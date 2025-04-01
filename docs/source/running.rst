@@ -1,0 +1,1 @@
+.. highlight:: rest.. _sec-running:Running TRINITY==================An example of running TRINITY using the parameter file ``example.param`` may look like this:.. code-block:: console    python3 ./run.py param/example.param    Note: The above command is ran in the TRINITY root directory.

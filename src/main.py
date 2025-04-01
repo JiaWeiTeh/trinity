@@ -87,6 +87,8 @@ def start_expansion(main_dict):
     main_dict['SB99_data'].value = SB99_data
     main_dict['SB99f'].value = SB99f
     
+    print('..loaded sps files.')
+    
     # Step 3: get cooling structure for CIE (since it is non time dependent).
     # ---
     # Values for non-CIE cooling curve will be calcualated along the simnulation, since it depends on time evolution.
@@ -107,45 +109,22 @@ def start_expansion(main_dict):
     main_dict['cStruc_cooling_CIE_logLambda'].value = logLambda
     main_dict['cStruc_cooling_CIE_interpolation'].value = cooling_CIE_interpolation
     
-    print('Feedback parameters retrieved from Starburst99.')
+    print('..loaded cooling files.')
     
     # =============================================================================
     # These two are currently not being needed. 
     # =============================================================================
     # create density law for cloudy
-    # TODO: add this in the future.
-    # get_InitCloudyDens.create_InitCloudyDens(trinity_params.out_dir,
-    #                                       rCloud, trinity_params.mCloud, 
-    #                                       trinity_params.dens_a_pL,
-    #                                       trinity_params.dens_navg_pL,
-    #                                       trinity_params.rCore,
-    #                                       trinity_params.nISM,
-    #                                       trinity_params.nCore,
-    #                                       main_dict,
-    #                                       coll_counter = ii_coll)
+    # TODO: add cloudy support in the future.
     
     # get initial bubble structure and path to where the file is saved.
     # TODO: currently the file is not being saved. 
     get_InitBubStruc.get_InitBubStruc()
 
     # =============================================================================
-    # Begin WARPFIELD simulation.
-    # Simulate the Evolution (until end time reached, cloud dissolves, 
-    # or re-collapse)
+    # Begin simulation.
     # =============================================================================
-
-    # MAIN TRINITY CODE
     run_expansion(main_dict)
-    
-    # Checkout from here atm.
-    
-    # t = np.append(t, t1)
-    # r = np.append(r, r1)
-    # v = np.append(v, v1)
-    # E = np.append(E, E1)
-    # T = np.append(T, T1)
- 
-    
     
     # # write data (make new file) and cloudy data
     # # (this must be done after the ODE has been solved on the whole interval between 0 and tcollapse (or tdissolve) because the solver is implicit)
@@ -278,13 +257,6 @@ def run_expansion(main_dict):
     main_dict['cStruc_heating_nonCIE'].value = np.nan
     main_dict['cStruc_net_nonCIE_interpolation'].value = np.nan
     
-    main_dict['v0_residual'].value = np.nan
-    main_dict['v0_residual'].value = np.nan
-    main_dict['v0_residual'].value = np.nan
-    main_dict['v0_residual'].value = np.nan
-    main_dict['v0_residual'].value = np.nan
-    main_dict['v0_residual'].value = np.nan
-    
     main_dict['bubble_v_arr'].value = np.nan
     main_dict['bubble_T_arr'].value = np.nan
     main_dict['bubble_dTdr_arr'].value = np.nan
@@ -293,6 +265,7 @@ def run_expansion(main_dict):
     main_dict['bubble_dMdt'].value = np.nan
  
     
+ # TODO: i think this part is not needed since phase checks are all done within event_check(). Will see.
     if (set_phase.check_simulation_status(main_dict['t_now'].value, main_dict['R2'].value, main_dict['v2'].value, main_dict['tStop'].value) == set_phase.cont):
     
     # =============================================================================

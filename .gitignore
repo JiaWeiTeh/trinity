@@ -8,6 +8,7 @@ __pycache__/
 */*.icloud
 .DS_Store
 .spyproject/
+outputs/
 
 
 # C extensions
