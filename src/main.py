@@ -13,34 +13,23 @@ shell.
 import numpy as np
 import datetime
 import sys
-import yaml
 import scipy
-import os
 import astropy.units as u
 import src._functions.unit_conversions as cvt
-import astropy.constants as c
 
 #--
-from src.phase0_init import (get_InitCloudProp, get_InitBubStruc,
-                                        get_InitCloudyDens, get_InitPhaseParam)
+from src.phase0_init import (get_InitCloudProp, get_InitBubStruc, get_InitPhaseParam)
 from src.phase_general import set_phase
 from src.sb99 import read_SB99
 from src.phase1_energy import run_energy_phase
 from src.phase1b_energy_implicit import run_energy_implicit_phase
 from src.phase1c_transition import run_transition_phase
 from src.phase2_momentum import run_momentum_phase
-from src.cloudy import __cloudy__
 import src._output.terminal_prints as terminal_prints
 import src._output.write_outputs as write_outputs
-import src.bubble_structure.bubble_luminosity as bubble_luminosity
-from src._input.dictionary import DescribedItem, DescribedDict, updateDict
-import src.cooling.CIE.read_coolingcurve as CIE
-import src.cooling.non_CIE.read_cloudy as non_CIE
-from src._functions.clock import _timer
 
 
 def start_expansion(main_dict):
-    print(os.environ['WARPFIELD3_SETTING_MODULE'])
     """
     This wrapper takes in the parameters and feed them into smaller
     functions.
