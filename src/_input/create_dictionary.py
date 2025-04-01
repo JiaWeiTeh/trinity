@@ -123,7 +123,7 @@ def create():
 
     # paths
     main_dict['path_cooling_CIE'] = DescribedItem(trinity_params.path_cooling_CIE, 'path to CIE data')
-
+    main_dict['path2output'] = DescribedItem(trinity_params.out_dir, 'Output path')
 
     # mass loss calculations in bubble
     main_dict['dMdt'] = DescribedItem(np.nan, 'Msun/Myr. mass loss from region c (shell) into region b (shocked winds) due to thermal conduction.')
