@@ -47,10 +47,10 @@ verbose    2
 
 # Output format?
 # Available values:
-# -- ASCII
+# -- JSON
 # -- FITS (TBD)
-# DEFAULT: ASCII
-output_format    ASCII
+# DEFAULT: JSON
+output_format    JSON
 
 # =============================================================================
 # WARPFIELD main parameters

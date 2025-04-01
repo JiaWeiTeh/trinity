@@ -27,6 +27,7 @@ import phase1_wfld4_dMdt as dMdt
 # path2json = r'/Users/jwt/Documents/Code/warpfield3/outputs/1e7_001_n1e2/dictionary.json'
 
 path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/example_pl/dictionary.json'
+# path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/example_pl_test/dictionary.json'
 
 betadelta.plot(path2json)
 current.plot(path2json)

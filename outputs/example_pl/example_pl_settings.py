@@ -1,6 +1,6 @@
 # =============================================================================
 # Summary of parameters in the 'example_pl' run.
-# Created at 01/04/2025 15:43:24.
+# Created at 01/04/2025 17:22:30.
 # =============================================================================
 
 #-- import library for units
@@ -10,7 +10,7 @@ import astropy.units as u
 model_name="example_pl"
 out_dir="/Users/jwt/unsync/Code/Trinity/outputs/example_pl/"
 verbose = 2.0
-output_format="ASCII"
+output_format="JSON"
 rand_input = 0.0
 log_mCloud = 7.0 * u.M_sun
 is_mCloud_beforeSF = 1.0
