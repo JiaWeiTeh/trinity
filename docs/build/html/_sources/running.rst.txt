@@ -1,1 +1,0 @@
-.. highlight:: rest.. _sec-running:Running WARPFIELD==================An example of running WARPFIELD using the parameter file ``example.param`` may look like this:.. code-block:: console    python3 ./run.py param/example.param    Note: The above command is ran in the WARPFIELD root directory.
