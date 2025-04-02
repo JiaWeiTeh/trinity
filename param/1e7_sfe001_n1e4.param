@@ -1,0 +1,4 @@
+model_name    1e7_sfe001_n1e4
+log_mCloud    7
+sfe    0.01
+dens_navg_pL    1e4

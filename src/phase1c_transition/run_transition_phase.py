@@ -100,7 +100,7 @@ def ODE_equations_transition(t, y, params):
     SB99f = params['SB99f'].value
     
     # returns in pc/yr2
-    vd, _ = phase_ODEs.get_vdot(t, y, params, SB99f)
+    vd = phase_ODEs.get_vdot(t, y, params, SB99f)
     rd = v2
     
     # shouldnt we also balance r1?
@@ -108,6 +108,8 @@ def ODE_equations_transition(t, y, params):
     t_soundcrossing = params['R2'].value/params['cs_avg'].value
 
     params['dEdt'].value = - Eb / t_soundcrossing
+    
+    print('dEdt is', params['dEdt'].value)
     
     params.save_snapShot()
 
@@ -142,7 +144,7 @@ def check_events(params, dt_params):
     # =============================================================================
     
     # Main event: when energy is close to zero.
-    if Eb_next < 0:
+    if Eb_next < 1:
         print(f"Phase ended because energy crosses from E: {params['Eb'].value} to E: {Eb_next} in the next iteration.")
         return True
     

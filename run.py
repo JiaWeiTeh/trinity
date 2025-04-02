@@ -32,9 +32,6 @@ params = read_param.read_param(args.path2param, write_summary = True)
 from src._output import header
 header.display()
 
-# this import has to be here or warpfield_params will not work.
-# With this dictionary, run the simulation.
-# import test
 
 
 from src import main

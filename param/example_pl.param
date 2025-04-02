@@ -42,7 +42,7 @@ out_dir    def_dir
 # -- 1  only errors
 # -- 2  basic output
 # -- 3  everything (intense)
-# DEFAULT: 2
+# DEFAULT: 1
 verbose    2
 
 # Output format?
@@ -303,7 +303,7 @@ thermcoeff_SN    1.0
 # Available values:
 # -- pL_prof  power-law profile. 
 # -- bE_prof  Bonnor-Ebert density profile.
-# DEFAULT: bE_prof
+# DEFAULT: pL_prof
 dens_profile    pL_prof
 
 # If bE_prof (Bonner-Ebert) is specified for dens_profile, then the user must

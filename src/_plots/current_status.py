@@ -103,8 +103,8 @@ def plot(path2json):
     #-- final
     
     plt.tight_layout()  
-    path2figure = snapshots['path2output'].value + '/fig/'
-    plt.savefig(path2figure + 'current_comparison.png')
+    # path2figure = snapshots['path2output'].value + '/fig/'
+    # plt.savefig(path2figure + 'current_comparison.png')
     plt.show()
     
 

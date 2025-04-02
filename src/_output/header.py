@@ -70,7 +70,7 @@ def show_param():
     # shorten
     relpath = os.path.relpath(warpfield_params.out_dir, os.getcwd())
     print(f"{cpr.FILE}Summary: {relpath}/{warpfield_params.model_name}{'_summary.txt'}{cpr.END}")
-    filename =  relpath + '/' + warpfield_params.model_name+ '_config.yaml'
+    filename =  relpath + '/' + str(warpfield_params.model_name)+ '_config.yaml'
     print(f'{cpr.FILE}Verbose yaml: {filename}{cpr.END}')
 
     return

@@ -77,8 +77,8 @@ def plot(path2json):
     
     # plt.legend()
     plt.tight_layout()  
-    path2figure = snapshots['path2output'].value + '/fig/'
-    plt.savefig(path2figure + 'dMdt_comparison.png')
+    # path2figure = snapshots['path2output'].value + '/fig/'
+    # plt.savefig(path2figure + 'dMdt_comparison.png')
     plt.show()
 
 

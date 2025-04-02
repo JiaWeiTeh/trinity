@@ -150,7 +150,7 @@ def ODE_equations(t, y, params):
     # =============================================================================
     
     # returns in pc/yr2
-    vd, _ = phase_ODEs.get_vdot(t, y, params, SB99f)
+    vd = phase_ODEs.get_vdot(t, y, params, SB99f)
     rd = v2
         
     # =============================================================================
@@ -236,8 +236,8 @@ def check_events(params, dt_params):
     # =============================================================================
     
     
-    # Main event: when Lcool approaches 10 percent of Lgain.
-    if (params['Lgain'].value - params['Lloss'].value)/params['Lgain'].value < 0.1:
+    # Main event: when Lcool approaches 5 percent of Lgain.
+    if (params['Lgain'].value - params['Lloss'].value)/params['Lgain'].value < 0.05:
         print(f"Phase ended because Lloss: {params['Lloss'].value} is within {(params['Lgain'].value - params['Lloss'].value)/params['Lgain'].value * 100}% of Lgain: {params['Lgain'].value}")
         return True
     

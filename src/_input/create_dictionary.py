@@ -186,6 +186,7 @@ def create():
     
     
     main_dict['mShell'] = DescribedItem(np.nan, 'Msol. Shell mass')
+    main_dict['mShell_dot'] = DescribedItem(np.nan, 'Msol/Myr. Rate of change of shell mass')
     main_dict['isLowdense'] = DescribedItem(False, 'is the shell currently in low density?')
     main_dict['t_Lowdense'] = DescribedItem(np.nan, 'Myr, time of most recent isLowdense==True')
     

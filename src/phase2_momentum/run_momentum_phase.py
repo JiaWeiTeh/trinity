@@ -83,6 +83,8 @@ def ODE_equations_momentum(t, y, params):
     # --- These are R2, v2, Eb and T0 (Trgoal).
     R2, v2, Eb, T0 = y    
     
+    print(f'current stage: t:{t}, r:{R2}, v:{v2}, E:{Eb}, T:{T0}')
+
     # record
     params['t_now'].value = t
     params['v2'].value = v2
@@ -100,7 +102,7 @@ def ODE_equations_momentum(t, y, params):
     
     # vd, _ = phase_ODEs.get_vdot(t, [R2, v2, 0, 0], params, SB99f)
     # idea
-    vd, _ = phase_ODEs.get_vdot(t, [R2, v2, Eb, T0], params, SB99f)
+    vd = phase_ODEs.get_vdot(t, [R2, v2, Eb, T0], params, SB99f)
     rd = v2
     
     params.save_snapShot()
@@ -139,21 +141,25 @@ def check_events(params, dt_params):
     #--- 1) Stopping time reached
     if t_next > params['tStop'].value:
         print(f"Phase ended because t reaches {t_next} Myr (> tStop: {params['tStop'].value}) in the next iteration.")
+        params['completed_reason'].value = 'Stopping time reached'
         return True
     
     #--- 2) Small radius reached during collapse.
     if params['isCollapse'].value == True and R2_next < params['r_coll'].value:
         print(f"Phase ended because collapse is {params['isCollapse'].value} and r reaches {R2_next} pc (< r_coll: {params['r_coll'].value} pc)")
+        params['completed_reason'].value = 'Small radius reached'
         return True
     
     #--- 3) Large radius reached during expansion.
     if R2_next > params['stop_r'].value:
         print(f"Phase ended because r reaches {R2_next} pc (> stop_r: {params['stop_r'].value} pc)")
+        params['completed_reason'].value = 'Large radius reached'
         return True
         
     #--- 4) dissolution after certain period of low density
     if params['t_now'].value - params['t_Lowdense'].value > params['shell_nShell_max'].value:
         print(f"Phase ended because {params['t_now'].value - params['t_Lowdense'].value} Myr passed since low density of {params['shell_nShell_max'].value/cvt.ndens_cgs2au} /cm3")
+        params['completed_reason'].value = 'Shell dissolved'
         return True
     
     

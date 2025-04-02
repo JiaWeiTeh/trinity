@@ -62,12 +62,12 @@ def read_param(path2file, write_summary = True):
     params_dict = {'model_name': 'example', 
                    'out_dir': 'def_dir', 
                    'verbose': 1.0, 
-                   'output_format': 'ASCII', 
+                   'output_format': 'JSON', 
                    'rand_input': 0.0, 
                    'log_mCloud': 6.0, 
                    'is_mCloud_beforeSF': 1.0, 
                    'sfe': 0.01, 
-                   'nCore': 1000.0, 
+                   'nCore': 1e4, 
                    'rCore': 0.099, 
                    'metallicity': 1.0, 
                    'stochastic_sampling': 0.0, 
@@ -87,7 +87,7 @@ def read_param(path2file, write_summary = True):
                    'SB99_BHCUT': 120.0,
                    'SB99_forcefile': 0.0,
                    'SB99_age_min': 500000.0,
-                   'dens_profile': 'bE_prof', 
+                   'dens_profile': 'pL_prof', 
                    'dens_g_bE': 14.1, 
                    'dens_a_pL': 0, 
                    'dens_navg_pL': 100.0, 
@@ -173,13 +173,16 @@ def read_param(path2file, write_summary = True):
             value = value.split(',')
             # value is a list. That's why we needed [0], and can calculate its length.
             if len(value) == 1:
-                # Convert to float if possible
-                try:
-                    val = float(value[0])
-                    params_dict[param] = val
-                # otherwise remain as string
-                except:
-                    params_dict[param] = value[0]
+                if param == 'model_name':
+                    params_dict[param] = str(value[0])
+                else:
+                    # Convert to float if possible
+                    try:
+                        val = float(value[0])
+                        params_dict[param] = val
+                    # otherwise remain as string
+                    except:
+                        params_dict[param] = value[0]
             # not done, but for now we save them as a list.
             else:
                 params_dict[param] = value 
@@ -468,107 +471,112 @@ import astropy.units as u\n\n\n\
             # body
             for key, val in params_dict.items():
                 try:
-                    float(val) #check if value can be changed into float (therefore could require units)
-                    # a series of tests
-                    if key == 'log_mCloud':
-                        f.writelines(f'{key} = {float(val)} * u.M_sun\n')
-                        
-                    elif key == 'nCore':
-                        f.writelines(f'{key} = {float(val)} / u.cm**3\n')
-                        
-                    elif key == 'rCore':
-                        f.writelines(f'{key} = {float(val)} * u.pc\n')
-                        
-                    elif key == 'rand_log_mCloud':
-                        f.writelines(f'{key} = {float(val)} * u.M_sun\n')
-                        
-                    elif key == 'rand_n_cloud':
-                        f.writelines(f'{key} = {float(val)} / u.cm**3\n')
-                        
-                    elif key == 'r_coll':
-                        f.writelines(f'{key} = {float(val)} * u.pc\n')
-                        
-                    elif key == 'SB99_mass':
-                        f.writelines(f'{key} = {float(val)} * u.M_sun\n')
-                        
-                    elif key == 'SB99_BHCUT':
-                        f.writelines(f'{key} = {float(val)} * u.M_sun\n')
-                        
-                    elif key == 'SB99_age_min':
-                        f.writelines(f'{key} = {float(val)} * u.yr\n')
-                        
-                    elif key == 'v_SN':
-                        f.writelines(f'{key} = {float(val)} * u.km/u.s\n')
-                        
-                    elif key == 'dens_navg_pL':
-                        f.writelines(f'{key} = {float(val)} / u.cm**3\n')
-                        
-                    elif key == 'stop_n_diss':
-                        f.writelines(f'{key} = {float(val)} / u.cm**3  \n')
-                        
-                    elif key == 'stop_t_diss':
+                    if key == 'model_name':
+                        # make sure it is string
+                        f.writelines(f'{key} = "{val}"\n')
+                    else:
+                        float(val)
+                        #check if value can be changed into float (therefore could require units)
+                        # a series of tests
+                        if key == 'log_mCloud':
+                            f.writelines(f'{key} = {float(val)} * u.M_sun\n')
+                            
+                        elif key == 'nCore':
+                            f.writelines(f'{key} = {float(val)} / u.cm**3\n')
+                            
+                        elif key == 'rCore':
+                            f.writelines(f'{key} = {float(val)} * u.pc\n')
+                            
+                        elif key == 'rand_log_mCloud':
+                            f.writelines(f'{key} = {float(val)} * u.M_sun\n')
+                            
+                        elif key == 'rand_n_cloud':
+                            f.writelines(f'{key} = {float(val)} / u.cm**3\n')
+                            
+                        elif key == 'r_coll':
+                            f.writelines(f'{key} = {float(val)} * u.pc\n')
+                            
+                        elif key == 'SB99_mass':
+                            f.writelines(f'{key} = {float(val)} * u.M_sun\n')
+                            
+                        elif key == 'SB99_BHCUT':
+                            f.writelines(f'{key} = {float(val)} * u.M_sun\n')
+                            
+                        elif key == 'SB99_age_min':
+                            f.writelines(f'{key} = {float(val)} * u.yr\n')
+                            
+                        elif key == 'v_SN':
+                            f.writelines(f'{key} = {float(val)} * u.km/u.s\n')
+                            
+                        elif key == 'dens_navg_pL':
+                            f.writelines(f'{key} = {float(val)} / u.cm**3\n')
+                            
+                        elif key == 'stop_n_diss':
+                            f.writelines(f'{key} = {float(val)} / u.cm**3  \n')
+                            
+                        elif key == 'stop_t_diss':
+                                f.writelines(f'{key} = {float(val)} * u.Myr\n')
+                            
+                        elif key == 'stop_r':
+                            f.writelines(f'{key} = {float(val)} * u.pc\n')
+                            
+                        elif key == 'stop_v':
+                            f.writelines(f'{key} = {float(val)} * u.km/u.s\n')
+                            
+                        elif key == 'stop_t':
+                            if params_dict['stop_t_unit'] == 'Myr':
+                                f.writelines(f'{key} = {float(val)} * u.Myr\n')
+                            else:
+                                f.writelines(f'{key} = {float(val)}\n')
+                                
+                        elif key == 'phase_Emin':
+                            f.writelines(f'{key} = {float(val)} * u.erg\n')
+                            
+                        elif key == 'sigma0':
+                            f.writelines(f'{key} = {float(val)} * u.cm**2\n')
+                            
+                        elif key == 'mu_n':
+                            f.writelines(f'{key} = {float(val)} * u.g\n')
+                            
+                        elif key == 'mu_p':
+                            f.writelines(f'{key} = {float(val)} * u.g\n')
+                            
+                        elif key == 't_ion':
+                            f.writelines(f'{key} = {float(val)} * u.K\n')
+    
+                        elif key == 't_neu':
+                            f.writelines(f'{key} = {float(val)} * u.K\n')
+    
+                        elif key == 'nISM':
+                            f.writelines(f'{key} = {float(val)} / u.cm**3\n')
+    
+                        elif key == 'kappa_IR':
+                            f.writelines(f'{key} = {float(val)} * u.cm**2 / u.g\n')
+    
+                        elif key == 'alpha_B':
+                            f.writelines(f'{key} = {float(val)} * u.cm**3 / u.s\n')
+    
+                        elif key == 'c_therm':
+                            f.writelines(f'{key} = {float(val)} * u.erg / u.cm / u.s * u.K**(-7/2)\n')
+    
+                        elif key == 'sigma_d':
+                            f.writelines(f'{key} = {float(val)} * u.cm**2\n')
+    
+                        elif key == 'tff':
                             f.writelines(f'{key} = {float(val)} * u.Myr\n')
+    
+                        elif key == 'mCloud':
+                            f.writelines(f'{key} = {float(val)} * u.M_sun\n')
+    
+                        elif key == 'mCluster':
+                            f.writelines(f'{key} = {float(val)} * u.M_sun\n')
+    
+                        elif key == 'T_r2Prime':
+                            f.writelines(f'{key} = {float(val)} * u.K\n')
                         
-                    elif key == 'stop_r':
-                        f.writelines(f'{key} = {float(val)} * u.pc\n')
-                        
-                    elif key == 'stop_v':
-                        f.writelines(f'{key} = {float(val)} * u.km/u.s\n')
-                        
-                    elif key == 'stop_t':
-                        if params_dict['stop_t_unit'] == 'Myr':
-                            f.writelines(f'{key} = {float(val)} * u.Myr\n')
+                        # simply write without units
                         else:
                             f.writelines(f'{key} = {float(val)}\n')
-                            
-                    elif key == 'phase_Emin':
-                        f.writelines(f'{key} = {float(val)} * u.erg\n')
-                        
-                    elif key == 'sigma0':
-                        f.writelines(f'{key} = {float(val)} * u.cm**2\n')
-                        
-                    elif key == 'mu_n':
-                        f.writelines(f'{key} = {float(val)} * u.g\n')
-                        
-                    elif key == 'mu_p':
-                        f.writelines(f'{key} = {float(val)} * u.g\n')
-                        
-                    elif key == 't_ion':
-                        f.writelines(f'{key} = {float(val)} * u.K\n')
-
-                    elif key == 't_neu':
-                        f.writelines(f'{key} = {float(val)} * u.K\n')
-
-                    elif key == 'nISM':
-                        f.writelines(f'{key} = {float(val)} / u.cm**3\n')
-
-                    elif key == 'kappa_IR':
-                        f.writelines(f'{key} = {float(val)} * u.cm**2 / u.g\n')
-
-                    elif key == 'alpha_B':
-                        f.writelines(f'{key} = {float(val)} * u.cm**3 / u.s\n')
-
-                    elif key == 'c_therm':
-                        f.writelines(f'{key} = {float(val)} * u.erg / u.cm / u.s * u.K**(-7/2)\n')
-
-                    elif key == 'sigma_d':
-                        f.writelines(f'{key} = {float(val)} * u.cm**2\n')
-
-                    elif key == 'tff':
-                        f.writelines(f'{key} = {float(val)} * u.Myr\n')
-
-                    elif key == 'mCloud':
-                        f.writelines(f'{key} = {float(val)} * u.M_sun\n')
-
-                    elif key == 'mCluster':
-                        f.writelines(f'{key} = {float(val)} * u.M_sun\n')
-
-                    elif key == 'T_r2Prime':
-                        f.writelines(f'{key} = {float(val)} * u.K\n')
-                    
-                    # simply write without units
-                    else:
-                        f.writelines(f'{key} = {float(val)}\n')
 
                 except ValueError:
                     # strings dont need units
