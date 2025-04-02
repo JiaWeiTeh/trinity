@@ -5,17 +5,11 @@ Created on Wed Jul 12 13:37:22 2023
 
 @author: Jia Wei Teh
 """
-import time
 import os
-import sys
+import numpy as np
 from src._output.terminal_prints import cprint as cpr
-# get parameter
-import importlib
-warpfield_params = importlib.import_module(os.environ['WARPFIELD3_SETTING_MODULE'])
-# from src.input_tools import get_param
-# warpfield_params = get_param.get_param()
 
-def display():
+def display(params):
     
     # display logo for WARPFIELD
     show_logo()
@@ -30,7 +24,7 @@ def display():
     print(f'\t\t      [Version 3.0] 2022. All rights reserved.')
     print(f'\t\t      --------------------------------------------------')
     # show initial parameters
-    show_param()
+    show_param(params)
     
     return
 
@@ -44,7 +38,7 @@ def show_logo():
     _ _\     /_ _      \ \_\  \ \_\ \_\  \ \_\  \ \_\\"\_\  \ \_\    \ \_\  \/\_____\
        /_   _\          \/_/   \/_/ /_/   \/_/   \/_/ \/_/   \/_/     \/_/   \/_____/
      .'  \ /  `.      
-          '             © J.W. Teh, R.S. Klessen, S.O. Glover, K. Kreckel.                             
+          '             © J.W. Teh, R.S. Klessen                            
         """)
 
     return 
@@ -59,18 +53,18 @@ def link(url, label = None):
 
     return escape_mask.format(parameters, url, label)
 
-def show_param():
+def show_param(params):
     # print some useful information
     print(f"{cpr.BLINK}Loading parameters:{cpr.END}")
-    print(f'\tmodel name: {warpfield_params.model_name}')
-    print(f'\tlog_mCloud: {warpfield_params.log_mCloud}')
-    print(f'\tSFE: {warpfield_params.sfe}')
-    print(f'\tmetallicity: {warpfield_params.metallicity}')
-    print(f'\tdensity profile: {warpfield_params.dens_profile}')
+    print(f"\tmodel name: {params['model_name'].value}")
+    print(f"\tlog_mCloud: {np.log10(params['mCloud_au'].value)}")
+    print(f"\tSFE: {params['sfe'].value}")
+    print(f"\tmetallicity: {params['metallicity'].value}")
+    print(f"\tdensity profile: {params['dens_profile'].value}")
     # shorten
-    relpath = os.path.relpath(warpfield_params.out_dir, os.getcwd())
-    print(f"{cpr.FILE}Summary: {relpath}/{warpfield_params.model_name}{'_summary.txt'}{cpr.END}")
-    filename =  relpath + '/' + str(warpfield_params.model_name)+ '_config.yaml'
+    relpath = os.path.relpath(params['path2output'].value, os.getcwd())
+    print(f"{cpr.FILE}Summary: {relpath}/{params['model_name'].value}{'_summary.txt'}{cpr.END}")
+    filename =  relpath + '/' + params['model_name'].value + '_config.yaml'
     print(f'{cpr.FILE}Verbose yaml: {filename}{cpr.END}')
 
     return

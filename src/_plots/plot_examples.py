@@ -14,8 +14,8 @@ import src._plots.dMdt as dMdt
 
 
 # path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/example_pl/dictionary.json'
-path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/1e5_sfe001_n1e4/dictionary.json'
-# path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/1e6_sfe001_n1e4/dictionary.json'
+# path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/1e5_sfe001_n1e4/dictionary.json'
+path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/1e5_sfe001_n1e2/dictionary.json'
 
 betadelta.plot(path2json)
 current_status.plot(path2json)

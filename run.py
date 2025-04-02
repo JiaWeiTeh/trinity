@@ -29,8 +29,6 @@ args = parser.parse_args()
 # Get class and write summary file
 params = read_param.read_param(args.path2param, write_summary = True)
 
-from src._output import header
-header.display()
 
 
 
@@ -39,19 +37,17 @@ import src._input.create_dictionary as create_dictionary
 
 main_dict = create_dictionary.create()
 
-main.start_expansion(main_dict)
+from src._output import header
+header.display(main_dict)
+
 
 
 try:
+    main.start_expansion(main_dict)
+except Exception as e:
+    print(f'Simulation exited. Error:\n{e}')
     main_dict.flush()
-except:
     pass
-
-# try:
-# except Exception as e:
-#     print(f'Simulation exited. Error:\n{e}')
-#     main_dict.flush()
-#     pass
 # # test
 
 # Done!

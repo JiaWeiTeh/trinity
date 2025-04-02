@@ -10,18 +10,6 @@ This script adds astropy units into the dictionary.
 
 import astropy.units as u
 import astropy.constants as c
-# Well.. this is actually the modules name
-# import fuckit
-
-# decorator to avoid lengthy try blocks
-# @fuckit
-
-
-
-
-
-
-
 
 
 def append_units(path2file):
@@ -37,7 +25,6 @@ def append_units(path2file):
     
     
     return
-
 
 
 def old_append_units(wp):
