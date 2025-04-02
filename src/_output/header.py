@@ -20,9 +20,9 @@ def display():
     # display logo for WARPFIELD
     show_logo()
     print(f'\t\t      --------------------------------------------------')
-    print(f'\t\t      Welcome to'+' \033[32m'+link('https://github.com/JiaWeiTeh/warpfield3', 'TRINITY')+'\033[0m!\n')
+    print(f'\t\t      Welcome to'+' \033[32m'+link('https://github.com/JiaWeiTeh/trinity', 'TRINITY')+'\033[0m!\n')
     print(f'\t\t      Notes:')
-    print(f'\t\t         - Documentation can be found \033[32m'+link('https://warpfield3.readthedocs.io/en/latest/', 'here')+'\033[0m.')
+    print(f'\t\t         - Documentation can be found \033[32m'+link('https://trinitysf.readthedocs.io/en/latest/index.html', 'here')+'\033[0m.')
     print(f'\t\t         - \033[1m\033[96mBold text{cpr.END} indicates that a file is saved,')
     print(f'\t\t           and shows where it is saved.')
     print(f'\t\t         - {cpr.WARN}Warning message{cpr.END}. Code runs still.')
