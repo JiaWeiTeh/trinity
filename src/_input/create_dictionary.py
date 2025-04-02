@@ -46,7 +46,9 @@ def create():
     main_dict['isDissolution'] = DescribedItem(False, 'is the bubble currently dissolving')
     main_dict['collapse_counter'] = DescribedItem(0, 'How many times recollapse has happened.')
     main_dict['metallicity'] = DescribedItem(trinity_params.metallicity, 'Cloud metallicity of the simulation')
-    
+    main_dict['model_name'] = DescribedItem(trinity_params.model_name, 'Model name')
+    main_dict['dens_profile'] = DescribedItem(trinity_params.dens_profile, 'density profile')
+    main_dict['sfe'] = DescribedItem(trinity_params.sfe, 'sfe')
     
     # constants
     main_dict['mu_n_au'] = DescribedItem(trinity_params.mu_n.value * cvt.g2Msun, 'Msun.')

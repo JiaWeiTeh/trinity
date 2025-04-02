@@ -48,7 +48,7 @@ def get_beta_delta_wrapper(beta_guess, delta_guess, params):
 def get_betadelta(beta_guess, delta_guess, params):
     
     
-    beta_max = 1
+    beta_max = 10 # very large number. Maybe beta doesnt have a maximum! It used to be 1.
     beta_min = 0
     delta_max = 0
     delta_min = -1

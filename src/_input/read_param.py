@@ -102,7 +102,7 @@ def read_param(path2file, write_summary = True):
                    'frag_enable_timescale': 1.0, 
                    'stop_n_diss': 1.0, 
                    'stop_t_diss': 1.0, 
-                   'stop_r': 5050.0, 
+                   'stop_r': 100.0, 
                    'stop_v': -10000.0,
                    'stop_t': 15.05, 
                    'stop_t_unit': 'Myr', 
