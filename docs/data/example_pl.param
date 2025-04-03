@@ -1,6 +1,6 @@
 # ==============================================================================
 # EXAMPLE PARAMETER FILE
-# This parameter file provides an example setup for running the WARPFIELD
+# This parameter file provides an example setup for running the TRINITY
 # code. This file contains documentation for all possible parameters.
 # @author: Jia Wei Teh
 # ==============================================================================
@@ -33,7 +33,7 @@ model_name    example_pl
 
 # Directory for output files? Must provide absolute path. Do not include ',' or space character in path.
 # type: string
-# DEFAULT: def_dir: The default directory is the root directory in which WARPFIELD is being run. i.e., path/to/warpfield/output/your_model_name/
+# DEFAULT: def_dir: The default directory is the root directory in which TRINITY is being run. i.e., path/to/trinity/output/your_model_name/
 out_dir    def_dir
 
 # Output intensity level in terminal?
@@ -53,9 +53,9 @@ verbose    2
 output_format    JSON
 
 # =============================================================================
-# WARPFIELD main parameters
+# TRINITY main parameters
 # =============================================================================
-# Note: Here are the main parameters which WARPFIELD depends on. 
+# Note: Here are the main parameters which TRINITY depends on. 
 
 # Enable random input parameters?
 # This option will provide randomized inputs of cloud mass (log_mCloud), star 
@@ -227,7 +227,7 @@ stellar_tracks    geneva
 # parameters for Starburst99 operations (if used)
 # ==============================================================================
 # This does not automatically create a Starburst99 file; the purpose of this
-# section is to tell WARPFIELD which SB99 file (from your folder) do you wish to use in the current run.
+# section is to tell TRINITY which SB99 file (from your folder) do you wish to use in the current run.
 # For more information, see https://www.stsci.edu/science/starburst99/docs/run.html.
 
 # What is the default star cluster mass in SB99? This will be used for scaling relation in outputs.
@@ -475,7 +475,7 @@ phase_Emin    1e-4
 
 
 # =============================================================================
-# parameters for WARPFIELD outputs
+# parameters for TRINITY outputs
 # =============================================================================
 
 # Write and save output?
@@ -554,17 +554,17 @@ cooling_delta    -0.17142857142857143
 # 3. Gnat and Ferland 2012 (slightly interpolated for values)
 # 4. Sutherland and Dopita 1993, for [Fe/H] = -1].
 # Note: Either enter these numbers that represents the filenames, or enter your own path to your own cooling curve. 
-# DEFAULT: 3, or path/to/warpfield/lib/cooling_tables/CIE/current/
+# DEFAULT: 3, or path/to/trinity/lib/cooling_tables/CIE/current/
 path_cooling_CIE    3
 
 
 # Path to cooling curve FOLDER would you like to use for non-CIE (T < 10^5.5 K). 
-# DEFAULT: def_dir: path/to/warpfield/lib/cooling_tables/opiate/
+# DEFAULT: def_dir: path/to/trinity/lib/cooling_tables/opiate/
 path_cooling_nonCIE    def_dir
 
 
 # Path to starburst99 files?
-# DEFAULT: def_dir: path/to/warpfield/lib/sps/starburst99/
+# DEFAULT: def_dir: path/to/trinity/lib/sps/starburst99/
 path_sps    def_dir
 
 
