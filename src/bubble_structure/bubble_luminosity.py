@@ -138,7 +138,7 @@ def get_bubbleproperties(b_params,
     #here we follow the original code and use mu_p, but maybe we should use mu_n since the region is ionised?
     b_params['mu_au'] = DescribedItem(b_params['mu_p_au'].value, 'Msun')
 
-    print('b_params in bubble lum before dMdt', b_params)
+    # print('b_params in bubble lum before dMdt', b_params)
 
     # While evaluating for dMdt, we create a global variable to also store the values for
     # temperature and velocity. 
