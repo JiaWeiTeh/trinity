@@ -33,7 +33,7 @@ extensions = [
     'sphinx.ext.intersphinx',
     'sphinx_rtd_theme',
     'sphinx_copybutton',
-    
+    'sphinx_toolbox.collapse',    
 ]
 
 intersphinx_mapping = {
