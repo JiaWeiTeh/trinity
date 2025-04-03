@@ -95,7 +95,7 @@ def plot(path2json):
     axs[0][0].legend()
     
     axs[0][0].set_xlim(0, max(v3_t))
-    axs[0][0].set_ylim(-0.05, 1)
+    # axs[0][0].set_ylim(-0.05, 1)
     
     #-- beta residual
     
@@ -122,7 +122,7 @@ def plot(path2json):
     axs[0][1].legend(loc = 'lower left')
     
     axs[0][1].set_xlim(0, max(v3_t))
-    axs[0][1].set_ylim(-0.3, 0.05)
+    # axs[0][1].set_ylim(-0.3, 0.05)
     
         
     #-- delta residual
