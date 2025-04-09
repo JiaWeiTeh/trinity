@@ -59,12 +59,10 @@ def plot(path2json):
             elif key.endswith('T2_guess'):
                 v3T2.append(val[0])                
             elif key.endswith('current_phase'):
-                if val == '1a':
+                if val[0] == '1a':
                     v3a_length += 1
-                elif val == '1b':
+                elif val[0] == '1b':
                     v3b_length += 1
-                elif val == '1c':
-                    v3c_length += 1
                     
 #--------------
 
@@ -86,56 +84,56 @@ def plot(path2json):
     
     #-- beta
     
-    axs[0][0].plot(v3_t, v3data_b, '-k', alpha = 1, linewidth = 2, label = 'trinity')
+    axs[0][0].plot(v3_t, v3data_b, '-k', alpha = 1, linewidth = 2)
     axs[0][0].set_ylabel('beta')
     axs[0][0].set_xlabel('time (Myr)')
     
     axs[0][0].axhline(0, linestyle = '--', c = 'r', alpha = 0.5)
     axs[0][0].axhline(1, linestyle = '--', c = 'r', alpha = 0.5)
-    axs[0][0].legend()
+    # axs[0][0].legend()
     
-    axs[0][0].set_xlim(0, max(v3_t))
+    axs[0][0].set_xlim(0, v3_t[int(v3a_length+v3b_length)])
     # axs[0][0].set_ylim(-0.05, 1)
     
     #-- beta residual
     
     
-    axs[1][0].plot(v3_t, v3data_bres, '-k', alpha = 1, linewidth = 2, label = 'trinity')
+    axs[1][0].plot(v3_t, v3data_bres, '-k', alpha = 1, linewidth = 2)
     axs[1][0].set_ylabel('Edot residual')
     axs[1][0].set_xlabel('time (Myr)')
     
     axs[1][0].axhline(0, linestyle = '--', c = 'r', alpha = 0.5)
     axs[1][0].axhspan(-0.05, 0.05, color = 'b', alpha = 0.1)
     
-    axs[1][0].set_xlim(0, max(v3_t))
+    axs[1][0].set_xlim(0, v3_t[int(v3a_length+v3b_length)])
     axs[1][0].set_ylim(-0.2, 0.2)
     
     
     #-- delta
 
-    axs[0][1].plot(v3_t, v3data_d, '-k', alpha = 1, linewidth = 2, label = 'trinity')
+    axs[0][1].plot(v3_t, v3data_d, '-k', alpha = 1, linewidth = 2)
     axs[0][1].set_ylabel('delta')
     axs[0][1].set_xlabel('time (Myr)')
 
     axs[0][1].axhline(0, linestyle = '--', c = 'r', alpha = 0.5)
-    axs[0][1].axhline(1, linestyle = '--', c = 'r', alpha = 0.5)
-    axs[0][1].legend(loc = 'lower left')
+    axs[0][1].axhline(-1, linestyle = '--', c = 'r', alpha = 0.5)
+    # axs[0][1].legend(loc = 'lower left')
     
-    axs[0][1].set_xlim(0, max(v3_t))
+    axs[0][1].set_xlim(0, v3_t[int(v3a_length+v3b_length)])
     # axs[0][1].set_ylim(-0.3, 0.05)
     
         
     #-- delta residual
     
     
-    axs[1][1].plot(v3_t, v3data_dres, '-k', alpha = 1, linewidth = 2, label = 'trinity')
+    axs[1][1].plot(v3_t, v3data_dres, '-k', alpha = 1, linewidth = 2)
     axs[1][1].set_ylabel('T residual')
     axs[1][1].set_xlabel('time (Myr)')
     
     axs[1][1].axhline(0, linestyle = '--', c = 'r', alpha = 0.5)
     axs[1][1].axhspan(-0.05, 0.05, color = 'b', alpha = 0.1)
     
-    axs[1][1].set_xlim(0, max(v3_t))
+    axs[1][1].set_xlim(0, v3_t[int(v3a_length+v3b_length)])
     axs[1][1].set_ylim(-0.2, 0.2)
     
     
@@ -149,8 +147,8 @@ def plot(path2json):
     
     axs[2][0].legend(loc = 'lower left')
     
-    axs[2][0].set_xlim(0, max(v3_t))
-    axs[2][0].set_ylim(1e6, 1e10)
+    axs[2][0].set_xlim(0, v3_t[int(v3a_length+v3b_length)])
+    # axs[2][0].set_ylim(1e6, 1e10)
     
     
     #-- T guesses 
@@ -163,8 +161,8 @@ def plot(path2json):
     
     axs[2][1].legend(loc = 'lower left')
     
-    axs[2][1].set_xlim(0, max(v3_t))
-    axs[2][1].set_ylim(1e6, 1e8)
+    axs[2][1].set_xlim(0, v3_t[int(v3a_length+v3b_length)])
+    # axs[2][1].set_ylim(1e6, 1e8)
     
     #-- final
     

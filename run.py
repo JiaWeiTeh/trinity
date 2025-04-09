@@ -40,15 +40,19 @@ main_dict = create_dictionary.create()
 from src._output import header
 header.display(main_dict)
 
-
-
 try:
     main.start_expansion(main_dict)
-except Exception as e:
-    print(f'Simulation exited. Error:\n{e}')
     main_dict.flush()
+except:
     pass
-# # test
+
+# try:
+#     main.start_expansion(main_dict)
+# except Exception as e:
+#     print(f'Simulation exited. Error:\n{e}')
+#     main_dict.flush()
+#     pass
+# # # test
 
 # Done!
 print("Done!")

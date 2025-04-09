@@ -73,7 +73,7 @@ def run_phase_momentum(params):
             T0 += Td * dt[ii]
             
         
-    return params
+    return 
     
     
 

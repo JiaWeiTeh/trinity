@@ -193,8 +193,8 @@ def create():
     main_dict['t_Lowdense'] = DescribedItem(np.nan, 'Myr, time of most recent isLowdense==True')
     
     
-    main_dict['stop_n_diss'] = DescribedItem(np.nan, 'au, density such that after stop_t_diss the shell is considered dissolved')
-    main_dict['stop_t_diss'] = DescribedItem(np.nan, 'Myr, time sustained below stop_n_diss after which shell is considered dissolved')
+    main_dict['stop_n_diss'] = DescribedItem(trinity_params.stop_n_diss.value, 'au, density such that after stop_t_diss the shell is considered dissolved')
+    main_dict['stop_t_diss'] = DescribedItem(trinity_params.stop_t_diss.value, 'Myr, time sustained below stop_n_diss after which shell is considered dissolved')
     
     
     # simulation

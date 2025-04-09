@@ -79,7 +79,6 @@ def run_energy( main_dict
     # hand is that the energy is fed into the system at a
     # constant rate instead of in an initial blast.
     # -----------
-    from src._functions.clock import _timer
 
     # get cooling cube
     # _timer.begin('heating data')

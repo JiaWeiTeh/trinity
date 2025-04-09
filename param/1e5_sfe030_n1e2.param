@@ -1,0 +1,4 @@
+model_name    1e5_sfe030_n1e2
+log_mCloud    5
+sfe    0.30
+dens_navg_pL    1e2
