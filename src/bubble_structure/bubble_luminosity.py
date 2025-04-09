@@ -17,16 +17,11 @@ import sys
 import os
 import scipy.optimize
 import scipy.integrate
-import copy
 from scipy.interpolate import interp1d
-import astropy.units as u
-import astropy.constants as c
 #--
 import src._functions.operations as operations
 import src.bubble_structure.get_bubbleParams as get_bubbleParams
 from src.cooling import net_coolingcurve
-# import src.cooling.CIE.read_coolingcurve as CIE
-# import src.cooling.non_CIE.read_cloudy as non_CIE
 import src._functions.unit_conversions as cvt
 from src._input.dictionary import (updateDict, DescribedItem)
 
@@ -36,8 +31,6 @@ import os
 import importlib
 warpfield_params = importlib.import_module(os.environ['WARPFIELD3_SETTING_MODULE'])
 
-# from src.input_tools import get_param
-# warpfield_params = get_param.get_param()
 
 def get_bubbleproperties(b_params,
                          record = False,

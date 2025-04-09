@@ -112,8 +112,8 @@ def get_betadelta(beta_guess, delta_guess, params):
                 print(e)
                 residual = (100,100)
             except Exception as e:
-                print(e)
-                sys.exit()
+                print('Problem here', e)
+                # sys.exit('problem here')
             
             # print('residual', residual)
             

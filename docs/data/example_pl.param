@@ -432,8 +432,8 @@ stop_t_diss    2.0
 # Maximum radius of shell expansion? (unit: pc)
 # If shell radius exceeds this threshold, consider the shell destroyed and halt the simulation.
 # Set to an arbritrary high value (> 1e3) if stopping is not desired.
-# DEFAULT: 100 (at this point the galactic shear will have disrupted the cloud).
-stop_r    100
+# DEFAULT: 500 
+stop_r    500
 
 # The calculation will become unstable if the collapse is too fast. This parameter
 # sets the velocity threshold (unit: km/s)
@@ -446,9 +446,9 @@ stop_v    -10000.0
 # Available units:
 # -- Myr 
 # -- tff (free-fall time)
-# DEFAULT value: 15.05
+# DEFAULT value: 20
 # DEFAULT unit: Myr
-stop_t    15.05
+stop_t    20
 stop_t_unit    Myr
 
 

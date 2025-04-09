@@ -19,7 +19,6 @@ import src._functions.unit_conversions as cvt
 
 #--
 from src.phase0_init import (get_InitCloudProp, get_InitBubStruc, get_InitPhaseParam)
-from src.phase_general import set_phase
 from src.sb99 import read_SB99
 from src.phase1_energy import run_energy_phase
 from src.phase1b_energy_implicit import run_energy_implicit_phase
@@ -227,7 +226,7 @@ def run_expansion(main_dict):
  
     terminal_prints.phase('Entering energy driven phase (adaptive cooling)')
 
-    phase1b_results = run_energy_implicit_phase.run_phase_energy(main_dict)
+    run_energy_implicit_phase.run_phase_energy(main_dict)
     
     # record
     try:
@@ -265,31 +264,30 @@ def run_expansion(main_dict):
     main_dict['bubble_dMdt'].value = np.nan
  
     
- # TODO: i think this part is not needed since phase checks are all done within event_check(). Will see.
-    if (set_phase.check_simulation_status(main_dict['t_now'].value, main_dict['R2'].value, main_dict['v2'].value, main_dict['tStop'].value) == set_phase.cont):
-    
     # =============================================================================
     # Phase 1c: transition phase
     # =============================================================================
 
-        terminal_prints.phase('Entering transition phase (decreasing energy before momentum)')
+    terminal_prints.phase('Entering transition phase (decreasing energy before momentum)')
 
-        main_dict['current_phase'].value = '2'
-        
-        phase1c_results = run_transition_phase.run_phase_transition(main_dict)
+    main_dict['current_phase'].value = '2'
     
-        # =============================================================================
-        # Phase 1d: momentum phase
-        # =============================================================================
+    run_transition_phase.run_phase_transition(main_dict)
+    
+    try:
+        main_dict.flush()
+    except:
+        pass
+    # =============================================================================
+    # Phase 1d: momentum phase
+    # =============================================================================
 
-        if (set_phase.check_simulation_status(main_dict['t_now'].value, main_dict['R2'].value, main_dict['v2'].value, main_dict['tStop'].value) == set_phase.cont):
-            
-            terminal_prints.phase('Entering momentum phase')
+    terminal_prints.phase('Entering momentum phase')
 
-            main_dict['current_phase'].value = '3'
-            
-            phase1d_results = run_momentum_phase.run_phase_momentum(main_dict)
-        
+    main_dict['current_phase'].value = '3'
+    
+    run_momentum_phase.run_phase_momentum(main_dict)
+
     try:
         main_dict.flush()
     except:

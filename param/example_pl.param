@@ -446,9 +446,9 @@ stop_v    -10000.0
 # Available units:
 # -- Myr 
 # -- tff (free-fall time)
-# DEFAULT value: 15.05
+# DEFAULT value: 50
 # DEFAULT unit: Myr
-stop_t    15.05
+stop_t    50
 stop_t_unit    Myr
 
 

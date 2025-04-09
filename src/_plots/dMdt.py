@@ -39,14 +39,10 @@ def plot(path2json):
             elif key.endswith('v0_residual'):
                 v3res.append(val[0])
             elif key.endswith('current_phase'):
-                if val == '1a':
+                if val[0] == '1a':
                     v3a_length += 1
-                elif val == '1b':
+                elif val[0] == '1b':
                     v3b_length += 1
-                elif val == '1c':
-                    v3c_length += 1
-    
-        
 
 #--------------
     
@@ -61,19 +57,20 @@ def plot(path2json):
     
     #--- dMdt
     
-    axs[0].plot(v3_t, v3data, '-k', alpha = 1, linewidth = 2, label = 'trinity')
+    axs[0].plot(v3_t, v3data, '-k', alpha = 1, linewidth = 2)
     axs[0].set_ylabel('dMdt')
     axs[0].set_xlabel('time (Myr)')
     axs[0].legend(loc = 'lower left')
-    axs[0].set_xlim(0, max(v3_t))
+    axs[0].set_xlim(0, v3_t[int(v3a_length+v3b_length)])
     
     #--- velocity residual
     
-    axs[1].plot(v3_t, v3res, '-k', alpha = 1, linewidth = 2, label = 'trinity')
+    axs[1].plot(v3_t, v3res, '-k', alpha = 1, linewidth = 2)
     axs[1].axhline(0, c = 'k', linestyle = '--', alpha = 0.5)
     axs[1].set_ylabel('v0 residual')
     axs[1].set_xlabel('time (Myr)')    
     axs[1].set_ylim(-5e-2, 5e-2)
+    axs[1].set_xlim(0, v3_t[int(v3a_length+v3b_length)])
     
     # plt.legend()
     plt.tight_layout()  

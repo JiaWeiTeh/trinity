@@ -179,17 +179,6 @@ def shell_structure(rShell0,
         ]) * u.cm
     
     
-                    #     # restate just for clarity
-                    # L_total, T_rgoal, L_bubble, L_conduction, L_intermediate, dMdt_factor_out, Tavg = output
-                    
-                    # print('\n\nFinish bubble\n\n')
-                    # print('L_total', L_total.to(u.M_sun*u.pc**2/u.Myr**3))
-                    # print('T_rgoal', T_rgoal)
-                    # print('L_bubble', L_bubble.to(u.M_sun*u.pc**2/u.Myr**3))
-                    # print('L_conduction', L_conduction.to(u.M_sun*u.pc**2/u.Myr**3))
-                    # print('L_intermediate', L_intermediate.to(u.M_sun*u.pc**2/u.Myr**3))
-                    # print('dMdt_factor_out', dMdt_factor_out)
-                    # print('Tavg', Tavg)
         
     print('\n\nwe are now in shell_structure.\n\n')
     print(f'rShell0: {rShell0.to(u.cm)}')
