@@ -20,6 +20,9 @@ import src._functions.unit_conversions as cvt
 #--
 from src.shell_structure import get_shellODE, get_shellParams
 
+# from src.shell_structure import get_shellODE_old, get_shellParams_old as get_shellODE, get_shellParams
+
+
 # get parameters
 import os
 import importlib
@@ -28,9 +31,9 @@ warpfield_params = importlib.import_module(os.environ['WARPFIELD3_SETTING_MODULE
 # from src.input_tools import get_param
 # warpfield_params = get_param.get_param()
 
+# THiS IS OLD
 
-def shell_structure(
-                    rShell0, 
+def shell_structure(rShell0, 
                     pBubble,
                     mBubble, 
                     Ln, Li, Qi,
@@ -38,11 +41,6 @@ def shell_structure(
                     f_cover,
                     params
                     ):
-    
-    
-    """
-    I think this part has to be in cgs no matter what, because of tau and phi calculations
-    """
     
     
     """
@@ -223,30 +221,19 @@ def shell_structure(
         # Get arguments and parameters for integration:
         # ionised region    
         is_ionised = True
-        
-        #--- original cgs version
         # initial values
         y0 = [nShell0.to(1/u.cm**3).value, phi0, tau0_ion]
         # constants
-        # cons = [Ln, Li, Qi]
+        cons = [Ln, Li, Qi]
         # Run integration
         # TODO: problem here!
         sol_ODE = scipy.integrate.odeint(get_shellODE.get_shellODE, y0, rShell_arr.value,
-                              args=(f_cover, is_ionised, params),
+                              args=(cons, f_cover, is_ionised),
                               rtol=1e-3, hmin=1e-7)
         # solved for n(r), phi(r), and tau(r)
         nShell_arr = sol_ODE[:,0] / u.cm**3
         phiShell_arr = sol_ODE[:,1] 
         tauShell_arr = sol_ODE[:,2]
-        
-        
-        #--- au version
-        # y0 = [nShell0.to(1/u.cm**3).value, phi0, tau0_ion]
-        
-        
-        
-        
-        
 
         # mass of spherical shell. Volume given by V = 4 pi r**2 * thickness
         mShell_arr = np.empty_like(rShell_arr.value) * u.g
@@ -427,7 +414,7 @@ def shell_structure(
                 cons = [Ln, Qi]
                 # Run integration
                 sol_ODE = scipy.integrate.odeint(get_shellODE.get_shellODE, y0, rShell_arr.value,
-                                      args=(f_cover, is_ionised, params),
+                                      args=(cons, f_cover, is_ionised),
                                       rtol=1e-3, hmin=1e-7)
                 # solved for n(r) and tau(r)
                 nShell_arr = sol_ODE[:,0] / u.cm**3
@@ -602,7 +589,6 @@ def shell_structure(
                 grav_phi.value * cvt.gravPhi_cgs2au, grav_force_m.value * cvt.grav_force_m_cgs2au
         
     
-
 
 
 

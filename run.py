@@ -40,11 +40,15 @@ main_dict = create_dictionary.create()
 from src._output import header
 header.display(main_dict)
 
-try:
-    main.start_expansion(main_dict)
-    main_dict.flush()
-except:
-    pass
+
+main.start_expansion(main_dict)
+
+# try:
+#     main.start_expansion(main_dict)
+#     main_dict.flush()
+#     print("Done!")
+# except:
+#     pass
 
 # try:
 #     main.start_expansion(main_dict)
@@ -55,7 +59,6 @@ except:
 # # # test
 
 # Done!
-print("Done!")
 
 # from src.input_tools import get_param
 # warpfield_params = get_param.get_param()

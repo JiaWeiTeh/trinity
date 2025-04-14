@@ -475,8 +475,8 @@ def run_energy( main_dict
             
             # update
             updateDict(main_dict,
-                       ['R2', 'Qi', 'v_wind', 'Eb', 'alpha', 'beta', 'delta', 'L_wind', 'v_wind'],
-                       [R2, Qi, v_wind, Eb, alpha, beta, delta, Lw, v_wind])
+                       ['R2', 'Qi', 'v_wind', 'Eb', 'alpha', 'beta', 'delta', 'L_wind', 'v_wind', 'Ln', 'Li', 'Qi'],
+                       [R2, Qi, v_wind, Eb, alpha, beta, delta, Lw, v_wind, Ln, Li, Qi])
             
             
             # TODO: make all dictionary extraction at the beginning, so taht we know
