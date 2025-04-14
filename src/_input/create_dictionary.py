@@ -64,6 +64,8 @@ def create():
     main_dict['nISM_au'] = DescribedItem(trinity_params.nISM.value * cvt.ndens_cgs2au, '1/pc3.')
     main_dict['t_ion'] = DescribedItem(trinity_params.t_ion.value, 'K')
     main_dict['t_neu'] = DescribedItem(trinity_params.t_neu.value, 'K')
+    main_dict['alpha_B_au'] = DescribedItem(trinity_params.alpha_B.value * cvt.cm2pc**3 / cvt.s2Myr, 'au (cm3/s)')
+    main_dict['sigma_d_au'] = DescribedItem(trinity_params.sigma_d.value * cvt.cm2pc**2, 'pc^2, dust cross section at solar metallicity')
     
     # cloud and cluster properties
     main_dict['mCluster_au'] = DescribedItem(trinity_params.mCluster.value, 'M_sun')
@@ -190,21 +192,24 @@ def create():
     main_dict['mShell'] = DescribedItem(np.nan, 'Msol. Shell mass')
     main_dict['mShell_dot'] = DescribedItem(np.nan, 'Msol/Myr. Rate of change of shell mass')
     main_dict['isLowdense'] = DescribedItem(False, 'is the shell currently in low density?')
-    main_dict['t_Lowdense'] = DescribedItem(np.nan, 'Myr, time of most recent isLowdense==True')
+    main_dict['t_Lowdense'] = DescribedItem(1e30, 'Myr, time of most recent isLowdense==True')
     
     
-    main_dict['stop_n_diss'] = DescribedItem(trinity_params.stop_n_diss.value, 'au, density such that after stop_t_diss the shell is considered dissolved')
+    main_dict['stop_n_diss'] = DescribedItem(trinity_params.stop_n_diss.value * cvt.ndens_cgs2au, 'au, density such that after stop_t_diss the shell is considered dissolved')
     main_dict['stop_t_diss'] = DescribedItem(trinity_params.stop_t_diss.value, 'Myr, time sustained below stop_n_diss after which shell is considered dissolved')
     
     
     # simulation
     main_dict['tStop'] = DescribedItem(trinity_params.stop_t.value, 'Myr. Maximum time.') 
+    # TODO:
+    # i thinjk this is not used? also there seem to be shell termination within shell_strcuture.
     main_dict['t_dissolve'] = DescribedItem(1e30, 'Time after which consider simulation as dissolved.') 
     main_dict['dEdt'] = DescribedItem(np.nan, 'Constant energy gradient over time; used for phase 1c and beyond.')
 
-    main_dict['r_coll'] = DescribedItem(trinity_params.r_coll.to(u.pc).value, 'Radius below which cloud is considered completely collapse during collapse event')
-    main_dict['stop_r'] = DescribedItem(trinity_params.stop_r.to(u.pc).value, 'Radius above which cloud is considered too large')
-    
+    main_dict['r_coll'] = DescribedItem(trinity_params.r_coll.value, 'Radius below which cloud is considered completely collapse during collapse event')
+    main_dict['stop_r'] = DescribedItem(trinity_params.stop_r.value, 'Radius above which cloud is considered too large')
+    # TODO:
+    # i think this wasnt reached because in shell it has its own termination
     main_dict['completed_reason'] = DescribedItem('', 'What caused simulation to complete')
     
     # Force calculations
@@ -213,6 +218,9 @@ def create():
     main_dict['F_wind'] = DescribedItem(0, '')
     main_dict['F_ram'] = DescribedItem(0, 'F_wind + F_SN')
     main_dict['F_rad'] = DescribedItem(0, 'Radiation pressure = direct + indirect ~ f_abs * Lbol/c * (1 + tau_IR)')
+    
+    
+    
     
     
     return main_dict

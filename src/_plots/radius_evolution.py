@@ -136,7 +136,7 @@ def update(frame):
         ax.axvspan(max(shell_rlist[frame]), rCloud_list[frame], color = 'lightblue', label = 'cloud')
 
 
-    axs[0].plot(tlist[:frame], shell_max[:frame], color = 'gray')
+    # axs[0].plot(tlist[:frame], shell_max[:frame], color = 'gray')
     axs[0].plot(tlist[:frame], r2list[:frame], color = 'red')
     axs[0].set_xlabel('t [Myr]')
     axs[0].set_ylabel('Radius [pc]')
@@ -172,10 +172,12 @@ def update(frame):
         axs[2].yaxis.set_visible(False)
         axs2.yaxis.set_visible(False)
         
-    try:
-        axs[2].set_xlim(0, max(shell_rlist[frame]))
-    except:
-        axs[2].set_xlim(0, r2list[frame])
+    # try:
+    #     axs[2].set_xlim(0, max(shell_rlist[frame]))
+    # except:
+    #     axs[2].set_xlim(0, r2list[frame])
+    
+    axs[2].set_xlim(r1list[frame], r2list[frame])
     
     # axs2.set_ylabel('log T [K]', color = 'b')
     # axs[2].set_ylabel('log density [cm-3]', color = 'k')

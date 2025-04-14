@@ -18,6 +18,7 @@ import src.cloud_properties.mass_profile as mass_profile
 import src.cloud_properties.density_profile as density_profile
 import src.bubble_structure.get_bubbleParams as get_bubbleParams
 import src.shell_structure.shell_structure as shell_structure
+# import src.shell_structure.shell_structure_old as shell_structure
 import src._functions.unit_conversions as cvt
 
 import os
@@ -47,6 +48,9 @@ def get_vdot(t, y,
     Ln = SB99f['fLn_cgs'](t) * cvt.L_cgs2au
     Li = SB99f['fLi_cgs'](t) * cvt.L_cgs2au
     Qi = SB99f['fQi_cgs'](t) / cvt.s2Myr
+    
+    
+    
     
     # velocity from luminosity and change of momentum (au)
     v_wind = (2.*L_wind/pdot_wind)
@@ -93,6 +97,12 @@ def get_vdot(t, y,
         # ram pressure from winds
         press_bubble = get_bubbleParams.pRam(R2, L_wind, v_wind)
             
+        
+    params['Ln'].value = Ln  
+    params['Li'].value = Li  
+    params['Qi'].value = Qi  
+    params['mShell'].value = mShell  
+    params['Pb'].value = press_bubble  
         
     # =============================================================================
     # Shell structure

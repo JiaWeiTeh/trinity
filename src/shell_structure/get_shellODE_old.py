@@ -12,19 +12,21 @@ optical depth (tau) of the shell.
 
 import numpy as np
 import sys
+import astropy.constants as c
+import astropy.units as u
 
-import src._functions.unit_conversions as cvt
+import os
+import importlib
+warpfield_params = importlib.import_module(os.environ['WARPFIELD3_SETTING_MODULE'])
 
-
-
-# TODO: add cover fraction cf (f_cover)
+# from src.input_tools import get_param
+# warpfield_params = get_param.get_param()
 
 def get_shellODE(y, 
                  r, 
-                  # cons,
-                 f_cover,
-                 is_ionised,
-                 params,
+                 cons,
+                 f_cover = 1,
+                 is_ionised = True
                  ):
     """
     A function that returns ODE of the ionised number density (n), 
@@ -64,89 +66,66 @@ def get_shellODE(y,
 
     """
     
-    # make sure it is all in cgs
-    
-    sigma_dust = params['sigma_d_au'].value / cvt.cm2pc**2
-    mu_n = params['mu_n_au'].value / cvt.g2Msun
-    mu_p = params['mu_p_au'].value / cvt.g2Msun
-    t_ion = params['t_ion'].value
-    t_neu = params['t_neu'].value
-    alpha_B = params['alpha_B_au'].value / cvt.cm2pc**3 * cvt.s2Myr #cm3/s
-    k_B = params['k_B_au'].value / cvt.k_B_cgs2au
-    c = params['c_au'].value / cvt.v_cms2au
-    Ln = params['Ln'].value / cvt.L_cgs2au 
-    Li = params['Li'].value / cvt.L_cgs2au 
-    Qi = params['Qi'].value * cvt.s2Myr
-    
-    # try non cgs here
-    # sigma_dust = params['sigma_d_au'].value / cvt.cm2pc**2
-    # mu_n = params['mu_n_au'].value   
-    # mu_p = params['mu_p_au'].value 
-    # t_ion = params['t_ion'].value
-    # t_neu = params['t_neu'].value
-    # alpha_B = params['alpha_B_au'].value  #cm3/s
-    # k_B = params['k_B_au'].value  
-    # c = params['c_au'].value  
-    # Ln = params['Ln'].value  
-    # Li = params['Li'].value 
-    # Qi = params['Qi'].value  
+    sigma_dust = warpfield_params.sigma_d 
+    mu_n = warpfield_params.mu_n 
+    mu_p = warpfield_params.mu_p
+    t_ion = warpfield_params.t_ion
+    t_neu = warpfield_params.t_neu
+    alpha_B = warpfield_params.alpha_B
+    # UNITS
+    r *= u.cm
+    # TODO: Add f_cover
     
     # Is this region of the shell ionised?
     # If yes:
     if is_ionised:
         # unravel, and make sure they are in the right units
         nShell, phi, tau = y
-        
-        # nShell *= (1/u.cm**3)
-        # Ln, Li, Qi = cons
-        # Ln = Ln.to(u.)
+        nShell *= (1/u.cm**3)
+        Ln, Li, Qi = cons
         
         # prevent underflow for very large tau values
-        if tau > 500:
+        if tau > 700:
             neg_exp_tau = 0
         else:
             neg_exp_tau = np.exp(-tau)
             
         
         # number density
-        dndr = mu_p/mu_n/(k_B * t_ion) * (
-            nShell * sigma_dust / (4 * np.pi * r**2 * c) * (Ln * neg_exp_tau + Li * phi)\
-                + nShell**2 * alpha_B * Li / Qi / c
+        dndr = mu_p/mu_n/(c.k_B.cgs * t_ion) * (
+            nShell * sigma_dust / (4 * np.pi * r**2 * c.c.cgs) * (Ln * neg_exp_tau + Li * phi)\
+                + nShell**2 * alpha_B * Li / Qi / c.c.cgs
             )
-        # ionising photons
+    
         dphidr = - 4 * np.pi * r**2 * alpha_B * nShell**2 / Qi - nShell * sigma_dust * phi
         # optical depth
         dtaudr = nShell * sigma_dust * f_cover
         
         # return
-        return dndr, dphidr, dtaudr
-        # return dndr.to(1/u.cm**4).value, dphidr.to(1/u.cm).value, dtaudr.to(1/u.cm).value
-
+        return dndr.to(1/u.cm**4).value, dphidr.to(1/u.cm).value, dtaudr.to(1/u.cm).value
+    
     
     # If not, omit ionised paramters such as Li and phi.
     else:
         # unravel
         nShell, tau = y
-        
-        # nShell *= (1/u.cm**3)
+        nShell *= (1/u.cm**3)
         Ln, Qi = cons
         
         # prevent underflow for very large tau values
-        if tau > 500:
+        if tau > 700:
             neg_exp_tau = 0
         else:
             neg_exp_tau = np.exp(-tau)        
             
         # number density
-        dndr = 1/(k_B * t_neu) * (
-            nShell * sigma_dust / (4 * np.pi * r**2 * c) * (Ln * neg_exp_tau) 
+        dndr = 1/(c.k_B.cgs * t_neu) * (
+            nShell * sigma_dust / (4 * np.pi * r**2 * c.c.cgs) * (Ln * neg_exp_tau) 
             )
         # optical depth
         dtaudr = nShell * sigma_dust
-        
         # return
-        return dndr, dtaudr
-        # return dndr.to(1/u.cm**4).value, dtaudr.to(1/u.cm).value
+        return dndr.to(1/u.cm**4).value, dtaudr.to(1/u.cm).value
 
 
 
