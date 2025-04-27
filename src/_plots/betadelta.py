@@ -11,6 +11,7 @@ This one simply plots the findings of phase_energy.py in warpfield4
 
 import numpy as np
 import matplotlib.pyplot as plt
+import os
 
 def plot(path2json):
     print('reading... beta delta')
@@ -92,7 +93,7 @@ def plot(path2json):
     axs[0][0].axhline(1, linestyle = '--', c = 'r', alpha = 0.5)
     # axs[0][0].legend()
     
-    axs[0][0].set_xlim(0, v3_t[int(v3a_length+v3b_length)])
+    axs[0][0].set_xlim(0, v3_t[int(v3a_length+v3b_length-1)])
     # axs[0][0].set_ylim(-0.05, 1)
     
     #-- beta residual
@@ -105,7 +106,7 @@ def plot(path2json):
     axs[1][0].axhline(0, linestyle = '--', c = 'r', alpha = 0.5)
     axs[1][0].axhspan(-0.05, 0.05, color = 'b', alpha = 0.1)
     
-    axs[1][0].set_xlim(0, v3_t[int(v3a_length+v3b_length)])
+    axs[1][0].set_xlim(0, v3_t[int(v3a_length+v3b_length-1)])
     axs[1][0].set_ylim(-0.2, 0.2)
     
     
@@ -119,7 +120,7 @@ def plot(path2json):
     axs[0][1].axhline(-1, linestyle = '--', c = 'r', alpha = 0.5)
     # axs[0][1].legend(loc = 'lower left')
     
-    axs[0][1].set_xlim(0, v3_t[int(v3a_length+v3b_length)])
+    axs[0][1].set_xlim(0, v3_t[int(v3a_length+v3b_length-1)])
     # axs[0][1].set_ylim(-0.3, 0.05)
     
         
@@ -133,7 +134,7 @@ def plot(path2json):
     axs[1][1].axhline(0, linestyle = '--', c = 'r', alpha = 0.5)
     axs[1][1].axhspan(-0.05, 0.05, color = 'b', alpha = 0.1)
     
-    axs[1][1].set_xlim(0, v3_t[int(v3a_length+v3b_length)])
+    axs[1][1].set_xlim(0, v3_t[int(v3a_length+v3b_length-1)])
     axs[1][1].set_ylim(-0.2, 0.2)
     
     
@@ -147,7 +148,7 @@ def plot(path2json):
     
     axs[2][0].legend(loc = 'lower left')
     
-    axs[2][0].set_xlim(0, v3_t[int(v3a_length+v3b_length)])
+    axs[2][0].set_xlim(0, v3_t[int(v3a_length+v3b_length-1)])
     # axs[2][0].set_ylim(1e6, 1e10)
     
     
@@ -161,14 +162,19 @@ def plot(path2json):
     
     axs[2][1].legend(loc = 'lower left')
     
-    axs[2][1].set_xlim(0, v3_t[int(v3a_length+v3b_length)])
+    axs[2][1].set_xlim(0, v3_t[int(v3a_length+v3b_length-1)])
     # axs[2][1].set_ylim(1e6, 1e8)
     
     #-- final
     
     plt.tight_layout()  
-    # path2figure = snapshots['path2output'].value + '/fig/'
-    # plt.savefig(path2figure + 'betadelta_comparison.png')
+    
+    path2figure = os.path.dirname(path2json) 
+    
+    if not os.path.exists(path2figure):
+        os.makedirs(path2figure)
+    
+    plt.savefig(os.path.join(path2figure, 'betadelta_comparison.png'))
     plt.show()
     
 

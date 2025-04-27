@@ -182,14 +182,15 @@ def run_expansion(main_dict):
     # v2 = initial velocity (pc/Myr)
     # Eb = initial energy (erg/s)
     # T0 = initial temperature (K)
-    t_now, (R2, v2, Eb, T0) = get_InitPhaseParam.get_y0(0*u.Myr, main_dict['SB99f'].value)
+    # t_now, (R2, v2, Eb, T0) = get_InitPhaseParam.get_y0(0*u.Myr, main_dict['SB99f'].value)
+    get_InitPhaseParam.get_y0(main_dict)
     
     # update
-    main_dict['t_now'].value = t_now.to(u.Myr).value
-    main_dict['R2'].value = R2.to(u.pc).value
-    main_dict['v2'].value = v2.to(u.pc/u.Myr).value
-    main_dict['Eb'].value = Eb.to(u.erg).value * cvt.E_cgs2au
-    main_dict['T0'].value = T0.to(u.K).value
+    # main_dict['t_now'].value = t_now.to(u.Myr).value
+    # main_dict['R2'].value = R2.to(u.pc).value
+    # main_dict['v2'].value = v2.to(u.pc/u.Myr).value
+    # main_dict['Eb'].value = Eb.to(u.erg).value * cvt.E_cgs2au
+    # main_dict['T0'].value = T0.to(u.K).value
     
     # =============================================================================
     # Phase 1a: Energy driven phase.

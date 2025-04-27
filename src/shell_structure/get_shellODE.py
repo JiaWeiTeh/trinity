@@ -66,30 +66,30 @@ def get_shellODE(y,
     
     # make sure it is all in cgs
     
-    sigma_dust = params['sigma_d_au'].value / cvt.cm2pc**2
-    mu_n = params['mu_n_au'].value / cvt.g2Msun
-    mu_p = params['mu_p_au'].value / cvt.g2Msun
-    t_ion = params['t_ion'].value
-    t_neu = params['t_neu'].value
-    alpha_B = params['alpha_B_au'].value / cvt.cm2pc**3 * cvt.s2Myr #cm3/s
-    k_B = params['k_B_au'].value / cvt.k_B_cgs2au
-    c = params['c_au'].value / cvt.v_cms2au
-    Ln = params['Ln'].value / cvt.L_cgs2au 
-    Li = params['Li'].value / cvt.L_cgs2au 
-    Qi = params['Qi'].value * cvt.s2Myr
-    
-    # try non cgs here
     # sigma_dust = params['sigma_d_au'].value / cvt.cm2pc**2
-    # mu_n = params['mu_n_au'].value   
-    # mu_p = params['mu_p_au'].value 
+    # mu_n = params['mu_n_au'].value / cvt.g2Msun
+    # mu_p = params['mu_p_au'].value / cvt.g2Msun
     # t_ion = params['t_ion'].value
     # t_neu = params['t_neu'].value
-    # alpha_B = params['alpha_B_au'].value  #cm3/s
-    # k_B = params['k_B_au'].value  
-    # c = params['c_au'].value  
-    # Ln = params['Ln'].value  
-    # Li = params['Li'].value 
-    # Qi = params['Qi'].value  
+    # alpha_B = params['alpha_B_au'].value / cvt.cm2pc**3 * cvt.s2Myr #cm3/s
+    # k_B = params['k_B_au'].value / cvt.k_B_cgs2au
+    # c = params['c_au'].value / cvt.v_cms2au
+    # Ln = params['Ln'].value / cvt.L_cgs2au 
+    # Li = params['Li'].value / cvt.L_cgs2au 
+    # Qi = params['Qi'].value * cvt.s2Myr
+    
+    # try non cgs here
+    sigma_dust = params['sigma_d_au'].value
+    mu_n = params['mu_n_au'].value   
+    mu_p = params['mu_p_au'].value 
+    t_ion = params['t_ion'].value
+    t_neu = params['t_neu'].value
+    alpha_B = params['alpha_B_au'].value  #cm3/s
+    k_B = params['k_B_au'].value  
+    c = params['c_au'].value  
+    Ln = params['Ln'].value  
+    Li = params['Li'].value 
+    Qi = params['Qi'].value  
     
     # Is this region of the shell ionised?
     # If yes:
@@ -129,7 +129,7 @@ def get_shellODE(y,
         nShell, tau = y
         
         # nShell *= (1/u.cm**3)
-        Ln, Qi = cons
+        # Ln, Qi = cons
         
         # prevent underflow for very large tau values
         if tau > 500:

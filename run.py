@@ -43,6 +43,8 @@ header.display(main_dict)
 
 main.start_expansion(main_dict)
 
+
+
 # try:
 #     main.start_expansion(main_dict)
 #     main_dict.flush()
@@ -59,6 +61,12 @@ main.start_expansion(main_dict)
 # # # test
 
 # Done!
+
+# TODO: add a way to plot from the dictionary. include maybe a json dictionary file pathname in the dictionary
+# import src._plots.plot_examples as plot_examples
+# plot_examples.plot()
+
+
 
 # from src.input_tools import get_param
 # warpfield_params = get_param.get_param()

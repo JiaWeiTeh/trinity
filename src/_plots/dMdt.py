@@ -11,6 +11,7 @@ This one simply plots the findings of phase_energy.py in warpfield4
 
 import numpy as np
 import matplotlib.pyplot as plt
+import os
 
 def plot(path2json):
     print('reading... dMdt')
@@ -61,7 +62,7 @@ def plot(path2json):
     axs[0].set_ylabel('dMdt')
     axs[0].set_xlabel('time (Myr)')
     axs[0].legend(loc = 'lower left')
-    axs[0].set_xlim(0, v3_t[int(v3a_length+v3b_length)])
+    axs[0].set_xlim(0, v3_t[int(v3a_length+v3b_length-1)])
     
     #--- velocity residual
     
@@ -70,13 +71,19 @@ def plot(path2json):
     axs[1].set_ylabel('v0 residual')
     axs[1].set_xlabel('time (Myr)')    
     axs[1].set_ylim(-5e-2, 5e-2)
-    axs[1].set_xlim(0, v3_t[int(v3a_length+v3b_length)])
+    axs[1].set_xlim(0, v3_t[int(v3a_length+v3b_length-1)])
     
     # plt.legend()
     plt.tight_layout()  
-    # path2figure = snapshots['path2output'].value + '/fig/'
-    # plt.savefig(path2figure + 'dMdt_comparison.png')
+
+    path2figure = os.path.dirname(path2json) 
+    
+    if not os.path.exists(path2figure):
+        os.makedirs(path2figure)
+    
+    plt.savefig(os.path.join(path2figure, 'dMdt_comparison.png'))
     plt.show()
+
 
 
 

@@ -51,6 +51,7 @@ def create():
     main_dict['sfe'] = DescribedItem(trinity_params.sfe, 'sfe')
     
     # constants
+    main_dict['xi_Tb'] = DescribedItem(trinity_params.xi_Tb, '')
     main_dict['mu_n_au'] = DescribedItem(trinity_params.mu_n.value * cvt.g2Msun, 'Msun.')
     main_dict['mu_p_au'] = DescribedItem(trinity_params.mu_p.value * cvt.g2Msun, 'Msun.')
     main_dict['k_B_au'] = DescribedItem(c.k_B.cgs.value * cvt.k_B_cgs2au, 'Boltzmann constant. Msun*pc2/Myr2/K.')

@@ -9,37 +9,20 @@ This script includes a mini function that helps compute density of the
 shell at the innermost radius.
 """
 
-import numpy as np
-import astropy.units as u
-import astropy.constants as c
-import scipy.optimize
-import sys
 
-# get parameter
-import os
-import importlib
-warpfield_params = importlib.import_module(os.environ['WARPFIELD3_SETTING_MODULE'])
-
-# from src.input_tools import get_param
-# warpfield_params = get_param.get_param()
-
-
-def get_nShell0(pBubble, T):
+def get_nShell0(params):
+    
+    # pBubble, warpfield_params.t_ion
+    
+    
     """
-    This function computes density of the shell at the innermost radius.
+    This function computes density of the shell at the innermost radius via pressure balance(?).
 
-    Parameters
-    ----------
-    pBubble : pressure of the bubble
-        DESCRIPTION.
-    T : float (units: K)
-        Temperature of at inner edge of shell.
-            
     Returns
     -------
     nShell0 : float
         The density of shell at inner edge/radius.
-    nShell0_cloudy : float
+    nShell0_cloudy : float (TBD)
         The density of shell at inner edge/radius, but including B-field, as
         this will be passed to CLOUDY.
 
@@ -47,10 +30,12 @@ def get_nShell0(pBubble, T):
     # TODO: BMW and nMW are given in log units. Is this the same?
     # TODO: Add description for BMW nMW
     
+    nShell0 = params['mu_p_au'].value/params['mu_n_au'].value/(params['k_B_au'].value * params['t_ion'].value) * params['Pb'].value
     
-    pBubble = pBubble.decompose(bases=u.cgs.bases)
+    # old code
+    # pBubble = pBubble.decompose(bases=u.cgs.bases)
     # The density of shell at inner edge/radius
-    nShell0 = warpfield_params.mu_p/warpfield_params.mu_n/(c.k_B.cgs * T.to(u.K)) * pBubble
+    # nShell0 = warpfield_params.mu_p/warpfield_params.mu_n/(c.k_B.cgs * T.to(u.K)) * pBubble
     
     # TODO: here, CLOUDY stuffs are removed.
     
@@ -73,7 +58,8 @@ def get_nShell0(pBubble, T):
     #                                        args = (pBubble, T))[0]
     
     # return nShell0, nShell0_cloudy
-    return nShell0.to(1/u.cm**3)
+    # return nShell0.to(1/u.cm**3)
+    return nShell0
 
 
 
