@@ -478,6 +478,7 @@ def run_energy( main_dict
                        ['R2', 'Qi', 'v_wind', 'Eb', 'alpha', 'beta', 'delta', 'L_wind', 'v_wind', 'Ln', 'Li', 'Qi'],
                        [R2, Qi, v_wind, Eb, alpha, beta, delta, Lw, v_wind, Ln, Li, Qi])
             
+            updateDict(main_dict, ['R1', 'L_wind', 'Pb', 'pwdot', 'mShell'], [R1, L_wind, Pb, pdot_wind, Msh0])
             
             # TODO: make all dictionary extraction at the beginning, so taht we know
             # which values need to be updated.
@@ -605,15 +606,28 @@ def run_energy( main_dict
             # Qi = 5.395106225151268e+51 / u.s
             # Msh0 = 20.341185347035363 * u.M_sun
 
-            shell_prop = shell_structure.shell_structure(R2 * u.pc, 
-                                                        Pb * (u.M_sun/u.pc/u.Myr**2), 
-                                                        mBubble * u.M_sun, 
-                                                        Ln * (u.M_sun*u.pc**2/u.Myr**3),
-                                                        Li * (u.M_sun*u.pc**2/u.Myr**3),
-                                                        Qi / u.Myr,
-                                                        Msh0 * u.M_sun,
-                                                        1,
+            # shell_prop = shell_structure.shell_structure(R2 * u.pc, 
+            #                                             Pb * (u.M_sun/u.pc/u.Myr**2), 
+            #                                             mBubble * u.M_sun, 
+            #                                             Ln * (u.M_sun*u.pc**2/u.Myr**3),
+            #                                             Li * (u.M_sun*u.pc**2/u.Myr**3),
+            #                                             Qi / u.Myr,
+            #                                             Msh0 * u.M_sun,
+            #                                             1,
+            #                                             main_dict,
+            #                                             )
+            
+            shell_prop = shell_structure.shell_structure(
                                                         main_dict,
+                                                        # R2, 
+                                                        # Pb, 
+                                                        # mBubble, 
+                                                        # Ln * (u.M_sun*u.pc**2/u.Myr**3),
+                                                        # Li * (u.M_sun*u.pc**2/u.Myr**3),
+                                                        # Qi / u.Myr,
+                                                        # Msh0 * u.M_sun,
+                                                        # 1,
+                                                        # main_dict,
                                                         )
             
             f_absorbed_ion, f_absorbed_neu, f_absorbed,\
@@ -622,6 +636,7 @@ def run_energy( main_dict
 
 
         elif not calculate_bubble_shell:
+            # TODO: redefine these values so that they are more physically similar to the environments
             f_absorbed_ion = 0.0
             f_absorbed_neu = 0.0
             f_absorbed = 0.0
@@ -629,7 +644,7 @@ def run_energy( main_dict
             is_fullyIonised = False
             shell_thickness = 0.0
             nShellInner = 0
-            nShell_max = 1e5  * cvt.ndens_cgs2au
+            nShell_max = 1e5  
             tau_kappa_IR = 0
             grav_r = 0 
             grav_phi = 0 
@@ -887,8 +902,8 @@ def run_energy( main_dict
         
         
         updateDict(main_dict, 
-                    ['R1', 'R2', 'v2', 'Eb', 'v_wind', 't_now', 'Pb'], 
-                    [R1, R2, v2, Eb, v_wind, t_now, Pb])
+                    ['R1', 'R2', 'v2', 'Eb', 'v_wind', 't_now', 'Pb', 'mShell'], 
+                    [R1, R2, v2, Eb, v_wind, t_now, Pb, Msh0])
         
         
         # update loop counter

@@ -10,18 +10,16 @@ energy-driven phase (from a short free-streaming phase).
 """
 
 import numpy as np
-import astropy.units as u
-import astropy.constants as c
+import src._functions.unit_conversions as cvt
+
 #--
-import os
-import importlib
-warpfield_params = importlib.import_module(os.environ['WARPFIELD3_SETTING_MODULE'])
 
 # from src.input_tools import get_param
 # warpfield_params = get_param.get_param()
 
-def get_y0(tSF, SB99f):
+def get_y0(params):
     """
+    
     Obtain initial values for the energy driven phase.
 
     Parameters
@@ -46,41 +44,48 @@ def get_y0(tSF, SB99f):
         
     
     # Make sure it is in the right unit
-    tSF = tSF.to(u.Myr)
+    tSF = params['tSF'].value
+    SB99f = params['SB99f'].value
 
-    Lw_evo0 = SB99f['fLw_cgs'](tSF) * u.erg/u.s
-    pdot_evo0 = SB99f['fpdot_cgs'](tSF) * u.g * u.cm / u.s**2
+    Lw_evo0 = SB99f['fLw_cgs'](tSF) * cvt.L_cgs2au
+    pdot_evo0 = SB99f['fpdot_cgs'](tSF) * cvt.pdot_cgs2au
     
     # print(Lw_evo0, pdot_evo0)
 
     # mass loss rate from winds and SNe (cgs)
-    Mdot0_cgs = pdot_evo0**2/(2.*Lw_evo0) 
+    Mdot0 = pdot_evo0**2/(2.*Lw_evo0) 
     # terminal velocity from winds and SNe (cgs)
-    vterminal0_cgs = 2.*Lw_evo0/pdot_evo0 
+    # initial valocity (pc/Myr)
+    v0 = 2.*Lw_evo0/pdot_evo0 
 
-    rhoa =  warpfield_params.nCore * warpfield_params.mu_n
+    rhoa =  params['nCore_au'].value * params['mu_n_au'].value
     # duration of inital free-streaming phase (Myr)
     # see https://www.imprs-hd.mpg.de/399417/thesis_Rahner.pdf pg 17 Eq 1.15
-    dt_phase0 = np.sqrt(3. * Mdot0_cgs / (4. * np.pi * rhoa * vterminal0_cgs ** 3)).to(u.Myr)  
+    dt_phase0 = np.sqrt(3. * Mdot0 / (4. * np.pi * rhoa * v0 ** 3))
     # print(dt_phase0)
     # start time for Weaver phase (Myr)
     t0 = tSF + dt_phase0  
     # initial separation (pc)
-    r0 = vterminal0_cgs * dt_phase0 
-    r0 = r0.to(u.pc)
-    # initial velocity (km/s)
-    v0 = vterminal0_cgs.to(u.km/u.s)
+    r0 = v0 * dt_phase0 
     # The energy contained within the bubble (calculated using wind luminosity)
     # see Weaver+77, eq. (20)
-    # New, now changed to erg
-    E0 = (5. / 11. * Lw_evo0  * dt_phase0).to(u.erg)
+    # In au units (Myr, pc, Msun)
+    E0 = 5. / 11. * Lw_evo0  * dt_phase0
     # Make sure the units are right! see Weaver+77, eq. (37)
     # TODO: isn't it 2.07?
-    T0 = 1.51e6 * (Lw_evo0.value/1e36)**(8./35.) * warpfield_params.nCore.value**(2./35.) * (dt_phase0.value)**(-6./35.) * (1.-warpfield_params.xi_Tb)**0.4 * u.K
-    # pack into list.
-    y0 = [r0, v0, E0, T0]
+    # entry changed to L [erg/s], t [Myr] and n [/cm3]
+    T0 = 1.51e6 * (Lw_evo0 / cvt.L_cgs2au / 1e36)**(8/35) * \
+                (params['nCore_au'].value / cvt.ndens_cgs2au)**(2./35.) * \
+                    (dt_phase0)**(-6./35.) * \
+                        (1 - params['xi_Tb'].value)**0.4
+    # update
+    params['t_now'].value = t0
+    params['R2'].value = r0
+    params['v2'].value = v0
+    params['Eb'].value = E0 
+    params['T0'].value = T0 
 
-    return t0, y0    
+    return 
 
 
 

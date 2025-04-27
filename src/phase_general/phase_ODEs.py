@@ -111,15 +111,16 @@ def get_vdot(t, y,
     # calculate simplified shell structure (warpfield-internal shell structure, not cloudy)
     # We are setting mBubble = 0 here, since we are not interested in the potential. This can skip some calculations.
     # TODO: right now just lazily add units. future fix also shell_structure
-    shell_prop = shell_structure.shell_structure(R2 * u.pc, 
-                                                 press_bubble * (u.M_sun/u.pc/u.Myr**2), 
-                                        0 * u.M_sun, 
-                                        Ln * (u.M_sun*u.pc**2/u.Myr**3),
-                                        Li * (u.M_sun*u.pc**2/u.Myr**3),
-                                        Qi / u.Myr,
-                                        mShell * u.M_sun,
-                                        1,
-                                        params,
+    shell_prop = shell_structure.shell_structure(params,
+        # R2 * u.pc, 
+        #                                          press_bubble * (u.M_sun/u.pc/u.Myr**2), 
+        #                                 0 * u.M_sun, 
+        #                                 Ln * (u.M_sun*u.pc**2/u.Myr**3),
+        #                                 Li * (u.M_sun*u.pc**2/u.Myr**3),
+        #                                 Qi / u.Myr,
+        #                                 mShell * u.M_sun,
+        #                                 1,
+        #                                 params,
                                         )
     
     # clarity
@@ -195,9 +196,9 @@ def get_vdot(t, y,
                 - F_grav + cf * fRad) / mShell
     
     # force calculation
-    params['F_grav'].value = F_grav[0]
-    params['F_rad'].value = fRad[0]
-    params['F_ram'].value = (4 * np.pi * R2**2 * (press_bubble - press_HII))[0]
+    params['F_grav'].value = F_grav
+    params['F_rad'].value = fRad
+    params['F_ram'].value = (4 * np.pi * R2**2 * (press_bubble - press_HII))
     # params['F_wind'].value = fRad
     # params['F_SN'].value = fRad
     

@@ -12,6 +12,7 @@ This one simply plots the findings of E2, v2, T, and R2.
 import numpy as np
 import matplotlib.pyplot as plt
 import src._functions.unit_conversions as cvt
+import os
     
 def plot(path2json):
     print('reading... current phase')
@@ -103,10 +104,14 @@ def plot(path2json):
     #-- final
     
     plt.tight_layout()  
-    # path2figure = snapshots['path2output'].value + '/fig/'
-    # plt.savefig(path2figure + 'current_comparison.png')
-    plt.show()
     
+    path2figure = os.path.dirname(path2json) 
+    
+    if not os.path.exists(path2figure):
+        os.makedirs(path2figure)
+    
+    plt.savefig(os.path.join(path2figure, 'current_comparison.png'))
+    plt.show()
 
 
 

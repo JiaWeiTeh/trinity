@@ -37,7 +37,7 @@ class Timer:
         # return in formatted string
         return humanfriendly.format_timespan(elapsed)
 
-    # sets beginning of timer
+    # sets beginning of timer 
     def begin(self, s = ''):
         print('~'*20)
         print('Timer begins. ' + s) #display message if requried

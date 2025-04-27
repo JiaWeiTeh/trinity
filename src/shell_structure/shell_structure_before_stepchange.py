@@ -206,19 +206,15 @@ def shell_structure(
     # if the shell is lesser than 1pc, we will obviously use that instead.
     # Assuming constant density, what is the maximum possible shell thickness, 
     # assuming that density does not change?
-    
-    
     # Old version:
         # ---
     # max_shellThickness = (3 * Qi / (4 * np.pi * warpfield_params.alpha_B * nShell0**2) + rShell_start**3)**(1/3)
     # max_shellThickness = max_shellThickness.to(u.cm)
         # ---
+    max_shellThickness = (3 * Qi / (4 * np.pi * params['alpha_B_au'].value * nShell0**2) + rShell_start**3)**(1/3)
     # New version(?):
     # max_shellThickness = r_stromgren - rShell0
-    max_shellThickness = (3 * Qi / (4 * np.pi * params['alpha_B_au'].value * nShell0**2))**(1/3) - rShell_start
-    
-    if max_shellThickness < 0:
-        print(f"maxshell is {max_shellThickness} because rshellstart is {rShell_start} and stromgren radius is smaller ({(3 * Qi / (4 * np.pi * params['alpha_B_au'].value * nShell0**2))**(1/3)}).")
+    # max_shellThickness = (3 * Qi / (4 * np.pi * alpha_B * nShell0**2))**(1/3) - rShell_start
    
     # First, set the end of integration, rShell_stop:
     # The integration range should not be larger than 1pc. However,
@@ -262,8 +258,6 @@ def shell_structure(
     
     while not is_allMassSwept and not is_phiZero:
         
-        print('1-- not is_allMassSwept and is_phiZero')
-        
         # print('shell dict')
         # print(params)
         
@@ -286,8 +280,6 @@ def shell_structure(
         # rShell_arr = np.arange(rShell_start.value, rShell_stop.value, rShell_step.value) * u.cm
             # ---
         rShell_arr = np.arange(rShell_start, rShell_stop, rShell_step) 
-        
-        print('this is how long the shell array is:', len(rShell_arr))
 
         
         # Get arguments and parameters for integration:
@@ -409,8 +401,6 @@ def shell_structure(
     # further evaulation.
     # =============================================================================
     if not is_shellDissolved:
-        
-        print('2-- not is_shellDissolved')
     
         # =============================================================================
         # First, compute the gravitational potential for the ionised part of shell
@@ -445,6 +435,7 @@ def shell_structure(
         grav_phi = grav_ion_phi
         # gravitational potential force per unit mass
         grav_ion_force_m = params['G_au'].value * grav_ion_m_cum / grav_ion_r**2
+        
         
         
         # Now, modify the array so that it matches the potential file.
@@ -515,9 +506,6 @@ def shell_structure(
         # =============================================================================
         if not is_fullyIonised:
             
-            print('3-- not is_fullyIonised')
-            
-            
             # Pressure equilibrium dictates that there will be a temperature and density
             # discontinuity at boundary between ionised and neutral region.
             nShell0 = nShell0 * params['mu_n_au'].value / params['mu_p_au'].value * params['t_ion'].value / params['t_neu'].value
@@ -530,8 +518,6 @@ def shell_structure(
             # Entering this loop means not all mShell has been accounted for. Thus
             # is_phiZero can either be True or False here.
             while not is_allMassSwept:
-                
-                print('4-- not is_allMassSwept')
     
                 # ---
                 # # if tau is already 100, there is no point in integrating more.
@@ -569,7 +555,6 @@ def shell_structure(
                 # neutral region
                 is_ionised = False
                 
-                print('this is how long the shell array is in the second loop: ', len(rShell_arr))
                 
                 # # --- cgs version
                 # # initial values
@@ -586,7 +571,7 @@ def shell_structure(
                                        
                 
                 #--- au version
-                y0 = [nShell0, tau0_neu]
+                y0 = [nShell0, tau0_ion]
                 sol_ODE = scipy.integrate.odeint(get_shellODE.get_shellODE, y0, rShell_arr,
                                       args=(f_cover, is_ionised, params),
                                       # rtol=1e-3, hmin=1e-7
@@ -600,7 +585,7 @@ def shell_structure(
                 mShell_arr = np.empty_like(rShell_arr)
                 mShell_arr[0] = mShell0
                 # FIXME: Shouldnt we use mu_p?
-                mShell_arr[1:] = (nShell_arr[1:] * params['mu_p_au'].value * 4 * np.pi * rShell_arr[1:]**2 * rShell_step)
+                mShell_arr[1:] = (nShell_arr[1:] * params['mu_n_au'].value * 4 * np.pi * rShell_arr[1:]**2 * rShell_step)
                 mShell_arr_cum = np.cumsum(mShell_arr)
                 
                 # =============================================================================
@@ -644,7 +629,7 @@ def shell_structure(
             # Now, compute the gravitational potential for the neutral part of shell
             # =============================================================================
             # FIXME: Shouldnt we use mu_p?
-            grav_neu_rho = nShell_arr_neu * params['mu_p_au'].value
+            grav_neu_rho = nShell_arr_neu * params['mu_n_au'].value
             grav_neu_r = rShell_arr_neu
             # mass of the thin spherical shell
             grav_neu_m = grav_neu_rho * 4 * np.pi * grav_neu_r**2 * rShell_step
@@ -702,7 +687,7 @@ def shell_structure(
             nShell_max = np.max(nShell_arr_ion)
             dr_neu_arr = rShell_arr_neu[1:] - rShell_arr_neu[:-1]
             # FIXME: Shouldnt we use mu_p?
-            tau_kappa_IR = params['mu_p_au'].value * (np.sum(nShell_arr_neu[:-1] * dr_neu_arr) + np.sum(nShell_arr_ion[:-1] * dr_ion_arr))
+            tau_kappa_IR = params['mu_n_au'].value * (np.sum(nShell_arr_neu[:-1] * dr_neu_arr) + np.sum(nShell_arr_ion[:-1] * dr_ion_arr))
             
         # fraction of absorbed ionizing and non-ionizing radiations:
         f_absorbed_ion = 1 - phi_rEnd
