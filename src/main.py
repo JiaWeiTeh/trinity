@@ -75,9 +75,9 @@ def start_expansion(main_dict):
     # ---
     # Scaling factor for cluster masses. Though this might only be accurate for
     # high mass clusters (~>1e5) in which the IMF is fully sampled.
-    factor_feedback = main_dict['mCluster_au'].value / main_dict['SB99_mass'].value
+    f_mass = main_dict['mCluster_au'].value / main_dict['SB99_mass'].value
     # Get SB99 data and interpolation functions.
-    SB99_data = read_SB99.read_SB99(f_mass = factor_feedback)
+    SB99_data = read_SB99.read_SB99(f_mass, main_dict)
     SB99f = read_SB99.get_interpolation(SB99_data)
     # TODO:
     # if tSF != 0.: we would actually need to shift the feedback parameters by tSF

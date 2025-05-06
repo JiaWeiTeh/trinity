@@ -12,11 +12,6 @@ energy-driven phase (from a short free-streaming phase).
 import numpy as np
 import src._functions.unit_conversions as cvt
 
-#--
-
-# from src.input_tools import get_param
-# warpfield_params = get_param.get_param()
-
 def get_y0(params):
     """
     

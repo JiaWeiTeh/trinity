@@ -161,7 +161,7 @@ def run_energy( main_dict
     Lw_evo = SB99_data[5]
     dLwdt = np.abs(Lw_slope(t_evo, Lw_evo))
     # problematic time (which needs small timesteps)  [Myr]
-    t_problem = t_evo[ (dLwdt / Lw_evo).value > 3].value
+    t_problem = t_evo[ (dLwdt / Lw_evo) > 3]
     
 
     # -----------
@@ -364,7 +364,7 @@ def run_energy( main_dict
         
         # in the very beginning (and around first SNe) decrease tCheck because fabs varys a lot
         # increment stopping time
-        ii_dLwdt = operations.find_nearest_lower(t_evo.value, t_now)
+        ii_dLwdt = operations.find_nearest_lower(t_evo, t_now)
         if dLwdt[ii_dLwdt] > 0:
             dt_Lw = 0.94 * (0.005 * Lw_previous) / dLwdt[ii_dLwdt]
         else:

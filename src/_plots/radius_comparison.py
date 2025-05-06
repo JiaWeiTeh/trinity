@@ -28,7 +28,7 @@ sfe_list = ['001', '010', '030']
 colour = ['r', 'b', 'g']
 scatter_list = ['d', '^', 'o', 'x']
 
-completed_reason_list = ['Stopping time reached', 'Small radius reached', 'Large radius reached', 'Shell dissolved']
+completed_reason_list = ['Stopping time reached', 'Small radius reached', 'Large radius reached', 'Shell dissolved', 'Bubble radius larger than cloud']
 
 
 plt.rc('text', usetex=True)
@@ -94,8 +94,8 @@ for ii, mCloud in enumerate(mCloud_list):
                 
                 ax[ii][jj].axhline(rCloud, linestyle = '--', alpha = 0.8, c = colour[cc])
                 
-                ax[ii][jj].set_xlim(0, 15)
-                ax[ii][jj].set_ylim(1, 500)
+                ax[ii][jj].set_xlim(0, 5)
+                ax[ii][jj].set_ylim(1, 100)
                 ax[ii][jj].set_xlabel('t (Myr)')
                 
                 try:
@@ -128,8 +128,8 @@ fig.text(0.0, 0.55, "$10^6 \\rm{M}_\odot$ Cloud", va='center', ha='center', rota
 fig.text(0.0, 0.2, "$10^7 \\rm{M}_\odot$ Cloud", va='center', ha='center', rotation=90, fontsize=12)
 
 
-fig.text(0.3, 1, "n = $100 \\rm{ cm}^3$", va='center', ha='center', fontsize=12 )
-fig.text(0.75, 1, "n = $10^4 \\rm{ cm}^3$", va='center', ha='center', fontsize=12 )
+fig.text(0.3, 1, "n = $100 \\rm{ cm}^{-3}$", va='center', ha='center', fontsize=12 )
+fig.text(0.75, 1, "n = $10^4 \\rm{ cm}^{-3}$", va='center', ha='center', fontsize=12 )
         
         
 plt.tight_layout()

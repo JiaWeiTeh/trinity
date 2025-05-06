@@ -12,11 +12,11 @@ This script contains functions that will help reading in Starburst99 data.
 import numpy as np
 import scipy
 import sys
-# import astropy.units as u
+import astropy.units as u
 # get parameter
-# import os
-# import importlib
-# warpfield_params = importlib.import_module(os.environ['WARPFIELD3_SETTING_MODULE'])
+import os
+import importlib
+warpfield_params = importlib.import_module(os.environ['WARPFIELD3_SETTING_MODULE'])
 
 # from src.input_tools import get_param
 # warpfield_params = get_param.get_param()
@@ -24,7 +24,7 @@ import sys
 # TODO: Implement interpolation function for in-between metallicities/cluster 
     # : Add fmet, where metallicity scaling due to non-existent SB99 file
 
-def read_SB99(f_mass, params):
+def read_SB99(f_mass):
     """
     This function retrieves data from the Starburst99 files. 
     
@@ -56,33 +56,25 @@ def read_SB99(f_mass, params):
     
     """
     
-    
-    
     # =============================================================================
     # Step1: find and read the SB99 file. 
     # =============================================================================
     # grab the file name based on simulation input
-    filename = get_filename(params)
-    path2sps = params['path_sps'].value
+    filename = get_filename()
+    path2sps = warpfield_params.path_sps
     # read file
     # SB99_file = np.loadtxt(warpfield_params.path_sps + filename)
     SB99_file = np.loadtxt(path2sps + filename)
     # read columns
     # change to in Myr instead
-    # u.Myr
-    t = SB99_file[:,0] /1e6 
+    t = SB99_file[:,0] /1e6 * u.Myr
     # the rest, translate to linear, then scale with actual cluster mass
-    # / u.s
-    Qi = 10**SB99_file[:,1] * f_mass 
+    Qi = 10**SB99_file[:,1] * f_mass / u.s
     fi = 10**SB99_file[:,2]
-    # u.erg/u.s
-    Lbol = 10**SB99_file[:,3] * f_mass 
-    # u.erg/u.s
-    Lmech = 10**SB99_file[:,4] * f_mass 
-    # u.g * u.cm/(u.s**2)
-    pdot_W = 10**SB99_file[:,5] * f_mass 
-    # u.erg/u.s
-    Lmech_W = 10**SB99_file[:,6] * f_mass 
+    Lbol = 10**SB99_file[:,3] * f_mass * u.erg/u.s
+    Lmech = 10**SB99_file[:,4] * f_mass * u.erg/u.s
+    pdot_W = 10**SB99_file[:,5] * f_mass * u.g * u.cm/(u.s**2)
+    Lmech_W = 10**SB99_file[:,6] * f_mass * u.erg/u.s
 
     # =============================================================================
     # Step2: calculate other derived values
@@ -102,10 +94,10 @@ def read_SB99(f_mass, params):
     velocity_W = 2 * Lmech_W / pdot_W
     # Add fraction of mass injected into the cloud due to sweeping of cold material
     # from protostars and disks inside star clusters?
-    Mdot_W *= (1 + params['f_Mcold_wind'].value)
+    Mdot_W *= (1 + warpfield_params.f_Mcold_wind)
     # Modifiy terminal velocity according to 
     # 1) thermal efficiency and 2) cold mass content in cluster?
-    velocity_W *= np.sqrt(params['thermcoeff_wind'].value / (1. + params['f_Mcold_wind'].value)) 
+    velocity_W *= np.sqrt(warpfield_params.thermcoeff_wind / (1. + warpfield_params.f_Mcold_wind)) 
     # convert back
     pdot_W = Mdot_W * velocity_W
     Lmech_W = 0.5 * Mdot_W * velocity_W**2
@@ -117,14 +109,14 @@ def read_SB99(f_mass, params):
     # first break down into mass loss and velocity
     # TODO: get time-dependent velocity, e.g. when mass of ejecta are known
     # convert to cgs
-    velocity_SN = params['v_SN'].value
+    velocity_SN = warpfield_params.v_SN.cgs
     Mdot_SN = 2 * Lmech_SN / velocity_SN**2
     # Add fraction of mass injected into the cloud due to sweeping of cold material
     # from protostars and disks inside star clusters?
-    Mdot_SN *= (1 + params['f_Mcold_SN'].value)
+    Mdot_SN *= (1 + warpfield_params.f_Mcold_SN)
     # Modifiy terminal velocity according to 
     # 1) thermal efficiency and 2) cold mass content in cluster?
-    velocity_SN *= np.sqrt(params['thermcoeff_SN'].value / (1. + params['f_Mcold_SN'].value)) 
+    velocity_SN *= np.sqrt(warpfield_params.thermcoeff_SN / (1. + warpfield_params.f_Mcold_SN)) 
     # convert back
     pdot_SN = Mdot_SN * velocity_SN
     Lmech_SN = 0.5 * Mdot_SN * velocity_SN**2
@@ -133,7 +125,7 @@ def read_SB99(f_mass, params):
     # =============================================================================
     # total energy and momentum injection rate
     Lmech = Lmech_SN + Lmech_W
-    pdot = pdot_SN + pdot_W
+    pdot = pdot_SN.decompose(bases=u.cgs.bases) + pdot_W.decompose(bases=u.cgs.bases)
     
     # insert 1 element at t=0 for interpolation purposes
     t = np.insert(t, 0, 0.0)
@@ -145,10 +137,14 @@ def read_SB99(f_mass, params):
     pdot = np.insert(pdot, 0, pdot[0])
     pdot_SN = np.insert(pdot_SN, 0, pdot_SN[0])
     
+    # print('checkSB99')
+    # for i in [t,Qi,Li,Ln,Lbol,Lmech,pdot,pdot_SN]:
+    #     print(np.sum(i))
+    
     return [t, Qi, Li, Ln, Lbol, Lmech, pdot, pdot_SN]
     
 
-def get_filename(params):
+def get_filename():
     """
     Creates filename (str) based on simulation parameters
     """
@@ -161,31 +157,31 @@ def get_filename(params):
         def format_e(n):
             a = '%E' % n
             return a.split('E')[0].rstrip('0').rstrip('.') + 'e' + a.split('E')[1].strip('+').strip('0')
-        SBmass_str = format_e(params['SB99_mass'].value)
+        SBmass_str = format_e(warpfield_params.SB99_mass/u.M_sun)
         # with rotation?
-        if params['SB99_rotation'].value == True:
+        if warpfield_params.SB99_rotation == True:
             rot_str = 'rot'
         else:
             rot_str = 'norot'
         # what metallicity?
-        if float(params['metallicity'].value) == 1.0:
+        if float(warpfield_params.metallicity) == 1.0:
             # solar
             z_str = 'Z0014'
-        elif float(params['metallicity'].value) == 0.15:
+        elif float(warpfield_params.metallicity) == 0.15:
             # 0.15 solar
             z_str = 'Z0002'
         # what blackhole cutoff mass?
-        if int(params['SB99_BHCUT'].value) == 120:
+        if int(warpfield_params.SB99_BHCUT/u.M_sun) == 120:
             # solar
             BH_str = 'BH120'
-        elif int(params['SB99_BHCUT'].value) == 40:
+        elif int(warpfield_params.SB99_BHCUT/u.M_sun) == 40:
             # 0.15 solar
             BH_str = 'BH40'            
             
         filename = SBmass_str + 'cluster_' + rot_str + '_' + z_str + '_' + BH_str + '.txt'
         return filename
     except:
-        raise Exception(f"Starburst99 file {filename} not found. Make sure to double check parameters in the 'parameters for Starburst99 operations' section.")
+        raise Exception("Starburst99 file not found. Make sure to double check parameters in the 'parameters for Starburst99 operations' section.")
 
 
 

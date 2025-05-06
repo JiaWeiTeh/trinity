@@ -215,11 +215,9 @@ def shell_structure(
         # ---
     # New version(?):
     # max_shellThickness = r_stromgren - rShell0
-    max_shellThickness = (3 * Qi / (4 * np.pi * params['alpha_B_au'].value * nShell0**2))**(1/3) - rShell_start
+    max_shellThickness = (3 * Qi / (4 * np.pi * params['alpha_B_au'].value * nShell0**2))**(1/3) + rShell_start
     
-    if max_shellThickness < 0:
-        print(f"maxshell is {max_shellThickness} because rshellstart is {rShell_start} and stromgren radius is smaller ({(3 * Qi / (4 * np.pi * params['alpha_B_au'].value * nShell0**2))**(1/3)}).")
-   
+    
     # First, set the end of integration, rShell_stop:
     # The integration range should not be larger than 1pc. However,
     # if the shell step is lesser than 1pc, we will obviously use that instead.   
@@ -242,7 +240,7 @@ def shell_structure(
         # ---
     rShell_step = np.max([
         np.min([ 5e-4, mydr/1e3]),
-        mydr/1e6
+        mydr/1e4
         ]) 
     
     
@@ -287,7 +285,7 @@ def shell_structure(
             # ---
         rShell_arr = np.arange(rShell_start, rShell_stop, rShell_step) 
         
-        print('this is how long the shell array is:', len(rShell_arr))
+        print('this is how long the shell array is:', len(rShell_arr), ', and here is the stepsize', rShell_step, 'and the shell thickness', max_shellThickness)
 
         
         # Get arguments and parameters for integration:
@@ -529,9 +527,24 @@ def shell_structure(
             # =============================================================================
             # Entering this loop means not all mShell has been accounted for. Thus
             # is_phiZero can either be True or False here.
+            
+            # # if tau is already 100, there is no point in integrating more.
+            tau_max = 100
+            
+            mydr = np.min([ 1, np.abs((tau_max - tau0_ion)/(nShell0 * params['sigma_d_au'].value))])
+            
+
+            rShell_step = np.max([
+                    np.min([ 5e-5, mydr/1e3]),
+                    mydr/1e4
+                    ]) 
+            
+            
             while not is_allMassSwept:
                 
                 print('4-- not is_allMassSwept')
+                
+                # there seem to be an update issue
     
                 # ---
                 # # if tau is already 100, there is no point in integrating more.
@@ -552,24 +565,24 @@ def shell_structure(
                 # is_ionised = False
                 
                 # ---
-                # if tau is already 100, there is no point in integrating more.
-                tau_max = 100
-                # the maximum width of the neutral shell, assuming constant density.
-                max_shellThickness = np.abs((tau_max - tau0_ion)/(nShell0 * params['sigma_d_au'].value))
+                # # if tau is already 100, there is no point in integrating more.
+                # tau_max = 100
+                # # the maximum width of the neutral shell, assuming constant density.
+                # mydr = np.abs((tau_max - tau0_ion)/(nShell0 * params['sigma_d_au'].value))
                 # the end range of integration 
-                rShell_stop = np.min([ 1, max_shellThickness]) + rShell_start
-                # Step size
-                rShell_step = np.max([
-                    np.min([ 5e-5, max_shellThickness/1e3]),
-                    max_shellThickness/1e6
-                    ]) 
+                rShell_stop = mydr + rShell_start
+                # # Step size
+                # rShell_step = np.max([
+                #     np.min([ 5e-5, max_shellThickness/1e3]),
+                #     max_shellThickness/1e4
+                #     ]) 
                 # range of r values
                 rShell_arr = np.arange(rShell_start, rShell_stop, rShell_step)
                 # Get arguments and parameters for integration:
                 # neutral region
                 is_ionised = False
                 
-                print('this is how long the shell array is in the second loop: ', len(rShell_arr))
+                print('this is how long the shell array is in the second loop: ', len(rShell_arr), ', and here is the stepsize', rShell_step, 'and the shell thickness', max_shellThickness)
                 
                 # # --- cgs version
                 # # initial values
