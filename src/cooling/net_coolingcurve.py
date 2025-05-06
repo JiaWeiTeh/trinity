@@ -73,6 +73,19 @@ def get_dudt(age, ndens, T, phi, params_dict):
     # cooling_nonCIE, heating_nonCIE = non_CIE.get_coolingStructure(age)
     # print(cooling_nonCIE)
     # _timer.end()
+    # 
+    
+    # just a gate for limit
+    # TODO: this in the future has to depend on the file. It should
+    # be set such that it follows the minumu temperature of the cooling file.
+    # The reason im adding this is because the temperature seem to run at 
+    # some very low value (~1e3.91) and the lowest available value of hte coolingf ile that we 
+    # use is only until 3.99. Not sure why though, as the temperature should be 
+    # around 1e7, not 1e4. 
+    
+    if T < 1e4:
+        T = 1e4
+    
     Lambda_CIE = CIE.get_Lambda(T, CIE_interp) # Lambda is returned in units of erg/s * cm3
     
     # we take the cutoff at 10e5.5 K. 

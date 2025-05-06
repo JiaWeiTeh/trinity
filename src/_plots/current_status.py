@@ -14,6 +14,10 @@ import matplotlib.pyplot as plt
 import src._functions.unit_conversions as cvt
 import os
     
+
+
+# TODO: plot cloud radius and and shell radius.
+
 def plot(path2json):
     print('reading... current phase')
     
@@ -21,6 +25,7 @@ def plot(path2json):
     v3_v = []
     v3_E = []
     v3_T = []
+    v3_rShell = []
     
     v3_t = []
         
@@ -47,6 +52,21 @@ def plot(path2json):
                 v3_E.append(val[0])
             elif key.endswith('T0'):
                 v3_T.append(val[0])                
+            elif key.endswith('shell_grav_r'):
+                try:
+                    if np.isnan(val[0]):
+                        v3_rShell.append(np.nan)
+                    elif val[0] == 0:
+                        v3_rShell.append(np.nan)                    
+                    elif len(val[0]) == 0:
+                        v3_rShell.append(np.nan)
+                except:
+                    v3_rShell.append(val[0][-1])
+                # try:
+                #     v3_rShell.append(val[0][-1])
+                # except:
+                #     v3_rShell.append(val[0])
+                    
             elif key.endswith('current_phase'):
                 if val == '1a':
                     v3a_length += 1
@@ -69,10 +89,13 @@ def plot(path2json):
     v3_E = np.array(v3_E, dtype = float) / cvt.E_cgs2au
     v3_T = np.array(v3_T, dtype = float)
     v3_t = np.array(v3_t, dtype = float)
+    v3_rShell = np.array(v3_rShell, dtype = float)
+    
     
     #-- r
     
     axs[0][0].plot(v3_t, v3_r, '-k', alpha = 1, linewidth = 2, label = 'trinity')
+    axs[0][0].plot(v3_t[:len(v3_rShell)], v3_rShell, 'gray', alpha = 1, linewidth = 2, label = 'trinity')
     axs[0][0].set_ylabel('radius (pc)')
     axs[0][0].set_xlabel('time (Myr)')
     

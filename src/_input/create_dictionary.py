@@ -81,9 +81,19 @@ def create():
     
     # Starburst99 outputs
     main_dict['SB99_mass'] = DescribedItem(trinity_params.SB99_mass.value, 'SB99 data mass')
+    main_dict['SB99_BHCUT'] = DescribedItem(trinity_params.SB99_BHCUT.value, 'SB99 data SB99_BHCUT')
     main_dict['SB99_data'] = DescribedItem(np.nan, 'SB99 outputs')
+    main_dict['SB99_rotation'] = DescribedItem(trinity_params.SB99_rotation, '')
     main_dict['SB99f'] = DescribedItem(np.nan, 'SB99 Interpolation function.')
     
+    main_dict['f_Mcold_wind'] = DescribedItem(trinity_params.f_Mcold_wind, ' ')
+    main_dict['thermcoeff_wind'] = DescribedItem(trinity_params.thermcoeff_wind, ' ')
+    main_dict['f_Mcold_SN'] = DescribedItem(trinity_params.f_Mcold_SN, ' ')
+    main_dict['thermcoeff_SN'] = DescribedItem(trinity_params.thermcoeff_SN, ' ')
+    main_dict['v_SN'] = DescribedItem(trinity_params.v_SN.value * cvt.v_kms2au, ' ')
+
+
+
     main_dict['L_wind'] = DescribedItem(np.nan, 'Msun*pc2/Myr3)')
     main_dict['Qi'] = DescribedItem(np.nan, '/Myr')
     main_dict['v_wind'] = DescribedItem(np.nan, 'pc/Myr')
@@ -129,6 +139,7 @@ def create():
     # paths
     main_dict['path_cooling_CIE'] = DescribedItem(trinity_params.path_cooling_CIE, 'path to CIE data')
     main_dict['path2output'] = DescribedItem(trinity_params.out_dir, 'Output path')
+    main_dict['path_sps'] = DescribedItem(trinity_params.path_sps, 'path_sps path')
 
     # mass loss calculations in bubble
     main_dict['dMdt'] = DescribedItem(np.nan, 'Msun/Myr. mass loss from region c (shell) into region b (shocked winds) due to thermal conduction.')
@@ -184,9 +195,9 @@ def create():
     main_dict['shell_nShellInner'] = DescribedItem(np.nan, '/pc3')
     main_dict['shell_nShell_max'] = DescribedItem(np.nan, '/pc3')
     main_dict['shell_tau_kappa_IR'] = DescribedItem(np.nan, 'Msun / pc2')
-    main_dict['shell_grav_r'] = DescribedItem(np.nan, 'pc')
-    main_dict['shell_grav_phi'] = DescribedItem(np.nan, 'pc2 / Myr2')
-    main_dict['shell_grav_force_m'] = DescribedItem(np.nan, 'pc / Myr2')
+    main_dict['shell_grav_r'] = DescribedItem([], 'pc')
+    main_dict['shell_grav_phi'] = DescribedItem([], 'pc2 / Myr2')
+    main_dict['shell_grav_force_m'] = DescribedItem([], 'pc / Myr2')
     main_dict['shell_f_rad'] = DescribedItem(np.nan, 'Radiation pressure coupled to the shell. f_abs * Lbol / c')
     
     

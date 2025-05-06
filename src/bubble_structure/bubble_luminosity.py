@@ -26,11 +26,6 @@ import src._functions.unit_conversions as cvt
 from src._input.dictionary import (updateDict, DescribedItem)
 
 
-# get parameter
-import os
-import importlib
-warpfield_params = importlib.import_module(os.environ['WARPFIELD3_SETTING_MODULE'])
-
 
 def get_bubbleproperties(b_params,
                          record = False,
@@ -104,7 +99,7 @@ def get_bubbleproperties(b_params,
     
     
     # -- REMOVED a huge section of calculating xi_Tb. 
-    xi_Tb = warpfield_params.xi_Tb
+    xi_Tb = b_params['xi_Tb'].value
     # calculate rgoal
     rgoal = xi_Tb * b_params['R2'].value
     
