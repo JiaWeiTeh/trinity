@@ -1,5 +1,6 @@
-model_name    1e7_sfe001_n1e4
+model_name    1e7_sfe001_n1e4_Z015
 log_mCloud    7
 sfe    0.01
 dens_navg_pL    1e4
 metallicity    0.15
+SB99_BHCUT    40

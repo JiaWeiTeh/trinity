@@ -12,9 +12,6 @@ shell at the innermost radius.
 
 def get_nShell0(params):
     
-    # pBubble, warpfield_params.t_ion
-    
-    
     """
     This function computes density of the shell at the innermost radius via pressure balance(?).
 

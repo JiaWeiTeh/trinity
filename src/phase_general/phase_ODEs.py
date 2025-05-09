@@ -9,10 +9,7 @@ Created on Thu Jun  1 16:28:20 2023
 
 
 import numpy as np
-import os
 import scipy.optimize
-import astropy.constants as c
-import astropy.units as u
 #--
 import src.cloud_properties.mass_profile as mass_profile
 import src.cloud_properties.density_profile as density_profile
@@ -20,11 +17,6 @@ import src.bubble_structure.get_bubbleParams as get_bubbleParams
 import src.shell_structure.shell_structure as shell_structure
 # import src.shell_structure.shell_structure_old as shell_structure
 import src._functions.unit_conversions as cvt
-
-import os
-import importlib
-warpfield_params = importlib.import_module(os.environ['WARPFIELD3_SETTING_MODULE'])
-
 
     # TODO: add cover fraction cf
     
@@ -74,7 +66,7 @@ def get_vdot(t, y,
     
     # gravity correction (self-gravity and gravity between shell and star cluster)
     # if you don't want gravity, set .inc_grav to zero
-    F_grav = (params['G_au'].value * mShell / R2**2 * (params['mCluster_au'].value + mShell/2)  * warpfield_params.inc_grav) 
+    F_grav = (params['G_au'].value * mShell / R2**2 * (params['mCluster_au'].value + mShell/2)  * params['inc_grav'].value) 
   
     # get pressure from energy. 
     if Eb > 0:
@@ -88,10 +80,10 @@ def get_vdot(t, y,
         # remember t is in year
         if (t > (tmin + tSF)):
             # equation of state PB is in cgs
-            press_bubble = get_bubbleParams.bubble_E2P(Eb, R2, R1)
+            press_bubble = get_bubbleParams.bubble_E2P(Eb, R2, R1, params['gamma_adia'].value)
         elif (t <= (tmin + tSF)):
             R1_tmp = (t-tSF)/tmin * R1
-            press_bubble = get_bubbleParams.bubble_E2P(Eb, R2, R1_tmp)
+            press_bubble = get_bubbleParams.bubble_E2P(Eb, R2, R1_tmp, params['gamma_adia'].value)
     else: # energy is very small: case of pure momentum driving
         R1 = R2 # there is no bubble --> inner bubble radius R1 equals shell radius r
         # ram pressure from winds

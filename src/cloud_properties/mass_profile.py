@@ -9,14 +9,8 @@ This script contains function which computes the mass profile of cloud.
 """
 
 import numpy as np
-import sys 
-import os
 
-def get_mass_profile( r_arr, mass_dict,
-                        # r_arr,
-                        #  rCloud, 
-                        #  mCloud,
-                        #  alpha, rCore, nCore, mu_n, nAvg, nISM,
+def get_mass_profile( r_arr, params,
                           return_mdot,
                          **kwargs
                          ):
@@ -50,14 +44,14 @@ def get_mass_profile( r_arr, mass_dict,
     """
     
     # get values
-    nCore = mass_dict['nCore_au'].value
-    nAvg = mass_dict['nAvg_au'].value
-    nISM = mass_dict['nISM_au'].value
-    mu_n = mass_dict['mu_n_au'].value
-    alpha = mass_dict['alpha_pL'].value
-    mCloud = mass_dict['mCloud_au'].value
-    rCloud = mass_dict['rCloud_au'].value
-    rCore = mass_dict['rCore_au'].value
+    nCore = params['nCore_au'].value
+    nAvg = params['nAvg_au'].value
+    nISM = params['nISM_au'].value
+    mu_n = params['mu_n_au'].value
+    alpha = params['alpha_pL'].value
+    mCloud = params['mCloud_au'].value
+    rCloud = params['rCloud_au'].value
+    rCore = params['rCore_au'].value
     
     if type(r_arr) is not np.ndarray:
         r_arr = np.array([r_arr])

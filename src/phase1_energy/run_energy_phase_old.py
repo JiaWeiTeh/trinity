@@ -8,13 +8,21 @@ Created on Wed Aug  3 23:16:58 2022
 """
 # libraries
 import numpy as np
+import astropy.units as u
+import astropy.constants as c
 import scipy.interpolate
+import sys
+import scipy.optimize
+import os
 #--
 import src.bubble_structure.get_bubbleParams as get_bubbleParams
 import src.shell_structure.shell_structure as shell_structure
 import src.cloud_properties.mass_profile as mass_profile
 import src.phase1_energy.energy_phase_ODEs as energy_phase_ODEs
+from src._output import terminal_prints
+from src.cooling.non_CIE import read_cloudy
 import src.bubble_structure.bubble_luminosity as bubble_luminosity
+import src.cooling.CIE.read_coolingcurve as CIE
 import src.cooling.non_CIE.read_cloudy as non_CIE
 import src._functions.operations as operations
 from src._input.dictionary import updateDict
@@ -54,6 +62,13 @@ def run_energy( params
     # constant rate instead of in an initial blast.
     # -----------
 
+    # get cooling cube
+    # _timer.begin('heating data')
+    # TODO: remember to use this!!!
+    # cooling_data, heating_data = read_cloudy.get_coolingStructure(t0.to(u.yr).value)
+    # _timer.end()
+
+
     # extract dictionary infos
     t_now = params['t_now'].value
     R2 = params['R2'].value
@@ -70,15 +85,44 @@ def run_energy( params
     SB99f = params['SB99f'].value
     SB99_data = params['SB99_data'].value
     
+    # print(params)
+
+
+
+
+
+
     # =============================================================================
     # Now, we begin Energy-driven calculations (Phase 1)
     # =============================================================================
     # header
     
+    # test only
+    # verbosity.test()
+    # sys.exit('Demo done.')
+    # mypath = warpfield_params.out_dir
+
     # -----------
     # Step1: Obtain initial values
     # -----------
         
+    # # get data from stellar evolution code output
+    # # unit of t_evo is Myr, the other units are cgs
+    # # See read_SB99.read_SB99 for documentation.
+    # t_evo, Qi_evo, Li_evo, Ln_evo, Lbol_evo, Lw_evo, pdot_evo, pdot_SNe_evo = stellar_outputs 
+    
+    # # Question: isnt this already handelled in main.py in read_SB99?
+    # # Answer: yes, but in future there might be another expansion and this needs to be calculated again.
+    # # Also, why is this linear instead?
+    # # interpolation functions for SB99 values
+    # fQi_evo = scipy.interpolate.interp1d(t_evo, Qi_evo, kind = 'cubic')
+    # fLi_evo = scipy.interpolate.interp1d(t_evo, Li_evo, kind = 'cubic')
+    # fLn_evo = scipy.interpolate.interp1d(t_evo, Ln_evo, kind = 'cubic')
+    # fLbol_evo = scipy.interpolate.interp1d(t_evo, Lbol_evo, kind = 'cubic')
+    # fLw_evo = scipy.interpolate.interp1d(t_evo, Lw_evo, kind = 'cubic')
+    # fpdot_evo = scipy.interpolate.interp1d(t_evo, pdot_evo, kind = 'cubic')
+
+
     # mechanical luminosity at time t0 
     L_wind = SB99f['fLw_cgs'](t_now) * cvt.L_cgs2au
     # momentum of stellar winds at time t0
@@ -106,11 +150,25 @@ def run_energy( params
     # Solve equation for inner radius of the inner shock.
     # -----------
     
+    # print('\n\nvalues to solve r1')
+    # print(                       r0,  Lw0, 
+    #                                   E0, 
+    #                                   vterminal0, 
+    #                                   r0)
+                                      
     # initial radius of inner discontinuity [pc]
     R1 = scipy.optimize.brentq(get_bubbleParams.get_r1, 
                        a = 1e-3 * R2, b = R2, 
                        args=([L_wind, Eb, v_wind, R2]))
     
+    
+    # initial energy derivative
+    # Question: why?
+    # I suspec this is for the delta_new_root routine, where one compares to another.
+    Ebd0 = 0. 
+    E0m1 = 0.9*Eb
+    t0m1 = 0.9*t_now
+    r0m1 = 0.9*R2
     
     # -----------
     # Solve equation for mass and pressure within bubble (r0)
@@ -155,6 +213,11 @@ def run_energy( params
     beta = params['beta'].value # 4/5
     delta = params['delta'].value # ~ -0.17
     
+    # old: tscr
+    # sound crossing time
+    t_sound = 1e99 #* u.Myr
+    # time takes to fragmentation
+    t_frag = 1e99 #* u.Myr
     
     # minimum separation in this phase?
     dt_Emin = 1e-5 #* u.Myr
@@ -184,9 +247,44 @@ def run_energy( params
     
     condition_to_reduce_timestep = False
     
+    # according to main.py code, tfinal = t0 + 30. * i.dt_Estart
+    
+    # Question: isnt this all redundant? Only continueWeaver is relevant?
+    
     continueWeaver = True
     # how many times had the main loop being ran?
+    # old code: temp_counter
     loop_count = 0
+    
+    
+    # =============================================================================
+    # Initialise arrays to record values
+    # =============================================================================
+    
+    # tSweaver, rSweaver, vSweaver, ESweaver
+    # time, inner shell radius, shell velocity, shell energy
+    weaver_tShell = []; weaver_rShell = []; weaver_vShell = []; weaver_EShell = []; 
+    
+    # bubble temperature
+    weaver_Tbubble = [] 
+    
+    # shellmass
+    weaver_mShell = [] 
+    
+    # Lbweaver, Lbbweaver, Lbczweaver, Lb3weaver
+    weaver_L_total = []; weaver_L_bubble = []; weaver_L_conduction = []; weaver_L_intermediate = []
+    
+    # fraction of absorbed photons
+    weaver_f_absorbed_ion = []; weaver_f_absorbed_neu = []; weaver_f_absorbed = []; weaver_f_ionised_dust = []
+    
+    # parameters used in ODE functions
+    weaver_alpha = []; weaver_beta = []; weaver_delta = []
+    
+    # fabsweaver = []; fabs_i_weaver = []; fabs_n_weaver = []; ionshweaver = []; Mshell_weaver = []
+    # FSgrav_weaver = []; FSwind_weaver = []; FSradp_weaver = []; FSsne_weaver = []; FSIR_weaver = []; dRs_weaver = []; nmax_weaver = []
+    # n0weaver = []; n0_cloudyweaver = []; logMcluster_weaver = []; logMcloud_weaver = []; phase_weaver = []; R1weaver = []; Ebweaver = []; Pbweaver = []
+    # Lbweaver = []; Lwweaver = []; Tbweaver = []; alphaweaver = []; betaweaver = []; deltaweaver = []
+    # fragweaver = [];
 
     # Lets make this phase at max 16 Myr according to Eq4, Rahner thesis pg44.
     # actually lets make it less than 1e4 yr (sedov taylor cooling time i think)
@@ -352,6 +450,7 @@ def run_energy( params
             
             if condition_to_reduce_timestep:
                 # TODO: remove after debug
+            # if True:
                 # should we calculate the bubble structure?
                 
                 # =============================================================================
@@ -359,10 +458,20 @@ def run_energy( params
                 # =============================================================================
                 
                 if calculate_bubble_shell:
+                # if True:
                     
                     print('\nCalculate bubble and shell\n')
-                    output = bubble_luminosity.get_bubbleproperties(params)
                     
+                    # output = bubble_luminosity.get_bubbleproperties(t0 - tcoll[coll_counter],
+                    #                                                 # T_goal, rgoal,
+                    #                                                 # R2 is r0 in old code
+                    #                                                 r0,
+                    #                                                 Qi, alpha, beta, delta,
+                    #                                                 Lw, E0, vterminal,
+                    #                                                 dMdt_factor
+                    #                                                 )
+                    output = bubble_luminosity.get_bubbleproperties(params
+                                                                    )
                     # restate just for clarity
                     # T_rgoal here is T0 in original code.
                     # here, dMdt_factor is also being updated.
@@ -388,6 +497,7 @@ def run_energy( params
                     print('L_intermediate', params['bubble_L_intermediate'].value)
                     print('bubble_Tavg', params['bubble_Tavg'].value)
                     print('bubble_mBubble', params['bubble_mBubble'].value)
+                    # sys.exit('round2')
                         
                 elif not calculate_bubble_shell:
                     L_total = 0
@@ -443,8 +553,46 @@ def run_energy( params
             
             
             print('\n\nhere calculate_bubble_shell\n\n')
+            
+            
+            # print(r0)
+            # print(P0)
+            # print(Mbubble)
+            # print(Ln, Li, Qi,)
+            # print(Msh0)
+            
+            # print('debugging here')
+            # r0 = 0.24900205367057132 * u.pc
+            # P0 = 4.329788040892236e-06 * u.g / (u.cm * u.s**2)
+            # Mbubble = np.nan * u.M_sun
+            # Ln = 1.5150154294119439e41 * u.erg / u.s 
+            # Li = 1.9364219639465926e+41 *  u.erg / u.s 
+            # Qi = 5.395106225151268e+51 / u.s
+            # Msh0 = 20.341185347035363 * u.M_sun
 
-            shell_prop = shell_structure.shell_structure(params)
+            # shell_prop = shell_structure.shell_structure(R2 * u.pc, 
+            #                                             Pb * (u.M_sun/u.pc/u.Myr**2), 
+            #                                             mBubble * u.M_sun, 
+            #                                             Ln * (u.M_sun*u.pc**2/u.Myr**3),
+            #                                             Li * (u.M_sun*u.pc**2/u.Myr**3),
+            #                                             Qi / u.Myr,
+            #                                             Msh0 * u.M_sun,
+            #                                             1,
+            #                                             params,
+            #                                             )
+            
+            shell_prop = shell_structure.shell_structure(
+                                                        params,
+                                                        # R2, 
+                                                        # Pb, 
+                                                        # mBubble, 
+                                                        # Ln * (u.M_sun*u.pc**2/u.Myr**3),
+                                                        # Li * (u.M_sun*u.pc**2/u.Myr**3),
+                                                        # Qi / u.Myr,
+                                                        # Msh0 * u.M_sun,
+                                                        # 1,
+                                                        # params,
+                                                        )
             
             f_absorbed_ion, f_absorbed_neu, f_absorbed,\
                 f_ionised_dust, is_fullyIonised, shell_thickness,\
@@ -490,7 +638,25 @@ def run_energy( params
         # f_absorbed_ion calculated from shell_structure.
         # F_rad = f_absorbed_ion * Lbol / params['c_au'].value
         
+        # params = [Lw, pdot, mCloud, rCore, mCluster, L_total, F_rad, f_absorbed_ion, rCloud, tcoll, t_frag, t_sound, cs_avg,
+        #           dens_a_pL, nAvg, nISM, nCore, t_ion,
+        #           gamma_adia, inc_grav, mu_n]
+        
+        
+        # y0 = [r0.to(u.cm).value, v0.to(u.cm/u.s).value, E0.to(u.erg).value]
         y0 = [R2, v2, Eb]
+        
+        # print('y0', y0)
+        # print('t_arr', t_arr)
+        
+        
+        # update these
+        # sbparams
+        # L_wind
+        # pdot
+        # R2
+        
+        
         
         # call ODE solver
         # remember that the output is in cgs
@@ -505,6 +671,12 @@ def run_energy( params
         # [au]
         Eb_arr = psoln[:, 2] 
 
+        # print('\n\nhere are the results for the ODE\n\n')
+        # print(r_arr)
+        # print(v_arr)
+        # print(Eb_arr)
+        # sys.exit()
+
         # =============================================================================
         # calculate mass
         # =============================================================================
@@ -513,6 +685,13 @@ def run_energy( params
         mShell_arr = mass_profile.get_mass_profile(r_arr, params,
                                                     return_mdot = False)
         
+        # print(mShell_arr)
+    
+        # print(mShell_arr)
+        # sys.exit()
+        
+        
+            
             
         # =============================================================================
         # Here, we perform checks to see if we should continue the branch (i.e., increasing steps)
@@ -591,6 +770,55 @@ def run_energy( params
             # will always be one, since tfrag is very large. The slope will always end up at 1. I think.
             # OPTION 2 for switching to mom-driving: if i.immediate_leak is set to False, when covering fraction drops below 50%, switch to momentum driving
     
+        # ---- this seems to be redundant now, since we have dictionary.flush().
+        # # record values
+        # # Idea: for each t0, record also all r or n values in r0. Need shell/bubble to return them
+        # # so we can make movies.
+        # weaver_tShell = np.concatenate([weaver_tShell, [t_now]])
+        # weaver_rShell = np.concatenate([weaver_rShell, [R2]])
+        # weaver_vShell = np.concatenate([weaver_vShell, [v2]])
+        # weaver_EShell = np.concatenate([weaver_EShell, [Eb]])
+        # # bubble temperature
+        # weaver_Tbubble = np.concatenate([weaver_Tbubble, [T0]])
+        # # mass
+        # weaver_mShell = np.concatenate([weaver_mShell, [Msh0]])
+        # # luminosity properties
+        # weaver_L_total = np.concatenate([weaver_L_total, [L_total]])
+        # weaver_L_bubble = np.concatenate([weaver_L_bubble, [L_bubble]])
+        # weaver_L_conduction = np.concatenate([weaver_L_conduction, [L_conduction]])
+        # weaver_L_intermediate = np.concatenate([weaver_L_intermediate, [L_intermediate]])
+        # # absorbed photons 
+        # weaver_f_absorbed_ion = np.concatenate([weaver_f_absorbed_ion, [f_absorbed_ion]])
+        # weaver_f_absorbed_neu = np.concatenate([weaver_f_absorbed_neu, [f_absorbed_neu]])
+        # weaver_f_absorbed = np.concatenate([weaver_f_absorbed, [f_absorbed]])
+        # # ODE parameters
+        # weaver_alpha = np.concatenate([weaver_alpha, [alpha]])
+        # weaver_beta = np.concatenate([weaver_beta, [beta]])
+        # weaver_delta = np.concatenate([weaver_delta, [delta]])
+    
+        # # remember to change names once this is done. Names are quite misleading and i would love to change them.
+        # # This is doable because they are referred not many times. 
+        
+        # # TODO: remember to also update the script in write_outputs.py, which saves data into a fits file.
+        # weaver_data = {'t':weaver_tShell, 'r':weaver_rShell, 'v':weaver_vShell, 'E':weaver_EShell, 
+        #           'logMshell':np.log10(weaver_mShell),
+        #           'Tb': weaver_Tbubble,
+        #           # this was dMdt_factor_end
+        #           'dMdt_factor': dMdt_factor,
+        #           'alpha': weaver_alpha, 'beta': weaver_beta, 'delta': weaver_delta, 
+        #           # I think these are not important for the code, but still worth tracking.
+        #           'fabs':weaver_f_absorbed, 'fabs_n': weaver_f_absorbed_neu, 'fabs_i':weaver_f_absorbed_ion,
+        #           'Lcool':weaver_L_total, 'Lbb':weaver_L_bubble, 'Lbcz':weaver_L_conduction, 'Lb3':weaver_L_intermediate,
+        #           }
+          
+        #   # 't_end': weaver_tShell[-1], 'r_end':weaver_rShell[-1], 'v_end':weaver_vShell[-1], 'E_end':weaver_EShell[-1],
+        #   # 'Fgrav':FSgrav_weaver, 'Fwind':FSwind_weaver, 'Fradp_dir':FSradp_weaver, 'FSN':FSsne_weaver, 'Fradp_IR':FSIR_weaver,
+        #   # 'dRs':dRs_weaver, 'logMshell':np.log10(Mshell_weaver), 'nmax':nmax_weaver, 'logMcluster':logMcluster_weaver, 'logMcloud':logMcloud_weaver,
+        #   # 'phase': phase_weaver, 'R1':R1weaver, 'Eb':Ebweaver, 'Pb':Pbweaver, 'Lmech':Lwweaver, 'Lcool':Lbweaver, 'Tb':Tbweaver,
+        #   # 'alpha':alphaweaver, 'beta':betaweaver,'delta':deltaweaver, 'Lbb':Lbbweaver, 'Lbcz':Lbczweaver, 'Lb3':Lb3weaver, 'frag':fragweaver, 'dMdt_factor_end': dMdt_factor}
+
+
+    
         # =============================================================================
         # Prepare for next loop
         # =============================================================================
@@ -647,11 +875,38 @@ def run_energy( params
         
         # verbosity.print_parameter(weaver_data)
     
+        # sys.exit('one loop done')
+    
+        # break
         pass
 
+
+    # TODO: debug.
+
+    # Problem also: why is time not increasing, and only ever so slightly until 0.002Myr?
+# solution: line 200!! Need to be incremented!?
+
+
+    # Problem that seems to behappening: the velocity drops way too quickly. 
+    # it goes from 3656 to 400, then quickly to 150. 
+    # Also, the M was negative at first. The radius then is stuck at 0.249pc. Why?
+
+
+    # Another problem: now it seems that the dMdt factor drops from 2k Msol/Myr to 200 Msol/Myr, then 
+    # suddenly turn to -200 Msol/Myr. What could be the problem?
+    # This seems to have to do with the ODE solver which switches the guesses automatically.
+    # Perhaps the values of other parameters caused this? i.e., why did dMdt drop to 200 in the first place?
+
     return 
+    # return weaver_data
     
     
+    # here is testing region.
+    #------
+
+
+
+
 
 #%%
 
@@ -661,6 +916,38 @@ def run_energy( params
 
 
 
+
+
+#     alpha = 0.6
+#     beta = 0.8
+#     delta = -0.17142857142857143
+#     Eb = 94346.55799234606 * u.M_sun * u.pc**2 / u.Myr**2
+#     # Why is this 0.2?
+#     # change back? in old code R2 = r0.
+#     # R2 = 90.0207551764992493 * u.pc
+#     R2 = 0.07083553197734 * u.pc
+#     # R2 = r0
+#     # print('r0', r0)
+#     # 
+#     t_now = 0.00010205763664239359 * u.Myr
+#     Lw =  2016488677.477017 * u.M_sun * u.pc**2 / u.Myr**3
+#     vw = 3810.21965323859 * u.km / u.s
+#     dMdt_factor = 1.646
+#     Qi = 1.6994584609226495e+65 / u.Myr
+#     v0 = 0.0 * u.km / u.s 
+#     T_goal = 3e4 * u.K
+#     # r_inner = R1
+#     r_inner = 0.04032342117274968 * u.pc
+#     rgoal = 0.06375197877960599 * u.pc
+
+#     # L_total, T_rgoal, L_bubble, L_conduction, L_intermediate, dMdt_factor_out, Tavg = bubble_luminosity.get_bubbleproperties(t_now, T_goal, rgoal,
+#     #                                                                                      r_inner, R2,
+#     #                                                                                      Qi, alpha, beta, delta,
+#     #                                                                                      Lw, Eb, vw, v0,
+#     #                                                                                      )
+    
+    
+    
     
     
     

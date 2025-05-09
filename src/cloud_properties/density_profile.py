@@ -8,9 +8,6 @@ Created on Mon Jul 25 14:37:53 2022
 This script includes function that calculates the density profile.
 """
 
-# from src.input_tools import get_param
-# warpfield_params = get_param.get_param()
-
 def get_density_profile(r_arr,
                          density_params,
                          ):
