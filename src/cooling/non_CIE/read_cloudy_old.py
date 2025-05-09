@@ -14,15 +14,17 @@ Old code: coolnoeq.py
 import numpy as np
 import os
 from astropy.io import ascii
-from scipy.interpolate import RegularGridInterpolator
-import astropy.units as u
+import scipy.interpolate
+
 #--
-from src.output_tools.terminal_prints import cprint as cpr
+from src._output.terminal_prints import cprint as cpr
 
 # # get parameter
 import os
 import importlib
 warpfield_params = importlib.import_module(os.environ['WARPFIELD3_SETTING_MODULE'])
+
+
 
 # from src.input_tools import get_param
 # warpfield_params = get_param.get_param()
@@ -38,7 +40,7 @@ def get_coolingStructure(age):
     
     Parameters
     ----------
-    age : float [Myr]
+    age : float [yr]
         Current age.
 
     Returns
@@ -49,8 +51,6 @@ def get_coolingStructure(age):
         .(ndens, temp, phi) [in astropy units]: available values for the triplets (log_ndens_arr, log_temp_arr, log_phi_arr)
 
     """
-    # change from Myr to yr.
-    age = age.to(u.yr).value
     
     # =============================================================================
     # Step1: Time-dependent cooling curve: figure out which time!
@@ -96,30 +96,47 @@ def get_coolingStructure(age):
     
     # Create interpolation functions
     # old code: create_onlycoolheat(), Cool_Struc['Cfunc'] = onlycoolfunc, Cool_Struc['Hfunc'] = onlyheatfunc
-    cooling_interpolation = RegularGridInterpolator((log_ndens_arr, log_temp_arr, log_phi_arr), np.log10(cool_cube),
+    cooling_interpolation = scipy.interpolate.RegularGridInterpolator((log_ndens_arr, log_temp_arr, log_phi_arr), np.log10(cool_cube),
                                               method = 'linear')
-    heating_interpolation = RegularGridInterpolator((log_ndens_arr, log_temp_arr, log_phi_arr), np.log10(heat_cube),
+    heating_interpolation = scipy.interpolate.RegularGridInterpolator((log_ndens_arr, log_temp_arr, log_phi_arr), np.log10(heat_cube),
                                               method = 'linear')
     
     # create simple class
     class cube: 
-        pass
+        def __init__(self, age, datacube, interp, ndens, temp, phi):
+            self.age = age
+            self.datacube = datacube
+            self.interp = interp
+            self.ndens = ndens
+            self.temp = temp
+            self.phi = phi
+        def __str__(self):
+            # Customize the printed string for the dictionary here
+            return f"Cube at {self.age} yr. n:{self.ndens[0]}-{self.ndens[-1]}, T:{self.temp[0]}-{self.temp[-1]}, phi:{self.phi[0]}-{self.phi[-1]}"
     # very simple classes
-    cooling_data = cube()
-    cooling_data.datacube = cool_cube
-    cooling_data.interp = cooling_interpolation
-    cooling_data.ndens = log_ndens_arr / u.cm**3
-    cooling_data.temp = log_temp_arr * u.K
-    cooling_data.phi = log_phi_arr / u.cm**2 / u.s
+    cooling_data = cube(age, cool_cube, cooling_interpolation,
+                        log_ndens_arr,
+                        log_temp_arr,
+                        log_phi_arr)
+    # cooling_data.ndens = log_ndens_arr / u.cm**3
+    # cooling_data.temp = log_temp_arr * u.K
+    # cooling_data.phi = log_phi_arr / u.cm**2 / u.s
     #--
-    heating_data = cube()
-    heating_data.datacube = heat_cube
-    heating_data.interp = heating_interpolation
-    heating_data.ndens = log_ndens_arr / u.cm**3 
-    heating_data.temp = log_temp_arr * u.K
-    heating_data.phi = log_phi_arr / u.cm**2 / u.s
+    heating_data = cube(age, heat_cube, heating_interpolation,
+                        log_ndens_arr,
+                        log_temp_arr,
+                        log_phi_arr)
+    # heating_data.ndens = log_ndens_arr / u.cm**3 
+    # heating_data.temp = log_temp_arr * u.K
+    # heating_data.phi = log_phi_arr / u.cm**2 / u.s
     
-    return cooling_data, heating_data
+    #--
+    # netcooling
+    netcooling = cool_cube - heat_cube
+    # interpolater
+    netcooling_interpolation = scipy.interpolate.RegularGridInterpolator((log_ndens_arr, log_temp_arr, log_phi_arr), netcooling)
+    
+    return cooling_data, heating_data, netcooling_interpolation
 
 
 

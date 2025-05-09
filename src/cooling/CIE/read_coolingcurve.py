@@ -15,13 +15,6 @@ import sys
 import scipy
 import astropy.units as u
 #--
-# get parameter
-import os
-import importlib
-warpfield_params = importlib.import_module(os.environ['WARPFIELD3_SETTING_MODULE'])
-
-# from src.input_tools import get_param
-# warpfield_params = get_param.get_param()
 
 # This is the simple case when CIE is achieved, so Lambda depends only on T. 
 # TODO: add for non-solar metallicity 
@@ -29,7 +22,7 @@ warpfield_params = importlib.import_module(os.environ['WARPFIELD3_SETTING_MODULE
 
 # TODO: add file saving for quicker computation time.
 
-def get_Lambda(T, cooling_CIE_interpolation):
+def get_Lambda(T, cooling_CIE_interpolation, metallicity):
     """
     This function calculates Lambda assuming CIE conditions.
 
@@ -64,8 +57,8 @@ def get_Lambda(T, cooling_CIE_interpolation):
     # Might be a problem here because this does not support extrapolation. If
     # this happens, implement a function that does that.
     
-    if warpfield_params.metallicity != 1:
-        sys.exit('Need to implement non-solar metallicity.')
+    # if metallicity != 1:
+    #     sys.exit('Need to implement non-solar metallicity.')
     # # get path to library
     # # See example_pl.param for more information.
     # path2cooling = warpfield_params.path_cooling_CIE

@@ -107,7 +107,7 @@ def plot(path2json):
     axs[1][0].axhspan(-0.05, 0.05, color = 'b', alpha = 0.1)
     
     axs[1][0].set_xlim(0, v3_t[int(v3a_length+v3b_length-1)])
-    axs[1][0].set_ylim(-0.2, 0.2)
+    axs[1][0].set_ylim(-0.1, 0.1)
     
     
     #-- delta
@@ -135,7 +135,7 @@ def plot(path2json):
     axs[1][1].axhspan(-0.05, 0.05, color = 'b', alpha = 0.1)
     
     axs[1][1].set_xlim(0, v3_t[int(v3a_length+v3b_length-1)])
-    axs[1][1].set_ylim(-0.2, 0.2)
+    axs[1][1].set_ylim(-0.1, 0.1)
     
     
     #-- Edot guesses 

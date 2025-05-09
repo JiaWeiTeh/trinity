@@ -9,17 +9,7 @@ This script contains useful functions that help compute stuffs
 """
 
 import numpy as np
-import astropy.units as u
-import astropy.constants as c
 import src._functions.unit_conversions as cvt
-
-# get parameters
-import os
-import importlib
-warpfield_params = importlib.import_module(os.environ['WARPFIELD3_SETTING_MODULE'])
-
-# from src.input_tools import get_param
-# warpfield_params = get_param.get_param()
 
 def find_nearest(array, value):
     """
@@ -46,7 +36,7 @@ def find_nearest_lower(array, value):
         
     if not monotonic(array):
         print(f"array has to be monotonic! Instead got {array}.")
-        np.save(warpfield_params.out_dir + 'T_array_monotonic_check.npy', array)
+        # np.save(warpfield_params.out_dir + 'T_array_monotonic_check.npy', array)
         raise MonotonicError()
     
     # is it increasing?
@@ -97,7 +87,7 @@ def find_nearest_higher(array, value):
         
     if not monotonic(array):
         print(f"array has to be monotonic! Instead got {array}.")
-        np.save(warpfield_params.out_dir + 'T_array_monotonic_check.npy', array)
+        # np.save(warpfield_params.out_dir + 'T_array_monotonic_check.npy', array)
         raise MonotonicError()
 
     # is it increasing?
@@ -147,5 +137,5 @@ def get_soundspeed(T, params):
     else:
         mu = params['mu_n_au'].value / cvt.g2Msun
     
-    return  np.sqrt(warpfield_params.gamma_adia * (params['k_B_au'].value / cvt.k_B_cgs2au) * T / mu) * cvt.v_cms2au
+    return  np.sqrt(params['gamma_adia'].value * (params['k_B_au'].value / cvt.k_B_cgs2au) * T / mu) * cvt.v_cms2au
 

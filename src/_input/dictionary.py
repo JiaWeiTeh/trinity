@@ -8,15 +8,11 @@ Created on Wed Jul 26 15:21:52 2023
 Dictionary class. Handles the main bulk of parameter saving and calling.
 """
 
-import random
 import numpy as np
 import collections.abc
 from functools import reduce
 import os
 import json
-import importlib
-import sys
-trinity_params = importlib.import_module(os.environ['WARPFIELD3_SETTING_MODULE'])
 #--
 
 # for JSON file saving
@@ -213,7 +209,8 @@ class DescribedDict(dict):
             if k.startswith('_sS'):
                 self.pop(k, None)
                 
-        path2json = os.path.join(trinity_params.out_dir, 'dictionary' + '.json')
+        path2trinity = os.environ['path2trinity']
+        path2json = os.path.join(path2trinity, 'dictionary' + '.json')
         
         # Three cases: file exists; file exists but zero byte; file does not exist.
         

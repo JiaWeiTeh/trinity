@@ -51,6 +51,7 @@ def create():
     main_dict['sfe'] = DescribedItem(trinity_params.sfe, 'sfe')
     
     # constants
+    main_dict['gamma_adia'] = DescribedItem(trinity_params.gamma_adia, '')
     main_dict['xi_Tb'] = DescribedItem(trinity_params.xi_Tb, '')
     main_dict['mu_n_au'] = DescribedItem(trinity_params.mu_n.value * cvt.g2Msun, 'Msun.')
     main_dict['mu_p_au'] = DescribedItem(trinity_params.mu_p.value * cvt.g2Msun, 'Msun.')
@@ -137,6 +138,7 @@ def create():
     main_dict['time_last_cooling_update'] = DescribedItem(-1e30, 'arbitrary large negative number as initiation.')
 
     # paths
+    main_dict['path_cooling_nonCIE'] = DescribedItem(trinity_params.path_cooling_nonCIE, 'path to non-CIE data')
     main_dict['path_cooling_CIE'] = DescribedItem(trinity_params.path_cooling_CIE, 'path to CIE data')
     main_dict['path2output'] = DescribedItem(trinity_params.out_dir, 'Output path')
     main_dict['path_sps'] = DescribedItem(trinity_params.path_sps, 'path_sps path')

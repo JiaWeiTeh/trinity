@@ -10,19 +10,9 @@ import numpy as np
 import src.cloud_properties.mass_profile as mass_profile
 import src.cloud_properties.density_profile as density_profile
 import src.bubble_structure.get_bubbleParams as get_bubbleParams
-import astropy.units as u
-import astropy.constants as c
 import scipy.optimize
 import sys 
 import src._functions.unit_conversions as cvt
-
-# get parameters
-import os
-# import importlib
-# warpfield_params = importlib.import_module(os.environ['WARPFIELD3_SETTING_MODULE'])
-
-# from src.input_tools import get_param
-# warpfield_params = get_param.get_param()
 
 
 def get_ODE_Edot(y, t, params):
@@ -146,12 +136,12 @@ def get_ODE_Edot(y, t, params):
     tmin = dt_switchon
     if (t > (tmin + params['tSF'].value)):
         
-        press_bubble = get_bubbleParams.bubble_E2P(Eb, R2, R1)
+        press_bubble = get_bubbleParams.bubble_E2P(Eb, R2, R1, params['gamma_adia'].value)
         
     elif (t <= (tmin + params['tSF'].value)):
         
         R1_tmp = (t-params['tSF'].value)/tmin * R1
-        press_bubble = get_bubbleParams.bubble_E2P(Eb, R2, R1_tmp)
+        press_bubble = get_bubbleParams.bubble_E2P(Eb, R2, R1_tmp, params['gamma_adia'].value)
     
     
     # TODO: Future-------

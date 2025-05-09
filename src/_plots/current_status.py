@@ -92,14 +92,17 @@ def plot(path2json):
     v3_rShell = np.array(v3_rShell, dtype = float)
     
     
+    
     #-- r
     
     axs[0][0].plot(v3_t, v3_r, '-k', alpha = 1, linewidth = 2, label = 'trinity')
     axs[0][0].plot(v3_t[:len(v3_rShell)], v3_rShell, 'gray', alpha = 1, linewidth = 2, label = 'trinity')
     axs[0][0].set_ylabel('radius (pc)')
     axs[0][0].set_xlabel('time (Myr)')
+    axs[0][0].set_xlim(0, max(v3_t))
     
     axs[0][0].axhline(snapshots[last_key+'r_coll'][0], linestyle = '--', c = 'k', alpha = 0.7)
+    axs[0][0].axhline(snapshots[last_key+'rCloud_au'][0], linestyle = '--', c = 'k', alpha = 0.7)
     
     #-- v
     
@@ -108,6 +111,7 @@ def plot(path2json):
     axs[1][0].set_ylabel('log velocity (km/s)')
     axs[1][0].set_xlabel('time (Myr)')
     
+    axs[1][0].set_xlim(0, max(v3_t))
     axs[1][0].axhline(0, linestyle = '--', c = 'r', alpha = 0.5)
     
     #-- E
@@ -115,6 +119,7 @@ def plot(path2json):
     axs[0][1].plot(v3_t, np.log10(v3_E), '-k', alpha = 1, linewidth = 2, label = 'trinity')
     axs[0][1].set_ylabel('log Energy (ergs)')
     axs[0][1].set_xlabel('time (Myr)')
+    axs[0][1].set_xlim(0, max(v3_t))
         
     #-- T
     
@@ -122,6 +127,7 @@ def plot(path2json):
     axs[1][1].plot(v3_t, np.log10(v3_T), '-k', alpha = 1, linewidth = 2, label = 'trinity')
     axs[1][1].set_ylabel('log Temperature (K)')
     axs[1][1].set_xlabel('time (Myr)')
+    axs[1][1].set_xlim(0, max(v3_t))
     
     
     #-- final

@@ -183,7 +183,8 @@ def get_residual(beta_delta_guess, params):
     # The bubble Pbure [cgs - g/cm/s2, or dyn/cm2]
     Pb = get_bubbleParams.bubble_E2P(params['Eb'].value,
                                     params['R2'].value, 
-                                    params['R1'].value)
+                                    params['R1'].value,
+                                    params['gamma_adia'].value)
         
     params['Pb'].value = Pb
 

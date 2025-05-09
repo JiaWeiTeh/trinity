@@ -70,7 +70,7 @@ def plot(path2json):
     axs[1].axhline(0, c = 'k', linestyle = '--', alpha = 0.5)
     axs[1].set_ylabel('v0 residual')
     axs[1].set_xlabel('time (Myr)')    
-    axs[1].set_ylim(-5e-2, 5e-2)
+    axs[1].set_ylim(-1e-2, 1e-2)
     axs[1].set_xlim(0, v3_t[int(v3a_length+v3b_length-1)])
     
     # plt.legend()

@@ -139,7 +139,7 @@ def ODE_equations(t, y, params):
     # =============================================================================
     if np.abs(params['time_last_cooling_update'].value - params['t_now'].value) > 5e-3: # in Myr
         # recalculate non-CIE
-        cooling_nonCIE, heating_nonCIE, netcooling_interpolation = non_CIE.get_coolingStructure(params['t_now'].value * 1e6)
+        cooling_nonCIE, heating_nonCIE, netcooling_interpolation = non_CIE.get_coolingStructure(params)
         # save
         params['cStruc_cooling_nonCIE'].value = cooling_nonCIE
         params['cStruc_heating_nonCIE'].value = heating_nonCIE
@@ -186,7 +186,8 @@ def ODE_equations(t, y, params):
         # The bubble Pbure [cgs - g/cm/s2, or dyn/cm2]
         Pb = get_bubbleParams.bubble_E2P(params_dict['Eb'].value,
                                         params_dict['R2'].value, 
-                                        params_dict['R1'].value)
+                                        params_dict['R1'].value,
+                                        params_dict['gamma_adia'].value)
     
         params_dict['Pb'].value = Pb
 

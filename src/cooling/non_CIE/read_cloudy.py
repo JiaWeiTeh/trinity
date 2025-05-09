@@ -19,18 +19,7 @@ import scipy.interpolate
 #--
 from src._output.terminal_prints import cprint as cpr
 
-# # get parameter
-import os
-import importlib
-warpfield_params = importlib.import_module(os.environ['WARPFIELD3_SETTING_MODULE'])
-
-
-
-# from src.input_tools import get_param
-# warpfield_params = get_param.get_param()
-
-
-def get_coolingStructure(age):
+def get_coolingStructure(params):
     """
     Time-dependent cooling curve, based on (ndens, temperature, phi) triplets.
     See create_cubes() for values contained in the variable `cool_cubes`, and 
@@ -52,6 +41,12 @@ def get_coolingStructure(age):
 
     """
     
+    age = params['t_now'].value * 1e6
+    
+    path2cooling = params['path_cooling_nonCIE'].value
+    SB99_rotation = params['SB99_rotation'].value
+    metallicity = params['metallicity'].value
+    
     # =============================================================================
     # Step1: Time-dependent cooling curve: figure out which time!
     # Goal of this part: return tables for:
@@ -61,22 +56,22 @@ def get_coolingStructure(age):
     # Time-dependent cooling curve files:
     # Available ages: 1e6, 2e6, 3e6, 4e6, 5e6, 1e7 yr. 
     # For given time (cluster age), find the nearest available age. 
-    filename = get_filename(age)
+    filename = get_filename(age, metallicity, SB99_rotation, path2cooling)
     
     # TODO: add option to immediately get saved cubes.
     
     # if return only one file, no need interpolation. see get_filename()
     if isinstance(filename, list) ==  False:
-        log_ndens_arr, log_temp_arr, log_phi_arr, cool_cube, heat_cube = create_cubes(filename)
+        log_ndens_arr, log_temp_arr, log_phi_arr, cool_cube, heat_cube = create_cubes(filename, path2cooling)
     
     # if two files, then it means there is interpolation. This is the nearest higher/lower file
     else:
         file_age_lower, file_age_higher = filename
         # values from higher and lower ages
         log_ndens_arr, log_temp_arr, log_phi_arr,\
-            cool_cube_lower, heat_cube_lower = create_cubes(file_age_lower)
+            cool_cube_lower, heat_cube_lower = create_cubes(file_age_lower, path2cooling)
         _, _, _,\
-            cool_cube_higher, heat_cube_higher = create_cubes(file_age_higher)    
+            cool_cube_higher, heat_cube_higher = create_cubes(file_age_higher, path2cooling)
         
         # create cooling and heating from dict if tney don't exist. 
         # get ages
@@ -140,7 +135,7 @@ def get_coolingStructure(age):
 
 
 
-def create_cubes(filename):
+def create_cubes(filename, path2cooling):
     """
     This function will take filename and return cooling/heating in the form of cubes.
 
@@ -168,7 +163,7 @@ def create_cubes(filename):
     """
 
     # Does the cube already exist?
-    cube_filename = warpfield_params.path_cooling_nonCIE + filename.rstrip('.dat') +'_cube.npy'
+    cube_filename = path2cooling + filename.rstrip('.dat') +'_cube.npy'
     if os.path.exists(cube_filename):
         log_ndens_arr, log_temp_arr, log_phi_arr, cool_cube, heat_cube = np.load(cube_filename, allow_pickle = True)
         return log_ndens_arr, log_temp_arr, log_phi_arr, cool_cube, heat_cube
@@ -178,7 +173,7 @@ def create_cubes(filename):
     # =============================================================================
 
     # read file
-    opiate_file = ascii.read(warpfield_params.path_cooling_nonCIE + filename)
+    opiate_file = ascii.read(path2cooling + filename)
     
     # read in the columns
     ndens_data = opiate_file['ndens']
@@ -265,7 +260,7 @@ def create_cubes(filename):
     return log_ndens_arr, log_temp_arr, log_phi_arr, cool_cube, heat_cube
 
 
-def get_filename(age):
+def get_filename(age, metallicity, SB99_rotation, path2cooling):
     """
     This function creates the filename appropriate for curent run.
 
@@ -284,15 +279,15 @@ def get_filename(age):
     # Right now, only solar metallicity and rotation is considered. 
     # try:
     # with rotation?
-    if warpfield_params.SB99_rotation == True:
+    if SB99_rotation == True:
         rot_str = 'rot'
     else:
         rot_str = 'norot'
     # metallicity?
-    if float(warpfield_params.metallicity) == 1.0:
+    if float(metallicity) == 1.0:
         # solar, Z = 0.014
         Z_str = '1.00'        
-    elif float(warpfield_params.metallicity) == 0.15:
+    elif float(metallicity) == 0.15:
         # 0.15 solar, Z = 0.002
         Z_str = '0.15'
 
@@ -300,7 +295,7 @@ def get_filename(age):
     # is lower than the minimum, then use the max/min instead. Otherwise, do interpolation (in another function).
     # loop through the folder which contains all the data
     age_list = []
-    for files in os.listdir(warpfield_params.path_cooling_nonCIE):
+    for files in os.listdir(path2cooling):
         # look for .dat
         if files[-4:] == '.dat':
             # returns i.e. '1.00e+06'.
@@ -332,7 +327,7 @@ def get_filename(age):
         higher_age = age_list[age_list > age].min()
         lower_age = age_list[age_list < age].max()
         # return both
-        filename = [get_filename(lower_age), get_filename(higher_age)]
+        filename = [get_filename(lower_age, metallicity, SB99_rotation, path2cooling), get_filename(higher_age, metallicity, SB99_rotation, path2cooling)]
         return filename
     # except:
     #     raise Exception(f"{cpr.FAIL}Opiate/CLOUDY file (non-CIE) for cooling curve not found. Make sure to double check parameters in the 'parameters for Starburst99 operations' and 'parameters for setting path' section.{cpr.END}")

@@ -20,7 +20,8 @@ import os
 import yaml
 import astropy.units as u
 import astropy.constants as c 
-import src._input.default_values as default_values
+
+# from src.input_tools import input_warnings 
 
 def read_param(path2file, write_summary = True):    
     """
@@ -58,7 +59,95 @@ def read_param(path2file, write_summary = True):
     # =============================================================================
     # Routine for initialising parameters
     # First, initialise dictionary with default values. Includes all parameter
-    params_dict = default_values.default_parameters
+    params_dict = {'model_name': 'example', 
+                   'out_dir': 'def_dir', 
+                   'verbose': 1.0, 
+                   'output_format': 'JSON', 
+                   'rand_input': 0.0, 
+                   'log_mCloud': 6.0, 
+                   'is_mCloud_beforeSF': 1.0, 
+                   'sfe': 0.01, 
+                   'nCore': 1e4, 
+                   'rCore': 0.099, 
+                   'metallicity': 1.0, 
+                   'stochastic_sampling': 0.0, 
+                   'n_trials': 1.0, 
+                   'rand_log_mCloud': ['5', ' 7.47'], 
+                   'rand_sfe': ['0.01', ' 0.10'], 
+                   'rand_n_cloud': ['100.', ' 1000.'], 
+                   'rand_metallicity': ['0.15', ' 1'], 
+                   'mult_exp': 0.0, 
+                   'r_coll': 1.0, 
+                   'mult_SF': 1.0, 
+                   'sfe_tff': 0.01, 
+                   'imf': 'kroupa.imf', 
+                   'stellar_tracks': 'geneva', 
+                   'SB99_mass': 1e6,
+                   'SB99_rotation': 1.0,
+                   'SB99_BHCUT': 120.0,
+                   'SB99_forcefile': 0.0,
+                   'SB99_age_min': 500000.0,
+                   'dens_profile': 'pL_prof', 
+                   'dens_g_bE': 14.1, 
+                   'dens_a_pL': 0, 
+                   'dens_navg_pL': 100.0, 
+                   'frag_enabled': 0.0, 
+                   'frag_r_min': 0.1, 
+                   'frag_grav': 0.0, 
+                   'frag_grav_coeff': 0.67, 
+                   'frag_RTinstab': 0.0, 
+                   'frag_densInhom': 0.0, 
+                   'frag_cf': 1.0, 
+                   'frag_cf_end': 0.1,
+                   'frag_enable_timescale': 1.0, 
+                   'stop_n_diss': 1.0, 
+                   'stop_t_diss': 1.0, 
+                   'stop_r': 500.0, 
+                   'stop_v': -10000.0,
+                   'stop_t': 50, 
+                   'stop_t_unit': 'Myr', 
+                   'adiabaticOnlyInCore': False,
+                   'immediate_leak': True,
+                   'phase_Emin': 1e-4,
+                   'write_main': 1.0, 
+                   'write_stellar_prop': 0.0, 
+                   'write_bubble': 0.0, 
+                   'write_bubble_CLOUDY': 0.0, 
+                   'write_shell': 0.0, 
+                   'write_figures': 0.0,
+                   'write_potential': 0.0,
+                   'cooling_alpha': 0.6,
+                   'cooling_beta': 0.8,
+                   'cooling_delta': -0.17142857142857143,
+                   'path_cooling_nonCIE': 'def_dir',
+                   'path_cooling_CIE': 3,
+                   'path_sps': 'def_dir',
+                   'xi_Tb': 0.9,
+                   'inc_grav': 1.0, 
+                   'f_Mcold_wind': 0.0, 
+                   'f_Mcold_SN': 0.0, 
+                   'v_SN': 1000000000.0, 
+                   'sigma0': 1.5e-21, 
+                   'z_nodust': 0.05, 
+                   'mu_n': 2.1287915392418182e-24, 
+                   'mu_p': 1.0181176926808696e-24, 
+                   't_ion': 10000.0, 
+                   't_neu': 100.0, 
+                   'nISM': 10, 
+                   'kappa_IR': 4.0, 
+                   'gamma_adia': 1.6666666666666667, 
+                   'thermcoeff_wind': 1.0, 
+                   'thermcoeff_SN': 1.0,
+                   'alpha_B': 2.59e-13,
+                   'gamma_mag': 1.3333333333333333,
+                   'log_BMW': -4.3125,
+                   'log_nMW': 2.065,
+                   'c_therm': 1.2e-6,
+                   'dMdt_factor': 1.646,
+                   'T_r2Prime': 3e4
+                   }
+    
+    
     
     # TODO: remove _summary. Provide only the yaml file, and then 
     # make a python file that turns it into something that is human-readable!
@@ -103,11 +192,6 @@ def read_param(path2file, write_summary = True):
     # TODO
     # give warning if parameter does not make sense
     # input_warnings.input_warnings(params_dict)
-    
-    # warnings
-    if params_dict['metallicity'] not in [1, 0.15]:
-        sys.exit(f"metallicity of {params_dict['metallicity']} not implement.")
-    
     
     # =============================================================================
     # Here we deal with additional parameters that will be recorded in summary.txt.
@@ -199,9 +283,6 @@ def read_param(path2file, write_summary = True):
         path2output = str(params_dict['out_dir'])
         Path(path2output).mkdir(parents=True, exist_ok = True)
         params_dict['out_dir'] = path2output
-    
-    # put into environment. This is the only one that matters.
-    os.environ['path2trinity'] = path2output
  
     # 2. Cooling table directory - nonCIE:
     if params_dict['path_cooling_nonCIE'] == 'def_dir':
@@ -215,18 +296,17 @@ def read_param(path2file, write_summary = True):
         params_dict['path_cooling_nonCIE'] = path2cooling_nonCIE
         
     # 3. Cooling table directory - CIE:
-    if params_dict['metallicity'] == 1:
-        # option 1, 2, 3 are for solar metallicity
-        if params_dict['path_cooling_CIE'] == 1:
-            # If user did not specify, the directory will be set as ./lib/cooling/CIE/
-            params_dict['path_cooling_CIE'] = os.path.join(os.getcwd(), 'lib/cooling/CIE/coolingCIE_1_Cloudy.dat')
-        elif params_dict['path_cooling_CIE'] == 2:
-            # If user did not specify, the directory will be set as ./lib/cooling/CIE/
-            params_dict['path_cooling_CIE'] = os.path.join(os.getcwd(), 'lib/cooling/CIE/coolingCIE_2_Cloudy_grains.dat')
-        elif params_dict['path_cooling_CIE'] == 3:
-            # If user did not specify, the directory will be set as ./lib/cooling/CIE/
-            params_dict['path_cooling_CIE'] = os.path.join(os.getcwd(), 'lib/cooling/CIE/coolingCIE_3_Gnat-Ferland2012.dat')
-    elif params_dict['metallicity'] == 0.15:
+    if params_dict['path_cooling_CIE'] == 1:
+        # If user did not specify, the directory will be set as ./lib/cooling/CIE/
+        params_dict['path_cooling_CIE'] = os.path.join(os.getcwd(), 'lib/cooling/CIE/coolingCIE_1_Cloudy.dat')
+    elif params_dict['path_cooling_CIE'] == 2:
+        # If user did not specify, the directory will be set as ./lib/cooling/CIE/
+        params_dict['path_cooling_CIE'] = os.path.join(os.getcwd(), 'lib/cooling/CIE/coolingCIE_2_Cloudy_grains.dat')
+    elif params_dict['path_cooling_CIE'] == 3:
+        # If user did not specify, the directory will be set as ./lib/cooling/CIE/
+        params_dict['path_cooling_CIE'] = os.path.join(os.getcwd(), 'lib/cooling/CIE/coolingCIE_3_Gnat-Ferland2012.dat')
+    elif params_dict['path_cooling_CIE'] == 4:
+        # If user did not specify, the directory will be set as ./lib/cooling/CIE/
         params_dict['path_cooling_CIE'] = os.path.join(os.getcwd(), 'lib/cooling/CIE/coolingCIE_4_Sutherland-Dopita1993.dat')
     else:
         # if instead given a path, then use that instead
@@ -344,7 +424,6 @@ def read_param(path2file, write_summary = True):
     params_dict['BMW'] = 10**params_dict['log_BMW']
     params_dict['nMW'] = 10**params_dict['log_nMW']
     
-    # TODO: this seems unnecessary
     # Is there a density gradient?
     params_dict['density_gradient'] = float((params_dict['dens_profile'] == 'pL_prof') and (params_dict['dens_a_pL'] != 0))
     

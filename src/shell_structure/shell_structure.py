@@ -18,22 +18,8 @@ import src._functions.unit_conversions as cvt
 #--
 from src.shell_structure import get_shellODE, get_shellParams
 
-# get parameters
-# import os
-# import importlib
-# warpfield_params = importlib.import_module(os.environ['WARPFIELD3_SETTING_MODULE'])
-
-# from src.input_tools import get_param
-# warpfield_params = get_param.get_param()
-
 
 def shell_structure(
-                    # rShell0, 
-                    # pBubble,
-                    # mBubble, 
-                    # Ln, Li, Qi,
-                    # mShell_end,
-                    # f_cover,
                     params,
                     ):
     

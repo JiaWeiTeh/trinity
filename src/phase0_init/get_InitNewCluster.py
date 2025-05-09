@@ -16,10 +16,6 @@ import numpy as np
 # get parameter
 import src.cloud_properties.bonnorEbert as bE
 
-import os
-import importlib
-warpfield_params = importlib.import_module(os.environ['WARPFIELD3_SETTING_MODULE'])
-
 # from src.input_tools import get_param
 # warpfield_params = get_param.get_param()
 

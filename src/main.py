@@ -14,18 +14,16 @@ import numpy as np
 import datetime
 import sys
 import scipy
-import astropy.units as u
 import src._functions.unit_conversions as cvt
 
 #--
-from src.phase0_init import (get_InitCloudProp, get_InitBubStruc, get_InitPhaseParam)
+from src.phase0_init import (get_InitCloudProp, get_InitPhaseParam)
 from src.sb99 import read_SB99
 from src.phase1_energy import run_energy_phase
 from src.phase1b_energy_implicit import run_energy_implicit_phase
 from src.phase1c_transition import run_transition_phase
 from src.phase2_momentum import run_momentum_phase
 import src._output.terminal_prints as terminal_prints
-import src._output.write_outputs as write_outputs
 
 
 def start_expansion(main_dict):
@@ -54,8 +52,9 @@ def start_expansion(main_dict):
 
     terminal_prints.phase0(startdatetime)
     
+    # TODO: perhaps this is not needed anymore
     # prepare directories and write some basic files (like the file cotaining the input parameters)
-    output_filename = write_outputs.init_dir()
+    # output_filename = write_outputs.init_dir()
     
     # =============================================================================
     # A: Initialising cloud properties. 
@@ -92,9 +91,11 @@ def start_expansion(main_dict):
     # ---
     # Values for non-CIE cooling curve will be calcualated along the simnulation, since it depends on time evolution.
     
+    # for metallicity, here we need to take care of both CIE and nonCIE part. 
+    
     # maybe move this to read_params
-    if main_dict['metallicity'].value != 1:
-        sys.exit('Need to implement non-solar metallicity.')
+    # if main_dict['metallicity'].value != 1:
+    #     sys.exit('Need to implement non-solar metallicity.')
         
     # get path to library
     # See example_pl.param for more information.
@@ -118,7 +119,8 @@ def start_expansion(main_dict):
     
     # get initial bubble structure and path to where the file is saved.
     # TODO: currently the file is not being saved. 
-    get_InitBubStruc.get_InitBubStruc()
+    # this can be taken away i think.
+    # get_InitBubStruc.get_InitBubStruc()
 
     # =============================================================================
     # Begin simulation.
