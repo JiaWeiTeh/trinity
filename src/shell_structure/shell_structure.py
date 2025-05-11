@@ -25,11 +25,6 @@ def shell_structure(
     
     
     """
-    I think this part has to be in cgs no matter what, because of tau and phi calculations
-    """
-    
-    
-    """
     This function evaluates the shell structure. Includes the ability to 
     also treat the shell as composite region (i.e., ionised + neutral region).
 
@@ -90,38 +85,6 @@ def shell_structure(
         The array containing gravitational force per unit mass evaluated at grav_r.
     """
     
-                # shell_prop = shell_structure.shell_structure(R2 * u.pc, 
-            #                                             Pb * (u.M_sun/u.pc/u.Myr**2), 
-            #                                             mBubble * u.M_sun, 
-            #                                             Ln * (u.M_sun*u.pc**2/u.Myr**3),
-            #                                             Li * (u.M_sun*u.pc**2/u.Myr**3),
-            #                                             Qi / u.Myr,
-            #                                             Msh0 * u.M_sun,
-            #                                             1,
-            #                                             main_dict,
-            #                                             )
-            
-                # shell_prop = shell_structure.shell_structure(R2 * u.pc, 
-                #                                  press_bubble * (u.M_sun/u.pc/u.Myr**2), 
-                #                         0 * u.M_sun, 
-                #                         Ln * (u.M_sun*u.pc**2/u.Myr**3),
-                #                         Li * (u.M_sun*u.pc**2/u.Myr**3),
-                #                         Qi / u.Myr,
-                #                         mShell * u.M_sun,
-                #                         1,
-                #                         params,
-                #                         )
-                
-                # def shell_structure(
-                #     # rShell0, 
-                #     # pBubble,
-                #     # mBubble, 
-                #     # Ln, Li, Qi,
-                #     # mShell_end,
-                #     # f_cover,
-                    
-                
-    
     # should be safe because its not being altered here
     mBubble = params['bubble_mBubble'].value
     pBubble = params['Pb'].value
@@ -130,9 +93,6 @@ def shell_structure(
     Qi = params['Qi'].value
     Li = params['Li'].value
     Ln = params['Ln'].value
-    
-    # Notes: 
-    # old code: shell_structure2()
     
     # TODO: Add also f_cover.
     # at the moment put this here. But obviously this keeps changing during calculation.
@@ -193,14 +153,7 @@ def shell_structure(
     # Assuming constant density, what is the maximum possible shell thickness, 
     # assuming that density does not change?
     
-    
-    # Old version:
-        # ---
-    # max_shellThickness = (3 * Qi / (4 * np.pi * warpfield_params.alpha_B * nShell0**2) + rShell_start**3)**(1/3)
-    # max_shellThickness = max_shellThickness.to(u.cm)
-        # ---
-    # New version(?):
-    # max_shellThickness = r_stromgren - rShell0
+    # max_shellThickness = r_stromgren + rShell0
     max_shellThickness = (3 * Qi / (4 * np.pi * params['alpha_B_au'].value * nShell0**2))**(1/3) + rShell_start
     
     
@@ -712,37 +665,6 @@ def shell_structure(
         f_absorbed = (f_absorbed_ion * Li + f_absorbed_neu * Ln)/(Li + Ln)
         
         
-        # TODO: add this back to track shell progress
-        # ------------
-        # if warpfield_params.write_shell:
-
-        #     # save shell structure as .txt file (radius, density, temperature)
-        #     # only save Ndat entries (equally spaced in index, skip others)
-        #     Ndat = 500
-        #     Nskip_ion = int(max(1, len(rShell_arr_ion) / Ndat))
-        #     Nskip_noion = int(max(1, len(rShell_arr_ion) / Ndat))
-        #     TShell_arr_ion = params['t_ion'].value * np.ones(len(rShell_arr_ion)) 
-        #     TShell_arr_neu = params['t_neu'].value * np.ones(len(rShell_arr_neu))
-
-        #     if is_fullyIonised:
-        #         r_save = np.append(rShell_arr_ion[0:-1:Nskip_ion], rShell_arr_ion[-1])
-        #         n_save = np.append(nShell_arr_ion[0:-1:Nskip_ion], nShell_arr_ion[-1])
-        #         T_save = np.append(TShell_arr_ion[0:-1:Nskip_ion], TShell_arr_ion[-1])
-
-        #     else:
-        #         r_save = np.append(np.append(rShell_arr_ion[0:-1:Nskip_ion], rShell_arr_ion[-1]), np.append(rShell_arr_neu[0:-1:Nskip_noion], rShell_arr_neu[-1]))
-        #         n_save = np.append(np.append(nShell_arr_ion[0:-1:Nskip_ion], nShell_arr_ion[-1]), np.append(nShell_arr_neu[0:-1:Nskip_noion], nShell_arr_neu[-1]))
-        #         T_save = np.append(np.append(TShell_arr_ion[0:-1:Nskip_ion], TShell_arr_ion[-1]), np.append(TShell_arr_neu[0:-1:Nskip_noion], TShell_arr_neu[-1]))
-
-        #     sh_savedata = {"r (cm)": r_save, "n (cm-3)": n_save,
-        #                     "T (K)": T_save}
-        #     name_list = ["r (cm)", "n (cm-3)", "T (K)"]
-        #     tab = Table(sh_savedata, names=name_list)
-        #     outname = warpfield_params.out_dir + "shell/shell_structure.txt"
-        #     formats = {'r (cm)': '%1.6e', 'n (cm-3)': '%1.4e', 'T (K)': '%1.4e'}
-        #     tab.write(outname, format='ascii', formats=formats, delimiter="\t", overwrite=True)
-        # ------------
-            
             
     elif is_shellDissolved:
         f_absorbed_ion = 1.0
@@ -757,15 +679,27 @@ def shell_structure(
         grav_phi = np.nan
         grav_force_m = np.nan
         
-        print('(dissolved) shell attributes')
-        return f_absorbed_ion, f_absorbed_neu, f_absorbed, f_ionised_dust, is_fullyIonised, shellThickness, nShellInner, nShell_max, tau_kappa_IR, grav_r, grav_phi, grav_force_m
-            
-    print(f_absorbed_ion, f_absorbed_neu, f_absorbed, f_ionised_dust, is_fullyIonised, shellThickness, nShellInner, nShell_max, tau_kappa_IR,)
-    return f_absorbed_ion, f_absorbed_neu, f_absorbed, f_ionised_dust, \
-                is_fullyIonised, shellThickness, \
-                nShellInner, nShell_max, \
-                tau_kappa_IR, grav_r, \
-                grav_phi, grav_force_m
+        print('Shell dissolved.')
+        
+        
+    # finally, record
+    params['shell_f_absorbed_ion'].value = f_absorbed_ion
+    params['shell_f_absorbed_neu'].value = f_absorbed_neu
+    params['shell_f_absorbed'].value = f_absorbed
+    params['shell_f_ionised_dust'].value = f_ionised_dust
+    params['shell_f_rad'].value = f_absorbed_ion * params['Lbol'].value / params['c_au'].value
+
+    params['shell_thickness'].value = shellThickness 
+    params['shell_nShellInner'].value = nShellInner
+    params['shell_nShell_max'].value = nShell_max
+    params['shell_tau_kappa_IR'].value = tau_kappa_IR
+    
+    params['shell_grav_r'].value = grav_r 
+    params['shell_grav_phi'].value = grav_phi
+    params['shell_grav_force_m'].value = grav_force_m
+    
+        
+    return
         
     
 

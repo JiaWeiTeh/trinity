@@ -64,23 +64,6 @@ def get_ODE_Edot(y, t, params):
     L_bubble = params['bubble_L_total'].value
     pwdot = params['pwdot'].value 
     
-    # print(FABSi, FRAD, mCluster, L_wind, L_bubble)
-    # units
-    # rShell *= u.cm
-    # vShell *= u.cm/u.s
-    # E_bubble *= u.erg
-    # t *= u.s
-    
-    # unpack parameters
-    # L_wind, pdot_wind, mCloud, rCore, mCluster, L_bubble,\
-    #     FRAD, FABSi,\
-    #     rCloud,\
-    #     tSF, tFRAG, tSCR, CS,\
-    #     alpha, nAvg, nISM, nCore, t_ion,\
-    #     gamma_adia, inc_grav,\
-    #     mu_n,\
-    #     = params  
-            
     # velocity from luminosity and change of momentum [in au]
     v_wind = 2 * L_wind / pwdot
     # calculate shell mass and time derivative of shell mass [au]
@@ -174,18 +157,11 @@ def get_ODE_Edot(y, t, params):
         
     # time derivatives￼￼
     rd = v2
-    
     vd = (4 * np.pi * R2**2 * (press_bubble-press_HII) - mShell_dot * v2 - F_grav + FRAD) / mShell
-
-    
     Ed = (L_wind - L_bubble) - (4 * np.pi * R2**2 * press_bubble) * v2 - L_leak 
-
-    # list of dy/dt=f functions
 
     derivs = [rd, vd, Ed]
     
-    # print(derivs)
-
     # return
     return derivs
 

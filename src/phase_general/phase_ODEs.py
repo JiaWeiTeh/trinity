@@ -42,8 +42,6 @@ def get_vdot(t, y,
     Qi = SB99f['fQi_cgs'](t) / cvt.s2Myr
     
     
-    
-    
     # velocity from luminosity and change of momentum (au)
     v_wind = (2.*L_wind/pdot_wind)
     
@@ -93,6 +91,7 @@ def get_vdot(t, y,
     params['Ln'].value = Ln  
     params['Li'].value = Li  
     params['Qi'].value = Qi  
+    params['Lbol'].value = Lbol  
     params['mShell'].value = mShell  
     params['Pb'].value = press_bubble  
         
@@ -102,45 +101,15 @@ def get_vdot(t, y,
     
     # calculate simplified shell structure (warpfield-internal shell structure, not cloudy)
     # We are setting mBubble = 0 here, since we are not interested in the potential. This can skip some calculations.
-    # TODO: right now just lazily add units. future fix also shell_structure
-    shell_prop = shell_structure.shell_structure(params,
-        # R2 * u.pc, 
-        #                                          press_bubble * (u.M_sun/u.pc/u.Myr**2), 
-        #                                 0 * u.M_sun, 
-        #                                 Ln * (u.M_sun*u.pc**2/u.Myr**3),
-        #                                 Li * (u.M_sun*u.pc**2/u.Myr**3),
-        #                                 Qi / u.Myr,
-        #                                 mShell * u.M_sun,
-        #                                 1,
-        #                                 params,
-                                        )
-    
-    # clarity
-    f_absorbed_ion, f_absorbed_neu, f_absorbed, f_ionised_dust, is_fullyIonised,\
-       shellThickness, nShellInner, nShell_max, tau_kappa_IR, grav_r, grav_phi, grav_force_m = shell_prop
-   
-
-    params['shell_f_absorbed_ion'].value = f_absorbed_ion
-    params['shell_f_absorbed_neu'].value = f_absorbed_neu
-    params['shell_f_absorbed'].value = f_absorbed
-    params['shell_f_ionised_dust'].value = f_ionised_dust
-    params['shell_thickness'].value = shellThickness  
-    params['shell_nShellInner'].value = nShellInner  
-    params['shell_nShell_max'].value = nShell_max  
-    params['shell_tau_kappa_IR'].value = tau_kappa_IR
-    
-    params['shell_grav_r'].value = grav_r
-    params['shell_grav_phi'].value = grav_phi
-    params['shell_grav_force_m'].value = grav_force_m
-    
+    shell_structure.shell_structure(params)
     
     # units right
     
     # radiation pressure coupled to the shell
-    fRad = f_absorbed * Lbol / (params['c_au'].value)
+    fRad = params['f_absorbed'].value * Lbol / (params['c_au'].value)
     params['shell_f_rad'].value = fRad
 
-    isLowdense = nShell_max < params['stop_n_diss'].value
+    isLowdense = params['nShell_max'].value < params['stop_n_diss'].value
 
     if isLowdense != params['isLowdense'].value:
         # update if it is low dense now
@@ -175,7 +144,7 @@ def get_vdot(t, y,
 
     # calculate inward pressure from photoionized gas outside the shell 
     # (is zero if no ionizing radiation escapes the shell)
-    if f_absorbed_ion < 1.0:
+    if params['f_absorbed_ion'].value < 1.0:
         press_HII = get_press_ion(R2, params)
     else:
         press_HII = 0.0
