@@ -139,10 +139,6 @@ def run_energy( params
     
     updateDict(params, ['R1', 'L_wind', 'Pb', 'pwdot'], [R1, L_wind, Pb, pdot_wind])
     
-    # Calculate bubble structure
-    # preliminary - to be tested
-    # This should be something in bubble_structure.bubble_wrap(), which is being called in phase_solver2. 
-    
     # Initialise constants. What is here really do not matter that much - becasuse
     # they will be changed a lot in the loop.
     
@@ -151,13 +147,9 @@ def run_energy( params
     tStop_i = t_now
     
     # Now, we define some start values. In this phase, these three will stay constant throughout.
-    alpha = params['alpha'].value # 3/5
-    beta = params['beta'].value # 4/5
-    delta = params['delta'].value # ~ -0.17
-    
     
     # minimum separation in this phase?
-    dt_Emin = 1e-5 #* u.Myr
+    # dt_Emin = 1e-5 #* u.Myr
     # maximum separation in this phase?
     dt_Emax = 0.04166 #* u.Myr
     dt_Estart = 1e-4 #* u.Myr
@@ -170,17 +162,12 @@ def run_energy( params
     # record the initial Lw0. This value will be changed in the loop. 
     # old code: Lw_old
     Lw_previous = L_wind
-    delta_previous = delta
-    Lres0 = 1.0 # au
     
     # idk what is this. has to do with fitting?
     fit_len_max = 13
     
     # old code: mom_phase
     immediately_to_momentumphase = False
-    
-    # when to switch on cooling. This should be in parameter file
-    dt_switchon = 0.001 #* u.Myr
     
     condition_to_reduce_timestep = False
     
@@ -222,7 +209,9 @@ def run_energy( params
         
         # an initially small value if it is the first loop.
         if loop_count == 0:
-            dt_Emin = dt_Estart
+            dt_Emin = 1e-5
+        else:
+            dt_Emin = 1e-4
             
         
         # =============================================================================
@@ -342,8 +331,8 @@ def run_energy( params
             
             # update
             updateDict(params,
-                       ['R2', 'Qi', 'v_wind', 'Eb', 'alpha', 'beta', 'delta', 'L_wind', 'v_wind', 'Ln', 'Li', 'Qi'],
-                       [R2, Qi, v_wind, Eb, alpha, beta, delta, Lw, v_wind, Ln, Li, Qi])
+                       ['R2', 'Qi', 'v_wind', 'Eb', 'L_wind', 'v_wind', 'Ln', 'Li', 'Qi', 'Lbol'],
+                       [R2, Qi, v_wind, Eb, Lw, v_wind, Ln, Li, Qi, Lbol])
             
             updateDict(params, ['R1', 'L_wind', 'Pb', 'pwdot', 'mShell'], [R1, L_wind, Pb, pdot_wind, Msh0])
             
@@ -390,16 +379,7 @@ def run_energy( params
                     print('bubble_mBubble', params['bubble_mBubble'].value)
                         
                 elif not calculate_bubble_shell:
-                    L_total = 0
-                    L_bubble =  0 
-                    L_conduction = 0 
-                    L_intermediate = 0 
                     Tavg = T0
-                    
-                    mBubble = np.nan
-                    r_Phi = np.nan
-                    Phi_grav_r0b = np.nan
-                    f_grav = np.nan
                     dt_L = dt_L
                 
                 # average sound speed in bubble
@@ -411,8 +391,6 @@ def run_energy( params
             #                                    3) time step is already close to the lower limit
             if not calculate_bubble_shell: 
                 break
-            if abs(delta - delta_previous) < 0.03:
-                break
             if dt_real < 2 * dt_Emin:
                 break
 
@@ -421,17 +399,8 @@ def run_energy( params
             pass
 
     
-        # gradually switch on cooling (i.e. reduce the amount of cooling at very early times)
-        # TODO: add this later for recollapse
-        # if (t0-tcoll[coll_counter] < dt_switchon):
-        if (t_now < dt_switchon):
-            reduce_factor = np.max([0.,np.min([1.,t_now/dt_switchon])])
-            L_total *= reduce_factor # scale and make sure it is between 0 and 1
-            L_bubble *= reduce_factor
-            L_conduction *= reduce_factor
-            L_intermediate *= reduce_factor
-        
-        
+        params['cs_avg'].value = cs_avg
+
         # =============================================================================
         # Calculate shell structure
         # =============================================================================
@@ -441,48 +410,17 @@ def run_energy( params
         
         if calculate_bubble_shell:
             
-            
             print('\n\nhere calculate_bubble_shell\n\n')
 
-            shell_prop = shell_structure.shell_structure(params)
+            shell_structure.shell_structure(params)
             
-            f_absorbed_ion, f_absorbed_neu, f_absorbed,\
-                f_ionised_dust, is_fullyIonised, shell_thickness,\
-                    nShellInner, nShell_max, tau_kappa_IR, grav_r, grav_phi, grav_force_m = shell_prop
-
-
         elif not calculate_bubble_shell:
             # TODO: redefine these values so that they are more physically similar to the environments
-            f_absorbed_ion = 0.0
-            f_absorbed_neu = 0.0
-            f_absorbed = 0.0
-            f_ionised_dust = 0
-            is_fullyIonised = False
-            shell_thickness = 0.0
-            nShellInner = 0
-            nShell_max = 1e5  
-            tau_kappa_IR = 0
-            grav_r = 0 
-            grav_phi = 0 
-            grav_force_m = 0
+            # since we already have dictionary, this part should be empty and it should be fine.
+            pass
             
         # update
         
-        params['shell_f_absorbed_ion'].value = f_absorbed_ion
-        params['shell_f_absorbed_neu'].value = f_absorbed_neu
-        params['shell_f_absorbed'].value = f_absorbed
-        params['shell_f_ionised_dust'].value = f_ionised_dust
-        params['shell_thickness'].value = shell_thickness 
-        params['shell_nShellInner'].value = nShellInner
-        params['shell_nShell_max'].value = nShell_max
-        params['shell_tau_kappa_IR'].value = tau_kappa_IR
-        
-        # TODO: here requires unit conversion becsuse these are in cgs i th
-        params['shell_grav_r'].value = grav_r 
-        params['shell_grav_phi'].value = grav_phi
-        params['shell_grav_force_m'].value = grav_force_m
-        params['shell_f_rad'].value = f_absorbed_ion * Lbol / params['c_au'].value
-
         # =============================================================================
         # call ODE solver to solve for equation of motion (r, v (rdot), Eb). 
         # =============================================================================
@@ -493,92 +431,27 @@ def run_energy( params
         y0 = [R2, v2, Eb]
         
         # call ODE solver
-        # remember that the output is in cgs
         psoln = scipy.integrate.odeint(energy_phase_ODEs.get_ODE_Edot, y0, t_arr, args=(params,))
-        
         
         # [pc]
         r_arr = psoln[:,0] 
-        # rd in old code.
-        
         v_arr = psoln[:, 1]
-        # [au]
         Eb_arr = psoln[:, 2] 
-
-        # =============================================================================
-        # calculate mass
-        # =============================================================================
 
         # get shell mass
         mShell_arr = mass_profile.get_mass_profile(r_arr, params,
                                                     return_mdot = False)
-        
             
         # =============================================================================
         # Here, we perform checks to see if we should continue the branch (i.e., increasing steps)
         # =============================================================================
-        # TODO: 
-        #----------------------------
-        # 1. Stop calculating when radius threshold is reached
-        #----------------------------
-        # TODO: old code contains adabaticOnlyCore
-        # TODO: 
-        # if r_arr[-1].to(u.pc).value > rCloud.to(u.pc).value:
-        #     # if r values reach beyond the cloud radius, mask away, and stop the branch.
-        #     continue_branch = False
-        #     mask = r_arr.to(u.pc).value < rCloud.to(u.pc).value
-        #     t_arr = t_arr[mask]
-        #     r_arr = r_arr[mask]
-        #     v_arr = v_arr[mask]
-        #     Eb_arr = Eb_arr[mask]
-        #     mShell_arr = mShell_arr[mask]
-            
-        # else:
-        #     print('\n\nhere in else\n\n')
-        #     print(warpfield_params.rCore)
-        #     print(r_arr.to(u.pc).value)
-        #     print(r_arr[r_arr.to(u.pc).value >= warpfield_params.rCore.to(u.pc).value][0])
-        #     # if r values are still within the cloud, 
-        #     continue_branch = True
-        #     mask = r_arr.to(u.pc).value <= r_arr[r_arr.to(u.pc).value >= warpfield_params.rCore.to(u.pc).value][0]
-        #     t_arr = t_arr[mask]
-        #     r_arr = r_arr[mask]
-        #     v_arr = v_arr[mask]
-        #     Eb_arr = Eb_arr[mask]
-        #     mShell_arr = mShell_arr[mask]
             
         #----------------------------
         # 2. When does fragmentation occur?
         #----------------------------
-        # -----------
-        # Option1 : Gravitational instability
-        # -----------
-        # which temperature?
-        if f_absorbed_ion < 0.99:
-            T_shell = t_neu
-        else:
-            T_shell = t_ion
-        # sound speed
-        c_sound = operations.get_soundspeed(T_shell, params)
-        params['cs_avg'].value = c_sound
-        
-        # TODO: add this in the future.
-        # Unstable
-        # if warpfield_params.frag_enabled:
-        #     # fragmentation value array, due to gravitational instabiliey.
-        #     frag_arr = (warpfield_params.frag_grav_coeff * c.G * 3 / 4 * mShell_arr / (4 * np.pi * v_arr * c_sound * r_arr)).decompose()
-        #     # fragmentation occurs when this value is greater than 1.
-        #     frag_value_threshold = frag_arr[-1]
-            
-        #     # frag_value_final can jump from positive to negative (if velocity becomes negative) if time resolution is too coarse
-        #     # Thus at v=0, fragmentation always occurs
-        #     if frag_value_threshold <= 0:
-        #         frag_value_threshold = 2
-                
-        #     # check if this time it is closer to fragmentation, if it wasn't already.
-        #     # if not close_to_frag:
-        #     #     frag_threshold = 1 = float()
-            
+            # -----------
+            # Option1 : Gravitational instability
+            # -----------
             
             
             # TODO
@@ -587,9 +460,15 @@ def run_energy( params
             # -----------    
             
             
-            # TODO: Below is not implemented yet. Specifically, I think the cover fraction
-            # will always be one, since tfrag is very large. The slope will always end up at 1. I think.
-            # OPTION 2 for switching to mom-driving: if i.immediate_leak is set to False, when covering fraction drops below 50%, switch to momentum driving
+        # which temperature?
+        # this is obtained from shell_structure
+        if params['f_absorbed_ion'].value < 0.99:
+            T_shell = t_neu
+        else:
+            T_shell = t_ion
+        # sound speed
+        c_sound = operations.get_soundspeed(T_shell, params)
+        params['cs_avg'].value = c_sound
     
         # =============================================================================
         # Prepare for next loop
@@ -626,10 +505,7 @@ def run_energy( params
         
         
         # renew constants
-        Lres0 = Lw - L_total
         Lw_previous = Lw
-        # delta_previous = delta
-        
         
         # if warpfield_params.frag_enabled:
         #     pass
@@ -645,13 +521,83 @@ def run_energy( params
         # update loop counter
         loop_count += 1
         
-        # verbosity.print_parameter(weaver_data)
-    
         pass
 
     return 
     
     
+#%%
+
+
+
+
+def check_events(params, dt_params):
+    
+    [dt, rd, vd, Ed, Td] = dt_params
+    
+    t_next = params['t_now'].value + dt
+    R2_next = params['R2'].value + rd * dt
+    v2_next = params['v2'].value + vd * dt
+    Eb_next = params['Eb'].value + Ed * dt
+    T0_next = params['T0'].value + Td * dt
+        
+    # =============================================================================
+    # Non terminating events
+    # =============================================================================
+        
+    # check if there is a change in sign 
+    if np.sign(v2_next) != np.sign(params['v2'].value):
+        if np.sign(v2_next) == -1:
+            print(f'Bubble currently collapsing because the next velocity is {v2_next / cvt.v_kms2au} km/s.')
+            params['isCollapse'].value = True
+        else:
+            params['isCollapse'].value = False
+            
+    # =============================================================================
+    # Terminating events
+    # =============================================================================
+    # TODO add this percent thing into params as well
+    
+    # Main event: when Lcool approaches 10(?) percent of Lgain.
+    if (params['Lgain'].value - params['Lloss'].value)/params['Lgain'].value < 0.05:
+        print(f"Phase ended because Lloss: {params['Lloss'].value} is within {(params['Lgain'].value - params['Lloss'].value)/params['Lgain'].value * 100}% of Lgain: {params['Lgain'].value}")
+        
+        return True
+    
+    #--- 1) Stopping time reached
+    if t_next > params['tStop'].value:
+        print(f"Phase ended because t reaches {t_next} Myr (> tStop: {params['tStop'].value}) in the next iteration.")
+        params['completed_reason'].value = 'Stopping time reached'
+        return True
+    
+    #--- 2) Small radius reached during collapse.
+    if params['isCollapse'].value == True and R2_next < params['r_coll'].value:
+        print(f"Phase ended because collapse is {params['isCollapse'].value} and r reaches {R2_next} pc (< r_coll: {params['r_coll'].value} pc)")
+        params['completed_reason'].value = 'Small radius reached'
+        return True
+    
+    #--- 3) Large radius reached during expansion.
+    if R2_next > params['stop_r'].value:
+        print(f"Phase ended because r reaches {R2_next} pc (> stop_r: {params['stop_r'].value} pc)")
+        params['completed_reason'].value = 'Large radius reached'
+        return True
+        
+    #--- 4) dissolution after certain period of low density
+    if params['t_now'].value - params['t_Lowdense'].value > params['stop_t_diss'].value:
+        print(f"Phase ended because {params['t_now'].value - params['t_Lowdense'].value} Myr passed since low density of {params['shell_nShell_max'].value/cvt.ndens_cgs2au} /cm3")
+        params['completed_reason'].value = 'Shell dissolved'
+        return True
+    
+    #--- 5) exceeds cloud radius
+    if params['R2'].value > params['rCloud_au'].value:
+        print(f"Bubble radius ({params['R2'].value} pc) exceeds cloud radius ({params['rCloud_au'].value} pc)")
+        params['completed_reason'].value = 'Bubble radius larger than cloud'
+        return True
+    
+    return False
+
+
+
 
 #%%
 

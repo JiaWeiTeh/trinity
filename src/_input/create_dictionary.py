@@ -189,6 +189,8 @@ def create():
     main_dict['inc_grav'] = DescribedItem(trinity_params.inc_grav, 'maximum shell radius at any given time.')
     
     # shell output values
+    # TODO: make sure these area are properly initiated with physically motivated values.
+    # e.g.,  fraction starts with 1 or 0. np.nan may cause problem in fugture logic gates
     main_dict['shell_f_absorbed_ion'] = DescribedItem(np.nan, 'unitless')
     main_dict['shell_f_absorbed_neu'] = DescribedItem(np.nan, 'unitless')
     main_dict['shell_f_absorbed'] = DescribedItem(np.nan, 'unitless')
