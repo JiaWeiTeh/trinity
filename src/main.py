@@ -26,7 +26,7 @@ from src.phase2_momentum import run_momentum_phase
 import src._output.terminal_prints as terminal_prints
 
 
-def start_expansion(main_dict):
+def start_expansion(params):
     """
     This wrapper takes in the parameters and feed them into smaller
     functions.
@@ -64,26 +64,26 @@ def start_expansion(main_dict):
     # ---
     # note now that the parameter mCloud here is the cloud mass AFTER star formation.
     # make them return in AU units.
-    rCloud, nEdge = get_InitCloudProp.get_CloudRadiusEdge(main_dict)
+    rCloud, nEdge = get_InitCloudProp.get_CloudRadiusEdge(params)
     # update
-    main_dict['rCloud_au'].value = rCloud
-    main_dict['nEdge_au'].value = nEdge
+    params['rCloud_au'].value = rCloud
+    params['nEdge_au'].value = nEdge
     print(f"Cloud radius is {np.round(rCloud, 3)}pc.")
     
     # Step 2: Obtain parameters from Starburst99
     # ---
     # Scaling factor for cluster masses. Though this might only be accurate for
     # high mass clusters (~>1e5) in which the IMF is fully sampled.
-    f_mass = main_dict['mCluster_au'].value / main_dict['SB99_mass'].value
+    f_mass = params['mCluster_au'].value / params['SB99_mass'].value
     # Get SB99 data and interpolation functions.
-    SB99_data = read_SB99.read_SB99(f_mass, main_dict)
+    SB99_data = read_SB99.read_SB99(f_mass, params)
     SB99f = read_SB99.get_interpolation(SB99_data)
     # TODO:
     # if tSF != 0.: we would actually need to shift the feedback parameters by tSF
     
     # update
-    main_dict['SB99_data'].value = SB99_data
-    main_dict['SB99f'].value = SB99f
+    params['SB99_data'].value = SB99_data
+    params['SB99f'].value = SB99f
     
     print('..loaded sps files.')
     
@@ -94,20 +94,20 @@ def start_expansion(main_dict):
     # for metallicity, here we need to take care of both CIE and nonCIE part. 
     
     # maybe move this to read_params
-    # if main_dict['metallicity'].value != 1:
+    # if params['metallicity'].value != 1:
     #     sys.exit('Need to implement non-solar metallicity.')
         
     # get path to library
     # See example_pl.param for more information.
-    path2cooling = main_dict['path_cooling_CIE'].value
+    path2cooling = params['path_cooling_CIE'].value
     # unpack from file
     logT, logLambda = np.loadtxt(path2cooling, unpack = True)
     # create interpolation
     cooling_CIE_interpolation = scipy.interpolate.interp1d(logT, logLambda, kind = 'linear')
     # update
-    main_dict['cStruc_cooling_CIE_logT'].value = logT
-    main_dict['cStruc_cooling_CIE_logLambda'].value = logLambda
-    main_dict['cStruc_cooling_CIE_interpolation'].value = cooling_CIE_interpolation
+    params['cStruc_cooling_CIE_logT'].value = logT
+    params['cStruc_cooling_CIE_logLambda'].value = logLambda
+    params['cStruc_cooling_CIE_interpolation'].value = cooling_CIE_interpolation
     
     print('..loaded cooling files.')
     
@@ -125,7 +125,7 @@ def start_expansion(main_dict):
     # =============================================================================
     # Begin simulation.
     # =============================================================================
-    run_expansion(main_dict)
+    run_expansion(params)
     
     # # write data (make new file) and cloudy data
     # # (this must be done after the ODE has been solved on the whole interval between 0 and tcollapse (or tdissolve) because the solver is implicit)
@@ -170,7 +170,7 @@ def start_expansion(main_dict):
     
     #%%
     
-def run_expansion(main_dict):
+def run_expansion(params):
     """
     Model evolution of the cloud (both energy- and momentum-phase) until next recollapse or (if no re-collapse) until end of simulation
     """
@@ -184,27 +184,27 @@ def run_expansion(main_dict):
     # v2 = initial velocity (pc/Myr)
     # Eb = initial energy (erg/s)
     # T0 = initial temperature (K)
-    # t_now, (R2, v2, Eb, T0) = get_InitPhaseParam.get_y0(0*u.Myr, main_dict['SB99f'].value)
-    get_InitPhaseParam.get_y0(main_dict)
+    # t_now, (R2, v2, Eb, T0) = get_InitPhaseParam.get_y0(0*u.Myr, params['SB99f'].value)
+    get_InitPhaseParam.get_y0(params)
     
     # update
-    # main_dict['t_now'].value = t_now.to(u.Myr).value
-    # main_dict['R2'].value = R2.to(u.pc).value
-    # main_dict['v2'].value = v2.to(u.pc/u.Myr).value
-    # main_dict['Eb'].value = Eb.to(u.erg).value * cvt.E_cgs2au
-    # main_dict['T0'].value = T0.to(u.K).value
+    # params['t_now'].value = t_now.to(u.Myr).value
+    # params['R2'].value = R2.to(u.pc).value
+    # params['v2'].value = v2.to(u.pc/u.Myr).value
+    # params['Eb'].value = Eb.to(u.erg).value * cvt.E_cgs2au
+    # params['T0'].value = T0.to(u.K).value
     
     # =============================================================================
     # Phase 1a: Energy driven phase.
     # =============================================================================
 
-    main_dict['current_phase'].value = '1a'
+    params['current_phase'].value = '1a'
 
     terminal_prints.phase('Entering energy driven phase (constant cooling)')
 
     phase1a_starttime = datetime.datetime.now()
     
-    run_energy_phase.run_energy(main_dict)
+    run_energy_phase.run_energy(params)
     
     phase1a_endtime = datetime.datetime.now()
     
@@ -212,9 +212,12 @@ def run_expansion(main_dict):
     
     # record
     try:
-        main_dict.flush()
+        params.flush()
     except:
         pass  
+    
+    # sys.exit()
+    
     
     # ------------
     # checkout load_dict_halfway.py to understand how to load dictionaries 
@@ -225,46 +228,46 @@ def run_expansion(main_dict):
     # Phase 1b: implicit energy phase
     # =============================================================================
     
-    main_dict['current_phase'].value = '1b'
+    params['current_phase'].value = '1b'
  
     terminal_prints.phase('Entering energy driven phase (adaptive cooling)')
 
-    run_energy_implicit_phase.run_phase_energy(main_dict)
+    run_energy_implicit_phase.run_phase_energy(params)
     
     # record
     try:
-        main_dict.flush()
+        params.flush()
     except:
         pass
     
 
     # Since cooling is not needed anymore after this phase, we reset values.
-    main_dict['beta'].value = np.nan
-    main_dict['delta'].value = np.nan
-    main_dict['beta_Edot_residual'].value = np.nan
-    main_dict['delta_T_residual'].value = np.nan
-    main_dict['Edot1_guess'].value = np.nan
-    main_dict['Edot2_guess'].value = np.nan
-    main_dict['T1_guess'].value = np.nan
-    main_dict['T1_guess'].value = np.nan
-    main_dict['dMdt'].value = np.nan
-    main_dict['dMdt_factor'].value = np.nan
-    main_dict['v0_residual'].value = np.nan
+    params['beta'].value = np.nan
+    params['delta'].value = np.nan
+    params['beta_Edot_residual'].value = np.nan
+    params['delta_T_residual'].value = np.nan
+    params['Edot1_guess'].value = np.nan
+    params['Edot2_guess'].value = np.nan
+    params['T1_guess'].value = np.nan
+    params['T1_guess'].value = np.nan
+    params['dMdt'].value = np.nan
+    params['dMdt_factor'].value = np.nan
+    params['v0_residual'].value = np.nan
     
     
-    main_dict['cStruc_cooling_CIE_interpolation'].value = np.nan
-    main_dict['cStruc_cooling_CIE_logT'].value = np.nan
-    main_dict['cStruc_cooling_CIE_logLambda'].value = np.nan
-    main_dict['cStruc_cooling_nonCIE'].value = np.nan
-    main_dict['cStruc_heating_nonCIE'].value = np.nan
-    main_dict['cStruc_net_nonCIE_interpolation'].value = np.nan
+    params['cStruc_cooling_CIE_interpolation'].value = np.nan
+    params['cStruc_cooling_CIE_logT'].value = np.nan
+    params['cStruc_cooling_CIE_logLambda'].value = np.nan
+    params['cStruc_cooling_nonCIE'].value = np.nan
+    params['cStruc_heating_nonCIE'].value = np.nan
+    params['cStruc_net_nonCIE_interpolation'].value = np.nan
     
-    main_dict['bubble_v_arr'].value = np.nan
-    main_dict['bubble_T_arr'].value = np.nan
-    main_dict['bubble_dTdr_arr'].value = np.nan
-    main_dict['bubble_r_arr'].value = np.nan
-    main_dict['bubble_n_arr'].value = np.nan
-    main_dict['bubble_dMdt'].value = np.nan
+    params['bubble_v_arr'].value = np.nan
+    params['bubble_T_arr'].value = np.nan
+    params['bubble_dTdr_arr'].value = np.nan
+    params['bubble_r_arr'].value = np.nan
+    params['bubble_n_arr'].value = np.nan
+    params['bubble_dMdt'].value = np.nan
  
     
     # =============================================================================
@@ -273,12 +276,12 @@ def run_expansion(main_dict):
 
     terminal_prints.phase('Entering transition phase (decreasing energy before momentum)')
 
-    main_dict['current_phase'].value = '2'
+    params['current_phase'].value = '2'
     
-    run_transition_phase.run_phase_transition(main_dict)
+    run_transition_phase.run_phase_transition(params)
     
     try:
-        main_dict.flush()
+        params.flush()
     except:
         pass
     # =============================================================================
@@ -287,12 +290,12 @@ def run_expansion(main_dict):
 
     terminal_prints.phase('Entering momentum phase')
 
-    main_dict['current_phase'].value = '3'
+    params['current_phase'].value = '3'
     
-    run_momentum_phase.run_phase_momentum(main_dict)
+    run_momentum_phase.run_phase_momentum(params)
 
     try:
-        main_dict.flush()
+        params.flush()
     except:
         pass
     

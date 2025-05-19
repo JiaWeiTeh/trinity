@@ -29,20 +29,20 @@ def plot(path2json):
     import json
     with open(path2json, 'r') as f:
         # step one is to make sure they are lists i think
-        dictionary = json.load(f)
+        snaplists = json.load(f)
 
-    for snapshots in dictionary.values():
+    for snapshots in snaplists:
         for key, val in snapshots.items():
             if key.endswith('t_now'):
-                v3_t.append(val[0])
+                v3_t.append(val)
             elif key.endswith('dMdt') and 'bubble' not in key:
-                v3.append(val[0])
+                v3.append(val)
             elif key.endswith('v0_residual'):
-                v3res.append(val[0])
+                v3res.append(val)
             elif key.endswith('current_phase'):
-                if val[0] == '1a':
+                if val == '1a':
                     v3a_length += 1
-                elif val[0] == '1b':
+                elif val == '1b':
                     v3b_length += 1
 
 #--------------

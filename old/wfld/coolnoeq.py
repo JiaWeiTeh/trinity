@@ -31,9 +31,6 @@ def get_Cool_dat_timedep(Zism, age, basename="opiate_cooling", extension=".dat",
     :return:
     """
 
-    # print(age)
-    # sys.exit()
-    
     
     
     #Cool_dat1 = get_Cool_dat(Zism, age, basename=basename, extension=extension, cool_folder=cool_folder, indiv_CH=indiv_CH)

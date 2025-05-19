@@ -40,10 +40,11 @@ def run_phase_energy(params):
     # List of possible events and ODE terminating conditions
     # =============================================================================
         
-
+    # how many timesteps? about 200 timesteps per dex
     nmin = int(200 * np.log10(tmax/tmin))
 
     time_range = np.logspace(np.log10(tmin), np.log10(tmax), nmin)
+    
     dt = np.diff(time_range)
 
 
@@ -52,7 +53,7 @@ def run_phase_energy(params):
     Eb = params['Eb'].value
     T0 = params['T0'].value
     
-    stop_iteration = False
+    stop_condition = False
 
     for ii, time in enumerate(time_range):
         
@@ -61,15 +62,16 @@ def run_phase_energy(params):
     
         rd, vd, Ed, Td =  ODE_equations(time, y, params)
         
-        if hasattr(vd, '__len__') and len(vd) == 1:
-            vd = vd[0]
-        else:
-            sys.exit('weird vd behaviour in implicit')
+        # if hasattr(vd, '__len__') and len(vd) == 1:
+        #     vd = vd[0]
+        # else:
+        #     sys.exit('weird vd behaviour in implicit')
         
         
         dt_params = [dt[ii], rd, vd, Ed, Td]
             
         if check_events(params, dt_params):
+            stop_condition = True
             break
         
         
@@ -79,8 +81,37 @@ def run_phase_energy(params):
             Eb += Ed * dt[ii]
             T0 += Td * dt[ii]
             
-    
-    
+            
+    # if break, maybe something happened. Decrease dt
+    if stop_condition:
+        
+        tmin = time_range[ii]
+        tmax = time_range[ii+1] # this is the final moment
+        
+        
+        # reverse log space so that we have more point towards the end.
+        time_range = (tmin + tmax) - np.logspace(np.log10(tmin), np.log10(tmax), 50)
+        
+        
+        for ii, time in enumerate(time_range):
+        
+            # new inputs
+            y = [r2, v2, Eb, T0]
+        
+            rd, vd, Ed, Td =  ODE_equations(time, y, params)
+            
+            dt_params = [dt[ii], rd, vd, Ed, Td]
+                
+            if check_events(params, dt_params):
+                break
+            
+            
+            if ii != (len(time_range) - 1):
+                r2 += rd * dt[ii]
+                v2 += vd * dt[ii]
+                Eb += Ed * dt[ii]
+                T0 += Td * dt[ii]
+        
     return
 
 
@@ -108,17 +139,15 @@ def ODE_equations(t, y, params):
     # --- feedback parameters required to find beta/delta etc
     # Interpolate SB99 to get feedback parameters
     # mechanical luminosity at time t  
-    L_wind = SB99f['fLw_cgs'](t) * cvt.L_cgs2au
+    L_wind = SB99f['fLw'](t)[()]
     # momentum of stellar winds at time t  
-    pdot_wind = SB99f['fpdot_cgs'](t) * cvt.pdot_cgs2au
+    pdot_wind = SB99f['fpdot'](t)[()]
     # get the slope via mini interpolation for some dt.
     dt = 1e-9 #*Myr
-    pdotdot_wind = (SB99f['fpdot_cgs'](t + dt) - SB99f['fpdot_cgs'](t - dt))/ ((dt+dt)/cvt.s2Myr) #this is still in cgs
-    # and then add units
-    pdotdot_wind *= cvt.pdotdot_cgs2au
+    pdotdot_wind = (SB99f['fpdot'](t + dt)[()] - SB99f['fpdot'](t - dt)[()])/ (dt+dt)
     # print('pdotdot_wind', pdotdot_wind)
     # other luminosities
-    Qi = SB99f['fQi_cgs'](t) / cvt.s2Myr
+    Qi = SB99f['fQi'](t)[()]
     # velocity from luminosity and change of momentum (pc/Myr)
     v_wind = (2.*L_wind/pdot_wind)
     # ---  

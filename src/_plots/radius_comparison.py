@@ -74,21 +74,21 @@ for ii, mCloud in enumerate(mCloud_list):
                 for snapshots in dictionary.values():
                     for key, val in snapshots.items():
                         if key.endswith('t_now'):
-                            tlist.append(val[0])
+                            tlist.append(val)
                         elif key.endswith('R2'):
-                            r2list.append(val[0])
+                            r2list.append(val)
                         elif key.endswith('v2'):
-                            v2list.append(val[0])
+                            v2list.append(val)
                         elif key.endswith('Eb'):
-                            Elist.append(val[0])
+                            Elist.append(val)
                         elif key.endswith('T0'):
-                            Tlist.append(val[0])                
+                            Tlist.append(val)                
                         elif key.endswith('current_phase'):
-                            phaselist.append(val[0])  
+                            phaselist.append(val)  
                         elif key.endswith('rCloud_au'):
-                            rCloud = val[0]
+                            rCloud = val
                         elif key.endswith('completed_reason'):
-                            completed_reason = val[0]
+                            completed_reason = val
                 
                 ax[ii][jj].plot(tlist, r2list, label = f'sfe = {str2float(sfe)}', c = colour[cc])
                 

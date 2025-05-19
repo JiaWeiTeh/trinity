@@ -20,39 +20,14 @@ import src._functions.operations as operations
 from src._input.dictionary import updateDict
 import src._functions.unit_conversions as cvt
 
-def run_energy( params
-    # Note:
-    # old code: Weaver_phase()
-        
-        
-      ):
-    """In this function, rCloud and mCloud is called assuming au units."""
+def run_energy(params):
     
-    # TODO: remember double check with old files to make sure
-    # that the cloudy business are taken care of. This is becaus
-    # in the original file, write_cloudy is set to False. 
-    # But we have to be prepared for if people wanted to check out
-    # write_cloudy = True.
+    # TODO: add CLOUDY
     
     # the energy-driven phase
     # winds hit the shell --> reverse shock --> thermalization
     # shell is driven mostly by the high thermal pressure by the shocked ISM, 
     # also (though weaker) by the radiation pressure, at late times also SNe
-
-    # -----------
-    # Describing the free-expanding phase
-    # We consider first region (c) of swept-up interstellar
-    # gas, whose outer boundary, at R2, is a shock separating
-    # it from the ambient interstellar gas (d), and whose
-    # inner boundary, at Rc, is a contact discontinuity
-    # separating it from the shocked stellar wind (b). The
-    # structure of this region can be described by a similarity
-    # solution (Avedisova 1972). Our calculation parallels
-    # the theory of the adiabatic blast wave given by Taylor
-    # (1950); the only substantive difference in the case at
-    # hand is that the energy is fed into the system at a
-    # constant rate instead of in an initial blast.
-    # -----------
 
     # extract dictionary infos
     t_now = params['t_now'].value
@@ -62,7 +37,6 @@ def run_energy( params
     T0 = params['T0'].value
     
     rCloud = params['rCloud_au'].value
-    mCloud = params['mCloud_au'].value
     t_neu = params['t_neu'].value
     t_ion = params['t_ion'].value
     
@@ -80,14 +54,14 @@ def run_energy( params
     # -----------
         
     # mechanical luminosity at time t0 
-    L_wind = SB99f['fLw_cgs'](t_now) * cvt.L_cgs2au
+    # [()] is required because otherwise scipy interpolate returns size 0 ndarray, which will cause issues.
+    L_wind = SB99f['fLw'](t_now)[()]
     # momentum of stellar winds at time t0
-    pdot_wind = SB99f['fpdot_cgs'](t_now) * cvt.pdot_cgs2au
+    pdot_wind = SB99f['fpdot'](t_now)[()] 
     # velocity from luminosity and change of momentum (au)
     v_wind = (2 * L_wind / pdot_wind) 
 
 
-    
     # Identify potentially troublesome timestep; i.e., when change in mechanical luminosity is morre than 300% per Myr
     def Lw_slope(x, y):
         dydx = (y[1:] - y[0:-1])/(x[1:] - x[0:-1])
@@ -129,6 +103,7 @@ def run_energy( params
     else:
         rfinal = rCloud
     
+    
     print(f'Inner discontinuity: {R1}.')
     print(f'Initial bubble mass: {Msh0}')
     print(f'Initial bubble pressure: {Pb}')
@@ -138,9 +113,6 @@ def run_energy( params
     print(f'v_wind: {v_wind}')
     
     updateDict(params, ['R1', 'L_wind', 'Pb', 'pwdot'], [R1, L_wind, Pb, pdot_wind])
-    
-    # Initialise constants. What is here really do not matter that much - becasuse
-    # they will be changed a lot in the loop.
     
     # first stopping time (will be incremented at beginning of while loop)
     # start time t0 will be incremented at end of while loop
@@ -181,6 +153,9 @@ def run_energy( params
     # Myr
     # tfinal = 1e-2
     tfinal = 3e-3
+
+
+    dt_Emin = 1e-5
 
     while all([R2 < rfinal, (tfinal - t_now) > dt_Emin, continueWeaver]):
         
@@ -262,12 +237,6 @@ def run_energy( params
         # if it would change too much, reduce time step
         while True:
             
-            # save a snapshot here
-            params.save_snapShot()
-            
-            # TODO
-            # remember to add units!
-            
             
             if condition_to_reduce_timestep:
                 # continue the while loop, with smaller timestep otherwise, reduce timestep in next iteratin of loop
@@ -302,18 +271,18 @@ def run_energy( params
             # old code: thalf
             t_midpoint = 0.5 * (t_arr[0] + t_arr[-1])
             # mechanical luminosity at time t_midpoint (erg)
-            Lw = SB99f['fLw_cgs'](t_midpoint) * cvt.L_cgs2au 
-            Lbol = SB99f['fLbol_cgs'](t_midpoint) * cvt.L_cgs2au 
-            Ln = SB99f['fLn_cgs'](t_midpoint) * cvt.L_cgs2au  
-            Li = SB99f['fLi_cgs'](t_midpoint) * cvt.L_cgs2au  
+            Lw = SB99f['fLw'](t_midpoint)[()]  
+            Lbol = SB99f['fLbol'](t_midpoint)[()]
+            Ln = SB99f['fLn'](t_midpoint)[()]
+            Li = SB99f['fLi'](t_midpoint)[()]
             # momentum of stellar winds at time t0 (cgs)
-            pdot = SB99f['fpdot_cgs'](t_midpoint) * cvt.pdot_cgs2au 
+            pdot = SB99f['fpdot'](t_midpoint)[()]
             # terminal wind velocity at time t0 (pc/Myr)
-            v_wind = (2. * Lw / pdot) 
+            v_wind = (2. * Lw / pdot)[()]
             # ionizing
-            Qi = SB99f['fQi_cgs'](t_midpoint) / cvt.s2Myr   
+            Qi = SB99f['fQi'](t_midpoint)[()] 
             # old code: Lw_temp, evaluated at tStop_i
-            Lw_tStop = SB99f['fLw_cgs'](tStop_i) * cvt.L_cgs2au  
+            Lw_tStop = SB99f['fLw'](tStop_i)[()]
     
             # if mechanical luminosity would change too much, run through this while = True loop again with reduced time step
             # check that the difference with previous loop is not more than 0.5% of the original value.
@@ -331,10 +300,10 @@ def run_energy( params
             
             # update
             updateDict(params,
-                       ['R2', 'Qi', 'v_wind', 'Eb', 'L_wind', 'v_wind', 'Ln', 'Li', 'Qi', 'Lbol'],
-                       [R2, Qi, v_wind, Eb, Lw, v_wind, Ln, Li, Qi, Lbol])
+                       ['R2', 'Qi', 'v_wind', 'Eb', 'L_wind', 'Ln', 'Li', 'Lbol'],
+                       [R2, Qi, v_wind, Eb, Lw, Ln, Li, Lbol])
             
-            updateDict(params, ['R1', 'L_wind', 'Pb', 'pwdot', 'mShell'], [R1, L_wind, Pb, pdot_wind, Msh0])
+            updateDict(params, ['R1', 'Pb', 'pwdot', 'mShell'], [R1, Pb, pdot_wind, Msh0])
             
             # TODO: make all dictionary extraction at the beginning, so taht we know
             # which values need to be updated.
@@ -350,24 +319,14 @@ def run_energy( params
                 if calculate_bubble_shell:
                     
                     print('\nCalculate bubble and shell\n')
-                    output = bubble_luminosity.get_bubbleproperties(params)
-                    
-                    # restate just for clarity
-                    # T_rgoal here is T0 in original code.
-                    # here, dMdt_factor is also being updated.
-                    # L_total, T0, L_bubble, L_conduction, L_intermediate, Tavg, mBubble = output
+                    _ = bubble_luminosity.get_bubbleproperties(params)
                     
                     # update this here instead of in bubble_luminosity so that 
                     # T0 will not be overwrite when we are dealing with phase1b.
                     params['T0'].value = params['bubble_T_rgoal'].value
 
                     T0 = params['bubble_T_rgoal'].value
-                    L_total = params['bubble_L_total'].value
-                    L_conduction = params['bubble_L_conduction'].value
-                    L_intermediate = params['bubble_L_intermediate'].value
-                    L_bubble = params['bubble_L_bubble'].value
                     Tavg = params['bubble_Tavg'].value
-                    mBubble = params['bubble_mBubble'].value
                     
                     print('\n\nFinish bubble\n\n')
                     print('L_total', params['bubble_L_total'].value)
@@ -462,13 +421,20 @@ def run_energy( params
             
         # which temperature?
         # this is obtained from shell_structure
-        if params['f_absorbed_ion'].value < 0.99:
+        if params['shell_f_absorbed_ion'].value < 0.99:
             T_shell = t_neu
         else:
             T_shell = t_ion
         # sound speed
         c_sound = operations.get_soundspeed(T_shell, params)
         params['cs_avg'].value = c_sound
+    
+    
+        # save here
+        params.save_snapShot()
+        # debug
+        # params.flush()
+    
     
         # =============================================================================
         # Prepare for next loop
@@ -484,7 +450,7 @@ def run_energy( params
         # bubble energy
         Eb = Eb_arr[-1]
         # wind velocity = 2 * wind Luminosity / pdot
-        v_wind = (2 * (SB99f['fLw_cgs'](t_now) * cvt.L_cgs2au) / (SB99f['fpdot_cgs'](t_now) * cvt.pdot_cgs2au))
+        v_wind = 2 * SB99f['fLw'](t_now) / SB99f['fpdot'](t_now)
         
         # if we are going to the momentum phase next, do not have to 
         # calculate the discontinuity for the next loop

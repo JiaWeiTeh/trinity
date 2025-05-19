@@ -31,7 +31,6 @@ params = read_param.read_param(args.path2param, write_summary = True)
 
 
 
-
 from src import main
 import src._input.create_dictionary as create_dictionary
 
@@ -43,6 +42,10 @@ header.display(main_dict)
 
 main.start_expansion(main_dict)
 
+try:
+    main_dict.flush()
+except:
+    pass 
 
 
 # try:

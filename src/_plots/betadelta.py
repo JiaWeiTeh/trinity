@@ -37,32 +37,32 @@ def plot(path2json):
     import json
     with open(path2json, 'r') as f:
         # step one is to make sure they are lists i think
-        dictionary = json.load(f)
+        snaplists = json.load(f)
 
-    for snapshots in dictionary.values():
+    for snapshots in snaplists:
         for key, val in snapshots.items():
             if key.endswith('t_now'):
-                v3_t.append(val[0])
+                v3_t.append(val)
             elif key.endswith('beta') and 'transformation' not in key:
-                v3_b.append(val[0])
+                v3_b.append(val)
             elif key.endswith('delta') and 'transformation' not in key:
-                v3_d.append(val[0])
+                v3_d.append(val)
             elif key.endswith('Edot_residual'):
-                v3_bres.append(val[0])
+                v3_bres.append(val)
             elif key.endswith('T_residual'):
-                v3_dres.append(val[0])                
+                v3_dres.append(val)                
             elif key.endswith('Edot1_guess'):
-                v3Edot1.append(val[0])                
+                v3Edot1.append(val)                
             elif key.endswith('Edot2_guess'):
-                v3Edot2.append(val[0])                
+                v3Edot2.append(val)                
             elif key.endswith('T1_guess'):
-                v3T1.append(val[0])                
+                v3T1.append(val)                
             elif key.endswith('T2_guess'):
-                v3T2.append(val[0])                
+                v3T2.append(val)                
             elif key.endswith('current_phase'):
-                if val[0] == '1a':
+                if val == '1a':
                     v3a_length += 1
-                elif val[0] == '1b':
+                elif val == '1b':
                     v3b_length += 1
                     
 #--------------

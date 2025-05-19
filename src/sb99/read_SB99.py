@@ -12,14 +12,8 @@ This script contains functions that will help reading in Starburst99 data.
 import numpy as np
 import scipy
 import sys
-# import astropy.units as u
-# get parameter
-# import os
-# import importlib
-# warpfield_params = importlib.import_module(os.environ['WARPFIELD3_SETTING_MODULE'])
 
-# from src.input_tools import get_param
-# warpfield_params = get_param.get_param()
+import src._functions.unit_conversions as cvt
 
 # TODO: Implement interpolation function for in-between metallicities/cluster 
     # : Add fmet, where metallicity scaling due to non-existent SB99 file
@@ -34,17 +28,17 @@ def read_SB99(f_mass, params):
     
     t: time [yr]; however, saved as [Myr] in the output of this function.
     
-    Qi: emission rate of ionizing photons log[1/s]
+    Qi: emission rate of ionizing photons log[1/s] (au)
     
     fi: fraction of ionising radiation
     
-    Lbol: bolometric luminosity [erg/s]
+    Lbol: bolometric luminosity [erg/s] (au)
     
-    Lmech: mechanical luminosity (Winds + SNe) [erg/s]
+    Lmech: mechanical luminosity (Winds + SNe) [erg/s] (au)
     
-    pdot_W: momtntum rate (Winds) [g/cm/s2]
+    pdot_W: momtntum rate (Winds) [g/cm/s2] (au)
     
-    Lmech_W: mechanical luminosity (Winds) [erg/s]
+    Lmech_W: mechanical luminosity (Winds) [erg/s] (au)
 
     Returns
     -------
@@ -56,6 +50,12 @@ def read_SB99(f_mass, params):
     
     """
     
+    # The goal here is to mke sure that now all imports are automatically
+    # converted into au units. This is so that in the future
+    # we dont have to worry about cgs conversion. Its more user friendly.
+    
+    # Question: does this affect interpolation? does it make it easier or less accurate?
+    # shouldnt be a problem?
     
     
     # =============================================================================
@@ -73,16 +73,16 @@ def read_SB99(f_mass, params):
     t = SB99_file[:,0] /1e6 
     # the rest, translate to linear, then scale with actual cluster mass
     # / u.s
-    Qi = 10**SB99_file[:,1] * f_mass 
+    Qi = 10**SB99_file[:,1] * f_mass / cvt.s2Myr
     fi = 10**SB99_file[:,2]
     # u.erg/u.s
-    Lbol = 10**SB99_file[:,3] * f_mass 
+    Lbol = 10**SB99_file[:,3] * f_mass * cvt.L_cgs2au
     # u.erg/u.s
-    Lmech = 10**SB99_file[:,4] * f_mass 
+    Lmech = 10**SB99_file[:,4] * f_mass * cvt.L_cgs2au
     # u.g * u.cm/(u.s**2)
-    pdot_W = 10**SB99_file[:,5] * f_mass 
+    pdot_W = 10**SB99_file[:,5] * f_mass * cvt.pdot_cgs2au
     # u.erg/u.s
-    Lmech_W = 10**SB99_file[:,6] * f_mass 
+    Lmech_W = 10**SB99_file[:,6] * f_mass * cvt.L_cgs2au
 
     # =============================================================================
     # Step2: calculate other derived values
@@ -90,7 +90,7 @@ def read_SB99(f_mass, params):
     # Ionising and non-ionising luminosity (13.5 eV)
     Li = Lbol * fi
     Ln = Lbol * (1-fi)
-    # mechanical luminosity (SNe) [erg/s]
+    # mechanical luminosity (SNe)
     Lmech_SN = Lmech - Lmech_W
     
     # =============================================================================
@@ -210,18 +210,18 @@ def get_interpolation(SB99, ftype = 'cubic'):
     # Old code: make_interpfunc()
     
     # obtain all SB99 values
-    [t_Myr, Qi_cgs, Li_cgs, Ln_cgs, Lbol_cgs, Lw_cgs, pdot_cgs, pdot_SNe_cgs] = SB99
+    [t_Myr, Qi, Li, Ln, Lbol, Lw, pdot, pdot_SNe] = SB99
     # get interpolation functions
-    fQi_cgs = scipy.interpolate.interp1d(t_Myr, Qi_cgs, kind = ftype) 
-    fLi_cgs = scipy.interpolate.interp1d(t_Myr, Li_cgs, kind = ftype)
-    fLn_cgs = scipy.interpolate.interp1d(t_Myr, Ln_cgs, kind = ftype)
-    fLbol_cgs = scipy.interpolate.interp1d(t_Myr, Lbol_cgs, kind = ftype)
-    fLw_cgs = scipy.interpolate.interp1d(t_Myr, Lw_cgs, kind = ftype)
-    fpdot_cgs = scipy.interpolate.interp1d(t_Myr, pdot_cgs, kind = ftype)
-    fpdot_SNe_cgs = scipy.interpolate.interp1d(t_Myr, pdot_SNe_cgs, kind = ftype)
+    fQi = scipy.interpolate.interp1d(t_Myr, Qi, kind = ftype) 
+    fLi = scipy.interpolate.interp1d(t_Myr, Li, kind = ftype)
+    fLn = scipy.interpolate.interp1d(t_Myr, Ln, kind = ftype)
+    fLbol = scipy.interpolate.interp1d(t_Myr, Lbol, kind = ftype)
+    fLw = scipy.interpolate.interp1d(t_Myr, Lw, kind = ftype)
+    fpdot = scipy.interpolate.interp1d(t_Myr, pdot, kind = ftype)
+    fpdot_SNe = scipy.interpolate.interp1d(t_Myr, pdot_SNe, kind = ftype)
 
-    SB99f = {'fQi_cgs': fQi_cgs, 'fLi_cgs': fLi_cgs, 'fLn_cgs': fLn_cgs, 'fLbol_cgs': fLbol_cgs, 'fLw_cgs': fLw_cgs,
-              'fpdot_cgs': fpdot_cgs, 'fpdot_SNe_cgs': fpdot_SNe_cgs}
+    SB99f = {'fQi': fQi, 'fLi': fLi, 'fLn': fLn, 'fLbol': fLbol, 'fLw': fLw,
+              'fpdot': fpdot, 'fpdot_SNe': fpdot_SNe}
     
     return SB99f
 

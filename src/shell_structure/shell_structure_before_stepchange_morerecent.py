@@ -194,7 +194,7 @@ def shell_structure(params):
     # the slice should also have minimum of 1pc. 
     
     # new step size
-    nsteps = 5e3
+    nsteps = 1e4
     
     # # step size for the shell
     
@@ -202,17 +202,25 @@ def shell_structure(params):
     
     sliceSize = np.min([1, (max_shellRadius - rShell_start)/10])
     
-    rShell_step = sliceSize/nsteps
+    
+    rShell_step/nsteps
     
     # min (1pc or 10 slices
     #--
     
     
-    print(f'slizesize {sliceSize}')
-    print(f'max_shellRadius {max_shellRadius}')
-    print(f'rShell_start {rShell_start}')
-    print(f'shellthickness {max_shellRadius - rShell_start}')
-    print(f'rShell_step {rShell_step}')
+        
+    print('\n\nwe are now in shell_structure.\n\n')
+    # print(f'rShell0: {rShell0}')
+    # print(f'pBubble: {pBubble}')
+    # print(f'mBubble: {mBubble}')
+    # print(f'Ln: {Ln}')
+    # print(f'Li: {Li}')
+    # print(f'Qi: {Qi}')
+    # print(f'mShell_end: {mShell_end}')
+    # print(f'max_shellRadius: {max_shellRadius}')
+    # print(f'nShell0: {nShell0}')
+    # print(f'rShell_step: {rShell_step}')
     
     
     while not is_allMassSwept and not is_phiZero:
@@ -227,24 +235,21 @@ def shell_structure(params):
         # the shell, and at this rStep range not all ionisation is being used up (phi !=0).
         # =============================================================================
         
-        # #-- OLD
-        # # Therefore the end of integration is just rThickness + rStart
-        # # if the allowed shell thickness is more than 1pc, take 1pc as each stepsize. The ODE is 
-        # # very stiff, and cannot deal with bigger step size. If the shell is smaller than 
-        # # 1pc, then it can do it in one go. rShell_stop < 1pc. 
-        # # rShell_stop = np.min([max_shellRadius.value, 1]) * u.pc + rShell_start
-        # rShell_stop = mydr + rShell_start
-        # rShell_arr = np.arange(rShell_start, rShell_stop, rShell_step) 
-        # #---
-        
-        rShell_stop = rShell_start + sliceSize
-        
+        # Therefore the end of integration is just rThickness + rStart
+        # if the allowed shell thickness is more than 1pc, take 1pc as each stepsize. The ODE is 
+        # very stiff, and cannot deal with bigger step size. If the shell is smaller than 
+        # 1pc, then it can do it in one go. rShell_stop < 1pc. 
+        # rShell_stop = np.min([max_shellRadius.value, 1]) * u.pc + rShell_start
+        rShell_stop = mydr + rShell_start
+        # We now have the array at which we integrate
+            # ---
+        # rShell_arr = np.arange(rShell_start.value, rShell_stop.value, rShell_step.value) * u.cm
+            # ---
         rShell_arr = np.arange(rShell_start, rShell_stop, rShell_step) 
         
+        print('this is how long the shell array is:', len(rShell_arr), ', and here is the stepsize', rShell_step, 'and the shell thickness', max_shellRadius)
+
         
-        print('this is how long the shell array is:', len(rShell_arr), ', and here is the stepsize', rShell_step, 'and the slice thickness', sliceSize)
-
-
         # Get arguments and parameters for integration:
         # ionised region    
         is_ionised = True
@@ -454,35 +459,13 @@ def shell_structure(params):
             # # if tau is already 100, there is no point in integrating more.
             tau_max = 100
             
-            
-            # # --- OLD
-            # mydr = np.min([ 1, np.abs((tau_max - tau0_ion)/(nShell0 * params['sigma_d_au'].value))])
+            mydr = np.min([ 1, np.abs((tau_max - tau0_ion)/(nShell0 * params['sigma_d_au'].value))])
             
 
-            # rShell_step = np.max([
-            #         np.min([ 5e-5, mydr/1e3]),
-            #         mydr/1e4
-            #         ]) 
-            # # ---
-            
-                
-            # new step size
-            # TODO: idea: do a mesh up of logspace and reverse logspace. This way
-            # it contains high dense points for both ends
-            nsteps = 5e3
-            
-            # # step size for the shell
-            # added a factor of 10 here so that the loop does not exceed 10 times. 
-            # speed up for unnecessary calculations
-            
-            # maybe instead of a tau condition, we use instead a mass condtion
-            # option 1---
-            # derived from dtau/dr = n*sigma where r = 0 , tau = 0
-            # sliceSize = np.min([ 1, np.abs((tau_max - tau0_ion)/(nShell0 * params['sigma_d_au'].value))/10])
-            # option 2---
-            sliceSize = np.min([1, (max_shellRadius - rShell_start)/10])            
-            
-            rShell_step = sliceSize/nsteps
+            rShell_step = np.max([
+                    np.min([ 5e-5, mydr/1e3]),
+                    mydr/1e4
+                    ]) 
             
             
             while not is_allMassSwept:
@@ -515,11 +498,7 @@ def shell_structure(params):
                 # # the maximum width of the neutral shell, assuming constant density.
                 # mydr = np.abs((tau_max - tau0_ion)/(nShell0 * params['sigma_d_au'].value))
                 # the end range of integration 
-                # # --- OLD
-                # rShell_stop = mydr + rShell_start
-                # # --- OLD
-                rShell_stop = rShell_start + sliceSize
-                
+                rShell_stop = mydr + rShell_start
                 # # Step size
                 # rShell_step = np.max([
                 #     np.min([ 5e-5, max_shellRadius/1e3]),
@@ -531,9 +510,23 @@ def shell_structure(params):
                 # neutral region
                 is_ionised = False
                 
-                print('this is how long the shell array is in the second loop: ', len(rShell_arr), ', and here is the stepsize', rShell_step,\
-                      'and the shell thickness', max_shellRadius - rShell_start, 'and the slicesize', sliceSize)
+                print('this is how long the shell array is in the second loop: ', len(rShell_arr), ', and here is the stepsize', rShell_step, 'and the shell thickness', max_shellRadius)
                 
+                # # --- cgs version
+                # # initial values
+                # y0 = [nShell0.to(1/u.cm**3).value, tau0_neu]
+                # # constants
+                # cons = [Ln, Qi]
+                # # Run integration
+                # sol_ODE = scipy.integrate.odeint(get_shellODE.get_shellODE, y0, rShell_arr.value,
+                #                       args=(f_cover, is_ionised, params),
+                #                       rtol=1e-3, hmin=1e-7)
+                # # solved for n(r) and tau(r)
+                # nShell_arr = sol_ODE[:,0] / u.cm**3
+                # tauShell_arr = sol_ODE[:,1]
+                                       
+                
+                #--- au version
                 y0 = [nShell0, tau0_neu]
                 sol_ODE = scipy.integrate.odeint(get_shellODE.get_shellODE, y0, rShell_arr,
                                       args=(f_cover, is_ionised, params),
@@ -557,19 +550,13 @@ def shell_structure(params):
                 # with new (a continuation of) set of steps and start/end values.
                 # =============================================================================                
                 massCondition = mShell_arr_cum >= mShell_end
-                
-                
+                # print('mass condition:', mShell_arr_cum, mShell_end)
                 idx_array = np.nonzero(massCondition)[0]
                 # If there is none, then take as last index
                 if len(idx_array) == 0:
                     idx = len(rShell_arr) - 1
                 else:
                     idx = idx_array[0]
-                    
-                    
-                print('mass condition:', idx, mShell_arr_cum[idx-1], mShell_end)
-                
-                
                 # Associated condition
                 # True if any part of the array is true
                 is_allMassSwept = any(massCondition) 
@@ -636,7 +623,7 @@ def shell_structure(params):
         # Shell is fully evaluated. Compute shell properties now.
         # =============================================================================
         if is_fullyIonised:
-            # What is the actual thickness of the shell?
+            # What is the final thickness of the shell?
             shellThickness = rShell_arr_ion[-1] - rShell0
             # What is tau and phi at the outer edge of the shell?
             tau_rEnd = tauShell_arr_ion[-1]

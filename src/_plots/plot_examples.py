@@ -20,11 +20,12 @@ import matplotlib.pyplot as plt
 # path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/1e5_sfe030_n1e4/dictionary.json'
 
 # path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe030_n1e4/dictionary.json'
-# path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe010_n1e4/dictionary.json'
-# path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe001_n1e4/dictionary.json'
+path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe010_n1e4/dictionary.json'
 # path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/1e6_sfe030_n1e4/dictionary.json'
-path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/1e6_sfe001_n1e4/dictionary.json'
-path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe001_n1e4_Z015/dictionary.json'
+# path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/1e6_sfe010_n1e4/dictionary.json'
+# path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/1e6_sfe001_n1e4/dictionary.json'
+# path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe001_n1e4/dictionary.json'
+# path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe001_n1e4_Z015/dictionary.json'
 
 
 def plot(path2json):
