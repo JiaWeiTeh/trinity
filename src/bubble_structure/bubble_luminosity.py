@@ -156,7 +156,7 @@ def get_bubbleproperties(b_params,
     # Lets set an if/else structure for this. 
     
     if b_params['current_phase'].value == '1a':
-        print('first phase dMdt')
+        # print('first phase dMdt')
         dMdt_predict = scipy.optimize.least_squares(get_velocity_residuals,  dMdt_init, args = (b_params,), 
                                               # dMdt will increase.
                                               bounds = [0, np.inf],
@@ -182,7 +182,7 @@ def get_bubbleproperties(b_params,
                                               # ftol = 1e-4
                                               )[0] # u.M_sun/u.Myr
         
-        print('dMdt_predict', dMdt_predict)
+        # print('dMdt_predict', dMdt_predict)
         
     # ---- Old method
     # # problem: using old dMdt also implies using old varray and rarray, which causes problem
@@ -716,7 +716,7 @@ def get_bubble_ODE_initial_conditions(dMdt, dMdt_params_au):
     #     dR2 = dMdt_params_au['bubble_T_rgoal'].value**(5/2) / (constant * dMdt / (4 * np.pi * dMdt_params_au['R2'].value**2) )
     dR2 = dMdt_params_au['T_goal'].value**(5/2) / (constant * dMdt / (4 * np.pi * dMdt_params_au['R2'].value**2) )
     
-    print('dMdt_params_au["Tgoal"] in get_bubble_ODE_initial_conditions to check when it switches away from 3e4:', dMdt_params_au["T_goal"])
+    # print('dMdt_params_au["Tgoal"] in get_bubble_ODE_initial_conditions to check when it switches away from 3e4:', dMdt_params_au["T_goal"])
 
     # Possibility: extremely small dR2. I.e., at mCluster~1e7, dR2 ~1e-11pc. 
     # What is the minimum dR2? Set a number here

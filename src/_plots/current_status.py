@@ -38,34 +38,35 @@ def plot(path2json):
     import json
     with open(path2json, 'r') as f:
         # step one is to make sure they are lists i think
-        dictionary = json.load(f)
+        snaplists = json.load(f)
 
-    for snapshots in dictionary.values():
+    for snapshots in snaplists:
         for key, val in snapshots.items():
             if key.endswith('t_now'):
-                v3_t.append(val[0])
+                v3_t.append(val)
             elif key.endswith('R2'):
-                v3_r.append(val[0])
+                v3_r.append(val)
             elif key.endswith('v2'):
-                v3_v.append(val[0])
+                v3_v.append(val)
             elif key.endswith('Eb'):
-                v3_E.append(val[0])
+                v3_E.append(val)
             elif key.endswith('T0'):
-                v3_T.append(val[0])                
+                v3_T.append(val)                
             elif key.endswith('shell_grav_r'):
                 try:
-                    if np.isnan(val[0]):
+                    if np.isnan(val):
                         v3_rShell.append(np.nan)
-                    elif val[0] == 0:
+                    elif val == 0:
                         v3_rShell.append(np.nan)                    
-                    elif len(val[0]) == 0:
+                    elif len(val) == 0:
                         v3_rShell.append(np.nan)
                 except:
-                    v3_rShell.append(val[0][-1])
+                    # print(val[-1])
+                    v3_rShell.append(val[-1])
                 # try:
-                #     v3_rShell.append(val[0][-1])
+                #     v3_rShell.append(val[-1])
                 # except:
-                #     v3_rShell.append(val[0])
+                #     v3_rShell.append(val)
                     
             elif key.endswith('current_phase'):
                 if val == '1a':
@@ -94,16 +95,18 @@ def plot(path2json):
     
     
     #-- r
-    
     axs[0][0].plot(v3_t, v3_r, '-k', alpha = 1, linewidth = 2, label = 'trinity')
-    axs[0][0].plot(v3_t[:len(v3_rShell)], v3_rShell, 'gray', alpha = 1, linewidth = 2, label = 'trinity')
+    axs[0][0].plot(v3_t[:len(v3_rShell)], v3_rShell, 'gray', alpha = 0.5, linewidth = 5, label = 'trinity')
     axs[0][0].set_ylabel('radius (pc)')
     axs[0][0].set_xlabel('time (Myr)')
     axs[0][0].set_xlim(0, max(v3_t))
     
-    axs[0][0].axhline(snapshots[last_key+'r_coll'][0], linestyle = '--', c = 'k', alpha = 0.7)
-    axs[0][0].axhline(snapshots[last_key+'rCloud_au'][0], linestyle = '--', c = 'k', alpha = 0.7)
+    print(snapshots)
+    axs[0][0].axhline(snaplists[0]['r_coll'], linestyle = '--', c = 'k', alpha = 0.7)
+    axs[0][0].axhline(snaplists[0]['rCloud_au'], linestyle = '--', c = 'k', alpha = 0.7)
     
+    # print(v3_r)
+    # print(v3_rShell)
     #-- v
     
     

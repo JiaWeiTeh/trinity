@@ -36,8 +36,7 @@ def create():
     
     main_dict = DescribedDict()
     # how often do we save into json file?
-    # 2 = 10(2-1) = 10 saves per snapshot.
-    main_dict.snapshot_interval = 2 
+    main_dict.snapshot_interval = 100
     
     
     # main
@@ -125,9 +124,6 @@ def create():
     main_dict['T1_guess'] = DescribedItem(np.nan, 'Value of T obtained via bubble_Trgoal.')
     main_dict['T2_guess'] = DescribedItem(np.nan, 'Value of T obtained via T0.')
     
-    main_dict['transformation_beta_cent_a'] = DescribedItem([], 'Transformation parameters for beta. [previous_beta (center), sigma (symmetric about center)]')
-    main_dict['transformation_delta_cent_a'] = DescribedItem([], 'Transformation parameters for delta. [previous_delta (center), sigma (symmetric about center)]')
-    
     main_dict['cStruc_cooling_CIE_interpolation'] = DescribedItem(np.nan, 'CIE structure interpolations')
     main_dict['cStruc_cooling_CIE_logT'] = DescribedItem(np.nan, 'CIE structure log temperature')
     main_dict['cStruc_cooling_CIE_logLambda'] = DescribedItem(np.nan, 'CIE structure log lambda values')
@@ -170,13 +166,13 @@ def create():
   
     # bubble output values
     main_dict['bubble_L_total'] = DescribedItem(0, 'Total luminosity lost to cooling.')
-    main_dict['bubble_T_rgoal'] = DescribedItem(np.nan, 'Current guess temperature at R2prime. This becomes T0.')
-    main_dict['bubble_L_bubble'] = DescribedItem(np.nan, 'Total luminosity lost to cooling (bubble zone)')
-    main_dict['bubble_L_conduction'] = DescribedItem(np.nan, 'Total luminosity lost to cooling (conduction zone)')
-    main_dict['bubble_L_intermediate'] = DescribedItem(np.nan, 'Total luminosity lost to cooling (intermediate zone)')
-    main_dict['bubble_Tavg'] = DescribedItem(np.nan, 'Average temperature across bubble.')
-    main_dict['bubble_mBubble'] = DescribedItem(np.nan, 'Bubble mass')
-    
+    main_dict['bubble_T_rgoal'] = DescribedItem(0, 'Current guess temperature at R2prime. This becomes T0.')
+    main_dict['bubble_L_bubble'] = DescribedItem(0, 'Total luminosity lost to cooling (bubble zone)')
+    main_dict['bubble_L_conduction'] = DescribedItem(0, 'Total luminosity lost to cooling (conduction zone)')
+    main_dict['bubble_L_intermediate'] = DescribedItem(0, 'Total luminosity lost to cooling (intermediate zone)')
+    main_dict['bubble_Tavg'] = DescribedItem(0, 'Average temperature across bubble.')
+    main_dict['bubble_mBubble'] = DescribedItem(0, 'Bubble mass')
+
     # simulation constraints
     
     main_dict['Lgain'] = DescribedItem(np.nan, 'au, luminosity gain in get_betadelta')
@@ -191,22 +187,22 @@ def create():
     # shell output values
     # TODO: make sure these area are properly initiated with physically motivated values.
     # e.g.,  fraction starts with 1 or 0. np.nan may cause problem in fugture logic gates
-    main_dict['shell_f_absorbed_ion'] = DescribedItem(np.nan, 'unitless')
-    main_dict['shell_f_absorbed_neu'] = DescribedItem(np.nan, 'unitless')
-    main_dict['shell_f_absorbed'] = DescribedItem(np.nan, 'unitless')
-    main_dict['shell_f_ionised_dust'] = DescribedItem(np.nan, 'unitless')
-    main_dict['shell_thickness'] = DescribedItem(np.nan, 'pc')
-    main_dict['shell_nShellInner'] = DescribedItem(np.nan, '/pc3')
-    main_dict['shell_nShell_max'] = DescribedItem(np.nan, '/pc3')
-    main_dict['shell_tau_kappa_IR'] = DescribedItem(np.nan, 'Msun / pc2')
+    main_dict['shell_f_absorbed_ion'] = DescribedItem(0, 'unitless')
+    main_dict['shell_f_absorbed_neu'] = DescribedItem(0, 'unitless')
+    main_dict['shell_f_absorbed'] = DescribedItem(0, 'unitless')
+    main_dict['shell_f_ionised_dust'] = DescribedItem(0, 'unitless')
+    main_dict['shell_thickness'] = DescribedItem(0, 'pc')
+    main_dict['shell_nShellInner'] = DescribedItem(0, '/pc3')
+    main_dict['shell_nShell_max'] = DescribedItem(0, '/pc3')
+    main_dict['shell_tau_kappa_IR'] = DescribedItem(0, 'Msun / pc2')
     main_dict['shell_grav_r'] = DescribedItem([], 'pc')
     main_dict['shell_grav_phi'] = DescribedItem([], 'pc2 / Myr2')
     main_dict['shell_grav_force_m'] = DescribedItem([], 'pc / Myr2')
-    main_dict['shell_f_rad'] = DescribedItem(np.nan, 'Radiation pressure coupled to the shell. f_abs * Lbol / c')
+    main_dict['shell_f_rad'] = DescribedItem(0, 'Radiation pressure coupled to the shell. f_abs * Lbol / c')
     
     
-    main_dict['mShell'] = DescribedItem(np.nan, 'Msol. Shell mass')
-    main_dict['mShell_dot'] = DescribedItem(np.nan, 'Msol/Myr. Rate of change of shell mass')
+    main_dict['mShell'] = DescribedItem(0, 'Msol. Shell mass')
+    main_dict['mShell_dot'] = DescribedItem(0, 'Msol/Myr. Rate of change of shell mass')
     main_dict['isLowdense'] = DescribedItem(False, 'is the shell currently in low density?')
     main_dict['t_Lowdense'] = DescribedItem(1e30, 'Myr, time of most recent isLowdense==True')
     

@@ -30,6 +30,19 @@ scatter_list = ['d', '^', 'o', 'x']
 metallicity_list = ['_Z015', '']
 
 
+# or
+
+# path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/1e6_sfe001_n1e4/dictionary.json'
+
+mCloud_list = [ '1e6']
+ndens_list = [ '1e4']
+sfe_list = ['001']
+colour = ['r', 'b', 'g']
+scatter_list = ['d', '^', 'o', 'x']
+metallicity_list = ['']
+
+
+
 plt.rc('text', usetex=True)
 plt.rc('font', family='sans-serif', size=12)
 
@@ -59,6 +72,7 @@ for metallicity in metallicity_list:
                     
                     try:
                         path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/' + mCloud + '_' + 'sfe' + sfe + '_n' + ndens + metallicity + '/dictionary.json'
+                        # path2json = path2json
                         
                         print(f"plotting mCloud {np.log10(float(mCloud))}, sfe {sfe}, ndens {float(ndens)}, Z {metallicity}")
                         
@@ -82,23 +96,23 @@ for metallicity in metallicity_list:
                         for snapshots in dictionary.values():
                             for key, val in snapshots.items():
                                 if key.endswith('t_now'):
-                                    tlist.append(val[0])
+                                    tlist.append(val)
                                 elif key.endswith('R2'):
-                                    r2list.append(val[0])
+                                    r2list.append(val)
                                 elif key.endswith('v2'):
-                                    v2list.append(val[0])
+                                    v2list.append(val)
                                 elif key.endswith('current_phase'):
-                                    phaselist.append(val[0])  
+                                    phaselist.append(val)  
                                 elif key.endswith('rCloud_au'):
-                                    rCloud = val[0]
+                                    rCloud = val
                                 elif key.endswith('completed_reason'):
-                                    completed_reason = val[0]
+                                    completed_reason = val
                                 elif key.endswith('F_grav'):
-                                    F_gravlist.append(val[0])
+                                    F_gravlist.append(val)
                                 elif key.endswith('F_rad'):
-                                    F_radlist.append(val[0])
+                                    F_radlist.append(val)
                                 elif key.endswith('F_ram'):
-                                    F_ramlist.append(val[0])
+                                    F_ramlist.append(val)
                         
                         
                         fig, ax = plt.subplots(1, 1, figsize = (7, 5), dpi = 200) 

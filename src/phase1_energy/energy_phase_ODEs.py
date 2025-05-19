@@ -106,10 +106,9 @@ def get_ODE_Edot(y, t, params):
     # if you don't want gravity, set .inc_grav to zero
     F_grav = params['G_au'].value * mShell / R2**2 * (mCluster + mShell/2)  * params['inc_grav'].value
     
-    # print(R2, L_wind, Eb, v_wind)
-    
     # get pressure from energy
     # calculate radius of inner discontinuity (inner radius of bubble)
+    
     R1 = scipy.optimize.brentq(get_bubbleParams.get_r1, 0.0, R2,
                                args=([L_wind, Eb, v_wind, R2])) 
     

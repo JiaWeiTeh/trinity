@@ -32,14 +32,14 @@ def get_vdot(t, y,
     # can't quite use what's in the dictionary because it could be changed.
     # TODO: in future just add them into dictionary
     # mechanical luminosity at time t (erg)
-    L_wind = SB99f['fLw_cgs'](t) * cvt.L_cgs2au
+    L_wind = SB99f['fLw'](t)[()]
     # momentum of stellar winds at time t (cgs)
-    pdot_wind = SB99f['fpdot_cgs'](t) * cvt.pdot_cgs2au
+    pdot_wind = SB99f['fpdot'](t)[()] 
     # other luminosities
-    Lbol = SB99f['fLbol_cgs'](t) * cvt.L_cgs2au
-    Ln = SB99f['fLn_cgs'](t) * cvt.L_cgs2au
-    Li = SB99f['fLi_cgs'](t) * cvt.L_cgs2au
-    Qi = SB99f['fQi_cgs'](t) / cvt.s2Myr
+    Lbol = SB99f['fLbol'](t)[()]
+    Ln = SB99f['fLn'](t)[()]
+    Li = SB99f['fLi'](t)[()]
+    Qi = SB99f['fQi'](t)[()]
     
     
     # velocity from luminosity and change of momentum (au)
@@ -56,6 +56,16 @@ def get_vdot(t, y,
     else:
         mShell, mShell_dot = mass_profile.get_mass_profile(R2, params,
                                                        return_mdot = True, rdot_arr = v2)
+    
+    # just artifacts. 
+    # TODO: fix this in the future
+    if hasattr(mShell, '__len__'):
+        if len(mShell) == 1:
+            mShell = mShell[0]
+        
+    if hasattr(mShell_dot, '__len__'):
+        if len(mShell_dot) == 1:
+            mShell_dot = mShell_dot[0]
     
     params['mShell'].value = mShell
     params['mShell_dot'].value = mShell_dot
@@ -106,10 +116,10 @@ def get_vdot(t, y,
     # units right
     
     # radiation pressure coupled to the shell
-    fRad = params['f_absorbed'].value * Lbol / (params['c_au'].value)
+    fRad = params['shell_f_absorbed'].value * Lbol / (params['c_au'].value)
     params['shell_f_rad'].value = fRad
 
-    isLowdense = params['nShell_max'].value < params['stop_n_diss'].value
+    isLowdense = params['shell_nShell_max'].value < params['stop_n_diss'].value
 
     if isLowdense != params['isLowdense'].value:
         # update if it is low dense now
@@ -139,12 +149,15 @@ def get_vdot(t, y,
         
         P_ion = n_r * ion_dict['k_B_au'].value * ion_dict['t_ion'].value
         
+        if len(P_ion) == 1:
+            P_ion = P_ion[0]
+        
         return P_ion
     
 
     # calculate inward pressure from photoionized gas outside the shell 
     # (is zero if no ionizing radiation escapes the shell)
-    if params['f_absorbed_ion'].value < 1.0:
+    if params['shell_f_absorbed_ion'].value < 1.0:
         press_HII = get_press_ion(R2, params)
     else:
         press_HII = 0.0

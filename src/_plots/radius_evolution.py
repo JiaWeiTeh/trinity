@@ -26,7 +26,7 @@ import importlib
 
 mCloud_list = ['1e7']
 ndens_list = ['1e4']
-sfe_list = ['001', '010', '030']
+sfe_list = ['010', '030']
 
 for mCloud in mCloud_list:
     for ndens in ndens_list:
@@ -42,7 +42,7 @@ for mCloud in mCloud_list:
                 
                 with open(path2json, 'r') as f:
                     # step one is to make sure they are lists i think
-                    dictionary = json.load(f)        
+                    snapshot_list = json.load(f)        
                     
                     
                 tlist = []
@@ -59,35 +59,37 @@ for mCloud in mCloud_list:
                 current_t = 1e-10
                 completed_reason  = ''
                 
-                for snapshots in dictionary.values():
+                for snapshots in snapshot_list:
+                    if len(snapshots) == 0:
+                        break
                     for key, val in snapshots.items():
                         if key.endswith('t_now'):
-                            tlist.append(val[0])
+                            tlist.append(val)
                         elif key.endswith('R2'):
-                            r2list.append(val[0])
+                            r2list.append(val)
                         elif key.endswith('R1'):
-                            r1list.append(val[0])
+                            r1list.append(val)
                         elif key.endswith('rCloud_au'):
-                            rCloud_list.append(val[0])
+                            rCloud_list.append(val)
                         elif key.endswith('bubble_n_arr_r_arr'):
-                            r_nlist.append(val[0])
+                            r_nlist.append(val)
                         elif key.endswith('bubble_T_arr_r_arr'):
-                            r_Tlist.append(val[0])
+                            r_Tlist.append(val)
                         elif key.endswith('bubble_n_arr'):
-                            nlist.append(val[0])
+                            nlist.append(val)
                         elif key.endswith('bubble_T_arr'):
-                            Tlist.append(val[0])
+                            Tlist.append(val)
                         elif key.endswith('current_phase'):
-                            phaselist.append(val[0])  
+                            phaselist.append(val)  
                         elif key.endswith('shell_grav_r'):
-                            shell_rlist.append(val[0])
+                            shell_rlist.append(val)
                         elif key.endswith('completed_reason'):
                             if completed_reason != '':
-                                completed_reason = val[0]
+                                completed_reason = val
                                                 
                 
-                    # if (float(val[0]) - current_t)/current_t > 0.3:
-                    #     tlist.append(val[0])
+                    # if (float(val) - current_t)/current_t > 0.3:
+                    #     tlist.append(val)
                     # else:
                     #     break
                             

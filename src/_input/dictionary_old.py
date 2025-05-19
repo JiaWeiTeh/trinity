@@ -13,7 +13,6 @@ import collections.abc
 from functools import reduce
 import os
 import json
-import sys
 #--
 # from numba import njit, jitclass
 
@@ -49,9 +48,9 @@ class DescribedDict(dict):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # initialise snapshot counter.
-        self.save_count = 0
-        # save snapshot in intervals of?
-        self.snapshot_interval = 100
+        self.save_count = 1
+        # save snapshot in intervals of 3 = 10^(snapshot_interval-1) = 1e2
+        self.snapshot_interval = 3
         # which snapshots are stored. List of str.
         self.snapshots_stored = []
         # how much zero padding? 6 = 000001 
@@ -95,7 +94,8 @@ class DescribedDict(dict):
                     val_str = f"{key} : {shortened_val}\n" 
             custom_str += val_str
         custom_str += 'saved snapshot(s): ' + str(self.shorten_display(snapshots_stored)) + '\n'
-        custom_str += 'Access hidden snapshots by adding _sS(number) as suffix to keys.\n'
+        num_snapshotkeys = len([k for k in self.keys() if k.startswith('_sS')])
+        custom_str += f'{num_snapshotkeys} snapshot key(s) hidden. Access them by adding _sS(number) as suffix to keys.\n'
         return custom_str + "-------------"
     
     def __setitem__(self, key, value):
@@ -187,13 +187,12 @@ class DescribedDict(dict):
             if new_key[3:self._zero_padding+3] not in self.snapshots_stored:
                 self.snapshots_stored.append(str(new_key[3:self._zero_padding+3]))
 
-        self.save_count += 1
-
-        if self.save_count % self.snapshot_interval == 0:
+        if self.save_count % 10**(self.snapshot_interval-1) == 0:
             self.flush()
-            print('All snapshots flushed to JSON at t = ', self['t_now'].value)
+            print('Snapshot saved to JSON at t = ', self['t_now'].value)
         else:
-            print('Current snapshot saved at t = ', self['t_now'].value)
+            self.save_count += 1
+            print('Snapshot saved at t = ', self['t_now'].value)
             
         return
     
@@ -201,24 +200,15 @@ class DescribedDict(dict):
         """
         After certain amount of snapshots (see self.snapshot_inverval), flush 
         output into a JSON file. 
-        
-        If you want to use this function as a standalone, make sure you've already done
-        .save_snapshot() beforehand. 
         """
             
-        save_list = []
+        save_dict = {}
         
-        # go through list of saved snapshots in dictionary
         for snapshots in self.snapshots_stored:
             # for each snapshot create its own dictionary 
-            snapshot_number = {'snapshot_number': snapshots}
-            snapshot_dict = {k[3+self._zero_padding+1:]:v for k, v in self.items() if k.startswith('_sS'+str(snapshots))}
-            if len(snapshot_dict) == 0:
-                return
-            # organise into alphabetical order
-            snapshot_dict = dict(sorted(snapshot_dict.items()))
-            # save keys to a list, with snapshot numnber added in front
-            save_list.append({**snapshot_number, **snapshot_dict})
+            snapshot_dict = {k:v for k, v in self.items() if k.startswith('_sS'+str(snapshots))}
+            # save key to new dictionary
+            save_dict[snapshots] = snapshot_dict
             
         # remove snapshots
         for k, v in list(self.items()):
@@ -229,48 +219,29 @@ class DescribedDict(dict):
         path2json = os.path.join(path2trinity, 'dictionary' + '.json')
         
         # Three cases: file exists; file exists but zero byte; file does not exist.
+        
         # if file does not exist, then create it.
         # if file exists, but it shouldn't be (i.e., simulation just started), then remove it.
-        if not os.path.exists(path2json) or (os.path.exists(path2json) and self.flush_count == 0):
+        if not os.path.exists(path2json) or (os.path.exists(path2json) and self.save_count <= 10**(self.snapshot_interval-1)):
             with open(path2json, 'w') as infile:
+                json.dump({}, infile)
                 infile.close()
-            print('Initialising JSON file for saving purpose...')
-                
-        # Initialising the loaded array with None
-        load_list = None
-        
-        
-        #---
-        # if it is an empty file, 
-        try:
-            with open(path2json, 'r') as infile:
-                load_list = json.load(infile)
-                infile.close()
-                
-        except json.decoder.JSONDecodeError as e:
-            print(f'Exception: {e} catched; file is probably empty.')
-            
-        except Exception as e:
-            print(f'Something else went wrong in .flush(): {e}')
-            sys.exit()
-            
-        # If it is None, return an empty list instead
-        if load_list is None:
-            load_list = []
-    
-        # combine to record
-        combined_list = load_list + save_list
-        
+
+        # Once empty file is created, then load it
+        with open(path2json, 'r+') as infile:
+            load_dict = json.load(infile)
+            infile.close()
+         
         # then update dictionary
         with open(path2json, 'w') as outfile:
-            print('\nhere in update')
-            # json.dump(combined_list, outfile)
-            json.dump(combined_list, outfile, cls = NpEncoder)
+            save_dict.update(load_dict)
+            json.dump(save_dict, outfile, cls = NpEncoder)
             outfile.close()
 
         # update
+        self.save_count += 1
         self.flush_count += 1
-        
+            
         return
     
     def get_snapshot(t_now):
@@ -304,8 +275,8 @@ class DescribedDict(dict):
                 # no need to store the description
                 val = val.value
                 # if a single string, float or value, save it einfach
-                # if (type(val) is str) or (type(val) is float) or (type(val) is int):
-                if isinstance(val, (str, float, int)):
+                if (type(val) is str) or (type(val) is float) or (type(val) is int):
+                # if isinstance(val, (str, float, int)):
                     new_dict[key] = val
                 else:
                     # if the key is linked to bubble or shell strcuture, simplify it.

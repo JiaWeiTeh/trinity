@@ -42,8 +42,8 @@ def get_y0(params):
     tSF = params['tSF'].value
     SB99f = params['SB99f'].value
 
-    Lw_evo0 = SB99f['fLw_cgs'](tSF) * cvt.L_cgs2au
-    pdot_evo0 = SB99f['fpdot_cgs'](tSF) * cvt.pdot_cgs2au
+    Lw_evo0 = SB99f['fLw'](tSF)
+    pdot_evo0 = SB99f['fpdot'](tSF)
     
     # print(Lw_evo0, pdot_evo0)
 

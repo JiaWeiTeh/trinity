@@ -20,7 +20,6 @@ import src._functions.unit_conversions as cvt
 
 def get_shellODE(y, 
                  r, 
-                  # cons,
                  f_cover,
                  is_ionised,
                  params,
@@ -36,7 +35,7 @@ def get_shellODE(y,
     ----------
     y : list
         A list of ODE variable, including:
-        # nShell [1/cm3]: float
+        # nShell [1/pc3]: float
             the number density of the shell.
         # phi [unitless]: float
             fraction of ionizing photons that reaches a surface with radius r.
@@ -44,9 +43,6 @@ def get_shellODE(y,
             the optical depth of dust in the shell.               
     r [pc]: list
         An array of radii where y is evaluated.
-    cons : list
-        A list of constants used in the ODE, including:
-            Ln, Li and Qi. In erg/s and 1/s
                 
     f_cover: float, 0 < f_cover <= 1
             The fraction of shell that remained after fragmentation process.
@@ -57,33 +53,18 @@ def get_shellODE(y,
 
     Returns
     -------
-    dndr [1/cm4]: ODE 
-    dphidr [1/cm]: ODE (only in ionised region)
-    dtaudr [1/cm]: ODE
+    dndr [1/pc4]: ODE 
+    dphidr [1/pc]: ODE (only in ionised region)
+    dtaudr [1/pc]: ODE
 
     """
-    
-    # make sure it is all in cgs
-    
-    # sigma_dust = params['sigma_d_au'].value / cvt.cm2pc**2
-    # mu_n = params['mu_n_au'].value / cvt.g2Msun
-    # mu_p = params['mu_p_au'].value / cvt.g2Msun
-    # t_ion = params['t_ion'].value
-    # t_neu = params['t_neu'].value
-    # alpha_B = params['alpha_B_au'].value / cvt.cm2pc**3 * cvt.s2Myr #cm3/s
-    # k_B = params['k_B_au'].value / cvt.k_B_cgs2au
-    # c = params['c_au'].value / cvt.v_cms2au
-    # Ln = params['Ln'].value / cvt.L_cgs2au 
-    # Li = params['Li'].value / cvt.L_cgs2au 
-    # Qi = params['Qi'].value * cvt.s2Myr
-    
-    # try non cgs here
+
     sigma_dust = params['sigma_d_au'].value
     mu_n = params['mu_n_au'].value   
     mu_p = params['mu_p_au'].value 
     t_ion = params['t_ion'].value
     t_neu = params['t_neu'].value
-    alpha_B = params['alpha_B_au'].value  #cm3/s
+    alpha_B = params['alpha_B_au'].value  #cm3/s (au)
     k_B = params['k_B_au'].value  
     c = params['c_au'].value  
     Ln = params['Ln'].value  
@@ -96,16 +77,11 @@ def get_shellODE(y,
         # unravel, and make sure they are in the right units
         nShell, phi, tau = y
         
-        # nShell *= (1/u.cm**3)
-        # Ln, Li, Qi = cons
-        # Ln = Ln.to(u.)
-        
         # prevent underflow for very large tau values
         if tau > 500:
             neg_exp_tau = 0
         else:
             neg_exp_tau = np.exp(-tau)
-            
         
         # number density
         dndr = mu_p/mu_n/(k_B * t_ion) * (
@@ -119,16 +95,12 @@ def get_shellODE(y,
         
         # return
         return dndr, dphidr, dtaudr
-        # return dndr.to(1/u.cm**4).value, dphidr.to(1/u.cm).value, dtaudr.to(1/u.cm).value
 
     
     # If not, omit ionised paramters such as Li and phi.
     else:
         # unravel
         nShell, tau = y
-        
-        # nShell *= (1/u.cm**3)
-        # Ln, Qi = cons
         
         # prevent underflow for very large tau values
         if tau > 500:
@@ -145,7 +117,6 @@ def get_shellODE(y,
         
         # return
         return dndr, dtaudr
-        # return dndr.to(1/u.cm**4).value, dtaudr.to(1/u.cm).value
 
 
 
