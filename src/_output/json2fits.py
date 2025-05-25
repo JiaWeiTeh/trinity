@@ -9,13 +9,18 @@ This file converts json dictionary (default output) into fits for better data ex
 """
 
 from pathlib import Path
+import os
+
+
+import numpy as np
+
 
 
 path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe030_n1e4/dictionary_test.json'
 
 filename = r'output.fits'
 
-path2output = Path(path2json).parent / filename
+path2output = os.path.join(Path(path2json).parent,filename)
 
 import json
 from astropy.io import fits
@@ -34,20 +39,50 @@ table = Table(rows = data_dict)
 # Check type because object does not work
 # print(list(c.dtype for c in table.columns.values()))
 
-for ii, dtype in enumerate(table.dtype.descr):
-    print(f'{ii}: {dtype}')
+# for ii, dtype in enumerate(table.dtype.descr):
+#     print(f'{ii}: {dtype}')
     
     
     
 for col in table.colnames:
     if table[col].dtype == object:
-        for value in table[col]:
-            print(value, col)
-            break
-
+        print(col)
+        
+        maxlength = 0
+        currentlength = 0
+        
+        for ii, val in enumerate(table[col]):
+            
+            try:
+                if len(val) == 0:
+                    table[col][ii] = '[]'
+                else:
+                    table[col][ii] = np.array2string(np.array(val), separator=',')
+                    currentlength = len(table[col][ii])
+                    
+                if currentlength > maxlength:
+                    maxlength = int(currentlength)
+                    
+            except TypeError as e:
+                print(e)
+                table[col][ii] = '[]'
+            
+            
+        print(currentlength)
+        if currentlength == 0:
+            # print(col)
+            table[col] = table[col].astype(f'<U{currentlength}')
+        
 
 print(f'outputs will be saved to {path2output}')
 
+# Step 3: Write the table to a FITS file
+table.write(path2output, format='fits', overwrite=True)
+
+print("FITS file created successfully.")
+
+
+#%%
 
 # table.remove_columns(['F_ram'])
 # print(table['F_ram'])
@@ -62,17 +97,15 @@ print(f'outputs will be saved to {path2output}')
 
 
 
-object_cols = [col for col in table.colnames if table[col].dtype == object]
+# object_cols = [col for col in table.colnames if table[col].dtype == object]
 
 
-table.remove_columns(object_cols)
-
-
+# table.remove_columns(object_cols)
 
 
 
 
-print(f'removed the following columns... {object_cols}')
+# print(f'removed the following columns... {object_cols}')
 
 
 
@@ -86,10 +119,7 @@ print(f'removed the following columns... {object_cols}')
 
 
 
-# Step 3: Write the table to a FITS file
-table.write(path2output, format='fits', overwrite=True)
 
-print("FITS file created successfully.")
 
 
 
@@ -99,14 +129,46 @@ print("FITS file created successfully.")
 
 
 
-hdul = fits.open(path2output)
+hdu = fits.open(path2output)
 
-hdul.info()
+# print(hdul.info())
+
+hdu_main = hdu[1]
 
 
-data = hdul[1]
+header = hdu_main.header
 
-print(data.data
-     )
+print('header', header)
+
+
+
+# data = hdu_main[1].data
+
+
+# print(data.header())
+
+# # print(data['log_bubble_dTdr_arr'])
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 

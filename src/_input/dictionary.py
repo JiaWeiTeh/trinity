@@ -214,7 +214,7 @@ class DescribedDict(dict):
             snapshot_number = {'snapshot_number': snapshots}
             snapshot_dict = {k[3+self._zero_padding+1:]:v for k, v in self.items() if k.startswith('_sS'+str(snapshots))}
             if len(snapshot_dict) == 0:
-                return
+                continue
             # organise into alphabetical order
             snapshot_dict = dict(sorted(snapshot_dict.items()))
             # save keys to a list, with snapshot numnber added in front

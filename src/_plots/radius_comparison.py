@@ -68,27 +68,31 @@ for ii, mCloud in enumerate(mCloud_list):
                 
                 with open(path2json, 'r') as f:
                     # step one is to make sure they are lists i think
-                    dictionary = json.load(f)        
+                    snapshot_list = json.load(f)        
                     
                 
-                for snapshots in dictionary.values():
-                    for key, val in snapshots.items():
-                        if key.endswith('t_now'):
-                            tlist.append(val)
-                        elif key.endswith('R2'):
-                            r2list.append(val)
-                        elif key.endswith('v2'):
-                            v2list.append(val)
-                        elif key.endswith('Eb'):
-                            Elist.append(val)
-                        elif key.endswith('T0'):
-                            Tlist.append(val)                
-                        elif key.endswith('current_phase'):
-                            phaselist.append(val)  
-                        elif key.endswith('rCloud_au'):
-                            rCloud = val
-                        elif key.endswith('completed_reason'):
-                            completed_reason = val
+                for snapshots in snapshot_list:
+                    try:
+                        for key, val in snapshots.items():
+                            if key.endswith('t_now'):
+                                tlist.append(val)
+                            elif key.endswith('R2'):
+                                r2list.append(val)
+                            elif key.endswith('v2'):
+                                v2list.append(val)
+                            elif key.endswith('Eb'):
+                                Elist.append(val)
+                            elif key.endswith('T0'):
+                                Tlist.append(val)                
+                            elif key.endswith('current_phase'):
+                                phaselist.append(val)  
+                            elif key.endswith('rCloud_au'):
+                                rCloud = val
+                            elif key.endswith('completed_reason'):
+                                completed_reason = val
+                    except Exception as e:
+                        print(e)
+                        print(snapshots)
                 
                 ax[ii][jj].plot(tlist, r2list, label = f'sfe = {str2float(sfe)}', c = colour[cc])
                 

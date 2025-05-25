@@ -101,7 +101,7 @@ def plot(path2json):
     axs[0][0].set_xlabel('time (Myr)')
     axs[0][0].set_xlim(0, max(v3_t))
     
-    print(snapshots)
+    # print(snapshots)
     axs[0][0].axhline(snaplists[0]['r_coll'], linestyle = '--', c = 'k', alpha = 0.7)
     axs[0][0].axhline(snaplists[0]['rCloud_au'], linestyle = '--', c = 'k', alpha = 0.7)
     
