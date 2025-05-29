@@ -171,9 +171,9 @@ def get_vdot(t, y,
     
     # force calculation
     params['F_grav'].value = F_grav
+    params['F_ion'].value = press_HII
+    # params['F_ram'].value = (4 * np.pi * R2**2 * (press_bubble - press_HII))
     params['F_rad'].value = fRad
-    params['F_ram'].value = (4 * np.pi * R2**2 * (press_bubble - press_HII))
-    # params['F_wind'].value = fRad
     # params['F_SN'].value = fRad
     
     return vd

@@ -34,12 +34,12 @@ metallicity_list = ['_Z015', '']
 
 # path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/1e6_sfe001_n1e4/dictionary.json'
 
-mCloud_list = [ '1e6']
-ndens_list = [ '1e4']
-sfe_list = ['001']
-colour = ['r', 'b', 'g']
-scatter_list = ['d', '^', 'o', 'x']
-metallicity_list = ['']
+# mCloud_list = [ '1e6']
+# ndens_list = [ '1e4']
+# sfe_list = ['001']
+# colour = ['r', 'b', 'g']
+# scatter_list = ['d', '^', 'o', 'x']
+# metallicity_list = ['']
 
 
 
@@ -78,7 +78,7 @@ for metallicity in metallicity_list:
                         
                         with open(path2json, 'r') as f:
                             # step one is to make sure they are lists i think
-                            dictionary = json.load(f)        
+                            snapshot_list = json.load(f)        
                             
                             
                             
@@ -93,7 +93,7 @@ for metallicity in metallicity_list:
                         tlist = []
                             
                         
-                        for snapshots in dictionary.values():
+                        for snapshots in snapshot_list:
                             for key, val in snapshots.items():
                                 if key.endswith('t_now'):
                                     tlist.append(val)

@@ -50,14 +50,6 @@ def read_SB99(f_mass, params):
     
     """
     
-    # The goal here is to mke sure that now all imports are automatically
-    # converted into au units. This is so that in the future
-    # we dont have to worry about cgs conversion. Its more user friendly.
-    
-    # Question: does this affect interpolation? does it make it easier or less accurate?
-    # shouldnt be a problem?
-    
-    
     # =============================================================================
     # Step1: find and read the SB99 file. 
     # =============================================================================

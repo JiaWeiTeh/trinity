@@ -163,6 +163,9 @@ rand_n_cloud    100., 1000.
 # -- 1 (solar metallicity)
 rand_metallicity    0.15, 1
 
+# Should we allow bubble radius to go beyond cloud radius?
+expansionBeyondCloud False
+
 # =============================================================================
 # parameters for (re)collapsing events
 # =============================================================================
@@ -328,7 +331,7 @@ dens_g_bE    15
 # DEFAULT: 0
 dens_a_pL    0
 
-# Additionally (for pL_prof) the user must also define the average number density
+# Additionally (for pL_prof and if dens_a_pL = 0) the user must also define the average number density
 # of the cloud. (unit: 1/cm3)
 # type: float
 # DEFAULT: 100

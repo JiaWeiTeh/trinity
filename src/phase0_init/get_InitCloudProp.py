@@ -61,7 +61,7 @@ def get_CloudRadiusEdge(params
     # sanity check
     if nEdge < nISM:
         print(f'nCore: {nCore}, nISM: {nISM}')
-        sys.exit('"The density at the edge of the cloud is lower than the ISM; please consider increasing nCore."')
+        sys.exit(f"The density at the edge of the cloud ({nEdge}) is lower than the ISM ({nISM}); please consider increasing nCore.")
     # return
     return rCloud, nEdge
     

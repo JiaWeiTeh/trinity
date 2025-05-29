@@ -48,6 +48,7 @@ def create():
     main_dict['model_name'] = DescribedItem(trinity_params.model_name, 'Model name')
     main_dict['dens_profile'] = DescribedItem(trinity_params.dens_profile, 'density profile')
     main_dict['sfe'] = DescribedItem(trinity_params.sfe, 'sfe')
+    main_dict['expansionBeyondCloud'] = DescribedItem(trinity_params.expansionBeyondCloud, 'expansionBeyondCloud')
     
     # constants
     main_dict['gamma_adia'] = DescribedItem(trinity_params.gamma_adia, '')
@@ -227,8 +228,9 @@ def create():
     # Force calculations
     main_dict['F_grav'] = DescribedItem(0, '')
     main_dict['F_SN'] = DescribedItem(0, '')
-    main_dict['F_wind'] = DescribedItem(0, '')
-    main_dict['F_ram'] = DescribedItem(0, 'F_wind + F_SN')
+    main_dict['F_ram'] = DescribedItem(0, '')
+    main_dict['F_wind'] = DescribedItem(0, 'F_wind')
+    main_dict['F_ion'] = DescribedItem(0, 'F_ion')
     main_dict['F_rad'] = DescribedItem(0, 'Radiation pressure = direct + indirect ~ f_abs * Lbol/c * (1 + tau_IR)')
     
     
