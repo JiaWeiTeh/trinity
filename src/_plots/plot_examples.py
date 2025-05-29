@@ -9,6 +9,7 @@ Just a main script that plots other things
 """
 
 import src._plots.betadelta as betadelta
+
 import src._plots.current_status as current_status
 import src._plots.dMdt as dMdt
 import matplotlib.pyplot as plt
@@ -21,10 +22,12 @@ import matplotlib.pyplot as plt
 
 # path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe030_n1e4/dictionary.json'
 # path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe010_n1e4/dictionary.json'
+# path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe001_n1e4/dictionary.json'
+# path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe001_n1e4_exceedcloud/dictionary.json'
+path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe030_n1e4_exceedcloud/dictionary.json'
 # path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/1e6_sfe030_n1e4/dictionary.json'
 # path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/1e6_sfe010_n1e4/dictionary.json'
-path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/1e5_sfe001_n1e2/dictionary.json'
-# path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe001_n1e4/dictionary.json'
+# path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/1e5_sfe001_n1e2/dictionary.json'
 # path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe001_n1e2/dictionary.json'
 # path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe010_n1e2/dictionary.json'
 # path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe030_n1e2/dictionary.json'

@@ -94,6 +94,7 @@ default_parameters = {'model_name': 'example',
                    'log_nMW': 2.065,
                    'c_therm': 1.2e-6,
                    'dMdt_factor': 1.646,
-                   'T_r2Prime': 3e4
+                   'T_r2Prime': 3e4,
+                   'expansionBeyondCloud': False,
                    }
 

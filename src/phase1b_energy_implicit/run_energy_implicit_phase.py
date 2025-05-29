@@ -299,10 +299,11 @@ def check_events(params, dt_params):
         return True
     
     #--- 5) exceeds cloud radius
-    if params['R2'].value > params['rCloud_au'].value:
-        print(f"Bubble radius ({params['R2'].value} pc) exceeds cloud radius ({params['rCloud_au'].value} pc)")
-        params['completed_reason'].value = 'Bubble radius larger than cloud'
-        return True
+    if params['expansionBeyondCloud'] == False:
+        if params['R2'].value > params['rCloud_au'].value:
+            print(f"Bubble radius ({params['R2'].value} pc) exceeds cloud radius ({params['rCloud_au'].value} pc)")
+            params['completed_reason'].value = 'Bubble radius larger than cloud'
+            return True
     
     return False
 

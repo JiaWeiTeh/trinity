@@ -161,6 +161,13 @@ def get_ODE_Edot(y, t, params):
 
     derivs = [rd, vd, Ed]
     
+    params['F_grav'].value = F_grav
+    params['F_ion'].value = press_HII
+    # params['F_ram'].value = (4 * np.pi * R2**2 * (press_bubble - press_HII))
+    fRad = params['shell_f_absorbed'].value * params['Lbol'].value  / (params['c_au'].value)
+    params['F_rad'].value = fRad
+    
+    
     # return
     return derivs
 
