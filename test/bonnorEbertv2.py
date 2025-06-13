@@ -1,73 +1,69 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Mon May 26 11:44:16 2025
+Created on Tue Jul 26 15:04:46 2022
 
 @author: Jia Wei Teh
+
+This script contains helper functions to aid bonner-ebert sphere related 
+calculations. See density_profile.py and mass_profile.py for more.
+
+This differs with the first version, in that here we set the core radius
+ourselves. This has the benefit of lesser calculation, and to allow
+for more other parameter exploration since the cloud can now be described
+by lesser number of paramters/properties
+
 """
-
-
 
 import numpy as np
 import scipy.integrate
 import src._functions.unit_conversions as cvt
 import src._functions.operations as operations
+from scipy.interpolate import interp1d
 import astropy.constants as c 
 import matplotlib.pyplot as plt
-
-path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe001_n1e4/dictionary.json'
-
-import json
-with open(path2json, 'r') as f:
-    # step one is to make sure they are lists i think
-    snaplists = json.load(f)
-    
-params = snaplists[0]
-
-
-
-
-
-
-
-
-#%%
 
 
 # creating the bonnor ebert sphere
 
 # begin with calculting the pressure of the outer ISM
 
-
-
-
 # ISM temperature in K
 TISM = 100
+# TISM = 1e4
 # TCloud = 10
-TCloud = 1e6
+TCloud = 2900
 # 
 mu = 1.0181176926808696e-24 # g 
 # mu = 3.9e-24 # g 
 
-# number density to denstiy2
+# number density to denstiy
 def gcm2cm(dens):
     return dens / mu 
+# density to number density
+def cm2gcm(dens):
+    return dens * mu
 
 # this is a value from Rahner+17
-print(f'nISM should be set to {np.round(gcm2cm(1.67e-25), 3)} cm-3')
+print(f'According to Rahner17 nISM should be set to {np.round(gcm2cm(1.67e-25), 3)} cm-3')
 
 # boltzmann 
 k = c.k_B.cgs.value
+G = c.G.cgs.value
 
 # ISM density in cm-3
-nISM = 1e-1
+nISM = 1
 # cloud density in cm-3
 nCloud = 1e2
 # core density in cm-3
 nCore = 1e5
 
-# ISM denstiy in cgs
+# ISM number denstiy
 rhoISM = nISM * mu
+# Core number density
+rhoCore = nCore * mu
+# Cloud number density
+rhoCloud = nCloud * mu
 
 # adiabatic index
 gamma = 5/3
@@ -77,39 +73,44 @@ M_real = 1e6
 # in g
 M_real *= cvt.Msun2g
 
-# overwrite?
-overwriteNCORE = False
-nCore_OVERWRITE = 1e3
-
 # CORE sound speed in cgs
 c_s_Core = np.sqrt(gamma * k * TCloud / mu) 
 # ISM sound speed in cgs
 c_s_ISM = np.sqrt(gamma * k * TISM / mu) 
 # comparison
-print(f'c_s_Core is {c_s_Core} and c_s_ISM is {c_s_ISM}')
-
+print(f'c_s_Core is {c_s_Core} and c_s_ISM is {c_s_ISM} and the ratio is {c_s_Core/c_s_ISM}')
 
 # ISM pressure
 P_ISM = rhoISM * c_s_ISM**2
+# cloud edge pressure
+P_Cloud = rhoCloud * c_s_Core**2
+# P_Cloud = P_ISM
+# or
+# P_Cloud = 
 
-print(c_s_Core/100, f'm/s for T = {TCloud}K (core sound speed)')
-print(np.round(P_ISM / c.k_B.cgs.value, 3), 'P/kB')
+print(c_s_Core, f'm/s for T = {TCloud}K (core sound speed)')
+print(np.round(P_ISM / k, 4), 'P/kB')
 
 # OPTION 1
 # One we have P0, calculate m, the total mass of the sphere
-m_total = P_ISM ** (0.5) * c.G.cgs.value **(3/2) * M_real / c_s_Core**4
-print(np.round(m_total, 3), 'dimensionless mass')
+m_total = P_Cloud ** (0.5) * G **(3/2) * M_real / c_s_Core**4
+print(np.round(m_total, 4), 'dimensionless mass')
 
 
 
 
-#%%
+# T = (M_real * P_ISM**(1/2) * G**(3/2) / 1.18)**(1/2) * mu / k / gamma
+
+# print(f'temperature is around {T} K')
 
 
+# def m2r(m, c_s):
+#     return 1 / (2.4 * c_s**2 / G)
 
+# rBE = m2r(M_real, c_s_Core) * cvt.cm2pc
 
-
-
+# print(f'rBE from mBE is {rBE}')
+    
 
 #%%
 
@@ -118,15 +119,15 @@ print(np.round(m_total, 3), 'dimensionless mass')
 # define xi - r relation
 
 def r2xi(r, rho_c, c_s):
-    return r * np.sqrt(4 * np.pi * c.G.cgs.value * rho_c / c_s**2) 
+    return r * np.sqrt(4 * np.pi * G * rho_c / c_s**2) 
 
 def xi2r(xi, rho_c, c_s):
-    return xi * (4 * np.pi * c.G.cgs.value * rho_c / c_s**2) ** (-1/2) 
+    return xi * (4 * np.pi * G * rho_c / c_s**2) ** (-1/2) 
 
-def rho_rhoISM2u(rhoISM):
+def rho_rhoCore2u(rhoISM):
     return - np.ln(rhoISM)
 
-def u2rho_rhoISM(u):
+def u2rho_rhoCore(u):
     return np.exp(-u)
 
 
@@ -150,7 +151,7 @@ def laneEmden(y,t):
 
 u0, dudxi0 = 0, 0
 
-xi_array =  np.logspace(-1, 0, 1000)
+xi_array =  np.logspace(-2, 5, 3000)
 
 
 # =============================================================================
@@ -160,21 +161,146 @@ solution  = scipy.integrate.odeint(laneEmden, [u0, dudxi0], xi_array)
 # solution
 u_array = solution[:,0]
 dudxi_array = solution[:,1]
-# convert 
-rho_rhoISM_array = u2rho_rhoISM(u_array)
-rhoISM_rho_array = 1 / rho_rhoISM_array
 
-plt.plot(xi_array, rho_rhoISM_array)
+
+# convert 
+rho_rhoCore_array = u2rho_rhoCore(u_array)
+rhoCore_rho_array = 1 / rho_rhoCore_array
+
+plt.plot(xi_array, rho_rhoCore_array)
 
 plt.ylabel('$\\rho / \\rho_c$')
 plt.xlabel('$\\xi$')
 plt.xlim(min(xi_array), max(xi_array))
+plt.ylim(1e-9, 1e1)
 plt.yscale('log')
 plt.xscale('log')
 
 
 
+
+
 #%%
+
+
+
+def get_nedge(T):
+    
+    c_s_Core = np.sqrt(gamma * k * T / mu) 
+
+    RHS = 4 * np.pi * G**3 * M_real**2 * P_Cloud / c_s_Core**8
+    
+    LHS = np.exp(-u_array) * (xi_array**2 * dudxi_array)**2
+    
+    f = interp1d(LHS, xi_array, kind='cubic', fill_value="extrapolate")
+    
+    xi_out = f(RHS)
+    
+    # print(f'xi_out according to RHS and LHS is {xi_out}')
+    
+    r_out = xi2r(xi_out, rhoCore, c_s_Core) * cvt.cm2pc
+    
+    # print(f'r_out according to RHS and LHS is {r_out} pc')
+    
+    # find the right u
+    
+    f = interp1d(xi_array, u_array, kind='cubic', fill_value="extrapolate")
+    
+    u_out = f(xi_out)
+    
+    nEdge = nCore * np.exp(-u_out) + 1e-10
+    
+    # print(f'nEdge is {nEdge} giving ratio of {nCore/nEdge}')
+    
+    return nCore/nEdge - 14.1
+
+
+Teff = scipy.optimize.brentq(get_nedge, 1e3, 1e8)
+
+print(f'Teff is {Teff} K')
+
+c_s_Core = np.sqrt(gamma * k * Teff / mu) 
+
+RHS = 4 * np.pi * G**3 * M_real**2 * P_Cloud / c_s_Core**8
+
+LHS = np.exp(-u_array) * (xi_array**2 * dudxi_array)**2
+
+f = interp1d(LHS, xi_array, kind='cubic', fill_value="extrapolate")
+
+xi_out = f(RHS)
+
+print(f'xi_out according to RHS and LHS is {xi_out}')
+
+r_out = xi2r(xi_out, rhoCore, c_s_Core) * cvt.cm2pc
+
+print(f'r_out according to RHS and LHS is {r_out} pc')
+
+# find the right u
+
+f = interp1d(xi_array, u_array, kind='cubic', fill_value="extrapolate")
+
+u_out = f(xi_out)
+
+nEdge = nCore * np.exp(-u_out) + 1e-10
+
+print(f'nEdge is {nEdge} giving ratio of {nCore/nEdge}')
+
+    
+
+
+
+
+#%%
+
+
+
+n_array = np.ones(shape = len(xi_array)) * rhoISM / mu
+
+
+n_array[xi_array < xi_out] = rho_rhoCore_array[xi_array < xi_out] * rhoCore / mu
+
+r_array = xi2r(xi_array, rhoCore, c_s_Core) * cvt.cm2pc
+
+
+# plt.plot(xi_array, rho_rhoCore_array)
+plt.plot(r_array, n_array)
+
+plt.ylabel('$\\rho / \\rho_c$')
+plt.xlabel('$\\xi$')
+# plt.xlim(min(r_array), 1e2)
+# plt.ylim(1e-9, 1e1)
+plt.yscale('log')
+plt.xscale('log')
+
+
+
+
+#%%
+
+
+
+
+
+
+
+
+
+
+
+
+
+plt.plot(xi_array, rhoISM_rho_array)
+
+plt.ylabel('$\\rho_c / \\rho$')
+plt.xlabel('$\\xi$')
+plt.xlim(1e-1, 10)
+plt.ylim(1, 14.1)
+# plt.yscale('log')
+# plt.xscale('log')
+
+
+#%%
+
 
 # xi-squared vs xi term
 
@@ -185,6 +311,104 @@ plt.xlim(min(xi_array), max(xi_array))
 plt.ylim(1e-4, 1e4)
 plt.yscale('log')
 plt.xscale('log')
+
+
+#%%
+
+def get_m(rhoISM_rho_array, xi_array, dudxi_array):
+    return (4 * np.pi * rhoISM_rho_array)**(-1/2) * xi_array**2 * dudxi_array
+
+
+m_array = get_m(rhoISM_rho_array, xi_array, dudxi_array)
+
+
+plt.plot(rhoISM_rho_array, m_array)
+
+
+# OPTION 1
+max_rhoc_rho0 = rhoISM_rho_array[np.where(m_array == max(m_array))[0]][0]
+
+
+plt.axvline(max_rhoc_rho0, linestyle = '--')
+
+plt.xlabel('$\\rho_c/\\rho_o$')
+plt.ylabel('m (dimless)')
+plt.ylim(0, 1.2)
+plt.xlim(1, 1e5)
+plt.xscale('log')
+
+
+#%%
+
+
+# given 14.1, find xi0, then map and find xi2dudx, then plug into find m, then 
+
+# Find xi0
+# in cgs
+f = interp1d(rhoISM_rho_array, xi_array, kind='cubic', fill_value="extrapolate")
+# in cgs
+xi_out = f(max_rhoc_rho0)
+
+
+print(f'xi_out if g = 14.1 is {np.round(xi_out, 3)}')
+
+r_out = xi2r(xi_out, rhoCore, c_s_Core)
+
+print(f'this corresponds to radius of {np.round(r_out * cvt.cm2pc, 3)} pc')
+
+
+# Find xi2dudx
+# in cgs
+f = interp1d(xi_array, xi_array**2 * dudxi_array, kind='cubic', fill_value="extrapolate")
+# in cgs
+xi2dudxi_out = f(xi_out)
+
+print(f'xi2dudxi_out if g = 14.1 is {np.round(xi2dudxi_out, 3)}')
+
+
+# m value
+# use M =1e6 to solve for rhoCore?
+m = (4 * np.pi * max_rhoc_rho0)**(-1/2) * xi2dudxi_out
+
+print(f'dimensionless mass is {np.round(m, 3)}')
+
+
+plt.plot()
+
+
+
+
+#%%
+
+
+
+#%%
+
+# what is the mass array?
+def get_M(rho_c, c_s, xi_array, dudxi_array):
+    
+    return 4 * np.pi * rho_c * (c_s**2 / (4 * np.pi * c.G.cgs.value * rho_c))**(3/2) * xi_array**2 * dudxi_array
+
+
+M_array = get_M(rhoCore, c_s_Core, xi_array, dudxi_array) * cvt.g2Msun
+        
+
+plt.plot(xi_array, M_array)
+plt.ylabel('$M_\\odot (\\xi)$')
+plt.xlabel('$\\xi$')
+# plt.xlim(min(xi_array), max(xi_array))
+# plt.ylim(1e-4, 1e4)
+plt.yscale('log')
+plt.xscale('log')
+
+
+
+
+
+
+
+
+
 
 
 #%%
@@ -225,6 +449,109 @@ plt.xscale('log')
 
 #%%
 
+
+rho0 = rhoCore / max_rhoc_rho0
+
+print(f'the number density at cloud edge according to 14.1 is {np.round(rho0/mu, 3)} cm-3')
+
+
+
+
+
+# get xi0 from rhoCore/rhoCor0 ratio
+
+
+from scipy.interpolate import interp1d
+
+# in cgs
+f = interp1d(M_total, xi_array, kind='cubic', fill_value="extrapolate")
+# in cgs
+xi_out = f(M_real)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# therefore the radius xi
+
+def get_M(rho_c, c_s, xi_array, dudxi_array):
+    
+    return 4 * np.pi * rho_c * (c_s**2 / (4 * np.pi * c.G.cgs.value * rho_c))**(3/2) * xi_array**2 * dudxi_array
+
+if overwriteNCORE:
+    print(f'nCore is being overwritten to {nCore_OVERWRITE}')
+    nCore = nCore_OVERWRITE
+    rho_c = nCore * mu
+
+M_total = get_M(rho_c, c_s_Core, xi_array, dudxi_array)
+
+
+# therefore this gives xi_out
+
+from scipy.interpolate import interp1d
+
+# in cgs
+f = interp1d(M_total, xi_array, kind='cubic', fill_value="extrapolate")
+# in cgs
+xi_out = f(M_real)
+
+print(f'xi_out is found at xi = {xi_out}')
+
+plt.plot(xi_array, M_total * cvt.g2Msun)
+# plt.plot(rhoc_rho_array, M_real * cvt.g2Msun)
+plt.xlabel('$\\xi$')
+plt.ylabel('M (M$_\\odot$)')
+plt.axvline(xi_out, linestyle = '--')
+plt.axhline(M_real * cvt.g2Msun, linestyle = '--')
+plt.xscale('symlog')
+plt.yscale('log')
+plt.xlim(0, 1e3)
+
+
+r_out = xi2r(xi_out, rho_c, c_s_Core)
+
+print(f'r_out is found at r = {np.round(r_out * cvt.cm2pc, 3)} pc')
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#%%
 
 # # =============================================================================
 # # version 2
@@ -1417,6 +1744,225 @@ print(round(rho_rhoc[np.where(pressure == max(pressure))[0][0]],3))
 
 
 
+
+
+
+
+
+
+
+
+
+import numpy as np
+import scipy.integrate
+import astropy.constants as c
+import astropy.units as u
+import scipy.optimize
+import scipy.integrate
+import sys
+import os
+import importlib
+warpfield_params = importlib.import_module(os.environ['WARPFIELD3_SETTING_MODULE'])
+
+
+def laneEmden(y,xi):
+    """
+    This function specifics the Lane-Emden equation. This will then be fed
+    into scipy.integrate.odeint() to be solved.
+    """
+    # E.g., see https://iopscience.iop.org/article/10.3847/1538-4357/abfdc8 Eq 4
+    # Rearranging and let omega = dpsi/dxi, let y = [ psi, omega ],
+    # we arrive at the following expression for dy/dxi
+    # Syntax according to https://docs.scipy.org/doc/scipy/reference/generated/scipy.integrate.odeint.html
+    psi, omega = y
+    dydxi = [
+        omega, 
+        np.exp(-psi) - 2 * omega / xi
+        ]
+    # return
+    return dydxi
+
+def massIntegral(xi, rhoCore, c_s):
+    """
+    A function that outputs an expression (integral) to integrate to obtain
+    the mass profile M(r).
+    
+    Watch out units!
+
+    Parameters
+    ----------
+    xi : a list of xi
+        xi is dimensionless radius, where:
+            xi = (4 * pi * G * rho_core / c_s^2)^(0.5) * r
+    rho_core : float
+        The core density (Units: kg/m3)
+    c_s : float
+        Sound speed. (Units: m/s)
+
+    Returns
+    -------
+    The expression for integral of M(r). (Units: kg)
+
+    """
+    # Note:
+        # old code: MassIntegrate3()
+        
+    # An array for the range of xi for solving
+    xi_arr = np.linspace(1e-12, xi, 200)
+    # initial condition (set to a value that is very close to zero)
+    y0 = [1e-12, 1e-12]
+    # integrate the ODE to get values for psi and omega.
+    psi, omega = zip(*scipy.integrate.odeint(laneEmden, y0, xi_arr))
+    psi = np.array(psi)
+    omega = np.array(omega)
+    # Evaluate at the end point of xi_array, i.e., at xi(r) such that r is of
+    # our interest.
+    psipoint = psi[-1] 
+    # See Eq33 http://astro1.physics.utoledo.edu/~megeath/ph6820/lecture6_ph6820.pdf
+    A = 4 * np.pi * rhoCore * (c_s**2 / (4 * np.pi * c.G.value * rhoCore))**(3/2)
+    # return the integral
+    return A * np.exp(-psipoint) * xi**2
+
+def get_bE_soundspeed(T, mu_n, gamma):
+    """
+    This function computes the isothermal soundspeed, c_s, given temperature
+    T and mean molecular weight mu.
+
+    Parameters
+    ----------
+    T : float (Units: K)
+        Temperature of the gas.
+    mu_n : float (Units: g) 
+        Mean molecular weight of the gas. Watch out for the units.
+    gamma: float 
+        Adiabatic index of gas. 
+
+    Returns
+    -------
+    The isothermal soundspeed c_s (Units: m/s)
+
+    """
+    # return
+    mu_n = mu_n * u.g.to(u.kg)
+    return np.sqrt(gamma * c.k_B.value * T / mu_n )
+
+
+def get_bE_rCloud_nEdge(nCore, bE_T, mCloud, mu_n, gamma):
+    """
+    This function computes the bE cloud radius and the 
+    density at the edge of the cloud.
+
+    Parameters
+    ----------
+    nCore : float
+        Core number density. (Units: 1/cm^3)
+    bE_T : float
+        The temperature of the BE sphere. (Units: K). 
+    mCloud : float
+        Mass of cloud (Units: solar mass).
+    mu_n : float
+        Mean mass per nucleus (Units: cgs, i.e., g)
+    gamma: float
+        Adiabatic index of gas.
+
+    Returns
+    -------
+    rCloud : float
+        Cloud radius. (Units: pc)
+    nEdge: float
+        Density at edge of cloud. (Units: 1/cm3)
+
+    """
+    # Note:
+        # old code:
+            # FindRCBE()
+            
+    # sound speed 
+    c_s = get_bE_soundspeed(bE_T, mu_n, gamma)
+    # convert to SI units
+    rhoCore = nCore * mu_n * u.g.to(u.kg) * (1/u.cm**3).to(1/u.m**3).value
+    mCloud = mCloud * u.Msun.to(u.kg)
+    # Solve for xi such that the mass of cloud is mCloud at xi(r).
+    def solve_xi(xi, rhoCore, c_s, mCloud):
+        mass, _ = scipy.integrate.quad(massIntegral, 0, xi,
+                                       args=(rhoCore, c_s))
+        return mass - mCloud
+    sol = scipy.optimize.root_scalar(solve_xi,
+                                     args=(rhoCore, c_s, mCloud),
+                                     bracket=[8.530955303346797e-07, 170619106.06693593],
+                                     method='brentq')
+    # get xi(r)
+    xiCloud = sol.root
+    # get r 
+    rCloud = xiCloud * np.sqrt(c_s**2/(4 * np.pi * c.G.value * rhoCore))
+    # get r in pc
+    rCloud = rCloud * u.m.to(u.pc)
+    # An array for the range of xi for solving ODE
+    xi_arr = np.linspace(1e-12, xiCloud, 200)
+    # initial condition (set to a value that is very close to zero)
+    y0 = [1e-12, 1e-12]
+    # integrate the ODE to get values for psi and omega.
+    psi, omega = zip(*scipy.integrate.odeint(laneEmden, y0, xi_arr))
+    # get density at xiCloud
+    nEdge = nCore * np.exp(-psi[-1])
+    # return
+    return rCloud, nEdge
+
+def get_bE_T(mCloud, nCore, g, mu_n, gamma):
+    """
+    This function returns the temperature of bE sphere. The temperature is
+    determined such that the density at cloud edge, nEdge, is the same
+    when obtained via parameter g and via density at rCloud.
+
+    Parameters
+    ----------
+    mCloud : float
+        Mass of cloud (Units: solar mass).
+    nCore : float
+        Core number density. (Units: 1/cm^3)
+    g : float
+        The ratio given as g = rho_core/rho_edge. The default is 14.1.
+        This will only be considered if `bE_prof` is selected.
+    mu_n : float
+        Mean mass per nucleus (Units: cgs, i.e., g)
+    gamma: float
+        Adiabatic index of gas.
+
+    Returns
+    -------
+    bE_T: float
+        The temperature of the bE sphere.
+
+    """
+    
+    # Note:
+        # old code:
+            # AutoT()
+    
+    # nEdge obtained from g = nCore/nEdge
+    nEdge_g = nCore/g
+    # balance between nEdge = nCore/g and nEdge obtained from get_bE_rCloud.
+    def solve_T(T, mCloud, nCore, mu_n, gamma, nEdge_g):
+        # old code:
+            # Root()
+        _, nEdge = get_bE_rCloud_nEdge(nCore, T, mCloud, mu_n, gamma)
+        return nEdge - nEdge_g  # nEdge1 = nEdge2
+    try:
+        sol = scipy.optimize.root_scalar(solve_T,
+                                         args=(mCloud, nCore, mu_n, gamma, nEdge_g),
+                                         bracket=[2e+02, 2e+10], 
+                                         method='brentq')
+    except: 
+        sys.exit("Solver could not find solution for the temperature of BE sphere.")
+    # temperature of the bE sphere
+    bE_T = sol.root
+    # return
+    return bE_T
+
+#%%
+
+# temperature = get_bE_T(1000000.0, 1000.0, 14.1, 2.1287915392418182e-24, 1.6666666666666667)
+# print(temperature)
 
 
 
