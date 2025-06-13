@@ -621,11 +621,11 @@ z_nodust    0.05
 mu_n    2.1287915392418182e-24
 mu_p    1.0181176926808696e-24
 
-# Temperature of ionised and neutral H region? (unit: K)
+# Temperature of ionised and neutral shell? (unit: K)
 # DEFAULT:  -- t_ion = 1e4
 #           -- t_neu = 100
-t_ion    1e4
-t_neu    100
+TShell_ion    1e4
+TShell_neu    100
 
 # What is the number density of the ambient ISM? (unit: 1/cm^3)
 # type: float
