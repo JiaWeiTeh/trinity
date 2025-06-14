@@ -62,8 +62,8 @@ def get_shellODE(y,
     sigma_dust = params['sigma_d_au'].value
     mu_n = params['mu_n_au'].value   
     mu_p = params['mu_p_au'].value 
-    t_ion = params['t_ion'].value
-    t_neu = params['t_neu'].value
+    t_ion = params['TShell_ion'].value
+    t_neu = params['TShell_neu'].value
     alpha_B = params['alpha_B_au'].value  #cm3/s (au)
     k_B = params['k_B_au'].value  
     c = params['c_au'].value  

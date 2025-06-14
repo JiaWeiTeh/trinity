@@ -37,8 +37,8 @@ def run_energy(params):
     T0 = params['T0'].value
     
     rCloud = params['rCloud_au'].value
-    t_neu = params['t_neu'].value
-    t_ion = params['t_ion'].value
+    t_neu = params['TShell_neu'].value
+    t_ion = params['TShell_ion'].value
     
     
     SB99f = params['SB99f'].value

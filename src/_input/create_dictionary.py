@@ -64,8 +64,8 @@ def create():
     main_dict['nCore_au'] = DescribedItem(trinity_params.nCore.value * cvt.ndens_cgs2au, '1/pc3. Core density.')
     main_dict['nAvg_au'] = DescribedItem(trinity_params.dens_navg_pL.value * cvt.ndens_cgs2au, '1/pc3.')
     main_dict['nISM_au'] = DescribedItem(trinity_params.nISM.value * cvt.ndens_cgs2au, '1/pc3.')
-    main_dict['t_ion'] = DescribedItem(trinity_params.t_ion.value, 'K')
-    main_dict['t_neu'] = DescribedItem(trinity_params.t_neu.value, 'K')
+    main_dict['TShell_ion'] = DescribedItem(trinity_params.TShell_ion.value, 'K')
+    main_dict['TShell_neu'] = DescribedItem(trinity_params.TShell_neu.value, 'K')
     main_dict['alpha_B_au'] = DescribedItem(trinity_params.alpha_B.value * cvt.cm2pc**3 / cvt.s2Myr, 'au (cm3/s)')
     main_dict['sigma_d_au'] = DescribedItem(trinity_params.sigma_d.value * cvt.cm2pc**2, 'pc^2, dust cross section at solar metallicity')
     

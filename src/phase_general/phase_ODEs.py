@@ -147,7 +147,7 @@ def get_vdot(t, y,
         
         n_r = density_profile.get_density_profile(r, ion_dict)
         
-        P_ion = n_r * ion_dict['k_B_au'].value * ion_dict['t_ion'].value
+        P_ion = n_r * ion_dict['k_B_au'].value * ion_dict['TShell_ion'].value
         
         if len(P_ion) == 1:
             P_ion = P_ion[0]
