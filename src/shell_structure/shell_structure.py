@@ -441,7 +441,7 @@ def shell_structure(params):
             
             # Pressure equilibrium dictates that there will be a temperature and density
             # discontinuity at boundary between ionised and neutral region.
-            nShell0 = nShell0 * params['mu_n_au'].value / params['mu_p_au'].value * params['t_ion'].value / params['t_neu'].value
+            nShell0 = nShell0 * params['mu_n_au'].value / params['mu_p_au'].value * params['TShell_ion'].value / params['TShell_ion'].value
             # tau(r) at neutral shell region
             tau0_neu = tau0_ion
             

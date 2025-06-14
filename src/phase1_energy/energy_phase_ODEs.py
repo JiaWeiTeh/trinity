@@ -91,7 +91,7 @@ def get_ODE_Edot(y, t, params):
             pass
         n_r = density_profile.get_density_profile(r, ion_dict)
         
-        P_ion = n_r * ion_dict['k_B_au'].value * ion_dict['t_ion'].value
+        P_ion = n_r * ion_dict['k_B_au'].value * ion_dict['TShell_ion'].value
         
         return P_ion
 

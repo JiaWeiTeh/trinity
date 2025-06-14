@@ -378,7 +378,8 @@ def read_param(path2file, write_summary = True):
     # =============================================================================
         
     settings_name = path2output+params_dict['model_name']+'_settings.py'
-    
+    # TODO: remove thsi. the unit is mkaing everything much complicated especially
+    # when new parameters are added. 
     with open(settings_name, 'w') as f:
             # header
             f.writelines('\
@@ -462,10 +463,10 @@ import astropy.units as u\n\n\n\
                         elif key == 'mu_p':
                             f.writelines(f'{key} = {float(val)} * u.g\n')
                             
-                        elif key == 't_ion':
+                        elif key == 'TShell_ion':
                             f.writelines(f'{key} = {float(val)} * u.K\n')
     
-                        elif key == 't_neu':
+                        elif key == 'TShell_neu':
                             f.writelines(f'{key} = {float(val)} * u.K\n')
     
                         elif key == 'nISM':

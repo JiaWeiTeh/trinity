@@ -44,7 +44,7 @@ params = snaplists[0]
 # ISM temperature in K
 TISM = 100
 # TCloud = 10
-TCloud = 1e6
+TCloud = 1e8
 # 
 mu = 1.0181176926808696e-24 # g 
 # mu = 3.9e-24 # g 
@@ -64,7 +64,7 @@ nISM = 1e-1
 # cloud density in cm-3
 nCloud = 1e2
 # core density in cm-3
-nCore = 1e5
+nCore = 1e4
 
 # ISM denstiy in cgs
 rhoISM = nISM * mu

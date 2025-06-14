@@ -27,7 +27,7 @@ def get_nShell0(params):
     # TODO: BMW and nMW are given in log units. Is this the same?
     # TODO: Add description for BMW nMW
     
-    nShell0 = params['mu_p_au'].value/params['mu_n_au'].value/(params['k_B_au'].value * params['t_ion'].value) * params['Pb'].value
+    nShell0 = params['mu_p_au'].value/params['mu_n_au'].value/(params['k_B_au'].value * params['TShell_ion'].value) * params['Pb'].value
     
     # old code
     # pBubble = pBubble.decompose(bases=u.cgs.bases)

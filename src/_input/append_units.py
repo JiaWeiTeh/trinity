@@ -73,9 +73,9 @@ def old_append_units(wp):
     
     wp.mu_p *= u.g
     
-    wp.t_ion *= u.K
+    wp.TShell_ion *= u.K
     
-    wp.t_neu *= u.K
+    wp.TShell_neu *= u.K
 
     wp.nISM /= u.cm**3
     
