@@ -222,10 +222,3 @@ plt.savefig(os.path.join(path2figure, 'BESpheres_radius.pdf'))
 
 
 
-
-
-
-
-
-
-

@@ -6,8 +6,7 @@ Created on Fri Nov  8 17:46:23 2024
 @author: Jia Wei Teh
 """
 
-import astropy.units as u
-import astropy.constants as c
+import re
 
 # some cgs to astronomical units (au) conversions
 # cm2pc = u.cm.to(u.pc)
@@ -111,6 +110,71 @@ gravPhi_au2cgs = 1/gravPhi_cgs2au
 grav_force_m_cgs2au = 322743414.19646025
 grav_force_m_au2cgs = 1/grav_force_m_cgs2au
 
+
+
+
+
+# =============================================================================
+# Here we include unit conversion for dictionary
+# =============================================================================
+
+
+def convert2au(unit_string):
+    """ 
+    Given string (e.g., from .param file) of [km * s**2 * g**(3/2)] calculate the extra
+    factor to convert to [pc * Myr**2 * Msun**(3/2)].
+    """
+    
+    # if there is no unit
+    if unit_string is None:
+        return 1
+    
+    # Step 1: Clean and split units safely (excluding '**')
+    # whitespace
+    unit_string = re.sub(r'\s+', '', unit_string)
+    units = [uu.strip() for uu in re.split(r'(?<!\*)\*(?!\*)', unit_string)]
+
+    # Step 2: Mapping for replacements
+    unit_map = {
+        'g': str(g2Msun),
+        's': str(s2Myr),
+        'cm': str(cm2pc),
+        'km': str(cm2pc*1e-5),
+        'K': str(1), # *1 because there is no additional factor (no unit change required)
+        'Zsun': str(1),
+        'Msun': str(1),
+        'pc': str(1),
+        'Myr': str(1),
+        'erg': str(E_cgs2au),
+    }
+
+    # Step 3: Replace base units while preserving exponents
+    mapped_units = []
+    for uu in units:
+        match = re.match(r'^([a-zA-Z]+)(\*\*.*)?$', uu)
+        if match:
+            base, exp = match.groups()
+            mapped_base = unit_map.get(base, base)
+            new_unit = mapped_base + (exp if exp else '')
+            mapped_units.append(new_unit)
+        else:
+            mapped_units.append(uu)  # fallback
+
+    # a function that only allows string including 0-9, ., +-/*, e, and ().
+    # this is a small check for safer eval().
+    def is_valid_expression(s):
+        pattern = r'^[0-9e+\-*/().]*$'
+        return bool(re.fullmatch(pattern, s))
+
+    # evaluate
+    factor = 1
+    for element in mapped_units:
+        if is_valid_expression(element):
+            factor *= eval(element)
+        else:
+            raise Exception(f'Unit contains odd expression: \'{element}\'. If the expression is right, include it in unit_map.')
+
+    return factor
 
 
 

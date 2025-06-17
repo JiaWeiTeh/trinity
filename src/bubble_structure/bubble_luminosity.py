@@ -549,7 +549,11 @@ def get_init_dMdt(b_params):
     ref: Equation 33 in Weaver+77.
     """
     
-    dMdt_init = 12 / 75 * b_params['dMdt_factor'].value**(5/2) * 4 * np.pi * b_params['R2'].value**3 / b_params['t_now'].value\
+    # Factor A, which is related to the rate at which mass evaporates from the shell into
+    # the hot region (Region b in Weaver+77). See Equation 33 in the same paper. 
+    dMdt_factor = 1.646
+    
+    dMdt_init = 12 / 75 * dMdt_factor**(5/2) * 4 * np.pi * b_params['R2'].value**3 / b_params['t_now'].value\
         * b_params['mu_p_au'].value / b_params['k_B_au'].value * (b_params['t_now'].value * b_params['c_therm_au'].value / b_params['R2'].value**2)**(2/7) * b_params['Pb'].value**(5/7)
      
     # Msol/Myr
