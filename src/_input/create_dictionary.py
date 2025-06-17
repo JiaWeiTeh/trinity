@@ -142,7 +142,6 @@ def create():
 
     # mass loss calculations in bubble
     main_dict['dMdt'] = DescribedItem(np.nan, 'Msun/Myr. mass loss from region c (shell) into region b (shocked winds) due to thermal conduction.')
-    main_dict['dMdt_factor'] = DescribedItem(1.646, 'Tbd.')
     main_dict['v0'] = DescribedItem(0, 'pc/Myr. velocity at r1')
     main_dict['v0_residual'] = DescribedItem(0, 'pc/Myr. residual for v0 - 0/v0')
     

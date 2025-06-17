@@ -36,6 +36,7 @@ class NpEncoder(json.JSONEncoder):
     # maybe force them to be np.arrays. idk now. 
     # see: https://numba.pydata.org/numba-doc/dev/user/jitclass.html
 
+    # TODO: add unit=None, with attribute .units. 
 
 class DescribedItem:
     def __init__(self, value, info):
@@ -43,7 +44,38 @@ class DescribedItem:
         self.info = info
         
     def __str__(self):
-        return (f"{self.value} ({self.info})")
+        return (f"{self.value}\t({self.info})")
+    
+    def __repr__(self):
+        return str(self.value)
+
+    # Arithmetic operations
+    def __add__(self, other): return self.value + other
+    def __radd__(self, other): return other + self.value
+    def __sub__(self, other): return self.value - other
+    def __rsub__(self, other): return other - self.value
+    def __mul__(self, other): return self.value * other
+    def __rmul__(self, other): return other * self.value
+    def __truediv__(self, other): return self.value / other
+    def __rtruediv__(self, other): return other / self.value
+    def __pow__(self, other): return self.value ** other
+    def __rpow__(self, other): return other ** self.value
+
+    def __neg__(self): return -self.value
+    def __abs__(self): return abs(self.value)
+
+    # Comparison
+    def __eq__(self, other): return self.value == other
+    def __lt__(self, other): return self.value < other
+    def __le__(self, other): return self.value <= other
+    def __gt__(self, other): return self.value > other
+    def __ge__(self, other): return self.value >= other
+
+    # NumPy compatibility
+    def __float__(self): return float(self.value)
+    def __int__(self): return int(self.value)
+    def __array__(self, dtype=None): return np.array(self.value, dtype=dtype)
+    
 
 class DescribedDict(dict):
     def __init__(self, *args, **kwargs):
@@ -90,7 +122,8 @@ class DescribedDict(dict):
                 continue
             val_str = f"{key} : {val}\n"
             if isinstance(val.value, (collections.abc.Sequence, np.ndarray)):
-                if hasattr(val.value, "__len__"):
+                # if it has length but is not string.
+                if hasattr(val.value, "__len__") and type(val.value) != str:
                     shortened_val = self.shorten_display(val.value)
                     val_str = f"{key} : {shortened_val}\n" 
             custom_str += val_str
@@ -288,12 +321,26 @@ class DescribedDict(dict):
         # create new dictionary
         new_dict = {}
         # remove unnecessary details
-        skip_key = ['SB99_data', 'SB99f', 'cStruc_cooling_CIE_interpolation', 
+        skip_key = [
+                    # SB99
+                    'SB99_data', 'SB99f', 'SB99_mass', 'SB99_rotation', 'SB99_BHCUT',
+                    # cooling structures
+                    'cStruc_cooling_CIE_interpolation', 
                     'cStruc_cooling_CIE_logLambda', 'cStruc_cooling_CIE_logLambda', 
                     'cStruc_cooling_CIE_logT', 
-                    'cStruc_cooling_nonCIE', 
-                    'cStruc_heating_nonCIE', 
-                    'cStruc_net_nonCIE_interpolation']
+                    'cStruc_cooling_nonCIE', 'cStruc_heating_nonCIE', 'cStruc_net_nonCIE_interpolation',
+                    # constants
+                    'mu_neu', 'mu_ion',
+                    'TShell_neu', 'TShell_ion',
+                    'caseB_alpha', 'C_thermal', 'dust_sigma', 'dust_noZ', 'dust_KappaIR',
+                    'gamma_adia', 'path_cooling_CIE', 'path_cooling_nonCIE', 'path_sps',
+                    'c', 'G', 'k_B', 
+                    # stop conditions
+                    'stop_n_diss', 'stop_t_diss', 'stop_r', 'stop_v', 'stop_t', 
+                    # density profile
+                    'dens_profile', 'densBE_Omega', 'densPL_alpha',
+                    ]
+        
         # start iteration
         for key, val in self.items():
             if key in skip_key:

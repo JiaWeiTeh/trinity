@@ -5,7 +5,7 @@ Created on Thu Jul 21 09:33:31 2022
 
 @author: Jia Wei Teh
 
-This script contains a function that reads in parameter file and passes it to TRINITY. 
+This script contains a function that reads in parameter file and passes it to WARPFIELD. 
 The function will also create a summary.txt file in the output directory.
 
 """
@@ -20,11 +20,7 @@ import os
 import yaml
 import astropy.units as u
 import astropy.constants as c 
-import src._input.unify_units as unify_units
 import src._input.default_values as default_values
-import src._functions.unit_conversions as cvt
-
-from src._input.dictionary import DescribedItem, DescribedDict, updateDict
 
 def read_param(path2file, write_summary = True):    
     """
@@ -46,91 +42,23 @@ def read_param(path2file, write_summary = True):
         Example: To extract value for `sfe`, simply invoke params.sfe
 
     """
-    
-    
-    # categorise 'True' to True, '123' to 123, and 'abc' to 'abc'.
-    def parse_value(val):
-        val = val.strip()
-        # Check for boolean
-        if val.lower() == 'true':
-            return True
-        elif val.lower() == 'false':
-            return False
-        # Check for float (or int)
-        try:
-            num = float(val)
-            return num
-        except ValueError:
-            pass
-        # Fallback: treat as string
-        return val
-    
-    
     # =============================================================================
     # Create list from input
     # =============================================================================
-    
-    input_dict = {}
-    
-    with open(path2file, "r") as f:
-        for line in f:
-            line = line.strip()
-            if not line or line.startswith("#"):
-                continue  # skip empty lines and comments
-            parts = line.split(None)  # split only on the first whitespace
-            if len(parts) == 2:
-                key, val = parts
-                parsed_val = parse_value(val)
-                input_dict[key] = parsed_val
-            else:
-                raise ParameterFileError(f'Input parameter file formatting error: -> {line}')
+    with open(path2file, 'r') as f:
+        # grab all parameters (non-comments and non-newlines)
+        params_input_list = [line.strip() for line in f\
+                        if line.strip() and not line.strip().startswith("#")]
 
-    path2default = r'/Users/jwt/unsync/Code/Trinity/param/default.param'
-
-    default_dict = {}
-    with open(path2default, "r") as f:
-        lines = f.readlines()
-        comment = None
-        unit = None
-        for line in lines:
-            line = line.strip()
-            if line.startswith("# INFO: "):
-                comment = line[len("# INFO: "):]
-            elif line.startswith("# UNIT:"):
-                unit = line[len("# UNIT:"):].strip().replace('[', '').replace(']', '')
-            elif line and not line.startswith("#") and comment:
-                parts = line.strip().split(None)
-                if len(parts) == 2:
-                    key, val = parts
-                    parsed_val = parse_value(val)
-                    default_dict[key] = (comment, unit, parsed_val)
-                    comment = None  # Reset for next entry
-                    unit = None  # Reset for next entry
-                else:
-                    raise ParameterFileError(f'Default parameter file formatting error: -> {line}')
-    
-    
-    # Step1: check keys exist. 
-    # Step2: merge two libraries
-    for key, new_val in input_dict.items():
-        if key not in default_dict.keys():
-            raise ParameterFileError(f"Parameter '{key}' does not exist.")
-        else:
-            comment, unit, ori_val = default_dict[key]
-            default_dict[key] = (comment, unit, new_val)
-            
-    
-    param = DescribedDict()
-    
-    # Step3: change default parameter units into astronomy units (_au; e.g., s = Myr, cm = pc, g = Msun)
-    for key, (comment, unit, val) in default_dict.items():
-        
-        factor = cvt.convert2au(unit)
-        param[key] = DescribedItem(val * factor, comment)
-
+    # TODO: double check all these parameters with terminal.
+    # do not trust what is in parameter.py, as some of them may
+    # be overwritten.
     # =============================================================================
-    # Check with default parameters
+    # Record inputs
     # =============================================================================
+    # Routine for initialising parameters
+    # First, initialise dictionary with default values. Includes all parameter
+    params_dict = default_values.default_parameters
     
     # TODO: remove _summary. Provide only the yaml file, and then 
     # make a python file that turns it into something that is human-readable!
@@ -147,13 +75,38 @@ def read_param(path2file, write_summary = True):
         # What do if randomised? Should show both randomised range, and randomised result. 
     
     
+    try:
+        for pairs in params_input_list:
+            param, value = pairs.split(maxsplit = 1)
+            # if there are weird behaviours in the file:
+            if param not in params_dict:
+                sys.exit(f'{param} is not a parameter. If it is, make sure it has a default value entered in read_param.py.')
+            value = value.split(',')
+            # value is a list. That's why we needed [0], and can calculate its length.
+            if len(value) == 1:
+                if param == 'model_name':
+                    params_dict[param] = str(value[0])
+                else:
+                    # Convert to float if possible
+                    try:
+                        val = float(value[0])
+                        params_dict[param] = val
+                    # otherwise remain as string
+                    except:
+                        params_dict[param] = value[0]
+            # not done, but for now we save them as a list.
+            else:
+                params_dict[param] = value 
+    except Exception:
+        sys.exit("Error detected. Make sure to adhere to the rules when creating the .param file. There appears to be a formatting issue.") 
+    
     # TODO
     # give warning if parameter does not make sense
     # input_warnings.input_warnings(params_dict)
     
     # warnings
-    if param['ZCloud'].value != 2:
-        raise ParameterFileError(f"metallicity of {param['ZCloud'].value} is not implemented.")
+    if params_dict['metallicity'] not in [1, 0.15]:
+        sys.exit(f"metallicity of {params_dict['metallicity']} not implement.")
     
     
     # =============================================================================
@@ -163,17 +116,78 @@ def read_param(path2file, write_summary = True):
     # =============================================================================
     # We have assumed the dust cross section scales linearly with metallicity. However,
     # below a certain metallicity, there is no dust
-    if param['ZCloud'].value >= param['dust_noZ'].value:
-        param['dust_sigma'].value = param['dust_sigma'].value * param['ZCloud'].value
+    if params_dict['metallicity'] >= params_dict['sigma0']:
+        params_dict['sigma_d'] = params_dict['sigma0'] * params_dict['metallicity']
     else:
-        param['dust_sigma'].value = 0
+        params_dict['sigma_d'] = 0
 
+    # =============================================================================
+    # Here we deal with randomised parameters.
+    # =============================================================================
+    # Check if random input is desired
+    if params_dict['rand_input'] == 1:
+        # if yes, read limits. Note: even if the user mixed up max/min values, random will deal with that.
+        minM, maxM = params_dict['rand_log_mCloud']
+        minSFE, maxSFE = params_dict['rand_sfe']
+        # take random input from uniform distribution in log space
+        # also round to three decimal places
+        params_dict['log_mCloud'] = str(round(
+                                        random.uniform(
+                                            float(minM), float(maxM)
+                                            ),
+                                        3
+                                        )
+                                    )
+        params_dict['sfe'] = str(round(
+                                        random.uniform(
+                                            float(minSFE), float(maxSFE)
+                                            ),
+                                        3
+                                        )
+                                    )
+        params_dict['metallicity'] = np.random.choice(
+                                        ['0.15', '1'] #TODO add distribution once metallicity is done
+                                        )
+        params_dict['n_cloud'] = np.random.choice(
+                                        ['100', '1000'] #TODO add distribution once metallicity is done
+                                        )
+    elif params_dict['rand_input'] == 0:
+        params_dict.pop('rand_log_mCloud')
+        params_dict.pop('rand_sfe')
+        params_dict.pop('rand_n_cloud')
+        params_dict.pop('rand_metallicity')
+        
+        # TODO:
+            
+        # warnings.warn("Forcing WARPFIELD to use the following SB99 file: %s" % (force_file))
+        # warnings.warn("WARNING: Make sure you still provided the correct metallicity and mass scaling")
+        
+        # # figure out the SB99 file for use in cloudy (cloudy will not interpolate between files, just pick the one that comes closest)
+        # if force_SB99file == 0: # no specific cloudy file is forced, determine which file to use from BHcutoff, metallicity, ...
+        #     if rotation == True: rot_string = "_rot_"
+        #     else: rot_string = "_norot_"
+        #     BH_string = "_BH" + str(int(BHcutoff))
+        #     if abs(Zism-1.0) < abs(Zism-0.15): Z_string = "Z0014"
+        #     else: Z_string = "Z0002"
+        #     SB99cloudy_file = '1e6cluster'+rot_string+Z_string+BH_string
+        # else:
+        #     # if a specific file is forced, remove extension for cloudy
+        #     print(("forcing specific starburst99 file: " + force_SB99file))
+        #     idx = [pos for pos, char in enumerate(force_SB99file) if char == '.'] # find position of last '.' (beginning of file extension)
+        #     SB99cloudy_file = force_SB99file[:idx[-1]] # remove extension
+
+        # if SB99file != SB99cloudy_file + '.txt':
+        #     sys.exit("SB99file != SB99cloudy_file in read_SB99.py!")
+        #     print(("SB99file: " + SB99file))
+        #     print(("SB99cloudy_file +.txt: " + SB99cloudy_file))
+
+        
     # =============================================================================
     # Store only useful parameters into the summary.txt file
     # =============================================================================
     # First, grab directories
     # 1. Output directory:
-    if param['out_dir'].value == 'def_dir':
+    if params_dict['out_dir'] == 'def_dir':
         # If user did not specify, the directory will be set as ./outputs/ 
         # check if directory exists; if not, create one.
         # TODO: Add smart system that adds 1, 2, 3 if repeated default to avoid overwrite.
@@ -234,6 +248,23 @@ def read_param(path2file, write_summary = True):
     # ----
     
     # Then, organise dictionary so that it does not include useless info
+    # Remove fragmentation if frag_enabled == 0
+    if params_dict['frag_enabled'] == 0:
+        params_dict.pop('frag_r_min')
+        params_dict.pop('frag_grav')
+        params_dict.pop('frag_grav_coeff')
+        params_dict.pop('frag_RTinstab')
+        params_dict.pop('frag_densInhom')
+        params_dict.pop('frag_cf')
+        params_dict.pop('frag_enable_timescale')
+        
+    # ----
+    
+    # Remove stochasticity related parameters
+    if params_dict['stochastic_sampling'] == 0:
+        params_dict.pop('n_trials')
+        
+    # ----
     
     # Remove unrelated parameters depending on selected density profile
     if params_dict['dens_profile'] == 'bE_prof':
@@ -256,7 +287,7 @@ def read_param(path2file, write_summary = True):
             # header
             f.writelines('\
 # =============================================================================\n\
-# Summary of parameters in the \'%s\' run. Values are in units of [Myr, Msun, pc].\n\
+# Summary of parameters in the \'%s\' run.\n\
 # Created at %s.\n\
 # =============================================================================\n\n\
 '%(params_dict['model_name'], dt_string))
@@ -480,14 +511,14 @@ import astropy.units as u\n\n\n\
     # changes output/params/settings.py into output.params.settings for future module import.
     settings_module = os.path.relpath(settings_name, os.getcwd()).replace('/', '.')
     
-    os.environ['TRINITY_SETTING_MODULE'] = settings_module[:-3]
+    os.environ['WARPFIELD3_SETTING_MODULE'] = settings_module[:-3]
     
     return params_dict
 
 
 
-class ParameterFileError(Exception):
-    """Raised when a parameter file entry is invalid."""
+
+
 
 
 
