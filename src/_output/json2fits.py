@@ -16,7 +16,8 @@ import numpy as np
 
 
 
-path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe030_n1e4/dictionary_test.json'
+# path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe030_n1e4/dictionary_test.json'
+path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe001_n1e4/dictionary.json'
 
 filename = r'output.fits'
 
@@ -26,14 +27,24 @@ import json
 from astropy.io import fits
 from astropy.table import Table
 
-# Step 1: Load JSON file
-with open(path2json) as f:
+# # Step 1: Load JSON file
+# with open(path2json, 'r') as f:
+#     data_dict = json.loads(f)
+
+import json
+
+items = []
+with open(path2json, "r") as f:
     data_dict = json.load(f)
 
 
+main_dict = list(data_dict.values())
+
+
+#%%
 
 # Step 2: Convert dictionary to Astropy Table
-table = Table(rows = data_dict)
+table = Table(rows = main_dict)
 
 
 # Check type because object does not work
@@ -131,7 +142,6 @@ print("FITS file created successfully.")
 
 hdu = fits.open(path2output)
 
-# print(hdul.info())
 
 hdu_main = hdu[1]
 
@@ -142,8 +152,9 @@ print('header', header)
 
 
 
-# data = hdu_main[1].data
+data = hdu_main.data
 
+print(data[1])
 
 # print(data.header())
 

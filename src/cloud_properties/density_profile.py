@@ -38,13 +38,12 @@ def get_density_profile(r_arr,
         # old code: f_dens and f_densBE().
         
         
-    nISM = density_params['nISM_au'].value
-    alpha = density_params['alpha_pL'].value
-    rCloud = density_params['rCloud_au'].value
-    nCore = density_params['nCore_au'].value
-    nAvg = density_params['nAvg_au'].value
-    rCore = density_params['rCore_au'].value
-    nCore = density_params['nCore_au'].value
+    nISM = density_params['nISM'].value
+    alpha = density_params['densPL_alpha'].value
+    rCloud = density_params['rCloud'].value
+    nCore = density_params['nCore'].value
+    rCore = density_params['rCore'].value
+    nCore = density_params['nCore'].value
 
     # =============================================================================
     # For a power-law profile
@@ -54,7 +53,7 @@ def get_density_profile(r_arr,
     # for different alphas:
     if alpha == 0:
         dens_arr = nISM * r_arr ** alpha
-        dens_arr[r_arr <= rCloud] = nAvg
+        dens_arr[r_arr <= rCloud] = nCore
     else:
         dens_arr = nCore * (r_arr/rCore)**alpha
         dens_arr[r_arr <= rCore] = nCore
@@ -72,58 +71,58 @@ def get_density_profile(r_arr,
 
 
 
-def get_density_profile(r_arr,
-                         density_params,
-                         ):
-    """
-    This function takes in a list of radius and evaluates the density profile
-    based on the points given in the list. The output will depend on selected
-    type of density profile describing the sphere.
+# def get_density_profile(r_arr,
+#                          density_params,
+#                          ):
+#     """
+#     This function takes in a list of radius and evaluates the density profile
+#     based on the points given in the list. The output will depend on selected
+#     type of density profile describing the sphere.
     
-    Watch out the units!
+#     Watch out the units!
 
-    Parameters
-    ----------
-    r_arr : list/array of radius of interest
-        Radius at which we are interested in the density (Units: pc).
-    rCloud : float
-        Cloud radius. (Units: pc)
+#     Parameters
+#     ----------
+#     r_arr : list/array of radius of interest
+#         Radius at which we are interested in the density (Units: pc).
+#     rCloud : float
+#         Cloud radius. (Units: pc)
 
-    Returns
-    -------
-    dens_arr : array of float
-        NUMBER DENSITY profile for given radius profile. n(r). (Units: 1/pc^3)
+#     Returns
+#     -------
+#     dens_arr : array of float
+#         NUMBER DENSITY profile for given radius profile. n(r). (Units: 1/pc^3)
 
-    """
+#     """
     
-    # Note:
-        # old code: f_dens and f_densBE().
+#     # Note:
+#         # old code: f_dens and f_densBE().
         
         
-    nISM = density_params['nISM_au'].value
-    alpha = density_params['alpha_pL'].value
-    rCloud = density_params['rCloud_au'].value
-    nCore = density_params['nCore_au'].value
-    nAvg = density_params['nAvg_au'].value
-    rCore = density_params['rCore_au'].value
-    nCore = density_params['nCore_au'].value
+#     nISM = density_params['nISM_au'].value
+#     alpha = density_params['alpha_pL'].value
+#     rCloud = density_params['rCloud_au'].value
+#     nCore = density_params['nCore_au'].value
+#     nAvg = density_params['nAvg_au'].value
+#     rCore = density_params['rCore_au'].value
+#     nCore = density_params['nCore_au'].value
 
-    # =============================================================================
-    # For a power-law profile
-    # =============================================================================
+#     # =============================================================================
+#     # For a power-law profile
+#     # =============================================================================
     
-    # Initialise with power-law
-    # for different alphas:
-    if alpha == 0:
-        dens_arr = nISM * r_arr ** alpha
-        dens_arr[r_arr <= rCloud] = nAvg
-    else:
-        dens_arr = nCore * (r_arr/rCore)**alpha
-        dens_arr[r_arr <= rCore] = nCore
-        dens_arr[r_arr > rCloud] = nISM
+#     # Initialise with power-law
+#     # for different alphas:
+#     if alpha == 0:
+#         dens_arr = nISM * r_arr ** alpha
+#         dens_arr[r_arr <= rCloud] = nAvg
+#     else:
+#         dens_arr = nCore * (r_arr/rCore)**alpha
+#         dens_arr[r_arr <= rCore] = nCore
+#         dens_arr[r_arr > rCloud] = nISM
     
-    # return n(r)
-    return dens_arr
+#     # return n(r)
+#     return dens_arr
         
 
 

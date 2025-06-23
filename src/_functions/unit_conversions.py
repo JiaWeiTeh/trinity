@@ -139,7 +139,7 @@ def convert2au(unit_string):
         'g': str(g2Msun),
         's': str(s2Myr),
         'cm': str(cm2pc),
-        'km': str(cm2pc*1e-5),
+        'km': str(cm2pc/1e-5),
         'K': str(1), # *1 because there is no additional factor (no unit change required)
         'Zsun': str(1),
         'Msun': str(1),
@@ -175,9 +175,6 @@ def convert2au(unit_string):
             raise Exception(f'Unit contains odd expression: \'{element}\'. If the expression is right, include it in unit_map.')
 
     return factor
-
-
-
 
 
 

@@ -17,41 +17,30 @@ import src.bubble_structure.get_bubbleParams as get_bubbleParams
 import src.shell_structure.shell_structure as shell_structure
 # import src.shell_structure.shell_structure_old as shell_structure
 import src._functions.unit_conversions as cvt
+from src.sb99.update_feedback import get_currentSB99feedback
+
+
 
     # TODO: add cover fraction cf
     
 def get_vdot(t, y, 
-                 params, SB99f):
+                 params):
     
     # unpack current values of y (r, rdot, E, T)
     R2, v2, Eb, T0 = y  
     
     tSF = params['tSF'].value
     
-    # Interpolate SB99 to get feedback parameters
-    # can't quite use what's in the dictionary because it could be changed.
-    # TODO: in future just add them into dictionary
-    # mechanical luminosity at time t (erg)
-    L_wind = SB99f['fLw'](t)[()]
-    # momentum of stellar winds at time t (cgs)
-    pdot_wind = SB99f['fpdot'](t)[()] 
-    # other luminosities
-    Lbol = SB99f['fLbol'](t)[()]
-    Ln = SB99f['fLn'](t)[()]
-    Li = SB99f['fLi'](t)[()]
-    Qi = SB99f['fQi'](t)[()]
     
-    
-    # velocity from luminosity and change of momentum (au)
-    v_wind = (2.*L_wind/pdot_wind)
-    
+    [Qi, LWind, Lbol, Ln, Li, vWind, pWindDot, pWindDotDot] = get_currentSB99feedback(t, params)
+
     # =============================================================================
     # Shell mass, where radius = maximum extent of shell.
     # =============================================================================
 
     if params['isCollapse'].value == True:
         # stays constant during collapse
-        mShell = params['mShell'].value
+        mShell = params['shell_mass'].value
         mShell_dot = 0
     else:
         mShell, mShell_dot = mass_profile.get_mass_profile(R2, params,
@@ -67,20 +56,20 @@ def get_vdot(t, y,
         if len(mShell_dot) == 1:
             mShell_dot = mShell_dot[0]
     
-    params['mShell'].value = mShell
-    params['mShell_dot'].value = mShell_dot
+    params['shell_mass'].value = mShell
+    params['shell_massDot'].value = mShell_dot
         
     cf = 1
     
     # gravity correction (self-gravity and gravity between shell and star cluster)
     # if you don't want gravity, set .inc_grav to zero
-    F_grav = (params['G_au'].value * mShell / R2**2 * (params['mCluster_au'].value + mShell/2)  * params['inc_grav'].value) 
+    F_grav = (params['G'].value * mShell / R2**2 * (params['mCluster'].value + mShell/2)) 
   
     # get pressure from energy. 
     if Eb > 0:
         # calculate radius of inner discontinuity (inner radius of bubble)
         R1 = scipy.optimize.brentq(get_bubbleParams.get_r1, 0.0, R2,
-                                   args=([L_wind, Eb, v_wind, R2])) 
+                                   args=([LWind, Eb, vWind, R2])) 
         # the following if-clause needs to be rethought. for now, this prevents negative energies at very early times
         # IDEA: move R1 gradually outwards
         dt_switchon = 1e-3 # in Myr, gradually switch on things during this time period
@@ -95,14 +84,8 @@ def get_vdot(t, y,
     else: # energy is very small: case of pure momentum driving
         R1 = R2 # there is no bubble --> inner bubble radius R1 equals shell radius r
         # ram pressure from winds
-        press_bubble = get_bubbleParams.pRam(R2, L_wind, v_wind)
+        press_bubble = get_bubbleParams.pRam(R2, LWind, vWind)
             
-        
-    params['Ln'].value = Ln  
-    params['Li'].value = Li  
-    params['Qi'].value = Qi  
-    params['Lbol'].value = Lbol  
-    params['mShell'].value = mShell  
     params['Pb'].value = press_bubble  
         
     # =============================================================================
@@ -116,20 +99,21 @@ def get_vdot(t, y,
     # units right
     
     # radiation pressure coupled to the shell
-    fRad = params['shell_f_absorbed'].value * Lbol / (params['c_au'].value)
-    params['shell_f_rad'].value = fRad
+    fRad = params['shell_fAbsorbedWeightedTotal'].value * Lbol / (params['c_light'].value)
+    params['shell_fRad'].value = fRad
 
-    isLowdense = params['shell_nShell_max'].value < params['stop_n_diss'].value
+    isLowdense = params['shell_nMax'].value < params['stop_n_diss'].value
 
-    if isLowdense != params['isLowdense'].value:
-        # update if it is low dense now
-        if isLowdense == True:
-            params['t_Lowdense'].value = params['t_now'].value
-            params['isLowdense'].value = True
-        else:
-            # set so that t_lowdense - t_now in check_event() will never be positive (stop_t_diss)
-            params['t_Lowdense'].value = 1e30
-            params['isLowdense'].value = False    
+# TODO: fix this
+    # if isLowdense != params['isLowdense'].value:
+    #     # update if it is low dense now
+    #     if isLowdense == True:
+    #         params['t_Lowdense'].value = params['t_now'].value
+    #         params['isLowdense'].value = True
+    #     else:
+    #         # set so that t_lowdense - t_now in check_event() will never be positive (stop_t_diss)
+    #         params['t_Lowdense'].value = 1e30
+    #         params['isLowdense'].value = False    
 
     
     def get_press_ion(r, ion_dict):
@@ -147,7 +131,7 @@ def get_vdot(t, y,
         
         n_r = density_profile.get_density_profile(r, ion_dict)
         
-        P_ion = n_r * ion_dict['k_B_au'].value * ion_dict['TShell_ion'].value
+        P_ion = n_r * ion_dict['k_B'].value * ion_dict['TShell_ion'].value
         
         if len(P_ion) == 1:
             P_ion = P_ion[0]
@@ -157,7 +141,7 @@ def get_vdot(t, y,
 
     # calculate inward pressure from photoionized gas outside the shell 
     # (is zero if no ionizing radiation escapes the shell)
-    if params['shell_f_absorbed_ion'].value < 1.0:
+    if params['shell_fAbsorbedIon'].value < 1.0:
         press_HII = get_press_ion(R2, params)
     else:
         press_HII = 0.0

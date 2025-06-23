@@ -11,8 +11,7 @@ import numpy as np
 import sys
 #--
 
-def get_CloudRadiusEdge(params
-                      ):
+def get_CloudRadiusEdge(params):
     """
     This function computes the initial properties of the cloud, including (but not all):
         - cloud radius (Units: pc)
@@ -22,10 +21,6 @@ def get_CloudRadiusEdge(params
         
     Watch out units!
 
-    Parameters
-    ----------
-    Check create_dict() for explanations, or simply print dict['key'].info for explanation of the key.
-
     Returns
     -------
     rCloud : float
@@ -34,29 +29,28 @@ def get_CloudRadiusEdge(params
         cloud edge density (Units: 1/pc3).
     """
 
-    alpha = params['alpha_pL'].value
-    mCloud = params['mCloud_au'].value
-    nCore = params['nCore_au'].value
-    rCore = params['rCore_au'].value
-    mu_n = params['mu_n_au'].value
-    nAvg = params['nAvg_au'].value
-    nISM = params['nISM_au'].value
+    alpha = params['densPL_alpha'].value
+    mCloud = params['mCloud'].value
+    nCore = params['nCore'].value
+    rCore = params['rCore'].value
+    mu_neu = params['mu_neu'].value
+    nISM = params['nISM'].value
 
     # compute cloud radius
     # use core radius/density if there is a power law. If not, use average density.
     if alpha != 0:
         rCloud = (
                     (
-                        mCloud/(4 * np.pi * nCore * mu_n) - rCore**3/3
+                        mCloud/(4 * np.pi * nCore * mu_neu) - rCore**3/3
                     ) * rCore ** alpha * (alpha + 3) + rCore**(alpha + 3)
                  )**(1/(alpha + 3))
         # density at edge
         nEdge = nCore * (rCloud/rCore)**alpha
         
     elif alpha == 0:
-        rCloud = (3 * mCloud / 4 / np.pi / (nAvg * mu_n))**(1/3)
+        rCloud = (3 * mCloud / 4 / np.pi / (nCore * mu_neu))**(1/3)
         # density at edge should just be the average density
-        nEdge = nAvg
+        nEdge = nCore
     
     # sanity check
     if nEdge < nISM:

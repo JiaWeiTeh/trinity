@@ -24,6 +24,8 @@ from src.phase1b_energy_implicit import run_energy_implicit_phase
 from src.phase1c_transition import run_transition_phase
 from src.phase2_momentum import run_momentum_phase
 import src._output.terminal_prints as terminal_prints
+from src._input.dictionary import DescribedItem, DescribedDict
+
 
 
 def start_expansion(params):
@@ -49,12 +51,7 @@ def start_expansion(params):
     
     # Record timestamp
     startdatetime = datetime.datetime.now()
-
     terminal_prints.phase0(startdatetime)
-    
-    # TODO: perhaps this is not needed anymore
-    # prepare directories and write some basic files (like the file cotaining the input parameters)
-    # output_filename = write_outputs.init_dir()
     
     # =============================================================================
     # A: Initialising cloud properties. 
@@ -62,25 +59,22 @@ def start_expansion(params):
     
     # Step 1: Obtain initial cloud properties
     # ---
-    # note now that the parameter mCloud here is the cloud mass AFTER star formation.
-    # make them return in AU units.
     rCloud, nEdge = get_InitCloudProp.get_CloudRadiusEdge(params)
-    # update
-    params['rCloud_au'].value = rCloud
-    params['nEdge_au'].value = nEdge
+    # initialise
+    params['rCloud'].value = rCloud
+    params['nEdge'].value = nEdge
     print(f"Cloud radius is {np.round(rCloud, 3)}pc.")
     
     # Step 2: Obtain parameters from Starburst99
     # ---
     # Scaling factor for cluster masses. Though this might only be accurate for
     # high mass clusters (~>1e5) in which the IMF is fully sampled.
-    f_mass = params['mCluster_au'].value / params['SB99_mass'].value
+    f_mass = params['mCluster'] / params['SB99_mass']
     # Get SB99 data and interpolation functions.
     SB99_data = read_SB99.read_SB99(f_mass, params)
     SB99f = read_SB99.get_interpolation(SB99_data)
     # TODO:
     # if tSF != 0.: we would actually need to shift the feedback parameters by tSF
-    
     # update
     params['SB99_data'].value = SB99_data
     params['SB99f'].value = SB99f
@@ -99,9 +93,8 @@ def start_expansion(params):
         
     # get path to library
     # See example_pl.param for more information.
-    path2cooling = params['path_cooling_CIE'].value
     # unpack from file
-    logT, logLambda = np.loadtxt(path2cooling, unpack = True)
+    logT, logLambda = np.loadtxt(params['path_cooling_CIE'].value, unpack = True)
     # create interpolation
     cooling_CIE_interpolation = scipy.interpolate.interp1d(logT, logLambda, kind = 'linear')
     # update
@@ -182,23 +175,20 @@ def run_expansion(params):
     # y0 = [r0, v0, E0, T0]
     # R2 = initial outer bubble/shell radius (pc)
     # v2 = initial velocity (pc/Myr)
-    # Eb = initial energy (erg/s)
+    # Eb = initial energy
     # T0 = initial temperature (K)
     # t_now, (R2, v2, Eb, T0) = get_InitPhaseParam.get_y0(0*u.Myr, params['SB99f'].value)
     get_InitPhaseParam.get_y0(params)
     
-    # update
-    # params['t_now'].value = t_now.to(u.Myr).value
-    # params['R2'].value = R2.to(u.pc).value
-    # params['v2'].value = v2.to(u.pc/u.Myr).value
-    # params['Eb'].value = Eb.to(u.erg).value * cvt.E_cgs2au
-    # params['T0'].value = T0.to(u.K).value
     
+    # params.save_snapShot()
+    
+    # update
     # =============================================================================
     # Phase 1a: Energy driven phase.
     # =============================================================================
 
-    params['current_phase'].value = '1a'
+    params['current_phase'] = DescribedItem('1a', 'Which phase is the simulation in? 1a: energy, 1b: implicit energy, 2: transition, 3: momentum')
 
     terminal_prints.phase('Entering energy driven phase (constant cooling)')
 
@@ -242,18 +232,29 @@ def run_expansion(params):
     
 
     # Since cooling is not needed anymore after this phase, we reset values.
-    params['beta'].value = np.nan
-    params['delta'].value = np.nan
-    params['beta_Edot_residual'].value = np.nan
-    params['delta_T_residual'].value = np.nan
-    params['Edot1_guess'].value = np.nan
-    params['Edot2_guess'].value = np.nan
-    params['T1_guess'].value = np.nan
-    params['T1_guess'].value = np.nan
-    params['dMdt'].value = np.nan
-    params['dMdt_factor'].value = np.nan
-    params['v0_residual'].value = np.nan
-    
+    params['residual_deltaT'] = np.nan
+    params['residual_betaEdot'] = np.nan
+    params['residual_Edot1_guess'] = np.nan
+    params['residual_Edot2_guess'] = np.nan
+    params['residual_T1_guess'] = np.nan
+    params['residual_T2_guess'] = np.nan
+ 
+    params['bubble_Lgain'] = np.nan
+    params['bubble_Lloss'] = np.nan
+    params['bubble_Leak'] = np.nan
+ 
+    params['t_previousCoolingUpdate'] = np.nan
+    params['cStruc_cooling_nonCIE'] = np.nan
+    params['cStruc_heating_nonCIE'] = np.nan
+    params['cStruc_net_nonCIE_interpolation'] = np.nan
+    # --
+    params['cStruc_cooling_CIE_logT'] = np.nan
+    params['cStruc_cooling_CIE_logLambda'] = np.nan
+    params['cStruc_cooling_CIE_interpolation'] = np.nan
+ 
+    params['cool_beta'] = np.nan
+    params['cool_delta'] = np.nan
+
     
     params['cStruc_cooling_CIE_interpolation'].value = np.nan
     params['cStruc_cooling_CIE_logT'].value = np.nan

@@ -12,6 +12,8 @@ import src.cloud_properties.density_profile as density_profile
 import src.bubble_structure.get_bubbleParams as get_bubbleParams
 import scipy.optimize
 import sys 
+from src.sb99.update_feedback import get_currentSB99feedback
+
 import src._functions.unit_conversions as cvt
 
 
@@ -54,18 +56,17 @@ def get_ODE_Edot(y, t, params):
     # unpack current values of y (r, rdot, E)
     R2, v2, Eb = y 
     
-    # print('input:', R2, v2, Eb)
+    
+    [Qi, LWind, Lbol, Ln, Li, vWind, pWindDot, pWindDotDot] =  get_currentSB99feedback(t, params)
     
     
-    FABSi = params['shell_f_absorbed_ion'].value
-    FRAD = params['shell_f_rad'].value
-    mCluster = params['mCluster_au'].value
-    L_wind = params['L_wind'].value
-    L_bubble = params['bubble_L_total'].value
-    pwdot = params['pwdot'].value 
+    FABSi = params['shell_fAbsorbedIon'].value
+    FRAD = params['shell_fAbsorbedWeightedTotal'].value
+    mCluster = params['mCluster'].value
+    LWind = params['LWind'].value
+    L_bubble = params['bubble_LTotal'].value
+    pWindDot = params['pWindDot'].value 
     
-    # velocity from luminosity and change of momentum [in au]
-    v_wind = 2 * L_wind / pwdot
     # calculate shell mass and time derivative of shell mass [au]
     mShell, mShell_dot = mass_profile.get_mass_profile(R2, params,
                                                        return_mdot = True, 
@@ -91,7 +92,7 @@ def get_ODE_Edot(y, t, params):
             pass
         n_r = density_profile.get_density_profile(r, ion_dict)
         
-        P_ion = n_r * ion_dict['k_B_au'].value * ion_dict['TShell_ion'].value
+        P_ion = n_r * ion_dict['k_B'].value * ion_dict['TShell_ion'].value
         
         return P_ion
 
@@ -103,14 +104,13 @@ def get_ODE_Edot(y, t, params):
         press_HII = 0.0
     
     # gravity correction (self-gravity and gravity between shell and star cluster)
-    # if you don't want gravity, set .inc_grav to zero
-    F_grav = params['G_au'].value * mShell / R2**2 * (mCluster + mShell/2)  * params['inc_grav'].value
+    F_grav = params['G'].value * mShell / R2**2 * (mCluster + mShell/2) 
     
     # get pressure from energy
     # calculate radius of inner discontinuity (inner radius of bubble)
     
     R1 = scipy.optimize.brentq(get_bubbleParams.get_r1, 0.0, R2,
-                               args=([L_wind, Eb, v_wind, R2])) 
+                               args=([LWind, Eb, vWind, R2])) 
     
     # the following if-clause needs to be rethought. for now, this prevents negative energies at very early times
     # IDEA: move R1 gradually outwards
@@ -157,14 +157,14 @@ def get_ODE_Edot(y, t, params):
     # time derivatives￼￼
     rd = v2
     vd = (4 * np.pi * R2**2 * (press_bubble-press_HII) - mShell_dot * v2 - F_grav + FRAD) / mShell
-    Ed = (L_wind - L_bubble) - (4 * np.pi * R2**2 * press_bubble) * v2 - L_leak 
+    Ed = (LWind - L_bubble) - (4 * np.pi * R2**2 * press_bubble) * v2 - L_leak 
 
     derivs = [rd, vd, Ed]
     
     params['F_grav'].value = F_grav
     params['F_ion'].value = press_HII
     # params['F_ram'].value = (4 * np.pi * R2**2 * (press_bubble - press_HII))
-    fRad = params['shell_f_absorbed'].value * params['Lbol'].value  / (params['c_au'].value)
+    fRad = params['shell_fAbsorbedWeightedTotal'].value * params['Lbol'].value  / (params['c_light'].value)
     params['F_rad'].value = fRad
     
     

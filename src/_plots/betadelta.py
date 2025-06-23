@@ -39,31 +39,46 @@ def plot(path2json):
         # step one is to make sure they are lists i think
         snaplists = json.load(f)
 
-    for snapshots in snaplists:
-        for key, val in snapshots.items():
-            if key.endswith('t_now'):
-                v3_t.append(val)
-            elif key.endswith('beta') and 'transformation' not in key:
-                v3_b.append(val)
-            elif key.endswith('delta') and 'transformation' not in key:
-                v3_d.append(val)
-            elif key.endswith('Edot_residual'):
-                v3_bres.append(val)
-            elif key.endswith('T_residual'):
-                v3_dres.append(val)                
-            elif key.endswith('Edot1_guess'):
-                v3Edot1.append(val)                
-            elif key.endswith('Edot2_guess'):
-                v3Edot2.append(val)                
-            elif key.endswith('T1_guess'):
-                v3T1.append(val)                
-            elif key.endswith('T2_guess'):
-                v3T2.append(val)                
-            elif key.endswith('current_phase'):
-                if val == '1a':
-                    v3a_length += 1
-                elif val == '1b':
-                    v3b_length += 1
+
+    for key, val in snaplists.items():
+        v3_t.append(val['t_now'])
+        v3_b.append(val['cool_beta'])
+        v3_d.append(val['cool_delta'])
+        v3_bres.append(val['residual_betaEdot'])
+        v3_dres.append(val['residual_deltaT'])
+        v3Edot1.append(val['residual_Edot1_guess'])
+        v3Edot2.append(val['residual_Edot2_guess'])
+        v3T1.append(val['residual_T1_guess'])
+        v3T2.append(val['residual_T2_guess'])
+        # v3_E.append(val['Eb'])
+        # v3_T.append(val['T0'])
+
+
+    # for snapshots in snaplists:
+    #     for key, val in snapshots.items():
+    #         if key.endswith('t_now'):
+    #             v3_t.append(val)
+    #         elif key.endswith('beta') and 'transformation' not in key:
+    #             v3_b.append(val)
+    #         elif key.endswith('delta') and 'transformation' not in key:
+    #             v3_d.append(val)
+    #         elif key.endswith('Edot_residual'):
+    #             v3_bres.append(val)
+    #         elif key.endswith('T_residual'):
+    #             v3_dres.append(val)                
+    #         elif key.endswith('Edot1_guess'):
+    #             v3Edot1.append(val)                
+    #         elif key.endswith('Edot2_guess'):
+    #             v3Edot2.append(val)                
+    #         elif key.endswith('T1_guess'):
+    #             v3T1.append(val)                
+    #         elif key.endswith('T2_guess'):
+    #             v3T2.append(val)                
+    #         elif key.endswith('current_phase'):
+    #             if val == '1a':
+    #                 v3a_length += 1
+    #             elif val == '1b':
+    #                 v3b_length += 1
                     
 #--------------
 

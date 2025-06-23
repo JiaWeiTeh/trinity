@@ -37,14 +37,11 @@ class NpEncoder(json.JSONEncoder):
     # see: https://numba.pydata.org/numba-doc/dev/user/jitclass.html
 
     # TODO: add unit=None, with attribute .units. 
-    # this can then work when print valeus.
 
 class DescribedItem:
-    def __init__(self, value = None, info = None, ori_units = None, exclude_from_snapshot = False):
+    def __init__(self, value = None, info = None):
         self.value = value
         self.info = info
-        self.ori_units = ori_units
-        self.exclude_from_snapshot = exclude_from_snapshot
         
     def __str__(self):
         return (f"{self.value}\t({self.info})")
@@ -86,28 +83,15 @@ class DescribedDict(dict):
         # initialise snapshot counter.
         self.save_count = 0
         # save snapshot in intervals of?
-        self.snapshot_interval = 25
+        self.snapshot_interval = 100
         # which snapshots are stored. List of str.
-        # self.snapshots_stored = []
-        self.previous_snapshot = {}
+        self.snapshots_stored = []
         # how much zero padding? 6 = 000001 
         # minimum 4 (allows up to 9999 saves)
         # internal, dont change if not sure.
         self._zero_padding = 4
         # tracks how many times JSON file is saved
         self.flush_count = 0
-        # mark keys to exclude from snapshots
-        self._excluded_keys = set()
-        
-    # Mark a key to be excluded from snapshots.
-    def exclude_key(self, key): self._excluded_keys.add(key)
-
-    # Unmark a key (include it back in snapshot).
-    def include_key(self, key): self._excluded_keys.discard(key)
-
-    # Option to check if a key is excluded
-    def is_excluded(self, key): return key in self._excluded_keys
-    
     
     @staticmethod
     def shorten_display(arr, nshow = 3):
@@ -118,8 +102,6 @@ class DescribedDict(dict):
         if len(arr) > 10:
             arr = list(arr[:nshow]) + ['...'] + list(arr[-nshow:]) 
         return arr
-    
-    
     
     def __str__(self):
         """
@@ -145,26 +127,37 @@ class DescribedDict(dict):
                     shortened_val = self.shorten_display(val.value)
                     val_str = f"{key} : {shortened_val}\n" 
             custom_str += val_str
-        custom_str += 'saved snapshot(s): ' + str(self.save_count) + '\n'
+        custom_str += 'saved snapshot(s): ' + str(self.shorten_display(snapshots_stored)) + '\n'
+        custom_str += 'Access hidden snapshots by adding _sS(number) as suffix to keys.\n'
         return custom_str + "-------------"
     
     def __setitem__(self, key, value):
+        
+        if isinstance(value, DescribedItem):
+            super().__setitem__(key, value)
+        else:
+            # Check if key exists and has info to preserve
+            old = self.get(key)
+            info = old.info if isinstance(old, DescribedItem) else None
+            super().__setitem__(key, DescribedItem(value=value, info=info))
+            
+            
+        # # Wrap the value in DescribedItem if it's not already
+        # if not isinstance(value, DescribedItem):
+        #     value = DescribedItem(value=value)
+        # super().__setitem__(key, value)
+        
         
         # """
         # # foolproof - when trying to store value to key that does not exist.
         # # Also to remind adding DescribedItem.
         # """
-        if not isinstance(value, DescribedItem):
-            raise TypeError(f"Value assigned to '{key}' must be a DescribedItem instance.")
-        
-        # default is False (third keyword)
-        if getattr(value, "exclude_from_snapshot", False):
-            self._excluded_keys.add(key)
-        
-        
-        super().__setitem__(key, value)
-        
-        return 
+        # # allow however snapshot (keys with 'sS') to bypass this rule.
+        # if not isinstance(values, DescribedItem):
+        #     value = DescribedItem(value=values.value, info=values.info)
+        # if not isinstance(values, DescribedItem) and 'sS' not in key:
+        #     raise KeyError(f"'{values}' does not belong to the class DescribedItem().")
+        # super().__setitem__(key, value)
         
     @staticmethod
     def simplify(x_arr, y_arr, nmin = 100, grad_inc = 1, keyname = ''):
@@ -231,16 +224,24 @@ class DescribedDict(dict):
         print('Simplification complete')
         return new_x, new_y
             
-    def save_snapshot(self):
+    def save_snapShot(self):
         """
         # saves all current keys and values and add suffix for snapshots
         
         """
-        
-        # clean and simplify first (remove .info etc)
-        clean_dict = self.clean()
-        
-        self.previous_snapshot[str(self.save_count)] = clean_dict
+        # clean and simplify first
+        save_dict = self.clean()
+        for key, val in save_dict.items():
+            # pad to four digits so it's easier for str sorting
+            # format: _sS001_key (snapshot 1)
+            new_key = f'_sS{str(self.save_count).zfill(self._zero_padding)}_{key}'
+            if self.save_count > 10:
+                print(new_key)
+            self[new_key] = val
+            # update list
+            if new_key[3:self._zero_padding+3] not in self.snapshots_stored:
+                self.snapshots_stored.append(str(new_key[3:self._zero_padding+3]))
+
         self.save_count += 1
 
         if self.save_count % self.snapshot_interval == 0:
@@ -249,7 +250,6 @@ class DescribedDict(dict):
             print('All snapshots flushed to JSON at t = ', self['t_now'].value)
         else:
             print('Current snapshot saved at t = ', self['t_now'].value)
-
             
         return
     
@@ -261,10 +261,28 @@ class DescribedDict(dict):
         If you want to use this function as a standalone, make sure you've already done
         .save_snapshot() beforehand. 
         """
+            
+        save_list = []
+        
+        # go through list of saved snapshots in dictionary
+        for snapshots in self.snapshots_stored:
+            # for each snapshot create its own dictionary 
+            snapshot_number = {'snapshot_number': snapshots}
+            snapshot_dict = {k[3+self._zero_padding+1:]:v for k, v in self.items() if k.startswith('_sS'+str(snapshots))}
+            if len(snapshot_dict) == 0:
+                continue
+            # organise into alphabetical order
+            snapshot_dict = dict(sorted(snapshot_dict.items()))
+            # save keys to a list, with snapshot numnber added in front
+            save_list.append({**snapshot_number, **snapshot_dict})
+            
+        # remove snapshots
+        for k, v in list(self.items()):
+            if k.startswith('_sS'):
+                self.pop(k, None)
                 
         path2output = self['path2output'].value
         path2json = os.path.join(path2output, 'dictionary' + '.json')
-        
         
         # Three cases: file exists; file exists but zero byte; file does not exist.
         # if file does not exist, then create it.
@@ -274,14 +292,12 @@ class DescribedDict(dict):
                 infile.close()
             print('Initialising JSON file for saving purpose...')
                 
+        # Initialising the loaded array with None
+        load_list = None
         
-        # with open(path2json, 'a') as f:
-        #     json.dump(self.previous_snapshot, f, indent = 2, cls = NpEncoder)
         
         #---
         # if it is an empty file, 
-        load_list = None
-        
         try:
             with open(path2json, 'r') as infile:
                 load_list = json.load(infile)
@@ -296,21 +312,20 @@ class DescribedDict(dict):
             
         # If it is None, return an empty list instead
         if load_list is None:
-            load_list = {}
+            load_list = []
     
         # combine to record
-        combined_list = {**load_list, **self.previous_snapshot}
+        combined_list = load_list + save_list
         
         # then update dictionary
         with open(path2json, 'w') as outfile:
             print('\nhere in update')
             # json.dump(combined_list, outfile)
-            json.dump(combined_list, outfile, cls = NpEncoder, indent = 2)
+            json.dump(combined_list, outfile, cls = NpEncoder)
             outfile.close()
 
         # update
         self.flush_count += 1
-        self.previous_snapshot = {}
         
         return
     
@@ -328,15 +343,30 @@ class DescribedDict(dict):
         """
         # create new dictionary
         new_dict = {}
+        # remove unnecessary details
+        skip_key = [
+                    # SB99
+                    'SB99_data', 'SB99f', 'SB99_mass', 'SB99_rotation', 'SB99_BHCUT',
+                    # cooling structures
+                    'cStruc_cooling_CIE_interpolation', 
+                    'cStruc_cooling_CIE_logLambda', 'cStruc_cooling_CIE_logLambda', 
+                    'cStruc_cooling_CIE_logT', 
+                    'cStruc_cooling_nonCIE', 'cStruc_heating_nonCIE', 'cStruc_net_nonCIE_interpolation',
+                    # constants
+                    'mu_neu', 'mu_ion',
+                    'TShell_neu', 'TShell_ion',
+                    'caseB_alpha', 'C_thermal', 'dust_sigma', 'dust_noZ', 'dust_KappaIR',
+                    'gamma_adia', 'path_cooling_CIE', 'path_cooling_nonCIE', 'path_sps',
+                    'c_light', 'G', 'k_B', 
+                    # stop conditions
+                    'stop_n_diss', 'stop_t_diss', 'stop_r', 'stop_v', 'stop_t', 
+                    # density profile
+                    'dens_profile', 'densBE_Omega', 'densPL_alpha',
+                    ]
         
-        if self.save_count == 0:
-            for key, val in self.items():
-                if val.exclude_from_snapshot:
-                    self._excluded_keys.add(key)
-            
         # start iteration
         for key, val in self.items():
-            if key in self._excluded_keys:
+            if key in skip_key:
                 continue
             # only clean original dictionary; skip snapshots
             if isinstance(val, DescribedItem):

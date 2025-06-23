@@ -30,20 +30,26 @@ def plot(path2json):
     with open(path2json, 'r') as f:
         # step one is to make sure they are lists i think
         snaplists = json.load(f)
+        
+    for key, val in snaplists.items():
+        v3_t.append(val['t_now'])
+        v3.append(val['bubble_dMdt'])
+        # v3_d.append(val['cool_delta'])
+        
 
-    for snapshots in snaplists:
-        for key, val in snapshots.items():
-            if key.endswith('t_now'):
-                v3_t.append(val)
-            elif key.endswith('dMdt') and 'bubble' not in key:
-                v3.append(val)
-            elif key.endswith('v0_residual'):
-                v3res.append(val)
-            elif key.endswith('current_phase'):
-                if val == '1a':
-                    v3a_length += 1
-                elif val == '1b':
-                    v3b_length += 1
+    # for snapshots in snaplists:
+    #     for key, val in snapshots.items():
+    #         if key.endswith('t_now'):
+    #             v3_t.append(val)
+    #         elif key.endswith('dMdt') and 'bubble' not in key:
+    #             v3.append(val)
+    #         elif key.endswith('v0_residual'):
+    #             v3res.append(val)
+    #         elif key.endswith('current_phase'):
+    #             if val == '1a':
+    #                 v3a_length += 1
+    #             elif val == '1b':
+    #                 v3b_length += 1
 
 #--------------
     
@@ -64,14 +70,14 @@ def plot(path2json):
     axs[0].legend(loc = 'lower left')
     axs[0].set_xlim(0, v3_t[int(v3a_length+v3b_length-1)])
     
-    #--- velocity residual
+    # #--- velocity residual
     
-    axs[1].plot(v3_t, v3res, '-k', alpha = 1, linewidth = 2)
-    axs[1].axhline(0, c = 'k', linestyle = '--', alpha = 0.5)
-    axs[1].set_ylabel('v0 residual')
-    axs[1].set_xlabel('time (Myr)')    
-    axs[1].set_ylim(-1e-2, 1e-2)
-    axs[1].set_xlim(0, v3_t[int(v3a_length+v3b_length-1)])
+    # axs[1].plot(v3_t, v3res, '-k', alpha = 1, linewidth = 2)
+    # axs[1].axhline(0, c = 'k', linestyle = '--', alpha = 0.5)
+    # axs[1].set_ylabel('v0 residual')
+    # axs[1].set_xlabel('time (Myr)')    
+    # axs[1].set_ylim(-1e-2, 1e-2)
+    # axs[1].set_xlim(0, v3_t[int(v3a_length+v3b_length-1)])
     
     # plt.legend()
     plt.tight_layout()  

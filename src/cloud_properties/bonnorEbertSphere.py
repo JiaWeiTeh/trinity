@@ -1,53 +1,29 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Sat Jun 14 12:28:45 2025
+Created on Sun Jun 22 11:47:56 2025
 
 @author: Jia Wei Teh
-
-This script shows the radius of GMC as a function of core density and cloud mass.
 """
 
 
+
+
+    # TODO: i wonder if one only has to initialise once the density profile (or to some
+    # extend even the mass profile) because it is only used to calculate the density 
+    # at that one point (for ion pressure) and the mass for enclosed bubble+shell mass (despite being named Msh which it kinda is because mBubble is <<< mShell)
+    # This might not work on mdot profile because it relies on velocity. But then again 
+    # if we have an interpolation function that means we can do that too right? since 
+    # velocity is just a multiplication factor i think? I need to look more into this. 
+
+
+
+import sys
 import numpy as np
-import astropy.constants as c 
-import astropy.units as u
 import scipy.integrate
 import scipy.interpolate
-import sys
-import os
-import matplotlib.pyplot as plt
-import matplotlib.cm as cm
-import matplotlib.colors as mcolors
+from src._functions.operations import get_soundspeed
 
-
-# All constants are given in cgs
-# --- constants
-
-# for neutral gas
-mu_neu = (14/11) * c.m_p.cgs.value
-# for ionised
-mu_ion = (14/23) * c.m_p.cgs.value
-# constants
-G = c.G.cgs.value
-kB = c.k_B.cgs.value
-# conversions
-g2Msun = u.g.to(u.Msun)
-Msun2g = 1/g2Msun
-cm2pc = u.cm.to(u.pc)
-pc2cm = 1/cm2pc
-# adiabatic
-gamma = 5/3
-# maximum density ratio
-Omega = 14.1
-
-# --- sound speed
-def get_cs(T):
-    if T > 1e4:
-        return np.sqrt(gamma * kB * T / mu_ion)
-    else:
-        return np.sqrt(gamma * kB * T / mu_neu)
-    
 # --- lane-emden
 def laneEmden(y,t):
     """ The Lane-Emden equation."""
@@ -58,11 +34,12 @@ def laneEmden(y,t):
     u, dudxi = y
     return [dudxi, np.exp(-u) - 2 * dudxi / t]
 
+
 # --- solve lane-emden, returns also the interpolaltion of density contrast (rhoCore/rho(xi))
 def solve_laneEmden():
     # initial values
     u0, dudxi0 = 1e-5, 1e-5
-    # x values
+    # x values spanning across large logspace.
     xi_array = np.logspace(-5, 4, 3000)
     # solve
     solution  = scipy.integrate.odeint(laneEmden, [u0, dudxi0], xi_array)
@@ -71,13 +48,21 @@ def solve_laneEmden():
     dudxi_array = solution[:,1]
     # get density contrast
     rho_rhoc_array = np.exp(-u_array)
-    # interpolation
+    # interpolation of density contrase
     f_rho_rhoc = scipy.interpolate.interp1d(xi_array, rho_rhoc_array, kind='cubic', fill_value="extrapolate")
     # return
     return xi_array, u_array, dudxi_array, rho_rhoc_array, f_rho_rhoc
 
-# --- create BE sphere, returningouter radius, outer density and sphere effective temperature
-def create_BESphere(Omega, nCore, mCloud):
+
+
+# --- create BE sphere, returning outer radius, outer density and sphere effective temperature
+def create_BESphere(params):
+    
+    G = params['G'].value
+    mCloud = ['mCloud'].value
+    nCore = ['nCore'].value
+    densBE_Omega = ['densBE_Omega'].value
+    mu_ion = ['mu_ion'].value
     
     # Omega = max(rhoCore/rho(xi)) ~ 13.8-14.1 
     
@@ -85,14 +70,14 @@ def create_BESphere(Omega, nCore, mCloud):
     
     rhoCore = nCore * mu_ion
     
-    n_outOmega = nCore / Omega
+    n_outOmega = nCore / densBE_Omega
     
     # What is the effective temperature? This is the most important parameter
     # as it sets the pressure balance in the sphere
     def solve_structure(T, mCloud, rhoCore, f_rho_rhoc, n_outOmega):
         
         # sound speed
-        c_s = get_cs(T)
+        c_s = get_soundspeed(T, params)
         
         # with this sound speed, what is xi_out such that mass encompassed = mCloud?
         def solve_xi_out(xi, rhoCore, c_s, mCloud, f_rho_rhoc):
@@ -142,85 +127,11 @@ def create_BESphere(Omega, nCore, mCloud):
 
 
 
-# =============================================================================
-# Now we show the figure
-# =============================================================================
-# range of nCore to explore (cm3)
-nStart = 2.5
-nEnd = 6
-nNum = int((nEnd - nStart)*2+1)
-
-nCore_list = np.logspace(nStart, nEnd, nNum)
-
-# range of mCloud to explore (Msun)
-mStart = 4
-mEnd = 9
-mNum = int((mEnd-mStart)*2+1)
-
-mCloud_list = np.logspace(mStart, mEnd, mNum) * Msun2g
-
-# create datacube
-data = np.zeros(shape = (len(nCore_list)*len(mCloud_list), 3))
-
-# loop through
-idx = 0
-for mCloud in mCloud_list:
-    for nCore in nCore_list:
-        _, r_out, _, _ = create_BESphere(Omega, nCore, mCloud)
-        data[idx] = np.array([nCore, mCloud, r_out])
-        idx += 1
 
 
-#%%
 
 
-# extract data
-nCore_array = data[:,0]
-mCloud_array = data[:,1]
-rCloud_array = data[:,2] * cm2pc
 
-# Set up colormap
-cmap = cm.viridis
-norm = mcolors.Normalize(vmin=mStart, vmax=mEnd)
-colors = cmap(norm(np.log10(mCloud_list * g2Msun)))  # Get colors from colormap
-
-plt.rc('text', usetex=True)
-plt.rc('font', family='sans-serif', size=12)
-plt.rcParams["xtick.direction"] = "in"
-plt.rcParams["ytick.direction"] = "in"
-plt.rcParams["xtick.minor.visible"] = True  # Show minor ticks
-plt.rcParams["ytick.minor.visible"] = True
-plt.rcParams["xtick.major.size"] = 6        # Major tick size
-plt.rcParams["ytick.major.size"] = 6
-plt.rcParams["xtick.minor.size"] = 3        # Minor tick size
-plt.rcParams["ytick.minor.size"] = 3
-plt.rcParams["xtick.major.width"] = 1       # Major tick width
-plt.rcParams["ytick.major.width"] = 1
-plt.rcParams["xtick.minor.width"] = 0.8     # Minor tick width
-plt.rcParams["ytick.minor.width"] = 0.8
-fig, ax = plt.subplots(figsize = (7,5), dpi = 150,)
-
-for ii in range(mNum):
-
-    ax.plot(nCore_array[ii*len(nCore_list):(ii+1)*len(nCore_list)], rCloud_array[ii*len(nCore_list):(ii+1)*len(nCore_list)], \
-             label = f'M$_c$$_l$ = {np.log10(mCloud_array[ii*len(nCore_list)] * g2Msun)} M$_\\odot$',\
-                 color=colors[ii]
-                 )
-
-# Create colorbar
-sm = cm.ScalarMappable(cmap=cmap, norm=norm)
-sm.set_array([])  # Needed for older versions of matplotlib
-cbar = plt.colorbar(sm, ax=ax)
-cbar.set_label('log$_{10}$ M$_{\\rm cl}$ (M$_\\odot$)')
-
-
-plt.xscale('log')
-# plt.yscale('log')
-plt.ylabel('$r_{\\rm cl}$ (pc)')
-plt.xlabel('$\\rho_c$ (cm$^{-3}$)')    
-
-path2figure = r'/Users/jwt/unsync/Code/Trinity/fig'
-plt.savefig(os.path.join(path2figure, 'BESpheres_radius.pdf'))
 
 
 

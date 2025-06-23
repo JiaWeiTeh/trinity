@@ -300,22 +300,19 @@ def run_energy(params):
                     
                     # update this here instead of in bubble_luminosity so that 
                     # T0 will not be overwrite when we are dealing with phase1b.
-                    # params['T0'].value = params['bubble_T_rgoal'].value
+                    params['T0'].value = params['bubble_T_rgoal'].value
 
-                    # update T0 here
-                    params['T0'].value = params['bubble_T_r_Tb'].value
-                    T0 = params['bubble_T_r_Tb'].value
+                    T0 = params['bubble_T_rgoal'].value
                     Tavg = params['bubble_Tavg'].value
                     
-                    
                     print('\n\nFinish bubble\n\n')
-                    print('L_total', params['bubble_LTotal'].value)
-                    print('T0', params['T0'].value)
-                    print('L_bubble', params['bubble_L1Bubble'].value)
-                    print('L_conduction', params['bubble_L2Conduction'].value)
-                    print('L_intermediate', params['bubble_L3Intermediate'].value)
+                    print('L_total', params['bubble_L_total'].value)
+                    print('T_rgoal', params['bubble_T_rgoal'].value)
+                    print('L_bubble', params['bubble_L_bubble'].value)
+                    print('L_conduction', params['bubble_L_conduction'].value)
+                    print('L_intermediate', params['bubble_L_intermediate'].value)
                     print('bubble_Tavg', params['bubble_Tavg'].value)
-                    print('bubble_mBubble', params['bubble_mass'].value)
+                    print('bubble_mBubble', params['bubble_mBubble'].value)
                         
                 elif not calculate_bubble_shell:
                     Tavg = T0
@@ -349,10 +346,9 @@ def run_energy(params):
         
         if calculate_bubble_shell:
             
+            print('\n\nhere calculate_bubble_shell\n\n')
 
             shell_structure.shell_structure(params)
-            
-            print('\n\nShell structure calculated.\n\n')
             
         elif not calculate_bubble_shell:
             # TODO: redefine these values so that they are more physically similar to the environments
@@ -412,8 +408,7 @@ def run_energy(params):
     
     
         # save here
-        print('saving snapshot')
-        params.save_snapshot()
+        params.save_snapShot()
         # debug
         # params.flush()
     
@@ -462,17 +457,12 @@ def run_energy(params):
         
         
         updateDict(params, 
-                    ['R1', 'R2', 'v2', 'Eb', 't_now', 'Pb', 'shell_mass'], 
-                    [R1, R2, v2, Eb, t_now, Pb, Msh0])
+                    ['R1', 'R2', 'v2', 'Eb', 'vWind', 't_now', 'Pb', 'mShell'], 
+                    [R1, R2, v2, Eb, vWind, t_now, Pb, Msh0])
         
         
         # update loop counter
         loop_count += 1
-        
-        print(params)
-        # if loop_count == 20:
-        #     import sys
-        #     sys.exit()
         
         pass
 
@@ -520,31 +510,31 @@ def run_energy(params):
 #     #--- 1) Stopping time reached
 #     if t_next > params['tStop'].value:
 #         print(f"Phase ended because t reaches {t_next} Myr (> tStop: {params['tStop'].value}) in the next iteration.")
-#         params['SimulationEndReason'].value = 'Stopping time reached'
+#         params['completed_reason'].value = 'Stopping time reached'
 #         return True
     
 #     #--- 2) Small radius reached during collapse.
 #     if params['isCollapse'].value == True and R2_next < params['r_coll'].value:
 #         print(f"Phase ended because collapse is {params['isCollapse'].value} and r reaches {R2_next} pc (< r_coll: {params['r_coll'].value} pc)")
-#         params['SimulationEndReason'].value = 'Small radius reached'
+#         params['completed_reason'].value = 'Small radius reached'
 #         return True
     
 #     #--- 3) Large radius reached during expansion.
 #     if R2_next > params['stop_r'].value:
 #         print(f"Phase ended because r reaches {R2_next} pc (> stop_r: {params['stop_r'].value} pc)")
-#         params['SimulationEndReason'].value = 'Large radius reached'
+#         params['completed_reason'].value = 'Large radius reached'
 #         return True
         
 #     #--- 4) dissolution after certain period of low density
 #     if params['t_now'].value - params['t_Lowdense'].value > params['stop_t_diss'].value:
 #         print(f"Phase ended because {params['t_now'].value - params['t_Lowdense'].value} Myr passed since low density of {params['shell_nShell_max'].value/cvt.ndens_cgs2au} /cm3")
-#         params['SimulationEndReason'].value = 'Shell dissolved'
+#         params['completed_reason'].value = 'Shell dissolved'
 #         return True
     
 #     #--- 5) exceeds cloud radius
 #     if params['R2'].value > params['rCloud_au'].value:
 #         print(f"Bubble radius ({params['R2'].value} pc) exceeds cloud radius ({params['rCloud_au'].value} pc)")
-#         params['SimulationEndReason'].value = 'Bubble radius larger than cloud'
+#         params['completed_reason'].value = 'Bubble radius larger than cloud'
 #         return True
     
 #     return False

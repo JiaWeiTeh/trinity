@@ -1,6 +1,0 @@
-model_name    1e7_sfe001_n1e4_pl
-log_mCloud    7
-sfe    0.01
-dens_navg_pL    1e4
-dens_a_pL    -2
-nCore    1e5

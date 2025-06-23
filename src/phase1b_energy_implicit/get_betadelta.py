@@ -91,9 +91,6 @@ def get_betadelta(beta_guess, delta_guess, params):
     if residual_sq < 1e-4:
         
         for key in params.keys():
-            # dont have to care about past snapshots
-            if key.startswith('_sS'):
-                continue
             updateDict(params, [key], [test_params[key].value])
    
         return [beta_guess, delta_guess], params
@@ -126,22 +123,23 @@ def get_betadelta(beta_guess, delta_guess, params):
             
         sorted_keys = sorted(dictionary_residual_pair)
             
-        # for key in sorted_keys:
-        #     print('These are the residuals and beta-delta pairs')
-        #     print('residual', key, 'beta', dictionary_residual_pair[key]['beta'].value, 'delta', dictionary_residual_pair[key]['delta'].value)
+        for key in sorted_keys:
+            print('These are the residuals and beta-delta pairs')
+            print('residual', key, 'beta', dictionary_residual_pair[key]['cool_beta'].value, 'delta', dictionary_residual_pair[key]['cool_delta'].value)
         
         smallest_residual = sorted_keys[0]
-        
+         
         for key in params.keys():
-            # dont have to care about past snapshots
-            if key.startswith('_sS'):
-                continue
+            # print('updating', key)
             updateDict(params, [key], [dictionary_residual_pair[smallest_residual][key].value])
     
         # print('we chose these beta delta values', params['beta'].value, params['delta'].value)
-        # print('chosen:', params)
+        print('chosen:', params)
         
-        beta, delta = params['beta'].value, params['delta'].value
+        beta, delta = params['cool_beta'].value, params['cool_delta'].value
+
+        # import sys
+        # sys.exit()
 
         return [beta, delta], params
 
@@ -153,8 +151,8 @@ def get_residual(beta_delta_guess, params):
     _timer.begin('begin finding beta delta')
         
     # update
-    params['beta'].value = beta_guess
-    params['delta'].value = delta_guess
+    params['cool_beta'].value = beta_guess
+    params['cool_delta'].value = delta_guess
     
     # =============================================================================
     # Main equation to check current bubble structure
@@ -172,9 +170,9 @@ def get_residual(beta_delta_guess, params):
 
     R1 = scipy.optimize.brentq(get_bubbleParams.get_r1, 
                            1e-3 * params['R2'].value, params['R2'].value, 
-                           args=([params['L_wind'].value, 
+                           args=([params['LWind'].value, 
                                   params['Eb'].value, 
-                                  params['v_wind'].value,
+                                  params['vWind'].value,
                                   params['R2'].value,
                                   ]))
     
@@ -193,8 +191,8 @@ def get_residual(beta_delta_guess, params):
     Edot = get_bubbleParams.beta2Edot(params)
     
         #-- method 2 of calculating Edot, directly from equation
-    L_gain = params['L_wind'].value
-    L_loss = params['bubble_L_total'].value + params['L_leak'].value
+    L_gain = params['LWind'].value
+    L_loss = params['bubble_LTotal'].value + params['bubble_Leak'].value
     
     # these should be R2, v2 and press_bubble
     # gain - loss + work done
@@ -206,22 +204,29 @@ def get_residual(beta_delta_guess, params):
     # Part 2: calculate residual of T for delta
     # =============================================================================
     
-    T_residual = (params['bubble_T_rgoal'].value - params['T0'].value)/params['T0'].value    
+    T_residual = (params['bubble_T_r_Tb'].value - params['T0'].value)/params['T0'].value    
 
     _timer.end()
     
     # record runs
     # params['beta'].value = b_params['beta'].value
     # params['delta'].value = b_params['delta'].value
-    params['delta_T_residual'].value = T_residual
-    params['beta_Edot_residual'].value = Edot_residual
-    params['Edot1_guess'].value = Edot
-    params['Edot2_guess'].value = Edot2
-    params['T1_guess'].value = params['bubble_T_rgoal'].value
-    params['T2_guess'].value = params['T0'].value
-    params['Lloss'].value = L_loss
-    params['Lgain'].value = L_gain
     
+    
+    params['residual_deltaT'].value = T_residual
+    params['residual_betaEdot'].value = Edot_residual
+    params['residual_Edot1_guess'].value = Edot
+    params['residual_Edot2_guess'].value = Edot2
+    params['residual_T1_guess'].value = params['bubble_T_r_Tb'].value
+    params['residual_T2_guess'].value = params['T0'].value
+    
+    
+    params['bubble_Lloss'].value = L_loss
+    params['bubble_Lgain'].value = L_gain
+    
+    # print('here to check beta delta residual why np.nan')
+    # print(params)
+    # print('residuals', Edot_residual, T_residual)
     # or we could do this: first we make a deepcopy of the dictionary. 
     # then, we run it. if the residual is small, then we ruturn that,
     # oherwise, we continue the loop. No recording is needed to avoid
