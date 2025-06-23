@@ -28,32 +28,30 @@ def get_y0(params):
     -------
     t0 [Myr] : starting time for Weaver phase (free_expansion phase)
     y0 : An array of initial values. Check comments below for references in the literature
-        r0 [pc]: initial separation of bubble edge calculated using (terminal velocity / duration of free expansion phase)
-        v0 [km/s]: velocity of expanding bubble (terminal velocity) 
-        E0 [erg/s]: energy contained within the bubble
+        r0 : initial separation of bubble edge calculated using (terminal velocity / duration of free expansion phase)
+        v0 : velocity of expanding bubble (terminal velocity) 
+        E0 : energy contained within the bubble
         T0: temperature
         
     """
     # Note:
         # old code: get_startvalues.get_y0()
         
-    
     # Make sure it is in the right unit
+    # TODO: add tSF in the future.
     tSF = params['tSF'].value
     SB99f = params['SB99f'].value
 
     Lw_evo0 = SB99f['fLw'](tSF)
     pdot_evo0 = SB99f['fpdot'](tSF)
-    
-    # print(Lw_evo0, pdot_evo0)
-
-    # mass loss rate from winds and SNe (cgs)
+ 
+    # mass loss rate from winds and SNe 
     Mdot0 = pdot_evo0**2/(2.*Lw_evo0) 
-    # terminal velocity from winds and SNe (cgs)
+    # terminal velocity from winds and SNe 
     # initial valocity (pc/Myr)
     v0 = 2.*Lw_evo0/pdot_evo0 
 
-    rhoa =  params['nCore_au'].value * params['mu_n_au'].value
+    rhoa =  params['nCore'] * params['mu_neu']
     # duration of inital free-streaming phase (Myr)
     # see https://www.imprs-hd.mpg.de/399417/thesis_Rahner.pdf pg 17 Eq 1.15
     dt_phase0 = np.sqrt(3. * Mdot0 / (4. * np.pi * rhoa * v0 ** 3))
@@ -68,11 +66,10 @@ def get_y0(params):
     E0 = 5. / 11. * Lw_evo0  * dt_phase0
     # Make sure the units are right! see Weaver+77, eq. (37)
     # TODO: isn't it 2.07?
-    # entry changed to L [erg/s], t [Myr] and n [/cm3]
-    T0 = 1.51e6 * (Lw_evo0 / cvt.L_cgs2au / 1e36)**(8/35) * \
-                (params['nCore_au'].value / cvt.ndens_cgs2au)**(2./35.) * \
+    T0 = 1.51e6 * (Lw_evo0 * cvt.L_au2cgs / 1e36)**(8/35) * \
+                (params['nCore'] * cvt.ndens_au2cgs)**(2./35.) * \
                     (dt_phase0)**(-6./35.) * \
-                        (1 - params['xi_Tb'].value)**0.4
+                        (1 - params['bubble_xi_Tb'])**0.4
     # update
     params['t_now'].value = t0
     params['R2'].value = r0

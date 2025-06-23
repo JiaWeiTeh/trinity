@@ -41,21 +41,19 @@ def get_mass_profile( r_arr, params,
     """
     
     # get values
-    nCore = params['nCore_au'].value
-    nAvg = params['nAvg_au'].value
-    nISM = params['nISM_au'].value
-    mu_n = params['mu_n_au'].value
-    alpha = params['alpha_pL'].value
-    mCloud = params['mCloud_au'].value
-    rCloud = params['rCloud_au'].value
-    rCore = params['rCore_au'].value
+    nCore = params['nCore'].value
+    nISM = params['nISM'].value
+    mu_n = params['mu_neu'].value
+    alpha = params['densPL_alpha'].value
+    mCloud = params['mCloud'].value
+    rCloud = params['rCloud'].value
+    rCore = params['rCore'].value
     
     if type(r_arr) is not np.ndarray:
         r_arr = np.array([r_arr])
         
     # Setting up values for mass density (from number density) 
     rhoCore = nCore * mu_n
-    rhoAvg = nAvg * mu_n
     rhoISM = nISM * mu_n
     
     # initialise arrays
@@ -67,7 +65,7 @@ def get_mass_profile( r_arr, params,
     # Case 1: The density profile is homogeneous, i.e., alpha = 0
     if alpha == 0:
         # sphere
-        mGas =  4 / 3 * np.pi * r_arr**3 * rhoAvg
+        mGas =  4 / 3 * np.pi * r_arr**3 * rhoCore
         # outer region
         mGas[r_arr > rCloud] =  mCloud + 4. / 3. * np.pi * rhoISM * (r_arr[r_arr > rCloud]**3 - rCloud**3)
         
@@ -80,7 +78,7 @@ def get_mass_profile( r_arr, params,
                     rdot_arr = np.array([rdot_arr])
                 # check unit
                 inside_cloud = r_arr <= rCloud
-                mGasdot[inside_cloud] = 4 * np.pi * rhoAvg * r_arr[inside_cloud]**2 * rdot_arr[inside_cloud]
+                mGasdot[inside_cloud] = 4 * np.pi * rhoCore * r_arr[inside_cloud]**2 * rdot_arr[inside_cloud]
                 mGasdot[~inside_cloud] = 4 * np.pi * rhoISM * r_arr[~inside_cloud]**2 * rdot_arr[~inside_cloud]
                 # return value
                 return mGas, mGasdot

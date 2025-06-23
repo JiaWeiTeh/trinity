@@ -40,45 +40,16 @@ def plot(path2json):
         # step one is to make sure they are lists i think
         snaplists = json.load(f)
 
-    for snapshots in snaplists:
-        for key, val in snapshots.items():
-            if key.endswith('t_now'):
-                v3_t.append(val)
-            elif key.endswith('R2'):
-                v3_r.append(val)
-            elif key.endswith('v2'):
-                v3_v.append(val)
-            elif key.endswith('Eb'):
-                v3_E.append(val)
-            elif key.endswith('T0'):
-                v3_T.append(val)                
-            elif key.endswith('shell_grav_r'):
-                try:
-                    if np.isnan(val):
-                        v3_rShell.append(np.nan)
-                    elif val == 0:
-                        v3_rShell.append(np.nan)                    
-                    elif len(val) == 0:
-                        v3_rShell.append(np.nan)
-                except:
-                    # print(val[-1])
-                    v3_rShell.append(val[-1])
-                # try:
-                #     v3_rShell.append(val[-1])
-                # except:
-                #     v3_rShell.append(val)
-                    
-            elif key.endswith('current_phase'):
-                if val == '1a':
-                    v3a_length += 1
-                elif val == '1b':
-                    v3b_length += 1
-                elif val == '1c':
-                    v3c_length += 1
-    
+    for key, val in snaplists.items():
+        v3_t.append(val['t_now'])
+        v3_r.append(val['R2'])
+        v3_v.append(val['v2'])
+        v3_E.append(val['Eb'])
+        v3_T.append(val['T0'])
+
 
     # prefix of the final key
-    last_key = '_' + str(key.split('_')[1]) + '_'
+    # last_key = '_' + str(key.split('_')[1]) + '_'
 
     plt.rc('text', usetex=True)
     plt.rc('font', family='sans-serif', size=12)
@@ -102,8 +73,8 @@ def plot(path2json):
     axs[0][0].set_xlim(0, max(v3_t))
     
     # print(snapshots)
-    axs[0][0].axhline(snaplists[0]['r_coll'], linestyle = '--', c = 'k', alpha = 0.7)
-    axs[0][0].axhline(snaplists[0]['rCloud_au'], linestyle = '--', c = 'k', alpha = 0.7)
+    # axs[0][0].axhline(snaplists[0]['r_coll'], linestyle = '--', c = 'k', alpha = 0.7)
+    # axs[0][0].axhline(snaplists['0']['rCloud'], linestyle = '--', c = 'k', alpha = 0.7)
     
     # print(v3_r)
     # print(v3_rShell)

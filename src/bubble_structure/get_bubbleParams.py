@@ -99,14 +99,14 @@ def beta2Edot(params
 
     """
     # dp/dt pressure 
-    press_dot = - params['Pb'].value * params['beta'].value / params['t_now'].value
+    press_dot = - params['Pb'].value * params['cool_beta'].value / params['t_now'].value
     # define terms
     # print('pwdot', pwdot)
     # print('r1', r1)
-    a = np.sqrt(params['pwdot'].value/2)
+    a = np.sqrt(params['pWindDot'].value/2)
     b = 1.5 * a**2 * params['R1'].value
     d = params['R2'].value**3 - params['R1'].value**3
-    adot = 0.25 * params['pwdot_dot'].value / a
+    adot = 0.25 * params['pWindDotDot'].value / a
     # print('b', b)
     # print('bubble_E', bubble_E)
     e = b / ( b + params['Eb'].value )
@@ -186,8 +186,8 @@ def Edot2beta(bubble_P, r1, bubble_Edot, my_params
 
     """
     t_now = my_params["t_now"]
-    pwdot = my_params["pwdot"]
-    pwdotdot = my_params["pwdotdot"]
+    pwdot = my_params["pWindDot"]
+    pwdotdot = my_params["pWindDotDot"]
     r2 = my_params["R2"]
     r2dot = my_params["v2"]
     bubble_E = my_params["Eb"]
@@ -233,9 +233,9 @@ def bubble_E2P(Eb, r2, r1, gamma):
     """
     
     # Make sure units are in cgs
-    r1 /= cvt.cm2pc
-    r2 /= cvt.cm2pc
-    Eb /= cvt.E_cgs2au
+    r1 *= cvt.pc2cm
+    r2 *= cvt.pc2cm
+    Eb *= cvt.E_au2cgs
     # avoid division by zero
     r2 += 1e-10 
     

@@ -34,16 +34,33 @@ params = read_param.read_param(args.path2param, write_summary = True)
 from src import main
 import src._input.create_dictionary as create_dictionary
 
-main_dict = create_dictionary.create()
+# main_dict = create_dictionary.create()
 
 from src._output import header
-header.display(main_dict)
+header.display(params)
 
 
-main.start_expansion(main_dict)
+# # test if dictionary is working
+# for i in range(2):
+#     print(i)
+#     params['verbose'].value += 1
+#     params.save_snapshot()
+# params.flush()
+# for i in range(2):
+#     print(i)
+#     params['verbose'].value += 1
+#     params.save_snapshot()
+# params.flush()
+    
+
+# import sys
+# sys.exit()
+
+
+main.start_expansion(params)
 
 try:
-    main_dict.flush()
+    params.flush()
 except:
     pass 
 

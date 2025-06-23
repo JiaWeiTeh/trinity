@@ -85,7 +85,7 @@ def get_dudt(age, ndens, T, phi, params_dict):
     if T < 1e4:
         T = 1e4
     
-    Lambda_CIE = CIE.get_Lambda(T, CIE_interp, params_dict['metallicity'].value) # Lambda is returned in units of erg/s * cm3
+    Lambda_CIE = CIE.get_Lambda(T, CIE_interp, params_dict['ZCloud'].value) # Lambda is returned in units of erg/s * cm3
     
     # we take the cutoff at 10e5.5 K. 
     # These are all in log-space. 
@@ -145,7 +145,7 @@ def get_dudt(age, ndens, T, phi, params_dict):
         # =============================================================================
     
         # # get CIE cooling rate
-        Lambda = CIE.get_Lambda(10**CIE_Tcutoff, CIE_interp, params_dict['metallicity'].value)
+        Lambda = CIE.get_Lambda(10**CIE_Tcutoff, CIE_interp, params_dict['ZCloud'].value)
         dudt_CIE = (ndens**2 * Lambda)#.to(u.erg / u.cm**3 / u.s)
         
         # =============================================================================

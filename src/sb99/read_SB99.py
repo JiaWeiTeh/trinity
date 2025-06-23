@@ -55,7 +55,7 @@ def read_SB99(f_mass, params):
     # =============================================================================
     # grab the file name based on simulation input
     filename = get_filename(params)
-    path2sps = params['path_sps'].value
+    path2sps = params['path_sps']
     # read file
     # SB99_file = np.loadtxt(warpfield_params.path_sps + filename)
     SB99_file = np.loadtxt(path2sps + filename)
@@ -94,10 +94,10 @@ def read_SB99(f_mass, params):
     velocity_W = 2 * Lmech_W / pdot_W
     # Add fraction of mass injected into the cloud due to sweeping of cold material
     # from protostars and disks inside star clusters?
-    Mdot_W *= (1 + params['f_Mcold_wind'].value)
+    Mdot_W *= (1 + params['FB_mColdWindFrac'])
     # Modifiy terminal velocity according to 
     # 1) thermal efficiency and 2) cold mass content in cluster?
-    velocity_W *= np.sqrt(params['thermcoeff_wind'].value / (1. + params['f_Mcold_wind'].value)) 
+    velocity_W *= np.sqrt(params['FB_thermCoeffWind'] / (1. + params['FB_mColdWindFrac'])) 
     # convert back
     pdot_W = Mdot_W * velocity_W
     Lmech_W = 0.5 * Mdot_W * velocity_W**2
@@ -109,14 +109,14 @@ def read_SB99(f_mass, params):
     # first break down into mass loss and velocity
     # TODO: get time-dependent velocity, e.g. when mass of ejecta are known
     # convert to cgs
-    velocity_SN = params['v_SN'].value
+    velocity_SN = params['FB_vSN']
     Mdot_SN = 2 * Lmech_SN / velocity_SN**2
     # Add fraction of mass injected into the cloud due to sweeping of cold material
     # from protostars and disks inside star clusters?
-    Mdot_SN *= (1 + params['f_Mcold_SN'].value)
+    Mdot_SN *= (1 + params['FB_mColdSNFrac'])
     # Modifiy terminal velocity according to 
     # 1) thermal efficiency and 2) cold mass content in cluster?
-    velocity_SN *= np.sqrt(params['thermcoeff_SN'].value / (1. + params['f_Mcold_SN'].value)) 
+    velocity_SN *= np.sqrt(params['FB_thermCoeffSN'] / (1. + params['FB_mColdSNFrac'])) 
     # convert back
     pdot_SN = Mdot_SN * velocity_SN
     Lmech_SN = 0.5 * Mdot_SN * velocity_SN**2
@@ -153,30 +153,31 @@ def get_filename(params):
         def format_e(n):
             a = '%E' % n
             return a.split('E')[0].rstrip('0').rstrip('.') + 'e' + a.split('E')[1].strip('+').strip('0')
-        SBmass_str = format_e(params['SB99_mass'].value)
+        SBmass_str = format_e(params['SB99_mass'])
         # with rotation?
-        if params['SB99_rotation'].value == True:
+        if params['SB99_rotation'] == True:
             rot_str = 'rot'
         else:
             rot_str = 'norot'
         # what metallicity?
-        if float(params['metallicity'].value) == 1.0:
+        if params['ZCloud'] == 1.0:
             # solar
             z_str = 'Z0014'
-        elif float(params['metallicity'].value) == 0.15:
+        elif params['ZCloud'] == 0.15:
             # 0.15 solar
             z_str = 'Z0002'
         # what blackhole cutoff mass?
-        if int(params['SB99_BHCUT'].value) == 120:
+        if params['SB99_BHCUT'] == 120:
             # solar
             BH_str = 'BH120'
-        elif int(params['SB99_BHCUT'].value) == 40:
+        elif params['SB99_BHCUT'] == 40:
             # 0.15 solar
             BH_str = 'BH40'            
             
         filename = SBmass_str + 'cluster_' + rot_str + '_' + z_str + '_' + BH_str + '.txt'
         return filename
-    except:
+    except Exception as e:
+        print(e)
         raise Exception(f"Starburst99 file {filename} not found. Make sure to double check parameters in the 'parameters for Starburst99 operations' section.")
 
 

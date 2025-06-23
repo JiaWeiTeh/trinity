@@ -17,8 +17,7 @@ def display(params):
     print(f'\t\t      Welcome to'+' \033[32m'+link('https://github.com/JiaWeiTeh/trinity', 'TRINITY')+'\033[0m!\n')
     print(f'\t\t      Notes:')
     print(f'\t\t         - Documentation can be found \033[32m'+link('https://trinitysf.readthedocs.io/en/latest/index.html', 'here')+'\033[0m.')
-    print(f'\t\t         - \033[1m\033[96mBold text{cpr.END} indicates that a file is saved,')
-    print(f'\t\t           and shows where it is saved.')
+    print(f'\t\t         - \033[1m\033[96mBold text{cpr.END} indicates that a file is saved.')
     print(f'\t\t         - {cpr.WARN}Warning message{cpr.END}. Code runs still.')
     print(f'\t\t         - {cpr.FAIL}Error encountered.{cpr.END} Code terminates.\n')
     print(f'\t\t      [Version 3.0] 2022. All rights reserved.')
@@ -57,15 +56,13 @@ def show_param(params):
     # print some useful information
     print(f"{cpr.BLINK}Loading parameters:{cpr.END}")
     print(f"\tmodel name: {params['model_name'].value}")
-    print(f"\tlog_mCloud: {np.log10(params['mCloud_au'].value)}")
+    print(f"\tlog_mCloud: {np.log10(params['mCloud']/(1-params['sfe']))} Msun")
     print(f"\tSFE: {params['sfe'].value}")
-    print(f"\tmetallicity: {params['metallicity'].value}")
+    print(f"\tmetallicity: {params['ZCloud'].value} Zsun")
     print(f"\tdensity profile: {params['dens_profile'].value}")
     # shorten
     relpath = os.path.relpath(params['path2output'].value, os.getcwd())
     print(f"{cpr.FILE}Summary: {relpath}/{params['model_name'].value}{'_summary.txt'}{cpr.END}")
-    filename =  relpath + '/' + params['model_name'].value + '_config.yaml'
-    print(f'{cpr.FILE}Verbose yaml: {filename}{cpr.END}')
 
     return
 

@@ -41,11 +41,11 @@ def get_coolingStructure(params):
 
     """
     
-    age = params['t_now'].value * 1e6
+    age = params['t_now'] * 1e6
     
     path2cooling = params['path_cooling_nonCIE'].value
     SB99_rotation = params['SB99_rotation'].value
-    metallicity = params['metallicity'].value
+    metallicity = params['ZCloud'].value
     
     # =============================================================================
     # Step1: Time-dependent cooling curve: figure out which time!

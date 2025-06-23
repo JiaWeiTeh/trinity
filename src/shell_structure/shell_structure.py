@@ -87,10 +87,10 @@ def shell_structure(params):
     """
     
     # should be safe because its not being altered here
-    mBubble = params['bubble_mBubble'].value
+    mBubble = params['bubble_mass'].value
     pBubble = params['Pb'].value
     rShell0 = params['R2'].value
-    mShell_end = params['mShell'].value
+    mShell_end = params['shell_mass'].value
     Qi = params['Qi'].value
     Li = params['Li'].value
     Ln = params['Ln'].value
@@ -154,7 +154,7 @@ def shell_structure(params):
     # Assuming constant density, what is the maximum possible shell thickness.
     
     # max_shellRadius = r_stromgren + rShell0
-    max_shellRadius = (3 * Qi / (4 * np.pi * params['alpha_B_au'].value * nShell0**2))**(1/3) + rShell_start
+    max_shellRadius = (3 * Qi / (4 * np.pi * params['caseB_alpha'].value * nShell0**2))**(1/3) + rShell_start
     
     # print((3 * Qi / (4 * np.pi * params['alpha_B_au'].value * nShell0**2))**(1/3))
     # print(rShell_start)
@@ -271,7 +271,7 @@ def shell_structure(params):
         # ---
         mShell_arr = np.empty_like(rShell_arr)
         mShell_arr[0] = mShell0
-        mShell_arr[1:] = (nShell_arr[1:] * params['mu_n_au'].value * 4 * np.pi * rShell_arr[1:]**2 * rShell_step)
+        mShell_arr[1:] = (nShell_arr[1:] * params['mu_ion'].value * 4 * np.pi * rShell_arr[1:]**2 * rShell_step)
         mShell_arr_cum = np.cumsum(mShell_arr)
         
         # =============================================================================
@@ -352,18 +352,18 @@ def shell_structure(params):
         # First, compute the gravitational potential for the ionised part of shell
         # =============================================================================
         
-        grav_ion_rho = (nShell_arr_ion * params['mu_n_au'].value)
+        grav_ion_rho = (nShell_arr_ion * params['mu_ion'].value)
         grav_ion_r = rShell_arr_ion
         # mass of the thin spherical shell
         grav_ion_m = grav_ion_rho * 4 * np.pi * grav_ion_r**2 * rShell_step
         # cumulative mass
         grav_ion_m_cum = np.cumsum(grav_ion_m) + mBubble
         # gravitational potential
-        grav_ion_phi = - 4 * np.pi * params['G_au'].value * scipy.integrate.simps(grav_ion_r * grav_ion_rho, x = grav_ion_r)
+        grav_ion_phi = - 4 * np.pi * params['G'].value * scipy.integrate.simps(grav_ion_r * grav_ion_rho, x = grav_ion_r)
         # mark for future use
         grav_phi = grav_ion_phi
         # gravitational potential force per unit mass
-        grav_ion_force_m = params['G_au'].value * grav_ion_m_cum / grav_ion_r**2
+        grav_ion_force_m = params['G'].value * grav_ion_m_cum / grav_ion_r**2
         
         # #--- old code
         # # Now, modify the array so that it matches the potential file.
@@ -400,11 +400,11 @@ def shell_structure(params):
         # ---
         # dust term in dphi/dr
         phi_dust = np.sum(
-                        - nShell_arr_ion[:-1] * params['sigma_d_au'].value * phiShell_arr_ion[:-1] * dr_ion_arr
+                        - nShell_arr_ion[:-1] * params['dust_sigma'].value * phiShell_arr_ion[:-1] * dr_ion_arr
                         )
         # recombination term in dphi/dr
         phi_hydrogen = np.sum(
-                        - 4 * np.pi * rShell_arr_ion[:-1]**2 / Qi * params['alpha_B_au'].value * nShell_arr_ion[:-1]**2 * dr_ion_arr
+                        - 4 * np.pi * rShell_arr_ion[:-1]**2 / Qi * params['caseB_alpha'].value * nShell_arr_ion[:-1]**2 * dr_ion_arr
                         )
         
         # If there is no ionised shell (e.g., because the ionising radiation is too weak)
@@ -430,6 +430,8 @@ def shell_structure(params):
         # reinitialise
         rShell_start = rShell_arr_ion[-1]
         
+        print('2-- ready to go into 3--')
+        
         # =============================================================================
         # If the shell is not fully ionised, calculate structure of 
         # non-ionized (neutral) part
@@ -441,7 +443,7 @@ def shell_structure(params):
             
             # Pressure equilibrium dictates that there will be a temperature and density
             # discontinuity at boundary between ionised and neutral region.
-            nShell0 = nShell0 * params['mu_n_au'].value / params['mu_p_au'].value * params['TShell_ion'].value / params['TShell_ion'].value
+            nShell0 = nShell0 * params['mu_neu'].value / params['mu_ion'].value * params['TShell_ion'].value / params['TShell_neu'].value
             # tau(r) at neutral shell region
             tau0_neu = tau0_ion
             
@@ -548,7 +550,7 @@ def shell_structure(params):
                 mShell_arr = np.empty_like(rShell_arr)
                 mShell_arr[0] = mShell0
                 # FIXME: Shouldnt we use mu_p?
-                mShell_arr[1:] = (nShell_arr[1:] * params['mu_p_au'].value * 4 * np.pi * rShell_arr[1:]**2 * rShell_step)
+                mShell_arr[1:] = (nShell_arr[1:] * params['mu_neu'].value * 4 * np.pi * rShell_arr[1:]**2 * rShell_step)
                 mShell_arr_cum = np.cumsum(mShell_arr)
                 
                 # =============================================================================
@@ -598,17 +600,17 @@ def shell_structure(params):
             # Now, compute the gravitational potential for the neutral part of shell
             # =============================================================================
             # FIXME: Shouldnt we use mu_p?
-            grav_neu_rho = nShell_arr_neu * params['mu_p_au'].value
+            grav_neu_rho = nShell_arr_neu * params['mu_neu'].value
             grav_neu_r = rShell_arr_neu
             # mass of the thin spherical shell
             grav_neu_m = grav_neu_rho * 4 * np.pi * grav_neu_r**2 * rShell_step
             # cumulative mass
             grav_neu_m_cum = np.cumsum(grav_neu_m) + grav_ion_m_cum[-1]
             # gravitational potential
-            grav_neu_phi = - 4 * np.pi * params['G_au'].value * (scipy.integrate.simps(grav_neu_r * grav_neu_rho, x = grav_neu_r))
+            grav_neu_phi = - 4 * np.pi * params['G'].value * (scipy.integrate.simps(grav_neu_r * grav_neu_rho, x = grav_neu_r))
             grav_phi = grav_neu_phi + grav_ion_phi
             # gravitational potential force per unit mass
-            grav_neu_force_m = params['G_au'].value * grav_neu_m_cum / grav_neu_r**2
+            grav_neu_force_m = params['G'].value * grav_neu_m_cum / grav_neu_r**2
             
             
             # # --- old code
@@ -646,7 +648,7 @@ def shell_structure(params):
             # The ratio tau_IR/kappa_IR  = \int rho dr
             # Integrating using left Riemann sums.
             # See https://www.imprs-hd.mpg.de/399417/thesis_Rahner.pdf page 45 Eq 9
-            tau_kappa_IR = params['mu_n_au'].value * np.sum(nShell_arr_ion[:-1] * dr_ion_arr) 
+            tau_kappa_IR = params['mu_ion'].value * np.sum(nShell_arr_ion[:-1] * dr_ion_arr) 
             
         else:
             shellThickness = rShell_arr_neu[-1] - rShell0
@@ -655,7 +657,7 @@ def shell_structure(params):
             nShell_max = np.max(nShell_arr_ion)
             dr_neu_arr = rShell_arr_neu[1:] - rShell_arr_neu[:-1]
             # FIXME: Shouldnt we use mu_p?
-            tau_kappa_IR = params['mu_p_au'].value * (np.sum(nShell_arr_neu[:-1] * dr_neu_arr) + np.sum(nShell_arr_ion[:-1] * dr_ion_arr))
+            tau_kappa_IR = params['mu_neu'].value * (np.sum(nShell_arr_neu[:-1] * dr_neu_arr) + np.sum(nShell_arr_ion[:-1] * dr_ion_arr))
             
         # fraction of absorbed ionizing and non-ionizing radiations:
         f_absorbed_ion = 1 - phi_rEnd
@@ -674,7 +676,7 @@ def shell_structure(params):
         f_ionised_dust = np.nan
         is_fullyIonised = True
         shellThickness = np.nan
-        nShell_max = params['nISM_au'].value
+        nShell_max = params['nISM'].value
         tau_kappa_IR = 0
         grav_r = np.nan
         grav_phi = np.nan
@@ -684,16 +686,16 @@ def shell_structure(params):
         
         
     # finally, record
-    params['shell_f_absorbed_ion'].value = f_absorbed_ion
-    params['shell_f_absorbed_neu'].value = f_absorbed_neu
-    params['shell_f_absorbed'].value = f_absorbed
-    params['shell_f_ionised_dust'].value = f_ionised_dust
-    params['shell_f_rad'].value = f_absorbed_ion * params['Lbol'].value / params['c_au'].value
+    params['shell_fAbsorbedIon'].value = f_absorbed_ion
+    params['shell_fAbsorbedNeu'].value = f_absorbed_neu
+    params['shell_fAbsorbedWeightedTotal'].value = f_absorbed
+    params['shell_fIonisedDust'].value = f_ionised_dust
+    params['shell_fRad'].value = f_absorbed_ion * params['Lbol'].value / params['c_light'].value
 
     params['shell_thickness'].value = shellThickness 
-    params['shell_nShellInner'].value = nShellInner
-    params['shell_nShell_max'].value = nShell_max
-    params['shell_tau_kappa_IR'].value = tau_kappa_IR
+    # params['shell_nShellInner'].value = nShellInner
+    params['shell_nMax'].value = nShell_max
+    params['shell_tauKappaRatio'].value = tau_kappa_IR
     
     params['shell_grav_r'].value = grav_r 
     params['shell_grav_phi'].value = grav_phi

@@ -23,12 +23,12 @@ def run_phase_transition(params):
     # TODO: add fragmentation mechanics in events 
 
     # what is the current v2?
-    params['v2'].value = params['alpha'].value * params['R2'].value / (params['t_now'].value) 
+    params['v2'].value = params['cool_alpha'].value * params['R2'].value / (params['t_now'].value) 
     
     
     #-- theoretical minimum and maximum of this phase
     tmin = params['t_now'].value
-    tmax = params['tStop'].value
+    tmax = params['stop_t'].value
 
     # =============================================================================
     # List of possible events and ODE terminating conditions
@@ -130,23 +130,22 @@ def ODE_equations_transition(t, y, params):
     params['T0'].value = T0
     params['R2'].value = R2
     
-    SB99f = params['SB99f'].value
-    
     # returns in pc/yr2
-    vd = phase_ODEs.get_vdot(t, y, params, SB99f)
+    vd = phase_ODEs.get_vdot(t, y, params)
     rd = v2
     
     # shouldnt we also balance r1?
 
-    t_soundcrossing = params['R2'].value/params['cs_avg'].value
+    t_soundcrossing = params['R2'].value/params['c_sound'].value
 
-    params['dEdt'].value = - Eb / t_soundcrossing
+    # params['dEdt'].value = - Eb / t_soundcrossing
+    dEdt = - Eb / t_soundcrossing
     
-    print('dEdt is', params['dEdt'].value)
+    # print('dEdt is', params['dEdt'].value)
     
-    params.save_snapShot()
+    params.save_snapshot()
 
-    return [rd, vd, params['dEdt'].value, 0]
+    return [rd, vd, dEdt, 0]
 
 
 
@@ -182,34 +181,34 @@ def check_events(params, dt_params):
         return True
     
     #--- 1) Stopping time reached
-    if t_next > params['tStop'].value:
-        print(f"Phase ended because t reaches {t_next} Myr (> tStop: {params['tStop'].value}) in the next iteration.")
-        params['completed_reason'].value = 'Stopping time reached'
+    if t_next > params['stop_t'].value:
+        print(f"Phase ended because t reaches {t_next} Myr (> tStop: {params['stop_t'].value}) in the next iteration.")
+        params['SimulationEndReason'].value = 'Stopping time reached'
         return True
     
     #--- 2) Small radius reached during collapse.
-    if params['isCollapse'].value == True and R2_next < params['r_coll'].value:
-        print(f"Phase ended because collapse is {params['isCollapse'].value} and r reaches {R2_next} pc (< r_coll: {params['r_coll'].value} pc)")
-        params['completed_reason'].value = 'Small radius reached'
+    if params['isCollapse'].value == True and R2_next < params['coll_r'].value:
+        print(f"Phase ended because collapse is {params['isCollapse'].value} and r reaches {R2_next} pc (< r_coll: {params['coll_r'].value} pc)")
+        params['SimulationEndReason'].value = 'Small radius reached'
         return True
     
     #--- 3) Large radius reached during expansion.
     if R2_next > params['stop_r'].value:
         print(f"Phase ended because r reaches {R2_next} pc (> stop_r: {params['stop_r'].value} pc)")
-        params['completed_reason'].value = 'Large radius reached'
+        params['SimulationEndReason'].value = 'Large radius reached'
         return True
         
-    #--- 4) dissolution after certain period of low density
-    if params['t_now'].value - params['t_Lowdense'].value > params['stop_t_diss'].value:
-        print(f"Phase ended because {params['t_now'].value - params['t_Lowdense'].value} Myr passed since low density of {params['shell_nShell_max'].value/cvt.ndens_cgs2au} /cm3")
-        params['completed_reason'].value = 'Shell dissolved'
-        return True
+    # #--- 4) dissolution after certain period of low density
+    # if params['t_now'].value - params['t_Lowdense'].value > params['stop_t_diss'].value:
+    #     print(f"Phase ended because {params['t_now'].value - params['t_Lowdense'].value} Myr passed since low density of {params['shell_nShell_max'].value/cvt.ndens_cgs2au} /cm3")
+    #     params['completed_reason'].value = 'Shell dissolved'
+    #     return True
     
     #--- 5) exceeds cloud radius
     if params['expansionBeyondCloud'] == False:
-        if params['R2'].value > params['rCloud_au'].value:
-            print(f"Bubble radius ({params['R2'].value} pc) exceeds cloud radius ({params['rCloud_au'].value} pc)")
-            params['completed_reason'].value = 'Bubble radius larger than cloud'
+        if params['R2'].value > params['rCloud'].value:
+            print(f"Bubble radius ({params['R2'].value} pc) exceeds cloud radius ({params['rCloud'].value} pc)")
+            params['SimulationEndReason'].value = 'Bubble radius larger than cloud'
             return True
     
     

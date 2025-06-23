@@ -21,6 +21,8 @@ import src.bubble_structure.get_bubbleParams as get_bubbleParams
 import src.phase1b_energy_implicit.get_betadelta as get_betadelta
 import src._functions.unit_conversions as cvt
 import src.cooling.non_CIE.read_cloudy as non_CIE
+from src.sb99.update_feedback import get_currentSB99feedback
+
 import src._functions.operations as operations
 #--
 
@@ -29,12 +31,12 @@ def run_phase_energy(params):
     # TODO: add fragmentation mechanics in events 
 
     # what is the current v2?
-    params['v2'].value = params['alpha'].value * params['R2'].value / (params['t_now'].value) 
+    params['v2'].value = params['cool_alpha'].value * params['R2'].value / (params['t_now'].value) 
     
     
     #-- theoretical minimum and maximum of this phase
     tmin = params['t_now'].value
-    tmax = params['tStop'].value
+    tmax = params['stop_t'].value
 
     # =============================================================================
     # List of possible events and ODE terminating conditions
@@ -132,41 +134,21 @@ def ODE_equations(t, y, params):
     params['T0'].value = T0
     params['R2'].value = R2
     
-    SB99f = params['SB99f'].value
-    
     print(f'current stage: t:{t}, r:{R2}, v:{v2}, E:{Eb}, T:{T0}')
     
-    # --- feedback parameters required to find beta/delta etc
-    # Interpolate SB99 to get feedback parameters
-    # mechanical luminosity at time t  
-    L_wind = SB99f['fLw'](t)[()]
-    # momentum of stellar winds at time t  
-    pdot_wind = SB99f['fpdot'](t)[()]
-    # get the slope via mini interpolation for some dt.
-    dt = 1e-9 #*Myr
-    pdotdot_wind = (SB99f['fpdot'](t + dt)[()] - SB99f['fpdot'](t - dt)[()])/ (dt+dt)
-    # print('pdotdot_wind', pdotdot_wind)
-    # other luminosities
-    Qi = SB99f['fQi'](t)[()]
-    # velocity from luminosity and change of momentum (pc/Myr)
-    v_wind = (2.*L_wind/pdot_wind)
+    
     # ---  
     
     #-- updating values in the loop; make sure to include all values of parameters
     # Take note that alpha is defined as a = t/r*v, where t[Myr], v[kms], r[pc]
     # this is kinda wrong. In future lets make it all in pc and Myr before converting
-    params['alpha'].value = t / R2 * v2
-    params['Qi'].value = Qi
-    params['v_wind'].value = v_wind
-    params['pwdot'].value = pdot_wind
-    params['pwdot_dot'].value = pdotdot_wind
-    params['L_wind'].value = L_wind
+    params['cool_alpha'].value = t / R2 * v2
     
     # =============================================================================
     # Prelude: prepare cooling structures so that it doesnt have to run every loop.
     # Tip: Get cooling structure every 50k years (or 1e5?) or so. 
     # =============================================================================
-    if np.abs(params['time_last_cooling_update'].value - params['t_now'].value) > 5e-3: # in Myr
+    if np.abs(params['t_previousCoolingUpdate'].value - params['t_now'].value) > 5e-3: # in Myr
         # recalculate non-CIE
         cooling_nonCIE, heating_nonCIE, netcooling_interpolation = non_CIE.get_coolingStructure(params)
         # save
@@ -174,29 +156,30 @@ def ODE_equations(t, y, params):
         params['cStruc_heating_nonCIE'].value = heating_nonCIE
         params['cStruc_net_nonCIE_interpolation'].value = netcooling_interpolation
         # update current value
-        params['time_last_cooling_update'].value = params['t_now'].value 
+        params['t_previousCoolingUpdate'].value = params['t_now'].value 
         
     # =============================================================================
     # Part 1: find acceleration and velocity
     # =============================================================================
     
     # returns in pc/yr2
-    vd = phase_ODEs.get_vdot(t, y, params, SB99f)
+    vd = phase_ODEs.get_vdot(t, y, params)
     rd = v2
         
     # =============================================================================
     # Part 2: find beta, delta and convert them to dEdt and dTdt
     # =============================================================================
         
-    (beta, delta), result_params = get_betadelta.get_beta_delta_wrapper(params['beta'].value, params['delta'].value, params)
+    (beta, delta), result_params = get_betadelta.get_beta_delta_wrapper(params['cool_beta'].value, params['cool_delta'].value, params)
            
     # update
-    result_params["beta"].value = beta
-    result_params["delta"].value = delta
+    result_params["cool_beta"].value = beta
+    result_params["cool_delta"].value = delta
     print('beta found:', beta, 'delta found', delta)
+    print('current state', result_params)
     
     # sound speed for future dEdt calculation.
-    result_params['cs_avg'].value = operations.get_soundspeed(result_params['bubble_Tavg'].value, result_params)
+    result_params['c_sound'].value = operations.get_soundspeed(result_params['bubble_Tavg'].value, result_params)
 
     #------ convert them to dEdt and dTdt.
     def get_EdotTdot(params_dict
@@ -204,9 +187,9 @@ def ODE_equations(t, y, params):
         # convert beta and delta to dE/dt and dT/dt.
         R1 = scipy.optimize.brentq(get_bubbleParams.get_r1, 
                        1e-3 * params_dict['R2'].value, params_dict['R2'].value, 
-                       args=([params_dict['L_wind'].value, 
+                       args=([params_dict['LWind'].value, 
                               params_dict['Eb'].value, 
-                              params_dict['v_wind'].value,
+                              params_dict['vWind'].value,
                               params_dict['R2'].value,
                               ]))
     
@@ -223,7 +206,7 @@ def ODE_equations(t, y, params):
         # get new beta value
         Edot = get_bubbleParams.beta2Edot(params_dict)
         # get dTdt
-        Tdot = get_bubbleParams.delta2dTdt(params_dict['t_now'].value, params_dict['T0'].value, params_dict['delta'].value)
+        Tdot = get_bubbleParams.delta2dTdt(params_dict['t_now'].value, params_dict['T0'].value, params_dict['cool_delta'].value)
         
         return Edot, Tdot
 
@@ -234,7 +217,7 @@ def ODE_equations(t, y, params):
     print(f'rd: {rd}, vd: {vd}, Ed: {Ed}, Td: {Td}')
     
     # save snapshot
-    result_params.save_snapShot()
+    result_params.save_snapshot()
     
     # return [rd.to(u.pc/u.Myr).value, vd.to(u.km/u.s/u.Myr).value, Ed.to(u.erg/u.Myr).value, Td.to(u.K/u.Myr).value]
     return [rd, vd, Ed, Td]
@@ -269,40 +252,40 @@ def check_events(params, dt_params):
     # TODO add this percent thing into params as well
     
     # Main event: when Lcool approaches 10(?) percent of Lgain.
-    if (params['Lgain'].value - params['Lloss'].value)/params['Lgain'].value < 0.05:
-        print(f"Phase ended because Lloss: {params['Lloss'].value} is within {(params['Lgain'].value - params['Lloss'].value)/params['Lgain'].value * 100}% of Lgain: {params['Lgain'].value}")
+    if (params['bubble_Lgain'].value - params['bubble_Lloss'].value)/params['bubble_Lgain'].value < 0.05:
+        print(f"Phase ended because Lloss: {params['bubble_Lloss'].value} is within {(params['bubble_Lgain'].value - params['bubble_Lloss'].value)/params['bubble_Lgain'].value * 100}% of Lgain: {params['bubble_Lgain'].value}")
         
         return True
     
     #--- 1) Stopping time reached
-    if t_next > params['tStop'].value:
-        print(f"Phase ended because t reaches {t_next} Myr (> tStop: {params['tStop'].value}) in the next iteration.")
-        params['completed_reason'].value = 'Stopping time reached'
+    if t_next > params['stop_t'].value:
+        print(f"Phase ended because t reaches {t_next} Myr (> tStop: {params['stop_t'].value}) in the next iteration.")
+        params['SimulationEndReason'].value = 'Stopping time reached'
         return True
     
     #--- 2) Small radius reached during collapse.
-    if params['isCollapse'].value == True and R2_next < params['r_coll'].value:
-        print(f"Phase ended because collapse is {params['isCollapse'].value} and r reaches {R2_next} pc (< r_coll: {params['r_coll'].value} pc)")
-        params['completed_reason'].value = 'Small radius reached'
+    if params['isCollapse'].value == True and R2_next < params['coll_r'].value:
+        print(f"Phase ended because collapse is {params['isCollapse'].value} and r reaches {R2_next} pc (< r_coll: {params['coll_r'].value} pc)")
+        params['SimulationEndReason'].value = 'Small radius reached'
         return True
     
     #--- 3) Large radius reached during expansion.
     if R2_next > params['stop_r'].value:
         print(f"Phase ended because r reaches {R2_next} pc (> stop_r: {params['stop_r'].value} pc)")
-        params['completed_reason'].value = 'Large radius reached'
+        params['SimulationEndReason'].value = 'Large radius reached'
         return True
         
-    #--- 4) dissolution after certain period of low density
-    if params['t_now'].value - params['t_Lowdense'].value > params['stop_t_diss'].value:
-        print(f"Phase ended because {params['t_now'].value - params['t_Lowdense'].value} Myr passed since low density of {params['shell_nShell_max'].value/cvt.ndens_cgs2au} /cm3")
-        params['completed_reason'].value = 'Shell dissolved'
-        return True
+    # #--- 4) dissolution after certain period of low density
+    # if params['t_now'].value - params['t_Lowdense'].value > params['stop_t_diss'].value:
+    #     print(f"Phase ended because {params['t_now'].value - params['t_Lowdense'].value} Myr passed since low density of {params['shell_nShell_max'].value/cvt.ndens_cgs2au} /cm3")
+    #     params['completed_reason'].value = 'Shell dissolved'
+    #     return True
     
     #--- 5) exceeds cloud radius
     if params['expansionBeyondCloud'] == False:
-        if params['R2'].value > params['rCloud_au'].value:
-            print(f"Bubble radius ({params['R2'].value} pc) exceeds cloud radius ({params['rCloud_au'].value} pc)")
-            params['completed_reason'].value = 'Bubble radius larger than cloud'
+        if params['R2'].value > params['rCloud'].value:
+            print(f"Bubble radius ({params['R2'].value} pc) exceeds cloud radius ({params['rCloud'].value} pc)")
+            params['SimulationEndReason'].value = 'Bubble radius larger than cloud'
             return True
     
     return False

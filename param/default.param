@@ -33,7 +33,7 @@
 model_name    default
 
 # INFO: Defines the output directory where all generated files will be stored. 
-out_dir    def_dir
+path2output    def_dir
 
 # INFO: Controls the verbosity level of terminal output:
 verbose    1
@@ -108,6 +108,16 @@ stop_v    -1e4
 stop_t    50
 
 
+
+# ==============================================================================
+# Collapse parameters
+# ==============================================================================
+# INFO: Radius below which the cloud is considered completely collapsed.
+# UNIT: [pc]
+coll_r    1
+
+
+
 # ==============================================================================
 # Parameters for feedback calculations from Starburst99 
 # ==============================================================================
@@ -177,7 +187,7 @@ gamma_adia    5/3
 # UNIT: [erg * s**-1 * cm**-1 * K**(-7/2)]
 C_thermal    6e-7
 
-# Should we allow bubble radius to go beyond cloud radius?
+# INFO: Should we allow bubble radius to go beyond cloud radius?
 expansionBeyondCloud    False
 
 # INFO: speed of light
@@ -238,7 +248,7 @@ path_sps    def_dir
 # =============================================================================
 
 # INFO: The relative radius xi = r/R2, at which we measure the bubble temperature.
-xi_Tb    0.9
+bubble_xi_Tb    0.9
 
 
 
