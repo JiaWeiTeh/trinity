@@ -36,7 +36,7 @@ def start_expansion(params):
     Parameters
     ----------
     params : Object
-        An object describing WARPFIELD parameters.
+        An object describing TRINITY parameters.
 
     Returns
     -------
@@ -58,12 +58,39 @@ def start_expansion(params):
     # =============================================================================
     
     # Step 1: Obtain initial cloud properties
+    
+    # BEsphere stuffs
+    
+    
+    
+    
     # ---
-    rCloud, nEdge = get_InitCloudProp.get_CloudRadiusEdge(params)
+    # rCloud, nEdge = get_InitCloudProp.get_CloudRadiusEdge(params)
+    get_InitCloudProp.get_InitCloudProp(params)
     # initialise
-    params['rCloud'].value = rCloud
-    params['nEdge'].value = nEdge
-    print(f"Cloud radius is {np.round(rCloud, 3)}pc.")
+    
+    
+    
+    
+    # import matplotlib.pyplot as plt
+    
+    # n_arr = params['initial_cloud_n_arr'].value
+    # # m_arr = params['initial_cloud_m_arr'].value
+    # r_arr = params['initial_cloud_r_arr'].value
+    
+    # plt.plot(r_arr, n_arr * cvt.ndens_au2cgs)
+    # # plt.axhline(params['nCore'] * 0.9 * cvt.ndens_au2cgs, linestyle = '--')
+    # # plt.axhline(params['nCore'] * 0.95 * cvt.ndens_au2cgs, linestyle = '--', c = 'b')
+    # # # plt.plot(r_arr, m_arr)
+    # plt.yscale('log')
+    # plt.xscale('log')
+    # plt.show()
+    
+    # sys.exit()
+    
+    
+    
+    
     
     # Step 2: Obtain parameters from Starburst99
     # ---
@@ -200,13 +227,14 @@ def run_expansion(params):
     
     print('total time: ', phase1a_endtime - phase1a_starttime)
     
+    
     # record
     try:
         params.flush()
     except:
         pass  
     
-    # sys.exit()
+    # sys.exit('done with phase 1a')
     
     
     # ------------
@@ -232,28 +260,28 @@ def run_expansion(params):
     
 
     # Since cooling is not needed anymore after this phase, we reset values.
-    params['residual_deltaT'] = np.nan
-    params['residual_betaEdot'] = np.nan
-    params['residual_Edot1_guess'] = np.nan
-    params['residual_Edot2_guess'] = np.nan
-    params['residual_T1_guess'] = np.nan
-    params['residual_T2_guess'] = np.nan
+    params['residual_deltaT'].value = np.nan
+    params['residual_betaEdot'].value = np.nan
+    params['residual_Edot1_guess'].value = np.nan
+    params['residual_Edot2_guess'].value = np.nan
+    params['residual_T1_guess'].value = np.nan
+    params['residual_T2_guess'].value = np.nan
  
-    params['bubble_Lgain'] = np.nan
-    params['bubble_Lloss'] = np.nan
-    params['bubble_Leak'] = np.nan
+    params['bubble_Lgain'].value = np.nan
+    params['bubble_Lloss'].value = np.nan
+    params['bubble_Leak'].value = np.nan
  
-    params['t_previousCoolingUpdate'] = np.nan
-    params['cStruc_cooling_nonCIE'] = np.nan
-    params['cStruc_heating_nonCIE'] = np.nan
-    params['cStruc_net_nonCIE_interpolation'] = np.nan
+    params['t_previousCoolingUpdate'].value = np.nan
+    params['cStruc_cooling_nonCIE'].value = np.nan
+    params['cStruc_heating_nonCIE'].value = np.nan
+    params['cStruc_net_nonCIE_interpolation'].value = np.nan
     # --
-    params['cStruc_cooling_CIE_logT'] = np.nan
-    params['cStruc_cooling_CIE_logLambda'] = np.nan
-    params['cStruc_cooling_CIE_interpolation'] = np.nan
+    params['cStruc_cooling_CIE_logT'].value = np.nan
+    params['cStruc_cooling_CIE_logLambda'].value = np.nan
+    params['cStruc_cooling_CIE_interpolation'].value = np.nan
  
-    params['cool_beta'] = np.nan
-    params['cool_delta'] = np.nan
+    params['cool_beta'].value = np.nan
+    params['cool_delta'].value = np.nan
 
     
     params['cStruc_cooling_CIE_interpolation'].value = np.nan
@@ -279,7 +307,8 @@ def run_expansion(params):
 
     params['current_phase'].value = '2'
     
-    run_transition_phase.run_phase_transition(params)
+    if params['EndSimulationDirectly'].value == False:
+        run_transition_phase.run_phase_transition(params)
     
     try:
         params.flush()
@@ -293,7 +322,8 @@ def run_expansion(params):
 
     params['current_phase'].value = '3'
     
-    run_momentum_phase.run_phase_momentum(params)
+    if params['EndSimulationDirectly'].value == False:
+        run_momentum_phase.run_phase_momentum(params)
 
     try:
         params.flush()

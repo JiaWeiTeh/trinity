@@ -1,0 +1,8 @@
+model_name    cloud_example_PL
+mCloud    1e6
+sfe    0.01
+# powerlaw, -2
+dens_profile    densPL
+densPL_alpha -1.8
+nCore    1e6
+nISM    10

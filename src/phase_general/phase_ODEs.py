@@ -58,6 +58,17 @@ def get_vdot(t, y,
     
     params['shell_mass'].value = mShell
     params['shell_massDot'].value = mShell_dot
+    
+    params['array_t_now'].value = np.concatenate([params['array_t_now'].value, [t]])
+    params['array_R2'].value = np.concatenate([params['array_R2'].value, [R2]])
+    params['array_R1'].value = np.concatenate([params['array_R1'].value, [params['R1'].value]])
+    params['array_v2'].value = np.concatenate([params['array_v2'].value, [v2]])
+    params['array_T0'].value = np.concatenate([params['array_T0'].value, [T0]])
+    
+    print('mshell problems', mShell)
+    
+    params['array_mShell'].value = np.concatenate([params['array_mShell'].value, [mShell]])
+    
         
     cf = 1
     
@@ -144,7 +155,11 @@ def get_vdot(t, y,
     if params['shell_fAbsorbedIon'].value < 1.0:
         press_HII = get_press_ion(R2, params)
     else:
-        press_HII = 0.0
+        if params['R2'].value >= params['rCloud'].value:
+            # TODO: add this more for ambient pressure
+            press_HII = 5e3 * (params['k_B'] * cvt.k_B_au2cgs)
+        else:
+            press_HII = 0.0
         
     # =============================================================================
     # calculate the ODE part: Acceleration 

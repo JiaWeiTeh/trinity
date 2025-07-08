@@ -1,4 +1,8 @@
 model_name    1e7_sfe001_n1e2
-log_mCloud    7
+mCloud    1e7
 sfe    0.01
-dens_navg_pL    1e2
+# powerlaw, homogeneous
+dens_profile    densPL
+densPL_alpha    0
+nCore    1e2
+nISM    10

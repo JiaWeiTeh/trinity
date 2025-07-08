@@ -1,0 +1,8 @@
+model_name    1e7_sfe001_n1e5_PL
+mCloud    1e7
+sfe    0.01
+# powerlaw, -2
+dens_profile    densPL
+densPL_alpha    -2
+nCore    1e5
+nISM    10

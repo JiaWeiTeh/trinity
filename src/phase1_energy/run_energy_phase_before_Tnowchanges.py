@@ -90,57 +90,48 @@ def run_energy(params):
     Pb = get_bubbleParams.bubble_E2P(Eb, R2, R1, params['gamma_adia'].value)
     
     # How long to stay in Weaver phase? Until what radius?
-    # rfinal = rCloud
-    # if params['dens_profile'].value == 'densPL':
-    #     if params['densPL_alpha'].value != 0:
-    #         rfinal = np.min([params['rCloud_au'], params['rCore']])
+    rfinal = rCloud
+    if params['dens_profile'].value == 'densPL':
+        if params['densPL_alpha'].value != 0:
+            rfinal = np.min([params['rCloud_au'], params['rCore']])
     
     print(f'Inner discontinuity: {R1} pc')
     print(f'Initial bubble mass: {Msh0}')
     print(f'Initial bubble pressure: {Pb}')
-    # print(f'rfinal: {rfinal} pc')
+    print(f'rfinal: {rfinal} pc')
     # update
     params['Pb'].value = Pb
     params['R1'].value = R1
     
-                # OLD ---
+    # first stopping time (will be incremented at beginning of while loop)
+    # start time t0 will be incremented at end of while loop
+    tStop_i = t_now
     
-                # # first stopping time (will be incremented at beginning of while loop)
-                # # start time t0 will be incremented at end of while loop
-                # tStop_i = t_now
-                
-                # # Now, we define some start values. In this phase, these three will stay constant throughout.
-                
-                # # minimum separation in this phase?
-                # # dt_Emin = 1e-5 #* u.Myr
-                # # maximum separation in this phase?
-                # dt_Emax = 0.04166 #* u.Myr
-                
-                # dt_Estart = 1e-4 #* u.Myr
-                # dt_L = dt_Estart
-                
-                # # this will be the proper dt, timestep
-                # dt_real  = 1e-4 #* u.Myr
-                
-                
-                # # idk what is this. has to do with fitting?
-                # fit_len_max = 13
-                
-                # condition_to_reduce_timestep = False
-                
-                # ---
-                
+    # Now, we define some start values. In this phase, these three will stay constant throughout.
     
+    # minimum separation in this phase?
+    # dt_Emin = 1e-5 #* u.Myr
+    # maximum separation in this phase?
+    dt_Emax = 0.04166 #* u.Myr
+    dt_Estart = 1e-4 #* u.Myr
     
+    dt_L = dt_Estart
     
+    # this will be the proper dt, timestep
+    dt_real  = 1e-4 #* u.Myr
     
-    # old code: mom_phase
-    immediately_to_momentumphase = False
     # record the initial Lw0. This value will be changed in the loop. 
     # old code: Lw_old
     Lw_previous = LWind
-
-
+    
+    # idk what is this. has to do with fitting?
+    fit_len_max = 13
+    
+    # old code: mom_phase
+    immediately_to_momentumphase = False
+    
+    condition_to_reduce_timestep = False
+    
     continueWeaver = True
     # how many times had the main loop being ran?
     loop_count = 0
@@ -151,21 +142,13 @@ def run_energy(params):
     # Myr
     # tfinal = 1e-2
     tfinal = 3e-3
-    
-    dt_min = 1e-6
 
 
-# =============================================================================
-#   this energy phase persists if:
-#       1) radius is less than cloud radius
-#       2) total time change is less than 1e-5/-4 Myr (~1e4yr is Sedov Taylor cooling).
-# 
-# =============================================================================
+    dt_Emin = 1e-5
 
-    while R2 < rCloud and\
-        (tfinal - t_now) > 1e-4 and\
-            continueWeaver:
-
+    while all([R2 < rfinal, (tfinal - t_now) > dt_Emin, continueWeaver]):
+        
+        
         # =============================================================================
         # Prelude: prepare cooling structures so that it doesnt have to run every loop.
         # Tip: Get cooling structure every 50k years (or 1e5?) or so. 
@@ -185,199 +168,177 @@ def run_energy(params):
         # calculate bubble structure and shell structure?
         # no need to calculate them at very early times, since we say that no bubble or shell is being
         # created at this time. Old code: structure_switch
-        
-        # an initially small dt value if it is the first loop.
         calculate_bubble_shell = loop_count > 0
         
-        # eventhough we have an array of time t_arr, we dont have to do bubble calculation
-        # every single time. We just assume that since the timesteps are small enough, 
-        # we can approximate the bubble as having the same properties
-        # Since also this phase cooling is not important, its probably a good approximation
-        # 
+        # an initially small value if it is the first loop.
+        if loop_count == 0:
+            dt_Emin = 1e-5
+        else:
+            dt_Emin = 1e-4
         
-        t_arr = np.arange(t_now, t_now +  (dt_min * 50), dt_min)  
-        # print(t_arr)
+        # =============================================================================
+        # identify time step size and end-time value
+        # =============================================================================
         
-                    # OLD --- 
-                    
-                    # # =============================================================================
-                    # # identify time step size and end-time value
-                    # # =============================================================================
-                    
-                    # # in the very beginning (and around first SNe) decrease tCheck because fabs varys a lot
-                    # # increment stopping time
-                    # ii_dLwdt = operations.find_nearest_lower(t_evo, t_now)
-                    # if dLwdt[ii_dLwdt] > 0:
-                    #     dt_Lw = 0.94 * (0.005 * Lw_previous) / dLwdt[ii_dLwdt]
-                    # else:
-                    #     dt_Lw = dt_Emax
-                    # # consistent unit
+        # in the very beginning (and around first SNe) decrease tCheck because fabs varys a lot
+        # increment stopping time
+        ii_dLwdt = operations.find_nearest_lower(t_evo, t_now)
+        if dLwdt[ii_dLwdt] > 0:
+            dt_Lw = 0.94 * (0.005 * Lw_previous) / dLwdt[ii_dLwdt]
+        else:
+            dt_Lw = dt_Emax
+        # consistent unit
+
+        
+        # check stoptime: it should be minimum between tfinal and tadaptive, 
+        # where tadaptive = min (t0 + dt_total or dt_emax or dt_wind)
+        # [Myr]
+        tStop_i = np.min([tfinal, t_now + np.min([dt_L, dt_Emax, dt_Lw])]) #* u.Myr
+        # find nearest problematic neighbor of current stop time
+        t_problem_hi = t_problem[t_problem > (t_now + 0.001 * dt_Emin)]
+        # the next problematic time
+        t_problem_nnhi = t_problem_hi[0]
+        # restate [Myr]
+        tStop_i = np.min([tStop_i, (t_problem_nnhi - float(fit_len_max + 1) * dt_Emin)]) #* u.Myr
+ 
+        # ensure that time step becomes not too small or negative
+        if tStop_i < (t_now + dt_Emin):
+            tStop_i = t_now + dt_Emin
             
-                    
-                    # # check stoptime: it should be minimum between tfinal and tadaptive, 
-                    # # where tadaptive = min (t0 + dt_total or dt_emax or dt_wind)
-                    # # [Myr]
-                    # tStop_i = np.min([tfinal, t_now + np.min([dt_L, dt_Emax, dt_Lw])]) #* u.Myr
-                    # # find nearest problematic neighbor of current stop time
-                    # t_problem_hi = t_problem[t_problem > (t_now + 0.001 * dt_Emin)]
-                    # # the next problematic time
-                    # t_problem_nnhi = t_problem_hi[0]
-                    # # restate [Myr]
-                    # tStop_i = np.min([tStop_i, (t_problem_nnhi - float(fit_len_max + 1) * dt_Emin)]) #* u.Myr
-             
-                    # # ensure that time step becomes not too small or negative
-                    # if tStop_i < (t_now + dt_Emin):
-                    #     tStop_i = t_now + dt_Emin
-                        
-                    # # t0 changes at the end of this loop.
-                    # dt_real = tStop_i - t_now    
-                    
-                    # print(f'\n\nloop {loop_count}, R2: {R2}.\n\n')
-                    # print(f'conditions: R2 < rfinal: {R2}:{rfinal}')
-                    # print(f'conditions: tfinal - t_now: {tfinal}:{t_now}')
-                    # print(f'dt_Emin: {dt_Emin}')
-                    # print(f'tStop_i: {tStop_i}')
-                    # print(f'dt_real: {dt_real}') 
-                    
-                    # # t0 will increase bit by bit in this main loop
+        # t0 changes at the end of this loop.
+        dt_real = tStop_i - t_now    
+        
+        print(f'\n\nloop {loop_count}, R2: {R2}.\n\n')
+        print(f'conditions: R2 < rfinal: {R2}:{rfinal}')
+        print(f'conditions: tfinal - t_now: {tfinal}:{t_now}')
+        print(f'dt_Emin: {dt_Emin}')
+        print(f'tStop_i: {tStop_i}')
+        print(f'dt_real: {dt_real}') 
+        
+        # t0 will increase bit by bit in this main loop
+
+        # In this while loop, we calculate the bubble structure.
+        # before this time step is accepted, check how the mechanical luminosity would change
+        # if it would change too much, reduce time step
+        while True:
             
-                    # # In this while loop, we calculate the bubble structure.
-                    # # before this time step is accepted, check how the mechanical luminosity would change
-                    # # if it would change too much, reduce time step
-                    # while True:
-                        
-                        
-                    #     if condition_to_reduce_timestep:
-                    #         # continue the while loop, with smaller timestep otherwise, reduce timestep in next iteratin of loop
-                    #         # prepare for the next bubble loop
-                    #         dt_real = 0.5 * dt_real
-                    #         tStop_i = t_now + dt_real
-                        
-                        
-                    #     # =============================================================================
-                    #     # Here, we create the array for timesteps for bubble calculation. 
-                    #     # =============================================================================
-                        
-                    #     t_inc = dt_real / 1e3
-                    #     # time vector for this time step
-                    #     # make sure to include tStop_i+t_inc here, i.e. go one small dt further
-                    #     t_temp = np.arange(t_now, tStop_i + t_inc, t_inc) #* u.Myr
-                        
-                    #     # insert a value close to t[-1]
-                    #     # I don't know why specifically this value, but it is in the original code. 
-                    #     t_smallfinal = t_temp[-1] -  9.9147e-6 #* u.Myr
-                    #     # if this value is smaller than the beginning, don't bother adding
-                    #     if t_smallfinal > t_temp[0]:
-                    #         idx_t_smallfinal = np.searchsorted(t_temp, t_smallfinal)
-                    #         # old code: t
-                    #         t_arr = np.insert(t_temp,idx_t_smallfinal,t_smallfinal)
-                    #     else:
-                    #         # initialise index anyway for future use
-                    #         idx_t_smallfinal = 0
-                    #         t_arr = t_temp
-                        
-                    #     # We then evaluate the feedback parameters at these midpoint timesteps.
-                    #     # old code: thalf
-                    #     t_midpoint = 0.5 * (t_arr[0] + t_arr[-1])
-                    #     # mechanical luminosity at time t_midpoint (erg)
-                    #     Lw_tStop = SB99f['fLw'](tStop_i)[()]
-                        
-                    #     [Qi, LWind, Lbol, Ln, Li, vWind, pWindDot, pWindDotDot] = get_currentSB99feedback(t_midpoint, params)
+            
+            if condition_to_reduce_timestep:
+                # continue the while loop, with smaller timestep otherwise, reduce timestep in next iteratin of loop
+                # prepare for the next bubble loop
+                dt_real = 0.5 * dt_real
+                tStop_i = t_now + dt_real
+            
+            
+            # =============================================================================
+            # Here, we create the array for timesteps for bubble calculation. 
+            # =============================================================================
+            
+            t_inc = dt_real / 1e3
+            # time vector for this time step
+            # make sure to include tStop_i+t_inc here, i.e. go one small dt further
+            t_temp = np.arange(t_now, tStop_i + t_inc, t_inc) #* u.Myr
+            
+            # insert a value close to t[-1]
+            # I don't know why specifically this value, but it is in the original code. 
+            t_smallfinal = t_temp[-1] -  9.9147e-6 #* u.Myr
+            # if this value is smaller than the beginning, don't bother adding
+            if t_smallfinal > t_temp[0]:
+                idx_t_smallfinal = np.searchsorted(t_temp, t_smallfinal)
+                # old code: t
+                t_arr = np.insert(t_temp,idx_t_smallfinal,t_smallfinal)
+            else:
+                # initialise index anyway for future use
+                idx_t_smallfinal = 0
+                t_arr = t_temp
+            
+            # We then evaluate the feedback parameters at these midpoint timesteps.
+            # old code: thalf
+            t_midpoint = 0.5 * (t_arr[0] + t_arr[-1])
+            # mechanical luminosity at time t_midpoint (erg)
+            Lw_tStop = SB99f['fLw'](tStop_i)[()]
+            
+            [Qi, LWind, Lbol, Ln, Li, vWind, pWindDot, pWindDotDot] = get_currentSB99feedback(t_midpoint, params)
+    
+            # if mechanical luminosity would change too much, run through this while = True loop again with reduced time step
+            # check that the difference with previous loop is not more than 0.5% of the original value.
+            # if these conditions are not met, no need to calculate bubble - save computation
+            # timestep needed to be reduced.
+            condition_to_reduce_timestep1 = abs(Lw_tStop - Lw_previous) < (0.005 * Lw_previous)
+            condition_to_reduce_timestep2 = abs(LWind - Lw_previous) < (0.005 * Lw_previous)
+            condition_to_reduce_timestep3 = (dt_real < 2 * dt_Emin)
+            
+            # print(condition_to_reduce_timestep1, condition_to_reduce_timestep2, condition_to_reduce_timestep3)
+            # sys.exit()
+            
+            # combined
+            condition_to_reduce_timestep = (condition_to_reduce_timestep1 and condition_to_reduce_timestep2) or condition_to_reduce_timestep3
+            
+            # update
+            updateDict(params,
+                       ['R2', 'Eb'],
+                       [R2, Eb])
+            
+            # TODO: mShell still requires to subtract mBubble no?
+            updateDict(params, ['R1', 'Pb', 'shell_mass'], [R1, Pb, Msh0])
+            
+            # TODO: make all dictionary extraction at the beginning, so taht we know
+            # which values need to be updated.
+            
+            if condition_to_reduce_timestep:
+                # TODO: remove after debug
+                # should we calculate the bubble structure?
                 
-                    #     # if mechanical luminosity would change too much, run through this while = True loop again with reduced time step
-                    #     # check that the difference with previous loop is not more than 0.5% of the original value.
-                    #     # if these conditions are not met, no need to calculate bubble - save computation
-                    #     # timestep needed to be reduced.
-                    #     condition_to_reduce_timestep1 = abs(Lw_tStop - Lw_previous) < (0.005 * Lw_previous)
-                    #     condition_to_reduce_timestep2 = abs(LWind - Lw_previous) < (0.005 * Lw_previous)
-                    #     condition_to_reduce_timestep3 = (dt_real < 2 * dt_Emin)
-                        
-                    #     # print(condition_to_reduce_timestep1, condition_to_reduce_timestep2, condition_to_reduce_timestep3)
-                    #     # sys.exit()
-                        
-                    #     # combined
-                    #     condition_to_reduce_timestep = (condition_to_reduce_timestep1 and condition_to_reduce_timestep2) or condition_to_reduce_timestep3
-                        
-                    #     # update
-                    #     updateDict(params,
-                    #                ['R2', 'Eb'],
-                    #                [R2, Eb])
-                        
-                    #     # TODO: mShell still requires to subtract mBubble no?
-                    #     updateDict(params, ['R1', 'Pb', 'shell_mass'], [R1, Pb, Msh0])
-                        
-                    #     # TODO: make all dictionary extraction at the beginning, so taht we know
-                    #     # which values need to be updated.
-                        
-                    #     if condition_to_reduce_timestep:
-                    #         # TODO: remove after debug
-                    #         # should we calculate the bubble structure?
-                            
-                    #         # =============================================================================
-                    #         # Calculate bubble structure
-                    #         # =============================================================================
-                            
-                    #         if calculate_bubble_shell:
-                                
-                    #             print('\nCalculate bubble and shell\n')
-                    #             _ = bubble_luminosity.get_bubbleproperties(params)
-                                
-                    #             # update this here instead of in bubble_luminosity so that 
-                    #             # T0 will not be overwrite when we are dealing with phase1b.
-                    #             # params['T0'].value = params['bubble_T_rgoal'].value
-            
-                    #             # update T0 here
-                    #             params['T0'].value = params['bubble_T_r_Tb'].value
-                    #             T0 = params['bubble_T_r_Tb'].value
-                    #             Tavg = params['bubble_Tavg'].value
-                                
-                                
-                    #             print('\n\nFinish bubble\n\n')
-                    #             print('L_total', params['bubble_LTotal'].value)
-                    #             print('T0', params['T0'].value)
-                    #             print('L_bubble', params['bubble_L1Bubble'].value)
-                    #             print('L_conduction', params['bubble_L2Conduction'].value)
-                    #             print('L_intermediate', params['bubble_L3Intermediate'].value)
-                    #             print('bubble_Tavg', params['bubble_Tavg'].value)
-                    #             print('bubble_mBubble', params['bubble_mass'].value)
-                                    
-                    #         elif not calculate_bubble_shell:
-                    #             Tavg = T0
-                    #             dt_L = dt_L
-                            
-                    #         # average sound speed in bubble
-                    #         c_sound = operations.get_soundspeed(Tavg, params)
-            
-                    
-                    #     # leave the while = True loop, if:   1) the bubble is not calculated, OR
-                    #     #                                    2) if it is SUCCESSFULLY calculated AND delta did not change by large margin, OR
-                    #     #                                    3) time step is already close to the lower limit
-                    #     if not calculate_bubble_shell: 
-                    #         break
-                    #     if dt_real < 2 * dt_Emin:
-                    #         break
-            
-                    #     condition_to_reduce_timestep = True
-                    #     # put this here to signify ending of loop
-                    #     pass
+                # =============================================================================
+                # Calculate bubble structure
+                # =============================================================================
                 
+                if calculate_bubble_shell:
+                    
+                    print('\nCalculate bubble and shell\n')
+                    _ = bubble_luminosity.get_bubbleproperties(params)
+                    
+                    # update this here instead of in bubble_luminosity so that 
+                    # T0 will not be overwrite when we are dealing with phase1b.
+                    # params['T0'].value = params['bubble_T_rgoal'].value
+
+                    # update T0 here
+                    params['T0'].value = params['bubble_T_r_Tb'].value
+                    T0 = params['bubble_T_r_Tb'].value
+                    Tavg = params['bubble_Tavg'].value
+                    
+                    
+                    print('\n\nFinish bubble\n\n')
+                    print('L_total', params['bubble_LTotal'].value)
+                    print('T0', params['T0'].value)
+                    print('L_bubble', params['bubble_L1Bubble'].value)
+                    print('L_conduction', params['bubble_L2Conduction'].value)
+                    print('L_intermediate', params['bubble_L3Intermediate'].value)
+                    print('bubble_Tavg', params['bubble_Tavg'].value)
+                    print('bubble_mBubble', params['bubble_mass'].value)
+                        
+                elif not calculate_bubble_shell:
+                    Tavg = T0
+                    dt_L = dt_L
                 
-                    #  ----
-                    
-                    
-                    
-                    
-        # --- new calculations
+                # average sound speed in bubble
+                c_sound = operations.get_soundspeed(Tavg, params)
+
         
-        
-        
-        
-        
-        
-        
-        # ---
+            # leave the while = True loop, if:   1) the bubble is not calculated, OR
+            #                                    2) if it is SUCCESSFULLY calculated AND delta did not change by large margin, OR
+            #                                    3) time step is already close to the lower limit
+            if not calculate_bubble_shell: 
+                break
+            if dt_real < 2 * dt_Emin:
+                break
+
+            condition_to_reduce_timestep = True
+            # put this here to signify ending of loop
+            pass
 
     
+        params['c_sound'].value = c_sound
 
         # =============================================================================
         # Calculate shell structure
@@ -388,39 +349,15 @@ def run_energy(params):
         
         if calculate_bubble_shell:
             
-            
-            _ = bubble_luminosity.get_bubbleproperties(params)
-            
-            # update this here instead of in bubble_luminosity so that 
-            # T0 will not be overwrite when we are dealing with phase1b.
-            T0 = params['bubble_T_r_Tb'].value
-            params['T0'].value = T0
-            Tavg = params['bubble_Tavg'].value
-
-            print('\n\nFinish bubble\n\n')
-            print('L_total', params['bubble_LTotal'].value)
-            print('T0', params['T0'].value)
-            print('L_bubble', params['bubble_L1Bubble'].value)
-            print('L_conduction', params['bubble_L2Conduction'].value)
-            print('L_intermediate', params['bubble_L3Intermediate'].value)
-            print('bubble_Tavg', params['bubble_Tavg'].value)
-            print('bubble_mBubble', params['bubble_mass'].value)
-            
 
             shell_structure.shell_structure(params)
             
             print('\n\nShell structure calculated.\n\n')
             
         elif not calculate_bubble_shell:
-            print('bubble and shell not calculated.')
             # TODO: redefine these values so that they are more physically similar to the environments
-            # TODO: what about those that are inherited by values from previous entries in dictionary?
-            # make sure to also initialise them properly.
-            Tavg = T0
-            
-        
-        c_sound = operations.get_soundspeed(Tavg, params)
-        params['c_sound'].value = c_sound
+            # since we already have dictionary, this part should be empty and it should be fine.
+            pass
             
         # update
         
@@ -474,19 +411,19 @@ def run_energy(params):
         params['c_sound'].value = c_sound
     
     
-        params['array_t_now'].value = np.concatenate([params['array_t_now'].value, [t_now]])
-        params['array_R2'].value = np.concatenate([params['array_R2'].value, [R2]])
-        params['array_R1'].value = np.concatenate([params['array_R1'].value, [R1]])
-        params['array_v2'].value = np.concatenate([params['array_v2'].value, [v2]])
-        params['array_T0'].value = np.concatenate([params['array_T0'].value, [T0]])
-        params['array_mShell'].value = np.concatenate([params['array_mShell'].value, [Msh0]])
-        
+        params['array_t_now'].value = np.concatenate([params['array_t_now'].value, t_now])
+        params['array_R2'].value = np.concatenate([params['array_R2'].value, R2])
+        params['array_R1'].value = np.concatenate([params['array_R1'].value, R1])
+        params['array_v2'].value = np.concatenate([params['array_v2'].value, v2])
+        params['array_T0'].value = np.concatenate([params['array_T0'].value, T0])
+    
         # save here
         print('saving snapshot')
         params.save_snapshot()
         # debug
         # params.flush()
-        
+    
+    
         # =============================================================================
         # Prepare for next loop
         # =============================================================================
@@ -501,40 +438,45 @@ def run_energy(params):
         # bubble energy
         Eb = Eb_arr[-1]
         
-        Msh0 = mShell_arr[-1] # shell mass
-        
-    
         [Qi, LWind, Lbol, Ln, Li, vWind, pWindDot, pWindDotDot] =  get_currentSB99feedback(t_now, params)
         
-        # # if we are going to the momentum phase next, do not have to 
-        # # calculate the discontinuity for the next loop
-        # if immediately_to_momentumphase:
-        #     R1 = R2 # why?
-        #     # bubble pressure
-        #     Pb = get_bubbleParams.pRam(R2, LWind, vWind)
-        # # else, if we are continuing this loop and staying in energy
-        # else:
-        R1 = scipy.optimize.brentq(get_bubbleParams.get_r1, 
-                       1e-3 * R2, R2, 
-                       args=([LWind, Eb, vWind, R2]))
-        # bubble pressure
-        Pb = get_bubbleParams.bubble_E2P(Eb, R2, R1, params['gamma_adia'].value)
+        # if we are going to the momentum phase next, do not have to 
+        # calculate the discontinuity for the next loop
+        if immediately_to_momentumphase:
+            R1 = R2 # why?
+            # bubble pressure
+            Pb = get_bubbleParams.pRam(R2, LWind, vWind)
+        # else, if we are continuing this loop and staying in energy
+        else:
+            R1 = scipy.optimize.brentq(get_bubbleParams.get_r1, 
+                           1e-3 * R2, R2, 
+                           args=([LWind, Eb, vWind, R2]))
+            # bubble pressure
+            Pb = get_bubbleParams.bubble_E2P(Eb, R2, R1, params['gamma_adia'].value)
+            
+            
+        Msh0 = mShell_arr[-1] # shell mass
+        
+        
+        # renew constants
+        Lw_previous = LWind
+        
+        # if warpfield_params.frag_enabled:
+        #     pass
+            # dfragdt = (frag_value_threshold - frag_value0)/(t_arr[-1]-t_arr[0])
+            # frag_value0 = frag_value_threshold
+        
         
         updateDict(params, 
                     ['R1', 'R2', 'v2', 'Eb', 't_now', 'Pb', 'shell_mass'], 
                     [R1, R2, v2, Eb, t_now, Pb, Msh0])
-            
-        # renew constants
-        # Lw_previous = LWind
         
         
         # update loop counter
         loop_count += 1
         
-        # print(params)
-        
-        
-        # if loop_count > 1:
+        print(params)
+        # if loop_count == 20:
         #     import sys
         #     sys.exit()
         

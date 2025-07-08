@@ -56,13 +56,22 @@ header.display(params)
 # import sys
 # sys.exit()
 
+# try:
+#     main.start_expansion(params)
+# except Exception as e:
+#     print(f'Simulation exited. Error:\n{e}')
+#     params.flush()
+#     pass
+
+
+# test
 
 main.start_expansion(params)
 
-try:
-    params.flush()
-except:
-    pass 
+# try:
+#     params.flush()
+# except:
+#     pass 
 
 
 # try:
@@ -72,13 +81,6 @@ except:
 # except:
 #     pass
 
-# try:
-#     main.start_expansion(main_dict)
-# except Exception as e:
-#     print(f'Simulation exited. Error:\n{e}')
-#     main_dict.flush()
-#     pass
-# # test
 
 # Done!
 

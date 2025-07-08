@@ -245,9 +245,19 @@ def read_param(path2file, write_summary = True):
     if param['dens_profile'] == 'densBE':
         param.pop('densPL_alpha')
         param['densBE_Omega'].exclude_from_snapshot = True
+        
+        param['densBE_Teff'] = DescribedItem(0, 'Effective temperature of BE sphere.')
+        param['densBE_xi_arr'] = DescribedItem([], 'see solve_laneEmden in bonnoEbertSphere.py')
+        param['densBE_u_arr'] = DescribedItem([], 'see solve_laneEmden in bonnoEbertSphere.py')
+        param['densBE_dudxi_arr'] = DescribedItem([], 'see solve_laneEmden in bonnoEbertSphere.py')
+        param['densBE_rho_rhoc_arr'] = DescribedItem([], 'see solve_laneEmden in bonnoEbertSphere.py') 
+        param['densBE_f_rho_rhoc'] = DescribedItem(0, 'interpolation function for density contrase from LE-equation.')
+
+
     elif param['dens_profile'] == 'densPL':
         param.pop('densBE_Omega')
         param['densPL_alpha'].exclude_from_snapshot = True
+        
         
     # ----
     
@@ -313,6 +323,7 @@ def read_param(path2file, write_summary = True):
             val.exclude_from_snapshot = True
             
 
+    param['EndSimulationDirectly'] = DescribedItem(False, 'Immediately end simulation')
     param['SimulationEndReason'] = DescribedItem('', 'What caused simulation to complete')
 
     
@@ -328,6 +339,16 @@ def read_param(path2file, write_summary = True):
     param['R1'] = DescribedItem(0, 'pc. Inner radius of bubble')
     param['Pb'] = DescribedItem(0, 'Msun/Myr2/pc. Bubble pressure')    
     param['c_sound'] = DescribedItem(0, 'Sound speed.')
+    # --
+    param['t_next'] = DescribedItem(0, 'for calculation of mShell interpolation.', exclude_from_snapshot = True)
+    param['array_t_now'] = DescribedItem([], 'store variable into an array for mShell interpolation calculation', exclude_from_snapshot = True)
+    param['array_R2'] = DescribedItem([], 'store variable into an array for mShell interpolation calculation', exclude_from_snapshot = True)
+    param['array_R1'] = DescribedItem([], 'store variable into an array for mShell interpolation calculation', exclude_from_snapshot = True)
+    param['array_v2'] = DescribedItem([], 'store variable into an array for mShell interpolation calculation', exclude_from_snapshot = True)
+    param['array_T0'] = DescribedItem([], 'store variable into an array for mShell interpolation calculation', exclude_from_snapshot = True)
+    param['array_mShell'] = DescribedItem([], 'store variable into an array for mShell interpolation calculation', exclude_from_snapshot = True)
+    param['array_mShellDot'] = DescribedItem([], 'store variable into an array for mShell interpolation calculation', exclude_from_snapshot = True)
+    
     # --
     param['rCloud'] = DescribedItem(0, 'Cloud radius')
     param['nEdge'] = DescribedItem(0, 'Number density at cloud radius')
@@ -409,8 +430,9 @@ def read_param(path2file, write_summary = True):
     param['isCollapse'] = DescribedItem(False, 'Check if the cloud is collapsing')
    
     # initial(?)
-    param['initial_cloudDens'] = DescribedItem([], 'Initial cloud density profile')
-    param['initial_cloudMass'] = DescribedItem([], 'Initial cloud density profile')
+    param['initial_cloud_n_arr'] = DescribedItem([], 'Initial cloud density profile')
+    param['initial_cloud_m_arr'] = DescribedItem([], 'Initial cloud mass profile')
+    param['initial_cloud_r_arr'] = DescribedItem([], 'Initial cloud radius profile')
     
    
     # To be removed

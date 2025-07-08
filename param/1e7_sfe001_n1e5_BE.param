@@ -1,8 +1,8 @@
-model_name    1e7_sfe001_n1e4_BE
+model_name    1e7_sfe001_n1e5_BE
 mCloud    1e7
 sfe    0.01
 # Bonnor-Ebert sphere
 dens_profile    densBE
 densBE_Omega    14.1
-nCore    1e4
+nCore    1e5
 nISM    10

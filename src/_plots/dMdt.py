@@ -34,6 +34,8 @@ def plot(path2json):
     for key, val in snaplists.items():
         v3_t.append(val['t_now'])
         v3.append(val['bubble_dMdt'])
+        # if val['current_phase'] == '1b':
+        #     break
         # v3_d.append(val['cool_delta'])
         
 

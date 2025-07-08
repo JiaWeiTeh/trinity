@@ -72,7 +72,7 @@ densPL_alpha    0
 
 # INFO: Number density of cloud core. If `densPL` AND densPL_alpha = 0, this is the average cloud density.
 # UNIT: [cm**-3]
-nCore    1e4
+nCore    1e5
 
 # INFO: Number density of the ambient interstellar medium (ISM). 
 # UNIT: [cm**-3]
@@ -80,7 +80,7 @@ nISM    1
 
 # INFO: Core radius of the molecular cloud. 
 # UNIT: [pc]
-rCore    0.1
+rCore    0.2
 
 
 # =============================================================================

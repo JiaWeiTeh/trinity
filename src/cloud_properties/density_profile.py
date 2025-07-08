@@ -8,121 +8,63 @@ Created on Mon Jul 25 14:37:53 2022
 This script includes function that calculates the density profile.
 """
 
+import numpy as np
+from src.cloud_properties import bonnorEbertSphere
 
 
 def get_density_profile(r_arr,
-                         density_params,
+                         params,
                          ):
     """
-    This function takes in a list of radius and evaluates the density profile
-    based on the points given in the list. The output will depend on selected
-    type of density profile describing the sphere.
-    
-    Watch out the units!
-
-    Parameters
-    ----------
-    r_arr : list/array of radius of interest
-        Radius at which we are interested in the density (Units: pc).
-    rCloud : float
-        Cloud radius. (Units: pc)
-
-    Returns
-    -------,
-    dens_arr : array of float
-        NUMBER DENSITY profile for given radius profile. n(r). (Units: 1/pc^3)
-
+    Density profile (if r_arr is an array), otherwise the density at point r.
     """
     
-    # Note:
-        # old code: f_dens and f_densBE().
-        
-        
-    nISM = density_params['nISM'].value
-    alpha = density_params['densPL_alpha'].value
-    rCloud = density_params['rCloud'].value
-    nCore = density_params['nCore'].value
-    rCore = density_params['rCore'].value
-    nCore = density_params['nCore'].value
+    nISM = params['nISM'].value
+    rCloud = params['rCloud'].value
+    nCore = params['nCore'].value
+    rCore = params['rCore'].value
+    nCore = params['nCore'].value
 
+    if type(r_arr) is not np.ndarray:
+        r_arr = np.array([r_arr])
+        
     # =============================================================================
     # For a power-law profile
     # =============================================================================
     
-    # Initialise with power-law
-    # for different alphas:
-    if alpha == 0:
-        dens_arr = nISM * r_arr ** alpha
-        dens_arr[r_arr <= rCloud] = nCore
-    else:
-        dens_arr = nCore * (r_arr/rCore)**alpha
-        dens_arr[r_arr <= rCore] = nCore
-        dens_arr[r_arr > rCloud] = nISM
-    
+    if params['dens_profile'].value == 'densPL':
+        alpha = params['densPL_alpha'].value
+        # Initialise with power-law
+        # for different alphas:
+        if alpha == 0:
+            n_arr = nISM * r_arr ** alpha
+            n_arr[r_arr <= rCloud] = nCore
+        else:
+            n_arr = nCore * (r_arr/rCore)**alpha
+            n_arr[r_arr <= rCore] = nCore
+            n_arr[r_arr > rCloud] = nISM
+        
+        
+    elif params['dens_profile'].value == 'densBE':
+        
+        f_rho_rhoc = params['densBE_f_rho_rhoc'].value
+        
+        xi_arr = bonnorEbertSphere.r2xi(r_arr, params)
+        
+        # print(xi_arr)
+
+        rho_rhoc = f_rho_rhoc(xi_arr)
+        
+        n_arr = rho_rhoc * params['nCore'] 
+        
+        n_arr[r_arr > rCloud] = nISM
+        
+        # print(n_arr)
+        
     # return n(r)
-    return dens_arr
+    return n_arr
         
 
-
-
-
-
-#%%
-
-
-
-# def get_density_profile(r_arr,
-#                          density_params,
-#                          ):
-#     """
-#     This function takes in a list of radius and evaluates the density profile
-#     based on the points given in the list. The output will depend on selected
-#     type of density profile describing the sphere.
-    
-#     Watch out the units!
-
-#     Parameters
-#     ----------
-#     r_arr : list/array of radius of interest
-#         Radius at which we are interested in the density (Units: pc).
-#     rCloud : float
-#         Cloud radius. (Units: pc)
-
-#     Returns
-#     -------
-#     dens_arr : array of float
-#         NUMBER DENSITY profile for given radius profile. n(r). (Units: 1/pc^3)
-
-#     """
-    
-#     # Note:
-#         # old code: f_dens and f_densBE().
-        
-        
-#     nISM = density_params['nISM_au'].value
-#     alpha = density_params['alpha_pL'].value
-#     rCloud = density_params['rCloud_au'].value
-#     nCore = density_params['nCore_au'].value
-#     nAvg = density_params['nAvg_au'].value
-#     rCore = density_params['rCore_au'].value
-#     nCore = density_params['nCore_au'].value
-
-#     # =============================================================================
-#     # For a power-law profile
-#     # =============================================================================
-    
-#     # Initialise with power-law
-#     # for different alphas:
-#     if alpha == 0:
-#         dens_arr = nISM * r_arr ** alpha
-#         dens_arr[r_arr <= rCloud] = nAvg
-#     else:
-#         dens_arr = nCore * (r_arr/rCore)**alpha
-#         dens_arr[r_arr <= rCore] = nCore
-#         dens_arr[r_arr > rCloud] = nISM
-    
-#     # return n(r)
-#     return dens_arr
         
 
 
