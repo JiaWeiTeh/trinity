@@ -50,6 +50,8 @@ def plot(path2json):
         v3Edot2.append(val['residual_Edot2_guess'])
         v3T1.append(val['residual_T1_guess'])
         v3T2.append(val['residual_T2_guess'])
+        # if val['current_phase'] == '1b':
+        #     break
         # v3_E.append(val['Eb'])
         # v3_T.append(val['T0'])
 

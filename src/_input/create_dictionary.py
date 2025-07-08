@@ -68,10 +68,6 @@ def create():
     main_dict['t_dissolve'] = DescribedItem(1e30, 'Time after which consider simulation as dissolved.') 
     main_dict['dEdt'] = DescribedItem(np.nan, 'Constant energy gradient over time; used for phase 1c and beyond.')
 
-    # TODO:
-    # i think this wasnt reached because in shell it has its own termination
-    main_dict['completed_reason'] = DescribedItem('', 'What caused simulation to complete')
-    
     
     
     

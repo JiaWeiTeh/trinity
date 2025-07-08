@@ -64,6 +64,13 @@ def run_phase_energy(params):
     
         rd, vd, Ed, Td =  ODE_equations(time, y, params)
         
+                
+        try:
+            params['t_next'].value = time_range[ii+1]
+        except:
+            params['t_next'].value = time + dt
+                
+        
         # if hasattr(vd, '__len__') and len(vd) == 1:
         #     vd = vd[0]
         # else:
@@ -99,6 +106,11 @@ def run_phase_energy(params):
         
             # new inputs
             y = [r2, v2, Eb, T0]
+            
+            try:
+                params['t_next'].value = time_range[ii+1]
+            except:
+                params['t_next'].value = time + dt
         
             rd, vd, Ed, Td =  ODE_equations(time, y, params)
             
@@ -215,7 +227,8 @@ def ODE_equations(t, y, params):
     
     print('completed a phase in ODE_equations in implicit_phase')
     print(f'rd: {rd}, vd: {vd}, Ed: {Ed}, Td: {Td}')
-    
+
+   
     # save snapshot
     result_params.save_snapshot()
     
@@ -261,18 +274,21 @@ def check_events(params, dt_params):
     if t_next > params['stop_t'].value:
         print(f"Phase ended because t reaches {t_next} Myr (> tStop: {params['stop_t'].value}) in the next iteration.")
         params['SimulationEndReason'].value = 'Stopping time reached'
+        params['EndSimulationDirectly'].value = True
         return True
     
     #--- 2) Small radius reached during collapse.
     if params['isCollapse'].value == True and R2_next < params['coll_r'].value:
         print(f"Phase ended because collapse is {params['isCollapse'].value} and r reaches {R2_next} pc (< r_coll: {params['coll_r'].value} pc)")
         params['SimulationEndReason'].value = 'Small radius reached'
+        params['EndSimulationDirectly'].value = True
         return True
     
     #--- 3) Large radius reached during expansion.
     if R2_next > params['stop_r'].value:
         print(f"Phase ended because r reaches {R2_next} pc (> stop_r: {params['stop_r'].value} pc)")
         params['SimulationEndReason'].value = 'Large radius reached'
+        params['EndSimulationDirectly'].value = True
         return True
         
     # #--- 4) dissolution after certain period of low density
@@ -286,6 +302,7 @@ def check_events(params, dt_params):
         if params['R2'].value > params['rCloud'].value:
             print(f"Bubble radius ({params['R2'].value} pc) exceeds cloud radius ({params['rCloud'].value} pc)")
             params['SimulationEndReason'].value = 'Bubble radius larger than cloud'
+            params['EndSimulationDirectly'].value = True
             return True
     
     return False

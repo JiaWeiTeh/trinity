@@ -161,7 +161,6 @@ class DescribedDict(dict):
         if getattr(value, "exclude_from_snapshot", False):
             self._excluded_keys.add(key)
         
-        
         super().__setitem__(key, value)
         
         return 
@@ -240,6 +239,9 @@ class DescribedDict(dict):
         # clean and simplify first (remove .info etc)
         clean_dict = self.clean()
         
+        # for k, v in clean_dict.items():
+        #     print(type(v))
+        
         self.previous_snapshot[str(self.save_count)] = clean_dict
         self.save_count += 1
 
@@ -265,6 +267,7 @@ class DescribedDict(dict):
         path2output = self['path2output'].value
         path2json = os.path.join(path2output, 'dictionary' + '.json')
         
+        load_list = None
         
         # Three cases: file exists; file exists but zero byte; file does not exist.
         # if file does not exist, then create it.
@@ -274,25 +277,23 @@ class DescribedDict(dict):
                 infile.close()
             print('Initialising JSON file for saving purpose...')
                 
-        
         # with open(path2json, 'a') as f:
         #     json.dump(self.previous_snapshot, f, indent = 2, cls = NpEncoder)
         
+        else: 
         #---
         # if it is an empty file, 
-        load_list = None
-        
-        try:
-            with open(path2json, 'r') as infile:
-                load_list = json.load(infile)
-                infile.close()
+            try:
+                with open(path2json, 'r') as infile:
+                    load_list = json.load(infile)
+                    infile.close()
+                    
+            except json.decoder.JSONDecodeError as e:
+                print(f'Exception: {e} catched; file is probably empty.')
                 
-        except json.decoder.JSONDecodeError as e:
-            print(f'Exception: {e} catched; file is probably empty.')
-            
-        except Exception as e:
-            print(f'Something else went wrong in .flush(): {e}')
-            sys.exit()
+            except Exception as e:
+                print(f'Something else went wrong in .flush(): {e}')
+                sys.exit()
             
         # If it is None, return an empty list instead
         if load_list is None:
@@ -303,7 +304,7 @@ class DescribedDict(dict):
         
         # then update dictionary
         with open(path2json, 'w') as outfile:
-            print('\nhere in update')
+            print('Updating dictionary in .flush()')
             # json.dump(combined_list, outfile)
             json.dump(combined_list, outfile, cls = NpEncoder, indent = 2)
             outfile.close()

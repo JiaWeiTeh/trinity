@@ -46,6 +46,8 @@ def plot(path2json):
         v3_v.append(val['v2'])
         v3_E.append(val['Eb'])
         v3_T.append(val['T0'])
+        # if val['current_phase'] == '1b':
+        #     break
 
 
     # prefix of the final key
@@ -74,7 +76,7 @@ def plot(path2json):
     
     # print(snapshots)
     # axs[0][0].axhline(snaplists[0]['r_coll'], linestyle = '--', c = 'k', alpha = 0.7)
-    # axs[0][0].axhline(snaplists['0']['rCloud'], linestyle = '--', c = 'k', alpha = 0.7)
+    axs[0][0].axhline(snaplists['0']['rCloud'], linestyle = '--', c = 'k', alpha = 0.7)
     
     # print(v3_r)
     # print(v3_rShell)

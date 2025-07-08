@@ -8,6 +8,7 @@ Created on Wed Jul 12 13:37:22 2023
 import os
 import numpy as np
 from src._output.terminal_prints import cprint as cpr
+import src._functions.unit_conversions as cvt
 
 def display(params):
     
@@ -59,6 +60,7 @@ def show_param(params):
     print(f"\tlog_mCloud: {np.log10(params['mCloud']/(1-params['sfe']))} Msun")
     print(f"\tSFE: {params['sfe'].value}")
     print(f"\tmetallicity: {params['ZCloud'].value} Zsun")
+    print(f"\tlog10 Core density: {np.round(np.log10(params['nCore'].value*cvt.ndens_au2cgs), 1)} cm-3")
     print(f"\tdensity profile: {params['dens_profile'].value}")
     # shorten
     relpath = os.path.relpath(params['path2output'].value, os.getcwd())

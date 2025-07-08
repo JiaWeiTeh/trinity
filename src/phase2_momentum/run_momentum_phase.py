@@ -132,7 +132,7 @@ def ODE_equations_momentum(t, y, params):
     vd = phase_ODEs.get_vdot(t, [R2, v2, Eb, T0], params)
     rd = v2
     
-    params.save_snapShot()
+    params.save_snapshot()
     
     # return [rd, vd, 0, 0]
     return [rd, vd, 0, 0]

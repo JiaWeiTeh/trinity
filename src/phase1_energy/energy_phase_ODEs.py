@@ -76,6 +76,9 @@ def get_ODE_Edot(y, t, params):
         mShell = mShell[0]
         mShell_dot = mShell_dot[0]
     
+    params['shell_mass'].value = mShell
+    params['shell_massDot'].value = mShell_dot
+    
     def get_press_ion(r, ion_dict):
         """
         calculates pressure from photoionized part of cloud at radius r
@@ -101,7 +104,12 @@ def get_ODE_Edot(y, t, params):
     if FABSi < 1.0:
         press_HII = get_press_ion(R2, params)
     else:
-        press_HII = 0.0
+        if params['R2'].value >= params['rCloud'].value:
+            # TODO: add this more for ambient pressure
+            press_HII = 5e3 * (params['k_B'] * cvt.k_B_au2cgs)
+        else:
+            press_HII = 0.0
+        
     
     # gravity correction (self-gravity and gravity between shell and star cluster)
     F_grav = params['G'].value * mShell / R2**2 * (mCluster + mShell/2) 
