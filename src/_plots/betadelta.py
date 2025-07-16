@@ -84,10 +84,12 @@ def plot(path2json):
                     
 #--------------
 
-
+    
     plt.rc('text', usetex=True)
     plt.rc('font', family='sans-serif', size=12)
     fig, axs = plt.subplots(3, 2, figsize = (7,7), dpi = 150, height_ratios = [3, 1, 3])
+    
+    fig.suptitle(f'{path2json}')
     
     v3data_b = np.array(v3_b, dtype = float)
     v3data_d = np.array(v3_d, dtype = float)
@@ -157,11 +159,11 @@ def plot(path2json):
     
     #-- Edot guesses 
     
-    axs[2][0].plot(v3_t, v3Edot1, '-k', alpha = 1, linewidth = 2, label = 'Edot1 beta')
-    axs[2][0].plot(v3_t, v3Edot2, '-b', alpha = 0.2, linewidth = 2, label = 'Edot2 eq')
+    axs[2][0].plot(v3_t, np.log10(v3Edot1), '-k', alpha = 1, linewidth = 2, label = 'Edot1 beta')
+    axs[2][0].plot(v3_t, np.log10(v3Edot2), '-b', alpha = 0.2, linewidth = 2, label = 'Edot2 eq')
     axs[2][0].set_ylabel('Edot guesses')
     axs[2][0].set_xlabel('time (Myr)')
-    axs[2][0].set_yscale('symlog')
+    # axs[2][0].set_yscale('log')
     
     axs[2][0].legend(loc = 'lower left')
     
@@ -171,11 +173,11 @@ def plot(path2json):
     
     #-- T guesses 
     
-    axs[2][1].plot(v3_t, v3T1, '-k', alpha = 1, linewidth = 2, label = 'Trgoal')
-    axs[2][1].plot(v3_t, v3T2, '-b', alpha = 0.2, linewidth = 2, label = 'T0')
+    axs[2][1].plot(v3_t, np.log10(v3T1), '-k', alpha = 1, linewidth = 2, label = 'Trgoal')
+    axs[2][1].plot(v3_t, np.log10(v3T2), '-b', alpha = 0.2, linewidth = 2, label = 'T0')
     axs[2][1].set_ylabel('T guesses')
     axs[2][1].set_xlabel('time (Myr)')
-    axs[2][1].set_yscale('symlog')
+    # axs[2][1].set_yscale('log')
     
     axs[2][1].legend(loc = 'lower left')
     

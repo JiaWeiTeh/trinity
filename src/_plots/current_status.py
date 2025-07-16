@@ -43,9 +43,17 @@ def plot(path2json):
     for key, val in snaplists.items():
         v3_t.append(val['t_now'])
         v3_r.append(val['R2'])
+        try:
+            v3_rShell.append(val['shell_grav_r'][-1])
+        except:
+            # asume if above fails that means shell is not there. 
+            v3_rShell.append(val['R2'])
+            print('here')
         v3_v.append(val['v2'])
         v3_E.append(val['Eb'])
         v3_T.append(val['T0'])
+        
+        # print(v3_rShell[-1] - v3_r[-1])
         # if val['current_phase'] == '1b':
         #     break
 
@@ -57,6 +65,7 @@ def plot(path2json):
     plt.rc('font', family='sans-serif', size=12)
     fig, axs = plt.subplots(2, 2, figsize = (5,5), dpi = 150)
     
+    fig.suptitle(f'{path2json}')
     
     v3_r = np.array(v3_r, dtype = float)
     v3_v = np.array(v3_v, dtype = float) / cvt.v_kms2au
@@ -72,7 +81,10 @@ def plot(path2json):
     axs[0][0].plot(v3_t[:len(v3_rShell)], v3_rShell, 'gray', alpha = 0.5, linewidth = 5, label = 'trinity')
     axs[0][0].set_ylabel('radius (pc)')
     axs[0][0].set_xlabel('time (Myr)')
-    axs[0][0].set_xlim(0, max(v3_t))
+    # axs[0][0].set_xlim(0, max(v3_t))
+    # axs[0][0].set_xlim(0, 1)
+    # axs[0][0].set_yscale('symlog')
+    print(snaplists['0']['rCloud'])
     
     # print(snapshots)
     # axs[0][0].axhline(snaplists[0]['r_coll'], linestyle = '--', c = 'k', alpha = 0.7)
@@ -83,27 +95,30 @@ def plot(path2json):
     #-- v
     
     
-    axs[1][0].plot(v3_t, np.log10(v3_v), '-k', alpha = 1, linewidth = 2, label = 'trinity')
+    axs[1][0].plot(v3_t, (v3_v), '-k', alpha = 1, linewidth = 2, label = 'trinity')
     axs[1][0].set_ylabel('log velocity (km/s)')
     axs[1][0].set_xlabel('time (Myr)')
     
+    axs[1][0].set_yscale('symlog')
     axs[1][0].set_xlim(0, max(v3_t))
     axs[1][0].axhline(0, linestyle = '--', c = 'r', alpha = 0.5)
     
     #-- E
     
-    axs[0][1].plot(v3_t, np.log10(v3_E), '-k', alpha = 1, linewidth = 2, label = 'trinity')
+    axs[0][1].plot(v3_t, (v3_E), '-k', alpha = 1, linewidth = 2, label = 'trinity')
     axs[0][1].set_ylabel('log Energy (ergs)')
     axs[0][1].set_xlabel('time (Myr)')
     axs[0][1].set_xlim(0, max(v3_t))
+    axs[0][1].set_yscale('log')
         
     #-- T
     
     
-    axs[1][1].plot(v3_t, np.log10(v3_T), '-k', alpha = 1, linewidth = 2, label = 'trinity')
+    axs[1][1].plot(v3_t, (v3_T), '-k', alpha = 1, linewidth = 2, label = 'trinity')
     axs[1][1].set_ylabel('log Temperature (K)')
     axs[1][1].set_xlabel('time (Myr)')
     axs[1][1].set_xlim(0, max(v3_t))
+    axs[1][1].set_yscale('log')
     
     
     #-- final

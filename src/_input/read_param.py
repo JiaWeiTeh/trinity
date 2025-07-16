@@ -68,6 +68,7 @@ def read_param(path2file, write_summary = True):
     input_dict = {}
     
     with open(path2file, "r") as f:
+        filename = Path(f.name).stem
         for line in f:
             line = line.strip()
             if not line or line.startswith("#"):
@@ -169,6 +170,10 @@ def read_param(path2file, write_summary = True):
     # print(param['dust_sigma'])
     
     # param['test'] = 1
+
+    # if model name is not given, assume same name as filename.
+    if param['model_name'].value == "default":
+        param['model_name'].value = filename
 
     # =============================================================================
     # Store only useful parameters into the summary.txt file
@@ -351,6 +356,7 @@ def read_param(path2file, write_summary = True):
     
     # --
     param['rCloud'] = DescribedItem(0, 'Cloud radius')
+    param['rShell'] = DescribedItem(0, 'Shell outer radius')
     param['nEdge'] = DescribedItem(0, 'Number density at cloud radius')
     
     # feedback values from SB99

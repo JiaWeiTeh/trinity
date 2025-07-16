@@ -1,8 +1,8 @@
-model_name    1e7_sfe001_n1e2
 mCloud    1e7
-sfe    0.01
+sfe    0.3
 # powerlaw, homogeneous
 dens_profile    densPL
 densPL_alpha    0
-nCore    1e2
+nCore    1e4
 nISM    10
+PISM    5e5

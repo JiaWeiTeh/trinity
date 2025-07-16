@@ -59,7 +59,8 @@ def plot(path2json):
     plt.rc('font', family='sans-serif', size=12)
     fig, axs = plt.subplots(2, 1, figsize = (7,5), dpi = 150, height_ratios = [3, 1])
     
-    
+    fig.suptitle(f'{path2json}')
+
     v3data = np.array(v3, dtype = float)
     v3res = np.array(v3res, dtype = float)
     v3_t = np.array(v3_t, dtype = float)

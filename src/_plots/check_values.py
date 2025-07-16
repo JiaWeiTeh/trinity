@@ -9,29 +9,58 @@ Created on Fri Jun 20 15:46:08 2025
 
     
 import json
+import numpy as np
+import matplotlib.pyplot as plt
 
 
-path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe001_n1e4_exceedcloud/dictionary.json'
+path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe001_n1e4/dictionary.json'
 
 with open(path2json, 'r') as f:
     # step one is to make sure they are lists i think
     snaplists = json.load(f)
 
-
-v1, v2, v3 = [], [], []
-
-for snapshots in snaplists:
-    for key, val in snapshots.items():
-        if key.endswith('T_rgoal'):
-            v1.append(val)
-        elif key.endswith('T_goal'):
-            v2.append(val)
-        elif key.endswith('r_goal'):
-            v3.append(val)
-
-#%%
+t_list = []
+rShell_list = []
+thickness_list = []
+    
+#--------------
 
 
-print(v1[:4])
-print(v1[:4])
-print(v3[:4])
+import json
+with open(path2json, 'r') as f:
+    # step one is to make sure they are lists i think
+    snaplists = json.load(f)
+
+for key, val in snaplists.items():
+    t_list.append(val['t_now'])
+    # rShell_list.append(val['rShell'])
+    thickness_list.append(val['shell_thickness'])
+    
+
+plt.rc('text', usetex=True)
+plt.rc('font', family='sans-serif', size=12)
+fig, axs = plt.subplots(1, 1, figsize = (5,5), dpi = 200)
+
+plt.plot(t_list, thickness_list)
+plt.show()
+
+
+
+
+
+
+
+            
+
+
+
+
+
+
+
+
+
+
+
+
+

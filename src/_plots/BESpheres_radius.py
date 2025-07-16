@@ -169,10 +169,9 @@ for mCloud in mCloud_list:
         _, r_out, _, _ = create_BESphere(Omega, nCore, mCloud)
         data[idx] = np.array([nCore, mCloud, r_out])
         idx += 1
-
-
+        
+        
 #%%
-
 
 # extract data
 nCore_array = data[:,0]
@@ -216,11 +215,102 @@ cbar.set_label('log$_{10}$ M$_{\\rm cl}$ (M$_\\odot$)')
 
 plt.xscale('log')
 # plt.yscale('log')
+plt.ylim(0, 700)
 plt.ylabel('$r_{\\rm cl}$ (pc)')
 plt.xlabel('$\\rho_c$ (cm$^{-3}$)')    
 
 path2figure = r'/Users/jwt/unsync/Code/Trinity/fig'
 plt.savefig(os.path.join(path2figure, 'BESpheres_radius.pdf'))
+
+
+#%%
+
+# =============================================================================
+# Version for homogeneous cloud
+# =============================================================================
+
+
+
+def get_homoR(mCloud, nCore):
+    
+    r = (3 * mCloud / 4 / np.pi / (nCore * mu_neu))**(1/3)
+
+    return r
+
+
+
+# loop through
+idx = 0
+for mCloud in mCloud_list:
+    for nCore in nCore_list:
+        r_out = get_homoR(mCloud, nCore)
+        data[idx] = np.array([nCore, mCloud, r_out])
+        idx += 1
+
+# extract data
+nCore_array = data[:,0]
+mCloud_array = data[:,1]
+rCloud_array = data[:,2] * cm2pc
+
+# Set up colormap
+cmap = cm.viridis
+norm = mcolors.Normalize(vmin=mStart, vmax=mEnd)
+colors = cmap(norm(np.log10(mCloud_list * g2Msun)))  # Get colors from colormap
+
+plt.rc('text', usetex=True)
+plt.rc('font', family='sans-serif', size=12)
+plt.rcParams["xtick.direction"] = "in"
+plt.rcParams["ytick.direction"] = "in"
+plt.rcParams["xtick.minor.visible"] = True  # Show minor ticks
+plt.rcParams["ytick.minor.visible"] = True
+plt.rcParams["xtick.major.size"] = 6        # Major tick size
+plt.rcParams["ytick.major.size"] = 6
+plt.rcParams["xtick.minor.size"] = 3        # Minor tick size
+plt.rcParams["ytick.minor.size"] = 3
+plt.rcParams["xtick.major.width"] = 1       # Major tick width
+plt.rcParams["ytick.major.width"] = 1
+plt.rcParams["xtick.minor.width"] = 0.8     # Minor tick width
+plt.rcParams["ytick.minor.width"] = 0.8
+fig, ax = plt.subplots(figsize = (7,5), dpi = 150,)
+for ii in range(mNum):
+
+    ax.plot(nCore_array[ii*len(nCore_list):(ii+1)*len(nCore_list)], rCloud_array[ii*len(nCore_list):(ii+1)*len(nCore_list)], \
+             label = f'M$_c$$_l$ = {np.log10(mCloud_array[ii*len(nCore_list)] * g2Msun)} M$_\\odot$',\
+                 color=colors[ii]
+                 )
+
+# Create colorbar
+sm = cm.ScalarMappable(cmap=cmap, norm=norm)
+sm.set_array([])  # Needed for older versions of matplotlib
+cbar = plt.colorbar(sm, ax=ax)
+cbar.set_label('log$_{10}$ M$_{\\rm cl}$ (M$_\\odot$)')
+
+
+plt.xscale('log')
+plt.ylim(0, 700)
+# plt.yscale('log')
+plt.ylabel('$r_{\\rm cl}$ (pc)')
+plt.xlabel('$\\rho_c$ (cm$^{-3}$)')    
+
+path2figure = r'/Users/jwt/unsync/Code/Trinity/fig'
+plt.savefig(os.path.join(path2figure, 'HomoSpheres_radius.pdf'))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

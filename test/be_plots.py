@@ -55,7 +55,7 @@ fig.patch.set_alpha(0.0)      # Figure background
 ax.patch.set_alpha(0.0)       # Axes background
 
 #figure rho/rho_c vs. r/r_c
-plt.loglog(x,rho_rhoc,'k-')
+# plt.loglog(x,rho_rhoc,'k-')
 plt.loglog(x,1.7*x**(-2),'b--', label=r'$\propto x^{-2}$')
 plt.axhline(y = 1, c='r', ls='--', label=r'$\propto x^0$')
 
@@ -90,7 +90,7 @@ def M(rho,r):
 mass = M(rho_rhoc,x)
 
 #figure M(r) vs. x
-plt.loglog(x,mass, 'k-')
+# plt.loglog(x,mass, 'k-')
 plt.loglog(x,4./(4*np.pi)*x**(3),'b--', label=r'$\propto x^{3}$')
 plt.loglog(x,7./(4*np.pi)*x**(1),'r--', label=r'$\propto x^{1}$')
 
@@ -117,10 +117,17 @@ plt.show()
 dimless_mass = mass*np.sqrt(rho_rhoc)/np.sqrt(2.9246796896)#/(np.pi**2*2)/1.0887942136 ####GET RID OF THESE NORMALIZATION FACTORS####
 
 print("max m(r_0) resides at x = ", round(x[np.where(dimless_mass == max(dimless_mass))[0][0]],3))
+print(f'max is {max(dimless_mass)}')
 
 #figure of dimensionless mass
+
+fig, ax = plt.subplots(1, 1, figsize = (5, 5), dpi = 200)
+fig.patch.set_alpha(0.0)      # Figure background
+ax.patch.set_alpha(0.0)       # Axes background
+
+
 plt.semilogx(x,dimless_mass, 'k-')
-plt.xlim(1E-1,50)
+plt.xlim(1E-1,5000)
 plt.ylabel(r'$m(r_0)$ $[M(r) / (c_s^3 \rho_0^{-1/2} G^{3/2})] $', size=18)
 plt.xlabel(r'$r_0/r_c$', size=18)
 plt.rc('font', size=15)

@@ -40,11 +40,12 @@ class NpEncoder(json.JSONEncoder):
     # this can then work when print valeus.
 
 class DescribedItem:
-    def __init__(self, value = None, info = None, ori_units = None, exclude_from_snapshot = False):
+    def __init__(self, value = None, info = None, ori_units = None, exclude_from_snapshot = False, isPersistent = False):
         self.value = value
         self.info = info
         self.ori_units = ori_units
         self.exclude_from_snapshot = exclude_from_snapshot
+        self.isPersistent = isPersistent
         
     def __str__(self):
         return (f"{self.value}\t({self.info})")
@@ -98,16 +99,26 @@ class DescribedDict(dict):
         self.flush_count = 0
         # mark keys to exclude from snapshots
         self._excluded_keys = set()
+        # mark keys to remain within dictionary even after .flush()
+        self._persistent_keys = set()
+        # store persistent data
+        self._persistent_data = {}
         
     # Mark a key to be excluded from snapshots.
     def exclude_key(self, key): self._excluded_keys.add(key)
 
     # Unmark a key (include it back in snapshot).
     def include_key(self, key): self._excluded_keys.discard(key)
-
-    # Option to check if a key is excluded
-    def is_excluded(self, key): return key in self._excluded_keys
     
+    # Mark a key to be excluded from flush and stays in self
+    def mark_persistent(self, key): self._persistent_keys.add(key)
+
+    # Unmark a key to be excluded from flush and stays in self
+    def unmark_persistent(self, key): self._persistent_keys.discard(key)
+
+    # Option to check if a key is excluded or persistent
+    def is_excluded(self, key): return key in self._excluded_keys
+    def is_persistent(self, key): return key in self._persistent_keys
     
     @staticmethod
     def shorten_display(arr, nshow = 3):
@@ -118,7 +129,6 @@ class DescribedDict(dict):
         if len(arr) > 10:
             arr = list(arr[:nshow]) + ['...'] + list(arr[-nshow:]) 
         return arr
-    
     
     
     def __str__(self):
@@ -187,7 +197,7 @@ class DescribedDict(dict):
         """
         
         # if number given is larger than array size.
-        print(f'simplifying {keyname}...')
+        # print(f'simplifying {keyname}...')
         if nmin >= len(x_arr):
             return x_arr, y_arr
     
@@ -227,7 +237,7 @@ class DescribedDict(dict):
         new_y = y_arr[merged]
         new_x = x_arr[merged]
     
-        print('Simplification complete')
+        # print('Simplification complete')
         return new_x, new_y
             
     def save_snapshot(self):
@@ -334,11 +344,16 @@ class DescribedDict(dict):
             for key, val in self.items():
                 if val.exclude_from_snapshot:
                     self._excluded_keys.add(key)
+                if val.isPersistent:
+                    self._persistent_keys.add(key)
             
         # start iteration
         for key, val in self.items():
             if key in self._excluded_keys:
                 continue
+            if key in self._persistent_keys:
+                # bring the DescribedItem() forward.
+                self._persistent_data[key] = val
             # only clean original dictionary; skip snapshots
             if isinstance(val, DescribedItem):
             # if not key.beginswith('_sS'):

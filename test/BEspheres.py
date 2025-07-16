@@ -169,8 +169,8 @@ plt.plot(xi_array, rho_rhoISM_array)
 plt.ylabel('$\\rho / \\rho_c$')
 plt.xlabel('$\\xi$')
 plt.xlim(min(xi_array), max(xi_array))
-plt.yscale('log')
-plt.xscale('log')
+# plt.yscale('log')
+# plt.xscale('log')
 
 
 
@@ -1003,7 +1003,6 @@ def AutoT(M,ncore,g):
 
 
 #!/usr/bin/env python
-from __future__ import division
 import scipy as sp
 import matplotlib.pyplot as plt
 from scipy.integrate import odeint
