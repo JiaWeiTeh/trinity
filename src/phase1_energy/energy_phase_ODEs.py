@@ -106,7 +106,7 @@ def get_ODE_Edot(y, t, params):
     else:
         if params['R2'].value >= params['rCloud'].value:
             # TODO: add this more for ambient pressure
-            press_HII = 5e3 * (params['k_B'] * cvt.k_B_au2cgs)
+            press_HII = params['PISM'] * params['k_B']
         else:
             press_HII = 0.0
         

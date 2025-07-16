@@ -1,5 +1,5 @@
 mCloud    1e7
-sfe    0.3
+sfe    0.01
 # Bonnor-Ebert sphere
 dens_profile    densBE
 densBE_Omega    14.1

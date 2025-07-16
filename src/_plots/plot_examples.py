@@ -15,52 +15,6 @@ import src._plots.dMdt as dMdt
 import matplotlib.pyplot as plt
 
 
-# # path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/example_pl/dictionary.json'
-# path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/1e5_sfe010_n1e4/dictionary.json'
-# path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/1e5_sfe001_n1e2/dictionary.json'
-# path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/1e5_sfe030_n1e4/dictionary.json'
-
-
-
-
-# path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe030_n1e4/dictionary.json'
-# path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe010_n1e4/dictionary.json'
-# path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe030_n1e4_BE/dictionary.json'
-# path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe010_n1e4_BE/dictionary.json'
-
-
-
-
-# path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe001_n1e4/dictionary.json'
-# path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe001_n1e4_BE/dictionary.json'
-# path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/test_dict_BE/dictionary.json'
-
-
-
-
-
-# path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/cloud_example_homogeneous/dictionary.json'
-# path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/cloud_example_PL/dictionary.json'
-path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/cloud_example_BE/dictionary.json'
-
-
-
-
-
-
-# path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/1e5_sfe001_n1e4_BE/dictionary.json'
-# path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe001_n1e4_exceedcloud/dictionary.json'
-# path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe030_n1e4_exceedcloud/dictionary.json'
-# path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/1e6_sfe030_n1e4/dictionary.json'
-# path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/1e6_sfe010_n1e4/dictionary.json'
-# path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/1e5_sfe001_n1e2/dictionary.json'
-# path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe001_n1e2/dictionary.json'
-# path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe010_n1e2/dictionary.json'
-# path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe030_n1e2/dictionary.json'
-# path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe001_n1e4_Z015/dictionary.json'
-
-
-
 
 def plot(path2json):
     
@@ -87,8 +41,64 @@ def plot(path2json):
     betadelta.plot(path2json)
     current_status.plot(path2json)
     dMdt.plot(path2json)
+    
+    
+    
+    
+    
+
+# # path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/example_pl/dictionary.json'
+# path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/1e5_sfe001_n1e2/dictionary.json'
 
 
 
 
-plot(path2json)
+
+# path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/1e5_sfe001_n1e4/dictionary.json'
+# path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/1e5_sfe010_n1e4/dictionary.json'
+# path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/1e5_sfe030_n1e4/dictionary.json'
+
+for sfe in ['001', '010', '030']:
+    path2json = f'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe{sfe}_n1e4/dictionary.json'
+    # 1e4010_1e7 seems to have the problem where v suddenly blows up to -1e45.
+    plot(path2json)
+    
+
+# for sfe in ['001', '010', '030']:
+#     path2json = f'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe{sfe}_n1e4_BE/dictionary.json'
+#     # 1e4010_1e7 seems to have the problem where v suddenly blows up to -1e45.
+#     plot(path2json)
+
+
+# path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/test_dict_BE/dictionary.json'
+
+
+
+
+
+
+# path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/cloud_example_homogeneous/dictionary.json'
+# path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/cloud_example_PL/dictionary.json'
+# path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/cloud_example_BE/dictionary.json'
+
+
+
+
+
+
+# path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/1e5_sfe030_n1e4/dictionary.json'
+# path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe001_n1e4_exceedcloud/dictionary.json'
+# path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe030_n1e4_exceedcloud/dictionary.json'
+# path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/1e6_sfe030_n1e4/dictionary.json'
+# path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/1e6_sfe010_n1e4/dictionary.json'
+# path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/1e5_sfe001_n1e2/dictionary.json'
+# path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe001_n1e2/dictionary.json'
+# path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe010_n1e2/dictionary.json'
+# path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe030_n1e2/dictionary.json'
+# path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe001_n1e4_Z015/dictionary.json'
+
+
+
+
+
+

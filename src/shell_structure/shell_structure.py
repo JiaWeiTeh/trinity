@@ -19,6 +19,8 @@ import src._functions.unit_conversions as cvt
 from src.shell_structure import get_shellODE, get_shellParams
 
 
+# SHELL THICKNESS IS NEGATIVE???
+
 from numba import jit
 
 # @jit
@@ -124,9 +126,9 @@ def shell_structure(params):
     # 1. Have we accounted all the shell mass in our integration? 
     # I.e., is cumulative_mass(r = R) >= mShell?
     is_allMassSwept = False
-    # 2. Are all ionising photons being used up? 
-    # I.e., is phi(r = R) = 0?
-    is_phiZero = False
+            # # 2. Are all ionising photons being used up? 
+            # # I.e., is phi(r = R) = 0?
+            # is_phiZero = False
     # 3. Has the shell dissolved?
     is_shellDissolved = False
     # 4. Is the shell fully ionised at r = R?
@@ -215,9 +217,9 @@ def shell_structure(params):
     print(f'rShell_step {rShell_step}')
     
     
-    while not is_allMassSwept and not is_phiZero:
+    while not is_allMassSwept and not is_fullyIonised:
         
-        print('1-- not is_allMassSwept and is_phiZero')
+        print('1-- not is_allMassSwept and not is_fullyIonised')
         
         # =============================================================================
         # Define the range at which integration occurs.
@@ -294,24 +296,45 @@ def shell_structure(params):
         mShell_arr_cum[idx+1:] = 0.0
         # Associated condition
         # True if any part of the array is true
+        # all mass if swept up if any part of the radius has mass = mass shell
         is_allMassSwept = any(massCondition) 
-        is_fullyIonised = any(massCondition)
-        is_phiZero = any(phiCondition)
+        # the shell is fully ionised if any part of the radius has fraction 0.
+        is_fullyIonised = any(phiCondition)
+        # is_phiZero = any(phiCondition)
         
+        
+                # # ------OLD----
+                # # Store values into arrays representing profile in the ionised region. 
+                # mShell_arr_ion = np.concatenate(( mShell_arr_ion, mShell_arr[:idx-1]))
+                # mShell_arr_cum_ion = np.concatenate(( mShell_arr_cum_ion, mShell_arr_cum[:idx-1]))
+                # phiShell_arr_ion = np.concatenate(( phiShell_arr_ion, phiShell_arr[:idx-1]))
+                # tauShell_arr_ion = np.concatenate(( tauShell_arr_ion, tauShell_arr[:idx-1]))
+                # nShell_arr_ion = np.concatenate(( nShell_arr_ion, nShell_arr[:idx-1]))
+                # rShell_arr_ion = np.concatenate(( rShell_arr_ion, rShell_arr[:idx-1]))
+        
+                # # Reinitialise values for next integration
+                # nShell0 = nShell_arr[idx - 1]
+                # phi0 = phiShell_arr[idx - 1]
+                # tau0_ion = tauShell_arr[idx - 1]
+                # mShell0 = mShell_arr_cum[idx - 1]
+                # rShell_start = rShell_arr[idx - 1]
+        
+        
+        # -------NEW----
         # Store values into arrays representing profile in the ionised region. 
-        mShell_arr_ion = np.concatenate(( mShell_arr_ion, mShell_arr[:idx-1]))
-        mShell_arr_cum_ion = np.concatenate(( mShell_arr_cum_ion, mShell_arr_cum[:idx-1]))
-        phiShell_arr_ion = np.concatenate(( phiShell_arr_ion, phiShell_arr[:idx-1]))
-        tauShell_arr_ion = np.concatenate(( tauShell_arr_ion, tauShell_arr[:idx-1]))
-        nShell_arr_ion = np.concatenate(( nShell_arr_ion, nShell_arr[:idx-1]))
-        rShell_arr_ion = np.concatenate(( rShell_arr_ion, rShell_arr[:idx-1]))
+        mShell_arr_ion = np.concatenate(( mShell_arr_ion, mShell_arr[:idx]))
+        mShell_arr_cum_ion = np.concatenate(( mShell_arr_cum_ion, mShell_arr_cum[:idx]))
+        phiShell_arr_ion = np.concatenate(( phiShell_arr_ion, phiShell_arr[:idx]))
+        tauShell_arr_ion = np.concatenate(( tauShell_arr_ion, tauShell_arr[:idx]))
+        nShell_arr_ion = np.concatenate(( nShell_arr_ion, nShell_arr[:idx]))
+        rShell_arr_ion = np.concatenate(( rShell_arr_ion, rShell_arr[:idx]))
 
         # Reinitialise values for next integration
-        nShell0 = nShell_arr[idx - 1]
-        phi0 = phiShell_arr[idx - 1]
-        tau0_ion = tauShell_arr[idx - 1]
-        mShell0 = mShell_arr_cum[idx - 1]
-        rShell_start = rShell_arr[idx - 1]
+        nShell0 = nShell_arr[idx]
+        phi0 = phiShell_arr[idx]
+        tau0_ion = tauShell_arr[idx]
+        mShell0 = mShell_arr_cum[idx]
+        rShell_start = rShell_arr[idx]
         
         # IDEA: here we remove the condition and put it to energy events
         # TODO: make sure this works
@@ -332,14 +355,25 @@ def shell_structure(params):
         # if either condition is not met, move on.
         # ---------------------
         
-    # append the last few values that are otherwise missed in the while loop.
-    mShell_arr_ion = np.append(mShell_arr_ion, mShell_arr[idx-1])
-    mShell_arr_cum_ion = np.append(mShell_arr_cum_ion, mShell_arr_cum[idx-1])
-    phiShell_arr_ion = np.append(phiShell_arr_ion, phiShell_arr[idx-1])
-    tauShell_arr_ion = np.append(tauShell_arr_ion, tauShell_arr[idx-1])
-    nShell_arr_ion = np.append(nShell_arr_ion, nShell_arr[idx-1])
-    rShell_arr_ion = np.append(rShell_arr_ion, rShell_arr[idx-1])
+            # ----OLD---
+            # # append the last few values that are otherwise missed in the while loop.
+            # mShell_arr_ion = np.append(mShell_arr_ion, mShell_arr[idx-1])
+            # mShell_arr_cum_ion = np.append(mShell_arr_cum_ion, mShell_arr_cum[idx-1])
+            # phiShell_arr_ion = np.append(phiShell_arr_ion, phiShell_arr[idx-1])
+            # tauShell_arr_ion = np.append(tauShell_arr_ion, tauShell_arr[idx-1])
+            # nShell_arr_ion = np.append(nShell_arr_ion, nShell_arr[idx-1])
+            # rShell_arr_ion = np.append(rShell_arr_ion, rShell_arr[idx-1])
 
+    # ---NEW---
+    # append the last few values that are otherwise missed in the while loop.
+    mShell_arr_ion = np.append(mShell_arr_ion, mShell_arr[idx])
+    mShell_arr_cum_ion = np.append(mShell_arr_cum_ion, mShell_arr_cum[idx])
+    phiShell_arr_ion = np.append(phiShell_arr_ion, phiShell_arr[idx])
+    tauShell_arr_ion = np.append(tauShell_arr_ion, tauShell_arr[idx])
+    nShell_arr_ion = np.append(nShell_arr_ion, nShell_arr[idx])
+    rShell_arr_ion = np.append(rShell_arr_ion, rShell_arr[idx])
+    
+    
     # =============================================================================
     # If shell hasn't dissolved, continue some computation to prepare for 
     # further evaulation.
@@ -536,6 +570,12 @@ def shell_structure(params):
                 print('this is how long the shell array is in the second loop: ', len(rShell_arr), ', and here is the stepsize', rShell_step,\
                       'and the shell thickness', max_shellRadius - rShell_start, 'and the slicesize', sliceSize)
                 
+                # DEBUG
+                if max_shellRadius - rShell_start < 0:
+                    print(max_shellRadius, rShell_start, rShell_stop)
+                    sys.exit()
+                    
+                    
                 y0 = [nShell0, tau0_neu]
                 sol_ODE = scipy.integrate.odeint(get_shellODE.get_shellODE, y0, rShell_arr,
                                       args=(f_cover, is_ionised, params),
@@ -569,32 +609,57 @@ def shell_structure(params):
                     idx = idx_array[0]
                     
                     
-                print('mass condition:', idx, mShell_arr_cum[idx-1], mShell_end)
+                print('mass condition:', idx, mShell_arr_cum[idx], mShell_end)
                 
-                
+                        # -----OLD----
+                        #     # Associated condition
+                        #     # True if any part of the array is true
+                        #     is_allMassSwept = any(massCondition) 
+                            
+                        #     # Store values into arrays representing profile in the ionised region. 
+                        #     mShell_arr_neu = np.concatenate(( mShell_arr_neu, mShell_arr[:idx-1]))
+                        #     mShell_arr_cum_neu = np.concatenate(( mShell_arr_cum_neu, mShell_arr_cum[:idx-1]))
+                        #     tauShell_arr_neu = np.concatenate(( tauShell_arr_neu, tauShell_arr[:idx-1]))
+                        #     nShell_arr_neu = np.concatenate(( nShell_arr_neu, nShell_arr[:idx-1]))
+                        #     rShell_arr_neu = np.concatenate(( rShell_arr_neu, rShell_arr[:idx-1]))
+                            
+                        #     # Reinitialise values for next integration
+                        #     nShell0 = nShell_arr[idx - 1]
+                        #     tau0_neu = tauShell_arr[idx - 1]
+                        #     mShell0 = mShell_arr[idx - 1]
+                        #     rShell_start = rShell_arr[idx - 1]
+                            
+                        # # append the last few values that are otherwise missed in the while loop.
+                        # mShell_arr_neu = np.append(mShell_arr_neu, mShell_arr[idx-1])
+                        # mShell_arr_cum_neu = np.append(mShell_arr_cum_neu, mShell_arr_cum[idx-1])
+                        # tauShell_arr_neu = np.append(tauShell_arr_neu, tauShell_arr[idx-1])
+                        # nShell_arr_neu = np.append(nShell_arr_neu, nShell_arr[idx-1])
+                        # rShell_arr_neu = np.append(rShell_arr_neu, rShell_arr[idx-1])
+                        
+                # ----NEW----
                 # Associated condition
                 # True if any part of the array is true
                 is_allMassSwept = any(massCondition) 
                 
                 # Store values into arrays representing profile in the ionised region. 
-                mShell_arr_neu = np.concatenate(( mShell_arr_neu, mShell_arr[:idx-1]))
-                mShell_arr_cum_neu = np.concatenate(( mShell_arr_cum_neu, mShell_arr_cum[:idx-1]))
-                tauShell_arr_neu = np.concatenate(( tauShell_arr_neu, tauShell_arr[:idx-1]))
-                nShell_arr_neu = np.concatenate(( nShell_arr_neu, nShell_arr[:idx-1]))
-                rShell_arr_neu = np.concatenate(( rShell_arr_neu, rShell_arr[:idx-1]))
+                mShell_arr_neu = np.concatenate(( mShell_arr_neu, mShell_arr[:idx]))
+                mShell_arr_cum_neu = np.concatenate(( mShell_arr_cum_neu, mShell_arr_cum[:idx]))
+                tauShell_arr_neu = np.concatenate(( tauShell_arr_neu, tauShell_arr[:idx]))
+                nShell_arr_neu = np.concatenate(( nShell_arr_neu, nShell_arr[:idx]))
+                rShell_arr_neu = np.concatenate(( rShell_arr_neu, rShell_arr[:idx]))
                 
                 # Reinitialise values for next integration
-                nShell0 = nShell_arr[idx - 1]
-                tau0_neu = tauShell_arr[idx - 1]
-                mShell0 = mShell_arr[idx - 1]
-                rShell_start = rShell_arr[idx - 1]
+                nShell0 = nShell_arr[idx]
+                tau0_neu = tauShell_arr[idx]
+                mShell0 = mShell_arr[idx]
+                rShell_start = rShell_arr[idx]
                 
             # append the last few values that are otherwise missed in the while loop.
-            mShell_arr_neu = np.append(mShell_arr_neu, mShell_arr[idx-1])
-            mShell_arr_cum_neu = np.append(mShell_arr_cum_neu, mShell_arr_cum[idx-1])
-            tauShell_arr_neu = np.append(tauShell_arr_neu, tauShell_arr[idx-1])
-            nShell_arr_neu = np.append(nShell_arr_neu, nShell_arr[idx-1])
-            rShell_arr_neu = np.append(rShell_arr_neu, rShell_arr[idx-1])
+            mShell_arr_neu = np.append(mShell_arr_neu, mShell_arr[idx])
+            mShell_arr_cum_neu = np.append(mShell_arr_cum_neu, mShell_arr_cum[idx])
+            tauShell_arr_neu = np.append(tauShell_arr_neu, tauShell_arr[idx])
+            nShell_arr_neu = np.append(nShell_arr_neu, nShell_arr[idx])
+            rShell_arr_neu = np.append(rShell_arr_neu, rShell_arr[idx])
             
             # =============================================================================
             # Now, compute the gravitational potential for the neutral part of shell
@@ -701,6 +766,7 @@ def shell_structure(params):
     params['shell_grav_phi'].value = grav_phi
     params['shell_grav_force_m'].value = grav_force_m
     
+    params['rShell'].value = grav_r[-1]
         
     return
         

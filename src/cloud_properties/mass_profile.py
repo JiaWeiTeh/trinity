@@ -249,10 +249,40 @@ def get_mass_profile( r_arr, params,
                 r_arr_previous = params['array_R2'].value
                 m_arr_previous = params['array_mShell'].value
                 
+                # Find duplicate indices in `a`
+                _, idx_first = np.unique(t_arr_previous, return_index=True)
+                duplicate_mask = np.ones(len(t_arr_previous), dtype=bool)
+                duplicate_mask[np.setdiff1d(np.arange(len(t_arr_previous)), idx_first)] = False
+                
+                # Keep only unique elements (i.e., remove duplicates and their corresponding entries in both arrays)
+                t_arr_previous = t_arr_previous[duplicate_mask]
+                r_arr_previous = r_arr_previous[duplicate_mask]
+                m_arr_previous = m_arr_previous[duplicate_mask]
+                
+            
+                # Do one also for r-arr
+                _, idx_first = np.unique(r_arr_previous, return_index=True)
+                duplicate_mask = np.ones(len(r_arr_previous), dtype=bool)
+                duplicate_mask[np.setdiff1d(np.arange(len(r_arr_previous)), idx_first)] = False
+                # Keep only unique elements (i.e., remove duplicates and their corresponding entries in both arrays)
+                t_arr_previous = t_arr_previous[duplicate_mask]
+                r_arr_previous = r_arr_previous[duplicate_mask]
+                m_arr_previous = m_arr_previous[duplicate_mask]
+                
+                
                 from scipy.interpolate import CubicSpline
                 
                 # Cubic spline with extrapolation
-                interps = CubicSpline(t_arr_previous, r_arr_previous, extrapolate=True)
+                try:
+                    interps = CubicSpline(t_arr_previous, r_arr_previous, extrapolate=True)
+                except Exception as e:
+                    print(e)
+                    print('t_arr_previous1', params['array_t_now'].value)
+                    print('t_arr_previous', t_arr_previous)
+                    print('r_arr_previous1', params['array_R2'].value)
+                    print('r_arr_previous', r_arr_previous)
+                    import sys
+                    sys.exit()
 
                 t_next = params['t_next'].value
                 # what is the next R2?
@@ -264,8 +294,25 @@ def get_mass_profile( r_arr, params,
             
                 # print('mass profile problems', m_arr, m_arr_previous, t_arr_previous)
                 # print(len(m_arr_previous), len(t_arr_previous))
-                
-                mdot_interp = scipy.interpolate.interp1d(r_arr_previous, np.gradient(m_arr_previous, t_arr_previous), kind='cubic', fill_value="extrapolate")
+                try:
+                    
+                    mdot_interp = scipy.interpolate.interp1d(r_arr_previous, np.gradient(m_arr_previous, t_arr_previous), kind='cubic', fill_value="extrapolate")
+                except Exception as e:
+                    print(e)
+                    print(r_arr_previous)
+                    u, c = np.unique(r_arr_previous, return_counts=True)
+                    dup = u[c > 1]
+                    print('r_arr_previous', dup)
+                    
+                    mgrad = np.gradient(m_arr_previous, t_arr_previous)
+                    
+                    print(mgrad)
+                    u, c = np.unique(mgrad, return_counts=True)
+                    dup = u[c > 1]
+                    print('mgrad', dup)
+                    print(dup)
+                    import sys
+                    sys.exit()
                 
                 mdot_arr = mdot_interp(r_arr)
 

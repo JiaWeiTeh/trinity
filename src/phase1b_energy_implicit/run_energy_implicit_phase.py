@@ -251,9 +251,9 @@ def check_events(params, dt_params):
     # Non terminating events
     # =============================================================================
         
-    # check if there is a change in sign 
-    if np.sign(v2_next) != np.sign(params['v2'].value):
-        if np.sign(v2_next) == -1:
+    # check if it is collapsing
+    if np.sign(v2_next) == -1:
+        if R2_next < params['R2'].value:
             print(f'Bubble currently collapsing because the next velocity is {v2_next / cvt.v_kms2au} km/s.')
             params['isCollapse'].value = True
         else:

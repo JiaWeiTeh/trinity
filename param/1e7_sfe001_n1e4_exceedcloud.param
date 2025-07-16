@@ -1,5 +1,8 @@
-model_name    1e7_sfe001_n1e4_exceedcloud
-log_mCloud    7
-sfe    0.01
-dens_navg_pL    1e4
-expansionBeyondCloud    True
+mCloud    1e7
+sfe    0.1
+# powerlaw, homogeneous
+dens_profile    densPL
+densPL_alpha    0
+nCore    1e4
+nISM    10
+expansionBeyondCloud True
