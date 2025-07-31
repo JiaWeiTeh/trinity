@@ -29,11 +29,16 @@ def plot(path2json):
     
     v3_t = []
         
+    v3_Lgain = []
+    v3_Lloss = []
+    
     #--------------
     
     v3a_length = 0
     v3b_length = 0
     v3c_length = 0
+    
+    phase = []
 
     import json
     with open(path2json, 'r') as f:
@@ -52,18 +57,28 @@ def plot(path2json):
         v3_v.append(val['v2'])
         v3_E.append(val['Eb'])
         v3_T.append(val['T0'])
+        v3_Lgain.append(val['bubble_Lgain'])
+        v3_Lloss.append(val['bubble_Lloss'])
+        phase.append(val['current_phase'])
+        
         
         # print(v3_rShell[-1] - v3_r[-1])
         # if val['current_phase'] == '1b':
         #     break
 
+    def change_points(arr):
+        arr = np.asarray(arr)
+        return np.where(arr[1:] != arr[:-1])[0] + 1
+
+
+    idx_phasechange = change_points(phase)
 
     # prefix of the final key
     # last_key = '_' + str(key.split('_')[1]) + '_'
 
     plt.rc('text', usetex=True)
     plt.rc('font', family='sans-serif', size=12)
-    fig, axs = plt.subplots(2, 2, figsize = (5,5), dpi = 150)
+    fig, axs = plt.subplots(2, 3, figsize = (10,5), dpi = 200)
     
     fig.suptitle(f'{path2json}')
     
@@ -81,9 +96,26 @@ def plot(path2json):
     axs[0][0].plot(v3_t[:len(v3_rShell)], v3_rShell, 'gray', alpha = 0.5, linewidth = 5, label = 'trinity')
     axs[0][0].set_ylabel('radius (pc)')
     axs[0][0].set_xlabel('time (Myr)')
+    
+    print('phase change', idx_phasechange)
+    
+    c = ['g', 'b', 'r', 'k']
+    
+    if idx_phasechange[-1] != len(v3_t) - 1:
+        idx_phasechange = np.concatenate([idx_phasechange, [len(v3_t) - 1]])
+    
+    for ii, phase_idx in enumerate(idx_phasechange):
+        if ii == 0:
+            axs[0][0].axvspan(0, v3_t[phase_idx], color = c[ii], alpha = 0.3)
+        else:
+            axs[0][0].axvspan(v3_t[idx_phasechange[ii-1]], v3_t[idx_phasechange[ii]], color = c[ii], alpha = 0.3)
+            
+        
+        
     # axs[0][0].set_xlim(0, max(v3_t))
     # axs[0][0].set_xlim(0, 1)
     # axs[0][0].set_yscale('symlog')
+    # axs[0][0].set_xscale('log')
     print(snaplists['0']['rCloud'])
     
     # print(snapshots)
@@ -120,6 +152,15 @@ def plot(path2json):
     axs[1][1].set_xlim(0, max(v3_t))
     axs[1][1].set_yscale('log')
     
+    
+    #-- gainloss
+    
+    axs[1][2].plot(v3_t, (v3_Lgain), '-k', alpha = 1, linewidth = 2, label = 'trinity')
+    axs[1][2].plot(v3_t, (v3_Lloss), '-b', alpha = 1, linewidth = 2, label = 'trinity')
+    axs[1][2].set_ylabel('Luminosity')
+    axs[1][2].set_xlabel('time (Myr)')
+    axs[1][2].set_xlim(0, max(v3_t))
+    axs[1][2].set_yscale('log')
     
     #-- final
     

@@ -100,6 +100,8 @@ def run_phase_energy(params):
         
         # reverse log space so that we have more point towards the end.
         time_range = (tmin + tmax) - np.logspace(np.log10(tmin), np.log10(tmax), 50)
+        # shave off first value
+        time_range = time_range[1:]
         
         
         for ii, time in enumerate(time_range):
@@ -254,7 +256,7 @@ def check_events(params, dt_params):
     # check if it is collapsing
     if np.sign(v2_next) == -1:
         if R2_next < params['R2'].value:
-            print(f'Bubble currently collapsing because the next velocity is {v2_next / cvt.v_kms2au} km/s.')
+            print(f'Bubble currently collapsing because the next velocity is {v2_next / cvt.v_kms2au} km/s and current radius is {params["R2"].value} pc.')
             params['isCollapse'].value = True
         else:
             params['isCollapse'].value = False

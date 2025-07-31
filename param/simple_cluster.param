@@ -1,3 +1,2 @@
-model_name    simple_cluster
-log_mCloud    7.0
-sfe    0.01
+mCloud    1e5
+sfe    0.3

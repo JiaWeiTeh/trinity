@@ -51,7 +51,7 @@ def get_betadelta(beta_guess, delta_guess, params):
     beta_max = 10 # very large number. Maybe beta doesnt have a maximum! It used to be 1.
     beta_min = 0
     delta_max = 0
-    delta_min = -1
+    delta_min = -10 # same with this
     
     
     def generate_combinations(beta, delta):

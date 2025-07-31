@@ -26,6 +26,7 @@ def get_InitCloudProp(params):
     
     if params['dens_profile'].value == 'densBE':
         _, rCloud, nEdge, _ = bonnorEbertSphere.create_BESphere(params)
+        # _, rCloud, nEdge, _ = bonnorEbertSphere.create_BESphereVersion2(params)
         
     
     elif params['dens_profile'].value == 'densPL':

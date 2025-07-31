@@ -6,3 +6,4 @@ densPL_alpha    0
 nCore    1e4
 nISM    10
 PISM    5e5
+expansionBeyondCloud True

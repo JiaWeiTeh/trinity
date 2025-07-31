@@ -79,6 +79,7 @@ def run_phase_transition(params):
         
         # reverse log space so that we have more point towards the end.
         time_range = (tmin + tmax) - np.logspace(np.log10(tmin), np.log10(tmax), 50)
+        time_range = time_range[1:]
         
         
         for ii, time in enumerate(time_range):

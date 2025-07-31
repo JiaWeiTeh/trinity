@@ -1,7 +1,7 @@
 
 for sfe in "001" "010" "030"; do
-    for ndens in "1e2"; do
-        for mCloud in "1e5"
+    for ndens in "1e2_BE"; do
+        for mCloud in "1e7"
 	   do
 		start_time=$(date +%s)
 		start_date=$(date)
@@ -12,7 +12,6 @@ for sfe in "001" "010" "030"; do
 		echo "========================================"
 		
 		python3 run.py param/${filename}.param > txt/${filename}.txt &
-	    	 
 	   done
     done
 done

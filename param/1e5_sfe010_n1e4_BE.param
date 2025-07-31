@@ -1,7 +1,9 @@
 mCloud    1e5
-sfe    0.01
+sfe    0.10
 # Bonnor-Ebert sphere
 dens_profile    densBE
 densBE_Omega    14.1
 nCore    1e4
 nISM    10
+PISM    1e5
+expansionBeyondCloud True

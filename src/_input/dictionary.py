@@ -246,6 +246,13 @@ class DescribedDict(dict):
         
         """
         
+        # no need to save if the time is the same (to avoid duplicates) and if dictionary is empty
+        if self.save_count >= 1 and self.previous_snapshot:
+            if self['t_now'] == self.previous_snapshot[str(self.save_count-1)]['t_now'] or\
+                self['R2'] == self.previous_snapshot[str(self.save_count-1)]['R2']:
+                print(f"duplicate detected in save_snapshot at t = {self['t_now']}. Snapshot not saved.")
+                return
+        
         # clean and simplify first (remove .info etc)
         clean_dict = self.clean()
         

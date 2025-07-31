@@ -75,13 +75,13 @@ def start_expansion(params):
     # import matplotlib.pyplot as plt
     
     # n_arr = params['initial_cloud_n_arr'].value
-    # # m_arr = params['initial_cloud_m_arr'].value
+    # m_arr = params['initial_cloud_m_arr'].value
     # r_arr = params['initial_cloud_r_arr'].value
     
-    # plt.plot(r_arr, n_arr * cvt.ndens_au2cgs)
+    # # plt.plot(r_arr, n_arr * cvt.ndens_au2cgs)
     # # plt.axhline(params['nCore'] * 0.9 * cvt.ndens_au2cgs, linestyle = '--')
     # # plt.axhline(params['nCore'] * 0.95 * cvt.ndens_au2cgs, linestyle = '--', c = 'b')
-    # # # plt.plot(r_arr, m_arr)
+    # plt.plot(r_arr, m_arr)
     # plt.yscale('log')
     # plt.xscale('log')
     # plt.show()
@@ -229,10 +229,10 @@ def run_expansion(params):
     
     
     # record
-    try:
-        params.flush()
-    except:
-        pass  
+    # try:
+    #     params.flush()
+    # except:
+    #     pass  
     
     # sys.exit('done with phase 1a')
     
@@ -253,10 +253,10 @@ def run_expansion(params):
     run_energy_implicit_phase.run_phase_energy(params)
     
     # record
-    try:
-        params.flush()
-    except:
-        pass
+    # try:
+    #     params.flush()
+    # except:
+    #     pass
     
 
     # Since cooling is not needed anymore after this phase, we reset values.
@@ -310,10 +310,10 @@ def run_expansion(params):
     if params['EndSimulationDirectly'].value == False:
         run_transition_phase.run_phase_transition(params)
     
-    try:
-        params.flush()
-    except:
-        pass
+    # try:
+    #     params.flush()
+    # except:
+    #     pass
     # =============================================================================
     # Phase 1d: momentum phase
     # =============================================================================

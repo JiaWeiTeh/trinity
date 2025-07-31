@@ -40,7 +40,7 @@ def plot(path2json):
     
     betadelta.plot(path2json)
     current_status.plot(path2json)
-    dMdt.plot(path2json)
+    # dMdt.plot(path2json)
     
     
     
@@ -58,16 +58,52 @@ def plot(path2json):
 # path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/1e5_sfe010_n1e4/dictionary.json'
 # path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/1e5_sfe030_n1e4/dictionary.json'
 
-for sfe in ['001', '010', '030']:
-    path2json = f'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe{sfe}_n1e4/dictionary.json'
-    # 1e4010_1e7 seems to have the problem where v suddenly blows up to -1e45.
-    plot(path2json)
-    
 
+# =============================================================================
+# homogeneous 1e7
+# =============================================================================
 # for sfe in ['001', '010', '030']:
-#     path2json = f'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe{sfe}_n1e4_BE/dictionary.json'
+#     path2json = f'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe{sfe}_n1e4/dictionary.json'
 #     # 1e4010_1e7 seems to have the problem where v suddenly blows up to -1e45.
 #     plot(path2json)
+    
+    
+    
+# =============================================================================
+# homogeneous 1e5
+# =============================================================================
+# for sfe in ['001', '010', '030']:
+#     path2json = f'/Users/jwt/unsync/Code/Trinity/outputs/1e5_sfe{sfe}_n1e4/dictionary.json'
+#     plot(path2json)
+    
+
+
+    
+# =============================================================================
+# PISM, homogeneous
+# =============================================================================
+# for sfe in ['010', '030']:
+#     path2json = f'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe{sfe}_n1e4_PISM5e5/dictionary.json'
+#     # 1e4010_1e7 seems to have the problem where v suddenly blows up to -1e45.
+#     plot(path2json)
+
+
+# =============================================================================
+# BE spheres
+# =============================================================================
+for sfe in ['001', '010', '030']:
+    path2json = f'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe{sfe}_n1e4_BE/dictionary.json'
+    # 1e4010_1e7 seems to have the problem where v suddenly blows up to -1e45.
+    plot(path2json)
+
+
+
+
+
+
+
+
+
 
 
 # path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/test_dict_BE/dictionary.json'

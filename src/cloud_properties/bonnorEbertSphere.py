@@ -108,67 +108,63 @@ def get_m():
 
 
 
-
-
-
-
-# # --- create BE sphere, returning outer radius, outer density and sphere effective temperature
-# def create_BESphereVersion2(params):
+# --- create BE sphere, returning outer radius, outer density and sphere effective temperature
+def create_BESphereVersion2(params):
     
-#     G = params['G'].value
-#     mCloud = params['mCloud'].value
-#     nCore = params['nCore'].value
-#     densBE_Omega = params['densBE_Omega'].value
-#     mu_ion = params['mu_ion'].value
+    G = params['G'].value
+    mCloud = params['mCloud'].value
+    nCore = params['nCore'].value
+    densBE_Omega = params['densBE_Omega'].value
+    mu_ion = params['mu_ion'].value
     
-#     m_total = 1.18
+    m_total = 1.18
     
-#     # Omega = max(rhoCore/rho(xi)) ~ 13.8-14.1 
+    # Omega = max(rhoCore/rho(xi)) ~ 13.8-14.1 
     
-#     xi_array, u_array, dudxi_array, rho_rhoc_array, f_rho_rhoc = solve_laneEmden()
+    xi_array, u_array, dudxi_array, rho_rhoc_array, f_rho_rhoc = solve_laneEmden()
     
-#     params['densBE_xi_arr'].value = xi_array
-#     params['densBE_u_arr'].value = u_array
-#     params['densBE_dudxi_arr'].value = dudxi_array
-#     params['densBE_rho_rhoc_arr'].value = rho_rhoc_array
-#     params['densBE_f_rho_rhoc'].value = f_rho_rhoc
+    params['densBE_xi_arr'].value = xi_array
+    params['densBE_u_arr'].value = u_array
+    params['densBE_dudxi_arr'].value = dudxi_array
+    params['densBE_rho_rhoc_arr'].value = rho_rhoc_array
+    params['densBE_f_rho_rhoc'].value = f_rho_rhoc
     
-#     # or is it neu? because Teff is high but its just an effective temp? 
-#     rhoCore = nCore * mu_ion
+    # or is it neu? because Teff is high but its just an effective temp? 
+    rhoCore = nCore * mu_ion
     
-#     n_out = nCore / densBE_Omega
+    n_out = nCore / densBE_Omega
 
             
-#     Pext_kb = 1e4
-#     Pext = Pext_kb * params['k_B'] * cvt.k_B_au2cgs
-#     Pext *= cvt.Pb_cgs2au
+    Pext_kb = 1e4
+    Pext = Pext_kb * params['k_B'] * cvt.k_B_au2cgs
+    Pext *= cvt.Pb_cgs2au
 
-#     xi_out = 6.45
+    xi_out = 6.45
         
-#     def cs2R(c_s):
-#         return np.sqrt(c_s**2 / (4 * np.pi * G * rhoCore)) * xi_out
+    def cs2R(c_s):
+        return np.sqrt(c_s**2 / (4 * np.pi * G * rhoCore)) * xi_out
     
-#     def Pext2cs(Pext):
-#         return (Pext**0.5 * G**(3/2) * mCloud/m_total)**(1/4)
+    def Pext2cs(Pext):
+        return (Pext**0.5 * G**(3/2) * mCloud/m_total)**(1/4)
     
-#     def cs2T(c_s):
-#         return mu_ion * c_s**2 / params['gamma_adia'] / params['k_B']
+    def cs2T(c_s):
+        return mu_ion * c_s**2 / params['gamma_adia'] / params['k_B']
     
-#     c_s = Pext2cs(Pext)
+    c_s = Pext2cs(Pext)
     
-#     r_out = cs2R(c_s)
+    r_out = cs2R(c_s)
     
-#     bE_Teff = cs2T(c_s)
+    bE_Teff = cs2T(c_s)
     
-#     print(xi_out, r_out, n_out, bE_Teff)
+    print(xi_out, r_out, n_out, bE_Teff)
     
-#     import sys
-#     sys.exit()
+    # import sys
+    # sys.exit()
     
-#     params['densBE_Teff'].value = bE_Teff
+    params['densBE_Teff'].value = bE_Teff
     
     
-#     return xi_out, r_out, n_out, bE_Teff
+    return xi_out, r_out, n_out, bE_Teff
 
 
         
@@ -202,7 +198,8 @@ def create_BESphere(params):
     def solve_structure(T, mCloud, rhoCore, f_rho_rhoc, n_outOmega):
         
         # sound speed
-        c_s = operations.get_soundspeed(T, params)
+        
+        c_s = np.sqrt(params['gamma_adia'] * (params['k_B'] * cvt.k_B_au2cgs) * T / (mu_ion*cvt.Msun2g)) * cvt.v_cms2au
         
         # with this sound speed, what is xi_out such that mass encompassed = mCloud?
         def solve_xi_out(xi, rhoCore, c_s, mCloud, f_rho_rhoc):
@@ -262,11 +259,11 @@ def create_BESphere(params):
 # define xi - r relation
 
 def r2xi(r, params):
-    c_s = operations.get_soundspeed(params['densBE_Teff'].value, params)
+    c_s = np.sqrt(params['gamma_adia'] * (params['k_B'] * cvt.k_B_au2cgs) * params['densBE_Teff'] / (params['mu_ion']*cvt.Msun2g)) * cvt.v_cms2au
     return r * np.sqrt(4 * np.pi * params['G'] * params['nCore'] * params['mu_ion'] / c_s**2) 
 
 def xi2r(xi, params):
-    c_s = operations.get_soundspeed(params['densBE_Teff'].value, params)
+    c_s = np.sqrt(params['gamma_adia'] * (params['k_B'] * cvt.k_B_au2cgs) * params['densBE_Teff'] / (params['mu_ion']*cvt.Msun2g)) * cvt.v_cms2au
     return xi * (4 * np.pi * params['G'] * params['nCore'] * params['mu_ion'] / c_s**2) ** (-1/2) 
 
 

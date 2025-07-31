@@ -17,9 +17,9 @@ def create_PLSphere(params):
     mCloud = params['mCloud'].value
     nCore = params['nCore'].value
     rCore = params['rCore'].value
-    mu_neu = params['mu_neu'].value
+    mu_ion = params['mu_ion'].value
     nISM = params['nISM'].value
-    rhoCore = nCore * mu_neu
+    rhoCore = nCore * mu_ion
     
     print(rCore)
     
@@ -44,7 +44,7 @@ def create_PLSphere(params):
         nEdge = nCore * (rCloud/rCore)**alpha
         
     elif alpha == 0:
-        rCloud = (3 * mCloud / 4 / np.pi / (nCore * mu_neu))**(1/3)
+        rCloud = (3 * mCloud / 4 / np.pi / (nCore * mu_ion))**(1/3)
         # density at edge should just be the average density
         nEdge = nCore
     

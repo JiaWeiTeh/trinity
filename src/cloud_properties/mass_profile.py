@@ -12,6 +12,7 @@ import numpy as np
 from src._functions import operations
 import scipy.integrate
 from src.cloud_properties import bonnorEbertSphere
+import src._functions.unit_conversions as cvt
 
 def get_mass_profile( r_arr, params,
                           return_mdot,
@@ -137,7 +138,9 @@ def get_mass_profile( r_arr, params,
 
         # OLD VERSION for mass ----
         # i think this will break if r_arr is given such that it is very large and break interpolation?
-        c_s = operations.get_soundspeed(params['densBE_Teff'], params)
+        # c_s = operations.get_soundspeed(params['densBE_Teff'], params)
+        c_s = np.sqrt(params['gamma_adia'] * (params['k_B'] * cvt.k_B_au2cgs) * params['densBE_Teff'] / (params['mu_ion']*cvt.Msun2g)) * cvt.v_cms2au
+        
         G = params['G'].value
         f_rho_rhoc = params['densBE_f_rho_rhoc'].value
         
@@ -184,6 +187,7 @@ def get_mass_profile( r_arr, params,
         
         # m_arr[r_arr <= rCloud] =  4 / 3 * np.pi * r_arr[r_arr <= rCloud]**3 * rho_arr
         
+        # #---
         
         
         m_arr[r_arr > rCloud] = mCloud + 4 / 3 * np.pi * rhoISM * (r_arr[r_arr > rCloud]**3 - rCloud**3)
@@ -229,7 +233,7 @@ def get_mass_profile( r_arr, params,
             # get radius
             r_threshold = cloud_getr_interp(n_threshold)
             
-            # print(r_threshold)
+            # print(r_threshold) 
             
             rhoGas = cloud_getn_interp(r_arr) * params['mu_ion'].value
             
@@ -238,7 +242,7 @@ def get_mass_profile( r_arr, params,
             # if params['t_now'].value < 0.01:
                 # treat as a homogeneous cloud
                 mdot_arr = 4 * np.pi * r_arr**2 * rhoGas * rdot_arr
-            else:
+            elif params['R2'].value < rCloud:
                             # # input values into mass array
                             # # dm/dt, see above for expressions of m.
                             # mGasdot[r_arr <= rCore] = 4 * np.pi * rhoCore * r_arr[r_arr <= rCore]**2 * rdot_arr[r_arr <= rCore]
@@ -315,8 +319,9 @@ def get_mass_profile( r_arr, params,
                     sys.exit()
                 
                 mdot_arr = mdot_interp(r_arr)
-
-                
+            
+            else:
+                mdot_arr = 4 * np.pi * rhoISM * r_arr[r_arr > rCloud]**2 * rdot_arr[r_arr > rCloud]
             
             # rhoGas = rhoCore * f_rho_rhoc(xi_arr)
             
