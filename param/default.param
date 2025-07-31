@@ -97,7 +97,7 @@ stop_t_diss    2
 
 # INFO: Maximum radial extent permitted for shell expansion.
 # UNIT: [pc]
-stop_r    100
+stop_r    300
 
 # INFO: Velocity threshold below which the simulation is considered numerically unstable.
 # UNIT: [km * s**-1]

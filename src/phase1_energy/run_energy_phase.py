@@ -484,8 +484,6 @@ def run_energy(params):
         # save here
         print('saving snapshot')
         params.save_snapshot()
-        # debug
-        # params.flush()
         
         # =============================================================================
         # Prepare for next loop

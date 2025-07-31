@@ -12,15 +12,6 @@ for sfe in "001" "010" "030"; do
 		echo "========================================"
 		
 		python3 run.py param/${filename}.param > txt/${filename}.txt
-	    	
-		end_time=$(date +%s)
-		end_date=$(date)
-        	runtime=$((end_time - start_time))
-
-		echo "========================================"
-		echo "Completed $filename at $end_date"
-		echo "Total run time: ${runtime} seconds"
-		echo "========================================"
 	   done
     done
 done

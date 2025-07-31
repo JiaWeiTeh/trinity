@@ -5,5 +5,5 @@ dens_profile    densPL
 densPL_alpha    0
 nCore    1e4
 nISM    10
-PISM    1e5
+PISM    1e6
 expansionBeyondCloud True

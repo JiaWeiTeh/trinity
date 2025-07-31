@@ -35,6 +35,7 @@ def run_phase_momentum(params):
     nmin = int(200 * np.log10(tmax/tmin))
 
     time_range = np.logspace(np.log10(tmin), np.log10(tmax), nmin)
+    
     dt = np.diff(time_range)
 
 
@@ -75,7 +76,7 @@ def run_phase_momentum(params):
         
         # reverse log space so that we have more point towards the end.
         time_range = (tmin + tmax) - np.logspace(np.log10(tmin), np.log10(tmax), 50)
-        
+        time_range = time_range[1:]
         
         for ii, time in enumerate(time_range):
         
