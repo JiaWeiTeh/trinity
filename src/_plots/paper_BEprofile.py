@@ -112,6 +112,7 @@ plt.show()
 
 
 
+fig, axs = plt.subplots(1, 1, figsize = (5, 5), dpi = 200)
 
 
 
