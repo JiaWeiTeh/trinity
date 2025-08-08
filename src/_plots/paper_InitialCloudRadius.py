@@ -198,7 +198,7 @@ plt.rcParams["ytick.minor.width"] = 0.8
 
 
 
-fig, ax = plt.subplots(1, 2, figsize = (9,5), dpi = 200,)
+fig, ax = plt.subplots(1, 2, figsize = (5,5), dpi = 200,)
 for ii in range(mNum):
 
     ax[0].plot(nCore_array[ii*len(nCore_list):(ii+1)*len(nCore_list)], rCloud_array[ii*len(nCore_list):(ii+1)*len(nCore_list)], \

@@ -33,19 +33,21 @@ plt.rcParams["ytick.minor.width"] = 0.8
 fig, ax = plt.subplots(1, 1, figsize = (5,5), dpi = 150,)
 
 
-# alist = [0.2, 0.4, 0.8]
-alist = [0.8]
+alist = [0.2, 0.4, 0.8]
+# alist = [0.8]
 
-# sfelist = ['001', '010', '030']
-sfelist = ['010']
+sfelist = ['001', '010', '030']
+# sfelist = ['001']
 
 for ii, sfe in enumerate(sfelist):
-    path2json = f'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe{sfe}_n1e4/dictionary.json'
+    # path2json = f'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe{sfe}_n1e4/dictionary.json'
     # path2json = f'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe{sfe}_n1e4_BE/dictionary.json'
+    path2json = f'/Users/jwt/unsync/Code/Trinity/outputs/1e5_sfe{sfe}_n1e4_BE/dictionary.json'
 
     with open(path2json, 'r') as f:
         # step one is to make sure they are lists i think
         snaplists = json.load(f)
+
 
     mlist = []
     mshell = []
@@ -76,8 +78,8 @@ fig, ax = plt.subplots(1, 1, figsize = (5,5), dpi = 150,)
 
 alist = [0.3, 0.4, 0.6]
 
-# sfelist = ['001', '010', '030']
-sfelist = ['010']
+sfelist = ['001', '010', '030']
+# sfelist = ['010']
 
 for ii, sfe in enumerate(sfelist):
     # path2json = f'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe{sfe}_n1e4/dictionary.json'
@@ -103,4 +105,43 @@ for ii, sfe in enumerate(sfelist):
     # plt.xscale('log')
     # plt.xlim(0, 5)
     plt.axhline(snaplists['1']['rCloud'], c = 'b', alpha = alist[ii])
+
+
+#%%
+
+
+
+
+
+
+
+alist = [0.3, 0.4, 0.6]
+
+sfelist = ['001', '010', '030']
+# sfelist = ['010']
+
+for ii, sfe in enumerate(sfelist):
+    # path2json = f'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe{sfe}_n1e4/dictionary.json'
+    path2json = f'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe{sfe}_n1e4_BE/dictionary.json'
+
+    with open(path2json, 'r') as f:
+        # step one is to make sure they are lists i think
+        snaplists = json.load(f)
+
+    t2list = []
+    tlist = []
+    phaselist = []
+    
+    #--------------
+    
+    for key, val in snaplists.items():
+        # t2list.append(val['t_next'])
+        tlist.append(val['t_now'])
+        
+    fig, ax = plt.subplots(1, 1, figsize = (5,5), dpi = 150,)
+    plt.plot(tlist)
+    # plt.plot(t2list)
+    plt.show()
+
+
 

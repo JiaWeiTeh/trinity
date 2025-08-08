@@ -51,11 +51,11 @@ plt.rc('font', family='sans-serif', size=12)
     
     
 fig, ax = plt.subplots(1, 1, figsize = (5, 5), dpi = 200)
-fig.patch.set_alpha(0.0)      # Figure background
-ax.patch.set_alpha(0.0)       # Axes background
+# fig.patch.set_alpha(0.0)      # Figure background
+# ax.patch.set_alpha(0.0)       # Axes background
 
 #figure rho/rho_c vs. r/r_c
-# plt.loglog(x,rho_rhoc,'k-')
+plt.loglog(x,rho_rhoc,'k-')
 plt.loglog(x,1.7*x**(-2),'b--', label=r'$\propto x^{-2}$')
 plt.axhline(y = 1, c='r', ls='--', label=r'$\propto x^0$')
 
@@ -77,8 +77,8 @@ plt.show()
 #%%
 
 fig, ax = plt.subplots(1, 1, figsize = (5, 5), dpi = 200)
-fig.patch.set_alpha(0.0)      # Figure background
-ax.patch.set_alpha(0.0)       # Axes background
+# fig.patch.set_alpha(0.0)      # Figure background
+# ax.patch.set_alpha(0.0)       # Axes background
 
 
 
@@ -90,7 +90,7 @@ def M(rho,r):
 mass = M(rho_rhoc,x)
 
 #figure M(r) vs. x
-# plt.loglog(x,mass, 'k-')
+plt.loglog(x,mass, 'k-')
 plt.loglog(x,4./(4*np.pi)*x**(3),'b--', label=r'$\propto x^{3}$')
 plt.loglog(x,7./(4*np.pi)*x**(1),'r--', label=r'$\propto x^{1}$')
 

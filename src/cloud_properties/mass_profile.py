@@ -238,7 +238,7 @@ def get_mass_profile( r_arr, params,
             rhoGas = cloud_getn_interp(r_arr) * params['mu_ion'].value
             
             # DEBUG remove the time condition
-            if params['R2'].value < r_threshold:
+            if params['R2'].value < r_threshold: #or params['t_now'].value < 1e-2:
             # if params['t_now'].value < 0.01:
                 # treat as a homogeneous cloud
                 mdot_arr = 4 * np.pi * r_arr**2 * rhoGas * rdot_arr

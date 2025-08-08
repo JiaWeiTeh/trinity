@@ -65,6 +65,8 @@ plt.rcParams["xtick.minor.width"] = 0.8     # Minor tick width
 plt.rcParams["ytick.minor.width"] = 0.8
 
 
+#%%
+
 
 fig, axs = plt.subplots(1, 1, figsize = (5, 5), dpi = 200)
 
@@ -72,7 +74,7 @@ fig, axs = plt.subplots(1, 1, figsize = (5, 5), dpi = 200)
 
 # the line for scaling
 xmin = 10**(-0.5)
-xmax = 100
+xmax = 60
 
 xrange = np.logspace(xmin, xmax, 1000)
 
@@ -81,14 +83,14 @@ yn2 = xrange**-2
 
 
 # plt.plot(xrange, 10**(6.24) * yn2 - 10**(2.), linestyle = '--', c = 'b', label = '$n\propto r^{-2}$')
-plt.plot(xrange, 10**(6.22) * yn2, linestyle = '--', c = 'b', label = '$n\propto r^{-2}$')
+plt.plot(xrange, 10**(6.21) * yn2, linestyle = '--', c = 'b', label = '$n\propto r^{-2}$')
 plt.plot(xrange, np.ones_like(xrange)*1e4, linestyle = '--', c = 'r', label = '$n\propto r^0$')
 
 
 
 
 
-plt.plot(rlist, nlist * cvt.ndens_au2cgs, c = 'k')
+plt.plot(rlist, nlist * cvt.ndens_au2cgs, c = 'k', linewidth = 3)
 
 
 
@@ -97,7 +99,7 @@ plt.plot(rlist, nlist * cvt.ndens_au2cgs, c = 'k')
 plt.legend()
 plt.xscale('log')
 plt.xlim(xmin, xmax)
-plt.ylim(1e2, 1e5)
+plt.ylim(10**(0.9), 1e5)
 plt.yscale('log')
 plt.ylabel('$n$ [$\mathrm{cm}^{-3}$]')
 plt.xlabel('$r$ [pc]')
@@ -111,12 +113,42 @@ plt.show()
 #---- mass
 
 
+#%%
+
 
 fig, axs = plt.subplots(1, 1, figsize = (5, 5), dpi = 200)
 
 
 
+# the line for scaling
+xmin = -1
+xmax = 8
 
+xrange = np.logspace(xmin, xmax, 1000)
+
+# yn2 = xrange
+yn3 = xrange**3
+
+
+plt.plot(xrange, 10**(2.8)*yn3, linestyle = '--', c = 'r', label = '$M\propto r^{3}$')
+plt.plot(xrange, 10**(5.35)*xrange, linestyle = '--', c = 'b', label = '$M\propto r$')
+
+# plt.plot(xrange, 10**(6.24) * yn2 - 10**(2.), linestyle = '--', c = 'b', label = '$n\propto r^{-2}$')
+# plt.plot(xrange, 10**(6.22) * yn2, linestyle = '--', c = 'b', label = '$n\propto r^{-2}$')
+# plt.plot(xrange, np.ones_like(xrange)*1e4, linestyle = '--', c = 'r', label = '$n\propto r^0$')
+
+
+plt.plot(rlist, mlist, c = 'k', linewidth = 3)
+
+
+
+# plt.legend()
+plt.xscale('log')
+plt.xlim(10*(0.3), 50)
+plt.ylim(1e4, 1e8)
+plt.yscale('log')
+plt.ylabel('$M$ [$\mathrm{M}_\odot$]')
+plt.xlabel('$r$ [pc]')
 
 
 
