@@ -155,11 +155,12 @@ def get_vdot(t, y,
     if params['shell_fAbsorbedIon'].value < 1.0:
         press_HII = get_press_ion(R2, params)
     else:
-        if params['R2'].value >= params['rCloud'].value:
-            # TODO: add this more for ambient pressure
-            press_HII = params['PISM'] * params['k_B']
-        else:
-            press_HII = 0.0
+        press_HII = 0.0
+            
+    if params['R2'].value >= params['rCloud'].value:
+        # TODO: add this more for ambient pressure
+        press_HII += params['PISM'] * params['k_B']      
+    
         
     # =============================================================================
     # calculate the ODE part: Acceleration 

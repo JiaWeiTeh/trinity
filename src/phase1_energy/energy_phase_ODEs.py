@@ -104,12 +104,11 @@ def get_ODE_Edot(y, t, params):
     if FABSi < 1.0:
         press_HII = get_press_ion(R2, params)
     else:
-        if params['R2'].value >= params['rCloud'].value:
-            # TODO: add this more for ambient pressure
-            press_HII = params['PISM'] * params['k_B']
-        else:
-            press_HII = 0.0
+        press_HII = 0.0
         
+    if params['R2'].value >= params['rCloud'].value:
+        # TODO: add this more for ambient pressure
+        press_HII += params['PISM'] * params['k_B']   
     
     # gravity correction (self-gravity and gravity between shell and star cluster)
     F_grav = params['G'].value * mShell / R2**2 * (mCluster + mShell/2) 
