@@ -345,14 +345,14 @@ def read_param(path2file, write_summary = True):
     param['Pb'] = DescribedItem(0, 'Msun/Myr2/pc. Bubble pressure')    
     param['c_sound'] = DescribedItem(0, 'Sound speed.')
     # --
-    param['t_next'] = DescribedItem(0, 'for calculation of mShell interpolation.', exclude_from_snapshot = True)
-    param['array_t_now'] = DescribedItem([], 'store variable into an array for mShell interpolation calculation', exclude_from_snapshot = True)
-    param['array_R2'] = DescribedItem([], 'store variable into an array for mShell interpolation calculation', exclude_from_snapshot = True)
-    param['array_R1'] = DescribedItem([], 'store variable into an array for mShell interpolation calculation', exclude_from_snapshot = True)
-    param['array_v2'] = DescribedItem([], 'store variable into an array for mShell interpolation calculation', exclude_from_snapshot = True)
-    param['array_T0'] = DescribedItem([], 'store variable into an array for mShell interpolation calculation', exclude_from_snapshot = True)
-    param['array_mShell'] = DescribedItem([], 'store variable into an array for mShell interpolation calculation', exclude_from_snapshot = True)
-    param['array_mShellDot'] = DescribedItem([], 'store variable into an array for mShell interpolation calculation', exclude_from_snapshot = True)
+    param['t_next'] = DescribedItem(0, 'for calculation of mShell interpolation.', exclude_from_snapshot = False)
+    param['array_t_now'] = DescribedItem([], 'store variable into an array for mShell interpolation calculation', exclude_from_snapshot = False)
+    param['array_R2'] = DescribedItem([], 'store variable into an array for mShell interpolation calculation', exclude_from_snapshot = False)
+    param['array_R1'] = DescribedItem([], 'store variable into an array for mShell interpolation calculation', exclude_from_snapshot = False)
+    param['array_v2'] = DescribedItem([], 'store variable into an array for mShell interpolation calculation', exclude_from_snapshot = False)
+    param['array_T0'] = DescribedItem([], 'store variable into an array for mShell interpolation calculation', exclude_from_snapshot = False)
+    param['array_mShell'] = DescribedItem([], 'store variable into an array for mShell interpolation calculation', exclude_from_snapshot = False)
+    param['array_mShellDot'] = DescribedItem([], 'store variable into an array for mShell interpolation calculation', exclude_from_snapshot = False)
     
     # --
     param['rCloud'] = DescribedItem(0, 'Cloud radius')
@@ -396,6 +396,7 @@ def read_param(path2file, write_summary = True):
     param['shell_grav_force_m'] = DescribedItem(np.array([]), 'pc / Myr2. Gravitational potential force per unit mass')
     param['shell_mass'] = DescribedItem(0, 'Msol. Shell mass')
     param['shell_massDot'] = DescribedItem(0, 'Msol/Myr. Rate of change of shell mass')
+    param['shell_interpolate_massDot'] = DescribedItem(False, 'Begin shell interpolation? Only used if dens_prof is dens_BE.')
 
     # Force calculation in shell dynamics
     
@@ -434,6 +435,7 @@ def read_param(path2file, write_summary = True):
  
     # state
     param['isCollapse'] = DescribedItem(False, 'Check if the cloud is collapsing')
+    param['isDissolved'] = DescribedItem(False, 'Shell has dissolved')
    
     # initial(?)
     param['initial_cloud_n_arr'] = DescribedItem([], 'Initial cloud density profile')

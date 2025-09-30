@@ -73,7 +73,8 @@ def plot(path2json):
 # homogeneous 1e5
 # =============================================================================
 # for sfe in ['001', '010', '030']:
-#     path2json = f'/Users/jwt/unsync/Code/Trinity/outputs/1e5_sfe{sfe}_n1e4/dictionary.json'
+#     # path2json = f'/Users/jwt/unsync/Code/Trinity/outputs/1e5_sfe{sfe}_n1e4/dictionary.json'
+#     path2json = f'/Users/jwt/unsync/Code/Trinity/outputs/1e5_sfe{sfe}_n1e2/dictionary.json'
 #     plot(path2json)
     
 

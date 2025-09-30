@@ -103,6 +103,36 @@ def run_energy(params):
     params['Pb'].value = Pb
     params['R1'].value = R1
     
+                # OLD ---
+    
+                # # first stopping time (will be incremented at beginning of while loop)
+                # # start time t0 will be incremented at end of while loop
+                # tStop_i = t_now
+                
+                # # Now, we define some start values. In this phase, these three will stay constant throughout.
+                
+                # # minimum separation in this phase?
+                # # dt_Emin = 1e-5 #* u.Myr
+                # # maximum separation in this phase?
+                # dt_Emax = 0.04166 #* u.Myr
+                
+                # dt_Estart = 1e-4 #* u.Myr
+                # dt_L = dt_Estart
+                
+                # # this will be the proper dt, timestep
+                # dt_real  = 1e-4 #* u.Myr
+                
+                
+                # # idk what is this. has to do with fitting?
+                # fit_len_max = 13
+                
+                # condition_to_reduce_timestep = False
+                
+                # ---
+                
+    
+    
+    
     
     # old code: mom_phase
     immediately_to_momentumphase = False
@@ -165,12 +195,7 @@ def run_energy(params):
         # Since also this phase cooling is not important, its probably a good approximation
         # 
         
-        # something is wrong here: the loop seems to record t twice, thus
-        # creating a duplicate which causes problems in extrapolation in mshelldot.
-        tsteps = 50
-        t_arr = np.arange(t_now, t_now +  (dt_min * tsteps), dt_min)[1:]  
-        
-        print('t_arr is this', t_arr)
+        t_arr = np.arange(t_now, t_now +  (dt_min * 50), dt_min)  
         
         # =============================================================================
         # Calculate shell structure
@@ -209,72 +234,23 @@ def run_energy(params):
         # =============================================================================
         # call ODE solver to solve for equation of motion (r, v (rdot), Eb). 
         # =============================================================================
+        # radiation pressure coupled to the shell
+        # f_absorbed_ion calculated from shell_structure.
+        # F_rad = f_absorbed_ion * Lbol / params['c_au'].value
         
+        y0 = [R2, v2, Eb]
         
+        # call ODE solver
+        psoln = scipy.integrate.odeint(energy_phase_ODEs.get_ODE_Edot, y0, t_arr, args=(params,))
         
-        
-        
-        
-            # # METHOD 1 ODE solver
-            
-            # # radiation pressure coupled to the shell
-            # # f_absorbed_ion calculated from shell_structure.
-            # # F_rad = f_absorbed_ion * Lbol / params['c_au'].value
-            
-            # y0 = [R2, v2, Eb, T0]
-            
-            # # call ODE solver
-            # psoln = scipy.integrate.odeint(energy_phase_ODEs.get_ODE_Edot, y0, t_arr, args=(params,))
-            
-            # # if calculate_bubble_shell:
-            # #     import sys
-            # #     sys.exit()
-            
-            # # [pc]
-            # r_arr = psoln[:,0] 
-            # v_arr = psoln[:, 1]
-            # Eb_arr = psoln[:, 2] 
+        # [pc]
+        r_arr = psoln[:,0] 
+        v_arr = psoln[:, 1]
+        Eb_arr = psoln[:, 2] 
 
-
-        # METHOD 2 own equations, this solves problem with dictionary
-        
-        
-        r_arr = []
-        v_arr = []
-        Eb_arr = []
-        
-        
-        
-        
-        for ii, time in enumerate(t_arr):
-            
-            # new inputs
-            y = [R2, v2, Eb, T0]
-            
-            print('original y', y)
-        
-            try:
-                params['t_next'].value = t_arr[ii+1]
-            except:
-                params['t_next'].value = time + dt_min
-                
-                
-            print('time', time)
-                    
-            rd, vd, Ed, Td =  energy_phase_ODEs.get_ODE_Edot(y, time, params)
-            
-            if ii != (len(t_arr) - 1):
-                R2 += rd * dt_min 
-                v2 += vd * dt_min 
-                Eb += Ed * dt_min 
-                T0 += Td * dt_min 
-                
-            r_arr.append(R2)
-            v_arr.append(v2)
-            Eb_arr.append(Eb)
-            
-        # print(v_arr)
-
+        # get shell mass
+        mShell_arr = mass_profile.get_mass_profile(r_arr, params,
+                                                    return_mdot = False)
             
         # =============================================================================
         # Here, we perform checks to see if we should continue the branch (i.e., increasing steps)
@@ -304,7 +280,17 @@ def run_energy(params):
         c_sound = operations.get_soundspeed(T_shell, params)
         params['c_sound'].value = c_sound
     
+    
+        params['array_t_now'].value = np.concatenate([params['array_t_now'].value, [t_now]])
+        params['array_R2'].value = np.concatenate([params['array_R2'].value, [R2]])
+        params['array_R1'].value = np.concatenate([params['array_R1'].value, [R1]])
+        params['array_v2'].value = np.concatenate([params['array_v2'].value, [v2]])
+        params['array_T0'].value = np.concatenate([params['array_T0'].value, [T0]])
+        params['array_mShell'].value = np.concatenate([params['array_mShell'].value, [Msh0]])
         
+        # save here
+        print('saving snapshot')
+        params.save_snapshot()
         
         # =============================================================================
         # Prepare for next loop
@@ -320,27 +306,7 @@ def run_energy(params):
         # bubble energy
         Eb = Eb_arr[-1]
         
-        # -- new, record only once
-        params['array_t_now'].value = np.concatenate([params['array_t_now'].value, [t_now]])
-        params['array_R2'].value = np.concatenate([params['array_R2'].value, [R2]])
-        params['array_R1'].value = np.concatenate([params['array_R1'].value, [params['R1'].value]])
-        params['array_v2'].value = np.concatenate([params['array_v2'].value, [v2]])
-        params['array_T0'].value = np.concatenate([params['array_T0'].value, [T0]])
-        
-        # get shell mass
-        mShell_arr = mass_profile.get_mass_profile(r_arr, params,
-                                                    return_mdot = False)
-        
         Msh0 = mShell_arr[-1] # shell mass
-        
-        params['array_mShell'].value = np.concatenate([params['array_mShell'].value, [Msh0]])
-        
-        # -- end new
-        
-        # save here
-        print('saving snapshot')
-        params.save_snapshot()
-        
         
     
         [Qi, LWind, Lbol, Ln, Li, vWind, pWindDot, pWindDotDot] =  get_currentSB99feedback(t_now, params)
@@ -372,21 +338,12 @@ def run_energy(params):
         
         # print(params)
         
-        # print('t_now', t_now)
-        # print('R2', R2)
-        # print('v2 array', v2)
         
         # if loop_count > 1:
         #     import sys
-        #     sys.exit('energy loop check')
-        
-        # import sys
-        # sys.exit('energy loop check')
+        #     sys.exit()
         
         pass
-
-    # import sys
-    # sys.exit('completed energy early.')
 
     return 
     

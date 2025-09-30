@@ -53,7 +53,9 @@ def get_mass_profile( r_arr, params,
     rCloud = params['rCloud'].value
     rCore = params['rCore'].value
     
-    if type(r_arr) is not np.ndarray:
+    if type(r_arr) == list:
+        r_arr = np.array(r_arr)
+    elif type(r_arr) is not np.ndarray:
         r_arr = np.array([r_arr])
         
     # Setting up values for mass density (from number density) 
@@ -152,9 +154,12 @@ def get_mass_profile( r_arr, params,
         
         # if r is bigger than cloud and if its smaller than cloud. 
         
+        # print('xi_arr', xi_arr)
         
         for ii, xi in enumerate(xi_arr[r_arr <= rCloud]):
             mass, _ = scipy.integrate.quad(f_mass, 0, xi)
+            # print('mass', mass)
+            # print('m_arr', m_arr)
             m_arr[ii] = mass
         # ----
             
@@ -249,30 +254,50 @@ def get_mass_profile( r_arr, params,
                             # mdot_arr[r_arr > rCore] = 4 * np.pi * rhoCore * (1 / rCore**-2) * rdot_arr[r_arr > rCore]
                             # mdot_arr[r_arr > rCloudud] = 4 * np.pi * rhoISM * r_arr[r_arr > rCloud]**2 * rdot_arr[r_arr > rCloud]
                 
+                params['shell_interpolate_massDot'].value = True
+                
                 t_arr_previous = params['array_t_now'].value
                 r_arr_previous = params['array_R2'].value
                 m_arr_previous = params['array_mShell'].value
                 
-                # Find duplicate indices in `a`
-                _, idx_first = np.unique(t_arr_previous, return_index=True)
-                duplicate_mask = np.ones(len(t_arr_previous), dtype=bool)
-                duplicate_mask[np.setdiff1d(np.arange(len(t_arr_previous)), idx_first)] = False
                 
-                # Keep only unique elements (i.e., remove duplicates and their corresponding entries in both arrays)
-                t_arr_previous = t_arr_previous[duplicate_mask]
-                r_arr_previous = r_arr_previous[duplicate_mask]
-                m_arr_previous = m_arr_previous[duplicate_mask]
+                    # # ---- removing this and making sure that there are never duplicates
+                    # # Find duplicate indices in `a`
+                    # _, idx_first = np.unique(t_arr_previous, return_index=True)
+                    # duplicate_mask = np.ones(len(t_arr_previous), dtype=bool)
+                    # duplicate_mask[np.setdiff1d(np.arange(len(t_arr_previous)), idx_first)] = False
+                    
+                    # # Keep only unique elements (i.e., remove duplicates and their corresponding entries in both arrays)
+                    # t_arr_previous = t_arr_previous[duplicate_mask]
+                    # r_arr_previous = r_arr_previous[duplicate_mask]
+                    # m_arr_previous = m_arr_previous[duplicate_mask]
+                    
                 
-            
-                # Do one also for r-arr
-                _, idx_first = np.unique(r_arr_previous, return_index=True)
-                duplicate_mask = np.ones(len(r_arr_previous), dtype=bool)
-                duplicate_mask[np.setdiff1d(np.arange(len(r_arr_previous)), idx_first)] = False
-                # Keep only unique elements (i.e., remove duplicates and their corresponding entries in both arrays)
-                t_arr_previous = t_arr_previous[duplicate_mask]
-                r_arr_previous = r_arr_previous[duplicate_mask]
-                m_arr_previous = m_arr_previous[duplicate_mask]
+                    # # Do one also for r-arr
+                    # _, idx_first = np.unique(r_arr_previous, return_index=True)
+                    # duplicate_mask = np.ones(len(r_arr_previous), dtype=bool)
+                    # duplicate_mask[np.setdiff1d(np.arange(len(r_arr_previous)), idx_first)] = False
+                    # # Keep only unique elements (i.e., remove duplicates and their corresponding entries in both arrays)
+                    # t_arr_previous = t_arr_previous[duplicate_mask]
+                    # r_arr_previous = r_arr_previous[duplicate_mask]
+                    # m_arr_previous = m_arr_previous[duplicate_mask]
+                    
+                    # # ----
+                    
+                    
+                def print_duplicates(arr):
+                    seen = set()
+                    duplicates = set()
                 
+                    for item in arr:
+                        if item in seen:
+                            duplicates.add(item)
+                        else:
+                            seen.add(item)
+                
+                    print("Duplicate items:", list(duplicates))
+                    
+    
                 
                 from scipy.interpolate import CubicSpline
                 
@@ -281,10 +306,15 @@ def get_mass_profile( r_arr, params,
                     interps = CubicSpline(t_arr_previous, r_arr_previous, extrapolate=True)
                 except Exception as e:
                     print(e)
-                    print('t_arr_previous1', params['array_t_now'].value)
                     print('t_arr_previous', t_arr_previous)
-                    print('r_arr_previous1', params['array_R2'].value)
+                    
+                    print_duplicates(t_arr_previous)
+                    
                     print('r_arr_previous', r_arr_previous)
+                    
+                    print_duplicates(t_arr_previous)
+                    
+                    
                     import sys
                     sys.exit()
 
@@ -321,6 +351,9 @@ def get_mass_profile( r_arr, params,
                 mdot_arr = mdot_interp(r_arr)
             
             else:
+                
+                params['shell_interpolate_massDot'].value = False
+                
                 mdot_arr = 4 * np.pi * rhoISM * r_arr[r_arr > rCloud]**2 * rdot_arr[r_arr > rCloud]
             
             # rhoGas = rhoCore * f_rho_rhoc(xi_arr)

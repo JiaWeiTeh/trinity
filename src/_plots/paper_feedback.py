@@ -110,10 +110,15 @@ for mCloud in mCloud_list:
                 
                 F_total = F_gravlist + F_radlist + F_ionlist
                 
+                # grav
                 ax.fill_between(tlist, F_gravlist/F_total, color = 'k', alpha = 0.3)
+                # ion
                 ax.fill_between(tlist, (F_gravlist+F_ionlist)/F_total, color = 'k', alpha = 0.3)
+                # radiation
                 ax.fill_between(tlist, 1, color = 'k', alpha = 0.3)
                 
+                # ax.set_yscale('log')
+                print(F_gravlist, F_radlist, F_ionlist)
                 
                 ax.set_xlim(0, max(tlist))
                 ax.set_xlabel('t [Myr]')
