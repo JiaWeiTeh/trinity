@@ -41,8 +41,9 @@ sfelist = ['001', '010', '030']
 
 for ii, sfe in enumerate(sfelist):
     # path2json = f'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe{sfe}_n1e4/dictionary.json'
-    # path2json = f'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe{sfe}_n1e4_BE/dictionary.json'
-    path2json = f'/Users/jwt/unsync/Code/Trinity/outputs/1e5_sfe{sfe}_n1e4_BE/dictionary.json'
+    path2json = f'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe{sfe}_n1e4_BE/dictionary.json'
+    # path2json = f'/Users/jwt/unsync/Code/Trinity/outputs/1e5_sfe{sfe}_n1e4_BE/dictionary.json'
+    # path2json = f'/Users/jwt/unsync/Code/Trinity/outputs/1e5_sfe{sfe}_n1e2/dictionary.json'
 
     with open(path2json, 'r') as f:
         # step one is to make sure they are lists i think
@@ -142,6 +143,118 @@ for ii, sfe in enumerate(sfelist):
     plt.plot(tlist)
     # plt.plot(t2list)
     plt.show()
+
+
+
+#%%
+
+
+import json
+import matplotlib.pyplot as plt
+import numpy as np
+
+
+alist = [0.3, 0.4, 0.6]
+
+sfelist = ['001', '010', '030']
+# sfelist = ['001']
+
+for ii, sfe in enumerate(sfelist):
+    # path2json = f'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe{sfe}_n1e4/dictionary.json'
+    path2json = f'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe{sfe}_n1e4_BE/dictionary.json'
+
+    with open(path2json, 'r') as f:
+        # step one is to make sure they are lists i think
+        snaplists = json.load(f)
+
+    t2list = []
+    tlist = []
+    rlist = []
+    mlist = []
+    phaselist = []
+    
+    #--------------
+    fig, ax = plt.subplots(1, 1, figsize = (5,5), dpi = 200,)
+    
+    last_item = next(reversed(snaplists.items()))[1]
+    
+    # print(last_item.keys())
+    
+    tlist = np.array(last_item['array_t_now'])
+    # tlist = np.array(last_item['array_mShell'])
+    # tlist = np.array(last_item['array_R2'])
+    
+    tlist = tlist[1:] - tlist[:-1]
+    plt.ylim(-1e-10, 1e-10)
+    
+    
+    
+    
+    print(tlist)
+    
+    
+    # plt.xlim(0, 200)
+    
+    plt.plot(tlist, linewidth = 1)
+    
+    # plt.yscale('symlog')
+    plt.axhline(0, c ='k')
+    # plt.plot(t2list)
+    plt.show()
+    break
+
+#%%
+
+
+
+fig, ax = plt.subplots(1, 1, figsize = (5,5), dpi = 200,)
+
+
+for ii, sfe in enumerate(sfelist):
+    # path2json = f'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe{sfe}_n1e4/dictionary.json'
+    path2json = f'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe{sfe}_n1e4_BE/dictionary.json'
+
+    with open(path2json, 'r') as f:
+        # step one is to make sure they are lists i think
+        snaplists = json.load(f)
+
+    t2list = []
+    tlist = []
+    rlist = []
+    mlist = []
+    phaselist = []
+    
+    #--------------
+    
+    last_item = next(reversed(snaplists.items()))[1]
+    
+    # print(last_item.keys())
+    
+    tlist = np.array(last_item['array_t_now'])
+    # tlist = np.array(last_item['array_mShell'])
+    rlist = np.array(last_item['array_R2'])
+    
+    # tlist = tlist[1:] - tlist[:-1]
+    # plt.ylim(-1e-10, 1e-10)
+    
+    print(tlist)
+    print(rlist)
+    
+    # plt.xlim(0, 1e-3)
+    # plt.ylim(0, 1)
+    
+    plt.plot(tlist, rlist, linewidth = 1)
+    
+    # plt.yscale('symlog')
+    plt.axhline(0, c ='k')
+    # plt.plot(t2list)
+    # plt.show()
+    # break
+
+
+
+
+
 
 
 

@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 import src._functions.unit_conversions as cvt
 
 
-path2json2 = r'/Users/jwt/unsync/Code/Trinity/outputs/1e5_sfe030_n1e4/dictionary.json'
+path2json2 = r'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe001_n1e4/dictionary.json'
 path2json1 = r'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe001_n1e4_BE/dictionary.json'
 # path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/1e5_sfe030_n1e4/dictionary.json'
 # path2json2 = r'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe030_n1e4/dictionary.json'
@@ -145,14 +145,14 @@ for pp, path2json in enumerate([path2json1, path2json2]):
         pass
     
 
-axs[0].text(0.23, 15, 'ENERGY DRIVEN', **textdict)
-axs[0].text(2.63, 15, 'TRANSITION', **textdict)
-axs[0].text(3.53, 15, 'MOMENTUM DRIVEN', **textdict)
-# # plt.ylim(0, 35)
+# axs[0].text(0.23, 15, 'ENERGY DRIVEN', **textdict)
+# axs[0].text(2.63, 15, 'TRANSITION', **textdict)
+# axs[0].text(3.53, 15, 'MOMENTUM DRIVEN', **textdict)
+# # # plt.ylim(0, 35)
 
-axs[1].text(0.23, 50, 'ENERGY DRIVEN', **textdict)
-axs[1].text(1.63, 50, 'TRANSITION', **textdict)
-axs[1].text(4.7, 50, 'MOMENTUM DRIVEN', **textdict)
+# axs[1].text(0.23, 50, 'ENERGY DRIVEN', **textdict)
+# axs[1].text(1.63, 50, 'TRANSITION', **textdict)
+# axs[1].text(4.7, 50, 'MOMENTUM DRIVEN', **textdict)
 
 plt.tight_layout()
 

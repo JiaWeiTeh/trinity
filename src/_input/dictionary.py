@@ -165,7 +165,7 @@ class DescribedDict(dict):
         # # Also to remind adding DescribedItem.
         # """
         if not isinstance(value, DescribedItem):
-            raise TypeError(f"Value assigned to '{key}' must be a DescribedItem instance.")
+            raise TypeError(f"Value assigned to '{key}' must be a DescribedItem instance. You might be thinking of using dict['key'].value = val instead.")
         
         # default is False (third keyword)
         if getattr(value, "exclude_from_snapshot", False):

@@ -188,9 +188,8 @@ def ODE_equations(t, y, params):
     # vd = phase_ODEs.get_vdot(t, y, params)
     
     # NEW MERGE
-    print('here')
-    rd, vd, _, _ = energy_phase_ODEs.get_ODE_Edot(y, t, params)
-    print('done here')
+    rd, vd, _ = energy_phase_ODEs.get_ODE_Edot(t, y, params)
+    
     
     
     
