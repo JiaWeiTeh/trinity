@@ -13,7 +13,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe001_n1e4/dictionary.json'
+# path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe001_n1e4/dictionary.json'
+path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe030_n1e4_BE/dictionary.json'
 
 with open(path2json, 'r') as f:
     # step one is to make sure they are lists i think
@@ -34,7 +35,8 @@ with open(path2json, 'r') as f:
 for key, val in snaplists.items():
     t_list.append(val['t_now'])
     # rShell_list.append(val['rShell'])
-    thickness_list.append(val['shell_thickness'])
+    # thickness_list.append(val['shell_thickness'])
+    thickness_list.append(val['Eb'])
     
 
 plt.rc('text', usetex=True)

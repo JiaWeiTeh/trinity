@@ -56,17 +56,17 @@ header.display(params)
 # import sys
 # sys.exit()
 
-try:
-    main.start_expansion(params)
-except Exception as e:
-    print(f'Simulation exited. Error:\n{e}')
-    params.flush()
-    pass
+# try:
+#     main.start_expansion(params)
+# except Exception as e:
+#     print(f'Simulation exited. Error:\n{e}')
+#     params.flush()
+#     pass
 
 
 # test
 
-# main.start_expansion(params)
+main.start_expansion(params)
 
 # try:
 #     params.flush()

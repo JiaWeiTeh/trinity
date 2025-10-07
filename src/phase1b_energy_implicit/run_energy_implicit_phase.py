@@ -18,6 +18,8 @@ import os
 #--
 import src.phase_general.phase_ODEs as phase_ODEs
 import src.phase1_energy.energy_phase_ODEs as energy_phase_ODEs
+import src.cloud_properties.mass_profile as mass_profile
+
 import src.bubble_structure.get_bubbleParams as get_bubbleParams
 import src.phase1b_energy_implicit.get_betadelta as get_betadelta
 import src._functions.unit_conversions as cvt
@@ -46,7 +48,7 @@ def run_phase_energy(params):
     # how many timesteps? about 200 timesteps per dex
     nmin = int(200 * np.log10(tmax/tmin))
 
-    time_range = np.logspace(np.log10(tmin), np.log10(tmax), nmin)
+    time_range = np.logspace(np.log10(tmin), np.log10(tmax), nmin)[1:] #to avoid duplicate starting values
     
     dt = np.diff(time_range)
 
@@ -193,7 +195,38 @@ def ODE_equations(t, y, params):
     print('done here')
     
     
+    # ILL MAYBE PLACE THIS AFTER SO THAT WE WONT RECORD THE INTRIDCACIES INSIDE THIS LOOP
+    # # print('t here is t=', t)
+    params['array_t_now'].value = np.concatenate([params['array_t_now'].value, [t]])
+    params['array_R2'].value = np.concatenate([params['array_R2'].value, [R2]])
+    params['array_R1'].value = np.concatenate([params['array_R1'].value, [params['R1'].value]])
+    params['array_v2'].value = np.concatenate([params['array_v2'].value, [v2]])
+    params['array_T0'].value = np.concatenate([params['array_T0'].value, [T0]])
     
+    # print('mshell problems', mShell)
+    
+    mShell, mShell_dot = mass_profile.get_mass_profile(R2, params,
+                                                   return_mdot = True, 
+                                                   rdot_arr = v2)
+    
+
+    
+    # NEW CODE ---
+    # just artifacts. 
+    # TODO: fix this in the future
+    if hasattr(mShell, '__len__'):
+        if len(mShell) == 1:
+            mShell = mShell[0]
+        
+    if hasattr(mShell_dot, '__len__'):
+        if len(mShell_dot) == 1:
+            mShell_dot = mShell_dot[0]
+    
+    
+    
+    params['array_mShell'].value = np.concatenate([params['array_mShell'].value, [mShell]])
+            
+            
     rd = v2
         
     
