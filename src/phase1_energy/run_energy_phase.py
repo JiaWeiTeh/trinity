@@ -251,7 +251,7 @@ def run_energy(params):
             # new inputs
             y = [R2, v2, Eb, T0]
             
-            print('original y', y)
+            # print('original y', y)
         
             try:
                 params['t_next'].value = t_arr[ii+1]
@@ -259,7 +259,7 @@ def run_energy(params):
                 params['t_next'].value = time + dt_min
                 
                 
-            print('time', time)
+            # print('time', time)
                     
             rd, vd, Ed, Td =  energy_phase_ODEs.get_ODE_Edot(y, time, params)
             

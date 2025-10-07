@@ -34,7 +34,7 @@ def run_phase_momentum(params):
         
     nmin = int(200 * np.log10(tmax/tmin))
 
-    time_range = np.logspace(np.log10(tmin), np.log10(tmax), nmin)
+    time_range = np.logspace(np.log10(tmin), np.log10(tmax), nmin)[1:] #to avoid duplicate starting values
     
     dt = np.diff(time_range)
 
@@ -143,6 +143,42 @@ def ODE_equations_momentum(t, y, params):
     # vd, _ = phase_ODEs.get_vdot(t, [R2, v2, 0, 0], params, SB99f)
     # idea
     vd = phase_ODEs.get_vdot(t, [R2, v2, Eb, T0], params)
+    
+    
+        
+    # ILL MAYBE PLACE THIS AFTER SO THAT WE WONT RECORD THE INTRIDCACIES INSIDE THIS LOOP
+    # # print('t here is t=', t)
+    params['array_t_now'].value = np.concatenate([params['array_t_now'].value, [t]])
+    params['array_R2'].value = np.concatenate([params['array_R2'].value, [R2]])
+    params['array_R1'].value = np.concatenate([params['array_R1'].value, [params['R1'].value]])
+    params['array_v2'].value = np.concatenate([params['array_v2'].value, [v2]])
+    params['array_T0'].value = np.concatenate([params['array_T0'].value, [T0]])
+    
+    # print('mshell problems', mShell)
+    
+    import src.cloud_properties.mass_profile as mass_profile
+    mShell, mShell_dot = mass_profile.get_mass_profile(R2, params,
+                                                   return_mdot = True, 
+                                                   rdot_arr = v2)
+    
+        
+    # NEW CODE ---
+    # just artifacts. 
+    # TODO: fix this in the future
+    if hasattr(mShell, '__len__'):
+        if len(mShell) == 1:
+            mShell = mShell[0]
+        
+    if hasattr(mShell_dot, '__len__'):
+        if len(mShell_dot) == 1:
+            mShell_dot = mShell_dot[0]
+    
+    
+    params['array_mShell'].value = np.concatenate([params['array_mShell'].value, [mShell]])
+            
+    
+    
+    
     rd = v2
     
     params.save_snapshot()

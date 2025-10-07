@@ -40,8 +40,8 @@ sfelist = ['001', '010', '030']
 # sfelist = ['001']
 
 for ii, sfe in enumerate(sfelist):
-    # path2json = f'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe{sfe}_n1e4/dictionary.json'
-    path2json = f'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe{sfe}_n1e4_BE/dictionary.json'
+    path2json = f'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe{sfe}_n1e4/dictionary.json'
+    # path2json = f'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe{sfe}_n1e4_BE/dictionary.json'
     # path2json = f'/Users/jwt/unsync/Code/Trinity/outputs/1e5_sfe{sfe}_n1e4_BE/dictionary.json'
     # path2json = f'/Users/jwt/unsync/Code/Trinity/outputs/1e5_sfe{sfe}_n1e2/dictionary.json'
 
@@ -231,8 +231,9 @@ for ii, sfe in enumerate(sfelist):
     # print(last_item.keys())
     
     tlist = np.array(last_item['array_t_now'])
-    # tlist = np.array(last_item['array_mShell'])
-    rlist = np.array(last_item['array_R2'])
+    rlist = np.array(last_item['array_mShell'])
+    # rlist = np.array(last_item['array_mShellDot'])
+    # rlist = np.array(last_item['array_R2'])
     
     # tlist = tlist[1:] - tlist[:-1]
     # plt.ylim(-1e-10, 1e-10)
@@ -240,8 +241,8 @@ for ii, sfe in enumerate(sfelist):
     print(tlist)
     print(rlist)
     
-    # plt.xlim(0, 1e-3)
-    # plt.ylim(0, 1)
+    # plt.xlim(0, 0.05)
+    # plt.ylim(0, 2)
     
     plt.plot(tlist, rlist, linewidth = 1)
     
