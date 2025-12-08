@@ -3,7 +3,7 @@ sfe    0.01
 # powerlaw, homogeneous
 dens_profile    densPL
 densPL_alpha    -2
-rCore    1
-nCore    1e5
+rCore    0.01
+nCore    1e4
 nISM    0.1
 expansionBeyondCloud True

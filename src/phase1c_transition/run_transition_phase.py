@@ -14,6 +14,9 @@ import sys
 import os
 #--
 import src.phase_general.phase_ODEs as phase_ODEs
+import src.shell_structure.shell_structure as shell_structure
+import src.phase1_energy.energy_phase_ODEs as energy_phase_ODEs
+
 import src._functions.unit_conversions as cvt
 
 
@@ -145,7 +148,14 @@ def ODE_equations_transition(t, y, params):
     params['R2'].value = R2
     
     # returns in pc/yr2
-    vd = phase_ODEs.get_vdot(t, y, params)
+    # vd = phase_ODEs.get_vdot(t, y, params)
+    # new
+    from src.sb99.update_feedback import get_currentSB99feedback
+
+    [Qi, LWind, Lbol, Ln, Li, vWind, pWindDot, pWindDotDot] =  get_currentSB99feedback(t, params)
+    shell_structure.shell_structure(params)
+    
+    _, vd, _, _ = energy_phase_ODEs.get_ODE_Edot(y, t, params)
     
     
         

@@ -403,9 +403,12 @@ def read_param(path2file, write_summary = True):
     # Force calculations
     param['F_grav'] = DescribedItem(0, 'Force on shell due to gravity')
     param['F_SN'] = DescribedItem(0, 'Force on shell due to SN')
-    param['F_ram'] = DescribedItem(0, 'Force on shell due to ram pressure (wind+SN?)')
+    param['F_ram'] = DescribedItem(0, 'Force on shell due to ram pressure (wind+SN?). This is converted via Pb-Eb(Fram) relation.')
+    param['F_ram_wind'] = DescribedItem(0, 'Force on shell due to ram pressure (wind+SN?). This is directly obtained from SB99f.')
+    param['F_ram_SN'] = DescribedItem(0, 'Force on shell due to ram pressure (wind+SN?). This is directly obtained from SB99f.')
     param['F_wind'] = DescribedItem(0, 'Force on shell due to winds')
-    param['F_ion'] = DescribedItem(0, 'Force on shell due to photoionisation pressure')
+    param['F_ion_in'] = DescribedItem(0, 'Inwards force on shell due to photoionisation pressure from escaped photons')
+    param['F_ion_out'] = DescribedItem(0, 'Outwards force on shell due to photoionisation pressure')
     param['F_rad'] = DescribedItem(0, 'Radiation pressure = direct + indirect ~ f_abs * Lbol/c * (1 + tau_IR)')
     
     # bubble parameters 

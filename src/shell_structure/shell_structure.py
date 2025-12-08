@@ -604,7 +604,10 @@ def shell_structure(params):
     params['shell_fAbsorbedNeu'].value = f_absorbed_neu
     params['shell_fAbsorbedWeightedTotal'].value = f_absorbed
     params['shell_fIonisedDust'].value = f_ionised_dust
-    params['shell_fRad'].value = f_absorbed_ion * params['Lbol'].value / params['c_light'].value
+    # old: seems to not include indirect radiation
+    # params['shell_fRad'].value = f_absorbed_ion * params['Lbol'].value / params['c_light'].value 
+    # new: has radiation
+    params['shell_fRad'].value = f_absorbed_ion * params['Lbol'].value / params['c_light'].value * (1 + params['shell_tauKappaRatio'] * params['dust_KappaIR'])
 
     params['shell_thickness'].value = shellThickness 
     # params['shell_nShellInner'].value = nShellInner

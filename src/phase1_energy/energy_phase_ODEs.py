@@ -69,9 +69,6 @@ def get_ODE_Edot(y, t, params):
     params['Eb'].value = Eb
     
     
-    # print('v2', v2)
-    
-    
     FABSi = params['shell_fAbsorbedIon'].value
     FRAD = params['shell_fRad'].value
     mCluster = params['mCluster'].value
@@ -84,15 +81,6 @@ def get_ODE_Edot(y, t, params):
                                                        return_mdot = True, 
                                                        rdot_arr = v2)
     
-    
-    # OLD CODE ---
-    # if len(mShell_dot) == 1:
-    #     mShell = mShell[0]
-    #     mShell_dot = mShell_dot[0]
-    
-    # params['shell_mass'].value = mShell
-    # params['shell_massDot'].value = mShell_dot
-    # ---
     # ADD IF ELSE FOR IF CASE 1b AND ALSO TIME CONSTRAIN BOTH HERE AND ALSO IN MAS PROFILE CALCULATION
     
     # NEW CODE ---
@@ -140,26 +128,66 @@ def get_ODE_Edot(y, t, params):
             pass
         n_r = density_profile.get_density_profile(r, ion_dict)
         
-        P_ion = n_r * ion_dict['k_B'].value * ion_dict['TShell_ion'].value
+        print('n_r', n_r)
         
+        P_ion = 2 * n_r * ion_dict['k_B'].value * ion_dict['TShell_ion'].value
+        
+        # should always be true?
+        if hasattr(P_ion, '__len__'):
+            if len(P_ion) == 1:
+                P_ion = P_ion[0]
+                
         return P_ion
+
+    # NEW SSTUFFS HEREE
+
+    # Question: maybe 0.5?
 
     # calc inward pressure from photoionized gas outside the shell 
     # (is zero if no ionizing radiation escapes the shell)
     if FABSi < 1.0:
-        press_HII = get_press_ion(R2, params)
+        press_HII_in = get_press_ion(params['rShell'].value, params)
     else:
-        press_HII = 0.0
+        press_HII_in = 0.0
         
-    if params['R2'].value >= params['rCloud'].value:
+    if params['rShell'].value >= params['rCloud'].value:
         # TODO: add this more for ambient pressure
-        press_HII += params['PISM'] * params['k_B']   
+        press_HII_in += params['PISM'] * params['k_B']   
+        
+        
+    # this should follow density profile inside the bubble, hence interpolation
+    bubble_n_arr = params['bubble_n_arr'].value
+    bubble_r_arr = params['bubble_r_arr'].value
+    
+    import scipy
+    print('bubble bubble_r_arr, bubble_n_arr', bubble_r_arr, bubble_n_arr)
+    try:
+        # This is only a lazy way of achieving this, utilising the fact that the bubble_r_arr is
+        # empty because the first loop does not take into account the calculation of bubble/shell strcuture. 
+        # This is not error-proof: in future there needs to be a way to tell apart other than using this try/except method.
+        
+        # Interpolation is not used, because at very sharp end the values will blow up. Better to use instead
+        # the end of array.
+        
+        # this is thrown away
+        # nR2_interp = scipy.interpolate.interp1d(bubble_r_arr,bubble_n_arr, kind='cubic', fill_value="extrapolate")
+        # nR2 = nR2_interp(R2)
+        # this is used.
+        nR2 = bubble_n_arr[0] #takes the first element because the radius array is inversed.
+        print('nR2', nR2)
+        press_HII_out = 2 * nR2 * params['k_B'].value * params['TShell_ion'].value
+    except:
+        press_HII_out = get_press_ion(R2, params)
+        
+    #---
     
     # gravity correction (self-gravity and gravity between shell and star cluster)
     F_grav = params['G'].value * mShell / R2**2 * (mCluster + mShell/2) 
     
     # get pressure from energy
     # calculate radius of inner discontinuity (inner radius of bubble)
+    
+    # print(R2, LWind, Eb, vWind)
     
     R1 = scipy.optimize.brentq(get_bubbleParams.get_r1, 0.0, R2,
                                args=([LWind, Eb, vWind, R2])) 
@@ -175,6 +203,10 @@ def get_ODE_Edot(y, t, params):
         R1_tmp = (t-params['tSF'].value)/tmin * R1
         press_bubble = get_bubbleParams.bubble_E2P(Eb, R2, R1_tmp, params['gamma_adia'].value)
     
+    # TODO:
+    # _ratio = (4 * np.pi * R2**2 * press_bubble)/(params['F_ram_SN']+params['F_ram_wind'])
+    
+    # print('F_ram difference ratio: (Eb/SB88)', _ratio)
     
     # TODO: Future-------
     # def calc_coveringf(t,tFRAG,ts):
@@ -207,16 +239,26 @@ def get_ODE_Edot(y, t, params):
     # time derivatives￼￼
     rd = v2
     
-    # print(4 * np.pi * R2**2 *(press_bubble-press_HII), mShell_dot * v2, F_grav, )
+    print('rd--')
+    print('4 * np.pi * R2**2 *(press_bubble-press_HII_in+press_HII_out), mShell_dot * v2, F_grav, ', 4 * np.pi * R2**2 *(press_bubble-press_HII_in+press_HII_out), mShell_dot * v2, F_grav, )
+    print(';mShell_dot, v2, press_HII_in, press_HII_out', mShell_dot, v2, press_HII_in, press_HII_out)
+    print((4 * np.pi * R2**2 * press_HII_out)/(4 * np.pi * R2**2 * press_HII_out+FRAD+mShell_dot*v2))
+    print('--')
     
-    vd = (4 * np.pi * R2**2 * (press_bubble-press_HII) - mShell_dot * v2 - F_grav + FRAD) / mShell
+    
+    # add: outwards ionising pressure
+    
+    
+    
+    vd = (4 * np.pi * R2**2 * (press_bubble-press_HII_in+press_HII_out) - mShell_dot * v2 - F_grav + FRAD) / mShell
     Ed = (LWind - L_bubble) - (4 * np.pi * R2**2 * press_bubble) * v2 - L_leak 
 
     derivs = [rd, vd, Ed, 0]
     
     params['F_grav'].value = F_grav
-    params['F_ion'].value = press_HII * 4 * np.pi * R2**2 
-    # params['F_ram'].value = (4 * np.pi * R2**2 * (press_bubble - press_HII))
+    params['F_ion_in'].value = press_HII_in * 4 * np.pi * R2**2 
+    params['F_ion_out'].value = press_HII_out * 4 * np.pi * R2**2 
+    params['F_ram'].value = press_bubble * 4 * np.pi * R2**2 
     # fRad = params['shell_fAbsorbedWeightedTotal'].value * params['Lbol'].value  / (params['c_light'].value)
     params['F_rad'].value = FRAD
     

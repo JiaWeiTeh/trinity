@@ -22,7 +22,9 @@ def get_currentSB99feedback(t, params):
     Li = SB99f['fLi'](t)[()]
     # get the slope via mini interpolation for some dt.
     dt = 1e-9 #*Myr
-    # momentum of stellar winds at time t0 (cgs)
+    # force of SN
+    pdot_SNe = SB99f['fpdot_SNe'](t)[()]
+    # force of stellar winds at time t0 (cgs)
     pWindDot = SB99f['fpdot'](t)[()]
     pWindDotDot = (SB99f['fpdot'](t + dt)[()] - SB99f['fpdot'](t - dt)[()])/ (dt+dt)
     # terminal wind velocity at time t0 (pc/Myr)
@@ -34,6 +36,12 @@ def get_currentSB99feedback(t, params):
     updateDict(params, ['Qi', 'LWind', 'Lbol', 'Ln', 'Li', 'vWind', 'pWindDot', 'pWindDotDot'],
                        [Qi, LWind, Lbol, Ln, Li, vWind, pWindDot, pWindDotDot],
                )
+    
+    # also
+    # collect values
+    # this pWindDot is actually pRamDot=pWindDot+pSNeDot (see read_SB99. this is a huge misname)
+    params['F_ram_wind'].value = pWindDot - pdot_SNe
+    params['F_ram_SN'].value = pdot_SNe
     
     return [Qi, LWind, Lbol, Ln, Li, vWind, pWindDot, pWindDotDot]
 

@@ -13,16 +13,15 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-# path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe001_n1e4/dictionary.json'
-path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe030_n1e4_BE/dictionary.json'
+path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe010_n1e4/dictionary.json'
+# path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe030_n1e4_BE/dictionary.json'
 
 with open(path2json, 'r') as f:
     # step one is to make sure they are lists i think
     snaplists = json.load(f)
 
-t_list = []
-rShell_list = []
-thickness_list = []
+xlist = []
+ylist = []
     
 #--------------
 
@@ -32,19 +31,38 @@ with open(path2json, 'r') as f:
     # step one is to make sure they are lists i think
     snaplists = json.load(f)
 
+
+yvalue = 'Eb'
+xvalue = 't_now'
+
+
 for key, val in snaplists.items():
-    t_list.append(val['t_now'])
-    # rShell_list.append(val['rShell'])
-    # thickness_list.append(val['shell_thickness'])
-    thickness_list.append(val['Eb'])
-    
+    xlist.append(val[xvalue])
+    ylist.append(val[yvalue])
+
+
+xlist = np.array(xlist)
+ylist = np.array(ylist)
 
 plt.rc('text', usetex=True)
 plt.rc('font', family='sans-serif', size=12)
-fig, axs = plt.subplots(1, 1, figsize = (5,5), dpi = 200)
+fig, axs = plt.subplots(2, 1, figsize = (7,7), dpi = 300)
 
-plt.plot(t_list, thickness_list)
+axs[0].set_yscale('log')
+axs[0].set_xlabel(xvalue)
+axs[0].set_ylabel(yvalue)
+axs[0].plot(xlist, ylist)
+
+
+
+axs[1].plot(xlist[1:], ylist[1:]- ylist[:-1])
+axs[1].set_ylabel('residual')
+# axs[1].set_ylim(-1e-10, 1e-10)
+axs[1].axhline(0, c = 'k', linestyle = '--', alpha = 0.3)
+axs[1].set_yscale('symlog')
+
 plt.show()
+plt.tight_layout(pad=10)
 
 
 
