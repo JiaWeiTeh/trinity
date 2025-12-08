@@ -11,6 +11,9 @@ import sys
 #--
 from src.phase_general import phase_ODEs
 import src._functions.unit_conversions as cvt
+import src.phase1_energy.energy_phase_ODEs as energy_phase_ODEs
+import src.shell_structure.shell_structure as shell_structure
+
 
 
 
@@ -142,9 +145,17 @@ def ODE_equations_momentum(t, y, params):
     
     # vd, _ = phase_ODEs.get_vdot(t, [R2, v2, 0, 0], params, SB99f)
     # idea
-    vd = phase_ODEs.get_vdot(t, [R2, v2, Eb, T0], params)
+    # vd = phase_ODEs.get_vdot(t, [R2, v2, Eb, T0], params)
+    # now
+    
+    from src.sb99.update_feedback import get_currentSB99feedback
+
+    [Qi, LWind, Lbol, Ln, Li, vWind, pWindDot, pWindDotDot] =  get_currentSB99feedback(t, params)
+    shell_structure.shell_structure(params)
     
     
+    _, vd, _, _ = energy_phase_ODEs.get_ODE_Edot(y, t, params)
+
         
     # ILL MAYBE PLACE THIS AFTER SO THAT WE WONT RECORD THE INTRIDCACIES INSIDE THIS LOOP
     # # print('t here is t=', t)

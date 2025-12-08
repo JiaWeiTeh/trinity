@@ -37,7 +37,7 @@ def run_energy(params):
     Eb = params['Eb'].value
     T0 = params['T0'].value
     
-    rCloud = params['rCloud'].value
+    rCloud = params['rCloud'].val
     t_neu = params['TShell_neu'].value
     t_ion = params['TShell_ion'].value
     
@@ -268,6 +268,8 @@ def run_energy(params):
                 v2 += vd * dt_min 
                 Eb += Ed * dt_min 
                 T0 += Td * dt_min 
+                
+                print('new rd values in run_energy_phase', rd, vd, Ed, Td, R2, v2, Eb, T0)
                 
             r_arr.append(R2)
             v_arr.append(v2)

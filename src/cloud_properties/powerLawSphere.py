@@ -38,7 +38,10 @@ def create_PLSphere(params):
                         rCore**(3+alpha)) ** (1 / (3 + alpha))
                         
         
+            
         print(mCloud, rCore, alpha)
+        
+        print('cloud radius is [pc]', rCloud)
             
         # density at edge
         nEdge = nCore * (rCloud/rCore)**alpha
@@ -51,6 +54,6 @@ def create_PLSphere(params):
     # sanity check
     if nEdge < nISM:
         print(f'nCore: {nCore}, nISM: {nISM}')
-        sys.exit(f"The density at the edge of the cloud ({nEdge}) is lower than the ISM ({nISM}); please consider increasing nCore.")
+        sys.exit(f"The density at the edge of the cloud ({nEdge}) is lower than the ISM ({nISM}); please consider increasing nCore, or decreasing rCore")
     # return
     return rCloud, nEdge

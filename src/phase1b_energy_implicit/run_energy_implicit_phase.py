@@ -191,6 +191,16 @@ def ODE_equations(t, y, params):
     
     # NEW MERGE
     print('here')
+    
+    from src.sb99.update_feedback import get_currentSB99feedback
+
+    [Qi, LWind, Lbol, Ln, Li, vWind, pWindDot, pWindDotDot] =  get_currentSB99feedback(t, params)
+    
+    import src.shell_structure.shell_structure as shell_structure
+
+    shell_structure.shell_structure(params)
+    
+    
     rd, vd, _, _ = energy_phase_ODEs.get_ODE_Edot(y, t, params)
     print('done here')
     

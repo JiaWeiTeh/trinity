@@ -91,6 +91,9 @@ def get_mass_profile( r_arr, params,
                     mGasdot[inside_cloud] = 4 * np.pi * rhoCore * r_arr[inside_cloud]**2 * rdot_arr[inside_cloud]
                     mGasdot[~inside_cloud] = 4 * np.pi * rhoISM * r_arr[~inside_cloud]**2 * rdot_arr[~inside_cloud]
                     # return value
+                    print('mGasdot is', mGasdot)
+                    print('r_arr is', r_arr)
+                    print('rdot_arr is', rdot_arr)
                     return mGas, mGasdot
                 except: 
                     raise Exception('Velocity array expected.')
@@ -125,8 +128,14 @@ def get_mass_profile( r_arr, params,
                 # input values into mass array
                 # dm/dt, see above for expressions of m.
                 mGasdot[r_arr <= rCore] = 4 * np.pi * rhoCore * r_arr[r_arr <= rCore]**2 * rdot_arr[r_arr <= rCore]
+                print(mGasdot)
                 mGasdot[r_arr > rCore] = 4 * np.pi * rhoCore * (r_arr[r_arr > rCore]**(2+alpha) / rCore**alpha) * rdot_arr[r_arr > rCore]
+                print(mGasdot)
                 mGasdot[r_arr > rCloud] = 4 * np.pi * rhoISM * r_arr[r_arr > rCloud]**2 * rdot_arr[r_arr > rCloud]
+                print(mGasdot)
+                print('mGasdot is', mGasdot)
+                print('r_arr is', r_arr)
+                print('rdot_arr is', rdot_arr)
                 return mGas, mGasdot
             else:
                 return mGas

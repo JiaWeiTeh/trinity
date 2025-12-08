@@ -80,7 +80,7 @@ nISM    1
 
 # INFO: Core radius of the molecular cloud. 
 # UNIT: [pc]
-rCore    0.2
+rCore    0.01
 
 
 # =============================================================================

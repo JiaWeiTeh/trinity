@@ -26,7 +26,9 @@ print('...plotting radius comparison')
 mCloud_list = ['1e7']
 # ndens_list = ['1e2', '1e4']
 ndens_list = ['1e4']
-sfe_list = ['001', '010', '030']
+# sfe_list = ['001', '010', '030']
+# sfe_list = ['001']
+sfe_list = ['010']
 
 
 plt.rc('text', usetex=True)
@@ -68,7 +70,11 @@ for mCloud in mCloud_list:
                 tlist = []
                 F_gravlist = []
                 F_radlist = []
-                F_ionlist = []
+                F_ion_inlist = []
+                F_ion_outlist = []
+                F_ramlist = []
+                F_ram_SNlist = []
+                F_ram_windlist = []
                 v2list = []
                 phaselist = []
                 
@@ -79,7 +85,11 @@ for mCloud in mCloud_list:
                     tlist.append(val['t_now'])
                     F_gravlist.append(val['F_grav'])
                     F_radlist.append(val['F_rad'])
-                    F_ionlist.append(val['F_ion'])
+                    F_ion_inlist.append(val['F_ion_in'])
+                    F_ion_outlist.append(val['F_ion_out'])
+                    F_ramlist.append(val['F_ram'])
+                    F_ram_SNlist.append(val['F_ram_SN'])
+                    F_ram_windlist.append(val['F_ram_wind'])
                     v2list.append(val['v2'])
                 
                 fig, ax = plt.subplots(1, 1, figsize = (5, 5), dpi = 200) 
@@ -100,32 +110,60 @@ for mCloud in mCloud_list:
                 for ii, rad in enumerate(F_radlist):
                     if hasattr(rad, "__len__"):
                         F_radlist[ii] = rad[0]
-                for ii, ion in enumerate(F_ionlist):
-                    if hasattr(ion, "__len__"):
-                        F_ionlist[ii] = ion[0]
+                for ii, ion_out in enumerate(F_ion_outlist):
+                    if hasattr(ion_out, "__len__"):
+                        F_ion_outlist[ii] = ion_out[0]
+                for ii, ion_in in enumerate(F_ion_inlist):
+                    if hasattr(ion_in, "__len__"):
+                        F_ion_inlist[ii] = ion_in[0]
+                for ii, ram in enumerate(F_ramlist):
+                    if hasattr(ram, "__len__"):
+                        F_ramlist[ii] = ram[0]
+                for ii, ram_SN in enumerate(F_ram_SNlist):
+                    if hasattr(ram_SN, "__len__"):
+                        F_ram_SNlist[ii] = ram_SN[0]
+                for ii, ram_wind in enumerate(F_ram_windlist):
+                    if hasattr(ram_wind, "__len__"):
+                        F_ram_windlist[ii] = ram_wind[0]
                 
                 F_gravlist = np.array(F_gravlist)
                 F_radlist = np.array(F_radlist)
-                F_ionlist = np.array(F_ionlist)
+                F_ion_outlist = np.array(F_ion_outlist)
+                F_ion_inlist = np.array(F_ion_inlist)
+                F_ramlist = np.array(F_ramlist)
+                F_ram_SNlist = np.array(F_ram_SNlist)
+                F_ram_windlist = np.array(F_ram_windlist)
                 
-                F_total = F_gravlist + F_radlist + F_ionlist
+                # Flist = [F_gravlist, F_radlist, F_ion_outlist, F_ram_windlist, F_ram_SNlist]
+                # Flist = [F_gravlist, F_radlist, F_ion_outlist, F_ramlist]
+                # Flist = [F_gravlist, F_ramlist]
+                Flist = [F_gravlist, F_ram_windlist, F_ram_SNlist]
                 
-                # grav
-                ax.fill_between(tlist, F_gravlist/F_total, color = 'k', alpha = 0.3)
-                # ion
-                ax.fill_between(tlist, (F_gravlist+F_ionlist)/F_total, color = 'k', alpha = 0.3)
-                # radiation
-                ax.fill_between(tlist, 1, color = 'k', alpha = 0.3)
+                Ftotal = np.sum(Flist, axis = 0)
                 
-                # ax.set_yscale('log')
-                print(F_gravlist, F_radlist, F_ionlist)
+                for jj, forces in enumerate(Flist):
+                    ax.fill_between(tlist, np.sum(Flist[:(jj+1)], axis = 0)/Ftotal, color = 'k', alpha = 0.3)
+                
+                n = 10
+                
+                print('F_gravlist', F_gravlist[:n:])
+                print('F_radlist', F_radlist[:n:])
+                print('F_ion_inlist', F_ion_inlist[:n:])
+                print('F_ion_outlist', F_ion_outlist[:n:])
+                print('F_ramlist', F_ramlist[:n:])
+                print('F_ram_SNlist', F_ram_SNlist[:n:])
+                print('F_ram_windlist', F_ram_windlist[:n:])
                 
                 ax.set_xlim(0, max(tlist))
                 ax.set_xlabel('t [Myr]')
                 ax.set_ylabel('F/Ftotal')
                 ax.set_ylim(0, 1)
             
-                # print(F_radlist)
+                ax.text(0.1, 0.2, 'grav')
+                ax.text(0.1, 0.4, 'ionised')
+                ax.text(0.1, 0.6, 'ram')
+                ax.text(0.1, 0.8, 'radiation')
+            
                 plt.show()
             except FileNotFoundError as e: 
                 print(e)
@@ -134,6 +172,15 @@ for mCloud in mCloud_list:
                 print(e)
                 pass
 
+            
+            fig, ax = plt.subplots(1, 1, figsize = (5, 5), dpi = 200) 
+            
+            ax.set_yscale('log')
+            
+            for jj, forces in enumerate(Flist):
+                ax.plot(tlist, forces)
+                
+            ax.legend()
 
 
 

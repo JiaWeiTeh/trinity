@@ -57,7 +57,7 @@ def get_y0(params):
     dt_phase0 = np.sqrt(3. * Mdot0 / (4. * np.pi * rhoa * v0 ** 3))
     # print(dt_phase0)
     # start time for Weaver phase (Myr)
-    t0 = tSF + dt_phase0  
+    t0 = tSF + dt_phase0  #+5e-5 to test skip early phase
     # initial separation (pc)
     r0 = v0 * dt_phase0 
     # The energy contained within the bubble (calculated using wind luminosity)
