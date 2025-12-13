@@ -327,9 +327,10 @@ def read_param(path2file, write_summary = True):
         if key not in ['model_name', 'mCloud', 'cool_alpha', 'cool_beta', 'cool_delta']:
             val.exclude_from_snapshot = True
             
-
+    param['current_phase'] = DescribedItem('', 'Which phase is the simulation in? energy, implicit, transition, momentum')
     param['EndSimulationDirectly'] = DescribedItem(False, 'Immediately end simulation')
     param['SimulationEndReason'] = DescribedItem('', 'What caused simulation to complete')
+    param['EarlyPhaseApproximation'] = DescribedItem(True, 'Approximations? e.g., calculate shell, calculate mShellDot.')
 
     
     import numpy as np
@@ -397,6 +398,7 @@ def read_param(path2file, write_summary = True):
     param['shell_mass'] = DescribedItem(0, 'Msol. Shell mass')
     param['shell_massDot'] = DescribedItem(0, 'Msol/Myr. Rate of change of shell mass')
     param['shell_interpolate_massDot'] = DescribedItem(False, 'Begin shell interpolation? Only used if dens_prof is dens_BE.')
+    param['shell_n0'] = DescribedItem(0, 'Shell inner radius density, according to pressure balance.')
 
     # Force calculation in shell dynamics
     
@@ -454,6 +456,7 @@ def read_param(path2file, write_summary = True):
     param['residual_T1_guess'] = DescribedItem(np.nan, 'Value of T obtained via bubble_Trgoal.')
     param['residual_T2_guess'] = DescribedItem(np.nan, 'Value of T obtained via T0.')
    
+    # early phases
     
     
 

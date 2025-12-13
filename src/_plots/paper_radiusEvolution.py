@@ -35,15 +35,15 @@ fig, ax = plt.subplots(1, 1, figsize = (5,5), dpi = 150,)
 
 alist = [0.3, 0.4, 0.6, 0.8, 1]
 
-# sfelist = ['001', '010', '030']
+sfelist = ['001', '010', '030']
 # sfelist = ['010']
 # sfelist = ['030']
 # sfelist = ['001']
 
 for ii, sfe in enumerate(sfelist):
-    # path2json = f'/Users/jwt/unsync/Code/Trinity/outputs/1e5_sfe{sfe}_n1e4/dictionary.json'
+    path2json = f'/Users/jwt/unsync/Code/Trinity/outputs/1e5_sfe{sfe}_n1e4/dictionary.json'
     # path2json = f'/Users/jwt/unsync/Code/Trinity/outputs/1e5_sfe{sfe}_n1e4_BE/dictionary.json'
-    path2json = f'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe{sfe}_n1e4/dictionary.json'
+    # path2json = f'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe{sfe}_n1e4/dictionary.json'
     # path2json = f'/Users/jwt/unsync/Code/Trinity/outputs/1e5_sfe{sfe}_n1e2/dictionary.json'
 
     with open(path2json, 'r') as f:

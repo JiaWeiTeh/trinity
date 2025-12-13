@@ -150,7 +150,7 @@ def get_bubbleproperties(params):
     # initially dMdt will spike before it goes to equilibrium (before momentum phase). 
     # Lets set an if/else structure for this. 
     
-    if params['current_phase'].value == '1a':
+    if params['current_phase'].value == 'energy':
         # print('first phase dMdt')
         # params['bubble_dMdt'].value = scipy.optimize.least_squares(get_velocity_residuals,  params['bubble_dMdt'].value, args = (params,), 
         #                                       # dMdt will increase.
@@ -165,7 +165,7 @@ def get_bubbleproperties(params):
                                       epsfcn = 1e-4,
                                       )[0] # u.M_sun/u.Myr
                 
-    elif params['current_phase'].value == '1b':
+    elif params['current_phase'].value == 'implicit':
         # dMdt_predict = scipy.optimize.least_squares(get_velocity_residuals,  dMdt_init, args = (b_params,), 
         #                                       # at this point it will start to decrease.
         #                                       # should we set maximum limit as dMdt_init * 1.05?

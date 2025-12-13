@@ -76,6 +76,7 @@ def get_mass_profile( r_arr, params,
         if alpha == 0:
             # sphere
             mGas =  4 / 3 * np.pi * r_arr**3 * rhoCore
+            print(f'mGas is r={r_arr} and rho={rhoCore} equals {mGas}')
             # outer region
             mGas[r_arr > rCloud] =  mCloud + 4. / 3. * np.pi * rhoISM * (r_arr[r_arr > rCloud]**3 - rCloud**3)
             

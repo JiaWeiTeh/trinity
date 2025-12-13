@@ -114,6 +114,7 @@ def shell_structure(params):
     
     # Obtain density at the inner edge of shell
     nShell0 = get_shellParams.get_nShell0(params)
+    params['shell_n0'].value = nShell0
     # define for future use, as nShell0 constantly changes in the loop.
     # nShellInner = nShell0
     
