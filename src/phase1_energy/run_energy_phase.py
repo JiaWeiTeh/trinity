@@ -37,7 +37,7 @@ def run_energy(params):
     Eb = params['Eb'].value
     T0 = params['T0'].value
     
-    rCloud = params['rCloud'].val
+    rCloud = params['rCloud'].value
     t_neu = params['TShell_neu'].value
     t_ion = params['TShell_ion'].value
     
@@ -67,6 +67,8 @@ def run_energy(params):
     dLwdt = np.abs(Lw_slope(t_evo, Lw_evo))
     # problematic time (which needs small timesteps)  [Myr]
     t_problem = t_evo[ (dLwdt / Lw_evo) > 3]
+    
+    print('t_problem', t_problem)
     
 
     # -----------
@@ -122,6 +124,7 @@ def run_energy(params):
     # tfinal = 1e-2
     tfinal = 3e-3
     
+    # dt_min = 1e-6
     dt_min = 1e-6
 
 
@@ -167,7 +170,8 @@ def run_energy(params):
         
         # something is wrong here: the loop seems to record t twice, thus
         # creating a duplicate which causes problems in extrapolation in mshelldot.
-        tsteps = 50
+        # tsteps = 50
+        tsteps = 30
         t_arr = np.arange(t_now, t_now +  (dt_min * tsteps), dt_min)[1:]  
         
         print('t_arr is this', t_arr)
@@ -244,6 +248,10 @@ def run_energy(params):
         Eb_arr = []
         
         
+        print('R2', R2)
+        print('v2', v2)
+        print('Eb', Eb)
+        print('T0', T0)
         
         
         for ii, time in enumerate(t_arr):
@@ -269,11 +277,29 @@ def run_energy(params):
                 Eb += Ed * dt_min 
                 T0 += Td * dt_min 
                 
-                print('new rd values in run_energy_phase', rd, vd, Ed, Td, R2, v2, Eb, T0)
+                print('new rd values in run_energy_phase')
+                print('rd', rd)
+                print('vd', vd)
+                print('Ed', Ed)
+                print('Td', Td)
+                print('R2', R2)
+                print('v2', v2)
+                print('Eb', Eb)
+                print('T0', T0)
                 
             r_arr.append(R2)
             v_arr.append(v2)
             Eb_arr.append(Eb)
+            
+            
+            if ii == 10:
+                params['EarlyPhaseApproximation'].value = False
+                print('\n\n\n\n\n\n\nswitch to no approximation\n\n\n\n\n\n')
+            
+            # if ii == 20:
+            #     import sys
+            #     sys.exit('loop test done')
+            
             
         # print(v_arr)
 

@@ -207,6 +207,7 @@ def run_expansion(params):
     # t_now, (R2, v2, Eb, T0) = get_InitPhaseParam.get_y0(0*u.Myr, params['SB99f'].value)
     get_InitPhaseParam.get_y0(params)
     
+    print('here is your dictionary', params)
     
     # params.save_snapShot()
     
@@ -215,7 +216,7 @@ def run_expansion(params):
     # Phase 1a: Energy driven phase.
     # =============================================================================
 
-    params['current_phase'] = DescribedItem('1a', 'Which phase is the simulation in? 1a: energy, 1b: implicit energy, 2: transition, 3: momentum')
+    params['current_phase'].value = 'energy'
 
     terminal_prints.phase('Entering energy driven phase (constant cooling)')
 
@@ -246,7 +247,7 @@ def run_expansion(params):
     # Phase 1b: implicit energy phase
     # =============================================================================
     
-    params['current_phase'].value = '1b'
+    params['current_phase'].value = 'implicit'
  
     terminal_prints.phase('Entering energy driven phase (adaptive cooling)')
 
@@ -258,6 +259,8 @@ def run_expansion(params):
     # except:
     #     pass
     
+    # make a function that interpolates density so that it goes from top to end of cloud.
+
 
     # Since cooling is not needed anymore after this phase, we reset values.
     params['residual_deltaT'].value = np.nan
@@ -266,11 +269,11 @@ def run_expansion(params):
     params['residual_Edot2_guess'].value = np.nan
     params['residual_T1_guess'].value = np.nan
     params['residual_T2_guess'].value = np.nan
- 
+
     params['bubble_Lgain'].value = np.nan
     params['bubble_Lloss'].value = np.nan
     params['bubble_Leak'].value = np.nan
- 
+
     params['t_previousCoolingUpdate'].value = np.nan
     params['cStruc_cooling_nonCIE'].value = np.nan
     params['cStruc_heating_nonCIE'].value = np.nan
@@ -305,7 +308,7 @@ def run_expansion(params):
 
     terminal_prints.phase('Entering transition phase (decreasing energy before momentum)')
 
-    params['current_phase'].value = '2'
+    params['current_phase'].value = 'transition'
     
     if params['EndSimulationDirectly'].value == False:
         run_transition_phase.run_phase_transition(params)
@@ -320,7 +323,7 @@ def run_expansion(params):
 
     terminal_prints.phase('Entering momentum phase')
 
-    params['current_phase'].value = '3'
+    params['current_phase'].value = 'momentum'
     
     if params['EndSimulationDirectly'].value == False:
         run_momentum_phase.run_phase_momentum(params)

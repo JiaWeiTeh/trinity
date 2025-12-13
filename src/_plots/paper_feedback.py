@@ -24,11 +24,12 @@ print('...plotting radius comparison')
 
 # mCloud_list = ['1e5', '1e6', '1e7']
 mCloud_list = ['1e7']
+# mCloud_list = ['1e5']
 # ndens_list = ['1e2', '1e4']
 ndens_list = ['1e4']
-# sfe_list = ['001', '010', '030']
+sfe_list = ['001', '010', '030']
 # sfe_list = ['001']
-sfe_list = ['010']
+# sfe_list = ['001']
 
 
 plt.rc('text', usetex=True)
@@ -135,9 +136,10 @@ for mCloud in mCloud_list:
                 F_ram_windlist = np.array(F_ram_windlist)
                 
                 # Flist = [F_gravlist, F_radlist, F_ion_outlist, F_ram_windlist, F_ram_SNlist]
-                # Flist = [F_gravlist, F_radlist, F_ion_outlist, F_ramlist]
+                Flist = [F_gravlist, F_ramlist, F_ion_outlist, F_radlist ]
+                Flist = [F_gravlist, F_ram_windlist, F_ram_SNlist, F_ion_outlist, F_radlist ]
                 # Flist = [F_gravlist, F_ramlist]
-                Flist = [F_gravlist, F_ram_windlist, F_ram_SNlist]
+                # Flist = [F_gravlist, F_ram_windlist, F_ram_SNlist]
                 
                 Ftotal = np.sum(Flist, axis = 0)
                 
@@ -160,9 +162,9 @@ for mCloud in mCloud_list:
                 ax.set_ylim(0, 1)
             
                 ax.text(0.1, 0.2, 'grav')
-                ax.text(0.1, 0.4, 'ionised')
-                ax.text(0.1, 0.6, 'ram')
-                ax.text(0.1, 0.8, 'radiation')
+                ax.text(0.1, 0.4, 'ram')
+                ax.text(0.1, 0.6, 'ionised')
+                ax.text(0.1, 0.8, 'rad')
             
                 plt.show()
             except FileNotFoundError as e: 
@@ -179,7 +181,8 @@ for mCloud in mCloud_list:
             
             for jj, forces in enumerate(Flist):
                 ax.plot(tlist, forces)
-                
+            
+            ax.set_ylim(1e3, 1e9)
             ax.legend()
 
 
