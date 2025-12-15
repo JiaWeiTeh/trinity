@@ -9,6 +9,7 @@ Created on Thu Aug  7 15:41:07 2025
 import json
 import numpy as np
 import matplotlib.pyplot as plt
+
 import src._functions.unit_conversions as cvt
 
 
@@ -23,7 +24,8 @@ print('...plotting radius comparison')
 
 
 # mCloud_list = ['1e5', '1e6', '1e7']
-mCloud_list = ['1e7']
+# mCloud_list = ['1e8']
+# mCloud_list = ['1e7']
 # mCloud_list = ['1e5']
 # ndens_list = ['1e2', '1e4']
 ndens_list = ['1e4']
@@ -92,6 +94,7 @@ for mCloud in mCloud_list:
                     F_ram_SNlist.append(val['F_ram_SN'])
                     F_ram_windlist.append(val['F_ram_wind'])
                     v2list.append(val['v2'])
+                    phaselist.append(val['current_phase'])
                 
                 fig, ax = plt.subplots(1, 1, figsize = (5, 5), dpi = 200) 
                 
@@ -143,8 +146,18 @@ for mCloud in mCloud_list:
                 
                 Ftotal = np.sum(Flist, axis = 0)
                 
+                tlist = np.array(tlist)
+                
                 for jj, forces in enumerate(Flist):
                     ax.fill_between(tlist, np.sum(Flist[:(jj+1)], axis = 0)/Ftotal, color = 'k', alpha = 0.3)
+                
+                
+                change_idx = np.flatnonzero(phaselist[1:] != phaselist[:-1]) + 1   # +1 because we compared shifted arrays
+                change_t   = tlist[change_idx]
+                for x in change_t:
+                    ax.axvline(x, linestyle="--")   
+                    
+    
                 
                 n = 10
                 
@@ -167,29 +180,35 @@ for mCloud in mCloud_list:
                 ax.text(0.1, 0.8, 'rad')
             
                 plt.show()
+                plt.clf()
+
+                # ========
+            
+                fig, ax = plt.subplots(1, 1, figsize = (5, 5), dpi = 200) 
+                
+                ax.set_yscale('log')
+                
+                c = ['k', 'b', 'g', 'c', 'r']
+                
+                
+                for jj, forces in enumerate(Flist):
+                    ax.plot(tlist, forces, c = c[jj])
+
+                for x in change_t:
+                    ax.axvline(x, linestyle="--")   
+                
+                ax.set_ylim(1e5, 1e10)
+                ax.legend()
+    
+
             except FileNotFoundError as e: 
                 print(e)
                 pass        
             except Exception as e:
                 print(e)
                 pass
-
-            
-            fig, ax = plt.subplots(1, 1, figsize = (5, 5), dpi = 200) 
-            
-            ax.set_yscale('log')
-            
-            for jj, forces in enumerate(Flist):
-                ax.plot(tlist, forces)
-            
-            ax.set_ylim(1e3, 1e9)
-            ax.legend()
-
-
-
-
-
         
+                
         
         
         
