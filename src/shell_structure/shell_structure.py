@@ -585,17 +585,17 @@ def shell_structure(params):
             
     elif is_shellDissolved:
         params['isDissolved'].value = True
-        # f_absorbed_ion = 1.0
-        # f_absorbed_neu = 0.0
-        # f_absorbed = (f_absorbed_ion * Li + f_absorbed_neu * Ln)/(Li + Ln)
-        # f_ionised_dust = np.nan
-        # is_fullyIonised = True
-        # shellThickness = np.nan
-        # nShell_max = params['nISM'].value
-        # tau_kappa_IR = 0
-        # grav_r = np.nan
-        # grav_phi = np.nan
-        # grav_force_m = np.nan
+        f_absorbed_ion = 1.0
+        f_absorbed_neu = 0.0
+        f_absorbed = (f_absorbed_ion * Li + f_absorbed_neu * Ln)/(Li + Ln)
+        f_ionised_dust = np.nan
+        is_fullyIonised = True
+        shellThickness = np.nan
+        nShell_max = params['nISM'].value
+        tau_kappa_IR = 0
+        grav_r = np.nan
+        grav_phi = np.nan
+        grav_force_m = np.nan
         
         print('Shell dissolved.')
         
@@ -608,7 +608,7 @@ def shell_structure(params):
     # old: seems to not include indirect radiation
     # params['shell_fRad'].value = f_absorbed_ion * params['Lbol'].value / params['c_light'].value 
     # new: has radiation
-    params['shell_fRad'].value = f_absorbed_ion * params['Lbol'].value / params['c_light'].value * (1 + params['shell_tauKappaRatio'] * params['dust_KappaIR'])
+    params['shell_F_rad'].value = f_absorbed_ion * params['Lbol'].value / params['c_light'].value * (1 + params['shell_tauKappaRatio'] * params['dust_KappaIR'])
 
     params['shell_thickness'].value = shellThickness 
     # params['shell_nShellInner'].value = nShellInner
