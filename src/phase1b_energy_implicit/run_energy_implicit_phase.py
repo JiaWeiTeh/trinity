@@ -62,6 +62,9 @@ def run_phase_energy(params):
 
     for ii, time in enumerate(time_range):
         
+        if ii == (len(time_range) - 1):
+            break
+        
         # new inputs
         y = [r2, v2, Eb, T0]
     

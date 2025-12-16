@@ -5,210 +5,220 @@ Created on Thu Aug  7 15:41:07 2025
 
 @author: Jia Wei Teh
 """
-
+        
 import json
 import numpy as np
 import matplotlib.pyplot as plt
+from pathlib import Path
+import matplotlib.transforms as mtransforms
+from matplotlib.patches import Patch
 
-import src._functions.unit_conversions as cvt
+print("...plotting radius comparison")
 
+# --- configuration
+mCloud_list = ["1e5", "1e7", "1e8"]                 # rows
+ndens_list  = ["1e4"]                        # one figure per ndens
+# ndens_list  = ["1e2"]                        # one figure per ndens
+sfe_list    = ["001", "010", "020", "030", "050", "080"]   # cols
 
-# IDEA: a gridmap of mass vs density to check what casues recollapse
-        
-def str2float(string):
-    # for sfe, 010 -> 0.1
-    return float(string[0] + '.' + string[1:])
+BASE_DIR = Path.home() / "unsync" / "Code" / "Trinity" / "outputs"
 
+# smoothing: number of snapshots in moving average (None or 1 disables)
+SMOOTH_WINDOW = 21
 
-print('...plotting radius comparison')
+PHASE_CHANGE = False
 
-
-# mCloud_list = ['1e5', '1e6', '1e7']
-# mCloud_list = ['1e8']
-# mCloud_list = ['1e7']
-# mCloud_list = ['1e5']
-# ndens_list = ['1e2', '1e4']
-ndens_list = ['1e4']
-sfe_list = ['001', '010', '030']
-# sfe_list = ['001']
-# sfe_list = ['001']
-
-
-plt.rc('text', usetex=True)
-plt.rc('font', family='sans-serif', size=12)
-
-# Set default tick styles globally
-plt.rcParams["xtick.direction"] = "in"
-plt.rcParams["ytick.direction"] = "in"
-plt.rcParams["xtick.minor.visible"] = True  # Show minor ticks
-plt.rcParams["ytick.minor.visible"] = True
-plt.rcParams["xtick.major.size"] = 6        # Major tick size
-plt.rcParams["ytick.major.size"] = 6
-plt.rcParams["xtick.minor.size"] = 3        # Minor tick size
-plt.rcParams["ytick.minor.size"] = 3
-plt.rcParams["xtick.major.width"] = 1       # Major tick width
-plt.rcParams["ytick.major.width"] = 1
-plt.rcParams["xtick.minor.width"] = 0.8     # Minor tick width
-plt.rcParams["ytick.minor.width"] = 0.8
+FORCE_FIELDS = [
+    ("F_grav",     "Gravity",              "black"),
+    ("F_ram_wind", "Ram (wind)",           "b"),
+    ("F_ram_SN",   "Ram (SN)",             "#2ca02c"),
+    ("F_ion_out",  "Photoionised gas",     "#d62728"),
+    ("F_rad",      "Radiation (dir.+indir.)", "#9467bd"),
+]
 
 
-# mCloud = '1e7'
-# sfe = '001'
-# ndens = '1e4'
+def set_plot_style(use_tex=True, font_size=12):
+    plt.rcParams.update({
+        "text.usetex": use_tex,
+        "font.family": "sans-serif",
+        "font.size": font_size,
+        "xtick.direction": "in",
+        "ytick.direction": "in",
+        "xtick.minor.visible": True,
+        "ytick.minor.visible": True,
+        "xtick.major.size": 6,
+        "ytick.major.size": 6,
+        "xtick.minor.size": 3,
+        "ytick.minor.size": 3,
+        "xtick.major.width": 1.0,
+        "ytick.major.width": 1.0,
+        "xtick.minor.width": 0.8,
+        "ytick.minor.width": 0.8,
+    })
 
-for mCloud in mCloud_list:
-    for sfe in sfe_list:
-        for ndens in ndens_list:
+
+set_plot_style(use_tex=True, font_size=12)
+
+
+def load_run(json_path: Path):
+    with json_path.open("r") as f:
+        data = json.load(f)
+
+    snap_keys = sorted((k for k in data.keys() if str(k).isdigit()), key=lambda k: int(k))
+    snaps = [data[k] for k in snap_keys]
+
+    t = np.array([s["t_now"] for s in snaps], dtype=float)
+    r = np.array([s["R2"] for s in snaps], dtype=float)
+    phase = np.array([s.get("current_phase", "") for s in snaps])
+
+    forces = np.vstack([
+        np.array([s[field] for s in snaps], dtype=float)
+        for field, _, _ in FORCE_FIELDS
+    ])
+
+    rcloud = float(snaps[0].get("rCloud", np.nan))
+    return t, r, phase, forces, rcloud
+
+def smooth_1d(y, window, mode="edge"):
+    """
+    Simple boxcar moving-average smoothing.
+    window = number of points (will be made odd).
+    """
+    if window is None or window <= 1:
+        return y
+
+    window = int(window)
+    if window % 2 == 0:
+        window += 1
+
+    kernel = np.ones(window, dtype=float) / window
+    pad = window // 2
+
+    ypad = np.pad(y, (pad, pad), mode=mode)
+    return np.convolve(ypad, kernel, mode="valid")
+
+
+def smooth_2d(arr, window, mode="edge"):
+    """Smooth along the last axis for a 2D array shaped (n_series, n_time)."""
+    if window is None or window <= 1:
+        return arr
+    return np.vstack([smooth_1d(row, window, mode=mode) for row in arr])
+
+def plot_run_on_ax(ax, t, r, phase, forces, rcloud, alpha=0.75,
+                   smooth_window=None, smooth_mode="edge", phase_change=False):
+    # vertical phase-change lines (behind)
+    if phase_change:
+        change_idx = np.flatnonzero(phase[1:] != phase[:-1]) + 1
+        for x in t[change_idx]:
+            ax.axvline(x, color="r", lw=2, alpha=0.2, zorder=0)
+
+    # --- first time r exceeds rCloud (behind)
+    if np.isfinite(rcloud):
+        idx = np.flatnonzero(r > rcloud)
+        if idx.size:
+            x_rc = t[idx[0]]
+            ax.axvline(x_rc, color="k", ls="--", alpha=0.2, zorder=0)
+    
+            # after drawing the axvline at x_rc ...
+            text_trans = ax.get_xaxis_transform() + mtransforms.ScaledTranslation(
+                4/72, 0, fig.dpi_scale_trans  # 4 points to the right (increase to pad more)
+            )
+
+            # label next to the line
+            ax.text(
+                x_rc, 0.95, r"$R_2 = R_{\rm cloud}$",
+                transform=text_trans,
+                ha="left", va="top",
+                fontsize=8,
+                color="k",
+                alpha=0.8,
+                rotation=90
+            )
+
+    # --- SMOOTHING (apply to forces, then recompute fractions)
+    forces_use = smooth_2d(forces, smooth_window, mode=smooth_mode)
+
+    # stacked force fractions
+    ftotal = forces_use.sum(axis=0)
+    ftotal = np.where(ftotal == 0.0, np.nan, ftotal)
+
+    frac = forces_use / ftotal
+    cum  = np.cumsum(frac, axis=0)
+    prev = np.vstack([np.zeros_like(t), cum[:-1]])
+
+    for (_, _, color), y0, y1 in zip(FORCE_FIELDS, prev, cum):
+        ax.fill_between(t, y0, y1, color=color, alpha=alpha, lw=0, zorder=2)
+
+    ax.set_ylim(0, 1)
+    ax.set_xlim(t.min(), t.max())
+
+
+# --- one 3x5 figure per ndens
+for ndens in ndens_list:
+    nrows, ncols = len(mCloud_list), len(sfe_list)
+    fig, axes = plt.subplots(
+        nrows=nrows, ncols=ncols,
+        figsize=(3.2 * ncols, 2.6 * nrows),
+        sharex=False, sharey=True,
+        dpi=500,
+        constrained_layout=True
+    )
+
+    for i, mCloud in enumerate(mCloud_list):
+        for j, sfe in enumerate(sfe_list):
             try:
-                path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/' + mCloud + '_' + 'sfe' + sfe + '_n' + ndens + '/dictionary.json'
-                # path2json = path2json
-                
-                print(f"plotting mCloud {np.log10(float(mCloud))}, sfe {sfe}, ndens {float(ndens)}")
-                
-                with open(path2json, 'r') as f:
-                    # step one is to make sure they are lists i think
-                    snaplists = json.load(f)
-            
-                rlist = []
-                tlist = []
-                F_gravlist = []
-                F_radlist = []
-                F_ion_inlist = []
-                F_ion_outlist = []
-                F_ramlist = []
-                F_ram_SNlist = []
-                F_ram_windlist = []
-                v2list = []
-                phaselist = []
-                
-                #--------------
-                
-                for key, val in snaplists.items():
-                    rlist.append(val['R2'])
-                    tlist.append(val['t_now'])
-                    F_gravlist.append(val['F_grav'])
-                    F_radlist.append(val['F_rad'])
-                    F_ion_inlist.append(val['F_ion_in'])
-                    F_ion_outlist.append(val['F_ion_out'])
-                    F_ramlist.append(val['F_ram'])
-                    F_ram_SNlist.append(val['F_ram_SN'])
-                    F_ram_windlist.append(val['F_ram_wind'])
-                    v2list.append(val['v2'])
-                    phaselist.append(val['current_phase'])
-                
-                fig, ax = plt.subplots(1, 1, figsize = (5, 5), dpi = 200) 
-                
-                
-                plt.title(f'Mcloud = $10^{mCloud[-1]} M_\\odot$, $\\epsilon$ = {sfe}, n = $10^{ndens[-1]}$ 1/cm$^3$')
-                
-                # ax.text(0.47, 0.1, f'Mcloud = $10^{mCloud[-1]} M_\\odot$, $\\epsilon$ = {sfe}, n = $10^{ndens[-1]}$ 1/cm$^3$', fontsize = 10,
-                #     transform=ax.transAxes,
-                #     bbox=dict(facecolor="white", edgecolor="black", 
-                #     boxstyle="round,pad=0.5", alpha = 1)
-                #     )
-                    
-                    
-                for ii, grav in enumerate(F_gravlist):
-                    if hasattr(grav, "__len__"):
-                        F_gravlist[ii] = grav[0]
-                for ii, rad in enumerate(F_radlist):
-                    if hasattr(rad, "__len__"):
-                        F_radlist[ii] = rad[0]
-                for ii, ion_out in enumerate(F_ion_outlist):
-                    if hasattr(ion_out, "__len__"):
-                        F_ion_outlist[ii] = ion_out[0]
-                for ii, ion_in in enumerate(F_ion_inlist):
-                    if hasattr(ion_in, "__len__"):
-                        F_ion_inlist[ii] = ion_in[0]
-                for ii, ram in enumerate(F_ramlist):
-                    if hasattr(ram, "__len__"):
-                        F_ramlist[ii] = ram[0]
-                for ii, ram_SN in enumerate(F_ram_SNlist):
-                    if hasattr(ram_SN, "__len__"):
-                        F_ram_SNlist[ii] = ram_SN[0]
-                for ii, ram_wind in enumerate(F_ram_windlist):
-                    if hasattr(ram_wind, "__len__"):
-                        F_ram_windlist[ii] = ram_wind[0]
-                
-                F_gravlist = np.array(F_gravlist)
-                F_radlist = np.array(F_radlist)
-                F_ion_outlist = np.array(F_ion_outlist)
-                F_ion_inlist = np.array(F_ion_inlist)
-                F_ramlist = np.array(F_ramlist)
-                F_ram_SNlist = np.array(F_ram_SNlist)
-                F_ram_windlist = np.array(F_ram_windlist)
-                
-                # Flist = [F_gravlist, F_radlist, F_ion_outlist, F_ram_windlist, F_ram_SNlist]
-                Flist = [F_gravlist, F_ramlist, F_ion_outlist, F_radlist ]
-                Flist = [F_gravlist, F_ram_windlist, F_ram_SNlist, F_ion_outlist, F_radlist ]
-                # Flist = [F_gravlist, F_ramlist]
-                # Flist = [F_gravlist, F_ram_windlist, F_ram_SNlist]
-                
-                Ftotal = np.sum(Flist, axis = 0)
-                
-                tlist = np.array(tlist)
-                
-                for jj, forces in enumerate(Flist):
-                    ax.fill_between(tlist, np.sum(Flist[:(jj+1)], axis = 0)/Ftotal, color = 'k', alpha = 0.3)
-                
-                
-                change_idx = np.flatnonzero(phaselist[1:] != phaselist[:-1]) + 1   # +1 because we compared shifted arrays
-                change_t   = tlist[change_idx]
-                for x in change_t:
-                    ax.axvline(x, linestyle="--")   
-                    
+                ax = axes[i, j]
+                run_name = f"{mCloud}_sfe{sfe}_n{ndens}"
+                json_path = BASE_DIR / run_name / "dictionary.json"
     
-                
-                n = 10
-                
-                print('F_gravlist', F_gravlist[:n:])
-                print('F_radlist', F_radlist[:n:])
-                print('F_ion_inlist', F_ion_inlist[:n:])
-                print('F_ion_outlist', F_ion_outlist[:n:])
-                print('F_ramlist', F_ramlist[:n:])
-                print('F_ram_SNlist', F_ram_SNlist[:n:])
-                print('F_ram_windlist', F_ram_windlist[:n:])
-                
-                ax.set_xlim(0, max(tlist))
-                ax.set_xlabel('t [Myr]')
-                ax.set_ylabel('F/Ftotal')
-                ax.set_ylim(0, 1)
-            
-                ax.text(0.1, 0.2, 'grav')
-                ax.text(0.1, 0.4, 'ram')
-                ax.text(0.1, 0.6, 'ionised')
-                ax.text(0.1, 0.8, 'rad')
-            
-                plt.show()
-                plt.clf()
-
-                # ========
-            
-                fig, ax = plt.subplots(1, 1, figsize = (5, 5), dpi = 200) 
-                
-                ax.set_yscale('log')
-                
-                c = ['k', 'b', 'g', 'c', 'r']
-                
-                
-                for jj, forces in enumerate(Flist):
-                    ax.plot(tlist, forces, c = c[jj])
-
-                for x in change_t:
-                    ax.axvline(x, linestyle="--")   
-                
-                ax.set_ylim(1e5, 1e10)
-                ax.legend()
+                if not json_path.exists():
+                    ax.text(0.5, 0.5, "missing", ha="center", va="center", transform=ax.transAxes)
+                    ax.set_axis_off()
+                    continue
     
-
-            except FileNotFoundError as e: 
-                print(e)
-                pass        
+                t, r, phase, forces, rcloud = load_run(json_path)
+                plot_run_on_ax(ax, t, r, phase, forces, rcloud, alpha=0.75, smooth_window=SMOOTH_WINDOW)
+                
             except Exception as e:
-                print(e)
-                pass
-        
+                print(f"Error in {run_name}: {e}")
                 
+            # column titles (top row): SFE
+            if i == 0:
+                eps = int(sfe) / 100.0
+                ax.set_title(rf"$\epsilon={eps:.2f}$")
+
+            # row labels (left col): Mcloud
+            if j == 0:
+                mlog = int(np.log10(float(mCloud)))
+                ax.set_ylabel(rf"$M_{{cloud}}=10^{{{mlog}}}\,M_\odot$" + "\n" + r"$F/F_{tot}$")
+
+            # x-labels (bottom row)
+            if i == nrows - 1:
+                ax.set_xlabel("t [Myr]")
+
+    # one global legend (cleaner than repeating per panel)
+    handles = [Patch(facecolor=c, edgecolor="none", label=lab, alpha=0.75)
+               for _, lab, c in FORCE_FIELDS]
+    leg = fig.legend(
+        handles=handles, loc="upper center", ncol=len(handles),
+        frameon=True, facecolor="white", framealpha=0.9, edgecolor="0.2",
+        bbox_to_anchor=(0.5, 1.05)
+    )
+    leg.set_zorder(10)
+
+    nlog = int(np.log10(float(ndens)))
+    fig.suptitle(rf"Feedback force fractions grid  ($n=10^{{{nlog}}}\,\mathrm{{cm^{{-3}}}}$)", y=1.08)
+
+    plt.show()
+    plt.close(fig)
+
+        
+        
+        
+        
+        
+        
+        
         
         
         

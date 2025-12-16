@@ -19,11 +19,8 @@ import src._functions.unit_conversions as cvt
 from src.shell_structure import get_shellODE, get_shellParams
 
 
-# SHELL THICKNESS IS NEGATIVE???
-
 from numba import jit
 
-# @jit
 def shell_structure(params):
     
     
@@ -386,18 +383,6 @@ def shell_structure(params):
             
             # # if tau is already 100, there is no point in integrating more.
             tau_max = 100
-            
-            
-            # # --- OLD
-            # mydr = np.min([ 1, np.abs((tau_max - tau0_ion)/(nShell0 * params['sigma_d_au'].value))])
-            
-
-            # rShell_step = np.max([
-            #         np.min([ 5e-5, mydr/1e3]),
-            #         mydr/1e4
-            #         ]) 
-            # # ---
-            
                 
             # new step size
             # TODO: idea: do a mesh up of logspace and reverse logspace. This way
@@ -424,24 +409,6 @@ def shell_structure(params):
                 
                 # there seem to be an update issue
     
-                # ---
-                # # if tau is already 100, there is no point in integrating more.
-                # tau_max = 100
-                # # the maximum width of the neutral shell, assuming constant density.
-                # max_shellRadius = np.abs((tau_max - tau0_ion)/(nShell0 * params['sigma_d_au'].value))
-                # # the end range of integration 
-                # rShell_stop = np.min([ 1 * u.pc.to(u.cm), max_shellRadius.to(u.cm).value ])*u.cm + rShell_start.to(u.cm)
-                # # Step size
-                # rShell_step = np.max([
-                #     np.min([ 5e-5 * u.pc.to(u.cm), max_shellRadius.to(u.cm).value/1e3]),
-                #     max_shellRadius.to(u.cm).value/1e6
-                #     ]) * u.cm
-                # # range of r values
-                # rShell_arr = np.arange(rShell_start.to(u.cm).value, rShell_stop.value, rShell_step.value) * u.cm
-                # # Get arguments and parameters for integration:
-                # # neutral region
-                # is_ionised = False
-                
                 # ---
                 # # if tau is already 100, there is no point in integrating more.
                 # tau_max = 100
@@ -546,7 +513,8 @@ def shell_structure(params):
             # concatenate to an array which represents the whole shell
             grav_force_m = np.concatenate([grav_force_m, grav_neu_force_m])
             grav_r = np.concatenate([grav_r, grav_neu_r])
-            
+        
+        print('checking shell', phiShell_arr_ion[:10:])
         
         # =============================================================================
         # Shell is fully evaluated. Compute shell properties now.
@@ -557,6 +525,9 @@ def shell_structure(params):
             # What is tau and phi at the outer edge of the shell?
             tau_rEnd = tauShell_arr_ion[-1]
             phi_rEnd = phiShell_arr_ion[-1]
+            # prevent overshoot
+            if phi_rEnd < 0:
+                phi_rEnd = 0
             # What is the maximum shell density?
             nShell_max = np.max(nShell_arr_ion)
             # The ratio tau_IR/kappa_IR  = \int rho dr
@@ -593,9 +564,6 @@ def shell_structure(params):
         shellThickness = np.nan
         nShell_max = params['nISM'].value
         tau_kappa_IR = 0
-        grav_r = np.nan
-        grav_phi = np.nan
-        grav_force_m = np.nan
         
         print('Shell dissolved.')
         
