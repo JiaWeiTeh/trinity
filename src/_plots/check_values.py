@@ -13,8 +13,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-# path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe010_n1e4/dictionary.json'
-path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/1e5_sfe010_n1e4/dictionary.json'
+path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe001_n1e4/dictionary.json'
+# path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/1e5_sfe010_n1e4/dictionary.json'
 # path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe030_n1e4_BE/dictionary.json'
 
 with open(path2json, 'r') as f:
@@ -35,8 +35,10 @@ with open(path2json, 'r') as f:
     snaplists = json.load(f)
 
 
-yvalue = 'R2'
-yvalue2 = 'rShell'
+# yvalue = 'shell_fAbsorbedIon'
+# yvalue = 'shell_fAbsorbedWeightedTotal'
+yvalue = 'shell_fAbsorbedNeu'
+# yvalue2 = 'rShell'
 xvalue = 't_now'
 phase = 'current_phase'
 
@@ -44,13 +46,13 @@ phase = 'current_phase'
 for key, val in snaplists.items():
     xlist.append(val[xvalue])
     ylist.append(val[yvalue])
-    ylist2.append(val[yvalue2])
+    # ylist2.append(val[yvalue2])
     phaselist.append(val[phase])
 
 
 xlist = np.array(xlist)
 ylist = np.array(ylist)
-ylist2 = np.array(ylist2)
+# ylist2 = np.array(ylist2)
 phaselist = np.array(phaselist)
 
 
@@ -63,7 +65,7 @@ fig, axs = plt.subplots(2, 1, figsize = (7,7), dpi = 300)
 axs[0].set_xlabel(xvalue)
 axs[0].set_ylabel(yvalue)
 axs[0].plot(xlist, ylist)
-axs[0].plot(xlist, ylist2)
+# axs[0].plot(xlist, ylist2)
 
 change_idx = np.flatnonzero(phaselist[1:] != phaselist[:-1]) + 1   # +1 because we compared shifted arrays
 change_t   = xlist[change_idx]
