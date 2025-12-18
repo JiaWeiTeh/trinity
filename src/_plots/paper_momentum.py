@@ -18,15 +18,12 @@ print("...plotting integrated momentum (line plots)")
 
 # --- configuration
 mCloud_list = ["1e5", "1e7", "1e8"]                 # rows
-# mCloud_list = ["1e5", "1e8"]                 # rows
-# mCloud_list = ["1e5"]                 # rows
-ndens_list  = ["1e4"]                               # one figure per ndens
+ndens_list  = ["1e4", "1e2"]                               # one figure per ndens
 sfe_list    = ["001", "010", "020", "030", "050", "080"]   # cols
-# sfe_list    = ["001", "010",]   # cols
 
 BASE_DIR = Path.home() / "unsync" / "Code" / "Trinity" / "outputs"
 
-PHASE_CHANGE = False
+PHASE_CHANGE = True
 
 SMOOTH_WINDOW = None
 
@@ -37,8 +34,9 @@ DOMINANCE_STRIP = (0.97, 1)  # (ymin, ymax) in AXES fraction (0..1)
 
 FORCE_FIELDS = [
     ("F_grav",     "Gravity",              "black"),
-    ("F_ram_wind", "Ram (wind)",           "b"),
-    ("F_ram_SN",   "Ram (SN)",             "#2ca02c"),
+    # ("F_ram_wind", "Ram (wind)",           "b"),
+    # ("F_ram_SN",   "Ram (SN)",             "#2ca02c"),
+    ("F_ram",   "Ram",             "b"),
     ("F_ion_out",  "Photoionised gas",     "#d62728"),
     ("F_rad",      "Radiation (dir.+indir.)", "#9467bd"),
 ]
@@ -155,13 +153,39 @@ def dominant_bins(t, frac, dt=0.1):
 def plot_momentum_lines_on_ax(
     ax, t, r, phase, forces, rcloud,
     smooth_window=None, smooth_mode="edge",
-    lw=1.6, net_lw=4, alpha=0.8, phase_change=False,
+    lw=1.6, net_lw=4, alpha=0.8, phase_change=PHASE_CHANGE,
 ):
-    # --- phase-change lines (behind)
+    # --- phase-change line:
+    # --- phase lines with mini labels
     if phase_change:
-        change_idx = np.flatnonzero(phase[1:] != phase[:-1]) + 1
-        for x in t[change_idx]:
+        # energy/implicit -> transition  (T)
+        idx_T = np.flatnonzero(
+            np.isin(phase[:-1], ["energy", "implicit"]) & (phase[1:] == "transition")
+        ) + 1
+        for x in t[idx_T]:
             ax.axvline(x, color="r", lw=2, alpha=0.2, zorder=0)
+            ax.text(
+                x, 0.05, "T",
+                transform=ax.get_xaxis_transform(),
+                ha="center", va="bottom",
+                fontsize=8, color="r", alpha=0.6,
+                bbox=dict(facecolor="white", edgecolor="none", alpha=0.7, pad=0.2),
+                zorder=5
+            )
+
+        # transition -> momentum  (M)
+        idx_M = np.flatnonzero((phase[:-1] == "transition") & (phase[1:] == "momentum")) + 1
+        for x in t[idx_M]:
+            ax.axvline(x, color="r", lw=2, alpha=0.2, zorder=0)
+            ax.text(
+                x, 0.05, "M",
+                transform=ax.get_xaxis_transform(),
+                ha="center", va="bottom",
+                fontsize=8, color="r", alpha=0.6,
+                bbox=dict(facecolor="white", edgecolor="none", alpha=0.7, pad=0.2),
+                zorder=5
+            )
+
 
     # --- first time r exceeds rCloud (behind)
     if np.isfinite(rcloud):
@@ -311,7 +335,7 @@ for ndens in ndens_list:
 
                 plot_momentum_lines_on_ax(
                     ax, t, r, phase, forces, rcloud,
-                    smooth_window=SMOOTH_WINDOW,
+                    smooth_window=SMOOTH_WINDOW, phase_change=PHASE_CHANGE
                 )
 
             except Exception as e:

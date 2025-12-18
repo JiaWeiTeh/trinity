@@ -13,8 +13,8 @@ import src._functions.unit_conversions as cvt
 
 
 path2json2 = r'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe010_n1e4/dictionary.json'
-path2json1 = r'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe001_n1e4_BE/dictionary.json'
-# path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/1e5_sfe030_n1e4/dictionary.json'
+# path2json1 = r'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe001_n1e4_BE/dictionary.json'
+path2json1 = r'/Users/jwt/unsync/Code/Trinity/outputs/1e5_sfe030_n1e4/dictionary.json'
 # path2json2 = r'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe030_n1e4/dictionary.json'
 # path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe010_n1e2/dictionary.json'
 
@@ -78,10 +78,10 @@ for pp, path2json in enumerate([path2json1, path2json2]):
     
     
     
-    colour_map = { '1a': 'r',
-                  '1b': 'g',
-                  '2': 'b',
-                  '3': 'k'
+    colour_map = { 'energy': 'r',
+                  'implicit': 'g',
+                  'transition': 'b',
+                  'momentum': 'k'
                   } 
     
     
