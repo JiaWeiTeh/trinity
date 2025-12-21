@@ -325,6 +325,8 @@ def run_expansion(params):
 
     params['current_phase'].value = 'momentum'
     
+    params['Eb'].value = 1
+    
     if params['EndSimulationDirectly'].value == False:
         run_momentum_phase.run_phase_momentum(params)
 

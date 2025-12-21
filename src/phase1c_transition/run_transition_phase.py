@@ -239,7 +239,7 @@ def check_events(params, dt_params):
     # =============================================================================
     
     # Main event: when energy is close to zero.
-    if Eb_next < 1:
+    if Eb_next < 1e3:
         print(f"Phase ended because energy crosses from E: {params['Eb'].value} to E: {Eb_next} in the next iteration.")
         return True
     

@@ -27,8 +27,8 @@ print("...plotting radius comparison")
 # --- configuration
 mCloud_list = ["1e5", "1e7", "1e8"]                 # rows
 # mCloud_list = ["1e5","1e8"]                 # rows
-ndens_list  = ["1e4", "1e2"]                        # one figure per ndens
-# ndens_list  = ["1e4"]                        # one figure per ndens
+# ndens_list  = ["1e4", "1e2", "1e3"]                        # one figure per ndens
+ndens_list  = ["1e4"]                        # one figure per ndens
 sfe_list    = ["001", "010", "020", "030", "050", "080"]   # cols
 # sfe_list    = ["001", "010"]   # cols
 
@@ -86,7 +86,8 @@ def load_cooling_run(json_path: Path):
     
     t     = np.array([s["t_now"] for s in snaps], dtype=float)
     R2    = np.array([s["R2"] for s in snaps], dtype=float)
-    additional_param    = np.array([s["F_ram"] for s in snaps], dtype=float)
+    # additional_param    = np.array([s["F_ram"] for s in snaps], dtype=float)
+    additional_param    = np.array([s["Pb"] for s in snaps], dtype=float)
     phase = np.array([s.get("current_phase", "") for s in snaps])
 
     beta  = np.array([s.get("cool_beta", np.nan) for s in snaps], dtype=float)
@@ -151,6 +152,7 @@ def plot_cooling_on_ax(
     # --- right axis: R2
     axr = ax.twinx()
     axr.plot(t, additional_param, lw=1.4, alpha=0.8, c = 'k', label=r"$R_2$")
+    axr.set_yscale('log')
     # axr.set_ylabel(r"$R_2$ [pc]")
 
     # keep the twin axis from hiding things

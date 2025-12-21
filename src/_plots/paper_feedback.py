@@ -1,40 +1,50 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Thu Aug  7 15:41:07 2025
-
-@author: Jia Wei Teh
+Overlay wind+SN contributions inside F_ram while leaving an unhatched residual:
+- Base stack uses F_ram (blue) throughout all phases.
+- Hatched overlays show wind and SN as fractions of F_ram:
+    f_wind = F_ram_wind / F_ram
+    f_SN   = F_ram_SN   / F_ram
+  The unhatched remainder of the blue band is the residual: 1 - f_wind - f_SN
 """
-        
+
 import json
 import numpy as np
 import matplotlib.pyplot as plt
 from pathlib import Path
 import matplotlib.transforms as mtransforms
 from matplotlib.patches import Patch
+from matplotlib.lines import Line2D
 
-print("...plotting radius comparison")
+print("...plotting force fractions with ram composition overlay (residual visible)")
 
 # --- configuration
 mCloud_list = ["1e5", "1e7", "1e8"]                 # rows
-# ndens_list  = ["1e4"]                        # one figure per ndens
-ndens_list  = ["1e3"]                        # one figure per ndens
+ndens_list  = ["1e2", "1e3", "1e4"]                 # one figure per ndens
+# ndens_list  = ["1e4"]                 # one figure per ndens
 sfe_list    = ["001", "010", "020", "030", "050", "080"]   # cols
 
 BASE_DIR = Path.home() / "unsync" / "Code" / "Trinity" / "outputs"
 
-# smoothing: number of snapshots in moving average (None or 1 disables)
-SMOOTH_WINDOW = 21
-
+SMOOTH_WINDOW = 21          # None or 1 disables
 PHASE_CHANGE = True
+INCLUDE_ALL_FORCE = True    # show wind/SN overlays inside the ram band
 
-FORCE_FIELDS = [
-    ("F_grav",     "Gravity",              "black"),
-    # ("F_ram_wind", "Ram (wind)",           "b"),
-    # ("F_ram_SN",   "Ram (SN)",             "#2ca02c"),
-    ("F_ram",   "Ram",             "b"),
-    ("F_ion_out",  "Photoionised gas",     "#d62728"),
-    ("F_rad",      "Radiation (dir.+indir.)", "#9467bd"),
+# Colors
+C_GRAV = "black"
+C_RAM  = "b"
+C_SN   = "#2ca02c"
+C_ION  = "#d62728"
+C_RAD  = "#9467bd"
+
+
+# Base stacked forces (always)
+FORCE_FIELDS_BASE = [
+    ("F_grav",    "Gravity",                 C_GRAV),
+    ("F_ram",     "Ram (total)",             C_RAM),
+    ("F_ion_out", "Photoionised gas",        C_ION),
+    ("F_rad",     "Radiation (dir.+indir.)", C_RAD),
 ]
 
 
@@ -61,6 +71,24 @@ def set_plot_style(use_tex=True, font_size=12):
 set_plot_style(use_tex=True, font_size=12)
 
 
+def smooth_1d(y, window, mode="edge"):
+    if window is None or window <= 1:
+        return y
+    window = int(window)
+    if window % 2 == 0:
+        window += 1
+    kernel = np.ones(window, dtype=float) / window
+    pad = window // 2
+    ypad = np.pad(y, (pad, pad), mode=mode)
+    return np.convolve(ypad, kernel, mode="valid")
+
+
+def smooth_2d(arr, window, mode="edge"):
+    if window is None or window <= 1:
+        return arr
+    return np.vstack([smooth_1d(row, window, mode=mode) for row in arr])
+
+
 def load_run(json_path: Path):
     with json_path.open("r") as f:
         data = json.load(f)
@@ -69,48 +97,56 @@ def load_run(json_path: Path):
     snaps = [data[k] for k in snap_keys]
 
     t = np.array([s["t_now"] for s in snaps], dtype=float)
-    r = np.array([s["R2"] for s in snaps], dtype=float)
+    R2 = np.array([s.get("R2", np.nan) for s in snaps], dtype=float)
     phase = np.array([s.get("current_phase", "") for s in snaps])
 
-    forces = np.vstack([
-        np.array([s[field] for s in snaps], dtype=float)
-        for field, _, _ in FORCE_FIELDS
-    ])
+    def get_field(field, default=np.nan):
+        return np.array([s.get(field, default) for s in snaps], dtype=float)
+
+    F_grav = get_field("F_grav", 0.0)
+    F_ion  = get_field("F_ion_out", 0.0)
+    F_rad  = get_field("F_rad", 0.0)
+
+    # total ram (energy-balance effective)
+    F_ram = get_field("F_ram", np.nan)
+
+    # decomposition (SPS output)
+    F_wind = get_field("F_ram_wind", np.nan)
+    F_sn   = get_field("F_ram_SN", np.nan)
+
+    # If F_ram missing entirely, reconstruct if possible
+    if np.all(np.isnan(F_ram)):
+        if not (np.all(np.isnan(F_wind)) and np.all(np.isnan(F_sn))):
+            F_ram = np.nan_to_num(F_wind, nan=0.0) + np.nan_to_num(F_sn, nan=0.0)
+        else:
+            F_ram = np.zeros_like(t)
 
     rcloud = float(snaps[0].get("rCloud", np.nan))
-    return t, r, phase, forces, rcloud
 
-def smooth_1d(y, window, mode="edge"):
-    """
-    Simple boxcar moving-average smoothing.
-    window = number of points (will be made odd).
-    """
-    if window is None or window <= 1:
-        return y
+    # Ensure time increasing
+    if np.any(np.diff(t) < 0):
+        order = np.argsort(t)
+        t, R2, phase = t[order], R2[order], phase[order]
+        F_grav, F_ram, F_ion, F_rad = F_grav[order], F_ram[order], F_ion[order], F_rad[order]
+        F_wind, F_sn = F_wind[order], F_sn[order]
 
-    window = int(window)
-    if window % 2 == 0:
-        window += 1
+    base_forces = np.vstack([F_grav, F_ram, F_ion, F_rad])
+    overlay_forces = np.vstack([F_wind, F_sn])
 
-    kernel = np.ones(window, dtype=float) / window
-    pad = window // 2
-
-    ypad = np.pad(y, (pad, pad), mode=mode)
-    return np.convolve(ypad, kernel, mode="valid")
+    return t, R2, phase, base_forces, overlay_forces, rcloud
 
 
-def smooth_2d(arr, window, mode="edge"):
-    """Smooth along the last axis for a 2D array shaped (n_series, n_time)."""
-    if window is None or window <= 1:
-        return arr
-    return np.vstack([smooth_1d(row, window, mode=mode) for row in arr])
+def plot_run_on_ax(
+    ax, t, R2, phase, base_forces, overlay_forces, rcloud,
+    alpha=0.75,
+    smooth_window=None, smooth_mode="edge",
+    phase_change=True,
+    overlay_alpha=0.55
+):
+    fig = ax.figure
 
-def plot_run_on_ax(ax, t, r, phase, forces, rcloud, alpha=0.75,
-                   smooth_window=None, smooth_mode="edge", phase_change=PHASE_CHANGE):
-
-    # --- phase lines with mini labels
+    # --- phase markers (T and M)
     if phase_change:
-        # energy/implicit -> transition  (T)
         idx_T = np.flatnonzero(
             np.isin(phase[:-1], ["energy", "implicit"]) & (phase[1:] == "transition")
         ) + 1
@@ -120,12 +156,11 @@ def plot_run_on_ax(ax, t, r, phase, forces, rcloud, alpha=0.75,
                 x, 0.97, "T",
                 transform=ax.get_xaxis_transform(),
                 ha="center", va="top",
-                fontsize=8, color="r", alpha=0.6,
-                bbox=dict(facecolor="k", edgecolor="none", alpha=0.7, pad=0.2),
-                zorder=5
+                fontsize=8, color="k", alpha=0.8,
+                bbox=dict(facecolor="none", edgecolor="none", pad=0.2),
+                zorder=6
             )
 
-        # transition -> momentum  (M)
         idx_M = np.flatnonzero((phase[:-1] == "transition") & (phase[1:] == "momentum")) + 1
         for x in t[idx_M]:
             ax.axvline(x, color="r", lw=2, alpha=0.2, zorder=0)
@@ -133,309 +168,110 @@ def plot_run_on_ax(ax, t, r, phase, forces, rcloud, alpha=0.75,
                 x, 0.97, "M",
                 transform=ax.get_xaxis_transform(),
                 ha="center", va="top",
-                fontsize=8, color="r", alpha=0.6,
-                bbox=dict(facecolor="k", edgecolor="none", alpha=0.7, pad=0.2),
-                zorder=5
+                fontsize=8, color="k", alpha=0.8,
+                bbox=dict(facecolor="none", edgecolor="none", pad=0.2),
+                zorder=6
             )
 
-
-
-    # --- first time r exceeds rCloud (behind)
+    # --- breakout (first time R2 > rCloud)
     if np.isfinite(rcloud):
-        idx = np.flatnonzero(r > rcloud)
+        idx = np.flatnonzero(np.isfinite(R2) & (R2 > rcloud))
         if idx.size:
             x_rc = t[idx[0]]
             ax.axvline(x_rc, color="k", ls="--", alpha=0.2, zorder=0)
-    
-            # after drawing the axvline at x_rc ...
-            text_trans = ax.get_xaxis_transform() + mtransforms.ScaledTranslation(
-                4/72, 0, fig.dpi_scale_trans  # 4 points to the right (increase to pad more)
-            )
 
-            # label next to the line
+            text_trans = ax.get_xaxis_transform() + mtransforms.ScaledTranslation(
+                4/72, 0, fig.dpi_scale_trans
+            )
             ax.text(
                 x_rc, 0.95, r"$R_2 = R_{\rm cloud}$",
                 transform=text_trans,
                 ha="left", va="top",
-                fontsize=8,
-                color="k",
-                alpha=0.8,
-                rotation=90
+                fontsize=8, color="k", alpha=0.9,
+                rotation=90, zorder=6
             )
 
-    # --- SMOOTHING (apply to forces, then recompute fractions)
-    forces_use = smooth_2d(forces, smooth_window, mode=smooth_mode)
+    # --- smoothing
+    base_use = smooth_2d(base_forces, smooth_window, mode=smooth_mode)
 
-    # stacked force fractions
-    ftotal = forces_use.sum(axis=0)
+    # --- stacked fractions (base)
+    ftotal = base_use.sum(axis=0)
     ftotal = np.where(ftotal == 0.0, np.nan, ftotal)
 
-    frac = forces_use / ftotal
+    frac = base_use / ftotal  # order: grav, ram, ion, rad
     cum  = np.cumsum(frac, axis=0)
     prev = np.vstack([np.zeros_like(t), cum[:-1]])
 
-    for (_, _, color), y0, y1 in zip(FORCE_FIELDS, prev, cum):
+    for (_, _, color), y0, y1 in zip(FORCE_FIELDS_BASE, prev, cum):
         ax.fill_between(t, y0, y1, color=color, alpha=alpha, lw=0, zorder=2)
 
-    ax.set_ylim(0, 1)
-    ax.set_xlim(t.min(), t.max())
+    # --- overlay wind/SN inside ram band, leaving residual unhatched
+    if INCLUDE_ALL_FORCE:
+        Fw_raw, Fsn_raw = overlay_forces[0], overlay_forces[1]
 
+        if not (np.all(np.isnan(Fw_raw)) and np.all(np.isnan(Fsn_raw))):
+            # Smooth overlay components too
+            Fw  = smooth_1d(np.nan_to_num(Fw_raw,  nan=0.0), smooth_window, mode=smooth_mode)
+            Fsn = smooth_1d(np.nan_to_num(Fsn_raw, nan=0.0), smooth_window, mode=smooth_mode)
 
-# --- one 3x5 figure per ndens
-for ndens in ndens_list:
-    nrows, ncols = len(mCloud_list), len(sfe_list)
-    fig, axes = plt.subplots(
-        nrows=nrows, ncols=ncols,
-        figsize=(3.2 * ncols, 2.6 * nrows),
-        sharex=False, sharey=True,
-        dpi=500,
-        constrained_layout=True
-    )
+            # Use smoothed total ram from base stack as denominator
+            Fram = base_use[1].copy()
 
-    for i, mCloud in enumerate(mCloud_list):
-        for j, sfe in enumerate(sfe_list):
-            try:
-                ax = axes[i, j]
-                run_name = f"{mCloud}_sfe{sfe}_n{ndens}"
-                json_path = BASE_DIR / run_name / "dictionary.json"
-    
-                if not json_path.exists():
-                    ax.text(0.5, 0.5, "missing", ha="center", va="center", transform=ax.transAxes)
-                    ax.set_axis_off()
-                    continue
-    
-                t, r, phase, forces, rcloud = load_run(json_path)
-                plot_run_on_ax(ax, t, r, phase, forces, rcloud, alpha=0.75, smooth_window=SMOOTH_WINDOW, phase_change=PHASE_CHANGE)
-                
-            except Exception as e:
-                print(f"Error in {run_name}: {e}")
-                
-            # column titles (top row): SFE
-            if i == 0:
-                eps = int(sfe) / 100.0
-                ax.set_title(rf"$\epsilon={eps:.2f}$")
+            # Fractions of the TOTAL effective ram force
+            eps = 1e-30
+            denom = np.where(np.isfinite(Fram) & (Fram > 0), Fram, np.nan)
 
-            # row labels (left col): Mcloud
-            if j == 0:
-                mlog = int(np.log10(float(mCloud)))
-                ax.set_ylabel(rf"$M_{{cloud}}=10^{{{mlog}}}\,M_\odot$" + "\n" + r"$F/F_{tot}$")
+            f_wind = np.nan_to_num(Fw  / (denom + eps), nan=0.0)
+            f_sn   = np.nan_to_num(Fsn / (denom + eps), nan=0.0)
 
-            # x-labels (bottom row)
-            if i == nrows - 1:
-                ax.set_xlabel("t [Myr]")
+            # Clip and renormalize if wind+SN > 1 (numerical / model mismatch)
+            f_wind = np.clip(f_wind, 0.0, 1.0)
+            f_sn   = np.clip(f_sn,   0.0, 1.0)
+            s = f_wind + f_sn
+            mask = s > 1.0
+            f_wind[mask] /= s[mask]
+            f_sn[mask]   /= s[mask]
+            # residual is whatever remains unhatched: 1 - f_wind - f_sn
 
-    # one global legend (cleaner than repeating per panel)
-    handles = [Patch(facecolor=c, edgecolor="none", label=lab, alpha=0.75)
-               for _, lab, c in FORCE_FIELDS]
-    leg = fig.legend(
-        handles=handles, loc="upper center", ncol=len(handles),
-        frameon=True, facecolor="white", framealpha=0.9, edgecolor="0.2",
-        bbox_to_anchor=(0.5, 1.05)
-    )
-    leg.set_zorder(10)
+            # Ram band bounds in the stacked fraction plot
+            ram_bottom = prev[1]   # bottom of ram band
+            ram_top    = cum[1]    # top of ram band
+            ram_h      = ram_top - ram_bottom
 
-    nlog = int(np.log10(float(ndens)))
-    fig.suptitle(rf"Feedback force fractions grid  ($n=10^{{{nlog}}}\,\mathrm{{cm^{{-3}}}}$)", y=1.08)
+            # Wind occupies the lowest fraction of the ram band
+            y_wind_top = ram_bottom + f_wind * ram_h
+            # SN goes above wind
+            y_sn_top   = y_wind_top + f_sn * ram_h
+            # Unhatched remainder is y_sn_top -> ram_top (visible blue)
 
-    plt.show()
-    plt.close(fig)
-
-        
-        
-    #%%
-    
-# version 2: with SN feedback.
-    
-import json
-import numpy as np
-import matplotlib.pyplot as plt
-from pathlib import Path
-import matplotlib.transforms as mtransforms
-from matplotlib.patches import Patch
-
-print("...plotting radius comparison")
-
-# --- configuration
-mCloud_list = ["1e5", "1e7", "1e8"]                 # rows
-ndens_list  = ["1e4"]                        # one figure per ndens
-# ndens_list  = ["1e2"]                        # one figure per ndens
-sfe_list    = ["001", "010", "020", "030", "050", "080"]   # cols
-
-BASE_DIR = Path.home() / "unsync" / "Code" / "Trinity" / "outputs"
-
-# smoothing: number of snapshots in moving average (None or 1 disables)
-SMOOTH_WINDOW = 21
-
-PHASE_CHANGE = False
-
-FORCE_FIELDS = [
-    ("F_grav",     "Gravity",                    "black"),
-
-    # Ram: use combined in energy/implicit, split in transition/momentum
-    ("F_ram",      "Ram (energy/implicit)",      "b"),
-    ("F_ram_wind", "Ram (wind; trans/mom)",      "b"),
-    ("F_ram_SN",   "Ram (SN; trans/mom)",        "#2ca02c"),
-
-    ("F_ion_out",  "Photoionised gas",           "#d62728"),
-    ("F_rad",      "Radiation (dir.+indir.)",    "#9467bd"),
-]
-
-
-def set_plot_style(use_tex=True, font_size=12):
-    plt.rcParams.update({
-        "text.usetex": use_tex,
-        "font.family": "sans-serif",
-        "font.size": font_size,
-        "xtick.direction": "in",
-        "ytick.direction": "in",
-        "xtick.minor.visible": True,
-        "ytick.minor.visible": True,
-        "xtick.major.size": 6,
-        "ytick.major.size": 6,
-        "xtick.minor.size": 3,
-        "ytick.minor.size": 3,
-        "xtick.major.width": 1.0,
-        "ytick.major.width": 1.0,
-        "xtick.minor.width": 0.8,
-        "ytick.minor.width": 0.8,
-    })
-
-
-set_plot_style(use_tex=True, font_size=12)
-
-
-def load_run(json_path: Path):
-    with json_path.open("r") as f:
-        data = json.load(f)
-
-    snap_keys = sorted((k for k in data.keys() if str(k).isdigit()), key=lambda k: int(k))
-    snaps = [data[k] for k in snap_keys]
-
-    t = np.array([s["t_now"] for s in snaps], dtype=float)
-    r = np.array([s["R2"] for s in snaps], dtype=float)
-    phase = np.array([s.get("current_phase", "") for s in snaps])
-
-    # pull force arrays, with fallbacks
-    def get_field(field, default=0.0):
-        return np.array([s.get(field, default) for s in snaps], dtype=float)
-
-    F_grav     = get_field("F_grav")
-    F_ion_out  = get_field("F_ion_out")
-    F_rad      = get_field("F_rad")
-
-    F_ram_wind = get_field("F_ram_wind")
-    F_ram_SN   = get_field("F_ram_SN")
-    # if F_ram not present, build it from wind+SN
-    F_ram      = get_field("F_ram", default=np.nan)
-    if np.all(np.isnan(F_ram)):
-        F_ram = F_ram_wind + F_ram_SN
-    else:
-        # fill any missing elements with wind+SN
-        m = np.isnan(F_ram)
-        F_ram[m] = (F_ram_wind + F_ram_SN)[m]
-
-    forces = np.vstack([F_grav, F_ram, F_ram_wind, F_ram_SN, F_ion_out, F_rad])
-
-    rcloud = float(snaps[0].get("rCloud", np.nan))
-    return t, r, phase, forces, rcloud
-
-
-
-
-def smooth_1d(y, window, mode="edge"):
-    """
-    Simple boxcar moving-average smoothing.
-    window = number of points (will be made odd).
-    """
-    if window is None or window <= 1:
-        return y
-
-    window = int(window)
-    if window % 2 == 0:
-        window += 1
-
-    kernel = np.ones(window, dtype=float) / window
-    pad = window // 2
-
-    ypad = np.pad(y, (pad, pad), mode=mode)
-    return np.convolve(ypad, kernel, mode="valid")
-
-
-def smooth_2d(arr, window, mode="edge"):
-    """Smooth along the last axis for a 2D array shaped (n_series, n_time)."""
-    if window is None or window <= 1:
-        return arr
-    return np.vstack([smooth_1d(row, window, mode=mode) for row in arr])
-
-def plot_run_on_ax(ax, t, r, phase, forces, rcloud, alpha=0.75,
-                   smooth_window=None, smooth_mode="edge", phase_change=False):
-    # vertical phase-change lines (behind)
-    if phase_change:
-        # only mark transition -> momentum
-        change_idx = np.flatnonzero((phase[:-1] == "transition") & (phase[1:] == "momentum")) + 1
-        for x in t[change_idx]:
-            ax.axvline(x, color="r", lw=2, alpha=0.2, zorder=0)
+            # Wind hatch (blue)
+            ax.fill_between(
+                t, ram_bottom, y_wind_top,
+                facecolor="none", edgecolor=C_RAM,
+                hatch="////", linewidth=0.0, alpha=overlay_alpha, zorder=4
+            )
+            # SN hatch (green)
+            ax.fill_between(
+                t, y_wind_top, y_sn_top,
+                facecolor="none", edgecolor=C_SN,
+                hatch="....", linewidth=0.0, alpha=overlay_alpha, zorder=4
+            )
             
-    # --- first time r exceeds rCloud (behind)
-    if np.isfinite(rcloud):
-        idx = np.flatnonzero(r > rcloud)
-        if idx.size:
-            x_rc = t[idx[0]]
-            ax.axvline(x_rc, color="k", ls="--", alpha=0.2, zorder=0)
-    
-            # after drawing the axvline at x_rc ...
-            text_trans = ax.get_xaxis_transform() + mtransforms.ScaledTranslation(
-                4/72, 0, fig.dpi_scale_trans  # 4 points to the right (increase to pad more)
-            )
+            # Outline only the top boundary
+            ax.plot(t, y_wind_top, color=C_RAM, lw=1.0, alpha=0.9, zorder=6)
+            # ax.plot(t, y_sn_top,   color=C_SN,  lw=1.0, alpha=0.9, zorder=6)
 
-            # label next to the line
-            ax.text(
-                x_rc, 0.95, r"$R_2 = R_{\rm cloud}$",
-                transform=text_trans,
-                ha="left", va="top",
-                fontsize=8,
-                color="k",
-                alpha=0.8,
-                rotation=90
-            )
-
-    # --- SMOOTHING (apply to forces, then recompute fractions)
-    forces_use = smooth_2d(forces, smooth_window, mode=smooth_mode)
-
-    # phase masks
-    use_combined = np.isin(phase, ["energy", "implicit", "transition"])
-    use_split    = np.isin(phase, ["momentum"])
-
-    # indices in forces_use (must match stacking order from load_run)
-    i_grav, i_ram, i_wind, i_sn, i_ion, i_rad = range(forces_use.shape[0])
-
-    # zero-out inactive ram terms to avoid double counting
-    forces_use[i_ram,  ~use_combined] = 0.0
-    forces_use[i_wind, ~use_split]    = 0.0
-    forces_use[i_sn,   ~use_split]    = 0.0
-
-    # (optional) if you have phases outside these sets, default to combined:
-    other = ~(use_combined | use_split)
-    forces_use[i_ram,  other] = forces_use[i_ram, other]  # keep combined
-    forces_use[i_wind, other] = 0.0
-    forces_use[i_sn,   other] = 0.0
-
-    # stacked force fractions
-    ftotal = forces_use.sum(axis=0)
-    ftotal = np.where(ftotal == 0.0, np.nan, ftotal)
-
-    frac = forces_use / ftotal
-    cum  = np.cumsum(frac, axis=0)
-    prev = np.vstack([np.zeros_like(t), cum[:-1]])
-
-    for (_, _, color), y0, y1 in zip(FORCE_FIELDS, prev, cum):
-        ax.fill_between(t, y0, y1, color=color, alpha=alpha, lw=0, zorder=2)
+            # Use semi-transparent solid fill
+            ax.fill_between(t, ram_bottom, y_wind_top, color=C_RAM, alpha=0.12, lw=0, zorder=4)
+            # ax.fill_between(t, y_wind_top, y_sn_top,   color=C_SN,  alpha=0.12, lw=0, zorder=4)
+            ax.plot(t, y_wind_top, color=C_RAM, lw=1.0, alpha=0.9, zorder=6)
+            # ax.plot(t, y_sn_top,   color=C_SN,  lw=1.0, alpha=0.9, zorder=6)
 
     ax.set_ylim(0, 1)
     ax.set_xlim(t.min(), t.max())
 
 
-# --- one 3x5 figure per ndens
+# ---------------- main loop ----------------
 for ndens in ndens_list:
     nrows, ncols = len(mCloud_list), len(sfe_list)
     fig, axes = plt.subplots(
@@ -448,42 +284,70 @@ for ndens in ndens_list:
 
     for i, mCloud in enumerate(mCloud_list):
         for j, sfe in enumerate(sfe_list):
+            ax = axes[i, j]
+            run_name = f"{mCloud}_sfe{sfe}_n{ndens}"
+            json_path = BASE_DIR / run_name / "dictionary.json"
+
+            if not json_path.exists():
+                ax.text(0.5, 0.5, "missing", ha="center", va="center", transform=ax.transAxes)
+                ax.set_axis_off()
+                continue
+
             try:
-                ax = axes[i, j]
-                run_name = f"{mCloud}_sfe{sfe}_n{ndens}"
-                json_path = BASE_DIR / run_name / "dictionary.json"
-    
-                if not json_path.exists():
-                    ax.text(0.5, 0.5, "missing", ha="center", va="center", transform=ax.transAxes)
-                    ax.set_axis_off()
-                    continue
-    
-                t, r, phase, forces, rcloud = load_run(json_path)
-                plot_run_on_ax(ax, t, r, phase, forces, rcloud, alpha=0.75, smooth_window=SMOOTH_WINDOW)
-                
+                t, R2, phase, base_forces, overlay_forces, rcloud = load_run(json_path)
+                plot_run_on_ax(
+                    ax, t, R2, phase, base_forces, overlay_forces, rcloud,
+                    alpha=0.75,
+                    smooth_window=SMOOTH_WINDOW,
+                    phase_change=PHASE_CHANGE
+                )
             except Exception as e:
                 print(f"Error in {run_name}: {e}")
-                
-            # column titles (top row): SFE
+                ax.text(0.5, 0.5, "error", ha="center", va="center", transform=ax.transAxes)
+                ax.set_axis_off()
+                continue
+
+            # column titles
             if i == 0:
                 eps = int(sfe) / 100.0
                 ax.set_title(rf"$\epsilon={eps:.2f}$")
 
-            # row labels (left col): Mcloud
+            # y label only on left-most
             if j == 0:
                 mlog = int(np.log10(float(mCloud)))
                 ax.set_ylabel(rf"$M_{{cloud}}=10^{{{mlog}}}\,M_\odot$" + "\n" + r"$F/F_{tot}$")
+            else:
+                ax.tick_params(labelleft=False)
 
-            # x-labels (bottom row)
+            # x label only on bottom
             if i == nrows - 1:
                 ax.set_xlabel("t [Myr]")
+            else:
+                ax.tick_params(labelbottom=False)
 
-    # one global legend (cleaner than repeating per panel)
-    handles = [Patch(facecolor=c, edgecolor="none", label=lab, alpha=0.75)
-               for _, lab, c in FORCE_FIELDS]
+    # -------- global legend --------
+    handles = [
+        Patch(facecolor=C_GRAV, edgecolor="none", alpha=0.75, label="Gravity"),
+        Patch(facecolor=C_RAM,  edgecolor="none", alpha=0.75, label=r"Ram total $F_{\rm ram}$ (blue)"),
+        Patch(facecolor=C_ION,  edgecolor="none", alpha=0.75, label="Photoionised gas"),
+        Patch(facecolor=C_RAD,  edgecolor="none", alpha=0.75, label="Radiation"),
+    ]
+
+    if INCLUDE_ALL_FORCE:
+        handles += [
+            Patch(facecolor="none", edgecolor=C_RAM, hatch="////", label=r"Wind share of $F_{\rm ram}$"),
+            Patch(facecolor="none", edgecolor=C_SN,  hatch="....", label=r"SN share of $F_{\rm ram}$"),
+            Line2D([0], [0], color=C_RAM, lw=6, label="Unhatched blue = residual"),
+        ]
+
     leg = fig.legend(
-        handles=handles, loc="upper center", ncol=len(handles),
-        frameon=True, facecolor="white", framealpha=0.9, edgecolor="0.2",
+        handles=handles,
+        loc="upper center",
+        ncol=3,
+        frameon=True,
+        facecolor="white",
+        framealpha=0.9,
+        edgecolor="0.2",
         bbox_to_anchor=(0.5, 1.05)
     )
     leg.set_zorder(10)
@@ -494,11 +358,6 @@ for ndens in ndens_list:
     plt.show()
     plt.close(fig)
 
-        
-        
-        
-        
-        
         
         
         
