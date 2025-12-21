@@ -17,7 +17,7 @@ print("...plotting escape fraction comparison")
 
 # --- configuration
 mCloud_list = ["1e5", "1e7", "1e8"]                 # one subplot per mCloud
-ndens_list  = ["1e4", "1e2"]                        # one figure per ndens
+ndens_list  = ["1e4", "1e2", "1e3"]                        # one figure per ndens
 # ndens_list  = ["1e4"]                        # one figure per ndens
 sfe_list    = ["001", "010", "020", "030", "050", "080"]   # multiple lines per subplot
 

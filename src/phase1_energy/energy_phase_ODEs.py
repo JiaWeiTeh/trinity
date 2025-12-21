@@ -34,8 +34,6 @@ def get_press_ion_outside(r, params):
     return _scalar(P)
 
 
-
-
 def get_ODE_Edot_new(y, t, params):
     """
     old code: fE_gen()
@@ -289,29 +287,6 @@ def get_ODE_Edot(y, t, params):
     F_grav = G * mShell / (R2**2) * (mCluster + 0.5 * mShell)
     
     
-    
-    
-    
-    
-    # # --- inner radius R1
-    # R1 = scipy.optimize.brentq(get_bubbleParams.get_r1, 0.0, R2, args=([LWind, Eb, vWind, R2]))
-
-    # # --- bubble pressure
-    # if params["current_phase"].value == "momentum":
-    #     P_bub = get_bubbleParams.pRam(R2, LWind, vWind)
-    # else:
-    #     # smoothly turn on R1 over dt_switchon after tSF, but never negative
-    #     dt_switchon = 1e-3  # Myr
-    #     frac = np.clip((t - tSF) / dt_switchon, 0.0, 1.0)
-    #     R1_eff = frac * R1
-    #     P_bub = get_bubbleParams.bubble_E2P(Eb, R2, R1_eff, gamma)
-
-    # params["Pb"].value = P_bub
-    
-    
-    
-    
-    
     # calculate radius of inner discontinuity (inner radius of bubble)
     R1 = scipy.optimize.brentq(get_bubbleParams.get_r1, 0.0, R2,
                                args=([LWind, Eb, vWind, R2])) 
@@ -335,7 +310,7 @@ def get_ODE_Edot(y, t, params):
     #     press_bubble = get_bubbleParams.bubble_E2P(Eb, R2, R1, params['gamma_adia'].value)
     params['Pb'].value = press_bubble  
     
-    
+    press_ISM = params['PISM'].value
         
     
     def get_press_ion(r, ion_dict):
@@ -364,7 +339,6 @@ def get_ODE_Edot(y, t, params):
                 
         return P_ion
 
-    # NEW SSTUFFS HEREE
 
     # Question: maybe 0.5?
 
@@ -407,7 +381,7 @@ def get_ODE_Edot(y, t, params):
     if params['EarlyPhaseApproximation'].value == True:
         vd = -1e8
     
-    print(f'vd is {4 * np.pi * R2**2 * (press_bubble-press_HII_in+press_HII_out)} - {mShell_dot * v2} - {F_grav} + {F_rad} divide {mShell} equals {vd}')
+    print(f'vd is {4 * np.pi * R2**2 * (press_bubble-press_HII_in+press_HII_out-press_ISM)} - {mShell_dot * v2} - {F_grav} + {F_rad} divide {mShell} equals {vd}')
     
     # but this isnt used I think - Ed is obtained via conversion of beta/delta in run_implicit_energy.py.
     Ed = (LWind - L_bubble) - (4 * np.pi * R2**2 * press_bubble) * v2 - L_leak 
