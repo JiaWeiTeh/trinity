@@ -252,7 +252,7 @@ path_sps    def_dir
 # =============================================================================
 
 # INFO: The relative radius xi = r/R2, at which we measure the bubble temperature.
-bubble_xi_Tb    0.9
+bubble_xi_Tb    0.98
 
 
 
