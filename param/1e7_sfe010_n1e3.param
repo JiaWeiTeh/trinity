@@ -1,8 +1,8 @@
-mCloud    1e5
-sfe    0.10
+mCloud    1e7
+sfe    0.1
 # powerlaw, homogeneous
 dens_profile    densPL
 densPL_alpha    0
-nCore    1e2
+nCore    1e3
 nISM    0.1
 expansionBeyondCloud True

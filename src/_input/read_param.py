@@ -412,6 +412,7 @@ def read_param(path2file, write_summary = True):
     param['F_ion_in'] = DescribedItem(0, 'Inwards force on shell due to photoionisation pressure from escaped photons')
     param['F_ion_out'] = DescribedItem(0, 'Outwards force on shell due to photoionisation pressure')
     param['F_rad'] = DescribedItem(0, 'Radiation pressure = direct + indirect ~ f_abs * Lbol/c * (1 + tau_IR)')
+    param['F_ISM'] = DescribedItem(0, 'press_ISM')
     
     # bubble parameters 
 

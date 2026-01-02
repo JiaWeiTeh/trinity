@@ -1,0 +1,434 @@
+
+          ,          ______   ______     __     __   __     __     ______   __  __   
+       \  :  /      /\__  _\ /\  == \   /\ \   /\ "-.\ \   /\ \   /\__  _\ /\ \_\ \  
+    `. __/ \__ .'   \/_/\ \/ \ \  __<   \ \ \  \ \ \-.  \  \ \ \  \/_/\ \/ \ \____ \ 
+    _ _\     /_ _      \ \_\  \ \_\ \_\  \ \_\  \ \_\\"\_\  \ \_\    \ \_\  \/\_____\
+       /_   _\          \/_/   \/_/ /_/   \/_/   \/_/ \/_/   \/_/     \/_/   \/_____/
+     .'  \ /  `.      
+          '             © J.W. Teh, R.S. Klessen                            
+        
+		      --------------------------------------------------
+		      Welcome to [32m]8;;https://github.com/JiaWeiTeh/trinity\TRINITY]8;;\[0m!
+
+		      Notes:
+		         - Documentation can be found [32m]8;;https://trinitysf.readthedocs.io/en/latest/index.html\here]8;;\[0m.
+		         - [1m[96mBold text[0m indicates that a file is saved.
+		         - [1m[94mWarning message[0m. Code runs still.
+		         - [1m[91mError encountered.[0m Code terminates.
+
+		      [Version 3.0] 2022. All rights reserved.
+		      --------------------------------------------------
+[5mLoading parameters:[0m
+	model name: 1e5_sfe001_n1e2
+	log_mCloud: 5.0 Msun
+	SFE: 0.01
+	metallicity: 1.0 Zsun
+	log10 Core density: 2.0 cm-3
+	density profile: densPL
+➳ [1m[96mSummary: outputs/1e5_sfe001_n1e2/1e5_sfe001_n1e2_summary.txt[0m
+
+		      --------------------------------------------------
+		      2025-12-15 20:31:36.882531: Initialising bubble
+		      --------------------------------------------------
+0.01
+Cloud radius is 25.046pc.
+Cloud edge density is 100.0 cm-3.
+[2.93799895e+57 2.93799895e+57 2.93799895e+57 ... 2.93799895e+54
+ 2.93799895e+54 2.93799895e+54]
+mGas is r=[1.00000000e-10 1.00000000e-03 1.01019017e-03 ... 3.72621708e+01
+ 3.74150949e+01 3.75686467e+01] and rho=1.5043320555677682 equals [6.30133138e-30 6.30133138e-09 6.49593591e-09 ... 3.26014393e+05
+ 3.30044784e+05 3.34125000e+05]
+..loaded sps files.
+..loaded cooling files.
+here is your dictionary 
+-------------
+contents
+========
+C_thermal : 3.0733123139055833e-18	(The thermal conduction coefficient C)
+EarlyPhaseApproximation : True	(Approximations? e.g., calculate shell, calculate mShellDot.)
+Eb : 18.919401286636113	(Msun*pc2/Myr2. Bubble energy.)
+EndSimulationDirectly : False	(Immediately end simulation)
+FB_mColdSNFrac : 0.0	(Fraction of mass injected into the molecular cloud due to cold ejecta from supernovae.)
+FB_mColdWindFrac : 0.0	(Fraction of mass injected into the molecular cloud due to sweeping of cold material from protostellar winds and disks.)
+FB_thermCoeffSN : 1.0	(Defines the thermalization efficiency for supernova ejecta.)
+FB_thermCoeffWind : 1.0	(Defines the thermalization efficiency for colliding stellar winds.)
+FB_vSN : 10227.12165045695	(Specifies the velocity of supernova ejecta.)
+F_SN : 0	(Force on shell due to SN)
+F_grav : 0	(Force on shell due to gravity)
+F_ion_in : 0	(Inwards force on shell due to photoionisation pressure from escaped photons)
+F_ion_out : 0	(Outwards force on shell due to photoionisation pressure)
+F_rad : 0	(Radiation pressure = direct + indirect ~ f_abs * Lbol/c * (1 + tau_IR))
+F_ram : 0	(Force on shell due to ram pressure (wind+SN?). This is converted via Pb-Eb(Fram) relation.)
+F_ram_SN : 0	(Force on shell due to ram pressure (wind+SN?). This is directly obtained from SB99f.)
+F_ram_wind : 0	(Force on shell due to ram pressure (wind+SN?). This is directly obtained from SB99f.)
+F_wind : 0	(Force on shell due to winds)
+G : 0.004498502151469554	(Gravitational constant)
+LWind : 0	(Msun*pc2/Myr3. wind mechanical luminosity)
+Lbol : 0	(Msun*pc2/Myr3. Bolometric luminosity.)
+Li : 0	(Msun*pc2/Myr3. Ionizing luminosity Lbol*fi.)
+Ln : 0	(Msun*pc2/Myr3. Non-ionizing luminosity Lbol*(1-fi).)
+PISM : 1.4689994730481734e+59	(ISM Pressure, P/k)
+Pb : 0	(Msun/Myr2/pc. Bubble pressure)
+Qi : 0	(/Myr. Ionising photon rate.)
+R1 : 0	(pc. Inner radius of bubble)
+R2 : 0.007673766615320331	(pc. Outer bubble/inner shell radius.)
+SB99_BHCUT : 120.0	(Defines the black hole formation threshold.)
+SB99_data : [array([0.000e+00, 1.000e-02, 1.100e-01, ..., 9.971e+01, 9.981e+01,
+       9.991e+01]), array([1.70256604e+63, 1.70256604e+63, 1.71831969e+63, ...,
+       8.89414012e+55, 9.10131126e+55, 9.03865827e+55]), array([3.21443687e+09, 3.21443687e+09, 3.24417969e+09, ...,
+       1.09927133e+02, 1.12746975e+02, 1.11456372e+02]), array([2.51490715e+09, 2.51490715e+09, 2.52487825e+09, ...,
+       7.50074263e+07, 7.50074235e+07, 7.48349122e+07]), array([5.72934402e+09, 5.72934402e+09, 5.76905794e+09, ...,
+       7.50075362e+07, 7.50075362e+07, 7.48350237e+07]), array([2.02817255e+07, 2.02817255e+07, 2.02350788e+07, ...,
+       3.32739914e+00, 3.31974634e+00, 3.31974634e+00]), array([1.08480450e+04, 1.08480450e+04, 1.08981173e+04, ...,
+       2.16945916e-01, 2.16446954e-01, 2.16446954e-01]), array([0., 0., 0., ..., 0., 0., 0.])]
+SB99_mass : 1000000.0	(Default star cluster mass used in SB99.)
+SB99_rotation : 1.0	(Determines whether stellar rotation is considered in the stellar track.)
+SB99f : {'fQi': <scipy.interpolate._interpolate.interp1d object at 0x7f85e0b68400>, 'fLi': <scipy.interpolate._interpolate.interp1d object at 0x7f85e0b684f0>, 'fLn': <scipy.interpolate._interpolate.interp1d object at 0x7f85e0b684a0>, 'fLbol': <scipy.interpolate._interpolate.interp1d object at 0x7f85e0b68540>, 'fLw': <scipy.interpolate._interpolate.interp1d object at 0x7f85e0b68590>, 'fpdot': <scipy.interpolate._interpolate.interp1d object at 0x7f85e0b685e0>, 'fpdot_SNe': <scipy.interpolate._interpolate.interp1d object at 0x7f85e0b68630>}	(SB99 interpolation function from read_SB99.py)
+SimulationEndReason : 	(What caused simulation to complete)
+T0 : 13084794.860408045	(K. This is current T_rgoal in bubble_luminosity.)
+TShell_ion : 10000.0	(Temperature of the ionised shell region.)
+TShell_neu : 100.0	(Temperature of the neutral shell region.)
+ZCloud : 1.0	(Cloud metallicity)
+adiabaticOnlyInCore : 0	(Adiabatic phase only within core radius?)
+array_R1 : []
+array_R2 : []
+array_T0 : []
+array_mShell : []
+array_mShellDot : []
+array_t_now : []
+array_v2 : []
+bubble_L1Bubble : 0	(Total luminosity lost to cooling (bubble zone))
+bubble_L2Conduction : 0	(Total luminosity lost to cooling (conduction zone))
+bubble_L3Intermediate : 0	(Total luminosity lost to cooling (intermediate zone))
+bubble_LTotal : 0	(Total luminosity lost to cooling.)
+bubble_Leak : 0	(au, leaking luminosity)
+bubble_Lgain : nan	(au, luminosity gain in cooling phase due to winds)
+bubble_Lloss : nan	(au, luminosity lost in cooling phase due to cooling (and possibly leaking))
+bubble_T_arr : []
+bubble_T_r_Tb : 0	(Temperature at r_Tb)
+bubble_Tavg : 0	(Average temperature across bubble.)
+bubble_dMdt : nan	(Current dMdt. Mass loss from region c (shell) into region b (shocked winds) due to thermal conduction.)
+bubble_dMdtGuess : 0	(dMdt scipy guesses. Not the final guess.)
+bubble_dTdr_arr : []
+bubble_mass : 0	(Bubble mass)
+bubble_n_arr : []
+bubble_r_Tb : 0	(True radius obtained from bubble_xi_Tb * R2.)
+bubble_r_arr : []
+bubble_v_arr : []
+bubble_xi_Tb : 0.9	(The relative radius xi = r/R2, at which we measure the bubble temperature.)
+cStruc_cooling_CIE_interpolation : <scipy.interpolate._interpolate.interp1d object at 0x7f85e0b3b590>	(CIE structure interpolations)
+cStruc_cooling_CIE_logLambda : [-22.8853, -22.5492, -21.9223, '...', -22.7169, -22.6475, -21.6475]
+cStruc_cooling_CIE_logT : [3.99999, 4.05817, 4.14765, '...', 7.65548, 8.00001, 10.00001]
+cStruc_cooling_nonCIE : 0	(non-CIE, cooling cube)
+cStruc_heating_nonCIE : 0	(non-CIE, heating cube)
+cStruc_net_nonCIE_interpolation : 0	(non-CIE, netcooling cube interpolations)
+c_light : 306601.39378555055	(speed of light)
+c_sound : 0	(Sound speed.)
+caseB_alpha : 2.781967778055141e-55	(The case B recombination coefficient)
+coll_r : 1.0	(Radius below which the cloud is considered completely collapsed.)
+cool_alpha : 0.6	(Cooling related values. alpha = v2*t_now/R2)
+cool_beta : 0.8	(Cooling related values. beta = - dPb/dt.)
+cool_delta : -0.17142857142857143	(Cooling related values. delta = dT/dt.)
+current_phase : 	(Which phase is the simulation in? energy, implicit, transition, momentum)
+densPL_alpha : 0.0	(if `densPL` is selected, then the power-law coefficient `nCore*(r/rCore)^alpha` (0 = homogeneous, -2 = isothermal) must be specified.)
+dens_profile : densPL	(Specifies how the cloud density scales with radius.)
+dust_KappaIR : 0.0008353429491840148	(The Rosseland mean dust opacity kappa_IR.)
+dust_noZ : 0.05	(Metallicity below which there is effectively no dust)
+dust_sigma : 1.5753975604337285e-58	(Dust cross-section at solar metallicity.)
+expansionBeyondCloud : 1	(Should we allow bubble radius to go beyond cloud radius?)
+gamma_adia : 1.6666666666666667	(the adiabatic index)
+immediate_leak : 1	(Go to momentum-driving phase (Phase II) immediately after bubble bursts?)
+initial_cloud_m_arr : [6.301331379108444e-30, 6.301331379108444e-09, 6.495935911098956e-09, '...', 99474.66645866663, 99483.09363834625, 99491.625]
+initial_cloud_n_arr : [2.937998946096347e+57, 2.937998946096347e+57, 2.937998946096347e+57, '...', 2.937998946096347e+54, 2.937998946096347e+54, 2.937998946096347e+54]
+initial_cloud_r_arr : [1e-10, 0.001, 0.0010101901683320224, '...', 37.26217075528775, 37.415094913229915, 37.568646672774705]
+isCollapse : False	(Check if the cloud is collapsing)
+isDissolved : False	(Shell has dissolved)
+k_B : 7.262467736391801e-60	(Boltzmann constant)
+mCloud : 99000.0	(The mass of the molecular cloud.)
+mCluster : 1000.0	(Cluster mass)
+model_name : 1e5_sfe001_n1e2	(Specifies the model name, which serves as the prefix for all output filenames.)
+mu_ion : 5.1202607052209475e-58	(Mean molecular weight for ionised gas, assuming a standard composition of one helium atom per ten hydrogen atoms.)
+mu_neu : 1.0705999656371072e-57	(Mean molecular weight for neutral gas, assuming a standard composition of one helium atom per ten hydrogen atoms.)
+nCore : 2.937998946096347e+57	(Number density of cloud core. If `densPL` AND densPL_alpha = 0, this is the average cloud density.)
+nEdge : 2.937998946096347e+57	(Number density at cloud radius)
+nISM : 2.937998946096347e+54	(Number density of the ambient interstellar medium (ISM).)
+output_format : JSON	(Specifies the output format.)
+pWindDot : 0	(Msun*pc/Myr2. Wind momentum rate)
+pWindDotDot : 0	(Msun*pc/Myr3. Rate of wind momentum rate.)
+path2output : /Users/jwt/unsync/Code/Trinity/outputs/1e5_sfe001_n1e2/	(Defines the output directory where all generated files will be stored.)
+path_cooling_CIE : /Users/jwt/unsync/Code/Trinity/lib/cooling/CIE/coolingCIE_3_Gnat-Ferland2012.dat	(Specifies the cooling curve file for collisional ionization equilibrium (CIE) T > 1e5.5 K)
+path_cooling_nonCIE : /Users/jwt/unsync/Code/Trinity/lib/cooling/opiate/	(Specifies the cooling curve folder for non-CIE conditions T < 1e5.5 K)
+path_sps : /Users/jwt/unsync/Code/Trinity/lib/sps/starburst99/	(Specifies the absolute path to Starburst99 (SPS) files.)
+phaseSwitch_LlossLgain : 0.05	(When (Lgain-Lloss)/Lgain approaches this value, begin momentum-driving phase.)
+rCloud : 25.04576444851647	(Cloud radius)
+rCore : 0.01	(Core radius of the molecular cloud.)
+rShell : 0	(Shell outer radius)
+residual_Edot1_guess : nan	(Value of Edot obtained via beta.)
+residual_Edot2_guess : nan	(Value of Edot obtained via energy balance equation.)
+residual_T1_guess : nan	(Value of T obtained via bubble_Trgoal.)
+residual_T2_guess : nan	(Value of T obtained via T0.)
+residual_betaEdot : 0	((Edot - Edot2)/Edot)
+residual_deltaT : 0	((T1-T2)/T2)
+sfe : 0.01	(Star formation effeciency.)
+shell_F_rad : 0	(Radiation pressure coupled to the shell. f_abs * Lbol / c)
+shell_fAbsorbedIon : 1	(Fraction of absorbed ionizing radiations)
+shell_fAbsorbedNeu : 0	(Fraction of absorbed non-ionizing radiations)
+shell_fAbsorbedWeightedTotal : 0	(Total absorption fraction, defined as luminosity weighted average of shell_fAbsorbedIon and shell_fAbsorbedNeu)
+shell_fIonisedDust : 0	(unitless)
+shell_grav_force_m : []
+shell_grav_phi : []
+shell_grav_r : []
+shell_interpolate_massDot : False	(Begin shell interpolation? Only used if dens_prof is dens_BE.)
+shell_mass : 0	(Msol. Shell mass)
+shell_massDot : 0	(Msol/Myr. Rate of change of shell mass)
+shell_n0 : 0	(Shell inner radius density, according to pressure balance.)
+shell_nMax : 0	(/pc3. Maximum density of shell currently.)
+shell_tauKappaRatio : 0	(Msun / pc2. The ratio tau_IR/kappa_IR  = \int rho dr)
+shell_thickness : 0	(pc. Thickness of shell.)
+stop_n_diss : 2.937998946096347e+55	(Threshold number density below which the shell is considered dissolved.)
+stop_r : 500.0	(Maximum radial extent permitted for shell expansion.)
+stop_t : 10.0	(Maximum duration of the simulation.)
+stop_t_diss : 2.0	(The time interval during which the shell must continuously remain below ``stop_n_diss`` in order to be classified as dissolved.)
+stop_v : -10227.12165045695	(Velocity threshold below which the simulation is considered numerically unstable.)
+tSF : 0	(Time of star formation.)
+t_next : 0	(for calculation of mShell interpolation.)
+t_now : 2.0522259231733463e-06	(Myr. Current time.)
+t_previousCoolingUpdate : 1e+30	(Myr. At what time is the previous cooling update?)
+v2 : 3739.2406599437286	(pc/Myr. Velocity at outer bubble/inner shell radius.)
+vWind : 0	(pc/Myr. Terminal wind velocity)
+verbose : 1.0	(Controls the verbosity level of terminal output:)
+saved snapshot(s): 0
+-------------
+
+		      --------------------------------------------------
+		      Entering energy driven phase (constant cooling)
+		      --------------------------------------------------
+mGas is r=[0.00767377] and rho=1.5043320555677682 equals [2.84746293e-06]
+Inner discontinuity: 0.006669784056876595 pc
+Initial bubble mass: 2.847462933433004e-06
+Initial bubble pressure: 19405197.58082985
+t_arr is this [3.05222592e-06 4.05222592e-06 5.05222592e-06 6.05222592e-06
+ 7.05222592e-06 8.05222592e-06 9.05222592e-06 1.00522259e-05
+ 1.10522259e-05 1.20522259e-05 1.30522259e-05 1.40522259e-05
+ 1.50522259e-05 1.60522259e-05 1.70522259e-05 1.80522259e-05
+ 1.90522259e-05 2.00522259e-05 2.10522259e-05 2.20522259e-05
+ 2.30522259e-05 2.40522259e-05 2.50522259e-05 2.60522259e-05
+ 2.70522259e-05 2.80522259e-05 2.90522259e-05 3.00522259e-05
+ 3.10522259e-05]
+bubble and shell not calculated.
+R2 0.007673766615320331
+v2 3739.2406599437286
+Eb 18.919401286636113
+T0 13084794.860408045
+mGas is r=[0.00767377] and rho=1.5043320555677682 equals [2.84746293e-06]
+mGasdot is [4.16249922]
+r_arr is [0.00767377]
+rdot_arr is [3739.24065994]
+mGas is r=[0.00767377] and rho=1.5043320555677682 equals [2.84746293e-06]
+mGasdot is [4.16249922]
+r_arr is [0.00767377]
+rdot_arr is [3739.24065994]
+bubble bubble_r_arr, bubble_n_arr [] []
+vd is 42550.16395969911 - 15564.586322803178 - 0.2175248305851658 + 0 divide 2.847462933433004e-06 equals -100000000.0
+new rd values in run_energy_phase
+rd 3739.2406599437286
+vd -100000000.0
+Ed 1492995.7548611537
+Td 0
+R2 0.01141300727526406
+v2 3639.2406599437286
+Eb 20.412397041497265
+T0 13084794.860408045
+mGas is r=[0.01141301] and rho=1.5043320555677682 equals [9.36769197e-06]
+mGasdot is [8.96116633]
+r_arr is [0.01141301]
+rdot_arr is [3639.24065994]
+mGas is r=[0.01141301] and rho=1.5043320555677682 equals [9.36769197e-06]
+mGasdot is [8.96116633]
+r_arr is [0.01141301]
+rdot_arr is [3639.24065994]
+bubble bubble_r_arr, bubble_n_arr [] []
+vd is 49523.94479145175 - 32611.840853364352 - 0.3235194144628084 + 0 divide 9.367691965423239e-06 equals -100000000.0
+new rd values in run_energy_phase
+rd 3639.2406599437286
+vd -100000000.0
+Ed 6597357.453071179
+Td 0
+R2 0.01505224793520779
+v2 3539.2406599437286
+Eb 27.009754494568444
+T0 13084794.860408045
+mGas is r=[0.01505225] and rho=1.5043320555677682 equals [2.14899997e-05]
+mGasdot is [15.15885487]
+r_arr is [0.01505225]
+rdot_arr is [3539.24065994]
+mGas is r=[0.01505225] and rho=1.5043320555677682 equals [2.14899997e-05]
+mGasdot is [15.15885487]
+r_arr is [0.01505225]
+rdot_arr is [3539.24065994]
+bubble bubble_r_arr, bubble_n_arr [] []
+vd is 56518.523078822924 - 53650.83551417129 - 0.4266793449275829 + 0 divide 2.1489999677034827e-05 equals -100000000.0
+new rd values in run_energy_phase
+rd 3539.2406599437286
+vd -100000000.0
+Ed 6257247.211013438
+Td 0
+R2 0.018591488595151518
+v2 3439.2406599437286
+Eb 33.26700170558188
+T0 13084794.860408045
+mGas is r=[0.01859149] and rho=1.5043320555677682 equals [4.04925207e-05]
+mGasdot is [22.47214195]
+r_arr is [0.01859149]
+rdot_arr is [3439.24065994]
+mGas is r=[0.01859149] and rho=1.5043320555677682 equals [4.04925207e-05]
+mGasdot is [22.47214195]
+r_arr is [0.01859149]
+rdot_arr is [3439.24065994]
+bubble bubble_r_arr, bubble_n_arr [] []
+vd is 62680.83150935935 - 77287.10431235924 - 0.5270046231316021 + 0 divide 4.0492520693905606e-05 equals -100000000.0
+new rd values in run_energy_phase
+rd 3439.2406599437286
+vd -100000000.0
+Ed 5589207.704841308
+Td 0
+R2 0.022030729255095246
+v2 3339.2406599437286
+Eb 38.85620941042319
+T0 13084794.860408045
+mGas is r=[0.02203073] and rho=1.5043320555677682 equals [6.73781278e-05]
+mGasdot is [30.63790325]
+r_arr is [0.02203073]
+rdot_arr is [3339.24065994]
+mGas is r=[0.02203073] and rho=1.5043320555677682 equals [6.73781278e-05]
+mGasdot is [30.63790325]
+r_arr is [0.02203073]
+rdot_arr is [3339.24065994]
+bubble bubble_r_arr, bubble_n_arr [] []
+vd is 68335.16560978023 - 102307.33226991238 - 0.624495250342601 + 0 divide 6.737812776370519e-05 equals -100000000.0
+new rd values in run_energy_phase
+rd 3339.2406599437286
+vd -100000000.0
+Ed 4410500.365149427
+Td 0
+R2 0.025369969915038974
+v2 3239.2406599437286
+Eb 43.266709775572615
+T0 13084794.860408045
+mGas is r=[0.02536997] and rho=1.5043320555677682 equals [0.00010289]
+mGasdot is [39.41274592]
+r_arr is [0.02536997]
+rdot_arr is [3239.24065994]
+mGas is r=[0.02536997] and rho=1.5043320555677682 equals [0.00010289]
+mGasdot is [39.41274592]
+r_arr is [0.02536997]
+rdot_arr is [3239.24065994]
+bubble bubble_r_arr, bubble_n_arr [] []
+vd is 73799.85440863931 - 127667.36909440283 - 0.7191512278679012 + 0 divide 0.00010289450349154083 equals -100000000.0
+new rd values in run_energy_phase
+rd 3239.2406599437286
+vd -100000000.0
+Ed 2242610.828010291
+Td 0
+R2 0.028609210574982703
+v2 3139.2406599437286
+Eb 45.50932060358291
+T0 13084794.860408045
+mGas is r=[0.02860921] and rho=1.5043320555677682 equals [0.00014755]
+mGasdot is [48.57244144]
+r_arr is [0.02860921]
+rdot_arr is [3139.24065994]
+mGas is r=[0.02860921] and rho=1.5043320555677682 equals [0.00014755]
+mGasdot is [48.57244144]
+r_arr is [0.02860921]
+rdot_arr is [3139.24065994]
+bubble bubble_r_arr, bubble_n_arr [] []
+vd is 79705.50907258556 - 152480.58312162387 - 0.8109725569895263 + 0 divide 0.0001475536449555391 equals -100000000.0
+new rd values in run_energy_phase
+rd 3139.2406599437286
+vd -100000000.0
+Ed -2476311.1455360316
+Td 0
+R2 0.03174845123492643
+v2 3039.2406599437286
+Eb 43.03300945804688
+T0 13084794.860408045
+mGas is r=[0.03174845] and rho=1.5043320555677682 equals [0.00020165]
+mGasdot is [57.91135853]
+r_arr is [0.03174845]
+rdot_arr is [3039.24065994]
+mGas is r=[0.03174845] and rho=1.5043320555677682 equals [0.00020165]
+mGasdot is [57.91135853]
+r_arr is [0.03174845]
+rdot_arr is [3039.24065994]
+bubble bubble_r_arr, bubble_n_arr [] []
+vd is 89054.17269485306 - 176006.55553011785 - 0.8999592389096933 + 0 divide 0.00020165080120260347 equals -100000000.0
+new rd values in run_energy_phase
+rd 3039.2406599437286
+vd -100000000.0
+Ed -18396897.981672127
+Td 0
+R2 0.03478769189487016
+v2 2939.2406599437286
+Eb 24.63611147637475
+T0 13084794.860408045
+mGas is r=[0.03478769] and rho=1.5043320555677682 equals [0.00026528]
+mGasdot is [67.24189602]
+r_arr is [0.03478769]
+rdot_arr is [2939.24065994]
+mGas is r=[0.03478769] and rho=1.5043320555677682 equals [0.00026528]
+mGasdot is [67.24189602]
+r_arr is [0.03478769]
+rdot_arr is [2939.24065994]
+bubble bubble_r_arr, bubble_n_arr [] []
+vd is 91709.90475595518 - 197640.11482759868 - 0.9861112747059307 + 0 divide 0.00026528284362434804 equals -100000000.0
+new rd values in run_energy_phase
+rd 2939.2406599437286
+vd -100000000.0
+Ed -14437301.082006615
+Td 0
+R2 0.03772693255481389
+v2 2839.2406599437286
+Eb 10.198810394368136
+T0 13084794.860408045
+mGas is r=[0.03772693] and rho=1.5043320555677682 equals [0.00033837]
+mGasdot is [76.39391569]
+r_arr is [0.03772693]
+rdot_arr is [2839.24065994]
+mGas is r=[0.03772693] and rho=1.5043320555677682 equals [0.00033837]
+mGasdot is [76.39391569]
+r_arr is [0.03772693]
+rdot_arr is [2839.24065994]
+bubble bubble_r_arr, bubble_n_arr [] []
+vd is 94415.9856720292 - 216900.7116092681 - 1.0694286652950937 + 0 divide 0.0003383660692132065 equals -100000000.0
+new rd values in run_energy_phase
+rd 2839.2406599437286
+vd -100000000.0
+Ed -11550276.168041471
+Td 0
+R2 0.04056617321475762
+v2 2739.2406599437286
+Eb -1.3514657736733344
+T0 13084794.860408045
+mGas is r=[0.04056617] and rho=1.5043320555677682 equals [0.00042065]
+mGasdot is [85.21417523]
+r_arr is [0.04056617]
+rdot_arr is [2739.24065994]
+mGas is r=[0.04056617] and rho=1.5043320555677682 equals [0.00042065]
+mGasdot is [85.21417523]
+r_arr is [0.04056617]
+rdot_arr is [2739.24065994]
+Traceback (most recent call last):
+  File "run.py", line 69, in <module>
+    main.start_expansion(params)
+  File "/Users/jwt/unsync/Code/Trinity/src/main.py", line 148, in start_expansion
+    run_expansion(params)
+  File "/Users/jwt/unsync/Code/Trinity/src/main.py", line 225, in run_expansion
+    run_energy_phase.run_energy(params)
+  File "/Users/jwt/unsync/Code/Trinity/src/phase1_energy/run_energy_phase.py", line 249, in run_energy
+    rd, vd, Ed, Td =  energy_phase_ODEs.get_ODE_Edot(y, time, params)
+  File "/Users/jwt/unsync/Code/Trinity/src/phase1_energy/energy_phase_ODEs.py", line 135, in get_ODE_Edot
+    press_bubble = get_bubbleParams.bubble_E2P(Eb, R2, R1, params['gamma_adia'].value)
+  File "/Users/jwt/unsync/Code/Trinity/src/bubble_structure/get_bubbleParams.py", line 244, in bubble_E2P
+    Pb = (gamma - 1) * Eb / (r2**3 - r1**3) / (4 * np.pi / 3)
+ZeroDivisionError: float division by zero

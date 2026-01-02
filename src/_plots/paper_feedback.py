@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Overlay wind+SN contributions inside F_ram while leaving an unhatched residual:
-- Base stack uses F_ram (blue) throughout all phases.
-- Hatched overlays show wind and SN as fractions of F_ram:
-    f_wind = F_ram_wind / F_ram
-    f_SN   = F_ram_SN   / F_ram
-  The unhatched remainder of the blue band is the residual: 1 - f_wind - f_SN
+Force fraction grid with ram composition overlay (wind+SN within F_ram),
+PLUS an extra top component: PISM (white band at the top).
+
+- Base stack uses: F_grav, F_ram, F_ion_out, F_rad, PISM
+- Hatched overlays show wind/SN as fractions of F_ram, leaving an unhatched residual.
+- Phase markers: T (enter transition), M (enter momentum)
+- Breakout marker: first time R2 > rCloud (vertical dashed + label)
+- X ticks on every subplot; x tick labels only on bottom row.
 """
 
 import json
@@ -17,19 +19,18 @@ import matplotlib.transforms as mtransforms
 from matplotlib.patches import Patch
 from matplotlib.lines import Line2D
 
-print("...plotting force fractions with ram composition overlay (residual visible)")
+print("...plotting force fractions with ram composition overlay + PISM")
 
-# --- configuration
-mCloud_list = ["1e5", "1e7", "1e8"]                 # rows
-ndens_list  = ["1e2", "1e3", "1e4"]                 # one figure per ndens
-# ndens_list  = ["1e4"]                 # one figure per ndens
+# ---------------- configuration ----------------
+mCloud_list = ["1e5", "1e7", "1e8"]                  # rows
+ndens_list  = ["1e2", "1e3", "1e4"]                                # one figure per ndens
 sfe_list    = ["001", "010", "020", "030", "050", "080"]   # cols
 
 BASE_DIR = Path.home() / "unsync" / "Code" / "Trinity" / "outputs"
 
-SMOOTH_WINDOW = 21          # None or 1 disables
-PHASE_CHANGE = True
-INCLUDE_ALL_FORCE = True    # show wind/SN overlays inside the ram band
+SMOOTH_WINDOW = 21           # None or 1 disables
+PHASE_CHANGE  = True
+INCLUDE_ALL_FORCE = True     # show wind/SN overlays inside the ram band
 
 # Colors
 C_GRAV = "black"
@@ -37,15 +38,22 @@ C_RAM  = "b"
 C_SN   = "#2ca02c"
 C_ION  = "#d62728"
 C_RAD  = "#9467bd"
+C_PISM = "white"             # requested: white top band
 
-
-# Base stacked forces (always)
+# Base stacked forces (always) — order matters for stacking + overlay indexing
 FORCE_FIELDS_BASE = [
     ("F_grav",    "Gravity",                 C_GRAV),
-    ("F_ram",     "Ram (total)",             C_RAM),
+    ("F_ram",     r"Ram total $F_{\rm ram}$", C_RAM),
     ("F_ion_out", "Photoionised gas",        C_ION),
     ("F_rad",     "Radiation (dir.+indir.)", C_RAD),
+    ("F_ion_in",      "PISM",                    C_PISM),
 ]
+
+# --- optional single-run view (set to None for full grid)
+ONLY_M   = None   # e.g. "1e5" or None
+ONLY_N   = None   # e.g. "1e4" or None
+ONLY_SFE = None   # e.g. "001" or None
+
 
 
 def set_plot_style(use_tex=True, font_size=12):
@@ -71,6 +79,7 @@ def set_plot_style(use_tex=True, font_size=12):
 set_plot_style(use_tex=True, font_size=12)
 
 
+
 def smooth_1d(y, window, mode="edge"):
     if window is None or window <= 1:
         return y
@@ -88,6 +97,29 @@ def smooth_2d(arr, window, mode="edge"):
         return arr
     return np.vstack([smooth_1d(row, window, mode=mode) for row in arr])
 
+def plot_single_run(mCloud, ndens, sfe):
+    run_name = f"{mCloud}_sfe{sfe}_n{ndens}"
+    json_path = BASE_DIR / run_name / "dictionary.json"
+    if not json_path.exists():
+        print(f"Missing: {json_path}")
+        return
+
+    t, R2, phase, base_forces, overlay_forces, rcloud = load_run(json_path)
+
+    fig, ax = plt.subplots(figsize=(6, 4), dpi=400, constrained_layout=True)
+    plot_run_on_ax(
+        ax, t, R2, phase, base_forces, overlay_forces, rcloud,
+        alpha=0.75,
+        smooth_window=SMOOTH_WINDOW,
+        phase_change=PHASE_CHANGE
+    )
+
+    ax.set_xlabel("t [Myr]")
+    ax.set_ylabel(r"$F/F_{tot}$")
+    ax.set_title(f"{run_name}")
+
+    plt.show()
+    plt.close(fig)
 
 def load_run(json_path: Path):
     with json_path.open("r") as f:
@@ -96,8 +128,8 @@ def load_run(json_path: Path):
     snap_keys = sorted((k for k in data.keys() if str(k).isdigit()), key=lambda k: int(k))
     snaps = [data[k] for k in snap_keys]
 
-    t = np.array([s["t_now"] for s in snaps], dtype=float)
-    R2 = np.array([s.get("R2", np.nan) for s in snaps], dtype=float)
+    t     = np.array([s["t_now"] for s in snaps], dtype=float)
+    R2    = np.array([s.get("R2", np.nan) for s in snaps], dtype=float)
     phase = np.array([s.get("current_phase", "") for s in snaps])
 
     def get_field(field, default=np.nan):
@@ -108,11 +140,15 @@ def load_run(json_path: Path):
     F_rad  = get_field("F_rad", 0.0)
 
     # total ram (energy-balance effective)
-    F_ram = get_field("F_ram", np.nan)
+    F_ram  = get_field("F_ram", np.nan)
 
     # decomposition (SPS output)
     F_wind = get_field("F_ram_wind", np.nan)
     F_sn   = get_field("F_ram_SN", np.nan)
+
+    # PISM: try press_HII_in first, else PISM, else 0
+    F_PISM = get_field("press_HII_in", np.nan)
+    F_PISM = np.nan_to_num(F_PISM, nan=0.0)
 
     # If F_ram missing entirely, reconstruct if possible
     if np.all(np.isnan(F_ram)):
@@ -127,10 +163,11 @@ def load_run(json_path: Path):
     if np.any(np.diff(t) < 0):
         order = np.argsort(t)
         t, R2, phase = t[order], R2[order], phase[order]
-        F_grav, F_ram, F_ion, F_rad = F_grav[order], F_ram[order], F_ion[order], F_rad[order]
+        F_grav, F_ram, F_ion, F_rad, F_PISM = F_grav[order], F_ram[order], F_ion[order], F_rad[order], F_PISM[order]
         F_wind, F_sn = F_wind[order], F_sn[order]
 
-    base_forces = np.vstack([F_grav, F_ram, F_ion, F_rad])
+    # base forces order must match FORCE_FIELDS_BASE
+    base_forces    = np.vstack([F_grav, F_ram, F_ion, F_rad, F_PISM])
     overlay_forces = np.vstack([F_wind, F_sn])
 
     return t, R2, phase, base_forces, overlay_forces, rcloud
@@ -156,7 +193,7 @@ def plot_run_on_ax(
                 x, 0.97, "T",
                 transform=ax.get_xaxis_transform(),
                 ha="center", va="top",
-                fontsize=8, color="k", alpha=0.8,
+                fontsize=8, color="k", alpha=0.85,
                 bbox=dict(facecolor="none", edgecolor="none", pad=0.2),
                 zorder=6
             )
@@ -168,7 +205,7 @@ def plot_run_on_ax(
                 x, 0.97, "M",
                 transform=ax.get_xaxis_transform(),
                 ha="center", va="top",
-                fontsize=8, color="k", alpha=0.8,
+                fontsize=8, color="k", alpha=0.85,
                 bbox=dict(facecolor="none", edgecolor="none", pad=0.2),
                 zorder=6
             )
@@ -198,12 +235,14 @@ def plot_run_on_ax(
     ftotal = base_use.sum(axis=0)
     ftotal = np.where(ftotal == 0.0, np.nan, ftotal)
 
-    frac = base_use / ftotal  # order: grav, ram, ion, rad
+    frac = base_use / ftotal  # order: grav, ram, ion, rad, pism
     cum  = np.cumsum(frac, axis=0)
     prev = np.vstack([np.zeros_like(t), cum[:-1]])
 
-    for (_, _, color), y0, y1 in zip(FORCE_FIELDS_BASE, prev, cum):
-        ax.fill_between(t, y0, y1, color=color, alpha=alpha, lw=0, zorder=2)
+    # Fill base stack; make PISM white but visible in legend via edgecolor there
+    for (field, _, color), y0, y1 in zip(FORCE_FIELDS_BASE, prev, cum):
+        a = 1.0 if field == "PISM" else alpha  # keep white crisp
+        ax.fill_between(t, y0, y1, color=color, alpha=a, lw=0, zorder=2)
 
     # --- overlay wind/SN inside ram band, leaving residual unhatched
     if INCLUDE_ALL_FORCE:
@@ -217,32 +256,27 @@ def plot_run_on_ax(
             # Use smoothed total ram from base stack as denominator
             Fram = base_use[1].copy()
 
-            # Fractions of the TOTAL effective ram force
             eps = 1e-30
             denom = np.where(np.isfinite(Fram) & (Fram > 0), Fram, np.nan)
 
             f_wind = np.nan_to_num(Fw  / (denom + eps), nan=0.0)
             f_sn   = np.nan_to_num(Fsn / (denom + eps), nan=0.0)
 
-            # Clip and renormalize if wind+SN > 1 (numerical / model mismatch)
+            # Clip and renormalize if wind+SN > 1
             f_wind = np.clip(f_wind, 0.0, 1.0)
             f_sn   = np.clip(f_sn,   0.0, 1.0)
             s = f_wind + f_sn
             mask = s > 1.0
             f_wind[mask] /= s[mask]
             f_sn[mask]   /= s[mask]
-            # residual is whatever remains unhatched: 1 - f_wind - f_sn
 
-            # Ram band bounds in the stacked fraction plot
-            ram_bottom = prev[1]   # bottom of ram band
-            ram_top    = cum[1]    # top of ram band
+            # Ram band bounds in the stacked fraction plot (still index 1)
+            ram_bottom = prev[1]
+            ram_top    = cum[1]
             ram_h      = ram_top - ram_bottom
 
-            # Wind occupies the lowest fraction of the ram band
             y_wind_top = ram_bottom + f_wind * ram_h
-            # SN goes above wind
             y_sn_top   = y_wind_top + f_sn * ram_h
-            # Unhatched remainder is y_sn_top -> ram_top (visible blue)
 
             # Wind hatch (blue)
             ax.fill_between(
@@ -256,108 +290,112 @@ def plot_run_on_ax(
                 facecolor="none", edgecolor=C_SN,
                 hatch="....", linewidth=0.0, alpha=overlay_alpha, zorder=4
             )
-            
-            # Outline only the top boundary
-            ax.plot(t, y_wind_top, color=C_RAM, lw=1.0, alpha=0.9, zorder=6)
-            # ax.plot(t, y_sn_top,   color=C_SN,  lw=1.0, alpha=0.9, zorder=6)
 
-            # Use semi-transparent solid fill
+            # faint solid fill to help the eye
             ax.fill_between(t, ram_bottom, y_wind_top, color=C_RAM, alpha=0.12, lw=0, zorder=4)
-            # ax.fill_between(t, y_wind_top, y_sn_top,   color=C_SN,  alpha=0.12, lw=0, zorder=4)
             ax.plot(t, y_wind_top, color=C_RAM, lw=1.0, alpha=0.9, zorder=6)
-            # ax.plot(t, y_sn_top,   color=C_SN,  lw=1.0, alpha=0.9, zorder=6)
 
     ax.set_ylim(0, 1)
     ax.set_xlim(t.min(), t.max())
 
 
 # ---------------- main loop ----------------
-for ndens in ndens_list:
-    nrows, ncols = len(mCloud_list), len(sfe_list)
-    fig, axes = plt.subplots(
-        nrows=nrows, ncols=ncols,
-        figsize=(3.2 * ncols, 2.6 * nrows),
-        sharex=False, sharey=True,
-        dpi=500,
-        constrained_layout=True
-    )
 
-    for i, mCloud in enumerate(mCloud_list):
-        for j, sfe in enumerate(sfe_list):
-            ax = axes[i, j]
-            run_name = f"{mCloud}_sfe{sfe}_n{ndens}"
-            json_path = BASE_DIR / run_name / "dictionary.json"
+# If any filter is set, do single-run mode
+if (ONLY_M is not None) or (ONLY_N is not None) or (ONLY_SFE is not None):
+    m = ONLY_M if ONLY_M is not None else mCloud_list[0]
+    n = ONLY_N if ONLY_N is not None else ndens_list[0]
+    s = ONLY_SFE if ONLY_SFE is not None else sfe_list[0]
+    plot_single_run(m, n, s)
 
-            if not json_path.exists():
-                ax.text(0.5, 0.5, "missing", ha="center", va="center", transform=ax.transAxes)
-                ax.set_axis_off()
-                continue
-
-            try:
-                t, R2, phase, base_forces, overlay_forces, rcloud = load_run(json_path)
-                plot_run_on_ax(
-                    ax, t, R2, phase, base_forces, overlay_forces, rcloud,
-                    alpha=0.75,
-                    smooth_window=SMOOTH_WINDOW,
-                    phase_change=PHASE_CHANGE
-                )
-            except Exception as e:
-                print(f"Error in {run_name}: {e}")
-                ax.text(0.5, 0.5, "error", ha="center", va="center", transform=ax.transAxes)
-                ax.set_axis_off()
-                continue
-
-            # column titles
-            if i == 0:
-                eps = int(sfe) / 100.0
-                ax.set_title(rf"$\epsilon={eps:.2f}$")
-
-            # y label only on left-most
-            if j == 0:
-                mlog = int(np.log10(float(mCloud)))
-                ax.set_ylabel(rf"$M_{{cloud}}=10^{{{mlog}}}\,M_\odot$" + "\n" + r"$F/F_{tot}$")
-            else:
-                ax.tick_params(labelleft=False)
-
-            # x label only on bottom
-            if i == nrows - 1:
-                ax.set_xlabel("t [Myr]")
-            else:
-                ax.tick_params(labelbottom=False)
-
-    # -------- global legend --------
-    handles = [
-        Patch(facecolor=C_GRAV, edgecolor="none", alpha=0.75, label="Gravity"),
-        Patch(facecolor=C_RAM,  edgecolor="none", alpha=0.75, label=r"Ram total $F_{\rm ram}$ (blue)"),
-        Patch(facecolor=C_ION,  edgecolor="none", alpha=0.75, label="Photoionised gas"),
-        Patch(facecolor=C_RAD,  edgecolor="none", alpha=0.75, label="Radiation"),
-    ]
-
-    if INCLUDE_ALL_FORCE:
-        handles += [
-            Patch(facecolor="none", edgecolor=C_RAM, hatch="////", label=r"Wind share of $F_{\rm ram}$"),
-            Patch(facecolor="none", edgecolor=C_SN,  hatch="....", label=r"SN share of $F_{\rm ram}$"),
-            Line2D([0], [0], color=C_RAM, lw=6, label="Unhatched blue = residual"),
+else:
+    # --- full grid mode (your existing code)
+    for ndens in ndens_list:
+        nrows, ncols = len(mCloud_list), len(sfe_list)
+        fig, axes = plt.subplots(
+            nrows=nrows, ncols=ncols,
+            figsize=(3.2 * ncols, 2.6 * nrows),
+            sharex=False, sharey=True,
+            dpi=500,
+            constrained_layout=True
+        )
+    
+        for i, mCloud in enumerate(mCloud_list):
+            for j, sfe in enumerate(sfe_list):
+                ax = axes[i, j]
+                run_name = f"{mCloud}_sfe{sfe}_n{ndens}"
+                json_path = BASE_DIR / run_name / "dictionary.json"
+    
+                if not json_path.exists():
+                    ax.text(0.5, 0.5, "missing", ha="center", va="center", transform=ax.transAxes)
+                    ax.set_axis_off()
+                    continue
+    
+                try:
+                    t, R2, phase, base_forces, overlay_forces, rcloud = load_run(json_path)
+                    plot_run_on_ax(
+                        ax, t, R2, phase, base_forces, overlay_forces, rcloud,
+                        alpha=0.75,
+                        smooth_window=SMOOTH_WINDOW,
+                        phase_change=PHASE_CHANGE
+                    )
+                except Exception as e:
+                    print(f"Error in {run_name}: {e}")
+                    ax.text(0.5, 0.5, "error", ha="center", va="center", transform=ax.transAxes)
+                    ax.set_axis_off()
+                    continue
+    
+                # ---- ticks: show tick marks everywhere, labels only on bottom row
+                ax.tick_params(axis="x", which="both", bottom=True)  # ticks on all
+                if i == nrows - 1:
+                    ax.set_xlabel("t [Myr]")
+                    ax.tick_params(labelbottom=True)
+                else:
+                    ax.tick_params(labelbottom=False)
+    
+                # column titles
+                if i == 0:
+                    eps = int(sfe) / 100.0
+                    ax.set_title(rf"$\epsilon={eps:.2f}$")
+    
+                # y label only on left-most
+                if j == 0:
+                    mlog = int(np.log10(float(mCloud)))
+                    ax.set_ylabel(rf"$M_{{cloud}}=10^{{{mlog}}}\,M_\odot$" + "\n" + r"$F/F_{tot}$")
+                else:
+                    ax.tick_params(labelleft=False)
+    
+        # -------- global legend --------
+        handles = [
+            Patch(facecolor=C_GRAV, edgecolor="none", alpha=0.75, label="Gravity"),
+            Patch(facecolor=C_RAM,  edgecolor="none", alpha=0.75, label=r"Ram total $F_{\rm ram}$ (blue)"),
+            Patch(facecolor=C_ION,  edgecolor="none", alpha=0.75, label="Photoionised gas"),
+            Patch(facecolor=C_RAD,  edgecolor="none", alpha=0.75, label="Radiation"),
+            # PISM is white: give it a border so it’s visible in the legend
+            Patch(facecolor=C_PISM, edgecolor="0.4",  alpha=1.0,  label="PISM"),
         ]
-
-    leg = fig.legend(
-        handles=handles,
-        loc="upper center",
-        ncol=3,
-        frameon=True,
-        facecolor="white",
-        framealpha=0.9,
-        edgecolor="0.2",
-        bbox_to_anchor=(0.5, 1.05)
-    )
-    leg.set_zorder(10)
-
-    nlog = int(np.log10(float(ndens)))
-    fig.suptitle(rf"Feedback force fractions grid  ($n=10^{{{nlog}}}\,\mathrm{{cm^{{-3}}}}$)", y=1.08)
-
-    plt.show()
-    plt.close(fig)
-
-        
-        
-        
+    
+        if INCLUDE_ALL_FORCE:
+            handles += [
+                Patch(facecolor="none", edgecolor=C_RAM, hatch="////", label=r"$F_{\rm ram}$ attributed to winds"),
+                Patch(facecolor="none", edgecolor=C_SN,  hatch="....", label=r"$F_{\rm ram}$ attributed to SN"),
+                Line2D([0], [0], color=C_RAM, lw=6, label="Unhatched blue = residual"),
+            ]
+    
+        leg = fig.legend(
+            handles=handles,
+            loc="upper center",
+            ncol=3,
+            frameon=True,
+            facecolor="white",
+            framealpha=0.9,
+            edgecolor="0.2",
+            bbox_to_anchor=(0.5, 1.05)
+        )
+        leg.set_zorder(10)
+    
+        nlog = int(np.log10(float(ndens)))
+        fig.suptitle(rf"Feedback force fractions grid  ($n=10^{{{nlog}}}\,\mathrm{{cm^{{-3}}}}$)", y=1.08)
+    
+        plt.show()
+        plt.close(fig)
