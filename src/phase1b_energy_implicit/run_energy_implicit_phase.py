@@ -25,43 +25,45 @@ import src.phase1b_energy_implicit.get_betadelta as get_betadelta
 import src._functions.unit_conversions as cvt
 import src.cooling.non_CIE.read_cloudy as non_CIE
 from src.sb99.update_feedback import get_currentSB99feedback
-
+import src.shell_structure.shell_structure as shell_structure
 import src._functions.operations as operations
 #--
+
 
 def run_phase_energy(params):
 
     # TODO: add fragmentation mechanics in events 
 
-    # what is the current v2?
+    # what is the current outer bubble velocity?
     params['v2'].value = params['cool_alpha'].value * params['R2'].value / (params['t_now'].value) 
-    
     
     #-- theoretical minimum and maximum of this phase
     tmin = params['t_now'].value
     tmax = params['stop_t'].value
 
-    # =============================================================================
-    # List of possible events and ODE terminating conditions
-    # =============================================================================
         
-    # how many timesteps? about 200 timesteps per dex
+    # how many timesteps from tmin to tmax? set about 200 timesteps per dex
     nmin = int(200 * np.log10(tmax/tmin))
-
-    time_range = np.logspace(np.log10(tmin), np.log10(tmax), nmin)[1:] #to avoid duplicate starting values
-    
+    # create array for these timesteps
+    time_range = np.logspace(np.log10(tmin), np.log10(tmax), nmin)[1:] # [1:] to avoid duplicate starting values
+    # what is the dt for this?
     dt = np.diff(time_range)
 
-
+    # main parameters required for bubble evolution calculation: outer radius, outer velocity, bubble energy, temperature.
     r2 = params['R2'].value
     v2 = params['v2'].value
     Eb = params['Eb'].value
     T0 = params['T0'].value
     
+    
+    # Here, we run through timestep and evolve bubble. If any conditions (events) are 
+    # met, we stop the simulation
+    
+    # initialise stop condition
     stop_condition = False
 
     for ii, time in enumerate(time_range):
-        
+        # do not calculate final element
         if ii == (len(time_range) - 1):
             break
         
@@ -73,95 +75,49 @@ def run_phase_energy(params):
         except:
             params['t_next'].value = time + dt
                 
+        # this functino returns time derivative of parameters, which can be used 
+        # to calculate the next loop
         rd, vd, Ed, Td =  ODE_equations(time, y, params)
         
-                
-        
-        # if hasattr(vd, '__len__') and len(vd) == 1:
-        #     vd = vd[0]
-        # else:
-        #     sys.exit('weird vd behaviour in implicit')
-        
-        
+        # collect values to feed into stop condition calculation
         dt_params = [dt[ii], rd, vd, Ed, Td]
             
+        # if true, leave loop
         if check_events(params, dt_params):
             stop_condition = True
             break
         
-        
+        # otherwise calculate values for next loop
         if ii != (len(time_range) - 1):
             r2 += rd * dt[ii]
             v2 += vd * dt[ii]
             Eb += Ed * dt[ii]
             T0 += Td * dt[ii]
             
-    # we decide to stop this currently to fix a decreasing time bug.
-    # # if break, maybe something happened. Decrease dt
-    # if stop_condition:
-        
-    #     tmin = time_range[ii]
-    #     tmax = time_range[ii+1] # this is the final moment
-        
-        
-    #     # reverse log space so that we have more point towards the end.
-    #     time_range = (tmin + tmax) - np.logspace(np.log10(tmin), np.log10(tmax), 50)
-    #     # shave off first value
-    #     time_range = time_range[1:]
-        
-        
-    #     for ii, time in enumerate(time_range):
-        
-    #         # new inputs
-    #         y = [r2, v2, Eb, T0]
-            
-    #         try:
-    #             params['t_next'].value = time_range[ii+1]
-    #         except:
-    #             params['t_next'].value = time + dt
-        
-    #         rd, vd, Ed, Td =  ODE_equations(time, y, params)
-            
-    #         dt_params = [dt[ii], rd, vd, Ed, Td]
-                
-    #         if check_events(params, dt_params):
-    #             break
-            
-            
-    #         if ii != (len(time_range) - 1):
-    #             r2 += rd * dt[ii]
-    #             v2 += vd * dt[ii]
-    #             Eb += Ed * dt[ii]
-    #             T0 += Td * dt[ii]
-        
     return
 
 
 
-
-
-
+# main equation that calculates time derivative of the values
 def ODE_equations(t, y, params):
     
     # t [yr], R2 [pc], v2 [pc/yr], Eb [au]
     # --- These are R2, v2, Eb and T0 (Trgoal).
     R2, v2, Eb, T0 = y
     
-    # record
+    # record new values into dictionary
     params['t_now'].value = t
     params['v2'].value = v2
     params['Eb'].value = Eb
     params['T0'].value = T0
     params['R2'].value = R2
-    
+    # print into terminal
     print(f'current stage: t:{t}, r:{R2}, v:{v2}, E:{Eb}, T:{T0}')
-    
     
     # ---  
     
     #-- updating values in the loop; make sure to include all values of parameters
-    # Take note that alpha is defined as a = t/r*v, where t[Myr], v[kms], r[pc]
-    # this is kinda wrong. In future lets make it all in pc and Myr before converting
+    # update new alpha value
     params['cool_alpha'].value = t / R2 * v2
     
     # =============================================================================
@@ -169,9 +125,9 @@ def ODE_equations(t, y, params):
     # Tip: Get cooling structure every 50k years (or 1e5?) or so. 
     # =============================================================================
     if np.abs(params['t_previousCoolingUpdate'].value - params['t_now'].value) > 5e-3: # in Myr
-        # recalculate non-CIE
+        # recalculate non-CIE cooling structure
         cooling_nonCIE, heating_nonCIE, netcooling_interpolation = non_CIE.get_coolingStructure(params)
-        # save
+        # save into dictionary
         params['cStruc_cooling_nonCIE'].value = cooling_nonCIE
         params['cStruc_heating_nonCIE'].value = heating_nonCIE
         params['cStruc_net_nonCIE_interpolation'].value = netcooling_interpolation
@@ -181,52 +137,25 @@ def ODE_equations(t, y, params):
     # =============================================================================
     # Part 1: find acceleration and velocity
     # =============================================================================
-    
-    # returns in pc/yr2
-    
-    
-    
-    
-    
-    
-    # # OLD
-    # vd = phase_ODEs.get_vdot(t, y, params)
-    
-    # NEW MERGE
-    print('here')
-    
-    from src.sb99.update_feedback import get_currentSB99feedback
-
+    # get current feedback value
     [Qi, LWind, Lbol, Ln, Li, vWind, pWindDot, pWindDotDot] =  get_currentSB99feedback(t, params)
-    
-    import src.shell_structure.shell_structure as shell_structure
-
+    # run shell structure calculations
     shell_structure.shell_structure(params)
-    
-    
+    # get time derivative of radius and velocity from ode equations
     rd, vd, _, _ = energy_phase_ODEs.get_ODE_Edot(y, t, params)
-    print('done here')
     
-    
-    # ILL MAYBE PLACE THIS AFTER SO THAT WE WONT RECORD THE INTRIDCACIES INSIDE THIS LOOP
-    # # print('t here is t=', t)
+    # here we record radius trends across time, so that we can interpolate in the future
     params['array_t_now'].value = np.concatenate([params['array_t_now'].value, [t]])
     params['array_R2'].value = np.concatenate([params['array_R2'].value, [R2]])
     params['array_R1'].value = np.concatenate([params['array_R1'].value, [params['R1'].value]])
     params['array_v2'].value = np.concatenate([params['array_v2'].value, [v2]])
     params['array_T0'].value = np.concatenate([params['array_T0'].value, [T0]])
-    
-    # print('mshell problems', mShell)
-    
+    # here is where the interpolation is done
     mShell, mShell_dot = mass_profile.get_mass_profile(R2, params,
                                                    return_mdot = True, 
                                                    rdot_arr = v2)
-    
 
-    
-    # NEW CODE ---
-    # just artifacts. 
-    # TODO: fix this in the future
+    # if mShell or mShell_dot is a single element list, extract value
     if hasattr(mShell, '__len__'):
         if len(mShell) == 1:
             mShell = mShell[0]
@@ -235,18 +164,9 @@ def ODE_equations(t, y, params):
         if len(mShell_dot) == 1:
             mShell_dot = mShell_dot[0]
     
-    
-    
+    # update
     params['array_mShell'].value = np.concatenate([params['array_mShell'].value, [mShell]])
             
-            
-    rd = v2
-        
-    
-    
-    
-    
-    
     # =============================================================================
     # Part 2: find beta, delta and convert them to dEdt and dTdt
     # =============================================================================
@@ -294,6 +214,8 @@ def ODE_equations(t, y, params):
     
     Ed, Td = get_EdotTdot(result_params)
     
+    rd = v2
+    
     print('completed a phase in ODE_equations in implicit_phase')
     print(f'rd: {rd}, vd: {vd}, Ed: {Ed}, Td: {Td}')
 
@@ -301,7 +223,6 @@ def ODE_equations(t, y, params):
     # save snapshot
     result_params.save_snapshot()
     
-    # return [rd.to(u.pc/u.Myr).value, vd.to(u.km/u.s/u.Myr).value, Ed.to(u.erg/u.Myr).value, Td.to(u.K/u.Myr).value]
     return [rd, vd, Ed, Td]
 
 
@@ -362,7 +283,8 @@ def check_events(params, dt_params):
         
     #--- 4) dissolution after certain period of low density
     # if params['t_now'].value - params['t_Lowdense'].value > params['stop_t_diss'].value:
-    if params['isDissolved'].value == True:
+    if params['shell_nMax'].value < params['stop_n_diss'].value:
+        params['isDissolved'].value = True
         # print(f"Phase ended because {params['t_now'].value - params['t_Lowdense'].value} Myr passed since low density of {params['shell_nShell_max'].value/cvt.ndens_cgs2au} /cm3")
         params['completed_reason'].value = 'Shell dissolved'
         params['EndSimulationDirectly'].value = True

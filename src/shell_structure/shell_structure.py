@@ -552,7 +552,7 @@ def shell_structure(params):
         # See https://www.imprs-hd.mpg.de/399417/thesis_Rahner.pdf page 47 Eq 22, 23, 24.
         f_absorbed = (f_absorbed_ion * Li + f_absorbed_neu * Ln)/(Li + Ln)
         
-        
+        params['rShell'].value = grav_r[-1]
             
     elif is_shellDissolved:
         params['isDissolved'].value = True
@@ -564,6 +564,10 @@ def shell_structure(params):
         shellThickness = np.nan
         nShell_max = params['nISM'].value
         tau_kappa_IR = 0
+        grav_r = np.nan
+        grav_phi = np.nan
+        grav_force_m = np.nan
+        
         
         print('Shell dissolved.')
         
@@ -587,7 +591,6 @@ def shell_structure(params):
     params['shell_grav_phi'].value = grav_phi
     params['shell_grav_force_m'].value = grav_force_m
     
-    params['rShell'].value = grav_r[-1]
         
     return
         
