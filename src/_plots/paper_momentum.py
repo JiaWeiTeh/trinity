@@ -18,8 +18,8 @@ print("...plotting integrated momentum (line plots)")
 
 # --- configuration
 mCloud_list = ["1e5", "1e7", "1e8"]                 # rows
-# ndens_list  = ["1e4", "1e2", "1e3"]                               # one figure per ndens
-ndens_list  = ["1e4"]                               # one figure per ndens
+ndens_list  = ["1e4", "1e2", "1e3"]                               # one figure per ndens
+# ndens_list  = ["1e4"]                               # one figure per ndens
 sfe_list    = ["001", "010", "020", "030", "050", "080"]   # cols
 
 BASE_DIR = Path.home() / "unsync" / "Code" / "Trinity" / "outputs"
