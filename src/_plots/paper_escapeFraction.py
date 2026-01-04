@@ -26,6 +26,19 @@ BASE_DIR = Path.home() / "unsync" / "Code" / "Trinity" / "outputs"
 # smoothing: number of snapshots in moving average (None or 1 disables)
 SMOOTH_WINDOW = 7
 
+# --- output
+FIG_DIR = Path("./fig")
+FIG_DIR.mkdir(parents=True, exist_ok=True)
+SAVE_PNG = False
+SAVE_PDF = True
+
+def range_tag(prefix, values, key=float):
+    vals = list(values)
+    if len(vals) == 1:
+        return f"{prefix}{vals[0]}"
+    vmin, vmax = min(vals, key=key), max(vals, key=key)
+    return f"{prefix}{vmin}-{vmax}"
+
 
 def set_plot_style(use_tex=True, font_size=12):
     plt.rcParams.update({

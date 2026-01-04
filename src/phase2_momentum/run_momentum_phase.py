@@ -251,7 +251,7 @@ def check_events(params, dt_params):
     if params['shell_nMax'].value < params['stop_n_diss'].value:
         params['isDissolved'].value = True
         # print(f"Phase ended because {params['t_now'].value - params['t_Lowdense'].value} Myr passed since low density of {params['shell_nShell_max'].value/cvt.ndens_cgs2au} /cm3")
-        params['completed_reason'].value = 'Shell dissolved'
+        params['SimulationEndReason'].value = 'Shell dissolved'
         params['EndSimulationDirectly'].value = True
         return True
     

@@ -1,5 +1,5 @@
-mCloud    1e5
-sfe    0.30
+mCloud    1e7
+sfe    0.50
 # powerlaw, homogeneous
 dens_profile    densPL
 densPL_alpha    0

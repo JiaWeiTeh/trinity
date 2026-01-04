@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-
 import json
 import numpy as np
 import matplotlib.pyplot as plt
@@ -8,26 +7,34 @@ from pathlib import Path
 from matplotlib.lines import Line2D
 import matplotlib.transforms as mtransforms
 
-print("...plotting radius evolution grid")
+print("...plotting radius evolution grid (with r_Tb)")
 
 # ---------------- configuration ----------------
 mCloud_list = ["1e5", "1e7", "1e8"]                 # rows
-# ndens_list  = ["1e4", "1e2", "1e3"]                        # one figure per ndens
-ndens_list  = ["1e4"]                        # one figure per ndens
+ndens_list  = ["1e2", "1e3", "1e4"]                 # one figure per ndens
 sfe_list    = ["001", "010", "020", "030", "050", "080"]   # cols
 
 BASE_DIR = Path.home() / "unsync" / "Code" / "Trinity" / "outputs"
 
-PHASE_LINE = True          # draw transition->momentum line
-CLOUD_LINE = True          # draw breakout line (R2>Rcloud)
-SMOOTH_WINDOW = None       # set e.g. 7 to smooth radii; None/1 disables
+PHASE_LINE = True
+CLOUD_LINE = True
+SMOOTH_WINDOW = None        # e.g. 7 to smooth radii; None/1 disables
 SMOOTH_MODE = "edge"
 
-# radius line styles/colors
+
+# --- output
+FIG_DIR = Path("./fig")
+FIG_DIR.mkdir(parents=True, exist_ok=True)
+SAVE_PNG = False
+SAVE_PDF = True  # set True if you also want PDFs
+
+
+# radius line styles/colors (added r_Tb)
 RADIUS_FIELDS = [
-    ("R1",     r"$R_1$",     "#9467bd"),   # purple
-    ("R2",     r"$R_2$",     "k"),         # black
-    ("rShell", r"$r_{\rm shell}$", "#ff7f0e"),  # orange
+    ("R1",     r"$R_1$",              "#9467bd", "-",  1.6),  # purple
+    ("R2",     r"$R_2$",              "k",       "-",  2.0),  # black
+    ("rShell", r"$r_{\rm shell}$",    "#ff7f0e", "-",  1.6),  # orange
+    ("r_Tb",   r"$r_{T_b}=R_2\,\xi_{T_b}$", "0.35", ":",  1.8),  # grey dotted
 ]
 
 
@@ -50,6 +57,13 @@ def set_plot_style(use_tex=True, font_size=12):
         "ytick.minor.width": 0.8,
     })
 
+def range_tag(prefix, values, key=float):
+    """Return e.g. 'M1e5-1e8' or 'sfe001-080' (or single value if only one)."""
+    vals = list(values)
+    if len(vals) == 1:
+        return f"{prefix}{vals[0]}"
+    vmin, vmax = min(vals, key=key), max(vals, key=key)
+    return f"{prefix}{vmin}-{vmax}"
 
 def smooth_1d(y, window, mode="edge"):
     if window is None or window <= 1:
@@ -74,10 +88,13 @@ def load_run_radii(json_path: Path):
     t = np.array([s["t_now"] for s in snaps], dtype=float)
     phase = np.array([s.get("current_phase", "") for s in snaps])
 
-    # radii (use NaN if missing)
     R1 = np.array([s.get("R1", np.nan) for s in snaps], dtype=float)
     R2 = np.array([s.get("R2", np.nan) for s in snaps], dtype=float)
     rShell = np.array([s.get("rShell", np.nan) for s in snaps], dtype=float)
+
+    # NEW: r_Tb = R2 * bubble_xi_Tb
+    xi_Tb = np.array([s.get("bubble_xi_Tb", np.nan) for s in snaps], dtype=float)
+    r_Tb = R2 * xi_Tb
 
     rcloud = float(snaps[0].get("rCloud", np.nan))
 
@@ -85,25 +102,28 @@ def load_run_radii(json_path: Path):
     if np.any(np.diff(t) < 0):
         order = np.argsort(t)
         t, phase = t[order], phase[order]
-        R1, R2, rShell = R1[order], R2[order], rShell[order]
+        R1, R2, rShell, r_Tb = R1[order], R2[order], rShell[order], r_Tb[order]
 
-    return t, phase, R1, R2, rShell, rcloud
+    return t, phase, R1, R2, rShell, r_Tb, rcloud
 
 
-def plot_radii_on_ax(ax, t, phase, R1, R2, rShell, rcloud,
-                     phase_line=True, cloud_line=True,
-                     smooth_window=None, smooth_mode="edge",
-                     m_label="M", m_alpha=0.6, label_pad_points=4):
+def plot_radii_on_ax(
+    ax, t, phase, R1, R2, rShell, r_Tb, rcloud,
+    phase_line=True, cloud_line=True,
+    smooth_window=None, smooth_mode="edge",
+    label_pad_points=4
+):
     fig = ax.figure
 
     # optional smoothing
     R1s = smooth_1d(R1, smooth_window, mode=smooth_mode)
     R2s = smooth_1d(R2, smooth_window, mode=smooth_mode)
     rSs = smooth_1d(rShell, smooth_window, mode=smooth_mode)
+    rTbs = smooth_1d(r_Tb, smooth_window, mode=smooth_mode)
 
     # --- phase lines with mini labels
     if phase_line:
-        # energy/implicit -> transition  (T)
+        # energy/implicit -> transition (T)
         idx_T = np.flatnonzero(
             np.isin(phase[:-1], ["energy", "implicit"]) & (phase[1:] == "transition")
         ) + 1
@@ -118,7 +138,7 @@ def plot_radii_on_ax(ax, t, phase, R1, R2, rShell, rcloud,
                 zorder=5
             )
 
-        # transition -> momentum  (M)
+        # transition -> momentum (M)
         idx_M = np.flatnonzero((phase[:-1] == "transition") & (phase[1:] == "momentum")) + 1
         for x in t[idx_M]:
             ax.axvline(x, color="r", lw=2, alpha=0.2, zorder=0)
@@ -138,7 +158,6 @@ def plot_radii_on_ax(ax, t, phase, R1, R2, rShell, rcloud,
             x_rc = t[idx[0]]
             ax.axvline(x_rc, color="k", ls="--", alpha=0.25, zorder=0)
 
-            # padded label next to the line
             text_trans = ax.get_xaxis_transform() + mtransforms.ScaledTranslation(
                 label_pad_points/72, 0, fig.dpi_scale_trans
             )
@@ -151,9 +170,10 @@ def plot_radii_on_ax(ax, t, phase, R1, R2, rShell, rcloud,
             )
 
     # --- radii lines
-    ax.plot(t, R1s, lw=1.6, color=RADIUS_FIELDS[0][2], label=RADIUS_FIELDS[0][1], zorder=3)
-    ax.plot(t, R2s, lw=2.0, color=RADIUS_FIELDS[1][2], label=RADIUS_FIELDS[1][1], zorder=4)
-    ax.plot(t, rSs, lw=1.6, color=RADIUS_FIELDS[2][2], label=RADIUS_FIELDS[2][1], zorder=3)
+    ax.plot(t, R1s,    lw=RADIUS_FIELDS[0][4], ls=RADIUS_FIELDS[0][3], color=RADIUS_FIELDS[0][2], label=RADIUS_FIELDS[0][1], zorder=3)
+    ax.plot(t, R2s,    lw=RADIUS_FIELDS[1][4], ls=RADIUS_FIELDS[1][3], color=RADIUS_FIELDS[1][2], label=RADIUS_FIELDS[1][1], zorder=4)
+    ax.plot(t, rSs,    lw=RADIUS_FIELDS[2][4], ls=RADIUS_FIELDS[2][3], color=RADIUS_FIELDS[2][2], label=RADIUS_FIELDS[2][1], zorder=3)
+    ax.plot(t, rTbs,   lw=RADIUS_FIELDS[3][4], ls=RADIUS_FIELDS[3][3], color=RADIUS_FIELDS[3][2], label=RADIUS_FIELDS[3][1], zorder=3)
 
     ax.set_xlim(t.min(), t.max())
 
@@ -162,6 +182,7 @@ def plot_radii_on_ax(ax, t, phase, R1, R2, rShell, rcloud,
 set_plot_style(use_tex=True, font_size=12)
 
 for ndens in ndens_list:
+    
     nrows, ncols = len(mCloud_list), len(sfe_list)
 
     fig, axes = plt.subplots(
@@ -172,10 +193,15 @@ for ndens in ndens_list:
         constrained_layout=False
     )
 
-    # reserve band for legend + suptitle (prevents overlap with subplot titles)
     fig.subplots_adjust(top=0.90)
     nlog = int(np.log10(float(ndens)))
     fig.suptitle(rf"Radius evolution ($n=10^{{{nlog}}}\,\mathrm{{cm^{{-3}}}}$)", y=1.05)
+
+    m_tag   = range_tag("M",   mCloud_list, key=float)
+    sfe_tag = range_tag("sfe", sfe_list,    key=int)   # works for "001", "010", ...
+    n_tag   = f"n{ndens}"
+    tag = f"radius_grid_{m_tag}_{sfe_tag}_{n_tag}"
+
 
     for i, mCloud in enumerate(mCloud_list):
         for j, sfe in enumerate(sfe_list):
@@ -189,9 +215,9 @@ for ndens in ndens_list:
                 continue
 
             try:
-                t, phase, R1, R2, rShell, rcloud = load_run_radii(json_path)
+                t, phase, R1, R2, rShell, r_Tb, rcloud = load_run_radii(json_path)
                 plot_radii_on_ax(
-                    ax, t, phase, R1, R2, rShell, rcloud,
+                    ax, t, phase, R1, R2, rShell, r_Tb, rcloud,
                     phase_line=PHASE_LINE,
                     cloud_line=CLOUD_LINE,
                     smooth_window=SMOOTH_WINDOW,
@@ -208,7 +234,7 @@ for ndens in ndens_list:
                 eps = int(sfe) / 100.0
                 ax.set_title(rf"$\epsilon={eps:.2f}$")
 
-            # row labels + y label only on leftmost column
+            # y label only on leftmost column
             if j == 0:
                 mlog = int(np.log10(float(mCloud)))
                 ax.set_ylabel(rf"$M_{{cloud}}=10^{{{mlog}}}\,M_\odot$" + "\n" + r"Radius [pc]")
@@ -218,16 +244,15 @@ for ndens in ndens_list:
             # x label only on bottom row
             if i == nrows - 1:
                 ax.set_xlabel("t [Myr]")
-            else:
-                ax.tick_params(labelbottom=False)
 
-    # global legend
+    # global legend (now includes r_Tb)
     handles = [
-        Line2D([0], [0], color=RADIUS_FIELDS[0][2], lw=1.6, label=RADIUS_FIELDS[0][1]),
-        Line2D([0], [0], color=RADIUS_FIELDS[1][2], lw=2.0, label=RADIUS_FIELDS[1][1]),
-        Line2D([0], [0], color=RADIUS_FIELDS[2][2], lw=1.6, label=RADIUS_FIELDS[2][1]),
+        Line2D([0], [0], color=RADIUS_FIELDS[0][2], lw=RADIUS_FIELDS[0][4], ls=RADIUS_FIELDS[0][3], label=RADIUS_FIELDS[0][1]),
+        Line2D([0], [0], color=RADIUS_FIELDS[1][2], lw=RADIUS_FIELDS[1][4], ls=RADIUS_FIELDS[1][3], label=RADIUS_FIELDS[1][1]),
+        Line2D([0], [0], color=RADIUS_FIELDS[2][2], lw=RADIUS_FIELDS[2][4], ls=RADIUS_FIELDS[2][3], label=RADIUS_FIELDS[2][1]),
+        Line2D([0], [0], color=RADIUS_FIELDS[3][2], lw=RADIUS_FIELDS[3][4], ls=RADIUS_FIELDS[3][3], label=RADIUS_FIELDS[3][1]),
         Line2D([0], [0], color="k", ls="--", alpha=0.6, lw=1.6, label=r"$R_2>R_{\rm cloud}$"),
-        Line2D([0], [0], color="r", lw=2, alpha=0.3, label=r"transition$\to$momentum (M)"),
+        Line2D([0], [0], color="r", lw=2, alpha=0.3, label=r"phase changes: $T$ (→transition), $M$ (→momentum)"),
     ]
 
     leg = fig.legend(
@@ -242,6 +267,24 @@ for ndens in ndens_list:
         bbox_transform=fig.transFigure
     )
     leg.set_zorder(10)
+    
+    # --------- SAVE FIGURE ---------
+    m_tag   = range_tag("M",   mCloud_list, key=float)
+    sfe_tag = range_tag("sfe", sfe_list,    key=int)
+    n_tag   = f"n{ndens}"
+    tag = f"radiusEvolution_{m_tag}_{sfe_tag}_{n_tag}"
+
+    if SAVE_PNG:
+        out_png = FIG_DIR / f"{tag}.png"
+        fig.savefig(out_png, bbox_inches="tight")
+        print(f"Saved: {out_png}")
+    if SAVE_PDF:
+        out_pdf = FIG_DIR / f"{tag}.pdf"
+        fig.savefig(out_pdf, bbox_inches="tight")
+        print(f"Saved: {out_pdf}")
+
+
 
     plt.show()
     plt.close(fig)
+

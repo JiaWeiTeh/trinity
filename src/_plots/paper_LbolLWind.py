@@ -13,7 +13,6 @@ print("...plotting Qi(or Li) vs LWind with ratio on twin axis")
 # ---------------- configuration ----------------
 mCloud_list = ["1e5", "1e7", "1e8"]                 # rows
 ndens_list  = ["1e2", "1e3", "1e4"]                 # one figure per ndens
-# ndens_list  = ["1e4"]                 # one figure per ndens
 sfe_list    = ["001", "010", "020", "030", "050", "080"]   # cols
 
 BASE_DIR = Path.home() / "unsync" / "Code" / "Trinity" / "outputs"
@@ -40,6 +39,19 @@ C_LI    = "#d62728"   # red
 C_QI    = "#d62728"   # red (same role)
 C_RATIO = "0.2"       # dark gray
 
+
+# --- output
+FIG_DIR = Path("./fig")
+FIG_DIR.mkdir(parents=True, exist_ok=True)
+SAVE_PNG = False
+SAVE_PDF = True
+
+def range_tag(prefix, values, key=float):
+    vals = list(values)
+    if len(vals) == 1:
+        return f"{prefix}{vals[0]}"
+    vmin, vmax = min(vals, key=key), max(vals, key=key)
+    return f"{prefix}{vmin}-{vmax}"
 
 def set_plot_style(use_tex=True, font_size=12):
     plt.rcParams.update({
@@ -288,8 +300,6 @@ for ndens in ndens_list:
             # x label only on bottom row
             if i == nrows - 1:
                 ax.set_xlabel("t [Myr]")
-            else:
-                ax.tick_params(labelbottom=False)
 
     # -------- global legend --------
     if PLOT_QI:
@@ -319,6 +329,23 @@ for ndens in ndens_list:
         bbox_transform=fig.transFigure
     )
     leg.set_zorder(10)
+    
+    # --------- SAVE FIGURE ---------
+    m_tag   = range_tag("M",   mCloud_list, key=float)
+    sfe_tag = range_tag("sfe", sfe_list,    key=int)
+    n_tag   = f"n{ndens}"
+    tag = f"LbolLWind_{m_tag}_{sfe_tag}_{n_tag}"
+
+    if SAVE_PNG:
+        out_png = FIG_DIR / f"{tag}.png"
+        fig.savefig(out_png, bbox_inches="tight")
+        print(f"Saved: {out_png}")
+    if SAVE_PDF:
+        out_pdf = FIG_DIR / f"{tag}.pdf"
+        fig.savefig(out_pdf, bbox_inches="tight")
+        print(f"Saved: {out_pdf}")
+
+
 
     plt.show()
     plt.close(fig)

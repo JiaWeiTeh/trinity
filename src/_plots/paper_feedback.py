@@ -24,6 +24,7 @@ print("...plotting force fractions with ram composition overlay + PISM")
 # ---------------- configuration ----------------
 mCloud_list = ["1e5", "1e7", "1e8"]                  # rows
 ndens_list  = ["1e2", "1e3", "1e4"]                                # one figure per ndens
+ndens_list  = ["1e2"]                                # one figure per ndens
 sfe_list    = ["001", "010", "020", "030", "050", "080"]   # cols
 
 BASE_DIR = Path.home() / "unsync" / "Code" / "Trinity" / "outputs"
@@ -54,6 +55,18 @@ ONLY_M   = None   # e.g. "1e5" or None
 ONLY_N   = None   # e.g. "1e4" or None
 ONLY_SFE = None   # e.g. "001" or None
 
+# --- output
+FIG_DIR = Path("./fig")
+FIG_DIR.mkdir(parents=True, exist_ok=True)
+SAVE_PNG = False
+SAVE_PDF = False
+
+def range_tag(prefix, values, key=float):
+    vals = list(values)
+    if len(vals) == 1:
+        return f"{prefix}{vals[0]}"
+    vmin, vmax = min(vals, key=key), max(vals, key=key)
+    return f"{prefix}{vmin}-{vmax}"
 
 
 def set_plot_style(use_tex=True, font_size=12):
@@ -117,6 +130,16 @@ def plot_single_run(mCloud, ndens, sfe):
     ax.set_xlabel("t [Myr]")
     ax.set_ylabel(r"$F/F_{tot}$")
     ax.set_title(f"{run_name}")
+
+    tag = f"feedback_{mCloud}_sfe{sfe}_n{ndens}"
+    if SAVE_PNG:
+        out_png = FIG_DIR / f"{tag}.png"
+        fig.savefig(out_png, bbox_inches="tight")
+        print(f"Saved: {out_png}")
+    if SAVE_PDF:
+        out_pdf = FIG_DIR / f"{tag}.pdf"
+        fig.savefig(out_pdf, bbox_inches="tight")
+        print(f"Saved: {out_pdf}")
 
     plt.show()
     plt.close(fig)
@@ -278,22 +301,35 @@ def plot_run_on_ax(
             y_wind_top = ram_bottom + f_wind * ram_h
             y_sn_top   = y_wind_top + f_sn * ram_h
 
-            # Wind hatch (blue)
+            # --- Wind slice: forward slashes, normal hatch density
             ax.fill_between(
                 t, ram_bottom, y_wind_top,
-                facecolor="none", edgecolor=C_RAM,
-                hatch="////", linewidth=0.0, alpha=overlay_alpha, zorder=4
+                facecolor="none",
+                edgecolor=C_RAM,          # blue
+                hatch="////",
+                linewidth=0.8,            # hatch stroke weight (was 0.0)
+                alpha=0.9,
+                zorder=5
             )
-            # SN hatch (green)
-            ax.fill_between(
-                t, y_wind_top, y_sn_top,
-                facecolor="none", edgecolor=C_SN,
-                hatch="....", linewidth=0.0, alpha=overlay_alpha, zorder=4
-            )
-
-            # faint solid fill to help the eye
-            ax.fill_between(t, ram_bottom, y_wind_top, color=C_RAM, alpha=0.12, lw=0, zorder=4)
-            ax.plot(t, y_wind_top, color=C_RAM, lw=1.0, alpha=0.9, zorder=6)
+            
+            # --- SN slice: back slashes, "thicker" by overdrawing the hatch twice
+            for _ in range(4):  # draw twice -> visually thicker/darker hatch
+                ax.fill_between(
+                    t, y_wind_top, y_sn_top,
+                    facecolor="none",
+                    edgecolor=C_RAM,      # still blue
+                    hatch="\\\\\\\\",     # opposite direction
+                    linewidth=2.5,        # slightly heavier stroke
+                    alpha=0.9,
+                    zorder=5
+                )
+            
+            # Helpful boundaries (still blue) so the SN region is obvious
+            ax.plot(t, y_wind_top, color=C_RAM, lw=1.2, alpha=0.95, zorder=6)
+            ax.plot(t, y_sn_top,   color=C_RAM, lw=1.2, alpha=0.95, zorder=6)
+            
+            # Optional: subtle tint to keep "ram is blue" obvious without overpowering
+            ax.fill_between(t, ram_bottom, ram_top, color=C_RAM, alpha=0.10, lw=0, zorder=4)
 
     ax.set_ylim(0, 1)
     ax.set_xlim(t.min(), t.max())
@@ -317,7 +353,7 @@ else:
             figsize=(3.2 * ncols, 2.6 * nrows),
             sharex=False, sharey=True,
             dpi=500,
-            constrained_layout=True
+            constrained_layout=False
         )
     
         for i, mCloud in enumerate(mCloud_list):
@@ -349,9 +385,6 @@ else:
                 ax.tick_params(axis="x", which="both", bottom=True)  # ticks on all
                 if i == nrows - 1:
                     ax.set_xlabel("t [Myr]")
-                    ax.tick_params(labelbottom=True)
-                else:
-                    ax.tick_params(labelbottom=False)
     
                 # column titles
                 if i == 0:
@@ -374,11 +407,11 @@ else:
             # PISM is white: give it a border so it’s visible in the legend
             Patch(facecolor=C_PISM, edgecolor="0.4",  alpha=1.0,  label="PISM"),
         ]
-    
+        
         if INCLUDE_ALL_FORCE:
             handles += [
-                Patch(facecolor="none", edgecolor=C_RAM, hatch="////", label=r"$F_{\rm ram}$ attributed to winds"),
-                Patch(facecolor="none", edgecolor=C_SN,  hatch="....", label=r"$F_{\rm ram}$ attributed to SN"),
+                Patch(facecolor="none", edgecolor=C_RAM, hatch="////",   label=r"Ram attributed to winds"),
+                Patch(facecolor="none", edgecolor=C_RAM, hatch="\\\\\\\\", label=r"Ram attributed to SN (thicker hatch)"),
                 Line2D([0], [0], color=C_RAM, lw=6, label="Unhatched blue = residual"),
             ]
     
@@ -397,5 +430,20 @@ else:
         nlog = int(np.log10(float(ndens)))
         fig.suptitle(rf"Feedback force fractions grid  ($n=10^{{{nlog}}}\,\mathrm{{cm^{{-3}}}}$)", y=1.08)
     
+        # --------- SAVE FIGURE ---------
+        m_tag   = range_tag("M",   mCloud_list, key=float)
+        sfe_tag = range_tag("sfe", sfe_list,    key=int)
+        n_tag   = f"n{ndens}"
+        tag = f"feedback_grid_{m_tag}_{sfe_tag}_{n_tag}"
+
+        if SAVE_PNG:
+            out_png = FIG_DIR / f"{tag}.png"
+            fig.savefig(out_png, bbox_inches="tight")
+            print(f"Saved: {out_png}")
+        if SAVE_PDF:
+            out_pdf = FIG_DIR / f"{tag}.pdf"
+            fig.savefig(out_pdf, bbox_inches="tight")
+            print(f"Saved: {out_pdf}")
+
         plt.show()
         plt.close(fig)
