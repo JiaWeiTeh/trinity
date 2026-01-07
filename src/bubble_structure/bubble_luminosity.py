@@ -5,7 +5,37 @@ Created on Sun Aug 20 17:43:02 2023
 
 @author: Jia Wei Teh
 
-This is the newest version (after bubble_luminosity_neewithoutdict, because this has dict)
+ 
+## Purpose
+This module calculates bubble properties in stellar wind-driven HII regions, including:
+1. Bubble structure (temperature, velocity, density profiles)
+2. Cooling losses in three zones: bubble (CIE), conduction zone (non-CIE), and intermediate
+3. Mass flux from shell back into hot region via thermal conduction
+4. Based on Weaver+77 stellar wind bubble theory
+ 
+## Main Functions
+- `get_bubbleproperties(params)`: Main entry point, calculates all bubble properties
+- `get_init_dMdt(params)`: Initial guess for mass flux using Weaver+77 Eq. 33
+- `get_velocity_residuals(dMdt_init, dMdt_params_au)`: Solver for dMdt by comparing boundary velocities
+- `get_bubble_ODE_initial_conditions(dMdt, dMdt_params_au)`: Initial conditions for ODE integration
+- `get_bubble_ODE(r_arr, initial_ODEs, dMdt_params_au)`: ODE system for bubble structure
+ 
+This module is central to TRINITY's bubble evolution calculations. It:
+1. Solves for inner bubble radius (R1) and pressure (Pb)
+2. Iteratively finds mass flux (dMdt) from shell into bubble via thermal conduction
+3. Integrates ODE system (Weaver+77 Eqs 42-43) to get bubble structure:
+   - Temperature T(r)
+   - Velocity v(r)
+   - Density n(r)
+   - Temperature gradient dT/dr(r)
+4. Calculates cooling in three zones:
+   - Hot bubble (T > 10^5.5 K): CIE cooling
+   - Conduction zone (10^4 < T < 10^5.5 K): non-CIE cooling
+   - Intermediate zone: transition to cold shell
+5. Computes gravitational potential and bubble mass
+ 
+
+
 """
 
 
