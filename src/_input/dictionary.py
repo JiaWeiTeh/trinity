@@ -30,6 +30,7 @@ params = DescribedDict.load_snapshot(path2output, snap_id)
 arr = params["initial_cloud_n_arr"].value   # returns numpy array
 """
 
+import collections.abc
 import json
 import sys
 from functools import reduce
@@ -80,11 +81,9 @@ class DescribedItem:
         Units label (optional).
     exclude_from_snapshot : bool
         If True, key won't be saved into snapshots.
-    isPersistent : bool
-        Reserved flag you can use for special treatment later.
     """
 
-    __slots__ = ("_value", "info", "ori_units", "exclude_from_snapshot", "isPersistent")
+    __slots__ = ("_value", "info", "ori_units", "exclude_from_snapshot")
 
     def __init__(
         self,
@@ -92,13 +91,11 @@ class DescribedItem:
         info: Optional[str] = None,
         ori_units: Optional[str] = None,
         exclude_from_snapshot: bool = False,
-        isPersistent: bool = False,
     ):
         self._value = value
         self.info = info
         self.ori_units = ori_units
         self.exclude_from_snapshot = exclude_from_snapshot
-        self.isPersistent = isPersistent
 
     @property
     def value(self) -> Any:
@@ -194,7 +191,6 @@ class DescribedDict(dict):
 
         # Key flags
         self._excluded_keys: set[str] = set()     # keys to omit from snapshots
-        self._persistent_keys: set[str] = set()   # reserved for future logic (e.g. always store)
 
     def __setitem__(self, key: str, value: DescribedItem) -> None:
         """
@@ -207,13 +203,74 @@ class DescribedDict(dict):
                 f"Did you mean: params['{key}'].value = <val> ?"
             )
 
-        # Track exclusions/persistence based on item flags
+        # Track exclusions based on item flags
         if value.exclude_from_snapshot:
             self._excluded_keys.add(key)
-        if value.isPersistent:
-            self._persistent_keys.add(key)
 
         super().__setitem__(key, value)
+
+    # -------------------------------------------------------------------------
+    # Display helpers
+    # -------------------------------------------------------------------------
+    @staticmethod
+    def shorten_display(arr, nshow: int = 3):
+        """
+        Shorten an array for display purposes to avoid clogging output.
+        
+        Parameters
+        ----------
+        arr : array-like
+            Array or sequence to shorten.
+        nshow : int, optional
+            Number of elements to show at beginning and end (default: 3).
+        
+        Returns
+        -------
+        list
+            Shortened representation of array.
+        """
+        if len(arr) > 10:
+            arr = list(arr[:nshow]) + ['...'] + list(arr[-nshow:])
+        return arr
+
+    def __str__(self) -> str:
+        """
+        Customize the printed string for the dictionary.
+        
+        Features:
+        - Alphabetically sorted by key
+        - Long arrays (>10 elements) are shortened for display
+        - Shows snapshot count
+        - Only displays DescribedItem objects (not internal data)
+        """
+        custom_str = "\n" + "=" * 80 + "\n"
+        custom_str += "DescribedDict Contents\n"
+        custom_str += "=" * 80 + "\n\n"
+        
+        # Sort items alphabetically
+        sorted_items = sorted(self.items())
+        
+        for key, val in sorted_items:
+            # Only display DescribedItem objects (skip internal snapshot data)
+            if not isinstance(val, DescribedItem):
+                continue
+            
+            # Handle arrays/sequences separately for shortening
+            if isinstance(val.value, (collections.abc.Sequence, np.ndarray)):
+                # Check if it has length but is not a string
+                if hasattr(val.value, "__len__") and not isinstance(val.value, str):
+                    shortened_val = self.shorten_display(val.value)
+                    custom_str += f"{key:<35} : {shortened_val}\n"
+                else:
+                    custom_str += f"{key:<35} : {val}\n"
+            else:
+                custom_str += f"{key:<35} : {val}\n"
+        
+        custom_str += "\n" + "-" * 80 + "\n"
+        custom_str += f"Saved snapshot(s): {self.save_count}\n"
+        custom_str += "=" * 80 + "\n"
+        
+        return custom_str
 
     # -------------------------------------------------------------------------
     # (Optional) curve simplification for very long profile arrays
@@ -324,13 +381,11 @@ class DescribedDict(dict):
         Includes special handling for certain long profile arrays (bubble_*, shell_grav_*)
         where we store a simplified representation (and sometimes log-space).
         """
-        # Refresh excluded/persistent sets in case flags changed after insertion
+        # Refresh excluded sets in case flags changed after insertion
         for k, item in self.items():
             if isinstance(item, DescribedItem):
                 if item.exclude_from_snapshot:
                     self._excluded_keys.add(k)
-                if item.isPersistent:
-                    self._persistent_keys.add(k)
 
         new_dict: Dict[str, Any] = {}
         eps = 1e-300  # used for safe log10()
@@ -599,46 +654,74 @@ def updateDict(dictionary: DescribedDict, keys: Sequence[str], values: Sequence[
 
 
 # =============================================================================
-# Quickstart example (commented out)
+# Quick test example
 # =============================================================================
-# if __name__ == "__main__":
-#     # --- Create params container ---
-#     params = DescribedDict()
-#
-#     # Required for snapshotting
-#     params["path2output"] = DescribedItem("./_example_output", info="Output directory")
-#
-#     # Typical scalar parameters
-#     params["t_now"] = DescribedItem(0.0, info="Current time", ori_units="Myr")
-#     params["R2"] = DescribedItem(1.0, info="Bubble radius", ori_units="pc")
-#     params["SB99_mass"] = DescribedItem(1e6, info="SB99 cluster mass", ori_units="Msun")
-#
-#     # Example array parameters
-#     params["small_arr"] = DescribedItem(np.linspace(0, 1, 20), info="Small array")
-#     params["initial_cloud_n_arr"] = DescribedItem(np.ones(5000), info="Large array")
-#
-#     # --- Use numeric formatting without .value ---
-#     def format_e(n):
-#         a = "%E" % n
-#         return a.split("E")[0].rstrip("0").rstrip(".") + "e" + a.split("E")[1].strip("+").strip("0")
-#
-#     SBmass_str = format_e(params["SB99_mass"])  # works because DescribedItem implements __float__
-#     print("SB99 mass string:", SBmass_str)
-#
-#     # --- Save a couple of snapshots ---
-#     for i in range(3):
-#         params["t_now"].value = i * 0.1
-#         params["R2"].value = 1.0 + 0.5 * i
-#         params.save_snapshot()
-#
-#     # Flush any pending snapshots to dictionary.jsonl
-#     params.flush()
-#
-#     # --- Load a snapshot back ---
-#     loaded = DescribedDict.load_snapshot("./_example_output", 1)
-#     print("Loaded t_now:", loaded["t_now"].value)
-#     print("Loaded R2:", loaded["R2"].value)
-#
-#     # Arrays are automatically converted back from lists to numpy arrays
-#     cloud = loaded["initial_cloud_n_arr"].value
-#     print("Loaded initial_cloud_n_arr shape:", cloud.shape)
+if __name__ == "__main__":
+    print("=" * 80)
+    print("Testing DescribedDict")
+    print("=" * 80)
+    
+    # Create params container
+    params = DescribedDict()
+    
+    # Required for snapshotting
+    params["path2output"] = DescribedItem("./_example_output", info="Output directory")
+    
+    # Typical scalar parameters
+    params["t_now"] = DescribedItem(0.0, info="Current time", ori_units="Myr")
+    params["R2"] = DescribedItem(1.0, info="Bubble radius", ori_units="pc")
+    params["SB99_mass"] = DescribedItem(1e6, info="SB99 cluster mass", ori_units="Msun")
+    
+    # Example array parameters: one small, one large
+    params["small_arr"] = DescribedItem(
+        np.linspace(0, 1, 5), 
+        info="Small array (will show all elements)",
+        ori_units="dimensionless"
+    )
+    params["large_arr"] = DescribedItem(
+        np.linspace(0, 100, 50), 
+        info="Large array (will be shortened in display)",
+        ori_units="pc"
+    )
+    
+    # Test alphabetical sorting and array shortening
+    print("\n--- Testing print(params) ---")
+    print(params)
+    
+    # Test that actual array is not modified
+    print("\n--- Verifying actual array length is unchanged ---")
+    print(f"large_arr length: {len(params['large_arr'].value)}")
+    print(f"First 5 elements: {params['large_arr'].value[:5]}")
+    
+    # Test numeric formatting without .value
+    print("\n--- Testing numeric operations without .value ---")
+    def format_e(n):
+        a = "%E" % n
+        return a.split("E")[0].rstrip("0").rstrip(".") + "e" + a.split("E")[1].strip("+").strip("0")
+    
+    SBmass_str = format_e(params["SB99_mass"])  # works because DescribedItem implements __float__
+    print(f"SB99 mass formatted: {SBmass_str}")
+    
+    # Test saving snapshots
+    print("\n--- Testing snapshot saving ---")
+    for i in range(3):
+        params["t_now"].value = i * 0.1
+        params["R2"].value = 1.0 + 0.5 * i
+        params.save_snapshot()
+    
+    # Flush pending snapshots
+    params.flush()
+    
+    # Test loading
+    print("\n--- Testing snapshot loading ---")
+    loaded = DescribedDict.load_snapshot("./_example_output", 1)
+    print(f"Loaded t_now: {loaded['t_now'].value}")
+    print(f"Loaded R2: {loaded['R2'].value}")
+    
+    # Test array loading
+    large = loaded["large_arr"].value
+    print(f"Loaded large_arr shape: {large.shape}")
+    
+    print("\n" + "=" * 80)
+    print("All tests passed!")
+    print("=" * 80)

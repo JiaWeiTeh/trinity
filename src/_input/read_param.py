@@ -2,473 +2,531 @@
 # -*- coding: utf-8 -*-
 """
 Created on Thu Jul 21 09:33:31 2022
+Rewritten: January 2026 - Complete restructure with robust parsing and unit handling
 
 @author: Jia Wei Teh
 
-This script contains a function that reads in parameter file and passes it to TRINITY. 
-The function will also create a summary.txt file in the output directory.
+This script reads parameter files and creates a DescribedDict for TRINITY simulations.
 
+Key features:
+- Reads default.param for all parameter definitions with INFO/UNIT metadata
+- User .param file overrides defaults (missing parameters use defaults)
+- Automatic unit conversion to [Msun, pc, Myr] via unit_conversions.py
+- Inline comment support (e.g., "mCloud 1e6 # cloud mass")
+- Robust error handling with line numbers and helpful messages
+- Each parameter stored as DescribedItem(value, info, ori_units)
 """
 
 import sys
+import os
 from datetime import datetime
 from pathlib import Path
 from fractions import Fraction
-import os
+import numpy as np
 import src._functions.unit_conversions as cvt
 from src._input.dictionary import DescribedItem, DescribedDict
 
-def read_param(path2file, write_summary = True):    
-    """
-    This function takes in the path to .param file, and returns an object containing parameters.
-    Additionally, this function filters out non-useful parameters, then writes
-    useful parameters into a .txt summary file in the output directory.
 
+def read_param(path2file, write_summary=True):
+    """
+    Read parameter file and return DescribedDict with all TRINITY parameters.
+    
     Parameters
     ----------
-    path2file : str
-        Path to the .param file.
-    write_summary: boolean
-        Whether or not to write a summary .txt file.
-
+    path2file : str or Path
+        Path to the user .param file.
+    write_summary : bool, optional
+        Whether to write a summary .txt file in the output directory.
+    
     Returns
     -------
-    params : Object
-        An object describing WARPFIELD parameters.
-        Example: To extract value for `sfe`, simply invoke params.sfe
-
+    params : DescribedDict
+        Dictionary of all parameters as DescribedItem objects.
+        Access values via: params['mCloud'].value
+        Access info via: params['mCloud'].info
+        Access units via: params['mCloud'].ori_units
+    
+    Raises
+    ------
+    ParameterFileError
+        If parameter file has formatting errors or invalid parameters.
+    FileNotFoundError
+        If default.param cannot be found.
     """
     
+    # =============================================================================
+    # Helper function: parse value from string
+    # =============================================================================
     
-    # categorise 'True' to True, '123' to 123, and 'abc' to 'abc'.
-    def parse_value(val):
-        val = val.strip()
-        # Check for boolean
-        if val.lower() == 'true':
+    def parse_value(val_str):
+        """
+        Parse a string value into appropriate Python type.
+        
+        Precedence: boolean → number → fraction → string
+        """
+        val_str = val_str.strip()
+        
+        # Boolean
+        if val_str.lower() == 'true':
             return True
-        elif val.lower() == 'false':
+        elif val_str.lower() == 'false':
             return False
-        # Check for float (or int)
+        
+        # Number (float or int)
         try:
-            num = float(val)
-            return num
+            return float(val_str)
         except ValueError:
-            try: 
-                # It could be a fraction (i.e., 3/5)
-                return float(Fraction(val))
-            except ValueError:
-                # Fallback: treat as string
-                return val
-    
+            pass
+        
+        # Fraction (e.g., 5/3)
+        try:
+            return float(Fraction(val_str))
+        except (ValueError, ZeroDivisionError):
+            pass
+        
+        # String (fallback)
+        return val_str
     
     # =============================================================================
-    # Create list from input
+    # Step 1: Read default.param with INFO and UNIT metadata
     # =============================================================================
     
-    input_dict = {}
+    # Get path to default.param relative to this script
+    script_dir = Path(__file__).parent.resolve()
+    path2default = script_dir.parent.parent / 'param' / 'default.param'
     
-    with open(path2file, "r") as f:
-        filename = Path(f.name).stem
-        for line in f:
-            line = line.strip()
-            if not line or line.startswith("#"):
-                continue  # skip empty lines and comments
-            parts = line.split(None)  # split only on the first whitespace
-            if len(parts) == 2:
-                key, val = parts
-                parsed_val = parse_value(val)
-                input_dict[key] = parsed_val
-            else:
-                raise ParameterFileError(f'Input parameter file formatting error: -> {line}')
-
-    path2default = r'/Users/jwt/unsync/Code/Trinity/param/default.param'
-
+    if not path2default.exists():
+        raise FileNotFoundError(
+            f"Default parameter file not found at: {path2default}\n"
+            f"Expected: <trinity_root>/param/default.param"
+        )
+    
+    # Storage: key -> (info, unit, default_value)
     default_dict = {}
-    with open(path2default, "r") as f:
+    
+    with open(path2default, 'r', encoding='utf-8') as f:
         lines = f.readlines()
-        comment = None
-        unit = None
-        for line in lines:
-            line = line.strip()
-            if line.startswith("# INFO: "):
-                comment = line[len("# INFO: "):]
-            elif line.startswith("# UNIT:"):
-                unit = line[len("# UNIT:"):].strip().replace('[', '').replace(']', '')
-            elif line and not line.startswith("#") and comment:
-                parts = line.strip().split(None)
-                if len(parts) == 2:
-                    key, val = parts
-                    parsed_val = parse_value(val)
-                    default_dict[key] = (comment, unit, parsed_val)
-                    comment = None  # Reset for next entry
-                    unit = None  # Reset for next entry
+        
+        current_info = None
+        current_unit = None
+        
+        for line_num, line in enumerate(lines, start=1):
+            # Remove inline comments
+            if '#' in line:
+                comment_pos = line.find('#')
+                before_comment = line[:comment_pos].strip()
+                full_line = line.strip()
+                
+                # Check if this is an INFO or UNIT line
+                if full_line.startswith('# INFO:'):
+                    current_info = full_line[len('# INFO:'):].strip()
+                    continue
+                elif full_line.startswith('# UNIT:'):
+                    current_unit = full_line[len('# UNIT:'):].strip()
+                    # Remove surrounding brackets if present
+                    current_unit = current_unit.strip('[]').strip()
+                    continue
                 else:
-                    raise ParameterFileError(f'Default parameter file formatting error: -> {line}')
+                    # Regular line with inline comment
+                    line = before_comment
+            else:
+                line = line.strip()
+            
+            # Skip empty lines
+            if not line:
+                continue
+            
+            # Parse parameter line (format: key value)
+            parts = line.split(None, 1)  # Split on first whitespace only
+            
+            if len(parts) != 2:
+                continue  # Skip malformed lines in default.param
+            
+            key, val_str = parts
+            value = parse_value(val_str)
+            
+            # Store with metadata
+            info = current_info if current_info else "INFO not specified"
+            unit = current_unit if current_unit else None
+            default_dict[key] = (info, unit, value)
+            
+            # Reset metadata for next parameter
+            current_info = None
+            current_unit = None
     
+    print(f"Loaded {len(default_dict)} parameters from default.param")
     
-    # Step1: check keys exist. 
-    # Step2: merge two libraries
-    for key, new_val in input_dict.items():
-        if key not in default_dict.keys():
-            raise ParameterFileError(f"Parameter '{key}' does not exist.")
+    # =============================================================================
+    # Step 2: Read user parameter file
+    # =============================================================================
+    
+    user_dict = {}
+    
+    with open(path2file, 'r', encoding='utf-8') as f:
+        filename = Path(f.name).stem
+        
+        for line_num, line in enumerate(f, start=1):
+            # Remove inline comments
+            if '#' in line:
+                line = line[:line.find('#')]
+            
+            line = line.strip()
+            
+            # Skip empty lines
+            if not line:
+                continue
+            
+            # Parse parameter line
+            parts = line.split(None, 1)
+            
+            if len(parts) != 2:
+                raise ParameterFileError(
+                    f"{Path(path2file).name}, line {line_num}: "
+                    f"Expected format 'key value', got: '{line}'"
+                )
+            
+            key, val_str = parts
+            value = parse_value(val_str)
+            user_dict[key] = value
+    
+    print(f"Loaded {len(user_dict)} parameters from {Path(path2file).name}")
+    
+    # =============================================================================
+    # Step 3: Validate user parameters and merge with defaults
+    # =============================================================================
+    
+    # Check that all user-specified keys exist in default.param
+    invalid_keys = []
+    for key in user_dict.keys():
+        if key not in default_dict:
+            invalid_keys.append(key)
+    
+    if invalid_keys:
+        available = ', '.join(sorted(default_dict.keys())[:10])
+        raise ParameterFileError(
+            f"Invalid parameter(s) in {Path(path2file).name}: {', '.join(invalid_keys)}\n"
+            f"Available parameters include: {available}..."
+        )
+    
+    # Merge: user values override defaults
+    merged_dict = {}
+    for key, (info, unit, default_val) in default_dict.items():
+        if key in user_dict:
+            # User specified this parameter
+            value = user_dict[key]
+            merged_dict[key] = (info, unit, value)
         else:
-            comment, unit, ori_val = default_dict[key]
-            default_dict[key] = (comment, unit, new_val)
-            
+            # Use default
+            merged_dict[key] = (info, unit, default_val)
     
-    param = DescribedDict()
+    # Report which parameters were overridden
+    overridden = [k for k in user_dict.keys()]
+    if overridden:
+        print(f"Overridden {len(overridden)} parameters from user file")
     
-    # Step3: change default parameter units into astronomy units (_au; e.g., s = Myr, cm = pc, g = Msun)
-    for key, (comment, unit, val) in default_dict.items():
+    # =============================================================================
+    # Step 4: Create DescribedDict with unit conversions
+    # =============================================================================
+    
+    params = DescribedDict()
+    
+    for key, (info, unit, value) in merged_dict.items():
+        # Convert units to astronomy units [Msun, pc, Myr]
+        conversion_factor = cvt.convert2au(unit)
+        print(value, conversion_factor)
+        converted_value = value * conversion_factor
         
-        factor = cvt.convert2au(unit)
-        param[key] = DescribedItem(val * factor, comment, unit)
-      
-    # print(param)
-    # import sys
-    # sys.exit()
-
-    # =============================================================================
-    # Check with default parameters
-    # =============================================================================
+        # Create DescribedItem
+        unit_str = unit if unit else "UNIT not specified"
+        params[key] = DescribedItem(
+            value=converted_value,
+            info=info,
+            ori_units=unit_str
+        )
     
-    # TODO: remove _summary. Provide only the yaml file, and then 
-    # make a python file that turns it into something that is human-readable!
-    # Then, print in terminal that there is two files, one yaml, one for human.
-    
+    print(f"Created DescribedDict with {len(params)} parameters")
     
     # =============================================================================
-    # Check if parameters given in .param file makes sense
+    # Step 5: Validate critical parameters
     # =============================================================================
-    # First, for parameters specified in .param file, update dictionary and use the
-    # specified values instead of the default.
     
-    # TODO:
-        # What do if randomised? Should show both randomised range, and randomised result. 
+    # Check metallicity
+    if params['ZCloud'].value != 1:
+        raise ParameterFileError(
+            f"Metallicity Z={params['ZCloud'].value} not implemented. "
+            f"Currently only Z=1 (solar) is supported."
+        )
     
-    # TODO
-    # give warning if parameter does not make sense
-    # input_warnings.input_warnings(params_dict)
-    
-    # warnings
-    if param['ZCloud'] != 1:
-        raise ParameterFileError(f"metallicity of {param['ZCloud'].value} is not implemented.")
+    # Validate density profile
+    if params['dens_profile'].value not in ['densBE', 'densPL']:
+        raise ParameterFileError(
+            f"Invalid dens_profile '{params['dens_profile'].value}'. "
+            f"Must be 'densBE' or 'densPL'."
+        )
     
     # =============================================================================
-    # Here we deal with additional parameters that will be recorded in summary.txt.
-    # For those that are not recorded, scroll down to the final section of this 
-    # script.
+    # Step 6: Compute derived parameters
     # =============================================================================
-    # We have assumed the dust cross section scales linearly with metallicity. However,
-    # below a certain metallicity, there is no dust
-    if param['ZCloud'] >= param['dust_noZ']:
-        param['dust_sigma'].value = param['dust_sigma'] * param['ZCloud']
+    
+    # Dust cross-section scaling with metallicity
+    if params['ZCloud'].value >= params['dust_noZ'].value:
+        params['dust_sigma'].value = params['dust_sigma'].value * params['ZCloud'].value
     else:
-        param['dust_sigma'].value = 0
-        
-    # print(param['model_name'])
-    # print(param['dust_sigma'])
+        params['dust_sigma'].value = 0
     
-    # param['test'] = 1
-
-    # if model name is not given, assume same name as filename.
-    if param['model_name'].value == "default":
-        param['model_name'].value = filename
-
+    # Use filename as model name if not specified
+    if params['model_name'].value == "default":
+        params['model_name'].value = filename
+    
+    # Cluster and cloud masses after star formation
+    mCluster = params['mCloud'].value * params['sfe'].value
+    mCloud_after_SF = params['mCloud'].value - mCluster
+    params['mCloud'].value = mCloud_after_SF
+    params['mCluster'] = DescribedItem(
+        value=mCluster,
+        info="Cluster mass (mCloud * sfe)",
+        ori_units="Msun"
+    )
+    
     # =============================================================================
-    # Store only useful parameters into the summary.txt file
+    # Step 7: Set up directory paths
     # =============================================================================
-    # First, grab directories
-    # 1. Output directory:
-    if param['path2output'] == 'def_dir':
-        # If user did not specify, the directory will be set as ./outputs/ 
-        # check if directory exists; if not, create one.
-        # TODO: Add smart system that adds 1, 2, 3 if repeated default to avoid overwrite.
-        path2output = os.path.join(os.getcwd(), 'outputs/'+param['model_name']+'/')
-        Path(path2output).mkdir(parents=True, exist_ok = True)
-        param['path2output'].value = path2output
+    
+    # Output directory
+    if params['path2output'].value == 'def_dir':
+        path2output = os.path.join(os.getcwd(), 'outputs', params['model_name'].value)
+        Path(path2output).mkdir(parents=True, exist_ok=True)
+        params['path2output'].value = path2output
     else:
-        # if instead given a path, then use that instead
-        path2output = str(param['out_dir'])
-        Path(path2output).mkdir(parents=True, exist_ok = True)
-        param['path2output'].value = path2output
+        path2output = str(params['path2output'].value)
+        Path(path2output).mkdir(parents=True, exist_ok=True)
+        params['path2output'].value = path2output
     
-    # TODO: put into environment(?). This is the only one that matters.
-    
-    
-    # 2. Cooling table directory - nonCIE:
-    if param['path_cooling_nonCIE'] == 'def_dir':
-        # If user did not specify, the directory will be set as ./lib/cooling/opiate/
-        path2cooling_nonCIE = os.path.join(os.getcwd(), 'lib/cooling/opiate/')
-        param['path_cooling_nonCIE'].value = path2cooling_nonCIE
+    # Cooling directory - non-CIE
+    if params['path_cooling_nonCIE'].value == 'def_dir':
+        params['path_cooling_nonCIE'].value = os.path.join(os.getcwd(), 'lib/cooling/opiate/')
     else:
-        # if instead given a path, then use that instead
-        path2cooling_nonCIE = str(param['path_cooling_nonCIE'])
-        Path(path2cooling_nonCIE).mkdir(parents=True, exist_ok = True)
-        param['path_cooling_nonCIE'].value = path2cooling_nonCIE
-        
-    # 3. Cooling table directory - CIE:
-    if param['ZCloud'] == 1:
-        # option 1, 2, 3 are for solar metallicity
-        if param['path_cooling_CIE'] == 1:
-            # If user did not specify, the directory will be set as ./lib/cooling/CIE/
-            param['path_cooling_CIE'].value = os.path.join(os.getcwd(), 'lib/cooling/CIE/coolingCIE_1_Cloudy.dat')
-        elif param['path_cooling_CIE'] == 2:
-            # If user did not specify, the directory will be set as ./lib/cooling/CIE/
-            param['path_cooling_CIE'].value = os.path.join(os.getcwd(), 'lib/cooling/CIE/coolingCIE_2_Cloudy_grains.dat')
-        elif param['path_cooling_CIE'] == 3:
-            # If user did not specify, the directory will be set as ./lib/cooling/CIE/
-            param['path_cooling_CIE'].value = os.path.join(os.getcwd(), 'lib/cooling/CIE/coolingCIE_3_Gnat-Ferland2012.dat')
-    elif param['ZCloud'] == 0.15:
-        param['path_cooling_CIE'].value = os.path.join(os.getcwd(), 'lib/cooling/CIE/coolingCIE_4_Sutherland-Dopita1993.dat')
+        path_cooling = str(params['path_cooling_nonCIE'].value)
+        Path(path_cooling).mkdir(parents=True, exist_ok=True)
+        params['path_cooling_nonCIE'].value = path_cooling
+    
+    # Cooling directory - CIE
+    if params['ZCloud'].value == 1:
+        cie_files = {
+            1: 'lib/cooling/CIE/coolingCIE_1_Cloudy.dat',
+            2: 'lib/cooling/CIE/coolingCIE_2_Cloudy_grains.dat',
+            3: 'lib/cooling/CIE/coolingCIE_3_Gnat-Ferland2012.dat'
+        }
+        cie_choice = int(params['path_cooling_CIE'].value)
+        if cie_choice in cie_files:
+            params['path_cooling_CIE'].value = os.path.join(os.getcwd(), cie_files[cie_choice])
+    elif params['ZCloud'].value == 0.15:
+        params['path_cooling_CIE'].value = os.path.join(
+            os.getcwd(), 'lib/cooling/CIE/coolingCIE_4_Sutherland-Dopita1993.dat'
+        )
+    
+    # Starburst99 directory
+    if params['path_sps'].value == 'def_dir':
+        params['path_sps'].value = os.path.join(os.getcwd(), 'lib/sps/starburst99/')
     else:
-        # if instead given a path, then use that instead
-        path2cooling_CIE = str(param['path_cooling_CIE'])
-        Path(path2cooling_CIE).mkdir(parents=True, exist_ok = True)
-        param['path2cooling_CIE'].value = path2cooling_CIE
-        
-    # 4. Starburst99 (sps) table directory:
-    if param['path_sps'] == 'def_dir':
-        # If user did not specify, the directory will be set as ./lib/sps/starburst99/
-        path2sps = os.path.join(os.getcwd(), 'lib/sps/starburst99/')
-        param['path_sps'].value = path2sps
-    else:
-        # if instead given a path, then use that instead
-        path2sps = str(param['path_sps'])
-        Path(path2sps).mkdir(parents=True, exist_ok = True)
-        param['path_sps'].value = path2sps        
-        
-    # ----
+        path_sps = str(params['path_sps'].value)
+        Path(path_sps).mkdir(parents=True, exist_ok=True)
+        params['path_sps'].value = path_sps
     
-    # Then, organise dictionary so that it does not include useless info
-    
-    # Remove unrelated parameters depending on selected density profile
-    
-    if param['dens_profile'].value not in ['densBE', 'densPL']:
-        raise ParameterFileError(f"{param['dens_profile']} not in \'dens_profile\'")
-    
-    if param['dens_profile'] == 'densBE':
-        param.pop('densPL_alpha')
-        param['densBE_Omega'].exclude_from_snapshot = True
-        
-        param['densBE_Teff'] = DescribedItem(0, 'Effective temperature of BE sphere.')
-        param['densBE_xi_arr'] = DescribedItem([], 'see solve_laneEmden in bonnoEbertSphere.py')
-        param['densBE_u_arr'] = DescribedItem([], 'see solve_laneEmden in bonnoEbertSphere.py')
-        param['densBE_dudxi_arr'] = DescribedItem([], 'see solve_laneEmden in bonnoEbertSphere.py')
-        param['densBE_rho_rhoc_arr'] = DescribedItem([], 'see solve_laneEmden in bonnoEbertSphere.py') 
-        param['densBE_f_rho_rhoc'] = DescribedItem(0, 'interpolation function for density contrase from LE-equation.')
-
-
-    elif param['dens_profile'] == 'densPL':
-        param.pop('densBE_Omega')
-        param['densPL_alpha'].exclude_from_snapshot = True
-        
-        
-    # ----
-    
-    # ----
-        
-    # datetime object containing current date and time
-    now = datetime.now()
-    # dd/mm/YY H:M:S
-    dt_string = now.strftime("%d/%m/%Y %H:%M:%S")
-    # Store into summary file as output.
-    if write_summary:
-        with open(path2output+param['model_name']+'_summary.txt', 'w') as f:
-            # header
-            f.writelines('\
-# =============================================================================\n\
-# Summary of parameters in the \'%s\' run. Values are in units of [Myr, Msun, pc].\n\
-# Created at %s.\n\
-# =============================================================================\n\n\
-'%(param['model_name'].value, dt_string))
-            # body
-            for key, val in param.items():
-                f.writelines(key+'    '+"".join(str(val.value))+'\n')
-            # close 
-            f.close()
-   
     # =============================================================================
-    # This section contains information which you do not want to appear in the 
-    # final summary.txt file, but want it included. Mostly mini-conversions.
+    # Step 8: Handle density profile-specific parameters
     # =============================================================================
-            
-    # TODO:
-    # Here we deal with tStop based on units. If the unit is Myr, then
-    # tStop is tStop. If it is in free-frall time, then we need to change
-    # to a proper unit of time. Add a parameter 'tff' that calculates the 
-    # free-fall time. This may be used even if stop_t_unit is not in tff time, 
-    # as it may be called if mult_SF = 2, where the second startburst is
-    # characterised by the free-fall time.
-    # tff = np.sqrt(3. * np.pi / (32. * c.G.cgs.value * params_dict['dens_navg_pL'] * params_dict['mu_n'])) * u.s.to(u.Myr)
-    # params_dict['tff'] = float(tff)
-    # if params_dict['stop_t_unit'] == 'tff':
-        # params_dict['stop_t'] = params_dict['stop_t'] * params_dict['tff']
-    # elif params_dict['stop_t_unit'] == 'Myr':
-        # params_dict['stop_t'] = params_dict['stop_t'] 
-    # if params_dict['stop_t_unit'] == 'Myr', it is fine; Myr is also the 
-    # unit in all other calculations.
     
-    # ----
+    if params['dens_profile'].value == 'densBE':
+        # Bonnor-Ebert sphere
+        params.pop('densPL_alpha')
+        params['densBE_Omega'].exclude_from_snapshot = True
+        
+        # Add BE-specific runtime parameters
+        params['densBE_Teff'] = DescribedItem(0, info="Effective temperature of BE sphere", ori_units="K")
+        params['densBE_xi_arr'] = DescribedItem([], info="Lane-Emden xi array", ori_units="dimensionless")
+        params['densBE_u_arr'] = DescribedItem([], info="Lane-Emden u array", ori_units="dimensionless")
+        params['densBE_dudxi_arr'] = DescribedItem([], info="Lane-Emden du/dxi array", ori_units="dimensionless")
+        params['densBE_rho_rhoc_arr'] = DescribedItem([], info="Density contrast array", ori_units="dimensionless")
+        params['densBE_f_rho_rhoc'] = DescribedItem(0, info="Interpolation function for density contrast", ori_units="dimensionless")
     
-    # Here we calculate mCloud 
-    # cluster mass
-    mCluster = param['mCloud'] * param['sfe']
-    # cloud mass after SF
-    mCloud = param['mCloud'] - mCluster
-    # save
-    param['mCloud'].value = mCloud
-    param['mCluster'] = DescribedItem(mCluster, 'Cluster mass')
+    elif params['dens_profile'].value == 'densPL':
+        # Power-law
+        params.pop('densBE_Omega')
+        params['densPL_alpha'].exclude_from_snapshot = True
     
-    # exclude snapshots?
-    for key, val in param.items():
-        # only keep track of these. The rest in initial file are just constants that 
-        # will not change, and makes no sense to keep track and waste memory.
-        if key not in ['model_name', 'mCloud', 'cool_alpha', 'cool_beta', 'cool_delta']:
+    # =============================================================================
+    # Step 9: Set snapshot exclusions for constants
+    # =============================================================================
+    
+    # Only track time-varying quantities in snapshots
+    # Exclude initial conditions and constants to save memory
+    time_varying_keys = ['model_name', 'mCloud', 'cool_alpha', 'cool_beta', 'cool_delta']
+    
+    for key, val in params.items():
+        if key not in time_varying_keys:
             val.exclude_from_snapshot = True
+    
+    # =============================================================================
+    # Step 10: Initialize runtime parameters (not from .param files)
+    # =============================================================================
+    
+    # Simulation state
+    params['current_phase'] = DescribedItem('', info="Current simulation phase: energy/implicit/transition/momentum", ori_units="N/A")
+    params['EndSimulationDirectly'] = DescribedItem(False, info="Flag to immediately end simulation", ori_units="N/A")
+    params['SimulationEndReason'] = DescribedItem('', info="Reason for simulation completion", ori_units="N/A")
+    params['EarlyPhaseApproximation'] = DescribedItem(True, info="Using approximations for early phase?", ori_units="N/A")
+    
+    # Time tracking
+    params['tSF'] = DescribedItem(0, info="Time of star formation", ori_units="Myr")
+    params['t_now'] = DescribedItem(0, info="Current simulation time", ori_units="Myr")
+    
+    # Main bubble parameters
+    params['v2'] = DescribedItem(0, info="Velocity at outer bubble/inner shell radius", ori_units="pc/Myr")
+    params['R2'] = DescribedItem(0, info="Outer bubble/inner shell radius", ori_units="pc")
+    params['T0'] = DescribedItem(0, info="Bubble temperature at R2", ori_units="K")
+    params['Eb'] = DescribedItem(0, info="Bubble energy", ori_units="Msun*pc**2/Myr**2")
+    params['R1'] = DescribedItem(0, info="Inner bubble radius", ori_units="pc")
+    params['Pb'] = DescribedItem(0, info="Bubble pressure", ori_units="Msun/Myr**2/pc")
+    params['c_sound'] = DescribedItem(0, info="Sound speed", ori_units="pc/Myr")
+    
+    # Arrays for shell mass interpolation
+    params['t_next'] = DescribedItem(0, info="Next time for mShell interpolation", ori_units="Myr", exclude_from_snapshot=False)
+    params['array_t_now'] = DescribedItem([], info="Time array for mShell interpolation", ori_units="Myr", exclude_from_snapshot=False)
+    params['array_R2'] = DescribedItem([], info="R2 array for mShell interpolation", ori_units="pc", exclude_from_snapshot=False)
+    params['array_R1'] = DescribedItem([], info="R1 array for mShell interpolation", ori_units="pc", exclude_from_snapshot=False)
+    params['array_v2'] = DescribedItem([], info="v2 array for mShell interpolation", ori_units="pc/Myr", exclude_from_snapshot=False)
+    params['array_T0'] = DescribedItem([], info="T0 array for mShell interpolation", ori_units="K", exclude_from_snapshot=False)
+    params['array_mShell'] = DescribedItem([], info="Shell mass array", ori_units="Msun", exclude_from_snapshot=False)
+    params['array_mShellDot'] = DescribedItem([], info="Shell mass rate array", ori_units="Msun/Myr", exclude_from_snapshot=False)
+    
+    # Cloud and shell geometry
+    params['rCloud'] = DescribedItem(0, info="Cloud radius", ori_units="pc")
+    params['rShell'] = DescribedItem(0, info="Shell outer radius", ori_units="pc")
+    params['nEdge'] = DescribedItem(0, info="Number density at cloud edge", ori_units="1/pc**3")
+    
+    # Feedback from Starburst99
+    params['SB99_data'] = DescribedItem(0, info="SB99 datacube", ori_units="N/A", exclude_from_snapshot=True)
+    params['SB99f'] = DescribedItem(0, info="SB99 interpolation function", ori_units="N/A", exclude_from_snapshot=True)
+    params['LWind'] = DescribedItem(0, info="Wind mechanical luminosity", ori_units="Msun*pc**2/Myr**3")
+    params['Qi'] = DescribedItem(0, info="Ionizing photon rate", ori_units="1/Myr")
+    params['vWind'] = DescribedItem(0, info="Terminal wind velocity", ori_units="pc/Myr")
+    params['pWindDot'] = DescribedItem(0, info="Wind momentum rate", ori_units="Msun*pc/Myr**2")
+    params['pWindDotDot'] = DescribedItem(0, info="Rate of wind momentum rate", ori_units="Msun*pc/Myr**3")
+    params['Lbol'] = DescribedItem(0, info="Bolometric luminosity", ori_units="Msun*pc**2/Myr**3")
+    params['Ln'] = DescribedItem(0, info="Non-ionizing luminosity", ori_units="Msun*pc**2/Myr**3")
+    params['Li'] = DescribedItem(0, info="Ionizing luminosity", ori_units="Msun*pc**2/Myr**3")
+    
+    # Cooling
+    params['t_previousCoolingUpdate'] = DescribedItem(1e30, info="Time of previous cooling update", ori_units="Myr")
+    params['cStruc_cooling_nonCIE'] = DescribedItem(0, info="Non-CIE cooling cube", ori_units="N/A", exclude_from_snapshot=True)
+    params['cStruc_heating_nonCIE'] = DescribedItem(0, info="Non-CIE heating cube", ori_units="N/A", exclude_from_snapshot=True)
+    params['cStruc_net_nonCIE_interpolation'] = DescribedItem(0, info="Non-CIE net cooling interpolation", ori_units="N/A", exclude_from_snapshot=True)
+    params['cStruc_cooling_CIE_logT'] = DescribedItem(0, info="CIE log temperature array", ori_units="N/A", exclude_from_snapshot=True)
+    params['cStruc_cooling_CIE_logLambda'] = DescribedItem(0, info="CIE log lambda array", ori_units="N/A", exclude_from_snapshot=True)
+    params['cStruc_cooling_CIE_interpolation'] = DescribedItem(0, info="CIE cooling interpolation", ori_units="N/A", exclude_from_snapshot=True)
+    
+    # Shell properties
+    params['shell_fAbsorbedIon'] = DescribedItem(1, info="Fraction of absorbed ionizing radiation", ori_units="dimensionless")
+    params['shell_fAbsorbedNeu'] = DescribedItem(0, info="Fraction of absorbed non-ionizing radiation", ori_units="dimensionless")
+    params['shell_fAbsorbedWeightedTotal'] = DescribedItem(0, info="Total absorption fraction (luminosity weighted)", ori_units="dimensionless")
+    params['shell_fIonisedDust'] = DescribedItem(0, info="Ionized dust fraction", ori_units="dimensionless")
+    params['shell_F_rad'] = DescribedItem(0, info="Radiation pressure on shell", ori_units="Msun*pc/Myr**2")
+    params['shell_thickness'] = DescribedItem(0, info="Shell thickness", ori_units="pc")
+    params['shell_nMax'] = DescribedItem(0, info="Maximum shell density", ori_units="1/pc**3")
+    params['shell_tauKappaRatio'] = DescribedItem(0, info="tau_IR / kappa_IR ratio", ori_units="Msun/pc**2")
+    params['shell_grav_r'] = DescribedItem(np.array([]), info="Radius array for gravitational calculations", ori_units="pc")
+    params['shell_grav_phi'] = DescribedItem(np.array([]), info="Gravitational potential", ori_units="pc**2/Myr**2")
+    params['shell_grav_force_m'] = DescribedItem(np.array([]), info="Gravitational force per unit mass", ori_units="pc/Myr**2")
+    params['shell_mass'] = DescribedItem(0, info="Shell mass", ori_units="Msun")
+    params['shell_massDot'] = DescribedItem(0, info="Shell mass accretion rate", ori_units="Msun/Myr")
+    params['shell_interpolate_massDot'] = DescribedItem(False, info="Use shell mass interpolation?", ori_units="N/A")
+    params['shell_n0'] = DescribedItem(0, info="Shell inner density (pressure balance)", ori_units="1/pc**3")
+    
+    # Forces on shell
+    params['F_grav'] = DescribedItem(0, info="Gravitational force", ori_units="Msun*pc/Myr**2")
+    params['F_SN'] = DescribedItem(0, info="Supernova force", ori_units="Msun*pc/Myr**2")
+    params['F_ram'] = DescribedItem(0, info="Ram pressure force (from Pb-Eb relation)", ori_units="Msun*pc/Myr**2")
+    params['F_ram_wind'] = DescribedItem(0, info="Wind ram pressure force (from SB99)", ori_units="Msun*pc/Myr**2")
+    params['F_ram_SN'] = DescribedItem(0, info="SN ram pressure force (from SB99)", ori_units="Msun*pc/Myr**2")
+    params['F_wind'] = DescribedItem(0, info="Wind force", ori_units="Msun*pc/Myr**2")
+    params['F_ion_in'] = DescribedItem(0, info="Inward photoionization pressure", ori_units="Msun*pc/Myr**2")
+    params['F_ion_out'] = DescribedItem(0, info="Outward photoionization pressure", ori_units="Msun*pc/Myr**2")
+    params['F_rad'] = DescribedItem(0, info="Radiation pressure", ori_units="Msun*pc/Myr**2")
+    params['F_ISM'] = DescribedItem(0, info="ISM pressure", ori_units="Msun*pc/Myr**2")
+    
+    # Bubble structure
+    params['bubble_LTotal'] = DescribedItem(0, info="Total luminosity lost to cooling", ori_units="Msun*pc**2/Myr**3")
+    params['bubble_L1Bubble'] = DescribedItem(0, info="Cooling in bubble zone", ori_units="Msun*pc**2/Myr**3")
+    params['bubble_L2Conduction'] = DescribedItem(0, info="Cooling in conduction zone", ori_units="Msun*pc**2/Myr**3")
+    params['bubble_L3Intermediate'] = DescribedItem(0, info="Cooling in intermediate zone", ori_units="Msun*pc**2/Myr**3")
+    params['bubble_Tavg'] = DescribedItem(0, info="Average bubble temperature", ori_units="K")
+    params['bubble_mass'] = DescribedItem(0, info="Bubble mass", ori_units="Msun")
+    params['bubble_r_Tb'] = DescribedItem(0, info="Radius at bubble_xi_Tb * R2", ori_units="pc")
+    params['bubble_T_r_Tb'] = DescribedItem(0, info="Temperature at r_Tb", ori_units="K")
+    
+    # Bubble structure arrays
+    params['bubble_r_arr'] = DescribedItem(np.array([]), info="Bubble radius structure", ori_units="pc")
+    params['bubble_v_arr'] = DescribedItem(np.array([]), info="Bubble velocity structure", ori_units="pc/Myr")
+    params['bubble_T_arr'] = DescribedItem(np.array([]), info="Bubble temperature structure", ori_units="K")
+    params['bubble_dTdr_arr'] = DescribedItem(np.array([]), info="Bubble temperature gradient", ori_units="K/pc")
+    params['bubble_n_arr'] = DescribedItem(np.array([]), info="Bubble density structure", ori_units="1/pc**3")
+    params['bubble_dMdtGuess'] = DescribedItem(0, info="Bubble dM/dt guess", ori_units="Msun/Myr")
+    params['bubble_dMdt'] = DescribedItem(np.nan, info="Bubble mass loss rate (thermal conduction)", ori_units="Msun/Myr")
+    params['bubble_Lgain'] = DescribedItem(np.nan, info="Luminosity gain from winds", ori_units="Msun*pc**2/Myr**3")
+    params['bubble_Lloss'] = DescribedItem(np.nan, info="Luminosity loss from cooling/leaking", ori_units="Msun*pc**2/Myr**3")
+    params['bubble_Leak'] = DescribedItem(0, info="Leaking luminosity", ori_units="Msun*pc**2/Myr**3")
+    
+    # State flags
+    params['isCollapse'] = DescribedItem(False, info="Is cloud collapsing?", ori_units="N/A")
+    params['isDissolved'] = DescribedItem(False, info="Has shell dissolved?", ori_units="N/A")
+    
+    # Initial cloud profiles
+    params['initial_cloud_n_arr'] = DescribedItem([], info="Initial cloud density profile", ori_units="1/pc**3")
+    params['initial_cloud_m_arr'] = DescribedItem([], info="Initial cloud mass profile", ori_units="Msun")
+    params['initial_cloud_r_arr'] = DescribedItem([], info="Initial cloud radius profile", ori_units="pc")
+    
+    # Diagnostic residuals
+    params['residual_deltaT'] = DescribedItem(0, info="Temperature residual (T1-T2)/T2", ori_units="dimensionless")
+    params['residual_betaEdot'] = DescribedItem(0, info="Energy rate residual", ori_units="dimensionless")
+    params['residual_Edot1_guess'] = DescribedItem(np.nan, info="Edot from beta", ori_units="Msun*pc**2/Myr**3")
+    params['residual_Edot2_guess'] = DescribedItem(np.nan, info="Edot from energy balance", ori_units="Msun*pc**2/Myr**3")
+    params['residual_T1_guess'] = DescribedItem(np.nan, info="T from bubble_Trgoal", ori_units="K")
+    params['residual_T2_guess'] = DescribedItem(np.nan, info="T from T0", ori_units="K")
+    
+    # =============================================================================
+    # Step 11: Write summary file
+    # =============================================================================
+    
+    if write_summary:
+        now = datetime.now()
+        dt_string = now.strftime("%d/%m/%Y %H:%M:%S")
+        summary_path = os.path.join(path2output, f"{params['model_name'].value}_summary.txt")
+        
+        with open(summary_path, 'w', encoding='utf-8') as f:
+            f.write(f"# {'=' * 77}\n")
+            f.write(f"# Summary of parameters for run: '{params['model_name'].value}'\n")
+            f.write(f"# Units: [Msun, pc, Myr] unless otherwise specified\n")
+            f.write(f"# Created: {dt_string}\n")
+            f.write(f"# {'=' * 77}\n\n")
             
-    param['current_phase'] = DescribedItem('', 'Which phase is the simulation in? energy, implicit, transition, momentum')
-    param['EndSimulationDirectly'] = DescribedItem(False, 'Immediately end simulation')
-    param['SimulationEndReason'] = DescribedItem('', 'What caused simulation to complete')
-    param['EarlyPhaseApproximation'] = DescribedItem(True, 'Approximations? e.g., calculate shell, calculate mShellDot.')
-
+            for key, item in params.items():
+                f.write(f"{key:<30}  {item.value}\n")
+        
+        print(f"Summary written to: {summary_path}")
     
-    import numpy as np
-    # add tSF to track for multi expansion
-    param['tSF'] = DescribedItem(0, 'Time of star formation.')
-    # track most important bubble parameters:
-    param['t_now'] = DescribedItem(0, 'Myr. Current time.')
-    param['v2'] = DescribedItem(0, 'pc/Myr. Velocity at outer bubble/inner shell radius.')
-    param['R2'] = DescribedItem(0, 'pc. Outer bubble/inner shell radius.')
-    param['T0'] = DescribedItem(0, 'K. This is current T_rgoal in bubble_luminosity.')
-    param['Eb'] = DescribedItem(0,  'Msun*pc2/Myr2. Bubble energy.')
-    param['R1'] = DescribedItem(0, 'pc. Inner radius of bubble')
-    param['Pb'] = DescribedItem(0, 'Msun/Myr2/pc. Bubble pressure')    
-    param['c_sound'] = DescribedItem(0, 'Sound speed.')
-    # --
-    param['t_next'] = DescribedItem(0, 'for calculation of mShell interpolation.', exclude_from_snapshot = False)
-    param['array_t_now'] = DescribedItem([], 'store variable into an array for mShell interpolation calculation', exclude_from_snapshot = False)
-    param['array_R2'] = DescribedItem([], 'store variable into an array for mShell interpolation calculation', exclude_from_snapshot = False)
-    param['array_R1'] = DescribedItem([], 'store variable into an array for mShell interpolation calculation', exclude_from_snapshot = False)
-    param['array_v2'] = DescribedItem([], 'store variable into an array for mShell interpolation calculation', exclude_from_snapshot = False)
-    param['array_T0'] = DescribedItem([], 'store variable into an array for mShell interpolation calculation', exclude_from_snapshot = False)
-    param['array_mShell'] = DescribedItem([], 'store variable into an array for mShell interpolation calculation', exclude_from_snapshot = False)
-    param['array_mShellDot'] = DescribedItem([], 'store variable into an array for mShell interpolation calculation', exclude_from_snapshot = False)
-    
-    # --
-    param['rCloud'] = DescribedItem(0, 'Cloud radius')
-    param['rShell'] = DescribedItem(0, 'Shell outer radius')
-    param['nEdge'] = DescribedItem(0, 'Number density at cloud radius')
-    
-    # feedback values from SB99
-    param['SB99_data'] = DescribedItem(0, 'SB99 datacube from read_SB99.py', exclude_from_snapshot = True)
-    param['SB99f'] = DescribedItem(0, 'SB99 interpolation function from read_SB99.py', exclude_from_snapshot = True)
-    # --
-    param['LWind'] = DescribedItem(0, 'Msun*pc2/Myr3. wind mechanical luminosity')
-    param['Qi'] = DescribedItem(0, '/Myr. Ionising photon rate.')
-    param['vWind'] = DescribedItem(0, 'pc/Myr. Terminal wind velocity')
-    param['pWindDot'] = DescribedItem(0, 'Msun*pc/Myr2. Wind momentum rate')
-    param['pWindDotDot'] = DescribedItem(0, 'Msun*pc/Myr3. Rate of wind momentum rate.')
-    param['Lbol'] = DescribedItem(0,  'Msun*pc2/Myr3. Bolometric luminosity.') 
-    param['Ln'] = DescribedItem(0,  'Msun*pc2/Myr3. Non-ionizing luminosity Lbol*(1-fi).') 
-    param['Li'] = DescribedItem(0,  'Msun*pc2/Myr3. Ionizing luminosity Lbol*fi.') 
-    # cooling
-    param['t_previousCoolingUpdate'] = DescribedItem(1e30, 'Myr. At what time is the previous cooling update?')
-    param['cStruc_cooling_nonCIE'] = DescribedItem(0, 'non-CIE, cooling cube', exclude_from_snapshot = True)
-    param['cStruc_heating_nonCIE'] = DescribedItem(0, 'non-CIE, heating cube', exclude_from_snapshot = True)
-    param['cStruc_net_nonCIE_interpolation'] = DescribedItem(0, 'non-CIE, netcooling cube interpolations', exclude_from_snapshot = True)
-    # --
-    param['cStruc_cooling_CIE_logT'] = DescribedItem(0, 'CIE structure log temperature', exclude_from_snapshot = True)
-    param['cStruc_cooling_CIE_logLambda'] = DescribedItem(0, 'CIE structure log lambda values', exclude_from_snapshot = True)
-    param['cStruc_cooling_CIE_interpolation'] = DescribedItem(0, 'CIE structure interpolations', exclude_from_snapshot = True)
- 
-    # shell
-    param['shell_fAbsorbedIon'] = DescribedItem(1, 'Fraction of absorbed ionizing radiations')
-    param['shell_fAbsorbedNeu'] = DescribedItem(0, 'Fraction of absorbed non-ionizing radiations')
-    param['shell_fAbsorbedWeightedTotal'] = DescribedItem(0, 'Total absorption fraction, defined as luminosity weighted average of shell_fAbsorbedIon and shell_fAbsorbedNeu')
-    param['shell_fIonisedDust'] = DescribedItem(0, 'unitless')
-    param['shell_F_rad'] = DescribedItem(0, 'Radiation pressure coupled to the shell. f_abs * Lbol / c')
-    param['shell_thickness'] = DescribedItem(0, 'pc. Thickness of shell.')
-    # main_dict['shell_nInner'] = DescribedItem(0, '/pc3')
-    param['shell_nMax'] = DescribedItem(0, '/pc3. Maximum density of shell currently.')
-    param['shell_tauKappaRatio'] = DescribedItem(0, 'Msun / pc2. The ratio tau_IR/kappa_IR  = \int rho dr')
-    param['shell_grav_r'] = DescribedItem(np.array([]), 'pc. Radius array of gravitational potential calculations')
-    param['shell_grav_phi'] = DescribedItem(np.array([]), 'pc2 / Myr2. Gravitational potential')
-    param['shell_grav_force_m'] = DescribedItem(np.array([]), 'pc / Myr2. Gravitational potential force per unit mass')
-    param['shell_mass'] = DescribedItem(0, 'Msol. Shell mass')
-    param['shell_massDot'] = DescribedItem(0, 'Msol/Myr. Rate of change of shell mass')
-    param['shell_interpolate_massDot'] = DescribedItem(False, 'Begin shell interpolation? Only used if dens_prof is dens_BE.')
-    param['shell_n0'] = DescribedItem(0, 'Shell inner radius density, according to pressure balance.')
-
-    # Force calculation in shell dynamics
-    
-    # Force calculations
-    param['F_grav'] = DescribedItem(0, 'Force on shell due to gravity')
-    param['F_SN'] = DescribedItem(0, 'Force on shell due to SN')
-    param['F_ram'] = DescribedItem(0, 'Force on shell due to ram pressure (wind+SN?). This is converted via Pb-Eb(Fram) relation.')
-    param['F_ram_wind'] = DescribedItem(0, 'Force on shell due to ram pressure (wind+SN?). This is directly obtained from SB99f.')
-    param['F_ram_SN'] = DescribedItem(0, 'Force on shell due to ram pressure (wind+SN?). This is directly obtained from SB99f.')
-    param['F_wind'] = DescribedItem(0, 'Force on shell due to winds')
-    param['F_ion_in'] = DescribedItem(0, 'Inwards force on shell due to photoionisation pressure from escaped photons')
-    param['F_ion_out'] = DescribedItem(0, 'Outwards force on shell due to photoionisation pressure')
-    param['F_rad'] = DescribedItem(0, 'Radiation pressure = direct + indirect ~ f_abs * Lbol/c * (1 + tau_IR)')
-    param['F_ISM'] = DescribedItem(0, 'press_ISM')
-    
-    # bubble parameters 
-
-    param['bubble_LTotal'] = DescribedItem(0, 'Total luminosity lost to cooling.')
-    # main_dict['bubble_T_rgoal'] = DescribedItem(0, 'Current guess temperature at R2prime. This becomes T0.')
-    param['bubble_L1Bubble'] = DescribedItem(0, 'Total luminosity lost to cooling (bubble zone)')
-    param['bubble_L2Conduction'] = DescribedItem(0, 'Total luminosity lost to cooling (conduction zone)')
-    param['bubble_L3Intermediate'] = DescribedItem(0, 'Total luminosity lost to cooling (intermediate zone)')
-    param['bubble_Tavg'] = DescribedItem(0, 'Average temperature across bubble.')
-    param['bubble_mass'] = DescribedItem(0, 'Bubble mass')
-    param['bubble_r_Tb'] = DescribedItem(0, 'True radius obtained from bubble_xi_Tb * R2.')
-    param['bubble_T_r_Tb'] = DescribedItem(0, 'Temperature at r_Tb')
-
-
-    param['bubble_r_arr'] = DescribedItem(np.array([]), 'pc. radius structure. High to low. Paired with decreasing radius array.')
-    param['bubble_v_arr'] = DescribedItem(np.array([]), 'pc/Myr. velocity structure. Decreasing, since radius array is decreasing.')
-    param['bubble_T_arr'] = DescribedItem(np.array([]), 'K. velocity structure. Paired with decreasing radius array.')
-    param['bubble_dTdr_arr'] = DescribedItem(np.array([]), 'K/pc. T gradient structure. Paired with decreasing radius array.')
-    param['bubble_n_arr'] = DescribedItem(np.array([]), '1/pc3. density structure. Paired with decreasing radius array.')
-    param['bubble_dMdtGuess'] = DescribedItem(0, 'dMdt scipy guesses. Not the final guess.')
-    param['bubble_dMdt'] = DescribedItem(np.nan, 'Current dMdt. Mass loss from region c (shell) into region b (shocked winds) due to thermal conduction.')
-  
-    param['bubble_Lgain'] = DescribedItem(np.nan, 'au, luminosity gain in cooling phase due to winds')
-    param['bubble_Lloss'] = DescribedItem(np.nan, 'au, luminosity lost in cooling phase due to cooling (and possibly leaking)')
-    param['bubble_Leak'] = DescribedItem(0, 'au, leaking luminosity')
- 
-    # state
-    param['isCollapse'] = DescribedItem(False, 'Check if the cloud is collapsing')
-    param['isDissolved'] = DescribedItem(False, 'Shell has dissolved')
-   
-    # initial(?)
-    param['initial_cloud_n_arr'] = DescribedItem([], 'Initial cloud density profile')
-    param['initial_cloud_m_arr'] = DescribedItem([], 'Initial cloud mass profile')
-    param['initial_cloud_r_arr'] = DescribedItem([], 'Initial cloud radius profile')
-    
-   
-    # To be removed
-    param['residual_deltaT'] = DescribedItem(0, '(T1-T2)/T2')
-    param['residual_betaEdot'] = DescribedItem(0, '(Edot - Edot2)/Edot')
-    param['residual_Edot1_guess'] = DescribedItem(np.nan, 'Value of Edot obtained via beta.')
-    param['residual_Edot2_guess'] = DescribedItem(np.nan, 'Value of Edot obtained via energy balance equation.')
-    param['residual_T1_guess'] = DescribedItem(np.nan, 'Value of T obtained via bubble_Trgoal.')
-    param['residual_T2_guess'] = DescribedItem(np.nan, 'Value of T obtained via T0.')
-   
-    # early phases
-    
-    
-
-    return param
+    return params
 
 
 class ParameterFileError(Exception):
-    """Raised when a parameter file entry is invalid."""
+    """Raised when parameter file has formatting or validation errors."""
+    pass
 
 
-
-
-
-
+# =============================================================================
+# Quick test (commented out)
+# =============================================================================
+if __name__ == "__main__":
+    params = read_param('param/Orion_M43_EON.param')
+    print(f"mCloud = {params['mCloud'].value} {params['mCloud'].ori_units}")
+    print(f"  Info: {params['mCloud'].info}")
