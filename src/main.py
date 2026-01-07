@@ -58,12 +58,6 @@ def start_expansion(params):
     # =============================================================================
     
     # Step 1: Obtain initial cloud properties
-    
-    # BEsphere stuffs
-    
-    
-    
-    
     # ---
     # rCloud, nEdge = get_InitCloudProp.get_CloudRadiusEdge(params)
     get_InitCloudProp.get_InitCloudProp(params)
