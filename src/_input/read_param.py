@@ -232,9 +232,13 @@ def read_param(path2file, write_summary=True):
     
     for key, (info, unit, value) in merged_dict.items():
         # Convert units to astronomy units [Msun, pc, Myr]
-        conversion_factor = cvt.convert2au(unit)
-        print(value, conversion_factor)
-        converted_value = value * conversion_factor
+        # Only convert numeric values; strings remain unchanged
+        if isinstance(value, (int, float)) and not isinstance(value, bool):
+            conversion_factor = cvt.convert2au(unit)
+            converted_value = value * conversion_factor
+        else:
+            # Strings, booleans, etc. don't get unit conversion
+            converted_value = value
         
         # Create DescribedItem
         unit_str = unit if unit else "UNIT not specified"
