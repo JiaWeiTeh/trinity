@@ -3,6 +3,7 @@
 from __future__ import annotations
 """
 Created on Wed Jul 26 15:21:52 2023
+Modified: January 2026 - Rewritten for JSONL format with O(n) performance
 
 @author: Jia Wei Teh
 
@@ -12,50 +13,39 @@ Provide a "params" container that behaves like a dictionary of objects:
     params["R2"].value
     params["R2"].value = 10.0
 
-…and supports saving snapshots efficiently:
-- Scalars + small arrays: stored inline in JSON (dictionary.json)
-- Large arrays: stored in HDF5 (arrays.h5) and JSON contains a small reference pointer
-
-This design keeps simulation code clean (dictionary access) while keeping output sizes
-and write-time manageable for large profiles.
+...and supports saving snapshots efficiently using line-delimited JSON (JSONL):
+- All data (scalars + arrays) stored inline in JSON
+- Each snapshot is one line in dictionary.jsonl
+- Append-only writes for O(1) flush performance (vs O(n²) before)
+- No HDF5 dependency - pure JSON architecture
 
 Files written to params["path2output"].value
 -------------------------------------------
-dictionary.json : snapshot index -> { key: scalar / list / {"__h5__": {...}} }
-arrays.h5       : actual large array data at /snapshots/<snap_id>/<key>
+dictionary.jsonl : One JSON object per line, each line = one snapshot
+                   Line 0 = snapshot "0", Line 1 = snapshot "1", etc.
 
 Loading
 -------
 params = DescribedDict.load_snapshot(path2output, snap_id)
-arr = params["initial_cloud_n_arr"].value   # returns numpy array (loads lazily from HDF5)
+arr = params["initial_cloud_n_arr"].value   # returns numpy array
 """
 
-import collections.abc
 import json
 import sys
-from dataclasses import dataclass
 from functools import reduce
 from pathlib import Path
 from typing import Any, Dict, Optional, Sequence, Tuple, Union
 
 import numpy as np
 
-# h5py is required for HDF5 storage of large arrays
-try:
-    import h5py
-except Exception as e:  # pragma: no cover
-    raise ImportError("This script requires h5py for HDF5 array storage.") from e
-
 
 # =============================================================================
-# JSON helper: encode numpy scalar types (not arrays)
+# JSON helper: encode numpy types
 # =============================================================================
 class NpEncoder(json.JSONEncoder):
     """
-    JSON encoder that converts numpy scalar types to plain Python scalars.
-    We intentionally do NOT handle numpy arrays here because we either:
-      - inline small arrays as lists ourselves, or
-      - store large arrays in HDF5 and only store a reference dict in JSON.
+    JSON encoder that converts numpy types to plain Python types.
+    Handles both scalars and arrays.
     """
     def default(self, obj: Any) -> Any:
         if isinstance(obj, np.integer):
@@ -64,179 +54,9 @@ class NpEncoder(json.JSONEncoder):
             return float(obj)
         if isinstance(obj, np.bool_):
             return bool(obj)
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
         return super().default(obj)
-
-
-# =============================================================================
-# HDF5 reference format + lightweight proxy
-# =============================================================================
-
-# Key used in JSON to indicate "this value is an HDF5 reference"
-H5_REF_KEY = "__h5__"
-
-
-def is_h5_ref(x: Any) -> bool:
-    """
-    Return True if x looks like an HDF5 reference dict of the form:
-        {"__h5__": {"file": "arrays.h5", "dataset": "/snapshots/0/some_key"}}
-    """
-    return isinstance(x, dict) and (H5_REF_KEY in x) and isinstance(x[H5_REF_KEY], dict)
-
-
-def make_h5_ref(file: str, dataset: str) -> dict:
-    """
-    Make a JSON-storable reference dict that points to an array stored in HDF5.
-
-    Parameters
-    ----------
-    file : str
-        HDF5 filename (usually "arrays.h5") relative to output directory.
-    dataset : str
-        HDF5 dataset path inside the file (e.g. "/snapshots/12/initial_cloud_n_arr").
-    """
-    return {H5_REF_KEY: {"file": file, "dataset": dataset}}
-
-
-@dataclass
-class H5ArrayProxy:
-    """
-    Lazy-loading proxy for a numpy array stored in HDF5.
-
-    Why a proxy?
-    ------------
-    - When loading snapshots, you don't always want to load all arrays immediately.
-    - This object stores (file_path, dataset) and loads the array only when needed.
-    - If cache=True, it stores the loaded array in memory after the first read.
-
-    Notes
-    -----
-    DescribedItem.value will "materialize" this proxy automatically.
-    """
-    file_path: Path                 # absolute path to arrays.h5
-    dataset: str                    # dataset path within the HDF5 file
-    cache: bool = True              # whether to keep the array in memory once loaded
-    _cached: Optional[np.ndarray] = None  # internal cache
-
-    def asarray(self) -> np.ndarray:
-        """Load and return the referenced array (possibly from cache)."""
-        if self.cache and self._cached is not None:
-            return self._cached
-
-        # Open file read-only and load dataset into memory
-        with h5py.File(self.file_path, "r") as f:
-            arr = f[self.dataset][...]
-
-        if self.cache:
-            self._cached = arr
-        return arr
-
-    def __array__(self, dtype=None) -> np.ndarray:
-        """
-        Allows numpy to treat this object as an array if passed into np.asarray().
-        """
-        arr = self.asarray()
-        return np.asarray(arr, dtype=dtype) if dtype is not None else np.asarray(arr)
-
-    def __repr__(self) -> str:
-        return f"H5ArrayProxy(file='{self.file_path.name}', dataset='{self.dataset}')"
-
-
-class H5ArrayStore:
-    """
-    Minimal helper class to write arrays to a single HDF5 file.
-
-    Dataset layout
-    --------------
-    Arrays are written at:
-        /snapshots/<snap_id>/<key>
-
-    Example:
-        snap_id = 12
-        key     = "initial_cloud_n_arr"
-        dataset = "/snapshots/12/initial_cloud_n_arr"
-    """
-    def __init__(self, path2output: Path, arrays_filename: str = "arrays.h5"):
-        self.path2output = Path(path2output)
-        self.arrays_filename = arrays_filename
-
-    @property
-    def file_path(self) -> Path:
-        """Absolute path to the HDF5 file."""
-        return self.path2output / self.arrays_filename
-
-    def ensure_file(self, reset: bool = False) -> None:
-        """
-        Ensure output directory exists and HDF5 file exists.
-
-        reset=True deletes the existing arrays file before creating a new one.
-        Useful when starting a "fresh" run that should overwrite previous array outputs.
-        """
-        self.path2output.mkdir(parents=True, exist_ok=True)
-
-        # If requested, delete old file first
-        if reset and self.file_path.exists():
-            self.file_path.unlink()
-
-        # Create empty file if missing
-        if not self.file_path.exists():
-            with h5py.File(self.file_path, "w"):
-                pass
-
-    def write_array(
-        self,
-        snap_id: int,
-        key: str,
-        array: np.ndarray,
-        overwrite: bool = True,
-        compression: Optional[str] = None,
-        compression_opts: Optional[int] = None,
-    ) -> str:
-        """
-        Write array to HDF5 and return its dataset path.
-
-        Parameters
-        ----------
-        snap_id : int
-            Snapshot index (0,1,2,...).
-        key : str
-            Dictionary key (used as dataset name).
-        array : np.ndarray
-            Array to store.
-        overwrite : bool
-            If True, delete existing dataset and rewrite it.
-        compression, compression_opts
-            Optional HDF5 compression settings (e.g. compression="gzip", compression_opts=4).
-
-        Returns
-        -------
-        str
-            HDF5 dataset path (e.g. "/snapshots/3/bubble_T_arr").
-        """
-        self.ensure_file(reset=False)
-
-        # Dataset path within HDF5
-        ds_path = f"/snapshots/{snap_id}/{key}"
-
-        with h5py.File(self.file_path, "a") as f:
-            # Make sure the snapshot group exists
-            f.require_group(f"/snapshots/{snap_id}")
-
-            # If dataset exists, delete or reuse depending on overwrite
-            if ds_path in f:
-                if overwrite:
-                    del f[ds_path]
-                else:
-                    return ds_path
-
-            # Write dataset
-            f.create_dataset(
-                ds_path,
-                data=np.asarray(array),
-                compression=compression,
-                compression_opts=compression_opts,
-            )
-
-        return ds_path
 
 
 # =============================================================================
@@ -244,11 +64,10 @@ class H5ArrayStore:
 # =============================================================================
 class DescribedItem:
     """
-    Container for a value (scalar/array/proxy) + light metadata.
+    Container for a value (scalar/array) + light metadata.
 
     Key behavior
     ------------
-    - If internal value is H5ArrayProxy, .value returns a numpy array (materialized).
     - Implements numeric conversions so you can do:
         '%E' % params['SB99_mass']          # works without .value
         f"{params['SB99_mass']:.2e}"        # also works
@@ -283,18 +102,12 @@ class DescribedItem:
 
     @property
     def value(self) -> Any:
-        """
-        Return the stored value.
-
-        If value is an H5ArrayProxy, it is loaded from disk (and possibly cached).
-        """
-        if isinstance(self._value, H5ArrayProxy):
-            return self._value.asarray()
+        """Return the stored value."""
         return self._value
 
     @value.setter
     def value(self, v: Any) -> None:
-        """Set the underlying value (scalar, array, or proxy)."""
+        """Set the underlying value (scalar or array)."""
         self._value = v
 
     # ----- numeric formatting/conversion helpers (quality-of-life) -----
@@ -361,10 +174,9 @@ class DescribedDict(dict):
 
     Snapshot storage policy
     -----------------------
-    - Scalars: always stored in JSON
-    - Arrays:
-        * if array.size <= json_array_max_elems => stored inline in JSON as list
-        * else => stored in arrays.h5, and JSON stores {"__h5__": {...}} reference
+    - All data (scalars, arrays) stored inline in JSON
+    - Each snapshot is one line in dictionary.jsonl
+    - Append-only writes ensure O(1) flush performance (vs O(n²) in old version)
 
     Required key before saving
     --------------------------
@@ -379,12 +191,6 @@ class DescribedDict(dict):
         self.snapshot_interval: int = 25          # flush every N snapshots
         self.previous_snapshot: Dict[str, Dict[str, Any]] = {}  # pending snapshots not yet flushed
         self.flush_count: int = 0                 # number of flush() calls (used for "fresh run" logic)
-
-        # Storage policy knobs
-        self.json_array_max_elems: int = 200      # threshold for inlining arrays into JSON
-        self.arrays_filename: str = "arrays.h5"   # HDF5 file for large arrays
-        self.h5_compression: Optional[str] = None       # e.g. "gzip"
-        self.h5_compression_opts: Optional[int] = None  # e.g. 4..9
 
         # Key flags
         self._excluded_keys: set[str] = set()     # keys to omit from snapshots
@@ -487,65 +293,36 @@ class DescribedDict(dict):
         except KeyError as e:
             raise KeyError("save_snapshot()/flush() require params['path2output'].value") from e
 
-    def _array_store(self) -> H5ArrayStore:
-        """Create an H5ArrayStore bound to the current output directory."""
-        return H5ArrayStore(self._get_output_dir(), arrays_filename=self.arrays_filename)
-
-    def _should_inline_array_in_json(self, arr: np.ndarray) -> bool:
-        """Return True if this array is small enough to inline into JSON as a list."""
-        return arr.size <= int(self.json_array_max_elems)
-
-    def _to_json_ready_value(self, snap_id: int, key: str, val: Any) -> Any:
+    def _to_json_ready_value(self, val: Any) -> Any:
         """
-        Convert an arbitrary value to something JSON-storable:
-        - scalars: return as-is (or via NpEncoder for numpy scalars)
-        - arrays:
-            * small arrays => list in JSON
-            * large arrays => store in HDF5 and return {"__h5__": {...}} reference
+        Convert an arbitrary value to something JSON-storable.
+        All arrays are inlined as lists (no HDF5).
         """
-        # Primitive scalar types are safe to put directly in JSON
-        if isinstance(val, (str, float, int, bool)) or val is None:
+        # None, primitives
+        if val is None or isinstance(val, (str, float, int, bool)):
             return val
 
-        # Numpy scalar -> plain Python scalar
+        # Numpy types
         if isinstance(val, (np.integer, np.floating, np.bool_)):
             return NpEncoder().default(val)
 
-        # Array-like values
-        if isinstance(val, np.ndarray) or (
-            isinstance(val, collections.abc.Sequence) and not isinstance(val, (str, bytes))
-        ):
-            arr = np.asarray(val)
+        # Arrays (numpy or sequences)
+        if isinstance(val, np.ndarray):
+            return val.tolist()
 
-            # Small arrays are human-readable if stored inline as JSON lists
-            if self._should_inline_array_in_json(arr):
-                return arr.tolist()
+        if isinstance(val, (list, tuple)):
+            # Already a list/tuple, but might contain numpy types
+            return [self._to_json_ready_value(item) for item in val]
 
-            # Large arrays: store in HDF5, JSON gets only a pointer
-            store = self._array_store()
-
-            # Reset arrays.h5 only for the first snapshot of a new run
-            store.ensure_file(reset=(self.flush_count == 0 and snap_id == 0))
-
-            ds_path = store.write_array(
-                snap_id=snap_id,
-                key=key,
-                array=arr,
-                overwrite=True,
-                compression=self.h5_compression,
-                compression_opts=self.h5_compression_opts,
-            )
-            return make_h5_ref(file=store.file_path.name, dataset=ds_path)
-
-        # Fallback: attempt JSON encoding (may fail for complex objects)
+        # Fallback
         return val
 
     def _clean_for_snapshot(self, snap_id: int) -> Dict[str, Any]:
         """
         Build a JSON-ready snapshot dict of the current params.
 
-        Also includes special handling for certain long profile arrays (bubble_* etc.)
-        where you store a simplified representation (and sometimes log-space).
+        Includes special handling for certain long profile arrays (bubble_*, shell_grav_*)
+        where we store a simplified representation (and sometimes log-space).
         """
         # Refresh excluded/persistent sets in case flags changed after insertion
         for k, item in self.items():
@@ -565,7 +342,6 @@ class DescribedDict(dict):
             if not isinstance(item, DescribedItem):
                 continue
 
-            # Always snapshot the actual stored value (materializes proxies)
             val = item.value
 
             # -----------------------------------------------------------------
@@ -580,8 +356,8 @@ class DescribedDict(dict):
                 y_arr = np.log10(np.maximum(np.asarray(val), eps))
                 new_r, new_y = self.simplify(x_arr, y_arr, keyname=key)
 
-                new_dict["log_" + key] = self._to_json_ready_value(snap_id, "log_" + key, np.asarray(new_y))
-                new_dict[key + "_r_arr"] = self._to_json_ready_value(snap_id, key + "_r_arr", np.asarray(new_r))
+                new_dict["log_" + key] = self._to_json_ready_value(np.asarray(new_y))
+                new_dict[key + "_r_arr"] = self._to_json_ready_value(np.asarray(new_r))
                 continue
 
             if key == "bubble_dTdr_arr":
@@ -590,8 +366,8 @@ class DescribedDict(dict):
                 y_arr = np.log10(np.maximum(np.abs(v), eps))
                 new_r, new_y = self.simplify(x_arr, y_arr, keyname=key)
 
-                new_dict["log_" + key] = self._to_json_ready_value(snap_id, "log_" + key, np.asarray(new_y))
-                new_dict[key + "_r_arr"] = self._to_json_ready_value(snap_id, key + "_r_arr", np.asarray(new_r))
+                new_dict["log_" + key] = self._to_json_ready_value(np.asarray(new_y))
+                new_dict[key + "_r_arr"] = self._to_json_ready_value(np.asarray(new_r))
                 continue
 
             if key == "bubble_v_arr":
@@ -599,8 +375,8 @@ class DescribedDict(dict):
                 y_arr = np.asarray(val)
                 new_r, new_y = self.simplify(x_arr, y_arr, keyname=key)
 
-                new_dict[key] = self._to_json_ready_value(snap_id, key, np.asarray(new_y))
-                new_dict[key + "_r_arr"] = self._to_json_ready_value(snap_id, key + "_r_arr", np.asarray(new_r))
+                new_dict[key] = self._to_json_ready_value(np.asarray(new_y))
+                new_dict[key + "_r_arr"] = self._to_json_ready_value(np.asarray(new_r))
                 continue
 
             # -----------------------------------------------------------------
@@ -615,12 +391,12 @@ class DescribedDict(dict):
                 y_arr = np.log10(np.maximum(np.abs(np.asarray(val)), eps))
                 new_r, new_y = self.simplify(x_arr, y_arr, keyname=key)
 
-                new_dict[key] = self._to_json_ready_value(snap_id, key, np.asarray(new_y))
-                new_dict["shell_grav_r"] = self._to_json_ready_value(snap_id, "shell_grav_r", np.asarray(new_r))
+                new_dict[key] = self._to_json_ready_value(np.asarray(new_y))
+                new_dict["shell_grav_r"] = self._to_json_ready_value(np.asarray(new_r))
                 continue
 
-            # Default: store scalars inline; arrays based on size policy (JSON or HDF5)
-            new_dict[key] = self._to_json_ready_value(snap_id, key, val)
+            # Default: store everything as JSON-ready values
+            new_dict[key] = self._to_json_ready_value(val)
 
         return new_dict
 
@@ -649,7 +425,7 @@ class DescribedDict(dict):
         # Snapshot index is current save_count
         snap_id = self.save_count
 
-        # Convert to JSON/HDF5-friendly dict
+        # Convert to JSON-friendly dict
         clean_dict = self._clean_for_snapshot(snap_id=snap_id)
 
         # Store in the "pending" snapshot buffer
@@ -672,45 +448,44 @@ class DescribedDict(dict):
 
     def flush(self) -> None:
         """
-        Write pending snapshots in self.previous_snapshot into dictionary.json.
+        Append pending snapshots to dictionary.jsonl (line-delimited JSON).
+
+        Performance: O(pending_snapshots) - only writes new data, never reads existing file.
+        This is a MASSIVE improvement over the old O(n²) behavior.
+
+        Format
+        ------
+        Each line in dictionary.jsonl is one snapshot:
+            Line 0: snapshot "0" as JSON object
+            Line 1: snapshot "1" as JSON object
+            ...
 
         Behavior
         --------
-        - If dictionary.json doesn't exist OR flush_count == 0:
-            initialise/overwrite the file (fresh run behavior)
-        - Else:
-            merge existing JSON with pending snapshots
-
-        After a successful flush, previous_snapshot is cleared.
+        - If flush_count == 0 and file exists: overwrite (fresh run)
+        - Else: append new snapshots
         """
         path2output = self._get_output_dir()
         path2output.mkdir(parents=True, exist_ok=True)
-        path2json = path2output / "dictionary.json"
+        path2jsonl = path2output / "dictionary.jsonl"
 
-        # Fresh run: blank the JSON file
-        if (not path2json.exists()) or (path2json.exists() and self.flush_count == 0):
-            path2json.write_text("", encoding="utf-8")
-            print("Initialising JSON file for saving purpose...")
+        # Fresh run: delete existing file
+        if self.flush_count == 0 and path2jsonl.exists():
+            path2jsonl.unlink()
+            print("Starting fresh run: deleted existing dictionary.jsonl")
 
-        # Load existing content (if any)
-        load_dict: Dict[str, Any] = {}
-        try:
-            raw = path2json.read_text(encoding="utf-8").strip()
-            if raw:
-                load_dict = json.loads(raw)
-        except json.decoder.JSONDecodeError as e:
-            # If file is empty/corrupt, start fresh
-            print(f"Exception: {e} caught; JSON empty/corrupt. Overwriting with fresh content.")
-            load_dict = {}
-        except Exception as e:
-            print(f"Something else went wrong in .flush(): {e}")
-            sys.exit(1)
+        # Sort snapshot IDs to write in order
+        snap_ids = sorted([int(k) for k in self.previous_snapshot.keys()])
 
-        # Merge old + new snapshots
-        combined = {**load_dict, **self.previous_snapshot}
+        # Append each snapshot as one line
+        mode = "a" if path2jsonl.exists() else "w"
+        with open(path2jsonl, mode, encoding="utf-8") as f:
+            for snap_id in snap_ids:
+                snap_data = self.previous_snapshot[str(snap_id)]
+                json_line = json.dumps(snap_data, cls=NpEncoder)
+                f.write(json_line + "\n")
 
-        print("Updating dictionary in .flush()")
-        path2json.write_text(json.dumps(combined, cls=NpEncoder, indent=2), encoding="utf-8")
+        print(f"Flushed {len(snap_ids)} snapshot(s) to dictionary.jsonl")
 
         # Update counters and clear pending buffer
         self.flush_count += 1
@@ -722,33 +497,40 @@ class DescribedDict(dict):
     @classmethod
     def load_snapshots(cls, path2output: Union[str, Path]) -> Dict[str, Dict[str, Any]]:
         """
-        Load dictionary.json and return the raw snapshot dictionary.
+        Load dictionary.jsonl and return all snapshots.
 
         Returns
         -------
         Dict[str, Dict[str, Any]]
-            Outer dict maps snapshot id (as str) -> snapshot content dict.
-            Arrays may be stored as:
-              - list (if inlined), or
-              - {"__h5__": {...}} reference
+            Maps snapshot id (as str) -> snapshot content dict.
+            Line N in file = snapshot str(N).
         """
         path2output = Path(path2output)
-        path2json = path2output / "dictionary.json"
-        if not path2json.exists():
-            raise FileNotFoundError(f"No dictionary.json found in {path2output}")
+        path2jsonl = path2output / "dictionary.jsonl"
 
-        raw = path2json.read_text(encoding="utf-8").strip()
-        if not raw:
-            return {}
-        return json.loads(raw)
+        if not path2jsonl.exists():
+            raise FileNotFoundError(f"No dictionary.jsonl found in {path2output}")
+
+        snapshots = {}
+        with open(path2jsonl, "r", encoding="utf-8") as f:
+            for idx, line in enumerate(f):
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    snap_data = json.loads(line)
+                    snapshots[str(idx)] = snap_data
+                except json.JSONDecodeError as e:
+                    print(f"Warning: Could not parse line {idx}: {e}")
+                    continue
+
+        return snapshots
 
     @classmethod
     def load_snapshot(
         cls,
         path2output: Union[str, Path],
         snap_id: Union[int, str],
-        *,
-        cache_arrays: bool = True,
     ) -> "DescribedDict":
         """
         Load a single snapshot into a DescribedDict.
@@ -756,16 +538,13 @@ class DescribedDict(dict):
         This reconstructs:
         - scalars directly into DescribedItem(value)
         - list values back into numpy arrays
-        - HDF5 references into H5ArrayProxy (lazy loaded)
 
         Parameters
         ----------
         path2output : str or Path
-            Directory containing dictionary.json and arrays.h5.
+            Directory containing dictionary.jsonl.
         snap_id : int or str
             Snapshot id to load.
-        cache_arrays : bool
-            If True, arrays loaded from HDF5 are cached in memory after first load.
         """
         path2output = Path(path2output)
         snapshots = cls.load_snapshots(path2output)
@@ -782,35 +561,25 @@ class DescribedDict(dict):
 
         # Reconstruct each key/value
         for key, val in snap.items():
-            if is_h5_ref(val):
-                # Convert reference dict -> lazy proxy
-                ref = val[H5_REF_KEY]
-                proxy = H5ArrayProxy(
-                    file_path=path2output / ref["file"],
-                    dataset=ref["dataset"],
-                    cache=cache_arrays,
-                )
-                params[key] = DescribedItem(proxy)
+            # Lists are converted back to numpy arrays
+            if isinstance(val, list):
+                params[key] = DescribedItem(np.asarray(val))
             else:
-                # Inlined arrays were stored as lists; convert back to numpy arrays
-                if isinstance(val, list):
-                    params[key] = DescribedItem(np.asarray(val))
-                else:
-                    params[key] = DescribedItem(val)
+                params[key] = DescribedItem(val)
 
         return params
 
     @classmethod
-    def load_latest_snapshot(cls, path2output: Union[str, Path], *, cache_arrays: bool = True) -> "DescribedDict":
+    def load_latest_snapshot(cls, path2output: Union[str, Path]) -> "DescribedDict":
         """
         Convenience helper: load the snapshot with the largest integer id.
         """
         snapshots = cls.load_snapshots(path2output)
         if not snapshots:
-            raise ValueError("No snapshots found in dictionary.json")
+            raise ValueError("No snapshots found in dictionary.jsonl")
 
         last_id = max(int(k) for k in snapshots.keys())
-        return cls.load_snapshot(path2output, last_id, cache_arrays=cache_arrays)
+        return cls.load_snapshot(path2output, last_id)
 
 
 # =============================================================================
@@ -828,7 +597,6 @@ def updateDict(dictionary: DescribedDict, keys: Sequence[str], values: Sequence[
     for key, val in zip(keys, values):
         dictionary[key].value = val
 
-        
 
 # =============================================================================
 # Quickstart example (commented out)
@@ -845,16 +613,9 @@ def updateDict(dictionary: DescribedDict, keys: Sequence[str], values: Sequence[
 #     params["R2"] = DescribedItem(1.0, info="Bubble radius", ori_units="pc")
 #     params["SB99_mass"] = DescribedItem(1e6, info="SB99 cluster mass", ori_units="Msun")
 #
-#     # Example array parameters: one small, one big
-#     params["small_arr"] = DescribedItem(np.linspace(0, 1, 20), info="Small array (inlined to JSON)")
-#     params["initial_cloud_n_arr"] = DescribedItem(np.ones(5000), info="Big array (stored in HDF5)")
-#
-#     # Optional tuning: force almost all arrays to HDF5
-#     # params.json_array_max_elems = 0
-#
-#     # Optional tuning: HDF5 compression
-#     # params.h5_compression = "gzip"
-#     # params.h5_compression_opts = 4
+#     # Example array parameters
+#     params["small_arr"] = DescribedItem(np.linspace(0, 1, 20), info="Small array")
+#     params["initial_cloud_n_arr"] = DescribedItem(np.ones(5000), info="Large array")
 #
 #     # --- Use numeric formatting without .value ---
 #     def format_e(n):
@@ -870,7 +631,7 @@ def updateDict(dictionary: DescribedDict, keys: Sequence[str], values: Sequence[
 #         params["R2"].value = 1.0 + 0.5 * i
 #         params.save_snapshot()
 #
-#     # Flush any pending snapshots to dictionary.json
+#     # Flush any pending snapshots to dictionary.jsonl
 #     params.flush()
 #
 #     # --- Load a snapshot back ---
@@ -878,6 +639,6 @@ def updateDict(dictionary: DescribedDict, keys: Sequence[str], values: Sequence[
 #     print("Loaded t_now:", loaded["t_now"].value)
 #     print("Loaded R2:", loaded["R2"].value)
 #
-#     # Big arrays load lazily from arrays.h5 when .value is accessed
+#     # Arrays are automatically converted back from lists to numpy arrays
 #     cloud = loaded["initial_cloud_n_arr"].value
 #     print("Loaded initial_cloud_n_arr shape:", cloud.shape)
