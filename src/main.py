@@ -63,29 +63,6 @@ def start_expansion(params):
     get_InitCloudProp.get_InitCloudProp(params)
     # initialise
     
-    
-    
-    
-    # import matplotlib.pyplot as plt
-    
-    # n_arr = params['initial_cloud_n_arr'].value
-    # m_arr = params['initial_cloud_m_arr'].value
-    # r_arr = params['initial_cloud_r_arr'].value
-    
-    # # plt.plot(r_arr, n_arr * cvt.ndens_au2cgs)
-    # # plt.axhline(params['nCore'] * 0.9 * cvt.ndens_au2cgs, linestyle = '--')
-    # # plt.axhline(params['nCore'] * 0.95 * cvt.ndens_au2cgs, linestyle = '--', c = 'b')
-    # plt.plot(r_arr, m_arr)
-    # plt.yscale('log')
-    # plt.xscale('log')
-    # plt.show()
-    
-    # sys.exit()
-    
-    
-    
-    
-    
     # Step 2: Obtain parameters from Starburst99
     # ---
     # Scaling factor for cluster masses. Though this might only be accurate for
