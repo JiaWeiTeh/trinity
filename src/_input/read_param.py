@@ -232,9 +232,13 @@ def read_param(path2file, write_summary=True):
     
     for key, (info, unit, value) in merged_dict.items():
         # Convert units to astronomy units [Msun, pc, Myr]
-        conversion_factor = cvt.convert2au(unit)
-        print(value, conversion_factor)
-        converted_value = value * conversion_factor
+        # Only apply conversion to numeric values
+        if isinstance(value, (int, float, bool)):
+            conversion_factor = cvt.convert2au(unit)
+            converted_value = value * conversion_factor
+        else:
+            # String values (like 'default', 'densBE', etc.) don't need conversion
+            converted_value = value
         
         # Create DescribedItem
         unit_str = unit if unit else "UNIT not specified"
@@ -243,6 +247,7 @@ def read_param(path2file, write_summary=True):
             info=info,
             ori_units=unit_str
         )
+
     
     print(f"Created DescribedDict with {len(params)} parameters")
     
