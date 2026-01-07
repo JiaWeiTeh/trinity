@@ -24,7 +24,6 @@ print("...plotting force fractions with ram composition overlay + PISM")
 # ---------------- configuration ----------------
 mCloud_list = ["1e5", "1e7", "1e8"]                  # rows
 ndens_list  = ["1e2", "1e3", "1e4"]                                # one figure per ndens
-ndens_list  = ["1e2"]                                # one figure per ndens
 sfe_list    = ["001", "010", "020", "030", "050", "080"]   # cols
 
 BASE_DIR = Path.home() / "unsync" / "Code" / "Trinity" / "outputs"
@@ -59,7 +58,7 @@ ONLY_SFE = None   # e.g. "001" or None
 FIG_DIR = Path("./fig")
 FIG_DIR.mkdir(parents=True, exist_ok=True)
 SAVE_PNG = False
-SAVE_PDF = False
+SAVE_PDF = True
 
 def range_tag(prefix, values, key=float):
     vals = list(values)
@@ -414,6 +413,10 @@ else:
                 Patch(facecolor="none", edgecolor=C_RAM, hatch="\\\\\\\\", label=r"Ram attributed to SN (thicker hatch)"),
                 Line2D([0], [0], color=C_RAM, lw=6, label="Unhatched blue = residual"),
             ]
+            
+        # Reserve top space so legend never overlaps subplot titles
+        fig.subplots_adjust(top=0.9)           # <-- tune: smaller = more header space
+
     
         leg = fig.legend(
             handles=handles,
