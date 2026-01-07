@@ -31,21 +31,6 @@ DOMINANCE_DT = 0.05          # Myr
 DOMINANCE_ALPHA = 0.9
 DOMINANCE_STRIP = (0.97, 1)  # (ymin, ymax) in AXES fraction (0..1)
 
-# --- output
-FIG_DIR = Path("./fig")
-FIG_DIR.mkdir(parents=True, exist_ok=True)
-SAVE_PNG = False
-SAVE_PDF = True
-
-# --- output
-def range_tag(prefix, values, key=float):
-    vals = list(values)
-    if len(vals) == 1:
-        return f"{prefix}{vals[0]}"
-    vmin, vmax = min(vals, key=key), max(vals, key=key)
-    return f"{prefix}{vmin}-{vmax}"
-
-
 
 FORCE_FIELDS = [
     ("F_grav",     "Gravity",              "black"),
@@ -79,6 +64,13 @@ def set_plot_style(use_tex=True, font_size=12):
 
 set_plot_style(use_tex=True, font_size=12)
 
+# --- optional single-run view (set all to None for full grid)
+ONLY_MCLOUD = "1e8"   # e.g. "1e8"
+ONLY_NDENS  = "1e4"   # e.g. "1e4"
+ONLY_SFE    = "030"   # e.g. "030"
+
+# comment this out if want single mode, otherwise leave this be if want grid. 
+ONLY_NDENS = ONLY_MCLOUD = ONLY_SFE = None
 
 # -------- smoothing (optional) --------
 def smooth_1d(y, window, mode="edge"):
@@ -142,27 +134,58 @@ def load_run(json_path: Path):
     rcloud = float(snaps[0].get("rCloud", np.nan))
     return t, r, phase, forces, rcloud
 
-def dominant_bins(t, frac, dt=0.1):
-    """
-    t: (N,) time array
-    frac: (n_forces, N) fractions that sum to ~1 at each time
-    Returns edges (nbin+1,), winner_idx (nbin,) where winner_idx[b] is argmax in that bin.
-    """
+# This added functionality solves the problem in which white spaces occur
+# when calculating dominanting forces - for small binning values some snapshots
+# simply does not exist. This interpolates the value and makes sure that 
+# every bin has their own value and colour. 
+def _interp_finite(x, y, xnew):
+    m = np.isfinite(y)
+    if m.sum() < 2:
+        return np.full_like(xnew, np.nan, dtype=float)
+    return np.interp(xnew, x[m], y[m])
+
+def dominant_bins(t, frac, dt=0.05):
     t = np.asarray(t, float)
     frac = np.asarray(frac, float)
 
     edges = np.arange(t.min(), t.max() + dt, dt)
-    nbin = len(edges) - 1
-    winner = np.full(nbin, -1, dtype=int)
+    centers = 0.5 * (edges[:-1] + edges[1:])  # one value per bin
 
-    for b in range(nbin):
-        m = (t >= edges[b]) & (t < edges[b + 1])
-        if not np.any(m):
-            continue
-        fm = np.nanmean(frac[:, m], axis=1)
-        winner[b] = int(np.nanargmax(fm))
+    frac_c = np.vstack([_interp_finite(t, frac_i, centers) for frac_i in frac])
 
+    # optional: renormalize in case interpolation + NaNs break sum=1
+    denom = np.nansum(frac_c, axis=0)
+    denom = np.where(denom == 0.0, np.nan, denom)
+    frac_c = frac_c / denom
+
+    winner = np.nanargmax(frac_c, axis=0)  # now every bin has a winner (unless all NaN)
     return edges, winner
+
+
+#--- plots
+
+def plot_single_run(mCloud, ndens, sfe):
+    run_name = f"{mCloud}_sfe{sfe}_n{ndens}"
+    json_path = BASE_DIR / run_name / "dictionary.json"
+
+    if not json_path.exists():
+        print(f"Missing: {json_path}")
+        return
+
+    t, r, phase, forces, rcloud = load_run(json_path)
+
+    fig, ax = plt.subplots(figsize=(7, 5), dpi=500, constrained_layout=True)
+    plot_momentum_lines_on_ax(
+        ax, t, r, phase, forces, rcloud,
+        smooth_window=SMOOTH_WINDOW,
+        phase_change=PHASE_CHANGE
+    )
+
+    ax.set_title(run_name)
+    ax.set_xlabel("t [Myr]")
+    ax.set_ylabel(r"$p(t)=\int F\,dt$")
+    plt.show()
+    plt.close(fig)
 
 
 def plot_momentum_lines_on_ax(
@@ -201,20 +224,18 @@ def plot_momentum_lines_on_ax(
                 zorder=5
             )
 
-
     # --- first time r exceeds rCloud (behind)
     if np.isfinite(rcloud):
         idx = np.flatnonzero(r > rcloud)
         if idx.size:
             x_rc = t[idx[0]]
             ax.axvline(x_rc, color="k", ls="--", alpha=0.2, zorder=0)
-    
-            # after drawing the axvline at x_rc ...
+
+            fig = ax.figure  # <-- use the figure owning this axis
             text_trans = ax.get_xaxis_transform() + mtransforms.ScaledTranslation(
-                4/72, 0, fig.dpi_scale_trans  # 4 points to the right (increase to pad more)
+                4/72, 0, fig.dpi_scale_trans
             )
 
-            # label next to the line
             ax.text(
                 x_rc, 0.05, r"$R_2 = R_{\rm cloud}$",
                 transform=text_trans,
@@ -224,6 +245,7 @@ def plot_momentum_lines_on_ax(
                 alpha=0.8,
                 rotation=90
             )
+
 
     # --- optional smoothing before integrating
     F = smooth_2d(forces, smooth_window, mode=smooth_mode)
@@ -322,98 +344,79 @@ def plot_momentum_lines_on_ax(
     ax.set_yscale('log')
     ax.set_ylim(1e-5*P.max(), 10*P.max())
 
+# --------- MODE SWITCH: single plot or grid ----------
+single_mode = (ONLY_MCLOUD is not None) and (ONLY_NDENS is not None) and (ONLY_SFE is not None)
 
-# --- one figure per ndens
-for ndens in ndens_list:
-    nrows, ncols = len(mCloud_list), len(sfe_list)
-    fig, axes = plt.subplots(
-        nrows=nrows, ncols=ncols,
-        figsize=(3.2 * ncols, 2.6 * nrows),
-        sharex=False, sharey=False,   # keep your grid aesthetic; each panel keeps its own t_max
-        dpi=500,
-        constrained_layout=False
-    )
+if single_mode:
+    plot_single_run(ONLY_MCLOUD, ONLY_NDENS, ONLY_SFE)
 
-    for i, mCloud in enumerate(mCloud_list):
-        for j, sfe in enumerate(sfe_list):
-            ax = axes[i, j]
-            run_name = f"{mCloud}_sfe{sfe}_n{ndens}"
-            json_path = BASE_DIR / run_name / "dictionary.json"
+else:
+    # --- one figure per ndens (grid mode)
+    for ndens in ndens_list:
+        nrows, ncols = len(mCloud_list), len(sfe_list)
+        fig, axes = plt.subplots(
+            nrows=nrows, ncols=ncols,
+            figsize=(3.2 * ncols, 2.6 * nrows),
+            sharex=False, sharey=False,
+            dpi=500,
+            constrained_layout=False
+        )
 
-            if not json_path.exists():
-                ax.text(0.5, 0.5, "missing", ha="center", va="center", transform=ax.transAxes)
-                ax.set_axis_off()
-                continue
+        for i, mCloud in enumerate(mCloud_list):
+            for j, sfe in enumerate(sfe_list):
+                ax = axes[i, j]
+                run_name = f"{mCloud}_sfe{sfe}_n{ndens}"
+                json_path = BASE_DIR / run_name / "dictionary.json"
 
-            try:
-                t, r, phase, forces, rcloud = load_run(json_path)
+                if not json_path.exists():
+                    ax.text(0.5, 0.5, "missing", ha="center", va="center", transform=ax.transAxes)
+                    ax.set_axis_off()
+                    continue
 
-                plot_momentum_lines_on_ax(
-                    ax, t, r, phase, forces, rcloud,
-                    smooth_window=SMOOTH_WINDOW, phase_change=PHASE_CHANGE
-                )
+                try:
+                    t, r, phase, forces, rcloud = load_run(json_path)
+                    plot_momentum_lines_on_ax(
+                        ax, t, r, phase, forces, rcloud,
+                        smooth_window=SMOOTH_WINDOW,
+                        phase_change=PHASE_CHANGE
+                    )
+                except Exception as e:
+                    print(f"Error in {run_name}: {e}")
+                    ax.text(0.5, 0.5, "error", ha="center", va="center", transform=ax.transAxes)
+                    ax.set_axis_off()
+                    continue
 
-            except Exception as e:
-                print(f"Error in {run_name}: {e}")
-                ax.text(0.5, 0.5, "error", ha="center", va="center", transform=ax.transAxes)
-                ax.set_axis_off()
-                continue
+                if i == 0:
+                    eps = int(sfe) / 100.0
+                    ax.set_title(rf"$\epsilon={eps:.2f}$")
 
-            # column titles (top row): SFE
-            if i == 0:
-                eps = int(sfe) / 100.0
-                ax.set_title(rf"$\epsilon={eps:.2f}$")
+                if j == 0:
+                    mlog = int(np.log10(float(mCloud)))
+                    ax.set_ylabel(rf"$M_{{cloud}}=10^{{{mlog}}}\,M_\odot$" + "\n" + r"$p(t)=\int F\,dt$")
 
-            # row labels (left col): Mcloud
-            if j == 0:
-                mlog = int(np.log10(float(mCloud)))
-                ax.set_ylabel(rf"$M_{{cloud}}=10^{{{mlog}}}\,M_\odot$" + "\n" + r"$p(t)=\int F\,dt$")
+                if i == nrows - 1:
+                    ax.set_xlabel("t [Myr]")
 
-            # x-labels (bottom row)
-            if i == nrows - 1:
-                ax.set_xlabel("t [Myr]")
-                
+        # global legend
+        handles = []
+        handles.append(Line2D([0], [0], color="black", lw=1.6, ls="-", label="Gravity"))
+        for _, lab, c in FORCE_FIELDS[1:]:
+            handles.append(Line2D([0], [0], color=c, lw=1.6, label=lab))
+        handles.append(Line2D([0], [0], color="darkgrey", lw=2.4,
+                              label=r"Net: $| \int (\sum F_{\rm out} - F_{\rm grav})\,dt |$"))
 
-    # global legend (line-style, matches plot)
-    handles = []
-    handles.append(Line2D([0], [0], color="black", lw=1.6, ls="-", label="Gravity"))
-    for _, lab, c in FORCE_FIELDS[1:]:
-        handles.append(Line2D([0], [0], color=c, lw=1.6, label=lab))
-    handles.append(Line2D([0], [0], color="darkgrey", lw=2.4,
-                          label=r"Net: $| \int (\sum F_{\rm out} - F_{\rm grav})\,dt |$"))
+        leg = fig.legend(
+            handles=handles, loc="upper center", ncol=3,
+            frameon=True, facecolor="white", framealpha=0.9, edgecolor="0.2",
+            bbox_to_anchor=(0.5, 1.05)
+        )
+        leg.set_zorder(10)
 
-    ax.plot([], [], color="k", ls="--", label="(dashed = negative)")
-    leg = fig.legend(
-        handles=handles, loc="upper center", ncol=3,
-        frameon=True, facecolor="white", framealpha=0.9, edgecolor="0.2",
-        bbox_to_anchor=(0.5, 1.05)
-    )
-    leg.set_zorder(10)
+        fig.subplots_adjust(top=0.91)
+        nlog = int(np.log10(float(ndens)))
+        fig.suptitle(rf"Momentum injected ($n=10^{{{nlog}}}\,\mathrm{{cm^{{-3}}}}$)", y=1.08)
 
-    # Push the whole grid down to make a band for legend + suptitle
-    fig.subplots_adjust(top=0.91)  # tweak 0.78–0.88 to taste
-
-
-    nlog = int(np.log10(float(ndens)))
-    fig.suptitle(rf"Momentum injected ($n=10^{{{nlog}}}\,\mathrm{{cm^{{-3}}}}$)", y=1.08)
-
-    # --------- SAVE FIGURE ---------
-    m_tag   = range_tag("M",   mCloud_list, key=float)
-    sfe_tag = range_tag("sfe", sfe_list,    key=int)
-    n_tag   = f"n{ndens}"
-    tag = f"momentum_grid_{m_tag}_{sfe_tag}_{n_tag}"
-
-    if SAVE_PNG:
-        out_png = FIG_DIR / f"{tag}.png"
-        fig.savefig(out_png, bbox_inches="tight")
-        print(f"Saved: {out_png}")
-    if SAVE_PDF:
-        out_pdf = FIG_DIR / f"{tag}.pdf"
-        fig.savefig(out_pdf, bbox_inches="tight")
-        print(f"Saved: {out_pdf}")
-
-
-    plt.show()
-    plt.close(fig)
+        plt.show()
+        plt.close(fig)
 
 

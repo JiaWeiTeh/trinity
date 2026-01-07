@@ -432,3 +432,12 @@ Traceback (most recent call last):
   File "/Users/jwt/unsync/Code/Trinity/src/bubble_structure/get_bubbleParams.py", line 244, in bubble_E2P
     Pb = (gamma - 1) * Eb / (r2**3 - r1**3) / (4 * np.pi / 3)
 ZeroDivisionError: float division by zero
+Traceback (most recent call last):
+  File "run.py", line 17, in <module>
+    from src._input import read_param
+  File "/Users/jwt/unsync/Code/Trinity/src/_input/read_param.py", line 19, in <module>
+    from src._input.dictionary import DescribedItem, DescribedDict
+  File "/Users/jwt/unsync/Code/Trinity/src/_input/dictionary.py", line 33
+    from __future__ import annotations
+    ^
+SyntaxError: from __future__ imports must occur at the beginning of the file
