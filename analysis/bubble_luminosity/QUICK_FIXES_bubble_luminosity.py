@@ -7,7 +7,7 @@ Copy-paste the relevant sections to replace buggy code.
 """
 
 # =============================================================================
-# FIX 1: Line 103 - Consistent .value access
+# FIX 1: Line 103 - Consistent .value access done
 # =============================================================================
 # BEFORE:
 # params['bubble_r_Tb'].value = params['R1'] + xi_Tb * (params['R2'] - params['R1'])
@@ -17,7 +17,7 @@ params['bubble_r_Tb'].value = params['R1'].value + xi_Tb * (params['R2'].value -
 
 
 # =============================================================================
-# FIX 2: Lines 493-511 - Fix cumulative mass calculation
+# FIX 2: Lines 493-511 - Fix cumulative mass calculation done
 # =============================================================================
 # BEFORE:
 # def get_mass_and_grav(n, r):
@@ -74,7 +74,7 @@ def get_mass_and_grav(n, r):
 
 
 # =============================================================================
-# FIX 3: Lines 541-558 - Cleaner dMdt initialization
+# FIX 3: Lines 541-558 - Cleaner dMdt initialization ignored
 # =============================================================================
 # BEFORE:
 # dMdt_init = 12 / 75 * dMdt_factor**(5/2) * 4 * np.pi * params['R2']**3 / params['t_now']\
@@ -116,7 +116,7 @@ def get_init_dMdt(params):
 
 
 # =============================================================================
-# FIX 4: Line 726 - Consistent .value access
+# FIX 4: Line 726 - Consistent .value access done
 # =============================================================================
 # BEFORE:
 # dR2 = T_init**(5/2) / (constant * dMdt / (4 * np.pi * dMdt_params_au['R2']**2) )
@@ -226,7 +226,7 @@ def get_velocity_residuals(dMdt_init, dMdt_params_au):
 
     residual = v_final / v_initial
 
-    # Check physical constraints
+    # Check physical constraintss
     min_T = np.min(T_array)
 
     if np.isnan(min_T):

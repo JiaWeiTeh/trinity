@@ -519,51 +519,27 @@ def get_bubbleproperties(params):
     # Step 4: Mass/gravitational potential
     # =============================================================================
     
+    
     def get_mass_and_grav(n, r):
-        """
-        Calculate cumulative mass and gravitational potential in bubble.
+        # again: r and n is monotonically decreasing. We need to flip it here to avoid problems with np.cumsum.
+        
+        # r is now monotonically increasing
+        r_new = r[::-1] #.to(u.cm)
+        # so is n (rho) now
+        # old code says * mp, but it should be mu. 
+        rho_new = n[::-1] * params['mu_ion'].value
+        rho_new = rho_new #.to(u.g/u.cm**3)
+        # get mass 
+        m_new = 4 * np.pi * scipy.integrate.simps(rho_new * r_new**2, x = r_new)  
+        # cumulative mass 
+        m_cumulative = np.cumsum(m_new)
+        # gravitational potential [Msun/pc]
+        grav_phi = - 4 * np.pi * params['G'].value * scipy.integrate.simps(r_new * rho_new, x = r_new)  
+        # gravitational force per mass
+        grav_force_pmass = params['G'].value * m_cumulative / r_new**2
+        
+        return m_cumulative, grav_phi, grav_force_pmass
     
-        Parameters
-        ----------
-        n : ndarray
-            Number density [1/pc³], monotonically decreasing
-        r : ndarray
-            Radius [pc], monotonically decreasing
-    
-        Returns
-        -------
-        m_cumulative : ndarray
-            Cumulative mass from center [Msun]
-        grav_phi : float
-            Gravitational potential [pc²/Myr²]
-        grav_force_m : ndarray
-            Gravitational force per unit mass [pc/Myr²]
-        """
-        # Flip arrays to be monotonically increasing
-        r_new = r[::-1]
-        rho_new = n[::-1] * params['mu_ion'].value  # Mass density [Msun/pc³]
-    
-        # Calculate cumulative mass properly
-        m_cumulative = np.zeros_like(r_new)
-        for i in range(len(r_new)):
-            m_cumulative[i] = 4 * np.pi * scipy.integrate.simps(
-                rho_new[:i+1] * r_new[:i+1]**2,
-                x=r_new[:i+1]
-            )
-    
-        # Gravitational potential [pc²/Myr²]
-        grav_phi = -4 * np.pi * params['G'].value * scipy.integrate.simps(
-            r_new * rho_new, x=r_new
-        )
-    
-        # Gravitational force per unit mass [pc/Myr²]
-        # Add small number to avoid division by zero at r=0
-        grav_force_m = params['G'].value * m_cumulative / (r_new**2 + 1e-10)
-    
-        return m_cumulative, grav_phi, grav_force_m
-    
-
-
     # gettemåå
     m_cumulative, grav_phi, grav_force = get_mass_and_grav(n_array, r_array)
     
@@ -777,7 +753,7 @@ def get_bubble_ODE_initial_conditions(dMdt, dMdt_params_au):
     #     dR2 = dMdt_params_au['T_goal'].value**(5/2) / (constant * dMdt / (4 * np.pi * dMdt_params_au['R2'].value**2) )
     # else:
     #     dR2 = dMdt_params_au['bubble_T_rgoal'].value**(5/2) / (constant * dMdt / (4 * np.pi * dMdt_params_au['R2'].value**2) )
-    dR2 = T_init**(5/2) / (constant * dMdt / (4 * np.pi * dMdt_params_au['R2'].value**2))
+    dR2 = T_init**(5/2) / (constant * dMdt / (4 * np.pi * dMdt_params_au['R2']**2) )
     
     # print('dMdt_params_au["Tgoal"] in get_bubble_ODE_initial_conditions to check when it switches away from 3e4:', dMdt_params_au["T_goal"])
 
