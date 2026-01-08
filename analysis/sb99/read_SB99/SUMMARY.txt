@@ -1,0 +1,152 @@
+================================================================================
+EXECUTIVE SUMMARY: read_SB99.py
+================================================================================
+
+FILE: src/sb99/read_SB99.py
+LINES: 230
+ANALYZED: 2026-01-07
+STATUS: MEDIUM SEVERITY - Works but has critical error handling bugs
+
+================================================================================
+THE PROBLEM
+================================================================================
+
+This file reads Starburst99 stellar evolution data and scales it for cluster
+mass. It WORKS for happy path but HAS CRITICAL BUGS in error handling and
+lacks robustness.
+
+CRITICAL BUG: BROKEN EXCEPTION HANDLING (Lines 180-182)
+```python
+try:
+    # ... build filename
+    filename = ...
+    return filename
+except Exception as e:
+    print(e)
+    # BUG: filename might not be defined here!
+    raise Exception(f"Starburst99 file {filename} not found...")
+```
+
+If error occurs before filename is constructed → NameError!
+
+================================================================================
+CRITICAL ISSUES
+================================================================================
+
+ISSUE #1: BROKEN EXCEPTION HANDLING (HIGH)
+- Lines 180-182
+- References undefined variable in error message
+- Over-broad try/except catches everything
+- Misleading error messages
+
+ISSUE #2: SILENT UNIT CONVERSIONS (HIGH)
+- Lines 65-77
+- No validation of input units
+- Magic conversion factors (cvt.s2Myr, etc.)
+- Mixed CGS/AU without documentation
+
+ISSUE #3: HARDCODED METALLICITY (MEDIUM)
+- Lines 164-176
+- Only supports Z = 1.0 or 0.15
+- Silent failure for other values (z_str undefined)
+- TODO comment never implemented (Line 18)
+
+ISSUE #4: NO DIV-BY-ZERO PROTECTION (MEDIUM)
+- Lines 93-94, 113
+- Mdot = pdot²/(2*Lmech) → inf if Lmech=0
+- velocity = 2*Lmech/pdot → inf if pdot=0
+- NaN propagates through all calculations
+
+ISSUE #5: NO INPUT VALIDATION (MEDIUM)
+- Line 21: No check on f_mass
+- What if f_mass = 0? → All feedback = 0
+- What if f_mass < 0? → Negative luminosities
+- What if f_mass = NaN? → Everything becomes NaN
+
+================================================================================
+OTHER ISSUES
+================================================================================
+
+- Unused imports (sys)
+- Commented-out code (Lines 60, 64, 67)
+- Inconsistent naming (pdot_W vs Lbol, Mdot_W vs pdot_W)
+- Complex nested function format_e (Lines 154-156)
+- Incomplete docstring (doesn't match return)
+
+================================================================================
+PERFORMANCE
+================================================================================
+
+✓ NO BOTTLENECKS
+- Fast file load (~10ms)
+- Vectorized array operations
+- No significant issues
+
+================================================================================
+THE SOLUTION
+================================================================================
+
+CRITICAL (Must Fix):
+1. Fix exception handling - don't reference undefined filename
+2. Add f_mass validation (> 0, not NaN/inf)
+3. Handle unsupported metallicities explicitly
+
+HIGH PRIORITY:
+4. Add div-by-zero protection (EPSILON or explicit checks)
+5. Document unit conversions explicitly
+6. Add proper logging
+
+MEDIUM PRIORITY:
+7. Remove unused imports and commented code
+8. Simplify format_e function
+9. Fix docstring to match actual return
+
+================================================================================
+CORRECTNESS CHECK
+================================================================================
+
+PHYSICS: ✓ Correct
+- Velocity/mass loss formulas correct
+- Feedback scaling appropriate
+
+MATHEMATICS: ✓ Correct
+- Log to linear conversion correct
+- Array operations correct
+
+IMPLEMENTATION: ⚠️ ISSUES
+- ✗ Broken exception handling
+- ✗ No input validation
+- ✗ Hardcoded metallicity (brittle)
+- ⚠️ Silent unit conversions
+
+================================================================================
+IMPACT
+================================================================================
+
+CURRENT RISK: MEDIUM-HIGH
+- Misleading error messages (broken exception)
+- Silent failures (bad inputs, unsupported Z)
+- NaN propagation possible (div by zero)
+
+WORKS FOR: Standard cases (solar or 0.15 solar Z, positive f_mass)
+FAILS FOR: Edge cases, error conditions
+
+FIX TIME: 2-3 hours for critical issues
+
+================================================================================
+RECOMMENDATION
+================================================================================
+
+PRIORITY: HIGH
+
+Fix the broken exception handling immediately (Line 180-182). Add input
+validation for f_mass. Make unsupported metallicities raise clear errors
+instead of silently failing.
+
+This file is functional for normal use but will give confusing errors and
+silent failures on edge cases.
+
+SEE: ANALYSIS_read_SB99.md for detailed analysis
+SEE: REFACTORED_read_SB99.py for improved version
+
+================================================================================
