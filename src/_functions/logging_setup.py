@@ -12,7 +12,6 @@ Supports:
 - Per-module logger configuration
 
 Created: 2026-01-08
-Author: Claude Code Analysis
 """
 
 import logging
