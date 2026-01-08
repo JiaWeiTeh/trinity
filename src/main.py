@@ -52,7 +52,13 @@ def start_expansion(params):
     # Step 0: Preliminary
     # =============================================================================
     
-    
+    import logging
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
+    )
+
     # Record timestamp
     startdatetime = datetime.datetime.now()
     terminal_prints.phase0(startdatetime)
@@ -66,29 +72,6 @@ def start_expansion(params):
     # rCloud, nEdge = get_InitCloudProp.get_CloudRadiusEdge(params)
     get_InitCloudProp.get_InitCloudProp(params)
     # initialise
-    
-    
-    
-    
-    # import matplotlib.pyplot as plt
-    
-    # n_arr = params['initial_cloud_n_arr'].value
-    # m_arr = params['initial_cloud_m_arr'].value
-    # r_arr = params['initial_cloud_r_arr'].value
-    
-    # # plt.plot(r_arr, n_arr * cvt.ndens_au2cgs)
-    # # plt.axhline(params['nCore'] * 0.9 * cvt.ndens_au2cgs, linestyle = '--')
-    # # plt.axhline(params['nCore'] * 0.95 * cvt.ndens_au2cgs, linestyle = '--', c = 'b')
-    # plt.plot(r_arr, m_arr)
-    # plt.yscale('log')
-    # plt.xscale('log')
-    # plt.show()
-    
-    # sys.exit()
-    
-    
-    
-    
     
     # Step 2: Obtain parameters from Starburst99
     # ---
