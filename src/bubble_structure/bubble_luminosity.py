@@ -5,7 +5,37 @@ Created on Sun Aug 20 17:43:02 2023
 
 @author: Jia Wei Teh
 
-This is the newest version (after bubble_luminosity_neewithoutdict, because this has dict)
+ 
+## Purpose
+This module calculates bubble properties in stellar wind-driven HII regions, including:
+1. Bubble structure (temperature, velocity, density profiles)
+2. Cooling losses in three zones: bubble (CIE), conduction zone (non-CIE), and intermediate
+3. Mass flux from shell back into hot region via thermal conduction
+4. Based on Weaver+77 stellar wind bubble theory
+ 
+## Main Functions
+- `get_bubbleproperties(params)`: Main entry point, calculates all bubble properties
+- `get_init_dMdt(params)`: Initial guess for mass flux using Weaver+77 Eq. 33
+- `get_velocity_residuals(dMdt_init, dMdt_params_au)`: Solver for dMdt by comparing boundary velocities
+- `get_bubble_ODE_initial_conditions(dMdt, dMdt_params_au)`: Initial conditions for ODE integration
+- `get_bubble_ODE(r_arr, initial_ODEs, dMdt_params_au)`: ODE system for bubble structure
+ 
+This module is central to TRINITY's bubble evolution calculations. It:
+1. Solves for inner bubble radius (R1) and pressure (Pb)
+2. Iteratively finds mass flux (dMdt) from shell into bubble via thermal conduction
+3. Integrates ODE system (Weaver+77 Eqs 42-43) to get bubble structure:
+   - Temperature T(r)
+   - Velocity v(r)
+   - Density n(r)
+   - Temperature gradient dT/dr(r)
+4. Calculates cooling in three zones:
+   - Hot bubble (T > 10^5.5 K): CIE cooling
+   - Conduction zone (10^4 < T < 10^5.5 K): non-CIE cooling
+   - Intermediate zone: transition to cold shell
+5. Computes gravitational potential and bubble mass
+ 
+
+
 """
 
 
@@ -102,9 +132,8 @@ def get_bubbleproperties(params):
     # -- REMOVED a huge section of calculating xi_Tb. 
     xi_Tb = params['bubble_xi_Tb'].value
     # calculate rgoal
-    # rgoal = xi_Tb * params['R2'].value
     # new: this is reative to shell thickness
-    params['bubble_r_Tb'].value = params['R1'] + xi_Tb * (params['R2'] - params['R1'])
+    params['bubble_r_Tb'].value = params['R1'].value + xi_Tb * (params['R2'].value - params['R1'].value)
     
     # sanity check: rgoal cannot be smaller than the inner bubble radius R1
     assert params['bubble_r_Tb'].value > params['R1'].value, f"r_Tb ({params['bubble_r_Tb'].value}) is smaller than the inner bubble radius {R1}. Consider increasing xi_Tb."
@@ -495,25 +524,50 @@ def get_bubbleproperties(params):
     # =============================================================================
     
     def get_mass_and_grav(n, r):
-        # again: r and n is monotonically decreasing. We need to flip it here to avoid problems with np.cumsum.
-        
-        # r is now monotonically increasing
-        r_new = r[::-1] #.to(u.cm)
-        # so is n (rho) now
-        # old code says * mp, but it should be mu. 
-        rho_new = n[::-1] * params['mu_ion'].value
-        rho_new = rho_new #.to(u.g/u.cm**3)å
-        # get mass 
-        m_new = 4 * np.pi * scipy.integrate.simps(rho_new * r_new**2, x = r_new)  
-        # cumulative mass 
-        m_cumulative = np.cumsum(m_new)
-        # gravitational potential [Msun/pc]
-        grav_phi = - 4 * np.pi * params['G'].value * scipy.integrate.simps(r_new * rho_new, x = r_new)  
-        # gravitational force per mass
-        grav_force_pmass = params['G'].value * m_cumulative / r_new**2
-        
-        return m_cumulative, grav_phi, grav_force_pmass
+        """
+        Calculate cumulative mass and gravitational potential in bubble.
     
+        Parameters
+        ----------
+        n : ndarray
+            Number density [1/pc³], monotonically decreasing
+        r : ndarray
+            Radius [pc], monotonically decreasing
+    
+        Returns
+        -------
+        m_cumulative : ndarray
+            Cumulative mass from center [Msun]
+        grav_phi : float
+            Gravitational potential [pc²/Myr²]
+        grav_force_m : ndarray
+            Gravitational force per unit mass [pc/Myr²]
+        """
+        # Flip arrays to be monotonically increasing
+        r_new = r[::-1]
+        rho_new = n[::-1] * params['mu_ion'].value  # Mass density [Msun/pc³]
+    
+        # Calculate cumulative mass properly
+        m_cumulative = np.zeros_like(r_new)
+        for i in range(len(r_new)):
+            m_cumulative[i] = 4 * np.pi * scipy.integrate.simps(
+                rho_new[:i+1] * r_new[:i+1]**2,
+                x=r_new[:i+1]
+            )
+    
+        # Gravitational potential [pc²/Myr²]
+        grav_phi = -4 * np.pi * params['G'].value * scipy.integrate.simps(
+            r_new * rho_new, x=r_new
+        )
+    
+        # Gravitational force per unit mass [pc/Myr²]
+        # Add small number to avoid division by zero at r=0
+        grav_force_m = params['G'].value * m_cumulative / (r_new**2 + 1e-10)
+    
+        return m_cumulative, grav_phi, grav_force_m
+    
+
+
     # gettemåå
     m_cumulative, grav_phi, grav_force = get_mass_and_grav(n_array, r_array)
     
@@ -727,7 +781,7 @@ def get_bubble_ODE_initial_conditions(dMdt, dMdt_params_au):
     #     dR2 = dMdt_params_au['T_goal'].value**(5/2) / (constant * dMdt / (4 * np.pi * dMdt_params_au['R2'].value**2) )
     # else:
     #     dR2 = dMdt_params_au['bubble_T_rgoal'].value**(5/2) / (constant * dMdt / (4 * np.pi * dMdt_params_au['R2'].value**2) )
-    dR2 = T_init**(5/2) / (constant * dMdt / (4 * np.pi * dMdt_params_au['R2']**2) )
+    dR2 = T_init**(5/2) / (constant * dMdt / (4 * np.pi * dMdt_params_au['R2'].value**2))
     
     # print('dMdt_params_au["Tgoal"] in get_bubble_ODE_initial_conditions to check when it switches away from 3e4:', dMdt_params_au["T_goal"])
 
