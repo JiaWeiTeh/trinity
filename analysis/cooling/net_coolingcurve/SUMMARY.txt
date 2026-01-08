@@ -1,0 +1,123 @@
+================================================================================
+EXECUTIVE SUMMARY: net_coolingcurve.py
+================================================================================
+
+FILE: src/cooling/net_coolingcurve.py
+LINES: 167
+ANALYZED: 2026-01-07
+STATUS: MEDIUM SEVERITY - Works but has critical hidden issue
+
+================================================================================
+THE PROBLEM
+================================================================================
+
+This file combines CIE and non-CIE cooling regimes. It WORKS but has ONE
+CRITICAL HIDDEN ISSUE that masks underlying physics problems:
+
+**SILENT TEMPERATURE CLAMPING (Lines 85-86):**
+```python
+if T < 1e4:
+    T = 1e4  # NO WARNING!
+```
+
+The comment (Lines 78-83) admits:
+- "Temperature seem to run at some very low value (~1e3.91)"
+- "Not sure why though, as the temperature should be around 1e7, not 1e4"
+- Fixed by clamping instead of finding root cause
+
+THIS IS A RED FLAG! Silently changing physics values hides bugs.
+
+================================================================================
+CRITICAL ISSUES
+================================================================================
+
+ISSUE #1: SILENT TEMPERATURE CLAMPING (HIGH)
+- Lines 85-86
+- No warning when T < 10^4 K
+- Masks underlying problem (why is T wrong?)
+- Wrong cooling rates silently applied
+
+ISSUE #2: UNUSED 'age' PARAMETER (MEDIUM)
+- Line 22: age parameter never used in function body
+- Confusing interface
+- age comes from params_dict['t_now'] instead
+
+ISSUE #3: COMPLEX NESTED IF/ELIF LOGIC (MEDIUM)
+- Lines 102-163
+- Four branches based on temperature
+- Duplicated return logic (3 times)
+- Hard to maintain
+
+ISSUE #4: IN-PLACE UNIT CONVERSION (MEDIUM)
+- Lines 45-46
+- Modifies input variables (side effect)
+- Misleading variable names (cgs2au suggests wrong direction)
+
+================================================================================
+OTHER ISSUES
+================================================================================
+
+- Commented-out code (Lines 48-49, 63, 71-74, 107-110, 136-139)
+- Magic numbers without constants (1e4, 5.5)
+- Typo "depreciated" → "deprecated"
+- Using print() instead of logging (commented out)
+
+================================================================================
+PERFORMANCE
+================================================================================
+
+✓ NO BOTTLENECKS
+- Uses pre-computed interpolators (fast)
+- Caching strategy is good (updates every 5000 years)
+
+================================================================================
+THE SOLUTION
+================================================================================
+
+CRITICAL (Must Fix):
+1. INVESTIGATE why T < 10^4 K occurs (root cause!)
+2. Either fix root cause OR add loud warning if clamping
+3. Remove or document unused 'age' parameter
+
+HIGH PRIORITY:
+4. Refactor if/elif logic into helper functions
+5. Add proper input validation
+6. Use logging for warnings
+
+MEDIUM PRIORITY:
+7. Remove all commented-out code
+8. Replace magic numbers with named constants
+9. Consolidate duplicated return statements
+
+================================================================================
+IMPACT
+================================================================================
+
+CURRENT RISK: MEDIUM-HIGH
+- Masking physics bugs with silent clamping
+- Confusing interface (unused parameter)
+- Hard to maintain (complex logic)
+
+CORRECT PHYSICS: ⚠️ Mostly correct, but clamping is questionable
+PERFORMANCE: ✓ Good
+CODE QUALITY: ⚠️ Poor (complex, magic numbers, dead code)
+
+FIX TIME:
+- Critical issues: 2-3 hours (investigate T < 10^4 K)
+- Full refactoring: 1 day
+
+================================================================================
+RECOMMENDATION
+================================================================================
+
+PRIORITY: HIGH
+
+Before fixing code style, **INVESTIGATE ROOT CAUSE** of T < 10^4 K.
+Once resolved, refactor for clarity and add proper warnings/errors.
+
+The silent temperature clamping is a CODE SMELL suggesting deeper problems
+in shell temperature calculations.
+
+SEE: ANALYSIS_net_coolingcurve.md for detailed analysis
+SEE: REFACTORED_net_coolingcurve.py for improved version
+================================================================================
