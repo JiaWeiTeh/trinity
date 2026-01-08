@@ -48,7 +48,13 @@ def start_expansion(params):
     # Step 0: Preliminary
     # =============================================================================
     
-    
+    import logging
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
+    )
+
     # Record timestamp
     startdatetime = datetime.datetime.now()
     terminal_prints.phase0(startdatetime)
