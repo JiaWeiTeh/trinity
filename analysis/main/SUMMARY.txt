@@ -1,0 +1,269 @@
+================================================================================
+EXECUTIVE SUMMARY: main.py Analysis
+================================================================================
+
+FILE: src/main.py
+LINES: 700 total (422 active, 278 commented-out dead code)
+PURPOSE: Main orchestrator for TRINITY cloud expansion simulation
+ASSESSMENT: ⚠️ SEVERE CODE QUALITY ISSUES - Requires Major Refactoring
+
+================================================================================
+CRITICAL ISSUES (Must Fix Immediately)
+================================================================================
+
+1. 60% DEAD CODE (540 lines of commented-out WARPFIELD code, Lines 155-696)
+   - 400+ lines of commented-out recollapse handling
+   - Old WARPFIELD reconstruction code never ported
+   - Makes file unreadable and confusing
+   → FIX: DELETE all commented code
+
+2. GLOBAL MUTABLE STATE (Throughout entire file)
+   - params dict mutated everywhere
+   - No immutability, impossible to track state
+   - Cannot reproduce, rollback, or parallelize
+   - Example: params['SB99_data'].value = ... (Line 100)
+   → FIX: Use immutable SimulationState dataclass with explicit transitions
+
+3. MEMORY "CLEANUP" BY SETTING NaN (Lines 259-296)
+   - Sets 30+ fields to np.nan thinking it frees memory (it doesn't!)
+   - Creates NaN landmines for later code
+   - Contains DUPLICATE lines (276-278, 284-286 set same fields twice!)
+   - Comment admits confusion: "reset values" (why keep them then?)
+   → FIX: Use del for actual cleanup, or phase-specific data structures
+
+4. BARE except: pass (Lines 327-330)
+   - Catches ALL exceptions silently
+   - Hides critical errors (IOError, MemoryError, etc.)
+   - Makes debugging impossible
+   → FIX: Catch specific exceptions, log errors
+
+5. NO PHASE VALIDATION
+   - Phases run regardless of previous phase success
+   - No checking that output state is physically valid
+   - Cascading failures if Phase 1a produces garbage
+   → FIX: Validate state between phases
+
+================================================================================
+WHAT THE SCRIPT DOES
+================================================================================
+
+FUNCTION: start_expansion(params)
+  PURPOSE: Initialize simulation and load data
+  STEPS:
+    1. Record start timestamp
+    2. Get initial cloud properties (mutates params)
+    3. Load SB99 stellar feedback data
+    4. Load CIE cooling curves
+    5. Call run_expansion()
+
+FUNCTION: run_expansion(params)
+  PURPOSE: Execute all simulation phases in sequence
+  PHASES:
+    Phase 1a: Energy-driven (constant cooling)
+    Phase 1b: Energy-driven (adaptive cooling)
+    Phase 1c: Transition (energy → momentum)
+    Phase 1d: Momentum-driven
+
+  LOGIC:
+    - Set phase name in params
+    - Run phase function
+    - Print timing (Phase 1a only)
+    - Try params.flush() (with bare except: pass)
+    - Set 30+ cooling fields to NaN after Phase 1b
+    - Continue to next phase (no validation!)
+
+FUNCTION: expansion_next()
+  PURPOSE: Handle recollapse (from WARPFIELD)
+  STATUS: NOT IMPLEMENTED (returns immediately)
+
+================================================================================
+MAJOR ISSUES
+================================================================================
+
+6. HARD-CODED PHASE SEQUENCE
+   - Phases hard-coded in run_expansion()
+   - Cannot reorder, skip, or add phases without editing main.py
+   - Cannot make conditional based on physics
+
+7. INCONSISTENT LOGGING
+   - Mix of print() and terminal_prints module
+   - Cannot control log levels or redirect to file
+
+8. NO RETURN VALUE VALIDATION
+   - Phase functions return nothing
+   - Cannot check success or get statistics
+
+9. MISLEADING FUNCTION NAMES
+   - expansion_next() does nothing (returns immediately)
+   - start_expansion() returns 0 (why?)
+   - run_expansion() returns None
+
+10. MAGIC VALUES
+    - params['Eb'].value = 1 (Line 322) - why 1?
+    - return 0 (Line 182) - what does 0 mean?
+    - No named constants
+
+================================================================================
+CODE QUALITY METRICS
+================================================================================
+
+Dead Code:           60% (278/700 lines commented out)
+Function Coverage:   0% (no tests)
+Documentation:       Poor (no docstrings)
+Type Hints:          0%
+Logging:             Inconsistent (mix of print and module)
+Error Handling:      Dangerous (bare except: pass)
+Mutability:          Everywhere (params dict)
+Magic Values:        Several (Eb=1, return 0)
+Duplicated Code:     Yes (Lines 276-278, 284-286 duplicate)
+
+================================================================================
+ARCHITECTURAL PROBLEMS
+================================================================================
+
+Current Design:
+  ❌ Mutable params dict passed everywhere
+  ❌ Phases modify params directly
+  ❌ No state validation
+  ❌ No error propagation
+  ❌ No rollback capability
+  ❌ Hard-coded phase sequence
+
+Should Be:
+  ✓ Immutable SimulationState dataclass
+  ✓ Phases return PhaseResult with new state
+  ✓ State validation between phases
+  ✓ Proper error handling with specific exceptions
+  ✓ Configurable phase pipeline
+  ✓ Checkpointing for long runs
+
+================================================================================
+SPECIFIC CODE ISSUES
+================================================================================
+
+Lines 62-63:   Commented-out old API call (code drift)
+Lines 69-83:   Debug matplotlib code left in (commented)
+Lines 98-99:   TODO about time-shifting never implemented
+Lines 111-113: Metallicity check commented out (security?)
+Lines 129-137: CLOUDY support incomplete (commented out)
+Lines 155-696: 540 lines of dead WARPFIELD code
+Lines 227-230: Bare try/except: pass (commented but shows pattern)
+Lines 259-296: NaN "cleanup" hack with duplicates
+Lines 276-278: DUPLICATE (same as 272-274)
+Lines 284-286: DUPLICATE (same as 276-278)
+Lines 310-313: Bare try/except: pass (commented)
+Lines 327-330: Bare try/except: pass (ACTIVE - critical bug!)
+Line 322:      Magic value (Eb = 1)
+Line 337:      expansion_next() empty stub
+
+================================================================================
+PHYSICS CORRECTNESS
+================================================================================
+
+Cannot Assess Physics:
+  - No validation of physical constraints
+  - No checking for unphysical values (negative radius, etc.)
+  - NaN values may propagate silently
+  - If Phase 1a fails, Phase 1b gets garbage input
+
+Potential Physics Bugs:
+  - Setting Eb=1 at Line 322 may not be physically correct
+  - No validation that phases produce valid output
+  - Silent failures may produce nonsense results
+
+================================================================================
+PERFORMANCE ISSUES
+================================================================================
+
+- No profiling or timing (except Phase 1a)
+- No memory tracking
+- No checkpointing (long runs vulnerable to crashes)
+- params.flush() failures ignored (data loss risk)
+- No progress reporting
+
+================================================================================
+TESTING STATUS
+================================================================================
+
+Unit Tests:        0 (none)
+Integration Tests: 0 (none)
+Validation Tests:  0 (none)
+Test Coverage:     0%
+
+CANNOT VERIFY CORRECTNESS!
+
+================================================================================
+REFACTORING RECOMMENDATIONS
+================================================================================
+
+PRIORITY 1 (1 week effort):
+  1. DELETE Lines 155-696 (dead code)
+  2. FIX bare except: pass (Lines 327-330)
+  3. REMOVE NaN cleanup hack (Lines 259-296)
+  4. ADD state validation between phases
+  5. INTRODUCE immutable SimulationState
+
+PRIORITY 2 (2 days):
+  6. REPLACE params dict with structured state
+  7. INTRODUCE Phase base class
+  8. ADD PhaseResult return values
+  9. CREATE configurable pipeline
+
+PRIORITY 3 (1 day):
+  10. REPLACE print with logging
+  11. ADD docstrings and type hints
+  12. REMOVE magic values
+  13. ADD basic tests
+
+================================================================================
+RISK ASSESSMENT
+================================================================================
+
+CURRENT RISKS:
+  🔴 HIGH: Silent failures may produce wrong results (bare except: pass)
+  🔴 HIGH: Cannot reproduce runs (mutable state)
+  🔴 HIGH: Cannot debug failures (no logging, no validation)
+  ⚠️  MEDIUM: Data loss risk (params.flush() failures ignored)
+  ⚠️  MEDIUM: Memory leaks (NaN doesn't free memory)
+
+IF REFACTORED:
+  ✓ Reproducible simulations
+  ✓ Validated state transitions
+  ✓ Proper error handling
+  ✓ Testable components
+  ✓ Extensible phase pipeline
+
+================================================================================
+FINAL VERDICT
+================================================================================
+
+RATING: ⚠️ 3/10 - Poor Code Quality, Requires Major Refactoring
+
+POSITIVE:
+  ✓ Clear phase separation
+  ✓ Modular design (delegates to phase modules)
+  ✓ Timestamp tracking for performance
+
+NEGATIVE:
+  ✗ 60% dead code makes file unreadable
+  ✗ Global mutable state prevents reproducibility
+  ✗ No error handling or validation
+  ✗ NaN "cleanup" hack doesn't actually clean memory
+  ✗ Bare except: pass hides critical failures
+  ✗ Zero tests, cannot verify correctness
+
+RECOMMENDATION:
+  Create REFACTORED_main.py with:
+    - Immutable state management
+    - Proper error handling
+    - Phase validation
+    - Configurable pipeline
+    - Comprehensive tests
+
+  Run both versions in parallel to validate, then switch.
+
+EFFORT ESTIMATE: 1 week full-time work
+RISK: HIGH if not fixed (silent failures, wrong results, data loss)
+PRIORITY: 🔴 CRITICAL (this is the main entry point!)
+
+================================================================================
