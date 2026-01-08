@@ -12,8 +12,12 @@ This script contains functions that will help reading in Starburst99 data.
 import numpy as np
 import scipy
 import sys
+import logging
 
 import src._functions.unit_conversions as cvt
+
+# Initialize logger for this module
+logger = logging.getLogger(__name__)
 
 # TODO: Implement interpolation function for in-between metallicities/cluster 
     # : Add fmet, where metallicity scaling due to non-existent SB99 file

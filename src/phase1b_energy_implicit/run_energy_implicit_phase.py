@@ -23,6 +23,10 @@ import src.cloud_properties.mass_profile as mass_profile
 import src.bubble_structure.get_bubbleParams as get_bubbleParams
 import src.phase1b_energy_implicit.get_betadelta as get_betadelta
 import src._functions.unit_conversions as cvt
+import logging
+
+# Initialize logger for this module
+logger = logging.getLogger(__name__)
 import src.cooling.non_CIE.read_cloudy as non_CIE
 from src.sb99.update_feedback import get_currentSB99feedback
 import src.shell_structure.shell_structure as shell_structure
