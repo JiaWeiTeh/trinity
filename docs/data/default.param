@@ -41,6 +41,21 @@ verbose    1
 # INFO: Specifies the output format.
 output_format    JSON
 
+# --- Logging parameters
+
+# INFO: Logging level for terminal and file output. Controls how much detail is logged.
+# OPTIONS: DEBUG (most detailed), INFO (general information), WARNING (warnings only), ERROR (errors only), CRITICAL (critical errors only)
+log_level    INFO
+
+# INFO: Enable console (terminal) output for logging. If True, log messages are printed to terminal.
+log_console    True
+
+# INFO: Enable file output for logging. If True, log messages are written to a .log file in the output directory.
+log_file    True
+
+# INFO: Use colored output in terminal. If True, log messages are color-coded by severity (DEBUG=cyan, INFO=green, WARNING=yellow, ERROR=red, CRITICAL=magenta).
+log_colors    True
+
 # ---------------------------------
 # --- Physical parameters
 # ---------------------------------

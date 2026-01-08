@@ -13,8 +13,10 @@ from src.phase_general import phase_ODEs
 import src._functions.unit_conversions as cvt
 import src.phase1_energy.energy_phase_ODEs as energy_phase_ODEs
 import src.shell_structure.shell_structure as shell_structure
+import logging
 
-
+# Initialize logger for this module
+logger = logging.getLogger(__name__)
 
 
 def run_phase_momentum(params):
