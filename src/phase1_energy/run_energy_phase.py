@@ -20,6 +20,10 @@ import src._functions.operations as operations
 from src._input.dictionary import updateDict
 import src._functions.unit_conversions as cvt
 from src.sb99.update_feedback import get_currentSB99feedback
+import logging
+
+# Initialize logger for this module
+logger = logging.getLogger(__name__)
 
 def run_energy(params):
     

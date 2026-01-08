@@ -25,6 +25,10 @@ from src.phase1c_transition import run_transition_phase
 from src.phase2_momentum import run_momentum_phase
 import src._output.terminal_prints as terminal_prints
 from src._input.dictionary import DescribedItem, DescribedDict
+import logging
+
+# Initialize logger for this module
+logger = logging.getLogger(__name__)
 
 
 

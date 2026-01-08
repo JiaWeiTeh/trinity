@@ -9,6 +9,10 @@ Update SB99 feedback values across dictionary
 """
 
 from src._input.dictionary import updateDict
+import logging
+
+# Initialize logger for this module
+logger = logging.getLogger(__name__)
 
 
 def get_currentSB99feedback(t, params):
