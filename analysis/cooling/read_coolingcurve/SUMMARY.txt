@@ -1,0 +1,81 @@
+================================================================================
+EXECUTIVE SUMMARY: read_coolingcurve.py
+================================================================================
+
+FILE: src/cooling/CIE/read_coolingcurve.py
+LINES: 76
+ANALYZED: 2026-01-07
+STATUS: LOW SEVERITY - Simple file, mostly functional
+
+================================================================================
+THE PROBLEM
+================================================================================
+
+This file provides Lambda(T) cooling function for CIE (Collisional Ionization
+Equilibrium) conditions. It's simple and mostly correct, but LACKS ROBUSTNESS:
+
+KEY ISSUES:
+1. NO INPUT VALIDATION - Accepts T <= 0, NaN without error
+2. NO BOUNDS CHECKING - Crashes if T outside interpolation range
+3. UNUSED PARAMETER - metallicity parameter does nothing
+4. DEAD CODE - 9 lines of commented-out code (Lines 60-68)
+5. UNUSED IMPORTS - sys, astropy.units never used
+
+================================================================================
+SEVERITY BREAKDOWN
+================================================================================
+
+MEDIUM ISSUES:
+- No input validation (T > 0, not NaN)
+- No bounds checking on interpolation
+- Unused metallicity parameter
+
+LOW ISSUES:
+- Dead code (commented out)
+- Unused imports
+- Docstring typo (duplicate descriptions)
+
+PERFORMANCE: ✓ No issues (very fast)
+CORRECTNESS: ✓ Physics and math are correct
+CODE QUALITY: ⚠️ Lacks error handling and validation
+
+================================================================================
+THE SOLUTION
+================================================================================
+
+SHORT TERM (Critical):
+1. Add input validation: if T <= 0, raise ValueError
+2. Add bounds checking: warn if T outside interpolation range
+3. Handle edge cases gracefully
+
+MEDIUM TERM:
+4. Remove dead code (Lines 60-68)
+5. Remove unused imports
+6. Either use or remove metallicity parameter
+
+LONG TERM:
+7. Implement non-solar metallicity support
+8. Add proper logging
+9. Add unit tests
+
+================================================================================
+IMPACT
+================================================================================
+
+CURRENT RISK: MEDIUM
+- Can crash with cryptic error if T outside range
+- Silent failures possible with invalid inputs
+- No major physics bugs
+
+FIX TIME: ~30 minutes for critical issues
+
+================================================================================
+RECOMMENDATION
+================================================================================
+
+This file WORKS but is FRAGILE. Add validation and error handling to make
+it robust. Not urgent, but should be done before production use.
+
+SEE: ANALYSIS_read_coolingcurve.md for detailed analysis
+SEE: REFACTORED_read_coolingcurve.py for improved version
+================================================================================
