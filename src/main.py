@@ -215,6 +215,20 @@ def run_expansion(params):
     logger.debug(f"  Eb = {params['Eb'].value:.6e}")
     logger.debug(f"  T0 = {params['T0'].value:.6e} K")
 
+    
+    t0, r0, v0, E0, T0 = get_InitPhaseParam.get_y0(params)
+    
+    params['t_now'].value = t0
+    params['R2'].value = r0
+    params['v2'].value = v0
+    params['Eb'].value = E0 
+    params['T0'].value = T0 
+    
+    print('here is your dictionary', params)
+    
+    # params.save_snapShot()
+    
+    # update
     # =============================================================================
     # Phase 1a: Energy driven phase.
     # =============================================================================

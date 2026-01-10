@@ -1,17 +1,218 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python3 DONE
+
+
 # -*- coding: utf-8 -*-
+
+
 """
+
+
 REFACTORED VERSION of update_feedback.py
 
+
+ 
+
+
 Original Author: Jia Wei Teh
+
+
 Refactored: 2026-01-08
+
+
+ 
+
 
 This script retrieves current SB99 feedback values at a given time.
 
+
+ 
+
+
 CRITICAL BUG FIX:
 
+
+=================
+
+
+Wind velocity calculation was INCORRECT in original code.
+
+
+ 
+
+
+ORIGINAL (WRONG):
+
+
+    vWind = 2 * LWind / pWindDot
+
+
+ 
+
+
+    where pWindDot = pdot_total (wind + SNe momentum combined)
+
+
+ 
+
+
+    This incorrectly uses TOTAL momentum rate in denominator, causing
+
+
+    wind velocity to be underestimated by 10-80% depending on epoch
+
+
+    (when SNe contribute significantly to pdot).
+
+
+ 
+
+
+FIXED:
+
+
+    vWind = 2 * Lmech_W / pdot_W
+
+
+ 
+
+
+    Wind velocity should be calculated from WIND-ONLY quantities.
+
+
+ 
+
+
+PHYSICS:
+
+
+    From kinetic energy: L_wind = 0.5 * Mdot_wind * v_wind^2
+
+
+    From momentum:       pdot_wind = Mdot_wind * v_wind
+
+
+ 
+
+
+    Solving: v_wind = 2 * L_wind / pdot_wind
+
+
+ 
+
+
+    Using total momentum (wind + SNe) incorrectly dilutes the velocity.
+
+
+ 
+
+
+NAMING CONVENTION:
+
+
+==================
+
+
+- Wind components: _W suffix (Lmech_W, pdot_W)
+
+
+- SN components: _SN suffix (Lmech_SN, pdot_SN)
+
+
+- Total components: _total suffix (Lmech_total, pdot_total)
+
+
+ 
+
+
+RETURN SIGNATURE CHANGE:
+
+
+========================
+
+
+Old: [Qi, LWind, Lbol, Ln, Li, vWind, pWindDot, pWindDotDot]
+
+
+New: [t, Qi, Li, Ln, Lbol, Lmech_W, Lmech_SN, Lmech_total, pdot_W, pdot_SN, pdot_total]
+
+
+ 
+
+
+The new signature:
+
+
+1. Returns raw SB99 values (not derived quantities like vWind)
+
+
+2. Properly separates wind and SN components
+
+
+3. Includes time for clarity
+
+
+4. Allows caller to compute derived quantities as needed
+
+
+ 
+
+
+USAGE:
+
+
+======
+
+
+# Get feedback at current time
+
+
+feedback = get_currentSB99feedback(t_now, params)
+
+
+[t, Qi, Li, Ln, Lbol, Lmech_W, Lmech_SN, Lmech_total, pdot_W, pdot_SN, pdot_total] = feedback
+
+
+ 
+
+
+# Compute wind velocity correctly (if needed)
+
+
+vWind = 2.0 * Lmech_W / pdot_W  # CORRECT: wind-only quantities
+
+
+ 
+
+
+# Compute SN ejecta velocity (if needed, typically constant ~1e4 km/s)
+
+
+# vSN = 2.0 * Lmech_SN / pdot_SN  # Only valid if Mdot_SN is consistent
+
+
+"""
+
+
+ 
+
+
+import logging
+
+
+from typing import Dict, Any, List, Tuple
+
+
+import numpy as np
+
+
+ 
+
+
 # Set up logging
+
+
 logger = logging.getLogger(__name__)
+
 
 
 def get_currentSB99feedback(t: float, params: DescribedDict) -> List[float]:
