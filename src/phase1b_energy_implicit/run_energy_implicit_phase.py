@@ -142,7 +142,12 @@ def ODE_equations(t, y, params):
     # Part 1: find acceleration and velocity
     # =============================================================================
     # get current feedback value
-    [Qi, LWind, Lbol, Ln, Li, vWind, pWindDot, pWindDotDot] =  get_currentSB99feedback(t, params)
+    [t, Qi, Li, Ln, Lbol, Lmech_W, Lmech_SN, Lmech_total, pdot_W, pdot_SNe, pdot_total] = get_currentSB99feedback(t, params)
+    # Extract derived values from params for backward compatibility
+    LWind = params['LWind'].value
+    vWind = params['vWind'].value
+    pWindDot = params['pWindDot'].value
+    pWindDotDot = params['pWindDotDot'].value
     # run shell structure calculations
     shell_structure.shell_structure(params)
     # get time derivative of radius and velocity from ode equations
