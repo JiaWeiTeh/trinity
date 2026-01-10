@@ -4,57 +4,95 @@
 Created on Wed Jul 12 13:37:22 2023
 
 @author: Jia Wei Teh
+
+This module handles the display of the TRINITY header and initial parameters.
+Uses direct print() for header display (shown before logging is configured).
 """
 import os
 import numpy as np
 from src._output.terminal_prints import cprint as cpr
 import src._functions.unit_conversions as cvt
 
+
 def display(params):
-    
-    # display logo for WARPFIELD
+    """
+    Display the TRINITY welcome header and initial parameter summary.
+
+    Note: This function uses print() instead of logging because it should
+    display BEFORE logging is configured. This ensures the header appears
+    first in the terminal output.
+
+    Parameters
+    ----------
+    params : DescribedDict
+        Dictionary of simulation parameters
+    """
+    # display logo for TRINITY
     show_logo()
-    print(f'\t\t      --------------------------------------------------')
-    print(f'\t\t      Welcome to'+' \033[32m'+link('https://github.com/JiaWeiTeh/trinity', 'TRINITY')+'\033[0m!\n')
-    print(f'\t\t      Notes:')
-    print(f'\t\t         - Documentation can be found \033[32m'+link('https://trinitysf.readthedocs.io/en/latest/index.html', 'here')+'\033[0m.')
+    print('\t\t      --------------------------------------------------')
+    print('\t\t      Welcome to' + ' \033[32m' + link('https://github.com/JiaWeiTeh/trinity', 'TRINITY') + '\033[0m!\n')
+    print('\t\t      Notes:')
+    print('\t\t         - Documentation can be found \033[32m' + link('https://trinitysf.readthedocs.io/en/latest/index.html', 'here') + '\033[0m.')
     print(f'\t\t         - \033[1m\033[96mBold text{cpr.END} indicates that a file is saved.')
     print(f'\t\t         - {cpr.WARN}Warning message{cpr.END}. Code runs still.')
     print(f'\t\t         - {cpr.FAIL}Error encountered.{cpr.END} Code terminates.\n')
-    print(f'\t\t      [Version 3.0] 2022. All rights reserved.')
-    print(f'\t\t      --------------------------------------------------')
+    print('\t\t      [Version 3.0] 2022. All rights reserved.')
+    print('\t\t      --------------------------------------------------')
     # show initial parameters
     show_param(params)
-    
+
     return
 
 
 def show_logo():
-    
+    """Display the TRINITY ASCII art logo."""
     print(r"""
-          ,          ______   ______     __     __   __     __     ______   __  __   
-       \  :  /      /\__  _\ /\  == \   /\ \   /\ "-.\ \   /\ \   /\__  _\ /\ \_\ \  
-    `. __/ \__ .'   \/_/\ \/ \ \  __<   \ \ \  \ \ \-.  \  \ \ \  \/_/\ \/ \ \____ \ 
+          ,          ______   ______     __     __   __     __     ______   __  __
+       \  :  /      /\__  _\ /\  == \   /\ \   /\ "-.\ \   /\ \   /\__  _\ /\ \_\ \
+    `. __/ \__ .'   \/_/\ \/ \ \  __<   \ \ \  \ \ \-.  \  \ \ \  \/_/\ \/ \ \____ \
     _ _\     /_ _      \ \_\  \ \_\ \_\  \ \_\  \ \_\\"\_\  \ \_\    \ \_\  \/\_____\
        /_   _\          \/_/   \/_/ /_/   \/_/   \/_/ \/_/   \/_/     \/_/   \/_____/
-     .'  \ /  `.      
-          '             © J.W. Teh, R.S. Klessen                            
+     .'  \ /  `.
+          '             © J.W. Teh, R.S. Klessen
         """)
 
-    return 
+    return
 
 
-def link(url, label = None):
-    if label is None: 
+def link(url, label=None):
+    """
+    Create a clickable hyperlink for terminal output.
+
+    Parameters
+    ----------
+    url : str
+        The URL to link to
+    label : str, optional
+        Display text for the link. Defaults to the URL.
+
+    Returns
+    -------
+    str
+        OSC 8 escape sequence for clickable link
+    """
+    if label is None:
         label = url
     parameters = ''
-    # OSC 8 ; params ; URL ST <name> OSC 8 ;; ST 
+    # OSC 8 ; params ; URL ST <name> OSC 8 ;; ST
     escape_mask = '\033]8;{};{}\033\\{}\033]8;;\033\\'
 
     return escape_mask.format(parameters, url, label)
 
+
 def show_param(params):
-    # print some useful information
+    """
+    Display initial parameter summary.
+
+    Parameters
+    ----------
+    params : DescribedDict
+        Dictionary of simulation parameters
+    """
     print(f"{cpr.BLINK}Loading parameters:{cpr.END}")
     print(f"\tmodel name: {params['model_name'].value}")
     print(f"\tlog_mCloud: {np.log10(params['mCloud']/(1-params['sfe']))} Msun")
