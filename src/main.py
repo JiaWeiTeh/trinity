@@ -87,8 +87,6 @@ def start_expansion(params):
     params['SB99_data'].value = SB99_data
     params['SB99f'].value = SB99f
     
-    print('..loaded sps files.')
-    
     # Step 3: get cooling structure for CIE (since it is non time dependent).
     # ---
     # Values for non-CIE cooling curve will be calcualated along the simnulation, since it depends on time evolution.
