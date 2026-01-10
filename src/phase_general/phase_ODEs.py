@@ -32,7 +32,12 @@ def get_vdot(t, y,
     tSF = params['tSF'].value
     
     
-    [Qi, LWind, Lbol, Ln, Li, vWind, pWindDot, pWindDotDot] = get_currentSB99feedback(t, params)
+    [t, Qi, Li, Ln, Lbol, Lmech_W, Lmech_SN, Lmech_total, pdot_W, pdot_SNe, pdot_total] = get_currentSB99feedback(t, params)
+    # Extract derived values from params for backward compatibility
+    LWind = params['LWind'].value
+    vWind = params['vWind'].value
+    pWindDot = params['pWindDot'].value
+    pWindDotDot = params['pWindDotDot'].value
 
     # =============================================================================
     # Shell mass, where radius = maximum extent of shell.
@@ -191,7 +196,12 @@ def get_vdot_OLD(t, y,
     tSF = params['tSF'].value
     
     
-    [Qi, LWind, Lbol, Ln, Li, vWind, pWindDot, pWindDotDot] = get_currentSB99feedback(t, params)
+    [t, Qi, Li, Ln, Lbol, Lmech_W, Lmech_SN, Lmech_total, pdot_W, pdot_SNe, pdot_total] = get_currentSB99feedback(t, params)
+    # Extract derived values from params for backward compatibility
+    LWind = params['LWind'].value
+    vWind = params['vWind'].value
+    pWindDot = params['pWindDot'].value
+    pWindDotDot = params['pWindDotDot'].value
 
     # =============================================================================
     # Shell mass, where radius = maximum extent of shell.

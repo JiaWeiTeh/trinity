@@ -47,7 +47,7 @@ def read_SB99(f_mass, params):
 
     Returns
     -------
-    list : [t, Qi, Li, Ln, Lbol, Lmech_wind, Lmech_SN, Lmech_total, pdot_wind, pdot_SN, pdot_total]
+    list : [t, Qi, Li, Ln, Lbol, Lmech_W, Lmech_SN, Lmech_total, pdot_W, pdot_SNe, pdot_total]
         Time series arrays (all with t=0 prepended):
 
         t : ndarray
@@ -60,15 +60,15 @@ def read_SB99(f_mass, params):
             Non-ionizing luminosity (<13.6 eV) [erg/s] (AU)
         Lbol : ndarray
             Bolometric luminosity [erg/s] (AU)
-        Lmech_wind : ndarray
+        Lmech_W : ndarray
             Wind mechanical luminosity [erg/s] (AU)
         Lmech_SN : ndarray
             SNe mechanical luminosity [erg/s] (AU)
         Lmech_total : ndarray
             Total mechanical luminosity (winds + SNe) [erg/s] (AU)
-        pdot_wind : ndarray
+        pdot_W : ndarray
             Wind momentum rate [M_sun·pc/Myr²] (AU)
-        pdot_SN : ndarray
+        pdot_SNe : ndarray
             SNe momentum rate [M_sun·pc/Myr²] (AU)
         pdot_total : ndarray
             Total momentum rate (winds + SNe) [M_sun·pc/Myr²] (AU)
@@ -85,14 +85,14 @@ def read_SB99(f_mass, params):
     -----
     - All arrays have t=0 prepended with initial values for interpolation
     - Thermal efficiency and cold mass corrections are applied to winds and SNe
-    - Wind velocity: v_wind = 2 * Lmech_wind / pdot_wind (after corrections)
+    - Wind velocity: v_wind = 2 * Lmech_W / pdot_W (after corrections)
     - SNe velocity: from params['FB_vSN'] (after corrections)
 
     Examples
     --------
     >>> SB99_data = read_SB99(f_mass=1.0, params=params)
-    >>> t, Qi, Li, Ln, Lbol, Lmech_wind, Lmech_SN, Lmech_total, pdot_wind, pdot_SN, pdot_total = SB99_data
-    >>> print(f"At t={t[50]:.3f} Myr: Wind Lmech={Lmech_wind[50]:.3e}, SNe Lmech={Lmech_SN[50]:.3e}")
+    >>> t, Qi, Li, Ln, Lbol, Lmech_W, Lmech_SN, Lmech_total, pdot_W, pdot_SNe, pdot_total = SB99_data
+    >>> print(f"At t={t[50]:.3f} Myr: Wind Lmech={Lmech_W[50]:.3e}, SNe Lmech={Lmech_SN[50]:.3e}")
     """
 
     # =========================================================================
@@ -262,12 +262,12 @@ def read_SB99(f_mass, params):
     Lbol = np.insert(Lbol, 0, Lbol[0])
 
     # Insert separated wind and SNe components
-    Lmech_wind = np.insert(Lmech_wind, 0, Lmech_wind[0])
+    Lmech_W = np.insert(Lmech_wind, 0, Lmech_wind[0])
     Lmech_SN = np.insert(Lmech_SN, 0, Lmech_SN[0])
     Lmech_total = np.insert(Lmech_total, 0, Lmech_total[0])
 
-    pdot_wind = np.insert(pdot_wind, 0, pdot_wind[0])
-    pdot_SN = np.insert(pdot_SN, 0, pdot_SN[0])
+    pdot_W = np.insert(pdot_wind, 0, pdot_wind[0])
+    pdot_SNe = np.insert(pdot_SN, 0, pdot_SN[0])
     pdot_total = np.insert(pdot_total, 0, pdot_total[0])
 
     logger.info(
@@ -276,8 +276,8 @@ def read_SB99(f_mass, params):
     )
 
     # Return all separated components
-    return [t, Qi, Li, Ln, Lbol, Lmech_wind, Lmech_SN, Lmech_total,
-            pdot_wind, pdot_SN, pdot_total]
+    return [t, Qi, Li, Ln, Lbol, Lmech_W, Lmech_SN, Lmech_total,
+            pdot_W, pdot_SNe, pdot_total]
 
 
 def get_filename(params):
@@ -382,7 +382,7 @@ def get_interpolation(SB99, ftype='cubic'):
     ----------
     SB99 : list
         Data array from read_SB99():
-        [t, Qi, Li, Ln, Lbol, Lmech_wind, Lmech_SN, Lmech_total, pdot_wind, pdot_SN, pdot_total]
+        [t, Qi, Li, Ln, Lbol, Lmech_W, Lmech_SN, Lmech_total, pdot_W, pdot_SNe, pdot_total]
     ftype : str, optional
         Interpolation type for scipy.interpolate.interp1d.
         Options: 'linear', 'cubic' (default), 'quadratic', etc.
@@ -396,18 +396,18 @@ def get_interpolation(SB99, ftype='cubic'):
         - 'fLi' : Ionizing luminosity interpolator
         - 'fLn' : Non-ionizing luminosity interpolator
         - 'fLbol' : Bolometric luminosity interpolator
-        - 'fLmech_wind' : Wind mechanical luminosity interpolator
+        - 'fLmech_W' : Wind mechanical luminosity interpolator
         - 'fLmech_SN' : SNe mechanical luminosity interpolator
         - 'fLmech_total' : Total mechanical luminosity interpolator
-        - 'fpdot_wind' : Wind momentum rate interpolator
-        - 'fpdot_SN' : SNe momentum rate interpolator
+        - 'fpdot_W' : Wind momentum rate interpolator
+        - 'fpdot_SNe' : SNe momentum rate interpolator
         - 'fpdot_total' : Total momentum rate interpolator
 
     Notes
     -----
     - All interpolator keys match variable naming convention
-    - Wind components use '_wind' suffix
-    - SNe components use '_SN' suffix
+    - Wind components use '_W' suffix
+    - SNe components use '_SNe' suffix
     - Total components use '_total' suffix
 
     Examples
@@ -415,15 +415,15 @@ def get_interpolation(SB99, ftype='cubic'):
     >>> SB99_data = read_SB99(f_mass=1.0, params=params)
     >>> SB99f = get_interpolation(SB99_data, ftype='cubic')
     >>> t = 5.0  # Myr
-    >>> Lmech_wind = SB99f['fLmech_wind'](t)
+    >>> Lmech_W = SB99f['fLmech_W'](t)
     >>> Lmech_SN = SB99f['fLmech_SN'](t)
     >>> Lmech_total = SB99f['fLmech_total'](t)
-    >>> vWind = 2.0 * Lmech_wind / SB99f['fpdot_wind'](t)  # Correct formula!
+    >>> vWind = 2.0 * Lmech_W / SB99f['fpdot_W'](t)  # Correct formula!
     """
 
     # Unpack all SB99 values (with separated components)
-    [t_Myr, Qi, Li, Ln, Lbol, Lmech_wind, Lmech_SN, Lmech_total,
-     pdot_wind, pdot_SN, pdot_total] = SB99
+    [t_Myr, Qi, Li, Ln, Lbol, Lmech_W, Lmech_SN, Lmech_total,
+     pdot_W, pdot_SNe, pdot_total] = SB99
 
     # Create interpolation functions for all feedback parameters
     fQi = scipy.interpolate.interp1d(t_Myr, Qi, kind=ftype)
@@ -432,13 +432,13 @@ def get_interpolation(SB99, ftype='cubic'):
     fLbol = scipy.interpolate.interp1d(t_Myr, Lbol, kind=ftype)
 
     # Mechanical luminosity interpolators (separated with consistent naming!)
-    fLmech_wind = scipy.interpolate.interp1d(t_Myr, Lmech_wind, kind=ftype)
+    fLmech_W = scipy.interpolate.interp1d(t_Myr, Lmech_W, kind=ftype)
     fLmech_SN = scipy.interpolate.interp1d(t_Myr, Lmech_SN, kind=ftype)
     fLmech_total = scipy.interpolate.interp1d(t_Myr, Lmech_total, kind=ftype)
 
     # Momentum rate interpolators (separated with consistent naming!)
-    fpdot_wind = scipy.interpolate.interp1d(t_Myr, pdot_wind, kind=ftype)
-    fpdot_SN = scipy.interpolate.interp1d(t_Myr, pdot_SN, kind=ftype)
+    fpdot_W = scipy.interpolate.interp1d(t_Myr, pdot_W, kind=ftype)
+    fpdot_SNe = scipy.interpolate.interp1d(t_Myr, pdot_SNe, kind=ftype)
     fpdot_total = scipy.interpolate.interp1d(t_Myr, pdot_total, kind=ftype)
 
     # Dictionary of all interpolators with consistent key naming
@@ -447,11 +447,11 @@ def get_interpolation(SB99, ftype='cubic'):
         'fLi': fLi,
         'fLn': fLn,
         'fLbol': fLbol,
-        'fLmech_wind': fLmech_wind,      # Consistent: variable is Lmech_wind, key is fLmech_wind
+        'fLmech_W': fLmech_W,            # Consistent: variable is Lmech_W, key is fLmech_W
         'fLmech_SN': fLmech_SN,
         'fLmech_total': fLmech_total,
-        'fpdot_wind': fpdot_wind,         # Consistent: variable is pdot_wind, key is fpdot_wind
-        'fpdot_SN': fpdot_SN,
+        'fpdot_W': fpdot_W,              # Consistent: variable is pdot_W, key is fpdot_W
+        'fpdot_SNe': fpdot_SNe,
         'fpdot_total': fpdot_total
     }
 
