@@ -32,61 +32,80 @@ def get_currentSB99feedback(t, params):
 
     Returns
     -------
-    list : [Qi, LWind, Lbol, Ln, Li, vWind, pTotalDot, pTotalDotDot]
-        Stellar feedback parameters at time t
+    list : [t, Qi, Li, Ln, Lbol, Lmech_W, Lmech_SN, Lmech_total, pdot_W, pdot_SNe, pdot_total]
+        Raw SB99 feedback parameters at time t:
+        - t : float, current time [Myr]
+        - Qi : float, ionizing photon rate [s⁻¹]
+        - Li : float, ionizing luminosity [erg/s]
+        - Ln : float, non-ionizing luminosity [erg/s]
+        - Lbol : float, bolometric luminosity [erg/s]
+        - Lmech_W : float, wind mechanical luminosity [erg/s]
+        - Lmech_SN : float, SNe mechanical luminosity [erg/s]
+        - Lmech_total : float, total mechanical luminosity [erg/s]
+        - pdot_W : float, wind momentum rate [M_sun·pc/Myr²]
+        - pdot_SNe : float, SNe momentum rate [M_sun·pc/Myr²]
+        - pdot_total : float, total momentum rate [M_sun·pc/Myr²]
 
     Notes
     -----
     FIXED: Wind velocity now correctly uses wind-only momentum rate!
-    Old (WRONG): vWind = 2 * LWind / (pdot_wind + pdot_SN)
-    New (CORRECT): vWind = 2 * LWind / pdot_wind
+    Old (WRONG): vWind = 2 * LWind / (pdot_W + pdot_SNe)
+    New (CORRECT): vWind = 2 * LWind / pdot_W
 
     Naming convention:
-    - Wind components: _wind suffix (Lmech_wind, pdot_wind, fLmech_wind, fpdot_wind)
-    - SNe components: _SN suffix (Lmech_SN, pdot_SN, fLmech_SN, fpdot_SN)
+    - Wind components: _W suffix (Lmech_W, pdot_W, fLmech_W, fpdot_W)
+    - SNe components: _SNe suffix (Lmech_SN, pdot_SNe, fLmech_SN, fpdot_SNe)
     - Total components: _total suffix (Lmech_total, pdot_total)
 
-    Side effects: Updates params dictionary with all feedback parameters
+    Side effects: Updates params dictionary with all feedback parameters including:
+    - Raw SB99 values: Qi, Li, Ln, Lbol, LWind (=Lmech_W)
+    - Derived values: vWind (wind velocity), pWindDot (=pdot_total), pWindDotDot (time derivative)
+    - Separated components: F_ram_wind (=pdot_W), F_ram_SN (=pdot_SNe)
     """
 
     SB99f = params['SB99f'].value
 
-    # Interpolate luminosities (consistent key naming)
-    LWind = SB99f['fLmech_wind'](t)[()]  # Wind mechanical luminosity [erg/s]
-    Lbol = SB99f['fLbol'](t)[()]         # Bolometric luminosity [erg/s]
-    Ln = SB99f['fLn'](t)[()]             # Non-ionizing luminosity [erg/s]
-    Li = SB99f['fLi'](t)[()]             # Ionizing luminosity [erg/s]
-    Qi = SB99f['fQi'](t)[()]             # Ionizing photon rate [s⁻¹]
+    # Interpolate all raw SB99 values using consistent key naming
+    Qi = SB99f['fQi'](t)[()]                   # Ionizing photon rate [s⁻¹]
+    Li = SB99f['fLi'](t)[()]                   # Ionizing luminosity [erg/s]
+    Ln = SB99f['fLn'](t)[()]                   # Non-ionizing luminosity [erg/s]
+    Lbol = SB99f['fLbol'](t)[()]               # Bolometric luminosity [erg/s]
 
-    # Interpolate momentum rates (NOW PROPERLY SEPARATED WITH CONSISTENT NAMING!)
-    pdot_wind = SB99f['fpdot_wind'](t)[()]    # Wind-only momentum rate
-    pdot_SN = SB99f['fpdot_SN'](t)[()]        # SNe-only momentum rate
-    pTotalDot = SB99f['fpdot_total'](t)[()]   # Total momentum rate (wind + SNe)
+    Lmech_W = SB99f['fLmech_W'](t)[()]         # Wind mechanical luminosity [erg/s]
+    Lmech_SN = SB99f['fLmech_SN'](t)[()]       # SNe mechanical luminosity [erg/s]
+    Lmech_total = SB99f['fLmech_total'](t)[()]  # Total mechanical luminosity [erg/s]
+
+    pdot_W = SB99f['fpdot_W'](t)[()]           # Wind momentum rate
+    pdot_SNe = SB99f['fpdot_SNe'](t)[()]       # SNe momentum rate
+    pdot_total = SB99f['fpdot_total'](t)[()]   # Total momentum rate (wind + SNe)
 
     # =========================================================================
+    # DERIVED VALUES (for backward compatibility with params dictionary)
+    # =========================================================================
+
     # CRITICAL FIX: Wind velocity using WIND-ONLY momentum rate
-    # =========================================================================
     # Formula: v_wind = 2 * L_wind / pdot_wind
-    # OLD BUG: Used pTotalDot (wind + SNe) instead of pdot_wind
+    # OLD BUG: Used pdot_total (wind + SNe) instead of pdot_W
     # This caused 10-80% error depending on SNe contribution!
-    vWind = (2. * LWind / pdot_wind)[()]  # ← FIXED!
+    vWind = (2. * Lmech_W / pdot_W)[()]  # ← FIXED!
 
     # Numerical derivative of total momentum rate for time evolution
     dt = 1e-9  # Myr (small timestep for derivative)
     pTotalDotDot = (SB99f['fpdot_total'](t + dt)[()] - SB99f['fpdot_total'](t - dt)[()]) / (2.0 * dt)
 
-    # Update params dictionary with feedback values
-    # Note: pWindDot variable name kept for backward compatibility, but now contains pTotalDot
+    # Update params dictionary with feedback values (backward compatible names)
+    # Note: LWind = Lmech_W, pWindDot = pdot_total for backward compatibility
     updateDict(
         params,
         ['Qi', 'LWind', 'Lbol', 'Ln', 'Li', 'vWind', 'pWindDot', 'pWindDotDot'],
-        [Qi, LWind, Lbol, Ln, Li, vWind, pTotalDot, pTotalDotDot],
+        [Qi, Lmech_W, Lbol, Ln, Li, vWind, pdot_total, pTotalDotDot],
     )
 
     # Store separated wind and SNe momentum rates (with correct values!)
-    params['F_ram_wind'].value = pdot_wind  # Now directly from interpolation (correct!)
-    params['F_ram_SN'].value = pdot_SN
+    params['F_ram_wind'].value = pdot_W    # Wind-only momentum rate
+    params['F_ram_SN'].value = pdot_SNe     # SNe-only momentum rate
 
-    # Return values (pWindDot actually contains pTotalDot for backward compatibility)
-    return [Qi, LWind, Lbol, Ln, Li, vWind, pTotalDot, pTotalDotDot]
+    # Return raw SB99 values (matching read_SB99 signature)
+    return [t, Qi, Li, Ln, Lbol, Lmech_W, Lmech_SN, Lmech_total,
+            pdot_W, pdot_SNe, pdot_total]
 
