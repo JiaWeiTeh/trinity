@@ -19,84 +19,80 @@ import src._functions.unit_conversions as cvt
 # Initialize logger for this module
 logger = logging.getLogger(__name__)
 
-
-import logging
-logger = logging.getLogger(__name__)
-
 # Physical constants
 EPSILON = 1e-100  # Small number to prevent division by zero
 
 
-# TODO: Implement interpolation function for in-between metallicities/cluster 
+# TODO: Implement interpolation function for in-between metallicities/cluster
     # : Add fmet, where metallicity scaling due to non-existent SB99 file
 
 def read_SB99(f_mass, params):
     """
-    Read Starburst99 stellar evolution model data.
+    Read and process Starburst99 stellar feedback data.
 
-    This function loads SB99 feedback parameters (ionizing photons, luminosities,
-    mechanical energy) as a function of time for a stellar cluster.
+    This function reads SB99 files, scales by cluster mass, applies thermal
+    efficiency and cold mass corrections, and returns time series data with
+    properly separated wind and SNe components.
 
     Parameters
     ----------
     f_mass : float
-        Cluster mass fraction relative to SB99 file mass
-        (e.g., f_mass = 0.1 for 1e5 Msun cluster if SB99 file is for 1e6 Msun)
-    params : dict
-        Dictionary containing SB99 parameters:
-        - 'path_sps': Path to SB99 files
-        - 'SB99_mass': Reference mass in SB99 file [Msun]
-        - 'SB99_rotation': Boolean for stellar rotation
-        - 'ZCloud': Metallicity in solar units
-        - 'SB99_BHCUT': Black hole cutoff mass [Msun]
-        - 'FB_mColdWindFrac': Cold mass fraction in winds
-        - 'FB_thermCoeffWind': Thermal efficiency of winds
-        - 'FB_mColdSNFrac': Cold mass fraction in SNe
-        - 'FB_thermCoeffSN': Thermal efficiency of SNe
-        - 'FB_vSN': SN ejecta velocity
+        Cluster mass fraction (f_mass = M_cluster / SB99_mass)
+    params : DescribedDict
+        TRINITY parameters dictionary containing:
+        - path_sps : str, path to SB99 files
+        - SB99_mass, SB99_rotation, SB99_BHCUT, ZCloud : SB99 file selection
+        - FB_mColdWindFrac, FB_thermCoeffWind : Wind corrections
+        - FB_mColdSNFrac, FB_thermCoeffSN, FB_vSN : SNe corrections
 
     Returns
     -------
-    [t, Qi, Li, Ln, Lbol, Lmech, pdot, pdot_SN] : list of np.ndarray
-        t : Time [Myr]
-        Qi : Ionizing photon emission rate [1/Myr] (AU units)
-        Li : Ionizing luminosity (>13.6 eV) [erg/s] (AU units)
-        Ln : Non-ionizing luminosity (<13.6 eV) [erg/s] (AU units)
-        Lbol : Bolometric luminosity [erg/s] (AU units)
-        Lmech : Total mechanical luminosity [erg/s] (AU units)
-        pdot : Total momentum injection rate [g·cm/s²] (AU units)
-        pdot_SN : SN momentum injection rate [g·cm/s²] (AU units)
+    list : [t, Qi, Li, Ln, Lbol, Lmech_W, Lmech_SN, Lmech_total, pdot_W, pdot_SNe, pdot_total]
+        Time series arrays (all with t=0 prepended):
+
+        t : ndarray
+            Time [Myr]
+        Qi : ndarray
+            Ionizing photon rate [s⁻¹] (AU)
+        Li : ndarray
+            Ionizing luminosity (>13.6 eV) [erg/s] (AU)
+        Ln : ndarray
+            Non-ionizing luminosity (<13.6 eV) [erg/s] (AU)
+        Lbol : ndarray
+            Bolometric luminosity [erg/s] (AU)
+        Lmech_W : ndarray
+            Wind mechanical luminosity [erg/s] (AU)
+        Lmech_SN : ndarray
+            SNe mechanical luminosity [erg/s] (AU)
+        Lmech_total : ndarray
+            Total mechanical luminosity (winds + SNe) [erg/s] (AU)
+        pdot_W : ndarray
+            Wind momentum rate [M_sun·pc/Myr²] (AU)
+        pdot_SNe : ndarray
+            SNe momentum rate [M_sun·pc/Myr²] (AU)
+        pdot_total : ndarray
+            Total momentum rate (winds + SNe) [M_sun·pc/Myr²] (AU)
 
     Raises
     ------
     ValueError
         If f_mass <= 0 or is NaN/inf
-        If unsupported metallicity
-        If unsupported black hole cutoff mass
+        If unsupported metallicity or black hole cutoff mass
     FileNotFoundError
         If SB99 file not found
 
     Notes
     -----
-    SB99 file format (7 columns):
-    1. Time [yr]
-    2. log₁₀(Qi) [1/s]
-    3. log₁₀(fi) [fraction of ionizing radiation]
-    4. log₁₀(Lbol) [erg/s]
-    5. log₁₀(Lmech) [erg/s] (winds + SNe)
-    6. log₁₀(pdot_W) [g·cm/s²] (winds only)
-    7. log₁₀(Lmech_W) [erg/s] (winds only)
+    - All arrays have t=0 prepended with initial values for interpolation
+    - Thermal efficiency and cold mass corrections are applied to winds and SNe
+    - Wind velocity: v_wind = 2 * Lmech_W / pdot_W (after corrections)
+    - SNe velocity: from params['FB_vSN'] (after corrections)
 
-    Unit conversions (CGS → AU):
-    - Time: yr → Myr (divide by 1e6)
-    - Qi: 1/s → 1/Myr (divide by cvt.s2Myr)
-    - Luminosity: erg/s → AU (multiply by cvt.L_cgs2au)
-    - Momentum rate: g·cm/s² → AU (multiply by cvt.pdot_cgs2au)
-
-    Wind/SN modifications:
-    - Mass injection: Mdot × (1 + f_cold)
-    - Terminal velocity: v × √(η_therm / (1 + f_cold))
-    where η_therm is thermal efficiency, f_cold is cold mass fraction
+    Examples
+    --------
+    >>> SB99_data = read_SB99(f_mass=1.0, params=params)
+    >>> t, Qi, Li, Ln, Lbol, Lmech_W, Lmech_SN, Lmech_total, pdot_W, pdot_SNe, pdot_total = SB99_data
+    >>> print(f"At t={t[50]:.3f} Myr: Wind Lmech={Lmech_W[50]:.3e}, SNe Lmech={Lmech_SN[50]:.3e}")
     """
 
     # =========================================================================
@@ -173,14 +169,15 @@ def read_SB99(f_mass, params):
     Lmech = 10**SB99_file[:, 4] * f_mass * cvt.L_cgs2au
 
     # Wind momentum rate: log₁₀(g·cm/s²) → g·cm/s² (AU)
-    pdot_W = 10**SB99_file[:, 5] * f_mass * cvt.pdot_cgs2au
+    pdot_wind_raw = 10**SB99_file[:, 5] * f_mass * cvt.pdot_cgs2au
 
     # Wind mechanical luminosity: log₁₀(erg/s) → erg/s (AU)
-    Lmech_W = 10**SB99_file[:, 6] * f_mass * cvt.L_cgs2au
+    Lmech_wind_raw = 10**SB99_file[:, 6] * f_mass * cvt.L_cgs2au
 
     # Validate all arrays are finite
     for name, arr in [('t', t), ('Qi', Qi), ('fi', fi), ('Lbol', Lbol),
-                       ('Lmech', Lmech), ('pdot_W', pdot_W), ('Lmech_W', Lmech_W)]:
+                       ('Lmech', Lmech), ('pdot_wind_raw', pdot_wind_raw),
+                       ('Lmech_wind_raw', Lmech_wind_raw)]:
         if not np.all(np.isfinite(arr)):
             raise ValueError(f"Non-finite values in {name} array from SB99 file")
 
@@ -192,113 +189,96 @@ def read_SB99(f_mass, params):
     Li = Lbol * fi
     Ln = Lbol * (1 - fi)
 
-    # Mechanical luminosity from SNe only
-    Lmech_SN = Lmech - Lmech_W
-
-    print('heere')
-    Lmech_SN = np.array([0, 0, 0])
+    # Mechanical luminosity from SNe only (before corrections)
+    Lmech_SN_raw = Lmech - Lmech_wind_raw
 
     # Validate no negative values
-    if np.any(Lmech_SN < 0):
+    if np.any(Lmech_SN_raw < 0):
         logger.warning(
             "Negative SN mechanical luminosity detected. "
-            "This may indicate Lmech_W > Lmech in SB99 file. "
+            "This may indicate Lmech_wind > Lmech in SB99 file. "
             "Setting negative values to zero."
         )
-        Lmech_SN = np.maximum(Lmech_SN, 0)
-        
-    sys.exit()
+        Lmech_SN_raw = np.maximum(Lmech_SN_raw, 0)
 
-    # =============================================================================
-    # Step1: find and read the SB99 file. 
-    # =============================================================================
-    # grab the file name based on simulation input
-    filename = get_filename(params)
-    path2sps = params['path_sps']
-    # read file
-    # SB99_file = np.loadtxt(warpfield_params.path_sps + filename)
-    SB99_file = np.loadtxt(path2sps + filename)
-    # read columns
-    # change to in Myr instead
-    # u.Myr
-    t = SB99_file[:,0] /1e6 
-    # the rest, translate to linear, then scale with actual cluster mass
-    # / u.s
-    Qi = 10**SB99_file[:,1] * f_mass / cvt.s2Myr
-    fi = 10**SB99_file[:,2]
-    # u.erg/u.s
-    Lbol = 10**SB99_file[:,3] * f_mass * cvt.L_cgs2au
-    # u.erg/u.s
-    Lmech = 10**SB99_file[:,4] * f_mass * cvt.L_cgs2au
-    # u.g * u.cm/(u.s**2)
-    pdot_W = 10**SB99_file[:,5] * f_mass * cvt.pdot_cgs2au
-    # u.erg/u.s
-    Lmech_W = 10**SB99_file[:,6] * f_mass * cvt.L_cgs2au
+    # =========================================================================
+    # STEP 4: SCALE WIND PARAMETERS (thermal efficiency + cold mass)
+    # =========================================================================
 
-    # =============================================================================
-    # Step2: calculate other derived values
-    # =============================================================================
-    # Ionising and non-ionising luminosity (13.5 eV)
-    Li = Lbol * fi
-    Ln = Lbol * (1-fi)
-    # mechanical luminosity (SNe)
-    Lmech_SN = Lmech - Lmech_W
-    
-    # =============================================================================
-    # Scale values for WIND mass loss rate and terminal velocity (g/s, m/s)
-    # thus consequently the mechanical luminosity and momentum injection rate.
-    # =============================================================================
-    # first break down into mass loss and velocity
-    Mdot_W = pdot_W ** 2 / (2 * Lmech_W)
-    velocity_W = 2 * Lmech_W / pdot_W
-    # Add fraction of mass injected into the cloud due to sweeping of cold material
-    # from protostars and disks inside star clusters?
-    Mdot_W *= (1 + params['FB_mColdWindFrac'])
-    # Modifiy terminal velocity according to 
-    # 1) thermal efficiency and 2) cold mass content in cluster?
-    velocity_W *= np.sqrt(params['FB_thermCoeffWind'] / (1. + params['FB_mColdWindFrac'])) 
-    # convert back
-    pdot_W = Mdot_W * velocity_W
-    Lmech_W = 0.5 * Mdot_W * velocity_W**2
-    
-    # =============================================================================
-    # Scale values for SN mass loss rate and terminal velocity (g/s, m/s)
-    # thus consequently the mechanical luminosity and momentum injection rate.
-    # =============================================================================
-    # first break down into mass loss and velocity
-    # TODO: get time-dependent velocity, e.g. when mass of ejecta are known
-    # convert to cgs
+    # Break down into mass loss and velocity
+    # Protect against division by zero
+    Mdot_wind = pdot_wind_raw ** 2 / (2 * np.maximum(Lmech_wind_raw, EPSILON))
+    velocity_wind = 2 * Lmech_wind_raw / np.maximum(pdot_wind_raw, EPSILON)
+
+    # Add fraction of mass injected due to sweeping cold material
+    Mdot_wind *= (1 + params['FB_mColdWindFrac'])
+
+    # Modify terminal velocity according to:
+    # 1) thermal efficiency and 2) cold mass content
+    velocity_wind *= np.sqrt(params['FB_thermCoeffWind'] / (1. + params['FB_mColdWindFrac']))
+
+    # Convert back to momentum rate and luminosity
+    pdot_wind = Mdot_wind * velocity_wind
+    Lmech_wind = 0.5 * Mdot_wind * velocity_wind**2
+
+    # =========================================================================
+    # STEP 5: SCALE SNe PARAMETERS (thermal efficiency + cold mass)
+    # =========================================================================
+
+    # Get SN velocity from params
     velocity_SN = params['FB_vSN']
-    Mdot_SN = 2 * Lmech_SN / velocity_SN**2
-    # Add fraction of mass injected into the cloud due to sweeping of cold material
-    # from protostars and disks inside star clusters?
+
+    # Break down into mass loss rate
+    # Protect against division by zero
+    Mdot_SN = 2 * Lmech_SN_raw / np.maximum(velocity_SN**2, EPSILON)
+
+    # Add fraction of mass injected due to sweeping cold material
     Mdot_SN *= (1 + params['FB_mColdSNFrac'])
-    # Modifiy terminal velocity according to 
-    # 1) thermal efficiency and 2) cold mass content in cluster?
-    velocity_SN *= np.sqrt(params['FB_thermCoeffSN'] / (1. + params['FB_mColdSNFrac'])) 
-    # convert back
+
+    # Modify terminal velocity according to thermal efficiency and cold mass
+    velocity_SN *= np.sqrt(params['FB_thermCoeffSN'] / (1. + params['FB_mColdSNFrac']))
+
+    # Convert back to momentum rate and luminosity
     pdot_SN = Mdot_SN * velocity_SN
     Lmech_SN = 0.5 * Mdot_SN * velocity_SN**2
-    # =============================================================================
-    # Final touchups
-    # =============================================================================
-    # total energy and momentum injection rate
-    Lmech = Lmech_SN + Lmech_W
-    pdot = pdot_SN + pdot_W
-    
-    # insert 1 element at t=0 for interpolation purposes
+
+    # =========================================================================
+    # STEP 6: CALCULATE TOTALS
+    # =========================================================================
+
+    # Total mechanical luminosity and momentum injection rate
+    Lmech_total = Lmech_SN + Lmech_wind
+    pdot_total = pdot_SN + pdot_wind
+
+    # =========================================================================
+    # STEP 7: INSERT t=0 FOR INTERPOLATION
+    # =========================================================================
+
+    # Insert initial values at t=0 for proper interpolation
     t = np.insert(t, 0, 0.0)
     Qi = np.insert(Qi, 0, Qi[0])
     Li = np.insert(Li, 0, Li[0])
     Ln = np.insert(Ln, 0, Ln[0])
     Lbol = np.insert(Lbol, 0, Lbol[0])
-    Lmech= np.insert(Lmech, 0, Lmech[0])
-    pdot = np.insert(pdot, 0, pdot[0])
-    pdot_SN = np.insert(pdot_SN, 0, pdot_SN[0])
-    
-    
-    return [t, Qi, Li, Ln, Lbol, Lmech, pdot, pdot_SN]
-    
+
+    # Insert separated wind and SNe components
+    Lmech_W = np.insert(Lmech_wind, 0, Lmech_wind[0])
+    Lmech_SN = np.insert(Lmech_SN, 0, Lmech_SN[0])
+    Lmech_total = np.insert(Lmech_total, 0, Lmech_total[0])
+
+    pdot_W = np.insert(pdot_wind, 0, pdot_wind[0])
+    pdot_SNe = np.insert(pdot_SN, 0, pdot_SN[0])
+    pdot_total = np.insert(pdot_total, 0, pdot_total[0])
+
+    logger.info(
+        f"SB99 data processed: {len(t)} time points, "
+        f"t_max={t[-1]:.2f} Myr"
+    )
+
+    # Return all separated components
+    return [t, Qi, Li, Ln, Lbol, Lmech_W, Lmech_SN, Lmech_total,
+            pdot_W, pdot_SNe, pdot_total]
+
 
 def get_filename(params):
     """
@@ -332,15 +312,12 @@ def get_filename(params):
     - BH cutoff: 120 Msun or 40 Msun
     - Rotation: 'rot' or 'norot'
     """
-    
-    # Right now, only solar metallicity, 1e6, BH120, and rotation is considered. 
-    
+
     # Extract parameters with validation
     SB99_mass = params.get('SB99_mass').value
     SB99_rotation = params.get('SB99_rotation').value
     ZCloud = params.get('ZCloud').value
     SB99_BHCUT = params.get('SB99_BHCUT').value
-    
 
     if SB99_mass is None or SB99_mass <= 0:
         raise ValueError(f"Invalid SB99_mass: {SB99_mass}")
@@ -393,48 +370,89 @@ def get_filename(params):
     return filename
 
 
-
-def get_interpolation(SB99, ftype = 'cubic'):
+def get_interpolation(SB99, ftype='cubic'):
     """
-    This function creates interpolation function for further use. 
+    Create cubic interpolation functions for SB99 feedback data.
+
+    This function takes the output from read_SB99() and creates scipy
+    interpolation functions for all feedback parameters, with properly
+    separated wind and SNe components.
 
     Parameters
     ----------
-    SB99 : array
-        Data array of SB99.
+    SB99 : list
+        Data array from read_SB99():
+        [t, Qi, Li, Ln, Lbol, Lmech_W, Lmech_SN, Lmech_total, pdot_W, pdot_SNe, pdot_total]
     ftype : str, optional
-        The default is 'cubic'. Fed into scipy.interpolate.interp1d. Accept also 
-        values like 'linear'. Cubic is important for small-value interpolations.
+        Interpolation type for scipy.interpolate.interp1d.
+        Options: 'linear', 'cubic' (default), 'quadratic', etc.
+        Cubic is recommended for small-value interpolations.
 
     Returns
     -------
     SB99f : dict
-        A dictionary of interpolation functions for SB99 data.
+        Dictionary of interpolation functions with keys matching variable names:
+        - 'fQi' : Ionizing photon rate interpolator
+        - 'fLi' : Ionizing luminosity interpolator
+        - 'fLn' : Non-ionizing luminosity interpolator
+        - 'fLbol' : Bolometric luminosity interpolator
+        - 'fLmech_W' : Wind mechanical luminosity interpolator
+        - 'fLmech_SN' : SNe mechanical luminosity interpolator
+        - 'fLmech_total' : Total mechanical luminosity interpolator
+        - 'fpdot_W' : Wind momentum rate interpolator
+        - 'fpdot_SNe' : SNe momentum rate interpolator
+        - 'fpdot_total' : Total momentum rate interpolator
 
+    Notes
+    -----
+    - All interpolator keys match variable naming convention
+    - Wind components use '_W' suffix
+    - SNe components use '_SNe' suffix
+    - Total components use '_total' suffix
+
+    Examples
+    --------
+    >>> SB99_data = read_SB99(f_mass=1.0, params=params)
+    >>> SB99f = get_interpolation(SB99_data, ftype='cubic')
+    >>> t = 5.0  # Myr
+    >>> Lmech_W = SB99f['fLmech_W'](t)
+    >>> Lmech_SN = SB99f['fLmech_SN'](t)
+    >>> Lmech_total = SB99f['fLmech_total'](t)
+    >>> vWind = 2.0 * Lmech_W / SB99f['fpdot_W'](t)  # Correct formula!
     """
-    # Old code: make_interpfunc()
-    
-    # obtain all SB99 values
-    [t_Myr, Qi, Li, Ln, Lbol, Lw, pdot, pdot_SNe] = SB99
-    # get interpolation functions
-    fQi = scipy.interpolate.interp1d(t_Myr, Qi, kind = ftype) 
-    fLi = scipy.interpolate.interp1d(t_Myr, Li, kind = ftype)
-    fLn = scipy.interpolate.interp1d(t_Myr, Ln, kind = ftype)
-    fLbol = scipy.interpolate.interp1d(t_Myr, Lbol, kind = ftype)
-    fLw = scipy.interpolate.interp1d(t_Myr, Lw, kind = ftype)
-    fpdot = scipy.interpolate.interp1d(t_Myr, pdot, kind = ftype)
-    fpdot_SNe = scipy.interpolate.interp1d(t_Myr, pdot_SNe, kind = ftype)
 
-    SB99f = {'fQi': fQi, 'fLi': fLi, 'fLn': fLn, 'fLbol': fLbol, 'fLw': fLw,
-              'fpdot': fpdot, 'fpdot_SNe': fpdot_SNe}
-    
+    # Unpack all SB99 values (with separated components)
+    [t_Myr, Qi, Li, Ln, Lbol, Lmech_W, Lmech_SN, Lmech_total,
+     pdot_W, pdot_SNe, pdot_total] = SB99
+
+    # Create interpolation functions for all feedback parameters
+    fQi = scipy.interpolate.interp1d(t_Myr, Qi, kind=ftype)
+    fLi = scipy.interpolate.interp1d(t_Myr, Li, kind=ftype)
+    fLn = scipy.interpolate.interp1d(t_Myr, Ln, kind=ftype)
+    fLbol = scipy.interpolate.interp1d(t_Myr, Lbol, kind=ftype)
+
+    # Mechanical luminosity interpolators (separated with consistent naming!)
+    fLmech_W = scipy.interpolate.interp1d(t_Myr, Lmech_W, kind=ftype)
+    fLmech_SN = scipy.interpolate.interp1d(t_Myr, Lmech_SN, kind=ftype)
+    fLmech_total = scipy.interpolate.interp1d(t_Myr, Lmech_total, kind=ftype)
+
+    # Momentum rate interpolators (separated with consistent naming!)
+    fpdot_W = scipy.interpolate.interp1d(t_Myr, pdot_W, kind=ftype)
+    fpdot_SNe = scipy.interpolate.interp1d(t_Myr, pdot_SNe, kind=ftype)
+    fpdot_total = scipy.interpolate.interp1d(t_Myr, pdot_total, kind=ftype)
+
+    # Dictionary of all interpolators with consistent key naming
+    SB99f = {
+        'fQi': fQi,
+        'fLi': fLi,
+        'fLn': fLn,
+        'fLbol': fLbol,
+        'fLmech_W': fLmech_W,            # Consistent: variable is Lmech_W, key is fLmech_W
+        'fLmech_SN': fLmech_SN,
+        'fLmech_total': fLmech_total,
+        'fpdot_W': fpdot_W,              # Consistent: variable is pdot_W, key is fpdot_W
+        'fpdot_SNe': fpdot_SNe,
+        'fpdot_total': fpdot_total
+    }
+
     return SB99f
-
-
-
-
-
-
-
-
-

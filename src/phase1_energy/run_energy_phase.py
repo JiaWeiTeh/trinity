@@ -51,7 +51,12 @@ def run_energy(params):
     # Step1: Obtain initial feedback values
     # -----------
     
-    [Qi, LWind, Lbol, Ln, Li, vWind, pWindDot, pWindDotDot] = get_currentSB99feedback(t_now, params)
+    [t, Qi, Li, Ln, Lbol, Lmech_W, Lmech_SN, Lmech_total, pdot_W, pdot_SNe, pdot_total] = get_currentSB99feedback(t_now, params)
+    # Extract derived values from params for backward compatibility
+    LWind = params['LWind'].value
+    vWind = params['vWind'].value
+    pWindDot = params['pWindDot'].value
+    pWindDotDot = params['pWindDotDot'].value
 
     # removed troublesome timestep part
 
@@ -352,8 +357,13 @@ def run_energy(params):
         
         
     
-        [Qi, LWind, Lbol, Ln, Li, vWind, pWindDot, pWindDotDot] =  get_currentSB99feedback(t_now, params)
-        
+        [t, Qi, Li, Ln, Lbol, Lmech_W, Lmech_SN, Lmech_total, pdot_W, pdot_SNe, pdot_total] = get_currentSB99feedback(t_now, params)
+        # Extract derived values from params for backward compatibility
+        LWind = params['LWind'].value
+        vWind = params['vWind'].value
+        pWindDot = params['pWindDot'].value
+        pWindDotDot = params['pWindDotDot'].value
+
         # # if we are going to the momentum phase next, do not have to 
         # # calculate the discontinuity for the next loop
         # if immediately_to_momentumphase:
