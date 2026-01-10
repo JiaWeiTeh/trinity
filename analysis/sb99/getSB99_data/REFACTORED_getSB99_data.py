@@ -224,7 +224,7 @@ def load_stellar_tracks(
     Returns
     -------
     Data : list or dict
-        [t_evo, Qi_evo, Li_evo, Ln_evo, Lbol_evo, Lw_evo, pdot_evo, pdot_SNe_evo]
+        [t_evo, Qi_evo, Li_evo, Ln_evo, Lbol_evo, Lw_evo, pdot_evo, pdot_SN_evo]
 
     Notes
     -----
@@ -253,7 +253,7 @@ def load_stellar_tracks(
         warnings.warn(f"Forcing WARPFIELD to use SB99 file: {force_file}")
         warnings.warn("Make sure you provided correct metallicity and mass scaling")
 
-        [t_evo, Qi_evo, Li_evo, Ln_evo, Lbol_evo, Lw_evo, pdot_evo, pdot_SNe_evo] = \
+        [t_evo, Qi_evo, Li_evo, Ln_evo, Lbol_evo, Lw_evo, pdot_evo, pdot_SN_evo] = \
             getSB99_data(SB99file, f_mass=f_mass, test_plot=test_plot, log_t=log_t, tmax=tmax)
 
         if SB99file != i.SB99cloudy_file + '.txt':
@@ -269,7 +269,7 @@ def load_stellar_tracks(
         #   - Closing parenthesis
         #   - 4th argument: SB99_file_Z0014
         #   - 5th argument: 1.0
-        [t_evo, Qi_evo, Li_evo, Ln_evo, Lbol_evo, Lw_evo, pdot_evo, pdot_SNe_evo] = \
+        [t_evo, Qi_evo, Li_evo, Ln_evo, Lbol_evo, Lw_evo, pdot_evo, pdot_SN_evo] = \
             getSB99_data_interp(
                 Zism,
                 SB99_file_Z0002,
@@ -295,7 +295,7 @@ def load_stellar_tracks(
             logger.warning(f"SB99file: {SB99file}")
             logger.warning(f"SB99cloudy_file: {i.SB99cloudy_file}")
 
-        [t_evo, Qi_evo, Li_evo, Ln_evo, Lbol_evo, Lw_evo, pdot_evo, pdot_SNe_evo] = \
+        [t_evo, Qi_evo, Li_evo, Ln_evo, Lbol_evo, Lw_evo, pdot_evo, pdot_SN_evo] = \
             getSB99_data(SB99file, f_mass=f_mass, test_plot=test_plot, log_t=log_t, tmax=tmax)
 
     # Case 4: Metallicity out of range (extrapolation)
@@ -314,10 +314,10 @@ def load_stellar_tracks(
 
         logger.info(f"Using SB99 file: {SB99file}")
 
-        [t_evo, Qi_evo, Li_evo, Ln_evo, Lbol_evo, Lw_evo, pdot_evo, pdot_SNe_evo] = \
+        [t_evo, Qi_evo, Li_evo, Ln_evo, Lbol_evo, Lw_evo, pdot_evo, pdot_SN_evo] = \
             getSB99_data(SB99file, f_mass=f_mass, f_met=Zism / Zism_rel)
 
-    Data = [t_evo, Qi_evo, Li_evo, Ln_evo, Lbol_evo, Lw_evo, pdot_evo, pdot_SNe_evo]
+    Data = [t_evo, Qi_evo, Li_evo, Ln_evo, Lbol_evo, Lw_evo, pdot_evo, pdot_SN_evo]
 
     if return_format == 'dict':
         Data_out = return_as_dict(Data)
@@ -462,7 +462,7 @@ def getSB99_data_interp(
 
     Returns
     -------
-    [t, Qi, Li, Ln, Lbol, Lw, pdot, pdot_SNe] : list of np.ndarray
+    [t, Qi, Li, Ln, Lbol, Lw, pdot, pdot_SN] : list of np.ndarray
         Interpolated SB99 data
 
     Notes
@@ -474,16 +474,16 @@ def getSB99_data_interp(
 
     # Ensure index 1 is lower metallicity
     if Zfile1 < Zfile2:
-        [t1, Qi1, Li1, Ln1, Lbol1, Lw1, pdot1, pdot_SNe1] = \
+        [t1, Qi1, Li1, Ln1, Lbol1, Lw1, pdot1, pdot_SN1] = \
             getSB99_data(file1, f_mass=f_mass)
-        [t2, Qi2, Li2, Ln2, Lbol2, Lw2, pdot2, pdot_SNe2] = \
+        [t2, Qi2, Li2, Ln2, Lbol2, Lw2, pdot2, pdot_SN2] = \
             getSB99_data(file2, f_mass=f_mass)
         Z1 = Zfile1
         Z2 = Zfile2
     elif Zfile1 > Zfile2:
-        [t1, Qi1, Li1, Ln1, Lbol1, Lw1, pdot1, pdot_SNe1] = \
+        [t1, Qi1, Li1, Ln1, Lbol1, Lw1, pdot1, pdot_SN1] = \
             getSB99_data(file2, f_mass=f_mass)
-        [t2, Qi2, Li2, Ln2, Lbol2, Lw2, pdot2, pdot_SNe2] = \
+        [t2, Qi2, Li2, Ln2, Lbol2, Lw2, pdot2, pdot_SN2] = \
             getSB99_data(file1, f_mass=f_mass)
         Z1 = Zfile2
         Z2 = Zfile1
@@ -508,7 +508,7 @@ def getSB99_data_interp(
     Lbol1 = Lbol1[t1 <= tend]
     Lw1 = Lw1[t1 <= tend]
     pdot1 = pdot1[t1 <= tend]
-    pdot_SNe1 = pdot_SNe1[t1 <= tend]
+    pdot_SN1 = pdot_SN1[t1 <= tend]
 
     Qi2 = Qi2[t2 <= tend]
     Li2 = Li2[t2 <= tend]
@@ -516,7 +516,7 @@ def getSB99_data_interp(
     Lbol2 = Lbol2[t2 <= tend]
     Lw2 = Lw2[t2 <= tend]
     pdot2 = pdot2[t2 <= tend]
-    pdot_SNe2 = pdot_SNe2[t2 <= tend]
+    pdot_SN2 = pdot_SN2[t2 <= tend]
 
     t1 = t1[t1 <= tend]
     t2 = t2[t2 <= tend]
@@ -537,9 +537,9 @@ def getSB99_data_interp(
     Lbol = (Lbol1 * (Z2 - Zism) + Lbol2 * (Zism - Z1)) / (Z2 - Z1)
     Lw = (Lw1 * (Z2 - Zism) + Lw2 * (Zism - Z1)) / (Z2 - Z1)
     pdot = (pdot1 * (Z2 - Zism) + pdot2 * (Zism - Z1)) / (Z2 - Z1)
-    pdot_SNe = (pdot_SNe1 * (Z2 - Zism) + pdot_SNe2 * (Zism - Z1)) / (Z2 - Z1)
+    pdot_SN = (pdot_SN1 * (Z2 - Zism) + pdot_SN2 * (Zism - Z1)) / (Z2 - Z1)
 
-    return [t, Qi, Li, Ln, Lbol, Lw, pdot, pdot_SNe]
+    return [t, Qi, Li, Ln, Lbol, Lw, pdot, pdot_SN]
 
 
 def getMdotv(pdot: np.ndarray, Lmech: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
@@ -604,7 +604,7 @@ def make_interpfunc(SB99_data_IN: Union[List, Dict]) -> Dict:
     """
 
     SB99_data = return_as_array(SB99_data_IN)
-    [t_Myr, Qi_cgs, Li_cgs, Ln_cgs, Lbol_cgs, Lw_cgs, pdot_cgs, pdot_SNe_cgs] = SB99_data
+    [t_Myr, Qi_cgs, Li_cgs, Ln_cgs, Lbol_cgs, Lw_cgs, pdot_cgs, pdot_SN_cgs] = SB99_data
 
     fQi_cgs = scipy.interpolate.interp1d(t_Myr, Qi_cgs, kind='cubic')
     fLi_cgs = scipy.interpolate.interp1d(t_Myr, Li_cgs, kind='cubic')
@@ -612,7 +612,7 @@ def make_interpfunc(SB99_data_IN: Union[List, Dict]) -> Dict:
     fLbol_cgs = scipy.interpolate.interp1d(t_Myr, Lbol_cgs, kind='cubic')
     fLw_cgs = scipy.interpolate.interp1d(t_Myr, Lw_cgs, kind='cubic')
     fpdot_cgs = scipy.interpolate.interp1d(t_Myr, pdot_cgs, kind='cubic')
-    fpdot_SNe_cgs = scipy.interpolate.interp1d(t_Myr, pdot_SNe_cgs, kind='cubic')
+    fpdot_SN_cgs = scipy.interpolate.interp1d(t_Myr, pdot_SN_cgs, kind='cubic')
 
     SB99f = {
         'fQi_cgs': fQi_cgs,
@@ -621,7 +621,7 @@ def make_interpfunc(SB99_data_IN: Union[List, Dict]) -> Dict:
         'fLbol_cgs': fLbol_cgs,
         'fLw_cgs': fLw_cgs,
         'fpdot_cgs': fpdot_cgs,
-        'fpdot_SNe_cgs': fpdot_SNe_cgs
+        'fpdot_SN_cgs': fpdot_SN_cgs
     }
 
     return SB99f
@@ -647,7 +647,7 @@ def return_as_dict(SB99_data: Union[List, Dict]) -> Dict:
     if isinstance(SB99_data, collections.abc.Mapping):  # FIXED: was collections.Mapping
         return SB99_data
     else:
-        [t_evo, Qi_evo, Li_evo, Ln_evo, Lbol_evo, Lw_evo, pdot_evo, pdot_SNe_evo] = SB99_data
+        [t_evo, Qi_evo, Li_evo, Ln_evo, Lbol_evo, Lw_evo, pdot_evo, pdot_SN_evo] = SB99_data
         SB99_data_out = {
             't_Myr': t_evo,
             'Qi_cgs': Qi_evo,
@@ -656,7 +656,7 @@ def return_as_dict(SB99_data: Union[List, Dict]) -> Dict:
             'Lbol_cgs': Lbol_evo,
             'Lw_cgs': Lw_evo,
             'pdot_cgs': pdot_evo,
-            'pdot_SNe_cgs': pdot_SNe_evo
+            'pdot_SN_cgs': pdot_SN_evo
         }
         return SB99_data_out
 
@@ -686,8 +686,8 @@ def return_as_array(SB99_data: Union[List, Dict]) -> List:
         Lbol_cgs = SB99_data['Lbol_cgs']
         Lw_cgs = SB99_data['Lw_cgs']
         pdot_cgs = SB99_data['pdot_cgs']
-        pdot_SNe_cgs = SB99_data['pdot_SNe_cgs']
-        SB99_data_out = [t_Myr, Qi_cgs, Li_cgs, Ln_cgs, Lbol_cgs, Lw_cgs, pdot_cgs, pdot_SNe_cgs]
+        pdot_SN_cgs = SB99_data['pdot_SN_cgs']
+        SB99_data_out = [t_Myr, Qi_cgs, Li_cgs, Ln_cgs, Lbol_cgs, Lw_cgs, pdot_cgs, pdot_SN_cgs]
         return SB99_data_out
     else:
         return SB99_data
@@ -701,7 +701,7 @@ def testplot(
     Lbol: np.ndarray,
     Lw: np.ndarray,
     pdot: np.ndarray,
-    pdot_SNe: np.ndarray,
+    pdot_SN: np.ndarray,
     log_t: bool = False,
     t_max: float = 30.0,
     ylim: List[float] = [39.0, 43.0]
@@ -725,7 +725,7 @@ def testplot(
         Mechanical luminosity
     pdot : np.ndarray
         Momentum injection rate
-    pdot_SNe : np.ndarray
+    pdot_SN : np.ndarray
         SN momentum injection rate
     log_t : bool, optional
         Logarithmic time axis (default: False)

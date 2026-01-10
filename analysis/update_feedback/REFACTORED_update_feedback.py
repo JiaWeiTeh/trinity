@@ -1,34 +1,14 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-REFACTORED VERSION: Update SB99 feedback values
+REFACTORED VERSION of update_feedback.py
 
-Original: src/sb99/update_feedback.py
-Created on Tue Jun 17 23:14:53 2025
-Author: Jia Wei Teh
+Original Author: Jia Wei Teh
+Refactored: 2026-01-08
 
-REFACTORED on: 2026-01-08
-Refactored by: Claude Code Analysis
+This script retrieves current SB99 feedback values at a given time.
 
-CRITICAL FIXES IMPLEMENTED:
-1. ✅ Fixed wind velocity bug (was using total pdot instead of wind-only)
-2. ✅ Fixed variable naming (pWindDot → pTotalDot, separated wind component)
-3. ✅ Added comprehensive input validation
-4. ✅ Added detailed docstring with units and side effects
-5. ✅ Removed unnecessary [()]  notation
-6. ✅ Fixed division clarity (dt+dt → 2*dt)
-7. ✅ Added adaptive dt for numerical derivative
-8. ✅ Improved error messages
-
-This version is backward-compatible with the original interface but fixes
-critical physics bugs and improves code quality.
-"""
-
-from typing import Dict, List, Tuple
-import numpy as np
-import logging
-
-from src._input.dictionary import DescribedDict, updateDict
+CRITICAL BUG FIX:
 
 # Set up logging
 logger = logging.getLogger(__name__)

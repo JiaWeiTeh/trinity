@@ -75,15 +75,18 @@ def read_SB99(f_mass: float, params: Dict[str, Any]) -> List[np.ndarray]:
 
     Returns
     -------
-    [t, Qi, Li, Ln, Lbol, Lmech, pdot, pdot_SN] : list of np.ndarray
+    [t, Qi, Li, Ln, Lbol, Lmech_W, Lmech_SN, Lmech_total, pdot_W, pdot_SN, pdot_total] : list of np.ndarray
         t : Time [Myr]
         Qi : Ionizing photon emission rate [1/Myr] (AU units)
         Li : Ionizing luminosity (>13.6 eV) [erg/s] (AU units)
         Ln : Non-ionizing luminosity (<13.6 eV) [erg/s] (AU units)
         Lbol : Bolometric luminosity [erg/s] (AU units)
-        Lmech : Total mechanical luminosity [erg/s] (AU units)
-        pdot : Total momentum injection rate [g·cm/s²] (AU units)
+        Lmech_W : Wind mechanical luminosity [erg/s] (AU units)
+        Lmech_SN : SN mechanical luminosity [erg/s] (AU units)
+        Lmech_total : Total mechanical luminosity [erg/s] (AU units)
+        pdot_W : Wind momentum injection rate [g·cm/s²] (AU units)
         pdot_SN : SN momentum injection rate [g·cm/s²] (AU units)
+        pdot_total : Total momentum injection rate [g·cm/s²] (AU units)
 
     Raises
     ------
@@ -288,8 +291,8 @@ def read_SB99(f_mass: float, params: Dict[str, Any]) -> List[np.ndarray]:
     # STEP 6: COMBINE WIND + SN CONTRIBUTIONS
     # =========================================================================
 
-    Lmech = Lmech_SN + Lmech_W
-    pdot = pdot_SN + pdot_W
+    Lmech_total = Lmech_SN + Lmech_W
+    pdot_total = pdot_SN + pdot_W
 
     # =========================================================================
     # STEP 7: INSERT t=0 FOR INTERPOLATION
@@ -301,16 +304,19 @@ def read_SB99(f_mass: float, params: Dict[str, Any]) -> List[np.ndarray]:
     Li = np.insert(Li, 0, Li[0])
     Ln = np.insert(Ln, 0, Ln[0])
     Lbol = np.insert(Lbol, 0, Lbol[0])
-    Lmech = np.insert(Lmech, 0, Lmech[0])
-    pdot = np.insert(pdot, 0, pdot[0])
+    Lmech_W = np.insert(Lmech_W, 0, Lmech_W[0])
+    Lmech_SN = np.insert(Lmech_SN, 0, Lmech_SN[0])
+    Lmech_total = np.insert(Lmech_total, 0, Lmech_total[0])
+    pdot_W = np.insert(pdot_W, 0, pdot_W[0])
     pdot_SN = np.insert(pdot_SN, 0, pdot_SN[0])
+    pdot_total = np.insert(pdot_total, 0, pdot_total[0])
 
     logger.info(
         f"SB99 data loaded successfully. "
         f"Time range: {t[0]:.2f} - {t[-1]:.2f} Myr"
     )
 
-    return [t, Qi, Li, Ln, Lbol, Lmech, pdot, pdot_SN]
+    return [t, Qi, Li, Ln, Lbol, Lmech_W, Lmech_SN, Lmech_total, pdot_W, pdot_SN, pdot_total]
 
 
 def get_filename(params: Dict[str, Any]) -> str:
@@ -413,7 +419,8 @@ def get_interpolation(
     Parameters
     ----------
     SB99 : list of np.ndarray
-        SB99 data array from read_SB99()
+        SB99 data array from read_SB99():
+        [t, Qi, Li, Ln, Lbol, Lmech_W, Lmech_SN, Lmech_total, pdot_W, pdot_SN, pdot_total]
     ftype : str, optional
         Interpolation type ('linear', 'cubic', etc.)
         Default is 'cubic' for smooth interpolation
@@ -426,17 +433,25 @@ def get_interpolation(
         - 'fLi': Ionizing luminosity
         - 'fLn': Non-ionizing luminosity
         - 'fLbol': Bolometric luminosity
-        - 'fLw': Mechanical luminosity
-        - 'fpdot': Momentum injection rate
-        - 'fpdot_SNe': SN momentum injection rate
+        - 'fLmech_W': Wind mechanical luminosity
+        - 'fLmech_SN': SN mechanical luminosity
+        - 'fLmech_total': Total mechanical luminosity
+        - 'fpdot_W': Wind momentum injection rate
+        - 'fpdot_SN': SN momentum injection rate
+        - 'fpdot_total': Total momentum injection rate
 
     Notes
     -----
     Cubic interpolation is important for accurate small-value interpolations.
+
+    NAMING CONVENTION:
+    - Wind components: _W suffix (Lmech_W, pdot_W)
+    - SN components: _SN suffix (Lmech_SN, pdot_SN)
+    - Total components: _total suffix (Lmech_total, pdot_total)
     """
 
     # Unpack SB99 data
-    [t_Myr, Qi, Li, Ln, Lbol, Lw, pdot, pdot_SNe] = SB99
+    [t_Myr, Qi, Li, Ln, Lbol, Lmech_W, Lmech_SN, Lmech_total, pdot_W, pdot_SN, pdot_total] = SB99
 
     # Validate time array
     if not np.all(np.diff(t_Myr) > 0):
@@ -447,9 +462,12 @@ def get_interpolation(
         Li = Li[sort_idx]
         Ln = Ln[sort_idx]
         Lbol = Lbol[sort_idx]
-        Lw = Lw[sort_idx]
-        pdot = pdot[sort_idx]
-        pdot_SNe = pdot_SNe[sort_idx]
+        Lmech_W = Lmech_W[sort_idx]
+        Lmech_SN = Lmech_SN[sort_idx]
+        Lmech_total = Lmech_total[sort_idx]
+        pdot_W = pdot_W[sort_idx]
+        pdot_SN = pdot_SN[sort_idx]
+        pdot_total = pdot_total[sort_idx]
 
     # Create interpolation functions
     try:
@@ -457,9 +475,12 @@ def get_interpolation(
         fLi = scipy.interpolate.interp1d(t_Myr, Li, kind=ftype, bounds_error=False, fill_value='extrapolate')
         fLn = scipy.interpolate.interp1d(t_Myr, Ln, kind=ftype, bounds_error=False, fill_value='extrapolate')
         fLbol = scipy.interpolate.interp1d(t_Myr, Lbol, kind=ftype, bounds_error=False, fill_value='extrapolate')
-        fLw = scipy.interpolate.interp1d(t_Myr, Lw, kind=ftype, bounds_error=False, fill_value='extrapolate')
-        fpdot = scipy.interpolate.interp1d(t_Myr, pdot, kind=ftype, bounds_error=False, fill_value='extrapolate')
-        fpdot_SNe = scipy.interpolate.interp1d(t_Myr, pdot_SNe, kind=ftype, bounds_error=False, fill_value='extrapolate')
+        fLmech_W = scipy.interpolate.interp1d(t_Myr, Lmech_W, kind=ftype, bounds_error=False, fill_value='extrapolate')
+        fLmech_SN = scipy.interpolate.interp1d(t_Myr, Lmech_SN, kind=ftype, bounds_error=False, fill_value='extrapolate')
+        fLmech_total = scipy.interpolate.interp1d(t_Myr, Lmech_total, kind=ftype, bounds_error=False, fill_value='extrapolate')
+        fpdot_W = scipy.interpolate.interp1d(t_Myr, pdot_W, kind=ftype, bounds_error=False, fill_value='extrapolate')
+        fpdot_SN = scipy.interpolate.interp1d(t_Myr, pdot_SN, kind=ftype, bounds_error=False, fill_value='extrapolate')
+        fpdot_total = scipy.interpolate.interp1d(t_Myr, pdot_total, kind=ftype, bounds_error=False, fill_value='extrapolate')
     except ValueError as e:
         raise ValueError(f"Failed to create interpolation functions: {e}")
 
@@ -468,9 +489,12 @@ def get_interpolation(
         'fLi': fLi,
         'fLn': fLn,
         'fLbol': fLbol,
-        'fLw': fLw,
-        'fpdot': fpdot,
-        'fpdot_SNe': fpdot_SNe
+        'fLmech_W': fLmech_W,
+        'fLmech_SN': fLmech_SN,
+        'fLmech_total': fLmech_total,
+        'fpdot_W': fpdot_W,
+        'fpdot_SN': fpdot_SN,
+        'fpdot_total': fpdot_total,
     }
 
     logger.debug(f"Created {ftype} interpolation functions for SB99 data")
