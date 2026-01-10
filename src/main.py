@@ -52,7 +52,8 @@ def start_expansion(params):
     # Step 0: Preliminary
     # =============================================================================
 
-    # Configure logging (only if not already configured)
+    # Note: Logging is configured in run.py before this function is called.
+    # This fallback ensures logging works if main.py is called directly.
     if not logging.getLogger().handlers:
         logging.basicConfig(
             level=logging.INFO,
