@@ -17,6 +17,7 @@ Key features:
 - Each parameter stored as DescribedItem(value, info, ori_units)
 """
 
+import logging
 import sys
 import os
 from datetime import datetime
@@ -25,6 +26,9 @@ from fractions import Fraction
 import numpy as np
 import src._functions.unit_conversions as cvt
 from src._input.dictionary import DescribedItem, DescribedDict
+
+# Initialize logger for this module
+logger = logging.getLogger(__name__)
 
 
 def read_param(path2file, write_summary=True):
@@ -154,7 +158,7 @@ def read_param(path2file, write_summary=True):
             current_info = None
             current_unit = None
     
-    print(f"Loaded {len(default_dict)} parameters from default.param")
+    logger.debug(f"Loaded {len(default_dict)} parameters from default.param")
     
     # =============================================================================
     # Step 2: Read user parameter file
@@ -189,7 +193,7 @@ def read_param(path2file, write_summary=True):
             value = parse_value(val_str)
             user_dict[key] = value
     
-    print(f"Loaded {len(user_dict)} parameters from {Path(path2file).name}")
+    logger.debug(f"Loaded {len(user_dict)} parameters from {Path(path2file).name}")
     
     # =============================================================================
     # Step 3: Validate user parameters and merge with defaults
@@ -222,7 +226,7 @@ def read_param(path2file, write_summary=True):
     # Report which parameters were overridden
     overridden = [k for k in user_dict.keys()]
     if overridden:
-        print(f"Overridden {len(overridden)} parameters from user file")
+        logger.debug(f"Overridden {len(overridden)} parameters from user file")
     
     # =============================================================================
     # Step 4: Create DescribedDict with unit conversions
@@ -249,7 +253,7 @@ def read_param(path2file, write_summary=True):
         )
 
     
-    print(f"Created DescribedDict with {len(params)} parameters")
+    logger.debug(f"Created DescribedDict with {len(params)} parameters")
     
     # =============================================================================
     # Step 5: Validate critical parameters
@@ -522,7 +526,7 @@ def read_param(path2file, write_summary=True):
             for key, item in params.items():
                 f.write(f"{key:<30}  {item.value}\n")
         
-        print(f"Summary written to: {summary_path}")
+        logger.info(f"Summary written to: {summary_path}")
     
     return params
 
@@ -536,6 +540,11 @@ class ParameterFileError(Exception):
 # Quick test (commented out)
 # =============================================================================
 if __name__ == "__main__":
+    # Configure logging for standalone test
+    logging.basicConfig(
+        level=logging.DEBUG,
+        format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
+    )
     params = read_param('param/Orion_M43_EON.param')
-    print(f"mCloud = {params['mCloud'].value} {params['mCloud'].ori_units}")
-    print(f"  Info: {params['mCloud'].info}")
+    logger.info(f"mCloud = {params['mCloud'].value} {params['mCloud'].ori_units}")
+    logger.info(f"  Info: {params['mCloud'].info}")
