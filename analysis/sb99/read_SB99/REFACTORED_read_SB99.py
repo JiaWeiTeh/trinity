@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-REFACTORED VERSION of read_SB99.py
+REFACTORED VERSION of read_SB99.py DONE
 
 Author: Jia Wei Teh (original)
 Refactored: 2026-01-08

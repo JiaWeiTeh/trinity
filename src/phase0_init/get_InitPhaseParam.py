@@ -42,16 +42,16 @@ def get_y0(params):
     tSF = params['tSF'].value
     SB99f = params['SB99f'].value
 
-    Lw_evo0 = SB99f['fLw'](tSF)
-    pdot_evo0 = SB99f['fpdot'](tSF)
+    Lmech_total = SB99f['fLmech_total'](tSF)
+    pdot_total = SB99f['fpdot_total'](tSF)
  
     # mass loss rate from winds and SNe 
-    Mdot0 = pdot_evo0**2/(2.*Lw_evo0) 
+    Mdot0 = pdot_total**2/(2.*Lmech_total) 
     # terminal velocity from winds and SNe 
-    # initial valocity (pc/Myr)
-    v0 = 2.*Lw_evo0/pdot_evo0 
+    # initial velocity (pc/Myr)
+    v0 = 2.*Lmech_total/pdot_total 
 
-    rhoa =  params['nCore'] * params['mu_neu']
+    rhoa =  params['nCore'].value * params['mu_neu'].value
     # duration of inital free-streaming phase (Myr)
     # see https://www.imprs-hd.mpg.de/399417/thesis_Rahner.pdf pg 17 Eq 1.15
     dt_phase0 = np.sqrt(3. * Mdot0 / (4. * np.pi * rhoa * v0 ** 3))
@@ -63,21 +63,15 @@ def get_y0(params):
     # The energy contained within the bubble (calculated using wind luminosity)
     # see Weaver+77, eq. (20)
     # In au units (Myr, pc, Msun)
-    E0 = 5. / 11. * Lw_evo0  * dt_phase0
+    E0 = 5. / 11. * Lmech_total  * dt_phase0
     # Make sure the units are right! see Weaver+77, eq. (37)
     # TODO: isn't it 2.07?
-    T0 = 1.51e6 * (Lw_evo0 * cvt.L_au2cgs / 1e36)**(8/35) * \
-                (params['nCore'] * cvt.ndens_au2cgs)**(2./35.) * \
+    T0 = 1.51e6 * (Lmech_total * cvt.L_au2cgs / 1e36)**(8/35) * \
+                (params['nCore'].value * cvt.ndens_au2cgs)**(2./35.) * \
                     (dt_phase0)**(-6./35.) * \
-                        (1 - params['bubble_xi_Tb'])**0.4
-    # update
-    params['t_now'].value = t0
-    params['R2'].value = r0
-    params['v2'].value = v0
-    params['Eb'].value = E0 
-    params['T0'].value = T0 
+                        (1 - params['bubble_xi_Tb'].value)**0.4
 
-    return 
+    return t0, r0, v0, E0, T0
 
 
 
