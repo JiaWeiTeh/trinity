@@ -17,9 +17,11 @@ import src._functions.unit_conversions as cvt
 
 #--
 from src.shell_structure import get_shellODE, get_shellParams
-
-
 from numba import jit
+import logging
+
+# Initialize logger for this module
+logger = logging.getLogger(__name__)
 
 def shell_structure(params):
     
