@@ -5,11 +5,12 @@ Created on Sun Jul 24 22:46:31 2022
 
 @author: Jia Wei Teh
 
-This script contains a wrapper that initialises the expansion of 
+This script contains a wrapper that initialises the expansion of
 shell.
 """
 
 # libraries
+import logging
 import numpy as np
 import datetime
 import sys
@@ -25,7 +26,6 @@ from src.phase1c_transition import run_transition_phase
 from src.phase2_momentum import run_momentum_phase
 import src._output.terminal_prints as terminal_prints
 from src._input.dictionary import DescribedItem, DescribedDict
-import logging
 
 # Initialize logger for this module
 logger = logging.getLogger(__name__)
@@ -51,33 +51,38 @@ def start_expansion(params):
     # =============================================================================
     # Step 0: Preliminary
     # =============================================================================
-    
-    import logging
 
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
-    )
+    # Configure logging (only if not already configured)
+    if not logging.getLogger().handlers:
+        logging.basicConfig(
+            level=logging.INFO,
+            format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
+        )
 
     # Record timestamp
     startdatetime = datetime.datetime.now()
+    logger.info("=" * 60)
+    logger.info("TRINITY Simulation Starting")
+    logger.info("=" * 60)
+    logger.info(f"Start time: {startdatetime}")
     terminal_prints.phase0(startdatetime)
     
     # =============================================================================
-    # A: Initialising cloud properties. 
+    # A: Initialising cloud properties.
     # =============================================================================
-    
+
     # Step 1: Obtain initial cloud properties
-    # ---
-    # rCloud, nEdge = get_InitCloudProp.get_CloudRadiusEdge(params)
+    logger.info("Step 1: Initializing cloud properties...")
     get_InitCloudProp.get_InitCloudProp(params)
-    # initialise
-    
+    logger.debug(f"Cloud radius: {params['rCloud'].value:.4f} pc")
+    logger.debug(f"Core density: {params['nCore']:.4e}")
+
     # Step 2: Obtain parameters from Starburst99
-    # ---
+    logger.info("Step 2: Loading Starburst99 stellar feedback data...")
     # Scaling factor for cluster masses. Though this might only be accurate for
     # high mass clusters (~>1e5) in which the IMF is fully sampled.
     f_mass = params['mCluster'] / params['SB99_mass']
+    logger.debug(f"SB99 mass scaling factor: {f_mass:.4f}")
     # Get SB99 data and interpolation functions.
     SB99_data = read_SB99.read_SB99(f_mass, params)
     SB99f = read_SB99.get_interpolation(SB99_data)
@@ -86,29 +91,32 @@ def start_expansion(params):
     # update
     params['SB99_data'].value = SB99_data
     params['SB99f'].value = SB99f
+    logger.info("SB99 data loaded and interpolation functions created")
     
     # Step 3: get cooling structure for CIE (since it is non time dependent).
-    # ---
-    # Values for non-CIE cooling curve will be calcualated along the simnulation, since it depends on time evolution.
-    
-    # for metallicity, here we need to take care of both CIE and nonCIE part. 
-    
+    logger.info("Step 3: Loading CIE cooling curve...")
+    # Values for non-CIE cooling curve will be calculated along the simulation, since it depends on time evolution.
+
+    # for metallicity, here we need to take care of both CIE and nonCIE part.
+
     # maybe move this to read_params
     # if params['metallicity'].value != 1:
     #     sys.exit('Need to implement non-solar metallicity.')
-        
+
     # get path to library
     # See example_pl.param for more information.
+    cooling_path = params['path_cooling_CIE'].value
+    logger.debug(f"Loading cooling curve from: {cooling_path}")
     # unpack from file
-    logT, logLambda = np.loadtxt(params['path_cooling_CIE'].value, unpack = True)
+    logT, logLambda = np.loadtxt(cooling_path, unpack=True)
     # create interpolation
-    cooling_CIE_interpolation = scipy.interpolate.interp1d(logT, logLambda, kind = 'linear')
+    cooling_CIE_interpolation = scipy.interpolate.interp1d(logT, logLambda, kind='linear')
     # update
     params['cStruc_cooling_CIE_logT'].value = logT
     params['cStruc_cooling_CIE_logLambda'].value = logLambda
     params['cStruc_cooling_CIE_interpolation'].value = cooling_CIE_interpolation
-    
-    print('..loaded cooling files.')
+
+    logger.info(f"Loaded CIE cooling curve (T range: 10^{logT.min():.1f} - 10^{logT.max():.1f} K)")
     
     # =============================================================================
     # These two are currently not being needed. 
@@ -124,8 +132,21 @@ def start_expansion(params):
     # =============================================================================
     # Begin simulation.
     # =============================================================================
+    logger.info("=" * 60)
+    logger.info("Initialization complete. Starting bubble expansion simulation...")
+    logger.info("=" * 60)
+
     run_expansion(params)
-    
+
+    # Log completion
+    enddatetime = datetime.datetime.now()
+    elapsed = enddatetime - startdatetime
+    logger.info("=" * 60)
+    logger.info("TRINITY Simulation Complete")
+    logger.info(f"End time: {enddatetime}")
+    logger.info(f"Total elapsed time: {elapsed}")
+    logger.info("=" * 60)
+
     # # write data (make new file) and cloudy data
     # # (this must be done after the ODE has been solved on the whole interval between 0 and tcollapse (or tdissolve) because the solver is implicit)
     # warp_writedata.warp_reconstruct(t1, [r1,v1,E1,T1], ODEpar, SB99f, ii_coll, cloudypath, outdata_file, data_write=i.write_data, cloudy_write=i.write_cloudy, append=False)
@@ -173,7 +194,7 @@ def run_expansion(params):
     """
     Model evolution of the cloud (both energy- and momentum-phase) until next recollapse or (if no re-collapse) until end of simulation
     """
-    
+
     # =============================================================================
     # Prep for phases
     # =============================================================================
@@ -183,65 +204,82 @@ def run_expansion(params):
     # v2 = initial velocity (pc/Myr)
     # Eb = initial energy
     # T0 = initial temperature (K)
-    # t_now, (R2, v2, Eb, T0) = get_InitPhaseParam.get_y0(0*u.Myr, params['SB99f'].value)
+    logger.info("Computing initial phase parameters (free-streaming -> Weaver transition)...")
     get_InitPhaseParam.get_y0(params)
-    
-    print('here is your dictionary', params)
-    
-    # params.save_snapShot()
-    
-    # update
+
+    logger.debug("Initial parameters dictionary:")
+    logger.debug(f"  t_now = {params['t_now'].value:.6e} Myr")
+    logger.debug(f"  R2 = {params['R2'].value:.6e} pc")
+    logger.debug(f"  v2 = {params['v2'].value:.6e} pc/Myr")
+    logger.debug(f"  Eb = {params['Eb'].value:.6e}")
+    logger.debug(f"  T0 = {params['T0'].value:.6e} K")
+
     # =============================================================================
     # Phase 1a: Energy driven phase.
     # =============================================================================
 
     params['current_phase'].value = 'energy'
 
+    logger.info("-" * 60)
+    logger.info("PHASE 1a: Energy-driven phase (constant cooling)")
+    logger.info("-" * 60)
     terminal_prints.phase('Entering energy driven phase (constant cooling)')
 
     phase1a_starttime = datetime.datetime.now()
-    
-    run_energy_phase.run_energy(params)
-    
-    phase1a_endtime = datetime.datetime.now()
-    
-    print('total time: ', phase1a_endtime - phase1a_starttime)
-    
-    
-    # record
-    # try:
-    #     params.flush()
-    # except:
-    #     pass  
-    
-    # sys.exit('done with phase 1a')
-    
-    
-    # ------------
-    # checkout load_dict_halfway.py to understand how to load dictionaries 
-    # halfway through the simulation.
-    # ------------
- 
-    # =============================================================================
-    # Phase 1b: implicit energy phase
-    # =============================================================================
-    
-    params['current_phase'].value = 'implicit'
- 
-    terminal_prints.phase('Entering energy driven phase (adaptive cooling)')
 
-    run_energy_implicit_phase.run_phase_energy(params)
+    run_energy_phase.run_energy(params)
+
+    phase1a_endtime = datetime.datetime.now()
+    phase1a_elapsed = phase1a_endtime - phase1a_starttime
+
+    logger.info(f"Phase 1a complete. Duration: {phase1a_elapsed}")
+    logger.debug(f"  Final R2 = {params['R2'].value:.6e} pc")
+    logger.debug(f"  Final v2 = {params['v2'].value:.6e} pc/Myr")
+    
     
     # record
     # try:
     #     params.flush()
     # except:
     #     pass
-    
+
+    # sys.exit('done with phase 1a')
+
+    # ------------
+    # checkout load_dict_halfway.py to understand how to load dictionaries
+    # halfway through the simulation.
+    # ------------
+
+    # =============================================================================
+    # Phase 1b: implicit energy phase
+    # =============================================================================
+
+    params['current_phase'].value = 'implicit'
+
+    logger.info("-" * 60)
+    logger.info("PHASE 1b: Energy-driven phase (adaptive cooling)")
+    logger.info("-" * 60)
+    terminal_prints.phase('Entering energy driven phase (adaptive cooling)')
+
+    phase1b_starttime = datetime.datetime.now()
+
+    run_energy_implicit_phase.run_phase_energy(params)
+
+    phase1b_endtime = datetime.datetime.now()
+    phase1b_elapsed = phase1b_endtime - phase1b_starttime
+    logger.info(f"Phase 1b complete. Duration: {phase1b_elapsed}")
+
+    # record
+    # try:
+    #     params.flush()
+    # except:
+    #     pass
+
     # make a function that interpolates density so that it goes from top to end of cloud.
 
 
     # Since cooling is not needed anymore after this phase, we reset values.
+    logger.debug("Resetting cooling-related parameters (no longer needed)...")
     params['residual_deltaT'].value = np.nan
     params['residual_betaEdot'].value = np.nan
     params['residual_Edot1_guess'].value = np.nan
@@ -285,35 +323,58 @@ def run_expansion(params):
     # Phase 1c: transition phase
     # =============================================================================
 
+    logger.info("-" * 60)
+    logger.info("PHASE 1c: Transition phase (energy -> momentum)")
+    logger.info("-" * 60)
     terminal_prints.phase('Entering transition phase (decreasing energy before momentum)')
 
     params['current_phase'].value = 'transition'
-    
+
     if params['EndSimulationDirectly'].value == False:
+        phase1c_starttime = datetime.datetime.now()
         run_transition_phase.run_phase_transition(params)
-    
+        phase1c_endtime = datetime.datetime.now()
+        phase1c_elapsed = phase1c_endtime - phase1c_starttime
+        logger.info(f"Phase 1c complete. Duration: {phase1c_elapsed}")
+    else:
+        logger.warning("EndSimulationDirectly=True, skipping transition phase")
+
     # try:
     #     params.flush()
     # except:
     #     pass
+
     # =============================================================================
-    # Phase 1d: momentum phase
+    # Phase 2: momentum phase
     # =============================================================================
 
+    logger.info("-" * 60)
+    logger.info("PHASE 2: Momentum-driven phase")
+    logger.info("-" * 60)
     terminal_prints.phase('Entering momentum phase')
 
     params['current_phase'].value = 'momentum'
-    
-    params['Eb'].value = 1
-    
-    if params['EndSimulationDirectly'].value == False:
-        run_momentum_phase.run_phase_momentum(params)
 
+    params['Eb'].value = 1
+
+    if params['EndSimulationDirectly'].value == False:
+        phase2_starttime = datetime.datetime.now()
+        run_momentum_phase.run_phase_momentum(params)
+        phase2_endtime = datetime.datetime.now()
+        phase2_elapsed = phase2_endtime - phase2_starttime
+        logger.info(f"Phase 2 (momentum) complete. Duration: {phase2_elapsed}")
+    else:
+        logger.warning("EndSimulationDirectly=True, skipping momentum phase")
+
+    # Flush parameters to disk
     try:
         params.flush()
-    except:
-        pass
-    
+        logger.debug("Parameters flushed to disk")
+    except Exception as e:
+        logger.warning(f"Could not flush parameters: {e}")
+
+    logger.info("All expansion phases complete")
+
     return 
 
 
