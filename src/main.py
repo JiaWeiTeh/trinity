@@ -183,8 +183,14 @@ def run_expansion(params):
     # v2 = initial velocity (pc/Myr)
     # Eb = initial energy
     # T0 = initial temperature (K)
-    # t_now, (R2, v2, Eb, T0) = get_InitPhaseParam.get_y0(0*u.Myr, params['SB99f'].value)
-    get_InitPhaseParam.get_y0(params)
+    
+    t0, r0, v0, E0, T0 = get_InitPhaseParam.get_y0(params)
+    
+    params['t_now'].value = t0
+    params['R2'].value = r0
+    params['v2'].value = v0
+    params['Eb'].value = E0 
+    params['T0'].value = T0 
     
     print('here is your dictionary', params)
     

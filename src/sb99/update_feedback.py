@@ -101,10 +101,6 @@ def get_currentSB99feedback(t, params):
         [Qi, Lmech_W, Lbol, Ln, Li, vWind, pdot_total, pTotalDotDot],
     )
 
-    # Store separated wind and SN momentum rates (with correct values!)
-    params['F_ram_wind'].value = pdot_W    # Wind-only momentum rate
-    params['F_ram_SN'].value = pdot_SN     # SN-only momentum rate
-
     # Return raw SB99 values (matching read_SB99 signature)
     return [t, Qi, Li, Ln, Lbol, Lmech_W, Lmech_SN, Lmech_total,
             pdot_W, pdot_SN, pdot_total]
