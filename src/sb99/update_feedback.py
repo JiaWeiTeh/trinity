@@ -64,6 +64,14 @@ def get_currentSB99feedback(t, params):
     """
 
     SB99f = params['SB99f'].value
+    
+    t_min = float(SB99f['fQi'].x[0])
+    t_max = float(SB99f['fQi'].x[-1])
+
+    if not (t_min <= t <= t_max):
+        raise ValueError(
+            f"Time t={t:.6f} outside SB99 range [{t_min:.6f}, {t_max:.6f}] Myr"
+        )
 
     # Interpolate all raw SB99 values using consistent key naming
     Qi = SB99f['fQi'](t)[()]                   # Ionizing photon rate [s⁻¹]
@@ -87,21 +95,13 @@ def get_currentSB99feedback(t, params):
     # Formula: v_wind = 2 * L_wind / pdot_wind
     # OLD BUG: Used pdot_total (wind + SN) instead of pdot_W
     # This caused 10-80% error depending on SN contribution!
-    vWind = (2. * Lmech_W / pdot_W)[()]  # ← FIXED!
+    v_mech = (2. * Lmech_total / pdot_total)[()]  # ← FIXED!
 
     # Numerical derivative of total momentum rate for time evolution
     dt = 1e-9  # Myr (small timestep for derivative)
-    pTotalDotDot = (SB99f['fpdot_total'](t + dt)[()] - SB99f['fpdot_total'](t - dt)[()]) / (2.0 * dt)
-
-    # Update params dictionary with feedback values (backward compatible names)
-    # Note: LWind = Lmech_W, pWindDot = pdot_total for backward compatibility
-    updateDict(
-        params,
-        ['Qi', 'LWind', 'Lbol', 'Ln', 'Li', 'vWind', 'pWindDot', 'pWindDotDot'],
-        [Qi, Lmech_W, Lbol, Ln, Li, vWind, pdot_total, pTotalDotDot],
-    )
+    pdotdot_total = (SB99f['fpdot_total'](t + dt)[()] - SB99f['fpdot_total'](t - dt)[()]) / (2.0 * dt)
 
     # Return raw SB99 values (matching read_SB99 signature)
     return [t, Qi, Li, Ln, Lbol, Lmech_W, Lmech_SN, Lmech_total,
-            pdot_W, pdot_SN, pdot_total]
+            pdot_W, pdot_SN, pdot_total, pdotdot_total, v_mech]
 
