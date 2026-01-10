@@ -45,7 +45,7 @@ output_format    JSON
 
 # INFO: Logging level for terminal and file output. Controls how much detail is logged.
 # OPTIONS: DEBUG (most detailed), INFO (general information), WARNING (warnings only), ERROR (errors only), CRITICAL (critical errors only)
-log_level    INFO
+log_level    DEBUG
 
 # INFO: Enable console (terminal) output for logging. If True, log messages are printed to terminal.
 log_console    True
