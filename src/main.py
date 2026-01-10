@@ -25,6 +25,10 @@ from src.phase1c_transition import run_transition_phase
 from src.phase2_momentum import run_momentum_phase
 import src._output.terminal_prints as terminal_prints
 from src._input.dictionary import DescribedItem, DescribedDict
+import logging
+
+# Initialize logger for this module
+logger = logging.getLogger(__name__)
 
 
 
@@ -48,7 +52,13 @@ def start_expansion(params):
     # Step 0: Preliminary
     # =============================================================================
     
-    
+    import logging
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
+    )
+
     # Record timestamp
     startdatetime = datetime.datetime.now()
     terminal_prints.phase0(startdatetime)
@@ -76,8 +86,6 @@ def start_expansion(params):
     # update
     params['SB99_data'].value = SB99_data
     params['SB99f'].value = SB99f
-    
-    print('..loaded sps files.')
     
     # Step 3: get cooling structure for CIE (since it is non time dependent).
     # ---

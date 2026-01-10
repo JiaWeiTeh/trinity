@@ -23,6 +23,10 @@ import src.cloud_properties.mass_profile as mass_profile
 import src.bubble_structure.get_bubbleParams as get_bubbleParams
 import src.phase1b_energy_implicit.get_betadelta as get_betadelta
 import src._functions.unit_conversions as cvt
+import logging
+
+# Initialize logger for this module
+logger = logging.getLogger(__name__)
 import src.cooling.non_CIE.read_cloudy as non_CIE
 from src.sb99.update_feedback import get_currentSB99feedback
 import src.shell_structure.shell_structure as shell_structure
@@ -138,7 +142,12 @@ def ODE_equations(t, y, params):
     # Part 1: find acceleration and velocity
     # =============================================================================
     # get current feedback value
-    [Qi, LWind, Lbol, Ln, Li, vWind, pWindDot, pWindDotDot] =  get_currentSB99feedback(t, params)
+    [t, Qi, Li, Ln, Lbol, Lmech_W, Lmech_SN, Lmech_total, pdot_W, pdot_SNe, pdot_total] = get_currentSB99feedback(t, params)
+    # Extract derived values from params for backward compatibility
+    LWind = params['LWind'].value
+    vWind = params['vWind'].value
+    pWindDot = params['pWindDot'].value
+    pWindDotDot = params['pWindDotDot'].value
     # run shell structure calculations
     shell_structure.shell_structure(params)
     # get time derivative of radius and velocity from ode equations

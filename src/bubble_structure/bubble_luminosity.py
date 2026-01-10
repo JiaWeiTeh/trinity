@@ -53,6 +53,10 @@ import src._functions.operations as operations
 import src.bubble_structure.get_bubbleParams as get_bubbleParams
 from src.cooling import net_coolingcurve
 import src._functions.unit_conversions as cvt
+import logging
+
+# Initialize logger for this module
+logger = logging.getLogger(__name__)
 from src._input.dictionary import (updateDict, DescribedItem)
 from src.sb99.update_feedback import get_currentSB99feedback
 

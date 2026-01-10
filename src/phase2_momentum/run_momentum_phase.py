@@ -13,8 +13,10 @@ from src.phase_general import phase_ODEs
 import src._functions.unit_conversions as cvt
 import src.phase1_energy.energy_phase_ODEs as energy_phase_ODEs
 import src.shell_structure.shell_structure as shell_structure
+import logging
 
-
+# Initialize logger for this module
+logger = logging.getLogger(__name__)
 
 
 def run_phase_momentum(params):
@@ -150,7 +152,12 @@ def ODE_equations_momentum(t, y, params):
     
     from src.sb99.update_feedback import get_currentSB99feedback
 
-    [Qi, LWind, Lbol, Ln, Li, vWind, pWindDot, pWindDotDot] =  get_currentSB99feedback(t, params)
+    [t, Qi, Li, Ln, Lbol, Lmech_W, Lmech_SN, Lmech_total, pdot_W, pdot_SNe, pdot_total] = get_currentSB99feedback(t, params)
+    # Extract derived values from params for backward compatibility
+    LWind = params['LWind'].value
+    vWind = params['vWind'].value
+    pWindDot = params['pWindDot'].value
+    pWindDotDot = params['pWindDotDot'].value
     shell_structure.shell_structure(params)
     
     
