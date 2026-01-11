@@ -612,6 +612,7 @@ def test_powerlaw_analytical():
 
     r_arr = np.array([0.5, 1.0, 5.0, 10.0, 15.0])
     M_arr = get_mass_profile(r_arr, params)
+    print(M_arr)
 
     # Verify mass is monotonically increasing
     assert np.all(np.diff(M_arr) > 0), "Mass should be monotonically increasing!"
