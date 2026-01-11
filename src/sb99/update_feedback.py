@@ -95,7 +95,7 @@ def get_currentSB99feedback(t, params):
     # Formula: v_wind = 2 * L_wind / pdot_wind
     # OLD BUG: Used pdot_total (wind + SN) instead of pdot_W
     # This caused 10-80% error depending on SN contribution!
-    v_mech = (2. * Lmech_total / pdot_total)[()]  # ← FIXED!
+    v_mech_total = (2. * Lmech_total / pdot_total)[()]  # ← FIXED!
 
     # Numerical derivative of total momentum rate for time evolution
     dt = 1e-9  # Myr (small timestep for derivative)
@@ -103,5 +103,5 @@ def get_currentSB99feedback(t, params):
 
     # Return raw SB99 values (matching read_SB99 signature)
     return [t, Qi, Li, Ln, Lbol, Lmech_W, Lmech_SN, Lmech_total,
-            pdot_W, pdot_SN, pdot_total, pdotdot_total, v_mech]
+            pdot_W, pdot_SN, pdot_total, pdotdot_total, v_mech_total]
 

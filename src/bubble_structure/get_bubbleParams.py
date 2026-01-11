@@ -325,13 +325,13 @@ def get_r1(r1, params):
     # Note
     # old code: R1_zero()
     
-    Lw, Ebubble, vw, r2 = params
+    Lmech_total, Ebubble, v_mech_total, r2 = params
     
     # set minimum energy to avoid zero
     if Ebubble < 1e-30:
         Ebubble = 1e-30
     # the equation to solve
-    equation = np.sqrt( Lw / vw / Ebubble * (r2**3 - r1**3) ) - r1
+    equation = np.sqrt( Lmech_total / v_mech_total / Ebubble * (r2**3 - r1**3) ) - r1
     # return
     return equation
 

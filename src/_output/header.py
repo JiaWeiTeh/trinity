@@ -14,7 +14,7 @@ from src._output.terminal_prints import cprint as cpr
 import src._functions.unit_conversions as cvt
 
 
-def display(params):
+def display():
     """
     Display the TRINITY welcome header and initial parameter summary.
 
@@ -38,8 +38,6 @@ def display(params):
     print(f'\t\t         - {cpr.FAIL}Error encountered.{cpr.END} Code terminates.\n')
     print('\t\t      [Version 3.0] 2022. All rights reserved.')
     print('\t\t      --------------------------------------------------')
-    # show initial parameters
-    show_param(params)
 
     return
 
