@@ -57,7 +57,7 @@ def get_mass_profile( r_arr, params,
     if type(r_arr) == list:
         r_arr = np.array(r_arr)
     elif type(r_arr) is not np.ndarray:
-        r_arr = np.array(r_arr)
+        r_arr = np.array([r_arr])
         
     # Setting up values for mass density (from number density) 
     rhoCore = nCore * mu_ion
