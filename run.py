@@ -28,10 +28,16 @@ parser.add_argument('path2param')
 # grab argument
 args = parser.parse_args()
 
+from src._output import header
+header.display()
+
 # Get class and write summary file
 # Note: read_param uses logging which is not yet configured,
 # so messages are deferred until after header display
 params = read_param.read_param(args.path2param, write_summary=True)
+
+header.show_param(params)
+
 
 
 from src import main
@@ -39,11 +45,6 @@ import src._input.create_dictionary as create_dictionary
 
 # main_dict = create_dictionary.create()
 
-# =============================================================================
-# Display header FIRST (before logging is configured)
-# =============================================================================
-from src._output import header
-header.display(params)
 
 # =============================================================================
 # Configure logging AFTER header display

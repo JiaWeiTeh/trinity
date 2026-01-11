@@ -50,23 +50,24 @@ def run_energy(params):
     # -----------
     # Step1: Obtain initial feedback values
     # -----------
+    [t, Qi, Li, Ln, Lbol, Lmech_W, Lmech_SN, Lmech_total, pdot_W, pdot_SN, pdot_total, pdotdot_total, v_mech_total] = get_currentSB99feedback(t_now, params)
     
-    [t, Qi, Li, Ln, Lbol, Lmech_W, Lmech_SN, Lmech_total, pdot_W, pdot_SNe, pdot_total] = get_currentSB99feedback(t_now, params)
-    # Extract derived values from params for backward compatibility
-    LWind = params['LWind'].value
-    vWind = params['vWind'].value
-    pWindDot = params['pWindDot'].value
-    pWindDotDot = params['pWindDotDot'].value
-
-    # removed troublesome timestep part
-
+    
+    
+    
+    # CONTINUE here
+    # LWind = params['LWind'].value
+    # vWind = params['vWind'].value
+    # pWindDot = params['pWindDot'].value
+    # pWindDotDot = params['pWindDotDot'].value
+    
     # -----------
     # Solve equation for inner radius of the inner shock.
     # -----------
     # [pc]
     R1 = scipy.optimize.brentq(get_bubbleParams.get_r1, 
                        a = 1e-3 * R2, b = R2, 
-                       args=([LWind, Eb, vWind, R2]))
+                       args=([Lmech_total, Eb, v_mech_total, R2]))
     
     # -----------
     # Solve equation for mass and pressure within bubble
@@ -77,20 +78,12 @@ def run_energy(params):
     # The initial pressure [au]
     Pb = get_bubbleParams.bubble_E2P(Eb, R2, R1, params['gamma_adia'].value)
     
-    # How long to stay in Weaver phase? Until what radius?
-    # rfinal = rCloud
-    # if params['dens_profile'].value == 'densPL':
-    #     if params['densPL_alpha'].value != 0:
-    #         rfinal = np.min([params['rCloud_au'], params['rCore']])
-    
     print(f'Inner discontinuity: {R1} pc')
     print(f'Initial bubble mass: {Msh0}')
     print(f'Initial bubble pressure: {Pb}')
-    # print(f'rfinal: {rfinal} pc')
     # update
     params['Pb'].value = Pb
     params['R1'].value = R1
-    
     
     # old code: mom_phase
     immediately_to_momentumphase = False
@@ -118,7 +111,6 @@ def run_energy(params):
 #   this energy phase persists if:
 #       1) radius is less than cloud radius
 #       2) total time change is less than 1e-5/-4 Myr (~1e4yr is Sedov Taylor cooling).
-# 
 # =============================================================================
 
     while R2 < rCloud and\
