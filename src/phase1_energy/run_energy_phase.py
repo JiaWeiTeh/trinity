@@ -25,24 +25,36 @@ import logging
 # Initialize logger for this module
 logger = logging.getLogger(__name__)
 
+
+# =============================================================================
+# Constants 
+# =============================================================================
+
+TFINAL_ENERGY_PHASE = 3e-3  # Myr - max duration (~3000 years)
+DT_MIN = 1e-6  # Myr - minimum timestep for manual method (not needed with odeint)
+DT_EXIT_THRESHOLD = 1e-4  # Myr - exit when this close to tfinal
+COOLING_UPDATE_INTERVAL = 5e-2  # Myr - recalculate cooling every 50k years
+TIMESTEPS_PER_LOOP = 30  # Timesteps per outer loop
+
+
 def run_energy(params):
     
     # TODO: add CLOUDY
     # the energy-driven phase
 
-    # extract dictionary infos
-    # evolution info
+
+    # =============================================================================
+    # Initialization
+    # =============================================================================
+    
     t_now = params['t_now'].value
     R2 = params['R2'].value
     v2 = params['v2'].value
     Eb = params['Eb'].value
     T0 = params['T0'].value
-    # cloud infos
     rCloud = params['rCloud'].value
     t_neu = params['TShell_neu'].value
     t_ion = params['TShell_ion'].value
-    # starburst99
-    SB99_data = params['SB99_data'].value
     
     # =============================================================================
     # Now, we begin Energy-driven calculations (Phase 1)
@@ -52,8 +64,33 @@ def run_energy(params):
     # -----------
     [t, Qi, Li, Ln, Lbol, Lmech_W, Lmech_SN, Lmech_total, pdot_W, pdot_SN, pdot_total, pdotdot_total, v_mech_total] = get_currentSB99feedback(t_now, params)
     
+    # -----------
+    # Solve equation for inner radius of the inner shock.
+    # -----------
+    # [pc]
     
-    
+    # Calculate initial R1 and Pb
+    R1 = scipy.optimize.brentq(
+        get_bubbleParams.get_r1,
+        1e-3 * R2, R2,
+        args=([Lmech_total, Eb, v_mech_total, R2])
+    )
+
+    # -----------
+    # Solve equation for mass and pressure within bubble
+    # -----------
+    Msh0 = mass_profile.get_mass_profile(R2, params, return_mdot=False)
+    Pb = get_bubbleParams.bubble_E2P(Eb, R2, R1, params['gamma_adia'].value)
+
+    logger.info('Energy phase initialization:')
+    logger.info(f'  Inner discontinuity (R1): {R1:.6e} pc')
+    logger.info(f'  Initial shell mass: {Msh0:.6e} Msun')
+    logger.info(f'  Initial bubble pressure: {Pb:.6e} Msun/pc/Myr^2')
+
+    # Update params with initial values
+    params['Pb'].value = Pb
+    params['R1'].value = R1
+
     
     # CONTINUE here
     # LWind = params['LWind'].value
@@ -61,29 +98,6 @@ def run_energy(params):
     # pWindDot = params['pWindDot'].value
     # pWindDotDot = params['pWindDotDot'].value
     
-    # -----------
-    # Solve equation for inner radius of the inner shock.
-    # -----------
-    # [pc]
-    R1 = scipy.optimize.brentq(get_bubbleParams.get_r1, 
-                       a = 1e-3 * R2, b = R2, 
-                       args=([Lmech_total, Eb, v_mech_total, R2]))
-    
-    # -----------
-    # Solve equation for mass and pressure within bubble
-    # -----------
-    # mass enclosed [Msol]
-    Msh0 = mass_profile.get_mass_profile(R2, params,
-                                         return_mdot = False)[0]
-    # The initial pressure [au]
-    Pb = get_bubbleParams.bubble_E2P(Eb, R2, R1, params['gamma_adia'].value)
-    
-    print(f'Inner discontinuity: {R1} pc')
-    print(f'Initial bubble mass: {Msh0}')
-    print(f'Initial bubble pressure: {Pb}')
-    # update
-    params['Pb'].value = Pb
-    params['R1'].value = R1
     
     # old code: mom_phase
     immediately_to_momentumphase = False
