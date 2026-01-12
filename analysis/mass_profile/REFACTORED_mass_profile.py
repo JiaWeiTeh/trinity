@@ -965,12 +965,20 @@ def test_bonnor_ebert_various_parameters():
     solution = solve_lane_emden()
 
     # Test cases: (M_cloud, n_core, Omega, description)
+    # Cover wide range of cloud masses from sub-solar to GMC scale
     test_cases = [
+        # Small clouds (< 100 Msun)
+        (0.5, 1e4, 6.0, "Sub-solar mass"),
         (1.0, 1e3, 5.0, "Small cloud, low Omega"),
         (10.0, 1e4, 10.0, "Medium cloud, medium Omega"),
-        (100.0, 1e5, 8.0, "Large cloud, high density"),
         (50.0, 5e3, 13.5, "Near-critical Omega"),
-        (0.5, 1e4, 6.0, "Sub-solar mass"),
+        (100.0, 1e5, 8.0, "Large cloud, high density"),
+        # Large clouds (1e4 - 1e8 Msun) - GMC to starburst scales
+        (1e4, 1e4, 10.0, "10^4 Msun GMC core"),
+        (1e5, 1e3, 8.0, "10^5 Msun massive GMC"),
+        (1e6, 1e2, 6.0, "10^6 Msun giant cloud"),
+        (1e7, 1e2, 10.0, "10^7 Msun super cloud"),
+        (1e8, 1e1, 8.0, "10^8 Msun starburst scale"),
     ]
 
     mu = 2.33
