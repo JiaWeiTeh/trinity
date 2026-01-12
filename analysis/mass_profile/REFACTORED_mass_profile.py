@@ -55,7 +55,28 @@ if _analysis_dir not in sys.path:
 
 from density_profile.REFACTORED_density_profile import get_density_profile
 
+# Import Bonnor-Ebert sphere module for testing
+_bonnor_ebert_dir = os.path.join(_analysis_dir, 'bonnorEbert')
+if _bonnor_ebert_dir not in sys.path:
+    sys.path.insert(0, _bonnor_ebert_dir)
+
 logger = logging.getLogger(__name__)
+
+
+# =============================================================================
+# Physical constants for unit conversions
+# =============================================================================
+# These are needed to convert between internal units and physical units
+
+PC_TO_CM = 3.0857e18        # [cm/pc]
+MSUN_TO_G = 1.9884e33       # [g/Msun]
+M_H_CGS = 1.6735575e-24     # [g] hydrogen mass
+
+# Conversion factor: n [cm⁻³] × μ → ρ [Msun/pc³]
+# ρ [g/cm³] = n [cm⁻³] × μ × m_H [g]
+# ρ [Msun/pc³] = ρ [g/cm³] × (pc_to_cm)³ / Msun_to_g
+#              = n × μ × m_H × (pc_to_cm)³ / Msun_to_g
+DENSITY_CONVERSION = M_H_CGS * PC_TO_CM**3 / MSUN_TO_G  # ≈ 2.47e-2
 
 
 # Type aliases for clarity
@@ -81,12 +102,16 @@ def _to_output(result: np.ndarray, was_scalar: bool):
     return result
 
 
-def get_mass_density(r: ScalarOrArray, params) -> ScalarOrArray:
+def get_mass_density(
+    r: ScalarOrArray,
+    params,
+    physical_units: bool = True
+) -> ScalarOrArray:
     """
     Get mass density ρ(r) from number density n(r).
 
     This function wraps get_density_profile() from REFACTORED_density_profile.py
-    and converts number density [cm^-3] to mass density [Msun/pc³ or AU units].
+    and converts number density [cm^-3] to mass density.
 
     Parameters
     ----------
@@ -94,12 +119,22 @@ def get_mass_density(r: ScalarOrArray, params) -> ScalarOrArray:
         Radius/radii [pc]
     params : dict
         Parameter dictionary
+    physical_units : bool, optional
+        If True (default), return ρ in [Msun/pc³] for physical mass integration.
+        If False, return ρ in internal units (n × μ) for backward compatibility.
 
     Returns
     -------
     rho : float or array
         Mass density at radius r.
-        ρ = n × μ where μ is the appropriate mean molecular weight
+        If physical_units=True: ρ in [Msun/pc³]
+        If physical_units=False: ρ = n × μ (internal units)
+
+    Notes
+    -----
+    The conversion from internal to physical units:
+        ρ [Msun/pc³] = n [cm⁻³] × μ × m_H [g] × (pc/cm)³ / Msun_to_g
+                     = n × μ × DENSITY_CONVERSION
     """
     # Get number density from density_profile module
     n = get_density_profile(r, params)
@@ -119,6 +154,10 @@ def get_mass_density(r: ScalarOrArray, params) -> ScalarOrArray:
 
     # Mass density = number density × mean molecular weight
     rho_arr = n_arr * mu_arr
+
+    # Convert to physical units if requested
+    if physical_units:
+        rho_arr = rho_arr * DENSITY_CONVERSION
 
     return _to_output(rho_arr, was_scalar)
 
@@ -217,13 +256,14 @@ def get_mass_profile(
 
     # =========================================================================
     # Step 1: Get mass density ρ(r) from density_profile module
+    # Use physical units [Msun/pc³] so integration gives M in [Msun]
     # =========================================================================
-    rho_arr = _to_array(get_mass_density(r_arr, params))
+    rho_arr = _to_array(get_mass_density(r_arr, params, physical_units=True))
 
     # =========================================================================
-    # Step 2: Compute enclosed mass M(r)
+    # Step 2: Compute enclosed mass M(r) [Msun]
     # =========================================================================
-    M_arr = compute_enclosed_mass(r_arr, rho_arr, params)
+    M_arr = compute_enclosed_mass(r_arr, rho_arr, params, physical_units=True)
 
     # =========================================================================
     # Step 3: Convert output and return
@@ -240,7 +280,12 @@ def get_mass_profile(
     return _to_output(M_arr, r_was_scalar), _to_output(dMdt_arr, r_was_scalar)
 
 
-def compute_enclosed_mass(r_arr: np.ndarray, rho_arr: np.ndarray, params) -> np.ndarray:
+def compute_enclosed_mass(
+    r_arr: np.ndarray,
+    rho_arr: np.ndarray,
+    params,
+    physical_units: bool = True
+) -> np.ndarray:
     """
     Compute enclosed mass M(r) = ∫[0 to r] 4πr'² ρ(r') dr'.
 
@@ -251,28 +296,35 @@ def compute_enclosed_mass(r_arr: np.ndarray, rho_arr: np.ndarray, params) -> np.
     Parameters
     ----------
     r_arr : array
-        Radii
+        Radii [pc]
     rho_arr : array
-        Mass density at each radius (from get_mass_density)
+        Mass density at each radius (from get_mass_density).
+        Should be in [Msun/pc³] if physical_units=True.
     params : dict
         Parameter dictionary
+    physical_units : bool, optional
+        If True (default), return M in [Msun].
 
     Returns
     -------
     M_arr : array
-        Mass enclosed within each radius
+        Mass enclosed within each radius [Msun if physical_units=True]
     """
     profile_type = params['dens_profile'].value
 
     if profile_type == 'densPL':
-        return compute_enclosed_mass_powerlaw(r_arr, params)
+        return compute_enclosed_mass_powerlaw(r_arr, params, physical_units=physical_units)
     elif profile_type == 'densBE':
         return compute_enclosed_mass_bonnor_ebert(r_arr, rho_arr, params)
     else:
         raise ValueError(f"Unknown profile type: {profile_type}")
 
 
-def compute_enclosed_mass_powerlaw(r_arr: np.ndarray, params) -> np.ndarray:
+def compute_enclosed_mass_powerlaw(
+    r_arr: np.ndarray,
+    params,
+    physical_units: bool = True
+) -> np.ndarray:
     """
     Analytical enclosed mass for power-law profile.
 
@@ -289,14 +341,17 @@ def compute_enclosed_mass_powerlaw(r_arr: np.ndarray, params) -> np.ndarray:
     Parameters
     ----------
     r_arr : array
-        Radii
+        Radii [pc]
     params : dict
         Parameter dictionary
+    physical_units : bool, optional
+        If True (default), return M in [Msun].
+        If False, return M in internal units for backward compatibility.
 
     Returns
     -------
     M_arr : array
-        Enclosed mass at each radius
+        Enclosed mass at each radius [Msun if physical_units=True]
     """
     # Extract parameters
     nCore = params['nCore'].value
@@ -308,8 +363,17 @@ def compute_enclosed_mass_powerlaw(r_arr: np.ndarray, params) -> np.ndarray:
     mCloud = params['mCloud'].value
     alpha = params['densPL_alpha'].value
 
-    rhoCore = nCore * mu_ion
-    rhoISM = nISM * mu_neu
+    # Internal density units: n × μ
+    rhoCore_internal = nCore * mu_ion
+    rhoISM_internal = nISM * mu_neu
+
+    # Physical density units: [Msun/pc³]
+    if physical_units:
+        rhoCore = rhoCore_internal * DENSITY_CONVERSION
+        rhoISM = rhoISM_internal * DENSITY_CONVERSION
+    else:
+        rhoCore = rhoCore_internal
+        rhoISM = rhoISM_internal
 
     M_arr = np.zeros_like(r_arr, dtype=float)
 
@@ -319,7 +383,7 @@ def compute_enclosed_mass_powerlaw(r_arr: np.ndarray, params) -> np.ndarray:
         inside_cloud = r_arr <= rCloud
         M_arr[inside_cloud] = (4.0/3.0) * np.pi * r_arr[inside_cloud]**3 * rhoCore
 
-        # ISM region
+        # ISM region - mCloud should be in Msun
         outside_cloud = r_arr > rCloud
         M_arr[outside_cloud] = mCloud + (4.0/3.0) * np.pi * rhoISM * (
             r_arr[outside_cloud]**3 - rCloud**3
@@ -339,7 +403,7 @@ def compute_enclosed_mass_powerlaw(r_arr: np.ndarray, params) -> np.ndarray:
             ((3.0 + alpha) * rCore**alpha)
         )
 
-        # Region 3: r > r_cloud (ISM)
+        # Region 3: r > r_cloud (ISM) - mCloud should be in Msun
         region3 = r_arr > rCloud
         M_arr[region3] = mCloud + (4.0/3.0) * np.pi * rhoISM * (
             r_arr[region3]**3 - rCloud**3
@@ -477,18 +541,22 @@ def test_homogeneous_cloud():
         def __init__(self, value):
             self.value = value
 
-    rhoCore = 1e3 * 1.4  # nCore * mu_ion
+    nCore = 1e3
+    mu_ion = 1.4
     rCloud = 10.0
+
+    # Physical density in Msun/pc³
+    rhoCore_physical = nCore * mu_ion * DENSITY_CONVERSION
 
     params = {
         'dens_profile': MockParam('densPL'),
-        'nCore': MockParam(1e3),
+        'nCore': MockParam(nCore),
         'nISM': MockParam(1.0),
-        'mu_ion': MockParam(1.4),
+        'mu_ion': MockParam(mu_ion),
         'mu_neu': MockParam(2.3),
         'rCore': MockParam(1.0),
         'rCloud': MockParam(rCloud),
-        'mCloud': MockParam(1e5),
+        'mCloud': MockParam(1e5),  # Msun
         'densPL_alpha': MockParam(0.0),
     }
 
@@ -497,10 +565,11 @@ def test_homogeneous_cloud():
 
     for r in test_radii:
         M = get_mass_profile(r, params)
-        M_expected = (4.0/3.0) * np.pi * r**3 * rhoCore
+        # Expected mass in Msun using physical density
+        M_expected = (4.0/3.0) * np.pi * r**3 * rhoCore_physical
         assert np.isclose(M, M_expected, rtol=1e-6), \
             f"r={r}: M={M:.6e} != expected {M_expected:.6e}"
-        print(f"  ✓ r={r:.1f}: M = {M:.4e} (expected: {M_expected:.4e})")
+        print(f"  ✓ r={r:.1f}: M = {M:.4e} Msun (expected: {M_expected:.4e})")
 
     print("✓ Homogeneous cloud tests passed!")
     return True
@@ -520,10 +589,12 @@ def test_powerlaw_analytical():
     rCore = 1.0
     rCloud = 10.0
     alpha = -2.0
-    rhoCore = nCore * mu_ion
 
-    # Analytical mass at rCloud for power-law profile (Rahner+ 2018 Eq 25)
-    mCloud_computed = 4.0 * np.pi * rhoCore * (
+    # Physical density in Msun/pc³
+    rhoCore_physical = nCore * mu_ion * DENSITY_CONVERSION
+
+    # Analytical mass at rCloud for power-law profile (Rahner+ 2018 Eq 25) in Msun
+    mCloud_computed = 4.0 * np.pi * rhoCore_physical * (
         rCore**3 / 3.0 +
         (rCloud**(3.0 + alpha) - rCore**(3.0 + alpha)) /
         ((3.0 + alpha) * rCore**alpha)
@@ -537,26 +608,26 @@ def test_powerlaw_analytical():
         'mu_neu': MockParam(2.3),
         'rCore': MockParam(rCore),
         'rCloud': MockParam(rCloud),
-        'mCloud': MockParam(mCloud_computed),  # Use consistent mCloud
+        'mCloud': MockParam(mCloud_computed),  # Use consistent mCloud in Msun
         'densPL_alpha': MockParam(alpha),
     }
 
     r_arr = np.array([0.5, 1.0, 5.0, 10.0, 15.0])
     M_arr = get_mass_profile(r_arr, params)
-    print(M_arr)
+    print(f"  M(r) = {M_arr} Msun")
 
     # Verify mass is monotonically increasing
     assert np.all(np.diff(M_arr) > 0), "Mass should be monotonically increasing!"
     print("  ✓ Mass is monotonically increasing")
 
-    # Verify inside core matches uniform formula
-    M_core_expected = (4.0/3.0) * np.pi * 0.5**3 * rhoCore
+    # Verify inside core matches uniform formula (in Msun)
+    M_core_expected = (4.0/3.0) * np.pi * 0.5**3 * rhoCore_physical
     assert np.isclose(M_arr[0], M_core_expected, rtol=1e-6), "Core mass mismatch"
-    print("  ✓ Core region matches uniform density formula")
+    print(f"  ✓ Core region matches uniform density formula: {M_arr[0]:.4e} Msun")
 
     # Verify at rCloud matches mCloud
     assert np.isclose(M_arr[3], mCloud_computed, rtol=1e-6), "Mass at rCloud should equal mCloud"
-    print(f"  ✓ Mass at rCloud = {M_arr[3]:.2e} (mCloud = {mCloud_computed:.2e})")
+    print(f"  ✓ Mass at rCloud = {M_arr[3]:.4e} Msun (mCloud = {mCloud_computed:.4e} Msun)")
 
     print("✓ Power-law profile test passed!")
     return True
@@ -583,33 +654,483 @@ def test_density_import():
 
     # Test density at a point
     r = 5.0
-    n = get_density_profile(r, params)  # Number density from density_profile
-    rho = get_mass_density(r, params)   # Mass density (n × mu)
+    n = get_density_profile(r, params)  # Number density from density_profile [cm⁻³]
+    rho_internal = get_mass_density(r, params, physical_units=False)  # Internal units (n × μ)
+    rho_physical = get_mass_density(r, params, physical_units=True)   # Physical units [Msun/pc³]
 
-    expected_n = params['nCore'].value  # 1000.0
-    expected_rho = expected_n * params['mu_ion'].value  # 1000.0 × 1.4
+    expected_n = params['nCore'].value  # 1000.0 cm⁻³
+    expected_rho_internal = expected_n * params['mu_ion'].value  # 1000.0 × 1.4
+    expected_rho_physical = expected_rho_internal * DENSITY_CONVERSION  # Msun/pc³
 
     assert np.isclose(n, expected_n), f"Number density: {n} != {expected_n}"
-    assert np.isclose(rho, expected_rho), f"Mass density: {rho} != {expected_rho}"
+    assert np.isclose(rho_internal, expected_rho_internal), \
+        f"Mass density (internal): {rho_internal} != {expected_rho_internal}"
+    assert np.isclose(rho_physical, expected_rho_physical), \
+        f"Mass density (physical): {rho_physical} != {expected_rho_physical}"
 
-    print(f"  ✓ Number density n(r={r}) = {n} (from density_profile module)")
-    print(f"  ✓ Mass density ρ(r={r}) = {rho} (= n × μ)")
+    print(f"  ✓ Number density n(r={r}) = {n} cm⁻³ (from density_profile module)")
+    print(f"  ✓ Mass density ρ(r={r}) = {rho_internal:.4e} (internal: n × μ)")
+    print(f"  ✓ Mass density ρ(r={r}) = {rho_physical:.4e} Msun/pc³ (physical)")
     print("✓ Density import test passed!")
+    return True
+
+
+# =============================================================================
+# Bonnor-Ebert Sphere Mass Profile Tests
+# =============================================================================
+
+def test_bonnor_ebert_total_mass():
+    """
+    Test that the integrated mass at rCloud equals the input mCloud.
+
+    This is the fundamental consistency test: if we create a BE sphere
+    with mass M, the numerical integration should recover M at r=rCloud.
+    """
+    print("\nTesting Bonnor-Ebert sphere total mass...")
+
+    # Import BE sphere module
+    from bonnorEbertSphere_v2 import create_BE_sphere, solve_lane_emden
+
+    class MockParam:
+        def __init__(self, value):
+            self.value = value
+
+    # Test parameters
+    M_cloud = 100.0   # [Msun]
+    n_core = 1e4      # [cm^-3]
+    Omega = 10.0      # Density contrast
+    mu = 2.33         # Mean molecular weight
+    gamma = 5.0/3.0   # Adiabatic index
+
+    # Create BE sphere
+    solution = solve_lane_emden()
+    result = create_BE_sphere(
+        M_cloud=M_cloud,
+        n_core=n_core,
+        Omega=Omega,
+        mu=mu,
+        gamma=gamma,
+        lane_emden_solution=solution
+    )
+
+    print(f"  BE sphere created:")
+    print(f"    M_cloud = {M_cloud} Msun")
+    print(f"    n_core = {n_core:.2e} cm^-3")
+    print(f"    Omega = {Omega}")
+    print(f"    r_out = {result.r_out:.6f} pc")
+    print(f"    xi_out = {result.xi_out:.4f}")
+
+    # Set up params dictionary for mass_profile
+    params = {
+        'dens_profile': MockParam('densBE'),
+        'nCore': MockParam(n_core),
+        'nISM': MockParam(1.0),
+        'mu_ion': MockParam(mu),
+        'mu_neu': MockParam(2.3),
+        'rCore': MockParam(result.r_out * 0.1),  # Not used for BE, but required
+        'rCloud': MockParam(result.r_out),
+        'mCloud': MockParam(M_cloud),
+        'densBE_Omega': MockParam(Omega),
+        'densBE_Teff': MockParam(result.T_eff),
+        'densBE_f_rho_rhoc': MockParam(solution.f_rho_rhoc),
+        'densBE_xi_arr': MockParam(solution.xi),
+        'densBE_u_arr': MockParam(solution.u),
+        'gamma_adia': MockParam(gamma),
+    }
+
+    # Create dense radial grid for integration
+    # Need many points for accurate numerical integration
+    n_points = 500
+    r_arr = np.linspace(1e-6, result.r_out, n_points)
+
+    # Get density profile in physical units [Msun/pc³]
+    rho_arr = _to_array(get_mass_density(r_arr, params, physical_units=True))
+
+    # Compute enclosed mass [Msun]
+    M_arr = compute_enclosed_mass_bonnor_ebert(r_arr, rho_arr, params)
+
+    # Check total mass at cloud edge
+    M_total = M_arr[-1]
+    rel_error = abs(M_total - M_cloud) / M_cloud
+
+    print(f"  Results:")
+    print(f"    M(rCloud) = {M_total:.6f} Msun")
+    print(f"    Expected = {M_cloud:.6f} Msun")
+    print(f"    Relative error = {rel_error:.2e} ({rel_error*100:.4f}%)")
+
+    # Should be accurate to within ~1% for 500 points
+    # (trapezoidal integration has O(h²) error)
+    assert rel_error < 0.02, f"Total mass error too large: {rel_error*100:.2f}%"
+
+    print("  ✓ Total mass test passed!")
+    return True
+
+
+def test_bonnor_ebert_mass_monotonicity():
+    """
+    Test that enclosed mass increases monotonically from center to edge.
+
+    Physical requirement: M(r) must be strictly increasing since
+    we're always adding more mass as we go outward (ρ > 0).
+    """
+    print("\nTesting Bonnor-Ebert mass profile monotonicity...")
+
+    from bonnorEbertSphere_v2 import create_BE_sphere, solve_lane_emden
+
+    class MockParam:
+        def __init__(self, value):
+            self.value = value
+
+    # Create BE sphere
+    M_cloud = 50.0
+    n_core = 5e3
+    Omega = 12.0
+    mu = 2.33
+    gamma = 5.0/3.0
+
+    solution = solve_lane_emden()
+    result = create_BE_sphere(
+        M_cloud=M_cloud,
+        n_core=n_core,
+        Omega=Omega,
+        mu=mu,
+        gamma=gamma,
+        lane_emden_solution=solution
+    )
+
+    params = {
+        'dens_profile': MockParam('densBE'),
+        'nCore': MockParam(n_core),
+        'nISM': MockParam(1.0),
+        'mu_ion': MockParam(mu),
+        'mu_neu': MockParam(2.3),
+        'rCore': MockParam(result.r_out * 0.1),
+        'rCloud': MockParam(result.r_out),
+        'mCloud': MockParam(M_cloud),
+        'densBE_Omega': MockParam(Omega),
+        'densBE_Teff': MockParam(result.T_eff),
+        'densBE_f_rho_rhoc': MockParam(solution.f_rho_rhoc),
+        'densBE_xi_arr': MockParam(solution.xi),
+        'densBE_u_arr': MockParam(solution.u),
+        'gamma_adia': MockParam(gamma),
+    }
+
+    # Create radial grid
+    n_points = 200
+    r_arr = np.linspace(1e-6, result.r_out, n_points)
+
+    # Get density in physical units and compute mass
+    rho_arr = _to_array(get_mass_density(r_arr, params, physical_units=True))
+    M_arr = compute_enclosed_mass_bonnor_ebert(r_arr, rho_arr, params)
+
+    # Check monotonicity
+    dM = np.diff(M_arr)
+
+    # Allow for small numerical noise near zero
+    # (first few points might have tiny negative dM due to numerics)
+    non_monotonic = np.sum(dM < -1e-10)
+
+    print(f"  Mass profile statistics:")
+    print(f"    M(r=0) = {M_arr[0]:.6e} Msun")
+    print(f"    M(rCloud) = {M_arr[-1]:.6f} Msun")
+    print(f"    min(dM/dr) = {dM.min():.6e}")
+    print(f"    Non-monotonic points: {non_monotonic}/{len(dM)}")
+
+    assert non_monotonic == 0, f"Mass profile not monotonic: {non_monotonic} violations"
+
+    print("  ✓ Monotonicity test passed!")
+    return True
+
+
+def test_bonnor_ebert_lane_emden_comparison():
+    """
+    Compare numerical mass integration with Lane-Emden analytical solution.
+
+    The dimensionless mass m(ξ) from Lane-Emden should match our
+    numerical integration when properly scaled.
+
+    m(ξ) = (1/√4π) × ξ² × du/dξ × √(ρ/ρc)
+    M = m × ρc × a³ where a = c_s/√(4πGρc)
+    """
+    print("\nTesting BE mass profile against Lane-Emden solution...")
+
+    from bonnorEbertSphere_v2 import (
+        create_BE_sphere, solve_lane_emden,
+        G_CGS, M_H_CGS, K_B_CGS, MSUN_TO_G, PC_TO_CM
+    )
+
+    class MockParam:
+        def __init__(self, value):
+            self.value = value
+
+    # Create BE sphere
+    M_cloud = 10.0
+    n_core = 1e4
+    Omega = 8.0
+    mu = 2.33
+    gamma = 5.0/3.0
+
+    solution = solve_lane_emden()
+    result = create_BE_sphere(
+        M_cloud=M_cloud,
+        n_core=n_core,
+        Omega=Omega,
+        mu=mu,
+        gamma=gamma,
+        lane_emden_solution=solution
+    )
+
+    params = {
+        'dens_profile': MockParam('densBE'),
+        'nCore': MockParam(n_core),
+        'nISM': MockParam(1.0),
+        'mu_ion': MockParam(mu),
+        'mu_neu': MockParam(2.3),
+        'rCore': MockParam(result.r_out * 0.1),
+        'rCloud': MockParam(result.r_out),
+        'mCloud': MockParam(M_cloud),
+        'densBE_Omega': MockParam(Omega),
+        'densBE_Teff': MockParam(result.T_eff),
+        'densBE_f_rho_rhoc': MockParam(solution.f_rho_rhoc),
+        'densBE_xi_arr': MockParam(solution.xi),
+        'densBE_u_arr': MockParam(solution.u),
+        'gamma_adia': MockParam(gamma),
+    }
+
+    # Calculate physical constants
+    rho_core_cgs = n_core * mu * M_H_CGS  # [g/cm³]
+    c_s = result.c_s  # [cm/s]
+    a = c_s / np.sqrt(4.0 * np.pi * G_CGS * rho_core_cgs)  # [cm]
+
+    # Mass scale factor: M = 4π × m × ρc × a³ (with m = ξ² du/dξ)
+    mass_scale = 4.0 * np.pi * rho_core_cgs * a**3 / MSUN_TO_G  # [Msun]
+
+    # Get Lane-Emden mass at several xi values
+    xi_test = np.array([1.0, 2.0, 3.0, 4.0, 5.0, result.xi_out])
+    m_lane_emden = solution.f_m(xi_test)  # Dimensionless mass (m = ξ² du/dξ)
+    M_lane_emden = m_lane_emden * mass_scale  # Physical mass [Msun]
+
+    # Convert xi to physical radius
+    r_test = xi_test * a / PC_TO_CM  # [pc]
+
+    # Get numerical mass from our integration
+    # Need fine grid from 0 to each test radius
+    n_points = 500
+
+    print(f"  Comparing at {len(xi_test)} radii:")
+    print(f"  {'ξ':>8} {'r [pc]':>12} {'M_LE [Msun]':>14} {'M_num [Msun]':>14} {'Error':>10}")
+    print(f"  {'-'*8} {'-'*12} {'-'*14} {'-'*14} {'-'*10}")
+
+    max_error = 0.0
+
+    for i, (xi, r, M_le) in enumerate(zip(xi_test, r_test, M_lane_emden)):
+        # Create fine grid from 0 to r
+        r_fine = np.linspace(1e-8, r, n_points)
+        rho_fine = _to_array(get_mass_density(r_fine, params, physical_units=True))
+        M_fine = compute_enclosed_mass_bonnor_ebert(r_fine, rho_fine, params)
+        M_num = M_fine[-1]
+
+        error = abs(M_num - M_le) / M_le if M_le > 0 else 0
+        max_error = max(max_error, error)
+
+        print(f"  {xi:8.3f} {r:12.6f} {M_le:14.6f} {M_num:14.6f} {error*100:9.2f}%")
+
+    print(f"\n  Maximum relative error: {max_error*100:.2f}%")
+
+    # Should agree within ~5% (numerical integration vs interpolated analytical)
+    assert max_error < 0.05, f"Lane-Emden comparison error too large: {max_error*100:.2f}%"
+
+    print("  ✓ Lane-Emden comparison test passed!")
+    return True
+
+
+def test_bonnor_ebert_various_parameters():
+    """
+    Test BE mass profile with various cloud parameters.
+
+    Tests different combinations of:
+    - Cloud mass (small, medium, large)
+    - Density contrast (low, medium, near-critical)
+    - Core density (low, high)
+    """
+    print("\nTesting BE mass profile with various parameters...")
+
+    from bonnorEbertSphere_v2 import create_BE_sphere, solve_lane_emden
+
+    class MockParam:
+        def __init__(self, value):
+            self.value = value
+
+    # Cache Lane-Emden solution
+    solution = solve_lane_emden()
+
+    # Test cases: (M_cloud, n_core, Omega, description)
+    test_cases = [
+        (1.0, 1e3, 5.0, "Small cloud, low Omega"),
+        (10.0, 1e4, 10.0, "Medium cloud, medium Omega"),
+        (100.0, 1e5, 8.0, "Large cloud, high density"),
+        (50.0, 5e3, 13.5, "Near-critical Omega"),
+        (0.5, 1e4, 6.0, "Sub-solar mass"),
+    ]
+
+    mu = 2.33
+    gamma = 5.0/3.0
+
+    print(f"\n  {'Case':<30} {'M_input':>10} {'M_computed':>12} {'Error':>10}")
+    print(f"  {'-'*30} {'-'*10} {'-'*12} {'-'*10}")
+
+    all_passed = True
+
+    for M_cloud, n_core, Omega, desc in test_cases:
+        result = create_BE_sphere(
+            M_cloud=M_cloud,
+            n_core=n_core,
+            Omega=Omega,
+            mu=mu,
+            gamma=gamma,
+            lane_emden_solution=solution
+        )
+
+        params = {
+            'dens_profile': MockParam('densBE'),
+            'nCore': MockParam(n_core),
+            'nISM': MockParam(1.0),
+            'mu_ion': MockParam(mu),
+            'mu_neu': MockParam(2.3),
+            'rCore': MockParam(result.r_out * 0.1),
+            'rCloud': MockParam(result.r_out),
+            'mCloud': MockParam(M_cloud),
+            'densBE_Omega': MockParam(Omega),
+            'densBE_Teff': MockParam(result.T_eff),
+            'densBE_f_rho_rhoc': MockParam(solution.f_rho_rhoc),
+            'densBE_xi_arr': MockParam(solution.xi),
+            'densBE_u_arr': MockParam(solution.u),
+            'gamma_adia': MockParam(gamma),
+        }
+
+        # Compute mass profile
+        n_points = 300
+        r_arr = np.linspace(1e-8, result.r_out, n_points)
+        rho_arr = _to_array(get_mass_density(r_arr, params, physical_units=True))
+        M_arr = compute_enclosed_mass_bonnor_ebert(r_arr, rho_arr, params)
+
+        M_computed = M_arr[-1]
+        error = abs(M_computed - M_cloud) / M_cloud
+
+        status = "✓" if error < 0.03 else "✗"
+        print(f"  {desc:<30} {M_cloud:>10.2f} {M_computed:>12.4f} {error*100:>9.2f}%  {status}")
+
+        if error >= 0.03:
+            all_passed = False
+
+    assert all_passed, "Some parameter combinations failed"
+
+    print("\n  ✓ Various parameters test passed!")
+    return True
+
+
+def test_bonnor_ebert_scalar_array_consistency():
+    """
+    Test scalar/array consistency for BE sphere mass profile.
+    """
+    print("\nTesting BE sphere scalar/array consistency...")
+
+    from bonnorEbertSphere_v2 import create_BE_sphere, solve_lane_emden
+
+    class MockParam:
+        def __init__(self, value):
+            self.value = value
+
+    # Create BE sphere
+    M_cloud = 20.0
+    n_core = 1e4
+    Omega = 10.0
+    mu = 2.33
+    gamma = 5.0/3.0
+
+    solution = solve_lane_emden()
+    result = create_BE_sphere(
+        M_cloud=M_cloud,
+        n_core=n_core,
+        Omega=Omega,
+        mu=mu,
+        gamma=gamma,
+        lane_emden_solution=solution
+    )
+
+    params = {
+        'dens_profile': MockParam('densBE'),
+        'nCore': MockParam(n_core),
+        'nISM': MockParam(1.0),
+        'mu_ion': MockParam(mu),
+        'mu_neu': MockParam(2.3),
+        'rCore': MockParam(result.r_out * 0.1),
+        'rCloud': MockParam(result.r_out),
+        'mCloud': MockParam(M_cloud),
+        'densBE_Omega': MockParam(Omega),
+        'densBE_Teff': MockParam(result.T_eff),
+        'densBE_f_rho_rhoc': MockParam(solution.f_rho_rhoc),
+        'densBE_xi_arr': MockParam(solution.xi),
+        'densBE_u_arr': MockParam(solution.u),
+        'gamma_adia': MockParam(gamma),
+    }
+
+    # Note: For BE spheres, we need to compute mass from an array
+    # starting at r=0 due to the numerical integration.
+    # Test that the get_mass_profile function handles this correctly.
+
+    # Test array input
+    r_arr = np.linspace(1e-6, result.r_out, 100)
+    M_arr = get_mass_profile(r_arr, params)
+
+    assert isinstance(M_arr, np.ndarray), f"Expected ndarray, got {type(M_arr)}"
+    assert len(M_arr) == len(r_arr), f"Length mismatch: {len(M_arr)} != {len(r_arr)}"
+    print(f"  ✓ Array input (len={len(r_arr)}) → array output")
+
+    # Test that mass at cloud edge is approximately correct
+    assert np.isclose(M_arr[-1], M_cloud, rtol=0.03), \
+        f"Mass at rCloud: {M_arr[-1]:.4f} != {M_cloud:.4f}"
+    print(f"  ✓ M(rCloud) = {M_arr[-1]:.4f} Msun (expected: {M_cloud:.4f})")
+
+    print("  ✓ Scalar/array consistency test passed!")
     return True
 
 
 if __name__ == "__main__":
     """Run tests if executed as script."""
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Test mass_profile.py")
+    parser.add_argument('--skip-be', action='store_true',
+                        help='Skip Bonnor-Ebert sphere tests')
+    parser.add_argument('--be-only', action='store_true',
+                        help='Run only Bonnor-Ebert sphere tests')
+    args = parser.parse_args()
+
     print("=" * 70)
     print("Testing refactored mass_profile.py")
     print("(with density imported from REFACTORED_density_profile.py)")
     print("=" * 70)
     print()
 
-    test_density_import()
-    test_scalar_array_consistency()
-    test_homogeneous_cloud()
-    test_powerlaw_analytical()
+    if not args.be_only:
+        # Power-law profile tests
+        test_density_import()
+        test_scalar_array_consistency()
+        test_homogeneous_cloud()
+        test_powerlaw_analytical()
+
+    if not args.skip_be:
+        # Bonnor-Ebert sphere tests
+        print()
+        print("=" * 70)
+        print("Bonnor-Ebert Sphere Mass Profile Tests")
+        print("=" * 70)
+        test_bonnor_ebert_total_mass()
+        test_bonnor_ebert_mass_monotonicity()
+        test_bonnor_ebert_lane_emden_comparison()
+        test_bonnor_ebert_various_parameters()
+        test_bonnor_ebert_scalar_array_consistency()
 
     print()
     print("=" * 70)
@@ -623,4 +1144,5 @@ if __name__ == "__main__":
     print("- Correct formula: dM/dt = 4πr² ρ(r) × v(r)")
     print("- No solver coupling")
     print("- Clean homogeneous (α=0) handling")
+    print("- Bonnor-Ebert sphere mass integration verified against Lane-Emden")
     print("- Testable and maintainable")
