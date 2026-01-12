@@ -67,6 +67,8 @@ MSUN_TO_G = INV_CONV.Msun2g      # [g/Msun]
 # Conversion: n [cm⁻³] × μ → ρ [Msun/pc³]
 DENSITY_CONVERSION = M_H_CGS * PC_TO_CM**3 / MSUN_TO_G
 
+FONTSIZE = 20
+
 
 def compute_rCloud_homogeneous(M_cloud, nCore, mu=2.33):
     """
@@ -269,7 +271,7 @@ def plot_radius_heatmap_powerlaw(ax, M_values, n_core_values, r_out_grid, alpha,
         contours,
         inline=True,
         inline_spacing=3,
-        fontsize=8,
+        fontsize=FONTSIZE,
         fmt='%.1f',
         rightside_up=True,
         use_clabeltext=True,
@@ -287,7 +289,7 @@ def plot_radius_heatmap_powerlaw(ax, M_values, n_core_values, r_out_grid, alpha,
         title = r'$\alpha = 0$ (homogeneous)'
     else:
         title = fr'$\alpha = {alpha}$'
-    ax.set_title(title, fontsize=12)
+    ax.set_title(title, fontsize=FONTSIZE)
 
     # Add grid
     ax.grid(True, alpha=0.3, linestyle='--')
@@ -344,19 +346,19 @@ def main():
 
         # Only add axis labels on edges
         if idx >= 2:  # Bottom row
-            ax.set_xlabel(r'Cloud Mass $M_{\rm cloud}$ [M$_\odot$]', fontsize=11)
+            ax.set_xlabel(r'Cloud Mass $M_{\rm cloud}$ [M$_\odot$]', fontsize=FONTSIZE)
         if idx % 2 == 0:  # Left column
-            ax.set_ylabel(r'Core Density $n_{\rm core}$ [cm$^{-3}$]', fontsize=11)
+            ax.set_ylabel(r'Core Density $n_{\rm core}$ [cm$^{-3}$]', fontsize=FONTSIZE)
 
     # Add single colorbar on the right
     fig.subplots_adjust(right=0.88)
     cbar_ax = fig.add_axes([0.90, 0.15, 0.02, 0.7])
     cbar = fig.colorbar(pcm, cax=cbar_ax)
-    cbar.set_label(r'Cloud Radius $r_{\rm cloud}$ [pc]', fontsize=12)
+    cbar.set_label(r'Cloud Radius $r_{\rm cloud}$ [pc]', fontsize=FONTSIZE)
 
     # Main title
     fig.suptitle(r'Power-Law Density Profile: Cloud Radius vs $(M_{\rm cloud}, n_{\rm core})$',
-                 fontsize=14, y=0.98)
+                 fontsize=FONTSIZE, y=0.98)
 
     plt.tight_layout(rect=[0, 0, 0.88, 0.95])
 
