@@ -34,7 +34,7 @@ import os
 
 
 plt.rc('text', usetex=True)
-plt.rc('font', family='sans-serif', size=12)
+plt.rc('font', family='sans-serif', size=FONTSIZE)
 plt.rcParams["xtick.direction"] = "in"
 plt.rcParams["ytick.direction"] = "in"
 plt.rcParams["xtick.minor.visible"] = True
