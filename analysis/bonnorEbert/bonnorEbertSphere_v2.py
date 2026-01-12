@@ -727,7 +727,7 @@ def test_critical_sphere():
     print("\nTesting critical BE sphere...")
 
     result = create_BE_sphere(
-        M_cloud=1.0,
+        M_cloud=1e6,
         n_core=1e4,
         Omega=14.0  # Near critical
     )
