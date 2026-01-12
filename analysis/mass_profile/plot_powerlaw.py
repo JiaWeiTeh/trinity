@@ -25,8 +25,10 @@ Date: 2026-01-12
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
+import matplotlib.patheffects as path_effects
 from scipy.interpolate import RectBivariateSpline
 from scipy.optimize import brentq
+import cmasher as cmr
 import sys
 import os
 
@@ -246,7 +248,7 @@ def plot_radius_heatmap_powerlaw(ax, M_values, n_core_values, r_out_grid, alpha,
     pcm = ax.pcolormesh(
         M_fine, n_fine, r_fine,
         norm=mcolors.LogNorm(vmin=vmin, vmax=vmax),
-        cmap='viridis',
+        cmap='cmr.rainforest',
         shading='gouraud'
     )
 
@@ -275,6 +277,10 @@ def plot_radius_heatmap_powerlaw(ax, M_values, n_core_values, r_out_grid, alpha,
 
     for t in texts:
         t.set_rotation_mode("anchor")
+        t.set_path_effects([
+            path_effects.Stroke(linewidth=2, foreground='black'),
+            path_effects.Normal()
+        ])
 
     # Title with alpha value
     if alpha == 0:
