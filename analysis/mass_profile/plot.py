@@ -23,7 +23,9 @@ Date: 2026-01-12
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
+import matplotlib.patheffects as path_effects
 from scipy.interpolate import RectBivariateSpline
+import cmasher as cmr
 import sys
 import os
 
@@ -143,7 +145,7 @@ def plot_radius_heatmap(M_values, n_core_values, r_out_grid, Omega=8.0,
     pcm = ax.pcolormesh(
         M_fine, n_fine, r_fine,
         norm=mcolors.LogNorm(vmin=r_fine.min(), vmax=r_fine.max()),
-        cmap='viridis',
+        cmap='cmr.rainforest',
         shading='gouraud'
     )
     
@@ -173,7 +175,11 @@ def plot_radius_heatmap(M_values, n_core_values, r_out_grid, Omega=8.0,
     
     for t in texts:
         t.set_rotation_mode("anchor")
-        
+        t.set_path_effects([
+            path_effects.Stroke(linewidth=2, foreground='black'),
+            path_effects.Normal()
+        ])
+
     # Labels and formatting
     ax.set_xlabel(r'Cloud Mass $M_{\rm cloud}$ [M$_\odot$]', fontsize=12)
     ax.set_ylabel(r'Core Density $n_{\rm core}$ [cm$^{-3}$]', fontsize=12)
