@@ -1071,24 +1071,58 @@ def test_bonnor_ebert_various_parameters():
         (10.0, 1e4, 10.0, "Medium cloud, medium Omega"),
         (50.0, 5e3, 13.5, "Near-critical Omega"),
         (100.0, 1e5, 8.0, "Large cloud, high density"),
-        # Systematic nCore sweep (1e2 to 1e4 cm^-3) × Mass (1e4 to 1e8 Msun)
+        # Systematic nCore sweep with finer grid (2 values per decade)
+        # nCore: [1e2, 3e2, 1e3, 3e3, 1e4] cm^-3
+        # Mass:  [1e4, 3e4, 1e5, 3e5, 1e6, 3e6, 1e7, 3e7, 1e8] Msun
         # nCore = 1e2 cm^-3
         (1e4, 1e2, 8.0, "1e4 Msun, nCore=1e2"),
+        (3e4, 1e2, 8.0, "3e4 Msun, nCore=1e2"),
         (1e5, 1e2, 8.0, "1e5 Msun, nCore=1e2"),
+        (3e5, 1e2, 8.0, "3e5 Msun, nCore=1e2"),
         (1e6, 1e2, 8.0, "1e6 Msun, nCore=1e2"),
+        (3e6, 1e2, 8.0, "3e6 Msun, nCore=1e2"),
         (1e7, 1e2, 8.0, "1e7 Msun, nCore=1e2"),
+        (3e7, 1e2, 8.0, "3e7 Msun, nCore=1e2"),
         (1e8, 1e2, 8.0, "1e8 Msun, nCore=1e2"),
+        # nCore = 3e2 cm^-3
+        (1e4, 3e2, 8.0, "1e4 Msun, nCore=3e2"),
+        (3e4, 3e2, 8.0, "3e4 Msun, nCore=3e2"),
+        (1e5, 3e2, 8.0, "1e5 Msun, nCore=3e2"),
+        (3e5, 3e2, 8.0, "3e5 Msun, nCore=3e2"),
+        (1e6, 3e2, 8.0, "1e6 Msun, nCore=3e2"),
+        (3e6, 3e2, 8.0, "3e6 Msun, nCore=3e2"),
+        (1e7, 3e2, 8.0, "1e7 Msun, nCore=3e2"),
+        (3e7, 3e2, 8.0, "3e7 Msun, nCore=3e2"),
+        (1e8, 3e2, 8.0, "1e8 Msun, nCore=3e2"),
         # nCore = 1e3 cm^-3
         (1e4, 1e3, 8.0, "1e4 Msun, nCore=1e3"),
+        (3e4, 1e3, 8.0, "3e4 Msun, nCore=1e3"),
         (1e5, 1e3, 8.0, "1e5 Msun, nCore=1e3"),
+        (3e5, 1e3, 8.0, "3e5 Msun, nCore=1e3"),
         (1e6, 1e3, 8.0, "1e6 Msun, nCore=1e3"),
+        (3e6, 1e3, 8.0, "3e6 Msun, nCore=1e3"),
         (1e7, 1e3, 8.0, "1e7 Msun, nCore=1e3"),
+        (3e7, 1e3, 8.0, "3e7 Msun, nCore=1e3"),
         (1e8, 1e3, 8.0, "1e8 Msun, nCore=1e3"),
+        # nCore = 3e3 cm^-3
+        (1e4, 3e3, 8.0, "1e4 Msun, nCore=3e3"),
+        (3e4, 3e3, 8.0, "3e4 Msun, nCore=3e3"),
+        (1e5, 3e3, 8.0, "1e5 Msun, nCore=3e3"),
+        (3e5, 3e3, 8.0, "3e5 Msun, nCore=3e3"),
+        (1e6, 3e3, 8.0, "1e6 Msun, nCore=3e3"),
+        (3e6, 3e3, 8.0, "3e6 Msun, nCore=3e3"),
+        (1e7, 3e3, 8.0, "1e7 Msun, nCore=3e3"),
+        (3e7, 3e3, 8.0, "3e7 Msun, nCore=3e3"),
+        (1e8, 3e3, 8.0, "1e8 Msun, nCore=3e3"),
         # nCore = 1e4 cm^-3
         (1e4, 1e4, 8.0, "1e4 Msun, nCore=1e4"),
+        (3e4, 1e4, 8.0, "3e4 Msun, nCore=1e4"),
         (1e5, 1e4, 8.0, "1e5 Msun, nCore=1e4"),
+        (3e5, 1e4, 8.0, "3e5 Msun, nCore=1e4"),
         (1e6, 1e4, 8.0, "1e6 Msun, nCore=1e4"),
+        (3e6, 1e4, 8.0, "3e6 Msun, nCore=1e4"),
         (1e7, 1e4, 8.0, "1e7 Msun, nCore=1e4"),
+        (3e7, 1e4, 8.0, "3e7 Msun, nCore=1e4"),
         (1e8, 1e4, 8.0, "1e8 Msun, nCore=1e4"),
     ]
 
