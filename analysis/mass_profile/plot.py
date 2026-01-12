@@ -31,7 +31,7 @@ import os
 
 
 plt.rc('text', usetex=True)
-plt.rc('font', family='sans-serif', size=12)
+plt.rc('font', family='sans-serif', size=20)
 plt.rcParams["xtick.direction"] = "in"
 plt.rcParams["ytick.direction"] = "in"
 plt.rcParams["xtick.minor.visible"] = True  # Show minor ticks
@@ -167,7 +167,7 @@ def plot_radius_heatmap(M_values, n_core_values, r_out_grid, Omega=8.0,
         contours,
         inline=True,
         inline_spacing=3,
-        fontsize=10,
+        fontsize=20,
         fmt='%.1f pc',
         rightside_up=True,
         use_clabeltext=True,   # keeps rotation consistent on resize
