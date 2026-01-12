@@ -29,6 +29,8 @@ import cmasher as cmr
 import sys
 import os
 
+FONTSIZE = 20
+
 
 plt.rc('text', usetex=True)
 plt.rc('font', family='sans-serif', size=20)
@@ -181,13 +183,13 @@ def plot_radius_heatmap(M_values, n_core_values, r_out_grid, Omega=8.0,
         ])
 
     # Labels and formatting
-    ax.set_xlabel(r'Cloud Mass $M_{\rm cloud}$ [M$_\odot$]', fontsize=12)
-    ax.set_ylabel(r'Core Density $n_{\rm core}$ [cm$^{-3}$]', fontsize=12)
-    ax.set_title(fr'Bonnor-Ebert Sphere Radius ($\Omega$ = {Omega})', fontsize=14)
+    ax.set_xlabel(r'Cloud Mass $M_{\rm cloud}$ [M$_\odot$]', fontsize=FONTSIZE)
+    ax.set_ylabel(r'Core Density $n_{\rm core}$ [cm$^{-3}$]', fontsize=FONTSIZE)
+    ax.set_title(fr'Bonnor-Ebert Sphere Radius ($\Omega$ = {Omega})', fontsize=FONTSIZE)
 
     # Colorbar
     cbar = plt.colorbar(pcm, ax=ax)
-    cbar.set_label(r'Cloud Radius $r_{\rm out}$ [pc]', fontsize=12)
+    cbar.set_label(r'Cloud Radius $r_{\rm out}$ [pc]', fontsize=FONTSIZE)
 
     # Add grid
     ax.grid(True, alpha=0.3, linestyle='--')
