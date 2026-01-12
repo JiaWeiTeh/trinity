@@ -736,30 +736,6 @@ def get_mass_profile_OLD( r_arr, params,
     mGasdot = np.zeros_like(r_arr) 
     
     if params['dens_profile'].value == 'densPL':
-        # =============================================================================
-        # Compute ρ(r) for power-law profile.
-    
-        # Profile:
-        #     ρ(r) = ρ_core                      for r ≤ r_core (or all r if α=0)
-        #     ρ(r) = ρ_core (r/r_core)^α        for r_core < r ≤ r_cloud
-        #     ρ(r) = ρ_ISM                       for r > r_cloud
-    
-        # Special case α=0: Homogeneous cloud
-        #     ρ(r) = ρ_core    for r ≤ r_cloud
-        #     ρ(r) = ρ_ISM     for r > r_cloud
-    
-        # Parameters
-        # ----------
-        # r_arr : array
-        #     Radii
-        # params : dict
-        #     With keys: nCore, nISM, mu_ion, mu_neu, rCore, rCloud, densPL_alpha
-    
-        # Returns
-        # -------
-        # rho_arr : array
-        #     Mass density at each radius
-        # =============================================================================
         alpha = params['densPL_alpha'].value
         # ----
         # Case 1: The density profile is homogeneous, i.e., alpha = 0
