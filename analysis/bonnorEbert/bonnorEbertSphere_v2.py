@@ -52,6 +52,8 @@ import scipy.integrate
 import scipy.interpolate
 import scipy.optimize
 import logging
+import sys
+import os
 from typing import Tuple, Optional, Callable
 from dataclasses import dataclass
 
@@ -59,28 +61,50 @@ from dataclasses import dataclass
 logger = logging.getLogger(__name__)
 
 # ============================================================================
-# PHYSICAL CONSTANTS (CGS units for intermediate calculations)
+# Import physical constants and unit conversions from central module
+# ============================================================================
+# Add src/_functions to path for imports
+_project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+_functions_dir = os.path.join(_project_root, 'src', '_functions')
+if _functions_dir not in sys.path:
+    sys.path.insert(0, _functions_dir)
+
+from unit_conversions import (
+    CGS,           # Physical constants container
+    INV_CONV,      # Inverse unit conversions (AU → CGS)
+)
+
+# Physical constants in CGS (from central module)
+G_CGS = CGS.G               # [cm³ g⁻¹ s⁻²]
+K_B_CGS = CGS.k_B           # [erg K⁻¹]
+M_H_CGS = CGS.m_H           # [g] hydrogen mass
+
+# Unit conversions (from central module)
+MSUN_TO_G = INV_CONV.Msun2g  # [g/Msun]
+PC_TO_CM = INV_CONV.pc2cm    # [cm/pc]
+MYR_TO_S = INV_CONV.Myr2s    # [s/Myr]
+
+# ============================================================================
+# BONNOR-EBERT SPHERE CONSTANTS
 # ============================================================================
 
 # Critical Bonnor-Ebert sphere parameters (from Lane-Emden solution)
 OMEGA_CRITICAL = 14.04      # Critical density contrast ρc/ρsurf
 XI_CRITICAL = 6.451         # Critical dimensionless radius
+
+# Note on dimensionless mass conventions:
+# - Bonnor (1956) definition: m_B = (1/√4π) × ξ² × du/dξ × √f ≈ 1.182 at critical
+#   Formula: M = m_B × c_s⁴ / (G^(3/2) × √P_ext)
+# - Integration-based definition (used here): m = ξ² × du/dξ ≈ 15.70 at critical
+#   Formula: M = 4π × m × ρc × a³ (directly matches ∫4πr²ρ dr)
+# Both give the SAME physical mass M, just different m conventions.
 M_DIM_CRITICAL = 15.70      # Critical dimensionless mass (m = ξ² du/dξ)
+M_BONNOR_CRITICAL = 1.182   # Bonnor's dimensionless mass (for reference)
 
 # Integration parameters
 XI_MIN = 1e-7               # Start point (near zero, avoid singularity)
 XI_MAX = 20.0               # Maximum ξ (well beyond critical)
 N_POINTS = 5000             # Number of integration points
-
-# Physical constants in CGS
-G_CGS = 6.67430e-8          # [cm³ g⁻¹ s⁻²]
-K_B_CGS = 1.380649e-16      # [erg K⁻¹]
-M_H_CGS = 1.6735575e-24     # [g] hydrogen mass
-
-# Unit conversions
-MSUN_TO_G = 1.9884e33       # [g/Msun]
-PC_TO_CM = 3.0857e18        # [cm/pc]
-MYR_TO_S = 3.15576e13       # [s/Myr]
 
 
 # ============================================================================
