@@ -65,7 +65,15 @@ logger = logging.getLogger(__name__)
 # Critical Bonnor-Ebert sphere parameters (from Lane-Emden solution)
 OMEGA_CRITICAL = 14.04      # Critical density contrast ρc/ρsurf
 XI_CRITICAL = 6.451         # Critical dimensionless radius
+
+# Note on dimensionless mass conventions:
+# - Bonnor (1956) definition: m_B = (1/√4π) × ξ² × du/dξ × √f ≈ 1.182 at critical
+#   Formula: M = m_B × c_s⁴ / (G^(3/2) × √P_ext)
+# - Integration-based definition (used here): m = ξ² × du/dξ ≈ 15.70 at critical
+#   Formula: M = 4π × m × ρc × a³ (directly matches ∫4πr²ρ dr)
+# Both give the SAME physical mass M, just different m conventions.
 M_DIM_CRITICAL = 15.70      # Critical dimensionless mass (m = ξ² du/dξ)
+M_BONNOR_CRITICAL = 1.182   # Bonnor's dimensionless mass (for reference)
 
 # Integration parameters
 XI_MIN = 1e-7               # Start point (near zero, avoid singularity)
