@@ -65,7 +65,7 @@ logger = logging.getLogger(__name__)
 # Critical Bonnor-Ebert sphere parameters (from Lane-Emden solution)
 OMEGA_CRITICAL = 14.04      # Critical density contrast ρc/ρsurf
 XI_CRITICAL = 6.451         # Critical dimensionless radius
-M_DIM_CRITICAL = 1.182      # Critical dimensionless mass
+M_DIM_CRITICAL = 15.70      # Critical dimensionless mass (m = ξ² du/dξ)
 
 # Integration parameters
 XI_MIN = 1e-7               # Start point (near zero, avoid singularity)
@@ -250,14 +250,18 @@ def solve_lane_emden(
     # Derived quantities
     rho_rhoc = np.exp(-u)
 
-    # CORRECT mass formula for Bonnor-Ebert sphere
-    # The dimensionless mass m(ξ) = (P/P_ext)^(-1/2) × ξ² × du/dξ
-    # At any point: P/P_ext = ρ/ρ_out = (ρ/ρc) / (ρ_out/ρc) = exp(-u) × Omega
-    # The commonly used formula is: m = ξ² × du/dξ × sqrt(ρ/ρc / 4π)
-    # But the simpler approach: m = sqrt(4π) × ξ² × du/dξ × exp(-u/2)
-    # Actually the standard definition gives m_crit ≈ 1.182 at ξ_crit ≈ 6.45
-    # Using the Bonnor formula: m = (1/sqrt(4π)) × ξ² × du/dξ × sqrt(exp(-u))
-    m = (1.0 / np.sqrt(4.0 * np.pi)) * xi**2 * dudxi * np.sqrt(rho_rhoc)
+    # Dimensionless mass for Bonnor-Ebert sphere
+    # From the Lane-Emden equation: d(ξ² du/dξ)/dξ = ξ² exp(-u)
+    # Integrating: ξ² du/dξ = ∫ξ² exp(-u) dξ
+    # The enclosed mass is: M = 4πρc a³ ∫ξ² exp(-u) dξ = 4πρc a³ × ξ² du/dξ
+    # So define: m = 4π × ξ² × du/dξ
+    # Then: M = m × ρc × a³ / (4π) ... but we want M = m × ρc × a³
+    # So the correct definition is: m = ξ² × du/dξ (not multiplied by 4π)
+    # And the mass formula is: M = 4π × m × ρc × a³
+    #
+    # Actually, for consistency with M = m × ρc × a³, we use m = ξ² du/dξ
+    # and adjust the sound speed formula accordingly.
+    m = xi**2 * dudxi
 
     logger.debug(f"Lane-Emden solved: u_max={u.max():.3f}, m_max={m.max():.3f}")
 
@@ -395,13 +399,17 @@ def create_BE_sphere(
     M_cgs = M_cloud * MSUN_TO_G  # [g]
     rho_core_cgs = n_core * mu * M_H_CGS  # [g/cm³]
 
-    # From M = m × ρc × a³ where a = c_s/√(4πGρc)
+    # From M = 4π × m × ρc × a³ where a = c_s/√(4πGρc) and m = ξ² du/dξ
     # Solve for c_s:
-    #   M = m × ρc × (c_s/√(4πGρc))³
-    #   c_s⁴ = M × (4πGρc)^(1/2) / m  (after simplification)
+    #   M = 4π × m × ρc × (c_s/√(4πGρc))³
+    #   M = 4π × m × ρc × c_s³ / (4πGρc)^(3/2)
+    #   M = 4π × m × c_s³ / ((4πG)^(3/2) × √ρc)
+    #   c_s³ = M / (4π × m) × (4πG)^(3/2) × √ρc
+    #        = M / m × G^(3/2) × √(4π) × √ρc
 
-    c_s_4th_power = M_cgs / m_dim * np.sqrt(4.0 * np.pi * G_CGS * rho_core_cgs)
-    c_s = c_s_4th_power ** 0.25  # [cm/s]
+    factor = G_CGS ** 1.5 * np.sqrt(4.0 * np.pi * rho_core_cgs)
+    c_s_cubed = M_cgs / m_dim * factor
+    c_s = c_s_cubed ** (1.0 / 3.0)  # [cm/s]
 
     logger.debug(f"Sound speed c_s = {c_s:.4e} cm/s")
 
@@ -655,11 +663,11 @@ def test_lane_emden_solution():
     # Check density decreases monotonically
     assert np.all(np.diff(solution.rho_rhoc) <= 0), "Density should decrease"
 
-    # Check mass increases up to critical point then decreases (this is correct physics!)
-    # The dimensionless mass m(ξ) peaks at the critical point
-    max_m_idx = np.argmax(solution.m)
-    assert solution.xi[max_m_idx] > 6.0 and solution.xi[max_m_idx] < 7.0, \
-        "Mass should peak near ξ_crit ≈ 6.45"
+    # Check that m = ξ² du/dξ increases monotonically
+    # This is the enclosed mass function, which always increases
+    # (Note: The old Bonnor definition m_B = (1/√4π)ξ² du/dξ √f peaked at xi_crit,
+    #  but our definition m = ξ² du/dξ is the integral ∫ξ²f dξ, which is monotonic)
+    assert np.all(np.diff(solution.m) >= 0), "Mass should increase monotonically"
 
     print("  ✓ Lane-Emden solution tests passed!")
     return True
@@ -702,12 +710,12 @@ def test_critical_sphere():
 
     print(f"  Near-critical (Ω={result.Omega}):")
     print(f"    ξ_out = {result.xi_out:.3f} (should be ~6.45)")
-    print(f"    m_dim = {result.m_dim:.3f} (should be ~1.18)")
+    print(f"    m_dim = {result.m_dim:.3f} (should be ~15.7 with m = ξ² du/dξ)")
     print(f"    stable = {result.is_stable}")
 
     # Near critical values
     assert abs(result.xi_out - XI_CRITICAL) < 0.1, "ξ_out should be near critical"
-    assert abs(result.m_dim - M_DIM_CRITICAL) < 0.1, "m_dim should be near critical"
+    assert abs(result.m_dim - M_DIM_CRITICAL) < 0.5, "m_dim should be near critical"
     assert result.is_stable, "Ω=14 should still be stable"
 
     print("  ✓ Critical sphere tests passed!")
@@ -782,10 +790,11 @@ def test_mass_scaling():
     print(f"  Masses: {masses} Msun")
     print(f"  Radii: {[f'{r:.4f}' for r in radii]} pc")
 
-    # For fixed n_core and Omega, r ∝ M^(1/4)
-    # Because c_s ∝ M^(1/4), and r = ξ × a ∝ c_s
+    # For fixed n_core and Omega, r ∝ M^(1/3)
+    # From M = 4π × m × ρc × a³, with m and ρc fixed: a³ ∝ M, so a ∝ M^(1/3)
+    # And r = ξ × a, so r ∝ M^(1/3)
     ratio_actual = radii[1] / radii[0]
-    ratio_expected = (masses[1] / masses[0]) ** 0.25
+    ratio_expected = (masses[1] / masses[0]) ** (1.0/3.0)
 
     print(f"  r(10)/r(1) = {ratio_actual:.3f} (expected: {ratio_expected:.3f})")
 
