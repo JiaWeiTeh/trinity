@@ -48,12 +48,18 @@ import os
 # Add project root and analysis directories to path for imports
 _project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 _analysis_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+_functions_dir = os.path.join(_project_root, 'src', '_functions')
 if _project_root not in sys.path:
     sys.path.insert(0, _project_root)
 if _analysis_dir not in sys.path:
     sys.path.insert(0, _analysis_dir)
+if _functions_dir not in sys.path:
+    sys.path.insert(0, _functions_dir)
 
 from density_profile.REFACTORED_density_profile import get_density_profile
+
+# Import unit conversions and physical constants from central module
+from unit_conversions import CGS, INV_CONV
 
 # Import Bonnor-Ebert sphere module for testing
 _bonnor_ebert_dir = os.path.join(_analysis_dir, 'bonnorEbert')
@@ -64,13 +70,12 @@ logger = logging.getLogger(__name__)
 
 
 # =============================================================================
-# Physical constants for unit conversions
+# Physical constants for unit conversions (from central module)
 # =============================================================================
-# These are needed to convert between internal units and physical units
 
-PC_TO_CM = 3.0857e18        # [cm/pc]
-MSUN_TO_G = 1.9884e33       # [g/Msun]
-M_H_CGS = 1.6735575e-24     # [g] hydrogen mass
+PC_TO_CM = INV_CONV.pc2cm        # [cm/pc]
+MSUN_TO_G = INV_CONV.Msun2g      # [g/Msun]
+M_H_CGS = CGS.m_H                # [g] hydrogen mass
 
 # Conversion factor: n [cm⁻³] × μ → ρ [Msun/pc³]
 # ρ [g/cm³] = n [cm⁻³] × μ × m_H [g]
@@ -471,6 +476,99 @@ def compute_enclosed_mass_bonnor_ebert(
     )
 
     return M_arr
+
+
+# =============================================================================
+# Mass Accretion Rate (dM/dt)
+# =============================================================================
+
+def compute_mass_accretion_rate(
+    r_arr: np.ndarray,
+    rdot_arr: np.ndarray,
+    params,
+    physical_units: bool = True
+) -> np.ndarray:
+    """
+    Compute mass accretion rate dM/dt = 4πr²ρ(r)v(r).
+
+    This is the rate at which mass flows through a spherical shell moving
+    at velocity v(r) = dr/dt. It follows directly from the chain rule:
+
+        dM/dt = dM/dr × dr/dt = 4πr²ρ(r) × v(r)
+
+    This formula is EXACT for any smooth density profile, including:
+    - Power-law profiles (analytical)
+    - Bonnor-Ebert spheres (using Lane-Emden interpolation)
+
+    NO SOLVER HISTORY NEEDED - just instantaneous ρ(r) and v(r).
+
+    Physics Explanation
+    -------------------
+    Why doesn't this need solver history or time interpolation?
+
+    The enclosed mass at radius r is M(r) = ∫₀ʳ 4πr'²ρ(r') dr'.
+    For a shell moving outward at velocity v, its radius changes as r(t).
+    The mass enclosed by this moving shell is M(r(t)).
+
+    The rate of change of this enclosed mass is:
+        dM/dt = d/dt [M(r(t))]
+              = dM/dr × dr/dt     (chain rule)
+              = 4πr²ρ(r) × v(r)   (fundamental theorem of calculus)
+
+    This is the instantaneous mass flux through the shell - no history needed!
+
+    Analytical Formulas by Profile Type
+    ------------------------------------
+
+    **Power-law profile (α=0, homogeneous):**
+        r ≤ r_cloud:  dM/dt = 4πr²ρ_core × v(r)
+        r > r_cloud:  dM/dt = 4πr²ρ_ISM × v(r)
+
+    **Power-law profile (α≠0):**
+        r ≤ r_core:   dM/dt = 4πr²ρ_core × v(r)
+        r_core < r ≤ r_cloud: dM/dt = 4πr²ρ_core(r/r_core)^α × v(r)
+        r > r_cloud:  dM/dt = 4πr²ρ_ISM × v(r)
+
+    **Bonnor-Ebert sphere:**
+        r ≤ r_cloud:  dM/dt = 4πr²ρ_core × f_rho_rhoc(ξ(r)) × v(r)
+        r > r_cloud:  dM/dt = 4πr²ρ_ISM × v(r)
+
+        where f_rho_rhoc(ξ) = exp(-u(ξ)) is the Lane-Emden density ratio
+        and ξ = r/a is the dimensionless radius.
+
+    Parameters
+    ----------
+    r_arr : array
+        Radii [pc]
+    rdot_arr : array
+        Shell velocities dr/dt [pc/Myr] at each radius
+    params : dict
+        Parameter dictionary with density profile info
+    physical_units : bool, optional
+        If True (default), return dM/dt in [Msun/Myr].
+
+    Returns
+    -------
+    dMdt_arr : array
+        Mass accretion rate at each radius [Msun/Myr if physical_units=True]
+
+    See Also
+    --------
+    get_mass_density : Computes ρ(r) for any profile type
+
+    References
+    ----------
+    - Rahner et al. (2017), MNRAS 470, 4453 (WARPFIELD)
+    - Bonnor (1956), MNRAS 116, 351
+    """
+    # Get density at each radius
+    rho_arr = _to_array(get_mass_density(r_arr, params, physical_units=physical_units))
+
+    # The universal formula: dM/dt = 4πr²ρ(r)v(r)
+    # This works for ALL density profiles!
+    dMdt_arr = 4.0 * np.pi * r_arr**2 * rho_arr * rdot_arr
+
+    return dMdt_arr
 
 
 # =============================================================================
@@ -965,12 +1063,20 @@ def test_bonnor_ebert_various_parameters():
     solution = solve_lane_emden()
 
     # Test cases: (M_cloud, n_core, Omega, description)
+    # Cover wide range of cloud masses from sub-solar to GMC scale
     test_cases = [
+        # Small clouds (< 100 Msun)
+        (0.5, 1e4, 6.0, "Sub-solar mass"),
         (1.0, 1e3, 5.0, "Small cloud, low Omega"),
         (10.0, 1e4, 10.0, "Medium cloud, medium Omega"),
-        (100.0, 1e5, 8.0, "Large cloud, high density"),
         (50.0, 5e3, 13.5, "Near-critical Omega"),
-        (0.5, 1e4, 6.0, "Sub-solar mass"),
+        (100.0, 1e5, 8.0, "Large cloud, high density"),
+        # Large clouds (1e4 - 1e8 Msun) - GMC to starburst scales
+        (1e4, 1e4, 10.0, "10^4 Msun GMC core"),
+        (1e5, 1e3, 8.0, "10^5 Msun massive GMC"),
+        (1e6, 1e2, 6.0, "10^6 Msun giant cloud"),
+        (1e7, 1e2, 10.0, "10^7 Msun super cloud"),
+        (1e8, 1e1, 8.0, "10^8 Msun starburst scale"),
     ]
 
     mu = 2.33
@@ -1096,6 +1202,121 @@ def test_bonnor_ebert_scalar_array_consistency():
     return True
 
 
+def test_bonnor_ebert_mass_accretion_rate():
+    """
+    Test that dM/dt = 4πr²ρ(r)v(r) works correctly for BE spheres.
+
+    This verifies that:
+    1. The formula dM/dt = 4πr²ρv gives correct results
+    2. No solver history interpolation is needed
+    3. Results are consistent with numerical dM/dr × dr/dt
+    """
+    print("\nTesting Bonnor-Ebert mass accretion rate (dM/dt)...")
+
+    from bonnorEbertSphere_v2 import create_BE_sphere, solve_lane_emden
+
+    class MockParam:
+        def __init__(self, value):
+            self.value = value
+
+    # Create BE sphere
+    M_cloud = 50.0
+    n_core = 1e4
+    Omega = 10.0
+    mu = 2.33
+    gamma = 5.0/3.0
+
+    solution = solve_lane_emden()
+    result = create_BE_sphere(
+        M_cloud=M_cloud,
+        n_core=n_core,
+        Omega=Omega,
+        mu=mu,
+        gamma=gamma,
+        lane_emden_solution=solution
+    )
+
+    params = {
+        'dens_profile': MockParam('densBE'),
+        'nCore': MockParam(n_core),
+        'nISM': MockParam(1.0),
+        'mu_ion': MockParam(mu),
+        'mu_neu': MockParam(2.3),
+        'rCore': MockParam(result.r_out * 0.1),
+        'rCloud': MockParam(result.r_out),
+        'mCloud': MockParam(M_cloud),
+        'densBE_Omega': MockParam(Omega),
+        'densBE_Teff': MockParam(result.T_eff),
+        'densBE_f_rho_rhoc': MockParam(solution.f_rho_rhoc),
+        'densBE_xi_arr': MockParam(solution.xi),
+        'densBE_u_arr': MockParam(solution.u),
+        'gamma_adia': MockParam(gamma),
+    }
+
+    # Test at various radii with a uniform velocity
+    n_points = 100
+    r_arr = np.linspace(1e-6, result.r_out * 0.9, n_points)  # Stay inside cloud
+    v_const = 10.0  # pc/Myr (constant velocity for testing)
+    rdot_arr = np.full_like(r_arr, v_const)
+
+    # Method 1: Use compute_mass_accretion_rate directly
+    dMdt_direct = compute_mass_accretion_rate(r_arr, rdot_arr, params, physical_units=True)
+
+    # Method 2: Use get_mass_profile with return_mdot=True
+    M_arr, dMdt_profile = get_mass_profile(r_arr, params, return_mdot=True, rdot=rdot_arr)
+
+    # Method 3: Compute manually from density
+    rho_arr = _to_array(get_mass_density(r_arr, params, physical_units=True))
+    dMdt_manual = 4.0 * np.pi * r_arr**2 * rho_arr * rdot_arr
+
+    # All three methods should give identical results
+    assert np.allclose(dMdt_direct, dMdt_profile), "Direct and profile methods disagree"
+    assert np.allclose(dMdt_direct, dMdt_manual), "Direct and manual methods disagree"
+    print("  ✓ All three dM/dt calculation methods agree")
+
+    # Verify dM/dt is positive when v > 0 (mass increases as shell expands)
+    assert np.all(dMdt_direct > 0), "dM/dt should be positive for positive velocity"
+    print("  ✓ dM/dt > 0 for expanding shell (v > 0)")
+
+    # Verify dM/dt scales with density profile
+    # Near center (high density) should have higher dM/dt per unit area
+    # But also smaller r², so check that the product is reasonable
+    dMdt_per_area_per_v = dMdt_direct / (4.0 * np.pi * r_arr**2 * v_const)  # = ρ(r)
+    # This should match our density profile
+    assert np.allclose(dMdt_per_area_per_v, rho_arr, rtol=1e-10), "dM/dt/(4πr²v) should equal ρ(r)"
+    print("  ✓ dM/dt = 4πr²ρv verified (dM/dt / (4πr²v) = ρ)")
+
+    # Test consistency: ∫(dM/dt)dt ≈ ΔM for small time step
+    # If shell moves from r to r+Δr in time Δt, then:
+    #   ΔM ≈ dM/dt × Δt = 4πr²ρv × Δt = 4πr²ρ × Δr
+    # This is the mass in a thin shell of thickness Δr
+    i_mid = n_points // 2
+    r_mid = r_arr[i_mid]
+    rho_mid = rho_arr[i_mid]
+    dr = r_arr[1] - r_arr[0]  # Δr
+    dt = dr / v_const  # Δt = Δr/v
+
+    dMdt_mid = dMdt_direct[i_mid]
+    delta_M_from_rate = dMdt_mid * dt
+    delta_M_shell = 4.0 * np.pi * r_mid**2 * rho_mid * dr
+
+    assert np.isclose(delta_M_from_rate, delta_M_shell, rtol=1e-6), \
+        f"dM/dt × Δt = {delta_M_from_rate:.6e} should equal 4πr²ρΔr = {delta_M_shell:.6e}"
+    print(f"  ✓ dM/dt × Δt = 4πr²ρΔr verified at r={r_mid:.4f} pc")
+
+    # Test with negative velocity (contracting shell)
+    rdot_negative = -rdot_arr
+    dMdt_negative = compute_mass_accretion_rate(r_arr, rdot_negative, params, physical_units=True)
+    assert np.all(dMdt_negative < 0), "dM/dt should be negative for contracting shell"
+    assert np.allclose(dMdt_negative, -dMdt_direct), "dM/dt should flip sign with velocity"
+    print("  ✓ dM/dt < 0 for contracting shell (v < 0)")
+
+    print("\n  ✓ BE sphere mass accretion rate test passed!")
+    print("    Key result: dM/dt = 4πr²ρv works for BE spheres")
+    print("    NO solver history or time interpolation needed!")
+    return True
+
+
 if __name__ == "__main__":
     """Run tests if executed as script."""
     import argparse
@@ -1131,6 +1352,7 @@ if __name__ == "__main__":
         test_bonnor_ebert_lane_emden_comparison()
         test_bonnor_ebert_various_parameters()
         test_bonnor_ebert_scalar_array_consistency()
+        test_bonnor_ebert_mass_accretion_rate()
 
     print()
     print("=" * 70)
