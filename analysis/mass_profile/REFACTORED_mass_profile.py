@@ -48,12 +48,18 @@ import os
 # Add project root and analysis directories to path for imports
 _project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 _analysis_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+_functions_dir = os.path.join(_project_root, 'src', '_functions')
 if _project_root not in sys.path:
     sys.path.insert(0, _project_root)
 if _analysis_dir not in sys.path:
     sys.path.insert(0, _analysis_dir)
+if _functions_dir not in sys.path:
+    sys.path.insert(0, _functions_dir)
 
 from density_profile.REFACTORED_density_profile import get_density_profile
+
+# Import unit conversions and physical constants from central module
+from unit_conversions import CGS, INV_CONV
 
 # Import Bonnor-Ebert sphere module for testing
 _bonnor_ebert_dir = os.path.join(_analysis_dir, 'bonnorEbert')
@@ -64,13 +70,12 @@ logger = logging.getLogger(__name__)
 
 
 # =============================================================================
-# Physical constants for unit conversions
+# Physical constants for unit conversions (from central module)
 # =============================================================================
-# These are needed to convert between internal units and physical units
 
-PC_TO_CM = 3.0857e18        # [cm/pc]
-MSUN_TO_G = 1.9884e33       # [g/Msun]
-M_H_CGS = 1.6735575e-24     # [g] hydrogen mass
+PC_TO_CM = INV_CONV.pc2cm        # [cm/pc]
+MSUN_TO_G = INV_CONV.Msun2g      # [g/Msun]
+M_H_CGS = CGS.m_H                # [g] hydrogen mass
 
 # Conversion factor: n [cm⁻³] × μ → ρ [Msun/pc³]
 # ρ [g/cm³] = n [cm⁻³] × μ × m_H [g]

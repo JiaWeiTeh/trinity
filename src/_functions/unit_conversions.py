@@ -165,6 +165,63 @@ INV_CONV = InverseConversionConstants()
 
 
 # =============================================================================
+# Physical constants in CGS units
+# =============================================================================
+# These are fundamental physical constants, not conversion factors.
+# Useful for calculations that need CGS values directly.
+
+@dataclass(frozen=True)
+class PhysicalConstantsCGS:
+    """
+    Fundamental physical constants in CGS units.
+
+    These are the raw constants for calculations in CGS before converting
+    to astronomy units. Values from CODATA 2018 / IAU 2015 resolutions.
+    """
+
+    # Gravitational constant: [cm³ g⁻¹ s⁻²]
+    G: float = 6.67430e-8
+
+    # Boltzmann constant: [erg K⁻¹] = [g cm² s⁻² K⁻¹]
+    k_B: float = 1.380649e-16
+
+    # Hydrogen atom mass: [g]
+    m_H: float = 1.6735575e-24
+
+    # Proton mass: [g]
+    m_p: float = 1.67262192e-24
+
+    # Electron mass: [g]
+    m_e: float = 9.1093837e-28
+
+    # Speed of light: [cm s⁻¹]
+    c: float = 2.99792458e10
+
+    # Stefan-Boltzmann constant: [erg cm⁻² s⁻¹ K⁻⁴]
+    sigma_SB: float = 5.670374e-5
+
+    # Planck constant: [erg s]
+    h: float = 6.62607015e-27
+
+    # Elementary charge (esu): [statcoulomb]
+    e: float = 4.80320425e-10
+
+
+CGS = PhysicalConstantsCGS()
+
+
+# Backward-compatible aliases for CGS constants
+G_CGS = CGS.G
+K_B_CGS = CGS.k_B
+M_H_CGS = CGS.m_H
+M_P_CGS = CGS.m_p
+M_E_CGS = CGS.m_e
+C_CGS = CGS.c
+SIGMA_SB_CGS = CGS.sigma_SB
+H_CGS = CGS.h
+
+
+# =============================================================================
 # Backward compatibility aliases (deprecated, but kept for old code)
 # =============================================================================
 # These maintain compatibility with old code but are deprecated
