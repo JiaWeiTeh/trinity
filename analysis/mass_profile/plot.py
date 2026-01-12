@@ -118,6 +118,9 @@ def plot_radius_heatmap(M_values, n_core_values, r_out_grid, Omega=8.0,
     fig, ax : matplotlib Figure and Axes
     """
     fig, ax = plt.subplots(figsize=(10, 8))
+    # IMPORTANT: set log scales BEFORE drawing contour + labels
+    ax.set_xscale('log')
+    ax.set_yscale('log')
 
     # Interpolate to finer grid for smooth visualization
     # Use log-space interpolation for better results in log-log plot
@@ -137,25 +140,41 @@ def plot_radius_heatmap(M_values, n_core_values, r_out_grid, Omega=8.0,
     r_fine = 10**r_fine_log
 
     # Plot colormap with smooth shading
-    pcm = ax.pcolormesh(M_fine, n_fine, r_fine,
-                        norm=mcolors.LogNorm(vmin=r_fine.min(), vmax=r_fine.max()),
-                        cmap='viridis', shading='gouraud')
-
+    pcm = ax.pcolormesh(
+        M_fine, n_fine, r_fine,
+        norm=mcolors.LogNorm(vmin=r_fine.min(), vmax=r_fine.max()),
+        cmap='viridis',
+        shading='gouraud'
+    )
+    
     # Add smooth contour lines on fine grid
     M_fine_grid, n_fine_grid = np.meshgrid(M_fine, n_fine)
-
+    
+    
     # Choose contour levels spanning the radius range
     r_min, r_max = r_fine.min(), r_fine.max()
     contour_levels = np.logspace(np.log10(r_min), np.log10(r_max), 8)
-
-    contours = ax.contour(M_fine_grid, n_fine_grid, r_fine,
-                          levels=contour_levels,
-                          colors='white', linewidths=0.8, alpha=0.8)
-    ax.clabel(contours, inline=True, fontsize=10, fmt='%.1f pc')
-
+    
+    contours = ax.contour(
+        M_fine_grid, n_fine_grid, r_fine,
+        levels=contour_levels,
+        colors='white', linewidths=0.8, alpha=0.8
+    )
+    
+    texts = ax.clabel(
+        contours,
+        inline=True,
+        inline_spacing=3,
+        fontsize=10,
+        fmt='%.1f pc',
+        rightside_up=True,
+        use_clabeltext=True,   # keeps rotation consistent on resize
+    )
+    
+    for t in texts:
+        t.set_rotation_mode("anchor")
+        
     # Labels and formatting
-    ax.set_xscale('log')
-    ax.set_yscale('log')
     ax.set_xlabel(r'Cloud Mass $M_{\rm cloud}$ [M$_\odot$]', fontsize=12)
     ax.set_ylabel(r'Core Density $n_{\rm core}$ [cm$^{-3}$]', fontsize=12)
     ax.set_title(fr'Bonnor-Ebert Sphere Radius ($\Omega$ = {Omega})', fontsize=14)
