@@ -203,7 +203,7 @@ def main():
 
     # Create plot
     print("\nGenerating plot...")
-    output_file = os.path.join(_script_dir, 'be_sphere_radius_map.png')
+    output_file = os.path.join(_script_dir, 'be_sphere_radius_map.pdf')
     fig, ax = plot_radius_heatmap(M_values, n_core_values, r_out_grid,
                                    Omega=Omega, output_file=output_file, show=False)
 
