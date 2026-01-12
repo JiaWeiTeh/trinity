@@ -15,7 +15,22 @@ REFACTORED VERSION:
 """
 
 import numpy as np
-from src.cloud_properties import bonnorEbertSphere
+import sys
+import os
+
+# Add analysis directory to path for BE sphere v2 module
+_analysis_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+_bonnor_ebert_dir = os.path.join(_analysis_dir, 'bonnorEbert')
+if _bonnor_ebert_dir not in sys.path:
+    sys.path.insert(0, _bonnor_ebert_dir)
+
+# Try to import v2 BE sphere module first, fall back to old module
+try:
+    from bonnorEbertSphere_v2 import r2xi as be_r2xi
+    _USE_BE_V2 = True
+except ImportError:
+    from src.cloud_properties import bonnorEbertSphere
+    _USE_BE_V2 = False
 
 
 # =============================================================================
@@ -135,7 +150,12 @@ def get_density_profile(r, params):
         f_rho_rhoc = params['densBE_f_rho_rhoc'].value
 
         # Convert radius to dimensionless xi coordinate
-        xi_arr = bonnorEbertSphere.r2xi(r_arr, params)
+        if _USE_BE_V2:
+            # v2 module: r2xi(r, params) where r is in pc
+            xi_arr = be_r2xi(r_arr, params)
+        else:
+            # Old module: different parameter handling
+            xi_arr = bonnorEbertSphere.r2xi(r_arr, params)
 
         # Get density ratio from interpolation function
         rho_rhoc = f_rho_rhoc(xi_arr)
