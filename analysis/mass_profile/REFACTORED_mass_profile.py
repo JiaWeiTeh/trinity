@@ -8,6 +8,7 @@ Calculate mass M(r) and mass accretion rate dM/dt for cloud density profiles.
 Author: Claude (refactored from original by Jia Wei Teh)
 Date: 2026-01-07
 Updated: 2026-01-11 - Fixed scalar/array input-output consistency
+Updated: 2026-01-12 - Separated density calculation into REFACTORED_density_profile.py
 
 Physics:
     M(r) = ∫[0 to r] 4πr'² ρ(r') dr'
@@ -17,11 +18,11 @@ Key changes from original:
 - FIXED: Scalar input now returns scalar output (not 1-element array)
 - FIXED: Removed broken history-based dM/dt calculation
 - CORRECT FORMULA: dM/dt = 4πr² ρ(r) × v(r) for ALL profiles
+- SEPARATED: Density calculation now imported from REFACTORED_density_profile.py
 - No solver coupling (no dependency on array_t_now, etc.)
 - Clean separation: density calculation → mass integration → rate
 - 5-10× faster (no complex interpolations)
 - Testable (doesn't need full solver to run)
-- Removed 60+ lines of dead code
 - Logging instead of print()
 
 INPUT/OUTPUT CONTRACT:
@@ -38,10 +39,21 @@ References:
 import numpy as np
 import scipy.integrate
 import logging
-from typing import Union, Tuple, overload
+from typing import Union, Tuple
 
-from src.cloud_properties import bonnorEbertSphere
-import src._functions.unit_conversions as cvt
+# Import density profile from separate module
+import sys
+import os
+
+# Add project root and analysis directories to path for imports
+_project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+_analysis_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _project_root not in sys.path:
+    sys.path.insert(0, _project_root)
+if _analysis_dir not in sys.path:
+    sys.path.insert(0, _analysis_dir)
+
+from density_profile.REFACTORED_density_profile import get_density_profile
 
 logger = logging.getLogger(__name__)
 
@@ -69,6 +81,48 @@ def _to_output(result: np.ndarray, was_scalar: bool):
     return result
 
 
+def get_mass_density(r: ScalarOrArray, params) -> ScalarOrArray:
+    """
+    Get mass density ρ(r) from number density n(r).
+
+    This function wraps get_density_profile() from REFACTORED_density_profile.py
+    and converts number density [cm^-3] to mass density [Msun/pc³ or AU units].
+
+    Parameters
+    ----------
+    r : float or array-like
+        Radius/radii [pc]
+    params : dict
+        Parameter dictionary
+
+    Returns
+    -------
+    rho : float or array
+        Mass density at radius r.
+        ρ = n × μ where μ is the appropriate mean molecular weight
+    """
+    # Get number density from density_profile module
+    n = get_density_profile(r, params)
+
+    # Determine which mean molecular weight to use
+    # Inside cloud: mu_ion (ionized), Outside cloud: mu_neu (neutral)
+    was_scalar = _is_scalar(r)
+    r_arr = _to_array(r)
+    n_arr = _to_array(n)
+
+    mu_ion = params['mu_ion'].value
+    mu_neu = params['mu_neu'].value
+    rCloud = params['rCloud'].value
+
+    # Create mu array based on position
+    mu_arr = np.where(r_arr <= rCloud, mu_ion, mu_neu)
+
+    # Mass density = number density × mean molecular weight
+    rho_arr = n_arr * mu_arr
+
+    return _to_output(rho_arr, was_scalar)
+
+
 def get_mass_profile(
     r: ScalarOrArray,
     params,
@@ -93,7 +147,7 @@ def get_mass_profile(
         - 'nCore', 'nISM': Number densities
         - 'mu_ion', 'mu_neu': Mean molecular weights
         - 'mCloud', 'rCloud', 'rCore': Cloud parameters
-        - Profile-specific parameters (see compute_density_profile)
+        - Profile-specific parameters (see get_density_profile)
     return_mdot : bool, optional
         Whether to compute dM/dt (default False)
     rdot : float or array-like, optional
@@ -135,12 +189,10 @@ def get_mass_profile(
     This refactored version:
     - Preserves input type (scalar → scalar, array → array)
     - Uses correct formula: dM/dt = 4πr² ρ(r) × v(r)
+    - Imports density from REFACTORED_density_profile.py
     - No dependency on solver history
     - Works for ALL density profiles
     - Simple, testable, maintainable
-
-    The original tried to interpolate dM/dt from solver history,
-    which was mathematically wrong and broke on duplicate times.
     """
     # Track if input was scalar for output conversion
     r_was_scalar = _is_scalar(r)
@@ -164,9 +216,9 @@ def get_mass_profile(
     logger.debug(f"Computing mass profile for {len(r_arr)} radii (scalar={r_was_scalar})")
 
     # =========================================================================
-    # Step 1: Compute density profile ρ(r)
+    # Step 1: Get mass density ρ(r) from density_profile module
     # =========================================================================
-    rho_arr = compute_density_profile(r_arr, params)
+    rho_arr = _to_array(get_mass_density(r_arr, params))
 
     # =========================================================================
     # Step 2: Compute enclosed mass M(r)
@@ -188,142 +240,6 @@ def get_mass_profile(
     return _to_output(M_arr, r_was_scalar), _to_output(dMdt_arr, r_was_scalar)
 
 
-def compute_density_profile(r_arr: np.ndarray, params) -> np.ndarray:
-    """
-    Compute mass density ρ(r) for given profile type.
-
-    Parameters
-    ----------
-    r_arr : array
-        Radii [same units as params]
-    params : dict
-        Parameter dictionary
-
-    Returns
-    -------
-    rho_arr : array
-        Mass density at each radius
-    """
-    profile_type = params['dens_profile'].value
-
-    if profile_type == 'densPL':
-        return compute_powerlaw_density(r_arr, params)
-    elif profile_type == 'densBE':
-        return compute_bonnor_ebert_density(r_arr, params)
-    else:
-        raise ValueError(f"Unknown density profile: {profile_type}")
-
-
-def compute_powerlaw_density(r_arr: np.ndarray, params) -> np.ndarray:
-    """
-    Compute ρ(r) for power-law profile.
-
-    Profile:
-        ρ(r) = ρ_core                      for r ≤ r_core (or all r if α=0)
-        ρ(r) = ρ_core (r/r_core)^α        for r_core < r ≤ r_cloud
-        ρ(r) = ρ_ISM                       for r > r_cloud
-
-    Special case α=0: Homogeneous cloud
-        ρ(r) = ρ_core    for r ≤ r_cloud
-        ρ(r) = ρ_ISM     for r > r_cloud
-
-    Parameters
-    ----------
-    r_arr : array
-        Radii
-    params : dict
-        With keys: nCore, nISM, mu_ion, mu_neu, rCore, rCloud, densPL_alpha
-
-    Returns
-    -------
-    rho_arr : array
-        Mass density at each radius
-    """
-    # Extract parameters
-    nCore = params['nCore'].value
-    nISM = params['nISM'].value
-    mu_ion = params['mu_ion'].value
-    mu_neu = params['mu_neu'].value
-    rCore = params['rCore'].value
-    rCloud = params['rCloud'].value
-    alpha = params['densPL_alpha'].value
-
-    # Convert number density to mass density
-    rhoCore = nCore * mu_ion
-    rhoISM = nISM * mu_neu
-
-    # Initialize with core density
-    rho_arr = np.full_like(r_arr, rhoCore, dtype=float)
-
-    if alpha == 0:
-        # Special case: Homogeneous cloud (α=0)
-        # No power-law region, just uniform core + ISM
-        rho_arr[r_arr > rCloud] = rhoISM
-    else:
-        # General case: Power-law profile
-        # Power-law region (r_core < r ≤ r_cloud)
-        power_law_region = (r_arr > rCore) & (r_arr <= rCloud)
-        rho_arr[power_law_region] = rhoCore * (r_arr[power_law_region] / rCore)**alpha
-
-        # ISM region (r > r_cloud)
-        rho_arr[r_arr > rCloud] = rhoISM
-
-    return rho_arr
-
-
-def compute_bonnor_ebert_density(r_arr: np.ndarray, params) -> np.ndarray:
-    """
-    Compute ρ(r) for Bonnor-Ebert sphere.
-
-    Profile:
-        ρ(r) = ρ_core f(ξ)    for r ≤ r_cloud
-        ρ(r) = ρ_ISM          for r > r_cloud
-
-    where ξ = r / r_BE is dimensionless radius
-    and f(ξ) = ρ(ξ)/ρ_core from Lane-Emden solution
-
-    Parameters
-    ----------
-    r_arr : array
-        Radii
-    params : dict
-        With keys: nCore, nISM, mu_ion, mu_neu, rCloud,
-                   densBE_f_rho_rhoc (interpolation function)
-
-    Returns
-    -------
-    rho_arr : array
-        Mass density at each radius
-    """
-    # Extract parameters
-    nCore = params['nCore'].value
-    nISM = params['nISM'].value
-    mu_ion = params['mu_ion'].value
-    mu_neu = params['mu_neu'].value
-    rCloud = params['rCloud'].value
-
-    # Mass densities
-    rhoCore = nCore * mu_ion
-    rhoISM = nISM * mu_neu
-
-    # Get density ratio function ρ(ξ)/ρ_core
-    f_rho_rhoc = params['densBE_f_rho_rhoc'].value
-
-    # Convert r to dimensionless ξ
-    xi_arr = bonnorEbertSphere.r2xi(r_arr, params)
-
-    # Compute density ratio at each ξ
-    rho_ratio = f_rho_rhoc(xi_arr)
-
-    # Compute actual density
-    rho_arr = rhoCore * rho_ratio
-
-    # ISM density outside cloud
-    rho_arr[r_arr > rCloud] = rhoISM
-
-    return rho_arr
-
-
 def compute_enclosed_mass(r_arr: np.ndarray, rho_arr: np.ndarray, params) -> np.ndarray:
     """
     Compute enclosed mass M(r) = ∫[0 to r] 4πr'² ρ(r') dr'.
@@ -337,7 +253,7 @@ def compute_enclosed_mass(r_arr: np.ndarray, rho_arr: np.ndarray, params) -> np.
     r_arr : array
         Radii
     rho_arr : array
-        Density at each radius (from compute_density_profile)
+        Mass density at each radius (from get_mass_density)
     params : dict
         Parameter dictionary
 
@@ -449,7 +365,7 @@ def compute_enclosed_mass_bonnor_ebert(
     r_arr : array
         Radii (must be sorted!)
     rho_arr : array
-        Density at each radius
+        Mass density at each radius
     params : dict
         Parameter dictionary
 
@@ -479,7 +395,7 @@ def compute_enclosed_mass_bonnor_ebert(
                 M_arr[i] = 0.0  # M(0) = 0
             else:
                 # Integrate using trapezoidal rule
-                M_arr[i] = scipy.integrate.trapz(
+                M_arr[i] = scipy.integrate.trapezoid(
                     4.0 * np.pi * r_inside[:i+1]**2 * rho_inside[:i+1],
                     r_inside[:i+1]
                 )
@@ -598,16 +514,31 @@ def test_powerlaw_analytical():
         def __init__(self, value):
             self.value = value
 
+    # First compute what mCloud should be for consistency
+    nCore = 1e3
+    mu_ion = 1.4
+    rCore = 1.0
+    rCloud = 10.0
+    alpha = -2.0
+    rhoCore = nCore * mu_ion
+
+    # Analytical mass at rCloud for power-law profile (Rahner+ 2018 Eq 25)
+    mCloud_computed = 4.0 * np.pi * rhoCore * (
+        rCore**3 / 3.0 +
+        (rCloud**(3.0 + alpha) - rCore**(3.0 + alpha)) /
+        ((3.0 + alpha) * rCore**alpha)
+    )
+
     params = {
         'dens_profile': MockParam('densPL'),
-        'nCore': MockParam(1e3),
+        'nCore': MockParam(nCore),
         'nISM': MockParam(1.0),
-        'mu_ion': MockParam(1.4),
+        'mu_ion': MockParam(mu_ion),
         'mu_neu': MockParam(2.3),
-        'rCore': MockParam(1.0),
-        'rCloud': MockParam(10.0),
-        'mCloud': MockParam(1e3),
-        'densPL_alpha': MockParam(-2.0),  # Typical power-law
+        'rCore': MockParam(rCore),
+        'rCloud': MockParam(rCloud),
+        'mCloud': MockParam(mCloud_computed),  # Use consistent mCloud
+        'densPL_alpha': MockParam(alpha),
     }
 
     r_arr = np.array([0.5, 1.0, 5.0, 10.0, 15.0])
@@ -618,12 +549,51 @@ def test_powerlaw_analytical():
     print("  ✓ Mass is monotonically increasing")
 
     # Verify inside core matches uniform formula
-    rhoCore = 1e3 * 1.4
     M_core_expected = (4.0/3.0) * np.pi * 0.5**3 * rhoCore
     assert np.isclose(M_arr[0], M_core_expected, rtol=1e-6), "Core mass mismatch"
     print("  ✓ Core region matches uniform density formula")
 
+    # Verify at rCloud matches mCloud
+    assert np.isclose(M_arr[3], mCloud_computed, rtol=1e-6), "Mass at rCloud should equal mCloud"
+    print(f"  ✓ Mass at rCloud = {M_arr[3]:.2e} (mCloud = {mCloud_computed:.2e})")
+
     print("✓ Power-law profile test passed!")
+    return True
+
+
+def test_density_import():
+    """Test that density is correctly imported from density_profile module."""
+    print("\nTesting density import from density_profile module...")
+
+    class MockParam:
+        def __init__(self, value):
+            self.value = value
+
+    params = {
+        'dens_profile': MockParam('densPL'),
+        'nCore': MockParam(1000.0),
+        'nISM': MockParam(1.0),
+        'mu_ion': MockParam(1.4),
+        'mu_neu': MockParam(2.3),
+        'rCore': MockParam(1.0),
+        'rCloud': MockParam(10.0),
+        'densPL_alpha': MockParam(0),
+    }
+
+    # Test density at a point
+    r = 5.0
+    n = get_density_profile(r, params)  # Number density from density_profile
+    rho = get_mass_density(r, params)   # Mass density (n × mu)
+
+    expected_n = params['nCore'].value  # 1000.0
+    expected_rho = expected_n * params['mu_ion'].value  # 1000.0 × 1.4
+
+    assert np.isclose(n, expected_n), f"Number density: {n} != {expected_n}"
+    assert np.isclose(rho, expected_rho), f"Mass density: {rho} != {expected_rho}"
+
+    print(f"  ✓ Number density n(r={r}) = {n} (from density_profile module)")
+    print(f"  ✓ Mass density ρ(r={r}) = {rho} (= n × μ)")
+    print("✓ Density import test passed!")
     return True
 
 
@@ -631,9 +601,11 @@ if __name__ == "__main__":
     """Run tests if executed as script."""
     print("=" * 70)
     print("Testing refactored mass_profile.py")
+    print("(with density imported from REFACTORED_density_profile.py)")
     print("=" * 70)
     print()
 
+    test_density_import()
     test_scalar_array_consistency()
     test_homogeneous_cloud()
     test_powerlaw_analytical()
@@ -644,11 +616,10 @@ if __name__ == "__main__":
     print("=" * 70)
     print()
     print("Key improvements:")
+    print("- Density calculation now imported from REFACTORED_density_profile.py")
     print("- Scalar input → scalar output (no more [0] needed!)")
     print("- Array input → array output")
     print("- Correct formula: dM/dt = 4πr² ρ(r) × v(r)")
     print("- No solver coupling")
     print("- Clean homogeneous (α=0) handling")
-    print("- 5-10× faster")
     print("- Testable and maintainable")
-
