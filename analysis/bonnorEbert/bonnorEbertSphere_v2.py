@@ -52,6 +52,8 @@ import scipy.integrate
 import scipy.interpolate
 import scipy.optimize
 import logging
+import sys
+import os
 from typing import Tuple, Optional, Callable
 from dataclasses import dataclass
 
@@ -59,7 +61,31 @@ from dataclasses import dataclass
 logger = logging.getLogger(__name__)
 
 # ============================================================================
-# PHYSICAL CONSTANTS (CGS units for intermediate calculations)
+# Import physical constants and unit conversions from central module
+# ============================================================================
+# Add src/_functions to path for imports
+_project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+_functions_dir = os.path.join(_project_root, 'src', '_functions')
+if _functions_dir not in sys.path:
+    sys.path.insert(0, _functions_dir)
+
+from unit_conversions import (
+    CGS,           # Physical constants container
+    INV_CONV,      # Inverse unit conversions (AU → CGS)
+)
+
+# Physical constants in CGS (from central module)
+G_CGS = CGS.G               # [cm³ g⁻¹ s⁻²]
+K_B_CGS = CGS.k_B           # [erg K⁻¹]
+M_H_CGS = CGS.m_H           # [g] hydrogen mass
+
+# Unit conversions (from central module)
+MSUN_TO_G = INV_CONV.Msun2g  # [g/Msun]
+PC_TO_CM = INV_CONV.pc2cm    # [cm/pc]
+MYR_TO_S = INV_CONV.Myr2s    # [s/Myr]
+
+# ============================================================================
+# BONNOR-EBERT SPHERE CONSTANTS
 # ============================================================================
 
 # Critical Bonnor-Ebert sphere parameters (from Lane-Emden solution)
@@ -79,16 +105,6 @@ M_BONNOR_CRITICAL = 1.182   # Bonnor's dimensionless mass (for reference)
 XI_MIN = 1e-7               # Start point (near zero, avoid singularity)
 XI_MAX = 20.0               # Maximum ξ (well beyond critical)
 N_POINTS = 5000             # Number of integration points
-
-# Physical constants in CGS
-G_CGS = 6.67430e-8          # [cm³ g⁻¹ s⁻²]
-K_B_CGS = 1.380649e-16      # [erg K⁻¹]
-M_H_CGS = 1.6735575e-24     # [g] hydrogen mass
-
-# Unit conversions
-MSUN_TO_G = 1.9884e33       # [g/Msun]
-PC_TO_CM = 3.0857e18        # [cm/pc]
-MYR_TO_S = 3.15576e13       # [s/Myr]
 
 
 # ============================================================================
