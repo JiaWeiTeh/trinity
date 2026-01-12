@@ -196,7 +196,7 @@ def compute_radius_grid_powerlaw(M_values, n_core_values, alpha, rCore_fraction=
 
 
 def plot_radius_heatmap_powerlaw(ax, M_values, n_core_values, r_out_grid, alpha,
-                                  vmin=None, vmax=None):
+                                  vmin=None, vmax=None, contour_levels=None):
     """
     Create 2D colormap of rCloud vs (M_cloud, n_core) for power-law profile.
 
@@ -214,6 +214,8 @@ def plot_radius_heatmap_powerlaw(ax, M_values, n_core_values, r_out_grid, alpha,
         Power-law exponent (for title)
     vmin, vmax : float, optional
         Color scale limits
+    contour_levels : array-like, optional
+        Contour levels for radius lines. If None, computed from local data.
 
     Returns
     -------
@@ -257,9 +259,10 @@ def plot_radius_heatmap_powerlaw(ax, M_values, n_core_values, r_out_grid, alpha,
     # Add smooth contour lines on fine grid
     M_fine_grid, n_fine_grid = np.meshgrid(M_fine, n_fine)
 
-    # Choose contour levels spanning the radius range
-    r_min_local, r_max_local = r_fine.min(), r_fine.max()
-    contour_levels = np.logspace(np.log10(r_min_local), np.log10(r_max_local), 6)
+    # Use provided contour levels or compute from local range
+    if contour_levels is None:
+        r_min_local, r_max_local = r_fine.min(), r_fine.max()
+        contour_levels = np.logspace(np.log10(r_min_local), np.log10(r_max_local), 6)
 
     contours = ax.contour(
         M_fine_grid, n_fine_grid, r_fine,
@@ -331,6 +334,9 @@ def main():
     vmin, vmax = all_radii.min(), all_radii.max()
     print(f"\n  Global radius range: {vmin:.2f} - {vmax:.2f} pc")
 
+    # Compute global contour levels for consistent labels across subplots
+    contour_levels = np.logspace(np.log10(vmin), np.log10(vmax), 6)
+
     # Create 2x2 subplot figure
     fig, axes = plt.subplots(2, 2, figsize=(14, 12))
     axes = axes.flatten()
@@ -341,7 +347,7 @@ def main():
         ax = axes[idx]
         pcm = plot_radius_heatmap_powerlaw(
             ax, M_values, n_core_values, grids[alpha], alpha,
-            vmin=vmin, vmax=vmax
+            vmin=vmin, vmax=vmax, contour_levels=contour_levels
         )
 
         # Only add axis labels on edges
