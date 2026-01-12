@@ -23,6 +23,7 @@ Date: 2026-01-12
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
+from scipy.interpolate import RectBivariateSpline
 import sys
 import os
 
@@ -36,7 +37,7 @@ for _dir in [_be_dir, _functions_dir]:
     if _dir not in sys.path:
         sys.path.insert(0, _dir)
 
-from bonnorEbertSphere_v2 import create_BE_sphere, solve_lane_emden
+from bonnorEbertSphere_v2 import create_BE_sphere, solve_lane_emden, OMEGA_CRITICAL
 
 
 def compute_radius_grid(M_values, n_core_values, Omega=8.0, mu=2.33, gamma=5.0/3.0):
@@ -101,36 +102,36 @@ def plot_radius_heatmap(M_values, n_core_values, r_out_grid, Omega=8.0,
     """
     fig, ax = plt.subplots(figsize=(10, 8))
 
-    # Create meshgrid for pcolormesh (need cell edges, not centers)
-    # For log scale, we compute geometric means for edges
-    M_edges = np.zeros(len(M_values) + 1)
-    n_edges = np.zeros(len(n_core_values) + 1)
-
-    # Compute edges as geometric means between consecutive values
+    # Interpolate to finer grid for smooth visualization
+    # Use log-space interpolation for better results in log-log plot
     M_log = np.log10(M_values)
     n_log = np.log10(n_core_values)
+    r_log = np.log10(r_out_grid)
 
-    M_edges[1:-1] = 10**((M_log[:-1] + M_log[1:]) / 2)
-    M_edges[0] = 10**(M_log[0] - (M_log[1] - M_log[0]) / 2)
-    M_edges[-1] = 10**(M_log[-1] + (M_log[-1] - M_log[-2]) / 2)
+    # Create fine grids (100 x 50 points for smooth appearance)
+    M_fine_log = np.linspace(M_log.min(), M_log.max(), 100)
+    n_fine_log = np.linspace(n_log.min(), n_log.max(), 50)
+    M_fine = 10**M_fine_log
+    n_fine = 10**n_fine_log
 
-    n_edges[1:-1] = 10**((n_log[:-1] + n_log[1:]) / 2)
-    n_edges[0] = 10**(n_log[0] - (n_log[1] - n_log[0]) / 2)
-    n_edges[-1] = 10**(n_log[-1] + (n_log[-1] - n_log[-2]) / 2)
+    # Interpolate radius data in log-log space
+    interp = RectBivariateSpline(n_log, M_log, r_log, kx=3, ky=3)
+    r_fine_log = interp(n_fine_log, M_fine_log)
+    r_fine = 10**r_fine_log
 
-    # Plot colormap with logarithmic color scale
-    pcm = ax.pcolormesh(M_edges, n_edges, r_out_grid,
-                        norm=mcolors.LogNorm(vmin=r_out_grid.min(), vmax=r_out_grid.max()),
-                        cmap='viridis', shading='flat')
+    # Plot colormap with smooth shading
+    pcm = ax.pcolormesh(M_fine, n_fine, r_fine,
+                        norm=mcolors.LogNorm(vmin=r_fine.min(), vmax=r_fine.max()),
+                        cmap='viridis', shading='gouraud')
 
-    # Add contour lines at cell centers
-    M_grid, n_grid = np.meshgrid(M_values, n_core_values)
+    # Add smooth contour lines on fine grid
+    M_fine_grid, n_fine_grid = np.meshgrid(M_fine, n_fine)
 
     # Choose contour levels spanning the radius range
-    r_min, r_max = r_out_grid.min(), r_out_grid.max()
+    r_min, r_max = r_fine.min(), r_fine.max()
     contour_levels = np.logspace(np.log10(r_min), np.log10(r_max), 8)
 
-    contours = ax.contour(M_grid, n_grid, r_out_grid,
+    contours = ax.contour(M_fine_grid, n_fine_grid, r_fine,
                           levels=contour_levels,
                           colors='white', linewidths=0.8, alpha=0.8)
     ax.clabel(contours, inline=True, fontsize=8, fmt='%.1f pc')
@@ -153,7 +154,7 @@ def plot_radius_heatmap(M_values, n_core_values, r_out_grid, Omega=8.0,
 
     # Save if requested
     if output_file is not None:
-        plt.savefig(output_file, dpi=150, bbox_inches='tight')
+        plt.savefig(output_file, dpi=300, bbox_inches='tight')
         print(f"Saved figure to: {output_file}")
 
     if show:
@@ -175,7 +176,7 @@ def main():
     # M_cloud: 2 values per decade from 1e4 to 1e8
     M_values = np.array([1e4, 3e4, 1e5, 3e5, 1e6, 3e6, 1e7, 3e7, 1e8])
 
-    Omega = 8.0  # Standard density contrast
+    Omega = OMEGA_CRITICAL  # Critical density contrast (14.04)
 
     print(f"\nComputing radius grid for:")
     print(f"  n_core: {n_core_values} cm^-3")
