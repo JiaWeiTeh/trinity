@@ -164,15 +164,23 @@ def compare_mass_profiles(r_arr, params, rdot_arr=None, label="Test"):
     Returns:
         dict with comparison results
     """
+    # Extract mCloud and rCloud for verification
+    mCloud = params['mCloud'].value
+    rCloud = params['rCloud'].value
+
     results = {
         'r': r_arr,
         'label': label,
+        'mCloud': mCloud,
+        'rCloud': rCloud,
         'M_old': None,
         'M_new': None,
         'M_diff': None,
         'M_rel_diff': None,
         'M_match': False,
         'M_old_error': None,
+        'M_at_rCloud_old': None,
+        'M_at_rCloud_new': None,
         'dMdt_old': None,
         'dMdt_new': None,
         'dMdt_diff': None,
@@ -215,6 +223,31 @@ def compare_mass_profiles(r_arr, params, rdot_arr=None, label="Test"):
 
         print(f"  [{label}] M(r): max rel diff = {max_rel_diff:.2e} " +
               f"({'✓ MATCH' if results['M_match'] else '✗ MISMATCH'})")
+
+    # =========================================================================
+    # Verify M(rCloud) = mCloud
+    # =========================================================================
+    print(f"  [{label}] Verifying M(rCloud) = mCloud...")
+    print(f"           rCloud = {rCloud:.4f} pc, mCloud = {mCloud:.4e}")
+
+    # Compute M at exactly rCloud for OLD
+    if results['M_old'] is not None:
+        try:
+            M_at_rCloud_old = get_mass_profile_OLD(rCloud, params, return_mdot=False)
+            results['M_at_rCloud_old'] = float(M_at_rCloud_old)
+            rel_err_old = abs(M_at_rCloud_old - mCloud) / mCloud * 100
+            print(f"           OLD: M(rCloud) = {M_at_rCloud_old:.4e}, error = {rel_err_old:.2f}%")
+        except Exception as e:
+            print(f"           OLD: M(rCloud) computation failed: {e}")
+
+    # Compute M at exactly rCloud for NEW
+    try:
+        M_at_rCloud_new = get_mass_profile_NEW(rCloud, params, return_mdot=False)
+        results['M_at_rCloud_new'] = float(M_at_rCloud_new)
+        rel_err_new = abs(M_at_rCloud_new - mCloud) / mCloud * 100
+        print(f"           NEW: M(rCloud) = {M_at_rCloud_new:.4e}, error = {rel_err_new:.2f}%")
+    except Exception as e:
+        print(f"           NEW: M(rCloud) computation failed: {e}")
 
     # =========================================================================
     # Mass accretion rate dM/dt comparison
@@ -266,6 +299,9 @@ def plot_mass_comparison_grid(results_dict, save_path=None):
 
     Rows: OLD, NEW, Difference
     Cols: α=0, α=-2, Bonnor-Ebert
+
+    Includes horizontal lines at mCloud and vertical lines at rCloud
+    to verify M(rCloud) = mCloud.
     """
     fig, axes = plt.subplots(3, 3, figsize=(10, 8), constrained_layout=True)
 
@@ -276,23 +312,36 @@ def plot_mass_comparison_grid(results_dict, save_path=None):
     for j, (case, title) in enumerate(zip(cases, titles)):
         res = results_dict[case]
         r = res['r']
+        mCloud = res.get('mCloud', None)
+        rCloud = res.get('rCloud', None)
 
         # Row 0: OLD
         if res['M_old'] is not None:
             axes[0, j].plot(r, res['M_old'], 'b-', lw=1.5)
             axes[0, j].set_yscale('log')
+            # Add reference lines for mCloud and rCloud
+            if mCloud is not None:
+                axes[0, j].axhline(mCloud, ls='--', color='green', alpha=0.7, lw=1, label=r'$M_{\rm cloud}$')
+            if rCloud is not None:
+                axes[0, j].axvline(rCloud, ls=':', color='orange', alpha=0.7, lw=1, label=r'$r_{\rm cloud}$')
         else:
             axes[0, j].text(0.5, 0.5, 'FAILED', ha='center', va='center',
                            transform=axes[0, j].transAxes, fontsize=12, color='red')
 
         if j == 0:
             axes[0, j].set_ylabel(r'$M(r)$ [M$_\odot$]' + f'\n{row_labels[0]}')
+            axes[0, j].legend(loc='lower right', fontsize=7)
         axes[0, j].set_title(title)
 
         # Row 1: NEW
         if res['M_new'] is not None:
             axes[1, j].plot(r, res['M_new'], 'r-', lw=1.5)
             axes[1, j].set_yscale('log')
+            # Add reference lines for mCloud and rCloud
+            if mCloud is not None:
+                axes[1, j].axhline(mCloud, ls='--', color='green', alpha=0.7, lw=1)
+            if rCloud is not None:
+                axes[1, j].axvline(rCloud, ls=':', color='orange', alpha=0.7, lw=1)
 
         if j == 0:
             axes[1, j].set_ylabel(r'$M(r)$ [M$_\odot$]' + f'\n{row_labels[1]}')
@@ -302,6 +351,8 @@ def plot_mass_comparison_grid(results_dict, save_path=None):
             axes[2, j].plot(r, res['M_rel_diff'] * 100, 'k-', lw=1.5)
             axes[2, j].set_yscale('log')
             axes[2, j].axhline(1.0, ls='--', color='gray', alpha=0.5, label='1%')
+            if rCloud is not None:
+                axes[2, j].axvline(rCloud, ls=':', color='orange', alpha=0.7, lw=1)
 
         if j == 0:
             axes[2, j].set_ylabel(f'Rel. Diff [%]\n{row_labels[2]}')
@@ -382,6 +433,8 @@ def plot_overlay_comparison(results_dict, save_path=None):
 
     Row 1: M(r) overlay
     Row 2: dM/dt overlay
+
+    Includes reference lines for mCloud and rCloud.
     """
     fig, axes = plt.subplots(2, 3, figsize=(10, 6), constrained_layout=True)
 
@@ -391,6 +444,8 @@ def plot_overlay_comparison(results_dict, save_path=None):
     for j, (case, title) in enumerate(zip(cases, titles)):
         res = results_dict[case]
         r = res['r']
+        mCloud = res.get('mCloud', None)
+        rCloud = res.get('rCloud', None)
 
         # Row 0: M(r) overlay
         ax = axes[0, j]
@@ -398,11 +453,16 @@ def plot_overlay_comparison(results_dict, save_path=None):
             ax.plot(r, res['M_old'], 'b-', lw=2, label='OLD', alpha=0.7)
         if res['M_new'] is not None:
             ax.plot(r, res['M_new'], 'r--', lw=2, label='NEW', alpha=0.7)
+        # Add reference lines
+        if mCloud is not None:
+            ax.axhline(mCloud, ls='--', color='green', alpha=0.6, lw=1, label=r'$M_{\rm cloud}$')
+        if rCloud is not None:
+            ax.axvline(rCloud, ls=':', color='orange', alpha=0.6, lw=1, label=r'$r_{\rm cloud}$')
         ax.set_yscale('log')
         ax.set_title(title)
         if j == 0:
             ax.set_ylabel(r'$M(r)$ [M$_\odot$]')
-            ax.legend(loc='lower right', fontsize=8)
+            ax.legend(loc='lower right', fontsize=7)
 
         # Row 1: dM/dt overlay
         ax = axes[1, j]
@@ -410,6 +470,8 @@ def plot_overlay_comparison(results_dict, save_path=None):
             ax.plot(r, res['dMdt_old'], 'b-', lw=2, label='OLD', alpha=0.7)
         if res['dMdt_new'] is not None:
             ax.plot(r, res['dMdt_new'], 'r--', lw=2, label='NEW', alpha=0.7)
+        if rCloud is not None:
+            ax.axvline(rCloud, ls=':', color='orange', alpha=0.6, lw=1)
         ax.set_yscale('log')
         ax.set_xlabel(r'$r$ [pc]')
         if j == 0:
