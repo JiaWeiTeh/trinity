@@ -36,20 +36,7 @@ shared_levels = np.logspace(np.log10(1.5), np.log10(530), 6)
 # or shared_levels = None
 
 
-plt.rc('text', usetex=True)
-plt.rc('font', family='sans-serif', size=20)
-plt.rcParams["xtick.direction"] = "in"
-plt.rcParams["ytick.direction"] = "in"
-plt.rcParams["xtick.minor.visible"] = True  # Show minor ticks
-plt.rcParams["ytick.minor.visible"] = True
-plt.rcParams["xtick.major.size"] = 6        # Major tick size
-plt.rcParams["ytick.major.size"] = 6
-plt.rcParams["xtick.minor.size"] = 3        # Minor tick size
-plt.rcParams["ytick.minor.size"] = 3
-plt.rcParams["xtick.major.width"] = 1       # Major tick width
-plt.rcParams["ytick.major.width"] = 1
-plt.rcParams["xtick.minor.width"] = 0.8     # Minor tick width
-plt.rcParams["ytick.minor.width"] = 0.8
+plt.style.use('/home/user/trinity/src/_plots/trinity.mplstyle')
 
 
 # Add paths for imports

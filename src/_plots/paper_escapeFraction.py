@@ -40,26 +40,6 @@ def range_tag(prefix, values, key=float):
     return f"{prefix}{vmin}-{vmax}"
 
 
-def set_plot_style(use_tex=True, font_size=12):
-    plt.rcParams.update({
-        "text.usetex": use_tex,
-        "font.family": "sans-serif",
-        "font.size": font_size,
-        "xtick.direction": "in",
-        "ytick.direction": "in",
-        "xtick.minor.visible": True,
-        "ytick.minor.visible": True,
-        "xtick.major.size": 6,
-        "ytick.major.size": 6,
-        "xtick.minor.size": 3,
-        "ytick.minor.size": 3,
-        "xtick.major.width": 1.0,
-        "ytick.major.width": 1.0,
-        "xtick.minor.width": 0.8,
-        "ytick.minor.width": 0.8,
-    })
-
-
 def smooth_1d(y, window, mode="edge"):
     """Simple moving-average smoothing. window is in number of snapshots."""
     if window is None or window <= 1:
@@ -92,7 +72,7 @@ def load_escape_fraction(json_path: Path):
     return t, fesc
 
 
-set_plot_style(use_tex=True, font_size=12)
+plt.style.use('/home/user/trinity/src/_plots/trinity.mplstyle')
 
 
 # --- main plotting: one figure per ndens
