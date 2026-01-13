@@ -13,15 +13,18 @@ from src._functions import operations
 import scipy.integrate
 from src.cloud_properties import bonnorEbertSphere
 import src._functions.unit_conversions as cvt
+import logging
+from typing import Union, Tuple, overload
+from src.cloud_properties import bonnorEbertSphere
+import src._functions.unit_conversions as cvt
+
+logger = logging.getLogger(__name__)
 
 """
 Mass Profile Calculation - REFACTORED VERSION
 
 Calculate mass M(r) and mass accretion rate dM/dt for cloud density profiles.
-
-Author: Claude (refactored from original by Jia Wei Teh)
 Date: 2026-01-07
-Updated: 2026-01-11 - Fixed scalar/array input-output consistency
 
 Physics:
     M(r) = ∫[0 to r] 4πr'² ρ(r') dr'
@@ -35,7 +38,6 @@ Key changes from original:
 - Clean separation: density calculation → mass integration → rate
 - 5-10× faster (no complex interpolations)
 - Testable (doesn't need full solver to run)
-- Removed 60+ lines of dead code
 - Logging instead of print()
 
 INPUT/OUTPUT CONTRACT:
@@ -48,16 +50,6 @@ References:
 - Bonnor (1956), MNRAS 116, 351
 - Ebert (1955), Z. Astrophys. 37, 217
 """
-
-import numpy as np
-import scipy.integrate
-import logging
-from typing import Union, Tuple, overload
-
-from src.cloud_properties import bonnorEbertSphere
-import src._functions.unit_conversions as cvt
-
-logger = logging.getLogger(__name__)
 
 
 # Type aliases for clarity
