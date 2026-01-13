@@ -40,7 +40,7 @@ FORCE_FIELDS = [
 ]
 
 # Visualization mode: "discrete" or "interpolated"
-MESH_MODE = "discrete"  # Can be changed to "interpolated"
+MESH_MODE = "interpolated"  # Can be changed to "interpolated"
 
 SAVE_PNG = False
 SAVE_PDF = True
