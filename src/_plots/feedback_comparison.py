@@ -43,7 +43,8 @@ metallicity_list = ['_Z015', '']
 
 
 
-plt.style.use('/home/user/trinity/src/_plots/trinity.mplstyle')
+import os
+plt.style.use(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'trinity.mplstyle'))
 
 
 # mCloud = '1e7'

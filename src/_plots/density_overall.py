@@ -49,7 +49,8 @@ for key, val in snaplists.items():
 xlist = np.array(xlist)
 ylist = np.array(ylist)
 
-plt.style.use('/home/user/trinity/src/_plots/trinity.mplstyle')
+import os
+plt.style.use(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'trinity.mplstyle'))
 fig, axs = plt.subplots(2, 1, figsize = (7,7), dpi = 300)
 
 axs[0].set_yscale('log')

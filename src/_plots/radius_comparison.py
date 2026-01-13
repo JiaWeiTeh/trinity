@@ -31,7 +31,8 @@ scatter_list = ['d', '^', 'o', 'x']
 completed_reason_list = ['Stopping time reached', 'Small radius reached', 'Large radius reached', 'Shell dissolved', 'Bubble radius larger than cloud']
 
 
-plt.style.use('/home/user/trinity/src/_plots/trinity.mplstyle')
+import os
+plt.style.use(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'trinity.mplstyle'))
 
 completed_reason = ''
 
