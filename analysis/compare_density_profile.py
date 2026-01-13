@@ -449,10 +449,12 @@ def print_summary_table(results_dict):
             n_status = '✗ MISMATCH'
 
         # Scalar test status
-        scalar_old = res.get('scalar_test_old', {})
-        scalar_new = res.get('scalar_test_new', {})
+        scalar_old = res.get('scalar_test_old') or {}
+        scalar_new = res.get('scalar_test_new') or {}
         if scalar_old.get('is_scalar') and scalar_new.get('is_scalar'):
             scalar_status = '✓ Both scalar'
+        elif scalar_new.get('is_scalar') and not scalar_old:
+            scalar_status = '✗ OLD failed'
         elif scalar_new.get('is_scalar'):
             scalar_status = '✗ OLD returns array'
         else:
