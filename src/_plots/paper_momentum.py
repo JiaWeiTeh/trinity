@@ -65,12 +65,12 @@ def set_plot_style(use_tex=True, font_size=12):
 set_plot_style(use_tex=True, font_size=12)
 
 # --- optional single-run view (set all to None for full grid)
-ONLY_MCLOUD = "1e8"   # e.g. "1e8"
+ONLY_MCLOUD = "1e7"   # e.g. "1e8"
 ONLY_NDENS  = "1e4"   # e.g. "1e4"
-ONLY_SFE    = "030"   # e.g. "030"
+ONLY_SFE    = "020"   # e.g. "030"
 
 # comment this out if want single mode, otherwise leave this be if want grid. 
-ONLY_NDENS = ONLY_MCLOUD = ONLY_SFE = None
+# ONLY_NDENS = ONLY_MCLOUD = ONLY_SFE = None
 
 # -------- smoothing (optional) --------
 def smooth_1d(y, window, mode="edge"):
