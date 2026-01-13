@@ -57,8 +57,7 @@ phaselist = np.array(phaselist)
 
 
 
-plt.rc('text', usetex=True)
-plt.rc('font', family='sans-serif', size=12)
+plt.style.use('/home/user/trinity/src/_plots/trinity.mplstyle')
 fig, axs = plt.subplots(2, 1, figsize = (7,7), dpi = 300)
 
 # axs[0].set_yscale('log')

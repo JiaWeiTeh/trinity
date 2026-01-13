@@ -41,8 +41,7 @@ for key, val in snaplists.items():
         pass
     
 
-plt.rc('text', usetex=True)
-plt.rc('font', family='sans-serif', size=12)
+plt.style.use('/home/user/trinity/src/_plots/trinity.mplstyle')
 fig, axs = plt.subplots(2, 1, figsize = (8,5), dpi = 200)
 
 axs[0].plot(bubble_rT_list[-1], bubble_T_list[-1])

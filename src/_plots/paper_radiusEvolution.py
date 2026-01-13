@@ -38,25 +38,6 @@ RADIUS_FIELDS = [
 ]
 
 
-def set_plot_style(use_tex=True, font_size=12):
-    plt.rcParams.update({
-        "text.usetex": use_tex,
-        "font.family": "sans-serif",
-        "font.size": font_size,
-        "xtick.direction": "in",
-        "ytick.direction": "in",
-        "xtick.minor.visible": True,
-        "ytick.minor.visible": True,
-        "xtick.major.size": 6,
-        "ytick.major.size": 6,
-        "xtick.minor.size": 3,
-        "ytick.minor.size": 3,
-        "xtick.major.width": 1.0,
-        "ytick.major.width": 1.0,
-        "xtick.minor.width": 0.8,
-        "ytick.minor.width": 0.8,
-    })
-
 def range_tag(prefix, values, key=float):
     """Return e.g. 'M1e5-1e8' or 'sfe001-080' (or single value if only one)."""
     vals = list(values)
@@ -179,7 +160,7 @@ def plot_radii_on_ax(
 
 
 # ---------------- run plotting ----------------
-set_plot_style(use_tex=True, font_size=12)
+plt.style.use('/home/user/trinity/src/_plots/trinity.mplstyle')
 
 for ndens in ndens_list:
     
