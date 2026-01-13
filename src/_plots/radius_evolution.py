@@ -75,10 +75,8 @@ for mCloud in mCloud_list:
                                                    
 
                         
-            plt.rc('text', usetex=True)
-            plt.rc('font', family='sans-serif', size=12)
-            
-                                            
+            plt.style.use('/home/user/trinity/src/_plots/trinity.mplstyle')
+
             fig, axs = plt.subplots(3, 1, figsize = (10, 5), dpi = 300, height_ratios=(2, 1, 1))   
             
             axs2 = axs[2].twinx()

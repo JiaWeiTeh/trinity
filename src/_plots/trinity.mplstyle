@@ -1,0 +1,79 @@
+# TRINITY Scientific Publication Style
+# Compatible with A&A/MNRAS standards
+# Usage: plt.style.use('path/to/trinity.mplstyle')
+
+# =============================================================================
+# TEXT & FONTS
+# =============================================================================
+text.usetex: True
+font.family: serif
+font.serif: Computer Modern Roman, Times, DejaVu Serif
+font.sans-serif: Helvetica, Arial, DejaVu Sans
+font.size: 11
+text.latex.preamble: \usepackage{amsmath} \usepackage{amssymb}
+
+# =============================================================================
+# AXES
+# =============================================================================
+axes.linewidth: 0.8
+axes.labelsize: 12
+axes.titlesize: 12
+axes.labelpad: 4
+
+# =============================================================================
+# TICKS
+# =============================================================================
+xtick.direction: in
+ytick.direction: in
+xtick.minor.visible: True
+ytick.minor.visible: True
+xtick.top: True
+ytick.right: True
+
+# Tick sizes
+xtick.major.size: 6
+ytick.major.size: 6
+xtick.minor.size: 3
+ytick.minor.size: 3
+
+# Tick widths
+xtick.major.width: 0.8
+ytick.major.width: 0.8
+xtick.minor.width: 0.6
+ytick.minor.width: 0.6
+
+# Tick labels
+xtick.labelsize: 10
+ytick.labelsize: 10
+
+# =============================================================================
+# LINES & MARKERS
+# =============================================================================
+lines.linewidth: 1.2
+lines.markersize: 5
+
+# =============================================================================
+# LEGEND
+# =============================================================================
+legend.fontsize: 10
+legend.frameon: False
+legend.handlelength: 1.5
+legend.handletextpad: 0.4
+legend.columnspacing: 1.0
+
+# =============================================================================
+# FIGURE
+# =============================================================================
+figure.figsize: 3.5, 2.8
+figure.dpi: 150
+savefig.dpi: 300
+savefig.bbox: tight
+savefig.pad_inches: 0.05
+
+# =============================================================================
+# GRID (subtle, off by default)
+# =============================================================================
+axes.grid: False
+grid.alpha: 0.3
+grid.linestyle: --
+grid.linewidth: 0.5
