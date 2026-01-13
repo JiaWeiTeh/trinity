@@ -16,6 +16,8 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap, BoundaryNorm
 from matplotlib.patches import Patch
 from pathlib import Path
+from scipy.ndimage import zoom, gaussian_filter
+from scipy.interpolate import RegularGridInterpolator
 
 print("...plotting dominant feedback grid")
 
@@ -39,8 +41,14 @@ FORCE_FIELDS = [
     ("F_rad",      "Radiation",         "#9467bd"),  # Purple
 ]
 
-# Visualization mode: "discrete" or "interpolated"
-MESH_MODE = "interpolated"  # Can be changed to "interpolated"
+# Visualization modes:
+# - "discrete": Sharp cell boundaries (original)
+# - "interpolated": Bilinear interpolation (blurs categorical boundaries)
+# - "smooth_contour": Upsampled grid with contour-like smooth boundaries
+MESH_MODE = "smooth_contour"
+
+# Upsampling factor for smooth_contour mode (higher = smoother)
+UPSAMPLE_FACTOR = 20
 
 SAVE_PNG = False
 SAVE_PDF = True
@@ -188,6 +196,72 @@ def build_dominance_grid(target_time, mCloud_list, sfe_list, ndens, base_dir):
     return grid
 
 
+# ============== GRID SMOOTHING ==============
+
+def smooth_categorical_grid(grid, upsample_factor=20, sigma=2.0):
+    """
+    Create smooth boundaries for categorical data using soft voting.
+
+    For each category, we create a distance-based "membership" field,
+    smooth it with Gaussian filter, then use argmax to get the final
+    category at each point.
+
+    Parameters:
+        grid: 2D array of category indices (0-3), NaN for no data
+        upsample_factor: How much to upsample the grid
+        sigma: Gaussian smoothing sigma (in upsampled pixels)
+
+    Returns:
+        grid_smooth: Upsampled and smoothed grid
+        extent: (x_min, x_max, y_min, y_max) for plotting
+    """
+    n_sfe, n_mass = grid.shape
+    n_categories = 4  # Number of force types
+
+    # Create binary masks for each category
+    category_masks = np.zeros((n_categories, n_sfe, n_mass), dtype=float)
+    for cat in range(n_categories):
+        category_masks[cat] = (grid == cat).astype(float)
+
+    # Upsample each category mask
+    upsampled_masks = np.zeros((n_categories,
+                                 n_sfe * upsample_factor,
+                                 n_mass * upsample_factor), dtype=float)
+
+    for cat in range(n_categories):
+        # Use spline interpolation for smooth upsampling
+        upsampled_masks[cat] = zoom(category_masks[cat], upsample_factor, order=1)
+
+    # Apply Gaussian smoothing to each category mask
+    smoothed_masks = np.zeros_like(upsampled_masks)
+    for cat in range(n_categories):
+        smoothed_masks[cat] = gaussian_filter(upsampled_masks[cat], sigma=sigma)
+
+    # Get final category by argmax (soft voting)
+    grid_smooth = np.argmax(smoothed_masks, axis=0).astype(float)
+
+    # Handle NaN regions: find where original had NaN
+    nan_mask = np.isnan(grid)
+    nan_mask_upsampled = zoom(nan_mask.astype(float), upsample_factor, order=0)
+    grid_smooth[nan_mask_upsampled > 0.5] = np.nan
+
+    # Also mark as NaN where no category has significant probability
+    max_prob = np.max(smoothed_masks, axis=0)
+    grid_smooth[max_prob < 0.01] = np.nan
+
+    # Compute extent for imshow
+    extent = [-0.5, n_mass - 0.5, -0.5, n_sfe - 0.5]
+
+    return grid_smooth, extent
+
+
+def upsample_nearest(grid, upsample_factor=20):
+    """
+    Simple nearest-neighbor upsampling (keeps sharp boundaries but at higher resolution).
+    """
+    return zoom(grid, upsample_factor, order=0)
+
+
 # ============== PLOTTING ==============
 
 def create_colormap():
@@ -207,7 +281,7 @@ def create_colormap():
 
 
 def plot_dominance_grid(ax, grid, mCloud_list, sfe_list, target_time,
-                        cmap, norm, mode="discrete"):
+                        cmap, norm, mode="discrete", upsample_factor=20):
     """
     Plot a single dominance grid on an axis.
 
@@ -219,7 +293,8 @@ def plot_dominance_grid(ax, grid, mCloud_list, sfe_list, target_time,
         target_time: Time in Myr for title
         cmap: Colormap
         norm: BoundaryNorm
-        mode: "discrete" or "interpolated"
+        mode: "discrete", "interpolated", or "smooth_contour"
+        upsample_factor: Factor for upsampling in smooth_contour mode
     """
     mass_indices = np.arange(len(mCloud_list))
     sfe_indices = np.arange(len(sfe_list))
@@ -233,9 +308,26 @@ def plot_dominance_grid(ax, grid, mCloud_list, sfe_list, target_time,
     # Mask NaN values for proper white display
     grid_masked = np.ma.masked_invalid(grid)
 
-    if mode == "interpolated":
+    if mode == "smooth_contour":
+        # Use soft voting with Gaussian smoothing for smooth region boundaries
+        # sigma scales with upsample_factor to get consistent smoothness
+        sigma = upsample_factor * 0.8
+        grid_smooth, extent = smooth_categorical_grid(grid, upsample_factor, sigma)
+        grid_smooth_masked = np.ma.masked_invalid(grid_smooth)
+
+        im = ax.imshow(
+            grid_smooth_masked,
+            cmap=cmap,
+            norm=norm,
+            aspect='auto',
+            origin='lower',
+            extent=extent,
+            interpolation='nearest'  # Already smooth, don't blur more
+        )
+
+    elif mode == "interpolated":
         # Use imshow with interpolation for smooth transitions
-        # Note: This blurs categorical boundaries
+        # Note: This blurs categorical boundaries (not ideal for categorical data)
         im = ax.imshow(
             grid_masked,
             cmap=cmap,
@@ -246,7 +338,7 @@ def plot_dominance_grid(ax, grid, mCloud_list, sfe_list, target_time,
             interpolation='bilinear'
         )
     else:
-        # Discrete cells with clean edges
+        # Discrete cells with clean edges (original mode)
         im = ax.pcolormesh(
             X, Y, grid_masked,
             cmap=cmap,
@@ -311,7 +403,7 @@ def main():
 
         plot_dominance_grid(
             ax, grid, mCloud_list, sfe_list, target_time,
-            cmap, norm, mode=MESH_MODE
+            cmap, norm, mode=MESH_MODE, upsample_factor=UPSAMPLE_FACTOR
         )
 
     # Add shared axis labels
