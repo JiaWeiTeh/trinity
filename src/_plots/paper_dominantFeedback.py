@@ -338,7 +338,7 @@ def main():
     )
 
     # Save figure
-    tag = f"dominant_feedback_n{ndens}"
+    tag = f"dominant_feedback_n{ndens}_{MESH_MODE}"
 
     if SAVE_PNG:
         out_png = FIG_DIR / f"{tag}.png"

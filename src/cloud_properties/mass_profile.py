@@ -798,9 +798,9 @@ def get_mass_profile_OLD( r_arr, params,
                     mGasdot[inside_cloud] = 4 * np.pi * rhoCore * r_arr[inside_cloud]**2 * rdot_arr[inside_cloud]
                     mGasdot[~inside_cloud] = 4 * np.pi * rhoISM * r_arr[~inside_cloud]**2 * rdot_arr[~inside_cloud]
                     # return value
-                    print('mGasdot is', mGasdot)
-                    print('r_arr is', r_arr)
-                    print('rdot_arr is', rdot_arr)
+                    # print('mGasdot is', mGasdot)
+                    # print('r_arr is', r_arr)
+                    # print('rdot_arr is', rdot_arr)
                     return mGas, mGasdot
                 except: 
                     raise Exception('Velocity array expected.')
@@ -835,14 +835,14 @@ def get_mass_profile_OLD( r_arr, params,
                 # input values into mass array
                 # dm/dt, see above for expressions of m.
                 mGasdot[r_arr <= rCore] = 4 * np.pi * rhoCore * r_arr[r_arr <= rCore]**2 * rdot_arr[r_arr <= rCore]
-                print(mGasdot)
+                # print(mGasdot)
                 mGasdot[r_arr > rCore] = 4 * np.pi * rhoCore * (r_arr[r_arr > rCore]**(2+alpha) / rCore**alpha) * rdot_arr[r_arr > rCore]
-                print(mGasdot)
+                # print(mGasdot)
                 mGasdot[r_arr > rCloud] = 4 * np.pi * rhoISM * r_arr[r_arr > rCloud]**2 * rdot_arr[r_arr > rCloud]
-                print(mGasdot)
-                print('mGasdot is', mGasdot)
-                print('r_arr is', r_arr)
-                print('rdot_arr is', rdot_arr)
+                # print(mGasdot)
+                # print('mGasdot is', mGasdot)
+                # print('r_arr is', r_arr)
+                # print('rdot_arr is', rdot_arr)
                 return mGas, mGasdot
             else:
                 return mGas
@@ -955,7 +955,7 @@ def get_mass_profile_OLD( r_arr, params,
             r_threshold = cloud_getr_interp(n_threshold)
             
             
-            print('thresholds for BE interpolations are (n, r):', n_threshold, r_threshold)
+            # print('thresholds for BE interpolations are (n, r):', n_threshold, r_threshold)
             
             # print(r_threshold) 
             
@@ -996,11 +996,11 @@ def get_mass_profile_OLD( r_arr, params,
                     interps = CubicSpline(t_arr_previous, r_arr_previous, extrapolate=True)
                 except Exception as e:
                     print(e)
-                    print('t_arr_previous', t_arr_previous)
+                    # print('t_arr_previous', t_arr_previous)
                     
                     print_duplicates(t_arr_previous)
                     
-                    print('r_arr_previous', r_arr_previous)
+                    # print('r_arr_previous', r_arr_previous)
                     
                     print_duplicates(t_arr_previous)
                     
@@ -1022,19 +1022,19 @@ def get_mass_profile_OLD( r_arr, params,
                     
                     mdot_interp = scipy.interpolate.interp1d(r_arr_previous, np.gradient(m_arr_previous, t_arr_previous), kind='cubic', fill_value="extrapolate")
                 except Exception as e:
-                    print(e)
-                    print(r_arr_previous)
+                    # print(e)
+                    # print(r_arr_previous)
                     u, c = np.unique(r_arr_previous, return_counts=True)
                     dup = u[c > 1]
-                    print('r_arr_previous', dup)
+                    # print('r_arr_previous', dup)
                     
                     mgrad = np.gradient(m_arr_previous, t_arr_previous)
                     
-                    print(mgrad)
+                    # print(mgrad)
                     u, c = np.unique(mgrad, return_counts=True)
                     dup = u[c > 1]
-                    print('mgrad', dup)
-                    print(dup)
+                    # print('mgrad', dup)
+                    # print(dup)
                     import sys
                     sys.exit()
                 
