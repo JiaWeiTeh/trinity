@@ -29,6 +29,12 @@ import cmasher as cmr
 import sys
 import os
 
+FONTSIZE = 20
+
+# Define shared contour levels
+shared_levels = np.logspace(np.log10(1.5), np.log10(530), 6)
+# or shared_levels = None
+
 
 plt.style.use('/home/user/trinity/src/_plots/trinity.mplstyle')
 
@@ -83,7 +89,7 @@ def compute_radius_grid(M_values, n_core_values, Omega=8.0, mu=2.33, gamma=5.0/3
 
 
 def plot_radius_heatmap(M_values, n_core_values, r_out_grid, Omega=8.0,
-                        output_file=None, show=True, contour_levels=None):
+                        output_file=None, show=True, contour_levels=shared_levels):
     """
     Create 2D colormap of r_out vs (M_cloud, n_core).
 
@@ -157,7 +163,7 @@ def plot_radius_heatmap(M_values, n_core_values, r_out_grid, Omega=8.0,
         contours,
         inline=True,
         inline_spacing=3,
-        fontsize=10,
+        fontsize=20,
         fmt='%.1f pc',
         rightside_up=True,
         use_clabeltext=True,   # keeps rotation consistent on resize
@@ -171,13 +177,13 @@ def plot_radius_heatmap(M_values, n_core_values, r_out_grid, Omega=8.0,
         ])
 
     # Labels and formatting
-    ax.set_xlabel(r'Cloud Mass $M_{\rm cloud}$ [M$_\odot$]', fontsize=12)
-    ax.set_ylabel(r'Core Density $n_{\rm core}$ [cm$^{-3}$]', fontsize=12)
-    ax.set_title(fr'Bonnor-Ebert Sphere Radius ($\Omega$ = {Omega})', fontsize=14)
+    ax.set_xlabel(r'Cloud Mass $M_{\rm cloud}$ [M$_\odot$]', fontsize=FONTSIZE)
+    ax.set_ylabel(r'Core Density $n_{\rm core}$ [cm$^{-3}$]', fontsize=FONTSIZE)
+    ax.set_title(fr'Bonnor-Ebert Sphere Radius ($\Omega$ = {Omega})', fontsize=FONTSIZE)
 
     # Colorbar
     cbar = plt.colorbar(pcm, ax=ax)
-    cbar.set_label(r'Cloud Radius $r_{\rm out}$ [pc]', fontsize=12)
+    cbar.set_label(r'Cloud Radius $r_{\rm out}$ [pc]', fontsize=FONTSIZE)
 
     # Add grid
     ax.grid(True, alpha=0.3, linestyle='--')

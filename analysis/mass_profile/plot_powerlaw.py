@@ -55,6 +55,7 @@ MSUN_TO_G = INV_CONV.Msun2g      # [g/Msun]
 DENSITY_CONVERSION = M_H_CGS * PC_TO_CM**3 / MSUN_TO_G
 
 
+
 def compute_rCloud_homogeneous(M_cloud, nCore, mu=2.33):
     """
     Compute cloud radius for homogeneous (α=0) profile.
@@ -181,7 +182,7 @@ def compute_radius_grid_powerlaw(M_values, n_core_values, alpha, rCore_fraction=
 
 
 def plot_radius_heatmap_powerlaw(ax, M_values, n_core_values, r_out_grid, alpha,
-                                  vmin=None, vmax=None, contour_levels=None):
+                                  vmin=None, vmax=None, contour_levels=shared_levels):
     """
     Create 2D colormap of rCloud vs (M_cloud, n_core) for power-law profile.
 
@@ -259,7 +260,7 @@ def plot_radius_heatmap_powerlaw(ax, M_values, n_core_values, r_out_grid, alpha,
         contours,
         inline=True,
         inline_spacing=3,
-        fontsize=8,
+        fontsize=FONTSIZE,
         fmt='%.1f',
         rightside_up=True,
         use_clabeltext=True,
@@ -277,11 +278,11 @@ def plot_radius_heatmap_powerlaw(ax, M_values, n_core_values, r_out_grid, alpha,
         title = r'$\alpha = 0$ (homogeneous)'
     else:
         title = fr'$\alpha = {alpha}$'
-    ax.set_title(title, fontsize=12)
+    ax.set_title(title, fontsize=FONTSIZE)
 
     # Add grid
     ax.grid(True, alpha=0.3, linestyle='--')
-
+    
     return pcm
 
 
@@ -319,8 +320,6 @@ def main():
     vmin, vmax = all_radii.min(), all_radii.max()
     print(f"\n  Global radius range: {vmin:.2f} - {vmax:.2f} pc")
 
-    # Compute global contour levels for consistent labels across subplots
-    contour_levels = np.logspace(np.log10(vmin), np.log10(vmax), 6)
 
     # Create 2x2 subplot figure
     fig, axes = plt.subplots(2, 2, figsize=(14, 12))
@@ -332,24 +331,24 @@ def main():
         ax = axes[idx]
         pcm = plot_radius_heatmap_powerlaw(
             ax, M_values, n_core_values, grids[alpha], alpha,
-            vmin=vmin, vmax=vmax, contour_levels=contour_levels
+            vmin=vmin, vmax=vmax, contour_levels=shared_levels
         )
 
         # Only add axis labels on edges
         if idx >= 2:  # Bottom row
-            ax.set_xlabel(r'Cloud Mass $M_{\rm cloud}$ [M$_\odot$]', fontsize=11)
+            ax.set_xlabel(r'Cloud Mass $M_{\rm cloud}$ [M$_\odot$]', fontsize=FONTSIZE)
         if idx % 2 == 0:  # Left column
-            ax.set_ylabel(r'Core Density $n_{\rm core}$ [cm$^{-3}$]', fontsize=11)
+            ax.set_ylabel(r'Core Density $n_{\rm core}$ [cm$^{-3}$]', fontsize=FONTSIZE)
 
     # Add single colorbar on the right
     fig.subplots_adjust(right=0.88)
     cbar_ax = fig.add_axes([0.90, 0.15, 0.02, 0.7])
     cbar = fig.colorbar(pcm, cax=cbar_ax)
-    cbar.set_label(r'Cloud Radius $r_{\rm cloud}$ [pc]', fontsize=12)
+    cbar.set_label(r'Cloud Radius $r_{\rm cloud}$ [pc]', fontsize=FONTSIZE)
 
     # Main title
     fig.suptitle(r'Power-Law Density Profile: Cloud Radius vs $(M_{\rm cloud}, n_{\rm core})$',
-                 fontsize=14, y=0.98)
+                 fontsize=FONTSIZE, y=0.98)
 
     plt.tight_layout(rect=[0, 0, 0.88, 0.95])
 
