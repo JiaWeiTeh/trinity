@@ -33,9 +33,29 @@ for path in [_project_root, _analysis_dir, _functions_dir]:
     if path not in sys.path:
         sys.path.insert(0, path)
 
-# Import refactored functions
-from density_profile.REFACTORED_density_profile import get_density_profile
-from mass_profile.REFACTORED_mass_profile import get_mass_profile
+# Import refactored functions using explicit paths to avoid naming conflicts
+# (There's a mass_profile.py file in src/cloud_properties that conflicts with
+#  the mass_profile/ directory in analysis/)
+import importlib.util
+
+def _import_from_path(module_name, file_path):
+    """Import a module from an explicit file path."""
+    spec = importlib.util.spec_from_file_location(module_name, file_path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+_density_module = _import_from_path(
+    "REFACTORED_density_profile",
+    os.path.join(_analysis_dir, "density_profile", "REFACTORED_density_profile.py")
+)
+_mass_module = _import_from_path(
+    "REFACTORED_mass_profile",
+    os.path.join(_analysis_dir, "mass_profile", "REFACTORED_mass_profile.py")
+)
+
+get_density_profile = _density_module.get_density_profile
+get_mass_profile = _mass_module.get_mass_profile
 
 # Import utilities
 from src.cloud_properties.powerLawSphere import (
