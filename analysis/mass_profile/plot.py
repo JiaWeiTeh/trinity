@@ -31,6 +31,10 @@ import os
 
 FONTSIZE = 20
 
+# Define shared contour levels
+shared_levels = np.logspace(np.log10(1.5), np.log10(530), 6)
+# or shared_levels = None
+
 
 plt.rc('text', usetex=True)
 plt.rc('font', family='sans-serif', size=20)
@@ -98,7 +102,7 @@ def compute_radius_grid(M_values, n_core_values, Omega=8.0, mu=2.33, gamma=5.0/3
 
 
 def plot_radius_heatmap(M_values, n_core_values, r_out_grid, Omega=8.0,
-                        output_file=None, show=True, contour_levels=None):
+                        output_file=None, show=True, contour_levels=shared_levels):
     """
     Create 2D colormap of r_out vs (M_cloud, n_core).
 

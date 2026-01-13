@@ -33,6 +33,12 @@ import sys
 import os
 
 
+FONTSIZE = 20
+
+# Define shared contour levels
+shared_levels = np.logspace(np.log10(1.5), np.log10(530), 6)
+
+
 plt.rc('text', usetex=True)
 plt.rc('font', family='sans-serif', size=FONTSIZE)
 plt.rcParams["xtick.direction"] = "in"
@@ -67,7 +73,6 @@ MSUN_TO_G = INV_CONV.Msun2g      # [g/Msun]
 # Conversion: n [cm⁻³] × μ → ρ [Msun/pc³]
 DENSITY_CONVERSION = M_H_CGS * PC_TO_CM**3 / MSUN_TO_G
 
-FONTSIZE = 20
 
 
 def compute_rCloud_homogeneous(M_cloud, nCore, mu=2.33):
@@ -196,7 +201,7 @@ def compute_radius_grid_powerlaw(M_values, n_core_values, alpha, rCore_fraction=
 
 
 def plot_radius_heatmap_powerlaw(ax, M_values, n_core_values, r_out_grid, alpha,
-                                  vmin=None, vmax=None, contour_levels=None):
+                                  vmin=None, vmax=None, contour_levels=shared_levels):
     """
     Create 2D colormap of rCloud vs (M_cloud, n_core) for power-law profile.
 
@@ -296,7 +301,7 @@ def plot_radius_heatmap_powerlaw(ax, M_values, n_core_values, r_out_grid, alpha,
 
     # Add grid
     ax.grid(True, alpha=0.3, linestyle='--')
-
+    
     return pcm
 
 
@@ -334,8 +339,6 @@ def main():
     vmin, vmax = all_radii.min(), all_radii.max()
     print(f"\n  Global radius range: {vmin:.2f} - {vmax:.2f} pc")
 
-    # Compute global contour levels for consistent labels across subplots
-    contour_levels = np.logspace(np.log10(vmin), np.log10(vmax), 6)
 
     # Create 2x2 subplot figure
     fig, axes = plt.subplots(2, 2, figsize=(14, 12))
@@ -347,7 +350,7 @@ def main():
         ax = axes[idx]
         pcm = plot_radius_heatmap_powerlaw(
             ax, M_values, n_core_values, grids[alpha], alpha,
-            vmin=vmin, vmax=vmax, contour_levels=contour_levels
+            vmin=vmin, vmax=vmax, contour_levels=shared_levels
         )
 
         # Only add axis labels on edges
