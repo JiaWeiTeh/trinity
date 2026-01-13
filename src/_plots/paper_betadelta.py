@@ -52,7 +52,8 @@ def range_tag(prefix, values, key=float):
     vmin, vmax = min(vals, key=key), max(vals, key=key)
     return f"{prefix}{vmin}-{vmax}"
 
-plt.style.use('/home/user/trinity/src/_plots/trinity.mplstyle')
+import os
+plt.style.use(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'trinity.mplstyle'))
 
 
 # ---------- helpers (reuse your smoothing) ----------

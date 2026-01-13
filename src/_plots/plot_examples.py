@@ -20,7 +20,8 @@ def plot(path2json):
     
     # lets try this but iwht 0.1 condition for Lloss Lgain
     
-    plt.style.use('/home/user/trinity/src/_plots/trinity.mplstyle')
+    import os
+plt.style.use(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'trinity.mplstyle'))
 
     betadelta.plot(path2json)
     current_status.plot(path2json)

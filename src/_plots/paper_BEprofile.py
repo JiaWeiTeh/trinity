@@ -49,7 +49,8 @@ for key, val in snaplists.items():
     mlist = np.array(val['initial_cloud_m_arr'])
     break
     
-plt.style.use('/home/user/trinity/src/_plots/trinity.mplstyle')
+import os
+plt.style.use(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'trinity.mplstyle'))
 
 
 #%%
