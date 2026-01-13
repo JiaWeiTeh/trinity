@@ -76,8 +76,7 @@ def plot(path2json):
     # prefix of the final key
     # last_key = '_' + str(key.split('_')[1]) + '_'
 
-    plt.rc('text', usetex=True)
-    plt.rc('font', family='sans-serif', size=12)
+    plt.style.use('/home/user/trinity/src/_plots/trinity.mplstyle')
     fig, axs = plt.subplots(2, 3, figsize = (10,5), dpi = 200)
     
     fig.suptitle(f'{path2json}')
