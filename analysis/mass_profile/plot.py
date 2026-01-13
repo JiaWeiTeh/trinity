@@ -98,7 +98,7 @@ def compute_radius_grid(M_values, n_core_values, Omega=8.0, mu=2.33, gamma=5.0/3
 
 
 def plot_radius_heatmap(M_values, n_core_values, r_out_grid, Omega=8.0,
-                        output_file=None, show=True):
+                        output_file=None, show=True, contour_levels=None):
     """
     Create 2D colormap of r_out vs (M_cloud, n_core).
 
@@ -116,6 +116,8 @@ def plot_radius_heatmap(M_values, n_core_values, r_out_grid, Omega=8.0,
         Path to save figure (if None, not saved)
     show : bool
         Whether to display the figure
+    contour_levels : array-like, optional
+        Contour levels for radius lines. If None, computed from data.
 
     Returns
     -------
@@ -155,9 +157,10 @@ def plot_radius_heatmap(M_values, n_core_values, r_out_grid, Omega=8.0,
     M_fine_grid, n_fine_grid = np.meshgrid(M_fine, n_fine)
     
     
-    # Choose contour levels spanning the radius range
-    r_min, r_max = r_fine.min(), r_fine.max()
-    contour_levels = np.logspace(np.log10(r_min), np.log10(r_max), 8)
+    # Use provided contour levels or compute from local range
+    if contour_levels is None:
+        r_min, r_max = r_fine.min(), r_fine.max()
+        contour_levels = np.logspace(np.log10(r_min), np.log10(r_max), 8)
     
     contours = ax.contour(
         M_fine_grid, n_fine_grid, r_fine,
