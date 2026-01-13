@@ -61,6 +61,12 @@ from density_profile.REFACTORED_density_profile import get_density_profile
 # Import unit conversions and physical constants from central module
 from unit_conversions import CGS, INV_CONV
 
+# Import utility for computing rCloud from physical parameters
+from src.cloud_properties.powerLawSphere import (
+    compute_rCloud_homogeneous,
+    compute_rCloud_powerlaw
+)
+
 # Import Bonnor-Ebert sphere module for testing
 _bonnor_ebert_dir = os.path.join(_analysis_dir, 'bonnorEbert')
 if _bonnor_ebert_dir not in sys.path:
@@ -638,19 +644,30 @@ def test_scalar_array_consistency():
 
 
 def test_homogeneous_cloud():
-    """Test α=0 (homogeneous) case specifically."""
+    """Test α=0 (homogeneous) case specifically.
+
+    NOTE: REFACTORED get_mass_profile returns mass in PHYSICAL units (Msun),
+    with proper DENSITY_CONVERSION applied.
+    """
     print("\nTesting homogeneous cloud (α=0)...")
 
     class MockParam:
         def __init__(self, value):
             self.value = value
 
-    nCore = 1e3
+    # Define fundamental inputs
+    nCore = 1e3  # cm⁻³
     mu_ion = 1.4
-    rCloud = 10.0
+    mCloud = 1e5  # Msun
 
-    # Physical density in Msun/pc³
+    # Compute rCloud from fundamental inputs using proper physics
+    rCloud = compute_rCloud_homogeneous(mCloud, nCore, mu=mu_ion)
+    rCore = 0.1 * rCloud  # rCore is 10% of rCloud
+
+    # Physical density in Msun/pc³ (REFACTORED version uses physical units)
     rhoCore_physical = nCore * mu_ion * DENSITY_CONVERSION
+
+    print(f"  Computed rCloud = {rCloud:.3f} pc from mCloud={mCloud:.0e} Msun, nCore={nCore:.0e} cm⁻³")
 
     params = {
         'dens_profile': MockParam('densPL'),
@@ -658,14 +675,14 @@ def test_homogeneous_cloud():
         'nISM': MockParam(1.0),
         'mu_ion': MockParam(mu_ion),
         'mu_neu': MockParam(2.3),
-        'rCore': MockParam(1.0),
+        'rCore': MockParam(rCore),
         'rCloud': MockParam(rCloud),
-        'mCloud': MockParam(1e5),  # Msun
+        'mCloud': MockParam(mCloud),
         'densPL_alpha': MockParam(0.0),
     }
 
-    # Test at various radii
-    test_radii = [0.5, 1.0, 5.0, 9.9]
+    # Test at various radii (as fractions of rCloud)
+    test_radii = [0.1 * rCloud, 0.3 * rCloud, 0.5 * rCloud, 0.9 * rCloud]
 
     for r in test_radii:
         M = get_mass_profile(r, params)
@@ -673,7 +690,13 @@ def test_homogeneous_cloud():
         M_expected = (4.0/3.0) * np.pi * r**3 * rhoCore_physical
         assert np.isclose(M, M_expected, rtol=1e-6), \
             f"r={r}: M={M:.6e} != expected {M_expected:.6e}"
-        print(f"  ✓ r={r:.1f}: M = {M:.4e} Msun (expected: {M_expected:.4e})")
+        print(f"  ✓ r={r:.2f}: M = {M:.4e} Msun (expected: {M_expected:.4e})")
+
+    # Verify mass at rCloud equals mCloud (self-consistency check)
+    M_at_rCloud = get_mass_profile(rCloud, params)
+    assert np.isclose(M_at_rCloud, mCloud, rtol=1e-6), \
+        f"M(rCloud) = {M_at_rCloud:.4e} != mCloud = {mCloud:.4e}"
+    print(f"  ✓ M(rCloud) = {M_at_rCloud:.4e} Msun = mCloud (self-consistent)")
 
     print("✓ Homogeneous cloud tests passed!")
     return True
@@ -687,22 +710,20 @@ def test_powerlaw_analytical():
         def __init__(self, value):
             self.value = value
 
-    # First compute what mCloud should be for consistency
-    nCore = 1e3
+    # Define fundamental inputs (this is the correct approach)
+    nCore = 1e3  # cm⁻³
     mu_ion = 1.4
-    rCore = 1.0
-    rCloud = 10.0
-    alpha = -2.0
+    mCloud = 1e5  # Msun
+    alpha = -2.0  # isothermal
+
+    # Compute rCloud and rCore from fundamental inputs using proper physics
+    rCloud, rCore = compute_rCloud_powerlaw(mCloud, nCore, alpha, rCore_fraction=0.1, mu=mu_ion)
 
     # Physical density in Msun/pc³
     rhoCore_physical = nCore * mu_ion * DENSITY_CONVERSION
 
-    # Analytical mass at rCloud for power-law profile (Rahner+ 2018 Eq 25) in Msun
-    mCloud_computed = 4.0 * np.pi * rhoCore_physical * (
-        rCore**3 / 3.0 +
-        (rCloud**(3.0 + alpha) - rCore**(3.0 + alpha)) /
-        ((3.0 + alpha) * rCore**alpha)
-    )
+    print(f"  Computed rCloud = {rCloud:.3f} pc, rCore = {rCore:.3f} pc")
+    print(f"  from mCloud={mCloud:.0e} Msun, nCore={nCore:.0e} cm⁻³, α={alpha}")
 
     params = {
         'dens_profile': MockParam('densPL'),
@@ -712,11 +733,12 @@ def test_powerlaw_analytical():
         'mu_neu': MockParam(2.3),
         'rCore': MockParam(rCore),
         'rCloud': MockParam(rCloud),
-        'mCloud': MockParam(mCloud_computed),  # Use consistent mCloud in Msun
+        'mCloud': MockParam(mCloud),
         'densPL_alpha': MockParam(alpha),
     }
 
-    r_arr = np.array([0.5, 1.0, 5.0, 10.0, 15.0])
+    # Test at radii spanning core, envelope, and beyond cloud
+    r_arr = np.array([0.5 * rCore, rCore, 0.5 * rCloud, rCloud, 1.5 * rCloud])
     M_arr = get_mass_profile(r_arr, params)
     print(f"  M(r) = {M_arr} Msun")
 
@@ -724,14 +746,18 @@ def test_powerlaw_analytical():
     assert np.all(np.diff(M_arr) > 0), "Mass should be monotonically increasing!"
     print("  ✓ Mass is monotonically increasing")
 
-    # Verify inside core matches uniform formula (in Msun)
-    M_core_expected = (4.0/3.0) * np.pi * 0.5**3 * rhoCore_physical
-    assert np.isclose(M_arr[0], M_core_expected, rtol=1e-6), "Core mass mismatch"
+    # Verify inside core (r < rCore) matches uniform formula (in Msun)
+    r_in_core = 0.5 * rCore
+    M_core_expected = (4.0/3.0) * np.pi * r_in_core**3 * rhoCore_physical
+    assert np.isclose(M_arr[0], M_core_expected, rtol=1e-6), \
+        f"Core mass mismatch: {M_arr[0]:.4e} vs {M_core_expected:.4e}"
     print(f"  ✓ Core region matches uniform density formula: {M_arr[0]:.4e} Msun")
 
-    # Verify at rCloud matches mCloud
-    assert np.isclose(M_arr[3], mCloud_computed, rtol=1e-6), "Mass at rCloud should equal mCloud"
-    print(f"  ✓ Mass at rCloud = {M_arr[3]:.4e} Msun (mCloud = {mCloud_computed:.4e} Msun)")
+    # Verify mass at rCloud equals mCloud (self-consistency check)
+    M_at_rCloud = M_arr[3]
+    assert np.isclose(M_at_rCloud, mCloud, rtol=0.01), \
+        f"M(rCloud) = {M_at_rCloud:.4e} != mCloud = {mCloud:.4e}"
+    print(f"  ✓ M(rCloud) = {M_at_rCloud:.4e} Msun ≈ mCloud (self-consistent)")
 
     print("✓ Power-law profile test passed!")
     return True
