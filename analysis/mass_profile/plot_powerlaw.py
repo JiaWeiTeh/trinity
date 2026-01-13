@@ -33,7 +33,8 @@ import sys
 import os
 
 
-plt.style.use('/home/user/trinity/src/_plots/trinity.mplstyle')
+_style_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'src', '_plots', 'trinity.mplstyle')
+plt.style.use(_style_path)
 
 
 # Add paths for imports

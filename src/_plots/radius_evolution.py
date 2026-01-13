@@ -75,7 +75,7 @@ for mCloud in mCloud_list:
                                                    
 
                         
-            plt.style.use('/home/user/trinity/src/_plots/trinity.mplstyle')
+            plt.style.use(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'trinity.mplstyle'))
 
             fig, axs = plt.subplots(3, 1, figsize = (10, 5), dpi = 300, height_ratios=(2, 1, 1))   
             

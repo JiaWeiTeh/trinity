@@ -36,7 +36,8 @@ shared_levels = np.logspace(np.log10(1.5), np.log10(530), 6)
 # or shared_levels = None
 
 
-plt.style.use('/home/user/trinity/src/_plots/trinity.mplstyle')
+_style_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'src', '_plots', 'trinity.mplstyle')
+plt.style.use(_style_path)
 
 
 # Add paths for imports

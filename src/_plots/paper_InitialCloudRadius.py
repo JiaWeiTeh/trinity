@@ -181,7 +181,7 @@ cmap = cm.viridis
 norm = mcolors.Normalize(vmin=mStart, vmax=mEnd)
 colors = cmap(norm(np.log10(mCloud_list * g2Msun)))  # Get colors from colormap
 
-plt.style.use('/home/user/trinity/src/_plots/trinity.mplstyle')
+plt.style.use(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'trinity.mplstyle'))
 
 
 

@@ -68,7 +68,8 @@ def range_tag(prefix, values, key=float):
     return f"{prefix}{vmin}-{vmax}"
 
 
-plt.style.use('/home/user/trinity/src/_plots/trinity.mplstyle')
+import os
+plt.style.use(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'trinity.mplstyle'))
 
 
 def smooth_1d(y, window, mode="edge"):
