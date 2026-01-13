@@ -48,7 +48,7 @@ FORCE_FIELDS = [
 MESH_MODE = "smooth_contour"
 
 # Upsampling factor for smooth_contour mode (higher = smoother)
-UPSAMPLE_FACTOR = 20
+UPSAMPLE_FACTOR = 40 #20
 
 SAVE_PNG = False
 SAVE_PDF = True
