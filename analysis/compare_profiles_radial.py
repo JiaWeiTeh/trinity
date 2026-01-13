@@ -147,7 +147,7 @@ def create_powerlaw_params(mCloud, nCore, alpha, mu=1.4, nISM=1.0, rCore_frac=0.
     return params, rCloud, rCore, nEdge
 
 
-def create_BE_params(mCloud, nCore, Omega, mu=2.33, nISM=1.0):
+def create_BE_params(mCloud, nCore, Omega, mu=1.4, nISM=1.0):
     """Create parameter dict for Bonnor-Ebert sphere."""
 
     # Pre-solve Lane-Emden for efficiency
@@ -248,7 +248,7 @@ def main():
     # Bonnor-Ebert at critical omega
     # Note: BE sphere uses mu=2.33 (molecular gas)
     params_BE, rCloud_BE, rCore_BE, nEdge_BE = create_BE_params(
-        M_CLOUD, N_CORE, Omega=OMEGA_CRITICAL, mu=2.33
+        M_CLOUD, N_CORE, Omega=OMEGA_CRITICAL, mu=MU
     )
     profiles['BE (critical)'] = {
         'params': params_BE,
@@ -360,7 +360,7 @@ def main():
     plt.savefig(out_path_png, dpi=150, bbox_inches='tight')
     print(f"Saved: {out_path_png}")
 
-    plt.close()
+    # plt.close()
 
     # -------------------------------------------------------------------------
     # Summary table
