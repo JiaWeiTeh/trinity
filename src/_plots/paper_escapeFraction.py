@@ -72,7 +72,8 @@ def load_escape_fraction(json_path: Path):
     return t, fesc
 
 
-plt.style.use('/home/user/trinity/src/_plots/trinity.mplstyle')
+import os
+plt.style.use(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'trinity.mplstyle'))
 
 
 # --- main plotting: one figure per ndens

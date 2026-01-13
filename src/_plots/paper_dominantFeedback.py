@@ -19,7 +19,8 @@ from pathlib import Path
 
 print("...plotting dominant feedback grid")
 
-plt.style.use('/home/user/trinity/src/_plots/trinity.mplstyle')
+import os
+plt.style.use(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'trinity.mplstyle'))
 
 # ============== CONFIGURATION ==============
 mCloud_list = ["1e5", "1e7", "1e8"]

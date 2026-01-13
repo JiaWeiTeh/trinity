@@ -42,7 +42,8 @@ FORCE_FIELDS = [
 ]
 
 
-plt.style.use('/home/user/trinity/src/_plots/trinity.mplstyle')
+import os
+plt.style.use(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'trinity.mplstyle'))
 
 # --- optional single-run view (set all to None for full grid)
 ONLY_MCLOUD = "1e7"   # e.g. "1e8"

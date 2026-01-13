@@ -53,7 +53,12 @@ from bonnorEbertSphere_v2 import create_BE_sphere, solve_lane_emden
 
 print("...comparing mass profile implementations")
 
-plt.style.use('/home/user/trinity/src/_plots/trinity.mplstyle')
+# Load style file using relative path (works regardless of where script is run from)
+_style_file = os.path.join(_project_root, 'src', '_plots', 'trinity.mplstyle')
+if os.path.exists(_style_file):
+    plt.style.use(_style_file)
+else:
+    print(f"  (Style file not found: {_style_file})")
 
 # Disable LaTeX if not available (for container environments)
 try:

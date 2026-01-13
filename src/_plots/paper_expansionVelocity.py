@@ -238,7 +238,8 @@ def plot_velocity_on_ax(
 
 
 # ---------------- main plotting ----------------
-plt.style.use('/home/user/trinity/src/_plots/trinity.mplstyle')
+import os
+plt.style.use(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'trinity.mplstyle'))
 
 for ndens in ndens_list:
     nrows, ncols = len(mCloud_list), len(sfe_list)

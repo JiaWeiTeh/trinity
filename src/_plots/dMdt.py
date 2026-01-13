@@ -55,7 +55,7 @@ def plot(path2json):
 
 #--------------
     
-    plt.style.use('/home/user/trinity/src/_plots/trinity.mplstyle')
+    plt.style.use(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'trinity.mplstyle'))
     fig, axs = plt.subplots(2, 1, figsize = (7,5), dpi = 150, height_ratios = [3, 1])
     
     fig.suptitle(f'{path2json}')
