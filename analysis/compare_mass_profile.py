@@ -51,6 +51,9 @@ from REFACTORED_mass_profile import get_mass_profile as get_mass_profile_NEW
 # Import for Bonnor-Ebert sphere
 from bonnorEbertSphere_v2 import create_BE_sphere, solve_lane_emden
 
+# Import utility for computing rCloud from physical parameters
+from src.cloud_properties.powerLawSphere import compute_rCloud_powerlaw
+
 print("...comparing mass profile implementations")
 
 # Load style file using relative path (works regardless of where script is run from)
@@ -87,16 +90,27 @@ class MockParam:
 # Test Case Parameters
 # =============================================================================
 
-def create_powerlaw_params(alpha, n_core=1e3, r_cloud=10.0, m_cloud=1e5):
-    """Create parameters for power-law density profile."""
+def create_powerlaw_params(alpha, n_core=1e3, m_cloud=1e5, mu=1.4, rCore_fraction=0.1):
+    """
+    Create parameters for power-law density profile.
+
+    Note: rCloud is computed from (m_cloud, n_core, alpha) using the proper
+    physical formula, not hardcoded. This ensures self-consistency.
+    """
+    # Compute rCloud from fundamental inputs
+    rCloud, rCore = compute_rCloud_powerlaw(m_cloud, n_core, alpha,
+                                             rCore_fraction=rCore_fraction, mu=mu)
+
+    print(f"  [create_powerlaw_params] α={alpha}: computed rCloud={rCloud:.3f} pc, rCore={rCore:.3f} pc")
+
     return {
         'dens_profile': MockParam('densPL'),
         'nCore': MockParam(n_core),
         'nISM': MockParam(1.0),
-        'mu_ion': MockParam(1.4),
+        'mu_ion': MockParam(mu),
         'mu_neu': MockParam(2.3),
-        'rCore': MockParam(1.0),
-        'rCloud': MockParam(r_cloud),
+        'rCore': MockParam(rCore),
+        'rCloud': MockParam(rCloud),
         'mCloud': MockParam(m_cloud),
         'densPL_alpha': MockParam(alpha),
     }
@@ -472,7 +486,9 @@ def main():
     print("-" * 50)
 
     params_alpha0 = create_powerlaw_params(alpha=0.0)
-    r_arr = np.linspace(0.5, 15.0, 100)
+    rCloud_alpha0 = params_alpha0['rCloud'].value
+    # Test radii from 0.05*rCloud to 1.5*rCloud
+    r_arr = np.linspace(0.05 * rCloud_alpha0, 1.5 * rCloud_alpha0, 100)
     rdot_arr = np.full_like(r_arr, 10.0)  # 10 pc/Myr velocity
 
     results['alpha0'] = compare_mass_profiles(
@@ -486,7 +502,9 @@ def main():
     print("-" * 50)
 
     params_alpha2 = create_powerlaw_params(alpha=-2.0)
-    r_arr = np.linspace(0.5, 15.0, 100)
+    rCloud_alpha2 = params_alpha2['rCloud'].value
+    # Test radii from 0.05*rCloud to 1.5*rCloud
+    r_arr = np.linspace(0.05 * rCloud_alpha2, 1.5 * rCloud_alpha2, 100)
     rdot_arr = np.full_like(r_arr, 10.0)
 
     results['alpha2'] = compare_mass_profiles(
