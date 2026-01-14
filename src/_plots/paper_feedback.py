@@ -54,6 +54,8 @@ ONLY_M   = '1e7'   # e.g. "1e5" or None
 ONLY_N   = '1e4'   # e.g. "1e4" or None
 ONLY_SFE = '020'   # e.g. "001" or None
 
+ONLY_M = ONLY_N = ONLY_SFE = None
+
 # --- output
 FIG_DIR = Path("./fig")
 FIG_DIR.mkdir(parents=True, exist_ok=True)
