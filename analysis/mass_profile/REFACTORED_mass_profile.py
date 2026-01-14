@@ -429,53 +429,77 @@ def compute_enclosed_mass_bonnor_ebert(
     params
 ) -> np.ndarray:
     """
-    Numerical enclosed mass for Bonnor-Ebert sphere.
+    Enclosed mass for Bonnor-Ebert sphere using analytical Lane-Emden formula.
 
-    M(r) = ∫[0 to r] 4πr'² ρ(r') dr'
+    Uses M(r)/M_cloud = m(ξ)/m(ξ_out) where m(ξ) = ξ² du/dξ from Lane-Emden.
+    This gives EXACT results: M(rCloud) = mCloud guaranteed.
 
-    Since ρ(r) has no closed form, we integrate numerically.
+    Falls back to numerical integration if Lane-Emden mass function not available.
 
     Parameters
     ----------
     r_arr : array
         Radii (must be sorted!)
     rho_arr : array
-        Mass density at each radius
+        Mass density at each radius (used for fallback numerical integration)
     params : dict
-        Parameter dictionary
+        Parameter dictionary. For analytical method, needs 'densBE_f_m' and 'densBE_xi_out'.
 
     Returns
     -------
     M_arr : array
-        Enclosed mass at each radius
+        Enclosed mass at each radius [Msun]
     """
     rCloud = params['rCloud'].value
     mCloud = params['mCloud'].value
     nISM = params['nISM'].value
     mu_neu = params['mu_neu'].value
-    rhoISM = nISM * mu_neu * DENSITY_CONVERSION  # Convert to physical units [Msun/pc³]
+    rhoISM = nISM * mu_neu * DENSITY_CONVERSION  # Physical units [Msun/pc³]
 
     M_arr = np.zeros_like(r_arr, dtype=float)
 
-    # Integrate for points inside cloud
+    # Check if we have Lane-Emden mass function for analytical calculation
+    has_analytical = 'densBE_f_m' in params and 'densBE_xi_out' in params
+
     inside_cloud = r_arr <= rCloud
 
     if np.any(inside_cloud):
         r_inside = r_arr[inside_cloud]
-        rho_inside = rho_arr[inside_cloud]
 
-        # For each radius, integrate from 0 to r
-        for i, (r, rho) in enumerate(zip(r_inside, rho_inside)):
-            if i == 0:
-                M_arr[i] = 0.0  # M(0) = 0
-            else:
-                # Integrate using trapezoidal rule
-                M_arr[i] = scipy.integrate.trapezoid(
-                    4.0 * np.pi * r_inside[:i+1]**2 * rho_inside[:i+1],
-                    r_inside[:i+1]
-                )
+        if has_analytical:
+            # === ANALYTICAL METHOD (exact) ===
+            # Use Lane-Emden mass function: M(r)/M_cloud = m(ξ)/m(ξ_out)
+            f_m = params['densBE_f_m'].value          # m(ξ) interpolator
+            xi_out = params['densBE_xi_out'].value    # ξ at cloud edge
 
-    # ISM region (r > r_cloud)
+            # Get m(ξ_out) for normalization
+            m_dim_out = float(f_m(xi_out))
+
+            # Convert r → ξ (linear scaling: ξ/ξ_out = r/rCloud)
+            xi_inside = xi_out * (r_inside / rCloud)
+
+            # Get m(ξ) from Lane-Emden solution
+            m_inside = f_m(xi_inside)
+
+            # Scale to physical mass: M(r) = mCloud × m(ξ)/m(ξ_out)
+            # This guarantees M(rCloud) = mCloud exactly
+            M_arr[inside_cloud] = mCloud * (m_inside / m_dim_out)
+
+        else:
+            # === NUMERICAL FALLBACK ===
+            # Use trapezoidal integration (less accurate, ~0.5% error)
+            rho_inside = rho_arr[inside_cloud]
+
+            for i, (r, rho) in enumerate(zip(r_inside, rho_inside)):
+                if i == 0:
+                    M_arr[i] = 0.0
+                else:
+                    M_arr[i] = scipy.integrate.trapezoid(
+                        4.0 * np.pi * r_inside[:i+1]**2 * rho_inside[:i+1],
+                        r_inside[:i+1]
+                    )
+
+    # ISM region (r > r_cloud): add ISM contribution
     outside_cloud = r_arr > rCloud
     M_arr[outside_cloud] = mCloud + (4.0/3.0) * np.pi * rhoISM * (
         r_arr[outside_cloud]**3 - rCloud**3
