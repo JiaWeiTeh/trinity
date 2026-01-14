@@ -182,6 +182,7 @@ def create_BE_params(mCloud, nCore, Omega, mu=1.4, nISM=1.0):
         'gamma_adia': MockValue(5.0/3.0),
         'dens_profile': MockValue('densBE'),
         'densBE_f_rho_rhoc': MockValue(le_solution.f_rho_rhoc),
+        'densBE_f_m': MockValue(le_solution.f_m),  # Mass function m(ξ) for analytical mass
         'densBE_omega': MockValue(Omega),
         'densBE_xi_out': MockValue(be_result.xi_out),
         'densBE_Teff': MockValue(be_result.T_eff),
@@ -267,10 +268,13 @@ def main():
 
     for name, prof in profiles.items():
         rCloud = prof['rCloud']
+        rCore = prof['params']['rCore'].value
         # Create radial array from 0.01 pc to 1.5 × rCloud
         # Start from near zero for proper numerical integration (esp. BE sphere)
         r_min = 0.01  # pc - small but nonzero to avoid singularity
         r_arr = np.logspace(np.log10(r_min), np.log10(rCloud * 1.3), 500)
+        # Ensure key radii (rCore, rCloud) are included exactly in the array
+        r_arr = np.sort(np.unique(np.append(r_arr, [rCore, rCloud])))
 
         # Compute density profile (element-wise for scalars)
         n_arr = np.array([get_density_profile(r, prof['params']) for r in r_arr])
