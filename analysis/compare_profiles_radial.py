@@ -363,9 +363,9 @@ def main():
     print(f"\nSaved: {out_path}")
 
     # Also save PNG for quick viewing
-    out_path_png = 'fig/radial_profiles_comparison.png'
-    plt.savefig(out_path_png, dpi=150, bbox_inches='tight')
-    print(f"Saved: {out_path_png}")
+    # out_path_png = 'fig/radial_profiles_comparison.png'
+    # plt.savefig(out_path_png, dpi=150, bbox_inches='tight')
+    # print(f"Saved: {out_path_png}")
 
     # plt.close()
 
