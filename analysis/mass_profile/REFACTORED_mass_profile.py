@@ -453,7 +453,7 @@ def compute_enclosed_mass_bonnor_ebert(
     mCloud = params['mCloud'].value
     nISM = params['nISM'].value
     mu_neu = params['mu_neu'].value
-    rhoISM = nISM * mu_neu
+    rhoISM = nISM * mu_neu * DENSITY_CONVERSION  # Convert to physical units [Msun/pc³]
 
     M_arr = np.zeros_like(r_arr, dtype=float)
 
