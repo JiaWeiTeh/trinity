@@ -98,7 +98,7 @@ M_CLOUD = 1e7     # Msun
 N_CORE = 1e3      # cm⁻³
 MU = 1.4          # Mean molecular weight
 N_ISM = 1.0       # cm⁻³
-R_CORE_FRACTION = 0.1  # rCore/rCloud
+R_CORE = 1.0  # Fixed core radius [pc] - user specified
 
 
 # =============================================================================
@@ -111,17 +111,17 @@ class MockValue:
         self.value = value
 
 
-def create_powerlaw_params(mCloud, nCore, alpha, mu=1.4, nISM=1.0, rCore_frac=0.1):
-    """Create parameter dict for power-law density profile."""
+def create_powerlaw_params(mCloud, nCore, alpha, rCore, mu=1.4, nISM=1.0):
+    """Create parameter dict for power-law density profile with fixed rCore."""
 
     if alpha == 0:
         rCloud = compute_rCloud_homogeneous(mCloud, nCore, mu=mu)
-        rCore = rCloud * rCore_frac
     else:
-        rCloud, rCore = compute_rCloud_powerlaw(
+        rCloud, _ = compute_rCloud_powerlaw(
             mCloud, nCore, alpha,
-            rCore_fraction=rCore_frac, mu=mu
+            rCore=rCore, mu=mu
         )
+    # Use the fixed rCore (not recomputed from rCloud)
 
     # Edge density
     if alpha == 0:
@@ -147,8 +147,8 @@ def create_powerlaw_params(mCloud, nCore, alpha, mu=1.4, nISM=1.0, rCore_frac=0.
     return params, rCloud, rCore, nEdge
 
 
-def create_BE_params(mCloud, nCore, Omega, mu=1.4, nISM=1.0):
-    """Create parameter dict for Bonnor-Ebert sphere."""
+def create_BE_params(mCloud, nCore, Omega, rCore, mu=1.4, nISM=1.0):
+    """Create parameter dict for Bonnor-Ebert sphere with fixed rCore."""
 
     # Pre-solve Lane-Emden for efficiency
     le_solution = solve_lane_emden()
@@ -164,11 +164,7 @@ def create_BE_params(mCloud, nCore, Omega, mu=1.4, nISM=1.0):
 
     rCloud = be_result.r_out
     nEdge = be_result.n_out
-
-    # For BE sphere, rCore is defined by the BE profile itself
-    # We use the xi_out to scale - typically rCore ~ rCloud / xi_out
-    # But for simplicity, use same fraction as power-law
-    rCore = rCloud * R_CORE_FRACTION
+    # Use the fixed rCore passed as argument (not computed from rCloud)
 
     params = {
         'mCloud': MockValue(mCloud),
@@ -215,7 +211,7 @@ def main():
 
     # Power-law α = 0 (homogeneous)
     params_a0, rCloud_a0, rCore_a0, nEdge_a0 = create_powerlaw_params(
-        M_CLOUD, N_CORE, alpha=0, mu=MU
+        M_CLOUD, N_CORE, alpha=0, rCore=R_CORE, mu=MU
     )
     profiles['α = 0'] = {
         'params': params_a0,
@@ -226,7 +222,7 @@ def main():
 
     # Power-law α = -1
     params_a1, rCloud_a1, rCore_a1, nEdge_a1 = create_powerlaw_params(
-        M_CLOUD, N_CORE, alpha=-1, mu=MU
+        M_CLOUD, N_CORE, alpha=-1, rCore=R_CORE, mu=MU
     )
     profiles['α = -1'] = {
         'params': params_a1,
@@ -237,7 +233,7 @@ def main():
 
     # Power-law α = -2 (isothermal)
     params_a2, rCloud_a2, rCore_a2, nEdge_a2 = create_powerlaw_params(
-        M_CLOUD, N_CORE, alpha=-2, mu=MU
+        M_CLOUD, N_CORE, alpha=-2, rCore=R_CORE, mu=MU
     )
     profiles['α = -2'] = {
         'params': params_a2,
@@ -247,9 +243,8 @@ def main():
     }
 
     # Bonnor-Ebert at critical omega
-    # Note: BE sphere uses mu=2.33 (molecular gas)
     params_BE, rCloud_BE, rCore_BE, nEdge_BE = create_BE_params(
-        M_CLOUD, N_CORE, Omega=OMEGA_CRITICAL, mu=MU
+        M_CLOUD, N_CORE, Omega=OMEGA_CRITICAL, rCore=R_CORE, mu=MU
     )
     profiles['BE (critical)'] = {
         'params': params_BE,
