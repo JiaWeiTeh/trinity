@@ -129,6 +129,16 @@ def create_powerlaw_params(mCloud, nCore, alpha, rCore, mu=1.4, nISM=1.0):
     else:
         nEdge = nCore * (rCloud / rCore) ** alpha
 
+    # Validate: warn if nEdge < nISM (invalid physical configuration)
+    if nEdge < nISM and alpha != 0:
+        # Calculate minimum rCore such that nEdge = nISM
+        # nISM = nCore × (rCloud/rCore_min)^α  =>  rCore_min = rCloud × (nCore/nISM)^(1/α)
+        rCore_min = rCloud * (nCore / nISM) ** (1.0 / alpha)
+        print(f"  ⚠️  WARNING: nEdge ({nEdge:.2e}) < nISM ({nISM:.2e}) for α={alpha}")
+        print(f"      Current rCore = {rCore:.2f} pc is too small.")
+        print(f"      Minimum rCore for nEdge = nISM: {rCore_min:.2f} pc")
+        print(f"      Please increase R_CORE to at least {rCore_min:.2f} pc.")
+
     params = {
         'mCloud': MockValue(mCloud),
         'nCore': MockValue(nCore),
