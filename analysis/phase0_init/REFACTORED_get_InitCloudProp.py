@@ -199,16 +199,19 @@ def _init_powerlaw_cloud(params: Dict[str, Any]) -> CloudProperties:
         # nISM = nCore * (rCloud/rCore_min)^alpha
         # rCore_min = rCloud * (nCore/nISM)^(1/alpha)
         rCore_min = rCloud * (nCore / nISM) ** (1.0 / alpha)
+        # Calculate alternative: minimum nCore to keep rCore fixed
+        # nCore_min = nISM * (rCloud/rCore)^(-alpha)
+        nCore_min = nISM * (rCloud / rCore) ** (-alpha)
         logger.warning(
             f"nEdge ({nEdge:.2e} cm^-3) < nISM ({nISM:.2e} cm^-3)!\n"
             f"  Current rCore = {rCore:.3f} pc is too small.\n"
-            f"  Minimum rCore for nEdge = nISM: {rCore_min:.3f} pc\n"
-            f"  Please increase rCore to at least {rCore_min:.3f} pc."
+            f"  Option 1: Increase rCore to at least {rCore_min:.3f} pc\n"
+            f"  Option 2: Increase nCore to at least {nCore_min:.2e} cm^-3 (to keep rCore={rCore:.3f} pc)"
         )
         # Don't silently adjust - raise error so user fixes input
         raise ValueError(
             f"rCore={rCore:.3f} pc too small: nEdge={nEdge:.2e} < nISM={nISM:.2e}. "
-            f"Minimum rCore = {rCore_min:.3f} pc"
+            f"Min rCore={rCore_min:.3f} pc OR min nCore={nCore_min:.2e} cm^-3"
         )
 
     # Store computed values back to params
