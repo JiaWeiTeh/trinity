@@ -308,7 +308,7 @@ def main():
     # Left panel: Density profile n(r)
     ax1 = axes[0]
     for name, prof in profiles.items():
-        ax1.loglog(prof['r'], prof['n'],
+        ax1.plot(prof['r'], prof['n'],
                    color=prof['color'], ls=prof['ls'], lw=2,
                    label=name)
         # Mark rCloud
@@ -329,7 +329,7 @@ def main():
     # Right panel: Mass profile M(r)
     ax2 = axes[1]
     for name, prof in profiles.items():
-        ax2.loglog(prof['r'], prof['M'],
+        ax2.plot(prof['r'], prof['M'],
                    color=prof['color'], ls=prof['ls'], lw=2,
                    label=name)
         # Mark rCloud
@@ -346,6 +346,9 @@ def main():
     ax2.set_xlim(0.5, r_max)
     ax2.set_ylim(1e3, M_CLOUD * 2)
     ax2.grid(True, alpha=0.3, which='both')
+
+    ax1.set_yscale('log')
+    ax2.set_yscale('log')
 
     plt.tight_layout()
 
