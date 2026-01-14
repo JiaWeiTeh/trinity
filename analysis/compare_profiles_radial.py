@@ -362,10 +362,10 @@ def main():
     plt.tight_layout()
 
     # Save figure
-    os.makedirs('fig', exist_ok=True)
-    out_path = 'fig/radial_profiles_comparison.pdf'
-    plt.savefig(out_path, dpi=150, bbox_inches='tight')
-    print(f"\nSaved: {out_path}")
+    # os.makedirs('fig', exist_ok=True)
+    # out_path = 'fig/radial_profiles_comparison.pdf'
+    # plt.savefig(out_path, dpi=150, bbox_inches='tight')
+    # print(f"\nSaved: {out_path}")
 
     # Also save PNG for quick viewing
     # out_path_png = 'fig/radial_profiles_comparison.png'
