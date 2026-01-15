@@ -14,8 +14,8 @@ REFACTORED VERSION:
 """
 
 import numpy as np
-from src.cloud_properties import bonnorEbertSphere
-
+# from src.cloud_properties import bonnorEbertSphere
+# TODO: add BE sphere
 
 # =============================================================================
 # Helper functions for scalar/array consistency
@@ -130,27 +130,31 @@ def get_density_profile(r, params):
     # =============================================================================
     # Bonnor-Ebert sphere profile
     # =============================================================================
-    elif params['dens_profile'].value == 'densBE':
-        f_rho_rhoc = params['densBE_f_rho_rhoc'].value
+    # elif params['dens_profile'].value == 'densBE':
+    #     f_rho_rhoc = params['densBE_f_rho_rhoc'].value
 
-        # Convert radius to dimensionless xi coordinate
-        xi_arr = bonnorEbertSphere.r2xi(r_arr, params)
+    #     # Convert radius to dimensionless xi coordinate
+    #     if _USE_BE_V2:
+    #         # v2 module: r2xi(r, params) where r is in pc
+    #         xi_arr = be_r2xi(r_arr, params)
+    #     else:
+    #         # Old module: different parameter handling
+    #         xi_arr = bonnorEbertSphere.r2xi(r_arr, params)
 
-        # Get density ratio from interpolation function
-        rho_rhoc = f_rho_rhoc(xi_arr)
+    #     # Get density ratio from interpolation function
+    #     rho_rhoc = f_rho_rhoc(xi_arr)
 
-        # Calculate number density
-        n_arr = rho_rhoc * nCore
+    #     # Calculate number density
+    #     n_arr = rho_rhoc * nCore
 
-        # Outside cloud: ISM density
-        n_arr[r_arr > rCloud] = nISM
+    #     # Outside cloud: ISM density
+    #     n_arr[r_arr > rCloud] = nISM
 
     else:
         raise ValueError(f"Unknown density profile: {params['dens_profile'].value}")
 
     # Convert back to scalar if input was scalar
     return _to_output(n_arr, was_scalar)
-
 
 # =============================================================================
 # Tests
@@ -338,59 +342,6 @@ if __name__ == "__main__":
     print("All tests passed!")
     print("=" * 60)
 
-
-def get_density_profile_OLD(r_arr,
-                         params,
-                         ):
-    """
-    Density profile (if r_arr is an array), otherwise the density at point r.
-    """
-    
-    nISM = params['nISM'].value
-    rCloud = params['rCloud'].value
-    nCore = params['nCore'].value
-    rCore = params['rCore'].value
-    nCore = params['nCore'].value
-
-    if type(r_arr) is not np.ndarray:
-        r_arr = np.array([r_arr])
-        
-    # =============================================================================
-    # For a power-law profile
-    # =============================================================================
-    
-    if params['dens_profile'].value == 'densPL':
-        alpha = params['densPL_alpha'].value
-        # Initialise with power-law
-        # for different alphas:
-        if alpha == 0:
-            n_arr = nISM * r_arr ** alpha
-            n_arr[r_arr <= rCloud] = nCore
-        else:
-            n_arr = nCore * (r_arr/rCore)**alpha
-            n_arr[r_arr <= rCore] = nCore
-            n_arr[r_arr > rCloud] = nISM
-        
-        
-    elif params['dens_profile'].value == 'densBE':
-        
-        f_rho_rhoc = params['densBE_f_rho_rhoc'].value
-        
-        xi_arr = bonnorEbertSphere.r2xi(r_arr, params)
-        
-        # print(xi_arr)
-
-        rho_rhoc = f_rho_rhoc(xi_arr)
-        
-        n_arr = rho_rhoc * params['nCore'] 
-        
-        n_arr[r_arr > rCloud] = nISM
-        
-        # print(n_arr)
-        
-    # return n(r)
-    return n_arr
-        
 
 
 

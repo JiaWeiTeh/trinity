@@ -49,32 +49,32 @@ from typing import Union, Tuple
 import sys
 import os
 
-# Add project root and analysis directories to path for imports
-_project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-_analysis_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-_functions_dir = os.path.join(_project_root, 'src', '_functions')
-if _project_root not in sys.path:
-    sys.path.insert(0, _project_root)
-if _analysis_dir not in sys.path:
-    sys.path.insert(0, _analysis_dir)
-if _functions_dir not in sys.path:
-    sys.path.insert(0, _functions_dir)
+# # Add project root and analysis directories to path for imports
+# _project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# _analysis_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# _functions_dir = os.path.join(_project_root, 'src', '_functions')
+# if _project_root not in sys.path:
+#     sys.path.insert(0, _project_root)
+# if _analysis_dir not in sys.path:
+#     sys.path.insert(0, _analysis_dir)
+# if _functions_dir not in sys.path:
+#     sys.path.insert(0, _functions_dir)
 
 from density_profile.REFACTORED_density_profile import get_density_profile
 
 # Import unit conversions and physical constants from central module
 from unit_conversions import CGS, INV_CONV
 
-# Import utility for computing rCloud from physical parameters
-from src.cloud_properties.powerLawSphere import (
-    compute_rCloud_homogeneous,
-    compute_rCloud_powerlaw
-)
+# # Import utility for computing rCloud from physical parameters
+# from src.cloud_properties.powerLawSphere import (
+#     compute_rCloud_homogeneous,
+#     compute_rCloud_powerlaw
+# )
 
-# Import Bonnor-Ebert sphere module for testing
-_bonnor_ebert_dir = os.path.join(_analysis_dir, 'bonnorEbert')
-if _bonnor_ebert_dir not in sys.path:
-    sys.path.insert(0, _bonnor_ebert_dir)
+# # Import Bonnor-Ebert sphere module for testing
+# _bonnor_ebert_dir = os.path.join(_analysis_dir, 'bonnorEbert')
+# if _bonnor_ebert_dir not in sys.path:
+#     sys.path.insert(0, _bonnor_ebert_dir)
 
 logger = logging.getLogger(__name__)
 
@@ -91,7 +91,11 @@ M_H_CGS = CGS.m_H                # [g] hydrogen mass
 # ρ [g/cm³] = n [cm⁻³] × μ × m_H [g]
 # ρ [Msun/pc³] = ρ [g/cm³] × (pc_to_cm)³ / Msun_to_g
 #              = n × μ × m_H × (pc_to_cm)³ / Msun_to_g
-DENSITY_CONVERSION = M_H_CGS * PC_TO_CM**3 / MSUN_TO_G  # ≈ 2.47e-2
+# WRONG because mu is in grams already.
+# DENSITY_CONVERSION = M_H_CGS * PC_TO_CM**3 / MSUN_TO_G  # ≈ 2.47e-2
+
+
+DENSITY_CONVERSION = PC_TO_CM**3 / MSUN_TO_G  # pc^3/Msun, no m_H
 
 
 # Type aliases for clarity
@@ -118,10 +122,9 @@ def _to_output(result: np.ndarray, was_scalar: bool):
 
 
 def get_mass_density(
-    r: ScalarOrArray,
+    r ,
     params,
-    physical_units: bool = True
-) -> ScalarOrArray:
+) :
     """
     Get mass density ρ(r) from number density n(r).
 
@@ -134,9 +137,6 @@ def get_mass_density(
         Radius/radii [pc]
     params : dict
         Parameter dictionary
-    physical_units : bool, optional
-        If True (default), return ρ in [Msun/pc³] for physical mass integration.
-        If False, return ρ in internal units (n × μ) for backward compatibility.
 
     Returns
     -------
@@ -168,21 +168,16 @@ def get_mass_density(
     mu_arr = np.where(r_arr <= rCloud, mu_ion, mu_neu)
 
     # Mass density = number density × mean molecular weight
-    rho_arr = n_arr * mu_arr
-
-    # Convert to physical units if requested
-    if physical_units:
-        rho_arr = rho_arr * DENSITY_CONVERSION
+    rho_arr = n_arr * mu_arr * DENSITY_CONVERSION
 
     return _to_output(rho_arr, was_scalar)
 
 
 def get_mass_profile(
-    r: ScalarOrArray,
+    r ,
     params,
-    return_mdot: bool = False,
-    rdot: ScalarOrArray = None
-) -> Union[ScalarOrArray, Tuple[ScalarOrArray, ScalarOrArray]]:
+    return_mdot  = False,
+    rdot  = None )  :
     """
     Calculate mass profile M(r) and optionally dM/dt.
 
@@ -371,7 +366,7 @@ def compute_enclosed_mass_powerlaw(
     # Extract parameters
     nCore = params['nCore'].value
     nISM = params['nISM'].value
-    mu_ion = params['mu_ion'].value
+    # mu_ion = params['mu_ion'].value
     mu_neu = params['mu_neu'].value
     rCore = params['rCore'].value
     rCloud = params['rCloud'].value
