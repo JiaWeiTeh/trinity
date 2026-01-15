@@ -29,6 +29,8 @@ import matplotlib.colors as mcolors
 import matplotlib.patheffects as path_effects
 from scipy.interpolate import RectBivariateSpline
 from scipy.optimize import brentq
+from scipy.ndimage import gaussian_filter
+from matplotlib.patches import Patch
 import cmasher as cmr
 import sys
 import os
@@ -59,8 +61,15 @@ DENSITY_CONVERSION = M_H_CGS * PC_TO_CM**3 / MSUN_TO_G
 # Plot settings
 FONTSIZE = 12
 
-# Shared contour levels for rCore (reduced to avoid clutter)
-shared_levels = np.array([0.1, 0.5, 1.0, 2.0, 5.0])
+# Shared contour levels for rCore (updated for 0.01-1 pc range)
+shared_levels = np.array([0.05, 0.1, 0.2, 0.5, 1.0])
+
+# Forbidden zone colors by failure reason
+FORBIDDEN_COLORS = {
+    1: '#E0E0E0',  # Light gray - rCloud > 200 pc
+    2: '#A0A0A0',  # Medium gray - nEdge < nISM
+    3: '#606060',  # Dark gray - mass error
+}
 
 
 def compute_rCloud_homogeneous(M_cloud, nCore, mu=2.33):
@@ -219,6 +228,53 @@ def check_constraints(rCloud, rCore, nCore, nISM, alpha, M_cloud, mu,
     return True
 
 
+def check_constraints_detailed(rCloud, rCore, nCore, nISM, alpha, M_cloud, mu,
+                               r_max=200.0, mass_tol=0.001):
+    """
+    Check constraints and return failure reason code.
+
+    Returns
+    -------
+    reason : int
+        0 = valid (all constraints satisfied)
+        1 = rCloud > r_max (cloud too large)
+        2 = nEdge < nISM (edge density too low)
+        3 = mass_error > tol (mass inconsistency or no solution)
+    """
+    if np.isnan(rCloud):
+        return 3  # No solution found - treat as mass error
+
+    # 1. Radius constraint
+    if rCloud > r_max:
+        return 1
+
+    # 2. Edge density constraint
+    if alpha == 0:
+        nEdge = nCore
+    else:
+        nEdge = nCore * (rCloud / rCore) ** alpha
+
+    if nEdge < nISM:
+        return 2
+
+    # 3. Mass consistency check
+    rhoCore = nCore * mu * DENSITY_CONVERSION
+    if alpha == 0:
+        M_computed = (4.0/3.0) * np.pi * rCloud**3 * rhoCore
+    else:
+        M_computed = 4.0 * np.pi * rhoCore * (
+            rCore**3 / 3.0 +
+            (rCloud**(3.0 + alpha) - rCore**(3.0 + alpha)) /
+            ((3.0 + alpha) * rCore**alpha)
+        )
+
+    mass_error = abs(M_computed - M_cloud) / M_cloud if M_cloud > 0 else 0
+    if mass_error > mass_tol:
+        return 3
+
+    return 0  # Valid
+
+
 def find_valid_rCore(M_cloud, nCore, alpha, rCore_range, nISM=1.0, r_max=200.0,
                      mu=2.33, mass_tol=0.001):
     """
@@ -312,8 +368,77 @@ def compute_rCore_grid(M_values, n_core_values, alpha, rCore_range,
     return rCore_grid, rCloud_grid
 
 
+def compute_failure_reason_grid(M_values, n_core_values, alpha, rCore_range,
+                                nISM=1.0, r_max=200.0, mu=2.33, mass_tol=0.001):
+    """
+    Compute failure reason for each forbidden point in parameter grid.
+
+    For each (M, nCore) combination, tests all rCore values and determines
+    which constraint fails most often.
+
+    Parameters
+    ----------
+    M_values : array-like
+        Cloud mass values [Msun]
+    n_core_values : array-like
+        Core number density values [cm^-3]
+    alpha : float
+        Power-law exponent
+    rCore_range : array-like
+        Array of rCore values to search [pc]
+    nISM : float
+        ISM density [cm^-3]
+    r_max : float
+        Maximum cloud radius [pc]
+    mu : float
+        Mean molecular weight
+    mass_tol : float
+        Maximum mass error tolerance
+
+    Returns
+    -------
+    reason_grid : ndarray
+        2D array of failure reasons:
+          0 = valid (has valid rCore)
+          1 = rCloud > r_max (cloud too large)
+          2 = nEdge < nISM (edge density too low)
+          3 = mass_error > tol (mass inconsistency)
+    """
+    n_n = len(n_core_values)
+    n_m = len(M_values)
+
+    reason_grid = np.zeros((n_n, n_m), dtype=int)
+
+    for i, nCore in enumerate(n_core_values):
+        for j, M_cloud in enumerate(M_values):
+            # Check if ANY rCore value is valid
+            has_valid = False
+            failure_counts = {1: 0, 2: 0, 3: 0}
+
+            for rCore in rCore_range:
+                rCloud = compute_rCloud_powerlaw(M_cloud, nCore, alpha, rCore, mu)
+                reason = check_constraints_detailed(
+                    rCloud, rCore, nCore, nISM, alpha, M_cloud, mu,
+                    r_max, mass_tol
+                )
+
+                if reason == 0:
+                    has_valid = True
+                    break
+                else:
+                    failure_counts[reason] += 1
+
+            if has_valid:
+                reason_grid[i, j] = 0  # Valid
+            else:
+                # Return the most common failure reason
+                reason_grid[i, j] = max(failure_counts, key=failure_counts.get)
+
+    return reason_grid
+
+
 def plot_rCore_heatmap(ax, M_values, n_core_values, rCore_grid, alpha,
-                       vmin=0.01, vmax=5.0, contour_levels=None):
+                       reason_grid=None, vmin=0.01, vmax=1.0, contour_levels=None):
     """
     Create 2D colormap of valid rCore vs (M_cloud, n_core) for power-law profile.
 
@@ -329,6 +454,8 @@ def plot_rCore_heatmap(ax, M_values, n_core_values, rCore_grid, alpha,
         2D array of rCore values [pc], NaN for forbidden regions
     alpha : float
         Power-law exponent (for title)
+    reason_grid : ndarray, optional
+        2D array of failure reasons for forbidden zones
     vmin, vmax : float
         Color scale limits [pc]
     contour_levels : array-like, optional
@@ -389,7 +516,22 @@ def plot_rCore_heatmap(ax, M_values, n_core_values, rCore_grid, alpha,
 
     # Restore NaN mask
     forbidden_mask = rCore_fine_log < -100
-    rCore_fine = 10**rCore_fine_log
+
+    # Apply Gaussian smoothing for smoother contours (only to valid regions)
+    rCore_fine_log_smoothed = rCore_fine_log.copy()
+    rCore_fine_log_smoothed[forbidden_mask] = np.nan
+    # Smooth valid regions only
+    valid_mask = ~forbidden_mask
+    if np.any(valid_mask):
+        # Create temporary array for smoothing
+        temp = np.where(forbidden_mask, 0, rCore_fine_log)
+        temp_smoothed = gaussian_filter(temp, sigma=2.0)
+        # Normalize by valid counts to avoid edge effects
+        count_smoothed = gaussian_filter(valid_mask.astype(float), sigma=2.0)
+        count_smoothed[count_smoothed < 0.01] = 0.01  # Avoid division by zero
+        rCore_fine_log_smoothed = np.where(valid_mask, temp_smoothed / count_smoothed, np.nan)
+
+    rCore_fine = 10**np.where(forbidden_mask, -999, rCore_fine_log_smoothed)
     rCore_fine[forbidden_mask] = np.nan
 
     # Create masked array for plotting
@@ -438,21 +580,35 @@ def plot_rCore_heatmap(ax, M_values, n_core_values, rCore_grid, alpha,
         except ValueError:
             pass  # No contour lines to draw
 
-    # Overlay forbidden zones (where rCore is NaN)
-    # Create mask: 1 = forbidden, 0 = valid
-    forbidden_float = np.where(forbidden_mask, 1.0, 0.0)
-
-    if np.any(forbidden_mask):
-        # White fill for forbidden zones
-        ax.contourf(
-            M_fine_grid, n_fine_grid, forbidden_float,
-            levels=[0.5, 1.5],
-            colors='white',
-            alpha=0.85,
-            zorder=5
+    # Overlay forbidden zones with color-coded reasons
+    if np.any(forbidden_mask) and reason_grid is not None:
+        # Interpolate reason_grid to fine grid using nearest neighbor
+        from scipy.interpolate import RegularGridInterpolator
+        reason_interp = RegularGridInterpolator(
+            (n_log, M_log), reason_grid.astype(float),
+            method='nearest', bounds_error=False, fill_value=0
         )
+        n_fine_log_grid, M_fine_log_grid = np.meshgrid(n_fine_log, M_fine_log, indexing='ij')
+        points = np.stack([n_fine_log_grid.ravel(), M_fine_log_grid.ravel()], axis=-1)
+        reason_fine = reason_interp(points).reshape(n_fine_log_grid.shape)
 
-        # Dashed boundary line
+        # Apply forbidden mask - only show reasons where actually forbidden
+        reason_fine_masked = np.where(forbidden_mask, reason_fine, 0)
+
+        # Draw each failure reason with different color
+        for reason_code, color in FORBIDDEN_COLORS.items():
+            reason_mask = (reason_fine_masked == reason_code)
+            if np.any(reason_mask):
+                ax.contourf(
+                    M_fine_grid, n_fine_grid, reason_mask.astype(float),
+                    levels=[0.5, 1.5],
+                    colors=[color],
+                    alpha=0.9,
+                    zorder=5
+                )
+
+        # Dashed boundary line around all forbidden zones
+        forbidden_float = np.where(forbidden_mask, 1.0, 0.0)
         ax.contour(
             M_fine_grid, n_fine_grid, forbidden_float,
             levels=[0.5],
@@ -462,22 +618,24 @@ def plot_rCore_heatmap(ax, M_values, n_core_values, rCore_grid, alpha,
             zorder=6
         )
 
-        # Add "Forbidden" label in center of forbidden region
-        forbidden_indices = np.where(forbidden_mask)
-        if len(forbidden_indices[0]) > 10:  # Only label if region is large enough
-            center_i = int(np.mean(forbidden_indices[0]))
-            center_j = int(np.mean(forbidden_indices[1]))
-            x_center = M_fine[center_j]
-            y_center = n_fine[center_i]
-            ax.annotate(
-                'Forbidden',
-                xy=(x_center, y_center),
-                fontsize=FONTSIZE - 1,
-                ha='center', va='center',
-                color='gray',
-                style='italic',
-                zorder=7
-            )
+    elif np.any(forbidden_mask):
+        # Fallback if no reason_grid provided - use white
+        forbidden_float = np.where(forbidden_mask, 1.0, 0.0)
+        ax.contourf(
+            M_fine_grid, n_fine_grid, forbidden_float,
+            levels=[0.5, 1.5],
+            colors='white',
+            alpha=0.85,
+            zorder=5
+        )
+        ax.contour(
+            M_fine_grid, n_fine_grid, forbidden_float,
+            levels=[0.5],
+            colors='black',
+            linestyles='dashed',
+            linewidths=1.5,
+            zorder=6
+        )
 
     # Title with alpha value
     if alpha == 0:
@@ -505,8 +663,8 @@ def main():
     # Alpha values to plot
     alpha_values = [0, -0.5, -1, -2]
 
-    # rCore search range: 0.01 to 5 pc
-    rCore_range = np.logspace(np.log10(0.01), np.log10(5.0), 50)
+    # rCore search range: 0.01 to 1 pc (increased resolution for stability)
+    rCore_range = np.logspace(np.log10(0.01), np.log10(1.0), 100)
 
     # Physical constraints
     nISM = 1.0      # ISM density [cm^-3]
@@ -524,8 +682,9 @@ def main():
     print(f"  nEdge >= {nISM:.1f} cm^-3")
     print(f"  Mass error <= {mass_tol*100:.1f}%")
 
-    # Compute rCore grids for each alpha
+    # Compute rCore grids and reason grids for each alpha
     grids = {}
+    reason_grids = {}
     for alpha in alpha_values:
         print(f"\n  Computing alpha = {alpha}...")
         rCore_grid, rCloud_grid = compute_rCore_grid(
@@ -533,6 +692,13 @@ def main():
             nISM=nISM, r_max=r_max, mu=mu, mass_tol=mass_tol
         )
         grids[alpha] = rCore_grid
+
+        # Compute failure reasons for forbidden zones
+        reason_grid = compute_failure_reason_grid(
+            M_values, n_core_values, alpha, rCore_range,
+            nISM=nISM, r_max=r_max, mu=mu, mass_tol=mass_tol
+        )
+        reason_grids[alpha] = reason_grid
 
         n_valid = np.sum(~np.isnan(rCore_grid))
         n_total = rCore_grid.size
@@ -551,7 +717,8 @@ def main():
         ax = axes[idx]
         pcm = plot_rCore_heatmap(
             ax, M_values, n_core_values, grids[alpha], alpha,
-            vmin=0.01, vmax=5.0, contour_levels=shared_levels
+            reason_grid=reason_grids[alpha],
+            vmin=0.01, vmax=1.0, contour_levels=shared_levels
         )
         if pcm is not None:
             pcm_valid = pcm
@@ -571,10 +738,23 @@ def main():
 
     # Main title
     fig.suptitle(r'Power-Law Density Profile: Valid $r_{\rm core}$ vs $(M_{\rm cloud}, n_{\rm core})$' + '\n' +
-                 r'White regions: no valid $r_{\rm core}$ in [0.01, 5] pc satisfies constraints',
+                 r'Shaded regions: no valid $r_{\rm core}$ in [0.01, 1] pc satisfies constraints',
                  fontsize=FONTSIZE, y=0.98)
 
-    plt.tight_layout(rect=[0, 0, 0.88, 0.93])
+    # Add shared legend for forbidden zone colors
+    legend_elements = [
+        Patch(facecolor=FORBIDDEN_COLORS[1], edgecolor='black',
+              label=r'$r_{\rm cloud} > 200$ pc'),
+        Patch(facecolor=FORBIDDEN_COLORS[2], edgecolor='black',
+              label=r'$n_{\rm edge} < n_{\rm ISM}$'),
+        Patch(facecolor=FORBIDDEN_COLORS[3], edgecolor='black',
+              label='Mass error > 0.1%'),
+    ]
+    fig.legend(handles=legend_elements, loc='lower center', ncol=3,
+               fontsize=10, bbox_to_anchor=(0.44, 0.02),
+               frameon=True, fancybox=True, shadow=False)
+
+    plt.tight_layout(rect=[0, 0.06, 0.88, 0.93])
 
     # Save figure
     output_file = os.path.join(_script_dir, 'powerlaw_rCore_validity_map.pdf')
