@@ -266,9 +266,269 @@ def create_PLSphere(params):
         # density at edge should just be the average density
         nEdge = nCore
     
-    # sanity check
-    if nEdge < nISM:
-        print(f'nCore: {nCore}, nISM: {nISM}')
-        sys.exit(f"The density at the edge of the cloud ({nEdge}) is lower than the ISM ({nISM}); please consider increasing nCore, or decreasing rCore")
+    # Validate cloud parameters
+    validation = validate_cloud_params(
+        mCloud=mCloud,
+        nCore=nCore,
+        rCore=rCore,
+        rCloud=rCloud,
+        nEdge=nEdge,
+        nISM=nISM,
+        alpha=alpha,
+        mu=mu_ion
+    )
+
+    # Print warnings
+    for warning in validation['warnings']:
+        print(warning)
+
+    # Stop on critical errors
+    if validation['errors']:
+        for error in validation['errors']:
+            print(error)
+        sys.exit("Simulation stopped due to invalid cloud parameters.")
+
     # return
     return rCloud, nEdge
+
+
+# =============================================================================
+# Validation Functions
+# =============================================================================
+
+def validate_cloud_params(mCloud, nCore, rCore, rCloud, nEdge, nISM, alpha, mu,
+                          tolerance=0.001, r_max=200.0):
+    """
+    Validate cloud parameters for physical consistency.
+
+    Checks:
+    1. Mass consistency: M(rCloud) within tolerance of mCloud
+    2. Radius limit: rCloud <= r_max (default 200 pc, typical GMC)
+    3. Edge density: nEdge >= nISM
+
+    Parameters
+    ----------
+    mCloud : float
+        Expected cloud mass [Msun]
+    nCore : float
+        Core number density [cm⁻³]
+    rCore : float
+        Core radius [pc]
+    rCloud : float
+        Cloud radius [pc]
+    nEdge : float
+        Edge density [cm⁻³]
+    nISM : float
+        ISM density [cm⁻³]
+    alpha : float
+        Power-law exponent
+    mu : float
+        Mean molecular weight
+    tolerance : float
+        Maximum allowed relative mass error (default 0.1% = 0.001)
+    r_max : float
+        Maximum cloud radius [pc] (default 200)
+
+    Returns
+    -------
+    dict with keys:
+        'valid': bool - All checks passed (no errors)
+        'errors': list[str] - Critical errors (simulation should stop)
+        'warnings': list[str] - Non-critical warnings
+        'mass_error': float - Relative mass error
+        'M_computed': float - Computed mass at rCloud [Msun]
+    """
+    errors = []
+    warnings = []
+
+    # 1. Compute mass at rCloud and check consistency
+    rhoCore = nCore * mu * DENSITY_CONVERSION  # Msun/pc³
+
+    if alpha == 0:
+        M_computed = (4.0/3.0) * np.pi * rCloud**3 * rhoCore
+    else:
+        M_computed = 4.0 * np.pi * rhoCore * (
+            rCore**3 / 3.0 +
+            (rCloud**(3.0 + alpha) - rCore**(3.0 + alpha)) /
+            ((3.0 + alpha) * rCore**alpha)
+        )
+
+    mass_error = abs(M_computed - mCloud) / mCloud if mCloud > 0 else 0
+
+    # Mass check (CRITICAL - stops simulation)
+    if mass_error > tolerance:
+        errors.append(
+            f"CRITICAL: Mass inconsistency detected!\n"
+            f"  Expected mCloud = {mCloud:.4e} Msun\n"
+            f"  Computed M(rCloud) = {M_computed:.4e} Msun\n"
+            f"  Relative error = {mass_error*100:.4f}% (tolerance: {tolerance*100:.3f}%)\n"
+            f"  Check: nCore, rCore, mCloud, densPL_alpha combination"
+        )
+
+    # 2. Radius check (WARNING)
+    if rCloud > r_max:
+        warnings.append(
+            f"WARNING: Cloud radius ({rCloud:.1f} pc) exceeds typical single GMC size ({r_max:.0f} pc).\n"
+            f"  Such large clouds may be subject to galactic shear."
+        )
+
+    # 3. Edge density check (CRITICAL)
+    if nEdge < nISM:
+        errors.append(
+            f"CRITICAL: Edge density ({nEdge:.2e} cm⁻³) < ISM density ({nISM:.2e} cm⁻³)!\n"
+            f"  Consider: increasing nCore, decreasing rCore, or reducing |alpha|"
+        )
+
+    # If critical errors, find and suggest valid alternatives
+    if errors:
+        suggestions = find_valid_alternatives(
+            mCloud_orig=mCloud,
+            nCore_orig=nCore,
+            rCore_orig=rCore,
+            alpha=alpha,
+            nISM=nISM,
+            mu=mu,
+            n_suggestions=3
+        )
+        if suggestions:
+            errors.append("\n" + "=" * 50)
+            errors.append("SUGGESTED VALID PARAMETER COMBINATIONS:")
+            errors.append("=" * 50)
+            for i, s in enumerate(suggestions, 1):
+                errors.append(
+                    f"  {i}. mCloud = {s['mCloud']:.2e} Msun, "
+                    f"nCore = {s['nCore']:.2e} cm⁻³, "
+                    f"rCore = {s['rCore']:.3f} pc\n"
+                    f"     → rCloud = {s['rCloud']:.2f} pc, "
+                    f"nEdge = {s['nEdge']:.2e} cm⁻³, "
+                    f"mass_error = {s['mass_error']*100:.4f}%"
+                )
+        else:
+            errors.append("\nNo valid alternatives found within ±50% of current parameters.")
+
+    return {
+        'valid': len(errors) == 0,
+        'errors': errors,
+        'warnings': warnings,
+        'mass_error': mass_error,
+        'M_computed': M_computed,
+        'rCloud': rCloud,
+        'nEdge': nEdge
+    }
+
+
+def find_valid_alternatives(mCloud_orig, nCore_orig, rCore_orig, alpha, nISM, mu,
+                            n_suggestions=3, search_range=0.5, r_max=200.0,
+                            mass_tolerance=0.001):
+    """
+    Search nearby parameter space for valid (mCloud, nCore, rCore) triplets.
+
+    Searches ±search_range (default 50%) around current values to find
+    combinations that satisfy all constraints:
+    - Mass consistency (M(rCloud) matches mCloud within tolerance)
+    - Edge density >= nISM
+    - rCloud <= r_max
+
+    Parameters
+    ----------
+    mCloud_orig : float
+        Original cloud mass [Msun]
+    nCore_orig : float
+        Original core density [cm⁻³]
+    rCore_orig : float
+        Original core radius [pc]
+    alpha : float
+        Power-law exponent
+    nISM : float
+        ISM density [cm⁻³]
+    mu : float
+        Mean molecular weight
+    n_suggestions : int
+        Maximum number of suggestions to return (default 3)
+    search_range : float
+        Search range as fraction (default 0.5 = ±50%)
+    r_max : float
+        Maximum cloud radius [pc] (default 200)
+    mass_tolerance : float
+        Maximum relative mass error (default 0.1% = 0.001)
+
+    Returns
+    -------
+    list of dict
+        Each dict contains 'mCloud', 'nCore', 'rCore', 'rCloud', 'nEdge', 'mass_error'
+        Sorted by smallest change from original parameters.
+    """
+    # Generate search grid
+    # For mCloud and nCore: ±50% factors
+    mCloud_factors = np.array([1.0 - search_range, 0.8, 0.9, 1.0, 1.1, 1.2, 1.0 + search_range])
+    nCore_factors = np.array([1.0 - search_range, 0.8, 0.9, 1.0, 1.1, 1.2, 1.0 + search_range])
+    # For rCore: finer grid since it's often the key parameter
+    rCore_factors = np.array([0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5])
+
+    valid_combinations = []
+
+    for mf in mCloud_factors:
+        for nf in nCore_factors:
+            for rf in rCore_factors:
+                # Skip original combination
+                if mf == 1.0 and nf == 1.0 and rf == 1.0:
+                    continue
+
+                mCloud_test = mCloud_orig * mf
+                nCore_test = nCore_orig * nf
+                rCore_test = rCore_orig * rf
+
+                # Compute rCloud for this combination
+                if alpha == 0:
+                    rCloud_test = compute_rCloud_homogeneous(mCloud_test, nCore_test, mu)
+                    nEdge_test = nCore_test
+                else:
+                    try:
+                        rCloud_test, _ = compute_rCloud_powerlaw(
+                            mCloud_test, nCore_test, alpha,
+                            rCore=rCore_test, mu=mu
+                        )
+                        nEdge_test = nCore_test * (rCloud_test / rCore_test) ** alpha
+                    except:
+                        continue  # Skip if computation fails
+
+                # Check radius constraint
+                if rCloud_test > r_max:
+                    continue
+
+                # Check density constraint
+                if nEdge_test < nISM:
+                    continue
+
+                # Compute mass error
+                rhoCore = nCore_test * mu * DENSITY_CONVERSION
+                if alpha == 0:
+                    M_computed = (4.0/3.0) * np.pi * rCloud_test**3 * rhoCore
+                else:
+                    M_computed = 4.0 * np.pi * rhoCore * (
+                        rCore_test**3 / 3.0 +
+                        (rCloud_test**(3.0 + alpha) - rCore_test**(3.0 + alpha)) /
+                        ((3.0 + alpha) * rCore_test**alpha)
+                    )
+                mass_error = abs(M_computed - mCloud_test) / mCloud_test
+
+                # Check mass constraint
+                if mass_error <= mass_tolerance:
+                    valid_combinations.append({
+                        'mCloud': mCloud_test,
+                        'nCore': nCore_test,
+                        'rCore': rCore_test,
+                        'rCloud': rCloud_test,
+                        'nEdge': nEdge_test,
+                        'mass_error': mass_error
+                    })
+
+    # Sort by smallest change from original (in log space for mCloud/nCore)
+    def distance_from_original(combo):
+        log_m_diff = abs(np.log10(combo['mCloud'] / mCloud_orig)) if mCloud_orig > 0 else 0
+        log_n_diff = abs(np.log10(combo['nCore'] / nCore_orig)) if nCore_orig > 0 else 0
+        r_diff = abs(combo['rCore'] / rCore_orig - 1) if rCore_orig > 0 else 0
+        return log_m_diff + log_n_diff + r_diff
+
+    valid_combinations.sort(key=distance_from_original)
+    return valid_combinations[:n_suggestions]
