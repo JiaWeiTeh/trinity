@@ -243,7 +243,7 @@ def create_PLSphere(params):
     if alpha != 0:
         # rCloud = (
         #             (
-        #                 mCloud/(4 * np.pi * nCore * mu_neu) - rCore**3/3
+        #                 mCloud/(4 * np.pi * nCore * mu_atom) - rCore**3/3
         #             ) * rCore ** alpha * (alpha + 3) + rCore**(alpha + 3)
         #           )**(1/(alpha + 3))
         

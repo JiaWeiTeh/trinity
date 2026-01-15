@@ -74,7 +74,7 @@ def get_y0(params):
     """
 
     # Core properties - handle both DescribedItem and raw value access
-    mu_neu = params['mu_neu'].value
+    mu_atom = params['mu_atom'].value
     nCore = params['nCore'].value
     bubble_xi_Tb = params['bubble_xi_Tb'].value
         
@@ -98,8 +98,8 @@ def get_y0(params):
     if nCore <= 0:
         raise ValueError(f"nCore must be positive, got {nCore}")
 
-    if mu_neu <= 0:
-        raise ValueError(f"mu_neu must be positive, got {mu_neu}")
+    if mu_atom <= 0:
+        raise ValueError(f"mu_atom must be positive, got {mu_atom}")
 
     if not (0 <= bubble_xi_Tb <= 1):
         raise ValueError(f"bubble_xi_Tb must be in [0,1], got {bubble_xi_Tb}")
@@ -148,7 +148,7 @@ def get_y0(params):
     # =========================================================================
 
     # Ambient density [AU units: Msun/pc^3]
-    rhoa = nCore * mu_neu
+    rhoa = nCore * mu_atom
 
     # Duration of free-streaming phase [Myr]
     # From Rahner thesis Eq. 1.15:

@@ -150,7 +150,7 @@ def create_powerlaw_params(mCloud, nCore, alpha, rCore, mu=1.4, nISM=1.0):
         'nISM': MockValue(nISM),
         'mu_n': MockValue(mu),
         'mu_ion': MockValue(mu),
-        'mu_neu': MockValue(mu),
+        'mu_atom': MockValue(mu),
         'dens_profile': MockValue('densPL'),
         'densPL_alpha': MockValue(alpha),
     }
@@ -187,7 +187,7 @@ def create_BE_params(mCloud, nCore, Omega, rCore, mu=1.4, nISM=1.0):
         'nISM': MockValue(nISM),
         'mu_n': MockValue(mu),
         'mu_ion': MockValue(mu),
-        'mu_neu': MockValue(mu),
+        'mu_atom': MockValue(mu),
         'gamma_adia': MockValue(5.0/3.0),
         'dens_profile': MockValue('densBE'),
         'densBE_f_rho_rhoc': MockValue(le_solution.f_rho_rhoc),

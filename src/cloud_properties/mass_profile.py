@@ -155,17 +155,17 @@ def get_mass_density(
     n = get_density_profile(r, params)
 
     # Determine which mean molecular weight to use
-    # Inside cloud: mu_ion (ionized), Outside cloud: mu_neu (neutral)
+    # Inside cloud: mu_ion (ionized), Outside cloud: mu_atom (neutral)
     was_scalar = _is_scalar(r)
     r_arr = _to_array(r)
     n_arr = _to_array(n)
 
     mu_ion = params['mu_ion'].value
-    mu_neu = params['mu_neu'].value
+    mu_atom = params['mu_atom'].value
     rCloud = params['rCloud'].value
 
     # Create mu array based on position
-    mu_arr = np.where(r_arr <= rCloud, mu_ion, mu_neu)
+    mu_arr = np.where(r_arr <= rCloud, mu_ion, mu_atom)
 
     # Mass density = number density × mean molecular weight
     rho_arr = n_arr * mu_arr
@@ -199,7 +199,7 @@ def get_mass_profile(
         Required keys:
         - 'dens_profile': Profile type ('densPL' or 'densBE')
         - 'nCore', 'nISM': Number densities
-        - 'mu_ion', 'mu_neu': Mean molecular weights
+        - 'mu_ion', 'mu_atom': Mean molecular weights
         - 'mCloud', 'rCloud', 'rCore': Cloud parameters
         - Profile-specific parameters (see get_density_profile)
     return_mdot : bool, optional
@@ -372,7 +372,7 @@ def compute_enclosed_mass_powerlaw(
     nCore = params['nCore'].value
     nISM = params['nISM'].value
     mu_ion = params['mu_ion'].value
-    mu_neu = params['mu_neu'].value
+    mu_atom = params['mu_atom'].value
     rCore = params['rCore'].value
     rCloud = params['rCloud'].value
     mCloud = params['mCloud'].value
@@ -380,7 +380,7 @@ def compute_enclosed_mass_powerlaw(
 
     # Internal density units: n × μ
     rhoCore_internal = nCore * mu_ion
-    rhoISM_internal = nISM * mu_neu
+    rhoISM_internal = nISM * mu_atom
 
     # Physical density units: [Msun/pc³]
     if physical_units:
@@ -456,8 +456,8 @@ def compute_enclosed_mass_bonnor_ebert(
     rCloud = params['rCloud'].value
     mCloud = params['mCloud'].value
     nISM = params['nISM'].value
-    mu_neu = params['mu_neu'].value
-    rhoISM = nISM * mu_neu
+    mu_atom = params['mu_atom'].value
+    rhoISM = nISM * mu_atom
 
     M_arr = np.zeros_like(r_arr, dtype=float)
 
@@ -605,7 +605,7 @@ def test_scalar_array_consistency():
         'nCore': MockParam(1e3),
         'nISM': MockParam(1.0),
         'mu_ion': MockParam(1.4),
-        'mu_neu': MockParam(2.3),
+        'mu_atom': MockParam(2.3),
         'rCore': MockParam(1.0),
         'rCloud': MockParam(10.0),
         'mCloud': MockParam(1e3),
@@ -678,7 +678,7 @@ def test_homogeneous_cloud():
         'nCore': MockParam(nCore),
         'nISM': MockParam(1.0),
         'mu_ion': MockParam(mu_ion),
-        'mu_neu': MockParam(2.3),
+        'mu_atom': MockParam(2.3),
         'rCore': MockParam(rCore),
         'rCloud': MockParam(rCloud),
         'mCloud': MockParam(mCloud),
@@ -734,7 +734,7 @@ def test_powerlaw_analytical():
         'nCore': MockParam(nCore),
         'nISM': MockParam(1.0),
         'mu_ion': MockParam(mu_ion),
-        'mu_neu': MockParam(2.3),
+        'mu_atom': MockParam(2.3),
         'rCore': MockParam(rCore),
         'rCloud': MockParam(rCloud),
         'mCloud': MockParam(mCloud),
@@ -780,7 +780,7 @@ def test_density_import():
         'nCore': MockParam(1000.0),
         'nISM': MockParam(1.0),
         'mu_ion': MockParam(1.4),
-        'mu_neu': MockParam(2.3),
+        'mu_atom': MockParam(2.3),
         'rCore': MockParam(1.0),
         'rCloud': MockParam(10.0),
         'densPL_alpha': MockParam(0),
@@ -860,7 +860,7 @@ def test_bonnor_ebert_total_mass():
         'nCore': MockParam(n_core),
         'nISM': MockParam(1.0),
         'mu_ion': MockParam(mu),
-        'mu_neu': MockParam(2.3),
+        'mu_atom': MockParam(2.3),
         'rCore': MockParam(result.r_out * 0.1),  # Not used for BE, but required
         'rCloud': MockParam(result.r_out),
         'mCloud': MockParam(M_cloud),
@@ -937,7 +937,7 @@ def test_bonnor_ebert_mass_monotonicity():
         'nCore': MockParam(n_core),
         'nISM': MockParam(1.0),
         'mu_ion': MockParam(mu),
-        'mu_neu': MockParam(2.3),
+        'mu_atom': MockParam(2.3),
         'rCore': MockParam(result.r_out * 0.1),
         'rCloud': MockParam(result.r_out),
         'mCloud': MockParam(M_cloud),
@@ -1019,7 +1019,7 @@ def test_bonnor_ebert_lane_emden_comparison():
         'nCore': MockParam(n_core),
         'nISM': MockParam(1.0),
         'mu_ion': MockParam(mu),
-        'mu_neu': MockParam(2.3),
+        'mu_atom': MockParam(2.3),
         'rCore': MockParam(result.r_out * 0.1),
         'rCloud': MockParam(result.r_out),
         'mCloud': MockParam(M_cloud),
@@ -1185,7 +1185,7 @@ def test_bonnor_ebert_various_parameters():
             'nCore': MockParam(n_core),
             'nISM': MockParam(1.0),
             'mu_ion': MockParam(mu),
-            'mu_neu': MockParam(2.3),
+            'mu_atom': MockParam(2.3),
             'rCore': MockParam(result.r_out * 0.1),
             'rCloud': MockParam(result.r_out),
             'mCloud': MockParam(M_cloud),
@@ -1252,7 +1252,7 @@ def test_bonnor_ebert_scalar_array_consistency():
         'nCore': MockParam(n_core),
         'nISM': MockParam(1.0),
         'mu_ion': MockParam(mu),
-        'mu_neu': MockParam(2.3),
+        'mu_atom': MockParam(2.3),
         'rCore': MockParam(result.r_out * 0.1),
         'rCloud': MockParam(result.r_out),
         'mCloud': MockParam(M_cloud),
@@ -1324,7 +1324,7 @@ def test_bonnor_ebert_mass_accretion_rate():
         'nCore': MockParam(n_core),
         'nISM': MockParam(1.0),
         'mu_ion': MockParam(mu),
-        'mu_neu': MockParam(2.3),
+        'mu_atom': MockParam(2.3),
         'rCore': MockParam(result.r_out * 0.1),
         'rCloud': MockParam(result.r_out),
         'mCloud': MockParam(M_cloud),
@@ -1563,7 +1563,7 @@ def test_powerlaw_alpha_sweep():
                     'nCore': MockParam(nCore),
                     'nISM': MockParam(nISM),
                     'mu_ion': MockParam(mu_ion),
-                    'mu_neu': MockParam(2.3),
+                    'mu_atom': MockParam(2.3),
                     'rCore': MockParam(rCore),
                     'rCloud': MockParam(rCloud),
                     'mCloud': MockParam(mCloud_expected),
@@ -1746,7 +1746,7 @@ def get_mass_profile_OLD( r_arr, params,
         Required keys:
         - 'dens_profile': Profile type ('densPL' or 'densBE')
         - 'nCore', 'nISM': Number densities
-        - 'mu_ion', 'mu_neu': Mean molecular weights
+        - 'mu_ion', 'mu_atom': Mean molecular weights
         - 'mCloud', 'rCloud', 'rCore': Cloud parameters
         - Profile-specific parameters (see compute_density_profile)
     return_mdot : bool, optional
@@ -1790,7 +1790,7 @@ def get_mass_profile_OLD( r_arr, params,
     # get values
     nCore = params['nCore'].value
     nISM = params['nISM'].value
-    mu_neu = params['mu_neu'].value
+    mu_atom = params['mu_atom'].value
     mu_ion = params['mu_ion'].value
     mCloud = params['mCloud'].value
     rCloud = params['rCloud'].value
@@ -1804,7 +1804,7 @@ def get_mass_profile_OLD( r_arr, params,
         
     # Setting up values for mass density (from number density) 
     rhoCore = nCore * mu_ion
-    rhoISM = nISM * mu_neu
+    rhoISM = nISM * mu_atom
     
     # initialise arrays
     mGas = np.zeros_like(r_arr)  
