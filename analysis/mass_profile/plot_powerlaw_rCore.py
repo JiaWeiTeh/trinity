@@ -60,8 +60,8 @@ DENSITY_CONVERSION = M_H_CGS * PC_TO_CM**3 / MSUN_TO_G
 # Plot settings
 FONTSIZE = 12
 
-# Shared contour levels for rCore
-shared_levels = np.array([0.05, 0.1, 0.2, 0.5, 1.0, 2.0, 5.0])
+# Shared contour levels for rCore (reduced to avoid clutter)
+shared_levels = np.array([0.1, 0.5, 1.0, 2.0, 5.0])
 
 
 def compute_rCloud_homogeneous(M_cloud, nCore, mu=2.33):
@@ -374,9 +374,9 @@ def plot_rCore_heatmap(ax, M_values, n_core_values, rCore_grid, alpha,
     M_log = np.log10(M_values)
     n_log = np.log10(n_core_values)
 
-    # Create fine grids
-    M_fine_log = np.linspace(M_log.min(), M_log.max(), 100)
-    n_fine_log = np.linspace(n_log.min(), n_log.max(), 50)
+    # Create fine grids (higher resolution for smoother visualization)
+    M_fine_log = np.linspace(M_log.min(), M_log.max(), 300)
+    n_fine_log = np.linspace(n_log.min(), n_log.max(), 150)
     M_fine = 10**M_fine_log
     n_fine = 10**n_fine_log
 
@@ -384,8 +384,8 @@ def plot_rCore_heatmap(ax, M_values, n_core_values, rCore_grid, alpha,
     # Replace NaN with -999 for interpolation, then mask later
     rCore_for_interp = np.where(np.isnan(rCore_grid), -999, np.log10(rCore_grid + 1e-10))
 
-    # Interpolate in log-log space
-    interp = RectBivariateSpline(n_log, M_log, rCore_for_interp, kx=1, ky=1)
+    # Interpolate in log-log space (cubic for smoother boundaries)
+    interp = RectBivariateSpline(n_log, M_log, rCore_for_interp, kx=3, ky=3)
     rCore_fine_log = interp(n_fine_log, M_fine_log)
 
     # Restore NaN mask
@@ -499,9 +499,9 @@ def main():
     print("Power-Law Valid rCore Visualization")
     print("=" * 60)
 
-    # Define parameter grid
-    n_core_values = np.logspace(2, 4, 15)  # 100 to 10000 cm^-3
-    M_values = np.logspace(4, 8, 20)       # 10^4 to 10^8 Msun
+    # Define parameter grid (higher resolution for smoother visualization)
+    n_core_values = np.logspace(2, 4, 50)  # 100 to 10000 cm^-3
+    M_values = np.logspace(4, 8, 80)       # 10^4 to 10^8 Msun
 
     # Alpha values to plot
     alpha_values = [0, -0.5, -1, -2]
