@@ -604,6 +604,84 @@ def compute_mass_accretion_rate(
 
 
 # =============================================================================
+# Mass Validation
+# =============================================================================
+
+def validate_mass_at_rCloud(params, tolerance=0.001):
+    """
+    Validate that computed M(rCloud) matches expected mCloud.
+
+    This function provides an independent check that the cloud parameters
+    (mCloud, nCore, rCore, alpha) are self-consistent. If the computed
+    mass at rCloud differs from mCloud by more than the tolerance, it
+    indicates inconsistent parameters.
+
+    Parameters
+    ----------
+    params : dict
+        Parameter dictionary with cloud properties.
+        Required keys: 'rCloud', 'mCloud', 'dens_profile', etc.
+    tolerance : float
+        Maximum allowed relative error (default 0.1% = 0.001)
+
+    Returns
+    -------
+    dict with keys:
+        'valid': bool - True if error within tolerance
+        'M_computed': float - Computed mass at rCloud [Msun]
+        'M_expected': float - Expected mCloud [Msun]
+        'relative_error': float - |M_computed - M_expected| / M_expected
+        'message': str - Human-readable summary
+
+    Examples
+    --------
+    >>> result = validate_mass_at_rCloud(params)
+    >>> if not result['valid']:
+    ...     print(f"Mass error: {result['relative_error']*100:.4f}%")
+    ...     print(result['message'])
+    """
+    rCloud = params['rCloud'].value
+    mCloud = params['mCloud'].value
+
+    # Compute mass at rCloud using our analytical formula
+    M_computed = get_mass_profile(rCloud, params)
+
+    # Handle edge case of zero expected mass
+    if mCloud <= 0:
+        return {
+            'valid': False,
+            'M_computed': M_computed,
+            'M_expected': mCloud,
+            'relative_error': float('inf'),
+            'message': f"ERROR: mCloud = {mCloud} is not positive"
+        }
+
+    relative_error = abs(M_computed - mCloud) / mCloud
+
+    is_valid = relative_error <= tolerance
+
+    if is_valid:
+        status = "PASS"
+    else:
+        status = "FAIL"
+
+    message = (
+        f"Mass validation {status}: "
+        f"M(rCloud) = {M_computed:.4e} Msun vs "
+        f"mCloud = {mCloud:.4e} Msun "
+        f"(error: {relative_error*100:.4f}%, tolerance: {tolerance*100:.3f}%)"
+    )
+
+    return {
+        'valid': is_valid,
+        'M_computed': M_computed,
+        'M_expected': mCloud,
+        'relative_error': relative_error,
+        'message': message
+    }
+
+
+# =============================================================================
 # =============================================================================
 # =============================================================================
 # Validation and testing
