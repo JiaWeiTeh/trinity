@@ -687,6 +687,105 @@ def test_BE_mass_total():
 
 
 # =============================================================================
+# get_InitCloudProp_integrated Tests
+# =============================================================================
+
+def test_InitCloudProp_powerlaw():
+    """Test get_InitCloudProp with power-law profile."""
+    print("\nTesting InitCloudProp power-law...")
+
+    from src.phase0_init.get_InitCloudProp_integrated import (
+        get_InitCloudProp, verify_mass_at_rCloud
+    )
+    from src.cloud_properties.powerLawSphere import compute_rCloud_powerlaw
+
+    # Use parameters that satisfy nEdge >= nISM constraint
+    nCore = 1e3
+    mCloud = 1e5
+    alpha = -2.0
+    mu = 1.4
+    _, rCore = compute_rCloud_powerlaw(mCloud, nCore, alpha, rCore_fraction=0.1, mu=mu)
+
+    params = make_test_params(
+        dens_profile='densPL',
+        densPL_alpha=alpha,
+        mCloud=mCloud,
+        nCore=nCore,
+        rCore=rCore,
+    )
+    # Add placeholder params that get_InitCloudProp needs
+    params['rCloud'] = MockParam(None)
+    params['nEdge'] = MockParam(None)
+    params['initial_cloud_r_arr'] = MockParam(None)
+    params['initial_cloud_n_arr'] = MockParam(None)
+    params['initial_cloud_m_arr'] = MockParam(None)
+
+    props = get_InitCloudProp(params)
+
+    # Verify mass consistency
+    error = verify_mass_at_rCloud(props, mCloud)
+    assert error < 0.01, f"Mass error too large: {error*100:.2f}%"
+    print(f"  ✓ M(rCloud) error = {error*100:.6f}%")
+
+    # Verify arrays stored in params
+    assert params['initial_cloud_r_arr'].value is not None
+    assert len(params['initial_cloud_r_arr'].value) > 100
+    print(f"  ✓ Arrays stored in params (len={len(params['initial_cloud_r_arr'].value)})")
+
+    print("✓ InitCloudProp power-law test passed!")
+    return True
+
+
+def test_InitCloudProp_bonnor_ebert():
+    """Test get_InitCloudProp with Bonnor-Ebert profile."""
+    print("\nTesting InitCloudProp Bonnor-Ebert...")
+
+    from src.phase0_init.get_InitCloudProp_integrated import (
+        get_InitCloudProp, verify_mass_at_rCloud
+    )
+
+    mCloud = 100.0
+    nCore = 1e4
+    Omega = 10.0
+
+    params = make_test_params(
+        dens_profile='densBE',
+        mCloud=mCloud,
+        nCore=nCore,
+        rCore=0.01,  # Small rCore for BE
+        densBE_Omega=Omega,
+        gamma_adia=5.0/3.0,
+    )
+    # Add placeholder params
+    params['rCloud'] = MockParam(None)
+    params['nEdge'] = MockParam(None)
+    params['densBE_Teff'] = MockParam(None)
+    params['initial_cloud_r_arr'] = MockParam(None)
+    params['initial_cloud_n_arr'] = MockParam(None)
+    params['initial_cloud_m_arr'] = MockParam(None)
+
+    props = get_InitCloudProp(params)
+
+    # Verify mass consistency
+    error = verify_mass_at_rCloud(props, mCloud)
+    assert error < 0.01, f"Mass error too large: {error*100:.2f}%"
+    print(f"  ✓ M(rCloud) error = {error*100:.6f}%")
+
+    # Verify BE-specific outputs
+    assert props.T_eff is not None and props.T_eff > 0
+    assert props.xi_out is not None and props.xi_out > 0
+    print(f"  ✓ T_eff = {props.T_eff:.1f} K, xi_out = {props.xi_out:.3f}")
+
+    # Verify Lane-Emden functions stored
+    assert params['densBE_f_m'].value is not None
+    assert params['densBE_f_rho_rhoc'].value is not None
+    print("  ✓ Lane-Emden functions stored in params")
+
+    print("✓ InitCloudProp Bonnor-Ebert test passed!")
+    return True
+
+
+# =============================================================================
 # Main test runner
 # =============================================================================
 
@@ -715,6 +814,9 @@ def run_all_tests():
         ("BE: Sphere Creation", test_BE_sphere_creation),
         ("BE: Density Profile", test_BE_density_profile),
         ("BE: Mass Total", test_BE_mass_total),
+        # InitCloudProp tests
+        ("InitCloudProp: Power-law", test_InitCloudProp_powerlaw),
+        ("InitCloudProp: Bonnor-Ebert", test_InitCloudProp_bonnor_ebert),
     ]
 
     passed = 0
