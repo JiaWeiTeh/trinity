@@ -94,7 +94,7 @@ print("  (LaTeX disabled - using standard fonts)")
 # =============================================================================
 
 # Common inputs
-M_CLOUD = 1e7     # Msun
+M_CLOUD = 1e8     # Msun
 N_CORE = 2e4      # cm⁻³
 MU = 1.4          # Mean molecular weight
 N_ISM = 1.0       # cm⁻³
