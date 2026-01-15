@@ -1,1 +1,661 @@
-.. highlight:: rest.. _sec-parameters:Parameter Specifications========================Parameter file--------------1. Creating a Parameter file^^^^^^^^^^^^^^^^^^^^^^^^^Below are the basic guidelines on the structure and formatting of parameter files (``*.param``):* Most parameters come with predefined values (indicated in ``[]``). If a parameter is omitted from the parameter file, its default value will be assumed.* The parameters can be listed in any order; there is no strict arrangement required.* Some parameters are conditional — if the required conditions are not met, those parameters will be ignored.* Any line beginning with ``#`` is treated as a comment and will be automatically ignored.* Parameters should be specified using the following format:.. code-block:: console    parameter1    value1    parameter2    value2    ...           2. Example^^^^^^^An example of a parameter file:.. literalinclude:: ../data/simple_cluster.param   :language: text   :linenos:   :caption: simple_cluster.param      Here is a parameter file `in its full glory <https://github.com/JiaWeiTeh/trinity/blob/main/docs/data/default.param>`_:   .. admonition:: A Full Example Parameter File    :collapsible:    .. literalinclude:: ../data/example_pl.param       :language: text       :linenos:       :caption: FullExampleParameter.paramBasic parameters----------------1. Administrative parameters^^^^^^^^^^^^^^^^^^^^^^^^^These parameters define the fundamental settings for running TRINITY:* ``model_name [def_name]``: Specifies the model name, which serves as the prefix for all output filenames. Only alphanumeric characters and underscores (_) are allowed.* ``out_dir [def_dir]``: Defines the output directory where all generated files will be stored. This should be an absolute path. By default, the output directory is the root directory where TRINITY is executed.* ``verbose [2]``: Controls the verbosity level of terminal output:     * ``1`` - Minimal output    * ``2`` - Basic output (default)    * ``3`` - Detailed output (all messages)* ``output_format [json]``: Specifies the output format. Currently, only JSON format is supported.2. Physical parameters^^^^^^^^^^^^^^^^^^^These are the core parameters that TRINITY relies on.* ``log_mCloud [6.0]`` (:math:`M_\odot`):  The logarithmic mass of the molecular cloud.* ``sfe [0.01]``: Star formation effeciency (``0 < sfe < 1``). Determines the fraction of cloud mass converted into the initial star cluster.* ``metallicity [1]`` (:math:`Z_\odot`): Cloud metallicity. Supported values: 1 :math:`Z_\odot` and 0.15 :math:`Z_\odot`.3. Stochastic Sampling (Future Implementation)^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ * ``stochastic_sampling [0]``: Controls whether stochastic sampling of the Initial Mass Function (IMF) is included when creating the initial cluster:    * ``0`` - Disables stochastic sampling, applying scaling relations instead (IMF fully sampled).    * ``1`` - Enables stochastic sampling. The number of trials must then be specified using ``n_trials``.* ``n_trials``: Defines the number of iterations (SLUG clusters) to generate. The recommended number of trials follows the relation:        .. math:: {\rm n\_trials} \sim \lceil 10^6/{\rm mCluster} \rceil \sim \lceil 10^6/({\rm mCloud} \times {\rm sfe}) \rceil            * For high-mass clusters with fully sampled IMFs, fewer iterations are required.    * For low-mass clusters where stochastic effects are significant, more iterations are recommended to better capture output distributions (e.g., ionizing luminosity).Parameters for the Density Profile of the Cloud-----------------------------------------------This section defines the density profile, :math:`\rho(r)`, of the molecular cloud.* ``nISM [1]`` (cm\ :math:`^{-3}`): Number density of the ambient interstellar medium (ISM). * ``nCore [1e4]`` (cm\ :math:`^{-3}`): Cloud core number density. If cloud is homogeneous (see below; i.e., ``dens_profile = densPL`` and ``densPL_alpha = 0``), this sets the average cloud density.* ``rCore [0.1]`` (pc): Core radius of the molecular cloud. Does not apply to homogeneous cloud.* ``dens_profile [densPL]``: Specifies how the cloud density scales with radius. Available options:1. Bonnor-Ebert Sphere^^^^^^^^^^^^^^^^^^^^^^* ``densBE``: Implements a Bonnor-Ebert sphere profile (see `Ebert 1955 <https://ui.adsabs.harvard.edu/abs/1955ZA.....37..217E/abstract>`_; `Bonnor 1956 <https://ui.adsabs.harvard.edu/abs/1956MNRAS.116..351B/abstract>`_).* If selected, the following parameter must be defined:    * ``densBE_Omega [14.1]``: Specifies :math:`\Omega_{\rm BE} = \frac{\rho_{\rm centre}}{\rho_{\rm edge}}`. Clouds exceeding this value become gravitationally unstable (`Stahler and Palla 2004 <https://ui.adsabs.harvard.edu/abs/2004fost.book.....S/abstract>`_). 2. Power-Law Profile^^^^^^^^^^^^^^^^^^^^ * ``densPL``: Defines a power-law density profile.     * ``densPL_alpha [0]``: Specifies the power-law coefficient, :math:`\alpha`, where :math:`-2\leq\alpha<0`. Given a core radius :math:`r_0`, core density :math:`\rho_0`, and ISM density :math:`\rho_{\rm ambISM}`, then the cloud density profile is defined as:    .. math:: \rho_{\rm cloud}(r) = \left\{\begin{array}{lll} \rho_0 , & r \leq r_0 \\ \rho_0 \times (r / r_0)^\alpha, & r_0 < r \leq r_{\rm cloud} \\ \rho_{\rm ambISM}, & r > r_{\rm cloud} \end{array} \right.    * Special cases:            * ``densPL_alpha = 0`` results in a homogeneous cloud (default).                * ``densPL_alpha = -2`` produces an isothermal sphere.Parameters for feedback calculations from Starburst99 ----------------------------------------------------- This section specifies which Starburst99 (SB99) file from your local directory should be used for the current TRINITY run.For more details, refer to the official `Starburst99 documentation <https://www.stsci.edu/science/starburst99/docs/run.html>`_. Note: This does not automatically generate a Starburst99 file!1. Star Cluster Properties^^^^^^^^^^^^^^^^^^^^^^^^^^    * ``SB99_mass [1e6]`` (:math:`M_\odot`): Default star cluster mass used in SB99. This value is used for scaling relations in feedback calculations.    * ``SB99_rotation [1]``: Determines whether stellar rotation is considered in the stellar track:        * ``1`` - Rotating stars (default). Rotation extends stellar lifetimes due to increased internal mixing, which replenishes core hydrogen and enhances nitrogen enrichment.        * ``0`` - Non-rotating stars.        2. Supernova and Black Hole Formation^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^    * ``SB99_BHCUT [120]`` (:math:`M_\odot`): Defines the black hole formation threshold:        * Stars with ZAMS (Zero Age Main Sequence) masses below this limit undergo supernova (SN) explosions.        * For example, setting SB99_BHCUT = 40 results in supernovae only in the mass range 8–40 M_\odot.        * Above this threshold, remnants collapse directly into black holes.    * ``v_SN [1e4]`` (kms\ :math:`^{-1}`): Specifies the velocity of supernova ejecta.3. (Feedback) Mass Injection into the Cloud^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^    * ``f_Mcold_wind [0]``, ``f_Mcold_SN [0]``: Fraction of mass injected into the molecular cloud due to:        * ``f_Mcold_wind`` – Sweeping of cold material from protostellar winds and disks.        * ``f_Mcold_SN`` – Cold ejecta from supernovae.        * These parameters affect the total cluster mass loss rate, impacting properties like escape velocity (`Stevens and Hartwell 2003 <https://ui.adsabs.harvard.edu/abs/2003MNRAS.339..280S/abstract>`_).            * ``thermcoeff_wind [1]``, ``thermcoeff_SN [0]``: Defines the thermalization efficiency (:math:`\eta`), which represents the fraction of kinetic energy from stellar winds and supernova ejecta that is converted into heat:        * ``thermcoeff_wind`` - Efficiency for colliding stellar winds.        * ``thermcoeff_SN`` - Efficiency for supernova ejecta.        * For theoretical background, refer to `Stevens and Hartwell 2003 <https://ui.adsabs.harvard.edu/abs/2003MNRAS.339..280S/abstract>`_ or `Kavanagh 2020 <https://ui.adsabs.harvard.edu/abs/2020Ap%26SS.365....6K/abstract>`_    Parameters for setting library paths------------------------------------This section defines the absolute paths for library files used in TRINITY.* ``path_cooling_CIE [3]``: Specifies the cooling curve file for collisional ionization equilibrium (CIE), applicable at temperatures :math:`T > 10^{5.5}` K.     * Accepts either an absolute file path (e.g., ``path/to/trinity/lib/cooling_tables/opiate/file``) or a preset numerical option:        * ``1`` - CLOUDY cooling curve for HII region (solar metallicity).    * ``2`` - CLOUDY cooling curve for H II regions, including evaporative cooling of icy interstellar grains (e.g., cosmic-ray heating).    * ``3`` - Gnat & Ferland (2012) cooling curve (default), solar metallicity.    * ``4`` - Sutherland & Dopita (1993) cooling curve for 0.15 solar metallicity.    * ``path_cooling_nonCIE [def_dir]``: Specifies the cooling curve folder for non-CIE conditions ( :math:`T < 10^{5.5}` K). Default: ``path/to/trinity/lib/cooling_tables/CIE/current/``.* ``path_sps [def_dir]``: Specifies the absolute path to Starburst99 (SPS) files. Default: ``path/to/trinity/lib/sps/starburst99/``.Parameters for termination of simulation------------------------------------This section sets the conditions under which the simulation will terminate.* ``stop_n_diss [1]`` (cm\ :math:`^{-3}`): Threshold number density below which the shell is considered dissolved. If the shell remains below this density for a continuous duration specified by ``stop_t_diss``, it is treated as fully mixed with the ISM. This value should typically be set equal to the ambient ISM density (``nISM``).* ``stop_t_diss [2]`` (Myr): The time interval during which the shell must continuously remain below ``stop_n_diss`` in order to be classified as dissolved.* ``stop_r [1e3]`` (pc): Maximum radial extent permitted for shell expansion. Exceeding this limit indicates that the shell is likely to be disrupted by galactic shear or other large-scale processes, and the simulation is terminated.* ``stop_v [-1e4]`` (km/s): Velocity threshold below which the simulation is considered numerically unstable.* ``stop_t [50]`` (Myr): Maximum duration of the simulation. This should remain within the timescale of the final supernova events (e.g., ~44 Myr for a single star cluster).Other parameters----------------These parameters allow users to fine-tune specific values; however, they primarily represent standard physical constants and are rarely modified. Unless necessary, it is recommended to retain their default settings.1. Fundamental Constants^^^^^^^^^^^^^^^^^^^^^* ``mu_atom [1.2727272727272727]`` (:math:`m_{\\rm H}`): Mean molecular weight for neutral atomic gas (HI + He), assuming a standard composition of one helium atom per ten hydrogen atoms. By default, :math:`\mu_{\rm n} = (14/11)m_{\rm H}`.* ``mu_ion [0.6086956521739131]`` (:math:`m_{\\rm H}`): Mean molecular weight for fully ionized gas (H+ + He++). Formula: :math:`\\mu_{\\rm ion} = 14/23`.* ``mu_mol [2.3333333333333333]`` (:math:`m_{\\rm H}`): Mean molecular weight for molecular gas (H2 + He). Formula: :math:`\\mu_{\\rm mol} = 14/6`.* ``mu_convert [1.4]`` (:math:`m_{\\rm H}`): Conversion factor for mass density calculation. Use this for mass integration (n→ρ conversion). Independent of ionization state.2. Temperature Constants^^^^^^^^^^^^^^^^^^^^^* ``t_ion [1e4]`` (:math:`T`): Temperature of the ionised shell region.* ``t_neu [1e2]`` (:math:`T`): Temperature of the neutral shell region.3. Dust and Metallicity Parameters^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^* ``sigma0 [1.5e-21]`` (cm\ :math:`^2`): Dust cross-section at solar metallicity. Thus for other metallicities the dust cross section is scaled as :math:`\sigma_d = \sigma_0 * (Z/Z_\odot)`.* ``z_nodust [0.05]`` (:math:`Z_\odot`): Metallicity below which there is effectively no dust, i.e., :math:`\sigma_d = 0` (unit: :math:`Z_\odot`). * ``kappa_IR [4]`` (cm\ :math:`^{2}`/g): The Rosseland mean dust opacity :math:`\kappa_{\rm IR}`. This parameter is assumed to be constant for simplicity, without temperature dependence. It relates to the calculation of :math:`\tau_{\rm IR}`, the infrared optical depth of the shell: .. math:: \tau_{\rm IR} = \kappa_{\rm IR} \int \mu_n n_{\rm sh} {\rm d}r4. Thermodynamic and Magnetic Parameters^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^* ``gamma_adia [1.6666666666666667]``: The adiabatic index (:math:`\gamma_{\rm adia} = 5/3`).* ``gamma_mag [1.3333333333333333]``: The effective magnetic adiabatic index (:math:`\gamma_{\rm mag} = 4/3`).     * Setting to ``0`` implies a constant magnetic field strength throughout the model.    * Setting to ``4/3`` assumes conservation of magnetic flux, as expected in the absence of dynamo action or magnetic reconnection (spherical configuration).    * See `Henney et al 2005 <https://ui.adsabs.harvard.edu/abs/2005ApJ...621..328H/abstract>`_, Appendix C.5. Recombination Parameters^^^^^^^^^^^^^^^^^^^^^^^^^^^* ``alpha_B [2.59e-13]`` (cm\ :math:`^{3}`/s): Case B recombination coefficient. See `Osterbrock and Ferland 2006 <https://ui.adsabs.harvard.edu/abs/2006agna.book.....O/abstract>`_.     
+.. highlight:: rest
+
+.. _sec-parameters:
+
+Parameter Specifications
+========================
+
+This section documents all parameters available in TRINITY, organized by category.
+
+Parameter File Format
+---------------------
+
+Basic Syntax
+^^^^^^^^^^^^
+
+Parameter files use a simple space-separated format:
+
+.. code-block:: text
+
+    parameter_name    value
+
+**Rules:**
+
+- Lines starting with ``#`` are comments
+- Parameters can appear in any order
+- Unspecified parameters use default values
+- Inline comments are supported: ``mCloud 1e6  # cloud mass``
+
+Supported Value Types
+^^^^^^^^^^^^^^^^^^^^^
+
+TRINITY automatically parses values in this order of precedence:
+
+==================  ========================  ============================
+Type                Example                   Notes
+==================  ========================  ============================
+Boolean             ``True``, ``False``       Case-sensitive
+Scientific          ``1e6``, ``3.14e-2``      Standard notation
+Fraction            ``5/3``                   Converted to float (1.6667)
+Number              ``100``, ``0.01``         Integer or decimal
+String              ``densPL``, ``my_model``  Fallback for text values
+==================  ========================  ============================
+
+
+Unit System
+-----------
+
+Input Units (CGS)
+^^^^^^^^^^^^^^^^^
+
+Parameters are specified in CGS units in the parameter file. TRINITY internally converts all quantities to astronomy units for numerical stability.
+
+**Common input units:**
+
+=================  ===========================
+Quantity           Input Unit
+=================  ===========================
+Mass               :math:`M_\odot` (solar mass)
+Length             pc (parsec) or cm
+Time               Myr or s
+Number density     cm\ :math:`^{-3}`
+Velocity           km s\ :math:`^{-1}`
+Temperature        K (Kelvin)
+=================  ===========================
+
+Internal Units
+^^^^^^^^^^^^^^
+
+TRINITY uses astronomy units internally: **[Msun, pc, Myr]**
+
+The conversion is handled automatically based on the ``# UNIT:`` annotations in ``default.param``.
+
+**Supported unit strings in annotations:**
+
+.. code-block:: text
+
+    # UNIT: [Msun]
+    # UNIT: [cm**-3]
+    # UNIT: [km * s**-1]
+    # UNIT: [erg * s**-1 * cm**-1 * K**(-7/2)]
+
+
+Parameter Reference
+-------------------
+
+Administrative Parameters
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+These parameters control simulation naming and output.
+
+.. list-table::
+   :widths: 25 15 60
+   :header-rows: 1
+
+   * - Parameter
+     - Default
+     - Description
+   * - ``model_name``
+     - ``default``
+     - Prefix for all output filenames. Use alphanumeric characters and underscores only.
+   * - ``path2output``
+     - ``def_dir``
+     - Output directory path. ``def_dir`` uses the current working directory.
+   * - ``verbose``
+     - ``1``
+     - Terminal output verbosity (1=minimal, 2=standard, 3=detailed).
+   * - ``output_format``
+     - ``JSON``
+     - Output format. Currently only JSON is supported.
+
+Logging Parameters
+^^^^^^^^^^^^^^^^^^
+
+Configure how TRINITY reports progress and diagnostics.
+
+.. list-table::
+   :widths: 25 15 60
+   :header-rows: 1
+
+   * - Parameter
+     - Default
+     - Description
+   * - ``log_level``
+     - ``DEBUG``
+     - Logging verbosity: ``DEBUG``, ``INFO``, ``WARNING``, ``ERROR``, ``CRITICAL``
+   * - ``log_console``
+     - ``True``
+     - Enable terminal output for log messages.
+   * - ``log_file``
+     - ``True``
+     - Write log messages to ``{model_name}.log`` file.
+   * - ``log_colors``
+     - ``True``
+     - Color-code terminal output by severity level.
+
+
+Physical Parameters
+^^^^^^^^^^^^^^^^^^^
+
+Core parameters defining the molecular cloud and star formation.
+
+.. list-table::
+   :widths: 25 15 15 45
+   :header-rows: 1
+
+   * - Parameter
+     - Default
+     - Unit
+     - Description
+   * - ``mCloud``
+     - ``1e6``
+     - :math:`M_\odot`
+     - Total mass of the molecular cloud.
+   * - ``sfe``
+     - ``0.01``
+     - --
+     - Star formation efficiency (0 < sfe < 1). Fraction of cloud mass converted to stars.
+   * - ``ZCloud``
+     - ``1``
+     - :math:`Z_\odot`
+     - Cloud metallicity. **Currently only solar (1) is supported.**
+
+**Derived quantities:**
+
+- Cluster mass: :math:`M_{\rm cluster} = M_{\rm cloud} \times {\rm sfe}`
+- Remaining cloud mass: :math:`M_{\rm cloud,after} = M_{\rm cloud} - M_{\rm cluster}`
+
+
+Density Profile Parameters
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Define the radial density structure of the molecular cloud.
+
+**Profile Selection:**
+
+.. list-table::
+   :widths: 25 15 60
+   :header-rows: 1
+
+   * - Parameter
+     - Default
+     - Description
+   * - ``dens_profile``
+     - ``densPL``
+     - Density profile type: ``densPL`` (power-law) or ``densBE`` (Bonnor-Ebert)
+
+**Common Parameters:**
+
+.. list-table::
+   :widths: 25 15 15 45
+   :header-rows: 1
+
+   * - Parameter
+     - Default
+     - Unit
+     - Description
+   * - ``nCore``
+     - ``1e5``
+     - cm\ :math:`^{-3}`
+     - Core number density. For homogeneous clouds (``densPL_alpha=0``), this is the average density.
+   * - ``nISM``
+     - ``1``
+     - cm\ :math:`^{-3}`
+     - Ambient ISM number density.
+   * - ``rCore``
+     - ``0.01``
+     - pc
+     - Core radius. Not used for homogeneous clouds.
+
+Power-Law Profile (densPL)
+""""""""""""""""""""""""""
+
+When ``dens_profile = densPL``, the density follows:
+
+.. math::
+
+    \rho(r) = \begin{cases}
+    \rho_0 & r \leq r_0 \\
+    \rho_0 \left(\frac{r}{r_0}\right)^\alpha & r_0 < r \leq r_{\rm cloud} \\
+    \rho_{\rm ISM} & r > r_{\rm cloud}
+    \end{cases}
+
+.. list-table::
+   :widths: 25 15 60
+   :header-rows: 1
+
+   * - Parameter
+     - Default
+     - Description
+   * - ``densPL_alpha``
+     - ``0``
+     - Power-law exponent (:math:`-2 \leq \alpha \leq 0`). Special cases: ``0`` = homogeneous, ``-2`` = isothermal sphere.
+
+Bonnor-Ebert Profile (densBE)
+"""""""""""""""""""""""""""""
+
+When ``dens_profile = densBE``, implements a Bonnor-Ebert sphere (`Ebert 1955 <https://ui.adsabs.harvard.edu/abs/1955ZA.....37..217E/abstract>`_; `Bonnor 1956 <https://ui.adsabs.harvard.edu/abs/1956MNRAS.116..351B/abstract>`_).
+
+.. list-table::
+   :widths: 25 15 60
+   :header-rows: 1
+
+   * - Parameter
+     - Default
+     - Description
+   * - ``densBE_Omega``
+     - ``14.1``
+     - Density contrast :math:`\Omega = \rho_{\rm center}/\rho_{\rm edge}`. Values > 14.1 indicate gravitational instability.
+
+.. note::
+
+   Conditional parameters: ``densPL_alpha`` is ignored when using ``densBE``, and ``densBE_Omega`` is ignored when using ``densPL``.
+
+
+Termination Parameters
+^^^^^^^^^^^^^^^^^^^^^^
+
+Conditions that end the simulation.
+
+.. list-table::
+   :widths: 25 15 15 45
+   :header-rows: 1
+
+   * - Parameter
+     - Default
+     - Unit
+     - Description
+   * - ``stop_n_diss``
+     - ``1``
+     - cm\ :math:`^{-3}`
+     - Shell dissolution threshold density. When shell density falls below this for ``stop_t_diss``, simulation ends.
+   * - ``stop_t_diss``
+     - ``2``
+     - Myr
+     - Duration shell must remain below ``stop_n_diss`` to be considered dissolved.
+   * - ``stop_r``
+     - ``500``
+     - pc
+     - Maximum shell radius. Exceeding this triggers termination.
+   * - ``stop_v``
+     - ``-1e4``
+     - km/s
+     - Velocity threshold for numerical instability detection.
+   * - ``stop_t``
+     - ``15``
+     - Myr
+     - Maximum simulation duration.
+
+Collapse Parameters
+^^^^^^^^^^^^^^^^^^^
+
+.. list-table::
+   :widths: 25 15 15 45
+   :header-rows: 1
+
+   * - Parameter
+     - Default
+     - Unit
+     - Description
+   * - ``coll_r``
+     - ``1``
+     - pc
+     - Radius below which the cloud is considered completely collapsed.
+
+
+Starburst99 Parameters
+^^^^^^^^^^^^^^^^^^^^^^
+
+Configure the stellar population synthesis model for feedback calculations.
+
+.. list-table::
+   :widths: 25 15 15 45
+   :header-rows: 1
+
+   * - Parameter
+     - Default
+     - Unit
+     - Description
+   * - ``SB99_mass``
+     - ``1e6``
+     - :math:`M_\odot`
+     - Reference cluster mass used in SB99 files. Used for scaling.
+   * - ``SB99_rotation``
+     - ``1``
+     - --
+     - Include stellar rotation (1=yes, 0=no). Rotation extends lifetimes via internal mixing.
+   * - ``SB99_BHCUT``
+     - ``120``
+     - :math:`M_\odot`
+     - Black hole formation threshold. Stars above this ZAMS mass collapse directly to BH without SN.
+
+
+Feedback Parameters
+^^^^^^^^^^^^^^^^^^^
+
+Control mass injection and energy thermalization from stellar feedback.
+
+.. list-table::
+   :widths: 25 15 15 45
+   :header-rows: 1
+
+   * - Parameter
+     - Default
+     - Unit
+     - Description
+   * - ``FB_mColdWindFrac``
+     - ``0``
+     - --
+     - Fraction of cold material swept up by protostellar winds.
+   * - ``FB_mColdSNFrac``
+     - ``0``
+     - --
+     - Fraction of cold ejecta from supernovae.
+   * - ``FB_thermCoeffWind``
+     - ``1``
+     - --
+     - Thermalization efficiency for stellar wind kinetic energy.
+   * - ``FB_thermCoeffSN``
+     - ``1``
+     - --
+     - Thermalization efficiency for supernova ejecta.
+   * - ``FB_vSN``
+     - ``1e4``
+     - km/s
+     - Supernova ejecta velocity.
+
+
+Phase Control Parameters
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+Control transitions between simulation phases.
+
+.. list-table::
+   :widths: 30 15 55
+   :header-rows: 1
+
+   * - Parameter
+     - Default
+     - Description
+   * - ``adiabaticOnlyInCore``
+     - ``False``
+     - Restrict adiabatic (energy-driven) phase to within core radius.
+   * - ``immediate_leak``
+     - ``True``
+     - Transition immediately to momentum-driven phase when bubble bursts.
+   * - ``phaseSwitch_LlossLgain``
+     - ``0.05``
+     - Threshold for :math:`(L_{\rm gain} - L_{\rm loss})/L_{\rm gain}` to trigger phase transition.
+   * - ``expansionBeyondCloud``
+     - ``False``
+     - Allow bubble radius to exceed cloud radius.
+
+
+Cooling Parameters
+^^^^^^^^^^^^^^^^^^
+
+Parameters for radiative cooling calculations.
+
+.. list-table::
+   :widths: 25 15 60
+   :header-rows: 1
+
+   * - Parameter
+     - Default
+     - Description
+   * - ``cool_alpha``
+     - ``0.6``
+     - Cooling parameter: :math:`\alpha = v_2 \cdot t_{\rm now} / R_2`
+   * - ``cool_beta``
+     - ``0.8``
+     - Cooling parameter: :math:`\beta = -dP_b/dt`
+   * - ``cool_delta``
+     - ``-6/35``
+     - Cooling parameter: :math:`\delta = dT/dt`
+
+
+Path Configuration
+^^^^^^^^^^^^^^^^^^
+
+Specify paths to external data files.
+
+.. list-table::
+   :widths: 25 15 60
+   :header-rows: 1
+
+   * - Parameter
+     - Default
+     - Description
+   * - ``path_cooling_CIE``
+     - ``3``
+     - Cooling curve for CIE (T > 10\ :sup:`5.5` K). Integer presets: 1=CLOUDY HII, 2=CLOUDY+grains, 3=Gnat & Ferland 2012, 4=Sutherland & Dopita 0.15Z.
+   * - ``path_cooling_nonCIE``
+     - ``def_dir``
+     - Path to non-CIE cooling curves (T < 10\ :sup:`5.5` K).
+   * - ``path_sps``
+     - ``def_dir``
+     - Path to Starburst99 stellar population files.
+
+
+Physical Constants
+^^^^^^^^^^^^^^^^^^
+
+Standard physical constants. Typically not modified.
+
+**Mean Molecular Weights:**
+
+.. list-table::
+   :widths: 20 25 55
+   :header-rows: 1
+
+   * - Parameter
+     - Default
+     - Description
+   * - ``mu_atom``
+     - ``1.273``
+     - Neutral atomic gas (HI + He). :math:`\mu = 14/11`
+   * - ``mu_ion``
+     - ``0.609``
+     - Fully ionized gas (H+ + He++). :math:`\mu = 14/23`
+   * - ``mu_mol``
+     - ``2.333``
+     - Molecular gas (H2 + He). :math:`\mu = 14/6`
+   * - ``mu_convert``
+     - ``1.4``
+     - Mass density conversion factor (n to :math:`\rho`).
+
+**Temperature Constants:**
+
+.. list-table::
+   :widths: 20 15 15 50
+   :header-rows: 1
+
+   * - Parameter
+     - Default
+     - Unit
+     - Description
+   * - ``TShell_neu``
+     - ``1e2``
+     - K
+     - Neutral shell temperature.
+   * - ``TShell_ion``
+     - ``1e4``
+     - K
+     - Ionized shell temperature.
+
+**Dust Parameters:**
+
+.. list-table::
+   :widths: 20 15 20 45
+   :header-rows: 1
+
+   * - Parameter
+     - Default
+     - Unit
+     - Description
+   * - ``dust_sigma``
+     - ``1.5e-21``
+     - cm\ :math:`^2`
+     - Dust cross-section at solar metallicity.
+   * - ``dust_noZ``
+     - ``0.05``
+     - :math:`Z_\odot`
+     - Metallicity below which dust is negligible.
+   * - ``dust_KappaIR``
+     - ``4``
+     - cm\ :math:`^2`/g
+     - Rosseland mean dust opacity :math:`\kappa_{\rm IR}`.
+
+**Fundamental Constants:**
+
+.. list-table::
+   :widths: 20 20 20 40
+   :header-rows: 1
+
+   * - Parameter
+     - Default
+     - Unit
+     - Description
+   * - ``gamma_adia``
+     - ``5/3``
+     - --
+     - Adiabatic index.
+   * - ``caseB_alpha``
+     - ``2.59e-13``
+     - cm\ :math:`^3`/s
+     - Case B recombination coefficient.
+   * - ``C_thermal``
+     - ``6e-7``
+     - erg/(s cm K\ :sup:`7/2`)
+     - Thermal conduction coefficient.
+   * - ``c_light``
+     - ``2.998e10``
+     - cm/s
+     - Speed of light.
+   * - ``G``
+     - ``6.674e-8``
+     - cm\ :math:`^3`/(g s\ :math:`^2`)
+     - Gravitational constant.
+   * - ``k_B``
+     - ``1.381e-16``
+     - erg/K
+     - Boltzmann constant.
+   * - ``PISM``
+     - ``5e3``
+     - K cm\ :math:`^{-3}`
+     - ISM pressure P/k.
+
+**Bubble Structure:**
+
+.. list-table::
+   :widths: 20 15 65
+   :header-rows: 1
+
+   * - Parameter
+     - Default
+     - Description
+   * - ``bubble_xi_Tb``
+     - ``0.98``
+     - Relative radius :math:`\xi = r/R_2` for measuring bubble temperature.
+
+
+Sweep Syntax
+------------
+
+For parameter sweeps, use list notation to specify multiple values:
+
+.. code-block:: text
+
+    # Single values (fixed across all runs)
+    dens_profile    densPL
+    densPL_alpha    0
+
+    # List values (generate combinations)
+    mCloud    [1e5, 1e6, 1e7]
+    sfe       [0.01, 0.05, 0.10]
+    nCore     [1e3, 1e4, 1e5]
+
+This generates all combinations (Cartesian product): 3 x 3 x 3 = 27 simulations.
+
+See :ref:`sec-running` for details on running parameter sweeps.
+
+
+Examples
+--------
+
+Minimal Parameter File
+^^^^^^^^^^^^^^^^^^^^^^
+
+.. code-block:: text
+   :caption: minimal.param
+
+    model_name    my_simulation
+    mCloud        1e6
+    sfe           0.01
+
+Power-Law Cloud
+^^^^^^^^^^^^^^^
+
+.. code-block:: text
+   :caption: powerlaw.param
+
+    # Model identification
+    model_name      powerlaw_test
+    path2output     outputs/powerlaw
+
+    # Cloud properties
+    mCloud          1e7
+    sfe             0.05
+    ZCloud          1
+
+    # Power-law density profile
+    dens_profile    densPL
+    densPL_alpha    -1.5
+    nCore           1e4
+    rCore           0.5
+    nISM            1
+
+    # Termination
+    stop_t          20
+    stop_r          300
+
+Bonnor-Ebert Sphere
+^^^^^^^^^^^^^^^^^^^
+
+.. code-block:: text
+   :caption: bonnor_ebert.param
+
+    # Model identification
+    model_name      BE_sphere
+    path2output     outputs/BE
+
+    # Cloud properties
+    mCloud          1e5
+    sfe             0.02
+
+    # Bonnor-Ebert profile
+    dens_profile    densBE
+    densBE_Omega    14.1
+    nCore           1e5
+    rCore           0.1
+
+Parameter Sweep
+^^^^^^^^^^^^^^^
+
+.. code-block:: text
+   :caption: sweep.param
+
+    # Sweep over cloud mass and SFE
+    mCloud    [1e5, 1e6, 1e7]
+    sfe       [0.01, 0.05]
+
+    # Fixed parameters
+    dens_profile    densPL
+    densPL_alpha    0
+    nCore           1e4
+    path2output     outputs/mass_sfe_sweep
+
+    # Generates 6 combinations:
+    # 1e5_sfe001_n1e4, 1e5_sfe005_n1e4,
+    # 1e6_sfe001_n1e4, 1e6_sfe005_n1e4,
+    # 1e7_sfe001_n1e4, 1e7_sfe005_n1e4
