@@ -45,6 +45,9 @@ def make_test_params(**kwargs):
 
     Default values suitable for a homogeneous cloud test case.
     Override any parameter by passing keyword arguments.
+
+    Note: mu_convert = 1.4 is used for mass density calculations.
+    This is independent of ionization state (mu_ion/mu_atom).
     """
     defaults = {
         'nISM': 1.0,
@@ -53,8 +56,9 @@ def make_test_params(**kwargs):
         'rCore': 1.0,
         'dens_profile': 'densPL',
         'densPL_alpha': 0.0,
-        'mu_ion': 1.4,
-        'mu_atom': 2.3,
+        'mu_convert': 1.4,  # For mass density: rho = n * mu_convert * m_H
+        'mu_ion': 1.4,      # Legacy param (not used for mass calculations)
+        'mu_atom': 2.3,     # Legacy param (not used for mass calculations)
         'mCloud': 1e5,
     }
     defaults.update(kwargs)
@@ -578,7 +582,7 @@ def test_BE_density_profile():
     M_cloud = 100.0   # [Msun]
     n_core = 1e4      # [cm⁻³]
     Omega = 10.0
-    mu = 2.33         # Mean molecular weight
+    mu = 1.4          # mu_convert for mass density calculations
 
     solution = solve_lane_emden()
     result = create_BE_sphere(
@@ -590,12 +594,12 @@ def test_BE_density_profile():
     )
 
     # Create mock params for get_density_profile
-    # IMPORTANT: mu_ion must match what was used in create_BE_sphere
+    # IMPORTANT: mu_convert must match what was used in create_BE_sphere
     params = make_test_params(
         dens_profile='densBE',
         nCore=n_core,
         rCloud=result.r_out,
-        mu_ion=mu,  # Must match BE sphere creation
+        mu_convert=mu,  # Must match BE sphere creation
         densBE_Omega=Omega,
         densBE_Teff=result.T_eff,
         densBE_f_rho_rhoc=solution.f_rho_rhoc,
@@ -641,7 +645,7 @@ def test_BE_mass_total():
     M_cloud = 100.0   # [Msun]
     n_core = 1e4      # [cm⁻³]
     Omega = 10.0
-    mu = 2.33
+    mu = 1.4          # mu_convert for mass density calculations
 
     solution = solve_lane_emden()
     result = create_BE_sphere(
@@ -658,7 +662,7 @@ def test_BE_mass_total():
         nCore=n_core,
         rCloud=result.r_out,
         mCloud=M_cloud,
-        mu_ion=mu,
+        mu_convert=mu,  # Must match BE sphere creation
         densBE_Omega=Omega,
         densBE_Teff=result.T_eff,
         densBE_f_rho_rhoc=solution.f_rho_rhoc,

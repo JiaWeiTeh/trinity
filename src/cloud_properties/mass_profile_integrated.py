@@ -123,21 +123,17 @@ def get_mass_density(
     # Get number density from density_profile module
     n = get_density_profile(r, params)
 
-    # Determine which mean molecular weight to use
-    # Inside cloud: mu_ion (ionized), Outside cloud: mu_atom (neutral)
+    # Use mu_convert for mass density calculation
+    # mu_convert = 1.4 is independent of ionization state
+    # (ionization changes particle counts but NOT total mass)
     was_scalar = _is_scalar(r)
     r_arr = _to_array(r)
     n_arr = _to_array(n)
 
-    mu_ion = params['mu_ion'].value
-    mu_atom = params['mu_atom'].value
-    rCloud = params['rCloud'].value
-
-    # Create mu array based on position
-    mu_arr = np.where(r_arr <= rCloud, mu_ion, mu_atom)
+    mu_convert = params['mu_convert'].value
 
     # Mass density = number density * mean molecular weight
-    rho_arr = n_arr * mu_arr
+    rho_arr = n_arr * mu_convert
 
     # Convert to physical units if requested
     if physical_units:
@@ -168,7 +164,7 @@ def get_mass_profile(
         Required keys:
         - 'dens_profile': Profile type ('densPL' or 'densBE')
         - 'nCore', 'nISM': Number densities
-        - 'mu_ion', 'mu_atom': Mean molecular weights
+        - 'mu_convert': Mean molecular weight for mass conversion (=1.4)
         - 'mCloud', 'rCloud', 'rCore': Cloud parameters
         - Profile-specific parameters (see get_density_profile)
     return_mdot : bool, optional
@@ -323,16 +319,16 @@ def compute_enclosed_mass_powerlaw(
     # Extract parameters
     nCore = params['nCore'].value
     nISM = params['nISM'].value
-    mu_ion = params['mu_ion'].value
-    mu_atom = params['mu_atom'].value
+    mu_convert = params['mu_convert'].value
     rCore = params['rCore'].value
     rCloud = params['rCloud'].value
     mCloud = params['mCloud'].value
     alpha = params['densPL_alpha'].value
 
-    # Internal density units: n * mu
-    rhoCore_internal = nCore * mu_ion
-    rhoISM_internal = nISM * mu_atom
+    # Internal density units: n * mu_convert
+    # mu_convert = 1.4 is independent of ionization state
+    rhoCore_internal = nCore * mu_convert
+    rhoISM_internal = nISM * mu_convert
 
     # Physical density units: [Msun/pc^3]
     if physical_units:
@@ -409,8 +405,8 @@ def compute_enclosed_mass_bonnor_ebert(
     rCloud = params['rCloud'].value
     mCloud = params['mCloud'].value
     nISM = params['nISM'].value
-    mu_atom = params['mu_atom'].value
-    rhoISM = nISM * mu_atom * DENSITY_CONVERSION  # Physical units [Msun/pc^3]
+    mu_convert = params['mu_convert'].value
+    rhoISM = nISM * mu_convert * DENSITY_CONVERSION  # Physical units [Msun/pc^3]
 
     M_arr = np.zeros_like(r_arr, dtype=float)
 
