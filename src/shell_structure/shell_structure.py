@@ -373,7 +373,7 @@ def shell_structure(params):
             
             # Pressure equilibrium dictates that there will be a temperature and density
             # discontinuity at boundary between ionised and neutral region.
-            nShell0 = nShell0 * params['mu_neu'].value / params['mu_ion'].value * params['TShell_ion'].value / params['TShell_neu'].value
+            nShell0 = nShell0 * params['mu_atom'].value / params['mu_ion'].value * params['TShell_ion'].value / params['TShell_neu'].value
             # tau(r) at neutral shell region
             tau0_neu = tau0_ion
             
@@ -448,7 +448,7 @@ def shell_structure(params):
                 mShell_arr = np.empty_like(rShell_arr)
                 mShell_arr[0] = mShell0
                 # FIXME: Shouldnt we use mu_p?
-                mShell_arr[1:] = (nShell_arr[1:] * params['mu_neu'].value * 4 * np.pi * rShell_arr[1:]**2 * rShell_step)
+                mShell_arr[1:] = (nShell_arr[1:] * params['mu_atom'].value * 4 * np.pi * rShell_arr[1:]**2 * rShell_step)
                 mShell_arr_cum = np.cumsum(mShell_arr)
                 
                 # =============================================================================
@@ -499,7 +499,7 @@ def shell_structure(params):
             # Now, compute the gravitational potential for the neutral part of shell
             # =============================================================================
             # FIXME: Shouldnt we use mu_p?
-            grav_neu_rho = nShell_arr_neu * params['mu_neu'].value
+            grav_neu_rho = nShell_arr_neu * params['mu_atom'].value
             grav_neu_r = rShell_arr_neu
             # mass of the thin spherical shell
             grav_neu_m = grav_neu_rho * 4 * np.pi * grav_neu_r**2 * rShell_step
@@ -544,7 +544,7 @@ def shell_structure(params):
             nShell_max = np.max(nShell_arr_ion)
             dr_neu_arr = rShell_arr_neu[1:] - rShell_arr_neu[:-1]
             # FIXME: Shouldnt we use mu_p?
-            tau_kappa_IR = params['mu_neu'].value * (np.sum(nShell_arr_neu[:-1] * dr_neu_arr) + np.sum(nShell_arr_ion[:-1] * dr_ion_arr))
+            tau_kappa_IR = params['mu_atom'].value * (np.sum(nShell_arr_neu[:-1] * dr_neu_arr) + np.sum(nShell_arr_ion[:-1] * dr_ion_arr))
             
         # fraction of absorbed ionizing and non-ionizing radiations:
         f_absorbed_ion = 1 - phi_rEnd

@@ -60,7 +60,7 @@ def get_shellODE(y,
     """
 
     sigma_dust = params['dust_sigma'].value
-    mu_n = params['mu_neu'].value   
+    mu_n = params['mu_atom'].value
     mu_p = params['mu_ion'].value 
     t_ion = params['TShell_ion'].value
     t_neu = params['TShell_neu'].value

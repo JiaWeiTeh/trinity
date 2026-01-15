@@ -337,6 +337,9 @@ def convert2au(unit_string: Optional[str]) -> float:
         'cm': CONV.cm2pc,
         'km': CONV.km2pc,
         'erg': CONV.E_cgs2au,
+        # Mean molecular weight unit: dimensionless value × m_H [g] → Msun
+        # Used for mu parameters (mu_atom, mu_ion, mu_mol, mu_convert)
+        'm_H': CGS.m_H * CONV.g2Msun,
         # Dimensionless units (no conversion needed)
         'K': 1.0,
         'Zsun': 1.0,

@@ -472,7 +472,7 @@ if __name__ == '__main__':
         'nCore': MockValue(1e3),
         'nISM': MockValue(1.0),
         'mu_ion': MockValue(1.4),
-        'mu_neu': MockValue(1.4),
+        'mu_atom': MockValue(1.4),
         'gamma_adia': MockValue(5.0/3.0),
         'rCore': MockValue(10.0),  # User-specified core radius [pc]
         'densBE_Omega': MockValue(14.04),
@@ -512,7 +512,7 @@ if __name__ == '__main__':
         'nCore': MockValue(1e3),
         'nISM': MockValue(1.0),
         'mu_ion': MockValue(1.4),
-        'mu_neu': MockValue(1.4),
+        'mu_atom': MockValue(1.4),
         'rCore': MockValue(10.0),  # User-specified
         'densPL_alpha': MockValue(-2),
         # Placeholders
