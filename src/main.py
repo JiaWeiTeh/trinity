@@ -26,6 +26,7 @@ from src.phase1c_transition import run_transition_phase
 from src.phase2_momentum import run_momentum_phase
 import src._output.terminal_prints as terminal_prints
 from src._input.dictionary import DescribedItem, DescribedDict
+from src._output.simulation_end import write_simulation_end
 
 # Initialize logger for this module
 logger = logging.getLogger(__name__)
@@ -147,6 +148,14 @@ def start_expansion(params):
     logger.info(f"End time: {enddatetime}")
     logger.info(f"Total elapsed time: {elapsed}")
     logger.info("=" * 60)
+
+    # Write simulation end report to file
+    try:
+        exit_code = write_simulation_end(params)
+        logger.info(f"Simulation end report written (exit code: {exit_code})")
+    except Exception as e:
+        logger.warning(f"Could not write simulation end report: {e}")
+        exit_code = 99
 
     # # write data (make new file) and cloudy data
     # # (this must be done after the ODE has been solved on the whole interval between 0 and tcollapse (or tdissolve) because the solver is implicit)
