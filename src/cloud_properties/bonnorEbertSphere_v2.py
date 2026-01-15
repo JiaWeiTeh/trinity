@@ -298,7 +298,7 @@ def create_BE_sphere(
     M_cloud: float,
     n_core: float,
     Omega: float,
-    mu: float = 2.33,
+    mu: float = 1.4,
     gamma: float = 5.0/3.0,
     validate: bool = True,
     lane_emden_solution: Optional[LaneEmdenSolution] = None
@@ -320,7 +320,7 @@ def create_BE_sphere(
     Optional:
     ---------
     mu : float
-        Mean molecular weight [m_H units] (default: 2.33)
+        Mean molecular weight for mass conversion [m_H units] (default: 1.4 = mu_convert)
     gamma : float
         Adiabatic index (default: 5/3)
     validate : bool
@@ -502,7 +502,7 @@ def create_BE_sphere_from_params(params) -> BESphereResult:
     - 'mCloud' : Total cloud mass [Msun]
     - 'nCore' : Core number density [cm⁻³]
     - 'densBE_Omega' : Density contrast
-    - 'mu_ion' : Mean molecular weight
+    - 'mu_convert' : Mean molecular weight for mass conversion (=1.4)
     - 'gamma_adia' : Adiabatic index
 
     Updates params with:
@@ -526,7 +526,7 @@ def create_BE_sphere_from_params(params) -> BESphereResult:
     M_cloud = params['mCloud'].value
     n_core = params['nCore'].value
     Omega = params['densBE_Omega'].value
-    mu = params['mu_ion'].value
+    mu = params['mu_convert'].value  # Use mu_convert = 1.4 for mass conversion
     gamma = params['gamma_adia'].value
 
     # Solve Lane-Emden (cache for efficiency)
@@ -570,7 +570,7 @@ def r2xi(r, params):
     r : float or array [pc]
         Physical radius
     params : dict
-        TRINITY parameters (needs densBE_Teff, nCore, mu_ion, gamma_adia)
+        TRINITY parameters (needs densBE_Teff, nCore, mu_convert, gamma_adia)
 
     Returns
     -------
@@ -580,7 +580,7 @@ def r2xi(r, params):
     # Get parameters
     T_eff = params['densBE_Teff'].value
     n_core = params['nCore'].value
-    mu = params['mu_ion'].value
+    mu = params['mu_convert'].value  # Use mu_convert = 1.4 for mass density
     gamma = params['gamma_adia'].value
 
     # Calculate sound speed [cm/s]
@@ -607,7 +607,7 @@ def xi2r(xi, params):
     xi : float or array
         Dimensionless radius
     params : dict
-        TRINITY parameters
+        TRINITY parameters (needs densBE_Teff, nCore, mu_convert, gamma_adia)
 
     Returns
     -------
@@ -617,7 +617,7 @@ def xi2r(xi, params):
     # Get parameters
     T_eff = params['densBE_Teff'].value
     n_core = params['nCore'].value
-    mu = params['mu_ion'].value
+    mu = params['mu_convert'].value  # Use mu_convert = 1.4 for mass density
     gamma = params['gamma_adia'].value
 
     # Calculate sound speed [cm/s]
