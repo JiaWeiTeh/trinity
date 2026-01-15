@@ -498,6 +498,191 @@ def test_minimum_rCore():
 
 
 # =============================================================================
+# Bonnor-Ebert Sphere Tests
+# =============================================================================
+
+def test_BE_lane_emden_solution():
+    """Test Lane-Emden solution against known critical values."""
+    print("\nTesting Lane-Emden solution...")
+
+    from src.cloud_properties.bonnorEbertSphere_v2 import (
+        solve_lane_emden, OMEGA_CRITICAL, XI_CRITICAL, M_DIM_CRITICAL
+    )
+
+    solution = solve_lane_emden()
+
+    # Find critical values (where rho/rho_c = 1/OMEGA_CRITICAL)
+    idx_crit = np.argmin(np.abs(solution.rho_rhoc - 1.0/OMEGA_CRITICAL))
+    xi_crit_computed = solution.xi[idx_crit]
+    m_crit_computed = solution.m[idx_crit]
+
+    print(f"  Critical ξ: computed={xi_crit_computed:.3f}, expected≈{XI_CRITICAL:.3f}")
+    print(f"  Critical m: computed={m_crit_computed:.2f}, expected≈{M_DIM_CRITICAL:.2f}")
+
+    # Check within tolerance
+    assert abs(xi_crit_computed - XI_CRITICAL) < 0.1, \
+        f"ξ_crit mismatch: {xi_crit_computed:.3f} vs {XI_CRITICAL:.3f}"
+    assert abs(m_crit_computed - M_DIM_CRITICAL) < 0.5, \
+        f"m_crit mismatch: {m_crit_computed:.2f} vs {M_DIM_CRITICAL:.2f}"
+
+    # Check density decreases monotonically
+    assert np.all(np.diff(solution.rho_rhoc) <= 0), "Density should decrease"
+    print("  ✓ Density decreases monotonically")
+
+    # Check mass increases monotonically
+    assert np.all(np.diff(solution.m) >= 0), "Mass should increase monotonically"
+    print("  ✓ Mass increases monotonically")
+
+    print("✓ Lane-Emden solution test passed!")
+    return True
+
+
+def test_BE_sphere_creation():
+    """Test BE sphere creation from M, n_core, Omega."""
+    print("\nTesting BE sphere creation...")
+
+    from src.cloud_properties.bonnorEbertSphere_v2 import (
+        create_BE_sphere, OMEGA_CRITICAL
+    )
+
+    # Test case: 1 solar mass cloud
+    result = create_BE_sphere(
+        M_cloud=1.0,      # [Msun]
+        n_core=1e4,       # [cm⁻³]
+        Omega=10.0        # Moderately concentrated
+    )
+
+    print(f"  Input: M={result.M_cloud} Msun, n_core={result.n_core:.0e} cm⁻³, Ω={result.Omega}")
+    print(f"  Output: r_out={result.r_out:.4f} pc, n_out={result.n_out:.2e} cm⁻³")
+    print(f"          T_eff={result.T_eff:.1f} K, stable={result.is_stable}")
+
+    # Verify outputs
+    assert result.r_out > 0, "Radius should be positive"
+    assert np.isclose(result.n_out, result.n_core / result.Omega), "n_out = n_core/Omega"
+    assert result.T_eff > 0, "Temperature should be positive"
+    assert result.is_stable == (result.Omega < OMEGA_CRITICAL), "Stability check"
+
+    print("✓ BE sphere creation test passed!")
+    return True
+
+
+def test_BE_density_profile():
+    """Test BE density profile n(r) = nCore * rho_rhoc(xi)."""
+    print("\nTesting BE density profile...")
+
+    from src.cloud_properties.bonnorEbertSphere_v2 import (
+        solve_lane_emden, create_BE_sphere
+    )
+
+    # Create a BE sphere
+    M_cloud = 100.0   # [Msun]
+    n_core = 1e4      # [cm⁻³]
+    Omega = 10.0
+    mu = 2.33         # Mean molecular weight
+
+    solution = solve_lane_emden()
+    result = create_BE_sphere(
+        M_cloud=M_cloud,
+        n_core=n_core,
+        Omega=Omega,
+        mu=mu,
+        lane_emden_solution=solution
+    )
+
+    # Create mock params for get_density_profile
+    # IMPORTANT: mu_ion must match what was used in create_BE_sphere
+    params = make_test_params(
+        dens_profile='densBE',
+        nCore=n_core,
+        rCloud=result.r_out,
+        mu_ion=mu,  # Must match BE sphere creation
+        densBE_Omega=Omega,
+        densBE_Teff=result.T_eff,
+        densBE_f_rho_rhoc=solution.f_rho_rhoc,
+        gamma_adia=5.0/3.0,
+    )
+
+    # Test density at center (should be nCore)
+    r_center = 0.01 * result.r_out
+    n_center = get_density_profile(r_center, params)
+    # At center, rho_rhoc ≈ 1, so n ≈ nCore
+    assert np.isclose(n_center, n_core, rtol=0.01), \
+        f"Center density {n_center:.2e} should be ~nCore {n_core:.2e}"
+    print(f"  ✓ n(r=0.01*rCloud) = {n_center:.2e} ≈ nCore")
+
+    # Test density at edge (should be nCore/Omega at exactly rCloud)
+    # Use exactly rCloud for the edge test
+    r_edge = result.r_out
+    n_edge = get_density_profile(r_edge, params)
+    expected_n_edge = n_core / Omega
+    assert np.isclose(n_edge, expected_n_edge, rtol=0.05), \
+        f"Edge density {n_edge:.2e} should be ~{expected_n_edge:.2e}"
+    print(f"  ✓ n(r=rCloud) = {n_edge:.2e} ≈ nCore/Ω = {expected_n_edge:.2e}")
+
+    # Test outside cloud (should be nISM)
+    r_outside = 1.5 * result.r_out
+    n_outside = get_density_profile(r_outside, params)
+    assert n_outside == params['nISM'].value, "Outside should be nISM"
+    print(f"  ✓ n(r=1.5*rCloud) = {n_outside} = nISM")
+
+    print("✓ BE density profile test passed!")
+    return True
+
+
+def test_BE_mass_total():
+    """Test that M(rCloud) = mCloud for BE sphere (within 2%)."""
+    print("\nTesting BE mass total...")
+
+    from src.cloud_properties.bonnorEbertSphere_v2 import (
+        solve_lane_emden, create_BE_sphere
+    )
+
+    # Create a BE sphere
+    M_cloud = 100.0   # [Msun]
+    n_core = 1e4      # [cm⁻³]
+    Omega = 10.0
+    mu = 2.33
+
+    solution = solve_lane_emden()
+    result = create_BE_sphere(
+        M_cloud=M_cloud,
+        n_core=n_core,
+        Omega=Omega,
+        mu=mu,
+        lane_emden_solution=solution
+    )
+
+    # Create mock params for get_mass_profile
+    params = make_test_params(
+        dens_profile='densBE',
+        nCore=n_core,
+        rCloud=result.r_out,
+        mCloud=M_cloud,
+        mu_ion=mu,
+        densBE_Omega=Omega,
+        densBE_Teff=result.T_eff,
+        densBE_f_rho_rhoc=solution.f_rho_rhoc,
+        densBE_f_m=solution.f_m,
+        densBE_xi_out=result.xi_out,
+        gamma_adia=5.0/3.0,
+    )
+
+    # Compute mass at rCloud
+    M_at_rCloud = get_mass_profile(result.r_out, params)
+    rel_error = abs(M_at_rCloud - M_cloud) / M_cloud
+
+    print(f"  M(rCloud) = {M_at_rCloud:.4f} Msun")
+    print(f"  Expected  = {M_cloud:.4f} Msun")
+    print(f"  Relative error = {rel_error*100:.2f}%")
+
+    # Should be accurate to within 2%
+    assert rel_error < 0.02, f"Mass error too large: {rel_error*100:.2f}%"
+
+    print("✓ BE mass total test passed!")
+    return True
+
+
+# =============================================================================
 # Main test runner
 # =============================================================================
 
@@ -521,6 +706,11 @@ def run_all_tests():
         ("Mass: Accretion Rate", test_mass_accretion_rate),
         ("Mass: Validation", test_validate_mass),
         ("Mass: Minimum rCore", test_minimum_rCore),
+        # Bonnor-Ebert sphere tests
+        ("BE: Lane-Emden Solution", test_BE_lane_emden_solution),
+        ("BE: Sphere Creation", test_BE_sphere_creation),
+        ("BE: Density Profile", test_BE_density_profile),
+        ("BE: Mass Total", test_BE_mass_total),
     ]
 
     passed = 0
