@@ -166,77 +166,77 @@ def get_InitCloudProp(params: Dict[str, Any]) -> CloudProperties:
 # Power-law cloud initialization
 # =============================================================================
 
-def _init_powerlaw_cloud(params: Dict[str, Any]) -> CloudProperties:
-    """Initialize power-law density profile cloud.
+# def _init_powerlaw_cloud(params: Dict[str, Any]) -> CloudProperties:
+#     """Initialize power-law density profile cloud.
 
-    For power-law: n(r) = nCore * (r/rCore)^alpha
-    - alpha = 0: homogeneous
-    - alpha = -1: intermediate
-    - alpha = -2: isothermal
-    """
-    # Extract parameters
-    mCloud = params['mCloud'].value
-    nCore = params['nCore'].value
-    nISM = params['nISM'].value
-    alpha = params['densPL_alpha'].value
-    mu = params['mu_ion'].value
-    rCore = params['rCore'].value  # Read rCore directly from params
+#     For power-law: n(r) = nCore * (r/rCore)^alpha
+#     - alpha = 0: homogeneous
+#     - alpha = -1: intermediate
+#     - alpha = -2: isothermal
+#     """
+#     # Extract parameters
+#     mCloud = params['mCloud'].value
+#     nCore = params['nCore'].value
+#     nISM = params['nISM'].value
+#     alpha = params['densPL_alpha'].value
+#     mu = params['mu_ion'].value
+#     rCore = params['rCore'].value  # Read rCore directly from params
 
-    # Compute rCloud from physics (not hardcoded!)
-    if alpha == 0:
-        rCloud = compute_rCloud_homogeneous(mCloud, nCore, mu=mu)
-    else:
-        rCloud, _ = compute_rCloud_powerlaw(
-            mCloud, nCore, alpha, rCore=rCore, mu=mu
-        )
+#     # Compute rCloud from physics (not hardcoded!)
+#     if alpha == 0:
+#         rCloud = compute_rCloud_homogeneous(mCloud, nCore, mu=mu)
+#     else:
+#         rCloud, _ = compute_rCloud_powerlaw(
+#             mCloud, nCore, alpha, rCore=rCore, mu=mu
+#         )
 
-    # Compute edge density
-    nEdge = nCore * (rCloud / rCore) ** alpha if alpha != 0 else nCore
+#     # Compute edge density
+#     nEdge = nCore * (rCloud / rCore) ** alpha if alpha != 0 else nCore
 
-    # Validate edge density - warn user if rCore is too small
-    if nEdge < nISM and alpha != 0:
-        # Calculate minimum rCore such that nEdge = nISM
-        # nISM = nCore * (rCloud/rCore_min)^alpha
-        # rCore_min = rCloud * (nCore/nISM)^(1/alpha)
-        rCore_min = rCloud * (nCore / nISM) ** (1.0 / alpha)
-        # Calculate alternative: minimum nCore to keep rCore fixed
-        # nCore_min = nISM * (rCloud/rCore)^(-alpha)
-        nCore_min = nISM * (rCloud / rCore) ** (-alpha)
-        logger.warning(
-            f"nEdge ({nEdge:.2e} cm^-3) < nISM ({nISM:.2e} cm^-3)!\n"
-            f"  Current rCore = {rCore:.3f} pc is too small.\n"
-            f"  Option 1: Increase rCore to at least {rCore_min:.3f} pc\n"
-            f"  Option 2: Increase nCore to at least {nCore_min:.2e} cm^-3 (to keep rCore={rCore:.3f} pc)"
-        )
-        # Don't silently adjust - raise error so user fixes input
-        raise ValueError(
-            f"rCore={rCore:.3f} pc too small: nEdge={nEdge:.2e} < nISM={nISM:.2e}. "
-            f"Min rCore={rCore_min:.3f} pc OR min nCore={nCore_min:.2e} cm^-3"
-        )
+#     # Validate edge density - warn user if rCore is too small
+#     if nEdge < nISM and alpha != 0:
+#         # Calculate minimum rCore such that nEdge = nISM
+#         # nISM = nCore * (rCloud/rCore_min)^alpha
+#         # rCore_min = rCloud * (nCore/nISM)^(1/alpha)
+#         rCore_min = rCloud * (nCore / nISM) ** (1.0 / alpha)
+#         # Calculate alternative: minimum nCore to keep rCore fixed
+#         # nCore_min = nISM * (rCloud/rCore)^(-alpha)
+#         nCore_min = nISM * (rCloud / rCore) ** (-alpha)
+#         logger.warning(
+#             f"nEdge ({nEdge:.2e} cm^-3) < nISM ({nISM:.2e} cm^-3)!\n"
+#             f"  Current rCore = {rCore:.3f} pc is too small.\n"
+#             f"  Option 1: Increase rCore to at least {rCore_min:.3f} pc\n"
+#             f"  Option 2: Increase nCore to at least {nCore_min:.2e} cm^-3 (to keep rCore={rCore:.3f} pc)"
+#         )
+#         # Don't silently adjust - raise error so user fixes input
+#         raise ValueError(
+#             f"rCore={rCore:.3f} pc too small: nEdge={nEdge:.2e} < nISM={nISM:.2e}. "
+#             f"Min rCore={rCore_min:.3f} pc OR min nCore={nCore_min:.2e} cm^-3"
+#         )
 
-    # Store computed values back to params
-    params['rCloud'].value = rCloud
-    params['rCore'].value = rCore
-    params['nEdge'].value = nEdge
+#     # Store computed values back to params
+#     params['rCloud'].value = rCloud
+#     params['rCore'].value = rCore
+#     params['nEdge'].value = nEdge
 
-    # Create radius array with key radii included exactly
-    r_arr = _create_radius_array(rCloud, rCore)
+#     # Create radius array with key radii included exactly
+#     r_arr = _create_radius_array(rCloud, rCore)
 
-    # Compute profiles
-    n_arr = np.array([get_density_profile(r, params) for r in r_arr])
-    M_arr = np.array([get_mass_profile(r, params, return_mdot=False) for r in r_arr])
+#     # Compute profiles
+#     n_arr = np.array([get_density_profile(r, params) for r in r_arr])
+#     M_arr = np.array([get_mass_profile(r, params, return_mdot=False) for r in r_arr])
 
-    logger.info(f"Power-law cloud (alpha={alpha}): rCloud={rCloud:.3f} pc, nEdge={nEdge:.2e} cm^-3")
+#     logger.info(f"Power-law cloud (alpha={alpha}): rCloud={rCloud:.3f} pc, nEdge={nEdge:.2e} cm^-3")
 
-    # Store arrays in params for compatibility
-    params['initial_cloud_r_arr'].value = r_arr
-    params['initial_cloud_n_arr'].value = n_arr
-    params['initial_cloud_m_arr'].value = M_arr
+#     # Store arrays in params for compatibility
+#     params['initial_cloud_r_arr'].value = r_arr
+#     params['initial_cloud_n_arr'].value = n_arr
+#     params['initial_cloud_m_arr'].value = M_arr
 
-    return CloudProperties(
-        rCloud=rCloud, rCore=rCore, nEdge=nEdge,
-        r_arr=r_arr, n_arr=n_arr, M_arr=M_arr
-    )
+#     return CloudProperties(
+#         rCloud=rCloud, rCore=rCore, nEdge=nEdge,
+#         r_arr=r_arr, n_arr=n_arr, M_arr=M_arr
+#     )
 
 
 # =============================================================================
@@ -310,76 +310,76 @@ def _init_bonnor_ebert_cloud(params: Dict[str, Any]) -> CloudProperties:
     )
 
 
-# =============================================================================
-# Helper functions
-# =============================================================================
+# # =============================================================================
+# # Helper functions
+# # =============================================================================
 
-def _create_radius_array(rCloud: float, rCore: float,
-                         n_inside: int = 1000,
-                         n_outside: int = 100) -> np.ndarray:
-    """
-    Create radius array with key radii included exactly.
+# def _create_radius_array(rCloud: float, rCore: float,
+#                          n_inside: int = 1000,
+#                          n_outside: int = 100) -> np.ndarray:
+#     """
+#     Create radius array with key radii included exactly.
 
-    Parameters
-    ----------
-    rCloud : float
-        Cloud radius [pc]
-    rCore : float
-        Core radius [pc]
-    n_inside : int
-        Number of points inside cloud
-    n_outside : int
-        Number of points beyond cloud
+#     Parameters
+#     ----------
+#     rCloud : float
+#         Cloud radius [pc]
+#     rCore : float
+#         Core radius [pc]
+#     n_inside : int
+#         Number of points inside cloud
+#     n_outside : int
+#         Number of points beyond cloud
 
-    Returns
-    -------
-    r_arr : array
-        Sorted unique radius array including rCore and rCloud exactly
-    """
-    # Inside cloud: logspace from small radius to rCloud
-    r_min = 1e-3  # pc
-    r_inside = np.logspace(np.log10(r_min), np.log10(rCloud), n_inside)
+#     Returns
+#     -------
+#     r_arr : array
+#         Sorted unique radius array including rCore and rCloud exactly
+#     """
+#     # Inside cloud: logspace from small radius to rCloud
+#     r_min = 1e-3  # pc
+#     r_inside = np.logspace(np.log10(r_min), np.log10(rCloud), n_inside)
 
-    # Beyond cloud: up to 1.5 * rCloud
-    r_outside = np.logspace(np.log10(rCloud), np.log10(1.5 * rCloud), n_outside)
+#     # Beyond cloud: up to 1.5 * rCloud
+#     r_outside = np.logspace(np.log10(rCloud), np.log10(1.5 * rCloud), n_outside)
 
-    # Combine and add key radii explicitly
-    r_arr = np.concatenate([
-        [1e-10],     # Near-origin point
-        r_inside,
-        r_outside
-    ])
+#     # Combine and add key radii explicitly
+#     r_arr = np.concatenate([
+#         [1e-10],     # Near-origin point
+#         r_inside,
+#         r_outside
+#     ])
 
-    # Add key radii exactly and sort
-    r_arr = np.sort(np.unique(np.append(r_arr, [rCore, rCloud])))
+#     # Add key radii exactly and sort
+#     r_arr = np.sort(np.unique(np.append(r_arr, [rCore, rCloud])))
 
-    return r_arr
+#     return r_arr
 
 
-def _validate_params(params: Dict[str, Any]) -> None:
-    """Validate input parameters."""
-    required = ['dens_profile', 'mCloud', 'nCore', 'nISM', 'mu_ion', 'rCore']
+# def _validate_params(params: Dict[str, Any]) -> None:
+#     """Validate input parameters."""
+#     required = ['dens_profile', 'mCloud', 'nCore', 'nISM', 'mu_ion', 'rCore']
 
-    for key in required:
-        if key not in params:
-            raise ValueError(f"Missing required parameter: {key}")
-        if params[key].value is None:
-            raise ValueError(f"Parameter {key} is None")
+#     for key in required:
+#         if key not in params:
+#             raise ValueError(f"Missing required parameter: {key}")
+#         if params[key].value is None:
+#             raise ValueError(f"Parameter {key} is None")
 
-    if params['mCloud'].value <= 0:
-        raise ValueError(f"mCloud must be positive, got {params['mCloud'].value}")
-    if params['nCore'].value <= 0:
-        raise ValueError(f"nCore must be positive, got {params['nCore'].value}")
-    if params['rCore'].value <= 0:
-        raise ValueError(f"rCore must be positive, got {params['rCore'].value}")
+#     if params['mCloud'].value <= 0:
+#         raise ValueError(f"mCloud must be positive, got {params['mCloud'].value}")
+#     if params['nCore'].value <= 0:
+#         raise ValueError(f"nCore must be positive, got {params['nCore'].value}")
+#     if params['rCore'].value <= 0:
+#         raise ValueError(f"rCore must be positive, got {params['rCore'].value}")
 
-    profile = params['dens_profile'].value
-    if profile == 'densPL':
-        if 'densPL_alpha' not in params:
-            raise ValueError("densPL profile requires densPL_alpha")
-    elif profile == 'densBE':
-        if 'densBE_Omega' not in params:
-            raise ValueError("densBE profile requires densBE_Omega")
+#     profile = params['dens_profile'].value
+#     if profile == 'densPL':
+#         if 'densPL_alpha' not in params:
+#             raise ValueError("densPL profile requires densPL_alpha")
+#     elif profile == 'densBE':
+#         if 'densBE_Omega' not in params:
+#             raise ValueError("densBE profile requires densBE_Omega")
 
 
 # =============================================================================
