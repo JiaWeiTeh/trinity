@@ -37,8 +37,8 @@ import os
 
 FONTSIZE = 20
 
-# Define shared contour levels
-shared_levels = np.logspace(np.log10(1.5), np.log10(530), 10)
+# Define shared contour levels (reduced to avoid clutter)
+shared_levels = np.logspace(np.log10(1.5), np.log10(530), 6)
 # or shared_levels = None
 
 
@@ -227,9 +227,9 @@ def plot_radius_heatmap_powerlaw(ax, M_values, n_core_values, r_out_grid, alpha,
     n_log = np.log10(n_core_values)
     r_log = np.log10(r_out_grid)
 
-    # Create fine grids (100 x 50 points for smooth appearance)
-    M_fine_log = np.linspace(M_log.min(), M_log.max(), 100)
-    n_fine_log = np.linspace(n_log.min(), n_log.max(), 50)
+    # Create fine grids (higher resolution for smoother visualization)
+    M_fine_log = np.linspace(M_log.min(), M_log.max(), 300)
+    n_fine_log = np.linspace(n_log.min(), n_log.max(), 150)
     M_fine = 10**M_fine_log
     n_fine = 10**n_fine_log
 
@@ -302,9 +302,9 @@ def main():
     print("Power-Law Cloud Radius Visualization")
     print("=" * 60)
 
-    # Define parameter grid
-    n_core_values = np.array([1e2, 3e2, 1e3, 3e3, 1e4])
-    M_values = np.array([1e4, 3e4, 1e5, 3e5, 1e6, 3e6, 1e7, 3e7, 1e8])
+    # Define parameter grid (higher resolution for smoother visualization)
+    n_core_values = np.logspace(2, 4, 50)  # 100 to 10000 cm^-3
+    M_values = np.logspace(4, 8, 80)       # 10^4 to 10^8 Msun
 
     # Alpha values to plot
     alpha_values = [0, -0.5, -1, -2]
