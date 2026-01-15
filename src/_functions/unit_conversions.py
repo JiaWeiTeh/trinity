@@ -397,8 +397,8 @@ def convert2au(unit_string: Optional[str]) -> float:
 
     # Process numerator units
     for unit in numerator_units:
-        # Parse: base_unit**exponent
-        match = re.match(r'^([a-zA-Z]+)(\*\*(.+))?$', unit)
+        # Parse: base_unit**exponent (allow underscores in unit names like m_H)
+        match = re.match(r'^([a-zA-Z_][a-zA-Z0-9_]*)(\*\*(.+))?$', unit)
 
         if not match:
             raise UnitConversionError(f"Cannot parse unit: '{unit}' in '{unit_string}'")
@@ -434,8 +434,8 @@ def convert2au(unit_string: Optional[str]) -> float:
 
     # Process denominator units (negative exponent)
     for unit in denominator_units:
-        # Parse: base_unit**exponent
-        match = re.match(r'^([a-zA-Z]+)(\*\*(.+))?$', unit)
+        # Parse: base_unit**exponent (allow underscores in unit names like m_H)
+        match = re.match(r'^([a-zA-Z_][a-zA-Z0-9_]*)(\*\*(.+))?$', unit)
 
         if not match:
             raise UnitConversionError(f"Cannot parse unit: '{unit}' in '{unit_string}'")
