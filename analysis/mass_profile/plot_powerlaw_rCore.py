@@ -20,7 +20,6 @@ For power-law density profile:
     n(r) = nCore * (r/rCore)^alpha  for rCore < r <= rCloud
     n(r) = nISM                     for r > rCloud
 
-Author: Claude Code
 Date: 2026-01-15
 """
 
