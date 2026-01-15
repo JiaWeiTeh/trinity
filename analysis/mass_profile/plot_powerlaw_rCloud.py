@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Visualization of Power-Law cloud radius as function of (M_cloud, n_core) for various alpha.
+Visualization of Power-Law cloud radius (rCloud) as function of (M_cloud, n_core).
 
 Creates 2D colormap plots showing how cloud radius varies with:
 - Cloud mass (x-axis)
 - Core density (y-axis)
-- Radius shown as color
+- Cloud radius (rCloud) shown as color
 
 For power-law density profile:
     n(r) = nCore                    for r ≤ rCore
@@ -17,6 +17,8 @@ Physics:
 ========
 For α = 0 (homogeneous): rCloud = (3M/(4πρ))^(1/3)
 For α ≠ 0: M = 4πρ[rCore³/3 + (rCloud^(3+α) - rCore^(3+α))/((3+α)×rCore^α)]
+
+Note: For forbidden zone visualization (parameter validity), see plot_powerlaw_rCore.py
 
 Author: Claude Code
 Date: 2026-01-12
@@ -147,83 +149,6 @@ def compute_rCloud_powerlaw(M_cloud, nCore, alpha, rCore_fraction=0.1, mu=2.33):
     return rCloud, rCore
 
 
-def compute_forbidden_zones(M_values, n_core_values, alpha, rCore_fraction=0.1,
-                            mu=2.33, nISM=1.0, r_max=200.0, mass_tol=0.001):
-    """
-    Compute boolean mask for forbidden parameter combinations.
-
-    Parameters
-    ----------
-    M_values : array-like
-        Cloud mass values [Msun]
-    n_core_values : array-like
-        Core number density values [cm^-3]
-    alpha : float
-        Power-law exponent
-    rCore_fraction : float
-        Ratio rCore/rCloud
-    mu : float
-        Mean molecular weight
-    nISM : float
-        ISM density for edge constraint [cm^-3] (default 1.0)
-    r_max : float
-        Maximum cloud radius [pc] (default 200)
-    mass_tol : float
-        Maximum mass error tolerance (default 0.1% = 0.001)
-
-    Returns
-    -------
-    dict with 2D boolean arrays (same shape as radius grid):
-        'radius': rCloud > r_max
-        'density': nEdge < nISM
-        'mass': mass error > mass_tol
-        'any': union of all constraints
-    """
-    n_n = len(n_core_values)
-    n_m = len(M_values)
-
-    forbidden_radius = np.zeros((n_n, n_m), dtype=bool)
-    forbidden_density = np.zeros((n_n, n_m), dtype=bool)
-    forbidden_mass = np.zeros((n_n, n_m), dtype=bool)
-
-    for i, nCore in enumerate(n_core_values):
-        for j, M_cloud in enumerate(M_values):
-            # Compute rCloud
-            if alpha == 0:
-                rCloud = compute_rCloud_homogeneous(M_cloud, nCore, mu)
-                rCore = rCloud * rCore_fraction
-                nEdge = nCore
-            else:
-                rCloud, rCore = compute_rCloud_powerlaw(M_cloud, nCore, alpha, rCore_fraction, mu)
-                nEdge = nCore * (rCloud / rCore) ** alpha
-
-            # Check constraints
-            forbidden_radius[i, j] = rCloud > r_max
-            forbidden_density[i, j] = nEdge < nISM
-
-            # Mass validation (compute M at rCloud and compare)
-            rhoCore = nCore * mu * DENSITY_CONVERSION
-            if alpha == 0:
-                M_computed = (4.0/3.0) * np.pi * rCloud**3 * rhoCore
-            else:
-                M_computed = 4.0 * np.pi * rhoCore * (
-                    rCore**3 / 3.0 +
-                    (rCloud**(3.0 + alpha) - rCore**(3.0 + alpha)) /
-                    ((3.0 + alpha) * rCore**alpha)
-                )
-            mass_error = abs(M_computed - M_cloud) / M_cloud if M_cloud > 0 else 0
-            forbidden_mass[i, j] = mass_error > mass_tol
-
-    forbidden_any = forbidden_radius | forbidden_density | forbidden_mass
-
-    return {
-        'radius': forbidden_radius,
-        'density': forbidden_density,
-        'mass': forbidden_mass,
-        'any': forbidden_any
-    }
-
-
 def compute_radius_grid_powerlaw(M_values, n_core_values, alpha, rCore_fraction=0.1, mu=2.33):
     """
     Compute power-law cloud radius for grid of (M_cloud, n_core) values.
@@ -260,9 +185,7 @@ def compute_radius_grid_powerlaw(M_values, n_core_values, alpha, rCore_fraction=
 
 
 def plot_radius_heatmap_powerlaw(ax, M_values, n_core_values, r_out_grid, alpha,
-                                  vmin=None, vmax=None, contour_levels=shared_levels,
-                                  show_forbidden=True, nISM=1.0, r_max=200.0,
-                                  rCore_fraction=0.1, mu=2.33):
+                                  vmin=None, vmax=None, contour_levels=shared_levels):
     """
     Create 2D colormap of rCloud vs (M_cloud, n_core) for power-law profile.
 
@@ -282,16 +205,6 @@ def plot_radius_heatmap_powerlaw(ax, M_values, n_core_values, r_out_grid, alpha,
         Color scale limits
     contour_levels : array-like, optional
         Contour levels for radius lines. If None, computed from local data.
-    show_forbidden : bool, optional
-        Whether to overlay forbidden zones (default True)
-    nISM : float, optional
-        ISM density for edge constraint [cm^-3] (default 1.0)
-    r_max : float, optional
-        Maximum cloud radius [pc] (default 200)
-    rCore_fraction : float, optional
-        Ratio rCore/rCloud (default 0.1)
-    mu : float, optional
-        Mean molecular weight (default 2.33)
 
     Returns
     -------
@@ -373,69 +286,6 @@ def plot_radius_heatmap_powerlaw(ax, M_values, n_core_values, r_out_grid, alpha,
     # Add grid
     ax.grid(True, alpha=0.3, linestyle='--')
 
-    # Overlay forbidden zones if requested
-    if show_forbidden:
-        # Compute forbidden zones on original grid
-        forbidden = compute_forbidden_zones(
-            M_values, n_core_values, alpha,
-            rCore_fraction=rCore_fraction, mu=mu,
-            nISM=nISM, r_max=r_max
-        )
-
-        # Interpolate forbidden mask to fine grid
-        # Convert boolean to float for interpolation
-        forbidden_float = forbidden['any'].astype(float)
-
-        # Interpolate in log-log space
-        interp_forbidden = RectBivariateSpline(
-            n_log, M_log, forbidden_float, kx=1, ky=1
-        )
-        forbidden_fine = interp_forbidden(n_fine_log, M_fine_log)
-
-        # Threshold at 0.5 to get smooth boundary
-        forbidden_mask = forbidden_fine > 0.5
-
-        # Only draw if there are forbidden regions
-        if np.any(forbidden_mask):
-            # Overlay forbidden zones with white fill
-            ax.contourf(
-                M_fine_grid, n_fine_grid, forbidden_fine,
-                levels=[0.5, 1.5],
-                colors='white',
-                alpha=0.75,
-                zorder=5
-            )
-
-            # Add dashed boundary line
-            ax.contour(
-                M_fine_grid, n_fine_grid, forbidden_fine,
-                levels=[0.5],
-                colors='black',
-                linestyles='dashed',
-                linewidths=1.5,
-                zorder=6
-            )
-
-            # Add "Forbidden" label in the center of forbidden region
-            # Find centroid of forbidden region
-            forbidden_indices = np.where(forbidden_mask)
-            if len(forbidden_indices[0]) > 0:
-                # Get center in index space
-                center_i = int(np.mean(forbidden_indices[0]))
-                center_j = int(np.mean(forbidden_indices[1]))
-                # Convert to data coordinates
-                x_center = M_fine[center_j]
-                y_center = n_fine[center_i]
-                ax.annotate(
-                    'Forbidden',
-                    xy=(x_center, y_center),
-                    fontsize=FONTSIZE - 1,
-                    ha='center', va='center',
-                    color='gray',
-                    style='italic',
-                    zorder=7
-                )
-
     return pcm
 
 
@@ -480,18 +330,11 @@ def main():
 
     print("\nGenerating plots...")
 
-    # Forbidden zone parameters
-    nISM = 1.0      # ISM density [cm^-3]
-    r_max = 200.0   # Maximum cloud radius [pc]
-    mu = 2.33       # Mean molecular weight
-
     for idx, alpha in enumerate(alpha_values):
         ax = axes[idx]
         pcm = plot_radius_heatmap_powerlaw(
             ax, M_values, n_core_values, grids[alpha], alpha,
-            vmin=vmin, vmax=vmax, contour_levels=shared_levels,
-            show_forbidden=True, nISM=nISM, r_max=r_max,
-            rCore_fraction=rCore_fraction, mu=mu
+            vmin=vmin, vmax=vmax, contour_levels=shared_levels
         )
 
         # Only add axis labels on edges
