@@ -25,7 +25,7 @@ import matplotlib.colors as mcolors
 # --- constants
 
 # for neutral gas
-mu_neu = (14/11) * c.m_p.cgs.value
+mu_atom = (14/11) * c.m_p.cgs.value
 # for ionised
 mu_ion = (14/23) * c.m_p.cgs.value
 # constants
@@ -46,7 +46,7 @@ def get_cs(T):
     if T > 1e4:
         return np.sqrt(gamma * kB * T / mu_ion)
     else:
-        return np.sqrt(gamma * kB * T / mu_neu)
+        return np.sqrt(gamma * kB * T / mu_atom)
     
 # --- lane-emden
 def laneEmden(y,t):
@@ -217,7 +217,7 @@ ax[1].set_xlabel('$\\rho_c$ [cm$^{-3}$]')
 
 def get_homoR(mCloud, nCore):
     
-    r = (3 * mCloud / 4 / np.pi / (nCore * mu_neu))**(1/3)
+    r = (3 * mCloud / 4 / np.pi / (nCore * mu_atom))**(1/3)
 
     return r
 

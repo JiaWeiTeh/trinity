@@ -120,7 +120,7 @@ def get_y0(
         Required keys (with .value attribute for DescribedItem, or raw values):
         - 'nCore' : float [AU units]
             Core number density.
-        - 'mu_neu' : float [AU units]
+        - 'mu_atom' : float [AU units]
             Mean molecular weight of neutral gas.
         - 'bubble_xi_Tb' : float [dimensionless]
             Thermal conduction efficiency parameter (0-1).
@@ -176,7 +176,7 @@ def get_y0(
 
     # Core properties - handle both DescribedItem and raw value access
     nCore = _get_param_value(params, 'nCore')
-    mu_neu = _get_param_value(params, 'mu_neu')
+    mu_atom = _get_param_value(params, 'mu_atom')
     bubble_xi_Tb = _get_param_value(params, 'bubble_xi_Tb')
 
     # =========================================================================
@@ -189,8 +189,8 @@ def get_y0(
     if nCore <= 0:
         raise ValueError(f"nCore must be positive, got {nCore}")
 
-    if mu_neu <= 0:
-        raise ValueError(f"mu_neu must be positive, got {mu_neu}")
+    if mu_atom <= 0:
+        raise ValueError(f"mu_atom must be positive, got {mu_atom}")
 
     if not (0 <= bubble_xi_Tb <= 1):
         raise ValueError(f"bubble_xi_Tb must be in [0,1], got {bubble_xi_Tb}")
@@ -239,7 +239,7 @@ def get_y0(
     # =========================================================================
 
     # Ambient density [AU units: Msun/pc^3]
-    rhoa = nCore * mu_neu
+    rhoa = nCore * mu_atom
 
     # Duration of free-streaming phase [Myr]
     # From Rahner thesis Eq. 1.15:

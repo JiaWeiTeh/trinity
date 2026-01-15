@@ -127,7 +127,7 @@ def get_shellODE_ionized(y, r, f_cover, params):
     params : dict
         Required keys:
         - 'dust_sigma': Dust cross section [cm²]
-        - 'mu_neu': Mean molecular weight neutral gas
+        - 'mu_atom': Mean molecular weight neutral gas
         - 'mu_ion': Mean molecular weight ionized gas
         - 'TShell_ion': Shell temperature ionized region [K]
         - 'caseB_alpha': Case B recombination coefficient [cm³/s]
@@ -176,7 +176,7 @@ def get_shellODE_ionized(y, r, f_cover, params):
 
     # Extract parameters
     sigma_d = params['dust_sigma'].value
-    mu_n = params['mu_neu'].value
+    mu_n = params['mu_atom'].value
     mu_p = params['mu_ion'].value
     T_ion = params['TShell_ion'].value
     alpha_B = params['caseB_alpha'].value
@@ -289,7 +289,7 @@ def get_shellODE_neutral(y, r, f_cover, params):
     params : dict
         Required keys:
         - 'dust_sigma': Dust cross section [cm²]
-        - 'mu_neu': Mean molecular weight neutral gas
+        - 'mu_atom': Mean molecular weight neutral gas
         - 'TShell_neu': Shell temperature neutral region [K]
         - 'k_B': Boltzmann constant [erg/K]
         - 'c_light': Speed of light [cm/s]
@@ -336,7 +336,7 @@ def get_shellODE_neutral(y, r, f_cover, params):
 
     # Extract parameters
     sigma_d = params['dust_sigma'].value
-    mu_n = params['mu_neu'].value
+    mu_n = params['mu_atom'].value
     T_neu = params['TShell_neu'].value
     k_B = params['k_B'].value
     c = params['c_light'].value
@@ -404,7 +404,7 @@ def validate_ode_params(params, is_ionised=True):
     """
     # Common parameters (both regions)
     required_common = [
-        'dust_sigma', 'mu_neu', 'k_B', 'c_light', 'Ln'
+        'dust_sigma', 'mu_atom', 'k_B', 'c_light', 'Ln'
     ]
 
     # Additional parameters for ionized region
@@ -461,7 +461,7 @@ def test_ionized_ode():
 
     params = {
         'dust_sigma': MockParam(1e-21),  # cm²
-        'mu_neu': MockParam(2.3),
+        'mu_atom': MockParam(2.3),
         'mu_ion': MockParam(1.4),
         'TShell_ion': MockParam(1e4),  # K
         'caseB_alpha': MockParam(2.6e-13),  # cm³/s
@@ -505,7 +505,7 @@ def test_neutral_ode():
 
     params = {
         'dust_sigma': MockParam(1e-21),
-        'mu_neu': MockParam(2.3),
+        'mu_atom': MockParam(2.3),
         'TShell_neu': MockParam(100),  # K
         'k_B': MockParam(1.38e-16),
         'c_light': MockParam(3e10),

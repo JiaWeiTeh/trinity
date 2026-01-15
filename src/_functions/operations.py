@@ -135,7 +135,7 @@ def get_soundspeed(T, params):
     if T > 1e4:
         mu = params['mu_ion'] * cvt.Msun2g
     else:
-        mu = params['mu_neu'] * cvt.Msun2g
+        mu = params['mu_atom'] * cvt.Msun2g
     
     return  np.sqrt(params['gamma_adia'] * (params['k_B'] * cvt.k_B_au2cgs) * T / mu) * cvt.v_cms2au
 

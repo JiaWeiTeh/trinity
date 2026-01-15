@@ -115,7 +115,7 @@ def get_ODE_implicit_pure(y: np.ndarray, t: float, params: Dict) -> np.ndarray:
     nCore = params['nCore'].value
     nISM = params['nISM'].value
     mu_ion = params['mu_ion'].value
-    mu_neu = params['mu_neu'].value
+    mu_atom = params['mu_atom'].value
     rCloud = params['rCloud'].value
     mCloud = params['mCloud'].value
 
@@ -310,14 +310,14 @@ def calculate_mass_profile_pure(R2: float, v2: float, params: Dict) -> Tuple[flo
     nCore = params['nCore'].value
     nISM = params['nISM'].value
     mu_ion = params['mu_ion'].value
-    mu_neu = params['mu_neu'].value
+    mu_atom = params['mu_atom'].value
     rCore = params['rCore'].value
     rCloud = params['rCloud'].value
     mCloud = params['mCloud'].value
 
     # Convert to mass density
     rhoCore = nCore * mu_ion
-    rhoISM = nISM * mu_neu
+    rhoISM = nISM * mu_atom
 
     # =========================================================================
     # Power-law profile

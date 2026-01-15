@@ -169,12 +169,25 @@ FB_vSN    1e4
 # Other constants
 # =============================================================================
 
-# INFO: Mean molecular weight for neutral gas, assuming a standard composition of one helium atom per ten hydrogen atoms.
-# UNIT: [g]
-mu_neu    2.1287915392418182e-24
-# INFO: Mean molecular weight for ionised gas, assuming a standard composition of one helium atom per ten hydrogen atoms.
-# UNIT: [g]
-mu_ion    1.0181176926808696e-24
+# INFO: Mean molecular weight for neutral atomic gas (HI + He). Dimensionless, in units of m_H.
+# INFO: Composition: He:H = 1:10 by number. Formula: (10×1 + 1×4) / 11 = 14/11.
+# UNIT: [m_H]
+mu_atom    1.2727272727272727
+
+# INFO: Mean molecular weight for fully ionized gas (H+ + He++). Dimensionless, in units of m_H.
+# INFO: Composition: He:H = 1:10 by number. Formula: (10×1 + 1×4) / 23 = 14/23.
+# UNIT: [m_H]
+mu_ion    0.6086956521739131
+
+# INFO: Mean molecular weight for molecular gas (H2 + He). Dimensionless, in units of m_H.
+# INFO: Composition: He:H = 1:10 by number. Formula: (10×1 + 1×4) / 6 = 14/6.
+# UNIT: [m_H]
+mu_mol    2.3333333333333333
+
+# INFO: Conversion factor for mass density calculation (mass integration). Use this for n→rho conversion.
+# INFO: Independent of ionization state - ionization changes particle counts but NOT total mass.
+# UNIT: [m_H]
+mu_convert    1.4
 
 # INFO: Temperature of the neutral shell region.
 TShell_neu    1e2
