@@ -24,7 +24,6 @@ Example sweep.param:
 
 This generates 3 x 2 x 2 = 12 simulations.
 
-Author: Claude Code
 Date: 2026-01-14
 """
 

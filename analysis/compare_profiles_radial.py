@@ -95,10 +95,10 @@ print("  (LaTeX disabled - using standard fonts)")
 
 # Common inputs
 M_CLOUD = 1e7     # Msun
-N_CORE = 1e3      # cm⁻³
+N_CORE = 2e4      # cm⁻³
 MU = 1.4          # Mean molecular weight
 N_ISM = 1.0       # cm⁻³
-R_CORE = 1.0  # Fixed core radius [pc] - user specified
+R_CORE = 3.0  # Fixed core radius [pc] - user specified
 
 
 # =============================================================================
