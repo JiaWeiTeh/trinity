@@ -37,7 +37,7 @@ nCore = 1e4
 gamma = 5/3
 
 # for neutral gas
-mu_neu = (14/11) * c.m_p.cgs.value
+mu_atom = (14/11) * c.m_p.cgs.value
 # for ionised
 mu_ion = (14/23) * c.m_p.cgs.value
 
@@ -60,7 +60,7 @@ rhoCore = rhoCore * cvt.ndens_cgs2au * cvt.g2Msun
 k_B *= cvt.k_B_cgs2au
 G *= cvt.G_cgs2au
 c_light *= cvt.v_cms2au
-mu_neu *= cvt.g2Msun
+mu_atom *= cvt.g2Msun
 mu_ion *= cvt.g2Msun
 Pext *= cvt.Pb_cgs2au
 

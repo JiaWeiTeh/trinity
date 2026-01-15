@@ -582,7 +582,7 @@ def get_init_dMdt(params):
     dMdt_factor = 1.646
     
     dMdt_init = 12 / 75 * dMdt_factor**(5/2) * 4 * np.pi * params['R2']**3 / params['t_now']\
-        * params['mu_neu'] / params['k_B'] * (params['t_now'] * params['C_thermal'] / params['R2']**2)**(2/7) * params['Pb']**(5/7)
+        * params['mu_atom'] / params['k_B'] * (params['t_now'] * params['C_thermal'] / params['R2']**2)**(2/7) * params['Pb']**(5/7)
      
     # Msol/Myr
     return dMdt_init
