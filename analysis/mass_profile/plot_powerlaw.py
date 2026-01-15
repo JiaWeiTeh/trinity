@@ -33,6 +33,13 @@ import sys
 import os
 
 
+FONTSIZE = 20
+
+# Define shared contour levels
+shared_levels = np.logspace(np.log10(1.5), np.log10(530), 10)
+# or shared_levels = None
+
+
 _style_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'src', '_plots', 'trinity.mplstyle')
 plt.style.use(_style_path)
 
