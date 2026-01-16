@@ -24,6 +24,7 @@ import numpy as np
 import logging
 import os
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Optional
 
 import matplotlib.pyplot as plt
@@ -503,6 +504,9 @@ def plot_initial_cloud_profiles(
     filepath : str
         Full path to the saved figure
     """
+    # Get path to trinity style file
+    style_path = Path(__file__).parent.parent / '_plots' / 'trinity.mplstyle'
+
     # Extract data
     r_arr = props.r_arr
     n_arr = props.n_arr
@@ -518,91 +522,91 @@ def plot_initial_cloud_profiles(
 
     if profile_type == 'densPL':
         alpha = params['densPL_alpha'].value
-        profile_label = f"Power-law (α={alpha})"
+        profile_label = rf"Power-law ($\alpha$={alpha})"
     elif profile_type == 'densBE':
         Omega = params['densBE_Omega'].value
         T_eff = props.T_eff
-        profile_label = f"Bonnor-Ebert (Ω={Omega:.1f}, T={T_eff:.1f} K)"
+        profile_label = rf"Bonnor-Ebert ($\Omega$={Omega:.1f}, T={T_eff:.1f} K)"
     else:
         profile_label = profile_type
 
-    # Create figure with two panels
-    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+    # Use trinity style for plotting
+    with plt.style.context(str(style_path)):
+        # Create figure with two panels (wider for two-panel layout)
+        fig, axes = plt.subplots(1, 2, figsize=(7.0, 2.8))
 
-    # -------------------------------------------------------------------------
-    # Left panel: Density profile
-    # -------------------------------------------------------------------------
-    ax1 = axes[0]
+        # ---------------------------------------------------------------------
+        # Left panel: Density profile
+        # ---------------------------------------------------------------------
+        ax1 = axes[0]
 
-    # Plot density profile
-    ax1.loglog(r_arr, n_arr, 'b-', linewidth=2, label='n(r)')
+        # Plot density profile
+        ax1.loglog(r_arr, n_arr, 'C0-', label=r'$n(r)$')
 
-    # Mark key radii
-    ax1.axvline(rCore, color='green', linestyle='--', linewidth=1.5,
-                label=f'rCore = {rCore:.3f} pc')
-    ax1.axvline(rCloud, color='red', linestyle='--', linewidth=1.5,
-                label=f'rCloud = {rCloud:.3f} pc')
+        # Mark key radii
+        ax1.axvline(rCore, color='C2', linestyle='--',
+                    label=rf'$r_{{\rm core}}$ = {rCore:.3f} pc')
+        ax1.axvline(rCloud, color='C3', linestyle='--',
+                    label=rf'$r_{{\rm cloud}}$ = {rCloud:.3f} pc')
 
-    # Mark key densities
-    ax1.axhline(nCore, color='blue', linestyle=':', alpha=0.5,
-                label=f'nCore = {nCore:.2e} cm⁻³')
-    ax1.axhline(nEdge, color='orange', linestyle=':', alpha=0.5,
-                label=f'nEdge = {nEdge:.2e} cm⁻³')
+        # Mark key densities
+        ax1.axhline(nCore, color='C0', linestyle=':', alpha=0.5,
+                    label=rf'$n_{{\rm core}}$ = {nCore:.2e} cm$^{{-3}}$')
+        ax1.axhline(nEdge, color='C1', linestyle=':', alpha=0.5,
+                    label=rf'$n_{{\rm edge}}$ = {nEdge:.2e} cm$^{{-3}}$')
 
-    ax1.set_xlabel('Radius r [pc]', fontsize=12)
-    ax1.set_ylabel('Number density n [cm⁻³]', fontsize=12)
-    ax1.set_title('Density Profile', fontsize=14)
-    ax1.legend(loc='best', fontsize=9)
-    ax1.grid(True, alpha=0.3, which='both')
+        ax1.set_xlabel(r'Radius $r$ [pc]')
+        ax1.set_ylabel(r'Number density $n$ [cm$^{-3}$]')
+        ax1.set_title('Density Profile')
+        ax1.legend(loc='best')
 
-    # Set axis limits
-    ax1.set_xlim(r_arr[r_arr > 0].min() * 0.5, r_arr.max() * 1.2)
-    ax1.set_ylim(n_arr[n_arr > 0].min() * 0.5, n_arr.max() * 2)
+        # Set axis limits
+        ax1.set_xlim(r_arr[r_arr > 0].min() * 0.5, r_arr.max() * 1.2)
+        ax1.set_ylim(n_arr[n_arr > 0].min() * 0.5, n_arr.max() * 2)
 
-    # -------------------------------------------------------------------------
-    # Right panel: Mass profile
-    # -------------------------------------------------------------------------
-    ax2 = axes[1]
+        # ---------------------------------------------------------------------
+        # Right panel: Mass profile
+        # ---------------------------------------------------------------------
+        ax2 = axes[1]
 
-    # Plot mass profile
-    ax2.loglog(r_arr, M_arr, 'r-', linewidth=2, label='M(r)')
+        # Plot mass profile
+        ax2.loglog(r_arr, M_arr, 'C3-', label=r'$M(r)$')
 
-    # Mark key radii
-    ax2.axvline(rCore, color='green', linestyle='--', linewidth=1.5,
-                label=f'rCore = {rCore:.3f} pc')
-    ax2.axvline(rCloud, color='red', linestyle='--', linewidth=1.5,
-                label=f'rCloud = {rCloud:.3f} pc')
+        # Mark key radii
+        ax2.axvline(rCore, color='C2', linestyle='--',
+                    label=rf'$r_{{\rm core}}$ = {rCore:.3f} pc')
+        ax2.axvline(rCloud, color='C3', linestyle='--',
+                    label=rf'$r_{{\rm cloud}}$ = {rCloud:.3f} pc')
 
-    # Mark cloud mass
-    ax2.axhline(mCloud, color='purple', linestyle=':', alpha=0.5,
-                label=f'mCloud = {mCloud:.2e} M☉')
+        # Mark cloud mass
+        ax2.axhline(mCloud, color='C4', linestyle=':', alpha=0.5,
+                    label=rf'$M_{{\rm cloud}}$ = {mCloud:.2e} M$_{{\odot}}$')
 
-    ax2.set_xlabel('Radius r [pc]', fontsize=12)
-    ax2.set_ylabel('Enclosed mass M [M☉]', fontsize=12)
-    ax2.set_title('Mass Profile', fontsize=14)
-    ax2.legend(loc='best', fontsize=9)
-    ax2.grid(True, alpha=0.3, which='both')
+        ax2.set_xlabel(r'Radius $r$ [pc]')
+        ax2.set_ylabel(r'Enclosed mass $M$ [M$_{\odot}$]')
+        ax2.set_title('Mass Profile')
+        ax2.legend(loc='best')
 
-    # Set axis limits
-    ax2.set_xlim(r_arr[r_arr > 0].min() * 0.5, r_arr.max() * 1.2)
-    ax2.set_ylim(M_arr[M_arr > 0].min() * 0.5, M_arr.max() * 2)
+        # Set axis limits
+        ax2.set_xlim(r_arr[r_arr > 0].min() * 0.5, r_arr.max() * 1.2)
+        ax2.set_ylim(M_arr[M_arr > 0].min() * 0.5, M_arr.max() * 2)
 
-    # -------------------------------------------------------------------------
-    # Overall title
-    # -------------------------------------------------------------------------
-    fig.suptitle(
-        f'Initial Cloud: {profile_label}\n'
-        f'mCloud = {mCloud:.2e} M☉, nCore = {nCore:.2e} cm⁻³',
-        fontsize=14, fontweight='bold'
-    )
+        # ---------------------------------------------------------------------
+        # Overall title
+        # ---------------------------------------------------------------------
+        fig.suptitle(
+            rf'Initial Cloud: {profile_label}, '
+            rf'$M_{{\rm cloud}}$ = {mCloud:.2e} M$_{{\odot}}$, '
+            rf'$n_{{\rm core}}$ = {nCore:.2e} cm$^{{-3}}$'
+        )
 
-    plt.tight_layout()
+        plt.tight_layout()
 
-    # Save figure
-    os.makedirs(out_dir, exist_ok=True)
-    filepath = os.path.join(out_dir, filename)
-    fig.savefig(filepath, format='pdf', bbox_inches='tight', dpi=150)
-    plt.close(fig)
+        # Save figure
+        os.makedirs(out_dir, exist_ok=True)
+        filepath = os.path.join(out_dir, filename)
+        fig.savefig(filepath, format='pdf')
+        plt.close(fig)
 
     logger.info(f"Saved initial cloud profile plot to: {filepath}")
 
