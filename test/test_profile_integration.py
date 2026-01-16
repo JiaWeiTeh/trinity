@@ -22,12 +22,12 @@ from src.cloud_properties.mass_profile_integrated import (
     get_mass_density,
     validate_mass_at_rCloud,
     compute_minimum_rCore,
-    DENSITY_CONVERSION,
 )
 from src.cloud_properties.powerLawSphere import (
     compute_rCloud_homogeneous,
     compute_rCloud_powerlaw
 )
+from src._functions.unit_conversions import CONV, CGS
 
 
 # =============================================================================
@@ -43,26 +43,43 @@ class MockParam:
 def make_test_params(**kwargs):
     """Create a parameter dictionary for testing.
 
-    Default values suitable for a homogeneous cloud test case.
-    Override any parameter by passing keyword arguments.
+    Values are converted to internal units [Msun, pc, Myr] to match
+    what read_param.py produces:
+    - nISM, nCore: [cm^-3] -> [1/pc^3] via ndens_cgs2au
+    - mu_convert, mu_ion, mu_atom: [m_H] -> [Msun] via m_H * g2Msun
 
-    Note: mu_convert = 1.4 is used for mass density calculations.
-    This is independent of ionization state (mu_ion/mu_atom).
+    Override any parameter by passing keyword arguments (raw values).
     """
-    defaults = {
-        'nISM': 1.0,
-        'nCore': 1000.0,
-        'rCloud': 10.0,
-        'rCore': 1.0,
+    # Conversion factors (same as read_param.py uses)
+    ndens_cgs2au = CONV.ndens_cgs2au      # cm^-3 -> pc^-3
+    m_H_to_Msun = CGS.m_H * CONV.g2Msun   # m_H unit -> Msun
+
+    # Raw values (as written in param files)
+    raw_defaults = {
+        'nISM': 1.0,           # [cm^-3]
+        'nCore': 1000.0,       # [cm^-3]
+        'rCloud': 10.0,        # [pc] - no conversion needed
+        'rCore': 1.0,          # [pc] - no conversion needed
         'dens_profile': 'densPL',
         'densPL_alpha': 0.0,
-        'mu_convert': 1.4,  # For mass density: rho = n * mu_convert * m_H
-        'mu_ion': 1.4,      # Legacy param (not used for mass calculations)
-        'mu_atom': 2.3,     # Legacy param (not used for mass calculations)
-        'mCloud': 1e5,
+        'mu_convert': 1.4,     # [m_H]
+        'mu_ion': 1.4,         # [m_H]
+        'mu_atom': 2.3,        # [m_H]
+        'mCloud': 1e5,         # [Msun] - no conversion needed
     }
-    defaults.update(kwargs)
-    return {k: MockParam(v) for k, v in defaults.items()}
+    raw_defaults.update(kwargs)
+
+    # Apply unit conversions (like read_param.py does)
+    converted = {}
+    for k, v in raw_defaults.items():
+        if k in ('nISM', 'nCore'):
+            converted[k] = v * ndens_cgs2au  # cm^-3 -> pc^-3
+        elif k in ('mu_convert', 'mu_ion', 'mu_atom'):
+            converted[k] = v * m_H_to_Msun   # m_H -> Msun
+        else:
+            converted[k] = v
+
+    return {k: MockParam(v) for k, v in converted.items()}
 
 
 # =============================================================================
@@ -203,21 +220,30 @@ def test_mass_scalar_array_consistency():
     """Test that scalar and array inputs give consistent mass results."""
     print("\nTesting mass profile scalar/array consistency...")
 
-    # Create self-consistent params
-    nCore = 1e3
-    mu_ion = 1.4
-    mCloud = 1e5
-    rCloud = compute_rCloud_homogeneous(mCloud, nCore, mu=mu_ion)
-    rCore = 0.1 * rCloud
+    # Create self-consistent params (raw values as in param files)
+    nCore_raw = 1e3     # cm⁻³
+    mu_raw = 1.4        # m_H units
+    mCloud = 1e5        # Msun
 
+    # Create params with conversions applied
     params = make_test_params(
-        nCore=nCore,
-        mu_ion=mu_ion,
+        nCore=nCore_raw,
+        mu_ion=mu_raw,
+        mu_convert=mu_raw,
         mCloud=mCloud,
-        rCloud=rCloud,
-        rCore=rCore,
         densPL_alpha=0.0
     )
+
+    # Compute rCloud from converted values
+    nCore_internal = params['nCore'].value
+    mu_internal = params['mu_convert'].value
+    rhoCore = nCore_internal * mu_internal
+    rCloud = (3 * mCloud / (4 * np.pi * rhoCore)) ** (1.0/3.0)
+    rCore = 0.1 * rCloud
+
+    # Update params
+    params['rCloud'] = MockParam(rCloud)
+    params['rCore'] = MockParam(rCore)
 
     # Test 1: Scalar input should return scalar
     r_scalar = 0.5 * rCloud
@@ -258,31 +284,40 @@ def test_mass_homogeneous_cloud():
     """Test α=0 (homogeneous) case for mass profile.
 
     Uses self-consistent parameters computed from mCloud and nCore.
+    All values are in internal units [Msun, pc, Myr].
     """
     print("\nTesting mass homogeneous cloud (α=0)...")
 
-    # Define fundamental inputs
-    nCore = 1e3  # cm⁻³
-    mu_ion = 1.4
-    mCloud = 1e5  # Msun
+    # Define fundamental inputs (raw values as in param files)
+    nCore_raw = 1e3  # cm⁻³
+    mu_raw = 1.4     # m_H units
+    mCloud = 1e5     # Msun
 
-    # Compute rCloud from fundamental inputs using proper physics
-    rCloud = compute_rCloud_homogeneous(mCloud, nCore, mu=mu_ion)
-    rCore = 0.1 * rCloud  # rCore is 10% of rCloud
-
-    # Physical density in Msun/pc³
-    rhoCore_physical = nCore * mu_ion * DENSITY_CONVERSION
-
-    print(f"  Computed rCloud = {rCloud:.3f} pc from mCloud={mCloud:.0e} Msun, nCore={nCore:.0e} cm⁻³")
-
+    # Create params with conversions applied
     params = make_test_params(
-        nCore=nCore,
-        mu_ion=mu_ion,
+        nCore=nCore_raw,
+        mu_ion=mu_raw,
+        mu_convert=mu_raw,
         mCloud=mCloud,
-        rCloud=rCloud,
-        rCore=rCore,
         densPL_alpha=0.0
     )
+
+    # Get converted values from params (internal units)
+    nCore_internal = params['nCore'].value       # [1/pc³]
+    mu_internal = params['mu_convert'].value     # [Msun]
+
+    # Physical density in internal units: rho = n * mu directly gives [Msun/pc³]
+    rhoCore_physical = nCore_internal * mu_internal
+
+    # Compute rCloud from physical density (in internal units)
+    rCloud = (3 * mCloud / (4 * np.pi * rhoCore_physical)) ** (1.0/3.0)
+    rCore = 0.1 * rCloud  # rCore is 10% of rCloud
+
+    print(f"  Computed rCloud = {rCloud:.3f} pc from mCloud={mCloud:.0e} Msun")
+
+    # Update params with computed rCloud and rCore
+    params['rCloud'] = MockParam(rCloud)
+    params['rCore'] = MockParam(rCore)
 
     # Test at various radii (as fractions of rCloud)
     test_radii = [0.1 * rCloud, 0.3 * rCloud, 0.5 * rCloud, 0.9 * rCloud]
@@ -306,32 +341,59 @@ def test_mass_homogeneous_cloud():
 
 
 def test_mass_powerlaw_analytical():
-    """Test power-law profile against analytical solution."""
+    """Test power-law profile against analytical solution.
+
+    All values are in internal units [Msun, pc, Myr].
+    """
     print("\nTesting mass power-law profile...")
 
-    # Define fundamental inputs
-    nCore = 1e3  # cm⁻³
-    mu_ion = 1.4
-    mCloud = 1e5  # Msun
-    alpha = -2.0  # isothermal
+    # Define fundamental inputs (raw values as in param files)
+    nCore_raw = 1e3  # cm⁻³
+    mu_raw = 1.4     # m_H units
+    mCloud = 1e5     # Msun
+    alpha = -2.0     # isothermal
 
-    # Compute rCloud and rCore from fundamental inputs using proper physics
-    rCloud, rCore = compute_rCloud_powerlaw(mCloud, nCore, alpha, rCore_fraction=0.1, mu=mu_ion)
-
-    # Physical density in Msun/pc³
-    rhoCore_physical = nCore * mu_ion * DENSITY_CONVERSION
-
-    print(f"  Computed rCloud = {rCloud:.3f} pc, rCore = {rCore:.3f} pc")
-    print(f"  from mCloud={mCloud:.0e} Msun, nCore={nCore:.0e} cm⁻³, α={alpha}")
-
+    # Create params with conversions applied
     params = make_test_params(
-        nCore=nCore,
-        mu_ion=mu_ion,
+        nCore=nCore_raw,
+        mu_ion=mu_raw,
+        mu_convert=mu_raw,
         mCloud=mCloud,
-        rCloud=rCloud,
-        rCore=rCore,
         densPL_alpha=alpha
     )
+
+    # Get converted values from params (internal units)
+    nCore_internal = params['nCore'].value       # [1/pc³]
+    mu_internal = params['mu_convert'].value     # [Msun]
+
+    # Physical density in internal units: rho = n * mu directly gives [Msun/pc³]
+    rhoCore_physical = nCore_internal * mu_internal
+
+    # Compute rCloud and rCore using internal units
+    # For power-law: solve M = 4πρc[rCore³/3 + (rCloud^(3+α) - rCore^(3+α))/((3+α)×rCore^α)]
+    # with rCore = rCore_fraction × rCloud
+    rCore_fraction = 0.1
+
+    def mass_at_radius(rCloud_guess):
+        rCore_val = rCloud_guess * rCore_fraction
+        return 4.0 * np.pi * rhoCore_physical * (
+            rCore_val**3 / 3.0 +
+            (rCloud_guess**(3.0 + alpha) - rCore_val**(3.0 + alpha)) /
+            ((3.0 + alpha) * rCore_val**alpha)
+        )
+
+    # Find rCloud using bisection
+    from scipy.optimize import brentq
+    rCloud_homo = (3 * mCloud / (4 * np.pi * rhoCore_physical)) ** (1.0/3.0)
+    rCloud = brentq(lambda r: mass_at_radius(r) - mCloud, 0.1 * rCloud_homo, 10 * rCloud_homo)
+    rCore = rCloud * rCore_fraction
+
+    print(f"  Computed rCloud = {rCloud:.3f} pc, rCore = {rCore:.3f} pc")
+    print(f"  from mCloud={mCloud:.0e} Msun, α={alpha}")
+
+    # Update params with computed rCloud and rCore
+    params['rCloud'] = MockParam(rCloud)
+    params['rCore'] = MockParam(rCore)
 
     # Test at radii spanning core, envelope, and beyond cloud
     r_arr = np.array([0.5 * rCore, rCore, 0.5 * rCloud, rCloud, 1.5 * rCloud])
@@ -360,25 +422,29 @@ def test_mass_powerlaw_analytical():
 
 
 def test_mass_density_import():
-    """Test that density is correctly imported from density_profile module."""
+    """Test that density is correctly imported from density_profile module.
+
+    After unit conversion, rho = n * mu directly gives [Msun/pc³].
+    """
     print("\nTesting density import from density_profile module...")
 
     params = make_test_params()
 
     # Test density at a point
     r = 5.0
-    n = get_density_profile(r, params)  # Number density from density_profile [cm⁻³]
+    n = get_density_profile(r, params)  # Number density [1/pc³] (internal units)
     rho = get_mass_density(r, params)   # Mass density [Msun/pc³]
 
-    expected_n = params['nCore'].value  # 1000.0 cm⁻³
-    mu_convert = params['mu_convert'].value  # 1.4
-    expected_rho = expected_n * mu_convert * DENSITY_CONVERSION  # Msun/pc³
+    expected_n = params['nCore'].value       # [1/pc³] (converted)
+    mu_convert = params['mu_convert'].value  # [Msun] (converted)
+    # In internal units: rho = n * mu directly (no DENSITY_CONVERSION needed)
+    expected_rho = expected_n * mu_convert   # [Msun/pc³]
 
     assert np.isclose(n, expected_n), f"Number density: {n} != {expected_n}"
     assert np.isclose(rho, expected_rho), \
         f"Mass density: {rho} != {expected_rho}"
 
-    print(f"  ✓ Number density n(r={r}) = {n} cm⁻³ (from density_profile module)")
+    print(f"  ✓ Number density n(r={r}) = {n:.4e} pc⁻³ (from density_profile module)")
     print(f"  ✓ Mass density ρ(r={r}) = {rho:.4e} Msun/pc³")
     print("✓ Density import test passed!")
     return True
@@ -388,21 +454,30 @@ def test_mass_accretion_rate():
     """Test mass accretion rate dM/dt = 4πr²ρv calculation."""
     print("\nTesting mass accretion rate...")
 
-    # Use self-consistent parameters
-    nCore = 1e3
-    mu_ion = 1.4
-    mCloud = 1e5
-    rCloud = compute_rCloud_homogeneous(mCloud, nCore, mu=mu_ion)
-    rCore = 0.1 * rCloud
+    # Use self-consistent parameters (raw values as in param files)
+    nCore_raw = 1e3     # cm⁻³
+    mu_raw = 1.4        # m_H units
+    mCloud = 1e5        # Msun
 
+    # Create params with conversions applied
     params = make_test_params(
-        nCore=nCore,
-        mu_ion=mu_ion,
+        nCore=nCore_raw,
+        mu_ion=mu_raw,
+        mu_convert=mu_raw,
         mCloud=mCloud,
-        rCloud=rCloud,
-        rCore=rCore,
         densPL_alpha=0.0
     )
+
+    # Compute rCloud from converted values
+    nCore_internal = params['nCore'].value
+    mu_internal = params['mu_convert'].value
+    rhoCore = nCore_internal * mu_internal
+    rCloud = (3 * mCloud / (4 * np.pi * rhoCore)) ** (1.0/3.0)
+    rCore = 0.1 * rCloud
+
+    # Update params
+    params['rCloud'] = MockParam(rCloud)
+    params['rCore'] = MockParam(rCore)
 
     # Test at a point inside the cloud
     r = 0.5 * rCloud
@@ -426,21 +501,30 @@ def test_validate_mass():
     """Test mass validation function."""
     print("\nTesting mass validation...")
 
-    # Create self-consistent params
-    nCore = 1e3
-    mu_ion = 1.4
-    mCloud = 1e5
-    rCloud = compute_rCloud_homogeneous(mCloud, nCore, mu=mu_ion)
-    rCore = 0.1 * rCloud
+    # Create self-consistent params (raw values as in param files)
+    nCore_raw = 1e3     # cm⁻³
+    mu_raw = 1.4        # m_H units
+    mCloud = 1e5        # Msun
 
+    # Create params with conversions applied
     params = make_test_params(
-        nCore=nCore,
-        mu_ion=mu_ion,
+        nCore=nCore_raw,
+        mu_ion=mu_raw,
+        mu_convert=mu_raw,
         mCloud=mCloud,
-        rCloud=rCloud,
-        rCore=rCore,
         densPL_alpha=0.0
     )
+
+    # Compute rCloud from converted values
+    nCore_internal = params['nCore'].value
+    mu_internal = params['mu_convert'].value
+    rhoCore = nCore_internal * mu_internal
+    rCloud = (3 * mCloud / (4 * np.pi * rhoCore)) ** (1.0/3.0)
+    rCore = 0.1 * rCloud
+
+    # Update params
+    params['rCloud'] = MockParam(rCloud)
+    params['rCore'] = MockParam(rCore)
 
     # Should pass validation
     result = validate_mass_at_rCloud(params)
@@ -449,8 +533,9 @@ def test_validate_mass():
 
     # Test with inconsistent params (wrong mCloud)
     bad_params = make_test_params(
-        nCore=nCore,
-        mu_ion=mu_ion,
+        nCore=nCore_raw,
+        mu_ion=mu_raw,
+        mu_convert=mu_raw,
         mCloud=mCloud * 2,  # Wrong mass!
         rCloud=rCloud,
         rCore=rCore,
@@ -538,28 +623,47 @@ def test_BE_lane_emden_solution():
 
 
 def test_BE_sphere_creation():
-    """Test BE sphere creation from M, n_core, Omega."""
+    """Test BE sphere creation from M, n_core, Omega.
+
+    create_BE_sphere now expects internal units:
+    - n_core: [1/pc³]
+    - mu: [Msun]
+    """
     print("\nTesting BE sphere creation...")
 
     from src.cloud_properties.bonnorEbertSphere_v2 import (
         create_BE_sphere, OMEGA_CRITICAL
     )
 
+    # Conversion factors
+    ndens_cgs2au = CONV.ndens_cgs2au
+    m_H_to_Msun = CGS.m_H * CONV.g2Msun
+
+    # Raw values (as in param files)
+    n_core_raw = 1e4     # [cm⁻³]
+    mu_raw = 1.4         # [m_H units]
+
+    # Convert to internal units
+    n_core_internal = n_core_raw * ndens_cgs2au  # [1/pc³]
+    mu_internal = mu_raw * m_H_to_Msun           # [Msun]
+
     # Test case: 1 solar mass cloud
     result = create_BE_sphere(
-        M_cloud=1.0,      # [Msun]
-        n_core=1e4,       # [cm⁻³]
-        Omega=10.0        # Moderately concentrated
+        M_cloud=1.0,           # [Msun]
+        n_core=n_core_internal,  # [1/pc³]
+        Omega=10.0,            # Moderately concentrated
+        mu=mu_internal         # [Msun]
     )
 
-    print(f"  Input: M={result.M_cloud} Msun, n_core={result.n_core:.0e} cm⁻³, Ω={result.Omega}")
-    print(f"  Output: r_out={result.r_out:.4f} pc, n_out={result.n_out:.2e} cm⁻³")
+    print(f"  Input: M={result.M_cloud} Msun, n_core={result.n_core:.2e} pc⁻³, Ω={result.Omega}")
+    print(f"  Output: r_out={result.r_out:.4f} pc, n_out={result.n_out:.2e} pc⁻³")
     print(f"          T_eff={result.T_eff:.1f} K, stable={result.is_stable}")
 
     # Verify outputs
     assert result.r_out > 0, "Radius should be positive"
     assert np.isclose(result.n_out, result.n_core / result.Omega), "n_out = n_core/Omega"
     assert result.T_eff > 0, "Temperature should be positive"
+    assert result.T_eff < 1e4, f"Temperature should be physical, got {result.T_eff}"
     assert result.is_stable == (result.Omega < OMEGA_CRITICAL), "Stability check"
 
     print("✓ BE sphere creation test passed!")
@@ -567,54 +671,68 @@ def test_BE_sphere_creation():
 
 
 def test_BE_density_profile():
-    """Test BE density profile n(r) = nCore * rho_rhoc(xi)."""
+    """Test BE density profile n(r) = nCore * rho_rhoc(xi).
+
+    All values in internal units [Msun, pc, Myr].
+    """
     print("\nTesting BE density profile...")
 
     from src.cloud_properties.bonnorEbertSphere_v2 import (
         solve_lane_emden, create_BE_sphere
     )
 
-    # Create a BE sphere
-    M_cloud = 100.0   # [Msun]
-    n_core = 1e4      # [cm⁻³]
+    # Conversion factors
+    ndens_cgs2au = CONV.ndens_cgs2au
+    m_H_to_Msun = CGS.m_H * CONV.g2Msun
+
+    # Raw values (as in param files)
+    M_cloud = 100.0      # [Msun]
+    n_core_raw = 1e4     # [cm⁻³]
+    mu_raw = 1.4         # [m_H units]
     Omega = 10.0
-    mu = 1.4          # mu_convert for mass density calculations
+
+    # Convert to internal units
+    n_core_internal = n_core_raw * ndens_cgs2au  # [1/pc³]
+    mu_internal = mu_raw * m_H_to_Msun           # [Msun]
 
     solution = solve_lane_emden()
     result = create_BE_sphere(
         M_cloud=M_cloud,
-        n_core=n_core,
+        n_core=n_core_internal,
         Omega=Omega,
-        mu=mu,
+        mu=mu_internal,
         lane_emden_solution=solution
     )
 
     # Create mock params for get_density_profile
-    # IMPORTANT: mu_convert must match what was used in create_BE_sphere
+    # make_test_params converts raw values, but we need to pass already-converted
+    # values for BE-specific params, so use MockParam directly for those
     params = make_test_params(
         dens_profile='densBE',
-        nCore=n_core,
-        rCloud=result.r_out,
-        mu_convert=mu,  # Must match BE sphere creation
-        densBE_Omega=Omega,
-        densBE_Teff=result.T_eff,
-        densBE_f_rho_rhoc=solution.f_rho_rhoc,
+        nCore=n_core_raw,       # Will be converted by make_test_params
+        mu_convert=mu_raw,      # Will be converted by make_test_params
         gamma_adia=5.0/3.0,
     )
+    # Override with BE-specific params (already in internal units from create_BE_sphere)
+    params['rCloud'] = MockParam(result.r_out)
+    params['densBE_Omega'] = MockParam(Omega)
+    params['densBE_Teff'] = MockParam(result.T_eff)
+    params['densBE_f_rho_rhoc'] = MockParam(solution.f_rho_rhoc)
 
-    # Test density at center (should be nCore)
+    # Test density at center (should be nCore in internal units)
     r_center = 0.01 * result.r_out
     n_center = get_density_profile(r_center, params)
-    # At center, rho_rhoc ≈ 1, so n ≈ nCore
-    assert np.isclose(n_center, n_core, rtol=0.01), \
-        f"Center density {n_center:.2e} should be ~nCore {n_core:.2e}"
+    # At center, rho_rhoc ≈ 1, so n ≈ nCore (in internal units)
+    nCore_internal = params['nCore'].value  # Already converted by make_test_params
+    assert np.isclose(n_center, nCore_internal, rtol=0.01), \
+        f"Center density {n_center:.2e} should be ~nCore {nCore_internal:.2e}"
     print(f"  ✓ n(r=0.01*rCloud) = {n_center:.2e} ≈ nCore")
 
     # Test density at edge (should be nCore/Omega at exactly rCloud)
     # Use exactly rCloud for the edge test
     r_edge = result.r_out
     n_edge = get_density_profile(r_edge, params)
-    expected_n_edge = n_core / Omega
+    expected_n_edge = nCore_internal / Omega
     assert np.isclose(n_edge, expected_n_edge, rtol=0.05), \
         f"Edge density {n_edge:.2e} should be ~{expected_n_edge:.2e}"
     print(f"  ✓ n(r=rCloud) = {n_edge:.2e} ≈ nCore/Ω = {expected_n_edge:.2e}")
@@ -694,19 +812,33 @@ def test_InitCloudProp_powerlaw():
         get_InitCloudProp, verify_mass_at_rCloud
     )
     from src.cloud_properties.powerLawSphere import compute_rCloud_powerlaw
+    from src._functions.unit_conversions import CONV, CGS
 
-    # Use parameters that satisfy nEdge >= nISM constraint
-    nCore = 1e3
-    mCloud = 1e5
+    # Conversion factors (same as make_test_params uses)
+    ndens_cgs2au = CONV.ndens_cgs2au      # cm^-3 → pc^-3
+    m_H_to_Msun = CGS.m_H * CONV.g2Msun   # m_H → Msun
+
+    # Raw values (as written in param files)
+    nCore_raw = 1e4       # [cm^-3] - increased to satisfy edge constraint
+    mCloud = 1e5          # [Msun]
     alpha = -2.0
-    mu = 1.4
-    _, rCore = compute_rCloud_powerlaw(mCloud, nCore, alpha, rCore_fraction=0.1, mu=mu)
+    mu_raw = 1.4          # [m_H]
 
+    # Convert to internal units for compute_rCloud_powerlaw
+    nCore_internal = nCore_raw * ndens_cgs2au
+    mu_internal = mu_raw * m_H_to_Msun
+
+    # Compute rCloud and rCore using internal units
+    _, rCore = compute_rCloud_powerlaw(
+        mCloud, nCore_internal, alpha, rCore_fraction=0.1, mu=mu_internal
+    )
+
+    # make_test_params expects raw values and converts them
     params = make_test_params(
         dens_profile='densPL',
         densPL_alpha=alpha,
         mCloud=mCloud,
-        nCore=nCore,
+        nCore=nCore_raw,   # raw value, will be converted by make_test_params
         rCore=rCore,
     )
     # Add placeholder params that get_InitCloudProp needs
