@@ -88,14 +88,13 @@ def _to_output(result: np.ndarray, was_scalar: bool):
 
 def get_mass_density(
     r: ScalarOrArray,
-    params,
-    physical_units: bool = True
+    params
 ) -> ScalarOrArray:
     """
     Get mass density rho(r) from number density n(r).
 
     This function wraps get_density_profile() from density_profile_integrated.py
-    and converts number density [cm^-3] to mass density.
+    and converts number density [cm^-3] to mass density [Msun/pc^3].
 
     Parameters
     ----------
@@ -103,22 +102,17 @@ def get_mass_density(
         Radius/radii [pc]
     params : dict
         Parameter dictionary
-    physical_units : bool, optional
-        If True (default), return rho in [Msun/pc^3] for physical mass integration.
-        If False, return rho in internal units (n * mu) for backward compatibility.
 
     Returns
     -------
     rho : float or array
-        Mass density at radius r.
-        If physical_units=True: rho in [Msun/pc^3]
-        If physical_units=False: rho = n * mu (internal units)
+        Mass density at radius r [Msun/pc^3]
 
     Notes
     -----
-    The conversion from internal to physical units:
-        rho [Msun/pc^3] = n [cm^-3] * mu * m_H [g] * (pc/cm)^3 / Msun_to_g
-                     = n * mu * DENSITY_CONVERSION
+    The conversion from n [cm^-3] to rho [Msun/pc^3]:
+        rho = n * mu * m_H * (pc/cm)^3 / Msun_to_g
+            = n * mu * DENSITY_CONVERSION
     """
     # Get number density from density_profile module
     n = get_density_profile(r, params)
@@ -132,12 +126,8 @@ def get_mass_density(
 
     mu_convert = params['mu_convert'].value
 
-    # Mass density = number density * mean molecular weight
-    rho_arr = n_arr * mu_convert
-
-    # Convert to physical units if requested
-    if physical_units:
-        rho_arr = rho_arr * DENSITY_CONVERSION
+    # Mass density = number density * mean molecular weight * unit conversion
+    rho_arr = n_arr * mu_convert * DENSITY_CONVERSION
 
     return _to_output(rho_arr, was_scalar)
 
@@ -218,15 +208,14 @@ def get_mass_profile(
     logger.debug(f"Computing mass profile for {len(r_arr)} radii (scalar={r_was_scalar})")
 
     # =========================================================================
-    # Step 1: Get mass density rho(r) from density_profile module
-    # Use physical units [Msun/pc^3] so integration gives M in [Msun]
+    # Step 1: Get mass density rho(r) [Msun/pc^3]
     # =========================================================================
-    rho_arr = _to_array(get_mass_density(r_arr, params, physical_units=True))
+    rho_arr = _to_array(get_mass_density(r_arr, params))
 
     # =========================================================================
     # Step 2: Compute enclosed mass M(r) [Msun]
     # =========================================================================
-    M_arr = compute_enclosed_mass(r_arr, rho_arr, params, physical_units=True)
+    M_arr = compute_enclosed_mass(r_arr, rho_arr, params)
 
     # =========================================================================
     # Step 3: Convert output and return
@@ -246,37 +235,33 @@ def get_mass_profile(
 def compute_enclosed_mass(
     r_arr: np.ndarray,
     rho_arr: np.ndarray,
-    params,
-    physical_units: bool = True
+    params
 ) -> np.ndarray:
     """
     Compute enclosed mass M(r) = integral[0 to r] 4*pi*r'^2 * rho(r') dr'.
 
     Uses appropriate method based on profile type:
     - Power-law: Analytical formula
-    - Bonnor-Ebert: Numerical integration
+    - Bonnor-Ebert: Analytical Lane-Emden or numerical integration
 
     Parameters
     ----------
     r_arr : array
         Radii [pc]
     rho_arr : array
-        Mass density at each radius (from get_mass_density).
-        Should be in [Msun/pc^3] if physical_units=True.
+        Mass density at each radius [Msun/pc^3] (from get_mass_density)
     params : dict
         Parameter dictionary
-    physical_units : bool, optional
-        If True (default), return M in [Msun].
 
     Returns
     -------
     M_arr : array
-        Mass enclosed within each radius [Msun if physical_units=True]
+        Mass enclosed within each radius [Msun]
     """
     profile_type = params['dens_profile'].value
 
     if profile_type == 'densPL':
-        return compute_enclosed_mass_powerlaw(r_arr, params, physical_units=physical_units)
+        return compute_enclosed_mass_powerlaw(r_arr, params)
     elif profile_type == 'densBE':
         return compute_enclosed_mass_bonnor_ebert(r_arr, rho_arr, params)
     else:
@@ -285,8 +270,7 @@ def compute_enclosed_mass(
 
 def compute_enclosed_mass_powerlaw(
     r_arr: np.ndarray,
-    params,
-    physical_units: bool = True
+    params
 ) -> np.ndarray:
     """
     Analytical enclosed mass for power-law profile.
@@ -307,14 +291,11 @@ def compute_enclosed_mass_powerlaw(
         Radii [pc]
     params : dict
         Parameter dictionary
-    physical_units : bool, optional
-        If True (default), return M in [Msun].
-        If False, return M in internal units for backward compatibility.
 
     Returns
     -------
     M_arr : array
-        Enclosed mass at each radius [Msun if physical_units=True]
+        Enclosed mass at each radius [Msun]
     """
     # Extract parameters
     nCore = params['nCore'].value
@@ -325,18 +306,10 @@ def compute_enclosed_mass_powerlaw(
     mCloud = params['mCloud'].value
     alpha = params['densPL_alpha'].value
 
-    # Internal density units: n * mu_convert
-    # mu_convert = 1.4 is independent of ionization state
-    rhoCore_internal = nCore * mu_convert
-    rhoISM_internal = nISM * mu_convert
-
     # Physical density units: [Msun/pc^3]
-    if physical_units:
-        rhoCore = rhoCore_internal * DENSITY_CONVERSION
-        rhoISM = rhoISM_internal * DENSITY_CONVERSION
-    else:
-        rhoCore = rhoCore_internal
-        rhoISM = rhoISM_internal
+    # mu_convert = 1.4 is independent of ionization state
+    rhoCore = nCore * mu_convert * DENSITY_CONVERSION
+    rhoISM = nISM * mu_convert * DENSITY_CONVERSION
 
     M_arr = np.zeros_like(r_arr, dtype=float)
 
@@ -467,8 +440,7 @@ def compute_enclosed_mass_bonnor_ebert(
 def compute_mass_accretion_rate(
     r_arr: np.ndarray,
     rdot_arr: np.ndarray,
-    params,
-    physical_units: bool = True
+    params
 ) -> np.ndarray:
     """
     Compute mass accretion rate dM/dt = 4*pi*r^2*rho(r)*v(r).
@@ -492,20 +464,18 @@ def compute_mass_accretion_rate(
         Shell velocities dr/dt [pc/Myr] at each radius
     params : dict
         Parameter dictionary with density profile info
-    physical_units : bool, optional
-        If True (default), return dM/dt in [Msun/Myr].
 
     Returns
     -------
     dMdt_arr : array
-        Mass accretion rate at each radius [Msun/Myr if physical_units=True]
+        Mass accretion rate at each radius [Msun/Myr]
 
     See Also
     --------
     get_mass_density : Computes rho(r) for any profile type
     """
-    # Get density at each radius
-    rho_arr = _to_array(get_mass_density(r_arr, params, physical_units=physical_units))
+    # Get density at each radius [Msun/pc^3]
+    rho_arr = _to_array(get_mass_density(r_arr, params))
 
     # The universal formula: dM/dt = 4*pi*r^2*rho(r)*v(r)
     # This works for ALL density profiles!
