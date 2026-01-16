@@ -494,11 +494,6 @@ def read_param(path2file, write_summary=True):
     params['isCollapse'] = DescribedItem(False, info="Is cloud collapsing?", ori_units="N/A")
     params['isDissolved'] = DescribedItem(False, info="Has shell dissolved?", ori_units="N/A")
     
-    # Initial cloud profiles
-    params['initial_cloud_n_arr'] = DescribedItem([], info="Initial cloud density profile", ori_units="1/pc**3")
-    params['initial_cloud_m_arr'] = DescribedItem([], info="Initial cloud mass profile", ori_units="Msun")
-    params['initial_cloud_r_arr'] = DescribedItem([], info="Initial cloud radius profile", ori_units="pc")
-    
     # Diagnostic residuals
     params['residual_deltaT'] = DescribedItem(0, info="Temperature residual (T1-T2)/T2", ori_units="dimensionless")
     params['residual_betaEdot'] = DescribedItem(0, info="Energy rate residual", ori_units="dimensionless")

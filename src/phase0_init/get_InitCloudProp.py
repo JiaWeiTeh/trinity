@@ -32,9 +32,9 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 
 # Absolute imports from integrated modules
-from src.cloud_properties.density_profile_integrated import get_density_profile
-from src.cloud_properties.mass_profile_integrated import get_mass_profile
-from src.cloud_properties.bonnorEbertSphere_v2 import (
+from src.cloud_properties.density_profile import get_density_profile
+from src.cloud_properties.mass_profile import get_mass_profile
+from src.cloud_properties.bonnorEbertSphere import (
     create_BE_sphere,
     solve_lane_emden,
 )
