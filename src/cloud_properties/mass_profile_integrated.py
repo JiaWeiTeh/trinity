@@ -17,7 +17,7 @@ Key features:
 - No solver coupling (no dependency on array_t_now, etc.)
 - Clean separation: density calculation -> mass integration -> rate
 
-Author: TRINITY Team (integrated from REFACTORED_mass_profile.py)
+@author: Jia Wei
 """
 
 import numpy as np
