@@ -50,24 +50,17 @@ import src._input.create_dictionary as create_dictionary
 # Configure logging AFTER header display
 # =============================================================================
 # This ensures header appears first, then logging messages follow
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
-)
-logger = logging.getLogger(__name__)
-logger.info(f"Parameter file loaded: {args.path2param}")
+from src._functions.logging_setup import setup_logging
 
-# Add file logging to output directory
-out_dir = params['path2output'].value
-if out_dir:
-    os.makedirs(out_dir, exist_ok=True)
-    file_handler = logging.FileHandler(os.path.join(out_dir, 'trinity.log'), mode='w')
-    file_handler.setLevel(logging.INFO)
-    file_handler.setFormatter(logging.Formatter(
-        "%(asctime)s %(levelname)s [%(name)s] %(message)s"
-    ))
-    logging.getLogger().addHandler(file_handler)
-    logger.info(f"Log file: {os.path.join(out_dir, 'trinity.log')}")
+logger = setup_logging(
+    log_level='INFO',
+    console_output=True,
+    file_output=True,
+    log_file_path=params['path2output'].value,
+    log_file_name='trinity.log',
+    use_colors=True,
+)
+logger.info(f"Parameter file loaded: {args.path2param}")
 
 
 main.start_expansion(params)
