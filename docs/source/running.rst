@@ -143,7 +143,7 @@ Output files are organized into subdirectories:
 Logging Configuration
 ---------------------
 
-TRINITY provides flexible logging to help monitor simulation progress.
+TRINITY provides a flexible logging system to help monitor simulation progress and debug issues.
 
 Logging Parameters
 ^^^^^^^^^^^^^^^^^^
@@ -157,41 +157,135 @@ Configure logging in your parameter file:
     log_file      True      # Write to .log file
     log_colors    True      # Color-coded terminal output
 
+.. list-table::
+   :widths: 20 15 65
+   :header-rows: 1
+
+   * - Parameter
+     - Default
+     - Description
+   * - ``log_level``
+     - ``INFO``
+     - Controls how much detail you see. Think of it as a volume knob for logging.
+   * - ``log_console``
+     - ``True``
+     - Print log messages to terminal during simulation.
+   * - ``log_file``
+     - ``True``
+     - Save log messages to ``{path2output}/trinity_YYYYMMDD_HHMMSS.log``.
+   * - ``log_colors``
+     - ``True``
+     - Color-code terminal output by severity level.
+
+
 Log Levels
 ^^^^^^^^^^
 
-================  ===============================================================
-Level             Description
-================  ===============================================================
-``DEBUG``         Most detailed - includes internal calculations
-``INFO``          General progress information (recommended for most users)
-``WARNING``       Warnings about potential issues
-``ERROR``         Error conditions that may affect results
-``CRITICAL``      Severe errors that halt execution
-================  ===============================================================
+Setting a log level shows **that level and everything more severe**:
 
-Color Coding (Terminal)
-^^^^^^^^^^^^^^^^^^^^^^^
+.. raw:: html
 
-When ``log_colors = True``, messages are color-coded:
+   <style>
+   .log-debug { color: #00CED1; font-weight: bold; }
+   .log-info { color: #32CD32; font-weight: bold; }
+   .log-warning { color: #FFA500; font-weight: bold; }
+   .log-error { color: #FF4444; font-weight: bold; }
+   .log-critical { color: #FF00FF; font-weight: bold; }
+   </style>
 
-- **Cyan**: DEBUG
-- **Green**: INFO
-- **Yellow**: WARNING
-- **Red**: ERROR
-- **Magenta**: CRITICAL
+.. raw:: html
+
+   <table style="width:100%; border-collapse: collapse; margin: 1em 0;">
+   <tr style="background: #f0f0f0;">
+     <th style="padding: 8px; text-align: left; border: 1px solid #ddd;">Level</th>
+     <th style="padding: 8px; text-align: left; border: 1px solid #ddd;">Shows</th>
+     <th style="padding: 8px; text-align: left; border: 1px solid #ddd;">Use Case</th>
+   </tr>
+   <tr>
+     <td style="padding: 8px; border: 1px solid #ddd;"><span class="log-debug">DEBUG</span></td>
+     <td style="padding: 8px; border: 1px solid #ddd;">All messages</td>
+     <td style="padding: 8px; border: 1px solid #ddd;">Development, debugging specific issues</td>
+   </tr>
+   <tr>
+     <td style="padding: 8px; border: 1px solid #ddd;"><span class="log-info">INFO</span> ⭐</td>
+     <td style="padding: 8px; border: 1px solid #ddd;">INFO + WARNING + ERROR + CRITICAL</td>
+     <td style="padding: 8px; border: 1px solid #ddd;"><strong>Recommended</strong> - Normal simulation runs</td>
+   </tr>
+   <tr>
+     <td style="padding: 8px; border: 1px solid #ddd;"><span class="log-warning">WARNING</span></td>
+     <td style="padding: 8px; border: 1px solid #ddd;">WARNING + ERROR + CRITICAL</td>
+     <td style="padding: 8px; border: 1px solid #ddd;">Production runs, only see potential problems</td>
+   </tr>
+   <tr>
+     <td style="padding: 8px; border: 1px solid #ddd;"><span class="log-error">ERROR</span></td>
+     <td style="padding: 8px; border: 1px solid #ddd;">ERROR + CRITICAL</td>
+     <td style="padding: 8px; border: 1px solid #ddd;">Silent runs, only see actual errors</td>
+   </tr>
+   <tr>
+     <td style="padding: 8px; border: 1px solid #ddd;"><span class="log-critical">CRITICAL</span></td>
+     <td style="padding: 8px; border: 1px solid #ddd;">CRITICAL only</td>
+     <td style="padding: 8px; border: 1px solid #ddd;">Only simulation-stopping errors</td>
+   </tr>
+   </table>
 
 
-Verbosity Control
------------------
+What Each Level Shows
+"""""""""""""""""""""
 
-The ``verbose`` parameter controls the amount of terminal output:
+.. raw:: html
+
+   <p><span class="log-debug">DEBUG</span> - Variable values, loop iterations, intermediate calculations, function entry/exit</p>
+   <p><span class="log-info">INFO</span> - Phase transitions, major events (bubble bursts, cloud edge reached), initialization, completion</p>
+   <p><span class="log-warning">WARNING</span> - Values clamped to limits, fallback behavior, unusual but non-critical conditions</p>
+   <p><span class="log-error">ERROR</span> - Calculation failures, unexpected conditions, recoverable errors</p>
+   <p><span class="log-critical">CRITICAL</span> - Unrecoverable errors, fatal failures, simulation crashes</p>
+
+
+Common Configurations
+^^^^^^^^^^^^^^^^^^^^^
+
+**Development/Debugging** (maximum detail):
 
 .. code-block:: text
 
-    verbose    1    # Minimal output
-    verbose    2    # Standard output (default)
-    verbose    3    # Detailed output
+    log_level    DEBUG
+    log_console  True
+    log_file     False
+    log_colors   True
+
+**Normal Run** (recommended):
+
+.. code-block:: text
+
+    log_level    INFO
+    log_console  True
+    log_file     True
+    log_colors   True
+
+**Production/Batch Run** (minimal output):
+
+.. code-block:: text
+
+    log_level    WARNING
+    log_console  False
+    log_file     True
+    log_colors   False
+
+
+Example Log Output
+^^^^^^^^^^^^^^^^^^
+
+With ``log_level = INFO``:
+
+.. code-block:: text
+
+    2026-01-08 15:30:00 | INFO     | src.main | === TRINITY Simulation Starting ===
+    2026-01-08 15:30:00 | INFO     | src.main | Model: test_simulation
+    2026-01-08 15:30:01 | INFO     | src.sb99.read_SB99 | SB99 data loaded: 201 time points
+    2026-01-08 15:30:03 | INFO     | src.phase1_energy | Entering energy-driven phase
+    2026-01-08 15:30:15 | WARNING  | src.cooling | Temperature below minimum, clamping to 1e4 K
+    2026-01-08 15:30:45 | INFO     | src.phase1_energy | Energy phase complete: 150 timesteps
+    2026-01-08 15:35:00 | INFO     | src.main | === Simulation Finished ===
 
 
 Output Formats

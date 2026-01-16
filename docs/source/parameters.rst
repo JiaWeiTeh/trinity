@@ -101,9 +101,6 @@ These parameters control simulation naming and output.
    * - ``path2output``
      - ``def_dir``
      - Output directory path. ``def_dir`` uses the current working directory.
-   * - ``verbose``
-     - ``1``
-     - Terminal output verbosity (1=minimal, 2=standard, 3=detailed).
    * - ``output_format``
      - ``JSON``
      - Output format. Currently only JSON is supported.
@@ -121,8 +118,8 @@ Configure how TRINITY reports progress and diagnostics.
      - Default
      - Description
    * - ``log_level``
-     - ``DEBUG``
-     - Logging verbosity: ``DEBUG``, ``INFO``, ``WARNING``, ``ERROR``, ``CRITICAL``
+     - ``INFO``
+     - Logging verbosity: ``DEBUG``, ``INFO``, ``WARNING``, ``ERROR``, ``CRITICAL``. See :ref:`sec-running` for details.
    * - ``log_console``
      - ``True``
      - Enable terminal output for log messages.
