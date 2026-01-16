@@ -25,6 +25,7 @@ from src.sb99 import read_SB99
 # from src.phase0_init import (get_InitCloudProp, get_InitPhaseParam)
 from src.phase0_init import get_InitCloudProp_integrated as get_InitCloudProp
 from src.phase0_init import get_InitPhaseParam
+from src._output.simulation_end import write_simulation_end
 
 
 
@@ -34,7 +35,6 @@ from src.phase0_init import get_InitPhaseParam
 # from src.phase2_momentum import run_momentum_phase
 import src._output.terminal_prints as terminal_prints
 from src._input.dictionary import DescribedItem, DescribedDict
-# from src._output.simulation_end import write_simulation_end
 
 # Initialize logger for this module
 logger = logging.getLogger(__name__)
@@ -156,9 +156,6 @@ def start_expansion(params):
     logger.info(f"End time: {enddatetime}")
     logger.info(f"Total elapsed time: {elapsed}")
     logger.info("=" * 60)
-
-    import sys
-    sys.exit()
 
     # Write simulation end report to file
     try:
