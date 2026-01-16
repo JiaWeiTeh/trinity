@@ -61,7 +61,7 @@ logger.info(f"Parameter file loaded: {args.path2param}")
 out_dir = params['path2output'].value
 if out_dir:
     os.makedirs(out_dir, exist_ok=True)
-    file_handler = logging.FileHandler(os.path.join(out_dir, 'trinity.log'))
+    file_handler = logging.FileHandler(os.path.join(out_dir, 'trinity.log'), mode='w')
     file_handler.setLevel(logging.INFO)
     file_handler.setFormatter(logging.Formatter(
         "%(asctime)s %(levelname)s [%(name)s] %(message)s"
