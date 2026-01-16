@@ -27,6 +27,8 @@ from typing import Callable, Optional, Tuple
 
 # Import for R1 calculation
 import src.bubble_structure.get_bubbleParams as get_bubbleParams
+# Import existing mass profile function (side-effect-free)
+from src.cloud_properties.mass_profile import get_mass_profile
 
 logger = logging.getLogger(__name__)
 
@@ -243,14 +245,73 @@ class R1Cache:
 
 
 # =============================================================================
-# Pure Mass Calculation
+# ParamsWrapper for using existing mass_profile functions
 # =============================================================================
 
-def _calculate_mass_pure(R2: float, v2: float, static: StaticODEParams) -> Tuple[float, float]:
+class ParamsWrapper:
     """
-    Calculate shell mass and mass accretion rate using analytical formulas.
+    Minimal dict-like wrapper for using mass_profile.get_mass_profile().
 
-    This is a pure function - no side effects, no dictionary mutations.
+    This allows the pure ODE function to use the existing side-effect-free
+    mass profile functions without needing the full params dict.
+    """
+
+    def __init__(self, static: StaticODEParams):
+        """
+        Create wrapper from StaticODEParams.
+
+        Parameters
+        ----------
+        static : StaticODEParams
+            Immutable parameters container
+        """
+        self._static = static
+        # Map params keys to StaticODEParams attributes
+        self._key_map = {
+            'rCloud': 'rCloud',
+            'rCore': 'rCore',
+            'mCloud': 'mCloud',
+            'nCore': 'nCore',
+            'nISM': 'nISM',
+            'mu_convert': 'mu_convert',
+            'dens_profile': 'dens_profile',
+            'densPL_alpha': 'densPL_alpha',
+            'isCollapse': 'is_collapse',
+            'shell_mass': 'shell_mass_frozen',
+            # Additional keys that mass_profile might need
+            'initial_cloud_r_arr': None,
+            'initial_cloud_m_arr': None,
+        }
+
+    def __getitem__(self, key):
+        """Get parameter value wrapped in object with .value attribute."""
+        if key in self._key_map:
+            attr_name = self._key_map[key]
+            if attr_name is None:
+                # Return None for optional arrays not in static params
+                return type('Param', (), {'value': None})()
+            value = getattr(self._static, attr_name)
+            return type('Param', (), {'value': value})()
+        raise KeyError(f"Key '{key}' not found in ParamsWrapper")
+
+    def __contains__(self, key):
+        """Check if key exists."""
+        return key in self._key_map
+
+    def get(self, key, default=None):
+        """Get with default value."""
+        try:
+            return self[key]
+        except KeyError:
+            return type('Param', (), {'value': default})()
+
+
+def _get_mass_from_profile(R2: float, v2: float, static: StaticODEParams) -> Tuple[float, float]:
+    """
+    Get shell mass and mass accretion rate using existing mass_profile module.
+
+    This wraps the existing get_mass_profile() function which is already
+    side-effect-free.
 
     Parameters
     ----------
@@ -272,54 +333,26 @@ def _calculate_mass_pure(R2: float, v2: float, static: StaticODEParams) -> Tuple
     if static.is_collapse:
         return static.shell_mass_frozen, 0.0
 
-    # Physical density in internal units [Msun/pc³]
-    rhoCore = static.nCore * static.mu_convert
-    rhoISM = static.nISM * static.mu_convert
+    # Create wrapper for mass_profile function
+    params_wrapper = ParamsWrapper(static)
 
-    alpha = static.densPL_alpha
-    rCore = static.rCore
-    rCloud = static.rCloud
-    mCloud = static.mCloud
+    # Call existing mass profile function
+    result = get_mass_profile(R2, params_wrapper, return_mdot=True, rdot=v2)
 
-    # Compute enclosed mass based on profile type
-    if static.dens_profile == 'densPL':
-        if alpha == 0:
-            # Homogeneous cloud
-            if R2 <= rCloud:
-                mShell = (4.0/3.0) * np.pi * R2**3 * rhoCore
-                rho_at_R2 = rhoCore
-            else:
-                mShell = mCloud + (4.0/3.0) * np.pi * rhoISM * (R2**3 - rCloud**3)
-                rho_at_R2 = rhoISM
-        else:
-            # Power-law profile
-            if R2 <= rCore:
-                mShell = (4.0/3.0) * np.pi * R2**3 * rhoCore
-                rho_at_R2 = rhoCore
-            elif R2 <= rCloud:
-                mShell = 4.0 * np.pi * rhoCore * (
-                    rCore**3 / 3.0 +
-                    (R2**(3.0 + alpha) - rCore**(3.0 + alpha)) /
-                    ((3.0 + alpha) * rCore**alpha)
-                )
-                rho_at_R2 = rhoCore * (R2 / rCore)**alpha
-            else:
-                mShell = mCloud + (4.0/3.0) * np.pi * rhoISM * (R2**3 - rCloud**3)
-                rho_at_R2 = rhoISM
+    # Handle both tuple and single return
+    if isinstance(result, tuple):
+        mShell, mShell_dot = result
     else:
-        # For Bonnor-Ebert or other profiles, use simpler approximation
-        # (full BE calculation would need tabulated Lane-Emden solution)
-        if R2 <= rCloud:
-            mShell = (4.0/3.0) * np.pi * R2**3 * rhoCore
-            rho_at_R2 = rhoCore
-        else:
-            mShell = mCloud + (4.0/3.0) * np.pi * rhoISM * (R2**3 - rCloud**3)
-            rho_at_R2 = rhoISM
+        mShell = result
+        mShell_dot = 0.0
 
-    # Mass accretion rate: dM/dt = 4*pi*r² * rho(r) * v(r)
-    mShell_dot = FOUR_PI * R2**2 * rho_at_R2 * v2
+    # Ensure scalar outputs
+    if hasattr(mShell, '__len__') and len(mShell) == 1:
+        mShell = float(mShell[0])
+    if hasattr(mShell_dot, '__len__') and len(mShell_dot) == 1:
+        mShell_dot = float(mShell_dot[0])
 
-    return mShell, mShell_dot
+    return float(mShell), float(mShell_dot)
 
 
 def _get_mShell_dot_with_activation(mShell_dot_raw: float, R2: float,
@@ -392,8 +425,8 @@ def get_ODE_Edot_pure(t: float, y: np.ndarray, static: StaticODEParams) -> np.nd
     R2 = max(R2, 1e-10)
     Eb = max(Eb, 1e-10)
 
-    # Calculate shell mass and mass accretion rate
-    mShell, mShell_dot_raw = _calculate_mass_pure(R2, v2, static)
+    # Calculate shell mass and mass accretion rate using existing mass_profile module
+    mShell, mShell_dot_raw = _get_mass_from_profile(R2, v2, static)
 
     # Apply gradual activation to fix v²/r singularity
     mShell_dot = _get_mShell_dot_with_activation(mShell_dot_raw, R2, static)
