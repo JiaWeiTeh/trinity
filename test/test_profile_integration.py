@@ -340,6 +340,53 @@ def test_mass_homogeneous_cloud():
     return True
 
 
+def test_homogeneous_sphere_1e7_Msun():
+    """Test specific case: 1e7 Msun sphere with nCore=1e4 cm^-3.
+
+    Expected radius: ~19 pc for homogeneous sphere with mu=1.4.
+    """
+    print("\nTesting homogeneous sphere: M=1e7 Msun, nCore=1e4 cm^-3...")
+
+    # Define inputs (raw values as in param files)
+    mCloud = 1e7         # Msun
+    nCore_raw = 1e4      # cm^-3
+    mu_raw = 1.4         # m_H units
+
+    # Create params with conversions applied
+    params = make_test_params(
+        nCore=nCore_raw,
+        mu_convert=mu_raw,
+        mCloud=mCloud,
+        densPL_alpha=0.0
+    )
+
+    # Get converted values (internal units)
+    nCore_internal = params['nCore'].value       # [1/pc³]
+    mu_internal = params['mu_convert'].value     # [Msun]
+
+    # Compute rCloud: r = (3M / (4πρ))^(1/3) where ρ = n * mu
+    rhoCore = nCore_internal * mu_internal       # [Msun/pc³]
+    rCloud = (3 * mCloud / (4 * np.pi * rhoCore)) ** (1.0/3.0)
+
+    print(f"  Computed rCloud = {rCloud:.2f} pc")
+    print(f"  from mCloud = {mCloud:.0e} Msun, nCore = {nCore_raw:.0e} cm⁻³")
+
+    # Expected radius is ~19 pc
+    expected_rCloud = 19.0  # pc
+    assert np.isclose(rCloud, expected_rCloud, rtol=0.05), \
+        f"rCloud = {rCloud:.2f} pc, expected ~{expected_rCloud} pc"
+    print(f"  ✓ rCloud = {rCloud:.2f} pc ≈ {expected_rCloud} pc (expected)")
+
+    # Also verify using compute_rCloud_homogeneous
+    rCloud_func = compute_rCloud_homogeneous(mCloud, nCore_internal, mu_internal)
+    assert np.isclose(rCloud_func, rCloud, rtol=1e-10), \
+        f"compute_rCloud_homogeneous gives {rCloud_func:.2f} != {rCloud:.2f}"
+    print(f"  ✓ compute_rCloud_homogeneous() = {rCloud_func:.2f} pc (consistent)")
+
+    print("✓ Homogeneous sphere 1e7 Msun test passed!")
+    return True
+
+
 def test_mass_powerlaw_analytical():
     """Test power-law profile against analytical solution.
 
@@ -932,6 +979,7 @@ def run_all_tests():
         # Mass profile tests
         ("Mass: Scalar/Array Consistency", test_mass_scalar_array_consistency),
         ("Mass: Homogeneous Cloud", test_mass_homogeneous_cloud),
+        ("Mass: 1e7 Msun Sphere", test_homogeneous_sphere_1e7_Msun),
         ("Mass: Power-law Profile", test_mass_powerlaw_analytical),
         ("Mass: Density Import", test_mass_density_import),
         ("Mass: Accretion Rate", test_mass_accretion_rate),
