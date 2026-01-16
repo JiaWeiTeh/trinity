@@ -31,11 +31,15 @@ import sys
 import numpy as np
 from scipy.optimize import brentq
 
-# Import unit conversion constants
-import src._functions.unit_conversions as cvt
-
-# Density conversion: n [cm⁻³] × μ → ρ [Msun/pc³]
-DENSITY_CONVERSION = cvt.CGS.m_H * cvt.INV_CONV.pc2cm**3 / cvt.INV_CONV.Msun2g
+# =============================================================================
+# Note on units
+# =============================================================================
+# All parameters are expected to be in internal units [Msun, pc, Myr] as
+# converted by read_param.py:
+#   - nCore, nISM: [1/pc³] (converted from cm⁻³ via ndens_cgs2au)
+#   - mu: [Msun] (converted from m_H units via m_H * g2Msun)
+#
+# Therefore: rho = n * mu directly gives [Msun/pc³]
 
 
 # =============================================================================
@@ -53,16 +57,17 @@ def compute_rCloud_homogeneous(M_cloud, nCore, mu=1.4):
     M_cloud : float
         Cloud mass [Msun]
     nCore : float
-        Core number density [cm⁻³]
+        Core number density [1/pc³] (internal units, converted from cm⁻³)
     mu : float
-        Mean molecular weight (default 1.4 for ionized gas)
+        Mean molecular weight [Msun] (internal units, converted from m_H)
 
     Returns
     -------
     rCloud : float
         Cloud radius [pc]
     """
-    rhoCore = nCore * mu * DENSITY_CONVERSION  # Msun/pc³
+    # In internal units: n [1/pc³] * mu [Msun] = rho [Msun/pc³]
+    rhoCore = nCore * mu
     rCloud = (3 * M_cloud / (4 * np.pi * rhoCore)) ** (1.0/3.0)
     return rCloud
 
@@ -113,7 +118,8 @@ def compute_rCloud_powerlaw(M_cloud, nCore, alpha, rCore=None, rCore_fraction=0.
             rCore = rCloud * rCore_fraction
         return rCloud, rCore
 
-    rhoCore = nCore * mu * DENSITY_CONVERSION  # Msun/pc³
+    # In internal units: n [1/pc³] * mu [Msun] = rho [Msun/pc³]
+    rhoCore = nCore * mu
 
     def mass_at_radius(rCloud_guess, rCore_val):
         """Compute enclosed mass at rCloud given rCore."""
@@ -342,7 +348,8 @@ def validate_cloud_params(mCloud, nCore, rCore, rCloud, nEdge, nISM, alpha, mu,
     warnings = []
 
     # 1. Compute mass at rCloud and check consistency
-    rhoCore = nCore * mu * DENSITY_CONVERSION  # Msun/pc³
+    # In internal units: n [1/pc³] * mu [Msun] = rho [Msun/pc³]
+    rhoCore = nCore * mu
 
     if alpha == 0:
         M_computed = (4.0/3.0) * np.pi * rCloud**3 * rhoCore
@@ -501,7 +508,8 @@ def find_valid_alternatives(mCloud_orig, nCore_orig, rCore_orig, alpha, nISM, mu
                     continue
 
                 # Compute mass error
-                rhoCore = nCore_test * mu * DENSITY_CONVERSION
+                # In internal units: n [1/pc³] * mu [Msun] = rho [Msun/pc³]
+                rhoCore = nCore_test * mu
                 if alpha == 0:
                     M_computed = (4.0/3.0) * np.pi * rCloud_test**3 * rhoCore
                 else:
