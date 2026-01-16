@@ -136,6 +136,14 @@ def get_InitCloudProp(params) -> CloudProperties:
     else:
         raise ValueError(f"Unknown density profile: {profile_type}")
 
+    # Store computed arrays back to params (as documented in docstring)
+    if 'initial_cloud_r_arr' in params:
+        params['initial_cloud_r_arr'].value = props.r_arr
+    if 'initial_cloud_n_arr' in params:
+        params['initial_cloud_n_arr'].value = props.n_arr
+    if 'initial_cloud_m_arr' in params:
+        params['initial_cloud_m_arr'].value = props.M_arr
+
     # Plot and save initial cloud profiles
     if 'path2output' in params and params['path2output'].value is not None:
         out_dir = params['path2output'].value
