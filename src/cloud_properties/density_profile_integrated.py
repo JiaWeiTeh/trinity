@@ -15,14 +15,13 @@ For Bonnor-Ebert sphere:
     n(r) = nCore * f_rho_rhoc(xi)   for r <= rCloud
     n(r) = nISM                     for r > rCloud
 
-Author: TRINITY Team (integrated from REFACTORED_density_profile.py)
+@author: Jia Wei 
 """
 
 import numpy as np
 
 # Import Bonnor-Ebert sphere module for r2xi conversion
 from src.cloud_properties.bonnorEbertSphere_v2 import r2xi as be_r2xi
-
 
 # =============================================================================
 # Helper functions for scalar/array consistency

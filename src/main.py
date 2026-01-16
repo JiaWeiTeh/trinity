@@ -22,9 +22,9 @@ from src.sb99 import read_SB99
 
 
 
-# from src.phase0_init import (get_InitCloudProp, get_InitPhaseParam)
-from src.phase0_init import get_InitCloudProp_integrated as get_InitCloudProp
+from src.phase0_init import (get_InitCloudProp, get_InitPhaseParam)
 from src.phase0_init import get_InitPhaseParam
+from src._output.simulation_end import write_simulation_end
 
 
 
@@ -34,7 +34,6 @@ from src.phase0_init import get_InitPhaseParam
 # from src.phase2_momentum import run_momentum_phase
 import src._output.terminal_prints as terminal_prints
 from src._input.dictionary import DescribedItem, DescribedDict
-# from src._output.simulation_end import write_simulation_end
 
 # Initialize logger for this module
 logger = logging.getLogger(__name__)
@@ -85,7 +84,7 @@ def start_expansion(params):
     logger.info("Step 1: Initializing cloud properties...")
     get_InitCloudProp.get_InitCloudProp(params)
     logger.debug(f"Cloud radius: {params['rCloud'].value:.4f} pc")
-    logger.debug(f"Core density: {params['nCore']:.4e}")
+    logger.debug(f"Core density: {params['nCore'].value*cvt.ndens_au2cgs:.4e} cm-3")
 
     # Step 2: Obtain parameters from Starburst99
     logger.info("Step 2: Loading Starburst99 stellar feedback data...")
@@ -132,13 +131,8 @@ def start_expansion(params):
     # These two are currently not being needed. 
     # =============================================================================
     # create density law for cloudy
-    # TODO: add cloudy support in the future.
+    # TODO: add CLOUDY support in the future.
     
-    # get initial bubble structure and path to where the file is saved.
-    # TODO: currently the file is not being saved. 
-    # this can be taken away i think.
-    # get_InitBubStruc.get_InitBubStruc()
-
     # =============================================================================
     # Begin simulation.
     # =============================================================================
@@ -157,9 +151,6 @@ def start_expansion(params):
     logger.info(f"Total elapsed time: {elapsed}")
     logger.info("=" * 60)
 
-    import sys
-    sys.exit()
-
     # Write simulation end report to file
     try:
         exit_code = write_simulation_end(params)
@@ -168,48 +159,14 @@ def start_expansion(params):
         logger.warning(f"Could not write simulation end report: {e}")
         exit_code = 99
 
-    # # write data (make new file) and cloudy data
-    # # (this must be done after the ODE has been solved on the whole interval between 0 and tcollapse (or tdissolve) because the solver is implicit)
-    # warp_writedata.warp_reconstruct(t1, [r1,v1,E1,T1], ODEpar, SB99f, ii_coll, cloudypath, outdata_file, data_write=i.write_data, cloudy_write=i.write_cloudy, append=False)
-
-
-
-
-
-
-
 
     # ########### STEP 2: In case of recollapse, prepare next expansion ##########################
-
-    # # did the expansion stop because a recollapse occured? If yes, start next expansion
-    # while set_phase.check_simulation_status(t[-1], r[-1], v[-1], warpfield_params) == set_phase.coll:
-
-    #     ii_coll += 1
-
-    #     # run expansion_next
-    #     t1, r1, v1, E1, T1, ODEpar, SB99_data, SB99f = expansion_next(t[-1], ODEpar, SB99_data, SB99f, path2output, cloudypath, ii_coll)
-    #     t = np.append(t, t1 + t[-1])
-    #     r = np.append(r, r1)
-    #     v = np.append(v, v1)
-    #     E = np.append(E, E1)
-    #     T = np.append(T, T1)
-
-    #     # write data (append to old file) and cloudy data
-    #     # TOASK: WHY RERUN RECONSTRUCT?
-    #     # how to call cf in reconstruct?
-    #     warp_writedata.warp_reconstruct(t1, [r1,v1,E1,T1], ODEpar, SB99f, ii_coll, cloudypath, outdata_file, data_write=i.write_data, cloudy_write=i.write_cloudy, append=True)
-
-    # # write success message to file
-    # with open(success_file, "w") as text_file:
-    #     text_file.write("Stopped because...")
-    #     if abs(t[-1]-i.tStop) < 1e-3: text_file.write("end time reached")
-    #     elif (abs(r[-1]-i.rcoll) < 1e-3 and v[-1] < 0.): text_file.write("recollapse")
-    #     else: text_file.write("unknown")
-
+    # TODO: add loop so that this simulation starts over with old generation of parameter to simulate new starburst environment
+    
     return 0
     
     
-    #%%
+#%%
     
 def run_expansion(params):
     """
@@ -226,18 +183,9 @@ def run_expansion(params):
     # Eb = initial energy
     # T0 = initial temperature (K)
     logger.info("Computing initial phase parameters (free-streaming -> Weaver transition)...")
-    get_InitPhaseParam.get_y0(params)
 
-    logger.debug("Initial parameters dictionary:")
-    logger.debug(f"  t_now = {params['t_now'].value:.6e} Myr")
-    logger.debug(f"  R2 = {params['R2'].value:.6e} pc")
-    logger.debug(f"  v2 = {params['v2'].value:.6e} pc/Myr")
-    logger.debug(f"  Eb = {params['Eb'].value:.6e}")
-    logger.debug(f"  T0 = {params['T0'].value:.6e} K")
-
-    
     t0, r0, v0, E0, T0 = get_InitPhaseParam.get_y0(params)
-    
+
     params['t_now'].value = t0
     params['R2'].value = r0
     params['v2'].value = v0
@@ -246,9 +194,6 @@ def run_expansion(params):
     
     print('here is your dictionary', params)
     
-    # params.save_snapShot()
-    
-    # update
     # =============================================================================
     # Phase 1a: Energy driven phase.
     # =============================================================================
