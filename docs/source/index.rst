@@ -20,4 +20,5 @@ Contents
    license
    running
    parameters
+   architecture
    publications
