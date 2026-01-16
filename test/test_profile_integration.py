@@ -45,6 +45,9 @@ def make_test_params(**kwargs):
 
     Default values suitable for a homogeneous cloud test case.
     Override any parameter by passing keyword arguments.
+
+    Note: mu_convert = 1.4 is used for mass density calculations.
+    This is independent of ionization state (mu_ion/mu_atom).
     """
     defaults = {
         'nISM': 1.0,
@@ -53,8 +56,9 @@ def make_test_params(**kwargs):
         'rCore': 1.0,
         'dens_profile': 'densPL',
         'densPL_alpha': 0.0,
-        'mu_ion': 1.4,
-        'mu_atom': 2.3,
+        'mu_convert': 1.4,  # For mass density: rho = n * mu_convert * m_H
+        'mu_ion': 1.4,      # Legacy param (not used for mass calculations)
+        'mu_atom': 2.3,     # Legacy param (not used for mass calculations)
         'mCloud': 1e5,
     }
     defaults.update(kwargs)
@@ -498,6 +502,290 @@ def test_minimum_rCore():
 
 
 # =============================================================================
+# Bonnor-Ebert Sphere Tests
+# =============================================================================
+
+def test_BE_lane_emden_solution():
+    """Test Lane-Emden solution against known critical values."""
+    print("\nTesting Lane-Emden solution...")
+
+    from src.cloud_properties.bonnorEbertSphere_v2 import (
+        solve_lane_emden, OMEGA_CRITICAL, XI_CRITICAL, M_DIM_CRITICAL
+    )
+
+    solution = solve_lane_emden()
+
+    # Find critical values (where rho/rho_c = 1/OMEGA_CRITICAL)
+    idx_crit = np.argmin(np.abs(solution.rho_rhoc - 1.0/OMEGA_CRITICAL))
+    xi_crit_computed = solution.xi[idx_crit]
+    m_crit_computed = solution.m[idx_crit]
+
+    print(f"  Critical ξ: computed={xi_crit_computed:.3f}, expected≈{XI_CRITICAL:.3f}")
+    print(f"  Critical m: computed={m_crit_computed:.2f}, expected≈{M_DIM_CRITICAL:.2f}")
+
+    # Check within tolerance
+    assert abs(xi_crit_computed - XI_CRITICAL) < 0.1, \
+        f"ξ_crit mismatch: {xi_crit_computed:.3f} vs {XI_CRITICAL:.3f}"
+    assert abs(m_crit_computed - M_DIM_CRITICAL) < 0.5, \
+        f"m_crit mismatch: {m_crit_computed:.2f} vs {M_DIM_CRITICAL:.2f}"
+
+    # Check density decreases monotonically
+    assert np.all(np.diff(solution.rho_rhoc) <= 0), "Density should decrease"
+    print("  ✓ Density decreases monotonically")
+
+    # Check mass increases monotonically
+    assert np.all(np.diff(solution.m) >= 0), "Mass should increase monotonically"
+    print("  ✓ Mass increases monotonically")
+
+    print("✓ Lane-Emden solution test passed!")
+    return True
+
+
+def test_BE_sphere_creation():
+    """Test BE sphere creation from M, n_core, Omega."""
+    print("\nTesting BE sphere creation...")
+
+    from src.cloud_properties.bonnorEbertSphere_v2 import (
+        create_BE_sphere, OMEGA_CRITICAL
+    )
+
+    # Test case: 1 solar mass cloud
+    result = create_BE_sphere(
+        M_cloud=1.0,      # [Msun]
+        n_core=1e4,       # [cm⁻³]
+        Omega=10.0        # Moderately concentrated
+    )
+
+    print(f"  Input: M={result.M_cloud} Msun, n_core={result.n_core:.0e} cm⁻³, Ω={result.Omega}")
+    print(f"  Output: r_out={result.r_out:.4f} pc, n_out={result.n_out:.2e} cm⁻³")
+    print(f"          T_eff={result.T_eff:.1f} K, stable={result.is_stable}")
+
+    # Verify outputs
+    assert result.r_out > 0, "Radius should be positive"
+    assert np.isclose(result.n_out, result.n_core / result.Omega), "n_out = n_core/Omega"
+    assert result.T_eff > 0, "Temperature should be positive"
+    assert result.is_stable == (result.Omega < OMEGA_CRITICAL), "Stability check"
+
+    print("✓ BE sphere creation test passed!")
+    return True
+
+
+def test_BE_density_profile():
+    """Test BE density profile n(r) = nCore * rho_rhoc(xi)."""
+    print("\nTesting BE density profile...")
+
+    from src.cloud_properties.bonnorEbertSphere_v2 import (
+        solve_lane_emden, create_BE_sphere
+    )
+
+    # Create a BE sphere
+    M_cloud = 100.0   # [Msun]
+    n_core = 1e4      # [cm⁻³]
+    Omega = 10.0
+    mu = 1.4          # mu_convert for mass density calculations
+
+    solution = solve_lane_emden()
+    result = create_BE_sphere(
+        M_cloud=M_cloud,
+        n_core=n_core,
+        Omega=Omega,
+        mu=mu,
+        lane_emden_solution=solution
+    )
+
+    # Create mock params for get_density_profile
+    # IMPORTANT: mu_convert must match what was used in create_BE_sphere
+    params = make_test_params(
+        dens_profile='densBE',
+        nCore=n_core,
+        rCloud=result.r_out,
+        mu_convert=mu,  # Must match BE sphere creation
+        densBE_Omega=Omega,
+        densBE_Teff=result.T_eff,
+        densBE_f_rho_rhoc=solution.f_rho_rhoc,
+        gamma_adia=5.0/3.0,
+    )
+
+    # Test density at center (should be nCore)
+    r_center = 0.01 * result.r_out
+    n_center = get_density_profile(r_center, params)
+    # At center, rho_rhoc ≈ 1, so n ≈ nCore
+    assert np.isclose(n_center, n_core, rtol=0.01), \
+        f"Center density {n_center:.2e} should be ~nCore {n_core:.2e}"
+    print(f"  ✓ n(r=0.01*rCloud) = {n_center:.2e} ≈ nCore")
+
+    # Test density at edge (should be nCore/Omega at exactly rCloud)
+    # Use exactly rCloud for the edge test
+    r_edge = result.r_out
+    n_edge = get_density_profile(r_edge, params)
+    expected_n_edge = n_core / Omega
+    assert np.isclose(n_edge, expected_n_edge, rtol=0.05), \
+        f"Edge density {n_edge:.2e} should be ~{expected_n_edge:.2e}"
+    print(f"  ✓ n(r=rCloud) = {n_edge:.2e} ≈ nCore/Ω = {expected_n_edge:.2e}")
+
+    # Test outside cloud (should be nISM)
+    r_outside = 1.5 * result.r_out
+    n_outside = get_density_profile(r_outside, params)
+    assert n_outside == params['nISM'].value, "Outside should be nISM"
+    print(f"  ✓ n(r=1.5*rCloud) = {n_outside} = nISM")
+
+    print("✓ BE density profile test passed!")
+    return True
+
+
+def test_BE_mass_total():
+    """Test that M(rCloud) = mCloud for BE sphere (within 2%)."""
+    print("\nTesting BE mass total...")
+
+    from src.cloud_properties.bonnorEbertSphere_v2 import (
+        solve_lane_emden, create_BE_sphere
+    )
+
+    # Create a BE sphere
+    M_cloud = 100.0   # [Msun]
+    n_core = 1e4      # [cm⁻³]
+    Omega = 10.0
+    mu = 1.4          # mu_convert for mass density calculations
+
+    solution = solve_lane_emden()
+    result = create_BE_sphere(
+        M_cloud=M_cloud,
+        n_core=n_core,
+        Omega=Omega,
+        mu=mu,
+        lane_emden_solution=solution
+    )
+
+    # Create mock params for get_mass_profile
+    params = make_test_params(
+        dens_profile='densBE',
+        nCore=n_core,
+        rCloud=result.r_out,
+        mCloud=M_cloud,
+        mu_convert=mu,  # Must match BE sphere creation
+        densBE_Omega=Omega,
+        densBE_Teff=result.T_eff,
+        densBE_f_rho_rhoc=solution.f_rho_rhoc,
+        densBE_f_m=solution.f_m,
+        densBE_xi_out=result.xi_out,
+        gamma_adia=5.0/3.0,
+    )
+
+    # Compute mass at rCloud
+    M_at_rCloud = get_mass_profile(result.r_out, params)
+    rel_error = abs(M_at_rCloud - M_cloud) / M_cloud
+
+    print(f"  M(rCloud) = {M_at_rCloud:.4f} Msun")
+    print(f"  Expected  = {M_cloud:.4f} Msun")
+    print(f"  Relative error = {rel_error*100:.2f}%")
+
+    # Should be accurate to within 2%
+    assert rel_error < 0.02, f"Mass error too large: {rel_error*100:.2f}%"
+
+    print("✓ BE mass total test passed!")
+    return True
+
+
+# =============================================================================
+# get_InitCloudProp_integrated Tests
+# =============================================================================
+
+def test_InitCloudProp_powerlaw():
+    """Test get_InitCloudProp with power-law profile."""
+    print("\nTesting InitCloudProp power-law...")
+
+    from src.phase0_init.get_InitCloudProp_integrated import (
+        get_InitCloudProp, verify_mass_at_rCloud
+    )
+    from src.cloud_properties.powerLawSphere import compute_rCloud_powerlaw
+
+    # Use parameters that satisfy nEdge >= nISM constraint
+    nCore = 1e3
+    mCloud = 1e5
+    alpha = -2.0
+    mu = 1.4
+    _, rCore = compute_rCloud_powerlaw(mCloud, nCore, alpha, rCore_fraction=0.1, mu=mu)
+
+    params = make_test_params(
+        dens_profile='densPL',
+        densPL_alpha=alpha,
+        mCloud=mCloud,
+        nCore=nCore,
+        rCore=rCore,
+    )
+    # Add placeholder params that get_InitCloudProp needs
+    params['rCloud'] = MockParam(None)
+    params['nEdge'] = MockParam(None)
+    params['initial_cloud_r_arr'] = MockParam(None)
+    params['initial_cloud_n_arr'] = MockParam(None)
+    params['initial_cloud_m_arr'] = MockParam(None)
+
+    props = get_InitCloudProp(params)
+
+    # Verify mass consistency
+    error = verify_mass_at_rCloud(props, mCloud)
+    assert error < 0.01, f"Mass error too large: {error*100:.2f}%"
+    print(f"  ✓ M(rCloud) error = {error*100:.6f}%")
+
+    # Verify arrays stored in params
+    assert params['initial_cloud_r_arr'].value is not None
+    assert len(params['initial_cloud_r_arr'].value) > 100
+    print(f"  ✓ Arrays stored in params (len={len(params['initial_cloud_r_arr'].value)})")
+
+    print("✓ InitCloudProp power-law test passed!")
+    return True
+
+
+def test_InitCloudProp_bonnor_ebert():
+    """Test get_InitCloudProp with Bonnor-Ebert profile."""
+    print("\nTesting InitCloudProp Bonnor-Ebert...")
+
+    from src.phase0_init.get_InitCloudProp_integrated import (
+        get_InitCloudProp, verify_mass_at_rCloud
+    )
+
+    mCloud = 100.0
+    nCore = 1e4
+    Omega = 10.0
+
+    params = make_test_params(
+        dens_profile='densBE',
+        mCloud=mCloud,
+        nCore=nCore,
+        rCore=0.01,  # Small rCore for BE
+        densBE_Omega=Omega,
+        gamma_adia=5.0/3.0,
+    )
+    # Add placeholder params
+    params['rCloud'] = MockParam(None)
+    params['nEdge'] = MockParam(None)
+    params['densBE_Teff'] = MockParam(None)
+    params['initial_cloud_r_arr'] = MockParam(None)
+    params['initial_cloud_n_arr'] = MockParam(None)
+    params['initial_cloud_m_arr'] = MockParam(None)
+
+    props = get_InitCloudProp(params)
+
+    # Verify mass consistency
+    error = verify_mass_at_rCloud(props, mCloud)
+    assert error < 0.01, f"Mass error too large: {error*100:.2f}%"
+    print(f"  ✓ M(rCloud) error = {error*100:.6f}%")
+
+    # Verify BE-specific outputs
+    assert props.T_eff is not None and props.T_eff > 0
+    assert props.xi_out is not None and props.xi_out > 0
+    print(f"  ✓ T_eff = {props.T_eff:.1f} K, xi_out = {props.xi_out:.3f}")
+
+    # Verify Lane-Emden functions stored
+    assert params['densBE_f_m'].value is not None
+    assert params['densBE_f_rho_rhoc'].value is not None
+    print("  ✓ Lane-Emden functions stored in params")
+
+    print("✓ InitCloudProp Bonnor-Ebert test passed!")
+    return True
+
+
+# =============================================================================
 # Main test runner
 # =============================================================================
 
@@ -521,6 +809,14 @@ def run_all_tests():
         ("Mass: Accretion Rate", test_mass_accretion_rate),
         ("Mass: Validation", test_validate_mass),
         ("Mass: Minimum rCore", test_minimum_rCore),
+        # Bonnor-Ebert sphere tests
+        ("BE: Lane-Emden Solution", test_BE_lane_emden_solution),
+        ("BE: Sphere Creation", test_BE_sphere_creation),
+        ("BE: Density Profile", test_BE_density_profile),
+        ("BE: Mass Total", test_BE_mass_total),
+        # InitCloudProp tests
+        ("InitCloudProp: Power-law", test_InitCloudProp_powerlaw),
+        ("InitCloudProp: Bonnor-Ebert", test_InitCloudProp_bonnor_ebert),
     ]
 
     passed = 0
