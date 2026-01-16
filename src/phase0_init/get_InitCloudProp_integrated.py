@@ -22,8 +22,12 @@ Author: TRINITY Team
 
 import numpy as np
 import logging
+import os
 from dataclasses import dataclass
 from typing import Optional
+
+import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
 
 # Absolute imports from integrated modules
 from src.cloud_properties.density_profile_integrated import get_density_profile
@@ -98,6 +102,7 @@ def get_InitCloudProp(params) -> CloudProperties:
         - nISM: ISM density [cm^-3]
         - mu_convert: mean molecular weight for mass (=1.4)
         - rCore: core radius [pc] (user-specified)
+        - out_dir: output directory for saving plots
         For densPL:
         - densPL_alpha: power-law exponent
         For densBE:
@@ -115,17 +120,26 @@ def get_InitCloudProp(params) -> CloudProperties:
     - rCloud, rCore, nEdge
     - initial_cloud_r_arr, initial_cloud_n_arr, initial_cloud_m_arr
     - For BE spheres: densBE_Teff, densBE_xi_out, densBE_f_rho_rhoc, densBE_f_m
+
+    A plot of the initial cloud profiles is saved to out_dir/initial_cloud_profiles.pdf
     """
     _validate_params(params)
 
     profile_type = params['dens_profile'].value
 
     if profile_type == 'densPL':
-        return _init_powerlaw_cloud(params)
+        props = _init_powerlaw_cloud(params)
     elif profile_type == 'densBE':
-        return _init_bonnor_ebert_cloud(params)
+        props = _init_bonnor_ebert_cloud(params)
     else:
         raise ValueError(f"Unknown density profile: {profile_type}")
+
+    # Plot and save initial cloud profiles
+    if 'out_dir' in params and params['out_dir'].value is not None:
+        out_dir = params['out_dir'].value
+        plot_initial_cloud_profiles(props, params, out_dir)
+
+    return props
 
 
 # =============================================================================
@@ -452,6 +466,147 @@ def verify_key_radii_in_array(props: CloudProperties) -> bool:
         logger.info("rCloud and rCore are both exactly in r_arr")
 
     return success
+
+
+# =============================================================================
+# Plotting functions
+# =============================================================================
+
+def plot_initial_cloud_profiles(
+    props: CloudProperties,
+    params,
+    out_dir: str,
+    filename: str = "initial_cloud_profiles.pdf"
+) -> str:
+    """
+    Plot the initial cloud density and mass profiles.
+
+    Creates a two-panel figure showing:
+    - Left panel: Number density profile n(r) [cm^-3]
+    - Right panel: Enclosed mass profile M(r) [Msun]
+
+    Key radii (rCore, rCloud) are marked with vertical lines.
+
+    Parameters
+    ----------
+    props : CloudProperties
+        Computed cloud properties containing r_arr, n_arr, M_arr
+    params : dict-like
+        Parameter dictionary with cloud configuration
+    out_dir : str
+        Output directory path where the figure will be saved
+    filename : str, optional
+        Output filename (default: "initial_cloud_profiles.pdf")
+
+    Returns
+    -------
+    filepath : str
+        Full path to the saved figure
+    """
+    # Extract data
+    r_arr = props.r_arr
+    n_arr = props.n_arr
+    M_arr = props.M_arr
+    rCloud = props.rCloud
+    rCore = props.rCore
+    nEdge = props.nEdge
+
+    # Get profile info for title
+    profile_type = params['dens_profile'].value
+    mCloud = params['mCloud'].value
+    nCore = params['nCore'].value
+
+    if profile_type == 'densPL':
+        alpha = params['densPL_alpha'].value
+        profile_label = f"Power-law (α={alpha})"
+    elif profile_type == 'densBE':
+        Omega = params['densBE_Omega'].value
+        T_eff = props.T_eff
+        profile_label = f"Bonnor-Ebert (Ω={Omega:.1f}, T={T_eff:.1f} K)"
+    else:
+        profile_label = profile_type
+
+    # Create figure with two panels
+    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+
+    # -------------------------------------------------------------------------
+    # Left panel: Density profile
+    # -------------------------------------------------------------------------
+    ax1 = axes[0]
+
+    # Plot density profile
+    ax1.loglog(r_arr, n_arr, 'b-', linewidth=2, label='n(r)')
+
+    # Mark key radii
+    ax1.axvline(rCore, color='green', linestyle='--', linewidth=1.5,
+                label=f'rCore = {rCore:.3f} pc')
+    ax1.axvline(rCloud, color='red', linestyle='--', linewidth=1.5,
+                label=f'rCloud = {rCloud:.3f} pc')
+
+    # Mark key densities
+    ax1.axhline(nCore, color='blue', linestyle=':', alpha=0.5,
+                label=f'nCore = {nCore:.2e} cm⁻³')
+    ax1.axhline(nEdge, color='orange', linestyle=':', alpha=0.5,
+                label=f'nEdge = {nEdge:.2e} cm⁻³')
+
+    ax1.set_xlabel('Radius r [pc]', fontsize=12)
+    ax1.set_ylabel('Number density n [cm⁻³]', fontsize=12)
+    ax1.set_title('Density Profile', fontsize=14)
+    ax1.legend(loc='best', fontsize=9)
+    ax1.grid(True, alpha=0.3, which='both')
+
+    # Set axis limits
+    ax1.set_xlim(r_arr[r_arr > 0].min() * 0.5, r_arr.max() * 1.2)
+    ax1.set_ylim(n_arr[n_arr > 0].min() * 0.5, n_arr.max() * 2)
+
+    # -------------------------------------------------------------------------
+    # Right panel: Mass profile
+    # -------------------------------------------------------------------------
+    ax2 = axes[1]
+
+    # Plot mass profile
+    ax2.loglog(r_arr, M_arr, 'r-', linewidth=2, label='M(r)')
+
+    # Mark key radii
+    ax2.axvline(rCore, color='green', linestyle='--', linewidth=1.5,
+                label=f'rCore = {rCore:.3f} pc')
+    ax2.axvline(rCloud, color='red', linestyle='--', linewidth=1.5,
+                label=f'rCloud = {rCloud:.3f} pc')
+
+    # Mark cloud mass
+    ax2.axhline(mCloud, color='purple', linestyle=':', alpha=0.5,
+                label=f'mCloud = {mCloud:.2e} M☉')
+
+    ax2.set_xlabel('Radius r [pc]', fontsize=12)
+    ax2.set_ylabel('Enclosed mass M [M☉]', fontsize=12)
+    ax2.set_title('Mass Profile', fontsize=14)
+    ax2.legend(loc='best', fontsize=9)
+    ax2.grid(True, alpha=0.3, which='both')
+
+    # Set axis limits
+    ax2.set_xlim(r_arr[r_arr > 0].min() * 0.5, r_arr.max() * 1.2)
+    ax2.set_ylim(M_arr[M_arr > 0].min() * 0.5, M_arr.max() * 2)
+
+    # -------------------------------------------------------------------------
+    # Overall title
+    # -------------------------------------------------------------------------
+    fig.suptitle(
+        f'Initial Cloud: {profile_label}\n'
+        f'mCloud = {mCloud:.2e} M☉, nCore = {nCore:.2e} cm⁻³',
+        fontsize=14, fontweight='bold'
+    )
+
+    plt.tight_layout()
+
+    # Save figure
+    os.makedirs(out_dir, exist_ok=True)
+    filepath = os.path.join(out_dir, filename)
+    fig.savefig(filepath, format='pdf', bbox_inches='tight', dpi=150)
+    plt.close(fig)
+
+    logger.info(f"Saved initial cloud profile plot to: {filepath}")
+
+    return filepath
 
 
 # =============================================================================
