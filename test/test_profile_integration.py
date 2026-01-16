@@ -551,7 +551,7 @@ def test_BE_sphere_creation():
 
     # Test case: 1 solar mass cloud
     result = create_BE_sphere(
-        M_cloud=1.0,      # [Msun]
+        M_cloud=1e5,      # [Msun]
         n_core=1e4,       # [cm⁻³]
         Omega=10.0        # Moderately concentrated
     )
@@ -579,7 +579,7 @@ def test_BE_density_profile():
     )
 
     # Create a BE sphere
-    M_cloud = 100.0   # [Msun]
+    M_cloud = 1e5   # [Msun]
     n_core = 1e4      # [cm⁻³]
     Omega = 10.0
     mu = 1.4          # mu_convert for mass density calculations
@@ -642,7 +642,7 @@ def test_BE_mass_total():
     )
 
     # Create a BE sphere
-    M_cloud = 100.0   # [Msun]
+    M_cloud = 1e5   # [Msun]
     n_core = 1e4      # [cm⁻³]
     Omega = 10.0
     mu = 1.4          # mu_convert for mass density calculations
