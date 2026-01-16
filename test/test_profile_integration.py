@@ -16,8 +16,8 @@ import os
 # Ensure src is in path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from src.cloud_properties.density_profile_integrated import get_density_profile
-from src.cloud_properties.mass_profile_integrated import (
+from src.cloud_properties.density_profile import get_density_profile
+from src.cloud_properties.mass_profile import (
     get_mass_profile,
     get_mass_density,
     validate_mass_at_rCloud,
@@ -637,7 +637,7 @@ def test_BE_lane_emden_solution():
     """Test Lane-Emden solution against known critical values."""
     print("\nTesting Lane-Emden solution...")
 
-    from src.cloud_properties.bonnorEbertSphere_v2 import (
+    from src.cloud_properties.bonnorEbertSphere import (
         solve_lane_emden, OMEGA_CRITICAL, XI_CRITICAL, M_DIM_CRITICAL
     )
 
@@ -678,7 +678,7 @@ def test_BE_sphere_creation():
     """
     print("\nTesting BE sphere creation...")
 
-    from src.cloud_properties.bonnorEbertSphere_v2 import (
+    from src.cloud_properties.bonnorEbertSphere import (
         create_BE_sphere, OMEGA_CRITICAL
     )
 
@@ -724,7 +724,7 @@ def test_BE_density_profile():
     """
     print("\nTesting BE density profile...")
 
-    from src.cloud_properties.bonnorEbertSphere_v2 import (
+    from src.cloud_properties.bonnorEbertSphere import (
         solve_lane_emden, create_BE_sphere
     )
 
@@ -798,7 +798,7 @@ def test_BE_mass_total():
     """Test that M(rCloud) = mCloud for BE sphere (within 2%)."""
     print("\nTesting BE mass total...")
 
-    from src.cloud_properties.bonnorEbertSphere_v2 import (
+    from src.cloud_properties.bonnorEbertSphere import (
         solve_lane_emden, create_BE_sphere
     )
 
