@@ -301,6 +301,7 @@ def compute_enclosed_mass_powerlaw(
     nCore = params['nCore'].value
     nISM = params['nISM'].value
     mu_convert = params['mu_convert'].value
+    print('\n\nmu_convert', mu_convert)
     rCore = params['rCore'].value
     rCloud = params['rCloud'].value
     mCloud = params['mCloud'].value
@@ -309,7 +310,17 @@ def compute_enclosed_mass_powerlaw(
     # Physical density units: [Msun/pc^3]
     # mu_convert = 1.4 is independent of ionization state
     rhoCore = nCore * mu_convert * DENSITY_CONVERSION
+    # x = au * au
     rhoISM = nISM * mu_convert * DENSITY_CONVERSION
+    
+    import src._functions.unit_conversions as cvt
+    
+    
+    print('nISM', nISM*cvt.ndens_au2cgs)
+    print('\n\n\n\n')
+    print((rhoISM)*cvt.Msun2g*cvt.ndens_au2cgs)
+    print(rhoISM)
+    print('\n\n\n\n')
 
     M_arr = np.zeros_like(r_arr, dtype=float)
 
