@@ -57,6 +57,18 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 logger.info(f"Parameter file loaded: {args.path2param}")
 
+# Add file logging to output directory
+out_dir = params['out_dir'].value
+if out_dir:
+    os.makedirs(out_dir, exist_ok=True)
+    file_handler = logging.FileHandler(os.path.join(out_dir, 'trinity.log'))
+    file_handler.setLevel(logging.INFO)
+    file_handler.setFormatter(logging.Formatter(
+        "%(asctime)s %(levelname)s [%(name)s] %(message)s"
+    ))
+    logging.getLogger().addHandler(file_handler)
+    logger.info(f"Log file: {os.path.join(out_dir, 'trinity.log')}")
+
 
 main.start_expansion(params)
 
