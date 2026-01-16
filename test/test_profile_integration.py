@@ -368,22 +368,18 @@ def test_mass_density_import():
     # Test density at a point
     r = 5.0
     n = get_density_profile(r, params)  # Number density from density_profile [cm⁻³]
-    rho_internal = get_mass_density(r, params, physical_units=False)  # Internal units (n × μ)
-    rho_physical = get_mass_density(r, params, physical_units=True)   # Physical units [Msun/pc³]
+    rho = get_mass_density(r, params)   # Mass density [Msun/pc³]
 
     expected_n = params['nCore'].value  # 1000.0 cm⁻³
-    expected_rho_internal = expected_n * params['mu_ion'].value  # 1000.0 × 1.4
-    expected_rho_physical = expected_rho_internal * DENSITY_CONVERSION  # Msun/pc³
+    mu_convert = params['mu_convert'].value  # 1.4
+    expected_rho = expected_n * mu_convert * DENSITY_CONVERSION  # Msun/pc³
 
     assert np.isclose(n, expected_n), f"Number density: {n} != {expected_n}"
-    assert np.isclose(rho_internal, expected_rho_internal), \
-        f"Mass density (internal): {rho_internal} != {expected_rho_internal}"
-    assert np.isclose(rho_physical, expected_rho_physical), \
-        f"Mass density (physical): {rho_physical} != {expected_rho_physical}"
+    assert np.isclose(rho, expected_rho), \
+        f"Mass density: {rho} != {expected_rho}"
 
     print(f"  ✓ Number density n(r={r}) = {n} cm⁻³ (from density_profile module)")
-    print(f"  ✓ Mass density ρ(r={r}) = {rho_internal:.4e} (internal: n × μ)")
-    print(f"  ✓ Mass density ρ(r={r}) = {rho_physical:.4e} Msun/pc³ (physical)")
+    print(f"  ✓ Mass density ρ(r={r}) = {rho:.4e} Msun/pc³")
     print("✓ Density import test passed!")
     return True
 
@@ -415,7 +411,7 @@ def test_mass_accretion_rate():
     M, dMdt = get_mass_profile(r, params, return_mdot=True, rdot=v)
 
     # Expected dM/dt = 4πr²ρv
-    rho = get_mass_density(r, params, physical_units=True)
+    rho = get_mass_density(r, params)
     expected_dMdt = 4.0 * np.pi * r**2 * rho * v
 
     assert np.isclose(dMdt, expected_dMdt, rtol=1e-6), \
