@@ -21,4 +21,5 @@ Contents
    running
    parameters
    architecture
+   physics
    publications
