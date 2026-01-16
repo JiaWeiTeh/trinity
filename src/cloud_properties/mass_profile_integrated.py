@@ -17,7 +17,7 @@ Key features:
 - No solver coupling (no dependency on array_t_now, etc.)
 - Clean separation: density calculation -> mass integration -> rate
 
-Author: TRINITY Team (integrated from REFACTORED_mass_profile.py)
+@author: Jia Wei
 """
 
 import numpy as np
@@ -297,6 +297,7 @@ def compute_enclosed_mass_powerlaw(
     nCore = params['nCore'].value
     nISM = params['nISM'].value
     mu_convert = params['mu_convert'].value
+    print('\n\nmu_convert', mu_convert)
     rCore = params['rCore'].value
     rCloud = params['rCloud'].value
     mCloud = params['mCloud'].value

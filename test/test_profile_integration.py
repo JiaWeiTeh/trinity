@@ -803,7 +803,7 @@ def test_BE_mass_total():
     )
 
     # Create a BE sphere
-    M_cloud = 100.0   # [Msun]
+    M_cloud = 1e5   # [Msun]
     n_core = 1e4      # [cm⁻³]
     Omega = 10.0
     mu = 1.4          # mu_convert for mass density calculations
