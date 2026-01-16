@@ -102,7 +102,7 @@ def get_InitCloudProp(params) -> CloudProperties:
         - nISM: ISM density [cm^-3]
         - mu_convert: mean molecular weight for mass (=1.4)
         - rCore: core radius [pc] (user-specified)
-        - out_dir: output directory for saving plots
+        - path2output: output directory for saving plots
         For densPL:
         - densPL_alpha: power-law exponent
         For densBE:
@@ -121,7 +121,7 @@ def get_InitCloudProp(params) -> CloudProperties:
     - initial_cloud_r_arr, initial_cloud_n_arr, initial_cloud_m_arr
     - For BE spheres: densBE_Teff, densBE_xi_out, densBE_f_rho_rhoc, densBE_f_m
 
-    A plot of the initial cloud profiles is saved to out_dir/initial_cloud_profiles.pdf
+    A plot of the initial cloud profiles is saved to path2output/initial_cloud_profiles.pdf
     """
     _validate_params(params)
 
@@ -135,8 +135,8 @@ def get_InitCloudProp(params) -> CloudProperties:
         raise ValueError(f"Unknown density profile: {profile_type}")
 
     # Plot and save initial cloud profiles
-    if 'out_dir' in params and params['out_dir'].value is not None:
-        out_dir = params['out_dir'].value
+    if 'path2output' in params and params['path2output'].value is not None:
+        out_dir = params['path2output'].value
         plot_initial_cloud_profiles(props, params, out_dir)
 
     return props
