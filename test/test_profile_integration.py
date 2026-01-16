@@ -855,7 +855,7 @@ def test_InitCloudProp_powerlaw():
     """Test get_InitCloudProp with power-law profile."""
     print("\nTesting InitCloudProp power-law...")
 
-    from src.phase0_init.get_InitCloudProp_integrated import (
+    from src.phase0_init.get_InitCloudProp import (
         get_InitCloudProp, verify_mass_at_rCloud
     )
     from src.cloud_properties.powerLawSphere import compute_rCloud_powerlaw
@@ -915,7 +915,7 @@ def test_InitCloudProp_bonnor_ebert():
     """Test get_InitCloudProp with Bonnor-Ebert profile."""
     print("\nTesting InitCloudProp Bonnor-Ebert...")
 
-    from src.phase0_init.get_InitCloudProp_integrated import (
+    from src.phase0_init.get_InitCloudProp import (
         get_InitCloudProp, verify_mass_at_rCloud
     )
 

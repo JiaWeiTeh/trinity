@@ -5,9 +5,16 @@ Created on Mon Jul 25 14:37:53 2022
 
 @author: Jia Wei Teh
 
-This script includes function that calculates the density profile, given 
+This script includes function that calculates the density profile.
 
-REFACTORED VERSION:
+MIGRATION NOTICE:
+================
+For new code, use density_profile_integrated.py instead. The integrated version:
+- Has full Bonnor-Ebert sphere support via bonnorEbertSphere_v2
+- Works seamlessly with mass_profile_integrated.py
+- Is fully tested with comprehensive test suite
+
+LEGACY REFACTORED VERSION:
 - Scalar/array input-output consistency: scalar input → scalar output, array input → array output
 - Cleaner code structure with helper functions
 - Comprehensive tests included at bottom

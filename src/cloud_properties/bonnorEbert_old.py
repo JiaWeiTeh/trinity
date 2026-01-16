@@ -5,9 +5,23 @@ Created on Tue Jul 26 15:04:46 2022
 
 @author: Jia Wei Teh
 
-This script contains helper functions to aid bonner-ebert sphere related 
+DEPRECATED: This module is deprecated. Use bonnorEbertSphere_v2.py instead.
+The v2 module provides:
+- Correct dimensionless mass formula: m = ξ² du/dξ (not m = ξ² exp(-u))
+- Analytical Lane-Emden mass integration (no nested numerical integration)
+- Clean unit handling consistent with TRINITY's internal units
+- No dependency on warpfield_params global settings
+
+This script contains helper functions to aid bonner-ebert sphere related
 calculations. See density_profile.py and mass_profile.py for more.
 """
+import warnings
+warnings.warn(
+    "bonnorEbert_old.py is deprecated. Use bonnorEbertSphere_v2.py instead. "
+    "The v2 module has correct physics and no global state dependencies.",
+    DeprecationWarning,
+    stacklevel=2
+)
 
 import numpy as np
 import scipy.integrate

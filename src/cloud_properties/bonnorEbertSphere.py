@@ -4,7 +4,27 @@
 Created on Sun Jun 22 11:47:56 2025
 
 @author: Jia Wei Teh
+
+DEPRECATED: This module is deprecated. Use bonnorEbertSphere_v2.py instead.
+The v2 module provides:
+- Correct dimensionless mass formula: m = ξ² du/dξ (not m = ξ² exp(-u))
+- Analytical Lane-Emden mass integration (no nested numerical integration)
+- Clean unit handling consistent with TRINITY's internal units
+
+Migration guide:
+    # Old code
+    from bonnorEbertSphere import solve_laneEmden, ...
+
+    # New code
+    from bonnorEbertSphere_v2 import solve_lane_emden, create_BE_sphere, ...
 """
+import warnings
+warnings.warn(
+    "bonnorEbertSphere.py is deprecated. Use bonnorEbertSphere_v2.py instead. "
+    "The v2 module has correct physics (m = ξ² du/dξ) and clean unit handling.",
+    DeprecationWarning,
+    stacklevel=2
+)
 
 
     # TODO: i wonder if one only has to initialise once the density profile (or to some
