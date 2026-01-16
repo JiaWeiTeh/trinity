@@ -5,7 +5,18 @@ Created on Mon Jul 25 14:37:58 2022
 
 @author: Jia Wei Teh
 
-Mass Profile Calculation - REFACTORED VERSION
+Mass Profile Calculation - LEGACY VERSION (PARTIALLY REFACTORED)
+
+MIGRATION NOTICE:
+================
+For new code, use mass_profile_integrated.py instead. The integrated version:
+- Has cleaner unit handling (no DENSITY_CONVERSION factor)
+- Expects all parameters in internal units [Msun, pc, Myr, 1/pc³]
+- Works seamlessly with density_profile_integrated.py
+- Is fully tested with comprehensive test suite
+
+This file is retained for backward compatibility with phase modules
+(phase1_energy, phase2_momentum, etc.) that have not yet been migrated.
 
 Calculate mass M(r) and mass accretion rate dM/dt for cloud density profiles.
 
