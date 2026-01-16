@@ -58,7 +58,7 @@ logger = logging.getLogger(__name__)
 logger.info(f"Parameter file loaded: {args.path2param}")
 
 # Add file logging to output directory
-out_dir = params['out_dir'].value
+out_dir = params['path2output'].value
 if out_dir:
     os.makedirs(out_dir, exist_ok=True)
     file_handler = logging.FileHandler(os.path.join(out_dir, 'trinity.log'))
