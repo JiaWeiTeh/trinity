@@ -394,9 +394,12 @@ def create_BE_sphere(
     # ========================================================================
     # STEP 4: Calculate sound speed (DIRECT - NO OPTIMIZATION!)
     # ========================================================================
-    # Convert inputs to CGS
+    # Convert inputs from internal units [Msun, pc] to CGS
+    # n_core is in [1/pc³], mu is in [Msun]
+    # rho_internal [Msun/pc³] = n_core * mu
+    # rho_cgs [g/cm³] = rho_internal * MSUN_TO_G / PC_TO_CM³
     M_cgs = M_cloud * MSUN_TO_G  # [g]
-    rho_core_cgs = n_core * mu * M_H_CGS  # [g/cm³]
+    rho_core_cgs = n_core * mu * MSUN_TO_G / PC_TO_CM**3  # [g/cm³]
 
     # From M = 4π × m × ρc × a³ where a = c_s/√(4πGρc) and m = ξ² du/dξ
     # Solve for c_s:
@@ -417,11 +420,14 @@ def create_BE_sphere(
     r_out_cm = xi_out * a  # [cm]
     r_out = r_out_cm / PC_TO_CM  # [pc]
 
-    # Surface number density
-    n_out = n_core / Omega  # [cm⁻³]
+    # Surface number density (in internal units [1/pc³])
+    n_out = n_core / Omega  # [1/pc³]
 
-    # Effective temperature: T = μ m_H c_s² / (γ k_B)
-    T_eff = mu * M_H_CGS * c_s**2 / (gamma * K_B_CGS)  # [K]
+    # Effective temperature: T = μ_dimensionless * m_H * c_s² / (γ * k_B)
+    # mu is in [Msun], so μ_dimensionless = mu * MSUN_TO_G / M_H_CGS
+    # T = (mu * MSUN_TO_G / M_H_CGS) * M_H_CGS * c_s² / (γ * k_B)
+    #   = mu * MSUN_TO_G * c_s² / (γ * k_B)
+    T_eff = mu * MSUN_TO_G * c_s**2 / (gamma * K_B_CGS)  # [K]
 
     logger.debug(f"Result: r_out={r_out:.4f} pc, n_out={n_out:.2e} cm⁻³, T_eff={T_eff:.1f} K")
 
@@ -577,17 +583,20 @@ def r2xi(r, params):
     xi : float or array
         Dimensionless radius
     """
-    # Get parameters
+    # Get parameters (all in internal units)
     T_eff = params['densBE_Teff'].value
-    n_core = params['nCore'].value
-    mu = params['mu_convert'].value  # Use mu_convert = 1.4 for mass density
+    n_core = params['nCore'].value       # [1/pc³]
+    mu = params['mu_convert'].value      # [Msun]
     gamma = params['gamma_adia'].value
 
     # Calculate sound speed [cm/s]
-    c_s = np.sqrt(gamma * K_B_CGS * T_eff / (mu * M_H_CGS))
+    # c_s² = γ k_B T / m_particle, where m_particle = mu [Msun] * MSUN_TO_G
+    c_s = np.sqrt(gamma * K_B_CGS * T_eff / (mu * MSUN_TO_G))
 
     # Core mass density [g/cm³]
-    rho_core = n_core * mu * M_H_CGS
+    # rho = n [1/pc³] * mu [Msun] = [Msun/pc³]
+    # Convert to CGS: rho_cgs = rho_internal * MSUN_TO_G / PC_TO_CM³
+    rho_core = n_core * mu * MSUN_TO_G / PC_TO_CM**3
 
     # Convert r from pc to cm
     r_cm = np.asarray(r) * PC_TO_CM
@@ -614,17 +623,20 @@ def xi2r(xi, params):
     r : float or array [pc]
         Physical radius
     """
-    # Get parameters
+    # Get parameters (all in internal units)
     T_eff = params['densBE_Teff'].value
-    n_core = params['nCore'].value
-    mu = params['mu_convert'].value  # Use mu_convert = 1.4 for mass density
+    n_core = params['nCore'].value       # [1/pc³]
+    mu = params['mu_convert'].value      # [Msun]
     gamma = params['gamma_adia'].value
 
     # Calculate sound speed [cm/s]
-    c_s = np.sqrt(gamma * K_B_CGS * T_eff / (mu * M_H_CGS))
+    # c_s² = γ k_B T / m_particle, where m_particle = mu [Msun] * MSUN_TO_G
+    c_s = np.sqrt(gamma * K_B_CGS * T_eff / (mu * MSUN_TO_G))
 
     # Core mass density [g/cm³]
-    rho_core = n_core * mu * M_H_CGS
+    # rho = n [1/pc³] * mu [Msun] = [Msun/pc³]
+    # Convert to CGS: rho_cgs = rho_internal * MSUN_TO_G / PC_TO_CM³
+    rho_core = n_core * mu * MSUN_TO_G / PC_TO_CM**3
 
     # Calculate r [cm]
     r_cm = xi_to_r(np.asarray(xi), c_s, rho_core)

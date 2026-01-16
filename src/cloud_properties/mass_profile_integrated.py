@@ -28,9 +28,6 @@ from typing import Union, Tuple
 # Import density profile from integrated module
 from src.cloud_properties.density_profile_integrated import get_density_profile
 
-# Import unit conversions and physical constants from central module
-from src._functions.unit_conversions import CGS, INV_CONV
-
 # Import utility for computing rCloud from physical parameters
 from src.cloud_properties.powerLawSphere import (
     compute_rCloud_homogeneous,
@@ -41,18 +38,15 @@ logger = logging.getLogger(__name__)
 
 
 # =============================================================================
-# Physical constants for unit conversions (from central module)
+# Note on units
 # =============================================================================
-
-PC_TO_CM = INV_CONV.pc2cm        # [cm/pc]
-MSUN_TO_G = INV_CONV.Msun2g      # [g/Msun]
-M_H_CGS = CGS.m_H                # [g] hydrogen mass
-
-# Conversion factor: n [cm^-3] * mu -> rho [Msun/pc^3]
-# rho [g/cm^3] = n [cm^-3] * mu * m_H [g]
-# rho [Msun/pc^3] = rho [g/cm^3] * (pc_to_cm)^3 / Msun_to_g
-#              = n * mu * m_H * (pc_to_cm)^3 / Msun_to_g
-DENSITY_CONVERSION = M_H_CGS * PC_TO_CM**3 / MSUN_TO_G  # approx 2.47e-2
+# All parameters are expected to be in internal units [Msun, pc, Myr] as
+# converted by read_param.py:
+#   - nCore, nISM: [1/pc³] (converted from cm⁻³ via ndens_cgs2au)
+#   - mu_convert: [Msun] (converted from m_H units via m_H * g2Msun)
+#
+# Therefore: rho = n * mu_convert directly gives [Msun/pc³]
+# No additional conversion factor is needed.
 
 
 # Type aliases for clarity
@@ -110,9 +104,10 @@ def get_mass_density(
 
     Notes
     -----
-    The conversion from n [cm^-3] to rho [Msun/pc^3]:
-        rho = n * mu * m_H * (pc/cm)^3 / Msun_to_g
-            = n * mu * DENSITY_CONVERSION
+    In internal units [Msun, pc, Myr]:
+        - n is in [1/pc³] (converted from cm⁻³)
+        - mu_convert is in [Msun] (converted from m_H units)
+        - rho = n * mu_convert directly gives [Msun/pc³]
     """
     # Get number density from density_profile module
     n = get_density_profile(r, params)
@@ -126,8 +121,9 @@ def get_mass_density(
 
     mu_convert = params['mu_convert'].value
 
-    # Mass density = number density * mean molecular weight * unit conversion
-    rho_arr = n_arr * mu_convert * DENSITY_CONVERSION
+    # Mass density = number density * mean molecular weight
+    # In internal units: n [1/pc³] * mu [Msun] = rho [Msun/pc³]
+    rho_arr = n_arr * mu_convert
 
     return _to_output(rho_arr, was_scalar)
 
@@ -306,10 +302,10 @@ def compute_enclosed_mass_powerlaw(
     mCloud = params['mCloud'].value
     alpha = params['densPL_alpha'].value
 
-    # Physical density units: [Msun/pc^3]
-    # mu_convert = 1.4 is independent of ionization state
-    rhoCore = nCore * mu_convert * DENSITY_CONVERSION
-    rhoISM = nISM * mu_convert * DENSITY_CONVERSION
+    # Physical density in internal units [Msun/pc³]
+    # n [1/pc³] * mu [Msun] = rho [Msun/pc³]
+    rhoCore = nCore * mu_convert
+    rhoISM = nISM * mu_convert
 
     M_arr = np.zeros_like(r_arr, dtype=float)
 
@@ -379,7 +375,8 @@ def compute_enclosed_mass_bonnor_ebert(
     mCloud = params['mCloud'].value
     nISM = params['nISM'].value
     mu_convert = params['mu_convert'].value
-    rhoISM = nISM * mu_convert * DENSITY_CONVERSION  # Physical units [Msun/pc^3]
+    # Physical density in internal units [Msun/pc³]
+    rhoISM = nISM * mu_convert
 
     M_arr = np.zeros_like(r_arr, dtype=float)
 
