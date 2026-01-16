@@ -21,7 +21,7 @@ Author: TRINITY Team (integrated from REFACTORED_density_profile.py)
 import numpy as np
 
 # Import Bonnor-Ebert sphere module for r2xi conversion
-from src.cloud_properties import bonnorEbertSphere
+from src.cloud_properties.bonnorEbertSphere_v2 import r2xi as be_r2xi
 
 
 # =============================================================================
@@ -141,7 +141,7 @@ def get_density_profile(r, params):
         f_rho_rhoc = params['densBE_f_rho_rhoc'].value
 
         # Convert radius to dimensionless xi coordinate
-        xi_arr = bonnorEbertSphere.r2xi(r_arr, params)
+        xi_arr = be_r2xi(r_arr, params)
 
         # Get density ratio from interpolation function
         rho_rhoc = f_rho_rhoc(xi_arr)
