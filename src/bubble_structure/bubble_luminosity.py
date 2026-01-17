@@ -553,6 +553,11 @@ def get_bubbleproperties(params):
     
         # Calculate cumulative mass properly
         m_cumulative = np.zeros_like(r_new)
+        
+        print(r_new)
+        print(len(r_new))
+        print(rho_new)
+        
         for i in range(len(r_new)):
             m_cumulative[i] = 4 * np.pi * scipy.integrate.simps(
                 rho_new[:i+1] * r_new[:i+1]**2,
@@ -560,6 +565,7 @@ def get_bubbleproperties(params):
             )
     
         # Gravitational potential [pc²/Myr²]
+        
         grav_phi = -4 * np.pi * params['G'].value * scipy.integrate.simps(
             r_new * rho_new, x=r_new
         )
