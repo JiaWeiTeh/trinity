@@ -162,7 +162,7 @@ def _get_mass_from_profile(R2: float, v2: float, params) -> Tuple[float, float]:
         return params['shell_mass'].value, 0.0
 
     # Call existing mass profile function
-    result = mass_profile.get_mass_profile(R2, params, return_mdot=True, rdot_arr=v2)
+    result = mass_profile.get_mass_profile(R2, params, return_mdot=True, rdot=v2)
 
     # Handle both tuple and single return
     if isinstance(result, tuple):
@@ -413,7 +413,7 @@ def update_params_after_segment(t: float, R2: float, v2: float, Eb: float,
         mShell_dot = 0
     else:
         mShell, mShell_dot = mass_profile.get_mass_profile(
-            R2, params, return_mdot=True, rdot_arr=v2
+            R2, params, return_mdot=True, rdot=v2
         )
         mShell = _scalar(mShell)
         mShell_dot = _scalar(mShell_dot)
