@@ -74,16 +74,27 @@ log_level = 'INFO'
 if 'log_level' in params:
     log_level = params['log_level'].value if hasattr(params['log_level'], 'value') else params['log_level']
 
+# Get log_console from params (default to True if not set)
+log_console = True
+if 'log_console' in params:
+    log_console = params['log_console'].value if hasattr(params['log_console'], 'value') else params['log_console']
+
+# Get log_file from params (default to True if not set)
+log_file = True
+if 'log_file' in params:
+    log_file = params['log_file'].value if hasattr(params['log_file'], 'value') else params['log_file']
+
 logger = setup_logging(
     log_level=log_level,
-    console_output=True,
-    file_output=True,
+    console_output=log_console,
+    file_output=log_file,
     log_file_path=params['path2output'].value,
     log_file_name='trinity.log',
     use_colors=True,
 )
 logger.info(f"Parameter file loaded: {args.path2param}")
 logger.info(f"Log level set to: {log_level}")
+logger.info(f"Console output: {log_console}, File output: {log_file}")
 
 
 main.start_expansion(params)
