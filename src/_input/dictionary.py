@@ -185,7 +185,7 @@ class DescribedDict(dict):
 
         # Snapshot counters
         self.save_count: int = 0                  # how many snapshots have been saved in-memory
-        self.snapshot_interval: int = 25          # flush every N snapshots
+        self.snapshot_interval: int = 10          # flush every N snapshots
         self.previous_snapshot: Dict[str, Dict[str, Any]] = {}  # pending snapshots not yet flushed
         self.flush_count: int = 0                 # number of flush() calls (used for "fresh run" logic)
 

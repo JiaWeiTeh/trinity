@@ -160,10 +160,10 @@ def get_ODE_Edot(y, t, params):
         press_HII_in += params['PISM'] * params['k_B']   
         
     # this should follow density profile inside the bubble, hence interpolation
-    bubble_n_arr = params['bubble_n_arr'].value
-    bubble_r_arr = params['bubble_r_arr'].value
+    # bubble_n_arr = params['bubble_n_arr'].value
+    # bubble_r_arr = params['bubble_r_arr'].value
     
-    print('bubble bubble_r_arr, bubble_n_arr', bubble_r_arr, bubble_n_arr)
+    # print('bubble bubble_r_arr, bubble_n_arr', bubble_r_arr, bubble_n_arr)
     # method 2: all hii region approximation
     if FABSi < 1:
         nR2 = params['nISM']
@@ -189,7 +189,7 @@ def get_ODE_Edot(y, t, params):
     if params['EarlyPhaseApproximation'].value == True:
         vd = -1e8
     
-    print(f'vd is {4 * np.pi * R2**2 * (press_bubble-press_HII_in+press_HII_out)} - {mShell_dot * v2} - {F_grav} + {F_rad} divide {mShell} equals {vd}')
+    logger.debug(f'vd is {4 * np.pi * R2**2 * (press_bubble-press_HII_in+press_HII_out)} - {mShell_dot * v2} - {F_grav} + {F_rad} divide {mShell} equals {vd}')
     
     # but this isnt used I think - Ed is obtained via conversion of beta/delta in run_implicit_energy.py.
     Ed = (Lmech_total - L_bubble) - (4 * np.pi * R2**2 * press_bubble) * v2 - L_leak 
