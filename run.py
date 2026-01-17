@@ -27,6 +27,11 @@ logging.basicConfig(
     format="%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
     datefmt='%Y-%m-%d %H:%M:%S',
 )
+
+# Suppress noisy third-party libraries during early logging
+for lib in ['matplotlib', 'PIL', 'urllib3', 'asyncio', 'parso', 'fontTools', 'numba', 'h5py']:
+    logging.getLogger(lib).setLevel(logging.INFO)
+
 early_logger = logging.getLogger(__name__)
 early_logger.debug("Early logging configured (pre-params)")
 

@@ -84,6 +84,7 @@ def setup_logging(
     log_file_name: Optional[str] = None,
     use_colors: bool = True,
     format_string: Optional[str] = None,
+    suppress_library_debug: bool = True,
 ) -> logging.Logger:
     """
     Set up TRINITY logging system.
@@ -264,6 +265,26 @@ def setup_logging(
 
         # Log where the log file is being written
         root_logger.info(f"Log file: {log_file_full_path}")
+
+    # =============================================================================
+    # Suppress third-party library debug messages
+    # =============================================================================
+    # When using DEBUG level, third-party libraries can be very noisy.
+    # This sets common noisy libraries to INFO level to keep logs focused on
+    # TRINITY's science-related debug output.
+    if suppress_library_debug and log_level <= logging.DEBUG:
+        noisy_libraries = [
+            'matplotlib',
+            'PIL',
+            'urllib3',
+            'asyncio',
+            'parso',
+            'fontTools',
+            'numba',
+            'h5py',
+        ]
+        for lib in noisy_libraries:
+            logging.getLogger(lib).setLevel(logging.INFO)
 
     return root_logger
 
