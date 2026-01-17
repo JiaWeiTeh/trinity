@@ -184,7 +184,7 @@ def run_phase_transition(params) -> TransitionPhaseResults:
         # Get feedback and shell structure
         # ---------------------------------------------------------------------
         feedback = get_currentSB99feedback(t_now, params)
-        L_mech_total = params['L_mech_total'].value
+        Lmech_total = params['Lmech_total'].value
         v_mech_total = params['v_mech_total'].value
 
         shell_structure.shell_structure(params)
@@ -199,12 +199,12 @@ def run_phase_transition(params) -> TransitionPhaseResults:
             R1 = scipy.optimize.brentq(
                 get_bubbleParams.get_r1,
                 1e-3 * R2, R2,
-                args=([L_mech_total, Eb, v_mech_total, R2])
+                args=([Lmech_total, Eb, v_mech_total, R2])
             )
         except:
             R1 = 0.01 * R2
 
-        r1_cache.update(t_now, R2, Eb, L_mech_total, v_mech_total)
+        r1_cache.update(t_now, R2, Eb, Lmech_total, v_mech_total)
         params['R1'].value = R1
 
         # ---------------------------------------------------------------------

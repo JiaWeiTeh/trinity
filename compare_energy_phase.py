@@ -137,6 +137,21 @@ def initialize_simulation(params, logger):
     params['SB99_data'].value = SB99_data
     params['SB99f'].value = SB99f
 
+    # Extract SB99 arrays for the modified version
+    # SB99_data = [t, Qi, Li, Ln, Lbol, Lmech_W, Lmech_SN, Lmech_total,
+    #              pdot_W, pdot_SN, pdot_total]
+    t_arr = SB99_data[0]           # Time array
+    Lmech_arr = SB99_data[7]       # Lmech_total array
+    pdot_arr = SB99_data[10]       # pdot_total array
+
+    # Compute v_mech = 2 * Lmech / pdot (wind terminal velocity formula)
+    v_mech_arr = np.where(pdot_arr > 0, 2.0 * Lmech_arr / pdot_arr, 0.0)
+
+    # Store arrays in params for modified version
+    params['SB99_t'].value = t_arr
+    params['SB99_Lmech'].value = Lmech_arr
+    params['SB99_vmech'].value = v_mech_arr
+
     logger.info("Loading CIE cooling curve...")
     cooling_path = params['path_cooling_CIE'].value
     logT, logLambda = np.loadtxt(cooling_path, unpack=True)
