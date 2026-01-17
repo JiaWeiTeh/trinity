@@ -97,7 +97,7 @@ def run_energy(params):
 
     
     # CONTINUE here
-    # L_mech_total = params['L_mech_total'].value
+    # Lmech_total = params['Lmech_total'].value
     # v_mech_total = params['v_mech_total'].value
     # pdot_total = params['pdot_total'].value
     # pdotdot_total = params['pdotdot_total'].value
@@ -379,7 +379,7 @@ def run_energy(params):
         # if immediately_to_momentumphase:
         #     R1 = R2 # why?
         #     # bubble pressure
-        #     Pb = get_bubbleParams.pRam(R2, L_mech_total, v_mech_total)
+        #     Pb = get_bubbleParams.pRam(R2, Lmech_total, v_mech_total)
         # # else, if we are continuing this loop and staying in energy
         # else:
         R1 = scipy.optimize.brentq(get_bubbleParams.get_r1, 
@@ -393,7 +393,7 @@ def run_energy(params):
                     [R1, R2, v2, Eb, t_now, Pb, Msh0])
             
         # renew constants
-        # Lw_previous = L_mech_total
+        # Lw_previous = Lmech_total
         
         
         # update loop counter

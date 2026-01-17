@@ -53,7 +53,7 @@ def run_energy(params):
     # Step1: Obtain initial feedback values
     # -----------
     
-    [Qi, L_mech_total, Lbol, Ln, Li, v_mech_total, pdot_total, pdotdot_total] = get_currentSB99feedback(t_now, params)
+    [Qi, Lmech_total, Lbol, Ln, Li, v_mech_total, pdot_total, pdotdot_total] = get_currentSB99feedback(t_now, params)
 
     # Identify potentially troublesome timestep; i.e., when change in mechanical luminosity is morre than 300% per Myr
     def Lw_slope(x, y):
@@ -76,7 +76,7 @@ def run_energy(params):
     # initial radius of inner discontinuity [pc]
     R1 = scipy.optimize.brentq(get_bubbleParams.get_r1, 
                        a = 1e-3 * R2, b = R2, 
-                       args=([L_mech_total, Eb, v_mech_total, R2]))
+                       args=([Lmech_total, Eb, v_mech_total, R2]))
     
     # -----------
     # Solve equation for mass and pressure within bubble (r0)
@@ -138,7 +138,7 @@ def run_energy(params):
     immediately_to_momentumphase = False
     # record the initial Lw0. This value will be changed in the loop. 
     # old code: Lw_old
-    Lw_previous = L_mech_total
+    Lw_previous = Lmech_total
 
 
     continueWeaver = True
@@ -309,19 +309,19 @@ def run_energy(params):
         Msh0 = mShell_arr[-1] # shell mass
         
     
-        [Qi, L_mech_total, Lbol, Ln, Li, v_mech_total, pdot_total, pdotdot_total] =  get_currentSB99feedback(t_now, params)
+        [Qi, Lmech_total, Lbol, Ln, Li, v_mech_total, pdot_total, pdotdot_total] =  get_currentSB99feedback(t_now, params)
         
         # # if we are going to the momentum phase next, do not have to 
         # # calculate the discontinuity for the next loop
         # if immediately_to_momentumphase:
         #     R1 = R2 # why?
         #     # bubble pressure
-        #     Pb = get_bubbleParams.pRam(R2, L_mech_total, v_mech_total)
+        #     Pb = get_bubbleParams.pRam(R2, Lmech_total, v_mech_total)
         # # else, if we are continuing this loop and staying in energy
         # else:
         R1 = scipy.optimize.brentq(get_bubbleParams.get_r1, 
                        1e-3 * R2, R2, 
-                       args=([L_mech_total, Eb, v_mech_total, R2]))
+                       args=([Lmech_total, Eb, v_mech_total, R2]))
         # bubble pressure
         Pb = get_bubbleParams.bubble_E2P(Eb, R2, R1, params['gamma_adia'].value)
         
@@ -330,7 +330,7 @@ def run_energy(params):
                     [R1, R2, v2, Eb, t_now, Pb, Msh0])
             
         # renew constants
-        # Lw_previous = L_mech_total
+        # Lw_previous = Lmech_total
         
         
         # update loop counter

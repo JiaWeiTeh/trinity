@@ -95,7 +95,7 @@ def get_ODE_momentum_pure(t: float, y: np.ndarray, params) -> np.ndarray:
     # Get parameters
     G = params['G'].value
     mCluster = params['mCluster'].value
-    L_mech_total = params['L_mech_total'].value
+    Lmech_total = params['Lmech_total'].value
     v_mech_total = params['v_mech_total'].value
     k_B = params['k_B'].value
     FABSi = params['shell_fAbsorbedIon'].value
@@ -114,7 +114,7 @@ def get_ODE_momentum_pure(t: float, y: np.ndarray, params) -> np.ndarray:
     F_grav = G * mShell / (R2**2) * (mCluster + 0.5 * mShell)
 
     # Ram pressure (momentum phase - no thermal pressure)
-    press_ram = get_bubbleParams.pRam(R2, L_mech_total, v_mech_total)
+    press_ram = get_bubbleParams.pRam(R2, Lmech_total, v_mech_total)
 
     # HII pressures (calculated using density_profile)
     if FABSi < 1.0:
@@ -187,7 +187,7 @@ def update_params_momentum(t: float, R2: float, v2: float, params):
     # --- Get parameters ---
     G = params['G'].value
     mCluster = params['mCluster'].value
-    L_mech_total = params['L_mech_total'].value
+    Lmech_total = params['Lmech_total'].value
     v_mech_total = params['v_mech_total'].value
     k_B = params['k_B'].value
     FABSi = params['shell_fAbsorbedIon'].value
@@ -195,7 +195,7 @@ def update_params_momentum(t: float, R2: float, v2: float, params):
     Qi = params['Qi'].value
 
     # --- Ram pressure ---
-    press_ram = get_bubbleParams.pRam(R2, L_mech_total, v_mech_total)
+    press_ram = get_bubbleParams.pRam(R2, Lmech_total, v_mech_total)
     params['Pb'].value = press_ram
 
     # --- HII pressures ---
@@ -289,7 +289,7 @@ def run_phase_momentum(params) -> MomentumPhaseResults:
         # Get feedback and shell structure
         # ---------------------------------------------------------------------
         feedback = get_currentSB99feedback(t_now, params)
-        L_mech_total = params['L_mech_total'].value
+        Lmech_total = params['Lmech_total'].value
         v_mech_total = params['v_mech_total'].value
 
         shell_structure.shell_structure(params)

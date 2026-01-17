@@ -51,7 +51,7 @@ def get_bubbleproperties(params):
     # initial radius of discontinuity [pc] (inner bubble radius)
     R1 = scipy.optimize.brentq(get_bubbleParams.get_r1, 
                                1e-3 * params['R2'].value, params['R2'].value, 
-                               args=([params['L_mech_total'], params['Eb'], 
+                               args=([params['Lmech_total'], params['Eb'], 
                                       params['v_mech_total'], params['R2'],
                                       ]))
 
