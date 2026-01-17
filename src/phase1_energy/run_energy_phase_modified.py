@@ -52,8 +52,8 @@ logger = logging.getLogger(__name__)
 # =============================================================================
 
 TFINAL_ENERGY_PHASE = 3e-3  # Myr - max duration (~3000 years)
-DT_SEGMENT = 1e-6  # Myr - short segments to keep params approximately constant
-DT_MIN_SEGMENT = 1e-7  # Myr - minimum segment duration for first step
+DT_SEGMENT = 5e-5  # Myr - segment duration (comparable to original's 30*1e-6=3e-5)
+DT_MIN_SEGMENT = 1e-6  # Myr - minimum segment duration for first step
 COOLING_UPDATE_INTERVAL = 5e-2  # Myr - recalculate cooling every 50k years
 MAX_SEGMENTS = 10000  # Maximum number of segments to prevent infinite loops
 
