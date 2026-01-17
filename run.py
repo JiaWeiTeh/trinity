@@ -19,6 +19,19 @@ from src._input import read_param
 
 
 # =============================================================================
+# Configure EARLY logging so read_param messages are captured
+# =============================================================================
+# This is a minimal setup - will be reconfigured after params are loaded
+logging.basicConfig(
+    level=logging.DEBUG,  # Start with DEBUG to capture everything
+    format="%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
+    datefmt='%Y-%m-%d %H:%M:%S',
+)
+early_logger = logging.getLogger(__name__)
+early_logger.debug("Early logging configured (pre-params)")
+
+
+# =============================================================================
 # Read in parameter files
 # =============================================================================
 # parser
@@ -32,8 +45,7 @@ from src._output import header
 header.display()
 
 # Get class and write summary file
-# Note: read_param uses logging which is not yet configured,
-# so messages are deferred until after header display
+# Note: read_param logging is now captured with early config above
 params = read_param.read_param(args.path2param, write_summary=True)
 
 header.show_param(params)
@@ -47,13 +59,18 @@ import src._input.create_dictionary as create_dictionary
 
 
 # =============================================================================
-# Configure logging AFTER header display
+# Reconfigure logging with params settings
 # =============================================================================
-# This ensures header appears first, then logging messages follow
+# Now reconfigure with user's preferred log level from params
 from src._functions.logging_setup import setup_logging
 
+# Get log_level from params (default to INFO if not set)
+log_level = 'INFO'
+if 'log_level' in params:
+    log_level = params['log_level'].value if hasattr(params['log_level'], 'value') else params['log_level']
+
 logger = setup_logging(
-    log_level='INFO',
+    log_level=log_level,
     console_output=True,
     file_output=True,
     log_file_path=params['path2output'].value,
@@ -61,6 +78,7 @@ logger = setup_logging(
     use_colors=True,
 )
 logger.info(f"Parameter file loaded: {args.path2param}")
+logger.info(f"Log level set to: {log_level}")
 
 
 main.start_expansion(params)
