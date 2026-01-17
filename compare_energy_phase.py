@@ -5,14 +5,22 @@ Compare original vs modified energy phase implementations.
 
 This script runs both the original (run_energy_phase.py) and modified
 (run_energy_phase_modified.py) versions of the energy phase solver on
-the same parameter file, then produces comparison plots.
+parameter file(s), then produces comparison plots.
 
 Each version runs with its own isolated output directory to avoid conflicts.
+When multiple parameter files are provided, each generates its own separate
+PDF comparison plot.
 
 Usage:
     python compare_energy_phase.py param/1e7_sfe030_n1e4.param
     python compare_energy_phase.py param/test.param --save-pdf
     python compare_energy_phase.py param/test.param --params R2,Eb,v2
+
+    # Multiple parameter files (each generates its own PDF):
+    python compare_energy_phase.py param/1e7_sfe001_n1e4.param param/1e7_sfe030_n1e4.param --save-pdf
+
+    # Run in nohup/headless environment (no display):
+    nohup python compare_energy_phase.py param/*.param --save-pdf --no-display &
 
 Author: TRINITY Team
 """
@@ -26,8 +34,14 @@ import argparse
 import datetime
 import numpy as np
 import scipy
-import matplotlib.pyplot as plt
+import matplotlib
 from pathlib import Path
+
+# Set non-interactive backend if --no-display flag is present (for nohup/headless)
+if '--no-display' in sys.argv:
+    matplotlib.use('Agg')
+
+import matplotlib.pyplot as plt
 
 # =============================================================================
 # Setup paths and imports
@@ -54,8 +68,9 @@ from src.phase1_energy import run_energy_phase_modified
 
 DEFAULT_COMPARE_PARAMS = [
     'R2', 'v2', 'Eb', 'R1',
-    'F_ram', 'F_grav', 'F_ion_out', 'F_ion_in', 'F_rad',
-    'shell_mass', 'Pb',
+    'F_ram', 'F_grav', 'F_ion_out', 'F_rad',
+    'shell_mass', 'Pb', 'L_mech_wind', 'shell_massDot', 'pdotdot_total',
+    'bubble_LTotal', 'bubble_Tavg', 'bubble_T_r_Tb', 'bubble_dMdt',
 ]
 
 # =============================================================================
@@ -200,8 +215,8 @@ def extract_time_series(snapshots, key):
     return t[order], values[order]
 
 
-def plot_comparison(snaps_orig, snaps_mod, params_to_plot, output_path=None,
-                    save_pdf=False, save_png=False):
+def plot_comparison(snaps_orig, snaps_mod, params_to_plot, output_paths=None,
+                    save_pdf=False, save_png=False, base_name="comparison_energy_phase"):
     """
     Create comparison plots for original vs modified runs.
 
@@ -213,12 +228,14 @@ def plot_comparison(snaps_orig, snaps_mod, params_to_plot, output_path=None,
         Snapshots from modified run
     params_to_plot : list
         List of parameter keys to plot
-    output_path : Path, optional
-        Directory to save figures
+    output_paths : list of Path, optional
+        List of directories to save figures to (saves to each)
     save_pdf : bool
         Save as PDF
     save_png : bool
         Save as PNG
+    base_name : str
+        Base filename for saved plots (without extension)
     """
     # Filter to available parameters
     available_orig = set()
@@ -292,24 +309,22 @@ def plot_comparison(snaps_orig, snaps_mod, params_to_plot, output_path=None,
 
     fig.suptitle('Energy Phase Comparison: Original vs Modified', fontsize=14, fontweight='bold')
 
-    # Save figures
-    if output_path and (save_pdf or save_png):
-        output_path = Path(output_path)
-        output_path.mkdir(parents=True, exist_ok=True)
+    # Save figures to each output path
+    if output_paths and (save_pdf or save_png):
+        for output_path in output_paths:
+            output_path = Path(output_path)
+            output_path.mkdir(parents=True, exist_ok=True)
 
-        base_name = "comparison_energy_phase"
+            if save_pdf:
+                pdf_path = output_path / f"{base_name}.pdf"
+                fig.savefig(pdf_path, bbox_inches='tight')
+                print(f"Saved: {pdf_path}")
 
-        if save_pdf:
-            pdf_path = output_path / f"{base_name}.pdf"
-            fig.savefig(pdf_path, bbox_inches='tight')
-            print(f"Saved: {pdf_path}")
+            if save_png:
+                png_path = output_path / f"{base_name}.png"
+                fig.savefig(png_path, bbox_inches='tight', dpi=300)
+                print(f"Saved: {png_path}")
 
-        if save_png:
-            png_path = output_path / f"{base_name}.png"
-            fig.savefig(png_path, bbox_inches='tight', dpi=300)
-            print(f"Saved: {png_path}")
-
-    plt.show()
     plt.close(fig)
 
 
@@ -317,7 +332,8 @@ def plot_comparison(snaps_orig, snaps_mod, params_to_plot, output_path=None,
 # Main comparison routine
 # =============================================================================
 
-def run_comparison(param_file, params_to_compare=None, save_pdf=False, save_png=False):
+def run_comparison(param_file, params_to_compare=None, save_pdf=False, save_png=False,
+                   output_name=None):
     """
     Run both original and modified energy phase and compare results.
 
@@ -331,6 +347,8 @@ def run_comparison(param_file, params_to_compare=None, save_pdf=False, save_png=
         Save comparison plot as PDF
     save_png : bool
         Save comparison plot as PNG
+    output_name : str, optional
+        Base name for output file. If None, derived from param_file name.
     """
     logger = setup_simple_logging('INFO')
 
@@ -416,14 +434,22 @@ def run_comparison(param_file, params_to_compare=None, save_pdf=False, save_png=
     # =========================================================================
     # Step 5: Plot comparison
     # =========================================================================
-    # Save to parent of the output directories
-    output_parent = Path(base_output_path).parent
+    # Save to both output directories
+    output_paths = [
+        Path(params_orig['path2output'].value),
+        Path(params_mod['path2output'].value),
+    ]
+
+    # Derive output name from param file if not provided
+    if output_name is None:
+        output_name = f"comparison_{param_file.stem}"
 
     plot_comparison(
         snaps_orig, snaps_mod, params_to_compare,
-        output_path=output_parent,
+        output_paths=output_paths,
         save_pdf=save_pdf,
-        save_png=save_png
+        save_png=save_png,
+        base_name=output_name,
     )
 
     # =========================================================================
@@ -450,13 +476,20 @@ Examples:
   %(prog)s param/1e7_sfe030_n1e4.param
   %(prog)s param/test.param --save-pdf
   %(prog)s param/test.param --params R2,Eb,v2,F_ram
+
+  # Multiple parameter files (each generates its own PDF):
+  %(prog)s param/1e7_sfe001_n1e4.param param/1e7_sfe030_n1e4.param --save-pdf
+
+  # Run in nohup/headless environment (no display):
+  nohup %(prog)s param/*.param --save-pdf --no-display &
         """
     )
 
     parser.add_argument(
-        'param_file',
+        'param_files',
         type=str,
-        help='Path to the parameter file (.param)'
+        nargs='+',
+        help='Path(s) to the parameter file(s) (.param)'
     )
 
     parser.add_argument(
@@ -478,6 +511,12 @@ Examples:
         help='Save comparison plot as PNG'
     )
 
+    parser.add_argument(
+        '--no-display',
+        action='store_true',
+        help='Disable interactive plot display (for nohup/headless environments)'
+    )
+
     args = parser.parse_args()
 
     # Parse custom parameters
@@ -485,13 +524,19 @@ Examples:
     if args.params:
         params_to_compare = [p.strip() for p in args.params.split(',') if p.strip()]
 
-    # Run comparison
-    run_comparison(
-        param_file=args.param_file,
-        params_to_compare=params_to_compare,
-        save_pdf=args.save_pdf,
-        save_png=args.save_png,
-    )
+    # Run comparison for each parameter file
+    for i, param_file in enumerate(args.param_files):
+        if len(args.param_files) > 1:
+            print(f"\n{'='*60}")
+            print(f"Processing file {i+1}/{len(args.param_files)}: {param_file}")
+            print(f"{'='*60}\n")
+
+        run_comparison(
+            param_file=param_file,
+            params_to_compare=params_to_compare,
+            save_pdf=args.save_pdf,
+            save_png=args.save_png,
+        )
 
 
 if __name__ == "__main__":
