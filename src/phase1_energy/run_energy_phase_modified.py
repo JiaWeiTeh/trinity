@@ -282,6 +282,15 @@ def run_energy(params) -> EnergyPhaseResults:
         calculate_bubble_shell = loop_count > 0
 
         if calculate_bubble_shell:
+            # Update params with current state BEFORE bubble calculations
+            # (Original ODE updates params at start of each call, but modified
+            # version only updates after segment. Functions like bubble_luminosity
+            # read from params, so we must update them first.)
+            params['t_now'].value = t_now
+            params['R2'].value = R2
+            params['v2'].value = v2
+            params['Eb'].value = Eb
+
             # Calculate bubble properties (this updates T0, L_bubble, etc.)
             _ = bubble_luminosity.get_bubbleproperties(params)
 
