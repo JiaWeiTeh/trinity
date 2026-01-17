@@ -179,9 +179,9 @@ def run_energy(params) -> EnergyPhaseResults:
     feedback = get_currentSB99feedback(t_now, params)
     (t, Qi, Li, Ln, Lbol, Lmech_W, Lmech_SN, Lmech_total,
      pdot_W, pdot_SN, pdot_total, pdotdot_total, v_mech_total) = feedback
-
-    Lmech_total = params['Lmech_total'].value
-    v_mech_total = params['v_mech_total'].value
+    
+    updateDict(params, ['Qi', 'Li', 'Ln', 'Lbol', 'Lmech_W', 'Lmech_SN', 'Lmech_total', 'pdot_W', 'pdot_SN', 'pdot_total', 'pdotdot_total', 'v_mech_total'],
+               [Qi, Li, Ln, Lbol, Lmech_W, Lmech_SN, Lmech_total, pdot_W, pdot_SN, pdot_total, pdotdot_total, v_mech_total])
 
     # =============================================================================
     # Calculate initial R1 and Pb
