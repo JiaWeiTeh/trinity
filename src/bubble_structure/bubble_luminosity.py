@@ -101,8 +101,6 @@ def get_bubbleproperties(params):
     params['R1'].value = R1
     params['Pb'].value = Pb
     
-    logger.debug('R1', R1)
-    
     # =============================================================================
     # Step 2: Calculate dMdt, the mass flux from the shell back into the hot region
     # =============================================================================
@@ -699,16 +697,16 @@ def get_velocity_residuals(dMdt_init, dMdt_params_au):
     # check to avoid having very low temperature
     min_T = np.min(T_array)
     if min_T < 3e4:
-        print('Rejected. minimum temperature:', min_T)
+        logger.debug(f'Rejected. minimum temperature:{min_T}')
         residual *= (3e4/(min_T+1e-1))**2 # in case min_T is zero.
         return residual
     
     if np.isnan(min_T):
-        print('Rejected. minimum temperature:', min_T)
+        logger.debug('Rejected. nan temperature:')
         return -1e3
     
     if not operations.monotonic(T_array):
-        print('temperature not monotonic')
+        logger.debug('temperature not monotonic')
         return 1e2
 
     # is this necessary? does velocity have to be monotonic?
@@ -721,7 +719,7 @@ def get_velocity_residuals(dMdt_init, dMdt_params_au):
     #     return residual
     
 
-    print('record, and min temp is', min_T)
+    logger.debug(f'record, and min temp is {min_T}')
     
     # otherwise record
     # TODO: maybe this part need to change during recollapse.
