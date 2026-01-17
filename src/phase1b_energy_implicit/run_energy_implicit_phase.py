@@ -144,7 +144,7 @@ def ODE_equations(t, y, params):
     # get current feedback value
     [t, Qi, Li, Ln, Lbol, Lmech_W, Lmech_SN, Lmech_total, pdot_W, pdot_SN, pdot_total, pdotdot_total, v_mech_total] = get_currentSB99feedback(t, params)
     # Extract derived values from params for backward compatibility
-    L_mech_total = params['L_mech_total'].value
+    Lmech_total = params['Lmech_total'].value
     v_mech_total = params['v_mech_total'].value
     pdot_total = params['pdot_total'].value
     pdotdot_total = params['pdotdot_total'].value
@@ -197,7 +197,7 @@ def ODE_equations(t, y, params):
         # convert beta and delta to dE/dt and dT/dt.
         R1 = scipy.optimize.brentq(get_bubbleParams.get_r1, 
                        1e-3 * params_dict['R2'].value, params_dict['R2'].value, 
-                       args=([params_dict['L_mech_total'].value, 
+                       args=([params_dict['Lmech_total'].value, 
                               params_dict['Eb'].value, 
                               params_dict['v_mech_total'].value,
                               params_dict['R2'].value,

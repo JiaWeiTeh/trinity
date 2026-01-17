@@ -180,7 +180,7 @@ def run_energy(params) -> EnergyPhaseResults:
     (t, Qi, Li, Ln, Lbol, Lmech_W, Lmech_SN, Lmech_total,
      pdot_W, pdot_SN, pdot_total, pdotdot_total, v_mech_total) = feedback
 
-    L_mech_total = params['L_mech_total'].value
+    Lmech_total = params['Lmech_total'].value
     v_mech_total = params['v_mech_total'].value
 
     # =============================================================================
@@ -192,7 +192,7 @@ def run_energy(params) -> EnergyPhaseResults:
         1e-3 * R2, R2,
         args=([Lmech_total, Eb, v_mech_total, R2])
     )
-    r1_cache.update(t_now, R2, Eb, L_mech_total, v_mech_total)
+    r1_cache.update(t_now, R2, Eb, Lmech_total, v_mech_total)
 
     # Initial shell mass and bubble pressure
     Msh0 = mass_profile.get_mass_profile(R2, params, return_mdot=False)
@@ -232,7 +232,7 @@ def run_energy(params) -> EnergyPhaseResults:
         )
     else:
         # Fallback to constant values
-        L_mech_interp = lambda t: L_mech_total
+        L_mech_interp = lambda t: Lmech_total
         v_mech_interp = lambda t: v_mech_total
 
     # =============================================================================
@@ -304,7 +304,7 @@ def run_energy(params) -> EnergyPhaseResults:
         Pb = get_bubbleParams.bubble_E2P(Eb, R2, R1, params['gamma_adia'].value)
 
         # Update params for this segment (these are read by ODE but not modified)
-        params['L_mech_total'].value = L_mech_now
+        params['Lmech_total'].value = L_mech_now
         params['v_mech_total'].value = v_mech_now
         params['R1'].value = R1
         params['Pb'].value = Pb

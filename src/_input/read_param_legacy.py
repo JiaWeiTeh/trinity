@@ -364,7 +364,7 @@ def read_param(path2file, write_summary = True):
     param['SB99_data'] = DescribedItem(0, 'SB99 datacube from read_SB99.py', exclude_from_snapshot = True)
     param['SB99f'] = DescribedItem(0, 'SB99 interpolation function from read_SB99.py', exclude_from_snapshot = True)
     # --
-    param['L_mech_total'] = DescribedItem(0, 'Msun*pc2/Myr3. wind mechanical luminosity')
+    param['Lmech_total'] = DescribedItem(0, 'Msun*pc2/Myr3. wind mechanical luminosity')
     param['Qi'] = DescribedItem(0, '/Myr. Ionising photon rate.')
     param['v_mech_total'] = DescribedItem(0, 'pc/Myr. Terminal wind velocity')
     param['pdot_total'] = DescribedItem(0, 'Msun*pc/Myr2. Wind momentum rate')
