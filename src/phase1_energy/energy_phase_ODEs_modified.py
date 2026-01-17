@@ -1,158 +1,38 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Pure ODE functions for TRINITY energy phase.
+Modified ODE functions for TRINITY energy phase.
 
-This module provides pure (side-effect-free) ODE functions for bubble expansion
-that are compatible with scipy.integrate.solve_ivp.
+This module provides ODE functions for bubble expansion that are compatible
+with scipy.integrate.solve_ivp, while preserving all physics from the original code.
 
-Key features:
-- No dictionary mutations (params dict is read-only)
-- StaticODEParams dataclass for immutable parameter passing
-- Gradual activation of mShell_dot term to fix v²/r singularity at small R2
-- R1Cache for efficient caching of expensive brentq calculations
+Key design:
+- ODE reads from params dict for physics calculations
+- ODE does NOT mutate params during integration (no writing)
+- After successful segment, call update_params_after_segment() to store ALL values
+- Short segments ensure params values are approximately constant during integration
 
 State vector: y = [R2, v2, Eb] (3 variables)
 Note: T0 is NOT integrated - it's calculated externally via bubble_luminosity.
 
-@author: TRINITY Team (refactored for pure functions)
+@author: TRINITY Team (refactored for solve_ivp)
 """
 
 import numpy as np
 import scipy.optimize
 import scipy.interpolate
 import logging
-from dataclasses import dataclass
-from typing import Callable, Optional, Tuple
+from typing import Tuple
 
-# Import for R1 calculation
+# Import for physics calculations
 import src.bubble_structure.get_bubbleParams as get_bubbleParams
-# Import existing mass profile function (side-effect-free)
-from src.cloud_properties.mass_profile import get_mass_profile
+import src.cloud_properties.mass_profile as mass_profile
+import src.cloud_properties.density_profile as density_profile
 
 logger = logging.getLogger(__name__)
 
 # Constants
 FOUR_PI = 4.0 * np.pi
-
-
-# =============================================================================
-# Static Parameters Container
-# =============================================================================
-
-@dataclass(frozen=True)
-class StaticODEParams:
-    """
-    Immutable container for ODE parameters.
-
-    These are computed OUTSIDE the ODE function and passed in as read-only.
-    Using frozen=True ensures no accidental modifications.
-
-    Attributes
-    ----------
-    # Physical constants
-    gamma_adia : float
-        Adiabatic index (typically 5/3)
-    G : float
-        Gravitational constant [pc³/Msun/Myr²]
-    k_B : float
-        Boltzmann constant [internal units]
-
-    # Cloud properties (static during integration segment)
-    rCloud : float
-        Cloud outer radius [pc]
-    rCore : float
-        Core radius [pc]
-    mCloud : float
-        Cloud mass [Msun]
-    mCluster : float
-        Cluster mass [Msun]
-
-    # Density profile parameters
-    nCore : float
-        Core number density [1/pc³] (internal units)
-    nISM : float
-        ISM number density [1/pc³] (internal units)
-    mu_convert : float
-        Mean molecular weight [Msun] (internal units)
-    dens_profile : str
-        Profile type ('densPL' or 'densBE')
-    densPL_alpha : float
-        Power-law exponent (for densPL)
-
-    # Feedback (can be interpolators or constants)
-    LWind : float
-        Wind luminosity [internal units]
-    vWind : float
-        Wind velocity [internal units]
-
-    # From previous bubble_luminosity calculation
-    L_bubble : float
-        Bubble cooling luminosity [internal units]
-    F_rad : float
-        Radiation force [internal units]
-    FABSi : float
-        Fraction of ionizing radiation absorbed
-
-    # Pressures (from shell structure)
-    press_HII_in : float
-        Inward HII pressure [internal units]
-    press_HII_out : float
-        Outward HII pressure [internal units]
-
-    # Cached R1 value (computed at segment start)
-    R1_cached : float
-        Inner bubble radius [pc]
-
-    # Timing
-    tSF : float
-        Star formation time [Myr]
-
-    # Phase info
-    current_phase : str
-        Current simulation phase
-    is_collapse : bool
-        Whether shell is collapsing
-    shell_mass_frozen : float
-        Frozen shell mass during collapse [Msun]
-    """
-    # Physical constants
-    gamma_adia: float
-    G: float
-    k_B: float
-
-    # Cloud properties
-    rCloud: float
-    rCore: float
-    mCloud: float
-    mCluster: float
-
-    # Density profile
-    nCore: float
-    nISM: float
-    mu_convert: float
-    dens_profile: str
-    densPL_alpha: float
-
-    # Feedback
-    LWind: float
-    vWind: float
-
-    # Bubble/shell properties
-    L_bubble: float
-    F_rad: float
-    FABSi: float
-    press_HII_in: float
-    press_HII_out: float
-
-    # Cached values
-    R1_cached: float
-
-    # Timing and phase
-    tSF: float
-    current_phase: str
-    is_collapse: bool
-    shell_mass_frozen: float
 
 
 # =============================================================================
@@ -245,68 +125,16 @@ class R1Cache:
 
 
 # =============================================================================
-# ParamsWrapper for using existing mass_profile functions
+# Helper Functions
 # =============================================================================
 
-class ParamsWrapper:
-    """
-    Minimal dict-like wrapper for using mass_profile.get_mass_profile().
-
-    This allows the pure ODE function to use the existing side-effect-free
-    mass profile functions without needing the full params dict.
-    """
-
-    def __init__(self, static: StaticODEParams):
-        """
-        Create wrapper from StaticODEParams.
-
-        Parameters
-        ----------
-        static : StaticODEParams
-            Immutable parameters container
-        """
-        self._static = static
-        # Map params keys to StaticODEParams attributes
-        self._key_map = {
-            'rCloud': 'rCloud',
-            'rCore': 'rCore',
-            'mCloud': 'mCloud',
-            'nCore': 'nCore',
-            'nISM': 'nISM',
-            'mu_convert': 'mu_convert',
-            'dens_profile': 'dens_profile',
-            'densPL_alpha': 'densPL_alpha',
-            'isCollapse': 'is_collapse',
-            'shell_mass': 'shell_mass_frozen',
-            # Additional keys that mass_profile might need
-            'initial_cloud_r_arr': None,
-            'initial_cloud_m_arr': None,
-        }
-
-    def __getitem__(self, key):
-        """Get parameter value wrapped in object with .value attribute."""
-        if key in self._key_map:
-            attr_name = self._key_map[key]
-            if attr_name is None:
-                # Return None for optional arrays not in static params
-                return type('Param', (), {'value': None})()
-            value = getattr(self._static, attr_name)
-            return type('Param', (), {'value': value})()
-        raise KeyError(f"Key '{key}' not found in ParamsWrapper")
-
-    def __contains__(self, key):
-        """Check if key exists."""
-        return key in self._key_map
-
-    def get(self, key, default=None):
-        """Get with default value."""
-        try:
-            return self[key]
-        except KeyError:
-            return type('Param', (), {'value': default})()
+def _scalar(x):
+    """Convert len-1 arrays / 0-d arrays to Python scalars; otherwise return x."""
+    a = np.asarray(x)
+    return a.item() if a.size == 1 else x
 
 
-def _get_mass_from_profile(R2: float, v2: float, static: StaticODEParams) -> Tuple[float, float]:
+def _get_mass_from_profile(R2: float, v2: float, params) -> Tuple[float, float]:
     """
     Get shell mass and mass accretion rate using existing mass_profile module.
 
@@ -319,8 +147,8 @@ def _get_mass_from_profile(R2: float, v2: float, static: StaticODEParams) -> Tup
         Shell radius [pc]
     v2 : float
         Shell velocity [pc/Myr]
-    static : StaticODEParams
-        Immutable parameters
+    params : dict
+        Parameter dictionary with .value attributes
 
     Returns
     -------
@@ -329,15 +157,12 @@ def _get_mass_from_profile(R2: float, v2: float, static: StaticODEParams) -> Tup
     mShell_dot : float
         Mass accretion rate at R2 [Msun/Myr]
     """
-    # Handle collapse mode
-    if static.is_collapse:
-        return static.shell_mass_frozen, 0.0
-
-    # Create wrapper for mass_profile function
-    params_wrapper = ParamsWrapper(static)
+    # Handle collapse mode - freeze shell mass
+    if params['isCollapse'].value == True:
+        return params['shell_mass'].value, 0.0
 
     # Call existing mass profile function
-    result = get_mass_profile(R2, params_wrapper, return_mdot=True, rdot=v2)
+    result = mass_profile.get_mass_profile(R2, params, return_mdot=True, rdot_arr=v2)
 
     # Handle both tuple and single return
     if isinstance(result, tuple):
@@ -347,16 +172,13 @@ def _get_mass_from_profile(R2: float, v2: float, static: StaticODEParams) -> Tup
         mShell_dot = 0.0
 
     # Ensure scalar outputs
-    if hasattr(mShell, '__len__') and len(mShell) == 1:
-        mShell = float(mShell[0])
-    if hasattr(mShell_dot, '__len__') and len(mShell_dot) == 1:
-        mShell_dot = float(mShell_dot[0])
+    mShell = _scalar(mShell)
+    mShell_dot = _scalar(mShell_dot)
 
     return float(mShell), float(mShell_dot)
 
 
-def _get_mShell_dot_with_activation(mShell_dot_raw: float, R2: float,
-                                     static: StaticODEParams) -> float:
+def _get_mShell_dot_with_activation(mShell_dot_raw: float, R2: float, params) -> float:
     """
     Gradually activate mass accretion drag term as shell forms.
 
@@ -369,8 +191,8 @@ def _get_mShell_dot_with_activation(mShell_dot_raw: float, R2: float,
         Raw mass accretion rate [Msun/Myr]
     R2 : float
         Shell radius [pc]
-    static : StaticODEParams
-        Immutable parameters
+    params : dict
+        Parameter dictionary with .value attributes
 
     Returns
     -------
@@ -378,7 +200,8 @@ def _get_mShell_dot_with_activation(mShell_dot_raw: float, R2: float,
         Activated mass accretion rate [Msun/Myr]
     """
     # Activation radius: shell is well-formed above this
-    R2_activate = static.rCore * 0.1  # 10% of core radius
+    rCore = params['rCore'].value
+    R2_activate = rCore * 0.1  # 10% of core radius
 
     if R2 < R2_activate:
         # Linear ramp from 0 to 1 as R2 grows from 0 to R2_activate
@@ -388,16 +211,53 @@ def _get_mShell_dot_with_activation(mShell_dot_raw: float, R2: float,
         return mShell_dot_raw
 
 
+def get_press_ion(r, params):
+    """
+    Calculate pressure from photoionized part of cloud at radius r.
+
+    This is the original get_press_ion() function from energy_phase_ODEs.py.
+
+    Parameters
+    ----------
+    r : float or array
+        Radius [pc]
+    params : dict
+        Parameter dictionary with .value attributes
+
+    Returns
+    -------
+    P_ion : float
+        Pressure of ionized gas [internal units]
+    """
+    # n_r: total number density of particles (H+, He++, electrons)
+    try:
+        r = np.array([r])
+    except:
+        pass
+
+    n_r = density_profile.get_density_profile(r, params)
+
+    P_ion = 2 * n_r * params['k_B'].value * params['TShell_ion'].value
+
+    # Ensure scalar output
+    if hasattr(P_ion, '__len__'):
+        if len(P_ion) == 1:
+            P_ion = P_ion[0]
+
+    return P_ion
+
+
 # =============================================================================
 # Pure ODE Function
 # =============================================================================
 
-def get_ODE_Edot_pure(t: float, y: np.ndarray, static: StaticODEParams) -> np.ndarray:
+def get_ODE_Edot_pure(t: float, y: np.ndarray, params, R1_cached: float) -> np.ndarray:
     """
-    Pure ODE function for bubble expansion - NO SIDE EFFECTS.
+    ODE function for bubble expansion - reads params but does NOT mutate.
 
     This function is compatible with scipy.integrate.solve_ivp.
-    It reads from the immutable StaticODEParams and returns derivatives.
+    It reads from the params dict but does NOT write to it during integration.
+    All params mutations happen in update_params_after_segment() after success.
 
     State vector: y = [R2, v2, Eb]
     Note: T0 is NOT in state - it's updated between integration segments.
@@ -408,8 +268,10 @@ def get_ODE_Edot_pure(t: float, y: np.ndarray, static: StaticODEParams) -> np.nd
         Time [Myr]
     y : ndarray
         State vector [R2, v2, Eb]
-    static : StaticODEParams
-        Immutable parameters container
+    params : dict
+        Parameter dictionary with .value attributes (READ ONLY during ODE)
+    R1_cached : float
+        Pre-computed inner bubble radius [pc]
 
     Returns
     -------
@@ -425,91 +287,184 @@ def get_ODE_Edot_pure(t: float, y: np.ndarray, static: StaticODEParams) -> np.nd
     R2 = max(R2, 1e-10)
     Eb = max(Eb, 1e-10)
 
-    # Calculate shell mass and mass accretion rate using existing mass_profile module
-    mShell, mShell_dot_raw = _get_mass_from_profile(R2, v2, static)
+    # --- Pull frequently-used parameters once ---
+    FABSi = params['shell_fAbsorbedIon'].value
+    F_rad = params['shell_F_rad'].value
+    mCluster = params['mCluster'].value
+    L_bubble = params['bubble_LTotal'].value
+    gamma = params['gamma_adia'].value
+    tSF = params['tSF'].value
+    G = params['G'].value
+    Qi = params['Qi'].value
+    LWind = params['LWind'].value
+    vWind = params['vWind'].value
+    k_B = params['k_B'].value
+
+    # --- Calculate shell mass and mass derivative ---
+    mShell, mShell_dot_raw = _get_mass_from_profile(R2, v2, params)
 
     # Apply gradual activation to fix v²/r singularity
-    mShell_dot = _get_mShell_dot_with_activation(mShell_dot_raw, R2, static)
+    mShell_dot = _get_mShell_dot_with_activation(mShell_dot_raw, R2, params)
 
     # Ensure positive shell mass
     mShell = max(mShell, 1e-10)
 
-    # Gravity force (self + cluster)
-    F_grav = static.G * mShell / (R2**2) * (static.mCluster + 0.5 * mShell)
+    # --- Gravity force (self + cluster) ---
+    F_grav = G * mShell / (R2**2) * (mCluster + 0.5 * mShell)
 
-    # Bubble pressure
-    if static.current_phase == 'momentum':
-        press_bubble = get_bubbleParams.pRam(R2, static.LWind, static.vWind)
+    # --- Bubble pressure ---
+    if params['current_phase'].value in ['momentum']:
+        press_bubble = get_bubbleParams.pRam(R2, LWind, vWind)
     else:
-        # Use cached R1
-        R1 = static.R1_cached
-
         # Pressure switch-on at early times
         dt_switchon = 1e-3  # Myr
-        t_elapsed = t - static.tSF
+        tmin = dt_switchon
 
-        if t_elapsed <= dt_switchon:
-            # Gradually switch on: interpolate R1 from 0 to actual value
-            R1_tmp = (t_elapsed / dt_switchon) * R1
+        if (t > (tmin + tSF)):
+            press_bubble = get_bubbleParams.bubble_E2P(Eb, R2, R1_cached, gamma)
+        elif (t <= (tmin + tSF)):
+            R1_tmp = (t - tSF) / tmin * R1_cached
             R1_tmp = max(R1_tmp, 1e-10)
-            press_bubble = get_bubbleParams.bubble_E2P(Eb, R2, R1_tmp, static.gamma_adia)
-        else:
-            press_bubble = get_bubbleParams.bubble_E2P(Eb, R2, R1, static.gamma_adia)
+            press_bubble = get_bubbleParams.bubble_E2P(Eb, R2, R1_tmp, gamma)
 
-    # Net pressure force
-    press_HII_in = static.press_HII_in
-    press_HII_out = static.press_HII_out
-    F_pressure = FOUR_PI * R2**2 * (press_bubble - press_HII_in + press_HII_out)
+    # --- Calculate press_HII_in using density_profile (INSIDE ODE) ---
+    # Calc inward pressure from photoionized gas outside the shell
+    # (is zero if no ionizing radiation escapes the shell)
+    if FABSi < 1.0:
+        rShell = params['rShell'].value
+        press_HII_in = get_press_ion(rShell, params)
+    else:
+        press_HII_in = 0.0
 
-    # Time derivatives
+    # Add ambient pressure if shell is beyond cloud
+    rCloud = params['rCloud'].value
+    if params['rShell'].value >= rCloud:
+        press_HII_in += params['PISM'].value * k_B
+
+    # --- Calculate press_HII_out (INSIDE ODE) ---
+    # Method 2: all HII region approximation
+    if FABSi < 1:
+        nR2 = params['nISM'].value
+    else:
+        caseB_alpha = params['caseB_alpha'].value
+        nR2 = np.sqrt(Qi / caseB_alpha / R2**3 * 3 / 4 / np.pi)
+
+    press_HII_out = 2 * nR2 * k_B * 3e4
+
+    # --- Time derivatives ---
     rd = v2  # dR/dt = velocity
 
     # dv/dt = (F_pressure - momentum_drag - F_grav + F_rad) / mShell
-    vd = (F_pressure - mShell_dot * v2 - F_grav + static.F_rad) / mShell
+    vd = (FOUR_PI * R2**2 * (press_bubble - press_HII_in + press_HII_out)
+          - mShell_dot * v2 - F_grav + F_rad) / mShell
+
+    # EarlyPhaseApproximation check
+    if params['EarlyPhaseApproximation'].value == True:
+        vd = -1e8
 
     # dE/dt = LWind - L_bubble - P*dV/dt (energy balance)
     # Note: L_leak = 0 for now (no fragmentation)
     L_leak = 0.0
-    Ed = (static.LWind - static.L_bubble) - (FOUR_PI * R2**2 * press_bubble) * v2 - L_leak
+    Ed = (LWind - L_bubble) - (FOUR_PI * R2**2 * press_bubble) * v2 - L_leak
 
     return np.array([rd, vd, Ed])
 
 
 # =============================================================================
-# Event Functions for solve_ivp
+# Update Params After Successful Segment
 # =============================================================================
 
-def velocity_floor_event(t: float, y: np.ndarray, static: StaticODEParams) -> float:
+def update_params_after_segment(t: float, R2: float, v2: float, Eb: float,
+                                 params, R1_cached: float):
     """
-    Event function: triggers when velocity drops below minimum.
+    Update params dict with ALL computed values after successful segment.
 
-    This is a physically motivated safeguard - if the shell stalls,
-    we should halt rather than continue with unphysical collapse.
+    This matches what the original ODE did on every call, but we only
+    do it after successful integration to avoid stale/duplicate values
+    during solver backtracking.
+
+    TRINITY uses the params dict as a timestep snapshot - all computed
+    values must be stored here for the next segment.
 
     Parameters
     ----------
     t : float
-        Time [Myr]
-    y : ndarray
-        State vector [R2, v2, Eb]
-    static : StaticODEParams
-        Immutable parameters
-
-    Returns
-    -------
-    value : float
-        Positive when v2 > v_min, negative when v2 < v_min
+        Current time [Myr]
+    R2 : float
+        Shell radius [pc]
+    v2 : float
+        Shell velocity [pc/Myr]
+    Eb : float
+        Bubble energy [internal units]
+    params : dict
+        Parameter dictionary with .value attributes
+    R1_cached : float
+        Cached inner bubble radius [pc]
     """
-    R2, v2, Eb = y
-    v_min = 0.01  # pc/Myr minimum velocity
-    return v2 - v_min
+    # --- State variables ---
+    params['t_now'].value = t
+    params['R2'].value = R2
+    params['v2'].value = v2
+    params['Eb'].value = Eb
 
-# Set event attributes
-velocity_floor_event.terminal = True
-velocity_floor_event.direction = -1  # Trigger when v2 decreasing through v_min
+    # --- Shell mass ---
+    if params['isCollapse'].value == True:
+        mShell = params['shell_mass'].value
+        mShell_dot = 0
+    else:
+        mShell, mShell_dot = mass_profile.get_mass_profile(
+            R2, params, return_mdot=True, rdot_arr=v2
+        )
+        mShell = _scalar(mShell)
+        mShell_dot = _scalar(mShell_dot)
+
+    params['shell_mass'].value = mShell
+    params['shell_massDot'].value = mShell_dot
+
+    # --- Bubble pressure and R1 ---
+    gamma = params['gamma_adia'].value
+    press_bubble = get_bubbleParams.bubble_E2P(Eb, R2, R1_cached, gamma)
+    params['Pb'].value = press_bubble
+    params['R1'].value = R1_cached
+
+    # --- HII pressures (calculated using density_profile) ---
+    FABSi = params['shell_fAbsorbedIon'].value
+    k_B = params['k_B'].value
+
+    if FABSi < 1.0:
+        press_HII_in = get_press_ion(params['rShell'].value, params)
+    else:
+        press_HII_in = 0.0
+
+    if params['rShell'].value >= params['rCloud'].value:
+        press_HII_in += params['PISM'].value * k_B
+
+    Qi = params['Qi'].value
+    if FABSi < 1:
+        nR2 = params['nISM'].value
+    else:
+        nR2 = np.sqrt(Qi / params['caseB_alpha'].value / R2**3 * 3 / 4 / np.pi)
+    press_HII_out = 2 * nR2 * k_B * 3e4
+
+    # --- Gravity ---
+    G = params['G'].value
+    mCluster = params['mCluster'].value
+    F_grav = G * mShell / (R2**2) * (mCluster + 0.5 * mShell)
+    F_rad = params['shell_F_rad'].value
+
+    # --- Store forces for diagnostics ---
+    params['F_grav'].value = F_grav
+    params['F_ion_in'].value = press_HII_in * FOUR_PI * R2**2
+    params['F_ion_out'].value = press_HII_out * FOUR_PI * R2**2
+    params['F_ram'].value = press_bubble * FOUR_PI * R2**2
+    params['F_rad'].value = F_rad
 
 
-def radius_exceeds_cloud_event(t: float, y: np.ndarray, static: StaticODEParams) -> float:
+# =============================================================================
+# Event Functions for solve_ivp (optional)
+# =============================================================================
+
+def radius_exceeds_cloud_event(t: float, y: np.ndarray, params) -> float:
     """
     Event function: triggers when shell reaches cloud boundary.
 
@@ -519,8 +474,8 @@ def radius_exceeds_cloud_event(t: float, y: np.ndarray, static: StaticODEParams)
         Time [Myr]
     y : ndarray
         State vector [R2, v2, Eb]
-    static : StaticODEParams
-        Immutable parameters
+    params : dict
+        Parameter dictionary
 
     Returns
     -------
@@ -528,98 +483,22 @@ def radius_exceeds_cloud_event(t: float, y: np.ndarray, static: StaticODEParams)
         Positive when R2 < rCloud, negative when R2 > rCloud
     """
     R2, v2, Eb = y
-    return static.rCloud - R2
+    rCloud = params['rCloud'].value
+    return rCloud - R2
 
-radius_exceeds_cloud_event.terminal = False  # Don't stop, just record
+radius_exceeds_cloud_event.terminal = False
 radius_exceeds_cloud_event.direction = -1
 
 
 # =============================================================================
-# Helper to extract static params from params dict
-# =============================================================================
-
-def extract_static_params(params, R1_cached: float = 0.01) -> StaticODEParams:
-    """
-    Extract StaticODEParams from params dictionary.
-
-    This creates an immutable snapshot of the current parameter values
-    for use during an integration segment.
-
-    Parameters
-    ----------
-    params : dict
-        Parameter dictionary with .value attributes
-    R1_cached : float, optional
-        Pre-computed R1 value (from R1Cache)
-
-    Returns
-    -------
-    static : StaticODEParams
-        Immutable parameters container
-    """
-    # Handle optional parameters with defaults
-    def get_value(key, default=0.0):
-        if key in params and hasattr(params[key], 'value'):
-            return params[key].value
-        elif key in params:
-            return params[key]
-        return default
-
-    return StaticODEParams(
-        # Physical constants
-        gamma_adia=get_value('gamma_adia', 5.0/3.0),
-        G=get_value('G', 4.49e-15),
-        k_B=get_value('k_B', 6.94e-60),
-
-        # Cloud properties
-        rCloud=get_value('rCloud', 10.0),
-        rCore=get_value('rCore', 1.0),
-        mCloud=get_value('mCloud', 1e5),
-        mCluster=get_value('mCluster', 1e4),
-
-        # Density profile
-        nCore=get_value('nCore'),
-        nISM=get_value('nISM'),
-        mu_convert=get_value('mu_convert'),
-        dens_profile=get_value('dens_profile', 'densPL'),
-        densPL_alpha=get_value('densPL_alpha', 0.0),
-
-        # Feedback
-        LWind=get_value('LWind'),
-        vWind=get_value('vWind'),
-
-        # Bubble/shell properties
-        L_bubble=get_value('bubble_LTotal', 0.0),
-        F_rad=get_value('shell_F_rad', 0.0),
-        FABSi=get_value('shell_fAbsorbedIon', 1.0),
-        press_HII_in=get_value('press_HII_in', 0.0),
-        press_HII_out=get_value('press_HII_out', 0.0),
-
-        # Cached R1
-        R1_cached=R1_cached,
-
-        # Timing and phase
-        tSF=get_value('tSF', 0.0),
-        current_phase=get_value('current_phase', 'energy'),
-        is_collapse=get_value('isCollapse', False),
-        shell_mass_frozen=get_value('shell_mass', 0.0),
-    )
-
-
-# =============================================================================
-# Wrapper for backward compatibility (if needed)
+# Backward Compatibility Wrapper
 # =============================================================================
 
 def get_ODE_Edot_wrapper(y, t, params):
     """
-    Wrapper that provides interface compatible with old code.
+    Wrapper that provides interface compatible with old code (odeint signature).
 
     DEPRECATED: Use get_ODE_Edot_pure with solve_ivp instead.
-
-    This wrapper:
-    1. Extracts static params from params dict
-    2. Calls the pure function
-    3. Updates params dict with computed values (for compatibility)
 
     Parameters
     ----------
@@ -657,18 +536,9 @@ def get_ODE_Edot_wrapper(y, t, params):
     except:
         R1 = 0.01 * R2
 
-    # Extract static params
-    static = extract_static_params(params, R1_cached=R1)
-
-    # Call pure function
+    # Call the ODE function
     y_arr = np.array([R2, v2, Eb])
-    dydt = get_ODE_Edot_pure(t, y_arr, static)
-
-    # Update params dict (for compatibility with old code)
-    params['t_now'].value = t
-    params['R2'].value = R2
-    params['v2'].value = v2
-    params['Eb'].value = Eb
+    dydt = get_ODE_Edot_pure(t, y_arr, params, R1)
 
     # Return with T0 derivative = 0 (T0 is external)
     return [dydt[0], dydt[1], dydt[2], 0]
