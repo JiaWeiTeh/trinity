@@ -324,7 +324,6 @@ def get_r1(r1, params):
     """
     # Note
     # old code: R1_zero()
-    
     Lmech_total, Ebubble, v_mech_total, r2 = params
     
     # set minimum energy to avoid zero

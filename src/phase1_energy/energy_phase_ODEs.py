@@ -15,6 +15,11 @@ import src.cloud_properties.density_profile as density_profile
 import src.bubble_structure.get_bubbleParams as get_bubbleParams
 from src.sb99.update_feedback import get_currentSB99feedback
 
+import logging
+# Initialize logger for this module
+logger = logging.getLogger(__name__)
+
+
 # -- constant
 FOUR_PI = 4.0 * np.pi
 
@@ -64,15 +69,11 @@ def get_ODE_Edot(y, t, params):
     tSF       = params["tSF"].value
     G         = params["G"].value
     Qi        = params["Qi"].value
-    LWind     = params["LWind"].value
-    vWind     = params["vWind"].value
+    Lmech_total     = params["Lmech_total"].value
+    v_mech_total     = params["v_mech_total"].value
     
     
     # --- calculate shell mass and time derivative of shell mass [au]
-    mShell, mShell_dot = mass_profile.get_mass_profile(R2, params,
-                                                       return_mdot = True, 
-                                                       rdot_arr = v2)
-    
     
     if params['isCollapse'].value == True:
         # stays constant during collapse
@@ -80,7 +81,7 @@ def get_ODE_Edot(y, t, params):
         mShell_dot = 0
     else:
         mShell, mShell_dot = mass_profile.get_mass_profile(
-            R2, params, return_mdot = True, rdot_arr = v2
+            R2, params, return_mdot = True, rdot = v2
             )
         mShell = _scalar(mShell)
         mShell_dot = _scalar(mShell_dot)
@@ -92,10 +93,11 @@ def get_ODE_Edot(y, t, params):
     # --- gravity force (self + cluster)
     F_grav = G * mShell / (R2**2) * (mCluster + 0.5 * mShell)
     
+    logger.info(f'R2 {R2}, R1 {params["R1"]}')
     
     # calculate radius of inner discontinuity (inner radius of bubble)
     R1 = scipy.optimize.brentq(get_bubbleParams.get_r1, 0.0, R2,
-                               args=([LWind, Eb, vWind, R2])) 
+                               args=([Lmech_total, Eb, v_mech_total, R2])) 
     
     # the following if-clause needs to be rethought. for now, this prevents negative energies at very early times
     # IDEA: move R1 gradually outwards
@@ -104,7 +106,7 @@ def get_ODE_Edot(y, t, params):
 
         
     if params['current_phase'].value in ['momentum']:
-        press_bubble = get_bubbleParams.pRam(R2, LWind, vWind)
+        press_bubble = get_bubbleParams.pRam(R2, Lmech_total, v_mech_total)
     else:
         if (t > (tmin + params['tSF'].value)):
             press_bubble = get_bubbleParams.bubble_E2P(Eb, R2, R1, params['gamma_adia'].value)
@@ -190,7 +192,7 @@ def get_ODE_Edot(y, t, params):
     print(f'vd is {4 * np.pi * R2**2 * (press_bubble-press_HII_in+press_HII_out)} - {mShell_dot * v2} - {F_grav} + {F_rad} divide {mShell} equals {vd}')
     
     # but this isnt used I think - Ed is obtained via conversion of beta/delta in run_implicit_energy.py.
-    Ed = (LWind - L_bubble) - (4 * np.pi * R2**2 * press_bubble) * v2 - L_leak 
+    Ed = (Lmech_total - L_bubble) - (4 * np.pi * R2**2 * press_bubble) * v2 - L_leak 
 
     derivs = [rd, vd, Ed, 0]
     
