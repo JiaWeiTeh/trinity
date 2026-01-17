@@ -273,6 +273,7 @@ def run_energy(params):
                 Eb += Ed * dt_min 
                 T0 += Td * dt_min 
                 
+                logger.info(f'Phase values: R2: {R2}, v2: {v2}, Eb: {Eb}, T0: {T0}')
                 print('new rd values in run_energy_phase')
                 print('rd', rd)
                 print('vd', vd)
