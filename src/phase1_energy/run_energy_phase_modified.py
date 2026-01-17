@@ -247,6 +247,14 @@ def run_energy(params) -> EnergyPhaseResults:
     # Track time of last cooling structure update
     t_last_cooling_update = t_now
 
+    # Initialize cooling structure before main loop
+    # (Original version does this on first iteration via t_previousCoolingUpdate check)
+    cooling_nonCIE, heating_nonCIE, netcooling_interpolation = non_CIE.get_coolingStructure(params)
+    params['cStruc_cooling_nonCIE'].value = cooling_nonCIE
+    params['cStruc_heating_nonCIE'].value = heating_nonCIE
+    params['cStruc_net_nonCIE_interpolation'].value = netcooling_interpolation
+    params['t_previousCoolingUpdate'].value = t_now
+
     while R2 < rCloud and t_now < tfinal and continueWeaver:
         segment_count += 1
 
