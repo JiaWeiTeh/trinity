@@ -170,9 +170,9 @@ def get_residual(beta_delta_guess, params):
 
     R1 = scipy.optimize.brentq(get_bubbleParams.get_r1, 
                            1e-3 * params['R2'].value, params['R2'].value, 
-                           args=([params['LWind'].value, 
+                           args=([params['L_mech_total'].value, 
                                   params['Eb'].value, 
-                                  params['vWind'].value,
+                                  params['v_mech_total'].value,
                                   params['R2'].value,
                                   ]))
     
@@ -191,7 +191,7 @@ def get_residual(beta_delta_guess, params):
     Edot = get_bubbleParams.beta2Edot(params)
     
         #-- method 2 of calculating Edot, directly from equation
-    L_gain = params['LWind'].value
+    L_gain = params['L_mech_total'].value
     L_loss = params['bubble_LTotal'].value + params['bubble_Leak'].value
     
     # these should be R2, v2 and press_bubble

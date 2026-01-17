@@ -496,7 +496,7 @@ if __name__ == "__main__":
     logger_main.info("Starting TRINITY simulation")
     logger_phase1.info("Entering energy-driven phase")
     logger_cooling.debug("Interpolating cooling curve at T=1.5e6 K")
-    logger_sb99.warning("Wind momentum rate near zero, setting vWind=0")
+    logger_sb99.warning("Wind momentum rate near zero, setting v_mech_total=0")
     logger_phase1.info("Energy-driven phase complete")
     logger_main.info("Simulation finished")
 

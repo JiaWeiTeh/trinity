@@ -49,8 +49,8 @@ def get_currentSB99feedback(t, params):
     Notes
     -----
     FIXED: Wind velocity now correctly uses wind-only momentum rate!
-    Old (WRONG): vWind = 2 * LWind / (pdot_W + pdot_SN)
-    New (CORRECT): vWind = 2 * LWind / pdot_W
+    Old (WRONG): v_mech_total = 2 * L_mech_total / (pdot_W + pdot_SN)
+    New (CORRECT): v_mech_total = 2 * L_mech_total / pdot_W
 
     Naming convention:
     - Wind components: _W suffix (Lmech_W, pdot_W, fLmech_W, fpdot_W)
@@ -58,8 +58,8 @@ def get_currentSB99feedback(t, params):
     - Total components: _total suffix (Lmech_total, pdot_total)
 
     Side effects: Updates params dictionary with all feedback parameters including:
-    - Raw SB99 values: Qi, Li, Ln, Lbol, LWind (=Lmech_W)
-    - Derived values: vWind (wind velocity), pWindDot (=pdot_total), pWindDotDot (time derivative)
+    - Raw SB99 values: Qi, Li, Ln, Lbol, L_mech_total (=Lmech_W)
+    - Derived values: v_mech_total (wind velocity), pdot_total (=pdot_total), pdotdot_total (time derivative)
     - Separated components: F_ram_wind (=pdot_W), F_ram_SN (=pdot_SN)
     """
 

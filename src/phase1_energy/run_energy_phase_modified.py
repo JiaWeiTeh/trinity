@@ -180,8 +180,8 @@ def run_energy(params) -> EnergyPhaseResults:
     (t, Qi, Li, Ln, Lbol, Lmech_W, Lmech_SN, Lmech_total,
      pdot_W, pdot_SN, pdot_total, pdotdot_total, v_mech_total) = feedback
 
-    LWind = params['LWind'].value
-    vWind = params['vWind'].value
+    L_mech_total = params['L_mech_total'].value
+    v_mech_total = params['v_mech_total'].value
 
     # =============================================================================
     # Calculate initial R1 and Pb
@@ -192,7 +192,7 @@ def run_energy(params) -> EnergyPhaseResults:
         1e-3 * R2, R2,
         args=([Lmech_total, Eb, v_mech_total, R2])
     )
-    r1_cache.update(t_now, R2, Eb, LWind, vWind)
+    r1_cache.update(t_now, R2, Eb, L_mech_total, v_mech_total)
 
     # Initial shell mass and bubble pressure
     Msh0 = mass_profile.get_mass_profile(R2, params, return_mdot=False)
@@ -217,23 +217,23 @@ def run_energy(params) -> EnergyPhaseResults:
     # Get SB99 feedback arrays for interpolation
     # (These should already be in params from initialization)
     t_fb = params['SB99_t'].value
-    LWind_arr = params['SB99_Lmech'].value
-    vWind_arr = params['SB99_vWind'].value
+    L_mech_arr = params['SB99_Lmech'].value
+    v_mech_arr = params['SB99_vmech'].value
 
     # Create interpolators (only if arrays exist)
     if len(t_fb) > 1:
-        LWind_interp = scipy.interpolate.interp1d(
-            t_fb, LWind_arr, kind='linear',
-            bounds_error=False, fill_value=(LWind_arr[0], LWind_arr[-1])
+        L_mech_interp = scipy.interpolate.interp1d(
+            t_fb, L_mech_arr, kind='linear',
+            bounds_error=False, fill_value=(L_mech_arr[0], L_mech_arr[-1])
         )
-        vWind_interp = scipy.interpolate.interp1d(
-            t_fb, vWind_arr, kind='linear',
-            bounds_error=False, fill_value=(vWind_arr[0], vWind_arr[-1])
+        v_mech_interp = scipy.interpolate.interp1d(
+            t_fb, v_mech_arr, kind='linear',
+            bounds_error=False, fill_value=(v_mech_arr[0], v_mech_arr[-1])
         )
     else:
         # Fallback to constant values
-        LWind_interp = lambda t: LWind
-        vWind_interp = lambda t: vWind
+        L_mech_interp = lambda t: L_mech_total
+        v_mech_interp = lambda t: v_mech_total
 
     # =============================================================================
     # Main integration loop (segment-based)
@@ -296,16 +296,16 @@ def run_energy(params) -> EnergyPhaseResults:
         # Update R1 cache and get current feedback
         # =============================================================================
 
-        LWind_now = float(LWind_interp(t_now))
-        vWind_now = float(vWind_interp(t_now))
+        L_mech_now = float(L_mech_interp(t_now))
+        v_mech_now = float(v_mech_interp(t_now))
 
         # Update R1 for this segment
-        R1 = r1_cache.update(t_now, R2, Eb, LWind_now, vWind_now)
+        R1 = r1_cache.update(t_now, R2, Eb, L_mech_now, v_mech_now)
         Pb = get_bubbleParams.bubble_E2P(Eb, R2, R1, params['gamma_adia'].value)
 
         # Update params for this segment (these are read by ODE but not modified)
-        params['LWind'].value = LWind_now
-        params['vWind'].value = vWind_now
+        params['L_mech_total'].value = L_mech_now
+        params['v_mech_total'].value = v_mech_now
         params['R1'].value = R1
         params['Pb'].value = Pb
 
