@@ -54,7 +54,7 @@ class R1Cache:
         self.R1_values = []
         self._interp = None
 
-    def update(self, t: float, R2: float, Eb: float, L_mech_total: float, v_mech_total: float) -> float:
+    def update(self, t: float, R2: float, Eb: float, Lmech_total: float, v_mech_total: float) -> float:
         """
         Compute and cache R1 at given time.
 
@@ -66,7 +66,7 @@ class R1Cache:
             Outer bubble radius [pc]
         Eb : float
             Bubble energy [internal units]
-        L_mech_total : float
+        Lmech_total : float
             Wind luminosity [internal units]
         v_mech_total : float
             Wind velocity [internal units]
@@ -80,7 +80,7 @@ class R1Cache:
             R1 = scipy.optimize.brentq(
                 get_bubbleParams.get_r1,
                 1e-6 * R2, R2 * 0.999,
-                args=([L_mech_total, Eb, v_mech_total, R2])
+                args=([Lmech_total, Eb, v_mech_total, R2])
             )
         except ValueError:
             # Fallback if brentq fails (e.g., no root in interval)
@@ -296,7 +296,7 @@ def get_ODE_Edot_pure(t: float, y: np.ndarray, params, R1_cached: float) -> np.n
     tSF = params['tSF'].value
     G = params['G'].value
     Qi = params['Qi'].value
-    L_mech_total = params['L_mech_total'].value
+    Lmech_total = params['Lmech_total'].value
     v_mech_total = params['v_mech_total'].value
     k_B = params['k_B'].value
 
@@ -314,7 +314,7 @@ def get_ODE_Edot_pure(t: float, y: np.ndarray, params, R1_cached: float) -> np.n
 
     # --- Bubble pressure ---
     if params['current_phase'].value in ['momentum']:
-        press_bubble = get_bubbleParams.pRam(R2, L_mech_total, v_mech_total)
+        press_bubble = get_bubbleParams.pRam(R2, Lmech_total, v_mech_total)
     else:
         # Pressure switch-on at early times
         dt_switchon = 1e-3  # Myr
@@ -362,10 +362,10 @@ def get_ODE_Edot_pure(t: float, y: np.ndarray, params, R1_cached: float) -> np.n
     if params['EarlyPhaseApproximation'].value == True:
         vd = -1e8
 
-    # dE/dt = L_mech_total - L_bubble - P*dV/dt (energy balance)
+    # dE/dt = Lmech_total - L_bubble - P*dV/dt (energy balance)
     # Note: L_leak = 0 for now (no fragmentation)
     L_leak = 0.0
-    Ed = (L_mech_total - L_bubble) - (FOUR_PI * R2**2 * press_bubble) * v2 - L_leak
+    Ed = (Lmech_total - L_bubble) - (FOUR_PI * R2**2 * press_bubble) * v2 - L_leak
 
     return np.array([rd, vd, Ed])
 
@@ -524,14 +524,14 @@ def get_ODE_Edot_wrapper(y, t, params):
     R2, v2, Eb, T0 = y
 
     # Get R1 for this state
-    L_mech_total = params['L_mech_total'].value
+    Lmech_total = params['Lmech_total'].value
     v_mech_total = params['v_mech_total'].value
 
     try:
         R1 = scipy.optimize.brentq(
             get_bubbleParams.get_r1,
             1e-6 * R2, R2 * 0.999,
-            args=([L_mech_total, Eb, v_mech_total, R2])
+            args=([Lmech_total, Eb, v_mech_total, R2])
         )
     except:
         R1 = 0.01 * R2

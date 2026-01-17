@@ -273,7 +273,7 @@ def plot_parameter_grid(
     # Default log scale parameters (typically energies, luminosities)
     if log_scale_params is None:
         log_scale_params = {
-            'Eb', 'Lbol', 'Li', 'L_mech_total', 'Ln',
+            'Eb', 'Lbol', 'Li', 'Lmech_total', 'Ln',
             'F_grav', 'F_ram', 'F_ram_wind', 'F_ram_SN',
             'F_ion_in', 'F_ion_out', 'F_rad', 'F_ISM', 'F_SN',
             'PISM', 'Pb', 'Qi', 'shell_mass', 'shell_massDot',
