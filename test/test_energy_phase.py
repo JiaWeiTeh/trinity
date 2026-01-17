@@ -26,7 +26,8 @@ from src.phase1_energy.energy_phase_ODEs_modified import (
     get_ODE_Edot_pure,
     extract_static_params,
     R1Cache,
-    _calculate_mass_pure,
+    ParamsWrapper,
+    _get_mass_from_profile,
     _get_mShell_dot_with_activation,
     velocity_floor_event,
 )
@@ -363,12 +364,42 @@ def test_velocity_floor_event():
 
 
 # =============================================================================
-# Test: Mass calculation pure function
+# Test: ParamsWrapper class
 # =============================================================================
 
-def test_calculate_mass_pure():
-    """Test pure mass calculation function."""
-    print("Testing pure mass calculation...")
+def test_params_wrapper():
+    """Test ParamsWrapper provides correct interface for mass_profile."""
+    print("Testing ParamsWrapper...")
+
+    static = make_static_params(rCloud=15.0, rCore=2.0, densPL_alpha=-1.5)
+    wrapper = ParamsWrapper(static)
+
+    # Test __getitem__
+    assert wrapper['rCloud'].value == 15.0, "rCloud mismatch"
+    assert wrapper['rCore'].value == 2.0, "rCore mismatch"
+    assert wrapper['densPL_alpha'].value == -1.5, "densPL_alpha mismatch"
+
+    # Test __contains__
+    assert 'rCloud' in wrapper, "rCloud not in wrapper"
+    assert 'nonexistent_key' not in wrapper, "nonexistent_key should not be in wrapper"
+
+    # Test get() with default
+    default_result = wrapper.get('nonexistent_key', 999.0)
+    assert default_result.value == 999.0, "Default value not returned"
+
+    print(f"  wrapper['rCloud'].value = {wrapper['rCloud'].value}")
+    print(f"  wrapper['rCore'].value = {wrapper['rCore'].value}")
+    print(f"  wrapper['densPL_alpha'].value = {wrapper['densPL_alpha'].value}")
+    print("  [PASS] ParamsWrapper works correctly")
+
+
+# =============================================================================
+# Test: Mass calculation using existing mass_profile module
+# =============================================================================
+
+def test_get_mass_from_profile():
+    """Test mass calculation via existing mass_profile module."""
+    print("Testing mass calculation via mass_profile module...")
 
     # Homogeneous cloud (alpha=0)
     static = make_static_params(densPL_alpha=0.0)
@@ -376,14 +407,14 @@ def test_calculate_mass_pure():
     R2 = 0.5  # Inside cloud
     v2 = 10.0
 
-    mShell, mShell_dot = _calculate_mass_pure(R2, v2, static)
+    mShell, mShell_dot = _get_mass_from_profile(R2, v2, static)
 
     assert mShell > 0, f"Expected positive mass, got {mShell}"
     assert mShell_dot > 0, f"Expected positive mdot (expanding), got {mShell_dot}"
 
     # Check mass scales as R³ for homogeneous
     R2_2 = 1.0
-    mShell_2, _ = _calculate_mass_pure(R2_2, v2, static)
+    mShell_2, _ = _get_mass_from_profile(R2_2, v2, static)
     ratio = mShell_2 / mShell
     expected_ratio = (R2_2 / R2)**3
 
@@ -393,7 +424,7 @@ def test_calculate_mass_pure():
     print(f"  R2={R2:.2f} → mShell={mShell:.2e}")
     print(f"  R2={R2_2:.2f} → mShell={mShell_2:.2e}")
     print(f"  Ratio: {ratio:.2f} (expected: {expected_ratio:.2f})")
-    print("  [PASS] Pure mass calculation works correctly")
+    print("  [PASS] Mass calculation via mass_profile works correctly")
 
 
 # =============================================================================
@@ -411,7 +442,8 @@ def run_all_tests():
         test_R1Cache,
         test_extract_static_params,
         test_velocity_floor_event,
-        test_calculate_mass_pure,
+        test_params_wrapper,
+        test_get_mass_from_profile,
     ]
 
     passed = 0
