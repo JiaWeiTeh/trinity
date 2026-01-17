@@ -368,9 +368,9 @@ def plot_parameter_grid(
     # Main title
     fig.suptitle(f"Parameter Evolution: {filepath.stem}", fontsize=12, fontweight='bold')
 
-    # Save figures
+    # Save figures - default to same directory as input file
     if output_dir is None:
-        output_dir = Path('.')
+        output_dir = filepath.parent
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -486,8 +486,8 @@ Examples:
     parser.add_argument(
         '--output-dir', '-o',
         type=str,
-        default='./fig',
-        help='Output directory for saved figures (default: ./fig)'
+        default=None,
+        help='Output directory for saved figures (default: same as input file)'
     )
 
     parser.add_argument(
@@ -517,7 +517,7 @@ Examples:
         ncols=args.ncols,
         save_pdf=args.save_pdf,
         save_png=args.save_png,
-        output_dir=Path(args.output_dir),
+        output_dir=Path(args.output_dir) if args.output_dir else None,
     )
 
 
