@@ -214,9 +214,8 @@ def extract_time_series(snapshots, key):
     return t[order], values[order]
 
 
-def plot_comparison(snaps_orig, snaps_mod, params_to_plot, output_path=None,
-                    save_pdf=False, save_png=False, base_name="comparison_energy_phase",
-                    show_plot=True):
+def plot_comparison(snaps_orig, snaps_mod, params_to_plot, output_paths=None,
+                    save_pdf=False, save_png=False, base_name="comparison_energy_phase"):
     """
     Create comparison plots for original vs modified runs.
 
@@ -228,16 +227,14 @@ def plot_comparison(snaps_orig, snaps_mod, params_to_plot, output_path=None,
         Snapshots from modified run
     params_to_plot : list
         List of parameter keys to plot
-    output_path : Path, optional
-        Directory to save figures
+    output_paths : list of Path, optional
+        List of directories to save figures to (saves to each)
     save_pdf : bool
         Save as PDF
     save_png : bool
         Save as PNG
     base_name : str
         Base filename for saved plots (without extension)
-    show_plot : bool
-        Show interactive plot window (set False for headless/nohup)
     """
     # Filter to available parameters
     available_orig = set()
@@ -311,23 +308,22 @@ def plot_comparison(snaps_orig, snaps_mod, params_to_plot, output_path=None,
 
     fig.suptitle('Energy Phase Comparison: Original vs Modified', fontsize=14, fontweight='bold')
 
-    # Save figures
-    if output_path and (save_pdf or save_png):
-        output_path = Path(output_path)
-        output_path.mkdir(parents=True, exist_ok=True)
+    # Save figures to each output path
+    if output_paths and (save_pdf or save_png):
+        for output_path in output_paths:
+            output_path = Path(output_path)
+            output_path.mkdir(parents=True, exist_ok=True)
 
-        if save_pdf:
-            pdf_path = output_path / f"{base_name}.pdf"
-            fig.savefig(pdf_path, bbox_inches='tight')
-            print(f"Saved: {pdf_path}")
+            if save_pdf:
+                pdf_path = output_path / f"{base_name}.pdf"
+                fig.savefig(pdf_path, bbox_inches='tight')
+                print(f"Saved: {pdf_path}")
 
-        if save_png:
-            png_path = output_path / f"{base_name}.png"
-            fig.savefig(png_path, bbox_inches='tight', dpi=300)
-            print(f"Saved: {png_path}")
+            if save_png:
+                png_path = output_path / f"{base_name}.png"
+                fig.savefig(png_path, bbox_inches='tight', dpi=300)
+                print(f"Saved: {png_path}")
 
-    if show_plot:
-        plt.show()
     plt.close(fig)
 
 
@@ -336,7 +332,7 @@ def plot_comparison(snaps_orig, snaps_mod, params_to_plot, output_path=None,
 # =============================================================================
 
 def run_comparison(param_file, params_to_compare=None, save_pdf=False, save_png=False,
-                   output_name=None, show_plot=True):
+                   output_name=None):
     """
     Run both original and modified energy phase and compare results.
 
@@ -352,8 +348,6 @@ def run_comparison(param_file, params_to_compare=None, save_pdf=False, save_png=
         Save comparison plot as PNG
     output_name : str, optional
         Base name for output file. If None, derived from param_file name.
-    show_plot : bool
-        Show interactive plot window (set False for headless/nohup)
     """
     logger = setup_simple_logging('INFO')
 
@@ -439,8 +433,11 @@ def run_comparison(param_file, params_to_compare=None, save_pdf=False, save_png=
     # =========================================================================
     # Step 5: Plot comparison
     # =========================================================================
-    # Save to parent of the output directories
-    output_parent = Path(base_output_path).parent
+    # Save to both output directories
+    output_paths = [
+        Path(params_orig['path2output'].value),
+        Path(params_mod['path2output'].value),
+    ]
 
     # Derive output name from param file if not provided
     if output_name is None:
@@ -448,11 +445,10 @@ def run_comparison(param_file, params_to_compare=None, save_pdf=False, save_png=
 
     plot_comparison(
         snaps_orig, snaps_mod, params_to_compare,
-        output_path=output_parent,
+        output_paths=output_paths,
         save_pdf=save_pdf,
         save_png=save_png,
         base_name=output_name,
-        show_plot=show_plot
     )
 
     # =========================================================================
@@ -539,7 +535,6 @@ Examples:
             params_to_compare=params_to_compare,
             save_pdf=args.save_pdf,
             save_png=args.save_png,
-            show_plot=not args.no_display,
         )
 
 
