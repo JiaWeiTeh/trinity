@@ -154,10 +154,10 @@ def ODE_equations_momentum(t, y, params):
 
     [t, Qi, Li, Ln, Lbol, Lmech_W, Lmech_SN, Lmech_total, pdot_W, pdot_SNe, pdot_total] = get_currentSB99feedback(t, params)
     # Extract derived values from params for backward compatibility
-    LWind = params['LWind'].value
-    vWind = params['vWind'].value
-    pWindDot = params['pWindDot'].value
-    pWindDotDot = params['pWindDotDot'].value
+    L_mech_total = params['L_mech_total'].value
+    v_mech_total = params['v_mech_total'].value
+    pdot_total = params['pdot_total'].value
+    pdotdot_total = params['pdotdot_total'].value
     shell_structure.shell_structure(params)
     
     

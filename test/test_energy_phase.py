@@ -69,9 +69,9 @@ def make_test_params(**overrides):
         'dens_profile': 'densPL',
         'densPL_alpha': 0.0,
 
-        # Wind/bubble properties
-        'LWind': 1e38,  # internal units
-        'vWind': 1e3,  # pc/Myr
+        # Wind/bubble properties (using new naming convention)
+        'L_mech_total': 1e38,  # internal units
+        'v_mech_total': 1e3,  # pc/Myr
         'bubble_LTotal': 1e37,
         'Qi': 1e49,  # ionizing photons/s
 
