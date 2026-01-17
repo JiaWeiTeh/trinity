@@ -11,16 +11,16 @@ Each version runs with its own isolated output directory to avoid conflicts.
 When multiple parameter files are provided, each generates its own separate
 PDF comparison plot.
 
-Usage:
-    python compare_energy_phase.py param/1e7_sfe030_n1e4.param
-    python compare_energy_phase.py param/test.param --save-pdf
-    python compare_energy_phase.py param/test.param --params R2,Eb,v2
+Usage (from project root):
+    python comparison/compare_energy_phase.py param/1e7_sfe030_n1e4.param
+    python comparison/compare_energy_phase.py param/test.param --save-pdf
+    python comparison/compare_energy_phase.py param/test.param --params R2,Eb,v2
 
     # Multiple parameter files (each generates its own PDF):
-    python compare_energy_phase.py param/1e7_sfe001_n1e4.param param/1e7_sfe030_n1e4.param --save-pdf
+    python comparison/compare_energy_phase.py param/1e7_sfe001_n1e4.param param/1e7_sfe030_n1e4.param --save-pdf
 
     # Run in nohup/headless environment (no display):
-    nohup python compare_energy_phase.py param/*.param --save-pdf --no-display &
+    nohup python comparison/compare_energy_phase.py param/*.param --save-pdf --no-display &
 
 Author: TRINITY Team
 """
@@ -48,7 +48,7 @@ import matplotlib.pyplot as plt
 # =============================================================================
 
 # Add project root to path if needed
-project_root = Path(__file__).parent
+project_root = Path(__file__).parent.parent
 if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
