@@ -42,7 +42,7 @@ DEFAULT_PARAMETERS = [
     ("Eb", r"$E_b$", "erg"),
     ("Lbol", r"$L_{\rm bol}$", None),
     ("Li", r"$L_i$", None),
-    ("L_mech_total", r"$L_{\rm mech}$", None),
+    ("Lmech_total", r"$L_{\rm mech}$", None),
     ("Ln", r"$L_n$", None),
 
     # Forces
@@ -386,7 +386,7 @@ def plot_parameter_grid(
         fig.savefig(png_path, bbox_inches='tight', dpi=300)
         print(f"Saved: {png_path}")
 
-    plt.show()
+    # plt.show()
     plt.close(fig)
 
     return fig

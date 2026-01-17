@@ -142,7 +142,7 @@ def ODE_equations(t, y, params):
     # Part 1: find acceleration and velocity
     # =============================================================================
     # get current feedback value
-    [t, Qi, Li, Ln, Lbol, Lmech_W, Lmech_SN, Lmech_total, pdot_W, pdot_SNe, pdot_total] = get_currentSB99feedback(t, params)
+    [t, Qi, Li, Ln, Lbol, Lmech_W, Lmech_SN, Lmech_total, pdot_W, pdot_SN, pdot_total, pdotdot_total, v_mech_total] = get_currentSB99feedback(t, params)
     # Extract derived values from params for backward compatibility
     L_mech_total = params['L_mech_total'].value
     v_mech_total = params['v_mech_total'].value

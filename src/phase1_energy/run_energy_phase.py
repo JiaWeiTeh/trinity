@@ -170,7 +170,7 @@ def run_energy(params):
         tsteps = 30
         t_arr = np.arange(t_now, t_now +  (dt_min * tsteps), dt_min)[1:]  
         
-        print('t_arr is this', t_arr)
+        logger.debug(f't_arr is this {t_arr}')
         
         # =============================================================================
         # Calculate shell structure
@@ -280,7 +280,7 @@ def run_energy(params):
             Eb_arr.append(Eb)
             
             
-            if ii == 10:
+            if ii == 10 and params['EarlyPhaseApproximation'].value == True:
                 params['EarlyPhaseApproximation'].value = False
                 print('\n\n\n\n\n\n\nswitch to no approximation\n\n\n\n\n\n')
             
