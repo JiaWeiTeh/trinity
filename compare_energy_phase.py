@@ -354,24 +354,6 @@ def run_comparison(param_file, params_to_compare=None, save_pdf=False, save_png=
     base_output_path = base_params['path2output'].value
 
     # =========================================================================
-    # Step 3: Run ORIGINAL version
-    # =========================================================================
-    logger.info("-" * 60)
-    logger.info("Running ORIGINAL energy phase...")
-    logger.info("-" * 60)
-
-    params_orig = create_isolated_params(base_params, "original")
-    initialize_simulation(params_orig, logger)
-
-    start_orig = datetime.datetime.now()
-    run_energy_phase.run_energy(params_orig)
-    params_orig.flush()  # Ensure all snapshots written
-    elapsed_orig = datetime.datetime.now() - start_orig
-
-    logger.info(f"Original completed in {elapsed_orig}")
-    logger.info(f"  Output: {params_orig['path2output'].value}")
-    
-    # =========================================================================
     # Step 2: Run MODIFIED version (first, for easier debugging)
     # =========================================================================
     logger.info("-" * 60)
@@ -389,6 +371,24 @@ def run_comparison(param_file, params_to_compare=None, save_pdf=False, save_png=
     logger.info(f"Modified completed in {elapsed_mod}")
     logger.info(f"  Output: {params_mod['path2output'].value}")
 
+    # =========================================================================
+    # Step 3: Run ORIGINAL version
+    # =========================================================================
+    logger.info("-" * 60)
+    logger.info("Running ORIGINAL energy phase...")
+    logger.info("-" * 60)
+
+    params_orig = create_isolated_params(base_params, "original")
+    initialize_simulation(params_orig, logger)
+
+    start_orig = datetime.datetime.now()
+    run_energy_phase.run_energy(params_orig)
+    params_orig.flush()  # Ensure all snapshots written
+    elapsed_orig = datetime.datetime.now() - start_orig
+
+    logger.info(f"Original completed in {elapsed_orig}")
+    logger.info(f"  Output: {params_orig['path2output'].value}")
+    
 
     # =========================================================================
     # Step 4: Load results and compare
