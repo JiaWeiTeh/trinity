@@ -70,6 +70,7 @@ DEFAULT_COMPARE_PARAMS = [
     'R2', 'v2', 'Eb', 'R1',
     'F_ram', 'F_grav', 'F_ion_out', 'F_rad',
     'shell_mass', 'Pb', 'L_mech_wind', 'shell_massDot', 'pdotdot_total',
+    'bubble_LTotal', 'bubble_Tavg', 'bubble_T_r_Tb', 'bubble_dMdt',
 ]
 
 # =============================================================================
