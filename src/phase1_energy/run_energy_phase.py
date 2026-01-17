@@ -64,6 +64,10 @@ def run_energy(params):
     # -----------
     [t, Qi, Li, Ln, Lbol, Lmech_W, Lmech_SN, Lmech_total, pdot_W, pdot_SN, pdot_total, pdotdot_total, v_mech_total] = get_currentSB99feedback(t_now, params)
     
+    updateDict(params, ['Qi', 'Li', 'Ln', 'Lbol', 'Lmech_W', 'Lmech_SN', 'Lmech_total', 'pdot_W', 'pdot_SN', 'pdot_total', 'pdotdot_total', 'v_mech_total'],
+               [Qi, Li, Ln, Lbol, Lmech_W, Lmech_SN, Lmech_total, pdot_W, pdot_SN, pdot_total, pdotdot_total, v_mech_total])
+    
+    
     # -----------
     # Solve equation for inner radius of the inner shock.
     # -----------
@@ -103,7 +107,7 @@ def run_energy(params):
     immediately_to_momentumphase = False
     # record the initial Lw0. This value will be changed in the loop. 
     # old code: Lw_old
-    Lw_previous = LWind
+    Lw_previous = Lmech_total
 
 
     continueWeaver = True
@@ -361,14 +365,14 @@ def run_energy(params):
         print('saving snapshot')
         params.save_snapshot()
         
-        
+        'pdot_SN', 'pdot_total', 'pdotdot_total'
     
-        [t, Qi, Li, Ln, Lbol, Lmech_W, Lmech_SN, Lmech_total, pdot_W, pdot_SNe, pdot_total] = get_currentSB99feedback(t_now, params)
+        [t, Qi, Li, Ln, Lbol, Lmech_W, Lmech_SN, Lmech_total, pdot_W, pdot_SN, pdot_total, pdotdot_total, v_mech_total] = get_currentSB99feedback(t_now, params)
         # Extract derived values from params for backward compatibility
-        LWind = params['LWind'].value
-        vWind = params['vWind'].value
-        pWindDot = params['pWindDot'].value
-        pWindDotDot = params['pWindDotDot'].value
+        Lmech_total = params['Lmech_total'].value
+        v_mech_total = params['v_mech_total'].value
+        pdot_total = params['pdot_total'].value
+        pdotdot_total = params['pdotdot_total'].value
 
         # # if we are going to the momentum phase next, do not have to 
         # # calculate the discontinuity for the next loop
@@ -380,7 +384,7 @@ def run_energy(params):
         # else:
         R1 = scipy.optimize.brentq(get_bubbleParams.get_r1, 
                        1e-3 * R2, R2, 
-                       args=([LWind, Eb, vWind, R2]))
+                       args=([Lmech_total, Eb, v_mech_total, R2]))
         # bubble pressure
         Pb = get_bubbleParams.bubble_E2P(Eb, R2, R1, params['gamma_adia'].value)
         

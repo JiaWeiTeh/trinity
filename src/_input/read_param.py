@@ -420,7 +420,7 @@ def read_param(path2file, write_summary=True):
     params['Lmech_W'] = DescribedItem(0, info="Wind mechanical luminosity", ori_units="Msun*pc**2/Myr**3")
     params['Lmech_SN'] = DescribedItem(0, info="SN mechanical luminosity", ori_units="Msun*pc**2/Myr**3")
     params['Lmech_total'] = DescribedItem(0, info="Total mechanical luminosity", ori_units="Msun*pc**2/Myr**3")
-    params['v_mech'] = DescribedItem(0, info="mechanical velocity (winds+SN)", ori_units="pc/Myr")
+    params['v_mech_total'] = DescribedItem(0, info="mechanical velocity (winds+SN)", ori_units="pc/Myr")
     params['pdot_W'] = DescribedItem(0, info="Wind momentum rate", ori_units="Msun*pc/Myr**2")
     params['pdot_SN'] = DescribedItem(0, info="Supernova momentum rate", ori_units="Msun*pc/Myr**2")
     params['pdot_total'] = DescribedItem(0, info="Total momentum rate", ori_units="Msun*pc/Myr**2")

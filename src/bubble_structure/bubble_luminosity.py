@@ -73,6 +73,8 @@ def get_bubbleproperties(params):
     
     print('entering get_bubbleproperties')    
     
+    logger.info(f'mu_atom {params["mu_atom"]}')
+    
     # =============================================================================
     # Step 1: Get necessary parameters, such as inner bubble radius R1 
     #           and pressure Pb
@@ -85,8 +87,8 @@ def get_bubbleproperties(params):
     # initial radius of discontinuity [pc] (inner bubble radius)
     R1 = scipy.optimize.brentq(get_bubbleParams.get_r1, 
                                1e-3 * params['R2'].value, params['R2'].value, 
-                               args=([params['LWind'], params['Eb'], 
-                                      params['vWind'], params['R2'],
+                               args=([params['Lmech_total'], params['Eb'], 
+                                      params['v_mech_total'], params['R2'],
                                       ]))
 
     # The bubble Pbure [cgs - g/cm/s2, or dyn/cm2]
@@ -98,6 +100,8 @@ def get_bubbleproperties(params):
     # update
     params['R1'].value = R1
     params['Pb'].value = Pb
+    
+    logger.debug('R1', R1)
     
     # =============================================================================
     # Step 2: Calculate dMdt, the mass flux from the shell back into the hot region
@@ -556,6 +560,7 @@ def get_bubbleproperties(params):
         )
     
         # Gravitational potential [pc²/Myr²]
+        
         grav_phi = -4 * np.pi * params['G'].value * scipy.integrate.simps(
             r_new * rho_new, x=r_new
         )
