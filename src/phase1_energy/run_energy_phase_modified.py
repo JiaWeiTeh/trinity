@@ -418,10 +418,6 @@ def run_energy(params) -> EnergyPhaseResults:
         # Update loop counter
         loop_count += 1
 
-        # Switch off early phase approximation after first few loops
-        if loop_count > 2:
-            params['EarlyPhaseApproximation'].value = False
-
     # =============================================================================
     # Finalize results
     # =============================================================================
