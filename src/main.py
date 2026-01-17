@@ -60,11 +60,12 @@ def start_expansion(params):
     # Step 0: Preliminary
     # =============================================================================
 
+    # TODO: put this in read_param, and make it depend on param file.
     # Note: Logging is configured in run.py before this function is called.
     # This fallback ensures logging works if main.py is called directly.
     if not logging.getLogger().handlers:
         logging.basicConfig(
-            level=logging.INFO,
+            level=logging.DEBUG,
             format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
         )
 
