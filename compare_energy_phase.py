@@ -19,6 +19,9 @@ Usage:
     # Multiple parameter files (each generates its own PDF):
     python compare_energy_phase.py param/1e7_sfe001_n1e4.param param/1e7_sfe030_n1e4.param --save-pdf
 
+    # Run in nohup/headless environment (no display):
+    nohup python compare_energy_phase.py param/*.param --save-pdf --no-display &
+
 Author: TRINITY Team
 """
 
@@ -31,8 +34,14 @@ import argparse
 import datetime
 import numpy as np
 import scipy
-import matplotlib.pyplot as plt
+import matplotlib
 from pathlib import Path
+
+# Set non-interactive backend if --no-display flag is present (for nohup/headless)
+if '--no-display' in sys.argv:
+    matplotlib.use('Agg')
+
+import matplotlib.pyplot as plt
 
 # =============================================================================
 # Setup paths and imports
@@ -206,7 +215,8 @@ def extract_time_series(snapshots, key):
 
 
 def plot_comparison(snaps_orig, snaps_mod, params_to_plot, output_path=None,
-                    save_pdf=False, save_png=False, base_name="comparison_energy_phase"):
+                    save_pdf=False, save_png=False, base_name="comparison_energy_phase",
+                    show_plot=True):
     """
     Create comparison plots for original vs modified runs.
 
@@ -226,6 +236,8 @@ def plot_comparison(snaps_orig, snaps_mod, params_to_plot, output_path=None,
         Save as PNG
     base_name : str
         Base filename for saved plots (without extension)
+    show_plot : bool
+        Show interactive plot window (set False for headless/nohup)
     """
     # Filter to available parameters
     available_orig = set()
@@ -314,7 +326,8 @@ def plot_comparison(snaps_orig, snaps_mod, params_to_plot, output_path=None,
             fig.savefig(png_path, bbox_inches='tight', dpi=300)
             print(f"Saved: {png_path}")
 
-    plt.show()
+    if show_plot:
+        plt.show()
     plt.close(fig)
 
 
@@ -323,7 +336,7 @@ def plot_comparison(snaps_orig, snaps_mod, params_to_plot, output_path=None,
 # =============================================================================
 
 def run_comparison(param_file, params_to_compare=None, save_pdf=False, save_png=False,
-                   output_name=None):
+                   output_name=None, show_plot=True):
     """
     Run both original and modified energy phase and compare results.
 
@@ -339,6 +352,8 @@ def run_comparison(param_file, params_to_compare=None, save_pdf=False, save_png=
         Save comparison plot as PNG
     output_name : str, optional
         Base name for output file. If None, derived from param_file name.
+    show_plot : bool
+        Show interactive plot window (set False for headless/nohup)
     """
     logger = setup_simple_logging('INFO')
 
@@ -436,7 +451,8 @@ def run_comparison(param_file, params_to_compare=None, save_pdf=False, save_png=
         output_path=output_parent,
         save_pdf=save_pdf,
         save_png=save_png,
-        base_name=output_name
+        base_name=output_name,
+        show_plot=show_plot
     )
 
     # =========================================================================
@@ -466,6 +482,9 @@ Examples:
 
   # Multiple parameter files (each generates its own PDF):
   %(prog)s param/1e7_sfe001_n1e4.param param/1e7_sfe030_n1e4.param --save-pdf
+
+  # Run in nohup/headless environment (no display):
+  nohup %(prog)s param/*.param --save-pdf --no-display &
         """
     )
 
@@ -495,6 +514,12 @@ Examples:
         help='Save comparison plot as PNG'
     )
 
+    parser.add_argument(
+        '--no-display',
+        action='store_true',
+        help='Disable interactive plot display (for nohup/headless environments)'
+    )
+
     args = parser.parse_args()
 
     # Parse custom parameters
@@ -514,6 +539,7 @@ Examples:
             params_to_compare=params_to_compare,
             save_pdf=args.save_pdf,
             save_png=args.save_png,
+            show_plot=not args.no_display,
         )
 
 
