@@ -547,13 +547,13 @@ def get_bubbleproperties(params):
         r_new = r[::-1]
         rho_new = n[::-1] * params['mu_ion'].value  # Mass density [Msun/pc³]
     
-        # Calculate cumulative mass properly
-        m_cumulative = np.zeros_like(r_new)
-        for i in range(len(r_new)):
-            m_cumulative[i] = 4 * np.pi * scipy.integrate.simps(
-                rho_new[:i+1] * r_new[:i+1]**2,
-                x=r_new[:i+1]
-            )
+        # Calculate cumulative mass using O(n) cumulative integration
+        # instead of O(n²) loop with simps
+        # M(r) = ∫[0 to r] 4πr'² ρ(r') dr'
+        integrand = rho_new * r_new**2
+        m_cumulative = 4 * np.pi * scipy.integrate.cumulative_trapezoid(
+            integrand, x=r_new, initial=0
+        )
     
         # Gravitational potential [pc²/Myr²]
         grav_phi = -4 * np.pi * params['G'].value * scipy.integrate.simps(
