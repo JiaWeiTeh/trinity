@@ -148,9 +148,9 @@ def initialize_simulation(params, logger):
     v_mech_arr = np.where(pdot_arr > 0, 2.0 * Lmech_arr / pdot_arr, 0.0)
 
     # Store arrays in params for modified version
-    params['SB99_t'].value = t_arr
-    params['SB99_Lmech'].value = Lmech_arr
-    params['SB99_vmech'].value = v_mech_arr
+    params['SB99_t'] = DescribedItem(t_arr, info="SB99 time array")
+    params['SB99_Lmech'] = DescribedItem(Lmech_arr, info="SB99 Lmech_total array")
+    params['SB99_vmech'] = DescribedItem(v_mech_arr, info="SB99 v_mech_total array")
 
     logger.info("Loading CIE cooling curve...")
     cooling_path = params['path_cooling_CIE'].value
