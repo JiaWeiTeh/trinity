@@ -277,7 +277,8 @@ def plot_comparison(snaps_orig, snaps_mod, params_to_plot, output_paths=None,
 
     # Log-scale parameters
     log_params = {'Eb', 'F_ram', 'F_grav', 'F_ion_out', 'F_ion_in', 'F_rad',
-                  'shell_mass', 'Pb', 'Qi', 'Lbol', 'L_mech_total'}
+                  'shell_mass', 'Pb', 'Qi', 'Lbol', 'L_mech_total',
+                  'bubble_LTotal', 'bubble_Tavg', 'bubble_T_r_Tb', 'shell_massDot'}
 
     for idx, key in enumerate(valid_params):
         ax = axes_flat[idx]
