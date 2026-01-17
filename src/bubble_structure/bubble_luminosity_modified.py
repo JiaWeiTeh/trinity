@@ -320,8 +320,8 @@ def get_bubbleproperties_pure(R2: float, v2: float, Eb: float, t_now: float,
             return params[key]
         return default
 
-    LWind = get_val('LWind')
-    vWind = get_val('vWind')
+    L_mech_total = get_val('L_mech_total')
+    v_mech_total = get_val('v_mech_total')
     gamma_adia = get_val('gamma_adia', 5/3)
 
     # Calculate R1
@@ -329,7 +329,7 @@ def get_bubbleproperties_pure(R2: float, v2: float, Eb: float, t_now: float,
         R1 = scipy.optimize.brentq(
             get_bubbleParams.get_r1,
             1e-3 * R2, R2 * 0.999,
-            args=([LWind, Eb, vWind, R2])
+            args=([L_mech_total, Eb, v_mech_total, R2])
         )
     except ValueError:
         R1 = 0.01 * R2
@@ -351,8 +351,8 @@ def get_bubbleproperties_pure(R2: float, v2: float, Eb: float, t_now: float,
         'cool_beta': get_val('cool_beta'),
         'cool_delta': get_val('cool_delta'),
         'Qi': get_val('Qi'),
-        'LWind': LWind,
-        'vWind': vWind,
+        'L_mech_total': L_mech_total,
+        'v_mech_total': v_mech_total,
     }
 
     # Get initial dMdt guess

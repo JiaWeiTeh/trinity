@@ -53,7 +53,7 @@ def run_energy(params):
     # Step1: Obtain initial feedback values
     # -----------
     
-    [Qi, LWind, Lbol, Ln, Li, vWind, pWindDot, pWindDotDot] = get_currentSB99feedback(t_now, params)
+    [Qi, L_mech_total, Lbol, Ln, Li, v_mech_total, pdot_total, pdotdot_total] = get_currentSB99feedback(t_now, params)
 
     # Identify potentially troublesome timestep; i.e., when change in mechanical luminosity is morre than 300% per Myr
     def Lw_slope(x, y):
@@ -76,7 +76,7 @@ def run_energy(params):
     # initial radius of inner discontinuity [pc]
     R1 = scipy.optimize.brentq(get_bubbleParams.get_r1, 
                        a = 1e-3 * R2, b = R2, 
-                       args=([LWind, Eb, vWind, R2]))
+                       args=([L_mech_total, Eb, v_mech_total, R2]))
     
     # -----------
     # Solve equation for mass and pressure within bubble (r0)
@@ -122,7 +122,7 @@ def run_energy(params):
     
     # record the initial Lw0. This value will be changed in the loop. 
     # old code: Lw_old
-    Lw_previous = LWind
+    Lw_previous = L_mech_total
     
     # idk what is this. has to do with fitting?
     fit_len_max = 13
@@ -258,14 +258,14 @@ def run_energy(params):
             # mechanical luminosity at time t_midpoint (erg)
             Lw_tStop = SB99f['fLw'](tStop_i)[()]
             
-            [Qi, LWind, Lbol, Ln, Li, vWind, pWindDot, pWindDotDot] = get_currentSB99feedback(t_midpoint, params)
+            [Qi, L_mech_total, Lbol, Ln, Li, v_mech_total, pdot_total, pdotdot_total] = get_currentSB99feedback(t_midpoint, params)
     
             # if mechanical luminosity would change too much, run through this while = True loop again with reduced time step
             # check that the difference with previous loop is not more than 0.5% of the original value.
             # if these conditions are not met, no need to calculate bubble - save computation
             # timestep needed to be reduced.
             condition_to_reduce_timestep1 = abs(Lw_tStop - Lw_previous) < (0.005 * Lw_previous)
-            condition_to_reduce_timestep2 = abs(LWind - Lw_previous) < (0.005 * Lw_previous)
+            condition_to_reduce_timestep2 = abs(L_mech_total - Lw_previous) < (0.005 * Lw_previous)
             condition_to_reduce_timestep3 = (dt_real < 2 * dt_Emin)
             
             # print(condition_to_reduce_timestep1, condition_to_reduce_timestep2, condition_to_reduce_timestep3)
@@ -438,19 +438,19 @@ def run_energy(params):
         # bubble energy
         Eb = Eb_arr[-1]
         
-        [Qi, LWind, Lbol, Ln, Li, vWind, pWindDot, pWindDotDot] =  get_currentSB99feedback(t_now, params)
+        [Qi, L_mech_total, Lbol, Ln, Li, v_mech_total, pdot_total, pdotdot_total] =  get_currentSB99feedback(t_now, params)
         
         # if we are going to the momentum phase next, do not have to 
         # calculate the discontinuity for the next loop
         if immediately_to_momentumphase:
             R1 = R2 # why?
             # bubble pressure
-            Pb = get_bubbleParams.pRam(R2, LWind, vWind)
+            Pb = get_bubbleParams.pRam(R2, L_mech_total, v_mech_total)
         # else, if we are continuing this loop and staying in energy
         else:
             R1 = scipy.optimize.brentq(get_bubbleParams.get_r1, 
                            1e-3 * R2, R2, 
-                           args=([LWind, Eb, vWind, R2]))
+                           args=([L_mech_total, Eb, v_mech_total, R2]))
             # bubble pressure
             Pb = get_bubbleParams.bubble_E2P(Eb, R2, R1, params['gamma_adia'].value)
             
@@ -459,7 +459,7 @@ def run_energy(params):
         
         
         # renew constants
-        Lw_previous = LWind
+        Lw_previous = L_mech_total
         
         # if warpfield_params.frag_enabled:
         #     pass

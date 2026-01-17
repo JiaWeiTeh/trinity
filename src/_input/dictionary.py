@@ -465,13 +465,16 @@ class DescribedDict(dict):
         Duplicate guard:
         - If the last saved snapshot has the same t_now or R2, it will not save again.
         """
+        import logging
+        logger = logging.getLogger(__name__)
+
         if self.save_count >= 1 and self.previous_snapshot:
             last = self.previous_snapshot.get(str(self.save_count - 1), {})
             try:
                 t_now = self["t_now"].value
                 r2 = self["R2"].value
                 if ("t_now" in last and t_now == last["t_now"]) or ("R2" in last and r2 == last["R2"]):
-                    print(f"duplicate detected in save_snapshot at t = {t_now}. Snapshot not saved.")
+                    logger.debug(f"Duplicate detected in save_snapshot at t = {t_now}. Snapshot not saved.")
                     return
             except KeyError:
                 # If t_now/R2 not present, skip duplicate detection
@@ -487,19 +490,26 @@ class DescribedDict(dict):
         self.previous_snapshot[str(snap_id)] = clean_dict
         self.save_count += 1
 
+        # Calculate progress toward next flush
+        pending_count = len(self.previous_snapshot)
+        until_flush = self.snapshot_interval - (self.save_count % self.snapshot_interval)
+        if until_flush == self.snapshot_interval:
+            until_flush = 0  # We're about to flush
+
         # Flush periodically
         if self.save_count % self.snapshot_interval == 0:
-            print("flushing dictionary...")
+            logger.info(f"Snapshot #{self.save_count} saved. Flushing {pending_count} snapshots to disk...")
             self.flush()
             try:
-                print("All snapshots flushed to JSON at t = ", self["t_now"].value)
+                logger.info(f"All snapshots flushed to JSON at t = {self['t_now'].value:.6e} Myr")
             except KeyError:
-                print("All snapshots flushed to JSON.")
+                logger.info("All snapshots flushed to JSON.")
         else:
             try:
-                print("Current snapshot saved at t = ", self["t_now"].value)
+                logger.info(f"Snapshot #{self.save_count} saved at t = {self['t_now'].value:.6e} Myr "
+                           f"({pending_count} pending, {until_flush} until flush)")
             except KeyError:
-                print("Current snapshot saved.")
+                logger.info(f"Snapshot #{self.save_count} saved ({pending_count} pending, {until_flush} until flush)")
 
     def flush(self) -> None:
         """
@@ -520,6 +530,9 @@ class DescribedDict(dict):
         - If flush_count == 0 and file exists: overwrite (fresh run)
         - Else: append new snapshots
         """
+        import logging
+        logger = logging.getLogger(__name__)
+
         path2output = self._get_output_dir()
         path2output.mkdir(parents=True, exist_ok=True)
         path2jsonl = path2output / "dictionary.jsonl"
@@ -527,7 +540,7 @@ class DescribedDict(dict):
         # Fresh run: delete existing file
         if self.flush_count == 0 and path2jsonl.exists():
             path2jsonl.unlink()
-            print("Starting fresh run: deleted existing dictionary.jsonl")
+            logger.debug("Starting fresh run: deleted existing dictionary.jsonl")
 
         # Sort snapshot IDs to write in order
         snap_ids = sorted([int(k) for k in self.previous_snapshot.keys()])
@@ -540,7 +553,7 @@ class DescribedDict(dict):
                 json_line = json.dumps(snap_data, cls=NpEncoder)
                 f.write(json_line + "\n")
 
-        print(f"Flushed {len(snap_ids)} snapshot(s) to dictionary.jsonl")
+        logger.debug(f"Flushed {len(snap_ids)} snapshot(s) to dictionary.jsonl")
 
         # Update counters and clear pending buffer
         self.flush_count += 1

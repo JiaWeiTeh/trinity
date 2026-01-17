@@ -421,7 +421,7 @@ def get_interpolation(SB99, ftype='cubic'):
     >>> Lmech_W = SB99f['fLmech_W'](t)
     >>> Lmech_SN = SB99f['fLmech_SN'](t)
     >>> Lmech_total = SB99f['fLmech_total'](t)
-    >>> vWind = 2.0 * Lmech_W / SB99f['fpdot_W'](t)  # Correct formula!
+    >>> v_mech_total = 2.0 * Lmech_W / SB99f['fpdot_W'](t)  # Correct formula!
     """
 
     # Unpack all SB99 values (with separated components)

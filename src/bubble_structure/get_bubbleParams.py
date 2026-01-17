@@ -103,10 +103,10 @@ def beta2Edot(params
     # define terms
     # print('pwdot', pwdot)
     # print('r1', r1)
-    a = np.sqrt(params['pWindDot'].value/2)
+    a = np.sqrt(params['pdot_total'].value/2)
     b = 1.5 * a**2 * params['R1'].value
     d = params['R2'].value**3 - params['R1'].value**3
-    adot = 0.25 * params['pWindDotDot'].value / a
+    adot = 0.25 * params['pdotdot_total'].value / a
     # print('b', b)
     # print('bubble_E', bubble_E)
     e = b / ( b + params['Eb'].value )
@@ -186,8 +186,8 @@ def Edot2beta(bubble_P, r1, bubble_Edot, my_params
 
     """
     t_now = my_params["t_now"]
-    pwdot = my_params["pWindDot"]
-    pwdotdot = my_params["pWindDotDot"]
+    pwdot = my_params["pdot_total"]
+    pwdotdot = my_params["pdotdot_total"]
     r2 = my_params["R2"]
     r2dot = my_params["v2"]
     bubble_E = my_params["Eb"]
@@ -275,7 +275,7 @@ def bubble_P2E(Pb, r2, r1, gamma):
     
     return Eb.to(u.erg)
 
-def pRam(r, Lwind, vWind):
+def pRam(r, Lwind, v_mech_total):
     """
     This function calculates the ram pressure.
     
@@ -287,7 +287,7 @@ def pRam(r, Lwind, vWind):
         Radius of outer edge of bubble.
     Lwind : float
         Mechanical wind luminosity.
-    vWind : float 
+    v_mech_total : float 
         terminal velocity of wind.
 
     Returns 
@@ -297,7 +297,7 @@ def pRam(r, Lwind, vWind):
     # Note:
         # old code: Pram()
         
-    return Lwind / (2 * np.pi * r**2 * vWind)
+    return Lwind / (2 * np.pi * r**2 * v_mech_total)
 
 
 # =============================================================================

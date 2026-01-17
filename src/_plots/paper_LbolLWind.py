@@ -8,7 +8,7 @@ from pathlib import Path
 from matplotlib.lines import Line2D
 import matplotlib.transforms as mtransforms
 
-print("...plotting Qi(or Li) vs LWind with ratio on twin axis")
+print("...plotting Qi(or Li) vs L_mech_total with ratio on twin axis")
 
 # ---------------- configuration ----------------
 mCloud_list = ["1e5", "1e7", "1e8"]                 # rows
@@ -23,14 +23,14 @@ SMOOTH_WINDOW = None      # e.g. 7 or 21; None/1 disables
 SMOOTH_MODE   = "edge"
 
 # ---- WHAT TO PLOT ----
-PLOT_QI = False            # True: plot Qi vs LWind; False: plot Li vs LWind
+PLOT_QI = False            # True: plot Qi vs L_mech_total; False: plot Li vs L_mech_total
 QI_PREFER_JSON = True     # if True and JSON has "Qi", use it; else estimate from Li
 
 # If estimating Qi from Li [erg/s], choose mean ionizing photon energy:
 MEAN_ION_PHOTON_ENERGY_EV = 20.0   # typical assumption (SED-dependent)
 
 # Scales
-LOG_LEFT_AXIS  = True     # log y for Li/LWind or Qi/LWind (if positive)
+LOG_LEFT_AXIS  = True     # log y for Li/L_mech_total or Qi/L_mech_total (if positive)
 LOG_RATIO_AXIS = False    # usually keep linear
 
 # colors
@@ -70,7 +70,7 @@ def ev_to_erg(ev):
 
 
 def load_run(json_path: Path):
-    """Load t, phase, Li, LWind, (optional) Qi, and R2/rCloud for breakout line."""
+    """Load t, phase, Li, L_mech_total, (optional) Qi, and R2/rCloud for breakout line."""
     with json_path.open("r") as f:
         data = json.load(f)
 
@@ -81,7 +81,7 @@ def load_run(json_path: Path):
     phase = np.array([s.get("current_phase", "") for s in snaps])
 
     Li    = np.array([s.get("Li", np.nan)    for s in snaps], dtype=float)
-    LWind = np.array([s.get("LWind", np.nan) for s in snaps], dtype=float)
+    L_mech_total = np.array([s.get("L_mech_total", np.nan) for s in snaps], dtype=float)
 
     # Qi may or may not exist
     Qi = np.array([s.get("Qi", np.nan) for s in snaps], dtype=float)
@@ -94,9 +94,9 @@ def load_run(json_path: Path):
     if np.any(np.diff(t) < 0):
         order = np.argsort(t)
         t, phase = t[order], phase[order]
-        Li, LWind, Qi, R2 = Li[order], LWind[order], Qi[order], R2[order]
+        Li, L_mech_total, Qi, R2 = Li[order], L_mech_total[order], Qi[order], R2[order]
 
-    return t, phase, Li, LWind, Qi, R2, rcloud
+    return t, phase, Li, L_mech_total, Qi, R2, rcloud
 
 
 def add_phase_and_cloud_markers(ax, t, phase, R2, rcloud, label_pad_points=4):
@@ -150,10 +150,10 @@ def add_phase_and_cloud_markers(ax, t, phase, R2, rcloud, label_pad_points=4):
             )
 
 
-def plot_panel(ax, t, phase, Li, LWind, Qi, R2, rcloud):
+def plot_panel(ax, t, phase, Li, L_mech_total, Qi, R2, rcloud):
     # smoothing
     Li_s    = smooth_1d(Li,    SMOOTH_WINDOW, mode=SMOOTH_MODE)
-    LWind_s = smooth_1d(LWind, SMOOTH_WINDOW, mode=SMOOTH_MODE)
+    L_mech_s = smooth_1d(L_mech_total, SMOOTH_WINDOW, mode=SMOOTH_MODE)
     Qi_s    = smooth_1d(Qi,    SMOOTH_WINDOW, mode=SMOOTH_MODE)
     R2_s    = smooth_1d(R2,    SMOOTH_WINDOW, mode=SMOOTH_MODE)
 
@@ -181,19 +181,19 @@ def plot_panel(ax, t, phase, Li, LWind, Qi, R2, rcloud):
 
     # left axis lines
     ax.plot(t, y_main,  lw=1.8, color=main_color, label=y_label, zorder=3)
-    ax.plot(t, LWind_s, lw=1.8, color=C_LWIND,   label=r"$L_{\rm Wind}$", zorder=3)
+    ax.plot(t, L_mech_s, lw=1.8, color=C_LWIND,   label=r"$L_{\rm Wind}$", zorder=3)
 
     ax.set_xlim(t.min(), t.max())
 
     if LOG_LEFT_AXIS:
-        y_all = np.concatenate([y_main[np.isfinite(y_main)], LWind_s[np.isfinite(LWind_s)]])
+        y_all = np.concatenate([y_main[np.isfinite(y_main)], L_mech_s[np.isfinite(L_mech_s)]])
         if y_all.size and np.nanmin(y_all) > 0:
             ax.set_yscale("log")
 
     # right axis: ratio
     axr = ax.twinx()
     with np.errstate(divide="ignore", invalid="ignore"):
-        ratio = y_main / LWind_s
+        ratio = y_main / L_mech_s
     ratio = np.where(np.isfinite(ratio), ratio, np.nan)
 
     axr.plot(t, ratio, lw=1.5, color=C_RATIO, ls="--", alpha=0.9,
@@ -248,8 +248,8 @@ for ndens in ndens_list:
                 continue
 
             try:
-                t, phase, Li, LWind, Qi, R2, rcloud = load_run(json_path)
-                axr = plot_panel(ax, t, phase, Li, LWind, Qi, R2, rcloud)
+                t, phase, Li, L_mech_total, Qi, R2, rcloud = load_run(json_path)
+                axr = plot_panel(ax, t, phase, Li, L_mech_total, Qi, R2, rcloud)
             except Exception as e:
                 print(f"Error in {run_name}: {e}")
                 ax.text(0.5, 0.5, "error", ha="center", va="center", transform=ax.transAxes)

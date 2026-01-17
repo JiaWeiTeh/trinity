@@ -221,9 +221,9 @@ def ODE_equations(t, y, params):
         # convert beta and delta to dE/dt and dT/dt.
         R1 = scipy.optimize.brentq(get_bubbleParams.get_r1, 
                        1e-3 * params_dict['R2'].value, params_dict['R2'].value, 
-                       args=([params_dict['LWind'].value, 
+                       args=([params_dict['L_mech_total'].value, 
                               params_dict['Eb'].value, 
-                              params_dict['vWind'].value,
+                              params_dict['v_mech_total'].value,
                               params_dict['R2'].value,
                               ]))
     
