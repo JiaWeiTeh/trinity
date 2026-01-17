@@ -10,8 +10,8 @@ Key improvements:
 1. Pre-allocated result arrays (fixes O(n²) concatenation)
 2. scipy.integrate.solve_ivp(LSODA) for adaptive ODE integration
 3. Segment-based integration with bubble_luminosity calls between segments
-4. Pure ODE functions (no dictionary mutations during integration)
-5. Event detection for termination conditions
+4. ODE reads params but does NOT mutate during integration
+5. update_params_after_segment() called after each successful segment
 
 State vector: y = [R2, v2, Eb] (3 variables)
 Note: T0 is NOT integrated - it's calculated externally via bubble_luminosity.
@@ -36,13 +36,11 @@ from src._input.dictionary import updateDict
 import src._functions.unit_conversions as cvt
 from src.sb99.update_feedback import get_currentSB99feedback
 
-# Import pure ODE functions
+# Import ODE functions
 from src.phase1_energy.energy_phase_ODEs_modified import (
-    StaticODEParams,
     get_ODE_Edot_pure,
-    extract_static_params,
+    update_params_after_segment,
     R1Cache,
-    velocity_floor_event,
     radius_exceeds_cloud_event,
 )
 
@@ -54,10 +52,10 @@ logger = logging.getLogger(__name__)
 # =============================================================================
 
 TFINAL_ENERGY_PHASE = 3e-3  # Myr - max duration (~3000 years)
-DT_SEGMENT = 1e-5  # Myr - segment duration for bubble_luminosity updates
-DT_MIN_SEGMENT = 1e-7  # Myr - minimum segment duration
+DT_SEGMENT = 1e-6  # Myr - short segments to keep params approximately constant
+DT_MIN_SEGMENT = 1e-7  # Myr - minimum segment duration for first step
 COOLING_UPDATE_INTERVAL = 5e-2  # Myr - recalculate cooling every 50k years
-MAX_SEGMENTS = 1000  # Maximum number of segments to prevent infinite loops
+MAX_SEGMENTS = 10000  # Maximum number of segments to prevent infinite loops
 
 
 # =============================================================================
@@ -141,6 +139,8 @@ def run_energy(params) -> EnergyPhaseResults:
     - Adaptive ODE integration via scipy.integrate.solve_ivp(LSODA)
     - Segment-based integration for updating T0, L_bubble between segments
     - Pre-allocated result arrays for efficiency
+    - ODE reads params but does NOT mutate during integration
+    - update_params_after_segment() called after each successful segment
 
     Parameters
     ----------
@@ -303,17 +303,11 @@ def run_energy(params) -> EnergyPhaseResults:
         R1 = r1_cache.update(t_now, R2, Eb, LWind_now, vWind_now)
         Pb = get_bubbleParams.bubble_E2P(Eb, R2, R1, params['gamma_adia'].value)
 
-        # Update params
+        # Update params for this segment (these are read by ODE but not modified)
         params['LWind'].value = LWind_now
         params['vWind'].value = vWind_now
         params['R1'].value = R1
         params['Pb'].value = Pb
-
-        # =============================================================================
-        # Build static params for this segment
-        # =============================================================================
-
-        static = extract_static_params(params, R1_cached=R1)
 
         # =============================================================================
         # Define segment time span
@@ -327,37 +321,28 @@ def run_energy(params) -> EnergyPhaseResults:
         t_segment_end = min(t_now + dt_segment, tfinal)
         t_span = (t_now, t_segment_end)
 
-        # Dense output for smooth results
-        t_eval = np.linspace(t_now, t_segment_end, 10)
-
         # =============================================================================
         # Integrate segment with solve_ivp
         # =============================================================================
 
         y0 = np.array([R2, v2, Eb])
 
-        # Set up events
-        def vel_event(t, y):
-            return velocity_floor_event(t, y, static)
-        vel_event.terminal = True
-        vel_event.direction = -1
-
+        # Set up event for cloud boundary
         def cloud_event(t, y):
-            return radius_exceeds_cloud_event(t, y, static)
+            return radius_exceeds_cloud_event(t, y, params)
         cloud_event.terminal = False
         cloud_event.direction = -1
 
         try:
             sol = scipy.integrate.solve_ivp(
-                fun=lambda t, y: get_ODE_Edot_pure(t, y, static),
+                fun=lambda t, y: get_ODE_Edot_pure(t, y, params, R1),
                 t_span=t_span,
                 y0=y0,
                 method='LSODA',
-                t_eval=t_eval,
-                events=[vel_event, cloud_event],
+                events=[cloud_event],
                 rtol=1e-6,
                 atol=1e-9,
-                max_step=dt_segment / 2,
+                max_step=dt_segment,
             )
         except Exception as e:
             logger.error(f"solve_ivp failed at t={t_now:.6e}: {e}")
@@ -382,32 +367,27 @@ def run_energy(params) -> EnergyPhaseResults:
         t_now = float(sol.t[-1])
 
         # Check for events
-        if sol.t_events[0].size > 0:  # velocity floor event
-            logger.info(f"Velocity floor reached at t={sol.t_events[0][0]:.6e}")
-            results.termination_reason = "velocity_floor"
-            continueWeaver = False
-
-        if sol.t_events[1].size > 0:  # cloud boundary event
-            logger.info(f"Shell reached cloud boundary at t={sol.t_events[1][0]:.6e}")
+        if len(sol.t_events) > 0 and sol.t_events[0].size > 0:
+            logger.info(f"Shell reached cloud boundary at t={sol.t_events[0][0]:.6e}")
 
         # =============================================================================
-        # Update shell mass and store results
+        # Update params after successful segment
         # =============================================================================
 
-        mShell = mass_profile.get_mass_profile(R2, params, return_mdot=False)
+        # This is the ONLY place where params is mutated during integration
+        update_params_after_segment(t_now, R2, v2, Eb, params, R1)
+
+        # Get values for results storage
+        mShell = params['shell_mass'].value
+        Pb = params['Pb'].value
 
         # Store final point of this segment
         results.append(t_now, R2, v2, Eb, T0, R1, mShell, Pb)
 
         # =============================================================================
-        # Update params for next segment
+        # Update history arrays
         # =============================================================================
 
-        updateDict(params,
-                   ['R1', 'R2', 'v2', 'Eb', 't_now', 'Pb', 'shell_mass'],
-                   [R1, R2, v2, Eb, t_now, Pb, mShell])
-
-        # Update history arrays (using pre-allocated storage if available)
         params['array_t_now'].value = np.concatenate([params['array_t_now'].value, [t_now]])
         params['array_R2'].value = np.concatenate([params['array_R2'].value, [R2]])
         params['array_R1'].value = np.concatenate([params['array_R1'].value, [R1]])
