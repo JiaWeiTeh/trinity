@@ -8,7 +8,8 @@ momentum-driven expansion, using scipy.integrate.solve_ivp.
 
 Key features:
 - Energy decays on sound-crossing timescale: dE/dt = -Eb / t_sound
-- Uses pure ODE functions for rd, vd
+- Uses ODE function that reads params but does NOT mutate during integration
+- update_params_after_segment() called after each successful segment
 - No T0 evolution (dT/dt = 0)
 
 @author: TRINITY Team (refactored for solve_ivp)
@@ -27,13 +28,15 @@ import src.cloud_properties.mass_profile as mass_profile
 import src._functions.unit_conversions as cvt
 from src.sb99.update_feedback import get_currentSB99feedback
 
-# Import pure ODE functions
+# Import ODE functions and helpers
 from src.phase1_energy.energy_phase_ODEs_modified import (
-    StaticODEParams,
     get_ODE_Edot_pure,
-    extract_static_params,
+    update_params_after_segment,
     R1Cache,
+    _get_mass_from_profile,
+    _scalar,
 )
+import src.bubble_structure.get_bubbleParams as get_bubbleParams
 
 logger = logging.getLogger(__name__)
 
@@ -66,12 +69,13 @@ class TransitionPhaseResults:
 # Pure ODE for Transition Phase
 # =============================================================================
 
-def get_ODE_transition_pure(t: float, y: np.ndarray, static: StaticODEParams,
+def get_ODE_transition_pure(t: float, y: np.ndarray, params, R1_cached: float,
                             c_sound: float) -> np.ndarray:
     """
-    Pure ODE function for transition phase.
+    ODE function for transition phase.
 
     Energy decays on sound-crossing timescale.
+    Reads params but does NOT mutate during integration.
 
     Parameters
     ----------
@@ -79,8 +83,10 @@ def get_ODE_transition_pure(t: float, y: np.ndarray, static: StaticODEParams,
         Time [Myr]
     y : ndarray
         State vector [R2, v2, Eb]
-    static : StaticODEParams
-        Immutable parameters
+    params : dict
+        Parameter dictionary (READ ONLY during ODE)
+    R1_cached : float
+        Cached inner bubble radius [pc]
     c_sound : float
         Sound speed [pc/Myr]
 
@@ -92,7 +98,7 @@ def get_ODE_transition_pure(t: float, y: np.ndarray, static: StaticODEParams,
     R2, v2, Eb = y
 
     # Get rd, vd from energy ODE
-    dydt_energy = get_ODE_Edot_pure(t, y, static)
+    dydt_energy = get_ODE_Edot_pure(t, y, params, R1_cached)
     rd = dydt_energy[0]  # = v2
     vd = dydt_energy[1]  # acceleration
 
@@ -202,17 +208,15 @@ def run_phase_transition(params) -> TransitionPhaseResults:
         params['R1'].value = R1
 
         # ---------------------------------------------------------------------
-        # Build static params and integrate
+        # Integrate segment
         # ---------------------------------------------------------------------
-        static = extract_static_params(params, R1_cached=R1)
-
         t_segment_end = min(t_now + DT_SEGMENT, tmax)
         t_span = (t_now, t_segment_end)
         y0 = np.array([R2, v2, Eb])
 
         try:
             sol = scipy.integrate.solve_ivp(
-                fun=lambda t, y: get_ODE_transition_pure(t, y, static, c_sound),
+                fun=lambda t, y: get_ODE_transition_pure(t, y, params, R1, c_sound),
                 t_span=t_span,
                 y0=y0,
                 method='LSODA',
@@ -243,6 +247,11 @@ def run_phase_transition(params) -> TransitionPhaseResults:
         Eb_results.append(Eb)
 
         # ---------------------------------------------------------------------
+        # Update params after successful segment
+        # ---------------------------------------------------------------------
+        update_params_after_segment(t_now, R2, v2, Eb, params, R1)
+
+        # ---------------------------------------------------------------------
         # Update history arrays
         # ---------------------------------------------------------------------
         params['array_t_now'].value = np.concatenate([params['array_t_now'].value, [t_now]])
@@ -251,9 +260,7 @@ def run_phase_transition(params) -> TransitionPhaseResults:
         params['array_v2'].value = np.concatenate([params['array_v2'].value, [v2]])
         params['array_T0'].value = np.concatenate([params['array_T0'].value, [T0]])
 
-        mShell, _ = mass_profile.get_mass_profile(R2, params, return_mdot=True, rdot_arr=v2)
-        if hasattr(mShell, '__len__') and len(mShell) == 1:
-            mShell = mShell[0]
+        mShell = params['shell_mass'].value
         params['array_mShell'].value = np.concatenate([params['array_mShell'].value, [mShell]])
 
         params.save_snapshot()
@@ -307,7 +314,3 @@ def run_phase_transition(params) -> TransitionPhaseResults:
         termination_reason=termination_reason,
         final_time=t_now,
     )
-
-
-# Import for R1 calculation (moved here to avoid circular import)
-import src.bubble_structure.get_bubbleParams as get_bubbleParams
