@@ -325,7 +325,7 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         params['array_v2'].value = np.concatenate([params['array_v2'].value, [v2]])
         params['array_T0'].value = np.concatenate([params['array_T0'].value, [T0]])
 
-        mShell, mShell_dot = mass_profile.get_mass_profile(R2, params, return_mdot=True, rdot_arr=v2)
+        mShell, mShell_dot = mass_profile.get_mass_profile(R2, params, return_mdot=True, rdot=v2)
         if hasattr(mShell, '__len__') and len(mShell) == 1:
             mShell = mShell[0]
         params['array_mShell'].value = np.concatenate([params['array_mShell'].value, [mShell]])
