@@ -28,7 +28,7 @@ from src._output.simulation_end import write_simulation_end
 
 
 
-# # from src.phase1_energy import run_energy_phase
+from src.phase1_energy import run_energy_phase
 # from src.phase1b_energy_implicit import run_energy_implicit_phase
 # from src.phase1c_transition import run_transition_phase
 # from src.phase2_momentum import run_momentum_phase
