@@ -68,8 +68,8 @@ from src.phase1_energy import run_energy_phase_modified
 
 DEFAULT_COMPARE_PARAMS = [
     'R2', 'v2', 'Eb', 'R1',
-    'F_ram', 'F_grav', 'F_ion_out', 'F_ion_in', 'F_rad',
-    'shell_mass', 'Pb',
+    'F_ram', 'F_grav', 'F_ion_out', 'F_rad',
+    'shell_mass', 'Pb', 'L_mech_wind', 'shell_massDot', 'pdotdot_total',
 ]
 
 # =============================================================================
