@@ -39,22 +39,28 @@ TIMESTEPS_PER_LOOP = 30  # Timesteps per outer loop
 
 def run_energy(params):
     
+    # This function runs the energy-driven phase (Phase 1), implementing
+    # the Weaver+77 bubble expansion model. 
+    # This phase is run until the first ~3000 year. Then it should go into implicit phase
+    # since cooling becomes important. 
+    
+    # This phase includes bubble structure calculation, shell structure calculation.
+    # This function solves ODEs to calculate bubble expansion. 
+    
     # TODO: add CLOUDY
-    # the energy-driven phase
-
 
     # =============================================================================
     # Initialization
     # =============================================================================
-    
-    t_now = params['t_now'].value
-    R2 = params['R2'].value
-    v2 = params['v2'].value
-    Eb = params['Eb'].value
-    T0 = params['T0'].value
-    rCloud = params['rCloud'].value
-    t_neu = params['TShell_neu'].value
-    t_ion = params['TShell_ion'].value
+    # here we grab parameter from the main dictioanry
+    t_now = params['t_now'].value #time
+    R2 = params['R2'].value #outer bubble radius
+    v2 = params['v2'].value #bubble velocity
+    Eb = params['Eb'].value #bubble energy
+    T0 = params['T0'].value #temperature at xi_Tb (T_rgoal in bubble_luminosity)
+    rCloud = params['rCloud'].value #cloud radius
+    t_neu = params['TShell_neu'].value #temperature neutral
+    t_ion = params['TShell_ion'].value #temperature ionised
     
     # =============================================================================
     # Now, we begin Energy-driven calculations (Phase 1)
@@ -62,8 +68,9 @@ def run_energy(params):
     # -----------
     # Step1: Obtain initial feedback values
     # -----------
+    # we take starburst99 feedback values here
     [t, Qi, Li, Ln, Lbol, Lmech_W, Lmech_SN, Lmech_total, pdot_W, pdot_SN, pdot_total, pdotdot_total, v_mech_total] = get_currentSB99feedback(t_now, params)
-    
+    # update them to dictionary.
     updateDict(params, ['Qi', 'Li', 'Ln', 'Lbol', 'Lmech_W', 'Lmech_SN', 'Lmech_total', 'pdot_W', 'pdot_SN', 'pdot_total', 'pdotdot_total', 'v_mech_total'],
                [Qi, Li, Ln, Lbol, Lmech_W, Lmech_SN, Lmech_total, pdot_W, pdot_SN, pdot_total, pdotdot_total, v_mech_total])
     
@@ -95,41 +102,25 @@ def run_energy(params):
     params['Pb'].value = Pb
     params['R1'].value = R1
 
-    
-    # CONTINUE here
-    # Lmech_total = params['Lmech_total'].value
-    # v_mech_total = params['v_mech_total'].value
-    # pdot_total = params['pdot_total'].value
-    # pdotdot_total = params['pdotdot_total'].value
-    
-    
-    # old code: mom_phase
-    immediately_to_momentumphase = False
-    # record the initial Lw0. This value will be changed in the loop. 
-    # old code: Lw_old
     Lw_previous = Lmech_total
-
-
+    # initialisation
     continueWeaver = True
     # how many times had the main loop being ran?
     loop_count = 0
 
-    # Lets make this phase at max 16 Myr according to Eq4, Rahner thesis pg44.
     # actually lets make it less than 1e4 yr (sedov taylor cooling time i think)
     # in previous code this is 3e-3 (~3000 yr)
     # Myr
-    # tfinal = 1e-2
+    # What is the maximum time this phase can run?
     tfinal = 3e-3
-    
-    # dt_min = 1e-6
+    # What is the smallest timestep?
     dt_min = 1e-6
 
-
-# =============================================================================
-#   this energy phase persists if:
-#       1) radius is less than cloud radius
-#       2) total time change is less than 1e-5/-4 Myr (~1e4yr is Sedov Taylor cooling).
-# =============================================================================
+    # =============================================================================
+    #   this energy phase persists if:
+    #       1) radius is less than cloud radius
+    #       2) total time change is less than 1e-5/-4 Myr (~1e4yr is Sedov Taylor cooling).
+    # =============================================================================
 
     while R2 < rCloud and\
         (tfinal - t_now) > 1e-4 and\
@@ -153,7 +144,7 @@ def run_energy(params):
         
         # calculate bubble structure and shell structure?
         # no need to calculate them at very early times, since we say that no bubble or shell is being
-        # created at this time. Old code: structure_switch
+        # created at this time.  
         
         # an initially small dt value if it is the first loop.
         calculate_bubble_shell = loop_count > 0
@@ -178,7 +169,7 @@ def run_energy(params):
         
         if calculate_bubble_shell:
             
-            
+            print(params)
             _ = bubble_luminosity.get_bubbleproperties(params)
             
             # update this here instead of in bubble_luminosity so that 
@@ -210,45 +201,9 @@ def run_energy(params):
         # call ODE solver to solve for equation of motion (r, v (rdot), Eb). 
         # =============================================================================
         
-        
-        
-        
-        
-        
-            # # METHOD 1 ODE solver
-            
-            # # radiation pressure coupled to the shell
-            # # f_absorbed_ion calculated from shell_structure.
-            # # F_rad = f_absorbed_ion * Lbol / params['c_au'].value
-            
-            # y0 = [R2, v2, Eb, T0]
-            
-            # # call ODE solver
-            # psoln = scipy.integrate.odeint(energy_phase_ODEs.get_ODE_Edot, y0, t_arr, args=(params,))
-            
-            # # if calculate_bubble_shell:
-            # #     import sys
-            # #     sys.exit()
-            
-            # # [pc]
-            # r_arr = psoln[:,0] 
-            # v_arr = psoln[:, 1]
-            # Eb_arr = psoln[:, 2] 
-
-
-        # METHOD 2 own equations, this solves problem with dictionary
-        
-        
         r_arr = []
         v_arr = []
         Eb_arr = []
-        
-        
-        print('R2', R2)
-        print('v2', v2)
-        print('Eb', Eb)
-        print('T0', T0)
-        
         
         for ii, time in enumerate(t_arr):
             
@@ -280,14 +235,6 @@ def run_energy(params):
             if ii == 10 and params['EarlyPhaseApproximation'].value == True:
                 params['EarlyPhaseApproximation'].value = False
                 print('\n\n\n\n\n\n\nswitch to no approximation\n\n\n\n\n\n')
-            
-            # if ii == 20:
-            #     import sys
-            #     sys.exit('loop test done')
-            
-        
-        # print(v_arr)
-
             
         # =============================================================================
         # Here, we perform checks to see if we should continue the branch (i.e., increasing steps)
@@ -336,20 +283,12 @@ def run_energy(params):
         logger.info(f'Phase values: t: {t_now}, R2: {R2}, v2: {v2}, Eb: {Eb}, T0: {T0}')
         
         
-        # -- new, record only once
-        params['array_t_now'].value = np.concatenate([params['array_t_now'].value, [t_now]])
-        params['array_R2'].value = np.concatenate([params['array_R2'].value, [R2]])
-        params['array_R1'].value = np.concatenate([params['array_R1'].value, [params['R1'].value]])
-        params['array_v2'].value = np.concatenate([params['array_v2'].value, [v2]])
-        params['array_T0'].value = np.concatenate([params['array_T0'].value, [T0]])
         
         # get shell mass
         mShell_arr = mass_profile.get_mass_profile(r_arr, params,
                                                     return_mdot = False)
         
         Msh0 = mShell_arr[-1] # shell mass
-        
-        params['array_mShell'].value = np.concatenate([params['array_mShell'].value, [Msh0]])
         
         # -- end new
         
@@ -384,31 +323,9 @@ def run_energy(params):
                     ['R1', 'R2', 'v2', 'Eb', 't_now', 'Pb', 'shell_mass'], 
                     [R1, R2, v2, Eb, t_now, Pb, Msh0])
             
-        # renew constants
-        # Lw_previous = Lmech_total
-        
-        
         # update loop counter
         loop_count += 1
         
-        # print(params)
-        
-        # print('t_now', t_now)
-        # print('R2', R2)
-        # print('v2 array', v2)
-        
-        # if loop_count > 1:
-        #     import sys
-        #     sys.exit('energy loop check')
-        
-        # import sys
-        # sys.exit('energy loop check')
-        
-        pass
-
-    # import sys
-    # sys.exit('completed energy early.')
-
     return 
     
 

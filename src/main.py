@@ -209,8 +209,8 @@ def run_expansion(params):
 
     phase1a_starttime = datetime.datetime.now()
 
-    # run_energy_phase.run_energy(params)
-    run_energy_phase_modified.run_energy(params)
+    run_energy_phase.run_energy(params)
+    # run_energy_phase_modified.run_energy(params)
 
     phase1a_endtime = datetime.datetime.now()
     phase1a_elapsed = phase1a_endtime - phase1a_starttime

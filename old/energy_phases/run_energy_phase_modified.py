@@ -211,11 +211,6 @@ def run_energy(params) -> EnergyPhaseResults:
     results.append(t_now, R2, v2, Eb, T0, R1, Msh0, Pb)
 
     # =============================================================================
-    # Build feedback interpolators
-    # =============================================================================
-# remove here
-
-    # =============================================================================
     # Main integration loop (segment-based)
     # =============================================================================
 
@@ -272,6 +267,7 @@ def run_energy(params) -> EnergyPhaseResults:
             params['Eb'].value = Eb
 
             # Calculate bubble properties using pure function
+            print(params)
             bubble_props = bubble_luminosity_modified.get_bubbleproperties_pure(
                 R2=R2,
                 v2=v2,
@@ -310,11 +306,11 @@ def run_energy(params) -> EnergyPhaseResults:
         # =============================================================================
         # Update R1 cache and get current feedback
         # =============================================================================
-# update here
-        [t, Qi, Li, Ln, Lbol, Lmech_W, Lmech_SN, Lmech_total, pdot_W, pdot_SN, pdot_total, pdotdot_total, v_mech_total] = get_currentSB99feedback(t_now, params)
+        # update here
+        feedback_now = get_currentSB99feedback(t_now, params)
 
-        L_mech_now = float(L_mech_interp(t_now))
-        v_mech_now = float(v_mech_interp(t_now))
+        L_mech_now = float(feedback_now.Lmech_total)
+        v_mech_now = float(feedback_now.v_mech_total)
 
         # Update R1 for this segment
         R1 = r1_cache.update(t_now, R2, Eb, L_mech_now, v_mech_now)
@@ -407,17 +403,6 @@ def run_energy(params) -> EnergyPhaseResults:
 
         # Store final point of this segment
         results.append(t_now, R2, v2, Eb, T0, R1, mShell, Pb)
-
-        # =============================================================================
-        # Update history arrays
-        # =============================================================================
-
-        params['array_t_now'].value = np.concatenate([params['array_t_now'].value, [t_now]])
-        params['array_R2'].value = np.concatenate([params['array_R2'].value, [R2]])
-        params['array_R1'].value = np.concatenate([params['array_R1'].value, [R1]])
-        params['array_v2'].value = np.concatenate([params['array_v2'].value, [v2]])
-        params['array_T0'].value = np.concatenate([params['array_T0'].value, [T0]])
-        params['array_mShell'].value = np.concatenate([params['array_mShell'].value, [mShell]])
 
         # Save snapshot
         params.save_snapshot()

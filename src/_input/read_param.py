@@ -401,13 +401,6 @@ def read_param(path2file, write_summary=True):
     
     # Arrays for shell mass interpolation
     params['t_next'] = DescribedItem(0, info="Next time for mShell interpolation", ori_units="Myr", exclude_from_snapshot=False)
-    params['array_t_now'] = DescribedItem([], info="Time array for mShell interpolation", ori_units="Myr", exclude_from_snapshot=False)
-    params['array_R2'] = DescribedItem([], info="R2 array for mShell interpolation", ori_units="pc", exclude_from_snapshot=False)
-    params['array_R1'] = DescribedItem([], info="R1 array for mShell interpolation", ori_units="pc", exclude_from_snapshot=False)
-    params['array_v2'] = DescribedItem([], info="v2 array for mShell interpolation", ori_units="pc/Myr", exclude_from_snapshot=False)
-    params['array_T0'] = DescribedItem([], info="T0 array for mShell interpolation", ori_units="K", exclude_from_snapshot=False)
-    params['array_mShell'] = DescribedItem([], info="Shell mass array", ori_units="Msun", exclude_from_snapshot=False)
-    params['array_mShellDot'] = DescribedItem([], info="Shell mass rate array", ori_units="Msun/Myr", exclude_from_snapshot=False)
     
     # Cloud and shell geometry
     params['rCloud'] = DescribedItem(0, info="Cloud radius", ori_units="pc")
