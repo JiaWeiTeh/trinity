@@ -358,8 +358,9 @@ def get_ODE_Edot_pure(t: float, y: np.ndarray, params, R1_cached: float) -> np.n
     vd = (FOUR_PI * R2**2 * (press_bubble - press_HII_in + press_HII_out)
           - mShell_dot * v2 - F_grav + F_rad) / mShell
 
-    # Note: EarlyPhaseApproximation removed - _get_mShell_dot_with_activation
-    # already handles early-time singularity via smooth ramp-up
+    # EarlyPhaseApproximation: override vd in early phase (original behavior)
+    if params['EarlyPhaseApproximation'].value:
+        vd = -1e8
 
     # dE/dt = Lmech_total - L_bubble - P*dV/dt (energy balance)
     # Note: L_leak = 0 for now (no fragmentation)
