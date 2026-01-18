@@ -27,7 +27,7 @@ import scipy.optimize
 import logging
 
 import src.bubble_structure.get_bubbleParams as get_bubbleParams
-import src.shell_structure.shell_structure as shell_structure
+import src.shell_structure.shell_structure_modified as shell_structure_modified
 import src.cloud_properties.mass_profile as mass_profile
 import src.phase1_energy.energy_phase_ODEs_modified as energy_phase_ODEs_modified
 import src.bubble_structure.bubble_luminosity_modified as bubble_luminosity_modified
@@ -164,8 +164,23 @@ def run_energy(params):
             Tavg = params['bubble_Tavg'].value
 
             # Compute shell structure
-            shell_structure.shell_structure(params)
-            logger.info('shell complete')
+            shell_data = shell_structure_modified.shell_structure_pure(params)
+            # Update params with shell properties
+            params['shell_n0'].value = shell_data.shell_n0
+            params['rShell'].value = shell_data.rShell
+            params['isDissolved'].value = shell_data.isDissolved
+            params['shell_fAbsorbedIon'].value = shell_data.shell_fAbsorbedIon
+            params['shell_fAbsorbedNeu'].value = shell_data.shell_fAbsorbedNeu
+            params['shell_fAbsorbedWeightedTotal'].value = shell_data.shell_fAbsorbedWeightedTotal
+            params['shell_fIonisedDust'].value = shell_data.shell_fIonisedDust
+            params['shell_thickness'].value = shell_data.shell_thickness
+            params['shell_nMax'].value = shell_data.shell_nMax
+            params['shell_tauKappaRatio'].value = shell_data.shell_tauKappaRatio
+            params['shell_F_rad'].value = shell_data.shell_F_rad
+            params['shell_grav_r'].value = shell_data.shell_grav_r
+            params['shell_grav_phi'].value = shell_data.shell_grav_phi
+            params['shell_grav_force_m'].value = shell_data.shell_grav_force_m
+            logger.info('shell complete (modified)')
         else:
             Tavg = T0
 
