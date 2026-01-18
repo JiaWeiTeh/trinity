@@ -69,10 +69,10 @@ def run_energy(params):
     # Step1: Obtain initial feedback values
     # -----------
     # we take starburst99 feedback values here
-    [t, Qi, Li, Ln, Lbol, Lmech_W, Lmech_SN, Lmech_total, pdot_W, pdot_SN, pdot_total, pdotdot_total, v_mech_total] = get_currentSB99feedback(t_now, params)
+    # [t, Qi, Li, Ln, Lbol, Lmech_W, Lmech_SN, Lmech_total, pdot_W, pdot_SN, pdot_total, pdotdot_total, v_mech_total] = get_currentSB99feedback(t_now, params)
+    feedback = get_currentSB99feedback(t_now, params)
     # update them to dictionary.
-    updateDict(params, ['Qi', 'Li', 'Ln', 'Lbol', 'Lmech_W', 'Lmech_SN', 'Lmech_total', 'pdot_W', 'pdot_SN', 'pdot_total', 'pdotdot_total', 'v_mech_total'],
-               [Qi, Li, Ln, Lbol, Lmech_W, Lmech_SN, Lmech_total, pdot_W, pdot_SN, pdot_total, pdotdot_total, v_mech_total])
+    updateDict(params, feedback)
     
     
     # -----------
@@ -84,7 +84,7 @@ def run_energy(params):
     R1 = scipy.optimize.brentq(
         get_bubbleParams.get_r1,
         1e-4 * R2, R2,
-        args=([Lmech_total, Eb, v_mech_total, R2])
+        args=([feedback.Lmech_total, Eb, feedback.v_mech_total, R2])
     )
 
     # -----------
@@ -198,17 +198,13 @@ def run_energy(params):
             # new inputs
             y = [R2, v2, Eb, T0]
             
-            # print('original y', y)
-        
             try:
                 params['t_next'].value = t_arr[ii+1]
             except:
                 params['t_next'].value = time + dt_min
                 
-                
-            # print('time', time)
                     
-            rd, vd, Ed=  energy_phase_ODEs.get_ODE_Edot(y, time, params)
+            rd, vd, Ed =  energy_phase_ODEs.get_ODE_Edot(y, time, params)
             
             if ii != (len(t_arr) - 1):
                 R2 += rd * dt_min 
@@ -224,36 +220,7 @@ def run_energy(params):
                 params['EarlyPhaseApproximation'].value = False
                 print('\n\n\n\n\n\n\nswitch to no approximation\n\n\n\n\n\n')
             
-        # =============================================================================
-        # Here, we perform checks to see if we should continue the branch (i.e., increasing steps)
-        # =============================================================================
-            
-        #----------------------------
-        # 2. When does fragmentation occur?
-        #----------------------------
-            # -----------
-            # Option1 : Gravitational instability
-            # -----------
-            
-            
-            # TODO
-            # -----------
-            # Option2 : Rayleigh-Taylor isntability (not yet implemented)
-            # -----------    
-            
-            
-        # which temperature?
-        # this is obtained from shell_structure
-        if params['shell_fAbsorbedIon'].value < 0.99:
-            T_shell = t_neu
-        else:
-            T_shell = t_ion
-        # sound speed
-        c_sound = operations.get_soundspeed(T_shell, params)
-        params['c_sound'].value = c_sound
-    
-        
-        
+                    
         # =============================================================================
         # Prepare for next loop
         # =============================================================================
@@ -270,8 +237,6 @@ def run_energy(params):
         
         logger.info(f'Phase values: t: {t_now}, R2: {R2}, v2: {v2}, Eb: {Eb}, T0: {T0}')
         
-        
-        
         # get shell mass
         mShell_arr = mass_profile.get_mass_profile(r_arr, params,
                                                     return_mdot = False)
@@ -281,29 +246,14 @@ def run_energy(params):
         # -- end new
         
         # save here
-        print('saving snapshot')
         params.save_snapshot()
         
-        'pdot_SN', 'pdot_total', 'pdotdot_total'
     
-        [t, Qi, Li, Ln, Lbol, Lmech_W, Lmech_SN, Lmech_total, pdot_W, pdot_SN, pdot_total, pdotdot_total, v_mech_total] = get_currentSB99feedback(t_now, params)
-        # Extract derived values from params for backward compatibility
-        Lmech_total = params['Lmech_total'].value
-        v_mech_total = params['v_mech_total'].value
-        pdot_total = params['pdot_total'].value
-        pdotdot_total = params['pdotdot_total'].value
+        feedback = get_currentSB99feedback(t_now, params)
 
-        # # if we are going to the momentum phase next, do not have to 
-        # # calculate the discontinuity for the next loop
-        # if immediately_to_momentumphase:
-        #     R1 = R2 # why?
-        #     # bubble pressure
-        #     Pb = get_bubbleParams.pRam(R2, Lmech_total, v_mech_total)
-        # # else, if we are continuing this loop and staying in energy
-        # else:
         R1 = scipy.optimize.brentq(get_bubbleParams.get_r1, 
                        1e-3 * R2, R2, 
-                       args=([Lmech_total, Eb, v_mech_total, R2]))
+                       args=([feedback.Lmech_total, Eb, feedback.v_mech_total, R2]))
         # bubble pressure
         Pb = get_bubbleParams.bubble_E2P(Eb, R2, R1, params['gamma_adia'].value)
         
