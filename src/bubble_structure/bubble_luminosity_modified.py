@@ -138,34 +138,54 @@ def get_bubble_ODE_regularized(r: float, y: np.ndarray, params_dict: Dict) -> np
 # Helper Functions
 # =============================================================================
 
-def create_radius_array(R1: float, R2: float, n_points: int = 2000) -> np.ndarray:
+def create_radius_array(R1: float, r2_prime: float, n_points_per_step: int = 20000) -> np.ndarray:
     """
     Create radius array for ODE integration.
 
-    Array is in DECREASING order (from R2 to R1) with higher
-    resolution near the boundaries.
+    Array is in DECREASING order (from r2_prime to R1) with much higher
+    resolution near the shock front (high r) where the ODE is stiff.
+
+    This matches the original bubble_luminosity.py approach (lines 654-668):
+    - Step 1: Reverse logspace with high-r density
+    - Step 2: Add more resolution at high r end (shock front)
+    - Step 3: Add more resolution at low r end
 
     Parameters
     ----------
     R1 : float
         Inner radius [pc]
-    R2 : float
-        Outer radius [pc]
-    n_points : int
-        Number of points
+    r2_prime : float
+        Starting radius (R2 - dR2) [pc]
+    n_points_per_step : int
+        Number of points per step (default 2e4 to match original)
 
     Returns
     -------
     r_arr : ndarray
-        Radius array [pc], decreasing order
+        Radius array [pc], decreasing order (~60k points)
     """
-    # Log-spaced from R1 to R2
-    r_arr = np.logspace(np.log10(R1), np.log10(R2), n_points)
+    # Step 1: Create array sampled at higher density at larger radius
+    # Formula: (r2Prime + R1) - logspace(R1, r2Prime, N)
+    # This creates decreasing array that is denser at high r
+    r_array = (r2_prime + R1) - np.logspace(
+        np.log10(R1), np.log10(r2_prime), int(n_points_per_step)
+    )
 
-    # Reverse to get decreasing order (R2 -> R1)
-    r_arr = r_arr[::-1]
+    # Step 2: Add front-heavy resolution at high r end (shock front)
+    # Insert more points between r_array[0] and r_array[2]
+    r_improve_resolution_high_r = np.logspace(
+        np.log10(r_array[0]), np.log10(r_array[2]), int(n_points_per_step)
+    )
+    r_array = np.insert(r_array[3:], 0, r_improve_resolution_high_r)
 
-    return r_arr
+    # Step 3: Further front-heavy resolution at low r end
+    # Add more points in the last 5 elements region
+    r_further_resolution = (r_array[-1] + r_array[-5]) - np.logspace(
+        np.log10(r_array[-1]), np.log10(r_array[-5]), int(n_points_per_step)
+    )
+    r_array = np.insert(r_array[:-5], len(r_array[:-5]), r_further_resolution)
+
+    return r_array
 
 
 def get_initial_conditions(dMdt: float, params_dict: Dict) -> Tuple[float, float, float, float]:
@@ -268,7 +288,7 @@ def compute_velocity_residual(dMdt: float, params_dict: Dict) -> float:
 
     # Create radius array
     R1 = params_dict['R1']
-    r_arr = create_radius_array(R1, r2_prime, n_points=2000)
+    r_arr = create_radius_array(R1, r2_prime)
 
     # Initial state
     y0 = [v_init, T_init, dTdr_init]
@@ -842,7 +862,7 @@ def get_bubbleproperties_pure(R2: float, v2: float, Eb: float, t_now: float,
 
     # Compute final profiles
     r2_prime, T_init, dTdr_init, v_init = get_initial_conditions(dMdt, params_dict)
-    r_arr = create_radius_array(R1, r2_prime, n_points=2000)
+    r_arr = create_radius_array(R1, r2_prime)
 
     # Validate initial temperature (don't clamp - that causes non-monotonic profiles)
     if T_init < 1e3:
