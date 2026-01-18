@@ -850,7 +850,11 @@ def get_bubbleproperties_pure(R2: float, v2: float, Eb: float, t_now: float,
     v_mech_total = get_val('v_mech_total')
     gamma_adia = get_val('gamma_adia', 5/3)
 
-    # Calculate R1
+    # Get OLD R1 from params (for Pb calculation - matches original behavior)
+    # The original code uses params['R1'].value for Pb, then updates it after
+    R1_old = get_val('R1', 0.01 * R2)
+
+    # Calculate NEW R1 via brentq
     try:
         R1 = scipy.optimize.brentq(
             get_bubbleParams.get_r1,
@@ -861,8 +865,10 @@ def get_bubbleproperties_pure(R2: float, v2: float, Eb: float, t_now: float,
         R1 = 0.01 * R2
         logger.warning(f"R1 brentq failed, using R1=0.01*R2")
 
-    # Calculate bubble pressure
-    Pb = get_bubbleParams.bubble_E2P(Eb, R2, R1, gamma_adia)
+    # Calculate bubble pressure using OLD R1 (matches original behavior)
+    # Original code: Pb = bubble_E2P(Eb, R2, params['R1'].value, gamma)
+    # The params['R1'].value is the OLD value before the update
+    Pb = get_bubbleParams.bubble_E2P(Eb, R2, R1_old, gamma_adia)
 
     # Simple wrapper for values that need .value attribute
     class ValWrapper:
