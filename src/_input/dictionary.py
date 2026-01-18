@@ -299,7 +299,7 @@ class DescribedDict(dict):
         if x.size == 0 or y.size == 0:
             return x, y
         if x.size != y.size:
-            raise ValueError(f"simplify(): x and y must have same length for {keyname}.")
+            raise ValueError(f"simplify(): x and y must have same length for {keyname}. Instead got {x.size} and {y.size}")
         if nmin >= x.size:
             return x, y
         nmin = max(int(nmin), 100)
