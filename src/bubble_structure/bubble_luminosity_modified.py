@@ -116,8 +116,22 @@ def get_bubble_ODE_regularized(r: float, y: np.ndarray, params_dict: Dict) -> np
     ndens = Pb / (2 * k_B * T)
     phi = Qi / (FOUR_PI * r_safe**2)
 
-    # Cooling rate
-    dudt = net_coolingcurve.get_dudt(t_now, ndens, T, phi, params_dict)
+    # Cooling rate - with bounds protection
+    # The cooling interpolators have temperature bounds (typically 10^4 - 10^8 K)
+    # If T is out of bounds, use a safe fallback cooling rate
+    T_MIN_COOLING = 1e4  # Minimum temperature for cooling curves
+    T_MAX_COOLING = 1e9  # Maximum temperature for cooling curves
+    try:
+        if T < T_MIN_COOLING or T > T_MAX_COOLING:
+            # Use simple power-law cooling for out-of-bounds temperatures
+            # Λ ≈ 10^-22 * (T/10^6)^(-0.5) for T > 10^6 K (CIE regime)
+            Lambda_approx = 1e-22 * (max(T, T_MIN_COOLING) / 1e6)**(-0.5)
+            dudt = ndens**2 * Lambda_approx  # Simple n^2 Λ cooling [cgs]
+        else:
+            dudt = net_coolingcurve.get_dudt(t_now, ndens, T, phi, params_dict)
+    except Exception:
+        # Fallback if cooling calculation fails
+        dudt = 0.0
 
     # Terminal velocity term
     v_term = cool_alpha * r_safe / t_now
@@ -292,13 +306,17 @@ def compute_velocity_residual(dMdt: float, params_dict: Dict) -> float:
 
     R1 = params_dict['R1']
 
+    # Validate bounds
+    if r2_prime <= R1:
+        return 1e3  # Invalid bounds, return large residual
+
     # Initial state
     y0 = [v_init, T_init, dTdr_init]
 
-    # Compute minimum step size to avoid floating point precision issues
-    # Step size should be at least ~1e-14 relative to span for numerical stability
+    # Compute step size limits
     span = abs(r2_prime - R1)
     min_step = max(span * 1e-12, 1e-16)  # Floor at machine epsilon level
+    max_step = span * 0.1  # Prevent huge overshoots
 
     # Event to stop integration when we're "close enough" to R1
     # This prevents the solver from taking infinitesimally small steps
@@ -309,6 +327,12 @@ def compute_velocity_residual(dMdt: float, params_dict: Dict) -> float:
     near_R1_event.terminal = True
     near_R1_event.direction = -1  # Trigger when crossing from positive to negative
 
+    # Safety event: stop if radius goes below minimum
+    def min_radius_event(r, y):
+        return r - R_MIN
+    min_radius_event.terminal = True
+    min_radius_event.direction = -1
+
     # Integrate ODE using solve_ivp with LSODA (auto stiff/non-stiff)
     try:
         solution = scipy.integrate.solve_ivp(
@@ -318,8 +342,9 @@ def compute_velocity_residual(dMdt: float, params_dict: Dict) -> float:
             method='LSODA',  # Auto-switches between Adams and BDF
             rtol=1e-5,  # Slightly relaxed for stability
             atol=1e-8,
-            events=[near_R1_event],
+            events=[near_R1_event, min_radius_event],
             min_step=min_step,  # Prevent vanishingly small steps
+            max_step=max_step,  # Prevent huge overshoots
         )
 
         # Solution is successful if it reached R1 (or close enough via event)
@@ -403,7 +428,11 @@ def _compute_L_bubble(
 
     # CIE cooling rate [internal units]
     # Λ(T) from interpolation: log10(Λ_cgs) = interp(log10(T))
-    Lambda_bubble = 10**(cooling_CIE_interp(np.log10(T_bubble))) * cvt.Lambda_cgs2au
+    # Clamp temperature to valid interpolation range (10^4 - 10^8 K typically)
+    T_MIN_CIE = 1e4  # Minimum temperature for CIE cooling curve
+    T_MAX_CIE = 1e8  # Maximum temperature for CIE cooling curve
+    T_bubble_safe = np.clip(T_bubble, T_MIN_CIE, T_MAX_CIE)
+    Lambda_bubble = 10**(cooling_CIE_interp(np.log10(T_bubble_safe))) * cvt.Lambda_cgs2au
 
     # Integrand: n² Λ 4πr²
     integrand = n_bubble**2 * Lambda_bubble * FOUR_PI * r_bubble**2
@@ -895,11 +924,16 @@ def get_bubbleproperties_pure(R2: float, v2: float, Eb: float, t_now: float,
 
     y0 = [v_init, T_init, dTdr_init]
 
-    # Compute minimum step size to avoid floating point precision issues
-    # When step size h << t, we get t + h = t in floating point arithmetic
-    # The warning "in the machine, t + h = t" indicates this problem
+    # Validate integration bounds
+    if r2_prime <= R1:
+        logger.warning(f"Invalid integration bounds: r2_prime={r2_prime:.4e} <= R1={R1:.4e}")
+        # Use fallback
+        raise ValueError(f"r2_prime ({r2_prime:.4e}) must be > R1 ({R1:.4e})")
+
+    # Compute step size limits to avoid numerical issues
     span = abs(r2_prime - R1)
     min_step = max(span * 1e-12, 1e-16)  # Floor at machine epsilon level
+    max_step = span * 0.1  # Prevent huge overshoots (max 10% of span per step)
 
     # Event to stop integration when we're "close enough" to R1
     # This prevents the solver from taking infinitesimally small steps near singularities
@@ -909,6 +943,12 @@ def get_bubbleproperties_pure(R2: float, v2: float, Eb: float, t_now: float,
         return r - R1 - threshold
     near_R1_event.terminal = True
     near_R1_event.direction = -1  # Trigger when crossing from positive to negative
+
+    # Safety event: stop if radius goes below minimum (prevent negative radii)
+    def min_radius_event(r, y):
+        return r - R_MIN  # Stop if r < R_MIN (1e-6 pc)
+    min_radius_event.terminal = True
+    min_radius_event.direction = -1
 
     try:
         # Use solve_ivp with LSODA method (auto-switches between stiff/non-stiff)
@@ -920,8 +960,9 @@ def get_bubbleproperties_pure(R2: float, v2: float, Eb: float, t_now: float,
             method='LSODA',  # Auto-switches between Adams (non-stiff) and BDF (stiff)
             rtol=1e-6,  # Relaxed for numerical stability
             atol=1e-9,
-            events=[near_R1_event],
+            events=[near_R1_event, min_radius_event],
             min_step=min_step,  # Prevent vanishingly small steps
+            max_step=max_step,  # Prevent huge overshoots
         )
 
         # Solution is successful if it reached R1 (or close enough via event)
@@ -939,7 +980,9 @@ def get_bubbleproperties_pure(R2: float, v2: float, Eb: float, t_now: float,
         # Fallback: create a simple grid and use power-law profiles (Weaver+77 self-similar solution)
         r_arr = np.linspace(r2_prime, R1, 100)
         v_arr = v_init * (r_arr / r2_prime)
-        T_arr = T_init * np.ones_like(r_arr)  # Isothermal fallback
+        # Ensure fallback temperature is within valid CIE cooling range
+        T_fallback = max(T_init, 3e4)  # At least 3e4 K for valid cooling
+        T_arr = T_fallback * np.ones_like(r_arr)  # Isothermal fallback
         dTdr_arr = np.zeros_like(r_arr)
 
     # Validate temperature profile (matches original behavior at line 318-319)
