@@ -29,7 +29,7 @@ from typing import Dict, Tuple, Optional, List
 import src.bubble_structure.get_bubbleParams as get_bubbleParams
 import src.shell_structure.shell_structure as shell_structure
 import src.cloud_properties.mass_profile as mass_profile
-import src.bubble_structure.bubble_luminosity as bubble_luminosity
+import src.bubble_structure.bubble_luminosity_modified as bubble_luminosity_modified
 import src.cooling.non_CIE.read_cloudy as non_CIE
 import src._functions.operations as operations
 from src._input.dictionary import updateDict
@@ -291,13 +291,31 @@ def run_energy(params) -> EnergyPhaseResults:
             params['v2'].value = v2
             params['Eb'].value = Eb
 
-            # Calculate bubble properties (this updates T0, L_bubble, etc.)
-            _ = bubble_luminosity.get_bubbleproperties(params)
+            # Calculate bubble properties using pure function
+            bubble_props = bubble_luminosity_modified.get_bubbleproperties_pure(
+                R2=R2,
+                v2=v2,
+                Eb=Eb,
+                t_now=t_now,
+                params=params
+            )
+
+            # Update params with bubble properties
+            params['R1'].value = bubble_props.R1
+            params['Pb'].value = bubble_props.Pb
+            params['bubble_dMdt'].value = bubble_props.dMdt
+            params['bubble_T_r_Tb'].value = bubble_props.T_rgoal
+            params['bubble_LTotal'].value = bubble_props.L_total
+            params['bubble_Tavg'].value = bubble_props.Tavg
+            params['bubble_T_arr'].value = bubble_props.T_arr
+            params['bubble_v_arr'].value = bubble_props.v_arr
+            params['bubble_r_arr'].value = bubble_props.r_arr
+            params['bubble_n_arr'].value = bubble_props.n_arr
 
             # Get updated T0 from bubble calculation
-            T0 = params['bubble_T_r_Tb'].value
+            T0 = bubble_props.T_rgoal
             params['T0'].value = T0
-            Tavg = params['bubble_Tavg'].value
+            Tavg = bubble_props.Tavg
 
             # Calculate shell structure
             shell_structure.shell_structure(params)
