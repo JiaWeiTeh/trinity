@@ -214,9 +214,11 @@ def run_expansion(params):
     #   - scipy.integrate.solve_ivp with adaptive RK45/RK23 stepping
     #   - Pure ODE functions that don't mutate params during integration
     #   - Segment-based integration with params updates only after success
-    use_adaptive_solver = params.get('use_adaptive_solver', False)
-    if hasattr(use_adaptive_solver, 'value'):
-        use_adaptive_solver = use_adaptive_solver.value
+    # use_adaptive_solver = params.get('use_adaptive_solver', False)
+    # if hasattr(use_adaptive_solver, 'value'):
+    #     use_adaptive_solver = use_adaptive_solver.value
+    
+    use_adaptive_solver = True
 
     if use_adaptive_solver:
         logger.info("Using modified energy phase (adaptive solve_ivp)")
