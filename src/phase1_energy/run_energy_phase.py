@@ -265,15 +265,12 @@ def run_energy(params):
                 
             # print('time', time)
                     
-            rd, vd, Ed, Td =  energy_phase_ODEs.get_ODE_Edot(y, time, params)
+            rd, vd, Ed=  energy_phase_ODEs.get_ODE_Edot(y, time, params)
             
             if ii != (len(t_arr) - 1):
                 R2 += rd * dt_min 
                 v2 += vd * dt_min 
                 Eb += Ed * dt_min 
-                T0 += Td * dt_min 
-                
-                logger.info(f'Phase values: t: {time}, R2: {R2}, v2: {v2}, Eb: {Eb}, T0: {T0}')
                 
             r_arr.append(R2)
             v_arr.append(v2)
@@ -288,7 +285,7 @@ def run_energy(params):
             #     import sys
             #     sys.exit('loop test done')
             
-            
+        
         # print(v_arr)
 
             
@@ -335,6 +332,9 @@ def run_energy(params):
         v2 = v_arr[-1]
         # bubble energy
         Eb = Eb_arr[-1]
+        
+        logger.info(f'Phase values: t: {t_now}, R2: {R2}, v2: {v2}, Eb: {Eb}, T0: {T0}')
+        
         
         # -- new, record only once
         params['array_t_now'].value = np.concatenate([params['array_t_now'].value, [t_now]])
