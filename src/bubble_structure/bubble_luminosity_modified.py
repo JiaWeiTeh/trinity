@@ -373,6 +373,7 @@ def _compute_L_conduction(
     T_arr: np.ndarray,
     r_arr: np.ndarray,
     n_arr: np.ndarray,
+    v_arr: np.ndarray,
     dTdr_arr: np.ndarray,
     idx_cooling_switch: int,
     idx_CIE_switch: int,
@@ -388,7 +389,7 @@ def _compute_L_conduction(
 
     Parameters
     ----------
-    T_arr, r_arr, n_arr, dTdr_arr : ndarray
+    T_arr, r_arr, n_arr, v_arr, dTdr_arr : ndarray
         Bubble structure profiles
     idx_cooling_switch : int
         Index where T crosses 10^4 K threshold
@@ -439,7 +440,7 @@ def _compute_L_conduction(
         try:
             psoln = scipy.integrate.odeint(
                 lambda y, r: get_bubble_ODE_regularized(r, y, params_dict),
-                [T_arr[idx_cooling_switch], T_arr[idx_cooling_switch], dTdr_arr[idx_cooling_switch]],
+                [v_arr[idx_cooling_switch], T_arr[idx_cooling_switch], dTdr_arr[idx_cooling_switch]],
                 r_conduction,
                 tfirst=True
             )
@@ -631,6 +632,7 @@ def compute_cooling_luminosity_pure(
     T_arr: np.ndarray,
     r_arr: np.ndarray,
     n_arr: np.ndarray,
+    v_arr: np.ndarray,
     dTdr_arr: np.ndarray,
     Pb: float,
     k_B: float,
@@ -646,7 +648,7 @@ def compute_cooling_luminosity_pure(
 
     Parameters
     ----------
-    T_arr, r_arr, n_arr, dTdr_arr : ndarray
+    T_arr, r_arr, n_arr, v_arr, dTdr_arr : ndarray
         Bubble structure profiles (r is decreasing, T is increasing)
     Pb : float
         Bubble pressure [internal units]
@@ -688,7 +690,7 @@ def compute_cooling_luminosity_pure(
 
     # Zone 2: Conduction (non-CIE) - 10^4 < T < 10^5.5 K
     L_conduction, Tavg_conduction, dTdr_at_cooling_switch = _compute_L_conduction(
-        T_arr, r_arr, n_arr, dTdr_arr,
+        T_arr, r_arr, n_arr, v_arr, dTdr_arr,
         idx_cooling_switch, idx_CIE_switch,
         Pb, k_B, Qi,
         cooling_nonCIE, heating_nonCIE,
@@ -793,6 +795,7 @@ def get_bubbleproperties_pure(R2: float, v2: float, Eb: float, t_now: float,
         't_now': t_now,
         'k_B': get_val('k_B'),
         'mu_ion': get_val('mu_ion'),
+        'mu_atom': get_val('mu_atom'),  # For initial dMdt guess (Weaver+77 Eq.33)
         'C_thermal': get_val('C_thermal'),
         'cool_alpha': get_val('cool_alpha'),
         'cool_beta': get_val('cool_beta'),
@@ -875,6 +878,7 @@ def get_bubbleproperties_pure(R2: float, v2: float, Eb: float, t_now: float,
         T_arr=T_arr,
         r_arr=r_arr,
         n_arr=n_arr,
+        v_arr=v_arr,
         dTdr_arr=dTdr_arr,
         Pb=Pb,
         k_B=params_dict['k_B'],
@@ -923,13 +927,14 @@ def _compute_init_dMdt(params_dict: Dict) -> float:
     t_now = params_dict['t_now']
     k_B = params_dict['k_B']
     C_thermal = params_dict['C_thermal']
-    mu_ion = params_dict.get('mu_ion', params_dict.get('mu_atom', 1e-57))
+    # Original uses mu_atom for initial guess (see bubble_luminosity.py line 615-616)
+    mu_atom = params_dict.get('mu_atom', params_dict.get('mu_ion', 1e-57))
 
     # Weaver+77 Eq. 33 (with empirical factor)
     dMdt_factor = 1.646
 
     dMdt_init = (12/75 * dMdt_factor**(5/2) * FOUR_PI * R2**3 / t_now *
-                 mu_ion / k_B * (t_now * C_thermal / R2**2)**(2/7) *
+                 mu_atom / k_B * (t_now * C_thermal / R2**2)**(2/7) *
                  Pb**(5/7))
 
     return dMdt_init
