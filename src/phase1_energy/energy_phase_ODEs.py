@@ -6,7 +6,6 @@ Created on Mon Nov 21 16:32:47 2022
 @author: Jia Wei Teh
 """
 # libraries
-import sys 
 import scipy
 import numpy as np
 import scipy.optimize
@@ -20,23 +19,31 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-# -- constant
-FOUR_PI = 4.0 * np.pi
-
 def _scalar(x):
     """Convert len-1 arrays / 0-d arrays to Python scalars; otherwise return x."""
     a = np.asarray(x)
     return a.item() if a.size == 1 else x
 
-def get_press_ion_outside(r, params):
+def get_press_ion(r, params):
     """
-    Pressure of photoionized gas at radius r (outside shell).
-    Returns scalar in your code units.
+    Pressure from photoionized part of cloud at radius r.
+
+    Parameters
+    ----------
+    r : float
+        Radius in pc.
+    params : DescribedDict
+        Parameter dictionary.
+
+    Returns
+    -------
+    float
+        Pressure of ionized gas in code units.
     """
     r = np.atleast_1d(r)
-    n_r = density_profile.get_density_profile(r, params)  # assumes it accepts params
-    P = 2.0 * n_r * params["k_B"].value * params["TShell_ion"].value
-    return _scalar(P)
+    n_r = density_profile.get_density_profile(r, params)
+    P_ion = 2.0 * n_r * params['k_B'].value * params['TShell_ion'].value
+    return _scalar(P_ion)
 
 
 def get_ODE_Edot(y, t, params):
@@ -114,31 +121,6 @@ def get_ODE_Edot(y, t, params):
     params['Pb'].value = press_bubble  
     
     
-    def get_press_ion(r, ion_dict):
-        """
-        calculates pressure from photoionized part of cloud at radius r
-        :return: pressure of ionized gas outside shell
-        
-        returns in [au]
-        """
-        
-        # n_r: total number density of particles (H+, He++, electrons)
-        try:
-            r = np.array([r])
-        except:
-            pass
-        n_r = density_profile.get_density_profile(r, ion_dict)
-        
-        P_ion = 2 * n_r * ion_dict['k_B'].value * ion_dict['TShell_ion'].value
-        
-        # should always be true?
-        if hasattr(P_ion, '__len__'):
-            if len(P_ion) == 1:
-                P_ion = P_ion[0]
-                
-        return P_ion
-
-
     # --- inward pressure from photoionized gas outside the shell 
     # (is zero if no ionizing radiation escapes the shell)
     if FABSi < 1.0:
@@ -149,13 +131,13 @@ def get_ODE_Edot(y, t, params):
     # if shell is beyond cloud, add also ISM pressure
     if params['rShell'].value >= params['rCloud'].value:
         # TODO: add this more for ambient pressure
-        press_HII_in += params['PISM'] * params['k_B']   
+        press_HII_in += params['PISM'].value * params['k_B'].value   
         
         
     # --- photoionised gas from HII region approximation
     # if ions escape cloud, HII region has density of outer ISM
     if FABSi < 1:
-        nR2 = params['nISM']
+        nR2 = params['nISM'].value
     # otherwise, it has density assuming radius = bubble radius
     else:
         nR2 = np.sqrt(Qi/params['caseB_alpha'].value/R2**3 * 3 / 4 / np.pi)
