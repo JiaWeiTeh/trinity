@@ -60,6 +60,7 @@ class BubbleProperties:
     n_arr: np.ndarray  # Density profile [1/pc³]
     dTdr_arr: np.ndarray  # Temperature gradient profile [K/pc]
     Tavg: float  # Average temperature [K]
+    bubble_mass: float  # Total bubble mass [Msun]
 
 
 # =============================================================================
@@ -92,10 +93,11 @@ def get_bubble_ODE_regularized(r: float, y: np.ndarray, params_dict: Dict) -> np
     # Regularization: use small cutoff near r=0
     r_safe = max(r, R_MIN)
 
-    # Clamp temperature to physical range [1e3, 1e9] K
-    # Lower bound: avoid zero/negative temperatures
-    # Upper bound: prevent unphysical runaway (CIE tables typically go to ~10^9 K)
-    T = max(min(T, 1e9), 1e3)
+    # Check for unphysical temperature (matches original line 854-856)
+    # Don't clamp - that breaks monotonicity. Let ODE solver handle it.
+    if np.abs(T) < 1e-5 or T < 0:
+        # Return very large derivatives to signal solver to backtrack
+        return np.array([1e30, 1e30, 1e30])
 
     # Extract parameters
     Pb = params_dict['Pb']
@@ -136,34 +138,54 @@ def get_bubble_ODE_regularized(r: float, y: np.ndarray, params_dict: Dict) -> np
 # Helper Functions
 # =============================================================================
 
-def create_radius_array(R1: float, R2: float, n_points: int = 2000) -> np.ndarray:
+def create_radius_array(R1: float, r2_prime: float, n_points_per_step: int = 20000) -> np.ndarray:
     """
     Create radius array for ODE integration.
 
-    Array is in DECREASING order (from R2 to R1) with higher
-    resolution near the boundaries.
+    Array is in DECREASING order (from r2_prime to R1) with much higher
+    resolution near the shock front (high r) where the ODE is stiff.
+
+    This matches the original bubble_luminosity.py approach (lines 654-668):
+    - Step 1: Reverse logspace with high-r density
+    - Step 2: Add more resolution at high r end (shock front)
+    - Step 3: Add more resolution at low r end
 
     Parameters
     ----------
     R1 : float
         Inner radius [pc]
-    R2 : float
-        Outer radius [pc]
-    n_points : int
-        Number of points
+    r2_prime : float
+        Starting radius (R2 - dR2) [pc]
+    n_points_per_step : int
+        Number of points per step (default 2e4 to match original)
 
     Returns
     -------
     r_arr : ndarray
-        Radius array [pc], decreasing order
+        Radius array [pc], decreasing order (~60k points)
     """
-    # Log-spaced from R1 to R2
-    r_arr = np.logspace(np.log10(R1), np.log10(R2), n_points)
+    # Step 1: Create array sampled at higher density at larger radius
+    # Formula: (r2Prime + R1) - logspace(R1, r2Prime, N)
+    # This creates decreasing array that is denser at high r
+    r_array = (r2_prime + R1) - np.logspace(
+        np.log10(R1), np.log10(r2_prime), int(n_points_per_step)
+    )
 
-    # Reverse to get decreasing order (R2 -> R1)
-    r_arr = r_arr[::-1]
+    # Step 2: Add front-heavy resolution at high r end (shock front)
+    # Insert more points between r_array[0] and r_array[2]
+    r_improve_resolution_high_r = np.logspace(
+        np.log10(r_array[0]), np.log10(r_array[2]), int(n_points_per_step)
+    )
+    r_array = np.insert(r_array[3:], 0, r_improve_resolution_high_r)
 
-    return r_arr
+    # Step 3: Further front-heavy resolution at low r end
+    # Add more points in the last 5 elements region
+    r_further_resolution = (r_array[-1] + r_array[-5]) - np.logspace(
+        np.log10(r_array[-1]), np.log10(r_array[-5]), int(n_points_per_step)
+    )
+    r_array = np.insert(r_array[:-5], len(r_array[:-5]), r_further_resolution)
+
+    return r_array
 
 
 def get_initial_conditions(dMdt: float, params_dict: Dict) -> Tuple[float, float, float, float]:
@@ -218,11 +240,13 @@ def get_initial_conditions(dMdt: float, params_dict: Dict) -> Tuple[float, float
     # Temperature at r2_prime (Weaver+77 Eq 35)
     T = (constant * dMdt_safe * dR2 / (FOUR_PI * R2**2))**(2.0/5.0)
 
-    # Ensure temperature is physical
-    if np.isnan(T) or T < 1e4:
-        T = 1e4
-    elif T > 1e9:
-        T = 1e9
+    # Validate temperature - warn but don't clamp (let solver handle it)
+    if np.isnan(T):
+        logger.warning(f"NaN temperature in initial conditions, using T_init_default={T_init_default}")
+        T = T_init_default
+    elif T < 0:
+        logger.warning(f"Negative temperature {T} in initial conditions, using T_init_default={T_init_default}")
+        T = T_init_default
 
     # Velocity at r2_prime
     v = cool_alpha * R2 / t_now - dMdt / (FOUR_PI * R2**2) * k_B * T / (mu_ion * Pb)
@@ -241,6 +265,7 @@ def compute_velocity_residual(dMdt: float, params_dict: Dict) -> float:
     Compute residual for dMdt solver.
 
     Integrates ODE and checks if boundary condition v(R1) → 0 is satisfied.
+    Uses solve_ivp with Radau method for stiff ODEs.
 
     Parameters
     ----------
@@ -262,24 +287,27 @@ def compute_velocity_residual(dMdt: float, params_dict: Dict) -> float:
     # Get initial conditions
     r2_prime, T_init, dTdr_init, v_init = get_initial_conditions(dMdt, params_dict)
 
-    # Create radius array
     R1 = params_dict['R1']
-    r_arr = create_radius_array(R1, r2_prime, n_points=2000)
 
     # Initial state
     y0 = [v_init, T_init, dTdr_init]
 
-    # Integrate ODE
+    # Integrate ODE using solve_ivp with LSODA (auto stiff/non-stiff)
     try:
-        solution = scipy.integrate.odeint(
-            lambda y, r: get_bubble_ODE_regularized(r, y, params_dict),
-            y0,
-            r_arr,
-            full_output=0
+        solution = scipy.integrate.solve_ivp(
+            fun=lambda r, y: get_bubble_ODE_regularized(r, y, params_dict),
+            t_span=(r2_prime, R1),  # Integrate from r2_prime down to R1
+            y0=y0,
+            method='LSODA',  # Auto-switches between Adams and BDF
+            rtol=1e-6,
+            atol=1e-9,
         )
 
-        v_arr = solution[:, 0]
-        T_arr = solution[:, 1]
+        if not solution.success:
+            return 1e3
+
+        v_arr = solution.y[0]
+        T_arr = solution.y[1]
 
         # Check for valid solution
         min_T = np.min(T_arr)
@@ -293,7 +321,7 @@ def compute_velocity_residual(dMdt: float, params_dict: Dict) -> float:
         if not operations.monotonic(T_arr):
             return 1e2
 
-        # Residual: v should approach 0 at inner boundary
+        # Residual: v should approach 0 at inner boundary (last point)
         residual = (v_arr[-1] - 0) / (v_arr[0] + 1e-4)
 
         return residual
@@ -836,23 +864,38 @@ def get_bubbleproperties_pure(R2: float, v2: float, Eb: float, t_now: float,
         logger.warning(f"dMdt solver failed: {e}, using initial guess")
         dMdt = dMdt_init
 
-    # Compute final profiles
+    # Compute final profiles using solve_ivp with adaptive stiff solver
     r2_prime, T_init, dTdr_init, v_init = get_initial_conditions(dMdt, params_dict)
-    r_arr = create_radius_array(R1, r2_prime, n_points=2000)
 
-    # Clamp initial temperature to physical range
-    T_init = max(min(T_init, 1e9), 1e4)
+    # Validate initial temperature (don't clamp - that causes non-monotonic profiles)
+    if T_init < 1e3:
+        logger.warning(f"Very low initial temperature {T_init:.2e} K, may indicate solver issues")
+    elif T_init > 1e9:
+        logger.warning(f"Very high initial temperature {T_init:.2e} K, may indicate solver issues")
 
     y0 = [v_init, T_init, dTdr_init]
+
     try:
-        solution = scipy.integrate.odeint(
-            lambda y, r: get_bubble_ODE_regularized(r, y, params_dict),
-            y0,
-            r_arr
+        # Use solve_ivp with LSODA method (auto-switches between stiff/non-stiff)
+        # This is what odeint uses internally, but with modern solve_ivp interface
+        solution = scipy.integrate.solve_ivp(
+            fun=lambda r, y: get_bubble_ODE_regularized(r, y, params_dict),
+            t_span=(r2_prime, R1),
+            y0=y0,
+            method='LSODA',  # Auto-switches between Adams (non-stiff) and BDF (stiff)
+            rtol=1e-8,
+            atol=1e-10,
         )
-        v_arr = solution[:, 0]
-        T_arr = solution[:, 1]
-        dTdr_arr = solution[:, 2]
+
+        if not solution.success:
+            raise RuntimeError(f"solve_ivp failed: {solution.message}")
+
+        # Use the solver's own adaptive grid - it has more points where solution varies rapidly
+        r_arr = solution.t
+        v_arr = solution.y[0]
+        T_arr = solution.y[1]
+        dTdr_arr = solution.y[2]
+
     except Exception as e:
         logger.warning(f"Final ODE integration failed: {e}, using fallback profiles")
         # Fallback: simple power-law profiles (Weaver+77 self-similar solution)
@@ -860,8 +903,23 @@ def get_bubbleproperties_pure(R2: float, v2: float, Eb: float, t_now: float,
         T_arr = T_init * np.ones_like(r_arr)  # Isothermal fallback
         dTdr_arr = np.zeros_like(r_arr)
 
-    # Clamp T_arr to physical bounds
-    T_arr = np.clip(T_arr, 1e4, 1e9)
+    # Validate temperature profile (matches original behavior at line 318-319)
+    if np.any(T_arr < 0):
+        raise ValueError("Negative temperature detected in bubble ODE solution")
+    if np.any(np.isnan(T_arr)):
+        raise ValueError("NaN temperature detected in bubble ODE solution")
+
+    # Check monotonicity - T should be monotonically increasing (r is decreasing)
+    # If not monotonic, the ODE solver failed to converge properly
+    if not operations.monotonic(T_arr):
+        logger.warning("Temperature profile is non-monotonic - ODE solver may have failed")
+        # Use fallback: monotonic profile from initial conditions
+        # This is safer than crashing but indicates the solver had issues
+        T_min, T_max = T_arr[0], T_arr[-1]
+        if T_min > T_max:
+            T_min, T_max = T_max, T_min
+        T_arr = np.linspace(T_min, T_max, len(r_arr))
+        logger.warning(f"Using fallback linear T profile from {T_min:.2e} to {T_max:.2e} K")
 
     # Density profile
     n_arr = Pb / (2 * params_dict['k_B'] * T_arr)
@@ -896,6 +954,17 @@ def get_bubbleproperties_pure(R2: float, v2: float, Eb: float, t_now: float,
         params_dict=params_dict,
     )
 
+    # Compute bubble mass (matches original get_mass_and_grav, line 556-558)
+    # M(r) = ∫[0 to r] 4πr'² ρ(r') dr'
+    r_increasing = r_arr[::-1]  # Flip to increasing order
+    mu_ion = params_dict['mu_ion']
+    rho_increasing = n_arr[::-1] * mu_ion  # Mass density [Msun/pc³]
+    integrand = rho_increasing * r_increasing**2
+    m_cumulative = FOUR_PI * scipy.integrate.cumulative_trapezoid(
+        integrand, x=r_increasing, initial=0
+    )
+    bubble_mass = m_cumulative[-1]
+
     return BubbleProperties(
         R1=R1,
         Pb=Pb,
@@ -911,6 +980,7 @@ def get_bubbleproperties_pure(R2: float, v2: float, Eb: float, t_now: float,
         n_arr=n_arr,
         dTdr_arr=dTdr_arr,
         Tavg=Tavg,
+        bubble_mass=bubble_mass,
     )
 
 
