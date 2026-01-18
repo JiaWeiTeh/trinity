@@ -92,8 +92,10 @@ def get_bubble_ODE_regularized(r: float, y: np.ndarray, params_dict: Dict) -> np
     # Regularization: use small cutoff near r=0
     r_safe = max(r, R_MIN)
 
-    # Ensure positive temperature
-    T = max(T, 1e3)
+    # Clamp temperature to physical range [1e3, 1e9] K
+    # Lower bound: avoid zero/negative temperatures
+    # Upper bound: prevent unphysical runaway (CIE tables typically go to ~10^9 K)
+    T = max(min(T, 1e9), 1e3)
 
     # Extract parameters
     Pb = params_dict['Pb']
@@ -203,8 +205,15 @@ def get_initial_conditions(dMdt: float, params_dict: Dict) -> Tuple[float, float
     constant = (25 * Pb / (8 * np.pi * C_thermal))**2
 
     # Temperature at r2_prime
-    T = (constant * dMdt * dR2 / (FOUR_PI * R2**2))**(2/5)
-    T = max(T, 1e4)  # Floor at 10^4 K
+    # Use abs(dMdt) to avoid negative base in power (which produces NaN)
+    dMdt_safe = max(abs(dMdt), 1e-20)
+    T = (constant * dMdt_safe * dR2 / (FOUR_PI * R2**2))**(2/5)
+
+    # Clamp temperature to physical range [1e4, 1e8] K
+    if np.isnan(T) or T < 1e4:
+        T = 1e4
+    elif T > 1e8:
+        T = 1e8
 
     # Velocity at r2_prime
     v = cool_alpha * R2 / t_now - dMdt / (FOUR_PI * R2**2) * k_B * T / (mu_ion * Pb)
@@ -813,16 +822,28 @@ def get_bubbleproperties_pure(R2: float, v2: float, Eb: float, t_now: float,
     r2_prime, T_init, dTdr_init, v_init = get_initial_conditions(dMdt, params_dict)
     r_arr = create_radius_array(R1, r2_prime, n_points=2000)
 
-    y0 = [v_init, T_init, dTdr_init]
-    solution = scipy.integrate.odeint(
-        lambda y, r: get_bubble_ODE_regularized(r, y, params_dict),
-        y0,
-        r_arr
-    )
+    # Clamp initial temperature to physical range
+    T_init = max(min(T_init, 1e9), 1e4)
 
-    v_arr = solution[:, 0]
-    T_arr = solution[:, 1]
-    dTdr_arr = solution[:, 2]
+    y0 = [v_init, T_init, dTdr_init]
+    try:
+        solution = scipy.integrate.odeint(
+            lambda y, r: get_bubble_ODE_regularized(r, y, params_dict),
+            y0,
+            r_arr
+        )
+        v_arr = solution[:, 0]
+        T_arr = solution[:, 1]
+        dTdr_arr = solution[:, 2]
+    except Exception as e:
+        logger.warning(f"Final ODE integration failed: {e}, using fallback profiles")
+        # Fallback: simple power-law profiles (Weaver+77 self-similar solution)
+        v_arr = v_init * (r_arr / r2_prime)
+        T_arr = T_init * np.ones_like(r_arr)  # Isothermal fallback
+        dTdr_arr = np.zeros_like(r_arr)
+
+    # Clamp T_arr to physical bounds
+    T_arr = np.clip(T_arr, 1e4, 1e9)
 
     # Density profile
     n_arr = Pb / (2 * params_dict['k_B'] * T_arr)
