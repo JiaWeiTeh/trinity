@@ -16,7 +16,7 @@ from astropy.table import Table
 import src._functions.unit_conversions as cvt
 
 #--
-from src.shell_structure import get_shellODE, get_shellParams
+from src.shell_structure import get_shellODE
 from numba import jit
 import logging
 
@@ -112,7 +112,7 @@ def shell_structure(params):
     mShell_end = mShell_end
     
     # Obtain density at the inner edge of shell
-    nShell0 = get_shellParams.get_nShell0(params)
+    nShell0 = params['mu_atom'].value/params['mu_ion'].value/(params['k_B'].value * params['TShell_ion'].value) * params['Pb'].value
     params['shell_n0'].value = nShell0
     # define for future use, as nShell0 constantly changes in the loop.
     # nShellInner = nShell0

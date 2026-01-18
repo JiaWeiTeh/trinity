@@ -725,17 +725,6 @@ def get_velocity_residuals(dMdt_init, dMdt_params_au):
 
     logger.debug(f'record, and min temp is {min_T}')
     
-    # otherwise record
-    # TODO: maybe this part need to change during recollapse.
-    # v_array[v_array < 0] = 0
-    
-    # dMdt_params_au['bubble_v_arr'].value = v_array
-    # dMdt_params_au['bubble_T_arr'].value = T_array
-    # dMdt_params_au['bubble_dTdr_arr'].value = dTdr_array
-    # dMdt_params_au['bubble_r_arr'].value = r_array
-    # dMdt_params_au['bubble_dMdt'].value = dMdt_init[0]
-    # dMdt_params_au['v0_residual'].value = residual
-    
     # return
     return residual
     
