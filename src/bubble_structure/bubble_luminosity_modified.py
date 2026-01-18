@@ -60,6 +60,7 @@ class BubbleProperties:
     n_arr: np.ndarray  # Density profile [1/pc³]
     dTdr_arr: np.ndarray  # Temperature gradient profile [K/pc]
     Tavg: float  # Average temperature [K]
+    bubble_mass: float  # Total bubble mass [Msun]
 
 
 # =============================================================================
@@ -917,6 +918,17 @@ def get_bubbleproperties_pure(R2: float, v2: float, Eb: float, t_now: float,
         params_dict=params_dict,
     )
 
+    # Compute bubble mass (matches original get_mass_and_grav, line 556-558)
+    # M(r) = ∫[0 to r] 4πr'² ρ(r') dr'
+    r_increasing = r_arr[::-1]  # Flip to increasing order
+    mu_ion = params_dict['mu_ion']
+    rho_increasing = n_arr[::-1] * mu_ion  # Mass density [Msun/pc³]
+    integrand = rho_increasing * r_increasing**2
+    m_cumulative = FOUR_PI * scipy.integrate.cumulative_trapezoid(
+        integrand, x=r_increasing, initial=0
+    )
+    bubble_mass = m_cumulative[-1]
+
     return BubbleProperties(
         R1=R1,
         Pb=Pb,
@@ -932,6 +944,7 @@ def get_bubbleproperties_pure(R2: float, v2: float, Eb: float, t_now: float,
         n_arr=n_arr,
         dTdr_arr=dTdr_arr,
         Tavg=Tavg,
+        bubble_mass=bubble_mass,
     )
 
 
