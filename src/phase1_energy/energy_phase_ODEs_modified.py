@@ -98,8 +98,8 @@ def create_ODE_snapshot(params) -> ODESnapshot:
         'k_B': params['k_B'].value,
         'TShell_neu': params['TShell_neu'].value,
         'TShell_ion': params['TShell_ion'].value,
-        'mu_n': params['mu_n'].value,
-        'mu_p': params['mu_p'].value,
+        'mu_atom': params['mu_atom'].value,
+        'mu_ion': params['mu_ion'].value,
     }
 
     return ODESnapshot(
@@ -168,19 +168,19 @@ def get_shell_mass_pure(R2: float, v2: float, snapshot: ODESnapshot):
     rCore = dp['rCore']
     nISM = dp['nISM']
     rCloud = dp['rCloud']
-    mu_n = dp['mu_n']
+    mu_atom = dp['mu_atom']
 
     # Simplified mass calculation (Plummer sphere)
     # M(r) = (4/3) * pi * nCore * rCore^3 * [r/rCore / sqrt(1 + (r/rCore)^2)]
     x = R2 / rCore
     mass_factor = x / np.sqrt(1 + x**2)
-    mShell = (4/3) * np.pi * nCore * mu_n * rCore**3 * mass_factor
+    mShell = (4/3) * np.pi * nCore * mu_atom * rCore**3 * mass_factor
 
     # Mass derivative: dM/dt = dM/dr * dr/dt
     # dM/dr = 4 * pi * r^2 * rho(r)
     n_at_R2 = nCore / (1 + x**2)**(3/2)
     n_at_R2 = max(n_at_R2, nISM)
-    dmdr = 4 * np.pi * R2**2 * n_at_R2 * mu_n
+    dmdr = 4 * np.pi * R2**2 * n_at_R2 * mu_atom
     mShell_dot = dmdr * v2
 
     return _scalar(mShell), _scalar(mShell_dot)
