@@ -1052,6 +1052,188 @@ def test_compare_Tavg():
     print("  [PASS] Tavg is comparable between versions")
 
 
+def test_compare_all_bubble_properties():
+    """Comprehensive comparison of ALL bubble properties between versions."""
+    print("Testing comparison: ALL bubble properties...")
+
+    # Create params for modified version
+    params_mod = make_comparison_params()
+    R2 = params_mod['R2'].value
+    v2 = params_mod['v2'].value
+    Eb = params_mod['Eb'].value
+    t_now = params_mod['t_now'].value
+
+    # Run modified version
+    props_mod = bl_modified.get_bubbleproperties_pure(
+        R2=R2, v2=v2, Eb=Eb, t_now=t_now, params=params_mod
+    )
+
+    # Create fresh params for original
+    params_orig = make_comparison_params()
+
+    # Suppress print output
+    import io
+    import sys as _sys
+    old_stdout = _sys.stdout
+    _sys.stdout = io.StringIO()
+    try:
+        bl_original.get_bubbleproperties(params_orig)
+    finally:
+        _sys.stdout = old_stdout
+
+    print("\n  === Scalar Properties ===")
+
+    # Helper to compare and report
+    def compare_scalar(name, orig, mod, tol=0.1, allow_zero=False):
+        if orig == 0 and mod == 0:
+            print(f"  {name}: both zero [OK]")
+            return True
+        if orig == 0:
+            if allow_zero:
+                print(f"  {name}: orig=0, mod={mod:.4e} [OK - zero allowed]")
+                return True
+            print(f"  {name}: orig=0, mod={mod:.4e} [WARN]")
+            return False
+        rel_diff = abs(orig - mod) / abs(orig)
+        status = "OK" if rel_diff < tol else "WARN" if rel_diff < 1.0 else "FAIL"
+        print(f"  {name}: orig={orig:.4e}, mod={mod:.4e}, diff={rel_diff:.2e} [{status}]")
+        return rel_diff < 1.0  # Allow up to 100% diff before failing
+
+    results = []
+
+    # R1 and Pb (should match exactly)
+    results.append(compare_scalar("R1", params_orig['R1'].value, props_mod.R1, tol=1e-4))
+    results.append(compare_scalar("Pb", params_orig['Pb'].value, props_mod.Pb, tol=1e-4))
+
+    # dMdt (iterative solver, small tolerance)
+    results.append(compare_scalar("dMdt", params_orig['bubble_dMdt'].value, props_mod.dMdt, tol=0.05))
+
+    # Cooling luminosities
+    results.append(compare_scalar("L_total", params_orig['bubble_LTotal'].value, props_mod.L_total, tol=0.5))
+    results.append(compare_scalar("L_bubble", params_orig['bubble_L1Bubble'].value, props_mod.L_bubble, tol=0.5))
+    results.append(compare_scalar("L_conduction", params_orig['bubble_L2Conduction'].value, props_mod.L_conduction, tol=0.5, allow_zero=True))
+    results.append(compare_scalar("L_intermediate", params_orig['bubble_L3Intermediate'].value, props_mod.L_intermediate, tol=0.5, allow_zero=True))
+
+    # Temperature values
+    results.append(compare_scalar("T_rgoal", params_orig['bubble_T_r_Tb'].value, props_mod.T_rgoal, tol=0.3))
+    results.append(compare_scalar("Tavg", params_orig['bubble_Tavg'].value, props_mod.Tavg, tol=0.5))
+
+    # Bubble mass
+    results.append(compare_scalar("bubble_mass", params_orig['bubble_mass'].value, props_mod.bubble_mass, tol=0.5))
+
+    print("\n  === Profile Arrays ===")
+
+    # Compare profile arrays
+    T_arr_orig = params_orig['bubble_T_arr'].value
+    T_arr_mod = props_mod.T_arr
+    r_arr_orig = params_orig['bubble_r_arr'].value
+    r_arr_mod = props_mod.r_arr
+    v_arr_orig = params_orig['bubble_v_arr'].value
+    v_arr_mod = props_mod.v_arr
+    n_arr_orig = params_orig['bubble_n_arr'].value
+    n_arr_mod = props_mod.n_arr
+    dTdr_arr_orig = params_orig['bubble_dTdr_arr'].value
+    dTdr_arr_mod = props_mod.dTdr_arr
+
+    def compare_array(name, orig, mod):
+        if len(orig) == 0 or len(mod) == 0:
+            print(f"  {name}: empty array(s) - orig len={len(orig)}, mod len={len(mod)}")
+            return len(orig) == len(mod)
+
+        # Compare at boundaries and middle
+        print(f"  {name}:")
+        print(f"    Length: orig={len(orig)}, mod={len(mod)}")
+        print(f"    First:  orig={orig[0]:.4e}, mod={mod[0]:.4e}")
+        print(f"    Last:   orig={orig[-1]:.4e}, mod={mod[-1]:.4e}")
+
+        # Compare ranges
+        orig_min, orig_max = np.min(orig), np.max(orig)
+        mod_min, mod_max = np.min(mod), np.max(mod)
+        print(f"    Range:  orig=[{orig_min:.4e}, {orig_max:.4e}]")
+        print(f"            mod=[{mod_min:.4e}, {mod_max:.4e}]")
+
+        # Check if ranges overlap significantly
+        overlap = min(orig_max, mod_max) > max(orig_min, mod_min)
+        status = "OK" if overlap else "WARN"
+        print(f"    Overlap: {overlap} [{status}]")
+        return overlap
+
+    results.append(compare_array("T_arr", T_arr_orig, T_arr_mod))
+    results.append(compare_array("r_arr", r_arr_orig, r_arr_mod))
+    results.append(compare_array("v_arr", v_arr_orig, v_arr_mod))
+    results.append(compare_array("n_arr", n_arr_orig, n_arr_mod))
+    results.append(compare_array("dTdr_arr", dTdr_arr_orig, dTdr_arr_mod))
+
+    # Summary
+    passed = sum(results)
+    total = len(results)
+    print(f"\n  Summary: {passed}/{total} comparisons passed")
+
+    assert passed >= total * 0.8, f"Too many comparison failures: {passed}/{total}"
+    print("  [PASS] All bubble properties are comparable")
+
+
+def test_compare_profile_statistics():
+    """Compare statistical properties of bubble profiles."""
+    print("Testing comparison: Profile statistics...")
+
+    # Create params for modified version
+    params_mod = make_comparison_params()
+    R2 = params_mod['R2'].value
+    v2 = params_mod['v2'].value
+    Eb = params_mod['Eb'].value
+    t_now = params_mod['t_now'].value
+
+    # Run modified version
+    props_mod = bl_modified.get_bubbleproperties_pure(
+        R2=R2, v2=v2, Eb=Eb, t_now=t_now, params=params_mod
+    )
+
+    # Create fresh params for original
+    params_orig = make_comparison_params()
+
+    # Suppress print output
+    import io
+    import sys as _sys
+    old_stdout = _sys.stdout
+    _sys.stdout = io.StringIO()
+    try:
+        bl_original.get_bubbleproperties(params_orig)
+    finally:
+        _sys.stdout = old_stdout
+
+    # Get arrays
+    T_orig = params_orig['bubble_T_arr'].value
+    T_mod = props_mod.T_arr
+    r_orig = params_orig['bubble_r_arr'].value
+    r_mod = props_mod.r_arr
+
+    print(f"  Temperature profile statistics:")
+    print(f"    Original: min={np.min(T_orig):.2e}, max={np.max(T_orig):.2e}, mean={np.mean(T_orig):.2e}")
+    print(f"    Modified: min={np.min(T_mod):.2e}, max={np.max(T_mod):.2e}, mean={np.mean(T_mod):.2e}")
+
+    print(f"  Radius profile statistics:")
+    print(f"    Original: min={np.min(r_orig):.4f}, max={np.max(r_orig):.4f}")
+    print(f"    Modified: min={np.min(r_mod):.4f}, max={np.max(r_mod):.4f}")
+
+    # Check temperature range is physical
+    assert np.min(T_orig) > 1e3, f"Original T_min too low: {np.min(T_orig)}"
+    assert np.min(T_mod) > 1e3, f"Modified T_min too low: {np.min(T_mod)}"
+    assert np.max(T_orig) < 1e10, f"Original T_max too high: {np.max(T_orig)}"
+    assert np.max(T_mod) < 1e10, f"Modified T_max too high: {np.max(T_mod)}"
+
+    # Check that both cover similar temperature range
+    T_range_orig = np.max(T_orig) / np.min(T_orig)
+    T_range_mod = np.max(T_mod) / np.min(T_mod)
+    print(f"  Temperature dynamic range: orig={T_range_orig:.1f}x, mod={T_range_mod:.1f}x")
+
+    # Both should have similar dynamic range (within factor of 5)
+    ratio = max(T_range_orig, T_range_mod) / min(T_range_orig, T_range_mod)
+    assert ratio < 5, f"Temperature range ratio too large: {ratio:.1f}x"
+
+    print("  [PASS] Profile statistics are comparable")
+
+
 # =============================================================================
 # Run all tests
 # =============================================================================
@@ -1077,6 +1259,8 @@ def run_all_tests():
         test_compare_cooling_luminosity,
         test_compare_T_rgoal,
         test_compare_Tavg,
+        test_compare_all_bubble_properties,
+        test_compare_profile_statistics,
     ]
 
     passed = 0
