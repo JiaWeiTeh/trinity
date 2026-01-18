@@ -405,7 +405,7 @@ def read_param(path2file, write_summary=True):
     params['array_R2'] = DescribedItem([], info="R2 array for mShell interpolation", ori_units="pc", exclude_from_snapshot=False)
     params['array_R1'] = DescribedItem([], info="R1 array for mShell interpolation", ori_units="pc", exclude_from_snapshot=False)
     params['array_v2'] = DescribedItem([], info="v2 array for mShell interpolation", ori_units="pc/Myr", exclude_from_snapshot=False)
-    params['array_T0'] = DescribedItem([], info="T0 array for mShell interpolation", ori_units="K", exclude_from_snapshot=False)
+    params['array_T0']v = DescribedItem([], info="T0 array for mShell interpolation", ori_units="K", exclude_from_snapshot=False)
     params['array_mShell'] = DescribedItem([], info="Shell mass array", ori_units="Msun", exclude_from_snapshot=False)
     params['array_mShellDot'] = DescribedItem([], info="Shell mass rate array", ori_units="Msun/Myr", exclude_from_snapshot=False)
     
