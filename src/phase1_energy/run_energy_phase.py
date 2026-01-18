@@ -169,22 +169,26 @@ def run_energy(params):
             # shellData = shell_structure.shell_structure(params)
             
         elif not calculate_bubble_shell:
-            print('bubble and shell not calculated.')
-            # TODO: redefine these values so that they are more physically similar to the environments
-            # TODO: what about those that are inherited by values from previous entries in dictionary?
-            # make sure to also initialise them properly.
+            # if bubble and shell is not calculated, average temperature will just be T0.
             Tavg = T0
             
-        
+        # calculate sound speed [Myr/pc]
         c_sound = operations.get_soundspeed(Tavg, params)
+        # update
         params['c_sound'].value = c_sound
             
-        # update
-        
         # =============================================================================
         # call ODE solver to solve for equation of motion (r, v (rdot), Eb). 
         # =============================================================================
         
+        # This is an Euler approach, which is not very good. 
+        # However, it is used because the dictionary `params` are passed in. The functions
+        # within mutates it, and this is terrible because scipy ODE solver 
+        # is adaptive and will create 'trial' states: these can go backwards in steps, duplicate steps. 
+        # Since functions within is time sensitive and is based on previous steps, this will
+        # create nonsense and non-reproducible results.
+        
+        # initialise list
         r_arr = []
         v_arr = []
         Eb_arr = []
