@@ -92,10 +92,11 @@ def get_bubble_ODE_regularized(r: float, y: np.ndarray, params_dict: Dict) -> np
     # Regularization: use small cutoff near r=0
     r_safe = max(r, R_MIN)
 
-    # Clamp temperature to physical range [1e3, 1e9] K
-    # Lower bound: avoid zero/negative temperatures
-    # Upper bound: prevent unphysical runaway (CIE tables typically go to ~10^9 K)
-    T = max(min(T, 1e9), 1e3)
+    # Check for unphysical temperature (matches original line 854-856)
+    # Don't clamp - that breaks monotonicity. Let ODE solver handle it.
+    if np.abs(T) < 1e-5 or T < 0:
+        # Return very large derivatives to signal solver to backtrack
+        return np.array([1e30, 1e30, 1e30])
 
     # Extract parameters
     Pb = params_dict['Pb']
@@ -218,11 +219,13 @@ def get_initial_conditions(dMdt: float, params_dict: Dict) -> Tuple[float, float
     # Temperature at r2_prime (Weaver+77 Eq 35)
     T = (constant * dMdt_safe * dR2 / (FOUR_PI * R2**2))**(2.0/5.0)
 
-    # Ensure temperature is physical
-    if np.isnan(T) or T < 1e4:
-        T = 1e4
-    elif T > 1e9:
-        T = 1e9
+    # Validate temperature - warn but don't clamp (let solver handle it)
+    if np.isnan(T):
+        logger.warning(f"NaN temperature in initial conditions, using T_init_default={T_init_default}")
+        T = T_init_default
+    elif T < 0:
+        logger.warning(f"Negative temperature {T} in initial conditions, using T_init_default={T_init_default}")
+        T = T_init_default
 
     # Velocity at r2_prime
     v = cool_alpha * R2 / t_now - dMdt / (FOUR_PI * R2**2) * k_B * T / (mu_ion * Pb)
@@ -840,8 +843,11 @@ def get_bubbleproperties_pure(R2: float, v2: float, Eb: float, t_now: float,
     r2_prime, T_init, dTdr_init, v_init = get_initial_conditions(dMdt, params_dict)
     r_arr = create_radius_array(R1, r2_prime, n_points=2000)
 
-    # Clamp initial temperature to physical range
-    T_init = max(min(T_init, 1e9), 1e4)
+    # Validate initial temperature (don't clamp - that causes non-monotonic profiles)
+    if T_init < 1e3:
+        logger.warning(f"Very low initial temperature {T_init:.2e} K, may indicate solver issues")
+    elif T_init > 1e9:
+        logger.warning(f"Very high initial temperature {T_init:.2e} K, may indicate solver issues")
 
     y0 = [v_init, T_init, dTdr_init]
     try:
@@ -860,8 +866,23 @@ def get_bubbleproperties_pure(R2: float, v2: float, Eb: float, t_now: float,
         T_arr = T_init * np.ones_like(r_arr)  # Isothermal fallback
         dTdr_arr = np.zeros_like(r_arr)
 
-    # Clamp T_arr to physical bounds
-    T_arr = np.clip(T_arr, 1e4, 1e9)
+    # Validate temperature profile (matches original behavior at line 318-319)
+    if np.any(T_arr < 0):
+        raise ValueError("Negative temperature detected in bubble ODE solution")
+    if np.any(np.isnan(T_arr)):
+        raise ValueError("NaN temperature detected in bubble ODE solution")
+
+    # Check monotonicity - T should be monotonically increasing (r is decreasing)
+    # If not monotonic, the ODE solver failed to converge properly
+    if not operations.monotonic(T_arr):
+        logger.warning("Temperature profile is non-monotonic - ODE solver may have failed")
+        # Use fallback: monotonic profile from initial conditions
+        # This is safer than crashing but indicates the solver had issues
+        T_min, T_max = T_arr[0], T_arr[-1]
+        if T_min > T_max:
+            T_min, T_max = T_max, T_min
+        T_arr = np.linspace(T_min, T_max, len(r_arr))
+        logger.warning(f"Using fallback linear T profile from {T_min:.2e} to {T_max:.2e} K")
 
     # Density profile
     n_arr = Pb / (2 * params_dict['k_B'] * T_arr)
