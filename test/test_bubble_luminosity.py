@@ -7,6 +7,14 @@ Compares original bubble_luminosity.get_bubbleproperties() with
 modified bubble_luminosity_modified.get_bubbleproperties_pure() to ensure
 they produce equivalent results.
 
+Usage
+-----
+Run with synthetic test parameters:
+    python test/test_bubble_luminosity.py
+
+Run with a debug snapshot (captured from a real crash):
+    python test/test_bubble_luminosity.py --snapshot /path/to/debug_snapshot.json
+
 Author: TRINITY Team
 """
 
@@ -14,12 +22,17 @@ import numpy as np
 import sys
 import os
 import copy
+import argparse
+from pathlib import Path
 
 # Ensure src is in path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import src.bubble_structure.bubble_luminosity_modified as bl_modified
 import src._functions.unit_conversions as cvt
+
+# Global variable to store debug snapshot path (set via command line)
+DEBUG_SNAPSHOT_PATH = None
 
 
 # =============================================================================
@@ -69,13 +82,115 @@ class MockParam:
         return np.array(self.value, dtype=dtype)
 
 
+def load_params_from_snapshot(snapshot_path):
+    """
+    Load parameters from a debug snapshot file.
+
+    This creates mock params from a real parameter snapshot captured
+    during a crash or at a specific point in the simulation.
+
+    Parameters
+    ----------
+    snapshot_path : str or Path
+        Path to debug_snapshot.json file
+
+    Returns
+    -------
+    dict
+        Dictionary of MockParam objects
+
+    Notes
+    -----
+    - Interpolators cannot be serialized, so mock versions are created
+    - Use this to reproduce exact conditions that caused a crash
+    """
+    from src._input.dictionary import load_debug_snapshot
+    from scipy.interpolate import interp1d, RegularGridInterpolator
+
+    print(f"  Loading debug snapshot from: {snapshot_path}")
+
+    # Load raw values
+    raw = load_debug_snapshot(snapshot_path)
+
+    print(f"  Loaded {len(raw)} parameters from snapshot")
+
+    # Create mock interpolators (these can't be serialized)
+    T_grid = np.logspace(4, 8, 100)
+    Lambda_grid = 1e-22 * (T_grid / 1e6)**(-0.5)
+    Lambda_grid[T_grid < 1e5] = 1e-24
+
+    cooling_CIE_interp = interp1d(
+        np.log10(T_grid),
+        np.log10(Lambda_grid),
+        kind='linear',
+        fill_value='extrapolate'
+    )
+
+    class MockCLOUDYInterp:
+        def __init__(self):
+            self.ndens = np.linspace(-2, 6, 20)
+            self.temp = np.linspace(4, 5.5, 20)
+            self.phi = np.linspace(6, 14, 20)
+            n_grid, t_grid, p_grid = np.meshgrid(
+                self.ndens, self.temp, self.phi, indexing='ij'
+            )
+            self.datacube = np.log10(1e-23 * (10**n_grid)**2 + 1e-30)
+            self._interp = RegularGridInterpolator(
+                (self.ndens, self.temp, self.phi),
+                self.datacube,
+                bounds_error=False,
+                fill_value=-30.0
+            )
+
+        def interp(self, points):
+            return self._interp(points)
+
+    mock_cooling_nonCIE = MockCLOUDYInterp()
+    mock_heating_nonCIE = MockCLOUDYInterp()
+    mock_heating_nonCIE.datacube = mock_cooling_nonCIE.datacube - 0.5
+
+    net_datacube = mock_cooling_nonCIE.datacube - mock_heating_nonCIE.datacube
+    netcool_interp = RegularGridInterpolator(
+        (mock_cooling_nonCIE.ndens, mock_cooling_nonCIE.temp, mock_cooling_nonCIE.phi),
+        10**net_datacube,
+        bounds_error=False,
+        fill_value=1e-30
+    )
+
+    # Add interpolators that can't be serialized
+    raw['cStruc_cooling_CIE_interpolation'] = cooling_CIE_interp
+    raw['cStruc_cooling_CIE_logT'] = np.log10(T_grid)
+    raw['cStruc_cooling_nonCIE'] = mock_cooling_nonCIE
+    raw['cStruc_heating_nonCIE'] = mock_heating_nonCIE
+    raw['cStruc_net_nonCIE_interpolation'] = netcool_interp
+
+    # Convert to MockParam
+    params = {k: MockParam(v) for k, v in raw.items()}
+
+    # Print key values for debugging
+    for key in ['R2', 'v2', 'Eb', 't_now', 'Lmech_total']:
+        if key in params:
+            print(f"    {key} = {params[key].value}")
+
+    return params
+
+
 def make_bubble_test_params(**overrides):
     """
     Create a mock params dict for testing bubble luminosity.
 
     These parameters are set to realistic values that would occur
     during a typical bubble evolution simulation.
+
+    If DEBUG_SNAPSHOT_PATH is set (via --snapshot flag), loads from snapshot
+    instead of using synthetic values.
     """
+    global DEBUG_SNAPSHOT_PATH
+
+    # If snapshot is available, use it
+    if DEBUG_SNAPSHOT_PATH is not None:
+        return load_params_from_snapshot(DEBUG_SNAPSHOT_PATH)
+
     from scipy.interpolate import interp1d, RegularGridInterpolator
 
     # Create a simple CIE cooling curve interpolator (log10(T) -> log10(Lambda))
@@ -1373,5 +1488,39 @@ def run_all_tests():
 
 
 if __name__ == "__main__":
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(
+        description="Test bubble luminosity calculations",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  # Run with synthetic test parameters:
+  python test/test_bubble_luminosity.py
+
+  # Run with a debug snapshot (captured from a real crash):
+  python test/test_bubble_luminosity.py --snapshot /path/to/debug_snapshot.json
+
+  # To capture a debug snapshot in your code:
+  from src._input.dictionary import save_debug_snapshot
+  save_debug_snapshot(params)  # Saves to params['path2output']/debug_snapshot.json
+        """
+    )
+    parser.add_argument(
+        '--snapshot', '-s',
+        type=str,
+        default=None,
+        help='Path to debug_snapshot.json file to use instead of synthetic params'
+    )
+
+    args = parser.parse_args()
+
+    # Set global snapshot path
+    if args.snapshot:
+        DEBUG_SNAPSHOT_PATH = Path(args.snapshot)
+        if not DEBUG_SNAPSHOT_PATH.exists():
+            print(f"ERROR: Snapshot file not found: {DEBUG_SNAPSHOT_PATH}")
+            sys.exit(1)
+        print(f"Using debug snapshot: {DEBUG_SNAPSHOT_PATH}")
+
     success = run_all_tests()
     sys.exit(0 if success else 1)

@@ -651,6 +651,165 @@ class DescribedDict(dict):
 
 
 # =============================================================================
+# Debug snapshot: save raw params for crash debugging
+# =============================================================================
+
+DEBUG_SNAPSHOT_FILE = "debug_snapshot.json"
+
+def save_debug_snapshot(params: DescribedDict, output_path: Optional[Union[str, Path]] = None) -> Path:
+    """
+    Save a RAW snapshot of all params for debugging.
+
+    Unlike regular snapshots, this:
+    - Saves ALL keys without any cleaning/simplification
+    - Skips non-serializable objects (interpolators, etc.) gracefully
+    - Always OVERWRITES the file (captures latest state before crash)
+    - Can be called from anywhere without params['path2output']
+
+    Parameters
+    ----------
+    params : DescribedDict or dict
+        Parameter dictionary to snapshot
+    output_path : str or Path, optional
+        Directory to save to. If None, uses params['path2output'] or current dir.
+
+    Returns
+    -------
+    Path
+        Path to the saved snapshot file
+
+    Usage
+    -----
+    # In your code, call periodically or before risky operations:
+    from src._input.dictionary import save_debug_snapshot
+    save_debug_snapshot(params)
+
+    # Or with explicit path:
+    save_debug_snapshot(params, "/tmp/debug")
+    """
+    import logging
+    logger = logging.getLogger(__name__)
+
+    # Determine output directory
+    if output_path is not None:
+        out_dir = Path(output_path)
+    elif hasattr(params, '__getitem__') and 'path2output' in params:
+        try:
+            out_dir = Path(params['path2output'].value if hasattr(params['path2output'], 'value')
+                          else params['path2output'])
+        except:
+            out_dir = Path(".")
+    else:
+        out_dir = Path(".")
+
+    out_dir.mkdir(parents=True, exist_ok=True)
+    snapshot_path = out_dir / DEBUG_SNAPSHOT_FILE
+
+    # Build raw snapshot dict
+    snapshot = {
+        "_meta": {
+            "type": "debug_snapshot",
+            "description": "Raw parameter snapshot for debugging",
+        }
+    }
+
+    skipped_keys = []
+
+    for key, item in params.items():
+        try:
+            # Get the actual value
+            if hasattr(item, 'value'):
+                val = item.value
+            else:
+                val = item
+
+            # Try to serialize
+            if val is None or isinstance(val, (str, int, float, bool)):
+                snapshot[key] = val
+            elif isinstance(val, (np.integer, np.floating, np.bool_)):
+                snapshot[key] = NpEncoder().default(val)
+            elif isinstance(val, np.ndarray):
+                snapshot[key] = val.tolist()
+            elif isinstance(val, (list, tuple)):
+                # Try to convert, may contain numpy types
+                snapshot[key] = json.loads(json.dumps(val, cls=NpEncoder))
+            elif callable(val):
+                # Skip functions/interpolators
+                skipped_keys.append(f"{key} (callable)")
+                continue
+            else:
+                # Try generic serialization
+                try:
+                    snapshot[key] = json.loads(json.dumps(val, cls=NpEncoder))
+                except (TypeError, ValueError):
+                    skipped_keys.append(f"{key} ({type(val).__name__})")
+                    continue
+
+        except Exception as e:
+            skipped_keys.append(f"{key} (error: {e})")
+            continue
+
+    # Add metadata about skipped keys
+    if skipped_keys:
+        snapshot["_meta"]["skipped_keys"] = skipped_keys
+
+    # Write snapshot (always overwrite)
+    with open(snapshot_path, 'w', encoding='utf-8') as f:
+        json.dump(snapshot, f, cls=NpEncoder, indent=2)
+
+    logger.info(f"Debug snapshot saved to {snapshot_path} ({len(snapshot)-1} keys, {len(skipped_keys)} skipped)")
+
+    return snapshot_path
+
+
+def load_debug_snapshot(snapshot_path: Union[str, Path]) -> Dict[str, Any]:
+    """
+    Load a debug snapshot for use in tests.
+
+    Parameters
+    ----------
+    snapshot_path : str or Path
+        Path to debug_snapshot.json file
+
+    Returns
+    -------
+    dict
+        Raw dictionary with values (not DescribedItem wrapped)
+        Arrays are converted back to numpy arrays.
+
+    Usage in tests
+    --------------
+    from src._input.dictionary import load_debug_snapshot
+
+    # Load snapshot
+    raw_params = load_debug_snapshot("/path/to/debug_snapshot.json")
+
+    # Convert to MockParam format for tests
+    params = {k: MockParam(v) for k, v in raw_params.items() if not k.startswith('_')}
+    """
+    snapshot_path = Path(snapshot_path)
+
+    if not snapshot_path.exists():
+        raise FileNotFoundError(f"Debug snapshot not found: {snapshot_path}")
+
+    with open(snapshot_path, 'r', encoding='utf-8') as f:
+        snapshot = json.load(f)
+
+    # Convert lists back to numpy arrays
+    result = {}
+    for key, val in snapshot.items():
+        if key.startswith('_'):
+            # Skip metadata
+            continue
+        if isinstance(val, list):
+            result[key] = np.asarray(val)
+        else:
+            result[key] = val
+
+    return result
+
+
+# =============================================================================
 # Convenience helper: bulk updates
 # =============================================================================
 def updateDict(dictionary: DescribedDict, keys: Sequence[str], values: Sequence[Any]) -> None:
