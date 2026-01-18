@@ -559,7 +559,7 @@ def get_bubbleproperties(params):
     
         # Gravitational potential [pc²/Myr²]
         
-        grav_phi = -4 * np.pi * params['G'].value * scipy.integrate.simps(
+        grav_phi = -4 * np.pi * params['G'].value * scipy.integrate.simpson(
             r_new * rho_new, x=r_new
         )
     
@@ -857,9 +857,7 @@ def get_bubble_ODE(r_arr, initial_ODEs, dMdt_params_au):
         print('Getting np.nan Temeprature')
         print(dMdt_params_au['t_now'].value, ndens, T, phi, v, dTdr)
     
-    # dudt is [M_sun/pc/yr3] (erg/cm3/s), because cooling is in units of (erg cm3/s) [M_sun*pc5/s3] 
-    print(ndens, T, phi, dMdt_params_au['t_now'].value, dMdt_params_au['Pb'].value)
-    sys.exit()
+    # dudt is [M_sun/pc/yr3] (erg/cm3/s), because cooling is in units of (erg cm3/s) [M_sun*pc5/s3]
     dudt = net_coolingcurve.get_dudt(dMdt_params_au['t_now'].value, ndens, T, phi, dMdt_params_au)
     
     # v - a*r but try with right units

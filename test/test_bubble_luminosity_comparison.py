@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Verification test comparing shell_structure and shell_structure_modified.
+Verification test comparing bubble_luminosity and bubble_luminosity_modified.
 
-This test loads a snapshot from the dictionary.jsonl file and verifies that
-both the original shell_structure() and the new shell_structure_pure()
+This test loads snapshots from the dictionary.jsonl file and verifies that
+both the original get_bubbleproperties() and the new get_bubbleproperties_pure()
 return identical results.
+
+Outputs a comparison table for 10 random snapshots in range 10-300.
 
 Author: TRINITY Team
 """
@@ -20,8 +22,8 @@ import random
 # Ensure src is in path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from src.shell_structure.shell_structure import shell_structure
-from src.shell_structure.shell_structure_modified import shell_structure_pure, ShellProperties
+from src.bubble_structure.bubble_luminosity import get_bubbleproperties
+from src.bubble_structure.bubble_luminosity_modified import get_bubbleproperties_pure, BubbleProperties
 from src._functions.unit_conversions import CONV, CGS
 
 
@@ -102,83 +104,130 @@ class MockParam:
 
 
 def load_snapshot_from_jsonl(filepath: str, line_number: int) -> dict:
-    """
-    Load a specific snapshot (line) from a JSONL file.
-
-    Parameters
-    ----------
-    filepath : str
-        Path to the JSONL file
-    line_number : int
-        1-indexed line number to load
-
-    Returns
-    -------
-    dict
-        Parsed JSON data from the specified line
-    """
+    """Load a specific snapshot (line) from a JSONL file."""
     with open(filepath, 'r') as f:
         for i, line in enumerate(f):
-            if i == line_number - 1:  # Convert to 0-indexed
+            if i == line_number - 1:
                 return json.loads(line.strip())
     raise ValueError(f"Line {line_number} not found in {filepath}")
+
+
+def get_total_lines(filepath: str) -> int:
+    """Count total lines in a file."""
+    with open(filepath, 'r') as f:
+        return sum(1 for _ in f)
 
 
 def add_physical_constants(params: dict) -> dict:
     """
     Add physical constants that are missing from the dictionary snapshot.
-
-    These constants are normally set during initialization but are not
-    saved in the dictionary.jsonl output file.
+    Includes both shell and bubble-specific constants.
     """
     # Unit conversion factors
-    ndens_cgs2au = CONV.ndens_cgs2au      # cm^-3 -> pc^-3
-    m_H_to_Msun = CGS.m_H * CONV.g2Msun   # m_H unit -> Msun
-    k_B_cgs2au = CONV.k_B_cgs2au          # erg/K -> AU
-    G_cgs2au = CONV.G_cgs2au              # CGS G -> AU
-    v_cms2au = CONV.v_cms2au              # cm/s -> pc/Myr
+    ndens_cgs2au = CONV.ndens_cgs2au
+    m_H_to_Msun = CGS.m_H * CONV.g2Msun
+    k_B_cgs2au = CONV.k_B_cgs2au
+    G_cgs2au = CONV.G_cgs2au
+    v_cms2au = CONV.v_cms2au
 
-    # Boltzmann constant in AU: k_B [erg/K] * conversion
-    params['k_B'] = CGS.k_B * k_B_cgs2au  # Msun·pc²/Myr²/K
+    # Boltzmann constant in AU
+    params['k_B'] = CGS.k_B * k_B_cgs2au
 
-    # Gravitational constant in AU: G [cm³/g/s²] * conversion
-    params['G'] = CGS.G * G_cgs2au  # pc³/Msun/Myr²
+    # Gravitational constant in AU
+    params['G'] = CGS.G * G_cgs2au
 
-    # Speed of light in AU: c [cm/s] * conversion
-    params['c_light'] = CGS.c * v_cms2au  # pc/Myr
+    # Speed of light in AU
+    params['c_light'] = CGS.c * v_cms2au
 
     # Mean molecular weights (in Msun)
-    params['mu_atom'] = 2.3 * m_H_to_Msun  # Neutral/atomic gas
-    params['mu_ion'] = 1.4 * m_H_to_Msun   # Ionized gas
+    params['mu_atom'] = 2.3 * m_H_to_Msun
+    params['mu_ion'] = 1.4 * m_H_to_Msun
 
     # Shell temperatures (K)
-    params['TShell_ion'] = 1e4  # Ionized shell temperature
-    params['TShell_neu'] = 100  # Neutral shell temperature
+    params['TShell_ion'] = 1e4
+    params['TShell_neu'] = 100
 
-    # Case B recombination coefficient: 2.54e-13 cm³/s at 10^4 K
-    # Convert to AU: cm³/s -> pc³/Myr
-    caseB_alpha_cgs = 2.54e-13  # cm³/s
+    # Case B recombination coefficient
+    caseB_alpha_cgs = 2.54e-13
     cm3_to_pc3 = CONV.cm2pc**3
     s_to_Myr = CONV.s2Myr
     params['caseB_alpha'] = caseB_alpha_cgs * cm3_to_pc3 / s_to_Myr
 
-    # Dust cross section: 1e-21 cm² (scaled with metallicity, assume solar)
-    # Convert to AU: cm² -> pc²
-    dust_sigma_cgs = 1e-21  # cm²
+    # Dust parameters
+    dust_sigma_cgs = 1e-21
     cm2_to_pc2 = CONV.cm2pc**2
     params['dust_sigma'] = dust_sigma_cgs * cm2_to_pc2
-
-    # Dust IR opacity: 4.0 cm²/g
-    # Convert to AU: cm²/g -> pc²/Msun
-    dust_KappaIR_cgs = 4.0  # cm²/g
+    dust_KappaIR_cgs = 4.0
     params['dust_KappaIR'] = dust_KappaIR_cgs * cm2_to_pc2 / CONV.g2Msun
 
-    # Shell dissolution threshold (number density in AU)
-    params['stop_n_diss'] = 0.1 * ndens_cgs2au  # Convert from cm^-3 to pc^-3
+    # Shell dissolution threshold
+    params['stop_n_diss'] = 0.1 * ndens_cgs2au
 
-    # ISM number density (if not present, use a typical value)
+    # ISM number density
     if 'nISM' not in params:
-        params['nISM'] = 1.0 * ndens_cgs2au  # 1 cm^-3 in AU
+        params['nISM'] = 1.0 * ndens_cgs2au
+
+    # =========================================================================
+    # Bubble-specific constants
+    # =========================================================================
+
+    # Adiabatic index (dimensionless)
+    params['gamma_adia'] = 5.0 / 3.0
+
+    # Thermal conductivity coefficient (CGS to AU)
+    C_thermal_cgs = 6e-7  # erg/(s·cm·K^(7/2))
+    params['C_thermal'] = C_thermal_cgs * CONV.c_therm_cgs2au
+
+    # Bubble temperature measurement radius ratio
+    params['bubble_xi_Tb'] = 0.98
+
+    # Cloud metallicity (solar = 1.0)
+    if 'ZCloud' not in params:
+        params['ZCloud'] = 1.0
+
+    # Mechanical luminosity and velocity from wind data
+    if 'LWind' in params and 'pWindDot' in params:
+        params['Lmech_total'] = params['LWind']
+        if params['pWindDot'] > 0:
+            params['v_mech_total'] = 2.0 * params['LWind'] / params['pWindDot']
+        else:
+            params['v_mech_total'] = 1000.0  # Default fallback
+
+    # Pre-initialize bubble arrays (will be populated by get_bubbleproperties)
+    if 'bubble_v_arr' not in params:
+        params['bubble_v_arr'] = np.array([])
+    if 'bubble_T_arr' not in params:
+        params['bubble_T_arr'] = np.array([])
+    if 'bubble_dTdr_arr' not in params:
+        params['bubble_dTdr_arr'] = np.array([])
+    if 'bubble_r_arr' not in params:
+        params['bubble_r_arr'] = np.array([])
+    if 'bubble_n_arr' not in params:
+        params['bubble_n_arr'] = np.array([])
+    if 'bubble_r_Tb' not in params:
+        params['bubble_r_Tb'] = 0.0
+
+    # Pre-initialize bubble output values
+    if 'bubble_LTotal' not in params:
+        params['bubble_LTotal'] = 0.0
+    if 'bubble_T_r_Tb' not in params:
+        params['bubble_T_r_Tb'] = 0.0
+    if 'bubble_L1Bubble' not in params:
+        params['bubble_L1Bubble'] = 0.0
+    if 'bubble_L2Conduction' not in params:
+        params['bubble_L2Conduction'] = 0.0
+    if 'bubble_L3Intermediate' not in params:
+        params['bubble_L3Intermediate'] = 0.0
+    if 'bubble_Tavg' not in params:
+        params['bubble_Tavg'] = 0.0
+    if 'bubble_mass' not in params:
+        params['bubble_mass'] = 0.0
+
+    # Pre-initialize R1 and Pb (will be computed)
+    if 'R1' not in params:
+        params['R1'] = 0.0
+    if 'Pb' not in params:
+        params['Pb'] = 0.0
 
     return params
 
@@ -186,26 +235,11 @@ def add_physical_constants(params: dict) -> dict:
 def prime_params(params: dict) -> dict:
     """
     Initialize parameters that require setup beyond simple values.
-
-    This function sets up:
-    - Cooling interpolation (CIE and non-CIE)
-    - Any other computed/interpolated parameters
-
-    Parameters
-    ----------
-    params : dict
-        Dictionary with raw values (already has physical constants added)
-
-    Returns
-    -------
-    dict
-        Dictionary with initialized interpolation objects and computed params
+    Sets up cooling interpolation and other computed parameters.
     """
     # =========================================================================
-    # Cooling interpolation (CIE - Collisional Ionization Equilibrium)
+    # Cooling interpolation (CIE)
     # =========================================================================
-
-    # Try to load cooling curve from lib/cooling/CIE/
     cie_files = {
         1: 'lib/cooling/CIE/coolingCIE_1_Cloudy.dat',
         2: 'lib/cooling/CIE/coolingCIE_2_Cloudy_grains.dat',
@@ -214,7 +248,7 @@ def prime_params(params: dict) -> dict:
     }
 
     cooling_loaded = False
-    for cie_choice in [3, 4, 1, 2]:  # Try Gnat-Ferland first, then others
+    for cie_choice in [3, 4, 1, 2]:
         cooling_path = os.path.join(PROJECT_ROOT, cie_files.get(cie_choice, ''))
         if os.path.exists(cooling_path):
             try:
@@ -228,15 +262,13 @@ def prime_params(params: dict) -> dict:
                 params['cStruc_cooling_CIE_interpolation'] = cooling_CIE_interpolation
                 cooling_loaded = True
                 break
-            except Exception as e:
-                print(f"Warning: Could not load cooling curve from {cooling_path}: {e}")
+            except Exception:
+                pass
 
     if not cooling_loaded:
-        # Create mock cooling interpolation for testing
-        # This is a simple approximation of the cooling curve
-        logT = np.linspace(4, 9, 100)  # log10(T) from 10^4 to 10^9 K
-        # Simple cooling function approximation: Lambda ~ T^0.5 for high T
-        logLambda = -22 + 0.5 * (logT - 6)  # Rough approximation
+        # Mock cooling curve
+        logT = np.linspace(4, 9, 100)
+        logLambda = -22 + 0.5 * (logT - 6)
         cooling_CIE_interpolation = scipy.interpolate.interp1d(
             logT, logLambda, kind='linear', bounds_error=False, fill_value='extrapolate'
         )
@@ -244,21 +276,40 @@ def prime_params(params: dict) -> dict:
         params['cStruc_cooling_CIE_logT'] = logT
         params['cStruc_cooling_CIE_logLambda'] = logLambda
         params['cStruc_cooling_CIE_interpolation'] = cooling_CIE_interpolation
-        print("Note: Using mock cooling curve (real cooling data not found)")
 
-    # =========================================================================
-    # Non-CIE cooling (placeholder - set to None if not available)
-    # =========================================================================
+    # Non-CIE cooling placeholders
+    # Note: These need to be objects with .temp, .ndens, .phi, .interp attributes
+    class MockCloudyCube:
+        """Mock CloudyCube with temperature range for non-CIE cooling."""
+        def __init__(self):
+            self.temp = np.array([4.0, 4.5, 5.0, 5.5])  # log10(T)
+            self.ndens = np.array([0, 2, 4, 6])  # log10(n)
+            self.phi = np.array([0, 5, 10, 15])  # log10(phi)
+            self.cooling = np.zeros((4, 4, 4))
+            self.heating = np.zeros((4, 4, 4))
+            # Interpolation function that returns 0 (log10 of small value)
+            self.interp = scipy.interpolate.RegularGridInterpolator(
+                (self.ndens, self.temp, self.phi),
+                np.full((4, 4, 4), -30.0),  # log10(very small) = -30
+                bounds_error=False,
+                fill_value=-30.0
+            )
+
     if 'cStruc_cooling_nonCIE' not in params:
-        params['cStruc_cooling_nonCIE'] = None
+        params['cStruc_cooling_nonCIE'] = MockCloudyCube()
     if 'cStruc_heating_nonCIE' not in params:
-        params['cStruc_heating_nonCIE'] = None
+        params['cStruc_heating_nonCIE'] = MockCloudyCube()
     if 'cStruc_net_nonCIE_interpolation' not in params:
-        params['cStruc_net_nonCIE_interpolation'] = None
+        # Mock interpolator that returns 0
+        mock_cube = MockCloudyCube()
+        params['cStruc_net_nonCIE_interpolation'] = scipy.interpolate.RegularGridInterpolator(
+            (mock_cube.ndens, mock_cube.temp, mock_cube.phi),
+            np.zeros((4, 4, 4)),
+            bounds_error=False,
+            fill_value=0.0
+        )
 
-    # =========================================================================
     # Cooling timing
-    # =========================================================================
     if 't_previousCoolingUpdate' not in params:
         params['t_previousCoolingUpdate'] = 0.0
 
@@ -266,101 +317,74 @@ def prime_params(params: dict) -> dict:
 
 
 def make_params_dict(snapshot: dict, include_priming: bool = True) -> dict:
-    """
-    Create a params dictionary with MockParam wrappers from a snapshot.
-
-    Parameters
-    ----------
-    snapshot : dict
-        Raw dictionary loaded from JSONL
-    include_priming : bool
-        If True, also initialize interpolation objects (cooling, etc.)
-
-    Returns
-    -------
-    dict
-        Dictionary with MockParam objects for .value access
-    """
-    # Add physical constants
+    """Create a params dictionary with MockParam wrappers from a snapshot."""
     snapshot = add_physical_constants(snapshot)
-
-    # Prime params with interpolation objects (cooling curves, etc.)
     if include_priming:
         snapshot = prime_params(snapshot)
-
-    # Wrap all values in MockParam
     return {k: MockParam(v) for k, v in snapshot.items()}
 
 
-def compare_values(name: str, original, modified, rtol: float = 1e-10) -> tuple:
-    """
-    Compare two values and return (passed, message).
-
-    Handles floats, arrays, and booleans.
-    """
+def compare_values(name: str, original, modified, rtol: float = 1e-8) -> tuple:
+    """Compare two values and return (passed, rel_diff, message)."""
     if isinstance(original, bool):
-        if original == modified:
-            return True, f"  ✓ {name}: {original}"
-        else:
-            return False, f"  ✗ {name}: original={original}, modified={modified}"
+        passed = (original == modified)
+        return passed, 0.0 if passed else 1.0, "bool"
 
     elif isinstance(original, np.ndarray):
         if not isinstance(modified, np.ndarray):
-            return False, f"  ✗ {name}: original is array, modified is {type(modified)}"
+            return False, 1.0, "type_mismatch"
         if original.shape != modified.shape:
-            return False, f"  ✗ {name}: shape mismatch {original.shape} vs {modified.shape}"
+            return False, 1.0, "shape_mismatch"
         if np.allclose(original, modified, rtol=rtol, equal_nan=True):
-            return True, f"  ✓ {name}: arrays match (shape={original.shape})"
+            return True, 0.0, "array_match"
         else:
-            max_diff = np.max(np.abs(original - modified))
-            return False, f"  ✗ {name}: arrays differ, max_diff={max_diff:.6e}"
+            max_diff = np.max(np.abs(original - modified) / (np.abs(original) + 1e-300))
+            return False, max_diff, "array_diff"
 
     elif isinstance(original, (int, float)):
         if np.isnan(original) and np.isnan(modified):
-            return True, f"  ✓ {name}: both NaN"
+            return True, 0.0, "both_nan"
         if np.isclose(original, modified, rtol=rtol):
-            return True, f"  ✓ {name}: {original:.6e}"
+            return True, 0.0, "match"
         else:
             rel_diff = abs(original - modified) / max(abs(original), abs(modified), 1e-300)
-            return False, f"  ✗ {name}: original={original:.6e}, modified={modified:.6e}, rel_diff={rel_diff:.6e}"
+            return False, rel_diff, "diff"
 
     else:
-        if original == modified:
-            return True, f"  ✓ {name}: {original}"
-        else:
-            return False, f"  ✗ {name}: original={original}, modified={modified}"
-
-
-def get_total_lines(filepath: str) -> int:
-    """Count total lines in a file."""
-    with open(filepath, 'r') as f:
-        return sum(1 for _ in f)
+        passed = (original == modified)
+        return passed, 0.0 if passed else 1.0, "other"
 
 
 def test_snapshot(snapshot: dict, verbose: bool = False) -> dict:
     """
     Test a single snapshot and return results dictionary.
+
+    Returns dict with:
+        - 'passed': bool
+        - 'line': int
+        - 't_now': float
+        - 'field_results': dict mapping field_name -> (passed, rel_diff)
     """
     params_original = make_params_dict(snapshot.copy())
     params_modified = make_params_dict(snapshot.copy())
 
     # Run both versions
-    shell_structure(params_original)
-    result_modified = shell_structure_pure(params_modified)
+    get_bubbleproperties(params_original)
+    result_modified = get_bubbleproperties_pure(params_modified)
 
     # Fields to compare
     fields = [
-        ('shell_n0', 'shell_n0'),
-        ('rShell', 'rShell'),
-        ('shell_thickness', 'shell_thickness'),
-        ('shell_fAbsorbedIon', 'shell_fAbsorbedIon'),
-        ('shell_fAbsorbedNeu', 'shell_fAbsorbedNeu'),
-        ('shell_fAbsorbedWeightedTotal', 'shell_fAbsorbedWeightedTotal'),
-        ('shell_fIonisedDust', 'shell_fIonisedDust'),
-        ('shell_nMax', 'shell_nMax'),
-        ('shell_tauKappaRatio', 'shell_tauKappaRatio'),
-        ('shell_F_rad', 'shell_F_rad'),
-        ('isDissolved', 'isDissolved'),
+        ('bubble_LTotal', 'bubble_LTotal'),
+        ('bubble_T_r_Tb', 'bubble_T_r_Tb'),
+        ('bubble_Tavg', 'bubble_Tavg'),
+        ('bubble_mass', 'bubble_mass'),
+        ('bubble_L1Bubble', 'bubble_L1Bubble'),
+        ('bubble_L2Conduction', 'bubble_L2Conduction'),
+        ('bubble_L3Intermediate', 'bubble_L3Intermediate'),
+        ('bubble_dMdt', 'bubble_dMdt'),
+        ('R1', 'R1'),
+        ('Pb', 'Pb'),
+        ('bubble_r_Tb', 'bubble_r_Tb'),
     ]
 
     field_results = {}
@@ -369,24 +393,12 @@ def test_snapshot(snapshot: dict, verbose: bool = False) -> dict:
     for params_key, dataclass_attr in fields:
         original_val = params_original[params_key].value
         modified_val = getattr(result_modified, dataclass_attr)
-
-        if isinstance(original_val, bool):
-            passed = (original_val == modified_val)
-            rel_diff = 0.0 if passed else 1.0
-        elif isinstance(original_val, (int, float)):
-            if np.isnan(original_val) and np.isnan(modified_val):
-                passed, rel_diff = True, 0.0
-            elif np.isclose(original_val, modified_val, rtol=1e-10):
-                passed, rel_diff = True, 0.0
-            else:
-                rel_diff = abs(original_val - modified_val) / max(abs(original_val), abs(modified_val), 1e-300)
-                passed = False
-        else:
-            passed, rel_diff = True, 0.0
-
+        passed, rel_diff, msg = compare_values(params_key, original_val, modified_val)
         field_results[params_key] = (passed, rel_diff, original_val)
         if not passed:
             all_passed = False
+            if verbose:
+                print(f"  ✗ {params_key}: rel_diff={rel_diff:.2e}")
 
     return {
         'passed': all_passed,
@@ -397,13 +409,14 @@ def test_snapshot(snapshot: dict, verbose: bool = False) -> dict:
 
 def print_comparison_table(results: list, fields: list):
     """Print a formatted comparison table."""
+    # Header
     print("\n" + "=" * 100)
-    print("SHELL STRUCTURE COMPARISON TABLE")
+    print("BUBBLE LUMINOSITY COMPARISON TABLE")
     print("=" * 100)
 
     # Column headers
     header = f"{'Snapshot':<10} {'t_now':<12} {'Status':<8}"
-    for field in fields[:5]:
+    for field in fields[:5]:  # Show first 5 key fields
         header += f" {field[:12]:<14}"
     print(header)
     print("-" * 100)
@@ -418,15 +431,10 @@ def print_comparison_table(results: list, fields: list):
         for field in fields[:5]:
             if field in res['field_results']:
                 passed, rel_diff, val = res['field_results'][field]
-                if isinstance(val, bool):
-                    row += f" {str(val):<14}"
-                elif isinstance(val, (int, float)):
-                    if passed:
-                        row += f" {val:<14.4e}"
-                    else:
-                        row += f" {val:<14.4e}*"
+                if passed:
+                    row += f" {val:<14.4e}"
                 else:
-                    row += f" {'N/A':<14}"
+                    row += f" {val:<14.4e}*"
             else:
                 row += f" {'N/A':<14}"
         print(row)
@@ -440,18 +448,15 @@ def print_comparison_table(results: list, fields: list):
         print("* indicates field with mismatch")
 
 
-def test_shell_structure_comparison():
+def test_bubble_luminosity_comparison():
     """
-    Test shell_structure vs shell_structure_modified on 10 random snapshots.
+    Test bubble_luminosity vs bubble_luminosity_modified on 10 random snapshots.
     """
     print("=" * 70)
-    print("Testing shell_structure vs shell_structure_modified")
+    print("Testing bubble_luminosity vs bubble_luminosity_modified")
     print("=" * 70)
 
-    jsonl_path = os.path.join(
-        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-        'comparison', '1e7_sfe020_n1e4_test_dictionary.jsonl'
-    )
+    jsonl_path = os.path.join(PROJECT_ROOT, 'comparison', '1e7_sfe020_n1e4_test_dictionary.jsonl')
 
     if not os.path.exists(jsonl_path):
         print(f"ERROR: Test dictionary not found at {jsonl_path}")
@@ -469,8 +474,8 @@ def test_shell_structure_comparison():
     print(f"Selected lines: {snapshot_lines}")
 
     results = []
-    fields = ['shell_n0', 'rShell', 'shell_thickness', 'shell_fAbsorbedIon',
-              'shell_fAbsorbedNeu', 'shell_nMax', 'shell_F_rad', 'isDissolved']
+    fields = ['bubble_LTotal', 'bubble_T_r_Tb', 'bubble_Tavg', 'bubble_mass',
+              'bubble_L1Bubble', 'bubble_dMdt', 'R1', 'Pb']
 
     for line_num in snapshot_lines:
         print(f"\nProcessing snapshot {line_num}...", end=" ")
@@ -493,10 +498,10 @@ def test_shell_structure_comparison():
 
 
 if __name__ == '__main__':
-    print("Shell Structure Comparison Test")
-    print("================================\n")
+    print("Bubble Luminosity Comparison Test")
+    print("==================================\n")
 
-    passed = test_shell_structure_comparison()
+    passed = test_bubble_luminosity_comparison()
 
     print("\n" + "=" * 70)
     if passed:
