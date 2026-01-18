@@ -64,19 +64,15 @@ from src.sb99.update_feedback import get_currentSB99feedback
 _trapezoid = getattr(np, 'trapezoid', None) or np.trapz
 
 
-
 def get_bubbleproperties(params):
     """
-    Used in nearly all phases to calculate bubble luminosity.
+    Used in nearly all phases to calculate bubble luminosity, and how much is lost to cooling.
+    This is calculated at fixed time. time does not change in this function. 
+    IMPORTANT: Therefore any dictionary entering here has to be VERY certain that every parameters within are up to date and reflects to its `t_now`. 
 
-    Print out the dictionary to check for their items and associated units via print(b_params)
-
-    old code: calc_Lb(); i.e., get_bubbleLuminosity
     """
     
-    print('entering get_bubbleproperties')    
-    
-    logger.info(f'mu_atom {params["mu_atom"]}')
+    logger.info('entering get_bubbleproperties')    
     
     # =============================================================================
     # Step 1: Get necessary parameters, such as inner bubble radius R1 
@@ -85,7 +81,6 @@ def get_bubbleproperties(params):
     
     # velocity at r ---> 0.
     v0 = 0.0
-    
     
     # initial radius of discontinuity [pc] (inner bubble radius)
     R1 = scipy.optimize.brentq(get_bubbleParams.get_r1, 
