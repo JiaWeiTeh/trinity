@@ -30,6 +30,9 @@ import src._functions.unit_conversions as cvt
 
 logger = logging.getLogger(__name__)
 
+# NumPy compatibility: trapz was renamed to trapezoid in NumPy 2.0
+_trapezoid = getattr(np, 'trapezoid', None) or np.trapz
+
 
 # =============================================================================
 # Constants
@@ -406,10 +409,10 @@ def _compute_L_bubble(
     integrand = n_bubble**2 * Lambda_bubble * FOUR_PI * r_bubble**2
 
     # Integrate (r is decreasing, so use abs)
-    L_bubble = np.abs(np.trapezoid(integrand, x=r_bubble))
+    L_bubble = np.abs(_trapezoid(integrand, x=r_bubble))
 
     # Volume-weighted temperature for average calculation
-    Tavg_bubble = np.abs(np.trapezoid(r_bubble**2 * T_bubble, x=r_bubble))
+    Tavg_bubble = np.abs(_trapezoid(r_bubble**2 * T_bubble, x=r_bubble))
 
     return L_bubble, Tavg_bubble
 
@@ -546,10 +549,10 @@ def _compute_L_conduction(
     integrand = dudt_conduction * FOUR_PI * r_conduction**2
 
     # Integrate
-    L_conduction = np.abs(np.trapezoid(integrand, x=r_conduction))
+    L_conduction = np.abs(_trapezoid(integrand, x=r_conduction))
 
     # Volume-weighted temperature
-    Tavg_conduction = np.abs(np.trapezoid(r_conduction**2 * T_conduction, x=r_conduction))
+    Tavg_conduction = np.abs(_trapezoid(r_conduction**2 * T_conduction, x=r_conduction))
 
     return L_conduction, Tavg_conduction, dTdr_at_cooling_switch
 
@@ -654,7 +657,7 @@ def _compute_L_intermediate(
             )
             dudt = (heating - cooling) * cvt.dudt_cgs2au
             integrand = dudt * FOUR_PI * r_intermediate[mask_nonCIE]**2
-            L_intermediate += np.abs(np.trapezoid(integrand, x=r_intermediate[mask_nonCIE]))
+            L_intermediate += np.abs(_trapezoid(integrand, x=r_intermediate[mask_nonCIE]))
         except Exception as e:
             logger.warning(f"Non-CIE intermediate calc failed: {e}")
 
@@ -663,12 +666,12 @@ def _compute_L_intermediate(
         try:
             Lambda = 10**(cooling_CIE_interp(np.log10(T_intermediate[mask_CIE]))) * cvt.Lambda_cgs2au
             integrand = n_intermediate[mask_CIE]**2 * Lambda * FOUR_PI * r_intermediate[mask_CIE]**2
-            L_intermediate += np.abs(np.trapezoid(integrand, x=r_intermediate[mask_CIE]))
+            L_intermediate += np.abs(_trapezoid(integrand, x=r_intermediate[mask_CIE]))
         except Exception as e:
             logger.warning(f"CIE intermediate calc failed: {e}")
 
     # Volume-weighted temperature
-    Tavg_intermediate = np.abs(np.trapezoid(r_intermediate**2 * T_intermediate, x=r_intermediate))
+    Tavg_intermediate = np.abs(_trapezoid(r_intermediate**2 * T_intermediate, x=r_intermediate))
 
     return L_intermediate, Tavg_intermediate
 
