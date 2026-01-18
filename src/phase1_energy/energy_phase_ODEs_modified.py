@@ -18,9 +18,9 @@ Key difference from energy_phase_ODEs.py:
 import numpy as np
 import scipy.optimize
 import src.cloud_properties.mass_profile as mass_profile
-import src.cloud_properties.density_profile as density_profile
 import src.bubble_structure.get_bubbleParams as get_bubbleParams
 from src.sb99.update_feedback import get_currentSB99feedback
+from src.phase1_energy.energy_phase_ODEs import get_press_ion  # Use existing function
 from dataclasses import dataclass
 from typing import Optional
 import logging
@@ -78,9 +78,6 @@ class ODESnapshot:
     # Cloud properties
     rCloud: float
 
-    # Density profile parameters (for mass calculation)
-    density_profile_params: dict
-
 
 def create_ODE_snapshot(params) -> ODESnapshot:
     """
@@ -89,19 +86,6 @@ def create_ODE_snapshot(params) -> ODESnapshot:
     This should be called once at the start of each integration segment,
     not during ODE evaluation.
     """
-    # Collect density profile parameters needed by mass_profile
-    density_params = {
-        'nCore': params['nCore'].value,
-        'rCore': params['rCore'].value,
-        'nISM': params['nISM'].value,
-        'rCloud': params['rCloud'].value,
-        'k_B': params['k_B'].value,
-        'TShell_neu': params['TShell_neu'].value,
-        'TShell_ion': params['TShell_ion'].value,
-        'mu_n': params['mu_n'].value,
-        'mu_p': params['mu_p'].value,
-    }
-
     return ODESnapshot(
         shell_fAbsorbedIon=params['shell_fAbsorbedIon'].value,
         shell_F_rad=params['shell_F_rad'].value,
@@ -124,66 +108,7 @@ def create_ODE_snapshot(params) -> ODESnapshot:
         current_phase=params['current_phase'].value,
         EarlyPhaseApproximation=params['EarlyPhaseApproximation'].value,
         rCloud=params['rCloud'].value,
-        density_profile_params=density_params,
     )
-
-
-def get_press_ion_pure(r: float, snapshot: ODESnapshot) -> float:
-    """
-    Pressure from photoionized part of cloud at radius r.
-
-    Pure version that uses snapshot instead of params dictionary.
-    """
-    r = np.atleast_1d(r)
-    # Simplified density calculation using snapshot parameters
-    dp = snapshot.density_profile_params
-
-    # Replicate density_profile logic inline to avoid params dependency
-    nCore = dp['nCore']
-    rCore = dp['rCore']
-    nISM = dp['nISM']
-    rCloud = dp['rCloud']
-
-    # Simplified Plummer-like profile
-    n_r = nCore / (1 + (r / rCore)**2)**(3/2)
-    # Ensure density doesn't drop below ISM
-    n_r = np.maximum(n_r, nISM)
-
-    P_ion = 2.0 * n_r * snapshot.k_B * snapshot.TShell_ion
-    return _scalar(P_ion)
-
-
-def get_shell_mass_pure(R2: float, v2: float, snapshot: ODESnapshot):
-    """
-    Calculate shell mass and its time derivative.
-
-    Pure version that uses snapshot instead of params dictionary.
-    Returns (mShell, mShell_dot).
-    """
-    if snapshot.isCollapse:
-        return snapshot.shell_mass, 0.0
-
-    dp = snapshot.density_profile_params
-    nCore = dp['nCore']
-    rCore = dp['rCore']
-    nISM = dp['nISM']
-    rCloud = dp['rCloud']
-    mu_n = dp['mu_n']
-
-    # Simplified mass calculation (Plummer sphere)
-    # M(r) = (4/3) * pi * nCore * rCore^3 * [r/rCore / sqrt(1 + (r/rCore)^2)]
-    x = R2 / rCore
-    mass_factor = x / np.sqrt(1 + x**2)
-    mShell = (4/3) * np.pi * nCore * mu_n * rCore**3 * mass_factor
-
-    # Mass derivative: dM/dt = dM/dr * dr/dt
-    # dM/dr = 4 * pi * r^2 * rho(r)
-    n_at_R2 = nCore / (1 + x**2)**(3/2)
-    n_at_R2 = max(n_at_R2, nISM)
-    dmdr = 4 * np.pi * R2**2 * n_at_R2 * mu_n
-    mShell_dot = dmdr * v2
-
-    return _scalar(mShell), _scalar(mShell_dot)
 
 
 def get_ODE_Edot_pure(t: float, y: list, snapshot: ODESnapshot, params_for_feedback):
@@ -217,8 +142,15 @@ def get_ODE_Edot_pure(t: float, y: list, snapshot: ODESnapshot, params_for_feedb
     Lmech_total = feedback.Lmech_total
     v_mech_total = feedback.v_mech_total
 
-    # Calculate shell mass
-    mShell, mShell_dot = get_shell_mass_pure(R2, v2, snapshot)
+    # Calculate shell mass using existing mass_profile module
+    # (only reads from params, safe for ODE evaluation)
+    if snapshot.isCollapse:
+        mShell = snapshot.shell_mass
+        mShell_dot = 0.0
+    else:
+        mShell, mShell_dot = mass_profile.get_mass_profile(
+            R2, params_for_feedback, return_mdot=True, rdot=v2
+        )
 
     # Gravity force (self + cluster)
     F_grav = snapshot.G * mShell / (R2**2) * (snapshot.mCluster + 0.5 * mShell)
@@ -244,9 +176,10 @@ def get_ODE_Edot_pure(t: float, y: list, snapshot: ODESnapshot, params_for_feedb
             press_bubble = get_bubbleParams.bubble_E2P(Eb, R2, R1_tmp, snapshot.gamma_adia)
 
     # Inward pressure from photoionized gas outside shell
+    # Uses existing get_press_ion() which only reads from params
     FABSi = snapshot.shell_fAbsorbedIon
     if FABSi < 1.0:
-        press_HII_in = get_press_ion_pure(snapshot.rShell, snapshot)
+        press_HII_in = get_press_ion(snapshot.rShell, params_for_feedback)
     else:
         press_HII_in = 0.0
 
@@ -324,8 +257,14 @@ def compute_derived_quantities(t: float, y: list, snapshot: ODESnapshot, params_
     Lmech_total = feedback.Lmech_total
     v_mech_total = feedback.v_mech_total
 
-    # Shell mass
-    mShell, mShell_dot = get_shell_mass_pure(R2, v2, snapshot)
+    # Shell mass using existing mass_profile module
+    if snapshot.isCollapse:
+        mShell = snapshot.shell_mass
+        mShell_dot = 0.0
+    else:
+        mShell, mShell_dot = mass_profile.get_mass_profile(
+            R2, params_for_feedback, return_mdot=True, rdot=v2
+        )
 
     # R1
     R1 = scipy.optimize.brentq(
@@ -342,7 +281,7 @@ def compute_derived_quantities(t: float, y: list, snapshot: ODESnapshot, params_
 
     FABSi = snapshot.shell_fAbsorbedIon
     if FABSi < 1.0:
-        press_HII_in = get_press_ion_pure(snapshot.rShell, snapshot)
+        press_HII_in = get_press_ion(snapshot.rShell, params_for_feedback)
     else:
         press_HII_in = 0.0
 
