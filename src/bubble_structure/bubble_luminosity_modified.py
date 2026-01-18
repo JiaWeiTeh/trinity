@@ -236,6 +236,8 @@ def compute_velocity_residual(dMdt: float, params_dict: Dict) -> float:
     residual : float
         Residual (should be ~0 when converged)
     """
+    # Ensure dMdt is a scalar (fsolve passes arrays)
+    dMdt = float(np.atleast_1d(dMdt)[0])
     # Ensure positive dMdt
     dMdt = max(dMdt, 1e-20)
 

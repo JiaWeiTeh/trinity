@@ -5,22 +5,23 @@ Compare original vs modified energy phase implementations.
 
 This script runs both the original (run_energy_phase.py) and modified
 (run_energy_phase_modified.py) versions of the energy phase solver on
-parameter file(s), then produces comparison plots.
+parameter file(s), then produces comparison plots grouped by category.
 
-Each version runs with its own isolated output directory to avoid conflicts.
-When multiple parameter files are provided, each generates its own separate
-PDF comparison plot.
+Output PDFs (saved to both output directories):
+    - comparison_shell_*.pdf: Shell parameters (shell_* prefix)
+    - comparison_bubble_*.pdf: Bubble parameters (bubble_* prefix)
+    - comparison_force_*.pdf: Force parameters (F_* prefix)
+    - comparison_sb99_*.pdf: Starburst99 parameters
+    - comparison_main_*.pdf: Main bubble parameters (v2, R2, R1, etc.)
 
 Usage (from project root):
     python comparison/compare_energy_phase.py param/1e7_sfe030_n1e4.param
-    python comparison/compare_energy_phase.py param/test.param --save-pdf
-    python comparison/compare_energy_phase.py param/test.param --params R2,Eb,v2
 
-    # Multiple parameter files (each generates its own PDF):
-    python comparison/compare_energy_phase.py param/1e7_sfe001_n1e4.param param/1e7_sfe030_n1e4.param --save-pdf
+    # Multiple parameter files (each generates its own set of PDFs):
+    python comparison/compare_energy_phase.py param/1e7_sfe001_n1e4.param param/1e7_sfe030_n1e4.param
 
-    # Run in nohup/headless environment (no display):
-    nohup python comparison/compare_energy_phase.py param/*.param --save-pdf --no-display &
+    # Run in nohup/headless environment:
+    nohup python comparison/compare_energy_phase.py param/*.param &
 
 Author: TRINITY Team
 """
@@ -37,9 +38,8 @@ import scipy
 import matplotlib
 from pathlib import Path
 
-# Set non-interactive backend if --no-display flag is present (for nohup/headless)
-if '--no-display' in sys.argv:
-    matplotlib.use('Agg')
+# Always use non-interactive backend (no display needed)
+matplotlib.use('Agg')
 
 import matplotlib.pyplot as plt
 
@@ -63,14 +63,27 @@ from src.phase1_energy import run_energy_phase
 from src.phase1_energy import run_energy_phase_modified
 
 # =============================================================================
-# Configuration: Default parameters to compare
+# Parameter categories for plotting
 # =============================================================================
 
-DEFAULT_COMPARE_PARAMS = [
-    'R2', 'v2', 'Eb', 'R1',
-    'F_ram', 'F_grav', 'F_ion_out', 'F_rad',
-    'shell_mass', 'Pb', 'L_mech_wind', 'shell_massDot', 'pdotdot_total',
-    'bubble_LTotal', 'bubble_Tavg', 'bubble_T_r_Tb', 'bubble_dMdt',
+# Category 1: Shell parameters (prefix shell_)
+# Will be auto-detected from snapshots
+
+# Category 2: Bubble parameters (prefix bubble_)
+# Will be auto-detected from snapshots
+
+# Category 3: Force parameters (prefix F_)
+# Will be auto-detected from snapshots
+
+# Category 4: Starburst99 parameters
+SB99_PARAMS = [
+    'Qi', 'Li', 'Lmech_W', 'Lmech_total',
+    'pdot_W', 'pdot_total', 'pdotdot_total', 'v_mech_total'
+]
+
+# Category 5: Main bubble/shell parameters
+MAIN_PARAMS = [
+    'v2', 'R2', 'R1', 'rShell', 'T0', 'Eb', 'Pb', 'c_sound'
 ]
 
 # =============================================================================
@@ -198,6 +211,35 @@ def load_jsonl(filepath):
     return snapshots
 
 
+def is_scalar_param(snapshots, key):
+    """
+    Check if a parameter is scalar (int/float) and not an array.
+
+    Parameters
+    ----------
+    snapshots : list
+        List of snapshot dictionaries
+    key : str
+        Parameter key to check
+
+    Returns
+    -------
+    bool
+        True if scalar, False if array or not present
+    """
+    for snap in snapshots:
+        val = snap.get(key)
+        if val is None:
+            continue
+        # Check if it's a list/array
+        if isinstance(val, (list, np.ndarray)):
+            return False
+        # Check if it's a scalar number
+        if isinstance(val, (int, float, np.integer, np.floating)):
+            return True
+    return False
+
+
 def extract_time_series(snapshots, key):
     """Extract time and value arrays from snapshots."""
     t = []
@@ -215,10 +257,108 @@ def extract_time_series(snapshots, key):
     return t[order], values[order]
 
 
-def plot_comparison(snaps_orig, snaps_mod, params_to_plot, output_paths=None,
-                    save_pdf=False, save_png=False, base_name="comparison_energy_phase"):
+def should_use_log_scale(values_orig, values_mod):
     """
-    Create comparison plots for original vs modified runs.
+    Determine if log scale should be used based on value ranges.
+
+    Criteria:
+    - Values span more than 2 dex (orders of magnitude)
+    - OR average value is > 1e4
+    - AND all values are positive
+
+    Parameters
+    ----------
+    values_orig, values_mod : ndarray
+        Value arrays from original and modified runs
+
+    Returns
+    -------
+    bool
+        True if log scale should be used
+    """
+    # Combine and filter finite positive values
+    all_vals = np.concatenate([values_orig, values_mod])
+    finite_vals = all_vals[np.isfinite(all_vals)]
+
+    if len(finite_vals) == 0:
+        return False
+
+    # Must all be positive for log scale
+    if np.any(finite_vals <= 0):
+        return False
+
+    # Check if average > 1e4
+    avg_val = np.mean(finite_vals)
+    if avg_val > 1e4:
+        return True
+
+    # Check if range spans > 2 dex
+    min_val = np.min(finite_vals)
+    max_val = np.max(finite_vals)
+    if min_val > 0 and max_val / min_val > 100:  # 2 dex = factor of 100
+        return True
+
+    return False
+
+
+def get_params_by_category(snapshots_orig, snapshots_mod):
+    """
+    Categorize parameters from snapshots.
+
+    Returns dict mapping category name to list of valid scalar parameters.
+    """
+    # Get all available keys
+    available_orig = set()
+    available_mod = set()
+    for snap in snapshots_orig:
+        available_orig.update(snap.keys())
+    for snap in snapshots_mod:
+        available_mod.update(snap.keys())
+
+    # Only keep parameters present in both
+    common_keys = available_orig & available_mod
+
+    # Filter to scalar parameters only
+    scalar_keys = set()
+    for key in common_keys:
+        if is_scalar_param(snapshots_orig, key) and is_scalar_param(snapshots_mod, key):
+            scalar_keys.add(key)
+
+    # Categorize
+    categories = {}
+
+    # Shell parameters (shell_* prefix)
+    shell_params = sorted([k for k in scalar_keys if k.startswith('shell_')])
+    if shell_params:
+        categories['shell'] = shell_params
+
+    # Bubble parameters (bubble_* prefix)
+    bubble_params = sorted([k for k in scalar_keys if k.startswith('bubble_')])
+    if bubble_params:
+        categories['bubble'] = bubble_params
+
+    # Force parameters (F_* prefix)
+    force_params = sorted([k for k in scalar_keys if k.startswith('F_')])
+    if force_params:
+        categories['force'] = force_params
+
+    # SB99 parameters
+    sb99_params = [p for p in SB99_PARAMS if p in scalar_keys]
+    if sb99_params:
+        categories['sb99'] = sb99_params
+
+    # Main parameters
+    main_params = [p for p in MAIN_PARAMS if p in scalar_keys]
+    if main_params:
+        categories['main'] = main_params
+
+    return categories
+
+
+def plot_category(snaps_orig, snaps_mod, params_to_plot, category_name,
+                  output_paths, base_name):
+    """
+    Create comparison plot for a single category.
 
     Parameters
     ----------
@@ -228,36 +368,21 @@ def plot_comparison(snaps_orig, snaps_mod, params_to_plot, output_paths=None,
         Snapshots from modified run
     params_to_plot : list
         List of parameter keys to plot
-    output_paths : list of Path, optional
-        List of directories to save figures to (saves to each)
-    save_pdf : bool
-        Save as PDF
-    save_png : bool
-        Save as PNG
+    category_name : str
+        Name of the category (for title)
+    output_paths : list of Path
+        Directories to save figures to
     base_name : str
-        Base filename for saved plots (without extension)
+        Base filename for saved plots
     """
-    # Filter to available parameters
-    available_orig = set()
-    available_mod = set()
-    for snap in snaps_orig:
-        available_orig.update(snap.keys())
-    for snap in snaps_mod:
-        available_mod.update(snap.keys())
-
-    valid_params = [p for p in params_to_plot if p in available_orig and p in available_mod]
-
-    if not valid_params:
-        print("No valid parameters to plot!")
-        print(f"Available in original: {sorted(available_orig)}")
-        print(f"Available in modified: {sorted(available_mod)}")
+    if not params_to_plot:
         return
 
-    print(f"Plotting {len(valid_params)} parameters: {valid_params}")
+    print(f"  Plotting {category_name}: {len(params_to_plot)} parameters")
 
     # Calculate grid dimensions
-    ncols = min(3, len(valid_params))
-    nrows = int(np.ceil(len(valid_params) / ncols))
+    ncols = min(3, len(params_to_plot))
+    nrows = int(np.ceil(len(params_to_plot) / ncols))
 
     fig, axes = plt.subplots(
         nrows=nrows, ncols=ncols,
@@ -275,12 +400,7 @@ def plot_comparison(snaps_orig, snaps_mod, params_to_plot, output_paths=None,
         axes = axes.reshape(-1, 1)
     axes_flat = axes.flatten()
 
-    # Log-scale parameters
-    log_params = {'Eb', 'F_ram', 'F_grav', 'F_ion_out', 'F_ion_in', 'F_rad',
-                  'shell_mass', 'Pb', 'Qi', 'Lbol', 'L_mech_total',
-                  'bubble_LTotal', 'bubble_Tavg', 'bubble_T_r_Tb', 'shell_massDot'}
-
-    for idx, key in enumerate(valid_params):
+    for idx, key in enumerate(params_to_plot):
         ax = axes_flat[idx]
 
         t_orig, v_orig = extract_time_series(snaps_orig, key)
@@ -296,35 +416,33 @@ def plot_comparison(snaps_orig, snaps_mod, params_to_plot, output_paths=None,
         ax.grid(True, alpha=0.3)
         ax.legend(fontsize=8)
 
-        # Log scale for certain parameters
-        if key in log_params:
-            finite_orig = v_orig[np.isfinite(v_orig)]
-            finite_mod = v_mod[np.isfinite(v_mod)]
-            if len(finite_orig) > 0 and len(finite_mod) > 0:
-                if np.all(finite_orig > 0) and np.all(finite_mod > 0):
-                    ax.set_yscale('log')
+        # Auto-detect log scale
+        if should_use_log_scale(v_orig, v_mod):
+            ax.set_yscale('log')
 
     # Hide unused axes
-    for idx in range(len(valid_params), len(axes_flat)):
+    for idx in range(len(params_to_plot), len(axes_flat)):
         axes_flat[idx].set_visible(False)
 
-    fig.suptitle('Energy Phase Comparison: Original vs Modified', fontsize=14, fontweight='bold')
+    # Category title mapping
+    title_map = {
+        'shell': 'Shell Parameters',
+        'bubble': 'Bubble Parameters',
+        'force': 'Force Parameters',
+        'sb99': 'Starburst99 Parameters',
+        'main': 'Main Parameters',
+    }
+    fig.suptitle(f'Energy Phase Comparison: {title_map.get(category_name, category_name)}',
+                 fontsize=14, fontweight='bold')
 
     # Save figures to each output path
-    if output_paths and (save_pdf or save_png):
-        for output_path in output_paths:
-            output_path = Path(output_path)
-            output_path.mkdir(parents=True, exist_ok=True)
+    for output_path in output_paths:
+        output_path = Path(output_path)
+        output_path.mkdir(parents=True, exist_ok=True)
 
-            if save_pdf:
-                pdf_path = output_path / f"{base_name}.pdf"
-                fig.savefig(pdf_path, bbox_inches='tight')
-                print(f"Saved: {pdf_path}")
-
-            if save_png:
-                png_path = output_path / f"{base_name}.png"
-                fig.savefig(png_path, bbox_inches='tight', dpi=300)
-                print(f"Saved: {png_path}")
+        pdf_path = output_path / f"{base_name}_{category_name}.pdf"
+        fig.savefig(pdf_path, bbox_inches='tight')
+        print(f"    Saved: {pdf_path}")
 
     plt.close(fig)
 
@@ -333,8 +451,7 @@ def plot_comparison(snaps_orig, snaps_mod, params_to_plot, output_paths=None,
 # Main comparison routine
 # =============================================================================
 
-def run_comparison(param_file, params_to_compare=None, save_pdf=False, save_png=False,
-                   output_name=None):
+def run_comparison(param_file):
     """
     Run both original and modified energy phase and compare results.
 
@@ -342,19 +459,8 @@ def run_comparison(param_file, params_to_compare=None, save_pdf=False, save_png=
     ----------
     param_file : str or Path
         Path to parameter file
-    params_to_compare : list, optional
-        Parameters to compare. If None, uses DEFAULT_COMPARE_PARAMS.
-    save_pdf : bool
-        Save comparison plot as PDF
-    save_png : bool
-        Save comparison plot as PNG
-    output_name : str, optional
-        Base name for output file. If None, derived from param_file name.
     """
     logger = setup_simple_logging('INFO')
-
-    if params_to_compare is None:
-        params_to_compare = DEFAULT_COMPARE_PARAMS
 
     param_file = Path(param_file)
     if not param_file.exists():
@@ -407,7 +513,7 @@ def run_comparison(param_file, params_to_compare=None, save_pdf=False, save_png=
 
     logger.info(f"Original completed in {elapsed_orig}")
     logger.info(f"  Output: {params_orig['path2output'].value}")
-    
+
 
     # =========================================================================
     # Step 4: Load results and compare
@@ -433,25 +539,25 @@ def run_comparison(param_file, params_to_compare=None, save_pdf=False, save_png=
     logger.info(f"Modified: {len(snaps_mod)} snapshots")
 
     # =========================================================================
-    # Step 5: Plot comparison
+    # Step 5: Categorize and plot
     # =========================================================================
-    # Save to both output directories
     output_paths = [
         Path(params_orig['path2output'].value),
         Path(params_mod['path2output'].value),
     ]
 
-    # Derive output name from param file if not provided
-    if output_name is None:
-        output_name = f"comparison_{param_file.stem}"
+    # Base name from param file
+    base_name = f"comparison_{param_file.stem}"
 
-    plot_comparison(
-        snaps_orig, snaps_mod, params_to_compare,
-        output_paths=output_paths,
-        save_pdf=save_pdf,
-        save_png=save_png,
-        base_name=output_name,
-    )
+    # Get parameters by category
+    categories = get_params_by_category(snaps_orig, snaps_mod)
+
+    logger.info("Creating comparison plots by category...")
+    for cat_name, cat_params in categories.items():
+        plot_category(
+            snaps_orig, snaps_mod, cat_params, cat_name,
+            output_paths, base_name
+        )
 
     # =========================================================================
     # Summary
@@ -462,6 +568,7 @@ def run_comparison(param_file, params_to_compare=None, save_pdf=False, save_png=
     logger.info(f"Original runtime: {elapsed_orig}")
     logger.info(f"Modified runtime: {elapsed_mod}")
     logger.info(f"Speedup: {elapsed_orig.total_seconds() / max(elapsed_mod.total_seconds(), 0.001):.2f}x")
+    logger.info(f"PDFs saved to: {output_paths[0]} and {output_paths[1]}")
 
 
 # =============================================================================
@@ -473,16 +580,21 @@ def main():
         description="Compare original vs modified energy phase implementations",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
+Output PDFs (saved to both *_original and *_modified directories):
+  - comparison_<param>_shell.pdf   : Shell parameters (shell_* prefix)
+  - comparison_<param>_bubble.pdf  : Bubble parameters (bubble_* prefix)
+  - comparison_<param>_force.pdf   : Force parameters (F_* prefix)
+  - comparison_<param>_sb99.pdf    : Starburst99 parameters
+  - comparison_<param>_main.pdf    : Main parameters (v2, R2, R1, etc.)
+
 Examples:
   %(prog)s param/1e7_sfe030_n1e4.param
-  %(prog)s param/test.param --save-pdf
-  %(prog)s param/test.param --params R2,Eb,v2,F_ram
 
-  # Multiple parameter files (each generates its own PDF):
-  %(prog)s param/1e7_sfe001_n1e4.param param/1e7_sfe030_n1e4.param --save-pdf
+  # Multiple parameter files (each generates its own set of PDFs):
+  %(prog)s param/1e7_sfe001_n1e4.param param/1e7_sfe030_n1e4.param
 
-  # Run in nohup/headless environment (no display):
-  nohup %(prog)s param/*.param --save-pdf --no-display &
+  # Run in nohup/background:
+  nohup %(prog)s param/*.param &
         """
     )
 
@@ -493,37 +605,7 @@ Examples:
         help='Path(s) to the parameter file(s) (.param)'
     )
 
-    parser.add_argument(
-        '--params', '-p',
-        type=str,
-        default=None,
-        help='Comma-separated list of parameters to compare (default: R2,v2,Eb,F_ram,...)'
-    )
-
-    parser.add_argument(
-        '--save-pdf',
-        action='store_true',
-        help='Save comparison plot as PDF'
-    )
-
-    parser.add_argument(
-        '--save-png',
-        action='store_true',
-        help='Save comparison plot as PNG'
-    )
-
-    parser.add_argument(
-        '--no-display',
-        action='store_true',
-        help='Disable interactive plot display (for nohup/headless environments)'
-    )
-
     args = parser.parse_args()
-
-    # Parse custom parameters
-    params_to_compare = None
-    if args.params:
-        params_to_compare = [p.strip() for p in args.params.split(',') if p.strip()]
 
     # Run comparison for each parameter file
     for i, param_file in enumerate(args.param_files):
@@ -532,12 +614,7 @@ Examples:
             print(f"Processing file {i+1}/{len(args.param_files)}: {param_file}")
             print(f"{'='*60}\n")
 
-        run_comparison(
-            param_file=param_file,
-            params_to_compare=params_to_compare,
-            save_pdf=args.save_pdf,
-            save_png=args.save_png,
-        )
+        run_comparison(param_file=param_file)
 
 
 if __name__ == "__main__":
