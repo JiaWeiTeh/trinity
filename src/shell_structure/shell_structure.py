@@ -563,11 +563,10 @@ def shell_structure(params):
     params['shell_fIonisedDust'].value = f_ionised_dust
     params['shell_thickness'].value = shellThickness
     params['shell_nMax'].value = nShell_max
-    # Must assign tau_kappa_IR BEFORE using it in shell_F_rad calculation
     params['shell_tauKappaRatio'].value = tau_kappa_IR
     # Radiation force with IR trapping: F_rad = L/c * (1 + tau_IR)
-    # where tau_IR = shell_tauKappaRatio * dust_KappaIR
-    params['shell_F_rad'].value = f_absorbed_ion * params['Lbol'].value / params['c_light'].value * (1 + params['shell_tauKappaRatio'].value * params['dust_KappaIR'].value)
+    # where tau_IR = tau_kappa_IR * dust_KappaIR
+    params['shell_F_rad'].value = f_absorbed_ion * params['Lbol'].value / params['c_light'].value * (1 + tau_kappa_IR * params['dust_KappaIR'].value)
     
     params['shell_grav_r'].value = grav_r 
     params['shell_grav_phi'].value = grav_phi
