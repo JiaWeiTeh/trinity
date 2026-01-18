@@ -265,7 +265,7 @@ def compute_velocity_residual(dMdt: float, params_dict: Dict) -> float:
     Compute residual for dMdt solver.
 
     Integrates ODE and checks if boundary condition v(R1) → 0 is satisfied.
-    Uses solve_ivp with Radau method for stiff ODEs.
+    Uses solve_ivp with LSODA method for stiff ODEs.
 
     Parameters
     ----------
@@ -292,6 +292,20 @@ def compute_velocity_residual(dMdt: float, params_dict: Dict) -> float:
     # Initial state
     y0 = [v_init, T_init, dTdr_init]
 
+    # Compute minimum step size to avoid floating point precision issues
+    # Step size should be at least ~1e-14 relative to span for numerical stability
+    span = abs(r2_prime - R1)
+    min_step = max(span * 1e-12, 1e-16)  # Floor at machine epsilon level
+
+    # Event to stop integration when we're "close enough" to R1
+    # This prevents the solver from taking infinitesimally small steps
+    def near_R1_event(r, y):
+        # Stop when within 0.1% of R1 or within min_step distance
+        threshold = max(R1 * 1e-3, min_step * 10)
+        return r - R1 - threshold
+    near_R1_event.terminal = True
+    near_R1_event.direction = -1  # Trigger when crossing from positive to negative
+
     # Integrate ODE using solve_ivp with LSODA (auto stiff/non-stiff)
     try:
         solution = scipy.integrate.solve_ivp(
@@ -299,11 +313,14 @@ def compute_velocity_residual(dMdt: float, params_dict: Dict) -> float:
             t_span=(r2_prime, R1),  # Integrate from r2_prime down to R1
             y0=y0,
             method='LSODA',  # Auto-switches between Adams and BDF
-            rtol=1e-6,
-            atol=1e-9,
+            rtol=1e-5,  # Slightly relaxed for stability
+            atol=1e-8,
+            events=[near_R1_event],
+            min_step=min_step,  # Prevent vanishingly small steps
         )
 
-        if not solution.success:
+        # Solution is successful if it reached R1 (or close enough via event)
+        if not solution.success and solution.status != 1:  # status=1 means terminated by event
             return 1e3
 
         v_arr = solution.y[0]
@@ -389,10 +406,10 @@ def _compute_L_bubble(
     integrand = n_bubble**2 * Lambda_bubble * FOUR_PI * r_bubble**2
 
     # Integrate (r is decreasing, so use abs)
-    L_bubble = np.abs(np.trapz(integrand, x=r_bubble))
+    L_bubble = np.abs(np.trapezoid(integrand, x=r_bubble))
 
     # Volume-weighted temperature for average calculation
-    Tavg_bubble = np.abs(np.trapz(r_bubble**2 * T_bubble, x=r_bubble))
+    Tavg_bubble = np.abs(np.trapezoid(r_bubble**2 * T_bubble, x=r_bubble))
 
     return L_bubble, Tavg_bubble
 
@@ -529,10 +546,10 @@ def _compute_L_conduction(
     integrand = dudt_conduction * FOUR_PI * r_conduction**2
 
     # Integrate
-    L_conduction = np.abs(np.trapz(integrand, x=r_conduction))
+    L_conduction = np.abs(np.trapezoid(integrand, x=r_conduction))
 
     # Volume-weighted temperature
-    Tavg_conduction = np.abs(np.trapz(r_conduction**2 * T_conduction, x=r_conduction))
+    Tavg_conduction = np.abs(np.trapezoid(r_conduction**2 * T_conduction, x=r_conduction))
 
     return L_conduction, Tavg_conduction, dTdr_at_cooling_switch
 
@@ -637,7 +654,7 @@ def _compute_L_intermediate(
             )
             dudt = (heating - cooling) * cvt.dudt_cgs2au
             integrand = dudt * FOUR_PI * r_intermediate[mask_nonCIE]**2
-            L_intermediate += np.abs(np.trapz(integrand, x=r_intermediate[mask_nonCIE]))
+            L_intermediate += np.abs(np.trapezoid(integrand, x=r_intermediate[mask_nonCIE]))
         except Exception as e:
             logger.warning(f"Non-CIE intermediate calc failed: {e}")
 
@@ -646,12 +663,12 @@ def _compute_L_intermediate(
         try:
             Lambda = 10**(cooling_CIE_interp(np.log10(T_intermediate[mask_CIE]))) * cvt.Lambda_cgs2au
             integrand = n_intermediate[mask_CIE]**2 * Lambda * FOUR_PI * r_intermediate[mask_CIE]**2
-            L_intermediate += np.abs(np.trapz(integrand, x=r_intermediate[mask_CIE]))
+            L_intermediate += np.abs(np.trapezoid(integrand, x=r_intermediate[mask_CIE]))
         except Exception as e:
             logger.warning(f"CIE intermediate calc failed: {e}")
 
     # Volume-weighted temperature
-    Tavg_intermediate = np.abs(np.trapz(r_intermediate**2 * T_intermediate, x=r_intermediate))
+    Tavg_intermediate = np.abs(np.trapezoid(r_intermediate**2 * T_intermediate, x=r_intermediate))
 
     return L_intermediate, Tavg_intermediate
 
@@ -875,6 +892,21 @@ def get_bubbleproperties_pure(R2: float, v2: float, Eb: float, t_now: float,
 
     y0 = [v_init, T_init, dTdr_init]
 
+    # Compute minimum step size to avoid floating point precision issues
+    # When step size h << t, we get t + h = t in floating point arithmetic
+    # The warning "in the machine, t + h = t" indicates this problem
+    span = abs(r2_prime - R1)
+    min_step = max(span * 1e-12, 1e-16)  # Floor at machine epsilon level
+
+    # Event to stop integration when we're "close enough" to R1
+    # This prevents the solver from taking infinitesimally small steps near singularities
+    def near_R1_event(r, y):
+        # Stop when within 0.1% of R1 or within min_step distance
+        threshold = max(R1 * 1e-3, min_step * 10)
+        return r - R1 - threshold
+    near_R1_event.terminal = True
+    near_R1_event.direction = -1  # Trigger when crossing from positive to negative
+
     try:
         # Use solve_ivp with LSODA method (auto-switches between stiff/non-stiff)
         # This is what odeint uses internally, but with modern solve_ivp interface
@@ -883,11 +915,14 @@ def get_bubbleproperties_pure(R2: float, v2: float, Eb: float, t_now: float,
             t_span=(r2_prime, R1),
             y0=y0,
             method='LSODA',  # Auto-switches between Adams (non-stiff) and BDF (stiff)
-            rtol=1e-8,
-            atol=1e-10,
+            rtol=1e-6,  # Relaxed for numerical stability
+            atol=1e-9,
+            events=[near_R1_event],
+            min_step=min_step,  # Prevent vanishingly small steps
         )
 
-        if not solution.success:
+        # Solution is successful if it reached R1 (or close enough via event)
+        if not solution.success and solution.status != 1:  # status=1 means terminated by event
             raise RuntimeError(f"solve_ivp failed: {solution.message}")
 
         # Use the solver's own adaptive grid - it has more points where solution varies rapidly
@@ -898,7 +933,8 @@ def get_bubbleproperties_pure(R2: float, v2: float, Eb: float, t_now: float,
 
     except Exception as e:
         logger.warning(f"Final ODE integration failed: {e}, using fallback profiles")
-        # Fallback: simple power-law profiles (Weaver+77 self-similar solution)
+        # Fallback: create a simple grid and use power-law profiles (Weaver+77 self-similar solution)
+        r_arr = np.linspace(r2_prime, R1, 100)
         v_arr = v_init * (r_arr / r2_prime)
         T_arr = T_init * np.ones_like(r_arr)  # Isothermal fallback
         dTdr_arr = np.zeros_like(r_arr)
