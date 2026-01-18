@@ -209,8 +209,21 @@ def run_expansion(params):
 
     phase1a_starttime = datetime.datetime.now()
 
-    run_energy_phase.run_energy(params)
-    # run_energy_phase_modified.run_energy(params)
+    # Switch between original (Euler) and modified (solve_ivp) implementations
+    # Set use_adaptive_solver=True to use the modified implementation with:
+    #   - scipy.integrate.solve_ivp with adaptive RK45/RK23 stepping
+    #   - Pure ODE functions that don't mutate params during integration
+    #   - Segment-based integration with params updates only after success
+    use_adaptive_solver = params.get('use_adaptive_solver', False)
+    if hasattr(use_adaptive_solver, 'value'):
+        use_adaptive_solver = use_adaptive_solver.value
+
+    if use_adaptive_solver:
+        logger.info("Using modified energy phase (adaptive solve_ivp)")
+        run_energy_phase_modified.run_energy(params)
+    else:
+        logger.info("Using original energy phase (Euler integration)")
+        run_energy_phase.run_energy(params)
 
     phase1a_endtime = datetime.datetime.now()
     phase1a_elapsed = phase1a_endtime - phase1a_starttime
