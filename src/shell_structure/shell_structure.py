@@ -9,15 +9,10 @@ This script contains a function that evaluates the shell structure.
 """
 # libraries
 import numpy as np
-import scipy.integrate 
-import os
-import sys
-from astropy.table import Table
-import src._functions.unit_conversions as cvt
+import scipy.integrate
 
 #--
 from src.shell_structure import get_shellODE
-from numba import jit
 import logging
 
 # Initialize logger for this module
@@ -108,8 +103,7 @@ def shell_structure(params):
     # tau(r) at ionised region?
     tau0_ion = 0
     
-    mShell0 = 0 
-    mShell_end = mShell_end
+    mShell0 = 0
     
     # Obtain density at the inner edge of shell
     nShell0 = params['mu_atom'].value/params['mu_ion'].value/(params['k_B'].value * params['TShell_ion'].value) * params['Pb'].value
@@ -174,18 +168,12 @@ def shell_structure(params):
     
     rShell_step = sliceSize/nsteps
     
-    #--
-    
-    print(f'slizesize {sliceSize}')
-    print(f'max_shellRadius {max_shellRadius}')
-    print(f'rShell_start {rShell_start}')
-    print(f'shellthickness {max_shellRadius - rShell_start}')
-    print(f'rShell_step {rShell_step}')
+    logger.debug(f'sliceSize={sliceSize}, max_shellRadius={max_shellRadius}, rShell_start={rShell_start}, shellThickness={max_shellRadius - rShell_start}, rShell_step={rShell_step}')
     
     
     while not is_allMassSwept and not is_fullyIonised:
-        
-        print('1-- not is_allMassSwept and not is_fullyIonised')
+
+        logger.debug('Ionised shell loop: not is_allMassSwept and not is_fullyIonised')
         
         # =============================================================================
         # Define the range at which integration occurs.
@@ -277,7 +265,7 @@ def shell_structure(params):
         # ---------------------
         
         # right now the shell is considered dissolved.
-        if nShell_arr[0] < params['stop_n_diss']:
+        if nShell_arr[0] < params['stop_n_diss'].value:
             is_shellDissolved = True
 
 
@@ -295,8 +283,8 @@ def shell_structure(params):
     # further evaulation.
     # =============================================================================
     if not is_shellDissolved:
-        
-        print('2-- not is_shellDissolved')
+
+        logger.debug('Shell not dissolved, computing gravitational potential')
     
         # =============================================================================
         # First, compute the gravitational potential for the ionised part of shell
@@ -309,7 +297,7 @@ def shell_structure(params):
         # cumulative mass
         grav_ion_m_cum = np.cumsum(grav_ion_m) + mBubble
         # gravitational potential
-        grav_ion_phi = - 4 * np.pi * params['G'].value * scipy.integrate.simps(grav_ion_r * grav_ion_rho, x = grav_ion_r)
+        grav_ion_phi = - 4 * np.pi * params['G'].value * scipy.integrate.simpson(grav_ion_r * grav_ion_rho, x = grav_ion_r)
         # mark for future use
         grav_phi = grav_ion_phi
         # gravitational potential force per unit mass
@@ -354,16 +342,16 @@ def shell_structure(params):
         rShell_arr_neu = np.array([])
         # reinitialise
         rShell_start = rShell_arr_ion[-1]
-        
-        print('2-- ready to go into 3--')
+
+        logger.debug('Ready to evaluate neutral shell region')
         
         # =============================================================================
         # If the shell is not fully ionised, calculate structure of 
         # non-ionized (neutral) part
         # =============================================================================
         if not is_fullyIonised:
-            
-            print('3-- not is_fullyIonised')
+
+            logger.debug('Shell not fully ionised, calculating neutral region')
             
             
             # Pressure equilibrium dictates that there will be a temperature and density
@@ -401,8 +389,8 @@ def shell_structure(params):
             
             
             while not is_allMassSwept:
-                
-                print('4-- not is_allMassSwept')
+
+                logger.debug('Neutral shell loop: not is_allMassSwept')
                 
                 # there seem to be an update issue
     
@@ -425,8 +413,7 @@ def shell_structure(params):
                 # neutral region
                 is_ionised = False
                 
-                print('this is how long the shell array is in the second loop: ', len(rShell_arr), ', and here is the stepsize', rShell_step,\
-                      'and the shell thickness', max_shellRadius - rShell_start, 'and the slicesize', sliceSize)
+                logger.debug(f'Neutral shell: len(rShell_arr)={len(rShell_arr)}, rShell_step={rShell_step}, thickness={max_shellRadius - rShell_start}, sliceSize={sliceSize}')
                 
                     
                 y0 = [nShell0, tau0_neu]
@@ -462,7 +449,7 @@ def shell_structure(params):
                     idx = idx_array[0]
                     
                     
-                print('mass condition:', idx, mShell_arr_cum[idx], mShell_end)
+                logger.debug(f'Mass condition: idx={idx}, mShell_arr_cum[idx]={mShell_arr_cum[idx]}, mShell_end={mShell_end}')
                 
                         
                 # ----NEW----
@@ -501,7 +488,7 @@ def shell_structure(params):
             # cumulative mass
             grav_neu_m_cum = np.cumsum(grav_neu_m) + grav_ion_m_cum[-1]
             # gravitational potential
-            grav_neu_phi = - 4 * np.pi * params['G'].value * (scipy.integrate.simps(grav_neu_r * grav_neu_rho, x = grav_neu_r))
+            grav_neu_phi = - 4 * np.pi * params['G'].value * (scipy.integrate.simpson(grav_neu_r * grav_neu_rho, x = grav_neu_r))
             grav_phi = grav_neu_phi + grav_ion_phi
             # gravitational potential force per unit mass
             grav_neu_force_m = params['G'].value * grav_neu_m_cum / grav_neu_r**2
@@ -511,7 +498,7 @@ def shell_structure(params):
             grav_force_m = np.concatenate([grav_force_m, grav_neu_force_m])
             grav_r = np.concatenate([grav_r, grav_neu_r])
         
-        print('checking shell', phiShell_arr_ion[:10:])
+        logger.debug(f'Checking shell phiShell_arr_ion[:10]: {phiShell_arr_ion[:10]}')
         
         # =============================================================================
         # Shell is fully evaluated. Compute shell properties now.
@@ -566,7 +553,7 @@ def shell_structure(params):
         grav_force_m = np.nan
         
         
-        print('Shell dissolved.')
+        logger.info('Shell dissolved.')
         
         
     # finally, record
@@ -574,15 +561,13 @@ def shell_structure(params):
     params['shell_fAbsorbedNeu'].value = f_absorbed_neu
     params['shell_fAbsorbedWeightedTotal'].value = f_absorbed
     params['shell_fIonisedDust'].value = f_ionised_dust
-    # old: seems to not include indirect radiation
-    # params['shell_fRad'].value = f_absorbed_ion * params['Lbol'].value / params['c_light'].value 
-    # new: has radiation
-    params['shell_F_rad'].value = f_absorbed_ion * params['Lbol'].value / params['c_light'].value * (1 + params['shell_tauKappaRatio'] * params['dust_KappaIR'])
-
-    params['shell_thickness'].value = shellThickness 
-    # params['shell_nShellInner'].value = nShellInner
+    params['shell_thickness'].value = shellThickness
     params['shell_nMax'].value = nShell_max
+    # Must assign tau_kappa_IR BEFORE using it in shell_F_rad calculation
     params['shell_tauKappaRatio'].value = tau_kappa_IR
+    # Radiation force with IR trapping: F_rad = L/c * (1 + tau_IR)
+    # where tau_IR = shell_tauKappaRatio * dust_KappaIR
+    params['shell_F_rad'].value = f_absorbed_ion * params['Lbol'].value / params['c_light'].value * (1 + params['shell_tauKappaRatio'].value * params['dust_KappaIR'].value)
     
     params['shell_grav_r'].value = grav_r 
     params['shell_grav_phi'].value = grav_phi
