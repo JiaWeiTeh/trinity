@@ -29,6 +29,7 @@ from src._output.simulation_end import write_simulation_end
 
 
 from src.phase1_energy import run_energy_phase
+from src.phase1_energy import run_energy_phase_modified
 from src.phase1b_energy_implicit import run_energy_implicit_phase
 # from src.phase1c_transition import run_transition_phase
 # from src.phase2_momentum import run_momentum_phase
@@ -208,7 +209,8 @@ def run_expansion(params):
 
     phase1a_starttime = datetime.datetime.now()
 
-    run_energy_phase.run_energy(params)
+    # run_energy_phase.run_energy(params)
+    run_energy_phase_modified.run_energy(params)
 
     phase1a_endtime = datetime.datetime.now()
     phase1a_elapsed = phase1a_endtime - phase1a_starttime

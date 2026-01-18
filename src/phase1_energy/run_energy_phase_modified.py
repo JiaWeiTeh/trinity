@@ -177,7 +177,7 @@ def run_energy(params) -> EnergyPhaseResults:
     # =============================================================================
 
     feedback = get_currentSB99feedback(t_now, params)
-    (t, Qi, Li, Ln, Lbol, Lmech_W, Lmech_SN, Lmech_total,
+    (t_fb, Qi, Li, Ln, Lbol, Lmech_W, Lmech_SN, Lmech_total,
      pdot_W, pdot_SN, pdot_total, pdotdot_total, v_mech_total) = feedback
     
     updateDict(params, ['Qi', 'Li', 'Ln', 'Lbol', 'Lmech_W', 'Lmech_SN', 'Lmech_total', 'pdot_W', 'pdot_SN', 'pdot_total', 'pdotdot_total', 'v_mech_total'],
@@ -213,27 +213,7 @@ def run_energy(params) -> EnergyPhaseResults:
     # =============================================================================
     # Build feedback interpolators
     # =============================================================================
-
-    # Get SB99 feedback arrays for interpolation
-    # (These should already be in params from initialization)
-    t_fb = params['SB99_t'].value
-    L_mech_arr = params['SB99_Lmech'].value
-    v_mech_arr = params['SB99_vmech'].value
-
-    # Create interpolators (only if arrays exist)
-    if len(t_fb) > 1:
-        L_mech_interp = scipy.interpolate.interp1d(
-            t_fb, L_mech_arr, kind='linear',
-            bounds_error=False, fill_value=(L_mech_arr[0], L_mech_arr[-1])
-        )
-        v_mech_interp = scipy.interpolate.interp1d(
-            t_fb, v_mech_arr, kind='linear',
-            bounds_error=False, fill_value=(v_mech_arr[0], v_mech_arr[-1])
-        )
-    else:
-        # Fallback to constant values
-        L_mech_interp = lambda t: Lmech_total
-        v_mech_interp = lambda t: v_mech_total
+# remove here
 
     # =============================================================================
     # Main integration loop (segment-based)
@@ -330,6 +310,8 @@ def run_energy(params) -> EnergyPhaseResults:
         # =============================================================================
         # Update R1 cache and get current feedback
         # =============================================================================
+# update here
+        [t, Qi, Li, Ln, Lbol, Lmech_W, Lmech_SN, Lmech_total, pdot_W, pdot_SN, pdot_total, pdotdot_total, v_mech_total] = get_currentSB99feedback(t_now, params)
 
         L_mech_now = float(L_mech_interp(t_now))
         v_mech_now = float(v_mech_interp(t_now))

@@ -94,6 +94,8 @@ def get_bubbleproperties(params):
                                       params['v_mech_total'], params['R2'],
                                       ]))
 
+    params['R1'].value = R1
+    
     # The bubble Pbure [cgs - g/cm/s2, or dyn/cm2]
     Pb = get_bubbleParams.bubble_E2P(params['Eb'].value,
                                     params['R2'].value, 
@@ -101,7 +103,6 @@ def get_bubbleproperties(params):
                                     params['gamma_adia'].value)
     
     # update
-    params['R1'].value = R1
     params['Pb'].value = Pb
     
     # =============================================================================
