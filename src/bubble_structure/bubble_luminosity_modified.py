@@ -119,18 +119,15 @@ def get_bubble_ODE_regularized(r: float, y: np.ndarray, params_dict: Dict) -> np
     # Cooling rate - with bounds protection
     # The cooling interpolators have temperature bounds (typically 10^4 - 10^8 K)
     # If T is out of bounds, use a safe fallback cooling rate
-    T_MIN_COOLING = 1e4  # Minimum temperature for cooling curves
-    T_MAX_COOLING = 1e9  # Maximum temperature for cooling curves
     try:
-        if T < T_MIN_COOLING or T > T_MAX_COOLING:
-            # Use simple power-law cooling for out-of-bounds temperatures
-            # Λ ≈ 10^-22 * (T/10^6)^(-0.5) for T > 10^6 K (CIE regime)
-            Lambda_approx = 1e-22 * (max(T, T_MIN_COOLING) / 1e6)**(-0.5)
-            dudt = ndens**2 * Lambda_approx  # Simple n^2 Λ cooling [cgs]
-        else:
-            dudt = net_coolingcurve.get_dudt(t_now, ndens, T, phi, params_dict)
+        print(ndens, T, phi, t_now, Pb)
+        dudt = net_coolingcurve.get_dudt(t_now, ndens, T, phi, params_dict)
+        import sys
+        sys.exit()
     except Exception:
         # Fallback if cooling calculation fails
+        import sys
+        sys.exit()
         dudt = 0.0
 
     # Terminal velocity term
