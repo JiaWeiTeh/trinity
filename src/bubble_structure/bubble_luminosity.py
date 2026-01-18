@@ -60,6 +60,9 @@ logger = logging.getLogger(__name__)
 from src._input.dictionary import (updateDict, DescribedItem)
 from src.sb99.update_feedback import get_currentSB99feedback
 
+# NumPy compatibility: trapz was renamed to trapezoid in NumPy 2.0
+_trapezoid = getattr(np, 'trapezoid', None) or np.trapz
+
 
 
 def get_bubbleproperties(params):
@@ -357,9 +360,9 @@ def get_bubbleproperties(params):
     
     integrand_bubble = n_bubble**2 * Lambda_bubble * 4 * np.pi * r_bubble**2
     # calculate power loss due to cooling
-    L_bubble = np.abs(np.trapezoid(integrand_bubble, x = r_bubble))
+    L_bubble = np.abs(_trapezoid(integrand_bubble, x = r_bubble))
     # intermediate result for calculation of average temperature [K pc3]
-    Tavg_bubble = np.abs(np.trapezoid(r_bubble**2 * T_bubble, x = r_bubble))
+    Tavg_bubble = np.abs(_trapezoid(r_bubble**2 * T_bubble, x = r_bubble))
     
 
     #---------------- 2. Conduction zone. High resolution region, 10**4 < T < 10**5.5 K. 
@@ -437,9 +440,9 @@ def get_bubbleproperties(params):
         # integrand [au]
         integrand_conduction = (dudt_conduction * 4 * np.pi * r_conduction**2)
         # calculate power loss due to cooling [au]
-        L_conduction = np.abs(np.trapezoid(integrand_conduction, x = r_conduction))
+        L_conduction = np.abs(_trapezoid(integrand_conduction, x = r_conduction))
         # intermediate result for calculation of average temperature
-        Tavg_conduction = np.abs(np.trapezoid(r_conduction**2 * T_conduction, x = r_conduction))
+        Tavg_conduction = np.abs(_trapezoid(r_conduction**2 * T_conduction, x = r_conduction))
     # if there is no conduction; i.e., the shock front is very steep. 
     elif index_cooling_switch == 0 and index_CIE_switch == 0:
         # the power loss due to cooling in this region will simply be zero. 
@@ -484,12 +487,12 @@ def get_bubbleproperties(params):
             Lambda_intermediate = 10**(cooling_CIE_interpolation(np.log10(T_intermediate[mask]))) * cvt.Lambda_cgs2au
             integrand_intermediate = n_intermediate[mask]**2 * Lambda_intermediate * 4 * np.pi * r_intermediate[mask]**2
         # calculate power loss due to cooling
-        L_intermediate[regime] = np.abs(np.trapezoid(integrand_intermediate, x = r_intermediate[mask]))
+        L_intermediate[regime] = np.abs(_trapezoid(integrand_intermediate, x = r_intermediate[mask]))
         
     # sum for both regions
     L_intermediate = L_intermediate['non-CIE'] + L_intermediate['CIE']
     # intermediate result for calculation of average temperature
-    Tavg_intermediate =  np.abs(np.trapezoid(r_intermediate**2 * T_intermediate,  x = r_intermediate))
+    Tavg_intermediate =  np.abs(_trapezoid(r_intermediate**2 * T_intermediate,  x = r_intermediate))
 
     #---------------- 4. Finally, sum up across all regions. Calculate the average temeprature.
     # this was Lb in old code
