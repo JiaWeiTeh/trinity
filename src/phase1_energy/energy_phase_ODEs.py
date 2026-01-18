@@ -194,7 +194,7 @@ def get_ODE_Edot(y, t, params):
     # but this isnt used I think - Ed is obtained via conversion of beta/delta in run_implicit_energy.py.
     Ed = (Lmech_total - L_bubble) - (4 * np.pi * R2**2 * press_bubble) * v2 - L_leak 
 
-    derivs = [rd, vd, Ed, 0]
+    derivs = [rd, vd, Ed]
     
     # calculate forces
     params['F_grav'].value = F_grav
