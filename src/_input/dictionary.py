@@ -31,6 +31,7 @@ arr = params["initial_cloud_n_arr"].value   # returns numpy array
 """
 
 import collections.abc
+import dataclasses
 import json
 import sys
 from functools import reduce
@@ -812,17 +813,53 @@ def load_debug_snapshot(snapshot_path: Union[str, Path]) -> Dict[str, Any]:
 # =============================================================================
 # Convenience helper: bulk updates
 # =============================================================================
-def updateDict(dictionary: DescribedDict, keys: Sequence[str], values: Sequence[Any]) -> None:
+def updateDict(dictionary: DescribedDict, keys_or_dataclass: Union[Sequence[str], Any], values: Optional[Sequence[Any]] = None) -> None:
     """
-    Bulk update helper:
+    Bulk update helper supporting two usage patterns:
+
+    1. Keys and values lists:
         updateDict(params, ["R2", "t_now"], [R2, t])
 
-    Expects keys to exist already in dictionary.
+    2. Dataclass instance (extracts all fields automatically):
+        feedback = get_currentSB99feedback(t, params)
+        updateDict(params, feedback)
+
+    Parameters
+    ----------
+    dictionary : DescribedDict
+        The params dictionary to update.
+    keys_or_dataclass : Sequence[str] or dataclass instance
+        Either a sequence of key names, or a dataclass instance.
+    values : Sequence[Any], optional
+        Values corresponding to keys. Required if keys_or_dataclass is a sequence.
+        Must be None if keys_or_dataclass is a dataclass.
+
+    Notes
+    -----
+    When using dataclass mode, only fields that exist in the dictionary are updated.
+    Missing keys are silently skipped.
     """
-    if len(keys) != len(values):
-        raise ValueError("Length of keys must match length of values.")
-    for key, val in zip(keys, values):
-        dictionary[key].value = val
+    # Check if second argument is a dataclass instance
+    if dataclasses.is_dataclass(keys_or_dataclass) and not isinstance(keys_or_dataclass, type):
+        # Dataclass mode: extract all fields
+        if values is not None:
+            raise ValueError("When passing a dataclass, values must be None.")
+
+        for field in dataclasses.fields(keys_or_dataclass):
+            key = field.name
+            val = getattr(keys_or_dataclass, key)
+            # Only update keys that exist in the dictionary
+            if key in dictionary:
+                dictionary[key].value = val
+    else:
+        # Traditional mode: keys and values lists
+        keys = keys_or_dataclass
+        if values is None:
+            raise ValueError("When passing keys as a sequence, values must be provided.")
+        if len(keys) != len(values):
+            raise ValueError("Length of keys must match length of values.")
+        for key, val in zip(keys, values):
+            dictionary[key].value = val
 
 
 # =============================================================================
