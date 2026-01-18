@@ -107,17 +107,12 @@ def run_energy(params):
     # how many times had the main loop being ran?
     loop_count = 0
 
-    # What is the maximum [Myr] this phase can run? (~<sedov taylor cooling time 1e4yr)
-    tfinal = 3e-3
-    # What is the smallest timestep [Myr]?
-    dt_min = 1e-6
-
     # =============================================================================
     # Prelude: prepare cooling structures so that it doesnt have to run every loop.
-    # Tip: Get cooling structure every 50k years (or 1e5?) or so. 
+    # Tip: Get cooling structure every 50k years (or 1e5?) or so.
     # =============================================================================
-    
-    if np.abs(params['t_previousCoolingUpdate'] - params['t_now']) > 5e-2:
+
+    if np.abs(params['t_previousCoolingUpdate'] - params['t_now']) > COOLING_UPDATE_INTERVAL:
         # recalculate non-CIE
         cooling_nonCIE, heating_nonCIE, netcooling_interpolation = non_CIE.get_coolingStructure(params)
         # save
@@ -128,7 +123,7 @@ def run_energy(params):
         params['t_previousCoolingUpdate'].value = params['t_now'].value
         
         
-    while R2 < rCloud and (tfinal - t_now) > 1e-4 and continueWeaver:
+    while R2 < rCloud and (TFINAL_ENERGY_PHASE - t_now) > DT_EXIT_THRESHOLD and continueWeaver:
 
         # no need to calculate bubble structure and shell structure at very early times, since we say that no bubble or shell is being
         # created at this time.  
@@ -138,8 +133,7 @@ def run_energy(params):
         # every single time. We just assume that since the timesteps are small enough, 
         # we can approximate the bubble as having the same properties
         
-        tsteps = 30
-        t_arr = np.arange(t_now, t_now +  (dt_min * tsteps), dt_min)[1:]  
+        t_arr = np.arange(t_now, t_now + (DT_MIN * TIMESTEPS_PER_LOOP), DT_MIN)[1:]  
         
         logger.debug(f't_arr is this {t_arr[0]}-{t_arr[-1]} Myr')
         
@@ -168,7 +162,7 @@ def run_energy(params):
             # same goes with 
             # shellData = shell_structure.shell_structure(params)
             
-        elif not calculate_bubble_shell:
+        else:
             # if bubble and shell is not calculated, average temperature will just be T0.
             Tavg = T0
             
@@ -200,16 +194,16 @@ def run_energy(params):
             
             try:
                 params['t_next'].value = t_arr[ii+1]
-            except:
-                params['t_next'].value = time + dt_min
+            except IndexError:
+                params['t_next'].value = time + DT_MIN
                 
                     
             rd, vd, Ed =  energy_phase_ODEs.get_ODE_Edot(y, time, params)
             
             if ii != (len(t_arr) - 1):
-                R2 += rd * dt_min 
-                v2 += vd * dt_min 
-                Eb += Ed * dt_min 
+                R2 += rd * DT_MIN
+                v2 += vd * DT_MIN
+                Eb += Ed * DT_MIN 
                 
             r_arr.append(R2)
             v_arr.append(v2)
@@ -218,7 +212,7 @@ def run_energy(params):
             
             if ii == 10 and params['EarlyPhaseApproximation'].value == True:
                 params['EarlyPhaseApproximation'].value = False
-                print('\n\n\n\n\n\n\nswitch to no approximation\n\n\n\n\n\n')
+                logger.info('Switching to no approximation')
             
                     
         # =============================================================================
@@ -250,6 +244,7 @@ def run_energy(params):
         
     
         feedback = get_currentSB99feedback(t_now, params)
+        updateDict(params, feedback)
 
         R1 = scipy.optimize.brentq(get_bubbleParams.get_r1, 
                        1e-3 * R2, R2, 
