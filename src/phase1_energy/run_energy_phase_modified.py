@@ -368,6 +368,12 @@ def run_energy(params) -> EnergyPhaseResults:
         cloud_event.terminal = False
         cloud_event.direction = -1
 
+        # Compute minimum step size to avoid floating point precision issues
+        # When step size h << t, we get t + h = t in floating point arithmetic
+        # The warning "in the machine, t + h = t" indicates this problem
+        span = abs(t_segment_end - t_now)
+        min_step = max(span * 1e-12, 1e-16)  # Floor at machine epsilon level
+
         try:
             sol = scipy.integrate.solve_ivp(
                 fun=lambda t, y: get_ODE_Edot_pure(t, y, params, R1),
@@ -375,9 +381,10 @@ def run_energy(params) -> EnergyPhaseResults:
                 y0=y0,
                 method='LSODA',
                 events=[cloud_event],
-                rtol=1e-6,
-                atol=1e-9,
+                rtol=1e-5,  # Slightly relaxed for stability
+                atol=1e-8,
                 max_step=dt_segment,
+                min_step=min_step,  # Prevent vanishingly small steps
             )
         except Exception as e:
             logger.error(f"solve_ivp failed at t={t_now:.6e}: {e}")
