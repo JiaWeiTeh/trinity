@@ -146,11 +146,6 @@ def shell_structure(params):
     rShell_arr_ion = np.array([])
 
 
-
-
-
-
-
     # =============================================================================
     # name conventions:
         # rshell_stop = the end of local radius integration
