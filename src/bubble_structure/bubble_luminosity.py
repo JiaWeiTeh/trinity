@@ -133,8 +133,9 @@ def get_bubbleproperties(params):
     # -- REMOVED a huge section of calculating xi_Tb. 
     xi_Tb = params['bubble_xi_Tb'].value
     # calculate rgoal
-    # new: this is reative to shell thickness
-    params['bubble_r_Tb'].value = params['R1'].value + xi_Tb * (params['R2'].value - params['R1'].value)
+    # new: this is relative to bubble thickness.
+    bubbleThickness = params['R2'].value - params['R1'].value
+    params['bubble_r_Tb'].value = params['R1'].value + xi_Tb * bubbleThickness
     
     # sanity check: rgoal cannot be smaller than the inner bubble radius R1
     assert params['bubble_r_Tb'].value > params['R1'].value, f"r_Tb ({params['bubble_r_Tb'].value}) is smaller than the inner bubble radius {R1}. Consider increasing xi_Tb."
