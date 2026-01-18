@@ -11,6 +11,7 @@ Author: TRINITY Team
 """
 
 import numpy as np
+import scipy.interpolate
 import json
 import sys
 import os
@@ -22,6 +23,12 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from src.shell_structure.shell_structure import shell_structure
 from src.shell_structure.shell_structure_modified import shell_structure_pure, ShellProperties
 from src._functions.unit_conversions import CONV, CGS
+
+
+# =============================================================================
+# Project root for finding data files
+# =============================================================================
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
 # =============================================================================
@@ -116,7 +123,89 @@ def add_physical_constants(params: dict) -> dict:
     return params
 
 
-def make_params_dict(snapshot: dict) -> dict:
+def prime_params(params: dict) -> dict:
+    """
+    Initialize parameters that require setup beyond simple values.
+
+    This function sets up:
+    - Cooling interpolation (CIE and non-CIE)
+    - Any other computed/interpolated parameters
+
+    Parameters
+    ----------
+    params : dict
+        Dictionary with raw values (already has physical constants added)
+
+    Returns
+    -------
+    dict
+        Dictionary with initialized interpolation objects and computed params
+    """
+    # =========================================================================
+    # Cooling interpolation (CIE - Collisional Ionization Equilibrium)
+    # =========================================================================
+
+    # Try to load cooling curve from lib/cooling/CIE/
+    cie_files = {
+        1: 'lib/cooling/CIE/coolingCIE_1_Cloudy.dat',
+        2: 'lib/cooling/CIE/coolingCIE_2_Cloudy_grains.dat',
+        3: 'lib/cooling/CIE/coolingCIE_3_Gnat-Ferland2012.dat',
+        4: 'lib/cooling/CIE/coolingCIE_4_Sutherland-Dopita1993.dat',
+    }
+
+    cooling_loaded = False
+    for cie_choice in [3, 4, 1, 2]:  # Try Gnat-Ferland first, then others
+        cooling_path = os.path.join(PROJECT_ROOT, cie_files.get(cie_choice, ''))
+        if os.path.exists(cooling_path):
+            try:
+                logT, logLambda = np.loadtxt(cooling_path, unpack=True)
+                cooling_CIE_interpolation = scipy.interpolate.interp1d(
+                    logT, logLambda, kind='linear', bounds_error=False, fill_value='extrapolate'
+                )
+                params['path_cooling_CIE'] = cooling_path
+                params['cStruc_cooling_CIE_logT'] = logT
+                params['cStruc_cooling_CIE_logLambda'] = logLambda
+                params['cStruc_cooling_CIE_interpolation'] = cooling_CIE_interpolation
+                cooling_loaded = True
+                break
+            except Exception as e:
+                print(f"Warning: Could not load cooling curve from {cooling_path}: {e}")
+
+    if not cooling_loaded:
+        # Create mock cooling interpolation for testing
+        # This is a simple approximation of the cooling curve
+        logT = np.linspace(4, 9, 100)  # log10(T) from 10^4 to 10^9 K
+        # Simple cooling function approximation: Lambda ~ T^0.5 for high T
+        logLambda = -22 + 0.5 * (logT - 6)  # Rough approximation
+        cooling_CIE_interpolation = scipy.interpolate.interp1d(
+            logT, logLambda, kind='linear', bounds_error=False, fill_value='extrapolate'
+        )
+        params['path_cooling_CIE'] = 'mock_cooling'
+        params['cStruc_cooling_CIE_logT'] = logT
+        params['cStruc_cooling_CIE_logLambda'] = logLambda
+        params['cStruc_cooling_CIE_interpolation'] = cooling_CIE_interpolation
+        print("Note: Using mock cooling curve (real cooling data not found)")
+
+    # =========================================================================
+    # Non-CIE cooling (placeholder - set to None if not available)
+    # =========================================================================
+    if 'cStruc_cooling_nonCIE' not in params:
+        params['cStruc_cooling_nonCIE'] = None
+    if 'cStruc_heating_nonCIE' not in params:
+        params['cStruc_heating_nonCIE'] = None
+    if 'cStruc_net_nonCIE_interpolation' not in params:
+        params['cStruc_net_nonCIE_interpolation'] = None
+
+    # =========================================================================
+    # Cooling timing
+    # =========================================================================
+    if 't_previousCoolingUpdate' not in params:
+        params['t_previousCoolingUpdate'] = 0.0
+
+    return params
+
+
+def make_params_dict(snapshot: dict, include_priming: bool = True) -> dict:
     """
     Create a params dictionary with MockParam wrappers from a snapshot.
 
@@ -124,6 +213,8 @@ def make_params_dict(snapshot: dict) -> dict:
     ----------
     snapshot : dict
         Raw dictionary loaded from JSONL
+    include_priming : bool
+        If True, also initialize interpolation objects (cooling, etc.)
 
     Returns
     -------
@@ -132,6 +223,10 @@ def make_params_dict(snapshot: dict) -> dict:
     """
     # Add physical constants
     snapshot = add_physical_constants(snapshot)
+
+    # Prime params with interpolation objects (cooling curves, etc.)
+    if include_priming:
+        snapshot = prime_params(snapshot)
 
     # Wrap all values in MockParam
     return {k: MockParam(v) for k, v in snapshot.items()}
