@@ -199,21 +199,30 @@ def get_initial_conditions(dMdt: float, params_dict: Dict) -> Tuple[float, float
     cool_alpha = params_dict['cool_alpha']
 
     # Small offset from R2
-    dR2 = max(1e-11, 1e-5 * R2)
+    # Use T_init = 3e4 K to compute dR2 (same as original)
+    T_init_default = 3e4  # K
 
-    # Constant for temperature calculation
-    constant = (25 * Pb / (8 * np.pi * C_thermal))**2
+    # Constant for temperature calculation (Weaver+77)
+    # This is: 25/4 * k_B / mu_ion / C_thermal
+    constant = 25.0 / 4.0 * k_B / mu_ion / C_thermal
 
-    # Temperature at r2_prime
-    # Use abs(dMdt) to avoid negative base in power (which produces NaN)
+    # Compute dR2 from T_init (inverted from T formula)
+    # T = (constant * dMdt * dR2 / (4*pi*R2^2))^(2/5)
+    # => dR2 = T^(5/2) / (constant * dMdt / (4*pi*R2^2))
     dMdt_safe = max(abs(dMdt), 1e-20)
-    T = (constant * dMdt_safe * dR2 / (FOUR_PI * R2**2))**(2/5)
+    dR2 = T_init_default**(5.0/2.0) / (constant * dMdt_safe / (FOUR_PI * R2**2))
 
-    # Clamp temperature to physical range [1e4, 1e8] K
+    # Ensure dR2 is reasonable (not too small or negative)
+    dR2 = max(1e-11, min(abs(dR2), 0.1 * R2))
+
+    # Temperature at r2_prime (Weaver+77 Eq 35)
+    T = (constant * dMdt_safe * dR2 / (FOUR_PI * R2**2))**(2.0/5.0)
+
+    # Ensure temperature is physical
     if np.isnan(T) or T < 1e4:
         T = 1e4
-    elif T > 1e8:
-        T = 1e8
+    elif T > 1e9:
+        T = 1e9
 
     # Velocity at r2_prime
     v = cool_alpha * R2 / t_now - dMdt / (FOUR_PI * R2**2) * k_B * T / (mu_ion * Pb)
