@@ -83,85 +83,65 @@ def run_energy(params):
     # Calculate initial R1 and Pb
     R1 = scipy.optimize.brentq(
         get_bubbleParams.get_r1,
-        1e-3 * R2, R2,
+        1e-4 * R2, R2,
         args=([Lmech_total, Eb, v_mech_total, R2])
     )
 
     # -----------
     # Solve equation for mass and pressure within bubble
     # -----------
-    Msh0 = mass_profile.get_mass_profile(R2, params, return_mdot=False)
+    mShell = mass_profile.get_mass_profile(R2, params, return_mdot=False)
     Pb = get_bubbleParams.bubble_E2P(Eb, R2, R1, params['gamma_adia'].value)
 
     logger.info('Energy phase initialization:')
     logger.info(f'  Inner discontinuity (R1): {R1:.6e} pc')
-    logger.info(f'  Initial shell mass: {Msh0:.6e} Msun')
+    logger.info(f'  Initial shell mass: {mShell:.6e} Msun')
     logger.info(f'  Initial bubble pressure: {Pb:.6e} Msun/pc/Myr^2')
 
     # Update params with initial values
     params['Pb'].value = Pb
     params['R1'].value = R1
 
-    Lw_previous = Lmech_total
     # initialisation
     continueWeaver = True
     # how many times had the main loop being ran?
     loop_count = 0
 
-    # actually lets make it less than 1e4 yr (sedov taylor cooling time i think)
-    # in previous code this is 3e-3 (~3000 yr)
-    # Myr
-    # What is the maximum time this phase can run?
+    # What is the maximum [Myr] this phase can run? (~<sedov taylor cooling time 1e4yr)
     tfinal = 3e-3
-    # What is the smallest timestep?
+    # What is the smallest timestep [Myr]?
     dt_min = 1e-6
 
     # =============================================================================
-    #   this energy phase persists if:
-    #       1) radius is less than cloud radius
-    #       2) total time change is less than 1e-5/-4 Myr (~1e4yr is Sedov Taylor cooling).
+    # Prelude: prepare cooling structures so that it doesnt have to run every loop.
+    # Tip: Get cooling structure every 50k years (or 1e5?) or so. 
     # =============================================================================
+    
+    if np.abs(params['t_previousCoolingUpdate'] - params['t_now']) > 5e-2:
+        # recalculate non-CIE
+        cooling_nonCIE, heating_nonCIE, netcooling_interpolation = non_CIE.get_coolingStructure(params)
+        # save
+        params['cStruc_cooling_nonCIE'].value = cooling_nonCIE
+        params['cStruc_heating_nonCIE'].value = heating_nonCIE
+        params['cStruc_net_nonCIE_interpolation'].value = netcooling_interpolation
+        # update current value
+        params['t_previousCoolingUpdate'].value = params['t_now'].value
+        
+        
+    while R2 < rCloud and (tfinal - t_now) > 1e-4 and continueWeaver:
 
-    while R2 < rCloud and\
-        (tfinal - t_now) > 1e-4 and\
-            continueWeaver:
-
-        # =============================================================================
-        # Prelude: prepare cooling structures so that it doesnt have to run every loop.
-        # Tip: Get cooling structure every 50k years (or 1e5?) or so. 
-        # =============================================================================
-        
-        if np.abs(params['t_previousCoolingUpdate'] - params['t_now']) > 5e-2:
-            # recalculate non-CIE
-            cooling_nonCIE, heating_nonCIE, netcooling_interpolation = non_CIE.get_coolingStructure(params)
-            # save
-            params['cStruc_cooling_nonCIE'].value = cooling_nonCIE
-            params['cStruc_heating_nonCIE'].value = heating_nonCIE
-            params['cStruc_net_nonCIE_interpolation'].value = netcooling_interpolation
-            # update current value
-            params['t_previousCoolingUpdate'].value = params['t_now'].value
-        
-        
-        # calculate bubble structure and shell structure?
-        # no need to calculate them at very early times, since we say that no bubble or shell is being
+        # no need to calculate bubble structure and shell structure at very early times, since we say that no bubble or shell is being
         # created at this time.  
-        
-        # an initially small dt value if it is the first loop.
         calculate_bubble_shell = loop_count > 0
         
         # eventhough we have an array of time t_arr, we dont have to do bubble calculation
         # every single time. We just assume that since the timesteps are small enough, 
         # we can approximate the bubble as having the same properties
-        # Since also this phase cooling is not important, its probably a good approximation
-        # 
         
-        # something is wrong here: the loop seems to record t twice, thus
-        # creating a duplicate which causes problems in extrapolation in mshelldot.
-        # tsteps = 50
         tsteps = 30
         t_arr = np.arange(t_now, t_now +  (dt_min * tsteps), dt_min)[1:]  
         
-        logger.debug(f't_arr is this {t_arr}')
+        logger.debug(f't_arr is this {t_arr[0]}-{t_arr[-1]} Myr')
         
         # =============================================================================
         # Calculate shell structure
@@ -169,20 +149,24 @@ def run_energy(params):
         
         if calculate_bubble_shell:
             
-            print(params)
+            # compuete bubble structure
             _ = bubble_luminosity.get_bubbleproperties(params)
+            logger.info('bubble complete')
             
-            # update this here instead of in bubble_luminosity so that 
-            # T0 will not be overwrite when we are dealing with phase1b.
             T0 = params['bubble_T_r_Tb'].value
             params['T0'].value = T0
             Tavg = params['bubble_Tavg'].value
 
-            print('\n\nFinish bubble\n\n')
-
+            # compute shell structure
             shell_structure.shell_structure(params)
+            logger.info('shell complete')
             
-            print('\n\nShell structure calculated.\n\n')
+            
+        # TODO:
+            # bubbleData = bubble_luminosity.get_bubbleproperties(params)
+            # updateDict(params, bubbleData) <- this will automatically retrieve key,value pair and update them to params dict.
+            # same goes with 
+            # shellData = shell_structure.shell_structure(params)
             
         elif not calculate_bubble_shell:
             print('bubble and shell not calculated.')
@@ -288,7 +272,7 @@ def run_energy(params):
         mShell_arr = mass_profile.get_mass_profile(r_arr, params,
                                                     return_mdot = False)
         
-        Msh0 = mShell_arr[-1] # shell mass
+        mShell = mShell_arr[-1] # shell mass
         
         # -- end new
         
@@ -321,7 +305,7 @@ def run_energy(params):
         
         updateDict(params, 
                     ['R1', 'R2', 'v2', 'Eb', 't_now', 'Pb', 'shell_mass'], 
-                    [R1, R2, v2, Eb, t_now, Pb, Msh0])
+                    [R1, R2, v2, Eb, t_now, Pb, mShell])
             
         # update loop counter
         loop_count += 1
