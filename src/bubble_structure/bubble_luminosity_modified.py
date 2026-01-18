@@ -265,6 +265,7 @@ def compute_velocity_residual(dMdt: float, params_dict: Dict) -> float:
     Compute residual for dMdt solver.
 
     Integrates ODE and checks if boundary condition v(R1) → 0 is satisfied.
+    Uses solve_ivp with Radau method for stiff ODEs.
 
     Parameters
     ----------
@@ -286,24 +287,27 @@ def compute_velocity_residual(dMdt: float, params_dict: Dict) -> float:
     # Get initial conditions
     r2_prime, T_init, dTdr_init, v_init = get_initial_conditions(dMdt, params_dict)
 
-    # Create radius array
     R1 = params_dict['R1']
-    r_arr = create_radius_array(R1, r2_prime)
 
     # Initial state
     y0 = [v_init, T_init, dTdr_init]
 
-    # Integrate ODE
+    # Integrate ODE using solve_ivp with LSODA (auto stiff/non-stiff)
     try:
-        solution = scipy.integrate.odeint(
-            lambda y, r: get_bubble_ODE_regularized(r, y, params_dict),
-            y0,
-            r_arr,
-            full_output=0
+        solution = scipy.integrate.solve_ivp(
+            fun=lambda r, y: get_bubble_ODE_regularized(r, y, params_dict),
+            t_span=(r2_prime, R1),  # Integrate from r2_prime down to R1
+            y0=y0,
+            method='LSODA',  # Auto-switches between Adams and BDF
+            rtol=1e-6,
+            atol=1e-9,
         )
 
-        v_arr = solution[:, 0]
-        T_arr = solution[:, 1]
+        if not solution.success:
+            return 1e3
+
+        v_arr = solution.y[0]
+        T_arr = solution.y[1]
 
         # Check for valid solution
         min_T = np.min(T_arr)
@@ -317,7 +321,7 @@ def compute_velocity_residual(dMdt: float, params_dict: Dict) -> float:
         if not operations.monotonic(T_arr):
             return 1e2
 
-        # Residual: v should approach 0 at inner boundary
+        # Residual: v should approach 0 at inner boundary (last point)
         residual = (v_arr[-1] - 0) / (v_arr[0] + 1e-4)
 
         return residual
@@ -860,9 +864,8 @@ def get_bubbleproperties_pure(R2: float, v2: float, Eb: float, t_now: float,
         logger.warning(f"dMdt solver failed: {e}, using initial guess")
         dMdt = dMdt_init
 
-    # Compute final profiles
+    # Compute final profiles using solve_ivp with adaptive stiff solver
     r2_prime, T_init, dTdr_init, v_init = get_initial_conditions(dMdt, params_dict)
-    r_arr = create_radius_array(R1, r2_prime)
 
     # Validate initial temperature (don't clamp - that causes non-monotonic profiles)
     if T_init < 1e3:
@@ -871,15 +874,28 @@ def get_bubbleproperties_pure(R2: float, v2: float, Eb: float, t_now: float,
         logger.warning(f"Very high initial temperature {T_init:.2e} K, may indicate solver issues")
 
     y0 = [v_init, T_init, dTdr_init]
+
     try:
-        solution = scipy.integrate.odeint(
-            lambda y, r: get_bubble_ODE_regularized(r, y, params_dict),
-            y0,
-            r_arr
+        # Use solve_ivp with LSODA method (auto-switches between stiff/non-stiff)
+        # This is what odeint uses internally, but with modern solve_ivp interface
+        solution = scipy.integrate.solve_ivp(
+            fun=lambda r, y: get_bubble_ODE_regularized(r, y, params_dict),
+            t_span=(r2_prime, R1),
+            y0=y0,
+            method='LSODA',  # Auto-switches between Adams (non-stiff) and BDF (stiff)
+            rtol=1e-8,
+            atol=1e-10,
         )
-        v_arr = solution[:, 0]
-        T_arr = solution[:, 1]
-        dTdr_arr = solution[:, 2]
+
+        if not solution.success:
+            raise RuntimeError(f"solve_ivp failed: {solution.message}")
+
+        # Use the solver's own adaptive grid - it has more points where solution varies rapidly
+        r_arr = solution.t
+        v_arr = solution.y[0]
+        T_arr = solution.y[1]
+        dTdr_arr = solution.y[2]
+
     except Exception as e:
         logger.warning(f"Final ODE integration failed: {e}, using fallback profiles")
         # Fallback: simple power-law profiles (Weaver+77 self-similar solution)

@@ -1234,6 +1234,85 @@ def test_compare_profile_statistics():
     print("  [PASS] Profile statistics are comparable")
 
 
+def test_timing_comparison():
+    """Compare timing between original (60k fixed points) and modified (adaptive solve_ivp)."""
+    print("Testing timing comparison: Original vs Modified (solve_ivp)...")
+    import time
+
+    # Create params
+    params_mod = make_comparison_params()
+    R2 = params_mod['R2'].value
+    v2 = params_mod['v2'].value
+    Eb = params_mod['Eb'].value
+    t_now = params_mod['t_now'].value
+
+    # Suppress print output
+    import io
+    import sys as _sys
+
+    # Warm-up run (JIT compilation, caching, etc.)
+    _ = bl_modified.get_bubbleproperties_pure(R2=R2, v2=v2, Eb=Eb, t_now=t_now, params=params_mod)
+    params_orig_warmup = make_comparison_params()
+    old_stdout = _sys.stdout
+    _sys.stdout = io.StringIO()
+    try:
+        bl_original.get_bubbleproperties(params_orig_warmup)
+    finally:
+        _sys.stdout = old_stdout
+
+    # Time the modified version (solve_ivp with Radau)
+    n_runs = 3
+    times_modified = []
+    for _ in range(n_runs):
+        params_mod = make_comparison_params()
+        start = time.perf_counter()
+        props_mod = bl_modified.get_bubbleproperties_pure(
+            R2=R2, v2=v2, Eb=Eb, t_now=t_now, params=params_mod
+        )
+        times_modified.append(time.perf_counter() - start)
+
+    # Time the original version (odeint with 60k fixed points)
+    times_original = []
+    for _ in range(n_runs):
+        params_orig = make_comparison_params()
+        old_stdout = _sys.stdout
+        _sys.stdout = io.StringIO()
+        start = time.perf_counter()
+        try:
+            bl_original.get_bubbleproperties(params_orig)
+        finally:
+            _sys.stdout = old_stdout
+        times_original.append(time.perf_counter() - start)
+
+    avg_time_mod = sum(times_modified) / n_runs
+    avg_time_orig = sum(times_original) / n_runs
+    speedup = avg_time_orig / avg_time_mod if avg_time_mod > 0 else float('inf')
+
+    print(f"\n  === Timing Results (average of {n_runs} runs) ===")
+    print(f"  Original (odeint, 60k pts):    {avg_time_orig*1000:.1f} ms")
+    print(f"  Modified (solve_ivp, adaptive): {avg_time_mod*1000:.1f} ms")
+    print(f"  Speedup: {speedup:.2f}x {'faster' if speedup > 1 else 'slower'}")
+
+    # Also report array sizes
+    r_arr_mod = props_mod.r_arr
+    r_arr_orig = params_orig['bubble_r_arr'].value
+    print(f"\n  === Array Sizes ===")
+    print(f"  Original: {len(r_arr_orig)} points")
+    print(f"  Modified: {len(r_arr_mod)} points")
+
+    # Compare accuracy (using L_total as benchmark)
+    L_total_orig = params_orig['bubble_LTotal'].value
+    L_total_mod = props_mod.L_total
+    if L_total_orig != 0:
+        rel_diff = abs(L_total_orig - L_total_mod) / abs(L_total_orig)
+        print(f"\n  === Accuracy (L_total) ===")
+        print(f"  Original: {L_total_orig:.6e}")
+        print(f"  Modified: {L_total_mod:.6e}")
+        print(f"  Relative diff: {rel_diff:.2e} ({rel_diff*100:.1f}%)")
+
+    print("\n  [PASS] Timing comparison complete")
+
+
 # =============================================================================
 # Run all tests
 # =============================================================================
@@ -1261,6 +1340,7 @@ def run_all_tests():
         test_compare_Tavg,
         test_compare_all_bubble_properties,
         test_compare_profile_statistics,
+        test_timing_comparison,
     ]
 
     passed = 0
