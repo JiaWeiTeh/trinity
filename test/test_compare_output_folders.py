@@ -3,12 +3,14 @@
 """
 Compare TRINITY output folders: original vs modified versions.
 
-This script automatically scans the /output/ folder for *_modified directories,
+This script automatically scans the /outputs/ folder for *_modified directories,
 finds their corresponding original versions, and generates comparison plots.
 
 Usage:
     python test_compare_output_folders.py
-    python test_compare_output_folders.py --output-dir /path/to/output
+    python test_compare_output_folders.py --output-dir /path/to/outputs
+
+Can be run from any directory within the trinity project.
 
 Author: TRINITY Team
 """
@@ -31,7 +33,27 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 # Configuration
 # =============================================================================
 
-PROJECT_ROOT = Path(__file__).parent.parent
+def find_project_root() -> Path:
+    """
+    Find the trinity project root directory.
+    Works when run from any directory within the project.
+    """
+    # First try: relative to this file (when running from test/)
+    script_based = Path(__file__).parent.parent.resolve()
+    if (script_based / 'src').exists() and (script_based / 'param').exists():
+        return script_based
+
+    # Second try: search upward from current working directory
+    current = Path.cwd().resolve()
+    for parent in [current] + list(current.parents):
+        if (parent / 'src').exists() and (parent / 'param').exists():
+            return parent
+
+    # Fallback: use script-based path
+    return script_based
+
+
+PROJECT_ROOT = find_project_root()
 DEFAULT_OUTPUT_DIR = PROJECT_ROOT / 'outputs'
 
 # Parameters of interest by category
@@ -115,6 +137,39 @@ def get_scalar_keys(snapshots: list) -> set:
                 scalar_keys.add(key)
 
     return scalar_keys
+
+
+def is_evolving_parameter(snapshots: list, key: str, rtol: float = 1e-6) -> bool:
+    """
+    Check if a parameter evolves (changes value) between t.min and t.max.
+
+    Returns True if the value at t_min differs from value at t_max.
+    """
+    t, values = extract_time_series(snapshots, key)
+
+    # Filter out NaN values
+    valid_mask = ~np.isnan(values)
+    if not np.any(valid_mask):
+        return False
+
+    t_valid = t[valid_mask]
+    v_valid = values[valid_mask]
+
+    if len(v_valid) < 2:
+        return False
+
+    # Get values at t_min and t_max
+    v_min = v_valid[np.argmin(t_valid)]
+    v_max = v_valid[np.argmax(t_valid)]
+
+    # Check if they differ (using relative tolerance)
+    if v_min == 0 and v_max == 0:
+        return False
+
+    denominator = max(abs(v_min), abs(v_max), 1e-300)
+    rel_diff = abs(v_max - v_min) / denominator
+
+    return rel_diff > rtol
 
 
 # =============================================================================
@@ -218,22 +273,25 @@ def plot_comparison_grid(
         t_orig, v_orig = extract_time_series(snapshots_orig, key)
         t_mod, v_mod = extract_time_series(snapshots_mod, key)
 
-        # Convert time to kyr for better readability
-        t_orig_kyr = t_orig * 1e3
-        t_mod_kyr = t_mod * 1e3
+        # Plot both (time already in Myr)
+        ax.plot(t_orig, v_orig, 'b-', label='Original', linewidth=1.5, alpha=0.8)
+        ax.plot(t_mod, v_mod, 'r--', label='Modified', linewidth=1.5, alpha=0.8)
 
-        # Plot both
-        ax.plot(t_orig_kyr, v_orig, 'b-', label='Original', linewidth=1.5, alpha=0.8)
-        ax.plot(t_mod_kyr, v_mod, 'r--', label='Modified', linewidth=1.5, alpha=0.8)
-
-        ax.set_xlabel('Time [kyr]')
+        ax.set_xlabel('Time [Myr]')
         ax.set_ylabel(key)
         ax.set_title(key, fontsize=10)
         ax.legend(fontsize=8)
         ax.grid(True, alpha=0.3)
 
-        # Use scientific notation for y-axis if values are very large/small
-        ax.ticklabel_format(style='scientific', axis='y', scilimits=(-2, 3))
+        # Use log10 scale if median value > 1e4
+        all_values = np.concatenate([v_orig[~np.isnan(v_orig)], v_mod[~np.isnan(v_mod)]])
+        if len(all_values) > 0:
+            median_val = np.median(np.abs(all_values[all_values != 0])) if np.any(all_values != 0) else 0
+            if median_val > 1e4 and np.all(all_values[~np.isnan(all_values)] > 0):
+                ax.set_yscale('log')
+            else:
+                # Use scientific notation for y-axis if values are very large/small
+                ax.ticklabel_format(style='scientific', axis='y', scilimits=(-2, 3))
 
     # Hide empty subplots
     for idx in range(n_params, n_rows * ncols):
@@ -305,6 +363,28 @@ def generate_all_comparison_plots(
             force_keys,
             f"{model_name}: Force Parameters Comparison",
             output_dir / "comparison_force_parameters.pdf"
+        )
+
+    # E) Remaining parameters - not in above categories but evolving
+    categorized_keys = set(shell_keys) | set(bubble_keys) | set(essential_keys) | set(force_keys)
+    remaining_keys = all_keys - categorized_keys
+
+    # Filter to only evolving parameters (different at t_min vs t_max)
+    evolving_remaining = []
+    for key in sorted(remaining_keys):
+        # Check if evolving in either original or modified
+        evolves_orig = is_evolving_parameter(snapshots_orig, key)
+        evolves_mod = is_evolving_parameter(snapshots_mod, key)
+        if evolves_orig or evolves_mod:
+            evolving_remaining.append(key)
+
+    if evolving_remaining:
+        print(f"  Plotting {len(evolving_remaining)} remaining evolving parameters...")
+        plot_comparison_grid(
+            snapshots_orig, snapshots_mod,
+            evolving_remaining,
+            f"{model_name}: Other Evolving Parameters Comparison",
+            output_dir / "comparison_remaining_parameters.pdf"
         )
 
 
@@ -423,13 +503,14 @@ def main():
         epilog="""
 Examples:
   %(prog)s
-  %(prog)s --output-dir /path/to/output
+  %(prog)s --output-dir /path/to/outputs
   %(prog)s -o ./my_outputs
 
 The script searches for folders ending with '_modified' and compares them
 with their corresponding original folders (e.g., '1e7_modified/' vs '1e7/').
 
 Comparison plots are saved as PDFs in the _modified folder.
+Can be run from any directory within the trinity project.
         """
     )
 
