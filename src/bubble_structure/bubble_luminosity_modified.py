@@ -12,6 +12,8 @@ Key difference from bubble_luminosity.py:
 - No dictionary mutations during calculation
 - Use updateDict(params, bubble_data) after call returns
 
+TODO: add docstrings for each function
+
 @author: Jia Wei Teh
 """
 
@@ -46,7 +48,7 @@ class BubbleProperties:
     """
     # Core bubble properties
     bubble_LTotal: float  # Total luminosity loss
-    bubble_T_r_Tb: float  # Temperature at r_Tb
+    bubble_T_r_Tb: float  # Temperature at bubble_r_Tb
     bubble_Tavg: float  # Average temperature
     bubble_mass: float  # Bubble mass
 
