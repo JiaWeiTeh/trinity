@@ -247,7 +247,11 @@ immediate_leak    True
 
 # INFO: When (Lgain-Lloss)/Lgain approaches this value, begin momentum-driving phase.
 phaseSwitch_LlossLgain    0.05
- 
+
+# INFO: Use adaptive solver (modified version) instead of original solver for energy phase.
+# If True, uses run_energy_phase_modified.py; if False, uses run_energy_phase.py
+use_adaptive_solver    False
+
 
 # =============================================================================
 # parameters for cooling calculations
