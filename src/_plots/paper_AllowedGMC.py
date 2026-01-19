@@ -146,8 +146,8 @@ def find_valid_rCore_powerlaw(mCloud, nCore, alpha, nISM=N_ISM,
             continue
 
     if valid_rCores:
-        # Return median of valid range
-        return np.median(valid_rCores)
+        # Return minimum valid rCore
+        return np.min(valid_rCores)
     else:
         return np.nan
 
@@ -282,7 +282,7 @@ def plot_powerlaw_grids():
     # Colormap settings
     vmin, vmax = 0.01, 5.0
     cmap = cmr.rainforest.copy()
-    cmap.set_bad('white', 1.0)  # Forbidden zones are white
+    cmap.set_bad('lightgray', 0.5)  # Forbidden zones are light gray
 
     # Contour levels evenly spaced in log
     contour_levels = np.logspace(np.log10(vmin), np.log10(vmax), 8)
@@ -297,7 +297,22 @@ def plot_powerlaw_grids():
         n_valid = np.sum(~np.isnan(grid))
         n_total = grid.size
 
-        # Plot pcolormesh
+        # Create forbidden zone mask (1 = forbidden, 0 = valid)
+        forbidden_mask = np.isnan(grid).astype(float)
+
+        # Shade forbidden zone with hatching
+        ax.contourf(
+            M_CLOUD_RANGE, N_CORE_RANGE, forbidden_mask,
+            levels=[0.5, 1.5], colors=['lightgray'], alpha=0.5
+        )
+
+        # Draw boundary line around forbidden zone
+        ax.contour(
+            M_CLOUD_RANGE, N_CORE_RANGE, forbidden_mask,
+            levels=[0.5], colors=['k'], linewidths=1.5, linestyles='-'
+        )
+
+        # Plot pcolormesh for valid regions
         im = ax.pcolormesh(
             M_CLOUD_RANGE, N_CORE_RANGE, grid,
             cmap=cmap, norm=LogNorm(vmin=vmin, vmax=vmax),
@@ -305,7 +320,6 @@ def plot_powerlaw_grids():
         )
 
         # Add contour lines (evenly spaced in log)
-        # Need to mask NaN values for contour
         grid_masked = np.ma.masked_invalid(grid)
         if n_valid > 0:
             cs = ax.contour(
@@ -313,7 +327,9 @@ def plot_powerlaw_grids():
                 levels=contour_levels,
                 colors='k', linewidths=0.5, linestyles='-'
             )
-            ax.clabel(cs, inline=True, fontsize=7, fmt='%.2f')
+            # Labels parallel to contours with rotation
+            ax.clabel(cs, inline=True, fontsize=7, fmt='%.2f',
+                      inline_spacing=2, use_clabeltext=True)
 
         ax.set_xscale('log')
         ax.set_yscale('log')
@@ -327,7 +343,7 @@ def plot_powerlaw_grids():
         ax.set_title(f'{title}\n({n_valid}/{n_total} valid cells)', fontsize=10)
 
         # Add colorbar
-        cbar = fig.colorbar(im, ax=ax, label=r'$r_\mathrm{core}$ [pc]')
+        cbar = fig.colorbar(im, ax=ax, label=r'min $r_\mathrm{core}$ [pc]')
 
     plt.tight_layout()
 
@@ -354,7 +370,7 @@ def plot_BE_grids():
     # Colormap settings
     vmin, vmax = 0.01, 5.0
     cmap = cmr.rainforest.copy()
-    cmap.set_bad('white', 1.0)  # Forbidden zones are white
+    cmap.set_bad('lightgray', 0.5)  # Forbidden zones are light gray
 
     # Contour levels evenly spaced in log
     contour_levels = np.logspace(np.log10(vmin), np.log10(vmax), 8)
@@ -369,7 +385,22 @@ def plot_BE_grids():
         n_valid = np.sum(~np.isnan(grid))
         n_total = grid.size
 
-        # Plot pcolormesh
+        # Create forbidden zone mask (1 = forbidden, 0 = valid)
+        forbidden_mask = np.isnan(grid).astype(float)
+
+        # Shade forbidden zone
+        ax.contourf(
+            M_CLOUD_RANGE, N_CORE_RANGE, forbidden_mask,
+            levels=[0.5, 1.5], colors=['lightgray'], alpha=0.5
+        )
+
+        # Draw boundary line around forbidden zone
+        ax.contour(
+            M_CLOUD_RANGE, N_CORE_RANGE, forbidden_mask,
+            levels=[0.5], colors=['k'], linewidths=1.5, linestyles='-'
+        )
+
+        # Plot pcolormesh for valid regions
         im = ax.pcolormesh(
             M_CLOUD_RANGE, N_CORE_RANGE, grid,
             cmap=cmap, norm=LogNorm(vmin=vmin, vmax=vmax),
@@ -377,7 +408,6 @@ def plot_BE_grids():
         )
 
         # Add contour lines (evenly spaced in log)
-        # Need to mask NaN values for contour
         grid_masked = np.ma.masked_invalid(grid)
         if n_valid > 0:
             cs = ax.contour(
@@ -385,7 +415,9 @@ def plot_BE_grids():
                 levels=contour_levels,
                 colors='k', linewidths=0.5, linestyles='-'
             )
-            ax.clabel(cs, inline=True, fontsize=7, fmt='%.2f')
+            # Labels parallel to contours with rotation
+            ax.clabel(cs, inline=True, fontsize=7, fmt='%.2f',
+                      inline_spacing=2, use_clabeltext=True)
 
         ax.set_xscale('log')
         ax.set_yscale('log')
@@ -399,7 +431,7 @@ def plot_BE_grids():
         ax.set_title(f'{title}\n({n_valid}/{n_total} valid cells)', fontsize=10)
 
         # Add colorbar
-        cbar = fig.colorbar(im, ax=ax, label=r'$r_\mathrm{core}$ [pc]')
+        cbar = fig.colorbar(im, ax=ax, label=r'min $r_\mathrm{core}$ [pc]')
 
     plt.tight_layout()
 
