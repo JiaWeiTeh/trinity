@@ -207,15 +207,18 @@ def get_bubbleproperties_pure(params) -> BubbleProperties:
         r_interp = r_array[:index_CIE_switch + _xtra]
         fdTdr_interp = interp1d(r_interp, dTdr_array[:index_CIE_switch + _xtra], kind='linear')
         fT_interp = interp1d(r_interp, T_array[:index_CIE_switch + _xtra] - _CIEswitch, kind='cubic')
+        fv_interp = interp1d(r_interp, v_array[:index_CIE_switch + _xtra], kind='linear')
 
         r_CIEswitch = scipy.optimize.brentq(fT_interp, np.min(r_interp), np.max(r_interp), xtol=1e-8)
         n_CIEswitch = Pb / (2 * params['k_B'].value * _CIEswitch)
         dTdr_CIEswitch = fdTdr_interp(r_CIEswitch)
+        v_CIEswitch = fv_interp(r_CIEswitch)
 
         T_array = np.insert(T_array, index_CIE_switch, _CIEswitch)
         r_array = np.insert(r_array, index_CIE_switch, r_CIEswitch)
         n_array = np.insert(n_array, index_CIE_switch, n_CIEswitch)
         dTdr_array = np.insert(dTdr_array, index_CIE_switch, dTdr_CIEswitch)
+        v_array = np.insert(v_array, index_CIE_switch, v_CIEswitch)
 
     # Region 1: Bubble (CIE, T > 10^5.5 K)
     T_bubble = T_array[index_CIE_switch:]
