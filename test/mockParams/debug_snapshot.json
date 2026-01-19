@@ -11,7 +11,7 @@
   "path2output": "/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe001_n1e4",
   "verbose": 1.0,
   "output_format": "JSON",
-  "log_level": "INFO",
+  "log_level": "DEBUG",
   "log_console": false,
   "log_file": true,
   "log_colors": true,
