@@ -29,8 +29,8 @@ BASE_DIR = Path.home() / "unsync" / "Code" / "Trinity" / "outputs"
 # smoothing: number of snapshots in moving average (None or 1 disables)
 SMOOTH_WINDOW = 7
 
-# --- output
-FIG_DIR = Path("./fig")
+# --- output - save to project root's fig/ directory
+FIG_DIR = Path(__file__).parent.parent.parent / "fig"
 FIG_DIR.mkdir(parents=True, exist_ok=True)
 SAVE_PNG = False
 SAVE_PDF = True

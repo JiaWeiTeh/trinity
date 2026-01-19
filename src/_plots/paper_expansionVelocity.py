@@ -31,8 +31,8 @@ CLOUD_LINE = True
 SMOOTH_WINDOW = None        # e.g. 7 or 21; None/1 disables
 SMOOTH_MODE = "edge"
 
-# --- output
-FIG_DIR = Path("./fig")
+# --- output - save to project root's fig/ directory
+FIG_DIR = Path(__file__).parent.parent.parent / "fig"
 FIG_DIR.mkdir(parents=True, exist_ok=True)
 SAVE_PNG = True
 SAVE_PDF = False
