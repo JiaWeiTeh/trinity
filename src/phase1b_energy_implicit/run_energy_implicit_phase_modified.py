@@ -343,9 +343,6 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         if hasattr(mShell, '__len__') and len(mShell) == 1:
             mShell = mShell[0]
 
-        # Save snapshot
-        params.save_snapshot()
-
         # ---------------------------------------------------------------------
         # Check termination conditions
         # ---------------------------------------------------------------------
@@ -366,6 +363,10 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         # Store for reference
         params['bubble_Lgain'].value = Lgain
         params['bubble_Lloss'].value = Lloss
+
+        # Save snapshot
+        params.save_snapshot()
+        
 
         # Get threshold from params (default 0.05)
         phase_switch_threshold = params.get('phaseSwitch_LlossLgain', None)
