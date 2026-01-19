@@ -10,7 +10,6 @@ White cells indicate no data (cloud collapsed/dissolved before that time).
 Created for TRINITY project - A&A/MNRAS publication figures.
 """
 
-import json
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap, BoundaryNorm
@@ -18,6 +17,7 @@ from matplotlib.patches import Patch
 from pathlib import Path
 from scipy.ndimage import zoom, gaussian_filter
 from scipy.interpolate import RegularGridInterpolator
+from load_snapshots import load_snapshots, find_data_file
 
 print("...plotting dominant feedback grid")
 
@@ -55,27 +55,19 @@ SAVE_PDF = True
 
 # ============== DATA LOADING ==============
 
-def load_run(json_path: Path):
+def load_run(data_path: Path):
     """
-    Load simulation data from JSON file.
+    Load simulation data from JSON or JSONL file.
 
     Returns:
         t: Time array (Myr)
         forces: 2D array shape (n_forces, n_snapshots)
         None, None if file doesn't exist
     """
-    if not json_path.exists():
+    if data_path is None or not data_path.exists():
         return None, None
 
-    with json_path.open("r") as f:
-        data = json.load(f)
-
-    # Get sorted snapshot keys
-    snap_keys = sorted(
-        (k for k in data.keys() if str(k).isdigit()),
-        key=lambda k: int(k)
-    )
-    snaps = [data[k] for k in snap_keys]
+    snaps = load_snapshots(data_path)
 
     if len(snaps) == 0:
         return None, None
@@ -185,9 +177,9 @@ def build_dominance_grid(target_time, mCloud_list, sfe_list, ndens, base_dir):
     for j, mCloud in enumerate(mCloud_list):
         for i, sfe in enumerate(sfe_list):
             run_name = f"{mCloud}_sfe{sfe}_n{ndens}"
-            json_path = base_dir / run_name / "dictionary.json"
+            data_path = find_data_file(base_dir, run_name)
 
-            t, forces = load_run(json_path)
+            t, forces = load_run(data_path)
 
             if t is not None:
                 dominant = get_dominant_at_time(t, forces, target_time)
