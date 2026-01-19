@@ -41,7 +41,7 @@ PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # Configuration
 # =============================================================================
 # Number of random snapshots to test (can be overridden via command line)
-NUM_SNAPSHOTS_TO_TEST = 1
+NUM_SNAPSHOTS_TO_TEST = 2
 
 
 # =============================================================================

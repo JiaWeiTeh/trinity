@@ -236,6 +236,10 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         params['Eb'].value = Eb
         params['T0'].value = T0
         params['cool_alpha'].value = t_now / R2 * v2
+        
+        mShell, mShell_dot = mass_profile.get_mass_profile(R2, params, return_mdot=True, rdot=v2)
+        params['shell_mass'].value = mShell
+        params['shell_massDot'].value = mShell_dot
 
         # ---------------------------------------------------------------------
         # Get feedback and shell structure
@@ -322,28 +326,6 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
             break
 
         # ---------------------------------------------------------------------
-        # Extract final state
-        # ---------------------------------------------------------------------
-        R2 = float(sol.y[0, -1])
-        v2 = float(sol.y[1, -1])
-        Eb = float(sol.y[2, -1])
-        T0 = float(sol.y[3, -1])
-        t_now = float(sol.t[-1])
-
-        # Store results
-        t_results.append(t_now)
-        R2_results.append(R2)
-        v2_results.append(v2)
-        Eb_results.append(Eb)
-        T0_results.append(T0)
-        beta_results.append(beta)
-        delta_results.append(delta)
-
-        mShell, mShell_dot = mass_profile.get_mass_profile(R2, params, return_mdot=True, rdot=v2)
-        if hasattr(mShell, '__len__') and len(mShell) == 1:
-            mShell = mShell[0]
-
-        # ---------------------------------------------------------------------
         # Check termination conditions
         # ---------------------------------------------------------------------
 
@@ -363,9 +345,29 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         # Store for reference
         params['bubble_Lgain'].value = Lgain
         params['bubble_Lloss'].value = Lloss
+        params['bubble_Lloss'].value = Lloss
+        params['bubble_Lloss'].value = Lloss
 
         # Save snapshot
         params.save_snapshot()
+        
+        # ---------------------------------------------------------------------
+        # Extract final state
+        # ---------------------------------------------------------------------
+        R2 = float(sol.y[0, -1])
+        v2 = float(sol.y[1, -1])
+        Eb = float(sol.y[2, -1])
+        T0 = float(sol.y[3, -1])
+        t_now = float(sol.t[-1])
+
+        # Store results
+        t_results.append(t_now)
+        R2_results.append(R2)
+        v2_results.append(v2)
+        Eb_results.append(Eb)
+        T0_results.append(T0)
+        beta_results.append(beta)
+        delta_results.append(delta)
         
 
         # Get threshold from params (default 0.05)
