@@ -33,10 +33,11 @@ from src._input.dictionary import updateDict
 
 # Import pure/modified functions
 from src.phase1_energy.energy_phase_ODEs_modified import (
-    StaticODEParams,
+    ODESnapshot,
     get_ODE_Edot_pure,
-    extract_static_params,
-    R1Cache,
+    create_ODE_snapshot,
+    ODEResult,
+    compute_derived_quantities,
 )
 from src.phase1b_energy_implicit.get_betadelta_modified import (
     solve_betadelta_pure,
@@ -84,7 +85,8 @@ class ImplicitPhaseResults:
 # Pure ODE for Implicit Phase
 # =============================================================================
 
-def get_ODE_implicit_pure(t: float, y: np.ndarray, static: StaticODEParams,
+def get_ODE_implicit_pure(t: float, y: np.ndarray, snapshot: ODESnapshot,
+                          params_for_feedback,
                           Ed_from_beta: float, Td_from_delta: float) -> np.ndarray:
     """
     Pure ODE function for implicit phase.
@@ -97,8 +99,10 @@ def get_ODE_implicit_pure(t: float, y: np.ndarray, static: StaticODEParams,
         Time [Myr]
     y : ndarray
         State vector [R2, v2, Eb, T0]
-    static : StaticODEParams
-        Immutable parameters
+    snapshot : ODESnapshot
+        Frozen snapshot of parameters
+    params_for_feedback : DescribedDict
+        Original params dict for feedback interpolation
     Ed_from_beta : float
         Energy derivative from beta calculation
     Td_from_delta : float
@@ -112,8 +116,8 @@ def get_ODE_implicit_pure(t: float, y: np.ndarray, static: StaticODEParams,
     R2, v2, Eb, T0 = y
 
     # Get rd, vd from energy ODE (y without T0)
-    y_energy = np.array([R2, v2, Eb])
-    dydt_energy = get_ODE_Edot_pure(t, y_energy, static)
+    y_energy = [R2, v2, Eb]
+    dydt_energy = get_ODE_Edot_pure(t, y_energy, snapshot, params_for_feedback)
 
     rd = dydt_energy[0]  # = v2
     vd = dydt_energy[1]  # acceleration from pressure balance
@@ -199,9 +203,6 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
     beta_results.append(params['cool_beta'].value)
     delta_results.append(params['cool_delta'].value)
 
-    # R1 cache
-    r1_cache = R1Cache()
-
     t_now = tmin
     segment_count = 0
     termination_reason = None
@@ -240,11 +241,15 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         # Get feedback and shell structure
         # ---------------------------------------------------------------------
         feedback = get_currentSB99feedback(t_now, params)
-        updateDict(feedback, params)
+        updateDict(params, feedback)
+
+        # Extract feedback values we'll need later
+        Lmech_total = feedback.Lmech_total
+        v_mech_total = feedback.v_mech_total
 
         # Calculate shell structure using pure function
         shell_props = shell_structure_pure(params)
-        updateDict(feedback, shell_props)
+        updateDict(params, shell_props)
 
         # ---------------------------------------------------------------------
         # Calculate beta and delta using pure function
@@ -271,8 +276,6 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         gamma_adia = params['gamma_adia'].value
         R1, Pb = compute_R1_Pb(R2, Eb, feedback.Lmech_total, feedback.v_mech_total, gamma_adia)
 
-        r1_cache.update(t_now, R2, Eb, feedback.Lmech_total, feedback.v_mech_total)
-
         params['R1'].value = R1
         params['Pb'].value = Pb
 
@@ -294,9 +297,9 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         Td = delta2dTdt_pure(t_now, T0, delta)
 
         # ---------------------------------------------------------------------
-        # Build static params and integrate segment
+        # Build snapshot and integrate segment
         # ---------------------------------------------------------------------
-        static = extract_static_params(params, R1_cached=R1)
+        snapshot = create_ODE_snapshot(params)
 
         t_segment_end = min(t_now + DT_SEGMENT, tmax)
         t_span = (t_now, t_segment_end)
@@ -304,7 +307,7 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
 
         try:
             sol = scipy.integrate.solve_ivp(
-                fun=lambda t, y: get_ODE_implicit_pure(t, y, static, Ed, Td),
+                fun=lambda t, y: get_ODE_implicit_pure(t, y, snapshot, params, Ed, Td),
                 t_span=t_span,
                 y0=y0,
                 method='LSODA',

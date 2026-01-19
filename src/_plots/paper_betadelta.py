@@ -6,12 +6,16 @@ Created on Wed Dec 17 20:03:19 2025
 @author: Jia Wei Teh
 """
 
+import sys
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.transforms as mtransforms
 from pathlib import Path
 from matplotlib.lines import Line2D
 from matplotlib.patches import Patch
+
+# Add script directory to path for local imports
+sys.path.insert(0, str(Path(__file__).parent))
 from load_snapshots import load_snapshots, find_data_file
 
 print("...plotting radius comparison")
