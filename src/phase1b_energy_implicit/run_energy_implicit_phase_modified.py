@@ -25,19 +25,25 @@ from dataclasses import dataclass
 import src.phase_general.phase_ODEs as phase_ODEs
 import src.cloud_properties.mass_profile as mass_profile
 import src.bubble_structure.get_bubbleParams as get_bubbleParams
-import src.phase1b_energy_implicit.get_betadelta as get_betadelta
 import src._functions.unit_conversions as cvt
 import src.cooling.non_CIE.read_cloudy as non_CIE
 import src.shell_structure.shell_structure as shell_structure
 import src._functions.operations as operations
 from src.sb99.update_feedback import get_currentSB99feedback
 
-# Import pure ODE functions
+# Import pure functions
 from src.phase1_energy.energy_phase_ODEs_modified import (
     StaticODEParams,
     get_ODE_Edot_pure,
     extract_static_params,
     R1Cache,
+)
+from src.phase1b_energy_implicit.get_betadelta_modified import (
+    solve_betadelta_pure,
+    beta2Edot_pure,
+    delta2dTdt_pure,
+    compute_R1_Pb,
+    BetaDeltaResult,
 )
 
 logger = logging.getLogger(__name__)
@@ -196,6 +202,9 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
     segment_count = 0
     termination_reason = None
 
+    # Track previous R2 for collapse detection
+    R2_prev = R2
+
     # =============================================================================
     # Main loop (segment-based)
     # =============================================================================
@@ -233,48 +242,56 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         shell_structure.shell_structure(params)
 
         # ---------------------------------------------------------------------
-        # Calculate beta and delta
+        # Calculate beta and delta using pure function
         # ---------------------------------------------------------------------
-        (beta, delta), result_params = get_betadelta.get_beta_delta_wrapper(
+        betadelta_result = solve_betadelta_pure(
             params['cool_beta'].value,
             params['cool_delta'].value,
             params
         )
 
-        result_params['cool_beta'].value = beta
-        result_params['cool_delta'].value = delta
-        result_params['c_sound'].value = operations.get_soundspeed(
-            result_params['bubble_Tavg'].value, result_params
-        )
+        beta = betadelta_result.beta
+        delta = betadelta_result.delta
+
+        # Update params with new beta/delta
+        params['cool_beta'].value = beta
+        params['cool_delta'].value = delta
+
+        # Get bubble properties from result
+        bubble_props = betadelta_result.bubble_properties
 
         # ---------------------------------------------------------------------
         # Get R1 and Pb
         # ---------------------------------------------------------------------
-        try:
-            R1 = scipy.optimize.brentq(
-                get_bubbleParams.get_r1,
-                1e-3 * R2, R2,
-                args=([Lmech_total, Eb, v_mech_total, R2])
-            )
-        except ValueError:
-            R1 = 0.01 * R2
+        gamma_adia = params['gamma_adia'].value
+        R1, Pb = compute_R1_Pb(R2, Eb, Lmech_total, v_mech_total, gamma_adia)
 
         r1_cache.update(t_now, R2, Eb, Lmech_total, v_mech_total)
 
-        Pb = get_bubbleParams.bubble_E2P(Eb, R2, R1, params['gamma_adia'].value)
-        result_params['R1'].value = R1
-        result_params['Pb'].value = Pb
+        params['R1'].value = R1
+        params['Pb'].value = Pb
+
+        # Get sound speed from bubble average temperature
+        if bubble_props is not None:
+            bubble_Tavg = bubble_props.bubble_Tavg
+        else:
+            bubble_Tavg = params.get('bubble_Tavg', {})
+            bubble_Tavg = bubble_Tavg.value if hasattr(bubble_Tavg, 'value') else 1e6
+        params['c_sound'].value = operations.get_soundspeed(bubble_Tavg, params)
 
         # ---------------------------------------------------------------------
-        # Convert beta/delta to Ed, Td
+        # Convert beta/delta to Ed, Td using pure functions
         # ---------------------------------------------------------------------
-        Ed = get_bubbleParams.beta2Edot(result_params)
-        Td = get_bubbleParams.delta2dTdt(t_now, T0, delta)
+        pdot_total = params['pdot_total'].value
+        pdotdot_total = params['pdotdot_total'].value
+
+        Ed = beta2Edot_pure(beta, Pb, t_now, R1, R2, v2, Eb, pdot_total, pdotdot_total)
+        Td = delta2dTdt_pure(t_now, T0, delta)
 
         # ---------------------------------------------------------------------
         # Build static params and integrate segment
         # ---------------------------------------------------------------------
-        static = extract_static_params(result_params, R1_cached=R1)
+        static = extract_static_params(params, R1_cached=R1)
 
         t_segment_end = min(t_now + DT_SEGMENT, tmax)
         t_span = (t_now, t_segment_end)
@@ -331,24 +348,47 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         params['array_mShell'].value = np.concatenate([params['array_mShell'].value, [mShell]])
 
         # Save snapshot
-        result_params.save_snapshot()
+        params.save_snapshot()
 
         # ---------------------------------------------------------------------
         # Check termination conditions
         # ---------------------------------------------------------------------
-        Lgain = result_params.get('bubble_Lgain', {})
-        Lloss = result_params.get('bubble_Lloss', {})
-        if hasattr(Lgain, 'value'):
-            Lgain = Lgain.value
-        if hasattr(Lloss, 'value'):
-            Lloss = Lloss.value
 
-        if Lgain > 0 and (Lgain - Lloss) / Lgain < 0.05:
+        # Get Lgain and Lloss from bubble properties or params
+        if bubble_props is not None:
+            Lloss = bubble_props.bubble_LTotal
+            # Add leak if available
+            bubble_Leak = params.get('bubble_Leak', None)
+            if bubble_Leak is not None and hasattr(bubble_Leak, 'value'):
+                Lloss += bubble_Leak.value
+        else:
+            Lloss_param = params.get('bubble_Lloss', None)
+            Lloss = Lloss_param.value if Lloss_param and hasattr(Lloss_param, 'value') else 0.0
+
+        Lgain = Lmech_total  # From feedback calculation above
+
+        # Store for reference
+        params['bubble_Lgain'].value = Lgain
+        params['bubble_Lloss'].value = Lloss
+
+        # Get threshold from params (default 0.05)
+        phase_switch_threshold = params.get('phaseSwitch_LlossLgain', None)
+        if phase_switch_threshold and hasattr(phase_switch_threshold, 'value'):
+            threshold = phase_switch_threshold.value
+        else:
+            threshold = 0.05
+
+        if Lgain > 0 and (Lgain - Lloss) / Lgain < threshold:
             termination_reason = "cooling_balance"
+            logger.info(f"Cooling balance reached: Lloss/Lgain ratio below {threshold}")
             break
 
-        if v2 < 0 and R2 < params['R2'].value:
+        # Collapse detection: velocity negative AND radius decreasing
+        if v2 < 0 and R2 < R2_prev:
             params['isCollapse'].value = True
+
+        # Update R2_prev for next iteration
+        R2_prev = R2
 
         if t_now > tmax:
             termination_reason = "reached_tmax"
@@ -356,11 +396,14 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
             params['EndSimulationDirectly'].value = True
             break
 
-        if params.get('isCollapse', {}).value == True and R2 < params['coll_r'].value:
-            termination_reason = "small_radius"
-            params['SimulationEndReason'].value = 'Small radius reached'
-            params['EndSimulationDirectly'].value = True
-            break
+        is_collapse = params.get('isCollapse', None)
+        if is_collapse and hasattr(is_collapse, 'value') and is_collapse.value:
+            coll_r = params['coll_r'].value
+            if R2 < coll_r:
+                termination_reason = "small_radius"
+                params['SimulationEndReason'].value = 'Small radius reached'
+                params['EndSimulationDirectly'].value = True
+                break
 
         if R2 > params['stop_r'].value:
             termination_reason = "large_radius"
