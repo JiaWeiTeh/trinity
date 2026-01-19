@@ -299,9 +299,14 @@ def make_mock_params(snapshot: dict) -> MockParamsDict:
     setup_cooling_interpolation(snapshot, params)
 
     # Ensure required parameters exist
-    # Override t_previousCoolingUpdate to skip non-CIE cooling recalculation
-    # (the original snapshot has 1e30 which triggers recalc, but we don't have the cooling files)
-    params['t_previousCoolingUpdate'] = MockParam(params['t_now'].value)
+    # Note: t_previousCoolingUpdate should stay at 1e30 to trigger cooling update
+    # The path_cooling_nonCIE needs to point to the correct location
+    if 'path_cooling_nonCIE' in params:
+        # Fix path to be relative to PROJECT_ROOT if it's an absolute path from another machine
+        orig_path = params['path_cooling_nonCIE'].value
+        if isinstance(orig_path, str) and '/Users/' in orig_path:
+            # Extract relative path and make it relative to PROJECT_ROOT
+            params['path_cooling_nonCIE'] = MockParam(os.path.join(PROJECT_ROOT, 'lib', 'cooling', 'opiate/'))
 
     if 't_next' not in params:
         params['t_next'] = MockParam(params['t_now'].value + 1e-6)
