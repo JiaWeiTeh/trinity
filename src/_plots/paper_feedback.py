@@ -60,8 +60,8 @@ ONLY_SFE = '001'   # e.g. "001" or None
 
 # ONLY_M = ONLY_N = ONLY_SFE = None
 
-# --- output
-FIG_DIR = Path("./fig")
+# --- output - save to project root's fig/ directory
+FIG_DIR = Path(__file__).parent.parent.parent / "fig"
 FIG_DIR.mkdir(parents=True, exist_ok=True)
 SAVE_PNG = False
 SAVE_PDF = True

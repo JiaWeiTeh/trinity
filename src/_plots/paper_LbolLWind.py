@@ -44,8 +44,8 @@ C_QI    = "#d62728"   # red (same role)
 C_RATIO = "0.2"       # dark gray
 
 
-# --- output
-FIG_DIR = Path("./fig")
+# --- output - save to project root's fig/ directory
+FIG_DIR = Path(__file__).parent.parent.parent / "fig"
 FIG_DIR.mkdir(parents=True, exist_ok=True)
 SAVE_PNG = False
 SAVE_PDF = True

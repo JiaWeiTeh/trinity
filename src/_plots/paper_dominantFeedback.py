@@ -35,7 +35,9 @@ ndens = "1e4"
 TARGET_TIMES = [0.5, 1.0, 1.5, 2.0]  # Myr
 
 BASE_DIR = Path.home() / "unsync" / "Code" / "Trinity" / "outputs"
-FIG_DIR = Path("./fig")
+# Output - save to project root's fig/ directory
+FIG_DIR = Path(__file__).parent.parent.parent / "fig"
+FIG_DIR.mkdir(parents=True, exist_ok=True)
 
 # Force field definitions (order matters for color indexing)
 FORCE_FIELDS = [
