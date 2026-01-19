@@ -30,9 +30,11 @@ params = DescribedDict.load_snapshot(path2output, snap_id)
 arr = params["initial_cloud_n_arr"].value   # returns numpy array
 """
 
+import atexit
 import collections.abc
 import dataclasses
 import json
+import signal
 import sys
 from functools import reduce
 from pathlib import Path
@@ -193,6 +195,9 @@ class DescribedDict(dict):
         # Key flags
         self._excluded_keys: set[str] = set()     # keys to omit from snapshots
 
+        # Register crash-safe handlers to flush pending snapshots on exit
+        self._register_crash_handlers()
+
     def __setitem__(self, key: str, value: DescribedItem) -> None:
         """
         Enforce that all stored values are DescribedItem.
@@ -209,6 +214,61 @@ class DescribedDict(dict):
             self._excluded_keys.add(key)
 
         super().__setitem__(key, value)
+
+    # -------------------------------------------------------------------------
+    # Crash-safe snapshot flushing
+    # -------------------------------------------------------------------------
+    def _register_crash_handlers(self) -> None:
+        """
+        Register handlers to flush pending snapshots on exit/crash.
+
+        Covers:
+        - Normal Python exit (atexit)
+        - Ctrl+C (SIGINT)
+        - kill <pid> (SIGTERM)
+
+        Does NOT cover:
+        - kill -9 (SIGKILL) - cannot be caught
+        - os._exit() - bypasses atexit
+        """
+        import logging
+        logger = logging.getLogger(__name__)
+
+        # atexit for normal Python exit and unhandled exceptions
+        atexit.register(self._safe_flush)
+
+        # Signal handlers for SIGINT (Ctrl+C) and SIGTERM (kill)
+        signal.signal(signal.SIGINT, self._signal_handler)
+        signal.signal(signal.SIGTERM, self._signal_handler)
+
+        logger.debug("Registered crash-safe snapshot handlers")
+
+    def _signal_handler(self, signum: int, frame) -> None:
+        """Handle termination signals by flushing pending snapshots before exit."""
+        import logging
+        logger = logging.getLogger(__name__)
+
+        sig_name = signal.Signals(signum).name if hasattr(signal, 'Signals') else str(signum)
+        logger.warning(f"Received {sig_name}, flushing pending snapshots...")
+        self._safe_flush()
+        sys.exit(128 + signum)  # Standard exit code for signals
+
+    def _safe_flush(self) -> None:
+        """
+        Flush pending snapshots, catching exceptions to avoid masking errors.
+
+        Safe to call multiple times - flush() clears the buffer after each call.
+        """
+        import logging
+        logger = logging.getLogger(__name__)
+
+        if self.previous_snapshot:
+            try:
+                pending_count = len(self.previous_snapshot)
+                logger.info(f"Emergency flush: saving {pending_count} pending snapshot(s)...")
+                self.flush()
+            except Exception as e:
+                logger.error(f"Failed to flush snapshots on exit: {e}")
 
     # -------------------------------------------------------------------------
     # Display helpers
