@@ -61,6 +61,113 @@ logger = logging.getLogger(__name__)
 COOLING_UPDATE_INTERVAL = 5e-3  # Myr - recalculate cooling
 DT_SEGMENT = 1e-4  # Myr - segment duration for beta/delta updates
 MAX_SEGMENTS = 5000
+FOUR_PI = 4.0 * np.pi
+
+
+# =============================================================================
+# Force Properties Dataclass
+# =============================================================================
+
+@dataclass
+class ForceProperties:
+    """Container for force calculations (pure function output)."""
+    F_grav: float       # Gravitational force
+    F_ion_in: float     # Inward ionization pressure force
+    F_ion_out: float    # Outward ionization pressure force
+    F_ram: float        # Ram pressure force (from bubble pressure)
+    F_rad: float        # Radiation pressure force
+
+
+def compute_forces_pure(
+    R2: float,
+    mShell: float,
+    Pb: float,
+    shell_props: ShellProperties,
+    params,
+) -> ForceProperties:
+    """
+    Compute all force components without mutating params.
+
+    Parameters
+    ----------
+    R2 : float
+        Shell outer radius
+    mShell : float
+        Shell mass
+    Pb : float
+        Bubble pressure
+    shell_props : ShellProperties
+        Shell structure properties
+    params : dict-like
+        Parameter dictionary (read-only)
+
+    Returns
+    -------
+    ForceProperties
+        Dataclass with all force values
+    """
+    # Gravitational force: F = G * mShell / R2^2 * (mCluster + mShell/2)
+    G = params['G'].value
+    mCluster = params['mCluster'].value
+    F_grav = G * mShell / (R2**2) * (mCluster + 0.5 * mShell)
+
+    # Ionization pressure forces
+    k_B = params['k_B'].value
+    TShell_ion = params['TShell_ion'].value
+    rCloud = params['rCloud'].value
+    rShell = shell_props.rShell
+    nISM = params['nISM'].value
+    PISM = params.get('PISM', None)
+    if PISM is not None and hasattr(PISM, 'value'):
+        PISM = PISM.value
+    else:
+        PISM = 0.0
+
+    # Inward pressure from photoionized gas outside shell
+    FABSi = shell_props.shell_fAbsorbedIon
+    if FABSi < 1.0:
+        # Get density profile at shell radius for ionized region
+        from src.cloud_properties import density_profile
+        try:
+            n_r = density_profile.get_density_profile(np.array([rShell]), params)
+            if hasattr(n_r, '__len__') and len(n_r) == 1:
+                n_r = n_r[0]
+            press_HII_in = n_r * k_B * TShell_ion
+        except Exception:
+            press_HII_in = 0.0
+    else:
+        press_HII_in = 0.0
+
+    # Add ISM pressure if shell extends beyond cloud
+    if rShell >= rCloud:
+        press_HII_in += PISM * k_B
+
+    # Outward ionization pressure
+    if FABSi < 1.0:
+        nR2 = nISM
+    else:
+        # Strömgren sphere density estimate
+        Qi = params['Qi'].value
+        caseB_alpha = params['caseB_alpha'].value
+        nR2 = np.sqrt(Qi / caseB_alpha / (R2**3) * 3 / FOUR_PI)
+    press_HII_out = 2.0 * nR2 * k_B * 3e4  # 3e4 K is typical HII region temperature
+
+    F_ion_in = press_HII_in * FOUR_PI * R2**2
+    F_ion_out = press_HII_out * FOUR_PI * R2**2
+
+    # Ram pressure force (from bubble pressure)
+    F_ram = Pb * FOUR_PI * R2**2
+
+    # Radiation pressure force (from shell structure)
+    F_rad = shell_props.shell_F_rad
+
+    return ForceProperties(
+        F_grav=F_grav,
+        F_ion_in=F_ion_in,
+        F_ion_out=F_ion_out,
+        F_ram=F_ram,
+        F_rad=F_rad,
+    )
 
 
 # =============================================================================
@@ -355,7 +462,21 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         mShell, mShell_dot = mass_profile.get_mass_profile(R2, params, return_mdot=True, rdot=v2)
         if hasattr(mShell, '__len__') and len(mShell) == 1:
             mShell = mShell[0]
+        if hasattr(mShell_dot, '__len__') and len(mShell_dot) == 1:
+            mShell_dot = mShell_dot[0]
         params['array_mShell'].value = np.concatenate([params['array_mShell'].value, [mShell]])
+        params['shell_mass'].value = mShell
+        params['shell_massDot'].value = mShell_dot
+
+        # ---------------------------------------------------------------------
+        # Compute and store forces (pure function, no mutation during calc)
+        # ---------------------------------------------------------------------
+        force_props = compute_forces_pure(R2, mShell, Pb, shell_props, params)
+        params['F_grav'].value = force_props.F_grav
+        params['F_ion_in'].value = force_props.F_ion_in
+        params['F_ion_out'].value = force_props.F_ion_out
+        params['F_ram'].value = force_props.F_ram
+        params['F_rad'].value = force_props.F_rad
 
         # Save snapshot
         params.save_snapshot()
