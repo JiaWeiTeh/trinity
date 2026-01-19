@@ -27,6 +27,7 @@ from matplotlib.colors import LogNorm, Normalize
 from matplotlib.patches import Patch
 from pathlib import Path
 import os
+import cmasher as cmr
 
 # Add script directory to path for local imports
 sys.path.insert(0, str(Path(__file__).parent))
@@ -280,8 +281,11 @@ def plot_powerlaw_grids():
 
     # Colormap settings
     vmin, vmax = 0.01, 5.0
-    cmap = plt.cm.viridis.copy()
+    cmap = cmr.rainforest.copy()
     cmap.set_bad('white', 1.0)  # Forbidden zones are white
+
+    # Contour levels evenly spaced in log
+    contour_levels = np.logspace(np.log10(vmin), np.log10(vmax), 8)
 
     for idx, alpha in enumerate(ALPHA_VALUES):
         ax = axes[idx]
@@ -293,12 +297,23 @@ def plot_powerlaw_grids():
         n_valid = np.sum(~np.isnan(grid))
         n_total = grid.size
 
-        # Plot
+        # Plot pcolormesh
         im = ax.pcolormesh(
             M_CLOUD_RANGE, N_CORE_RANGE, grid,
             cmap=cmap, norm=LogNorm(vmin=vmin, vmax=vmax),
             shading='auto'
         )
+
+        # Add contour lines (evenly spaced in log)
+        # Need to mask NaN values for contour
+        grid_masked = np.ma.masked_invalid(grid)
+        if n_valid > 0:
+            cs = ax.contour(
+                M_CLOUD_RANGE, N_CORE_RANGE, grid_masked,
+                levels=contour_levels,
+                colors='k', linewidths=0.5, linestyles='-'
+            )
+            ax.clabel(cs, inline=True, fontsize=7, fmt='%.2f')
 
         ax.set_xscale('log')
         ax.set_yscale('log')
@@ -338,8 +353,11 @@ def plot_BE_grids():
 
     # Colormap settings
     vmin, vmax = 0.01, 5.0
-    cmap = plt.cm.plasma.copy()
+    cmap = cmr.rainforest.copy()
     cmap.set_bad('white', 1.0)  # Forbidden zones are white
+
+    # Contour levels evenly spaced in log
+    contour_levels = np.logspace(np.log10(vmin), np.log10(vmax), 8)
 
     for idx, xi in enumerate(XI_VALUES):
         ax = axes[idx]
@@ -351,12 +369,23 @@ def plot_BE_grids():
         n_valid = np.sum(~np.isnan(grid))
         n_total = grid.size
 
-        # Plot
+        # Plot pcolormesh
         im = ax.pcolormesh(
             M_CLOUD_RANGE, N_CORE_RANGE, grid,
             cmap=cmap, norm=LogNorm(vmin=vmin, vmax=vmax),
             shading='auto'
         )
+
+        # Add contour lines (evenly spaced in log)
+        # Need to mask NaN values for contour
+        grid_masked = np.ma.masked_invalid(grid)
+        if n_valid > 0:
+            cs = ax.contour(
+                M_CLOUD_RANGE, N_CORE_RANGE, grid_masked,
+                levels=contour_levels,
+                colors='k', linewidths=0.5, linestyles='-'
+            )
+            ax.clabel(cs, inline=True, fontsize=7, fmt='%.2f')
 
         ax.set_xscale('log')
         ax.set_yscale('log')
