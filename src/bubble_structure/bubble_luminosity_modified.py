@@ -91,7 +91,6 @@ def get_bubbleproperties_pure(params) -> BubbleProperties:
         Dataclass containing all bubble properties
     """
     logger.info('Entering get_bubbleproperties_pure')
-    logger.info(f'mu_atom {params["mu_atom"]}')
 
     # =============================================================================
     # Step 1: Get necessary parameters
