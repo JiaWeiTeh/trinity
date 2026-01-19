@@ -302,11 +302,17 @@ def make_mock_params(snapshot: dict) -> MockParamsDict:
     # Note: t_previousCoolingUpdate should stay at 1e30 to trigger cooling update
     # The path_cooling_nonCIE needs to point to the correct location
     if 'path_cooling_nonCIE' in params:
-        # Fix path to be relative to PROJECT_ROOT if it's an absolute path from another machine
+        # Fix path to use test/mockParams/mockCooling/ instead of lib/cooling/
         orig_path = params['path_cooling_nonCIE'].value
         if isinstance(orig_path, str) and '/Users/' in orig_path:
-            # Extract relative path and make it relative to PROJECT_ROOT
-            params['path_cooling_nonCIE'] = MockParam(os.path.join(PROJECT_ROOT, 'lib', 'cooling', 'opiate/'))
+            params['path_cooling_nonCIE'] = MockParam(os.path.join(TEST_DIR, 'mockParams', 'mockCooling', 'opiate/'))
+
+    # Also fix path_cooling_CIE if needed
+    if 'path_cooling_CIE' in params:
+        orig_path = params['path_cooling_CIE'].value
+        if isinstance(orig_path, str) and '/Users/' in orig_path:
+            # Use the Gnat-Ferland cooling curve
+            params['path_cooling_CIE'] = MockParam(os.path.join(TEST_DIR, 'mockParams', 'mockCooling', 'CIE', 'coolingCIE_3_Gnat-Ferland2012.dat'))
 
     if 't_next' not in params:
         params['t_next'] = MockParam(params['t_now'].value + 1e-6)
