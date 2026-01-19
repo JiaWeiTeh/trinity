@@ -11,12 +11,16 @@ PLUS an extra top component: PISM (white band at the top).
 - X ticks on every subplot; x tick labels only on bottom row.
 """
 
+import sys
 import numpy as np
 import matplotlib.pyplot as plt
 from pathlib import Path
 import matplotlib.transforms as mtransforms
 from matplotlib.patches import Patch
 from matplotlib.lines import Line2D
+
+# Add script directory to path for local imports
+sys.path.insert(0, str(Path(__file__).parent))
 from load_snapshots import load_snapshots, find_data_file
 
 print("...plotting force fractions with ram composition overlay + PISM")

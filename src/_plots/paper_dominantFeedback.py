@@ -10,6 +10,7 @@ White cells indicate no data (cloud collapsed/dissolved before that time).
 Created for TRINITY project - A&A/MNRAS publication figures.
 """
 
+import sys
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap, BoundaryNorm
@@ -17,6 +18,9 @@ from matplotlib.patches import Patch
 from pathlib import Path
 from scipy.ndimage import zoom, gaussian_filter
 from scipy.interpolate import RegularGridInterpolator
+
+# Add script directory to path for local imports
+sys.path.insert(0, str(Path(__file__).parent))
 from load_snapshots import load_snapshots, find_data_file
 
 print("...plotting dominant feedback grid")

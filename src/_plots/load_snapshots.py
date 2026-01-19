@@ -7,21 +7,33 @@ Supports both formats:
 - JSON: Single file with nested dictionary {"0": {...}, "1": {...}, ...}
 - JSONL: One JSON object per line (each line is a snapshot)
 
+Usage:
+    # Import in scripts located in the same directory:
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).parent))
+    from load_snapshots import load_snapshots, find_data_file
+
 @author: TRINITY Team
 """
 
 import json
 from pathlib import Path
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Union
 
 
-def load_snapshots(file_path: Path) -> List[Dict[str, Any]]:
+def _ensure_path(file_path: Union[str, Path]) -> Path:
+    """Convert string path to Path object if needed."""
+    return Path(file_path) if isinstance(file_path, str) else file_path
+
+
+def load_snapshots(file_path: Union[str, Path]) -> List[Dict[str, Any]]:
     """
     Load simulation snapshots from either JSON or JSONL file.
 
     Parameters
     ----------
-    file_path : Path
+    file_path : Path or str
         Path to either a .json or .jsonl file
 
     Returns
@@ -29,7 +41,7 @@ def load_snapshots(file_path: Path) -> List[Dict[str, Any]]:
     List[Dict[str, Any]]
         List of snapshot dictionaries, sorted by snapshot index/order
     """
-    file_path = Path(file_path)
+    file_path = _ensure_path(file_path)
 
     if file_path.suffix == '.jsonl':
         return load_jsonl(file_path)
