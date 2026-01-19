@@ -10,15 +10,20 @@ This script shows the radius of GMC as a function of core density and cloud mass
 
 
 import numpy as np
-import astropy.constants as c 
+import astropy.constants as c
 import astropy.units as u
 import scipy.integrate
 import scipy.interpolate
 import sys
 import os
+from pathlib import Path
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import matplotlib.colors as mcolors
+
+# Output - save to project root's fig/ directory
+FIG_DIR = Path(__file__).parent.parent.parent / "fig"
+FIG_DIR.mkdir(parents=True, exist_ok=True)
 
 
 # All constants are given in cgs
@@ -259,8 +264,7 @@ ax[1].set_ylim(0, 700)
 # plt.yscale('log')
 ax[0].set_ylabel('$r_{\\rm cl}$ [pc]')
 
-path2figure = r'/Users/jwt/unsync/Code/Trinity/fig'
-plt.savefig(os.path.join(path2figure, 'InitialCloudRadius.pdf'))
+plt.savefig(FIG_DIR / 'InitialCloudRadius.pdf')
 
 
 

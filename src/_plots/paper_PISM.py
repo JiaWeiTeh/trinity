@@ -16,6 +16,10 @@ import src._functions.unit_conversions as cvt
 sys.path.insert(0, str(Path(__file__).parent))
 from load_snapshots import load_snapshots
 
+# Output - save to project root's fig/ directory
+FIG_DIR = Path(__file__).parent.parent.parent / "fig"
+FIG_DIR.mkdir(parents=True, exist_ok=True)
+
 
 import os
 plt.style.use(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'trinity.mplstyle'))
@@ -71,9 +75,7 @@ plt.legend()
 plt.xlim(min(tlist), 10)
 plt.ylim(1e-1, 5e2)
 
-path2fig = r'/Users/jwt/unsync/Code/Trinity/fig/'
-
-plt.savefig(path2fig + 'PISM.pdf')
+plt.savefig(FIG_DIR / 'PISM.pdf')
 plt.show()
 
 

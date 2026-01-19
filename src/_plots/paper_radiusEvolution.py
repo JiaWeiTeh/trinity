@@ -26,8 +26,8 @@ SMOOTH_WINDOW = None        # e.g. 7 to smooth radii; None/1 disables
 SMOOTH_MODE = "edge"
 
 
-# --- output
-FIG_DIR = Path("./fig")
+# --- output - save to project root's fig/ directory
+FIG_DIR = Path(__file__).parent.parent.parent / "fig"
 FIG_DIR.mkdir(parents=True, exist_ok=True)
 SAVE_PNG = False
 SAVE_PDF = True  # set True if you also want PDFs
