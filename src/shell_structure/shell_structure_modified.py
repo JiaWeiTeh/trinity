@@ -88,6 +88,9 @@ def shell_structure_pure(params) -> ShellProperties:
     Li = params['Li'].value
     Ln = params['Ln'].value
 
+    # Capture previous rShell for dissolved case (original doesn't update rShell when dissolved)
+    rShell_previous = params['rShell'].value
+
     # TODO: Add f_cover from fragmentation mechanics
     f_cover = 1
 
@@ -364,7 +367,8 @@ def shell_structure_pure(params) -> ShellProperties:
         grav_r = np.nan
         grav_phi = np.nan
         grav_force_m = np.nan
-        rShell = rShell0
+        # Keep previous rShell value when dissolved (matches original behavior)
+        rShell = rShell_previous
         shell_F_rad = 0.0
 
         logger.info('Shell dissolved.')

@@ -486,6 +486,7 @@ def read_param(path2file, write_summary=True):
     # State flags
     params['isCollapse'] = DescribedItem(False, info="Is cloud collapsing?", ori_units="N/A")
     params['isDissolved'] = DescribedItem(False, info="Has shell dissolved?", ori_units="N/A")
+    params['is_fullyIonised'] = DescribedItem(False, info="Is shell fully ionised?", ori_units="N/A")
     
     # Diagnostic residuals
     params['residual_deltaT'] = DescribedItem(0, info="Temperature residual (T1-T2)/T2", ori_units="dimensionless")
