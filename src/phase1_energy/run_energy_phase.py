@@ -189,8 +189,8 @@ def run_energy(params):
         
         for ii, time in enumerate(t_arr):
             
-            # new inputs
-            y = [R2, v2, Eb, T0]
+            # new inputs (ODE expects [R2, v2, Eb], T0 is passed via params)
+            y = [R2, v2, Eb]
             
             try:
                 params['t_next'].value = t_arr[ii+1]
