@@ -8,10 +8,14 @@ Created on Thu Jul 31 17:16:20 2025
 plots different radius profiles for BE
 """
 
-
+import sys
 import numpy as np
 import matplotlib.pyplot as plt
+from pathlib import Path
 import src._functions.unit_conversions as cvt
+
+# Add script directory to path for local imports
+sys.path.insert(0, str(Path(__file__).parent))
 from load_snapshots import load_snapshots
 
 

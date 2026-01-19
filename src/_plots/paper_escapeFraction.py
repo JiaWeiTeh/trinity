@@ -6,9 +6,13 @@ Created on Tue Dec 16 15:13:21 2025
 @author: Jia Wei Teh
 """
 
+import sys
 import numpy as np
 import matplotlib.pyplot as plt
 from pathlib import Path
+
+# Add script directory to path for local imports
+sys.path.insert(0, str(Path(__file__).parent))
 from load_snapshots import load_snapshots, find_data_file
 
 print("...plotting escape fraction comparison")
