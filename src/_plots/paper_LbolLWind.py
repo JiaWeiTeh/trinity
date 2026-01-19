@@ -1,11 +1,15 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+import sys
 import numpy as np
 import matplotlib.pyplot as plt
 from pathlib import Path
 from matplotlib.lines import Line2D
 import matplotlib.transforms as mtransforms
+
+# Add script directory to path for local imports
+sys.path.insert(0, str(Path(__file__).parent))
 from load_snapshots import load_snapshots, find_data_file
 
 print("...plotting Qi(or Li) vs Lmech_total with ratio on twin axis")
