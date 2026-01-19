@@ -6,17 +6,18 @@ Created on Thu Jul 17 11:52:11 2025
 @author: Jia Wei Teh
 """
 
-import json
 import numpy as np
 import matplotlib.pyplot as plt
 import src._functions.unit_conversions as cvt
+from load_snapshots import load_snapshots
 
 
-path2json2 = r'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe010_n1e4/dictionary.json'
-# path2json1 = r'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe001_n1e4_BE/dictionary.json'
-path2json1 = r'/Users/jwt/unsync/Code/Trinity/outputs/1e5_sfe030_n1e4/dictionary.json'
-# path2json2 = r'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe030_n1e4/dictionary.json'
-# path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe010_n1e2/dictionary.json'
+# Paths to data files (can be .json or .jsonl)
+path2data2 = r'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe010_n1e4/dictionary.json'
+# path2data1 = r'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe001_n1e4_BE/dictionary.json'
+path2data1 = r'/Users/jwt/unsync/Code/Trinity/outputs/1e5_sfe030_n1e4/dictionary.json'
+# path2data2 = r'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe030_n1e4/dictionary.json'
+# path2data = r'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe010_n1e2/dictionary.json'
 
 
 
@@ -43,23 +44,19 @@ def change_points(arr):
 fig, axs = plt.subplots(2, 1, figsize = (5,5), dpi = 200)
     
     
-for pp, path2json in enumerate([path2json1, path2json2]):
+for pp, path2data in enumerate([path2data1, path2data2]):
 
-    import json
-    
     rlist = []
     tlist = []
     phaselist = []
 
-    
-    with open(path2json, 'r') as f:
-        # step one is to make sure they are lists i think
-        snaplists = json.load(f)
-    
-    for key, val in snaplists.items():
-        rlist.append(val['R2'])
-        tlist.append(val['t_now'])
-        phaselist.append(val['current_phase'])
+    # Load snapshots (supports both JSON and JSONL)
+    snaps = load_snapshots(path2data)
+
+    for snap in snaps:
+        rlist.append(snap['R2'])
+        tlist.append(snap['t_now'])
+        phaselist.append(snap['current_phase'])
         
     phaselist[-1] = 'done'
     

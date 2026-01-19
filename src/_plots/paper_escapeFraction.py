@@ -6,11 +6,10 @@ Created on Tue Dec 16 15:13:21 2025
 @author: Jia Wei Teh
 """
 
-import json
 import numpy as np
 import matplotlib.pyplot as plt
 from pathlib import Path
-
+from load_snapshots import load_snapshots, find_data_file
 
 print("...plotting escape fraction comparison")
 
@@ -55,20 +54,19 @@ def smooth_1d(y, window, mode="edge"):
     return np.convolve(ypad, kernel, mode="valid")
 
 
-def load_escape_fraction(json_path: Path):
-    """Return (t, fesc) arrays sorted by snapshot index."""
-    with json_path.open("r") as f:
-        data = json.load(f)
+def load_escape_fraction(data_path: Path):
+    """Return (t, fesc) arrays. Supports both JSON and JSONL formats."""
+    snaps = load_snapshots(data_path)
 
-    snap_keys = sorted((k for k in data.keys() if str(k).isdigit()), key=lambda k: int(k))
-    snaps = [data[k] for k in snap_keys]
+    if not snaps:
+        raise ValueError(f"No snapshots found in {data_path}")
 
     t = np.array([s["t_now"] for s in snaps], dtype=float)
 
     # fesc = 1 - fAbs (fAbs stored as shell_fAbsorbedIon)
-    fAbs = np.array([s["shell_fAbsorbedIon"] for s in snaps], dtype=float)
+    fAbs = np.array([s.get("shell_fAbsorbedIon", 0.0) for s in snaps], dtype=float)
     fesc = 1.0 - fAbs
-    
+
     return t, fesc
 
 
@@ -100,14 +98,14 @@ for ndens in ndens_list:
         # plot each sfe as a line on the same axis
         for sfe in sfe_list:
             run_name = f"{mCloud}_sfe{sfe}_n{ndens}"
-            json_path = BASE_DIR / run_name / "dictionary.json"
+            data_path = find_data_file(BASE_DIR, run_name)
 
-            if not json_path.exists():
-                print(f"Missing: {json_path}")
+            if data_path is None:
+                print(f"Missing data for: {run_name}")
                 continue
 
             try:
-                t, fesc = load_escape_fraction(json_path)
+                t, fesc = load_escape_fraction(data_path)
 
                 # optional smoothing
                 fesc_plot = smooth_1d(fesc, SMOOTH_WINDOW)
