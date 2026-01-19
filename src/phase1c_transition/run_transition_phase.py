@@ -170,11 +170,11 @@ def ODE_equations_transition(t, y, params):
         
     # ILL MAYBE PLACE THIS AFTER SO THAT WE WONT RECORD THE INTRIDCACIES INSIDE THIS LOOP
     # # print('t here is t=', t)
-    params['array_t_now'].value = np.concatenate([params['array_t_now'].value, [t]])
-    params['array_R2'].value = np.concatenate([params['array_R2'].value, [R2]])
-    params['array_R1'].value = np.concatenate([params['array_R1'].value, [params['R1'].value]])
-    params['array_v2'].value = np.concatenate([params['array_v2'].value, [v2]])
-    params['array_T0'].value = np.concatenate([params['array_T0'].value, [T0]])
+    # params['array_t_now'].value = np.concatenate([params['array_t_now'].value, [t]])
+    # params['array_R2'].value = np.concatenate([params['array_R2'].value, [R2]])
+    # params['array_R1'].value = np.concatenate([params['array_R1'].value, [params['R1'].value]])
+    # params['array_v2'].value = np.concatenate([params['array_v2'].value, [v2]])
+    # params['array_T0'].value = np.concatenate([params['array_T0'].value, [T0]])
     
     # print('mshell problems', mShell)
     
@@ -198,7 +198,7 @@ def ODE_equations_transition(t, y, params):
     
     
     
-    params['array_mShell'].value = np.concatenate([params['array_mShell'].value, [mShell]])
+    # params['array_mShell'].value = np.concatenate([params['array_mShell'].value, [mShell]])
             
     
     
