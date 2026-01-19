@@ -32,7 +32,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 # =============================================================================
 
 PROJECT_ROOT = Path(__file__).parent.parent
-DEFAULT_OUTPUT_DIR = PROJECT_ROOT / 'output'
+DEFAULT_OUTPUT_DIR = PROJECT_ROOT / 'outputs'
 
 # Parameters of interest by category
 ESSENTIAL_PARAMS = ['R1', 'R2', 'rShell', 'Pb', 'Eb', 'T0']
