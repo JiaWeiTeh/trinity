@@ -7,8 +7,8 @@
       "cStruc_cooling_CIE_interpolation (callable)"
     ]
   },
-  "model_name": "1e7_sfe001_n1e4",
-  "path2output": "/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe001_n1e4",
+  "model_name": "1e7_sfe001_n1e4_modified",
+  "path2output": "/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe001_n1e4_modified",
   "verbose": 1.0,
   "output_format": "JSON",
   "log_level": "DEBUG",
@@ -57,6 +57,7 @@
   "adiabaticOnlyInCore": false,
   "immediate_leak": true,
   "phaseSwitch_LlossLgain": 0.05,
+  "use_adaptive_solver": true,
   "cool_alpha": 0.6,
   "cool_beta": 0.8,
   "cool_delta": -0.17142857142857143,

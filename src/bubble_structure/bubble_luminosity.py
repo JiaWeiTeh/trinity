@@ -268,11 +268,8 @@ def get_bubbleproperties(params):
     
     
     # grab the most successful runs
-    print('final array selection for bubble_luminosity:')
-    print('final v_array:', v_array)
-    print('final T_array:', T_array)
-    print('final dTdr_array:', dTdr_array)
-    print('final r_array:', r_array)
+    logger.info(f'Bubble structure: r=[{r_array[0]:.4f}, {r_array[-1]:.4f}], '
+                f'T=[{T_array[0]:.2e}, {T_array[-1]:.2e}]')
     # print('post dmdt:', dMdt_predict)
     # print('final dmdt:', dMdt)
     
