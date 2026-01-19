@@ -268,6 +268,11 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         # Get bubble properties from result
         bubble_props = betadelta_result.bubble_properties
 
+        # Update params with all bubble properties from the pure function result
+        # This is critical: without this, bubble_mass, bubble arrays, etc. remain stale
+        if bubble_props is not None:
+            updateDict(params, bubble_props)
+
         # ---------------------------------------------------------------------
         # Get R1 and Pb
         # ---------------------------------------------------------------------
@@ -278,11 +283,8 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         params['Pb'].value = Pb
 
         # Get sound speed from bubble average temperature
-        if bubble_props is not None:
-            bubble_Tavg = bubble_props.bubble_Tavg
-        else:
-            bubble_Tavg = params.get('bubble_Tavg', {})
-            bubble_Tavg = bubble_Tavg.value if hasattr(bubble_Tavg, 'value') else 1e6
+        # (bubble_Tavg is now in params via updateDict above)
+        bubble_Tavg = params['bubble_Tavg'].value if params['bubble_Tavg'].value else 1e6
         params['c_sound'].value = operations.get_soundspeed(bubble_Tavg, params)
 
         # ---------------------------------------------------------------------
