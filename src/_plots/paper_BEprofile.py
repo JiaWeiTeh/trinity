@@ -9,31 +9,28 @@ plots different radius profiles for BE
 """
 
 
-import json
 import numpy as np
 import matplotlib.pyplot as plt
 import src._functions.unit_conversions as cvt
+from load_snapshots import load_snapshots
 
 
-# path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/1e5_sfe030_n1e4/dictionary.json'
-path2json = r'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe001_n1e4_BE/dictionary.json'
+# Path to data file (can be .json or .jsonl)
+# path2data = r'/Users/jwt/unsync/Code/Trinity/outputs/1e5_sfe030_n1e4/dictionary.json'
+path2data = r'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe001_n1e4_BE/dictionary.json'
 
-with open(path2json, 'r') as f:
-    # step one is to make sure they are lists i think
-    snaplists = json.load(f)
+# Load snapshots (supports both JSON and JSONL)
+snaplists_list = load_snapshots(path2data)
 
 nlist = []
 rlist = []
 mlist = []
 phaselist = []
-    
+
 #--------------
 
-
-import json
-with open(path2json, 'r') as f:
-    # step one is to make sure they are lists i think
-    snaplists = json.load(f)
+# For backward compatibility, convert to dict-like access
+snaplists = {str(i): s for i, s in enumerate(snaplists_list)}
     
         # n_arr = params['initial_cloud_n_arr'].value
     # m_arr = params['initial_cloud_m_arr'].value
