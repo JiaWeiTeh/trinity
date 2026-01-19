@@ -254,7 +254,7 @@ def add_physical_constants(params: dict, jsonl_path: str = None) -> dict:
     defaults = _DEFAULT_PARAMS_CACHE
 
     if jsonl_path is None:
-        jsonl_path = os.path.join(PROJECT_ROOT, 'comparison', '1e7_sfe020_n1e4_test_dictionary.jsonl')
+        jsonl_path = os.path.join(PROJECT_ROOT, 'comparison', '1e7_sfe001_n1e4_test_dictionary.jsonl')
     _JSONL_PATH_CACHE = jsonl_path
 
     # Unit conversion factors
@@ -623,7 +623,7 @@ def test_shell_structure_comparison():
 
     jsonl_path = os.path.join(
         os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-        'comparison', '1e7_sfe020_n1e4_test_dictionary.jsonl'
+        'comparison', '1e7_sfe001_n1e4_test_dictionary.jsonl'
     )
 
     if not os.path.exists(jsonl_path):
