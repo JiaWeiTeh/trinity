@@ -42,7 +42,7 @@ DELTA_MAX = 0.0
 
 # Convergence thresholds
 RESIDUAL_THRESHOLD = 1e-4
-MAX_ITERATIONS = 50
+MAX_ITERATIONS = 15
 
 
 # =============================================================================
