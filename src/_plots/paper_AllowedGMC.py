@@ -313,6 +313,17 @@ def plot_powerlaw_grids():
             levels=[0.5], colors=['k'], linewidths=1.5, linestyles='-'
         )
 
+        # Add "Forbidden" label in the forbidden zone
+        # Find center of forbidden region for label placement
+        forbidden_indices = np.where(forbidden_mask > 0.5)
+        if len(forbidden_indices[0]) > 0:
+            # Get approximate center of forbidden region
+            mid_idx = len(forbidden_indices[0]) // 2
+            label_n = N_CORE_RANGE[forbidden_indices[0][mid_idx]]
+            label_m = M_CLOUD_RANGE[forbidden_indices[1][mid_idx]]
+            ax.text(label_m, label_n, 'Forbidden', fontsize=9, ha='center', va='center',
+                    color='dimgray', fontstyle='italic', fontweight='bold')
+
         # Plot pcolormesh for valid regions
         im = ax.pcolormesh(
             M_CLOUD_RANGE, N_CORE_RANGE, grid,
@@ -412,6 +423,15 @@ def plot_BE_grids():
             M_CLOUD_RANGE, N_CORE_RANGE, forbidden_mask,
             levels=[0.5], colors=['k'], linewidths=1.5, linestyles='-'
         )
+
+        # Add "Forbidden" label in the forbidden zone
+        forbidden_indices = np.where(forbidden_mask > 0.5)
+        if len(forbidden_indices[0]) > 0:
+            mid_idx = len(forbidden_indices[0]) // 2
+            label_n = N_CORE_RANGE[forbidden_indices[0][mid_idx]]
+            label_m = M_CLOUD_RANGE[forbidden_indices[1][mid_idx]]
+            ax.text(label_m, label_n, 'Forbidden', fontsize=9, ha='center', va='center',
+                    color='dimgray', fontstyle='italic', fontweight='bold')
 
         # Plot pcolormesh for valid regions
         im = ax.pcolormesh(
