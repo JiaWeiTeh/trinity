@@ -341,19 +341,9 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         beta_results.append(beta)
         delta_results.append(delta)
 
-        # ---------------------------------------------------------------------
-        # Update history arrays
-        # ---------------------------------------------------------------------
-        params['array_t_now'].value = np.concatenate([params['array_t_now'].value, [t_now]])
-        params['array_R2'].value = np.concatenate([params['array_R2'].value, [R2]])
-        params['array_R1'].value = np.concatenate([params['array_R1'].value, [R1]])
-        params['array_v2'].value = np.concatenate([params['array_v2'].value, [v2]])
-        params['array_T0'].value = np.concatenate([params['array_T0'].value, [T0]])
-
         mShell, mShell_dot = mass_profile.get_mass_profile(R2, params, return_mdot=True, rdot=v2)
         if hasattr(mShell, '__len__') and len(mShell) == 1:
             mShell = mShell[0]
-        params['array_mShell'].value = np.concatenate([params['array_mShell'].value, [mShell]])
 
         # Save snapshot
         params.save_snapshot()
