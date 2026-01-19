@@ -68,7 +68,7 @@ MU = 1.4             # mean molecular weight
 ALPHA_VALUES = [0, -1, -1.5, -2]
 
 # Bonnor-Ebert dimensionless radii to test (including critical ~6.45)
-XI_VALUES = [3.0, 4.5, 6.0, XI_CRITICAL]
+XI_VALUES = [3.0, 4.0, XI_CRITICAL, 10]
 
 # Output
 FIG_DIR = Path(__file__).parent / "fig"
