@@ -62,7 +62,7 @@ log_colors    True
 
 # INFO: The mass of the molecular cloud.
 # UNIT: [Msun]
-mCloud    1e6
+mCloud    1e7
 
 # INFO: Star formation effeciency.
 sfe    0.01
