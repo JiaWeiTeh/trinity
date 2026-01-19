@@ -343,6 +343,10 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         params['Eb'].value = Eb
         params['T0'].value = T0
         params['cool_alpha'].value = t_now / R2 * v2
+        
+        mShell, mShell_dot = mass_profile.get_mass_profile(R2, params, return_mdot=True, rdot=v2)
+        params['shell_mass'].value = mShell
+        params['shell_massDot'].value = mShell_dot
 
         # ---------------------------------------------------------------------
         # Get feedback and shell structure
@@ -351,8 +355,6 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         updateDict(params, feedback)
 
         # Extract feedback values we'll need later
-        Lmech_total = feedback.Lmech_total
-        v_mech_total = feedback.v_mech_total
 
         # Calculate shell structure using pure function
         shell_props = shell_structure_pure(params)
@@ -399,10 +401,8 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         # ---------------------------------------------------------------------
         # Convert beta/delta to Ed, Td using pure functions
         # ---------------------------------------------------------------------
-        pdot_total = params['pdot_total'].value
-        pdotdot_total = params['pdotdot_total'].value
 
-        Ed = beta2Edot_pure(beta, Pb, t_now, R1, R2, v2, Eb, pdot_total, pdotdot_total)
+        Ed = beta2Edot_pure(beta, Pb, t_now, R1, R2, v2, Eb, feedback.pdot_total, feedback.pdotdot_total)
         Td = delta2dTdt_pure(t_now, T0, delta)
 
         # ---------------------------------------------------------------------
@@ -496,11 +496,35 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
             Lloss_param = params.get('bubble_Lloss', None)
             Lloss = Lloss_param.value if Lloss_param and hasattr(Lloss_param, 'value') else 0.0
 
-        Lgain = Lmech_total  # From feedback calculation above
+        Lgain = feedback.Lmech_total  # From feedback calculation above
 
         # Store for reference
         params['bubble_Lgain'].value = Lgain
         params['bubble_Lloss'].value = Lloss
+        params['bubble_Lloss'].value = Lloss
+        params['bubble_Lloss'].value = Lloss
+
+        # Save snapshot
+        params.save_snapshot()
+        
+        # ---------------------------------------------------------------------
+        # Extract final state
+        # ---------------------------------------------------------------------
+        R2 = float(sol.y[0, -1])
+        v2 = float(sol.y[1, -1])
+        Eb = float(sol.y[2, -1])
+        T0 = float(sol.y[3, -1])
+        t_now = float(sol.t[-1])
+
+        # Store results
+        t_results.append(t_now)
+        R2_results.append(R2)
+        v2_results.append(v2)
+        Eb_results.append(Eb)
+        T0_results.append(T0)
+        beta_results.append(beta)
+        delta_results.append(delta)
+        
 
         # Get threshold from params (default 0.05)
         phase_switch_threshold = params.get('phaseSwitch_LlossLgain', None)
