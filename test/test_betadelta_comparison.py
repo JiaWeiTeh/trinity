@@ -280,6 +280,21 @@ def add_physical_constants(params: dict, jsonl_path: str = None) -> dict:
         if key not in params:
             params[key] = 0.0
 
+    # Mechanical feedback parameters (from wind data in snapshot)
+    # The JSONL snapshot uses wind variable names, but get_betadelta_modified
+    # expects mechanical parameter names
+    if 'Lmech_total' not in params:
+        params['Lmech_total'] = params.get('LWind', 0.0)
+
+    if 'v_mech_total' not in params:
+        params['v_mech_total'] = params.get('vWind', 0.0)
+
+    if 'pdot_total' not in params:
+        params['pdot_total'] = params.get('pWindDot', 0.0)
+
+    if 'pdotdot_total' not in params:
+        params['pdotdot_total'] = params.get('pWindDotDot', 0.0)
+
     return params
 
 
