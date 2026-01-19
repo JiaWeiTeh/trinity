@@ -31,6 +31,7 @@ from src._output.simulation_end import write_simulation_end
 from src.phase1_energy import run_energy_phase
 from src.phase1_energy import run_energy_phase_modified
 from src.phase1b_energy_implicit import run_energy_implicit_phase
+from src.phase1b_energy_implicit import run_energy_implicit_phase_modified
 # from src.phase1c_transition import run_transition_phase
 # from src.phase2_momentum import run_momentum_phase
 import src._output.terminal_prints as terminal_prints
@@ -263,7 +264,14 @@ def run_expansion(params):
 
     phase1b_starttime = datetime.datetime.now()
 
-    run_energy_implicit_phase.run_phase_energy(params)
+
+    if use_adaptive_solver:
+        logger.info("Using modified energy phase (adaptive solve_ivp)")
+        run_energy_implicit_phase_modified.run_energy(params)
+    else:
+        logger.info("Using original energy phase (Euler integration)")
+        run_energy_implicit_phase.run_phase_energy(params)
+        
 
     phase1b_endtime = datetime.datetime.now()
     phase1b_elapsed = phase1b_endtime - phase1b_starttime

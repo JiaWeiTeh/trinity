@@ -269,9 +269,9 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         # Get R1 and Pb
         # ---------------------------------------------------------------------
         gamma_adia = params['gamma_adia'].value
-        R1, Pb = compute_R1_Pb(R2, Eb, Lmech_total, v_mech_total, gamma_adia)
+        R1, Pb = compute_R1_Pb(R2, Eb, feedback.Lmech_total, feedback.v_mech_total, gamma_adia)
 
-        r1_cache.update(t_now, R2, Eb, Lmech_total, v_mech_total)
+        r1_cache.update(t_now, R2, Eb, feedback.Lmech_total, feedback.v_mech_total)
 
         params['R1'].value = R1
         params['Pb'].value = Pb
