@@ -192,7 +192,7 @@ def add_physical_constants(params: dict, jsonl_path: str = None) -> dict:
     defaults = _DEFAULT_PARAMS_CACHE
 
     if jsonl_path is None:
-        jsonl_path = os.path.join(PROJECT_ROOT, 'comparison', '1e7_sfe020_n1e4_test_dictionary.jsonl')
+        jsonl_path = os.path.join(PROJECT_ROOT, 'comparison', '1e7_sfe001_n1e4_test_dictionary.jsonl')
 
     # Unit conversion factors
     ndens_cgs2au = CONV.ndens_cgs2au
@@ -580,7 +580,7 @@ def test_bubble_luminosity_comparison():
     print("Testing bubble_luminosity vs bubble_luminosity_modified")
     print("=" * 70)
 
-    jsonl_path = os.path.join(PROJECT_ROOT, 'comparison', '1e7_sfe020_n1e4_test_dictionary.jsonl')
+    jsonl_path = os.path.join(PROJECT_ROOT, 'comparison', '1e7_sfe001_n1e4_test_dictionary.jsonl')
 
     if not os.path.exists(jsonl_path):
         print(f"ERROR: Test dictionary not found at {jsonl_path}")

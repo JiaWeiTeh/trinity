@@ -589,7 +589,7 @@ def test_betadelta_comparison():
     print("Testing get_betadelta vs get_betadelta_modified")
     print("=" * 70)
 
-    jsonl_path = os.path.join(PROJECT_ROOT, 'comparison', '1e7_sfe020_n1e4_test_dictionary.jsonl')
+    jsonl_path = os.path.join(PROJECT_ROOT, 'comparison', '1e7_sfe001_n1e4_test_dictionary.jsonl')
 
     if not os.path.exists(jsonl_path):
         print(f"ERROR: Test dictionary not found at {jsonl_path}")
