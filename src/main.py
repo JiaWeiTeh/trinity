@@ -267,7 +267,7 @@ def run_expansion(params):
 
     if use_adaptive_solver:
         logger.info("Using modified energy phase (adaptive solve_ivp)")
-        run_energy_implicit_phase_modified.run_energy(params)
+        run_energy_implicit_phase_modified.run_phase_energy(params)
     else:
         logger.info("Using original energy phase (Euler integration)")
         run_energy_implicit_phase.run_phase_energy(params)

@@ -11245,6 +11245,7 @@
   "bubble_Leak": 0,
   "isCollapse": false,
   "isDissolved": false,
+  "is_fullyIonised": false,
   "residual_deltaT": 0,
   "residual_betaEdot": 0,
   "residual_Edot1_guess": NaN,
