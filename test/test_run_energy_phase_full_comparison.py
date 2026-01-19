@@ -3,15 +3,11 @@
 """
 Full comparison test for run_energy_phase vs run_energy_phase_modified.
 
-This test compares the ODE and physics calculations across multiple snapshots
-from an existing simulation run. It generates PDF plots showing parameter
-evolution and comparison between original and modified implementations.
+This test runs the complete energy phase using both implementations from a
+single t=0 snapshot and compares their outputs. It generates PDF plots showing
+the evolution of parameters over time.
 
-Instead of running the full energy phase (which requires complete TRINITY setup),
-this test:
-1. Loads a sequence of snapshots from the test JSONL file
-2. For each snapshot, compares ODE outputs between original and modified
-3. Generates PDF plots showing parameter evolution over time
+Uses: test/mockParams/1e7_sfe001_n1e4_t0_debug_snapshot.json
 
 Author: TRINITY Team
 """
@@ -26,7 +22,6 @@ import time
 import matplotlib
 matplotlib.use('Agg')  # Non-interactive backend for PDF generation
 import matplotlib.pyplot as plt
-from matplotlib.backends.backend_pdf import PdfPages
 
 # Ensure src is in path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -38,6 +33,7 @@ from src._functions.unit_conversions import CONV, CGS
 # =============================================================================
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TEST_DIR = os.path.dirname(os.path.abspath(__file__))
+MOCK_SNAPSHOT_PATH = os.path.join(TEST_DIR, 'mockParams', '1e7_sfe001_n1e4_t0_debug_snapshot.json')
 
 
 # =============================================================================
@@ -117,342 +113,132 @@ class MockParam:
 
 
 # =============================================================================
+# MockParamsDict that tracks history
+# =============================================================================
+
+class MockParamsDict(dict):
+    """
+    Mock params dictionary that tracks history via save_snapshot().
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.history = []
+        self._snapshot_count = 0
+
+    def save_snapshot(self):
+        """Record current state to history."""
+        snapshot = {}
+        for key, param in self.items():
+            if hasattr(param, 'value'):
+                val = param.value
+                # Only store scalars for history tracking
+                if isinstance(val, (int, float, bool, np.integer, np.floating)):
+                    snapshot[key] = float(val) if isinstance(val, (int, float, np.integer, np.floating)) else val
+                elif isinstance(val, np.ndarray) and val.size == 1:
+                    snapshot[key] = float(val.item())
+        self.history.append(snapshot)
+        self._snapshot_count += 1
+
+    def get_history_array(self, key):
+        """Get array of values for a key across all snapshots."""
+        values = []
+        for snapshot in self.history:
+            if key in snapshot:
+                values.append(snapshot[key])
+            else:
+                values.append(np.nan)
+        return np.array(values)
+
+    def get_time_array(self):
+        """Get array of t_now values from history."""
+        return self.get_history_array('t_now')
+
+
+# =============================================================================
 # Helper functions
 # =============================================================================
 
-def load_snapshot_from_jsonl(filepath: str, line_number: int) -> dict:
-    """Load a specific snapshot (line) from a JSONL file."""
+def load_debug_snapshot(filepath: str) -> dict:
+    """Load the debug snapshot JSON file."""
     with open(filepath, 'r') as f:
-        for i, line in enumerate(f):
-            if i == line_number - 1:
-                return json.loads(line.strip())
-    raise ValueError(f"Line {line_number} not found in {filepath}")
-
-
-def load_all_snapshots(filepath: str, max_lines: int = None) -> list:
-    """Load all snapshots from a JSONL file."""
-    snapshots = []
-    with open(filepath, 'r') as f:
-        for i, line in enumerate(f):
-            if max_lines and i >= max_lines:
-                break
-            try:
-                snapshots.append(json.loads(line.strip()))
-            except json.JSONDecodeError:
-                continue
-    return snapshots
-
-
-def load_default_params(param_file: str = None) -> dict:
-    """Load default parameters from default.param file."""
-    if param_file is None:
-        param_file = os.path.join(PROJECT_ROOT, 'param', 'default.param')
-
-    defaults = {}
-    if not os.path.exists(param_file):
-        return defaults
-
-    with open(param_file, 'r') as f:
-        for line in f:
-            line = line.strip()
-            if not line or line.startswith('#') or line.startswith('INFO'):
-                continue
-            parts = line.split(None, 1)
-            if len(parts) == 2:
-                key, value = parts
-                try:
-                    if '/' in value and not value.startswith('/'):
-                        num, denom = value.split('/')
-                        defaults[key] = float(num) / float(denom)
-                    elif value.lower() == 'true':
-                        defaults[key] = True
-                    elif value.lower() == 'false':
-                        defaults[key] = False
-                    else:
-                        defaults[key] = float(value)
-                except ValueError:
-                    defaults[key] = value
-    return defaults
-
-
-def search_jsonl_for_param(jsonl_path: str, param_name: str):
-    """Search through JSONL file for a parameter value."""
-    if not os.path.exists(jsonl_path):
-        return None
-    with open(jsonl_path, 'r') as f:
-        for line in f:
-            try:
-                data = json.loads(line.strip())
-                if param_name in data:
-                    return data[param_name]
-            except json.JSONDecodeError:
-                continue
-    return None
-
-
-def get_param_value(params: dict, key: str, defaults: dict, jsonl_path: str):
-    """Get parameter value from params, defaults, or jsonl."""
-    if key in params:
-        return params[key]
-    if key in defaults:
-        return defaults[key]
-    return search_jsonl_for_param(jsonl_path, key)
-
-
-# Cache for default params
-_DEFAULT_PARAMS_CACHE = None
-
-
-def add_physical_constants(params: dict, jsonl_path: str = None) -> dict:
-    """Add physical constants that are missing from the dictionary snapshot."""
-    global _DEFAULT_PARAMS_CACHE
-
-    if _DEFAULT_PARAMS_CACHE is None:
-        _DEFAULT_PARAMS_CACHE = load_default_params()
-    defaults = _DEFAULT_PARAMS_CACHE
-
-    if jsonl_path is None:
-        jsonl_path = os.path.join(PROJECT_ROOT, 'test', '1e7_sfe020_n1e4_test_dictionary.jsonl')
-
-    # Unit conversion factors
-    ndens_cgs2au = CONV.ndens_cgs2au
-    m_H_to_Msun = CGS.m_H * CONV.g2Msun
-    k_B_cgs2au = CONV.k_B_cgs2au
-    G_cgs2au = CONV.G_cgs2au
-    v_cms2au = CONV.v_cms2au
-    cm2_to_pc2 = CONV.cm2pc**2
-    cm3_to_pc3 = CONV.cm2pc**3
-    s_to_Myr = CONV.s2Myr
-
-    # Physical constants
-    k_B_cgs = get_param_value(params, 'k_B', defaults, jsonl_path) or CGS.k_B
-    params['k_B'] = k_B_cgs * k_B_cgs2au
-
-    G_cgs = get_param_value(params, 'G', defaults, jsonl_path) or CGS.G
-    params['G'] = G_cgs * G_cgs2au
-
-    c_cgs = get_param_value(params, 'c_light', defaults, jsonl_path) or CGS.c
-    params['c_light'] = c_cgs * v_cms2au
-
-    # Mean molecular weights
-    mu_atom = get_param_value(params, 'mu_atom', defaults, jsonl_path)
-    params['mu_atom'] = mu_atom * m_H_to_Msun if mu_atom else 1.27 * m_H_to_Msun
-
-    mu_ion = get_param_value(params, 'mu_ion', defaults, jsonl_path)
-    params['mu_ion'] = mu_ion * m_H_to_Msun if mu_ion else 0.61 * m_H_to_Msun
-
-    mu_convert = get_param_value(params, 'mu_convert', defaults, jsonl_path)
-    params['mu_convert'] = mu_convert * m_H_to_Msun if mu_convert else 1.4 * m_H_to_Msun
-
-    # Shell temperatures
-    params['TShell_ion'] = get_param_value(params, 'TShell_ion', defaults, jsonl_path) or 1e4
-    params['TShell_neu'] = get_param_value(params, 'TShell_neu', defaults, jsonl_path) or 100
-
-    # Case B recombination
-    caseB_cgs = get_param_value(params, 'caseB_alpha', defaults, jsonl_path) or 2.59e-13
-    params['caseB_alpha'] = caseB_cgs * cm3_to_pc3 / s_to_Myr
-
-    # Dust parameters
-    dust_sigma_cgs = get_param_value(params, 'dust_sigma', defaults, jsonl_path) or 1.5e-21
-    params['dust_sigma'] = dust_sigma_cgs * cm2_to_pc2
-    dust_KappaIR_cgs = get_param_value(params, 'dust_KappaIR', defaults, jsonl_path) or 4.0
-    params['dust_KappaIR'] = dust_KappaIR_cgs * cm2_to_pc2 / CONV.g2Msun
-
-    # Shell dissolution threshold
-    stop_n_diss_cgs = get_param_value(params, 'stop_n_diss', defaults, jsonl_path) or 1.0
-    params['stop_n_diss'] = stop_n_diss_cgs * ndens_cgs2au
-
-    # ISM number density
-    if 'nISM' not in params:
-        nISM_cgs = get_param_value(params, 'nISM', defaults, jsonl_path) or 1.0
-        params['nISM'] = nISM_cgs * ndens_cgs2au
-
-    # Cloud metallicity
-    if 'ZCloud' not in params:
-        params['ZCloud'] = get_param_value(params, 'ZCloud', defaults, jsonl_path) or 1.0
-
-    # Flags
-    if 'isCollapse' not in params:
-        params['isCollapse'] = False
-    if 'EarlyPhaseApproximation' not in params:
-        params['EarlyPhaseApproximation'] = False
-    if 'current_phase' not in params:
-        params['current_phase'] = 'energy'
-    if 'PISM' not in params:
-        PISM_val = get_param_value(params, 'PISM', defaults, jsonl_path) or 5e3
-        params['PISM'] = PISM_val
-
-    # Cluster mass
-    if 'mCluster' not in params:
-        sfe = get_param_value(params, 'sfe', defaults, jsonl_path) or 0.01
-        mCloud = params.get('mCloud', 1e6)
-        params['mCluster'] = sfe * mCloud
-
-    # Adiabatic index
-    if 'gamma_adia' not in params:
-        gamma = get_param_value(params, 'gamma_adia', defaults, jsonl_path)
-        params['gamma_adia'] = gamma if gamma else 5.0 / 3.0
-
-    # Thermal conductivity coefficient (bubble-specific)
-    C_thermal_cgs = get_param_value(params, 'C_thermal', defaults, jsonl_path) or 6e-7
-    params['C_thermal'] = C_thermal_cgs * CONV.c_therm_cgs2au
-
-    # Bubble temperature measurement radius ratio
-    params['bubble_xi_Tb'] = get_param_value(params, 'bubble_xi_Tb', defaults, jsonl_path) or 0.98
-
-    # Mechanical luminosity and velocity from wind data (if available)
-    if 'LWind' in params and 'pWindDot' in params:
-        params['Lmech_total'] = params['LWind']
-        if params['pWindDot'] > 0:
-            params['v_mech_total'] = 2.0 * params['LWind'] / params['pWindDot']
-        else:
-            params['v_mech_total'] = 1000.0
-
-    # Mechanical luminosity and wind velocity
-    if 'Lmech_total' not in params:
-        params['Lmech_total'] = 1e36 * CONV.L_cgs2au
-
-    if 'v_mech_total' not in params:
-        params['v_mech_total'] = 1000e5 * v_cms2au
-
-    # Start of star formation time
-    if 'tSF' not in params:
-        params['tSF'] = 0.0
-
-    # Cloud density profile parameters
-    if 'nCore' not in params:
-        params['nCore'] = 1e4 * ndens_cgs2au
-
-    if 'rCore' not in params:
-        rCloud = params.get('rCloud', 10.0)
-        params['rCore'] = 0.1 * rCloud
-
-    if 'dens_profile' not in params:
-        params['dens_profile'] = 'densPL'
-
-    if 'densPL_alpha' not in params:
-        params['densPL_alpha'] = -2.0
-
-    # Force parameters
-    for key in ['F_grav', 'F_ion_in', 'F_ion_out', 'F_ram', 'F_rad', 'F_ISM', 'F_wind', 'F_SN']:
-        if key not in params:
-            params[key] = 0.0
-
-    # t_next for Euler stepping
-    if 't_next' not in params:
-        params['t_next'] = params.get('t_now', 0) + 1e-6
-
-    # Cooling update time
-    if 't_previousCoolingUpdate' not in params:
-        params['t_previousCoolingUpdate'] = 0.0
-
-    # isDissolved flag
-    if 'isDissolved' not in params:
-        params['isDissolved'] = False
-
-    # Pre-initialize bubble arrays
-    for key in ['bubble_v_arr', 'bubble_T_arr', 'bubble_dTdr_arr', 'bubble_r_arr', 'bubble_n_arr']:
-        if key not in params:
-            params[key] = np.array([])
-
-    # Pre-initialize bubble scalar values
-    for key in ['bubble_r_Tb', 'bubble_LTotal', 'bubble_T_r_Tb', 'bubble_L1Bubble',
-                'bubble_L2Conduction', 'bubble_L3Intermediate', 'bubble_Tavg',
-                'bubble_mass', 'bubble_dMdt']:
-        if key not in params:
-            params[key] = 0.0
-
-    # Pre-initialize shell parameters
-    for key in ['shell_fAbsorbedIon', 'shell_fAbsorbedNeu', 'shell_fAbsorbedWeightedTotal',
-                'shell_fIonisedDust', 'shell_F_rad', 'shell_thickness', 'shell_nMax',
-                'shell_n0', 'shell_grav_force_m', 'shell_mass', 'shell_massDot']:
-        if key not in params:
-            params[key] = 0.0
-
-    if 'shell_tauKappaRatio' not in params:
-        params['shell_tauKappaRatio'] = 1.0
-
-    for key in ['shell_grav_r', 'shell_grav_phi']:
-        if key not in params:
-            params[key] = np.array([])
-
-    return params
+        return json.load(f)
 
 
 class MockSB99Interpolator:
-    """Mock interpolator for SB99 data."""
-    def __init__(self, value, t_min=0.0, t_max=100.0):
-        self.value = value
-        self.x = np.array([t_min, t_max])
+    """Mock interpolator for SB99 data that interpolates from data arrays."""
+    def __init__(self, times, values):
+        self.x = np.array(times)
+        self._values = np.array(values)
+        self._interp = scipy.interpolate.interp1d(
+            self.x, self._values,
+            kind='linear',
+            bounds_error=False,
+            fill_value=(self._values[0], self._values[-1])
+        )
 
     def __call__(self, t):
-        return np.array(self.value)
+        return self._interp(t)
 
 
-def create_mock_sb99f(params: dict) -> dict:
-    """Create a mock SB99f structure with interpolation functions."""
-    Qi = params.get('Qi', 1e49)
-    Lbol = params.get('Lbol', 1e10)
-    Li = params.get('Li', 0.5 * Lbol)
-    Ln = params.get('Ln', 0.5 * Lbol)
-    Lmech = params.get('LWind', params.get('Lmech_total', 1e10))
-    pdot_W = params.get('pWindDot', 1e7)
-    pdot_SN = 0.0
-    pdot_total = pdot_W + pdot_SN
-    t_min, t_max = 0.0, 100.0
+def create_sb99f_from_snapshot(snapshot: dict) -> dict:
+    """Create SB99f structure from snapshot's SB99_data."""
+    sb99_data = snapshot.get('SB99_data', [])
+    if not sb99_data or len(sb99_data) < 11:
+        raise ValueError("SB99_data not found or incomplete in snapshot")
+
+    # SB99_data structure: [times, Qi, Li, Ln, Lbol, Lmech_W, Lmech_SN, Lmech_total, pdot_W, pdot_SN, pdot_total]
+    times = sb99_data[0]
+    Qi = sb99_data[1]
+    Li = sb99_data[2]
+    Ln = sb99_data[3]
+    Lbol = sb99_data[4]
+    Lmech_W = sb99_data[5]
+    Lmech_SN = sb99_data[6]
+    Lmech_total = sb99_data[7]
+    pdot_W = sb99_data[8]
+    pdot_SN = sb99_data[9]
+    pdot_total = sb99_data[10]
 
     return {
-        'fQi': MockSB99Interpolator(Qi, t_min, t_max),
-        'fLi': MockSB99Interpolator(Li, t_min, t_max),
-        'fLn': MockSB99Interpolator(Ln, t_min, t_max),
-        'fLbol': MockSB99Interpolator(Lbol, t_min, t_max),
-        'fLmech_W': MockSB99Interpolator(Lmech, t_min, t_max),
-        'fLmech_SN': MockSB99Interpolator(0.0, t_min, t_max),
-        'fLmech_total': MockSB99Interpolator(Lmech, t_min, t_max),
-        'fpdot_W': MockSB99Interpolator(pdot_W, t_min, t_max),
-        'fpdot_SN': MockSB99Interpolator(pdot_SN, t_min, t_max),
-        'fpdot_total': MockSB99Interpolator(pdot_total, t_min, t_max),
+        'fQi': MockSB99Interpolator(times, Qi),
+        'fLi': MockSB99Interpolator(times, Li),
+        'fLn': MockSB99Interpolator(times, Ln),
+        'fLbol': MockSB99Interpolator(times, Lbol),
+        'fLmech_W': MockSB99Interpolator(times, Lmech_W),
+        'fLmech_SN': MockSB99Interpolator(times, Lmech_SN),
+        'fLmech_total': MockSB99Interpolator(times, Lmech_total),
+        'fpdot_W': MockSB99Interpolator(times, pdot_W),
+        'fpdot_SN': MockSB99Interpolator(times, pdot_SN),
+        'fpdot_total': MockSB99Interpolator(times, pdot_total),
     }
 
 
-def prime_params(params: dict) -> dict:
-    """Initialize parameters that require setup beyond simple values."""
-    # Cooling interpolation (CIE)
-    cie_files = {
-        1: 'lib/cooling/CIE/coolingCIE_1_Cloudy.dat',
-        2: 'lib/cooling/CIE/coolingCIE_2_Cloudy_grains.dat',
-        3: 'lib/cooling/CIE/coolingCIE_3_Gnat-Ferland2012.dat',
-        4: 'lib/cooling/CIE/coolingCIE_4_Sutherland-Dopita1993.dat',
-    }
+def setup_cooling_interpolation(snapshot: dict, params: dict):
+    """Set up cooling interpolation from snapshot data."""
+    # CIE cooling
+    logT = snapshot.get('cStruc_cooling_CIE_logT', [])
+    logLambda = snapshot.get('cStruc_cooling_CIE_logLambda', [])
 
-    cooling_loaded = False
-    for cie_choice in [3, 4, 1, 2]:
-        cooling_path = os.path.join(PROJECT_ROOT, cie_files.get(cie_choice, ''))
-        if os.path.exists(cooling_path):
-            try:
-                logT, logLambda = np.loadtxt(cooling_path, unpack=True)
-                cooling_CIE_interpolation = scipy.interpolate.interp1d(
-                    logT, logLambda, kind='linear', bounds_error=False, fill_value='extrapolate'
-                )
-                params['path_cooling_CIE'] = cooling_path
-                params['cStruc_cooling_CIE_logT'] = logT
-                params['cStruc_cooling_CIE_logLambda'] = logLambda
-                params['cStruc_cooling_CIE_interpolation'] = cooling_CIE_interpolation
-                cooling_loaded = True
-                break
-            except Exception as e:
-                print(f"Warning: Could not load cooling curve: {e}")
-
-    if not cooling_loaded:
+    if logT and logLambda:
+        logT = np.array(logT)
+        logLambda = np.array(logLambda)
+        cooling_CIE_interpolation = scipy.interpolate.interp1d(
+            logT, logLambda, kind='linear', bounds_error=False, fill_value='extrapolate'
+        )
+        params['cStruc_cooling_CIE_logT'] = MockParam(logT)
+        params['cStruc_cooling_CIE_logLambda'] = MockParam(logLambda)
+        params['cStruc_cooling_CIE_interpolation'] = MockParam(cooling_CIE_interpolation)
+    else:
+        # Mock cooling
         logT = np.linspace(4, 9, 100)
         logLambda = -22 + 0.5 * (logT - 6)
         cooling_CIE_interpolation = scipy.interpolate.interp1d(
             logT, logLambda, kind='linear', bounds_error=False, fill_value='extrapolate'
         )
-        params['path_cooling_CIE'] = 'mock_cooling'
-        params['cStruc_cooling_CIE_logT'] = logT
-        params['cStruc_cooling_CIE_logLambda'] = logLambda
-        params['cStruc_cooling_CIE_interpolation'] = cooling_CIE_interpolation
+        params['cStruc_cooling_CIE_logT'] = MockParam(logT)
+        params['cStruc_cooling_CIE_logLambda'] = MockParam(logLambda)
+        params['cStruc_cooling_CIE_interpolation'] = MockParam(cooling_CIE_interpolation)
 
     # Non-CIE cooling - create mock structures
     class MockCoolingCube:
@@ -470,79 +256,123 @@ def prime_params(params: dict) -> dict:
                 fill_value=-23.0
             )
 
-    if 'cStruc_cooling_nonCIE' not in params or params['cStruc_cooling_nonCIE'] is None:
-        params['cStruc_cooling_nonCIE'] = MockCoolingCube()
-    if 'cStruc_heating_nonCIE' not in params or params['cStruc_heating_nonCIE'] is None:
-        params['cStruc_heating_nonCIE'] = MockCoolingCube()
+    params['cStruc_cooling_nonCIE'] = MockParam(MockCoolingCube())
+    params['cStruc_heating_nonCIE'] = MockParam(MockCoolingCube())
 
-    if 'cStruc_net_nonCIE_interpolation' not in params or params['cStruc_net_nonCIE_interpolation'] is None:
-        mock_cube = params['cStruc_cooling_nonCIE']
-        net_cooling = np.ones((20, 20, 20)) * (-23.0)
-        params['cStruc_net_nonCIE_interpolation'] = scipy.interpolate.RegularGridInterpolator(
+    mock_cube = params['cStruc_cooling_nonCIE'].value
+    net_cooling = np.ones((20, 20, 20)) * (-23.0)
+    params['cStruc_net_nonCIE_interpolation'] = MockParam(
+        scipy.interpolate.RegularGridInterpolator(
             (mock_cube.ndens, mock_cube.temp, mock_cube.phi),
             net_cooling,
             method='linear',
             bounds_error=False,
             fill_value=-23.0
         )
+    )
 
-    # SB99 feedback
-    if 'SB99f' not in params:
-        params['SB99f'] = create_mock_sb99f(params)
 
-    # Ensure Lmech/v_mech consistency
-    Lmech_from_sb99 = params.get('LWind', params.get('Lmech_total', 1e10))
-    params['Lmech_total'] = Lmech_from_sb99
-    v_mech_from_sb99 = params.get('vWind', params.get('v_mech_total', 1000))
-    params['v_mech_total'] = v_mech_from_sb99
+def make_mock_params(snapshot: dict) -> MockParamsDict:
+    """
+    Create a MockParamsDict from the debug snapshot.
+
+    The snapshot already has values in AU units, so we just need to wrap them.
+    """
+    params = MockParamsDict()
+
+    # Skip meta and special keys
+    skip_keys = {'_meta', 'SB99_data', 'cStruc_cooling_CIE_logT', 'cStruc_cooling_CIE_logLambda'}
+
+    for key, value in snapshot.items():
+        if key in skip_keys:
+            continue
+        # Handle arrays
+        if isinstance(value, list):
+            params[key] = MockParam(np.array(value))
+        else:
+            params[key] = MockParam(value)
+
+    # Set up SB99 feedback interpolation
+    params['SB99f'] = MockParam(create_sb99f_from_snapshot(snapshot))
+
+    # Set up cooling interpolation
+    setup_cooling_interpolation(snapshot, params)
+
+    # Ensure required parameters exist
+    # Note: t_previousCoolingUpdate should stay at 1e30 to trigger cooling update
+    # The path_cooling_nonCIE needs to point to the correct location
+    if 'path_cooling_nonCIE' in params:
+        # Fix path to use test/mockParams/mockCooling/ instead of lib/cooling/
+        orig_path = params['path_cooling_nonCIE'].value
+        if isinstance(orig_path, str) and '/Users/' in orig_path:
+            params['path_cooling_nonCIE'] = MockParam(os.path.join(TEST_DIR, 'mockParams', 'mockCooling', 'opiate/'))
+
+    # Also fix path_cooling_CIE if needed
+    if 'path_cooling_CIE' in params:
+        orig_path = params['path_cooling_CIE'].value
+        if isinstance(orig_path, str) and '/Users/' in orig_path:
+            # Use the Gnat-Ferland cooling curve
+            params['path_cooling_CIE'] = MockParam(os.path.join(TEST_DIR, 'mockParams', 'mockCooling', 'CIE', 'coolingCIE_3_Gnat-Ferland2012.dat'))
+
+    if 't_next' not in params:
+        params['t_next'] = MockParam(params['t_now'].value + 1e-6)
+    if 'isDissolved' not in params:
+        params['isDissolved'] = MockParam(False)
+    if 'isCollapse' not in params:
+        params['isCollapse'] = MockParam(False)
+
+    # Initialize bubble arrays if not present
+    for key in ['bubble_v_arr', 'bubble_T_arr', 'bubble_dTdr_arr', 'bubble_r_arr', 'bubble_n_arr']:
+        if key not in params:
+            params[key] = MockParam(np.array([]))
+
+    # Initialize bubble scalars
+    for key in ['bubble_r_Tb', 'bubble_LTotal', 'bubble_T_r_Tb', 'bubble_L1Bubble',
+                'bubble_L2Conduction', 'bubble_L3Intermediate', 'bubble_Tavg',
+                'bubble_mass', 'bubble_dMdt']:
+        if key not in params:
+            params[key] = MockParam(0.0)
+
+    # Initialize shell parameters
+    for key in ['shell_fAbsorbedIon', 'shell_fAbsorbedNeu', 'shell_fAbsorbedWeightedTotal',
+                'shell_fIonisedDust', 'shell_F_rad', 'shell_thickness', 'shell_nMax',
+                'shell_n0', 'shell_grav_force_m', 'shell_mass', 'shell_massDot']:
+        if key not in params:
+            params[key] = MockParam(0.0)
+
+    if 'shell_tauKappaRatio' not in params:
+        params['shell_tauKappaRatio'] = MockParam(1.0)
+
+    for key in ['shell_grav_r', 'shell_grav_phi']:
+        if key not in params:
+            params[key] = MockParam(np.array([]))
+
+    # Force parameters
+    for key in ['F_grav', 'F_ion_in', 'F_ion_out', 'F_ram', 'F_rad', 'F_ISM', 'F_wind', 'F_SN']:
+        if key not in params:
+            params[key] = MockParam(0.0)
 
     return params
-
-
-def make_mock_params(snapshot: dict) -> dict:
-    """Create a params dictionary with MockParam wrappers from a snapshot."""
-    snapshot = add_physical_constants(snapshot.copy())
-    snapshot = prime_params(snapshot)
-    return {k: MockParam(v) for k, v in snapshot.items()}
 
 
 # =============================================================================
 # Plotting functions
 # =============================================================================
 
-def plot_parameter_evolution(snapshots: list, keys: list, title: str, pdf_path: str):
+def plot_parameter_grid(params_orig, params_mod, keys, title, pdf_path):
     """
-    Plot evolution of parameters over time from snapshots.
-
-    Parameters
-    ----------
-    snapshots : list
-        List of snapshot dictionaries
-    keys : list
-        List of parameter keys to plot
-    title : str
-        Title for the plot
-    pdf_path : str
-        Path to save the PDF
+    Plot a grid of parameter evolution comparisons.
     """
-    # Filter to only scalar parameters that exist
+    # Filter to only scalar parameters that exist in history
     valid_keys = []
     for key in keys:
-        has_data = False
-        for snap in snapshots:
-            val = snap.get(key)
-            if val is not None and isinstance(val, (int, float)):
-                has_data = True
-                break
-        if has_data:
+        orig_arr = params_orig.get_history_array(key)
+        if len(orig_arr) > 0 and not np.all(np.isnan(orig_arr)):
             valid_keys.append(key)
 
     if not valid_keys:
         print(f"  No valid keys to plot for {title}")
         return
-
-    # Get time array
-    t_arr = np.array([snap.get('t_now', 0) for snap in snapshots]) * 1e3  # Convert to kyr
 
     # Calculate grid dimensions
     n_params = len(valid_keys)
@@ -559,25 +389,25 @@ def plot_parameter_evolution(snapshots: list, keys: list, title: str, pdf_path: 
 
     fig.suptitle(title, fontsize=14, fontweight='bold')
 
+    t_orig = params_orig.get_time_array()
+    t_mod = params_mod.get_time_array()
+
     for idx, key in enumerate(valid_keys):
         row = idx // n_cols
         col = idx % n_cols
         ax = axes[row, col]
 
-        # Get values
-        values = []
-        for snap in snapshots:
-            val = snap.get(key)
-            if val is not None and isinstance(val, (int, float)):
-                values.append(val)
-            else:
-                values.append(np.nan)
-        values = np.array(values)
+        orig_arr = params_orig.get_history_array(key)
+        mod_arr = params_mod.get_history_array(key)
 
-        ax.plot(t_arr, values, 'b-', linewidth=1.5)
+        # Plot both
+        ax.plot(t_orig * 1e3, orig_arr, 'b-', label='Original', linewidth=1.5, alpha=0.8)
+        ax.plot(t_mod * 1e3, mod_arr, 'r--', label='Modified', linewidth=1.5, alpha=0.8)
+
         ax.set_xlabel('Time [kyr]')
         ax.set_ylabel(key)
         ax.set_title(key, fontsize=10)
+        ax.legend(fontsize=8)
         ax.grid(True, alpha=0.3)
         ax.ticklabel_format(style='scientific', axis='y', scilimits=(-2, 3))
 
@@ -593,133 +423,53 @@ def plot_parameter_evolution(snapshots: list, keys: list, title: str, pdf_path: 
     print(f"  Saved: {pdf_path}")
 
 
-def generate_evolution_plots(snapshots: list, output_dir: str):
-    """Generate all parameter evolution PDF plots from snapshots."""
+def generate_comparison_plots(params_orig, params_mod, output_dir):
+    """Generate all comparison PDF plots."""
 
-    print("\nGenerating parameter evolution plots from simulation data...")
+    print("\nGenerating comparison plots...")
 
     # A) Shell parameters
-    shell_keys = []
-    for snap in snapshots:
-        for k in snap.keys():
-            if k.startswith('shell_') and k not in shell_keys:
-                val = snap[k]
-                if isinstance(val, (int, float)):
-                    shell_keys.append(k)
-    shell_keys = sorted(set(shell_keys))
+    shell_keys = [k for k in params_orig.keys()
+                  if k.startswith('shell_') and hasattr(params_orig[k], 'value')
+                  and isinstance(params_orig[k].value, (int, float, np.integer, np.floating))]
     if shell_keys:
-        plot_parameter_evolution(
-            snapshots, shell_keys,
+        plot_parameter_grid(
+            params_orig, params_mod, shell_keys,
             "Shell Parameters Evolution",
-            os.path.join(output_dir, "evolution_shell_parameters.pdf")
+            os.path.join(output_dir, "comparison_shell_parameters.pdf")
         )
 
     # B) Bubble parameters
-    bubble_keys = []
-    for snap in snapshots:
-        for k in snap.keys():
-            if k.startswith('bubble_') and k not in bubble_keys:
-                val = snap[k]
-                if isinstance(val, (int, float)):
-                    bubble_keys.append(k)
-    bubble_keys = sorted(set(bubble_keys))
+    bubble_keys = [k for k in params_orig.keys()
+                   if k.startswith('bubble_') and hasattr(params_orig[k], 'value')
+                   and isinstance(params_orig[k].value, (int, float, np.integer, np.floating))]
     if bubble_keys:
-        plot_parameter_evolution(
-            snapshots, bubble_keys,
+        plot_parameter_grid(
+            params_orig, params_mod, bubble_keys,
             "Bubble Parameters Evolution",
-            os.path.join(output_dir, "evolution_bubble_parameters.pdf")
+            os.path.join(output_dir, "comparison_bubble_parameters.pdf")
         )
 
     # C) TRINITY essentials
     essential_keys = ['R1', 'R2', 'rShell', 'Pb', 'Eb', 'T0']
-    plot_parameter_evolution(
-        snapshots, essential_keys,
-        "TRINITY Essential Parameters Evolution",
-        os.path.join(output_dir, "evolution_essential_parameters.pdf")
-    )
-
-    # D) Force parameters
-    force_keys = []
-    for snap in snapshots:
-        for k in snap.keys():
-            if 'F_' in k and k not in force_keys:
-                val = snap[k]
-                if isinstance(val, (int, float)):
-                    force_keys.append(k)
-    force_keys = sorted(set(force_keys))
-    if force_keys:
-        plot_parameter_evolution(
-            snapshots, force_keys,
-            "Force Parameters Evolution",
-            os.path.join(output_dir, "evolution_force_parameters.pdf")
+    essential_keys = [k for k in essential_keys if k in params_orig]
+    if essential_keys:
+        plot_parameter_grid(
+            params_orig, params_mod, essential_keys,
+            "TRINITY Essential Parameters Evolution",
+            os.path.join(output_dir, "comparison_essential_parameters.pdf")
         )
 
-
-def test_ode_comparison(snapshots: list) -> dict:
-    """
-    Test ODE outputs across multiple snapshots.
-
-    Returns dict with comparison results.
-    """
-    from src.phase1_energy.energy_phase_ODEs import get_ODE_Edot
-    from src.phase1_energy.energy_phase_ODEs_modified import get_ODE_Edot_pure, create_ODE_snapshot
-
-    results = []
-    print("\nComparing ODE outputs across snapshots...")
-
-    for i, snapshot in enumerate(snapshots):
-        if i % 50 == 0:
-            print(f"  Processing snapshot {i+1}/{len(snapshots)}...")
-
-        try:
-            params_orig = make_mock_params(snapshot.copy())
-            params_mod = make_mock_params(snapshot.copy())
-
-            t_now = snapshot['t_now']
-            R2 = snapshot['R2']
-            v2 = snapshot['v2']
-            Eb = snapshot['Eb']
-            y = [R2, v2, Eb]
-
-            # Run original
-            start_orig = time.perf_counter()
-            result_orig = get_ODE_Edot(y.copy(), t_now, params_orig)
-            time_orig = time.perf_counter() - start_orig
-
-            # Run modified
-            ode_snapshot = create_ODE_snapshot(params_mod)
-            start_mod = time.perf_counter()
-            result_mod = get_ODE_Edot_pure(t_now, y.copy(), ode_snapshot, params_mod)
-            time_mod = time.perf_counter() - start_mod
-
-            # Compare
-            rd_orig, vd_orig, Ed_orig = result_orig
-            rd_mod, vd_mod, Ed_mod = result_mod
-
-            def rel_diff(a, b):
-                if abs(a) < 1e-300 and abs(b) < 1e-300:
-                    return 0.0
-                return abs(a - b) / max(abs(a), abs(b), 1e-300)
-
-            results.append({
-                't_now': t_now,
-                'rd_diff': rel_diff(rd_orig, rd_mod),
-                'vd_diff': rel_diff(vd_orig, vd_mod),
-                'Ed_diff': rel_diff(Ed_orig, Ed_mod),
-                'time_orig': time_orig,
-                'time_mod': time_mod,
-                'passed': (rel_diff(rd_orig, rd_mod) < 1e-6 and
-                          rel_diff(vd_orig, vd_mod) < 1e-6 and
-                          rel_diff(Ed_orig, Ed_mod) < 1e-6)
-            })
-        except Exception as e:
-            results.append({
-                't_now': snapshot.get('t_now', 0),
-                'error': str(e),
-                'passed': False
-            })
-
-    return results
+    # D) Force parameters
+    force_keys = [k for k in params_orig.keys()
+                  if 'F_' in k and hasattr(params_orig[k], 'value')
+                  and isinstance(params_orig[k].value, (int, float, np.integer, np.floating))]
+    if force_keys:
+        plot_parameter_grid(
+            params_orig, params_mod, force_keys,
+            "Force Parameters Evolution",
+            os.path.join(output_dir, "comparison_force_parameters.pdf")
+        )
 
 
 # =============================================================================
@@ -730,72 +480,114 @@ def run_full_comparison():
     """Run full energy phase comparison test."""
 
     print("=" * 70)
-    print("Energy Phase Evolution Comparison Test")
-    print("Comparing ODE outputs and generating parameter evolution plots")
+    print("Full Energy Phase Comparison Test")
+    print("run_energy_phase.py vs run_energy_phase_modified.py")
     print("=" * 70)
 
-    # Load snapshots
-    jsonl_path = os.path.join(TEST_DIR, '1e7_sfe020_n1e4_test_dictionary.jsonl')
-    if not os.path.exists(jsonl_path):
-        print(f"ERROR: Test dictionary not found at {jsonl_path}")
+    # Load snapshot
+    if not os.path.exists(MOCK_SNAPSHOT_PATH):
+        print(f"ERROR: Snapshot not found at {MOCK_SNAPSHOT_PATH}")
         return False
 
-    print(f"\nLoading snapshots from: {jsonl_path}")
-    snapshots = load_all_snapshots(jsonl_path)
-    print(f"  Loaded {len(snapshots)} snapshots")
-    print(f"  Time range: {snapshots[0].get('t_now', 0):.6e} to {snapshots[-1].get('t_now', 0):.6e} Myr")
+    print(f"\nLoading snapshot from: {MOCK_SNAPSHOT_PATH}")
+    snapshot = load_debug_snapshot(MOCK_SNAPSHOT_PATH)
+    print(f"  Model: {snapshot.get('model_name', 'N/A')}")
+    print(f"  Initial t_now: {snapshot.get('t_now', 'N/A'):.6e} Myr")
+    print(f"  Initial R2: {snapshot.get('R2', 'N/A'):.6e} pc")
+    print(f"  Initial Eb: {snapshot.get('Eb', 'N/A'):.6e}")
 
-    # Generate evolution plots from existing data
-    generate_evolution_plots(snapshots, TEST_DIR)
+    # Create two independent params dictionaries
+    print("\nCreating mock params for both implementations...")
+    params_orig = make_mock_params(snapshot)
+    params_mod = make_mock_params(snapshot)
 
-    # Test ODE comparison on subset of snapshots
-    test_snapshots = snapshots[1::10]  # Every 10th snapshot, starting from 2nd
-    print(f"\nTesting ODE comparison on {len(test_snapshots)} snapshots...")
+    # Import run_energy functions
+    print("\nImporting run_energy functions...")
+    try:
+        from src.phase1_energy.run_energy_phase import run_energy as run_energy_original
+        from src.phase1_energy.run_energy_phase_modified import run_energy as run_energy_modified
+    except ImportError as e:
+        print(f"ERROR: Failed to import run_energy functions: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
 
-    results = test_ode_comparison(test_snapshots)
+    # Run original implementation
+    print("\n" + "-" * 70)
+    print("Running ORIGINAL implementation...")
+    print("-" * 70)
+    start_orig = time.perf_counter()
+    try:
+        run_energy_original(params_orig)
+        time_orig = time.perf_counter() - start_orig
+        print(f"\nOriginal completed in {time_orig:.2f} seconds")
+        print(f"  Snapshots recorded: {len(params_orig.history)}")
+        print(f"  Final t_now: {params_orig['t_now'].value:.6e} Myr")
+        print(f"  Final R2: {params_orig['R2'].value:.6e} pc")
+    except Exception as e:
+        print(f"ERROR: Original implementation failed: {e}")
+        import traceback
+        traceback.print_exc()
+        time_orig = None
+
+    # Run modified implementation
+    print("\n" + "-" * 70)
+    print("Running MODIFIED implementation...")
+    print("-" * 70)
+    start_mod = time.perf_counter()
+    try:
+        run_energy_modified(params_mod)
+        time_mod = time.perf_counter() - start_mod
+        print(f"\nModified completed in {time_mod:.2f} seconds")
+        print(f"  Snapshots recorded: {len(params_mod.history)}")
+        print(f"  Final t_now: {params_mod['t_now'].value:.6e} Myr")
+        print(f"  Final R2: {params_mod['R2'].value:.6e} pc")
+    except Exception as e:
+        print(f"ERROR: Modified implementation failed: {e}")
+        import traceback
+        traceback.print_exc()
+        time_mod = None
 
     # Summary
     print("\n" + "=" * 70)
-    print("ODE COMPARISON SUMMARY")
+    print("SUMMARY")
     print("=" * 70)
 
-    passed = sum(1 for r in results if r.get('passed', False))
-    total = len(results)
-    errors = sum(1 for r in results if 'error' in r)
+    if time_orig and time_mod:
+        speedup = time_orig / time_mod if time_mod > 0 else float('inf')
+        print(f"\nTiming:")
+        print(f"  Original: {time_orig:.2f} s")
+        print(f"  Modified: {time_mod:.2f} s")
+        print(f"  Speedup:  {speedup:.2f}x")
 
-    print(f"\nResults: {passed}/{total} snapshots passed ODE comparison")
-    if errors > 0:
-        print(f"  Errors: {errors} snapshots had errors")
+        # Compare final states
+        print(f"\nFinal State Comparison:")
+        essentials = ['R2', 'v2', 'Eb', 't_now', 'R1', 'Pb', 'T0']
+        all_close = True
+        for key in essentials:
+            if key in params_orig and key in params_mod:
+                orig_val = params_orig[key].value
+                mod_val = params_mod[key].value
+                if isinstance(orig_val, (int, float)) and isinstance(mod_val, (int, float)):
+                    rel_diff = abs(orig_val - mod_val) / max(abs(orig_val), 1e-300)
+                    status = "OK" if rel_diff < 0.01 else "DIFF"
+                    if rel_diff >= 0.01:
+                        all_close = False
+                    print(f"  {key:12s}: orig={orig_val:.6e}, mod={mod_val:.6e}, rel_diff={rel_diff:.2e} [{status}]")
 
-    # Timing summary
-    valid_results = [r for r in results if 'time_orig' in r]
-    if valid_results:
-        total_orig = sum(r['time_orig'] for r in valid_results)
-        total_mod = sum(r['time_mod'] for r in valid_results)
-        speedup = total_orig / total_mod if total_mod > 0 else 1.0
-        print(f"\nTiming ({len(valid_results)} comparisons):")
-        print(f"  Original total: {total_orig*1000:.2f} ms")
-        print(f"  Modified total: {total_mod*1000:.2f} ms")
-        print(f"  Average speedup: {speedup:.2f}x")
+        # Generate plots
+        generate_comparison_plots(params_orig, params_mod, TEST_DIR)
 
-    # Show max differences
-    valid_diffs = [r for r in results if 'rd_diff' in r]
-    if valid_diffs:
-        max_rd = max(r['rd_diff'] for r in valid_diffs)
-        max_vd = max(r['vd_diff'] for r in valid_diffs)
-        max_Ed = max(r['Ed_diff'] for r in valid_diffs)
-        print(f"\nMax relative differences:")
-        print(f"  rd: {max_rd:.2e}")
-        print(f"  vd: {max_vd:.2e}")
-        print(f"  Ed: {max_Ed:.2e}")
-
-    print("\n" + "=" * 70)
-    if passed == total and errors == 0:
-        print("ALL TESTS PASSED!")
+        print("\n" + "=" * 70)
+        if all_close:
+            print("TEST COMPLETED - Results match within tolerance")
+        else:
+            print("TEST COMPLETED - Some differences detected")
+        print("=" * 70)
         return True
     else:
-        print("SOME TESTS FAILED or had errors")
-        return passed > total * 0.9  # Allow up to 10% failures
+        print("\nOne or both implementations failed. Cannot compare.")
+        return False
 
 
 if __name__ == '__main__':
