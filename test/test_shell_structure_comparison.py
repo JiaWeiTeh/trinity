@@ -16,6 +16,7 @@ import json
 import sys
 import os
 import random
+import time
 
 # Ensure src is in path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -124,61 +125,189 @@ def load_snapshot_from_jsonl(filepath: str, line_number: int) -> dict:
     raise ValueError(f"Line {line_number} not found in {filepath}")
 
 
-def add_physical_constants(params: dict) -> dict:
+def load_default_params(param_file: str = None) -> dict:
+    """
+    Load default parameters from default.param file.
+
+    Parameters
+    ----------
+    param_file : str, optional
+        Path to param file. If None, uses PROJECT_ROOT/param/default.param
+
+    Returns
+    -------
+    dict
+        Dictionary of parameter name -> value (as strings initially)
+    """
+    if param_file is None:
+        param_file = os.path.join(PROJECT_ROOT, 'param', 'default.param')
+
+    defaults = {}
+    if not os.path.exists(param_file):
+        return defaults
+
+    with open(param_file, 'r') as f:
+        for line in f:
+            line = line.strip()
+            # Skip comments and empty lines
+            if not line or line.startswith('#') or line.startswith('INFO'):
+                continue
+            # Parse "param value" format
+            parts = line.split(None, 1)  # Split on first whitespace
+            if len(parts) == 2:
+                key, value = parts
+                # Try to convert to numeric
+                try:
+                    # Handle fractions like 5/3
+                    if '/' in value and not value.startswith('/'):
+                        num, denom = value.split('/')
+                        defaults[key] = float(num) / float(denom)
+                    elif value.lower() == 'true':
+                        defaults[key] = True
+                    elif value.lower() == 'false':
+                        defaults[key] = False
+                    else:
+                        defaults[key] = float(value)
+                except ValueError:
+                    defaults[key] = value  # Keep as string
+
+    return defaults
+
+
+def search_jsonl_for_param(jsonl_path: str, param_name: str) -> any:
+    """
+    Search through JSONL file for a parameter value.
+
+    Parameters
+    ----------
+    jsonl_path : str
+        Path to the JSONL file
+    param_name : str
+        Parameter name to search for
+
+    Returns
+    -------
+    any
+        The parameter value if found, None otherwise
+    """
+    if not os.path.exists(jsonl_path):
+        return None
+
+    with open(jsonl_path, 'r') as f:
+        for line in f:
+            try:
+                data = json.loads(line.strip())
+                if param_name in data:
+                    return data[param_name]
+            except json.JSONDecodeError:
+                continue
+    return None
+
+
+# Cache for default params and jsonl search
+_DEFAULT_PARAMS_CACHE = None
+_JSONL_PATH_CACHE = None
+
+
+def get_param_value(params: dict, key: str, defaults: dict, jsonl_path: str):
+    """
+    Get parameter value from params, defaults, or jsonl (in that order).
+
+    Parameters
+    ----------
+    params : dict
+        Current params dictionary
+    key : str
+        Parameter name
+    defaults : dict
+        Default params from default.param
+    jsonl_path : str
+        Path to JSONL file for fallback search
+
+    Returns
+    -------
+    any
+        Parameter value if found, None otherwise
+    """
+    # First check params
+    if key in params:
+        return params[key]
+    # Then check defaults
+    if key in defaults:
+        return defaults[key]
+    # Finally search jsonl
+    return search_jsonl_for_param(jsonl_path, key)
+
+
+def add_physical_constants(params: dict, jsonl_path: str = None) -> dict:
     """
     Add physical constants that are missing from the dictionary snapshot.
 
-    These constants are normally set during initialization but are not
-    saved in the dictionary.jsonl output file.
+    Reads defaults from /param/default.param, then searches jsonl if not found.
     """
+    global _DEFAULT_PARAMS_CACHE, _JSONL_PATH_CACHE
+
+    # Load defaults once
+    if _DEFAULT_PARAMS_CACHE is None:
+        _DEFAULT_PARAMS_CACHE = load_default_params()
+
+    defaults = _DEFAULT_PARAMS_CACHE
+
+    if jsonl_path is None:
+        jsonl_path = os.path.join(PROJECT_ROOT, 'comparison', '1e7_sfe020_n1e4_test_dictionary.jsonl')
+    _JSONL_PATH_CACHE = jsonl_path
+
     # Unit conversion factors
-    ndens_cgs2au = CONV.ndens_cgs2au      # cm^-3 -> pc^-3
-    m_H_to_Msun = CGS.m_H * CONV.g2Msun   # m_H unit -> Msun
-    k_B_cgs2au = CONV.k_B_cgs2au          # erg/K -> AU
-    G_cgs2au = CONV.G_cgs2au              # CGS G -> AU
-    v_cms2au = CONV.v_cms2au              # cm/s -> pc/Myr
-
-    # Boltzmann constant in AU: k_B [erg/K] * conversion
-    params['k_B'] = CGS.k_B * k_B_cgs2au  # Msun·pc²/Myr²/K
-
-    # Gravitational constant in AU: G [cm³/g/s²] * conversion
-    params['G'] = CGS.G * G_cgs2au  # pc³/Msun/Myr²
-
-    # Speed of light in AU: c [cm/s] * conversion
-    params['c_light'] = CGS.c * v_cms2au  # pc/Myr
-
-    # Mean molecular weights (in Msun)
-    params['mu_atom'] = 2.3 * m_H_to_Msun  # Neutral/atomic gas
-    params['mu_ion'] = 1.4 * m_H_to_Msun   # Ionized gas
-
-    # Shell temperatures (K)
-    params['TShell_ion'] = 1e4  # Ionized shell temperature
-    params['TShell_neu'] = 100  # Neutral shell temperature
-
-    # Case B recombination coefficient: 2.54e-13 cm³/s at 10^4 K
-    # Convert to AU: cm³/s -> pc³/Myr
-    caseB_alpha_cgs = 2.54e-13  # cm³/s
+    ndens_cgs2au = CONV.ndens_cgs2au
+    m_H_to_Msun = CGS.m_H * CONV.g2Msun
+    k_B_cgs2au = CONV.k_B_cgs2au
+    G_cgs2au = CONV.G_cgs2au
+    v_cms2au = CONV.v_cms2au
+    cm2_to_pc2 = CONV.cm2pc**2
     cm3_to_pc3 = CONV.cm2pc**3
     s_to_Myr = CONV.s2Myr
-    params['caseB_alpha'] = caseB_alpha_cgs * cm3_to_pc3 / s_to_Myr
 
-    # Dust cross section: 1e-21 cm² (scaled with metallicity, assume solar)
-    # Convert to AU: cm² -> pc²
-    dust_sigma_cgs = 1e-21  # cm²
-    cm2_to_pc2 = CONV.cm2pc**2
+    # Physical constants with unit conversion (these are fundamental, read from default.param)
+    k_B_cgs = get_param_value(params, 'k_B', defaults, jsonl_path) or CGS.k_B
+    params['k_B'] = k_B_cgs * k_B_cgs2au
+
+    G_cgs = get_param_value(params, 'G', defaults, jsonl_path) or CGS.G
+    params['G'] = G_cgs * G_cgs2au
+
+    c_cgs = get_param_value(params, 'c_light', defaults, jsonl_path) or CGS.c
+    params['c_light'] = c_cgs * v_cms2au
+
+    # Mean molecular weights (from default.param, in units of m_H -> convert to Msun)
+    mu_atom = get_param_value(params, 'mu_atom', defaults, jsonl_path)
+    params['mu_atom'] = mu_atom * m_H_to_Msun if mu_atom else 1.27 * m_H_to_Msun
+
+    mu_ion = get_param_value(params, 'mu_ion', defaults, jsonl_path)
+    params['mu_ion'] = mu_ion * m_H_to_Msun if mu_ion else 0.61 * m_H_to_Msun
+
+    # Shell temperatures (K) - direct values
+    params['TShell_ion'] = get_param_value(params, 'TShell_ion', defaults, jsonl_path) or 1e4
+    params['TShell_neu'] = get_param_value(params, 'TShell_neu', defaults, jsonl_path) or 100
+
+    # Case B recombination coefficient (from default.param in cm³/s -> convert to AU)
+    caseB_cgs = get_param_value(params, 'caseB_alpha', defaults, jsonl_path) or 2.59e-13
+    params['caseB_alpha'] = caseB_cgs * cm3_to_pc3 / s_to_Myr
+
+    # Dust cross section (from default.param in cm² -> convert to AU)
+    dust_sigma_cgs = get_param_value(params, 'dust_sigma', defaults, jsonl_path) or 1.5e-21
     params['dust_sigma'] = dust_sigma_cgs * cm2_to_pc2
 
-    # Dust IR opacity: 4.0 cm²/g
-    # Convert to AU: cm²/g -> pc²/Msun
-    dust_KappaIR_cgs = 4.0  # cm²/g
+    # Dust IR opacity (from default.param in cm²/g -> convert to AU)
+    dust_KappaIR_cgs = get_param_value(params, 'dust_KappaIR', defaults, jsonl_path) or 4.0
     params['dust_KappaIR'] = dust_KappaIR_cgs * cm2_to_pc2 / CONV.g2Msun
 
-    # Shell dissolution threshold (number density in AU)
-    params['stop_n_diss'] = 0.1 * ndens_cgs2au  # Convert from cm^-3 to pc^-3
+    # Shell dissolution threshold (from default.param in cm^-3 -> convert to AU)
+    stop_n_diss_cgs = get_param_value(params, 'stop_n_diss', defaults, jsonl_path) or 1.0
+    params['stop_n_diss'] = stop_n_diss_cgs * ndens_cgs2au
 
-    # ISM number density (if not present, use a typical value)
+    # ISM number density (from default.param in cm^-3 -> convert to AU)
     if 'nISM' not in params:
-        params['nISM'] = 1.0 * ndens_cgs2au  # 1 cm^-3 in AU
+        nISM_cgs = get_param_value(params, 'nISM', defaults, jsonl_path) or 1.0
+        params['nISM'] = nISM_cgs * ndens_cgs2au
 
     return params
 
@@ -340,13 +469,30 @@ def get_total_lines(filepath: str) -> int:
 def test_snapshot(snapshot: dict, verbose: bool = False) -> dict:
     """
     Test a single snapshot and return results dictionary.
+
+    Returns dict with:
+        - 'passed': bool
+        - 't_now': float
+        - 'field_results': dict mapping field_name -> (passed, rel_diff, original_val, pct_error)
+        - 'time_original': float (seconds)
+        - 'time_modified': float (seconds)
+        - 'speedup': float
     """
     params_original = make_params_dict(snapshot.copy())
     params_modified = make_params_dict(snapshot.copy())
 
-    # Run both versions
+    # Run original version with timing
+    start_orig = time.perf_counter()
     shell_structure(params_original)
+    time_original = time.perf_counter() - start_orig
+
+    # Run modified version with timing
+    start_mod = time.perf_counter()
     result_modified = shell_structure_pure(params_modified)
+    time_modified = time.perf_counter() - start_mod
+
+    # Calculate speedup
+    speedup = time_original / time_modified if time_modified > 0 else float('inf')
 
     # Fields to compare
     fields = [
@@ -373,18 +519,21 @@ def test_snapshot(snapshot: dict, verbose: bool = False) -> dict:
         if isinstance(original_val, bool):
             passed = (original_val == modified_val)
             rel_diff = 0.0 if passed else 1.0
+            pct_error = 0.0 if passed else 100.0
         elif isinstance(original_val, (int, float)):
             if np.isnan(original_val) and np.isnan(modified_val):
-                passed, rel_diff = True, 0.0
+                passed, rel_diff, pct_error = True, 0.0, 0.0
             elif np.isclose(original_val, modified_val, rtol=1e-10):
                 passed, rel_diff = True, 0.0
+                pct_error = 100.0 * abs(original_val - modified_val) / abs(original_val) if abs(original_val) > 1e-300 else 0.0
             else:
                 rel_diff = abs(original_val - modified_val) / max(abs(original_val), abs(modified_val), 1e-300)
+                pct_error = 100.0 * abs(original_val - modified_val) / abs(original_val) if abs(original_val) > 1e-300 else 100.0
                 passed = False
         else:
-            passed, rel_diff = True, 0.0
+            passed, rel_diff, pct_error = True, 0.0, 0.0
 
-        field_results[params_key] = (passed, rel_diff, original_val)
+        field_results[params_key] = (passed, rel_diff, original_val, pct_error)
         if not passed:
             all_passed = False
 
@@ -392,52 +541,76 @@ def test_snapshot(snapshot: dict, verbose: bool = False) -> dict:
         'passed': all_passed,
         't_now': snapshot.get('t_now', 0),
         'field_results': field_results,
+        'time_original': time_original,
+        'time_modified': time_modified,
+        'speedup': speedup,
     }
 
 
 def print_comparison_table(results: list, fields: list):
-    """Print a formatted comparison table."""
-    print("\n" + "=" * 100)
-    print("SHELL STRUCTURE COMPARISON TABLE")
-    print("=" * 100)
+    """Print a formatted comparison table with timing and % error."""
+    print("\n" + "=" * 80)
+    print("SHELL STRUCTURE COMPARISON TEST")
+    print("=" * 80)
 
-    # Column headers
-    header = f"{'Snapshot':<10} {'t_now':<12} {'Status':<8}"
-    for field in fields[:5]:
-        header += f" {field[:12]:<14}"
+    # Show tested parameters at top
+    print(f"\nParameters tested: {', '.join(fields)}")
+
+    # Compact results table
+    print("\n" + "-" * 80)
+    header = f"{'Snap':<6} {'t_now':<12} {'Status':<8} {'Orig(ms)':<10} {'Mod(ms)':<10} {'Speedup':<10}"
     print(header)
-    print("-" * 100)
+    print("-" * 80)
 
     # Data rows
+    total_time_orig = 0.0
+    total_time_mod = 0.0
+    failed_snapshots = []
+
     for i, res in enumerate(results):
         line = res.get('line', i)
         t_now = res['t_now']
         status = "PASS" if res['passed'] else "FAIL"
+        time_orig_ms = res.get('time_original', 0) * 1000
+        time_mod_ms = res.get('time_modified', 0) * 1000
+        speedup = res.get('speedup', 1.0)
 
-        row = f"{line:<10} {t_now:<12.4e} {status:<8}"
-        for field in fields[:5]:
-            if field in res['field_results']:
-                passed, rel_diff, val = res['field_results'][field]
-                if isinstance(val, bool):
-                    row += f" {str(val):<14}"
-                elif isinstance(val, (int, float)):
-                    if passed:
-                        row += f" {val:<14.4e}"
-                    else:
-                        row += f" {val:<14.4e}*"
-                else:
-                    row += f" {'N/A':<14}"
-            else:
-                row += f" {'N/A':<14}"
+        total_time_orig += res.get('time_original', 0)
+        total_time_mod += res.get('time_modified', 0)
+
+        row = f"{line:<6} {t_now:<12.4e} {status:<8} {time_orig_ms:<10.2f} {time_mod_ms:<10.2f} {speedup:<10.2f}x"
         print(row)
 
-    print("-" * 100)
+        # Track failed snapshots for error detail
+        if not res['passed']:
+            failed_snapshots.append((line, res))
+
+    print("-" * 80)
+
+    # Timing summary
+    avg_speedup = total_time_orig / total_time_mod if total_time_mod > 0 else 1.0
+    print(f"\nTiming Summary:")
+    print(f"  Total original time: {total_time_orig*1000:.2f} ms")
+    print(f"  Total modified time: {total_time_mod*1000:.2f} ms")
+    print(f"  Average speedup: {avg_speedup:.2f}x")
+
+    # Only show error details if there are failures
+    if failed_snapshots:
+        print("\n" + "=" * 80)
+        print("ERROR DETAILS (only showing parameters with errors)")
+        print("=" * 80)
+
+        for line_num, res in failed_snapshots:
+            print(f"\nSnapshot {line_num} (t={res['t_now']:.4e}):")
+            for field, (passed, rel_diff, orig_val, pct_error) in res['field_results'].items():
+                if not passed:
+                    print(f"  {field}: {pct_error:.2e}% error (original={orig_val:.4e})")
+
+        print("-" * 80)
 
     # Summary
     passed_count = sum(1 for r in results if r['passed'])
     print(f"\nSummary: {passed_count}/{len(results)} snapshots passed all comparisons")
-    if passed_count < len(results):
-        print("* indicates field with mismatch")
 
 
 def test_shell_structure_comparison():
