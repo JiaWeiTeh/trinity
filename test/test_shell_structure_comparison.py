@@ -16,6 +16,7 @@ import json
 import sys
 import os
 import random
+import time
 
 # Ensure src is in path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -340,13 +341,30 @@ def get_total_lines(filepath: str) -> int:
 def test_snapshot(snapshot: dict, verbose: bool = False) -> dict:
     """
     Test a single snapshot and return results dictionary.
+
+    Returns dict with:
+        - 'passed': bool
+        - 't_now': float
+        - 'field_results': dict mapping field_name -> (passed, rel_diff, original_val, pct_error)
+        - 'time_original': float (seconds)
+        - 'time_modified': float (seconds)
+        - 'speedup': float
     """
     params_original = make_params_dict(snapshot.copy())
     params_modified = make_params_dict(snapshot.copy())
 
-    # Run both versions
+    # Run original version with timing
+    start_orig = time.perf_counter()
     shell_structure(params_original)
+    time_original = time.perf_counter() - start_orig
+
+    # Run modified version with timing
+    start_mod = time.perf_counter()
     result_modified = shell_structure_pure(params_modified)
+    time_modified = time.perf_counter() - start_mod
+
+    # Calculate speedup
+    speedup = time_original / time_modified if time_modified > 0 else float('inf')
 
     # Fields to compare
     fields = [
@@ -373,18 +391,21 @@ def test_snapshot(snapshot: dict, verbose: bool = False) -> dict:
         if isinstance(original_val, bool):
             passed = (original_val == modified_val)
             rel_diff = 0.0 if passed else 1.0
+            pct_error = 0.0 if passed else 100.0
         elif isinstance(original_val, (int, float)):
             if np.isnan(original_val) and np.isnan(modified_val):
-                passed, rel_diff = True, 0.0
+                passed, rel_diff, pct_error = True, 0.0, 0.0
             elif np.isclose(original_val, modified_val, rtol=1e-10):
                 passed, rel_diff = True, 0.0
+                pct_error = 100.0 * abs(original_val - modified_val) / abs(original_val) if abs(original_val) > 1e-300 else 0.0
             else:
                 rel_diff = abs(original_val - modified_val) / max(abs(original_val), abs(modified_val), 1e-300)
+                pct_error = 100.0 * abs(original_val - modified_val) / abs(original_val) if abs(original_val) > 1e-300 else 100.0
                 passed = False
         else:
-            passed, rel_diff = True, 0.0
+            passed, rel_diff, pct_error = True, 0.0, 0.0
 
-        field_results[params_key] = (passed, rel_diff, original_val)
+        field_results[params_key] = (passed, rel_diff, original_val, pct_error)
         if not passed:
             all_passed = False
 
@@ -392,43 +413,89 @@ def test_snapshot(snapshot: dict, verbose: bool = False) -> dict:
         'passed': all_passed,
         't_now': snapshot.get('t_now', 0),
         'field_results': field_results,
+        'time_original': time_original,
+        'time_modified': time_modified,
+        'speedup': speedup,
     }
 
 
 def print_comparison_table(results: list, fields: list):
-    """Print a formatted comparison table."""
-    print("\n" + "=" * 100)
+    """Print a formatted comparison table with timing and % error."""
+    print("\n" + "=" * 130)
     print("SHELL STRUCTURE COMPARISON TABLE")
-    print("=" * 100)
+    print("=" * 130)
 
-    # Column headers
-    header = f"{'Snapshot':<10} {'t_now':<12} {'Status':<8}"
-    for field in fields[:5]:
-        header += f" {field[:12]:<14}"
+    # Column headers for main table
+    header = f"{'Snap':<6} {'t_now':<11} {'Status':<6} {'Orig(ms)':<9} {'Mod(ms)':<9} {'Speedup':<8}"
+    for field in fields[:4]:  # Show first 4 key fields
+        header += f" {field[:10]:<12}"
     print(header)
-    print("-" * 100)
+    print("-" * 130)
 
     # Data rows
+    total_time_orig = 0.0
+    total_time_mod = 0.0
+
     for i, res in enumerate(results):
         line = res.get('line', i)
         t_now = res['t_now']
         status = "PASS" if res['passed'] else "FAIL"
+        time_orig_ms = res.get('time_original', 0) * 1000
+        time_mod_ms = res.get('time_modified', 0) * 1000
+        speedup = res.get('speedup', 1.0)
 
-        row = f"{line:<10} {t_now:<12.4e} {status:<8}"
-        for field in fields[:5]:
+        total_time_orig += res.get('time_original', 0)
+        total_time_mod += res.get('time_modified', 0)
+
+        row = f"{line:<6} {t_now:<11.4e} {status:<6} {time_orig_ms:<9.2f} {time_mod_ms:<9.2f} {speedup:<8.2f}x"
+        for field in fields[:4]:
             if field in res['field_results']:
-                passed, rel_diff, val = res['field_results'][field]
+                passed, rel_diff, val, pct_error = res['field_results'][field]
                 if isinstance(val, bool):
-                    row += f" {str(val):<14}"
+                    row += f" {str(val):<12}"
                 elif isinstance(val, (int, float)):
                     if passed:
-                        row += f" {val:<14.4e}"
+                        row += f" {val:<12.4e}"
                     else:
-                        row += f" {val:<14.4e}*"
+                        row += f" {val:<12.4e}*"
                 else:
-                    row += f" {'N/A':<14}"
+                    row += f" {'N/A':<12}"
             else:
-                row += f" {'N/A':<14}"
+                row += f" {'N/A':<12}"
+        print(row)
+
+    print("-" * 130)
+
+    # Timing summary
+    avg_speedup = total_time_orig / total_time_mod if total_time_mod > 0 else 1.0
+    print(f"\nTiming Summary:")
+    print(f"  Total original time: {total_time_orig*1000:.2f} ms")
+    print(f"  Total modified time: {total_time_mod*1000:.2f} ms")
+    print(f"  Average speedup: {avg_speedup:.2f}x")
+
+    # Error summary table
+    print("\n" + "=" * 100)
+    print("% ERROR PER FIELD (max across all snapshots)")
+    print("=" * 100)
+
+    # Collect max % error per field
+    field_max_errors = {}
+    for field in fields:
+        max_err = 0.0
+        for res in results:
+            if field in res['field_results']:
+                _, _, _, pct_error = res['field_results'][field]
+                max_err = max(max_err, pct_error)
+        field_max_errors[field] = max_err
+
+    # Print error table (2 columns)
+    field_list = list(field_max_errors.items())
+    for i in range(0, len(field_list), 2):
+        row = ""
+        for j in range(2):
+            if i + j < len(field_list):
+                field, err = field_list[i + j]
+                row += f"  {field:<25}: {err:>12.2e}%"
         print(row)
 
     print("-" * 100)
