@@ -1,13 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Verification test comparing bubble_luminosity and bubble_luminosity_modified.
+Verification test comparing energy_phase_ODEs and energy_phase_ODEs_modified.
 
 This test loads snapshots from the dictionary.jsonl file and verifies that
-both the original get_bubbleproperties() and the new get_bubbleproperties_pure()
+both the original get_ODE_Edot() and the new get_ODE_Edot_pure()
 return identical results.
-
-Outputs a comparison table for 10 random snapshots in range 10-300.
 
 Author: TRINITY Team
 """
@@ -23,8 +21,10 @@ import time
 # Ensure src is in path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from src.bubble_structure.bubble_luminosity import get_bubbleproperties
-from src.bubble_structure.bubble_luminosity_modified import get_bubbleproperties_pure, BubbleProperties
+from src.phase1_energy.energy_phase_ODEs import get_ODE_Edot
+from src.phase1_energy.energy_phase_ODEs_modified import (
+    get_ODE_Edot_pure, create_ODE_snapshot, ODESnapshot
+)
 from src._functions.unit_conversions import CONV, CGS
 
 
@@ -67,6 +67,9 @@ class MockParam:
     def __eq__(self, other):
         return self.value == self._unwrap(other)
 
+    def __ne__(self, other):
+        return self.value != self._unwrap(other)
+
     def __add__(self, other):
         return self.value + self._unwrap(other)
 
@@ -100,23 +103,34 @@ class MockParam:
     def __neg__(self):
         return -self.value
 
+    def __abs__(self):
+        return abs(self.value)
+
     def __repr__(self):
         return f"MockParam({self.value})"
 
 
 def load_snapshot_from_jsonl(filepath: str, line_number: int) -> dict:
-    """Load a specific snapshot (line) from a JSONL file."""
+    """
+    Load a specific snapshot (line) from a JSONL file.
+
+    Parameters
+    ----------
+    filepath : str
+        Path to the JSONL file
+    line_number : int
+        1-indexed line number to load
+
+    Returns
+    -------
+    dict
+        Parsed JSON data from the specified line
+    """
     with open(filepath, 'r') as f:
         for i, line in enumerate(f):
-            if i == line_number - 1:
+            if i == line_number - 1:  # Convert to 0-indexed
                 return json.loads(line.strip())
     raise ValueError(f"Line {line_number} not found in {filepath}")
-
-
-def get_total_lines(filepath: str) -> int:
-    """Count total lines in a file."""
-    with open(filepath, 'r') as f:
-        return sum(1 for _ in f)
 
 
 def load_default_params(param_file: str = None) -> dict:
@@ -214,14 +228,17 @@ def add_physical_constants(params: dict, jsonl_path: str = None) -> dict:
     c_cgs = get_param_value(params, 'c_light', defaults, jsonl_path) or CGS.c
     params['c_light'] = c_cgs * v_cms2au
 
-    # Mean molecular weights (from default.param in m_H -> convert to Msun)
+    # Mean molecular weights
     mu_atom = get_param_value(params, 'mu_atom', defaults, jsonl_path)
     params['mu_atom'] = mu_atom * m_H_to_Msun if mu_atom else 1.27 * m_H_to_Msun
 
     mu_ion = get_param_value(params, 'mu_ion', defaults, jsonl_path)
     params['mu_ion'] = mu_ion * m_H_to_Msun if mu_ion else 0.61 * m_H_to_Msun
 
-    # Shell temperatures (K)
+    mu_convert = get_param_value(params, 'mu_convert', defaults, jsonl_path)
+    params['mu_convert'] = mu_convert * m_H_to_Msun if mu_convert else 1.4 * m_H_to_Msun
+
+    # Shell temperatures
     params['TShell_ion'] = get_param_value(params, 'TShell_ion', defaults, jsonl_path) or 1e4
     params['TShell_neu'] = get_param_value(params, 'TShell_neu', defaults, jsonl_path) or 100
 
@@ -244,76 +261,148 @@ def add_physical_constants(params: dict, jsonl_path: str = None) -> dict:
         nISM_cgs = get_param_value(params, 'nISM', defaults, jsonl_path) or 1.0
         params['nISM'] = nISM_cgs * ndens_cgs2au
 
-    # =========================================================================
-    # Bubble-specific constants
-    # =========================================================================
-
-    # Adiabatic index
-    gamma = get_param_value(params, 'gamma_adia', defaults, jsonl_path)
-    params['gamma_adia'] = gamma if gamma else 5.0 / 3.0
-
-    # Thermal conductivity coefficient
-    C_thermal_cgs = get_param_value(params, 'C_thermal', defaults, jsonl_path) or 6e-7
-    params['C_thermal'] = C_thermal_cgs * CONV.c_therm_cgs2au
-
-    # Bubble temperature measurement radius ratio
-    params['bubble_xi_Tb'] = get_param_value(params, 'bubble_xi_Tb', defaults, jsonl_path) or 0.98
-
     # Cloud metallicity
     if 'ZCloud' not in params:
         params['ZCloud'] = get_param_value(params, 'ZCloud', defaults, jsonl_path) or 1.0
 
-    # Mechanical luminosity and velocity from wind data
-    if 'LWind' in params and 'pWindDot' in params:
-        params['Lmech_total'] = params['LWind']
-        if params['pWindDot'] > 0:
-            params['v_mech_total'] = 2.0 * params['LWind'] / params['pWindDot']
-        else:
-            params['v_mech_total'] = 1000.0  # Default fallback
+    # Ensure key parameters exist
+    if 'isCollapse' not in params:
+        params['isCollapse'] = False
+    if 'EarlyPhaseApproximation' not in params:
+        params['EarlyPhaseApproximation'] = False
+    if 'current_phase' not in params:
+        params['current_phase'] = 'energy'
+    if 'PISM' not in params:
+        PISM_val = get_param_value(params, 'PISM', defaults, jsonl_path) or 5e3
+        params['PISM'] = PISM_val
 
-    # Pre-initialize bubble arrays (will be populated by get_bubbleproperties)
-    if 'bubble_v_arr' not in params:
-        params['bubble_v_arr'] = np.array([])
-    if 'bubble_T_arr' not in params:
-        params['bubble_T_arr'] = np.array([])
-    if 'bubble_dTdr_arr' not in params:
-        params['bubble_dTdr_arr'] = np.array([])
-    if 'bubble_r_arr' not in params:
-        params['bubble_r_arr'] = np.array([])
-    if 'bubble_n_arr' not in params:
-        params['bubble_n_arr'] = np.array([])
-    if 'bubble_r_Tb' not in params:
-        params['bubble_r_Tb'] = 0.0
+    # =========================================================================
+    # Energy phase specific parameters
+    # =========================================================================
 
-    # Pre-initialize bubble output values
-    if 'bubble_LTotal' not in params:
-        params['bubble_LTotal'] = 0.0
-    if 'bubble_T_r_Tb' not in params:
-        params['bubble_T_r_Tb'] = 0.0
-    if 'bubble_L1Bubble' not in params:
-        params['bubble_L1Bubble'] = 0.0
-    if 'bubble_L2Conduction' not in params:
-        params['bubble_L2Conduction'] = 0.0
-    if 'bubble_L3Intermediate' not in params:
-        params['bubble_L3Intermediate'] = 0.0
-    if 'bubble_Tavg' not in params:
-        params['bubble_Tavg'] = 0.0
-    if 'bubble_mass' not in params:
-        params['bubble_mass'] = 0.0
+    # Cluster mass
+    if 'mCluster' not in params:
+        sfe = get_param_value(params, 'sfe', defaults, jsonl_path) or 0.01
+        mCloud = params.get('mCloud', 1e6)
+        params['mCluster'] = sfe * mCloud
 
-    # Pre-initialize R1 and Pb (will be computed)
-    if 'R1' not in params:
-        params['R1'] = 0.0
-    if 'Pb' not in params:
-        params['Pb'] = 0.0
+    # Adiabatic index
+    if 'gamma_adia' not in params:
+        gamma = get_param_value(params, 'gamma_adia', defaults, jsonl_path)
+        params['gamma_adia'] = gamma if gamma else 5.0 / 3.0
+
+    # Mechanical luminosity and wind velocity from SB99
+    # These are normally calculated from feedback, but need defaults
+    if 'Lmech_total' not in params:
+        params['Lmech_total'] = 1e36 * CONV.L_cgs2au  # Typical value in AU
+
+    if 'v_mech_total' not in params:
+        params['v_mech_total'] = 1000e5 * v_cms2au  # 1000 km/s in AU
+
+    # Start of star formation time
+    if 'tSF' not in params:
+        params['tSF'] = 0.0
+
+    # =========================================================================
+    # Cloud density profile parameters
+    # =========================================================================
+
+    # Core number density (in AU: pc^-3)
+    if 'nCore' not in params:
+        params['nCore'] = 1e4 * ndens_cgs2au  # 10^4 cm^-3 typical
+
+    # Core radius
+    if 'rCore' not in params:
+        rCloud = params.get('rCloud', 10.0)
+        params['rCore'] = 0.1 * rCloud  # Assume core is 10% of cloud radius
+
+    # Density profile type
+    if 'dens_profile' not in params:
+        params['dens_profile'] = 'densPL'  # Power-law profile
+
+    # Power-law exponent
+    if 'densPL_alpha' not in params:
+        params['densPL_alpha'] = -2.0  # Standard power-law
+
+    # =========================================================================
+    # Feedback force terms (ensure initialized)
+    # =========================================================================
+
+    if 'F_grav' not in params:
+        params['F_grav'] = 0.0
+    if 'F_ion_in' not in params:
+        params['F_ion_in'] = 0.0
+    if 'F_ion_out' not in params:
+        params['F_ion_out'] = 0.0
+    if 'F_ram' not in params:
+        params['F_ram'] = 0.0
 
     return params
+
+
+class MockSB99Interpolator:
+    """Mock interpolator for SB99 data that returns constant values."""
+    def __init__(self, value, t_min=0.0, t_max=100.0):
+        self.value = value
+        self.x = np.array([t_min, t_max])
+
+    def __call__(self, t):
+        return np.array(self.value)
+
+
+def create_mock_sb99f(params: dict) -> dict:
+    """
+    Create a mock SB99f structure with interpolation functions.
+
+    Uses values from the params dictionary if available, otherwise uses
+    reasonable defaults for energy phase testing.
+
+    The values in the snapshot are already in TRINITY's AU units:
+    - LWind: Mechanical luminosity [Msun*pc^2/Myr^3]
+    - pWindDot: Momentum rate [Msun*pc/Myr^2]
+    - vWind: Wind velocity [pc/Myr]
+    - Qi: Ionizing photon rate [s^-1] - but converted to AU units
+    """
+    # Get existing values from params - these are already in AU
+    Qi = params.get('Qi', 1e49)  # Ionizing photon rate
+    Lbol = params.get('Lbol', 1e10)  # Bolometric luminosity in AU
+    Li = params.get('Li', 0.5 * Lbol)  # Ionizing luminosity
+    Ln = params.get('Ln', 0.5 * Lbol)  # Non-ionizing luminosity
+
+    # Mechanical luminosity - use LWind from snapshot (already in AU)
+    Lmech = params.get('LWind', params.get('Lmech_total', 1e10))
+
+    # Momentum rate from snapshot - use pWindDot (already in AU)
+    pdot_W = params.get('pWindDot', 1e7)
+    pdot_SN = 0.0  # No SN early in energy phase
+    pdot_total = pdot_W + pdot_SN
+
+    # Time range (ensure it covers the snapshot time)
+    t_min = 0.0
+    t_max = 100.0
+
+    return {
+        'fQi': MockSB99Interpolator(Qi, t_min, t_max),
+        'fLi': MockSB99Interpolator(Li, t_min, t_max),
+        'fLn': MockSB99Interpolator(Ln, t_min, t_max),
+        'fLbol': MockSB99Interpolator(Lbol, t_min, t_max),
+        'fLmech_W': MockSB99Interpolator(Lmech, t_min, t_max),
+        'fLmech_SN': MockSB99Interpolator(0.0, t_min, t_max),  # No SN early
+        'fLmech_total': MockSB99Interpolator(Lmech, t_min, t_max),
+        'fpdot_W': MockSB99Interpolator(pdot_W, t_min, t_max),
+        'fpdot_SN': MockSB99Interpolator(pdot_SN, t_min, t_max),
+        'fpdot_total': MockSB99Interpolator(pdot_total, t_min, t_max),
+    }
 
 
 def prime_params(params: dict) -> dict:
     """
     Initialize parameters that require setup beyond simple values.
-    Sets up cooling interpolation and other computed parameters.
+
+    This function sets up:
+    - Cooling interpolation (CIE and non-CIE)
+    - Starburst99 interpolation tables
+    - Any other computed/interpolated parameters
     """
     # =========================================================================
     # Cooling interpolation (CIE)
@@ -340,11 +429,10 @@ def prime_params(params: dict) -> dict:
                 params['cStruc_cooling_CIE_interpolation'] = cooling_CIE_interpolation
                 cooling_loaded = True
                 break
-            except Exception:
-                pass
+            except Exception as e:
+                print(f"Warning: Could not load cooling curve from {cooling_path}: {e}")
 
     if not cooling_loaded:
-        # Mock cooling curve
         logT = np.linspace(4, 9, 100)
         logLambda = -22 + 0.5 * (logT - 6)
         cooling_CIE_interpolation = scipy.interpolate.interp1d(
@@ -355,78 +443,82 @@ def prime_params(params: dict) -> dict:
         params['cStruc_cooling_CIE_logLambda'] = logLambda
         params['cStruc_cooling_CIE_interpolation'] = cooling_CIE_interpolation
 
-    # Non-CIE cooling placeholders
-    # Note: These need to be objects with .temp, .ndens, .phi, .interp attributes
-    class MockCloudyCube:
-        """Mock CloudyCube with temperature range for non-CIE cooling."""
-        def __init__(self):
-            self.temp = np.array([4.0, 4.5, 5.0, 5.5])  # log10(T)
-            self.ndens = np.array([0, 2, 4, 6])  # log10(n)
-            self.phi = np.array([0, 5, 10, 15])  # log10(phi)
-            self.cooling = np.zeros((4, 4, 4))
-            self.heating = np.zeros((4, 4, 4))
-            # Interpolation function that returns 0 (log10 of small value)
-            self.interp = scipy.interpolate.RegularGridInterpolator(
-                (self.ndens, self.temp, self.phi),
-                np.full((4, 4, 4), -30.0),  # log10(very small) = -30
-                bounds_error=False,
-                fill_value=-30.0
-            )
-
+    # Non-CIE cooling
     if 'cStruc_cooling_nonCIE' not in params:
-        params['cStruc_cooling_nonCIE'] = MockCloudyCube()
+        params['cStruc_cooling_nonCIE'] = None
     if 'cStruc_heating_nonCIE' not in params:
-        params['cStruc_heating_nonCIE'] = MockCloudyCube()
+        params['cStruc_heating_nonCIE'] = None
     if 'cStruc_net_nonCIE_interpolation' not in params:
-        # Mock interpolator that returns 0
-        mock_cube = MockCloudyCube()
-        params['cStruc_net_nonCIE_interpolation'] = scipy.interpolate.RegularGridInterpolator(
-            (mock_cube.ndens, mock_cube.temp, mock_cube.phi),
-            np.zeros((4, 4, 4)),
-            bounds_error=False,
-            fill_value=0.0
-        )
+        params['cStruc_net_nonCIE_interpolation'] = None
 
-    # Cooling timing
     if 't_previousCoolingUpdate' not in params:
         params['t_previousCoolingUpdate'] = 0.0
+
+    # =========================================================================
+    # Starburst99 feedback (SB99f) - use mock for testing
+    # =========================================================================
+    # The SB99f structure contains interpolation functions for stellar feedback
+    # For testing, we create a mock that returns values from the snapshot
+    if 'SB99f' not in params:
+        params['SB99f'] = create_mock_sb99f(params)
+
+    # Ensure Lmech_total in params matches what feedback will return
+    # This is needed because original code reads params["Lmech_total"] directly
+    # while also calling get_currentSB99feedback() which returns LWind
+    # The modified version consistently uses feedback values
+    Lmech_from_sb99 = params.get('LWind', params.get('Lmech_total', 1e10))
+    params['Lmech_total'] = Lmech_from_sb99
+
+    # Same for v_mech_total - use vWind from snapshot if available
+    v_mech_from_sb99 = params.get('vWind', params.get('v_mech_total', 1000))
+    params['v_mech_total'] = v_mech_from_sb99
 
     return params
 
 
 def make_params_dict(snapshot: dict, include_priming: bool = True) -> dict:
-    """Create a params dictionary with MockParam wrappers from a snapshot."""
+    """
+    Create a params dictionary with MockParam wrappers from a snapshot.
+    """
+    # Add physical constants
     snapshot = add_physical_constants(snapshot)
+
+    # Prime params with interpolation objects
     if include_priming:
         snapshot = prime_params(snapshot)
+
+    # Wrap all values in MockParam
     return {k: MockParam(v) for k, v in snapshot.items()}
 
 
-def compare_values(name: str, original, modified, rtol: float = 1e-8) -> tuple:
-    """Compare two values and return (passed, rel_diff, message)."""
+def compare_values(name: str, original, modified, rtol: float = 1e-10):
+    """
+    Compare two values and return (passed, rel_diff, message).
+    """
     if isinstance(original, bool):
         passed = (original == modified)
         return passed, 0.0 if passed else 1.0, "bool"
 
     elif isinstance(original, np.ndarray):
         if not isinstance(modified, np.ndarray):
-            return False, 1.0, "type_mismatch"
+            return False, 1.0, f"type mismatch: array vs {type(modified)}"
         if original.shape != modified.shape:
-            return False, 1.0, "shape_mismatch"
+            return False, 1.0, f"shape mismatch {original.shape} vs {modified.shape}"
         if np.allclose(original, modified, rtol=rtol, equal_nan=True):
-            return True, 0.0, "array_match"
+            return True, 0.0, "arrays match"
         else:
-            max_diff = np.max(np.abs(original - modified) / (np.abs(original) + 1e-300))
-            return False, max_diff, "array_diff"
+            max_diff = np.max(np.abs(original - modified))
+            return False, max_diff, f"arrays differ, max_diff={max_diff:.6e}"
 
     elif isinstance(original, (int, float)):
         if np.isnan(original) and np.isnan(modified):
-            return True, 0.0, "both_nan"
+            return True, 0.0, "both NaN"
         if np.isclose(original, modified, rtol=rtol):
-            return True, 0.0, "match"
+            rel_diff = abs(original - modified) / max(abs(original), 1e-300)
+            return True, rel_diff, "match"
         else:
             rel_diff = abs(original - modified) / max(abs(original), abs(modified), 1e-300)
-            return False, rel_diff, "diff"
+            return False, rel_diff, f"differ: {original:.6e} vs {modified:.6e}"
 
     else:
         passed = (original == modified)
@@ -439,7 +531,6 @@ def test_snapshot(snapshot: dict, verbose: bool = False) -> dict:
 
     Returns dict with:
         - 'passed': bool
-        - 'line': int
         - 't_now': float
         - 'field_results': dict mapping field_name -> (passed, rel_diff, original_val, pct_error)
         - 'time_original': float (seconds)
@@ -449,51 +540,50 @@ def test_snapshot(snapshot: dict, verbose: bool = False) -> dict:
     params_original = make_params_dict(snapshot.copy())
     params_modified = make_params_dict(snapshot.copy())
 
+    # Extract state for ODE evaluation
+    t_now = params_original['t_now'].value
+    R2 = params_original['R2'].value
+    v2 = params_original['v2'].value
+    Eb = params_original['Eb'].value
+    y = [R2, v2, Eb]
+
     # Run original version with timing
     start_orig = time.perf_counter()
-    get_bubbleproperties(params_original)
+    result_original = get_ODE_Edot(y.copy(), t_now, params_original)
     time_original = time.perf_counter() - start_orig
+
+    # Create snapshot for modified version
+    snapshot_obj = create_ODE_snapshot(params_modified)
 
     # Run modified version with timing
     start_mod = time.perf_counter()
-    result_modified = get_bubbleproperties_pure(params_modified)
+    result_modified = get_ODE_Edot_pure(t_now, y.copy(), snapshot_obj, params_modified)
     time_modified = time.perf_counter() - start_mod
 
     # Calculate speedup
     speedup = time_original / time_modified if time_modified > 0 else float('inf')
 
-    # Fields to compare
-    fields = [
-        ('bubble_LTotal', 'bubble_LTotal'),
-        ('bubble_T_r_Tb', 'bubble_T_r_Tb'),
-        ('bubble_Tavg', 'bubble_Tavg'),
-        ('bubble_mass', 'bubble_mass'),
-        ('bubble_L1Bubble', 'bubble_L1Bubble'),
-        ('bubble_L2Conduction', 'bubble_L2Conduction'),
-        ('bubble_L3Intermediate', 'bubble_L3Intermediate'),
-        ('bubble_dMdt', 'bubble_dMdt'),
-        ('R1', 'R1'),
-        ('Pb', 'Pb'),
-        ('bubble_r_Tb', 'bubble_r_Tb'),
-    ]
-
+    # Compare ODE outputs [rd, vd, Ed]
+    fields = ['rd', 'vd', 'Ed']
     field_results = {}
     all_passed = True
 
-    for params_key, dataclass_attr in fields:
-        original_val = params_original[params_key].value
-        modified_val = getattr(result_modified, dataclass_attr)
-        passed, rel_diff, msg = compare_values(params_key, original_val, modified_val)
+    for i, field_name in enumerate(fields):
+        original_val = result_original[i]
+        modified_val = result_modified[i]
+
+        passed, rel_diff, msg = compare_values(field_name, original_val, modified_val)
         # Calculate % error
         if isinstance(original_val, (int, float)) and not np.isnan(original_val) and abs(original_val) > 1e-300:
             pct_error = 100.0 * abs(original_val - modified_val) / abs(original_val)
         else:
             pct_error = 0.0 if passed else 100.0
-        field_results[params_key] = (passed, rel_diff, original_val, pct_error)
+
+        field_results[field_name] = (passed, rel_diff, original_val, pct_error)
         if not passed:
             all_passed = False
             if verbose:
-                print(f"  ✗ {params_key}: rel_diff={rel_diff:.2e}, %error={pct_error:.2e}%")
+                print(f"  ✗ {field_name}: rel_diff={rel_diff:.2e}, %error={pct_error:.2e}%")
 
     return {
         'passed': all_passed,
@@ -505,10 +595,16 @@ def test_snapshot(snapshot: dict, verbose: bool = False) -> dict:
     }
 
 
+def get_total_lines(filepath: str) -> int:
+    """Count total lines in a file."""
+    with open(filepath, 'r') as f:
+        return sum(1 for _ in f)
+
+
 def print_comparison_table(results: list, fields: list):
     """Print a formatted comparison table with timing and % error."""
     print("\n" + "=" * 80)
-    print("BUBBLE LUMINOSITY COMPARISON TEST")
+    print("ENERGY PHASE ODE COMPARISON TEST")
     print("=" * 80)
 
     # Show tested parameters at top
@@ -539,6 +635,7 @@ def print_comparison_table(results: list, fields: list):
         row = f"{line:<6} {t_now:<12.4e} {status:<8} {time_orig_ms:<10.2f} {time_mod_ms:<10.2f} {speedup:<10.2f}x"
         print(row)
 
+        # Track failed snapshots for error detail
         if not res['passed']:
             failed_snapshots.append((line, res))
 
@@ -568,19 +665,20 @@ def print_comparison_table(results: list, fields: list):
     # Summary
     passed_count = sum(1 for r in results if r['passed'])
     print(f"\nSummary: {passed_count}/{len(results)} snapshots passed all comparisons")
-    if passed_count < len(results):
-        print("* indicates field with mismatch")
 
 
-def test_bubble_luminosity_comparison():
+def test_energy_phase_comparison():
     """
-    Test bubble_luminosity vs bubble_luminosity_modified on 10 random snapshots.
+    Test energy_phase_ODEs vs energy_phase_ODEs_modified on 10 random snapshots.
     """
     print("=" * 70)
-    print("Testing bubble_luminosity vs bubble_luminosity_modified")
+    print("Testing energy_phase_ODEs vs energy_phase_ODEs_modified")
     print("=" * 70)
 
-    jsonl_path = os.path.join(PROJECT_ROOT, 'comparison', '1e7_sfe020_n1e4_test_dictionary.jsonl')
+    jsonl_path = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+        'comparison', '1e7_sfe020_n1e4_test_dictionary.jsonl'
+    )
 
     if not os.path.exists(jsonl_path):
         print(f"ERROR: Test dictionary not found at {jsonl_path}")
@@ -598,8 +696,7 @@ def test_bubble_luminosity_comparison():
     print(f"Selected lines: {snapshot_lines}")
 
     results = []
-    fields = ['bubble_LTotal', 'bubble_T_r_Tb', 'bubble_Tavg', 'bubble_mass',
-              'bubble_L1Bubble', 'bubble_dMdt', 'R1', 'Pb']
+    fields = ['rd', 'vd', 'Ed']
 
     for line_num in snapshot_lines:
         print(f"\nProcessing snapshot {line_num}...", end=" ")
@@ -612,6 +709,8 @@ def test_bubble_luminosity_comparison():
             print(f"{status} (t={result['t_now']:.4e})")
         except Exception as e:
             print(f"✗ Error: {e}")
+            import traceback
+            traceback.print_exc()
             results.append({'passed': False, 'line': line_num, 't_now': 0, 'field_results': {}})
 
     # Print comparison table
@@ -622,10 +721,10 @@ def test_bubble_luminosity_comparison():
 
 
 if __name__ == '__main__':
-    print("Bubble Luminosity Comparison Test")
-    print("==================================\n")
+    print("Energy Phase ODE Comparison Test")
+    print("=================================\n")
 
-    passed = test_bubble_luminosity_comparison()
+    passed = test_energy_phase_comparison()
 
     print("\n" + "=" * 70)
     if passed:
