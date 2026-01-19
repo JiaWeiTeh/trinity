@@ -25,6 +25,7 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm, Normalize
 from matplotlib.patches import Patch
+from matplotlib import patheffects
 from pathlib import Path
 import os
 import cmasher as cmr
@@ -322,14 +323,26 @@ def plot_powerlaw_grids():
         # Add contour lines (evenly spaced in log)
         grid_masked = np.ma.masked_invalid(grid)
         if n_valid > 0:
-            cs = ax.contour(
-                M_CLOUD_RANGE, N_CORE_RANGE, grid_masked,
-                levels=contour_levels,
-                colors='k', linewidths=0.5, linestyles='-'
-            )
-            # Labels parallel to contours with rotation
-            ax.clabel(cs, inline=True, fontsize=7, fmt='%.2f',
-                      inline_spacing=2, use_clabeltext=True)
+            try:
+                cs = ax.contour(
+                    M_CLOUD_RANGE, N_CORE_RANGE, grid_masked,
+                    levels=contour_levels,
+                    colors='white', linewidths=0.8, alpha=0.8
+                )
+                # Labels with proper spacing and path effects for readability
+                texts = ax.clabel(
+                    cs, inline=True, fontsize=7, fmt='%.2f',
+                    inline_spacing=3, rightside_up=True, use_clabeltext=True
+                )
+                # Add stroke effect for better visibility
+                for t in texts:
+                    t.set_rotation_mode("anchor")
+                    t.set_path_effects([
+                        patheffects.Stroke(linewidth=2, foreground='black'),
+                        patheffects.Normal()
+                    ])
+            except ValueError:
+                pass  # No contour lines to draw
 
         ax.set_xscale('log')
         ax.set_yscale('log')
@@ -410,14 +423,26 @@ def plot_BE_grids():
         # Add contour lines (evenly spaced in log)
         grid_masked = np.ma.masked_invalid(grid)
         if n_valid > 0:
-            cs = ax.contour(
-                M_CLOUD_RANGE, N_CORE_RANGE, grid_masked,
-                levels=contour_levels,
-                colors='k', linewidths=0.5, linestyles='-'
-            )
-            # Labels parallel to contours with rotation
-            ax.clabel(cs, inline=True, fontsize=7, fmt='%.2f',
-                      inline_spacing=2, use_clabeltext=True)
+            try:
+                cs = ax.contour(
+                    M_CLOUD_RANGE, N_CORE_RANGE, grid_masked,
+                    levels=contour_levels,
+                    colors='white', linewidths=0.8, alpha=0.8
+                )
+                # Labels with proper spacing and path effects for readability
+                texts = ax.clabel(
+                    cs, inline=True, fontsize=7, fmt='%.2f',
+                    inline_spacing=3, rightside_up=True, use_clabeltext=True
+                )
+                # Add stroke effect for better visibility
+                for t in texts:
+                    t.set_rotation_mode("anchor")
+                    t.set_path_effects([
+                        patheffects.Stroke(linewidth=2, foreground='black'),
+                        patheffects.Normal()
+                    ])
+            except ValueError:
+                pass  # No contour lines to draw
 
         ax.set_xscale('log')
         ax.set_yscale('log')
