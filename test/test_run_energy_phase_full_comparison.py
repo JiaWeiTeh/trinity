@@ -215,61 +215,29 @@ def create_sb99f_from_snapshot(snapshot: dict) -> dict:
 
 
 def setup_cooling_interpolation(snapshot: dict, params: dict):
-    """Set up cooling interpolation from snapshot data."""
-    # CIE cooling
-    logT = snapshot.get('cStruc_cooling_CIE_logT', [])
-    logLambda = snapshot.get('cStruc_cooling_CIE_logLambda', [])
+    """
+    Set up cooling interpolation using actual TRINITY functions.
 
-    if logT and logLambda:
-        logT = np.array(logT)
-        logLambda = np.array(logLambda)
-        cooling_CIE_interpolation = scipy.interpolate.interp1d(
-            logT, logLambda, kind='linear', bounds_error=False, fill_value='extrapolate'
-        )
-        params['cStruc_cooling_CIE_logT'] = MockParam(logT)
-        params['cStruc_cooling_CIE_logLambda'] = MockParam(logLambda)
-        params['cStruc_cooling_CIE_interpolation'] = MockParam(cooling_CIE_interpolation)
-    else:
-        # Mock cooling
-        logT = np.linspace(4, 9, 100)
-        logLambda = -22 + 0.5 * (logT - 6)
-        cooling_CIE_interpolation = scipy.interpolate.interp1d(
-            logT, logLambda, kind='linear', bounds_error=False, fill_value='extrapolate'
-        )
-        params['cStruc_cooling_CIE_logT'] = MockParam(logT)
-        params['cStruc_cooling_CIE_logLambda'] = MockParam(logLambda)
-        params['cStruc_cooling_CIE_interpolation'] = MockParam(cooling_CIE_interpolation)
+    This loads CIE cooling from file and non-CIE cooling using
+    the non_CIE.get_coolingStructure() function.
+    """
+    import src.cooling.non_CIE.read_cloudy as non_CIE
 
-    # Non-CIE cooling - create mock structures
-    class MockCoolingCube:
-        """Mock non-CIE cooling structure with required attributes."""
-        def __init__(self):
-            self.temp = np.linspace(4.0, 5.5, 20)
-            self.ndens = np.linspace(-2, 6, 20)
-            self.phi = np.linspace(8, 14, 20)
-            self.datacube = np.ones((20, 20, 20)) * (-23.0)
-            self.interp = scipy.interpolate.RegularGridInterpolator(
-                (self.ndens, self.temp, self.phi),
-                self.datacube,
-                method='linear',
-                bounds_error=False,
-                fill_value=-23.0
-            )
+    # CIE cooling - load from file
+    cooling_path = params['path_cooling_CIE'].value
+    logT, logLambda = np.loadtxt(cooling_path, unpack=True)
+    cooling_CIE_interpolation = scipy.interpolate.interp1d(logT, logLambda, kind='linear')
+    params['cStruc_cooling_CIE_logT'] = MockParam(logT)
+    params['cStruc_cooling_CIE_logLambda'] = MockParam(logLambda)
+    params['cStruc_cooling_CIE_interpolation'] = MockParam(cooling_CIE_interpolation)
 
-    params['cStruc_cooling_nonCIE'] = MockParam(MockCoolingCube())
-    params['cStruc_heating_nonCIE'] = MockParam(MockCoolingCube())
-
-    mock_cube = params['cStruc_cooling_nonCIE'].value
-    net_cooling = np.ones((20, 20, 20)) * (-23.0)
-    params['cStruc_net_nonCIE_interpolation'] = MockParam(
-        scipy.interpolate.RegularGridInterpolator(
-            (mock_cube.ndens, mock_cube.temp, mock_cube.phi),
-            net_cooling,
-            method='linear',
-            bounds_error=False,
-            fill_value=-23.0
-        )
-    )
+    # Non-CIE cooling - use TRINITY's function
+    cooling_nonCIE, heating_nonCIE, netcooling_interpolation = non_CIE.get_coolingStructure(params)
+    params['cStruc_cooling_nonCIE'] = MockParam(cooling_nonCIE)
+    params['cStruc_heating_nonCIE'] = MockParam(heating_nonCIE)
+    params['cStruc_net_nonCIE_interpolation'] = MockParam(netcooling_interpolation)
+    # Update t_previousCoolingUpdate so it doesn't recalculate immediately
+    params['t_previousCoolingUpdate'] = MockParam(params['t_now'].value)
 
 
 def make_mock_params(snapshot: dict) -> MockParamsDict:
@@ -295,24 +263,20 @@ def make_mock_params(snapshot: dict) -> MockParamsDict:
     # Set up SB99 feedback interpolation
     params['SB99f'] = MockParam(create_sb99f_from_snapshot(snapshot))
 
-    # Set up cooling interpolation
-    setup_cooling_interpolation(snapshot, params)
-
-    # Ensure required parameters exist
-    # Note: t_previousCoolingUpdate should stay at 1e30 to trigger cooling update
-    # The path_cooling_nonCIE needs to point to the correct location
+    # Fix cooling paths BEFORE loading cooling data
+    # The snapshot has paths from local machine, need to use test/mockParams/mockCooling/
     if 'path_cooling_nonCIE' in params:
-        # Fix path to use test/mockParams/mockCooling/ instead of lib/cooling/
         orig_path = params['path_cooling_nonCIE'].value
         if isinstance(orig_path, str) and '/Users/' in orig_path:
             params['path_cooling_nonCIE'] = MockParam(os.path.join(TEST_DIR, 'mockParams', 'mockCooling', 'opiate/'))
 
-    # Also fix path_cooling_CIE if needed
     if 'path_cooling_CIE' in params:
         orig_path = params['path_cooling_CIE'].value
         if isinstance(orig_path, str) and '/Users/' in orig_path:
-            # Use the Gnat-Ferland cooling curve
             params['path_cooling_CIE'] = MockParam(os.path.join(TEST_DIR, 'mockParams', 'mockCooling', 'CIE', 'coolingCIE_3_Gnat-Ferland2012.dat'))
+
+    # Now set up cooling interpolation using the corrected paths
+    setup_cooling_interpolation(snapshot, params)
 
     if 't_next' not in params:
         params['t_next'] = MockParam(params['t_now'].value + 1e-6)
