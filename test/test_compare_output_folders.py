@@ -57,7 +57,7 @@ PROJECT_ROOT = find_project_root()
 DEFAULT_OUTPUT_DIR = PROJECT_ROOT / 'outputs'
 
 # Parameters of interest by category
-ESSENTIAL_PARAMS = ['R1', 'R2', 'rShell', 'Pb', 'Eb', 'T0']
+ESSENTIAL_PARAMS = ['R1', 'R2', 'rShell', 'Pb', 'Eb', 'T0', 'v2']
 
 
 # =============================================================================

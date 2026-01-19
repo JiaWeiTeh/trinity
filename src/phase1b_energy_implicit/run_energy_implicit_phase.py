@@ -142,27 +142,30 @@ def ODE_equations(t, y, params):
     # Part 1: find acceleration and velocity
     # =============================================================================
     # get current feedback value
-    [t, Qi, Li, Ln, Lbol, Lmech_W, Lmech_SN, Lmech_total, pdot_W, pdot_SN, pdot_total, pdotdot_total, v_mech_total] = get_currentSB99feedback(t, params)
+    # [t, Qi, Li, Ln, Lbol, Lmech_W, Lmech_SN, Lmech_total, pdot_W, pdot_SN, pdot_total, pdotdot_total, v_mech_total] = get_currentSB99feedback(t, params)
+    feedback = get_currentSB99feedback(t, params)
     # Extract derived values from params for backward compatibility
-    Lmech_total = params['Lmech_total'].value
-    v_mech_total = params['v_mech_total'].value
-    pdot_total = params['pdot_total'].value
-    pdotdot_total = params['pdotdot_total'].value
+    from src._input.dictionary import updateDict
+    updateDict(params, feedback)
+    # Lmech_total = params['Lmech_total'].value
+    # v_mech_total = params['v_mech_total'].value
+    # pdot_total = params['pdot_total'].value
+    # pdotdot_total = params['pdotdot_total'].value
     # run shell structure calculations
     shell_structure.shell_structure(params)
     # get time derivative of radius and velocity from ode equations
-    rd, vd, _, _ = energy_phase_ODEs.get_ODE_Edot(y, t, params)
+    rd, vd, _ = energy_phase_ODEs.get_ODE_Edot([R2, v2, Eb], t, params)
     
     # here we record radius trends across time, so that we can interpolate in the future
-    params['array_t_now'].value = np.concatenate([params['array_t_now'].value, [t]])
-    params['array_R2'].value = np.concatenate([params['array_R2'].value, [R2]])
-    params['array_R1'].value = np.concatenate([params['array_R1'].value, [params['R1'].value]])
-    params['array_v2'].value = np.concatenate([params['array_v2'].value, [v2]])
-    params['array_T0'].value = np.concatenate([params['array_T0'].value, [T0]])
+    # params['array_t_now'].value = np.concatenate([params['array_t_now'].value, [t]])
+    # params['array_R2'].value = np.concatenate([params['array_R2'].value, [R2]])
+    # params['array_R1'].value = np.concatenate([params['array_R1'].value, [params['R1'].value]])
+    # params['array_v2'].value = np.concatenate([params['array_v2'].value, [v2]])
+    # params['array_T0'].value = np.concatenate([params['array_T0'].value, [T0]])
     # here is where the interpolation is done
     mShell, mShell_dot = mass_profile.get_mass_profile(R2, params,
                                                    return_mdot = True, 
-                                                   rdot_arr = v2)
+                                                   rdot = v2)
 
     # if mShell or mShell_dot is a single element list, extract value
     if hasattr(mShell, '__len__'):
@@ -174,7 +177,7 @@ def ODE_equations(t, y, params):
             mShell_dot = mShell_dot[0]
     
     # update
-    params['array_mShell'].value = np.concatenate([params['array_mShell'].value, [mShell]])
+    # params['array_mShell'].value = np.concatenate([params['array_mShell'].value, [mShell]])
             
     # =============================================================================
     # Part 2: find beta, delta and convert them to dEdt and dTdt
