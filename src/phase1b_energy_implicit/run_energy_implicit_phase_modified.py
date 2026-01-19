@@ -244,8 +244,6 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         updateDict(params, feedback)
 
         # Extract feedback values we'll need later
-        Lmech_total = feedback.Lmech_total
-        v_mech_total = feedback.v_mech_total
 
         # Calculate shell structure using pure function
         shell_props = shell_structure_pure(params)
@@ -290,10 +288,8 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         # ---------------------------------------------------------------------
         # Convert beta/delta to Ed, Td using pure functions
         # ---------------------------------------------------------------------
-        pdot_total = params['pdot_total'].value
-        pdotdot_total = params['pdotdot_total'].value
 
-        Ed = beta2Edot_pure(beta, Pb, t_now, R1, R2, v2, Eb, pdot_total, pdotdot_total)
+        Ed = beta2Edot_pure(beta, Pb, t_now, R1, R2, v2, Eb, feedback.pdot_total, feedback.pdotdot_total)
         Td = delta2dTdt_pure(t_now, T0, delta)
 
         # ---------------------------------------------------------------------
@@ -363,7 +359,7 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
             Lloss_param = params.get('bubble_Lloss', None)
             Lloss = Lloss_param.value if Lloss_param and hasattr(Lloss_param, 'value') else 0.0
 
-        Lgain = Lmech_total  # From feedback calculation above
+        Lgain = feedback.Lmech_total  # From feedback calculation above
 
         # Store for reference
         params['bubble_Lgain'].value = Lgain
