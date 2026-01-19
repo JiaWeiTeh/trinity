@@ -37,6 +37,12 @@ from src._functions.unit_conversions import CONV, CGS
 # =============================================================================
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
+# =============================================================================
+# Configuration
+# =============================================================================
+# Number of random snapshots to test (can be overridden via command line)
+NUM_SNAPSHOTS_TO_TEST = 5
+
 
 # =============================================================================
 # Helper class for mock parameters
@@ -581,19 +587,27 @@ def print_comparison_table(results: list):
     print("=" * 100)
 
 
-def test_betadelta_comparison():
+def test_betadelta_comparison(num_snapshots: int = None):
     """
     Test get_betadelta vs get_betadelta_modified on random snapshots.
+
+    Parameters
+    ----------
+    num_snapshots : int, optional
+        Number of random snapshots to test. Defaults to NUM_SNAPSHOTS_TO_TEST.
     """
+    if num_snapshots is None:
+        num_snapshots = NUM_SNAPSHOTS_TO_TEST
+
     print("=" * 70)
     print("Testing get_betadelta vs get_betadelta_modified")
     print("=" * 70)
 
-    jsonl_path = os.path.join(PROJECT_ROOT, 'comparison', '1e7_sfe001_n1e4_test_dictionary.jsonl')
+    jsonl_path = os.path.join(PROJECT_ROOT, 'test', '1e7_sfe020_n1e4_test_dictionary.jsonl')
 
     if not os.path.exists(jsonl_path):
         print(f"ERROR: Test dictionary not found at {jsonl_path}")
-        print("Please ensure the comparison data exists.")
+        print("Please ensure the test data exists.")
         return False
 
     # Get total lines
@@ -602,7 +616,8 @@ def test_betadelta_comparison():
 
     # Pick random snapshots - use later snapshots where beta/delta matter more
     random.seed(42)
-    snapshot_lines = sorted(random.sample(range(50, max_line + 1), min(10, max_line - 49)))
+    num_to_sample = min(num_snapshots, max_line - 49)
+    snapshot_lines = sorted(random.sample(range(50, max_line + 1), num_to_sample))
 
     print(f"\nTesting {len(snapshot_lines)} random snapshots from lines {snapshot_lines[0]}-{snapshot_lines[-1]}")
     print(f"Selected lines: {snapshot_lines}")
@@ -648,10 +663,17 @@ def test_betadelta_comparison():
 
 
 if __name__ == '__main__':
+    import argparse
+
+    parser = argparse.ArgumentParser(description='Beta-Delta Solver Comparison Test')
+    parser.add_argument('-n', '--num-snapshots', type=int, default=NUM_SNAPSHOTS_TO_TEST,
+                        help=f'Number of random snapshots to test (default: {NUM_SNAPSHOTS_TO_TEST})')
+    args = parser.parse_args()
+
     print("Beta-Delta Solver Comparison Test")
     print("==================================\n")
 
-    passed = test_betadelta_comparison()
+    passed = test_betadelta_comparison(num_snapshots=args.num_snapshots)
 
     print("\n" + "=" * 70)
     if passed:
