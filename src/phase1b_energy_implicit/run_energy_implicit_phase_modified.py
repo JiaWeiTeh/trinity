@@ -27,11 +27,10 @@ import src.cloud_properties.mass_profile as mass_profile
 import src.bubble_structure.get_bubbleParams as get_bubbleParams
 import src._functions.unit_conversions as cvt
 import src.cooling.non_CIE.read_cloudy as non_CIE
-import src.shell_structure.shell_structure as shell_structure
 import src._functions.operations as operations
 from src.sb99.update_feedback import get_currentSB99feedback
 
-# Import pure functions
+# Import pure/modified functions
 from src.phase1_energy.energy_phase_ODEs_modified import (
     StaticODEParams,
     get_ODE_Edot_pure,
@@ -44,6 +43,10 @@ from src.phase1b_energy_implicit.get_betadelta_modified import (
     delta2dTdt_pure,
     compute_R1_Pb,
     BetaDeltaResult,
+)
+from src.shell_structure.shell_structure_modified import (
+    shell_structure_pure,
+    ShellProperties,
 )
 
 logger = logging.getLogger(__name__)
@@ -239,7 +242,22 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         Lmech_total = params['Lmech_total'].value
         v_mech_total = params['v_mech_total'].value
 
-        shell_structure.shell_structure(params)
+        # Calculate shell structure using pure function
+        shell_props = shell_structure_pure(params)
+
+        # Update params with shell properties
+        params['shell_n0'].value = shell_props.shell_n0
+        params['rShell'].value = shell_props.rShell
+        params['shell_thickness'].value = shell_props.shell_thickness
+        params['shell_fAbsorbedIon'].value = shell_props.shell_fAbsorbedIon
+        params['shell_fAbsorbedNeu'].value = shell_props.shell_fAbsorbedNeu
+        params['shell_fAbsorbedWeightedTotal'].value = shell_props.shell_fAbsorbedWeightedTotal
+        params['shell_fIonisedDust'].value = shell_props.shell_fIonisedDust
+        params['shell_nMax'].value = shell_props.shell_nMax
+        params['shell_tauKappaRatio'].value = shell_props.shell_tauKappaRatio
+        params['shell_F_rad'].value = shell_props.shell_F_rad
+        params['isDissolved'].value = shell_props.isDissolved
+        params['is_fullyIonised'].value = shell_props.is_fullyIonised
 
         # ---------------------------------------------------------------------
         # Calculate beta and delta using pure function
