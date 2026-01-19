@@ -8,9 +8,10 @@ beta and delta values without mutating the params dictionary.
 
 Key improvements over get_betadelta.py:
 1. Pure functions that return results instead of mutating params
-2. scipy.optimize.minimize instead of brute-force grid search
-3. Reuses get_bubbleproperties_pure from bubble_luminosity_modified
-4. Proper logging instead of print statements
+2. BubbleParamsView avoids expensive deepcopy (25-100x faster per evaluation)
+3. Grid search (default) or L-BFGS-B optimizer (optional via method='lbfgsb')
+4. Reuses get_bubbleproperties_pure from bubble_luminosity_modified
+5. Proper logging instead of print statements
 
 @author: TRINITY Team (refactored for pure functions)
 """
@@ -43,6 +44,10 @@ DELTA_MAX = 0.0
 # Convergence thresholds
 RESIDUAL_THRESHOLD = 1e-4
 MAX_ITERATIONS = 15
+
+# Grid search parameters (matching original get_betadelta.py)
+GRID_SIZE = 5  # 5x5 grid
+GRID_EPSILON = 0.02  # Search range around guess
 
 
 # =============================================================================
@@ -362,11 +367,10 @@ def solve_betadelta_pure(
     beta_guess: float,
     delta_guess: float,
     params,
+    method: str = 'grid',
 ) -> BetaDeltaResult:
     """
-    Solve for optimal beta and delta using scipy.optimize.minimize.
-
-    This replaces the brute-force grid search with an efficient optimizer.
+    Solve for optimal beta and delta.
 
     Parameters
     ----------
@@ -376,6 +380,8 @@ def solve_betadelta_pure(
         Initial guess for delta
     params : dict-like
         Parameter dictionary (not mutated)
+    method : str, optional
+        Solver method: 'grid' (default, fast) or 'lbfgsb' (optimizer)
 
     Returns
     -------
@@ -401,13 +407,90 @@ def solve_betadelta_pure(
             bubble_properties=bubble_props,
         )
 
-    # Define objective function for optimizer
+    if method == 'grid':
+        # Grid search (fast, fixed 25 evaluations)
+        beta_opt, delta_opt, iterations = _solve_grid(beta_guess, delta_guess, params)
+    elif method == 'lbfgsb':
+        # L-BFGS-B optimizer (more evaluations, may be slower)
+        beta_opt, delta_opt, iterations = _solve_lbfgsb(beta_guess, delta_guess, params)
+    else:
+        raise ValueError(f"Unknown method: {method}. Use 'grid' or 'lbfgsb'.")
+
+    # Get final residuals with bubble properties
+    Edot_res, T_res, bubble_props = get_residual_pure(
+        beta_opt, delta_opt, params, return_bubble_props=True
+    )
+    total_res = Edot_res**2 + T_res**2
+
+    converged = total_res < RESIDUAL_THRESHOLD
+
+    logger.debug(
+        f"Beta-delta solved ({method}): beta={beta_opt:.4f}, delta={delta_opt:.4f}, "
+        f"residual={total_res:.2e}, converged={converged}, iter={iterations}"
+    )
+
+    return BetaDeltaResult(
+        beta=beta_opt,
+        delta=delta_opt,
+        Edot_residual=Edot_res,
+        T_residual=T_res,
+        total_residual=total_res,
+        converged=converged,
+        iterations=iterations,
+        bubble_properties=bubble_props,
+    )
+
+
+def _solve_grid(
+    beta_guess: float,
+    delta_guess: float,
+    params,
+) -> Tuple[float, float, int]:
+    """
+    Grid search solver using BubbleParamsView (no deepcopy).
+
+    Searches a 5x5 grid around the guess, matching original get_betadelta.py.
+    """
+    # Generate grid around guess
+    beta_min = max(BETA_MIN, beta_guess - GRID_EPSILON)
+    beta_max = min(BETA_MAX, beta_guess + GRID_EPSILON)
+    delta_min = max(DELTA_MIN, delta_guess - GRID_EPSILON)
+    delta_max = min(DELTA_MAX, delta_guess + GRID_EPSILON)
+
+    beta_range = np.linspace(beta_min, beta_max, GRID_SIZE)
+    delta_range = np.linspace(delta_min, delta_max, GRID_SIZE)
+
+    # Evaluate all grid points
+    best_residual = float('inf')
+    best_beta, best_delta = beta_guess, delta_guess
+
+    for beta in beta_range:
+        for delta in delta_range:
+            try:
+                Edot_res, T_res, _ = get_residual_pure(beta, delta, params)
+                residual = Edot_res**2 + T_res**2
+                if residual < best_residual:
+                    best_residual = residual
+                    best_beta, best_delta = beta, delta
+            except Exception as e:
+                logger.warning(f"Grid point ({beta:.3f}, {delta:.3f}) failed: {e}")
+                continue
+
+    return best_beta, best_delta, GRID_SIZE * GRID_SIZE
+
+
+def _solve_lbfgsb(
+    beta_guess: float,
+    delta_guess: float,
+    params,
+) -> Tuple[float, float, int]:
+    """
+    L-BFGS-B optimizer solver.
+    """
     def objective(x):
         beta, delta = x
-        # Enforce bounds
         beta = np.clip(beta, BETA_MIN, BETA_MAX)
         delta = np.clip(delta, DELTA_MIN, DELTA_MAX)
-
         try:
             Edot_res, T_res, _ = get_residual_pure(beta, delta, params)
             return Edot_res**2 + T_res**2
@@ -415,7 +498,6 @@ def solve_betadelta_pure(
             logger.warning(f"Residual calculation failed: {e}")
             return 1e10
 
-    # Use scipy.optimize.minimize with bounds
     bounds = [(BETA_MIN, BETA_MAX), (DELTA_MIN, DELTA_MAX)]
     x0 = np.array([beta_guess, delta_guess])
 
@@ -431,38 +513,10 @@ def solve_betadelta_pure(
                 'gtol': 1e-6,
             }
         )
-
-        beta_opt, delta_opt = result.x
-        iterations = result.nit
-
+        return result.x[0], result.x[1], result.nit
     except Exception as e:
         logger.warning(f"Optimizer failed: {e}, using initial guess")
-        beta_opt, delta_opt = beta_guess, delta_guess
-        iterations = 0
-
-    # Get final residuals with bubble properties
-    Edot_res, T_res, bubble_props = get_residual_pure(
-        beta_opt, delta_opt, params, return_bubble_props=True
-    )
-    total_res = Edot_res**2 + T_res**2
-
-    converged = total_res < RESIDUAL_THRESHOLD
-
-    logger.debug(
-        f"Beta-delta solved: beta={beta_opt:.4f}, delta={delta_opt:.4f}, "
-        f"residual={total_res:.2e}, converged={converged}, iter={iterations}"
-    )
-
-    return BetaDeltaResult(
-        beta=beta_opt,
-        delta=delta_opt,
-        Edot_residual=Edot_res,
-        T_residual=T_res,
-        total_residual=total_res,
-        converged=converged,
-        iterations=iterations,
-        bubble_properties=bubble_props,
-    )
+        return beta_guess, delta_guess, 0
 
 
 # =============================================================================
