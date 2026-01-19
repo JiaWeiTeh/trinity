@@ -18,6 +18,10 @@ import src._functions.unit_conversions as cvt
 sys.path.insert(0, str(Path(__file__).parent))
 from load_snapshots import load_snapshots
 
+# Output - save to project root's fig/ directory
+FIG_DIR = Path(__file__).parent.parent.parent / "fig"
+FIG_DIR.mkdir(parents=True, exist_ok=True)
+
 
 # Path to data file (can be .json or .jsonl)
 # path2data = r'/Users/jwt/unsync/Code/Trinity/outputs/1e5_sfe030_n1e4/dictionary.json'
@@ -93,9 +97,7 @@ plt.yscale('log')
 plt.ylabel('$n$ [$\mathrm{cm}^{-3}$]')
 plt.xlabel('$r$ [pc]')
 
-path2fig = r'/Users/jwt/unsync/Code/Trinity/fig/'
-
-plt.savefig(path2fig + 'BE_profile_dens.pdf')
+plt.savefig(FIG_DIR / 'BE_profile_dens.pdf')
 plt.show()
 
 
@@ -143,9 +145,7 @@ plt.xlabel('$r$ [pc]')
 
 
 
-path2fig = r'/Users/jwt/unsync/Code/Trinity/fig/'
-
-plt.savefig(path2fig + 'BE_profile_mass.pdf')
+plt.savefig(FIG_DIR / 'BE_profile_mass.pdf')
 plt.show()
 
 

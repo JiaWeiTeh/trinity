@@ -149,9 +149,11 @@ plt.tight_layout()
 
 
 
-path2fig = r'/Users/jwt/unsync/Code/Trinity/fig/'
+# Output - save to project root's fig/ directory
+FIG_DIR = Path(__file__).parent.parent.parent / "fig"
+FIG_DIR.mkdir(parents=True, exist_ok=True)
 
-# plt.savefig(path2fig + 'bubblePhase.pdf')
+# plt.savefig(FIG_DIR / 'bubblePhase.pdf')
 plt.show()
 
 
