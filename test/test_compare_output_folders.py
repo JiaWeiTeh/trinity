@@ -172,6 +172,43 @@ def is_evolving_parameter(snapshots: list, key: str, rtol: float = 1e-6) -> bool
     return rel_diff > rtol
 
 
+def get_common_time_range(snapshots_orig: list, snapshots_mod: list) -> tuple:
+    """
+    Get the common time range between two snapshot sets.
+
+    Returns (t_min, t_max) where t_max is the minimum of the two end times.
+    This ensures we only compare overlapping time periods.
+    """
+    # Get time arrays
+    t_orig = np.array([s.get('t_now', np.nan) for s in snapshots_orig], dtype=float)
+    t_mod = np.array([s.get('t_now', np.nan) for s in snapshots_mod], dtype=float)
+
+    # Filter NaN values
+    t_orig = t_orig[~np.isnan(t_orig)]
+    t_mod = t_mod[~np.isnan(t_mod)]
+
+    if len(t_orig) == 0 or len(t_mod) == 0:
+        return 0.0, 0.0
+
+    # Common range: start at max of mins, end at min of maxs
+    t_min = max(t_orig.min(), t_mod.min())
+    t_max = min(t_orig.max(), t_mod.max())
+
+    return t_min, t_max
+
+
+def filter_snapshots_by_time(snapshots: list, t_min: float, t_max: float) -> list:
+    """
+    Filter snapshots to only include those within the time range [t_min, t_max].
+    """
+    filtered = []
+    for snap in snapshots:
+        t = snap.get('t_now', np.nan)
+        if not np.isnan(t) and t_min <= t <= t_max:
+            filtered.append(snap)
+    return filtered
+
+
 # =============================================================================
 # Folder discovery functions
 # =============================================================================
@@ -313,20 +350,37 @@ def generate_all_comparison_plots(
 ):
     """
     Generate all comparison plots for a model pair.
+
+    Only compares data within the common time range (up to the shorter simulation's end time).
     """
-    # Get all scalar keys from both datasets
-    keys_orig = get_scalar_keys(snapshots_orig)
-    keys_mod = get_scalar_keys(snapshots_mod)
+    # Get common time range
+    t_min, t_max = get_common_time_range(snapshots_orig, snapshots_mod)
+    print(f"\n  Common time range: [{t_min:.4e}, {t_max:.4e}] Myr")
+
+    # Filter snapshots to common time range
+    snapshots_orig_filtered = filter_snapshots_by_time(snapshots_orig, t_min, t_max)
+    snapshots_mod_filtered = filter_snapshots_by_time(snapshots_mod, t_min, t_max)
+
+    print(f"  Using {len(snapshots_orig_filtered)}/{len(snapshots_orig)} original snapshots")
+    print(f"  Using {len(snapshots_mod_filtered)}/{len(snapshots_mod)} modified snapshots")
+
+    if len(snapshots_orig_filtered) == 0 or len(snapshots_mod_filtered) == 0:
+        print("  ERROR: No overlapping time range found")
+        return
+
+    # Get all scalar keys from both datasets (use filtered data)
+    keys_orig = get_scalar_keys(snapshots_orig_filtered)
+    keys_mod = get_scalar_keys(snapshots_mod_filtered)
     all_keys = keys_orig | keys_mod
 
-    print(f"\n  Found {len(all_keys)} scalar parameters")
+    print(f"  Found {len(all_keys)} scalar parameters")
 
     # A) Shell parameters (keys starting with shell_)
     shell_keys = sorted([k for k in all_keys if k.startswith('shell_')])
     if shell_keys:
         print(f"  Plotting {len(shell_keys)} shell parameters...")
         plot_comparison_grid(
-            snapshots_orig, snapshots_mod,
+            snapshots_orig_filtered, snapshots_mod_filtered,
             shell_keys,
             f"{model_name}: Shell Parameters Comparison",
             output_dir / "comparison_shell_parameters.pdf"
@@ -337,7 +391,7 @@ def generate_all_comparison_plots(
     if bubble_keys:
         print(f"  Plotting {len(bubble_keys)} bubble parameters...")
         plot_comparison_grid(
-            snapshots_orig, snapshots_mod,
+            snapshots_orig_filtered, snapshots_mod_filtered,
             bubble_keys,
             f"{model_name}: Bubble Parameters Comparison",
             output_dir / "comparison_bubble_parameters.pdf"
@@ -348,7 +402,7 @@ def generate_all_comparison_plots(
     if essential_keys:
         print(f"  Plotting {len(essential_keys)} essential parameters...")
         plot_comparison_grid(
-            snapshots_orig, snapshots_mod,
+            snapshots_orig_filtered, snapshots_mod_filtered,
             essential_keys,
             f"{model_name}: Essential Parameters Comparison",
             output_dir / "comparison_essential_parameters.pdf"
@@ -359,7 +413,7 @@ def generate_all_comparison_plots(
     if force_keys:
         print(f"  Plotting {len(force_keys)} force parameters...")
         plot_comparison_grid(
-            snapshots_orig, snapshots_mod,
+            snapshots_orig_filtered, snapshots_mod_filtered,
             force_keys,
             f"{model_name}: Force Parameters Comparison",
             output_dir / "comparison_force_parameters.pdf"
@@ -372,16 +426,16 @@ def generate_all_comparison_plots(
     # Filter to only evolving parameters (different at t_min vs t_max)
     evolving_remaining = []
     for key in sorted(remaining_keys):
-        # Check if evolving in either original or modified
-        evolves_orig = is_evolving_parameter(snapshots_orig, key)
-        evolves_mod = is_evolving_parameter(snapshots_mod, key)
+        # Check if evolving in either original or modified (using filtered data)
+        evolves_orig = is_evolving_parameter(snapshots_orig_filtered, key)
+        evolves_mod = is_evolving_parameter(snapshots_mod_filtered, key)
         if evolves_orig or evolves_mod:
             evolving_remaining.append(key)
 
     if evolving_remaining:
         print(f"  Plotting {len(evolving_remaining)} remaining evolving parameters...")
         plot_comparison_grid(
-            snapshots_orig, snapshots_mod,
+            snapshots_orig_filtered, snapshots_mod_filtered,
             evolving_remaining,
             f"{model_name}: Other Evolving Parameters Comparison",
             output_dir / "comparison_remaining_parameters.pdf"
@@ -459,16 +513,20 @@ def compare_output_folders(output_dir: Path = None):
             orig_path.name
         )
 
-        # Print summary statistics
-        print("\n  Summary Statistics:")
+        # Print summary statistics (using common time range)
+        t_min, t_max = get_common_time_range(snapshots_orig, snapshots_mod)
+        snapshots_orig_filtered = filter_snapshots_by_time(snapshots_orig, t_min, t_max)
+        snapshots_mod_filtered = filter_snapshots_by_time(snapshots_mod, t_min, t_max)
+
+        print(f"\n  Summary Statistics (at t={t_max:.4e} Myr, common end time):")
         for key in ESSENTIAL_PARAMS:
-            t_orig, v_orig = extract_time_series(snapshots_orig, key)
-            t_mod, v_mod = extract_time_series(snapshots_mod, key)
+            t_orig, v_orig = extract_time_series(snapshots_orig_filtered, key)
+            t_mod, v_mod = extract_time_series(snapshots_mod_filtered, key)
 
             if np.all(np.isnan(v_orig)) and np.all(np.isnan(v_mod)):
                 continue
 
-            # Get final values
+            # Get final values (at common end time)
             final_orig = v_orig[~np.isnan(v_orig)][-1] if any(~np.isnan(v_orig)) else np.nan
             final_mod = v_mod[~np.isnan(v_mod)][-1] if any(~np.isnan(v_mod)) else np.nan
 
