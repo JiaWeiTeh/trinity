@@ -196,10 +196,13 @@ def run_expansion(params):
     
     print('here is your dictionary', params)
     
+    from src._input.dictionary import save_debug_snapshot
+    save_debug_snapshot(params, './test/mockParams/')
+    
     # =============================================================================
     # Phase 1a: Energy driven phase.
     # =============================================================================
-
+    
     params['current_phase'].value = 'energy'
 
     logger.info("-" * 60)
