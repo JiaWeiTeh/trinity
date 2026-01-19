@@ -6,21 +6,13 @@ Created on Wed Dec 17 20:03:19 2025
 @author: Jia Wei Teh
 """
 
-import json
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.transforms as mtransforms
 from pathlib import Path
 from matplotlib.lines import Line2D
-
-
-
-import json
-import numpy as np
-import matplotlib.pyplot as plt
-from pathlib import Path
-import matplotlib.transforms as mtransforms
 from matplotlib.patches import Patch
+from load_snapshots import load_snapshots, find_data_file
 
 print("...plotting radius comparison")
 
@@ -69,19 +61,17 @@ def smooth_1d(y, window, mode="edge"):
     return np.convolve(ypad, kernel, mode="valid")
 
 # ---------- load beta/delta + R2 ----------
-def load_cooling_run(json_path: Path):
-    with json_path.open("r") as f:
-        data = json.load(f)
+def load_cooling_run(data_path: Path):
+    """Load cooling run data. Supports both JSON and JSONL formats."""
+    snaps = load_snapshots(data_path)
 
-    snap_keys = sorted((k for k in data.keys() if str(k).isdigit()), key=lambda k: int(k))
-    snaps = [data[k] for k in snap_keys]
-    
-    additional_param = None
-    
+    if not snaps:
+        raise ValueError(f"No snapshots found in {data_path}")
+
     t     = np.array([s["t_now"] for s in snaps], dtype=float)
     R2    = np.array([s["R2"] for s in snaps], dtype=float)
     # additional_param    = np.array([s["F_ram"] for s in snaps], dtype=float)
-    additional_param    = np.array([s["Pb"] for s in snaps], dtype=float)
+    additional_param    = np.array([s.get("Pb", np.nan) for s in snaps], dtype=float)
     phase = np.array([s.get("current_phase", "") for s in snaps])
 
     beta  = np.array([s.get("cool_beta", np.nan) for s in snaps], dtype=float)
@@ -89,7 +79,7 @@ def load_cooling_run(json_path: Path):
 
     rcloud = float(snaps[0].get("rCloud", np.nan))
 
-    # ensure increasing time (important for “first crossing” + plotting)
+    # ensure increasing time (important for "first crossing" + plotting)
     if np.any(np.diff(t) < 0):
         order = np.argsort(t)
         t, R2, phase, beta, delta, additional_param = t[order], R2[order], phase[order], beta[order], delta[order], additional_param[order]
@@ -182,15 +172,15 @@ for ndens in ndens_list:
         for j, sfe in enumerate(sfe_list):
             ax = axes[i, j]
             run_name = f"{mCloud}_sfe{sfe}_n{ndens}"
-            json_path = BASE_DIR / run_name / "dictionary.json"
+            data_path = find_data_file(BASE_DIR, run_name)
 
-            if not json_path.exists():
+            if data_path is None:
                 ax.text(0.5, 0.5, "missing", ha="center", va="center", transform=ax.transAxes)
                 ax.set_axis_off()
                 continue
 
             try:
-                t, R2, phase, beta, delta, rcloud, additional_param = load_cooling_run(json_path)
+                t, R2, phase, beta, delta, rcloud, additional_param = load_cooling_run(data_path)
                 plot_cooling_on_ax(
                     ax, t, R2, phase, beta, delta, rcloud, additional_param,
                     smooth_window=7,      # set None/1 to disable

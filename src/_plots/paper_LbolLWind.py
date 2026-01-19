@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import json
 import numpy as np
 import matplotlib.pyplot as plt
 from pathlib import Path
 from matplotlib.lines import Line2D
 import matplotlib.transforms as mtransforms
+from load_snapshots import load_snapshots, find_data_file
 
 print("...plotting Qi(or Li) vs Lmech_total with ratio on twin axis")
 
@@ -69,13 +69,15 @@ def ev_to_erg(ev):
     return ev * 1.602176634e-12
 
 
-def load_run(json_path: Path):
-    """Load t, phase, Li, Lmech_total, (optional) Qi, and R2/rCloud for breakout line."""
-    with json_path.open("r") as f:
-        data = json.load(f)
+def load_run(data_path: Path):
+    """Load t, phase, Li, Lmech_total, (optional) Qi, and R2/rCloud for breakout line.
 
-    snap_keys = sorted((k for k in data.keys() if str(k).isdigit()), key=lambda k: int(k))
-    snaps = [data[k] for k in snap_keys]
+    Supports both JSON and JSONL formats.
+    """
+    snaps = load_snapshots(data_path)
+
+    if not snaps:
+        raise ValueError(f"No snapshots found in {data_path}")
 
     t = np.array([s["t_now"] for s in snaps], dtype=float)
     phase = np.array([s.get("current_phase", "") for s in snaps])
@@ -240,15 +242,15 @@ for ndens in ndens_list:
         for j, sfe in enumerate(sfe_list):
             ax = axes[i, j]
             run_name = f"{mCloud}_sfe{sfe}_n{ndens}"
-            json_path = BASE_DIR / run_name / "dictionary.json"
+            data_path = find_data_file(BASE_DIR, run_name)
 
-            if not json_path.exists():
+            if data_path is None:
                 ax.text(0.5, 0.5, "missing", ha="center", va="center", transform=ax.transAxes)
                 ax.set_axis_off()
                 continue
 
             try:
-                t, phase, Li, Lmech_total, Qi, R2, rcloud = load_run(json_path)
+                t, phase, Li, Lmech_total, Qi, R2, rcloud = load_run(data_path)
                 axr = plot_panel(ax, t, phase, Li, Lmech_total, Qi, R2, rcloud)
             except Exception as e:
                 print(f"Error in {run_name}: {e}")

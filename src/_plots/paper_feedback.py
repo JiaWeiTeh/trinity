@@ -11,13 +11,13 @@ PLUS an extra top component: PISM (white band at the top).
 - X ticks on every subplot; x tick labels only on bottom row.
 """
 
-import json
 import numpy as np
 import matplotlib.pyplot as plt
 from pathlib import Path
 import matplotlib.transforms as mtransforms
 from matplotlib.patches import Patch
 from matplotlib.lines import Line2D
+from load_snapshots import load_snapshots, find_data_file
 
 print("...plotting force fractions with ram composition overlay + PISM")
 
@@ -93,12 +93,12 @@ def smooth_2d(arr, window, mode="edge"):
 
 def plot_single_run(mCloud, ndens, sfe):
     run_name = f"{mCloud}_sfe{sfe}_n{ndens}"
-    json_path = BASE_DIR / run_name / "dictionary.json"
-    if not json_path.exists():
-        print(f"Missing: {json_path}")
+    data_path = find_data_file(BASE_DIR, run_name)
+    if data_path is None:
+        print(f"Missing data for: {run_name}")
         return
 
-    t, R2, phase, base_forces, overlay_forces, rcloud = load_run(json_path)
+    t, R2, phase, base_forces, overlay_forces, rcloud = load_run(data_path)
 
     fig, ax = plt.subplots(figsize=(6, 4), dpi=400, constrained_layout=True)
     plot_run_on_ax(
@@ -125,12 +125,12 @@ def plot_single_run(mCloud, ndens, sfe):
     plt.show()
     plt.close(fig)
 
-def load_run(json_path: Path):
-    with json_path.open("r") as f:
-        data = json.load(f)
+def load_run(data_path: Path):
+    """Load run data. Supports both JSON and JSONL formats."""
+    snaps = load_snapshots(data_path)
 
-    snap_keys = sorted((k for k in data.keys() if str(k).isdigit()), key=lambda k: int(k))
-    snaps = [data[k] for k in snap_keys]
+    if not snaps:
+        raise ValueError(f"No snapshots found in {data_path}")
 
     t     = np.array([s["t_now"] for s in snaps], dtype=float)
     R2    = np.array([s.get("R2", np.nan) for s in snaps], dtype=float)
@@ -341,15 +341,15 @@ else:
             for j, sfe in enumerate(sfe_list):
                 ax = axes[i, j]
                 run_name = f"{mCloud}_sfe{sfe}_n{ndens}"
-                json_path = BASE_DIR / run_name / "dictionary.json"
-    
-                if not json_path.exists():
+                data_path = find_data_file(BASE_DIR, run_name)
+
+                if data_path is None:
                     ax.text(0.5, 0.5, "missing", ha="center", va="center", transform=ax.transAxes)
                     ax.set_axis_off()
                     continue
-    
+
                 try:
-                    t, R2, phase, base_forces, overlay_forces, rcloud = load_run(json_path)
+                    t, R2, phase, base_forces, overlay_forces, rcloud = load_run(data_path)
                     plot_run_on_ax(
                         ax, t, R2, phase, base_forces, overlay_forces, rcloud,
                         alpha=0.75,
