@@ -221,7 +221,7 @@ def run_expansion(params):
     # if hasattr(use_adaptive_solver, 'value'):
     #     use_adaptive_solver = use_adaptive_solver.value
     
-    use_adaptive_solver = True
+    use_adaptive_solver = False
 
     if use_adaptive_solver:
         logger.info("Using modified energy phase (adaptive solve_ivp)")
