@@ -343,10 +343,6 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         params['Eb'].value = Eb
         params['T0'].value = T0
         params['cool_alpha'].value = t_now / R2 * v2
-        
-        mShell, mShell_dot = mass_profile.get_mass_profile(R2, params, return_mdot=True, rdot=v2)
-        params['shell_mass'].value = mShell
-        params['shell_massDot'].value = mShell_dot
 
         # ---------------------------------------------------------------------
         # Get feedback and shell structure
@@ -450,21 +446,7 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         beta_results.append(beta)
         delta_results.append(delta)
 
-        # ---------------------------------------------------------------------
-        # Update history arrays
-        # ---------------------------------------------------------------------
-        params['array_t_now'].value = np.concatenate([params['array_t_now'].value, [t_now]])
-        params['array_R2'].value = np.concatenate([params['array_R2'].value, [R2]])
-        params['array_R1'].value = np.concatenate([params['array_R1'].value, [R1]])
-        params['array_v2'].value = np.concatenate([params['array_v2'].value, [v2]])
-        params['array_T0'].value = np.concatenate([params['array_T0'].value, [T0]])
-
         mShell, mShell_dot = mass_profile.get_mass_profile(R2, params, return_mdot=True, rdot=v2)
-        if hasattr(mShell, '__len__') and len(mShell) == 1:
-            mShell = mShell[0]
-        if hasattr(mShell_dot, '__len__') and len(mShell_dot) == 1:
-            mShell_dot = mShell_dot[0]
-        params['array_mShell'].value = np.concatenate([params['array_mShell'].value, [mShell]])
         params['shell_mass'].value = mShell
         params['shell_massDot'].value = mShell_dot
 

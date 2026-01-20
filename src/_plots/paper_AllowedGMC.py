@@ -77,6 +77,11 @@ FIG_DIR = Path(__file__).parent.parent.parent / "fig"
 FIG_DIR.mkdir(parents=True, exist_ok=True)
 SAVE_PDF = True
 
+# Contours
+CONTOUR_FONT = 17
+CONTOUR_N = 5
+COLOUR_MAP = cmr.lavender.copy()
+
 
 # =============================================================================
 # Power-Law Cloud Functions
@@ -282,11 +287,11 @@ def plot_powerlaw_grids():
 
     # Colormap settings
     vmin, vmax = 0.01, 5.0
-    cmap = cmr.rainforest.copy()
+    cmap = COLOUR_MAP
     cmap.set_bad('lightgray', 0.5)  # Forbidden zones are light gray
 
     # Contour levels evenly spaced in log
-    contour_levels = np.logspace(np.log10(vmin), np.log10(vmax), 8)
+    contour_levels = np.logspace(np.log10(vmin), np.log10(vmax), CONTOUR_N)
 
     for idx, alpha in enumerate(ALPHA_VALUES):
         ax = axes[idx]
@@ -342,7 +347,7 @@ def plot_powerlaw_grids():
                 )
                 # Labels with proper spacing and path effects for readability
                 texts = ax.clabel(
-                    cs, inline=True, fontsize=7, fmt='%.2f',
+                    cs, inline=True, fontsize=CONTOUR_FONT, fmt='%.2f',
                     inline_spacing=3, rightside_up=True, use_clabeltext=True
                 )
                 # Add stroke effect for better visibility
@@ -393,11 +398,11 @@ def plot_BE_grids():
 
     # Colormap settings
     vmin, vmax = 0.01, 5.0
-    cmap = cmr.rainforest.copy()
+    cmap = COLOUR_MAP
     cmap.set_bad('lightgray', 0.5)  # Forbidden zones are light gray
 
     # Contour levels evenly spaced in log
-    contour_levels = np.logspace(np.log10(vmin), np.log10(vmax), 8)
+    contour_levels = np.logspace(np.log10(vmin), np.log10(vmax), CONTOUR_N)
 
     for idx, xi in enumerate(XI_VALUES):
         ax = axes[idx]
@@ -451,7 +456,7 @@ def plot_BE_grids():
                 )
                 # Labels with proper spacing and path effects for readability
                 texts = ax.clabel(
-                    cs, inline=True, fontsize=7, fmt='%.2f',
+                    cs, inline=True, fontsize=CONTOUR_FONT, fmt='%.2f',
                     inline_spacing=3, rightside_up=True, use_clabeltext=True
                 )
                 # Add stroke effect for better visibility
