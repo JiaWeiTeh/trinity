@@ -97,23 +97,106 @@ logger = logging.getLogger(__name__)
 # =============================================================================
 
 COOLING_UPDATE_INTERVAL = 5e-3  # Myr - recalculate cooling
-DT_SEGMENT = 1e-3  # Myr - segment duration for beta/delta updates
+DT_SEGMENT_INIT = 1e-3  # Myr - initial segment duration
+DT_SEGMENT_MIN = 1e-6   # Myr - minimum segment duration
+DT_SEGMENT_MAX = 1e-1   # Myr - maximum segment duration
 MAX_SEGMENTS = 5000
 FOUR_PI = 4.0 * np.pi
+
+# Adaptive stepping parameters
+ADAPTIVE_THRESHOLD_DEX = 0.1  # dex - threshold for parameter change (10^0.1 ≈ 1.26x)
+ADAPTIVE_FACTOR = 10**0.1     # Factor to increase/decrease DT_SEGMENT (~1.26)
+
+# Parameters to monitor for adaptive stepping (keys in params dict)
+ADAPTIVE_MONITOR_KEYS = [
+    'R2', 'v2', 'Eb', 'T0',           # Core state variables
+    'Pb', 'shell_mass',                # Derived quantities
+    'Lmech_total', 'Qi', 'pdot_total', # Feedback values
+]
 
 # ODE solver settings
 ODE_RTOL = 1e-6      # Relative tolerance
 ODE_ATOL = 1e-8      # Absolute tolerance (relaxed from 1e-9)
 ODE_MIN_STEP = 1e-12 # Minimum step size to prevent stalling (Myr)
-ODE_MAX_STEP = 1e-3  # Maximum step size (same as segment duration)
 
-# Solver method options:
-# - 'LSODA': Auto-switches stiff/non-stiff (FORTRAN, can produce confusing intdy warnings)
-# - 'Radau': Implicit Runge-Kutta for stiff problems (pure Python, clearer errors)
-# - 'BDF': Backward differentiation for stiff problems (pure Python)
-# - 'RK45': Explicit Runge-Kutta for non-stiff problems (default, pure Python)
-# Using 'Radau' to handle potential stiffness while avoiding FORTRAN intdy warnings
-ODE_METHOD = 'Radau'
+# Solver method: 'LSODA' for stiff/non-stiff switching
+ODE_METHOD = 'LSODA'
+
+
+# =============================================================================
+# Force Properties Dataclass
+# =============================================================================
+# Adaptive Stepping Helper
+# =============================================================================
+
+def compute_max_dex_change(params_before: dict, params_after: dict, keys: list) -> float:
+    """
+    Compute the maximum dex (log10) change across monitored parameters.
+
+    Parameters
+    ----------
+    params_before : dict
+        Parameter values before the segment
+    params_after : dict
+        Parameter values after the segment
+    keys : list
+        List of parameter keys to monitor
+
+    Returns
+    -------
+    float
+        Maximum absolute dex change across all monitored parameters
+    """
+    max_dex = 0.0
+    for key in keys:
+        old_val = params_before.get(key)
+        new_val = params_after.get(key)
+
+        # Skip if values are missing, zero, or opposite signs
+        if old_val is None or new_val is None:
+            continue
+        if old_val == 0 or new_val == 0:
+            continue
+        if (old_val > 0) != (new_val > 0):  # Sign change
+            # Large change if sign flips
+            max_dex = max(max_dex, 1.0)
+            continue
+
+        # Compute dex change: |log10(new/old)|
+        try:
+            dex_change = abs(np.log10(abs(new_val) / abs(old_val)))
+            max_dex = max(max_dex, dex_change)
+        except (ValueError, ZeroDivisionError):
+            continue
+
+    return max_dex
+
+
+def get_monitor_values(params) -> dict:
+    """
+    Extract current values of monitored parameters.
+
+    Parameters
+    ----------
+    params : DescribedDict
+        Parameter dictionary
+
+    Returns
+    -------
+    dict
+        Dictionary of parameter key -> value
+    """
+    values = {}
+    for key in ADAPTIVE_MONITOR_KEYS:
+        try:
+            val = params.get(key, None)
+            if val is not None and hasattr(val, 'value'):
+                values[key] = val.value
+            elif val is not None:
+                values[key] = val
+        except Exception:
+            pass
+    return values
 
 
 # =============================================================================
@@ -369,8 +452,11 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
     # Track previous R2 for collapse detection
     R2_prev = R2
 
+    # Adaptive time stepping
+    dt_segment = DT_SEGMENT_INIT
+
     # =============================================================================
-    # Main loop (segment-based)
+    # Main loop (segment-based with adaptive stepping)
     # =============================================================================
 
     while t_now < tmax and segment_count < MAX_SEGMENTS:
@@ -491,12 +577,15 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         # ---------------------------------------------------------------------
         snapshot = create_ODE_snapshot(params)
 
-        t_segment_end = min(t_now + DT_SEGMENT, tmax)
+        # Capture parameter values BEFORE integration for adaptive stepping
+        values_before = get_monitor_values(params)
+
+        t_segment_end = min(t_now + dt_segment, tmax)
         t_span = (t_now, t_segment_end)
         y0 = np.array([R2, v2, Eb, T0])
 
-        # Debug: log the solve_ivp inputs to diagnose LSODA warnings
-        logger.debug(f"solve_ivp: t_span=({t_span[0]:.10e}, {t_span[1]:.10e}), "
+        # Debug: log the solve_ivp inputs
+        logger.debug(f"solve_ivp: t_span=({t_span[0]:.10e}, {t_span[1]:.10e}), dt={dt_segment:.3e}, "
                      f"y0=[R2={y0[0]:.10e}, v2={y0[1]:.6e}, Eb={y0[2]:.6e}, T0={y0[3]:.6e}]")
 
         try:
@@ -508,7 +597,7 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
                 'method': ODE_METHOD,
                 'rtol': ODE_RTOL,
                 'atol': ODE_ATOL,
-                'max_step': ODE_MAX_STEP,
+                'max_step': dt_segment,  # Use adaptive dt_segment as max_step
             }
             if ODE_METHOD == 'LSODA':
                 solver_kwargs['min_step'] = ODE_MIN_STEP
@@ -535,9 +624,31 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         T0 = float(sol.y[3, -1])
         t_now = float(sol.t[-1])
 
-        # Debug: verify time values are consistent
-        if abs(sol.t[-1] - t_segment_end) > 1e-6 and sol.t[-1] < t_segment_end:
-            logger.debug(f"solve_ivp ended early: t_final={sol.t[-1]:.10e}, expected={t_segment_end:.10e}")
+        # ---------------------------------------------------------------------
+        # Adaptive stepping: adjust dt_segment based on parameter changes
+        # ---------------------------------------------------------------------
+        # Update params with new state for comparison
+        params['R2'].value = R2
+        params['v2'].value = v2
+        params['Eb'].value = Eb
+        params['T0'].value = T0
+
+        values_after = get_monitor_values(params)
+        max_dex_change = compute_max_dex_change(values_before, values_after, ADAPTIVE_MONITOR_KEYS)
+
+        if max_dex_change > ADAPTIVE_THRESHOLD_DEX:
+            # Large change: decrease dt_segment
+            dt_segment_old = dt_segment
+            dt_segment = max(dt_segment / ADAPTIVE_FACTOR, DT_SEGMENT_MIN)
+            logger.debug(f"Adaptive: max_dex={max_dex_change:.3f} > {ADAPTIVE_THRESHOLD_DEX}, "
+                        f"dt: {dt_segment_old:.3e} -> {dt_segment:.3e}")
+        else:
+            # Small change: increase dt_segment
+            dt_segment_old = dt_segment
+            dt_segment = min(dt_segment * ADAPTIVE_FACTOR, DT_SEGMENT_MAX)
+            if dt_segment != dt_segment_old:
+                logger.debug(f"Adaptive: max_dex={max_dex_change:.3f} < {ADAPTIVE_THRESHOLD_DEX}, "
+                            f"dt: {dt_segment_old:.3e} -> {dt_segment:.3e}")
 
         # Store results
         t_results.append(t_now)
