@@ -32,10 +32,12 @@ from src.phase1_energy import run_energy_phase
 from src.phase1_energy import run_energy_phase_modified
 from src.phase1b_energy_implicit import run_energy_implicit_phase
 from src.phase1b_energy_implicit import run_energy_implicit_phase_modified
-# from src.phase1c_transition import run_transition_phase
-# from src.phase2_momentum import run_momentum_phase
+from src.phase1c_transition import run_transition_phase
+from src.phase1c_transition import run_transition_phase_modified
+from src.phase2_momentum import run_momentum_phase
+from src.phase2_momentum import run_momentum_phase_modified
 import src._output.terminal_prints as terminal_prints
-from src._input.dictionary import DescribedItem, DescribedDict
+from src._input.dictionary import DescribedItem, DescribedDict, COOLING_PHASE_KEYS
 
 # Initialize logger for this module
 logger = logging.getLogger(__name__)
@@ -287,45 +289,9 @@ def run_expansion(params):
 
 
     # Since cooling is not needed anymore after this phase, we reset values.
+    # COOLING_PHASE_KEYS contains all cooling-related parameters that can be cleared.
     logger.debug("Resetting cooling-related parameters (no longer needed)...")
-    params['residual_deltaT'].value = np.nan
-    params['residual_betaEdot'].value = np.nan
-    params['residual_Edot1_guess'].value = np.nan
-    params['residual_Edot2_guess'].value = np.nan
-    params['residual_T1_guess'].value = np.nan
-    params['residual_T2_guess'].value = np.nan
-
-    params['bubble_Lgain'].value = np.nan
-    params['bubble_Lloss'].value = np.nan
-    params['bubble_Leak'].value = np.nan
-
-    params['t_previousCoolingUpdate'].value = np.nan
-    params['cStruc_cooling_nonCIE'].value = np.nan
-    params['cStruc_heating_nonCIE'].value = np.nan
-    params['cStruc_net_nonCIE_interpolation'].value = np.nan
-    # --
-    params['cStruc_cooling_CIE_logT'].value = np.nan
-    params['cStruc_cooling_CIE_logLambda'].value = np.nan
-    params['cStruc_cooling_CIE_interpolation'].value = np.nan
- 
-    params['cool_beta'].value = np.nan
-    params['cool_delta'].value = np.nan
-
-    
-    params['cStruc_cooling_CIE_interpolation'].value = np.nan
-    params['cStruc_cooling_CIE_logT'].value = np.nan
-    params['cStruc_cooling_CIE_logLambda'].value = np.nan
-    params['cStruc_cooling_nonCIE'].value = np.nan
-    params['cStruc_heating_nonCIE'].value = np.nan
-    params['cStruc_net_nonCIE_interpolation'].value = np.nan
-    
-    params['bubble_v_arr'].value = np.nan
-    params['bubble_T_arr'].value = np.nan
-    params['bubble_dTdr_arr'].value = np.nan
-    params['bubble_r_arr'].value = np.nan
-    params['bubble_n_arr'].value = np.nan
-    params['bubble_dMdt'].value = np.nan
- 
+    params.reset_keys(COOLING_PHASE_KEYS)
     
     # =============================================================================
     # Phase 1c: transition phase
@@ -340,7 +306,14 @@ def run_expansion(params):
 
     if params['EndSimulationDirectly'].value == False:
         phase1c_starttime = datetime.datetime.now()
-        run_transition_phase.run_phase_transition(params)
+
+        if use_adaptive_solver:
+            logger.info("Using modified transition phase (adaptive solve_ivp)")
+            run_transition_phase_modified.run_phase_transition(params)
+        else:
+            logger.info("Using original transition phase (Euler integration)")
+            run_transition_phase.run_phase_transition(params)
+
         phase1c_endtime = datetime.datetime.now()
         phase1c_elapsed = phase1c_endtime - phase1c_starttime
         logger.info(f"Phase 1c complete. Duration: {phase1c_elapsed}")
@@ -367,7 +340,14 @@ def run_expansion(params):
 
     if params['EndSimulationDirectly'].value == False:
         phase2_starttime = datetime.datetime.now()
-        run_momentum_phase.run_phase_momentum(params)
+
+        if use_adaptive_solver:
+            logger.info("Using modified momentum phase (adaptive solve_ivp)")
+            run_momentum_phase_modified.run_phase_momentum(params)
+        else:
+            logger.info("Using original momentum phase (Euler integration)")
+            run_momentum_phase.run_phase_momentum(params)
+
         phase2_endtime = datetime.datetime.now()
         phase2_elapsed = phase2_endtime - phase2_starttime
         logger.info(f"Phase 2 (momentum) complete. Duration: {phase2_elapsed}")

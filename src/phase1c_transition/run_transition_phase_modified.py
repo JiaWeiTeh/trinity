@@ -8,9 +8,10 @@ momentum-driven expansion, using scipy.integrate.solve_ivp.
 
 Key features:
 - Energy decays on sound-crossing timescale: dE/dt = -Eb / t_sound
-- Uses ODE function that reads params but does NOT mutate during integration
-- update_params_after_segment() called after each successful segment
-- No T0 evolution (dT/dt = 0)
+- Uses pure ODE functions (no dictionary mutations during integration)
+- scipy.integrate.solve_ivp(LSODA) for adaptive integration
+- Segment-based integration with parameter updates between segments
+- Uses shell_structure_pure() and updateDict() pattern
 
 @author: TRINITY Team (refactored for solve_ivp)
 """
@@ -19,22 +20,28 @@ import numpy as np
 import scipy.integrate
 import scipy.optimize
 import logging
-from typing import Dict, Tuple
+from typing import Tuple
 from dataclasses import dataclass
 
 import src.phase_general.phase_ODEs as phase_ODEs
-import src.shell_structure.shell_structure as shell_structure
 import src.cloud_properties.mass_profile as mass_profile
 import src._functions.unit_conversions as cvt
+import src._functions.operations as operations
 from src.sb99.update_feedback import get_currentSB99feedback
+from src._input.dictionary import updateDict
 
-# Import ODE functions and helpers
+# Import pure/modified functions
 from src.phase1_energy.energy_phase_ODEs_modified import (
+    ODESnapshot,
     get_ODE_Edot_pure,
-    update_params_after_segment,
-    R1Cache,
-    _get_mass_from_profile,
-    _scalar,
+    create_ODE_snapshot,
+)
+from src.phase1b_energy_implicit.get_betadelta_modified import (
+    compute_R1_Pb,
+)
+from src.shell_structure.shell_structure_modified import (
+    shell_structure_pure,
+    ShellProperties,
 )
 import src.bubble_structure.get_bubbleParams as get_bubbleParams
 
@@ -45,9 +52,10 @@ logger = logging.getLogger(__name__)
 # Constants
 # =============================================================================
 
-DT_SEGMENT = 1e-4  # Myr
+DT_SEGMENT = 1e-2  # Myr - segment duration
 MAX_SEGMENTS = 5000
 ENERGY_FLOOR = 1e3  # Minimum energy before transition to momentum phase
+FOUR_PI = 4.0 * np.pi
 
 
 # =============================================================================
@@ -69,13 +77,13 @@ class TransitionPhaseResults:
 # Pure ODE for Transition Phase
 # =============================================================================
 
-def get_ODE_transition_pure(t: float, y: np.ndarray, params, R1_cached: float,
-                            c_sound: float) -> np.ndarray:
+def get_ODE_transition_pure(t: float, y: np.ndarray, snapshot: ODESnapshot,
+                            params_for_feedback, c_sound: float) -> np.ndarray:
     """
-    ODE function for transition phase.
+    Pure ODE function for transition phase.
 
     Energy decays on sound-crossing timescale.
-    Reads params but does NOT mutate during integration.
+    Reads snapshot but does NOT mutate during integration.
 
     Parameters
     ----------
@@ -83,10 +91,10 @@ def get_ODE_transition_pure(t: float, y: np.ndarray, params, R1_cached: float,
         Time [Myr]
     y : ndarray
         State vector [R2, v2, Eb]
-    params : dict
-        Parameter dictionary (READ ONLY during ODE)
-    R1_cached : float
-        Cached inner bubble radius [pc]
+    snapshot : ODESnapshot
+        Frozen snapshot of parameters
+    params_for_feedback : DescribedDict
+        Original params dict for feedback interpolation
     c_sound : float
         Sound speed [pc/Myr]
 
@@ -98,7 +106,7 @@ def get_ODE_transition_pure(t: float, y: np.ndarray, params, R1_cached: float,
     R2, v2, Eb = y
 
     # Get rd, vd from energy ODE
-    dydt_energy = get_ODE_Edot_pure(t, y, params, R1_cached)
+    dydt_energy = get_ODE_Edot_pure(t, y, snapshot, params_for_feedback)
     rd = dydt_energy[0]  # = v2
     vd = dydt_energy[1]  # acceleration
 
@@ -111,6 +119,92 @@ def get_ODE_transition_pure(t: float, y: np.ndarray, params, R1_cached: float,
         Ed = 0.0
 
     return np.array([rd, vd, Ed])
+
+
+# =============================================================================
+# Force Computation (same as in energy_implicit)
+# =============================================================================
+
+@dataclass
+class ForceProperties:
+    """Container for force calculations (pure function output)."""
+    F_grav: float       # Gravitational force
+    F_ion_in: float     # Inward ionization pressure force
+    F_ion_out: float    # Outward ionization pressure force
+    F_ram: float        # Ram pressure force (from bubble pressure)
+    F_rad: float        # Radiation pressure force
+
+
+def compute_forces_pure(
+    R2: float,
+    mShell: float,
+    Pb: float,
+    shell_props: ShellProperties,
+    params,
+) -> ForceProperties:
+    """
+    Compute all force components without mutating params.
+    """
+    # Gravitational force
+    G = params['G'].value
+    mCluster = params['mCluster'].value
+    F_grav = G * mShell / (R2**2) * (mCluster + 0.5 * mShell)
+
+    # Ionization pressure forces
+    k_B = params['k_B'].value
+    TShell_ion = params['TShell_ion'].value
+    rCloud = params['rCloud'].value
+    rShell = shell_props.rShell
+    nISM = params['nISM'].value
+    PISM = params.get('PISM', None)
+    if PISM is not None and hasattr(PISM, 'value'):
+        PISM = PISM.value
+    else:
+        PISM = 0.0
+
+    # Inward pressure from photoionized gas outside shell
+    FABSi = shell_props.shell_fAbsorbedIon
+    if FABSi < 1.0:
+        from src.cloud_properties import density_profile
+        try:
+            n_r = density_profile.get_density_profile(np.array([rShell]), params)
+            if hasattr(n_r, '__len__') and len(n_r) == 1:
+                n_r = n_r[0]
+            press_HII_in = n_r * k_B * TShell_ion
+        except Exception:
+            press_HII_in = 0.0
+    else:
+        press_HII_in = 0.0
+
+    # Add ISM pressure if shell extends beyond cloud
+    if rShell >= rCloud:
+        press_HII_in += PISM * k_B
+
+    # Outward ionization pressure
+    if FABSi < 1.0:
+        nR2 = nISM
+    else:
+        Qi = params['Qi'].value
+        caseB_alpha = params['caseB_alpha'].value
+        nR2 = np.sqrt(Qi / caseB_alpha / (R2**3) * 3 / FOUR_PI)
+    press_HII_out = 2.0 * nR2 * k_B * 3e4
+
+    F_ion_in = press_HII_in * FOUR_PI * R2**2
+    F_ion_out = press_HII_out * FOUR_PI * R2**2
+
+    # Ram pressure force
+    F_ram = Pb * FOUR_PI * R2**2
+
+    # Radiation pressure force
+    F_rad = shell_props.shell_F_rad
+
+    return ForceProperties(
+        F_grav=F_grav,
+        F_ion_in=F_ion_in,
+        F_ion_out=F_ion_out,
+        F_ram=F_ram,
+        F_rad=F_rad,
+    )
 
 
 # =============================================================================
@@ -157,22 +251,22 @@ def run_phase_transition(params) -> TransitionPhaseResults:
     v2_results = [v2]
     Eb_results = [Eb]
 
-    # R1 cache
-    r1_cache = R1Cache()
-
     t_now = tmin
     segment_count = 0
     termination_reason = None
 
+    # Track previous R2 for collapse detection
+    R2_prev = R2
+
     # =============================================================================
-    # Main loop
+    # Main loop (segment-based)
     # =============================================================================
 
     while t_now < tmax and segment_count < MAX_SEGMENTS:
         segment_count += 1
 
         # ---------------------------------------------------------------------
-        # Update params
+        # Update params with current state
         # ---------------------------------------------------------------------
         params['t_now'].value = t_now
         params['R2'].value = R2
@@ -184,39 +278,44 @@ def run_phase_transition(params) -> TransitionPhaseResults:
         # Get feedback and shell structure
         # ---------------------------------------------------------------------
         feedback = get_currentSB99feedback(t_now, params)
-        Lmech_total = params['Lmech_total'].value
-        v_mech_total = params['v_mech_total'].value
+        updateDict(params, feedback)
 
-        shell_structure.shell_structure(params)
+        # Calculate shell structure using pure function
+        shell_props = shell_structure_pure(params)
+        updateDict(params, shell_props)
 
-        # Get sound speed
-        c_sound = params['c_sound'].value
+        # Get sound speed from bubble average temperature
+        bubble_Tavg = params.get('bubble_Tavg', None)
+        if bubble_Tavg and hasattr(bubble_Tavg, 'value') and bubble_Tavg.value:
+            T_for_sound = bubble_Tavg.value
+        else:
+            T_for_sound = 1e6
+        c_sound = operations.get_soundspeed(T_for_sound, params)
+        params['c_sound'].value = c_sound
 
         # ---------------------------------------------------------------------
-        # Get R1
+        # Get R1 and Pb
         # ---------------------------------------------------------------------
-        try:
-            R1 = scipy.optimize.brentq(
-                get_bubbleParams.get_r1,
-                1e-3 * R2, R2,
-                args=([Lmech_total, Eb, v_mech_total, R2])
-            )
-        except:
-            R1 = 0.01 * R2
+        Lmech_total = feedback.Lmech_total
+        v_mech_total = feedback.v_mech_total
+        gamma_adia = params['gamma_adia'].value
 
-        r1_cache.update(t_now, R2, Eb, Lmech_total, v_mech_total)
+        R1, Pb = compute_R1_Pb(R2, Eb, Lmech_total, v_mech_total, gamma_adia)
         params['R1'].value = R1
+        params['Pb'].value = Pb
 
         # ---------------------------------------------------------------------
-        # Integrate segment
+        # Build snapshot and integrate segment
         # ---------------------------------------------------------------------
+        snapshot = create_ODE_snapshot(params)
+
         t_segment_end = min(t_now + DT_SEGMENT, tmax)
         t_span = (t_now, t_segment_end)
         y0 = np.array([R2, v2, Eb])
 
         try:
             sol = scipy.integrate.solve_ivp(
-                fun=lambda t, y: get_ODE_transition_pure(t, y, params, R1, c_sound),
+                fun=lambda t, y: get_ODE_transition_pure(t, y, snapshot, params, c_sound),
                 t_span=t_span,
                 y0=y0,
                 method='LSODA',
@@ -247,54 +346,80 @@ def run_phase_transition(params) -> TransitionPhaseResults:
         Eb_results.append(Eb)
 
         # ---------------------------------------------------------------------
-        # Update params after successful segment
+        # Update shell mass
         # ---------------------------------------------------------------------
-        update_params_after_segment(t_now, R2, v2, Eb, params, R1)
+        mShell, mShell_dot = mass_profile.get_mass_profile(R2, params, return_mdot=True, rdot=v2)
+        params['shell_mass'].value = mShell
+        params['shell_massDot'].value = mShell_dot
 
         # ---------------------------------------------------------------------
-        # Update history arrays
+        # Compute and store forces
         # ---------------------------------------------------------------------
-        params['array_t_now'].value = np.concatenate([params['array_t_now'].value, [t_now]])
-        params['array_R2'].value = np.concatenate([params['array_R2'].value, [R2]])
-        params['array_R1'].value = np.concatenate([params['array_R1'].value, [R1]])
-        params['array_v2'].value = np.concatenate([params['array_v2'].value, [v2]])
-        params['array_T0'].value = np.concatenate([params['array_T0'].value, [T0]])
+        force_props = compute_forces_pure(R2, mShell, Pb, shell_props, params)
+        params['F_grav'].value = force_props.F_grav
+        params['F_ion_in'].value = force_props.F_ion_in
+        params['F_ion_out'].value = force_props.F_ion_out
+        params['F_ram'].value = force_props.F_ram
+        params['F_rad'].value = force_props.F_rad
 
-        mShell = params['shell_mass'].value
-        params['array_mShell'].value = np.concatenate([params['array_mShell'].value, [mShell]])
-
+        # Save snapshot
         params.save_snapshot()
 
         # ---------------------------------------------------------------------
-        # Check termination: energy floor reached
+        # Check termination conditions
         # ---------------------------------------------------------------------
+
+        # Energy floor reached -> transition to momentum phase
         if Eb < ENERGY_FLOOR:
             termination_reason = "energy_floor"
             logger.info(f"Energy dropped below floor ({ENERGY_FLOOR}), transitioning to momentum")
             break
 
-        # Check collapse
-        if v2 < 0 and R2 < params['R2'].value:
+        # Collapse detection: velocity negative AND radius decreasing
+        if v2 < 0 and R2 < R2_prev:
             params['isCollapse'].value = True
 
-        # Other termination conditions
+        # Update R2_prev for next iteration
+        R2_prev = R2
+
         if t_now > tmax:
             termination_reason = "reached_tmax"
             params['SimulationEndReason'].value = 'Stopping time reached'
             params['EndSimulationDirectly'].value = True
             break
 
-        if params.get('isCollapse', {}).value == True and R2 < params['coll_r'].value:
-            termination_reason = "small_radius"
-            params['SimulationEndReason'].value = 'Small radius reached'
-            params['EndSimulationDirectly'].value = True
-            break
+        is_collapse = params.get('isCollapse', None)
+        if is_collapse and hasattr(is_collapse, 'value') and is_collapse.value:
+            coll_r = params['coll_r'].value
+            if R2 < coll_r:
+                termination_reason = "small_radius"
+                params['SimulationEndReason'].value = 'Small radius reached'
+                params['EndSimulationDirectly'].value = True
+                break
 
         if R2 > params['stop_r'].value:
             termination_reason = "large_radius"
             params['SimulationEndReason'].value = 'Large radius reached'
             params['EndSimulationDirectly'].value = True
             break
+
+        # Dissolution check
+        shell_nMax = params.get('shell_nMax', None)
+        if shell_nMax and hasattr(shell_nMax, 'value'):
+            if shell_nMax.value < params['stop_n_diss'].value:
+                params['isDissolved'].value = True
+                termination_reason = "dissolved"
+                params['SimulationEndReason'].value = 'Shell dissolved'
+                params['EndSimulationDirectly'].value = True
+                break
+
+        # Cloud boundary check
+        if params.get('expansionBeyondCloud', True) == False:
+            if R2 > params['rCloud'].value:
+                termination_reason = "cloud_boundary"
+                params['SimulationEndReason'].value = 'Bubble radius larger than cloud'
+                params['EndSimulationDirectly'].value = True
+                break
 
     # =============================================================================
     # Build results
@@ -304,7 +429,7 @@ def run_phase_transition(params) -> TransitionPhaseResults:
         termination_reason = "max_segments" if segment_count >= MAX_SEGMENTS else "unknown"
 
     logger.info(f"Transition phase completed: {termination_reason}")
-    logger.info(f"  Final time: {t_now:.6e} Myr, Final Eb: {Eb:.6e}")
+    logger.info(f"  Final time: {t_now:.6e} Myr, Final Eb: {Eb:.6e}, Segments: {segment_count}")
 
     return TransitionPhaseResults(
         t=np.array(t_results),
