@@ -49,8 +49,9 @@ FOUR_PI = 4.0 * np.pi
 # ODE solver settings
 ODE_RTOL = 1e-6      # Relative tolerance
 ODE_ATOL = 1e-8      # Absolute tolerance
-ODE_MIN_STEP = 1e-12 # Minimum step size to prevent stalling (Myr)
+ODE_MIN_STEP = 1e-12 # Minimum step size to prevent stalling (Myr, LSODA only)
 ODE_MAX_STEP = 5e-2  # Maximum step size (same as segment duration)
+ODE_METHOD = 'Radau' # Implicit solver for stiff problems (avoids FORTRAN warnings)
 
 
 # =============================================================================
@@ -436,16 +437,20 @@ def run_phase_momentum(params) -> MomentumPhaseResults:
         y0 = np.array([R2, v2])
 
         try:
-            sol = scipy.integrate.solve_ivp(
-                fun=lambda t, y: get_ODE_momentum_pure(t, y, snapshot, params),
-                t_span=t_span,
-                y0=y0,
-                method='LSODA',
-                rtol=ODE_RTOL,
-                atol=ODE_ATOL,
-                min_step=ODE_MIN_STEP,
-                max_step=ODE_MAX_STEP,
-            )
+            # Build solver kwargs (min_step only supported by LSODA)
+            solver_kwargs = {
+                'fun': lambda t, y: get_ODE_momentum_pure(t, y, snapshot, params),
+                't_span': t_span,
+                'y0': y0,
+                'method': ODE_METHOD,
+                'rtol': ODE_RTOL,
+                'atol': ODE_ATOL,
+                'max_step': ODE_MAX_STEP,
+            }
+            if ODE_METHOD == 'LSODA':
+                solver_kwargs['min_step'] = ODE_MIN_STEP
+
+            sol = scipy.integrate.solve_ivp(**solver_kwargs)
         except Exception as e:
             logger.error(f"solve_ivp failed at t={t_now:.6e}: {e}")
             termination_reason = f"solver_error: {e}"
