@@ -15,11 +15,11 @@ print("...plotting radius evolution grid (with r_Tb)")
 
 # ---------------- configuration ----------------
 # Set SINGLE_MODE = True to plot a single run instead of grid
-SINGLE_MODE = False
+SINGLE_MODE = True
 
 # Single run configuration (used when SINGLE_MODE = True)
 SINGLE_MCLOUD = "1e7"
-SINGLE_SFE = "001"
+SINGLE_SFE = "020"
 SINGLE_NDENS = "1e4"
 
 # Grid configuration (used when SINGLE_MODE = False)

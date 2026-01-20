@@ -46,7 +46,7 @@ RESIDUAL_THRESHOLD = 1e-4
 MAX_ITERATIONS = 15
 
 # Grid search parameters (matching original get_betadelta.py)
-GRID_SIZE = 5  # 5x5 grid
+GRID_SIZE = 4  # Default: 5x5 grid
 GRID_EPSILON = 0.02  # Search range around guess
 
 
