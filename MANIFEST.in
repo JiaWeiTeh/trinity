@@ -1,0 +1,40 @@
+# MANIFEST.in - Controls which files are included in source distributions
+# See: https://packaging.python.org/guides/using-manifest-in/
+
+# Include essential files
+include LICENSE
+include README.md
+include requirements.txt
+include pyproject.toml
+
+# Include parameter files
+recursive-include param *.param
+
+# Include data files needed for simulations
+recursive-include data *
+
+# Include documentation source
+recursive-include docs/source *.rst *.py *.txt
+include docs/requirements.txt
+
+# Exclude directories not needed for package installation
+prune old_doNotRead
+prune analysis
+prune docs/build
+prune test
+prune example_scripts
+
+# Exclude development and temporary files
+global-exclude __pycache__
+global-exclude *.py[cod]
+global-exclude *.so
+global-exclude .DS_Store
+global-exclude *.egg-info
+global-exclude .git*
+global-exclude *.swp
+global-exclude *.swo
+global-exclude *~
+
+# Exclude large data files
+global-exclude *.jsonl
+global-exclude *.json

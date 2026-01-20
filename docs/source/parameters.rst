@@ -273,7 +273,7 @@ Conditions that end the simulation.
    * - ``stop_r``
      - ``500``
      - pc
-     - Maximum shell radius. Exceeding this triggers termination.
+     - Maximum shell radius. Exceeding this triggers termination. Set to ``None`` to disable this condition.
    * - ``stop_v``
      - ``-1e4``
      - km/s
@@ -281,7 +281,13 @@ Conditions that end the simulation.
    * - ``stop_t``
      - ``15``
      - Myr
-     - Maximum simulation duration.
+     - Maximum simulation duration. Set to ``None`` to disable this condition.
+
+.. note::
+
+   Setting ``stop_r`` or ``stop_t`` to ``None`` disables that termination condition,
+   allowing the simulation to continue until other conditions are met (e.g., shell dissolution,
+   collapse, or cloud boundary).
 
 Collapse Parameters
 ^^^^^^^^^^^^^^^^^^^

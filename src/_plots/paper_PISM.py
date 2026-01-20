@@ -4,8 +4,21 @@
 Created on Mon Jul 21 19:49:38 2025
 
 @author: Jia Wei Teh
+
+Paper figure: ISM pressure (PISM) comparison.
+
+USAGE:
+    Configure the output base directory before running, or set environment variable:
+    - TRINITY_OUTPUT_DIR: Base directory containing simulation outputs
+
+    Expected directory structure:
+        {TRINITY_OUTPUT_DIR}/1e5_sfe030_n1e4_PISM0/dictionary.jsonl
+        {TRINITY_OUTPUT_DIR}/1e5_sfe030_n1e4_PISM1e4/dictionary.jsonl
+        {TRINITY_OUTPUT_DIR}/1e5_sfe030_n1e4_PISM1e5/dictionary.jsonl
+        {TRINITY_OUTPUT_DIR}/1e5_sfe030_n1e4_PISM1e6/dictionary.jsonl
 """
 
+import os
 import sys
 import numpy as np
 import matplotlib.pyplot as plt
@@ -20,8 +33,12 @@ from load_snapshots import load_output
 FIG_DIR = Path(__file__).parent.parent.parent / "fig"
 FIG_DIR.mkdir(parents=True, exist_ok=True)
 
+# =============================================================================
+# DATA PATH - Configure this before running
+# =============================================================================
+# Base directory containing simulation outputs
+OUTPUT_DIR = os.environ.get('TRINITY_OUTPUT_DIR', 'outputs')
 
-import os
 plt.style.use(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'trinity.mplstyle'))
 
 
@@ -37,7 +54,7 @@ pressurelist = ['0', '10^4', '10^5', '10^6']
 
 for ii, pressure in enumerate(['0', '1e4', '1e5', '1e6']):
     # Path to data file (can be .json or .jsonl)
-    path2data = f'/Users/jwt/unsync/Code/Trinity/outputs/1e5_sfe030_n1e4_PISM{pressure}/dictionary.json'
+    path2data = f'{OUTPUT_DIR}/1e5_sfe030_n1e4_PISM{pressure}/dictionary.jsonl'
 
     # Load using TrinityOutput reader
     output = load_output(path2data)

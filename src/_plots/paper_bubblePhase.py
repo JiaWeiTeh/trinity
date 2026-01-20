@@ -4,8 +4,16 @@
 Created on Thu Jul 17 11:52:11 2025
 
 @author: Jia Wei Teh
+
+Paper figure: Bubble phase visualization.
+
+USAGE:
+    Configure the data paths below before running, or set environment variables:
+    - TRINITY_DATA_PATH1: Path to first simulation output (.json or .jsonl)
+    - TRINITY_DATA_PATH2: Path to second simulation output (.json or .jsonl)
 """
 
+import os
 import sys
 import numpy as np
 import matplotlib.pyplot as plt
@@ -17,12 +25,16 @@ sys.path.insert(0, str(Path(__file__).parent))
 from load_snapshots import load_output
 
 
-# Paths to data files (can be .json or .jsonl)
-path2data2 = r'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe010_n1e4/dictionary.json'
-# path2data1 = r'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe001_n1e4_BE/dictionary.json'
-path2data1 = r'/Users/jwt/unsync/Code/Trinity/outputs/1e5_sfe030_n1e4/dictionary.json'
-# path2data2 = r'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe030_n1e4/dictionary.json'
-# path2data = r'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe010_n1e2/dictionary.json'
+# =============================================================================
+# DATA PATHS - Configure these before running
+# =============================================================================
+# Option 1: Set paths directly
+# path2data1 = '/path/to/your/outputs/simulation1/dictionary.jsonl'
+# path2data2 = '/path/to/your/outputs/simulation2/dictionary.jsonl'
+
+# Option 2: Use environment variables (recommended for portability)
+path2data1 = os.environ.get('TRINITY_DATA_PATH1', 'outputs/simulation1/dictionary.jsonl')
+path2data2 = os.environ.get('TRINITY_DATA_PATH2', 'outputs/simulation2/dictionary.jsonl')
 
 
 
