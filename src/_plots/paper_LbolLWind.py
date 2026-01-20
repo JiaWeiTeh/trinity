@@ -10,7 +10,7 @@ import matplotlib.transforms as mtransforms
 
 # Add script directory to path for local imports
 sys.path.insert(0, str(Path(__file__).parent))
-from load_snapshots import load_snapshots, find_data_file
+from load_snapshots import load_output, find_data_file
 
 print("...plotting Qi(or Li) vs Lmech_total with ratio on twin axis")
 
@@ -76,25 +76,25 @@ def ev_to_erg(ev):
 def load_run(data_path: Path):
     """Load t, phase, Li, Lmech_total, (optional) Qi, and R2/rCloud for breakout line.
 
-    Supports both JSON and JSONL formats.
+    Uses TrinityOutput reader.
     """
-    snaps = load_snapshots(data_path)
+    output = load_output(data_path)
 
-    if not snaps:
+    if len(output) == 0:
         raise ValueError(f"No snapshots found in {data_path}")
 
-    t = np.array([s["t_now"] for s in snaps], dtype=float)
-    phase = np.array([s.get("current_phase", "") for s in snaps])
+    t = output.get('t_now')
+    phase = np.array(output.get('current_phase', as_array=False))
 
-    Li    = np.array([s.get("Li", np.nan)    for s in snaps], dtype=float)
-    Lmech_total = np.array([s.get("Lmech_total", np.nan) for s in snaps], dtype=float)
+    Li = output.get('Li')
+    Lmech_total = output.get('Lmech_total')
 
     # Qi may or may not exist
-    Qi = np.array([s.get("Qi", np.nan) for s in snaps], dtype=float)
+    Qi = output.get('Qi')
 
     # for breakout marker
-    R2 = np.array([s.get("R2", np.nan) for s in snaps], dtype=float)
-    rcloud = float(snaps[0].get("rCloud", np.nan))
+    R2 = output.get('R2')
+    rcloud = float(output[0].get('rCloud', np.nan))
 
     # ensure increasing time
     if np.any(np.diff(t) < 0):

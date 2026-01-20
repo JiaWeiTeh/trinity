@@ -14,12 +14,27 @@ Usage:
     sys.path.insert(0, str(Path(__file__).parent))
     from load_snapshots import load_snapshots, find_data_file
 
+    # NEW: Use TrinityOutput reader for cleaner access
+    from load_snapshots import load_output
+    output = load_output(data_path)
+    t = output.get('t_now')
+    R2 = output.get('R2')
+    output.info()
+
 @author: TRINITY Team
 """
 
 import json
 from pathlib import Path
 from typing import List, Dict, Any, Optional, Union
+
+# Import TrinityOutput reader
+import sys
+_src_path = str(Path(__file__).parent.parent.parent)
+if _src_path not in sys.path:
+    sys.path.insert(0, _src_path)
+
+from src._output.trinity_reader import TrinityOutput
 
 
 def _ensure_path(file_path: Union[str, Path]) -> Path:
@@ -121,3 +136,34 @@ def find_data_file(base_dir: Path, run_name: str) -> Optional[Path]:
             return path
 
     return None
+
+
+def load_output(file_path: Union[str, Path]) -> TrinityOutput:
+    """
+    Load simulation data as a TrinityOutput object for clean data access.
+
+    This is the preferred way to load TRINITY output files.
+
+    Parameters
+    ----------
+    file_path : Path or str
+        Path to either a .json or .jsonl file
+
+    Returns
+    -------
+    TrinityOutput
+        Reader object with convenient methods:
+        - output.get('key') -> numpy array of values across all snapshots
+        - output.filter(phase='implicit') -> filtered TrinityOutput
+        - output.info() -> print summary
+        - output[i] -> access snapshot i
+        - output.t_min, output.t_max -> time range
+
+    Examples
+    --------
+    >>> output = load_output('simulation.jsonl')
+    >>> t = output.get('t_now')
+    >>> R2 = output.get('R2')
+    >>> output.info()
+    """
+    return TrinityOutput.open(file_path)

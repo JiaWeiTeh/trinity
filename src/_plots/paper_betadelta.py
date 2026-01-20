@@ -16,7 +16,7 @@ from matplotlib.patches import Patch
 
 # Add script directory to path for local imports
 sys.path.insert(0, str(Path(__file__).parent))
-from load_snapshots import load_snapshots, find_data_file
+from load_snapshots import load_output, find_data_file
 
 print("...plotting radius comparison")
 
@@ -66,22 +66,22 @@ def smooth_1d(y, window, mode="edge"):
 
 # ---------- load beta/delta + R2 ----------
 def load_cooling_run(data_path: Path):
-    """Load cooling run data. Supports both JSON and JSONL formats."""
-    snaps = load_snapshots(data_path)
+    """Load cooling run data using TrinityOutput reader."""
+    output = load_output(data_path)
 
-    if not snaps:
+    if len(output) == 0:
         raise ValueError(f"No snapshots found in {data_path}")
 
-    t     = np.array([s["t_now"] for s in snaps], dtype=float)
-    R2    = np.array([s["R2"] for s in snaps], dtype=float)
-    # additional_param    = np.array([s["F_ram"] for s in snaps], dtype=float)
-    additional_param    = np.array([s.get("Pb", np.nan) for s in snaps], dtype=float)
-    phase = np.array([s.get("current_phase", "") for s in snaps])
+    # Use TrinityOutput.get() for clean array extraction
+    t = output.get('t_now')
+    R2 = output.get('R2')
+    additional_param = output.get('Pb')
+    phase = np.array(output.get('current_phase', as_array=False))
 
-    beta  = np.array([s.get("cool_beta", np.nan) for s in snaps], dtype=float)
-    delta = np.array([s.get("cool_delta", np.nan) for s in snaps], dtype=float)
+    beta = output.get('cool_beta')
+    delta = output.get('cool_delta')
 
-    rcloud = float(snaps[0].get("rCloud", np.nan))
+    rcloud = float(output[0].get('rCloud', np.nan))
 
     # ensure increasing time (important for "first crossing" + plotting)
     if np.any(np.diff(t) < 0):

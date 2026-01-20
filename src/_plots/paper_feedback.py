@@ -21,7 +21,7 @@ from matplotlib.lines import Line2D
 
 # Add script directory to path for local imports
 sys.path.insert(0, str(Path(__file__).parent))
-from load_snapshots import load_snapshots, find_data_file
+from load_snapshots import load_output, find_data_file
 
 print("...plotting force fractions with ram composition overlay + PISM")
 
@@ -130,18 +130,23 @@ def plot_single_run(mCloud, ndens, sfe):
     plt.close(fig)
 
 def load_run(data_path: Path):
-    """Load run data. Supports both JSON and JSONL formats."""
-    snaps = load_snapshots(data_path)
+    """Load run data using TrinityOutput reader."""
+    output = load_output(data_path)
 
-    if not snaps:
+    if len(output) == 0:
         raise ValueError(f"No snapshots found in {data_path}")
 
-    t     = np.array([s["t_now"] for s in snaps], dtype=float)
-    R2    = np.array([s.get("R2", np.nan) for s in snaps], dtype=float)
-    phase = np.array([s.get("current_phase", "") for s in snaps])
+    # Use TrinityOutput.get() for clean array extraction
+    t = output.get('t_now')
+    R2 = output.get('R2')
+    phase = np.array(output.get('current_phase', as_array=False))
 
+    # Helper to get field with default
     def get_field(field, default=np.nan):
-        return np.array([s.get(field, default) for s in snaps], dtype=float)
+        arr = output.get(field)
+        if arr is None or (isinstance(arr, np.ndarray) and np.all(arr == None)):
+            return np.full(len(output), default)
+        return np.where(arr == None, default, arr).astype(float)
 
     F_grav = get_field("F_grav", 0.0)
     F_ion  = get_field("F_ion_out", 0.0)
@@ -165,7 +170,7 @@ def load_run(data_path: Path):
         else:
             F_ram = np.zeros_like(t)
 
-    rcloud = float(snaps[0].get("rCloud", np.nan))
+    rcloud = float(output[0].get('rCloud', np.nan))
 
     # Ensure time increasing
     if np.any(np.diff(t) < 0):
