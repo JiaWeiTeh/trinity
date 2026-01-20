@@ -198,16 +198,26 @@ def analyze_parameter_changes(filepath: str, start_phase: str = 'energy_implicit
     scalar_params = extract_scalar_params(filtered_snapshots)
     print(f"Found {len(scalar_params)} scalar parameters that change over time")
 
+    # Parameters to exclude from analysis
+    exclude_prefixes = ['residual_']
+    exclude_names = ['t_previousCoolingUpdate']
+
     # Compute changes for each parameter
     results = []
     for name, values in scalar_params.items():
+        # Skip excluded parameters
+        if any(name.startswith(prefix) for prefix in exclude_prefixes):
+            continue
+        if name in exclude_names:
+            continue
+
         dex_changes = compute_dex_changes(values)
-        total_dex = np.sum(dex_changes)
-        max_dex = np.max(dex_changes) if len(dex_changes) > 0 else 0
+        total_dex = np.nansum(dex_changes)  # Use nansum to handle NaN
+        max_dex = np.nanmax(dex_changes) if len(dex_changes) > 0 else 0  # Use nanmax
         results.append((name, total_dex, max_dex, values, dex_changes))
 
-    # Sort by total dex change
-    results.sort(key=lambda x: x[1], reverse=True)
+    # Sort by total dex change (NaN values go to end)
+    results.sort(key=lambda x: x[1] if not np.isnan(x[1]) else -np.inf, reverse=True)
 
     # Extract time array
     t_values = np.array([s.get('t_now', s.get('t', i)) for i, s in enumerate(filtered_snapshots)])
