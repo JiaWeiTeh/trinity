@@ -152,43 +152,6 @@ Think of it like a **volume knob** for logging:
 
 ---
 
-## Relationship Between `log_level` and `verbose`
-
-### They are **DIFFERENT** but **RELATED**:
-
-| Parameter | Purpose | Values |
-|-----------|---------|--------|
-| **`verbose`** | Controls **existing print statements** (legacy) | 0, 1, 2, 3 (integer) |
-| **`log_level`** | Controls **new logging system** (modern) | DEBUG, INFO, WARNING, ERROR, CRITICAL |
-
-### Current TRINITY code has BOTH:
-
-```python
-# OLD STYLE (verbose):
-if params['verbose'].value >= 2:
-    print("Debug information")  # Only shows if verbose >= 2
-
-# NEW STYLE (logging):
-logger.debug("Debug information")  # Shows if log_level == DEBUG
-```
-
-### Recommended migration path:
-
-1. **Keep both** for backward compatibility
-2. **Use logging in new/refactored code**
-3. **Eventually replace** verbose with log_level
-
-### Suggested mapping:
-
-| Old `verbose` | New `log_level` | Description |
-|---------------|-----------------|-------------|
-| 0 | ERROR | Silent (errors only) |
-| 1 | INFO | Normal output |
-| 2 | DEBUG | Detailed output |
-| 3 | DEBUG | Very detailed (same as 2 for logging) |
-
----
-
 ## Log Level Hierarchy
 
 **Key concept**: Setting a log level shows **that level AND everything more severe**.
