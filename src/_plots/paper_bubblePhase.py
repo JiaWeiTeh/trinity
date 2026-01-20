@@ -152,8 +152,10 @@ plt.tight_layout()
 # Output - save to project root's fig/ directory
 FIG_DIR = Path(__file__).parent.parent.parent / "fig"
 FIG_DIR.mkdir(parents=True, exist_ok=True)
+SAVE_PDF = True
 
-# plt.savefig(FIG_DIR / 'bubblePhase.pdf')
+if SAVE_PDF:
+    plt.savefig(FIG_DIR / 'bubblePhase.pdf', bbox_inches='tight')
 plt.show()
 
 
