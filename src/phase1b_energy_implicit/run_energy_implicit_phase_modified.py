@@ -59,7 +59,7 @@ logger = logging.getLogger(__name__)
 # =============================================================================
 
 COOLING_UPDATE_INTERVAL = 5e-3  # Myr - recalculate cooling
-DT_SEGMENT = 1e-2  # Myr - segment duration for beta/delta updates
+DT_SEGMENT = 1e-3  # Myr - segment duration for beta/delta updates
 MAX_SEGMENTS = 5000
 FOUR_PI = 4.0 * np.pi
 
@@ -482,8 +482,6 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
 
         # Store for reference
         params['bubble_Lgain'].value = Lgain
-        params['bubble_Lloss'].value = Lloss
-        params['bubble_Lloss'].value = Lloss
         params['bubble_Lloss'].value = Lloss
 
         # Save snapshot

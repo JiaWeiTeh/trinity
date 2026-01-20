@@ -206,7 +206,7 @@ def add_physical_constants(params: dict, jsonl_path: str = None) -> dict:
     defaults = _DEFAULT_PARAMS_CACHE
 
     if jsonl_path is None:
-        jsonl_path = os.path.join(PROJECT_ROOT, 'comparison', '1e7_sfe001_n1e4_test_dictionary.jsonl')
+        jsonl_path = os.path.join(PROJECT_ROOT, 'test', '1e7_sfe001_n1e4_test_dictionary.jsonl')
 
     # Unit conversion factors
     ndens_cgs2au = CONV.ndens_cgs2au
@@ -677,7 +677,7 @@ def test_energy_phase_comparison():
 
     jsonl_path = os.path.join(
         os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-        'comparison', '1e7_sfe001_n1e4_test_dictionary.jsonl'
+        'test', '1e7_sfe001_n1e4_test_dictionary.jsonl'
     )
 
     if not os.path.exists(jsonl_path):

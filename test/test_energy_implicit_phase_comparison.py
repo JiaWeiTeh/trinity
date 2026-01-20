@@ -43,9 +43,13 @@ INTEGRATION_DT = 0.1  # Myr - duration of each test run
 # Target start times for tests (Myr)
 # These should be times where implicit phase snapshots exist
 # Using earlier times where the phase is more stable
+<<<<<<< HEAD
+TARGET_START_TIMES = [0.1]  # t_start values to test
+=======
 # Note: Later times (>0.05 Myr) may fail due to bubble temperature ODE instability
 # when cooling structures need to be refreshed. Use earlier times for reliable tests.
 TARGET_START_TIMES = [0.01, 0.02, 0.03]  # t_start values to test
+>>>>>>> 52ce2dd2738b7214438eda990ea0c7aa43ec49cb
 
 # Configure logging
 logging.basicConfig(level=logging.WARNING)  # Reduce noise during testing
