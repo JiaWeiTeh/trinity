@@ -21,7 +21,7 @@ from scipy.interpolate import RegularGridInterpolator
 
 # Add script directory to path for local imports
 sys.path.insert(0, str(Path(__file__).parent))
-from load_snapshots import load_snapshots, find_data_file
+from load_snapshots import load_output, find_data_file
 
 print("...plotting dominant feedback grid")
 
@@ -63,7 +63,7 @@ SAVE_PDF = True
 
 def load_run(data_path: Path):
     """
-    Load simulation data from JSON or JSONL file.
+    Load simulation data using TrinityOutput reader.
 
     Returns:
         t: Time array (Myr)
@@ -73,17 +73,20 @@ def load_run(data_path: Path):
     if data_path is None or not data_path.exists():
         return None, None
 
-    snaps = load_snapshots(data_path)
+    output = load_output(data_path)
 
-    if len(snaps) == 0:
+    if len(output) == 0:
         return None, None
 
     # Extract time
-    t = np.array([s.get("t_now", np.nan) for s in snaps], dtype=float)
+    t = output.get('t_now')
 
-    # Extract forces (with fallback to 0 for missing fields)
+    # Helper to get field with default
     def get_field(field, default=0.0):
-        return np.array([s.get(field, default) for s in snaps], dtype=float)
+        arr = output.get(field)
+        if arr is None:
+            return np.full(len(output), default)
+        return np.nan_to_num(arr, nan=default)
 
     F_grav = get_field("F_grav", 0.0)
     F_ram = get_field("F_ram", 0.0)
@@ -91,7 +94,7 @@ def load_run(data_path: Path):
     F_rad = get_field("F_rad", 0.0)
 
     # Handle NaN in F_ram (reconstruct if possible)
-    if np.all(np.isnan(F_ram)):
+    if np.all(np.isnan(output.get("F_ram"))):
         F_wind = get_field("F_ram_wind", np.nan)
         F_sn = get_field("F_ram_SN", np.nan)
         if not (np.all(np.isnan(F_wind)) and np.all(np.isnan(F_sn))):

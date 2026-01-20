@@ -15,7 +15,7 @@ import matplotlib.transforms as mtransforms
 
 # Add script directory to path for local imports
 sys.path.insert(0, str(Path(__file__).parent))
-from load_snapshots import load_snapshots, find_data_file
+from load_snapshots import load_output, find_data_file
 
 print("...plotting integrated momentum (line plots)")
 
@@ -97,18 +97,20 @@ def cumtrapz_2d(Y, x):
 
 
 def load_run(data_path: Path):
-    """Load run data. Supports both JSON and JSONL formats."""
-    snaps = load_snapshots(data_path)
+    """Load run data using TrinityOutput reader."""
+    output = load_output(data_path)
 
-    if not snaps:
+    if len(output) == 0:
         raise ValueError(f"No snapshots found in {data_path}")
 
-    t = np.array([s["t_now"] for s in snaps], dtype=float)
-    r = np.array([s["R2"] for s in snaps], dtype=float)
-    phase = np.array([s.get("current_phase", "") for s in snaps])
+    # Use TrinityOutput.get() for clean array extraction
+    t = output.get('t_now')
+    r = output.get('R2')
+    phase = np.array(output.get('current_phase', as_array=False))
 
+    # Extract force fields
     forces = np.vstack([
-        np.array([s.get(field, 0.0) for s in snaps], dtype=float)
+        np.nan_to_num(output.get(field), nan=0.0)
         for field, _, _ in FORCE_FIELDS
     ])
 
@@ -120,7 +122,7 @@ def load_run(data_path: Path):
         phase = phase[order]
         forces = forces[:, order]
 
-    rcloud = float(snaps[0].get("rCloud", np.nan))
+    rcloud = float(output[0].get('rCloud', np.nan))
     return t, r, phase, forces, rcloud
 
 # This added functionality solves the problem in which white spaces occur

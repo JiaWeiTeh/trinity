@@ -16,7 +16,7 @@ import src._functions.unit_conversions as cvt
 
 # Add script directory to path for local imports
 sys.path.insert(0, str(Path(__file__).parent))
-from load_snapshots import load_snapshots
+from load_snapshots import load_output
 
 # Output - save to project root's fig/ directory
 FIG_DIR = Path(__file__).parent.parent.parent / "fig"
@@ -27,32 +27,16 @@ FIG_DIR.mkdir(parents=True, exist_ok=True)
 # path2data = r'/Users/jwt/unsync/Code/Trinity/outputs/1e5_sfe030_n1e4/dictionary.json'
 path2data = r'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe001_n1e4_BE/dictionary.json'
 
-# Load snapshots (supports both JSON and JSONL)
-snaplists_list = load_snapshots(path2data)
-
-nlist = []
-rlist = []
-mlist = []
-phaselist = []
+# Load using TrinityOutput reader
+output = load_output(path2data)
 
 #--------------
 
-# For backward compatibility, convert to dict-like access
-snaplists = {str(i): s for i, s in enumerate(snaplists_list)}
-    
-        # n_arr = params['initial_cloud_n_arr'].value
-    # m_arr = params['initial_cloud_m_arr'].value
-    # r_arr = params['initial_cloud_r_arr'].value
-    
-    # # plt.plot(r_arr, n_arr * cvt.ndens_au2cgs)
-    
-    
-
-for key, val in snaplists.items():
-    nlist = np.array(val['initial_cloud_n_arr'])
-    rlist = np.array(val['initial_cloud_r_arr'])
-    mlist = np.array(val['initial_cloud_m_arr'])
-    break
+# Get initial cloud profile from first snapshot
+first_snap = output[0]
+nlist = np.array(first_snap.get('initial_cloud_n_arr', []))
+rlist = np.array(first_snap.get('initial_cloud_r_arr', []))
+mlist = np.array(first_snap.get('initial_cloud_m_arr', []))
     
 import os
 plt.style.use(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'trinity.mplstyle'))
