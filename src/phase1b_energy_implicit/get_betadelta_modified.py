@@ -46,6 +46,11 @@ DELTA_MAX = 0.0
 RESIDUAL_THRESHOLD = 1e-4
 MAX_ITERATIONS = 15
 
+# Threshold for L-BFGS-B fallback: only run L-BFGS-B if grid residual exceeds this
+# If grid gives a reasonable result (< 1.0), L-BFGS-B is unlikely to improve much
+# and wastes ~50 expensive function evaluations
+LBFGSB_FALLBACK_THRESHOLD = 1.0
+
 # Grid search parameters (matching original get_betadelta.py)
 GRID_SIZE = 4  # Default: 5x5 grid
 GRID_EPSILON = 0.02  # Search range around guess
@@ -436,10 +441,17 @@ def solve_betadelta_pure(
     except Exception as e:
         logger.warning(f"Grid search failed: {e}")
 
-    # Step 2: If grid didn't converge, try L-BFGS-B
+    # Step 2: If grid didn't converge AND grid residual is bad, try L-BFGS-B
+    # Skip L-BFGS-B if grid gave a reasonable result to avoid wasting ~50 evaluations
     lbfgsb_converged = False
     lbfgsb_result = None
-    if not grid_converged:
+    grid_residual = grid_result[2] if grid_result else float('inf')
+
+    if not grid_converged and grid_residual > LBFGSB_FALLBACK_THRESHOLD:
+        logger.debug(
+            f"Grid residual ({grid_residual:.2e}) > threshold ({LBFGSB_FALLBACK_THRESHOLD}), "
+            "trying L-BFGS-B fallback"
+        )
         try:
             beta_lbfgsb, delta_lbfgsb, iter_lbfgsb = _solve_lbfgsb(
                 beta_guess, delta_guess, params
@@ -460,6 +472,11 @@ def solve_betadelta_pure(
                     logger.debug(f"L-BFGS-B converged: residual={total_res_lbfgsb:.2e}")
         except Exception as e:
             logger.warning(f"L-BFGS-B failed: {e}")
+    elif not grid_converged:
+        logger.debug(
+            f"Grid residual ({grid_residual:.2e}) <= threshold ({LBFGSB_FALLBACK_THRESHOLD}), "
+            "skipping L-BFGS-B fallback"
+        )
 
     # Step 3: Pick the best result
     if not candidates:
