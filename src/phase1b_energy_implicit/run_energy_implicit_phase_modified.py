@@ -101,6 +101,20 @@ DT_SEGMENT = 1e-3  # Myr - segment duration for beta/delta updates
 MAX_SEGMENTS = 5000
 FOUR_PI = 4.0 * np.pi
 
+# ODE solver settings
+ODE_RTOL = 1e-6      # Relative tolerance
+ODE_ATOL = 1e-8      # Absolute tolerance (relaxed from 1e-9)
+ODE_MIN_STEP = 1e-12 # Minimum step size to prevent stalling (Myr)
+ODE_MAX_STEP = 1e-3  # Maximum step size (same as segment duration)
+
+# Solver method options:
+# - 'LSODA': Auto-switches stiff/non-stiff (FORTRAN, can produce confusing intdy warnings)
+# - 'Radau': Implicit Runge-Kutta for stiff problems (pure Python, clearer errors)
+# - 'BDF': Backward differentiation for stiff problems (pure Python)
+# - 'RK45': Explicit Runge-Kutta for non-stiff problems (default, pure Python)
+# Using 'Radau' to handle potential stiffness while avoiding FORTRAN intdy warnings
+ODE_METHOD = 'Radau'
+
 
 # =============================================================================
 # Force Properties Dataclass
@@ -481,21 +495,34 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         t_span = (t_now, t_segment_end)
         y0 = np.array([R2, v2, Eb, T0])
 
+        # Debug: log the solve_ivp inputs to diagnose LSODA warnings
+        logger.debug(f"solve_ivp: t_span=({t_span[0]:.10e}, {t_span[1]:.10e}), "
+                     f"y0=[R2={y0[0]:.10e}, v2={y0[1]:.6e}, Eb={y0[2]:.6e}, T0={y0[3]:.6e}]")
+
         try:
-            sol = scipy.integrate.solve_ivp(
-                fun=lambda t, y: get_ODE_implicit_pure(t, y, snapshot, params, Ed, Td),
-                t_span=t_span,
-                y0=y0,
-                method='LSODA',
-                rtol=1e-6,
-                atol=1e-9,
-            )
+            # Build solver kwargs (min_step only supported by LSODA)
+            solver_kwargs = {
+                'fun': lambda t, y: get_ODE_implicit_pure(t, y, snapshot, params, Ed, Td),
+                't_span': t_span,
+                'y0': y0,
+                'method': ODE_METHOD,
+                'rtol': ODE_RTOL,
+                'atol': ODE_ATOL,
+                'max_step': ODE_MAX_STEP,
+            }
+            if ODE_METHOD == 'LSODA':
+                solver_kwargs['min_step'] = ODE_MIN_STEP
+
+            sol = scipy.integrate.solve_ivp(**solver_kwargs)
         except Exception as e:
             logger.error(f"solve_ivp failed at t={t_now:.6e}: {e}")
             termination_reason = f"solver_error: {e}"
             break
 
         if not sol.success or len(sol.t) == 0:
+            logger.warning(f"Solver did not succeed: {sol.message}")
+            logger.warning(f"  t_span was: ({t_span[0]:.10e}, {t_span[1]:.10e})")
+            logger.warning(f"  y0 was: R2={y0[0]:.10e}, v2={y0[1]:.6e}")
             termination_reason = f"solver_failed: {sol.message}"
             break
 
@@ -507,6 +534,10 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         Eb = float(sol.y[2, -1])
         T0 = float(sol.y[3, -1])
         t_now = float(sol.t[-1])
+
+        # Debug: verify time values are consistent
+        if abs(sol.t[-1] - t_segment_end) > 1e-6 and sol.t[-1] < t_segment_end:
+            logger.debug(f"solve_ivp ended early: t_final={sol.t[-1]:.10e}, expected={t_segment_end:.10e}")
 
         # Store results
         t_results.append(t_now)
