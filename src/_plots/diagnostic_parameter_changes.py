@@ -198,16 +198,26 @@ def analyze_parameter_changes(filepath: str, start_phase: str = 'energy_implicit
     scalar_params = extract_scalar_params(filtered_snapshots)
     print(f"Found {len(scalar_params)} scalar parameters that change over time")
 
+    # Parameters to exclude from analysis
+    exclude_prefixes = ['residual_']
+    exclude_names = ['t_previousCoolingUpdate']
+
     # Compute changes for each parameter
     results = []
     for name, values in scalar_params.items():
+        # Skip excluded parameters
+        if any(name.startswith(prefix) for prefix in exclude_prefixes):
+            continue
+        if name in exclude_names:
+            continue
+
         dex_changes = compute_dex_changes(values)
-        total_dex = np.sum(dex_changes)
-        max_dex = np.max(dex_changes) if len(dex_changes) > 0 else 0
+        total_dex = np.nansum(dex_changes)  # Use nansum to handle NaN
+        max_dex = np.nanmax(dex_changes) if len(dex_changes) > 0 else 0  # Use nanmax
         results.append((name, total_dex, max_dex, values, dex_changes))
 
-    # Sort by total dex change
-    results.sort(key=lambda x: x[1], reverse=True)
+    # Sort by total dex change (NaN values go to end)
+    results.sort(key=lambda x: x[1] if not np.isnan(x[1]) else -np.inf, reverse=True)
 
     # Extract time array
     t_values = np.array([s.get('t_now', s.get('t', i)) for i, s in enumerate(filtered_snapshots)])
@@ -253,7 +263,7 @@ def plot_top_parameters(results: list, t_values: np.ndarray, n_top: int = 16,
         ax.set_yscale('log')
         ax.set_ylim(1e-6, 10)
         ax.set_xlabel('Time [Myr]')
-        ax.set_ylabel('|Δlog₁₀|')
+        ax.set_ylabel('dex change')
         ax.set_title(f'{name}\nΣ={total_dex:.2f}, max={max_dex:.3f}')
         ax.grid(True, alpha=0.3)
         ax.legend(fontsize=6)
