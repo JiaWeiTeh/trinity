@@ -297,15 +297,24 @@ def print_summary(results: list, n_top: int = 30):
     print("="*70)
 
     # Check which ADAPTIVE_MONITOR_KEYS are in top results
+    # This list should match ADAPTIVE_MONITOR_KEYS in run_*_phase_modified.py files
     adaptive_keys = [
+        # Core state variables
         'R2', 'v2', 'Eb', 'T0', 'Pb', 'R1',
-        'Lmech_total', 'Lbol', 'Qi', 'pdot_total',
+        # Feedback values
+        'pdot_SN', 'Lmech_SN', 'pdotdot_total',
+        # Cooling parameters
+        'cool_delta', 'cool_beta',
+        # Bubble properties
+        'bubble_mass', 'bubble_r_Tb', 'bubble_LTotal',
+        'bubble_L1Bubble', 'bubble_Lloss', 'bubble_dMdt',
+        'bubble_L2Conduction', 'bubble_L3Intermediate',
+        # Shell parameters
+        'shell_mass', 'shell_massDot', 'shell_n0', 'shell_nMax',
+        'shell_thickness', 'shell_tauKappaRatio', 'shell_fIonisedDust', 'rShell',
+        # Force parameters
         'F_grav', 'F_SN', 'F_ram', 'F_ram_wind', 'F_ram_SN',
         'F_wind', 'F_ion_in', 'F_ion_out', 'F_rad', 'F_ISM',
-        'shell_mass', 'shell_massDot', 'shell_n0', 'shell_nMax',
-        'shell_thickness', 'shell_tauKappaRatio', 'shell_F_rad',
-        'shell_fAbsorbedIon', 'shell_fAbsorbedNeu', 'shell_fAbsorbedWeightedTotal',
-        'shell_fIonisedDust', 'rShell',
     ]
 
     result_names = [r[0] for r in results]

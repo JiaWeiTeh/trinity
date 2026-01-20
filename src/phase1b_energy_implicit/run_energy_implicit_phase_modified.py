@@ -98,8 +98,8 @@ logger = logging.getLogger(__name__)
 
 COOLING_UPDATE_INTERVAL = 5e-3  # Myr - recalculate cooling
 DT_SEGMENT_INIT = 1e-3  # Myr - initial segment duration
-DT_SEGMENT_MIN = 1e-6   # Myr - minimum segment duration
-DT_SEGMENT_MAX = 1e-1   # Myr - maximum segment duration
+DT_SEGMENT_MIN = 1e-4   # Myr - minimum segment duration
+DT_SEGMENT_MAX = 2e-1   # Myr - maximum segment duration
 MAX_SEGMENTS = 5000
 FOUR_PI = 4.0 * np.pi
 
@@ -109,27 +109,31 @@ ADAPTIVE_FACTOR = 10**0.1     # Factor to increase/decrease DT_SEGMENT (~1.26)
 
 # Parameters to monitor for adaptive stepping (keys in params dict)
 # Only scalar (float/int) parameters - no arrays
+# Based on diagnostic_parameter_changes.py analysis of top 30 most variable parameters
 ADAPTIVE_MONITOR_KEYS = [
     # Core state variables
-    'R2', 'v2', 'Eb', 'T0',
-    # Bubble properties
-    'Pb', 'R1',
+    'R2', 'v2', 'Eb', 'T0', 'Pb', 'R1',
     # Feedback values
-    'Lmech_total', 'Lbol', 'Qi', 'pdot_total',
-    # Force parameters (all scalars)
+    'pdot_SN', 'Lmech_SN', 'pdotdot_total',
+    # Cooling parameters
+    'cool_delta', 'cool_beta',
+    # Bubble properties
+    'bubble_mass', 'bubble_r_Tb', 'bubble_LTotal',
+    'bubble_L1Bubble', 'bubble_Lloss', 'bubble_dMdt',
+    'bubble_L2Conduction', 'bubble_L3Intermediate',
+    # Shell parameters
+    'shell_mass', 'shell_massDot', 'shell_n0', 'shell_nMax',
+    'shell_thickness', 'shell_tauKappaRatio', 'shell_fIonisedDust', 'rShell',
+    # Force parameters
     'F_grav', 'F_SN', 'F_ram', 'F_ram_wind', 'F_ram_SN',
     'F_wind', 'F_ion_in', 'F_ion_out', 'F_rad', 'F_ISM',
-    # Shell parameters (scalars only, excluding shell_grav_* arrays)
-    'shell_mass', 'shell_massDot', 'shell_n0', 'shell_nMax',
-    'shell_thickness', 'shell_tauKappaRatio', 'shell_F_rad',
-    'shell_fAbsorbedIon', 'shell_fAbsorbedNeu', 'shell_fAbsorbedWeightedTotal',
-    'shell_fIonisedDust', 'rShell',
 ]
 
 # ODE solver settings
 ODE_RTOL = 1e-6      # Relative tolerance
 ODE_ATOL = 1e-8      # Absolute tolerance (relaxed from 1e-9)
-ODE_MIN_STEP = 1e-12 # Minimum step size to prevent stalling (Myr)
+ODE_MIN_STEP = 1e-6  # Minimum step size (Myr)
+ODE_MAX_STEP = DT_SEGMENT_MIN / 5  # Max step = 2e-5 Myr (ensures >=5 steps per segment)
 
 # Solver method: 'LSODA' for stiff/non-stiff switching
 ODE_METHOD = 'LSODA'
@@ -609,7 +613,7 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
                 'method': ODE_METHOD,
                 'rtol': ODE_RTOL,
                 'atol': ODE_ATOL,
-                'max_step': dt_segment,  # Use adaptive dt_segment as max_step
+                'max_step': ODE_MAX_STEP,
             }
             if ODE_METHOD == 'LSODA':
                 solver_kwargs['min_step'] = ODE_MIN_STEP

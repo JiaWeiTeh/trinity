@@ -73,16 +73,83 @@ logger = logging.getLogger(__name__)
 # Constants
 # =============================================================================
 
-DT_SEGMENT = 5e-2  # Myr - segment duration (larger OK in momentum phase)
+DT_SEGMENT_INIT = 5e-2  # Myr - initial segment duration (larger OK in momentum phase)
+DT_SEGMENT_MIN = 1e-4   # Myr - minimum segment duration
+DT_SEGMENT_MAX = 2e-1   # Myr - maximum segment duration
 MAX_SEGMENTS = 10000
 FOUR_PI = 4.0 * np.pi
+
+# Adaptive stepping parameters
+ADAPTIVE_THRESHOLD_DEX = 0.1  # dex - threshold for parameter change (10^0.1 ≈ 1.26x)
+ADAPTIVE_FACTOR = 10**0.1     # Factor to increase/decrease DT_SEGMENT (~1.26)
+
+# Parameters to monitor for adaptive stepping (keys in params dict)
+# Based on diagnostic_parameter_changes.py analysis of top 30 most variable parameters
+ADAPTIVE_MONITOR_KEYS = [
+    # Core state variables
+    'R2', 'v2', 'Eb', 'T0', 'Pb', 'R1',
+    # Feedback values
+    'pdot_SN', 'Lmech_SN', 'pdotdot_total',
+    # Cooling parameters
+    'cool_delta', 'cool_beta',
+    # Bubble properties
+    'bubble_mass', 'bubble_r_Tb', 'bubble_LTotal',
+    'bubble_L1Bubble', 'bubble_Lloss', 'bubble_dMdt',
+    'bubble_L2Conduction', 'bubble_L3Intermediate',
+    # Shell parameters
+    'shell_mass', 'shell_massDot', 'shell_n0', 'shell_nMax',
+    'shell_thickness', 'shell_tauKappaRatio', 'shell_fIonisedDust', 'rShell',
+    # Force parameters
+    'F_grav', 'F_SN', 'F_ram', 'F_ram_wind', 'F_ram_SN',
+    'F_wind', 'F_ion_in', 'F_ion_out', 'F_rad', 'F_ISM',
+]
 
 # ODE solver settings
 ODE_RTOL = 1e-6      # Relative tolerance
 ODE_ATOL = 1e-8      # Absolute tolerance
-ODE_MIN_STEP = 1e-12 # Minimum step size to prevent stalling (Myr, LSODA only)
-ODE_MAX_STEP = 5e-2  # Maximum step size (same as segment duration)
-ODE_METHOD = 'Radau' # Implicit solver for stiff problems (avoids FORTRAN warnings)
+ODE_MIN_STEP = 1e-6  # Minimum step size (Myr)
+ODE_MAX_STEP = DT_SEGMENT_MIN / 5  # Max step = 2e-5 Myr (ensures >=5 steps per segment)
+ODE_METHOD = 'LSODA' # Auto-switches stiff/non-stiff
+
+
+# =============================================================================
+# Adaptive Stepping Helpers
+# =============================================================================
+
+def compute_max_dex_change(params_before: dict, params_after: dict, keys: list) -> float:
+    """Compute the maximum dex (log10) change across monitored parameters."""
+    max_dex = 0.0
+    for key in keys:
+        old_val = params_before.get(key)
+        new_val = params_after.get(key)
+        if old_val is None or new_val is None:
+            continue
+        if old_val == 0 or new_val == 0:
+            continue
+        if (old_val > 0) != (new_val > 0):
+            max_dex = max(max_dex, 1.0)
+            continue
+        try:
+            dex_change = abs(np.log10(abs(new_val) / abs(old_val)))
+            max_dex = max(max_dex, dex_change)
+        except (ValueError, ZeroDivisionError):
+            continue
+    return max_dex
+
+
+def get_monitor_values(params) -> dict:
+    """Extract current values of monitored parameters."""
+    values = {}
+    for key in ADAPTIVE_MONITOR_KEYS:
+        try:
+            val = params.get(key, None)
+            if val is not None and hasattr(val, 'value'):
+                values[key] = val.value
+            elif val is not None:
+                values[key] = val
+        except Exception:
+            pass
+    return values
 
 
 # =============================================================================
@@ -383,8 +450,11 @@ def run_phase_momentum(params) -> MomentumPhaseResults:
     # Track previous R2 for collapse detection
     R2_prev = R2
 
+    # Adaptive time stepping
+    dt_segment = DT_SEGMENT_INIT
+
     # =============================================================================
-    # Main loop (segment-based)
+    # Main loop (segment-based with adaptive stepping)
     # =============================================================================
 
     while t_now < tmax and segment_count < MAX_SEGMENTS:
@@ -463,7 +533,10 @@ def run_phase_momentum(params) -> MomentumPhaseResults:
         # ---------------------------------------------------------------------
         snapshot = create_momentum_snapshot(params, shell_props, mShell, mShell_dot)
 
-        t_segment_end = min(t_now + DT_SEGMENT, tmax)
+        # Capture parameter values BEFORE integration for adaptive stepping
+        values_before = get_monitor_values(params)
+
+        t_segment_end = min(t_now + dt_segment, tmax)
         t_span = (t_now, t_segment_end)
         y0 = np.array([R2, v2])
 
@@ -497,6 +570,22 @@ def run_phase_momentum(params) -> MomentumPhaseResults:
         R2 = float(sol.y[0, -1])
         v2 = float(sol.y[1, -1])
         t_now = float(sol.t[-1])
+
+        # ---------------------------------------------------------------------
+        # Adaptive stepping: adjust dt_segment based on parameter changes
+        # ---------------------------------------------------------------------
+        params['R2'].value = R2
+        params['v2'].value = v2
+
+        values_after = get_monitor_values(params)
+        max_dex_change = compute_max_dex_change(values_before, values_after, ADAPTIVE_MONITOR_KEYS)
+
+        if max_dex_change > ADAPTIVE_THRESHOLD_DEX:
+            dt_segment = max(dt_segment / ADAPTIVE_FACTOR, DT_SEGMENT_MIN)
+            logger.debug(f"Adaptive: max_dex={max_dex_change:.3f} > threshold, dt -> {dt_segment:.3e}")
+        else:
+            dt_segment = min(dt_segment * ADAPTIVE_FACTOR, DT_SEGMENT_MAX)
+            logger.debug(f"Adaptive: max_dex={max_dex_change:.3f} < threshold, dt -> {dt_segment:.3e}")
 
         # Store results
         t_results.append(t_now)
