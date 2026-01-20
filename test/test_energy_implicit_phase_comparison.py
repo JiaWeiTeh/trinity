@@ -40,6 +40,11 @@ PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 NUM_TESTS = 3  # Number of test runs
 INTEGRATION_DT = 0.1  # Myr - duration of each test run
 
+# Target start times for tests (Myr)
+# These should be times where implicit phase snapshots exist
+# Using earlier times where the phase is more stable
+TARGET_START_TIMES = [0.01, 0.02, 0.03]  # t_start values to test
+
 # Configure logging
 logging.basicConfig(level=logging.WARNING)  # Reduce noise during testing
 
@@ -172,6 +177,46 @@ def find_implicit_phase_lines(filepath: str) -> list:
             if data.get('current_phase') == 'implicit':
                 implicit_lines.append(i + 1)  # 1-indexed
     return implicit_lines
+
+
+def find_snapshot_near_time(filepath: str, target_time: float, phase: str = 'implicit') -> tuple:
+    """
+    Find the snapshot line number closest to a target time.
+
+    Parameters
+    ----------
+    filepath : str
+        Path to JSONL file
+    target_time : float
+        Target time in Myr
+    phase : str, optional
+        Required phase ('implicit', 'energy', etc.). Default 'implicit'.
+
+    Returns
+    -------
+    tuple
+        (line_number, actual_t_now) of the closest snapshot
+    """
+    best_line = None
+    best_time = None
+    best_diff = float('inf')
+
+    with open(filepath, 'r') as f:
+        for i, line in enumerate(f):
+            data = json.loads(line.strip())
+            if phase and data.get('current_phase') != phase:
+                continue
+            t_now = data.get('t_now', 0)
+            diff = abs(t_now - target_time)
+            if diff < best_diff:
+                best_diff = diff
+                best_line = i + 1  # 1-indexed
+                best_time = t_now
+
+    if best_line is None:
+        raise ValueError(f"No {phase} phase snapshots found in {filepath}")
+
+    return best_line, best_time
 
 
 def load_default_params(param_file: str = None) -> dict:
@@ -740,7 +785,7 @@ def print_comparison_table(results: list):
     print("=" * 100)
 
 
-def test_energy_implicit_phase_comparison(num_tests: int = None):
+def test_energy_implicit_phase_comparison(num_tests: int = None, target_times: list = None):
     """
     Test run_energy_implicit_phase vs run_energy_implicit_phase_modified.
 
@@ -748,9 +793,13 @@ def test_energy_implicit_phase_comparison(num_tests: int = None):
     ----------
     num_tests : int, optional
         Number of tests to run. Defaults to NUM_TESTS.
+    target_times : list, optional
+        List of target start times (Myr). Defaults to TARGET_START_TIMES.
     """
     if num_tests is None:
         num_tests = NUM_TESTS
+    if target_times is None:
+        target_times = TARGET_START_TIMES[:num_tests]
 
     print("=" * 70)
     print("Testing run_energy_implicit_phase vs run_energy_implicit_phase_modified")
@@ -767,26 +816,32 @@ def test_energy_implicit_phase_comparison(num_tests: int = None):
     implicit_lines = find_implicit_phase_lines(jsonl_path)
     print(f"\nFound {len(implicit_lines)} implicit phase snapshots")
 
-    # Select evenly spaced lines from the middle range
-    if len(implicit_lines) < num_tests:
-        selected_lines = implicit_lines
-    else:
-        # Pick from middle range (avoid very early/late)
-        mid_start = len(implicit_lines) // 4
-        mid_end = 3 * len(implicit_lines) // 4
-        step = max(1, (mid_end - mid_start) // num_tests)
-        selected_lines = implicit_lines[mid_start:mid_end:step][:num_tests]
+    # Find snapshots near each target time
+    selected_snapshots = []
+    print(f"\nFinding snapshots near target times: {target_times}")
+    for target_t in target_times:
+        try:
+            line_num, actual_t = find_snapshot_near_time(jsonl_path, target_t, phase='implicit')
+            selected_snapshots.append((line_num, target_t, actual_t))
+            print(f"  Target t={target_t:.2f} Myr -> Line {line_num} (actual t={actual_t:.4e} Myr)")
+        except ValueError as e:
+            print(f"  Target t={target_t:.2f} Myr -> Not found: {e}")
 
-    print(f"Selected lines for testing: {selected_lines}")
+    if not selected_snapshots:
+        print("ERROR: No valid snapshots found for target times")
+        return False
+
+    print(f"\nSelected {len(selected_snapshots)} snapshots for testing")
 
     results = []
 
-    for i, line_num in enumerate(selected_lines):
-        print(f"\nTest {i+1}/{len(selected_lines)} (line {line_num})...", end=" ", flush=True)
+    for i, (line_num, target_t, actual_t) in enumerate(selected_snapshots):
+        print(f"\nTest {i+1}/{len(selected_snapshots)} (line {line_num}, t={actual_t:.4e})...", end=" ", flush=True)
         try:
             snapshot = load_snapshot_from_jsonl(jsonl_path, line_num)
             result = test_snapshot(snapshot, verbose=False)
             result['line'] = line_num
+            result['target_t'] = target_t
             results.append(result)
             status = "PASS" if result['passed'] else "FAIL"
             speedup = result.get('speedup', 1.0)
@@ -798,8 +853,9 @@ def test_energy_implicit_phase_comparison(num_tests: int = None):
             results.append({
                 'passed': False,
                 'line': line_num,
-                't_start': 0,
-                't_stop': 0,
+                'target_t': target_t,
+                't_start': actual_t,
+                't_stop': actual_t + INTEGRATION_DT,
                 'field_results': {},
                 'time_original': 0,
                 'time_modified': 0,
