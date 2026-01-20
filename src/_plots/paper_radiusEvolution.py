@@ -14,6 +14,15 @@ from load_snapshots import load_snapshots, find_data_file
 print("...plotting radius evolution grid (with r_Tb)")
 
 # ---------------- configuration ----------------
+# Set SINGLE_MODE = True to plot a single run instead of grid
+SINGLE_MODE = False
+
+# Single run configuration (used when SINGLE_MODE = True)
+SINGLE_MCLOUD = "1e7"
+SINGLE_SFE = "001"
+SINGLE_NDENS = "1e4"
+
+# Grid configuration (used when SINGLE_MODE = False)
 mCloud_list = ["1e5", "1e7", "1e8"]                 # rows
 ndens_list  = ["1e2", "1e3", "1e4"]                 # one figure per ndens
 sfe_list    = ["001", "010", "020", "030", "050", "080"]   # cols
@@ -22,6 +31,7 @@ BASE_DIR = Path.home() / "unsync" / "Code" / "Trinity" / "outputs"
 
 PHASE_LINE = True
 CLOUD_LINE = True
+SHOW_WEAVER = True  # Show Weaver-like R ∝ t^(3/5) solution
 SMOOTH_WINDOW = None        # e.g. 7 to smooth radii; None/1 disables
 SMOOTH_MODE = "edge"
 
@@ -94,9 +104,55 @@ def load_run_radii(data_path: Path):
     return t, phase, R1, R2, rShell, r_Tb, rcloud
 
 
+def compute_weaver_solution(t, R2, t_ref_frac=0.1):
+    """
+    Compute Weaver-like solution R ∝ t^(3/5).
+
+    The classic Weaver et al. (1977) wind-blown bubble solution gives
+    R(t) ∝ (L_wind / ρ_0)^(1/5) * t^(3/5).
+
+    We normalize to match R2 at an early reference time.
+
+    Parameters
+    ----------
+    t : array
+        Time array
+    R2 : array
+        R2 radius array (used for normalization)
+    t_ref_frac : float
+        Fraction of time range to use as reference point (default 0.1 = 10%)
+
+    Returns
+    -------
+    R_weaver : array
+        Weaver solution normalized to R2
+    """
+    # Find valid (finite) R2 values
+    valid_mask = np.isfinite(R2) & (R2 > 0) & np.isfinite(t) & (t > 0)
+    if not np.any(valid_mask):
+        return np.full_like(t, np.nan)
+
+    # Use early time as reference (at t_ref_frac of valid time range)
+    t_valid = t[valid_mask]
+    R2_valid = R2[valid_mask]
+
+    t_min, t_max = t_valid.min(), t_valid.max()
+    t_ref = t_min + t_ref_frac * (t_max - t_min)
+
+    # Find closest time to t_ref
+    ref_idx = np.argmin(np.abs(t_valid - t_ref))
+    t_ref_actual = t_valid[ref_idx]
+    R_ref = R2_valid[ref_idx]
+
+    # Weaver solution: R(t) = R_ref * (t / t_ref)^(3/5)
+    R_weaver = R_ref * (t / t_ref_actual) ** (3.0 / 5.0)
+
+    return R_weaver
+
+
 def plot_radii_on_ax(
     ax, t, phase, R1, R2, rShell, r_Tb, rcloud,
-    phase_line=True, cloud_line=True,
+    phase_line=True, cloud_line=True, show_weaver=False,
     smooth_window=None, smooth_mode="edge",
     label_pad_points=4
 ):
@@ -162,6 +218,12 @@ def plot_radii_on_ax(
     ax.plot(t, rSs,    lw=RADIUS_FIELDS[2][4], ls=RADIUS_FIELDS[2][3], color=RADIUS_FIELDS[2][2], label=RADIUS_FIELDS[2][1], zorder=3)
     ax.plot(t, rTbs,   lw=RADIUS_FIELDS[3][4], ls=RADIUS_FIELDS[3][3], color=RADIUS_FIELDS[3][2], label=RADIUS_FIELDS[3][1], zorder=3)
 
+    # --- Weaver-like solution: R ∝ t^(3/5)
+    if show_weaver:
+        R_weaver = compute_weaver_solution(t, R2s)
+        ax.plot(t, R_weaver, lw=1.5, ls="--", color="k", alpha=0.6,
+                label=r"Weaver: $R \propto t^{3/5}$", zorder=2)
+
     ax.set_xlim(t.min(), t.max())
 
 
@@ -169,102 +231,62 @@ def plot_radii_on_ax(
 import os
 plt.style.use(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'trinity.mplstyle'))
 
-for ndens in ndens_list:
-    
-    nrows, ncols = len(mCloud_list), len(sfe_list)
 
-    fig, axes = plt.subplots(
-        nrows=nrows, ncols=ncols,
-        figsize=(3.2 * ncols, 2.6 * nrows),
-        sharex=False, sharey=False,
-        dpi=500,
-        constrained_layout=False
-    )
+def plot_single_run(mCloud, sfe, ndens):
+    """Plot a single run's radius evolution."""
+    run_name = f"{mCloud}_sfe{sfe}_n{ndens}"
+    data_path = find_data_file(BASE_DIR, run_name)
 
-    fig.subplots_adjust(top=0.90)
+    if data_path is None:
+        print(f"Data file not found for {run_name}")
+        return
+
+    fig, ax = plt.subplots(figsize=(8, 6), dpi=150)
+
+    try:
+        t, phase, R1, R2, rShell, r_Tb, rcloud = load_run_radii(data_path)
+        plot_radii_on_ax(
+            ax, t, phase, R1, R2, rShell, r_Tb, rcloud,
+            phase_line=PHASE_LINE,
+            cloud_line=CLOUD_LINE,
+            show_weaver=SHOW_WEAVER,
+            smooth_window=SMOOTH_WINDOW,
+            smooth_mode=SMOOTH_MODE
+        )
+    except Exception as e:
+        print(f"Error loading {run_name}: {e}")
+        plt.close(fig)
+        return
+
+    # Title with run parameters
+    mlog = int(np.log10(float(mCloud)))
     nlog = int(np.log10(float(ndens)))
-    fig.suptitle(rf"Radius evolution ($n=10^{{{nlog}}}\,\mathrm{{cm^{{-3}}}}$)", y=1.05)
+    eps = int(sfe) / 100.0
+    ax.set_title(
+        rf"$M_{{\rm cloud}}=10^{{{mlog}}}\,M_\odot$, "
+        rf"$\epsilon={eps:.2f}$, "
+        rf"$n=10^{{{nlog}}}\,\mathrm{{cm^{{-3}}}}$"
+    )
+    ax.set_xlabel("t [Myr]")
+    ax.set_ylabel("Radius [pc]")
 
-    m_tag   = range_tag("M",   mCloud_list, key=float)
-    sfe_tag = range_tag("sfe", sfe_list,    key=int)   # works for "001", "010", ...
-    n_tag   = f"n{ndens}"
-    tag = f"radius_grid_{m_tag}_{sfe_tag}_{n_tag}"
-
-
-    for i, mCloud in enumerate(mCloud_list):
-        for j, sfe in enumerate(sfe_list):
-            ax = axes[i, j]
-            run_name = f"{mCloud}_sfe{sfe}_n{ndens}"
-            data_path = find_data_file(BASE_DIR, run_name)
-
-            if data_path is None:
-                ax.text(0.5, 0.5, "missing", ha="center", va="center", transform=ax.transAxes)
-                ax.set_axis_off()
-                continue
-
-            try:
-                t, phase, R1, R2, rShell, r_Tb, rcloud = load_run_radii(data_path)
-                plot_radii_on_ax(
-                    ax, t, phase, R1, R2, rShell, r_Tb, rcloud,
-                    phase_line=PHASE_LINE,
-                    cloud_line=CLOUD_LINE,
-                    smooth_window=SMOOTH_WINDOW,
-                    smooth_mode=SMOOTH_MODE
-                )
-            except Exception as e:
-                print(f"Error in {run_name}: {e}")
-                ax.text(0.5, 0.5, "error", ha="center", va="center", transform=ax.transAxes)
-                ax.set_axis_off()
-                continue
-
-            # column titles
-            if i == 0:
-                eps = int(sfe) / 100.0
-                ax.set_title(rf"$\epsilon={eps:.2f}$")
-
-            # y label only on leftmost column
-            if j == 0:
-                mlog = int(np.log10(float(mCloud)))
-                ax.set_ylabel(rf"$M_{{cloud}}=10^{{{mlog}}}\,M_\odot$" + "\n" + r"Radius [pc]")
-            else:
-                ax.tick_params(labelleft=False)
-
-            # x label only on bottom row
-            if i == nrows - 1:
-                ax.set_xlabel("t [Myr]")
-
-    # global legend (now includes r_Tb)
+    # Legend
     handles = [
         Line2D([0], [0], color=RADIUS_FIELDS[0][2], lw=RADIUS_FIELDS[0][4], ls=RADIUS_FIELDS[0][3], label=RADIUS_FIELDS[0][1]),
         Line2D([0], [0], color=RADIUS_FIELDS[1][2], lw=RADIUS_FIELDS[1][4], ls=RADIUS_FIELDS[1][3], label=RADIUS_FIELDS[1][1]),
         Line2D([0], [0], color=RADIUS_FIELDS[2][2], lw=RADIUS_FIELDS[2][4], ls=RADIUS_FIELDS[2][3], label=RADIUS_FIELDS[2][1]),
         Line2D([0], [0], color=RADIUS_FIELDS[3][2], lw=RADIUS_FIELDS[3][4], ls=RADIUS_FIELDS[3][3], label=RADIUS_FIELDS[3][1]),
-        Line2D([0], [0], color="k", ls="--", alpha=0.6, lw=1.6, label=r"$R_2>R_{\rm cloud}$"),
-        Line2D([0], [0], color="r", lw=2, alpha=0.3, label=r"phase changes: $T$ (→transition), $M$ (→momentum)"),
     ]
+    if SHOW_WEAVER:
+        handles.append(Line2D([0], [0], color="k", ls="--", alpha=0.6, lw=1.5, label=r"Weaver: $R \propto t^{3/5}$"))
+    handles.extend([
+        Line2D([0], [0], color="k", ls="--", alpha=0.25, lw=1.6, label=r"$R_2>R_{\rm cloud}$"),
+        Line2D([0], [0], color="r", lw=2, alpha=0.3, label="phase change"),
+    ])
+    ax.legend(handles=handles, loc="upper left", framealpha=0.9)
 
-    # Reserve top space so legend never overlaps subplot titles
-    fig.subplots_adjust(top=0.9)           # <-- tune: smaller = more header space
-
-    leg = fig.legend(
-        handles=handles,
-        loc="upper center",
-        ncol=3,
-        frameon=True,
-        facecolor="white",
-        framealpha=0.9,
-        edgecolor="0.2",
-        bbox_to_anchor=(0.5, 0.98),
-        bbox_transform=fig.transFigure
-    )
-    leg.set_zorder(10)
-    
-    # --------- SAVE FIGURE ---------
-    m_tag   = range_tag("M",   mCloud_list, key=float)
-    sfe_tag = range_tag("sfe", sfe_list,    key=int)
-    n_tag   = f"n{ndens}"
-    tag = f"radiusEvolution_{m_tag}_{sfe_tag}_{n_tag}"
-
+    # Save
+    tag = f"radiusEvolution_M{mCloud}_sfe{sfe}_n{ndens}"
     if SAVE_PNG:
         out_png = FIG_DIR / f"{tag}.png"
         fig.savefig(out_png, bbox_inches="tight")
@@ -274,8 +296,124 @@ for ndens in ndens_list:
         fig.savefig(out_pdf, bbox_inches="tight")
         print(f"Saved: {out_pdf}")
 
-
-
     plt.show()
     plt.close(fig)
+
+
+# ---------------- main execution ----------------
+if SINGLE_MODE:
+    # Plot single run
+    plot_single_run(SINGLE_MCLOUD, SINGLE_SFE, SINGLE_NDENS)
+else:
+    # Plot grid for each ndens
+    for ndens in ndens_list:
+        nrows, ncols = len(mCloud_list), len(sfe_list)
+
+        fig, axes = plt.subplots(
+            nrows=nrows, ncols=ncols,
+            figsize=(3.2 * ncols, 2.6 * nrows),
+            sharex=False, sharey=False,
+            dpi=500,
+            constrained_layout=False
+        )
+
+        fig.subplots_adjust(top=0.90)
+        nlog = int(np.log10(float(ndens)))
+        fig.suptitle(rf"Radius evolution ($n=10^{{{nlog}}}\,\mathrm{{cm^{{-3}}}}$)", y=1.05)
+
+        m_tag   = range_tag("M",   mCloud_list, key=float)
+        sfe_tag = range_tag("sfe", sfe_list,    key=int)   # works for "001", "010", ...
+        n_tag   = f"n{ndens}"
+        tag = f"radius_grid_{m_tag}_{sfe_tag}_{n_tag}"
+
+        for i, mCloud in enumerate(mCloud_list):
+            for j, sfe in enumerate(sfe_list):
+                ax = axes[i, j]
+                run_name = f"{mCloud}_sfe{sfe}_n{ndens}"
+                data_path = find_data_file(BASE_DIR, run_name)
+
+                if data_path is None:
+                    ax.text(0.5, 0.5, "missing", ha="center", va="center", transform=ax.transAxes)
+                    ax.set_axis_off()
+                    continue
+
+                try:
+                    t, phase, R1, R2, rShell, r_Tb, rcloud = load_run_radii(data_path)
+                    plot_radii_on_ax(
+                        ax, t, phase, R1, R2, rShell, r_Tb, rcloud,
+                        phase_line=PHASE_LINE,
+                        cloud_line=CLOUD_LINE,
+                        show_weaver=SHOW_WEAVER,
+                        smooth_window=SMOOTH_WINDOW,
+                        smooth_mode=SMOOTH_MODE
+                    )
+                except Exception as e:
+                    print(f"Error in {run_name}: {e}")
+                    ax.text(0.5, 0.5, "error", ha="center", va="center", transform=ax.transAxes)
+                    ax.set_axis_off()
+                    continue
+
+                # column titles
+                if i == 0:
+                    eps = int(sfe) / 100.0
+                    ax.set_title(rf"$\epsilon={eps:.2f}$")
+
+                # y label only on leftmost column
+                if j == 0:
+                    mlog = int(np.log10(float(mCloud)))
+                    ax.set_ylabel(rf"$M_{{cloud}}=10^{{{mlog}}}\,M_\odot$" + "\n" + r"Radius [pc]")
+                else:
+                    ax.tick_params(labelleft=False)
+
+                # x label only on bottom row
+                if i == nrows - 1:
+                    ax.set_xlabel("t [Myr]")
+
+        # global legend (now includes r_Tb and optionally Weaver)
+        handles = [
+            Line2D([0], [0], color=RADIUS_FIELDS[0][2], lw=RADIUS_FIELDS[0][4], ls=RADIUS_FIELDS[0][3], label=RADIUS_FIELDS[0][1]),
+            Line2D([0], [0], color=RADIUS_FIELDS[1][2], lw=RADIUS_FIELDS[1][4], ls=RADIUS_FIELDS[1][3], label=RADIUS_FIELDS[1][1]),
+            Line2D([0], [0], color=RADIUS_FIELDS[2][2], lw=RADIUS_FIELDS[2][4], ls=RADIUS_FIELDS[2][3], label=RADIUS_FIELDS[2][1]),
+            Line2D([0], [0], color=RADIUS_FIELDS[3][2], lw=RADIUS_FIELDS[3][4], ls=RADIUS_FIELDS[3][3], label=RADIUS_FIELDS[3][1]),
+        ]
+        if SHOW_WEAVER:
+            handles.append(Line2D([0], [0], color="k", ls="--", alpha=0.6, lw=1.5, label=r"Weaver: $R \propto t^{3/5}$"))
+        handles.extend([
+            Line2D([0], [0], color="k", ls="--", alpha=0.25, lw=1.6, label=r"$R_2>R_{\rm cloud}$"),
+            Line2D([0], [0], color="r", lw=2, alpha=0.3, label=r"phase changes: $T$ (→transition), $M$ (→momentum)"),
+        ])
+
+        # Reserve top space so legend never overlaps subplot titles
+        fig.subplots_adjust(top=0.9)           # <-- tune: smaller = more header space
+
+        leg = fig.legend(
+            handles=handles,
+            loc="upper center",
+            ncol=3,
+            frameon=True,
+            facecolor="white",
+            framealpha=0.9,
+            edgecolor="0.2",
+            bbox_to_anchor=(0.5, 0.98),
+            bbox_transform=fig.transFigure
+        )
+        leg.set_zorder(10)
+
+        # --------- SAVE FIGURE ---------
+        m_tag   = range_tag("M",   mCloud_list, key=float)
+        sfe_tag = range_tag("sfe", sfe_list,    key=int)
+        n_tag   = f"n{ndens}"
+        tag = f"radiusEvolution_{m_tag}_{sfe_tag}_{n_tag}"
+
+        if SAVE_PNG:
+            out_png = FIG_DIR / f"{tag}.png"
+            fig.savefig(out_png, bbox_inches="tight")
+            print(f"Saved: {out_png}")
+        if SAVE_PDF:
+            out_pdf = FIG_DIR / f"{tag}.pdf"
+            fig.savefig(out_pdf, bbox_inches="tight")
+            print(f"Saved: {out_pdf}")
+
+        plt.show()
+        plt.close(fig)
 
