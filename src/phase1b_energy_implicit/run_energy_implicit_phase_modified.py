@@ -69,6 +69,14 @@ ODE_ATOL = 1e-8      # Absolute tolerance (relaxed from 1e-9)
 ODE_MIN_STEP = 1e-12 # Minimum step size to prevent stalling (Myr)
 ODE_MAX_STEP = 1e-3  # Maximum step size (same as segment duration)
 
+# Solver method options:
+# - 'LSODA': Auto-switches stiff/non-stiff (FORTRAN, can produce confusing intdy warnings)
+# - 'Radau': Implicit Runge-Kutta for stiff problems (pure Python, clearer errors)
+# - 'BDF': Backward differentiation for stiff problems (pure Python)
+# - 'RK45': Explicit Runge-Kutta for non-stiff problems (default, pure Python)
+# Using 'Radau' to handle potential stiffness while avoiding FORTRAN intdy warnings
+ODE_METHOD = 'Radau'
+
 
 # =============================================================================
 # Force Properties Dataclass
@@ -454,16 +462,20 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
                      f"y0=[R2={y0[0]:.10e}, v2={y0[1]:.6e}, Eb={y0[2]:.6e}, T0={y0[3]:.6e}]")
 
         try:
-            sol = scipy.integrate.solve_ivp(
-                fun=lambda t, y: get_ODE_implicit_pure(t, y, snapshot, params, Ed, Td),
-                t_span=t_span,
-                y0=y0,
-                method='LSODA',
-                rtol=ODE_RTOL,
-                atol=ODE_ATOL,
-                min_step=ODE_MIN_STEP,
-                max_step=ODE_MAX_STEP,
-            )
+            # Build solver kwargs (min_step only supported by LSODA)
+            solver_kwargs = {
+                'fun': lambda t, y: get_ODE_implicit_pure(t, y, snapshot, params, Ed, Td),
+                't_span': t_span,
+                'y0': y0,
+                'method': ODE_METHOD,
+                'rtol': ODE_RTOL,
+                'atol': ODE_ATOL,
+                'max_step': ODE_MAX_STEP,
+            }
+            if ODE_METHOD == 'LSODA':
+                solver_kwargs['min_step'] = ODE_MIN_STEP
+
+            sol = scipy.integrate.solve_ivp(**solver_kwargs)
         except Exception as e:
             logger.error(f"solve_ivp failed at t={t_now:.6e}: {e}")
             termination_reason = f"solver_error: {e}"
