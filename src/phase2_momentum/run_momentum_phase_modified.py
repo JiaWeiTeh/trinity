@@ -46,6 +46,12 @@ DT_SEGMENT = 5e-2  # Myr - segment duration (larger OK in momentum phase)
 MAX_SEGMENTS = 10000
 FOUR_PI = 4.0 * np.pi
 
+# ODE solver settings
+ODE_RTOL = 1e-6      # Relative tolerance
+ODE_ATOL = 1e-8      # Absolute tolerance
+ODE_MIN_STEP = 1e-12 # Minimum step size to prevent stalling (Myr)
+ODE_MAX_STEP = 5e-2  # Maximum step size (same as segment duration)
+
 
 # =============================================================================
 # Result Container
@@ -435,8 +441,10 @@ def run_phase_momentum(params) -> MomentumPhaseResults:
                 t_span=t_span,
                 y0=y0,
                 method='LSODA',
-                rtol=1e-6,
-                atol=1e-9,
+                rtol=ODE_RTOL,
+                atol=ODE_ATOL,
+                min_step=ODE_MIN_STEP,
+                max_step=ODE_MAX_STEP,
             )
         except Exception as e:
             logger.error(f"solve_ivp failed at t={t_now:.6e}: {e}")
