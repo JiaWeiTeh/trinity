@@ -32,8 +32,10 @@ from src.phase1_energy import run_energy_phase
 from src.phase1_energy import run_energy_phase_modified
 from src.phase1b_energy_implicit import run_energy_implicit_phase
 from src.phase1b_energy_implicit import run_energy_implicit_phase_modified
-# from src.phase1c_transition import run_transition_phase
-# from src.phase2_momentum import run_momentum_phase
+from src.phase1c_transition import run_transition_phase
+from src.phase1c_transition import run_transition_phase_modified
+from src.phase2_momentum import run_momentum_phase
+from src.phase2_momentum import run_momentum_phase_modified
 import src._output.terminal_prints as terminal_prints
 from src._input.dictionary import DescribedItem, DescribedDict
 
@@ -340,7 +342,14 @@ def run_expansion(params):
 
     if params['EndSimulationDirectly'].value == False:
         phase1c_starttime = datetime.datetime.now()
-        run_transition_phase.run_phase_transition(params)
+
+        if use_adaptive_solver:
+            logger.info("Using modified transition phase (adaptive solve_ivp)")
+            run_transition_phase_modified.run_phase_transition(params)
+        else:
+            logger.info("Using original transition phase (Euler integration)")
+            run_transition_phase.run_phase_transition(params)
+
         phase1c_endtime = datetime.datetime.now()
         phase1c_elapsed = phase1c_endtime - phase1c_starttime
         logger.info(f"Phase 1c complete. Duration: {phase1c_elapsed}")
@@ -367,7 +376,14 @@ def run_expansion(params):
 
     if params['EndSimulationDirectly'].value == False:
         phase2_starttime = datetime.datetime.now()
-        run_momentum_phase.run_phase_momentum(params)
+
+        if use_adaptive_solver:
+            logger.info("Using modified momentum phase (adaptive solve_ivp)")
+            run_momentum_phase_modified.run_phase_momentum(params)
+        else:
+            logger.info("Using original momentum phase (Euler integration)")
+            run_momentum_phase.run_phase_momentum(params)
+
         phase2_endtime = datetime.datetime.now()
         phase2_elapsed = phase2_endtime - phase2_starttime
         logger.info(f"Phase 2 (momentum) complete. Duration: {phase2_elapsed}")
