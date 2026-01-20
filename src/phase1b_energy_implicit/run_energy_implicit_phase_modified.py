@@ -472,9 +472,6 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         params['F_ram'].value = force_props.F_ram
         params['F_rad'].value = force_props.F_rad
 
-        # Save snapshot
-        params.save_snapshot()
-
         # ---------------------------------------------------------------------
         # Check termination conditions
         # ---------------------------------------------------------------------
@@ -496,9 +493,9 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         params['bubble_Lgain'].value = Lgain
         params['bubble_Lloss'].value = Lloss
 
-        # Save snapshot
+        # Save snapshot (after all values for this timestep are stored)
         params.save_snapshot()
-        
+
         # ---------------------------------------------------------------------
         # Extract final state
         # ---------------------------------------------------------------------
