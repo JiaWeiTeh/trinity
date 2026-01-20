@@ -114,6 +114,11 @@ class BetaDeltaResult:
     converged: bool
     iterations: int
     bubble_properties: Optional[BubbleProperties] = None
+    # Raw residual components for diagnostics
+    Edot_from_beta: Optional[float] = None      # residual_Edot1_guess
+    Edot_from_balance: Optional[float] = None   # residual_Edot2_guess
+    T_bubble: Optional[float] = None            # residual_T1_guess
+    T0: Optional[float] = None                  # residual_T2_guess
 
 
 # =============================================================================
@@ -365,6 +370,101 @@ def get_residual_pure(
     return Edot_residual, T_residual, None
 
 
+@dataclass
+class ResidualDetails:
+    """Detailed residual components for diagnostics."""
+    Edot_residual: float
+    T_residual: float
+    Edot_from_beta: float       # residual_Edot1_guess
+    Edot_from_balance: float    # residual_Edot2_guess
+    T_bubble: float             # residual_T1_guess
+    T0: float                   # residual_T2_guess
+    bubble_props: Optional[BubbleProperties] = None
+
+
+def get_residual_detailed(
+    beta: float,
+    delta: float,
+    params,
+) -> ResidualDetails:
+    """
+    Calculate residuals with all raw components for diagnostics.
+
+    Returns a ResidualDetails object containing both normalized residuals
+    and the raw values used to compute them.
+    """
+    # Create a lightweight view that overrides beta/delta without copying
+    params_view = BubbleParamsView(params, beta, delta)
+
+    # Calculate bubble properties
+    try:
+        bubble_props = get_bubbleproperties_pure(params_view)
+    except Exception as e:
+        logger.warning(f"Bubble properties calculation failed: {e}")
+        return ResidualDetails(
+            Edot_residual=100.0,
+            T_residual=100.0,
+            Edot_from_beta=np.nan,
+            Edot_from_balance=np.nan,
+            T_bubble=np.nan,
+            T0=np.nan,
+            bubble_props=None,
+        )
+
+    # Extract needed values from original params
+    R2 = params['R2'].value
+    v2 = params['v2'].value
+    Eb = params['Eb'].value
+    T0 = params['T0'].value
+    t_now = params['t_now'].value
+    gamma_adia = params['gamma_adia'].value
+    Lmech_total = params['Lmech_total'].value
+    v_mech_total = params['v_mech_total'].value
+    pdot_total = params['pdot_total'].value
+    pdotdot_total = params['pdotdot_total'].value
+
+    # Compute R1 and Pb
+    R1, Pb = compute_R1_Pb(R2, Eb, Lmech_total, v_mech_total, gamma_adia)
+
+    # Part 1: Calculate Edot values
+    Edot_from_beta = beta2Edot_pure(
+        beta, Pb, t_now, R1, R2, v2, Eb, pdot_total, pdotdot_total
+    )
+
+    L_gain = Lmech_total
+    L_loss = bubble_props.bubble_LTotal
+    bubble_Leak = getattr(params.get('bubble_Leak', None), 'value', 0.0)
+    if bubble_Leak is None:
+        bubble_Leak = 0.0
+    L_loss += bubble_Leak
+
+    Edot_from_balance = L_gain - L_loss - 4 * np.pi * R2**2 * v2 * Pb
+
+    # Relative Edot residual
+    if abs(Edot_from_beta) > 1e-300:
+        Edot_residual = (Edot_from_beta - Edot_from_balance) / Edot_from_beta
+    else:
+        Edot_residual = Edot_from_balance if abs(Edot_from_balance) > 0 else 0.0
+
+    # Part 2: Calculate T values
+    T_bubble = bubble_props.bubble_T_r_Tb
+
+    if abs(T0) > 1e-300:
+        T_residual = (T_bubble - T0) / T0
+    else:
+        T_residual = T_bubble if abs(T_bubble) > 0 else 0.0
+
+    return ResidualDetails(
+        Edot_residual=Edot_residual,
+        T_residual=T_residual,
+        Edot_from_beta=Edot_from_beta,
+        Edot_from_balance=Edot_from_balance,
+        T_bubble=T_bubble,
+        T0=T0,
+        bubble_props=bubble_props,
+    )
+
+
 # =============================================================================
 # Main Solver
 # =============================================================================
@@ -519,10 +619,8 @@ def solve_betadelta_pure(
         # Neither converged, picked best from all candidates
         method_desc = f'best({best_method})'
 
-    # Get final bubble properties for best result
-    Edot_res_final, T_res_final, bubble_props_final = get_residual_pure(
-        best_beta, best_delta, params, return_bubble_props=True
-    )
+    # Get final detailed residuals for best result
+    details = get_residual_detailed(best_beta, best_delta, params)
 
     logger.info(
         f"Beta-delta result ({method_desc}): β={best_beta:.4f}, δ={best_delta:.4f}, "
@@ -532,12 +630,17 @@ def solve_betadelta_pure(
     return BetaDeltaResult(
         beta=best_beta,
         delta=best_delta,
-        Edot_residual=Edot_res_final,
-        T_residual=T_res_final,
+        Edot_residual=details.Edot_residual,
+        T_residual=details.T_residual,
         total_residual=best_residual,
         converged=converged,
         iterations=best_iterations,
-        bubble_properties=bubble_props_final,
+        bubble_properties=details.bubble_props,
+        # Raw residual components for saving to dictionary
+        Edot_from_beta=details.Edot_from_beta,
+        Edot_from_balance=details.Edot_from_balance,
+        T_bubble=details.T_bubble,
+        T0=details.T0,
     )
 
 

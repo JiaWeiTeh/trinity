@@ -380,6 +380,18 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         if bubble_props is not None:
             updateDict(params, bubble_props)
 
+        # Save residual diagnostics to dictionary (after ODE, not during)
+        params['residual_deltaT'].value = betadelta_result.T_residual
+        params['residual_betaEdot'].value = betadelta_result.Edot_residual
+        if betadelta_result.Edot_from_beta is not None:
+            params['residual_Edot1_guess'].value = betadelta_result.Edot_from_beta
+        if betadelta_result.Edot_from_balance is not None:
+            params['residual_Edot2_guess'].value = betadelta_result.Edot_from_balance
+        if betadelta_result.T_bubble is not None:
+            params['residual_T1_guess'].value = betadelta_result.T_bubble
+        if betadelta_result.T0 is not None:
+            params['residual_T2_guess'].value = betadelta_result.T0
+
         # ---------------------------------------------------------------------
         # Get R1 and Pb
         # ---------------------------------------------------------------------
