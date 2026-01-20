@@ -35,7 +35,7 @@ SMOOTH_MODE = "edge"
 FIG_DIR = Path(__file__).parent.parent.parent / "fig"
 FIG_DIR.mkdir(parents=True, exist_ok=True)
 SAVE_PNG = True
-SAVE_PDF = False
+SAVE_PDF = True
 
 # --- unit conversion: pc/Myr -> km/s
 PC_PER_MYR_TO_KMS = 0.9777922215250843
