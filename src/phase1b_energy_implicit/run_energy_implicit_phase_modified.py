@@ -70,18 +70,22 @@ ADAPTIVE_THRESHOLD_DEX = 0.1  # dex - threshold for parameter change (10^0.1 ≈
 ADAPTIVE_FACTOR = 10**0.1     # Factor to increase/decrease DT_SEGMENT (~1.26)
 
 # Parameters to monitor for adaptive stepping (keys in params dict)
+# Only scalar (float/int) parameters - no arrays
 ADAPTIVE_MONITOR_KEYS = [
     # Core state variables
     'R2', 'v2', 'Eb', 'T0',
     # Bubble properties
     'Pb', 'R1',
     # Feedback values
-    'Lmech_total', 'Qi', 'pdot_total',
-    # Force parameters
-    'F_grav', 'F_ion_in', 'F_ion_out', 'F_ram', 'F_rad',
-    # Shell parameters
-    'shell_mass', 'shell_massDot', 'shell_nShell', 'shell_col',
-    'shell_fAbsorbedIon', 'shell_fAbsorbedDust', 'shell_F_rad',
+    'Lmech_total', 'Lbol', 'Qi', 'pdot_total',
+    # Force parameters (all scalars)
+    'F_grav', 'F_SN', 'F_ram', 'F_ram_wind', 'F_ram_SN',
+    'F_wind', 'F_ion_in', 'F_ion_out', 'F_rad', 'F_ISM',
+    # Shell parameters (scalars only, excluding shell_grav_* arrays)
+    'shell_mass', 'shell_massDot', 'shell_n0', 'shell_nMax',
+    'shell_thickness', 'shell_tauKappaRatio', 'shell_F_rad',
+    'shell_fAbsorbedIon', 'shell_fAbsorbedNeu', 'shell_fAbsorbedWeightedTotal',
+    'shell_fIonisedDust', 'rShell',
 ]
 
 # ODE solver settings
