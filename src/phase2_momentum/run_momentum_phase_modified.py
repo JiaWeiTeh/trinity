@@ -1,17 +1,48 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Modified momentum phase runner for TRINITY.
+Modified Momentum Phase Runner for TRINITY
+==========================================
 
 This module implements the momentum-driven phase using scipy.integrate.solve_ivp.
+In this phase, thermal pressure is negligible and expansion is driven purely by
+ram pressure from stellar winds and supernovae.
 
-Key features:
-- Bubble energy Eb = 0 (energy-driven terms negligible)
-- Only rd, vd are evolved; Ed = Td = 0
-- Uses pure ODE functions (no dictionary mutations during integration)
-- scipy.integrate.solve_ivp(LSODA) for adaptive integration
-- Segment-based integration with parameter updates between segments
-- Uses shell_structure_pure() and updateDict() pattern
+Overview
+--------
+The momentum phase is the final expansion phase where:
+- Bubble thermal energy Eb ≈ 0 (thermal pressure negligible)
+- Only radius and velocity (R2, v2) are evolved
+- Expansion driven by ram pressure only
+
+Key Features
+------------
+1. **Eb = 0**: Energy-driven terms negligible
+2. **Only rd, vd evolved**: Ed = Td = 0 (no energy/temperature evolution)
+3. **Pure ODE functions**: No dictionary mutations during integration
+4. **scipy.integrate.solve_ivp(LSODA)**: Adaptive integration for accuracy
+5. **Segment-based integration**: Parameter updates between segments
+6. **Consistent snapshots**: All values saved at consistent timestamps
+
+Snapshot Consistency (January 2026)
+-----------------------------------
+Snapshots are saved BEFORE ODE integration to ensure all values correspond
+to the same timestamp (t_now). The snapshot includes:
+- t_now, R2, v2 (current state)
+- feedback properties (Lmech, pdot, v_mech, etc.)
+- shell_props (shell structure)
+- Pb (ram pressure only, since Eb = 0)
+- forces (F_grav, F_ram, F_ion, F_rad)
+- mShell, mShell_dot (shell mass and accretion rate)
+
+Main Function
+-------------
+run_phase_momentum(params) -> MomentumPhaseResults
+
+Returns
+-------
+MomentumPhaseResults : dataclass
+    Contains t, R2, v2 arrays and termination info
 
 @author: TRINITY Team (refactored for solve_ivp)
 """
