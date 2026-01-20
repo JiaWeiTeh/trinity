@@ -35,9 +35,6 @@ model_name    default
 # INFO: Defines the output directory where all generated files will be stored. 
 path2output    def_dir
 
-# INFO: Controls the verbosity level of terminal output:
-verbose    1
-
 # INFO: Specifies the output format.
 output_format    JSON
 
@@ -110,7 +107,7 @@ stop_n_diss    1
 # UNIT: [Myr]
 stop_t_diss    2
 
-# INFO: Maximum radial extent permitted for shell expansion.
+# INFO: Maximum radial extent permitted for shell expansion. Set to None to disable this termination condition.
 # UNIT: [pc]
 stop_r    100
 
@@ -118,7 +115,7 @@ stop_r    100
 # UNIT: [km * s**-1]
 stop_v    -1e4
 
-# INFO: Maximum duration of the simulation.
+# INFO: Maximum duration of the simulation. Set to None to disable this termination condition.
 # UNIT: [Myr]
 stop_t    10
 
