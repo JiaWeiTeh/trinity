@@ -395,6 +395,32 @@ def run_phase_momentum(params) -> MomentumPhaseResults:
         params['shell_massDot'].value = mShell_dot
 
         # ---------------------------------------------------------------------
+        # Compute and store forces BEFORE ODE - all values consistent at t_now
+        # ---------------------------------------------------------------------
+        Lmech_total = feedback.Lmech_total
+        v_mech_total = feedback.v_mech_total
+
+        force_props = compute_forces_momentum_pure(
+            R2, mShell, Lmech_total, v_mech_total, shell_props, params
+        )
+        params['F_grav'].value = force_props.F_grav
+        params['F_ion_in'].value = force_props.F_ion_in
+        params['F_ion_out'].value = force_props.F_ion_out
+        params['F_ram'].value = force_props.F_ram
+        params['F_rad'].value = force_props.F_rad
+
+        # Store Pb (ram pressure)
+        press_ram = get_bubbleParams.pRam(R2, Lmech_total, v_mech_total)
+        params['Pb'].value = press_ram
+
+        # ---------------------------------------------------------------------
+        # Save snapshot BEFORE ODE - all values are consistent at t_now
+        # ---------------------------------------------------------------------
+        # At this point: t_now, R2, v2, feedback, shell_props, mShell, forces,
+        # Pb are all computed for the SAME t_now
+        params.save_snapshot()
+
+        # ---------------------------------------------------------------------
         # Build snapshot and integrate segment
         # ---------------------------------------------------------------------
         snapshot = create_momentum_snapshot(params, shell_props, mShell, mShell_dot)
@@ -432,43 +458,6 @@ def run_phase_momentum(params) -> MomentumPhaseResults:
         t_results.append(t_now)
         R2_results.append(R2)
         v2_results.append(v2)
-
-        # ---------------------------------------------------------------------
-        # Update shell mass after segment
-        # ---------------------------------------------------------------------
-        if not (is_collapse and hasattr(is_collapse, 'value') and is_collapse.value):
-            mShell, mShell_dot = mass_profile.get_mass_profile(
-                R2, params, return_mdot=True, rdot=v2
-            )
-            if hasattr(mShell, '__len__') and len(mShell) == 1:
-                mShell = float(mShell[0])
-            if hasattr(mShell_dot, '__len__') and len(mShell_dot) == 1:
-                mShell_dot = float(mShell_dot[0])
-
-        params['shell_mass'].value = mShell
-        params['shell_massDot'].value = mShell_dot
-
-        # ---------------------------------------------------------------------
-        # Compute and store forces
-        # ---------------------------------------------------------------------
-        Lmech_total = feedback.Lmech_total
-        v_mech_total = feedback.v_mech_total
-
-        force_props = compute_forces_momentum_pure(
-            R2, mShell, Lmech_total, v_mech_total, shell_props, params
-        )
-        params['F_grav'].value = force_props.F_grav
-        params['F_ion_in'].value = force_props.F_ion_in
-        params['F_ion_out'].value = force_props.F_ion_out
-        params['F_ram'].value = force_props.F_ram
-        params['F_rad'].value = force_props.F_rad
-
-        # Store Pb (ram pressure)
-        press_ram = get_bubbleParams.pRam(R2, Lmech_total, v_mech_total)
-        params['Pb'].value = press_ram
-
-        # Save snapshot
-        params.save_snapshot()
 
         # ---------------------------------------------------------------------
         # Check termination conditions

@@ -305,6 +305,27 @@ def run_phase_transition(params) -> TransitionPhaseResults:
         params['Pb'].value = Pb
 
         # ---------------------------------------------------------------------
+        # Compute shell mass and forces BEFORE ODE - all values consistent at t_now
+        # ---------------------------------------------------------------------
+        mShell, mShell_dot = mass_profile.get_mass_profile(R2, params, return_mdot=True, rdot=v2)
+        params['shell_mass'].value = mShell
+        params['shell_massDot'].value = mShell_dot
+
+        force_props = compute_forces_pure(R2, mShell, Pb, shell_props, params)
+        params['F_grav'].value = force_props.F_grav
+        params['F_ion_in'].value = force_props.F_ion_in
+        params['F_ion_out'].value = force_props.F_ion_out
+        params['F_ram'].value = force_props.F_ram
+        params['F_rad'].value = force_props.F_rad
+
+        # ---------------------------------------------------------------------
+        # Save snapshot BEFORE ODE - all values are consistent at t_now
+        # ---------------------------------------------------------------------
+        # At this point: t_now, R2, v2, Eb, feedback, shell_props, R1, Pb,
+        # forces, mShell are all computed for the SAME t_now
+        params.save_snapshot()
+
+        # ---------------------------------------------------------------------
         # Build snapshot and integrate segment
         # ---------------------------------------------------------------------
         snapshot = create_ODE_snapshot(params)
@@ -344,26 +365,6 @@ def run_phase_transition(params) -> TransitionPhaseResults:
         R2_results.append(R2)
         v2_results.append(v2)
         Eb_results.append(Eb)
-
-        # ---------------------------------------------------------------------
-        # Update shell mass
-        # ---------------------------------------------------------------------
-        mShell, mShell_dot = mass_profile.get_mass_profile(R2, params, return_mdot=True, rdot=v2)
-        params['shell_mass'].value = mShell
-        params['shell_massDot'].value = mShell_dot
-
-        # ---------------------------------------------------------------------
-        # Compute and store forces
-        # ---------------------------------------------------------------------
-        force_props = compute_forces_pure(R2, mShell, Pb, shell_props, params)
-        params['F_grav'].value = force_props.F_grav
-        params['F_ion_in'].value = force_props.F_ion_in
-        params['F_ion_out'].value = force_props.F_ion_out
-        params['F_ram'].value = force_props.F_ram
-        params['F_rad'].value = force_props.F_rad
-
-        # Save snapshot
-        params.save_snapshot()
 
         # ---------------------------------------------------------------------
         # Check termination conditions

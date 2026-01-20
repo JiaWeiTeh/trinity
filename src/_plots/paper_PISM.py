@@ -14,7 +14,7 @@ import src._functions.unit_conversions as cvt
 
 # Add script directory to path for local imports
 sys.path.insert(0, str(Path(__file__).parent))
-from load_snapshots import load_snapshots
+from load_snapshots import load_output
 
 # Output - save to project root's fig/ directory
 FIG_DIR = Path(__file__).parent.parent.parent / "fig"
@@ -39,18 +39,12 @@ for ii, pressure in enumerate(['0', '1e4', '1e5', '1e6']):
     # Path to data file (can be .json or .jsonl)
     path2data = f'/Users/jwt/unsync/Code/Trinity/outputs/1e5_sfe030_n1e4_PISM{pressure}/dictionary.json'
 
-    # Load snapshots (supports both JSON and JSONL)
-    snaps = load_snapshots(path2data)
+    # Load using TrinityOutput reader
+    output = load_output(path2data)
 
-    rlist = []
-    tlist = []
-    phaselist = []
-
-    #--------------
-
-    for snap in snaps:
-        rlist.append(snap['R2'])
-        tlist.append(snap['t_now'])
+    rlist = list(output.get('R2'))
+    tlist = list(output.get('t_now'))
+    snaps = output  # Keep reference for rCloud access
 
     label = r"$P_{\mathrm{ISM}}/k_B = " + pressurelist[ii] + "\ \mathrm{K}\ \mathrm{cm}^{-3}$"
 

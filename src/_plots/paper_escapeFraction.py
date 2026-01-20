@@ -13,7 +13,7 @@ from pathlib import Path
 
 # Add script directory to path for local imports
 sys.path.insert(0, str(Path(__file__).parent))
-from load_snapshots import load_snapshots, find_data_file
+from load_snapshots import load_output, find_data_file
 
 print("...plotting escape fraction comparison")
 
@@ -59,16 +59,17 @@ def smooth_1d(y, window, mode="edge"):
 
 
 def load_escape_fraction(data_path: Path):
-    """Return (t, fesc) arrays. Supports both JSON and JSONL formats."""
-    snaps = load_snapshots(data_path)
+    """Return (t, fesc) arrays using TrinityOutput reader."""
+    output = load_output(data_path)
 
-    if not snaps:
+    if len(output) == 0:
         raise ValueError(f"No snapshots found in {data_path}")
 
-    t = np.array([s["t_now"] for s in snaps], dtype=float)
+    t = output.get('t_now')
 
     # fesc = 1 - fAbs (fAbs stored as shell_fAbsorbedIon)
-    fAbs = np.array([s.get("shell_fAbsorbedIon", 0.0) for s in snaps], dtype=float)
+    fAbs = output.get('shell_fAbsorbedIon')
+    fAbs = np.nan_to_num(fAbs, nan=0.0)
     fesc = 1.0 - fAbs
 
     return t, fesc
