@@ -150,27 +150,17 @@ def ODE_equations_momentum(t, y, params):
     # vd = phase_ODEs.get_vdot(t, [R2, v2, Eb, T0], params)
     # now
     
+    # new
     from src.sb99.update_feedback import get_currentSB99feedback
 
-    [t, Qi, Li, Ln, Lbol, Lmech_W, Lmech_SN, Lmech_total, pdot_W, pdot_SNe, pdot_total] = get_currentSB99feedback(t, params)
+    feedback = get_currentSB99feedback(t, params)
+    from src._input.dictionary import updateDict
+    updateDict(params, feedback)
     # Extract derived values from params for backward compatibility
-    Lmech_total = params['Lmech_total'].value
-    v_mech_total = params['v_mech_total'].value
-    pdot_total = params['pdot_total'].value
-    pdotdot_total = params['pdotdot_total'].value
     shell_structure.shell_structure(params)
     
     
-    _, vd, _, _ = energy_phase_ODEs.get_ODE_Edot(y, t, params)
-
-        
-    # ILL MAYBE PLACE THIS AFTER SO THAT WE WONT RECORD THE INTRIDCACIES INSIDE THIS LOOP
-    # # print('t here is t=', t)
-    params['array_t_now'].value = np.concatenate([params['array_t_now'].value, [t]])
-    params['array_R2'].value = np.concatenate([params['array_R2'].value, [R2]])
-    params['array_R1'].value = np.concatenate([params['array_R1'].value, [params['R1'].value]])
-    params['array_v2'].value = np.concatenate([params['array_v2'].value, [v2]])
-    params['array_T0'].value = np.concatenate([params['array_T0'].value, [T0]])
+    _, vd, _= energy_phase_ODEs.get_ODE_Edot([R2, v2, Eb], t, params)
     
     # print('mshell problems', mShell)
     
@@ -191,8 +181,6 @@ def ODE_equations_momentum(t, y, params):
         if len(mShell_dot) == 1:
             mShell_dot = mShell_dot[0]
     
-    
-    params['array_mShell'].value = np.concatenate([params['array_mShell'].value, [mShell]])
             
     
     

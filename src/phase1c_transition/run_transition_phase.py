@@ -156,15 +156,13 @@ def ODE_equations_transition(t, y, params):
     # new
     from src.sb99.update_feedback import get_currentSB99feedback
 
-    [t, Qi, Li, Ln, Lbol, Lmech_W, Lmech_SN, Lmech_total, pdot_W, pdot_SNe, pdot_total] = get_currentSB99feedback(t, params)
+    feedback = get_currentSB99feedback(t, params)
+    from src._input.dictionary import updateDict
+    updateDict(params, feedback)
     # Extract derived values from params for backward compatibility
-    Lmech_total = params['Lmech_total'].value
-    v_mech_total = params['v_mech_total'].value
-    pdot_total = params['pdot_total'].value
-    pdotdot_total = params['pdotdot_total'].value
     shell_structure.shell_structure(params)
     
-    _, vd, _, _ = energy_phase_ODEs.get_ODE_Edot(y, t, params)
+    _, vd, _, = energy_phase_ODEs.get_ODE_Edot([R2, v2, Eb], t, params)
     
     
         
@@ -197,9 +195,6 @@ def ODE_equations_transition(t, y, params):
             mShell_dot = mShell_dot[0]
     
     
-    
-    # params['array_mShell'].value = np.concatenate([params['array_mShell'].value, [mShell]])
-            
     
     
     rd = v2
