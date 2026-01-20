@@ -52,7 +52,7 @@ logger = logging.getLogger(__name__)
 # Constants
 # =============================================================================
 
-DT_SEGMENT = 1e-2  # Myr - segment duration
+DT_SEGMENT = 5e-2  # Myr - segment duration, coarser grid towards end
 MAX_SEGMENTS = 5000
 ENERGY_FLOOR = 1e3  # Minimum energy before transition to momentum phase
 FOUR_PI = 4.0 * np.pi
