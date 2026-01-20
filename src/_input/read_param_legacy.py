@@ -81,7 +81,11 @@ def read_param(path2file, write_summary = True):
             else:
                 raise ParameterFileError(f'Input parameter file formatting error: -> {line}')
 
-    path2default = r'/Users/jwt/unsync/Code/Trinity/param/default.param'
+    # Get path to default.param relative to this file's location
+    # This file is in src/_input/, default.param is in param/
+    _this_dir = Path(__file__).parent.resolve()
+    _project_root = _this_dir.parent.parent  # Go up from src/_input to project root
+    path2default = _project_root / 'param' / 'default.param'
 
     default_dict = {}
     with open(path2default, "r") as f:
