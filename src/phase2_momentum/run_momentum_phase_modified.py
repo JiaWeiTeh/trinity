@@ -76,7 +76,8 @@ ADAPTIVE_MONITOR_KEYS = [
 # ODE solver settings
 ODE_RTOL = 1e-6      # Relative tolerance
 ODE_ATOL = 1e-8      # Absolute tolerance
-ODE_MIN_STEP = 1e-12 # Minimum step size to prevent stalling (Myr, LSODA only)
+ODE_MIN_STEP = 1e-6  # Minimum step size (Myr)
+ODE_MAX_STEP = DT_SEGMENT_MIN / 5  # Max step = 2e-5 Myr (ensures >=5 steps per segment)
 ODE_METHOD = 'LSODA' # Auto-switches stiff/non-stiff
 
 
@@ -517,7 +518,7 @@ def run_phase_momentum(params) -> MomentumPhaseResults:
                 'method': ODE_METHOD,
                 'rtol': ODE_RTOL,
                 'atol': ODE_ATOL,
-                'max_step': dt_segment,
+                'max_step': ODE_MAX_STEP,
             }
             if ODE_METHOD == 'LSODA':
                 solver_kwargs['min_step'] = ODE_MIN_STEP

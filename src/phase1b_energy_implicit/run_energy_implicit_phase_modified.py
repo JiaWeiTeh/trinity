@@ -94,7 +94,8 @@ ADAPTIVE_MONITOR_KEYS = [
 # ODE solver settings
 ODE_RTOL = 1e-6      # Relative tolerance
 ODE_ATOL = 1e-8      # Absolute tolerance (relaxed from 1e-9)
-ODE_MIN_STEP = 1e-12 # Minimum step size to prevent stalling (Myr)
+ODE_MIN_STEP = 1e-6  # Minimum step size (Myr)
+ODE_MAX_STEP = DT_SEGMENT_MIN / 5  # Max step = 2e-5 Myr (ensures >=5 steps per segment)
 
 # Solver method: 'LSODA' for stiff/non-stiff switching
 ODE_METHOD = 'LSODA'
@@ -574,7 +575,7 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
                 'method': ODE_METHOD,
                 'rtol': ODE_RTOL,
                 'atol': ODE_ATOL,
-                'max_step': dt_segment,  # Use adaptive dt_segment as max_step
+                'max_step': ODE_MAX_STEP,
             }
             if ODE_METHOD == 'LSODA':
                 solver_kwargs['min_step'] = ODE_MIN_STEP
