@@ -59,7 +59,7 @@ logger = logging.getLogger(__name__)
 # =============================================================================
 
 COOLING_UPDATE_INTERVAL = 5e-3  # Myr - recalculate cooling
-DT_SEGMENT = 1e-4  # Myr - segment duration for beta/delta updates
+DT_SEGMENT = 1e-2  # Myr - segment duration for beta/delta updates
 MAX_SEGMENTS = 5000
 FOUR_PI = 4.0 * np.pi
 
