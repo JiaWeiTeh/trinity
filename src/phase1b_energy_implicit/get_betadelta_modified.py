@@ -421,13 +421,13 @@ def solve_betadelta_pure(
             total_res = Edot_res**2 + T_res**2
             if not np.isfinite(total_res) or total_res >= RESIDUAL_THRESHOLD:
                 lbfgsb_failed = True
-                logger.debug(
+                logger.warning(
                     f"L-BFGS-B did not converge (residual={total_res:.2e}), "
                     "falling back to grid search"
                 )
         except Exception as e:
             lbfgsb_failed = True
-            logger.warning(f"L-BFGS-B failed ({e}), falling back to grid search")
+            logger.critical(f"L-BFGS-B failed ({e}), falling back to grid search")
 
         # Fallback to grid search if L-BFGS-B failed or didn't converge
         if lbfgsb_failed:
@@ -435,7 +435,7 @@ def solve_betadelta_pure(
                 beta_opt, delta_opt, iterations = _solve_grid(beta_guess, delta_guess, params)
                 method = 'lbfgsb->grid'  # Update for logging
             except Exception as e:
-                logger.warning(f"Grid search fallback also failed: {e}")
+                logger.critical(f"Grid search fallback also failed: {e}")
                 # Both methods failed, return initial guess
                 return BetaDeltaResult(
                     beta=beta_guess,
@@ -510,7 +510,7 @@ def _solve_grid(
                     best_residual = residual
                     best_beta, best_delta = beta, delta
             except Exception as e:
-                logger.warning(f"Grid point ({beta:.3f}, {delta:.3f}) failed: {e}")
+                logger.critical(f"Grid point ({beta:.3f}, {delta:.3f}) failed: {e}")
                 continue
 
     return best_beta, best_delta, GRID_SIZE * GRID_SIZE
@@ -552,7 +552,7 @@ def _solve_lbfgsb(
         )
         return result.x[0], result.x[1], result.nit
     except Exception as e:
-        logger.warning(f"Optimizer failed: {e}, using initial guess")
+        logger.critical(f"Optimizer failed: {e}, using initial guess")
         return beta_guess, delta_guess, 0
 
 
