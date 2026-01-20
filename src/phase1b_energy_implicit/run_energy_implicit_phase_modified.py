@@ -414,6 +414,27 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         Td = delta2dTdt_pure(t_now, T0, delta)
 
         # ---------------------------------------------------------------------
+        # Compute shell mass and forces BEFORE ODE - all values consistent at t_now
+        # ---------------------------------------------------------------------
+        mShell, mShell_dot = mass_profile.get_mass_profile(R2, params, return_mdot=True, rdot=v2)
+        params['shell_mass'].value = mShell
+        params['shell_massDot'].value = mShell_dot
+
+        force_props = compute_forces_pure(R2, mShell, Pb, shell_props, params)
+        params['F_grav'].value = force_props.F_grav
+        params['F_ion_in'].value = force_props.F_ion_in
+        params['F_ion_out'].value = force_props.F_ion_out
+        params['F_ram'].value = force_props.F_ram
+        params['F_rad'].value = force_props.F_rad
+
+        # ---------------------------------------------------------------------
+        # Save snapshot BEFORE ODE - all values are consistent at t_now
+        # ---------------------------------------------------------------------
+        # At this point: t_now, R2, v2, Eb, T0, feedback, shell_props, bubble_props,
+        # beta, delta, R1, Pb, forces, residuals are all computed for the SAME t_now
+        params.save_snapshot()
+
+        # ---------------------------------------------------------------------
         # Build snapshot and integrate segment
         # ---------------------------------------------------------------------
         snapshot = create_ODE_snapshot(params)
@@ -458,23 +479,6 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         beta_results.append(beta)
         delta_results.append(delta)
 
-        mShell, mShell_dot = mass_profile.get_mass_profile(R2, params, return_mdot=True, rdot=v2)
-        params['shell_mass'].value = mShell
-        params['shell_massDot'].value = mShell_dot
-
-        # ---------------------------------------------------------------------
-        # Compute and store forces (pure function, no mutation during calc)
-        # ---------------------------------------------------------------------
-        force_props = compute_forces_pure(R2, mShell, Pb, shell_props, params)
-        params['F_grav'].value = force_props.F_grav
-        params['F_ion_in'].value = force_props.F_ion_in
-        params['F_ion_out'].value = force_props.F_ion_out
-        params['F_ram'].value = force_props.F_ram
-        params['F_rad'].value = force_props.F_rad
-
-        # Save snapshot
-        params.save_snapshot()
-
         # ---------------------------------------------------------------------
         # Check termination conditions
         # ---------------------------------------------------------------------
@@ -491,32 +495,6 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
             Lloss = Lloss_param.value if Lloss_param and hasattr(Lloss_param, 'value') else 0.0
 
         Lgain = feedback.Lmech_total  # From feedback calculation above
-
-        # Store for reference
-        params['bubble_Lgain'].value = Lgain
-        params['bubble_Lloss'].value = Lloss
-
-        # Save snapshot
-        params.save_snapshot()
-        
-        # ---------------------------------------------------------------------
-        # Extract final state
-        # ---------------------------------------------------------------------
-        R2 = float(sol.y[0, -1])
-        v2 = float(sol.y[1, -1])
-        Eb = float(sol.y[2, -1])
-        T0 = float(sol.y[3, -1])
-        t_now = float(sol.t[-1])
-
-        # Store results
-        t_results.append(t_now)
-        R2_results.append(R2)
-        v2_results.append(v2)
-        Eb_results.append(Eb)
-        T0_results.append(T0)
-        beta_results.append(beta)
-        delta_results.append(delta)
-        
 
         # Get threshold from params (default 0.05)
         phase_switch_threshold = params.get('phaseSwitch_LlossLgain', None)
