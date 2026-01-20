@@ -338,10 +338,15 @@ def print_summary(results: list, n_top: int = 30):
 
 
 def main():
+    # Default test file path (relative to this script's location)
+    script_dir = Path(__file__).parent.parent.parent  # Go up to trinity root
+    default_file = script_dir / 'test' / '1e7_sfe001_n1e4_test_dictionary.jsonl'
+
     parser = argparse.ArgumentParser(
         description='Analyze parameter changes in TRINITY simulation output'
     )
-    parser.add_argument('filepath', type=str, help='Path to .jsonl output file')
+    parser.add_argument('filepath', type=str, nargs='?', default=None,
+                        help='Path to .jsonl output file (default: test/1e7_sfe001_n1e4_test_dictionary.jsonl)')
     parser.add_argument('--phase', type=str, default='energy_implicit',
                         help='Starting phase (default: energy_implicit)')
     parser.add_argument('--top', type=int, default=16,
@@ -351,13 +356,20 @@ def main():
 
     args = parser.parse_args()
 
+    # Use default file if none specified
+    filepath = Path(args.filepath) if args.filepath else default_file
+
     # Check file exists
-    if not Path(args.filepath).exists():
-        print(f"Error: File not found: {args.filepath}")
+    if not filepath.exists():
+        print(f"Error: File not found: {filepath}")
+        if not args.filepath:
+            print(f"(Tried default: {default_file})")
         sys.exit(1)
 
+    filepath = str(filepath)
+
     # Analyze
-    results, t_values, snapshots = analyze_parameter_changes(args.filepath, args.phase)
+    results, t_values, snapshots = analyze_parameter_changes(filepath, args.phase)
 
     if not results:
         print("No results to display")
