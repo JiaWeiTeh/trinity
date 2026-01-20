@@ -264,7 +264,7 @@ def plot_top_parameters(results: list, t_values: np.ndarray, n_top: int = 16,
         ax.set_ylim(1e-6, 10)
         ax.set_xlabel('Time [Myr]')
         ax.set_ylabel('dex change')
-        ax.set_title(f'{name}\nΣ={total_dex:.2f}, max={max_dex:.3f}')
+        ax.set_title(f'{name}\nsum={total_dex:.2f}, max={max_dex:.3f}')
         ax.grid(True, alpha=0.3)
         ax.legend(fontsize=6)
 
