@@ -65,29 +65,33 @@ def read_param(path2file, write_summary=True):
     def parse_value(val_str):
         """
         Parse a string value into appropriate Python type.
-        
-        Precedence: boolean → number → fraction → string
+
+        Precedence: None → boolean → number → fraction → string
         """
         val_str = val_str.strip()
-        
+
+        # None
+        if val_str.lower() == 'none':
+            return None
+
         # Boolean
         if val_str.lower() == 'true':
             return True
         elif val_str.lower() == 'false':
             return False
-        
+
         # Number (float or int)
         try:
             return float(val_str)
         except ValueError:
             pass
-        
+
         # Fraction (e.g., 5/3)
         try:
             return float(Fraction(val_str))
         except (ValueError, ZeroDivisionError):
             pass
-        
+
         # String (fallback)
         return val_str
     
@@ -236,8 +240,11 @@ def read_param(path2file, write_summary=True):
     
     for key, (info, unit, value) in merged_dict.items():
         # Convert units to astronomy units [Msun, pc, Myr]
-        # Only convert numeric values; strings remain unchanged
-        if isinstance(value, (int, float)) and not isinstance(value, bool):
+        # Only convert numeric values; strings, booleans, and None remain unchanged
+        if value is None:
+            # None values (e.g., for disabled termination conditions) pass through
+            converted_value = None
+        elif isinstance(value, (int, float)) and not isinstance(value, bool):
             conversion_factor = cvt.convert2au(unit)
             converted_value = value * conversion_factor
         else:
