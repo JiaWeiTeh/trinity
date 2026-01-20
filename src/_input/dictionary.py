@@ -710,6 +710,43 @@ class DescribedDict(dict):
         last_id = max(int(k) for k in snapshots.keys())
         return cls.load_snapshot(path2output, last_id)
 
+    # -------------------------------------------------------------------------
+    # Bulk reset helper
+    # -------------------------------------------------------------------------
+    def reset_keys(self, keys: Sequence[str], value: Any = np.nan) -> None:
+        """
+        Reset multiple keys to a specified value (default: np.nan).
+
+        This is useful for clearing phase-specific parameters that are no longer
+        needed, reducing memory usage and avoiding stale data.
+
+        Parameters
+        ----------
+        keys : Sequence[str]
+            List of key names to reset.
+        value : Any, optional
+            Value to set for all keys (default: np.nan).
+
+        Notes
+        -----
+        Keys that don't exist in the dictionary are silently skipped.
+
+        Example
+        -------
+        from src._input.dictionary import COOLING_PHASE_KEYS
+        params.reset_keys(COOLING_PHASE_KEYS)  # Clear all cooling-related params
+        """
+        import logging
+        logger = logging.getLogger(__name__)
+
+        reset_count = 0
+        for key in keys:
+            if key in self:
+                self[key].value = value
+                reset_count += 1
+
+        logger.debug(f"Reset {reset_count}/{len(keys)} keys to {value}")
+
 
 # =============================================================================
 # Debug snapshot: save raw params for crash debugging
@@ -868,6 +905,46 @@ def load_debug_snapshot(snapshot_path: Union[str, Path]) -> Dict[str, Any]:
             result[key] = val
 
     return result
+
+
+# =============================================================================
+# Constants: Parameter groups for bulk operations
+# =============================================================================
+
+# Cooling-related parameters that can be reset after the implicit energy phase
+COOLING_PHASE_KEYS = [
+    # Residuals from beta/delta solver
+    'residual_deltaT',
+    'residual_betaEdot',
+    'residual_Edot1_guess',
+    'residual_Edot2_guess',
+    'residual_T1_guess',
+    'residual_T2_guess',
+    # Bubble energy balance
+    'bubble_Lgain',
+    'bubble_Lloss',
+    'bubble_Leak',
+    # Cooling timing
+    't_previousCoolingUpdate',
+    # Non-CIE cooling structures
+    'cStruc_cooling_nonCIE',
+    'cStruc_heating_nonCIE',
+    'cStruc_net_nonCIE_interpolation',
+    # CIE cooling structures
+    'cStruc_cooling_CIE_logT',
+    'cStruc_cooling_CIE_logLambda',
+    'cStruc_cooling_CIE_interpolation',
+    # Beta/delta values
+    'cool_beta',
+    'cool_delta',
+    # Bubble profile arrays
+    'bubble_v_arr',
+    'bubble_T_arr',
+    'bubble_dTdr_arr',
+    'bubble_r_arr',
+    'bubble_n_arr',
+    'bubble_dMdt',
+]
 
 
 # =============================================================================

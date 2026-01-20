@@ -3,14 +3,15 @@
 """
 Modified momentum phase runner for TRINITY.
 
-This module implements the momentum-driven phase (Phase 2) using
-scipy.integrate.solve_ivp.
+This module implements the momentum-driven phase using scipy.integrate.solve_ivp.
 
 Key features:
 - Bubble energy Eb = 0 (energy-driven terms negligible)
 - Only rd, vd are evolved; Ed = Td = 0
-- Uses ODE function that reads params but does NOT mutate during integration
-- update_params_after_segment() called after each successful segment
+- Uses pure ODE functions (no dictionary mutations during integration)
+- scipy.integrate.solve_ivp(LSODA) for adaptive integration
+- Segment-based integration with parameter updates between segments
+- Uses shell_structure_pure() and updateDict() pattern
 
 @author: TRINITY Team (refactored for solve_ivp)
 """
@@ -18,25 +19,21 @@ Key features:
 import numpy as np
 import scipy.integrate
 import logging
-from typing import Dict
 from dataclasses import dataclass
 
 from src.phase_general import phase_ODEs
 import src._functions.unit_conversions as cvt
-import src.shell_structure.shell_structure as shell_structure
 import src.cloud_properties.mass_profile as mass_profile
 from src.sb99.update_feedback import get_currentSB99feedback
+from src._input.dictionary import updateDict
 
-# Import ODE helpers from energy phase
-from src.phase1_energy.energy_phase_ODEs_modified import (
-    R1Cache,
-    _get_mass_from_profile,
-    _get_mShell_dot_with_activation,
-    _scalar,
-    get_press_ion,
-    update_params_after_segment,
+# Import pure/modified functions
+from src.shell_structure.shell_structure_modified import (
+    shell_structure_pure,
+    ShellProperties,
 )
 import src.bubble_structure.get_bubbleParams as get_bubbleParams
+from src.cloud_properties import density_profile
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +42,7 @@ logger = logging.getLogger(__name__)
 # Constants
 # =============================================================================
 
-DT_SEGMENT = 1e-3  # Myr - larger segments OK in momentum phase
+DT_SEGMENT = 1e-2  # Myr - segment duration (larger OK in momentum phase)
 MAX_SEGMENTS = 10000
 FOUR_PI = 4.0 * np.pi
 
@@ -65,15 +62,167 @@ class MomentumPhaseResults:
 
 
 # =============================================================================
+# Force Computation
+# =============================================================================
+
+@dataclass
+class ForceProperties:
+    """Container for force calculations (pure function output)."""
+    F_grav: float       # Gravitational force
+    F_ion_in: float     # Inward ionization pressure force
+    F_ion_out: float    # Outward ionization pressure force
+    F_ram: float        # Ram pressure force
+    F_rad: float        # Radiation pressure force
+
+
+def compute_forces_momentum_pure(
+    R2: float,
+    mShell: float,
+    Lmech_total: float,
+    v_mech_total: float,
+    shell_props: ShellProperties,
+    params,
+) -> ForceProperties:
+    """
+    Compute all force components for momentum phase without mutating params.
+
+    In momentum phase, pressure is ram pressure only (no thermal pressure).
+    """
+    # Gravitational force
+    G = params['G'].value
+    mCluster = params['mCluster'].value
+    F_grav = G * mShell / (R2**2) * (mCluster + 0.5 * mShell)
+
+    # Ram pressure (momentum phase - no thermal pressure)
+    press_ram = get_bubbleParams.pRam(R2, Lmech_total, v_mech_total)
+
+    # Ionization pressure forces
+    k_B = params['k_B'].value
+    TShell_ion = params['TShell_ion'].value
+    rCloud = params['rCloud'].value
+    rShell = shell_props.rShell
+    nISM = params['nISM'].value
+    PISM = params.get('PISM', None)
+    if PISM is not None and hasattr(PISM, 'value'):
+        PISM = PISM.value
+    else:
+        PISM = 0.0
+
+    # Inward pressure from photoionized gas outside shell
+    FABSi = shell_props.shell_fAbsorbedIon
+    if FABSi < 1.0:
+        try:
+            n_r = density_profile.get_density_profile(np.array([rShell]), params)
+            if hasattr(n_r, '__len__') and len(n_r) == 1:
+                n_r = n_r[0]
+            press_HII_in = n_r * k_B * TShell_ion
+        except Exception:
+            press_HII_in = 0.0
+    else:
+        press_HII_in = 0.0
+
+    # Add ISM pressure if shell extends beyond cloud
+    if rShell >= rCloud:
+        press_HII_in += PISM * k_B
+
+    # Outward ionization pressure
+    if FABSi < 1.0:
+        nR2 = nISM
+    else:
+        Qi = params['Qi'].value
+        caseB_alpha = params['caseB_alpha'].value
+        nR2 = np.sqrt(Qi / caseB_alpha / (R2**3) * 3 / FOUR_PI)
+    press_HII_out = 2.0 * nR2 * k_B * 3e4
+
+    F_ion_in = press_HII_in * FOUR_PI * R2**2
+    F_ion_out = press_HII_out * FOUR_PI * R2**2
+
+    # Ram pressure force
+    F_ram = press_ram * FOUR_PI * R2**2
+
+    # Radiation pressure force
+    F_rad = shell_props.shell_F_rad
+
+    return ForceProperties(
+        F_grav=F_grav,
+        F_ion_in=F_ion_in,
+        F_ion_out=F_ion_out,
+        F_ram=F_ram,
+        F_rad=F_rad,
+    )
+
+
+# =============================================================================
+# ODE Snapshot for Momentum Phase
+# =============================================================================
+
+@dataclass
+class MomentumODESnapshot:
+    """Frozen snapshot of parameters for momentum phase ODE."""
+    G: float
+    mCluster: float
+    Lmech_total: float
+    v_mech_total: float
+    k_B: float
+    Qi: float
+    caseB_alpha: float
+    nISM: float
+    PISM: float
+    rCloud: float
+    rShell: float
+    FABSi: float
+    F_rad: float
+    mShell: float
+    mShell_dot: float
+    isCollapse: bool
+
+
+def create_momentum_snapshot(params, shell_props: ShellProperties,
+                              mShell: float, mShell_dot: float) -> MomentumODESnapshot:
+    """Create a frozen snapshot of parameters for ODE integration."""
+    PISM = params.get('PISM', None)
+    if PISM is not None and hasattr(PISM, 'value'):
+        PISM = PISM.value
+    else:
+        PISM = 0.0
+
+    is_collapse = params.get('isCollapse', None)
+    if is_collapse and hasattr(is_collapse, 'value'):
+        is_collapse = is_collapse.value
+    else:
+        is_collapse = False
+
+    return MomentumODESnapshot(
+        G=params['G'].value,
+        mCluster=params['mCluster'].value,
+        Lmech_total=params['Lmech_total'].value,
+        v_mech_total=params['v_mech_total'].value,
+        k_B=params['k_B'].value,
+        Qi=params['Qi'].value,
+        caseB_alpha=params['caseB_alpha'].value,
+        nISM=params['nISM'].value,
+        PISM=PISM,
+        rCloud=params['rCloud'].value,
+        rShell=shell_props.rShell,
+        FABSi=shell_props.shell_fAbsorbedIon,
+        F_rad=shell_props.shell_F_rad,
+        mShell=mShell,
+        mShell_dot=mShell_dot,
+        isCollapse=is_collapse,
+    )
+
+
+# =============================================================================
 # Pure ODE for Momentum Phase
 # =============================================================================
 
-def get_ODE_momentum_pure(t: float, y: np.ndarray, params) -> np.ndarray:
+def get_ODE_momentum_pure(t: float, y: np.ndarray, snapshot: MomentumODESnapshot,
+                          params) -> np.ndarray:
     """
-    ODE function for momentum phase.
+    Pure ODE function for momentum phase.
 
     In momentum phase, Eb = 0 so bubble pressure is ram pressure only.
-    Reads params but does NOT mutate during integration.
+    Reads snapshot but does NOT mutate during integration.
 
     Parameters
     ----------
@@ -81,8 +230,10 @@ def get_ODE_momentum_pure(t: float, y: np.ndarray, params) -> np.ndarray:
         Time [Myr]
     y : ndarray
         State vector [R2, v2]
+    snapshot : MomentumODESnapshot
+        Frozen snapshot of parameters
     params : dict
-        Parameter dictionary (READ ONLY during ODE)
+        Original params for density profile lookup
 
     Returns
     -------
@@ -92,21 +243,17 @@ def get_ODE_momentum_pure(t: float, y: np.ndarray, params) -> np.ndarray:
     R2, v2 = y
     R2 = max(R2, 1e-10)
 
-    # Get parameters
-    G = params['G'].value
-    mCluster = params['mCluster'].value
-    Lmech_total = params['Lmech_total'].value
-    v_mech_total = params['v_mech_total'].value
-    k_B = params['k_B'].value
-    FABSi = params['shell_fAbsorbedIon'].value
-    F_rad = params['shell_F_rad'].value
-    Qi = params['Qi'].value
-
-    # Calculate shell mass
-    mShell, mShell_dot_raw = _get_mass_from_profile(R2, v2, params)
-
-    # Apply activation
-    mShell_dot = _get_mShell_dot_with_activation(mShell_dot_raw, R2, params)
+    # Get parameters from snapshot
+    G = snapshot.G
+    mCluster = snapshot.mCluster
+    Lmech_total = snapshot.Lmech_total
+    v_mech_total = snapshot.v_mech_total
+    k_B = snapshot.k_B
+    FABSi = snapshot.FABSi
+    F_rad = snapshot.F_rad
+    Qi = snapshot.Qi
+    mShell = snapshot.mShell
+    mShell_dot = snapshot.mShell_dot
 
     mShell = max(mShell, 1e-10)
 
@@ -116,24 +263,29 @@ def get_ODE_momentum_pure(t: float, y: np.ndarray, params) -> np.ndarray:
     # Ram pressure (momentum phase - no thermal pressure)
     press_ram = get_bubbleParams.pRam(R2, Lmech_total, v_mech_total)
 
-    # HII pressures (calculated using density_profile)
+    # HII pressures
     if FABSi < 1.0:
-        rShell = params['rShell'].value
-        press_HII_in = get_press_ion(rShell, params)
+        rShell = snapshot.rShell
+        try:
+            n_r = density_profile.get_density_profile(np.array([rShell]), params)
+            if hasattr(n_r, '__len__') and len(n_r) == 1:
+                n_r = n_r[0]
+            press_HII_in = n_r * k_B * 1e4  # TShell_ion approximation
+        except Exception:
+            press_HII_in = 0.0
     else:
         press_HII_in = 0.0
 
     # Add ambient pressure if shell is beyond cloud
-    rCloud = params['rCloud'].value
-    if params['rShell'].value >= rCloud:
-        press_HII_in += params['PISM'].value * k_B
+    if snapshot.rShell >= snapshot.rCloud:
+        press_HII_in += snapshot.PISM * k_B
 
     # Calculate press_HII_out
     if FABSi < 1:
-        nR2 = params['nISM'].value
+        nR2 = snapshot.nISM
     else:
-        caseB_alpha = params['caseB_alpha'].value
-        nR2 = np.sqrt(Qi / caseB_alpha / R2**3 * 3 / 4 / np.pi)
+        caseB_alpha = snapshot.caseB_alpha
+        nR2 = np.sqrt(Qi / caseB_alpha / R2**3 * 3 / FOUR_PI)
     press_HII_out = 2 * nR2 * k_B * 3e4
 
     # Net pressure force
@@ -144,84 +296,6 @@ def get_ODE_momentum_pure(t: float, y: np.ndarray, params) -> np.ndarray:
     vd = (F_pressure - mShell_dot * v2 - F_grav + F_rad) / mShell
 
     return np.array([rd, vd])
-
-
-def update_params_momentum(t: float, R2: float, v2: float, params):
-    """
-    Update params dict after successful momentum phase segment.
-
-    Similar to update_params_after_segment but for momentum phase
-    where Eb = 0.
-
-    Parameters
-    ----------
-    t : float
-        Current time [Myr]
-    R2 : float
-        Shell radius [pc]
-    v2 : float
-        Shell velocity [pc/Myr]
-    params : dict
-        Parameter dictionary with .value attributes
-    """
-    # --- State variables ---
-    params['t_now'].value = t
-    params['R2'].value = R2
-    params['v2'].value = v2
-    params['Eb'].value = 0.0
-
-    # --- Shell mass ---
-    if params['isCollapse'].value == True:
-        mShell = params['shell_mass'].value
-        mShell_dot = 0
-    else:
-        mShell, mShell_dot = mass_profile.get_mass_profile(
-            R2, params, return_mdot=True, rdot=v2
-        )
-        mShell = _scalar(mShell)
-        mShell_dot = _scalar(mShell_dot)
-
-    params['shell_mass'].value = mShell
-    params['shell_massDot'].value = mShell_dot
-
-    # --- Get parameters ---
-    G = params['G'].value
-    mCluster = params['mCluster'].value
-    Lmech_total = params['Lmech_total'].value
-    v_mech_total = params['v_mech_total'].value
-    k_B = params['k_B'].value
-    FABSi = params['shell_fAbsorbedIon'].value
-    F_rad = params['shell_F_rad'].value
-    Qi = params['Qi'].value
-
-    # --- Ram pressure ---
-    press_ram = get_bubbleParams.pRam(R2, Lmech_total, v_mech_total)
-    params['Pb'].value = press_ram
-
-    # --- HII pressures ---
-    if FABSi < 1.0:
-        press_HII_in = get_press_ion(params['rShell'].value, params)
-    else:
-        press_HII_in = 0.0
-
-    if params['rShell'].value >= params['rCloud'].value:
-        press_HII_in += params['PISM'].value * k_B
-
-    if FABSi < 1:
-        nR2 = params['nISM'].value
-    else:
-        nR2 = np.sqrt(Qi / params['caseB_alpha'].value / R2**3 * 3 / 4 / np.pi)
-    press_HII_out = 2 * nR2 * k_B * 3e4
-
-    # --- Gravity ---
-    F_grav = G * mShell / (R2**2) * (mCluster + 0.5 * mShell)
-
-    # --- Store forces for diagnostics ---
-    params['F_grav'].value = F_grav
-    params['F_ion_in'].value = press_HII_in * FOUR_PI * R2**2
-    params['F_ion_out'].value = press_HII_out * FOUR_PI * R2**2
-    params['F_ram'].value = press_ram * FOUR_PI * R2**2
-    params['F_rad'].value = F_rad
 
 
 # =============================================================================
@@ -255,7 +329,6 @@ def run_phase_momentum(params) -> MomentumPhaseResults:
     # Initialize state (Eb = 0 in momentum phase)
     R2 = params['R2'].value
     v2 = params['v2'].value
-    Eb = 0.0
     T0 = params['T0'].value
 
     params['Eb'].value = 0.0
@@ -269,15 +342,18 @@ def run_phase_momentum(params) -> MomentumPhaseResults:
     segment_count = 0
     termination_reason = None
 
+    # Track previous R2 for collapse detection
+    R2_prev = R2
+
     # =============================================================================
-    # Main loop
+    # Main loop (segment-based)
     # =============================================================================
 
     while t_now < tmax and segment_count < MAX_SEGMENTS:
         segment_count += 1
 
         # ---------------------------------------------------------------------
-        # Update params
+        # Update params with current state
         # ---------------------------------------------------------------------
         params['t_now'].value = t_now
         params['R2'].value = R2
@@ -289,24 +365,47 @@ def run_phase_momentum(params) -> MomentumPhaseResults:
         # Get feedback and shell structure
         # ---------------------------------------------------------------------
         feedback = get_currentSB99feedback(t_now, params)
-        Lmech_total = params['Lmech_total'].value
-        v_mech_total = params['v_mech_total'].value
+        updateDict(params, feedback)
 
-        shell_structure.shell_structure(params)
+        # Calculate shell structure using pure function
+        shell_props = shell_structure_pure(params)
+        updateDict(params, shell_props)
 
         # Set R1 = R2 (no inner shock in momentum phase)
         params['R1'].value = R2
 
         # ---------------------------------------------------------------------
-        # Integrate segment
+        # Get shell mass
         # ---------------------------------------------------------------------
+        is_collapse = params.get('isCollapse', None)
+        if is_collapse and hasattr(is_collapse, 'value') and is_collapse.value:
+            mShell = params['shell_mass'].value
+            mShell_dot = 0.0
+        else:
+            mShell, mShell_dot = mass_profile.get_mass_profile(
+                R2, params, return_mdot=True, rdot=v2
+            )
+            # Handle array returns
+            if hasattr(mShell, '__len__') and len(mShell) == 1:
+                mShell = float(mShell[0])
+            if hasattr(mShell_dot, '__len__') and len(mShell_dot) == 1:
+                mShell_dot = float(mShell_dot[0])
+
+        params['shell_mass'].value = mShell
+        params['shell_massDot'].value = mShell_dot
+
+        # ---------------------------------------------------------------------
+        # Build snapshot and integrate segment
+        # ---------------------------------------------------------------------
+        snapshot = create_momentum_snapshot(params, shell_props, mShell, mShell_dot)
+
         t_segment_end = min(t_now + DT_SEGMENT, tmax)
         t_span = (t_now, t_segment_end)
         y0 = np.array([R2, v2])
 
         try:
             sol = scipy.integrate.solve_ivp(
-                fun=lambda t, y: get_ODE_momentum_pure(t, y, params),
+                fun=lambda t, y: get_ODE_momentum_pure(t, y, snapshot, params),
                 t_span=t_span,
                 y0=y0,
                 method='LSODA',
@@ -335,30 +434,52 @@ def run_phase_momentum(params) -> MomentumPhaseResults:
         v2_results.append(v2)
 
         # ---------------------------------------------------------------------
-        # Update params after successful segment
+        # Update shell mass after segment
         # ---------------------------------------------------------------------
-        update_params_momentum(t_now, R2, v2, params)
+        if not (is_collapse and hasattr(is_collapse, 'value') and is_collapse.value):
+            mShell, mShell_dot = mass_profile.get_mass_profile(
+                R2, params, return_mdot=True, rdot=v2
+            )
+            if hasattr(mShell, '__len__') and len(mShell) == 1:
+                mShell = float(mShell[0])
+            if hasattr(mShell_dot, '__len__') and len(mShell_dot) == 1:
+                mShell_dot = float(mShell_dot[0])
+
+        params['shell_mass'].value = mShell
+        params['shell_massDot'].value = mShell_dot
 
         # ---------------------------------------------------------------------
-        # Update history arrays
+        # Compute and store forces
         # ---------------------------------------------------------------------
-        params['array_t_now'].value = np.concatenate([params['array_t_now'].value, [t_now]])
-        params['array_R2'].value = np.concatenate([params['array_R2'].value, [R2]])
-        params['array_R1'].value = np.concatenate([params['array_R1'].value, [R2]])  # R1 = R2
-        params['array_v2'].value = np.concatenate([params['array_v2'].value, [v2]])
-        params['array_T0'].value = np.concatenate([params['array_T0'].value, [T0]])
+        Lmech_total = feedback.Lmech_total
+        v_mech_total = feedback.v_mech_total
 
-        mShell = params['shell_mass'].value
-        params['array_mShell'].value = np.concatenate([params['array_mShell'].value, [mShell]])
+        force_props = compute_forces_momentum_pure(
+            R2, mShell, Lmech_total, v_mech_total, shell_props, params
+        )
+        params['F_grav'].value = force_props.F_grav
+        params['F_ion_in'].value = force_props.F_ion_in
+        params['F_ion_out'].value = force_props.F_ion_out
+        params['F_ram'].value = force_props.F_ram
+        params['F_rad'].value = force_props.F_rad
 
+        # Store Pb (ram pressure)
+        press_ram = get_bubbleParams.pRam(R2, Lmech_total, v_mech_total)
+        params['Pb'].value = press_ram
+
+        # Save snapshot
         params.save_snapshot()
 
         # ---------------------------------------------------------------------
         # Check termination conditions
         # ---------------------------------------------------------------------
-        # Check collapse
-        if v2 < 0:
+
+        # Collapse detection: velocity negative AND radius decreasing
+        if v2 < 0 and R2 < R2_prev:
             params['isCollapse'].value = True
+
+        # Update R2_prev for next iteration
+        R2_prev = R2
 
         if t_now > tmax:
             termination_reason = "reached_tmax"
@@ -366,11 +487,14 @@ def run_phase_momentum(params) -> MomentumPhaseResults:
             params['EndSimulationDirectly'].value = True
             break
 
-        if params.get('isCollapse', {}).value == True and R2 < params['coll_r'].value:
-            termination_reason = "small_radius"
-            params['SimulationEndReason'].value = 'Small radius reached'
-            params['EndSimulationDirectly'].value = True
-            break
+        is_collapse = params.get('isCollapse', None)
+        if is_collapse and hasattr(is_collapse, 'value') and is_collapse.value:
+            coll_r = params['coll_r'].value
+            if R2 < coll_r:
+                termination_reason = "small_radius"
+                params['SimulationEndReason'].value = 'Small radius reached'
+                params['EndSimulationDirectly'].value = True
+                break
 
         if R2 > params['stop_r'].value:
             termination_reason = "large_radius"
@@ -379,12 +503,14 @@ def run_phase_momentum(params) -> MomentumPhaseResults:
             break
 
         # Dissolution check
-        if params['shell_nMax'].value < params['stop_n_diss'].value:
-            params['isDissolved'].value = True
-            termination_reason = "dissolved"
-            params['SimulationEndReason'].value = 'Shell dissolved'
-            params['EndSimulationDirectly'].value = True
-            break
+        shell_nMax = params.get('shell_nMax', None)
+        if shell_nMax and hasattr(shell_nMax, 'value'):
+            if shell_nMax.value < params['stop_n_diss'].value:
+                params['isDissolved'].value = True
+                termination_reason = "dissolved"
+                params['SimulationEndReason'].value = 'Shell dissolved'
+                params['EndSimulationDirectly'].value = True
+                break
 
         # Cloud boundary check
         if params.get('expansionBeyondCloud', True) == False:
@@ -402,7 +528,7 @@ def run_phase_momentum(params) -> MomentumPhaseResults:
         termination_reason = "max_segments" if segment_count >= MAX_SEGMENTS else "unknown"
 
     logger.info(f"Momentum phase completed: {termination_reason}")
-    logger.info(f"  Final time: {t_now:.6e} Myr, Final R2: {R2:.6e} pc")
+    logger.info(f"  Final time: {t_now:.6e} Myr, Final R2: {R2:.6e} pc, Segments: {segment_count}")
 
     return MomentumPhaseResults(
         t=np.array(t_results),
