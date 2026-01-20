@@ -60,8 +60,8 @@ logger = logging.getLogger(__name__)
 
 COOLING_UPDATE_INTERVAL = 5e-3  # Myr - recalculate cooling
 DT_SEGMENT_INIT = 1e-3  # Myr - initial segment duration
-DT_SEGMENT_MIN = 1e-6   # Myr - minimum segment duration
-DT_SEGMENT_MAX = 1e-1   # Myr - maximum segment duration
+DT_SEGMENT_MIN = 1e-4   # Myr - minimum segment duration
+DT_SEGMENT_MAX = 2e-1   # Myr - maximum segment duration
 MAX_SEGMENTS = 5000
 FOUR_PI = 4.0 * np.pi
 
@@ -87,7 +87,8 @@ ADAPTIVE_MONITOR_KEYS = [
     'shell_mass', 'shell_massDot', 'shell_n0', 'shell_nMax',
     'shell_thickness', 'shell_tauKappaRatio', 'shell_fIonisedDust', 'rShell',
     # Force parameters
-    'F_grav', 'F_ram',
+    'F_grav', 'F_SN', 'F_ram', 'F_ram_wind', 'F_ram_SN',
+    'F_wind', 'F_ion_in', 'F_ion_out', 'F_rad', 'F_ISM',
 ]
 
 # ODE solver settings
