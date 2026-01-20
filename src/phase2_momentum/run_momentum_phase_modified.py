@@ -42,7 +42,7 @@ logger = logging.getLogger(__name__)
 # Constants
 # =============================================================================
 
-DT_SEGMENT = 1e-2  # Myr - segment duration (larger OK in momentum phase)
+DT_SEGMENT = 5e-2  # Myr - segment duration (larger OK in momentum phase)
 MAX_SEGMENTS = 10000
 FOUR_PI = 4.0 * np.pi
 

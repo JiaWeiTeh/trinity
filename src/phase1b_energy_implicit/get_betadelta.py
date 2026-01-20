@@ -148,7 +148,7 @@ def get_residual(beta_delta_guess, params):
     
     beta_guess, delta_guess = beta_delta_guess
     
-    _timer.begin('begin finding beta delta')
+    # _timer.begin('begin finding beta delta')
         
     # update
     params['cool_beta'].value = beta_guess
@@ -206,7 +206,7 @@ def get_residual(beta_delta_guess, params):
     
     T_residual = (params['bubble_T_r_Tb'].value - params['T0'].value)/params['T0'].value    
 
-    _timer.end()
+    # _timer.end()
     
     # record runs
     # params['beta'].value = b_params['beta'].value

@@ -56,7 +56,7 @@ plt.style.use(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'trinity.
 # --- optional single-run view (set all to None for full grid)
 ONLY_MCLOUD = "1e7"   # e.g. "1e8"
 ONLY_NDENS  = "1e4"   # e.g. "1e4"
-ONLY_SFE    = "020"   # e.g. "030"
+ONLY_SFE    = "001"   # e.g. "030"
 
 # comment this out if want single mode, otherwise leave this be if want grid. 
 # ONLY_NDENS = ONLY_MCLOUD = ONLY_SFE = None
