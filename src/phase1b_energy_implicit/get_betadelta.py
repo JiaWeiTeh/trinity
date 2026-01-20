@@ -14,6 +14,7 @@ import copy
 import scipy.interpolate
 import sys
 import scipy.optimize
+import logging
 #--
 import src.bubble_structure.get_bubbleParams as get_bubbleParams
 import src.bubble_structure.bubble_luminosity as bubble_luminosity
@@ -22,6 +23,8 @@ from src._input.dictionary import updateDict
 
 #--
 from src._functions.clock import _timer
+
+logger = logging.getLogger(__name__)
 
 
 def get_beta_delta_wrapper(beta_guess, delta_guess, params):
@@ -87,12 +90,17 @@ def get_betadelta(beta_guess, delta_guess, params):
     residual_sq = np.sum(np.square(residual))
     
     # only calculate beta/delta again if the residual is larger than 1e-4
-    
+
     if residual_sq < 1e-4:
-        
+
         for key in params.keys():
             updateDict(params, [key], [test_params[key].value])
-   
+
+        logger.info(
+            f"Beta-delta result (input): β={beta_guess:.4f}, δ={delta_guess:.4f}, "
+            f"residual={residual_sq:.2e}, converged=True"
+        )
+
         return [beta_guess, delta_guess], params
         
     else:
@@ -106,11 +114,10 @@ def get_betadelta(beta_guess, delta_guess, params):
             try:
                 residual = get_residual(bd_pair, test_params)
             except operations.MonotonicError as e:
-                print(e)
-                residual = (100,100)
+                logger.warning(f"MonotonicError at β={bd_pair[0]:.4f}, δ={bd_pair[1]:.4f}: {e}")
+                residual = (100, 100)
             except Exception as e:
-                print('Problem here', e)
-                # sys.exit('problem here')
+                logger.warning(f"Error at β={bd_pair[0]:.4f}, δ={bd_pair[1]:.4f}: {e}")
             
             # print('residual', residual)
             
@@ -119,27 +126,29 @@ def get_betadelta(beta_guess, delta_guess, params):
             dictionary_residual_pair[residual_sq] = test_params
             
         # check residuals
-        # for str_residual, test_dictionary in dictionary_residual_pair.items():
-            
         sorted_keys = sorted(dictionary_residual_pair)
-            
-        for key in sorted_keys:
-            print('These are the residuals and beta-delta pairs')
-            print('residual', key, 'beta', dictionary_residual_pair[key]['cool_beta'].value, 'delta', dictionary_residual_pair[key]['cool_delta'].value)
-        
-        smallest_residual = sorted_keys[0]
-         
-        for key in params.keys():
-            # print('updating', key)
-            updateDict(params, [key], [dictionary_residual_pair[smallest_residual][key].value])
-    
-        # print('we chose these beta delta values', params['beta'].value, params['delta'].value)
-        print('chosen:', params)
-        
-        beta, delta = params['cool_beta'].value, params['cool_delta'].value
 
-        # import sys
-        # sys.exit()
+        # Log all candidates at DEBUG level
+        for res_key in sorted_keys:
+            logger.debug(
+                f"Grid candidate: β={dictionary_residual_pair[res_key]['cool_beta'].value:.4f}, "
+                f"δ={dictionary_residual_pair[res_key]['cool_delta'].value:.4f}, "
+                f"residual={res_key:.2e}"
+            )
+
+        smallest_residual = sorted_keys[0]
+
+        for key in params.keys():
+            updateDict(params, [key], [dictionary_residual_pair[smallest_residual][key].value])
+
+        beta, delta = params['cool_beta'].value, params['cool_delta'].value
+        converged = smallest_residual < 1e-4
+
+        # Log final result at INFO level
+        logger.info(
+            f"Beta-delta result (grid): β={beta:.4f}, δ={delta:.4f}, "
+            f"residual={smallest_residual:.2e}, converged={converged}"
+        )
 
         return [beta, delta], params
 
