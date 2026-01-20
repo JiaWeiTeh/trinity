@@ -310,6 +310,13 @@ def plot_powerlaw_grids():
             shading='auto'
         )
 
+        # Draw boundary line between valid and invalid regions
+        boundary_mask = np.isnan(grid).astype(float)
+        ax.contour(
+            M_CLOUD_RANGE, N_CORE_RANGE, boundary_mask,
+            levels=[0.5], colors=['k'], linewidths=1.5, linestyles='-'
+        )
+
         # Add contour lines (evenly spaced in log)
         grid_masked = np.ma.masked_invalid(grid)
         if n_valid > 0:
@@ -393,6 +400,13 @@ def plot_BE_grids():
             M_CLOUD_RANGE, N_CORE_RANGE, grid,
             cmap=cmap, norm=LogNorm(vmin=vmin, vmax=vmax),
             shading='auto'
+        )
+
+        # Draw boundary line between valid and invalid regions
+        boundary_mask = np.isnan(grid).astype(float)
+        ax.contour(
+            M_CLOUD_RANGE, N_CORE_RANGE, boundary_mask,
+            levels=[0.5], colors=['k'], linewidths=1.5, linestyles='-'
         )
 
         # Add contour lines (evenly spaced in log)

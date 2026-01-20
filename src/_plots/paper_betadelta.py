@@ -225,5 +225,7 @@ for ndens in ndens_list:
     )
     leg.set_zorder(10)
 
+    if SAVE_PDF:
+        fig.savefig(FIG_DIR / f"paper_betadelta_n{ndens}.pdf", bbox_inches='tight')
     plt.show()
     plt.close(fig)

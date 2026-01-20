@@ -26,6 +26,11 @@ sfe_list    = ["001", "010", "020", "030", "050", "080"]   # cols
 
 BASE_DIR = Path.home() / "unsync" / "Code" / "Trinity" / "outputs"
 
+# --- output - save to project root's fig/ directory
+FIG_DIR = Path(__file__).parent.parent.parent / "fig"
+FIG_DIR.mkdir(parents=True, exist_ok=True)
+SAVE_PDF = True
+
 PHASE_CHANGE = True
 
 SMOOTH_WINDOW = None
@@ -168,6 +173,8 @@ def plot_single_run(mCloud, ndens, sfe):
     ax.set_title(run_name)
     ax.set_xlabel("t [Myr]")
     ax.set_ylabel(r"$p(t)=\int F\,dt$")
+    if SAVE_PDF:
+        fig.savefig(FIG_DIR / f"paper_momentum_{run_name}.pdf", bbox_inches='tight')
     plt.show()
     plt.close(fig)
 
@@ -400,6 +407,8 @@ else:
         nlog = int(np.log10(float(ndens)))
         fig.suptitle(rf"Momentum injected ($n=10^{{{nlog}}}\,\mathrm{{cm^{{-3}}}}$)", y=1.08)
 
+        if SAVE_PDF:
+            fig.savefig(FIG_DIR / f"paper_momentum_n{ndens}.pdf", bbox_inches='tight')
         plt.show()
         plt.close(fig)
 
