@@ -411,7 +411,8 @@ def run_phase_transition(params) -> TransitionPhaseResults:
         # Update R2_prev for next iteration
         R2_prev = R2
 
-        if t_now > tmax:
+        # Stop time check (skip if tmax is None)
+        if tmax is not None and t_now > tmax:
             termination_reason = "reached_tmax"
             params['SimulationEndReason'].value = 'Stopping time reached'
             params['EndSimulationDirectly'].value = True
@@ -426,7 +427,9 @@ def run_phase_transition(params) -> TransitionPhaseResults:
                 params['EndSimulationDirectly'].value = True
                 break
 
-        if R2 > params['stop_r'].value:
+        # Stop radius check (skip if stop_r is None)
+        stop_r = params['stop_r'].value
+        if stop_r is not None and R2 > stop_r:
             termination_reason = "large_radius"
             params['SimulationEndReason'].value = 'Large radius reached'
             params['EndSimulationDirectly'].value = True

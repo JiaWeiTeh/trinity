@@ -10,6 +10,23 @@ __pycache__/
 .spyproject/
 outputs/
 txt/
+fig/
+
+# Large test data files (optional - uncomment to exclude from git)
+# test/*.jsonl
+# example_scripts/*.jsonl
+
+# IDE settings
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
 
 # C extensions
 *.so

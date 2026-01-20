@@ -212,8 +212,8 @@ ax[0].set_ylim(0, 700)
 ax[0].set_xlabel('$\\rho_c$ [cm$^{-3}$]')    
 ax[1].set_xlabel('$\\rho_c$ [cm$^{-3}$]')    
 
-# path2figure = r'/Users/jwt/unsync/Code/Trinity/fig'
-# plt.savefig(os.path.join(path2figure, 'BESpheres_radius.pdf'))
+# Uncomment to save figure:
+# plt.savefig(FIG_DIR / 'BESpheres_radius.pdf')
 
 
 # =============================================================================

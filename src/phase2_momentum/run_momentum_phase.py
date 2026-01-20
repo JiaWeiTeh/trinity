@@ -220,9 +220,10 @@ def check_events(params, dt_params):
     # Terminating events
     # =============================================================================
     
-    #--- 1) Stopping time reached
-    if t_next > params['stop_t'].value:
-        print(f"Phase ended because t reaches {t_next} Myr (> tStop: {params['stop_t'].value}) in the next iteration.")
+    #--- 1) Stopping time reached (skip if stop_t is None)
+    stop_t = params['stop_t'].value
+    if stop_t is not None and t_next > stop_t:
+        print(f"Phase ended because t reaches {t_next} Myr (> tStop: {stop_t}) in the next iteration.")
         params['SimulationEndReason'].value = 'Stopping time reached'
         params['EndSimulationDirectly'].value = True
         return True
@@ -234,9 +235,10 @@ def check_events(params, dt_params):
         params['EndSimulationDirectly'].value = True
         return True
     
-    #--- 3) Large radius reached during expansion.
-    if R2_next > params['stop_r'].value:
-        print(f"Phase ended because r reaches {R2_next} pc (> stop_r: {params['stop_r'].value} pc)")
+    #--- 3) Large radius reached during expansion (skip if stop_r is None)
+    stop_r = params['stop_r'].value
+    if stop_r is not None and R2_next > stop_r:
+        print(f"Phase ended because r reaches {R2_next} pc (> stop_r: {stop_r} pc)")
         params['SimulationEndReason'].value = 'Large radius reached'
         params['EndSimulationDirectly'].value = True
         return True

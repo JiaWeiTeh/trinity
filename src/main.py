@@ -194,14 +194,9 @@ def run_expansion(params):
     params['t_now'].value = t0
     params['R2'].value = r0
     params['v2'].value = v0
-    params['Eb'].value = E0 
-    params['T0'].value = T0 
-    
-    print('here is your dictionary', params)
-    
-    from src._input.dictionary import save_debug_snapshot
-    save_debug_snapshot(params, './test/mockParams/')
-    
+    params['Eb'].value = E0
+    params['T0'].value = T0
+
     # =============================================================================
     # Phase 1a: Energy driven phase.
     # =============================================================================
