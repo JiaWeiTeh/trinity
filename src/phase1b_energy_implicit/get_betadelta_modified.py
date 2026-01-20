@@ -367,7 +367,7 @@ def solve_betadelta_pure(
     beta_guess: float,
     delta_guess: float,
     params,
-    method: str = 'grid',
+    method: str = 'lbfgsb',
 ) -> BetaDeltaResult:
     """
     Solve for optimal beta and delta.
@@ -381,9 +381,9 @@ def solve_betadelta_pure(
     params : dict-like
         Parameter dictionary (not mutated)
     method : str, optional
-        Solver method: 'grid' (default, fast) or 'lbfgsb' (optimizer)
-        When method='grid', automatically falls back to 'lbfgsb' if grid
-        search fails or doesn't converge.
+        Solver method: 'lbfgsb' (default, optimizer) or 'grid' (fast grid search)
+        When method='lbfgsb', automatically falls back to 'grid' if L-BFGS-B
+        fails or doesn't converge.
 
     Returns
     -------
@@ -409,53 +409,49 @@ def solve_betadelta_pure(
             bubble_properties=bubble_props,
         )
 
-    grid_failed = False
-    if method == 'grid':
-        # Grid search (fast, fixed 25 evaluations)
+    lbfgsb_failed = False
+    if method == 'lbfgsb':
+        # L-BFGS-B optimizer (default)
         try:
-            beta_opt, delta_opt, iterations = _solve_grid(beta_guess, delta_guess, params)
-            # Check if grid search actually found a valid result
+            beta_opt, delta_opt, iterations = _solve_lbfgsb(beta_guess, delta_guess, params)
+            # Check if L-BFGS-B actually found a valid result
             Edot_res, T_res, bubble_props = get_residual_pure(
                 beta_opt, delta_opt, params, return_bubble_props=True
             )
             total_res = Edot_res**2 + T_res**2
             if not np.isfinite(total_res) or total_res >= RESIDUAL_THRESHOLD:
-                grid_failed = True
+                lbfgsb_failed = True
                 logger.debug(
-                    f"Grid search did not converge (residual={total_res:.2e}), "
-                    "falling back to L-BFGS-B"
+                    f"L-BFGS-B did not converge (residual={total_res:.2e}), "
+                    "falling back to grid search"
                 )
         except Exception as e:
-            grid_failed = True
-            logger.warning(f"Grid search failed ({e}), falling back to L-BFGS-B")
+            lbfgsb_failed = True
+            logger.warning(f"L-BFGS-B failed ({e}), falling back to grid search")
 
-        # Fallback to L-BFGS-B if grid search failed or didn't converge
-        if grid_failed:
+        # Fallback to grid search if L-BFGS-B failed or didn't converge
+        if lbfgsb_failed:
             try:
-                beta_opt, delta_opt, iterations = _solve_lbfgsb(beta_guess, delta_guess, params)
-                method = 'grid->lbfgsb'  # Update for logging
+                beta_opt, delta_opt, iterations = _solve_grid(beta_guess, delta_guess, params)
+                method = 'lbfgsb->grid'  # Update for logging
             except Exception as e:
-                logger.warning(f"L-BFGS-B fallback also failed: {e}")
-                # Return best effort from grid if we had any result
-                if not grid_failed:
-                    pass  # Keep grid results
-                else:
-                    # Both methods failed, return initial guess
-                    return BetaDeltaResult(
-                        beta=beta_guess,
-                        delta=delta_guess,
-                        Edot_residual=float('inf'),
-                        T_residual=float('inf'),
-                        total_residual=float('inf'),
-                        converged=False,
-                        iterations=0,
-                        bubble_properties=None,
-                    )
-    elif method == 'lbfgsb':
-        # L-BFGS-B optimizer (more evaluations, may be slower)
-        beta_opt, delta_opt, iterations = _solve_lbfgsb(beta_guess, delta_guess, params)
+                logger.warning(f"Grid search fallback also failed: {e}")
+                # Both methods failed, return initial guess
+                return BetaDeltaResult(
+                    beta=beta_guess,
+                    delta=delta_guess,
+                    Edot_residual=float('inf'),
+                    T_residual=float('inf'),
+                    total_residual=float('inf'),
+                    converged=False,
+                    iterations=0,
+                    bubble_properties=None,
+                )
+    elif method == 'grid':
+        # Grid search (fast, fixed 25 evaluations)
+        beta_opt, delta_opt, iterations = _solve_grid(beta_guess, delta_guess, params)
     else:
-        raise ValueError(f"Unknown method: {method}. Use 'grid' or 'lbfgsb'.")
+        raise ValueError(f"Unknown method: {method}. Use 'lbfgsb' or 'grid'.")
 
     # Get final residuals with bubble properties
     Edot_res, T_res, bubble_props = get_residual_pure(
