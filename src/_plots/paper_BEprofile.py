@@ -5,9 +5,14 @@ Created on Thu Jul 31 17:16:20 2025
 
 @author: Jia Wei Teh
 
-plots different radius profiles for BE
+Paper figure: Bonnor-Ebert density profile visualization.
+
+USAGE:
+    Configure the data path below before running, or set environment variable:
+    - TRINITY_DATA_PATH: Path to simulation output (.json or .jsonl)
 """
 
+import os
 import sys
 import numpy as np
 import matplotlib.pyplot as plt
@@ -23,9 +28,14 @@ FIG_DIR = Path(__file__).parent.parent.parent / "fig"
 FIG_DIR.mkdir(parents=True, exist_ok=True)
 
 
-# Path to data file (can be .json or .jsonl)
-# path2data = r'/Users/jwt/unsync/Code/Trinity/outputs/1e5_sfe030_n1e4/dictionary.json'
-path2data = r'/Users/jwt/unsync/Code/Trinity/outputs/1e7_sfe001_n1e4_BE/dictionary.json'
+# =============================================================================
+# DATA PATH - Configure this before running
+# =============================================================================
+# Option 1: Set path directly
+# path2data = '/path/to/your/outputs/simulation/dictionary.jsonl'
+
+# Option 2: Use environment variable (recommended for portability)
+path2data = os.environ.get('TRINITY_DATA_PATH', 'outputs/simulation/dictionary.jsonl')
 
 # Load using TrinityOutput reader
 output = load_output(path2data)

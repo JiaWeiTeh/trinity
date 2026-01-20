@@ -1,0 +1,121 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "trinity-sf"
+version = "1.0.0"
+description = "TRINITY: A stellar feedback and bubble evolution simulation code"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.9"
+authors = [
+    {name = "Jia Wei Teh"},
+]
+keywords = [
+    "astrophysics",
+    "stellar feedback",
+    "bubble evolution",
+    "star formation",
+    "molecular clouds",
+    "simulations",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Astronomy",
+    "Topic :: Scientific/Engineering :: Physics",
+]
+
+dependencies = [
+    "numpy>=1.20.0",
+    "scipy>=1.7.0",
+    "astropy>=5.0",
+    "matplotlib>=3.5.0",
+    "pandas>=1.3.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "black>=23.0",
+    "flake8>=6.0",
+    "mypy>=1.0",
+]
+docs = [
+    "sphinx>=7.1,<7.2",
+    "sphinx_rtd_theme==2.0.0",
+    "readthedocs-sphinx-search==0.1.1",
+    "sphinx_copybutton",
+]
+
+[project.urls]
+Homepage = "https://github.com/JiaWeiTeh/trinity"
+Documentation = "https://trinitysf.readthedocs.io/en/latest/"
+Repository = "https://github.com/JiaWeiTeh/trinity"
+Issues = "https://github.com/JiaWeiTeh/trinity/issues"
+
+[tool.setuptools]
+packages = ["src"]
+package-dir = {"" = "."}
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["src*"]
+exclude = [
+    "old_doNotRead*",
+    "analysis*",
+    "test*",
+    "docs*",
+    "example_scripts*",
+]
+
+[tool.setuptools.package-data]
+"*" = [
+    "param/*.param",
+    "data/**/*",
+]
+
+[tool.black]
+line-length = 100
+target-version = ['py39', 'py310', 'py311', 'py312']
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.git
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | _build
+  | buck-out
+  | build
+  | dist
+  | old_doNotRead
+)/
+'''
+
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true
+exclude = [
+    "old_doNotRead/",
+    "analysis/",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["test"]
+python_files = ["test_*.py"]
+addopts = "-v --tb=short"
+filterwarnings = [
+    "ignore::DeprecationWarning",
+]
