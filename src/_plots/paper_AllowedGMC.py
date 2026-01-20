@@ -67,7 +67,7 @@ MASS_TOLERANCE = 0.001  # 0.1% mass error tolerance
 MU = 1.4             # mean molecular weight
 
 # Power-law exponents to test
-ALPHA_VALUES = [0, -1, -1.5, -2]
+ALPHA_VALUES = [-0.5, -1, -1.5, -2]
 
 # Bonnor-Ebert dimensionless radii to test (including critical ~6.45)
 XI_VALUES = [3.0, 4.0, XI_CRITICAL, 10]
