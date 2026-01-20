@@ -71,21 +71,23 @@ ADAPTIVE_FACTOR = 10**0.1     # Factor to increase/decrease DT_SEGMENT (~1.26)
 
 # Parameters to monitor for adaptive stepping (keys in params dict)
 # Only scalar (float/int) parameters - no arrays
+# Based on diagnostic_parameter_changes.py analysis of top 30 most variable parameters
 ADAPTIVE_MONITOR_KEYS = [
     # Core state variables
-    'R2', 'v2', 'Eb', 'T0',
-    # Bubble properties
-    'Pb', 'R1',
+    'R2', 'v2', 'Eb', 'T0', 'Pb', 'R1',
     # Feedback values
-    'Lmech_total', 'Lbol', 'Qi', 'pdot_total',
-    # Force parameters (all scalars)
-    'F_grav', 'F_SN', 'F_ram', 'F_ram_wind', 'F_ram_SN',
-    'F_wind', 'F_ion_in', 'F_ion_out', 'F_rad', 'F_ISM',
-    # Shell parameters (scalars only, excluding shell_grav_* arrays)
+    'pdot_SN', 'Lmech_SN', 'pdotdot_total',
+    # Cooling parameters
+    'cool_delta', 'cool_beta',
+    # Bubble properties
+    'bubble_mass', 'bubble_r_Tb', 'bubble_LTotal',
+    'bubble_L1Bubble', 'bubble_Lloss', 'bubble_dMdt',
+    'bubble_L2Conduction', 'bubble_L3Intermediate',
+    # Shell parameters
     'shell_mass', 'shell_massDot', 'shell_n0', 'shell_nMax',
-    'shell_thickness', 'shell_tauKappaRatio', 'shell_F_rad',
-    'shell_fAbsorbedIon', 'shell_fAbsorbedNeu', 'shell_fAbsorbedWeightedTotal',
-    'shell_fIonisedDust', 'rShell',
+    'shell_thickness', 'shell_tauKappaRatio', 'shell_fIonisedDust', 'rShell',
+    # Force parameters
+    'F_grav', 'F_ram',
 ]
 
 # ODE solver settings
