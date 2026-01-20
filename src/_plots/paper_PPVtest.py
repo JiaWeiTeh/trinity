@@ -44,6 +44,12 @@ Run
 
 import numpy as np
 import matplotlib.pyplot as plt
+from pathlib import Path
+
+# --- output - save to project root's fig/ directory
+FIG_DIR = Path(__file__).parent.parent.parent / "fig"
+FIG_DIR.mkdir(parents=True, exist_ok=True)
+SAVE_PDF = True
 
 # ---------------- Parameters ----------------
 R = 4.0          # shell radius (units)
@@ -105,6 +111,8 @@ plt.plot(xx,  vv, linewidth=1.5)
 plt.plot(xx, -vv, linewidth=1.5)
 plt.colorbar()
 plt.tight_layout()
+if SAVE_PDF:
+    plt.savefig(FIG_DIR / 'PPVtest_thinShell.pdf', bbox_inches='tight')
 plt.show()
 
 
@@ -201,6 +209,8 @@ plt.plot(xx,  vv, linewidth=1.5)
 plt.plot(xx, -vv, linewidth=1.5)
 
 plt.tight_layout()
+if SAVE_PDF:
+    plt.savefig(FIG_DIR / 'PPVtest_filledSphere.pdf', bbox_inches='tight')
 plt.show()
 
 
