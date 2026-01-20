@@ -37,7 +37,7 @@ from src.phase1c_transition import run_transition_phase_modified
 from src.phase2_momentum import run_momentum_phase
 from src.phase2_momentum import run_momentum_phase_modified
 import src._output.terminal_prints as terminal_prints
-from src._input.dictionary import DescribedItem, DescribedDict
+from src._input.dictionary import DescribedItem, DescribedDict, COOLING_PHASE_KEYS
 
 # Initialize logger for this module
 logger = logging.getLogger(__name__)
@@ -289,45 +289,9 @@ def run_expansion(params):
 
 
     # Since cooling is not needed anymore after this phase, we reset values.
+    # COOLING_PHASE_KEYS contains all cooling-related parameters that can be cleared.
     logger.debug("Resetting cooling-related parameters (no longer needed)...")
-    params['residual_deltaT'].value = np.nan
-    params['residual_betaEdot'].value = np.nan
-    params['residual_Edot1_guess'].value = np.nan
-    params['residual_Edot2_guess'].value = np.nan
-    params['residual_T1_guess'].value = np.nan
-    params['residual_T2_guess'].value = np.nan
-
-    params['bubble_Lgain'].value = np.nan
-    params['bubble_Lloss'].value = np.nan
-    params['bubble_Leak'].value = np.nan
-
-    params['t_previousCoolingUpdate'].value = np.nan
-    params['cStruc_cooling_nonCIE'].value = np.nan
-    params['cStruc_heating_nonCIE'].value = np.nan
-    params['cStruc_net_nonCIE_interpolation'].value = np.nan
-    # --
-    params['cStruc_cooling_CIE_logT'].value = np.nan
-    params['cStruc_cooling_CIE_logLambda'].value = np.nan
-    params['cStruc_cooling_CIE_interpolation'].value = np.nan
- 
-    params['cool_beta'].value = np.nan
-    params['cool_delta'].value = np.nan
-
-    
-    params['cStruc_cooling_CIE_interpolation'].value = np.nan
-    params['cStruc_cooling_CIE_logT'].value = np.nan
-    params['cStruc_cooling_CIE_logLambda'].value = np.nan
-    params['cStruc_cooling_nonCIE'].value = np.nan
-    params['cStruc_heating_nonCIE'].value = np.nan
-    params['cStruc_net_nonCIE_interpolation'].value = np.nan
-    
-    params['bubble_v_arr'].value = np.nan
-    params['bubble_T_arr'].value = np.nan
-    params['bubble_dTdr_arr'].value = np.nan
-    params['bubble_r_arr'].value = np.nan
-    params['bubble_n_arr'].value = np.nan
-    params['bubble_dMdt'].value = np.nan
- 
+    params.reset_keys(COOLING_PHASE_KEYS)
     
     # =============================================================================
     # Phase 1c: transition phase
