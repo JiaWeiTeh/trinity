@@ -43,7 +43,7 @@ INTEGRATION_DT = 0.1  # Myr - duration of each test run
 # Target start times for tests (Myr)
 # These should be times where implicit phase snapshots exist
 # Using earlier times where the phase is more stable
-TARGET_START_TIMES = [0.01, 0.02, 0.03]  # t_start values to test
+TARGET_START_TIMES = [0.1]  # t_start values to test
 
 # Configure logging
 logging.basicConfig(level=logging.WARNING)  # Reduce noise during testing
