@@ -283,7 +283,7 @@ def plot_powerlaw_grids():
     # Colormap settings
     vmin, vmax = 0.01, 5.0
     cmap = cmr.rainforest.copy()
-    cmap.set_bad('lightgray', 0.5)  # Forbidden zones are light gray
+    cmap.set_bad('white', 1.0)  # Empty parameter space is white
 
     # Contour levels evenly spaced in log
     contour_levels = np.logspace(np.log10(vmin), np.log10(vmax), 8)
@@ -297,21 +297,6 @@ def plot_powerlaw_grids():
         # Count valid cells
         n_valid = np.sum(~np.isnan(grid))
         n_total = grid.size
-
-        # Create forbidden zone mask (1 = forbidden, 0 = valid)
-        forbidden_mask = np.isnan(grid).astype(float)
-
-        # Shade forbidden zone with hatching
-        ax.contourf(
-            M_CLOUD_RANGE, N_CORE_RANGE, forbidden_mask,
-            levels=[0.5, 1.5], colors=['lightgray'], alpha=0.5
-        )
-
-        # Draw boundary line around forbidden zone
-        ax.contour(
-            M_CLOUD_RANGE, N_CORE_RANGE, forbidden_mask,
-            levels=[0.5], colors=['k'], linewidths=1.5, linestyles='-'
-        )
 
         # Plot pcolormesh for valid regions
         im = ax.pcolormesh(
@@ -383,7 +368,7 @@ def plot_BE_grids():
     # Colormap settings
     vmin, vmax = 0.01, 5.0
     cmap = cmr.rainforest.copy()
-    cmap.set_bad('lightgray', 0.5)  # Forbidden zones are light gray
+    cmap.set_bad('white', 1.0)  # Empty parameter space is white
 
     # Contour levels evenly spaced in log
     contour_levels = np.logspace(np.log10(vmin), np.log10(vmax), 8)
@@ -397,21 +382,6 @@ def plot_BE_grids():
         # Count valid cells
         n_valid = np.sum(~np.isnan(grid))
         n_total = grid.size
-
-        # Create forbidden zone mask (1 = forbidden, 0 = valid)
-        forbidden_mask = np.isnan(grid).astype(float)
-
-        # Shade forbidden zone
-        ax.contourf(
-            M_CLOUD_RANGE, N_CORE_RANGE, forbidden_mask,
-            levels=[0.5, 1.5], colors=['lightgray'], alpha=0.5
-        )
-
-        # Draw boundary line around forbidden zone
-        ax.contour(
-            M_CLOUD_RANGE, N_CORE_RANGE, forbidden_mask,
-            levels=[0.5], colors=['k'], linewidths=1.5, linestyles='-'
-        )
 
         # Plot pcolormesh for valid regions
         im = ax.pcolormesh(
