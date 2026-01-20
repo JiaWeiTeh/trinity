@@ -9,7 +9,7 @@ import matplotlib.transforms as mtransforms
 
 # Add script directory to path for local imports
 sys.path.insert(0, str(Path(__file__).parent))
-from load_snapshots import load_snapshots, find_data_file
+from load_snapshots import load_output, find_data_file
 
 print("...plotting radius evolution grid (with r_Tb)")
 
@@ -75,25 +75,27 @@ def smooth_1d(y, window, mode="edge"):
 def load_run_radii(data_path: Path):
     """Load one run and return arrays sorted by snapshot index.
 
+    Uses TrinityOutput reader for clean data access.
     Supports both JSON and JSONL formats.
     """
-    snaps = load_snapshots(data_path)
+    output = load_output(data_path)
 
-    if not snaps:
+    if len(output) == 0:
         raise ValueError(f"No snapshots found in {data_path}")
 
-    t = np.array([s["t_now"] for s in snaps], dtype=float)
-    phase = np.array([s.get("current_phase", "") for s in snaps])
+    # Use TrinityOutput.get() for clean array extraction
+    t = output.get('t_now')
+    phase = np.array(output.get('current_phase', as_array=False))
 
-    R1 = np.array([s.get("R1", np.nan) for s in snaps], dtype=float)
-    R2 = np.array([s.get("R2", np.nan) for s in snaps], dtype=float)
-    rShell = np.array([s.get("rShell", np.nan) for s in snaps], dtype=float)
+    R1 = output.get('R1')
+    R2 = output.get('R2')
+    rShell = output.get('rShell')
 
-    # NEW: r_Tb = R2 * bubble_xi_Tb
-    xi_Tb = np.array([s.get("bubble_xi_Tb", np.nan) for s in snaps], dtype=float)
+    # r_Tb = R2 * bubble_xi_Tb
+    xi_Tb = output.get('bubble_xi_Tb')
     r_Tb = R2 * xi_Tb
 
-    rcloud = float(snaps[0].get("rCloud", np.nan))
+    rcloud = float(output[0].get('rCloud', np.nan))
 
     # ensure increasing time
     if np.any(np.diff(t) < 0):

@@ -14,7 +14,7 @@ import src._functions.unit_conversions as cvt
 
 # Add script directory to path for local imports
 sys.path.insert(0, str(Path(__file__).parent))
-from load_snapshots import load_snapshots
+from load_snapshots import load_output
 
 
 # Paths to data files (can be .json or .jsonl)
@@ -51,17 +51,12 @@ fig, axs = plt.subplots(2, 1, figsize = (5,5), dpi = 200)
     
 for pp, path2data in enumerate([path2data1, path2data2]):
 
-    rlist = []
-    tlist = []
-    phaselist = []
+    # Load using TrinityOutput reader
+    output = load_output(path2data)
 
-    # Load snapshots (supports both JSON and JSONL)
-    snaps = load_snapshots(path2data)
-
-    for snap in snaps:
-        rlist.append(snap['R2'])
-        tlist.append(snap['t_now'])
-        phaselist.append(snap['current_phase'])
+    rlist = list(output.get('R2'))
+    tlist = list(output.get('t_now'))
+    phaselist = list(output.get('current_phase', as_array=False))
         
     phaselist[-1] = 'done'
     
