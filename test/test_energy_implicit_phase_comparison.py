@@ -43,7 +43,7 @@ INTEGRATION_DT = 0.1  # Myr - duration of each test run
 # Target start times for tests (Myr)
 # These should be times where implicit phase snapshots exist
 # Using earlier times where the phase is more stable
-TARGET_START_TIMES = [0.01, 0.02, 0.03]  # t_start values to test
+TARGET_START_TIMES = [0.1, 0.2, 0.3]  # t_start values to test
 
 # Configure logging
 logging.basicConfig(level=logging.WARNING)  # Reduce noise during testing
@@ -521,6 +521,14 @@ def prime_params(params: dict) -> dict:
     if 't_previousCoolingUpdate' not in params:
         params['t_previousCoolingUpdate'] = 0.0
 
+    # Non-CIE cooling path (required by original code)
+    if 'path_cooling_nonCIE' not in params:
+        params['path_cooling_nonCIE'] = os.path.join(PROJECT_ROOT, 'lib/cooling/opiate/')
+
+    # SB99 rotation (required by non-CIE cooling)
+    if 'SB99_rotation' not in params:
+        params['SB99_rotation'] = False
+
     # SB99 feedback
     if 'SB99f' not in params:
         params['SB99f'] = create_mock_sb99f(params)
@@ -839,7 +847,7 @@ def test_energy_implicit_phase_comparison(num_tests: int = None, target_times: l
         print(f"\nTest {i+1}/{len(selected_snapshots)} (line {line_num}, t={actual_t:.4e})...", end=" ", flush=True)
         try:
             snapshot = load_snapshot_from_jsonl(jsonl_path, line_num)
-            result = test_snapshot(snapshot, verbose=False)
+            result = test_snapshot(snapshot, verbose=True)
             result['line'] = line_num
             result['target_t'] = target_t
             results.append(result)
