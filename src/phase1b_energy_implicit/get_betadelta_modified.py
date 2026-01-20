@@ -437,7 +437,15 @@ def solve_betadelta_pure(
 
             if total_res_grid < RESIDUAL_THRESHOLD:
                 grid_converged = True
-                logger.debug(f"Grid search converged: residual={total_res_grid:.2e}")
+                logger.info(
+                    f"Grid search converged: β={beta_grid:.4f}, δ={delta_grid:.4f}, "
+                    f"residual={total_res_grid:.2e}"
+                )
+            else:
+                logger.info(
+                    f"Grid search did not converge: β={beta_grid:.4f}, δ={delta_grid:.4f}, "
+                    f"residual={total_res_grid:.2e} (threshold={RESIDUAL_THRESHOLD:.0e})"
+                )
     except Exception as e:
         logger.warning(f"Grid search failed: {e}")
 
@@ -448,9 +456,9 @@ def solve_betadelta_pure(
     grid_residual = grid_result[2] if grid_result else float('inf')
 
     if not grid_converged and grid_residual > LBFGSB_FALLBACK_THRESHOLD:
-        logger.debug(
-            f"Grid residual ({grid_residual:.2e}) > threshold ({LBFGSB_FALLBACK_THRESHOLD}), "
-            "trying L-BFGS-B fallback"
+        logger.info(
+            f"Grid residual ({grid_residual:.2e}) > fallback threshold ({LBFGSB_FALLBACK_THRESHOLD}), "
+            "trying L-BFGS-B"
         )
         try:
             beta_lbfgsb, delta_lbfgsb, iter_lbfgsb = _solve_lbfgsb(
@@ -469,14 +477,17 @@ def solve_betadelta_pure(
 
                 if total_res_lbfgsb < RESIDUAL_THRESHOLD:
                     lbfgsb_converged = True
-                    logger.debug(f"L-BFGS-B converged: residual={total_res_lbfgsb:.2e}")
+                    logger.info(
+                        f"L-BFGS-B converged: β={beta_lbfgsb:.4f}, δ={delta_lbfgsb:.4f}, "
+                        f"residual={total_res_lbfgsb:.2e}"
+                    )
+                else:
+                    logger.info(
+                        f"L-BFGS-B did not converge: β={beta_lbfgsb:.4f}, δ={delta_lbfgsb:.4f}, "
+                        f"residual={total_res_lbfgsb:.2e}"
+                    )
         except Exception as e:
             logger.warning(f"L-BFGS-B failed: {e}")
-    elif not grid_converged:
-        logger.debug(
-            f"Grid residual ({grid_residual:.2e}) <= threshold ({LBFGSB_FALLBACK_THRESHOLD}), "
-            "skipping L-BFGS-B fallback"
-        )
 
     # Step 3: Pick the best result
     if not candidates:
@@ -513,9 +524,9 @@ def solve_betadelta_pure(
         best_beta, best_delta, params, return_bubble_props=True
     )
 
-    logger.debug(
-        f"Beta-delta solved ({method_desc}): beta={best_beta:.4f}, delta={best_delta:.4f}, "
-        f"residual={best_residual:.2e}, converged={converged}, iter={best_iterations}"
+    logger.info(
+        f"Beta-delta result ({method_desc}): β={best_beta:.4f}, δ={best_delta:.4f}, "
+        f"residual={best_residual:.2e}, converged={converged}"
     )
 
     return BetaDeltaResult(
