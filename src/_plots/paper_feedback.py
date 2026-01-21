@@ -146,10 +146,7 @@ def plot_from_path(data_input: str, output_dir: str = None):
 
     # Save figures
     run_name = data_path.parent.name
-    out_png = FIG_DIR / f"paper_feedback_{run_name}.png"
     out_pdf = FIG_DIR / f"paper_feedback_{run_name}.pdf"
-    fig.savefig(out_png, bbox_inches='tight', dpi=150)
-    print(f"Saved: {out_png}")
     fig.savefig(out_pdf, bbox_inches='tight')
     print(f"Saved: {out_pdf}")
 
@@ -180,9 +177,6 @@ def plot_single_run(mCloud, ndens, sfe):
 
     tag = f"feedback_{mCloud}_sfe{sfe}_n{ndens}"
     if SAVE_PNG:
-        out_png = FIG_DIR / f"{tag}.png"
-        fig.savefig(out_png, bbox_inches="tight")
-        print(f"Saved: {out_png}")
     if SAVE_PDF:
         out_pdf = FIG_DIR / f"{tag}.pdf"
         fig.savefig(out_pdf, bbox_inches="tight")
@@ -489,9 +483,6 @@ def plot_grid():
         tag = f"feedback_grid_{m_tag}_{sfe_tag}_{n_tag}"
 
         if SAVE_PNG:
-            out_png = FIG_DIR / f"{tag}.png"
-            fig.savefig(out_png, bbox_inches="tight")
-            print(f"Saved: {out_png}")
         if SAVE_PDF:
             out_pdf = FIG_DIR / f"{tag}.pdf"
             fig.savefig(out_pdf, bbox_inches="tight")

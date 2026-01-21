@@ -204,10 +204,7 @@ def plot_from_path(data_input: str, output_dir: str = None):
 
     # Save figures
     run_name = data_path.parent.name
-    out_png = FIG_DIR / f"paper_betadelta_{run_name}.png"
     out_pdf = FIG_DIR / f"paper_betadelta_{run_name}.pdf"
-    fig.savefig(out_png, bbox_inches='tight', dpi=150)
-    print(f"Saved: {out_png}")
     fig.savefig(out_pdf, bbox_inches='tight')
     print(f"Saved: {out_pdf}")
 
@@ -288,8 +285,6 @@ def plot_grid():
         leg.set_zorder(10)
 
         if SAVE_PDF:
-            fig.savefig(FIG_DIR / f"paper_betadelta_n{ndens}.png", bbox_inches='tight', dpi=150)
-            print(f"Saved: {FIG_DIR / f'paper_betadelta_n{ndens}.png'}")
             fig.savefig(FIG_DIR / f"paper_betadelta_n{ndens}.pdf", bbox_inches='tight')
             print(f"Saved: {FIG_DIR / f'paper_betadelta_n{ndens}.pdf'}")
         plt.show()
