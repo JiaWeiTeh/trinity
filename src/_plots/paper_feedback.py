@@ -36,6 +36,12 @@ SMOOTH_WINDOW = 21           # None or 1 disables
 PHASE_CHANGE  = True
 INCLUDE_ALL_FORCE = True     # show wind/SN overlays inside the ram band
 
+RUN_MODIFIED = False
+if RUN_MODIFIED:
+    MODIFIED = "_modified"
+else:
+    MODIFIED = ""
+    
 # Colors
 C_GRAV = "black"
 C_RAM  = "b"
@@ -58,7 +64,7 @@ ONLY_M   = '1e7'   # e.g. "1e5" or None
 ONLY_N   = '1e4'   # e.g. "1e4" or None
 ONLY_SFE = '010'   # e.g. "001" or None
 
-# ONLY_M = ONLY_N = ONLY_SFE = None
+ONLY_M = ONLY_N = ONLY_SFE = None
 
 # --- output - save to project root's fig/ directory
 FIG_DIR = Path(__file__).parent.parent.parent / "fig"
@@ -398,7 +404,7 @@ def plot_grid():
         for i, mCloud in enumerate(mCloud_list):
             for j, sfe in enumerate(sfe_list):
                 ax = axes[i, j]
-                run_name = f"{mCloud}_sfe{sfe}_n{ndens}"
+                run_name = f"{mCloud}_sfe{sfe}_n{ndens}{MODIFIED}"
                 data_path = find_data_file(BASE_DIR, run_name)
 
                 if data_path is None:
@@ -479,7 +485,7 @@ def plot_grid():
         m_tag   = range_tag("M",   mCloud_list, key=float)
         sfe_tag = range_tag("sfe", sfe_list,    key=int)
         n_tag   = f"n{ndens}"
-        tag = f"feedback_grid_{m_tag}_{sfe_tag}_{n_tag}"
+        tag = f"feedback_grid_{m_tag}_{sfe_tag}_{n_tag}{MODIFIED}"
 
         if SAVE_PDF:
             out_pdf = FIG_DIR / f"{tag}.pdf"
