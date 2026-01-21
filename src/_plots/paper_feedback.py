@@ -36,7 +36,7 @@ SMOOTH_WINDOW = 21           # None or 1 disables
 PHASE_CHANGE  = True
 INCLUDE_ALL_FORCE = True     # show wind/SN overlays inside the ram band
 
-RUN_MODIFIED = False
+RUN_MODIFIED = True
 if RUN_MODIFIED:
     MODIFIED = "_modified"
 else:

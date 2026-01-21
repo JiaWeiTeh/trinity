@@ -97,14 +97,14 @@ logger = logging.getLogger(__name__)
 # =============================================================================
 
 COOLING_UPDATE_INTERVAL = 5e-3  # Myr - recalculate cooling
-DT_SEGMENT_INIT = 5e-4  # Myr - initial segment duration
+DT_SEGMENT_INIT = 2e-3  # Myr - initial segment duration
 DT_SEGMENT_MIN = 1e-4   # Myr - minimum segment duration
 DT_SEGMENT_MAX = 5e-2   # Myr - maximum segment duration
 MAX_SEGMENTS = 5000
 FOUR_PI = 4.0 * np.pi
 
 # Adaptive stepping parameters
-ADAPTIVE_THRESHOLD_DEX = 0.01  # dex - threshold for parameter change (10^0.1 ≈ 1.26x)
+ADAPTIVE_THRESHOLD_DEX = 0.05  # dex - threshold for parameter change (10^0.1 ≈ 1.26x)
 ADAPTIVE_FACTOR = 10**0.1     # Factor to increase/decrease DT_SEGMENT (~1.26)
 
 # Parameters to monitor for adaptive stepping (keys in params dict)

@@ -80,9 +80,9 @@ logger = logging.getLogger(__name__)
 # Constants
 # =============================================================================
 
-DT_SEGMENT_INIT = 5e-3  # Myr - initial segment duration
-DT_SEGMENT_MIN = 1e-4   # Myr - minimum segment duration
-DT_SEGMENT_MAX = 2e-1   # Myr - maximum segment duration
+DT_SEGMENT_INIT = 2e-3  # Myr - initial segment duration
+DT_SEGMENT_MIN = 1e-3  # Myr - minimum segment duration
+DT_SEGMENT_MAX = 5e-2   # Myr - maximum segment duration
 MAX_SEGMENTS = 5000
 ENERGY_FLOOR = 1e3  # Minimum energy before transition to momentum phase
 FOUR_PI = 4.0 * np.pi

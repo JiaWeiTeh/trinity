@@ -1,0 +1,37 @@
+# Example Sweep Parameter File for TRINITY
+# ==========================================
+#
+# This file demonstrates the sweep parameter syntax.
+# Parameters with [list, values] will generate all combinations.
+#
+# Usage:
+#   python run_sweep.py param/sweep_example.param --dry-run
+#   python run_sweep.py param/sweep_example.param --workers 4
+#
+
+# =============================================================================
+# Sweep parameters (lists) - these will be combined
+# =============================================================================
+
+mCloud    [1e5, 5e5, 1e6, 5e6, 1e7, 5e7, 1e8]
+sfe       [0.01, 0.10, 0.30, 0.50, 0.80]
+nCore     [1e2, 1e4]
+
+# =============================================================================
+# Fixed parameters (constant across all runs)
+# =============================================================================
+
+# Density profile
+dens_profile    densPL
+densPL_alpha    0
+
+# ISM density
+nISM    0.1
+
+# Allow expansion beyond cloud
+expansionBeyondCloud    True
+
+# Output directory (each run creates subfolder like 1e5_sfe001_n1e2/)
+path2output    outputs/sweep_test_modified
+
+use_adaptive_solver True

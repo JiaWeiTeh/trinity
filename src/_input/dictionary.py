@@ -945,7 +945,6 @@ COOLING_PHASE_KEYS = [
     'cStruc_cooling_CIE_logLambda',
     'cStruc_cooling_CIE_interpolation',
     # Beta/delta values
-    'cool_alpha',
     'cool_beta',
     'cool_delta',
     # Bubble profile arrays
