@@ -375,7 +375,9 @@ def plot_comparison_grid(
     title: str,
     output_path: Path,
     ncols: int = 3,
-    transition_times: dict = None
+    transition_times: dict = None,
+    label1: str = 'Original',
+    label2: str = 'Modified'
 ):
     """
     Plot a grid comparing parameter evolution between original and modified.
@@ -399,6 +401,10 @@ def plot_comparison_grid(
         - 't_transition_orig', 't_transition_mod': transition phase entry
         - 't_momentum_orig', 't_momentum_mod': momentum phase entry
         - 't_R2_gt_rCloud_orig', 't_R2_gt_rCloud_mod': R2 > rCloud
+    label1 : str
+        Label for first dataset (default: 'Original')
+    label2 : str
+        Label for second dataset (default: 'Modified')
     """
     # Filter to valid scalar keys
     valid_keys = []
@@ -446,32 +452,32 @@ def plot_comparison_grid(
         t_mod, v_mod = extract_time_series(snapshots_mod, key)
 
         # Plot both (time already in Myr)
-        ax.plot(t_orig, v_orig, 'b-', label='Original', linewidth=1.5, alpha=0.8)
-        ax.plot(t_mod, v_mod, 'r--', label='Modified', linewidth=1.5, alpha=0.8)
+        ax.plot(t_orig, v_orig, 'b-', label=label1, linewidth=1.5, alpha=0.8)
+        ax.plot(t_mod, v_mod, 'r--', label=label2, linewidth=1.5, alpha=0.8)
 
         # Add vertical lines for phase transitions
         if transition_times:
             added_labels = set()  # Track which labels we've added to avoid duplicates
             for base_key, style in vline_styles.items():
-                # Check original run
+                # Check first dataset
                 t_orig_trans = transition_times.get(f'{base_key}_orig')
                 if t_orig_trans is not None:
-                    label = f"{style['label']} (orig)" if f"{style['label']} (orig)" not in added_labels else None
+                    vline_label = f"{style['label']} ({label1})" if f"{style['label']} ({label1})" not in added_labels else None
                     ax.axvline(x=t_orig_trans, color=style['color'], linestyle='--',
-                               linewidth=1.0, alpha=0.7, label=label)
-                    if label:
-                        added_labels.add(label)
+                               linewidth=1.0, alpha=0.7, label=vline_label)
+                    if vline_label:
+                        added_labels.add(vline_label)
 
-                # Check modified run
+                # Check second dataset
                 t_mod_trans = transition_times.get(f'{base_key}_mod')
                 if t_mod_trans is not None:
-                    # Only plot if different from original (to avoid clutter)
+                    # Only plot if different from first (to avoid clutter)
                     if t_orig_trans is None or abs(t_mod_trans - t_orig_trans) > 1e-10:
-                        label = f"{style['label']} (mod)" if f"{style['label']} (mod)" not in added_labels else None
+                        vline_label = f"{style['label']} ({label2})" if f"{style['label']} ({label2})" not in added_labels else None
                         ax.axvline(x=t_mod_trans, color=style['color'], linestyle=':',
-                                   linewidth=1.0, alpha=0.7, label=label)
-                        if label:
-                            added_labels.add(label)
+                                   linewidth=1.0, alpha=0.7, label=vline_label)
+                        if vline_label:
+                            added_labels.add(vline_label)
 
         ax.set_xlabel('Time [Myr]')
         ax.set_ylabel(key)
@@ -505,13 +511,22 @@ def generate_all_comparison_plots(
     snapshots_orig: list,
     snapshots_mod: list,
     output_dir: Path,
-    model_name: str
+    model_name: str,
+    label1: str = 'Original',
+    label2: str = 'Modified'
 ):
     """
     Generate all comparison plots for a model pair.
 
     Only compares data within the common time range (up to the shorter simulation's end time).
     Adds vertical dashed lines for phase transitions and R2 > rCloud events.
+
+    Parameters
+    ----------
+    label1 : str
+        Label for first dataset (default: 'Original')
+    label2 : str
+        Label for second dataset (default: 'Modified')
     """
     # Get common time range
     t_min, t_max = get_common_time_range(snapshots_orig, snapshots_mod)
@@ -521,8 +536,8 @@ def generate_all_comparison_plots(
     snapshots_orig_filtered = filter_snapshots_by_time(snapshots_orig, t_min, t_max)
     snapshots_mod_filtered = filter_snapshots_by_time(snapshots_mod, t_min, t_max)
 
-    print(f"  Using {len(snapshots_orig_filtered)}/{len(snapshots_orig)} original snapshots")
-    print(f"  Using {len(snapshots_mod_filtered)}/{len(snapshots_mod)} modified snapshots")
+    print(f"  Using {len(snapshots_orig_filtered)}/{len(snapshots_orig)} {label1} snapshots")
+    print(f"  Using {len(snapshots_mod_filtered)}/{len(snapshots_mod)} {label2} snapshots")
 
     if len(snapshots_orig_filtered) == 0 or len(snapshots_mod_filtered) == 0:
         print("  ERROR: No overlapping time range found")
@@ -536,17 +551,17 @@ def generate_all_comparison_plots(
     # Print detected transitions
     print("  Phase transitions detected:")
     if times_orig['t_transition'] is not None:
-        print(f"    Original -> Transition phase at t = {times_orig['t_transition']:.4e} Myr")
+        print(f"    {label1} -> Transition phase at t = {times_orig['t_transition']:.4e} Myr")
     if times_mod['t_transition'] is not None:
-        print(f"    Modified -> Transition phase at t = {times_mod['t_transition']:.4e} Myr")
+        print(f"    {label2} -> Transition phase at t = {times_mod['t_transition']:.4e} Myr")
     if times_orig['t_momentum'] is not None:
-        print(f"    Original -> Momentum phase at t = {times_orig['t_momentum']:.4e} Myr")
+        print(f"    {label1} -> Momentum phase at t = {times_orig['t_momentum']:.4e} Myr")
     if times_mod['t_momentum'] is not None:
-        print(f"    Modified -> Momentum phase at t = {times_mod['t_momentum']:.4e} Myr")
+        print(f"    {label2} -> Momentum phase at t = {times_mod['t_momentum']:.4e} Myr")
     if times_orig['t_R2_gt_rCloud'] is not None:
-        print(f"    Original -> R2 > rCloud at t = {times_orig['t_R2_gt_rCloud']:.4e} Myr")
+        print(f"    {label1} -> R2 > rCloud at t = {times_orig['t_R2_gt_rCloud']:.4e} Myr")
     if times_mod['t_R2_gt_rCloud'] is not None:
-        print(f"    Modified -> R2 > rCloud at t = {times_mod['t_R2_gt_rCloud']:.4e} Myr")
+        print(f"    {label2} -> R2 > rCloud at t = {times_mod['t_R2_gt_rCloud']:.4e} Myr")
 
     # Get all scalar keys from both datasets (use filtered data)
     keys_orig = get_scalar_keys(snapshots_orig_filtered)
@@ -564,7 +579,8 @@ def generate_all_comparison_plots(
             shell_keys,
             f"{model_name}: Shell Parameters Comparison",
             output_dir / "comparison_shell_parameters.pdf",
-            transition_times=transition_times
+            transition_times=transition_times,
+            label1=label1, label2=label2
         )
 
     # B) Bubble parameters (keys starting with bubble_)
@@ -576,7 +592,8 @@ def generate_all_comparison_plots(
             bubble_keys,
             f"{model_name}: Bubble Parameters Comparison",
             output_dir / "comparison_bubble_parameters.pdf",
-            transition_times=transition_times
+            transition_times=transition_times,
+            label1=label1, label2=label2
         )
 
     # C) TRINITY essentials (R1, R2, rShell, Pb, Eb, T0)
@@ -588,7 +605,8 @@ def generate_all_comparison_plots(
             essential_keys,
             f"{model_name}: Essential Parameters Comparison",
             output_dir / "comparison_essential_parameters.pdf",
-            transition_times=transition_times
+            transition_times=transition_times,
+            label1=label1, label2=label2
         )
 
     # D) Force parameters (keys containing F_)
@@ -600,7 +618,8 @@ def generate_all_comparison_plots(
             force_keys,
             f"{model_name}: Force Parameters Comparison",
             output_dir / "comparison_force_parameters.pdf",
-            transition_times=transition_times
+            transition_times=transition_times,
+            label1=label1, label2=label2
         )
 
     # E) Remaining parameters - not in above categories but evolving
@@ -623,7 +642,8 @@ def generate_all_comparison_plots(
             evolving_remaining,
             f"{model_name}: Other Evolving Parameters Comparison",
             output_dir / "comparison_remaining_parameters.pdf",
-            transition_times=transition_times
+            transition_times=transition_times,
+            label1=label1, label2=label2
         )
 
 
@@ -802,12 +822,14 @@ def compare_two_folders(folder1: Path, folder2: Path, output_dir: Path = None):
     name2 = jsonl2.parent.name if jsonl2.parent.name != '' else 'file2'
     model_name = f"{name1} vs {name2}"
 
-    # Generate comparison plots
+    # Generate comparison plots with folder names as labels
     print("\nGenerating comparison plots...")
     generate_all_comparison_plots(
         snapshots1, snapshots2,
         output_dir,
-        model_name
+        model_name,
+        label1=name1,
+        label2=name2
     )
 
     # Print summary statistics
@@ -832,7 +854,7 @@ def compare_two_folders(folder1: Path, folder2: Path, output_dir: Path = None):
         rel_diff = abs(final1 - final2) / max(abs(final1), 1e-300)
         status = "OK" if rel_diff < 0.01 else "DIFF"
 
-        print(f"  {key:12s}: file1={final1:.4e}, file2={final2:.4e}, "
+        print(f"  {key:12s}: {name1}={final1:.4e}, {name2}={final2:.4e}, "
               f"rel_diff={rel_diff:.2e} [{status}]")
 
     print(f"\n{'=' * 70}")
