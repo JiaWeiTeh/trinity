@@ -21,7 +21,7 @@ import src._functions.unit_conversions as cvt
 
 # Add script directory to path for local imports
 sys.path.insert(0, str(Path(__file__).parent))
-from load_snapshots import load_output
+from load_snapshots import load_output, find_data_path
 
 # Output - save to project root's fig/ directory
 FIG_DIR = Path(__file__).parent.parent.parent / "fig"
@@ -31,11 +31,14 @@ FIG_DIR.mkdir(parents=True, exist_ok=True)
 # =============================================================================
 # DATA PATH - Configure this before running
 # =============================================================================
-# Option 1: Set path directly
-# path2data = '/path/to/your/outputs/simulation/dictionary.jsonl'
+# Option 1: Set path directly (without extension - will search for .jsonl first, then .json)
+# base_path = '/path/to/your/outputs/simulation/dictionary'
 
 # Option 2: Use environment variable (recommended for portability)
-path2data = os.environ.get('TRINITY_DATA_PATH', 'outputs/simulation/dictionary.jsonl')
+base_path = os.environ.get('TRINITY_DATA_PATH', 'outputs/simulation/dictionary')
+
+# Find data file (prioritizes .jsonl over .json)
+path2data = find_data_path(base_path)
 
 # Load using TrinityOutput reader
 output = load_output(path2data)

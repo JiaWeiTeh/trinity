@@ -15,6 +15,7 @@ fig/
 # Large test data files (optional - uncomment to exclude from git)
 # test/*.jsonl
 # example_scripts/*.jsonl
+old_doNotRead/
 
 # IDE settings
 .idea/

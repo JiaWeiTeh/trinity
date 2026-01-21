@@ -15,7 +15,7 @@ import matplotlib.transforms as mtransforms
 
 # Add script directory to path for local imports
 sys.path.insert(0, str(Path(__file__).parent))
-from load_snapshots import load_output, find_data_file
+from load_snapshots import load_output, find_data_file, resolve_data_input
 
 print("...plotting integrated momentum (line plots)")
 
@@ -154,6 +154,54 @@ def dominant_bins(t, frac, dt=0.05):
 
 
 #--- plots
+
+def plot_from_path(data_input: str, output_dir: str = None):
+    """
+    Plot momentum evolution from a direct data path/folder.
+
+    Parameters
+    ----------
+    data_input : str
+        Can be: folder name, folder path, or file path
+    output_dir : str, optional
+        Base directory for output folders
+    """
+    try:
+        data_path = resolve_data_input(data_input, output_dir)
+    except FileNotFoundError as e:
+        print(f"Error: {e}")
+        return
+
+    print(f"Loading data from: {data_path}")
+
+    try:
+        t, r, phase, forces, rcloud = load_run(data_path)
+    except Exception as e:
+        print(f"Error loading data: {e}")
+        return
+
+    fig, ax = plt.subplots(figsize=(8, 6), dpi=150)
+    plot_momentum_lines_on_ax(
+        ax, t, r, phase, forces, rcloud,
+        smooth_window=SMOOTH_WINDOW,
+        phase_change=PHASE_CHANGE
+    )
+
+    ax.set_title(f"Momentum Evolution: {data_path.parent.name}")
+    ax.set_xlabel("t [Myr]")
+    ax.set_ylabel(r"$p(t)=\int F\,dt$")
+
+    # Legend
+    handles = [Line2D([0], [0], color="black", lw=1.6, ls="-", label="Gravity")]
+    for _, lab, c in FORCE_FIELDS[1:]:
+        handles.append(Line2D([0], [0], color=c, lw=1.6, label=lab))
+    handles.append(Line2D([0], [0], color="darkgrey", lw=2.4, label="Net"))
+    ax.legend(handles=handles, loc="upper left", framealpha=0.9)
+
+    plt.tight_layout()
+    plt.show()
+    plt.close(fig)
+
 
 def plot_single_run(mCloud, ndens, sfe):
     run_name = f"{mCloud}_sfe{sfe}_n{ndens}"
@@ -338,13 +386,8 @@ def plot_momentum_lines_on_ax(
     ax.set_ylim(1e-5*P.max(), 10*P.max())
 
 # --------- MODE SWITCH: single plot or grid ----------
-single_mode = (ONLY_MCLOUD is not None) and (ONLY_NDENS is not None) and (ONLY_SFE is not None)
-
-if single_mode:
-    plot_single_run(ONLY_MCLOUD, ONLY_NDENS, ONLY_SFE)
-
-else:
-    # --- one figure per ndens (grid mode)
+def plot_grid():
+    """Plot full grid of momentum evolution."""
     for ndens in ndens_list:
         nrows, ncols = len(mCloud_list), len(sfe_list)
         fig, axes = plt.subplots(
@@ -362,10 +405,12 @@ else:
                 data_path = find_data_file(BASE_DIR, run_name)
 
                 if data_path is None:
+                    print(f"  {run_name}: missing")
                     ax.text(0.5, 0.5, "missing", ha="center", va="center", transform=ax.transAxes)
                     ax.set_axis_off()
                     continue
 
+                print(f"  Loading: {data_path}")
                 try:
                     t, r, phase, forces, rcloud = load_run(data_path)
                     plot_momentum_lines_on_ax(
@@ -415,3 +460,38 @@ else:
         plt.close(fig)
 
 
+# ---------------- command-line interface ----------------
+if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        description="Plot TRINITY momentum evolution",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  python paper_momentum.py 1e7_sfe020_n1e4
+  python paper_momentum.py /path/to/outputs/1e7_sfe020_n1e4
+  python paper_momentum.py /path/to/dictionary.jsonl
+  python paper_momentum.py  # (uses config at top of file)
+        """
+    )
+    parser.add_argument(
+        'data', nargs='?', default=None,
+        help='Data input: folder name, folder path, or file path'
+    )
+    parser.add_argument(
+        '--output-dir', '-o', default=None,
+        help='Base directory for output folders (default: TRINITY_OUTPUT_DIR or "outputs")'
+    )
+
+    args = parser.parse_args()
+
+    if args.data:
+        # Command-line mode: plot from specified path
+        plot_from_path(args.data, args.output_dir)
+    elif (ONLY_MCLOUD is not None) and (ONLY_NDENS is not None) and (ONLY_SFE is not None):
+        # Config mode: single run
+        plot_single_run(ONLY_MCLOUD, ONLY_NDENS, ONLY_SFE)
+    else:
+        # Config mode: plot grid
+        plot_grid()

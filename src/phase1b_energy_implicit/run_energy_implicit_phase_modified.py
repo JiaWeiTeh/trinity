@@ -478,6 +478,9 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
     while t_now < tmax and segment_count < MAX_SEGMENTS:
         segment_count += 1
 
+        # Log current state at beginning of each segment
+        logger.info(f"[Implicit] t={t_now:.6e} Myr, R2={R2:.4e} pc, v2={v2:.4e} pc/Myr, Eb={Eb:.4e}, T0={T0:.4e} K")
+
         # ---------------------------------------------------------------------
         # Update cooling structure periodically
         # ---------------------------------------------------------------------
