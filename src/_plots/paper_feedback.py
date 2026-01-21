@@ -121,14 +121,14 @@ def plot_from_path(data_input: str, output_dir: str = None):
     print(f"Loading data from: {data_path}")
 
     try:
-        t, R2, phase, base_forces, overlay_forces, rcloud = load_run(data_path)
+        t, R2, phase, base_forces, overlay_forces, rcloud, isCollapse = load_run(data_path)
     except Exception as e:
         print(f"Error loading data: {e}")
         return
 
     fig, ax = plt.subplots(figsize=(8, 6), dpi=150)
     plot_run_on_ax(
-        ax, t, R2, phase, base_forces, overlay_forces, rcloud,
+        ax, t, R2, phase, base_forces, overlay_forces, rcloud, isCollapse,
         alpha=0.75,
         smooth_window=SMOOTH_WINDOW,
         phase_change=PHASE_CHANGE
@@ -145,6 +145,7 @@ def plot_from_path(data_input: str, output_dir: str = None):
         Patch(facecolor=C_ION,  edgecolor="none", alpha=0.75, label="Photoionised gas"),
         Patch(facecolor=C_RAD,  edgecolor="none", alpha=0.75, label="Radiation"),
         Patch(facecolor=C_PISM, edgecolor="0.4",  alpha=1.0,  label="PISM"),
+        Line2D([0], [0], color="purple", ls="--", alpha=0.6, lw=1.8, label="Collapse"),
     ]
     ax.legend(handles=handles, loc="upper right", framealpha=0.9)
 
@@ -167,11 +168,11 @@ def plot_single_run(mCloud, ndens, sfe):
         print(f"Missing data for: {run_name}")
         return
 
-    t, R2, phase, base_forces, overlay_forces, rcloud = load_run(data_path)
+    t, R2, phase, base_forces, overlay_forces, rcloud, isCollapse = load_run(data_path)
 
     fig, ax = plt.subplots(figsize=(6, 4), dpi=400, constrained_layout=True)
     plot_run_on_ax(
-        ax, t, R2, phase, base_forces, overlay_forces, rcloud,
+        ax, t, R2, phase, base_forces, overlay_forces, rcloud, isCollapse,
         alpha=0.75,
         smooth_window=SMOOTH_WINDOW,
         phase_change=PHASE_CHANGE
@@ -233,28 +234,50 @@ def load_run(data_path: Path):
 
     rcloud = float(output[0].get('rCloud', np.nan))
 
+    # Load isCollapse for collapse indicator
+    isCollapse = np.array(output.get('isCollapse', as_array=False))
+
     # Ensure time increasing
     if np.any(np.diff(t) < 0):
         order = np.argsort(t)
         t, R2, phase = t[order], R2[order], phase[order]
         F_grav, F_ram, F_ion, F_rad, F_PISM = F_grav[order], F_ram[order], F_ion[order], F_rad[order], F_PISM[order]
         F_wind, F_sn = F_wind[order], F_sn[order]
+        isCollapse = isCollapse[order]
 
     # base forces order must match FORCE_FIELDS_BASE
     base_forces    = np.vstack([F_grav, F_ram, F_ion, F_rad, F_PISM])
     overlay_forces = np.vstack([F_wind, F_sn])
 
-    return t, R2, phase, base_forces, overlay_forces, rcloud
+    return t, R2, phase, base_forces, overlay_forces, rcloud, isCollapse
 
 
 def plot_run_on_ax(
-    ax, t, R2, phase, base_forces, overlay_forces, rcloud,
+    ax, t, R2, phase, base_forces, overlay_forces, rcloud, isCollapse=None,
     alpha=0.75,
     smooth_window=None, smooth_mode="edge",
     phase_change=True,
     overlay_alpha=0.55
 ):
     fig = ax.figure
+
+    # --- collapse line: first time isCollapse becomes True
+    if isCollapse is not None:
+        collapse_mask = np.array([bool(c) for c in isCollapse])
+        idx_collapse = np.flatnonzero(collapse_mask)
+        if idx_collapse.size:
+            x_collapse = t[idx_collapse[0]]
+            ax.axvline(x_collapse, color="purple", ls="--", lw=1.8, alpha=0.6, zorder=0)
+            text_trans = ax.get_xaxis_transform() + mtransforms.ScaledTranslation(
+                4/72, 0, fig.dpi_scale_trans
+            )
+            ax.text(
+                x_collapse, 0.05, "Collapse",
+                transform=text_trans,
+                ha="left", va="bottom",
+                fontsize=8, color="purple", alpha=0.8,
+                rotation=90, zorder=6
+            )
 
     # --- phase markers (T and M)
     if phase_change:
@@ -415,9 +438,9 @@ def plot_grid():
 
                 print(f"  Loading: {data_path}")
                 try:
-                    t, R2, phase, base_forces, overlay_forces, rcloud = load_run(data_path)
+                    t, R2, phase, base_forces, overlay_forces, rcloud, isCollapse = load_run(data_path)
                     plot_run_on_ax(
-                        ax, t, R2, phase, base_forces, overlay_forces, rcloud,
+                        ax, t, R2, phase, base_forces, overlay_forces, rcloud, isCollapse,
                         alpha=0.75,
                         smooth_window=SMOOTH_WINDOW,
                         phase_change=PHASE_CHANGE
@@ -461,7 +484,10 @@ def plot_grid():
                 Patch(facecolor="none", edgecolor=C_RAM, hatch="\\\\\\\\", label=r"Ram attributed to SN (thicker hatch)"),
                 Line2D([0], [0], color=C_RAM, lw=6, label="Unhatched blue = residual"),
             ]
-            
+
+        # Add collapse indicator to legend
+        handles.append(Line2D([0], [0], color="purple", ls="--", alpha=0.6, lw=1.8, label="Collapse"))
+
         # Reserve top space so legend never overlaps subplot titles
         fig.subplots_adjust(top=0.9)           # <-- tune: smaller = more header space
 

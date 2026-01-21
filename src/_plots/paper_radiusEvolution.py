@@ -97,13 +97,17 @@ def load_run_radii(data_path: Path):
 
     rcloud = float(output[0].get('rCloud', np.nan))
 
+    # Load isCollapse for collapse indicator
+    isCollapse = np.array(output.get('isCollapse', as_array=False))
+
     # ensure increasing time
     if np.any(np.diff(t) < 0):
         order = np.argsort(t)
         t, phase = t[order], phase[order]
         R1, R2, rShell, r_Tb = R1[order], R2[order], rShell[order], r_Tb[order]
+        isCollapse = isCollapse[order]
 
-    return t, phase, R1, R2, rShell, r_Tb, rcloud
+    return t, phase, R1, R2, rShell, r_Tb, rcloud, isCollapse
 
 
 def compute_weaver_solution(t, R2, t_ref_frac=0.1):
@@ -153,7 +157,7 @@ def compute_weaver_solution(t, R2, t_ref_frac=0.1):
 
 
 def plot_radii_on_ax(
-    ax, t, phase, R1, R2, rShell, r_Tb, rcloud,
+    ax, t, phase, R1, R2, rShell, r_Tb, rcloud, isCollapse=None,
     phase_line=True, cloud_line=True, show_weaver=False,
     smooth_window=None, smooth_mode="edge",
     label_pad_points=4
@@ -165,6 +169,24 @@ def plot_radii_on_ax(
     R2s = smooth_1d(R2, smooth_window, mode=smooth_mode)
     rSs = smooth_1d(rShell, smooth_window, mode=smooth_mode)
     rTbs = smooth_1d(r_Tb, smooth_window, mode=smooth_mode)
+
+    # --- collapse line: first time isCollapse becomes True
+    if isCollapse is not None:
+        collapse_mask = np.array([bool(c) for c in isCollapse])
+        idx_collapse = np.flatnonzero(collapse_mask)
+        if idx_collapse.size:
+            x_collapse = t[idx_collapse[0]]
+            ax.axvline(x_collapse, color="purple", ls="--", lw=1.8, alpha=0.6, zorder=0)
+            text_trans = ax.get_xaxis_transform() + mtransforms.ScaledTranslation(
+                label_pad_points/72, 0, fig.dpi_scale_trans
+            )
+            ax.text(
+                x_collapse, 0.05, "Collapse",
+                transform=text_trans,
+                ha="left", va="bottom",
+                fontsize=8, color="purple", alpha=0.8,
+                rotation=90, zorder=5
+            )
 
     # --- phase lines with mini labels
     if phase_line:
@@ -246,9 +268,9 @@ def plot_single_run(mCloud, sfe, ndens):
     fig, ax = plt.subplots(figsize=(8, 6), dpi=150)
 
     try:
-        t, phase, R1, R2, rShell, r_Tb, rcloud = load_run_radii(data_path)
+        t, phase, R1, R2, rShell, r_Tb, rcloud, isCollapse = load_run_radii(data_path)
         plot_radii_on_ax(
-            ax, t, phase, R1, R2, rShell, r_Tb, rcloud,
+            ax, t, phase, R1, R2, rShell, r_Tb, rcloud, isCollapse,
             phase_line=PHASE_LINE,
             cloud_line=CLOUD_LINE,
             show_weaver=SHOW_WEAVER,
@@ -284,6 +306,7 @@ def plot_single_run(mCloud, sfe, ndens):
     handles.extend([
         Line2D([0], [0], color="k", ls="--", alpha=0.25, lw=1.6, label=r"$R_2>R_{\rm cloud}$"),
         Line2D([0], [0], color="r", lw=2, alpha=0.3, label="phase change"),
+        Line2D([0], [0], color="purple", ls="--", alpha=0.6, lw=1.8, label="Collapse"),
     ])
     ax.legend(handles=handles, loc="upper left", framealpha=0.9)
 
@@ -321,9 +344,9 @@ def plot_from_path(data_input: str, output_dir: str = None):
     fig, ax = plt.subplots(figsize=(8, 6), dpi=150)
 
     try:
-        t, phase, R1, R2, rShell, r_Tb, rcloud = load_run_radii(data_path)
+        t, phase, R1, R2, rShell, r_Tb, rcloud, isCollapse = load_run_radii(data_path)
         plot_radii_on_ax(
-            ax, t, phase, R1, R2, rShell, r_Tb, rcloud,
+            ax, t, phase, R1, R2, rShell, r_Tb, rcloud, isCollapse,
             phase_line=PHASE_LINE,
             cloud_line=CLOUD_LINE,
             show_weaver=SHOW_WEAVER,
@@ -351,6 +374,7 @@ def plot_from_path(data_input: str, output_dir: str = None):
     handles.extend([
         Line2D([0], [0], color="k", ls="--", alpha=0.25, lw=1.6, label=r"$R_2>R_{\rm cloud}$"),
         Line2D([0], [0], color="r", lw=2, alpha=0.3, label="phase change"),
+        Line2D([0], [0], color="purple", ls="--", alpha=0.6, lw=1.8, label="Collapse"),
     ])
     ax.legend(handles=handles, loc="upper left", framealpha=0.9)
 
@@ -434,9 +458,9 @@ Examples:
 
                     print(f"  Loading: {data_path}")
                     try:
-                        t, phase, R1, R2, rShell, r_Tb, rcloud = load_run_radii(data_path)
+                        t, phase, R1, R2, rShell, r_Tb, rcloud, isCollapse = load_run_radii(data_path)
                         plot_radii_on_ax(
-                            ax, t, phase, R1, R2, rShell, r_Tb, rcloud,
+                            ax, t, phase, R1, R2, rShell, r_Tb, rcloud, isCollapse,
                             phase_line=PHASE_LINE,
                             cloud_line=CLOUD_LINE,
                             show_weaver=SHOW_WEAVER,
@@ -473,6 +497,7 @@ Examples:
             handles.extend([
                 Line2D([0], [0], color="k", ls="--", alpha=0.25, lw=1.6, label=r"$R_2>R_{\rm cloud}$"),
                 Line2D([0], [0], color="r", lw=2, alpha=0.3, label=r"phase changes"),
+                Line2D([0], [0], color="purple", ls="--", alpha=0.6, lw=1.8, label="Collapse"),
             ])
 
             fig.subplots_adjust(top=0.9)

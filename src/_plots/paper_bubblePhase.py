@@ -73,8 +73,23 @@ for pp, path2data in enumerate([path2data1, path2data2]):
     rlist = list(output.get('R2'))
     tlist = list(output.get('t_now'))
     phaselist = list(output.get('current_phase', as_array=False))
-        
+    isCollapse_list = list(output.get('isCollapse', as_array=False))
+
     phaselist[-1] = 'done'
+
+    # --- collapse line: first time isCollapse becomes True
+    collapse_mask = np.array([bool(c) for c in isCollapse_list])
+    idx_collapse = np.flatnonzero(collapse_mask)
+    if idx_collapse.size:
+        x_collapse = tlist[idx_collapse[0]]
+        axs[pp].axvline(x_collapse, color="purple", ls="--", lw=1.8, alpha=0.6, zorder=10)
+        axs[pp].text(
+            x_collapse, 0.95, "Collapse",
+            transform=axs[pp].get_xaxis_transform(),
+            ha="left", va="top",
+            fontsize=8, color="purple", alpha=0.8,
+            rotation=90, zorder=11
+        )
     
     
     

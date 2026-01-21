@@ -114,6 +114,9 @@ def load_run(data_path: Path):
         for field, _, _ in FORCE_FIELDS
     ])
 
+    # Load isCollapse for collapse indicator
+    isCollapse = np.array(output.get('isCollapse', as_array=False))
+
     # Ensure time is increasing for integration
     if np.any(np.diff(t) < 0):
         order = np.argsort(t)
@@ -121,9 +124,10 @@ def load_run(data_path: Path):
         r = r[order]
         phase = phase[order]
         forces = forces[:, order]
+        isCollapse = isCollapse[order]
 
     rcloud = float(output[0].get('rCloud', np.nan))
-    return t, r, phase, forces, rcloud
+    return t, r, phase, forces, rcloud, isCollapse
 
 # This added functionality solves the problem in which white spaces occur
 # when calculating dominanting forces - for small binning values some snapshots
@@ -175,14 +179,14 @@ def plot_from_path(data_input: str, output_dir: str = None):
     print(f"Loading data from: {data_path}")
 
     try:
-        t, r, phase, forces, rcloud = load_run(data_path)
+        t, r, phase, forces, rcloud, isCollapse = load_run(data_path)
     except Exception as e:
         print(f"Error loading data: {e}")
         return
 
     fig, ax = plt.subplots(figsize=(8, 6), dpi=150)
     plot_momentum_lines_on_ax(
-        ax, t, r, phase, forces, rcloud,
+        ax, t, r, phase, forces, rcloud, isCollapse,
         smooth_window=SMOOTH_WINDOW,
         phase_change=PHASE_CHANGE
     )
@@ -196,6 +200,7 @@ def plot_from_path(data_input: str, output_dir: str = None):
     for _, lab, c in FORCE_FIELDS[1:]:
         handles.append(Line2D([0], [0], color=c, lw=1.6, label=lab))
     handles.append(Line2D([0], [0], color="darkgrey", lw=2.4, label="Net"))
+    handles.append(Line2D([0], [0], color="purple", ls="--", alpha=0.6, lw=1.8, label="Collapse"))
     ax.legend(handles=handles, loc="upper left", framealpha=0.9)
 
     plt.tight_layout()
@@ -218,11 +223,11 @@ def plot_single_run(mCloud, ndens, sfe):
         print(f"Missing data for: {run_name}")
         return
 
-    t, r, phase, forces, rcloud = load_run(data_path)
+    t, r, phase, forces, rcloud, isCollapse = load_run(data_path)
 
     fig, ax = plt.subplots(figsize=(7, 5), dpi=500, constrained_layout=True)
     plot_momentum_lines_on_ax(
-        ax, t, r, phase, forces, rcloud,
+        ax, t, r, phase, forces, rcloud, isCollapse,
         smooth_window=SMOOTH_WINDOW,
         phase_change=PHASE_CHANGE
     )
@@ -238,10 +243,30 @@ def plot_single_run(mCloud, ndens, sfe):
 
 
 def plot_momentum_lines_on_ax(
-    ax, t, r, phase, forces, rcloud,
+    ax, t, r, phase, forces, rcloud, isCollapse=None,
     smooth_window=None, smooth_mode="edge",
     lw=1.6, net_lw=4, alpha=0.8, phase_change=PHASE_CHANGE,
 ):
+    fig = ax.figure
+
+    # --- collapse line: first time isCollapse becomes True
+    if isCollapse is not None:
+        collapse_mask = np.array([bool(c) for c in isCollapse])
+        idx_collapse = np.flatnonzero(collapse_mask)
+        if idx_collapse.size:
+            x_collapse = t[idx_collapse[0]]
+            ax.axvline(x_collapse, color="purple", ls="--", lw=1.8, alpha=0.6, zorder=0)
+            text_trans = ax.get_xaxis_transform() + mtransforms.ScaledTranslation(
+                4/72, 0, fig.dpi_scale_trans
+            )
+            ax.text(
+                x_collapse, 0.05, "Collapse",
+                transform=text_trans,
+                ha="left", va="bottom",
+                fontsize=8, color="purple", alpha=0.8,
+                rotation=90, zorder=5
+            )
+
     # --- phase-change line:
     # --- phase lines with mini labels
     if phase_change:
@@ -420,9 +445,9 @@ def plot_grid():
 
                 print(f"  Loading: {data_path}")
                 try:
-                    t, r, phase, forces, rcloud = load_run(data_path)
+                    t, r, phase, forces, rcloud, isCollapse = load_run(data_path)
                     plot_momentum_lines_on_ax(
-                        ax, t, r, phase, forces, rcloud,
+                        ax, t, r, phase, forces, rcloud, isCollapse,
                         smooth_window=SMOOTH_WINDOW,
                         phase_change=PHASE_CHANGE
                     )
@@ -450,6 +475,7 @@ def plot_grid():
             handles.append(Line2D([0], [0], color=c, lw=1.6, label=lab))
         handles.append(Line2D([0], [0], color="darkgrey", lw=2.4,
                               label=r"Net: $| \int (\sum F_{\rm out} - F_{\rm grav})\,dt |$"))
+        handles.append(Line2D([0], [0], color="purple", ls="--", alpha=0.6, lw=1.8, label="Collapse"))
 
         leg = fig.legend(
             handles=handles, loc="upper center", ncol=3,

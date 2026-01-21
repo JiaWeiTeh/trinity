@@ -374,7 +374,7 @@ def find_dictionary_jsonl(folder: Path) -> Path:
 def find_phase_transition_times(snapshots: list) -> dict:
     """
     Find times when simulation crosses into transition and momentum phases,
-    and when R2 exceeds rCloud.
+    when R2 exceeds rCloud, and when collapse begins.
 
     Parameters
     ----------
@@ -388,11 +388,13 @@ def find_phase_transition_times(snapshots: list) -> dict:
         - 't_transition': time entering transition phase (or None)
         - 't_momentum': time entering momentum phase (or None)
         - 't_R2_gt_rCloud': time when R2 > rCloud (or None)
+        - 't_collapse': time when isCollapse becomes True (or None)
     """
     result = {
         't_transition': None,
         't_momentum': None,
-        't_R2_gt_rCloud': None
+        't_R2_gt_rCloud': None,
+        't_collapse': None
     }
 
     if not snapshots:
@@ -439,6 +441,12 @@ def find_phase_transition_times(snapshots: list) -> dict:
                     if R2 > rCloud:
                         result['t_R2_gt_rCloud'] = t
 
+        # Check for collapse (isCollapse becomes True)
+        if result['t_collapse'] is None:
+            isCollapse = snap.get('isCollapse')
+            if isCollapse is not None and bool(isCollapse):
+                result['t_collapse'] = t
+
     return result
 
 
@@ -455,7 +463,7 @@ def merge_transition_times(times_orig: dict, times_mod: dict) -> dict:
     """
     merged = {}
 
-    for key in ['t_transition', 't_momentum', 't_R2_gt_rCloud']:
+    for key in ['t_transition', 't_momentum', 't_R2_gt_rCloud', 't_collapse']:
         t_orig = times_orig.get(key)
         t_mod = times_mod.get(key)
 
@@ -540,8 +548,9 @@ def plot_comparison_grid(
     # Define vertical line styles for transitions
     vline_styles = {
         't_transition': {'color': 'green', 'label': 'Transition phase'},
-        't_momentum': {'color': 'purple', 'label': 'Momentum phase'},
-        't_R2_gt_rCloud': {'color': 'orange', 'label': 'R2 > rCloud'}
+        't_momentum': {'color': 'blue', 'label': 'Momentum phase'},
+        't_R2_gt_rCloud': {'color': 'orange', 'label': 'R2 > rCloud'},
+        't_collapse': {'color': 'purple', 'label': 'Collapse'}
     }
 
     for idx, key in enumerate(valid_keys):
@@ -663,6 +672,10 @@ def generate_all_comparison_plots(
         print(f"    {label1} -> R2 > rCloud at t = {times_orig['t_R2_gt_rCloud']:.4e} Myr")
     if times_mod['t_R2_gt_rCloud'] is not None:
         print(f"    {label2} -> R2 > rCloud at t = {times_mod['t_R2_gt_rCloud']:.4e} Myr")
+    if times_orig['t_collapse'] is not None:
+        print(f"    {label1} -> Collapse at t = {times_orig['t_collapse']:.4e} Myr")
+    if times_mod['t_collapse'] is not None:
+        print(f"    {label2} -> Collapse at t = {times_mod['t_collapse']:.4e} Myr")
 
     # Get all scalar keys from both datasets (use filtered data)
     keys_orig = get_scalar_keys(snapshots_orig_filtered)

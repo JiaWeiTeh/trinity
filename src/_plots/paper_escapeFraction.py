@@ -59,7 +59,7 @@ def smooth_1d(y, window, mode="edge"):
 
 
 def load_escape_fraction(data_path: Path):
-    """Return (t, fesc) arrays using TrinityOutput reader."""
+    """Return (t, fesc, isCollapse) arrays using TrinityOutput reader."""
     output = load_output(data_path)
 
     if len(output) == 0:
@@ -72,7 +72,10 @@ def load_escape_fraction(data_path: Path):
     fAbs = np.nan_to_num(fAbs, nan=0.0)
     fesc = 1.0 - fAbs
 
-    return t, fesc
+    # Load isCollapse for collapse indicator
+    isCollapse = np.array(output.get('isCollapse', as_array=False))
+
+    return t, fesc, isCollapse
 
 
 import os
@@ -101,7 +104,7 @@ def plot_from_path(data_input: str, output_dir: str = None):
     print(f"Loading data from: {data_path}")
 
     try:
-        t, fesc = load_escape_fraction(data_path)
+        t, fesc, isCollapse = load_escape_fraction(data_path)
     except Exception as e:
         print(f"Error loading data: {e}")
         return
@@ -112,6 +115,20 @@ def plot_from_path(data_input: str, output_dir: str = None):
     fesc_plot = np.clip(fesc_plot, 0.0, 1.0)
 
     ax.plot(t, fesc_plot, lw=1.8, alpha=0.9, label=r"$f_{\rm esc}$")
+
+    # --- collapse line: first time isCollapse becomes True
+    collapse_mask = np.array([bool(c) for c in isCollapse])
+    idx_collapse = np.flatnonzero(collapse_mask)
+    if idx_collapse.size:
+        x_collapse = t[idx_collapse[0]]
+        ax.axvline(x_collapse, color="purple", ls="--", lw=1.8, alpha=0.6, zorder=0)
+        ax.text(
+            x_collapse, 0.95, "Collapse",
+            transform=ax.get_xaxis_transform(),
+            ha="left", va="top",
+            fontsize=8, color="purple", alpha=0.8,
+            rotation=90, zorder=5
+        )
 
     ax.set_title(f"Escape Fraction: {data_path.parent.name}")
     ax.set_xlabel("t [Myr]")
@@ -165,7 +182,7 @@ def plot_grid():
 
                 print(f"  Loading: {data_path}")
                 try:
-                    t, fesc = load_escape_fraction(data_path)
+                    t, fesc, isCollapse = load_escape_fraction(data_path)
 
                     # optional smoothing
                     fesc_plot = smooth_1d(fesc, SMOOTH_WINDOW)
@@ -178,6 +195,13 @@ def plot_grid():
                     if i == 0:
                         all_line_handles.append(line)
                         all_line_labels.append(rf"$\epsilon={eps:.2f}$")
+
+                    # --- collapse line: first time isCollapse becomes True
+                    collapse_mask = np.array([bool(c) for c in isCollapse])
+                    idx_collapse = np.flatnonzero(collapse_mask)
+                    if idx_collapse.size:
+                        x_collapse = t[idx_collapse[0]]
+                        ax.axvline(x_collapse, color="purple", ls="--", lw=1.8, alpha=0.4, zorder=0)
 
                 except Exception as e:
                     print(f"Error in {run_name}: {e}")
@@ -196,6 +220,10 @@ def plot_grid():
 
         # global legend (cleaner than repeating per axis)
         if all_line_handles:
+            # Add collapse indicator to legend
+            from matplotlib.lines import Line2D
+            all_line_handles.append(Line2D([0], [0], color="purple", ls="--", alpha=0.6, lw=1.8))
+            all_line_labels.append("Collapse")
             leg = fig.legend(
                 handles=all_line_handles,
                 labels=all_line_labels,
