@@ -924,6 +924,16 @@ COOLING_PHASE_KEYS = [
     'bubble_Lgain',
     'bubble_Lloss',
     'bubble_Leak',
+    # Bubble luminosity components
+    'bubble_L1Bubble',
+    'bubble_L2Conduction',
+    'bubble_L3Intermediate',
+    'bubble_LTotal',
+    # Bubble temperature/mass
+    'bubble_Tavg',
+    'bubble_T_r_Tb',
+    'bubble_mass',
+    'bubble_r_Tb',
     # Cooling timing
     't_previousCoolingUpdate',
     # Non-CIE cooling structures
