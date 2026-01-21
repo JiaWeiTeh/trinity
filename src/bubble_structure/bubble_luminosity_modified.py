@@ -157,25 +157,25 @@ def get_bubbleproperties_pure(params) -> BubbleProperties:
     )
 
     # Create radius array and solve ODE
-    # Try adaptive grid first (fewer points, concentrated at shocks), fall back to
-    # cleaned legacy if it fails (negative T, solver error, etc.)
+    # NOTE: The adaptive grid (_create_adaptive_radius_grid) is disabled because it
+    # concentrates points around shock regions but under-samples the conduction zone
+    # (T = 1e4 to 10^5.5 K), causing incorrect cooling calculations. The cleaned
+    # legacy grid fixes the LSODA warnings while maintaining accuracy.
+    #
+    # TODO: To re-enable adaptive grid, ensure it maintains sufficient resolution
+    # in the conduction zone, not just shock regions. The cooling calculations
+    # at lines 267+ expect ~100+ points between index_cooling_switch and index_CIE_switch.
     initial_conditions = [v_r2Prime, T_r2Prime, dTdr_r2Prime]
 
-    r_array, psoln = _create_adaptive_radius_grid(
-        R1, r2Prime, initial_conditions, params, Pb
+    # Always use cleaned legacy grid for now (adaptive grid causes accuracy issues)
+    r_array = _create_legacy_radius_grid(R1, r2Prime)
+    psoln = scipy.integrate.odeint(
+        _get_bubble_ODE,
+        initial_conditions,
+        r_array,
+        args=(params, Pb),
+        tfirst=True
     )
-
-    if r_array is None:
-        # Adaptive failed - use cleaned legacy grid with odeint
-        logger.debug('Adaptive grid failed, falling back to cleaned legacy')
-        r_array = _create_legacy_radius_grid(R1, r2Prime)
-        psoln = scipy.integrate.odeint(
-            _get_bubble_ODE,
-            initial_conditions,
-            r_array,
-            args=(params, Pb),
-            tfirst=True
-        )
 
     v_array = psoln[:, 0]
     T_array = psoln[:, 1]
