@@ -96,18 +96,40 @@ def load_run(data_path: Path):
     R2 = output.get('R2')
     rcloud = float(output[0].get('rCloud', np.nan))
 
+    # Load isCollapse for collapse indicator
+    isCollapse = np.array(output.get('isCollapse', as_array=False))
+
     # ensure increasing time
     if np.any(np.diff(t) < 0):
         order = np.argsort(t)
         t, phase = t[order], phase[order]
         Li, Lmech_total, Qi, R2 = Li[order], Lmech_total[order], Qi[order], R2[order]
+        isCollapse = isCollapse[order]
 
-    return t, phase, Li, Lmech_total, Qi, R2, rcloud
+    return t, phase, Li, Lmech_total, Qi, R2, rcloud, isCollapse
 
 
-def add_phase_and_cloud_markers(ax, t, phase, R2, rcloud, label_pad_points=4):
-    """Phase T/M markers + breakout line."""
+def add_phase_and_cloud_markers(ax, t, phase, R2, rcloud, isCollapse=None, label_pad_points=4):
+    """Phase T/M markers + breakout line + collapse line."""
     fig = ax.figure
+
+    # --- collapse line: first time isCollapse becomes True
+    if isCollapse is not None:
+        collapse_mask = np.array([bool(c) for c in isCollapse])
+        idx_collapse = np.flatnonzero(collapse_mask)
+        if idx_collapse.size:
+            x_collapse = t[idx_collapse[0]]
+            ax.axvline(x_collapse, color="purple", ls="--", lw=1.8, alpha=0.6, zorder=0)
+            text_trans = ax.get_xaxis_transform() + mtransforms.ScaledTranslation(
+                label_pad_points/72, 0, fig.dpi_scale_trans
+            )
+            ax.text(
+                x_collapse, 0.05, "Collapse",
+                transform=text_trans,
+                ha="left", va="bottom",
+                fontsize=8, color="purple", alpha=0.8,
+                rotation=90, zorder=6
+            )
 
     if PHASE_LINE:
         # energy/implicit -> transition (T)
@@ -156,14 +178,14 @@ def add_phase_and_cloud_markers(ax, t, phase, R2, rcloud, label_pad_points=4):
             )
 
 
-def plot_panel(ax, t, phase, Li, Lmech_total, Qi, R2, rcloud):
+def plot_panel(ax, t, phase, Li, Lmech_total, Qi, R2, rcloud, isCollapse=None):
     # smoothing
     Li_s    = smooth_1d(Li,    SMOOTH_WINDOW, mode=SMOOTH_MODE)
     L_mech_s = smooth_1d(Lmech_total, SMOOTH_WINDOW, mode=SMOOTH_MODE)
     Qi_s    = smooth_1d(Qi,    SMOOTH_WINDOW, mode=SMOOTH_MODE)
     R2_s    = smooth_1d(R2,    SMOOTH_WINDOW, mode=SMOOTH_MODE)
 
-    add_phase_and_cloud_markers(ax, t, phase, R2_s, rcloud)
+    add_phase_and_cloud_markers(ax, t, phase, R2_s, rcloud, isCollapse)
 
     # decide y-quantity: Li or Qi
     if PLOT_QI:
@@ -240,13 +262,13 @@ def plot_from_path(data_input: str, output_dir: str = None):
     print(f"Loading data from: {data_path}")
 
     try:
-        t, phase, Li, Lmech_total, Qi, R2, rcloud = load_run(data_path)
+        t, phase, Li, Lmech_total, Qi, R2, rcloud, isCollapse = load_run(data_path)
     except Exception as e:
         print(f"Error loading data: {e}")
         return
 
     fig, ax = plt.subplots(figsize=(8, 6), dpi=150)
-    axr = plot_panel(ax, t, phase, Li, Lmech_total, Qi, R2, rcloud)
+    axr = plot_panel(ax, t, phase, Li, Lmech_total, Qi, R2, rcloud, isCollapse)
 
     ax.set_title(f"Li vs Lmech: {data_path.parent.name}")
     ax.set_xlabel("t [Myr]")
@@ -309,8 +331,8 @@ def plot_grid():
 
                 print(f"  Loading: {data_path}")
                 try:
-                    t, phase, Li, Lmech_total, Qi, R2, rcloud = load_run(data_path)
-                    axr = plot_panel(ax, t, phase, Li, Lmech_total, Qi, R2, rcloud)
+                    t, phase, Li, Lmech_total, Qi, R2, rcloud, isCollapse = load_run(data_path)
+                    axr = plot_panel(ax, t, phase, Li, Lmech_total, Qi, R2, rcloud, isCollapse)
                 except Exception as e:
                     print(f"Error in {run_name}: {e}")
                     ax.text(0.5, 0.5, "error", ha="center", va="center", transform=ax.transAxes)
@@ -357,6 +379,7 @@ def plot_grid():
             ratio_handle,
             Line2D([0], [0], color="k", ls="--", alpha=0.6, lw=1.6, label=r"$R_2>R_{\rm cloud}$"),
             Line2D([0], [0], color="r", lw=2, alpha=0.3, label=r"phase: $T$ (→transition), $M$ (→momentum)"),
+            Line2D([0], [0], color="purple", ls="--", alpha=0.6, lw=1.8, label="Collapse"),
         ]
 
         leg = fig.legend(

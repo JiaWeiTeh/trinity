@@ -88,13 +88,17 @@ def load_run_velocity(data_path: Path):
 
     rcloud = float(output[0].get('rCloud', np.nan))
 
+    # Load isCollapse for collapse indicator
+    isCollapse = np.array(output.get('isCollapse', as_array=False))
+
     # enforce increasing time (robust if there are tiny non-monotonicities)
     if np.any(np.diff(t) < 0):
         order = np.argsort(t)
         t, phase = t[order], phase[order]
         v2, R1, R2, rShell, r_Tb = v2[order], R1[order], R2[order], rShell[order], r_Tb[order]
+        isCollapse = isCollapse[order]
 
-    return t, phase, v2, R1, R2, rShell, r_Tb, rcloud
+    return t, phase, v2, R1, R2, rShell, r_Tb, rcloud, isCollapse
 
 
 def range_tag(prefix, values, key=float):
@@ -149,7 +153,7 @@ def plot_signed_logline(ax, t, v, *, color="k", lw=1.8, alpha=0.95, label_pos=No
 
 
 def plot_velocity_on_ax(
-    ax, t, phase, v2_pcmyr, R1, R2, rShell, r_Tb, rcloud,
+    ax, t, phase, v2_pcmyr, R1, R2, rShell, r_Tb, rcloud, isCollapse=None,
     smooth_window=None, smooth_mode="edge",
     phase_line=True, cloud_line=True,
     label_pad_points=4
@@ -165,6 +169,24 @@ def plot_velocity_on_ax(
 
     # convert velocity to km/s
     v2_kms = v2s * PC_PER_MYR_TO_KMS
+
+    # --- collapse line: first time isCollapse becomes True
+    if isCollapse is not None:
+        collapse_mask = np.array([bool(c) for c in isCollapse])
+        idx_collapse = np.flatnonzero(collapse_mask)
+        if idx_collapse.size:
+            x_collapse = t[idx_collapse[0]]
+            ax.axvline(x_collapse, color="purple", ls="--", lw=1.8, alpha=0.6, zorder=0)
+            text_trans = ax.get_xaxis_transform() + mtransforms.ScaledTranslation(
+                label_pad_points/72, 0, fig.dpi_scale_trans
+            )
+            ax.text(
+                x_collapse, 0.05, "Collapse",
+                transform=text_trans,
+                ha="left", va="bottom",
+                fontsize=8, color="purple", alpha=0.8,
+                rotation=90, zorder=6
+            )
 
     # --- phase lines with mini labels
     if phase_line:
@@ -268,9 +290,9 @@ def plot_from_path(data_input: str, output_dir: str = None):
     fig, ax = plt.subplots(figsize=(8, 6), dpi=150)
 
     try:
-        t, phase, v2, R1, R2, rShell, r_Tb, rcloud = load_run_velocity(data_path)
+        t, phase, v2, R1, R2, rShell, r_Tb, rcloud, isCollapse = load_run_velocity(data_path)
         axr = plot_velocity_on_ax(
-            ax, t, phase, v2, R1, R2, rShell, r_Tb, rcloud,
+            ax, t, phase, v2, R1, R2, rShell, r_Tb, rcloud, isCollapse,
             smooth_window=SMOOTH_WINDOW,
             smooth_mode=SMOOTH_MODE,
             phase_line=PHASE_LINE,
@@ -294,6 +316,7 @@ def plot_from_path(data_input: str, output_dir: str = None):
         Line2D([0], [0], color=RADIUS_FIELDS[1][2], lw=RADIUS_FIELDS[1][4], ls=RADIUS_FIELDS[1][3], label=RADIUS_FIELDS[1][1]),
         Line2D([0], [0], color=RADIUS_FIELDS[2][2], lw=RADIUS_FIELDS[2][4], ls=RADIUS_FIELDS[2][3], label=RADIUS_FIELDS[2][1]),
         Line2D([0], [0], color=RADIUS_FIELDS[3][2], lw=RADIUS_FIELDS[3][4], ls=RADIUS_FIELDS[3][3], label=RADIUS_FIELDS[3][1]),
+        Line2D([0], [0], color="purple", ls="--", alpha=0.6, lw=1.8, label="Collapse"),
     ]
     ax.legend(handles=handles, loc="upper left", framealpha=0.9)
 
@@ -341,9 +364,9 @@ def plot_grid():
 
                 print(f"  Loading: {data_path}")
                 try:
-                    t, phase, v2, R1, R2, rShell, r_Tb, rcloud = load_run_velocity(data_path)
+                    t, phase, v2, R1, R2, rShell, r_Tb, rcloud, isCollapse = load_run_velocity(data_path)
                     axr = plot_velocity_on_ax(
-                        ax, t, phase, v2, R1, R2, rShell, r_Tb, rcloud,
+                        ax, t, phase, v2, R1, R2, rShell, r_Tb, rcloud, isCollapse,
                         smooth_window=SMOOTH_WINDOW,
                         smooth_mode=SMOOTH_MODE,
                         phase_line=PHASE_LINE,
@@ -390,6 +413,7 @@ def plot_grid():
             Line2D([0], [0], color=RADIUS_FIELDS[3][2], lw=RADIUS_FIELDS[3][4], ls=RADIUS_FIELDS[3][3], label=RADIUS_FIELDS[3][1]),
             Line2D([0], [0], color="k", ls="--", alpha=0.6, lw=1.6, label=r"$R_2>R_{\rm cloud}$"),
             Line2D([0], [0], color="r", lw=2, alpha=0.3, label=r"phase changes: $T$ (→transition), $M$ (→momentum)"),
+            Line2D([0], [0], color="purple", ls="--", alpha=0.6, lw=1.8, label="Collapse"),
         ]
 
         leg = fig.legend(
