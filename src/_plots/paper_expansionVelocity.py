@@ -298,6 +298,13 @@ def plot_from_path(data_input: str, output_dir: str = None):
     ax.legend(handles=handles, loc="upper left", framealpha=0.9)
 
     plt.tight_layout()
+
+    # Save figures
+    run_name = data_path.parent.name
+    out_pdf = FIG_DIR / f"paper_expansionVelocity_{run_name}.pdf"
+    fig.savefig(out_pdf, bbox_inches='tight')
+    print(f"Saved: {out_pdf}")
+
     plt.show()
     plt.close(fig)
 
@@ -405,9 +412,6 @@ def plot_grid():
         tag = f"velocity_grid_{m_tag}_{sfe_tag}_{n_tag}"
 
         if SAVE_PNG:
-            out_png = FIG_DIR / f"{tag}.png"
-            fig.savefig(out_png, bbox_inches="tight", pad_inches=0.15)
-            print(f"Saved: {out_png}")
         if SAVE_PDF:
             out_pdf = FIG_DIR / f"{tag}.pdf"
             fig.savefig(out_pdf, bbox_inches="tight", pad_inches=0.15)

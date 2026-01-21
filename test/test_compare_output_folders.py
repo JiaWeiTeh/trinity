@@ -3,12 +3,21 @@
 """
 Compare TRINITY output folders: original vs modified versions.
 
-This script automatically scans the /outputs/ folder for *_modified directories,
-finds their corresponding original versions, and generates comparison plots.
+Two modes of operation:
+
+1. Auto mode (default): Scans the outputs folder for *_modified directories,
+   finds their corresponding original versions, and generates comparison plots.
+
+2. Manual mode: Compare two specific folders/files directly.
 
 Usage:
+    # Auto mode - find and compare all *_modified pairs
     python test_compare_output_folders.py
     python test_compare_output_folders.py --output-dir /path/to/outputs
+
+    # Manual mode - compare two specific folders/files
+    python test_compare_output_folders.py folder1 folder2
+    python test_compare_output_folders.py /path/to/run1 /path/to/run2
 
 Can be run from any directory within the trinity project.
 
@@ -727,6 +736,113 @@ def compare_output_folders(output_dir: Path = None):
 
 
 # =============================================================================
+# Manual comparison function
+# =============================================================================
+
+def compare_two_folders(folder1: Path, folder2: Path, output_dir: Path = None):
+    """
+    Compare two specific folders/files directly.
+
+    Parameters
+    ----------
+    folder1 : Path
+        First folder or file path
+    folder2 : Path
+        Second folder or file path
+    output_dir : Path, optional
+        Where to save comparison plots (default: folder2's directory)
+    """
+    folder1 = Path(folder1)
+    folder2 = Path(folder2)
+
+    print("=" * 70)
+    print("TRINITY Output Comparison: Manual Mode")
+    print("=" * 70)
+
+    # Find dictionary files
+    if folder1.is_file():
+        jsonl1 = folder1
+    else:
+        jsonl1 = find_dictionary_jsonl(folder1)
+
+    if folder2.is_file():
+        jsonl2 = folder2
+    else:
+        jsonl2 = find_dictionary_jsonl(folder2)
+
+    if jsonl1 is None:
+        print(f"ERROR: No dictionary.jsonl found in {folder1}")
+        return False
+    if jsonl2 is None:
+        print(f"ERROR: No dictionary.jsonl found in {folder2}")
+        return False
+
+    print(f"\nFile 1: {jsonl1}")
+    print(f"File 2: {jsonl2}")
+
+    # Determine output directory
+    if output_dir is None:
+        output_dir = jsonl2.parent if jsonl2.is_file() else folder2
+    output_dir = Path(output_dir)
+
+    # Load data
+    print("\nLoading snapshots...")
+    snapshots1 = load_jsonl(jsonl1)
+    snapshots2 = load_jsonl(jsonl2)
+
+    print(f"  File 1: {len(snapshots1)} snapshots")
+    print(f"  File 2: {len(snapshots2)} snapshots")
+
+    if len(snapshots1) == 0 or len(snapshots2) == 0:
+        print("ERROR: Empty snapshot data")
+        return False
+
+    # Generate comparison name from folder names
+    name1 = jsonl1.parent.name if jsonl1.parent.name != '' else 'file1'
+    name2 = jsonl2.parent.name if jsonl2.parent.name != '' else 'file2'
+    model_name = f"{name1} vs {name2}"
+
+    # Generate comparison plots
+    print("\nGenerating comparison plots...")
+    generate_all_comparison_plots(
+        snapshots1, snapshots2,
+        output_dir,
+        model_name
+    )
+
+    # Print summary statistics
+    t_min, t_max = get_common_time_range(snapshots1, snapshots2)
+    snapshots1_filtered = filter_snapshots_by_time(snapshots1, t_min, t_max)
+    snapshots2_filtered = filter_snapshots_by_time(snapshots2, t_min, t_max)
+
+    print(f"\nSummary Statistics (at t={t_max:.4e} Myr, common end time):")
+    for key in ESSENTIAL_PARAMS:
+        t1, v1 = extract_time_series(snapshots1_filtered, key)
+        t2, v2 = extract_time_series(snapshots2_filtered, key)
+
+        if np.all(np.isnan(v1)) and np.all(np.isnan(v2)):
+            continue
+
+        final1 = v1[~np.isnan(v1)][-1] if any(~np.isnan(v1)) else np.nan
+        final2 = v2[~np.isnan(v2)][-1] if any(~np.isnan(v2)) else np.nan
+
+        if np.isnan(final1) or np.isnan(final2):
+            continue
+
+        rel_diff = abs(final1 - final2) / max(abs(final1), 1e-300)
+        status = "OK" if rel_diff < 0.01 else "DIFF"
+
+        print(f"  {key:12s}: file1={final1:.4e}, file2={final2:.4e}, "
+              f"rel_diff={rel_diff:.2e} [{status}]")
+
+    print(f"\n{'=' * 70}")
+    print(f"Comparison complete. Plots saved to: {output_dir}")
+    print(f"{'=' * 70}")
+
+    return True
+
+
+# =============================================================================
 # Command-line interface
 # =============================================================================
 
@@ -736,29 +852,53 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
+  # Auto mode - find and compare all *_modified pairs
   %(prog)s
   %(prog)s --output-dir /path/to/outputs
   %(prog)s -o ./my_outputs
 
-The script searches for folders ending with '_modified' and compares them
-with their corresponding original folders (e.g., '1e7_modified/' vs '1e7/').
+  # Manual mode - compare two specific folders
+  %(prog)s folder1 folder2
+  %(prog)s /path/to/run1 /path/to/run2
+  %(prog)s run1/dictionary.jsonl run2/dictionary.jsonl
 
-Comparison plots are saved as PDFs in the _modified folder.
-Can be run from any directory within the trinity project.
+In auto mode, the script searches for folders ending with '_modified' and
+compares them with their corresponding original folders.
+
+In manual mode, you provide two folder paths (or file paths) to compare directly.
+
+Comparison plots are saved as PDFs.
         """
+    )
+
+    parser.add_argument(
+        'folders',
+        nargs='*',
+        help='Two folders/files to compare (manual mode). If not provided, runs in auto mode.'
     )
 
     parser.add_argument(
         '--output-dir', '-o',
         type=str,
         default=None,
-        help=f'Output directory to search (default: {DEFAULT_OUTPUT_DIR})'
+        help=f'Output directory to search (auto mode) or save plots (manual mode). Default: {DEFAULT_OUTPUT_DIR}'
     )
 
     args = parser.parse_args()
 
-    output_dir = Path(args.output_dir) if args.output_dir else None
-    success = compare_output_folders(output_dir)
+    # Determine mode based on arguments
+    if len(args.folders) == 2:
+        # Manual mode: compare two specific folders
+        folder1, folder2 = args.folders
+        output_dir = Path(args.output_dir) if args.output_dir else None
+        success = compare_two_folders(folder1, folder2, output_dir)
+    elif len(args.folders) == 0:
+        # Auto mode: find and compare *_modified pairs
+        output_dir = Path(args.output_dir) if args.output_dir else None
+        success = compare_output_folders(output_dir)
+    else:
+        parser.error("Manual mode requires exactly two folder/file arguments.")
+        sys.exit(1)
 
     sys.exit(0 if success else 1)
 

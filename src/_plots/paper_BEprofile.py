@@ -94,7 +94,8 @@ plt.yscale('log')
 plt.ylabel('$n$ [$\mathrm{cm}^{-3}$]')
 plt.xlabel('$r$ [pc]')
 
-plt.savefig(FIG_DIR / 'BE_profile_dens.pdf')
+plt.savefig(FIG_DIR / 'BE_profile_dens.pdf', bbox_inches='tight')
+print(f"Saved: {FIG_DIR / 'BE_profile_dens.pdf'}")
 plt.show()
 
 
@@ -142,7 +143,8 @@ plt.xlabel('$r$ [pc]')
 
 
 
-plt.savefig(FIG_DIR / 'BE_profile_mass.pdf')
+plt.savefig(FIG_DIR / 'BE_profile_mass.pdf', bbox_inches='tight')
+print(f"Saved: {FIG_DIR / 'BE_profile_mass.pdf'}")
 plt.show()
 
 

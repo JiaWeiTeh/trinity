@@ -121,6 +121,13 @@ def plot_from_path(data_input: str, output_dir: str = None):
     ax.legend(loc="upper left", framealpha=0.9)
 
     plt.tight_layout()
+
+    # Save figures
+    run_name = data_path.parent.name
+    out_pdf = FIG_DIR / f"paper_escapeFraction_{run_name}.pdf"
+    fig.savefig(out_pdf, bbox_inches='tight')
+    print(f"Saved: {out_pdf}")
+
     plt.show()
     plt.close(fig)
 
@@ -204,6 +211,7 @@ def plot_grid():
 
         if SAVE_PDF:
             fig.savefig(FIG_DIR / f"paper_escapeFraction_n{ndens}.pdf", bbox_inches='tight')
+            print(f"Saved: {FIG_DIR / f'paper_escapeFraction_n{ndens}.pdf'}")
         plt.show()
         plt.close(fig)
 

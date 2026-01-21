@@ -167,6 +167,7 @@ SAVE_PDF = True
 
 if SAVE_PDF:
     plt.savefig(FIG_DIR / 'bubblePhase.pdf', bbox_inches='tight')
+    print(f"Saved: {FIG_DIR / 'bubblePhase.pdf'}")
 plt.show()
 
 

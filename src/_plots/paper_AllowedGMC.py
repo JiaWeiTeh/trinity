@@ -358,9 +358,9 @@ def plot_powerlaw_grids():
     plt.tight_layout()
 
     if SAVE_PDF:
-        out_path = FIG_DIR / "paper_AllowedGMC_PowerLaw.pdf"
-        fig.savefig(out_path, bbox_inches='tight', dpi=150)
-        print(f"Saved: {out_path}")
+        out_pdf = FIG_DIR / "paper_AllowedGMC_PowerLaw.pdf"
+        fig.savefig(out_pdf, bbox_inches='tight')
+        print(f"Saved: {out_pdf}")
 
     plt.close(fig)
 
@@ -450,9 +450,9 @@ def plot_BE_grids():
     plt.tight_layout()
 
     if SAVE_PDF:
-        out_path = FIG_DIR / "paper_AllowedGMC_BonnorEbert.pdf"
-        fig.savefig(out_path, bbox_inches='tight', dpi=150)
-        print(f"Saved: {out_path}")
+        out_pdf = FIG_DIR / "paper_AllowedGMC_BonnorEbert.pdf"
+        fig.savefig(out_pdf, bbox_inches='tight')
+        print(f"Saved: {out_pdf}")
 
     plt.close(fig)
 

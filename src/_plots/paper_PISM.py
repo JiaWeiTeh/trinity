@@ -87,7 +87,8 @@ plt.legend()
 plt.xlim(min(tlist), 10)
 plt.ylim(1e-1, 5e2)
 
-plt.savefig(FIG_DIR / 'PISM.pdf')
+plt.savefig(FIG_DIR / 'PISM.pdf', bbox_inches='tight')
+print(f"Saved: {FIG_DIR / 'PISM.pdf'}")
 plt.show()
 
 

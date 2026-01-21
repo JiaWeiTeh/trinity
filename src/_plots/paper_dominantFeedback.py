@@ -426,7 +426,7 @@ def main(mCloud_list, sfe_list, nCore, target_times, base_dir, fig_dir=None):
     # Save
     filename = f"dominant_feedback_n{nCore}"
     out_pdf = fig_dir / f"{filename}.pdf"
-    fig.savefig(out_pdf, bbox_inches='tight', dpi=150)
+    fig.savefig(out_pdf, bbox_inches='tight')
     print(f"Saved: {out_pdf}")
 
     plt.show()
