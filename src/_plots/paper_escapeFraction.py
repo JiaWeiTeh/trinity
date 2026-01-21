@@ -153,9 +153,10 @@ def plot_grid():
                 data_path = find_data_file(BASE_DIR, run_name)
 
                 if data_path is None:
-                    print(f"Missing data for: {run_name}")
+                    print(f"  {run_name}: missing")
                     continue
 
+                print(f"  Loading: {data_path}")
                 try:
                     t, fesc = load_escape_fraction(data_path)
 

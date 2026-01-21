@@ -188,6 +188,11 @@ def build_dominance_grid(target_time, mCloud_list, sfe_list, ndens, base_dir):
             run_name = f"{mCloud}_sfe{sfe}_n{ndens}"
             data_path = find_data_file(base_dir, run_name)
 
+            if data_path is None:
+                print(f"    {run_name}: missing")
+                continue
+
+            print(f"    Loading: {data_path}")
             t, forces = load_run(data_path)
 
             if t is not None:

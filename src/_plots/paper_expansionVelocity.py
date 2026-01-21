@@ -327,10 +327,12 @@ def plot_grid():
                 data_path = find_data_file(BASE_DIR, run_name)
 
                 if data_path is None:
+                    print(f"  {run_name}: missing")
                     ax.text(0.5, 0.5, "missing", ha="center", va="center", transform=ax.transAxes)
                     ax.set_axis_off()
                     continue
 
+                print(f"  Loading: {data_path}")
                 try:
                     t, phase, v2, R1, R2, rShell, r_Tb, rcloud = load_run_velocity(data_path)
                     axr = plot_velocity_on_ax(
