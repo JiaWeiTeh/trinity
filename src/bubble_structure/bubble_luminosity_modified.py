@@ -38,6 +38,305 @@ logger = logging.getLogger(__name__)
 _trapezoid = getattr(np, 'trapezoid', None) or np.trapz
 
 
+# =============================================================================
+# Grid construction utilities
+# =============================================================================
+
+def _clean_radius_grid(r_array: np.ndarray, min_rel_spacing: float = 1e-10) -> np.ndarray:
+    """
+    Clean radius grid by removing near-duplicates and enforcing strict monotonicity.
+
+    This fixes LSODA 'intdy-- t illegal' warnings caused by consecutive grid points
+    being too close together (within floating-point precision).
+
+    Parameters
+    ----------
+    r_array : np.ndarray
+        Radius array (expected to be in decreasing order)
+    min_rel_spacing : float
+        Minimum relative spacing between consecutive points
+
+    Returns
+    -------
+    np.ndarray
+        Cleaned radius array in strictly decreasing order
+    """
+    # Handle empty or single-element arrays
+    if len(r_array) <= 1:
+        return r_array
+
+    # Determine if array is decreasing or increasing
+    is_decreasing = r_array[0] > r_array[-1]
+
+    if is_decreasing:
+        # Work with decreasing array
+        result = [r_array[0]]
+        for r in r_array[1:]:
+            spacing = result[-1] - r
+            if spacing > min_rel_spacing * abs(result[-1]):
+                result.append(r)
+        return np.array(result)
+    else:
+        # Work with increasing array
+        result = [r_array[0]]
+        for r in r_array[1:]:
+            spacing = r - result[-1]
+            if spacing > min_rel_spacing * abs(result[-1]) if result[-1] != 0 else spacing > min_rel_spacing:
+                result.append(r)
+        return np.array(result)
+
+
+def _create_legacy_radius_grid(R1: float, r2Prime: float) -> np.ndarray:
+    """
+    Create radius grid using the legacy method (three logspace chunks).
+
+    This is the original implementation that creates ~60k points.
+    Use this as fallback if adaptive refinement fails.
+
+    Parameters
+    ----------
+    R1 : float
+        Inner bubble radius
+    r2Prime : float
+        Outer bubble radius (slightly inside R2)
+
+    Returns
+    -------
+    np.ndarray
+        Radius array in decreasing order (~60k points)
+    """
+    # Step 1: Base logspace (reverse logspace for higher density at outer edge)
+    r_array = (r2Prime + R1) - np.logspace(np.log10(R1), np.log10(r2Prime), int(2e4))
+
+    # Step 2: Improve resolution at the start (outer edge)
+    r_improve = np.logspace(np.log10(r_array[0]), np.log10(r_array[2]), int(2e4))
+    r_array = np.insert(r_array[3:], 0, r_improve)
+
+    # Step 3: Further improve resolution at the end (inner edge)
+    r_further = (r_array[-1] + r_array[-5]) - np.logspace(
+        np.log10(r_array[-1]), np.log10(r_array[-5]), int(2e4)
+    )
+    r_array = np.insert(r_array[:-5], len(r_array[:-5]), r_further)
+
+    # Clean the grid to remove near-duplicates from np.insert operations
+    return _clean_radius_grid(r_array)
+
+
+def _create_adaptive_radius_grid(
+    R1: float,
+    r2Prime: float,
+    initial_conditions: tuple,
+    params,
+    Pb: float,
+    coarse_points: int = 2000,
+    refinement_points: int = 500,
+    gradient_threshold_percentile: float = 85
+) -> tuple:
+    """
+    Create radius grid with adaptive refinement around shock fronts.
+
+    Strategy:
+    1. Solve ODE on coarse grid using solve_ivp with dense_output
+    2. Identify shock regions (large |dT/dr|)
+    3. Build refined grid concentrated around those regions
+    4. Evaluate dense output on refined grid
+
+    Parameters
+    ----------
+    R1 : float
+        Inner bubble radius
+    r2Prime : float
+        Outer bubble radius (slightly inside R2)
+    initial_conditions : tuple
+        (v_r2Prime, T_r2Prime, dTdr_r2Prime) initial values
+    params : DescribedDict
+        Parameter dictionary
+    Pb : float
+        Bubble pressure
+    coarse_points : int
+        Number of points in coarse grid
+    refinement_points : int
+        Number of points to add around each shock region
+    gradient_threshold_percentile : float
+        Percentile of |dT/dr| above which to refine
+
+    Returns
+    -------
+    tuple
+        (r_array, psoln) where psoln is the ODE solution array
+        Returns (None, None) if adaptive method fails
+    """
+    from scipy.integrate import solve_ivp
+
+    v_init, T_init, dTdr_init = initial_conditions
+
+    # Ensure scalars
+    v_init = float(v_init) if hasattr(v_init, '__len__') else v_init
+    T_init = float(T_init) if hasattr(T_init, '__len__') else T_init
+    dTdr_init = float(dTdr_init) if hasattr(dTdr_init, '__len__') else dTdr_init
+    r2Prime = float(r2Prime) if hasattr(r2Prime, '__len__') else r2Prime
+
+    try:
+        # Step 1: Coarse grid (decreasing order, so we integrate "backwards")
+        r_start = r2Prime  # Start at outer edge
+        r_end = R1 * 1.001  # End just above inner edge (avoid singularity)
+
+        # Use solve_ivp with dense_output for efficient interpolation
+        sol = solve_ivp(
+            _get_bubble_ODE,
+            [r_start, r_end],
+            [v_init, T_init, dTdr_init],
+            args=(params, Pb),
+            method='LSODA',
+            dense_output=True,
+            max_step=(r_start - r_end) / 100  # Ensure reasonable step sizes
+        )
+
+        if not sol.success:
+            logger.warning(f"Adaptive grid: solve_ivp failed: {sol.message}")
+            return None, None
+
+        # Step 2: Evaluate on coarse grid to find gradients
+        r_coarse = np.linspace(r_start, r_end, coarse_points)
+        y_coarse = sol.sol(r_coarse)
+        T_coarse = y_coarse[1]
+
+        # Check for negative temperatures
+        if np.any(T_coarse < 0):
+            logger.warning("Adaptive grid: negative temperature in coarse solution")
+            return None, None
+
+        # Step 3: Find shock regions (large temperature gradient)
+        dTdr_coarse = np.abs(np.gradient(T_coarse, r_coarse))
+        threshold = np.percentile(dTdr_coarse, gradient_threshold_percentile)
+        shock_mask = dTdr_coarse > threshold
+
+        # Step 4: Build refined grid
+        # Start with coarse grid
+        r_list = list(r_coarse)
+
+        # Add refinement points around shock regions
+        shock_indices = np.where(shock_mask)[0]
+        if len(shock_indices) > 0:
+            # Group consecutive shock indices into regions
+            regions = []
+            start_idx = shock_indices[0]
+            for i in range(1, len(shock_indices)):
+                if shock_indices[i] - shock_indices[i-1] > 5:  # Gap > 5 points = new region
+                    regions.append((start_idx, shock_indices[i-1]))
+                    start_idx = shock_indices[i]
+            regions.append((start_idx, shock_indices[-1]))
+
+            # Add fine points around each region
+            for start_idx, end_idx in regions:
+                # Expand region slightly
+                start_idx = max(0, start_idx - 5)
+                end_idx = min(len(r_coarse) - 1, end_idx + 5)
+
+                r_region_start = r_coarse[start_idx]
+                r_region_end = r_coarse[end_idx]
+
+                # Add fine grid in this region
+                r_fine = np.linspace(r_region_start, r_region_end, refinement_points)
+                r_list.extend(r_fine)
+
+        # Also add refinement near the boundaries (where shocks often occur)
+        # Near outer boundary
+        r_outer_fine = np.linspace(r_start, r_coarse[min(50, len(r_coarse)-1)], refinement_points)
+        r_list.extend(r_outer_fine)
+
+        # Near inner boundary
+        r_inner_fine = np.linspace(r_coarse[max(0, len(r_coarse)-50)], r_end, refinement_points)
+        r_list.extend(r_inner_fine)
+
+        # Sort and remove duplicates (want decreasing order)
+        r_array = np.unique(r_list)[::-1]
+        r_array = _clean_radius_grid(r_array)
+
+        # Step 5: Evaluate dense output on refined grid
+        y_refined = sol.sol(r_array)
+
+        # Check solution quality
+        T_refined = y_refined[1]
+        if np.any(T_refined < 0) or np.any(np.isnan(T_refined)):
+            logger.warning("Adaptive grid: invalid temperature in refined solution")
+            return None, None
+
+        # Return in format compatible with odeint output
+        psoln = np.column_stack([y_refined[0], y_refined[1], y_refined[2]])
+
+        logger.info(f"Adaptive grid: {len(r_array)} points (vs ~60k legacy)")
+        return r_array, psoln
+
+    except Exception as e:
+        logger.warning(f"Adaptive grid failed: {e}")
+        return None, None
+
+
+def _solve_bubble_ode_with_ivp(
+    r_array: np.ndarray,
+    initial_conditions: tuple,
+    params,
+    Pb: float,
+    method: str = 'LSODA'
+) -> np.ndarray:
+    """
+    Solve bubble ODE using solve_ivp instead of odeint.
+
+    This is an alternative solver that may have better behavior for
+    some parameter regimes. Kept for future use and experimentation.
+
+    Parameters
+    ----------
+    r_array : np.ndarray
+        Radius array (evaluation points, decreasing order)
+    initial_conditions : tuple
+        (v_init, T_init, dTdr_init)
+    params : DescribedDict
+        Parameter dictionary
+    Pb : float
+        Bubble pressure
+    method : str
+        Integration method ('LSODA', 'RK45', 'BDF', etc.)
+
+    Returns
+    -------
+    np.ndarray
+        Solution array with shape (len(r_array), 3) for [v, T, dTdr]
+        Returns None if solve fails
+    """
+    from scipy.integrate import solve_ivp
+
+    v_init, T_init, dTdr_init = initial_conditions
+
+    # Ensure scalars
+    v_init = float(v_init) if hasattr(v_init, '__len__') else v_init
+    T_init = float(T_init) if hasattr(T_init, '__len__') else T_init
+    dTdr_init = float(dTdr_init) if hasattr(dTdr_init, '__len__') else dTdr_init
+
+    try:
+        sol = solve_ivp(
+            _get_bubble_ODE,
+            [r_array[0], r_array[-1]],
+            [v_init, T_init, dTdr_init],
+            args=(params, Pb),
+            method=method,
+            t_eval=r_array,
+            dense_output=False
+        )
+
+        if not sol.success:
+            logger.warning(f"solve_ivp failed: {sol.message}")
+            return None
+
+        # Return in same format as odeint
+        return np.column_stack([sol.y[0], sol.y[1], sol.y[2]])
+
+    except Exception as e:
+        logger.warning(f"solve_ivp error: {e}")
+        return None
+
+
 @dataclass
 class BubbleProperties:
     """
@@ -156,26 +455,29 @@ def get_bubbleproperties_pure(params) -> BubbleProperties:
         bubble_dMdt, params, Pb, R1
     )
 
-    # Create radius array
-    # add mamy improving resolution points to resolve shock front.
-    # TODO: maybe this could be quicker. This array is huge, but it's necessary to resolve shock front. 
-    # Are there better alternatives?
-    r_array = (r2Prime + R1) - np.logspace(np.log10(R1), np.log10(r2Prime), int(2e4))
-    r_improve = np.logspace(np.log10(r_array[0]), np.log10(r_array[2]), int(2e4))
-    r_array = np.insert(r_array[3:], 0, r_improve)
-    r_further = (r_array[-1] + r_array[-5]) - np.logspace(
-        np.log10(r_array[-1]), np.log10(r_array[-5]), int(2e4)
-    )
-    r_array = np.insert(r_array[:-5], len(r_array[:-5]), r_further)
+    # Create radius array and solve ODE
+    # Strategy: Try adaptive refinement first (fewer points, concentrated at shocks)
+    # Fall back to legacy method (60k points) if adaptive fails
+    initial_conditions = (v_r2Prime, T_r2Prime, dTdr_r2Prime)
 
-    # Solve ODE
-    psoln = scipy.integrate.odeint(
-        _get_bubble_ODE,
-        [v_r2Prime, T_r2Prime, dTdr_r2Prime],
-        r_array,
-        args=(params, Pb),
-        tfirst=True
+    # Try adaptive refinement first
+    r_array, psoln = _create_adaptive_radius_grid(
+        R1, r2Prime, initial_conditions, params, Pb
     )
+
+    if r_array is None:
+        # Adaptive failed, fall back to legacy method with grid cleaning
+        logger.info("Adaptive grid failed, using legacy method with cleaned grid")
+        r_array = _create_legacy_radius_grid(R1, r2Prime)
+
+        # Solve ODE with cleaned legacy grid
+        psoln = scipy.integrate.odeint(
+            _get_bubble_ODE,
+            [v_r2Prime, T_r2Prime, dTdr_r2Prime],
+            r_array,
+            args=(params, Pb),
+            tfirst=True
+        )
 
     v_array = psoln[:, 0]
     T_array = psoln[:, 1]
@@ -439,36 +741,29 @@ def _get_init_dMdt(params, Pb: float) -> float:
 def _get_velocity_residuals(dMdt_init, params, Pb: float, R1: float) -> float:
     """Calculate velocity residual for dMdt solver."""
     # =============================================================================
-    # Get initial bubble values for integration  
+    # Get initial bubble values for integration
     # =============================================================================
     r2Prime, T_r2Prime, dTdr_r2Prime, v_r2Prime = _get_bubble_ODE_initial_conditions(
         dMdt_init, params, Pb, R1
     )
 
+    # Ensure scalar values (in case arrays are returned)
+    r2Prime_val = float(r2Prime[0]) if hasattr(r2Prime, '__len__') else float(r2Prime)
+    T_r2Prime_val = float(T_r2Prime[0]) if hasattr(T_r2Prime, '__len__') else float(T_r2Prime)
+    dTdr_r2Prime_val = float(dTdr_r2Prime[0]) if hasattr(dTdr_r2Prime, '__len__') else float(dTdr_r2Prime)
+    v_r2Prime_val = float(v_r2Prime[0]) if hasattr(v_r2Prime, '__len__') else float(v_r2Prime)
+
     # =============================================================================
     # radius array at which bubble structure is being evaluated.
     # =============================================================================
-    # array is monotonically decreasing, and these values are all in pc.
-    
-    # ----- radius creation -----
-    # Step 1: create array sampled at higher density at larger radius i.e., more datapoints near bubble's outer edge (sort of a reverse logspace).
-    # [10, 9,.7, 9.3, 8.8, 8.2, 7.4, 6.4, 5, 3, 1]
-    # The same problem with too large array
-    r_array = (r2Prime + R1) - np.logspace(np.log10(R1), np.log10(r2Prime[0]), int(2e4))
-    # Step 2: add front-heavy, i.e., 1, 1.2, 1.6, 2, 3, 4, 5, 7, 10.
-    # new r_array with improved resolution at high r.
-    r_improve = np.logspace(np.log10(r_array[0]), np.log10(r_array[2]), int(2e4))
-    r_array = np.insert(r_array[3:], 0, r_improve)
-    # Step 3: further front-heavy for end of array
-    r_further = (r_array[-1] + r_array[-5]) - np.logspace(
-        np.log10(r_array[-1]), np.log10(r_array[-5]), int(2e4)
-    )
-    r_array = np.insert(r_array[:-5], len(r_array[:-5]), r_further)
-    # ----- radius creation -----
-    # tfirst = True because get_bubble_ODE() is defined as f(t, y). 
+    # Use legacy grid with cleaning (simpler and faster for residual evaluation)
+    # This function is called many times during fsolve, so we avoid adaptive overhead
+    r_array = _create_legacy_radius_grid(R1, r2Prime_val)
+
+    # Solve ODE with cleaned grid (no LSODA interpolation warnings)
     psoln = scipy.integrate.odeint(
         _get_bubble_ODE,
-        [v_r2Prime[0], T_r2Prime[0], dTdr_r2Prime[0]],
+        [v_r2Prime_val, T_r2Prime_val, dTdr_r2Prime_val],
         r_array,
         args=(params, Pb),
         tfirst=True
