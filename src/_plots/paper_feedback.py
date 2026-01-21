@@ -176,7 +176,6 @@ def plot_single_run(mCloud, ndens, sfe):
     ax.set_title(f"{run_name}")
 
     tag = f"feedback_{mCloud}_sfe{sfe}_n{ndens}"
-    if SAVE_PNG:
     if SAVE_PDF:
         out_pdf = FIG_DIR / f"{tag}.pdf"
         fig.savefig(out_pdf, bbox_inches="tight")
@@ -482,7 +481,6 @@ def plot_grid():
         n_tag   = f"n{ndens}"
         tag = f"feedback_grid_{m_tag}_{sfe_tag}_{n_tag}"
 
-        if SAVE_PNG:
         if SAVE_PDF:
             out_pdf = FIG_DIR / f"{tag}.pdf"
             fig.savefig(out_pdf, bbox_inches="tight")
