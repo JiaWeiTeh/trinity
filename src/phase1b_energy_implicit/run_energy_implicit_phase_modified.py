@@ -97,9 +97,9 @@ logger = logging.getLogger(__name__)
 # =============================================================================
 
 COOLING_UPDATE_INTERVAL = 5e-3  # Myr - recalculate cooling
-DT_SEGMENT_INIT = 1e-3  # Myr - initial segment duration
+DT_SEGMENT_INIT = 5e-4  # Myr - initial segment duration
 DT_SEGMENT_MIN = 1e-4   # Myr - minimum segment duration
-DT_SEGMENT_MAX = 2e-1   # Myr - maximum segment duration
+DT_SEGMENT_MAX = 5e-2   # Myr - maximum segment duration
 MAX_SEGMENTS = 5000
 FOUR_PI = 4.0 * np.pi
 
