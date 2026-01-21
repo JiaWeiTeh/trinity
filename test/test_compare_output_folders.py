@@ -78,8 +78,11 @@ def load_jsonl(filepath: Path) -> list:
     Load a JSONL file (line-delimited JSON).
 
     Each line is a JSON object representing one snapshot.
+    Handles corrupted lines with multiple concatenated JSON objects.
     """
     snapshots = []
+    corrupted_lines = []
+    recovered_count = 0
 
     with open(filepath, 'r', encoding='utf-8') as f:
         for line_num, line in enumerate(f, 1):
@@ -90,14 +93,59 @@ def load_jsonl(filepath: Path) -> list:
                 snap = json.loads(line)
                 snapshots.append(snap)
             except json.JSONDecodeError as e:
-                print(f"  Warning: Failed to parse line {line_num}: {e}")
-                continue
+                # Try to recover concatenated JSON objects (e.g., {...}{...})
+                if "Extra data" in str(e):
+                    recovered = _try_split_concatenated_json(line)
+                    if recovered:
+                        snapshots.extend(recovered)
+                        recovered_count += len(recovered)
+                        continue
+                corrupted_lines.append(line_num)
+
+    # Report corrupted lines summary (not individual warnings)
+    if corrupted_lines:
+        if len(corrupted_lines) <= 5:
+            print(f"  Warning: Failed to parse lines: {corrupted_lines}")
+        else:
+            print(f"  Warning: Failed to parse {len(corrupted_lines)} lines "
+                  f"(first 5: {corrupted_lines[:5]})")
+    if recovered_count > 0:
+        print(f"  Recovered {recovered_count} snapshots from concatenated lines")
 
     # Sort by snapshot index if available
     if snapshots and 'snap_id' in snapshots[0]:
         snapshots.sort(key=lambda s: s.get('snap_id', 0))
 
     return snapshots
+
+
+def _try_split_concatenated_json(line: str) -> list:
+    """
+    Try to split a line containing multiple concatenated JSON objects.
+
+    E.g., '{"a":1}{"b":2}' -> [{"a":1}, {"b":2}]
+    """
+    results = []
+    decoder = json.JSONDecoder()
+    idx = 0
+    line = line.strip()
+
+    while idx < len(line):
+        # Skip whitespace
+        while idx < len(line) and line[idx] in ' \t\n\r':
+            idx += 1
+        if idx >= len(line):
+            break
+
+        try:
+            obj, end_idx = decoder.raw_decode(line, idx)
+            results.append(obj)
+            idx += end_idx
+        except json.JSONDecodeError:
+            # Can't parse more, stop
+            break
+
+    return results if len(results) > 0 else None
 
 
 def extract_time_series(snapshots: list, key: str) -> tuple:
