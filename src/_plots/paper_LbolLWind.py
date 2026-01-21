@@ -259,6 +259,16 @@ def plot_from_path(data_input: str, output_dir: str = None):
         axr.set_ylabel(r"$\mathcal{L}=L_i/L_{\rm Wind}$")
 
     plt.tight_layout()
+
+    # Save figures
+    run_name = data_path.parent.name
+    out_png = FIG_DIR / f"paper_LbolLWind_{run_name}.png"
+    out_pdf = FIG_DIR / f"paper_LbolLWind_{run_name}.pdf"
+    fig.savefig(out_png, bbox_inches='tight', dpi=150)
+    print(f"Saved: {out_png}")
+    fig.savefig(out_pdf, bbox_inches='tight')
+    print(f"Saved: {out_pdf}")
+
     plt.show()
     plt.close(fig)
 
