@@ -345,11 +345,12 @@ class ImplicitPhaseResults:
 
 def get_ODE_implicit_pure(t: float, y: np.ndarray, snapshot: ODESnapshot,
                           params_for_feedback,
-                          Ed_from_beta: float, Td_from_delta: float) -> np.ndarray:
+                          beta: float, delta: float) -> np.ndarray:
     """
     Pure ODE function for implicit phase.
 
-    Uses rd, vd from standard energy ODE but Ed, Td from beta/delta.
+    Uses rd, vd from standard energy ODE. Ed, Td are recomputed from
+    beta/delta using current state (R2, v2, Eb, T0).
 
     Parameters
     ----------
@@ -361,10 +362,10 @@ def get_ODE_implicit_pure(t: float, y: np.ndarray, snapshot: ODESnapshot,
         Frozen snapshot of parameters
     params_for_feedback : DescribedDict
         Original params dict for feedback interpolation
-    Ed_from_beta : float
-        Energy derivative from beta calculation
-    Td_from_delta : float
-        Temperature derivative from delta calculation
+    beta : float
+        Cooling parameter (fixed for segment)
+    delta : float
+        Cooling parameter (fixed for segment)
 
     Returns
     -------
@@ -380,8 +381,18 @@ def get_ODE_implicit_pure(t: float, y: np.ndarray, snapshot: ODESnapshot,
     rd = dydt_energy[0]  # = v2
     vd = dydt_energy[1]  # acceleration from pressure balance
 
-    # Use Ed and Td from beta/delta calculations (computed outside ODE)
-    return np.array([rd, vd, Ed_from_beta, Td_from_delta])
+    # Recompute Ed from beta using CURRENT state (R2, v2, Eb)
+    # This is the key fix: Ed must be updated as R2, v2, Eb evolve
+    feedback = get_currentSB99feedback(t, params_for_feedback)
+    R1, Pb = compute_R1_Pb(R2, Eb, feedback.Lmech_total, feedback.v_mech_total,
+                           snapshot.gamma_adia)
+    Ed = beta2Edot_pure(beta, Pb, t, R1, R2, v2, Eb,
+                        feedback.pdot_total, feedback.pdotdot_total)
+
+    # Recompute Td from delta using CURRENT T0
+    Td = delta2dTdt_pure(t, T0, delta)
+
+    return np.array([rd, vd, Ed, Td])
 
 
 # =============================================================================
@@ -614,8 +625,9 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
 
         try:
             # Build solver kwargs (min_step only supported by LSODA)
+            # Pass beta/delta instead of Ed/Td - Ed/Td will be recomputed from current state
             solver_kwargs = {
-                'fun': lambda t, y: get_ODE_implicit_pure(t, y, snapshot, params, Ed, Td),
+                'fun': lambda t, y: get_ODE_implicit_pure(t, y, snapshot, params, beta, delta),
                 't_span': t_span,
                 'y0': y0,
                 'method': ODE_METHOD,
