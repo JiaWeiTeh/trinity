@@ -37,6 +37,7 @@ logger = logging.getLogger(__name__)
 # NumPy compatibility: trapz was renamed to trapezoid in NumPy 2.0
 _trapezoid = getattr(np, 'trapezoid', None) or np.trapz
 
+MIN_SPACING = 1e-5
 
 @dataclass
 class BubbleProperties:
@@ -436,7 +437,7 @@ def _get_init_dMdt(params, Pb: float) -> float:
             * Pb**(5/7))
 
 
-def _clean_radius_grid(r_array: np.ndarray, min_relative_spacing: float = 1e-10) -> np.ndarray:
+def _clean_radius_grid(r_array: np.ndarray, min_relative_spacing: float = MIN_SPACING) -> np.ndarray:
     """
     Remove near-duplicate points from a radius grid.
 
