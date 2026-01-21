@@ -15,13 +15,13 @@ import sys
 import numpy as np
 import matplotlib.pyplot as plt
 from pathlib import Path
-import matplotlib.transforms as mtransforms
 from matplotlib.patches import Patch
 from matplotlib.lines import Line2D
 
 # Add project root to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from src._output.trinity_reader import load_output, find_data_file, resolve_data_input
+from src._plots.plot_markers import add_plot_markers, get_marker_legend_handles
 
 print("...plotting force fractions with ram composition overlay + PISM")
 
@@ -138,15 +138,15 @@ def plot_from_path(data_input: str, output_dir: str = None):
     ax.set_ylabel(r"$F/F_{tot}$")
     ax.set_title(f"Feedback Fractions: {data_path.parent.name}")
 
-    # Legend
+    # Legend - force colors + markers from helper
     handles = [
         Patch(facecolor=C_GRAV, edgecolor="none", alpha=0.75, label="Gravity"),
         Patch(facecolor=C_RAM,  edgecolor="none", alpha=0.75, label=r"Ram total"),
         Patch(facecolor=C_ION,  edgecolor="none", alpha=0.75, label="Photoionised gas"),
         Patch(facecolor=C_RAD,  edgecolor="none", alpha=0.75, label="Radiation"),
         Patch(facecolor=C_PISM, edgecolor="0.4",  alpha=1.0,  label="PISM"),
-        Line2D([0], [0], color="purple", ls="--", alpha=0.6, lw=1.8, label="Collapse"),
     ]
+    handles.extend(get_marker_legend_handles())
     ax.legend(handles=handles, loc="upper right", framealpha=0.9)
 
     plt.tight_layout()
@@ -257,73 +257,21 @@ def plot_run_on_ax(
     alpha=0.75,
     smooth_window=None, smooth_mode="edge",
     phase_change=True,
+    show_rcloud=True,
+    show_collapse=True,
     overlay_alpha=0.55
 ):
-    fig = ax.figure
-
-    # --- collapse line: first time isCollapse becomes True
-    if isCollapse is not None:
-        collapse_mask = np.array([bool(c) for c in isCollapse])
-        idx_collapse = np.flatnonzero(collapse_mask)
-        if idx_collapse.size:
-            x_collapse = t[idx_collapse[0]]
-            ax.axvline(x_collapse, color="purple", ls="--", lw=1.8, alpha=0.6, zorder=0)
-            text_trans = ax.get_xaxis_transform() + mtransforms.ScaledTranslation(
-                4/72, 0, fig.dpi_scale_trans
-            )
-            ax.text(
-                x_collapse, 0.05, "Collapse",
-                transform=text_trans,
-                ha="left", va="bottom",
-                fontsize=8, color="purple", alpha=0.8,
-                rotation=90, zorder=6
-            )
-
-    # --- phase markers (T and M)
-    if phase_change:
-        idx_T = np.flatnonzero(
-            np.isin(phase[:-1], ["energy", "implicit"]) & (phase[1:] == "transition")
-        ) + 1
-        for x in t[idx_T]:
-            ax.axvline(x, color="r", lw=2, alpha=0.2, zorder=0)
-            ax.text(
-                x, 0.97, "T",
-                transform=ax.get_xaxis_transform(),
-                ha="center", va="top",
-                fontsize=8, color="k", alpha=0.85,
-                bbox=dict(facecolor="none", edgecolor="none", pad=0.2),
-                zorder=6
-            )
-
-        idx_M = np.flatnonzero((phase[:-1] == "transition") & (phase[1:] == "momentum")) + 1
-        for x in t[idx_M]:
-            ax.axvline(x, color="r", lw=2, alpha=0.2, zorder=0)
-            ax.text(
-                x, 0.97, "M",
-                transform=ax.get_xaxis_transform(),
-                ha="center", va="top",
-                fontsize=8, color="k", alpha=0.85,
-                bbox=dict(facecolor="none", edgecolor="none", pad=0.2),
-                zorder=6
-            )
-
-    # --- breakout (first time R2 > rCloud)
-    if np.isfinite(rcloud):
-        idx = np.flatnonzero(np.isfinite(R2) & (R2 > rcloud))
-        if idx.size:
-            x_rc = t[idx[0]]
-            ax.axvline(x_rc, color="k", ls="--", alpha=0.2, zorder=0)
-
-            text_trans = ax.get_xaxis_transform() + mtransforms.ScaledTranslation(
-                4/72, 0, fig.dpi_scale_trans
-            )
-            ax.text(
-                x_rc, 0.95, r"$R_2 = R_{\rm cloud}$",
-                transform=text_trans,
-                ha="left", va="top",
-                fontsize=8, color="k", alpha=0.9,
-                rotation=90, zorder=6
-            )
+    # --- Add all time-axis markers using helper module
+    add_plot_markers(
+        ax, t,
+        phase=phase if phase_change else None,
+        R2=R2 if show_rcloud else None,
+        rcloud=rcloud if show_rcloud else None,
+        isCollapse=isCollapse if show_collapse else None,
+        show_phase=phase_change,
+        show_rcloud=show_rcloud,
+        show_collapse=show_collapse
+    )
 
     # --- smoothing
     base_use = smooth_2d(base_forces, smooth_window, mode=smooth_mode)
@@ -474,10 +422,10 @@ def plot_grid():
             Patch(facecolor=C_RAM,  edgecolor="none", alpha=0.75, label=r"Ram total $F_{\rm ram}$ (blue)"),
             Patch(facecolor=C_ION,  edgecolor="none", alpha=0.75, label="Photoionised gas"),
             Patch(facecolor=C_RAD,  edgecolor="none", alpha=0.75, label="Radiation"),
-            # PISM is white: give it a border so it’s visible in the legend
+            # PISM is white: give it a border so it's visible in the legend
             Patch(facecolor=C_PISM, edgecolor="0.4",  alpha=1.0,  label="PISM"),
         ]
-        
+
         if INCLUDE_ALL_FORCE:
             handles += [
                 Patch(facecolor="none", edgecolor=C_RAM, hatch="////",   label=r"Ram attributed to winds"),
@@ -485,8 +433,8 @@ def plot_grid():
                 Line2D([0], [0], color=C_RAM, lw=6, label="Unhatched blue = residual"),
             ]
 
-        # Add collapse indicator to legend
-        handles.append(Line2D([0], [0], color="purple", ls="--", alpha=0.6, lw=1.8, label="Collapse"))
+        # Add marker legend handles from helper
+        handles.extend(get_marker_legend_handles())
 
         # Reserve top space so legend never overlaps subplot titles
         fig.subplots_adjust(top=0.9)           # <-- tune: smaller = more header space

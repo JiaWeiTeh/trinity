@@ -31,10 +31,15 @@ import argparse
 import logging
 import multiprocessing
 import os
+import signal
 import sys
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from datetime import datetime
 from pathlib import Path
+from threading import Event
+
+# Global flag for graceful shutdown on Ctrl+C
+_shutdown_requested = Event()
 
 # Add trinity root to path
 TRINITY_ROOT = Path(__file__).parent.resolve()
@@ -229,7 +234,8 @@ def main():
 
     print("\n" + "=" * 60)
     print("STARTING PARAMETER SWEEP")
-    print("=" * 60 + "\n")
+    print("=" * 60)
+    print("(Press Ctrl+C to cancel all remaining simulations)\n")
 
     start_time = datetime.now()
 
@@ -241,12 +247,35 @@ def main():
 
     successful = []
     failed = []
+    cancelled = []
+
+    # Setup Ctrl+C handler
+    def signal_handler(signum, frame):
+        _shutdown_requested.set()
+        print("\n\n*** Ctrl+C received - cancelling remaining simulations... ***\n")
+
+    original_handler = signal.signal(signal.SIGINT, signal_handler)
 
     # Execute with process pool
-    with ProcessPoolExecutor(max_workers=workers) as executor:
+    executor = None
+    try:
+        executor = ProcessPoolExecutor(max_workers=workers)
+
         # Submit all jobs
         futures = {}
         for params, name in combinations:
+            if _shutdown_requested.is_set():
+                # Don't submit new jobs if shutdown requested
+                cancelled.append(SimulationResult(
+                    name=name,
+                    params=params,
+                    success=False,
+                    return_code=-2,
+                    duration=0,
+                    error_message="Cancelled by user (Ctrl+C)"
+                ))
+                continue
+
             future = executor.submit(
                 run_single_simulation,
                 params,
@@ -262,9 +291,16 @@ def main():
 
         # Process results as they complete
         for future in as_completed(futures):
+            if _shutdown_requested.is_set():
+                # Cancel remaining futures
+                for f in futures:
+                    if not f.done():
+                        f.cancel()
+                break
+
             params, name = futures[future]
             try:
-                result = future.result()
+                result = future.result(timeout=0.1)
             except Exception as e:
                 result = SimulationResult(
                     name=name,
@@ -284,8 +320,35 @@ def main():
                 # Log failed simulation immediately
                 logger.warning(f"FAILED: {result.name} - {result.error_message[:100] if result.error_message else 'Unknown error'}...")
 
+        # If shutdown was requested, mark remaining as cancelled
+        if _shutdown_requested.is_set():
+            for future, (params, name) in futures.items():
+                if not future.done():
+                    cancelled.append(SimulationResult(
+                        name=name,
+                        params=params,
+                        success=False,
+                        return_code=-2,
+                        duration=0,
+                        error_message="Cancelled by user (Ctrl+C)"
+                    ))
+
+    except KeyboardInterrupt:
+        print("\n\n*** Sweep cancelled by user ***\n")
+        _shutdown_requested.set()
+    finally:
+        # Restore original signal handler
+        signal.signal(signal.SIGINT, original_handler)
+
+        # Shutdown executor
+        if executor:
+            executor.shutdown(wait=False, cancel_futures=True)
+
     progress.close()
     end_time = datetime.now()
+
+    # Add cancelled to failed for reporting
+    failed.extend(cancelled)
 
     # =============================================================================
     # Generate report
@@ -313,7 +376,15 @@ def main():
     print(f"  {txt_report}")
     print(f"  {json_report}")
 
-    if failed:
+    if _shutdown_requested.is_set():
+        n_cancelled = len(cancelled)
+        n_actual_failed = len(failed) - n_cancelled
+        print(f"\n*** SWEEP CANCELLED ***")
+        print(f"Completed: {len(successful)} | Failed: {n_actual_failed} | Cancelled: {n_cancelled}")
+        if failed:
+            print(f"\nSee {txt_report} for details.")
+        sys.exit(130)  # Standard exit code for Ctrl+C
+    elif failed:
         print(f"\nWARNING: {len(failed)} simulation(s) failed!")
         print("Failed simulations:")
         for result in failed:
