@@ -16,7 +16,7 @@ from matplotlib.patches import Patch
 
 # Add script directory to path for local imports
 sys.path.insert(0, str(Path(__file__).parent))
-from load_snapshots import load_output, find_data_file
+from load_snapshots import load_output, find_data_file, resolve_data_input
 
 print("...plotting radius comparison")
 
@@ -150,82 +150,166 @@ def plot_cooling_on_ax(
     return axr  # in case you want per-panel tweaks
 
 
-# ---------- GRID (same layout idea as your previous) ----------
-# assumes you already have: mCloud_list, sfe_list, ndens_list, BASE_DIR
-# Example:
-# mCloud_list = ["1e5","1e7","1e8"]
-# sfe_list = ["001","010","030","050","080"]
-# ndens_list = ["1e4","1e2"]
-# BASE_DIR = Path.home() / "unsync" / "Code" / "Trinity" / "outputs"
+# ---------- plot_from_path for CLI ----------
+def plot_from_path(data_input: str, output_dir: str = None):
+    """
+    Plot cooling parameters from a direct data path/folder.
 
-for ndens in ndens_list:
-    nrows, ncols = len(mCloud_list), len(sfe_list)
-    fig, axes = plt.subplots(
-        nrows=nrows, ncols=ncols,
-        figsize=(3.2 * ncols, 2.6 * nrows),
-        sharex=False, sharey=False,
-        dpi=200,
-        constrained_layout=False
-    )
+    Parameters
+    ----------
+    data_input : str
+        Can be: folder name, folder path, or file path
+    output_dir : str, optional
+        Base directory for output folders
+    """
+    try:
+        data_path = resolve_data_input(data_input, output_dir)
+    except FileNotFoundError as e:
+        print(f"Error: {e}")
+        return
 
-    # leave room for suptitle + global legend
-    fig.subplots_adjust(top=0.82)
-    fig.suptitle(rf"Cooling parameters with $R_2$ overlay  (n={ndens})", y=0.98)
+    print(f"Loading data from: {data_path}")
 
-    for i, mCloud in enumerate(mCloud_list):
-        for j, sfe in enumerate(sfe_list):
-            ax = axes[i, j]
-            run_name = f"{mCloud}_sfe{sfe}_n{ndens}"
-            data_path = find_data_file(BASE_DIR, run_name)
+    fig, ax = plt.subplots(figsize=(8, 6), dpi=150)
 
-            if data_path is None:
-                ax.text(0.5, 0.5, "missing", ha="center", va="center", transform=ax.transAxes)
-                ax.set_axis_off()
-                continue
+    try:
+        t, R2, phase, beta, delta, rcloud, additional_param = load_cooling_run(data_path)
+        axr = plot_cooling_on_ax(
+            ax, t, R2, phase, beta, delta, rcloud, additional_param,
+            smooth_window=SMOOTH_WINDOW,
+            show_phase_line=PHASE_CHANGE,
+            show_cloud_line=True,
+        )
+    except Exception as e:
+        print(f"Error loading data: {e}")
+        plt.close(fig)
+        return
 
-            try:
-                t, R2, phase, beta, delta, rcloud, additional_param = load_cooling_run(data_path)
-                plot_cooling_on_ax(
-                    ax, t, R2, phase, beta, delta, rcloud, additional_param,
-                    smooth_window=7,      # set None/1 to disable
-                    show_phase_line=True,
-                    show_cloud_line=True,
-                )
-            except Exception as e:
-                ax.text(0.5, 0.5, "error", ha="center", va="center", transform=ax.transAxes)
-                ax.set_axis_off()
-                print(f"Error in {run_name}: {e}")
-                continue
+    ax.set_title(f"Cooling Parameters: {data_path.parent.name}")
+    ax.set_xlabel("t [Myr]")
+    ax.set_ylabel(r"Cooling: $\beta,\delta$")
+    axr.set_ylabel(r"$P_b$")
 
-            # column titles
-            if i == 0:
-                eps = int(sfe) / 100.0
-                ax.set_title(rf"$\epsilon={eps:.2f}$")
-
-            # row labels (leftmost)
-            if j == 0:
-                mlog = int(np.log10(float(mCloud)))
-                ax.set_ylabel(rf"$M_{{cloud}}=10^{{{mlog}}}M_\odot$" + "\n" + r"Cooling: $\beta,\delta$")
-
-            if i == nrows - 1:
-                ax.set_xlabel("t [Myr]")
-
-    # global legend (beta, delta, R2, plus line meanings)
+    # Legend
     handles = [
         Line2D([0],[0], lw=1.6, label=r"$\beta$"),
         Line2D([0],[0], lw=1.6, label=r"$\delta$"),
-        Line2D([0],[0], lw=1.4, alpha=0.8, label=r"$R_2$"),
+        Line2D([0],[0], lw=1.4, alpha=0.8, c='k', label=r"$P_b$"),
         Line2D([0],[0], color="k", ls="--", alpha=0.4, label=r"$R_2>R_{\rm cloud}$"),
-        Line2D([0],[0], color="r", lw=2, alpha=0.3, label=r"transition$\to$momentum"),
+        Line2D([0],[0], color="r", lw=2, alpha=0.3, label=r"phase change"),
     ]
-    leg = fig.legend(
-        handles=handles, loc="upper center", ncol=3,
-        frameon=True, facecolor="white", framealpha=0.9, edgecolor="0.2",
-        bbox_to_anchor=(0.5, 0.91), bbox_transform=fig.transFigure
-    )
-    leg.set_zorder(10)
+    ax.legend(handles=handles, loc="upper left", framealpha=0.9)
 
-    if SAVE_PDF:
-        fig.savefig(FIG_DIR / f"paper_betadelta_n{ndens}.pdf", bbox_inches='tight')
+    plt.tight_layout()
     plt.show()
     plt.close(fig)
+
+
+# ---------- GRID (same layout idea as your previous) ----------
+def plot_grid():
+    """Plot full grid of cooling parameters."""
+    for ndens in ndens_list:
+        nrows, ncols = len(mCloud_list), len(sfe_list)
+        fig, axes = plt.subplots(
+            nrows=nrows, ncols=ncols,
+            figsize=(3.2 * ncols, 2.6 * nrows),
+            sharex=False, sharey=False,
+            dpi=200,
+            constrained_layout=False
+        )
+
+        # leave room for suptitle + global legend
+        fig.subplots_adjust(top=0.82)
+        fig.suptitle(rf"Cooling parameters with $R_2$ overlay  (n={ndens})", y=0.98)
+
+        for i, mCloud in enumerate(mCloud_list):
+            for j, sfe in enumerate(sfe_list):
+                ax = axes[i, j]
+                run_name = f"{mCloud}_sfe{sfe}_n{ndens}"
+                data_path = find_data_file(BASE_DIR, run_name)
+
+                if data_path is None:
+                    ax.text(0.5, 0.5, "missing", ha="center", va="center", transform=ax.transAxes)
+                    ax.set_axis_off()
+                    continue
+
+                try:
+                    t, R2, phase, beta, delta, rcloud, additional_param = load_cooling_run(data_path)
+                    plot_cooling_on_ax(
+                        ax, t, R2, phase, beta, delta, rcloud, additional_param,
+                        smooth_window=7,      # set None/1 to disable
+                        show_phase_line=True,
+                        show_cloud_line=True,
+                    )
+                except Exception as e:
+                    ax.text(0.5, 0.5, "error", ha="center", va="center", transform=ax.transAxes)
+                    ax.set_axis_off()
+                    print(f"Error in {run_name}: {e}")
+                    continue
+
+                # column titles
+                if i == 0:
+                    eps = int(sfe) / 100.0
+                    ax.set_title(rf"$\epsilon={eps:.2f}$")
+
+                # row labels (leftmost)
+                if j == 0:
+                    mlog = int(np.log10(float(mCloud)))
+                    ax.set_ylabel(rf"$M_{{cloud}}=10^{{{mlog}}}M_\odot$" + "\n" + r"Cooling: $\beta,\delta$")
+
+                if i == nrows - 1:
+                    ax.set_xlabel("t [Myr]")
+
+        # global legend (beta, delta, R2, plus line meanings)
+        handles = [
+            Line2D([0],[0], lw=1.6, label=r"$\beta$"),
+            Line2D([0],[0], lw=1.6, label=r"$\delta$"),
+            Line2D([0],[0], lw=1.4, alpha=0.8, label=r"$R_2$"),
+            Line2D([0],[0], color="k", ls="--", alpha=0.4, label=r"$R_2>R_{\rm cloud}$"),
+            Line2D([0],[0], color="r", lw=2, alpha=0.3, label=r"transition$\to$momentum"),
+        ]
+        leg = fig.legend(
+            handles=handles, loc="upper center", ncol=3,
+            frameon=True, facecolor="white", framealpha=0.9, edgecolor="0.2",
+            bbox_to_anchor=(0.5, 0.91), bbox_transform=fig.transFigure
+        )
+        leg.set_zorder(10)
+
+        if SAVE_PDF:
+            fig.savefig(FIG_DIR / f"paper_betadelta_n{ndens}.pdf", bbox_inches='tight')
+        plt.show()
+        plt.close(fig)
+
+
+# ---------------- command-line interface ----------------
+if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        description="Plot TRINITY cooling parameters (beta, delta)",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  python paper_betadelta.py 1e7_sfe020_n1e4
+  python paper_betadelta.py /path/to/outputs/1e7_sfe020_n1e4
+  python paper_betadelta.py /path/to/dictionary.jsonl
+  python paper_betadelta.py  # (uses grid config at top of file)
+        """
+    )
+    parser.add_argument(
+        'data', nargs='?', default=None,
+        help='Data input: folder name, folder path, or file path'
+    )
+    parser.add_argument(
+        '--output-dir', '-o', default=None,
+        help='Base directory for output folders (default: TRINITY_OUTPUT_DIR or "outputs")'
+    )
+
+    args = parser.parse_args()
+
+    if args.data:
+        # Command-line mode: plot from specified path
+        plot_from_path(args.data, args.output_dir)
+    else:
+        # Config mode: plot grid
+        plot_grid()

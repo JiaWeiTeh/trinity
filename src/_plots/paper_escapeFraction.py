@@ -13,7 +13,7 @@ from pathlib import Path
 
 # Add script directory to path for local imports
 sys.path.insert(0, str(Path(__file__).parent))
-from load_snapshots import load_output, find_data_file
+from load_snapshots import load_output, find_data_file, resolve_data_input
 
 print("...plotting escape fraction comparison")
 
@@ -79,82 +79,163 @@ import os
 plt.style.use(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'trinity.mplstyle'))
 
 
-# --- main plotting: one figure per ndens
-for ndens in ndens_list:
-    nrows = len(mCloud_list)
-    fig, axes = plt.subplots(
-        nrows=nrows, ncols=1,
-        figsize=(7.0, 2.6 * nrows),
-        sharex=False,     # each subplot gets its own t_max
-        sharey=True,
-        dpi=200,
-        constrained_layout=True
-    )
+def plot_from_path(data_input: str, output_dir: str = None):
+    """
+    Plot escape fraction from a direct data path/folder.
 
-    if nrows == 1:
-        axes = [axes]  # make iterable
+    Parameters
+    ----------
+    data_input : str
+        Can be: folder name, folder path, or file path
+    output_dir : str, optional
+        Base directory for output folders
+    """
+    from matplotlib.lines import Line2D
 
-    all_line_handles = []
-    all_line_labels = []
+    try:
+        data_path = resolve_data_input(data_input, output_dir)
+    except FileNotFoundError as e:
+        print(f"Error: {e}")
+        return
 
-    for i, mCloud in enumerate(mCloud_list):
-        ax = axes[i]
+    print(f"Loading data from: {data_path}")
 
-        # plot each sfe as a line on the same axis
-        for sfe in sfe_list:
-            run_name = f"{mCloud}_sfe{sfe}_n{ndens}"
-            data_path = find_data_file(BASE_DIR, run_name)
+    try:
+        t, fesc = load_escape_fraction(data_path)
+    except Exception as e:
+        print(f"Error loading data: {e}")
+        return
 
-            if data_path is None:
-                print(f"Missing data for: {run_name}")
-                continue
+    fig, ax = plt.subplots(figsize=(8, 5), dpi=150)
 
-            try:
-                t, fesc = load_escape_fraction(data_path)
+    fesc_plot = smooth_1d(fesc, SMOOTH_WINDOW)
+    fesc_plot = np.clip(fesc_plot, 0.0, 1.0)
 
-                # optional smoothing
-                fesc_plot = smooth_1d(fesc, SMOOTH_WINDOW)
-                fesc_plot = np.clip(fesc_plot, 0.0, 1.0)
+    ax.plot(t, fesc_plot, lw=1.8, alpha=0.9, label=r"$f_{\rm esc}$")
 
-                eps = int(sfe) / 100.0
-                (line,) = ax.plot(t, fesc_plot, lw=1.8, alpha=0.9, label=rf"$\epsilon={eps:.2f}$")
+    ax.set_title(f"Escape Fraction: {data_path.parent.name}")
+    ax.set_xlabel("t [Myr]")
+    ax.set_ylabel(r"$f_{\rm esc}$")
+    ax.set_ylim(0, 1)
+    ax.set_xscale('log')
+    ax.legend(loc="upper left", framealpha=0.9)
 
-                # store legend handles once (from first subplot only)
-                if i == 0:
-                    all_line_handles.append(line)
-                    all_line_labels.append(rf"$\epsilon={eps:.2f}$")
-
-            except Exception as e:
-                print(f"Error in {run_name}: {e}")
-
-        mlog = int(np.log10(float(mCloud)))
-        ax.set_ylabel(rf"$f_\mathrm{{esc}}$" + "\n" + rf"$M_{{cloud}}=10^{{{mlog}}}\,M_\odot$")
-        ax.set_ylim(0, 1)
-        ax.set_xscale('log')
-
-        # x label only on bottom subplot
-        if i == nrows - 1:
-            ax.set_xlabel("t [Myr]")
-
-    nlog = int(np.log10(float(ndens)))
-    fig.suptitle(rf"Escape fraction vs time  ($n=10^{{{nlog}}}\,\mathrm{{cm^{{-3}}}}$)", y=1.02)
-
-    # global legend (cleaner than repeating per axis)
-    if all_line_handles:
-        leg = fig.legend(
-            handles=all_line_handles,
-            labels=all_line_labels,
-            loc="upper center",
-            ncol=len(all_line_handles),
-            frameon=True,
-            facecolor="white",
-            framealpha=0.9,
-            edgecolor="0.2",
-            bbox_to_anchor=(0.5, 1.07),
-        )
-        leg.set_zorder(10)
-
-    if SAVE_PDF:
-        fig.savefig(FIG_DIR / f"paper_escapeFraction_n{ndens}.pdf", bbox_inches='tight')
+    plt.tight_layout()
     plt.show()
     plt.close(fig)
+
+
+def plot_grid():
+    """Plot full grid of escape fractions."""
+    for ndens in ndens_list:
+        nrows = len(mCloud_list)
+        fig, axes = plt.subplots(
+            nrows=nrows, ncols=1,
+            figsize=(7.0, 2.6 * nrows),
+            sharex=False,     # each subplot gets its own t_max
+            sharey=True,
+            dpi=200,
+            constrained_layout=True
+        )
+
+        if nrows == 1:
+            axes = [axes]  # make iterable
+
+        all_line_handles = []
+        all_line_labels = []
+
+        for i, mCloud in enumerate(mCloud_list):
+            ax = axes[i]
+
+            # plot each sfe as a line on the same axis
+            for sfe in sfe_list:
+                run_name = f"{mCloud}_sfe{sfe}_n{ndens}"
+                data_path = find_data_file(BASE_DIR, run_name)
+
+                if data_path is None:
+                    print(f"Missing data for: {run_name}")
+                    continue
+
+                try:
+                    t, fesc = load_escape_fraction(data_path)
+
+                    # optional smoothing
+                    fesc_plot = smooth_1d(fesc, SMOOTH_WINDOW)
+                    fesc_plot = np.clip(fesc_plot, 0.0, 1.0)
+
+                    eps = int(sfe) / 100.0
+                    (line,) = ax.plot(t, fesc_plot, lw=1.8, alpha=0.9, label=rf"$\epsilon={eps:.2f}$")
+
+                    # store legend handles once (from first subplot only)
+                    if i == 0:
+                        all_line_handles.append(line)
+                        all_line_labels.append(rf"$\epsilon={eps:.2f}$")
+
+                except Exception as e:
+                    print(f"Error in {run_name}: {e}")
+
+            mlog = int(np.log10(float(mCloud)))
+            ax.set_ylabel(rf"$f_\mathrm{{esc}}$" + "\n" + rf"$M_{{cloud}}=10^{{{mlog}}}\,M_\odot$")
+            ax.set_ylim(0, 1)
+            ax.set_xscale('log')
+
+            # x label only on bottom subplot
+            if i == nrows - 1:
+                ax.set_xlabel("t [Myr]")
+
+        nlog = int(np.log10(float(ndens)))
+        fig.suptitle(rf"Escape fraction vs time  ($n=10^{{{nlog}}}\,\mathrm{{cm^{{-3}}}}$)", y=1.02)
+
+        # global legend (cleaner than repeating per axis)
+        if all_line_handles:
+            leg = fig.legend(
+                handles=all_line_handles,
+                labels=all_line_labels,
+                loc="upper center",
+                ncol=len(all_line_handles),
+                frameon=True,
+                facecolor="white",
+                framealpha=0.9,
+                edgecolor="0.2",
+                bbox_to_anchor=(0.5, 1.07),
+            )
+            leg.set_zorder(10)
+
+        if SAVE_PDF:
+            fig.savefig(FIG_DIR / f"paper_escapeFraction_n{ndens}.pdf", bbox_inches='tight')
+        plt.show()
+        plt.close(fig)
+
+
+# ---------------- command-line interface ----------------
+if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        description="Plot TRINITY escape fraction",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  python paper_escapeFraction.py 1e7_sfe020_n1e4
+  python paper_escapeFraction.py /path/to/outputs/1e7_sfe020_n1e4
+  python paper_escapeFraction.py /path/to/dictionary.jsonl
+  python paper_escapeFraction.py  # (uses grid config at top of file)
+        """
+    )
+    parser.add_argument(
+        'data', nargs='?', default=None,
+        help='Data input: folder name, folder path, or file path'
+    )
+    parser.add_argument(
+        '--output-dir', '-o', default=None,
+        help='Base directory for output folders (default: TRINITY_OUTPUT_DIR or "outputs")'
+    )
+
+    args = parser.parse_args()
+
+    if args.data:
+        # Command-line mode: plot from specified path
+        plot_from_path(args.data, args.output_dir)
+    else:
+        # Config mode: plot grid
+        plot_grid()

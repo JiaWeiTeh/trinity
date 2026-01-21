@@ -21,7 +21,7 @@ from scipy.interpolate import RegularGridInterpolator
 
 # Add script directory to path for local imports
 sys.path.insert(0, str(Path(__file__).parent))
-from load_snapshots import load_output, find_data_file
+from load_snapshots import load_output, find_data_file, resolve_data_input
 
 print("...plotting dominant feedback grid")
 
@@ -448,4 +448,25 @@ def main():
 
 
 if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        description="Plot TRINITY dominant feedback grid",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  python paper_dominantFeedback.py
+  python paper_dominantFeedback.py --output-dir /path/to/outputs
+        """
+    )
+    parser.add_argument(
+        '--output-dir', '-o', default=None,
+        help='Base directory for output folders (default: uses BASE_DIR config)'
+    )
+
+    args = parser.parse_args()
+
+    if args.output_dir:
+        BASE_DIR = Path(args.output_dir)
+
     main()

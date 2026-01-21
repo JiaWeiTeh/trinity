@@ -21,7 +21,7 @@ from matplotlib.lines import Line2D
 
 # Add script directory to path for local imports
 sys.path.insert(0, str(Path(__file__).parent))
-from load_snapshots import load_output, find_data_file
+from load_snapshots import load_output, find_data_file, resolve_data_input
 
 print("...plotting force fractions with ram composition overlay + PISM")
 
@@ -94,6 +94,58 @@ def smooth_2d(arr, window, mode="edge"):
     if window is None or window <= 1:
         return arr
     return np.vstack([smooth_1d(row, window, mode=mode) for row in arr])
+
+def plot_from_path(data_input: str, output_dir: str = None):
+    """
+    Plot feedback force fractions from a direct data path/folder.
+
+    Parameters
+    ----------
+    data_input : str
+        Can be: folder name, folder path, or file path
+    output_dir : str, optional
+        Base directory for output folders
+    """
+    try:
+        data_path = resolve_data_input(data_input, output_dir)
+    except FileNotFoundError as e:
+        print(f"Error: {e}")
+        return
+
+    print(f"Loading data from: {data_path}")
+
+    try:
+        t, R2, phase, base_forces, overlay_forces, rcloud = load_run(data_path)
+    except Exception as e:
+        print(f"Error loading data: {e}")
+        return
+
+    fig, ax = plt.subplots(figsize=(8, 6), dpi=150)
+    plot_run_on_ax(
+        ax, t, R2, phase, base_forces, overlay_forces, rcloud,
+        alpha=0.75,
+        smooth_window=SMOOTH_WINDOW,
+        phase_change=PHASE_CHANGE
+    )
+
+    ax.set_xlabel("t [Myr]")
+    ax.set_ylabel(r"$F/F_{tot}$")
+    ax.set_title(f"Feedback Fractions: {data_path.parent.name}")
+
+    # Legend
+    handles = [
+        Patch(facecolor=C_GRAV, edgecolor="none", alpha=0.75, label="Gravity"),
+        Patch(facecolor=C_RAM,  edgecolor="none", alpha=0.75, label=r"Ram total"),
+        Patch(facecolor=C_ION,  edgecolor="none", alpha=0.75, label="Photoionised gas"),
+        Patch(facecolor=C_RAD,  edgecolor="none", alpha=0.75, label="Radiation"),
+        Patch(facecolor=C_PISM, edgecolor="0.4",  alpha=1.0,  label="PISM"),
+    ]
+    ax.legend(handles=handles, loc="upper right", framealpha=0.9)
+
+    plt.tight_layout()
+    plt.show()
+    plt.close(fig)
+
 
 def plot_single_run(mCloud, ndens, sfe):
     run_name = f"{mCloud}_sfe{sfe}_n{ndens}"
@@ -327,14 +379,8 @@ def plot_run_on_ax(
 
 # ---------------- main loop ----------------
 
-# If any filter is set, do single-run mode
-if (ONLY_M is not None) or (ONLY_N is not None) or (ONLY_SFE is not None):
-    m = ONLY_M if ONLY_M is not None else mCloud_list[0]
-    n = ONLY_N if ONLY_N is not None else ndens_list[0]
-    s = ONLY_SFE if ONLY_SFE is not None else sfe_list[0]
-    plot_single_run(m, n, s)
-
-else:
+def plot_grid():
+    """Plot full grid of feedback fractions."""
     # --- full grid mode (your existing code)
     for ndens in ndens_list:
         nrows, ncols = len(mCloud_list), len(sfe_list)
@@ -441,3 +487,43 @@ else:
 
         plt.show()
         plt.close(fig)
+
+
+# ---------------- command-line interface ----------------
+if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        description="Plot TRINITY feedback force fractions",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  python paper_feedback.py 1e7_sfe020_n1e4
+  python paper_feedback.py /path/to/outputs/1e7_sfe020_n1e4
+  python paper_feedback.py /path/to/dictionary.jsonl
+  python paper_feedback.py  # (uses grid/single config at top of file)
+        """
+    )
+    parser.add_argument(
+        'data', nargs='?', default=None,
+        help='Data input: folder name, folder path, or file path'
+    )
+    parser.add_argument(
+        '--output-dir', '-o', default=None,
+        help='Base directory for output folders (default: TRINITY_OUTPUT_DIR or "outputs")'
+    )
+
+    args = parser.parse_args()
+
+    if args.data:
+        # Command-line mode: plot from specified path
+        plot_from_path(args.data, args.output_dir)
+    elif (ONLY_M is not None) or (ONLY_N is not None) or (ONLY_SFE is not None):
+        # Config mode: single run
+        m = ONLY_M if ONLY_M is not None else mCloud_list[0]
+        n = ONLY_N if ONLY_N is not None else ndens_list[0]
+        s = ONLY_SFE if ONLY_SFE is not None else sfe_list[0]
+        plot_single_run(m, n, s)
+    else:
+        # Config mode: plot grid
+        plot_grid()

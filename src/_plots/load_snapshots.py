@@ -204,6 +204,90 @@ def find_data_path(base_path: Union[str, Path]) -> Path:
     )
 
 
+def resolve_data_input(data_input: Union[str, Path], output_dir: Union[str, Path] = None) -> Path:
+    """
+    Resolve various data input formats to a data file path.
+
+    Accepts:
+    1. Output folder name (e.g., "1e7_sfe020_n1e4") - searches in output_dir
+    2. Folder path (e.g., "/path/to/outputs/1e7_sfe020_n1e4") - looks for dictionary inside
+    3. File path (e.g., "/path/to/dictionary.jsonl") - uses directly
+
+    Parameters
+    ----------
+    data_input : str or Path
+        The input to resolve. Can be a folder name, folder path, or file path.
+    output_dir : str or Path, optional
+        Base directory for output folders. Defaults to 'outputs' or TRINITY_OUTPUT_DIR env var.
+
+    Returns
+    -------
+    Path
+        Resolved path to the data file
+
+    Raises
+    ------
+    FileNotFoundError
+        If no data file can be found
+    """
+    import os
+
+    data_input = _ensure_path(data_input)
+
+    # Default output directory
+    if output_dir is None:
+        output_dir = Path(os.environ.get('TRINITY_OUTPUT_DIR', 'outputs'))
+    else:
+        output_dir = _ensure_path(output_dir)
+
+    # Case 1: It's a file that exists
+    if data_input.is_file():
+        return data_input
+
+    # Case 2: It's a directory - look for dictionary files inside
+    if data_input.is_dir():
+        for suffix in ['.jsonl', '.json']:
+            dict_path = data_input / f'dictionary{suffix}'
+            if dict_path.exists():
+                return dict_path
+        raise FileNotFoundError(
+            f"No dictionary.jsonl or dictionary.json found in: {data_input}"
+        )
+
+    # Case 3: Check if it's a path with extension that doesn't exist yet
+    if data_input.suffix in ['.json', '.jsonl']:
+        # Try find_data_path which handles .jsonl/.json priority
+        try:
+            return find_data_path(data_input)
+        except FileNotFoundError:
+            pass
+
+    # Case 4: It might be a folder name - check in output_dir
+    folder_path = output_dir / data_input
+    if folder_path.is_dir():
+        for suffix in ['.jsonl', '.json']:
+            dict_path = folder_path / f'dictionary{suffix}'
+            if dict_path.exists():
+                return dict_path
+
+    # Case 5: Try as a base path (no extension) with find_data_path
+    try:
+        return find_data_path(data_input)
+    except FileNotFoundError:
+        pass
+
+    # Case 6: Try in output_dir as base path
+    try:
+        return find_data_path(output_dir / data_input / 'dictionary')
+    except FileNotFoundError:
+        pass
+
+    raise FileNotFoundError(
+        f"Could not resolve data input: {data_input}\n"
+        f"Tried as: file, directory, folder name in {output_dir}"
+    )
+
+
 def load_output(file_path: Union[str, Path]) -> TrinityOutput:
     """
     Load simulation data as a TrinityOutput object for clean data access.

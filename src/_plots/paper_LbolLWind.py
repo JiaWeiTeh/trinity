@@ -10,7 +10,7 @@ import matplotlib.transforms as mtransforms
 
 # Add script directory to path for local imports
 sys.path.insert(0, str(Path(__file__).parent))
-from load_snapshots import load_output, find_data_file
+from load_snapshots import load_output, find_data_file, resolve_data_input
 
 print("...plotting Qi(or Li) vs Lmech_total with ratio on twin axis")
 
@@ -219,120 +219,198 @@ def plot_panel(ax, t, phase, Li, Lmech_total, Qi, R2, rcloud):
 import os
 plt.style.use(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'trinity.mplstyle'))
 
-for ndens in ndens_list:
-    nrows, ncols = len(mCloud_list), len(sfe_list)
-    fig, axes = plt.subplots(
-        nrows=nrows, ncols=ncols,
-        figsize=(3.2 * ncols, 2.6 * nrows),
-        sharex=False, sharey=False,
-        dpi=500,
-        constrained_layout=False
-    )
 
-    fig.subplots_adjust(top=0.90)
-    nlog = int(np.log10(float(ndens)))
+def plot_from_path(data_input: str, output_dir: str = None):
+    """
+    Plot Li/Lmech_total from a direct data path/folder.
+
+    Parameters
+    ----------
+    data_input : str
+        Can be: folder name, folder path, or file path
+    output_dir : str, optional
+        Base directory for output folders
+    """
+    try:
+        data_path = resolve_data_input(data_input, output_dir)
+    except FileNotFoundError as e:
+        print(f"Error: {e}")
+        return
+
+    print(f"Loading data from: {data_path}")
+
+    try:
+        t, phase, Li, Lmech_total, Qi, R2, rcloud = load_run(data_path)
+    except Exception as e:
+        print(f"Error loading data: {e}")
+        return
+
+    fig, ax = plt.subplots(figsize=(8, 6), dpi=150)
+    axr = plot_panel(ax, t, phase, Li, Lmech_total, Qi, R2, rcloud)
+
+    ax.set_title(f"Li vs Lmech: {data_path.parent.name}")
+    ax.set_xlabel("t [Myr]")
+
     if PLOT_QI:
-        fig.suptitle(
-            rf"$Q_i$ vs $L_{{\rm Wind}}$ (ratio on right), $n=10^{{{nlog}}}\,\mathrm{{cm^{{-3}}}}$",
-            y=1.05
-        )
+        ax.set_ylabel(r"$Q_i\ [{\rm s^{-1}}]$, $L_{\rm Wind}$")
+        axr.set_ylabel(r"$\mathcal{L}=Q_i/L_{\rm Wind}$")
     else:
-        fig.suptitle(
-            rf"$L_i$ vs $L_{{\rm Wind}}$ (ratio on right), $n=10^{{{nlog}}}\,\mathrm{{cm^{{-3}}}}$",
-            y=1.05
-        )
+        ax.set_ylabel(r"$L_i\ [{\rm erg\ s^{-1}}]$, $L_{\rm Wind}$")
+        axr.set_ylabel(r"$\mathcal{L}=L_i/L_{\rm Wind}$")
 
-    for i, mCloud in enumerate(mCloud_list):
-        for j, sfe in enumerate(sfe_list):
-            ax = axes[i, j]
-            run_name = f"{mCloud}_sfe{sfe}_n{ndens}"
-            data_path = find_data_file(BASE_DIR, run_name)
-
-            if data_path is None:
-                ax.text(0.5, 0.5, "missing", ha="center", va="center", transform=ax.transAxes)
-                ax.set_axis_off()
-                continue
-
-            try:
-                t, phase, Li, Lmech_total, Qi, R2, rcloud = load_run(data_path)
-                axr = plot_panel(ax, t, phase, Li, Lmech_total, Qi, R2, rcloud)
-            except Exception as e:
-                print(f"Error in {run_name}: {e}")
-                ax.text(0.5, 0.5, "error", ha="center", va="center", transform=ax.transAxes)
-                ax.set_axis_off()
-                continue
-
-            # column titles (top row)
-            if i == 0:
-                eps = int(sfe) / 100.0
-                ax.set_title(rf"$\epsilon={eps:.2f}$")
-
-            # left y label only on left-most
-            if j == 0:
-                mlog = int(np.log10(float(mCloud)))
-                ax.set_ylabel(rf"$M_{{cloud}}=10^{{{mlog}}}\,M_\odot$" + "\n" + r"left: main + $L_{\rm Wind}$")
-            else:
-                ax.tick_params(labelleft=False)
-
-            # right y label only on right-most
-            if j == ncols - 1:
-                if PLOT_QI:
-                    axr.set_ylabel(r"$\mathcal{L}=Q_i/L_{\rm Wind}$")
-                else:
-                    axr.set_ylabel(r"$\mathcal{L}=L_i/L_{\rm Wind}$")
-            else:
-                axr.tick_params(labelright=False)
-                axr.set_ylabel("")
-
-            # x label only on bottom row
-            if i == nrows - 1:
-                ax.set_xlabel("t [Myr]")
-
-    # -------- global legend --------
-    if PLOT_QI:
-        main_handle = Line2D([0], [0], color=C_QI, lw=1.8, label=r"$Q_i$ (or estimated from $L_i/\langle h\nu\rangle$)")
-        ratio_handle = Line2D([0], [0], color=C_RATIO, lw=1.5, ls="--", label=r"$\mathcal{L}=Q_i/L_{\rm Wind}$")
-    else:
-        main_handle = Line2D([0], [0], color=C_LI, lw=1.8, label=r"$L_i$")
-        ratio_handle = Line2D([0], [0], color=C_RATIO, lw=1.5, ls="--", label=r"$\mathcal{L}=L_i/L_{\rm Wind}$")
-
-    handles = [
-        main_handle,
-        Line2D([0], [0], color=C_LWIND, lw=1.8, label=r"$L_{\rm Wind}$"),
-        ratio_handle,
-        Line2D([0], [0], color="k", ls="--", alpha=0.6, lw=1.6, label=r"$R_2>R_{\rm cloud}$"),
-        Line2D([0], [0], color="r", lw=2, alpha=0.3, label=r"phase: $T$ (→transition), $M$ (→momentum)"),
-    ]
-
-    leg = fig.legend(
-        handles=handles,
-        loc="upper center",
-        ncol=3,
-        frameon=True,
-        facecolor="white",
-        framealpha=0.9,
-        edgecolor="0.2",
-        bbox_to_anchor=(0.5, 0.98),
-        bbox_transform=fig.transFigure
-    )
-    leg.set_zorder(10)
-    
-    # --------- SAVE FIGURE ---------
-    m_tag   = range_tag("M",   mCloud_list, key=float)
-    sfe_tag = range_tag("sfe", sfe_list,    key=int)
-    n_tag   = f"n{ndens}"
-    tag = f"LbolLWind_{m_tag}_{sfe_tag}_{n_tag}"
-
-    if SAVE_PNG:
-        out_png = FIG_DIR / f"{tag}.png"
-        fig.savefig(out_png, bbox_inches="tight")
-        print(f"Saved: {out_png}")
-    if SAVE_PDF:
-        out_pdf = FIG_DIR / f"{tag}.pdf"
-        fig.savefig(out_pdf, bbox_inches="tight")
-        print(f"Saved: {out_pdf}")
-
-
-
+    plt.tight_layout()
     plt.show()
     plt.close(fig)
+
+
+def plot_grid():
+    """Plot full grid of Li/Lmech_total."""
+    for ndens in ndens_list:
+        nrows, ncols = len(mCloud_list), len(sfe_list)
+        fig, axes = plt.subplots(
+            nrows=nrows, ncols=ncols,
+            figsize=(3.2 * ncols, 2.6 * nrows),
+            sharex=False, sharey=False,
+            dpi=500,
+            constrained_layout=False
+        )
+
+        fig.subplots_adjust(top=0.90)
+        nlog = int(np.log10(float(ndens)))
+        if PLOT_QI:
+            fig.suptitle(
+                rf"$Q_i$ vs $L_{{\rm Wind}}$ (ratio on right), $n=10^{{{nlog}}}\,\mathrm{{cm^{{-3}}}}$",
+                y=1.05
+            )
+        else:
+            fig.suptitle(
+                rf"$L_i$ vs $L_{{\rm Wind}}$ (ratio on right), $n=10^{{{nlog}}}\,\mathrm{{cm^{{-3}}}}$",
+                y=1.05
+            )
+
+        for i, mCloud in enumerate(mCloud_list):
+            for j, sfe in enumerate(sfe_list):
+                ax = axes[i, j]
+                run_name = f"{mCloud}_sfe{sfe}_n{ndens}"
+                data_path = find_data_file(BASE_DIR, run_name)
+
+                if data_path is None:
+                    ax.text(0.5, 0.5, "missing", ha="center", va="center", transform=ax.transAxes)
+                    ax.set_axis_off()
+                    continue
+
+                try:
+                    t, phase, Li, Lmech_total, Qi, R2, rcloud = load_run(data_path)
+                    axr = plot_panel(ax, t, phase, Li, Lmech_total, Qi, R2, rcloud)
+                except Exception as e:
+                    print(f"Error in {run_name}: {e}")
+                    ax.text(0.5, 0.5, "error", ha="center", va="center", transform=ax.transAxes)
+                    ax.set_axis_off()
+                    continue
+
+                # column titles (top row)
+                if i == 0:
+                    eps = int(sfe) / 100.0
+                    ax.set_title(rf"$\epsilon={eps:.2f}$")
+
+                # left y label only on left-most
+                if j == 0:
+                    mlog = int(np.log10(float(mCloud)))
+                    ax.set_ylabel(rf"$M_{{cloud}}=10^{{{mlog}}}\,M_\odot$" + "\n" + r"left: main + $L_{\rm Wind}$")
+                else:
+                    ax.tick_params(labelleft=False)
+
+                # right y label only on right-most
+                if j == ncols - 1:
+                    if PLOT_QI:
+                        axr.set_ylabel(r"$\mathcal{L}=Q_i/L_{\rm Wind}$")
+                    else:
+                        axr.set_ylabel(r"$\mathcal{L}=L_i/L_{\rm Wind}$")
+                else:
+                    axr.tick_params(labelright=False)
+                    axr.set_ylabel("")
+
+                # x label only on bottom row
+                if i == nrows - 1:
+                    ax.set_xlabel("t [Myr]")
+
+        # -------- global legend --------
+        if PLOT_QI:
+            main_handle = Line2D([0], [0], color=C_QI, lw=1.8, label=r"$Q_i$ (or estimated from $L_i/\langle h\nu\rangle$)")
+            ratio_handle = Line2D([0], [0], color=C_RATIO, lw=1.5, ls="--", label=r"$\mathcal{L}=Q_i/L_{\rm Wind}$")
+        else:
+            main_handle = Line2D([0], [0], color=C_LI, lw=1.8, label=r"$L_i$")
+            ratio_handle = Line2D([0], [0], color=C_RATIO, lw=1.5, ls="--", label=r"$\mathcal{L}=L_i/L_{\rm Wind}$")
+
+        handles = [
+            main_handle,
+            Line2D([0], [0], color=C_LWIND, lw=1.8, label=r"$L_{\rm Wind}$"),
+            ratio_handle,
+            Line2D([0], [0], color="k", ls="--", alpha=0.6, lw=1.6, label=r"$R_2>R_{\rm cloud}$"),
+            Line2D([0], [0], color="r", lw=2, alpha=0.3, label=r"phase: $T$ (→transition), $M$ (→momentum)"),
+        ]
+
+        leg = fig.legend(
+            handles=handles,
+            loc="upper center",
+            ncol=3,
+            frameon=True,
+            facecolor="white",
+            framealpha=0.9,
+            edgecolor="0.2",
+            bbox_to_anchor=(0.5, 0.98),
+            bbox_transform=fig.transFigure
+        )
+        leg.set_zorder(10)
+
+        # --------- SAVE FIGURE ---------
+        m_tag   = range_tag("M",   mCloud_list, key=float)
+        sfe_tag = range_tag("sfe", sfe_list,    key=int)
+        n_tag   = f"n{ndens}"
+        tag = f"LbolLWind_{m_tag}_{sfe_tag}_{n_tag}"
+
+        if SAVE_PNG:
+            out_png = FIG_DIR / f"{tag}.png"
+            fig.savefig(out_png, bbox_inches="tight")
+            print(f"Saved: {out_png}")
+        if SAVE_PDF:
+            out_pdf = FIG_DIR / f"{tag}.pdf"
+            fig.savefig(out_pdf, bbox_inches="tight")
+            print(f"Saved: {out_pdf}")
+
+        plt.show()
+        plt.close(fig)
+
+
+# ---------------- command-line interface ----------------
+if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        description="Plot TRINITY Li/Lmech_total comparison",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  python paper_LbolLWind.py 1e7_sfe020_n1e4
+  python paper_LbolLWind.py /path/to/outputs/1e7_sfe020_n1e4
+  python paper_LbolLWind.py /path/to/dictionary.jsonl
+  python paper_LbolLWind.py  # (uses grid config at top of file)
+        """
+    )
+    parser.add_argument(
+        'data', nargs='?', default=None,
+        help='Data input: folder name, folder path, or file path'
+    )
+    parser.add_argument(
+        '--output-dir', '-o', default=None,
+        help='Base directory for output folders (default: TRINITY_OUTPUT_DIR or "outputs")'
+    )
+
+    args = parser.parse_args()
+
+    if args.data:
+        # Command-line mode: plot from specified path
+        plot_from_path(args.data, args.output_dir)
+    else:
+        # Config mode: plot grid
+        plot_grid()
