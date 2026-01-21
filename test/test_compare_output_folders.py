@@ -73,11 +73,64 @@ ESSENTIAL_PARAMS = ['R1', 'R2', 'rShell', 'Pb', 'Eb', 'T0', 'v2']
 # Data loading functions
 # =============================================================================
 
-def load_jsonl(filepath: Path) -> list:
+def load_snapshots(filepath: Path) -> list:
     """
-    Load a JSONL file (line-delimited JSON).
+    Load snapshots from either .json or .jsonl file.
 
-    Each line is a JSON object representing one snapshot.
+    Automatically detects format based on file extension:
+    - .json: Single JSON object with snapshot IDs as keys
+    - .jsonl: Line-delimited JSON, one snapshot per line
+    """
+    filepath = Path(filepath)
+
+    if filepath.suffix == '.json':
+        return _load_json_format(filepath)
+    elif filepath.suffix == '.jsonl':
+        return _load_jsonl_format(filepath)
+    else:
+        # Try to auto-detect by reading first character
+        with open(filepath, 'r', encoding='utf-8') as f:
+            first_char = f.read(1)
+        if first_char == '{':
+            # Could be either format, try JSONL first (more common for new runs)
+            try:
+                return _load_jsonl_format(filepath)
+            except:
+                return _load_json_format(filepath)
+        return _load_jsonl_format(filepath)
+
+
+def _load_json_format(filepath: Path) -> list:
+    """
+    Load old-style .json format (single JSON object with all snapshots).
+
+    Format: {"0": {...}, "1": {...}, ...}
+    """
+    with open(filepath, 'r', encoding='utf-8') as f:
+        data = json.load(f)
+
+    # Convert dict of snapshots to list
+    snapshots = []
+    for key, snap in data.items():
+        if isinstance(snap, dict):
+            # Add snap_id if not present
+            if 'snap_id' not in snap:
+                try:
+                    snap['snap_id'] = int(key)
+                except ValueError:
+                    pass
+            snapshots.append(snap)
+
+    # Sort by snap_id
+    snapshots.sort(key=lambda s: s.get('snap_id', 0))
+    return snapshots
+
+
+def _load_jsonl_format(filepath: Path) -> list:
+    """
+    Load new-style .jsonl format (line-delimited JSON).
+
+    Each line is one snapshot as a JSON object.
     Handles corrupted lines with multiple concatenated JSON objects.
     """
     snapshots = []
@@ -748,8 +801,8 @@ def compare_output_folders(output_dir: Path = None):
 
         # Load data
         print("  Loading snapshots...")
-        snapshots_orig = load_jsonl(orig_jsonl)
-        snapshots_mod = load_jsonl(mod_jsonl)
+        snapshots_orig = load_snapshots(orig_jsonl)
+        snapshots_mod = load_snapshots(mod_jsonl)
 
         print(f"  Original: {len(snapshots_orig)} snapshots")
         print(f"  Modified: {len(snapshots_mod)} snapshots")
@@ -855,8 +908,8 @@ def compare_two_folders(folder1: Path, folder2: Path, output_dir: Path = None):
 
     # Load data
     print("\nLoading snapshots...")
-    snapshots1 = load_jsonl(jsonl1)
-    snapshots2 = load_jsonl(jsonl2)
+    snapshots1 = load_snapshots(jsonl1)
+    snapshots2 = load_snapshots(jsonl2)
 
     print(f"  File 1: {len(snapshots1)} snapshots")
     print(f"  File 2: {len(snapshots2)} snapshots")
