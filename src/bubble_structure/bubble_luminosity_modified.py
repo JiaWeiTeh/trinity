@@ -37,7 +37,7 @@ logger = logging.getLogger(__name__)
 # NumPy compatibility: trapz was renamed to trapezoid in NumPy 2.0
 _trapezoid = getattr(np, 'trapezoid', None) or np.trapz
 
-MIN_SPACING = 1e-5
+MIN_SPACING = 1e-12
 
 @dataclass
 class BubbleProperties:

@@ -56,7 +56,7 @@ FORCE_FIELDS_BASE = [
 # --- optional single-run view (set to None for full grid)
 ONLY_M   = '1e7'   # e.g. "1e5" or None
 ONLY_N   = '1e4'   # e.g. "1e4" or None
-ONLY_SFE = '020'   # e.g. "001" or None
+ONLY_SFE = '010'   # e.g. "001" or None
 
 # ONLY_M = ONLY_N = ONLY_SFE = None
 
