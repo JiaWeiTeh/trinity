@@ -63,8 +63,8 @@ FORCE_FIELDS = [
 ]
 
 # Default parameters
-DEFAULT_MCLOUD = ["1e7", "1e8"]
-DEFAULT_SFE = ["001", "010", "020"]
+DEFAULT_MCLOUD = ["1e5", "1e7", "1e8"]
+DEFAULT_SFE = ["001", "010", "020", "030", "050", "080"]
 DEFAULT_NCORE = "1e4"
 DEFAULT_TIMES = [1.0, 1.5, 2.0, 2.5]  # Myr
 
