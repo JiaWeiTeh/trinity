@@ -10,6 +10,7 @@ import matplotlib.transforms as mtransforms
 # Add project root to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from src._output.trinity_reader import load_output, find_data_file, resolve_data_input
+from src._plots.plot_markers import add_plot_markers, get_marker_legend_handles
 
 print("...plotting radius evolution grid (with r_Tb)")
 
@@ -162,79 +163,24 @@ def plot_radii_on_ax(
     smooth_window=None, smooth_mode="edge",
     label_pad_points=4
 ):
-    fig = ax.figure
-
     # optional smoothing
     R1s = smooth_1d(R1, smooth_window, mode=smooth_mode)
     R2s = smooth_1d(R2, smooth_window, mode=smooth_mode)
     rSs = smooth_1d(rShell, smooth_window, mode=smooth_mode)
     rTbs = smooth_1d(r_Tb, smooth_window, mode=smooth_mode)
 
-    # --- collapse line: first time isCollapse becomes True
-    if isCollapse is not None:
-        collapse_mask = np.array([bool(c) for c in isCollapse])
-        idx_collapse = np.flatnonzero(collapse_mask)
-        if idx_collapse.size:
-            x_collapse = t[idx_collapse[0]]
-            ax.axvline(x_collapse, color="purple", ls="--", lw=1.8, alpha=0.6, zorder=0)
-            text_trans = ax.get_xaxis_transform() + mtransforms.ScaledTranslation(
-                label_pad_points/72, 0, fig.dpi_scale_trans
-            )
-            ax.text(
-                x_collapse, 0.05, "Collapse",
-                transform=text_trans,
-                ha="left", va="bottom",
-                fontsize=8, color="purple", alpha=0.8,
-                rotation=90, zorder=5
-            )
-
-    # --- phase lines with mini labels
-    if phase_line:
-        # energy/implicit -> transition (T)
-        idx_T = np.flatnonzero(
-            np.isin(phase[:-1], ["energy", "implicit"]) & (phase[1:] == "transition")
-        ) + 1
-        for x in t[idx_T]:
-            ax.axvline(x, color="r", lw=2, alpha=0.2, zorder=0)
-            ax.text(
-                x, 0.97, "T",
-                transform=ax.get_xaxis_transform(),
-                ha="center", va="top",
-                fontsize=8, color="r", alpha=0.6,
-                bbox=dict(facecolor="white", edgecolor="none", alpha=0.7, pad=0.2),
-                zorder=5
-            )
-
-        # transition -> momentum (M)
-        idx_M = np.flatnonzero((phase[:-1] == "transition") & (phase[1:] == "momentum")) + 1
-        for x in t[idx_M]:
-            ax.axvline(x, color="r", lw=2, alpha=0.2, zorder=0)
-            ax.text(
-                x, 0.97, "M",
-                transform=ax.get_xaxis_transform(),
-                ha="center", va="top",
-                fontsize=8, color="r", alpha=0.6,
-                bbox=dict(facecolor="white", edgecolor="none", alpha=0.7, pad=0.2),
-                zorder=5
-            )
-
-    # --- breakout line: first time R2 > rcloud
-    if cloud_line and np.isfinite(rcloud):
-        idx = np.flatnonzero(np.isfinite(R2s) & (R2s > rcloud))
-        if idx.size:
-            x_rc = t[idx[0]]
-            ax.axvline(x_rc, color="k", ls="--", alpha=0.25, zorder=0)
-
-            text_trans = ax.get_xaxis_transform() + mtransforms.ScaledTranslation(
-                label_pad_points/72, 0, fig.dpi_scale_trans
-            )
-            ax.text(
-                x_rc, 0.05, r"$R_2 = R_{\rm cloud}$",
-                transform=text_trans,
-                ha="left", va="bottom",
-                fontsize=8, color="k", alpha=0.8,
-                rotation=90, zorder=5
-            )
+    # --- Add plot markers using helper module
+    add_plot_markers(
+        ax, t,
+        phase=phase if phase_line else None,
+        R2=R2s if cloud_line else None,
+        rcloud=rcloud if cloud_line else None,
+        isCollapse=isCollapse,
+        show_phase=phase_line,
+        show_rcloud=cloud_line,
+        show_collapse=True,
+        label_pad_points=label_pad_points
+    )
 
     # --- radii lines
     ax.plot(t, R1s,    lw=RADIUS_FIELDS[0][4], ls=RADIUS_FIELDS[0][3], color=RADIUS_FIELDS[0][2], label=RADIUS_FIELDS[0][1], zorder=3)
@@ -294,7 +240,7 @@ def plot_single_run(mCloud, sfe, ndens):
     ax.set_xlabel("t [Myr]")
     ax.set_ylabel("Radius [pc]")
 
-    # Legend
+    # Legend - radius lines + Weaver + markers from helper
     handles = [
         Line2D([0], [0], color=RADIUS_FIELDS[0][2], lw=RADIUS_FIELDS[0][4], ls=RADIUS_FIELDS[0][3], label=RADIUS_FIELDS[0][1]),
         Line2D([0], [0], color=RADIUS_FIELDS[1][2], lw=RADIUS_FIELDS[1][4], ls=RADIUS_FIELDS[1][3], label=RADIUS_FIELDS[1][1]),
@@ -303,11 +249,7 @@ def plot_single_run(mCloud, sfe, ndens):
     ]
     if SHOW_WEAVER:
         handles.append(Line2D([0], [0], color="k", ls="--", alpha=0.6, lw=1.5, label=r"Weaver: $R \propto t^{3/5}$"))
-    handles.extend([
-        Line2D([0], [0], color="k", ls="--", alpha=0.25, lw=1.6, label=r"$R_2>R_{\rm cloud}$"),
-        Line2D([0], [0], color="r", lw=2, alpha=0.3, label="phase change"),
-        Line2D([0], [0], color="purple", ls="--", alpha=0.6, lw=1.8, label="Collapse"),
-    ])
+    handles.extend(get_marker_legend_handles())
     ax.legend(handles=handles, loc="upper left", framealpha=0.9)
 
     # Save
@@ -362,7 +304,7 @@ def plot_from_path(data_input: str, output_dir: str = None):
     ax.set_xlabel("t [Myr]")
     ax.set_ylabel("Radius [pc]")
 
-    # Legend
+    # Legend - radius lines + Weaver + markers from helper
     handles = [
         Line2D([0], [0], color=RADIUS_FIELDS[0][2], lw=RADIUS_FIELDS[0][4], ls=RADIUS_FIELDS[0][3], label=RADIUS_FIELDS[0][1]),
         Line2D([0], [0], color=RADIUS_FIELDS[1][2], lw=RADIUS_FIELDS[1][4], ls=RADIUS_FIELDS[1][3], label=RADIUS_FIELDS[1][1]),
@@ -371,11 +313,7 @@ def plot_from_path(data_input: str, output_dir: str = None):
     ]
     if SHOW_WEAVER:
         handles.append(Line2D([0], [0], color="k", ls="--", alpha=0.6, lw=1.5, label=r"Weaver: $R \propto t^{3/5}$"))
-    handles.extend([
-        Line2D([0], [0], color="k", ls="--", alpha=0.25, lw=1.6, label=r"$R_2>R_{\rm cloud}$"),
-        Line2D([0], [0], color="r", lw=2, alpha=0.3, label="phase change"),
-        Line2D([0], [0], color="purple", ls="--", alpha=0.6, lw=1.8, label="Collapse"),
-    ])
+    handles.extend(get_marker_legend_handles())
     ax.legend(handles=handles, loc="upper left", framealpha=0.9)
 
     plt.tight_layout()
@@ -486,6 +424,7 @@ Examples:
                     if i == nrows - 1:
                         ax.set_xlabel("t [Myr]")
 
+            # Legend - radius lines + Weaver + markers from helper
             handles = [
                 Line2D([0], [0], color=RADIUS_FIELDS[0][2], lw=RADIUS_FIELDS[0][4], ls=RADIUS_FIELDS[0][3], label=RADIUS_FIELDS[0][1]),
                 Line2D([0], [0], color=RADIUS_FIELDS[1][2], lw=RADIUS_FIELDS[1][4], ls=RADIUS_FIELDS[1][3], label=RADIUS_FIELDS[1][1]),
@@ -494,11 +433,7 @@ Examples:
             ]
             if SHOW_WEAVER:
                 handles.append(Line2D([0], [0], color="k", ls="--", alpha=0.6, lw=1.5, label=r"Weaver: $R \propto t^{3/5}$"))
-            handles.extend([
-                Line2D([0], [0], color="k", ls="--", alpha=0.25, lw=1.6, label=r"$R_2>R_{\rm cloud}$"),
-                Line2D([0], [0], color="r", lw=2, alpha=0.3, label=r"phase changes"),
-                Line2D([0], [0], color="purple", ls="--", alpha=0.6, lw=1.8, label="Collapse"),
-            ])
+            handles.extend(get_marker_legend_handles())
 
             fig.subplots_adjust(top=0.9)
 
