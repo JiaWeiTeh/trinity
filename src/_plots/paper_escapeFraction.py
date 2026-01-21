@@ -11,9 +11,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 from pathlib import Path
 
-# Add script directory to path for local imports
-sys.path.insert(0, str(Path(__file__).parent))
-from load_snapshots import load_output, find_data_file, resolve_data_input
+# Add project root to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+from src._output.trinity_reader import load_output, find_data_file, resolve_data_input
 
 print("...plotting escape fraction comparison")
 
