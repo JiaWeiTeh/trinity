@@ -445,7 +445,8 @@ class TrinityOutput:
             print(f"[TrinityOutput] Time t={t:.6e} Myr not found in snapshots. "
                   f"Interpolating from {len(neighbor_indices)} neighbors "
                   f"(t=[{neighbor_times.min():.6e}, {neighbor_times.max():.6e}] Myr). "
-                  f"NOTE: These are interpolated values, not actual simulation output.")
+                  f"NOTE: These are interpolated values, not actual simulation output. "
+                  f"Use mode='closest' for the actual snapshot closest to the requested time.")
 
         # Build interpolated data dictionary
         interpolated_data = {}
