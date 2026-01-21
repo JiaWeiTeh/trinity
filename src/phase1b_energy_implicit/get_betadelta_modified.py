@@ -52,7 +52,7 @@ MAX_ITERATIONS = 15
 LBFGSB_FALLBACK_THRESHOLD = 1.0
 
 # Grid search parameters (matching original get_betadelta.py)
-GRID_SIZE = 4  # Default: 5x5 grid
+GRID_SIZE = 5  # 5x5 grid (matching original get_betadelta.py)
 GRID_EPSILON = 0.02  # Search range around guess
 
 
