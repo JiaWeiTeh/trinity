@@ -341,6 +341,7 @@ class TrinityOutput:
                 if line:
                     snapshots.append(json.loads(line))
 
+        print(f"[TrinityOutput] Loaded: {filepath} ({len(snapshots)} snapshots)")
         return cls(filepath, snapshots)
 
     def __len__(self) -> int:
