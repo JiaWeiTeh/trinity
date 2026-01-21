@@ -203,7 +203,10 @@ def plot_grid():
             leg.set_zorder(10)
 
         if SAVE_PDF:
+            fig.savefig(FIG_DIR / f"paper_escapeFraction_n{ndens}.png", bbox_inches='tight', dpi=150)
+            print(f"Saved: {FIG_DIR / f'paper_escapeFraction_n{ndens}.png'}")
             fig.savefig(FIG_DIR / f"paper_escapeFraction_n{ndens}.pdf", bbox_inches='tight')
+            print(f"Saved: {FIG_DIR / f'paper_escapeFraction_n{ndens}.pdf'}")
         plt.show()
         plt.close(fig)
 

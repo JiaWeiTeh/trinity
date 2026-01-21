@@ -166,7 +166,10 @@ FIG_DIR.mkdir(parents=True, exist_ok=True)
 SAVE_PDF = True
 
 if SAVE_PDF:
+    plt.savefig(FIG_DIR / 'bubblePhase.png', bbox_inches='tight', dpi=150)
+    print(f"Saved: {FIG_DIR / 'bubblePhase.png'}")
     plt.savefig(FIG_DIR / 'bubblePhase.pdf', bbox_inches='tight')
+    print(f"Saved: {FIG_DIR / 'bubblePhase.pdf'}")
 plt.show()
 
 

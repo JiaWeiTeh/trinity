@@ -224,7 +224,10 @@ def plot_single_run(mCloud, ndens, sfe):
     ax.set_xlabel("t [Myr]")
     ax.set_ylabel(r"$p(t)=\int F\,dt$")
     if SAVE_PDF:
+        fig.savefig(FIG_DIR / f"paper_momentum_{run_name}.png", bbox_inches='tight', dpi=150)
+        print(f"Saved: {FIG_DIR / f'paper_momentum_{run_name}.png'}")
         fig.savefig(FIG_DIR / f"paper_momentum_{run_name}.pdf", bbox_inches='tight')
+        print(f"Saved: {FIG_DIR / f'paper_momentum_{run_name}.pdf'}")
     plt.show()
     plt.close(fig)
 
@@ -455,7 +458,10 @@ def plot_grid():
         fig.suptitle(rf"Momentum injected ($n=10^{{{nlog}}}\,\mathrm{{cm^{{-3}}}}$)", y=1.08)
 
         if SAVE_PDF:
+            fig.savefig(FIG_DIR / f"paper_momentum_n{ndens}.png", bbox_inches='tight', dpi=150)
+            print(f"Saved: {FIG_DIR / f'paper_momentum_n{ndens}.png'}")
             fig.savefig(FIG_DIR / f"paper_momentum_n{ndens}.pdf", bbox_inches='tight')
+            print(f"Saved: {FIG_DIR / f'paper_momentum_n{ndens}.pdf'}")
         plt.show()
         plt.close(fig)
 

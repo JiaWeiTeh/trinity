@@ -112,7 +112,10 @@ plt.plot(xx, -vv, linewidth=1.5)
 plt.colorbar()
 plt.tight_layout()
 if SAVE_PDF:
+    plt.savefig(FIG_DIR / 'PPVtest_thinShell.png', bbox_inches='tight', dpi=150)
+    print(f"Saved: {FIG_DIR / 'PPVtest_thinShell.png'}")
     plt.savefig(FIG_DIR / 'PPVtest_thinShell.pdf', bbox_inches='tight')
+    print(f"Saved: {FIG_DIR / 'PPVtest_thinShell.pdf'}")
 plt.show()
 
 
@@ -210,7 +213,10 @@ plt.plot(xx, -vv, linewidth=1.5)
 
 plt.tight_layout()
 if SAVE_PDF:
+    plt.savefig(FIG_DIR / 'PPVtest_filledSphere.png', bbox_inches='tight', dpi=150)
+    print(f"Saved: {FIG_DIR / 'PPVtest_filledSphere.png'}")
     plt.savefig(FIG_DIR / 'PPVtest_filledSphere.pdf', bbox_inches='tight')
+    print(f"Saved: {FIG_DIR / 'PPVtest_filledSphere.pdf'}")
 plt.show()
 
 

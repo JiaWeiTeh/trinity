@@ -264,7 +264,10 @@ ax[1].set_ylim(0, 700)
 # plt.yscale('log')
 ax[0].set_ylabel('$r_{\\rm cl}$ [pc]')
 
-plt.savefig(FIG_DIR / 'InitialCloudRadius.pdf')
+plt.savefig(FIG_DIR / 'InitialCloudRadius.png', bbox_inches='tight', dpi=150)
+print(f"Saved: {FIG_DIR / 'InitialCloudRadius.png'}")
+plt.savefig(FIG_DIR / 'InitialCloudRadius.pdf', bbox_inches='tight')
+print(f"Saved: {FIG_DIR / 'InitialCloudRadius.pdf'}")
 
 
 
