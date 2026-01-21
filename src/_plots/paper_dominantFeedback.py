@@ -41,9 +41,9 @@ from matplotlib.colors import ListedColormap, BoundaryNorm
 from matplotlib.patches import Patch
 from pathlib import Path
 
-# Add script directory to path for local imports
-sys.path.insert(0, str(Path(__file__).parent))
-from load_snapshots import load_output, find_data_file
+# Add project root to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+from src._output.trinity_reader import load_output, find_data_file
 
 import os
 plt.style.use(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'trinity.mplstyle'))

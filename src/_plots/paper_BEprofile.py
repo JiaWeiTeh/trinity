@@ -19,9 +19,9 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 import src._functions.unit_conversions as cvt
 
-# Add script directory to path for local imports
-sys.path.insert(0, str(Path(__file__).parent))
-from load_snapshots import load_output, find_data_path
+# Add project root to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+from src._output.trinity_reader import load_output, find_data_path
 
 # Output - save to project root's fig/ directory
 FIG_DIR = Path(__file__).parent.parent.parent / "fig"
