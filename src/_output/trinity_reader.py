@@ -323,7 +323,7 @@ class TrinityOutput:
         Parameters
         ----------
         filepath : str or Path
-            Path to the .jsonl output file
+            Path to the .json or .jsonl output file
 
         Returns
         -------
@@ -334,15 +334,52 @@ class TrinityOutput:
         if not filepath.exists():
             raise FileNotFoundError(f"File not found: {filepath}")
 
+        # Detect format based on extension
+        if filepath.suffix == '.json':
+            snapshots = cls._load_json_format(filepath)
+        elif filepath.suffix == '.jsonl':
+            snapshots = cls._load_jsonl_format(filepath)
+        else:
+            # Try to auto-detect by attempting JSONL first
+            try:
+                snapshots = cls._load_jsonl_format(filepath)
+            except json.JSONDecodeError:
+                snapshots = cls._load_json_format(filepath)
+
+        print(f"[TrinityOutput] Loaded: {filepath} ({len(snapshots)} snapshots)")
+        return cls(filepath, snapshots)
+
+    @classmethod
+    def _load_json_format(cls, filepath: Path) -> List[dict]:
+        """Load old-style .json format (single JSON object with all snapshots)."""
+        with open(filepath, 'r') as f:
+            data = json.load(f)
+
+        # Convert dict of snapshots to list
+        snapshots = []
+        for key, snap in data.items():
+            if isinstance(snap, dict):
+                if 'snap_id' not in snap:
+                    try:
+                        snap['snap_id'] = int(key)
+                    except ValueError:
+                        pass
+                snapshots.append(snap)
+
+        # Sort by snap_id
+        snapshots.sort(key=lambda s: s.get('snap_id', 0))
+        return snapshots
+
+    @classmethod
+    def _load_jsonl_format(cls, filepath: Path) -> List[dict]:
+        """Load new-style .jsonl format (line-delimited JSON)."""
         snapshots = []
         with open(filepath, 'r') as f:
             for line in f:
                 line = line.strip()
                 if line:
                     snapshots.append(json.loads(line))
-
-        print(f"[TrinityOutput] Loaded: {filepath} ({len(snapshots)} snapshots)")
-        return cls(filepath, snapshots)
+        return snapshots
 
     def __len__(self) -> int:
         """Number of snapshots."""
@@ -820,12 +857,13 @@ load_output = read
 
 def find_data_file(base_dir: Union[str, Path], run_name: str) -> Optional[Path]:
     """
-    Find the data file for a run, preferring JSONL over JSON.
+    Find the data file for a run, preferring _modified folders and JSONL over JSON.
 
-    Searches for:
-    1. {run_name}_dictionary.jsonl
-    2. dictionary.jsonl
-    3. dictionary.json
+    Search order (first found wins):
+    1. {run_name}_modified folder (new runs)
+    2. {run_name} folder (original runs)
+
+    Within each folder, prefers: dictionary.jsonl > dictionary.json
 
     Parameters
     ----------
@@ -840,19 +878,36 @@ def find_data_file(base_dir: Union[str, Path], run_name: str) -> Optional[Path]:
         Path to data file, or None if not found
     """
     base_dir = Path(base_dir)
-    run_dir = base_dir / run_name
 
-    # Check various file locations/names
-    candidates = [
-        run_dir / f"{run_name}_dictionary.jsonl",
-        run_dir / "dictionary.jsonl",
-        run_dir / "dictionary.json",
-        # Also check if the file is directly in base_dir with run_name prefix
+    # Try _modified folder first, then original
+    folder_candidates = [
+        base_dir / f"{run_name}_modified",  # Modified runs first
+        base_dir / run_name,                 # Then original runs
+    ]
+
+    for run_dir in folder_candidates:
+        if not run_dir.exists():
+            continue
+
+        # Check various file names within the folder
+        file_candidates = [
+            run_dir / "dictionary.jsonl",
+            run_dir / "dictionary.json",
+            run_dir / f"{run_name}_dictionary.jsonl",
+        ]
+
+        for path in file_candidates:
+            if path.exists():
+                return path
+
+    # Also check if the file is directly in base_dir with run_name prefix
+    direct_candidates = [
+        base_dir / f"{run_name}_modified_dictionary.jsonl",
         base_dir / f"{run_name}_dictionary.jsonl",
         base_dir / f"{run_name}_dictionary.json",
     ]
 
-    for path in candidates:
+    for path in direct_candidates:
         if path.exists():
             return path
 
