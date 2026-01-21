@@ -15,6 +15,9 @@ from datetime import datetime
 from enum import Enum
 from typing import Optional, Dict, Any
 
+# Import unit conversions for display
+from src._functions.unit_conversions import INV_CONV
+
 
 class SimulationEndCode(Enum):
     """
@@ -43,6 +46,7 @@ class SimulationEndCode(Enum):
     ERROR_VELOCITY = (21, "Velocity below threshold")
     ERROR_SOLVER = (22, "ODE solver failed")
     ERROR_NEGATIVE_VALUES = (23, "Negative physical values encountered")
+    ERROR_SMALL_RADIUS = (24, "Shell radius became too small")
 
     # Unknown
     UNKNOWN = (99, "Unknown termination reason")
@@ -91,6 +95,7 @@ def get_end_code_from_reason(reason_str: str) -> SimulationEndCode:
 
     # Map common reason strings to codes
     reason_map = {
+        # Success states
         'shell dissolved': SimulationEndCode.SUCCESS_DISSOLVED,
         'dissolved': SimulationEndCode.SUCCESS_DISSOLVED,
         'stopping time reached': SimulationEndCode.SUCCESS_MAX_TIME,
@@ -99,12 +104,14 @@ def get_end_code_from_reason(reason_str: str) -> SimulationEndCode:
         'max radius': SimulationEndCode.SUCCESS_MAX_RADIUS,
         'exceeded rcloud': SimulationEndCode.SUCCESS_MAX_RADIUS,
         'complete': SimulationEndCode.SUCCESS_COMPLETE,
+        # Parameter errors
         'invalid cloud parameters': SimulationEndCode.ERROR_INVALID_PARAMS,
         'invalid param': SimulationEndCode.ERROR_INVALID_PARAMS,
         'mass inconsistency': SimulationEndCode.ERROR_MASS_INCONSISTENCY,
         'mass error': SimulationEndCode.ERROR_MASS_INCONSISTENCY,
         'edge density': SimulationEndCode.ERROR_EDGE_DENSITY,
         'nedge < nism': SimulationEndCode.ERROR_EDGE_DENSITY,
+        # Numerical errors
         'numerical instability': SimulationEndCode.ERROR_NUMERICAL,
         'numerical error': SimulationEndCode.ERROR_NUMERICAL,
         'velocity threshold': SimulationEndCode.ERROR_VELOCITY,
@@ -112,6 +119,10 @@ def get_end_code_from_reason(reason_str: str) -> SimulationEndCode:
         'solver failed': SimulationEndCode.ERROR_SOLVER,
         'ode error': SimulationEndCode.ERROR_SOLVER,
         'negative': SimulationEndCode.ERROR_NEGATIVE_VALUES,
+        # Radius-related terminations
+        'small radius': SimulationEndCode.ERROR_SMALL_RADIUS,
+        'radius too small': SimulationEndCode.ERROR_SMALL_RADIUS,
+        'shell collapsed': SimulationEndCode.ERROR_SMALL_RADIUS,
     }
 
     for key, code in reason_map.items():
@@ -197,21 +208,25 @@ def write_simulation_end(params: Dict[str, Any], output_dir: Optional[str] = Non
         "-" * 50,
     ])
 
-    # Helper to safely get param values
-    def get_param(key, fmt=".4e", default="N/A"):
+    # Helper to safely get param values with optional unit conversion
+    def get_param(key, fmt=".4e", default="N/A", conversion=1.0):
         if key in params:
             val = params[key].value
             if val is not None:
                 try:
-                    return f"{val:{fmt}}"
+                    return f"{val * conversion:{fmt}}"
                 except:
                     return str(val)
         return default
 
+    # Unit conversion factors:
+    # - Velocity: pc/Myr -> km/s (INV_CONV.v_au2kms)
+    # - Number density: pc^-3 -> cm^-3 (INV_CONV.ndens_au2cgs)
+
     lines.append(f"  Time:           {get_param('t_now', '.3f')} Myr")
     lines.append(f"  Radius (R2):    {get_param('R2', '.2f')} pc")
-    lines.append(f"  Shell nMax:     {get_param('shell_nMax', '.2e')} cm^-3")
-    lines.append(f"  Shell Velocity: {get_param('v_R2', '.2f')} km/s")
+    lines.append(f"  Shell nMax:     {get_param('shell_nMax', '.2e', conversion=INV_CONV.ndens_au2cgs)} cm^-3")
+    lines.append(f"  Shell Velocity: {get_param('v2', '.2f', conversion=INV_CONV.v_au2kms)} km/s")
 
     # Add initial parameters section
     lines.extend([
@@ -220,11 +235,11 @@ def write_simulation_end(params: Dict[str, Any], output_dir: Optional[str] = Non
         "INITIAL CLOUD PARAMETERS",
         "-" * 50,
         f"  mCloud:  {get_param('mCloud', '.2e')} Msun",
-        f"  nCore:   {get_param('nCore', '.2e')} cm^-3",
+        f"  nCore:   {get_param('nCore', '.2e', conversion=INV_CONV.ndens_au2cgs)} cm^-3",
         f"  rCloud:  {get_param('rCloud', '.2f')} pc",
         f"  rCore:   {get_param('rCore', '.2f')} pc",
         f"  alpha:   {get_param('densPL_alpha', '.1f')}",
-        f"  nISM:    {get_param('nISM', '.2e')} cm^-3",
+        f"  nISM:    {get_param('nISM', '.2e', conversion=INV_CONV.ndens_au2cgs)} cm^-3",
     ])
 
     # Add validation info if available
