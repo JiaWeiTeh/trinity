@@ -1,25 +1,64 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
+TRINITY Snapshot Loading Utilities
+===================================
+
 Utility module for loading TRINITY simulation snapshots from JSON or JSONL files.
+This module provides both low-level loading functions and a high-level TrinityOutput
+reader interface.
 
 Supports both formats:
 - JSON: Single file with nested dictionary {"0": {...}, "1": {...}, ...}
-- JSONL: One JSON object per line (each line is a snapshot)
+- JSONL: One JSON object per line (each line is a snapshot) - RECOMMENDED
 
-Usage:
-    # Import in scripts located in the same directory:
-    import sys
-    from pathlib import Path
-    sys.path.insert(0, str(Path(__file__).parent))
-    from load_snapshots import load_snapshots, find_data_file
+Recommended Usage (TrinityOutput Reader)
+----------------------------------------
+The TrinityOutput reader provides the cleanest API for accessing simulation data:
 
-    # NEW: Use TrinityOutput reader for cleaner access
-    from load_snapshots import load_output
+    from load_snapshots import load_output, find_data_file
+
+    # Find and load data file
+    data_path = find_data_file(BASE_DIR, run_name)
     output = load_output(data_path)
+
+    # Access time series as numpy arrays
     t = output.get('t_now')
     R2 = output.get('R2')
+    v2 = output.get('v2')
+
+    # For non-numeric data
+    phase = np.array(output.get('current_phase', as_array=False))
+
+    # Get scalar from first snapshot
+    rcloud = float(output[0].get('rCloud', np.nan))
+
+    # Print summary
     output.info()
+
+Legacy Usage (Direct Snapshot Loading)
+--------------------------------------
+For backward compatibility, the original load_snapshots function is still available:
+
+    from load_snapshots import load_snapshots, find_data_file
+
+    snaps = load_snapshots(data_path)
+    t = np.array([s["t_now"] for s in snaps], dtype=float)
+    R2 = np.array([s["R2"] for s in snaps], dtype=float)
+
+Key Functions
+-------------
+- load_output(path): Load as TrinityOutput object (RECOMMENDED)
+- load_snapshots(path): Load as list of dictionaries (legacy)
+- find_data_file(base_dir, run_name): Locate data file for a simulation run
+
+All paper_* plotting scripts in this directory have been updated (January 2026)
+to use load_output() for cleaner, more maintainable code.
+
+See Also
+--------
+- src/_output/trinity_reader.py: Full TrinityOutput reader implementation
+- example_scripts/: Usage examples for the reader
 
 @author: TRINITY Team
 """

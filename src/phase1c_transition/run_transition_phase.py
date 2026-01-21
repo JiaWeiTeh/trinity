@@ -179,7 +179,7 @@ def ODE_equations_transition(t, y, params):
     import src.cloud_properties.mass_profile as mass_profile
     mShell, mShell_dot = mass_profile.get_mass_profile(R2, params,
                                                    return_mdot = True, 
-                                                   rdot_arr = v2)
+                                                   rdot = v2)
     
 
     

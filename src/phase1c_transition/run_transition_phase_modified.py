@@ -1,17 +1,45 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Modified transition phase runner for TRINITY.
+Modified Transition Phase Runner for TRINITY
+============================================
 
 This module implements the transition phase between energy-driven and
 momentum-driven expansion, using scipy.integrate.solve_ivp.
 
-Key features:
-- Energy decays on sound-crossing timescale: dE/dt = -Eb / t_sound
-- Uses pure ODE functions (no dictionary mutations during integration)
-- scipy.integrate.solve_ivp(LSODA) for adaptive integration
-- Segment-based integration with parameter updates between segments
-- Uses shell_structure_pure() and updateDict() pattern
+Overview
+--------
+The transition phase handles the period when bubble thermal energy (Eb)
+becomes negligible as cooling dominates. Energy decays on the sound-crossing
+timescale: dE/dt = -Eb / t_sound.
+
+Key Features
+------------
+1. **Energy decay model**: dE/dt = -Eb / t_sound (sound-crossing timescale)
+2. **Pure ODE functions**: No dictionary mutations during integration
+3. **scipy.integrate.solve_ivp(LSODA)**: Adaptive integration for accuracy
+4. **Segment-based integration**: Parameter updates between segments
+5. **Consistent snapshots**: All values saved at consistent timestamps
+
+Snapshot Consistency (January 2026)
+-----------------------------------
+Snapshots are saved BEFORE ODE integration to ensure all values correspond
+to the same timestamp (t_now). The snapshot includes:
+- t_now, R2, v2, Eb (current state)
+- feedback properties (Lmech, pdot, etc.)
+- shell_props (shell structure)
+- R1, Pb (inner radius and pressure)
+- forces (F_grav, F_ram, F_ion, F_rad)
+- mShell, mShell_dot (shell mass and accretion rate)
+
+Main Function
+-------------
+run_phase_transition(params) -> TransitionPhaseResults
+
+Returns
+-------
+TransitionPhaseResults : dataclass
+    Contains t, R2, v2, Eb arrays and termination info
 
 @author: TRINITY Team (refactored for solve_ivp)
 """

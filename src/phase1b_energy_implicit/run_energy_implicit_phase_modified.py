@@ -1,16 +1,54 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Modified energy implicit phase runner for TRINITY.
+Modified Energy Implicit Phase Runner for TRINITY
+=================================================
 
 This module continues the energy phase with real-time beta/delta calculations,
 using scipy.integrate.solve_ivp instead of manual Euler stepping.
 
-Key improvements:
-1. Uses pure ODE functions (no dictionary mutations during integration)
-2. scipy.integrate.solve_ivp(LSODA) for adaptive integration
-3. Segment-based integration with beta/delta updates between segments
-4. Pre-allocated result arrays
+Key Features
+------------
+1. **Pure ODE functions**: No dictionary mutations during integration
+2. **scipy.integrate.solve_ivp(LSODA)**: Adaptive integration for accuracy
+3. **Segment-based integration**: Beta/delta updates between segments
+4. **Pre-allocated result arrays**: Efficient memory usage
+5. **Consistent snapshots**: All values saved at consistent timestamps
+
+Snapshot Consistency (January 2026)
+-----------------------------------
+Snapshots are saved BEFORE ODE integration to ensure all values correspond
+to the same timestamp (t_now). The snapshot includes:
+- t_now, R2, v2, Eb, T0 (current state)
+- feedback properties (Lmech, pdot, etc.)
+- shell_props (shell structure)
+- bubble_props (bubble structure from beta-delta solver)
+- beta, delta (cooling parameters)
+- R1, Pb (inner radius and pressure)
+- forces (F_grav, F_ram, F_ion, F_rad)
+- residual diagnostics (Edot and T residuals)
+
+Beta-Delta Solver
+-----------------
+The beta-delta solver (get_betadelta_modified.py) uses:
+1. Grid search first (4x4 grid by default)
+2. L-BFGS-B fallback only if grid residual > LBFGSB_FALLBACK_THRESHOLD
+3. Best result selection from all candidates
+
+The solver returns a BetaDeltaResult dataclass with:
+- beta, delta: Cooling parameters
+- Edot_residual, T_residual: Normalized residuals
+- Edot_from_beta, Edot_from_balance: Raw Edot values for diagnostics
+- T_bubble, T0: Raw temperature values for diagnostics
+
+Main Function
+-------------
+run_phase_energy(params) -> ImplicitPhaseResults
+
+Returns
+-------
+ImplicitPhaseResults : dataclass
+    Contains t, R2, v2, Eb, T0, beta, delta arrays and termination info
 
 @author: TRINITY Team (refactored for solve_ivp)
 """

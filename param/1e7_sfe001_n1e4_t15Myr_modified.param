@@ -5,7 +5,7 @@ dens_profile    densPL
 densPL_alpha    0
 nCore    1e4
 nISM    0.1
-stop_r    1e3
-stop_t    20
+stop_r    None
+stop_t    15
 expansionBeyondCloud True
 use_adaptive_solver True
