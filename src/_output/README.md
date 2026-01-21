@@ -45,10 +45,13 @@ df = output.to_dataframe()
 
 ### From Plotting Scripts
 
-In `src/_plots/` scripts, use the convenience wrapper:
+In `src/_plots/` scripts:
 
 ```python
-from load_snapshots import load_output, find_data_file
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+from src._output.trinity_reader import load_output, find_data_file
 
 data_path = find_data_file(BASE_DIR, '1e7_sfe020_n1e4')
 output = load_output(data_path)
@@ -124,5 +127,4 @@ See `example_scripts/` for comprehensive examples:
 
 ## See Also
 
-- `src/_plots/load_snapshots.py`: Convenience functions for plotting scripts
 - `src/_plots/paper_*.py`: Paper figure scripts using TrinityOutput
