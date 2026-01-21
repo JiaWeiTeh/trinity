@@ -25,6 +25,10 @@ Usage:
     # Get a specific snapshot
     snapshot = output[100]
 
+    # Get snapshot at a specific time (interpolated by default)
+    snap = output.get_at_time(0.5)  # Returns interpolated snapshot
+    snap = output.get_at_time(0.5, mode='closest')  # Returns closest actual snapshot
+
     # Iterate over snapshots
     for snap in output:
         print(snap['t_now'], snap['R2'])
@@ -35,9 +39,10 @@ Usage:
 import json
 import numpy as np
 from pathlib import Path
-from typing import List, Dict, Any, Optional, Union, Iterator
+from typing import List, Dict, Any, Optional, Union, Iterator, Literal
 from dataclasses import dataclass, field
 import pandas as pd
+from scipy import interpolate as scipy_interp
 
 
 # =============================================================================
@@ -175,6 +180,8 @@ class Snapshot:
     """A single simulation snapshot."""
     data: Dict[str, Any]
     index: int
+    is_interpolated: bool = False
+    interpolation_time: Optional[float] = None
 
     def __getitem__(self, key: str) -> Any:
         """Access snapshot data by key."""
@@ -199,6 +206,8 @@ class Snapshot:
         return self.data.get('current_phase', 'unknown')
 
     def __repr__(self) -> str:
+        if self.is_interpolated:
+            return f"Snapshot(INTERPOLATED, t={self.t_now:.4e}, phase='{self.phase}')"
         return f"Snapshot(index={self.index}, t={self.t_now:.4e}, phase='{self.phase}')"
 
 
@@ -329,9 +338,11 @@ class TrinityOutput:
                 return values
         return values
 
-    def get_at_time(self, t: float, key: Optional[str] = None) -> Union[Snapshot, Any]:
+    def get_at_time(self, t: float, key: Optional[str] = None,
+                    mode: Literal['interpolate', 'closest'] = 'interpolate',
+                    n_neighbors: int = 5, quiet: bool = False) -> Union[Snapshot, Any]:
         """
-        Get snapshot closest to a specific time.
+        Get snapshot at a specific time.
 
         Parameters
         ----------
@@ -339,18 +350,213 @@ class TrinityOutput:
             Target time [Myr]
         key : str, optional
             If provided, return just this parameter value
+        mode : str
+            - 'interpolate' (default): Interpolate values from neighboring snapshots.
+              Returns an interpolated snapshot with a warning message.
+            - 'closest': Return the actual snapshot closest to requested time.
+        n_neighbors : int
+            Number of neighbors to use for interpolation (default 5, uses 2-3 on each side)
+        quiet : bool
+            If True, suppress the interpolation warning message
 
         Returns
         -------
         Snapshot or value
-            Snapshot closest to time t, or specific value if key provided
+            Snapshot at time t (interpolated or closest), or specific value if key provided
         """
         times = self.get('t_now')
-        idx = np.argmin(np.abs(times - t))
-        snap = self[idx]
-        if key is not None:
-            return snap[key]
-        return snap
+
+        # Check if exact time exists
+        exact_idx = np.where(np.isclose(times, t, rtol=1e-10))[0]
+        if len(exact_idx) > 0:
+            snap = self[exact_idx[0]]
+            if key is not None:
+                return snap[key]
+            return snap
+
+        # Time not exact - use requested mode
+        if mode == 'closest':
+            idx = np.argmin(np.abs(times - t))
+            snap = self[idx]
+            if not quiet:
+                print(f"[TrinityOutput] Time t={t:.6e} Myr not found in snapshots. "
+                      f"Returning closest snapshot at t={times[idx]:.6e} Myr.")
+            if key is not None:
+                return snap[key]
+            return snap
+        else:
+            # Interpolate
+            snap = self._interpolate_snapshot(t, n_neighbors, quiet)
+            if key is not None:
+                return snap[key]
+            return snap
+
+    def _interpolate_snapshot(self, t: float, n_neighbors: int = 5, quiet: bool = False) -> Snapshot:
+        """
+        Create an interpolated snapshot at time t using neighboring snapshots.
+
+        Parameters
+        ----------
+        t : float
+            Target time [Myr]
+        n_neighbors : int
+            Total number of neighbors to use (split between before/after)
+        quiet : bool
+            If True, suppress warning message
+
+        Returns
+        -------
+        Snapshot
+            Interpolated snapshot with is_interpolated=True
+        """
+        times = np.array(self.get('t_now'))
+
+        # Check bounds
+        if t < times.min() or t > times.max():
+            raise ValueError(
+                f"Requested time t={t:.6e} is outside data range "
+                f"[{times.min():.6e}, {times.max():.6e}] Myr"
+            )
+
+        # Find indices of neighbors
+        sorted_indices = np.argsort(times)
+        sorted_times = times[sorted_indices]
+
+        # Find insertion point
+        insert_idx = np.searchsorted(sorted_times, t)
+
+        # Get neighbors on each side (n_neighbors total, roughly split)
+        n_before = n_neighbors // 2
+        n_after = n_neighbors - n_before
+
+        start_idx = max(0, insert_idx - n_before)
+        end_idx = min(len(sorted_times), insert_idx + n_after)
+
+        # Adjust if we hit boundaries
+        if start_idx == 0:
+            end_idx = min(len(sorted_times), n_neighbors)
+        if end_idx == len(sorted_times):
+            start_idx = max(0, len(sorted_times) - n_neighbors)
+
+        neighbor_indices = sorted_indices[start_idx:end_idx]
+        neighbor_times = times[neighbor_indices]
+
+        if not quiet:
+            print(f"[TrinityOutput] Time t={t:.6e} Myr not found in snapshots. "
+                  f"Interpolating from {len(neighbor_indices)} neighbors "
+                  f"(t=[{neighbor_times.min():.6e}, {neighbor_times.max():.6e}] Myr). "
+                  f"NOTE: These are interpolated values, not actual simulation output.")
+
+        # Build interpolated data dictionary
+        interpolated_data = {}
+
+        # Get all keys from first snapshot
+        all_keys = self._snapshots[neighbor_indices[0]].keys()
+
+        for key in all_keys:
+            try:
+                # Get values from neighbor snapshots
+                values = [self._snapshots[idx].get(key) for idx in neighbor_indices]
+
+                # Determine if this is interpolatable
+                first_val = values[0]
+
+                if first_val is None:
+                    interpolated_data[key] = None
+                    continue
+
+                # Handle strings/phases - use closest
+                if isinstance(first_val, str):
+                    closest_idx = neighbor_indices[np.argmin(np.abs(neighbor_times - t))]
+                    interpolated_data[key] = self._snapshots[closest_idx].get(key)
+                    continue
+
+                # Handle booleans - use closest
+                if isinstance(first_val, bool):
+                    closest_idx = neighbor_indices[np.argmin(np.abs(neighbor_times - t))]
+                    interpolated_data[key] = self._snapshots[closest_idx].get(key)
+                    continue
+
+                # Handle numeric scalars
+                if isinstance(first_val, (int, float)):
+                    y_vals = np.array(values, dtype=float)
+
+                    # Handle NaN values
+                    valid_mask = np.isfinite(y_vals)
+                    if not np.any(valid_mask):
+                        interpolated_data[key] = np.nan
+                        continue
+
+                    if np.sum(valid_mask) < 2:
+                        # Not enough points to interpolate
+                        interpolated_data[key] = y_vals[valid_mask][0] if np.any(valid_mask) else np.nan
+                        continue
+
+                    # Use linear interpolation
+                    valid_times = neighbor_times[valid_mask]
+                    valid_vals = y_vals[valid_mask]
+
+                    interp_func = scipy_interp.interp1d(
+                        valid_times, valid_vals,
+                        kind='linear',
+                        bounds_error=False,
+                        fill_value='extrapolate'
+                    )
+                    interpolated_data[key] = float(interp_func(t))
+                    continue
+
+                # Handle arrays/lists
+                if isinstance(first_val, (list, np.ndarray)):
+                    # For arrays, interpolate element-wise if same length
+                    arr_lengths = [len(v) if v is not None else 0 for v in values]
+
+                    if len(set(arr_lengths)) == 1 and arr_lengths[0] > 0:
+                        # All same length - interpolate each element
+                        arr_len = arr_lengths[0]
+                        result = []
+
+                        for elem_idx in range(arr_len):
+                            elem_values = np.array([v[elem_idx] for v in values], dtype=float)
+                            valid_mask = np.isfinite(elem_values)
+
+                            if np.sum(valid_mask) < 2:
+                                result.append(elem_values[0] if len(elem_values) > 0 else np.nan)
+                            else:
+                                valid_times = neighbor_times[valid_mask]
+                                valid_vals = elem_values[valid_mask]
+                                interp_func = scipy_interp.interp1d(
+                                    valid_times, valid_vals,
+                                    kind='linear',
+                                    bounds_error=False,
+                                    fill_value='extrapolate'
+                                )
+                                result.append(float(interp_func(t)))
+
+                        interpolated_data[key] = result
+                    else:
+                        # Different lengths or empty - use closest
+                        closest_idx = neighbor_indices[np.argmin(np.abs(neighbor_times - t))]
+                        interpolated_data[key] = self._snapshots[closest_idx].get(key)
+                    continue
+
+                # Default: use closest value
+                closest_idx = neighbor_indices[np.argmin(np.abs(neighbor_times - t))]
+                interpolated_data[key] = self._snapshots[closest_idx].get(key)
+
+            except Exception:
+                # If interpolation fails for any reason, use closest value
+                closest_idx = neighbor_indices[np.argmin(np.abs(neighbor_times - t))]
+                interpolated_data[key] = self._snapshots[closest_idx].get(key)
+
+        # Set the interpolated time
+        interpolated_data['t_now'] = t
+
+        return Snapshot(
+            data=interpolated_data,
+            index=-1,  # -1 indicates interpolated
+            is_interpolated=True,
+            interpolation_time=t
+        )
 
     def filter(self, phase: Optional[str] = None,
                t_min: Optional[float] = None,
