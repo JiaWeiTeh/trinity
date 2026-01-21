@@ -22,19 +22,23 @@ import src._functions.unit_conversions as cvt
 
 # Add script directory to path for local imports
 sys.path.insert(0, str(Path(__file__).parent))
-from load_snapshots import load_output
+from load_snapshots import load_output, find_data_path
 
 
 # =============================================================================
 # DATA PATHS - Configure these before running
 # =============================================================================
-# Option 1: Set paths directly
-# path2data1 = '/path/to/your/outputs/simulation1/dictionary.jsonl'
-# path2data2 = '/path/to/your/outputs/simulation2/dictionary.jsonl'
+# Option 1: Set paths directly (without extension - will search for .jsonl first, then .json)
+# base_path1 = '/path/to/your/outputs/simulation1/dictionary'
+# base_path2 = '/path/to/your/outputs/simulation2/dictionary'
 
 # Option 2: Use environment variables (recommended for portability)
-path2data1 = os.environ.get('TRINITY_DATA_PATH1', 'outputs/simulation1/dictionary.jsonl')
-path2data2 = os.environ.get('TRINITY_DATA_PATH2', 'outputs/simulation2/dictionary.jsonl')
+base_path1 = os.environ.get('TRINITY_DATA_PATH1', 'outputs/simulation1/dictionary')
+base_path2 = os.environ.get('TRINITY_DATA_PATH2', 'outputs/simulation2/dictionary')
+
+# Find data files (prioritizes .jsonl over .json)
+path2data1 = find_data_path(base_path1)
+path2data2 = find_data_path(base_path2)
 
 
 

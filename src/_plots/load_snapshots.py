@@ -138,6 +138,72 @@ def find_data_file(base_dir: Path, run_name: str) -> Optional[Path]:
     return None
 
 
+def find_data_path(base_path: Union[str, Path]) -> Path:
+    """
+    Find the data file, preferring JSONL over JSON.
+
+    Given a base path (with or without extension), searches for:
+    1. {base_path}.jsonl (if base_path has no extension)
+    2. {base_path}.json (if base_path has no extension)
+    3. {base_path} as-is (if it has an extension and exists)
+    4. {base_path with .json replaced by .jsonl} (if base_path ends with .json)
+
+    Parameters
+    ----------
+    base_path : str or Path
+        Base path to the data file. Can be:
+        - Path without extension: will try .jsonl then .json
+        - Path with .json: will try .jsonl first, then .json
+        - Path with .jsonl: will use as-is if exists
+
+    Returns
+    -------
+    Path
+        Path to the found data file
+
+    Raises
+    ------
+    FileNotFoundError
+        If no data file is found
+    """
+    base_path = _ensure_path(base_path)
+
+    # If the path exists as-is, check if we should prefer .jsonl
+    if base_path.suffix == '.json':
+        # Try .jsonl first
+        jsonl_path = base_path.with_suffix('.jsonl')
+        if jsonl_path.exists():
+            return jsonl_path
+        if base_path.exists():
+            return base_path
+    elif base_path.suffix == '.jsonl':
+        if base_path.exists():
+            return base_path
+        # Fall back to .json
+        json_path = base_path.with_suffix('.json')
+        if json_path.exists():
+            return json_path
+    else:
+        # No extension - try adding .jsonl then .json
+        jsonl_path = Path(str(base_path) + '.jsonl')
+        if jsonl_path.exists():
+            return jsonl_path
+        json_path = Path(str(base_path) + '.json')
+        if json_path.exists():
+            return json_path
+        # Also try as directory with dictionary files
+        if base_path.is_dir():
+            for suffix in ['.jsonl', '.json']:
+                dict_path = base_path / f'dictionary{suffix}'
+                if dict_path.exists():
+                    return dict_path
+
+    raise FileNotFoundError(
+        f"No data file found for: {base_path}\n"
+        f"Tried: .jsonl and .json variants"
+    )
+
+
 def load_output(file_path: Union[str, Path]) -> TrinityOutput:
     """
     Load simulation data as a TrinityOutput object for clean data access.
