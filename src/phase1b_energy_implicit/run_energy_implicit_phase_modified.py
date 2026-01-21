@@ -573,7 +573,12 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         # ---------------------------------------------------------------------
         # Compute shell mass and forces BEFORE ODE - all values consistent at t_now
         # ---------------------------------------------------------------------
-        mShell, mShell_dot = mass_profile.get_mass_profile(R2, params, return_mdot=True, rdot=v2)
+        is_collapse = params.get('isCollapse', None)
+        if is_collapse and hasattr(is_collapse, 'value') and is_collapse.value:
+            mShell = params['shell_mass'].value
+            mShell_dot = 0.0
+        else:
+            mShell, mShell_dot = mass_profile.get_mass_profile(R2, params, return_mdot=True, rdot=v2)
         params['shell_mass'].value = mShell
         params['shell_massDot'].value = mShell_dot
 
