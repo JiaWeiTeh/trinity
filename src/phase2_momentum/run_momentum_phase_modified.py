@@ -487,20 +487,24 @@ def run_phase_momentum(params) -> MomentumPhaseResults:
 
         # ---------------------------------------------------------------------
         # Get shell mass
+        # Shell mass should NEVER decrease - once mass is swept up, it stays in shell
         # ---------------------------------------------------------------------
-        is_collapse = params.get('isCollapse', None)
-        if is_collapse and hasattr(is_collapse, 'value') and is_collapse.value:
-            mShell = params['shell_mass'].value
+        mShell_new, mShell_dot = mass_profile.get_mass_profile(
+            R2, params, return_mdot=True, rdot=v2
+        )
+        # Handle array returns
+        if hasattr(mShell_new, '__len__') and len(mShell_new) == 1:
+            mShell_new = float(mShell_new[0])
+        if hasattr(mShell_dot, '__len__') and len(mShell_dot) == 1:
+            mShell_dot = float(mShell_dot[0])
+
+        prev_mShell = params['shell_mass'].value
+        if prev_mShell > 0 and mShell_new < prev_mShell:
+            # Shell mass cannot decrease - keep previous value
+            mShell = prev_mShell
             mShell_dot = 0.0
         else:
-            mShell, mShell_dot = mass_profile.get_mass_profile(
-                R2, params, return_mdot=True, rdot=v2
-            )
-            # Handle array returns
-            if hasattr(mShell, '__len__') and len(mShell) == 1:
-                mShell = float(mShell[0])
-            if hasattr(mShell_dot, '__len__') and len(mShell_dot) == 1:
-                mShell_dot = float(mShell_dot[0])
+            mShell = mShell_new
 
         params['shell_mass'].value = mShell
         params['shell_massDot'].value = mShell_dot

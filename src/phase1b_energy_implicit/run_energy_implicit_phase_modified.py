@@ -572,13 +572,16 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
 
         # ---------------------------------------------------------------------
         # Compute shell mass and forces BEFORE ODE - all values consistent at t_now
+        # Shell mass should NEVER decrease - once mass is swept up, it stays in shell
         # ---------------------------------------------------------------------
-        is_collapse = params.get('isCollapse', None)
-        if is_collapse and hasattr(is_collapse, 'value') and is_collapse.value:
-            mShell = params['shell_mass'].value
+        mShell_new, mShell_dot = mass_profile.get_mass_profile(R2, params, return_mdot=True, rdot=v2)
+        prev_mShell = params['shell_mass'].value
+        if prev_mShell > 0 and mShell_new < prev_mShell:
+            # Shell mass cannot decrease - keep previous value
+            mShell = prev_mShell
             mShell_dot = 0.0
         else:
-            mShell, mShell_dot = mass_profile.get_mass_profile(R2, params, return_mdot=True, rdot=v2)
+            mShell = mShell_new
         params['shell_mass'].value = mShell
         params['shell_massDot'].value = mShell_dot
 
