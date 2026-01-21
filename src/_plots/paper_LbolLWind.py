@@ -6,11 +6,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 from pathlib import Path
 from matplotlib.lines import Line2D
-import matplotlib.transforms as mtransforms
 
 # Add project root to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from src._output.trinity_reader import load_output, find_data_file, resolve_data_input
+from src._plots.plot_markers import add_plot_markers, get_marker_legend_handles
 
 print("...plotting Qi(or Li) vs Lmech_total with ratio on twin axis")
 
@@ -109,73 +109,20 @@ def load_run(data_path: Path):
     return t, phase, Li, Lmech_total, Qi, R2, rcloud, isCollapse
 
 
-def add_phase_and_cloud_markers(ax, t, phase, R2, rcloud, isCollapse=None, label_pad_points=4):
-    """Phase T/M markers + breakout line + collapse line."""
-    fig = ax.figure
-
-    # --- collapse line: first time isCollapse becomes True
-    if isCollapse is not None:
-        collapse_mask = np.array([bool(c) for c in isCollapse])
-        idx_collapse = np.flatnonzero(collapse_mask)
-        if idx_collapse.size:
-            x_collapse = t[idx_collapse[0]]
-            ax.axvline(x_collapse, color="purple", ls="--", lw=1.8, alpha=0.6, zorder=0)
-            text_trans = ax.get_xaxis_transform() + mtransforms.ScaledTranslation(
-                label_pad_points/72, 0, fig.dpi_scale_trans
-            )
-            ax.text(
-                x_collapse, 0.05, "Collapse",
-                transform=text_trans,
-                ha="left", va="bottom",
-                fontsize=8, color="purple", alpha=0.8,
-                rotation=90, zorder=6
-            )
-
-    if PHASE_LINE:
-        # energy/implicit -> transition (T)
-        idx_T = np.flatnonzero(
-            np.isin(phase[:-1], ["energy", "implicit"]) & (phase[1:] == "transition")
-        ) + 1
-        for x in t[idx_T]:
-            ax.axvline(x, color="r", lw=2, alpha=0.2, zorder=0)
-            ax.text(
-                x, 0.97, "T",
-                transform=ax.get_xaxis_transform(),
-                ha="center", va="top",
-                fontsize=8, color="r", alpha=0.6,
-                bbox=dict(facecolor="white", edgecolor="none", alpha=0.7, pad=0.2),
-                zorder=6
-            )
-
-        # transition -> momentum (M)
-        idx_M = np.flatnonzero((phase[:-1] == "transition") & (phase[1:] == "momentum")) + 1
-        for x in t[idx_M]:
-            ax.axvline(x, color="r", lw=2, alpha=0.2, zorder=0)
-            ax.text(
-                x, 0.97, "M",
-                transform=ax.get_xaxis_transform(),
-                ha="center", va="top",
-                fontsize=8, color="r", alpha=0.6,
-                bbox=dict(facecolor="white", edgecolor="none", alpha=0.7, pad=0.2),
-                zorder=6
-            )
-
-    if CLOUD_LINE and np.isfinite(rcloud):
-        idx = np.flatnonzero(np.isfinite(R2) & (R2 > rcloud))
-        if idx.size:
-            x_rc = t[idx[0]]
-            ax.axvline(x_rc, color="k", ls="--", alpha=0.25, zorder=0)
-
-            text_trans = ax.get_xaxis_transform() + mtransforms.ScaledTranslation(
-                label_pad_points/72, 0, fig.dpi_scale_trans
-            )
-            ax.text(
-                x_rc, 0.05, r"$R_2 = R_{\rm cloud}$",
-                transform=text_trans,
-                ha="left", va="bottom",
-                fontsize=8, color="k", alpha=0.8,
-                rotation=90, zorder=6
-            )
+def add_phase_and_cloud_markers(ax, t, phase, R2, rcloud, isCollapse=None, label_pad_points=4,
+                                 show_collapse=True):
+    """Phase T/M markers + breakout line + collapse line using helper module."""
+    add_plot_markers(
+        ax, t,
+        phase=phase if PHASE_LINE else None,
+        R2=R2 if CLOUD_LINE else None,
+        rcloud=rcloud if CLOUD_LINE else None,
+        isCollapse=isCollapse if show_collapse else None,
+        show_phase=PHASE_LINE,
+        show_rcloud=CLOUD_LINE,
+        show_collapse=show_collapse,
+        label_pad_points=label_pad_points
+    )
 
 
 def plot_panel(ax, t, phase, Li, Lmech_total, Qi, R2, rcloud, isCollapse=None):
@@ -377,10 +324,8 @@ def plot_grid():
             main_handle,
             Line2D([0], [0], color=C_LWIND, lw=1.8, label=r"$L_{\rm Wind}$"),
             ratio_handle,
-            Line2D([0], [0], color="k", ls="--", alpha=0.6, lw=1.6, label=r"$R_2>R_{\rm cloud}$"),
-            Line2D([0], [0], color="r", lw=2, alpha=0.3, label=r"phase: $T$ (→transition), $M$ (→momentum)"),
-            Line2D([0], [0], color="purple", ls="--", alpha=0.6, lw=1.8, label="Collapse"),
         ]
+        handles.extend(get_marker_legend_handles())
 
         leg = fig.legend(
             handles=handles,

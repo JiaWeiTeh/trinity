@@ -14,6 +14,7 @@ from pathlib import Path
 # Add project root to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from src._output.trinity_reader import load_output, find_data_file, resolve_data_input
+from src._plots.plot_markers import add_collapse_marker, get_marker_legend_handles
 
 print("...plotting escape fraction comparison")
 
@@ -116,19 +117,8 @@ def plot_from_path(data_input: str, output_dir: str = None):
 
     ax.plot(t, fesc_plot, lw=1.8, alpha=0.9, label=r"$f_{\rm esc}$")
 
-    # --- collapse line: first time isCollapse becomes True
-    collapse_mask = np.array([bool(c) for c in isCollapse])
-    idx_collapse = np.flatnonzero(collapse_mask)
-    if idx_collapse.size:
-        x_collapse = t[idx_collapse[0]]
-        ax.axvline(x_collapse, color="purple", ls="--", lw=1.8, alpha=0.6, zorder=0)
-        ax.text(
-            x_collapse, 0.95, "Collapse",
-            transform=ax.get_xaxis_transform(),
-            ha="left", va="top",
-            fontsize=8, color="purple", alpha=0.8,
-            rotation=90, zorder=5
-        )
+    # --- collapse line using helper module
+    add_collapse_marker(ax, t, isCollapse)
 
     ax.set_title(f"Escape Fraction: {data_path.parent.name}")
     ax.set_xlabel("t [Myr]")
@@ -196,12 +186,8 @@ def plot_grid():
                         all_line_handles.append(line)
                         all_line_labels.append(rf"$\epsilon={eps:.2f}$")
 
-                    # --- collapse line: first time isCollapse becomes True
-                    collapse_mask = np.array([bool(c) for c in isCollapse])
-                    idx_collapse = np.flatnonzero(collapse_mask)
-                    if idx_collapse.size:
-                        x_collapse = t[idx_collapse[0]]
-                        ax.axvline(x_collapse, color="purple", ls="--", lw=1.8, alpha=0.4, zorder=0)
+                    # --- collapse line using helper module (no label since many runs per subplot)
+                    add_collapse_marker(ax, t, isCollapse, show_label=False)
 
                 except Exception as e:
                     print(f"Error in {run_name}: {e}")
@@ -220,10 +206,11 @@ def plot_grid():
 
         # global legend (cleaner than repeating per axis)
         if all_line_handles:
-            # Add collapse indicator to legend
-            from matplotlib.lines import Line2D
-            all_line_handles.append(Line2D([0], [0], color="purple", ls="--", alpha=0.6, lw=1.8))
-            all_line_labels.append("Collapse")
+            # Add collapse indicator to legend using helper
+            collapse_handles = get_marker_legend_handles(include_phase=False, include_rcloud=False, include_collapse=True)
+            for h in collapse_handles:
+                all_line_handles.append(h)
+                all_line_labels.append(h.get_label())
             leg = fig.legend(
                 handles=all_line_handles,
                 labels=all_line_labels,
