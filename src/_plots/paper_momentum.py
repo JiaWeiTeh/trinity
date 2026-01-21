@@ -11,11 +11,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 from pathlib import Path
 from matplotlib.lines import Line2D
-import matplotlib.transforms as mtransforms
 
 # Add project root to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from src._output.trinity_reader import load_output, find_data_file, resolve_data_input
+from src._plots.plot_markers import add_plot_markers, get_marker_legend_handles
 
 print("...plotting integrated momentum (line plots)")
 
@@ -195,12 +195,12 @@ def plot_from_path(data_input: str, output_dir: str = None):
     ax.set_xlabel("t [Myr]")
     ax.set_ylabel(r"$p(t)=\int F\,dt$")
 
-    # Legend
+    # Legend - force lines + markers from helper
     handles = [Line2D([0], [0], color="black", lw=1.6, ls="-", label="Gravity")]
     for _, lab, c in FORCE_FIELDS[1:]:
         handles.append(Line2D([0], [0], color=c, lw=1.6, label=lab))
     handles.append(Line2D([0], [0], color="darkgrey", lw=2.4, label="Net"))
-    handles.append(Line2D([0], [0], color="purple", ls="--", alpha=0.6, lw=1.8, label="Collapse"))
+    handles.extend(get_marker_legend_handles())
     ax.legend(handles=handles, loc="upper left", framealpha=0.9)
 
     plt.tight_layout()
@@ -246,80 +246,19 @@ def plot_momentum_lines_on_ax(
     ax, t, r, phase, forces, rcloud, isCollapse=None,
     smooth_window=None, smooth_mode="edge",
     lw=1.6, net_lw=4, alpha=0.8, phase_change=PHASE_CHANGE,
+    show_rcloud=True, show_collapse=True,
 ):
-    fig = ax.figure
-
-    # --- collapse line: first time isCollapse becomes True
-    if isCollapse is not None:
-        collapse_mask = np.array([bool(c) for c in isCollapse])
-        idx_collapse = np.flatnonzero(collapse_mask)
-        if idx_collapse.size:
-            x_collapse = t[idx_collapse[0]]
-            ax.axvline(x_collapse, color="purple", ls="--", lw=1.8, alpha=0.6, zorder=0)
-            text_trans = ax.get_xaxis_transform() + mtransforms.ScaledTranslation(
-                4/72, 0, fig.dpi_scale_trans
-            )
-            ax.text(
-                x_collapse, 0.05, "Collapse",
-                transform=text_trans,
-                ha="left", va="bottom",
-                fontsize=8, color="purple", alpha=0.8,
-                rotation=90, zorder=5
-            )
-
-    # --- phase-change line:
-    # --- phase lines with mini labels
-    if phase_change:
-        # energy/implicit -> transition  (T)
-        idx_T = np.flatnonzero(
-            np.isin(phase[:-1], ["energy", "implicit"]) & (phase[1:] == "transition")
-        ) + 1
-        for x in t[idx_T]:
-            ax.axvline(x, color="r", lw=2, alpha=0.2, zorder=0)
-            ax.text(
-                x, 0.95, "T",
-                transform=ax.get_xaxis_transform(),
-                ha="center", va="top",
-                fontsize=8, color="r", alpha=0.6,
-                bbox=dict(facecolor="white", edgecolor="none", alpha=0.7, pad=0.2),
-                zorder=5
-            )
-
-        # transition -> momentum  (M)
-        idx_M = np.flatnonzero((phase[:-1] == "transition") & (phase[1:] == "momentum")) + 1
-        for x in t[idx_M]:
-            ax.axvline(x, color="r", lw=2, alpha=0.2, zorder=0)
-            ax.text(
-                x, 0.95, "M",
-                transform=ax.get_xaxis_transform(),
-                ha="center", va="top",
-                fontsize=8, color="r", alpha=0.6,
-                bbox=dict(facecolor="white", edgecolor="none", alpha=0.7, pad=0.2),
-                zorder=5
-            )
-
-    # --- first time r exceeds rCloud (behind)
-    if np.isfinite(rcloud):
-        idx = np.flatnonzero(r > rcloud)
-        if idx.size:
-            x_rc = t[idx[0]]
-            ax.axvline(x_rc, color="k", ls="--", alpha=0.2, zorder=0)
-
-            fig = ax.figure  # <-- use the figure owning this axis
-            text_trans = ax.get_xaxis_transform() + mtransforms.ScaledTranslation(
-                4/72, 0, fig.dpi_scale_trans
-            )
-
-            ax.text(
-                x_rc, 0.05, r"$R_2 = R_{\rm cloud}$",
-                transform=text_trans,
-                ha="left", va="bottom",
-                fontsize=8,
-                color="k",
-                alpha=0.8,
-                rotation=90
-            )
-
+    # --- Add all time-axis markers using helper module
+    add_plot_markers(
+        ax, t,
+        phase=phase if phase_change else None,
+        R2=r if show_rcloud else None,
+        rcloud=rcloud if show_rcloud else None,
+        isCollapse=isCollapse if show_collapse else None,
+        show_phase=phase_change,
+        show_rcloud=show_rcloud,
+        show_collapse=show_collapse
+    )
 
     # --- optional smoothing before integrating
     F = smooth_2d(forces, smooth_window, mode=smooth_mode)
@@ -468,14 +407,14 @@ def plot_grid():
                 if i == nrows - 1:
                     ax.set_xlabel("t [Myr]")
 
-        # global legend
+        # global legend - force lines + markers from helper
         handles = []
         handles.append(Line2D([0], [0], color="black", lw=1.6, ls="-", label="Gravity"))
         for _, lab, c in FORCE_FIELDS[1:]:
             handles.append(Line2D([0], [0], color=c, lw=1.6, label=lab))
         handles.append(Line2D([0], [0], color="darkgrey", lw=2.4,
                               label=r"Net: $| \int (\sum F_{\rm out} - F_{\rm grav})\,dt |$"))
-        handles.append(Line2D([0], [0], color="purple", ls="--", alpha=0.6, lw=1.8, label="Collapse"))
+        handles.extend(get_marker_legend_handles())
 
         leg = fig.legend(
             handles=handles, loc="upper center", ncol=3,

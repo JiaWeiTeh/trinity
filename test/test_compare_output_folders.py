@@ -37,6 +37,9 @@ import re
 
 # Ensure src is in path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from src._plots.plot_markers import (
+    find_phase_transitions, find_rcloud_crossing, find_collapse_time
+)
 
 # =============================================================================
 # Configuration
@@ -376,6 +379,8 @@ def find_phase_transition_times(snapshots: list) -> dict:
     Find times when simulation crosses into transition and momentum phases,
     when R2 exceeds rCloud, and when collapse begins.
 
+    Uses helper functions from plot_markers module for consistent detection.
+
     Parameters
     ----------
     snapshots : list
@@ -403,49 +408,22 @@ def find_phase_transition_times(snapshots: list) -> dict:
     # Sort snapshots by time
     sorted_snaps = sorted(snapshots, key=lambda s: s.get('t_now', 0))
 
-    # Track previous phase for transition detection
-    prev_phase = None
+    # Extract arrays for helper functions
+    t = np.array([s.get('t_now', np.nan) for s in sorted_snaps], dtype=float)
+    phase = np.array([s.get('current_phase', '') for s in sorted_snaps])
+    R2 = np.array([s.get('R2', np.nan) for s in sorted_snaps], dtype=float)
+    isCollapse = np.array([s.get('isCollapse', False) for s in sorted_snaps])
 
-    for snap in sorted_snaps:
-        t = snap.get('t_now')
-        if t is None:
-            continue
+    # Get rCloud from first snapshot (constant parameter)
+    rCloud = sorted_snaps[0].get('rCloud', np.nan) if sorted_snaps else np.nan
 
-        # Check for phase transitions
-        phase = snap.get('current_phase')
-        if phase is not None and prev_phase is not None:
-            # Detect transition phase entry
-            # Phase can be 'transition', '2', '1c', or similar
-            phase_str = str(phase).lower()
-            prev_str = str(prev_phase).lower()
+    # Use helper functions for detection
+    transitions = find_phase_transitions(t, phase)
+    result['t_transition'] = transitions['t_transition'][0] if transitions['t_transition'] else None
+    result['t_momentum'] = transitions['t_momentum'][0] if transitions['t_momentum'] else None
 
-            if result['t_transition'] is None:
-                if ('transition' in phase_str or phase_str == '2' or phase_str == '1c') and \
-                   ('transition' not in prev_str and prev_str != '2' and prev_str != '1c'):
-                    result['t_transition'] = t
-
-            # Detect momentum phase entry
-            if result['t_momentum'] is None:
-                if ('momentum' in phase_str or phase_str == '3') and \
-                   ('momentum' not in prev_str and prev_str != '3'):
-                    result['t_momentum'] = t
-
-        prev_phase = phase
-
-        # Check for R2 > rCloud
-        if result['t_R2_gt_rCloud'] is None:
-            R2 = snap.get('R2')
-            rCloud = snap.get('rCloud')
-            if R2 is not None and rCloud is not None:
-                if isinstance(R2, (int, float)) and isinstance(rCloud, (int, float)):
-                    if R2 > rCloud:
-                        result['t_R2_gt_rCloud'] = t
-
-        # Check for collapse (isCollapse becomes True)
-        if result['t_collapse'] is None:
-            isCollapse = snap.get('isCollapse')
-            if isCollapse is not None and bool(isCollapse):
-                result['t_collapse'] = t
+    result['t_R2_gt_rCloud'] = find_rcloud_crossing(t, R2, rCloud)
+    result['t_collapse'] = find_collapse_time(t, isCollapse)
 
     return result
 

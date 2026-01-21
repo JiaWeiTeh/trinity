@@ -79,7 +79,7 @@ class SweepProgress:
 def generate_param_file(
     params: Dict[str, Any],
     run_name: str,
-    base_output_dir: str
+    run_output_dir: str
 ) -> str:
     """
     Generate parameter file content for a single simulation.
@@ -90,8 +90,8 @@ def generate_param_file(
         Parameter dictionary for this simulation
     run_name : str
         Name for this run (e.g., '1e5_sfe001_n1e2')
-    base_output_dir : str
-        Base output directory from sweep file
+    run_output_dir : str
+        Output directory for this specific run (e.g., outputs/sweep/1e5_sfe001_n1e2/)
 
     Returns
     -------
@@ -104,7 +104,7 @@ def generate_param_file(
         f"# Generated: {datetime.now().isoformat()}",
         "",
         f"model_name    {run_name}",
-        f"path2output    {base_output_dir}",
+        f"path2output    {run_output_dir}",
     ]
 
     for key, value in params.items():
@@ -166,11 +166,13 @@ def run_single_simulation(
     start_time = time.time()
 
     # Create output directory for this run
+    # Each run gets its own subfolder so outputs don't overwrite each other
     output_dir = Path(base_output_dir) / run_name
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Create parameter file in the output directory
-    param_content = generate_param_file(params, run_name, base_output_dir)
+    # path2output points to the run-specific folder, not the base sweep folder
+    param_content = generate_param_file(params, run_name, str(output_dir))
     param_path = output_dir / f"{run_name}.param"
 
     try:
