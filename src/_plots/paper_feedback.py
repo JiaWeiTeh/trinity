@@ -56,9 +56,9 @@ FORCE_FIELDS_BASE = [
 # --- optional single-run view (set to None for full grid)
 ONLY_M   = '1e7'   # e.g. "1e5" or None
 ONLY_N   = '1e4'   # e.g. "1e4" or None
-ONLY_SFE = '001'   # e.g. "001" or None
+ONLY_SFE = '020'   # e.g. "001" or None
 
-ONLY_M = ONLY_N = ONLY_SFE = None
+# ONLY_M = ONLY_N = ONLY_SFE = None
 
 # --- output - save to project root's fig/ directory
 FIG_DIR = Path(__file__).parent.parent.parent / "fig"
