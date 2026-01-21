@@ -235,10 +235,11 @@ def plot_phase_portrait(output):
     ax3 = axes[1, 0]
     ax3.plot(t, v2_kms, 'g-', lw=1.5)
 
-    # Mark specific times
+    # Mark specific times (using interpolation for smooth values)
     for t_mark in [0.01, 0.1, 0.5]:
         if t_mark <= t.max():
-            snap = impl.get_at_time(t_mark)
+            # quiet=True suppresses interpolation messages during plotting
+            snap = impl.get_at_time(t_mark, quiet=True)
             v_at_t = snap['v2'] * 0.978
             ax3.axvline(t_mark, color='gray', ls=':', alpha=0.5)
             ax3.plot(snap.t_now, v_at_t, 'ro', ms=8)
