@@ -2,28 +2,55 @@
 # -*- coding: utf-8 -*-
 """
 TRINITY Output Reader
+=====================
 
 A helper class for reading and processing TRINITY simulation output files (.jsonl).
-Similar to astropy.io.fits, provides easy access to simulation data.
+Similar to astropy.io.fits, provides easy access to simulation data with a clean,
+Pythonic API.
 
-Usage:
+This module is the recommended way to access TRINITY output data, replacing direct
+JSON parsing in plotting and analysis scripts.
+
+Installation
+------------
+This module is part of the TRINITY package. Import it as:
+
+    from src._output.trinity_reader import TrinityOutput
+
+Or from plotting scripts in src/_plots/:
+
+    from load_snapshots import load_output
+    output = load_output('path/to/output.jsonl')
+
+Basic Usage
+-----------
     from src._output.trinity_reader import TrinityOutput
 
     # Open a TRINITY output file
     output = TrinityOutput.open('path/to/output.jsonl')
 
     # Get information about the output
-    output.info()
+    output.info()              # Summary
+    output.info(verbose=True)  # Detailed parameter documentation
 
-    # Access time series data
+    # Access time series data as numpy arrays
     times = output.get('t_now')
     radii = output.get('R2')
+    velocity = output.get('v2')
 
-    # Filter by phase
+    # For non-numeric data, disable array conversion
+    phases = output.get('current_phase', as_array=False)
+
+    # Filter by phase or time range
     implicit_data = output.filter(phase='implicit')
+    early_data = output.filter(t_max=1.0)
 
-    # Get a specific snapshot
+    # Get a specific snapshot by index
     snapshot = output[100]
+    print(snapshot['R2'], snapshot['v2'])
+
+    # Get snapshot closest to a specific time
+    snap_at_1myr = output.get_at_time(1.0)
 
     # Get snapshot at a specific time (interpolated by default)
     snap = output.get_at_time(0.5)  # Returns interpolated snapshot
@@ -31,7 +58,55 @@ Usage:
 
     # Iterate over snapshots
     for snap in output:
-        print(snap['t_now'], snap['R2'])
+        print(snap.t_now, snap['R2'])
+
+    # Convert to pandas DataFrame (scalar values only)
+    df = output.to_dataframe()
+
+Key Parameters
+--------------
+The most commonly used output parameters are:
+
+**Dynamical Variables:**
+- t_now: Current simulation time [Myr]
+- R2: Outer bubble/shell radius [pc]
+- v2: Shell expansion velocity [pc/Myr]
+- Eb: Bubble thermal energy [erg]
+- T0: Characteristic bubble temperature [K]
+- R1: Inner bubble radius (wind termination shock) [pc]
+- Pb: Bubble pressure [dyn/cm^2]
+
+**Cooling Parameters (from beta-delta solver):**
+- cool_beta: Pressure evolution parameter β = -(t/Pb)(dPb/dt)
+- cool_delta: Temperature evolution parameter δ
+
+**Forces:**
+- F_grav: Gravitational force
+- F_ram: Ram pressure force (total)
+- F_ion_out: Ionization force (outward)
+- F_rad: Radiation pressure force
+
+**Residual Diagnostics (beta-delta solver):**
+- residual_Edot1_guess: Edot from beta [erg/Myr]
+- residual_Edot2_guess: Edot from energy balance [erg/Myr]
+- residual_T1_guess: Bubble temperature T_bubble [K]
+- residual_T2_guess: Target temperature T0 [K]
+
+Use output.info(verbose=True) for a complete list of available parameters
+with documentation.
+
+Snapshot Consistency
+--------------------
+As of January 2026, TRINITY snapshots are saved BEFORE ODE integration,
+ensuring all values in a snapshot correspond to the same timestamp (t_now).
+This includes: t_now, R2, v2, Eb, T0, feedback properties, shell properties,
+bubble properties, forces, and beta-delta residuals.
+
+See Also
+--------
+- src/_plots/load_snapshots.py: Convenience wrapper with find_data_file()
+- example_scripts/example_reader_overview.py: Comprehensive usage examples
+- example_scripts/example_plot_radius_vs_time.py: Plotting examples
 
 @author: TRINITY Team
 """

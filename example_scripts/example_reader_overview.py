@@ -2,12 +2,38 @@
 # -*- coding: utf-8 -*-
 """
 TRINITY Output Reader - Overview and Examples
+==============================================
 
 This script demonstrates the various utilities provided by the TrinityOutput
 reader class for analyzing TRINITY simulation outputs.
 
+The TrinityOutput reader (src/_output/trinity_reader.py) provides a clean,
+Pythonic API for accessing simulation data, similar to astropy.io.fits.
+
+Key Features Demonstrated
+-------------------------
+1. Opening output files with TrinityOutput.open()
+2. Getting summary info with .info() and .info(verbose=True)
+3. Extracting time series as numpy arrays with .get()
+4. Indexing and slicing snapshots
+5. Finding snapshots at specific times with .get_at_time()
+6. Filtering by phase or time range with .filter()
+7. Converting to pandas DataFrame with .to_dataframe()
+
+Snapshot Consistency Note
+-------------------------
+As of January 2026, TRINITY snapshots are saved BEFORE ODE integration,
+ensuring all values in a snapshot correspond to the same timestamp (t_now).
+This includes dynamical variables, forces, and beta-delta residuals.
+
 Run from the trinity root directory:
     python example_scripts/example_reader_overview.py
+
+See Also
+--------
+- example_plot_radius_vs_time.py: Plotting examples
+- src/_output/trinity_reader.py: Full reader implementation
+- src/_plots/load_snapshots.py: Convenience wrapper for plotting scripts
 
 @author: TRINITY Team
 """
