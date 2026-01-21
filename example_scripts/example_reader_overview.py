@@ -150,15 +150,27 @@ def main():
     # -------------------------------------------------------------------------
     print_section("6. Finding snapshots at specific times (.get_at_time())")
 
+    print("  Two modes available:")
+    print("    - 'interpolate' (default): Interpolates values from neighboring snapshots")
+    print("    - 'closest': Returns the actual snapshot closest to requested time")
+    print()
+
     target_times = [0.01, 0.1, 0.5]
+
+    print("  Mode='interpolate' (default - values are interpolated):")
     for t in target_times:
-        snap = output.get_at_time(t)
-        r2 = output.get_at_time(t, 'R2')
-        print(f"  t ~ {t:.2f} Myr:")
-        print(f"    -> Actual time: {snap.t_now:.4e} Myr")
-        print(f"    -> R2 = {r2:.4e} pc")
-        print(f"    -> Phase: {snap.phase}")
-        print()
+        snap = output.get_at_time(t, quiet=True)  # quiet=True to suppress messages
+        r2 = output.get_at_time(t, 'R2', quiet=True)
+        interp_str = " [INTERPOLATED]" if snap.is_interpolated else ""
+        print(f"    t = {t:.2f} Myr -> t_now={snap.t_now:.4e}, R2={r2:.4e}{interp_str}")
+    print()
+
+    print("  Mode='closest' (returns actual snapshot):")
+    for t in target_times:
+        snap = output.get_at_time(t, mode='closest', quiet=True)
+        r2 = output.get_at_time(t, 'R2', mode='closest', quiet=True)
+        print(f"    t ~ {t:.2f} Myr -> t_now={snap.t_now:.4e}, R2={r2:.4e}, phase={snap.phase}")
+    print()
 
     # -------------------------------------------------------------------------
     # 7. Filtering snapshots
@@ -276,7 +288,8 @@ def main():
     2. Quick overview:        output.info() / output.info(verbose=True)
     3. Time series access:    output.get('parameter_name')
     4. Snapshot access:       output[index] / output[start:stop]
-    5. Time-based lookup:     output.get_at_time(t)
+    5. Time-based lookup:     output.get_at_time(t)  # interpolated by default
+                              output.get_at_time(t, mode='closest')  # exact snapshot
     6. Filtering:             output.filter(phase=, t_min=, t_max=)
     7. Iteration:             for snap in output: ...
     8. pandas integration:    output.to_dataframe()

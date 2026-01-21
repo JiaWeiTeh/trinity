@@ -11,11 +11,11 @@ USAGE:
     Configure the output base directory before running, or set environment variable:
     - TRINITY_OUTPUT_DIR: Base directory containing simulation outputs
 
-    Expected directory structure:
-        {TRINITY_OUTPUT_DIR}/1e5_sfe030_n1e4_PISM0/dictionary.jsonl
-        {TRINITY_OUTPUT_DIR}/1e5_sfe030_n1e4_PISM1e4/dictionary.jsonl
-        {TRINITY_OUTPUT_DIR}/1e5_sfe030_n1e4_PISM1e5/dictionary.jsonl
-        {TRINITY_OUTPUT_DIR}/1e5_sfe030_n1e4_PISM1e6/dictionary.jsonl
+    Expected directory structure (searches for .jsonl first, then .json):
+        {TRINITY_OUTPUT_DIR}/1e5_sfe030_n1e4_PISM0/dictionary.jsonl (or .json)
+        {TRINITY_OUTPUT_DIR}/1e5_sfe030_n1e4_PISM1e4/dictionary.jsonl (or .json)
+        {TRINITY_OUTPUT_DIR}/1e5_sfe030_n1e4_PISM1e5/dictionary.jsonl (or .json)
+        {TRINITY_OUTPUT_DIR}/1e5_sfe030_n1e4_PISM1e6/dictionary.jsonl (or .json)
 """
 
 import os
@@ -27,7 +27,7 @@ import src._functions.unit_conversions as cvt
 
 # Add script directory to path for local imports
 sys.path.insert(0, str(Path(__file__).parent))
-from load_snapshots import load_output
+from load_snapshots import load_output, find_data_path
 
 # Output - save to project root's fig/ directory
 FIG_DIR = Path(__file__).parent.parent.parent / "fig"
@@ -53,8 +53,9 @@ alist = [0.3, 0.4, 0.6, 0.8, 1]
 pressurelist = ['0', '10^4', '10^5', '10^6']
 
 for ii, pressure in enumerate(['0', '1e4', '1e5', '1e6']):
-    # Path to data file (can be .json or .jsonl)
-    path2data = f'{OUTPUT_DIR}/1e5_sfe030_n1e4_PISM{pressure}/dictionary.jsonl'
+    # Path to data file (prioritizes .jsonl over .json)
+    base_path = f'{OUTPUT_DIR}/1e5_sfe030_n1e4_PISM{pressure}/dictionary'
+    path2data = find_data_path(base_path)
 
     # Load using TrinityOutput reader
     output = load_output(path2data)

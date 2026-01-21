@@ -370,6 +370,9 @@ def run_phase_transition(params) -> TransitionPhaseResults:
     while t_now < tmax and segment_count < MAX_SEGMENTS:
         segment_count += 1
 
+        # Log current state at beginning of each segment
+        logger.info(f"[Transition] t={t_now:.6e} Myr, R2={R2:.4e} pc, v2={v2:.4e} pc/Myr, Eb={Eb:.4e}, T0={T0:.4e} K")
+
         # ---------------------------------------------------------------------
         # Update params with current state
         # ---------------------------------------------------------------------
