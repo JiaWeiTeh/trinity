@@ -81,7 +81,7 @@ DEFAULT_SFE = ["001", "010", "030", "050", "080"] #"020"
 DEFAULT_NCORE = ["1e2", "1e4"]  # List of nCore values - produces one plot per nCore
 DEFAULT_TIMES = [1.0, 1.5, 2.0, 2.5]  # Myr
 
-# Smoothing options: 'none', 'gaussian', 'contour'
+# Smoothing options: 'none', 'gaussian', 'interp'
 DEFAULT_SMOOTH = 'none'
 
 # Axis mode options:
@@ -305,11 +305,11 @@ def apply_smoothing(grid, method='none', sigma=0.8, upsample=4):
     method : str
         'none': no smoothing (discrete grid)
         'gaussian': Gaussian blur for soft transitions
-        'contour': upsampled nearest-neighbor for smooth boundaries
+        'interp': high-resolution interpolation for continuous mode
     sigma : float
         Gaussian sigma for 'gaussian' method
     upsample : int
-        Upsampling factor for 'contour' method
+        Upsampling factor for interpolation methods
 
     Returns
     -------
@@ -349,34 +349,59 @@ def apply_smoothing(grid, method='none', sigma=0.8, upsample=4):
 
         return grid_smooth, None
 
-    elif method == 'contour':
-        # Upsample using nearest-neighbor for sharp but smooth boundaries
+    elif method == 'interp':
+        # High-resolution interpolation using probability-based blending
+        # Better for continuous coordinate mode
         new_sfe = n_sfe * upsample
         new_mass = n_mass * upsample
 
-        # Create coordinate grids
-        x_old = np.arange(n_mass)
+        n_forces = len(FORCE_FIELDS)
+
+        # Create coordinate arrays
         y_old = np.arange(n_sfe)
-        x_new = np.linspace(0, n_mass - 1, new_mass)
+        x_old = np.arange(n_mass)
         y_new = np.linspace(0, n_sfe - 1, new_sfe)
+        x_new = np.linspace(0, n_mass - 1, new_mass)
 
-        # Use nearest-neighbor interpolation for each force type
-        # to maintain discrete categories
-        grid_smooth = np.zeros((new_sfe, new_mass))
+        # Create binary masks for each force type
+        masks = np.zeros((n_forces, n_sfe, n_mass))
+        for force_idx in range(n_forces):
+            masks[force_idx] = (grid == force_idx).astype(float)
 
+        # Interpolate each mask using bilinear interpolation
+        from scipy.interpolate import RectBivariateSpline
+        interpolated_masks = np.zeros((n_forces, new_sfe, new_mass))
+
+        for force_idx in range(n_forces):
+            # Use linear spline (k=1) for smooth but bounded interpolation
+            spline = RectBivariateSpline(y_old, x_old, masks[force_idx], kx=1, ky=1)
+            interpolated_masks[force_idx] = spline(y_new, x_new)
+
+        # Clip to [0, 1] range (interpolation can overshoot)
+        interpolated_masks = np.clip(interpolated_masks, 0, 1)
+
+        # Take argmax to get dominant force at each point
+        grid_smooth = np.argmax(interpolated_masks, axis=0).astype(float)
+
+        # Handle missing data: interpolate a missing data mask
+        missing_mask_orig = (grid < 0).astype(float)
+        spline_missing = RectBivariateSpline(y_old, x_old, missing_mask_orig, kx=1, ky=1)
+        missing_interp = spline_missing(y_new, x_new)
+
+        # Where missing probability > 0.5, mark as missing (use original value type)
+        # Determine which type of missing data based on nearest neighbor
         for iy, y in enumerate(y_new):
             for ix, x in enumerate(x_new):
-                # Find nearest original cell
-                orig_y = int(round(y))
-                orig_x = int(round(x))
-                orig_y = min(max(orig_y, 0), n_sfe - 1)
-                orig_x = min(max(orig_x, 0), n_mass - 1)
-                grid_smooth[iy, ix] = grid[orig_y, orig_x]
+                if missing_interp[iy, ix] > 0.3:
+                    # Find nearest original cell
+                    orig_y = int(round(y))
+                    orig_x = int(round(x))
+                    orig_y = min(max(orig_y, 0), n_sfe - 1)
+                    orig_x = min(max(orig_x, 0), n_mass - 1)
+                    if grid[orig_y, orig_x] < 0:
+                        grid_smooth[iy, ix] = grid[orig_y, orig_x]
 
-        # Extent for plotting
-        extent = (-0.5, n_mass - 0.5, -0.5, n_sfe - 0.5)
-
-        return grid_smooth, extent
+        return grid_smooth, None
 
     return grid, None
 
@@ -439,48 +464,51 @@ def plot_single_grid(ax, grid, mCloud_list, sfe_list, target_time, cmap, norm,
     grid_plot, extent = apply_smoothing(grid, method=smooth)
 
     if axis_mode == 'continuous':
-        # Real-value axis spacing
-        # For pcolormesh, we need cell edges
-        # Create edges at midpoints between values, plus outer edges
+        # Real-value axis spacing using log10(mass) for x and linear SFE for y
+        # Compute extent in real coordinate space
+        mass_min, mass_max = mass_values.min(), mass_values.max()
+        sfe_min, sfe_max = sfe_values.min(), sfe_values.max()
+
+        # Add padding (half cell width at edges)
         if n_mass > 1:
-            mass_edges = np.zeros(n_mass + 1)
-            mass_edges[0] = mass_values[0] - (mass_values[1] - mass_values[0]) / 2
-            mass_edges[-1] = mass_values[-1] + (mass_values[-1] - mass_values[-2]) / 2
-            for i in range(1, n_mass):
-                mass_edges[i] = (mass_values[i-1] + mass_values[i]) / 2
+            mass_pad = (mass_values[1] - mass_values[0]) / 2
         else:
-            mass_edges = np.array([mass_values[0] - 0.5, mass_values[0] + 0.5])
-
+            mass_pad = 0.5
         if n_sfe > 1:
-            sfe_edges = np.zeros(n_sfe + 1)
-            sfe_edges[0] = sfe_values[0] - (sfe_values[1] - sfe_values[0]) / 2
-            sfe_edges[-1] = sfe_values[-1] + (sfe_values[-1] - sfe_values[-2]) / 2
-            for i in range(1, n_sfe):
-                sfe_edges[i] = (sfe_values[i-1] + sfe_values[i]) / 2
+            sfe_pad = (sfe_values[1] - sfe_values[0]) / 2
         else:
-            sfe_edges = np.array([sfe_values[0] - 0.05, sfe_values[0] + 0.05])
+            sfe_pad = 0.05
 
-        X, Y = np.meshgrid(mass_edges, sfe_edges)
+        extent = (mass_min - mass_pad, mass_max + mass_pad,
+                  sfe_min - sfe_pad, sfe_max + sfe_pad)
 
         # Mask NaN values
         grid_masked = np.ma.masked_invalid(grid_plot)
 
-        im = ax.pcolormesh(
-            X, Y, grid_masked,
+        # Use imshow for smooth rendering
+        im = ax.imshow(
+            grid_masked,
             cmap=cmap,
             norm=norm,
-            edgecolors='white' if smooth == 'none' else 'none',
-            linewidths=0.5 if smooth == 'none' else 0
+            origin='lower',
+            extent=extent,
+            aspect='auto',
+            interpolation='nearest' if smooth == 'none' else 'bilinear'
         )
 
-        # Set axis to real values
-        ax.set_xticks(mass_values)
-        ax.set_xticklabels([rf"$10^{{{int(m)}}}$" for m in mass_values])
-        ax.set_xlim(mass_edges[0], mass_edges[-1])
+        # X-axis: use standard log-scale ticks at integer powers
+        # Find the range of integer powers covered
+        min_power = int(np.floor(extent[0]))
+        max_power = int(np.ceil(extent[1]))
+        x_ticks = np.arange(min_power, max_power + 1)
+        ax.set_xticks(x_ticks)
+        ax.set_xticklabels([rf"$10^{{{int(p)}}}$" for p in x_ticks])
+        ax.set_xlim(extent[0], extent[1])
 
-        ax.set_yticks(sfe_values)
-        ax.set_yticklabels([f"{s:.2f}" for s in sfe_values])
-        ax.set_ylim(sfe_edges[0], sfe_edges[-1])
+        # Y-axis: linear SFE with reasonable tick spacing
+        ax.set_ylim(extent[2], extent[3])
+        # Auto-generate nice tick locations
+        ax.yaxis.set_major_locator(plt.MaxNLocator(nbins=6, steps=[1, 2, 2.5, 5, 10]))
 
     else:
         # Discrete mode (original behavior)
@@ -704,9 +732,9 @@ Examples:
   python paper_dominantFeedback.py --output-dir /path/to/outputs --fig-dir /path/to/figs
 
 Smoothing methods (only with --axis-mode continuous):
-  none     - Discrete grid with cell borders (default)
-  gaussian - Gaussian blur for soft color transitions
-  contour  - Upsampled nearest-neighbor for smooth region boundaries
+  none     - Discrete grid cells (default)
+  gaussian - Gaussian blur on force probability masks
+  interp   - Bilinear interpolation for smooth contour-like boundaries
 
 Axis modes:
   discrete   - Equal spacing with categorical labels (default, no smoothing)
@@ -743,7 +771,7 @@ Axis modes:
         help='Use *_modified/ output folders and save as *_modified.pdf'
     )
     parser.add_argument(
-        '--smooth', choices=['none', 'gaussian', 'contour'], default=None,
+        '--smooth', choices=['none', 'gaussian', 'interp'], default=None,
         help=f"Smoothing method for contour-like appearance (only with --axis-mode continuous). Default: {DEFAULT_SMOOTH}"
     )
     parser.add_argument(
