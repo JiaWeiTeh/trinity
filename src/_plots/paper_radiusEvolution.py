@@ -228,12 +228,22 @@ def plot_single_run(mCloud, sfe, ndens):
         plt.close(fig)
         return
 
-    # Title with run parameters
-    mlog = int(np.log10(float(mCloud)))
+    # Title with run parameters - properly handle non-power-of-10 masses
+    mval = float(mCloud)
+    mexp = int(np.floor(np.log10(mval)))
+    mcoeff = mval / (10 ** mexp)
+    mcoeff = round(mcoeff)
+    if mcoeff == 10:
+        mcoeff = 1
+        mexp += 1
+    if mcoeff == 1:
+        mlabel = rf"$M_{{\rm cloud}}=10^{{{mexp}}}\,M_\odot$"
+    else:
+        mlabel = rf"$M_{{\rm cloud}}={mcoeff}\times10^{{{mexp}}}\,M_\odot$"
     nlog = int(np.log10(float(ndens)))
     eps = int(sfe) / 100.0
     ax.set_title(
-        rf"$M_{{\rm cloud}}=10^{{{mlog}}}\,M_\odot$, "
+        mlabel + ", "
         rf"$\epsilon={eps:.2f}$, "
         rf"$n=10^{{{nlog}}}\,\mathrm{{cm^{{-3}}}}$"
     )
@@ -416,8 +426,19 @@ Examples:
                         ax.set_title(rf"$\epsilon={eps:.2f}$")
 
                     if j == 0:
-                        mlog = int(np.log10(float(mCloud)))
-                        ax.set_ylabel(rf"$M_{{cloud}}=10^{{{mlog}}}\,M_\odot$" + "\n" + r"Radius [pc]")
+                        # Parse mCloud to handle non-power-of-10 values (e.g., 5e6)
+                        mval = float(mCloud)
+                        mexp = int(np.floor(np.log10(mval)))
+                        mcoeff = mval / (10 ** mexp)
+                        mcoeff = round(mcoeff)
+                        if mcoeff == 10:
+                            mcoeff = 1
+                            mexp += 1
+                        if mcoeff == 1:
+                            mlabel = rf"$M_{{\rm cloud}}=10^{{{mexp}}}\,M_\odot$"
+                        else:
+                            mlabel = rf"$M_{{\rm cloud}}={mcoeff}\times10^{{{mexp}}}\,M_\odot$"
+                        ax.set_ylabel(mlabel + "\n" + r"Radius [pc]")
                     else:
                         ax.tick_params(labelleft=False)
 

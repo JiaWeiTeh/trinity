@@ -401,8 +401,19 @@ def plot_grid():
                     ax.set_title(rf"$\epsilon={eps:.2f}$")
 
                 if j == 0:
-                    mlog = int(np.log10(float(mCloud)))
-                    ax.set_ylabel(rf"$M_{{cloud}}=10^{{{mlog}}}\,M_\odot$" + "\n" + r"$p(t)=\int F\,dt$")
+                    # Handle non-power-of-10 masses (e.g., 5e6)
+                    mval = float(mCloud)
+                    mexp = int(np.floor(np.log10(mval)))
+                    mcoeff = mval / (10 ** mexp)
+                    mcoeff = round(mcoeff)
+                    if mcoeff == 10:
+                        mcoeff = 1
+                        mexp += 1
+                    if mcoeff == 1:
+                        mlabel = rf"$M_{{\rm cloud}}=10^{{{mexp}}}\,M_\odot$"
+                    else:
+                        mlabel = rf"$M_{{\rm cloud}}={mcoeff}\times10^{{{mexp}}}\,M_\odot$"
+                    ax.set_ylabel(mlabel + "\n" + r"$p(t)=\int F\,dt$")
 
                 if i == nrows - 1:
                     ax.set_xlabel("t [Myr]")
