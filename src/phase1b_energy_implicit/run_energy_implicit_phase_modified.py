@@ -60,7 +60,6 @@ import logging
 from typing import Dict, Optional, Tuple
 from dataclasses import dataclass
 
-import src.phase_general.phase_ODEs as phase_ODEs
 import src.cloud_properties.mass_profile as mass_profile
 import src.bubble_structure.get_bubbleParams as get_bubbleParams
 import src._functions.unit_conversions as cvt
@@ -103,8 +102,10 @@ logger = logging.getLogger(__name__)
 # Constants
 # =============================================================================
 
+# TODO: very fine grid in this phase. Only in transition phase it goes coarse. 
+
 COOLING_UPDATE_INTERVAL = 5e-3  # Myr - recalculate cooling
-DT_SEGMENT_INIT = 2e-3  # Myr - initial segment duration
+DT_SEGMENT_INIT = 5e-4  # Myr - initial segment duration
 DT_SEGMENT_MIN = 1e-4   # Myr - minimum segment duration
 DT_SEGMENT_MAX = 5e-2   # Myr - maximum segment duration
 MAX_SEGMENTS = 5000
@@ -591,6 +592,8 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         params['F_ion_out'].value = force_props.F_ion_out
         params['F_ram'].value = force_props.F_ram
         params['F_rad'].value = force_props.F_rad
+        params['F_ram_wind'].value = feedback.pdot_W
+        params['F_ram_SN'].value = feedback.pdot_SN
 
         # ---------------------------------------------------------------------
         # Save snapshot BEFORE ODE - all values are consistent at t_now

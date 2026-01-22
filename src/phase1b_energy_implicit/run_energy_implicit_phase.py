@@ -16,7 +16,6 @@ import astropy.units as u
 import sys
 import os
 #--
-import src.phase_general.phase_ODEs as phase_ODEs
 import src.phase1_energy.energy_phase_ODEs as energy_phase_ODEs
 import src.cloud_properties.mass_profile as mass_profile
 

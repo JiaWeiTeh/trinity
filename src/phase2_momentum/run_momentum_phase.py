@@ -9,7 +9,6 @@ Created on Mon Jul 10 13:53:30 2023
 import numpy as np
 import sys
 #--
-from src.phase_general import phase_ODEs
 import src._functions.unit_conversions as cvt
 import src.phase1_energy.energy_phase_ODEs as energy_phase_ODEs
 import src.shell_structure.shell_structure as shell_structure

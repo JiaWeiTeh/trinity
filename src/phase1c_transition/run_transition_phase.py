@@ -13,7 +13,6 @@ import astropy.constants as c
 import sys
 import os
 #--
-import src.phase_general.phase_ODEs as phase_ODEs
 import src.shell_structure.shell_structure as shell_structure
 import src.phase1_energy.energy_phase_ODEs as energy_phase_ODEs
 

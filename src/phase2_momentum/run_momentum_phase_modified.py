@@ -52,7 +52,6 @@ import scipy.integrate
 import logging
 from dataclasses import dataclass
 
-from src.phase_general import phase_ODEs
 import src._functions.unit_conversions as cvt
 import src.cloud_properties.mass_profile as mass_profile
 from src.sb99.update_feedback import get_currentSB99feedback
@@ -543,6 +542,8 @@ def run_phase_momentum(params) -> MomentumPhaseResults:
         params['F_ion_out'].value = force_props.F_ion_out
         params['F_ram'].value = force_props.F_ram
         params['F_rad'].value = force_props.F_rad
+        params['F_ram_wind'].value = feedback.pdot_W
+        params['F_ram_SN'].value = feedback.pdot_SN
 
         # Store Pb (ram pressure)
         press_ram = get_bubbleParams.pRam(R2, Lmech_total, v_mech_total)

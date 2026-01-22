@@ -51,7 +51,6 @@ import logging
 from typing import Tuple
 from dataclasses import dataclass
 
-import src.phase_general.phase_ODEs as phase_ODEs
 import src.cloud_properties.mass_profile as mass_profile
 import src._functions.unit_conversions as cvt
 import src._functions.operations as operations
@@ -454,6 +453,8 @@ def run_phase_transition(params) -> TransitionPhaseResults:
         params['F_ion_out'].value = force_props.F_ion_out
         params['F_ram'].value = force_props.F_ram
         params['F_rad'].value = force_props.F_rad
+        params['F_ram_wind'].value = feedback.pdot_W
+        params['F_ram_SN'].value = feedback.pdot_SN
 
         # ---------------------------------------------------------------------
         # Save snapshot BEFORE ODE - all values are consistent at t_now
