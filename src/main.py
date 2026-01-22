@@ -164,6 +164,15 @@ def start_expansion(params):
         logger.warning(f"Could not write simulation end report: {e}")
         exit_code = 99
 
+    # Write termination debug report (last 2 snapshots with comparison)
+    try:
+        reason = params['SimulationEndReason'].value if 'SimulationEndReason' in params else "Unknown"
+        debug_path = params.write_termination_report(reason=reason)
+        if debug_path:
+            logger.info(f"Termination debug report written: {debug_path}")
+    except Exception as e:
+        logger.warning(f"Could not write termination debug report: {e}")
+
 
     # ########### STEP 2: In case of recollapse, prepare next expansion ##########################
     # TODO: add loop so that this simulation starts over with old generation of parameter to simulate new starburst environment
