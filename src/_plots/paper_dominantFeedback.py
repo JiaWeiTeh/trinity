@@ -419,6 +419,7 @@ def plot_single_grid(ax, grid, mCloud_list, sfe_list, target_time, cmap, norm,
         Color normalization
     smooth : str
         Smoothing method: 'none', 'gaussian', 'contour'
+        Note: Smoothing only works with axis_mode='continuous'
     axis_mode : str
         'discrete': equal spacing with categorical labels
         'continuous': real value spacing (log for mCloud, linear for SFE)
@@ -426,11 +427,15 @@ def plot_single_grid(ax, grid, mCloud_list, sfe_list, target_time, cmap, norm,
     n_mass = len(mCloud_list)
     n_sfe = len(sfe_list)
 
+    # Smoothing only works with continuous mode
+    if axis_mode == 'discrete' and smooth != 'none':
+        smooth = 'none'
+
     # Convert to real values for continuous mode
     mass_values = np.array([np.log10(float(m)) for m in mCloud_list])  # log10(Msun)
     sfe_values = np.array([int(s) / 100.0 for s in sfe_list])  # decimal SFE
 
-    # Apply smoothing if requested
+    # Apply smoothing if requested (only effective in continuous mode)
     grid_plot, extent = apply_smoothing(grid, method=smooth)
 
     if axis_mode == 'continuous':
@@ -584,6 +589,9 @@ def main(mCloud_list, sfe_list, nCore_list, target_times, base_dir, fig_dir=None
     print(f"  Use modified: {use_modified}")
     print(f"  Smooth: {smooth}")
     print(f"  Axis mode: {axis_mode}")
+    if axis_mode == 'discrete' and smooth != 'none':
+        print(f"  Warning: Smoothing only works with axis_mode='continuous', ignoring --smooth {smooth}")
+        smooth = 'none'
     print()
 
     # Set up figure directory
@@ -662,10 +670,12 @@ def main(mCloud_list, sfe_list, nCore_list, target_times, base_dir, fig_dir=None
         )
 
         # Save with appropriate suffix
+        # Format: dominant_feedback_n{nCore}[_modified]_{axis_mode}[_{smooth}].pdf
         filename = f"dominant_feedback_n{nCore}"
         if use_modified:
             filename = f"{filename}_modified"
-        if smooth != 'none':
+        filename = f"{filename}_{axis_mode}"
+        if axis_mode == 'continuous' and smooth != 'none':
             filename = f"{filename}_{smooth}"
         out_pdf = fig_dir / f"{filename}.pdf"
         fig.savefig(out_pdf, bbox_inches='tight')
@@ -693,13 +703,13 @@ Examples:
   python paper_dominantFeedback.py --axis-mode continuous
   python paper_dominantFeedback.py --output-dir /path/to/outputs --fig-dir /path/to/figs
 
-Smoothing methods:
+Smoothing methods (only with --axis-mode continuous):
   none     - Discrete grid with cell borders (default)
   gaussian - Gaussian blur for soft color transitions
   contour  - Upsampled nearest-neighbor for smooth region boundaries
 
 Axis modes:
-  discrete   - Equal spacing with categorical labels (default)
+  discrete   - Equal spacing with categorical labels (default, no smoothing)
   continuous - Real value spacing (log scale for mCloud, linear for SFE)
         """
     )
@@ -734,7 +744,7 @@ Axis modes:
     )
     parser.add_argument(
         '--smooth', choices=['none', 'gaussian', 'contour'], default=None,
-        help=f"Smoothing method for contour-like appearance. Default: {DEFAULT_SMOOTH}"
+        help=f"Smoothing method for contour-like appearance (only with --axis-mode continuous). Default: {DEFAULT_SMOOTH}"
     )
     parser.add_argument(
         '--axis-mode', choices=['discrete', 'continuous'], default=None,
