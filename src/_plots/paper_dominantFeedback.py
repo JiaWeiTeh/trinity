@@ -594,22 +594,9 @@ def plot_single_grid(ax, grid, mCloud_list, sfe_list, target_time, cmap, norm,
         # Use log scale for x-axis
         ax.set_xscale('log')
 
-        # Set axis limits with some padding
-        mass_min, mass_max = 10**logM.min(), 10**logM.max()
-        eps_min, eps_max = eps.min(), eps.max()
-
-        # Add padding
-        if n_mass > 1:
-            log_pad = (logM[1] - logM[0]) / 2
-            mass_min = 10**(logM.min() - log_pad)
-            mass_max = 10**(logM.max() + log_pad)
-        if n_sfe > 1:
-            eps_pad = (eps[1] - eps[0]) / 2
-            eps_min = eps.min() - eps_pad
-            eps_max = eps.max() + eps_pad
-
-        ax.set_xlim(mass_min, mass_max)
-        ax.set_ylim(eps_min, eps_max)
+        # Set axis limits exactly to data range (no padding for square plot)
+        ax.set_xlim(10**logM.min(), 10**logM.max())
+        ax.set_ylim(eps.min(), eps.max())
 
         # Auto-generate nice tick locations for y-axis
         ax.yaxis.set_major_locator(plt.MaxNLocator(nbins=6, steps=[1, 2, 2.5, 5, 10]))
@@ -782,9 +769,9 @@ def main(mCloud_list, sfe_list, nCore_list, target_times, base_dir, fig_dir=None
         print(f"Processing nCore = {nCore}")
         print("-" * 60)
 
-        # Create figure
-        fig_width = 3.5 * ncols
-        fig_height = 3.0 * nrows + 0.5  # Extra space for legend
+        # Create figure (square aspect for each subplot)
+        fig_width = 5.0 * ncols
+        fig_height = 5.0 * nrows + 0.8  # Extra space for legend
         fig, axes = plt.subplots(
             nrows=nrows, ncols=ncols,
             figsize=(fig_width, fig_height),
@@ -954,7 +941,7 @@ def make_movie(mCloud_list, sfe_list, nCore, base_dir, fig_dir=None,
             print(f"  Frame {frame_idx + 1}/{n_frames}: t = {target_time:.3f} Myr", end='\r')
 
             # Create single-panel figure
-            fig, ax = plt.subplots(figsize=(8, 6), constrained_layout=True)
+            fig, ax = plt.subplots(figsize=(8, 8), constrained_layout=True)
 
             # For interpolated smooth mode, get force values; otherwise just dominance grid
             if smooth == 'interp' and axis_mode == 'continuous':
