@@ -81,12 +81,13 @@ COLOR_TIME_OUT_OF_RANGE = "#ffffff"   # White
 DEFAULT_MCLOUD = ["1e5", "5e5", "1e6", "5e6", "1e7", "5e7", "1e8"]
 DEFAULT_SFE = ["001", "010", "030", "050", "080"] #"020"
 DEFAULT_NCORE = ["1e2", "1e4"]  # List of nCore values - produces one plot per nCore
-DEFAULT_TIMES = [1.0, 1.5, 2.0, 2.5]  # Myr
+# DEFAULT_TIMES = [1.0, 1.5, 2.0, 2.5]  # Myr
+DEFAULT_TIMES = [1.0]  # Myr
 
 
 # Smoothing parameters (can be adjusted via CLI)
-DEFAULT_SIGMA = 0.8      # Gaussian sigma - higher = smoother transitions
-DEFAULT_UPSAMPLE = 4     # Contour upsampling factor - higher = smoother boundaries
+DEFAULT_SIGMA = 0.1      # Gaussian sigma - higher = smoother transitions
+DEFAULT_UPSAMPLE = 10     # Contour upsampling factor - higher = smoother boundaries
 
 # Axis mode options:
 #   'discrete': equal spacing, categorical labels (default)
@@ -94,7 +95,7 @@ DEFAULT_UPSAMPLE = 4     # Contour upsampling factor - higher = smoother boundar
 DEFAULT_AXIS_MODE = 'continuous'
 
 # Smoothing options: 'none', 'gaussian', 'interp', only if continuous.
-DEFAULT_SMOOTH = 'gaussian'
+DEFAULT_SMOOTH = 'interp'
 
 # Default directories
 DEFAULT_OUTPUT_DIR = Path.home() / "unsync" / "Code" / "Trinity" / "outputs" / "sweep_test_modified"
@@ -734,7 +735,7 @@ def main(mCloud_list, sfe_list, nCore_list, target_times, base_dir, fig_dir=None
         print(f"Saved: {out_pdf}")
 
         plt.show()
-        plt.close(fig)
+        # plt.close(fig)
         print()
 
 
