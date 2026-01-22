@@ -84,6 +84,11 @@ DEFAULT_TIMES = [1.0, 1.5, 2.0, 2.5]  # Myr
 # Smoothing options: 'none', 'gaussian', 'contour'
 DEFAULT_SMOOTH = 'none'
 
+# Axis mode options:
+#   'discrete': equal spacing, categorical labels (default)
+#   'continuous': real value spacing (log for mCloud, linear for SFE)
+DEFAULT_AXIS_MODE = 'discrete'
+
 # Default directories
 DEFAULT_OUTPUT_DIR = Path.home() / "unsync" / "Code" / "Trinity" / "outputs"
 FIG_DIR = Path(__file__).parent.parent.parent / "fig"
@@ -391,7 +396,8 @@ def compute_grid_layout(n_plots):
     return nrows, ncols
 
 
-def plot_single_grid(ax, grid, mCloud_list, sfe_list, target_time, cmap, norm, smooth='none'):
+def plot_single_grid(ax, grid, mCloud_list, sfe_list, target_time, cmap, norm,
+                     smooth='none', axis_mode='discrete'):
     """
     Plot a single dominance grid on an axis.
 
@@ -402,9 +408,9 @@ def plot_single_grid(ax, grid, mCloud_list, sfe_list, target_time, cmap, norm, s
     grid : np.ndarray
         2D array of dominant force indices
     mCloud_list : list
-        Cloud mass labels
+        Cloud mass labels (strings like "1e7")
     sfe_list : list
-        SFE labels
+        SFE labels (strings like "010")
     target_time : float
         Time in Myr (for title)
     cmap : ListedColormap
@@ -413,19 +419,43 @@ def plot_single_grid(ax, grid, mCloud_list, sfe_list, target_time, cmap, norm, s
         Color normalization
     smooth : str
         Smoothing method: 'none', 'gaussian', 'contour'
+    axis_mode : str
+        'discrete': equal spacing with categorical labels
+        'continuous': real value spacing (log for mCloud, linear for SFE)
     """
     n_mass = len(mCloud_list)
     n_sfe = len(sfe_list)
 
+    # Convert to real values for continuous mode
+    mass_values = np.array([np.log10(float(m)) for m in mCloud_list])  # log10(Msun)
+    sfe_values = np.array([int(s) / 100.0 for s in sfe_list])  # decimal SFE
+
     # Apply smoothing if requested
     grid_plot, extent = apply_smoothing(grid, method=smooth)
 
-    if smooth == 'none':
-        # Original discrete grid with cell borders
-        X, Y = np.meshgrid(
-            np.arange(n_mass + 1) - 0.5,
-            np.arange(n_sfe + 1) - 0.5
-        )
+    if axis_mode == 'continuous':
+        # Real-value axis spacing
+        # For pcolormesh, we need cell edges
+        # Create edges at midpoints between values, plus outer edges
+        if n_mass > 1:
+            mass_edges = np.zeros(n_mass + 1)
+            mass_edges[0] = mass_values[0] - (mass_values[1] - mass_values[0]) / 2
+            mass_edges[-1] = mass_values[-1] + (mass_values[-1] - mass_values[-2]) / 2
+            for i in range(1, n_mass):
+                mass_edges[i] = (mass_values[i-1] + mass_values[i]) / 2
+        else:
+            mass_edges = np.array([mass_values[0] - 0.5, mass_values[0] + 0.5])
+
+        if n_sfe > 1:
+            sfe_edges = np.zeros(n_sfe + 1)
+            sfe_edges[0] = sfe_values[0] - (sfe_values[1] - sfe_values[0]) / 2
+            sfe_edges[-1] = sfe_values[-1] + (sfe_values[-1] - sfe_values[-2]) / 2
+            for i in range(1, n_sfe):
+                sfe_edges[i] = (sfe_values[i-1] + sfe_values[i]) / 2
+        else:
+            sfe_edges = np.array([sfe_values[0] - 0.05, sfe_values[0] + 0.05])
+
+        X, Y = np.meshgrid(mass_edges, sfe_edges)
 
         # Mask NaN values
         grid_masked = np.ma.masked_invalid(grid_plot)
@@ -434,32 +464,61 @@ def plot_single_grid(ax, grid, mCloud_list, sfe_list, target_time, cmap, norm, s
             X, Y, grid_masked,
             cmap=cmap,
             norm=norm,
-            edgecolors='white',
-            linewidths=1.0
+            edgecolors='white' if smooth == 'none' else 'none',
+            linewidths=0.5 if smooth == 'none' else 0
         )
+
+        # Set axis to real values
+        ax.set_xticks(mass_values)
+        ax.set_xticklabels([rf"$10^{{{int(m)}}}$" for m in mass_values])
+        ax.set_xlim(mass_edges[0], mass_edges[-1])
+
+        ax.set_yticks(sfe_values)
+        ax.set_yticklabels([f"{s:.2f}" for s in sfe_values])
+        ax.set_ylim(sfe_edges[0], sfe_edges[-1])
+
     else:
-        # Smoothed grid - use imshow for better appearance
-        grid_masked = np.ma.masked_invalid(grid_plot)
+        # Discrete mode (original behavior)
+        if smooth == 'none':
+            # Original discrete grid with cell borders
+            X, Y = np.meshgrid(
+                np.arange(n_mass + 1) - 0.5,
+                np.arange(n_sfe + 1) - 0.5
+            )
 
-        if extent is None:
-            extent = (-0.5, n_mass - 0.5, -0.5, n_sfe - 0.5)
+            # Mask NaN values
+            grid_masked = np.ma.masked_invalid(grid_plot)
 
-        im = ax.imshow(
-            grid_masked,
-            cmap=cmap,
-            norm=norm,
-            origin='lower',
-            extent=extent,
-            aspect='auto',
-            interpolation='nearest' if smooth == 'contour' else 'bilinear'
-        )
+            im = ax.pcolormesh(
+                X, Y, grid_masked,
+                cmap=cmap,
+                norm=norm,
+                edgecolors='white',
+                linewidths=1.0
+            )
+        else:
+            # Smoothed grid - use imshow for better appearance
+            grid_masked = np.ma.masked_invalid(grid_plot)
 
-    # Axis labels
-    ax.set_xticks(np.arange(n_mass))
-    ax.set_xticklabels([rf"$10^{{{int(np.log10(float(m)))}}}$" for m in mCloud_list])
+            if extent is None:
+                extent = (-0.5, n_mass - 0.5, -0.5, n_sfe - 0.5)
 
-    ax.set_yticks(np.arange(n_sfe))
-    ax.set_yticklabels([f"{int(s)/100:.2f}" for s in sfe_list])
+            im = ax.imshow(
+                grid_masked,
+                cmap=cmap,
+                norm=norm,
+                origin='lower',
+                extent=extent,
+                aspect='auto',
+                interpolation='nearest' if smooth == 'contour' else 'bilinear'
+            )
+
+        # Discrete axis labels
+        ax.set_xticks(np.arange(n_mass))
+        ax.set_xticklabels([rf"$10^{{{int(np.log10(float(m)))}}}$" for m in mCloud_list])
+
+        ax.set_yticks(np.arange(n_sfe))
+        ax.set_yticklabels([f"{int(s)/100:.2f}" for s in sfe_list])
 
     ax.set_title(rf"$t = {target_time}$ Myr", fontsize=11)
 
@@ -487,7 +546,7 @@ def create_legend():
 # =============================================================================
 
 def main(mCloud_list, sfe_list, nCore_list, target_times, base_dir, fig_dir=None,
-         use_modified=False, smooth='none'):
+         use_modified=False, smooth='none', axis_mode='discrete'):
     """
     Generate dominant feedback grid plot(s).
 
@@ -510,6 +569,9 @@ def main(mCloud_list, sfe_list, nCore_list, target_times, base_dir, fig_dir=None
         If True, look in *_modified/ folders and save as *_modified.pdf
     smooth : str
         Smoothing method: 'none', 'gaussian', 'contour'
+    axis_mode : str
+        'discrete': equal spacing with categorical labels
+        'continuous': real value spacing (log for mCloud, linear for SFE)
     """
     print("=" * 60)
     print("Dominant Feedback Grid Plot")
@@ -521,6 +583,7 @@ def main(mCloud_list, sfe_list, nCore_list, target_times, base_dir, fig_dir=None
     print(f"  Base dir: {base_dir}")
     print(f"  Use modified: {use_modified}")
     print(f"  Smooth: {smooth}")
+    print(f"  Axis mode: {axis_mode}")
     print()
 
     # Set up figure directory
@@ -565,7 +628,7 @@ def main(mCloud_list, sfe_list, nCore_list, target_times, base_dir, fig_dir=None
             )
 
             plot_single_grid(ax, grid, mCloud_list, sfe_list, target_time, cmap, norm,
-                           smooth=smooth)
+                           smooth=smooth, axis_mode=axis_mode)
             print()
 
         # Hide unused subplots
@@ -627,12 +690,17 @@ Examples:
   python paper_dominantFeedback.py --mCloud 1e7 1e8 --sfe 001 020 --times 1 1.5 2 2.5
   python paper_dominantFeedback.py --nCore 1e4 1e5 --modified
   python paper_dominantFeedback.py --smooth gaussian
+  python paper_dominantFeedback.py --axis-mode continuous
   python paper_dominantFeedback.py --output-dir /path/to/outputs --fig-dir /path/to/figs
 
 Smoothing methods:
   none     - Discrete grid with cell borders (default)
   gaussian - Gaussian blur for soft color transitions
   contour  - Upsampled nearest-neighbor for smooth region boundaries
+
+Axis modes:
+  discrete   - Equal spacing with categorical labels (default)
+  continuous - Real value spacing (log scale for mCloud, linear for SFE)
         """
     )
 
@@ -668,6 +736,11 @@ Smoothing methods:
         '--smooth', choices=['none', 'gaussian', 'contour'], default=None,
         help=f"Smoothing method for contour-like appearance. Default: {DEFAULT_SMOOTH}"
     )
+    parser.add_argument(
+        '--axis-mode', choices=['discrete', 'continuous'], default=None,
+        help=f"Axis spacing mode: 'discrete' for equal spacing with categorical labels, "
+             f"'continuous' for real value spacing (log for mCloud, linear for SFE). Default: {DEFAULT_AXIS_MODE}"
+    )
 
     args = parser.parse_args()
 
@@ -679,8 +752,9 @@ Smoothing methods:
     base_dir = Path(args.output_dir) if args.output_dir else DEFAULT_OUTPUT_DIR
     fig_dir = Path(args.fig_dir) if args.fig_dir else None
     smooth = args.smooth if args.smooth else DEFAULT_SMOOTH
+    axis_mode = args.axis_mode if args.axis_mode else DEFAULT_AXIS_MODE
 
     # Use module-level USE_MODIFIED if --modified not explicitly set
     use_modified = args.modified or USE_MODIFIED
 
-    main(mCloud_list, sfe_list, nCore_list, target_times, base_dir, fig_dir, use_modified, smooth)
+    main(mCloud_list, sfe_list, nCore_list, target_times, base_dir, fig_dir, use_modified, smooth, axis_mode)
