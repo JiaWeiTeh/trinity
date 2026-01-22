@@ -52,11 +52,6 @@ from src._plots.plot_markers import (
 # Configuration
 # =============================================================================
 
-# Default directories for cross-directory comparison
-DEFAULT_DIR_A = Path.home() / "unsync" / "Code" / "Trinity" / "outputs"
-DEFAULT_DIR_B = Path.home() / "unsync" / "Code" / "Trinity" / "outputs" / "sweep_test_modified"
-
-
 def find_project_root() -> Path:
     """
     Find the trinity project root directory.
@@ -79,6 +74,10 @@ def find_project_root() -> Path:
 
 PROJECT_ROOT = find_project_root()
 DEFAULT_OUTPUT_DIR = PROJECT_ROOT / 'outputs'
+
+# Default directories for cross-directory comparison
+DEFAULT_DIR_A = DEFAULT_OUTPUT_DIR
+DEFAULT_DIR_B = DEFAULT_OUTPUT_DIR / 'sweep_test_modified'
 
 # Parameters of interest by category
 ESSENTIAL_PARAMS = ['R1', 'R2', 'rShell', 'Pb', 'Eb', 'T0', 'v2']
