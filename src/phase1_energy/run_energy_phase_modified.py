@@ -37,6 +37,13 @@ from src._input.dictionary import updateDict
 import src._functions.unit_conversions as cvt
 from src.sb99.update_feedback import get_currentSB99feedback
 
+# Import centralized event functions
+from src.phase_general.phase_events import (
+    build_energy_phase_events,
+    check_event_termination,
+    apply_event_result,
+)
+
 logger = logging.getLogger(__name__)
 
 # =============================================================================
@@ -104,6 +111,12 @@ def run_energy(params):
     params['R1'].value = R1
 
     loop_count = 0
+
+    # =============================================================================
+    # Build events for safe termination
+    # =============================================================================
+
+    ode_events = build_energy_phase_events(params)
 
     # =============================================================================
     # Cooling structure (computed periodically)
@@ -210,6 +223,7 @@ def run_energy(params):
             t_span=(t_now, t_segment_end),
             y0=y0,
             method='RK45',
+            events=ode_events,
             rtol=RTOL,
             atol=ATOL,
             dense_output=True
@@ -224,9 +238,21 @@ def run_energy(params):
                 t_span=(t_now, t_segment_end),
                 y0=y0,
                 method='RK23',  # More robust method
+                events=ode_events,
                 rtol=RTOL * 10,
                 atol=ATOL * 10
             )
+
+        # Check if an event terminated the integration
+        event_result = check_event_termination(solution, ode_events)
+        if event_result.triggered:
+            logger.info(f"Event '{event_result.name}' triggered at t={event_result.t:.6e} Myr")
+            apply_event_result(params, event_result, event_result.t, event_result.y,
+                              state_keys=['R2', 'v2', 'Eb'])
+            if event_result.is_simulation_ending:
+                return  # Exit immediately for simulation-ending events
+            # For phase-ending events (cloud_boundary), exit the loop normally
+            break
 
         # Extract final state
         R2_new, v2_new, Eb_new = solution.y[:, -1]
@@ -324,19 +350,14 @@ def run_energy_continuous(params):
     R2 = params['R2'].value
     v2 = params['v2'].value
     Eb = params['Eb'].value
-    rCloud = params['rCloud'].value
 
     # Initial setup
     feedback = get_currentSB99feedback(t_now, params)
     updateDict(params, feedback)
 
-    # Define stopping events
-    def cloud_boundary(t, y):
-        """Stop when shell reaches cloud edge."""
-        return y[0] - rCloud
-
-    cloud_boundary.terminal = True
-    cloud_boundary.direction = 1
+    # Build events using centralized module
+    # Energy phase events: cloud_boundary (phase ending), min_radius, velocity_runaway
+    ode_events = build_energy_phase_events(params)
 
     # Create snapshot
     snapshot = energy_phase_ODEs_modified.create_ODE_snapshot(params)
@@ -350,7 +371,7 @@ def run_energy_continuous(params):
         t_span=(t_now, TFINAL_ENERGY_PHASE),
         y0=[R2, v2, Eb],
         method='RK45',
-        events=cloud_boundary,
+        events=ode_events,
         rtol=RTOL,
         atol=ATOL,
         dense_output=True
@@ -358,12 +379,19 @@ def run_energy_continuous(params):
 
     logger.info(f'Continuous integration: {len(solution.t)} steps')
 
-    # Update final state
-    R2_final, v2_final, Eb_final = solution.y[:, -1]
-    t_final = solution.t[-1]
-
-    updateDict(params,
-               ['R2', 'v2', 'Eb', 't_now'],
-               [R2_final, v2_final, Eb_final, t_final])
+    # Check if an event terminated the integration
+    event_result = check_event_termination(solution, ode_events)
+    if event_result.triggered:
+        logger.info(f"Event '{event_result.name}' triggered at t={event_result.t:.6e} Myr")
+        # Apply event result to params
+        apply_event_result(params, event_result, event_result.t, event_result.y,
+                          state_keys=['R2', 'v2', 'Eb'])
+    else:
+        # Update final state normally
+        R2_final, v2_final, Eb_final = solution.y[:, -1]
+        t_final = solution.t[-1]
+        updateDict(params,
+                   ['R2', 'v2', 'Eb', 't_now'],
+                   [R2_final, v2_final, Eb_final, t_final])
 
     return solution

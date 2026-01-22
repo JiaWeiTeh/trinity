@@ -89,6 +89,13 @@ from src.shell_structure.shell_structure_modified import (
     ShellProperties,
 )
 
+# Import centralized event functions
+from src.phase_general.phase_events import (
+    build_implicit_phase_events,
+    check_event_termination,
+    apply_event_result,
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -385,27 +392,6 @@ def get_ODE_implicit_pure(t: float, y: np.ndarray, snapshot: ODESnapshot,
 
 
 # =============================================================================
-# Event Functions
-# =============================================================================
-
-def cooling_balance_event(t: float, y: np.ndarray, Lgain: float, Lloss: float) -> float:
-    """Event: Lcool approaches Lgain (energy loss dominates)."""
-    if Lgain <= 0:
-        return 1.0  # No event if no gain
-    ratio = (Lgain - Lloss) / Lgain
-    return ratio - 0.05  # Trigger when ratio < 5%
-
-
-def velocity_sign_event(t: float, y: np.ndarray) -> float:
-    """Event: velocity changes sign (collapse onset)."""
-    R2, v2, Eb, T0 = y
-    return v2
-
-
-velocity_sign_event.direction = -1
-
-
-# =============================================================================
 # Main Function
 # =============================================================================
 
@@ -470,6 +456,14 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
 
     # Adaptive time stepping
     dt_segment = DT_SEGMENT_INIT
+
+    # =============================================================================
+    # Build events for safe termination
+    # =============================================================================
+
+    # Build events using centralized module
+    # Returns (events_list, cooling_balance_factory)
+    ode_events, cooling_balance_factory = build_implicit_phase_events(params)
 
     # =============================================================================
     # Main loop (segment-based with adaptive stepping)
@@ -625,6 +619,7 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
                 'rtol': ODE_RTOL,
                 'atol': ODE_ATOL,
                 'max_step': ODE_MAX_STEP,
+                'events': ode_events,  # Event functions for safe termination
             }
             if ODE_METHOD == 'LSODA':
                 solver_kwargs['min_step'] = ODE_MIN_STEP
@@ -640,6 +635,33 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
             logger.warning(f"  t_span was: ({t_span[0]:.10e}, {t_span[1]:.10e})")
             logger.warning(f"  y0 was: R2={y0[0]:.10e}, v2={y0[1]:.6e}")
             termination_reason = f"solver_failed: {sol.message}"
+            break
+
+        # ---------------------------------------------------------------------
+        # Check if an event terminated the integration
+        # ---------------------------------------------------------------------
+        event_result = check_event_termination(sol, ode_events)
+        if event_result.triggered:
+            logger.warning(f"Event '{event_result.name}' triggered at t={event_result.t:.6e} Myr: "
+                          f"R2={event_result.y[0]:.4e} pc, v2={event_result.y[1]:.4e} pc/Myr")
+            termination_reason = event_result.reason_code
+            # Update state from event
+            R2 = float(event_result.y[0])
+            v2 = float(event_result.y[1])
+            Eb = float(event_result.y[2])
+            T0 = float(event_result.y[3])
+            t_now = event_result.t
+            # Add final state to results
+            t_results.append(t_now)
+            R2_results.append(R2)
+            v2_results.append(v2)
+            Eb_results.append(Eb)
+            T0_results.append(T0)
+            beta_results.append(beta)
+            delta_results.append(delta)
+            # Apply event result to params
+            apply_event_result(params, event_result, t_now, event_result.y,
+                              state_keys=['R2', 'v2', 'Eb', 'T0'])
             break
 
         # ---------------------------------------------------------------------

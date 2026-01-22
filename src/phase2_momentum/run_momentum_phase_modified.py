@@ -66,6 +66,13 @@ from src.shell_structure.shell_structure_modified import (
 import src.bubble_structure.get_bubbleParams as get_bubbleParams
 from src.cloud_properties import density_profile
 
+# Import centralized event functions
+from src.phase_general.phase_events import (
+    build_momentum_phase_events,
+    check_event_termination,
+    apply_event_result,
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -454,6 +461,13 @@ def run_phase_momentum(params) -> MomentumPhaseResults:
     dt_segment = DT_SEGMENT_INIT
 
     # =============================================================================
+    # Create event functions for safe termination during collapse
+    # =============================================================================
+
+    # Build events using centralized module
+    ode_events = build_momentum_phase_events(params)
+
+    # =============================================================================
     # Main loop (segment-based with adaptive stepping)
     # =============================================================================
 
@@ -557,6 +571,7 @@ def run_phase_momentum(params) -> MomentumPhaseResults:
                 'rtol': ODE_RTOL,
                 'atol': ODE_ATOL,
                 'max_step': ODE_MAX_STEP,
+                'events': ode_events,  # Event functions for safe termination
             }
             if ODE_METHOD == 'LSODA':
                 solver_kwargs['min_step'] = ODE_MIN_STEP
@@ -569,6 +584,26 @@ def run_phase_momentum(params) -> MomentumPhaseResults:
 
         if not sol.success or len(sol.t) == 0:
             termination_reason = f"solver_failed: {sol.message}"
+            break
+
+        # ---------------------------------------------------------------------
+        # Check if an event terminated the integration
+        # ---------------------------------------------------------------------
+        event_result = check_event_termination(sol, ode_events)
+        if event_result.triggered:
+            logger.warning(f"Event '{event_result.name}' triggered at t={event_result.t:.6e} Myr: "
+                          f"R2={event_result.y[0]:.4e} pc, v2={event_result.y[1]:.4e} pc/Myr")
+            termination_reason = event_result.reason_code
+            # Update state from event
+            R2 = float(event_result.y[0])
+            v2 = float(event_result.y[1])
+            t_now = event_result.t
+            # Add final state to results
+            t_results.append(t_now)
+            R2_results.append(R2)
+            v2_results.append(v2)
+            # Apply event result to params (sets SimulationEndReason, etc.)
+            apply_event_result(params, event_result, t_now, event_result.y, state_keys=['R2', 'v2'])
             break
 
         # ---------------------------------------------------------------------
