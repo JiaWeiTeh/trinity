@@ -40,7 +40,6 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap, BoundaryNorm
 from matplotlib.patches import Patch
 from pathlib import Path
-from scipy.ndimage import gaussian_filter
 from scipy.interpolate import RegularGridInterpolator
 import tempfile
 import shutil
@@ -84,10 +83,6 @@ DEFAULT_NCORE = ["1e2", "1e4"]  # List of nCore values - produces one plot per n
 # DEFAULT_TIMES = [1.0, 1.5, 2.0, 2.5]  # Myr
 DEFAULT_TIMES = [1.0]  # Myr
 
-
-# Smoothing parameters (can be adjusted via CLI)
-DEFAULT_SIGMA = 0.1      # Gaussian sigma - higher = smoother transitions
-DEFAULT_UPSAMPLE = 0.1    # Contour upsampling factor - higher = smoother boundaries
 
 # Axis mode options:
 #   'discrete': equal spacing, categorical labels (default)
@@ -171,6 +166,34 @@ def get_dominant_force(snapshot):
         return np.nan
 
     return int(np.argmax(forces))
+
+
+def get_force_values(snapshot):
+    """
+    Extract all force values from a snapshot.
+
+    Parameters
+    ----------
+    snapshot : dict
+        Snapshot data dictionary
+
+    Returns
+    -------
+    dict or None
+        Dictionary of {force_key: value} or None if snapshot is None
+    """
+    if snapshot is None:
+        return None
+
+    forces = {}
+    for key, _, _ in FORCE_FIELDS:
+        val = snapshot.get(key)
+        if val is None or not np.isfinite(val):
+            forces[key] = np.nan
+        else:
+            forces[key] = abs(val)
+
+    return forces
 
 
 def load_simulation(base_dir, run_name, use_modified=False):
@@ -270,6 +293,160 @@ def build_dominance_grid(target_time, mCloud_list, sfe_list, nCore, base_dir, us
     return grid
 
 
+def build_force_grids(target_time, mCloud_list, sfe_list, nCore, base_dir, use_modified=False):
+    """
+    Build 2D grids of force values for a given time (for proper interpolation).
+
+    Unlike build_dominance_grid which returns dominant indices, this returns
+    the actual force values for each type, allowing proper interpolation
+    before taking argmax.
+
+    Parameters
+    ----------
+    target_time : float
+        Target time in Myr
+    mCloud_list : list
+        List of cloud mass strings (e.g., ["1e7", "1e8"])
+    sfe_list : list
+        List of SFE strings (e.g., ["001", "010", "020"])
+    nCore : str
+        Core density string (e.g., "1e4")
+    base_dir : Path
+        Base directory for output folders
+    use_modified : bool
+        If True, look in *_modified/ folders
+
+    Returns
+    -------
+    forces_dict : dict
+        Dictionary {force_key: 2D array} for each force type
+    mask : np.ndarray
+        Boolean 2D array where True = invalid (file not found or time out of range)
+    status_grid : np.ndarray
+        2D array with FILE_NOT_FOUND (-1) or TIME_OUT_OF_RANGE (-2) for invalid cells
+    """
+    n_sfe = len(sfe_list)
+    n_mass = len(mCloud_list)
+
+    # Initialize force grids with NaN
+    forces_dict = {}
+    for key, _, _ in FORCE_FIELDS:
+        forces_dict[key] = np.full((n_sfe, n_mass), np.nan, dtype=float)
+
+    # Status grid for missing data types
+    status_grid = np.zeros((n_sfe, n_mass), dtype=float)
+    mask = np.zeros((n_sfe, n_mass), dtype=bool)
+
+    for j, mCloud in enumerate(mCloud_list):
+        for i, sfe in enumerate(sfe_list):
+            run_name = f"{mCloud}_sfe{sfe}_n{nCore}"
+            display_name = f"{run_name}_modified" if use_modified else run_name
+
+            output = load_simulation(base_dir, run_name, use_modified=use_modified)
+            if output is None:
+                print(f"    {display_name}: not found")
+                mask[i, j] = True
+                status_grid[i, j] = FILE_NOT_FOUND
+                continue
+
+            # Check time bounds
+            if target_time < output.t_min or target_time > output.t_max:
+                print(f"    {display_name}: t={target_time} outside range [{output.t_min:.3f}, {output.t_max:.3f}]")
+                mask[i, j] = True
+                status_grid[i, j] = TIME_OUT_OF_RANGE
+                continue
+
+            snapshot = get_snapshot_at_time(output, target_time)
+            force_vals = get_force_values(snapshot)
+
+            if force_vals is None or all(np.isnan(v) for v in force_vals.values()):
+                mask[i, j] = True
+                status_grid[i, j] = TIME_OUT_OF_RANGE
+            else:
+                for key in forces_dict:
+                    forces_dict[key][i, j] = force_vals.get(key, np.nan)
+
+                # Report dominant force
+                valid_forces = {k: v for k, v in force_vals.items() if np.isfinite(v)}
+                if valid_forces:
+                    dominant_key = max(valid_forces, key=valid_forces.get)
+                    for idx, (k, label, _) in enumerate(FORCE_FIELDS):
+                        if k == dominant_key:
+                            print(f"    {display_name}: {label}")
+                            break
+
+    return forces_dict, mask, status_grid
+
+
+def refine_dominant_map(logM, eps, forces_dict, mask, nref_M=300, nref_eps=300):
+    """
+    Interpolate continuous force fields, then take argmax for smooth boundaries.
+
+    This is the correct approach: interpolate the underlying forces FIRST,
+    then determine the dominant force at each point. This avoids the color
+    bleeding issues from smoothing categorical labels.
+
+    Parameters
+    ----------
+    logM : np.ndarray
+        1D array of log10(Mcloud/Msun) values
+    eps : np.ndarray
+        1D array of SFE values
+    forces_dict : dict
+        Dictionary {force_key: 2D array (n_eps, n_mass)} for each force
+    mask : np.ndarray
+        Boolean 2D array where True = invalid data
+    nref_M : int
+        Number of points in refined mass grid
+    nref_eps : int
+        Number of points in refined SFE grid
+
+    Returns
+    -------
+    logM_f : np.ndarray
+        Fine mass grid (log10 values)
+    eps_f : np.ndarray
+        Fine SFE grid
+    dom_f : np.ma.MaskedArray
+        Dominant force index at each fine grid point (masked where invalid)
+    """
+    keys = list(forces_dict.keys())
+
+    # Create fine grids
+    logM_f = np.linspace(logM.min(), logM.max(), nref_M)
+    eps_f = np.linspace(eps.min(), eps.max(), nref_eps)
+    E, L = np.meshgrid(eps_f, logM_f, indexing="ij")  # shapes (nref_eps, nref_M)
+    pts = np.stack([E.ravel(), L.ravel()], axis=-1)
+
+    # Interpolate each force field
+    fine_fields = []
+    for k in keys:
+        arr = np.array(forces_dict[k], dtype=float)  # (n_eps, n_mass)
+        # Set masked regions to NaN to prevent interpolation across holes
+        arr_masked = arr.copy()
+        arr_masked[mask] = np.nan
+
+        itp = RegularGridInterpolator(
+            (eps, logM), arr_masked,
+            method="linear",
+            bounds_error=False,
+            fill_value=np.nan
+        )
+        fine_fields.append(itp(pts).reshape(nref_eps, nref_M))
+
+    stack = np.stack(fine_fields, axis=-1)  # (nref_eps, nref_M, nF)
+
+    # Take argmax to get dominant force (nanargmax handles NaN)
+    with np.errstate(invalid='ignore'):
+        dom_f = np.nanargmax(stack, axis=-1).astype(float)
+
+    # Mark as invalid where ALL forces are NaN
+    invalid_f = np.all(~np.isfinite(stack), axis=-1)
+    dom_f = np.ma.array(dom_f, mask=invalid_f)
+
+    return logM_f, eps_f, dom_f
+
+
 # =============================================================================
 # Plotting Functions
 # =============================================================================
@@ -302,179 +479,18 @@ def create_colormap():
     return cmap, norm
 
 
-def apply_smoothing(grid, method='none', sigma=0.8, upsample=4):
+def create_force_colormap():
     """
-    Apply smoothing to the dominance grid for contour-like appearance.
+    Create discrete colormap for just force types (0-3).
 
-    Parameters
-    ----------
-    grid : np.ndarray
-        2D array of dominant force indices
-    method : str
-        'none': no smoothing (discrete grid)
-        'gaussian': Gaussian blur for soft transitions (respects local colors only)
-        'interp': high-resolution interpolation for continuous mode
-    sigma : float
-        Gaussian sigma for 'gaussian' method
-    upsample : int
-        Upsampling factor for interpolation methods
-
-    Returns
-    -------
-    grid_smooth : np.ndarray
-        Smoothed grid (may be larger if upsampled)
-    extent : tuple or None
-        New extent for imshow if upsampled, else None
+    Used for interpolated plots where missing data is handled via masking.
     """
-    if method == 'none':
-        return grid, None
-
-    n_sfe, n_mass = grid.shape
-
-    if method == 'gaussian':
-        # Create separate binary masks for each force type
-        # Then smooth each and take argmax
-        n_forces = len(FORCE_FIELDS)
-        masks = np.zeros((n_forces, n_sfe, n_mass))
-
-        for force_idx in range(n_forces):
-            masks[force_idx] = (grid == force_idx).astype(float)
-
-        # Apply Gaussian filter to each mask
-        smoothed_masks = np.array([
-            gaussian_filter(mask, sigma=sigma, mode='nearest')
-            for mask in masks
-        ])
-
-        # Handle missing data: where original was negative, keep it
-        missing_mask = grid < 0
-
-        # Take argmax of smoothed masks
-        grid_smooth = np.argmax(smoothed_masks, axis=0).astype(float)
-
-        # --- FIX: Strict local constraint to prevent color bleeding ---
-        # Only allow a smoothed color if it was EITHER:
-        # 1. The original color at this cell, OR
-        # 2. Present in at least one of the 4-connected neighbors (up/down/left/right)
-        # This prevents diagonal bleeding and distant colors from appearing.
-        for i in range(n_sfe):
-            for j in range(n_mass):
-                if missing_mask[i, j]:
-                    continue  # Skip missing data cells
-
-                original_color = int(grid[i, j]) if grid[i, j] >= 0 else -1
-                smoothed_color = int(grid_smooth[i, j])
-
-                # If smoothed color equals original, keep it
-                if smoothed_color == original_color:
-                    continue
-
-                # Check 4-connected neighbors only (not diagonal)
-                neighbor_colors = set()
-                if i > 0 and grid[i-1, j] >= 0:
-                    neighbor_colors.add(int(grid[i-1, j]))
-                if i < n_sfe - 1 and grid[i+1, j] >= 0:
-                    neighbor_colors.add(int(grid[i+1, j]))
-                if j > 0 and grid[i, j-1] >= 0:
-                    neighbor_colors.add(int(grid[i, j-1]))
-                if j < n_mass - 1 and grid[i, j+1] >= 0:
-                    neighbor_colors.add(int(grid[i, j+1]))
-
-                # If smoothed color is not in 4-connected neighbors, revert to original
-                if smoothed_color not in neighbor_colors:
-                    grid_smooth[i, j] = grid[i, j]
-
-        # Restore missing data markers
-        grid_smooth[missing_mask] = grid[missing_mask]
-
-        return grid_smooth, None
-
-    elif method == 'interp':
-        # High-resolution interpolation using probability-based blending
-        # Better for continuous coordinate mode
-        new_sfe = n_sfe * upsample
-        new_mass = n_mass * upsample
-
-        n_forces = len(FORCE_FIELDS)
-
-        # Create coordinate arrays
-        y_old = np.arange(n_sfe)
-        x_old = np.arange(n_mass)
-        y_new = np.linspace(0, n_sfe - 1, new_sfe)
-        x_new = np.linspace(0, n_mass - 1, new_mass)
-
-        # Create binary masks for each force type
-        masks = np.zeros((n_forces, n_sfe, n_mass))
-        for force_idx in range(n_forces):
-            masks[force_idx] = (grid == force_idx).astype(float)
-
-        # Interpolate each mask using bilinear interpolation
-        from scipy.interpolate import RectBivariateSpline
-        interpolated_masks = np.zeros((n_forces, new_sfe, new_mass))
-
-        for force_idx in range(n_forces):
-            # Use linear spline (k=1) for smooth but bounded interpolation
-            spline = RectBivariateSpline(y_old, x_old, masks[force_idx], kx=1, ky=1)
-            interpolated_masks[force_idx] = spline(y_new, x_new)
-
-        # Clip to [0, 1] range (interpolation can overshoot)
-        interpolated_masks = np.clip(interpolated_masks, 0, 1)
-
-        # Take argmax to get dominant force at each point
-        grid_smooth = np.argmax(interpolated_masks, axis=0).astype(float)
-
-        # --- FIX: Strict local constraint to prevent color bleeding ---
-        # For each upsampled cell, only allow interpolated color if it was EITHER:
-        # 1. The original color at the nearest cell, OR
-        # 2. Present in at least one of the 4-connected neighbors (up/down/left/right)
-        # Handle missing data at the same time.
-        missing_mask_orig = (grid < 0).astype(float)
-        spline_missing = RectBivariateSpline(y_old, x_old, missing_mask_orig, kx=1, ky=1)
-        missing_interp = spline_missing(y_new, x_new)
-
-        for iy, y in enumerate(y_new):
-            for ix, x in enumerate(x_new):
-                # Find nearest original cell
-                orig_y = int(round(y))
-                orig_x = int(round(x))
-                orig_y = min(max(orig_y, 0), n_sfe - 1)
-                orig_x = min(max(orig_x, 0), n_mass - 1)
-
-                # Handle missing data
-                if missing_interp[iy, ix] > 0.3:
-                    if grid[orig_y, orig_x] < 0:
-                        grid_smooth[iy, ix] = grid[orig_y, orig_x]
-                        continue
-
-                # Skip if original cell is missing data
-                if grid[orig_y, orig_x] < 0:
-                    continue
-
-                original_color = int(grid[orig_y, orig_x])
-                interp_color = int(grid_smooth[iy, ix])
-
-                # If interpolated color equals original, keep it
-                if interp_color == original_color:
-                    continue
-
-                # Check 4-connected neighbors only (not diagonal)
-                neighbor_colors = set()
-                if orig_y > 0 and grid[orig_y-1, orig_x] >= 0:
-                    neighbor_colors.add(int(grid[orig_y-1, orig_x]))
-                if orig_y < n_sfe - 1 and grid[orig_y+1, orig_x] >= 0:
-                    neighbor_colors.add(int(grid[orig_y+1, orig_x]))
-                if orig_x > 0 and grid[orig_y, orig_x-1] >= 0:
-                    neighbor_colors.add(int(grid[orig_y, orig_x-1]))
-                if orig_x < n_mass - 1 and grid[orig_y, orig_x+1] >= 0:
-                    neighbor_colors.add(int(grid[orig_y, orig_x+1]))
-
-                # If interpolated color is not in 4-connected neighbors, use original
-                if interp_color not in neighbor_colors:
-                    grid_smooth[iy, ix] = original_color
-
-        return grid_smooth, None
-
-    return grid, None
+    n_forces = len(FORCE_FIELDS)
+    colors = [field[2] for field in FORCE_FIELDS]
+    cmap = ListedColormap(colors)
+    cmap.set_bad(color='white')  # Masked values -> white
+    norm = BoundaryNorm(np.arange(n_forces + 1) - 0.5, n_forces)
+    return cmap, norm
 
 
 def compute_grid_layout(n_plots):
@@ -493,16 +509,20 @@ def compute_grid_layout(n_plots):
 
 
 def plot_single_grid(ax, grid, mCloud_list, sfe_list, target_time, cmap, norm,
-                     smooth='none', axis_mode='discrete', sigma=DEFAULT_SIGMA, upsample=DEFAULT_UPSAMPLE):
+                     smooth='none', axis_mode='discrete', forces_dict=None, mask=None,
+                     nref_M=300, nref_eps=300):
     """
     Plot a single dominance grid on an axis.
+
+    For smooth mode, uses the proper approach: interpolate continuous force values
+    on a fine grid, then take argmax. This avoids color bleeding issues.
 
     Parameters
     ----------
     ax : matplotlib.axes.Axes
         Axis to plot on
     grid : np.ndarray
-        2D array of dominant force indices
+        2D array of dominant force indices (used for discrete mode or as fallback)
     mCloud_list : list
         Cloud mass labels (strings like "1e7")
     sfe_list : list
@@ -510,65 +530,115 @@ def plot_single_grid(ax, grid, mCloud_list, sfe_list, target_time, cmap, norm,
     target_time : float
         Time in Myr (for title)
     cmap : ListedColormap
-        Colormap
+        Colormap (full colormap with missing data colors)
     norm : BoundaryNorm
         Color normalization
     smooth : str
-        Smoothing method: 'none', 'gaussian', 'contour'
-        Note: Smoothing only works with axis_mode='continuous'
+        Smoothing method: 'none' or 'interp'
+        Note: 'interp' requires forces_dict and mask to be provided
     axis_mode : str
         'discrete': equal spacing with categorical labels
         'continuous': real value spacing (log for mCloud, linear for SFE)
+    forces_dict : dict, optional
+        Dictionary {force_key: 2D array} for interpolation (required for smooth='interp')
+    mask : np.ndarray, optional
+        Boolean mask where True = invalid data (required for smooth='interp')
+    nref_M : int
+        Number of points in refined mass grid for interpolation
+    nref_eps : int
+        Number of points in refined SFE grid for interpolation
     """
     n_mass = len(mCloud_list)
     n_sfe = len(sfe_list)
 
-    # Smoothing only works with continuous mode
+    # Convert to real values
+    logM = np.array([np.log10(float(m)) for m in mCloud_list])  # log10(Msun)
+    eps = np.array([int(s) / 100.0 for s in sfe_list])  # decimal SFE
+
+    # Smoothing only works with continuous mode and requires force data
+    if smooth == 'interp' and (forces_dict is None or mask is None):
+        print("    Warning: smooth='interp' requires forces_dict and mask, falling back to 'none'")
+        smooth = 'none'
     if axis_mode == 'discrete' and smooth != 'none':
         smooth = 'none'
 
-    # Convert to real values for continuous mode
-    mass_values = np.array([np.log10(float(m)) for m in mCloud_list])  # log10(Msun)
-    sfe_values = np.array([int(s) / 100.0 for s in sfe_list])  # decimal SFE
+    if axis_mode == 'continuous' and smooth == 'interp':
+        # PROPER APPROACH: Interpolate continuous force values, then argmax
+        # This gives smooth boundaries without color bleeding
+        logM_f, eps_f, dom_f = refine_dominant_map(logM, eps, forces_dict, mask,
+                                                    nref_M=nref_M, nref_eps=nref_eps)
 
-    # Apply smoothing if requested (only effective in continuous mode)
-    grid_plot, extent = apply_smoothing(grid, method=smooth, sigma=sigma, upsample=upsample)
+        # Create colormap for just forces (0-3), masking handles invalid data
+        force_cmap, force_norm = create_force_colormap()
 
-    if axis_mode == 'continuous':
-        # Real-value axis spacing using log10(mass) for x and linear SFE for y
-        # Compute extent in real coordinate space
-        mass_min, mass_max = mass_values.min(), mass_values.max()
-        sfe_min, sfe_max = sfe_values.min(), sfe_values.max()
+        # Use pcolormesh with nearest shading for categorical data
+        # This ensures each pixel is exactly one color with no interpolation artifacts
+        im = ax.pcolormesh(
+            10**logM_f,  # Convert back to linear mass for display
+            eps_f,
+            dom_f,
+            cmap=force_cmap,
+            norm=force_norm,
+            shading='nearest',
+            linewidth=0,
+            antialiased=False
+        )
+
+        # Use log scale for x-axis
+        ax.set_xscale('log')
+
+        # Set axis limits with some padding
+        mass_min, mass_max = 10**logM.min(), 10**logM.max()
+        eps_min, eps_max = eps.min(), eps.max()
+
+        # Add padding
+        if n_mass > 1:
+            log_pad = (logM[1] - logM[0]) / 2
+            mass_min = 10**(logM.min() - log_pad)
+            mass_max = 10**(logM.max() + log_pad)
+        if n_sfe > 1:
+            eps_pad = (eps[1] - eps[0]) / 2
+            eps_min = eps.min() - eps_pad
+            eps_max = eps.max() + eps_pad
+
+        ax.set_xlim(mass_min, mass_max)
+        ax.set_ylim(eps_min, eps_max)
+
+        # Auto-generate nice tick locations for y-axis
+        ax.yaxis.set_major_locator(plt.MaxNLocator(nbins=6, steps=[1, 2, 2.5, 5, 10]))
+
+    elif axis_mode == 'continuous':
+        # Continuous mode without interpolation - use pcolormesh with nearest
+        mass_min, mass_max = logM.min(), logM.max()
+        eps_min, eps_max = eps.min(), eps.max()
 
         # Add padding (half cell width at edges)
         if n_mass > 1:
-            mass_pad = (mass_values[1] - mass_values[0]) / 2
+            mass_pad = (logM[1] - logM[0]) / 2
         else:
             mass_pad = 0.5
         if n_sfe > 1:
-            sfe_pad = (sfe_values[1] - sfe_values[0]) / 2
+            eps_pad = (eps[1] - eps[0]) / 2
         else:
-            sfe_pad = 0.05
+            eps_pad = 0.05
 
         extent = (mass_min - mass_pad, mass_max + mass_pad,
-                  sfe_min - sfe_pad, sfe_max + sfe_pad)
+                  eps_min - eps_pad, eps_max + eps_pad)
 
-        # Mask NaN values
-        grid_masked = np.ma.masked_invalid(grid_plot)
+        # Mask invalid values
+        grid_masked = np.ma.masked_invalid(grid)
 
-        # Use imshow for smooth rendering
-        im = ax.imshow(
-            grid_masked,
+        # Use pcolormesh with nearest shading
+        im = ax.pcolormesh(
+            logM, eps, grid_masked,
             cmap=cmap,
             norm=norm,
-            origin='lower',
-            extent=extent,
-            aspect='auto',
-            interpolation='nearest' if smooth == 'none' else 'bilinear'
+            shading='nearest',
+            linewidth=0,
+            antialiased=False
         )
 
         # X-axis: use standard log-scale ticks at integer powers
-        # Find the range of integer powers covered
         min_power = int(np.floor(extent[0]))
         max_power = int(np.ceil(extent[1]))
         x_ticks = np.arange(min_power, max_power + 1)
@@ -578,44 +648,25 @@ def plot_single_grid(ax, grid, mCloud_list, sfe_list, target_time, cmap, norm,
 
         # Y-axis: linear SFE with reasonable tick spacing
         ax.set_ylim(extent[2], extent[3])
-        # Auto-generate nice tick locations
         ax.yaxis.set_major_locator(plt.MaxNLocator(nbins=6, steps=[1, 2, 2.5, 5, 10]))
 
     else:
-        # Discrete mode (original behavior)
-        if smooth == 'none':
-            # Original discrete grid with cell borders
-            X, Y = np.meshgrid(
-                np.arange(n_mass + 1) - 0.5,
-                np.arange(n_sfe + 1) - 0.5
-            )
+        # Discrete mode - categorical grid with cell borders
+        X, Y = np.meshgrid(
+            np.arange(n_mass + 1) - 0.5,
+            np.arange(n_sfe + 1) - 0.5
+        )
 
-            # Mask NaN values
-            grid_masked = np.ma.masked_invalid(grid_plot)
+        # Mask invalid values
+        grid_masked = np.ma.masked_invalid(grid)
 
-            im = ax.pcolormesh(
-                X, Y, grid_masked,
-                cmap=cmap,
-                norm=norm,
-                edgecolors='white',
-                linewidths=1.0
-            )
-        else:
-            # Smoothed grid - use imshow for better appearance
-            grid_masked = np.ma.masked_invalid(grid_plot)
-
-            if extent is None:
-                extent = (-0.5, n_mass - 0.5, -0.5, n_sfe - 0.5)
-
-            im = ax.imshow(
-                grid_masked,
-                cmap=cmap,
-                norm=norm,
-                origin='lower',
-                extent=extent,
-                aspect='auto',
-                interpolation='nearest' if smooth == 'contour' else 'bilinear'
-            )
+        im = ax.pcolormesh(
+            X, Y, grid_masked,
+            cmap=cmap,
+            norm=norm,
+            edgecolors='white',
+            linewidths=1.0
+        )
 
         # Discrete axis labels - handle non-power-of-10 masses (e.g., 5e6)
         ax.set_xticks(np.arange(n_mass))
@@ -663,7 +714,7 @@ def create_legend():
 # =============================================================================
 
 def main(mCloud_list, sfe_list, nCore_list, target_times, base_dir, fig_dir=None,
-         use_modified=False, smooth='none', axis_mode='discrete', sigma=DEFAULT_SIGMA, upsample=DEFAULT_UPSAMPLE):
+         use_modified=False, smooth='none', axis_mode='discrete'):
     """
     Generate dominant feedback grid plot(s).
 
@@ -685,7 +736,7 @@ def main(mCloud_list, sfe_list, nCore_list, target_times, base_dir, fig_dir=None
     use_modified : bool
         If True, look in *_modified/ folders and save as *_modified.pdf
     smooth : str
-        Smoothing method: 'none', 'gaussian', 'contour'
+        Smoothing method: 'none' or 'interp' (interpolate force fields)
     axis_mode : str
         'discrete': equal spacing with categorical labels
         'continuous': real value spacing (log for mCloud, linear for SFE)
@@ -701,10 +752,6 @@ def main(mCloud_list, sfe_list, nCore_list, target_times, base_dir, fig_dir=None
     print(f"  Use modified: {use_modified}")
     print(f"  Smooth: {smooth}")
     print(f"  Axis mode: {axis_mode}")
-    if smooth == 'gaussian':
-        print(f"  Gaussian sigma: {sigma} (higher = smoother)")
-    elif smooth == 'contour':
-        print(f"  Contour upsample: {upsample}x (higher = smoother)")
     if axis_mode == 'discrete' and smooth != 'none':
         print(f"  Warning: Smoothing only works with axis_mode='continuous', ignoring --smooth {smooth}")
         smooth = 'none'
@@ -746,13 +793,27 @@ def main(mCloud_list, sfe_list, nCore_list, target_times, base_dir, fig_dir=None
 
             print(f"Building grid for t = {target_time} Myr...")
 
-            grid = build_dominance_grid(
-                target_time, mCloud_list, sfe_list, nCore, base_dir,
-                use_modified=use_modified
-            )
-
-            plot_single_grid(ax, grid, mCloud_list, sfe_list, target_time, cmap, norm,
-                           smooth=smooth, axis_mode=axis_mode, sigma=sigma, upsample=upsample)
+            # For interpolated smooth mode, get force values; otherwise just dominance grid
+            if smooth == 'interp' and axis_mode == 'continuous':
+                forces_dict, mask, status_grid = build_force_grids(
+                    target_time, mCloud_list, sfe_list, nCore, base_dir,
+                    use_modified=use_modified
+                )
+                # Build dominance grid from forces for fallback/status display
+                grid = build_dominance_grid(
+                    target_time, mCloud_list, sfe_list, nCore, base_dir,
+                    use_modified=use_modified
+                )
+                plot_single_grid(ax, grid, mCloud_list, sfe_list, target_time, cmap, norm,
+                               smooth=smooth, axis_mode=axis_mode,
+                               forces_dict=forces_dict, mask=mask)
+            else:
+                grid = build_dominance_grid(
+                    target_time, mCloud_list, sfe_list, nCore, base_dir,
+                    use_modified=use_modified
+                )
+                plot_single_grid(ax, grid, mCloud_list, sfe_list, target_time, cmap, norm,
+                               smooth=smooth, axis_mode=axis_mode)
             print()
 
         # Hide unused subplots
@@ -808,7 +869,6 @@ def main(mCloud_list, sfe_list, nCore_list, target_times, base_dir, fig_dir=None
 
 def make_movie(mCloud_list, sfe_list, nCore, base_dir, fig_dir=None,
                use_modified=False, smooth='none', axis_mode='discrete',
-               sigma=DEFAULT_SIGMA, upsample=DEFAULT_UPSAMPLE,
                t_start=0.0, t_end=5.0, dt=0.05, fps=10):
     """
     Create an animated GIF showing the evolution of dominant feedback over time.
@@ -828,13 +888,9 @@ def make_movie(mCloud_list, sfe_list, nCore, base_dir, fig_dir=None,
     use_modified : bool
         If True, look in *_modified/ folders
     smooth : str
-        Smoothing method: 'none', 'gaussian', 'contour'
+        Smoothing method: 'none' or 'interp' (interpolate force fields)
     axis_mode : str
         'discrete' or 'continuous'
-    sigma : float
-        Gaussian smoothing sigma
-    upsample : int
-        Contour upsampling factor
     t_start : float
         Start time in Myr (default: 0.0)
     t_end : float
@@ -862,10 +918,6 @@ def make_movie(mCloud_list, sfe_list, nCore, base_dir, fig_dir=None,
     print(f"  Base dir: {base_dir}")
     print(f"  Use modified: {use_modified}")
     print(f"  Smooth: {smooth}, Axis mode: {axis_mode}")
-    if smooth == 'gaussian':
-        print(f"  Gaussian sigma: {sigma}")
-    elif smooth == 'contour':
-        print(f"  Contour upsample: {upsample}x")
     print()
 
     # Set up directories
@@ -897,15 +949,26 @@ def make_movie(mCloud_list, sfe_list, nCore, base_dir, fig_dir=None,
             # Create single-panel figure
             fig, ax = plt.subplots(figsize=(8, 6), constrained_layout=True)
 
-            # Build grid for this time
-            grid = build_dominance_grid(
-                target_time, mCloud_list, sfe_list, nCore, base_dir,
-                use_modified=use_modified
-            )
-
-            # Plot
-            plot_single_grid(ax, grid, mCloud_list, sfe_list, target_time, cmap, norm,
-                           smooth=smooth, axis_mode=axis_mode, sigma=sigma, upsample=upsample)
+            # For interpolated smooth mode, get force values; otherwise just dominance grid
+            if smooth == 'interp' and axis_mode == 'continuous':
+                forces_dict, mask, status_grid = build_force_grids(
+                    target_time, mCloud_list, sfe_list, nCore, base_dir,
+                    use_modified=use_modified
+                )
+                grid = build_dominance_grid(
+                    target_time, mCloud_list, sfe_list, nCore, base_dir,
+                    use_modified=use_modified
+                )
+                plot_single_grid(ax, grid, mCloud_list, sfe_list, target_time, cmap, norm,
+                               smooth=smooth, axis_mode=axis_mode,
+                               forces_dict=forces_dict, mask=mask)
+            else:
+                grid = build_dominance_grid(
+                    target_time, mCloud_list, sfe_list, nCore, base_dir,
+                    use_modified=use_modified
+                )
+                plot_single_grid(ax, grid, mCloud_list, sfe_list, target_time, cmap, norm,
+                               smooth=smooth, axis_mode=axis_mode)
 
             # Labels
             ax.set_xlabel(r"$M_{\rm cloud}$ [$M_\odot$]", fontsize=12)
@@ -989,18 +1052,16 @@ Examples:
   python paper_dominantFeedback.py
   python paper_dominantFeedback.py --mCloud 1e7 1e8 --sfe 001 020 --times 1 1.5 2 2.5
   python paper_dominantFeedback.py --nCore 1e4 1e5 --modified
-  python paper_dominantFeedback.py --smooth gaussian --sigma 1.2
-  python paper_dominantFeedback.py --smooth contour --upsample 8
-  python paper_dominantFeedback.py --axis-mode continuous
+  python paper_dominantFeedback.py --axis-mode continuous --smooth interp
 
   # Movie generation
   python paper_dominantFeedback.py --movie --nCore 1e4 --dt 0.05 --fps 10
   python paper_dominantFeedback.py --movie --t-start 0.5 --t-end 3.0 --dt 0.1 --fps 5
 
 Smoothing methods (only with --axis-mode continuous):
-  none     - Discrete grid with cell borders (default)
-  gaussian - Gaussian blur for soft color transitions (adjust with --sigma)
-  contour  - Upsampled nearest-neighbor for smooth boundaries (adjust with --upsample)
+  none   - Discrete grid, each cell shows dominant force at that point
+  interp - Interpolate underlying force fields on fine grid, then take argmax
+           This gives smooth boundaries without color bleeding artifacts
 
 Axis modes:
   discrete   - Equal spacing with categorical labels (default, no smoothing)
@@ -1044,21 +1105,14 @@ Movie mode:
         help='Use *_modified/ output folders and save as *_modified.pdf'
     )
     parser.add_argument(
-        '--smooth', choices=['none', 'gaussian', 'interp'], default=None,
-        help=f"Smoothing method for contour-like appearance (only with --axis-mode continuous). Default: {DEFAULT_SMOOTH}"
+        '--smooth', choices=['none', 'interp'], default=None,
+        help=f"Smoothing method: 'none' for discrete grid, 'interp' for interpolated force fields "
+             f"(only with --axis-mode continuous). Default: {DEFAULT_SMOOTH}"
     )
     parser.add_argument(
         '--axis-mode', choices=['discrete', 'continuous'], default=None,
         help=f"Axis spacing mode: 'discrete' for equal spacing with categorical labels, "
              f"'continuous' for real value spacing (log for mCloud, linear for SFE). Default: {DEFAULT_AXIS_MODE}"
-    )
-    parser.add_argument(
-        '--sigma', type=float, default=None,
-        help=f"Gaussian smoothing sigma (higher = smoother). Default: {DEFAULT_SIGMA}"
-    )
-    parser.add_argument(
-        '--upsample', type=int, default=None,
-        help=f"Contour upsampling factor (higher = smoother boundaries). Default: {DEFAULT_UPSAMPLE}"
     )
 
     # Movie generation arguments
@@ -1094,8 +1148,6 @@ Movie mode:
     fig_dir = Path(args.fig_dir) if args.fig_dir else None
     smooth = args.smooth if args.smooth else DEFAULT_SMOOTH
     axis_mode = args.axis_mode if args.axis_mode else DEFAULT_AXIS_MODE
-    sigma = args.sigma if args.sigma else DEFAULT_SIGMA
-    upsample = args.upsample if args.upsample else DEFAULT_UPSAMPLE
 
     # Use module-level USE_MODIFIED if --modified not explicitly set
     use_modified = args.modified or USE_MODIFIED
@@ -1106,10 +1158,9 @@ Movie mode:
             make_movie(
                 mCloud_list, sfe_list, nCore, base_dir, fig_dir,
                 use_modified=use_modified, smooth=smooth, axis_mode=axis_mode,
-                sigma=sigma, upsample=upsample,
                 t_start=args.t_start, t_end=args.t_end, dt=args.dt, fps=args.fps
             )
     else:
         # Static plot mode
         main(mCloud_list, sfe_list, nCore_list, target_times, base_dir, fig_dir,
-             use_modified, smooth, axis_mode, sigma, upsample)
+             use_modified, smooth, axis_mode)
