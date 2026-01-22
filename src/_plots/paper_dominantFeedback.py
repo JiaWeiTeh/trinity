@@ -87,7 +87,7 @@ DEFAULT_TIMES = [1.0]  # Myr
 
 # Smoothing parameters (can be adjusted via CLI)
 DEFAULT_SIGMA = 0.1      # Gaussian sigma - higher = smoother transitions
-DEFAULT_UPSAMPLE = 10     # Contour upsampling factor - higher = smoother boundaries
+DEFAULT_UPSAMPLE = 0.1    # Contour upsampling factor - higher = smoother boundaries
 
 # Axis mode options:
 #   'discrete': equal spacing, categorical labels (default)
@@ -95,7 +95,7 @@ DEFAULT_UPSAMPLE = 10     # Contour upsampling factor - higher = smoother bounda
 DEFAULT_AXIS_MODE = 'continuous'
 
 # Smoothing options: 'none', 'gaussian', 'interp', only if continuous.
-DEFAULT_SMOOTH = 'interp'
+DEFAULT_SMOOTH = 'gaussian'
 
 # Default directories
 DEFAULT_OUTPUT_DIR = Path.home() / "unsync" / "Code" / "Trinity" / "outputs" / "sweep_test_modified"
