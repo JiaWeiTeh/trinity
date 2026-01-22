@@ -82,7 +82,7 @@ DEFAULT_NCORE = ["1e2", "1e4"]  # List of nCore values - produces one plot per n
 DEFAULT_TIMES = [1.0, 1.5, 2.0, 2.5]  # Myr
 
 # Smoothing options: 'none', 'gaussian', 'interp'
-DEFAULT_SMOOTH = 'none'
+DEFAULT_SMOOTH = 'interp'
 
 # Axis mode options:
 #   'discrete': equal spacing, categorical labels (default)
