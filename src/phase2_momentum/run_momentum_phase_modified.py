@@ -90,6 +90,12 @@ FOUR_PI = 4.0 * np.pi
 ADAPTIVE_THRESHOLD_DEX = 0.1  # dex - threshold for parameter change (10^0.1 ≈ 1.26x)
 ADAPTIVE_FACTOR = 10**0.1     # Factor to increase/decrease DT_SEGMENT (~1.26)
 
+# Velocity-based proactive timestep control (for rapid collapse)
+# When |v2| exceeds threshold, reduce dt_segment to ensure fine temporal resolution
+VELOCITY_THRESHOLD_COLLAPSE = 50.0   # pc/Myr - proactively reduce step when |v2| > this
+VELOCITY_THRESHOLD_EXTREME = 200.0   # pc/Myr - use minimum step when |v2| > this
+DT_SEGMENT_COLLAPSE = 5e-4           # Myr - segment duration during collapse (0.5 kyr)
+
 # Parameters to monitor for adaptive stepping (keys in params dict)
 # Based on diagnostic_parameter_changes.py analysis of top 30 most variable parameters
 ADAPTIVE_MONITOR_KEYS = [
@@ -628,6 +634,23 @@ def run_phase_momentum(params) -> MomentumPhaseResults:
         else:
             dt_segment = min(dt_segment * ADAPTIVE_FACTOR, DT_SEGMENT_MAX)
             logger.debug(f"Adaptive: max_dex={max_dex_change:.3f} < threshold, dt -> {dt_segment:.3e}")
+
+        # ---------------------------------------------------------------------
+        # Proactive velocity-based timestep control during collapse
+        # This ensures fine temporal resolution when shell is collapsing rapidly
+        # ---------------------------------------------------------------------
+        abs_v2 = abs(v2)
+        if v2 < 0:  # Only during collapse (negative velocity = inward motion)
+            if abs_v2 > VELOCITY_THRESHOLD_EXTREME:
+                # Extreme collapse velocity: use minimum segment duration
+                dt_segment = DT_SEGMENT_COLLAPSE
+                logger.info(f"Velocity-based: |v2|={abs_v2:.1f} > {VELOCITY_THRESHOLD_EXTREME}, "
+                           f"dt -> {dt_segment:.3e} Myr (collapse mode)")
+            elif abs_v2 > VELOCITY_THRESHOLD_COLLAPSE:
+                # Moderate collapse velocity: use intermediate segment duration
+                dt_segment = min(dt_segment, DT_SEGMENT_MIN)
+                logger.debug(f"Velocity-based: |v2|={abs_v2:.1f} > {VELOCITY_THRESHOLD_COLLAPSE}, "
+                            f"dt -> {dt_segment:.3e} Myr")
 
         # Store results
         t_results.append(t_now)
