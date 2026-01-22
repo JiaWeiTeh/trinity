@@ -111,6 +111,67 @@ ODE_MIN_STEP = 1e-6  # Minimum step size (Myr)
 ODE_MAX_STEP = DT_SEGMENT_MIN / 5  # Max step = 2e-5 Myr (ensures >=5 steps per segment)
 ODE_METHOD = 'LSODA' # Auto-switches stiff/non-stiff
 
+# Collapse safety parameters
+MIN_RADIUS_SAFETY = 0.01  # pc - absolute minimum radius before event triggers
+MIN_RADIUS_FACTOR = 1.5   # Factor above coll_r to trigger early termination
+
+
+# =============================================================================
+# Event Functions for solve_ivp
+# =============================================================================
+
+def make_min_radius_event(min_r: float):
+    """
+    Create event function that triggers when R2 falls below min_r.
+
+    This prevents LSODA from crashing when R2 approaches zero during
+    rapid collapse. The event is terminal - integration stops immediately.
+
+    Parameters
+    ----------
+    min_r : float
+        Minimum allowed radius (pc). Typically coll_r * factor or MIN_RADIUS_SAFETY.
+
+    Returns
+    -------
+    event : callable
+        Event function for solve_ivp with terminal=True, direction=-1
+    """
+    def min_radius_event(t, y):
+        R2 = y[0]
+        return R2 - min_r
+
+    min_radius_event.terminal = True
+    min_radius_event.direction = -1  # Only trigger when R2 crosses min_r from above
+    return min_radius_event
+
+
+def make_velocity_runaway_event(v_max: float = 500.0):
+    """
+    Create event function that triggers on extreme inward velocity.
+
+    This catches runaway collapse before the solver becomes numerically unstable.
+    Velocity threshold is in pc/Myr (500 pc/Myr ≈ 490 km/s).
+
+    Parameters
+    ----------
+    v_max : float
+        Maximum inward velocity magnitude (pc/Myr). Default 500 pc/Myr.
+
+    Returns
+    -------
+    event : callable
+        Event function for solve_ivp with terminal=True
+    """
+    def velocity_runaway_event(t, y):
+        v2 = y[1]
+        # Triggers when v2 < -v_max (extreme inward velocity)
+        return v2 + v_max
+
+    velocity_runaway_event.terminal = True
+    velocity_runaway_event.direction = -1  # Trigger when crossing threshold going more negative
+    return velocity_runaway_event
+
 
 # =============================================================================
 # Adaptive Stepping Helpers
@@ -454,6 +515,27 @@ def run_phase_momentum(params) -> MomentumPhaseResults:
     dt_segment = DT_SEGMENT_INIT
 
     # =============================================================================
+    # Create event functions for safe termination during collapse
+    # =============================================================================
+
+    # Get collapse radius threshold from params
+    coll_r = params['coll_r'].value
+
+    # Create minimum radius event - triggers when R2 approaches collapse threshold
+    # Use the larger of: coll_r * factor or absolute minimum
+    min_r_threshold = max(coll_r * MIN_RADIUS_FACTOR, MIN_RADIUS_SAFETY)
+    min_radius_event = make_min_radius_event(min_r_threshold)
+
+    # Create velocity runaway event - triggers on extreme inward velocity
+    # 500 pc/Myr ≈ 490 km/s - extremely fast collapse
+    velocity_event = make_velocity_runaway_event(v_max=500.0)
+
+    # Combine events for solve_ivp
+    ode_events = [min_radius_event, velocity_event]
+
+    logger.debug(f"Collapse safety: min_r_threshold={min_r_threshold:.4e} pc (coll_r={coll_r:.4e} pc)")
+
+    # =============================================================================
     # Main loop (segment-based with adaptive stepping)
     # =============================================================================
 
@@ -557,6 +639,7 @@ def run_phase_momentum(params) -> MomentumPhaseResults:
                 'rtol': ODE_RTOL,
                 'atol': ODE_ATOL,
                 'max_step': ODE_MAX_STEP,
+                'events': ode_events,  # Event functions for safe termination
             }
             if ODE_METHOD == 'LSODA':
                 solver_kwargs['min_step'] = ODE_MIN_STEP
@@ -570,6 +653,63 @@ def run_phase_momentum(params) -> MomentumPhaseResults:
         if not sol.success or len(sol.t) == 0:
             termination_reason = f"solver_failed: {sol.message}"
             break
+
+        # ---------------------------------------------------------------------
+        # Check if an event terminated the integration
+        # ---------------------------------------------------------------------
+        event_triggered = False
+        if sol.t_events is not None:
+            # Event 0: min_radius_event - R2 fell below threshold
+            if len(sol.t_events[0]) > 0:
+                event_triggered = True
+                event_R2 = float(sol.y_events[0][0, 0])
+                event_v2 = float(sol.y_events[0][0, 1])
+                event_t = float(sol.t_events[0][0])
+                logger.warning(f"Min radius event triggered at t={event_t:.6e} Myr: "
+                              f"R2={event_R2:.4e} pc < threshold={min_r_threshold:.4e} pc")
+                termination_reason = "small_radius_event"
+                params['SimulationEndReason'].value = 'Small radius reached (event)'
+                params['EndSimulationDirectly'].value = True
+                params['isCollapse'].value = True
+                # Update final state from event
+                R2 = event_R2
+                v2 = event_v2
+                t_now = event_t
+                # Add final state to results
+                t_results.append(t_now)
+                R2_results.append(R2)
+                v2_results.append(v2)
+                # Update params for final snapshot
+                params['R2'].value = R2
+                params['v2'].value = v2
+                params['t_now'].value = t_now
+                break
+
+            # Event 1: velocity_runaway_event - extreme inward velocity
+            if len(sol.t_events[1]) > 0:
+                event_triggered = True
+                event_R2 = float(sol.y_events[1][0, 0])
+                event_v2 = float(sol.y_events[1][0, 1])
+                event_t = float(sol.t_events[1][0])
+                logger.warning(f"Velocity runaway event triggered at t={event_t:.6e} Myr: "
+                              f"v2={event_v2:.4e} pc/Myr (extreme collapse velocity)")
+                termination_reason = "velocity_runaway_event"
+                params['SimulationEndReason'].value = 'Collapse velocity runaway (event)'
+                params['EndSimulationDirectly'].value = True
+                params['isCollapse'].value = True
+                # Update final state from event
+                R2 = event_R2
+                v2 = event_v2
+                t_now = event_t
+                # Add final state to results
+                t_results.append(t_now)
+                R2_results.append(R2)
+                v2_results.append(v2)
+                # Update params for final snapshot
+                params['R2'].value = R2
+                params['v2'].value = v2
+                params['t_now'].value = t_now
+                break
 
         # ---------------------------------------------------------------------
         # Extract final state
