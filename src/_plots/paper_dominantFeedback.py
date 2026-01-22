@@ -40,6 +40,8 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap, BoundaryNorm
 from matplotlib.patches import Patch
 from pathlib import Path
+from scipy.ndimage import gaussian_filter
+from scipy.interpolate import RegularGridInterpolator
 
 # Add project root to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
@@ -65,11 +67,22 @@ FORCE_FIELDS = [
     ("F_rad",      "Radiation",         "#9b59b6"),  # Purple
 ]
 
+# Special values for missing data (must be negative to distinguish from force indices 0-3)
+FILE_NOT_FOUND = -1      # Gray: simulation file not found
+TIME_OUT_OF_RANGE = -2   # White: time outside simulation range (t > t_max or t < t_min)
+
+# Missing data colors
+COLOR_FILE_NOT_FOUND = "#808080"      # Gray
+COLOR_TIME_OUT_OF_RANGE = "#ffffff"   # White
+
 # Default parameters
 DEFAULT_MCLOUD = ["1e5", "1e7", "1e8"]
 DEFAULT_SFE = ["001", "010", "020", "030", "050", "080"]
 DEFAULT_NCORE = ["1e4"]  # List of nCore values - produces one plot per nCore
 DEFAULT_TIMES = [1.0, 1.5, 2.0, 2.5]  # Myr
+
+# Smoothing options: 'none', 'gaussian', 'contour'
+DEFAULT_SMOOTH = 'none'
 
 # Default directories
 DEFAULT_OUTPUT_DIR = Path.home() / "unsync" / "Code" / "Trinity" / "outputs"
@@ -206,11 +219,12 @@ def build_dominance_grid(target_time, mCloud_list, sfe_list, nCore, base_dir, us
     -------
     np.ndarray
         2D array shape (len(sfe_list), len(mCloud_list))
-        Values: 0-3 for force index, NaN for no data
+        Values: 0-3 for force index, FILE_NOT_FOUND (-1), TIME_OUT_OF_RANGE (-2)
     """
     n_sfe = len(sfe_list)
     n_mass = len(mCloud_list)
-    grid = np.full((n_sfe, n_mass), np.nan, dtype=float)
+    # Initialize with FILE_NOT_FOUND as default
+    grid = np.full((n_sfe, n_mass), FILE_NOT_FOUND, dtype=float)
 
     for j, mCloud in enumerate(mCloud_list):
         for i, sfe in enumerate(sfe_list):
@@ -220,18 +234,23 @@ def build_dominance_grid(target_time, mCloud_list, sfe_list, nCore, base_dir, us
             output = load_simulation(base_dir, run_name, use_modified=use_modified)
             if output is None:
                 print(f"    {display_name}: not found")
+                grid[i, j] = FILE_NOT_FOUND
                 continue
 
             # Check time bounds before attempting to get snapshot
             if target_time < output.t_min or target_time > output.t_max:
                 print(f"    {display_name}: t={target_time} outside range [{output.t_min:.3f}, {output.t_max:.3f}]")
+                grid[i, j] = TIME_OUT_OF_RANGE
                 continue
 
             snapshot = get_snapshot_at_time(output, target_time)
             dominant = get_dominant_force(snapshot)
-            grid[i, j] = dominant
 
-            if np.isfinite(dominant):
+            if np.isnan(dominant):
+                # Valid file, valid time, but no force data
+                grid[i, j] = TIME_OUT_OF_RANGE
+            else:
+                grid[i, j] = dominant
                 force_name = FORCE_FIELDS[int(dominant)][1]
                 print(f"    {display_name}: {force_name}")
 
@@ -243,15 +262,118 @@ def build_dominance_grid(target_time, mCloud_list, sfe_list, nCore, base_dir, us
 # =============================================================================
 
 def create_colormap():
-    """Create discrete colormap for force types."""
-    colors = [field[2] for field in FORCE_FIELDS]
-    cmap = ListedColormap(colors)
-    cmap.set_bad(color='white')  # NaN -> white
+    """
+    Create discrete colormap for force types and missing data.
 
-    bounds = [-0.5, 0.5, 1.5, 2.5, 3.5]
+    Color mapping:
+    - -2 (TIME_OUT_OF_RANGE): white
+    - -1 (FILE_NOT_FOUND): gray
+    - 0 (F_grav): dark blue-gray
+    - 1 (F_ram): blue
+    - 2 (F_ion_out): red
+    - 3 (F_rad): purple
+    """
+    # Colors in order: TIME_OUT_OF_RANGE, FILE_NOT_FOUND, then force colors
+    colors = [
+        COLOR_TIME_OUT_OF_RANGE,  # -2
+        COLOR_FILE_NOT_FOUND,     # -1
+    ] + [field[2] for field in FORCE_FIELDS]  # 0, 1, 2, 3
+
+    cmap = ListedColormap(colors)
+    cmap.set_bad(color='white')  # NaN -> white (fallback)
+
+    # Bounds: -2.5 to -1.5 -> color[0], -1.5 to -0.5 -> color[1], etc.
+    bounds = [-2.5, -1.5, -0.5, 0.5, 1.5, 2.5, 3.5]
     norm = BoundaryNorm(bounds, cmap.N)
 
     return cmap, norm
+
+
+def apply_smoothing(grid, method='none', sigma=0.8, upsample=4):
+    """
+    Apply smoothing to the dominance grid for contour-like appearance.
+
+    Parameters
+    ----------
+    grid : np.ndarray
+        2D array of dominant force indices
+    method : str
+        'none': no smoothing (discrete grid)
+        'gaussian': Gaussian blur for soft transitions
+        'contour': upsampled nearest-neighbor for smooth boundaries
+    sigma : float
+        Gaussian sigma for 'gaussian' method
+    upsample : int
+        Upsampling factor for 'contour' method
+
+    Returns
+    -------
+    grid_smooth : np.ndarray
+        Smoothed grid (may be larger if upsampled)
+    extent : tuple or None
+        New extent for imshow if upsampled, else None
+    """
+    if method == 'none':
+        return grid, None
+
+    n_sfe, n_mass = grid.shape
+
+    if method == 'gaussian':
+        # Create separate binary masks for each force type
+        # Then smooth each and take argmax
+        n_forces = len(FORCE_FIELDS)
+        masks = np.zeros((n_forces, n_sfe, n_mass))
+
+        for force_idx in range(n_forces):
+            masks[force_idx] = (grid == force_idx).astype(float)
+
+        # Apply Gaussian filter to each mask
+        smoothed_masks = np.array([
+            gaussian_filter(mask, sigma=sigma, mode='nearest')
+            for mask in masks
+        ])
+
+        # Handle missing data: where original was negative, keep it
+        missing_mask = grid < 0
+
+        # Take argmax of smoothed masks
+        grid_smooth = np.argmax(smoothed_masks, axis=0).astype(float)
+
+        # Restore missing data markers
+        grid_smooth[missing_mask] = grid[missing_mask]
+
+        return grid_smooth, None
+
+    elif method == 'contour':
+        # Upsample using nearest-neighbor for sharp but smooth boundaries
+        new_sfe = n_sfe * upsample
+        new_mass = n_mass * upsample
+
+        # Create coordinate grids
+        x_old = np.arange(n_mass)
+        y_old = np.arange(n_sfe)
+        x_new = np.linspace(0, n_mass - 1, new_mass)
+        y_new = np.linspace(0, n_sfe - 1, new_sfe)
+
+        # Use nearest-neighbor interpolation for each force type
+        # to maintain discrete categories
+        grid_smooth = np.zeros((new_sfe, new_mass))
+
+        for iy, y in enumerate(y_new):
+            for ix, x in enumerate(x_new):
+                # Find nearest original cell
+                orig_y = int(round(y))
+                orig_x = int(round(x))
+                orig_y = min(max(orig_y, 0), n_sfe - 1)
+                orig_x = min(max(orig_x, 0), n_mass - 1)
+                grid_smooth[iy, ix] = grid[orig_y, orig_x]
+
+        # Extent for plotting
+        extent = (-0.5, n_mass - 0.5, -0.5, n_sfe - 0.5)
+
+        return grid_smooth, extent
+
+    return grid, None
 
 
 def compute_grid_layout(n_plots):
@@ -269,7 +391,7 @@ def compute_grid_layout(n_plots):
     return nrows, ncols
 
 
-def plot_single_grid(ax, grid, mCloud_list, sfe_list, target_time, cmap, norm):
+def plot_single_grid(ax, grid, mCloud_list, sfe_list, target_time, cmap, norm, smooth='none'):
     """
     Plot a single dominance grid on an axis.
 
@@ -289,27 +411,48 @@ def plot_single_grid(ax, grid, mCloud_list, sfe_list, target_time, cmap, norm):
         Colormap
     norm : BoundaryNorm
         Color normalization
+    smooth : str
+        Smoothing method: 'none', 'gaussian', 'contour'
     """
     n_mass = len(mCloud_list)
     n_sfe = len(sfe_list)
 
-    # Create pcolormesh grid
-    X, Y = np.meshgrid(
-        np.arange(n_mass + 1) - 0.5,
-        np.arange(n_sfe + 1) - 0.5
-    )
+    # Apply smoothing if requested
+    grid_plot, extent = apply_smoothing(grid, method=smooth)
 
-    # Mask NaN values for white display
-    grid_masked = np.ma.masked_invalid(grid)
+    if smooth == 'none':
+        # Original discrete grid with cell borders
+        X, Y = np.meshgrid(
+            np.arange(n_mass + 1) - 0.5,
+            np.arange(n_sfe + 1) - 0.5
+        )
 
-    # Plot
-    im = ax.pcolormesh(
-        X, Y, grid_masked,
-        cmap=cmap,
-        norm=norm,
-        edgecolors='white',
-        linewidths=1.0
-    )
+        # Mask NaN values
+        grid_masked = np.ma.masked_invalid(grid_plot)
+
+        im = ax.pcolormesh(
+            X, Y, grid_masked,
+            cmap=cmap,
+            norm=norm,
+            edgecolors='white',
+            linewidths=1.0
+        )
+    else:
+        # Smoothed grid - use imshow for better appearance
+        grid_masked = np.ma.masked_invalid(grid_plot)
+
+        if extent is None:
+            extent = (-0.5, n_mass - 0.5, -0.5, n_sfe - 0.5)
+
+        im = ax.imshow(
+            grid_masked,
+            cmap=cmap,
+            norm=norm,
+            origin='lower',
+            extent=extent,
+            aspect='auto',
+            interpolation='nearest' if smooth == 'contour' else 'bilinear'
+        )
 
     # Axis labels
     ax.set_xticks(np.arange(n_mass))
@@ -324,13 +467,17 @@ def plot_single_grid(ax, grid, mCloud_list, sfe_list, target_time, cmap, norm):
 
 
 def create_legend():
-    """Create legend handles for force types."""
+    """Create legend handles for force types and missing data."""
     handles = [
         Patch(facecolor=color, edgecolor='gray', label=label)
         for _, label, color in FORCE_FIELDS
     ]
+    # Add missing data types
     handles.append(
-        Patch(facecolor='white', edgecolor='gray', label='No data')
+        Patch(facecolor=COLOR_TIME_OUT_OF_RANGE, edgecolor='gray', label='Beyond $t_{\\rm max}$')
+    )
+    handles.append(
+        Patch(facecolor=COLOR_FILE_NOT_FOUND, edgecolor='gray', label='File not found')
     )
     return handles
 
@@ -339,7 +486,8 @@ def create_legend():
 # Main Function
 # =============================================================================
 
-def main(mCloud_list, sfe_list, nCore_list, target_times, base_dir, fig_dir=None, use_modified=False):
+def main(mCloud_list, sfe_list, nCore_list, target_times, base_dir, fig_dir=None,
+         use_modified=False, smooth='none'):
     """
     Generate dominant feedback grid plot(s).
 
@@ -360,6 +508,8 @@ def main(mCloud_list, sfe_list, nCore_list, target_times, base_dir, fig_dir=None
         Directory to save figures
     use_modified : bool
         If True, look in *_modified/ folders and save as *_modified.pdf
+    smooth : str
+        Smoothing method: 'none', 'gaussian', 'contour'
     """
     print("=" * 60)
     print("Dominant Feedback Grid Plot")
@@ -370,6 +520,7 @@ def main(mCloud_list, sfe_list, nCore_list, target_times, base_dir, fig_dir=None
     print(f"  Times: {target_times} Myr")
     print(f"  Base dir: {base_dir}")
     print(f"  Use modified: {use_modified}")
+    print(f"  Smooth: {smooth}")
     print()
 
     # Set up figure directory
@@ -413,7 +564,8 @@ def main(mCloud_list, sfe_list, nCore_list, target_times, base_dir, fig_dir=None
                 use_modified=use_modified
             )
 
-            plot_single_grid(ax, grid, mCloud_list, sfe_list, target_time, cmap, norm)
+            plot_single_grid(ax, grid, mCloud_list, sfe_list, target_time, cmap, norm,
+                           smooth=smooth)
             print()
 
         # Hide unused subplots
@@ -450,6 +602,8 @@ def main(mCloud_list, sfe_list, nCore_list, target_times, base_dir, fig_dir=None
         filename = f"dominant_feedback_n{nCore}"
         if use_modified:
             filename = f"{filename}_modified"
+        if smooth != 'none':
+            filename = f"{filename}_{smooth}"
         out_pdf = fig_dir / f"{filename}.pdf"
         fig.savefig(out_pdf, bbox_inches='tight')
         print(f"Saved: {out_pdf}")
@@ -472,7 +626,13 @@ Examples:
   python paper_dominantFeedback.py
   python paper_dominantFeedback.py --mCloud 1e7 1e8 --sfe 001 020 --times 1 1.5 2 2.5
   python paper_dominantFeedback.py --nCore 1e4 1e5 --modified
+  python paper_dominantFeedback.py --smooth gaussian
   python paper_dominantFeedback.py --output-dir /path/to/outputs --fig-dir /path/to/figs
+
+Smoothing methods:
+  none     - Discrete grid with cell borders (default)
+  gaussian - Gaussian blur for soft color transitions
+  contour  - Upsampled nearest-neighbor for smooth region boundaries
         """
     )
 
@@ -504,6 +664,10 @@ Examples:
         '--modified', action='store_true',
         help='Use *_modified/ output folders and save as *_modified.pdf'
     )
+    parser.add_argument(
+        '--smooth', choices=['none', 'gaussian', 'contour'], default=None,
+        help=f"Smoothing method for contour-like appearance. Default: {DEFAULT_SMOOTH}"
+    )
 
     args = parser.parse_args()
 
@@ -514,8 +678,9 @@ Examples:
     target_times = args.times if args.times else DEFAULT_TIMES
     base_dir = Path(args.output_dir) if args.output_dir else DEFAULT_OUTPUT_DIR
     fig_dir = Path(args.fig_dir) if args.fig_dir else None
+    smooth = args.smooth if args.smooth else DEFAULT_SMOOTH
 
     # Use module-level USE_MODIFIED if --modified not explicitly set
     use_modified = args.modified or USE_MODIFIED
 
-    main(mCloud_list, sfe_list, nCore_list, target_times, base_dir, fig_dir, use_modified)
+    main(mCloud_list, sfe_list, nCore_list, target_times, base_dir, fig_dir, use_modified, smooth)
