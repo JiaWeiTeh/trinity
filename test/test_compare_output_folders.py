@@ -1,19 +1,26 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Compare TRINITY output folders: original vs modified versions.
+Compare TRINITY output folders across directories or within a single directory.
 
-Two modes of operation:
+Three modes of operation:
 
-1. Auto mode (default): Scans the outputs folder for *_modified directories,
+1. Cross-directory mode (default): Compares folders with matching names across
+   two directories (e.g., outputs/ vs sweep_test_modified/).
+
+2. Auto mode (--auto): Scans a single output folder for *_modified directories,
    finds their corresponding original versions, and generates comparison plots.
 
-2. Manual mode: Compare two specific folders/files directly.
+3. Manual mode: Compare two specific folders/files directly.
 
 Usage:
-    # Auto mode - find and compare all *_modified pairs
+    # Cross-directory mode (default) - compare matching folders across two directories
     python test_compare_output_folders.py
-    python test_compare_output_folders.py --output-dir /path/to/outputs
+    python test_compare_output_folders.py --dir-a /path/to/outputs --dir-b /path/to/sweep_test
+
+    # Auto mode - find and compare all *_modified pairs in a single directory
+    python test_compare_output_folders.py --auto
+    python test_compare_output_folders.py --auto --output-dir /path/to/outputs
 
     # Manual mode - compare two specific folders/files
     python test_compare_output_folders.py folder1 folder2
@@ -67,6 +74,10 @@ def find_project_root() -> Path:
 
 PROJECT_ROOT = find_project_root()
 DEFAULT_OUTPUT_DIR = PROJECT_ROOT / 'outputs'
+
+# Default directories for cross-directory comparison
+DEFAULT_DIR_A = DEFAULT_OUTPUT_DIR
+DEFAULT_DIR_B = DEFAULT_OUTPUT_DIR / 'sweep_test_modified'
 
 # Parameters of interest by category
 ESSENTIAL_PARAMS = ['R1', 'R2', 'rShell', 'Pb', 'Eb', 'T0', 'v2']
@@ -957,45 +968,234 @@ def compare_two_folders(folder1: Path, folder2: Path, output_dir: Path = None):
 
 
 # =============================================================================
+# Cross-directory comparison function
+# =============================================================================
+
+def find_matching_folders(dir_a: Path, dir_b: Path) -> list:
+    """
+    Find folders with the same name in both directories.
+
+    Parameters
+    ----------
+    dir_a : Path
+        First directory (e.g., outputs/)
+    dir_b : Path
+        Second directory (e.g., sweep_test_modified/)
+
+    Returns
+    -------
+    list
+        List of (folder_a, folder_b) tuples for matching folder names
+    """
+    pairs = []
+
+    if not dir_a.exists():
+        print(f"Directory A does not exist: {dir_a}")
+        return pairs
+    if not dir_b.exists():
+        print(f"Directory B does not exist: {dir_b}")
+        return pairs
+
+    # Get folder names in dir_b
+    folders_b = {item.name: item for item in dir_b.iterdir() if item.is_dir()}
+
+    # Find matching folders in dir_a
+    for item in dir_a.iterdir():
+        if item.is_dir() and item.name in folders_b:
+            # Skip if it's the same as dir_b (e.g., if dir_b is a subdirectory of dir_a)
+            if item.resolve() == dir_b.resolve():
+                continue
+            pairs.append((item, folders_b[item.name]))
+
+    return sorted(pairs, key=lambda p: p[0].name)
+
+
+def compare_across_directories(dir_a: Path = None, dir_b: Path = None):
+    """
+    Compare matching output folders across two directories.
+
+    Finds folders with the same name in both directories and compares them.
+
+    Parameters
+    ----------
+    dir_a : Path, optional
+        First directory (default: DEFAULT_DIR_A)
+    dir_b : Path, optional
+        Second directory (default: DEFAULT_DIR_B)
+    """
+    if dir_a is None:
+        dir_a = DEFAULT_DIR_A
+    if dir_b is None:
+        dir_b = DEFAULT_DIR_B
+
+    dir_a = Path(dir_a)
+    dir_b = Path(dir_b)
+
+    print("=" * 70)
+    print("TRINITY Output Comparison: Cross-Directory Mode")
+    print("=" * 70)
+    print(f"\nDirectory A: {dir_a}")
+    print(f"Directory B: {dir_b}")
+    print(f"\nSearching for matching folder names...")
+
+    # Find matching folder pairs
+    pairs = find_matching_folders(dir_a, dir_b)
+
+    if not pairs:
+        print("\nNo matching folders found between the directories.")
+        print("Make sure both directories contain folders with the same names.")
+        return False
+
+    print(f"\nFound {len(pairs)} matching folder pair(s):")
+    for folder_a, folder_b in pairs:
+        print(f"  {folder_a.name}")
+
+    # Process each pair
+    success_count = 0
+    for folder_a, folder_b in pairs:
+        print(f"\n{'-' * 70}")
+        print(f"Comparing: {folder_a.name}")
+        print(f"  A: {folder_a}")
+        print(f"  B: {folder_b}")
+        print(f"{'-' * 70}")
+
+        # Find dictionary files
+        jsonl_a = find_dictionary_jsonl(folder_a)
+        jsonl_b = find_dictionary_jsonl(folder_b)
+
+        if jsonl_a is None:
+            print(f"  ERROR: No dictionary.jsonl found in {folder_a}")
+            continue
+        if jsonl_b is None:
+            print(f"  ERROR: No dictionary.jsonl found in {folder_b}")
+            continue
+
+        # Load data
+        print("  Loading snapshots...")
+        snapshots_a = load_snapshots(jsonl_a)
+        snapshots_b = load_snapshots(jsonl_b)
+
+        print(f"  Dir A: {len(snapshots_a)} snapshots")
+        print(f"  Dir B: {len(snapshots_b)} snapshots")
+
+        if len(snapshots_a) == 0 or len(snapshots_b) == 0:
+            print("  ERROR: Empty snapshot data")
+            continue
+
+        # Use parent directory names as labels
+        label_a = dir_a.name
+        label_b = dir_b.name
+
+        # Generate comparison plots (save to folder_b)
+        print("  Generating comparison plots...")
+        generate_all_comparison_plots(
+            snapshots_a, snapshots_b,
+            folder_b,  # Save to folder_b
+            folder_a.name,
+            label1=label_a,
+            label2=label_b
+        )
+
+        # Print summary statistics
+        t_min, t_max = get_common_time_range(snapshots_a, snapshots_b)
+        snapshots_a_filtered = filter_snapshots_by_time(snapshots_a, t_min, t_max)
+        snapshots_b_filtered = filter_snapshots_by_time(snapshots_b, t_min, t_max)
+
+        print(f"\n  Summary Statistics (at t={t_max:.4e} Myr, common end time):")
+        for key in ESSENTIAL_PARAMS:
+            t_a, v_a = extract_time_series(snapshots_a_filtered, key)
+            t_b, v_b = extract_time_series(snapshots_b_filtered, key)
+
+            if np.all(np.isnan(v_a)) and np.all(np.isnan(v_b)):
+                continue
+
+            final_a = v_a[~np.isnan(v_a)][-1] if any(~np.isnan(v_a)) else np.nan
+            final_b = v_b[~np.isnan(v_b)][-1] if any(~np.isnan(v_b)) else np.nan
+
+            if np.isnan(final_a) or np.isnan(final_b):
+                continue
+
+            rel_diff = abs(final_a - final_b) / max(abs(final_a), 1e-300)
+            status = "OK" if rel_diff < 0.01 else "DIFF"
+
+            print(f"    {key:12s}: {label_a}={final_a:.4e}, {label_b}={final_b:.4e}, "
+                  f"rel_diff={rel_diff:.2e} [{status}]")
+
+        success_count += 1
+
+    # Final summary
+    print(f"\n{'=' * 70}")
+    print(f"Completed: {success_count}/{len(pairs)} comparisons successful")
+    print(f"{'=' * 70}")
+
+    return success_count == len(pairs)
+
+
+# =============================================================================
 # Command-line interface
 # =============================================================================
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Compare TRINITY output folders: original vs modified versions",
+        description="Compare TRINITY output folders across directories or within a single directory",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # Auto mode - find and compare all *_modified pairs
+  # Cross-directory mode (default) - compare matching folders across two directories
   %(prog)s
-  %(prog)s --output-dir /path/to/outputs
-  %(prog)s -o ./my_outputs
+  %(prog)s --dir-a /path/to/outputs --dir-b /path/to/sweep_test_modified
+
+  # Auto mode - find and compare all *_modified pairs in a single directory
+  %(prog)s --auto
+  %(prog)s --auto --output-dir /path/to/outputs
 
   # Manual mode - compare two specific folders
   %(prog)s folder1 folder2
   %(prog)s /path/to/run1 /path/to/run2
-  %(prog)s run1/dictionary.jsonl run2/dictionary.jsonl
 
-In auto mode, the script searches for folders ending with '_modified' and
+Default behavior (cross-directory mode): Compares folders with matching names
+between two directories (outputs/ and sweep_test_modified/).
+
+Auto mode (--auto): Searches for folders ending with '_modified' and
 compares them with their corresponding original folders.
 
-In manual mode, you provide two folder paths (or file paths) to compare directly.
+Manual mode: Provide two folder paths to compare directly.
 
-Comparison plots are saved as PDFs.
+Comparison plots are saved as PDFs to the second folder/directory.
         """
     )
 
     parser.add_argument(
         'folders',
         nargs='*',
-        help='Two folders/files to compare (manual mode). If not provided, runs in auto mode.'
+        help='Two folders/files to compare (manual mode). If not provided, runs in default mode.'
+    )
+
+    parser.add_argument(
+        '--dir-a', '-a',
+        type=str,
+        default=None,
+        help=f'First directory for cross-directory comparison. Default: {DEFAULT_DIR_A}'
+    )
+
+    parser.add_argument(
+        '--dir-b', '-b',
+        type=str,
+        default=None,
+        help=f'Second directory for cross-directory comparison. Default: {DEFAULT_DIR_B}'
+    )
+
+    parser.add_argument(
+        '--auto',
+        action='store_true',
+        help='Auto mode: find and compare *_modified pairs in a single directory'
     )
 
     parser.add_argument(
         '--output-dir', '-o',
         type=str,
         default=None,
-        help=f'Output directory to search (auto mode) or save plots (manual mode). Default: {DEFAULT_OUTPUT_DIR}'
+        help=f'Output directory to search (auto mode only). Default: {DEFAULT_OUTPUT_DIR}'
     )
 
     args = parser.parse_args()
@@ -1006,13 +1206,18 @@ Comparison plots are saved as PDFs.
         folder1, folder2 = args.folders
         output_dir = Path(args.output_dir) if args.output_dir else None
         success = compare_two_folders(folder1, folder2, output_dir)
-    elif len(args.folders) == 0:
+    elif len(args.folders) == 1:
+        parser.error("Manual mode requires exactly two folder/file arguments.")
+        sys.exit(1)
+    elif args.auto:
         # Auto mode: find and compare *_modified pairs
         output_dir = Path(args.output_dir) if args.output_dir else None
         success = compare_output_folders(output_dir)
     else:
-        parser.error("Manual mode requires exactly two folder/file arguments.")
-        sys.exit(1)
+        # Default: Cross-directory mode
+        dir_a = Path(args.dir_a) if args.dir_a else None
+        dir_b = Path(args.dir_b) if args.dir_b else None
+        success = compare_across_directories(dir_a, dir_b)
 
     sys.exit(0 if success else 1)
 
