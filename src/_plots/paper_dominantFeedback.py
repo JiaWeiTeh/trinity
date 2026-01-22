@@ -351,25 +351,36 @@ def apply_smoothing(grid, method='none', sigma=0.8, upsample=4):
         # Take argmax of smoothed masks
         grid_smooth = np.argmax(smoothed_masks, axis=0).astype(float)
 
-        # --- FIX: Prevent distant colors from bleeding into boundaries ---
-        # Only allow a color at a cell if it exists in the 3x3 neighborhood
-        # of the original grid. Otherwise, keep the original cell's color.
+        # --- FIX: Strict local constraint to prevent color bleeding ---
+        # Only allow a smoothed color if it was EITHER:
+        # 1. The original color at this cell, OR
+        # 2. Present in at least one of the 4-connected neighbors (up/down/left/right)
+        # This prevents diagonal bleeding and distant colors from appearing.
         for i in range(n_sfe):
             for j in range(n_mass):
                 if missing_mask[i, j]:
                     continue  # Skip missing data cells
 
-                # Get 3x3 neighborhood (with boundary handling)
-                i_min, i_max = max(0, i - 1), min(n_sfe, i + 2)
-                j_min, j_max = max(0, j - 1), min(n_mass, j + 2)
-                neighborhood = grid[i_min:i_max, j_min:j_max]
-
-                # Get colors present in neighborhood (excluding missing data)
-                local_colors = set(neighborhood[neighborhood >= 0].astype(int).flatten())
-
-                # If the smoothed color is not in local neighborhood, revert to original
+                original_color = int(grid[i, j]) if grid[i, j] >= 0 else -1
                 smoothed_color = int(grid_smooth[i, j])
-                if smoothed_color not in local_colors:
+
+                # If smoothed color equals original, keep it
+                if smoothed_color == original_color:
+                    continue
+
+                # Check 4-connected neighbors only (not diagonal)
+                neighbor_colors = set()
+                if i > 0 and grid[i-1, j] >= 0:
+                    neighbor_colors.add(int(grid[i-1, j]))
+                if i < n_sfe - 1 and grid[i+1, j] >= 0:
+                    neighbor_colors.add(int(grid[i+1, j]))
+                if j > 0 and grid[i, j-1] >= 0:
+                    neighbor_colors.add(int(grid[i, j-1]))
+                if j < n_mass - 1 and grid[i, j+1] >= 0:
+                    neighbor_colors.add(int(grid[i, j+1]))
+
+                # If smoothed color is not in 4-connected neighbors, revert to original
+                if smoothed_color not in neighbor_colors:
                     grid_smooth[i, j] = grid[i, j]
 
         # Restore missing data markers
@@ -411,9 +422,10 @@ def apply_smoothing(grid, method='none', sigma=0.8, upsample=4):
         # Take argmax to get dominant force at each point
         grid_smooth = np.argmax(interpolated_masks, axis=0).astype(float)
 
-        # --- FIX: Prevent distant colors from bleeding into boundaries ---
-        # For each upsampled cell, only allow colors that exist in the 3x3
-        # neighborhood of the corresponding original cell(s).
+        # --- FIX: Strict local constraint to prevent color bleeding ---
+        # For each upsampled cell, only allow interpolated color if it was EITHER:
+        # 1. The original color at the nearest cell, OR
+        # 2. Present in at least one of the 4-connected neighbors (up/down/left/right)
         # Handle missing data at the same time.
         missing_mask_orig = (grid < 0).astype(float)
         spline_missing = RectBivariateSpline(y_old, x_old, missing_mask_orig, kx=1, ky=1)
@@ -437,18 +449,27 @@ def apply_smoothing(grid, method='none', sigma=0.8, upsample=4):
                 if grid[orig_y, orig_x] < 0:
                     continue
 
-                # Get 3x3 neighborhood of original grid (with boundary handling)
-                i_min, i_max = max(0, orig_y - 1), min(n_sfe, orig_y + 2)
-                j_min, j_max = max(0, orig_x - 1), min(n_mass, orig_x + 2)
-                neighborhood = grid[i_min:i_max, j_min:j_max]
-
-                # Get colors present in neighborhood (excluding missing data)
-                local_colors = set(neighborhood[neighborhood >= 0].astype(int).flatten())
-
-                # If the interpolated color is not in local neighborhood, use nearest original
+                original_color = int(grid[orig_y, orig_x])
                 interp_color = int(grid_smooth[iy, ix])
-                if interp_color not in local_colors:
-                    grid_smooth[iy, ix] = grid[orig_y, orig_x]
+
+                # If interpolated color equals original, keep it
+                if interp_color == original_color:
+                    continue
+
+                # Check 4-connected neighbors only (not diagonal)
+                neighbor_colors = set()
+                if orig_y > 0 and grid[orig_y-1, orig_x] >= 0:
+                    neighbor_colors.add(int(grid[orig_y-1, orig_x]))
+                if orig_y < n_sfe - 1 and grid[orig_y+1, orig_x] >= 0:
+                    neighbor_colors.add(int(grid[orig_y+1, orig_x]))
+                if orig_x > 0 and grid[orig_y, orig_x-1] >= 0:
+                    neighbor_colors.add(int(grid[orig_y, orig_x-1]))
+                if orig_x < n_mass - 1 and grid[orig_y, orig_x+1] >= 0:
+                    neighbor_colors.add(int(grid[orig_y, orig_x+1]))
+
+                # If interpolated color is not in 4-connected neighbors, use original
+                if interp_color not in neighbor_colors:
+                    grid_smooth[iy, ix] = original_color
 
         return grid_smooth, None
 
