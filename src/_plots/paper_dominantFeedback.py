@@ -53,6 +53,9 @@ plt.style.use(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'trinity.
 # Configuration
 # =============================================================================
 
+# Switch to use *_modified/ output folders and save as *_modified.pdf
+USE_MODIFIED = False
+
 # Force field definitions: (key, label, color)
 # Order determines the index (0, 1, 2, 3) used in the grid
 FORCE_FIELDS = [
@@ -63,10 +66,9 @@ FORCE_FIELDS = [
 ]
 
 # Default parameters
-DEFAULT_MCLOUD = ["1e5", "5e5", "1e6", "5e6", "1e7", "5e7", "1e8"]
-DEFAULT_SFE = ["001", "010", "030", "050", "080"] #020
-# DEFAULT_NCORE = "1e4"
-DEFAULT_NCORE = "1e2"
+DEFAULT_MCLOUD = ["1e5", "1e7", "1e8"]
+DEFAULT_SFE = ["001", "010", "020", "030", "050", "080"]
+DEFAULT_NCORE = ["1e4"]  # List of nCore values - produces one plot per nCore
 DEFAULT_TIMES = [1.0, 1.5, 2.0, 2.5]  # Myr
 
 # Default directories
@@ -145,7 +147,7 @@ def get_dominant_force(snapshot):
     return int(np.argmax(forces))
 
 
-def load_simulation(base_dir, run_name):
+def load_simulation(base_dir, run_name, use_modified=False):
     """
     Load simulation output for a given run name.
 
@@ -155,20 +157,25 @@ def load_simulation(base_dir, run_name):
         Base directory containing output folders
     run_name : str
         Run name (e.g., "1e7_sfe001_n1e4")
+    use_modified : bool
+        If True, look in *_modified/ folders instead of regular folders
 
     Returns
     -------
     TrinityOutput or None
         Loaded output, or None if not found
     """
-    data_path = find_data_file(base_dir, run_name)
+    # Modify run_name to look in *_modified folder if requested
+    search_name = f"{run_name}_modified" if use_modified else run_name
+
+    data_path = find_data_file(base_dir, search_name)
     if data_path is None:
         return None
 
     try:
         return load_output(data_path)
     except Exception as e:
-        print(f"    Warning: Failed to load {run_name}: {e}")
+        print(f"    Warning: Failed to load {search_name}: {e}")
         return None
 
 
@@ -176,7 +183,7 @@ def load_simulation(base_dir, run_name):
 # Grid Building
 # =============================================================================
 
-def build_dominance_grid(target_time, mCloud_list, sfe_list, nCore, base_dir):
+def build_dominance_grid(target_time, mCloud_list, sfe_list, nCore, base_dir, use_modified=False):
     """
     Build 2D grid of dominant feedback indices for a given time.
 
@@ -192,6 +199,8 @@ def build_dominance_grid(target_time, mCloud_list, sfe_list, nCore, base_dir):
         Core density string (e.g., "1e4")
     base_dir : Path
         Base directory for output folders
+    use_modified : bool
+        If True, look in *_modified/ folders
 
     Returns
     -------
@@ -206,15 +215,16 @@ def build_dominance_grid(target_time, mCloud_list, sfe_list, nCore, base_dir):
     for j, mCloud in enumerate(mCloud_list):
         for i, sfe in enumerate(sfe_list):
             run_name = f"{mCloud}_sfe{sfe}_n{nCore}"
+            display_name = f"{run_name}_modified" if use_modified else run_name
 
-            output = load_simulation(base_dir, run_name)
+            output = load_simulation(base_dir, run_name, use_modified=use_modified)
             if output is None:
-                print(f"    {run_name}: not found")
+                print(f"    {display_name}: not found")
                 continue
 
             # Check time bounds before attempting to get snapshot
             if target_time < output.t_min or target_time > output.t_max:
-                print(f"    {run_name}: t={target_time} outside range [{output.t_min:.3f}, {output.t_max:.3f}]")
+                print(f"    {display_name}: t={target_time} outside range [{output.t_min:.3f}, {output.t_max:.3f}]")
                 continue
 
             snapshot = get_snapshot_at_time(output, target_time)
@@ -223,7 +233,7 @@ def build_dominance_grid(target_time, mCloud_list, sfe_list, nCore, base_dir):
 
             if np.isfinite(dominant):
                 force_name = FORCE_FIELDS[int(dominant)][1]
-                print(f"    {run_name}: {force_name}")
+                print(f"    {display_name}: {force_name}")
 
     return grid
 
@@ -329,9 +339,9 @@ def create_legend():
 # Main Function
 # =============================================================================
 
-def main(mCloud_list, sfe_list, nCore, target_times, base_dir, fig_dir=None):
+def main(mCloud_list, sfe_list, nCore_list, target_times, base_dir, fig_dir=None, use_modified=False):
     """
-    Generate dominant feedback grid plot.
+    Generate dominant feedback grid plot(s).
 
     Parameters
     ----------
@@ -339,23 +349,27 @@ def main(mCloud_list, sfe_list, nCore, target_times, base_dir, fig_dir=None):
         Cloud mass values (strings, e.g., ["1e7", "1e8"])
     sfe_list : list
         SFE values (strings, e.g., ["001", "010", "020"])
-    nCore : str
-        Core density (e.g., "1e4")
+    nCore_list : list
+        List of core density values (e.g., ["1e4", "1e5"]).
+        Produces one plot per nCore.
     target_times : list
         Target times in Myr (e.g., [1.0, 1.5, 2.0, 2.5])
     base_dir : Path
         Base directory for output folders
     fig_dir : Path, optional
         Directory to save figures
+    use_modified : bool
+        If True, look in *_modified/ folders and save as *_modified.pdf
     """
     print("=" * 60)
     print("Dominant Feedback Grid Plot")
     print("=" * 60)
     print(f"  mCloud: {mCloud_list}")
     print(f"  SFE: {sfe_list}")
-    print(f"  nCore: {nCore}")
+    print(f"  nCore: {nCore_list}")
     print(f"  Times: {target_times} Myr")
     print(f"  Base dir: {base_dir}")
+    print(f"  Use modified: {use_modified}")
     print()
 
     # Set up figure directory
@@ -368,70 +382,81 @@ def main(mCloud_list, sfe_list, nCore, target_times, base_dir, fig_dir=None):
     n_times = len(target_times)
     nrows, ncols = compute_grid_layout(n_times)
 
-    # Create figure
-    fig_width = 3.5 * ncols
-    fig_height = 3.0 * nrows + 0.5  # Extra space for legend
-    fig, axes = plt.subplots(
-        nrows=nrows, ncols=ncols,
-        figsize=(fig_width, fig_height),
-        constrained_layout=True,
-        squeeze=False
-    )
-
     cmap, norm = create_colormap()
 
-    # Build and plot each time snapshot
-    for idx, target_time in enumerate(target_times):
-        row = idx // ncols
-        col = idx % ncols
-        ax = axes[row, col]
+    # Generate one plot per nCore
+    for nCore in nCore_list:
+        print("-" * 60)
+        print(f"Processing nCore = {nCore}")
+        print("-" * 60)
 
-        print(f"Building grid for t = {target_time} Myr...")
-
-        grid = build_dominance_grid(
-            target_time, mCloud_list, sfe_list, nCore, base_dir
+        # Create figure
+        fig_width = 3.5 * ncols
+        fig_height = 3.0 * nrows + 0.5  # Extra space for legend
+        fig, axes = plt.subplots(
+            nrows=nrows, ncols=ncols,
+            figsize=(fig_width, fig_height),
+            constrained_layout=True,
+            squeeze=False
         )
 
-        plot_single_grid(ax, grid, mCloud_list, sfe_list, target_time, cmap, norm)
+        # Build and plot each time snapshot
+        for idx, target_time in enumerate(target_times):
+            row = idx // ncols
+            col = idx % ncols
+            ax = axes[row, col]
+
+            print(f"Building grid for t = {target_time} Myr...")
+
+            grid = build_dominance_grid(
+                target_time, mCloud_list, sfe_list, nCore, base_dir,
+                use_modified=use_modified
+            )
+
+            plot_single_grid(ax, grid, mCloud_list, sfe_list, target_time, cmap, norm)
+            print()
+
+        # Hide unused subplots
+        for idx in range(n_times, nrows * ncols):
+            row = idx // ncols
+            col = idx % ncols
+            axes[row, col].set_visible(False)
+
+        # Axis labels
+        fig.supxlabel(r"$M_{\rm cloud}$ [$M_\odot$]", fontsize=12)
+        fig.supylabel(r"Star Formation Efficiency $\epsilon$", fontsize=12)
+
+        # Title
+        nlog = int(np.log10(float(nCore)))
+        title_suffix = " (modified)" if use_modified else ""
+        fig.suptitle(
+            rf"Dominant Feedback ($n_{{\rm core}} = 10^{{{nlog}}}$ cm$^{{-3}}$){title_suffix}",
+            fontsize=13
+        )
+
+        # Legend
+        handles = create_legend()
+        fig.legend(
+            handles=handles,
+            loc='upper center',
+            ncol=len(handles),
+            bbox_to_anchor=(0.5, -0.02),
+            frameon=True,
+            facecolor='white',
+            edgecolor='gray'
+        )
+
+        # Save with appropriate suffix
+        filename = f"dominant_feedback_n{nCore}"
+        if use_modified:
+            filename = f"{filename}_modified"
+        out_pdf = fig_dir / f"{filename}.pdf"
+        fig.savefig(out_pdf, bbox_inches='tight')
+        print(f"Saved: {out_pdf}")
+
+        plt.show()
+        plt.close(fig)
         print()
-
-    # Hide unused subplots
-    for idx in range(n_times, nrows * ncols):
-        row = idx // ncols
-        col = idx % ncols
-        axes[row, col].set_visible(False)
-
-    # Axis labels
-    fig.supxlabel(r"$M_{\rm cloud}$ [$M_\odot$]", fontsize=12)
-    fig.supylabel(r"Star Formation Efficiency $\epsilon$", fontsize=12)
-
-    # Title
-    nlog = int(np.log10(float(nCore)))
-    fig.suptitle(
-        rf"Dominant Feedback ($n_{{\rm core}} = 10^{{{nlog}}}$ cm$^{{-3}}$)",
-        fontsize=13
-    )
-
-    # Legend
-    handles = create_legend()
-    fig.legend(
-        handles=handles,
-        loc='upper center',
-        ncol=len(handles),
-        bbox_to_anchor=(0.5, -0.02),
-        frameon=True,
-        facecolor='white',
-        edgecolor='gray'
-    )
-
-    # Save
-    filename = f"dominant_feedback_n{nCore}"
-    out_pdf = fig_dir / f"{filename}.pdf"
-    fig.savefig(out_pdf, bbox_inches='tight')
-    print(f"Saved: {out_pdf}")
-
-    plt.show()
-    plt.close(fig)
 
 
 # =============================================================================
@@ -446,6 +471,7 @@ if __name__ == "__main__":
 Examples:
   python paper_dominantFeedback.py
   python paper_dominantFeedback.py --mCloud 1e7 1e8 --sfe 001 020 --times 1 1.5 2 2.5
+  python paper_dominantFeedback.py --nCore 1e4 1e5 --modified
   python paper_dominantFeedback.py --output-dir /path/to/outputs --fig-dir /path/to/figs
         """
     )
@@ -459,8 +485,8 @@ Examples:
         help=f'Star formation efficiencies (e.g., 001 010 020). Default: {DEFAULT_SFE}'
     )
     parser.add_argument(
-        '--nCore', '-n', default=None,
-        help=f'Core density (e.g., 1e4). Default: {DEFAULT_NCORE}'
+        '--nCore', '-n', nargs='+', default=None,
+        help=f'Core densities (e.g., 1e4 1e5). Produces one plot per nCore. Default: {DEFAULT_NCORE}'
     )
     parser.add_argument(
         '--times', '-t', nargs='+', type=float, default=None,
@@ -474,15 +500,22 @@ Examples:
         '--fig-dir', '-f', default=None,
         help=f'Directory to save figures. Default: {FIG_DIR}'
     )
+    parser.add_argument(
+        '--modified', action='store_true',
+        help='Use *_modified/ output folders and save as *_modified.pdf'
+    )
 
     args = parser.parse_args()
 
     # Apply defaults
     mCloud_list = args.mCloud if args.mCloud else DEFAULT_MCLOUD
     sfe_list = args.sfe if args.sfe else DEFAULT_SFE
-    nCore = args.nCore if args.nCore else DEFAULT_NCORE
+    nCore_list = args.nCore if args.nCore else DEFAULT_NCORE
     target_times = args.times if args.times else DEFAULT_TIMES
     base_dir = Path(args.output_dir) if args.output_dir else DEFAULT_OUTPUT_DIR
     fig_dir = Path(args.fig_dir) if args.fig_dir else None
 
-    main(mCloud_list, sfe_list, nCore, target_times, base_dir, fig_dir)
+    # Use module-level USE_MODIFIED if --modified not explicitly set
+    use_modified = args.modified or USE_MODIFIED
+
+    main(mCloud_list, sfe_list, nCore_list, target_times, base_dir, fig_dir, use_modified)

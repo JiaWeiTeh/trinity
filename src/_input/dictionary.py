@@ -235,7 +235,9 @@ class DescribedDict(dict):
         logger = logging.getLogger(__name__)
 
         # atexit for normal Python exit and unhandled exceptions
-        atexit.register(self._safe_flush)
+        def atexit_handler():
+            self._safe_flush(termination_reason="Normal exit / atexit")
+        atexit.register(atexit_handler)
 
         # Signal handlers for SIGINT (Ctrl+C) and SIGTERM (kill)
         signal.signal(signal.SIGINT, self._signal_handler)
@@ -250,14 +252,19 @@ class DescribedDict(dict):
 
         sig_name = signal.Signals(signum).name if hasattr(signal, 'Signals') else str(signum)
         logger.warning(f"Received {sig_name}, flushing pending snapshots...")
-        self._safe_flush()
+        self._safe_flush(termination_reason=f"Signal {sig_name}")
         sys.exit(128 + signum)  # Standard exit code for signals
 
-    def _safe_flush(self) -> None:
+    def _safe_flush(self, termination_reason: str = "Unknown") -> None:
         """
-        Flush pending snapshots, catching exceptions to avoid masking errors.
+        Flush pending snapshots and write debug report, catching exceptions.
 
         Safe to call multiple times - flush() clears the buffer after each call.
+
+        Parameters
+        ----------
+        termination_reason : str
+            Reason for termination (for debug report)
         """
         import logging
         logger = logging.getLogger(__name__)
@@ -269,6 +276,46 @@ class DescribedDict(dict):
                 self.flush()
             except Exception as e:
                 logger.error(f"Failed to flush snapshots on exit: {e}")
+
+        # Write termination debug report
+        try:
+            output_dir = self._get_output_dir()
+            from src._output.simulation_end import write_termination_debug_report
+            write_termination_debug_report(str(output_dir), reason=termination_reason)
+        except Exception as e:
+            logger.error(f"Failed to write termination debug report: {e}")
+
+    def write_termination_report(self, reason: str = "Unknown") -> Optional[str]:
+        """
+        Explicitly write termination debug report.
+
+        Call this at simulation end (error or success) to generate a human-readable
+        report of the last two snapshots with comparison tables.
+
+        Parameters
+        ----------
+        reason : str
+            Termination reason (e.g., "Shell dissolved", "ODE solver failed")
+
+        Returns
+        -------
+        str or None
+            Path to the written report, or None if failed
+        """
+        import logging
+        logger = logging.getLogger(__name__)
+
+        try:
+            # Flush any pending snapshots first
+            if self.previous_snapshot:
+                self.flush()
+
+            output_dir = self._get_output_dir()
+            from src._output.simulation_end import write_termination_debug_report
+            return write_termination_debug_report(str(output_dir), reason=reason)
+        except Exception as e:
+            logger.error(f"Failed to write termination debug report: {e}")
+            return None
 
     # -------------------------------------------------------------------------
     # Display helpers
