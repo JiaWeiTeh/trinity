@@ -80,7 +80,8 @@ COLOR_TIME_OUT_OF_RANGE = "#ffffff"   # White
 DEFAULT_MCLOUD = ["1e5", "5e5", "1e6", "5e6", "1e7", "5e7", "1e8"]
 DEFAULT_SFE = ["001", "010", "030", "050", "080"] #"020"
 DEFAULT_NCORE = ["1e2", "1e4"]  # List of nCore values - produces one plot per nCore
-DEFAULT_TIMES = [1.0, 1.5, 2.0, 2.5]  # Myr
+# DEFAULT_TIMES = [1.0, 1.5, 2.0, 2.5]  # Myr
+DEFAULT_TIMES = [1.0]  # Myr
 
 
 # Axis mode options:
@@ -858,7 +859,7 @@ def main(mCloud_list, sfe_list, nCore_list, target_times, base_dir, fig_dir=None
         print(f"Saved: {out_pdf}")
 
         plt.show()
-        plt.close(fig)
+        # plt.close(fig)
         print()
 
 
