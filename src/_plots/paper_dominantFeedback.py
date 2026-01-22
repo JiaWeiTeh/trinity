@@ -89,8 +89,8 @@ DEFAULT_TIMES = [1.0]  # Myr
 #   'continuous': real value spacing (log for mCloud, linear for SFE)
 DEFAULT_AXIS_MODE = 'continuous'
 
-# Smoothing options: 'none', 'gaussian', 'interp', only if continuous.
-DEFAULT_SMOOTH = 'gaussian'
+# Smoothing options: 'none' or 'interp' (only effective with axis_mode='continuous')
+DEFAULT_SMOOTH = 'interp'
 
 # Default directories
 DEFAULT_OUTPUT_DIR = Path.home() / "unsync" / "Code" / "Trinity" / "outputs" / "sweep_test_modified"
@@ -436,12 +436,19 @@ def refine_dominant_map(logM, eps, forces_dict, mask, nref_M=300, nref_eps=300):
 
     stack = np.stack(fine_fields, axis=-1)  # (nref_eps, nref_M, nF)
 
-    # Take argmax to get dominant force (nanargmax handles NaN)
-    with np.errstate(invalid='ignore'):
-        dom_f = np.nanargmax(stack, axis=-1).astype(float)
-
-    # Mark as invalid where ALL forces are NaN
+    # Identify invalid cells (where ALL forces are NaN)
     invalid_f = np.all(~np.isfinite(stack), axis=-1)
+
+    # For cells with all NaN, temporarily fill with 0 to avoid nanargmax error
+    # We'll mask these cells afterward
+    stack_filled = stack.copy()
+    stack_filled[invalid_f] = 0  # Temporary fill for argmax
+
+    # Take argmax to get dominant force
+    with np.errstate(invalid='ignore'):
+        dom_f = np.nanargmax(stack_filled, axis=-1).astype(float)
+
+    # Mask invalid cells
     dom_f = np.ma.array(dom_f, mask=invalid_f)
 
     return logM_f, eps_f, dom_f
