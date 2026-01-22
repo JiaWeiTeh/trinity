@@ -311,7 +311,7 @@ def apply_smoothing(grid, method='none', sigma=0.8, upsample=4):
         2D array of dominant force indices
     method : str
         'none': no smoothing (discrete grid)
-        'gaussian': Gaussian blur for soft transitions
+        'gaussian': Gaussian blur for soft transitions (respects local colors only)
         'interp': high-resolution interpolation for continuous mode
     sigma : float
         Gaussian sigma for 'gaussian' method
@@ -350,6 +350,27 @@ def apply_smoothing(grid, method='none', sigma=0.8, upsample=4):
 
         # Take argmax of smoothed masks
         grid_smooth = np.argmax(smoothed_masks, axis=0).astype(float)
+
+        # --- FIX: Prevent distant colors from bleeding into boundaries ---
+        # Only allow a color at a cell if it exists in the 3x3 neighborhood
+        # of the original grid. Otherwise, keep the original cell's color.
+        for i in range(n_sfe):
+            for j in range(n_mass):
+                if missing_mask[i, j]:
+                    continue  # Skip missing data cells
+
+                # Get 3x3 neighborhood (with boundary handling)
+                i_min, i_max = max(0, i - 1), min(n_sfe, i + 2)
+                j_min, j_max = max(0, j - 1), min(n_mass, j + 2)
+                neighborhood = grid[i_min:i_max, j_min:j_max]
+
+                # Get colors present in neighborhood (excluding missing data)
+                local_colors = set(neighborhood[neighborhood >= 0].astype(int).flatten())
+
+                # If the smoothed color is not in local neighborhood, revert to original
+                smoothed_color = int(grid_smooth[i, j])
+                if smoothed_color not in local_colors:
+                    grid_smooth[i, j] = grid[i, j]
 
         # Restore missing data markers
         grid_smooth[missing_mask] = grid[missing_mask]
@@ -390,23 +411,44 @@ def apply_smoothing(grid, method='none', sigma=0.8, upsample=4):
         # Take argmax to get dominant force at each point
         grid_smooth = np.argmax(interpolated_masks, axis=0).astype(float)
 
-        # Handle missing data: interpolate a missing data mask
+        # --- FIX: Prevent distant colors from bleeding into boundaries ---
+        # For each upsampled cell, only allow colors that exist in the 3x3
+        # neighborhood of the corresponding original cell(s).
+        # Handle missing data at the same time.
         missing_mask_orig = (grid < 0).astype(float)
         spline_missing = RectBivariateSpline(y_old, x_old, missing_mask_orig, kx=1, ky=1)
         missing_interp = spline_missing(y_new, x_new)
 
-        # Where missing probability > 0.5, mark as missing (use original value type)
-        # Determine which type of missing data based on nearest neighbor
         for iy, y in enumerate(y_new):
             for ix, x in enumerate(x_new):
+                # Find nearest original cell
+                orig_y = int(round(y))
+                orig_x = int(round(x))
+                orig_y = min(max(orig_y, 0), n_sfe - 1)
+                orig_x = min(max(orig_x, 0), n_mass - 1)
+
+                # Handle missing data
                 if missing_interp[iy, ix] > 0.3:
-                    # Find nearest original cell
-                    orig_y = int(round(y))
-                    orig_x = int(round(x))
-                    orig_y = min(max(orig_y, 0), n_sfe - 1)
-                    orig_x = min(max(orig_x, 0), n_mass - 1)
                     if grid[orig_y, orig_x] < 0:
                         grid_smooth[iy, ix] = grid[orig_y, orig_x]
+                        continue
+
+                # Skip if original cell is missing data
+                if grid[orig_y, orig_x] < 0:
+                    continue
+
+                # Get 3x3 neighborhood of original grid (with boundary handling)
+                i_min, i_max = max(0, orig_y - 1), min(n_sfe, orig_y + 2)
+                j_min, j_max = max(0, orig_x - 1), min(n_mass, orig_x + 2)
+                neighborhood = grid[i_min:i_max, j_min:j_max]
+
+                # Get colors present in neighborhood (excluding missing data)
+                local_colors = set(neighborhood[neighborhood >= 0].astype(int).flatten())
+
+                # If the interpolated color is not in local neighborhood, use nearest original
+                interp_color = int(grid_smooth[iy, ix])
+                if interp_color not in local_colors:
+                    grid_smooth[iy, ix] = grid[orig_y, orig_x]
 
         return grid_smooth, None
 
