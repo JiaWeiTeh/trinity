@@ -42,6 +42,8 @@ from matplotlib.patches import Patch
 from pathlib import Path
 from scipy.ndimage import gaussian_filter
 from scipy.interpolate import RegularGridInterpolator
+import tempfile
+import shutil
 
 # Add project root to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
@@ -81,6 +83,10 @@ DEFAULT_SFE = ["001", "010", "030", "050", "080"] #"020"
 DEFAULT_NCORE = ["1e2", "1e4"]  # List of nCore values - produces one plot per nCore
 DEFAULT_TIMES = [1.0, 1.5, 2.0, 2.5]  # Myr
 
+
+# Smoothing parameters (can be adjusted via CLI)
+DEFAULT_SIGMA = 0.8      # Gaussian sigma - higher = smoother transitions
+DEFAULT_UPSAMPLE = 4     # Contour upsampling factor - higher = smoother boundaries
 
 # Axis mode options:
 #   'discrete': equal spacing, categorical labels (default)
@@ -423,7 +429,7 @@ def compute_grid_layout(n_plots):
 
 
 def plot_single_grid(ax, grid, mCloud_list, sfe_list, target_time, cmap, norm,
-                     smooth='none', axis_mode='discrete'):
+                     smooth='none', axis_mode='discrete', sigma=DEFAULT_SIGMA, upsample=DEFAULT_UPSAMPLE):
     """
     Plot a single dominance grid on an axis.
 
@@ -462,7 +468,7 @@ def plot_single_grid(ax, grid, mCloud_list, sfe_list, target_time, cmap, norm,
     sfe_values = np.array([int(s) / 100.0 for s in sfe_list])  # decimal SFE
 
     # Apply smoothing if requested (only effective in continuous mode)
-    grid_plot, extent = apply_smoothing(grid, method=smooth)
+    grid_plot, extent = apply_smoothing(grid, method=smooth, sigma=sigma, upsample=upsample)
 
     if axis_mode == 'continuous':
         # Real-value axis spacing using log10(mass) for x and linear SFE for y
@@ -593,7 +599,7 @@ def create_legend():
 # =============================================================================
 
 def main(mCloud_list, sfe_list, nCore_list, target_times, base_dir, fig_dir=None,
-         use_modified=False, smooth='none', axis_mode='discrete'):
+         use_modified=False, smooth='none', axis_mode='discrete', sigma=DEFAULT_SIGMA, upsample=DEFAULT_UPSAMPLE):
     """
     Generate dominant feedback grid plot(s).
 
@@ -631,6 +637,10 @@ def main(mCloud_list, sfe_list, nCore_list, target_times, base_dir, fig_dir=None
     print(f"  Use modified: {use_modified}")
     print(f"  Smooth: {smooth}")
     print(f"  Axis mode: {axis_mode}")
+    if smooth == 'gaussian':
+        print(f"  Gaussian sigma: {sigma} (higher = smoother)")
+    elif smooth == 'contour':
+        print(f"  Contour upsample: {upsample}x (higher = smoother)")
     if axis_mode == 'discrete' and smooth != 'none':
         print(f"  Warning: Smoothing only works with axis_mode='continuous', ignoring --smooth {smooth}")
         smooth = 'none'
@@ -678,7 +688,7 @@ def main(mCloud_list, sfe_list, nCore_list, target_times, base_dir, fig_dir=None
             )
 
             plot_single_grid(ax, grid, mCloud_list, sfe_list, target_time, cmap, norm,
-                           smooth=smooth, axis_mode=axis_mode)
+                           smooth=smooth, axis_mode=axis_mode, sigma=sigma, upsample=upsample)
             print()
 
         # Hide unused subplots
@@ -729,6 +739,179 @@ def main(mCloud_list, sfe_list, nCore_list, target_times, base_dir, fig_dir=None
 
 
 # =============================================================================
+# Movie Generation
+# =============================================================================
+
+def make_movie(mCloud_list, sfe_list, nCore, base_dir, fig_dir=None,
+               use_modified=False, smooth='none', axis_mode='discrete',
+               sigma=DEFAULT_SIGMA, upsample=DEFAULT_UPSAMPLE,
+               t_start=0.0, t_end=5.0, dt=0.05, fps=10):
+    """
+    Create an animated GIF showing the evolution of dominant feedback over time.
+
+    Parameters
+    ----------
+    mCloud_list : list
+        Cloud mass values (strings, e.g., ["1e7", "1e8"])
+    sfe_list : list
+        SFE values (strings, e.g., ["001", "010", "020"])
+    nCore : str
+        Core density value (single value, e.g., "1e4")
+    base_dir : Path
+        Base directory for output folders
+    fig_dir : Path, optional
+        Directory to save the GIF
+    use_modified : bool
+        If True, look in *_modified/ folders
+    smooth : str
+        Smoothing method: 'none', 'gaussian', 'contour'
+    axis_mode : str
+        'discrete' or 'continuous'
+    sigma : float
+        Gaussian smoothing sigma
+    upsample : int
+        Contour upsampling factor
+    t_start : float
+        Start time in Myr (default: 0.0)
+    t_end : float
+        End time in Myr (default: 5.0)
+    dt : float
+        Time step in Myr (default: 0.05)
+    fps : int
+        Frames per second in the output GIF (default: 10)
+    """
+    try:
+        from PIL import Image
+    except ImportError:
+        print("Error: PIL (Pillow) is required for movie generation.")
+        print("Install with: pip install Pillow")
+        return
+
+    print("=" * 60)
+    print("Dominant Feedback Movie Generation")
+    print("=" * 60)
+    print(f"  mCloud: {mCloud_list}")
+    print(f"  SFE: {sfe_list}")
+    print(f"  nCore: {nCore}")
+    print(f"  Time range: {t_start} - {t_end} Myr, dt = {dt} Myr")
+    print(f"  FPS: {fps} (frame duration: {1000/fps:.0f} ms)")
+    print(f"  Base dir: {base_dir}")
+    print(f"  Use modified: {use_modified}")
+    print(f"  Smooth: {smooth}, Axis mode: {axis_mode}")
+    if smooth == 'gaussian':
+        print(f"  Gaussian sigma: {sigma}")
+    elif smooth == 'contour':
+        print(f"  Contour upsample: {upsample}x")
+    print()
+
+    # Set up directories
+    if fig_dir is None:
+        fig_dir = FIG_DIR
+    fig_dir = Path(fig_dir)
+    fig_dir.mkdir(parents=True, exist_ok=True)
+
+    # Generate time steps
+    times = np.arange(t_start, t_end + dt/2, dt)
+    n_frames = len(times)
+    print(f"Generating {n_frames} frames...")
+
+    # Handle smoothing warning
+    if axis_mode == 'discrete' and smooth != 'none':
+        print(f"  Warning: Smoothing only works with axis_mode='continuous', ignoring --smooth {smooth}")
+        smooth = 'none'
+
+    cmap, norm = create_colormap()
+
+    # Create temporary directory for frames
+    temp_dir = tempfile.mkdtemp(prefix='dominant_feedback_movie_')
+    frame_paths = []
+
+    try:
+        for frame_idx, target_time in enumerate(times):
+            print(f"  Frame {frame_idx + 1}/{n_frames}: t = {target_time:.3f} Myr", end='\r')
+
+            # Create single-panel figure
+            fig, ax = plt.subplots(figsize=(8, 6), constrained_layout=True)
+
+            # Build grid for this time
+            grid = build_dominance_grid(
+                target_time, mCloud_list, sfe_list, nCore, base_dir,
+                use_modified=use_modified
+            )
+
+            # Plot
+            plot_single_grid(ax, grid, mCloud_list, sfe_list, target_time, cmap, norm,
+                           smooth=smooth, axis_mode=axis_mode, sigma=sigma, upsample=upsample)
+
+            # Labels
+            ax.set_xlabel(r"$M_{\rm cloud}$ [$M_\odot$]", fontsize=12)
+            ax.set_ylabel(r"Star Formation Efficiency $\epsilon$", fontsize=12)
+
+            # Title with nCore info
+            nlog = int(np.log10(float(nCore)))
+            title_suffix = " (modified)" if use_modified else ""
+            ax.set_title(
+                rf"Dominant Feedback at $t = {target_time:.2f}$ Myr "
+                rf"($n_{{\rm core}} = 10^{{{nlog}}}$ cm$^{{-3}}$){title_suffix}",
+                fontsize=12
+            )
+
+            # Legend
+            handles = create_legend()
+            ax.legend(
+                handles=handles,
+                loc='upper center',
+                ncol=3,
+                bbox_to_anchor=(0.5, -0.12),
+                frameon=True,
+                facecolor='white',
+                edgecolor='gray',
+                fontsize=9
+            )
+
+            # Save frame
+            frame_path = Path(temp_dir) / f"frame_{frame_idx:04d}.png"
+            fig.savefig(frame_path, dpi=150, bbox_inches='tight')
+            frame_paths.append(frame_path)
+            plt.close(fig)
+
+        print()  # New line after progress
+        print(f"Assembling GIF from {len(frame_paths)} frames...")
+
+        # Load frames and create GIF
+        frames = [Image.open(fp) for fp in frame_paths]
+
+        # Calculate frame duration in milliseconds
+        frame_duration = int(1000 / fps)
+
+        # Build output filename
+        filename = f"dominant_feedback_movie_n{nCore}"
+        if use_modified:
+            filename = f"{filename}_modified"
+        filename = f"{filename}_{axis_mode}"
+        if axis_mode == 'continuous' and smooth != 'none':
+            filename = f"{filename}_{smooth}"
+        filename = f"{filename}_t{t_start:.1f}-{t_end:.1f}"
+        out_gif = fig_dir / f"{filename}.gif"
+
+        # Save GIF
+        frames[0].save(
+            out_gif,
+            save_all=True,
+            append_images=frames[1:],
+            duration=frame_duration,
+            loop=0  # 0 = infinite loop
+        )
+
+        print(f"Saved: {out_gif}")
+        print(f"  Duration: {len(frames) * frame_duration / 1000:.1f} seconds")
+
+    finally:
+        # Clean up temporary directory
+        shutil.rmtree(temp_dir, ignore_errors=True)
+
+
+# =============================================================================
 # CLI Entry Point
 # =============================================================================
 
@@ -738,21 +921,33 @@ if __name__ == "__main__":
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
+  # Static plots
   python paper_dominantFeedback.py
   python paper_dominantFeedback.py --mCloud 1e7 1e8 --sfe 001 020 --times 1 1.5 2 2.5
   python paper_dominantFeedback.py --nCore 1e4 1e5 --modified
-  python paper_dominantFeedback.py --smooth gaussian
+  python paper_dominantFeedback.py --smooth gaussian --sigma 1.2
+  python paper_dominantFeedback.py --smooth contour --upsample 8
   python paper_dominantFeedback.py --axis-mode continuous
-  python paper_dominantFeedback.py --output-dir /path/to/outputs --fig-dir /path/to/figs
+
+  # Movie generation
+  python paper_dominantFeedback.py --movie --nCore 1e4 --dt 0.05 --fps 10
+  python paper_dominantFeedback.py --movie --t-start 0.5 --t-end 3.0 --dt 0.1 --fps 5
 
 Smoothing methods (only with --axis-mode continuous):
-  none     - Discrete grid cells (default)
-  gaussian - Gaussian blur on force probability masks
-  interp   - Bilinear interpolation for smooth contour-like boundaries
+  none     - Discrete grid with cell borders (default)
+  gaussian - Gaussian blur for soft color transitions (adjust with --sigma)
+  contour  - Upsampled nearest-neighbor for smooth boundaries (adjust with --upsample)
 
 Axis modes:
   discrete   - Equal spacing with categorical labels (default, no smoothing)
   continuous - Real value spacing (log scale for mCloud, linear for SFE)
+
+Movie mode:
+  --movie    - Generate animated GIF instead of static plots
+  --dt       - Time step between frames in Myr (default: 0.05)
+  --fps      - Frames per second / playback speed (default: 10)
+  --t-start  - Start time in Myr (default: 0.0)
+  --t-end    - End time in Myr (default: 5.0)
         """
     )
 
@@ -793,6 +988,36 @@ Axis modes:
         help=f"Axis spacing mode: 'discrete' for equal spacing with categorical labels, "
              f"'continuous' for real value spacing (log for mCloud, linear for SFE). Default: {DEFAULT_AXIS_MODE}"
     )
+    parser.add_argument(
+        '--sigma', type=float, default=None,
+        help=f"Gaussian smoothing sigma (higher = smoother). Default: {DEFAULT_SIGMA}"
+    )
+    parser.add_argument(
+        '--upsample', type=int, default=None,
+        help=f"Contour upsampling factor (higher = smoother boundaries). Default: {DEFAULT_UPSAMPLE}"
+    )
+
+    # Movie generation arguments
+    parser.add_argument(
+        '--movie', action='store_true',
+        help='Generate animated GIF instead of static plots'
+    )
+    parser.add_argument(
+        '--dt', type=float, default=0.05,
+        help='Time step between frames in Myr (default: 0.05)'
+    )
+    parser.add_argument(
+        '--fps', type=int, default=10,
+        help='Frames per second / playback speed (default: 10, higher = faster)'
+    )
+    parser.add_argument(
+        '--t-start', type=float, default=0.0,
+        help='Start time for movie in Myr (default: 0.0)'
+    )
+    parser.add_argument(
+        '--t-end', type=float, default=5.0,
+        help='End time for movie in Myr (default: 5.0)'
+    )
 
     args = parser.parse_args()
 
@@ -805,8 +1030,22 @@ Axis modes:
     fig_dir = Path(args.fig_dir) if args.fig_dir else None
     smooth = args.smooth if args.smooth else DEFAULT_SMOOTH
     axis_mode = args.axis_mode if args.axis_mode else DEFAULT_AXIS_MODE
+    sigma = args.sigma if args.sigma else DEFAULT_SIGMA
+    upsample = args.upsample if args.upsample else DEFAULT_UPSAMPLE
 
     # Use module-level USE_MODIFIED if --modified not explicitly set
     use_modified = args.modified or USE_MODIFIED
 
-    main(mCloud_list, sfe_list, nCore_list, target_times, base_dir, fig_dir, use_modified, smooth, axis_mode)
+    if args.movie:
+        # Movie mode: generate one GIF per nCore
+        for nCore in nCore_list:
+            make_movie(
+                mCloud_list, sfe_list, nCore, base_dir, fig_dir,
+                use_modified=use_modified, smooth=smooth, axis_mode=axis_mode,
+                sigma=sigma, upsample=upsample,
+                t_start=args.t_start, t_end=args.t_end, dt=args.dt, fps=args.fps
+            )
+    else:
+        # Static plot mode
+        main(mCloud_list, sfe_list, nCore_list, target_times, base_dir, fig_dir,
+             use_modified, smooth, axis_mode, sigma, upsample)
