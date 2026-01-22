@@ -81,13 +81,14 @@ DEFAULT_SFE = ["001", "010", "030", "050", "080"] #"020"
 DEFAULT_NCORE = ["1e2", "1e4"]  # List of nCore values - produces one plot per nCore
 DEFAULT_TIMES = [1.0, 1.5, 2.0, 2.5]  # Myr
 
-# Smoothing options: 'none', 'gaussian', 'interp'
-DEFAULT_SMOOTH = 'interp'
 
 # Axis mode options:
 #   'discrete': equal spacing, categorical labels (default)
 #   'continuous': real value spacing (log for mCloud, linear for SFE)
 DEFAULT_AXIS_MODE = 'continuous'
+
+# Smoothing options: 'none', 'gaussian', 'interp', only if continuous.
+DEFAULT_SMOOTH = 'gaussian'
 
 # Default directories
 DEFAULT_OUTPUT_DIR = Path.home() / "unsync" / "Code" / "Trinity" / "outputs" / "sweep_test_modified"

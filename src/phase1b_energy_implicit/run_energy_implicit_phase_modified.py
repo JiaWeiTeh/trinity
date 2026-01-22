@@ -117,7 +117,7 @@ ADAPTIVE_FACTOR = 10**0.1     # Factor to increase/decrease DT_SEGMENT (~1.26)
 # Velocity-based proactive timestep control (for rapid collapse)
 # When |v2| exceeds threshold, reduce dt_segment to ensure fine temporal resolution
 VELOCITY_THRESHOLD_COLLAPSE = 50.0   # pc/Myr - proactively reduce step when |v2| > this
-VELOCITY_THRESHOLD_EXTREME = 200.0   # pc/Myr - use minimum step when |v2| > this
+VELOCITY_THRESHOLD_EXTREME = 150.0   # pc/Myr - use minimum step when |v2| > this
 DT_SEGMENT_COLLAPSE = 5e-5           # Myr - segment duration during collapse (50 years, tighter than other phases)
 
 # Parameters to monitor for adaptive stepping (keys in params dict)
