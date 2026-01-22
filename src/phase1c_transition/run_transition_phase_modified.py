@@ -73,6 +73,13 @@ from src.shell_structure.shell_structure_modified import (
 )
 import src.bubble_structure.get_bubbleParams as get_bubbleParams
 
+# Import centralized event functions
+from src.phase_general.phase_events import (
+    build_transition_phase_events,
+    check_event_termination,
+    apply_event_result,
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -364,6 +371,14 @@ def run_phase_transition(params) -> TransitionPhaseResults:
     dt_segment = DT_SEGMENT_INIT
 
     # =============================================================================
+    # Build events for safe termination
+    # =============================================================================
+
+    # Build events using centralized module
+    # Transition phase events: energy_floor (phase ending), min_radius, velocity_runaway
+    ode_events = build_transition_phase_events(params, energy_floor=ENERGY_FLOOR)
+
+    # =============================================================================
     # Main loop (segment-based with adaptive stepping)
     # =============================================================================
 
@@ -463,6 +478,7 @@ def run_phase_transition(params) -> TransitionPhaseResults:
                 'rtol': ODE_RTOL,
                 'atol': ODE_ATOL,
                 'max_step': ODE_MAX_STEP,
+                'events': ode_events,  # Event functions for safe termination
             }
             if ODE_METHOD == 'LSODA':
                 solver_kwargs['min_step'] = ODE_MIN_STEP
@@ -475,6 +491,29 @@ def run_phase_transition(params) -> TransitionPhaseResults:
 
         if not sol.success or len(sol.t) == 0:
             termination_reason = f"solver_failed: {sol.message}"
+            break
+
+        # ---------------------------------------------------------------------
+        # Check if an event terminated the integration
+        # ---------------------------------------------------------------------
+        event_result = check_event_termination(sol, ode_events)
+        if event_result.triggered:
+            logger.warning(f"Event '{event_result.name}' triggered at t={event_result.t:.6e} Myr: "
+                          f"R2={event_result.y[0]:.4e} pc, v2={event_result.y[1]:.4e} pc/Myr, Eb={event_result.y[2]:.4e}")
+            termination_reason = event_result.reason_code
+            # Update state from event
+            R2 = float(event_result.y[0])
+            v2 = float(event_result.y[1])
+            Eb = float(event_result.y[2])
+            t_now = event_result.t
+            # Add final state to results
+            t_results.append(t_now)
+            R2_results.append(R2)
+            v2_results.append(v2)
+            Eb_results.append(Eb)
+            # Apply event result to params
+            apply_event_result(params, event_result, t_now, event_result.y,
+                              state_keys=['R2', 'v2', 'Eb'])
             break
 
         # ---------------------------------------------------------------------
