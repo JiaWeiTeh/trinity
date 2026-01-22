@@ -311,7 +311,7 @@ def apply_smoothing(grid, method='none', sigma=0.8, upsample=4):
         2D array of dominant force indices
     method : str
         'none': no smoothing (discrete grid)
-        'gaussian': Gaussian blur for soft transitions
+        'gaussian': Gaussian blur for soft transitions (respects local colors only)
         'interp': high-resolution interpolation for continuous mode
     sigma : float
         Gaussian sigma for 'gaussian' method
@@ -350,6 +350,27 @@ def apply_smoothing(grid, method='none', sigma=0.8, upsample=4):
 
         # Take argmax of smoothed masks
         grid_smooth = np.argmax(smoothed_masks, axis=0).astype(float)
+
+        # --- FIX: Prevent distant colors from bleeding into boundaries ---
+        # Only allow a color at a cell if it exists in the 3x3 neighborhood
+        # of the original grid. Otherwise, keep the original cell's color.
+        for i in range(n_sfe):
+            for j in range(n_mass):
+                if missing_mask[i, j]:
+                    continue  # Skip missing data cells
+
+                # Get 3x3 neighborhood (with boundary handling)
+                i_min, i_max = max(0, i - 1), min(n_sfe, i + 2)
+                j_min, j_max = max(0, j - 1), min(n_mass, j + 2)
+                neighborhood = grid[i_min:i_max, j_min:j_max]
+
+                # Get colors present in neighborhood (excluding missing data)
+                local_colors = set(neighborhood[neighborhood >= 0].astype(int).flatten())
+
+                # If the smoothed color is not in local neighborhood, revert to original
+                smoothed_color = int(grid_smooth[i, j])
+                if smoothed_color not in local_colors:
+                    grid_smooth[i, j] = grid[i, j]
 
         # Restore missing data markers
         grid_smooth[missing_mask] = grid[missing_mask]
