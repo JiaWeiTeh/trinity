@@ -66,13 +66,13 @@ FORCE_FIELDS = [
 ]
 
 # Default parameters
-DEFAULT_MCLOUD = ["1e5", "1e7", "1e8"]
-DEFAULT_SFE = ["001", "010", "020", "030", "050", "080"]
-DEFAULT_NCORE = ["1e4"]  # List of nCore values - produces one plot per nCore
+DEFAULT_MCLOUD = ["1e5", "5e5", "1e6", "5e6", "1e7", "5e7", "1e8"]
+DEFAULT_SFE = ["001", "010", "030", "050", "080"] #"020"
+DEFAULT_NCORE = ["1e2", "1e4"]  # List of nCore values - produces one plot per nCore
 DEFAULT_TIMES = [1.0, 1.5, 2.0, 2.5]  # Myr
 
 # Default directories
-DEFAULT_OUTPUT_DIR = Path.home() / "unsync" / "Code" / "Trinity" / "outputs"
+DEFAULT_OUTPUT_DIR = Path.home() / "unsync" / "Code" / "Trinity" / "outputs" / "sweep_test_modified"
 FIG_DIR = Path(__file__).parent.parent.parent / "fig"
 
 
