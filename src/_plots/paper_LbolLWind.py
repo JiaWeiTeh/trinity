@@ -291,10 +291,20 @@ def plot_grid():
                     eps = int(sfe) / 100.0
                     ax.set_title(rf"$\epsilon={eps:.2f}$")
 
-                # left y label only on left-most
+                # left y label only on left-most - handle non-power-of-10 masses
                 if j == 0:
-                    mlog = int(np.log10(float(mCloud)))
-                    ax.set_ylabel(rf"$M_{{cloud}}=10^{{{mlog}}}\,M_\odot$" + "\n" + r"left: main + $L_{\rm Wind}$")
+                    mval = float(mCloud)
+                    mexp = int(np.floor(np.log10(mval)))
+                    mcoeff = mval / (10 ** mexp)
+                    mcoeff = round(mcoeff)
+                    if mcoeff == 10:
+                        mcoeff = 1
+                        mexp += 1
+                    if mcoeff == 1:
+                        mlabel = rf"$M_{{\rm cloud}}=10^{{{mexp}}}\,M_\odot$"
+                    else:
+                        mlabel = rf"$M_{{\rm cloud}}={mcoeff}\times10^{{{mexp}}}\,M_\odot$"
+                    ax.set_ylabel(mlabel + "\n" + r"left: main + $L_{\rm Wind}$")
                 else:
                     ax.tick_params(labelleft=False)
 

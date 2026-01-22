@@ -546,9 +546,22 @@ def plot_single_grid(ax, grid, mCloud_list, sfe_list, target_time, cmap, norm,
                 interpolation='nearest' if smooth == 'contour' else 'bilinear'
             )
 
-        # Discrete axis labels
+        # Discrete axis labels - handle non-power-of-10 masses (e.g., 5e6)
         ax.set_xticks(np.arange(n_mass))
-        ax.set_xticklabels([rf"$10^{{{int(np.log10(float(m)))}}}$" for m in mCloud_list])
+        xlabels = []
+        for m in mCloud_list:
+            mval = float(m)
+            mexp = int(np.floor(np.log10(mval)))
+            mcoeff = mval / (10 ** mexp)
+            mcoeff = round(mcoeff)
+            if mcoeff == 10:
+                mcoeff = 1
+                mexp += 1
+            if mcoeff == 1:
+                xlabels.append(rf"$10^{{{mexp}}}$")
+            else:
+                xlabels.append(rf"${mcoeff}\times10^{{{mexp}}}$")
+        ax.set_xticklabels(xlabels)
 
         ax.set_yticks(np.arange(n_sfe))
         ax.set_yticklabels([f"{int(s)/100:.2f}" for s in sfe_list])
