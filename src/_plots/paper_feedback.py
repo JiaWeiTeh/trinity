@@ -411,8 +411,21 @@ def plot_grid():
     
                 # y label only on left-most
                 if j == 0:
-                    mlog = int(np.log10(float(mCloud)))
-                    ax.set_ylabel(rf"$M_{{cloud}}=10^{{{mlog}}}\,M_\odot$" + "\n" + r"$F/F_{tot}$")
+                    # Parse mCloud string to get coefficient and exponent
+                    # e.g., "5e7" -> coeff=5, exp=7; "1e5" -> coeff=1, exp=5
+                    mval = float(mCloud)
+                    mexp = int(np.floor(np.log10(mval)))
+                    mcoeff = mval / (10 ** mexp)
+                    # Round coefficient to avoid floating point issues (e.g., 4.9999 -> 5)
+                    mcoeff = round(mcoeff)
+                    if mcoeff == 10:
+                        mcoeff = 1
+                        mexp += 1
+                    if mcoeff == 1:
+                        mlabel = rf"$M_{{\rm cloud}}=10^{{{mexp}}}\,M_\odot$"
+                    else:
+                        mlabel = rf"$M_{{\rm cloud}}={mcoeff}\times10^{{{mexp}}}\,M_\odot$"
+                    ax.set_ylabel(mlabel + "\n" + r"$F/F_{tot}$")
                 else:
                     ax.tick_params(labelleft=False)
     
