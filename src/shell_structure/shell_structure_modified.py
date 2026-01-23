@@ -101,7 +101,7 @@ def shell_structure_pure(params) -> ShellProperties:
     mShell0 = 0
 
     # Density at inner edge of shell
-    nShell0 = (params['mu_atom'].value / params['mu_ion'].value /
+    nShell0 = (params['mu_ion'].value / params['mu_atom'].value /
                (params['k_B'].value * params['TShell_ion'].value) * params['Pb'].value)
     shell_n0 = nShell0  # Store for output
 
@@ -157,7 +157,7 @@ def shell_structure_pure(params) -> ShellProperties:
 
         # Find termination index
         massCondition = mShell_arr_cum >= mShell_end
-        phiCondition = phiShell_arr <= 0
+        phiCondition = phiShell_arr <= 1e-9 #small positive threshold
         idx_array = np.nonzero((massCondition | phiCondition))[0]
 
         if len(idx_array) == 0:
@@ -296,7 +296,7 @@ def shell_structure_pure(params) -> ShellProperties:
 
                 nShell0 = nShell_arr[idx]
                 tau0_neu = tauShell_arr[idx]
-                mShell0 = mShell_arr[idx]
+                mShell0 = mShell_arr_cum[idx]
                 rShell_start = rShell_arr[idx]
 
             # Append final neutral values
@@ -337,12 +337,10 @@ def shell_structure_pure(params) -> ShellProperties:
             shellThickness = rShell_arr_neu[-1] - rShell0
             tau_rEnd = tauShell_arr_neu[-1]
             phi_rEnd = 0
-            nShell_max = np.max(nShell_arr_ion)
+            nShell_max = max(np.max(nShell_arr_ion), np.max(nShell_arr_neu))
             dr_neu_arr = rShell_arr_neu[1:] - rShell_arr_neu[:-1]
-            tau_kappa_IR = params['mu_atom'].value * (
-                np.sum(nShell_arr_neu[:-1] * dr_neu_arr) +
-                np.sum(nShell_arr_ion[:-1] * dr_ion_arr)
-            )
+            tau_kappa_IR = (params['mu_ion'].value * np.sum(nShell_arr_ion[:-1] * dr_ion_arr) +
+                params['mu_atom'].value * np.sum(nShell_arr_neu[:-1] * dr_neu_arr))
 
         # Absorption fractions
         f_absorbed_ion = 1 - phi_rEnd
@@ -352,8 +350,7 @@ def shell_structure_pure(params) -> ShellProperties:
         rShell = grav_r[-1]
 
         # Radiation force with IR trapping
-        shell_F_rad = (f_absorbed_ion * params['Lbol'].value / params['c_light'].value *
-                      (1 + tau_kappa_IR * params['dust_KappaIR'].value))
+        shell_F_rad = (f_absorbed * params['Lbol'].value / params['c_light'].value * (1 + tau_kappa_IR * params['dust_KappaIR'].value))
 
     elif is_shellDissolved:
         f_absorbed_ion = 1.0
@@ -391,3 +388,4 @@ def shell_structure_pure(params) -> ShellProperties:
         isDissolved=is_shellDissolved,
         is_fullyIonised=is_fullyIonised,
     )
+
