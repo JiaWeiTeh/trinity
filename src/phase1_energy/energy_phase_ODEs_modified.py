@@ -197,20 +197,48 @@ def get_ODE_Edot_pure(t: float, y: list, snapshot: ODESnapshot, params_for_feedb
     if snapshot.rShell >= snapshot.rCloud:
         press_HII_in += snapshot.PISM * snapshot.k_B
 
-    # Photoionized gas from HII region
-    if FABSi < 1:
-        nR2 = snapshot.nISM
-    else:
-        nR2 = np.sqrt(snapshot.Qi / snapshot.caseB_alpha / R2**3 * 3 / 4 / np.pi)
+    # ==========================================================================
+    # WARM IONIZED GAS PRESSURE (P_HII) CONTRIBUTION
+    # Uses ε coupling approach: P_drive = P_b + ε · ΔP_HII
+    # ==========================================================================
+    T_ion = 1e4  # K — standard HII region temperature
 
-    press_HII_out = 2 * nR2 * snapshot.k_B * 3e4
+    # Strömgren equilibrium density and pressure
+    if R2 > 0 and snapshot.Qi > 0 and snapshot.caseB_alpha > 0:
+        n_Stromgren = np.sqrt(3.0 * snapshot.Qi / (4.0 * np.pi * snapshot.caseB_alpha * R2**3))
+    else:
+        n_Stromgren = 0.0
+
+    P_HII_Stromgren = 2.0 * n_Stromgren * snapshot.k_B * T_ion
+
+    # Excess HII pressure beyond bubble pressure
+    Delta_P_HII = max(0.0, P_HII_Stromgren - press_bubble)
+
+    # Coupling coefficient: ε = f_abs_ion * min(1, P_HII_Str / P_b)
+    if press_bubble > 1e-30:
+        pressure_ratio = min(1.0, P_HII_Stromgren / press_bubble)
+    else:
+        pressure_ratio = 1.0
+
+    epsilon_HII = FABSi * pressure_ratio
+
+    # Effective driving pressure: P_drive = P_b + ε · ΔP_HII
+    P_HII_contribution = epsilon_HII * Delta_P_HII
+    P_drive = press_bubble + P_HII_contribution
+
+    # Keep F_ion_out for backwards compatibility (diagnostic output)
+    # This now represents the P_HII contribution force
+    F_HII = 4.0 * np.pi * R2**2 * P_HII_contribution
 
     # Radiation force
     F_rad = snapshot.shell_F_rad
 
+    # Rename press_HII_in to press_ext for clarity (external/confining pressure)
+    press_ext = press_HII_in
+
     # Time derivatives
     rd = v2
-    vd = (4 * np.pi * R2**2 * (press_bubble - press_HII_in + press_HII_out)
+    vd = (4.0 * np.pi * R2**2 * (P_drive - press_ext)
           - mShell_dot * v2 - F_grav + F_rad) / mShell
 
     # Early phase approximation
@@ -252,6 +280,15 @@ class ODEResult:
     F_ion_out: Optional[float] = None
     F_ram: Optional[float] = None
     F_rad: Optional[float] = None
+
+    # P_HII diagnostic quantities (warm ionized gas pressure coupling)
+    P_HII_Stromgren: Optional[float] = None
+    n_Stromgren: Optional[float] = None
+    epsilon_HII: Optional[float] = None
+    Delta_P_HII: Optional[float] = None
+    P_HII_contribution: Optional[float] = None
+    P_drive: Optional[float] = None
+    F_HII: Optional[float] = None
 
 
 def compute_derived_quantities(t: float, y: list, snapshot: ODESnapshot, params_for_feedback) -> ODEResult:
@@ -308,11 +345,38 @@ def compute_derived_quantities(t: float, y: list, snapshot: ODESnapshot, params_
     if snapshot.rShell >= snapshot.rCloud:
         press_HII_in += snapshot.PISM * snapshot.k_B
 
-    if FABSi < 1:
-        nR2 = snapshot.nISM
+    # ==========================================================================
+    # P_HII COUPLING CALCULATION (same as in ODE function)
+    # ==========================================================================
+    T_ion = 1e4  # K — standard HII region temperature
+
+    # Strömgren equilibrium density and pressure
+    if R2 > 0 and snapshot.Qi > 0 and snapshot.caseB_alpha > 0:
+        n_Stromgren = np.sqrt(3.0 * snapshot.Qi / (4.0 * np.pi * snapshot.caseB_alpha * R2**3))
     else:
-        nR2 = np.sqrt(snapshot.Qi / snapshot.caseB_alpha / R2**3 * 3 / 4 / np.pi)
-    press_HII_out = 2 * nR2 * snapshot.k_B * 3e4
+        n_Stromgren = 0.0
+
+    P_HII_Stromgren = 2.0 * n_Stromgren * snapshot.k_B * T_ion
+
+    # Excess HII pressure beyond bubble pressure
+    Delta_P_HII = max(0.0, P_HII_Stromgren - Pb)
+
+    # Coupling coefficient: ε = f_abs_ion * min(1, P_HII_Str / P_b)
+    if Pb > 1e-30:
+        pressure_ratio = min(1.0, P_HII_Stromgren / Pb)
+    else:
+        pressure_ratio = 1.0
+
+    epsilon_HII = FABSi * pressure_ratio
+
+    # Effective driving pressure: P_drive = P_b + ε · ΔP_HII
+    P_HII_contribution = epsilon_HII * Delta_P_HII
+    P_drive = Pb + P_HII_contribution
+
+    # Forces
+    F_HII = 4.0 * np.pi * R2**2 * P_HII_contribution
+    # F_ion_out kept for backwards compatibility
+    F_ion_out = F_HII
 
     return ODEResult(
         R2=R2,
@@ -325,7 +389,15 @@ def compute_derived_quantities(t: float, y: list, snapshot: ODESnapshot, params_
         shell_massDot=mShell_dot,
         F_grav=F_grav,
         F_ion_in=press_HII_in * 4 * np.pi * R2**2,
-        F_ion_out=press_HII_out * 4 * np.pi * R2**2,
+        F_ion_out=F_ion_out,
         F_ram=Pb * 4 * np.pi * R2**2,
         F_rad=snapshot.shell_F_rad,
+        # P_HII diagnostic quantities
+        P_HII_Stromgren=P_HII_Stromgren,
+        n_Stromgren=n_Stromgren,
+        epsilon_HII=epsilon_HII,
+        Delta_P_HII=Delta_P_HII,
+        P_HII_contribution=P_HII_contribution,
+        P_drive=P_drive,
+        F_HII=F_HII,
     )

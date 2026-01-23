@@ -247,6 +247,14 @@ class ForceProperties:
     F_ion_out: float    # Outward ionization pressure force
     F_ram: float        # Ram pressure force (from bubble pressure)
     F_rad: float        # Radiation pressure force
+    # P_HII diagnostic quantities (warm ionized gas pressure coupling)
+    P_HII_Stromgren: float = 0.0
+    n_Stromgren: float = 0.0
+    epsilon_HII: float = 0.0
+    Delta_P_HII: float = 0.0
+    P_HII_contribution: float = 0.0
+    P_drive: float = 0.0
+    F_HII: float = 0.0
 
 
 def compute_forces_pure(
@@ -294,17 +302,41 @@ def compute_forces_pure(
     if rShell >= rCloud:
         press_HII_in += PISM * k_B
 
-    # Outward ionization pressure
-    if FABSi < 1.0:
-        nR2 = nISM
-    else:
-        Qi = params['Qi'].value
-        caseB_alpha = params['caseB_alpha'].value
-        nR2 = np.sqrt(Qi / caseB_alpha / (R2**3) * 3 / FOUR_PI)
-    press_HII_out = 2.0 * nR2 * k_B * 3e4
+    # ==========================================================================
+    # P_HII COUPLING CALCULATION
+    # Uses ε coupling approach: P_drive = P_b + ε · ΔP_HII
+    # ==========================================================================
+    T_ion = 1e4  # K — standard HII region temperature
+    Qi = params['Qi'].value
+    caseB_alpha = params['caseB_alpha'].value
 
+    # Strömgren equilibrium density and pressure
+    if R2 > 0 and Qi > 0 and caseB_alpha > 0:
+        n_Stromgren = np.sqrt(3.0 * Qi / (FOUR_PI * caseB_alpha * R2**3))
+    else:
+        n_Stromgren = 0.0
+
+    P_HII_Stromgren = 2.0 * n_Stromgren * k_B * T_ion
+
+    # Excess HII pressure beyond bubble pressure
+    Delta_P_HII = max(0.0, P_HII_Stromgren - Pb)
+
+    # Coupling coefficient: ε = f_abs_ion * min(1, P_HII_Str / P_b)
+    if Pb > 1e-30:
+        pressure_ratio = min(1.0, P_HII_Stromgren / Pb)
+    else:
+        pressure_ratio = 1.0
+
+    epsilon_HII = FABSi * pressure_ratio
+
+    # Effective driving pressure: P_drive = P_b + ε · ΔP_HII
+    P_HII_contribution = epsilon_HII * Delta_P_HII
+    P_drive = Pb + P_HII_contribution
+
+    # Forces
     F_ion_in = press_HII_in * FOUR_PI * R2**2
-    F_ion_out = press_HII_out * FOUR_PI * R2**2
+    F_HII = FOUR_PI * R2**2 * P_HII_contribution
+    F_ion_out = F_HII  # For backwards compatibility
 
     # Ram pressure force
     F_ram = Pb * FOUR_PI * R2**2
@@ -318,6 +350,13 @@ def compute_forces_pure(
         F_ion_out=F_ion_out,
         F_ram=F_ram,
         F_rad=F_rad,
+        P_HII_Stromgren=P_HII_Stromgren,
+        n_Stromgren=n_Stromgren,
+        epsilon_HII=epsilon_HII,
+        Delta_P_HII=Delta_P_HII,
+        P_HII_contribution=P_HII_contribution,
+        P_drive=P_drive,
+        F_HII=F_HII,
     )
 
 
@@ -463,6 +502,14 @@ def run_phase_transition(params) -> TransitionPhaseResults:
         params['F_ion_out'].value = force_props.F_ion_out
         params['F_ram'].value = force_props.F_ram
         params['F_rad'].value = force_props.F_rad
+        # P_HII diagnostic quantities
+        params['P_HII_Stromgren'].value = force_props.P_HII_Stromgren
+        params['n_Stromgren'].value = force_props.n_Stromgren
+        params['epsilon_HII'].value = force_props.epsilon_HII
+        params['Delta_P_HII'].value = force_props.Delta_P_HII
+        params['P_HII_contribution'].value = force_props.P_HII_contribution
+        params['P_drive'].value = force_props.P_drive
+        params['F_HII'].value = force_props.F_HII
         params['F_ram_wind'].value = feedback.pdot_W
         params['F_ram_SN'].value = feedback.pdot_SN
 
