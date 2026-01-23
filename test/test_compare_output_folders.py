@@ -82,6 +82,9 @@ DEFAULT_DIR_B = DEFAULT_OUTPUT_DIR / 'sweep_test_modified'
 # Parameters of interest by category
 ESSENTIAL_PARAMS = ['R1', 'R2', 'rShell', 'Pb', 'Eb', 'T0', 'v2']
 
+# Parameters to exclude from comparison (metadata, redundant, etc.)
+EXCLUDED_PARAMS = {'snap_id', 't_next', 't_now', 'F_SN', 'F_wind'}
+
 
 # =============================================================================
 # Data loading functions
@@ -252,13 +255,16 @@ def extract_time_series(snapshots: list, key: str) -> tuple:
 def get_scalar_keys(snapshots: list) -> set:
     """
     Get all keys that have scalar (int/float) values.
+
+    Excludes parameters in EXCLUDED_PARAMS (metadata, redundant, etc.).
     """
     scalar_keys = set()
 
     for snap in snapshots:
         for key, val in snap.items():
             if isinstance(val, (int, float)) and not isinstance(val, bool):
-                scalar_keys.add(key)
+                if key not in EXCLUDED_PARAMS:
+                    scalar_keys.add(key)
 
     return scalar_keys
 
@@ -606,6 +612,125 @@ def plot_comparison_grid(
     print(f"  Saved: {output_path}")
 
 
+def plot_combined_comparison(
+    snapshots_orig: list,
+    snapshots_mod: list,
+    keys: list,
+    title: str,
+    output_path: Path,
+    transition_times: dict = None,
+    label1: str = 'Original',
+    label2: str = 'Modified',
+    ylabel: str = None
+):
+    """
+    Plot multiple parameters on the same axes for comparison.
+
+    Creates a single plot with multiple parameters from both datasets.
+    Each parameter gets a different color, with solid lines for dataset 1
+    and dashed lines for dataset 2.
+
+    Parameters
+    ----------
+    snapshots_orig : list
+        Original run snapshots
+    snapshots_mod : list
+        Modified run snapshots
+    keys : list
+        Parameter keys to plot together
+    title : str
+        Plot title
+    output_path : Path
+        Output file path
+    transition_times : dict, optional
+        Dictionary with transition times to mark with vertical lines
+    label1 : str
+        Label for first dataset (default: 'Original')
+    label2 : str
+        Label for second dataset (default: 'Modified')
+    ylabel : str, optional
+        Y-axis label (default: auto from keys)
+    """
+    # Check for valid keys
+    valid_keys = []
+    for key in keys:
+        t_orig, v_orig = extract_time_series(snapshots_orig, key)
+        t_mod, v_mod = extract_time_series(snapshots_mod, key)
+        if (not np.all(np.isnan(v_orig))) or (not np.all(np.isnan(v_mod))):
+            valid_keys.append(key)
+
+    if not valid_keys:
+        print(f"  No valid keys to plot for: {title}")
+        return
+
+    fig, ax = plt.subplots(figsize=(10, 6))
+
+    # Color cycle for different parameters
+    colors = plt.cm.tab10.colors
+
+    for idx, key in enumerate(valid_keys):
+        color = colors[idx % len(colors)]
+
+        t_orig, v_orig = extract_time_series(snapshots_orig, key)
+        t_mod, v_mod = extract_time_series(snapshots_mod, key)
+
+        # Plot original (solid) and modified (dashed)
+        ax.plot(t_orig, v_orig, '-', color=color, linewidth=1.5, alpha=0.8,
+                label=f'{key} ({label1})')
+        ax.plot(t_mod, v_mod, '--', color=color, linewidth=1.5, alpha=0.8,
+                label=f'{key} ({label2})')
+
+    # Add vertical lines for phase transitions
+    if transition_times:
+        vline_styles = {
+            't_transition': {'color': 'green', 'label': 'Transition phase'},
+            't_momentum': {'color': 'blue', 'label': 'Momentum phase'},
+            't_R2_gt_rCloud': {'color': 'orange', 'label': 'R2 > rCloud'},
+            't_collapse': {'color': 'purple', 'label': 'Collapse'}
+        }
+        added_labels = set()
+        for base_key, style in vline_styles.items():
+            t_orig_trans = transition_times.get(f'{base_key}_orig')
+            if t_orig_trans is not None:
+                vline_label = style['label'] if style['label'] not in added_labels else None
+                ax.axvline(x=t_orig_trans, color=style['color'], linestyle='--',
+                           linewidth=1.0, alpha=0.5, label=vline_label)
+                if vline_label:
+                    added_labels.add(vline_label)
+
+            t_mod_trans = transition_times.get(f'{base_key}_mod')
+            if t_mod_trans is not None:
+                if t_orig_trans is None or abs(t_mod_trans - t_orig_trans) > 1e-10:
+                    ax.axvline(x=t_mod_trans, color=style['color'], linestyle=':',
+                               linewidth=1.0, alpha=0.5)
+
+    ax.set_xlabel('Time [Myr]')
+    ax.set_ylabel(ylabel if ylabel else ', '.join(valid_keys))
+    ax.set_title(title, fontsize=12, fontweight='bold')
+    ax.legend(fontsize=8, loc='best', ncol=2)
+    ax.grid(True, alpha=0.3)
+
+    # Use log scale if values span multiple orders of magnitude
+    all_values = []
+    for key in valid_keys:
+        _, v_orig = extract_time_series(snapshots_orig, key)
+        _, v_mod = extract_time_series(snapshots_mod, key)
+        all_values.extend(v_orig[~np.isnan(v_orig)])
+        all_values.extend(v_mod[~np.isnan(v_mod)])
+
+    if len(all_values) > 0:
+        all_values = np.array(all_values)
+        if np.all(all_values[~np.isnan(all_values)] > 0):
+            median_val = np.median(all_values[all_values > 0])
+            if median_val > 1e4:
+                ax.set_yscale('log')
+
+    plt.tight_layout()
+    plt.savefig(output_path, format='pdf', bbox_inches='tight', dpi=150)
+    plt.close(fig)
+    print(f"  Saved: {output_path}")
+
+
 def generate_all_comparison_plots(
     snapshots_orig: list,
     snapshots_mod: list,
@@ -699,6 +824,20 @@ def generate_all_comparison_plots(
             label1=label1, label2=label2
         )
 
+    # B2) Combined plot: bubble_Lgain and bubble_Lloss on same axes
+    lgain_lloss_keys = ['bubble_Lgain', 'bubble_Lloss']
+    if all(k in all_keys for k in lgain_lloss_keys):
+        print("  Plotting combined Lgain/Lloss comparison...")
+        plot_combined_comparison(
+            snapshots_orig_filtered, snapshots_mod_filtered,
+            lgain_lloss_keys,
+            f"{model_name}: Bubble Energy Gain vs Loss",
+            output_dir / "comparison_bubble_Lgain_Lloss.pdf",
+            transition_times=transition_times,
+            label1=label1, label2=label2,
+            ylabel='Luminosity [erg/s]'
+        )
+
     # C) TRINITY essentials (R1, R2, rShell, Pb, Eb, T0)
     essential_keys = [k for k in ESSENTIAL_PARAMS if k in all_keys]
     if essential_keys:
@@ -710,6 +849,21 @@ def generate_all_comparison_plots(
             output_dir / "comparison_essential_parameters.pdf",
             transition_times=transition_times,
             label1=label1, label2=label2
+        )
+
+    # C2) Combined plot: R2, R1, rShell on same axes
+    radii_keys = ['R2', 'R1', 'rShell']
+    if any(k in all_keys for k in radii_keys):
+        available_radii = [k for k in radii_keys if k in all_keys]
+        print(f"  Plotting combined radii comparison ({', '.join(available_radii)})...")
+        plot_combined_comparison(
+            snapshots_orig_filtered, snapshots_mod_filtered,
+            available_radii,
+            f"{model_name}: Radii Comparison (R2, R1, rShell)",
+            output_dir / "comparison_radii_combined.pdf",
+            transition_times=transition_times,
+            label1=label1, label2=label2,
+            ylabel='Radius [pc]'
         )
 
     # D) Force parameters (keys containing F_)
