@@ -434,16 +434,26 @@ def run_phase_transition(params) -> TransitionPhaseResults:
 
         # ---------------------------------------------------------------------
         # Compute shell mass and forces BEFORE ODE - all values consistent at t_now
-        # Shell mass should NEVER decrease - once mass is swept up, it stays in shell
+        # Two conditions for freezing shell mass:
+        # 1. During collapse (isCollapse=True): shell mass is frozen
+        # 2. Shell mass can NEVER decrease - once mass is swept up, it stays in shell
         # ---------------------------------------------------------------------
-        mShell_new, mShell_dot = mass_profile.get_mass_profile(R2, params, return_mdot=True, rdot=v2)
         prev_mShell = params['shell_mass'].value
-        if prev_mShell > 0 and mShell_new < prev_mShell:
-            # Shell mass cannot decrease - keep previous value
+        is_collapse = params.get('isCollapse', None)
+        is_collapse_val = is_collapse.value if is_collapse and hasattr(is_collapse, 'value') else False
+
+        if is_collapse_val:
+            # During collapse, shell mass is frozen
             mShell = prev_mShell
             mShell_dot = 0.0
         else:
-            mShell = mShell_new
+            mShell_new, mShell_dot = mass_profile.get_mass_profile(R2, params, return_mdot=True, rdot=v2)
+            # Ensure shell mass never decreases
+            if prev_mShell > 0 and mShell_new < prev_mShell:
+                mShell = prev_mShell
+                mShell_dot = 0.0
+            else:
+                mShell = mShell_new
         params['shell_mass'].value = mShell
         params['shell_massDot'].value = mShell_dot
 

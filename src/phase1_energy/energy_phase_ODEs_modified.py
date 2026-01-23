@@ -144,13 +144,23 @@ def get_ODE_Edot_pure(t: float, y: list, snapshot: ODESnapshot, params_for_feedb
 
     # Calculate shell mass using existing mass_profile module
     # (only reads from params, safe for ODE evaluation)
+    # Two conditions for freezing shell mass:
+    # 1. During collapse (isCollapse=True): shell mass is frozen
+    # 2. Shell mass can NEVER decrease - once mass is swept up, it stays in shell
     if snapshot.isCollapse:
         mShell = snapshot.shell_mass
         mShell_dot = 0.0
     else:
-        mShell, mShell_dot = mass_profile.get_mass_profile(
+        mShell_new, mShell_dot = mass_profile.get_mass_profile(
             R2, params_for_feedback, return_mdot=True, rdot=v2
         )
+        # Ensure shell mass never decreases
+        prev_mShell = snapshot.shell_mass
+        if prev_mShell > 0 and mShell_new < prev_mShell:
+            mShell = prev_mShell
+            mShell_dot = 0.0
+        else:
+            mShell = mShell_new
 
     # Gravity force (self + cluster)
     F_grav = snapshot.G * mShell / (R2**2) * (snapshot.mCluster + 0.5 * mShell)
@@ -258,13 +268,23 @@ def compute_derived_quantities(t: float, y: list, snapshot: ODESnapshot, params_
     v_mech_total = feedback.v_mech_total
 
     # Shell mass using existing mass_profile module
+    # Two conditions for freezing shell mass:
+    # 1. During collapse (isCollapse=True): shell mass is frozen
+    # 2. Shell mass can NEVER decrease - once mass is swept up, it stays in shell
     if snapshot.isCollapse:
         mShell = snapshot.shell_mass
         mShell_dot = 0.0
     else:
-        mShell, mShell_dot = mass_profile.get_mass_profile(
+        mShell_new, mShell_dot = mass_profile.get_mass_profile(
             R2, params_for_feedback, return_mdot=True, rdot=v2
         )
+        # Ensure shell mass never decreases
+        prev_mShell = snapshot.shell_mass
+        if prev_mShell > 0 and mShell_new < prev_mShell:
+            mShell = prev_mShell
+            mShell_dot = 0.0
+        else:
+            mShell = mShell_new
 
     # R1
     R1 = scipy.optimize.brentq(
