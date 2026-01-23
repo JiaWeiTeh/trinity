@@ -15,7 +15,7 @@
 
 mCloud    [1e5, 5e5, 1e6, 5e6, 1e7, 5e7, 1e8]
 sfe       [0.01, 0.10, 0.30, 0.50, 0.80]
-nCore     [1e2, 1e4]
+nCore     [1e3]
 
 # =============================================================================
 # Fixed parameters (constant across all runs)
@@ -34,4 +34,8 @@ expansionBeyondCloud    True
 # Output directory (each run creates subfolder like 1e5_sfe001_n1e2/)
 path2output    outputs/sweep_test_modified
 
+# use _modified files with solvers
 use_adaptive_solver True
+
+# run without stopping radius
+stop_r    None

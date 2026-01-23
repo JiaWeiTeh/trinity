@@ -24,7 +24,7 @@ mCloud_list = ["1e5", "1e7", "1e8"]                 # rows
 ndens_list  = ["1e4", "1e2", "1e3"]                               # one figure per ndens
 sfe_list    = ["001", "010", "020", "030", "050", "080"]   # cols
 
-BASE_DIR = Path.home() / "unsync" / "Code" / "Trinity" / "outputs"
+BASE_DIR = Path.home() / "unsync" / "Code" / "Trinity" / "outputs" / "sweep_test_modified"
 
 # --- output - save to project root's fig/ directory
 FIG_DIR = Path(__file__).parent.parent.parent / "fig"
@@ -59,7 +59,7 @@ ONLY_NDENS  = "1e4"   # e.g. "1e4"
 ONLY_SFE    = "010"   # e.g. "030"
 
 # comment this out if want single mode, otherwise leave this be if want grid. 
-# ONLY_NDENS = ONLY_MCLOUD = ONLY_SFE = None
+ONLY_NDENS = ONLY_MCLOUD = ONLY_SFE = None
 
 # -------- smoothing (optional) --------
 def smooth_1d(y, window, mode="edge"):

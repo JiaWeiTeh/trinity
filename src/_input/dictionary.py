@@ -977,10 +977,10 @@ COOLING_PHASE_KEYS = [
     'bubble_L3Intermediate',
     'bubble_LTotal',
     # Bubble temperature/mass
-    'bubble_Tavg',
-    'bubble_T_r_Tb',
-    'bubble_mass',
-    'bubble_r_Tb',
+    # 'bubble_Tavg',
+    # 'bubble_T_r_Tb',
+    # 'bubble_mass',
+    # 'bubble_r_Tb',
     # Cooling timing
     't_previousCoolingUpdate',
     # Non-CIE cooling structures
@@ -995,11 +995,11 @@ COOLING_PHASE_KEYS = [
     'cool_beta',
     'cool_delta',
     # Bubble profile arrays
-    'bubble_v_arr',
-    'bubble_T_arr',
-    'bubble_dTdr_arr',
-    'bubble_r_arr',
-    'bubble_n_arr',
+    # 'bubble_v_arr',
+    # 'bubble_T_arr',
+    # 'bubble_dTdr_arr',
+    # 'bubble_r_arr',
+    # 'bubble_n_arr',
     'bubble_dMdt',
 ]
 

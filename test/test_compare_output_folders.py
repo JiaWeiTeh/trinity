@@ -584,11 +584,11 @@ def plot_comparison_grid(
         ax.legend(fontsize=7, loc='best')
         ax.grid(True, alpha=0.3)
 
-        # Use log10 scale if median value > 1e4
+        # Use log10 scale if median value > 1e4 or peak
         all_values = np.concatenate([v_orig[~np.isnan(v_orig)], v_mod[~np.isnan(v_mod)]])
         if len(all_values) > 0:
             median_val = np.median(np.abs(all_values[all_values != 0])) if np.any(all_values != 0) else 0
-            if median_val > 1e4 and np.all(all_values[~np.isnan(all_values)] > 0):
+            if (median_val > 1e4 or all_values.max() > 1e4) and np.all(all_values[~np.isnan(all_values)] > 0):
                 ax.set_yscale('log')
             else:
                 # Use scientific notation for y-axis if values are very large/small
