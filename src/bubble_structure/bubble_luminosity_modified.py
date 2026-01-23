@@ -101,8 +101,8 @@ def get_bubbleproperties_pure(params) -> BubbleProperties:
     R1 = scipy.optimize.brentq(
         get_bubbleParams.get_r1,
         1e-3 * params['R2'].value, params['R2'].value,
-        args=([params['Lmech_total'], params['Eb'],
-               params['v_mech_total'], params['R2']])
+        args=([params['Lmech_total'].value, params['Eb'].value,
+               params['v_mech_total'].value, params['R2'].value])
     )
 
     # Bubble pressure
@@ -372,18 +372,19 @@ def get_bubbleproperties_pure(params) -> BubbleProperties:
     # Total luminosity
     L_total = L_bubble + L_conduction + L_intermediate
 
-    # Average temperature
+    # Average temperature (volume-weighted)
+    # <T> = ∫T dV / ∫dV = 3 × Σ(∫T r² dr) / Σ(r_outer³ - r_inner³)
     if index_cooling_switch != index_CIE_switch:
-        Tavg = 3 * (
-            Tavg_bubble / (r_bubble[0]**3 - r_bubble[-1]**3) +
-            Tavg_conduction / (r_conduction[0]**3 - r_conduction[-1]**3) +
-            Tavg_intermediate / (r_interm[0]**3 - r_interm[-1]**3)
-        )
+        total_Tr2_integral = Tavg_bubble + Tavg_conduction + Tavg_intermediate
+        total_volume = ((r_bubble[0]**3 - r_bubble[-1]**3) +
+                        (r_conduction[0]**3 - r_conduction[-1]**3) +
+                        (r_interm[0]**3 - r_interm[-1]**3))
+        Tavg = 3 * total_Tr2_integral / total_volume
     else:
-        Tavg = 3 * (
-            Tavg_bubble / (r_bubble[0]**3 - r_bubble[-1]**3) +
-            Tavg_intermediate / (r_interm[0]**3 - r_interm[-1]**3)
-        )
+        total_Tr2_integral = Tavg_bubble + Tavg_intermediate
+        total_volume = ((r_bubble[0]**3 - r_bubble[-1]**3) +
+                        (r_interm[0]**3 - r_interm[-1]**3))
+        Tavg = 3 * total_Tr2_integral / total_volume
 
     # Temperature at r_Tb
     # If rgoal is smaller than the radius of cooling threshold, i.e., larger than the index,
@@ -431,9 +432,14 @@ def get_bubbleproperties_pure(params) -> BubbleProperties:
 def _get_init_dMdt(params, Pb: float) -> float:
     """Initial guess for dMdt (Equation 33 in Weaver+77)."""
     dMdt_factor = 1.646
-    return (12 / 75 * dMdt_factor**(5/2) * 4 * np.pi * params['R2']**3 / params['t_now']
-            * params['mu_atom'] / params['k_B']
-            * (params['t_now'] * params['C_thermal'] / params['R2']**2)**(2/7)
+    R2 = params['R2'].value
+    t_now = params['t_now'].value
+    mu_atom = params['mu_atom'].value
+    k_B = params['k_B'].value
+    C_thermal = params['C_thermal'].value
+    return (12 / 75 * dMdt_factor**(5/2) * 4 * np.pi * R2**3 / t_now
+            * mu_atom / k_B
+            * (t_now * C_thermal / R2**2)**(2/7)
             * Pb**(5/7))
 
 
@@ -759,15 +765,20 @@ def _get_bubble_ODE_initial_conditions(dMdt, params, Pb: float, R1: float):
     """Get initial conditions for bubble ODE (Eq 44 in Weaver+77)."""
     T_init = 3e4
 
-    constant = (25/4 * params['k_B'] / params['mu_ion'] / params['C_thermal'])
-    dR2 = T_init**(5/2) / (constant * dMdt / (4 * np.pi * params['R2'].value**2))
+    k_B = params['k_B'].value
+    mu_ion = params['mu_ion'].value
+    C_thermal = params['C_thermal'].value
+    R2 = params['R2'].value
 
-    T = (constant * dMdt * dR2 / (4 * np.pi * params['R2'].value**2))**(2/5)
-    v = (params['cool_alpha'].value * params['R2'].value / params['t_now'].value
-         - dMdt / (4 * np.pi * params['R2'].value**2)
-         * params['k_B'].value * T / params['mu_ion'].value / Pb)
+    constant = (25/4 * k_B / mu_ion / C_thermal)
+    dR2 = T_init**(5/2) / (constant * dMdt / (4 * np.pi * R2**2))
+
+    T = (constant * dMdt * dR2 / (4 * np.pi * R2**2))**(2/5)
+    v = (params['cool_alpha'].value * R2 / params['t_now'].value
+         - dMdt / (4 * np.pi * R2**2)
+         * k_B * T / mu_ion / Pb)
     dTdr = -2/5 * T / dR2
-    r2_prime = params['R2'].value - dR2
+    r2_prime = R2 - dR2
 
     return r2_prime, T, dTdr, v
 
