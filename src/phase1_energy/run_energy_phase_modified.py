@@ -320,6 +320,21 @@ def run_energy(params):
             params['F_ram'].value = ode_result.F_ram
         if ode_result.F_rad is not None:
             params['F_rad'].value = ode_result.F_rad
+        # P_HII diagnostic quantities
+        if ode_result.P_HII_Stromgren is not None:
+            params['P_HII_Stromgren'].value = ode_result.P_HII_Stromgren
+        if ode_result.n_Stromgren is not None:
+            params['n_Stromgren'].value = ode_result.n_Stromgren
+        if ode_result.epsilon_HII is not None:
+            params['epsilon_HII'].value = ode_result.epsilon_HII
+        if ode_result.Delta_P_HII is not None:
+            params['Delta_P_HII'].value = ode_result.Delta_P_HII
+        if ode_result.P_HII_contribution is not None:
+            params['P_HII_contribution'].value = ode_result.P_HII_contribution
+        if ode_result.P_drive is not None:
+            params['P_drive'].value = ode_result.P_drive
+        if ode_result.F_HII is not None:
+            params['F_HII'].value = ode_result.F_HII
         if ode_result.shell_mass is not None:
             params['shell_mass'].value = ode_result.shell_mass
         if ode_result.shell_massDot is not None:
