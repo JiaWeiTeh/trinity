@@ -28,6 +28,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from pathlib import Path
 from matplotlib.lines import Line2D
+from matplotlib.ticker import SymmetricalLogLocator, NullLocator
 
 # Add project root to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
@@ -261,6 +262,11 @@ def plot_run_on_ax(ax, data, smooth_window=None, phase_change=True,
     if use_symlog:
         # Use symmetric log scale (handles positive and negative values)
         ax.set_yscale('symlog', linthresh=1e-3)
+        # Reduce tick crowding: only show major ticks at exact powers of 10
+        # subs=[1] means only 10^n, not 2*10^n, 5*10^n, etc.
+        ax.yaxis.set_major_locator(SymmetricalLogLocator(base=10, linthresh=1e-3, subs=[1]))
+        # Remove minor ticks to reduce clutter
+        ax.yaxis.set_minor_locator(NullLocator())
     else:
         ax.set_yscale('linear')
 

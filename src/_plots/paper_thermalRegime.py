@@ -186,9 +186,24 @@ def plot_run_on_ax(ax, data, smooth_window=None, phase_change=True,
         ax.axhline(0.5, color='gray', ls=':', lw=1, alpha=0.4, zorder=1)
         ax.axhline(1.0, color='red', ls='--', lw=1, alpha=0.4, zorder=1)
 
-        # Shade regime regions (subtle)
-        ax.fill_between(t, 0, 0.3, color=C_BUBBLE, alpha=0.1, zorder=0)
-        ax.fill_between(t, 0.7, 1.0, color=C_HII, alpha=0.1, zorder=0)
+        # Shade regime regions with gradient fading to white at 0.5
+        # Use multiple strips with decreasing alpha toward 0.5
+        n_strips = 20
+        max_alpha = 0.15
+        # Bottom (bubble) gradient: 0 to 0.5, alpha decreases toward 0.5
+        for i in range(n_strips):
+            y0 = i * 0.5 / n_strips
+            y1 = (i + 1) * 0.5 / n_strips
+            # Alpha decreases linearly from max_alpha at y=0 to 0 at y=0.5
+            alpha = max_alpha * (1 - (i + 0.5) / n_strips)
+            ax.fill_between(t, y0, y1, color=C_BUBBLE, alpha=alpha, lw=0, zorder=0)
+        # Top (HII) gradient: 0.5 to 1.0, alpha increases from 0.5 toward 1.0
+        for i in range(n_strips):
+            y0 = 0.5 + i * 0.5 / n_strips
+            y1 = 0.5 + (i + 1) * 0.5 / n_strips
+            # Alpha increases linearly from 0 at y=0.5 to max_alpha at y=1.0
+            alpha = max_alpha * ((i + 0.5) / n_strips)
+            ax.fill_between(t, y0, y1, color=C_HII, alpha=alpha, lw=0, zorder=0)
 
         # Add regime labels at edges
         ax.text(0.02, 0.05, "Bubble-dominated", transform=ax.transAxes,
