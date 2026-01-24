@@ -39,3 +39,4 @@ use_adaptive_solver True
 
 # run without stopping radius
 stop_r    None
+stop_t    10

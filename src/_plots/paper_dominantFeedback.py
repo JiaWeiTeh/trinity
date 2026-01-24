@@ -78,8 +78,10 @@ COLOR_TIME_OUT_OF_RANGE = "#ffffff"   # White
 
 # Default parameters
 DEFAULT_MCLOUD = ["1e5", "5e5", "1e6", "5e6", "1e7", "5e7", "1e8"]
-DEFAULT_SFE = ["001", "010", "030", "050", "080"] #"020"
-DEFAULT_NCORE = ["1e2", "1e4"]  # List of nCore values - produces one plot per nCore
+# DEFAULT_SFE = ["001", "010", "030", "050", "080"] #"020"
+DEFAULT_SFE = ["001", "005", "010", "020", "030", "050", "070", "080"] #"020"
+# DEFAULT_NCORE = ["1e2", "1e4"]  # List of nCore values - produces one plot per nCore
+DEFAULT_NCORE = ["1e3"]  # List of nCore values - produces one plot per nCore
 # DEFAULT_TIMES = [1.0, 1.5, 2.0, 2.5]  # Myr
 DEFAULT_TIMES = [1.0]  # Myr
 

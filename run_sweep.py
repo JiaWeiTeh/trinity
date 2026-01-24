@@ -170,12 +170,12 @@ def main():
     print(f"Will use {workers} parallel worker(s)")
 
     # Estimate time (rough estimate: 5 minutes per simulation)
-    estimated_time_per_sim = 300  # seconds
+    estimated_time_per_sim = 1000  # seconds
     estimated_total_seconds = (n_combinations / workers) * estimated_time_per_sim
     estimated_total_minutes = estimated_total_seconds / 60
 
     print(f"\nEstimated total time: ~{estimated_total_minutes:.0f} minutes")
-    print(f"  (assuming ~5 min/sim with {workers} workers)")
+    print(f"  (assuming ~{estimated_time_per_sim} s/sim with {workers} workers)")
 
     # =============================================================================
     # Determine output directory
