@@ -262,10 +262,11 @@ def plot_run_on_ax(ax, data, smooth_window=None, phase_change=True,
     if use_symlog:
         # Use symmetric log scale (handles positive and negative values)
         ax.set_yscale('symlog', linthresh=1e-3)
-        # Reduce tick crowding: show ticks every 3 decades
-        # Generate tick positions: ..., -10^6, -10^3, 0, 10^3, 10^6, ...
+        # Reduce tick crowding: show ticks every 3 decades, only non-negative exponents
+        # This avoids cramping near 10^0 by excluding 10^-3, 10^-6, etc.
+        # Generate tick positions: -10^9, -10^6, -10^3, 0, 10^3, 10^6, 10^9
         tick_positions = [0]
-        for exp in range(-9, 10, 3):  # every 3 decades from 10^-9 to 10^9
+        for exp in range(0, 10, 3):  # every 3 decades from 10^0 to 10^9 (non-negative exp only)
             tick_positions.append(10**exp)
             tick_positions.append(-10**exp)
         ax.yaxis.set_major_locator(FixedLocator(sorted(tick_positions)))

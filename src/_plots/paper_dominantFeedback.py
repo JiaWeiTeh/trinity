@@ -59,10 +59,14 @@ plt.style.use(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'trinity.
 # Switch to use *_modified/ output folders and save as *_modified.pdf
 USE_MODIFIED = False
 
+# Whether to decompose F_ram into wind/SN/residual components
+# True: show F_ram_wind (blue), F_ram_SN (yellow), F_ram_residual (gray) separately
+# False: show combined F_ram (blue) as a single category
+DECOMPOSE_F_RAM = True
+
 # Force field definitions: (key, label, color)
-# Order determines the index (0, 1, 2, 3, 4, 5) used in the grid
-# Note: F_ram_residual is computed as F_ram - F_ram_wind - F_ram_SN
-FORCE_FIELDS = [
+# DECOMPOSED mode: F_ram split into wind/SN/residual (6 force types, indices 0-5)
+FORCE_FIELDS_DECOMPOSED = [
     ("F_grav",         "Gravity",           "#2c3e50"),  # Dark blue-gray
     ("F_ram_wind",     "Winds",             "#3498db"),  # Blue (ram from winds)
     ("F_ram_SN",       "Supernovae",        "#DAA520"),  # Golden yellow for SN
@@ -71,7 +75,18 @@ FORCE_FIELDS = [
     ("F_rad",          "Radiation",         "#9b59b6"),  # Purple
 ]
 
-# Special values for missing data (must be negative to distinguish from force indices 0-5)
+# COMBINED mode: F_ram as single category (5 force types, indices 0-4)
+FORCE_FIELDS_COMBINED = [
+    ("F_grav",    "Gravity",           "#2c3e50"),  # Dark blue-gray
+    ("F_ram",     "Ram pressure",      "#3498db"),  # Blue (combined ram)
+    ("F_ion_out", "Photoionised gas",  "#e74c3c"),  # Red
+    ("F_rad",     "Radiation",         "#9b59b6"),  # Purple
+]
+
+# Active force fields (set based on DECOMPOSE_F_RAM)
+FORCE_FIELDS = FORCE_FIELDS_DECOMPOSED if DECOMPOSE_F_RAM else FORCE_FIELDS_COMBINED
+
+# Special values for missing data (must be negative to distinguish from force indices)
 FILE_NOT_FOUND = -1      # Gray: simulation file not found
 TIME_OUT_OF_RANGE = -2   # White: time outside simulation range (t > t_max or t < t_min)
 
@@ -141,7 +156,7 @@ def get_snapshot_at_time(output, target_time):
         return None
 
 
-def get_dominant_force(snapshot):
+def get_dominant_force(snapshot, force_fields=None):
     """
     Determine the dominant feedback force from a snapshot.
 
@@ -149,18 +164,28 @@ def get_dominant_force(snapshot):
     ----------
     snapshot : dict
         Snapshot data dictionary
+    force_fields : list, optional
+        List of (key, label, color) tuples. If None, uses global FORCE_FIELDS.
 
     Returns
     -------
     int or np.nan
-        Index of dominant force (0-3), or np.nan if no valid forces
+        Index of dominant force, or np.nan if no valid forces
     """
     if snapshot is None:
         return np.nan
 
+    if force_fields is None:
+        force_fields = FORCE_FIELDS
+
+    # Use get_force_values to handle computed fields like F_ram_residual
+    force_vals = get_force_values(snapshot, force_fields)
+    if force_vals is None:
+        return np.nan
+
     forces = []
-    for key, _, _ in FORCE_FIELDS:
-        val = snapshot.get(key)
+    for key, _, _ in force_fields:
+        val = force_vals.get(key, 0.0)
         if val is None or not np.isfinite(val):
             forces.append(0.0)
         else:
@@ -174,7 +199,7 @@ def get_dominant_force(snapshot):
     return int(np.argmax(forces))
 
 
-def get_force_values(snapshot):
+def get_force_values(snapshot, force_fields=None):
     """
     Extract all force values from a snapshot.
 
@@ -182,6 +207,9 @@ def get_force_values(snapshot):
     ----------
     snapshot : dict
         Snapshot data dictionary
+    force_fields : list, optional
+        List of (key, label, color) tuples defining which forces to extract.
+        If None, uses global FORCE_FIELDS.
 
     Returns
     -------
@@ -191,10 +219,14 @@ def get_force_values(snapshot):
     if snapshot is None:
         return None
 
+    if force_fields is None:
+        force_fields = FORCE_FIELDS
+
     forces = {}
+    force_keys = [key for key, _, _ in force_fields]
 
     # First pass: get raw values for standard fields
-    for key, _, _ in FORCE_FIELDS:
+    for key, _, _ in force_fields:
         if key == "F_ram_residual":
             # Compute F_ram_residual separately after getting other values
             continue
@@ -204,21 +236,23 @@ def get_force_values(snapshot):
         else:
             forces[key] = abs(val)
 
-    # Compute F_ram_residual = F_ram - F_ram_wind - F_ram_SN
-    # This captures any thermal pressure not from direct wind/SN momentum input
-    F_ram = snapshot.get("F_ram")
-    F_ram_wind = forces.get("F_ram_wind", 0.0)
-    F_ram_SN = forces.get("F_ram_SN", 0.0)
+    # Compute F_ram_residual only if it's in the force fields (decomposed mode)
+    if "F_ram_residual" in force_keys:
+        # F_ram_residual = F_ram - F_ram_wind - F_ram_SN
+        # This captures any thermal pressure not from direct wind/SN momentum input
+        F_ram = snapshot.get("F_ram")
+        F_ram_wind = forces.get("F_ram_wind", 0.0)
+        F_ram_SN = forces.get("F_ram_SN", 0.0)
 
-    if F_ram is not None and np.isfinite(F_ram):
-        # Use nan_to_num to handle NaN in wind/SN values
-        F_wind_val = np.nan_to_num(F_ram_wind, nan=0.0)
-        F_SN_val = np.nan_to_num(F_ram_SN, nan=0.0)
-        residual = abs(F_ram) - F_wind_val - F_SN_val
-        # Residual should be non-negative (force magnitude)
-        forces["F_ram_residual"] = max(0.0, residual)
-    else:
-        forces["F_ram_residual"] = np.nan
+        if F_ram is not None and np.isfinite(F_ram):
+            # Use nan_to_num to handle NaN in wind/SN values
+            F_wind_val = np.nan_to_num(F_ram_wind, nan=0.0)
+            F_SN_val = np.nan_to_num(F_ram_SN, nan=0.0)
+            residual = abs(F_ram) - F_wind_val - F_SN_val
+            # Residual should be non-negative (force magnitude)
+            forces["F_ram_residual"] = max(0.0, residual)
+        else:
+            forces["F_ram_residual"] = np.nan
 
     return forces
 
@@ -485,45 +519,48 @@ def refine_dominant_map(logM, eps, forces_dict, mask, nref_M=300, nref_eps=300):
 # Plotting Functions
 # =============================================================================
 
-def create_colormap():
+def create_colormap(force_fields=None):
     """
     Create discrete colormap for force types and missing data.
 
-    Color mapping:
+    Color mapping depends on force_fields:
     - -2 (TIME_OUT_OF_RANGE): white
     - -1 (FILE_NOT_FOUND): gray
-    - 0 (F_grav): dark blue-gray (Gravity)
-    - 1 (F_ram_wind): blue (Winds)
-    - 2 (F_ram_SN): golden yellow (Supernovae)
-    - 3 (F_ram_residual): gray (Other thermal)
-    - 4 (F_ion_out): red (Photoionised gas)
-    - 5 (F_rad): purple (Radiation)
+    - 0, 1, 2, ... : force colors from force_fields list
     """
+    if force_fields is None:
+        force_fields = FORCE_FIELDS
+
+    n_forces = len(force_fields)
+
     # Colors in order: TIME_OUT_OF_RANGE, FILE_NOT_FOUND, then force colors
     colors = [
         COLOR_TIME_OUT_OF_RANGE,  # -2
         COLOR_FILE_NOT_FOUND,     # -1
-    ] + [field[2] for field in FORCE_FIELDS]  # 0, 1, 2, 3
+    ] + [field[2] for field in force_fields]
 
     cmap = ListedColormap(colors)
     cmap.set_bad(color='white')  # NaN -> white (fallback)
 
     # Bounds: -2.5 to -1.5 -> color[0], -1.5 to -0.5 -> color[1], etc.
-    # Extended for 6 force types (indices 0-5)
-    bounds = [-2.5, -1.5, -0.5, 0.5, 1.5, 2.5, 3.5, 4.5, 5.5]
+    # Dynamic based on number of force types
+    bounds = [-2.5, -1.5, -0.5] + [i + 0.5 for i in range(n_forces)]
     norm = BoundaryNorm(bounds, cmap.N)
 
     return cmap, norm
 
 
-def create_force_colormap():
+def create_force_colormap(force_fields=None):
     """
-    Create discrete colormap for just force types (0-3).
+    Create discrete colormap for just force types.
 
     Used for interpolated plots where missing data is handled via masking.
     """
-    n_forces = len(FORCE_FIELDS)
-    colors = [field[2] for field in FORCE_FIELDS]
+    if force_fields is None:
+        force_fields = FORCE_FIELDS
+
+    n_forces = len(force_fields)
+    colors = [field[2] for field in force_fields]
     cmap = ListedColormap(colors)
     cmap.set_bad(color='white')  # Masked values -> white
     norm = BoundaryNorm(np.arange(n_forces + 1) - 0.5, n_forces)
@@ -717,11 +754,14 @@ def plot_single_grid(ax, grid, mCloud_list, sfe_list, target_time, cmap, norm,
     return im
 
 
-def create_legend():
+def create_legend(force_fields=None):
     """Create legend handles for force types and missing data."""
+    if force_fields is None:
+        force_fields = FORCE_FIELDS
+
     handles = [
         Patch(facecolor=color, edgecolor='gray', label=label)
-        for _, label, color in FORCE_FIELDS
+        for _, label, color in force_fields
     ]
     # Add missing data types
     handles.append(
@@ -1097,6 +1137,10 @@ Movie mode:
   --fps      - Frames per second / playback speed (default: 10)
   --t-start  - Start time in Myr (default: 0.0)
   --t-end    - End time in Myr (default: 5.0)
+
+F_ram decomposition:
+  --decompose-ram     - Show F_ram_wind (winds), F_ram_SN (supernovae), F_ram_residual separately
+  --no-decompose-ram  - Show combined F_ram as single category (original behavior)
         """
     )
 
@@ -1161,6 +1205,16 @@ Movie mode:
         help='End time for movie in Myr (default: 5.0)'
     )
 
+    # F_ram decomposition mode
+    parser.add_argument(
+        '--decompose-ram', action='store_true', default=None,
+        help='Decompose F_ram into F_ram_wind (winds), F_ram_SN (supernovae), F_ram_residual (other thermal)'
+    )
+    parser.add_argument(
+        '--no-decompose-ram', action='store_true',
+        help='Use combined F_ram as single category (original behavior)'
+    )
+
     args = parser.parse_args()
 
     # Apply defaults
@@ -1175,6 +1229,20 @@ Movie mode:
 
     # Use module-level USE_MODIFIED if --modified not explicitly set
     use_modified = args.modified or USE_MODIFIED
+
+    # Determine F_ram decomposition mode
+    # Priority: CLI flags > module-level DECOMPOSE_F_RAM
+    if args.no_decompose_ram:
+        decompose_ram = False
+    elif args.decompose_ram:
+        decompose_ram = True
+    else:
+        decompose_ram = DECOMPOSE_F_RAM
+
+    # Update global FORCE_FIELDS based on decomposition mode
+    global FORCE_FIELDS
+    FORCE_FIELDS = FORCE_FIELDS_DECOMPOSED if decompose_ram else FORCE_FIELDS_COMBINED
+    print(f"F_ram decomposition: {'enabled (wind/SN/residual)' if decompose_ram else 'disabled (combined)'}")
 
     if args.movie:
         # Movie mode: generate one GIF per nCore
