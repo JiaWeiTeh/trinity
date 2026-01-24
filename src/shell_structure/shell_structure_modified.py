@@ -61,6 +61,10 @@ class ShellProperties:
     isDissolved: bool  # Is the shell dissolved?
     is_fullyIonised: bool  # Is the shell fully ionized?
 
+    # Ionization front properties (for P_HII convex blend)
+    n_IF: float  # Density at ionization front (code units)
+    R_IF: float  # Radius of ionization front (pc)
+
 
 def shell_structure_pure(params) -> ShellProperties:
     """
@@ -195,6 +199,10 @@ def shell_structure_pure(params) -> ShellProperties:
     tauShell_arr_ion = np.append(tauShell_arr_ion, tauShell_arr[idx])
     nShell_arr_ion = np.append(nShell_arr_ion, nShell_arr[idx])
     rShell_arr_ion = np.append(rShell_arr_ion, rShell_arr[idx])
+
+    # Extract ionization front properties (for P_HII convex blend)
+    n_IF = nShell_arr_ion[-1]  # Density at ionization front
+    R_IF = rShell_arr_ion[-1]  # Radius of ionization front
 
     # =============================================================================
     # Continue computation if shell hasn't dissolved
@@ -367,6 +375,9 @@ def shell_structure_pure(params) -> ShellProperties:
         # Keep previous rShell value when dissolved (matches original behavior)
         rShell = rShell_previous
         shell_F_rad = 0.0
+        # No ionization front when dissolved
+        n_IF = 0.0
+        R_IF = rShell_previous
 
         logger.info('Shell dissolved.')
 
@@ -387,5 +398,7 @@ def shell_structure_pure(params) -> ShellProperties:
         shell_grav_force_m=grav_force_m,
         isDissolved=is_shellDissolved,
         is_fullyIonised=is_fullyIonised,
+        n_IF=n_IF,
+        R_IF=R_IF,
     )
 

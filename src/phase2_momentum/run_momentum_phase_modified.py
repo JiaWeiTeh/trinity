@@ -190,12 +190,11 @@ class ForceProperties:
     F_ion_out: float    # Outward ionization pressure force
     F_ram: float        # Ram pressure force
     F_rad: float        # Radiation pressure force
-    # P_HII diagnostic quantities (warm ionized gas pressure coupling)
-    P_HII_Stromgren: float = 0.0
-    n_Stromgren: float = 0.0
-    epsilon_HII: float = 0.0
-    Delta_P_HII: float = 0.0
-    P_HII_contribution: float = 0.0
+    # P_IF diagnostic quantities (ionization front pressure - convex blend)
+    n_IF: float = 0.0
+    R_IF: float = 0.0
+    P_IF: float = 0.0
+    w_blend: float = 0.0
     P_drive: float = 0.0
     F_HII: float = 0.0
 
@@ -251,40 +250,33 @@ def compute_forces_momentum_pure(
         press_HII_in += PISM * k_B
 
     # ==========================================================================
-    # P_HII COUPLING CALCULATION
-    # Uses ε coupling approach: P_drive = P_ram + ε · ΔP_HII
+    # P_IF CALCULATION - CONVEX BLEND
+    # Uses ionization front pressure from shell structure
     # In momentum phase, we use ram pressure instead of thermal bubble pressure
+    # P_drive = (1-w)*P_ram + w*P_IF where w = f_abs_ion * P_IF/(P_IF + P_ram)
     # ==========================================================================
     T_ion = 1e4  # K — standard HII region temperature
-    Qi = params['Qi'].value
-    caseB_alpha = params['caseB_alpha'].value
 
-    # Strömgren equilibrium density and pressure
-    if R2 > 0 and Qi > 0 and caseB_alpha > 0:
-        n_Stromgren = np.sqrt(3.0 * Qi / (FOUR_PI * caseB_alpha * R2**3))
+    # Get n_IF from shell_props (ionization front density from shell structure)
+    n_IF = shell_props.n_IF
+    R_IF = shell_props.R_IF
+
+    # Pressure at ionization front
+    P_IF = 2.0 * n_IF * k_B * T_ion
+
+    # Blending weight: w = f_abs_ion * P_IF/(P_IF + P_ram)
+    denom = P_IF + press_ram
+    if denom > 1e-30:
+        w_blend = FABSi * P_IF / denom
     else:
-        n_Stromgren = 0.0
+        w_blend = 0.0
 
-    P_HII_Stromgren = 2.0 * n_Stromgren * k_B * T_ion
-
-    # Excess HII pressure beyond ram pressure
-    Delta_P_HII = max(0.0, P_HII_Stromgren - press_ram)
-
-    # Coupling coefficient: ε = f_abs_ion * min(1, P_HII_Str / P_ram)
-    if press_ram > 1e-30:
-        pressure_ratio = min(1.0, P_HII_Stromgren / press_ram)
-    else:
-        pressure_ratio = 1.0
-
-    epsilon_HII = FABSi * pressure_ratio
-
-    # Effective driving pressure: P_drive = P_ram + ε · ΔP_HII
-    P_HII_contribution = epsilon_HII * Delta_P_HII
-    P_drive = press_ram + P_HII_contribution
+    # Driving pressure as convex blend: P_drive = (1-w)*P_ram + w*P_IF
+    P_drive = (1.0 - w_blend) * press_ram + w_blend * P_IF
 
     # Forces
     F_ion_in = press_HII_in * FOUR_PI * R2**2
-    F_HII = FOUR_PI * R2**2 * P_HII_contribution
+    F_HII = FOUR_PI * R2**2 * (P_drive - press_ram)
     F_ion_out = F_HII  # For backwards compatibility
 
     # Ram pressure force
@@ -299,11 +291,10 @@ def compute_forces_momentum_pure(
         F_ion_out=F_ion_out,
         F_ram=F_ram,
         F_rad=F_rad,
-        P_HII_Stromgren=P_HII_Stromgren,
-        n_Stromgren=n_Stromgren,
-        epsilon_HII=epsilon_HII,
-        Delta_P_HII=Delta_P_HII,
-        P_HII_contribution=P_HII_contribution,
+        n_IF=n_IF,
+        R_IF=R_IF,
+        P_IF=P_IF,
+        w_blend=w_blend,
         P_drive=P_drive,
         F_HII=F_HII,
     )
@@ -328,6 +319,7 @@ class MomentumODESnapshot:
     rCloud: float
     rShell: float
     FABSi: float
+    n_IF: float  # Density at ionization front (for P_IF convex blend)
     F_rad: float
     mShell: float
     mShell_dot: float
@@ -362,6 +354,7 @@ def create_momentum_snapshot(params, shell_props: ShellProperties,
         rCloud=params['rCloud'].value,
         rShell=shell_props.rShell,
         FABSi=shell_props.shell_fAbsorbedIon,
+        n_IF=shell_props.n_IF,
         F_rad=shell_props.shell_F_rad,
         mShell=mShell,
         mShell_dot=mShell_dot,
@@ -438,33 +431,23 @@ def get_ODE_momentum_pure(t: float, y: np.ndarray, snapshot: MomentumODESnapshot
         press_HII_in += snapshot.PISM * k_B
 
     # ==========================================================================
-    # P_HII COUPLING CALCULATION (momentum phase uses ram pressure)
+    # P_IF CALCULATION - CONVEX BLEND (momentum phase uses ram pressure)
     # ==========================================================================
     T_ion = 1e4  # K — standard HII region temperature
-    caseB_alpha = snapshot.caseB_alpha
 
-    # Strömgren equilibrium density and pressure
-    if R2 > 0 and Qi > 0 and caseB_alpha > 0:
-        n_Stromgren = np.sqrt(3.0 * Qi / (FOUR_PI * caseB_alpha * R2**3))
+    # Pressure at ionization front (from snapshot, set by shell structure)
+    n_IF = snapshot.n_IF
+    P_IF = 2.0 * n_IF * k_B * T_ion
+
+    # Blending weight: w = f_abs_ion * P_IF/(P_IF + P_ram)
+    denom = P_IF + press_ram
+    if denom > 1e-30:
+        w_blend = FABSi * P_IF / denom
     else:
-        n_Stromgren = 0.0
+        w_blend = 0.0
 
-    P_HII_Stromgren = 2.0 * n_Stromgren * k_B * T_ion
-
-    # Excess HII pressure beyond ram pressure
-    Delta_P_HII = max(0.0, P_HII_Stromgren - press_ram)
-
-    # Coupling coefficient: ε = f_abs_ion * min(1, P_HII_Str / P_ram)
-    if press_ram > 1e-30:
-        pressure_ratio = min(1.0, P_HII_Stromgren / press_ram)
-    else:
-        pressure_ratio = 1.0
-
-    epsilon_HII = FABSi * pressure_ratio
-
-    # Effective driving pressure: P_drive = P_ram + ε · ΔP_HII
-    P_HII_contribution = epsilon_HII * Delta_P_HII
-    P_drive = press_ram + P_HII_contribution
+    # Driving pressure as convex blend: P_drive = (1-w)*P_ram + w*P_IF
+    P_drive = (1.0 - w_blend) * press_ram + w_blend * P_IF
 
     # Rename press_HII_in to press_ext for clarity (external/confining pressure)
     press_ext = press_HII_in
@@ -616,12 +599,11 @@ def run_phase_momentum(params) -> MomentumPhaseResults:
         params['F_ion_out'].value = force_props.F_ion_out
         params['F_ram'].value = force_props.F_ram
         params['F_rad'].value = force_props.F_rad
-        # P_HII diagnostic quantities
-        params['P_HII_Stromgren'].value = force_props.P_HII_Stromgren
-        params['n_Stromgren'].value = force_props.n_Stromgren
-        params['epsilon_HII'].value = force_props.epsilon_HII
-        params['Delta_P_HII'].value = force_props.Delta_P_HII
-        params['P_HII_contribution'].value = force_props.P_HII_contribution
+        # P_IF diagnostic quantities (convex blend)
+        params['n_IF'].value = force_props.n_IF
+        params['R_IF'].value = force_props.R_IF
+        params['P_IF'].value = force_props.P_IF
+        params['w_blend'].value = force_props.w_blend
         params['P_drive'].value = force_props.P_drive
         params['F_HII'].value = force_props.F_HII
         params['F_ram_wind'].value = feedback.pdot_W
