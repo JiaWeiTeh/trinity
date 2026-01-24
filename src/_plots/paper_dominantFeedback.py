@@ -62,7 +62,7 @@ USE_MODIFIED = False
 # Whether to decompose F_ram into wind/SN/residual components
 # True: show F_ram_wind (blue), F_ram_SN (yellow), F_ram_residual (gray) separately
 # False: show combined F_ram (blue) as a single category
-DECOMPOSE_F_RAM = True
+DECOMPOSE_F_RAM = False
 
 # Force field definitions: (key, label, color)
 # DECOMPOSED mode: F_ram split into wind/SN/residual (6 force types, indices 0-5)

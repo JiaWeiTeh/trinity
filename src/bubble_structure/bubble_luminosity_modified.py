@@ -434,11 +434,11 @@ def _get_init_dMdt(params, Pb: float) -> float:
     dMdt_factor = 1.646
     R2 = params['R2'].value
     t_now = params['t_now'].value
-    mu_atom = params['mu_atom'].value
+    mu_ion = params['mu_ion'].value
     k_B = params['k_B'].value
     C_thermal = params['C_thermal'].value
     return (12 / 75 * dMdt_factor**(5/2) * 4 * np.pi * R2**3 / t_now
-            * mu_atom / k_B
+            * mu_ion / k_B
             * (t_now * C_thermal / R2**2)**(2/7)
             * Pb**(5/7))
 
