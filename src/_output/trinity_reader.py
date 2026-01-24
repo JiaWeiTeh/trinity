@@ -1063,3 +1063,48 @@ def resolve_data_input(data_input: Union[str, Path],
         f"Could not resolve data input: {data_input}\n"
         f"Tried as: file, directory, folder name in {output_dir}"
     )
+
+
+def find_all_simulations(base_dir: Union[str, Path]) -> List[Path]:
+    """
+    Recursively search for all simulation .jsonl files in a directory.
+
+    Searches for dictionary.jsonl (preferred) or dictionary.json files
+    in all subdirectories of the given base directory.
+
+    Parameters
+    ----------
+    base_dir : str or Path
+        Base directory to search recursively
+
+    Returns
+    -------
+    List[Path]
+        Sorted list of paths to dictionary files found.
+        Returns empty list if base_dir doesn't exist or contains no simulations.
+
+    Examples
+    --------
+    >>> sim_files = find_all_simulations('/path/to/outputs')
+    >>> for data_path in sim_files:
+    ...     output = load_output(data_path)
+    ...     # process each simulation...
+    """
+    base_dir = Path(base_dir)
+    if not base_dir.is_dir():
+        return []
+
+    found = []
+
+    # Search for dictionary.jsonl files recursively (preferred format)
+    for jsonl_file in base_dir.rglob("dictionary.jsonl"):
+        found.append(jsonl_file)
+
+    # Also search for dictionary.json as fallback
+    for json_file in base_dir.rglob("dictionary.json"):
+        # Only add if no .jsonl version exists in same directory
+        jsonl_version = json_file.with_suffix('.jsonl')
+        if jsonl_version not in found:
+            found.append(json_file)
+
+    return sorted(found)

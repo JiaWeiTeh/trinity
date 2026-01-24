@@ -59,10 +59,11 @@ plt.style.use(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'trinity.
 # Switch to use *_modified/ output folders and save as *_modified.pdf
 USE_MODIFIED = False
 
-# Whether to decompose F_ram into wind/SN/residual components
-# True: show F_ram_wind (blue), F_ram_SN (yellow), F_ram_residual (gray) separately
-# False: show combined F_ram (blue) as a single category
-DECOMPOSE_F_RAM = False
+# F_ram decomposition mode: 'decomposed', 'combined', or 'sn_highlight'
+# - 'decomposed': F_ram_wind (blue), F_ram_SN (yellow), F_ram_residual (gray) separately
+# - 'combined': single F_ram category (blue)
+# - 'sn_highlight': F_ram_thermal (blue, wind+residual), F_ram_SN (yellow) - highlights SN only
+DECOMPOSE_MODE = 'sn_highlight'
 
 # Force field definitions: (key, label, color)
 # DECOMPOSED mode: F_ram split into wind/SN/residual (6 force types, indices 0-5)
@@ -75,7 +76,7 @@ FORCE_FIELDS_DECOMPOSED = [
     ("F_rad",          "Radiation",         "#9b59b6"),  # Purple
 ]
 
-# COMBINED mode: F_ram as single category (5 force types, indices 0-4)
+# COMBINED mode: F_ram as single category (4 force types, indices 0-3)
 FORCE_FIELDS_COMBINED = [
     ("F_grav",    "Gravity",           "#2c3e50"),  # Dark blue-gray
     ("F_ram",     "Ram pressure",      "#3498db"),  # Blue (combined ram)
@@ -83,8 +84,22 @@ FORCE_FIELDS_COMBINED = [
     ("F_rad",     "Radiation",         "#9b59b6"),  # Purple
 ]
 
-# Active force fields (set based on DECOMPOSE_F_RAM)
-FORCE_FIELDS = FORCE_FIELDS_DECOMPOSED if DECOMPOSE_F_RAM else FORCE_FIELDS_COMBINED
+# SN_HIGHLIGHT mode: Only F_ram_SN highlighted, wind+residual grouped as thermal (5 force types)
+FORCE_FIELDS_SN_HIGHLIGHT = [
+    ("F_grav",         "Gravity",              "#2c3e50"),  # Dark blue-gray
+    ("F_ram_thermal",  "Thermal (non-SN)",     "#3498db"),  # Blue (wind + residual combined)
+    ("F_ram_SN",       "Supernovae",           "#DAA520"),  # Golden yellow for SN
+    ("F_ion_out",      "Photoionised gas",     "#e74c3c"),  # Red
+    ("F_rad",          "Radiation",            "#9b59b6"),  # Purple
+]
+
+# Active force fields (set based on DECOMPOSE_MODE)
+if DECOMPOSE_MODE == 'decomposed':
+    FORCE_FIELDS = FORCE_FIELDS_DECOMPOSED
+elif DECOMPOSE_MODE == 'sn_highlight':
+    FORCE_FIELDS = FORCE_FIELDS_SN_HIGHLIGHT
+else:
+    FORCE_FIELDS = FORCE_FIELDS_COMBINED
 
 # Special values for missing data (must be negative to distinguish from force indices)
 FILE_NOT_FOUND = -1      # Gray: simulation file not found
@@ -226,9 +241,10 @@ def get_force_values(snapshot, force_fields=None):
     force_keys = [key for key, _, _ in force_fields]
 
     # First pass: get raw values for standard fields
+    # Skip computed fields (F_ram_residual, F_ram_thermal) - they're computed below
+    computed_fields = {"F_ram_residual", "F_ram_thermal"}
     for key, _, _ in force_fields:
-        if key == "F_ram_residual":
-            # Compute F_ram_residual separately after getting other values
+        if key in computed_fields:
             continue
         val = snapshot.get(key)
         if val is None or not np.isfinite(val):
@@ -253,6 +269,21 @@ def get_force_values(snapshot, force_fields=None):
             forces["F_ram_residual"] = max(0.0, residual)
         else:
             forces["F_ram_residual"] = np.nan
+
+    # Compute F_ram_thermal only if it's in the force fields (sn_highlight mode)
+    if "F_ram_thermal" in force_keys:
+        # F_ram_thermal = F_ram - F_ram_SN (combines wind + residual into one blue category)
+        # This highlights SN contribution while grouping all other thermal feedback
+        F_ram = snapshot.get("F_ram")
+        F_ram_SN_raw = snapshot.get("F_ram_SN")
+
+        if F_ram is not None and np.isfinite(F_ram):
+            F_SN_val = np.nan_to_num(F_ram_SN_raw, nan=0.0) if F_ram_SN_raw is not None else 0.0
+            thermal = abs(F_ram) - abs(F_SN_val)
+            # Thermal should be non-negative (force magnitude)
+            forces["F_ram_thermal"] = max(0.0, thermal)
+        else:
+            forces["F_ram_thermal"] = np.nan
 
     return forces
 
@@ -1138,8 +1169,9 @@ Movie mode:
   --t-start  - Start time in Myr (default: 0.0)
   --t-end    - End time in Myr (default: 5.0)
 
-F_ram decomposition:
+F_ram decomposition modes:
   --decompose-ram     - Show F_ram_wind (winds), F_ram_SN (supernovae), F_ram_residual separately
+  --sn-highlight      - Highlight only SN (yellow); group winds+residual as thermal (blue)
   --no-decompose-ram  - Show combined F_ram as single category (original behavior)
         """
     )
@@ -1211,6 +1243,10 @@ F_ram decomposition:
         help='Decompose F_ram into F_ram_wind (winds), F_ram_SN (supernovae), F_ram_residual (other thermal)'
     )
     parser.add_argument(
+        '--sn-highlight', action='store_true',
+        help='Highlight only SN (yellow); group winds+residual as thermal (blue)'
+    )
+    parser.add_argument(
         '--no-decompose-ram', action='store_true',
         help='Use combined F_ram as single category (original behavior)'
     )
@@ -1231,18 +1267,27 @@ F_ram decomposition:
     use_modified = args.modified or USE_MODIFIED
 
     # Determine F_ram decomposition mode
-    # Priority: CLI flags > module-level DECOMPOSE_F_RAM
+    # Priority: CLI flags > module-level DECOMPOSE_MODE
     if args.no_decompose_ram:
-        decompose_ram = False
+        decompose_mode = 'combined'
+    elif args.sn_highlight:
+        decompose_mode = 'sn_highlight'
     elif args.decompose_ram:
-        decompose_ram = True
+        decompose_mode = 'decomposed'
     else:
-        decompose_ram = DECOMPOSE_F_RAM
+        decompose_mode = DECOMPOSE_MODE
 
     # Update global FORCE_FIELDS based on decomposition mode
     global FORCE_FIELDS
-    FORCE_FIELDS = FORCE_FIELDS_DECOMPOSED if decompose_ram else FORCE_FIELDS_COMBINED
-    print(f"F_ram decomposition: {'enabled (wind/SN/residual)' if decompose_ram else 'disabled (combined)'}")
+    if decompose_mode == 'decomposed':
+        FORCE_FIELDS = FORCE_FIELDS_DECOMPOSED
+        print("F_ram decomposition: enabled (wind/SN/residual separately)")
+    elif decompose_mode == 'sn_highlight':
+        FORCE_FIELDS = FORCE_FIELDS_SN_HIGHLIGHT
+        print("F_ram decomposition: SN highlight (thermal in blue, SN in yellow)")
+    else:
+        FORCE_FIELDS = FORCE_FIELDS_COMBINED
+        print("F_ram decomposition: disabled (combined)")
 
     if args.movie:
         # Movie mode: generate one GIF per nCore
