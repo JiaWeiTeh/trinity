@@ -28,7 +28,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from pathlib import Path
 from matplotlib.lines import Line2D
-from matplotlib.ticker import SymmetricalLogLocator, NullLocator
+from matplotlib.ticker import SymmetricalLogLocator, NullLocator, FixedLocator
 
 # Add project root to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
@@ -262,9 +262,13 @@ def plot_run_on_ax(ax, data, smooth_window=None, phase_change=True,
     if use_symlog:
         # Use symmetric log scale (handles positive and negative values)
         ax.set_yscale('symlog', linthresh=1e-3)
-        # Reduce tick crowding: only show major ticks at exact powers of 10
-        # subs=[1] means only 10^n, not 2*10^n, 5*10^n, etc.
-        ax.yaxis.set_major_locator(SymmetricalLogLocator(base=10, linthresh=1e-3, subs=[1]))
+        # Reduce tick crowding: show ticks every 3 decades
+        # Generate tick positions: ..., -10^6, -10^3, 0, 10^3, 10^6, ...
+        tick_positions = [0]
+        for exp in range(-9, 10, 3):  # every 3 decades from 10^-9 to 10^9
+            tick_positions.append(10**exp)
+            tick_positions.append(-10**exp)
+        ax.yaxis.set_major_locator(FixedLocator(sorted(tick_positions)))
         # Remove minor ticks to reduce clutter
         ax.yaxis.set_minor_locator(NullLocator())
     else:
@@ -272,8 +276,9 @@ def plot_run_on_ax(ax, data, smooth_window=None, phase_change=True,
 
     # X-axis scale
     if use_log_x:
-        ax.set_xscale('log')
-        # For log scale, start from first positive time
+        # Use symlog: logarithmic for early times, linear for later times
+        # linthresh=0.1 means linear above 0.1 Myr, giving more space to late evolution
+        ax.set_xscale('symlog', linthresh=0.1)
         t_pos = t[t > 0]
         if len(t_pos) > 0:
             ax.set_xlim(t_pos.min(), t.max())
