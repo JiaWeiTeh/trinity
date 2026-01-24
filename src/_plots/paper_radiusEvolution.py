@@ -35,6 +35,7 @@ CLOUD_LINE = True
 SHOW_WEAVER = True  # Show Weaver-like R ∝ t^(3/5) solution
 SMOOTH_WINDOW = None        # e.g. 7 to smooth radii; None/1 disables
 SMOOTH_MODE = "edge"
+USE_LOG_X = False  # Use log scale for x-axis (time)
 
 
 # --- output - save to project root's fig/ directory
@@ -161,7 +162,7 @@ def plot_radii_on_ax(
     ax, t, phase, R1, R2, rShell, r_Tb, rcloud, isCollapse=None,
     phase_line=True, cloud_line=True, show_weaver=False,
     smooth_window=None, smooth_mode="edge",
-    label_pad_points=4
+    label_pad_points=4, use_log_x=False
 ):
     # optional smoothing
     R1s = smooth_1d(R1, smooth_window, mode=smooth_mode)
@@ -194,7 +195,14 @@ def plot_radii_on_ax(
         ax.plot(t, R_weaver, lw=1.5, ls="--", color="k", alpha=0.6,
                 label=r"Weaver: $R \propto t^{3/5}$", zorder=2)
 
-    ax.set_xlim(t.min(), t.max())
+    # X-axis scale
+    if use_log_x:
+        ax.set_xscale('log')
+        t_pos = t[t > 0]
+        if len(t_pos) > 0:
+            ax.set_xlim(t_pos.min(), t.max())
+    else:
+        ax.set_xlim(t.min(), t.max())
 
 
 # ---------------- run plotting ----------------
@@ -221,7 +229,8 @@ def plot_single_run(mCloud, sfe, ndens):
             cloud_line=CLOUD_LINE,
             show_weaver=SHOW_WEAVER,
             smooth_window=SMOOTH_WINDOW,
-            smooth_mode=SMOOTH_MODE
+            smooth_mode=SMOOTH_MODE,
+            use_log_x=USE_LOG_X
         )
     except Exception as e:
         print(f"Error loading {run_name}: {e}")
@@ -303,7 +312,8 @@ def plot_from_path(data_input: str, output_dir: str = None):
             cloud_line=CLOUD_LINE,
             show_weaver=SHOW_WEAVER,
             smooth_window=SMOOTH_WINDOW,
-            smooth_mode=SMOOTH_MODE
+            smooth_mode=SMOOTH_MODE,
+            use_log_x=USE_LOG_X
         )
     except Exception as e:
         print(f"Error loading data: {e}")
@@ -361,8 +371,15 @@ Examples:
         '--output-dir', '-o', default=None,
         help='Base directory for output folders (default: TRINITY_OUTPUT_DIR or "outputs")'
     )
+    parser.add_argument(
+        '--log-x', action='store_true',
+        help='Use log scale for x-axis (time)'
+    )
 
     args = parser.parse_args()
+
+    if args.log_x:
+        USE_LOG_X = True
 
     if args.data:
         # Command-line mode: plot from specified path
@@ -413,7 +430,8 @@ Examples:
                             cloud_line=CLOUD_LINE,
                             show_weaver=SHOW_WEAVER,
                             smooth_window=SMOOTH_WINDOW,
-                            smooth_mode=SMOOTH_MODE
+                            smooth_mode=SMOOTH_MODE,
+                            use_log_x=USE_LOG_X
                         )
                     except Exception as e:
                         print(f"Error in {run_name}: {e}")
