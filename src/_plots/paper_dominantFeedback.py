@@ -60,16 +60,18 @@ plt.style.use(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'trinity.
 USE_MODIFIED = False
 
 # Force field definitions: (key, label, color)
-# Order determines the index (0, 1, 2, 3, 4) used in the grid
+# Order determines the index (0, 1, 2, 3, 4, 5) used in the grid
+# Note: F_ram_residual is computed as F_ram - F_ram_wind - F_ram_SN
 FORCE_FIELDS = [
-    ("F_grav",     "Gravity",           "#2c3e50"),  # Dark blue-gray
-    ("F_ram_wind", "Winds",             "#3498db"),  # Blue (ram from winds)
-    ("F_ram_SN",   "Supernovae",        "#DAA520"),  # Golden yellow for SN
-    ("F_ion_out",  "Photoionised gas",  "#e74c3c"),  # Red
-    ("F_rad",      "Radiation",         "#9b59b6"),  # Purple
+    ("F_grav",         "Gravity",           "#2c3e50"),  # Dark blue-gray
+    ("F_ram_wind",     "Winds",             "#3498db"),  # Blue (ram from winds)
+    ("F_ram_SN",       "Supernovae",        "#DAA520"),  # Golden yellow for SN
+    ("F_ram_residual", "Other thermal",     "#7f8c8d"),  # Gray (F_ram - wind - SN)
+    ("F_ion_out",      "Photoionised gas",  "#e74c3c"),  # Red
+    ("F_rad",          "Radiation",         "#9b59b6"),  # Purple
 ]
 
-# Special values for missing data (must be negative to distinguish from force indices 0-3)
+# Special values for missing data (must be negative to distinguish from force indices 0-5)
 FILE_NOT_FOUND = -1      # Gray: simulation file not found
 TIME_OUT_OF_RANGE = -2   # White: time outside simulation range (t > t_max or t < t_min)
 
@@ -84,7 +86,8 @@ DEFAULT_SFE = ["001", "005", "010", "020", "030", "050", "070", "080"] #"020"
 # DEFAULT_NCORE = ["1e2", "1e4"]  # List of nCore values - produces one plot per nCore
 DEFAULT_NCORE = ["1e3"]  # List of nCore values - produces one plot per nCore
 # DEFAULT_TIMES = [1.0, 1.5, 2.0, 2.5]  # Myr
-DEFAULT_TIMES = [1.0]  # Myr
+# Note: SN typically starts ~3-4 Myr after star formation
+DEFAULT_TIMES = [1.0, 3.0, 5.0]  # Myr - includes times when SN should be active
 
 
 # Axis mode options:
@@ -189,12 +192,33 @@ def get_force_values(snapshot):
         return None
 
     forces = {}
+
+    # First pass: get raw values for standard fields
     for key, _, _ in FORCE_FIELDS:
+        if key == "F_ram_residual":
+            # Compute F_ram_residual separately after getting other values
+            continue
         val = snapshot.get(key)
         if val is None or not np.isfinite(val):
             forces[key] = np.nan
         else:
             forces[key] = abs(val)
+
+    # Compute F_ram_residual = F_ram - F_ram_wind - F_ram_SN
+    # This captures any thermal pressure not from direct wind/SN momentum input
+    F_ram = snapshot.get("F_ram")
+    F_ram_wind = forces.get("F_ram_wind", 0.0)
+    F_ram_SN = forces.get("F_ram_SN", 0.0)
+
+    if F_ram is not None and np.isfinite(F_ram):
+        # Use nan_to_num to handle NaN in wind/SN values
+        F_wind_val = np.nan_to_num(F_ram_wind, nan=0.0)
+        F_SN_val = np.nan_to_num(F_ram_SN, nan=0.0)
+        residual = abs(F_ram) - F_wind_val - F_SN_val
+        # Residual should be non-negative (force magnitude)
+        forces["F_ram_residual"] = max(0.0, residual)
+    else:
+        forces["F_ram_residual"] = np.nan
 
     return forces
 
@@ -468,10 +492,12 @@ def create_colormap():
     Color mapping:
     - -2 (TIME_OUT_OF_RANGE): white
     - -1 (FILE_NOT_FOUND): gray
-    - 0 (F_grav): dark blue-gray
-    - 1 (F_ram): blue
-    - 2 (F_ion_out): red
-    - 3 (F_rad): purple
+    - 0 (F_grav): dark blue-gray (Gravity)
+    - 1 (F_ram_wind): blue (Winds)
+    - 2 (F_ram_SN): golden yellow (Supernovae)
+    - 3 (F_ram_residual): gray (Other thermal)
+    - 4 (F_ion_out): red (Photoionised gas)
+    - 5 (F_rad): purple (Radiation)
     """
     # Colors in order: TIME_OUT_OF_RANGE, FILE_NOT_FOUND, then force colors
     colors = [
@@ -483,8 +509,8 @@ def create_colormap():
     cmap.set_bad(color='white')  # NaN -> white (fallback)
 
     # Bounds: -2.5 to -1.5 -> color[0], -1.5 to -0.5 -> color[1], etc.
-    # Extended for 5 force types (indices 0-4)
-    bounds = [-2.5, -1.5, -0.5, 0.5, 1.5, 2.5, 3.5, 4.5]
+    # Extended for 6 force types (indices 0-5)
+    bounds = [-2.5, -1.5, -0.5, 0.5, 1.5, 2.5, 3.5, 4.5, 5.5]
     norm = BoundaryNorm(bounds, cmap.N)
 
     return cmap, norm
