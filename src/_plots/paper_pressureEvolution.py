@@ -29,8 +29,13 @@ from matplotlib.lines import Line2D
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from src._output.trinity_reader import load_output, find_data_file, resolve_data_input
 from src._plots.plot_markers import add_plot_markers, get_marker_legend_handles
+from src._functions.unit_conversions import INV_CONV, CGS
 
 print("...plotting pressure evolution (P_b, P_IF, P_drive)")
+
+# Unit conversion: code units (Msun/pc/Myr²) → K/cm³ (= P/k_B = n*T)
+# P[K/cm³] = P[code] * Pb_au2cgs / k_B
+P_AU_TO_K_CM3 = INV_CONV.Pb_au2cgs / CGS.k_B
 
 # ---------------- configuration ----------------
 mCloud_list = ["1e5", "5e5", "1e6", "5e6", "1e7", "5e7", "1e8"]
@@ -109,11 +114,11 @@ def load_run(data_path: Path):
             return np.full(len(output), default)
         return np.where(arr == None, default, arr).astype(float)
 
-    # Pressure fields
-    Pb = get_field('Pb', np.nan)
-    P_IF = get_field('P_IF', np.nan)
-    P_drive = get_field('P_drive', np.nan)
-    press_HII_in = get_field('press_HII_in', np.nan)
+    # Pressure fields - convert from code units to K/cm³
+    Pb = get_field('Pb', np.nan) * P_AU_TO_K_CM3
+    P_IF = get_field('P_IF', np.nan) * P_AU_TO_K_CM3
+    P_drive = get_field('P_drive', np.nan) * P_AU_TO_K_CM3
+    press_HII_in = get_field('press_HII_in', np.nan) * P_AU_TO_K_CM3
 
     # Shell properties for markers
     rcloud = float(output[0].get('rCloud', np.nan))
@@ -215,7 +220,7 @@ def plot_from_path(data_input: str, output_dir: str = None):
                    phase_change=PHASE_CHANGE, show_pext=SHOW_PEXT)
 
     ax.set_xlabel("t [Myr]")
-    ax.set_ylabel(r"Pressure [code units]")
+    ax.set_ylabel(r"$P/k_B$ [K cm$^{-3}$]")
     ax.set_title(f"Pressure Evolution: {data_path.parent.name}")
 
     # Legend
@@ -248,7 +253,7 @@ def plot_single_run(mCloud, ndens, sfe):
                    phase_change=PHASE_CHANGE, show_pext=SHOW_PEXT)
 
     ax.set_xlabel("t [Myr]")
-    ax.set_ylabel(r"Pressure [code units]")
+    ax.set_ylabel(r"$P/k_B$ [K cm$^{-3}$]")
     ax.set_title(f"{run_name}")
     ax.legend(loc="upper right", framealpha=0.9)
 
@@ -321,7 +326,7 @@ def plot_grid():
                         mlabel = rf"$M_{{\rm cl}}=10^{{{mexp}}}$"
                     else:
                         mlabel = rf"$M_{{\rm cl}}={mcoeff}\times10^{{{mexp}}}$"
-                    ax.set_ylabel(mlabel + "\nP [code]")
+                    ax.set_ylabel(mlabel + "\n" + r"$P/k_B$ [K cm$^{-3}$]")
                 else:
                     ax.tick_params(labelleft=False)
 
