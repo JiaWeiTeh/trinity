@@ -49,6 +49,7 @@ class ODESnapshot:
     rShell: float
     shell_mass: float
     isCollapse: bool
+    n_IF: float  # Density at ionization front (for P_IF convex blend)
 
     # Cluster/bubble properties
     mCluster: float
@@ -92,6 +93,7 @@ def create_ODE_snapshot(params) -> ODESnapshot:
         rShell=params['rShell'].value,
         shell_mass=params['shell_mass'].value,
         isCollapse=params['isCollapse'].value,
+        n_IF=params['n_IF'].value,
         mCluster=params['mCluster'].value,
         bubble_LTotal=params['bubble_LTotal'].value,
         Qi=params['Qi'].value,
@@ -198,37 +200,27 @@ def get_ODE_Edot_pure(t: float, y: list, snapshot: ODESnapshot, params_for_feedb
         press_HII_in += snapshot.PISM * snapshot.k_B
 
     # ==========================================================================
-    # WARM IONIZED GAS PRESSURE (P_HII) CONTRIBUTION
-    # Uses ε coupling approach: P_drive = P_b + ε · ΔP_HII
+    # WARM IONIZED GAS PRESSURE (P_IF) - CONVEX BLEND APPROACH
+    # Uses ionization front pressure from shell structure
+    # P_drive = (1-w)*P_b + w*P_IF where w = f_abs_ion * P_IF/(P_IF + P_b)
     # ==========================================================================
     T_ion = 1e4  # K — standard HII region temperature
 
-    # Strömgren equilibrium density and pressure
-    if R2 > 0 and snapshot.Qi > 0 and snapshot.caseB_alpha > 0:
-        n_Stromgren = np.sqrt(3.0 * snapshot.Qi / (4.0 * np.pi * snapshot.caseB_alpha * R2**3))
+    # Pressure at ionization front (from shell structure)
+    P_IF = 2.0 * snapshot.n_IF * snapshot.k_B * T_ion
+
+    # Blending weight: w = f_abs_ion * P_IF/(P_IF + P_b)
+    denom = P_IF + press_bubble
+    if denom > 1e-30:
+        w_blend = FABSi * P_IF / denom
     else:
-        n_Stromgren = 0.0
+        w_blend = 0.0
 
-    P_HII_Stromgren = 2.0 * n_Stromgren * snapshot.k_B * T_ion
+    # Driving pressure as convex blend: P_drive = (1-w)*P_b + w*P_IF
+    P_drive = (1.0 - w_blend) * press_bubble + w_blend * P_IF
 
-    # Excess HII pressure beyond bubble pressure
-    Delta_P_HII = max(0.0, P_HII_Stromgren - press_bubble)
-
-    # Coupling coefficient: ε = f_abs_ion * min(1, P_HII_Str / P_b)
-    if press_bubble > 1e-30:
-        pressure_ratio = min(1.0, P_HII_Stromgren / press_bubble)
-    else:
-        pressure_ratio = 1.0
-
-    epsilon_HII = FABSi * pressure_ratio
-
-    # Effective driving pressure: P_drive = P_b + ε · ΔP_HII
-    P_HII_contribution = epsilon_HII * Delta_P_HII
-    P_drive = press_bubble + P_HII_contribution
-
-    # Keep F_ion_out for backwards compatibility (diagnostic output)
-    # This now represents the P_HII contribution force
-    F_HII = 4.0 * np.pi * R2**2 * P_HII_contribution
+    # Force from HII pressure contribution (for diagnostics)
+    F_HII = 4.0 * np.pi * R2**2 * (P_drive - press_bubble)
 
     # Radiation force
     F_rad = snapshot.shell_F_rad
@@ -281,12 +273,11 @@ class ODEResult:
     F_ram: Optional[float] = None
     F_rad: Optional[float] = None
 
-    # P_HII diagnostic quantities (warm ionized gas pressure coupling)
-    P_HII_Stromgren: Optional[float] = None
-    n_Stromgren: Optional[float] = None
-    epsilon_HII: Optional[float] = None
-    Delta_P_HII: Optional[float] = None
-    P_HII_contribution: Optional[float] = None
+    # P_IF diagnostic quantities (ionization front pressure - convex blend)
+    n_IF: Optional[float] = None
+    R_IF: Optional[float] = None
+    P_IF: Optional[float] = None
+    w_blend: Optional[float] = None
     P_drive: Optional[float] = None
     F_HII: Optional[float] = None
 
@@ -346,35 +337,26 @@ def compute_derived_quantities(t: float, y: list, snapshot: ODESnapshot, params_
         press_HII_in += snapshot.PISM * snapshot.k_B
 
     # ==========================================================================
-    # P_HII COUPLING CALCULATION (same as in ODE function)
+    # P_IF CALCULATION - CONVEX BLEND (same as in ODE function)
     # ==========================================================================
     T_ion = 1e4  # K — standard HII region temperature
 
-    # Strömgren equilibrium density and pressure
-    if R2 > 0 and snapshot.Qi > 0 and snapshot.caseB_alpha > 0:
-        n_Stromgren = np.sqrt(3.0 * snapshot.Qi / (4.0 * np.pi * snapshot.caseB_alpha * R2**3))
+    # Pressure at ionization front (from shell structure via snapshot)
+    n_IF = snapshot.n_IF
+    P_IF = 2.0 * n_IF * snapshot.k_B * T_ion
+
+    # Blending weight: w = f_abs_ion * P_IF/(P_IF + P_b)
+    denom = P_IF + Pb
+    if denom > 1e-30:
+        w_blend = FABSi * P_IF / denom
     else:
-        n_Stromgren = 0.0
+        w_blend = 0.0
 
-    P_HII_Stromgren = 2.0 * n_Stromgren * snapshot.k_B * T_ion
-
-    # Excess HII pressure beyond bubble pressure
-    Delta_P_HII = max(0.0, P_HII_Stromgren - Pb)
-
-    # Coupling coefficient: ε = f_abs_ion * min(1, P_HII_Str / P_b)
-    if Pb > 1e-30:
-        pressure_ratio = min(1.0, P_HII_Stromgren / Pb)
-    else:
-        pressure_ratio = 1.0
-
-    epsilon_HII = FABSi * pressure_ratio
-
-    # Effective driving pressure: P_drive = P_b + ε · ΔP_HII
-    P_HII_contribution = epsilon_HII * Delta_P_HII
-    P_drive = Pb + P_HII_contribution
+    # Driving pressure as convex blend: P_drive = (1-w)*P_b + w*P_IF
+    P_drive = (1.0 - w_blend) * Pb + w_blend * P_IF
 
     # Forces
-    F_HII = 4.0 * np.pi * R2**2 * P_HII_contribution
+    F_HII = 4.0 * np.pi * R2**2 * (P_drive - Pb)
     # F_ion_out kept for backwards compatibility
     F_ion_out = F_HII
 
@@ -392,12 +374,11 @@ def compute_derived_quantities(t: float, y: list, snapshot: ODESnapshot, params_
         F_ion_out=F_ion_out,
         F_ram=Pb * 4 * np.pi * R2**2,
         F_rad=snapshot.shell_F_rad,
-        # P_HII diagnostic quantities
-        P_HII_Stromgren=P_HII_Stromgren,
-        n_Stromgren=n_Stromgren,
-        epsilon_HII=epsilon_HII,
-        Delta_P_HII=Delta_P_HII,
-        P_HII_contribution=P_HII_contribution,
+        # P_IF diagnostic quantities (convex blend)
+        n_IF=n_IF,
+        R_IF=snapshot.rShell,  # Use rShell as proxy for R_IF (updated by shell structure)
+        P_IF=P_IF,
+        w_blend=w_blend,
         P_drive=P_drive,
         F_HII=F_HII,
     )

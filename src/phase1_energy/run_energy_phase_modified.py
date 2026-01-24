@@ -320,17 +320,15 @@ def run_energy(params):
             params['F_ram'].value = ode_result.F_ram
         if ode_result.F_rad is not None:
             params['F_rad'].value = ode_result.F_rad
-        # P_HII diagnostic quantities
-        if ode_result.P_HII_Stromgren is not None:
-            params['P_HII_Stromgren'].value = ode_result.P_HII_Stromgren
-        if ode_result.n_Stromgren is not None:
-            params['n_Stromgren'].value = ode_result.n_Stromgren
-        if ode_result.epsilon_HII is not None:
-            params['epsilon_HII'].value = ode_result.epsilon_HII
-        if ode_result.Delta_P_HII is not None:
-            params['Delta_P_HII'].value = ode_result.Delta_P_HII
-        if ode_result.P_HII_contribution is not None:
-            params['P_HII_contribution'].value = ode_result.P_HII_contribution
+        # P_IF diagnostic quantities (convex blend)
+        if ode_result.n_IF is not None:
+            params['n_IF'].value = ode_result.n_IF
+        if ode_result.R_IF is not None:
+            params['R_IF'].value = ode_result.R_IF
+        if ode_result.P_IF is not None:
+            params['P_IF'].value = ode_result.P_IF
+        if ode_result.w_blend is not None:
+            params['w_blend'].value = ode_result.w_blend
         if ode_result.P_drive is not None:
             params['P_drive'].value = ode_result.P_drive
         if ode_result.F_HII is not None:

@@ -468,14 +468,13 @@ def read_param(path2file, write_summary=True):
     params['F_rad'] = DescribedItem(0, info="Radiation pressure", ori_units="Msun*pc/Myr**2")
     params['F_ISM'] = DescribedItem(0, info="ISM pressure", ori_units="Msun*pc/Myr**2")
 
-    # HII region diagnostic parameters (P_HII coupling)
-    params['P_HII_Stromgren'] = DescribedItem(0.0, info="Strömgren equilibrium pressure", ori_units="Msun/Myr**2/pc")
-    params['n_Stromgren'] = DescribedItem(0.0, info="Strömgren equilibrium density", ori_units="1/pc**3")
-    params['epsilon_HII'] = DescribedItem(0.0, info="HII coupling coefficient", ori_units="dimensionless")
-    params['Delta_P_HII'] = DescribedItem(0.0, info="Excess HII pressure above P_b", ori_units="Msun/Myr**2/pc")
-    params['P_HII_contribution'] = DescribedItem(0.0, info="HII pressure contribution to P_drive", ori_units="Msun/Myr**2/pc")
-    params['P_drive'] = DescribedItem(0.0, info="Total driving pressure (P_b + epsilon*Delta_P_HII)", ori_units="Msun/Myr**2/pc")
-    params['F_HII'] = DescribedItem(0.0, info="Force from HII pressure contribution", ori_units="Msun*pc/Myr**2")
+    # HII region / ionization front diagnostic parameters (P_IF convex blend)
+    params['n_IF'] = DescribedItem(0.0, info="Density at ionization front", ori_units="1/pc**3")
+    params['R_IF'] = DescribedItem(0.0, info="Radius of ionization front", ori_units="pc")
+    params['P_IF'] = DescribedItem(0.0, info="Pressure at ionization front", ori_units="Msun/Myr**2/pc")
+    params['w_blend'] = DescribedItem(0.0, info="P_HII blending weight", ori_units="dimensionless")
+    params['P_drive'] = DescribedItem(0.0, info="Total driving pressure (convex blend)", ori_units="Msun/Myr**2/pc")
+    params['F_HII'] = DescribedItem(0.0, info="Force from HII pressure", ori_units="Msun*pc/Myr**2")
     
     # Bubble structure
     params['bubble_LTotal'] = DescribedItem(0, info="Total luminosity lost to cooling", ori_units="Msun*pc**2/Myr**3")
