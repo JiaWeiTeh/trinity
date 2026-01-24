@@ -33,9 +33,9 @@ from src._plots.plot_markers import add_plot_markers, get_marker_legend_handles
 print("...plotting cancellation metric")
 
 # ---------------- configuration ----------------
-mCloud_list = ["1e5", "1e6", "1e7", "1e8"]
-ndens_list = ["1e2", "1e3", "1e4"]
-sfe_list = ["001", "010", "020", "030", "050", "080"]
+mCloud_list = ["1e5", "5e5", "1e6", "5e6", "1e7", "5e7", "1e8"]
+ndens_list = ["1e3"]
+sfe_list = ["001", "005", "010", "020", "030", "050", "070", "080"]
 
 BASE_DIR = Path.home() / "unsync" / "Code" / "Trinity" / "outputs" / "sweep_test_modified"
 
