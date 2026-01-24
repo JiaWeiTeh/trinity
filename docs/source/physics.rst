@@ -309,8 +309,121 @@ References
 .. [Rahner2018] Rahner, D., Pellegrini, E. W., Glover, S. C. O., & Klessen, R. S. (2018). "WARPFIELD population synthesis." *MNRAS*, 473, 4862. `ADS <https://ui.adsabs.harvard.edu/abs/2018MNRAS.473.4862R>`_
 
 
+Shell Dynamics
+--------------
+
+Momentum Equation
+^^^^^^^^^^^^^^^^^
+
+The shell momentum equation governs the expansion dynamics:
+
+.. math::
+   :label: eq-momentum
+
+   \frac{d}{dt}(M_{\rm sh} v) = 4\pi R^2 (P_{\rm drive} - P_{\rm ext}) + F_{\rm rad} - F_{\rm grav}
+
+where:
+
+- :math:`M_{\rm sh}` is the shell mass
+- :math:`v = dR/dt` is the shell velocity
+- :math:`R` is the shell radius
+- :math:`P_{\rm drive}` is the driving pressure
+- :math:`P_{\rm ext}` is the external confining pressure
+- :math:`F_{\rm rad}` is the radiation pressure force
+- :math:`F_{\rm grav}` is the gravitational force
+
+Expanding the left-hand side gives the acceleration:
+
+.. math::
+
+   M_{\rm sh} \dot{v} = F_{\rm gas} + F_{\rm rad} - F_{\rm grav} - \dot{M}_{\rm sh} v
+
+The mass-loading term :math:`\dot{M}_{\rm sh} v` represents momentum loss as new material is swept into the shell.
+
+
+Driving Pressure Model
+^^^^^^^^^^^^^^^^^^^^^^
+
+TRINITY uses a **convex blend model** for the driving pressure that smoothly transitions
+between energy-driven (hot bubble) and momentum-driven (HII region) regimes:
+
+.. math::
+   :label: eq-pdrive
+
+   P_{\rm drive} = (1 - w) P_b + w P_{\rm IF}
+
+where:
+
+- :math:`P_b` is the hot bubble thermal pressure
+- :math:`P_{\rm IF}` is the ionization front pressure
+- :math:`w` is the blending weight
+
+The blending weight is determined by:
+
+.. math::
+   :label: eq-wblend
+
+   w = f_{\rm abs,ion} \cdot \frac{P_{\rm IF}}{P_{\rm IF} + P_b}
+
+where :math:`f_{\rm abs,ion}` is the fraction of ionizing photons absorbed in the shell.
+
+**Physical interpretation:**
+
+- **Early times** (:math:`w \approx 0`): Hot bubble pressure dominates (energy-driven expansion)
+- **Late times** (:math:`w \approx 1`): Warm ionized gas pressure dominates (HII-driven expansion)
+- **Transition**: Smooth handoff as bubble cools or leaks
+
+The ionization front pressure is computed from the shell structure:
+
+.. math::
+
+   P_{\rm IF} = 2 n_{\rm IF} k_B T_{\rm ion}
+
+where :math:`n_{\rm IF}` is the density at the ionization front and :math:`T_{\rm ion} \approx 10^4` K
+is the ionized gas temperature.
+
+
+Force Components
+^^^^^^^^^^^^^^^^
+
+.. list-table::
+   :widths: 20 40 40
+   :header-rows: 1
+
+   * - Force
+     - Expression
+     - Physical Origin
+   * - :math:`F_{\rm gas}`
+     - :math:`4\pi R^2 (P_{\rm drive} - P_{\rm ext})`
+     - Net thermal pressure (inward + outward)
+   * - :math:`F_{\rm rad}`
+     - :math:`\frac{L_{\rm abs}}{c}(1 + \tau_{\rm IR})`
+     - Direct + reprocessed radiation momentum
+   * - :math:`F_{\rm grav}`
+     - :math:`\frac{G M_{\rm sh}(M_* + M_{\rm sh}/2)}{R^2}`
+     - Self-gravity of shell + cluster
+   * - :math:`F_{\rm ram}`
+     - (energy phase only)
+     - Hot bubble ram pressure
+
+
+Phase Evolution
+^^^^^^^^^^^^^^^
+
+TRINITY evolves through distinct phases:
+
+1. **Energy Phase**: Adiabatic bubble expansion with :math:`E_b` evolution
+2. **Implicit Energy Phase**: Bubble with cooling/heating balance
+3. **Transition Phase**: Handoff from energy-driven to momentum-driven
+4. **Momentum Phase**: No bubble, ram pressure from mechanical luminosity only
+
+The transition from energy-driven to momentum-driven expansion is governed by the
+shell mass freeze condition and the blending weight evolution.
+
+
 See Also
 --------
 
 - :ref:`sec-parameters` for input parameter specifications
 - :ref:`sec-architecture` for code structure and data flow
+- :ref:`sec-visualization` for diagnostic plotting tools

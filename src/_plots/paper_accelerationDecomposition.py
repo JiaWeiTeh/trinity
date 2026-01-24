@@ -8,7 +8,7 @@ acceleration components from the force balance equation:
 
     M_sh * dv/dt = F_gas + F_rad - F_grav - (dM_sh/dt) * v
 
-Acceleration components (all in pc/Myr^2, outward positive):
+Acceleration components (all in km/s/Myr, outward positive):
 - a_gas:  Gas pressure acceleration = 4*pi*R2^2*(P_drive - P_ext) / M_sh
 - a_rad:  Radiation pressure acceleration = F_rad / M_sh
 - a_grav: Gravitational acceleration = -F_grav / M_sh (negative = inward)
@@ -33,8 +33,13 @@ from matplotlib.lines import Line2D
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from src._output.trinity_reader import load_output, find_data_file, resolve_data_input
 from src._plots.plot_markers import add_plot_markers, get_marker_legend_handles
+from src._functions.unit_conversions import INV_CONV
 
 print("...plotting acceleration decomposition")
+
+# Unit conversion: pc/Myr² → km/s/Myr (more intuitive unit)
+# 1 pc/Myr = 0.978 km/s, so 1 pc/Myr² = 0.978 km/s/Myr
+A_AU_TO_KMS_MYR = INV_CONV.v_au2kms  # pc/Myr → km/s, so pc/Myr² → km/s/Myr
 
 # ---------------- configuration ----------------
 mCloud_list = ["1e5", "5e5", "1e6", "5e6", "1e7", "5e7", "1e8"]
@@ -167,7 +172,7 @@ def compute_accelerations(data):
     """
     Compute acceleration components from simulation data.
 
-    Returns dict with a_gas, a_rad, a_grav, a_acc, a_net (all in pc/Myr^2)
+    Returns dict with a_gas, a_rad, a_grav, a_acc, a_net (all in km/s/Myr)
     """
     R2 = data['R2']
     v2 = data['v2']
@@ -201,12 +206,13 @@ def compute_accelerations(data):
     # Net acceleration (should equal dv/dt)
     a_net = a_gas + a_rad + a_grav + a_acc
 
+    # Convert from code units (pc/Myr²) to km/s/Myr
     return {
-        'a_gas': a_gas,
-        'a_rad': a_rad,
-        'a_grav': a_grav,
-        'a_acc': a_acc,
-        'a_net': a_net,
+        'a_gas': a_gas * A_AU_TO_KMS_MYR,
+        'a_rad': a_rad * A_AU_TO_KMS_MYR,
+        'a_grav': a_grav * A_AU_TO_KMS_MYR,
+        'a_acc': a_acc * A_AU_TO_KMS_MYR,
+        'a_net': a_net * A_AU_TO_KMS_MYR,
     }
 
 
@@ -288,7 +294,7 @@ def plot_from_path(data_input: str, output_dir: str = None):
                    phase_change=PHASE_CHANGE, use_symlog=USE_SYMLOG)
 
     ax.set_xlabel("t [Myr]")
-    ax.set_ylabel(r"Acceleration [pc/Myr$^2$]")
+    ax.set_ylabel(r"Acceleration [km s$^{-1}$ Myr$^{-1}$]")
     ax.set_title(f"Acceleration Decomposition: {data_path.parent.name}")
 
     # Legend
@@ -328,7 +334,7 @@ def plot_single_run(mCloud, ndens, sfe):
                    phase_change=PHASE_CHANGE, use_symlog=USE_SYMLOG)
 
     ax.set_xlabel("t [Myr]")
-    ax.set_ylabel(r"Acceleration [pc/Myr$^2$]")
+    ax.set_ylabel(r"Acceleration [km s$^{-1}$ Myr$^{-1}$]")
     ax.set_title(f"{run_name}")
 
     # Legend
@@ -407,7 +413,7 @@ def plot_grid():
                         mlabel = rf"$M_{{\rm cl}}=10^{{{mexp}}}$"
                     else:
                         mlabel = rf"$M_{{\rm cl}}={mcoeff}\times10^{{{mexp}}}$"
-                    ax.set_ylabel(mlabel + "\n" + r"$a$ [pc/Myr$^2$]")
+                    ax.set_ylabel(mlabel + "\n" + r"$a$ [km s$^{-1}$ Myr$^{-1}$]")
                 else:
                     ax.tick_params(labelleft=False)
 

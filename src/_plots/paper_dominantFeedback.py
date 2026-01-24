@@ -11,7 +11,7 @@ and star formation efficiency (SFE).
 Each subplot (one per time snapshot):
 - X-axis: cloud mass (mCloud)
 - Y-axis: star formation efficiency (SFE)
-- Color: dominant feedback force (F_grav, F_ram, F_ion_out, F_rad)
+- Color: dominant feedback force (F_grav, F_ram_wind, F_ram_SN, F_ion_out, F_rad)
 - White: no data (simulation ended before this time or hasn't reached it)
 
 Usage
@@ -60,10 +60,11 @@ plt.style.use(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'trinity.
 USE_MODIFIED = False
 
 # Force field definitions: (key, label, color)
-# Order determines the index (0, 1, 2, 3) used in the grid
+# Order determines the index (0, 1, 2, 3, 4) used in the grid
 FORCE_FIELDS = [
     ("F_grav",     "Gravity",           "#2c3e50"),  # Dark blue-gray
-    ("F_ram",      "Ram pressure",      "#3498db"),  # Blue
+    ("F_ram_wind", "Winds",             "#3498db"),  # Blue (ram from winds)
+    ("F_ram_SN",   "Supernovae",        "#DAA520"),  # Golden yellow for SN
     ("F_ion_out",  "Photoionised gas",  "#e74c3c"),  # Red
     ("F_rad",      "Radiation",         "#9b59b6"),  # Purple
 ]
@@ -482,7 +483,8 @@ def create_colormap():
     cmap.set_bad(color='white')  # NaN -> white (fallback)
 
     # Bounds: -2.5 to -1.5 -> color[0], -1.5 to -0.5 -> color[1], etc.
-    bounds = [-2.5, -1.5, -0.5, 0.5, 1.5, 2.5, 3.5]
+    # Extended for 5 force types (indices 0-4)
+    bounds = [-2.5, -1.5, -0.5, 0.5, 1.5, 2.5, 3.5, 4.5]
     norm = BoundaryNorm(bounds, cmap.N)
 
     return cmap, norm
