@@ -11,6 +11,7 @@ __pycache__/
 outputs/
 txt/
 fig/
+movie.txt
 
 # Large test data files (optional - uncomment to exclude from git)
 # test/*.jsonl
