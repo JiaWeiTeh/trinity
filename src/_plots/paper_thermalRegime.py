@@ -213,14 +213,21 @@ def plot_run_on_ax(ax, data, smooth_window=None, phase_change=True,
 
     ax.set_ylim(0, 1)
 
-    # X-axis scale
-    if use_log_x:
-        ax.set_xscale('log')
-        t_pos = t[t > 0]
-        if len(t_pos) > 0:
-            ax.set_xlim(t_pos.min(), t.max())
+    # X-axis scale - start from where w_blend first exceeds threshold
+    w_threshold = 1e-2
+    valid_mask = w_blend > w_threshold
+    if np.any(valid_mask):
+        t_start = t[valid_mask].min()
     else:
-        ax.set_xlim(t.min(), t.max())
+        t_start = t[t > 0].min() if np.any(t > 0) else t.min()
+
+    if use_log_x:
+        # Use symlog: logarithmic for early times, linear for later times
+        # linthresh=0.1 means linear above 0.1 Myr, giving more space to late evolution
+        ax.set_xscale('symlog', linthresh=0.1)
+        ax.set_xlim(max(t_start, 1e-6), t.max())
+    else:
+        ax.set_xlim(t_start, t.max())
 
 
 def plot_from_path(data_input: str, output_dir: str = None):

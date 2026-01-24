@@ -256,7 +256,9 @@ def plot_run_on_ax(ax, data, smooth_window=None, phase_change=True,
 
     # X-axis scale
     if use_log_x:
-        ax.set_xscale('log')
+        # Use symlog: logarithmic for early times, linear for later times
+        # linthresh=0.1 means linear above 0.1 Myr, giving more space to late evolution
+        ax.set_xscale('symlog', linthresh=0.1)
         t_pos = t[t > 0]
         if len(t_pos) > 0:
             ax.set_xlim(t_pos.min(), t.max())
