@@ -47,6 +47,7 @@ BASE_DIR = Path.home() / "unsync" / "Code" / "Trinity" / "outputs" / "sweep_test
 SMOOTH_WINDOW = 5  # None or 1 disables
 PHASE_CHANGE = True
 SHOW_PEXT = True  # Show external pressure
+USE_LOG_X = False  # Use log scale for x-axis (time)
 
 # --- optional single-run view (set to None for full grid)
 ONLY_M = "1e7"
@@ -145,7 +146,8 @@ def load_run(data_path: Path):
 
 
 def plot_run_on_ax(ax, data, smooth_window=None, phase_change=True,
-                   show_rcloud=True, show_collapse=True, show_pext=True):
+                   show_rcloud=True, show_collapse=True, show_pext=True,
+                   use_log_x=False):
     """Plot pressure evolution on given axes."""
     t = data['t']
     R2 = data['R2']
@@ -187,7 +189,16 @@ def plot_run_on_ax(ax, data, smooth_window=None, phase_change=True,
                     label=r'$P_{\rm ext}$', alpha=0.7, zorder=2)
 
     ax.set_yscale('log')
-    ax.set_xlim(t.min(), t.max())
+
+    # X-axis scale
+    if use_log_x:
+        ax.set_xscale('log')
+        # For log scale, start from first positive time
+        t_pos = t[t > 0]
+        if len(t_pos) > 0:
+            ax.set_xlim(t_pos.min(), t.max())
+    else:
+        ax.set_xlim(t.min(), t.max())
 
     # Auto y-limits with some padding
     all_pressures = np.concatenate([
@@ -217,7 +228,8 @@ def plot_from_path(data_input: str, output_dir: str = None):
 
     fig, ax = plt.subplots(figsize=(8, 5), dpi=150)
     plot_run_on_ax(ax, data, smooth_window=SMOOTH_WINDOW,
-                   phase_change=PHASE_CHANGE, show_pext=SHOW_PEXT)
+                   phase_change=PHASE_CHANGE, show_pext=SHOW_PEXT,
+                   use_log_x=USE_LOG_X)
 
     ax.set_xlabel("t [Myr]")
     ax.set_ylabel(r"$P/k_B$ [K cm$^{-3}$]")
@@ -250,7 +262,8 @@ def plot_single_run(mCloud, ndens, sfe):
 
     fig, ax = plt.subplots(figsize=(6, 4), dpi=400, constrained_layout=True)
     plot_run_on_ax(ax, data, smooth_window=SMOOTH_WINDOW,
-                   phase_change=PHASE_CHANGE, show_pext=SHOW_PEXT)
+                   phase_change=PHASE_CHANGE, show_pext=SHOW_PEXT,
+                   use_log_x=USE_LOG_X)
 
     ax.set_xlabel("t [Myr]")
     ax.set_ylabel(r"$P/k_B$ [K cm$^{-3}$]")
@@ -296,7 +309,8 @@ def plot_grid():
                 try:
                     data = load_run(data_path)
                     plot_run_on_ax(ax, data, smooth_window=SMOOTH_WINDOW,
-                                   phase_change=PHASE_CHANGE, show_pext=SHOW_PEXT)
+                                   phase_change=PHASE_CHANGE, show_pext=SHOW_PEXT,
+                                   use_log_x=USE_LOG_X)
                 except Exception as e:
                     print(f"Error in {run_name}: {e}")
                     ax.text(0.5, 0.5, "error", ha="center", va="center",
@@ -395,8 +409,15 @@ Examples:
         '--output-dir', '-o', default=None,
         help='Base directory for output folders (default: TRINITY_OUTPUT_DIR or "outputs")'
     )
+    parser.add_argument(
+        '--log-x', action='store_true',
+        help='Use log scale for x-axis (time)'
+    )
 
     args = parser.parse_args()
+
+    if args.log_x:
+        USE_LOG_X = True
 
     if args.data:
         plot_from_path(args.data, args.output_dir)

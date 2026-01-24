@@ -46,6 +46,7 @@ BASE_DIR = Path.home() / "unsync" / "Code" / "Trinity" / "outputs" / "sweep_test
 SMOOTH_WINDOW = 5  # None or 1 disables
 PHASE_CHANGE = True
 PLOT_MODE = "line"  # "line" or "stacked"
+USE_LOG_X = False  # Use log scale for x-axis (time)
 
 # Colors for stacked mode
 C_BUBBLE = "blue"
@@ -134,7 +135,8 @@ def load_run(data_path: Path):
 
 
 def plot_run_on_ax(ax, data, smooth_window=None, phase_change=True,
-                   show_rcloud=True, show_collapse=True, plot_mode="line"):
+                   show_rcloud=True, show_collapse=True, plot_mode="line",
+                   use_log_x=False):
     """Plot thermal regime on given axes."""
     t = data['t']
     R2 = data['R2']
@@ -184,9 +186,24 @@ def plot_run_on_ax(ax, data, smooth_window=None, phase_change=True,
         ax.axhline(0.5, color='gray', ls=':', lw=1, alpha=0.4, zorder=1)
         ax.axhline(1.0, color='red', ls='--', lw=1, alpha=0.4, zorder=1)
 
-        # Shade regime regions (subtle)
-        ax.fill_between(t, 0, 0.3, color=C_BUBBLE, alpha=0.1, zorder=0)
-        ax.fill_between(t, 0.7, 1.0, color=C_HII, alpha=0.1, zorder=0)
+        # Shade regime regions with gradient fading to white at 0.5
+        # Use multiple strips with decreasing alpha toward 0.5
+        n_strips = 20
+        max_alpha = 0.15
+        # Bottom (bubble) gradient: 0 to 0.5, alpha decreases toward 0.5
+        for i in range(n_strips):
+            y0 = i * 0.5 / n_strips
+            y1 = (i + 1) * 0.5 / n_strips
+            # Alpha decreases linearly from max_alpha at y=0 to 0 at y=0.5
+            alpha = max_alpha * (1 - (i + 0.5) / n_strips)
+            ax.fill_between(t, y0, y1, color=C_BUBBLE, alpha=alpha, lw=0, zorder=0)
+        # Top (HII) gradient: 0.5 to 1.0, alpha increases from 0.5 toward 1.0
+        for i in range(n_strips):
+            y0 = 0.5 + i * 0.5 / n_strips
+            y1 = 0.5 + (i + 1) * 0.5 / n_strips
+            # Alpha increases linearly from 0 at y=0.5 to max_alpha at y=1.0
+            alpha = max_alpha * ((i + 0.5) / n_strips)
+            ax.fill_between(t, y0, y1, color=C_HII, alpha=alpha, lw=0, zorder=0)
 
         # Add regime labels at edges
         ax.text(0.02, 0.05, "Bubble-dominated", transform=ax.transAxes,
@@ -195,7 +212,15 @@ def plot_run_on_ax(ax, data, smooth_window=None, phase_change=True,
                 fontsize=7, color=C_HII, alpha=0.8, va='top')
 
     ax.set_ylim(0, 1)
-    ax.set_xlim(t.min(), t.max())
+
+    # X-axis scale
+    if use_log_x:
+        ax.set_xscale('log')
+        t_pos = t[t > 0]
+        if len(t_pos) > 0:
+            ax.set_xlim(t_pos.min(), t.max())
+    else:
+        ax.set_xlim(t.min(), t.max())
 
 
 def plot_from_path(data_input: str, output_dir: str = None):
@@ -216,7 +241,8 @@ def plot_from_path(data_input: str, output_dir: str = None):
 
     fig, ax = plt.subplots(figsize=(8, 5), dpi=150)
     plot_run_on_ax(ax, data, smooth_window=SMOOTH_WINDOW,
-                   phase_change=PHASE_CHANGE, plot_mode=PLOT_MODE)
+                   phase_change=PHASE_CHANGE, plot_mode=PLOT_MODE,
+                   use_log_x=USE_LOG_X)
 
     ax.set_xlabel("t [Myr]")
     ax.set_ylabel(r"$w_{\rm blend}$ (HII weight)")
@@ -261,7 +287,8 @@ def plot_single_run(mCloud, ndens, sfe):
 
     fig, ax = plt.subplots(figsize=(6, 4), dpi=400, constrained_layout=True)
     plot_run_on_ax(ax, data, smooth_window=SMOOTH_WINDOW,
-                   phase_change=PHASE_CHANGE, plot_mode=PLOT_MODE)
+                   phase_change=PHASE_CHANGE, plot_mode=PLOT_MODE,
+                   use_log_x=USE_LOG_X)
 
     ax.set_xlabel("t [Myr]")
     ax.set_ylabel(r"$w_{\rm blend}$")
@@ -306,7 +333,8 @@ def plot_grid():
                 try:
                     data = load_run(data_path)
                     plot_run_on_ax(ax, data, smooth_window=SMOOTH_WINDOW,
-                                   phase_change=PHASE_CHANGE, plot_mode=PLOT_MODE)
+                                   phase_change=PHASE_CHANGE, plot_mode=PLOT_MODE,
+                                   use_log_x=USE_LOG_X)
                 except Exception as e:
                     print(f"Error in {run_name}: {e}")
                     ax.text(0.5, 0.5, "error", ha="center", va="center",
@@ -414,11 +442,17 @@ Examples:
         '--stacked', action='store_true',
         help='Use stacked area plot instead of line plot'
     )
+    parser.add_argument(
+        '--log-x', action='store_true',
+        help='Use log scale for x-axis (time)'
+    )
 
     args = parser.parse_args()
 
     if args.stacked:
         PLOT_MODE = "stacked"
+    if args.log_x:
+        USE_LOG_X = True
 
     if args.data:
         plot_from_path(args.data, args.output_dir)

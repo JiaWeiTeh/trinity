@@ -30,6 +30,7 @@ PHASE_LINE = True
 CLOUD_LINE = True
 SMOOTH_WINDOW = None        # e.g. 7 or 21; None/1 disables
 SMOOTH_MODE = "edge"
+USE_LOG_X = False  # Use log scale for x-axis (time)
 
 # --- output - save to project root's fig/ directory
 FIG_DIR = Path(__file__).parent.parent.parent / "fig"
@@ -156,7 +157,7 @@ def plot_velocity_on_ax(
     ax, t, phase, v2_pcmyr, R1, R2, rShell, r_Tb, rcloud, isCollapse=None,
     smooth_window=None, smooth_mode="edge",
     phase_line=True, cloud_line=True, show_collapse=True,
-    label_pad_points=4
+    label_pad_points=4, use_log_x=False
 ):
     # smoothing
     v2s = smooth_1d(v2_pcmyr, smooth_window, mode=smooth_mode)
@@ -192,8 +193,15 @@ def plot_velocity_on_ax(
     )
     ax.set_ylabel(r"$|v_2|$ [km s$^{-1}$]")
 
+    # X-axis scale
+    if use_log_x:
+        ax.set_xscale('log')
+        t_pos = t[t > 0]
+        if len(t_pos) > 0:
+            ax.set_xlim(t_pos.min(), t.max())
+    else:
+        ax.set_xlim(t.min(), t.max())
 
-    ax.set_xlim(t.min(), t.max())
     # --- right axis: radii (pc)
     axr = ax.twinx()
     axr.plot(t, R1s,   color=RADIUS_FIELDS[0][2], ls=RADIUS_FIELDS[0][3], lw=RADIUS_FIELDS[0][4], label=RADIUS_FIELDS[0][1])
@@ -243,7 +251,8 @@ def plot_from_path(data_input: str, output_dir: str = None):
             smooth_window=SMOOTH_WINDOW,
             smooth_mode=SMOOTH_MODE,
             phase_line=PHASE_LINE,
-            cloud_line=CLOUD_LINE
+            cloud_line=CLOUD_LINE,
+            use_log_x=USE_LOG_X
         )
     except Exception as e:
         print(f"Error loading data: {e}")
@@ -317,7 +326,8 @@ def plot_grid():
                         smooth_window=SMOOTH_WINDOW,
                         smooth_mode=SMOOTH_MODE,
                         phase_line=PHASE_LINE,
-                        cloud_line=CLOUD_LINE
+                        cloud_line=CLOUD_LINE,
+                        use_log_x=USE_LOG_X
                     )
                 except Exception as e:
                     print(f"Error in {run_name}: {e}")
@@ -423,8 +433,15 @@ Examples:
         '--output-dir', '-o', default=None,
         help='Base directory for output folders (default: TRINITY_OUTPUT_DIR or "outputs")'
     )
+    parser.add_argument(
+        '--log-x', action='store_true',
+        help='Use log scale for x-axis (time)'
+    )
 
     args = parser.parse_args()
+
+    if args.log_x:
+        USE_LOG_X = True
 
     if args.data:
         # Command-line mode: plot from specified path

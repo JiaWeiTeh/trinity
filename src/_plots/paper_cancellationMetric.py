@@ -42,6 +42,7 @@ BASE_DIR = Path.home() / "unsync" / "Code" / "Trinity" / "outputs" / "sweep_test
 SMOOTH_WINDOW = 7  # None or 1 disables
 PHASE_CHANGE = True
 SHOW_EQUILIBRIUM_BAND = True  # Shade quasi-equilibrium region
+USE_LOG_X = False  # Use log scale for x-axis (time)
 
 # --- optional single-run view (set to None for full grid)
 ONLY_M = "1e7"
@@ -201,7 +202,7 @@ def compute_cancellation_metric(data):
 
 def plot_run_on_ax(ax, data, smooth_window=None, phase_change=True,
                    show_rcloud=True, show_collapse=True,
-                   show_equilibrium_band=True):
+                   show_equilibrium_band=True, use_log_x=False):
     """Plot cancellation metric on given axes."""
     t = data['t']
     R2 = data['R2']
@@ -252,7 +253,15 @@ def plot_run_on_ax(ax, data, smooth_window=None, phase_change=True,
             fontsize=7, color='gray', alpha=0.8, ha='right', va='top')
 
     ax.set_ylim(0, 1.05)
-    ax.set_xlim(t.min(), t.max())
+
+    # X-axis scale
+    if use_log_x:
+        ax.set_xscale('log')
+        t_pos = t[t > 0]
+        if len(t_pos) > 0:
+            ax.set_xlim(t_pos.min(), t.max())
+    else:
+        ax.set_xlim(t.min(), t.max())
 
 
 def plot_from_path(data_input: str, output_dir: str = None):
@@ -274,7 +283,8 @@ def plot_from_path(data_input: str, output_dir: str = None):
     fig, ax = plt.subplots(figsize=(8, 5), dpi=150)
     plot_run_on_ax(ax, data, smooth_window=SMOOTH_WINDOW,
                    phase_change=PHASE_CHANGE,
-                   show_equilibrium_band=SHOW_EQUILIBRIUM_BAND)
+                   show_equilibrium_band=SHOW_EQUILIBRIUM_BAND,
+                   use_log_x=USE_LOG_X)
 
     ax.set_xlabel("t [Myr]")
     ax.set_ylabel(r"Cancellation metric $\mathcal{C}$")
@@ -315,7 +325,8 @@ def plot_single_run(mCloud, ndens, sfe):
     fig, ax = plt.subplots(figsize=(6, 4), dpi=400, constrained_layout=True)
     plot_run_on_ax(ax, data, smooth_window=SMOOTH_WINDOW,
                    phase_change=PHASE_CHANGE,
-                   show_equilibrium_band=SHOW_EQUILIBRIUM_BAND)
+                   show_equilibrium_band=SHOW_EQUILIBRIUM_BAND,
+                   use_log_x=USE_LOG_X)
 
     ax.set_xlabel("t [Myr]")
     ax.set_ylabel(r"$\mathcal{C}$")
@@ -361,7 +372,8 @@ def plot_grid():
                     data = load_run(data_path)
                     plot_run_on_ax(ax, data, smooth_window=SMOOTH_WINDOW,
                                    phase_change=PHASE_CHANGE,
-                                   show_equilibrium_band=SHOW_EQUILIBRIUM_BAND)
+                                   show_equilibrium_band=SHOW_EQUILIBRIUM_BAND,
+                                   use_log_x=USE_LOG_X)
                 except Exception as e:
                     print(f"Error in {run_name}: {e}")
                     ax.text(0.5, 0.5, "error", ha="center", va="center",
@@ -464,11 +476,17 @@ Examples:
         '--no-band', action='store_true',
         help='Do not show equilibrium band shading'
     )
+    parser.add_argument(
+        '--log-x', action='store_true',
+        help='Use log scale for x-axis (time)'
+    )
 
     args = parser.parse_args()
 
     if args.no_band:
         SHOW_EQUILIBRIUM_BAND = False
+    if args.log_x:
+        USE_LOG_X = True
 
     if args.data:
         plot_from_path(args.data, args.output_dir)

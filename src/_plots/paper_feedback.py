@@ -42,6 +42,7 @@ BASE_DIR = Path.home() / "unsync" / "Code" / "Trinity" / "outputs" / "sweep_test
 SMOOTH_WINDOW = 21           # None or 1 disables
 PHASE_CHANGE  = True
 INCLUDE_ALL_FORCE = True     # show wind/SN overlays inside the ram band
+USE_LOG_X = False            # Use log scale for x-axis (time)
 
 RUN_MODIFIED = False
 if RUN_MODIFIED:
@@ -138,7 +139,8 @@ def plot_from_path(data_input: str, output_dir: str = None):
         ax, t, R2, phase, base_forces, overlay_forces, rcloud, isCollapse,
         alpha=0.75,
         smooth_window=SMOOTH_WINDOW,
-        phase_change=PHASE_CHANGE
+        phase_change=PHASE_CHANGE,
+        use_log_x=USE_LOG_X
     )
 
     ax.set_xlabel("t [Myr]")
@@ -182,7 +184,8 @@ def plot_single_run(mCloud, ndens, sfe):
         ax, t, R2, phase, base_forces, overlay_forces, rcloud, isCollapse,
         alpha=0.75,
         smooth_window=SMOOTH_WINDOW,
-        phase_change=PHASE_CHANGE
+        phase_change=PHASE_CHANGE,
+        use_log_x=USE_LOG_X
     )
 
     ax.set_xlabel("t [Myr]")
@@ -266,7 +269,8 @@ def plot_run_on_ax(
     phase_change=True,
     show_rcloud=True,
     show_collapse=True,
-    overlay_alpha=0.55
+    overlay_alpha=0.55,
+    use_log_x=False
 ):
     # --- Add all time-axis markers using helper module
     add_plot_markers(
@@ -361,7 +365,15 @@ def plot_run_on_ax(
             ax.fill_between(t, ram_bottom, ram_top, color=C_RAM, alpha=0.10, lw=0, zorder=4)
 
     ax.set_ylim(0, 1)
-    ax.set_xlim(t.min(), t.max())
+
+    # X-axis scale
+    if use_log_x:
+        ax.set_xscale('log')
+        t_pos = t[t > 0]
+        if len(t_pos) > 0:
+            ax.set_xlim(t_pos.min(), t.max())
+    else:
+        ax.set_xlim(t.min(), t.max())
 
 
 # ---------------- main loop ----------------
@@ -398,7 +410,8 @@ def plot_grid():
                         ax, t, R2, phase, base_forces, overlay_forces, rcloud, isCollapse,
                         alpha=0.75,
                         smooth_window=SMOOTH_WINDOW,
-                        phase_change=PHASE_CHANGE
+                        phase_change=PHASE_CHANGE,
+                        use_log_x=USE_LOG_X
                     )
                 except Exception as e:
                     print(f"Error in {run_name}: {e}")
@@ -513,8 +526,15 @@ Examples:
         '--output-dir', '-o', default=None,
         help='Base directory for output folders (default: TRINITY_OUTPUT_DIR or "outputs")'
     )
+    parser.add_argument(
+        '--log-x', action='store_true',
+        help='Use log scale for x-axis (time)'
+    )
 
     args = parser.parse_args()
+
+    if args.log_x:
+        USE_LOG_X = True
 
     if args.data:
         # Command-line mode: plot from specified path
