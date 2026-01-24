@@ -46,7 +46,7 @@ BASE_DIR = Path.home() / "unsync" / "Code" / "Trinity" / "outputs" / "sweep_test
 SMOOTH_WINDOW = 5  # None or 1 disables
 PHASE_CHANGE = True
 PLOT_MODE = "line"  # "line" or "stacked"
-USE_LOG_X = False  # Use log scale for x-axis (time)
+USE_LOG_X = True  # Use log scale for x-axis (time)
 
 # Colors for stacked mode
 C_BUBBLE = "blue"

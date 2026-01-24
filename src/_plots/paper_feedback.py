@@ -42,7 +42,7 @@ BASE_DIR = Path.home() / "unsync" / "Code" / "Trinity" / "outputs" / "sweep_test
 SMOOTH_WINDOW = 21           # None or 1 disables
 PHASE_CHANGE  = True
 INCLUDE_ALL_FORCE = True     # show wind/SN overlays inside the ram band
-USE_LOG_X = False            # Use log scale for x-axis (time)
+USE_LOG_X = True            # Use log scale for x-axis (time)
 
 RUN_MODIFIED = False
 if RUN_MODIFIED:
