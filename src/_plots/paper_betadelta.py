@@ -324,10 +324,23 @@ Examples:
         '--output-dir', '-o', default=None,
         help='Base directory for output folders (default: TRINITY_OUTPUT_DIR or "outputs")'
     )
+    parser.add_argument(
+        '--folder', '-F', default=None,
+        help='Search folder recursively for all simulation .jsonl files'
+    )
 
     args = parser.parse_args()
 
-    if args.data:
+    if args.folder:
+        from src._output.trinity_reader import find_all_simulations
+        sim_files = find_all_simulations(args.folder)
+        if not sim_files:
+            print(f"No simulation files found in {args.folder}")
+            sys.exit(1)
+        print(f"Found {len(sim_files)} simulations in {args.folder}")
+        for data_path in sim_files:
+            plot_from_path(str(data_path), args.output_dir)
+    elif args.data:
         # Command-line mode: plot from specified path
         plot_from_path(args.data, args.output_dir)
     else:
