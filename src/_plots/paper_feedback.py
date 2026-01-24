@@ -52,7 +52,7 @@ else:
 # Colors
 C_GRAV = "black"
 C_RAM  = "b"
-C_SN   = "#2ca02c"
+C_SN   = "#DAA520"  # golden yellow for SN visibility
 C_ION  = "#d62728"
 C_RAD  = "#9467bd"
 C_PISM = "white"             # requested: white top band
@@ -341,21 +341,21 @@ def plot_run_on_ax(
                 zorder=5
             )
             
-            # --- SN slice: back slashes, "thicker" by overdrawing the hatch twice
-            for _ in range(4):  # draw twice -> visually thicker/darker hatch
+            # --- SN slice: back slashes, yellow color for visibility
+            for _ in range(4):  # draw multiple times for thicker hatch
                 ax.fill_between(
                     t, y_wind_top, y_sn_top,
                     facecolor="none",
-                    edgecolor=C_RAM,      # still blue
+                    edgecolor=C_SN,       # yellow for SN
                     hatch="\\\\\\\\",     # opposite direction
                     linewidth=2.5,        # slightly heavier stroke
                     alpha=0.9,
                     zorder=5
                 )
-            
-            # Helpful boundaries (still blue) so the SN region is obvious
+
+            # Helpful boundaries - blue for wind/ram top, yellow for SN top
             ax.plot(t, y_wind_top, color=C_RAM, lw=1.2, alpha=0.95, zorder=6)
-            ax.plot(t, y_sn_top,   color=C_RAM, lw=1.2, alpha=0.95, zorder=6)
+            ax.plot(t, y_sn_top,   color=C_SN,  lw=1.2, alpha=0.95, zorder=6)
             
             # Optional: subtle tint to keep "ram is blue" obvious without overpowering
             ax.fill_between(t, ram_bottom, ram_top, color=C_RAM, alpha=0.10, lw=0, zorder=4)
@@ -448,8 +448,8 @@ def plot_grid():
 
         if INCLUDE_ALL_FORCE:
             handles += [
-                Patch(facecolor="none", edgecolor=C_RAM, hatch="////",   label=r"Ram attributed to winds"),
-                Patch(facecolor="none", edgecolor=C_RAM, hatch="\\\\\\\\", label=r"Ram attributed to SN (thicker hatch)"),
+                Patch(facecolor="none", edgecolor=C_RAM, hatch="////",   label=r"Ram attributed to winds (blue)"),
+                Patch(facecolor="none", edgecolor=C_SN,  hatch="\\\\\\\\", label=r"Ram attributed to SN (yellow)"),
                 Line2D([0], [0], color=C_RAM, lw=6, label="Unhatched blue = residual"),
             ]
 

@@ -22,4 +22,5 @@ Contents
    parameters
    architecture
    physics
+   visualization
    publications
