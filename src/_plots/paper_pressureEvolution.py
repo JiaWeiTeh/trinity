@@ -390,11 +390,25 @@ def plot_folder_grid(folder_path, output_dir=None):
     """
     Create grid plot from all simulations found in a folder.
 
-    Automatically arranges simulations by:
+    Searches subfolders for dictionary.jsonl files, parses simulation
+    parameters from folder names (e.g., "1e7_sfe020_n1e4"), and arranges
+    them in a grid sorted by:
     - Rows: increasing mCloud (top to bottom)
     - Columns: increasing SFE (left to right)
 
-    PDF and title named after the folder.
+    Saves PDF as {folder_name}_{ndens}.pdf without displaying.
+
+    Parameters
+    ----------
+    folder_path : str or Path
+        Path to folder containing simulation subfolders
+    output_dir : str or Path, optional
+        Directory to save figure (default: FIG_DIR)
+
+    Notes
+    -----
+    Folder names must follow the pattern: {mCloud}_sfe{sfe}_n{ndens}
+    Examples: "1e7_sfe020_n1e4", "5e6_sfe010_n1e3"
     """
     from src._output.trinity_reader import find_all_simulations, organize_simulations_for_grid
 
@@ -501,11 +515,12 @@ def plot_folder_grid(folder_path, output_dir=None):
 
     fig_dir = Path(output_dir) if output_dir else FIG_DIR
     fig_dir.mkdir(parents=True, exist_ok=True)
-    out_pdf = fig_dir / f"{folder_name}.pdf"
+    ndens = organized['ndens']
+    ndens_tag = f"n{ndens}" if ndens else "nMixed"
+    out_pdf = fig_dir / f"{folder_name}_{ndens_tag}.pdf"
     fig.savefig(out_pdf, bbox_inches="tight")
     print(f"Saved: {out_pdf}")
 
-    plt.show()
     plt.close(fig)
 
 
@@ -518,10 +533,17 @@ if __name__ == "__main__":
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
+  # Single simulation
   python paper_pressureEvolution.py 1e7_sfe020_n1e4
   python paper_pressureEvolution.py /path/to/outputs/1e7_sfe020_n1e4
   python paper_pressureEvolution.py /path/to/dictionary.jsonl
-  python paper_pressureEvolution.py  # (uses grid/single config at top of file)
+
+  # Folder-based grid (auto-discovers simulations)
+  python paper_pressureEvolution.py --folder /path/to/my_experiment/
+  python paper_pressureEvolution.py -F /path/to/simulations/
+
+  # Uses config at top of file
+  python paper_pressureEvolution.py
         """
     )
     parser.add_argument(
@@ -538,7 +560,9 @@ Examples:
     )
     parser.add_argument(
         '--folder', '-F', default=None,
-        help='Search folder recursively for all simulation .jsonl files'
+        help='Search folder recursively for simulations and create grid plot. '
+             'Auto-organizes by mCloud (rows) and SFE (columns). '
+             'Saves as {folder}_{ndens}.pdf'
     )
 
     args = parser.parse_args()
