@@ -1278,7 +1278,7 @@ F_ram decomposition modes:
         decompose_mode = DECOMPOSE_MODE
 
     # Update global FORCE_FIELDS based on decomposition mode
-    global FORCE_FIELDS
+    # global FORCE_FIELDS
     if decompose_mode == 'decomposed':
         FORCE_FIELDS = FORCE_FIELDS_DECOMPOSED
         print("F_ram decomposition: enabled (wind/SN/residual separately)")

@@ -47,7 +47,7 @@ BASE_DIR = Path.home() / "unsync" / "Code" / "Trinity" / "outputs" / "sweep_test
 SMOOTH_WINDOW = 5  # None or 1 disables
 PHASE_CHANGE = True
 SHOW_PEXT = True  # Show external pressure
-USE_LOG_X = True  # Use log scale for x-axis (time)
+USE_LOG_X = False  # Use log scale for x-axis (time)
 
 # --- optional single-run view (set to None for full grid)
 ONLY_M = "1e7"
