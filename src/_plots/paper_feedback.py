@@ -503,6 +503,156 @@ def plot_grid():
         plt.close(fig)
 
 
+def plot_folder_grid(folder_path, output_dir=None):
+    """
+    Create grid plot from all simulations found in a folder.
+
+    Automatically arranges simulations by:
+    - Rows: increasing mCloud (top to bottom)
+    - Columns: increasing SFE (left to right)
+
+    PDF and title named after the folder.
+
+    Parameters
+    ----------
+    folder_path : str or Path
+        Path to folder containing simulation subfolders
+    output_dir : str or Path, optional
+        Directory to save figure (default: FIG_DIR)
+    """
+    from src._output.trinity_reader import find_all_simulations, organize_simulations_for_grid
+
+    folder_path = Path(folder_path)
+    folder_name = folder_path.name
+
+    # Find and organize simulations
+    sim_files = find_all_simulations(folder_path)
+    if not sim_files:
+        print(f"No simulation files found in {folder_path}")
+        return
+
+    organized = organize_simulations_for_grid(sim_files)
+    mCloud_list_found = organized['mCloud_list']
+    sfe_list_found = organized['sfe_list']
+    grid = organized['grid']
+
+    if not mCloud_list_found or not sfe_list_found:
+        print(f"Could not organize simulations into grid")
+        return
+
+    print(f"Found {len(sim_files)} simulations")
+    print(f"  mCloud: {mCloud_list_found}")
+    print(f"  SFE: {sfe_list_found}")
+
+    nrows, ncols = len(mCloud_list_found), len(sfe_list_found)
+    fig, axes = plt.subplots(
+        nrows=nrows, ncols=ncols,
+        figsize=(3.2 * ncols, 2.6 * nrows),
+        sharex=False, sharey=True,
+        dpi=500,
+        squeeze=False,
+        constrained_layout=False
+    )
+
+    for i, mCloud in enumerate(mCloud_list_found):
+        for j, sfe in enumerate(sfe_list_found):
+            ax = axes[i, j]
+            data_path = grid.get((mCloud, sfe))
+
+            if data_path is None:
+                ax.text(0.5, 0.5, "missing", ha="center", va="center", transform=ax.transAxes)
+                ax.set_axis_off()
+                continue
+
+            print(f"  Loading: {data_path}")
+            try:
+                t, R2, phase, base_forces, overlay_forces, rcloud, isCollapse = load_run(data_path)
+                plot_run_on_ax(
+                    ax, t, R2, phase, base_forces, overlay_forces, rcloud, isCollapse,
+                    alpha=0.75,
+                    smooth_window=SMOOTH_WINDOW,
+                    phase_change=PHASE_CHANGE,
+                    use_log_x=USE_LOG_X
+                )
+            except Exception as e:
+                print(f"Error loading {data_path}: {e}")
+                ax.text(0.5, 0.5, "error", ha="center", va="center", transform=ax.transAxes)
+                ax.set_axis_off()
+                continue
+
+            # Ticks: show tick marks everywhere, labels only on bottom row
+            ax.tick_params(axis="x", which="both", bottom=True)
+            if i == nrows - 1:
+                ax.set_xlabel("t [Myr]")
+
+            # Column titles (top row only)
+            if i == 0:
+                eps = int(sfe) / 100.0
+                ax.set_title(rf"$\epsilon={eps:.2f}$")
+
+            # Row labels (left column only)
+            if j == 0:
+                mval = float(mCloud)
+                mexp = int(np.floor(np.log10(mval)))
+                mcoeff = mval / (10 ** mexp)
+                mcoeff = round(mcoeff)
+                if mcoeff == 10:
+                    mcoeff = 1
+                    mexp += 1
+                if mcoeff == 1:
+                    mlabel = rf"$M_{{\rm cloud}}=10^{{{mexp}}}\,M_\odot$"
+                else:
+                    mlabel = rf"$M_{{\rm cloud}}={mcoeff}\times10^{{{mexp}}}\,M_\odot$"
+                ax.set_ylabel(mlabel + "\n" + r"$F/F_{tot}$")
+            else:
+                ax.tick_params(labelleft=False)
+
+    # Global legend
+    handles = [
+        Patch(facecolor=C_GRAV, edgecolor="none", alpha=0.75, label="Gravity"),
+        Patch(facecolor=C_RAM,  edgecolor="none", alpha=0.75, label=r"Ram total $F_{\rm ram}$ (blue)"),
+        Patch(facecolor=C_ION,  edgecolor="none", alpha=0.75, label="Photoionised gas"),
+        Patch(facecolor=C_RAD,  edgecolor="none", alpha=0.75, label="Radiation"),
+        Patch(facecolor=C_PISM, edgecolor="0.4",  alpha=1.0,  label="PISM"),
+    ]
+
+    if INCLUDE_ALL_FORCE:
+        handles += [
+            Patch(facecolor="none", edgecolor=C_RAM, hatch="////",   label=r"Ram attributed to winds (blue)"),
+            Patch(facecolor="none", edgecolor=C_SN,  hatch="\\\\\\\\", label=r"Ram attributed to SN (yellow)"),
+            Line2D([0], [0], color=C_RAM, lw=6, label="Unhatched blue = residual"),
+        ]
+
+    handles.extend(get_marker_legend_handles())
+
+    fig.subplots_adjust(top=0.9)
+
+    leg = fig.legend(
+        handles=handles,
+        loc="upper center",
+        ncol=3,
+        frameon=True,
+        facecolor="white",
+        framealpha=0.9,
+        edgecolor="0.2",
+        bbox_to_anchor=(0.5, 1.05)
+    )
+    leg.set_zorder(10)
+
+    # Title from folder name
+    fig.suptitle(folder_name, fontsize=14, y=1.08)
+
+    # Save with folder name
+    fig_dir = Path(output_dir) if output_dir else FIG_DIR
+    fig_dir.mkdir(parents=True, exist_ok=True)
+    out_pdf = fig_dir / f"{folder_name}.pdf"
+    fig.savefig(out_pdf, bbox_inches="tight")
+    print(f"Saved: {out_pdf}")
+
+    plt.show()
+    plt.close(fig)
+
+
 # ---------------- command-line interface ----------------
 if __name__ == "__main__":
     import argparse
@@ -541,15 +691,8 @@ Examples:
         USE_LOG_X = True
 
     if args.folder:
-        # Folder search mode: find all simulations in subfolders
-        from src._output.trinity_reader import find_all_simulations
-        sim_files = find_all_simulations(args.folder)
-        if not sim_files:
-            print(f"No simulation files found in {args.folder}")
-            sys.exit(1)
-        print(f"Found {len(sim_files)} simulations in {args.folder}")
-        for data_path in sim_files:
-            plot_from_path(str(data_path), args.output_dir)
+        # Folder grid mode: create grid from all simulations in folder
+        plot_folder_grid(args.folder, args.output_dir)
     elif args.data:
         # Command-line mode: plot from specified path
         plot_from_path(args.data, args.output_dir)

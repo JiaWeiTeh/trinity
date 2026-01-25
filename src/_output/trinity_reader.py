@@ -1108,3 +1108,86 @@ def find_all_simulations(base_dir: Union[str, Path]) -> List[Path]:
             found.append(json_file)
 
     return sorted(found)
+
+
+def parse_simulation_params(folder_name: str) -> Optional[Dict[str, str]]:
+    """
+    Extract mCloud, sfe, ndens from simulation folder name.
+
+    Parameters
+    ----------
+    folder_name : str
+        Folder name like "1e7_sfe020_n1e4" or "m1e7_sfe020_n1e4"
+
+    Returns
+    -------
+    dict or None
+        {'mCloud': '1e7', 'sfe': '020', 'ndens': '1e4'} or None if no match
+    """
+    import re
+    # Pattern: optional 'm' prefix, mCloud, _sfe{sfe}, _n{ndens}
+    # Also handle _modified suffix
+    match = re.search(
+        r'm?(\d+\.?\d*e\d+)_sfe(\d+)_n(\d+\.?\d*e\d+)',
+        folder_name,
+        re.IGNORECASE
+    )
+    if match:
+        return {
+            'mCloud': match.group(1),
+            'sfe': match.group(2),
+            'ndens': match.group(3)
+        }
+    return None
+
+
+def organize_simulations_for_grid(sim_files: List[Path]) -> Dict:
+    """
+    Organize simulation files into a grid structure for plotting.
+
+    Parameters
+    ----------
+    sim_files : List[Path]
+        List of paths to dictionary.jsonl files
+
+    Returns
+    -------
+    dict with keys:
+        'mCloud_list': sorted list of unique mCloud values (rows, increasing)
+        'sfe_list': sorted list of unique SFE values (columns, increasing)
+        'grid': dict mapping (mCloud, sfe) -> file path
+        'ndens': common ndens value (or None if mixed)
+    """
+    grid = {}
+    mCloud_set = set()
+    sfe_set = set()
+    ndens_set = set()
+
+    for sim_file in sim_files:
+        # Get parent folder name (the simulation folder)
+        folder_name = sim_file.parent.name
+        params = parse_simulation_params(folder_name)
+
+        if params is None:
+            print(f"Warning: Could not parse folder name: {folder_name}")
+            continue
+
+        mCloud = params['mCloud']
+        sfe = params['sfe']
+        ndens = params['ndens']
+
+        mCloud_set.add(mCloud)
+        sfe_set.add(sfe)
+        ndens_set.add(ndens)
+        grid[(mCloud, sfe)] = sim_file
+
+    # Sort by numerical value
+    mCloud_list = sorted(mCloud_set, key=lambda x: float(x))
+    sfe_list = sorted(sfe_set, key=lambda x: int(x))
+
+    return {
+        'mCloud_list': mCloud_list,
+        'sfe_list': sfe_list,
+        'grid': grid,
+        'ndens': list(ndens_set)[0] if len(ndens_set) == 1 else None
+    }

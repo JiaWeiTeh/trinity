@@ -242,6 +242,122 @@ def plot_grid():
         plt.close(fig)
 
 
+def plot_folder_grid(folder_path, output_dir=None):
+    """
+    Create grid plot from all simulations found in a folder.
+
+    Groups SFE values as lines on each row, with mCloud defining rows.
+    """
+    from src._output.trinity_reader import find_all_simulations, organize_simulations_for_grid
+
+    folder_path = Path(folder_path)
+    folder_name = folder_path.name
+
+    sim_files = find_all_simulations(folder_path)
+    if not sim_files:
+        print(f"No simulation files found in {folder_path}")
+        return
+
+    organized = organize_simulations_for_grid(sim_files)
+    mCloud_list_found = organized['mCloud_list']
+    sfe_list_found = organized['sfe_list']
+    grid = organized['grid']
+
+    if not mCloud_list_found or not sfe_list_found:
+        print(f"Could not organize simulations into grid")
+        return
+
+    print(f"Found {len(sim_files)} simulations")
+    print(f"  mCloud: {mCloud_list_found}")
+    print(f"  SFE: {sfe_list_found}")
+
+    nrows = len(mCloud_list_found)
+    fig, axes = plt.subplots(
+        nrows=nrows, ncols=1,
+        figsize=(7.0, 2.6 * nrows),
+        sharex=False,
+        sharey=True,
+        dpi=200,
+        squeeze=False,
+        constrained_layout=True
+    )
+
+    all_line_handles = []
+    all_line_labels = []
+
+    for i, mCloud in enumerate(mCloud_list_found):
+        ax = axes[i, 0]
+
+        for sfe in sfe_list_found:
+            data_path = grid.get((mCloud, sfe))
+
+            if data_path is None:
+                continue
+
+            print(f"  Loading: {data_path}")
+            try:
+                t, fesc, isCollapse = load_escape_fraction(data_path)
+                fesc_plot = smooth_1d(fesc, SMOOTH_WINDOW)
+                fesc_plot = np.clip(fesc_plot, 0.0, 1.0)
+
+                eps = int(sfe) / 100.0
+                (line,) = ax.plot(t, fesc_plot, lw=1.8, alpha=0.9, label=rf"$\epsilon={eps:.2f}$")
+
+                if i == 0:
+                    all_line_handles.append(line)
+                    all_line_labels.append(rf"$\epsilon={eps:.2f}$")
+
+                add_collapse_marker(ax, t, isCollapse, show_label=False)
+            except Exception as e:
+                print(f"Error loading {data_path}: {e}")
+
+        mval = float(mCloud)
+        mexp = int(np.floor(np.log10(mval)))
+        mcoeff = round(mval / (10 ** mexp))
+        if mcoeff == 10:
+            mcoeff = 1
+            mexp += 1
+        if mcoeff == 1:
+            mlabel = rf"$M_{{\rm cloud}}=10^{{{mexp}}}\,M_\odot$"
+        else:
+            mlabel = rf"$M_{{\rm cloud}}={mcoeff}\times10^{{{mexp}}}\,M_\odot$"
+        ax.set_ylabel(rf"$f_\mathrm{{esc}}$" + "\n" + mlabel)
+        ax.set_ylim(0, 1)
+        ax.set_xscale('log')
+
+        if i == nrows - 1:
+            ax.set_xlabel("t [Myr]")
+
+    fig.suptitle(folder_name, fontsize=14, y=1.02)
+
+    if all_line_handles:
+        collapse_handles = get_marker_legend_handles(include_phase=False, include_rcloud=False, include_collapse=True)
+        for h in collapse_handles:
+            all_line_handles.append(h)
+            all_line_labels.append(h.get_label())
+        leg = fig.legend(
+            handles=all_line_handles,
+            labels=all_line_labels,
+            loc="upper center",
+            ncol=len(all_line_handles),
+            frameon=True,
+            facecolor="white",
+            framealpha=0.9,
+            edgecolor="0.2",
+            bbox_to_anchor=(0.5, 1.07),
+        )
+        leg.set_zorder(10)
+
+    fig_dir = Path(output_dir) if output_dir else FIG_DIR
+    fig_dir.mkdir(parents=True, exist_ok=True)
+    out_pdf = fig_dir / f"{folder_name}.pdf"
+    fig.savefig(out_pdf, bbox_inches="tight")
+    print(f"Saved: {out_pdf}")
+
+    plt.show()
+    plt.close(fig)
+
+
 # ---------------- command-line interface ----------------
 if __name__ == "__main__":
     import argparse
@@ -273,14 +389,7 @@ Examples:
     args = parser.parse_args()
 
     if args.folder:
-        from src._output.trinity_reader import find_all_simulations
-        sim_files = find_all_simulations(args.folder)
-        if not sim_files:
-            print(f"No simulation files found in {args.folder}")
-            sys.exit(1)
-        print(f"Found {len(sim_files)} simulations in {args.folder}")
-        for data_path in sim_files:
-            plot_from_path(str(data_path), args.output_dir)
+        plot_folder_grid(args.folder, args.output_dir)
     elif args.data:
         # Command-line mode: plot from specified path
         plot_from_path(args.data, args.output_dir)

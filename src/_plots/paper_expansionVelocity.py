@@ -410,6 +410,137 @@ def plot_grid():
         plt.close(fig)
 
 
+def plot_folder_grid(folder_path, output_dir=None):
+    """
+    Create grid plot from all simulations found in a folder.
+    """
+    from src._output.trinity_reader import find_all_simulations, organize_simulations_for_grid
+
+    folder_path = Path(folder_path)
+    folder_name = folder_path.name
+
+    sim_files = find_all_simulations(folder_path)
+    if not sim_files:
+        print(f"No simulation files found in {folder_path}")
+        return
+
+    organized = organize_simulations_for_grid(sim_files)
+    mCloud_list_found = organized['mCloud_list']
+    sfe_list_found = organized['sfe_list']
+    grid = organized['grid']
+
+    if not mCloud_list_found or not sfe_list_found:
+        print(f"Could not organize simulations into grid")
+        return
+
+    print(f"Found {len(sim_files)} simulations")
+    print(f"  mCloud: {mCloud_list_found}")
+    print(f"  SFE: {sfe_list_found}")
+
+    nrows, ncols = len(mCloud_list_found), len(sfe_list_found)
+    fig, axes = plt.subplots(
+        nrows=nrows, ncols=ncols,
+        figsize=(3.2 * ncols, 2.6 * nrows),
+        sharex=False, sharey=False,
+        dpi=500,
+        squeeze=False,
+        constrained_layout=False
+    )
+
+    fig.subplots_adjust(top=0.90)
+
+    for i, mCloud in enumerate(mCloud_list_found):
+        for j, sfe in enumerate(sfe_list_found):
+            ax = axes[i, j]
+            data_path = grid.get((mCloud, sfe))
+
+            if data_path is None:
+                ax.text(0.5, 0.5, "missing", ha="center", va="center", transform=ax.transAxes)
+                ax.set_axis_off()
+                continue
+
+            print(f"  Loading: {data_path}")
+            try:
+                t, phase, v2, R1, R2, rShell, r_Tb, rcloud, isCollapse = load_run_velocity(data_path)
+                axr = plot_velocity_on_ax(
+                    ax, t, phase, v2, R1, R2, rShell, r_Tb, rcloud, isCollapse,
+                    smooth_window=SMOOTH_WINDOW,
+                    smooth_mode=SMOOTH_MODE,
+                    phase_line=PHASE_LINE,
+                    cloud_line=CLOUD_LINE,
+                    use_log_x=USE_LOG_X
+                )
+            except Exception as e:
+                print(f"Error loading {data_path}: {e}")
+                ax.text(0.5, 0.5, "error", ha="center", va="center", transform=ax.transAxes)
+                ax.set_axis_off()
+                continue
+
+            if i == 0:
+                eps = int(sfe) / 100.0
+                ax.set_title(rf"$\epsilon={eps:.2f}$")
+
+            if j == 0:
+                mval = float(mCloud)
+                mexp = int(np.floor(np.log10(mval)))
+                mcoeff = round(mval / (10 ** mexp))
+                if mcoeff == 10:
+                    mcoeff = 1
+                    mexp += 1
+                if mcoeff == 1:
+                    mlabel = rf"$M_{{\rm cloud}}=10^{{{mexp}}}\,M_\odot$"
+                else:
+                    mlabel = rf"$M_{{\rm cloud}}={mcoeff}\times10^{{{mexp}}}\,M_\odot$"
+                ax.set_ylabel(mlabel + "\n" + r"$v_2$ [km s$^{-1}$]")
+            else:
+                ax.tick_params(labelleft=False)
+
+            if j != ncols - 1:
+                axr.set_ylabel("")
+                axr.tick_params(labelright=False)
+
+            ax.tick_params(axis="x", which="both", bottom=True)
+            if i == nrows - 1:
+                ax.set_xlabel("t [Myr]")
+                ax.tick_params(labelbottom=True)
+            else:
+                ax.tick_params(labelbottom=False)
+
+    handles = [
+        Line2D([0], [0], color="k", lw=1.8, ls="-",  label=r"$v_2>0$ (solid; plotted as $|v_2|$)"),
+        Line2D([0], [0], color="k", lw=1.8, ls="--", label=r"$v_2<0$ (dashed; plotted as $|v_2|$)"),
+        Line2D([0], [0], color=RADIUS_FIELDS[0][2], lw=RADIUS_FIELDS[0][4], ls=RADIUS_FIELDS[0][3], label=RADIUS_FIELDS[0][1]),
+        Line2D([0], [0], color=RADIUS_FIELDS[1][2], lw=RADIUS_FIELDS[1][4], ls=RADIUS_FIELDS[1][3], label=RADIUS_FIELDS[1][1]),
+        Line2D([0], [0], color=RADIUS_FIELDS[2][2], lw=RADIUS_FIELDS[2][4], ls=RADIUS_FIELDS[2][3], label=RADIUS_FIELDS[2][1]),
+        Line2D([0], [0], color=RADIUS_FIELDS[3][2], lw=RADIUS_FIELDS[3][4], ls=RADIUS_FIELDS[3][3], label=RADIUS_FIELDS[3][1]),
+    ]
+    handles.extend(get_marker_legend_handles())
+
+    leg = fig.legend(
+        handles=handles,
+        loc="upper center",
+        ncol=3,
+        frameon=True,
+        facecolor="white",
+        framealpha=0.9,
+        edgecolor="0.2",
+        bbox_to_anchor=(0.5, 0.98),
+        bbox_transform=fig.transFigure
+    )
+    leg.set_zorder(10)
+
+    fig.suptitle(folder_name, fontsize=14, y=1.05)
+
+    fig_dir = Path(output_dir) if output_dir else FIG_DIR
+    fig_dir.mkdir(parents=True, exist_ok=True)
+    out_pdf = fig_dir / f"{folder_name}.pdf"
+    fig.savefig(out_pdf, bbox_inches="tight", pad_inches=0.15)
+    print(f"Saved: {out_pdf}")
+
+    plt.show()
+    plt.close(fig)
+
+
 # ---------------- command-line interface ----------------
 if __name__ == "__main__":
     import argparse
@@ -448,14 +579,7 @@ Examples:
         USE_LOG_X = True
 
     if args.folder:
-        from src._output.trinity_reader import find_all_simulations
-        sim_files = find_all_simulations(args.folder)
-        if not sim_files:
-            print(f"No simulation files found in {args.folder}")
-            sys.exit(1)
-        print(f"Found {len(sim_files)} simulations in {args.folder}")
-        for data_path in sim_files:
-            plot_from_path(str(data_path), args.output_dir)
+        plot_folder_grid(args.folder, args.output_dir)
     elif args.data:
         # Command-line mode: plot from specified path
         plot_from_path(args.data, args.output_dir)
