@@ -242,7 +242,7 @@ def plot_grid():
         plt.close(fig)
 
 
-def plot_folder_grid(folder_path, output_dir=None):
+def plot_folder_grid(folder_path, output_dir=None, ndens_filter=None):
     """
     Create grid plot from all simulations found in a folder.
 
@@ -260,13 +260,16 @@ def plot_folder_grid(folder_path, output_dir=None):
         Path to folder containing simulation subfolders
     output_dir : str or Path, optional
         Directory to save figure (default: FIG_DIR)
+    ndens_filter : str, optional
+        Filter simulations by cloud density (e.g., "1e4", "1e3").
+        If not specified, generates one PDF per density found.
 
     Notes
     -----
     Folder names must follow the pattern: {mCloud}_sfe{sfe}_n{ndens}
     Examples: "1e7_sfe020_n1e4", "5e6_sfe010_n1e3"
     """
-    from src._output.trinity_reader import find_all_simulations, organize_simulations_for_grid
+    from src._output.trinity_reader import find_all_simulations, organize_simulations_for_grid, get_unique_ndens
 
     folder_path = Path(folder_path)
     folder_name = folder_path.name
@@ -276,105 +279,115 @@ def plot_folder_grid(folder_path, output_dir=None):
         print(f"No simulation files found in {folder_path}")
         return
 
-    organized = organize_simulations_for_grid(sim_files)
-    mCloud_list_found = organized['mCloud_list']
-    sfe_list_found = organized['sfe_list']
-    grid = organized['grid']
-
-    if not mCloud_list_found or not sfe_list_found:
-        print(f"Could not organize simulations into grid")
-        return
+    # Determine which densities to plot
+    if ndens_filter:
+        ndens_to_plot = [ndens_filter]
+    else:
+        ndens_to_plot = get_unique_ndens(sim_files)
 
     print(f"Found {len(sim_files)} simulations")
-    print(f"  mCloud: {mCloud_list_found}")
-    print(f"  SFE: {sfe_list_found}")
+    print(f"  Densities to plot: {ndens_to_plot}")
 
-    nrows = len(mCloud_list_found)
-    fig, axes = plt.subplots(
-        nrows=nrows, ncols=1,
-        figsize=(7.0, 2.6 * nrows),
-        sharex=False,
-        sharey=True,
-        dpi=200,
-        squeeze=False,
-        constrained_layout=True
-    )
+    # Create one grid per density
+    for ndens in ndens_to_plot:
+        print(f"\nProcessing n={ndens}...")
+        organized = organize_simulations_for_grid(sim_files, ndens_filter=ndens)
+        mCloud_list_found = organized['mCloud_list']
+        sfe_list_found = organized['sfe_list']
+        grid = organized['grid']
 
-    all_line_handles = []
-    all_line_labels = []
+        if not mCloud_list_found or not sfe_list_found:
+            print(f"Could not organize simulations into grid")
+            continue
 
-    for i, mCloud in enumerate(mCloud_list_found):
-        ax = axes[i, 0]
+        print(f"  mCloud: {mCloud_list_found}")
+        print(f"  SFE: {sfe_list_found}")
 
-        for sfe in sfe_list_found:
-            data_path = grid.get((mCloud, sfe))
-
-            if data_path is None:
-                continue
-
-            print(f"  Loading: {data_path}")
-            try:
-                t, fesc, isCollapse = load_escape_fraction(data_path)
-                fesc_plot = smooth_1d(fesc, SMOOTH_WINDOW)
-                fesc_plot = np.clip(fesc_plot, 0.0, 1.0)
-
-                eps = int(sfe) / 100.0
-                (line,) = ax.plot(t, fesc_plot, lw=1.8, alpha=0.9, label=rf"$\epsilon={eps:.2f}$")
-
-                if i == 0:
-                    all_line_handles.append(line)
-                    all_line_labels.append(rf"$\epsilon={eps:.2f}$")
-
-                add_collapse_marker(ax, t, isCollapse, show_label=False)
-            except Exception as e:
-                print(f"Error loading {data_path}: {e}")
-
-        mval = float(mCloud)
-        mexp = int(np.floor(np.log10(mval)))
-        mcoeff = round(mval / (10 ** mexp))
-        if mcoeff == 10:
-            mcoeff = 1
-            mexp += 1
-        if mcoeff == 1:
-            mlabel = rf"$M_{{\rm cloud}}=10^{{{mexp}}}\,M_\odot$"
-        else:
-            mlabel = rf"$M_{{\rm cloud}}={mcoeff}\times10^{{{mexp}}}\,M_\odot$"
-        ax.set_ylabel(rf"$f_\mathrm{{esc}}$" + "\n" + mlabel)
-        ax.set_ylim(0, 1)
-        ax.set_xscale('log')
-
-        if i == nrows - 1:
-            ax.set_xlabel("t [Myr]")
-
-    fig.suptitle(folder_name, fontsize=14, y=1.02)
-
-    if all_line_handles:
-        collapse_handles = get_marker_legend_handles(include_phase=False, include_rcloud=False, include_collapse=True)
-        for h in collapse_handles:
-            all_line_handles.append(h)
-            all_line_labels.append(h.get_label())
-        leg = fig.legend(
-            handles=all_line_handles,
-            labels=all_line_labels,
-            loc="upper center",
-            ncol=len(all_line_handles),
-            frameon=True,
-            facecolor="white",
-            framealpha=0.9,
-            edgecolor="0.2",
-            bbox_to_anchor=(0.5, 1.07),
+        nrows = len(mCloud_list_found)
+        fig, axes = plt.subplots(
+            nrows=nrows, ncols=1,
+            figsize=(7.0, 2.6 * nrows),
+            sharex=False,
+            sharey=True,
+            dpi=200,
+            squeeze=False,
+            constrained_layout=True
         )
-        leg.set_zorder(10)
 
-    fig_dir = Path(output_dir) if output_dir else FIG_DIR
-    fig_dir.mkdir(parents=True, exist_ok=True)
-    ndens = organized['ndens']
-    ndens_tag = f"n{ndens}" if ndens else "nMixed"
-    out_pdf = fig_dir / f"{folder_name}_{ndens_tag}.pdf"
-    fig.savefig(out_pdf, bbox_inches="tight")
-    print(f"Saved: {out_pdf}")
+        all_line_handles = []
+        all_line_labels = []
 
-    plt.close(fig)
+        for i, mCloud in enumerate(mCloud_list_found):
+            ax = axes[i, 0]
+
+            for sfe in sfe_list_found:
+                data_path = grid.get((mCloud, sfe))
+
+                if data_path is None:
+                    continue
+
+                print(f"    Loading: {data_path}")
+                try:
+                    t, fesc, isCollapse = load_escape_fraction(data_path)
+                    fesc_plot = smooth_1d(fesc, SMOOTH_WINDOW)
+                    fesc_plot = np.clip(fesc_plot, 0.0, 1.0)
+
+                    eps = int(sfe) / 100.0
+                    (line,) = ax.plot(t, fesc_plot, lw=1.8, alpha=0.9, label=rf"$\epsilon={eps:.2f}$")
+
+                    if i == 0:
+                        all_line_handles.append(line)
+                        all_line_labels.append(rf"$\epsilon={eps:.2f}$")
+
+                    add_collapse_marker(ax, t, isCollapse, show_label=False)
+                except Exception as e:
+                    print(f"Error loading {data_path}: {e}")
+
+            mval = float(mCloud)
+            mexp = int(np.floor(np.log10(mval)))
+            mcoeff = round(mval / (10 ** mexp))
+            if mcoeff == 10:
+                mcoeff = 1
+                mexp += 1
+            if mcoeff == 1:
+                mlabel = rf"$M_{{\rm cloud}}=10^{{{mexp}}}\,M_\odot$"
+            else:
+                mlabel = rf"$M_{{\rm cloud}}={mcoeff}\times10^{{{mexp}}}\,M_\odot$"
+            ax.set_ylabel(rf"$f_\mathrm{{esc}}$" + "\n" + mlabel)
+            ax.set_ylim(0, 1)
+            ax.set_xscale('log')
+
+            if i == nrows - 1:
+                ax.set_xlabel("t [Myr]")
+
+        fig.suptitle(f"{folder_name} (n{ndens})", fontsize=14, y=1.02)
+
+        if all_line_handles:
+            collapse_handles = get_marker_legend_handles(include_phase=False, include_rcloud=False, include_collapse=True)
+            for h in collapse_handles:
+                all_line_handles.append(h)
+                all_line_labels.append(h.get_label())
+            leg = fig.legend(
+                handles=all_line_handles,
+                labels=all_line_labels,
+                loc="upper center",
+                ncol=len(all_line_handles),
+                frameon=True,
+                facecolor="white",
+                framealpha=0.9,
+                edgecolor="0.2",
+                bbox_to_anchor=(0.5, 1.07),
+            )
+            leg.set_zorder(10)
+
+        fig_dir = Path(output_dir) if output_dir else FIG_DIR
+        fig_dir.mkdir(parents=True, exist_ok=True)
+        ndens_tag = f"n{ndens}"
+        out_pdf = fig_dir / f"{folder_name}_{ndens_tag}.pdf"
+        fig.savefig(out_pdf, bbox_inches="tight")
+        print(f"  Saved: {out_pdf}")
+
+        plt.close(fig)
 
 
 # ---------------- command-line interface ----------------
@@ -413,11 +426,16 @@ Examples:
              'Auto-organizes by mCloud (rows) and SFE (columns). '
              'Saves as {folder}_{ndens}.pdf'
     )
+    parser.add_argument(
+        '--nCore', '-n', default=None,
+        help='Filter simulations by cloud density (e.g., "1e4", "1e3"). '
+             'If not specified with --folder, generates one PDF per density found.'
+    )
 
     args = parser.parse_args()
 
     if args.folder:
-        plot_folder_grid(args.folder, args.output_dir)
+        plot_folder_grid(args.folder, args.output_dir, ndens_filter=args.nCore)
     elif args.data:
         # Command-line mode: plot from specified path
         plot_from_path(args.data, args.output_dir)

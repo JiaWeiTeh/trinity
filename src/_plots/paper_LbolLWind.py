@@ -366,7 +366,7 @@ def plot_grid():
         plt.close(fig)
 
 
-def plot_folder_grid(folder_path, output_dir=None):
+def plot_folder_grid(folder_path, output_dir=None, ndens_filter=None):
     """
     Create grid plot from all simulations found in a folder.
 
@@ -384,13 +384,16 @@ def plot_folder_grid(folder_path, output_dir=None):
         Path to folder containing simulation subfolders
     output_dir : str or Path, optional
         Directory to save figure (default: FIG_DIR)
+    ndens_filter : str, optional
+        Filter simulations by cloud density (e.g., "1e4", "1e3").
+        If not specified, generates one PDF per density found.
 
     Notes
     -----
     Folder names must follow the pattern: {mCloud}_sfe{sfe}_n{ndens}
     Examples: "1e7_sfe020_n1e4", "5e6_sfe010_n1e3"
     """
-    from src._output.trinity_reader import find_all_simulations, organize_simulations_for_grid
+    from src._output.trinity_reader import find_all_simulations, organize_simulations_for_grid, get_unique_ndens
 
     folder_path = Path(folder_path)
     folder_name = folder_path.name
@@ -400,120 +403,130 @@ def plot_folder_grid(folder_path, output_dir=None):
         print(f"No simulation files found in {folder_path}")
         return
 
-    organized = organize_simulations_for_grid(sim_files)
-    mCloud_list_found = organized['mCloud_list']
-    sfe_list_found = organized['sfe_list']
-    grid = organized['grid']
-
-    if not mCloud_list_found or not sfe_list_found:
-        print(f"Could not organize simulations into grid")
-        return
+    # Determine which densities to plot
+    if ndens_filter:
+        ndens_to_plot = [ndens_filter]
+    else:
+        ndens_to_plot = get_unique_ndens(sim_files)
 
     print(f"Found {len(sim_files)} simulations")
-    print(f"  mCloud: {mCloud_list_found}")
-    print(f"  SFE: {sfe_list_found}")
+    print(f"  Densities to plot: {ndens_to_plot}")
 
-    nrows, ncols = len(mCloud_list_found), len(sfe_list_found)
-    fig, axes = plt.subplots(
-        nrows=nrows, ncols=ncols,
-        figsize=(3.2 * ncols, 2.6 * nrows),
-        sharex=False, sharey=False,
-        dpi=500,
-        squeeze=False,
-        constrained_layout=False
-    )
+    # Create one grid per density
+    for ndens in ndens_to_plot:
+        print(f"\nProcessing n={ndens}...")
+        organized = organize_simulations_for_grid(sim_files, ndens_filter=ndens)
+        mCloud_list_found = organized['mCloud_list']
+        sfe_list_found = organized['sfe_list']
+        grid = organized['grid']
 
-    fig.subplots_adjust(top=0.90)
+        if not mCloud_list_found or not sfe_list_found:
+            print(f"Could not organize simulations into grid")
+            continue
 
-    for i, mCloud in enumerate(mCloud_list_found):
-        for j, sfe in enumerate(sfe_list_found):
-            ax = axes[i, j]
-            data_path = grid.get((mCloud, sfe))
+        print(f"  mCloud: {mCloud_list_found}")
+        print(f"  SFE: {sfe_list_found}")
 
-            if data_path is None:
-                ax.text(0.5, 0.5, "missing", ha="center", va="center", transform=ax.transAxes)
-                ax.set_axis_off()
-                continue
+        nrows, ncols = len(mCloud_list_found), len(sfe_list_found)
+        fig, axes = plt.subplots(
+            nrows=nrows, ncols=ncols,
+            figsize=(3.2 * ncols, 2.6 * nrows),
+            sharex=False, sharey=False,
+            dpi=500,
+            squeeze=False,
+            constrained_layout=False
+        )
 
-            print(f"  Loading: {data_path}")
-            try:
-                t, phase, Li, Lmech_total, Qi, R2, rcloud, isCollapse = load_run(data_path)
-                axr = plot_panel(ax, t, phase, Li, Lmech_total, Qi, R2, rcloud, isCollapse)
-            except Exception as e:
-                print(f"Error loading {data_path}: {e}")
-                ax.text(0.5, 0.5, "error", ha="center", va="center", transform=ax.transAxes)
-                ax.set_axis_off()
-                continue
+        fig.subplots_adjust(top=0.90)
 
-            if i == 0:
-                eps = int(sfe) / 100.0
-                ax.set_title(rf"$\epsilon={eps:.2f}$")
+        for i, mCloud in enumerate(mCloud_list_found):
+            for j, sfe in enumerate(sfe_list_found):
+                ax = axes[i, j]
+                data_path = grid.get((mCloud, sfe))
 
-            if j == 0:
-                mval = float(mCloud)
-                mexp = int(np.floor(np.log10(mval)))
-                mcoeff = round(mval / (10 ** mexp))
-                if mcoeff == 10:
-                    mcoeff = 1
-                    mexp += 1
-                if mcoeff == 1:
-                    mlabel = rf"$M_{{\rm cloud}}=10^{{{mexp}}}\,M_\odot$"
+                if data_path is None:
+                    ax.text(0.5, 0.5, "missing", ha="center", va="center", transform=ax.transAxes)
+                    ax.set_axis_off()
+                    continue
+
+                print(f"    Loading: {data_path}")
+                try:
+                    t, phase, Li, Lmech_total, Qi, R2, rcloud, isCollapse = load_run(data_path)
+                    axr = plot_panel(ax, t, phase, Li, Lmech_total, Qi, R2, rcloud, isCollapse)
+                except Exception as e:
+                    print(f"Error loading {data_path}: {e}")
+                    ax.text(0.5, 0.5, "error", ha="center", va="center", transform=ax.transAxes)
+                    ax.set_axis_off()
+                    continue
+
+                if i == 0:
+                    eps = int(sfe) / 100.0
+                    ax.set_title(rf"$\epsilon={eps:.2f}$")
+
+                if j == 0:
+                    mval = float(mCloud)
+                    mexp = int(np.floor(np.log10(mval)))
+                    mcoeff = round(mval / (10 ** mexp))
+                    if mcoeff == 10:
+                        mcoeff = 1
+                        mexp += 1
+                    if mcoeff == 1:
+                        mlabel = rf"$M_{{\rm cloud}}=10^{{{mexp}}}\,M_\odot$"
+                    else:
+                        mlabel = rf"$M_{{\rm cloud}}={mcoeff}\times10^{{{mexp}}}\,M_\odot$"
+                    ax.set_ylabel(mlabel + "\n" + r"left: main + $L_{\rm Wind}$")
                 else:
-                    mlabel = rf"$M_{{\rm cloud}}={mcoeff}\times10^{{{mexp}}}\,M_\odot$"
-                ax.set_ylabel(mlabel + "\n" + r"left: main + $L_{\rm Wind}$")
-            else:
-                ax.tick_params(labelleft=False)
+                    ax.tick_params(labelleft=False)
 
-            if j == ncols - 1:
-                if PLOT_QI:
-                    axr.set_ylabel(r"$\mathcal{L}=Q_i/L_{\rm Wind}$")
+                if j == ncols - 1:
+                    if PLOT_QI:
+                        axr.set_ylabel(r"$\mathcal{L}=Q_i/L_{\rm Wind}$")
+                    else:
+                        axr.set_ylabel(r"$\mathcal{L}=L_i/L_{\rm Wind}$")
                 else:
-                    axr.set_ylabel(r"$\mathcal{L}=L_i/L_{\rm Wind}$")
-            else:
-                axr.tick_params(labelright=False)
-                axr.set_ylabel("")
+                    axr.tick_params(labelright=False)
+                    axr.set_ylabel("")
 
-            if i == nrows - 1:
-                ax.set_xlabel("t [Myr]")
+                if i == nrows - 1:
+                    ax.set_xlabel("t [Myr]")
 
-    if PLOT_QI:
-        main_handle = Line2D([0], [0], color=C_QI, lw=1.8, label=r"$Q_i$ (or estimated from $L_i/\langle h\nu\rangle$)")
-        ratio_handle = Line2D([0], [0], color=C_RATIO, lw=1.5, ls="--", label=r"$\mathcal{L}=Q_i/L_{\rm Wind}$")
-    else:
-        main_handle = Line2D([0], [0], color=C_LI, lw=1.8, label=r"$L_i$")
-        ratio_handle = Line2D([0], [0], color=C_RATIO, lw=1.5, ls="--", label=r"$\mathcal{L}=L_i/L_{\rm Wind}$")
+        if PLOT_QI:
+            main_handle = Line2D([0], [0], color=C_QI, lw=1.8, label=r"$Q_i$ (or estimated from $L_i/\langle h\nu\rangle$)")
+            ratio_handle = Line2D([0], [0], color=C_RATIO, lw=1.5, ls="--", label=r"$\mathcal{L}=Q_i/L_{\rm Wind}$")
+        else:
+            main_handle = Line2D([0], [0], color=C_LI, lw=1.8, label=r"$L_i$")
+            ratio_handle = Line2D([0], [0], color=C_RATIO, lw=1.5, ls="--", label=r"$\mathcal{L}=L_i/L_{\rm Wind}$")
 
-    handles = [
-        main_handle,
-        Line2D([0], [0], color=C_LWIND, lw=1.8, label=r"$L_{\rm Wind}$"),
-        ratio_handle,
-    ]
-    handles.extend(get_marker_legend_handles())
+        handles = [
+            main_handle,
+            Line2D([0], [0], color=C_LWIND, lw=1.8, label=r"$L_{\rm Wind}$"),
+            ratio_handle,
+        ]
+        handles.extend(get_marker_legend_handles())
 
-    leg = fig.legend(
-        handles=handles,
-        loc="upper center",
-        ncol=3,
-        frameon=True,
-        facecolor="white",
-        framealpha=0.9,
-        edgecolor="0.2",
-        bbox_to_anchor=(0.5, 0.98),
-        bbox_transform=fig.transFigure
-    )
-    leg.set_zorder(10)
+        leg = fig.legend(
+            handles=handles,
+            loc="upper center",
+            ncol=3,
+            frameon=True,
+            facecolor="white",
+            framealpha=0.9,
+            edgecolor="0.2",
+            bbox_to_anchor=(0.5, 0.98),
+            bbox_transform=fig.transFigure
+        )
+        leg.set_zorder(10)
 
-    fig.suptitle(folder_name, fontsize=14, y=1.05)
+        fig.suptitle(f"{folder_name} (n{ndens})", fontsize=14, y=1.05)
 
-    fig_dir = Path(output_dir) if output_dir else FIG_DIR
-    fig_dir.mkdir(parents=True, exist_ok=True)
-    ndens = organized['ndens']
-    ndens_tag = f"n{ndens}" if ndens else "nMixed"
-    out_pdf = fig_dir / f"{folder_name}_{ndens_tag}.pdf"
-    fig.savefig(out_pdf, bbox_inches="tight")
-    print(f"Saved: {out_pdf}")
+        fig_dir = Path(output_dir) if output_dir else FIG_DIR
+        fig_dir.mkdir(parents=True, exist_ok=True)
+        ndens_tag = f"n{ndens}"
+        out_pdf = fig_dir / f"{folder_name}_{ndens_tag}.pdf"
+        fig.savefig(out_pdf, bbox_inches="tight")
+        print(f"  Saved: {out_pdf}")
 
-    plt.close(fig)
+        plt.close(fig)
 
 
 # ---------------- command-line interface ----------------
@@ -552,11 +565,16 @@ Examples:
              'Auto-organizes by mCloud (rows) and SFE (columns). '
              'Saves as {folder}_{ndens}.pdf'
     )
+    parser.add_argument(
+        '--nCore', '-n', default=None,
+        help='Filter simulations by cloud density (e.g., "1e4", "1e3"). '
+             'If not specified with --folder, generates one PDF per density found.'
+    )
 
     args = parser.parse_args()
 
     if args.folder:
-        plot_folder_grid(args.folder, args.output_dir)
+        plot_folder_grid(args.folder, args.output_dir, ndens_filter=args.nCore)
     elif args.data:
         # Command-line mode: plot from specified path
         plot_from_path(args.data, args.output_dir)
