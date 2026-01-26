@@ -38,6 +38,7 @@ sfe_list    = ["001", "005", "010", "020", "030", "050", "070", "080"]   # cols
 
 
 BASE_DIR = Path.home() / "unsync" / "Code" / "Trinity" / "outputs" / "sweep_test_modified"
+# BASE_DIR = Path.home() / "unsync" / "Code" / "Trinity" / "outputs" / "sweep_orion"
 
 SMOOTH_WINDOW = 21           # None or 1 disables
 PHASE_CHANGE  = True
@@ -654,7 +655,7 @@ def plot_folder_grid(folder_path, output_dir=None):
     fig_dir.mkdir(parents=True, exist_ok=True)
     ndens = organized['ndens']
     ndens_tag = f"n{ndens}" if ndens else "nMixed"
-    out_pdf = fig_dir / f"{folder_name}_{ndens_tag}.pdf"
+    out_pdf = fig_dir / f"{folder_name}_{ndens_tag}_feedback.pdf"
     fig.savefig(out_pdf, bbox_inches="tight")
     print(f"Saved: {out_pdf}")
 
