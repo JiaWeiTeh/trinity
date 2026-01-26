@@ -1141,9 +1141,9 @@ def parse_simulation_params(folder_name: str) -> Optional[Dict[str, str]]:
     return None
 
 
-def organize_simulations_for_grid(sim_files: List[Path]) -> Dict:
+def get_unique_ndens(sim_files: List[Path]) -> List[str]:
     """
-    Organize simulation files into a grid structure for plotting.
+    Get list of unique ndens values from simulation files.
 
     Parameters
     ----------
@@ -1152,11 +1152,38 @@ def organize_simulations_for_grid(sim_files: List[Path]) -> Dict:
 
     Returns
     -------
+    List[str]
+        Sorted list of unique ndens values (e.g., ['1e3', '1e4'])
+    """
+    ndens_set = set()
+    for sim_file in sim_files:
+        folder_name = sim_file.parent.name
+        params = parse_simulation_params(folder_name)
+        if params:
+            ndens_set.add(params['ndens'])
+    return sorted(ndens_set, key=lambda x: float(x))
+
+
+def organize_simulations_for_grid(sim_files: List[Path], ndens_filter: str = None) -> Dict:
+    """
+    Organize simulation files into a grid structure for plotting.
+
+    Parameters
+    ----------
+    sim_files : List[Path]
+        List of paths to dictionary.jsonl files
+    ndens_filter : str, optional
+        If provided, only include simulations with this ndens value (e.g., "1e4").
+        If None, includes all simulations.
+
+    Returns
+    -------
     dict with keys:
         'mCloud_list': sorted list of unique mCloud values (rows, increasing)
         'sfe_list': sorted list of unique SFE values (columns, increasing)
         'grid': dict mapping (mCloud, sfe) -> file path
         'ndens': common ndens value (or None if mixed)
+        'ndens_list': list of all unique ndens values found
     """
     grid = {}
     mCloud_set = set()
@@ -1176,6 +1203,10 @@ def organize_simulations_for_grid(sim_files: List[Path]) -> Dict:
         sfe = params['sfe']
         ndens = params['ndens']
 
+        # Apply ndens filter if specified
+        if ndens_filter is not None and ndens != ndens_filter:
+            continue
+
         mCloud_set.add(mCloud)
         sfe_set.add(sfe)
         ndens_set.add(ndens)
@@ -1184,10 +1215,12 @@ def organize_simulations_for_grid(sim_files: List[Path]) -> Dict:
     # Sort by numerical value
     mCloud_list = sorted(mCloud_set, key=lambda x: float(x))
     sfe_list = sorted(sfe_set, key=lambda x: int(x))
+    ndens_list = sorted(ndens_set, key=lambda x: float(x))
 
     return {
         'mCloud_list': mCloud_list,
         'sfe_list': sfe_list,
         'grid': grid,
-        'ndens': list(ndens_set)[0] if len(ndens_set) == 1 else None
+        'ndens': ndens_list[0] if len(ndens_list) == 1 else None,
+        'ndens_list': ndens_list
     }
