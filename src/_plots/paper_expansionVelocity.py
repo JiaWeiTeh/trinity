@@ -20,11 +20,14 @@ from src._plots.plot_markers import add_plot_markers, get_marker_legend_handles
 print("...plotting velocity (v2) + radii (twin axis) grid")
 
 # ---------------- configuration ----------------
-mCloud_list = ["1e5", "1e7", "1e8"]                 # rows
-ndens_list  = ["1e4", "1e2"]                        # one figure per ndens
-sfe_list    = ["001", "010", "020", "030", "050", "080"]   # cols
+# mCloud_list = ["1e5", "1e7", "1e8"]                 # rows
+mCloud_list = ["1e3", "3e3", "5e3", "7e3", "1e4"]                 # rows
+# ndens_list  = ["1e4", "1e2"]                        # one figure per ndens
+ndens_list  = ["1e4", "1e3"]                        # one figure per ndens
+# sfe_list    = ["001", "002", "003", "030", "050", "080"]   # cols
+sfe_list    = ["001", "002", "003", "004", "005"]   # cols
 
-BASE_DIR = Path.home() / "unsync" / "Code" / "Trinity" / "outputs"
+BASE_DIR = Path.home() / "unsync" / "Code" / "Trinity" / "outputs" / "sweep_orion"
 
 PHASE_LINE = True
 CLOUD_LINE = True
@@ -400,7 +403,6 @@ def plot_grid():
         n_tag   = f"n{ndens}"
         tag = f"velocity_grid_{m_tag}_{sfe_tag}_{n_tag}"
 
-        if SAVE_PNG:
         if SAVE_PDF:
             out_pdf = FIG_DIR / f"{tag}.pdf"
             fig.savefig(out_pdf, bbox_inches="tight", pad_inches=0.15)
