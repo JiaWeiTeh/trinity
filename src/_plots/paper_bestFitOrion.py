@@ -180,7 +180,9 @@ def load_sweep_results(folder_path, ndens_filter=None):
         if params is None:
             continue
 
-        mCloud, sfe, ndens = params
+        mCloud = params['mCloud']
+        sfe = params['sfe']
+        ndens = params['ndens']
 
         # Apply density filter if specified
         if ndens_filter and ndens != ndens_filter:
