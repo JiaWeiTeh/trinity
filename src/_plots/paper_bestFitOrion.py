@@ -1496,7 +1496,7 @@ def main(folder_path: str, output_dir: str = None, config: AnalysisConfig = None
         Analysis configuration
     """
     folder_path = Path(folder_path)
-    output_dir = Path(output_dir) if output_dir else folder_path / 'analysis'
+    output_dir = Path(output_dir) if output_dir else FIG_DIR
     output_dir.mkdir(parents=True, exist_ok=True)
 
     if config is None:
