@@ -697,7 +697,7 @@ def plot_chi2_heatmap_2d(results: List[SimulationResult], config: AnalysisConfig
     chi2_min = np.nanmin(chi2_grid)
     chi2_max = np.nanmax(chi2_grid)
 
-    cmap = plt.cm.RdYlGn_r
+    cmap = plt.cm.viridis_r
     im1 = ax1.imshow(chi2_grid, cmap=cmap, aspect='auto',
                      norm=mcolors.LogNorm(vmin=max(0.1, chi2_min), vmax=min(1000, chi2_max)))
 
@@ -963,7 +963,7 @@ def plot_residual_contours_2d(results: List[SimulationResult], config: AnalysisC
         return
 
     # Scatter plot colored by chi2
-    scatter = ax.scatter(v_vals, M_vals, c=chi2_vals, cmap='RdYlGn_r',
+    scatter = ax.scatter(v_vals, M_vals, c=chi2_vals, cmap='viridis_r',
                          norm=mcolors.LogNorm(vmin=0.1, vmax=100),
                          s=100, edgecolors='k', linewidths=0.5, zorder=5)
 
@@ -1077,7 +1077,7 @@ def plot_Mstar_constraint_2d(results: List[SimulationResult], config: AnalysisCo
                 chi2_grid[i, j] = lookup[(mCloud, sfe)].chi2_total
 
     # Plot heatmap
-    im = ax.imshow(chi2_grid, cmap='RdYlGn_r', aspect='auto',
+    im = ax.imshow(chi2_grid, cmap='viridis_r', aspect='auto',
                    norm=mcolors.LogNorm(vmin=0.1, vmax=100),
                    extent=[-0.5, ncols-0.5, nrows-0.5, -0.5])
 
@@ -1182,7 +1182,7 @@ def plot_chi2_heatmap_3d_faceted(results: List[SimulationResult], config: Analys
         return
     vmin, vmax = max(0.1, min(chi2_all)), min(1000, max(chi2_all))
     norm = mcolors.LogNorm(vmin=vmin, vmax=vmax)
-    cmap = plt.cm.RdYlGn_r
+    cmap = plt.cm.viridis_r
 
     for ax, nCore in zip(axes, nCore_list):
         # Filter for this nCore
@@ -1349,7 +1349,7 @@ def plot_marginal_projections(results: List[SimulationResult], config: AnalysisC
     sfe_vals = sorted(set(r.sfe for r in results), key=lambda x: int(x))
     nCore_vals = sorted(set(r.nCore for r in results), key=float)
 
-    cmap = plt.cm.RdYlGn_r
+    cmap = plt.cm.viridis_r
     chi2_all = [r.chi2_total for r in results if np.isfinite(r.chi2_total)]
     if not chi2_all:
         return
