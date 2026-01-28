@@ -189,8 +189,12 @@ def shell_structure_pure(params) -> ShellProperties:
         rShell_start = rShell_arr[idx]
 
         # Check for shell dissolution
-        if nShell_arr[0] < params['stop_n_diss'].value:
-            is_shellDissolved = True
+        # Requires: allowShellDissolution=True AND density < stop_n_diss AND time > stop_t_diss
+        allow_dissolution = params.get('allowShellDissolution', default=True)
+        if allow_dissolution:
+            t_now_Myr = params['t_now'].value  # Already in Myr
+            if nShell_arr[0] < params['stop_n_diss'].value and t_now_Myr > params['stop_t_diss'].value:
+                is_shellDissolved = True
 
     # Append final values
     mShell_arr_ion = np.append(mShell_arr_ion, mShell_arr[idx])

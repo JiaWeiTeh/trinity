@@ -99,11 +99,14 @@ rCore    0.01
 # Parameters for termination of simulation
 # =============================================================================
 
+# INFO: Allow shell dissolution to terminate simulation. If False, shell dissolution check is disabled.
+allowShellDissolution    True
+
 # INFO: Threshold number density below which the shell is considered dissolved.
 # UNIT: [cm**-3]
 stop_n_diss    1
 
-# INFO: The time interval during which the shell must continuously remain below ``stop_n_diss`` in order to be classified as dissolved.
+# INFO: Minimum simulation time before shell dissolution can occur. Shell dissolves only after t > stop_t_diss AND density < stop_n_diss.
 # UNIT: [Myr]
 stop_t_diss    2
 
