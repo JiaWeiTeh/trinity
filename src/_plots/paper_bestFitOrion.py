@@ -242,7 +242,7 @@ def get_delta_chi2_thresholds(n_dof: int) -> Dict[str, float]:
 # Core Functions
 # =============================================================================
 
-def compute_stellar_mass(mCloud: float, sfe: float) -> float:
+def compute_stellar_mass(mCloud, sfe):
     """
     Compute stellar mass from cloud parameters.
 
@@ -250,19 +250,27 @@ def compute_stellar_mass(mCloud: float, sfe: float) -> float:
 
     Parameters
     ----------
-    mCloud : float
+    mCloud : float or array-like
         Cloud mass in M_sun
-    sfe : float
+    sfe : float or array-like
         Star formation efficiency (0-1)
 
     Returns
     -------
-    float
+    float or ndarray
         Stellar mass in M_sun
     """
-    if sfe >= 1.0:
-        return np.inf
-    return sfe * mCloud / (1.0 - sfe)
+    mCloud = np.asarray(mCloud)
+    sfe = np.asarray(sfe)
+
+    # Use np.where to handle both scalar and array inputs
+    with np.errstate(divide='ignore', invalid='ignore'):
+        result = np.where(sfe >= 1.0, np.inf, sfe * mCloud / (1.0 - sfe))
+
+    # Return scalar if inputs were scalar
+    if result.ndim == 0:
+        return float(result)
+    return result
 
 
 def compute_chi2(sim_values: dict, config: AnalysisConfig) -> dict:
