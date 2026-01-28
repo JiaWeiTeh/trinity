@@ -27,6 +27,7 @@ densPL_alpha    0
 
 # ISM density
 nISM    0.1
+stop_n_diss 0.1
 
 # Allow expansion beyond cloud
 expansionBeyondCloud    True
