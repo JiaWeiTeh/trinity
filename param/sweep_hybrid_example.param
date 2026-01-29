@@ -1,0 +1,39 @@
+# Example Sweep Parameter File with Hybrid Mode
+# ==============================================
+#
+# This file demonstrates hybrid mode: tuple combinations × Cartesian sweep.
+# The tuple defines explicit (mCloud, sfe) pairs, and nCore is swept
+# independently across all tuple combinations.
+#
+# Usage:
+#   python run_sweep.py param/sweep_hybrid_example.param --dry-run
+#
+
+# =============================================================================
+# Tuple parameters - explicit combinations
+# =============================================================================
+
+tuple(mCloud, sfe)    [1e5, 0.01] [1e7, 0.10]
+
+# =============================================================================
+# Sweep parameters - Cartesian product with tuples
+# =============================================================================
+
+# nCore will be combined with EACH tuple combination
+nCore    [1e3, 1e4]
+
+# This generates 2 tuples × 2 nCore values = 4 total combinations:
+#   1. mCloud=1e5, sfe=0.01, nCore=1e3
+#   2. mCloud=1e5, sfe=0.01, nCore=1e4
+#   3. mCloud=1e7, sfe=0.10, nCore=1e3
+#   4. mCloud=1e7, sfe=0.10, nCore=1e4
+
+# =============================================================================
+# Fixed parameters (constant across all runs)
+# =============================================================================
+
+dens_profile    densPL
+densPL_alpha    0
+nISM    0.1
+expansionBeyondCloud    True
+path2output    outputs/sweep_hybrid_test
