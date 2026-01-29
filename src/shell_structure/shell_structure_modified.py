@@ -195,6 +195,7 @@ def shell_structure_pure(params) -> ShellProperties:
             t_now_Myr = params['t_now'].value  # Already in Myr
             if nShell_arr[0] < params['stop_n_diss'].value and t_now_Myr > params['stop_t_diss'].value:
                 is_shellDissolved = True
+                logger.info(f'Shell has dissolved. nShell0 = f{nShell_arr[0]}')
 
     # Append final values
     mShell_arr_ion = np.append(mShell_arr_ion, mShell_arr[idx])
