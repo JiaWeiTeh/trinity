@@ -492,8 +492,6 @@ def plot_trajectory_evolution(results: List[SimulationResult], config: AnalysisC
             tracer_highlight_configs.append(('HI', obs.M_shell_HI, obs.M_shell_HI_err, 'blue', '-'))
         if config.mass_tracer in ['CII', 'all']:
             tracer_highlight_configs.append(('[CII]', obs.M_shell_CII, obs.M_shell_CII_err, 'darkorange', '-'))
-        if config.mass_tracer in ['combined', 'all']:
-            tracer_highlight_configs.append(('Comb', obs.M_shell_combined, obs.M_shell_combined_err, 'red', '-'))
 
         for tracer_name, M_obs, M_err, color, ls in tracer_highlight_configs:
             # Find best model for this tracer
@@ -519,7 +517,6 @@ def plot_trajectory_evolution(results: List[SimulationResult], config: AnalysisC
     tracer_bands = [
         (obs.M_shell_HI, obs.M_shell_HI_err, 'blue', r'HI ($\sim 10^2 M_\odot$)', 0.15),
         (obs.M_shell_CII, obs.M_shell_CII_err, 'darkorange', r'[CII] ($\sim 10^3 M_\odot$)', 0.15),
-        (obs.M_shell_combined, obs.M_shell_combined_err, 'red', 'Combined', 0.08),
     ]
 
     for M_val, M_err, color, label, alpha in tracer_bands:
