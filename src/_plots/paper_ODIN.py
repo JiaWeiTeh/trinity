@@ -443,9 +443,8 @@ def plot_trajectory_evolution(results: List[SimulationResult], config: AnalysisC
     else:
         data_to_plot = data_all_sorted[:top_n]
 
-    # 2 subplots: mass, radius
-    fig, axes = plt.subplots(1, 2, figsize=(6.5, 3.0), dpi=150)
-    ax_m, ax_r = axes
+    # 2 subplots: mass (top), radius (bottom) - stacked vertically with shared x-axis
+    fig, (ax_m, ax_r) = plt.subplots(2, 1, figsize=(6.5, 5.0), dpi=150, sharex=True)
 
     obs = config.obs
 
@@ -501,12 +500,10 @@ def plot_trajectory_evolution(results: List[SimulationResult], config: AnalysisC
     ax_m.axvspan(obs.t_obs - obs.t_err, obs.t_obs + obs.t_err,
                  alpha=0.1, color='gray', zorder=0)
 
-    ax_m.set_xlabel('Time [Myr]', fontsize=14)
     ax_m.set_ylabel(r'Shell Mass [$M_\odot$]', fontsize=14, rotation=90)
     ax_m.tick_params(axis='y', labelrotation=90)
     legend_m = ax_m.legend(loc='lower right', fontsize=10)
     legend_m.set_zorder(100)
-    ax_m.set_xlim(0, 0.3)
     ax_m.set_yscale('log')
     ax_m.set_ylim(10, 1e4)
     ax_m.grid(True, alpha=0.3, which='both')
@@ -529,7 +526,7 @@ def plot_trajectory_evolution(results: List[SimulationResult], config: AnalysisC
     ax_r.set_ylim(0, None)
     ax_r.grid(True, alpha=0.3)
 
-    plt.tight_layout(w_pad=2.0)
+    plt.tight_layout(h_pad=1.0)
 
     suffix = config.get_filename_suffix()
     out_pdf = output_dir / f'trajectory_n{nCore_value}{suffix}.pdf'
