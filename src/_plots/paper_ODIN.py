@@ -503,7 +503,8 @@ def plot_trajectory_evolution(results: List[SimulationResult], config: AnalysisC
 
     ax_m.set_xlabel('Time [Myr]', fontsize=14)
     ax_m.set_ylabel(r'Shell Mass [$M_\odot$]', fontsize=14, rotation=90)
-    ax_m.legend(loc='upper left', fontsize=7)
+    legend_m = ax_m.legend(loc='lower right', fontsize=10)
+    legend_m.set_zorder(100)
     ax_m.set_xlim(0, max(0.5, obs.t_obs * 2.5))
     ax_m.set_yscale('log')
     ax_m.set_ylim(10, 1e4)
@@ -520,7 +521,8 @@ def plot_trajectory_evolution(results: List[SimulationResult], config: AnalysisC
 
     ax_r.set_xlabel('Time [Myr]', fontsize=14)
     ax_r.set_ylabel('Shell Radius [pc]', fontsize=14, rotation=90)
-    ax_r.legend(loc='upper left', fontsize=7)
+    legend_r = ax_r.legend(loc='lower right', fontsize=10)
+    legend_r.set_zorder(100)
     ax_r.set_xlim(0, max(0.5, obs.t_obs * 2.5))
     ax_r.set_ylim(0, None)
     ax_r.grid(True, alpha=0.3)
