@@ -125,10 +125,6 @@ class ObservationalConstraints:
     M_shell_combined: float = 2000.0 # M_sun - Pabst+2019
     M_shell_combined_err: float = 500.0  # M_sun
 
-    # Backwards compatibility - default to combined
-    M_shell_obs: float = 2000.0  # M_sun (deprecated, use specific tracer)
-    M_shell_err: float = 500.0   # M_sun (deprecated)
-
     # Dynamical age
     t_obs: float = 0.2           # Myr
     t_err: float = 0.05          # Myr
@@ -509,10 +505,13 @@ def find_matching_time(output, config: AnalysisConfig) -> dict:
     # Compute chi^2 at each timestep (excluding time constraint)
     chi2_arr = np.zeros_like(t_arr, dtype=float)
 
+    # Get mass constraint for selected tracer
+    M_obs, M_err = config.get_mass_constraint()
+
     if config.constrain_v and v_arr is not None:
         chi2_arr += ((v_arr - obs.v_obs) / obs.v_err) ** 2
     if config.constrain_M_shell and M_arr is not None:
-        chi2_arr += ((M_arr - obs.M_shell_obs) / obs.M_shell_err) ** 2
+        chi2_arr += ((M_arr - M_obs) / M_err) ** 2
     if config.constrain_R and R_arr is not None:
         chi2_arr += ((R_arr - obs.R_obs) / obs.R_err) ** 2
 
@@ -1246,19 +1245,20 @@ def plot_residual_contours_2d(results: List[SimulationResult], config: AnalysisC
                         label=f'Best {tracer_name} ($\\chi^2$={chi2_val:.1f})')
     else:
         # Standard single-tracer: draw confidence ellipses
+        M_obs_single, M_err_single = config.get_mass_constraint()
         for level_name, color, label in [('1sigma', 'green', r'1$\sigma$'),
                                           ('2sigma', 'orange', r'2$\sigma$'),
                                           ('3sigma', 'red', r'3$\sigma$')]:
             delta_chi2 = thresholds[level_name]
             scale = np.sqrt(delta_chi2)
             v_ellipse = obs.v_obs + scale * obs.v_err * np.cos(theta)
-            M_ellipse = obs.M_shell_obs + scale * obs.M_shell_err * np.sin(theta)
+            M_ellipse = M_obs_single + scale * M_err_single * np.sin(theta)
             ax.plot(v_ellipse, M_ellipse, color=color, lw=2, linestyle='--',
                     label=f'{label} ($\\Delta\\chi^2={delta_chi2:.2f}$)')
 
         # Mark observation point
-        ax.errorbar(obs.v_obs, obs.M_shell_obs,
-                    xerr=obs.v_err, yerr=obs.M_shell_err,
+        ax.errorbar(obs.v_obs, M_obs_single,
+                    xerr=obs.v_err, yerr=M_err_single,
                     fmt='s', color='red', markersize=15, capsize=5, capthick=2,
                     label='M42 Observed', zorder=10, markeredgecolor='k', markeredgewidth=2)
 
@@ -2141,13 +2141,14 @@ def print_ranking_table(results: List[SimulationResult], config: AnalysisConfig,
             print(f"     chi²={chi2_val:.2f}")
     else:
         best = sorted_results[0]
-        print(f"\n** BEST FIT:")
+        M_obs_print, M_err_print = config.get_mass_constraint()
+        print(f"\n** BEST FIT ({config.mass_tracer} tracer):")
         print(f"   mCloud = {best.mCloud} M_sun")
         print(f"   sfe = {best.sfe_float:.2f}")
         print(f"   nCore = {best.nCore} cm^-3")
         print(f"   M_star = {best.Mstar:.1f} M_sun (obs: {obs.Mstar_obs:.0f}+/-{obs.Mstar_err:.0f})")
         print(f"   v = {best.v_kms:.1f} km/s (obs: {obs.v_obs:.0f}+/-{obs.v_err:.0f})")
-        print(f"   M_shell = {best.M_shell:.0f} M_sun (obs: {obs.M_shell_obs:.0f}+/-{obs.M_shell_err:.0f})")
+        print(f"   M_shell = {best.M_shell:.0f} M_sun (obs[{config.mass_tracer}]: {M_obs_print:.0f}+/-{M_err_print:.0f})")
         print(f"   t = {best.t_actual:.3f} Myr (target: {obs.t_obs:.2f}+/-{obs.t_err:.2f})")
         print(f"   R = {best.R2:.2f} pc (obs: {obs.R_obs:.1f}+/-{obs.R_err:.1f})")
         print(f"   chi2 = {best.chi2_total:.2f}")
@@ -2330,11 +2331,14 @@ Examples:
   # Analyze with HI mass constraint (~10^2 M_sun)
   python paper_bestFitOrion.py --folder sweep_orion/ --mass-tracer HI
 
-  # Compare all tracers side-by-side
+  # Compare all tracers side-by-side (KEY for mass tension analysis)
   python paper_bestFitOrion.py --folder sweep_orion/ --mass-tracer all
 
   # Show all simulation trajectories
   python paper_bestFitOrion.py --folder sweep_orion/ --showall
+
+  # Filter by nCore value (2D mode)
+  python paper_bestFitOrion.py --folder sweep_orion/ --nCore 1e4
 
   # 3D mode (full parameter space)
   python paper_bestFitOrion.py --folder sweep_orion/ --mode 3d
@@ -2348,16 +2352,22 @@ Examples:
   # Without radius constraint
   python paper_bestFitOrion.py --folder sweep_orion/ --no-R
 
-Observational Constraints (default values):
-  v_expansion:  13 +/- 2 km/s      (Pabst et al. 2020)
-  M_shell:      2000 +/- 500 M_sun (Pabst et al. 2019)
-  Age:          0.2 +/- 0.05 Myr   (Pabst et al. 2019, 2020)
-  R_shell:      4 +/- 0.5 pc       (Pabst et al. 2019)
-  M_star:       34 +/- 5 M_sun     (theta^1 Ori C)
+  # Custom mass values for each tracer
+  python paper_bestFitOrion.py --folder sweep_orion/ --mass-tracer all \\
+      --M-HI 150 --M-HI-err 50 --M-CII 800 --M-CII-err 200
+
+Default Observational Constraints:
+  v_expansion:     13 +/- 2 km/s       (Pabst et al. 2020)
+  M_shell (HI):    100 +/- 30 M_sun    (front hemisphere)
+  M_shell ([CII]): 1000 +/- 300 M_sun  (back hemisphere/PDR)
+  M_shell (comb):  2000 +/- 500 M_sun  (Pabst et al. 2019)
+  Age:             0.2 +/- 0.05 Myr    (Pabst et al. 2019, 2020)
+  R_shell:         4 +/- 0.5 pc        (Pabst et al. 2019)
+  M_star:          34 +/- 5 M_sun      (theta^1 Ori C)
 
 Stellar Mass Constraint:
   M_star = sfe * mCloud / (1 - sfe)
-  This derived constraint helps identify physically plausible (mCloud, sfe) combinations.
+  This derived constraint identifies physically plausible (mCloud, sfe) combinations.
         """
     )
 
@@ -2394,10 +2404,10 @@ Stellar Mass Constraint:
                         help='Observed velocity [km/s] (default: 13.0)')
     parser.add_argument('--v-err', type=float, default=2.0,
                         help='Velocity uncertainty [km/s] (default: 2.0)')
-    parser.add_argument('--M-obs', type=float, default=2000.0,
-                        help='Observed shell mass [M_sun] (default: 2000.0)')
-    parser.add_argument('--M-err', type=float, default=500.0,
-                        help='Shell mass uncertainty [M_sun] (default: 500.0)')
+    parser.add_argument('--M-combined', type=float, default=2000.0,
+                        help='Combined (spherical) shell mass [M_sun] (default: 2000.0)')
+    parser.add_argument('--M-combined-err', type=float, default=500.0,
+                        help='Combined shell mass uncertainty [M_sun] (default: 500.0)')
     parser.add_argument('--t-obs', type=float, default=0.2,
                         help='Observed age [Myr] (default: 0.2)')
     parser.add_argument('--t-err', type=float, default=0.05,
@@ -2439,8 +2449,7 @@ Stellar Mass Constraint:
         v_obs=args.v_obs, v_err=args.v_err,
         M_shell_HI=args.M_HI, M_shell_HI_err=args.M_HI_err,
         M_shell_CII=args.M_CII, M_shell_CII_err=args.M_CII_err,
-        M_shell_combined=args.M_obs, M_shell_combined_err=args.M_err,
-        M_shell_obs=args.M_obs, M_shell_err=args.M_err,  # backwards compat
+        M_shell_combined=args.M_combined, M_shell_combined_err=args.M_combined_err,
         t_obs=args.t_obs, t_err=args.t_err,
         R_obs=args.R_obs, R_err=args.R_err,
         Mstar_obs=args.Mstar, Mstar_err=args.Mstar_err,
