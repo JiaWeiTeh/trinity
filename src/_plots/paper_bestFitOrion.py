@@ -161,6 +161,25 @@ class AnalysisConfig:
             dof += 1
         return dof
 
+    def get_filename_suffix(self) -> str:
+        """Generate filename suffix based on mode and free parameter."""
+        suffix = ""
+        if self.mode == '3d':
+            suffix += "_3d"
+        if self.free_param:
+            suffix += f"_estimate_{self.free_param}"
+        return suffix
+
+    def get_free_param_label(self) -> str:
+        """Get display label for free parameter."""
+        labels = {
+            'v': 'v [km/s]',
+            'M_shell': r'$M_{\rm shell}$ [$M_\odot$]',
+            't': 't [Myr]',
+            'R': 'R [pc]',
+        }
+        return labels.get(self.free_param, self.free_param)
+
 
 @dataclass
 class SimulationResult:
@@ -678,7 +697,7 @@ def plot_chi2_heatmap_2d(results: List[SimulationResult], config: AnalysisConfig
     chi2_min = np.nanmin(chi2_grid)
     chi2_max = np.nanmax(chi2_grid)
 
-    cmap = plt.cm.RdYlGn_r
+    cmap = plt.cm.viridis_r
     im1 = ax1.imshow(chi2_grid, cmap=cmap, aspect='auto',
                      norm=mcolors.LogNorm(vmin=max(0.1, chi2_min), vmax=min(1000, chi2_max)))
 
@@ -785,14 +804,19 @@ def plot_chi2_heatmap_2d(results: List[SimulationResult], config: AnalysisConfig
     ax3.plot(best_j, best_i, marker='*', markersize=15, color='gold',
              markeredgecolor='k', markeredgewidth=1, zorder=10)
 
-    fig.suptitle(f'M42 Best-Fit Analysis: $n_{{\\rm core}}$ = {nCore_value} cm$^{{-3}}$\n'
-                 f'Best: mCloud={best_result.mCloud}, sfe={best_result.sfe_float:.2f}, '
-                 f'$M_\\star$={best_result.Mstar:.1f} M$_\\odot$, $\\chi^2$={best_result.chi2_total:.2f}',
-                 fontsize=12, y=1.02)
+    # Build title with free parameter estimate if applicable
+    title_lines = [f'M42 Best-Fit Analysis: $n_{{\\rm core}}$ = {nCore_value} cm$^{{-3}}$']
+    title_lines.append(f'Best: mCloud={best_result.mCloud}, sfe={best_result.sfe_float:.2f}, '
+                       f'$M_\\star$={best_result.Mstar:.1f} M$_\\odot$, $\\chi^2$={best_result.chi2_total:.2f}')
+    if config.free_param and best_result.free_value is not None:
+        title_lines.append(f'Predicted {config.get_free_param_label()}: {best_result.free_value:.2f}')
+
+    fig.suptitle('\n'.join(title_lines), fontsize=12, y=1.02)
 
     plt.tight_layout()
 
-    out_pdf = output_dir / f'bestfit_n{nCore_value}_heatmap.pdf'
+    suffix = config.get_filename_suffix()
+    out_pdf = output_dir / f'bestfit_n{nCore_value}_heatmap{suffix}.pdf'
     fig.savefig(out_pdf, bbox_inches='tight')
     print(f"  Saved: {out_pdf}")
     plt.close(fig)
@@ -887,12 +911,18 @@ def plot_trajectory_comparison_2d(results: List[SimulationResult], config: Analy
     ax_m.set_ylim(0, None)
     ax_m.grid(True, alpha=0.3)
 
-    fig.suptitle(f'M42 Trajectory Comparison: $n_{{\\rm core}}$ = {nCore_value} cm$^{{-3}}$',
-                 fontsize=14, y=1.02)
+    # Build title with free parameter estimate
+    best = data_sorted[0] if data_sorted else None
+    title_lines = [f'M42 Trajectory Comparison: $n_{{\\rm core}}$ = {nCore_value} cm$^{{-3}}$']
+    if config.free_param and best and best.free_value is not None:
+        title_lines.append(f'Predicted {config.get_free_param_label()}: {best.free_value:.2f}')
+
+    fig.suptitle('\n'.join(title_lines), fontsize=14, y=1.02)
 
     plt.tight_layout()
 
-    out_pdf = output_dir / f'bestfit_n{nCore_value}_trajectories.pdf'
+    suffix = config.get_filename_suffix()
+    out_pdf = output_dir / f'bestfit_n{nCore_value}_trajectories{suffix}.pdf'
     fig.savefig(out_pdf, bbox_inches='tight')
     print(f"  Saved: {out_pdf}")
     plt.close(fig)
@@ -933,7 +963,7 @@ def plot_residual_contours_2d(results: List[SimulationResult], config: AnalysisC
         return
 
     # Scatter plot colored by chi2
-    scatter = ax.scatter(v_vals, M_vals, c=chi2_vals, cmap='RdYlGn_r',
+    scatter = ax.scatter(v_vals, M_vals, c=chi2_vals, cmap='viridis_r',
                          norm=mcolors.LogNorm(vmin=0.1, vmax=100),
                          s=100, edgecolors='k', linewidths=0.5, zorder=5)
 
@@ -981,14 +1011,21 @@ def plot_residual_contours_2d(results: List[SimulationResult], config: AnalysisC
     # Labels
     ax.set_xlabel('Shell Velocity [km/s]')
     ax.set_ylabel(r'Shell Mass [$M_\odot$]')
-    ax.set_title(f'M42 Parameter Space ($n_{{\\rm core}}$ = {nCore_value} cm$^{{-3}}$)\n'
-                 f'at t = {obs.t_obs} Myr')
+
+    # Build title with free parameter estimate
+    title_lines = [f'M42 Parameter Space ($n_{{\\rm core}}$ = {nCore_value} cm$^{{-3}}$)',
+                   f'at t = {obs.t_obs} Myr']
+    if config.free_param and best.free_value is not None:
+        title_lines.append(f'Predicted {config.get_free_param_label()}: {best.free_value:.2f}')
+
+    ax.set_title('\n'.join(title_lines))
     ax.legend(loc='upper left', fontsize=9)
     ax.grid(True, alpha=0.3)
 
     plt.tight_layout()
 
-    out_pdf = output_dir / f'bestfit_n{nCore_value}_residuals.pdf'
+    suffix = config.get_filename_suffix()
+    out_pdf = output_dir / f'bestfit_n{nCore_value}_residuals{suffix}.pdf'
     fig.savefig(out_pdf, bbox_inches='tight')
     print(f"  Saved: {out_pdf}")
     plt.close(fig)
@@ -1040,7 +1077,7 @@ def plot_Mstar_constraint_2d(results: List[SimulationResult], config: AnalysisCo
                 chi2_grid[i, j] = lookup[(mCloud, sfe)].chi2_total
 
     # Plot heatmap
-    im = ax.imshow(chi2_grid, cmap='RdYlGn_r', aspect='auto',
+    im = ax.imshow(chi2_grid, cmap='viridis_r', aspect='auto',
                    norm=mcolors.LogNorm(vmin=0.1, vmax=100),
                    extent=[-0.5, ncols-0.5, nrows-0.5, -0.5])
 
@@ -1085,13 +1122,20 @@ def plot_Mstar_constraint_2d(results: List[SimulationResult], config: AnalysisCo
     ax.set_yticklabels([f'{float(m):.0e}' for m in mCloud_list])
     ax.set_xlabel(r'Star Formation Efficiency ($\epsilon$)')
     ax.set_ylabel(r'Cloud Mass ($M_{\rm cloud}$ [$M_\odot$])')
-    ax.set_title(f'M42 Stellar Mass Constraint: $n_{{\\rm core}}$ = {nCore_value} cm$^{{-3}}$\n'
-                 f'M$_\\star$(obs) = {obs.Mstar_obs:.0f} +/- {obs.Mstar_err:.0f} M$_\\odot$ '
-                 f'(black line = {obs.Mstar_obs:.0f} M$_\\odot$)')
+
+    # Build title with free parameter estimate
+    title_lines = [f'M42 Stellar Mass Constraint: $n_{{\\rm core}}$ = {nCore_value} cm$^{{-3}}$',
+                   f'M$_\\star$(obs) = {obs.Mstar_obs:.0f} +/- {obs.Mstar_err:.0f} M$_\\odot$ '
+                   f'(black line = {obs.Mstar_obs:.0f} M$_\\odot$)']
+    if config.free_param and best.free_value is not None:
+        title_lines.append(f'Predicted {config.get_free_param_label()}: {best.free_value:.2f}')
+
+    ax.set_title('\n'.join(title_lines))
 
     plt.tight_layout()
 
-    out_pdf = output_dir / f'bestfit_n{nCore_value}_Mstar.pdf'
+    suffix = config.get_filename_suffix()
+    out_pdf = output_dir / f'bestfit_n{nCore_value}_Mstar{suffix}.pdf'
     fig.savefig(out_pdf, bbox_inches='tight')
     print(f"  Saved: {out_pdf}")
     plt.close(fig)
@@ -1138,7 +1182,7 @@ def plot_chi2_heatmap_3d_faceted(results: List[SimulationResult], config: Analys
         return
     vmin, vmax = max(0.1, min(chi2_all)), min(1000, max(chi2_all))
     norm = mcolors.LogNorm(vmin=vmin, vmax=vmax)
-    cmap = plt.cm.RdYlGn_r
+    cmap = plt.cm.viridis_r
 
     for ax, nCore in zip(axes, nCore_list):
         # Filter for this nCore
@@ -1193,12 +1237,17 @@ def plot_chi2_heatmap_3d_faceted(results: List[SimulationResult], config: Analys
     cbar = fig.colorbar(plt.cm.ScalarMappable(norm=norm, cmap=cmap), cax=cbar_ax,
                         label=r'$\chi^2_{\rm total}$')
 
-    fig.suptitle(f'M42 Best-Fit Analysis (3D Mode)\n'
-                 f'Global Best: mCloud={best.mCloud}, sfe={best.sfe_float:.2f}, '
-                 f'nCore={best.nCore}, $\\chi^2$={best.chi2_total:.2f}',
-                 fontsize=12, y=1.02)
+    # Build title with free parameter estimate
+    title_lines = ['M42 Best-Fit Analysis (3D Mode)',
+                   f'Global Best: mCloud={best.mCloud}, sfe={best.sfe_float:.2f}, '
+                   f'nCore={best.nCore}, $\\chi^2$={best.chi2_total:.2f}']
+    if config.free_param and best.free_value is not None:
+        title_lines.append(f'Predicted {config.get_free_param_label()}: {best.free_value:.2f}')
 
-    out_pdf = output_dir / 'bestfit_3d_faceted.pdf'
+    fig.suptitle('\n'.join(title_lines), fontsize=12, y=1.02)
+
+    suffix = config.get_filename_suffix()
+    out_pdf = output_dir / f'bestfit_faceted{suffix}.pdf'
     fig.savefig(out_pdf, bbox_inches='tight')
     print(f"  Saved: {out_pdf}")
     plt.close(fig)
@@ -1256,14 +1305,19 @@ def plot_3d_scatter(results: List[SimulationResult], config: AnalysisConfig,
 
     plt.colorbar(sc, ax=ax, label=r'$\chi^2_{\rm total}$', shrink=0.6, pad=0.1)
 
-    ax.set_title(f'M42 Parameter Space (3D)\n'
-                 f'Best: mCloud={best.mCloud}, sfe={best.sfe_float:.2f}, '
-                 f'nCore={best.nCore}, $\\chi^2$={best.chi2_total:.2f}',
-                 fontsize=12)
+    # Build title with free parameter estimate
+    title_lines = ['M42 Parameter Space (3D)',
+                   f'Best: mCloud={best.mCloud}, sfe={best.sfe_float:.2f}, '
+                   f'nCore={best.nCore}, $\\chi^2$={best.chi2_total:.2f}']
+    if config.free_param and best.free_value is not None:
+        title_lines.append(f'Predicted {config.get_free_param_label()}: {best.free_value:.2f}')
+
+    ax.set_title('\n'.join(title_lines), fontsize=12)
 
     ax.legend(loc='upper left')
 
-    out_pdf = output_dir / 'bestfit_3d_scatter.pdf'
+    suffix = config.get_filename_suffix()
+    out_pdf = output_dir / f'bestfit_scatter{suffix}.pdf'
     fig.savefig(out_pdf, bbox_inches='tight')
     print(f"  Saved: {out_pdf}")
     plt.close(fig)
@@ -1295,7 +1349,7 @@ def plot_marginal_projections(results: List[SimulationResult], config: AnalysisC
     sfe_vals = sorted(set(r.sfe for r in results), key=lambda x: int(x))
     nCore_vals = sorted(set(r.nCore for r in results), key=float)
 
-    cmap = plt.cm.RdYlGn_r
+    cmap = plt.cm.viridis_r
     chi2_all = [r.chi2_total for r in results if np.isfinite(r.chi2_total)]
     if not chi2_all:
         return
@@ -1359,12 +1413,18 @@ def plot_marginal_projections(results: List[SimulationResult], config: AnalysisC
     ax3.set_title('min over $M_{\\rm cloud}$')
     plt.colorbar(im3, ax=ax3, label=r'$\chi^2$')
 
-    fig.suptitle('M42 Marginal Projections (minimum $\\chi^2$ over marginalized parameter)',
-                 fontsize=12, y=1.02)
+    # Build title with free parameter estimate
+    best = min(results, key=lambda r: r.chi2_total)
+    title_lines = ['M42 Marginal Projections (minimum $\\chi^2$ over marginalized parameter)']
+    if config.free_param and best.free_value is not None:
+        title_lines.append(f'Predicted {config.get_free_param_label()}: {best.free_value:.2f}')
+
+    fig.suptitle('\n'.join(title_lines), fontsize=12, y=1.02)
 
     plt.tight_layout()
 
-    out_pdf = output_dir / 'bestfit_marginal_projections.pdf'
+    suffix = config.get_filename_suffix()
+    out_pdf = output_dir / f'bestfit_marginal_projections{suffix}.pdf'
     fig.savefig(out_pdf, bbox_inches='tight')
     print(f"  Saved: {out_pdf}")
     plt.close(fig)
