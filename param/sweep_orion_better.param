@@ -1,0 +1,44 @@
+# Example Sweep Parameter File for TRINITY
+# ==========================================
+#
+# This file demonstrates the sweep parameter syntax.
+# Parameters with [list, values] will generate all combinations.
+#
+# Usage:
+#   python run_sweep.py param/sweep_example.param --dry-run
+#   python run_sweep.py param/sweep_example.param --workers 4
+#
+
+# =============================================================================
+# Sweep parameters (lists) - these will be combined
+# =============================================================================
+
+tuple(mCloud, sfe) [1e3, 0.034] [1.5e3, 0.0226667] [2e3, 0.017] [2.5e3, 0.0136] [3e3, 0.0113333] [3.5e3, 0.00971429] [4e3, 0.0085] [5e3, 0.0068]
+
+nCore     [1e3, 1e4]
+
+# =============================================================================
+# Fixed parameters (constant across all runs)
+# =============================================================================
+
+# Density profile
+dens_profile    densPL
+densPL_alpha    0
+
+# ISM density
+nISM    0.1
+stop_n_diss 0.1
+stop_t_diss 1
+
+# Allow expansion beyond cloud
+expansionBeyondCloud    True
+
+# Output directory (each run creates subfolder like 1e5_sfe001_n1e2/)
+path2output    outputs/sweep_orion_better
+
+# use _modified files with solvers
+use_adaptive_solver True
+
+# run without stopping radius
+stop_r    None
+stop_t    0.5
