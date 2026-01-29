@@ -253,8 +253,13 @@ class SweepConfig:
 
     @property
     def is_tuple_mode(self) -> bool:
-        """Check if this is a tuple mode sweep."""
+        """Check if this uses tuple syntax (pure tuple or hybrid)."""
         return self.tuple_params is not None and self.tuple_values is not None
+
+    @property
+    def is_hybrid_mode(self) -> bool:
+        """Check if this is hybrid mode (tuple + sweep params)."""
+        return self.is_tuple_mode and bool(self.sweep_params)
 
 
 def read_sweep_param(path2file: str) -> Tuple[Dict[str, Any], Dict[str, List[Any]]]:
@@ -456,13 +461,14 @@ def read_sweep_config(path2file: str) -> SweepConfig:
                 base_params[key] = value
                 logger.debug(f"  {key}: {value} (base)")
 
-    # Validate: can't have both tuple mode and sweep params
+    # Validate: tuple params and sweep params must not overlap
     if tuple_params is not None and sweep_params:
-        raise ValueError(
-            f"Cannot mix tuple mode with sweep parameters. "
-            f"Found tuple({', '.join(tuple_params)}) but also sweep params: {list(sweep_params.keys())}. "
-            f"Either use tuple mode OR use lists for Cartesian product, not both."
-        )
+        overlap = set(tuple_params) & set(sweep_params.keys())
+        if overlap:
+            raise ValueError(
+                f"Parameter(s) {overlap} appear in both tuple() and as sweep parameters. "
+                f"Each parameter can only be specified once."
+            )
 
     logger.info(f"Read {len(base_params)} base params")
     if tuple_params:
@@ -486,7 +492,10 @@ def generate_combinations_from_config(config: SweepConfig) -> Iterator[Tuple[Dic
     """
     Generate parameter combinations from a SweepConfig.
 
-    Handles both Cartesian mode and tuple mode.
+    Handles three modes:
+    - Cartesian mode: Lists of values generate all combinations
+    - Tuple mode: Explicit tuples specify exact combinations
+    - Hybrid mode: Tuple combinations × Cartesian product of sweep params
 
     Parameters
     ----------
@@ -500,15 +509,34 @@ def generate_combinations_from_config(config: SweepConfig) -> Iterator[Tuple[Dic
         - output_name: Generated name following convention {mass}_sfe{sfe}_n{nCore}
     """
     if config.is_tuple_mode:
-        # Tuple mode: use explicit combinations
-        for values in config.tuple_values:
-            params = config.base_params.copy()
-            for param_name, value in zip(config.tuple_params, values):
-                params[param_name] = value
-            name = generate_run_name(params)
-            yield params, name
+        if config.sweep_params:
+            # Hybrid mode: tuple combinations × sweep params Cartesian product
+            sweep_keys = list(config.sweep_params.keys())
+            sweep_value_lists = [config.sweep_params[k] for k in sweep_keys]
+
+            for tuple_values in config.tuple_values:
+                # Build base params with tuple values
+                tuple_base = config.base_params.copy()
+                for param_name, value in zip(config.tuple_params, tuple_values):
+                    tuple_base[param_name] = value
+
+                # Generate Cartesian product of sweep params
+                for sweep_combo in itertools.product(*sweep_value_lists):
+                    params = tuple_base.copy()
+                    for key, value in zip(sweep_keys, sweep_combo):
+                        params[key] = value
+                    name = generate_run_name(params)
+                    yield params, name
+        else:
+            # Pure tuple mode: use explicit combinations only
+            for values in config.tuple_values:
+                params = config.base_params.copy()
+                for param_name, value in zip(config.tuple_params, values):
+                    params[param_name] = value
+                name = generate_run_name(params)
+                yield params, name
     else:
-        # Cartesian mode: use existing logic
+        # Pure Cartesian mode: use existing logic
         yield from generate_combinations(config.base_params, config.sweep_params)
 
 
@@ -669,6 +697,11 @@ def count_combinations_from_config(config: SweepConfig) -> int:
     """
     Count total number of combinations from a SweepConfig.
 
+    Handles three modes:
+    - Cartesian mode: Product of all sweep param lengths
+    - Tuple mode: Number of explicit tuples
+    - Hybrid mode: Number of tuples × product of sweep param lengths
+
     Parameters
     ----------
     config : SweepConfig
@@ -680,7 +713,13 @@ def count_combinations_from_config(config: SweepConfig) -> int:
         Total number of combinations
     """
     if config.is_tuple_mode:
-        return len(config.tuple_values)
+        n_tuples = len(config.tuple_values)
+        if config.sweep_params:
+            # Hybrid mode: tuples × sweep combinations
+            return n_tuples * count_combinations(config.sweep_params)
+        else:
+            # Pure tuple mode
+            return n_tuples
     else:
         return count_combinations(config.sweep_params)
 

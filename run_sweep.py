@@ -150,7 +150,19 @@ def main():
     for k, v in sorted(config.base_params.items()):
         print(f"  {k}: {v}")
 
-    if config.is_tuple_mode:
+    if config.is_hybrid_mode:
+        print(f"\nHybrid mode:")
+        print(f"  Tuple parameters: {config.tuple_params}")
+        print(f"    {len(config.tuple_values)} explicit combinations:")
+        for i, values in enumerate(config.tuple_values[:5]):  # Show first 5
+            combo_str = ", ".join(f"{p}={v}" for p, v in zip(config.tuple_params, values))
+            print(f"      [{i+1}] {combo_str}")
+        if len(config.tuple_values) > 5:
+            print(f"      ... and {len(config.tuple_values) - 5} more")
+        print(f"  Sweep parameters (Cartesian with tuples):")
+        for k, v in sorted(config.sweep_params.items()):
+            print(f"    {k}: {v} ({len(v)} values)")
+    elif config.is_tuple_mode:
         print(f"\nTuple mode: {config.tuple_params}")
         print(f"  {len(config.tuple_values)} explicit combinations:")
         for i, values in enumerate(config.tuple_values[:5]):  # Show first 5
@@ -214,8 +226,11 @@ def main():
         print("-" * 60)
 
         combinations = list(generate_combinations_from_config(config))
-        # Determine which keys to show (tuple params or sweep params)
-        if config.is_tuple_mode:
+        # Determine which keys to show
+        if config.is_hybrid_mode:
+            # Show both tuple params and sweep params
+            varying_keys = config.tuple_params + sorted(config.sweep_params.keys())
+        elif config.is_tuple_mode:
             varying_keys = config.tuple_params
         else:
             varying_keys = sorted(config.sweep_params.keys())
