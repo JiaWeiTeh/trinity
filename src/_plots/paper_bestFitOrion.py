@@ -475,6 +475,296 @@ def compute_chi2(sim_values: dict, config: AnalysisConfig) -> dict:
     }
 
 
+def get_shell_mass_for_comparison(M_shell: float, config: AnalysisConfig) -> float:
+    """
+    Apply blister correction to shell mass if enabled.
+
+    TRINITY predicts the full shell mass, but in blister geometry
+    we only observe a fraction. This function returns the mass value
+    to compare against observations.
+
+    Parameters
+    ----------
+    M_shell : float
+        Raw shell mass from simulation [M_sun]
+    config : AnalysisConfig
+        Analysis configuration with blister settings
+
+    Returns
+    -------
+    float
+        Shell mass adjusted for blister geometry (if enabled)
+    """
+    if config.blister_mode:
+        return M_shell * config.blister_fraction
+    return M_shell
+
+
+def compute_chi2_for_tracer(r, config: AnalysisConfig, M_obs: float, M_err: float,
+                            include_mass: bool = None) -> float:
+    """
+    Canonical chi² computation for a specific mass tracer.
+
+    This is THE single function to use for all chi² calculations involving
+    tracer mass comparisons. It ensures consistent handling of:
+    - Blister geometry correction
+    - Config constraint flags
+    - All chi² components (v, M, t, R, M_star)
+
+    Parameters
+    ----------
+    r : SimulationResult
+        Simulation result object
+    config : AnalysisConfig
+        Analysis configuration
+    M_obs : float
+        Observed shell mass for this tracer [M_sun]
+    M_err : float
+        Shell mass uncertainty [M_sun]
+    include_mass : bool, optional
+        If True, always include mass term in chi² (useful for tracer comparisons
+        even when constrain_M_shell is False). If None, uses config.constrain_M_shell.
+
+    Returns
+    -------
+    float
+        Total chi² value
+    """
+    obs = config.obs
+    chi2 = 0.0
+
+    # Velocity
+    if config.constrain_v and np.isfinite(r.v_kms):
+        chi2 += ((r.v_kms - obs.v_obs) / obs.v_err) ** 2
+
+    # Shell mass - with blister correction
+    use_mass = include_mass if include_mass is not None else config.constrain_M_shell
+    if use_mass and np.isfinite(r.M_shell):
+        M_compare = get_shell_mass_for_comparison(r.M_shell, config)
+        chi2 += ((M_compare - M_obs) / M_err) ** 2
+
+    # Age
+    if config.constrain_t and np.isfinite(r.t_actual):
+        chi2 += ((r.t_actual - obs.t_obs) / obs.t_err) ** 2
+
+    # Radius
+    if config.constrain_R and np.isfinite(r.R2):
+        chi2 += ((r.R2 - obs.R_obs) / obs.R_err) ** 2
+
+    # Stellar mass
+    if config.constrain_Mstar and np.isfinite(r.Mstar):
+        chi2 += ((r.Mstar - obs.Mstar_obs) / obs.Mstar_err) ** 2
+
+    return chi2
+
+
+def get_n_params_for_grid(mode: str) -> int:
+    """
+    Get number of fitted parameters for confidence region thresholds.
+
+    For parameter-space confidence contours (not goodness-of-fit), we use
+    the number of parameters being explored, not the number of constraints.
+
+    Parameters
+    ----------
+    mode : str
+        '2d' for (mCloud, sfe) grids, '3d' for (mCloud, sfe, nCore) grids
+
+    Returns
+    -------
+    int
+        Number of parameters (2 or 3)
+    """
+    return 3 if mode == '3d' else 2
+
+
+def nCore_matches(ndens_str: str, filter_str: str) -> bool:
+    """
+    Check if nCore value matches filter, handling numeric formatting differences.
+
+    Compares numerically to handle cases like '1e4' vs '1e04' vs '10000'.
+
+    Parameters
+    ----------
+    ndens_str : str
+        nCore value from simulation (e.g., '1e04')
+    filter_str : str
+        Filter value from CLI (e.g., '1e4')
+
+    Returns
+    -------
+    bool
+        True if values match numerically
+    """
+    try:
+        return float(ndens_str) == float(filter_str)
+    except (ValueError, TypeError):
+        # Fall back to string comparison if conversion fails
+        return ndens_str == filter_str
+
+
+def run_debug_checks():
+    """
+    Run self-tests to verify internal consistency of chi² calculations.
+
+    Tests:
+    - Blister correction application
+    - Chi² component calculations
+    - n_params for parameter-space thresholds
+    - nCore filter numeric matching
+    - Δχ² threshold values
+    """
+    print("=" * 60)
+    print("Running debug checks...")
+    print("=" * 60)
+
+    passed = 0
+    failed = 0
+
+    # Create test config
+    test_obs = ObservationalConstraints(
+        v_obs=10.0, v_err=2.0,
+        M_shell_HI=100.0, M_shell_HI_err=20.0,
+        M_shell_CII=1000.0, M_shell_CII_err=200.0,
+        t_obs=0.2, t_err=0.05,
+        R_obs=2.0, R_err=0.3,
+        Mstar_obs=34.0, Mstar_err=3.0,
+    )
+
+    # Test 1: Blister correction
+    print("\n[Test 1] Blister correction...")
+    config_no_blister = AnalysisConfig(obs=test_obs, blister_mode=False)
+    config_blister = AnalysisConfig(obs=test_obs, blister_mode=True, blister_fraction=0.5)
+
+    M_test = 200.0
+    M_no_blister = get_shell_mass_for_comparison(M_test, config_no_blister)
+    M_blister = get_shell_mass_for_comparison(M_test, config_blister)
+
+    if M_no_blister == 200.0 and M_blister == 100.0:
+        print(f"  PASS: no blister={M_no_blister}, blister(0.5)={M_blister}")
+        passed += 1
+    else:
+        print(f"  FAIL: expected (200, 100), got ({M_no_blister}, {M_blister})")
+        failed += 1
+
+    # Test 2: n_params for grid
+    print("\n[Test 2] n_params for grid...")
+    n_2d = get_n_params_for_grid('2d')
+    n_3d = get_n_params_for_grid('3d')
+
+    if n_2d == 2 and n_3d == 3:
+        print(f"  PASS: 2d={n_2d}, 3d={n_3d}")
+        passed += 1
+    else:
+        print(f"  FAIL: expected (2, 3), got ({n_2d}, {n_3d})")
+        failed += 1
+
+    # Test 3: nCore filter matching
+    print("\n[Test 3] nCore filter numeric matching...")
+    tests = [
+        ('1e4', '1e4', True),
+        ('1e04', '1e4', True),
+        ('10000', '1e4', True),
+        ('1e4', '1e5', False),
+        ('1.0e4', '1e4', True),
+    ]
+    test3_pass = True
+    for ndens, filter_val, expected in tests:
+        result = nCore_matches(ndens, filter_val)
+        if result != expected:
+            print(f"  FAIL: nCore_matches('{ndens}', '{filter_val}') = {result}, expected {expected}")
+            test3_pass = False
+
+    if test3_pass:
+        print(f"  PASS: all {len(tests)} numeric matching tests passed")
+        passed += 1
+    else:
+        failed += 1
+
+    # Test 4: Δχ² thresholds
+    print("\n[Test 4] Δχ² thresholds (2-param)...")
+    thresholds = get_delta_chi2_thresholds(2)
+    # For 2 DOF: 1σ ≈ 2.30, 2σ ≈ 6.18, 3σ ≈ 11.83
+    if 2.2 < thresholds['1sigma'] < 2.4 and 6.1 < thresholds['2sigma'] < 6.3:
+        print(f"  PASS: 1σ={thresholds['1sigma']:.2f}, 2σ={thresholds['2sigma']:.2f}, 3σ={thresholds['3sigma']:.2f}")
+        passed += 1
+    else:
+        print(f"  FAIL: unexpected thresholds: {thresholds}")
+        failed += 1
+
+    # Test 5: Chi² calculation consistency
+    print("\n[Test 5] Chi² calculation consistency...")
+
+    # Create mock result
+    class MockResult:
+        def __init__(self):
+            self.v_kms = 12.0
+            self.M_shell = 120.0
+            self.t_actual = 0.22
+            self.R2 = 2.1
+            self.Mstar = 35.0
+
+    mock_r = MockResult()
+    config_test = AnalysisConfig(
+        obs=test_obs,
+        constrain_v=True,
+        constrain_M_shell=True,
+        constrain_t=True,
+        constrain_R=True,
+        constrain_Mstar=True,
+        blister_mode=False
+    )
+
+    chi2 = compute_chi2_for_tracer(mock_r, config_test, test_obs.M_shell_HI, test_obs.M_shell_HI_err)
+
+    # Manual calculation
+    chi2_v = ((12.0 - 10.0) / 2.0) ** 2  # 1.0
+    chi2_M = ((120.0 - 100.0) / 20.0) ** 2  # 1.0
+    chi2_t = ((0.22 - 0.2) / 0.05) ** 2  # 0.16
+    chi2_R = ((2.1 - 2.0) / 0.3) ** 2  # 0.111
+    chi2_Mstar = ((35.0 - 34.0) / 3.0) ** 2  # 0.111
+    expected_chi2 = chi2_v + chi2_M + chi2_t + chi2_R + chi2_Mstar
+
+    if abs(chi2 - expected_chi2) < 0.001:
+        print(f"  PASS: chi²={chi2:.3f} (expected {expected_chi2:.3f})")
+        passed += 1
+    else:
+        print(f"  FAIL: chi²={chi2:.3f} != expected {expected_chi2:.3f}")
+        print(f"        Components: v={chi2_v:.3f}, M={chi2_M:.3f}, t={chi2_t:.3f}, R={chi2_R:.3f}, M*={chi2_Mstar:.3f}")
+        failed += 1
+
+    # Test 6: Chi² with blister
+    print("\n[Test 6] Chi² with blister correction...")
+    config_blister_test = AnalysisConfig(
+        obs=test_obs,
+        constrain_v=False,
+        constrain_M_shell=True,
+        constrain_t=False,
+        constrain_R=False,
+        constrain_Mstar=False,
+        blister_mode=True,
+        blister_fraction=0.5
+    )
+
+    # M_shell=120, with blister*0.5 = 60, obs=100±20 → chi²_M = ((60-100)/20)² = 4.0
+    chi2_blister = compute_chi2_for_tracer(mock_r, config_blister_test, 100.0, 20.0)
+    expected_blister = ((60.0 - 100.0) / 20.0) ** 2
+
+    if abs(chi2_blister - expected_blister) < 0.001:
+        print(f"  PASS: chi² with blister={chi2_blister:.3f} (expected {expected_blister:.3f})")
+        passed += 1
+    else:
+        print(f"  FAIL: chi² with blister={chi2_blister:.3f} != expected {expected_blister:.3f}")
+        failed += 1
+
+    # Summary
+    print("\n" + "=" * 60)
+    print(f"Debug checks: {passed} passed, {failed} failed")
+    print("=" * 60)
+
+    return failed == 0
+
+
 def find_matching_time(output, config: AnalysisConfig) -> dict:
     """
     Find time(s) when simulation best matches constrained observables.
@@ -695,8 +985,8 @@ def load_sweep_results(folder_path: Path, config: AnalysisConfig) -> List[Simula
 
         ndens = params['ndens']
 
-        # Apply nCore filter if specified
-        if config.nCore_filter and ndens != config.nCore_filter:
+        # Apply nCore filter if specified (numeric comparison handles 1e4 vs 1e04)
+        if config.nCore_filter and not nCore_matches(ndens, config.nCore_filter):
             continue
 
         # Load simulation data
@@ -767,17 +1057,9 @@ def plot_chi2_heatmap_2d(results: List[SimulationResult], config: AnalysisConfig
                 M_grid[i, j] = r.M_shell
 
     obs = config.obs
-    n_dof = config.count_dof()
-    thresholds = get_delta_chi2_thresholds(n_dof)
-
-    # Helper function to compute chi² for a specific tracer
-    def compute_tracer_chi2(r, M_obs, M_err):
-        chi2_v = ((r.v_kms - obs.v_obs) / obs.v_err)**2 if np.isfinite(r.v_kms) and config.constrain_v else 0
-        chi2_M = ((r.M_shell - M_obs) / M_err)**2 if np.isfinite(r.M_shell) and config.constrain_M_shell else 0
-        chi2_t = ((r.t_actual - obs.t_obs) / obs.t_err)**2 if np.isfinite(r.t_actual) and config.constrain_t else 0
-        chi2_R = ((r.R2 - obs.R_obs) / obs.R_err)**2 if np.isfinite(r.R2) and config.constrain_R else 0
-        chi2_Mstar = ((r.Mstar - obs.Mstar_obs) / obs.Mstar_err)**2 if np.isfinite(r.Mstar) and config.constrain_Mstar else 0
-        return chi2_v + chi2_M + chi2_t + chi2_R + chi2_Mstar
+    # For parameter-space confidence regions, use n_params (not n_dof)
+    n_params = get_n_params_for_grid(config.mode)
+    thresholds = get_delta_chi2_thresholds(n_params)
 
     # Determine which tracers to plot
     if config.mass_tracer == 'all':
@@ -804,13 +1086,13 @@ def plot_chi2_heatmap_2d(results: List[SimulationResult], config: AnalysisConfig
         axes = axes.reshape(1, 3)  # Make 2D for consistent indexing
 
     for row_idx, (tracer_name, M_obs, M_err, tracer_color) in enumerate(tracer_configs):
-        # Compute chi² grid for this tracer
+        # Compute chi² grid for this tracer using canonical helper
         chi2_grid = np.full((nrows_grid, ncols_grid), np.nan)
         for i, mCloud in enumerate(mCloud_list):
             for j, sfe in enumerate(sfe_list):
                 if (mCloud, sfe) in lookup:
                     r = lookup[(mCloud, sfe)]
-                    chi2_grid[i, j] = compute_tracer_chi2(r, M_obs, M_err)
+                    chi2_grid[i, j] = compute_chi2_for_tracer(r, config, M_obs, M_err)
 
         # Find best fit for this tracer
         best_chi2 = np.inf
@@ -836,12 +1118,13 @@ def plot_chi2_heatmap_2d(results: List[SimulationResult], config: AnalysisConfig
 
         cbar1 = plt.colorbar(im1, ax=ax1, label=r'$\chi^2_{\rm total}$')
 
-        # Add confidence level lines to colorbar
-        for level_name, chi2_level in [('1sigma', thresholds['1sigma']),
+        # Add confidence level lines to colorbar at chi2_min + Δχ² (not just Δχ²)
+        for level_name, delta_chi2 in [('1sigma', thresholds['1sigma']),
                                         ('2sigma', thresholds['2sigma']),
                                         ('3sigma', thresholds['3sigma'])]:
-            if chi2_min < chi2_level < chi2_max:
-                cbar1.ax.axhline(y=chi2_level, color='k', linestyle='--', linewidth=0.8)
+            chi2_threshold = chi2_min + delta_chi2
+            if chi2_min < chi2_threshold < chi2_max:
+                cbar1.ax.axhline(y=chi2_threshold, color='k', linestyle='--', linewidth=0.8)
 
         # Mark best-fit cell with star in tracer color
         ax1.plot(best_j, best_i, marker='*', markersize=20, color=tracer_color,
@@ -1042,16 +1325,6 @@ def plot_trajectory_comparison_2d(results: List[SimulationResult], config: Analy
         if R is not None:
             ax_r.plot(t, R, color=color, lw=lw, label=label, alpha=alpha)
 
-    # Helper function to compute chi² for a specific mass tracer
-    def compute_tracer_chi2(r, M_obs, M_err):
-        """Compute chi² using a specific mass constraint."""
-        chi2_v = ((r.v_kms - obs.v_obs) / obs.v_err)**2 if np.isfinite(r.v_kms) else 0
-        chi2_M = ((r.M_shell - M_obs) / M_err)**2 if np.isfinite(r.M_shell) else 0
-        chi2_t = ((r.t_actual - obs.t_obs) / obs.t_err)**2 if np.isfinite(r.t_actual) else 0
-        chi2_R = ((r.R2 - obs.R_obs) / obs.R_err)**2 if np.isfinite(r.R2) else 0
-        chi2_Mstar = ((r.Mstar - obs.Mstar_obs) / obs.Mstar_err)**2 if np.isfinite(r.Mstar) else 0
-        return chi2_v + chi2_M + chi2_t + chi2_R + chi2_Mstar
-
     # Highlight best-fit trajectory based on mass_tracer selection
     # This shows which model best matches each tracer's mass constraint
     if config.show_all and data_all_sorted:
@@ -1066,9 +1339,9 @@ def plot_trajectory_comparison_2d(results: List[SimulationResult], config: Analy
 
         # Find and highlight best-fit for each selected tracer
         for tracer_name, M_obs, M_err, color, ls in tracer_highlight_configs:
-            # Find best model for this tracer
-            best_for_tracer = min(data, key=lambda r: compute_tracer_chi2(r, M_obs, M_err))
-            chi2_val = compute_tracer_chi2(best_for_tracer, M_obs, M_err)
+            # Find best model for this tracer using canonical helper
+            best_for_tracer = min(data, key=lambda r: compute_chi2_for_tracer(r, config, M_obs, M_err))
+            chi2_val = compute_chi2_for_tracer(best_for_tracer, config, M_obs, M_err)
 
             if best_for_tracer.t_full is not None:
                 label = f"Best ({tracer_name}): {best_for_tracer.mCloud}_sfe{best_for_tracer.sfe} ($\\chi^2$={chi2_val:.1f})"
@@ -1096,8 +1369,9 @@ def plot_trajectory_comparison_2d(results: List[SimulationResult], config: Analy
     ax_v.set_title('Velocity Evolution')
     ax_v.legend(loc='upper right', fontsize=7)
     ax_v.set_xlim(0, max(0.5, obs.t_obs * 2.5))
-    ax_v.set_yscale('log')
-    ax_v.set_ylim(1, 100)
+    # Use symlog scale to handle v<=0 values robustly
+    ax_v.set_yscale('symlog', linthresh=1.0)
+    ax_v.set_ylim(0.5, 100)
     ax_v.grid(True, alpha=0.3, which='both')
 
     # --- Mass panel (log scale) ---
@@ -1202,18 +1476,10 @@ def plot_residual_contours_2d(results: List[SimulationResult], config: AnalysisC
                          s=100, edgecolors='k', linewidths=0.5, zorder=5)
 
     obs = config.obs
-    n_dof = config.count_dof()
-    thresholds = get_delta_chi2_thresholds(n_dof)
+    # For parameter-space confidence regions, use n_params (not n_dof)
+    n_params = get_n_params_for_grid(config.mode)
+    thresholds = get_delta_chi2_thresholds(n_params)
     theta = np.linspace(0, 2 * np.pi, 100)
-
-    # Helper to compute chi² for a specific mass tracer
-    def compute_tracer_chi2(r, M_obs, M_err):
-        chi2_v = ((r.v_kms - obs.v_obs) / obs.v_err)**2 if np.isfinite(r.v_kms) else 0
-        chi2_M = ((r.M_shell - M_obs) / M_err)**2 if np.isfinite(r.M_shell) else 0
-        chi2_t = ((r.t_actual - obs.t_obs) / obs.t_err)**2 if np.isfinite(r.t_actual) else 0
-        chi2_R = ((r.R2 - obs.R_obs) / obs.R_err)**2 if np.isfinite(r.R2) else 0
-        chi2_Mstar = ((r.Mstar - obs.Mstar_obs) / obs.Mstar_err)**2 if np.isfinite(r.Mstar) else 0
-        return chi2_v + chi2_M + chi2_t + chi2_R + chi2_Mstar
 
     # When mass_tracer='all', show contours for all three tracers
     if config.mass_tracer == 'all':
@@ -1237,9 +1503,9 @@ def plot_residual_contours_2d(results: List[SimulationResult], config: AnalysisC
                         fmt='s', color=tracer_color, markersize=12, capsize=4, capthick=2,
                         zorder=10, markeredgecolor='k', markeredgewidth=1)
 
-            # Mark best-fit for this tracer
-            best_tracer = min(data, key=lambda r: compute_tracer_chi2(r, M_obs, M_err))
-            chi2_val = compute_tracer_chi2(best_tracer, M_obs, M_err)
+            # Mark best-fit for this tracer using canonical helper
+            best_tracer = min(data, key=lambda r: compute_chi2_for_tracer(r, config, M_obs, M_err))
+            chi2_val = compute_chi2_for_tracer(best_tracer, config, M_obs, M_err)
             if np.isfinite(best_tracer.v_kms) and np.isfinite(best_tracer.M_shell):
                 ax.plot(best_tracer.v_kms, best_tracer.M_shell, marker='*', markersize=20,
                         color=tracer_color, markeredgecolor='k', markeredgewidth=1, zorder=15,
@@ -1349,15 +1615,6 @@ def plot_Mstar_constraint_2d(results: List[SimulationResult], config: AnalysisCo
                     obs.Mstar_obs + obs.Mstar_err,
                     obs.Mstar_obs + 2*obs.Mstar_err]
 
-    # Helper function to compute chi² for a specific tracer
-    def compute_tracer_chi2(r, M_obs, M_err):
-        chi2_v = ((r.v_kms - obs.v_obs) / obs.v_err)**2 if np.isfinite(r.v_kms) and config.constrain_v else 0
-        chi2_M = ((r.M_shell - M_obs) / M_err)**2 if np.isfinite(r.M_shell) and config.constrain_M_shell else 0
-        chi2_t = ((r.t_actual - obs.t_obs) / obs.t_err)**2 if np.isfinite(r.t_actual) and config.constrain_t else 0
-        chi2_R = ((r.R2 - obs.R_obs) / obs.R_err)**2 if np.isfinite(r.R2) and config.constrain_R else 0
-        chi2_Mstar = ((r.Mstar - obs.Mstar_obs) / obs.Mstar_err)**2 if np.isfinite(r.Mstar) and config.constrain_Mstar else 0
-        return chi2_v + chi2_M + chi2_t + chi2_R + chi2_Mstar
-
     # Determine which tracers to plot
     if config.mass_tracer == 'all':
         tracer_configs = [
@@ -1385,13 +1642,13 @@ def plot_Mstar_constraint_2d(results: List[SimulationResult], config: AnalysisCo
     for ax_idx, (tracer_name, M_obs, M_err, tracer_color) in enumerate(tracer_configs):
         ax = axes[ax_idx]
 
-        # Compute chi² grid for this tracer
+        # Compute chi² grid for this tracer using canonical helper
         chi2_grid = np.full((nrows_grid, ncols_grid), np.nan)
         for i, mCloud in enumerate(mCloud_list):
             for j, sfe in enumerate(sfe_list):
                 if (mCloud, sfe) in lookup:
                     r = lookup[(mCloud, sfe)]
-                    chi2_grid[i, j] = compute_tracer_chi2(r, M_obs, M_err)
+                    chi2_grid[i, j] = compute_chi2_for_tracer(r, config, M_obs, M_err)
 
         # Plot heatmap
         im = ax.imshow(chi2_grid, cmap='viridis_r', aspect='auto',
@@ -1491,24 +1748,15 @@ def plot_momentum_comparison(results: List[SimulationResult], config: AnalysisCo
     # --- Panel 1: p(t) trajectories ---
     ax1 = axes[0]
 
-    # Helper function to compute chi² for a specific tracer
-    def compute_tracer_chi2(r, M_obs, M_err):
-        chi2_v = ((r.v_kms - obs.v_obs) / obs.v_err)**2 if np.isfinite(r.v_kms) and config.constrain_v else 0
-        chi2_M = ((r.M_shell - M_obs) / M_err)**2 if np.isfinite(r.M_shell) and config.constrain_M_shell else 0
-        chi2_t = ((r.t_actual - obs.t_obs) / obs.t_err)**2 if np.isfinite(r.t_actual) and config.constrain_t else 0
-        chi2_R = ((r.R2 - obs.R_obs) / obs.R_err)**2 if np.isfinite(r.R2) and config.constrain_R else 0
-        chi2_Mstar = ((r.Mstar - obs.Mstar_obs) / obs.Mstar_err)**2 if np.isfinite(r.Mstar) and config.constrain_Mstar else 0
-        return chi2_v + chi2_M + chi2_t + chi2_R + chi2_Mstar
-
     if config.mass_tracer == 'all':
-        # Plot best-fit trajectory for each tracer
+        # Plot best-fit trajectory for each tracer using canonical helper
         tracer_configs = [
             ('HI', obs.M_shell_HI, obs.M_shell_HI_err, 'blue'),
             ('[CII]', obs.M_shell_CII, obs.M_shell_CII_err, 'darkorange'),
             ('Comb', obs.M_shell_combined, obs.M_shell_combined_err, 'red'),
         ]
         for tracer_name, M_obs, M_err, tracer_color in tracer_configs:
-            best_tracer = min(data, key=lambda r: compute_tracer_chi2(r, M_obs, M_err))
+            best_tracer = min(data, key=lambda r: compute_chi2_for_tracer(r, config, M_obs, M_err))
             if best_tracer.t_full is not None and best_tracer.v_full_kms is not None and best_tracer.M_shell_full is not None:
                 p_full = best_tracer.M_shell_full * best_tracer.v_full_kms
                 ax1.plot(best_tracer.t_full, p_full, color=tracer_color, lw=2.5,
@@ -1582,7 +1830,7 @@ def plot_momentum_comparison(results: List[SimulationResult], config: AnalysisCo
                 ('Comb', obs.M_shell_combined, obs.M_shell_combined_err, 'red'),
             ]
             for tracer_name, M_obs, M_err, tracer_color in tracer_configs:
-                best_tracer = min(data, key=lambda r: compute_tracer_chi2(r, M_obs, M_err))
+                best_tracer = min(data, key=lambda r: compute_chi2_for_tracer(r, config, M_obs, M_err))
                 ax2.plot(best_tracer.v_kms, best_tracer.M_shell, marker='*', markersize=20,
                          color=tracer_color, markeredgecolor='k', markeredgewidth=1, zorder=15)
         else:
@@ -1611,16 +1859,7 @@ def plot_momentum_comparison(results: List[SimulationResult], config: AnalysisCo
         ax3.axvline(2*obs.p_HI, color='blue', ls=':', lw=1.5, label=f'2×p(HI) = {2*obs.p_HI:.0f}')
         ax3.axvline(obs.p_combined, color='red', ls='-.', lw=1.5, alpha=0.5, label=f'p(comb)')
 
-        # Helper function to compute chi² for a specific tracer
-        def compute_tracer_chi2(r, M_obs, M_err):
-            chi2_v = ((r.v_kms - obs.v_obs) / obs.v_err)**2 if np.isfinite(r.v_kms) and config.constrain_v else 0
-            chi2_M = ((r.M_shell - M_obs) / M_err)**2 if np.isfinite(r.M_shell) and config.constrain_M_shell else 0
-            chi2_t = ((r.t_actual - obs.t_obs) / obs.t_err)**2 if np.isfinite(r.t_actual) and config.constrain_t else 0
-            chi2_R = ((r.R2 - obs.R_obs) / obs.R_err)**2 if np.isfinite(r.R2) and config.constrain_R else 0
-            chi2_Mstar = ((r.Mstar - obs.Mstar_obs) / obs.Mstar_err)**2 if np.isfinite(r.Mstar) and config.constrain_Mstar else 0
-            return chi2_v + chi2_M + chi2_t + chi2_R + chi2_Mstar
-
-        # Mark best-fit momentum(s)
+        # Mark best-fit momentum(s) using canonical helper
         if config.mass_tracer == 'all':
             # Show best-fit for each tracer
             tracer_configs = [
@@ -1629,7 +1868,7 @@ def plot_momentum_comparison(results: List[SimulationResult], config: AnalysisCo
                 ('Comb', obs.M_shell_combined, obs.M_shell_combined_err, 'red'),
             ]
             for tracer_name, M_obs, M_err, tracer_color in tracer_configs:
-                best_tracer = min(data, key=lambda r: compute_tracer_chi2(r, M_obs, M_err))
+                best_tracer = min(data, key=lambda r: compute_chi2_for_tracer(r, config, M_obs, M_err))
                 p_best = best_tracer.M_shell * best_tracer.v_kms
                 ax3.axvline(p_best, color=tracer_color, ls='-', lw=3, alpha=0.8,
                            label=f'Best({tracer_name}): {p_best:.0f}')
@@ -2056,20 +2295,14 @@ def print_ranking_table(results: List[SimulationResult], config: AnalysisConfig,
     """Print ranked table of best-fit parameter combinations."""
     obs = config.obs
 
-    # Helper to compute chi² for a specific mass tracer
-    def compute_tracer_chi2(r, M_obs, M_err):
-        chi2_v = ((r.v_kms - obs.v_obs) / obs.v_err)**2 if np.isfinite(r.v_kms) else 0
-        chi2_M = ((r.M_shell - M_obs) / M_err)**2 if np.isfinite(r.M_shell) else 0
-        chi2_t = ((r.t_actual - obs.t_obs) / obs.t_err)**2 if np.isfinite(r.t_actual) else 0
-        chi2_R = ((r.R2 - obs.R_obs) / obs.R_err)**2 if np.isfinite(r.R2) else 0
-        chi2_Mstar = ((r.Mstar - obs.Mstar_obs) / obs.Mstar_err)**2 if np.isfinite(r.Mstar) else 0
-        return chi2_v + chi2_M + chi2_t + chi2_R + chi2_Mstar
-
     sorted_results = sorted(results, key=lambda r: r.chi2_total)[:top_n]
 
-    # Get thresholds
-    n_dof = config.count_dof()
-    thresholds = get_delta_chi2_thresholds(n_dof)
+    # Get chi2_min for Δχ² calculations
+    chi2_min = sorted_results[0].chi2_total if sorted_results else 0.0
+
+    # Get thresholds - use n_params=2 for parameter-space confidence
+    n_params = get_n_params_for_grid(config.mode)
+    thresholds = get_delta_chi2_thresholds(n_params)
 
     free_str = f"FREE: {config.free_param}" if config.free_param else "None"
 
@@ -2078,11 +2311,12 @@ def print_ranking_table(results: List[SimulationResult], config: AnalysisConfig,
     print("=" * 120)
     print(f"Constraints: {config.get_constraint_string()}")
     print(f"Free parameter: {free_str}")
-    print(f"DOF: {n_dof}")
+    print(f"chi²_min: {chi2_min:.2f}")
+    print(f"Δχ² thresholds (n_params={n_params}): 1σ<{thresholds['1sigma']:.2f}, 2σ<{thresholds['2sigma']:.2f}, 3σ<{thresholds['3sigma']:.2f}")
     print("-" * 120)
 
     if config.mass_tracer == 'all':
-        # Show chi² for all three tracers
+        # Show chi² for all three tracers (always include mass for tracer comparison)
         print(f"{'Rank':>4} {'mCloud':>10} {'sfe':>6} {'nCore':>8} {'M_star':>8} "
               f"{'v_sim':>7} {'M_sim':>8} {'t_sim':>7} {'chi2_HI':>8} {'chi2_CII':>9} {'chi2_comb':>10}")
         print(f"{'':>4} {'[M_sun]':>10} {'':>6} {'[cm-3]':>8} {'[M_sun]':>8} "
@@ -2090,39 +2324,42 @@ def print_ranking_table(results: List[SimulationResult], config: AnalysisConfig,
         print("-" * 120)
 
         for i, r in enumerate(sorted_results, 1):
-            chi2_HI = compute_tracer_chi2(r, obs.M_shell_HI, obs.M_shell_HI_err)
-            chi2_CII = compute_tracer_chi2(r, obs.M_shell_CII, obs.M_shell_CII_err)
-            chi2_comb = compute_tracer_chi2(r, obs.M_shell_combined, obs.M_shell_combined_err)
+            # Use canonical chi² function with include_mass=True for tracer comparison
+            chi2_HI = compute_chi2_for_tracer(r, config, obs.M_shell_HI, obs.M_shell_HI_err, include_mass=True)
+            chi2_CII = compute_chi2_for_tracer(r, config, obs.M_shell_CII, obs.M_shell_CII_err, include_mass=True)
+            chi2_comb = compute_chi2_for_tracer(r, config, obs.M_shell_combined, obs.M_shell_combined_err, include_mass=True)
 
             print(f"{i:>4} {r.mCloud:>10} {r.sfe_float:>6.2f} {r.nCore:>8} "
                   f"{r.Mstar:>8.1f} {r.v_kms:>7.1f} {r.M_shell:>8.0f} "
                   f"{r.t_actual:>7.3f} {chi2_HI:>8.2f} {chi2_CII:>9.2f} {chi2_comb:>10.2f}")
     else:
-        # Standard single-tracer output
+        # Standard single-tracer output with Δχ² significance
         print(f"{'Rank':>4} {'mCloud':>10} {'sfe':>6} {'nCore':>8} {'M_star':>8} "
-              f"{'v_sim':>8} {'M_sim':>8} {'t_sim':>8} {'chi2':>8} {'Sig':>5}")
+              f"{'v_sim':>8} {'M_sim':>8} {'t_sim':>8} {'chi2':>8} {'Δχ²':>6} {'Sig':>5}")
         print(f"{'':>4} {'[M_sun]':>10} {'':>6} {'[cm-3]':>8} {'[M_sun]':>8} "
-              f"{'[km/s]':>8} {'[M_sun]':>8} {'[Myr]':>8} {'':>8} {'':>5}")
+              f"{'[km/s]':>8} {'[M_sun]':>8} {'[Myr]':>8} {'':>8} {'':>6} {'':>5}")
         print("-" * 120)
 
         for i, r in enumerate(sorted_results, 1):
-            if r.chi2_total < thresholds['1sigma']:
+            # Significance uses Δχ² = χ² - χ²_min (NOT absolute χ²)
+            delta_chi2 = r.chi2_total - chi2_min
+            if delta_chi2 < thresholds['1sigma']:
                 sig = "***"
-            elif r.chi2_total < thresholds['2sigma']:
+            elif delta_chi2 < thresholds['2sigma']:
                 sig = "**"
-            elif r.chi2_total < thresholds['3sigma']:
+            elif delta_chi2 < thresholds['3sigma']:
                 sig = "*"
             else:
                 sig = ""
 
             print(f"{i:>4} {r.mCloud:>10} {r.sfe_float:>6.2f} {r.nCore:>8} "
                   f"{r.Mstar:>8.1f} {r.v_kms:>8.1f} {r.M_shell:>8.0f} "
-                  f"{r.t_actual:>8.3f} {r.chi2_total:>8.2f} {sig:>5}")
+                  f"{r.t_actual:>8.3f} {r.chi2_total:>8.2f} {delta_chi2:>6.2f} {sig:>5}")
 
     print("-" * 120)
-    print(f"Legend: *** = 1-sigma (dchi2<{thresholds['1sigma']:.2f}), "
-          f"** = 2-sigma (dchi2<{thresholds['2sigma']:.2f}), "
-          f"* = 3-sigma (dchi2<{thresholds['3sigma']:.2f})")
+    print(f"Legend: *** = 1σ (Δχ²<{thresholds['1sigma']:.2f}), "
+          f"** = 2σ (Δχ²<{thresholds['2sigma']:.2f}), "
+          f"* = 3σ (Δχ²<{thresholds['3sigma']:.2f})")
     print("=" * 120)
 
     # Best fit summary - show for each tracer when mass_tracer='all'
@@ -2134,8 +2371,8 @@ def print_ranking_table(results: List[SimulationResult], config: AnalysisConfig,
             ('Combined', obs.M_shell_combined, obs.M_shell_combined_err),
         ]
         for tracer_name, M_obs, M_err in tracer_configs:
-            best = min(results, key=lambda r: compute_tracer_chi2(r, M_obs, M_err))
-            chi2_val = compute_tracer_chi2(best, M_obs, M_err)
+            best = min(results, key=lambda r: compute_chi2_for_tracer(r, config, M_obs, M_err))
+            chi2_val = compute_chi2_for_tracer(best, config, M_obs, M_err)
             print(f"\n   {tracer_name} (M={M_obs:.0f}±{M_err:.0f} M_sun):")
             print(f"     Best: {best.mCloud} M_sun, sfe={best.sfe_float:.2f}, nCore={best.nCore}")
             print(f"     M_star={best.Mstar:.1f}, v={best.v_kms:.1f} km/s, M_shell={best.M_shell:.0f} M_sun")
@@ -2217,7 +2454,8 @@ def main(folder_path: str, output_dir: str = None, config: AnalysisConfig = None
         Analysis configuration
     """
     folder_path = Path(folder_path)
-    output_dir = Path(output_dir) if output_dir else FIG_DIR
+    # Default output directory is {folder}/analysis/ per documentation
+    output_dir = Path(output_dir) if output_dir else folder_path / 'analysis'
     output_dir.mkdir(parents=True, exist_ok=True)
 
     if config is None:
@@ -2365,9 +2603,9 @@ Shell Mass (shown in plots, optional for chi^2):
         """
     )
 
-    # Required
-    parser.add_argument('--folder', '-F', required=True,
-                        help='Path to sweep output folder')
+    # Required (unless --debug-checks is used)
+    parser.add_argument('--folder', '-F', default=None,
+                        help='Path to sweep output folder (required unless --debug-checks)')
 
     # Output
     parser.add_argument('--output-dir', '-o', default=None,
@@ -2435,7 +2673,20 @@ Shell Mass (shown in plots, optional for chi^2):
     parser.add_argument('--showall', action='store_true',
                         help='Show all simulation trajectories on v(t) and M(t) plots')
 
+    # Debug/testing
+    parser.add_argument('--debug-checks', action='store_true',
+                        help='Run self-tests to verify internal consistency')
+
     args = parser.parse_args()
+
+    # Run debug checks if requested
+    if args.debug_checks:
+        success = run_debug_checks()
+        sys.exit(0 if success else 1)
+
+    # Require --folder for normal operation
+    if not args.folder:
+        parser.error("--folder is required (use --debug-checks to run self-tests)")
 
     # Build observational constraints with multi-tracer support
     obs = ObservationalConstraints(
