@@ -468,12 +468,12 @@ def plot_trajectory_evolution(results: List[SimulationResult], config: AnalysisC
 
         if config.show_all:
             color = cmap(norm(r.chi2_total))
-            alpha = 0.4
-            lw = 0.8
+            alpha = 0.7
+            lw = 1.0
             label = None
         else:
             color = colors[i]
-            alpha = 0.8
+            alpha = 0.9
             lw = 1.5
             label = f"{r.mCloud}_sfe{r.sfe} (M$_\\star$={r.Mstar:.0f}, $\\chi^2$={r.chi2_total:.1f})"
 
@@ -484,34 +484,6 @@ def plot_trajectory_evolution(results: List[SimulationResult], config: AnalysisC
         # Radius trajectory
         if R is not None:
             ax_r.plot(t, R, color=color, lw=lw, label=label, alpha=alpha)
-
-    # Highlight best-fit trajectory based on mass_tracer selection
-    if config.show_all and data_all_sorted:
-        tracer_highlight_configs = []
-        if config.mass_tracer in ['HI', 'all']:
-            tracer_highlight_configs.append(('HI', obs.M_shell_HI, obs.M_shell_HI_err, 'blue', '-'))
-        if config.mass_tracer in ['CII', 'all']:
-            tracer_highlight_configs.append(('[CII]', obs.M_shell_CII, obs.M_shell_CII_err, 'darkorange', '-'))
-
-        for tracer_name, M_obs, M_err, color, ls in tracer_highlight_configs:
-            # Find best model for this tracer
-            def chi2_for_tracer(r):
-                if not np.isfinite(r.M_shell):
-                    return np.inf
-                delta_M = (r.M_shell - M_obs) / M_err
-                return r.chi2_v + delta_M**2 + r.chi2_t + r.chi2_R + r.chi2_Mstar
-
-            best_for_tracer = min(data, key=chi2_for_tracer)
-            chi2_val = chi2_for_tracer(best_for_tracer)
-
-            if best_for_tracer.t_full is not None:
-                label = f"Best ({tracer_name}): {best_for_tracer.mCloud}_sfe{best_for_tracer.sfe} ($\\chi^2$={chi2_val:.1f})"
-                if best_for_tracer.M_shell_full is not None:
-                    ax_m.plot(best_for_tracer.t_full, best_for_tracer.M_shell_full,
-                              color=color, lw=2.5, ls=ls, label=label, alpha=1.0, zorder=5)
-                if best_for_tracer.R_full is not None:
-                    ax_r.plot(best_for_tracer.t_full, best_for_tracer.R_full,
-                              color=color, lw=2.5, ls=ls, label=label, alpha=1.0, zorder=5)
 
     # --- Mass panel (log scale) ---
     tracer_bands = [
