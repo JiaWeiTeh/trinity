@@ -695,7 +695,10 @@ def write_termination_debug_report(output_dir: str, reason: str = "Unknown") -> 
             lines.append(f"\n--- Arrays ({len(array_keys)} total) ---")
             for key in sorted(array_keys)[:15]:  # Limit display
                 arr = np.asarray(snap[key])
-                lines.append(f"  {key:<30} : shape={arr.shape}, range=[{np.nanmin(arr):.3g}, {np.nanmax(arr):.3g}]")
+                if arr.size == 0:
+                    lines.append(f"  {key:<30} : shape={arr.shape}, range=[empty]")
+                else:
+                    lines.append(f"  {key:<30} : shape={arr.shape}, range=[{np.nanmin(arr):.3g}, {np.nanmax(arr):.3g}]")
             if len(array_keys) > 15:
                 lines.append(f"  ... and {len(array_keys) - 15} more arrays")
 
