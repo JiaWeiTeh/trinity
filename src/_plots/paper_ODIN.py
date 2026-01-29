@@ -444,7 +444,7 @@ def plot_trajectory_evolution(results: List[SimulationResult], config: AnalysisC
         data_to_plot = data_all_sorted[:top_n]
 
     # 2 subplots: mass, radius
-    fig, axes = plt.subplots(1, 2, figsize=(14, 5), dpi=150)
+    fig, axes = plt.subplots(1, 2, figsize=(6.5, 2.5), dpi=150)
     ax_m, ax_r = axes
 
     obs = config.obs
@@ -529,9 +529,9 @@ def plot_trajectory_evolution(results: List[SimulationResult], config: AnalysisC
     ax_m.axvspan(obs.t_obs - obs.t_err, obs.t_obs + obs.t_err,
                  alpha=0.1, color='gray', zorder=0)
 
-    ax_m.set_xlabel('Time [Myr]')
-    ax_m.set_ylabel(r'Shell Mass [$M_\odot$]')
-    ax_m.set_title(r'Shell Mass Evolution')
+    ax_m.set_xlabel('Time [Myr]', fontsize=14)
+    ax_m.set_ylabel(r'Shell Mass [$M_\odot$]', fontsize=14, rotation=90)
+    ax_m.set_title(r'Shell Mass Evolution', fontsize=14)
     ax_m.legend(loc='upper left', fontsize=7)
     ax_m.set_xlim(0, max(0.5, obs.t_obs * 2.5))
     ax_m.set_yscale('log')
@@ -547,9 +547,9 @@ def plot_trajectory_evolution(results: List[SimulationResult], config: AnalysisC
     ax_r.axhspan(obs.R_obs - obs.R_err, obs.R_obs + obs.R_err,
                  alpha=0.2, color='green', zorder=1)
 
-    ax_r.set_xlabel('Time [Myr]')
-    ax_r.set_ylabel('Shell Radius [pc]')
-    ax_r.set_title('Radius Evolution')
+    ax_r.set_xlabel('Time [Myr]', fontsize=14)
+    ax_r.set_ylabel('Shell Radius [pc]', fontsize=14, rotation=90)
+    ax_r.set_title('Radius Evolution', fontsize=14)
     ax_r.legend(loc='upper left', fontsize=7)
     ax_r.set_xlim(0, max(0.5, obs.t_obs * 2.5))
     ax_r.set_ylim(0, None)
@@ -561,7 +561,7 @@ def plot_trajectory_evolution(results: List[SimulationResult], config: AnalysisC
     if config.show_all:
         title_lines.append(f'Showing all {len(data_to_plot)} simulations')
 
-    fig.suptitle('\n'.join(title_lines), fontsize=14, y=1.02)
+    fig.suptitle('\n'.join(title_lines), fontsize=14, y=1.05)
 
     plt.tight_layout()
 
