@@ -522,13 +522,14 @@ def plot_trajectory_evolution(results: List[SimulationResult], config: AnalysisC
 
     ax_r.set_xlabel('Time [Myr]', fontsize=14)
     ax_r.set_ylabel('Shell Radius [pc]', fontsize=14, rotation=90)
+    ax_r.tick_params(axis='y', labelrotation=90)
     legend_r = ax_r.legend(loc='lower right', fontsize=10)
     legend_r.set_zorder(100)
     ax_r.set_xlim(0, max(0.5, obs.t_obs * 2.5))
     ax_r.set_ylim(0, None)
     ax_r.grid(True, alpha=0.3)
 
-    plt.tight_layout()
+    plt.tight_layout(w_pad=2.0)
 
     suffix = config.get_filename_suffix()
     out_pdf = output_dir / f'trajectory_n{nCore_value}{suffix}.pdf'
