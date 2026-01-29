@@ -165,19 +165,17 @@ class AnalysisConfig:
     mode: Literal['2d', '3d'] = '2d'
 
     # Which observables to constrain (include in chi^2)
+    # DEFAULT: Best fit based on v, t, R, M_star (NOT shell mass)
     constrain_v: bool = True
-    constrain_M_shell: bool = True
+    constrain_M_shell: bool = False  # Shell mass NOT in chi^2 by default (use --include-mshell)
     constrain_t: bool = True
-    constrain_R: bool = True  # Include radius in chi^2 by default
+    constrain_R: bool = True
     constrain_Mstar: bool = True
-
-    # Free parameter (excluded from chi^2, reported as output)
-    free_param: Optional[Literal['v', 'M_shell', 't', 'R']] = None
 
     # Filter by nCore (for 2D mode)
     nCore_filter: Optional[str] = None
 
-    # Mass tracer selection (for multi-tracer analysis)
+    # Mass tracer selection (for plotting and optional chi^2)
     mass_tracer: Literal['HI', 'CII', 'combined', 'all'] = 'combined'
 
     # Blister geometry correction
@@ -2322,52 +2320,45 @@ constrain which mass estimate is more consistent with the models.
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # Basic analysis (uses combined mass by default)
+  # Basic analysis - best fit based on chi^2(v, t, R, M_star)
+  # Shell mass is shown in plots but NOT used for ranking
   python paper_bestFitOrion.py --folder sweep_orion/
 
-  # Analyze with [CII] mass constraint (~10^3 M_sun)
-  python paper_bestFitOrion.py --folder sweep_orion/ --mass-tracer CII
+  # Include shell mass in chi^2 (optional)
+  python paper_bestFitOrion.py --folder sweep_orion/ --include-mshell
 
-  # Analyze with HI mass constraint (~10^2 M_sun)
-  python paper_bestFitOrion.py --folder sweep_orion/ --mass-tracer HI
+  # Include shell mass with specific tracer
+  python paper_bestFitOrion.py --folder sweep_orion/ --include-mshell --mass-tracer CII
 
-  # Compare all tracers side-by-side (KEY for mass tension analysis)
+  # Compare all tracers in plots (mass tension visualization)
   python paper_bestFitOrion.py --folder sweep_orion/ --mass-tracer all
 
   # Show all simulation trajectories
   python paper_bestFitOrion.py --folder sweep_orion/ --showall
 
-  # Filter by nCore value (2D mode)
+  # Filter by nCore value
   python paper_bestFitOrion.py --folder sweep_orion/ --nCore 1e4
 
   # 3D mode (full parameter space)
   python paper_bestFitOrion.py --folder sweep_orion/ --mode 3d
 
-  # Free parameter: find optimal age
-  python paper_bestFitOrion.py --folder sweep_orion/ --free-param t
-
   # Without stellar mass constraint
   python paper_bestFitOrion.py --folder sweep_orion/ --no-Mstar
 
-  # Without radius constraint
-  python paper_bestFitOrion.py --folder sweep_orion/ --no-R
-
-  # Custom mass values for each tracer
-  python paper_bestFitOrion.py --folder sweep_orion/ --mass-tracer all \\
-      --M-HI 150 --M-HI-err 50 --M-CII 800 --M-CII-err 200
+Default chi^2 calculation:
+  chi^2 = chi^2_v + chi^2_t + chi^2_R + chi^2_Mstar
+  (Shell mass NOT included unless --include-mshell is used)
 
 Default Observational Constraints:
   v_expansion:     13 +/- 2 km/s       (Pabst et al. 2020)
-  M_shell (HI):    100 +/- 30 M_sun    (front hemisphere)
-  M_shell ([CII]): 1000 +/- 300 M_sun  (back hemisphere/PDR)
-  M_shell (comb):  2000 +/- 500 M_sun  (Pabst et al. 2019)
   Age:             0.2 +/- 0.05 Myr    (Pabst et al. 2019, 2020)
   R_shell:         4 +/- 0.5 pc        (Pabst et al. 2019)
   M_star:          34 +/- 5 M_sun      (theta^1 Ori C)
 
-Stellar Mass Constraint:
-  M_star = sfe * mCloud / (1 - sfe)
-  This derived constraint identifies physically plausible (mCloud, sfe) combinations.
+Shell Mass (shown in plots, optional for chi^2):
+  M_shell (HI):    100 +/- 30 M_sun    (front hemisphere)
+  M_shell ([CII]): 1000 +/- 300 M_sun  (back hemisphere/PDR)
+  M_shell (comb):  2000 +/- 500 M_sun  (Pabst et al. 2019)
         """
     )
 
@@ -2386,14 +2377,13 @@ Stellar Mass Constraint:
                         help='Filter by nCore value (e.g., "1e4"). Implies 2D mode.')
 
     # Constraint configuration
-    parser.add_argument('--free-param', choices=['v', 'M_shell', 't', 'R'],
-                        default=None, help='Parameter to leave free (not constrained)')
+    # DEFAULT chi^2 = v + t + R + M_star (shell mass is NOT included by default)
+    parser.add_argument('--include-mshell', action='store_true',
+                        help='Include shell mass in chi^2 calculation (not included by default)')
     parser.add_argument('--no-Mstar', action='store_true',
                         help='Do not constrain stellar mass')
     parser.add_argument('--no-v', action='store_true',
                         help='Do not constrain velocity')
-    parser.add_argument('--no-M', action='store_true',
-                        help='Do not constrain shell mass')
     parser.add_argument('--no-t', action='store_true',
                         help='Do not constrain age')
     parser.add_argument('--no-R', action='store_true',
@@ -2421,10 +2411,10 @@ Stellar Mass Constraint:
     parser.add_argument('--Mstar-err', type=float, default=5.0,
                         help='Stellar mass uncertainty [M_sun] (default: 5.0)')
 
-    # Multi-tracer mass analysis
+    # Multi-tracer mass selection (for plotting; also used in chi^2 if --include-mshell)
     parser.add_argument('--mass-tracer', choices=['HI', 'CII', 'combined', 'all'],
                         default='combined',
-                        help='Mass tracer for chi^2 calculation (default: combined)')
+                        help='Mass tracer for plots (default: combined). Use with --include-mshell to constrain.')
     parser.add_argument('--blister', action='store_true',
                         help='Apply blister H II region geometry correction')
     parser.add_argument('--blister-fraction', type=float, default=0.5,
@@ -2461,11 +2451,10 @@ Stellar Mass Constraint:
     config = AnalysisConfig(
         mode=mode,
         constrain_v=not args.no_v,
-        constrain_M_shell=not args.no_M,
+        constrain_M_shell=args.include_mshell,  # Only include M_shell if explicitly requested
         constrain_t=not args.no_t,
         constrain_R=not args.no_R,
         constrain_Mstar=not args.no_Mstar,
-        free_param=args.free_param,
         nCore_filter=args.nCore,
         mass_tracer=args.mass_tracer,
         blister_mode=args.blister,
