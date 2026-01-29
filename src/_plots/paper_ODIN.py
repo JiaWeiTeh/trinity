@@ -26,7 +26,7 @@ import matplotlib.colors as mcolors
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from src._output.trinity_reader import (
     load_output, find_all_simulations,
-    parse_simulation_params, resolve_data_input
+    parse_simulation_params
 )
 
 print("...creating trajectory evolution plots")
@@ -595,8 +595,7 @@ def main(folder_path: str, output_dir: str = None, config: AnalysisConfig = None
     if config is None:
         config = AnalysisConfig()
 
-    # Resolve folder path
-    folder_path = resolve_data_input(folder_path)
+    # Convert to Path object
     folder_path = Path(folder_path)
 
     if not folder_path.exists():
