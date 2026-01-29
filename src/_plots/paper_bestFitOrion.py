@@ -984,19 +984,43 @@ def plot_trajectory_comparison_2d(results: List[SimulationResult], config: Analy
         if M is not None:
             ax_m.plot(t, M, color=color, lw=lw, label=label, alpha=alpha)
 
-    # Highlight best-fit in show_all mode
-    if config.show_all and data_all_sorted:
-        best = data_all_sorted[0]
-        if best.t_full is not None:
-            best_label = f"Best: {best.mCloud}_sfe{best.sfe} ($\\chi^2$={best.chi2_total:.1f})"
-            if best.v_full_kms is not None:
-                ax_v.plot(best.t_full, best.v_full_kms, color='red', lw=2.5,
-                          label=best_label, alpha=1.0, zorder=5)
-            if best.M_shell_full is not None:
-                ax_m.plot(best.t_full, best.M_shell_full, color='red', lw=2.5,
-                          label=best_label, alpha=1.0, zorder=5)
-
     obs = config.obs
+
+    # Highlight best-fit trajectory based on mass_tracer selection
+    # This shows which model best matches each tracer's mass constraint
+    if config.show_all and data_all_sorted:
+        # Helper function to compute chi² for a specific mass tracer
+        def compute_tracer_chi2(r, M_obs, M_err):
+            """Compute chi² using a specific mass constraint."""
+            chi2_v = ((r.v_kms - obs.v_obs) / obs.v_err)**2 if np.isfinite(r.v_kms) else 0
+            chi2_M = ((r.M_shell - M_obs) / M_err)**2 if np.isfinite(r.M_shell) else 0
+            chi2_t = ((r.t_actual - obs.t_obs) / obs.t_err)**2 if np.isfinite(r.t_actual) else 0
+            chi2_Mstar = ((r.Mstar - obs.Mstar_obs) / obs.Mstar_err)**2 if np.isfinite(r.Mstar) else 0
+            return chi2_v + chi2_M + chi2_t + chi2_Mstar
+
+        # Define tracer configurations: (name, M_obs, M_err, color, linestyle)
+        tracer_highlight_configs = []
+        if config.mass_tracer in ['HI', 'all']:
+            tracer_highlight_configs.append(('HI', obs.M_shell_HI, obs.M_shell_HI_err, 'blue', '-'))
+        if config.mass_tracer in ['CII', 'all']:
+            tracer_highlight_configs.append(('[CII]', obs.M_shell_CII, obs.M_shell_CII_err, 'darkorange', '-'))
+        if config.mass_tracer in ['combined', 'all']:
+            tracer_highlight_configs.append(('Combined', obs.M_shell_combined, obs.M_shell_combined_err, 'red', '-'))
+
+        # Find and highlight best-fit for each selected tracer
+        for tracer_name, M_obs, M_err, color, ls in tracer_highlight_configs:
+            # Find best model for this tracer
+            best_for_tracer = min(data, key=lambda r: compute_tracer_chi2(r, M_obs, M_err))
+            chi2_val = compute_tracer_chi2(best_for_tracer, M_obs, M_err)
+
+            if best_for_tracer.t_full is not None:
+                label = f"Best ({tracer_name}): {best_for_tracer.mCloud}_sfe{best_for_tracer.sfe} ($\\chi^2$={chi2_val:.1f})"
+                if best_for_tracer.v_full_kms is not None:
+                    ax_v.plot(best_for_tracer.t_full, best_for_tracer.v_full_kms,
+                              color=color, lw=2.5, ls=ls, label=label, alpha=1.0, zorder=5)
+                if best_for_tracer.M_shell_full is not None:
+                    ax_m.plot(best_for_tracer.t_full, best_for_tracer.M_shell_full,
+                              color=color, lw=2.5, ls=ls, label=label, alpha=1.0, zorder=5)
 
     # Mark observation point with error bars
     ax_v.errorbar(obs.t_obs, obs.v_obs, xerr=obs.t_err, yerr=obs.v_err,
