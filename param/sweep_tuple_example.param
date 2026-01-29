@@ -1,0 +1,43 @@
+# Example Sweep Parameter File with Tuple Syntax
+# ================================================
+#
+# This file demonstrates the tuple sweep parameter syntax.
+# Instead of generating all Cartesian combinations, tuple mode
+# runs only the explicitly specified parameter combinations.
+#
+# Usage:
+#   python run_sweep.py param/sweep_tuple_example.param --dry-run
+#   python run_sweep.py param/sweep_tuple_example.param --workers 4
+#
+
+# =============================================================================
+# Tuple parameters - explicit combinations only
+# =============================================================================
+
+# Syntax: tuple(param1, param2, ...)    [val1, val2] [val1, val2] ...
+# Each [...] defines one combination to run
+
+tuple(mCloud, sfe, nCore)    [1e5, 0.01, 1e2] [1e6, 0.05, 1e3] [1e7, 0.10, 1e4] [1e8, 0.30, 1e5]
+
+# This runs exactly 4 simulations with these specific parameter sets:
+#   1. mCloud=1e5, sfe=0.01, nCore=1e2
+#   2. mCloud=1e6, sfe=0.05, nCore=1e3
+#   3. mCloud=1e7, sfe=0.10, nCore=1e4
+#   4. mCloud=1e8, sfe=0.30, nCore=1e5
+
+# =============================================================================
+# Fixed parameters (constant across all runs)
+# =============================================================================
+
+# Density profile
+dens_profile    densPL
+densPL_alpha    0
+
+# ISM density
+nISM    0.1
+
+# Allow expansion beyond cloud
+expansionBeyondCloud    True
+
+# Output directory (each run creates subfolder like 1e5_sfe001_n1e2/)
+path2output    outputs/sweep_tuple_test

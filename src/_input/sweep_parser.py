@@ -11,6 +11,14 @@ Features:
 - Separate base (constant) parameters from sweep (varying) parameters
 - Generate all combinations via Cartesian product
 - Generate run names following TRINITY convention: {mass}_sfe{sfe}_n{nCore}
+- TUPLE MODE: Specify explicit parameter tuples instead of Cartesian product
+
+Tuple Mode Syntax:
+    tuple(sfe, mCloud)    [0.01, 1e5] [0.10, 1e7] [0.30, 1e8]
+    tuple(mCloud, nCore, sfe)    [1e5, 1e3, 0.01] [1e7, 1e4, 0.10]
+
+This runs only the specified combinations, not the full Cartesian product.
+Parameters not in the tuple are fixed across all runs.
 
 Author: Claude Code
 Date: 2026-01-14
@@ -19,9 +27,11 @@ Date: 2026-01-14
 import itertools
 import math
 import logging
+import re
+from dataclasses import dataclass
 from fractions import Fraction
 from pathlib import Path
-from typing import Any, Dict, Iterator, List, Tuple, Union
+from typing import Any, Dict, Iterator, List, Tuple, Union, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -141,8 +151,111 @@ def parse_list(list_str: str) -> List[Any]:
 
 
 # =============================================================================
+# Tuple Mode Parsing
+# =============================================================================
+
+def parse_tuple_line(line: str) -> Optional[Tuple[List[str], List[List[Any]]]]:
+    """
+    Parse a tuple definition line.
+
+    Syntax: tuple(param1, param2, ...)    [val1, val2, ...] [val1, val2, ...] ...
+
+    Parameters
+    ----------
+    line : str
+        Line from parameter file
+
+    Returns
+    -------
+    (param_names, tuple_values) or None if not a tuple line
+        - param_names: List of parameter names in the tuple
+        - tuple_values: List of value lists, one per combination
+
+    Examples
+    --------
+    >>> parse_tuple_line("tuple(sfe, mCloud)    [0.01, 1e5] [0.10, 1e7]")
+    (['sfe', 'mCloud'], [[0.01, 100000.0], [0.1, 10000000.0]])
+    """
+    line = line.strip()
+
+    # Check if line starts with 'tuple('
+    if not line.lower().startswith('tuple('):
+        return None
+
+    # Extract the tuple definition: tuple(param1, param2, ...)
+    # Find matching closing parenthesis
+    paren_start = line.find('(')
+    paren_end = line.find(')')
+
+    if paren_start == -1 or paren_end == -1 or paren_end < paren_start:
+        raise ValueError(f"Invalid tuple syntax: {line}")
+
+    # Extract parameter names
+    params_str = line[paren_start + 1:paren_end]
+    param_names = [p.strip() for p in params_str.split(',')]
+
+    if not param_names or any(not p for p in param_names):
+        raise ValueError(f"Invalid tuple parameter names: {line}")
+
+    # Extract the value tuples: [val1, val2] [val3, val4] ...
+    rest = line[paren_end + 1:].strip()
+
+    # Find all [...] groups
+    tuple_values = []
+    pattern = r'\[([^\]]+)\]'
+    matches = re.findall(pattern, rest)
+
+    for match in matches:
+        # Parse the values inside [...]
+        values = []
+        items = [item.strip() for item in match.split(',')]
+
+        if len(items) != len(param_names):
+            raise ValueError(
+                f"Tuple value count mismatch: expected {len(param_names)} values "
+                f"for params {param_names}, got {len(items)} in [{match}]"
+            )
+
+        for item in items:
+            # Parse each value
+            if item.lower() == 'true':
+                values.append(True)
+            elif item.lower() == 'false':
+                values.append(False)
+            else:
+                try:
+                    values.append(float(item))
+                except ValueError:
+                    try:
+                        values.append(float(Fraction(item)))
+                    except (ValueError, ZeroDivisionError):
+                        values.append(item)
+
+        tuple_values.append(values)
+
+    if not tuple_values:
+        raise ValueError(f"No tuple values found in: {line}")
+
+    return param_names, tuple_values
+
+
+# =============================================================================
 # Sweep Parameter File Reading
 # =============================================================================
+
+@dataclass
+class SweepConfig:
+    """Configuration parsed from a sweep parameter file."""
+    base_params: Dict[str, Any]
+    sweep_params: Dict[str, List[Any]]
+    tuple_params: Optional[List[str]] = None  # Parameter names in tuple
+    tuple_values: Optional[List[List[Any]]] = None  # List of value tuples
+
+    @property
+    def is_tuple_mode(self) -> bool:
+        """Check if this is a tuple mode sweep."""
+        return self.tuple_params is not None and self.tuple_values is not None
+
 
 def read_sweep_param(path2file: str) -> Tuple[Dict[str, Any], Dict[str, List[Any]]]:
     """
@@ -236,9 +349,168 @@ def read_sweep_param(path2file: str) -> Tuple[Dict[str, Any], Dict[str, List[Any
     return base_params, sweep_params
 
 
+def read_sweep_config(path2file: str) -> SweepConfig:
+    """
+    Read a sweep-enabled parameter file and return a SweepConfig.
+
+    Supports both modes:
+    - Cartesian mode: Lists of values generate all combinations
+    - Tuple mode: Explicit tuples specify exact combinations
+
+    Parameters
+    ----------
+    path2file : str or Path
+        Path to the sweep parameter file
+
+    Returns
+    -------
+    SweepConfig
+        Configuration object with base_params, sweep_params, and optional tuple info
+
+    Example (Cartesian mode)
+    ------------------------
+    For a file containing:
+        mCloud    [1e5, 1e7]
+        sfe       [0.01, 0.10]
+        dens_profile    densPL
+
+    Returns SweepConfig with:
+        base_params = {'dens_profile': 'densPL'}
+        sweep_params = {'mCloud': [1e5, 1e7], 'sfe': [0.01, 0.10]}
+
+    Example (Tuple mode)
+    --------------------
+    For a file containing:
+        tuple(mCloud, sfe)    [1e5, 0.01] [1e7, 0.10] [1e8, 0.30]
+        nCore    1e4
+        dens_profile    densPL
+
+    Returns SweepConfig with:
+        base_params = {'nCore': 1e4, 'dens_profile': 'densPL'}
+        sweep_params = {}
+        tuple_params = ['mCloud', 'sfe']
+        tuple_values = [[1e5, 0.01], [1e7, 0.10], [1e8, 0.30]]
+    """
+    path = Path(path2file)
+    if not path.exists():
+        raise FileNotFoundError(f"Parameter file not found: {path}")
+
+    base_params = {}
+    sweep_params = {}
+    tuple_params = None
+    tuple_values = None
+
+    with open(path, 'r', encoding='utf-8') as f:
+        for line_num, line in enumerate(f, start=1):
+            # Remove inline comments
+            if '#' in line:
+                line = line[:line.find('#')]
+
+            line = line.strip()
+
+            # Skip empty lines
+            if not line:
+                continue
+
+            # Check for tuple syntax
+            if line.lower().startswith('tuple('):
+                if tuple_params is not None:
+                    raise ValueError(
+                        f"Line {line_num}: Multiple tuple definitions not allowed. "
+                        "Use a single tuple() line with all combinations."
+                    )
+
+                try:
+                    result = parse_tuple_line(line)
+                    if result:
+                        tuple_params, tuple_values = result
+                        logger.info(f"  Tuple mode: {tuple_params} with {len(tuple_values)} combinations")
+                except ValueError as e:
+                    raise ValueError(f"Line {line_num}: {e}")
+                continue
+
+            # Parse parameter line (format: key value)
+            parts = line.split(None, 1)
+
+            if len(parts) != 2:
+                raise ValueError(
+                    f"Line {line_num}: Expected format 'key value', got: '{line}'"
+                )
+
+            key, val_str = parts
+            value = parse_value(val_str)
+
+            # Categorize based on whether it's a list
+            if isinstance(value, list):
+                if len(value) == 0:
+                    raise ValueError(
+                        f"Line {line_num}: Empty list for parameter '{key}'"
+                    )
+                elif len(value) == 1:
+                    base_params[key] = value[0]
+                    logger.debug(f"  {key}: {value[0]} (single-element list -> base)")
+                else:
+                    sweep_params[key] = value
+                    logger.debug(f"  {key}: {value} (sweep, {len(value)} values)")
+            else:
+                base_params[key] = value
+                logger.debug(f"  {key}: {value} (base)")
+
+    # Validate: can't have both tuple mode and sweep params
+    if tuple_params is not None and sweep_params:
+        raise ValueError(
+            f"Cannot mix tuple mode with sweep parameters. "
+            f"Found tuple({', '.join(tuple_params)}) but also sweep params: {list(sweep_params.keys())}. "
+            f"Either use tuple mode OR use lists for Cartesian product, not both."
+        )
+
+    logger.info(f"Read {len(base_params)} base params")
+    if tuple_params:
+        logger.info(f"Tuple mode: {tuple_params} with {len(tuple_values)} combinations")
+    else:
+        logger.info(f"Cartesian mode: {len(sweep_params)} sweep params")
+
+    return SweepConfig(
+        base_params=base_params,
+        sweep_params=sweep_params,
+        tuple_params=tuple_params,
+        tuple_values=tuple_values
+    )
+
+
 # =============================================================================
 # Combination Generation
 # =============================================================================
+
+def generate_combinations_from_config(config: SweepConfig) -> Iterator[Tuple[Dict[str, Any], str]]:
+    """
+    Generate parameter combinations from a SweepConfig.
+
+    Handles both Cartesian mode and tuple mode.
+
+    Parameters
+    ----------
+    config : SweepConfig
+        Configuration from read_sweep_config()
+
+    Yields
+    ------
+    (params_dict, output_name) : tuple
+        - params_dict: Complete parameter dictionary for one simulation
+        - output_name: Generated name following convention {mass}_sfe{sfe}_n{nCore}
+    """
+    if config.is_tuple_mode:
+        # Tuple mode: use explicit combinations
+        for values in config.tuple_values:
+            params = config.base_params.copy()
+            for param_name, value in zip(config.tuple_params, values):
+                params[param_name] = value
+            name = generate_run_name(params)
+            yield params, name
+    else:
+        # Cartesian mode: use existing logic
+        yield from generate_combinations(config.base_params, config.sweep_params)
+
 
 def generate_combinations(
     base_params: Dict[str, Any],
@@ -393,6 +665,26 @@ def count_combinations(sweep_params: Dict[str, List[Any]]) -> int:
     return count
 
 
+def count_combinations_from_config(config: SweepConfig) -> int:
+    """
+    Count total number of combinations from a SweepConfig.
+
+    Parameters
+    ----------
+    config : SweepConfig
+        Configuration from read_sweep_config()
+
+    Returns
+    -------
+    int
+        Total number of combinations
+    """
+    if config.is_tuple_mode:
+        return len(config.tuple_values)
+    else:
+        return count_combinations(config.sweep_params)
+
+
 # =============================================================================
 # Testing
 # =============================================================================
@@ -439,5 +731,42 @@ if __name__ == "__main__":
     expected = "1e7_sfe010_n1e4"
     status = "PASS" if name == expected else "FAIL"
     print(f"  {status}: generate_run_name({params}) = '{name}' (expected '{expected}')")
+
+    # Test parse_tuple_line
+    print("\nTesting parse_tuple_line:")
+    tuple_cases = [
+        ("tuple(sfe, mCloud)    [0.01, 1e5] [0.10, 1e7]",
+         (['sfe', 'mCloud'], [[0.01, 1e5], [0.10, 1e7]])),
+        ("tuple(mCloud, nCore, sfe)    [1e5, 1e3, 0.01]",
+         (['mCloud', 'nCore', 'sfe'], [[1e5, 1e3, 0.01]])),
+        ("TUPLE(a, b)    [1, 2] [3, 4] [5, 6]",
+         (['a', 'b'], [[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]])),
+    ]
+
+    for input_str, expected in tuple_cases:
+        result = parse_tuple_line(input_str)
+        # Compare with tolerance for floats
+        if result is None:
+            status = "FAIL"
+        elif result[0] != expected[0]:
+            status = "FAIL"
+        elif len(result[1]) != len(expected[1]):
+            status = "FAIL"
+        else:
+            status = "PASS"
+            for r_vals, e_vals in zip(result[1], expected[1]):
+                for r, e in zip(r_vals, e_vals):
+                    if abs(r - e) > 1e-9:
+                        status = "FAIL"
+                        break
+        print(f"  {status}: parse_tuple_line('{input_str[:40]}...')")
+        if status == "FAIL":
+            print(f"    Expected: {expected}")
+            print(f"    Got: {result}")
+
+    # Test non-tuple line returns None
+    result = parse_tuple_line("mCloud    [1e5, 1e7]")
+    status = "PASS" if result is None else "FAIL"
+    print(f"  {status}: parse_tuple_line('mCloud [1e5, 1e7]') returns None")
 
     print("\nAll tests complete!")
