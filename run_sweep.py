@@ -47,8 +47,12 @@ sys.path.insert(0, str(TRINITY_ROOT))
 
 from src._input.sweep_parser import (
     read_sweep_param,
+    read_sweep_config,
     generate_combinations,
+    generate_combinations_from_config,
     count_combinations,
+    count_combinations_from_config,
+    SweepConfig,
 )
 from src._input.sweep_runner import (
     run_single_simulation,
@@ -126,13 +130,13 @@ def main():
 
     print(f"\nReading sweep parameters from: {param_path}")
     try:
-        base_params, sweep_params = read_sweep_param(str(param_path))
+        config = read_sweep_config(str(param_path))
     except Exception as e:
         print(f"Error parsing parameter file: {e}")
         sys.exit(1)
 
     # Count combinations
-    n_combinations = count_combinations(sweep_params)
+    n_combinations = count_combinations_from_config(config)
 
     # =============================================================================
     # Display sweep summary
@@ -143,12 +147,21 @@ def main():
     print("=" * 60)
 
     print(f"\nBase parameters (constant across all runs):")
-    for k, v in sorted(base_params.items()):
+    for k, v in sorted(config.base_params.items()):
         print(f"  {k}: {v}")
 
-    print(f"\nSweep parameters (varying):")
-    for k, v in sorted(sweep_params.items()):
-        print(f"  {k}: {v} ({len(v)} values)")
+    if config.is_tuple_mode:
+        print(f"\nTuple mode: {config.tuple_params}")
+        print(f"  {len(config.tuple_values)} explicit combinations:")
+        for i, values in enumerate(config.tuple_values[:5]):  # Show first 5
+            combo_str = ", ".join(f"{p}={v}" for p, v in zip(config.tuple_params, values))
+            print(f"    [{i+1}] {combo_str}")
+        if len(config.tuple_values) > 5:
+            print(f"    ... and {len(config.tuple_values) - 5} more")
+    else:
+        print(f"\nSweep parameters (varying):")
+        for k, v in sorted(config.sweep_params.items()):
+            print(f"  {k}: {v} ({len(v)} values)")
 
     print(f"\nTotal combinations: {n_combinations}")
 
@@ -182,7 +195,7 @@ def main():
     # =============================================================================
 
     # Use path2output from params if specified, else use 'outputs/'
-    base_output_dir = base_params.get('path2output', 'outputs')
+    base_output_dir = config.base_params.get('path2output', 'outputs')
     if base_output_dir == 'def_dir':
         base_output_dir = os.path.join(os.getcwd(), 'outputs')
 
@@ -200,10 +213,16 @@ def main():
         print("DRY RUN - Combinations to be generated:")
         print("-" * 60)
 
-        combinations = list(generate_combinations(base_params, sweep_params))
+        combinations = list(generate_combinations_from_config(config))
+        # Determine which keys to show (tuple params or sweep params)
+        if config.is_tuple_mode:
+            varying_keys = config.tuple_params
+        else:
+            varying_keys = sorted(config.sweep_params.keys())
+
         for params, name in combinations:
             print(f"\n{name}:")
-            for k in sorted(sweep_params.keys()):
+            for k in varying_keys:
                 print(f"  {k}: {params.get(k)}")
 
         print(f"\n(Would run {n_combinations} simulations)")
@@ -240,7 +259,7 @@ def main():
     start_time = datetime.now()
 
     # Generate all combinations
-    combinations = list(generate_combinations(base_params, sweep_params))
+    combinations = list(generate_combinations_from_config(config))
     n_combinations = len(combinations)
 
     progress = ProgressBar(n_combinations, desc="Sweep")
