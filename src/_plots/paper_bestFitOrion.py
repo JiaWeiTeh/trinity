@@ -166,6 +166,9 @@ class AnalysisConfig:
     blister_mode: bool = False
     blister_fraction: float = 0.5  # Fraction of shell visible in blister geometry
 
+    # Show all trajectories (instead of just top N)
+    show_all: bool = False
+
     # Observational constraints
     obs: ObservationalConstraints = field(default_factory=ObservationalConstraints)
 
@@ -220,6 +223,8 @@ class AnalysisConfig:
             suffix += f"_{self.mass_tracer}"
         if self.blister_mode:
             suffix += "_blister"
+        if self.show_all:
+            suffix += "_showall"
         if self.free_param:
             suffix += f"_estimate_{self.free_param}"
         return suffix
@@ -899,7 +904,7 @@ def plot_trajectory_comparison_2d(results: List[SimulationResult], config: Analy
     nCore_value : str
         nCore value for filtering
     top_n : int
-        Number of best-fit models to show
+        Number of best-fit models to show (ignored if config.show_all is True)
     """
     # Filter for this nCore
     data = [r for r in results if r.nCore == nCore_value]
@@ -907,31 +912,67 @@ def plot_trajectory_comparison_2d(results: List[SimulationResult], config: Analy
     if not data:
         return
 
-    # Sort by chi2 and take top_n
-    data_sorted = sorted(data, key=lambda x: x.chi2_total)[:top_n]
+    # Sort by chi2
+    data_all_sorted = sorted(data, key=lambda x: x.chi2_total)
+
+    # Decide which simulations to plot
+    if config.show_all:
+        data_to_plot = data_all_sorted
+    else:
+        data_to_plot = data_all_sorted[:top_n]
 
     fig, axes = plt.subplots(1, 2, figsize=(14, 6), dpi=150)
     ax_v, ax_m = axes
 
     # Color map for different simulations
-    colors = plt.cm.tab10(np.linspace(0, 1, len(data_sorted)))
+    if config.show_all:
+        # Use viridis colormap based on chi2 for show_all mode
+        chi2_vals = [r.chi2_total for r in data_to_plot]
+        chi2_min, chi2_max = min(chi2_vals), max(chi2_vals)
+        norm = mcolors.LogNorm(vmin=max(0.1, chi2_min), vmax=max(1, chi2_max))
+        cmap = plt.cm.viridis_r
+    else:
+        colors = plt.cm.tab10(np.linspace(0, 1, len(data_to_plot)))
 
-    for i, r in enumerate(data_sorted):
+    for i, r in enumerate(data_to_plot):
         if r.t_full is None:
             continue
 
         t = r.t_full
         v = r.v_full_kms
         M = r.M_shell_full
-        label = f"{r.mCloud}_sfe{r.sfe} (M$_\\star$={r.Mstar:.0f}, $\\chi^2$={r.chi2_total:.1f})"
+
+        if config.show_all:
+            # Color by chi2, no individual labels
+            color = cmap(norm(r.chi2_total))
+            alpha = 0.4
+            lw = 0.8
+            label = None
+        else:
+            color = colors[i]
+            alpha = 0.8
+            lw = 1.5
+            label = f"{r.mCloud}_sfe{r.sfe} (M$_\\star$={r.Mstar:.0f}, $\\chi^2$={r.chi2_total:.1f})"
 
         # Velocity trajectory
         if v is not None:
-            ax_v.plot(t, v, color=colors[i], lw=1.5, label=label, alpha=0.8)
+            ax_v.plot(t, v, color=color, lw=lw, label=label, alpha=alpha)
 
         # Mass trajectory
         if M is not None:
-            ax_m.plot(t, M, color=colors[i], lw=1.5, label=label, alpha=0.8)
+            ax_m.plot(t, M, color=color, lw=lw, label=label, alpha=alpha)
+
+    # Highlight best-fit in show_all mode
+    if config.show_all and data_all_sorted:
+        best = data_all_sorted[0]
+        if best.t_full is not None:
+            best_label = f"Best: {best.mCloud}_sfe{best.sfe} ($\\chi^2$={best.chi2_total:.1f})"
+            if best.v_full_kms is not None:
+                ax_v.plot(best.t_full, best.v_full_kms, color='red', lw=2.5,
+                          label=best_label, alpha=1.0, zorder=5)
+            if best.M_shell_full is not None:
+                ax_m.plot(best.t_full, best.M_shell_full, color='red', lw=2.5,
+                          label=best_label, alpha=1.0, zorder=5)
 
     obs = config.obs
 
@@ -982,8 +1023,10 @@ def plot_trajectory_comparison_2d(results: List[SimulationResult], config: Analy
     ax_m.grid(True, alpha=0.3)
 
     # Build title with free parameter estimate
-    best = data_sorted[0] if data_sorted else None
+    best = data_all_sorted[0] if data_all_sorted else None
     title_lines = [f'M42 Trajectory Comparison: $n_{{\\rm core}}$ = {nCore_value} cm$^{{-3}}$']
+    if config.show_all:
+        title_lines.append(f'Showing all {len(data_to_plot)} simulations')
     if config.free_param and best and best.free_value is not None:
         title_lines.append(f'Predicted {config.get_free_param_label()}: {best.free_value:.2f}')
 
@@ -1865,6 +1908,8 @@ def main(folder_path: str, output_dir: str = None, config: AnalysisConfig = None
     print(f"Mass tracer: {config.mass_tracer}")
     if config.blister_mode:
         print(f"Blister geometry: ON (fraction={config.blister_fraction})")
+    if config.show_all:
+        print("Trajectory plots: showing ALL simulations")
     if config.nCore_filter:
         print(f"nCore filter: {config.nCore_filter}")
     if config.free_param:
@@ -2051,6 +2096,10 @@ Stellar Mass Constraint:
     parser.add_argument('--M-CII-err', type=float, default=200.0,
                         help='CII shell mass uncertainty [M_sun] (default: 200.0)')
 
+    # Trajectory plot options
+    parser.add_argument('--showall', action='store_true',
+                        help='Show all simulation trajectories on v(t) and M(t) plots')
+
     args = parser.parse_args()
 
     # Build observational constraints with multi-tracer support
@@ -2080,6 +2129,7 @@ Stellar Mass Constraint:
         mass_tracer=args.mass_tracer,
         blister_mode=args.blister,
         blister_fraction=args.blister_fraction,
+        show_all=args.showall,
         obs=obs,
     )
 
