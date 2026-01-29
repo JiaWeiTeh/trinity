@@ -726,6 +726,8 @@ def plot_chi2_heatmap_2d(results: List[SimulationResult], config: AnalysisConfig
     - Contours: M_star = 30, 34, 40 M_sun lines
     - Annotations: chi^2 values in cells
 
+    If mass_tracer='all', creates a 3-row figure with one row per tracer (HI, [CII], combined).
+
     Parameters
     ----------
     results : List[SimulationResult]
@@ -748,158 +750,206 @@ def plot_chi2_heatmap_2d(results: List[SimulationResult], config: AnalysisConfig
     mCloud_list = sorted(set(r.mCloud for r in data), key=float)
     sfe_list = sorted(set(r.sfe for r in data), key=lambda x: int(x))
 
-    nrows, ncols = len(mCloud_list), len(sfe_list)
-
-    # Build grids
-    chi2_grid = np.full((nrows, ncols), np.nan)
-    v_grid = np.full_like(chi2_grid, np.nan)
-    M_grid = np.full_like(chi2_grid, np.nan)
-    Mstar_grid = np.full_like(chi2_grid, np.nan)
+    nrows_grid, ncols_grid = len(mCloud_list), len(sfe_list)
 
     # Build lookup
     lookup = {(r.mCloud, r.sfe): r for r in data}
+
+    # Build velocity and mass grids (same for all tracers)
+    v_grid = np.full((nrows_grid, ncols_grid), np.nan)
+    M_grid = np.full_like(v_grid, np.nan)
 
     for i, mCloud in enumerate(mCloud_list):
         for j, sfe in enumerate(sfe_list):
             if (mCloud, sfe) in lookup:
                 r = lookup[(mCloud, sfe)]
-                chi2_grid[i, j] = r.chi2_total
                 v_grid[i, j] = r.v_kms
                 M_grid[i, j] = r.M_shell
-                Mstar_grid[i, j] = r.Mstar
 
-    # Find best fit for this nCore
-    best_result = min(data, key=lambda x: x.chi2_total)
-    best_i = mCloud_list.index(best_result.mCloud)
-    best_j = sfe_list.index(best_result.sfe)
-
-    # Get chi2 thresholds
+    obs = config.obs
     n_dof = config.count_dof()
     thresholds = get_delta_chi2_thresholds(n_dof)
 
-    # Create figure: 3 panels
-    fig, axes = plt.subplots(1, 3, figsize=(15, 5), dpi=150)
+    # Helper function to compute chi² for a specific tracer
+    def compute_tracer_chi2(r, M_obs, M_err):
+        chi2_v = ((r.v_kms - obs.v_obs) / obs.v_err)**2 if np.isfinite(r.v_kms) and config.constrain_v else 0
+        chi2_M = ((r.M_shell - M_obs) / M_err)**2 if np.isfinite(r.M_shell) and config.constrain_M_shell else 0
+        chi2_t = ((r.t_actual - obs.t_obs) / obs.t_err)**2 if np.isfinite(r.t_actual) and config.constrain_t else 0
+        chi2_R = ((r.R2 - obs.R_obs) / obs.R_err)**2 if np.isfinite(r.R2) and config.constrain_R else 0
+        chi2_Mstar = ((r.Mstar - obs.Mstar_obs) / obs.Mstar_err)**2 if np.isfinite(r.Mstar) and config.constrain_Mstar else 0
+        return chi2_v + chi2_M + chi2_t + chi2_R + chi2_Mstar
 
-    # --- Panel 1: Chi^2 heatmap ---
-    ax1 = axes[0]
-    chi2_min = np.nanmin(chi2_grid)
-    chi2_max = np.nanmax(chi2_grid)
+    # Determine which tracers to plot
+    if config.mass_tracer == 'all':
+        tracer_configs = [
+            ('HI 21cm', obs.M_shell_HI, obs.M_shell_HI_err, 'blue'),
+            ('[CII] 158µm', obs.M_shell_CII, obs.M_shell_CII_err, 'darkorange'),
+            ('Combined', obs.M_shell_combined, obs.M_shell_combined_err, 'red'),
+        ]
+        fig, axes = plt.subplots(3, 3, figsize=(15, 14), dpi=150)
+    else:
+        # Single tracer mode
+        M_obs, M_err = config.get_mass_constraint()
+        if config.mass_tracer == 'HI':
+            tracer_name = 'HI 21cm'
+            tracer_color = 'blue'
+        elif config.mass_tracer == 'CII':
+            tracer_name = '[CII] 158µm'
+            tracer_color = 'darkorange'
+        else:
+            tracer_name = 'Combined'
+            tracer_color = 'red'
+        tracer_configs = [(tracer_name, M_obs, M_err, tracer_color)]
+        fig, axes = plt.subplots(1, 3, figsize=(15, 5), dpi=150)
+        axes = axes.reshape(1, 3)  # Make 2D for consistent indexing
 
-    cmap = plt.cm.viridis_r
-    im1 = ax1.imshow(chi2_grid, cmap=cmap, aspect='auto',
-                     norm=mcolors.LogNorm(vmin=max(0.1, chi2_min), vmax=min(1000, chi2_max)))
+    for row_idx, (tracer_name, M_obs, M_err, tracer_color) in enumerate(tracer_configs):
+        # Compute chi² grid for this tracer
+        chi2_grid = np.full((nrows_grid, ncols_grid), np.nan)
+        for i, mCloud in enumerate(mCloud_list):
+            for j, sfe in enumerate(sfe_list):
+                if (mCloud, sfe) in lookup:
+                    r = lookup[(mCloud, sfe)]
+                    chi2_grid[i, j] = compute_tracer_chi2(r, M_obs, M_err)
 
-    cbar1 = plt.colorbar(im1, ax=ax1, label=r'$\chi^2_{\rm total}$')
+        # Find best fit for this tracer
+        best_chi2 = np.inf
+        best_i, best_j = 0, 0
+        best_result = None
+        for i, mCloud in enumerate(mCloud_list):
+            for j, sfe in enumerate(sfe_list):
+                if (mCloud, sfe) in lookup:
+                    chi2_val = chi2_grid[i, j]
+                    if np.isfinite(chi2_val) and chi2_val < best_chi2:
+                        best_chi2 = chi2_val
+                        best_i, best_j = i, j
+                        best_result = lookup[(mCloud, sfe)]
 
-    # Add confidence level lines to colorbar
-    for level_name, chi2_level in [('1sigma', thresholds['1sigma']),
-                                    ('2sigma', thresholds['2sigma']),
-                                    ('3sigma', thresholds['3sigma'])]:
-        if chi2_min < chi2_level < chi2_max:
-            cbar1.ax.axhline(y=chi2_level, color='k', linestyle='--', linewidth=0.8)
+        # --- Panel 1: Chi^2 heatmap ---
+        ax1 = axes[row_idx, 0]
+        chi2_min = np.nanmin(chi2_grid)
+        chi2_max = np.nanmax(chi2_grid)
 
-    # Mark best-fit cell with gold star
-    ax1.plot(best_j, best_i, marker='*', markersize=20, color='gold',
-             markeredgecolor='k', markeredgewidth=1.5, zorder=10)
+        cmap = plt.cm.viridis_r
+        im1 = ax1.imshow(chi2_grid, cmap=cmap, aspect='auto',
+                         norm=mcolors.LogNorm(vmin=max(0.1, chi2_min), vmax=min(1000, chi2_max)))
 
-    # Add chi2 values as text
-    for i in range(nrows):
-        for j in range(ncols):
-            chi2_val = chi2_grid[i, j]
-            if np.isfinite(chi2_val):
-                text_color = 'white' if chi2_val > 10 else 'black'
-                ax1.text(j, i, f'{chi2_val:.1f}', ha='center', va='center',
-                        fontsize=8, color=text_color, fontweight='bold')
-            else:
-                ax1.text(j, i, 'X', ha='center', va='center',
-                        fontsize=10, color='gray', alpha=0.5)
+        cbar1 = plt.colorbar(im1, ax=ax1, label=r'$\chi^2_{\rm total}$')
 
-    ax1.set_xticks(range(ncols))
-    ax1.set_xticklabels([f'{int(s)/100:.2f}' for s in sfe_list], fontsize=9)
-    ax1.set_yticks(range(nrows))
-    ax1.set_yticklabels([f'{float(m):.0e}' for m in mCloud_list], fontsize=9)
-    ax1.set_xlabel(r'Star Formation Efficiency ($\epsilon$)')
-    ax1.set_ylabel(r'Cloud Mass ($M_{\rm cloud}$ [$M_\odot$])')
-    ax1.set_title(r'$\chi^2$ Heatmap')
+        # Add confidence level lines to colorbar
+        for level_name, chi2_level in [('1sigma', thresholds['1sigma']),
+                                        ('2sigma', thresholds['2sigma']),
+                                        ('3sigma', thresholds['3sigma'])]:
+            if chi2_min < chi2_level < chi2_max:
+                cbar1.ax.axhline(y=chi2_level, color='k', linestyle='--', linewidth=0.8)
 
-    # --- Panel 2: Velocity heatmap ---
-    ax2 = axes[1]
-    v_min = np.nanmin(v_grid)
-    v_max = np.nanmax(v_grid)
+        # Mark best-fit cell with star in tracer color
+        ax1.plot(best_j, best_i, marker='*', markersize=20, color=tracer_color,
+                 markeredgecolor='k', markeredgewidth=1.5, zorder=10)
 
-    im2 = ax2.imshow(v_grid, cmap='coolwarm', aspect='auto',
-                     vmin=min(v_min, config.obs.v_obs - 3*config.obs.v_err),
-                     vmax=max(v_max, config.obs.v_obs + 3*config.obs.v_err))
-    cbar2 = plt.colorbar(im2, ax=ax2, label='v [km/s]')
+        # Add chi2 values as text
+        for i in range(nrows_grid):
+            for j in range(ncols_grid):
+                chi2_val = chi2_grid[i, j]
+                if np.isfinite(chi2_val):
+                    text_color = 'white' if chi2_val > 10 else 'black'
+                    ax1.text(j, i, f'{chi2_val:.1f}', ha='center', va='center',
+                            fontsize=7, color=text_color, fontweight='bold')
+                else:
+                    ax1.text(j, i, 'X', ha='center', va='center',
+                            fontsize=10, color='gray', alpha=0.5)
 
-    # Add observed velocity lines
-    cbar2.ax.axhline(y=config.obs.v_obs, color='k', linestyle='-', linewidth=2)
-    cbar2.ax.axhline(y=config.obs.v_obs - config.obs.v_err, color='k', linestyle='--', linewidth=1)
-    cbar2.ax.axhline(y=config.obs.v_obs + config.obs.v_err, color='k', linestyle='--', linewidth=1)
+        ax1.set_xticks(range(ncols_grid))
+        ax1.set_xticklabels([f'{int(s)/100:.2f}' for s in sfe_list], fontsize=8)
+        ax1.set_yticks(range(nrows_grid))
+        ax1.set_yticklabels([f'{float(m):.0e}' for m in mCloud_list], fontsize=8)
+        ax1.set_xlabel(r'Star Formation Efficiency ($\epsilon$)')
+        ax1.set_ylabel(r'Cloud Mass ($M_{\rm cloud}$ [$M_\odot$])')
+        ax1.set_title(f'{tracer_name}: $\\chi^2$ Heatmap')
 
-    # Add velocity values as text
-    for i in range(nrows):
-        for j in range(ncols):
-            v_val = v_grid[i, j]
-            if np.isfinite(v_val):
-                ax2.text(j, i, f'{v_val:.1f}', ha='center', va='center',
-                        fontsize=8, color='black', fontweight='bold')
+        # --- Panel 2: Velocity heatmap ---
+        ax2 = axes[row_idx, 1]
+        v_min = np.nanmin(v_grid)
+        v_max = np.nanmax(v_grid)
 
-    ax2.set_xticks(range(ncols))
-    ax2.set_xticklabels([f'{int(s)/100:.2f}' for s in sfe_list], fontsize=9)
-    ax2.set_yticks(range(nrows))
-    ax2.set_yticklabels([f'{float(m):.0e}' for m in mCloud_list], fontsize=9)
-    ax2.set_xlabel(r'Star Formation Efficiency ($\epsilon$)')
-    ax2.set_ylabel(r'Cloud Mass ($M_{\rm cloud}$ [$M_\odot$])')
-    ax2.set_title(f'Velocity (obs: {config.obs.v_obs:.0f} km/s)')
+        im2 = ax2.imshow(v_grid, cmap='coolwarm', aspect='auto',
+                         vmin=min(v_min, obs.v_obs - 3*obs.v_err),
+                         vmax=max(v_max, obs.v_obs + 3*obs.v_err))
+        cbar2 = plt.colorbar(im2, ax=ax2, label='v [km/s]')
 
-    # Mark best-fit
-    ax2.plot(best_j, best_i, marker='*', markersize=15, color='gold',
-             markeredgecolor='k', markeredgewidth=1, zorder=10)
+        # Add observed velocity lines
+        cbar2.ax.axhline(y=obs.v_obs, color='k', linestyle='-', linewidth=2)
+        cbar2.ax.axhline(y=obs.v_obs - obs.v_err, color='k', linestyle='--', linewidth=1)
+        cbar2.ax.axhline(y=obs.v_obs + obs.v_err, color='k', linestyle='--', linewidth=1)
 
-    # --- Panel 3: Shell mass heatmap ---
-    ax3 = axes[2]
-    M_min = np.nanmin(M_grid)
-    M_max = np.nanmax(M_grid)
+        # Add velocity values as text
+        for i in range(nrows_grid):
+            for j in range(ncols_grid):
+                v_val = v_grid[i, j]
+                if np.isfinite(v_val):
+                    ax2.text(j, i, f'{v_val:.1f}', ha='center', va='center',
+                            fontsize=7, color='black', fontweight='bold')
 
-    im3 = ax3.imshow(M_grid, cmap='coolwarm', aspect='auto',
-                     vmin=min(M_min, config.obs.M_shell_obs - 3*config.obs.M_shell_err),
-                     vmax=max(M_max, config.obs.M_shell_obs + 3*config.obs.M_shell_err))
-    cbar3 = plt.colorbar(im3, ax=ax3, label=r'$M_{\rm shell}$ [$M_\odot$]')
+        ax2.set_xticks(range(ncols_grid))
+        ax2.set_xticklabels([f'{int(s)/100:.2f}' for s in sfe_list], fontsize=8)
+        ax2.set_yticks(range(nrows_grid))
+        ax2.set_yticklabels([f'{float(m):.0e}' for m in mCloud_list], fontsize=8)
+        ax2.set_xlabel(r'Star Formation Efficiency ($\epsilon$)')
+        ax2.set_ylabel(r'Cloud Mass ($M_{\rm cloud}$ [$M_\odot$])')
+        ax2.set_title(f'{tracer_name}: Velocity (obs: {obs.v_obs:.0f} km/s)')
 
-    # Add observed shell mass lines
-    cbar3.ax.axhline(y=config.obs.M_shell_obs, color='k', linestyle='-', linewidth=2)
-    cbar3.ax.axhline(y=config.obs.M_shell_obs - config.obs.M_shell_err, color='k', linestyle='--', linewidth=1)
-    cbar3.ax.axhline(y=config.obs.M_shell_obs + config.obs.M_shell_err, color='k', linestyle='--', linewidth=1)
+        # Mark best-fit
+        ax2.plot(best_j, best_i, marker='*', markersize=15, color=tracer_color,
+                 markeredgecolor='k', markeredgewidth=1, zorder=10)
 
-    # Add mass values as text
-    for i in range(nrows):
-        for j in range(ncols):
-            M_val = M_grid[i, j]
-            if np.isfinite(M_val):
-                ax3.text(j, i, f'{M_val:.0f}', ha='center', va='center',
-                        fontsize=8, color='black', fontweight='bold')
+        # --- Panel 3: Shell mass heatmap ---
+        ax3 = axes[row_idx, 2]
+        M_min = np.nanmin(M_grid)
+        M_max = np.nanmax(M_grid)
 
-    ax3.set_xticks(range(ncols))
-    ax3.set_xticklabels([f'{int(s)/100:.2f}' for s in sfe_list], fontsize=9)
-    ax3.set_yticks(range(nrows))
-    ax3.set_yticklabels([f'{float(m):.0e}' for m in mCloud_list], fontsize=9)
-    ax3.set_xlabel(r'Star Formation Efficiency ($\epsilon$)')
-    ax3.set_ylabel(r'Cloud Mass ($M_{\rm cloud}$ [$M_\odot$])')
-    ax3.set_title(f'Shell Mass (obs: {config.obs.M_shell_obs:.0f} M$_\\odot$)')
+        im3 = ax3.imshow(M_grid, cmap='coolwarm', aspect='auto',
+                         vmin=min(M_min, M_obs - 3*M_err),
+                         vmax=max(M_max, M_obs + 3*M_err))
+        cbar3 = plt.colorbar(im3, ax=ax3, label=r'$M_{\rm shell}$ [$M_\odot$]')
 
-    # Mark best-fit
-    ax3.plot(best_j, best_i, marker='*', markersize=15, color='gold',
-             markeredgecolor='k', markeredgewidth=1, zorder=10)
+        # Add observed shell mass lines for this tracer
+        cbar3.ax.axhline(y=M_obs, color=tracer_color, linestyle='-', linewidth=2)
+        cbar3.ax.axhline(y=M_obs - M_err, color=tracer_color, linestyle='--', linewidth=1)
+        cbar3.ax.axhline(y=M_obs + M_err, color=tracer_color, linestyle='--', linewidth=1)
 
-    # Build title with free parameter estimate if applicable
-    title_lines = [f'M42 Best-Fit Analysis: $n_{{\\rm core}}$ = {nCore_value} cm$^{{-3}}$']
-    title_lines.append(f'Best: mCloud={best_result.mCloud}, sfe={best_result.sfe_float:.2f}, '
-                       f'$M_\\star$={best_result.Mstar:.1f} M$_\\odot$, $\\chi^2$={best_result.chi2_total:.2f}')
-    if config.free_param and best_result.free_value is not None:
-        title_lines.append(f'Predicted {config.get_free_param_label()}: {best_result.free_value:.2f}')
+        # Add mass values as text
+        for i in range(nrows_grid):
+            for j in range(ncols_grid):
+                M_val = M_grid[i, j]
+                if np.isfinite(M_val):
+                    ax3.text(j, i, f'{M_val:.0f}', ha='center', va='center',
+                            fontsize=7, color='black', fontweight='bold')
 
-    fig.suptitle('\n'.join(title_lines), fontsize=12, y=1.02)
+        ax3.set_xticks(range(ncols_grid))
+        ax3.set_xticklabels([f'{int(s)/100:.2f}' for s in sfe_list], fontsize=8)
+        ax3.set_yticks(range(nrows_grid))
+        ax3.set_yticklabels([f'{float(m):.0e}' for m in mCloud_list], fontsize=8)
+        ax3.set_xlabel(r'Star Formation Efficiency ($\epsilon$)')
+        ax3.set_ylabel(r'Cloud Mass ($M_{\rm cloud}$ [$M_\odot$])')
+        ax3.set_title(f'{tracer_name}: Shell Mass (obs: {M_obs:.0f} M$_\\odot$)')
+
+        # Mark best-fit
+        ax3.plot(best_j, best_i, marker='*', markersize=15, color=tracer_color,
+                 markeredgecolor='k', markeredgewidth=1, zorder=10)
+
+    # Build title
+    if config.mass_tracer == 'all':
+        title_lines = [f'M42 Best-Fit Analysis: $n_{{\\rm core}}$ = {nCore_value} cm$^{{-3}}$',
+                       r'[CII] vs HI Shell Mass Tension — Comparing Best-Fits by Tracer']
+    else:
+        best_result = min(data, key=lambda x: x.chi2_total)
+        title_lines = [f'M42 Best-Fit Analysis: $n_{{\\rm core}}$ = {nCore_value} cm$^{{-3}}$']
+        title_lines.append(f'Best: mCloud={best_result.mCloud}, sfe={best_result.sfe_float:.2f}, '
+                           f'$M_\\star$={best_result.Mstar:.1f} M$_\\odot$, $\\chi^2$={best_result.chi2_total:.2f}')
+        if config.free_param and best_result.free_value is not None:
+            title_lines.append(f'Predicted {config.get_free_param_label()}: {best_result.free_value:.2f}')
+
+    fig.suptitle('\n'.join(title_lines), fontsize=12, y=1.02 if config.mass_tracer != 'all' else 0.995)
 
     plt.tight_layout()
 
@@ -1135,13 +1185,12 @@ def plot_residual_contours_2d(results: List[SimulationResult], config: AnalysisC
     if not data:
         return
 
-    fig, ax = plt.subplots(figsize=(10, 8), dpi=150)
+    fig, ax = plt.subplots(figsize=(12, 8), dpi=150)
 
     # Plot each simulation as a point
     v_vals = [r.v_kms for r in data if np.isfinite(r.v_kms)]
     M_vals = [r.M_shell for r in data if np.isfinite(r.M_shell)]
     chi2_vals = [r.chi2_total for r in data if np.isfinite(r.chi2_total)]
-    Mstar_vals = [r.Mstar for r in data if np.isfinite(r.Mstar)]
 
     if not v_vals:
         print(f"  No valid data points for residual plot (nCore={nCore_value})")
@@ -1152,43 +1201,73 @@ def plot_residual_contours_2d(results: List[SimulationResult], config: AnalysisC
                          norm=mcolors.LogNorm(vmin=0.1, vmax=100),
                          s=100, edgecolors='k', linewidths=0.5, zorder=5)
 
-    # Draw confidence ellipses centered on observation
     obs = config.obs
     n_dof = config.count_dof()
     thresholds = get_delta_chi2_thresholds(n_dof)
     theta = np.linspace(0, 2 * np.pi, 100)
 
-    for level_name, color, label in [('1sigma', 'green', r'1$\sigma$'),
-                                      ('2sigma', 'orange', r'2$\sigma$'),
-                                      ('3sigma', 'red', r'3$\sigma$')]:
-        delta_chi2 = thresholds[level_name]
-        scale = np.sqrt(delta_chi2)
-        v_ellipse = obs.v_obs + scale * obs.v_err * np.cos(theta)
-        M_ellipse = obs.M_shell_obs + scale * obs.M_shell_err * np.sin(theta)
-        ax.plot(v_ellipse, M_ellipse, color=color, lw=2, linestyle='--',
-                label=f'{label} ($\\Delta\\chi^2={delta_chi2:.2f}$)')
+    # Helper to compute chi² for a specific mass tracer
+    def compute_tracer_chi2(r, M_obs, M_err):
+        chi2_v = ((r.v_kms - obs.v_obs) / obs.v_err)**2 if np.isfinite(r.v_kms) else 0
+        chi2_M = ((r.M_shell - M_obs) / M_err)**2 if np.isfinite(r.M_shell) else 0
+        chi2_t = ((r.t_actual - obs.t_obs) / obs.t_err)**2 if np.isfinite(r.t_actual) else 0
+        chi2_R = ((r.R2 - obs.R_obs) / obs.R_err)**2 if np.isfinite(r.R2) else 0
+        chi2_Mstar = ((r.Mstar - obs.Mstar_obs) / obs.Mstar_err)**2 if np.isfinite(r.Mstar) else 0
+        return chi2_v + chi2_M + chi2_t + chi2_R + chi2_Mstar
 
-    # Mark observation point
-    ax.errorbar(obs.v_obs, obs.M_shell_obs,
-                xerr=obs.v_err, yerr=obs.M_shell_err,
-                fmt='s', color='red', markersize=15, capsize=5, capthick=2,
-                label='M42 Observed', zorder=10, markeredgecolor='k', markeredgewidth=2)
+    # When mass_tracer='all', show contours for all three tracers
+    if config.mass_tracer == 'all':
+        tracer_obs_configs = [
+            ('HI', obs.M_shell_HI, obs.M_shell_HI_err, 'blue'),
+            ('[CII]', obs.M_shell_CII, obs.M_shell_CII_err, 'darkorange'),
+            ('Comb', obs.M_shell_combined, obs.M_shell_combined_err, 'red'),
+        ]
 
-    # Mark best-fit
-    best = min(data, key=lambda r: r.chi2_total)
-    if np.isfinite(best.v_kms) and np.isfinite(best.M_shell):
-        ax.plot(best.v_kms, best.M_shell, marker='*', markersize=25,
-                color='gold', markeredgecolor='k', markeredgewidth=1.5, zorder=15,
-                label=f'Best fit ($\\chi^2={best.chi2_total:.2f}$)')
+        # Draw 1-sigma ellipses for each tracer
+        for tracer_name, M_obs, M_err, tracer_color in tracer_obs_configs:
+            delta_chi2 = thresholds['1sigma']
+            scale = np.sqrt(delta_chi2)
+            v_ellipse = obs.v_obs + scale * obs.v_err * np.cos(theta)
+            M_ellipse = M_obs + scale * M_err * np.sin(theta)
+            ax.plot(v_ellipse, M_ellipse, color=tracer_color, lw=2, linestyle='--',
+                    label=f'{tracer_name} 1$\\sigma$', alpha=0.8)
 
-    # Add annotations for top 3
-    data_sorted = sorted(data, key=lambda r: r.chi2_total)
-    for i, r in enumerate(data_sorted[:3]):
-        if np.isfinite(r.v_kms) and np.isfinite(r.M_shell):
-            ax.annotate(f"{r.mCloud}\nsfe{r.sfe}\nM$_\\star$={r.Mstar:.0f}",
-                        (r.v_kms, r.M_shell),
-                        textcoords="offset points", xytext=(10, 10),
-                        fontsize=8, alpha=0.8)
+            # Mark observation point for this tracer
+            ax.errorbar(obs.v_obs, M_obs, xerr=obs.v_err, yerr=M_err,
+                        fmt='s', color=tracer_color, markersize=12, capsize=4, capthick=2,
+                        zorder=10, markeredgecolor='k', markeredgewidth=1)
+
+            # Mark best-fit for this tracer
+            best_tracer = min(data, key=lambda r: compute_tracer_chi2(r, M_obs, M_err))
+            chi2_val = compute_tracer_chi2(best_tracer, M_obs, M_err)
+            if np.isfinite(best_tracer.v_kms) and np.isfinite(best_tracer.M_shell):
+                ax.plot(best_tracer.v_kms, best_tracer.M_shell, marker='*', markersize=20,
+                        color=tracer_color, markeredgecolor='k', markeredgewidth=1, zorder=15,
+                        label=f'Best {tracer_name} ($\\chi^2$={chi2_val:.1f})')
+    else:
+        # Standard single-tracer: draw confidence ellipses
+        for level_name, color, label in [('1sigma', 'green', r'1$\sigma$'),
+                                          ('2sigma', 'orange', r'2$\sigma$'),
+                                          ('3sigma', 'red', r'3$\sigma$')]:
+            delta_chi2 = thresholds[level_name]
+            scale = np.sqrt(delta_chi2)
+            v_ellipse = obs.v_obs + scale * obs.v_err * np.cos(theta)
+            M_ellipse = obs.M_shell_obs + scale * obs.M_shell_err * np.sin(theta)
+            ax.plot(v_ellipse, M_ellipse, color=color, lw=2, linestyle='--',
+                    label=f'{label} ($\\Delta\\chi^2={delta_chi2:.2f}$)')
+
+        # Mark observation point
+        ax.errorbar(obs.v_obs, obs.M_shell_obs,
+                    xerr=obs.v_err, yerr=obs.M_shell_err,
+                    fmt='s', color='red', markersize=15, capsize=5, capthick=2,
+                    label='M42 Observed', zorder=10, markeredgecolor='k', markeredgewidth=2)
+
+        # Mark best-fit
+        best = min(data, key=lambda r: r.chi2_total)
+        if np.isfinite(best.v_kms) and np.isfinite(best.M_shell):
+            ax.plot(best.v_kms, best.M_shell, marker='*', markersize=25,
+                    color='gold', markeredgecolor='k', markeredgewidth=1.5, zorder=15,
+                    label=f'Best fit ($\\chi^2={best.chi2_total:.2f}$)')
 
     # Colorbar
     cbar = plt.colorbar(scatter, ax=ax, label=r'$\chi^2$')
@@ -1196,16 +1275,21 @@ def plot_residual_contours_2d(results: List[SimulationResult], config: AnalysisC
     # Labels
     ax.set_xlabel('Shell Velocity [km/s]')
     ax.set_ylabel(r'Shell Mass [$M_\odot$]')
+    ax.set_yscale('log')
+    ax.set_ylim(50, 5000)
 
-    # Build title with free parameter estimate
+    # Build title
+    best = min(data, key=lambda r: r.chi2_total)
     title_lines = [f'M42 Parameter Space ($n_{{\\rm core}}$ = {nCore_value} cm$^{{-3}}$)',
                    f'at t = {obs.t_obs} Myr']
+    if config.mass_tracer == 'all':
+        title_lines.append('[CII] vs HI Mass Tension')
     if config.free_param and best.free_value is not None:
         title_lines.append(f'Predicted {config.get_free_param_label()}: {best.free_value:.2f}')
 
     ax.set_title('\n'.join(title_lines))
-    ax.legend(loc='upper left', fontsize=9)
-    ax.grid(True, alpha=0.3)
+    ax.legend(loc='upper left', fontsize=8)
+    ax.grid(True, alpha=0.3, which='both')
 
     plt.tight_layout()
 
@@ -1220,6 +1304,9 @@ def plot_Mstar_constraint_2d(results: List[SimulationResult], config: AnalysisCo
                               output_dir: Path, nCore_value: str):
     """
     Plot stellar mass constraint diagram showing M_star contours.
+
+    If mass_tracer='all', creates a 1x3 panel showing chi² for each tracer
+    (HI, [CII], combined) with M_star contours overlaid.
 
     Parameters
     ----------
@@ -1241,81 +1328,125 @@ def plot_Mstar_constraint_2d(results: List[SimulationResult], config: AnalysisCo
     # Get unique values
     mCloud_list = sorted(set(r.mCloud for r in data), key=float)
     sfe_list = sorted(set(r.sfe for r in data), key=lambda x: int(x))
+    nrows_grid, ncols_grid = len(mCloud_list), len(sfe_list)
 
-    fig, ax = plt.subplots(figsize=(10, 8), dpi=150)
-
-    # Create mesh for contour plotting
-    mCloud_vals = np.array([float(m) for m in mCloud_list])
-    sfe_vals = np.array([int(s)/100.0 for s in sfe_list])
-
-    mCloud_mesh, sfe_mesh = np.meshgrid(mCloud_vals, sfe_vals)
-    Mstar_mesh = compute_stellar_mass(mCloud_mesh, sfe_mesh)
-
-    # Plot chi2 as background
-    nrows, ncols = len(mCloud_list), len(sfe_list)
-    chi2_grid = np.full((nrows, ncols), np.nan)
+    obs = config.obs
     lookup = {(r.mCloud, r.sfe): r for r in data}
 
-    for i, mCloud in enumerate(mCloud_list):
-        for j, sfe in enumerate(sfe_list):
-            if (mCloud, sfe) in lookup:
-                chi2_grid[i, j] = lookup[(mCloud, sfe)].chi2_total
-
-    # Plot heatmap
-    im = ax.imshow(chi2_grid, cmap='viridis_r', aspect='auto',
-                   norm=mcolors.LogNorm(vmin=0.1, vmax=100),
-                   extent=[-0.5, ncols-0.5, nrows-0.5, -0.5])
-
-    # Add M_star contours
-    # Note: need to transpose because imshow has different axis order
-    obs = config.obs
-    Mstar_levels = [obs.Mstar_obs - 2*obs.Mstar_err,
-                    obs.Mstar_obs - obs.Mstar_err,
-                    obs.Mstar_obs,
-                    obs.Mstar_obs + obs.Mstar_err,
-                    obs.Mstar_obs + 2*obs.Mstar_err]
-
-    # Create contour grid aligned with heatmap
-    j_coords, i_coords = np.meshgrid(range(ncols), range(nrows))
-    Mstar_grid = np.full((nrows, ncols), np.nan)
+    # Build Mstar grid (same for all tracers)
+    j_coords, i_coords = np.meshgrid(range(ncols_grid), range(nrows_grid))
+    Mstar_grid = np.full((nrows_grid, ncols_grid), np.nan)
     for i, mCloud in enumerate(mCloud_list):
         for j, sfe in enumerate(sfe_list):
             mCloud_f = float(mCloud)
             sfe_f = int(sfe) / 100.0
             Mstar_grid[i, j] = compute_stellar_mass(mCloud_f, sfe_f)
 
-    contour = ax.contour(j_coords, i_coords, Mstar_grid, levels=Mstar_levels,
-                         colors=['gray', 'blue', 'black', 'blue', 'gray'],
-                         linestyles=['--', '--', '-', '--', '--'],
-                         linewidths=[1, 1.5, 2, 1.5, 1])
-    ax.clabel(contour, inline=True, fontsize=9, fmt='M$_\\star$=%.0f')
+    Mstar_levels = [obs.Mstar_obs - 2*obs.Mstar_err,
+                    obs.Mstar_obs - obs.Mstar_err,
+                    obs.Mstar_obs,
+                    obs.Mstar_obs + obs.Mstar_err,
+                    obs.Mstar_obs + 2*obs.Mstar_err]
 
-    # Mark best-fit
-    best = min(data, key=lambda r: r.chi2_total)
-    best_i = mCloud_list.index(best.mCloud)
-    best_j = sfe_list.index(best.sfe)
-    ax.plot(best_j, best_i, marker='*', markersize=25, color='gold',
-            markeredgecolor='k', markeredgewidth=1.5, zorder=10)
+    # Helper function to compute chi² for a specific tracer
+    def compute_tracer_chi2(r, M_obs, M_err):
+        chi2_v = ((r.v_kms - obs.v_obs) / obs.v_err)**2 if np.isfinite(r.v_kms) and config.constrain_v else 0
+        chi2_M = ((r.M_shell - M_obs) / M_err)**2 if np.isfinite(r.M_shell) and config.constrain_M_shell else 0
+        chi2_t = ((r.t_actual - obs.t_obs) / obs.t_err)**2 if np.isfinite(r.t_actual) and config.constrain_t else 0
+        chi2_R = ((r.R2 - obs.R_obs) / obs.R_err)**2 if np.isfinite(r.R2) and config.constrain_R else 0
+        chi2_Mstar = ((r.Mstar - obs.Mstar_obs) / obs.Mstar_err)**2 if np.isfinite(r.Mstar) and config.constrain_Mstar else 0
+        return chi2_v + chi2_M + chi2_t + chi2_R + chi2_Mstar
 
-    # Colorbar
-    cbar = plt.colorbar(im, ax=ax, label=r'$\chi^2_{\rm total}$')
+    # Determine which tracers to plot
+    if config.mass_tracer == 'all':
+        tracer_configs = [
+            ('HI 21cm', obs.M_shell_HI, obs.M_shell_HI_err, 'blue'),
+            ('[CII] 158µm', obs.M_shell_CII, obs.M_shell_CII_err, 'darkorange'),
+            ('Combined', obs.M_shell_combined, obs.M_shell_combined_err, 'red'),
+        ]
+        fig, axes = plt.subplots(1, 3, figsize=(15, 5), dpi=150)
+    else:
+        # Single tracer mode
+        M_obs, M_err = config.get_mass_constraint()
+        if config.mass_tracer == 'HI':
+            tracer_name = 'HI 21cm'
+            tracer_color = 'blue'
+        elif config.mass_tracer == 'CII':
+            tracer_name = '[CII] 158µm'
+            tracer_color = 'darkorange'
+        else:
+            tracer_name = 'Combined'
+            tracer_color = 'red'
+        tracer_configs = [(tracer_name, M_obs, M_err, tracer_color)]
+        fig, axes = plt.subplots(1, 1, figsize=(10, 8), dpi=150)
+        axes = [axes]  # Make iterable
 
-    # Labels
-    ax.set_xticks(range(ncols))
-    ax.set_xticklabels([f'{int(s)/100:.2f}' for s in sfe_list])
-    ax.set_yticks(range(nrows))
-    ax.set_yticklabels([f'{float(m):.0e}' for m in mCloud_list])
-    ax.set_xlabel(r'Star Formation Efficiency ($\epsilon$)')
-    ax.set_ylabel(r'Cloud Mass ($M_{\rm cloud}$ [$M_\odot$])')
+    for ax_idx, (tracer_name, M_obs, M_err, tracer_color) in enumerate(tracer_configs):
+        ax = axes[ax_idx]
 
-    # Build title with free parameter estimate
-    title_lines = [f'M42 Stellar Mass Constraint: $n_{{\\rm core}}$ = {nCore_value} cm$^{{-3}}$',
-                   f'M$_\\star$(obs) = {obs.Mstar_obs:.0f} +/- {obs.Mstar_err:.0f} M$_\\odot$ '
-                   f'(black line = {obs.Mstar_obs:.0f} M$_\\odot$)']
-    if config.free_param and best.free_value is not None:
-        title_lines.append(f'Predicted {config.get_free_param_label()}: {best.free_value:.2f}')
+        # Compute chi² grid for this tracer
+        chi2_grid = np.full((nrows_grid, ncols_grid), np.nan)
+        for i, mCloud in enumerate(mCloud_list):
+            for j, sfe in enumerate(sfe_list):
+                if (mCloud, sfe) in lookup:
+                    r = lookup[(mCloud, sfe)]
+                    chi2_grid[i, j] = compute_tracer_chi2(r, M_obs, M_err)
 
-    ax.set_title('\n'.join(title_lines))
+        # Plot heatmap
+        im = ax.imshow(chi2_grid, cmap='viridis_r', aspect='auto',
+                       norm=mcolors.LogNorm(vmin=0.1, vmax=100),
+                       extent=[-0.5, ncols_grid-0.5, nrows_grid-0.5, -0.5])
+
+        # Add M_star contours
+        contour = ax.contour(j_coords, i_coords, Mstar_grid, levels=Mstar_levels,
+                             colors=['gray', 'blue', 'black', 'blue', 'gray'],
+                             linestyles=['--', '--', '-', '--', '--'],
+                             linewidths=[1, 1.5, 2, 1.5, 1])
+        ax.clabel(contour, inline=True, fontsize=8, fmt='M$_\\star$=%.0f')
+
+        # Find best-fit for this tracer
+        best_chi2 = np.inf
+        best_i, best_j = 0, 0
+        for i, mCloud in enumerate(mCloud_list):
+            for j, sfe in enumerate(sfe_list):
+                if (mCloud, sfe) in lookup:
+                    chi2_val = chi2_grid[i, j]
+                    if np.isfinite(chi2_val) and chi2_val < best_chi2:
+                        best_chi2 = chi2_val
+                        best_i, best_j = i, j
+
+        # Mark best-fit with tracer-colored star
+        ax.plot(best_j, best_i, marker='*', markersize=25, color=tracer_color,
+                markeredgecolor='k', markeredgewidth=1.5, zorder=10)
+
+        # Colorbar
+        cbar = plt.colorbar(im, ax=ax, label=r'$\chi^2_{\rm total}$')
+
+        # Labels
+        ax.set_xticks(range(ncols_grid))
+        ax.set_xticklabels([f'{int(s)/100:.2f}' for s in sfe_list], fontsize=8)
+        ax.set_yticks(range(nrows_grid))
+        ax.set_yticklabels([f'{float(m):.0e}' for m in mCloud_list], fontsize=8)
+        ax.set_xlabel(r'Star Formation Efficiency ($\epsilon$)')
+        ax.set_ylabel(r'Cloud Mass ($M_{\rm cloud}$ [$M_\odot$])')
+
+        # Title for this panel
+        ax.set_title(f'{tracer_name}\n$M_{{\\rm obs}}$ = {M_obs:.0f} +/- {M_err:.0f} M$_\\odot$')
+
+    # Build overall title
+    if config.mass_tracer == 'all':
+        fig.suptitle(f'M42 Stellar Mass Constraint: $n_{{\\rm core}}$ = {nCore_value} cm$^{{-3}}$\n'
+                     r'[CII] vs HI Shell Mass Tension — M$_\star$(obs) = '
+                     f'{obs.Mstar_obs:.0f} +/- {obs.Mstar_err:.0f} M$_\\odot$ (black line)',
+                     fontsize=11, y=1.02)
+    else:
+        best = min(data, key=lambda r: r.chi2_total)
+        title_lines = [f'M42 Stellar Mass Constraint: $n_{{\\rm core}}$ = {nCore_value} cm$^{{-3}}$',
+                       f'M$_\\star$(obs) = {obs.Mstar_obs:.0f} +/- {obs.Mstar_err:.0f} M$_\\odot$ '
+                       f'(black line = {obs.Mstar_obs:.0f} M$_\\odot$)']
+        if config.free_param and best.free_value is not None:
+            title_lines.append(f'Predicted {config.get_free_param_label()}: {best.free_value:.2f}')
+        fig.suptitle('\n'.join(title_lines))
 
     plt.tight_layout()
 
@@ -1359,15 +1490,39 @@ def plot_momentum_comparison(results: List[SimulationResult], config: AnalysisCo
     # --- Panel 1: p(t) trajectories ---
     ax1 = axes[0]
 
-    data_sorted = sorted(data, key=lambda x: x.chi2_total)[:5]
-    colors = plt.cm.viridis(np.linspace(0.2, 0.8, len(data_sorted)))
+    # Helper function to compute chi² for a specific tracer
+    def compute_tracer_chi2(r, M_obs, M_err):
+        chi2_v = ((r.v_kms - obs.v_obs) / obs.v_err)**2 if np.isfinite(r.v_kms) and config.constrain_v else 0
+        chi2_M = ((r.M_shell - M_obs) / M_err)**2 if np.isfinite(r.M_shell) and config.constrain_M_shell else 0
+        chi2_t = ((r.t_actual - obs.t_obs) / obs.t_err)**2 if np.isfinite(r.t_actual) and config.constrain_t else 0
+        chi2_R = ((r.R2 - obs.R_obs) / obs.R_err)**2 if np.isfinite(r.R2) and config.constrain_R else 0
+        chi2_Mstar = ((r.Mstar - obs.Mstar_obs) / obs.Mstar_err)**2 if np.isfinite(r.Mstar) and config.constrain_Mstar else 0
+        return chi2_v + chi2_M + chi2_t + chi2_R + chi2_Mstar
 
-    for i, r in enumerate(data_sorted):
-        if r.t_full is None or r.v_full_kms is None or r.M_shell_full is None:
-            continue
-        p_full = r.M_shell_full * r.v_full_kms  # M_sun km/s
-        ax1.plot(r.t_full, p_full, color=colors[i], lw=1.5,
-                 label=f"{r.mCloud}_sfe{r.sfe}")
+    if config.mass_tracer == 'all':
+        # Plot best-fit trajectory for each tracer
+        tracer_configs = [
+            ('HI', obs.M_shell_HI, obs.M_shell_HI_err, 'blue'),
+            ('[CII]', obs.M_shell_CII, obs.M_shell_CII_err, 'darkorange'),
+            ('Comb', obs.M_shell_combined, obs.M_shell_combined_err, 'red'),
+        ]
+        for tracer_name, M_obs, M_err, tracer_color in tracer_configs:
+            best_tracer = min(data, key=lambda r: compute_tracer_chi2(r, M_obs, M_err))
+            if best_tracer.t_full is not None and best_tracer.v_full_kms is not None and best_tracer.M_shell_full is not None:
+                p_full = best_tracer.M_shell_full * best_tracer.v_full_kms
+                ax1.plot(best_tracer.t_full, p_full, color=tracer_color, lw=2.5,
+                         label=f"Best({tracer_name})")
+    else:
+        # Default: plot top 5 by chi²
+        data_sorted = sorted(data, key=lambda x: x.chi2_total)[:5]
+        colors = plt.cm.viridis(np.linspace(0.2, 0.8, len(data_sorted)))
+
+        for i, r in enumerate(data_sorted):
+            if r.t_full is None or r.v_full_kms is None or r.M_shell_full is None:
+                continue
+            p_full = r.M_shell_full * r.v_full_kms  # M_sun km/s
+            ax1.plot(r.t_full, p_full, color=colors[i], lw=1.5,
+                     label=f"{r.mCloud}_sfe{r.sfe}")
 
     # Mark observational momentum estimates - [CII] vs HI
     ax1.axhline(obs.p_HI, color='blue', ls='--', lw=2, label=f'p(HI) = {obs.p_HI:.0f}')
@@ -1418,12 +1573,28 @@ def plot_momentum_comparison(results: List[SimulationResult], config: AnalysisCo
                      fmt='s', color='red', markersize=8, capsize=4,
                      markeredgecolor='k', zorder=10, alpha=0.5, label='Combined')
 
+        # Mark best-fit point(s) with stars
+        if config.mass_tracer == 'all':
+            tracer_configs = [
+                ('HI', obs.M_shell_HI, obs.M_shell_HI_err, 'blue'),
+                ('[CII]', obs.M_shell_CII, obs.M_shell_CII_err, 'darkorange'),
+                ('Comb', obs.M_shell_combined, obs.M_shell_combined_err, 'red'),
+            ]
+            for tracer_name, M_obs, M_err, tracer_color in tracer_configs:
+                best_tracer = min(data, key=lambda r: compute_tracer_chi2(r, M_obs, M_err))
+                ax2.plot(best_tracer.v_kms, best_tracer.M_shell, marker='*', markersize=20,
+                         color=tracer_color, markeredgecolor='k', markeredgewidth=1, zorder=15)
+        else:
+            best = min(data, key=lambda r: r.chi2_total)
+            ax2.plot(best.v_kms, best.M_shell, marker='*', markersize=20,
+                     color='gold', markeredgecolor='k', markeredgewidth=1, zorder=15)
+
         ax2.set_xlabel('Velocity [km/s]')
         ax2.set_ylabel(r'Shell Mass [$M_\odot$]')
         ax2.set_title(f'M vs v at t={obs.t_obs} Myr')
         ax2.set_yscale('log')
         ax2.set_ylim(10, 5000)
-        ax2.legend(fontsize=8, loc='upper right')
+        ax2.legend(fontsize=7, loc='upper right')
         plt.colorbar(sc, ax=ax2, label=r'$\chi^2$')
 
     # --- Panel 3: Momentum histogram ---
@@ -1439,15 +1610,38 @@ def plot_momentum_comparison(results: List[SimulationResult], config: AnalysisCo
         ax3.axvline(2*obs.p_HI, color='blue', ls=':', lw=1.5, label=f'2×p(HI) = {2*obs.p_HI:.0f}')
         ax3.axvline(obs.p_combined, color='red', ls='-.', lw=1.5, alpha=0.5, label=f'p(comb)')
 
-        # Mark best-fit momentum
-        best = min(data, key=lambda r: r.chi2_total)
-        p_best = best.M_shell * best.v_kms
-        ax3.axvline(p_best, color='gold', ls='-', lw=3, label=f'Best fit: {p_best:.0f}')
+        # Helper function to compute chi² for a specific tracer
+        def compute_tracer_chi2(r, M_obs, M_err):
+            chi2_v = ((r.v_kms - obs.v_obs) / obs.v_err)**2 if np.isfinite(r.v_kms) and config.constrain_v else 0
+            chi2_M = ((r.M_shell - M_obs) / M_err)**2 if np.isfinite(r.M_shell) and config.constrain_M_shell else 0
+            chi2_t = ((r.t_actual - obs.t_obs) / obs.t_err)**2 if np.isfinite(r.t_actual) and config.constrain_t else 0
+            chi2_R = ((r.R2 - obs.R_obs) / obs.R_err)**2 if np.isfinite(r.R2) and config.constrain_R else 0
+            chi2_Mstar = ((r.Mstar - obs.Mstar_obs) / obs.Mstar_err)**2 if np.isfinite(r.Mstar) and config.constrain_Mstar else 0
+            return chi2_v + chi2_M + chi2_t + chi2_R + chi2_Mstar
+
+        # Mark best-fit momentum(s)
+        if config.mass_tracer == 'all':
+            # Show best-fit for each tracer
+            tracer_configs = [
+                ('HI', obs.M_shell_HI, obs.M_shell_HI_err, 'blue'),
+                ('[CII]', obs.M_shell_CII, obs.M_shell_CII_err, 'darkorange'),
+                ('Comb', obs.M_shell_combined, obs.M_shell_combined_err, 'red'),
+            ]
+            for tracer_name, M_obs, M_err, tracer_color in tracer_configs:
+                best_tracer = min(data, key=lambda r: compute_tracer_chi2(r, M_obs, M_err))
+                p_best = best_tracer.M_shell * best_tracer.v_kms
+                ax3.axvline(p_best, color=tracer_color, ls='-', lw=3, alpha=0.8,
+                           label=f'Best({tracer_name}): {p_best:.0f}')
+        else:
+            # Single tracer mode - show default best-fit
+            best = min(data, key=lambda r: r.chi2_total)
+            p_best = best.M_shell * best.v_kms
+            ax3.axvline(p_best, color='gold', ls='-', lw=3, label=f'Best fit: {p_best:.0f}')
 
         ax3.set_xlabel(r'Momentum at t=0.2 Myr [$M_\odot$ km/s]')
         ax3.set_ylabel('Count')
         ax3.set_title('TRINITY Momentum Predictions')
-        ax3.legend(fontsize=8)
+        ax3.legend(fontsize=7, loc='upper right')
 
     fig.suptitle(r'[CII] vs HI Momentum Tension: $n_{\rm core}$ = ' + f'{nCore_value} cm' + r'$^{-3}$' + '\n'
                  r'p([CII]) $\sim$ ' + f'{obs.mass_ratio_CII_HI:.0f}' + r'$\times$ p(HI) — Which does TRINITY predict?',
@@ -1859,6 +2053,17 @@ def plot_marginal_projections(results: List[SimulationResult], config: AnalysisC
 def print_ranking_table(results: List[SimulationResult], config: AnalysisConfig,
                         top_n: int = 10):
     """Print ranked table of best-fit parameter combinations."""
+    obs = config.obs
+
+    # Helper to compute chi² for a specific mass tracer
+    def compute_tracer_chi2(r, M_obs, M_err):
+        chi2_v = ((r.v_kms - obs.v_obs) / obs.v_err)**2 if np.isfinite(r.v_kms) else 0
+        chi2_M = ((r.M_shell - M_obs) / M_err)**2 if np.isfinite(r.M_shell) else 0
+        chi2_t = ((r.t_actual - obs.t_obs) / obs.t_err)**2 if np.isfinite(r.t_actual) else 0
+        chi2_R = ((r.R2 - obs.R_obs) / obs.R_err)**2 if np.isfinite(r.R2) else 0
+        chi2_Mstar = ((r.Mstar - obs.Mstar_obs) / obs.Mstar_err)**2 if np.isfinite(r.Mstar) else 0
+        return chi2_v + chi2_M + chi2_t + chi2_R + chi2_Mstar
+
     sorted_results = sorted(results, key=lambda r: r.chi2_total)[:top_n]
 
     # Get thresholds
@@ -1867,60 +2072,92 @@ def print_ranking_table(results: List[SimulationResult], config: AnalysisConfig,
 
     free_str = f"FREE: {config.free_param}" if config.free_param else "None"
 
-    print("\n" + "=" * 100)
+    print("\n" + "=" * 120)
     print(f"TOP {top_n} BEST-FIT PARAMETER COMBINATIONS")
-    print("=" * 100)
+    print("=" * 120)
     print(f"Constraints: {config.get_constraint_string()}")
     print(f"Free parameter: {free_str}")
     print(f"DOF: {n_dof}")
-    print("-" * 100)
-    print(f"{'Rank':>4} {'mCloud':>10} {'sfe':>6} {'nCore':>8} {'M_star':>8} "
-          f"{'v_sim':>8} {'M_sim':>8} {'t_sim':>8} {'chi2':>8} {'Sig':>5}")
-    print(f"{'':>4} {'[M_sun]':>10} {'':>6} {'[cm-3]':>8} {'[M_sun]':>8} "
-          f"{'[km/s]':>8} {'[M_sun]':>8} {'[Myr]':>8} {'':>8} {'':>5}")
-    print("-" * 100)
+    print("-" * 120)
 
-    for i, r in enumerate(sorted_results, 1):
-        # Determine significance level
-        if r.chi2_total < thresholds['1sigma']:
-            sig = "***"
-        elif r.chi2_total < thresholds['2sigma']:
-            sig = "**"
-        elif r.chi2_total < thresholds['3sigma']:
-            sig = "*"
-        else:
-            sig = ""
+    if config.mass_tracer == 'all':
+        # Show chi² for all three tracers
+        print(f"{'Rank':>4} {'mCloud':>10} {'sfe':>6} {'nCore':>8} {'M_star':>8} "
+              f"{'v_sim':>7} {'M_sim':>8} {'t_sim':>7} {'chi2_HI':>8} {'chi2_CII':>9} {'chi2_comb':>10}")
+        print(f"{'':>4} {'[M_sun]':>10} {'':>6} {'[cm-3]':>8} {'[M_sun]':>8} "
+              f"{'[km/s]':>7} {'[M_sun]':>8} {'[Myr]':>7} {'':>8} {'':>9} {'':>10}")
+        print("-" * 120)
 
-        print(f"{i:>4} {r.mCloud:>10} {r.sfe_float:>6.2f} {r.nCore:>8} "
-              f"{r.Mstar:>8.1f} {r.v_kms:>8.1f} {r.M_shell:>8.0f} "
-              f"{r.t_actual:>8.3f} {r.chi2_total:>8.2f} {sig:>5}")
+        for i, r in enumerate(sorted_results, 1):
+            chi2_HI = compute_tracer_chi2(r, obs.M_shell_HI, obs.M_shell_HI_err)
+            chi2_CII = compute_tracer_chi2(r, obs.M_shell_CII, obs.M_shell_CII_err)
+            chi2_comb = compute_tracer_chi2(r, obs.M_shell_combined, obs.M_shell_combined_err)
 
-    print("-" * 100)
+            print(f"{i:>4} {r.mCloud:>10} {r.sfe_float:>6.2f} {r.nCore:>8} "
+                  f"{r.Mstar:>8.1f} {r.v_kms:>7.1f} {r.M_shell:>8.0f} "
+                  f"{r.t_actual:>7.3f} {chi2_HI:>8.2f} {chi2_CII:>9.2f} {chi2_comb:>10.2f}")
+    else:
+        # Standard single-tracer output
+        print(f"{'Rank':>4} {'mCloud':>10} {'sfe':>6} {'nCore':>8} {'M_star':>8} "
+              f"{'v_sim':>8} {'M_sim':>8} {'t_sim':>8} {'chi2':>8} {'Sig':>5}")
+        print(f"{'':>4} {'[M_sun]':>10} {'':>6} {'[cm-3]':>8} {'[M_sun]':>8} "
+              f"{'[km/s]':>8} {'[M_sun]':>8} {'[Myr]':>8} {'':>8} {'':>5}")
+        print("-" * 120)
+
+        for i, r in enumerate(sorted_results, 1):
+            if r.chi2_total < thresholds['1sigma']:
+                sig = "***"
+            elif r.chi2_total < thresholds['2sigma']:
+                sig = "**"
+            elif r.chi2_total < thresholds['3sigma']:
+                sig = "*"
+            else:
+                sig = ""
+
+            print(f"{i:>4} {r.mCloud:>10} {r.sfe_float:>6.2f} {r.nCore:>8} "
+                  f"{r.Mstar:>8.1f} {r.v_kms:>8.1f} {r.M_shell:>8.0f} "
+                  f"{r.t_actual:>8.3f} {r.chi2_total:>8.2f} {sig:>5}")
+
+    print("-" * 120)
     print(f"Legend: *** = 1-sigma (dchi2<{thresholds['1sigma']:.2f}), "
           f"** = 2-sigma (dchi2<{thresholds['2sigma']:.2f}), "
           f"* = 3-sigma (dchi2<{thresholds['3sigma']:.2f})")
-    print("=" * 100)
+    print("=" * 120)
 
-    # Best fit summary
-    best = sorted_results[0]
-    obs = config.obs
-    print(f"\n** BEST FIT:")
-    print(f"   mCloud = {best.mCloud} M_sun")
-    print(f"   sfe = {best.sfe_float:.2f}")
-    print(f"   nCore = {best.nCore} cm^-3")
-    print(f"   M_star = {best.Mstar:.1f} M_sun (obs: {obs.Mstar_obs:.0f}+/-{obs.Mstar_err:.0f})")
-    print(f"   v = {best.v_kms:.1f} km/s (obs: {obs.v_obs:.0f}+/-{obs.v_err:.0f})")
-    print(f"   M_shell = {best.M_shell:.0f} M_sun (obs: {obs.M_shell_obs:.0f}+/-{obs.M_shell_err:.0f})")
-    print(f"   t = {best.t_actual:.3f} Myr (target: {obs.t_obs:.2f}+/-{obs.t_err:.2f})")
-    print(f"   R = {best.R2:.2f} pc (obs: {obs.R_obs:.1f}+/-{obs.R_err:.1f})")
-    print(f"   chi2 = {best.chi2_total:.2f}")
+    # Best fit summary - show for each tracer when mass_tracer='all'
+    if config.mass_tracer == 'all':
+        print(f"\n** BEST FIT FOR EACH TRACER:")
+        tracer_configs = [
+            ('HI', obs.M_shell_HI, obs.M_shell_HI_err),
+            ('[CII]', obs.M_shell_CII, obs.M_shell_CII_err),
+            ('Combined', obs.M_shell_combined, obs.M_shell_combined_err),
+        ]
+        for tracer_name, M_obs, M_err in tracer_configs:
+            best = min(results, key=lambda r: compute_tracer_chi2(r, M_obs, M_err))
+            chi2_val = compute_tracer_chi2(best, M_obs, M_err)
+            print(f"\n   {tracer_name} (M={M_obs:.0f}±{M_err:.0f} M_sun):")
+            print(f"     Best: {best.mCloud} M_sun, sfe={best.sfe_float:.2f}, nCore={best.nCore}")
+            print(f"     M_star={best.Mstar:.1f}, v={best.v_kms:.1f} km/s, M_shell={best.M_shell:.0f} M_sun")
+            print(f"     chi²={chi2_val:.2f}")
+    else:
+        best = sorted_results[0]
+        print(f"\n** BEST FIT:")
+        print(f"   mCloud = {best.mCloud} M_sun")
+        print(f"   sfe = {best.sfe_float:.2f}")
+        print(f"   nCore = {best.nCore} cm^-3")
+        print(f"   M_star = {best.Mstar:.1f} M_sun (obs: {obs.Mstar_obs:.0f}+/-{obs.Mstar_err:.0f})")
+        print(f"   v = {best.v_kms:.1f} km/s (obs: {obs.v_obs:.0f}+/-{obs.v_err:.0f})")
+        print(f"   M_shell = {best.M_shell:.0f} M_sun (obs: {obs.M_shell_obs:.0f}+/-{obs.M_shell_err:.0f})")
+        print(f"   t = {best.t_actual:.3f} Myr (target: {obs.t_obs:.2f}+/-{obs.t_err:.2f})")
+        print(f"   R = {best.R2:.2f} pc (obs: {obs.R_obs:.1f}+/-{obs.R_err:.1f})")
+        print(f"   chi2 = {best.chi2_total:.2f}")
 
-    # Residuals breakdown
-    print(f"\n   Residuals (in sigma):")
-    print(f"     delta_v = {best.delta_v:+.2f} sigma")
-    print(f"     delta_M_shell = {best.delta_M:+.2f} sigma")
-    print(f"     delta_t = {best.delta_t:+.2f} sigma")
-    print(f"     delta_M_star = {best.delta_Mstar:+.2f} sigma")
+        # Residuals breakdown
+        print(f"\n   Residuals (in sigma):")
+        print(f"     delta_v = {best.delta_v:+.2f} sigma")
+        print(f"     delta_M_shell = {best.delta_M:+.2f} sigma")
+        print(f"     delta_t = {best.delta_t:+.2f} sigma")
+        print(f"     delta_M_star = {best.delta_Mstar:+.2f} sigma")
 
     if config.free_param:
         free_values = [r.free_value for r in sorted_results if r.free_value is not None]
