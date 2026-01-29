@@ -444,7 +444,7 @@ def plot_trajectory_evolution(results: List[SimulationResult], config: AnalysisC
         data_to_plot = data_all_sorted[:top_n]
 
     # 2 subplots: mass, radius
-    fig, axes = plt.subplots(1, 2, figsize=(6.5, 2.5), dpi=150)
+    fig, axes = plt.subplots(1, 2, figsize=(6.5, 3.0), dpi=150)
     ax_m, ax_r = axes
 
     obs = config.obs
@@ -503,7 +503,6 @@ def plot_trajectory_evolution(results: List[SimulationResult], config: AnalysisC
 
     ax_m.set_xlabel('Time [Myr]', fontsize=14)
     ax_m.set_ylabel(r'Shell Mass [$M_\odot$]', fontsize=14, rotation=90)
-    ax_m.set_title(r'Shell Mass Evolution', fontsize=14)
     ax_m.legend(loc='upper left', fontsize=7)
     ax_m.set_xlim(0, max(0.5, obs.t_obs * 2.5))
     ax_m.set_yscale('log')
@@ -521,19 +520,10 @@ def plot_trajectory_evolution(results: List[SimulationResult], config: AnalysisC
 
     ax_r.set_xlabel('Time [Myr]', fontsize=14)
     ax_r.set_ylabel('Shell Radius [pc]', fontsize=14, rotation=90)
-    ax_r.set_title('Radius Evolution', fontsize=14)
     ax_r.legend(loc='upper left', fontsize=7)
     ax_r.set_xlim(0, max(0.5, obs.t_obs * 2.5))
     ax_r.set_ylim(0, None)
     ax_r.grid(True, alpha=0.3)
-
-    # Build title
-    best = data_all_sorted[0] if data_all_sorted else None
-    title_lines = [f'Trajectory Evolution: $n_{{\\rm core}}$ = {nCore_value} cm$^{{-3}}$']
-    if config.show_all:
-        title_lines.append(f'Showing all {len(data_to_plot)} simulations')
-
-    fig.suptitle('\n'.join(title_lines), fontsize=14, y=1.05)
 
     plt.tight_layout()
 
