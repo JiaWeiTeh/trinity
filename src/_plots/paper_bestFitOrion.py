@@ -87,14 +87,30 @@ except:
 
 @dataclass
 class ObservationalConstraints:
-    """M42/Orion Nebula observational constraints."""
-    # Expansion velocity
+    """M42/EON observational constraints with multi-tracer support.
+
+    The EON shows a factor of 5-10 discrepancy between mass estimates:
+    - HI tracer (FAST+VLA): M ~ 80-100 M_sun, traces front hemisphere (v_LSR < 1 km/s)
+    - CII tracer (SOFIA): M ~ 680-1100 M_sun, traces back hemisphere interacting with OMC
+    - Combined estimate (Pabst+2019,2020): M ~ 2000 M_sun assuming spherical shell
+
+    This is a blister H II region - the two tracers sample different parts of an asymmetric structure.
+    """
+    # Expansion velocity (same for all tracers)
     v_obs: float = 13.0          # km/s
     v_err: float = 2.0           # km/s
 
-    # Shell mass
-    M_shell_obs: float = 2000.0  # M_sun
-    M_shell_err: float = 500.0   # M_sun
+    # Shell mass - MULTI-TRACER
+    M_shell_HI: float = 100.0        # M_sun - HI tracer (front hemisphere)
+    M_shell_HI_err: float = 30.0     # M_sun
+    M_shell_CII: float = 900.0       # M_sun - CII tracer (back hemisphere)
+    M_shell_CII_err: float = 200.0   # M_sun
+    M_shell_combined: float = 2000.0 # M_sun - spherical assumption (Pabst+2019)
+    M_shell_combined_err: float = 500.0  # M_sun
+
+    # Backwards compatibility - default to combined
+    M_shell_obs: float = 2000.0  # M_sun (deprecated, use combined)
+    M_shell_err: float = 500.0   # M_sun (deprecated, use combined)
 
     # Dynamical age
     t_obs: float = 0.2           # Myr
@@ -107,6 +123,21 @@ class ObservationalConstraints:
     # Stellar mass (derived constraint)
     Mstar_obs: float = 34.0      # M_sun
     Mstar_err: float = 5.0       # M_sun
+
+    @property
+    def p_HI(self) -> float:
+        """Momentum from HI mass [M_sun km/s]."""
+        return self.M_shell_HI * self.v_obs
+
+    @property
+    def p_CII(self) -> float:
+        """Momentum from CII mass [M_sun km/s]."""
+        return self.M_shell_CII * self.v_obs
+
+    @property
+    def p_combined(self) -> float:
+        """Momentum from combined mass [M_sun km/s]."""
+        return self.M_shell_combined * self.v_obs
 
 
 @dataclass
@@ -128,8 +159,24 @@ class AnalysisConfig:
     # Filter by nCore (for 2D mode)
     nCore_filter: Optional[str] = None
 
+    # Mass tracer selection (for multi-tracer analysis)
+    mass_tracer: Literal['HI', 'CII', 'combined', 'all'] = 'combined'
+
+    # Blister geometry correction
+    blister_mode: bool = False
+    blister_fraction: float = 0.5  # Fraction of shell visible in blister geometry
+
     # Observational constraints
     obs: ObservationalConstraints = field(default_factory=ObservationalConstraints)
+
+    def get_mass_constraint(self) -> Tuple[float, float]:
+        """Return (M_obs, M_err) based on tracer selection."""
+        if self.mass_tracer == 'HI':
+            return self.obs.M_shell_HI, self.obs.M_shell_HI_err
+        elif self.mass_tracer == 'CII':
+            return self.obs.M_shell_CII, self.obs.M_shell_CII_err
+        else:  # 'combined' or 'all'
+            return self.obs.M_shell_combined, self.obs.M_shell_combined_err
 
     def get_constraint_string(self) -> str:
         """Build a string describing active constraints."""
@@ -137,13 +184,16 @@ class AnalysisConfig:
         if self.constrain_v and self.free_param != 'v':
             constraints.append(f"v={self.obs.v_obs:.0f}+/-{self.obs.v_err:.0f} km/s")
         if self.constrain_M_shell and self.free_param != 'M_shell':
-            constraints.append(f"M_shell={self.obs.M_shell_obs:.0f}+/-{self.obs.M_shell_err:.0f} M_sun")
+            M_obs, M_err = self.get_mass_constraint()
+            constraints.append(f"M_shell({self.mass_tracer})={M_obs:.0f}+/-{M_err:.0f} M_sun")
         if self.constrain_t and self.free_param != 't':
             constraints.append(f"t={self.obs.t_obs:.2f}+/-{self.obs.t_err:.2f} Myr")
         if self.constrain_R and self.free_param != 'R':
             constraints.append(f"R={self.obs.R_obs:.1f}+/-{self.obs.R_err:.1f} pc")
         if self.constrain_Mstar:
             constraints.append(f"M_star={self.obs.Mstar_obs:.0f}+/-{self.obs.Mstar_err:.0f} M_sun")
+        if self.blister_mode:
+            constraints.append(f"blister_frac={self.blister_fraction:.1f}")
         return ", ".join(constraints)
 
     def count_dof(self) -> int:
@@ -162,10 +212,14 @@ class AnalysisConfig:
         return dof
 
     def get_filename_suffix(self) -> str:
-        """Generate filename suffix based on mode and free parameter."""
+        """Generate filename suffix based on mode, tracer, and free parameter."""
         suffix = ""
         if self.mode == '3d':
             suffix += "_3d"
+        if self.mass_tracer != 'combined':
+            suffix += f"_{self.mass_tracer}"
+        if self.blister_mode:
+            suffix += "_blister"
         if self.free_param:
             suffix += f"_estimate_{self.free_param}"
         return suffix
@@ -323,9 +377,16 @@ def compute_chi2(sim_values: dict, config: AnalysisConfig) -> dict:
     else:
         chi2_terms['chi2_v'] = 0.0
 
-    # Shell mass
-    if np.isfinite(sim_values['M_shell']) and obs.M_shell_err > 0:
-        delta_M = (sim_values['M_shell'] - obs.M_shell_obs) / obs.M_shell_err
+    # Shell mass - use selected tracer constraint
+    M_obs, M_err = config.get_mass_constraint()
+
+    # Apply blister correction if enabled (TRINITY predicts full shell, observation sees fraction)
+    M_shell_compare = sim_values['M_shell']
+    if config.blister_mode:
+        M_shell_compare = sim_values['M_shell'] * config.blister_fraction
+
+    if np.isfinite(M_shell_compare) and M_err > 0:
+        delta_M = (M_shell_compare - M_obs) / M_err
     else:
         delta_M = np.nan
     residuals['delta_M'] = delta_M
@@ -879,20 +940,29 @@ def plot_trajectory_comparison_2d(results: List[SimulationResult], config: Analy
                   fmt='s', color='red', markersize=12, capsize=5, capthick=2,
                   label='M42 Observed', zorder=10, markeredgecolor='k')
 
-    ax_m.errorbar(obs.t_obs, obs.M_shell_obs, xerr=obs.t_err, yerr=obs.M_shell_err,
-                  fmt='s', color='red', markersize=12, capsize=5, capthick=2,
-                  label='M42 Observed', zorder=10, markeredgecolor='k')
+    # Mass panel: Show ALL three mass constraints as bands
+    tracer_bands = [
+        (obs.M_shell_HI, obs.M_shell_HI_err, 'blue', 'HI (front)', 0.15),
+        (obs.M_shell_CII, obs.M_shell_CII_err, 'orange', 'CII (back)', 0.15),
+        (obs.M_shell_combined, obs.M_shell_combined_err, 'red', 'Combined', 0.1),
+    ]
 
-    # Shade observation uncertainty region
+    for M_val, M_err, color, label, alpha in tracer_bands:
+        ax_m.axhspan(M_val - M_err, M_val + M_err, alpha=alpha, color=color, zorder=1)
+        ax_m.errorbar(obs.t_obs, M_val, xerr=obs.t_err, yerr=M_err,
+                      fmt='s', color=color, markersize=10, capsize=4, capthick=1.5,
+                      label=f'{label}: {M_val:.0f}±{M_err:.0f} M$_\\odot$', zorder=10,
+                      markeredgecolor='k', markeredgewidth=0.5)
+
+    # Shade velocity observation uncertainty region
     ax_v.axhspan(obs.v_obs - obs.v_err, obs.v_obs + obs.v_err,
                  alpha=0.2, color='red', zorder=1)
     ax_v.axvspan(obs.t_obs - obs.t_err, obs.t_obs + obs.t_err,
                  alpha=0.2, color='blue', zorder=1)
 
-    ax_m.axhspan(obs.M_shell_obs - obs.M_shell_err, obs.M_shell_obs + obs.M_shell_err,
-                 alpha=0.2, color='red', zorder=1)
+    # Time constraint for mass panel
     ax_m.axvspan(obs.t_obs - obs.t_err, obs.t_obs + obs.t_err,
-                 alpha=0.2, color='blue', zorder=1)
+                 alpha=0.1, color='gray', zorder=0)
 
     # Labels and formatting
     ax_v.set_xlabel('Time [Myr]')
@@ -1136,6 +1206,233 @@ def plot_Mstar_constraint_2d(results: List[SimulationResult], config: AnalysisCo
 
     suffix = config.get_filename_suffix()
     out_pdf = output_dir / f'bestfit_n{nCore_value}_Mstar{suffix}.pdf'
+    fig.savefig(out_pdf, bbox_inches='tight')
+    print(f"  Saved: {out_pdf}")
+    plt.close(fig)
+
+
+def plot_momentum_comparison(results: List[SimulationResult], config: AnalysisConfig,
+                              output_dir: Path, nCore_value: str):
+    """
+    Compare TRINITY momentum predictions to HI and CII estimates.
+
+    Key question: Is p_TRINITY ~ 2 * p_HI (supporting blister interpretation)?
+
+    Parameters
+    ----------
+    results : List[SimulationResult]
+        List of simulation results
+    config : AnalysisConfig
+        Analysis configuration
+    output_dir : Path
+        Output directory
+    nCore_value : str
+        nCore value for filtering
+    """
+    data = [r for r in results if r.nCore == nCore_value]
+    if not data:
+        return
+
+    fig, axes = plt.subplots(1, 3, figsize=(15, 5), dpi=150)
+    obs = config.obs
+
+    # --- Panel 1: p(t) trajectories ---
+    ax1 = axes[0]
+
+    data_sorted = sorted(data, key=lambda x: x.chi2_total)[:5]
+    colors = plt.cm.viridis(np.linspace(0.2, 0.8, len(data_sorted)))
+
+    for i, r in enumerate(data_sorted):
+        if r.t_full is None or r.v_full_kms is None or r.M_shell_full is None:
+            continue
+        p_full = r.M_shell_full * r.v_full_kms  # M_sun km/s
+        ax1.plot(r.t_full, p_full, color=colors[i], lw=1.5,
+                 label=f"{r.mCloud}_sfe{r.sfe}")
+
+    # Mark observational momentum estimates
+    ax1.axhline(obs.p_HI, color='blue', ls='--', lw=2, label=f'p_HI = {obs.p_HI:.0f}')
+    ax1.axhline(obs.p_CII, color='orange', ls='--', lw=2, label=f'p_CII = {obs.p_CII:.0f}')
+    ax1.axhline(2 * obs.p_HI, color='blue', ls=':', lw=1.5, label=f'2xp_HI = {2*obs.p_HI:.0f}')
+    ax1.axhline(obs.p_combined, color='red', ls='-.', lw=1.5, alpha=0.5, label=f'p_comb = {obs.p_combined:.0f}')
+
+    ax1.axvline(obs.t_obs, color='gray', ls=':', alpha=0.5)
+    ax1.set_xlabel('Time [Myr]')
+    ax1.set_ylabel(r'Momentum [$M_\odot$ km/s]')
+    ax1.set_title('Momentum Evolution')
+    ax1.legend(fontsize=7, loc='upper left')
+    ax1.set_xlim(0, 0.5)
+    ax1.grid(True, alpha=0.3)
+
+    # --- Panel 2: M vs v with momentum contours ---
+    ax2 = axes[1]
+
+    v_vals = [r.v_kms for r in data if np.isfinite(r.v_kms)]
+    M_vals = [r.M_shell for r in data if np.isfinite(r.M_shell)]
+    chi2_vals = [r.chi2_total for r in data if np.isfinite(r.chi2_total)]
+
+    if v_vals and M_vals:
+        sc = ax2.scatter(v_vals, M_vals, c=chi2_vals, cmap='viridis_r',
+                         norm=mcolors.LogNorm(vmin=0.1, vmax=100),
+                         s=80, edgecolors='k', linewidths=0.5)
+
+        # Momentum contours
+        v_grid = np.linspace(5, 25, 100)
+        for p_val, ls, label in [(obs.p_HI, '--', 'p_HI'),
+                                  (obs.p_CII, '-', 'p_CII'),
+                                  (2*obs.p_HI, ':', '2xp_HI')]:
+            ax2.plot(v_grid, p_val / v_grid, 'k', ls=ls, alpha=0.3, lw=1)
+            # Label at edge
+            idx = len(v_grid) - 1
+            if p_val / v_grid[idx] > 10:
+                ax2.text(v_grid[idx], p_val / v_grid[idx], f' {label}', fontsize=7, alpha=0.6,
+                         va='center')
+
+        # Observational boxes
+        ax2.errorbar(obs.v_obs, obs.M_shell_HI, xerr=obs.v_err, yerr=obs.M_shell_HI_err,
+                     fmt='o', color='blue', markersize=10, capsize=4,
+                     markeredgecolor='k', zorder=10, label='HI')
+        ax2.errorbar(obs.v_obs, obs.M_shell_CII, xerr=obs.v_err, yerr=obs.M_shell_CII_err,
+                     fmt='^', color='orange', markersize=10, capsize=4,
+                     markeredgecolor='k', zorder=10, label='CII')
+        ax2.errorbar(obs.v_obs, obs.M_shell_combined, xerr=obs.v_err, yerr=obs.M_shell_combined_err,
+                     fmt='s', color='red', markersize=8, capsize=4,
+                     markeredgecolor='k', zorder=10, alpha=0.5, label='Combined')
+
+        ax2.set_xlabel('Velocity [km/s]')
+        ax2.set_ylabel(r'Shell Mass [$M_\odot$]')
+        ax2.set_title(f'M vs v at t={obs.t_obs} Myr')
+        ax2.set_yscale('log')
+        ax2.set_ylim(10, 5000)
+        ax2.legend(fontsize=8, loc='upper right')
+        plt.colorbar(sc, ax=ax2, label=r'$\chi^2$')
+
+    # --- Panel 3: Momentum histogram ---
+    ax3 = axes[2]
+
+    p_at_t = [r.M_shell * r.v_kms for r in data
+              if np.isfinite(r.M_shell) and np.isfinite(r.v_kms)]
+
+    if p_at_t:
+        ax3.hist(p_at_t, bins=15, color='gray', alpha=0.7, edgecolor='black')
+        ax3.axvline(obs.p_HI, color='blue', ls='--', lw=2, label=f'p_HI = {obs.p_HI:.0f}')
+        ax3.axvline(obs.p_CII, color='orange', ls='--', lw=2, label=f'p_CII = {obs.p_CII:.0f}')
+        ax3.axvline(2*obs.p_HI, color='blue', ls=':', lw=1.5, label=f'2xp_HI (spherical)')
+        ax3.axvline(obs.p_combined, color='red', ls='-.', lw=1.5, alpha=0.5, label=f'p_combined')
+
+        # Mark best-fit momentum
+        best = min(data, key=lambda r: r.chi2_total)
+        p_best = best.M_shell * best.v_kms
+        ax3.axvline(p_best, color='gold', ls='-', lw=3, label=f'Best fit: {p_best:.0f}')
+
+        ax3.set_xlabel(r'Momentum at t=0.2 Myr [$M_\odot$ km/s]')
+        ax3.set_ylabel('Count')
+        ax3.set_title('TRINITY Momentum Predictions')
+        ax3.legend(fontsize=8)
+
+    fig.suptitle(f'Momentum Budget Analysis: $n_{{\\rm core}}$ = {nCore_value} cm$^{{-3}}$\n'
+                 f'Testing blister hypothesis: is p_TRINITY ~ 2 x p_HI?', fontsize=12)
+    plt.tight_layout()
+
+    suffix = config.get_filename_suffix()
+    out_pdf = output_dir / f'bestfit_n{nCore_value}_momentum{suffix}.pdf'
+    fig.savefig(out_pdf, bbox_inches='tight')
+    print(f"  Saved: {out_pdf}")
+    plt.close(fig)
+
+
+def plot_tracer_comparison(results: List[SimulationResult], config: AnalysisConfig,
+                            output_dir: Path, nCore_value: str):
+    """
+    Side-by-side chi^2 heatmaps for different mass tracers.
+
+    Shows how best-fit region shifts depending on which mass you believe.
+
+    Parameters
+    ----------
+    results : List[SimulationResult]
+        List of simulation results
+    config : AnalysisConfig
+        Analysis configuration
+    output_dir : Path
+        Output directory
+    nCore_value : str
+        nCore value for filtering
+    """
+    data = [r for r in results if r.nCore == nCore_value]
+    if not data:
+        return
+
+    mCloud_list = sorted(set(r.mCloud for r in data), key=float)
+    sfe_list = sorted(set(r.sfe for r in data), key=lambda x: int(x))
+    nrows, ncols = len(mCloud_list), len(sfe_list)
+
+    fig, axes = plt.subplots(1, 3, figsize=(15, 5), dpi=150)
+    obs = config.obs
+
+    tracer_configs = [
+        ('HI', obs.M_shell_HI, obs.M_shell_HI_err, axes[0], 'blue'),
+        ('CII', obs.M_shell_CII, obs.M_shell_CII_err, axes[1], 'orange'),
+        ('Combined', obs.M_shell_combined, obs.M_shell_combined_err, axes[2], 'red'),
+    ]
+
+    # Shared colorbar normalization
+    vmin, vmax = 0.1, 100
+
+    for tracer_name, M_obs, M_err, ax, tracer_color in tracer_configs:
+        # Recompute chi^2 with this tracer's mass
+        chi2_grid = np.full((nrows, ncols), np.nan)
+        lookup = {(r.mCloud, r.sfe): r for r in data}
+
+        for i, mCloud in enumerate(mCloud_list):
+            for j, sfe in enumerate(sfe_list):
+                if (mCloud, sfe) in lookup:
+                    r = lookup[(mCloud, sfe)]
+                    # Recompute chi^2 with this mass constraint
+                    chi2_v = ((r.v_kms - obs.v_obs) / obs.v_err)**2 if np.isfinite(r.v_kms) else 0
+                    chi2_M = ((r.M_shell - M_obs) / M_err)**2 if np.isfinite(r.M_shell) else 0
+                    chi2_t = ((r.t_actual - obs.t_obs) / obs.t_err)**2 if np.isfinite(r.t_actual) else 0
+                    chi2_Mstar = ((r.Mstar - obs.Mstar_obs) / obs.Mstar_err)**2 if np.isfinite(r.Mstar) else 0
+                    chi2_grid[i, j] = chi2_v + chi2_M + chi2_t + chi2_Mstar
+
+        # Plot heatmap
+        im = ax.imshow(chi2_grid, cmap='viridis_r', aspect='auto',
+                       norm=mcolors.LogNorm(vmin=vmin, vmax=vmax))
+
+        # Mark best-fit
+        if not np.all(np.isnan(chi2_grid)):
+            best_idx = np.unravel_index(np.nanargmin(chi2_grid), chi2_grid.shape)
+            ax.plot(best_idx[1], best_idx[0], marker='*', markersize=20, color='gold',
+                    markeredgecolor='k', markeredgewidth=1.5, zorder=10)
+
+            # Add chi^2 values
+            for i in range(nrows):
+                for j in range(ncols):
+                    if np.isfinite(chi2_grid[i, j]):
+                        color = 'white' if chi2_grid[i, j] > 10 else 'black'
+                        ax.text(j, i, f'{chi2_grid[i, j]:.1f}', ha='center', va='center',
+                                fontsize=7, color=color)
+
+        ax.set_xticks(range(ncols))
+        ax.set_xticklabels([f'{int(s)/100:.2f}' for s in sfe_list], fontsize=8)
+        ax.set_yticks(range(nrows))
+        ax.set_yticklabels([f'{float(m):.0e}' for m in mCloud_list], fontsize=8)
+        ax.set_xlabel(r'SFE ($\epsilon$)')
+        ax.set_ylabel(r'$M_{\rm cloud}$ [$M_\odot$]')
+        ax.set_title(f'{tracer_name}: M = {M_obs:.0f} +/- {M_err:.0f} $M_\\odot$',
+                     color=tracer_color, fontweight='bold')
+
+    # Shared colorbar
+    fig.subplots_adjust(right=0.92)
+    cbar_ax = fig.add_axes([0.94, 0.15, 0.02, 0.7])
+    cbar = fig.colorbar(plt.cm.ScalarMappable(norm=mcolors.LogNorm(vmin=vmin, vmax=vmax),
+                                               cmap='viridis_r'),
+                        cax=cbar_ax, label=r'$\chi^2_{\rm total}$')
+
+    fig.suptitle(f'Mass Tracer Comparison: $n_{{\\rm core}}$ = {nCore_value} cm$^{{-3}}$\n'
+                 f'How does best-fit shift with different mass estimates?', fontsize=12)
+
+    suffix = config.get_filename_suffix()
+    out_pdf = output_dir / f'bestfit_n{nCore_value}_tracer_comparison{suffix}.pdf'
     fig.savefig(out_pdf, bbox_inches='tight')
     print(f"  Saved: {out_pdf}")
     plt.close(fig)
@@ -1565,6 +1862,9 @@ def main(folder_path: str, output_dir: str = None, config: AnalysisConfig = None
     print(f"\nLoading sweep results from: {folder_path}")
     print(f"Output directory: {output_dir}")
     print(f"Mode: {config.mode.upper()}")
+    print(f"Mass tracer: {config.mass_tracer}")
+    if config.blister_mode:
+        print(f"Blister geometry: ON (fraction={config.blister_fraction})")
     if config.nCore_filter:
         print(f"nCore filter: {config.nCore_filter}")
     if config.free_param:
@@ -1606,6 +1906,31 @@ def main(folder_path: str, output_dir: str = None, config: AnalysisConfig = None
         plot_chi2_heatmap_3d_faceted(results, config, output_dir)
         plot_3d_scatter(results, config, output_dir)
         plot_marginal_projections(results, config, output_dir)
+
+    # Multi-tracer analysis plots (run regardless of mode)
+    print("\n  Creating multi-tracer analysis plots...")
+    if config.mode == '2d':
+        if config.nCore_filter:
+            nCore_list_multi = [config.nCore_filter]
+        else:
+            nCore_list_multi = sorted(set(r.nCore for r in results), key=float)
+        for nCore in nCore_list_multi:
+            plot_momentum_comparison(results, config, output_dir, nCore)
+    else:
+        # In 3D mode, run momentum comparison for each nCore
+        nCore_list_multi = sorted(set(r.nCore for r in results), key=float)
+        for nCore in nCore_list_multi:
+            plot_momentum_comparison(results, config, output_dir, nCore)
+
+    # Tracer comparison plot (shows all three mass tracers side-by-side)
+    if config.mass_tracer == 'all' or config.mode == '2d':
+        print("\n  Creating tracer comparison plots...")
+        if config.mode == '2d':
+            for nCore in nCore_list_multi:
+                plot_tracer_comparison(results, config, output_dir, nCore)
+        else:
+            for nCore in nCore_list_multi:
+                plot_tracer_comparison(results, config, output_dir, nCore)
 
     print(f"\n** All plots saved to: {output_dir}")
 
@@ -1709,12 +2034,32 @@ Stellar Mass Constraint:
     parser.add_argument('--Mstar-err', type=float, default=5.0,
                         help='Stellar mass uncertainty [M_sun] (default: 5.0)')
 
+    # Multi-tracer mass analysis
+    parser.add_argument('--mass-tracer', choices=['HI', 'CII', 'combined', 'all'],
+                        default='combined',
+                        help='Mass tracer for chi^2 calculation (default: combined)')
+    parser.add_argument('--blister', action='store_true',
+                        help='Apply blister H II region geometry correction')
+    parser.add_argument('--blister-fraction', type=float, default=0.5,
+                        help='Fraction of shell visible in blister geometry (default: 0.5)')
+    parser.add_argument('--M-HI', type=float, default=100.0,
+                        help='HI-derived shell mass [M_sun] (default: 100.0)')
+    parser.add_argument('--M-HI-err', type=float, default=30.0,
+                        help='HI shell mass uncertainty [M_sun] (default: 30.0)')
+    parser.add_argument('--M-CII', type=float, default=900.0,
+                        help='CII-derived shell mass [M_sun] (default: 900.0)')
+    parser.add_argument('--M-CII-err', type=float, default=200.0,
+                        help='CII shell mass uncertainty [M_sun] (default: 200.0)')
+
     args = parser.parse_args()
 
-    # Build observational constraints
+    # Build observational constraints with multi-tracer support
     obs = ObservationalConstraints(
         v_obs=args.v_obs, v_err=args.v_err,
-        M_shell_obs=args.M_obs, M_shell_err=args.M_err,
+        M_shell_HI=args.M_HI, M_shell_HI_err=args.M_HI_err,
+        M_shell_CII=args.M_CII, M_shell_CII_err=args.M_CII_err,
+        M_shell_combined=args.M_obs, M_shell_combined_err=args.M_err,
+        M_shell_obs=args.M_obs, M_shell_err=args.M_err,  # backwards compat
         t_obs=args.t_obs, t_err=args.t_err,
         R_obs=args.R_obs, R_err=args.R_err,
         Mstar_obs=args.Mstar, Mstar_err=args.Mstar_err,
@@ -1732,6 +2077,9 @@ Stellar Mass Constraint:
         constrain_Mstar=not args.no_Mstar,
         free_param=args.free_param,
         nCore_filter=args.nCore,
+        mass_tracer=args.mass_tracer,
+        blister_mode=args.blister,
+        blister_fraction=args.blister_fraction,
         obs=obs,
     )
 
