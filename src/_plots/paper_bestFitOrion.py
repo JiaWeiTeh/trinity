@@ -898,6 +898,7 @@ def plot_trajectory_comparison_2d(results: List[SimulationResult], config: Analy
     ax_v.set_xlabel('Time [Myr]')
     ax_v.set_ylabel('Shell Velocity [km/s]')
     ax_v.set_title('Velocity Evolution')
+    ax_v.set_yscale('log')
     ax_v.legend(loc='upper right', fontsize=8)
     ax_v.set_xlim(0, max(0.5, obs.t_obs * 2.5))
     ax_v.set_ylim(0, None)
