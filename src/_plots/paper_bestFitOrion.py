@@ -172,6 +172,9 @@ class AnalysisConfig:
     constrain_R: bool = True
     constrain_Mstar: bool = True
 
+    # Free parameter (not exposed in CLI, kept for internal compatibility)
+    free_param: Optional[Literal['v', 'M_shell', 't', 'R']] = None
+
     # Filter by nCore (for 2D mode)
     nCore_filter: Optional[str] = None
 
