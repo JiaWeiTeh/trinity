@@ -305,6 +305,10 @@ class SimulationResult:
     # Free parameter value (if applicable)
     free_value: Optional[float] = None
 
+    # Predicted time (when --no-t is used, this is the optimal time)
+    t_predicted: Optional[float] = None
+    t_predicted_range: Optional[Tuple[float, float]] = None  # 1-sigma range
+
 
 # =============================================================================
 # Delta chi^2 Thresholds for Confidence Regions
@@ -877,9 +881,24 @@ def load_simulation_at_time(data_path: Path, config: AnalysisConfig) -> Optional
         sfe_float = int(sfe_str) / 100.0  # sfe is stored as percentage (e.g., "020" -> 0.20)
         nCore_float = float(nCore_str)
 
-        # Get snapshot closest to observation time
-        t_obs = config.obs.t_obs
-        snap = output.get_at_time(t_obs, mode='closest', quiet=True)
+        # Determine evaluation time: if --no-t, find optimal time; otherwise use t_obs
+        t_predicted = None
+        t_predicted_range = None
+
+        if not config.constrain_t:
+            # Find the time that minimizes chi² for unconstrained parameters
+            time_result = find_matching_time(output, config)
+            if time_result is not None:
+                t_predicted = time_result['t_best']
+                t_predicted_range = time_result['t_range_1sigma']
+                eval_time = t_predicted
+            else:
+                eval_time = config.obs.t_obs  # Fallback
+        else:
+            eval_time = config.obs.t_obs
+
+        # Get snapshot closest to evaluation time
+        snap = output.get_at_time(eval_time, mode='closest', quiet=True)
 
         if snap is None:
             return None
@@ -943,6 +962,8 @@ def load_simulation_at_time(data_path: Path, config: AnalysisConfig) -> Optional
             M_shell_full=M_shell_full,
             R_full=R_full,
             free_value=chi2_result['free_value'],
+            t_predicted=t_predicted,
+            t_predicted_range=t_predicted_range,
         )
 
     except Exception as e:
@@ -1355,14 +1376,28 @@ def plot_trajectory_comparison_2d(results: List[SimulationResult], config: Analy
                     ax_r.plot(best_for_tracer.t_full, best_for_tracer.R_full,
                               color=color, lw=2.5, ls=ls, label=label, alpha=1.0, zorder=5)
 
+    # Check if time is being predicted
+    time_is_predicted = not config.constrain_t
+    best_model = data_all_sorted[0] if data_all_sorted else None
+
     # --- Velocity panel ---
-    ax_v.errorbar(obs.t_obs, obs.v_obs, xerr=obs.t_err, yerr=obs.v_err,
-                  fmt='s', color='red', markersize=12, capsize=5, capthick=2,
-                  label='M42 Observed', zorder=10, markeredgecolor='k')
+    # Time marker depends on whether t is constrained
+    if time_is_predicted and best_model and best_model.t_predicted is not None:
+        # Show predicted time as vertical line
+        ax_v.axvline(best_model.t_actual, color='purple', linestyle='--', lw=2,
+                     label=f't_pred = {best_model.t_actual:.3f} Myr', zorder=5)
+        # Don't show observed time band, just observed v at best time
+        ax_v.errorbar(best_model.t_actual, obs.v_obs, yerr=obs.v_err,
+                      fmt='s', color='red', markersize=12, capsize=5, capthick=2,
+                      label='Observed v', zorder=10, markeredgecolor='k')
+    else:
+        ax_v.errorbar(obs.t_obs, obs.v_obs, xerr=obs.t_err, yerr=obs.v_err,
+                      fmt='s', color='red', markersize=12, capsize=5, capthick=2,
+                      label='M42 Observed', zorder=10, markeredgecolor='k')
+        ax_v.axvspan(obs.t_obs - obs.t_err, obs.t_obs + obs.t_err,
+                     alpha=0.2, color='blue', zorder=1)
     ax_v.axhspan(obs.v_obs - obs.v_err, obs.v_obs + obs.v_err,
                  alpha=0.2, color='red', zorder=1)
-    ax_v.axvspan(obs.t_obs - obs.t_err, obs.t_obs + obs.t_err,
-                 alpha=0.2, color='blue', zorder=1)
 
     ax_v.set_xlabel('Time [Myr]')
     ax_v.set_ylabel('Shell Velocity [km/s]')
@@ -1384,13 +1419,23 @@ def plot_trajectory_comparison_2d(results: List[SimulationResult], config: Analy
 
     for M_val, M_err, color, label, alpha in tracer_bands:
         ax_m.axhspan(M_val - M_err, M_val + M_err, alpha=alpha, color=color, zorder=1)
-        ax_m.errorbar(obs.t_obs, M_val, xerr=obs.t_err, yerr=M_err,
-                      fmt='s', color=color, markersize=10, capsize=4, capthick=1.5,
-                      label=f'{label}', zorder=10,
-                      markeredgecolor='k', markeredgewidth=0.5)
+        # Time position depends on whether t is constrained
+        if time_is_predicted and best_model and best_model.t_predicted is not None:
+            ax_m.errorbar(best_model.t_actual, M_val, yerr=M_err,
+                          fmt='s', color=color, markersize=10, capsize=4, capthick=1.5,
+                          label=f'{label}', zorder=10,
+                          markeredgecolor='k', markeredgewidth=0.5)
+        else:
+            ax_m.errorbar(obs.t_obs, M_val, xerr=obs.t_err, yerr=M_err,
+                          fmt='s', color=color, markersize=10, capsize=4, capthick=1.5,
+                          label=f'{label}', zorder=10,
+                          markeredgecolor='k', markeredgewidth=0.5)
 
-    ax_m.axvspan(obs.t_obs - obs.t_err, obs.t_obs + obs.t_err,
-                 alpha=0.1, color='gray', zorder=0)
+    if time_is_predicted and best_model and best_model.t_predicted is not None:
+        ax_m.axvline(best_model.t_actual, color='purple', linestyle='--', lw=2, zorder=5)
+    else:
+        ax_m.axvspan(obs.t_obs - obs.t_err, obs.t_obs + obs.t_err,
+                     alpha=0.1, color='gray', zorder=0)
 
     ax_m.set_xlabel('Time [Myr]')
     ax_m.set_ylabel(r'Shell Mass [$M_\odot$]')
@@ -1402,13 +1447,19 @@ def plot_trajectory_comparison_2d(results: List[SimulationResult], config: Analy
     ax_m.grid(True, alpha=0.3, which='both')
 
     # --- Radius panel ---
-    ax_r.errorbar(obs.t_obs, obs.R_obs, xerr=obs.t_err, yerr=obs.R_err,
-                  fmt='s', color='green', markersize=12, capsize=5, capthick=2,
-                  label=f'M42 Observed: {obs.R_obs}±{obs.R_err} pc', zorder=10, markeredgecolor='k')
+    if time_is_predicted and best_model and best_model.t_predicted is not None:
+        ax_r.errorbar(best_model.t_actual, obs.R_obs, yerr=obs.R_err,
+                      fmt='s', color='green', markersize=12, capsize=5, capthick=2,
+                      label=f'Observed R: {obs.R_obs}±{obs.R_err} pc', zorder=10, markeredgecolor='k')
+        ax_r.axvline(best_model.t_actual, color='purple', linestyle='--', lw=2, zorder=5)
+    else:
+        ax_r.errorbar(obs.t_obs, obs.R_obs, xerr=obs.t_err, yerr=obs.R_err,
+                      fmt='s', color='green', markersize=12, capsize=5, capthick=2,
+                      label=f'M42 Observed: {obs.R_obs}±{obs.R_err} pc', zorder=10, markeredgecolor='k')
+        ax_r.axvspan(obs.t_obs - obs.t_err, obs.t_obs + obs.t_err,
+                     alpha=0.2, color='blue', zorder=1)
     ax_r.axhspan(obs.R_obs - obs.R_err, obs.R_obs + obs.R_err,
                  alpha=0.2, color='green', zorder=1)
-    ax_r.axvspan(obs.t_obs - obs.t_err, obs.t_obs + obs.t_err,
-                 alpha=0.2, color='blue', zorder=1)
 
     ax_r.set_xlabel('Time [Myr]')
     ax_r.set_ylabel('Shell Radius [pc]')
@@ -1423,6 +1474,8 @@ def plot_trajectory_comparison_2d(results: List[SimulationResult], config: Analy
     title_lines = [f'M42 Trajectory Comparison: $n_{{\\rm core}}$ = {nCore_value} cm$^{{-3}}$']
     if config.show_all:
         title_lines.append(f'Showing all {len(data_to_plot)} simulations')
+    if time_is_predicted and best and best.t_predicted is not None:
+        title_lines.append(f'Predicted t = {best.t_actual:.3f} Myr (purple dashed line)')
     if config.free_param and best and best.free_value is not None:
         title_lines.append(f'Predicted {config.get_free_param_label()}: {best.free_value:.2f}')
 
@@ -2304,21 +2357,31 @@ def print_ranking_table(results: List[SimulationResult], config: AnalysisConfig,
     n_params = get_n_params_for_grid(config.mode)
     thresholds = get_delta_chi2_thresholds(n_params)
 
+    # Check if time is being predicted (--no-t mode)
+    time_is_predicted = not config.constrain_t
+
     free_str = f"FREE: {config.free_param}" if config.free_param else "None"
+    if time_is_predicted:
+        free_str += " (t is PREDICTED, not constrained)"
 
     print("\n" + "=" * 120)
     print(f"TOP {top_n} BEST-FIT PARAMETER COMBINATIONS")
     print("=" * 120)
     print(f"Constraints: {config.get_constraint_string()}")
+    if time_is_predicted:
+        print("NOTE: Time (t) is not constrained - values evaluated at PREDICTED optimal time")
     print(f"Free parameter: {free_str}")
     print(f"chi²_min: {chi2_min:.2f}")
     print(f"Δχ² thresholds (n_params={n_params}): 1σ<{thresholds['1sigma']:.2f}, 2σ<{thresholds['2sigma']:.2f}, 3σ<{thresholds['3sigma']:.2f}")
     print("-" * 120)
 
+    # Column header for time depends on whether it's predicted
+    t_col_header = "t_pred" if time_is_predicted else "t_sim"
+
     if config.mass_tracer == 'all':
         # Show chi² for all three tracers (always include mass for tracer comparison)
         print(f"{'Rank':>4} {'mCloud':>10} {'sfe':>6} {'nCore':>8} {'M_star':>8} "
-              f"{'v_sim':>7} {'M_sim':>8} {'t_sim':>7} {'chi2_HI':>8} {'chi2_CII':>9} {'chi2_comb':>10}")
+              f"{'v_sim':>7} {'M_sim':>8} {t_col_header:>7} {'chi2_HI':>8} {'chi2_CII':>9} {'chi2_comb':>10}")
         print(f"{'':>4} {'[M_sun]':>10} {'':>6} {'[cm-3]':>8} {'[M_sun]':>8} "
               f"{'[km/s]':>7} {'[M_sun]':>8} {'[Myr]':>7} {'':>8} {'':>9} {'':>10}")
         print("-" * 120)
@@ -2335,7 +2398,7 @@ def print_ranking_table(results: List[SimulationResult], config: AnalysisConfig,
     else:
         # Standard single-tracer output with Δχ² significance
         print(f"{'Rank':>4} {'mCloud':>10} {'sfe':>6} {'nCore':>8} {'M_star':>8} "
-              f"{'v_sim':>8} {'M_sim':>8} {'t_sim':>8} {'chi2':>8} {'Δχ²':>6} {'Sig':>5}")
+              f"{'v_sim':>8} {'M_sim':>8} {t_col_header:>8} {'chi2':>8} {'Δχ²':>6} {'Sig':>5}")
         print(f"{'':>4} {'[M_sun]':>10} {'':>6} {'[cm-3]':>8} {'[M_sun]':>8} "
               f"{'[km/s]':>8} {'[M_sun]':>8} {'[Myr]':>8} {'':>8} {'':>6} {'':>5}")
         print("-" * 120)
@@ -2365,6 +2428,8 @@ def print_ranking_table(results: List[SimulationResult], config: AnalysisConfig,
     # Best fit summary - show for each tracer when mass_tracer='all'
     if config.mass_tracer == 'all':
         print(f"\n** BEST FIT FOR EACH TRACER:")
+        if time_is_predicted:
+            print("   (Time is PREDICTED - values at optimal time for each model)")
         tracer_configs = [
             ('HI', obs.M_shell_HI, obs.M_shell_HI_err),
             ('[CII]', obs.M_shell_CII, obs.M_shell_CII_err),
@@ -2376,6 +2441,11 @@ def print_ranking_table(results: List[SimulationResult], config: AnalysisConfig,
             print(f"\n   {tracer_name} (M={M_obs:.0f}±{M_err:.0f} M_sun):")
             print(f"     Best: {best.mCloud} M_sun, sfe={best.sfe_float:.2f}, nCore={best.nCore}")
             print(f"     M_star={best.Mstar:.1f}, v={best.v_kms:.1f} km/s, M_shell={best.M_shell:.0f} M_sun")
+            if time_is_predicted and best.t_predicted is not None:
+                t_range_str = ""
+                if best.t_predicted_range:
+                    t_range_str = f" [1σ: {best.t_predicted_range[0]:.3f}-{best.t_predicted_range[1]:.3f}]"
+                print(f"     t = {best.t_actual:.3f} Myr (PREDICTED){t_range_str}")
             print(f"     chi²={chi2_val:.2f}")
     else:
         best = sorted_results[0]
@@ -2387,7 +2457,13 @@ def print_ranking_table(results: List[SimulationResult], config: AnalysisConfig,
         print(f"   M_star = {best.Mstar:.1f} M_sun (obs: {obs.Mstar_obs:.0f}+/-{obs.Mstar_err:.0f})")
         print(f"   v = {best.v_kms:.1f} km/s (obs: {obs.v_obs:.0f}+/-{obs.v_err:.0f})")
         print(f"   M_shell = {best.M_shell:.0f} M_sun (obs[{config.mass_tracer}]: {M_obs_print:.0f}+/-{M_err_print:.0f})")
-        print(f"   t = {best.t_actual:.3f} Myr (target: {obs.t_obs:.2f}+/-{obs.t_err:.2f})")
+        if time_is_predicted and best.t_predicted is not None:
+            t_range_str = ""
+            if best.t_predicted_range:
+                t_range_str = f" [1σ: {best.t_predicted_range[0]:.3f}-{best.t_predicted_range[1]:.3f}]"
+            print(f"   t = {best.t_actual:.3f} Myr (PREDICTED){t_range_str}")
+        else:
+            print(f"   t = {best.t_actual:.3f} Myr (target: {obs.t_obs:.2f}+/-{obs.t_err:.2f})")
         print(f"   R = {best.R2:.2f} pc (obs: {obs.R_obs:.1f}+/-{obs.R_err:.1f})")
         print(f"   chi2 = {best.chi2_total:.2f}")
 
