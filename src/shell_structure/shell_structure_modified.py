@@ -190,7 +190,7 @@ def shell_structure_pure(params) -> ShellProperties:
 
         # Check for shell dissolution
         # Requires: allowShellDissolution=True AND density < stop_n_diss AND time > stop_t_diss
-        allow_dissolution = params.get('allowShellDissolution', default=True)
+        allow_dissolution = params.get('allowShellDissolution', True)
         if allow_dissolution:
             t_now_Myr = params['t_now'].value  # Already in Myr
             if nShell_arr[0] < params['stop_n_diss'].value and t_now_Myr > params['stop_t_diss'].value:
