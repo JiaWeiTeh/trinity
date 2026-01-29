@@ -89,28 +89,45 @@ except:
 class ObservationalConstraints:
     """M42/EON observational constraints with multi-tracer support.
 
-    The EON shows a factor of 5-10 discrepancy between mass estimates:
-    - HI tracer (FAST+VLA): M ~ 80-100 M_sun, traces front hemisphere (v_LSR < 1 km/s)
-    - CII tracer (SOFIA): M ~ 680-1100 M_sun, traces back hemisphere interacting with OMC
-    - Combined estimate (Pabst+2019,2020): M ~ 2000 M_sun assuming spherical shell
+    MAIN SCIENCE TENSION: Order-of-magnitude discrepancy in shell mass estimates
+    =============================================================================
+    - [CII] 158 µm (SOFIA/upGREAT): M_shell ~ 10^3 M_sun
+    - HI 21 cm (FAST+VLA):          M_shell ~ 10^2 M_sun
 
-    This is a blister H II region - the two tracers sample different parts of an asymmetric structure.
+    This factor of ~10 discrepancy is the central question this analysis addresses.
+
+    Physical interpretation:
+    - The EON is a blister H II region, not a spherical shell
+    - [CII] traces the back hemisphere (PDR interacting with OMC-1)
+    - HI traces the front hemisphere (expanding into low-density ISM)
+    - The two tracers sample fundamentally different parts of an asymmetric structure
+
+    References:
+    - Pabst et al. (2019, 2020): [CII] observations, combined mass ~2000 M_sun
+    - HI observations: Shell mass ~100 M_sun in front hemisphere
     """
     # Expansion velocity (same for all tracers)
-    v_obs: float = 13.0          # km/s
+    v_obs: float = 13.0          # km/s - well-constrained
     v_err: float = 2.0           # km/s
 
-    # Shell mass - MULTI-TRACER
-    M_shell_HI: float = 100.0        # M_sun - HI tracer (front hemisphere)
+    # ==========================================================================
+    # SHELL MASS - THE KEY TENSION POINT
+    # ==========================================================================
+    # HI tracer: ~10^2 M_sun (front hemisphere, expanding toward us)
+    M_shell_HI: float = 100.0        # M_sun
     M_shell_HI_err: float = 30.0     # M_sun
-    M_shell_CII: float = 900.0       # M_sun - CII tracer (back hemisphere)
-    M_shell_CII_err: float = 200.0   # M_sun
-    M_shell_combined: float = 2000.0 # M_sun - spherical assumption (Pabst+2019)
+
+    # [CII] tracer: ~10^3 M_sun (back hemisphere, PDR at OMC interface)
+    M_shell_CII: float = 1000.0      # M_sun
+    M_shell_CII_err: float = 300.0   # M_sun
+
+    # Combined estimate (spherical assumption - likely overestimate)
+    M_shell_combined: float = 2000.0 # M_sun - Pabst+2019
     M_shell_combined_err: float = 500.0  # M_sun
 
     # Backwards compatibility - default to combined
-    M_shell_obs: float = 2000.0  # M_sun (deprecated, use combined)
-    M_shell_err: float = 500.0   # M_sun (deprecated, use combined)
+    M_shell_obs: float = 2000.0  # M_sun (deprecated, use specific tracer)
+    M_shell_err: float = 500.0   # M_sun (deprecated)
 
     # Dynamical age
     t_obs: float = 0.2           # Myr
@@ -121,8 +138,13 @@ class ObservationalConstraints:
     R_err: float = 0.5           # pc
 
     # Stellar mass (derived constraint)
-    Mstar_obs: float = 34.0      # M_sun
+    Mstar_obs: float = 34.0      # M_sun (theta^1 Ori C dominated)
     Mstar_err: float = 5.0       # M_sun
+
+    @property
+    def mass_ratio_CII_HI(self) -> float:
+        """The [CII]/HI mass ratio - quantifies the main tension."""
+        return self.M_shell_CII / self.M_shell_HI
 
     @property
     def p_HI(self) -> float:
@@ -131,7 +153,7 @@ class ObservationalConstraints:
 
     @property
     def p_CII(self) -> float:
-        """Momentum from CII mass [M_sun km/s]."""
+        """Momentum from [CII] mass [M_sun km/s]."""
         return self.M_shell_CII * self.v_obs
 
     @property
@@ -981,18 +1003,19 @@ def plot_trajectory_comparison_2d(results: List[SimulationResult], config: Analy
                   fmt='s', color='red', markersize=12, capsize=5, capthick=2,
                   label='M42 Observed', zorder=10, markeredgecolor='k')
 
-    # Mass panel: Show ALL three mass constraints as bands
+    # Mass panel: Show [CII] vs HI tension - the key science question
+    # Note: [CII] ~ 10^3 M_sun, HI ~ 10^2 M_sun (factor of ~10 discrepancy)
     tracer_bands = [
-        (obs.M_shell_HI, obs.M_shell_HI_err, 'blue', 'HI (front)', 0.15),
-        (obs.M_shell_CII, obs.M_shell_CII_err, 'orange', 'CII (back)', 0.15),
-        (obs.M_shell_combined, obs.M_shell_combined_err, 'red', 'Combined', 0.1),
+        (obs.M_shell_HI, obs.M_shell_HI_err, 'blue', r'HI 21cm ($\sim 10^2\,M_\odot$)', 0.15),
+        (obs.M_shell_CII, obs.M_shell_CII_err, 'darkorange', r'[CII] 158$\mu$m ($\sim 10^3\,M_\odot$)', 0.15),
+        (obs.M_shell_combined, obs.M_shell_combined_err, 'red', 'Combined (spherical)', 0.08),
     ]
 
     for M_val, M_err, color, label, alpha in tracer_bands:
         ax_m.axhspan(M_val - M_err, M_val + M_err, alpha=alpha, color=color, zorder=1)
         ax_m.errorbar(obs.t_obs, M_val, xerr=obs.t_err, yerr=M_err,
                       fmt='s', color=color, markersize=10, capsize=4, capthick=1.5,
-                      label=f'{label}: {M_val:.0f}±{M_err:.0f} M$_\\odot$', zorder=10,
+                      label=f'{label}', zorder=10,
                       markeredgecolor='k', markeredgewidth=0.5)
 
     # Shade velocity observation uncertainty region
@@ -1016,8 +1039,8 @@ def plot_trajectory_comparison_2d(results: List[SimulationResult], config: Analy
 
     ax_m.set_xlabel('Time [Myr]')
     ax_m.set_ylabel(r'Shell Mass [$M_\odot$]')
-    ax_m.set_title('Shell Mass Evolution')
-    ax_m.legend(loc='upper right', fontsize=8)
+    ax_m.set_title(r'Shell Mass Evolution ([CII] vs HI: $\times$' + f'{obs.mass_ratio_CII_HI:.0f} tension)')
+    ax_m.legend(loc='upper right', fontsize=7)
     ax_m.set_xlim(0, max(0.5, obs.t_obs * 2.5))
     ax_m.set_ylim(0, None)
     ax_m.grid(True, alpha=0.3)
@@ -1257,9 +1280,14 @@ def plot_Mstar_constraint_2d(results: List[SimulationResult], config: AnalysisCo
 def plot_momentum_comparison(results: List[SimulationResult], config: AnalysisConfig,
                               output_dir: Path, nCore_value: str):
     """
-    Compare TRINITY momentum predictions to HI and CII estimates.
+    Compare TRINITY momentum predictions to [CII] and HI estimates.
 
-    Key question: Is p_TRINITY ~ 2 * p_HI (supporting blister interpretation)?
+    This addresses the [CII]/HI mass tension through momentum:
+    - p_HI = M_HI × v ~ 10^2 × 13 ~ 1300 M_sun km/s
+    - p_[CII] = M_[CII] × v ~ 10^3 × 13 ~ 13000 M_sun km/s
+
+    Key question: Which momentum does TRINITY predict? This constrains
+    whether the shell is better described by HI or [CII] mass.
 
     Parameters
     ----------
@@ -1292,11 +1320,11 @@ def plot_momentum_comparison(results: List[SimulationResult], config: AnalysisCo
         ax1.plot(r.t_full, p_full, color=colors[i], lw=1.5,
                  label=f"{r.mCloud}_sfe{r.sfe}")
 
-    # Mark observational momentum estimates
-    ax1.axhline(obs.p_HI, color='blue', ls='--', lw=2, label=f'p_HI = {obs.p_HI:.0f}')
-    ax1.axhline(obs.p_CII, color='orange', ls='--', lw=2, label=f'p_CII = {obs.p_CII:.0f}')
-    ax1.axhline(2 * obs.p_HI, color='blue', ls=':', lw=1.5, label=f'2xp_HI = {2*obs.p_HI:.0f}')
-    ax1.axhline(obs.p_combined, color='red', ls='-.', lw=1.5, alpha=0.5, label=f'p_comb = {obs.p_combined:.0f}')
+    # Mark observational momentum estimates - [CII] vs HI
+    ax1.axhline(obs.p_HI, color='blue', ls='--', lw=2, label=f'p(HI) = {obs.p_HI:.0f}')
+    ax1.axhline(obs.p_CII, color='darkorange', ls='--', lw=2, label=f'p([CII]) = {obs.p_CII:.0f}')
+    ax1.axhline(2 * obs.p_HI, color='blue', ls=':', lw=1.5, label=f'2×p(HI) = {2*obs.p_HI:.0f}')
+    ax1.axhline(obs.p_combined, color='red', ls='-.', lw=1.5, alpha=0.5, label=f'p(comb) = {obs.p_combined:.0f}')
 
     ax1.axvline(obs.t_obs, color='gray', ls=':', alpha=0.5)
     ax1.set_xlabel('Time [Myr]')
@@ -1318,11 +1346,11 @@ def plot_momentum_comparison(results: List[SimulationResult], config: AnalysisCo
                          norm=mcolors.LogNorm(vmin=0.1, vmax=100),
                          s=80, edgecolors='k', linewidths=0.5)
 
-        # Momentum contours
+        # Momentum contours - [CII] vs HI
         v_grid = np.linspace(5, 25, 100)
-        for p_val, ls, label in [(obs.p_HI, '--', 'p_HI'),
-                                  (obs.p_CII, '-', 'p_CII'),
-                                  (2*obs.p_HI, ':', '2xp_HI')]:
+        for p_val, ls, label in [(obs.p_HI, '--', 'p(HI)'),
+                                  (obs.p_CII, '-', 'p([CII])'),
+                                  (2*obs.p_HI, ':', '2×p(HI)')]:
             ax2.plot(v_grid, p_val / v_grid, 'k', ls=ls, alpha=0.3, lw=1)
             # Label at edge
             idx = len(v_grid) - 1
@@ -1330,13 +1358,13 @@ def plot_momentum_comparison(results: List[SimulationResult], config: AnalysisCo
                 ax2.text(v_grid[idx], p_val / v_grid[idx], f' {label}', fontsize=7, alpha=0.6,
                          va='center')
 
-        # Observational boxes
+        # Observational boxes - [CII] vs HI (the tension)
         ax2.errorbar(obs.v_obs, obs.M_shell_HI, xerr=obs.v_err, yerr=obs.M_shell_HI_err,
                      fmt='o', color='blue', markersize=10, capsize=4,
-                     markeredgecolor='k', zorder=10, label='HI')
+                     markeredgecolor='k', zorder=10, label=r'HI ($\sim 10^2 M_\odot$)')
         ax2.errorbar(obs.v_obs, obs.M_shell_CII, xerr=obs.v_err, yerr=obs.M_shell_CII_err,
-                     fmt='^', color='orange', markersize=10, capsize=4,
-                     markeredgecolor='k', zorder=10, label='CII')
+                     fmt='^', color='darkorange', markersize=10, capsize=4,
+                     markeredgecolor='k', zorder=10, label=r'[CII] ($\sim 10^3 M_\odot$)')
         ax2.errorbar(obs.v_obs, obs.M_shell_combined, xerr=obs.v_err, yerr=obs.M_shell_combined_err,
                      fmt='s', color='red', markersize=8, capsize=4,
                      markeredgecolor='k', zorder=10, alpha=0.5, label='Combined')
@@ -1357,10 +1385,10 @@ def plot_momentum_comparison(results: List[SimulationResult], config: AnalysisCo
 
     if p_at_t:
         ax3.hist(p_at_t, bins=15, color='gray', alpha=0.7, edgecolor='black')
-        ax3.axvline(obs.p_HI, color='blue', ls='--', lw=2, label=f'p_HI = {obs.p_HI:.0f}')
-        ax3.axvline(obs.p_CII, color='orange', ls='--', lw=2, label=f'p_CII = {obs.p_CII:.0f}')
-        ax3.axvline(2*obs.p_HI, color='blue', ls=':', lw=1.5, label=f'2xp_HI (spherical)')
-        ax3.axvline(obs.p_combined, color='red', ls='-.', lw=1.5, alpha=0.5, label=f'p_combined')
+        ax3.axvline(obs.p_HI, color='blue', ls='--', lw=2, label=f'p(HI) = {obs.p_HI:.0f}')
+        ax3.axvline(obs.p_CII, color='darkorange', ls='--', lw=2, label=f'p([CII]) = {obs.p_CII:.0f}')
+        ax3.axvline(2*obs.p_HI, color='blue', ls=':', lw=1.5, label=f'2×p(HI) = {2*obs.p_HI:.0f}')
+        ax3.axvline(obs.p_combined, color='red', ls='-.', lw=1.5, alpha=0.5, label=f'p(comb)')
 
         # Mark best-fit momentum
         best = min(data, key=lambda r: r.chi2_total)
@@ -1372,8 +1400,9 @@ def plot_momentum_comparison(results: List[SimulationResult], config: AnalysisCo
         ax3.set_title('TRINITY Momentum Predictions')
         ax3.legend(fontsize=8)
 
-    fig.suptitle(f'Momentum Budget Analysis: $n_{{\\rm core}}$ = {nCore_value} cm$^{{-3}}$\n'
-                 f'Testing blister hypothesis: is p_TRINITY ~ 2 x p_HI?', fontsize=12)
+    fig.suptitle(r'[CII] vs HI Momentum Tension: $n_{\rm core}$ = ' + f'{nCore_value} cm' + r'$^{-3}$' + '\n'
+                 r'p([CII]) $\sim$ ' + f'{obs.mass_ratio_CII_HI:.0f}' + r'$\times$ p(HI) — Which does TRINITY predict?',
+                 fontsize=11)
     plt.tight_layout()
 
     suffix = config.get_filename_suffix()
@@ -1386,9 +1415,12 @@ def plot_momentum_comparison(results: List[SimulationResult], config: AnalysisCo
 def plot_tracer_comparison(results: List[SimulationResult], config: AnalysisConfig,
                             output_dir: Path, nCore_value: str):
     """
-    Side-by-side chi^2 heatmaps for different mass tracers.
+    Side-by-side chi^2 heatmaps comparing [CII] vs HI mass constraints.
 
-    Shows how best-fit region shifts depending on which mass you believe.
+    This is the KEY FIGURE for the mass tension analysis:
+    - Left panel: Best-fit using HI mass (~10^2 M_sun)
+    - Middle panel: Best-fit using [CII] mass (~10^3 M_sun)
+    - Right panel: Best-fit using combined mass (~2×10^3 M_sun)
 
     Parameters
     ----------
@@ -1412,10 +1444,11 @@ def plot_tracer_comparison(results: List[SimulationResult], config: AnalysisConf
     fig, axes = plt.subplots(1, 3, figsize=(15, 5), dpi=150)
     obs = config.obs
 
+    # [CII] vs HI: the main tension comparison
     tracer_configs = [
-        ('HI', obs.M_shell_HI, obs.M_shell_HI_err, axes[0], 'blue'),
-        ('CII', obs.M_shell_CII, obs.M_shell_CII_err, axes[1], 'orange'),
-        ('Combined', obs.M_shell_combined, obs.M_shell_combined_err, axes[2], 'red'),
+        (r'HI 21cm ($\sim 10^2 M_\odot$)', obs.M_shell_HI, obs.M_shell_HI_err, axes[0], 'blue'),
+        (r'[CII] 158$\mu$m ($\sim 10^3 M_\odot$)', obs.M_shell_CII, obs.M_shell_CII_err, axes[1], 'darkorange'),
+        ('Combined (spherical)', obs.M_shell_combined, obs.M_shell_combined_err, axes[2], 'red'),
     ]
 
     # Shared colorbar normalization
@@ -1461,8 +1494,7 @@ def plot_tracer_comparison(results: List[SimulationResult], config: AnalysisConf
         ax.set_yticklabels([f'{float(m):.0e}' for m in mCloud_list], fontsize=8)
         ax.set_xlabel(r'SFE ($\epsilon$)')
         ax.set_ylabel(r'$M_{\rm cloud}$ [$M_\odot$]')
-        ax.set_title(f'{tracer_name}: M = {M_obs:.0f} +/- {M_err:.0f} $M_\\odot$',
-                     color=tracer_color, fontweight='bold')
+        ax.set_title(f'{tracer_name}', color=tracer_color, fontweight='bold', fontsize=10)
 
     # Shared colorbar
     fig.subplots_adjust(right=0.92)
@@ -1471,8 +1503,9 @@ def plot_tracer_comparison(results: List[SimulationResult], config: AnalysisConf
                                                cmap='viridis_r'),
                         cax=cbar_ax, label=r'$\chi^2_{\rm total}$')
 
-    fig.suptitle(f'Mass Tracer Comparison: $n_{{\\rm core}}$ = {nCore_value} cm$^{{-3}}$\n'
-                 f'How does best-fit shift with different mass estimates?', fontsize=12)
+    fig.suptitle(r'[CII] vs HI Mass Tension: $n_{\rm core}$ = ' + f'{nCore_value} cm' + r'$^{-3}$' + '\n'
+                 r'Factor of $\sim$' + f'{obs.mass_ratio_CII_HI:.0f}' + r' discrepancy in shell mass estimates',
+                 fontsize=11)
 
     suffix = config.get_filename_suffix()
     out_pdf = output_dir / f'bestfit_n{nCore_value}_tracer_comparison{suffix}.pdf'
@@ -1988,15 +2021,34 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(
-        description="TRINITY parameter sweep best-fit analysis for M42 (Orion Nebula)",
+        description="""TRINITY parameter sweep best-fit analysis for M42 (Orion Nebula)
+
+MAIN SCIENCE QUESTION: [CII] vs HI Shell Mass Tension
+=====================================================
+Observations show an order-of-magnitude discrepancy in shell mass:
+  - [CII] 158µm (SOFIA):  M_shell ~ 10^3 M_sun
+  - HI 21cm (FAST+VLA):   M_shell ~ 10^2 M_sun
+
+This script compares TRINITY simulations against both tracers to
+constrain which mass estimate is more consistent with the models.
+""",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # 2D mode (separate plots per nCore)
-  python paper_bestFitOrion.py --folder sweep_orion/ --mode 2d
+  # Basic analysis (uses combined mass by default)
+  python paper_bestFitOrion.py --folder sweep_orion/
 
-  # 2D mode with specific nCore
-  python paper_bestFitOrion.py --folder sweep_orion/ --nCore 1e4
+  # Analyze with [CII] mass constraint (~10^3 M_sun)
+  python paper_bestFitOrion.py --folder sweep_orion/ --mass-tracer CII
+
+  # Analyze with HI mass constraint (~10^2 M_sun)
+  python paper_bestFitOrion.py --folder sweep_orion/ --mass-tracer HI
+
+  # Compare all tracers side-by-side
+  python paper_bestFitOrion.py --folder sweep_orion/ --mass-tracer all
+
+  # Show all simulation trajectories
+  python paper_bestFitOrion.py --folder sweep_orion/ --showall
 
   # 3D mode (full parameter space)
   python paper_bestFitOrion.py --folder sweep_orion/ --mode 3d
@@ -2004,14 +2056,8 @@ Examples:
   # Free parameter: find optimal age
   python paper_bestFitOrion.py --folder sweep_orion/ --free-param t
 
-  # Custom stellar mass constraint
-  python paper_bestFitOrion.py --folder sweep_orion/ --Mstar 40 --Mstar-err 8
-
   # Without stellar mass constraint
   python paper_bestFitOrion.py --folder sweep_orion/ --no-Mstar
-
-  # Without age constraint (if your simulations run longer)
-  python paper_bestFitOrion.py --folder sweep_orion/ --no-t
 
   # Also constrain radius
   python paper_bestFitOrion.py --folder sweep_orion/ --constrain-R
@@ -2091,10 +2137,10 @@ Stellar Mass Constraint:
                         help='HI-derived shell mass [M_sun] (default: 100.0)')
     parser.add_argument('--M-HI-err', type=float, default=30.0,
                         help='HI shell mass uncertainty [M_sun] (default: 30.0)')
-    parser.add_argument('--M-CII', type=float, default=900.0,
-                        help='CII-derived shell mass [M_sun] (default: 900.0)')
-    parser.add_argument('--M-CII-err', type=float, default=200.0,
-                        help='CII shell mass uncertainty [M_sun] (default: 200.0)')
+    parser.add_argument('--M-CII', type=float, default=1000.0,
+                        help='[CII]-derived shell mass [M_sun] ~10^3 (default: 1000.0)')
+    parser.add_argument('--M-CII-err', type=float, default=300.0,
+                        help='[CII] shell mass uncertainty [M_sun] (default: 300.0)')
 
     # Trajectory plot options
     parser.add_argument('--showall', action='store_true',
