@@ -172,7 +172,7 @@ class AnalysisConfig:
     constrain_v: bool = True
     constrain_M_shell: bool = True
     constrain_t: bool = True
-    constrain_R: bool = False
+    constrain_R: bool = True  # Include radius in chi^2 by default
     constrain_Mstar: bool = True
 
     # Free parameter (excluded from chi^2, reported as output)
@@ -913,7 +913,7 @@ def plot_chi2_heatmap_2d(results: List[SimulationResult], config: AnalysisConfig
 def plot_trajectory_comparison_2d(results: List[SimulationResult], config: AnalysisConfig,
                                    output_dir: Path, nCore_value: str, top_n: int = 5):
     """
-    Overlay v(t) and M_shell(t) trajectories for a single nCore.
+    Overlay v(t), M_shell(t), and R(t) trajectories for a single nCore.
 
     Parameters
     ----------
@@ -943,8 +943,11 @@ def plot_trajectory_comparison_2d(results: List[SimulationResult], config: Analy
     else:
         data_to_plot = data_all_sorted[:top_n]
 
-    fig, axes = plt.subplots(1, 2, figsize=(14, 6), dpi=150)
-    ax_v, ax_m = axes
+    # 3 subplots: velocity, mass, radius
+    fig, axes = plt.subplots(1, 3, figsize=(18, 5), dpi=150)
+    ax_v, ax_m, ax_r = axes
+
+    obs = config.obs
 
     # Color map for different simulations
     if config.show_all:
@@ -963,6 +966,7 @@ def plot_trajectory_comparison_2d(results: List[SimulationResult], config: Analy
         t = r.t_full
         v = r.v_full_kms
         M = r.M_shell_full
+        R = r.R_full
 
         if config.show_all:
             # Color by chi2, no individual labels
@@ -984,20 +988,23 @@ def plot_trajectory_comparison_2d(results: List[SimulationResult], config: Analy
         if M is not None:
             ax_m.plot(t, M, color=color, lw=lw, label=label, alpha=alpha)
 
-    obs = config.obs
+        # Radius trajectory
+        if R is not None:
+            ax_r.plot(t, R, color=color, lw=lw, label=label, alpha=alpha)
+
+    # Helper function to compute chi² for a specific mass tracer
+    def compute_tracer_chi2(r, M_obs, M_err):
+        """Compute chi² using a specific mass constraint."""
+        chi2_v = ((r.v_kms - obs.v_obs) / obs.v_err)**2 if np.isfinite(r.v_kms) else 0
+        chi2_M = ((r.M_shell - M_obs) / M_err)**2 if np.isfinite(r.M_shell) else 0
+        chi2_t = ((r.t_actual - obs.t_obs) / obs.t_err)**2 if np.isfinite(r.t_actual) else 0
+        chi2_R = ((r.R2 - obs.R_obs) / obs.R_err)**2 if np.isfinite(r.R2) else 0
+        chi2_Mstar = ((r.Mstar - obs.Mstar_obs) / obs.Mstar_err)**2 if np.isfinite(r.Mstar) else 0
+        return chi2_v + chi2_M + chi2_t + chi2_R + chi2_Mstar
 
     # Highlight best-fit trajectory based on mass_tracer selection
     # This shows which model best matches each tracer's mass constraint
     if config.show_all and data_all_sorted:
-        # Helper function to compute chi² for a specific mass tracer
-        def compute_tracer_chi2(r, M_obs, M_err):
-            """Compute chi² using a specific mass constraint."""
-            chi2_v = ((r.v_kms - obs.v_obs) / obs.v_err)**2 if np.isfinite(r.v_kms) else 0
-            chi2_M = ((r.M_shell - M_obs) / M_err)**2 if np.isfinite(r.M_shell) else 0
-            chi2_t = ((r.t_actual - obs.t_obs) / obs.t_err)**2 if np.isfinite(r.t_actual) else 0
-            chi2_Mstar = ((r.Mstar - obs.Mstar_obs) / obs.Mstar_err)**2 if np.isfinite(r.Mstar) else 0
-            return chi2_v + chi2_M + chi2_t + chi2_Mstar
-
         # Define tracer configurations: (name, M_obs, M_err, color, linestyle)
         tracer_highlight_configs = []
         if config.mass_tracer in ['HI', 'all']:
@@ -1005,7 +1012,7 @@ def plot_trajectory_comparison_2d(results: List[SimulationResult], config: Analy
         if config.mass_tracer in ['CII', 'all']:
             tracer_highlight_configs.append(('[CII]', obs.M_shell_CII, obs.M_shell_CII_err, 'darkorange', '-'))
         if config.mass_tracer in ['combined', 'all']:
-            tracer_highlight_configs.append(('Combined', obs.M_shell_combined, obs.M_shell_combined_err, 'red', '-'))
+            tracer_highlight_configs.append(('Comb', obs.M_shell_combined, obs.M_shell_combined_err, 'red', '-'))
 
         # Find and highlight best-fit for each selected tracer
         for tracer_name, M_obs, M_err, color, ls in tracer_highlight_configs:
@@ -1021,18 +1028,33 @@ def plot_trajectory_comparison_2d(results: List[SimulationResult], config: Analy
                 if best_for_tracer.M_shell_full is not None:
                     ax_m.plot(best_for_tracer.t_full, best_for_tracer.M_shell_full,
                               color=color, lw=2.5, ls=ls, label=label, alpha=1.0, zorder=5)
+                if best_for_tracer.R_full is not None:
+                    ax_r.plot(best_for_tracer.t_full, best_for_tracer.R_full,
+                              color=color, lw=2.5, ls=ls, label=label, alpha=1.0, zorder=5)
 
-    # Mark observation point with error bars
+    # --- Velocity panel ---
     ax_v.errorbar(obs.t_obs, obs.v_obs, xerr=obs.t_err, yerr=obs.v_err,
                   fmt='s', color='red', markersize=12, capsize=5, capthick=2,
                   label='M42 Observed', zorder=10, markeredgecolor='k')
+    ax_v.axhspan(obs.v_obs - obs.v_err, obs.v_obs + obs.v_err,
+                 alpha=0.2, color='red', zorder=1)
+    ax_v.axvspan(obs.t_obs - obs.t_err, obs.t_obs + obs.t_err,
+                 alpha=0.2, color='blue', zorder=1)
 
-    # Mass panel: Show [CII] vs HI tension - the key science question
-    # Note: [CII] ~ 10^3 M_sun, HI ~ 10^2 M_sun (factor of ~10 discrepancy)
+    ax_v.set_xlabel('Time [Myr]')
+    ax_v.set_ylabel('Shell Velocity [km/s]')
+    ax_v.set_title('Velocity Evolution')
+    ax_v.legend(loc='upper right', fontsize=7)
+    ax_v.set_xlim(0, max(0.5, obs.t_obs * 2.5))
+    ax_v.set_ylim(0, None)
+    ax_v.grid(True, alpha=0.3)
+
+    # --- Mass panel (log scale) ---
+    # Show [CII] vs HI tension bands
     tracer_bands = [
-        (obs.M_shell_HI, obs.M_shell_HI_err, 'blue', r'HI 21cm ($\sim 10^2\,M_\odot$)', 0.15),
-        (obs.M_shell_CII, obs.M_shell_CII_err, 'darkorange', r'[CII] 158$\mu$m ($\sim 10^3\,M_\odot$)', 0.15),
-        (obs.M_shell_combined, obs.M_shell_combined_err, 'red', 'Combined (spherical)', 0.08),
+        (obs.M_shell_HI, obs.M_shell_HI_err, 'blue', r'HI ($\sim 10^2 M_\odot$)', 0.15),
+        (obs.M_shell_CII, obs.M_shell_CII_err, 'darkorange', r'[CII] ($\sim 10^3 M_\odot$)', 0.15),
+        (obs.M_shell_combined, obs.M_shell_combined_err, 'red', 'Combined', 0.08),
     ]
 
     for M_val, M_err, color, label, alpha in tracer_bands:
@@ -1042,32 +1064,34 @@ def plot_trajectory_comparison_2d(results: List[SimulationResult], config: Analy
                       label=f'{label}', zorder=10,
                       markeredgecolor='k', markeredgewidth=0.5)
 
-    # Shade velocity observation uncertainty region
-    ax_v.axhspan(obs.v_obs - obs.v_err, obs.v_obs + obs.v_err,
-                 alpha=0.2, color='red', zorder=1)
-    ax_v.axvspan(obs.t_obs - obs.t_err, obs.t_obs + obs.t_err,
-                 alpha=0.2, color='blue', zorder=1)
-
-    # Time constraint for mass panel
     ax_m.axvspan(obs.t_obs - obs.t_err, obs.t_obs + obs.t_err,
                  alpha=0.1, color='gray', zorder=0)
 
-    # Labels and formatting
-    ax_v.set_xlabel('Time [Myr]')
-    ax_v.set_ylabel('Shell Velocity [km/s]')
-    ax_v.set_title('Velocity Evolution')
-    ax_v.legend(loc='upper right', fontsize=8)
-    ax_v.set_xlim(0, max(0.5, obs.t_obs * 2.5))
-    ax_v.set_ylim(0, None)
-    ax_v.grid(True, alpha=0.3)
-
     ax_m.set_xlabel('Time [Myr]')
     ax_m.set_ylabel(r'Shell Mass [$M_\odot$]')
-    ax_m.set_title(r'Shell Mass Evolution ([CII] vs HI: $\times$' + f'{obs.mass_ratio_CII_HI:.0f} tension)')
-    ax_m.legend(loc='upper right', fontsize=7)
+    ax_m.set_title(r'Shell Mass ([CII]/HI $\times$' + f'{obs.mass_ratio_CII_HI:.0f})')
+    ax_m.legend(loc='upper left', fontsize=7)
     ax_m.set_xlim(0, max(0.5, obs.t_obs * 2.5))
-    ax_m.set_ylim(0, None)
-    ax_m.grid(True, alpha=0.3)
+    ax_m.set_yscale('log')
+    ax_m.set_ylim(10, 1e4)
+    ax_m.grid(True, alpha=0.3, which='both')
+
+    # --- Radius panel ---
+    ax_r.errorbar(obs.t_obs, obs.R_obs, xerr=obs.t_err, yerr=obs.R_err,
+                  fmt='s', color='green', markersize=12, capsize=5, capthick=2,
+                  label=f'M42 Observed: {obs.R_obs}±{obs.R_err} pc', zorder=10, markeredgecolor='k')
+    ax_r.axhspan(obs.R_obs - obs.R_err, obs.R_obs + obs.R_err,
+                 alpha=0.2, color='green', zorder=1)
+    ax_r.axvspan(obs.t_obs - obs.t_err, obs.t_obs + obs.t_err,
+                 alpha=0.2, color='blue', zorder=1)
+
+    ax_r.set_xlabel('Time [Myr]')
+    ax_r.set_ylabel('Shell Radius [pc]')
+    ax_r.set_title('Radius Evolution')
+    ax_r.legend(loc='upper left', fontsize=7)
+    ax_r.set_xlim(0, max(0.5, obs.t_obs * 2.5))
+    ax_r.set_ylim(0, None)
+    ax_r.grid(True, alpha=0.3)
 
     # Build title with free parameter estimate
     best = data_all_sorted[0] if data_all_sorted else None
@@ -2083,14 +2107,14 @@ Examples:
   # Without stellar mass constraint
   python paper_bestFitOrion.py --folder sweep_orion/ --no-Mstar
 
-  # Also constrain radius
-  python paper_bestFitOrion.py --folder sweep_orion/ --constrain-R
+  # Without radius constraint
+  python paper_bestFitOrion.py --folder sweep_orion/ --no-R
 
 Observational Constraints (default values):
   v_expansion:  13 +/- 2 km/s      (Pabst et al. 2020)
   M_shell:      2000 +/- 500 M_sun (Pabst et al. 2019)
   Age:          0.2 +/- 0.05 Myr   (Pabst et al. 2019, 2020)
-  R_shell:      4 +/- 0.5 pc       (Pabst et al. 2019) - not constrained by default
+  R_shell:      4 +/- 0.5 pc       (Pabst et al. 2019)
   M_star:       34 +/- 5 M_sun     (theta^1 Ori C)
 
 Stellar Mass Constraint:
@@ -2124,8 +2148,8 @@ Stellar Mass Constraint:
                         help='Do not constrain shell mass')
     parser.add_argument('--no-t', action='store_true',
                         help='Do not constrain age')
-    parser.add_argument('--constrain-R', action='store_true',
-                        help='Also constrain shell radius (not constrained by default)')
+    parser.add_argument('--no-R', action='store_true',
+                        help='Do not constrain shell radius')
 
     # Custom observational values
     parser.add_argument('--v-obs', type=float, default=13.0,
@@ -2192,7 +2216,7 @@ Stellar Mass Constraint:
         constrain_v=not args.no_v,
         constrain_M_shell=not args.no_M,
         constrain_t=not args.no_t,
-        constrain_R=args.constrain_R,
+        constrain_R=not args.no_R,
         constrain_Mstar=not args.no_Mstar,
         free_param=args.free_param,
         nCore_filter=args.nCore,
