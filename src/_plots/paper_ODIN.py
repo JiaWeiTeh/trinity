@@ -36,6 +36,9 @@ print("...creating trajectory evolution plots")
 # Unit conversion: 1 km/s ~ 1.0227 pc/Myr
 PC_MYR_TO_KM_S = 1.0 / 1.0227
 
+# --- Global plot settings ---
+FONTSIZE = 14  # Global font size for labels, ticks, and legends
+
 # --- Output directory
 FIG_DIR = Path(__file__).parent.parent.parent / "fig"
 FIG_DIR.mkdir(parents=True, exist_ok=True)
@@ -73,6 +76,10 @@ class ObservationalConstraints:
     # Shell radius
     R_obs: float = 4.0           # pc
     R_err: float = 0.5           # pc
+
+    # Shell radius from Pabst et al. 2020
+    R_obs_Pabst: float = 2.7     # pc
+    R_err_Pabst: float = 0.3     # pc
 
     # Stellar mass (derived constraint)
     Mstar_obs: float = 34.0      # M_sun
@@ -538,7 +545,7 @@ def plot_trajectory_evolution(results: List[SimulationResult], config: AnalysisC
 
     # --- Mass panel (log scale) ---
     tracer_bands = [
-        (obs.M_shell_HI, obs.M_shell_HI_err, 'blue', r'HI ($\sim 10^2 M_\odot$)', 0.15),
+        (obs.M_shell_HI, obs.M_shell_HI_err, 'green', r'HI ($\sim 10^2 M_\odot$)', 0.15),
         (obs.M_shell_CII, obs.M_shell_CII_err, 'darkorange', r'[CII] ($\sim 10^3 M_\odot$)', 0.15),
     ]
 
@@ -552,9 +559,10 @@ def plot_trajectory_evolution(results: List[SimulationResult], config: AnalysisC
     ax_m.axvspan(obs.t_obs - obs.t_err, obs.t_obs + obs.t_err,
                  alpha=0.1, color='gray', zorder=0)
 
-    ax_m.set_ylabel(r'Shell Mass [$M_\odot$]', fontsize=17, rotation=90)
+    ax_m.set_ylabel(r'Shell Mass [$M_\odot$]', fontsize=FONTSIZE, rotation=90)
+    ax_m.tick_params(axis='both', labelsize=FONTSIZE)
     ax_m.tick_params(axis='y', labelrotation=90)
-    legend_m = ax_m.legend(loc='upper right', fontsize=17)
+    legend_m = ax_m.legend(loc='upper right', fontsize=FONTSIZE)
     legend_m.set_zorder(100)
     ax_m.set_yscale('log')
     ax_m.set_ylim(10, 1e4)
@@ -563,18 +571,28 @@ def plot_trajectory_evolution(results: List[SimulationResult], config: AnalysisC
     ax_m.tick_params(axis='y', pad=10)
 
     # --- Radius panel ---
+    # HI radius observation (blue)
     ax_r.errorbar(obs.t_obs, obs.R_obs, xerr=obs.t_err, yerr=obs.R_err,
-                  fmt='s', color='green', markersize=14, capsize=5, capthick=2,
-                  label=f'Observed: {obs.R_obs}±{obs.R_err} pc', zorder=10, markeredgecolor='k')
-    ax_r.axvspan(obs.t_obs - obs.t_err, obs.t_obs + obs.t_err,
-                 alpha=0.1, color='blue', zorder=1)
+                  fmt='s', color='blue', markersize=14, capsize=5, capthick=2,
+                  label=f'HI: {obs.R_obs}±{obs.R_err} pc', zorder=10, markeredgecolor='k')
     ax_r.axhspan(obs.R_obs - obs.R_err, obs.R_obs + obs.R_err,
-                 alpha=0.1, color='green', zorder=1)
+                 alpha=0.15, color='blue', zorder=1)
 
-    ax_r.set_xlabel('Time [Myr]', fontsize=17)
-    ax_r.set_ylabel('Shell Radius [pc]', fontsize=17, rotation=90)
+    # Pabst et al. 2020 radius observation (green)
+    ax_r.errorbar(obs.t_obs, obs.R_obs_Pabst, xerr=obs.t_err, yerr=obs.R_err_Pabst,
+                  fmt='s', color='green', markersize=14, capsize=5, capthick=2,
+                  label=f'Pabst+20: {obs.R_obs_Pabst}±{obs.R_err_Pabst} pc', zorder=10, markeredgecolor='k')
+    ax_r.axhspan(obs.R_obs_Pabst - obs.R_err_Pabst, obs.R_obs_Pabst + obs.R_err_Pabst,
+                 alpha=0.15, color='green', zorder=1)
+
+    ax_r.axvspan(obs.t_obs - obs.t_err, obs.t_obs + obs.t_err,
+                 alpha=0.1, color='gray', zorder=0)
+
+    ax_r.set_xlabel('Time [Myr]', fontsize=FONTSIZE)
+    ax_r.set_ylabel('Shell Radius [pc]', fontsize=FONTSIZE, rotation=90)
+    ax_r.tick_params(axis='both', labelsize=FONTSIZE)
     ax_r.tick_params(axis='y', labelrotation=90)
-    legend_r = ax_r.legend(loc='lower right', fontsize=17)
+    legend_r = ax_r.legend(loc='lower right', fontsize=FONTSIZE)
     legend_r.set_zorder(100)
     ax_r.set_xlim(0, 0.3)
     ax_r.set_ylim(0, None)
@@ -698,9 +716,9 @@ def plot_trajectory_evolution_combined(results: List[SimulationResult], config: 
             ax_r.fill_between(t_common, R_min, R_max, alpha=0.7, color=color,
                               label=f'$n_{{\\rm core}} = ${nCore_math[nCore_idx]} $\\rm cm^{-3}$')
 
-    # --- Mass panel (log scale) --- 
+    # --- Mass panel (log scale) ---
     tracer_bands = [
-        (obs.M_shell_HI, obs.M_shell_HI_err, 'blue', r'HI ($\sim 10^2 M_\odot$)', 0.15),
+        (obs.M_shell_HI, obs.M_shell_HI_err, 'green', r'HI ($\sim 10^2 M_\odot$)', 0.15),
         (obs.M_shell_CII, obs.M_shell_CII_err, 'darkorange', r'[CII] ($\sim 10^3 M_\odot$)', 0.15),
     ]
 
@@ -714,27 +732,38 @@ def plot_trajectory_evolution_combined(results: List[SimulationResult], config: 
     ax_m.axvspan(obs.t_obs - obs.t_err, obs.t_obs + obs.t_err,
                  alpha=0.1, color='gray', zorder=0)
 
-    ax_m.set_ylabel(r'Shell Mass [$M_\odot$]', fontsize=14, rotation=90)
+    ax_m.set_ylabel(r'Shell Mass [$M_\odot$]', fontsize=FONTSIZE, rotation=90)
+    ax_m.tick_params(axis='both', labelsize=FONTSIZE)
     ax_m.tick_params(axis='y', labelrotation=90)
-    legend_m = ax_m.legend(loc='upper left', fontsize=10)
+    legend_m = ax_m.legend(loc='upper left', fontsize=FONTSIZE)
     legend_m.set_zorder(100)
     ax_m.set_yscale('log')
     ax_m.set_ylim(10, 1e4)
     ax_m.grid(True, alpha=0.3, which='both')
 
     # --- Radius panel ---
+    # HI radius observation (blue)
     ax_r.errorbar(obs.t_obs, obs.R_obs, xerr=obs.t_err, yerr=obs.R_err,
-                  fmt='s', color='green', markersize=12, capsize=5, capthick=2,
-                  label=f'Observed: {obs.R_obs}±{obs.R_err} pc', zorder=10, markeredgecolor='k')
-    ax_r.axvspan(obs.t_obs - obs.t_err, obs.t_obs + obs.t_err,
-                 alpha=0.1, color='gray', zorder=1)
+                  fmt='s', color='blue', markersize=12, capsize=5, capthick=2,
+                  label=f'HI: {obs.R_obs}±{obs.R_err} pc', zorder=10, markeredgecolor='k')
     ax_r.axhspan(obs.R_obs - obs.R_err, obs.R_obs + obs.R_err,
-                 alpha=0.1, color='green', zorder=1)
+                 alpha=0.15, color='blue', zorder=1)
 
-    ax_r.set_xlabel('Time [Myr]', fontsize=14)
-    ax_r.set_ylabel('Shell Radius [pc]', fontsize=14, rotation=90)
+    # Pabst et al. 2020 radius observation (green)
+    ax_r.errorbar(obs.t_obs, obs.R_obs_Pabst, xerr=obs.t_err, yerr=obs.R_err_Pabst,
+                  fmt='s', color='green', markersize=12, capsize=5, capthick=2,
+                  label=f'Pabst+20: {obs.R_obs_Pabst}±{obs.R_err_Pabst} pc', zorder=10, markeredgecolor='k')
+    ax_r.axhspan(obs.R_obs_Pabst - obs.R_err_Pabst, obs.R_obs_Pabst + obs.R_err_Pabst,
+                 alpha=0.15, color='green', zorder=1)
+
+    ax_r.axvspan(obs.t_obs - obs.t_err, obs.t_obs + obs.t_err,
+                 alpha=0.1, color='gray', zorder=0)
+
+    ax_r.set_xlabel('Time [Myr]', fontsize=FONTSIZE)
+    ax_r.set_ylabel('Shell Radius [pc]', fontsize=FONTSIZE, rotation=90)
+    ax_r.tick_params(axis='both', labelsize=FONTSIZE)
     ax_r.tick_params(axis='y', labelrotation=90)
-    legend_r = ax_r.legend(loc='upper left', fontsize=10)
+    legend_r = ax_r.legend(loc='upper left', fontsize=FONTSIZE)
     legend_r.set_zorder(100)
     ax_r.set_xlim(0, 0.3)
     ax_r.set_ylim(0, None)
