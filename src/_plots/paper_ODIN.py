@@ -680,8 +680,9 @@ def plot_trajectory_evolution_combined(results: List[SimulationResult], config: 
         # Convert to arrays and compute envelope
         if M_interp_list:
             M_arr = np.array(M_interp_list)
-            M_min = np.nanmin(M_arr, axis=0)
-            M_max = np.nanmax(M_arr, axis=0)
+            with np.errstate(all='ignore'):
+                M_min = np.nanmin(M_arr, axis=0)
+                M_max = np.nanmax(M_arr, axis=0)
 
             # Plot shaded region
             ax_m.fill_between(t_common, M_min, M_max, alpha=0.7, color=color,
@@ -689,8 +690,9 @@ def plot_trajectory_evolution_combined(results: List[SimulationResult], config: 
 
         if R_interp_list:
             R_arr = np.array(R_interp_list)
-            R_min = np.nanmin(R_arr, axis=0)
-            R_max = np.nanmax(R_arr, axis=0)
+            with np.errstate(all='ignore'):
+                R_min = np.nanmin(R_arr, axis=0)
+                R_max = np.nanmax(R_arr, axis=0)
 
             # Plot shaded region
             ax_r.fill_between(t_common, R_min, R_max, alpha=0.7, color=color,
