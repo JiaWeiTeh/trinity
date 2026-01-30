@@ -492,7 +492,7 @@ def plot_trajectory_evolution(results: List[SimulationResult], config: AnalysisC
         data_to_plot = data_all_sorted[:top_n]
 
     # 2 subplots: mass (top), radius (bottom) - stacked vertically with shared x-axis
-    fig, (ax_m, ax_r) = plt.subplots(2, 1, figsize=(6.5, 9.0), dpi=150, sharex=True)
+    fig, (ax_m, ax_r) = plt.subplots(2, 1, figsize=(6.5, 10.0), dpi=150, sharex=True)
 
     obs = config.obs
 
@@ -567,9 +567,9 @@ def plot_trajectory_evolution(results: List[SimulationResult], config: AnalysisC
                   fmt='s', color='green', markersize=14, capsize=5, capthick=2,
                   label=f'Observed: {obs.R_obs}±{obs.R_err} pc', zorder=10, markeredgecolor='k')
     ax_r.axvspan(obs.t_obs - obs.t_err, obs.t_obs + obs.t_err,
-                 alpha=0.2, color='blue', zorder=1)
+                 alpha=0.1, color='blue', zorder=1)
     ax_r.axhspan(obs.R_obs - obs.R_err, obs.R_obs + obs.R_err,
-                 alpha=0.2, color='green', zorder=1)
+                 alpha=0.1, color='green', zorder=1)
 
     ax_r.set_xlabel('Time [Myr]', fontsize=17)
     ax_r.set_ylabel('Shell Radius [pc]', fontsize=17, rotation=90)
@@ -616,7 +616,8 @@ def plot_trajectory_evolution_combined(results: List[SimulationResult], config: 
     from scipy.interpolate import interp1d
 
     # Define colors for different nCore values
-    nCore_colors = ['C0', 'C1', 'C2', 'C3', 'C4', 'C5']
+    nCore_colors = ['orange', 'r', 'k', 'C3', 'C4', 'C5']
+    nCore_math = ["100", "500", "1000"]
 
     # 2 subplots: mass (top), radius (bottom) - stacked vertically with shared x-axis
     fig, (ax_m, ax_r) = plt.subplots(2, 1, figsize=(6.5, 5.0), dpi=150, sharex=True)
@@ -683,8 +684,8 @@ def plot_trajectory_evolution_combined(results: List[SimulationResult], config: 
             M_max = np.nanmax(M_arr, axis=0)
 
             # Plot shaded region
-            ax_m.fill_between(t_common, M_min, M_max, alpha=0.5, color=color,
-                              label=f'$n_{{\\rm core}}$={nCore_value}')
+            ax_m.fill_between(t_common, M_min, M_max, alpha=0.7, color=color,
+                              label=f'$n_{{\\rm core}} = ${nCore_math[nCore_idx]} $\\rm cm^{-3} $')
 
         if R_interp_list:
             R_arr = np.array(R_interp_list)
@@ -692,10 +693,10 @@ def plot_trajectory_evolution_combined(results: List[SimulationResult], config: 
             R_max = np.nanmax(R_arr, axis=0)
 
             # Plot shaded region
-            ax_r.fill_between(t_common, R_min, R_max, alpha=0.5, color=color,
-                              label=f'$n_{{\\rm core}}$={nCore_value}')
+            ax_r.fill_between(t_common, R_min, R_max, alpha=0.7, color=color,
+                              label=f'$n_{{\\rm core}} = ${nCore_math[nCore_idx]} $\\rm cm^{-3}$')
 
-    # --- Mass panel (log scale) ---
+    # --- Mass panel (log scale) --- 
     tracer_bands = [
         (obs.M_shell_HI, obs.M_shell_HI_err, 'blue', r'HI ($\sim 10^2 M_\odot$)', 0.15),
         (obs.M_shell_CII, obs.M_shell_CII_err, 'darkorange', r'[CII] ($\sim 10^3 M_\odot$)', 0.15),
@@ -713,7 +714,7 @@ def plot_trajectory_evolution_combined(results: List[SimulationResult], config: 
 
     ax_m.set_ylabel(r'Shell Mass [$M_\odot$]', fontsize=14, rotation=90)
     ax_m.tick_params(axis='y', labelrotation=90)
-    legend_m = ax_m.legend(loc='lower right', fontsize=10)
+    legend_m = ax_m.legend(loc='upper left', fontsize=10)
     legend_m.set_zorder(100)
     ax_m.set_yscale('log')
     ax_m.set_ylim(10, 1e4)
@@ -724,14 +725,14 @@ def plot_trajectory_evolution_combined(results: List[SimulationResult], config: 
                   fmt='s', color='green', markersize=12, capsize=5, capthick=2,
                   label=f'Observed: {obs.R_obs}±{obs.R_err} pc', zorder=10, markeredgecolor='k')
     ax_r.axvspan(obs.t_obs - obs.t_err, obs.t_obs + obs.t_err,
-                 alpha=0.2, color='blue', zorder=1)
+                 alpha=0.1, color='gray', zorder=1)
     ax_r.axhspan(obs.R_obs - obs.R_err, obs.R_obs + obs.R_err,
-                 alpha=0.2, color='green', zorder=1)
+                 alpha=0.1, color='green', zorder=1)
 
     ax_r.set_xlabel('Time [Myr]', fontsize=14)
     ax_r.set_ylabel('Shell Radius [pc]', fontsize=14, rotation=90)
     ax_r.tick_params(axis='y', labelrotation=90)
-    legend_r = ax_r.legend(loc='lower right', fontsize=10)
+    legend_r = ax_r.legend(loc='upper left', fontsize=10)
     legend_r.set_zorder(100)
     ax_r.set_xlim(0, 0.3)
     ax_r.set_ylim(0, None)
