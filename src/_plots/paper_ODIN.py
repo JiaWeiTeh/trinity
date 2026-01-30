@@ -21,6 +21,8 @@ from pathlib import Path
 from dataclasses import dataclass, field
 from typing import Optional, List, Literal, Tuple
 import matplotlib.colors as mcolors
+from scipy.signal import savgol_filter
+from scipy.interpolate import UnivariateSpline
 
 # Add project root to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
@@ -170,6 +172,47 @@ class SimulationResult:
 # =============================================================================
 # Core Functions
 # =============================================================================
+
+def smooth_trajectory(t, y, window_frac=0.05, polyorder=3):
+    """
+    Smooth a trajectory array to remove numerical jitters.
+
+    Uses Savitzky-Golay filter which preserves the overall shape
+    while smoothing out local discontinuities.
+
+    Parameters
+    ----------
+    t : array-like
+        Time array
+    y : array-like
+        Data array to smooth
+    window_frac : float
+        Fraction of data length to use as window size (default 0.05 = 5%)
+    polyorder : int
+        Polynomial order for the filter (default 3)
+
+    Returns
+    -------
+    y_smooth : array
+        Smoothed data array
+    """
+    if y is None or len(y) < 10:
+        return y
+
+    # Calculate window length (must be odd)
+    window_length = int(len(y) * window_frac)
+    if window_length < polyorder + 2:
+        window_length = polyorder + 2
+    if window_length % 2 == 0:
+        window_length += 1
+
+    # Apply Savitzky-Golay filter
+    try:
+        y_smooth = savgol_filter(y, window_length, polyorder)
+        return y_smooth
+    except Exception:
+        return y
+
 
 def compute_stellar_mass(mCloud, sfe):
     """
@@ -465,6 +508,10 @@ def plot_trajectory_evolution(results: List[SimulationResult], config: AnalysisC
         M = r.M_shell_full
         R = r.R_full
 
+        # Smooth trajectories to remove numerical jitters from phase transitions
+        M_smooth = smooth_trajectory(t, M)
+        R_smooth = smooth_trajectory(t, R)
+
         if config.show_all:
             color = cmap(norm(r.chi2_total))
             alpha = 0.7
@@ -477,12 +524,12 @@ def plot_trajectory_evolution(results: List[SimulationResult], config: AnalysisC
             label = f"{r.mCloud}_sfe{r.sfe} (M$_\\star$={r.Mstar:.0f}, $\\chi^2$={r.chi2_total:.1f})"
 
         # Mass trajectory
-        if M is not None:
-            ax_m.plot(t, M, color=color, lw=lw, label=label, alpha=alpha)
+        if M_smooth is not None:
+            ax_m.plot(t, M_smooth, color=color, lw=lw, label=label, alpha=alpha)
 
         # Radius trajectory
-        if R is not None:
-            ax_r.plot(t, R, color=color, lw=lw, label=label, alpha=alpha)
+        if R_smooth is not None:
+            ax_r.plot(t, R_smooth, color=color, lw=lw, label=label, alpha=alpha)
 
     # --- Mass panel (log scale) ---
     tracer_bands = [
