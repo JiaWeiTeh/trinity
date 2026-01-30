@@ -616,7 +616,7 @@ def plot_trajectory_evolution_combined(results: List[SimulationResult], config: 
     from scipy.interpolate import interp1d
 
     # Define colors for different nCore values
-    nCore_colors = ['orange', 'r', 'k', 'C3', 'C4', 'C5']
+    nCore_colors = ['orange', 'r', 'darkgray', 'C3', 'C4', 'C5']
     nCore_math = ["100", "500", "1000"]
 
     # 2 subplots: mass (top), radius (bottom) - stacked vertically with shared x-axis
