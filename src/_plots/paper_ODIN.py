@@ -681,23 +681,19 @@ def plot_trajectory_evolution_combined(results: List[SimulationResult], config: 
             M_arr = np.array(M_interp_list)
             M_min = np.nanmin(M_arr, axis=0)
             M_max = np.nanmax(M_arr, axis=0)
-            M_median = np.nanmedian(M_arr, axis=0)
 
-            # Plot shaded region and median line
-            ax_m.fill_between(t_common, M_min, M_max, alpha=0.3, color=color,
+            # Plot shaded region
+            ax_m.fill_between(t_common, M_min, M_max, alpha=0.5, color=color,
                               label=f'$n_{{\\rm core}}$={nCore_value}')
-            ax_m.plot(t_common, M_median, color=color, lw=1.5, linestyle='-')
 
         if R_interp_list:
             R_arr = np.array(R_interp_list)
             R_min = np.nanmin(R_arr, axis=0)
             R_max = np.nanmax(R_arr, axis=0)
-            R_median = np.nanmedian(R_arr, axis=0)
 
-            # Plot shaded region and median line
-            ax_r.fill_between(t_common, R_min, R_max, alpha=0.3, color=color,
+            # Plot shaded region
+            ax_r.fill_between(t_common, R_min, R_max, alpha=0.5, color=color,
                               label=f'$n_{{\\rm core}}$={nCore_value}')
-            ax_r.plot(t_common, R_median, color=color, lw=1.5, linestyle='-')
 
     # --- Mass panel (log scale) ---
     tracer_bands = [
