@@ -16,8 +16,8 @@ text.latex.preamble: \usepackage{amsmath} \usepackage{amssymb}
 # AXES
 # =============================================================================
 axes.linewidth: 0.8
-axes.labelsize: 12
-axes.titlesize: 12
+axes.labelsize: 15
+axes.titlesize: 15
 axes.labelpad: 4
 
 # =============================================================================
@@ -43,8 +43,8 @@ xtick.minor.width: 0.6
 ytick.minor.width: 0.6
 
 # Tick labels
-xtick.labelsize: 10
-ytick.labelsize: 10
+xtick.labelsize: 15
+ytick.labelsize: 15
 
 # =============================================================================
 # LINES & MARKERS
@@ -55,7 +55,7 @@ lines.markersize: 5
 # =============================================================================
 # LEGEND
 # =============================================================================
-legend.fontsize: 10
+legend.fontsize: 13
 legend.frameon: False
 legend.handlelength: 1.5
 legend.handletextpad: 0.4

@@ -58,9 +58,9 @@ class ObservationalConstraints:
 
     # Shell mass options
     M_shell_HI: float = 100.0        # M_sun
-    M_shell_HI_err: float = 30.0     # M_sun
+    M_shell_HI_err: float = 10.0     # M_sun
     M_shell_CII: float = 1000.0      # M_sun
-    M_shell_CII_err: float = 300.0   # M_sun
+    M_shell_CII_err: float = 100.0   # M_sun
     M_shell_combined: float = 2000.0 # M_sun
     M_shell_combined_err: float = 500.0  # M_sun
 
@@ -444,7 +444,7 @@ def plot_trajectory_evolution(results: List[SimulationResult], config: AnalysisC
         data_to_plot = data_all_sorted[:top_n]
 
     # 2 subplots: mass (top), radius (bottom) - stacked vertically with shared x-axis
-    fig, (ax_m, ax_r) = plt.subplots(2, 1, figsize=(6.5, 5.0), dpi=150, sharex=True)
+    fig, (ax_m, ax_r) = plt.subplots(2, 1, figsize=(6.5, 9.0), dpi=150, sharex=True)
 
     obs = config.obs
 
@@ -500,33 +500,38 @@ def plot_trajectory_evolution(results: List[SimulationResult], config: AnalysisC
     ax_m.axvspan(obs.t_obs - obs.t_err, obs.t_obs + obs.t_err,
                  alpha=0.1, color='gray', zorder=0)
 
-    ax_m.set_ylabel(r'Shell Mass [$M_\odot$]', fontsize=14, rotation=90)
+    ax_m.set_ylabel(r'Shell Mass [$M_\odot$]', fontsize=17, rotation=90)
     ax_m.tick_params(axis='y', labelrotation=90)
-    legend_m = ax_m.legend(loc='lower right', fontsize=10)
+    legend_m = ax_m.legend(loc='upper right', fontsize=17)
     legend_m.set_zorder(100)
     ax_m.set_yscale('log')
     ax_m.set_ylim(10, 1e4)
     ax_m.grid(True, alpha=0.3, which='both')
+    ax_m.tick_params(axis='x', pad=10)
+    ax_m.tick_params(axis='y', pad=10)
 
     # --- Radius panel ---
     ax_r.errorbar(obs.t_obs, obs.R_obs, xerr=obs.t_err, yerr=obs.R_err,
-                  fmt='s', color='green', markersize=12, capsize=5, capthick=2,
+                  fmt='s', color='green', markersize=14, capsize=5, capthick=2,
                   label=f'Observed: {obs.R_obs}±{obs.R_err} pc', zorder=10, markeredgecolor='k')
     ax_r.axvspan(obs.t_obs - obs.t_err, obs.t_obs + obs.t_err,
                  alpha=0.2, color='blue', zorder=1)
     ax_r.axhspan(obs.R_obs - obs.R_err, obs.R_obs + obs.R_err,
                  alpha=0.2, color='green', zorder=1)
 
-    ax_r.set_xlabel('Time [Myr]', fontsize=14)
-    ax_r.set_ylabel('Shell Radius [pc]', fontsize=14, rotation=90)
+    ax_r.set_xlabel('Time [Myr]', fontsize=17)
+    ax_r.set_ylabel('Shell Radius [pc]', fontsize=17, rotation=90)
     ax_r.tick_params(axis='y', labelrotation=90)
-    legend_r = ax_r.legend(loc='lower right', fontsize=10)
+    legend_r = ax_r.legend(loc='lower right', fontsize=17)
     legend_r.set_zorder(100)
     ax_r.set_xlim(0, 0.3)
     ax_r.set_ylim(0, None)
     ax_r.grid(True, alpha=0.3)
+    ax_r.tick_params(axis='x', pad=10)
+    ax_r.tick_params(axis='y', pad=10)
 
-    plt.tight_layout(h_pad=1.0)
+
+    plt.tight_layout()
 
     suffix = config.get_filename_suffix()
     out_pdf = output_dir / f'trajectory_n{nCore_value}{suffix}.pdf'
