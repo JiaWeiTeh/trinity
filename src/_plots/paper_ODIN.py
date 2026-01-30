@@ -21,6 +21,8 @@ from pathlib import Path
 from dataclasses import dataclass, field
 from typing import Optional, List, Literal, Tuple
 import matplotlib.colors as mcolors
+from scipy.signal import savgol_filter
+from scipy.interpolate import UnivariateSpline
 
 # Add project root to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
@@ -101,6 +103,9 @@ class AnalysisConfig:
     # Show all trajectories
     show_all: bool = False
 
+    # Combine multiple nCore values on same plot
+    combine_nCore: bool = False
+
     # Observational constraints
     obs: ObservationalConstraints = field(default_factory=ObservationalConstraints)
 
@@ -120,6 +125,8 @@ class AnalysisConfig:
             suffix += f"_{self.mass_tracer}"
         if self.show_all:
             suffix += "_showall"
+        if self.combine_nCore:
+            suffix += "_combined"
         return suffix
 
 
@@ -170,6 +177,47 @@ class SimulationResult:
 # =============================================================================
 # Core Functions
 # =============================================================================
+
+def smooth_trajectory(t, y, window_frac=0.05, polyorder=3):
+    """
+    Smooth a trajectory array to remove numerical jitters.
+
+    Uses Savitzky-Golay filter which preserves the overall shape
+    while smoothing out local discontinuities.
+
+    Parameters
+    ----------
+    t : array-like
+        Time array
+    y : array-like
+        Data array to smooth
+    window_frac : float
+        Fraction of data length to use as window size (default 0.05 = 5%)
+    polyorder : int
+        Polynomial order for the filter (default 3)
+
+    Returns
+    -------
+    y_smooth : array
+        Smoothed data array
+    """
+    if y is None or len(y) < 10:
+        return y
+
+    # Calculate window length (must be odd)
+    window_length = int(len(y) * window_frac)
+    if window_length < polyorder + 2:
+        window_length = polyorder + 2
+    if window_length % 2 == 0:
+        window_length += 1
+
+    # Apply Savitzky-Golay filter
+    try:
+        y_smooth = savgol_filter(y, window_length, polyorder)
+        return y_smooth
+    except Exception:
+        return y
+
 
 def compute_stellar_mass(mCloud, sfe):
     """
@@ -465,6 +513,10 @@ def plot_trajectory_evolution(results: List[SimulationResult], config: AnalysisC
         M = r.M_shell_full
         R = r.R_full
 
+        # Smooth trajectories to remove numerical jitters from phase transitions
+        M_smooth = smooth_trajectory(t, M)
+        R_smooth = smooth_trajectory(t, R)
+
         if config.show_all:
             color = cmap(norm(r.chi2_total))
             alpha = 0.7
@@ -477,12 +529,12 @@ def plot_trajectory_evolution(results: List[SimulationResult], config: AnalysisC
             label = f"{r.mCloud}_sfe{r.sfe} (M$_\\star$={r.Mstar:.0f}, $\\chi^2$={r.chi2_total:.1f})"
 
         # Mass trajectory
-        if M is not None:
-            ax_m.plot(t, M, color=color, lw=lw, label=label, alpha=alpha)
+        if M_smooth is not None:
+            ax_m.plot(t, M_smooth, color=color, lw=lw, label=label, alpha=alpha)
 
         # Radius trajectory
-        if R is not None:
-            ax_r.plot(t, R, color=color, lw=lw, label=label, alpha=alpha)
+        if R_smooth is not None:
+            ax_r.plot(t, R_smooth, color=color, lw=lw, label=label, alpha=alpha)
 
     # --- Mass panel (log scale) ---
     tracer_bands = [
@@ -540,6 +592,154 @@ def plot_trajectory_evolution(results: List[SimulationResult], config: AnalysisC
     plt.close(fig)
 
 
+def plot_trajectory_evolution_combined(results: List[SimulationResult], config: AnalysisConfig,
+                                        output_dir: Path, nCore_values: List[str], top_n: int = 5):
+    """
+    Create combined trajectory plot with multiple nCore values.
+
+    Different nCore values are distinguished by linestyle.
+    Different simulations within the same nCore use different colors.
+
+    Parameters
+    ----------
+    results : List[SimulationResult]
+        List of simulation results
+    config : AnalysisConfig
+        Analysis configuration
+    output_dir : Path
+        Output directory
+    nCore_values : List[str]
+        List of nCore values to plot
+    top_n : int
+        Number of best-fit models to show per nCore (ignored if config.show_all is True)
+    """
+    # Define linestyles for different nCore values
+    linestyles = ['-', '--', '-.', ':', (0, (3, 1, 1, 1)), (0, (5, 2, 1, 2))]
+
+    # 2 subplots: mass (top), radius (bottom) - stacked vertically with shared x-axis
+    fig, (ax_m, ax_r) = plt.subplots(2, 1, figsize=(6.5, 5.0), dpi=150, sharex=True)
+
+    obs = config.obs
+
+    # Track labels for legend (avoid duplicates)
+    nCore_legend_added = set()
+
+    for nCore_idx, nCore_value in enumerate(nCore_values):
+        # Filter for this nCore
+        data = [r for r in results if r.nCore == nCore_value]
+
+        if not data:
+            continue
+
+        # Sort by chi2
+        data_all_sorted = sorted(data, key=lambda x: x.chi2_total)
+
+        # Decide which simulations to plot
+        if config.show_all:
+            data_to_plot = data_all_sorted
+        else:
+            data_to_plot = data_all_sorted[:top_n]
+
+        # Get linestyle for this nCore
+        ls = linestyles[nCore_idx % len(linestyles)]
+
+        # Color map for simulations within this nCore
+        if config.show_all:
+            chi2_vals = [r.chi2_total for r in data_to_plot]
+            chi2_min, chi2_max = min(chi2_vals), max(chi2_vals)
+            norm = mcolors.LogNorm(vmin=max(0.1, chi2_min), vmax=max(1, chi2_max))
+            cmap = plt.cm.viridis_r
+        else:
+            colors = plt.cm.tab10(np.linspace(0, 1, len(data_to_plot)))
+
+        for i, r in enumerate(data_to_plot):
+            if r.t_full is None:
+                continue
+
+            t = r.t_full
+            M = r.M_shell_full
+            R = r.R_full
+
+            # Smooth trajectories to remove numerical jitters from phase transitions
+            M_smooth = smooth_trajectory(t, M)
+            R_smooth = smooth_trajectory(t, R)
+
+            if config.show_all:
+                color = cmap(norm(r.chi2_total))
+                alpha = 0.7
+                lw = 1.0
+                # Only add nCore label once per nCore value
+                if nCore_value not in nCore_legend_added:
+                    label = f"$n_{{\\rm core}}$={nCore_value}"
+                    nCore_legend_added.add(nCore_value)
+                else:
+                    label = None
+            else:
+                color = colors[i]
+                alpha = 0.9
+                lw = 1.5
+                label = f"{r.mCloud}_sfe{r.sfe} (n={nCore_value})"
+
+            # Mass trajectory
+            if M_smooth is not None:
+                ax_m.plot(t, M_smooth, color=color, lw=lw, label=label, alpha=alpha, linestyle=ls)
+
+            # Radius trajectory
+            if R_smooth is not None:
+                ax_r.plot(t, R_smooth, color=color, lw=lw, alpha=alpha, linestyle=ls)
+
+    # --- Mass panel (log scale) ---
+    tracer_bands = [
+        (obs.M_shell_HI, obs.M_shell_HI_err, 'blue', r'HI ($\sim 10^2 M_\odot$)', 0.15),
+        (obs.M_shell_CII, obs.M_shell_CII_err, 'darkorange', r'[CII] ($\sim 10^3 M_\odot$)', 0.15),
+    ]
+
+    for M_val, M_err, color, label, alpha in tracer_bands:
+        ax_m.axhspan(M_val - M_err, M_val + M_err, alpha=alpha, color=color, zorder=1)
+        ax_m.errorbar(obs.t_obs, M_val, xerr=obs.t_err, yerr=M_err,
+                      fmt='s', color=color, markersize=10, capsize=4, capthick=1.5,
+                      label=f'{label}', zorder=10,
+                      markeredgecolor='k', markeredgewidth=0.5)
+
+    ax_m.axvspan(obs.t_obs - obs.t_err, obs.t_obs + obs.t_err,
+                 alpha=0.1, color='gray', zorder=0)
+
+    ax_m.set_ylabel(r'Shell Mass [$M_\odot$]', fontsize=14, rotation=90)
+    ax_m.tick_params(axis='y', labelrotation=90)
+    legend_m = ax_m.legend(loc='lower right', fontsize=10)
+    legend_m.set_zorder(100)
+    ax_m.set_yscale('log')
+    ax_m.set_ylim(10, 1e4)
+    ax_m.grid(True, alpha=0.3, which='both')
+
+    # --- Radius panel ---
+    ax_r.errorbar(obs.t_obs, obs.R_obs, xerr=obs.t_err, yerr=obs.R_err,
+                  fmt='s', color='green', markersize=12, capsize=5, capthick=2,
+                  label=f'Observed: {obs.R_obs}±{obs.R_err} pc', zorder=10, markeredgecolor='k')
+    ax_r.axvspan(obs.t_obs - obs.t_err, obs.t_obs + obs.t_err,
+                 alpha=0.2, color='blue', zorder=1)
+    ax_r.axhspan(obs.R_obs - obs.R_err, obs.R_obs + obs.R_err,
+                 alpha=0.2, color='green', zorder=1)
+
+    ax_r.set_xlabel('Time [Myr]', fontsize=14)
+    ax_r.set_ylabel('Shell Radius [pc]', fontsize=14, rotation=90)
+    ax_r.tick_params(axis='y', labelrotation=90)
+    legend_r = ax_r.legend(loc='lower right', fontsize=10)
+    legend_r.set_zorder(100)
+    ax_r.set_xlim(0, 0.3)
+    ax_r.set_ylim(0, None)
+    ax_r.grid(True, alpha=0.3)
+
+    plt.tight_layout(h_pad=1.0)
+
+    suffix = config.get_filename_suffix()
+    nCore_str = "_".join(nCore_values)
+    out_pdf = output_dir / f'trajectory_n{nCore_str}{suffix}.pdf'
+    fig.savefig(out_pdf, bbox_inches='tight')
+    print(f"  Saved: {out_pdf}")
+    plt.close(fig)
+
+
 # =============================================================================
 # Main Function
 # =============================================================================
@@ -590,10 +790,15 @@ def main(folder_path: str, output_dir: str = None, config: AnalysisConfig = None
     nCore_values = sorted(set(r.nCore for r in results), key=lambda x: float(x))
     print(f"nCore values: {nCore_values}")
 
-    # Create trajectory plots for each nCore
+    # Create trajectory plots
     print("\nCreating trajectory evolution plots...")
-    for nCore in nCore_values:
-        plot_trajectory_evolution(results, config, output_dir, nCore)
+    if config.combine_nCore and len(nCore_values) > 1:
+        # Combined plot with all nCore values
+        plot_trajectory_evolution_combined(results, config, output_dir, nCore_values)
+    else:
+        # Separate plots for each nCore
+        for nCore in nCore_values:
+            plot_trajectory_evolution(results, config, output_dir, nCore)
 
     print("\nDone!")
 
@@ -700,6 +905,8 @@ Shell Mass (shown in plots):
     # Trajectory options
     parser.add_argument('--showall', action='store_true',
                         help='Show all simulation trajectories')
+    parser.add_argument('--combine-nCore', action='store_true',
+                        help='Plot all nCore values on the same plot (different linestyles)')
 
     args = parser.parse_args()
 
@@ -723,6 +930,7 @@ Shell Mass (shown in plots):
         nCore_filter=args.nCore,
         mass_tracer=args.mass_tracer,
         show_all=args.showall,
+        combine_nCore=args.combine_nCore,
         obs=obs,
     )
 
