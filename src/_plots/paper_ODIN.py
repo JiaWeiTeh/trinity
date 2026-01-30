@@ -590,10 +590,10 @@ def plot_trajectory_evolution(results: List[SimulationResult], config: AnalysisC
 def plot_trajectory_evolution_combined(results: List[SimulationResult], config: AnalysisConfig,
                                         output_dir: Path, nCore_values: List[str], top_n: int = 5):
     """
-    Create combined trajectory plot with multiple nCore values.
+    Create combined trajectory plot with multiple nCore values as shaded regions.
 
-    Different nCore values are distinguished by linestyle.
-    Different simulations within the same nCore use different colors.
+    Each nCore value is shown as a shaded region (min-max envelope) with a median line.
+    Different nCore values use different colors.
 
     Parameters
     ----------
@@ -606,18 +606,20 @@ def plot_trajectory_evolution_combined(results: List[SimulationResult], config: 
     nCore_values : List[str]
         List of nCore values to plot
     top_n : int
-        Number of best-fit models to show per nCore (ignored if config.show_all is True)
+        Number of best-fit models to include per nCore (ignored if config.show_all is True)
     """
-    # Define linestyles for different nCore values
-    linestyles = ['-', '--', '-.', ':', (0, (3, 1, 1, 1)), (0, (5, 2, 1, 2))]
+    from scipy.interpolate import interp1d
+
+    # Define colors for different nCore values
+    nCore_colors = ['C0', 'C1', 'C2', 'C3', 'C4', 'C5']
 
     # 2 subplots: mass (top), radius (bottom) - stacked vertically with shared x-axis
     fig, (ax_m, ax_r) = plt.subplots(2, 1, figsize=(6.5, 5.0), dpi=150, sharex=True)
 
     obs = config.obs
 
-    # Track labels for legend (avoid duplicates)
-    nCore_legend_added = set()
+    # Common time grid for interpolation
+    t_common = np.linspace(0, 0.3, 500)
 
     for nCore_idx, nCore_value in enumerate(nCore_values):
         # Filter for this nCore
@@ -629,25 +631,20 @@ def plot_trajectory_evolution_combined(results: List[SimulationResult], config: 
         # Sort by chi2
         data_all_sorted = sorted(data, key=lambda x: x.chi2_total)
 
-        # Decide which simulations to plot
+        # Decide which simulations to include
         if config.show_all:
             data_to_plot = data_all_sorted
         else:
             data_to_plot = data_all_sorted[:top_n]
 
-        # Get linestyle for this nCore
-        ls = linestyles[nCore_idx % len(linestyles)]
+        # Get color for this nCore
+        color = nCore_colors[nCore_idx % len(nCore_colors)]
 
-        # Color map for simulations within this nCore
-        if config.show_all:
-            chi2_vals = [r.chi2_total for r in data_to_plot]
-            chi2_min, chi2_max = min(chi2_vals), max(chi2_vals)
-            norm = mcolors.LogNorm(vmin=max(0.1, chi2_min), vmax=max(1, chi2_max))
-            cmap = plt.cm.viridis_r
-        else:
-            colors = plt.cm.tab10(np.linspace(0, 1, len(data_to_plot)))
+        # Collect interpolated trajectories
+        M_interp_list = []
+        R_interp_list = []
 
-        for i, r in enumerate(data_to_plot):
+        for r in data_to_plot:
             if r.t_full is None:
                 continue
 
@@ -655,33 +652,47 @@ def plot_trajectory_evolution_combined(results: List[SimulationResult], config: 
             M = r.M_shell_full
             R = r.R_full
 
-            # Smooth trajectories to remove numerical jitters from phase transitions
+            # Smooth trajectories
             M_smooth = smooth_trajectory(t, M)
             R_smooth = smooth_trajectory(t, R)
 
-            if config.show_all:
-                color = cmap(norm(r.chi2_total))
-                alpha = 0.7
-                lw = 1.0
-                # Only add nCore label once per nCore value
-                if nCore_value not in nCore_legend_added:
-                    label = f"$n_{{\\rm core}}$={nCore_value}"
-                    nCore_legend_added.add(nCore_value)
-                else:
-                    label = None
-            else:
-                color = colors[i]
-                alpha = 0.9
-                lw = 1.5
-                label = f"{r.mCloud}_sfe{r.sfe} (n={nCore_value})"
+            # Interpolate to common time grid
+            if M_smooth is not None and len(t) > 1:
+                try:
+                    f_M = interp1d(t, M_smooth, kind='linear', bounds_error=False, fill_value=np.nan)
+                    M_interp_list.append(f_M(t_common))
+                except Exception:
+                    pass
 
-            # Mass trajectory
-            if M_smooth is not None:
-                ax_m.plot(t, M_smooth, color=color, lw=lw, label=label, alpha=alpha, linestyle=ls)
+            if R_smooth is not None and len(t) > 1:
+                try:
+                    f_R = interp1d(t, R_smooth, kind='linear', bounds_error=False, fill_value=np.nan)
+                    R_interp_list.append(f_R(t_common))
+                except Exception:
+                    pass
 
-            # Radius trajectory
-            if R_smooth is not None:
-                ax_r.plot(t, R_smooth, color=color, lw=lw, alpha=alpha, linestyle=ls)
+        # Convert to arrays and compute envelope
+        if M_interp_list:
+            M_arr = np.array(M_interp_list)
+            M_min = np.nanmin(M_arr, axis=0)
+            M_max = np.nanmax(M_arr, axis=0)
+            M_median = np.nanmedian(M_arr, axis=0)
+
+            # Plot shaded region and median line
+            ax_m.fill_between(t_common, M_min, M_max, alpha=0.3, color=color,
+                              label=f'$n_{{\\rm core}}$={nCore_value}')
+            ax_m.plot(t_common, M_median, color=color, lw=1.5, linestyle='-')
+
+        if R_interp_list:
+            R_arr = np.array(R_interp_list)
+            R_min = np.nanmin(R_arr, axis=0)
+            R_max = np.nanmax(R_arr, axis=0)
+            R_median = np.nanmedian(R_arr, axis=0)
+
+            # Plot shaded region and median line
+            ax_r.fill_between(t_common, R_min, R_max, alpha=0.3, color=color,
+                              label=f'$n_{{\\rm core}}$={nCore_value}')
+            ax_r.plot(t_common, R_median, color=color, lw=1.5, linestyle='-')
 
     # --- Mass panel (log scale) ---
     tracer_bands = [
