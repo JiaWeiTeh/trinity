@@ -545,8 +545,8 @@ def plot_trajectory_evolution(results: List[SimulationResult], config: AnalysisC
 
     # --- Mass panel (log scale) ---
     tracer_bands = [
-        (obs.M_shell_HI, obs.M_shell_HI_err, 'green', r'HI ($\sim 10^2 M_\odot$)', 0.15),
-        (obs.M_shell_CII, obs.M_shell_CII_err, 'darkorange', r'[CII] ($\sim 10^3 M_\odot$)', 0.15),
+        (obs.M_shell_HI, obs.M_shell_HI_err, 'blue', r'HI ($\sim 10^2 M_\odot$)', 0.15),
+        (obs.M_shell_CII, obs.M_shell_CII_err, 'green', r'[CII] ($\sim 10^3 M_\odot$)', 0.15),
     ]
 
     for M_val, M_err, color, label, alpha in tracer_bands:
@@ -718,8 +718,8 @@ def plot_trajectory_evolution_combined(results: List[SimulationResult], config: 
 
     # --- Mass panel (log scale) ---
     tracer_bands = [
-        (obs.M_shell_HI, obs.M_shell_HI_err, 'green', r'HI ($\sim 10^2 M_\odot$)', 0.15),
-        (obs.M_shell_CII, obs.M_shell_CII_err, 'darkorange', r'[CII] ($\sim 10^3 M_\odot$)', 0.15),
+        (obs.M_shell_HI, obs.M_shell_HI_err, 'blue', r'HI ($\sim 10^2 M_\odot$)', 0.15),
+        (obs.M_shell_CII, obs.M_shell_CII_err, 'green', r'[CII] ($\sim 10^3 M_\odot$)', 0.15),
     ]
 
     for M_val, M_err, color, label, alpha in tracer_bands:
