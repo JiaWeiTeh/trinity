@@ -283,30 +283,17 @@ def plot_from_path(data_input: str, output_dir: str = None):
 
 def plot_grid(folder_path, output_dir=None, ndens_filter=None):
     """
-    Create grid plot from all simulations found in a folder.
-
-    Searches subfolders for dictionary.jsonl files, parses simulation
-    parameters from folder names (e.g., "1e7_sfe020_n1e4"), and arranges
-    them in a grid sorted by:
-    - Rows: increasing mCloud (top to bottom)
-    - Columns: increasing SFE (left to right)
-
-    Saves PDF as {folder_name}_{ndens}.pdf without displaying.
+    Plot grid of expansion velocity from simulations in a folder.
 
     Parameters
     ----------
     folder_path : str or Path
-        Path to folder containing simulation subfolders
+        Path to folder containing simulation subfolders.
     output_dir : str or Path, optional
         Directory to save figure (default: FIG_DIR)
     ndens_filter : str, optional
-        Filter simulations by cloud density (e.g., "1e4", "1e3").
-        If not specified, generates one PDF per density found.
-
-    Notes
-    -----
-    Folder names must follow the pattern: {mCloud}_sfe{sfe}_n{ndens}
-    Examples: "1e7_sfe020_n1e4", "5e6_sfe010_n1e3"
+        Filter simulations by density (e.g., "1e4"). If None, creates one
+        PDF per unique density found.
     """
     from src._output.trinity_reader import find_all_simulations, organize_simulations_for_grid, get_unique_ndens
 
@@ -455,55 +442,41 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(
-        description="Plot TRINITY velocity evolution",
+        description="Plot TRINITY expansion velocity",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
   # Single simulation
   python paper_expansionVelocity.py 1e7_sfe020_n1e4
   python paper_expansionVelocity.py /path/to/outputs/1e7_sfe020_n1e4
-  python paper_expansionVelocity.py /path/to/dictionary.jsonl
 
   # Grid plot from folder (auto-discovers simulations)
   python paper_expansionVelocity.py --folder /path/to/my_experiment/
-  python paper_expansionVelocity.py -F /path/to/simulations/
-  python paper_expansionVelocity.py -F /path/to/simulations/ -n 1e4  # filter by density
+  python paper_expansionVelocity.py -F /path/to/simulations/ -n 1e4
         """
     )
     parser.add_argument(
         'data', nargs='?', default=None,
-        help='Data input: folder name, folder path, or file path'
+        help='Data input: folder name, folder path, or file path (for single simulation)'
     )
     parser.add_argument(
         '--output-dir', '-o', default=None,
-        help='Base directory for output folders (default: TRINITY_OUTPUT_DIR or "outputs")'
-    )
-    parser.add_argument(
-        '--log-x', action='store_true',
-        help='Use log scale for x-axis (time)'
+        help='Directory to save output figures (default: fig/)'
     )
     parser.add_argument(
         '--folder', '-F', default=None,
-        help='Search folder recursively for simulations and create grid plot. '
-             'Auto-organizes by mCloud (rows) and SFE (columns). '
-             'Saves as {folder}_{ndens}.pdf'
+        help='Create grid plot from all simulations in folder.'
     )
     parser.add_argument(
         '--nCore', '-n', default=None,
-        help='Filter simulations by cloud density (e.g., "1e4", "1e3"). '
-             'If not specified with --folder, generates one PDF per density found.'
+        help='Filter simulations by cloud density (e.g., "1e4", "1e3").'
     )
 
     args = parser.parse_args()
 
-    if args.log_x:
-        USE_LOG_X = True
-
     if args.folder:
-        # Grid mode: create grid from all simulations in folder
         plot_grid(args.folder, args.output_dir, ndens_filter=args.nCore)
     elif args.data:
-        # Single simulation mode
         plot_from_path(args.data, args.output_dir)
     else:
         parser.print_help()
