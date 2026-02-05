@@ -12,7 +12,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from src._output.trinity_reader import load_output, find_data_file, resolve_data_input
 from src._plots.plot_markers import add_plot_markers, get_marker_legend_handles
 
-print("...plotting radius evolution grid (with r_Tb)")
+print("...plotting radius evolution grid")
 
 # ---------------- configuration ----------------
 # Set SINGLE_MODE = True to plot a single run instead of grid
@@ -45,12 +45,11 @@ SAVE_PNG = False
 SAVE_PDF = True  # set True if you also want PDFs
 
 
-# radius line styles/colors (added r_Tb)
+# radius line styles/colors
 RADIUS_FIELDS = [
     ("R1",     r"$R_1$",              "#9467bd", "-",  1.6),  # purple
     ("R2",     r"$R_2$",              "k",       "-",  2.0),  # black
     ("rShell", r"$r_{\rm shell}$",    "#ff7f0e", "-",  1.6),  # orange
-    ("r_Tb",   r"$r_{T_b}=R_2\,\xi_{T_b}$", "0.35", ":",  1.8),  # grey dotted
 ]
 
 
@@ -93,13 +92,6 @@ def load_run_radii(data_path: Path):
     R2 = output.get('R2')
     rShell = output.get('rShell')
 
-    # r_Tb = R2 * bubble_xi_Tb (may be None if not available)
-    xi_Tb = output.get('bubble_xi_Tb')
-    if xi_Tb is not None:
-        r_Tb = R2 * xi_Tb
-    else:
-        r_Tb = np.full_like(R2, np.nan)
-
     rcloud = float(output[0].get('rCloud', np.nan))
 
     # Load isCollapse for collapse indicator
@@ -109,10 +101,10 @@ def load_run_radii(data_path: Path):
     if np.any(np.diff(t) < 0):
         order = np.argsort(t)
         t, phase = t[order], phase[order]
-        R1, R2, rShell, r_Tb = R1[order], R2[order], rShell[order], r_Tb[order]
+        R1, R2, rShell = R1[order], R2[order], rShell[order]
         isCollapse = isCollapse[order]
 
-    return t, phase, R1, R2, rShell, r_Tb, rcloud, isCollapse
+    return t, phase, R1, R2, rShell, rcloud, isCollapse
 
 
 def compute_weaver_solution(t, R2, t_ref_frac=0.1):
@@ -162,7 +154,7 @@ def compute_weaver_solution(t, R2, t_ref_frac=0.1):
 
 
 def plot_radii_on_ax(
-    ax, t, phase, R1, R2, rShell, r_Tb, rcloud, isCollapse=None,
+    ax, t, phase, R1, R2, rShell, rcloud, isCollapse=None,
     phase_line=True, cloud_line=True, show_weaver=False,
     smooth_window=None, smooth_mode="edge",
     label_pad_points=4, use_log_x=False
@@ -171,7 +163,6 @@ def plot_radii_on_ax(
     R1s = smooth_1d(R1, smooth_window, mode=smooth_mode)
     R2s = smooth_1d(R2, smooth_window, mode=smooth_mode)
     rSs = smooth_1d(rShell, smooth_window, mode=smooth_mode)
-    rTbs = smooth_1d(r_Tb, smooth_window, mode=smooth_mode)
 
     # --- Add plot markers using helper module
     add_plot_markers(
@@ -190,7 +181,6 @@ def plot_radii_on_ax(
     ax.plot(t, R1s,    lw=RADIUS_FIELDS[0][4], ls=RADIUS_FIELDS[0][3], color=RADIUS_FIELDS[0][2], label=RADIUS_FIELDS[0][1], zorder=3)
     ax.plot(t, R2s,    lw=RADIUS_FIELDS[1][4], ls=RADIUS_FIELDS[1][3], color=RADIUS_FIELDS[1][2], label=RADIUS_FIELDS[1][1], zorder=4)
     ax.plot(t, rSs,    lw=RADIUS_FIELDS[2][4], ls=RADIUS_FIELDS[2][3], color=RADIUS_FIELDS[2][2], label=RADIUS_FIELDS[2][1], zorder=3)
-    ax.plot(t, rTbs,   lw=RADIUS_FIELDS[3][4], ls=RADIUS_FIELDS[3][3], color=RADIUS_FIELDS[3][2], label=RADIUS_FIELDS[3][1], zorder=3)
 
     # --- Weaver-like solution: R ∝ t^(3/5)
     if show_weaver:
@@ -225,9 +215,9 @@ def plot_single_run(mCloud, sfe, ndens):
     fig, ax = plt.subplots(figsize=(8, 6), dpi=150)
 
     try:
-        t, phase, R1, R2, rShell, r_Tb, rcloud, isCollapse = load_run_radii(data_path)
+        t, phase, R1, R2, rShell, rcloud, isCollapse = load_run_radii(data_path)
         plot_radii_on_ax(
-            ax, t, phase, R1, R2, rShell, r_Tb, rcloud, isCollapse,
+            ax, t, phase, R1, R2, rShell, rcloud, isCollapse,
             phase_line=PHASE_LINE,
             cloud_line=CLOUD_LINE,
             show_weaver=SHOW_WEAVER,
@@ -307,9 +297,9 @@ def plot_from_path(data_input: str, output_dir: str = None):
     fig, ax = plt.subplots(figsize=(8, 6), dpi=150)
 
     try:
-        t, phase, R1, R2, rShell, r_Tb, rcloud, isCollapse = load_run_radii(data_path)
+        t, phase, R1, R2, rShell, rcloud, isCollapse = load_run_radii(data_path)
         plot_radii_on_ax(
-            ax, t, phase, R1, R2, rShell, r_Tb, rcloud, isCollapse,
+            ax, t, phase, R1, R2, rShell, rcloud, isCollapse,
             phase_line=PHASE_LINE,
             cloud_line=CLOUD_LINE,
             show_weaver=SHOW_WEAVER,
@@ -434,9 +424,9 @@ def plot_folder_grid(folder_path, output_dir=None, ndens_filter=None):
 
                 print(f"    Loading: {data_path}")
                 try:
-                    t, phase, R1, R2, rShell, r_Tb, rcloud, isCollapse = load_run_radii(data_path)
+                    t, phase, R1, R2, rShell, rcloud, isCollapse = load_run_radii(data_path)
                     plot_radii_on_ax(
-                        ax, t, phase, R1, R2, rShell, r_Tb, rcloud, isCollapse,
+                        ax, t, phase, R1, R2, rShell, rcloud, isCollapse,
                         phase_line=PHASE_LINE,
                         cloud_line=CLOUD_LINE,
                         show_weaver=SHOW_WEAVER,
@@ -603,9 +593,9 @@ Examples:
 
                     print(f"  Loading: {data_path}")
                     try:
-                        t, phase, R1, R2, rShell, r_Tb, rcloud, isCollapse = load_run_radii(data_path)
+                        t, phase, R1, R2, rShell, rcloud, isCollapse = load_run_radii(data_path)
                         plot_radii_on_ax(
-                            ax, t, phase, R1, R2, rShell, r_Tb, rcloud, isCollapse,
+                            ax, t, phase, R1, R2, rShell, rcloud, isCollapse,
                             phase_line=PHASE_LINE,
                             cloud_line=CLOUD_LINE,
                             show_weaver=SHOW_WEAVER,
