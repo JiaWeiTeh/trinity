@@ -93,9 +93,12 @@ def load_run_radii(data_path: Path):
     R2 = output.get('R2')
     rShell = output.get('rShell')
 
-    # r_Tb = R2 * bubble_xi_Tb
+    # r_Tb = R2 * bubble_xi_Tb (may be None if not available)
     xi_Tb = output.get('bubble_xi_Tb')
-    r_Tb = R2 * xi_Tb
+    if xi_Tb is not None:
+        r_Tb = R2 * xi_Tb
+    else:
+        r_Tb = np.full_like(R2, np.nan)
 
     rcloud = float(output[0].get('rCloud', np.nan))
 
