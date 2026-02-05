@@ -34,15 +34,15 @@ def compute_blend_weight(
     Parameters
     ----------
     Qi : float
-        Ionizing photon rate [s^-1]
+        Ionizing photon rate [internal units]
     caseB_alpha : float
-        Case B recombination coefficient [cm^3 s^-1]
+        Case B recombination coefficient [internal units]
     R2 : float
-        Shell radius [pc] - will be converted to cm internally
+        Shell radius [internal units, pc]
     k_B : float
-        Boltzmann constant [cgs, erg K^-1]
+        Boltzmann constant [internal units]
     P_b : float
-        Bubble/ram pressure [dyn cm^-2]
+        Bubble/ram pressure [internal units]
     f_abs_ion : float
         Fraction of ionizing photons absorbed by shell
     T_ion : float, optional
@@ -53,9 +53,9 @@ def compute_blend_weight(
     w_blend : float
         Blend weight in [0, f_abs_ion]
     n_Str : float
-        Strömgren density [cm^-3]
+        Strömgren density [internal units]
     P_HII_Str : float
-        Strömgren pressure [dyn cm^-2]
+        Strömgren pressure [internal units]
 
     Notes
     -----
@@ -65,16 +65,17 @@ def compute_blend_weight(
     This is the characteristic HII region density for ionization equilibrium
     at radius R2, independent of bubble pressure.
 
+    All inputs are expected in TRINITY internal units (Msun, pc, Myr).
+    No unit conversions are performed here.
+
     Regime behavior:
     - Energy-driven (P_b >> P_HII_Str): w → 0, P_drive → P_b
     - Transition (P_b ~ P_HII_Str): w ~ f_abs/2, blended
     - Momentum (P_b << P_HII_Str): w → f_abs_ion, P_drive → P_IF
     """
-    # Convert R2 from parsecs to cm for CGS consistency
-    R2_cm = R2 * 3.086e18  # pc to cm
-
     # Strömgren density — independent of P_b, depends only on Q_i and R2
-    n_Str = np.sqrt(3.0 * Qi / (4.0 * np.pi * caseB_alpha * R2_cm**3))
+    # All quantities already in internal units (Msun, pc, Myr)
+    n_Str = np.sqrt(3.0 * Qi / (4.0 * np.pi * caseB_alpha * R2**3))
 
     # Strömgren pressure (factor of 2 for electron + ion contributions)
     P_HII_Str = 2.0 * n_Str * k_B * T_ion
