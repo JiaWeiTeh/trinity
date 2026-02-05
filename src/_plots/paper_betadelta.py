@@ -12,41 +12,21 @@ import matplotlib.pyplot as plt
 import matplotlib.transforms as mtransforms
 from pathlib import Path
 from matplotlib.lines import Line2D
-from matplotlib.patches import Patch
 
 # Add project root to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
-from src._output.trinity_reader import load_output, find_data_file, resolve_data_input
+from src._output.trinity_reader import load_output, resolve_data_input
 
 print("...plotting radius comparison")
 
 # --- configuration
-mCloud_list = ["1e5", "1e7", "1e8"]                 # rows
-# mCloud_list = ["1e5","1e8"]                 # rows
-# ndens_list  = ["1e4", "1e2", "1e3"]                        # one figure per ndens
-ndens_list  = ["1e4"]                        # one figure per ndens
-sfe_list    = ["001", "010", "020", "030", "050", "080"]   # cols
-# sfe_list    = ["001", "010"]   # cols
-
-BASE_DIR = Path.home() / "unsync" / "Code" / "Trinity" / "outputs"
-
-# smoothing: number of snapshots in moving average (None or 1 disables)
 SMOOTH_WINDOW = 21
-
 PHASE_CHANGE = True
 
 # --- output - save to project root's fig/ directory
 FIG_DIR = Path(__file__).parent.parent.parent / "fig"
 FIG_DIR.mkdir(parents=True, exist_ok=True)
-SAVE_PNG = False
 SAVE_PDF = True
-
-def range_tag(prefix, values, key=float):
-    vals = list(values)
-    if len(vals) == 1:
-        return f"{prefix}{vals[0]}"
-    vmin, vmax = min(vals, key=key), max(vals, key=key)
-    return f"{prefix}{vmin}-{vmax}"
 
 import os
 plt.style.use(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'trinity.mplstyle'))
@@ -212,106 +192,10 @@ def plot_from_path(data_input: str, output_dir: str = None):
     plt.close(fig)
 
 
-# ---------- GRID (same layout idea as your previous) ----------
-def plot_grid():
-    """Plot full grid of cooling parameters."""
-    for ndens in ndens_list:
-        nrows, ncols = len(mCloud_list), len(sfe_list)
-        fig, axes = plt.subplots(
-            nrows=nrows, ncols=ncols,
-            figsize=(3.2 * ncols, 2.6 * nrows),
-            sharex=False, sharey=False,
-            dpi=200,
-            constrained_layout=False
-        )
-
-        # leave room for suptitle + global legend
-        fig.subplots_adjust(top=0.82)
-        fig.suptitle(rf"Cooling parameters with $R_2$ overlay  (n={ndens})", y=0.98)
-
-        for i, mCloud in enumerate(mCloud_list):
-            for j, sfe in enumerate(sfe_list):
-                ax = axes[i, j]
-                run_name = f"{mCloud}_sfe{sfe}_n{ndens}"
-                data_path = find_data_file(BASE_DIR, run_name)
-
-                if data_path is None:
-                    print(f"  {run_name}: missing")
-                    ax.text(0.5, 0.5, "missing", ha="center", va="center", transform=ax.transAxes)
-                    ax.set_axis_off()
-                    continue
-
-                print(f"  Loading: {data_path}")
-                try:
-                    t, R2, phase, beta, delta, rcloud, additional_param = load_cooling_run(data_path)
-                    plot_cooling_on_ax(
-                        ax, t, R2, phase, beta, delta, rcloud, additional_param,
-                        smooth_window=7,      # set None/1 to disable
-                        show_phase_line=True,
-                        show_cloud_line=True,
-                    )
-                except Exception as e:
-                    ax.text(0.5, 0.5, "error", ha="center", va="center", transform=ax.transAxes)
-                    ax.set_axis_off()
-                    print(f"Error in {run_name}: {e}")
-                    continue
-
-                # column titles
-                if i == 0:
-                    eps = int(sfe) / 100.0
-                    ax.set_title(rf"$\epsilon={eps:.2f}$")
-
-                # row labels (leftmost) - handle non-power-of-10 masses
-                if j == 0:
-                    mval = float(mCloud)
-                    mexp = int(np.floor(np.log10(mval)))
-                    mcoeff = mval / (10 ** mexp)
-                    mcoeff = round(mcoeff)
-                    if mcoeff == 10:
-                        mcoeff = 1
-                        mexp += 1
-                    if mcoeff == 1:
-                        mlabel = rf"$M_{{\rm cloud}}=10^{{{mexp}}}M_\odot$"
-                    else:
-                        mlabel = rf"$M_{{\rm cloud}}={mcoeff}\times10^{{{mexp}}}M_\odot$"
-                    ax.set_ylabel(mlabel + "\n" + r"Cooling: $\beta,\delta$")
-
-                if i == nrows - 1:
-                    ax.set_xlabel("t [Myr]")
-
-        # global legend (beta, delta, R2, plus line meanings)
-        handles = [
-            Line2D([0],[0], lw=1.6, label=r"$\beta$"),
-            Line2D([0],[0], lw=1.6, label=r"$\delta$"),
-            Line2D([0],[0], lw=1.4, alpha=0.8, label=r"$R_2$"),
-            Line2D([0],[0], color="k", ls="--", alpha=0.4, label=r"$R_2>R_{\rm cloud}$"),
-            Line2D([0],[0], color="r", lw=2, alpha=0.3, label=r"transition$\to$momentum"),
-        ]
-        leg = fig.legend(
-            handles=handles, loc="upper center", ncol=3,
-            frameon=True, facecolor="white", framealpha=0.9, edgecolor="0.2",
-            bbox_to_anchor=(0.5, 0.91), bbox_transform=fig.transFigure
-        )
-        leg.set_zorder(10)
-
-        if SAVE_PDF:
-            fig.savefig(FIG_DIR / f"paper_betadelta_n{ndens}.pdf", bbox_inches='tight')
-            print(f"Saved: {FIG_DIR / f'paper_betadelta_n{ndens}.pdf'}")
-        plt.show()
-        plt.close(fig)
-
-
-def plot_folder_grid(folder_path, output_dir=None, ndens_filter=None):
+# ---------- GRID ----------
+def plot_grid(folder_path, output_dir=None, ndens_filter=None):
     """
-    Create grid plot from all simulations found in a folder.
-
-    Searches subfolders for dictionary.jsonl files, parses simulation
-    parameters from folder names (e.g., "1e7_sfe020_n1e4"), and arranges
-    them in a grid sorted by:
-    - Rows: increasing mCloud (top to bottom)
-    - Columns: increasing SFE (left to right)
-
-    Saves PDF as {folder_name}_{ndens}.pdf without displaying.
+    Plot grid of cooling parameters from simulations in a folder.
 
     Parameters
     ----------
@@ -320,13 +204,8 @@ def plot_folder_grid(folder_path, output_dir=None, ndens_filter=None):
     output_dir : str or Path, optional
         Directory to save figure (default: FIG_DIR)
     ndens_filter : str, optional
-        Filter simulations by cloud density (e.g., "1e4", "1e3").
-        If not specified, generates one PDF per density found.
-
-    Notes
-    -----
-    Folder names must follow the pattern: {mCloud}_sfe{sfe}_n{ndens}
-    Examples: "1e7_sfe020_n1e4", "5e6_sfe010_n1e3"
+        Filter simulations by density (e.g., "1e4"). If None, creates one
+        PDF per unique density found.
     """
     from src._output.trinity_reader import find_all_simulations, organize_simulations_for_grid, get_unique_ndens
 
@@ -338,7 +217,6 @@ def plot_folder_grid(folder_path, output_dir=None, ndens_filter=None):
         print(f"No simulation files found in {folder_path}")
         return
 
-    # Determine which densities to plot
     if ndens_filter:
         ndens_to_plot = [ndens_filter]
     else:
@@ -347,22 +225,21 @@ def plot_folder_grid(folder_path, output_dir=None, ndens_filter=None):
     print(f"Found {len(sim_files)} simulations")
     print(f"  Densities to plot: {ndens_to_plot}")
 
-    # Create one grid per density
     for ndens in ndens_to_plot:
         print(f"\nProcessing n={ndens}...")
         organized = organize_simulations_for_grid(sim_files, ndens_filter=ndens)
-        mCloud_list_found = organized['mCloud_list']
-        sfe_list_found = organized['sfe_list']
+        mCloud_list_use = organized['mCloud_list']
+        sfe_list_use = organized['sfe_list']
         grid = organized['grid']
 
-        if not mCloud_list_found or not sfe_list_found:
-            print(f"Could not organize simulations into grid")
+        if not mCloud_list_use or not sfe_list_use:
+            print(f"  Could not organize simulations into grid for n={ndens}")
             continue
 
-        print(f"  mCloud: {mCloud_list_found}")
-        print(f"  SFE: {sfe_list_found}")
+        print(f"  mCloud: {mCloud_list_use}")
+        print(f"  SFE: {sfe_list_use}")
 
-        nrows, ncols = len(mCloud_list_found), len(sfe_list_found)
+        nrows, ncols = len(mCloud_list_use), len(sfe_list_use)
         fig, axes = plt.subplots(
             nrows=nrows, ncols=ncols,
             figsize=(3.2 * ncols, 2.6 * nrows),
@@ -374,12 +251,14 @@ def plot_folder_grid(folder_path, output_dir=None, ndens_filter=None):
 
         fig.subplots_adjust(top=0.82)
 
-        for i, mCloud in enumerate(mCloud_list_found):
-            for j, sfe in enumerate(sfe_list_found):
+        for i, mCloud in enumerate(mCloud_list_use):
+            for j, sfe in enumerate(sfe_list_use):
                 ax = axes[i, j]
                 data_path = grid.get((mCloud, sfe))
 
                 if data_path is None:
+                    run_id = f"{mCloud}_sfe{sfe}_n{ndens}"
+                    print(f"  {run_id}: missing")
                     ax.text(0.5, 0.5, "missing", ha="center", va="center", transform=ax.transAxes)
                     ax.set_axis_off()
                     continue
@@ -433,16 +312,23 @@ def plot_folder_grid(folder_path, output_dir=None, ndens_filter=None):
         )
         leg.set_zorder(10)
 
-        fig.suptitle(f"{folder_name} (n{ndens})", fontsize=14, y=0.98)
+        ndens_tag = f"n{ndens}"
+        fig.suptitle(f"{folder_name} ({ndens_tag})", fontsize=14, y=0.98)
+        tag = f"{folder_name}_{ndens_tag}_betadelta"
 
         fig_dir = Path(output_dir) if output_dir else FIG_DIR
         fig_dir.mkdir(parents=True, exist_ok=True)
-        ndens_tag = f"n{ndens}"
-        out_pdf = fig_dir / f"{folder_name}_{ndens_tag}.pdf"
-        fig.savefig(out_pdf, bbox_inches="tight")
-        print(f"  Saved: {out_pdf}")
+
+        if SAVE_PDF:
+            out_pdf = fig_dir / f"{tag}.pdf"
+            fig.savefig(out_pdf, bbox_inches="tight")
+            print(f"Saved: {out_pdf}")
 
         plt.close(fig)
+
+
+# Backwards compatibility alias
+plot_folder_grid = plot_grid
 
 
 # ---------------- command-line interface ----------------
@@ -457,43 +343,35 @@ Examples:
   # Single simulation
   python paper_betadelta.py 1e7_sfe020_n1e4
   python paper_betadelta.py /path/to/outputs/1e7_sfe020_n1e4
-  python paper_betadelta.py /path/to/dictionary.jsonl
 
-  # Folder-based grid (auto-discovers simulations)
+  # Grid plot from folder (auto-discovers simulations)
   python paper_betadelta.py --folder /path/to/my_experiment/
-  python paper_betadelta.py -F /path/to/simulations/
-
-  # Uses config at top of file
-  python paper_betadelta.py
+  python paper_betadelta.py -F /path/to/simulations/ -n 1e4
         """
     )
     parser.add_argument(
         'data', nargs='?', default=None,
-        help='Data input: folder name, folder path, or file path'
+        help='Data input: folder name, folder path, or file path (for single simulation)'
     )
     parser.add_argument(
         '--output-dir', '-o', default=None,
-        help='Base directory for output folders (default: TRINITY_OUTPUT_DIR or "outputs")'
+        help='Directory to save output figures (default: fig/)'
     )
     parser.add_argument(
         '--folder', '-F', default=None,
-        help='Search folder recursively for simulations and create grid plot. '
-             'Auto-organizes by mCloud (rows) and SFE (columns). '
-             'Saves as {folder}_{ndens}.pdf'
+        help='Create grid plot from all simulations in folder.'
     )
     parser.add_argument(
         '--nCore', '-n', default=None,
-        help='Filter simulations by cloud density (e.g., "1e4", "1e3"). '
-             'If not specified with --folder, generates one PDF per density found.'
+        help='Filter simulations by cloud density (e.g., "1e4", "1e3").'
     )
 
     args = parser.parse_args()
 
     if args.folder:
-        plot_folder_grid(args.folder, args.output_dir, ndens_filter=args.nCore)
+        plot_grid(args.folder, args.output_dir, ndens_filter=args.nCore)
     elif args.data:
-        # Command-line mode: plot from specified path
         plot_from_path(args.data, args.output_dir)
     else:
-        # Config mode: plot grid
-        plot_grid()
+        parser.print_help()
+        print("\nError: Please provide either --folder or a data path.")
