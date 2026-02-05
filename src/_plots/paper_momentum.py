@@ -244,17 +244,35 @@ def plot_momentum_lines_on_ax(
     colors = [c for _, _, c in FORCE_FIELDS]
     y0, y1 = DOMINANCE_STRIP
 
-    for b, k in enumerate(win):
-        if k < 0:
-            continue
-        ax.axvspan(
-            edges[b], edges[b + 1],
-            ymin=y0, ymax=y1,          # <-- axes-fraction band
-            color=colors[k],
-            alpha=DOMINANCE_ALPHA,
-            lw=0,
-            zorder=10
-        )
+    # Merge consecutive bins with same color to avoid white lines
+    if len(win) > 0:
+        merged_spans = []  # list of (start_edge, end_edge, color_idx)
+        current_start = 0
+        current_color = win[0]
+
+        for b in range(1, len(win)):
+            if win[b] != current_color:
+                # Color changed - save previous span and start new one
+                if current_color >= 0:
+                    merged_spans.append((edges[current_start], edges[b], current_color))
+                current_start = b
+                current_color = win[b]
+
+        # Don't forget the last span
+        if current_color >= 0:
+            merged_spans.append((edges[current_start], edges[len(win)], current_color))
+
+        # Draw merged spans
+        for x0, x1, k in merged_spans:
+            ax.axvspan(
+                x0, x1,
+                ymin=y0, ymax=y1,
+                color=colors[k],
+                alpha=DOMINANCE_ALPHA,
+                lw=0,
+                edgecolor='none',
+                zorder=10
+            )
 
     # --- integrate each force: p_i(t) = ∫ F_i dt  (signed)
     P = cumtrapz_2d(F, t)  # shape (n_forces, n_time)
