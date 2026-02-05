@@ -133,6 +133,57 @@ DEFAULT_OUTPUT_DIR = Path.home() / "unsync" / "Code" / "Trinity" / "outputs" / "
 FIG_DIR = Path(__file__).parent.parent.parent / "fig"
 
 
+def build_filename(base_name, **kwargs):
+    """
+    Build output filename from base name and keyword arguments.
+
+    This is a future-proof helper that automatically includes all provided
+    flags in the filename. Add new flags here as they are added to the CLI.
+
+    Parameters
+    ----------
+    base_name : str
+        Base name for the file (e.g., 'dominantFeedback')
+    **kwargs : dict
+        Flag name-value pairs to include in filename.
+        Common flags: nCore, modified, axis_mode, smooth, t_range, etc.
+        Values that are None, False, or 'none' are skipped.
+
+    Returns
+    -------
+    str
+        Filename without extension (e.g., 'dominantFeedback_n1e4_continuous_interp')
+
+    Examples
+    --------
+    >>> build_filename('dominantFeedback', nCore='1e4', modified=True, axis_mode='continuous')
+    'dominantFeedback_n1e4_modified_continuous'
+    >>> build_filename('dominantFeedback_movie', nCore='1e4', t_range=(0.0, 5.0))
+    'dominantFeedback_movie_n1e4_t0.0-5.0'
+    """
+    parts = [base_name]
+
+    # Define flag order and formatting (add new flags here for future-proofing)
+    flag_order = [
+        ('nCore', lambda v: f"n{v}"),
+        ('modified', lambda v: "modified" if v else None),
+        ('axis_mode', lambda v: v if v and v != 'discrete' else None),
+        ('smooth', lambda v: v if v and v != 'none' else None),
+        ('decompose_mode', lambda v: v if v and v != 'combined' else None),
+        ('t_range', lambda v: f"t{v[0]:.1f}-{v[1]:.1f}" if v else None),
+    ]
+
+    for flag_name, formatter in flag_order:
+        if flag_name in kwargs:
+            value = kwargs[flag_name]
+            if value is not None and value is not False:
+                formatted = formatter(value)
+                if formatted:
+                    parts.append(formatted)
+
+    return "_".join(parts)
+
+
 # =============================================================================
 # Data Loading Functions
 # =============================================================================
@@ -941,15 +992,19 @@ def main(mCloud_list, sfe_list, nCore_list, target_times, base_dir, fig_dir=None
             edgecolor='gray'
         )
 
-        # Save with appropriate suffix
-        # Format: dominant_feedback_n{nCore}[_modified]_{axis_mode}[_{smooth}].pdf
-        filename = f"dominant_feedback_n{nCore}"
-        if use_modified:
-            filename = f"{filename}_modified"
-        filename = f"{filename}_{axis_mode}"
-        if axis_mode == 'continuous' and smooth != 'none':
-            filename = f"{filename}_{smooth}"
-        out_pdf = fig_dir / f"{filename}.pdf"
+        # Save to ./fig/{folder_name}/dominantFeedback_{flags}.pdf
+        folder_name = base_dir.name
+        save_dir = fig_dir / folder_name
+        save_dir.mkdir(parents=True, exist_ok=True)
+
+        filename = build_filename(
+            'dominantFeedback',
+            nCore=nCore,
+            modified=use_modified,
+            axis_mode=axis_mode,
+            smooth=smooth if axis_mode == 'continuous' else None
+        )
+        out_pdf = save_dir / f"{filename}.pdf"
         fig.savefig(out_pdf, bbox_inches='tight')
         print(f"Saved: {out_pdf}")
 
@@ -1106,15 +1161,20 @@ def make_movie(mCloud_list, sfe_list, nCore, base_dir, fig_dir=None,
         # Calculate frame duration in milliseconds
         frame_duration = int(1000 / fps)
 
-        # Build output filename
-        filename = f"dominant_feedback_movie_n{nCore}"
-        if use_modified:
-            filename = f"{filename}_modified"
-        filename = f"{filename}_{axis_mode}"
-        if axis_mode == 'continuous' and smooth != 'none':
-            filename = f"{filename}_{smooth}"
-        filename = f"{filename}_t{t_start:.1f}-{t_end:.1f}"
-        out_gif = fig_dir / f"{filename}.gif"
+        # Save to ./fig/{folder_name}/dominantFeedback_movie_{flags}.gif
+        folder_name = base_dir.name
+        save_dir = fig_dir / folder_name
+        save_dir.mkdir(parents=True, exist_ok=True)
+
+        filename = build_filename(
+            'dominantFeedback_movie',
+            nCore=nCore,
+            modified=use_modified,
+            axis_mode=axis_mode,
+            smooth=smooth if axis_mode == 'continuous' else None,
+            t_range=(t_start, t_end)
+        )
+        out_gif = save_dir / f"{filename}.gif"
 
         # Save GIF
         frames[0].save(

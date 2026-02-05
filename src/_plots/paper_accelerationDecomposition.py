@@ -442,10 +442,11 @@ def plot_grid(folder_path, output_dir=None, ndens_filter=None):
         )
         leg.set_zorder(10)
 
-        fig_dir = Path(output_dir) if output_dir else FIG_DIR
-        fig_dir.mkdir(parents=True, exist_ok=True)
+        # Save figure to ./fig/{folder_name}/acceleration_{ndens_tag}.pdf
         ndens_tag = f"n{ndens}"
-        out_pdf = fig_dir / f"{folder_name}_{ndens_tag}_acceleration.pdf"
+        fig_dir = Path(output_dir) if output_dir else FIG_DIR / folder_name
+        fig_dir.mkdir(parents=True, exist_ok=True)
+        out_pdf = fig_dir / f"acceleration_{ndens_tag}.pdf"
         fig.savefig(out_pdf, bbox_inches="tight")
         print(f"  Saved: {out_pdf}")
 

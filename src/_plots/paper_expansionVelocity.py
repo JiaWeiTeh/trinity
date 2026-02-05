@@ -423,10 +423,11 @@ def plot_grid(folder_path, output_dir=None, ndens_filter=None):
 
         fig.suptitle(f"{folder_name} (n{ndens})", fontsize=14, y=1.05)
 
-        fig_dir = Path(output_dir) if output_dir else FIG_DIR
-        fig_dir.mkdir(parents=True, exist_ok=True)
+        # Save figure to ./fig/{folder_name}/expansionVelocity_{ndens_tag}.pdf
         ndens_tag = f"n{ndens}"
-        out_pdf = fig_dir / f"{folder_name}_{ndens_tag}.pdf"
+        fig_dir = Path(output_dir) if output_dir else FIG_DIR / folder_name
+        fig_dir.mkdir(parents=True, exist_ok=True)
+        out_pdf = fig_dir / f"expansionVelocity_{ndens_tag}.pdf"
         fig.savefig(out_pdf, bbox_inches="tight", pad_inches=0.15)
         print(f"  Saved: {out_pdf}")
 

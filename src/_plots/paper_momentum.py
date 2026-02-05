@@ -437,10 +437,11 @@ def plot_grid(folder_path, output_dir=None, ndens_filter=None):
         fig.subplots_adjust(top=0.91)
         fig.suptitle(f"{folder_name} (n{ndens})", fontsize=14, y=1.08)
 
-        fig_dir = Path(output_dir) if output_dir else FIG_DIR
-        fig_dir.mkdir(parents=True, exist_ok=True)
+        # Save figure to ./fig/{folder_name}/momentum_{ndens_tag}.pdf
         ndens_tag = f"n{ndens}"
-        out_pdf = fig_dir / f"{folder_name}_{ndens_tag}_momentum.pdf"
+        fig_dir = Path(output_dir) if output_dir else FIG_DIR / folder_name
+        fig_dir.mkdir(parents=True, exist_ok=True)
+        out_pdf = fig_dir / f"momentum_{ndens_tag}.pdf"
         fig.savefig(out_pdf, bbox_inches="tight")
         print(f"  Saved: {out_pdf}")
 
