@@ -356,9 +356,10 @@ def plot_grid(folder_path, output_dir=None, ndens_filter=None):
         )
         leg.set_zorder(10)
 
-        fig_dir = Path(output_dir) if output_dir else FIG_DIR
+        # Save figure to ./fig/{folder_name}/pressure_{ndens_tag}.pdf
+        fig_dir = Path(output_dir) if output_dir else FIG_DIR / folder_name
         fig_dir.mkdir(parents=True, exist_ok=True)
-        out_pdf = fig_dir / f"{folder_name}_{ndens_tag}_pressure.pdf"
+        out_pdf = fig_dir / f"pressure_{ndens_tag}.pdf"
         fig.savefig(out_pdf, bbox_inches="tight")
         print(f"  Saved: {out_pdf}")
 

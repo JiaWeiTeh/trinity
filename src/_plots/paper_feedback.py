@@ -126,9 +126,12 @@ def plot_from_path(data_input: str, output_dir: str = None):
 
     plt.tight_layout()
 
-    # Save figures
+    # Save figures to ./fig/{parent_folder}/feedback_{run_name}.pdf
     run_name = data_path.parent.name
-    out_pdf = FIG_DIR / f"paper_feedback_{run_name}.pdf"
+    parent_folder = data_path.parent.parent.name
+    fig_dir = FIG_DIR / parent_folder
+    fig_dir.mkdir(parents=True, exist_ok=True)
+    out_pdf = fig_dir / f"feedback_{run_name}.pdf"
     fig.savefig(out_pdf, bbox_inches='tight')
     print(f"Saved: {out_pdf}")
 
@@ -471,14 +474,13 @@ def plot_grid(folder_path, output_dir=None, ndens_filter=None):
         # Title and filename
         ndens_tag = f"n{ndens}"
         fig.suptitle(f"{folder_name} ({ndens_tag})", fontsize=14, y=1.08)
-        tag = f"{folder_name}_{ndens_tag}_feedback"
 
-        # Save figure
-        fig_dir = Path(output_dir) if output_dir else FIG_DIR
+        # Save figure to ./fig/{folder_name}/feedback_n{ndens}.pdf
+        fig_dir = Path(output_dir) if output_dir else FIG_DIR / folder_name
         fig_dir.mkdir(parents=True, exist_ok=True)
 
         if SAVE_PDF:
-            out_pdf = fig_dir / f"{tag}.pdf"
+            out_pdf = fig_dir / f"feedback_{ndens_tag}.pdf"
             fig.savefig(out_pdf, bbox_inches="tight")
             print(f"Saved: {out_pdf}")
 
