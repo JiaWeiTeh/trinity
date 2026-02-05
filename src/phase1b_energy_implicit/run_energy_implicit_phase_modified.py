@@ -505,7 +505,7 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
     # Main loop (segment-based with adaptive stepping)
     # =============================================================================
 
-    while t_now < tmax and segment_count < MAX_SEGMENTS:
+    while t_now <= tmax and segment_count < MAX_SEGMENTS:
         segment_count += 1
 
         # Log current state at beginning of each segment
@@ -647,6 +647,16 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         # At this point: t_now, R2, v2, Eb, T0, feedback, shell_props, bubble_props,
         # beta, delta, R1, Pb, forces, residuals are all computed for the SAME t_now
         params.save_snapshot()
+
+        # ---------------------------------------------------------------------
+        # Check if we've reached stop_t - if so, terminate successfully
+        # ---------------------------------------------------------------------
+        if tmax is not None and t_now >= tmax:
+            termination_reason = "reached_tmax"
+            params['SimulationEndReason'].value = 'Stopping time reached'
+            params['EndSimulationDirectly'].value = True
+            logger.info(f"Simulation reached stop_t={tmax} Myr successfully")
+            break
 
         # ---------------------------------------------------------------------
         # Build snapshot and integrate segment
@@ -845,6 +855,7 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
     # =============================================================================
 
     if termination_reason is None:
+        # If we get here with no termination reason, it's either max_segments or unknown
         termination_reason = "max_segments" if segment_count >= MAX_SEGMENTS else "unknown"
 
     logger.info(f"Implicit phase completed: {termination_reason}")
