@@ -289,20 +289,13 @@ def run_energy(params):
         # Get shell mass
         mShell = mass_profile.get_mass_profile(R2, params, return_mdot=False)
 
-        # Save snapshot
-        params.save_snapshot()
-
         # Update feedback
         feedback = get_currentSB99feedback(t_now, params)
         updateDict(params, feedback)
 
-        # Update R1 and Pb
-        R1 = scipy.optimize.brentq(
-            get_bubbleParams.get_r1,
-            1e-3 * R2, R2,
-            args=([feedback.Lmech_total, Eb, feedback.v_mech_total, R2])
-        )
-        Pb = get_bubbleParams.bubble_E2P(Eb, R2, R1, params['gamma_adia'].value)
+        # Use R1 and Pb from ode_result (computed with phase-aware helper for consistency)
+        R1 = ode_result.R1
+        Pb = ode_result.Pb
 
         # Update params dictionary
         updateDict(params,
@@ -337,6 +330,9 @@ def run_energy(params):
             params['shell_mass'].value = ode_result.shell_mass
         if ode_result.shell_massDot is not None:
             params['shell_massDot'].value = ode_result.shell_massDot
+
+        # Save snapshot AFTER all params are updated (so it captures current state)
+        params.save_snapshot()
 
         loop_count += 1
 
