@@ -30,13 +30,13 @@ SMOOTH_WINDOW = None
 
 DOMINANCE_DT = 0.05          # Myr
 DOMINANCE_ALPHA = 0.9
-DOMINANCE_STRIP = (0.97, 1)  # (ymin, ymax) in AXES fraction (0..1)
+DOMINANCE_STRIP = (0.94, 1)  # (ymin, ymax) in AXES fraction (0..1) - doubled thickness
 
 
 FORCE_FIELDS = [
     ("F_grav",         "Gravity",              "black"),
     ("F_thermal_wind", "Thermal+Wind",         "b"),      # Combined: F_ram (energy) / F_ram_wind (momentum)
-    ("F_SN",           "Supernovae",           "#FFA500"), # Yellow/orange for SN
+    ("F_ram_SN",       "Supernovae",           "#FFA500"), # Yellow/orange for SN (pdot_SN from SB99)
     ("F_ion_out",      "Photoionised gas",     "#d62728"),
     ("F_rad",          "Radiation (dir.+indir.)", "#9467bd"),
 ]
