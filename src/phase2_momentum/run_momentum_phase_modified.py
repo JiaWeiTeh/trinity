@@ -523,7 +523,7 @@ def run_phase_momentum(params) -> MomentumPhaseResults:
     # Main loop (segment-based with adaptive stepping)
     # =============================================================================
 
-    while t_now < tmax and segment_count < MAX_SEGMENTS:
+    while t_now <= tmax and segment_count < MAX_SEGMENTS:
         segment_count += 1
 
         # Log current state at beginning of each segment
@@ -619,6 +619,16 @@ def run_phase_momentum(params) -> MomentumPhaseResults:
         # At this point: t_now, R2, v2, feedback, shell_props, mShell, forces,
         # Pb are all computed for the SAME t_now
         params.save_snapshot()
+
+        # ---------------------------------------------------------------------
+        # Check if we've reached stop_t - if so, terminate successfully
+        # ---------------------------------------------------------------------
+        if tmax is not None and t_now >= tmax:
+            termination_reason = "reached_tmax"
+            params['SimulationEndReason'].value = 'Stopping time reached'
+            params['EndSimulationDirectly'].value = True
+            logger.info(f"Simulation reached stop_t={tmax} Myr successfully")
+            break
 
         # ---------------------------------------------------------------------
         # Build snapshot and integrate segment
@@ -780,6 +790,7 @@ def run_phase_momentum(params) -> MomentumPhaseResults:
     # =============================================================================
 
     if termination_reason is None:
+        # If we get here with no termination reason, it's either max_segments or unknown
         termination_reason = "max_segments" if segment_count >= MAX_SEGMENTS else "unknown"
 
     logger.info(f"Momentum phase completed: {termination_reason}")
