@@ -278,26 +278,81 @@ def bubble_P2E(Pb, r2, r1, gamma):
 def pRam(r, Lwind, v_mech_total):
     """
     This function calculates the ram pressure.
-    
+
     returns in [au].
-    
+
     Parameters
     ----------
     r : float
         Radius of outer edge of bubble.
     Lwind : float
         Mechanical wind luminosity.
-    v_mech_total : float 
+    v_mech_total : float
         terminal velocity of wind.
 
-    Returns 
+    Returns
     -------
-    Ram pressure. 
+    Ram pressure.
     """
     # Note:
         # old code: Pram()
-        
+
     return Lwind / (2 * np.pi * r**2 * v_mech_total)
+
+
+def get_effective_bubble_pressure(current_phase, Eb, R2, R1, gamma,
+                                   Lmech_total=None, v_mech_total=None,
+                                   t=None, tSF=None):
+    """
+    Effective interior pressure felt by the shell.
+
+    Energy phase: thermal pressure from hot bubble via bubble_E2P.
+    Momentum phase: ram pressure from freely streaming wind via pRam.
+
+    This function MUST be called in both the ODE and in compute_derived_quantities
+    to guarantee consistency between the integrator and diagnostics.
+
+    Parameters
+    ----------
+    current_phase : str
+        Current simulation phase ('energy', 'momentum', etc.)
+    Eb : float
+        Bubble energy [au]
+    R2 : float
+        Outer bubble radius [pc]
+    R1 : float
+        Inner bubble radius [pc]
+    gamma : float
+        Adiabatic index
+    Lmech_total : float, optional
+        Mechanical wind luminosity (required for momentum phase)
+    v_mech_total : float, optional
+        Terminal wind velocity (required for momentum phase)
+    t : float, optional
+        Current time [Myr] (for early-phase R1 ramp-up)
+    tSF : float, optional
+        Star formation time [Myr] (for early-phase R1 ramp-up)
+
+    Returns
+    -------
+    press_bubble : float
+        Effective bubble pressure [au]
+    """
+    if current_phase == 'momentum':
+        # Momentum phase: ram pressure from freely streaming wind
+        return pRam(R2, Lmech_total, v_mech_total)
+    else:
+        # Energy phase: thermal pressure from hot bubble
+        # Include the early-phase R1 ramp-up if timing info provided
+        dt_switchon = 1e-3
+        tmin = dt_switchon
+
+        if t is not None and tSF is not None:
+            if t <= (tmin + tSF):
+                R1_tmp = (t - tSF) / tmin * R1
+                return bubble_E2P(Eb, R2, R1_tmp, gamma)
+
+        return bubble_E2P(Eb, R2, R1, gamma)
 
 
 # =============================================================================

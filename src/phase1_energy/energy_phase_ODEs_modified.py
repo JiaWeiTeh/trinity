@@ -21,6 +21,7 @@ import src.cloud_properties.mass_profile as mass_profile
 import src.bubble_structure.get_bubbleParams as get_bubbleParams
 from src.sb99.update_feedback import get_currentSB99feedback
 from src.phase1_energy.energy_phase_ODEs import get_press_ion  # Use existing function
+from src.phase_general.pressure_blend import compute_blend_weight
 from dataclasses import dataclass
 from typing import Optional
 import logging
@@ -174,18 +175,13 @@ def get_ODE_Edot_pure(t: float, y: list, snapshot: ODESnapshot, params_for_feedb
         args=([Lmech_total, Eb, v_mech_total, R2])
     )
 
-    # Bubble pressure calculation
-    dt_switchon = 1e-3
-    tmin = dt_switchon
-
-    if snapshot.current_phase == 'momentum':
-        press_bubble = get_bubbleParams.pRam(R2, Lmech_total, v_mech_total)
-    else:
-        if t > (tmin + snapshot.tSF):
-            press_bubble = get_bubbleParams.bubble_E2P(Eb, R2, R1, snapshot.gamma_adia)
-        else:
-            R1_tmp = (t - snapshot.tSF) / tmin * R1
-            press_bubble = get_bubbleParams.bubble_E2P(Eb, R2, R1_tmp, snapshot.gamma_adia)
+    # Bubble pressure calculation (uses shared helper for ODE/diagnostics consistency)
+    press_bubble = get_bubbleParams.get_effective_bubble_pressure(
+        current_phase=snapshot.current_phase,
+        Eb=Eb, R2=R2, R1=R1, gamma=snapshot.gamma_adia,
+        Lmech_total=Lmech_total, v_mech_total=v_mech_total,
+        t=t, tSF=snapshot.tSF
+    )
 
     # Inward pressure from photoionized gas outside shell
     # Uses existing get_press_ion() which only reads from params
@@ -201,20 +197,27 @@ def get_ODE_Edot_pure(t: float, y: list, snapshot: ODESnapshot, params_for_feedb
 
     # ==========================================================================
     # WARM IONIZED GAS PRESSURE (P_IF) - CONVEX BLEND APPROACH
-    # Uses ionization front pressure from shell structure
-    # P_drive = (1-w)*P_b + w*P_IF where w = f_abs_ion * P_IF/(P_IF + P_b)
+    # P_drive = (1-w)*P_b + w*P_IF
+    # Weight uses INDEPENDENT Strömgren pressure to break P_IF ∝ P_b degeneracy:
+    #   w = f_abs_ion * P_HII_Str / (P_HII_Str + P_b)
+    # where P_HII_Str = 2 * n_Str * k_B * T_ion, n_Str = sqrt(3*Qi / (4*pi*alpha_B*R2^3))
+    # P_IF from shell structure is used for the blend VALUE (physically correct IF pressure).
     # ==========================================================================
     T_ion = 1e4  # K — standard HII region temperature
 
-    # Pressure at ionization front (from shell structure)
+    # Pressure at ionization front (from shell structure) - used for blend VALUE
     P_IF = 2.0 * snapshot.n_IF * snapshot.k_B * T_ion
 
-    # Blending weight: w = f_abs_ion * P_IF/(P_IF + P_b)
-    denom = P_IF + press_bubble
-    if denom > 1e-30:
-        w_blend = FABSi * P_IF / denom
-    else:
-        w_blend = 0.0
+    # Blending weight: uses independent Strömgren pressure (breaks P_IF ∝ P_b degeneracy)
+    w_blend, n_Str, P_HII_Str = compute_blend_weight(
+        Qi=snapshot.Qi,
+        caseB_alpha=snapshot.caseB_alpha,
+        R2=R2,
+        k_B=snapshot.k_B,
+        P_b=press_bubble,
+        f_abs_ion=FABSi,
+        T_ion=T_ion
+    )
 
     # Driving pressure as convex blend: P_drive = (1-w)*P_b + w*P_IF
     P_drive = (1.0 - w_blend) * press_bubble + w_blend * P_IF
@@ -280,6 +283,9 @@ class ODEResult:
     w_blend: Optional[float] = None
     P_drive: Optional[float] = None
     F_HII: Optional[float] = None
+    # Strömgren diagnostics for blend weight (independent of P_b)
+    n_Str: Optional[float] = None
+    P_HII_Str: Optional[float] = None
 
 
 def compute_derived_quantities(t: float, y: list, snapshot: ODESnapshot, params_for_feedback) -> ODEResult:
@@ -321,8 +327,14 @@ def compute_derived_quantities(t: float, y: list, snapshot: ODESnapshot, params_
         args=([Lmech_total, Eb, v_mech_total, R2])
     )
 
-    # Bubble pressure
-    Pb = get_bubbleParams.bubble_E2P(Eb, R2, R1, snapshot.gamma_adia)
+    # Bubble pressure (uses shared helper for ODE/diagnostics consistency)
+    # In momentum phase, this returns pRam; in energy phase, returns bubble_E2P
+    Pb = get_bubbleParams.get_effective_bubble_pressure(
+        current_phase=snapshot.current_phase,
+        Eb=Eb, R2=R2, R1=R1, gamma=snapshot.gamma_adia,
+        Lmech_total=Lmech_total, v_mech_total=v_mech_total,
+        t=t, tSF=snapshot.tSF
+    )
 
     # Forces
     F_grav = snapshot.G * mShell / (R2**2) * (snapshot.mCluster + 0.5 * mShell)
@@ -338,19 +350,28 @@ def compute_derived_quantities(t: float, y: list, snapshot: ODESnapshot, params_
 
     # ==========================================================================
     # P_IF CALCULATION - CONVEX BLEND (same as in ODE function)
+    # P_drive = (1-w)*P_b + w*P_IF
+    # Weight uses INDEPENDENT Strömgren pressure to break P_IF ∝ P_b degeneracy:
+    #   w = f_abs_ion * P_HII_Str / (P_HII_Str + P_b)
+    # where P_HII_Str = 2 * n_Str * k_B * T_ion, n_Str = sqrt(3*Qi / (4*pi*alpha_B*R2^3))
+    # P_IF from shell structure is used for the blend VALUE (physically correct IF pressure).
     # ==========================================================================
     T_ion = 1e4  # K — standard HII region temperature
 
-    # Pressure at ionization front (from shell structure via snapshot)
+    # Pressure at ionization front (from shell structure via snapshot) - used for blend VALUE
     n_IF = snapshot.n_IF
     P_IF = 2.0 * n_IF * snapshot.k_B * T_ion
 
-    # Blending weight: w = f_abs_ion * P_IF/(P_IF + P_b)
-    denom = P_IF + Pb
-    if denom > 1e-30:
-        w_blend = FABSi * P_IF / denom
-    else:
-        w_blend = 0.0
+    # Blending weight: uses independent Strömgren pressure (breaks P_IF ∝ P_b degeneracy)
+    w_blend, n_Str, P_HII_Str = compute_blend_weight(
+        Qi=snapshot.Qi,
+        caseB_alpha=snapshot.caseB_alpha,
+        R2=R2,
+        k_B=snapshot.k_B,
+        P_b=Pb,
+        f_abs_ion=FABSi,
+        T_ion=T_ion
+    )
 
     # Driving pressure as convex blend: P_drive = (1-w)*P_b + w*P_IF
     P_drive = (1.0 - w_blend) * Pb + w_blend * P_IF
@@ -381,4 +402,7 @@ def compute_derived_quantities(t: float, y: list, snapshot: ODESnapshot, params_
         w_blend=w_blend,
         P_drive=P_drive,
         F_HII=F_HII,
+        # Strömgren diagnostics (independent of P_b)
+        n_Str=n_Str,
+        P_HII_Str=P_HII_Str,
     )
