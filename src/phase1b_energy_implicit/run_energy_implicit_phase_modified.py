@@ -83,6 +83,7 @@ from src.phase1b_energy_implicit.get_betadelta_modified import (
     compute_R1_Pb,
     BetaDeltaResult,
 )
+from src.phase_general.pressure_blend import compute_blend_weight
 from src.shell_structure.shell_structure_modified import (
     shell_structure_pure,
     ShellProperties,
@@ -248,6 +249,9 @@ class ForceProperties:
     w_blend: float = 0.0
     P_drive: float = 0.0
     F_HII: float = 0.0
+    # Strömgren diagnostics for blend weight (independent of P_b)
+    n_Str: float = 0.0
+    P_HII_Str: float = 0.0
 
 
 def compute_forces_pure(
@@ -316,8 +320,11 @@ def compute_forces_pure(
 
     # ==========================================================================
     # P_IF CALCULATION - CONVEX BLEND
-    # Uses ionization front pressure from shell structure
-    # P_drive = (1-w)*P_b + w*P_IF where w = f_abs_ion * P_IF/(P_IF + P_b)
+    # P_drive = (1-w)*P_b + w*P_IF
+    # Weight uses INDEPENDENT Strömgren pressure to break P_IF ∝ P_b degeneracy:
+    #   w = f_abs_ion * P_HII_Str / (P_HII_Str + P_b)
+    # where P_HII_Str = 2 * n_Str * k_B * T_ion, n_Str = sqrt(3*Qi / (4*pi*alpha_B*R2^3))
+    # P_IF from shell structure is used for the blend VALUE (physically correct IF pressure).
     # ==========================================================================
     T_ion = 1e4  # K — standard HII region temperature
 
@@ -325,15 +332,21 @@ def compute_forces_pure(
     n_IF = shell_props.n_IF
     R_IF = shell_props.R_IF
 
-    # Pressure at ionization front
+    # Pressure at ionization front (from shell structure) - used for blend VALUE
     P_IF = 2.0 * n_IF * k_B * T_ion
 
-    # Blending weight: w = f_abs_ion * P_IF/(P_IF + P_b)
-    denom = P_IF + Pb
-    if denom > 1e-30:
-        w_blend = FABSi * P_IF / denom
-    else:
-        w_blend = 0.0
+    # Blending weight: uses independent Strömgren pressure (breaks P_IF ∝ P_b degeneracy)
+    Qi = params['Qi'].value
+    caseB_alpha = params['caseB_alpha'].value
+    w_blend, n_Str, P_HII_Str = compute_blend_weight(
+        Qi=Qi,
+        caseB_alpha=caseB_alpha,
+        R2=R2,
+        k_B=k_B,
+        P_b=Pb,
+        f_abs_ion=FABSi,
+        T_ion=T_ion
+    )
 
     # Driving pressure as convex blend: P_drive = (1-w)*P_b + w*P_IF
     P_drive = (1.0 - w_blend) * Pb + w_blend * P_IF
@@ -361,6 +374,8 @@ def compute_forces_pure(
         w_blend=w_blend,
         P_drive=P_drive,
         F_HII=F_HII,
+        n_Str=n_Str,
+        P_HII_Str=P_HII_Str,
     )
 
 
