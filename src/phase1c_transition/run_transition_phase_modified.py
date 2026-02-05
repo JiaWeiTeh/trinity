@@ -340,7 +340,8 @@ def compute_forces_pure(
 
     # Forces
     F_ion_in = press_HII_in * FOUR_PI * R2**2
-    F_HII = FOUR_PI * R2**2 * (P_drive - Pb)
+    # F_HII: weighted warm ionized gas force = 4π R2² w P_IF (always >= 0)
+    F_HII = FOUR_PI * R2**2 * w_blend * P_IF
     F_ion_out = F_HII  # For backwards compatibility
 
     # Ram pressure force

@@ -222,8 +222,8 @@ def get_ODE_Edot_pure(t: float, y: list, snapshot: ODESnapshot, params_for_feedb
     # Driving pressure as convex blend: P_drive = (1-w)*P_b + w*P_IF
     P_drive = (1.0 - w_blend) * press_bubble + w_blend * P_IF
 
-    # Force from HII pressure contribution (for diagnostics)
-    F_HII = 4.0 * np.pi * R2**2 * (P_drive - press_bubble)
+    # Force from warm ionized gas (weighted share of P_drive, always >= 0)
+    F_HII = 4.0 * np.pi * R2**2 * w_blend * P_IF
 
     # Radiation force
     F_rad = snapshot.shell_F_rad
@@ -377,7 +377,8 @@ def compute_derived_quantities(t: float, y: list, snapshot: ODESnapshot, params_
     P_drive = (1.0 - w_blend) * Pb + w_blend * P_IF
 
     # Forces
-    F_HII = 4.0 * np.pi * R2**2 * (P_drive - Pb)
+    # F_HII: weighted warm ionized gas force = 4π R2² w P_IF (always >= 0)
+    F_HII = 4.0 * np.pi * R2**2 * w_blend * P_IF
     # F_ion_out kept for backwards compatibility
     F_ion_out = F_HII
 
