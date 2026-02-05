@@ -34,12 +34,11 @@ DOMINANCE_STRIP = (0.97, 1)  # (ymin, ymax) in AXES fraction (0..1)
 
 
 FORCE_FIELDS = [
-    ("F_grav",     "Gravity",              "black"),
-    # ("F_ram_wind", "Ram (wind)",           "b"),
-    # ("F_ram_SN",   "Ram (SN)",             "#2ca02c"),
-    ("F_ram",   "Ram",             "b"),
-    ("F_ion_out",  "Photoionised gas",     "#d62728"),
-    ("F_rad",      "Radiation (dir.+indir.)", "#9467bd"),
+    ("F_grav",         "Gravity",              "black"),
+    ("F_thermal_wind", "Thermal+Wind",         "b"),      # Combined: F_ram (energy) / F_ram_wind (momentum)
+    ("F_SN",           "Supernovae",           "#FFA500"), # Yellow/orange for SN
+    ("F_ion_out",      "Photoionised gas",     "#d62728"),
+    ("F_rad",          "Radiation (dir.+indir.)", "#9467bd"),
 ]
 
 
@@ -93,14 +92,28 @@ def load_run(data_path: Path):
     r = output.get('R2')
     phase = np.array(output.get('current_phase', as_array=False))
 
-    # Extract force fields
-    forces = np.vstack([
-        np.nan_to_num(output.get(field), nan=0.0)
-        for field, _, _ in FORCE_FIELDS
-    ])
-
     # Load isCollapse for collapse indicator
     isCollapse = np.array(output.get('isCollapse', as_array=False))
+
+    # Extract force fields - need special handling for F_thermal_wind
+    forces_list = []
+    for field, _, _ in FORCE_FIELDS:
+        if field == "F_thermal_wind":
+            # Combine F_ram (energy phase) and F_ram_wind (momentum phase)
+            F_ram = np.nan_to_num(output.get('F_ram'), nan=0.0)
+            F_ram_wind = np.nan_to_num(output.get('F_ram_wind'), nan=0.0)
+
+            # Use F_ram before momentum phase, F_ram_wind after
+            F_combined = np.where(
+                np.array([p == 'momentum' for p in phase]),
+                F_ram_wind,  # momentum phase: use wind ram pressure
+                F_ram        # energy/transition phase: use bubble thermal pressure
+            )
+            forces_list.append(F_combined)
+        else:
+            forces_list.append(np.nan_to_num(output.get(field), nan=0.0))
+
+    forces = np.vstack(forces_list)
 
     # Ensure time is increasing for integration
     if np.any(np.diff(t) < 0):
