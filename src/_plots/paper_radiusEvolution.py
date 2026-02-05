@@ -273,7 +273,6 @@ def plot_single_run(mCloud, sfe, ndens):
 
     # Save
     tag = f"radiusEvolution_M{mCloud}_sfe{sfe}_n{ndens}"
-    if SAVE_PNG:
     if SAVE_PDF:
         out_pdf = FIG_DIR / f"{tag}.pdf"
         fig.savefig(out_pdf, bbox_inches="tight")
@@ -497,9 +496,10 @@ def plot_folder_grid(folder_path, output_dir=None, ndens_filter=None):
         )
         leg.set_zorder(10)
 
-        fig_dir = Path(output_dir) if output_dir else FIG_DIR
+        # Save figure to ./fig/{folder_name}/radiusEvolution_{ndens_tag}.pdf
+        fig_dir = Path(output_dir) if output_dir else FIG_DIR / folder_name
         fig_dir.mkdir(parents=True, exist_ok=True)
-        out_pdf = fig_dir / f"{folder_name}_{ndens_tag}.pdf"
+        out_pdf = fig_dir / f"radiusEvolution_{ndens_tag}.pdf"
         fig.savefig(out_pdf, bbox_inches="tight")
         print(f"  Saved: {out_pdf}")
 
@@ -671,7 +671,6 @@ Examples:
             n_tag   = f"n{ndens}"
             tag = f"radiusEvolution_{m_tag}_{sfe_tag}_{n_tag}"
 
-            if SAVE_PNG:
             if SAVE_PDF:
                 out_pdf = FIG_DIR / f"{tag}.pdf"
                 fig.savefig(out_pdf, bbox_inches="tight")
