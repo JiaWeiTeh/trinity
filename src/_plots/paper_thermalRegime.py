@@ -31,18 +31,12 @@ from matplotlib.patches import Patch
 
 # Add project root to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
-from src._output.trinity_reader import load_output, find_data_file, resolve_data_input
+from src._output.trinity_reader import load_output, resolve_data_input
 from src._plots.plot_markers import add_plot_markers, get_marker_legend_handles
 
 print("...plotting thermal regime (w_blend)")
 
 # ---------------- configuration ----------------
-mCloud_list = ["1e5", "5e5", "1e6", "5e6", "1e7", "5e7", "1e8"]
-ndens_list = ["1e3"]
-sfe_list = ["001", "005", "010", "020", "030", "050", "070", "080"]
-
-BASE_DIR = Path.home() / "unsync" / "Code" / "Trinity" / "outputs" / "sweep_test_modified"
-
 SMOOTH_WINDOW = 5  # None or 1 disables
 PHASE_CHANGE = True
 PLOT_MODE = "line"  # "line" or "stacked"
@@ -52,31 +46,13 @@ USE_LOG_X = False  # Use log scale for x-axis (time)
 C_BUBBLE = "blue"
 C_HII = "#d62728"  # red
 
-# --- optional single-run view (set to None for full grid)
-ONLY_M = "1e7"
-ONLY_N = "1e4"
-ONLY_SFE = "010"
-
-# Comment this out for single mode, leave for grid mode
-ONLY_M = ONLY_N = ONLY_SFE = None
-
-# --- output
+# Output directory
 FIG_DIR = Path(__file__).parent.parent.parent / "fig"
 FIG_DIR.mkdir(parents=True, exist_ok=True)
-SAVE_PNG = False
 SAVE_PDF = True
 
 import os
 plt.style.use(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'trinity.mplstyle'))
-
-
-def range_tag(prefix, values, key=float):
-    """Create tag string from list of values."""
-    vals = list(values)
-    if len(vals) == 1:
-        return f"{prefix}{vals[0]}"
-    vmin, vmax = min(vals, key=key), max(vals, key=key)
-    return f"{prefix}{vmin}-{vmax}"
 
 
 def smooth_1d(y, window, mode="edge"):
@@ -282,147 +258,7 @@ def plot_from_path(data_input: str, output_dir: str = None):
     plt.close(fig)
 
 
-def plot_single_run(mCloud, ndens, sfe):
-    """Plot single run from config."""
-    run_name = f"{mCloud}_sfe{sfe}_n{ndens}"
-    data_path = find_data_file(BASE_DIR, run_name)
-    if data_path is None:
-        print(f"Missing data for: {run_name}")
-        return
-
-    data = load_run(data_path)
-
-    fig, ax = plt.subplots(figsize=(6, 4), dpi=400, constrained_layout=True)
-    plot_run_on_ax(ax, data, smooth_window=SMOOTH_WINDOW,
-                   phase_change=PHASE_CHANGE, plot_mode=PLOT_MODE,
-                   use_log_x=USE_LOG_X)
-
-    ax.set_xlabel("t [Myr]")
-    ax.set_ylabel(r"$w_{\rm blend}$")
-    ax.set_title(f"{run_name}")
-
-    tag = f"thermalRegime_{mCloud}_sfe{sfe}_n{ndens}"
-    if SAVE_PDF:
-        out_pdf = FIG_DIR / f"{tag}.pdf"
-        fig.savefig(out_pdf, bbox_inches="tight")
-        print(f"Saved: {out_pdf}")
-
-    plt.show()
-    plt.close(fig)
-
-
-def plot_grid():
-    """Plot full grid of thermal regime."""
-    for ndens in ndens_list:
-        nrows, ncols = len(mCloud_list), len(sfe_list)
-        fig, axes = plt.subplots(
-            nrows=nrows, ncols=ncols,
-            figsize=(3.0 * ncols, 2.4 * nrows),
-            sharex=False, sharey=True,
-            dpi=300,
-            constrained_layout=False
-        )
-
-        for i, mCloud in enumerate(mCloud_list):
-            for j, sfe in enumerate(sfe_list):
-                ax = axes[i, j]
-                run_name = f"{mCloud}_sfe{sfe}_n{ndens}"
-                data_path = find_data_file(BASE_DIR, run_name)
-
-                if data_path is None:
-                    print(f"  {run_name}: missing")
-                    ax.text(0.5, 0.5, "missing", ha="center", va="center",
-                            transform=ax.transAxes)
-                    ax.set_axis_off()
-                    continue
-
-                print(f"  Loading: {data_path}")
-                try:
-                    data = load_run(data_path)
-                    plot_run_on_ax(ax, data, smooth_window=SMOOTH_WINDOW,
-                                   phase_change=PHASE_CHANGE, plot_mode=PLOT_MODE,
-                                   use_log_x=USE_LOG_X)
-                except Exception as e:
-                    print(f"Error in {run_name}: {e}")
-                    ax.text(0.5, 0.5, "error", ha="center", va="center",
-                            transform=ax.transAxes)
-                    ax.set_axis_off()
-                    continue
-
-                # X-axis labels only on bottom row
-                ax.tick_params(axis="x", which="both", bottom=True)
-                if i == nrows - 1:
-                    ax.set_xlabel("t [Myr]")
-
-                # Column titles
-                if i == 0:
-                    eps = int(sfe) / 100.0
-                    ax.set_title(rf"$\epsilon={eps:.2f}$")
-
-                # Y-axis label on left column
-                if j == 0:
-                    mval = float(mCloud)
-                    mexp = int(np.floor(np.log10(mval)))
-                    mcoeff = round(mval / (10 ** mexp))
-                    if mcoeff == 10:
-                        mcoeff = 1
-                        mexp += 1
-                    if mcoeff == 1:
-                        mlabel = rf"$M_{{\rm cl}}=10^{{{mexp}}}$"
-                    else:
-                        mlabel = rf"$M_{{\rm cl}}={mcoeff}\times10^{{{mexp}}}$"
-                    ax.set_ylabel(mlabel + "\n" + r"$w_{\rm blend}$")
-                else:
-                    ax.tick_params(labelleft=False)
-
-        # Global legend
-        if PLOT_MODE == "stacked":
-            handles = [
-                Patch(facecolor=C_BUBBLE, alpha=0.7, label=r"$(1-w)$ Bubble"),
-                Patch(facecolor=C_HII, alpha=0.7, label=r"$w$ HII"),
-            ]
-        else:
-            handles = [
-                Line2D([0], [0], color='black', lw=2, label=r'$w_{\rm blend}$'),
-                Patch(facecolor=C_BUBBLE, alpha=0.1, edgecolor='none',
-                      label='Bubble regime (w<0.3)'),
-                Patch(facecolor=C_HII, alpha=0.1, edgecolor='none',
-                      label='HII regime (w>0.7)'),
-            ]
-        handles.extend(get_marker_legend_handles())
-
-        fig.subplots_adjust(top=0.9)
-        nlog = int(np.log10(float(ndens)))
-        fig.suptitle(rf"Thermal Regime ($n=10^{{{nlog}}}\,\mathrm{{cm^{{-3}}}}$)", y=1.02)
-
-        leg = fig.legend(
-            handles=handles,
-            loc="upper center",
-            ncol=4,
-            frameon=True,
-            facecolor="white",
-            framealpha=0.9,
-            edgecolor="0.2",
-            bbox_to_anchor=(0.5, 1.0)
-        )
-        leg.set_zorder(10)
-
-        # Save
-        m_tag = range_tag("M", mCloud_list, key=float)
-        sfe_tag = range_tag("sfe", sfe_list, key=int)
-        n_tag = f"n{ndens}"
-        tag = f"thermalRegime_grid_{m_tag}_{sfe_tag}_{n_tag}"
-
-        if SAVE_PDF:
-            out_pdf = FIG_DIR / f"{tag}.pdf"
-            fig.savefig(out_pdf, bbox_inches="tight")
-            print(f"Saved: {out_pdf}")
-
-        plt.show()
-        plt.close(fig)
-
-
-def plot_folder_grid(folder_path, output_dir=None, ndens_filter=None):
+def plot_grid(folder_path, output_dir=None, ndens_filter=None):
     """
     Create grid plot from all simulations found in a folder.
 
@@ -577,6 +413,10 @@ def plot_folder_grid(folder_path, output_dir=None, ndens_filter=None):
         plt.close(fig)
 
 
+# Backwards compatibility alias
+plot_folder_grid = plot_grid
+
+
 # ---------------- command-line interface ----------------
 if __name__ == "__main__":
     import argparse
@@ -591,21 +431,19 @@ Examples:
   python paper_thermalRegime.py /path/to/outputs/1e7_sfe020_n1e4
   python paper_thermalRegime.py /path/to/dictionary.jsonl
 
-  # Folder-based grid (auto-discovers simulations)
+  # Grid plot from folder (auto-discovers simulations)
   python paper_thermalRegime.py --folder /path/to/my_experiment/
   python paper_thermalRegime.py -F /path/to/simulations/
-
-  # Uses config at top of file
-  python paper_thermalRegime.py
+  python paper_thermalRegime.py -F /path/to/simulations/ -n 1e4  # filter by density
         """
     )
     parser.add_argument(
         'data', nargs='?', default=None,
-        help='Data input: folder name, folder path, or file path'
+        help='Data input: folder name, folder path, or file path (for single simulation)'
     )
     parser.add_argument(
         '--output-dir', '-o', default=None,
-        help='Base directory for output folders'
+        help='Directory to save output figures (default: fig/)'
     )
     parser.add_argument(
         '--stacked', action='store_true',
@@ -617,14 +455,13 @@ Examples:
     )
     parser.add_argument(
         '--folder', '-F', default=None,
-        help='Search folder recursively for simulations and create grid plot. '
-             'Auto-organizes by mCloud (rows) and SFE (columns). '
-             'Saves as {folder}_{ndens}.pdf'
+        help='Create grid plot from all simulations in folder. '
+             'Auto-organizes by mCloud (rows) and SFE (columns).'
     )
     parser.add_argument(
         '--nCore', '-n', default=None,
         help='Filter simulations by cloud density (e.g., "1e4", "1e3"). '
-             'If not specified with --folder, generates one PDF per density found.'
+             'If not specified, generates one PDF per density found.'
     )
 
     args = parser.parse_args()
@@ -635,10 +472,11 @@ Examples:
         USE_LOG_X = True
 
     if args.folder:
-        plot_folder_grid(args.folder, args.output_dir, ndens_filter=args.nCore)
+        # Grid mode: create grid from all simulations in folder
+        plot_grid(args.folder, args.output_dir, ndens_filter=args.nCore)
     elif args.data:
+        # Single simulation mode
         plot_from_path(args.data, args.output_dir)
-    elif (ONLY_M is not None) and (ONLY_N is not None) and (ONLY_SFE is not None):
-        plot_single_run(ONLY_M, ONLY_N, ONLY_SFE)
     else:
-        plot_grid()
+        parser.print_help()
+        print("\nError: Please provide either --folder or a data path.")

@@ -13,20 +13,13 @@ from pathlib import Path
 
 # Add project root to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
-from src._output.trinity_reader import load_output, find_data_file, resolve_data_input
+from src._output.trinity_reader import load_output, resolve_data_input
 from src._plots.plot_markers import add_collapse_marker, get_marker_legend_handles
 
 print("...plotting escape fraction comparison")
 
 
 # --- configuration
-mCloud_list = ["1e5", "1e7", "1e8"]                 # one subplot per mCloud
-ndens_list  = ["1e4", "1e2", "1e3"]                        # one figure per ndens
-# ndens_list  = ["1e4"]                        # one figure per ndens
-sfe_list    = ["001", "010", "020", "030", "050", "080"]   # multiple lines per subplot
-
-BASE_DIR = Path.home() / "unsync" / "Code" / "Trinity" / "outputs"
-
 # smoothing: number of snapshots in moving average (None or 1 disables)
 SMOOTH_WINDOW = 7
 
@@ -139,110 +132,7 @@ def plot_from_path(data_input: str, output_dir: str = None):
     plt.close(fig)
 
 
-def plot_grid():
-    """Plot full grid of escape fractions."""
-    for ndens in ndens_list:
-        nrows = len(mCloud_list)
-        fig, axes = plt.subplots(
-            nrows=nrows, ncols=1,
-            figsize=(7.0, 2.6 * nrows),
-            sharex=False,     # each subplot gets its own t_max
-            sharey=True,
-            dpi=200,
-            constrained_layout=True
-        )
-
-        if nrows == 1:
-            axes = [axes]  # make iterable
-
-        all_line_handles = []
-        all_line_labels = []
-
-        for i, mCloud in enumerate(mCloud_list):
-            ax = axes[i]
-
-            # plot each sfe as a line on the same axis
-            for sfe in sfe_list:
-                run_name = f"{mCloud}_sfe{sfe}_n{ndens}"
-                data_path = find_data_file(BASE_DIR, run_name)
-
-                if data_path is None:
-                    print(f"  {run_name}: missing")
-                    continue
-
-                print(f"  Loading: {data_path}")
-                try:
-                    t, fesc, isCollapse = load_escape_fraction(data_path)
-
-                    # optional smoothing
-                    fesc_plot = smooth_1d(fesc, SMOOTH_WINDOW)
-                    fesc_plot = np.clip(fesc_plot, 0.0, 1.0)
-
-                    eps = int(sfe) / 100.0
-                    (line,) = ax.plot(t, fesc_plot, lw=1.8, alpha=0.9, label=rf"$\epsilon={eps:.2f}$")
-
-                    # store legend handles once (from first subplot only)
-                    if i == 0:
-                        all_line_handles.append(line)
-                        all_line_labels.append(rf"$\epsilon={eps:.2f}$")
-
-                    # --- collapse line using helper module (no label since many runs per subplot)
-                    add_collapse_marker(ax, t, isCollapse, show_label=False)
-
-                except Exception as e:
-                    print(f"Error in {run_name}: {e}")
-
-            # Handle non-power-of-10 masses (e.g., 5e6)
-            mval = float(mCloud)
-            mexp = int(np.floor(np.log10(mval)))
-            mcoeff = mval / (10 ** mexp)
-            mcoeff = round(mcoeff)
-            if mcoeff == 10:
-                mcoeff = 1
-                mexp += 1
-            if mcoeff == 1:
-                mlabel = rf"$M_{{\rm cloud}}=10^{{{mexp}}}\,M_\odot$"
-            else:
-                mlabel = rf"$M_{{\rm cloud}}={mcoeff}\times10^{{{mexp}}}\,M_\odot$"
-            ax.set_ylabel(rf"$f_\mathrm{{esc}}$" + "\n" + mlabel)
-            ax.set_ylim(0, 1)
-            ax.set_xscale('log')
-
-            # x label only on bottom subplot
-            if i == nrows - 1:
-                ax.set_xlabel("t [Myr]")
-
-        nlog = int(np.log10(float(ndens)))
-        fig.suptitle(rf"Escape fraction vs time  ($n=10^{{{nlog}}}\,\mathrm{{cm^{{-3}}}}$)", y=1.02)
-
-        # global legend (cleaner than repeating per axis)
-        if all_line_handles:
-            # Add collapse indicator to legend using helper
-            collapse_handles = get_marker_legend_handles(include_phase=False, include_rcloud=False, include_collapse=True)
-            for h in collapse_handles:
-                all_line_handles.append(h)
-                all_line_labels.append(h.get_label())
-            leg = fig.legend(
-                handles=all_line_handles,
-                labels=all_line_labels,
-                loc="upper center",
-                ncol=len(all_line_handles),
-                frameon=True,
-                facecolor="white",
-                framealpha=0.9,
-                edgecolor="0.2",
-                bbox_to_anchor=(0.5, 1.07),
-            )
-            leg.set_zorder(10)
-
-        if SAVE_PDF:
-            fig.savefig(FIG_DIR / f"paper_escapeFraction_n{ndens}.pdf", bbox_inches='tight')
-            print(f"Saved: {FIG_DIR / f'paper_escapeFraction_n{ndens}.pdf'}")
-        plt.show()
-        plt.close(fig)
-
-
-def plot_folder_grid(folder_path, output_dir=None, ndens_filter=None):
+def plot_grid(folder_path, output_dir=None, ndens_filter=None):
     """
     Create grid plot from all simulations found in a folder.
 
@@ -390,6 +280,10 @@ def plot_folder_grid(folder_path, output_dir=None, ndens_filter=None):
         plt.close(fig)
 
 
+# Backwards compatibility alias
+plot_folder_grid = plot_grid
+
+
 # ---------------- command-line interface ----------------
 if __name__ == "__main__":
     import argparse
@@ -404,41 +298,39 @@ Examples:
   python paper_escapeFraction.py /path/to/outputs/1e7_sfe020_n1e4
   python paper_escapeFraction.py /path/to/dictionary.jsonl
 
-  # Folder-based grid (auto-discovers simulations)
+  # Grid plot from folder (auto-discovers simulations)
   python paper_escapeFraction.py --folder /path/to/my_experiment/
   python paper_escapeFraction.py -F /path/to/simulations/
-
-  # Uses config at top of file
-  python paper_escapeFraction.py
+  python paper_escapeFraction.py -F /path/to/simulations/ -n 1e4  # filter by density
         """
     )
     parser.add_argument(
         'data', nargs='?', default=None,
-        help='Data input: folder name, folder path, or file path'
+        help='Data input: folder name, folder path, or file path (for single simulation)'
     )
     parser.add_argument(
         '--output-dir', '-o', default=None,
-        help='Base directory for output folders (default: TRINITY_OUTPUT_DIR or "outputs")'
+        help='Directory to save output figures (default: fig/)'
     )
     parser.add_argument(
         '--folder', '-F', default=None,
-        help='Search folder recursively for simulations and create grid plot. '
-             'Auto-organizes by mCloud (rows) and SFE (columns). '
-             'Saves as {folder}_{ndens}.pdf'
+        help='Create grid plot from all simulations in folder. '
+             'Auto-organizes by mCloud (rows) and SFE (columns).'
     )
     parser.add_argument(
         '--nCore', '-n', default=None,
         help='Filter simulations by cloud density (e.g., "1e4", "1e3"). '
-             'If not specified with --folder, generates one PDF per density found.'
+             'If not specified, generates one PDF per density found.'
     )
 
     args = parser.parse_args()
 
     if args.folder:
-        plot_folder_grid(args.folder, args.output_dir, ndens_filter=args.nCore)
+        # Grid mode: create grid from all simulations in folder
+        plot_grid(args.folder, args.output_dir, ndens_filter=args.nCore)
     elif args.data:
-        # Command-line mode: plot from specified path
+        # Single simulation mode
         plot_from_path(args.data, args.output_dir)
     else:
-        # Config mode: plot grid
-        plot_grid()
+        parser.print_help()
+        print("\nError: Please provide either --folder or a data path.")

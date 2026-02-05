@@ -14,21 +14,12 @@ from matplotlib.lines import Line2D
 
 # Add project root to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
-from src._output.trinity_reader import load_output, find_data_file, resolve_data_input
+from src._output.trinity_reader import load_output, resolve_data_input
 from src._plots.plot_markers import add_plot_markers, get_marker_legend_handles
 
 print("...plotting velocity (v2) + radii (twin axis) grid")
 
 # ---------------- configuration ----------------
-# mCloud_list = ["1e5", "1e7", "1e8"]                 # rows
-mCloud_list = ["1e3", "3e3", "5e3", "7e3", "1e4"]                 # rows
-# ndens_list  = ["1e4", "1e2"]                        # one figure per ndens
-ndens_list  = ["1e4", "1e3"]                        # one figure per ndens
-# sfe_list    = ["001", "002", "003", "030", "050", "080"]   # cols
-sfe_list    = ["001", "002", "003", "004", "005"]   # cols
-
-BASE_DIR = Path.home() / "unsync" / "Code" / "Trinity" / "outputs" / "sweep_orion"
-
 PHASE_LINE = True
 CLOUD_LINE = True
 SMOOTH_WINDOW = None        # e.g. 7 or 21; None/1 disables
@@ -38,7 +29,6 @@ USE_LOG_X = False  # Use log scale for x-axis (time)
 # --- output - save to project root's fig/ directory
 FIG_DIR = Path(__file__).parent.parent.parent / "fig"
 FIG_DIR.mkdir(parents=True, exist_ok=True)
-SAVE_PNG = True
 SAVE_PDF = True
 
 # --- unit conversion: pc/Myr -> km/s
@@ -291,128 +281,7 @@ def plot_from_path(data_input: str, output_dir: str = None):
     plt.close(fig)
 
 
-def plot_grid():
-    """Plot full grid of velocity evolution."""
-    for ndens in ndens_list:
-        nrows, ncols = len(mCloud_list), len(sfe_list)
-
-        fig, axes = plt.subplots(
-            nrows=nrows, ncols=ncols,
-            figsize=(3.2 * ncols, 2.6 * nrows),
-            sharex=False, sharey=False,
-            dpi=500,
-            constrained_layout=False
-        )
-
-        # reserve top band for suptitle + legend
-        fig.subplots_adjust(top=0.90)
-        nlog = int(np.log10(float(ndens)))
-        fig.suptitle(rf"Velocity and radius evolution ($n=10^{{{nlog}}}\,\mathrm{{cm^{{-3}}}}$)", y=1.05)
-
-        for i, mCloud in enumerate(mCloud_list):
-            for j, sfe in enumerate(sfe_list):
-                ax = axes[i, j]
-                run_name = f"{mCloud}_sfe{sfe}_n{ndens}"
-                data_path = find_data_file(BASE_DIR, run_name)
-
-                if data_path is None:
-                    print(f"  {run_name}: missing")
-                    ax.text(0.5, 0.5, "missing", ha="center", va="center", transform=ax.transAxes)
-                    ax.set_axis_off()
-                    continue
-
-                print(f"  Loading: {data_path}")
-                try:
-                    t, phase, v2, R1, R2, rShell, r_Tb, rcloud, isCollapse = load_run_velocity(data_path)
-                    axr = plot_velocity_on_ax(
-                        ax, t, phase, v2, R1, R2, rShell, r_Tb, rcloud, isCollapse,
-                        smooth_window=SMOOTH_WINDOW,
-                        smooth_mode=SMOOTH_MODE,
-                        phase_line=PHASE_LINE,
-                        cloud_line=CLOUD_LINE,
-                        use_log_x=USE_LOG_X
-                    )
-                except Exception as e:
-                    print(f"Error in {run_name}: {e}")
-                    ax.text(0.5, 0.5, "error", ha="center", va="center", transform=ax.transAxes)
-                    ax.set_axis_off()
-                    continue
-
-                # column titles
-                if i == 0:
-                    eps = int(sfe) / 100.0
-                    ax.set_title(rf"$\epsilon={eps:.2f}$")
-
-                # left y labels only on left-most column - handle non-power-of-10 masses
-                if j == 0:
-                    mval = float(mCloud)
-                    mexp = int(np.floor(np.log10(mval)))
-                    mcoeff = mval / (10 ** mexp)
-                    mcoeff = round(mcoeff)
-                    if mcoeff == 10:
-                        mcoeff = 1
-                        mexp += 1
-                    if mcoeff == 1:
-                        mlabel = rf"$M_{{\rm cloud}}=10^{{{mexp}}}\,M_\odot$"
-                    else:
-                        mlabel = rf"$M_{{\rm cloud}}={mcoeff}\times10^{{{mexp}}}\,M_\odot$"
-                    ax.set_ylabel(mlabel + "\n" + r"$v_2$ [km s$^{-1}$]")
-                else:
-                    ax.tick_params(labelleft=False)
-
-                # right y labels only on right-most column
-                if j != ncols - 1:
-                    axr.set_ylabel("")
-                    axr.tick_params(labelright=False)
-
-                # x ticks on all, labels only bottom row
-                ax.tick_params(axis="x", which="both", bottom=True)
-                if i == nrows - 1:
-                    ax.set_xlabel("t [Myr]")
-                    ax.tick_params(labelbottom=True)
-                else:
-                    ax.tick_params(labelbottom=False)
-
-        # -------- global legend --------
-        handles = [
-            Line2D([0], [0], color="k", lw=1.8, ls="-",  label=r"$v_2>0$ (solid; plotted as $|v_2|$)"),
-            Line2D([0], [0], color="k", lw=1.8, ls="--", label=r"$v_2<0$ (dashed; plotted as $|v_2|$)"),
-            Line2D([0], [0], color=RADIUS_FIELDS[0][2], lw=RADIUS_FIELDS[0][4], ls=RADIUS_FIELDS[0][3], label=RADIUS_FIELDS[0][1]),
-            Line2D([0], [0], color=RADIUS_FIELDS[1][2], lw=RADIUS_FIELDS[1][4], ls=RADIUS_FIELDS[1][3], label=RADIUS_FIELDS[1][1]),
-            Line2D([0], [0], color=RADIUS_FIELDS[2][2], lw=RADIUS_FIELDS[2][4], ls=RADIUS_FIELDS[2][3], label=RADIUS_FIELDS[2][1]),
-            Line2D([0], [0], color=RADIUS_FIELDS[3][2], lw=RADIUS_FIELDS[3][4], ls=RADIUS_FIELDS[3][3], label=RADIUS_FIELDS[3][1]),
-        ]
-        handles.extend(get_marker_legend_handles())
-
-        leg = fig.legend(
-            handles=handles,
-            loc="upper center",
-            ncol=3,
-            frameon=True,
-            facecolor="white",
-            framealpha=0.9,
-            edgecolor="0.2",
-            bbox_to_anchor=(0.5, 0.98),
-            bbox_transform=fig.transFigure
-        )
-        leg.set_zorder(10)
-
-        # --------- SAVE FIGURE ---------
-        m_tag   = range_tag("M",   mCloud_list, key=float)
-        sfe_tag = range_tag("sfe", sfe_list,    key=int)
-        n_tag   = f"n{ndens}"
-        tag = f"velocity_grid_{m_tag}_{sfe_tag}_{n_tag}"
-
-        if SAVE_PDF:
-            out_pdf = FIG_DIR / f"{tag}.pdf"
-            fig.savefig(out_pdf, bbox_inches="tight", pad_inches=0.15)
-            print(f"Saved: {out_pdf}")
-
-        plt.show()
-        plt.close(fig)
-
-
-def plot_folder_grid(folder_path, output_dir=None, ndens_filter=None):
+def plot_grid(folder_path, output_dir=None, ndens_filter=None):
     """
     Create grid plot from all simulations found in a folder.
 
@@ -577,6 +446,10 @@ def plot_folder_grid(folder_path, output_dir=None, ndens_filter=None):
         plt.close(fig)
 
 
+# Backwards compatibility alias
+plot_folder_grid = plot_grid
+
+
 # ---------------- command-line interface ----------------
 if __name__ == "__main__":
     import argparse
@@ -591,12 +464,10 @@ Examples:
   python paper_expansionVelocity.py /path/to/outputs/1e7_sfe020_n1e4
   python paper_expansionVelocity.py /path/to/dictionary.jsonl
 
-  # Folder-based grid (auto-discovers simulations)
+  # Grid plot from folder (auto-discovers simulations)
   python paper_expansionVelocity.py --folder /path/to/my_experiment/
   python paper_expansionVelocity.py -F /path/to/simulations/
-
-  # Uses config at top of file
-  python paper_expansionVelocity.py
+  python paper_expansionVelocity.py -F /path/to/simulations/ -n 1e4  # filter by density
         """
     )
     parser.add_argument(
@@ -629,10 +500,11 @@ Examples:
         USE_LOG_X = True
 
     if args.folder:
-        plot_folder_grid(args.folder, args.output_dir, ndens_filter=args.nCore)
+        # Grid mode: create grid from all simulations in folder
+        plot_grid(args.folder, args.output_dir, ndens_filter=args.nCore)
     elif args.data:
-        # Command-line mode: plot from specified path
+        # Single simulation mode
         plot_from_path(args.data, args.output_dir)
     else:
-        # Config mode: plot grid
-        plot_grid()
+        parser.print_help()
+        print("\nError: Please provide either --folder or a data path.")
