@@ -37,7 +37,7 @@ print("...creating trajectory evolution plots")
 PC_MYR_TO_KM_S = 1.0 / 1.0227
 
 # --- Global plot settings ---
-FONTSIZE = 14  # Global font size for labels, ticks, and legends
+FONTSIZE = 16  # Global font size for labels, ticks, and legends
 
 # --- Output directory
 FIG_DIR = Path(__file__).parent.parent.parent / "fig"
@@ -79,7 +79,7 @@ class ObservationalConstraints:
 
     # Shell radius from Pabst et al. 2020
     R_obs_Pabst: float = 2.7     # pc
-    R_err_Pabst: float = 0.3     # pc
+    R_err_Pabst: float = 0     # pc
 
     # Stellar mass (derived constraint)
     Mstar_obs: float = 34.0      # M_sun
@@ -499,7 +499,7 @@ def plot_trajectory_evolution(results: List[SimulationResult], config: AnalysisC
         data_to_plot = data_all_sorted[:top_n]
 
     # 2 subplots: mass (top), radius (bottom) - stacked vertically with shared x-axis
-    fig, (ax_m, ax_r) = plt.subplots(2, 1, figsize=(6.5, 10.0), dpi=150, sharex=True)
+    fig, (ax_m, ax_r) = plt.subplots(2, 1, figsize=(6.5, 18), dpi=150, sharex=True)
 
     obs = config.obs
 
@@ -565,7 +565,7 @@ def plot_trajectory_evolution(results: List[SimulationResult], config: AnalysisC
     legend_m = ax_m.legend(loc='upper right', fontsize=FONTSIZE)
     legend_m.set_zorder(100)
     ax_m.set_yscale('log')
-    ax_m.set_ylim(10, 1e4)
+    ax_m.set_ylim(10, 3e4)
     ax_m.grid(True, alpha=0.3, which='both')
     ax_m.tick_params(axis='x', pad=10)
     ax_m.tick_params(axis='y', pad=10)
@@ -581,7 +581,7 @@ def plot_trajectory_evolution(results: List[SimulationResult], config: AnalysisC
     # Pabst et al. 2020 radius observation (green)
     ax_r.errorbar(obs.t_obs, obs.R_obs_Pabst, xerr=obs.t_err, yerr=obs.R_err_Pabst,
                   fmt='s', color='green', markersize=14, capsize=5, capthick=2,
-                  label=f'Pabst+20: {obs.R_obs_Pabst}±{obs.R_err_Pabst} pc', zorder=10, markeredgecolor='k')
+                  label=f'Pabst+20: {obs.R_obs_Pabst} pc', zorder=10, markeredgecolor='k')
     ax_r.axhspan(obs.R_obs_Pabst - obs.R_err_Pabst, obs.R_obs_Pabst + obs.R_err_Pabst,
                  alpha=0.15, color='green', zorder=1)
 
@@ -595,7 +595,7 @@ def plot_trajectory_evolution(results: List[SimulationResult], config: AnalysisC
     legend_r = ax_r.legend(loc='lower right', fontsize=FONTSIZE)
     legend_r.set_zorder(100)
     ax_r.set_xlim(0, 0.3)
-    ax_r.set_ylim(0, None)
+    ax_r.set_ylim(0, 6)
     ax_r.grid(True, alpha=0.3)
     ax_r.tick_params(axis='x', pad=10)
     ax_r.tick_params(axis='y', pad=10)
@@ -638,7 +638,7 @@ def plot_trajectory_evolution_combined(results: List[SimulationResult], config: 
     nCore_math = ["100", "500", "1000"]
 
     # 2 subplots: mass (top), radius (bottom) - stacked vertically with shared x-axis
-    fig, (ax_m, ax_r) = plt.subplots(2, 1, figsize=(6.5, 5.0), dpi=150, sharex=True)
+    fig, (ax_m, ax_r) = plt.subplots(2, 1, figsize=(6.5, 6.5), dpi=150, sharex=True)
 
     obs = config.obs
 
@@ -704,7 +704,7 @@ def plot_trajectory_evolution_combined(results: List[SimulationResult], config: 
 
             # Plot shaded region
             ax_m.fill_between(t_common, M_min, M_max, alpha=0.7, color=color,
-                              label=f'$n_{{\\rm core}} = ${nCore_math[nCore_idx]} $\\rm cm^{-3} $')
+                              label=f'$n_{{\\rm core}} = ${nCore_math[nCore_idx]}'+' $\\rm cm^{-3} $')
 
         if R_interp_list:
             R_arr = np.array(R_interp_list)
@@ -714,7 +714,7 @@ def plot_trajectory_evolution_combined(results: List[SimulationResult], config: 
 
             # Plot shaded region
             ax_r.fill_between(t_common, R_min, R_max, alpha=0.7, color=color,
-                              label=f'$n_{{\\rm core}} = ${nCore_math[nCore_idx]} $\\rm cm^{-3}$')
+                              label=f'$n_{{\\rm core}} = ${nCore_math[nCore_idx]}'+' $\\rm cm^{-3} $')
 
     # --- Mass panel (log scale) ---
     tracer_bands = [
@@ -738,7 +738,7 @@ def plot_trajectory_evolution_combined(results: List[SimulationResult], config: 
     legend_m = ax_m.legend(loc='upper left', fontsize=FONTSIZE)
     legend_m.set_zorder(100)
     ax_m.set_yscale('log')
-    ax_m.set_ylim(10, 1e4)
+    ax_m.set_ylim(10, 3e4)
     ax_m.grid(True, alpha=0.3, which='both')
 
     # --- Radius panel ---
@@ -752,7 +752,7 @@ def plot_trajectory_evolution_combined(results: List[SimulationResult], config: 
     # Pabst et al. 2020 radius observation (green)
     ax_r.errorbar(obs.t_obs, obs.R_obs_Pabst, xerr=obs.t_err, yerr=obs.R_err_Pabst,
                   fmt='s', color='green', markersize=12, capsize=5, capthick=2,
-                  label=f'Pabst+20: {obs.R_obs_Pabst}±{obs.R_err_Pabst} pc', zorder=10, markeredgecolor='k')
+                  label=f'Pabst+20: {obs.R_obs_Pabst} pc', zorder=10, markeredgecolor='k')
     ax_r.axhspan(obs.R_obs_Pabst - obs.R_err_Pabst, obs.R_obs_Pabst + obs.R_err_Pabst,
                  alpha=0.15, color='green', zorder=1)
 
@@ -766,7 +766,7 @@ def plot_trajectory_evolution_combined(results: List[SimulationResult], config: 
     legend_r = ax_r.legend(loc='upper left', fontsize=FONTSIZE)
     legend_r.set_zorder(100)
     ax_r.set_xlim(0, 0.3)
-    ax_r.set_ylim(0, None)
+    ax_r.set_ylim(0, 6)
     ax_r.grid(True, alpha=0.3)
 
     plt.tight_layout(h_pad=1.0)
