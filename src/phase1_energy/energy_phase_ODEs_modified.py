@@ -175,18 +175,13 @@ def get_ODE_Edot_pure(t: float, y: list, snapshot: ODESnapshot, params_for_feedb
         args=([Lmech_total, Eb, v_mech_total, R2])
     )
 
-    # Bubble pressure calculation
-    dt_switchon = 1e-3
-    tmin = dt_switchon
-
-    if snapshot.current_phase == 'momentum':
-        press_bubble = get_bubbleParams.pRam(R2, Lmech_total, v_mech_total)
-    else:
-        if t > (tmin + snapshot.tSF):
-            press_bubble = get_bubbleParams.bubble_E2P(Eb, R2, R1, snapshot.gamma_adia)
-        else:
-            R1_tmp = (t - snapshot.tSF) / tmin * R1
-            press_bubble = get_bubbleParams.bubble_E2P(Eb, R2, R1_tmp, snapshot.gamma_adia)
+    # Bubble pressure calculation (uses shared helper for ODE/diagnostics consistency)
+    press_bubble = get_bubbleParams.get_effective_bubble_pressure(
+        current_phase=snapshot.current_phase,
+        Eb=Eb, R2=R2, R1=R1, gamma=snapshot.gamma_adia,
+        Lmech_total=Lmech_total, v_mech_total=v_mech_total,
+        t=t, tSF=snapshot.tSF
+    )
 
     # Inward pressure from photoionized gas outside shell
     # Uses existing get_press_ion() which only reads from params
@@ -332,8 +327,14 @@ def compute_derived_quantities(t: float, y: list, snapshot: ODESnapshot, params_
         args=([Lmech_total, Eb, v_mech_total, R2])
     )
 
-    # Bubble pressure
-    Pb = get_bubbleParams.bubble_E2P(Eb, R2, R1, snapshot.gamma_adia)
+    # Bubble pressure (uses shared helper for ODE/diagnostics consistency)
+    # In momentum phase, this returns pRam; in energy phase, returns bubble_E2P
+    Pb = get_bubbleParams.get_effective_bubble_pressure(
+        current_phase=snapshot.current_phase,
+        Eb=Eb, R2=R2, R1=R1, gamma=snapshot.gamma_adia,
+        Lmech_total=Lmech_total, v_mech_total=v_mech_total,
+        t=t, tSF=snapshot.tSF
+    )
 
     # Forces
     F_grav = snapshot.G * mShell / (R2**2) * (snapshot.mCluster + 0.5 * mShell)
