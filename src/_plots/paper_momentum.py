@@ -32,14 +32,30 @@ DOMINANCE_DT = 0.05          # Myr
 DOMINANCE_ALPHA = 0.9
 DOMINANCE_STRIP = (0.94, 1)  # (ymin, ymax) in AXES fraction (0..1) - doubled thickness
 
-
+# Main force fields for plotting (solid lines)
+# F_ram is plotted continuously; F_ram_wind and F_ram_SN are plotted dashed separately
 FORCE_FIELDS = [
-    ("F_grav",         "Gravity",              "black"),
-    ("F_thermal_wind", "Thermal+Wind",         "b"),      # Combined: F_ram (energy) / F_ram_wind (momentum)
-    ("F_ram_SN",       "Supernovae",           "#FFA500"), # Yellow/orange for SN (pdot_SN from SB99)
-    ("F_ion_out",      "Photoionised gas",     "#d62728"),
-    ("F_rad",          "Radiation (dir.+indir.)", "#9467bd"),
+    ("F_grav",    "Gravity",                  "black"),
+    ("F_ram",     "Ram (thermal/wind)",       "b"),       # Continuous: thermal bubble + wind ram
+    ("F_ion_out", "Photoionised gas",         "#d62728"),
+    ("F_rad",     "Radiation (dir.+indir.)",  "#9467bd"),
 ]
+
+# Additional dashed lines for wind/SN breakdown
+DASHED_FIELDS = [
+    ("F_ram_wind", "Wind",       "b"),       # Blue dashed
+    ("F_ram_SN",   "Supernovae", "#FFA500"), # Yellow/orange dashed
+]
+
+# Colors for dominant bar (includes wind/SN subclassification)
+DOMINANT_COLORS = {
+    "F_grav": "black",
+    "F_ram": "b",
+    "F_ram_wind": "b",
+    "F_ram_SN": "#FFA500",
+    "F_ion_out": "#d62728",
+    "F_rad": "#9467bd",
+}
 
 
 import os
@@ -95,25 +111,17 @@ def load_run(data_path: Path):
     # Load isCollapse for collapse indicator
     isCollapse = np.array(output.get('isCollapse', as_array=False))
 
-    # Extract force fields - need special handling for F_thermal_wind
-    forces_list = []
+    # Extract main force fields
+    forces_dict = {}
     for field, _, _ in FORCE_FIELDS:
-        if field == "F_thermal_wind":
-            # Combine F_ram (energy phase) and F_ram_wind (momentum phase)
-            F_ram = np.nan_to_num(output.get('F_ram'), nan=0.0)
-            F_ram_wind = np.nan_to_num(output.get('F_ram_wind'), nan=0.0)
+        forces_dict[field] = np.nan_to_num(output.get(field), nan=0.0)
 
-            # Use F_ram before momentum phase, F_ram_wind after
-            F_combined = np.where(
-                np.array([p == 'momentum' for p in phase]),
-                F_ram_wind,  # momentum phase: use wind ram pressure
-                F_ram        # energy/transition phase: use bubble thermal pressure
-            )
-            forces_list.append(F_combined)
-        else:
-            forces_list.append(np.nan_to_num(output.get(field), nan=0.0))
+    # Extract dashed force fields (wind/SN breakdown)
+    for field, _, _ in DASHED_FIELDS:
+        forces_dict[field] = np.nan_to_num(output.get(field), nan=0.0)
 
-    forces = np.vstack(forces_list)
+    # Stack main forces for integration
+    forces = np.vstack([forces_dict[field] for field, _, _ in FORCE_FIELDS])
 
     # Ensure time is increasing for integration
     if np.any(np.diff(t) < 0):
@@ -123,36 +131,98 @@ def load_run(data_path: Path):
         phase = phase[order]
         forces = forces[:, order]
         isCollapse = isCollapse[order]
+        for key in forces_dict:
+            forces_dict[key] = forces_dict[key][order]
 
     rcloud = float(output[0].get('rCloud', np.nan))
-    return t, r, phase, forces, rcloud, isCollapse
+    return t, r, phase, forces, forces_dict, rcloud, isCollapse
 
-# This added functionality solves the problem in which white spaces occur
-# when calculating dominanting forces - for small binning values some snapshots
-# simply does not exist. This interpolates the value and makes sure that 
-# every bin has their own value and colour. 
+
 def _interp_finite(x, y, xnew):
+    """Interpolate y at xnew, handling NaN/inf values."""
     m = np.isfinite(y)
     if m.sum() < 2:
         return np.full_like(xnew, np.nan, dtype=float)
     return np.interp(xnew, x[m], y[m])
 
-def dominant_bins(t, frac, dt=0.05):
+
+def dominant_bins_impulse(t, forces_dict, dt=0.05):
+    """
+    Compute dominant force in each time bin based on impulse added.
+
+    ΔJ_i = ∫ max(F_i, 0) dt in each bin.
+
+    If F_ram wins, subclassify into F_ram_wind vs F_ram_SN.
+
+    Returns
+    -------
+    edges : array
+        Bin edges
+    winners : list of str
+        Field name of winner in each bin (for color lookup)
+    """
     t = np.asarray(t, float)
-    frac = np.asarray(frac, float)
-
     edges = np.arange(t.min(), t.max() + dt, dt)
-    centers = 0.5 * (edges[:-1] + edges[1:])  # one value per bin
+    n_bins = len(edges) - 1
 
-    frac_c = np.vstack([_interp_finite(t, frac_i, centers) for frac_i in frac])
+    # Fields to consider for dominance (main forces)
+    main_fields = ["F_grav", "F_ram", "F_ion_out", "F_rad"]
 
-    # optional: renormalize in case interpolation + NaNs break sum=1
-    denom = np.nansum(frac_c, axis=0)
-    denom = np.where(denom == 0.0, np.nan, denom)
-    frac_c = frac_c / denom
+    winners = []
 
-    winner = np.nanargmax(frac_c, axis=0)  # now every bin has a winner (unless all NaN)
-    return edges, winner
+    for b in range(n_bins):
+        t0, t1 = edges[b], edges[b + 1]
+
+        # Find indices in this bin
+        mask = (t >= t0) & (t < t1)
+        if not np.any(mask):
+            # No data in bin - use interpolation
+            t_bin = np.array([0.5 * (t0 + t1)])
+            impulses = {}
+            for field in main_fields:
+                F_interp = _interp_finite(t, forces_dict[field], t_bin)
+                impulses[field] = max(F_interp[0], 0) * dt if np.isfinite(F_interp[0]) else 0.0
+        else:
+            t_bin = t[mask]
+            impulses = {}
+            for field in main_fields:
+                F_bin = forces_dict[field][mask]
+                # ΔJ = ∫ max(F, 0) dt using trapezoidal rule
+                F_pos = np.maximum(F_bin, 0)
+                if len(F_pos) > 1:
+                    impulses[field] = np.trapz(F_pos, t_bin)
+                else:
+                    impulses[field] = F_pos[0] * dt
+
+        # Find winner
+        winner = max(impulses, key=impulses.get)
+
+        # If F_ram wins, subclassify into wind vs SN
+        if winner == "F_ram":
+            if not np.any(mask):
+                t_bin = np.array([0.5 * (t0 + t1)])
+                F_wind = _interp_finite(t, forces_dict["F_ram_wind"], t_bin)
+                F_SN = _interp_finite(t, forces_dict["F_ram_SN"], t_bin)
+                J_wind = max(F_wind[0], 0) * dt if np.isfinite(F_wind[0]) else 0.0
+                J_SN = max(F_SN[0], 0) * dt if np.isfinite(F_SN[0]) else 0.0
+            else:
+                F_wind = forces_dict["F_ram_wind"][mask]
+                F_SN = forces_dict["F_ram_SN"][mask]
+                F_wind_pos = np.maximum(F_wind, 0)
+                F_SN_pos = np.maximum(F_SN, 0)
+                if len(F_wind_pos) > 1:
+                    J_wind = np.trapz(F_wind_pos, t_bin)
+                    J_SN = np.trapz(F_SN_pos, t_bin)
+                else:
+                    J_wind = F_wind_pos[0] * dt
+                    J_SN = F_SN_pos[0] * dt
+
+            # Subclassify
+            winner = "F_ram_wind" if J_wind >= J_SN else "F_ram_SN"
+
+        winners.append(winner)
+
+    return edges, winners
 
 
 #--- plots
@@ -177,14 +247,14 @@ def plot_from_path(data_input: str, output_dir: str = None):
     print(f"Loading data from: {data_path}")
 
     try:
-        t, r, phase, forces, rcloud, isCollapse = load_run(data_path)
+        t, r, phase, forces, forces_dict, rcloud, isCollapse = load_run(data_path)
     except Exception as e:
         print(f"Error loading data: {e}")
         return
 
     fig, ax = plt.subplots(figsize=(8, 6), dpi=150)
     plot_momentum_lines_on_ax(
-        ax, t, r, phase, forces, rcloud, isCollapse,
+        ax, t, r, phase, forces, forces_dict, rcloud, isCollapse,
         smooth_window=SMOOTH_WINDOW,
         phase_change=PHASE_CHANGE
     )
@@ -194,9 +264,11 @@ def plot_from_path(data_input: str, output_dir: str = None):
     ax.set_ylabel(r"$p(t)=\int F\,dt$")
 
     # Legend - force lines + markers from helper
-    handles = [Line2D([0], [0], color="black", lw=1.6, ls="-", label="Gravity")]
-    for _, lab, c in FORCE_FIELDS[1:]:
-        handles.append(Line2D([0], [0], color=c, lw=1.6, label=lab))
+    handles = []
+    for _, lab, c in FORCE_FIELDS:
+        handles.append(Line2D([0], [0], color=c, lw=1.6, ls="-", label=lab))
+    for _, lab, c in DASHED_FIELDS:
+        handles.append(Line2D([0], [0], color=c, lw=1.2, ls="--", label=lab))
     handles.append(Line2D([0], [0], color="darkgrey", lw=2.4, label="Net"))
     handles.extend(get_marker_legend_handles())
     ax.legend(handles=handles, loc="upper left", framealpha=0.9)
@@ -214,7 +286,7 @@ def plot_from_path(data_input: str, output_dir: str = None):
 
 
 def plot_momentum_lines_on_ax(
-    ax, t, r, phase, forces, rcloud, isCollapse=None,
+    ax, t, r, phase, forces, forces_dict, rcloud, isCollapse=None,
     smooth_window=None, smooth_mode="edge",
     lw=1.6, net_lw=4, alpha=0.8, phase_change=PHASE_CHANGE,
     show_rcloud=True, show_collapse=True,
@@ -234,40 +306,33 @@ def plot_momentum_lines_on_ax(
     # --- optional smoothing before integrating
     F = smooth_2d(forces, smooth_window, mode=smooth_mode)
 
-    # === Dominant force every DOMINANCE_DT Myr (based on mean fractional |F|)
-    Fabs = np.abs(F)
-    denom = Fabs.sum(axis=0)
-    denom = np.where(denom == 0.0, np.nan, denom)
-    frac = Fabs / denom  # (n_forces, N)
-
-    edges, win = dominant_bins(t, frac, dt=DOMINANCE_DT)
-    colors = [c for _, _, c in FORCE_FIELDS]
+    # === Dominant force based on impulse in each bin
+    edges, winners = dominant_bins_impulse(t, forces_dict, dt=DOMINANCE_DT)
     y0, y1 = DOMINANCE_STRIP
 
-    # Merge consecutive bins with same color to avoid white lines
-    if len(win) > 0:
-        merged_spans = []  # list of (start_edge, end_edge, color_idx)
+    # Merge consecutive bins with same winner to avoid white lines
+    if len(winners) > 0:
+        merged_spans = []  # list of (start_edge, end_edge, field_name)
         current_start = 0
-        current_color = win[0]
+        current_winner = winners[0]
 
-        for b in range(1, len(win)):
-            if win[b] != current_color:
-                # Color changed - save previous span and start new one
-                if current_color >= 0:
-                    merged_spans.append((edges[current_start], edges[b], current_color))
+        for b in range(1, len(winners)):
+            if winners[b] != current_winner:
+                # Winner changed - save previous span and start new one
+                merged_spans.append((edges[current_start], edges[b], current_winner))
                 current_start = b
-                current_color = win[b]
+                current_winner = winners[b]
 
         # Don't forget the last span
-        if current_color >= 0:
-            merged_spans.append((edges[current_start], edges[len(win)], current_color))
+        merged_spans.append((edges[current_start], edges[len(winners)], current_winner))
 
         # Draw merged spans
-        for x0, x1, k in merged_spans:
+        for x0, x1, field in merged_spans:
+            color = DOMINANT_COLORS.get(field, "gray")
             ax.axvspan(
                 x0, x1,
                 ymin=y0, ymax=y1,
-                color=colors[k],
+                color=color,
                 alpha=DOMINANCE_ALPHA,
                 lw=0,
                 edgecolor='none',
@@ -277,70 +342,82 @@ def plot_momentum_lines_on_ax(
     # --- integrate each force: p_i(t) = ∫ F_i dt  (signed)
     P = cumtrapz_2d(F, t)  # shape (n_forces, n_time)
 
-    def plot_abs_with_sign_linestyle(ax, x, y, *, color, label=None, lw=1.6, alpha=0.95, zorder=3):
+    def plot_abs_with_sign_linestyle(ax, x, y, *, color, label=None, lw=1.6, alpha=0.95, zorder=3, base_ls="-"):
+        """Plot |y| with solid for positive, dashed for negative."""
         x = np.asarray(x, dtype=float)
         y = np.asarray(y, dtype=float)
-    
+
         yabs = np.abs(y)
         neg = y < 0
-    
+
         xs = [x[0]]
         ys = [yabs[0]]
         current_neg = neg[0]
         first_segment = True
-    
+
         for i in range(len(x) - 1):
             same_sign_next = (neg[i + 1] == current_neg)
             if same_sign_next:
                 xs.append(x[i + 1])
                 ys.append(yabs[i + 1])
                 continue
-    
-            # sign changes between i and i+1: insert crossing at y=0 if it truly crosses
-            x0, x1 = x[i], x[i + 1]
-            y0, y1 = y[i], y[i + 1]
-    
-            if y0 * y1 < 0:  # true crossing
-                x_cross = x0 + (-y0) * (x1 - x0) / (y1 - y0)
+
+            # sign changes between i and i+1
+            x0_seg, x1_seg = x[i], x[i + 1]
+            y0_seg, y1_seg = y[i], y[i + 1]
+
+            if y0_seg * y1_seg < 0:  # true crossing
+                x_cross = x0_seg + (-y0_seg) * (x1_seg - x0_seg) / (y1_seg - y0_seg)
                 xs.append(x_cross)
                 ys.append(0.0)
                 next_start_x, next_start_y = x_cross, 0.0
             else:
-                # one of them is exactly 0, no need to interpolate
                 next_start_x, next_start_y = x[i + 1], yabs[i + 1]
-    
-            ls = "--" if current_neg else "-"
+
+            # For base_ls="--", use dotted for negative to distinguish
+            if base_ls == "--":
+                ls = ":" if current_neg else "--"
+            else:
+                ls = "--" if current_neg else "-"
             ax.plot(
                 xs, ys,
                 color=color, lw=lw, alpha=alpha, ls=ls, zorder=zorder,
                 label=(label if (label is not None and first_segment) else "_nolegend_"),
             )
             first_segment = False
-    
-            # start new segment
+
             xs = [next_start_x, x[i + 1]]
             ys = [next_start_y, yabs[i + 1]]
             current_neg = neg[i + 1]
-    
+
         # plot final segment
-        ls = "--" if current_neg else "-"
+        if base_ls == "--":
+            ls = ":" if current_neg else "--"
+        else:
+            ls = "--" if current_neg else "-"
         ax.plot(
             xs, ys,
             color=color, lw=lw, alpha=alpha, ls=ls, zorder=zorder,
             label=(label if (label is not None and first_segment) else "_nolegend_"),
         )
 
-
-    # --- plot components (gravity included) using your FORCE_FIELDS colors
-    # P is signed momentum array from cumtrapz_2d(forces, t) with shape (n_forces, n_time)
+    # --- plot main force components (solid lines)
     for (field, label, color), Pi in zip(FORCE_FIELDS, P):
         plot_abs_with_sign_linestyle(ax, t, Pi, color=color, label=label, lw=lw, alpha=alpha, zorder=3)
-    
+
+    # --- plot wind/SN breakdown (dashed lines)
+    for field, label, color in DASHED_FIELDS:
+        F_dashed = forces_dict[field]
+        if smooth_window:
+            F_dashed = smooth_1d(F_dashed, smooth_window, mode=smooth_mode)
+        P_dashed = cumtrapz_2d(F_dashed[None, :], t)[0]
+        plot_abs_with_sign_linestyle(ax, t, P_dashed, color=color, label=label,
+                                      lw=lw*0.8, alpha=alpha*0.8, zorder=2, base_ls="--")
+
     # net momentum (signed): integrate F_net = sum(outward) - gravity
     F_net = F[1:].sum(axis=0) - F[0]
     P_net = cumtrapz_2d(F_net[None, :], t)[0]
     plot_abs_with_sign_linestyle(ax, t, P_net, color="darkgrey", label="Net", lw=net_lw, alpha=0.8, zorder=4)
-
 
     ax.set_xlim(0, t.max())
     ax.set_yscale('log')
@@ -418,9 +495,9 @@ def plot_grid(folder_path, output_dir=None, ndens_filter=None):
 
                 print(f"    Loading: {data_path}")
                 try:
-                    t, r, phase, forces, rcloud, isCollapse = load_run(data_path)
+                    t, r, phase, forces, forces_dict, rcloud, isCollapse = load_run(data_path)
                     plot_momentum_lines_on_ax(
-                        ax, t, r, phase, forces, rcloud, isCollapse,
+                        ax, t, r, phase, forces, forces_dict, rcloud, isCollapse,
                         smooth_window=SMOOTH_WINDOW,
                         phase_change=PHASE_CHANGE
                     )
@@ -451,9 +528,10 @@ def plot_grid(folder_path, output_dir=None, ndens_filter=None):
                     ax.set_xlabel("t [Myr]")
 
         handles = []
-        handles.append(Line2D([0], [0], color="black", lw=1.6, ls="-", label="Gravity"))
-        for _, lab, c in FORCE_FIELDS[1:]:
-            handles.append(Line2D([0], [0], color=c, lw=1.6, label=lab))
+        for _, lab, c in FORCE_FIELDS:
+            handles.append(Line2D([0], [0], color=c, lw=1.6, ls="-", label=lab))
+        for _, lab, c in DASHED_FIELDS:
+            handles.append(Line2D([0], [0], color=c, lw=1.2, ls="--", label=lab))
         handles.append(Line2D([0], [0], color="darkgrey", lw=2.4,
                               label=r"Net: $| \int (\sum F_{\rm out} - F_{\rm grav})\,dt |$"))
         handles.extend(get_marker_legend_handles())
