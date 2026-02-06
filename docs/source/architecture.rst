@@ -74,9 +74,9 @@ TRINITY is organized into layered modules: an orchestrator, phase-specific solve
     │  ┌──────────────────┐              ┌──────────────────┐             │
     │  │     _input/      │              │     _output/     │             │
     │  │                  │              │                  │             │
-    │  │  read_param      │              │  simulation_end  │             │
-    │  │  dictionary      │              │  terminal_prints │             │
-    │  │  (DescribedDict) │              │  json2fits       │             │
+    │  │  read_param      │              │  trinity_reader  │             │
+    │  │  dictionary      │              │  simulation_end  │             │
+    │  │  (DescribedDict) │              │  terminal_prints │             │
     │  └──────────────────┘              └──────────────────┘             │
     └─────────────────────────────────────────────────────────────────────┘
 
@@ -346,3 +346,4 @@ See Also
 
 - :ref:`sec-running` for how to execute simulations
 - :ref:`sec-parameters` for parameter specifications and units
+- :ref:`sec-trinity-reader` for reading and analyzing output data

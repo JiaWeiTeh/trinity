@@ -9,25 +9,30 @@ Common Features
 
 All plotting scripts support:
 
-- **Single-run mode**: Plot a single simulation from command line or config
+- **Folder-based input**: Auto-discover simulations using ``-F /path/to/outputs``
+- **Density filtering**: Filter by core density with ``--nCore`` or ``-n``
 - **Grid mode**: Generate parameter-space grids (mCloud × SFE)
-- **CLI interface**: ``python paper_*.py <run_name>`` or ``python paper_*.py /path/to/data``
 - **Consistent styling**: Uses ``trinity.mplstyle`` for publication-quality figures
 - **Phase markers**: Shows transition (T) and momentum (M) phase boundaries
+
+All scripts use the ``trinity_reader`` module (see :ref:`sec-trinity-reader`) for data loading.
 
 Usage Examples
 --------------
 
 .. code-block:: bash
 
-   # Single run from command line
-   python src/_plots/paper_feedback.py 1e7_sfe020_n1e4
+   # Plot all simulations from a folder (auto-discovers mCloud/SFE grid)
+   python src/_plots/paper_feedback.py -F /path/to/outputs/sweep_test
 
-   # From explicit path
+   # Filter by core density
+   python src/_plots/paper_feedback.py -F /path/to/outputs --nCore 1e4
+
+   # Specify output directory for figures
+   python src/_plots/paper_feedback.py -F /path/to/outputs -o /path/to/figures
+
+   # Single run from explicit path
    python src/_plots/paper_radiusEvolution.py /path/to/dictionary.jsonl
-
-   # Grid mode (uses config at top of file)
-   python src/_plots/paper_feedback.py
 
 Force Budget Plots
 ------------------
@@ -75,7 +80,19 @@ Force categories:
 - **Photoionised gas** (red)
 - **Radiation** (purple)
 
-Supports static plots and animated GIF generation with ``--movie`` flag.
+F_ram competes as a whole first, then subclassifies to wind (blue) or SN (yellow) if it wins.
+For simulations that have ended (t > t_max), the final dominant feedback is persisted.
+
+.. code-block:: bash
+
+   # Plot from folder
+   python src/_plots/paper_dominantFeedback.py -F /path/to/outputs --nCore 1e4
+
+   # Custom time snapshots
+   python src/_plots/paper_dominantFeedback.py -F /path/to/outputs --times 1.0 3.0 5.0
+
+   # Generate animated GIF
+   python src/_plots/paper_dominantFeedback.py -F /path/to/outputs --movie --dt 0.05
 
 Thermal Regime Plots
 --------------------
@@ -162,30 +179,36 @@ Shows cumulative momentum evolution with force contributions.
 Configuration
 -------------
 
-Each script has configuration variables at the top of the file:
+Scripts are configured via command-line arguments. Common options:
 
-.. code-block:: python
+.. code-block:: bash
 
-   # Parameter space
-   mCloud_list = ["1e5", "5e5", "1e6", "5e6", "1e7", "5e7", "1e8"]
-   ndens_list = ["1e3"]
-   sfe_list = ["001", "005", "010", "020", "030", "050", "070", "080"]
+   # Required: folder containing simulations
+   -F, --folder PATH     Path to folder with simulation subfolders
 
-   # Base directory for outputs
-   BASE_DIR = Path.home() / "unsync/Code/Trinity/outputs/sweep_test_modified"
+   # Filtering
+   -n, --nCore VALUE     Filter by core density (e.g., "1e4")
 
-   # Smoothing
-   SMOOTH_WINDOW = 11  # Moving average window (None to disable)
+   # Output
+   -o, --output-dir PATH Directory to save figures (default: fig/)
 
-   # Optional single-run mode
-   ONLY_M = "1e7"    # Set to None for grid mode
-   ONLY_N = "1e4"
-   ONLY_SFE = "010"
+   # Time selection (for grid plots)
+   -t, --times VALUES    Time snapshots in Myr (e.g., 1.0 3.0 5.0)
+
+   # Display options
+   --smooth METHOD       Smoothing: 'none' or 'interp'
+   --axis-mode MODE      'discrete' or 'continuous'
 
 Output
 ------
 
-All figures are saved to the ``fig/`` directory as PDF files with descriptive names:
+All figures are saved to the ``fig/{folder_name}/`` directory as PDF files:
 
-- Single run: ``{script}_{run_name}.pdf``
-- Grid: ``{script}_grid_{mass_range}_{sfe_range}_{ndens}.pdf``
+.. code-block:: text
+
+   fig/
+   └── sweep_test/
+       ├── feedback_n1e4.pdf
+       ├── dominantFeedback_n1e4_continuous_interp.pdf
+       ├── radiusEvolution_1e7_sfe020_n1e4.pdf
+       └── ...

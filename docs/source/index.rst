@@ -23,4 +23,5 @@ Contents
    architecture
    physics
    visualization
+   trinity_reader
    publications

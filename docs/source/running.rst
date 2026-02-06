@@ -57,9 +57,10 @@ TRINITY creates the following structure in your output directory (set by ``path2
 .. code-block:: text
 
     path2output/
-    ├── {model_name}_summary.txt    # Human-readable parameter summary
-    ├── {model_name}.log            # Log file (if log_file = True)
-    └── {model_name}.json           # Simulation output data
+    ├── {model_name}/
+    │   ├── dictionary.jsonl        # Simulation output data (JSONL format)
+    │   ├── {model_name}_summary.txt    # Human-readable parameter summary
+    │   └── {model_name}.log        # Log file (if log_file = True)
 
 If ``path2output`` is set to ``def_dir`` (default), outputs are written to the directory where TRINITY is executed.
 
@@ -133,11 +134,11 @@ Output files are organized into subdirectories:
 
     outputs/my_sweep/
     ├── 1e5_sfe001_n1e2/
-    │   ├── 1e5_sfe001_n1e2_summary.txt
-    │   └── 1e5_sfe001_n1e2.json
+    │   ├── dictionary.jsonl            # Simulation output data
+    │   └── 1e5_sfe001_n1e2_summary.txt
     ├── 1e5_sfe001_n1e3/
     │   └── ...
-    └── sweep_report.json           # Summary of all runs
+    └── sweep_report.json               # Summary of all runs
 
 
 Logging Configuration
@@ -291,23 +292,44 @@ With ``log_level = INFO``:
 Output Formats
 --------------
 
-JSON Output
-^^^^^^^^^^^
+JSONL Output
+^^^^^^^^^^^^
 
-The primary output format is JSON (``output_format = JSON``), containing:
+TRINITY uses **JSONL** (JSON Lines) format for simulation output, where each line
+is a complete JSON object representing one timestep:
 
-- All input parameters with metadata
-- Time-evolution arrays (radius, velocity, temperature, etc.)
-- Derived quantities (forces, luminosities, masses)
+.. code-block:: text
 
-Snapshot System
-^^^^^^^^^^^^^^^
+    {"t_now": 0.001, "R2": 0.5, "v2": 100, ...}
+    {"t_now": 0.002, "R2": 0.6, "v2": 98, ...}
+    ...
 
-TRINITY uses an append-only JSONL (JSON Lines) format for snapshots, where each line represents one timestep. This provides:
+This format provides:
 
-- O(1) write performance for large simulations
-- Easy parsing and streaming of results
-- Automatic array simplification for efficiency
+- **O(1) write performance**: Append-only, no rewriting of previous data
+- **Streaming reads**: Process large files without loading everything into memory
+- **Crash resilience**: Partial files are still readable up to the last complete line
+
+Reading Output Data
+^^^^^^^^^^^^^^^^^^^
+
+Use the ``trinity_reader`` module to access output data:
+
+.. code-block:: python
+
+    from src._output.trinity_reader import load_output
+
+    output = load_output('/path/to/dictionary.jsonl')
+    output.info()  # Print summary
+
+    # Access time series
+    times = output.get('t_now')
+    radii = output.get('R2')
+
+    # Get snapshot at specific time
+    snap = output.get_at_time(1.0)
+
+See :ref:`sec-trinity-reader` for complete API documentation.
 
 
 Troubleshooting
