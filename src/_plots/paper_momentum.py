@@ -26,9 +26,9 @@ SAVE_PDF = True
 
 PHASE_CHANGE = True
 
-SMOOTH_WINDOW = None
+SMOOTH_WINDOW = 11
 
-DOMINANCE_DT = 0.05          # Myr
+DOMINANCE_DT = 0.1          # Myr
 DOMINANCE_ALPHA = 0.9
 DOMINANCE_STRIP = (0.94, 1)  # (ymin, ymax) in AXES fraction (0..1) - doubled thickness
 
