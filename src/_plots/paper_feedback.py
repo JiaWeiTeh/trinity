@@ -238,40 +238,40 @@ def plot_run_on_ax(
         a = 1.0 if field == "PISM" else alpha  # keep white crisp
         ax.fill_between(t, y0, y1, color=color, alpha=a, lw=0, zorder=2)
 
-    # --- overlay wind/SN inside ram band, ONLY AFTER MOMENTUM PHASE
+    # --- overlay wind/SN inside ram band, ONLY AFTER TRANSITION PHASE
     if INCLUDE_ALL_FORCE:
         Fw_raw, Fsn_raw = overlay_forces[0], overlay_forces[1]
 
         if not (np.all(np.isnan(Fw_raw)) and np.all(np.isnan(Fsn_raw))):
-            # Find momentum phase start index
-            momentum_mask = np.array([p == 'momentum' for p in phase])
-            if np.any(momentum_mask):
-                momentum_start_idx = np.argmax(momentum_mask)  # first True index
+            # Find transition phase start index (hatching starts after transition)
+            transition_mask = np.array([p in ('transition', 'momentum') for p in phase])
+            if np.any(transition_mask):
+                transition_start_idx = np.argmax(transition_mask)  # first True index
             else:
-                momentum_start_idx = len(t)  # no momentum phase = no hatching
+                transition_start_idx = len(t)  # no transition phase = no hatching
 
-            # Only proceed if we have momentum phase data
-            if momentum_start_idx < len(t):
-                # Slice arrays to momentum phase only
-                t_mom = t[momentum_start_idx:]
+            # Only proceed if we have transition/momentum phase data
+            if transition_start_idx < len(t):
+                # Slice arrays to transition/momentum phase only
+                t_post = t[transition_start_idx:]
 
                 # Smooth overlay components too
                 Fw  = smooth_1d(np.nan_to_num(Fw_raw,  nan=0.0), smooth_window, mode=smooth_mode)
                 Fsn = smooth_1d(np.nan_to_num(Fsn_raw, nan=0.0), smooth_window, mode=smooth_mode)
 
-                # Slice to momentum phase
-                Fw_mom = Fw[momentum_start_idx:]
-                Fsn_mom = Fsn[momentum_start_idx:]
+                # Slice to transition/momentum phase
+                Fw_post = Fw[transition_start_idx:]
+                Fsn_post = Fsn[transition_start_idx:]
 
                 # Use smoothed total ram from base stack as denominator
                 Fram = base_use[1].copy()
-                Fram_mom = Fram[momentum_start_idx:]
+                Fram_post = Fram[transition_start_idx:]
 
                 eps = 1e-30
-                denom = np.where(np.isfinite(Fram_mom) & (Fram_mom > 0), Fram_mom, np.nan)
+                denom = np.where(np.isfinite(Fram_post) & (Fram_post > 0), Fram_post, np.nan)
 
-                f_wind = np.nan_to_num(Fw_mom  / (denom + eps), nan=0.0)
-                f_sn   = np.nan_to_num(Fsn_mom / (denom + eps), nan=0.0)
+                f_wind = np.nan_to_num(Fw_post  / (denom + eps), nan=0.0)
+                f_sn   = np.nan_to_num(Fsn_post / (denom + eps), nan=0.0)
 
                 # Clip and renormalize if wind+SN > 1
                 f_wind = np.clip(f_wind, 0.0, 1.0)
@@ -282,16 +282,16 @@ def plot_run_on_ax(
                 f_sn[mask]   /= s[mask]
 
                 # Ram band bounds in the stacked fraction plot (still index 1)
-                ram_bottom_mom = prev[1][momentum_start_idx:]
-                ram_top_mom    = cum[1][momentum_start_idx:]
-                ram_h_mom      = ram_top_mom - ram_bottom_mom
+                ram_bottom_post = prev[1][transition_start_idx:]
+                ram_top_post    = cum[1][transition_start_idx:]
+                ram_h_post      = ram_top_post - ram_bottom_post
 
-                y_wind_top = ram_bottom_mom + f_wind * ram_h_mom
-                y_sn_top   = y_wind_top + f_sn * ram_h_mom
+                y_wind_top = ram_bottom_post + f_wind * ram_h_post
+                y_sn_top   = y_wind_top + f_sn * ram_h_post
 
                 # --- Wind slice: forward slashes, normal hatch density
                 ax.fill_between(
-                    t_mom, ram_bottom_mom, y_wind_top,
+                    t_post, ram_bottom_post, y_wind_top,
                     facecolor="none",
                     edgecolor=C_RAM,          # blue
                     hatch="////",
@@ -303,7 +303,7 @@ def plot_run_on_ax(
                 # --- SN slice: back slashes, yellow color for visibility
                 for _ in range(4):  # draw multiple times for thicker hatch
                     ax.fill_between(
-                        t_mom, y_wind_top, y_sn_top,
+                        t_post, y_wind_top, y_sn_top,
                         facecolor="none",
                         edgecolor=C_SN,       # yellow for SN
                         hatch="\\\\\\\\",     # opposite direction
@@ -313,11 +313,11 @@ def plot_run_on_ax(
                     )
 
                 # Helpful boundaries - blue for wind/ram top, yellow for SN top
-                ax.plot(t_mom, y_wind_top, color=C_RAM, lw=1.2, alpha=0.95, zorder=6)
-                ax.plot(t_mom, y_sn_top,   color=C_SN,  lw=1.2, alpha=0.95, zorder=6)
+                ax.plot(t_post, y_wind_top, color=C_RAM, lw=1.2, alpha=0.95, zorder=6)
+                ax.plot(t_post, y_sn_top,   color=C_SN,  lw=1.2, alpha=0.95, zorder=6)
 
                 # Optional: subtle tint to keep "ram is blue" obvious without overpowering
-                ax.fill_between(t_mom, ram_bottom_mom, ram_top_mom, color=C_RAM, alpha=0.10, lw=0, zorder=4)
+                ax.fill_between(t_post, ram_bottom_post, ram_top_post, color=C_RAM, alpha=0.10, lw=0, zorder=4)
 
     ax.set_ylim(0, 1)
 
