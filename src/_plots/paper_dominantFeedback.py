@@ -14,6 +14,9 @@ Each subplot (one per time snapshot):
 - Color: dominant feedback force (F_grav, F_ram_wind, F_ram_SN, F_ion_out, F_rad)
 - White: no data (simulation ended before this time or hasn't reached it)
 
+F_ram competes as a whole first, then subclassifies to wind (blue) or SN (yellow)
+if it wins. This is the same logic as paper_momentum.py's dominant bar.
+
 Usage
 -----
     # Default settings
@@ -59,60 +62,15 @@ plt.style.use(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'trinity.
 # Switch to use *_modified/ output folders and save as *_modified.pdf
 USE_MODIFIED = False
 
-# F_ram decomposition mode: 'decomposed', 'combined', 'sn_highlight', or 'ram_subclass'
-# - 'decomposed': F_ram_wind (blue), F_ram_SN (yellow), F_ram_residual (gray) separately
-# - 'combined': single F_ram category (blue)
-# - 'sn_highlight': F_ram_thermal (blue, wind+residual), F_ram_SN (yellow) - highlights SN only
-# - 'ram_subclass': F_ram competes as whole, then subclassifies to wind (blue) or SN (yellow) if it wins
-DECOMPOSE_MODE = 'ram_subclass'
-
 # Force field definitions: (key, label, color)
-# DECOMPOSED mode: F_ram split into wind/SN/residual (6 force types, indices 0-5)
-FORCE_FIELDS_DECOMPOSED = [
-    ("F_grav",         "Gravity",           "#2c3e50"),  # Dark blue-gray
-    ("F_ram_wind",     "Winds",             "#3498db"),  # Blue (ram from winds)
-    ("F_ram_SN",       "Supernovae",        "#DAA520"),  # Golden yellow for SN
-    ("F_ram_residual", "Other thermal",     "#7f8c8d"),  # Gray (F_ram - wind - SN)
-    ("F_ion_out",      "Photoionised gas",  "#e74c3c"),  # Red
-    ("F_rad",          "Radiation",         "#9b59b6"),  # Purple
-]
-
-# COMBINED mode: F_ram as single category (4 force types, indices 0-3)
-FORCE_FIELDS_COMBINED = [
-    ("F_grav",    "Gravity",           "#2c3e50"),  # Dark blue-gray
-    ("F_ram",     "Ram pressure",      "#3498db"),  # Blue (combined ram)
-    ("F_ion_out", "Photoionised gas",  "#e74c3c"),  # Red
-    ("F_rad",     "Radiation",         "#9b59b6"),  # Purple
-]
-
-# SN_HIGHLIGHT mode: Only F_ram_SN highlighted, wind+residual grouped as thermal (5 force types)
-FORCE_FIELDS_SN_HIGHLIGHT = [
-    ("F_grav",         "Gravity",              "#2c3e50"),  # Dark blue-gray
-    ("F_ram_thermal",  "Thermal (non-SN)",     "#3498db"),  # Blue (wind + residual combined)
-    ("F_ram_SN",       "Supernovae",           "#DAA520"),  # Golden yellow for SN
-    ("F_ion_out",      "Photoionised gas",     "#e74c3c"),  # Red
-    ("F_rad",          "Radiation",            "#9b59b6"),  # Purple
-]
-
-# RAM_SUBCLASS mode: F_ram competes as a whole first, then subclassifies if it wins (5 force types)
-# This is similar to paper_momentum.py's dominant bar logic
-FORCE_FIELDS_RAM_SUBCLASS = [
+# F_ram competes as a whole first, then subclassifies to wind or SN if it wins
+FORCE_FIELDS = [
     ("F_grav",     "Gravity",           "#2c3e50"),  # Dark blue-gray
     ("F_ram_wind", "Winds",             "#3498db"),  # Blue for winds (when F_ram wins and wind > SN)
     ("F_ram_SN",   "Supernovae",        "#DAA520"),  # Golden yellow for SN (when F_ram wins and SN > wind)
     ("F_ion_out",  "Photoionised gas",  "#e74c3c"),  # Red
     ("F_rad",      "Radiation",         "#9b59b6"),  # Purple
 ]
-
-# Active force fields (set based on DECOMPOSE_MODE)
-if DECOMPOSE_MODE == 'decomposed':
-    FORCE_FIELDS = FORCE_FIELDS_DECOMPOSED
-elif DECOMPOSE_MODE == 'sn_highlight':
-    FORCE_FIELDS = FORCE_FIELDS_SN_HIGHLIGHT
-elif DECOMPOSE_MODE == 'ram_subclass':
-    FORCE_FIELDS = FORCE_FIELDS_RAM_SUBCLASS
-else:
-    FORCE_FIELDS = FORCE_FIELDS_COMBINED
 
 # Special values for missing data (must be negative to distinguish from force indices)
 FILE_NOT_FOUND = -1      # Gray: simulation file not found
@@ -124,14 +82,10 @@ COLOR_TIME_OUT_OF_RANGE = "#ffffff"   # White
 
 # Default parameters
 DEFAULT_MCLOUD = ["1e5", "5e5", "1e6", "5e6", "1e7", "5e7", "1e8"]
-# DEFAULT_SFE = ["001", "010", "030", "050", "080"] #"020"
-DEFAULT_SFE = ["001", "005", "010", "020", "030", "050", "070", "080"] #"020"
-# DEFAULT_NCORE = ["1e2", "1e4"]  # List of nCore values - produces one plot per nCore
-DEFAULT_NCORE = ["1e3"]  # List of nCore values - produces one plot per nCore
-# DEFAULT_TIMES = [1.0, 1.5, 2.0, 2.5]  # Myr
+DEFAULT_SFE = ["001", "005", "010", "020", "030", "050", "070", "080"]
+DEFAULT_NCORE = ["1e3"]
 # Note: SN typically starts ~3-4 Myr after star formation
 DEFAULT_TIMES = [1.0, 3.0, 5.0]  # Myr - includes times when SN should be active
-
 
 # Axis mode options:
 #   'discrete': equal spacing, categorical labels (default)
@@ -150,39 +104,25 @@ def build_filename(base_name, **kwargs):
     """
     Build output filename from base name and keyword arguments.
 
-    This is a future-proof helper that automatically includes all provided
-    flags in the filename. Add new flags here as they are added to the CLI.
-
     Parameters
     ----------
     base_name : str
         Base name for the file (e.g., 'dominantFeedback')
     **kwargs : dict
         Flag name-value pairs to include in filename.
-        Common flags: nCore, modified, axis_mode, smooth, t_range, etc.
-        Values that are None, False, or 'none' are skipped.
 
     Returns
     -------
     str
-        Filename without extension (e.g., 'dominantFeedback_n1e4_continuous_interp')
-
-    Examples
-    --------
-    >>> build_filename('dominantFeedback', nCore='1e4', modified=True, axis_mode='continuous')
-    'dominantFeedback_n1e4_modified_continuous'
-    >>> build_filename('dominantFeedback_movie', nCore='1e4', t_range=(0.0, 5.0))
-    'dominantFeedback_movie_n1e4_t0.0-5.0'
+        Filename without extension
     """
     parts = [base_name]
 
-    # Define flag order and formatting (add new flags here for future-proofing)
     flag_order = [
         ('nCore', lambda v: f"n{v}"),
         ('modified', lambda v: "modified" if v else None),
         ('axis_mode', lambda v: v if v and v != 'discrete' else None),
         ('smooth', lambda v: v if v and v != 'none' else None),
-        ('decompose_mode', lambda v: v if v and v != 'combined' else None),
         ('t_range', lambda v: f"t{v[0]:.1f}-{v[1]:.1f}" if v else None),
     ]
 
@@ -206,28 +146,13 @@ def get_snapshot_at_time(output, target_time):
     Get snapshot data at a specific time.
 
     Returns None if the target time is outside the simulation's data range.
-    This prevents interpolation into "unknown territory".
-
-    Parameters
-    ----------
-    output : TrinityOutput
-        Loaded simulation output
-    target_time : float
-        Target time in Myr
-
-    Returns
-    -------
-    dict or None
-        Snapshot data dict, or None if time is out of range
     """
     t_min = output.t_min
     t_max = output.t_max
 
-    # Strict bounds checking - no extrapolation
     if target_time < t_min or target_time > t_max:
         return None
 
-    # Use closest snapshot mode to avoid interpolation artifacts
     try:
         snap = output.get_at_time(target_time, mode='closest', quiet=True)
         return snap.data
@@ -235,101 +160,61 @@ def get_snapshot_at_time(output, target_time):
         return None
 
 
-def get_dominant_force(snapshot, force_fields=None, decompose_mode=None):
+def get_dominant_force(snapshot):
     """
     Determine the dominant feedback force from a snapshot.
 
-    Parameters
-    ----------
-    snapshot : dict
-        Snapshot data dictionary
-    force_fields : list, optional
-        List of (key, label, color) tuples. If None, uses global FORCE_FIELDS.
-    decompose_mode : str, optional
-        Decomposition mode. If 'ram_subclass', F_ram competes as whole first,
-        then subclassifies to wind vs SN if it wins.
+    F_ram competes as a whole first, then subclassifies to wind vs SN if it wins.
 
     Returns
     -------
     int or np.nan
-        Index of dominant force, or np.nan if no valid forces
+        Index of dominant force (0-4), or np.nan if no valid forces
     """
     if snapshot is None:
         return np.nan
 
-    if force_fields is None:
-        force_fields = FORCE_FIELDS
-    if decompose_mode is None:
-        decompose_mode = DECOMPOSE_MODE
-
-    # Use get_force_values to handle computed fields like F_ram_residual
-    force_vals = get_force_values(snapshot, force_fields)
+    force_vals = get_force_values(snapshot)
     if force_vals is None:
         return np.nan
 
-    # RAM_SUBCLASS mode: F_ram competes as whole, then subclassifies if it wins
-    if decompose_mode == 'ram_subclass':
-        # Get individual force values
-        F_grav = abs(force_vals.get("F_grav", 0.0) or 0.0)
-        F_ram_wind = abs(force_vals.get("F_ram_wind", 0.0) or 0.0)
-        F_ram_SN = abs(force_vals.get("F_ram_SN", 0.0) or 0.0)
-        F_ion_out = abs(force_vals.get("F_ion_out", 0.0) or 0.0)
-        F_rad = abs(force_vals.get("F_rad", 0.0) or 0.0)
+    # Get individual force values
+    F_grav = abs(force_vals.get("F_grav", 0.0) or 0.0)
+    F_ram_wind = abs(force_vals.get("F_ram_wind", 0.0) or 0.0)
+    F_ram_SN = abs(force_vals.get("F_ram_SN", 0.0) or 0.0)
+    F_ion_out = abs(force_vals.get("F_ion_out", 0.0) or 0.0)
+    F_rad = abs(force_vals.get("F_rad", 0.0) or 0.0)
 
-        # F_ram competes as total
-        F_ram_total = F_ram_wind + F_ram_SN
+    # F_ram competes as total
+    F_ram_total = F_ram_wind + F_ram_SN
 
-        # Compete: {F_grav, F_ram_total, F_ion_out, F_rad}
-        competitors = [F_grav, F_ram_total, F_ion_out, F_rad]
-        total = sum(competitors)
-        if total == 0 or not np.isfinite(total):
-            return np.nan
-
-        winner_idx = int(np.argmax(competitors))
-
-        # Map winner to FORCE_FIELDS_RAM_SUBCLASS indices:
-        # 0 = F_grav, 1 = F_ram_wind, 2 = F_ram_SN, 3 = F_ion_out, 4 = F_rad
-        if winner_idx == 0:  # F_grav wins
-            return 0
-        elif winner_idx == 1:  # F_ram_total wins -> subclassify
-            # Return wind (1) or SN (2) based on which is larger
-            if F_ram_SN > F_ram_wind:
-                return 2  # F_ram_SN (yellow)
-            else:
-                return 1  # F_ram_wind (blue)
-        elif winner_idx == 2:  # F_ion_out wins
-            return 3
-        else:  # F_rad wins
-            return 4
-
-    # Default mode: standard argmax over all force fields
-    forces = []
-    for key, _, _ in force_fields:
-        val = force_vals.get(key, 0.0)
-        if val is None or not np.isfinite(val):
-            forces.append(0.0)
-        else:
-            forces.append(abs(val))
-
-    # Check if we have any valid force data
-    total = sum(forces)
+    # Compete: {F_grav, F_ram_total, F_ion_out, F_rad}
+    competitors = [F_grav, F_ram_total, F_ion_out, F_rad]
+    total = sum(competitors)
     if total == 0 or not np.isfinite(total):
         return np.nan
 
-    return int(np.argmax(forces))
+    winner_idx = int(np.argmax(competitors))
+
+    # Map winner to FORCE_FIELDS indices:
+    # 0 = F_grav, 1 = F_ram_wind, 2 = F_ram_SN, 3 = F_ion_out, 4 = F_rad
+    if winner_idx == 0:  # F_grav wins
+        return 0
+    elif winner_idx == 1:  # F_ram_total wins -> subclassify
+        # Return wind (1) or SN (2) based on which is larger
+        if F_ram_SN > F_ram_wind:
+            return 2  # F_ram_SN (yellow)
+        else:
+            return 1  # F_ram_wind (blue)
+    elif winner_idx == 2:  # F_ion_out wins
+        return 3
+    else:  # F_rad wins
+        return 4
 
 
-def get_force_values(snapshot, force_fields=None):
+def get_force_values(snapshot):
     """
     Extract all force values from a snapshot.
-
-    Parameters
-    ----------
-    snapshot : dict
-        Snapshot data dictionary
-    force_fields : list, optional
-        List of (key, label, color) tuples defining which forces to extract.
-        If None, uses global FORCE_FIELDS.
 
     Returns
     -------
@@ -339,79 +224,19 @@ def get_force_values(snapshot, force_fields=None):
     if snapshot is None:
         return None
 
-    if force_fields is None:
-        force_fields = FORCE_FIELDS
-
     forces = {}
-    force_keys = [key for key, _, _ in force_fields]
-
-    # First pass: get raw values for standard fields
-    # Skip computed fields (F_ram_residual, F_ram_thermal) - they're computed below
-    computed_fields = {"F_ram_residual", "F_ram_thermal"}
-    for key, _, _ in force_fields:
-        if key in computed_fields:
-            continue
+    for key, _, _ in FORCE_FIELDS:
         val = snapshot.get(key)
         if val is None or not np.isfinite(val):
             forces[key] = np.nan
         else:
             forces[key] = abs(val)
 
-    # Compute F_ram_residual only if it's in the force fields (decomposed mode)
-    if "F_ram_residual" in force_keys:
-        # F_ram_residual = F_ram - F_ram_wind - F_ram_SN
-        # This captures any thermal pressure not from direct wind/SN momentum input
-        F_ram = snapshot.get("F_ram")
-        F_ram_wind = forces.get("F_ram_wind", 0.0)
-        F_ram_SN = forces.get("F_ram_SN", 0.0)
-
-        if F_ram is not None and np.isfinite(F_ram):
-            # Use nan_to_num to handle NaN in wind/SN values
-            F_wind_val = np.nan_to_num(F_ram_wind, nan=0.0)
-            F_SN_val = np.nan_to_num(F_ram_SN, nan=0.0)
-            residual = abs(F_ram) - F_wind_val - F_SN_val
-            # Residual should be non-negative (force magnitude)
-            forces["F_ram_residual"] = max(0.0, residual)
-        else:
-            forces["F_ram_residual"] = np.nan
-
-    # Compute F_ram_thermal only if it's in the force fields (sn_highlight mode)
-    if "F_ram_thermal" in force_keys:
-        # F_ram_thermal = F_ram - F_ram_SN (combines wind + residual into one blue category)
-        # This highlights SN contribution while grouping all other thermal feedback
-        F_ram = snapshot.get("F_ram")
-        F_ram_SN_raw = snapshot.get("F_ram_SN")
-
-        if F_ram is not None and np.isfinite(F_ram):
-            F_SN_val = np.nan_to_num(F_ram_SN_raw, nan=0.0) if F_ram_SN_raw is not None else 0.0
-            thermal = abs(F_ram) - abs(F_SN_val)
-            # Thermal should be non-negative (force magnitude)
-            forces["F_ram_thermal"] = max(0.0, thermal)
-        else:
-            forces["F_ram_thermal"] = np.nan
-
     return forces
 
 
 def load_simulation(base_dir, run_name, use_modified=False):
-    """
-    Load simulation output for a given run name.
-
-    Parameters
-    ----------
-    base_dir : Path
-        Base directory containing output folders
-    run_name : str
-        Run name (e.g., "1e7_sfe001_n1e4")
-    use_modified : bool
-        If True, look in *_modified/ folders instead of regular folders
-
-    Returns
-    -------
-    TrinityOutput or None
-        Loaded output, or None if not found
-    """
-    # Modify run_name to look in *_modified folder if requested
+    """Load simulation output for a given run name."""
     search_name = f"{run_name}_modified" if use_modified else run_name
 
     data_path = find_data_file(base_dir, search_name)
@@ -430,33 +255,9 @@ def load_simulation(base_dir, run_name, use_modified=False):
 # =============================================================================
 
 def build_dominance_grid(target_time, mCloud_list, sfe_list, nCore, base_dir, use_modified=False):
-    """
-    Build 2D grid of dominant feedback indices for a given time.
-
-    Parameters
-    ----------
-    target_time : float
-        Target time in Myr
-    mCloud_list : list
-        List of cloud mass strings (e.g., ["1e7", "1e8"])
-    sfe_list : list
-        List of SFE strings (e.g., ["001", "010", "020"])
-    nCore : str
-        Core density string (e.g., "1e4")
-    base_dir : Path
-        Base directory for output folders
-    use_modified : bool
-        If True, look in *_modified/ folders
-
-    Returns
-    -------
-    np.ndarray
-        2D array shape (len(sfe_list), len(mCloud_list))
-        Values: 0-3 for force index, FILE_NOT_FOUND (-1), TIME_OUT_OF_RANGE (-2)
-    """
+    """Build 2D grid of dominant feedback indices for a given time."""
     n_sfe = len(sfe_list)
     n_mass = len(mCloud_list)
-    # Initialize with FILE_NOT_FOUND as default
     grid = np.full((n_sfe, n_mass), FILE_NOT_FOUND, dtype=float)
 
     for j, mCloud in enumerate(mCloud_list):
@@ -470,7 +271,6 @@ def build_dominance_grid(target_time, mCloud_list, sfe_list, nCore, base_dir, us
                 grid[i, j] = FILE_NOT_FOUND
                 continue
 
-            # Check time bounds before attempting to get snapshot
             if target_time < output.t_min or target_time > output.t_max:
                 print(f"    {display_name}: t={target_time} outside range [{output.t_min:.3f}, {output.t_max:.3f}]")
                 grid[i, j] = TIME_OUT_OF_RANGE
@@ -480,7 +280,6 @@ def build_dominance_grid(target_time, mCloud_list, sfe_list, nCore, base_dir, us
             dominant = get_dominant_force(snapshot)
 
             if np.isnan(dominant):
-                # Valid file, valid time, but no force data
                 grid[i, j] = TIME_OUT_OF_RANGE
             else:
                 grid[i, j] = dominant
@@ -491,46 +290,14 @@ def build_dominance_grid(target_time, mCloud_list, sfe_list, nCore, base_dir, us
 
 
 def build_force_grids(target_time, mCloud_list, sfe_list, nCore, base_dir, use_modified=False):
-    """
-    Build 2D grids of force values for a given time (for proper interpolation).
-
-    Unlike build_dominance_grid which returns dominant indices, this returns
-    the actual force values for each type, allowing proper interpolation
-    before taking argmax.
-
-    Parameters
-    ----------
-    target_time : float
-        Target time in Myr
-    mCloud_list : list
-        List of cloud mass strings (e.g., ["1e7", "1e8"])
-    sfe_list : list
-        List of SFE strings (e.g., ["001", "010", "020"])
-    nCore : str
-        Core density string (e.g., "1e4")
-    base_dir : Path
-        Base directory for output folders
-    use_modified : bool
-        If True, look in *_modified/ folders
-
-    Returns
-    -------
-    forces_dict : dict
-        Dictionary {force_key: 2D array} for each force type
-    mask : np.ndarray
-        Boolean 2D array where True = invalid (file not found or time out of range)
-    status_grid : np.ndarray
-        2D array with FILE_NOT_FOUND (-1) or TIME_OUT_OF_RANGE (-2) for invalid cells
-    """
+    """Build 2D grids of force values for a given time (for proper interpolation)."""
     n_sfe = len(sfe_list)
     n_mass = len(mCloud_list)
 
-    # Initialize force grids with NaN
     forces_dict = {}
     for key, _, _ in FORCE_FIELDS:
         forces_dict[key] = np.full((n_sfe, n_mass), np.nan, dtype=float)
 
-    # Status grid for missing data types
     status_grid = np.zeros((n_sfe, n_mass), dtype=float)
     mask = np.zeros((n_sfe, n_mass), dtype=bool)
 
@@ -546,7 +313,6 @@ def build_force_grids(target_time, mCloud_list, sfe_list, nCore, base_dir, use_m
                 status_grid[i, j] = FILE_NOT_FOUND
                 continue
 
-            # Check time bounds
             if target_time < output.t_min or target_time > output.t_max:
                 print(f"    {display_name}: t={target_time} outside range [{output.t_min:.3f}, {output.t_max:.3f}]")
                 mask[i, j] = True
@@ -563,7 +329,6 @@ def build_force_grids(target_time, mCloud_list, sfe_list, nCore, base_dir, use_m
                 for key in forces_dict:
                     forces_dict[key][i, j] = force_vals.get(key, np.nan)
 
-                # Report dominant force
                 valid_forces = {k: v for k, v in force_vals.items() if np.isfinite(v)}
                 if valid_forces:
                     dominant_key = max(valid_forces, key=valid_forces.get)
@@ -575,58 +340,23 @@ def build_force_grids(target_time, mCloud_list, sfe_list, nCore, base_dir, use_m
     return forces_dict, mask, status_grid
 
 
-def refine_dominant_map(logM, eps, forces_dict, mask, nref_M=300, nref_eps=300,
-                        decompose_mode=None):
+def refine_dominant_map(logM, eps, forces_dict, mask, nref_M=300, nref_eps=300):
     """
     Interpolate continuous force fields, then take argmax for smooth boundaries.
 
-    This is the correct approach: interpolate the underlying forces FIRST,
-    then determine the dominant force at each point. This avoids the color
-    bleeding issues from smoothing categorical labels.
-
-    Parameters
-    ----------
-    logM : np.ndarray
-        1D array of log10(Mcloud/Msun) values
-    eps : np.ndarray
-        1D array of SFE values
-    forces_dict : dict
-        Dictionary {force_key: 2D array (n_eps, n_mass)} for each force
-    mask : np.ndarray
-        Boolean 2D array where True = invalid data
-    nref_M : int
-        Number of points in refined mass grid
-    nref_eps : int
-        Number of points in refined SFE grid
-    decompose_mode : str, optional
-        Decomposition mode. If 'ram_subclass', F_ram competes as whole first,
-        then subclassifies to wind vs SN if it wins.
-
-    Returns
-    -------
-    logM_f : np.ndarray
-        Fine mass grid (log10 values)
-    eps_f : np.ndarray
-        Fine SFE grid
-    dom_f : np.ma.MaskedArray
-        Dominant force index at each fine grid point (masked where invalid)
+    F_ram competes as a whole, then subclassifies to wind vs SN if it wins.
     """
-    if decompose_mode is None:
-        decompose_mode = DECOMPOSE_MODE
-
     keys = list(forces_dict.keys())
 
-    # Create fine grids
     logM_f = np.linspace(logM.min(), logM.max(), nref_M)
     eps_f = np.linspace(eps.min(), eps.max(), nref_eps)
-    E, L = np.meshgrid(eps_f, logM_f, indexing="ij")  # shapes (nref_eps, nref_M)
+    E, L = np.meshgrid(eps_f, logM_f, indexing="ij")
     pts = np.stack([E.ravel(), L.ravel()], axis=-1)
 
     # Interpolate each force field
     fine_fields = {}
     for k in keys:
-        arr = np.array(forces_dict[k], dtype=float)  # (n_eps, n_mass)
-        # Set masked regions to NaN to prevent interpolation across holes
+        arr = np.array(forces_dict[k], dtype=float)
         arr_masked = arr.copy()
         arr_masked[mask] = np.nan
 
@@ -638,63 +368,41 @@ def refine_dominant_map(logM, eps, forces_dict, mask, nref_M=300, nref_eps=300,
         )
         fine_fields[k] = itp(pts).reshape(nref_eps, nref_M)
 
-    # RAM_SUBCLASS mode: F_ram competes as whole, then subclassifies
-    if decompose_mode == 'ram_subclass':
-        # Get interpolated force arrays
-        F_grav = np.abs(np.nan_to_num(fine_fields.get("F_grav", 0), nan=0.0))
-        F_ram_wind = np.abs(np.nan_to_num(fine_fields.get("F_ram_wind", 0), nan=0.0))
-        F_ram_SN = np.abs(np.nan_to_num(fine_fields.get("F_ram_SN", 0), nan=0.0))
-        F_ion_out = np.abs(np.nan_to_num(fine_fields.get("F_ion_out", 0), nan=0.0))
-        F_rad = np.abs(np.nan_to_num(fine_fields.get("F_rad", 0), nan=0.0))
+    # Get interpolated force arrays
+    F_grav = np.abs(np.nan_to_num(fine_fields.get("F_grav", 0), nan=0.0))
+    F_ram_wind = np.abs(np.nan_to_num(fine_fields.get("F_ram_wind", 0), nan=0.0))
+    F_ram_SN = np.abs(np.nan_to_num(fine_fields.get("F_ram_SN", 0), nan=0.0))
+    F_ion_out = np.abs(np.nan_to_num(fine_fields.get("F_ion_out", 0), nan=0.0))
+    F_rad = np.abs(np.nan_to_num(fine_fields.get("F_rad", 0), nan=0.0))
 
-        # F_ram competes as total
-        F_ram_total = F_ram_wind + F_ram_SN
+    # F_ram competes as total
+    F_ram_total = F_ram_wind + F_ram_SN
 
-        # Stack competitors: {F_grav, F_ram_total, F_ion_out, F_rad}
-        stack = np.stack([F_grav, F_ram_total, F_ion_out, F_rad], axis=-1)
+    # Stack competitors: {F_grav, F_ram_total, F_ion_out, F_rad}
+    stack = np.stack([F_grav, F_ram_total, F_ion_out, F_rad], axis=-1)
 
-        # Identify invalid cells
-        invalid_f = np.all(stack == 0, axis=-1)
+    # Identify invalid cells
+    invalid_f = np.all(stack == 0, axis=-1)
 
-        # Get winner index (0=grav, 1=ram, 2=ion, 3=rad)
-        winner_idx = np.argmax(stack, axis=-1)
+    # Get winner index (0=grav, 1=ram, 2=ion, 3=rad)
+    winner_idx = np.argmax(stack, axis=-1)
 
-        # Initialize dominant array
-        dom_f = np.zeros_like(winner_idx, dtype=float)
+    # Initialize dominant array
+    dom_f = np.zeros_like(winner_idx, dtype=float)
 
-        # Map winners to FORCE_FIELDS_RAM_SUBCLASS indices:
-        # 0 = F_grav, 1 = F_ram_wind, 2 = F_ram_SN, 3 = F_ion_out, 4 = F_rad
-        dom_f[winner_idx == 0] = 0  # F_grav
-        dom_f[winner_idx == 2] = 3  # F_ion_out
-        dom_f[winner_idx == 3] = 4  # F_rad
+    # Map winners to FORCE_FIELDS indices:
+    # 0 = F_grav, 1 = F_ram_wind, 2 = F_ram_SN, 3 = F_ion_out, 4 = F_rad
+    dom_f[winner_idx == 0] = 0  # F_grav
+    dom_f[winner_idx == 2] = 3  # F_ion_out
+    dom_f[winner_idx == 3] = 4  # F_rad
 
-        # For F_ram winners (winner_idx == 1), subclassify
-        ram_wins = (winner_idx == 1)
-        sn_dominates = (F_ram_SN > F_ram_wind) & ram_wins
-        wind_dominates = ~sn_dominates & ram_wins
+    # For F_ram winners (winner_idx == 1), subclassify
+    ram_wins = (winner_idx == 1)
+    sn_dominates = (F_ram_SN > F_ram_wind) & ram_wins
+    wind_dominates = ~sn_dominates & ram_wins
 
-        dom_f[sn_dominates] = 2    # F_ram_SN (yellow)
-        dom_f[wind_dominates] = 1  # F_ram_wind (blue)
-
-        # Mask invalid cells
-        dom_f = np.ma.array(dom_f, mask=invalid_f)
-
-        return logM_f, eps_f, dom_f
-
-    # Default mode: standard argmax over all force fields
-    stack = np.stack([fine_fields[k] for k in keys], axis=-1)  # (nref_eps, nref_M, nF)
-
-    # Identify invalid cells (where ALL forces are NaN)
-    invalid_f = np.all(~np.isfinite(stack), axis=-1)
-
-    # For cells with all NaN, temporarily fill with 0 to avoid nanargmax error
-    # We'll mask these cells afterward
-    stack_filled = stack.copy()
-    stack_filled[invalid_f] = 0  # Temporary fill for argmax
-
-    # Take argmax to get dominant force
-    with np.errstate(invalid='ignore'):
-        dom_f = np.nanargmax(stack_filled, axis=-1).astype(float)
+    dom_f[sn_dominates] = 2    # F_ram_SN (yellow)
+    dom_f[wind_dominates] = 1  # F_ram_wind (blue)
 
     # Mask invalid cells
     dom_f = np.ma.array(dom_f, mask=invalid_f)
@@ -706,50 +414,30 @@ def refine_dominant_map(logM, eps, forces_dict, mask, nref_M=300, nref_eps=300,
 # Plotting Functions
 # =============================================================================
 
-def create_colormap(force_fields=None):
-    """
-    Create discrete colormap for force types and missing data.
+def create_colormap():
+    """Create discrete colormap for force types and missing data."""
+    n_forces = len(FORCE_FIELDS)
 
-    Color mapping depends on force_fields:
-    - -2 (TIME_OUT_OF_RANGE): white
-    - -1 (FILE_NOT_FOUND): gray
-    - 0, 1, 2, ... : force colors from force_fields list
-    """
-    if force_fields is None:
-        force_fields = FORCE_FIELDS
-
-    n_forces = len(force_fields)
-
-    # Colors in order: TIME_OUT_OF_RANGE, FILE_NOT_FOUND, then force colors
     colors = [
         COLOR_TIME_OUT_OF_RANGE,  # -2
         COLOR_FILE_NOT_FOUND,     # -1
-    ] + [field[2] for field in force_fields]
+    ] + [field[2] for field in FORCE_FIELDS]
 
     cmap = ListedColormap(colors)
-    cmap.set_bad(color='white')  # NaN -> white (fallback)
+    cmap.set_bad(color='white')
 
-    # Bounds: -2.5 to -1.5 -> color[0], -1.5 to -0.5 -> color[1], etc.
-    # Dynamic based on number of force types
     bounds = [-2.5, -1.5, -0.5] + [i + 0.5 for i in range(n_forces)]
     norm = BoundaryNorm(bounds, cmap.N)
 
     return cmap, norm
 
 
-def create_force_colormap(force_fields=None):
-    """
-    Create discrete colormap for just force types.
-
-    Used for interpolated plots where missing data is handled via masking.
-    """
-    if force_fields is None:
-        force_fields = FORCE_FIELDS
-
-    n_forces = len(force_fields)
-    colors = [field[2] for field in force_fields]
+def create_force_colormap():
+    """Create discrete colormap for just force types (for interpolated plots)."""
+    n_forces = len(FORCE_FIELDS)
+    colors = [field[2] for field in FORCE_FIELDS]
     cmap = ListedColormap(colors)
-    cmap.set_bad(color='white')  # Masked values -> white
+    cmap.set_bad(color='white')
     norm = BoundaryNorm(np.arange(n_forces + 1) - 0.5, n_forces)
     return cmap, norm
 
@@ -771,52 +459,14 @@ def compute_grid_layout(n_plots):
 
 def plot_single_grid(ax, grid, mCloud_list, sfe_list, target_time, cmap, norm,
                      smooth='none', axis_mode='discrete', forces_dict=None, mask=None,
-                     nref_M=300, nref_eps=300, decompose_mode=None):
-    """
-    Plot a single dominance grid on an axis.
-
-    For smooth mode, uses the proper approach: interpolate continuous force values
-    on a fine grid, then take argmax. This avoids color bleeding issues.
-
-    Parameters
-    ----------
-    ax : matplotlib.axes.Axes
-        Axis to plot on
-    grid : np.ndarray
-        2D array of dominant force indices (used for discrete mode or as fallback)
-    mCloud_list : list
-        Cloud mass labels (strings like "1e7")
-    sfe_list : list
-        SFE labels (strings like "010")
-    target_time : float
-        Time in Myr (for title)
-    cmap : ListedColormap
-        Colormap (full colormap with missing data colors)
-    norm : BoundaryNorm
-        Color normalization
-    smooth : str
-        Smoothing method: 'none' or 'interp'
-        Note: 'interp' requires forces_dict and mask to be provided
-    axis_mode : str
-        'discrete': equal spacing with categorical labels
-        'continuous': real value spacing (log for mCloud, linear for SFE)
-    forces_dict : dict, optional
-        Dictionary {force_key: 2D array} for interpolation (required for smooth='interp')
-    mask : np.ndarray, optional
-        Boolean mask where True = invalid data (required for smooth='interp')
-    nref_M : int
-        Number of points in refined mass grid for interpolation
-    nref_eps : int
-        Number of points in refined SFE grid for interpolation
-    """
+                     nref_M=300, nref_eps=300):
+    """Plot a single dominance grid on an axis."""
     n_mass = len(mCloud_list)
     n_sfe = len(sfe_list)
 
-    # Convert to real values
-    logM = np.array([np.log10(float(m)) for m in mCloud_list])  # log10(Msun)
-    eps = np.array([int(s) / 100.0 for s in sfe_list])  # decimal SFE
+    logM = np.array([np.log10(float(m)) for m in mCloud_list])
+    eps = np.array([int(s) / 100.0 for s in sfe_list])
 
-    # Smoothing only works with continuous mode and requires force data
     if smooth == 'interp' and (forces_dict is None or mask is None):
         print("    Warning: smooth='interp' requires forces_dict and mask, falling back to 'none'")
         smooth = 'none'
@@ -824,21 +474,13 @@ def plot_single_grid(ax, grid, mCloud_list, sfe_list, target_time, cmap, norm,
         smooth = 'none'
 
     if axis_mode == 'continuous' and smooth == 'interp':
-        # PROPER APPROACH: Interpolate continuous force values, then argmax
-        # This gives smooth boundaries without color bleeding
         logM_f, eps_f, dom_f = refine_dominant_map(logM, eps, forces_dict, mask,
-                                                    nref_M=nref_M, nref_eps=nref_eps,
-                                                    decompose_mode=decompose_mode)
+                                                    nref_M=nref_M, nref_eps=nref_eps)
 
-        # Create colormap for just forces (0-3), masking handles invalid data
         force_cmap, force_norm = create_force_colormap()
 
-        # Use pcolormesh with nearest shading for categorical data
-        # This ensures each pixel is exactly one color with no interpolation artifacts
-        im = ax.pcolormesh(
-            10**logM_f,  # Convert back to linear mass for display
-            eps_f,
-            dom_f,
+        ax.pcolormesh(
+            10**logM_f, eps_f, dom_f,
             cmap=force_cmap,
             norm=force_norm,
             shading='nearest',
@@ -846,22 +488,15 @@ def plot_single_grid(ax, grid, mCloud_list, sfe_list, target_time, cmap, norm,
             antialiased=False
         )
 
-        # Use log scale for x-axis
         ax.set_xscale('log')
-
-        # Set axis limits exactly to data range (no padding for square plot)
         ax.set_xlim(10**logM.min(), 10**logM.max())
         ax.set_ylim(eps.min(), eps.max())
-
-        # Auto-generate nice tick locations for y-axis
         ax.yaxis.set_major_locator(plt.MaxNLocator(nbins=6, steps=[1, 2, 2.5, 5, 10]))
 
     elif axis_mode == 'continuous':
-        # Continuous mode without interpolation - use pcolormesh with nearest
         mass_min, mass_max = logM.min(), logM.max()
         eps_min, eps_max = eps.min(), eps.max()
 
-        # Add padding (half cell width at edges)
         if n_mass > 1:
             mass_pad = (logM[1] - logM[0]) / 2
         else:
@@ -874,11 +509,9 @@ def plot_single_grid(ax, grid, mCloud_list, sfe_list, target_time, cmap, norm,
         extent = (mass_min - mass_pad, mass_max + mass_pad,
                   eps_min - eps_pad, eps_max + eps_pad)
 
-        # Mask invalid values
         grid_masked = np.ma.masked_invalid(grid)
 
-        # Use pcolormesh with nearest shading
-        im = ax.pcolormesh(
+        ax.pcolormesh(
             logM, eps, grid_masked,
             cmap=cmap,
             norm=norm,
@@ -887,7 +520,6 @@ def plot_single_grid(ax, grid, mCloud_list, sfe_list, target_time, cmap, norm,
             antialiased=False
         )
 
-        # X-axis: use standard log-scale ticks at integer powers
         min_power = int(np.floor(extent[0]))
         max_power = int(np.ceil(extent[1]))
         x_ticks = np.arange(min_power, max_power + 1)
@@ -895,21 +527,18 @@ def plot_single_grid(ax, grid, mCloud_list, sfe_list, target_time, cmap, norm,
         ax.set_xticklabels([rf"$10^{{{int(p)}}}$" for p in x_ticks])
         ax.set_xlim(extent[0], extent[1])
 
-        # Y-axis: linear SFE with reasonable tick spacing
         ax.set_ylim(extent[2], extent[3])
         ax.yaxis.set_major_locator(plt.MaxNLocator(nbins=6, steps=[1, 2, 2.5, 5, 10]))
 
     else:
-        # Discrete mode - categorical grid with cell borders
         X, Y = np.meshgrid(
             np.arange(n_mass + 1) - 0.5,
             np.arange(n_sfe + 1) - 0.5
         )
 
-        # Mask invalid values
         grid_masked = np.ma.masked_invalid(grid)
 
-        im = ax.pcolormesh(
+        ax.pcolormesh(
             X, Y, grid_masked,
             cmap=cmap,
             norm=norm,
@@ -917,7 +546,6 @@ def plot_single_grid(ax, grid, mCloud_list, sfe_list, target_time, cmap, norm,
             linewidths=1.0
         )
 
-        # Discrete axis labels - handle non-power-of-10 masses (e.g., 5e6)
         ax.set_xticks(np.arange(n_mass))
         xlabels = []
         for m in mCloud_list:
@@ -939,19 +567,13 @@ def plot_single_grid(ax, grid, mCloud_list, sfe_list, target_time, cmap, norm,
 
     ax.set_title(rf"$t = {target_time}$ Myr", fontsize=11)
 
-    return im
 
-
-def create_legend(force_fields=None):
+def create_legend():
     """Create legend handles for force types and missing data."""
-    if force_fields is None:
-        force_fields = FORCE_FIELDS
-
     handles = [
         Patch(facecolor=color, edgecolor='gray', label=label)
-        for _, label, color in force_fields
+        for _, label, color in FORCE_FIELDS
     ]
-    # Add missing data types
     handles.append(
         Patch(facecolor=COLOR_TIME_OUT_OF_RANGE, edgecolor='gray', label='Beyond $t_{\\rm max}$')
     )
@@ -966,37 +588,8 @@ def create_legend(force_fields=None):
 # =============================================================================
 
 def main(mCloud_list, sfe_list, nCore_list, target_times, base_dir, fig_dir=None,
-         use_modified=False, smooth='none', axis_mode='discrete', decompose_mode=None):
-    """
-    Generate dominant feedback grid plot(s).
-
-    Parameters
-    ----------
-    mCloud_list : list
-        Cloud mass values (strings, e.g., ["1e7", "1e8"])
-    sfe_list : list
-        SFE values (strings, e.g., ["001", "010", "020"])
-    nCore_list : list
-        List of core density values (e.g., ["1e4", "1e5"]).
-        Produces one plot per nCore.
-    target_times : list
-        Target times in Myr (e.g., [1.0, 1.5, 2.0, 2.5])
-    base_dir : Path
-        Base directory for output folders
-    fig_dir : Path, optional
-        Directory to save figures
-    use_modified : bool
-        If True, look in *_modified/ folders and save as *_modified.pdf
-    smooth : str
-        Smoothing method: 'none' or 'interp' (interpolate force fields)
-    axis_mode : str
-        'discrete': equal spacing with categorical labels
-        'continuous': real value spacing (log for mCloud, linear for SFE)
-    decompose_mode : str, optional
-        F_ram decomposition mode. If None, uses global DECOMPOSE_MODE.
-    """
-    if decompose_mode is None:
-        decompose_mode = DECOMPOSE_MODE
+         use_modified=False, smooth='none', axis_mode='discrete'):
+    """Generate dominant feedback grid plot(s)."""
     print("=" * 60)
     print("Dominant Feedback Grid Plot")
     print("=" * 60)
@@ -1013,27 +606,23 @@ def main(mCloud_list, sfe_list, nCore_list, target_times, base_dir, fig_dir=None
         smooth = 'none'
     print()
 
-    # Set up figure directory
     if fig_dir is None:
         fig_dir = FIG_DIR
     fig_dir = Path(fig_dir)
     fig_dir.mkdir(parents=True, exist_ok=True)
 
-    # Compute layout
     n_times = len(target_times)
     nrows, ncols = compute_grid_layout(n_times)
 
     cmap, norm = create_colormap()
 
-    # Generate one plot per nCore
     for nCore in nCore_list:
         print("-" * 60)
         print(f"Processing nCore = {nCore}")
         print("-" * 60)
 
-        # Create figure (square aspect for each subplot)
         fig_width = 5.0 * ncols
-        fig_height = 5.0 * nrows + 0.8  # Extra space for legend
+        fig_height = 5.0 * nrows + 0.8
         fig, axes = plt.subplots(
             nrows=nrows, ncols=ncols,
             figsize=(fig_width, fig_height),
@@ -1041,7 +630,6 @@ def main(mCloud_list, sfe_list, nCore_list, target_times, base_dir, fig_dir=None
             squeeze=False
         )
 
-        # Build and plot each time snapshot
         for idx, target_time in enumerate(target_times):
             row = idx // ncols
             col = idx % ncols
@@ -1049,42 +637,35 @@ def main(mCloud_list, sfe_list, nCore_list, target_times, base_dir, fig_dir=None
 
             print(f"Building grid for t = {target_time} Myr...")
 
-            # For interpolated smooth mode, get force values; otherwise just dominance grid
             if smooth == 'interp' and axis_mode == 'continuous':
                 forces_dict, mask, status_grid = build_force_grids(
                     target_time, mCloud_list, sfe_list, nCore, base_dir,
                     use_modified=use_modified
                 )
-                # Build dominance grid from forces for fallback/status display
                 grid = build_dominance_grid(
                     target_time, mCloud_list, sfe_list, nCore, base_dir,
                     use_modified=use_modified
                 )
                 plot_single_grid(ax, grid, mCloud_list, sfe_list, target_time, cmap, norm,
                                smooth=smooth, axis_mode=axis_mode,
-                               forces_dict=forces_dict, mask=mask,
-                               decompose_mode=decompose_mode)
+                               forces_dict=forces_dict, mask=mask)
             else:
                 grid = build_dominance_grid(
                     target_time, mCloud_list, sfe_list, nCore, base_dir,
                     use_modified=use_modified
                 )
                 plot_single_grid(ax, grid, mCloud_list, sfe_list, target_time, cmap, norm,
-                               smooth=smooth, axis_mode=axis_mode,
-                               decompose_mode=decompose_mode)
+                               smooth=smooth, axis_mode=axis_mode)
             print()
 
-        # Hide unused subplots
         for idx in range(n_times, nrows * ncols):
             row = idx // ncols
             col = idx % ncols
             axes[row, col].set_visible(False)
 
-        # Axis labels
         fig.supxlabel(r"$M_{\rm cloud}$ [$M_\odot$]", fontsize=12)
         fig.supylabel(r"Star Formation Efficiency $\epsilon$", fontsize=12)
 
-        # Title
         nlog = int(np.log10(float(nCore)))
         title_suffix = " (modified)" if use_modified else ""
         fig.suptitle(
@@ -1092,7 +673,6 @@ def main(mCloud_list, sfe_list, nCore_list, target_times, base_dir, fig_dir=None
             fontsize=13
         )
 
-        # Legend
         handles = create_legend()
         fig.legend(
             handles=handles,
@@ -1104,7 +684,6 @@ def main(mCloud_list, sfe_list, nCore_list, target_times, base_dir, fig_dir=None
             edgecolor='gray'
         )
 
-        # Save to ./fig/{folder_name}/dominantFeedback_{flags}.pdf
         folder_name = base_dir.name
         save_dir = fig_dir / folder_name
         save_dir.mkdir(parents=True, exist_ok=True)
@@ -1121,7 +700,6 @@ def main(mCloud_list, sfe_list, nCore_list, target_times, base_dir, fig_dir=None
         print(f"Saved: {out_pdf}")
 
         plt.show()
-        # plt.close(fig)
         print()
 
 
@@ -1131,41 +709,8 @@ def main(mCloud_list, sfe_list, nCore_list, target_times, base_dir, fig_dir=None
 
 def make_movie(mCloud_list, sfe_list, nCore, base_dir, fig_dir=None,
                use_modified=False, smooth='none', axis_mode='discrete',
-               t_start=0.0, t_end=5.0, dt=0.05, fps=10, decompose_mode=None):
-    """
-    Create an animated GIF showing the evolution of dominant feedback over time.
-
-    Parameters
-    ----------
-    mCloud_list : list
-        Cloud mass values (strings, e.g., ["1e7", "1e8"])
-    sfe_list : list
-        SFE values (strings, e.g., ["001", "010", "020"])
-    nCore : str
-        Core density value (single value, e.g., "1e4")
-    base_dir : Path
-        Base directory for output folders
-    fig_dir : Path, optional
-        Directory to save the GIF
-    use_modified : bool
-        If True, look in *_modified/ folders
-    smooth : str
-        Smoothing method: 'none' or 'interp' (interpolate force fields)
-    axis_mode : str
-        'discrete' or 'continuous'
-    t_start : float
-        Start time in Myr (default: 0.0)
-    t_end : float
-        End time in Myr (default: 5.0)
-    dt : float
-        Time step in Myr (default: 0.05)
-    fps : int
-        Frames per second in the output GIF (default: 10)
-    decompose_mode : str, optional
-        F_ram decomposition mode. If None, uses global DECOMPOSE_MODE.
-    """
-    if decompose_mode is None:
-        decompose_mode = DECOMPOSE_MODE
+               t_start=0.0, t_end=5.0, dt=0.05, fps=10):
+    """Create an animated GIF showing the evolution of dominant feedback over time."""
     try:
         from PIL import Image
     except ImportError:
@@ -1186,25 +731,21 @@ def make_movie(mCloud_list, sfe_list, nCore, base_dir, fig_dir=None,
     print(f"  Smooth: {smooth}, Axis mode: {axis_mode}")
     print()
 
-    # Set up directories
     if fig_dir is None:
         fig_dir = FIG_DIR
     fig_dir = Path(fig_dir)
     fig_dir.mkdir(parents=True, exist_ok=True)
 
-    # Generate time steps
     times = np.arange(t_start, t_end + dt/2, dt)
     n_frames = len(times)
     print(f"Generating {n_frames} frames...")
 
-    # Handle smoothing warning
     if axis_mode == 'discrete' and smooth != 'none':
         print(f"  Warning: Smoothing only works with axis_mode='continuous', ignoring --smooth {smooth}")
         smooth = 'none'
 
     cmap, norm = create_colormap()
 
-    # Create temporary directory for frames
     temp_dir = tempfile.mkdtemp(prefix='dominant_feedback_movie_')
     frame_paths = []
 
@@ -1212,10 +753,8 @@ def make_movie(mCloud_list, sfe_list, nCore, base_dir, fig_dir=None,
         for frame_idx, target_time in enumerate(times):
             print(f"  Frame {frame_idx + 1}/{n_frames}: t = {target_time:.3f} Myr", end='\r')
 
-            # Create single-panel figure
             fig, ax = plt.subplots(figsize=(8, 8), constrained_layout=True)
 
-            # For interpolated smooth mode, get force values; otherwise just dominance grid
             if smooth == 'interp' and axis_mode == 'continuous':
                 forces_dict, mask, status_grid = build_force_grids(
                     target_time, mCloud_list, sfe_list, nCore, base_dir,
@@ -1227,22 +766,18 @@ def make_movie(mCloud_list, sfe_list, nCore, base_dir, fig_dir=None,
                 )
                 plot_single_grid(ax, grid, mCloud_list, sfe_list, target_time, cmap, norm,
                                smooth=smooth, axis_mode=axis_mode,
-                               forces_dict=forces_dict, mask=mask,
-                               decompose_mode=decompose_mode)
+                               forces_dict=forces_dict, mask=mask)
             else:
                 grid = build_dominance_grid(
                     target_time, mCloud_list, sfe_list, nCore, base_dir,
                     use_modified=use_modified
                 )
                 plot_single_grid(ax, grid, mCloud_list, sfe_list, target_time, cmap, norm,
-                               smooth=smooth, axis_mode=axis_mode,
-                               decompose_mode=decompose_mode)
+                               smooth=smooth, axis_mode=axis_mode)
 
-            # Labels
             ax.set_xlabel(r"$M_{\rm cloud}$ [$M_\odot$]", fontsize=12)
             ax.set_ylabel(r"Star Formation Efficiency $\epsilon$", fontsize=12)
 
-            # Title with nCore info
             nlog = int(np.log10(float(nCore)))
             title_suffix = " (modified)" if use_modified else ""
             ax.set_title(
@@ -1251,7 +786,6 @@ def make_movie(mCloud_list, sfe_list, nCore, base_dir, fig_dir=None,
                 fontsize=12
             )
 
-            # Legend
             handles = create_legend()
             ax.legend(
                 handles=handles,
@@ -1264,22 +798,18 @@ def make_movie(mCloud_list, sfe_list, nCore, base_dir, fig_dir=None,
                 fontsize=9
             )
 
-            # Save frame
             frame_path = Path(temp_dir) / f"frame_{frame_idx:04d}.png"
             fig.savefig(frame_path, dpi=150, bbox_inches='tight')
             frame_paths.append(frame_path)
             plt.close(fig)
 
-        print()  # New line after progress
+        print()
         print(f"Assembling GIF from {len(frame_paths)} frames...")
 
-        # Load frames and create GIF
         frames = [Image.open(fp) for fp in frame_paths]
 
-        # Calculate frame duration in milliseconds
         frame_duration = int(1000 / fps)
 
-        # Save to ./fig/{folder_name}/dominantFeedback_movie_{flags}.gif
         folder_name = base_dir.name
         save_dir = fig_dir / folder_name
         save_dir.mkdir(parents=True, exist_ok=True)
@@ -1294,20 +824,18 @@ def make_movie(mCloud_list, sfe_list, nCore, base_dir, fig_dir=None,
         )
         out_gif = save_dir / f"{filename}.gif"
 
-        # Save GIF
         frames[0].save(
             out_gif,
             save_all=True,
             append_images=frames[1:],
             duration=frame_duration,
-            loop=0  # 0 = infinite loop
+            loop=0
         )
 
         print(f"Saved: {out_gif}")
         print(f"  Duration: {len(frames) * frame_duration / 1000:.1f} seconds")
 
     finally:
-        # Clean up temporary directory
         shutil.rmtree(temp_dir, ignore_errors=True)
 
 
@@ -1347,11 +875,8 @@ Movie mode:
   --t-start  - Start time in Myr (default: 0.0)
   --t-end    - End time in Myr (default: 5.0)
 
-F_ram decomposition modes:
-  --decompose-ram     - Show F_ram_wind (winds), F_ram_SN (supernovae), F_ram_residual separately
-  --sn-highlight      - Highlight only SN (yellow); group winds+residual as thermal (blue)
-  --ram-subclass      - F_ram competes as whole, then shows wind (blue) or SN (yellow) if it wins
-  --no-decompose-ram  - Show combined F_ram as single category (original behavior)
+Note: F_ram competes as a whole first, then subclassifies to wind (blue) or
+SN (yellow) if it wins. This matches paper_momentum.py's dominant bar logic.
         """
     )
 
@@ -1416,24 +941,6 @@ F_ram decomposition modes:
         help='End time for movie in Myr (default: 5.0)'
     )
 
-    # F_ram decomposition mode
-    parser.add_argument(
-        '--decompose-ram', action='store_true', default=None,
-        help='Decompose F_ram into F_ram_wind (winds), F_ram_SN (supernovae), F_ram_residual (other thermal)'
-    )
-    parser.add_argument(
-        '--sn-highlight', action='store_true',
-        help='Highlight only SN (yellow); group winds+residual as thermal (blue)'
-    )
-    parser.add_argument(
-        '--ram-subclass', action='store_true',
-        help='F_ram competes as whole, then subclassifies to wind (blue) or SN (yellow) if it wins'
-    )
-    parser.add_argument(
-        '--no-decompose-ram', action='store_true',
-        help='Use combined F_ram as single category (original behavior)'
-    )
-
     args = parser.parse_args()
 
     # Apply defaults
@@ -1446,47 +953,15 @@ F_ram decomposition modes:
     smooth = args.smooth if args.smooth else DEFAULT_SMOOTH
     axis_mode = args.axis_mode if args.axis_mode else DEFAULT_AXIS_MODE
 
-    # Use module-level USE_MODIFIED if --modified not explicitly set
     use_modified = args.modified or USE_MODIFIED
 
-    # Determine F_ram decomposition mode
-    # Priority: CLI flags > module-level DECOMPOSE_MODE
-    if args.no_decompose_ram:
-        decompose_mode = 'combined'
-    elif args.sn_highlight:
-        decompose_mode = 'sn_highlight'
-    elif args.ram_subclass:
-        decompose_mode = 'ram_subclass'
-    elif args.decompose_ram:
-        decompose_mode = 'decomposed'
-    else:
-        decompose_mode = DECOMPOSE_MODE
-
-    # Update global FORCE_FIELDS based on decomposition mode
-    # global FORCE_FIELDS
-    if decompose_mode == 'decomposed':
-        FORCE_FIELDS = FORCE_FIELDS_DECOMPOSED
-        print("F_ram decomposition: enabled (wind/SN/residual separately)")
-    elif decompose_mode == 'sn_highlight':
-        FORCE_FIELDS = FORCE_FIELDS_SN_HIGHLIGHT
-        print("F_ram decomposition: SN highlight (thermal in blue, SN in yellow)")
-    elif decompose_mode == 'ram_subclass':
-        FORCE_FIELDS = FORCE_FIELDS_RAM_SUBCLASS
-        print("F_ram decomposition: ram_subclass (F_ram competes as whole, then wind/SN if it wins)")
-    else:
-        FORCE_FIELDS = FORCE_FIELDS_COMBINED
-        print("F_ram decomposition: disabled (combined)")
-
     if args.movie:
-        # Movie mode: generate one GIF per nCore
         for nCore in nCore_list:
             make_movie(
                 mCloud_list, sfe_list, nCore, base_dir, fig_dir,
                 use_modified=use_modified, smooth=smooth, axis_mode=axis_mode,
-                t_start=args.t_start, t_end=args.t_end, dt=args.dt, fps=args.fps,
-                decompose_mode=decompose_mode
+                t_start=args.t_start, t_end=args.t_end, dt=args.dt, fps=args.fps
             )
     else:
-        # Static plot mode
         main(mCloud_list, sfe_list, nCore_list, target_times, base_dir, fig_dir,
-             use_modified, smooth, axis_mode, decompose_mode=decompose_mode)
+             use_modified, smooth, axis_mode)
