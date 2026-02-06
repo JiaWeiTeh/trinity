@@ -59,11 +59,12 @@ plt.style.use(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'trinity.
 # Switch to use *_modified/ output folders and save as *_modified.pdf
 USE_MODIFIED = False
 
-# F_ram decomposition mode: 'decomposed', 'combined', or 'sn_highlight'
+# F_ram decomposition mode: 'decomposed', 'combined', 'sn_highlight', or 'ram_subclass'
 # - 'decomposed': F_ram_wind (blue), F_ram_SN (yellow), F_ram_residual (gray) separately
 # - 'combined': single F_ram category (blue)
 # - 'sn_highlight': F_ram_thermal (blue, wind+residual), F_ram_SN (yellow) - highlights SN only
-DECOMPOSE_MODE = 'sn_highlight'
+# - 'ram_subclass': F_ram competes as whole, then subclassifies to wind (blue) or SN (yellow) if it wins
+DECOMPOSE_MODE = 'ram_subclass'
 
 # Force field definitions: (key, label, color)
 # DECOMPOSED mode: F_ram split into wind/SN/residual (6 force types, indices 0-5)
@@ -93,11 +94,23 @@ FORCE_FIELDS_SN_HIGHLIGHT = [
     ("F_rad",          "Radiation",            "#9b59b6"),  # Purple
 ]
 
+# RAM_SUBCLASS mode: F_ram competes as a whole first, then subclassifies if it wins (5 force types)
+# This is similar to paper_momentum.py's dominant bar logic
+FORCE_FIELDS_RAM_SUBCLASS = [
+    ("F_grav",     "Gravity",           "#2c3e50"),  # Dark blue-gray
+    ("F_ram_wind", "Winds",             "#3498db"),  # Blue for winds (when F_ram wins and wind > SN)
+    ("F_ram_SN",   "Supernovae",        "#DAA520"),  # Golden yellow for SN (when F_ram wins and SN > wind)
+    ("F_ion_out",  "Photoionised gas",  "#e74c3c"),  # Red
+    ("F_rad",      "Radiation",         "#9b59b6"),  # Purple
+]
+
 # Active force fields (set based on DECOMPOSE_MODE)
 if DECOMPOSE_MODE == 'decomposed':
     FORCE_FIELDS = FORCE_FIELDS_DECOMPOSED
 elif DECOMPOSE_MODE == 'sn_highlight':
     FORCE_FIELDS = FORCE_FIELDS_SN_HIGHLIGHT
+elif DECOMPOSE_MODE == 'ram_subclass':
+    FORCE_FIELDS = FORCE_FIELDS_RAM_SUBCLASS
 else:
     FORCE_FIELDS = FORCE_FIELDS_COMBINED
 
@@ -222,7 +235,7 @@ def get_snapshot_at_time(output, target_time):
         return None
 
 
-def get_dominant_force(snapshot, force_fields=None):
+def get_dominant_force(snapshot, force_fields=None, decompose_mode=None):
     """
     Determine the dominant feedback force from a snapshot.
 
@@ -232,6 +245,9 @@ def get_dominant_force(snapshot, force_fields=None):
         Snapshot data dictionary
     force_fields : list, optional
         List of (key, label, color) tuples. If None, uses global FORCE_FIELDS.
+    decompose_mode : str, optional
+        Decomposition mode. If 'ram_subclass', F_ram competes as whole first,
+        then subclassifies to wind vs SN if it wins.
 
     Returns
     -------
@@ -243,12 +259,50 @@ def get_dominant_force(snapshot, force_fields=None):
 
     if force_fields is None:
         force_fields = FORCE_FIELDS
+    if decompose_mode is None:
+        decompose_mode = DECOMPOSE_MODE
 
     # Use get_force_values to handle computed fields like F_ram_residual
     force_vals = get_force_values(snapshot, force_fields)
     if force_vals is None:
         return np.nan
 
+    # RAM_SUBCLASS mode: F_ram competes as whole, then subclassifies if it wins
+    if decompose_mode == 'ram_subclass':
+        # Get individual force values
+        F_grav = abs(force_vals.get("F_grav", 0.0) or 0.0)
+        F_ram_wind = abs(force_vals.get("F_ram_wind", 0.0) or 0.0)
+        F_ram_SN = abs(force_vals.get("F_ram_SN", 0.0) or 0.0)
+        F_ion_out = abs(force_vals.get("F_ion_out", 0.0) or 0.0)
+        F_rad = abs(force_vals.get("F_rad", 0.0) or 0.0)
+
+        # F_ram competes as total
+        F_ram_total = F_ram_wind + F_ram_SN
+
+        # Compete: {F_grav, F_ram_total, F_ion_out, F_rad}
+        competitors = [F_grav, F_ram_total, F_ion_out, F_rad]
+        total = sum(competitors)
+        if total == 0 or not np.isfinite(total):
+            return np.nan
+
+        winner_idx = int(np.argmax(competitors))
+
+        # Map winner to FORCE_FIELDS_RAM_SUBCLASS indices:
+        # 0 = F_grav, 1 = F_ram_wind, 2 = F_ram_SN, 3 = F_ion_out, 4 = F_rad
+        if winner_idx == 0:  # F_grav wins
+            return 0
+        elif winner_idx == 1:  # F_ram_total wins -> subclassify
+            # Return wind (1) or SN (2) based on which is larger
+            if F_ram_SN > F_ram_wind:
+                return 2  # F_ram_SN (yellow)
+            else:
+                return 1  # F_ram_wind (blue)
+        elif winner_idx == 2:  # F_ion_out wins
+            return 3
+        else:  # F_rad wins
+            return 4
+
+    # Default mode: standard argmax over all force fields
     forces = []
     for key, _, _ in force_fields:
         val = force_vals.get(key, 0.0)
@@ -521,7 +575,8 @@ def build_force_grids(target_time, mCloud_list, sfe_list, nCore, base_dir, use_m
     return forces_dict, mask, status_grid
 
 
-def refine_dominant_map(logM, eps, forces_dict, mask, nref_M=300, nref_eps=300):
+def refine_dominant_map(logM, eps, forces_dict, mask, nref_M=300, nref_eps=300,
+                        decompose_mode=None):
     """
     Interpolate continuous force fields, then take argmax for smooth boundaries.
 
@@ -543,6 +598,9 @@ def refine_dominant_map(logM, eps, forces_dict, mask, nref_M=300, nref_eps=300):
         Number of points in refined mass grid
     nref_eps : int
         Number of points in refined SFE grid
+    decompose_mode : str, optional
+        Decomposition mode. If 'ram_subclass', F_ram competes as whole first,
+        then subclassifies to wind vs SN if it wins.
 
     Returns
     -------
@@ -553,6 +611,9 @@ def refine_dominant_map(logM, eps, forces_dict, mask, nref_M=300, nref_eps=300):
     dom_f : np.ma.MaskedArray
         Dominant force index at each fine grid point (masked where invalid)
     """
+    if decompose_mode is None:
+        decompose_mode = DECOMPOSE_MODE
+
     keys = list(forces_dict.keys())
 
     # Create fine grids
@@ -562,7 +623,7 @@ def refine_dominant_map(logM, eps, forces_dict, mask, nref_M=300, nref_eps=300):
     pts = np.stack([E.ravel(), L.ravel()], axis=-1)
 
     # Interpolate each force field
-    fine_fields = []
+    fine_fields = {}
     for k in keys:
         arr = np.array(forces_dict[k], dtype=float)  # (n_eps, n_mass)
         # Set masked regions to NaN to prevent interpolation across holes
@@ -575,9 +636,53 @@ def refine_dominant_map(logM, eps, forces_dict, mask, nref_M=300, nref_eps=300):
             bounds_error=False,
             fill_value=np.nan
         )
-        fine_fields.append(itp(pts).reshape(nref_eps, nref_M))
+        fine_fields[k] = itp(pts).reshape(nref_eps, nref_M)
 
-    stack = np.stack(fine_fields, axis=-1)  # (nref_eps, nref_M, nF)
+    # RAM_SUBCLASS mode: F_ram competes as whole, then subclassifies
+    if decompose_mode == 'ram_subclass':
+        # Get interpolated force arrays
+        F_grav = np.abs(np.nan_to_num(fine_fields.get("F_grav", 0), nan=0.0))
+        F_ram_wind = np.abs(np.nan_to_num(fine_fields.get("F_ram_wind", 0), nan=0.0))
+        F_ram_SN = np.abs(np.nan_to_num(fine_fields.get("F_ram_SN", 0), nan=0.0))
+        F_ion_out = np.abs(np.nan_to_num(fine_fields.get("F_ion_out", 0), nan=0.0))
+        F_rad = np.abs(np.nan_to_num(fine_fields.get("F_rad", 0), nan=0.0))
+
+        # F_ram competes as total
+        F_ram_total = F_ram_wind + F_ram_SN
+
+        # Stack competitors: {F_grav, F_ram_total, F_ion_out, F_rad}
+        stack = np.stack([F_grav, F_ram_total, F_ion_out, F_rad], axis=-1)
+
+        # Identify invalid cells
+        invalid_f = np.all(stack == 0, axis=-1)
+
+        # Get winner index (0=grav, 1=ram, 2=ion, 3=rad)
+        winner_idx = np.argmax(stack, axis=-1)
+
+        # Initialize dominant array
+        dom_f = np.zeros_like(winner_idx, dtype=float)
+
+        # Map winners to FORCE_FIELDS_RAM_SUBCLASS indices:
+        # 0 = F_grav, 1 = F_ram_wind, 2 = F_ram_SN, 3 = F_ion_out, 4 = F_rad
+        dom_f[winner_idx == 0] = 0  # F_grav
+        dom_f[winner_idx == 2] = 3  # F_ion_out
+        dom_f[winner_idx == 3] = 4  # F_rad
+
+        # For F_ram winners (winner_idx == 1), subclassify
+        ram_wins = (winner_idx == 1)
+        sn_dominates = (F_ram_SN > F_ram_wind) & ram_wins
+        wind_dominates = ~sn_dominates & ram_wins
+
+        dom_f[sn_dominates] = 2    # F_ram_SN (yellow)
+        dom_f[wind_dominates] = 1  # F_ram_wind (blue)
+
+        # Mask invalid cells
+        dom_f = np.ma.array(dom_f, mask=invalid_f)
+
+        return logM_f, eps_f, dom_f
+
+    # Default mode: standard argmax over all force fields
+    stack = np.stack([fine_fields[k] for k in keys], axis=-1)  # (nref_eps, nref_M, nF)
 
     # Identify invalid cells (where ALL forces are NaN)
     invalid_f = np.all(~np.isfinite(stack), axis=-1)
@@ -666,7 +771,7 @@ def compute_grid_layout(n_plots):
 
 def plot_single_grid(ax, grid, mCloud_list, sfe_list, target_time, cmap, norm,
                      smooth='none', axis_mode='discrete', forces_dict=None, mask=None,
-                     nref_M=300, nref_eps=300):
+                     nref_M=300, nref_eps=300, decompose_mode=None):
     """
     Plot a single dominance grid on an axis.
 
@@ -722,7 +827,8 @@ def plot_single_grid(ax, grid, mCloud_list, sfe_list, target_time, cmap, norm,
         # PROPER APPROACH: Interpolate continuous force values, then argmax
         # This gives smooth boundaries without color bleeding
         logM_f, eps_f, dom_f = refine_dominant_map(logM, eps, forces_dict, mask,
-                                                    nref_M=nref_M, nref_eps=nref_eps)
+                                                    nref_M=nref_M, nref_eps=nref_eps,
+                                                    decompose_mode=decompose_mode)
 
         # Create colormap for just forces (0-3), masking handles invalid data
         force_cmap, force_norm = create_force_colormap()
@@ -860,7 +966,7 @@ def create_legend(force_fields=None):
 # =============================================================================
 
 def main(mCloud_list, sfe_list, nCore_list, target_times, base_dir, fig_dir=None,
-         use_modified=False, smooth='none', axis_mode='discrete'):
+         use_modified=False, smooth='none', axis_mode='discrete', decompose_mode=None):
     """
     Generate dominant feedback grid plot(s).
 
@@ -886,7 +992,11 @@ def main(mCloud_list, sfe_list, nCore_list, target_times, base_dir, fig_dir=None
     axis_mode : str
         'discrete': equal spacing with categorical labels
         'continuous': real value spacing (log for mCloud, linear for SFE)
+    decompose_mode : str, optional
+        F_ram decomposition mode. If None, uses global DECOMPOSE_MODE.
     """
+    if decompose_mode is None:
+        decompose_mode = DECOMPOSE_MODE
     print("=" * 60)
     print("Dominant Feedback Grid Plot")
     print("=" * 60)
@@ -952,14 +1062,16 @@ def main(mCloud_list, sfe_list, nCore_list, target_times, base_dir, fig_dir=None
                 )
                 plot_single_grid(ax, grid, mCloud_list, sfe_list, target_time, cmap, norm,
                                smooth=smooth, axis_mode=axis_mode,
-                               forces_dict=forces_dict, mask=mask)
+                               forces_dict=forces_dict, mask=mask,
+                               decompose_mode=decompose_mode)
             else:
                 grid = build_dominance_grid(
                     target_time, mCloud_list, sfe_list, nCore, base_dir,
                     use_modified=use_modified
                 )
                 plot_single_grid(ax, grid, mCloud_list, sfe_list, target_time, cmap, norm,
-                               smooth=smooth, axis_mode=axis_mode)
+                               smooth=smooth, axis_mode=axis_mode,
+                               decompose_mode=decompose_mode)
             print()
 
         # Hide unused subplots
@@ -1019,7 +1131,7 @@ def main(mCloud_list, sfe_list, nCore_list, target_times, base_dir, fig_dir=None
 
 def make_movie(mCloud_list, sfe_list, nCore, base_dir, fig_dir=None,
                use_modified=False, smooth='none', axis_mode='discrete',
-               t_start=0.0, t_end=5.0, dt=0.05, fps=10):
+               t_start=0.0, t_end=5.0, dt=0.05, fps=10, decompose_mode=None):
     """
     Create an animated GIF showing the evolution of dominant feedback over time.
 
@@ -1049,7 +1161,11 @@ def make_movie(mCloud_list, sfe_list, nCore, base_dir, fig_dir=None,
         Time step in Myr (default: 0.05)
     fps : int
         Frames per second in the output GIF (default: 10)
+    decompose_mode : str, optional
+        F_ram decomposition mode. If None, uses global DECOMPOSE_MODE.
     """
+    if decompose_mode is None:
+        decompose_mode = DECOMPOSE_MODE
     try:
         from PIL import Image
     except ImportError:
@@ -1111,14 +1227,16 @@ def make_movie(mCloud_list, sfe_list, nCore, base_dir, fig_dir=None,
                 )
                 plot_single_grid(ax, grid, mCloud_list, sfe_list, target_time, cmap, norm,
                                smooth=smooth, axis_mode=axis_mode,
-                               forces_dict=forces_dict, mask=mask)
+                               forces_dict=forces_dict, mask=mask,
+                               decompose_mode=decompose_mode)
             else:
                 grid = build_dominance_grid(
                     target_time, mCloud_list, sfe_list, nCore, base_dir,
                     use_modified=use_modified
                 )
                 plot_single_grid(ax, grid, mCloud_list, sfe_list, target_time, cmap, norm,
-                               smooth=smooth, axis_mode=axis_mode)
+                               smooth=smooth, axis_mode=axis_mode,
+                               decompose_mode=decompose_mode)
 
             # Labels
             ax.set_xlabel(r"$M_{\rm cloud}$ [$M_\odot$]", fontsize=12)
@@ -1232,6 +1350,7 @@ Movie mode:
 F_ram decomposition modes:
   --decompose-ram     - Show F_ram_wind (winds), F_ram_SN (supernovae), F_ram_residual separately
   --sn-highlight      - Highlight only SN (yellow); group winds+residual as thermal (blue)
+  --ram-subclass      - F_ram competes as whole, then shows wind (blue) or SN (yellow) if it wins
   --no-decompose-ram  - Show combined F_ram as single category (original behavior)
         """
     )
@@ -1307,6 +1426,10 @@ F_ram decomposition modes:
         help='Highlight only SN (yellow); group winds+residual as thermal (blue)'
     )
     parser.add_argument(
+        '--ram-subclass', action='store_true',
+        help='F_ram competes as whole, then subclassifies to wind (blue) or SN (yellow) if it wins'
+    )
+    parser.add_argument(
         '--no-decompose-ram', action='store_true',
         help='Use combined F_ram as single category (original behavior)'
     )
@@ -1332,6 +1455,8 @@ F_ram decomposition modes:
         decompose_mode = 'combined'
     elif args.sn_highlight:
         decompose_mode = 'sn_highlight'
+    elif args.ram_subclass:
+        decompose_mode = 'ram_subclass'
     elif args.decompose_ram:
         decompose_mode = 'decomposed'
     else:
@@ -1345,6 +1470,9 @@ F_ram decomposition modes:
     elif decompose_mode == 'sn_highlight':
         FORCE_FIELDS = FORCE_FIELDS_SN_HIGHLIGHT
         print("F_ram decomposition: SN highlight (thermal in blue, SN in yellow)")
+    elif decompose_mode == 'ram_subclass':
+        FORCE_FIELDS = FORCE_FIELDS_RAM_SUBCLASS
+        print("F_ram decomposition: ram_subclass (F_ram competes as whole, then wind/SN if it wins)")
     else:
         FORCE_FIELDS = FORCE_FIELDS_COMBINED
         print("F_ram decomposition: disabled (combined)")
@@ -1355,9 +1483,10 @@ F_ram decomposition modes:
             make_movie(
                 mCloud_list, sfe_list, nCore, base_dir, fig_dir,
                 use_modified=use_modified, smooth=smooth, axis_mode=axis_mode,
-                t_start=args.t_start, t_end=args.t_end, dt=args.dt, fps=args.fps
+                t_start=args.t_start, t_end=args.t_end, dt=args.dt, fps=args.fps,
+                decompose_mode=decompose_mode
             )
     else:
         # Static plot mode
         main(mCloud_list, sfe_list, nCore_list, target_times, base_dir, fig_dir,
-             use_modified, smooth, axis_mode)
+             use_modified, smooth, axis_mode, decompose_mode=decompose_mode)
