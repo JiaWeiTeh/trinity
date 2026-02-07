@@ -62,7 +62,7 @@ from matplotlib.lines import Line2D
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from src._output.trinity_reader import (
     load_output, find_all_simulations, organize_simulations_for_grid,
-    get_unique_ndens, parse_simulation_params, resolve_data_input
+    get_unique_ndens, parse_simulation_params, resolve_data_input, info_simulations
 )
 
 print("...analyzing best-fit models for Orion Nebula (M42)")
@@ -2692,6 +2692,12 @@ Shell Mass (shown in plots, optional for chi^2):
                         help='Visualization mode: 2d (separate plots per nCore) or 3d (full space)')
     parser.add_argument('--nCore', '-n', default=None,
                         help='Filter by nCore value (e.g., "1e4"). Implies 2D mode.')
+    parser.add_argument('--mCloud', nargs='+', default=None,
+                        help='Filter simulations by cloud mass (e.g., --mCloud 1e6 1e7).')
+    parser.add_argument('--sfe', nargs='+', default=None,
+                        help='Filter simulations by SFE (e.g., --sfe 001 010).')
+    parser.add_argument('--info', action='store_true',
+                        help='Scan folder and print available mCloud, SFE, and nCore values.')
 
     # Constraint configuration
     # DEFAULT chi^2 = v + t + R + M_star (shell mass is NOT included by default)
@@ -2759,6 +2765,20 @@ Shell Mass (shown in plots, optional for chi^2):
     if args.debug_checks:
         success = run_debug_checks()
         sys.exit(0 if success else 1)
+
+    # Handle --info mode
+    if args.info:
+        if not args.folder:
+            parser.error("--info requires --folder to be specified")
+        info = info_simulations(args.folder)
+        print("=" * 50)
+        print(f"Simulation parameters in: {args.folder}")
+        print("=" * 50)
+        print(f"  Total simulations: {info['count']}")
+        print(f"  mCloud values: {info['mCloud']}")
+        print(f"  SFE values: {info['sfe']}")
+        print(f"  nCore values: {info['ndens']}")
+        sys.exit(0)
 
     # Require --folder for normal operation
     if not args.folder:

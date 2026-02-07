@@ -31,7 +31,7 @@ from matplotlib.patches import Patch
 
 # Add project root to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
-from src._output.trinity_reader import load_output, resolve_data_input
+from src._output.trinity_reader import load_output, resolve_data_input, info_simulations
 from src._plots.plot_markers import add_plot_markers, get_marker_legend_handles
 
 print("...plotting thermal regime (w_blend)")
@@ -258,7 +258,8 @@ def plot_from_path(data_input: str, output_dir: str = None):
     plt.close(fig)
 
 
-def plot_grid(folder_path, output_dir=None, ndens_filter=None):
+def plot_grid(folder_path, output_dir=None, ndens_filter=None,
+              mCloud_filter=None, sfe_filter=None):
     """
     Plot grid of thermal regime from simulations in a folder.
 
@@ -294,7 +295,10 @@ def plot_grid(folder_path, output_dir=None, ndens_filter=None):
     # Create one grid per density
     for ndens in ndens_to_plot:
         print(f"\nProcessing n={ndens}...")
-        organized = organize_simulations_for_grid(sim_files, ndens_filter=ndens)
+        organized = organize_simulations_for_grid(
+            sim_files, ndens_filter=ndens,
+            mCloud_filter=mCloud_filter, sfe_filter=sfe_filter
+        )
         mCloud_list_found = organized['mCloud_list']
         sfe_list_found = organized['sfe_list']
         grid = organized['grid']
@@ -439,11 +443,37 @@ Examples:
         '--nCore', '-n', default=None,
         help='Filter simulations by cloud density (e.g., "1e4", "1e3").'
     )
+    parser.add_argument(
+        '--mCloud', nargs='+', default=None,
+        help='Filter simulations by cloud mass (e.g., --mCloud 1e6 1e7).'
+    )
+    parser.add_argument(
+        '--sfe', nargs='+', default=None,
+        help='Filter simulations by SFE (e.g., --sfe 001 010).'
+    )
+    parser.add_argument(
+        '--info', action='store_true',
+        help='Scan folder and print available mCloud, SFE, and nCore values.'
+    )
 
     args = parser.parse_args()
 
-    if args.folder:
-        plot_grid(args.folder, args.output_dir, ndens_filter=args.nCore)
+    if args.info:
+        if not args.folder:
+            parser.print_help()
+            print("\nError: --info requires --folder to be specified.")
+        else:
+            info = info_simulations(args.folder)
+            print("=" * 50)
+            print(f"Simulation parameters in: {args.folder}")
+            print("=" * 50)
+            print(f"  Total simulations: {info['count']}")
+            print(f"  mCloud values: {info['mCloud']}")
+            print(f"  SFE values: {info['sfe']}")
+            print(f"  nCore values: {info['ndens']}")
+    elif args.folder:
+        plot_grid(args.folder, args.output_dir, ndens_filter=args.nCore,
+                  mCloud_filter=args.mCloud, sfe_filter=args.sfe)
     elif args.data:
         plot_from_path(args.data, args.output_dir)
     else:
