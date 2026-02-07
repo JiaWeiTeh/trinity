@@ -1,21 +1,63 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Velocity-radius relation and self-similar expansion index from TRINITY.
+Velocity–radius relation and self-similar expansion index from TRINITY.
 
-Analyses the v(R) trajectory of each TRINITY run to extract:
-    - Instantaneous power-law index  alpha_local = d(log v)/d(log R)
-    - Phase-averaged power-law index alpha_phase for each phase
-    - Self-similar constant  eta(t) = v*t / R   (for age estimation)
+Physics background
+------------------
+The relationship v(R) between the shell expansion velocity and its
+radius encodes the underlying driving mechanism.  For self-similar
+solutions where R ∝ t^n, the velocity scales as v ∝ R^α with
+α = (1 − n)/n, and the dimensionless ratio η = v t / R equals n.
 
-Produces trajectory galleries, diagnostic plots, and scaling fits.
+Classical predictions for α (i.e. d log v / d log R):
+
+========================  ======  ======  ============================
+Solution                  n       α       Reference
+========================  ======  ======  ============================
+Weaver energy-driven      3/5     −2/3    Weaver et al. (1977)
+Spitzer HII expansion     4/7     −3/2    Spitzer (1978)
+Momentum-driven           1/2     −1      snowplough limit
+Radiation-pressure-driven 1/2     −1/2    Krumholz & Matzner (2009)
+========================  ======  ======  ============================
+
+In practice, TRINITY shells do not follow a single power law because:
+
+* The driving mechanism changes between phases (energy → transition →
+  momentum), each with its own effective α.
+* Mass loading (sweeping up ambient material) steepens deceleration.
+* Gravity can flatten or reverse the velocity trend, especially at
+  high Σ.
+* Supernovae at t ≈ 3–4 Myr re-accelerate the shell.
+
+The **self-similar constant** η = v t / R is particularly useful
+observationally.  An observer measuring v and R of an HII region can
+infer its dynamical age as t_dyn = η R / v.  The "correct" η depends
+on the expansion phase; using the wrong value introduces a systematic
+age bias.  This script quantifies η(phase) and η(R) across the
+parameter grid, providing look-up tables for observational studies.
+
+Computed quantities
+-------------------
+* **α_local(R)** — instantaneous power-law index via centred finite
+  differences in log-space, smoothed with Savitzky–Golay filtering.
+* **α_phase** — least-squares fit of log v = const + α log R within
+  each phase (energy, transition, momentum).
+* **η(t)** — time-resolved self-similar constant.
+* **η at fixed R** — interpolated η at observer-relevant radii
+  (10, 50, 100 pc).
+* **η at fixed t** — interpolated η at 1, 3, 5, 10 Myr.
+
+References
+----------
+* Weaver, R. et al. (1977), ApJ, 218, 377 — wind-bubble expansion.
+* Spitzer, L. (1978), *Physical Processes in the ISM* — HII expansion.
+* Krumholz, M. R. & Matzner, C. D. (2009), ApJ, 703, 1352 — radiation.
 
 CLI usage
 ---------
     python velocity_radius.py -F /path/to/sweep_output
     python velocity_radius.py -F /path/to/sweep_output --R-bins 30 --fmt png
-
-Author: Claude Code
 """
 
 import sys

@@ -3,22 +3,69 @@
 """
 Terminal radial momentum per stellar mass from TRINITY parameter sweeps.
 
-Extracts the terminal shell momentum p_fin/M_* for every completed run
-and fits power-law scaling relations of the form:
+Physics background
+------------------
+The **terminal momentum** p_fin is the total radial momentum carried by
+the swept-up shell when it reaches the cloud boundary (for expanding
+runs) or at peak expansion (for collapsing runs).  Normalised by the
+stellar mass M_* = ε M_cloud, the ratio p_fin/M_* [km/s] quantifies
+the net momentum yield of stellar feedback per unit star formation —
+a key input for sub-grid feedback models in galaxy simulations.
 
-    p_fin/M_*  ~  A * (n_c/n_0)^alpha * (M/M_0)^beta * (eps/eps_0)^gamma
+For a single supernova exploding into a uniform medium the momentum
+yield has been calibrated numerically:
 
-Optionally decomposes into momentum contributions from individual feedback
-mechanisms (winds, radiation, photoionised gas, supernovae) using the
-integrated force time series.
+    p_fin/M_* ≈ 1000–3000 km/s   (Kim & Ostriker 2015; Martizzi+ 2015)
+
+with a weak dependence on ambient density (∝ n^{-0.16}).  In reality,
+multiple feedback mechanisms operate *simultaneously*:
+
+* **Stellar winds** inject momentum continuously before the first SN
+  (t < 3–4 Myr), pre-evacuating the cavity and reducing the density
+  into which the SN blast propagates.
+
+* **Radiation pressure** (direct UV + reprocessed IR) acts on dust
+  grains in the shell and can dominate in high-Σ environments.
+
+* **Photoionised-gas (HII) pressure** pushes outward as ionising
+  photons heat the inner shell surface to ≈ 10⁴ K.
+
+* **Supernovae** deliver impulsive momentum injection after ≈ 3 Myr.
+
+The *momentum boost factor* η = p_fin / p_input measures how much
+extra momentum the shell gains beyond the direct mechanical input,
+through work done by thermal pressure in the hot bubble (PdV
+boosting).  In the adiabatic Weaver limit η ≈ 10–30; with cooling,
+η ≈ 2–10.
+
+Fitted quantities
+-----------------
+* **p_fin / M_*** [km/s] — terminal specific momentum, fitted
+  separately for expanding and collapsing subsets.
+* **p_boost** = p_fin / p_input — momentum boost factor (requires
+  ``--decompose``).
+* **Component momenta** — impulse from each force (F_grav, F_ram,
+  F_ion_out, F_rad, F_ram_wind, F_ram_SN) integrated to t_fin.
+
+Method
+------
+Shell momentum at each snapshot is p(t) = M_shell(t) × v₂(t)
+[M☉ pc/Myr].  For expanding runs t_fin is the last snapshot; for
+collapsing runs t_fin is the time of peak p (before deceleration
+brings p → 0).  Power-law fits use sigma-clipping OLS.
+
+References
+----------
+* Kim, C.-G. & Ostriker, E. C. (2015), ApJ, 802, 99 — SN momentum.
+* Martizzi, D. et al. (2015), MNRAS, 450, 504 — SN momentum vs density.
+* Lancaster, L. et al. (2021), ApJ, 914, 89 — wind momentum boost.
+* Grudić, M. Y. et al. (2018), MNRAS, 475, 3511 — multi-mechanism feedback.
 
 CLI usage
 ---------
     python terminal_momentum.py -F /path/to/sweep_output
     python terminal_momentum.py -F /path/to/sweep_output --decompose
     python terminal_momentum.py -F /path/to/sweep_output --fmt png
-
-Author: Claude Code
 """
 
 import sys

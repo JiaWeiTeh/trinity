@@ -3,26 +3,70 @@
 """
 Cloud dispersal timescale scaling relations from TRINITY parameter sweeps.
 
-Extracts the dispersal time t_disp, collapse time t_collapse, and derived
-quantities (t_disp/t_ff, feedback velocity v_fb, SFE per free-fall time
-eps_ff) for every completed run.  Fits power-law scaling relations:
+Physics background
+------------------
+The **dispersal time** t_disp is the time at which the expanding shell
+first reaches the cloud boundary R_cloud with positive velocity,
+physically marking the moment when feedback has swept the entire cloud
+mass and begins releasing gas into the ISM.  For collapsing runs the
+analogous quantity is t_collapse, the time at which the shell
+decelerates to v = 0 and begins re-collapsing.
 
-    t_disp     ~ A * (n/n0)^a * (M/M0)^b * (eps/eps0)^g
-    t_disp/tff ~ A' * ...
-    t_collapse/tff ~ A'' * ...
-    v_fb       ~ A''' * ...
-    eps_ff     ~ A'''' * ...
+These timescales set the **molecular-cloud lifetime** under the
+influence of internal stellar feedback — a quantity directly
+constrained by observations of nearby galaxies.
 
-Compares to Chevance et al. (2020) feedback timescales (1–5 Myr,
-v_fb = 7–21 km/s) and Rahner et al. (2017) collapse timescales
-(t_collapse = 2–4 t_ff).
+Observational comparisons
+^^^^^^^^^^^^^^^^^^^^^^^^^
+* **Chevance et al. (2020)** measured cloud-scale feedback timescales
+  of 1–5 Myr and feedback velocities v_fb = 7–21 km/s across nine
+  nearby galaxies using CO–Hα de-correlation.  The feedback velocity
+  is defined here as v_fb = R_cloud / t_disp.
+
+* **Rahner et al. (2017)** found with WARPFIELD that collapsing
+  clouds require t_collapse ≈ 2–4 t_ff, where t_ff is the cloud
+  free-fall time t_ff = √(3π / 32 G ρ).
+
+Derived quantities
+------------------
+* **t_disp / t_ff** — dispersal time normalised by the free-fall time.
+  Values ≫ 1 imply that feedback takes many free-fall times to disrupt
+  the cloud; values ∼ 1 indicate rapid disruption within a single
+  dynamical time.
+
+* **v_fb = R_cloud / t_disp** [km/s] — feedback velocity.  This is
+  the effective speed at which feedback information propagates outward
+  through the cloud and is directly comparable to Chevance et al.
+
+* **ε_ff = ε × t_ff / t_disp** — star-formation efficiency per free-
+  fall time.  In turbulence-regulated theories of star formation,
+  ε_ff ≈ 0.003–0.01 (Krumholz & McKee 2005; Padoan & Nordlund 2011).
+  Here it is measured *a posteriori* from the simulation outcome rather
+  than assumed.
+
+Fitted power laws
+-----------------
+Five quantities are fitted as power laws of (n_c, M_cloud, ε):
+
+1. t_disp (expanding runs only)
+2. t_disp / t_ff (expanding runs only)
+3. t_collapse / t_ff (collapsing runs only)
+4. v_fb (expanding runs only)
+5. ε_ff (expanding runs only)
+
+All fits use sigma-clipping OLS in log₁₀ space.
+
+References
+----------
+* Chevance, M. et al. (2020), MNRAS, 493, 2872 — feedback timescales.
+* Rahner, D. et al. (2017), MNRAS, 470, 4453 — WARPFIELD collapse times.
+* Krumholz, M. R. & McKee, C. F. (2005), ApJ, 630, 250 — ε_ff theory.
+* Padoan, P. & Nordlund, Å. (2011), ApJ, 730, 40 — ε_ff in turbulence.
 
 CLI usage
 ---------
     python dispersal_timescale.py -F /path/to/sweep_output
     python dispersal_timescale.py -F /path/to/sweep_output --fmt png
-
-Author: Claude Code
 """
 
 import sys

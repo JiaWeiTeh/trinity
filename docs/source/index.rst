@@ -24,4 +24,5 @@ Contents
    physics
    visualization
    trinity_reader
+   analysis
    publications

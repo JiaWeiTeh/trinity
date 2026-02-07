@@ -1,24 +1,69 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Scaling-relation fitting for TRINITY phase-transition timescales.
+Phase-transition timescale scaling relations for TRINITY.
 
-Extracts phase-transition times from completed TRINITY parameter-sweep runs
-and fits power-law scaling relations of the form:
+Physics background
+------------------
+TRINITY evolves expanding shells through distinct dynamical phases:
 
-    t_X  ~  A * (n_c / n_0)^alpha * (M_cloud / M_0)^beta * (eps / eps_0)^gamma
+1. **Energy-driven phase** — a hot, shocked stellar-wind bubble provides
+   the driving pressure.  The bubble interior is approximately adiabatic
+   (Weaver et al. 1977) and the shell radius grows as R ∝ t^{3/5}.
 
-via log-linear OLS with iterative sigma-clipping.
+2. **Transition phase** — radiative cooling of the bubble becomes important,
+   the internal energy drops, and driving shifts from thermal pressure to
+   direct momentum deposition and warm-ionised-gas pressure.
 
-Produces parity plots (predicted vs actual) and a summary CSV table.
+3. **Momentum-driven phase** — the bubble has cooled completely; the shell
+   coasts under its accumulated momentum with R ∝ t^{1/2} (snowplough).
+
+The *times* at which these transitions occur encode how quickly feedback
+couples to the ambient cloud.  They depend on the cloud parameters
+(core density n_c, cloud mass M_cloud, star-formation efficiency ε)
+through the competition between energy injection, radiative cooling,
+and the column density of swept-up material.
+
+Fitted quantities
+-----------------
+* **t_trans** — onset of the transition phase [Myr].  Marks where
+  the bubble's cooling time becomes comparable to the dynamical time.
+  Scales roughly as t_trans ∝ n^{-a} M^{b} ε^{g}, reflecting the
+  trade-off between luminosity (∝ ε M) and cooling rate (∝ n²).
+
+* **t_trans_dur** — duration of the transition phase [Myr], i.e.
+  t_mom − t_trans.  A short transition indicates an abrupt switch to
+  momentum-driving; a long one signals a gradual handoff.
+
+* **t_mom** — onset of the momentum phase [Myr].  After this time
+  the bubble contributes negligible thermal energy and expansion is
+  purely momentum-conserving.
+
+Method
+------
+For each quantity X ∈ {t_trans, t_trans_dur, t_mom} the script fits:
+
+    log₁₀(X) = log₁₀(A)
+                + α log₁₀(n_c / n₀)
+                + β log₁₀(M_cloud / M₀)
+                + γ log₁₀(ε / ε₀)
+
+using ordinary least-squares (OLS) with iterative sigma-clipping to
+reject outliers.  Only non-collapsing (expanding) runs contribute to
+the fit.  Parameters that are constant across the sweep are
+automatically excluded from the design matrix.
+
+References
+----------
+* Weaver, R. et al. (1977), ApJ, 218, 377 — adiabatic wind-bubble model.
+* Mac Low, M.-M. & McCray, R. (1988), ApJ, 324, 776 — bubble cooling time.
+* Rahner, D. et al. (2017), MNRAS, 470, 4453 — WARPFIELD phase evolution.
 
 CLI usage
 ---------
     python scaling_phases.py -F /path/to/sweep_output
     python scaling_phases.py -F /path/to/sweep_output --quantities t_trans,t_mom
     python scaling_phases.py -F /path/to/sweep_output --sigma-clip 2.5 --fmt png
-
-Author: Claude Code
 """
 
 import sys

@@ -1,32 +1,78 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Collapse criterion and minimum star formation efficiency for TRINITY.
+Minimum star-formation efficiency for cloud dispersal (collapse criterion).
 
-Classifies each TRINITY run as "expand" (dispersal) or "collapse",
-determines the minimum SFE eps_min(nCore, mCloud) for dispersal, and
-fits power-law scaling relations:
+Physics background
+------------------
+Whether stellar feedback can disperse a molecular cloud or whether the
+cloud re-collapses depends on the balance between outward feedback forces
+(thermal pressure, radiation, ionised-gas pressure) and the inward pull
+of gravity.  For a given cloud density n_c and mass M_cloud, there exists
+a **minimum SFE** ε_min below which feedback is too weak to unbind the
+cloud, and the swept-up shell re-collapses.
 
-    eps_min  ~  A * (n_c / n_0)^alpha * (M_cloud / M_0)^beta
-    eps_min  ~  A' * (Sigma / Sigma_0)^delta
+This threshold is controlled by:
 
-Produces:
-    - Phase diagram in (mCloud, SFE) space  (one panel per nCore)
-    - eps_min vs. surface density plot
-    - Parity plot (predicted vs. actual eps_min)
-    - Outcome fraction plot
-    - Summary CSV tables
+* **Gravitational binding energy**  E_bind = (3/5) G M²/R, which
+  increases with cloud mass and surface density Σ = M/(πR²).
 
-This is the TRINITY equivalent of WARPFIELD's headline result
-(Rahner et al. 2019, MNRAS 483, Fig. 5).
+* **Feedback energy budget**, set by the stellar mass M_* = ε M_cloud
+  and hence the mechanical luminosity L_w ∝ M_* and the ionising
+  photon rate Q_i ∝ M_*.
+
+* **Radiative cooling**, which removes thermal energy from the bubble
+  and reduces the effective coupling of winds/SNe.
+
+Denser, more massive clouds require a higher SFE to overcome their
+deeper gravitational potential.  This motivates the power-law ansatz:
+
+    ε_min ∝ (n_c / n₀)^α (M_cloud / M₀)^β
+
+and the complementary one-parameter form:
+
+    ε_min ∝ (Σ / Σ₀)^δ
+
+where Σ encapsulates the combined dependence on mass and density
+through the cloud radius–density relation.
+
+Method
+------
+1. Each TRINITY run is classified as **expand** (shell escapes the
+   cloud), **collapse** (shell re-collapses), or **stalled** (reaches
+   maximum time without clear outcome).
+
+2. For every unique (n_c, M_cloud) pair the script identifies the
+   SFE boundary between collapse and expansion by bracketing.  The
+   midpoint of the highest-collapsing and lowest-expanding SFE is
+   taken as ε_min (labelled "exact"); if all runs collapse or all
+   expand, the point becomes a lower/upper limit.
+
+3. Power-law fits are performed with sigma-clipping OLS on the
+   exact-boundary points.
+
+Connection to observations
+--------------------------
+Observed giant molecular clouds have integrated SFEs of ε ≈ 1–10 %
+and surface densities Σ ≈ 30–300 M☉ pc⁻².  Comparing TRINITY's
+ε_min(Σ) to these ranges constrains which clouds can be disrupted by
+internal stellar feedback alone, and which require additional
+mechanisms (e.g. cloud–cloud collisions, galactic shear).
+
+This analysis is the TRINITY equivalent of the WARPFIELD headline
+result presented in Rahner et al. (2019, MNRAS, 483, 2547, Fig. 5).
+
+References
+----------
+* Rahner, D. et al. (2019), MNRAS, 483, 2547 — WARPFIELD collapse criterion.
+* Fall, S. M. et al. (2010), ApJ, 710, L142 — ε_min vs Σ framework.
+* Grudić, M. Y. et al. (2018), MNRAS, 475, 3511 — simulated ε_min.
 
 CLI usage
 ---------
     python collapse_criterion.py -F /path/to/sweep_output
     python collapse_criterion.py -F /path/to/sweep_output --sigma-clip 2.5
     python collapse_criterion.py -F /path/to/sweep_output --fmt png
-
-Author: Claude Code
 """
 
 import sys
