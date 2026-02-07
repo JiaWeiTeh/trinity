@@ -46,7 +46,7 @@ use_adaptive_solver True
 
 # Run settings
 stop_r    None
-stop_t    10
+stop_t    5
 
 # Suppress warnings to save memory
 log_level    WARNING
