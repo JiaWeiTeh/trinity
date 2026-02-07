@@ -20,7 +20,7 @@ from matplotlib.lines import Line2D
 
 # Add project root to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
-from src._output.trinity_reader import load_output, resolve_data_input
+from src._output.trinity_reader import load_output, resolve_data_input, info_simulations
 from src._plots.plot_markers import add_plot_markers, get_marker_legend_handles
 
 print("...plotting force fractions with ram composition overlay + PISM")
@@ -333,7 +333,8 @@ def plot_run_on_ax(
 
 # ---------------- main loop ----------------
 
-def plot_grid(folder_path, output_dir=None, ndens_filter=None):
+def plot_grid(folder_path, output_dir=None, ndens_filter=None,
+              mCloud_filter=None, sfe_filter=None):
     """
     Plot grid of feedback fractions from simulations in a folder.
 
@@ -349,6 +350,10 @@ def plot_grid(folder_path, output_dir=None, ndens_filter=None):
     ndens_filter : str, optional
         Filter simulations by density (e.g., "1e4"). If None, creates one
         PDF per unique density found.
+    mCloud_filter : list of str, optional
+        Filter simulations by cloud mass (e.g., ["1e6", "1e7"]).
+    sfe_filter : list of str, optional
+        Filter simulations by SFE (e.g., ["001", "010"]).
 
     Notes
     -----
@@ -379,7 +384,10 @@ def plot_grid(folder_path, output_dir=None, ndens_filter=None):
     for ndens in ndens_to_plot:
         print(f"\nProcessing n={ndens}...")
 
-        organized = organize_simulations_for_grid(sim_files, ndens_filter=ndens)
+        organized = organize_simulations_for_grid(
+            sim_files, ndens_filter=ndens,
+            mCloud_filter=mCloud_filter, sfe_filter=sfe_filter
+        )
         mCloud_list_use = organized['mCloud_list']
         sfe_list_use = organized['sfe_list']
         grid = organized['grid']
@@ -526,6 +534,14 @@ Examples:
   python paper_feedback.py --folder /path/to/my_experiment/
   python paper_feedback.py -F /path/to/simulations/
   python paper_feedback.py -F /path/to/simulations/ -n 1e4  # filter by density
+
+  # Filter by cloud mass and/or SFE
+  python paper_feedback.py -F /path/to/simulations/ --mCloud 1e6 1e7
+  python paper_feedback.py -F /path/to/simulations/ --sfe 001 010 020
+  python paper_feedback.py -F /path/to/simulations/ -n 1e4 --mCloud 1e7 --sfe 010
+
+  # Scan folder for available parameters
+  python paper_feedback.py -F /path/to/simulations/ --info
         """
     )
     parser.add_argument(
@@ -550,15 +566,44 @@ Examples:
         help='Filter simulations by cloud density (e.g., "1e4", "1e3"). '
              'If not specified, generates one PDF per density found.'
     )
+    parser.add_argument(
+        '--mCloud', nargs='+', default=None,
+        help='Filter simulations by cloud mass (e.g., --mCloud 1e6 1e7). '
+             'Only shows specified mCloud values on the grid.'
+    )
+    parser.add_argument(
+        '--sfe', nargs='+', default=None,
+        help='Filter simulations by SFE (e.g., --sfe 001 010). '
+             'Only shows specified SFE values on the grid.'
+    )
+    parser.add_argument(
+        '--info', action='store_true',
+        help='Scan folder and print available mCloud, SFE, and nCore values, then exit.'
+    )
 
     args = parser.parse_args()
 
     if args.log_x:
         USE_LOG_X = True
 
-    if args.folder:
+    if args.info:
+        # Info mode: scan folder and print available parameters
+        if not args.folder:
+            parser.print_help()
+            print("\nError: --info requires --folder to be specified.")
+        else:
+            info = info_simulations(args.folder)
+            print("=" * 50)
+            print(f"Simulation parameters in: {args.folder}")
+            print("=" * 50)
+            print(f"  Total simulations: {info['count']}")
+            print(f"  mCloud values: {info['mCloud']}")
+            print(f"  SFE values: {info['sfe']}")
+            print(f"  nCore values: {info['ndens']}")
+    elif args.folder:
         # Grid mode: create grid from all simulations in folder
-        plot_grid(args.folder, args.output_dir, ndens_filter=args.nCore)
+        plot_grid(args.folder, args.output_dir, ndens_filter=args.nCore,
+                  mCloud_filter=args.mCloud, sfe_filter=args.sfe)
     elif args.data:
         # Single simulation mode
         plot_from_path(args.data, args.output_dir)

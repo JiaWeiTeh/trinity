@@ -1164,7 +1164,12 @@ def get_unique_ndens(sim_files: List[Path]) -> List[str]:
     return sorted(ndens_set, key=lambda x: float(x))
 
 
-def organize_simulations_for_grid(sim_files: List[Path], ndens_filter: str = None) -> Dict:
+def organize_simulations_for_grid(
+    sim_files: List[Path],
+    ndens_filter: str = None,
+    mCloud_filter: List[str] = None,
+    sfe_filter: List[str] = None
+) -> Dict:
     """
     Organize simulation files into a grid structure for plotting.
 
@@ -1175,6 +1180,10 @@ def organize_simulations_for_grid(sim_files: List[Path], ndens_filter: str = Non
     ndens_filter : str, optional
         If provided, only include simulations with this ndens value (e.g., "1e4").
         If None, includes all simulations.
+    mCloud_filter : list of str, optional
+        If provided, only include simulations with mCloud in this list (e.g., ["1e6", "1e7"]).
+    sfe_filter : list of str, optional
+        If provided, only include simulations with sfe in this list (e.g., ["001", "010"]).
 
     Returns
     -------
@@ -1207,6 +1216,14 @@ def organize_simulations_for_grid(sim_files: List[Path], ndens_filter: str = Non
         if ndens_filter is not None and ndens != ndens_filter:
             continue
 
+        # Apply mCloud filter if specified
+        if mCloud_filter is not None and mCloud not in mCloud_filter:
+            continue
+
+        # Apply sfe filter if specified
+        if sfe_filter is not None and sfe not in sfe_filter:
+            continue
+
         mCloud_set.add(mCloud)
         sfe_set.add(sfe)
         ndens_set.add(ndens)
@@ -1223,4 +1240,46 @@ def organize_simulations_for_grid(sim_files: List[Path], ndens_filter: str = Non
         'grid': grid,
         'ndens': ndens_list[0] if len(ndens_list) == 1 else None,
         'ndens_list': ndens_list
+    }
+
+
+def info_simulations(folder_path) -> Dict:
+    """
+    Scan a folder and return available simulation parameters.
+
+    Parameters
+    ----------
+    folder_path : str or Path
+        Path to folder containing simulation subfolders.
+
+    Returns
+    -------
+    dict with keys:
+        'mCloud': sorted list of unique mCloud values
+        'sfe': sorted list of unique SFE values
+        'ndens': sorted list of unique ndens values
+        'count': total number of simulations found
+    """
+    from pathlib import Path
+
+    folder_path = Path(folder_path)
+    sim_files = find_all_simulations(folder_path)
+
+    mCloud_set = set()
+    sfe_set = set()
+    ndens_set = set()
+
+    for sim_file in sim_files:
+        folder_name = sim_file.parent.name
+        params = parse_simulation_params(folder_name)
+        if params:
+            mCloud_set.add(params['mCloud'])
+            sfe_set.add(params['sfe'])
+            ndens_set.add(params['ndens'])
+
+    return {
+        'mCloud': sorted(mCloud_set, key=lambda x: float(x)),
+        'sfe': sorted(sfe_set, key=lambda x: int(x)),
+        'ndens': sorted(ndens_set, key=lambda x: float(x)),
+        'count': len(sim_files)
     }
