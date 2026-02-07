@@ -587,13 +587,18 @@ def generate_run_name(params: Dict[str, Any]) -> str:
     """
     Generate output folder name following existing TRINITY convention.
 
-    Format: {mCloud}_sfe{sfe*100:03d}_n{nCore}
-    Example: 1e7_sfe010_n1e4
+    Format: {mCloud}_sfe{sfe*100:03d}_n{nCore}[_profile_suffix]
+    Examples:
+        - 1e7_sfe010_n1e4 (default, no density profile suffix)
+        - 1e5_sfe001_n1e4_PL0 (powerlaw alpha=0)
+        - 1e5_sfe001_n1e4_PL-2 (powerlaw alpha=-2)
+        - 1e5_sfe001_n1e4_BE14 (Bonnor-Ebert Omega=14.1)
 
     Parameters
     ----------
     params : dict
-        Parameter dictionary containing mCloud, sfe, nCore
+        Parameter dictionary containing mCloud, sfe, nCore, and optionally
+        dens_profile, densPL_alpha, densBE_Omega
 
     Returns
     -------
@@ -615,7 +620,23 @@ def generate_run_name(params: Dict[str, Any]) -> str:
     # Format nCore (scientific notation)
     ncore_str = format_scientific(ncore)
 
-    return f"{mcloud_str}_sfe{sfe_str}_n{ncore_str}"
+    base_name = f"{mcloud_str}_sfe{sfe_str}_n{ncore_str}"
+
+    # Add density profile suffix if present
+    dens_profile = params.get('dens_profile')
+    if dens_profile:
+        if dens_profile == 'densPL':
+            alpha = params.get('densPL_alpha', 0)
+            # Format alpha: 0 -> "0", -1 -> "-1", -2 -> "-2"
+            alpha_int = int(alpha)
+            base_name += f"_PL{alpha_int}"
+        elif dens_profile == 'densBE':
+            omega = params.get('densBE_Omega', 14.1)
+            # Format omega: 14.1 -> "14", 7.0 -> "7"
+            omega_int = int(round(omega))
+            base_name += f"_BE{omega_int}"
+
+    return base_name
 
 
 def format_scientific(value: float) -> str:

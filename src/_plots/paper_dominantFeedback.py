@@ -48,7 +48,8 @@ import shutil
 # Add project root to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from src._output.trinity_reader import (
-    load_output, find_all_simulations, organize_simulations_for_grid, get_unique_ndens
+    load_output, find_all_simulations, organize_simulations_for_grid, get_unique_ndens,
+    info_simulations
 )
 
 import os
@@ -593,7 +594,7 @@ def create_legend():
 # =============================================================================
 
 def plot_grid(folder_path, target_times=None, output_dir=None, ndens_filter=None,
-              smooth='none', axis_mode='discrete'):
+              smooth='none', axis_mode='discrete', mCloud_filter=None, sfe_filter=None):
     """
     Plot dominant feedback grid from simulations in a folder.
 
@@ -615,6 +616,10 @@ def plot_grid(folder_path, target_times=None, output_dir=None, ndens_filter=None
         Smoothing method: 'none' or 'interp'
     axis_mode : str
         'discrete' or 'continuous'
+    mCloud_filter : list of str, optional
+        Filter simulations by cloud mass (e.g., ["1e6", "1e7"]).
+    sfe_filter : list of str, optional
+        Filter simulations by SFE (e.g., ["001", "010"]).
     """
     folder_path = Path(folder_path)
     folder_name = folder_path.name
@@ -666,7 +671,10 @@ def plot_grid(folder_path, target_times=None, output_dir=None, ndens_filter=None
         print(f"Processing n={ndens}...")
         print("-" * 60)
 
-        organized = organize_simulations_for_grid(sim_files, ndens_filter=ndens)
+        organized = organize_simulations_for_grid(
+            sim_files, ndens_filter=ndens,
+            mCloud_filter=mCloud_filter, sfe_filter=sfe_filter
+        )
         mCloud_list = organized['mCloud_list']
         sfe_list = organized['sfe_list']
         sim_grid = organized['grid']
@@ -765,7 +773,8 @@ def plot_grid(folder_path, target_times=None, output_dir=None, ndens_filter=None
 
 def make_movie(folder_path, output_dir=None, ndens_filter=None,
                smooth='none', axis_mode='discrete',
-               t_start=0.0, t_end=5.0, dt=0.05, fps=10):
+               t_start=0.0, t_end=5.0, dt=0.05, fps=10,
+               mCloud_filter=None, sfe_filter=None):
     """Create an animated GIF showing the evolution of dominant feedback over time."""
     try:
         from PIL import Image
@@ -817,7 +826,10 @@ def make_movie(folder_path, output_dir=None, ndens_filter=None,
     for ndens in ndens_to_plot:
         print(f"\nProcessing n={ndens}...")
 
-        organized = organize_simulations_for_grid(sim_files, ndens_filter=ndens)
+        organized = organize_simulations_for_grid(
+            sim_files, ndens_filter=ndens,
+            mCloud_filter=mCloud_filter, sfe_filter=sfe_filter
+        )
         mCloud_list = organized['mCloud_list']
         sfe_list = organized['sfe_list']
         sim_grid = organized['grid']
@@ -932,6 +944,14 @@ Examples:
   # Custom time snapshots
   python paper_dominantFeedback.py -F /path/to/outputs --times 1.0 3.0 5.0
 
+  # Filter by cloud mass and/or SFE
+  python paper_dominantFeedback.py -F /path/to/outputs --mCloud 1e6 1e7
+  python paper_dominantFeedback.py -F /path/to/outputs --sfe 001 010 020
+  python paper_dominantFeedback.py -F /path/to/outputs -n 1e4 --mCloud 1e7 --sfe 010
+
+  # Scan folder for available parameters
+  python paper_dominantFeedback.py -F /path/to/outputs --info
+
   # With interpolation smoothing
   python paper_dominantFeedback.py -F /path/to/outputs --axis-mode continuous --smooth interp
 
@@ -960,6 +980,20 @@ dominant feedback for later time snapshots.
         '--nCore', '-n', default=None,
         help='Filter simulations by density (e.g., "1e4"). If not specified, '
              'generates one PDF per density found.'
+    )
+    parser.add_argument(
+        '--mCloud', nargs='+', default=None,
+        help='Filter simulations by cloud mass (e.g., --mCloud 1e6 1e7). '
+             'Only shows specified mCloud values on the grid.'
+    )
+    parser.add_argument(
+        '--sfe', nargs='+', default=None,
+        help='Filter simulations by SFE (e.g., --sfe 001 010). '
+             'Only shows specified SFE values on the grid.'
+    )
+    parser.add_argument(
+        '--info', action='store_true',
+        help='Scan folder and print available mCloud, SFE, and nCore values, then exit.'
     )
     parser.add_argument(
         '--times', '-t', nargs='+', type=float, default=None,
@@ -1002,7 +1036,17 @@ dominant feedback for later time snapshots.
 
     args = parser.parse_args()
 
-    if args.movie:
+    if args.info:
+        # Info mode: scan folder and print available parameters
+        info = info_simulations(args.folder)
+        print("=" * 50)
+        print(f"Simulation parameters in: {args.folder}")
+        print("=" * 50)
+        print(f"  Total simulations: {info['count']}")
+        print(f"  mCloud values: {info['mCloud']}")
+        print(f"  SFE values: {info['sfe']}")
+        print(f"  nCore values: {info['ndens']}")
+    elif args.movie:
         make_movie(
             args.folder,
             output_dir=args.output_dir,
@@ -1012,7 +1056,9 @@ dominant feedback for later time snapshots.
             t_start=args.t_start,
             t_end=args.t_end,
             dt=args.dt,
-            fps=args.fps
+            fps=args.fps,
+            mCloud_filter=args.mCloud,
+            sfe_filter=args.sfe
         )
     else:
         plot_grid(
@@ -1021,5 +1067,7 @@ dominant feedback for later time snapshots.
             output_dir=args.output_dir,
             ndens_filter=args.nCore,
             smooth=args.smooth,
-            axis_mode=args.axis_mode
+            axis_mode=args.axis_mode,
+            mCloud_filter=args.mCloud,
+            sfe_filter=args.sfe
         )
