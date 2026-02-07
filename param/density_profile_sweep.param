@@ -1,0 +1,52 @@
+# Density Profile Sweep Parameter File for TRINITY
+# =================================================
+#
+# This file sweeps over different density profiles while keeping
+# all other parameters fixed.
+#
+# Usage:
+#   python run_sweep.py param/density_profile_sweep.param --dry-run
+#   python run_sweep.py param/density_profile_sweep.param --workers 4
+#
+# Runs:
+#   1. Powerlaw with alpha = 0 (uniform)
+#   2. Powerlaw with alpha = -1
+#   3. Powerlaw with alpha = -2
+#   4. Bonnor-Ebert with Omega = 14.1
+
+# =============================================================================
+# Tuple mode: specify exact (dens_profile, densPL_alpha, densBE_Omega) combos
+# =============================================================================
+
+tuple(dens_profile, densPL_alpha, densBE_Omega)    [densPL, 0, 0] [densPL, -1, 0] [densPL, -2, 0] [densBE, 0, 14.1]
+
+# =============================================================================
+# Fixed parameters (constant across all runs)
+# =============================================================================
+
+# Cloud properties
+mCloud    1e5
+sfe       0.01
+nCore     1e4
+rCore     1
+
+# ISM properties
+nISM    0.1
+stop_n_diss 0.1
+stop_t_diss 1
+
+# Allow expansion beyond cloud
+expansionBeyondCloud    True
+
+# Output directory
+path2output    outputs/density_profile_sweep
+
+# Use adaptive solver
+use_adaptive_solver True
+
+# Run settings
+stop_r    None
+stop_t    10
+
+# Suppress warnings to save memory
+log_level    WARNING
