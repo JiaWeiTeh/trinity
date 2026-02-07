@@ -295,7 +295,7 @@ def plot_run_on_ax(
                     facecolor="none",
                     edgecolor=C_RAM,          # blue
                     hatch="////",
-                    linewidth=0.8,            # hatch stroke weight
+                    linewidth=1,            # hatch stroke weight
                     alpha=0.9,
                     zorder=5
                 )
@@ -307,14 +307,14 @@ def plot_run_on_ax(
                         facecolor="none",
                         edgecolor=C_SN,       # yellow for SN
                         hatch="\\\\\\\\",     # opposite direction
-                        linewidth=2.5,        # slightly heavier stroke
+                        linewidth=1,        # slightly heavier stroke
                         alpha=0.9,
                         zorder=5
                     )
 
-                # Helpful boundaries - blue for wind/ram top, yellow for SN top
-                ax.plot(t_post, y_wind_top, color=C_RAM, lw=1.2, alpha=0.95, zorder=6)
-                ax.plot(t_post, y_sn_top,   color=C_SN,  lw=1.2, alpha=0.95, zorder=6)
+                # # Helpful boundaries - blue for wind/ram top, yellow for SN top
+                # ax.plot(t_post, y_wind_top, color=C_RAM, lw=0.5, alpha=0.95, zorder=6)
+                # ax.plot(t_post, y_sn_top,   color=C_SN,  lw=0.5, alpha=0.95, zorder=6)
 
                 # Optional: subtle tint to keep "ram is blue" obvious without overpowering
                 ax.fill_between(t_post, ram_bottom_post, ram_top_post, color=C_RAM, alpha=0.10, lw=0, zorder=4)

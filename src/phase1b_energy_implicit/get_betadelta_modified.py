@@ -182,7 +182,7 @@ def beta2Edot_pure(
     numerator = (
         2 * np.pi * press_dot * d**2
         + 3 * Eb * v2 * R2**2 * (1 - e)
-        - 3 * (adot / a) * R1**3 * Eb**2 / (Eb + b) if a > 0 else 0.0
+        - 3 * (adot / a) * R1**3 * Eb**2 / (Eb + b)
     )
     denominator = d * (1 - e)
 
