@@ -28,7 +28,7 @@ from scipy.interpolate import UnivariateSpline
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from src._output.trinity_reader import (
     load_output, find_all_simulations,
-    parse_simulation_params
+    parse_simulation_params, info_simulations
 )
 
 print("...creating trajectory evolution plots")
@@ -893,6 +893,12 @@ Shell Mass (shown in plots):
     # Filter
     parser.add_argument('--nCore', '-n', default=None,
                         help='Filter by nCore value (e.g., "1e4")')
+    parser.add_argument('--mCloud', nargs='+', default=None,
+                        help='Filter simulations by cloud mass (e.g., --mCloud 1e6 1e7).')
+    parser.add_argument('--sfe', nargs='+', default=None,
+                        help='Filter simulations by SFE (e.g., --sfe 001 010).')
+    parser.add_argument('--info', action='store_true',
+                        help='Scan folder and print available mCloud, SFE, and nCore values.')
 
     # Constraint configuration
     parser.add_argument('--include-mshell', action='store_true',
@@ -948,6 +954,18 @@ Shell Mass (shown in plots):
                         help='Plot all nCore values on the same plot (different linestyles)')
 
     args = parser.parse_args()
+
+    # Handle --info mode
+    if args.info:
+        info = info_simulations(args.folder)
+        print("=" * 50)
+        print(f"Simulation parameters in: {args.folder}")
+        print("=" * 50)
+        print(f"  Total simulations: {info['count']}")
+        print(f"  mCloud values: {info['mCloud']}")
+        print(f"  SFE values: {info['sfe']}")
+        print(f"  nCore values: {info['ndens']}")
+        sys.exit(0)
 
     # Build observational constraints
     obs = ObservationalConstraints(
