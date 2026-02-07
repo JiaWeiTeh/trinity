@@ -14,9 +14,9 @@ Produces parity plots (predicted vs actual) and a summary CSV table.
 
 CLI usage
 ---------
-    python trans_scaling.py -F /path/to/sweep_output
-    python trans_scaling.py -F /path/to/sweep_output --quantities t_trans,t_mom
-    python trans_scaling.py -F /path/to/sweep_output --sigma-clip 2.5 --fmt png
+    python scaling_phases.py -F /path/to/sweep_output
+    python scaling_phases.py -F /path/to/sweep_output --quantities t_trans,t_mom
+    python scaling_phases.py -F /path/to/sweep_output --sigma-clip 2.5 --fmt png
 
 Author: Claude Code
 """
@@ -46,6 +46,9 @@ from src._plots.plot_markers import find_phase_transitions
 
 logger = logging.getLogger(__name__)
 
+# Output directory: ./fig/ at project root, matching other paper_* scripts
+FIG_DIR = Path(__file__).parent.parent.parent / "fig"
+
 # Apply trinity plot style if available
 _style_path = Path(__file__).parent.parent / "_plots" / "trinity.mplstyle"
 if _style_path.exists():
@@ -61,7 +64,6 @@ QUANTITY_DEFS = {
     "t_trans":     "Time at which the transition phase begins [Myr]",
     "t_trans_dur": "Duration of the transition phase [Myr]",
     "t_mom":       "Time at which the momentum phase begins [Myr]",
-    "t_en_dur":    "Duration of the energy-driven phase (= t_trans) [Myr]",
 }
 
 
@@ -110,7 +112,6 @@ def extract_timescales(data_path: Path) -> Optional[Dict[str, float]]:
     if trans["t_transition"]:
         t_tr = trans["t_transition"][0]
         result["t_trans"] = t_tr
-        result["t_en_dur"] = t_tr          # energy duration = t_trans
     else:
         logger.debug("No transition phase in %s", data_path.parent.name)
 
@@ -625,9 +626,9 @@ def build_parser() -> argparse.ArgumentParser:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  python trans_scaling.py -F /path/to/sweep_output
-  python trans_scaling.py -F /path/to/sweep_output --quantities t_trans,t_mom
-  python trans_scaling.py -F /path/to/sweep_output --sigma-clip 2.5 --fmt png
+  python scaling_phases.py -F /path/to/sweep_output
+  python scaling_phases.py -F /path/to/sweep_output --quantities t_trans,t_mom
+  python scaling_phases.py -F /path/to/sweep_output --sigma-clip 2.5 --fmt png
         """,
     )
     parser.add_argument(
@@ -651,12 +652,8 @@ Examples:
         help="Number of sigma for outlier rejection (default: 3.0).",
     )
     parser.add_argument(
-        "--quantities", type=str, default="t_trans,t_trans_dur,t_mom,t_en_dur",
-        help="Comma-separated list of timescales to fit (default: all four).",
-    )
-    parser.add_argument(
-        "--output-dir", type=str, default=".",
-        help="Directory to save figures and CSV (default: current directory).",
+        "--quantities", type=str, default="t_trans,t_trans_dur,t_mom",
+        help="Comma-separated list of timescales to fit (default: all three).",
     )
     parser.add_argument(
         "--fmt", type=str, default="pdf",
@@ -681,7 +678,9 @@ def main(argv: Optional[List[str]] = None) -> int:
         logger.error("Folder does not exist: %s", folder_path)
         return 1
 
-    output_dir = Path(args.output_dir)
+    # Output into ./fig/{folder_name}/ matching other paper_* scripts
+    folder_name = folder_path.name
+    output_dir = FIG_DIR / folder_name
     output_dir.mkdir(parents=True, exist_ok=True)
 
     quantities = [q.strip() for q in args.quantities.split(",")]
