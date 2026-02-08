@@ -134,6 +134,9 @@ PHASE_GROUP = {
 # Minimum points in a phase to attempt a fit
 MIN_PHASE_PTS = 5
 
+# Exclude early transient before velocity stabilises [Myr]
+T_MIN_STABLE = 3e-3
+
 
 # ======================================================================
 # Data extraction
@@ -185,9 +188,11 @@ def extract_run(data_path: Path) -> Optional[Dict]:
 
     v_kms = v_au * V_AU2KMS
 
-    # Separate expanding and contracting portions
-    expanding = (v_au > 0) & (R > 0)
-    contracting = (v_au < 0) & (R > 0)
+    # Separate expanding and contracting portions;
+    # exclude early transient before velocity has stabilised
+    stable = t >= T_MIN_STABLE
+    expanding = (v_au > 0) & (R > 0) & stable
+    contracting = (v_au < 0) & (R > 0) & stable
 
     if expanding.sum() < MIN_PHASE_PTS and contracting.sum() < MIN_PHASE_PTS:
         logger.debug("Too few valid points in %s — skipping",
