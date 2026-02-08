@@ -350,6 +350,7 @@ def plot_shell_evolution(simulations: dict, output_dir: Path, fmt: str = 'pdf',
 
     axes[1].set_xlabel(r'$t$ [Myr]')
     axes[1].set_ylabel(r'$v$ [km\,s$^{-1}$]')
+    axes[1].set_yscale('log')
     axes[1].set_title(r'Shell Velocity')
 
     axes[2].set_xlabel(r'$t$ [Myr]')
