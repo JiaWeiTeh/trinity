@@ -50,6 +50,7 @@ SCRIPTS = [
     ("velocity_radius",     "src/_calc/velocity_radius.py"),
     ("dispersal_timescale", "src/_calc/dispersal_timescale.py"),
     ("energy_retention",    "src/_calc/energy_retention.py"),
+    ("bubble_distribution", "src/_calc/bubble_distribution.py"),
 ]
 
 # Flags that are forwarded verbatim to every sub-script.
