@@ -530,6 +530,225 @@ def fit_alpha_vs_params(
 
 
 # ======================================================================
+# Velocity scaling relation: v = A · R^a · (n/n0)^b · (M/M0)^c · (ε/ε0)^d
+# ======================================================================
+
+def fit_velocity_scaling(
+    records: List[Dict],
+    nCore_ref: float,
+    mCloud_ref: float,
+    sfe_ref: float,
+    sigma_clip: float,
+    population: str = "expanding",
+) -> Optional[Dict]:
+    """
+    Fit a multi-parameter velocity scaling relation in log-space.
+
+    Fits  log₁₀(v) = log₁₀(A) + a·log₁₀(R) + b·log₁₀(n/n₀)
+                                + c·log₁₀(M/M₀) + d·log₁₀(ε/ε₀)
+
+    using data pooled from all runs, separately for expanding (dispersing)
+    or collapsing clouds.
+
+    Parameters
+    ----------
+    records : list of dict
+        Output of :func:`collect_data`.
+    nCore_ref, mCloud_ref, sfe_ref : float
+        Reference normalizations.
+    sigma_clip : float
+        Sigma-clipping threshold for outlier rejection.
+    population : str
+        ``"expanding"`` for dispersing clouds (v > 0),
+        ``"collapsing"`` for collapsing clouds (|v| vs R).
+
+    Returns
+    -------
+    dict or None
+        Fit results with coefficients, uncertainties, R², equations, etc.
+    """
+    # Pool (R, v, params) data across all runs
+    all_logR, all_logv = [], []
+    all_nCore, all_mCloud, all_sfe = [], [], []
+    all_folders = []
+
+    for rec in records:
+        R = rec["R"]
+        v_au = rec["v_au"]
+
+        if population == "expanding":
+            # Only dispersing clouds
+            if rec["outcome"] == "collapse":
+                continue
+            sel = rec["expanding"] & (R > 0) & (v_au > 0)
+        else:
+            # Only collapsing clouds
+            if rec["outcome"] != "collapse":
+                continue
+            sel = rec.get("contracting", np.zeros(len(R), dtype=bool))
+            sel = sel & (R > 0) & (np.abs(v_au) > 0)
+
+        idx = np.where(sel)[0]
+        if len(idx) < MIN_PHASE_PTS:
+            continue
+
+        R_sel = R[idx]
+        if population == "expanding":
+            v_sel = v_au[idx] * V_AU2KMS            # km/s
+        else:
+            v_sel = np.abs(v_au[idx]) * V_AU2KMS     # |v| in km/s
+
+        # Subsample to avoid dominating with one long run
+        # Keep at most 50 evenly-spaced points per run
+        if len(idx) > 50:
+            step = len(idx) // 50
+            R_sel = R_sel[::step]
+            v_sel = v_sel[::step]
+
+        n_pts = len(R_sel)
+        all_logR.append(np.log10(R_sel))
+        all_logv.append(np.log10(v_sel))
+        all_nCore.append(np.full(n_pts, rec["nCore"]))
+        all_mCloud.append(np.full(n_pts, rec["mCloud"]))
+        all_sfe.append(np.full(n_pts, rec["sfe"]))
+        all_folders.extend([rec["folder"]] * n_pts)
+
+    if not all_logR:
+        logger.warning("No valid %s data for velocity scaling fit", population)
+        return None
+
+    logR = np.concatenate(all_logR)
+    logv = np.concatenate(all_logv)
+    nCore_arr = np.concatenate(all_nCore)
+    mCloud_arr = np.concatenate(all_mCloud)
+    sfe_arr = np.concatenate(all_sfe)
+    n_total = len(logR)
+
+    if n_total < 5:
+        logger.warning("Too few points (%d) for %s velocity scaling",
+                        n_total, population)
+        return None
+
+    # Build design matrix: intercept + log R + log(param/ref) for each varying param
+    param_info = [
+        ("R", logR, None),   # R column always included (no ref normalization)
+        ("nCore", nCore_arr, nCore_ref),
+        ("mCloud", mCloud_arr, mCloud_ref),
+        ("sfe", sfe_arr, sfe_ref),
+    ]
+
+    active_names = ["intercept"]
+    cols = [np.ones(n_total)]
+
+    # R always included
+    active_names.append("R")
+    cols.append(logR)
+
+    excluded = []
+    ref_map = {"nCore": nCore_ref, "mCloud": mCloud_ref, "sfe": sfe_ref}
+    for pname, arr, ref in param_info[1:]:  # skip R
+        if len(np.unique(arr)) >= 2:
+            active_names.append(pname)
+            cols.append(np.log10(arr / ref))
+        else:
+            excluded.append(pname)
+
+    X = np.column_stack(cols)
+
+    # Iterative sigma-clipping OLS
+    result = _ols_sigma_clip(X, logv, sigma_clip)
+    if result is None:
+        logger.warning("OLS failed for %s velocity scaling", population)
+        return None
+
+    beta = result["beta"]
+    unc = result["unc"]
+    mask = result["mask"]
+    n_used = result["n_used"]
+    n_rejected = result["n_rejected"]
+    R2 = result["R2"]
+    rms_dex = result["rms_dex"]
+
+    # Unpack coefficients
+    log_A = beta[0]
+    A = 10.0 ** log_A
+
+    exponents = {}
+    exponent_unc = {}
+    for i, name in enumerate(active_names[1:], 1):
+        exponents[name] = float(beta[i])
+        exponent_unc[name] = float(unc[i])
+    for name in excluded:
+        exponents[name] = 0.0
+        exponent_unc[name] = 0.0
+
+    # Human-readable equation string
+    label_map = {
+        "R": "R",
+        "nCore": "n_c",
+        "mCloud": r"M_{\rm cloud}",
+        "sfe": r"\varepsilon",
+    }
+    eq_parts = [f"{A:.3g} km/s"]
+    eq_latex_parts = [f"{A:.3g}" + r"\;\mathrm{km\,s^{-1}}"]
+
+    # R exponent
+    exp_R = exponents["R"]
+    eq_parts.append(f"R^{{{exp_R:+.2f}}}")
+    eq_latex_parts.append(rf"R^{{{exp_R:+.2f}}}")
+
+    # Cloud parameter exponents
+    for pname in ["nCore", "mCloud", "sfe"]:
+        exp = exponents.get(pname, 0.0)
+        if exp == 0.0 and pname in excluded:
+            continue
+        ref = ref_map[pname]
+        lab = label_map[pname]
+        eq_parts.append(f"({pname}/{ref:.0e})^{{{exp:+.2f}}}")
+        eq_latex_parts.append(
+            rf"\left(\frac{{{lab}}}{{{ref:.0e}}}\right)^{{{exp:+.2f}}}"
+        )
+
+    equation_str = " * ".join(eq_parts)
+    equation_latex = r" \cdot ".join(eq_latex_parts)
+
+    y_pred = X @ beta
+
+    logger.info(
+        "[%s] v scaling: %s  (R2=%.3f, rms=%.3f dex, n=%d/%d)",
+        population, equation_str, R2, rms_dex, n_used, n_total,
+    )
+
+    return {
+        "population": population,
+        "A": A,
+        "log_A": log_A,
+        "sigma_logA": float(unc[0]),
+        "exponents": exponents,
+        "exponent_unc": exponent_unc,
+        "active_params": active_names[1:],   # exclude intercept
+        "excluded_params": excluded,
+        "R2": R2,
+        "rms_dex": rms_dex,
+        "n_used": n_used,
+        "n_rejected": n_rejected,
+        "n_total": n_total,
+        "equation_str": equation_str,
+        "equation_latex": equation_latex,
+        # Arrays for parity plot
+        "logR": logR,
+        "logv_actual": logv,
+        "logv_predicted": y_pred,
+        "nCore": nCore_arr,
+        "mCloud": mCloud_arr,
+        "sfe": sfe_arr,
+        "mask": mask,
+        "folders": all_folders,
+        "refs": ref_map,
+    }
+
+
+# ======================================================================
 # Plotting helpers
 # ======================================================================
 
@@ -1062,6 +1281,141 @@ def plot_vR_powerlaw(
 
 
 # ======================================================================
+# Figure 7: Velocity scaling parity plot
+# ======================================================================
+
+def plot_velocity_scaling_parity(
+    vscale_fits: Dict[str, Optional[Dict]],
+    output_dir: Path,
+    fmt: str,
+) -> Optional[Path]:
+    """
+    Parity plot (actual vs predicted v) for the multi-parameter
+    velocity scaling relation, one panel per population
+    (expanding / collapsing).
+    """
+    fit_list = [(pop, fit) for pop, fit in vscale_fits.items()
+                if fit is not None]
+    if not fit_list:
+        logger.warning("No velocity scaling fits — skipping parity plot")
+        return None
+
+    n_panels = len(fit_list)
+    fig, axes = plt.subplots(1, n_panels,
+                             figsize=(5.5 * n_panels, 5), dpi=150,
+                             squeeze=False)
+    axes = axes.ravel()
+
+    for pi, (pop, fit) in enumerate(fit_list):
+        ax = axes[pi]
+        v_act = 10.0 ** fit["logv_actual"]       # km/s
+        v_pred = 10.0 ** fit["logv_predicted"]    # km/s
+        mask = fit["mask"]
+        mCloud = fit["mCloud"]
+        nCore = fit["nCore"]
+
+        log_mCloud = np.log10(mCloud)
+        vmin, vmax = log_mCloud.min(), log_mCloud.max()
+        if vmin == vmax:
+            vmin -= 0.5
+            vmax += 0.5
+        norm = matplotlib.colors.Normalize(vmin=vmin, vmax=vmax)
+
+        # Marker shape by unique nCore
+        unique_nCore = sorted(set(nCore))
+        nCore_to_marker = {
+            nc: _MARKERS[i % len(_MARKERS)] for i, nc in enumerate(unique_nCore)
+        }
+
+        # 1:1 line
+        all_vals = np.concatenate([v_act, v_pred])
+        lo = all_vals[all_vals > 0].min() * 0.5
+        hi = all_vals.max() * 2.0
+        ax.plot([lo, hi], [lo, hi], "k--", lw=1, alpha=0.6, label="1:1")
+
+        # Plot each nCore group
+        for nc in unique_nCore:
+            nc_mask = nCore == nc
+            marker = nCore_to_marker[nc]
+
+            # Inliers
+            sel = nc_mask & mask
+            if sel.any():
+                ax.scatter(
+                    v_act[sel], v_pred[sel],
+                    c=log_mCloud[sel],
+                    cmap="viridis", norm=norm,
+                    marker=marker, s=20, alpha=0.7,
+                    edgecolors="k", linewidths=0.3,
+                    zorder=5,
+                    label=rf"$n_c = {nc:.0e}$" + " cm$^{-3}$",
+                )
+
+            # Outliers
+            sel_out = nc_mask & ~mask
+            if sel_out.any():
+                ax.scatter(
+                    v_act[sel_out], v_pred[sel_out],
+                    c=log_mCloud[sel_out],
+                    cmap="viridis", norm=norm,
+                    marker=marker, s=20, alpha=0.2,
+                    edgecolors="grey", linewidths=0.5,
+                    zorder=3,
+                )
+
+        # Colourbar
+        sm = matplotlib.cm.ScalarMappable(cmap="viridis", norm=norm)
+        sm.set_array([])
+        cbar = fig.colorbar(sm, ax=ax, pad=0.02)
+        cbar.set_label(r"$\log_{10}(M_{\rm cloud}\;/\;M_\odot)$")
+
+        # Annotation
+        ann = (
+            rf"$R^2 = {fit['R2']:.3f}$"
+            + "\n"
+            + rf"RMS $= {fit['rms_dex']:.3f}$ dex"
+            + "\n"
+            + rf"$N = {fit['n_used']}$ (rejected {fit['n_rejected']})"
+        )
+        ax.text(
+            0.04, 0.96, ann,
+            transform=ax.transAxes,
+            va="top", ha="left", fontsize=8,
+            bbox=dict(facecolor="white", edgecolor="0.7",
+                      alpha=0.85, boxstyle="round,pad=0.3"),
+        )
+
+        # Equation
+        eq = fit["equation_latex"]
+        pop_label = "Dispersing" if pop == "expanding" else "Collapsing"
+        ax.set_title(f"{pop_label}: velocity scaling", fontsize=10)
+        ax.text(
+            0.96, 0.04,
+            rf"$v \approx {eq}$",
+            transform=ax.transAxes,
+            va="bottom", ha="right", fontsize=6,
+            bbox=dict(facecolor="white", edgecolor="0.7",
+                      alpha=0.85, boxstyle="round,pad=0.3"),
+        )
+
+        ax.set_xscale("log")
+        ax.set_yscale("log")
+        ax.set_xlim(lo, hi)
+        ax.set_ylim(lo, hi)
+        ax.set_xlabel(r"$v$ from TRINITY [km\,s$^{-1}$]")
+        ax.set_ylabel(r"$v$ from scaling fit [km\,s$^{-1}$]")
+        ax.set_aspect("equal")
+        ax.legend(fontsize=6, loc="lower right", framealpha=0.8)
+
+    fig.tight_layout()
+    out = output_dir / f"velocity_scaling_parity.{fmt}"
+    fig.savefig(out, bbox_inches="tight")
+    plt.close(fig)
+    logger.info("Saved: %s", out)
+    return out
+
+
+# ======================================================================
 # Summary output
 # ======================================================================
 
@@ -1156,6 +1510,7 @@ def write_fits_csv(
 def print_summary(
     records: List[Dict],
     alpha_fits: Dict[str, Optional[Dict]],
+    vscale_fits: Optional[Dict[str, Optional[Dict]]] = None,
 ) -> None:
     print()
     print("=" * 90)
@@ -1233,6 +1588,30 @@ def print_summary(
             print(f"  eta at R = {R_t:.0f} pc: {arr.mean():.3f} +/- {arr.std():.3f}"
                   f"  (N = {len(vals)})")
 
+    # Velocity scaling relations
+    if vscale_fits:
+        print()
+        print("-" * 90)
+        print("VELOCITY SCALING RELATIONS:  v = A * R^a * (n/n0)^b * (M/M0)^c * (sfe/sfe0)^d")
+        print("-" * 90)
+        for pop, fit in vscale_fits.items():
+            if fit is None:
+                continue
+            pop_label = "Dispersing" if pop == "expanding" else "Collapsing"
+            print(f"\n  [{pop_label}]")
+            print(f"    {fit['equation_str']}")
+            print(f"    R^2 = {fit['R2']:.3f},  "
+                  f"RMS = {fit['rms_dex']:.3f} dex,  "
+                  f"N = {fit['n_used']} (rejected {fit['n_rejected']})")
+            for pname in ["R", "nCore", "mCloud", "sfe"]:
+                exp = fit["exponents"].get(pname)
+                unc = fit["exponent_unc"].get(pname)
+                if exp is not None:
+                    status = ""
+                    if pname in fit.get("excluded_params", []):
+                        status = "  (constant — excluded)"
+                    print(f"    {pname:>8s}: {exp:+.4f} +/- {unc:.4f}{status}")
+
     print()
     print("=" * 90)
 
@@ -1244,6 +1623,7 @@ def print_summary(
 def _write_equation_json(
     alpha_fits: Dict[str, Optional[Dict]],
     output_dir: Path,
+    vscale_fits: Optional[Dict[str, Optional[Dict]]] = None,
 ) -> Path:
     """Write equation data for the run_all summary PDF.
 
@@ -1273,6 +1653,26 @@ def _write_equation_json(
             "n_used": int(fit["n_used"]),
             "linear_fit": True,
         })
+
+    # Velocity scaling fits
+    if vscale_fits:
+        for pop, fit in vscale_fits.items():
+            if fit is None:
+                continue
+            entries.append({
+                "script": "velocity_radius",
+                "label": f"v_scaling_{pop}",
+                "A": float(fit["A"]),
+                "exponents": {k: float(v) for k, v in fit["exponents"].items()},
+                "exponent_unc": {k: float(v) for k, v in fit["exponent_unc"].items()},
+                "refs": {k: float(v) for k, v in fit["refs"].items()},
+                "R2": float(fit["R2"]),
+                "rms_dex": float(fit["rms_dex"]),
+                "n_used": int(fit["n_used"]),
+                "linear_fit": False,
+                "equation": fit["equation_str"],
+            })
+
     path = output_dir / "velocity_radius_equations.json"
     with open(path, "w") as fh:
         json.dump(entries, fh, indent=2)
@@ -1363,6 +1763,13 @@ def main(argv: Optional[List[str]] = None) -> int:
         alpha_fits[phase_name] = fit_alpha_vs_params(
             records, phase_name, **fit_kwargs)
 
+    # Step 2b: velocity scaling relation  v = A * R^a * n^b * M^c * sfe^d
+    vscale_fits: Dict[str, Optional[Dict]] = {}
+    for pop in ["expanding", "collapsing"]:
+        logger.info("--- Fitting velocity scaling (%s) ---", pop)
+        vscale_fits[pop] = fit_velocity_scaling(
+            records, population=pop, **fit_kwargs)
+
     # Step 3: figures
     plot_trajectories(records, output_dir, args.fmt)
     plot_alpha_local(records, output_dir, args.fmt)
@@ -1371,14 +1778,15 @@ def main(argv: Optional[List[str]] = None) -> int:
     plot_eta_at_radii(records, output_dir, args.fmt)
     plot_vR_powerlaw(records, output_dir, args.fmt,
                      args.nCore_ref, args.mCloud_ref, args.sfe_ref)
+    plot_velocity_scaling_parity(vscale_fits, output_dir, args.fmt)
 
     # Step 4: output
     write_results_csv(records, output_dir)
     write_fits_csv(alpha_fits, output_dir)
-    print_summary(records, alpha_fits)
+    print_summary(records, alpha_fits, vscale_fits)
 
     # Equation JSON for run_all summary
-    _write_equation_json(alpha_fits, output_dir)
+    _write_equation_json(alpha_fits, output_dir, vscale_fits)
 
     return 0
 
