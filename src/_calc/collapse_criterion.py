@@ -79,6 +79,7 @@ import sys
 import logging
 import argparse
 import csv
+import json
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
@@ -1013,6 +1014,10 @@ def write_fits_csv(
             ])
 
     with open(csv_path, "w", newline="") as fh:
+        refs = fit_nM["refs"] if fit_nM is not None else {}
+        fh.write(f"# Normalizations: nCore_ref={refs.get('nCore',0):.0e} cm^-3"
+                 f", mCloud_ref={refs.get('mCloud',0):.0e} Msun"
+                 f", Sigma_ref=100 Msun/pc^2\n")
         writer = csv.writer(fh)
         writer.writerow(header)
         writer.writerows(rows)
@@ -1092,6 +1097,63 @@ def print_summary(
 
     print()
     print("=" * 80)
+
+
+# ======================================================================
+# Equation JSON (for run_all summary)
+# ======================================================================
+
+def _write_equation_json(
+    fit_nM: Optional[Dict],
+    fit_sigma: Optional[Dict],
+    output_dir: Path,
+) -> Path:
+    """Write equation data for the run_all summary PDF."""
+    entries = []
+    if fit_nM is not None:
+        A = 10.0 ** fit_nM["beta"][0]
+        refs = fit_nM.get("refs", {})
+        names = fit_nM["param_names"]
+        exponents = {}
+        exponent_unc = {}
+        for i, name in enumerate(names[1:], 1):
+            exponents[name] = float(fit_nM["beta"][i])
+            exponent_unc[name] = float(fit_nM["unc"][i])
+        entries.append({
+            "script": "collapse_criterion",
+            "label": "eps_min(nCore, mCloud)",
+            "A": float(A),
+            "exponents": exponents,
+            "exponent_unc": exponent_unc,
+            "refs": {k: float(v) for k, v in refs.items()},
+            "R2": float(fit_nM["R2"]),
+            "rms_dex": float(fit_nM["rms_dex"]),
+            "n_used": int(fit_nM["n_used"]),
+        })
+    if fit_sigma is not None:
+        A = 10.0 ** fit_sigma["beta"][0]
+        names = fit_sigma["param_names"]
+        exponents = {}
+        exponent_unc = {}
+        for i, name in enumerate(names[1:], 1):
+            exponents[name] = float(fit_sigma["beta"][i])
+            exponent_unc[name] = float(fit_sigma["unc"][i])
+        entries.append({
+            "script": "collapse_criterion",
+            "label": "eps_min(Sigma)",
+            "A": float(A),
+            "exponents": exponents,
+            "exponent_unc": exponent_unc,
+            "refs": {"Sigma": 100.0},
+            "R2": float(fit_sigma["R2"]),
+            "rms_dex": float(fit_sigma["rms_dex"]),
+            "n_used": int(fit_sigma["n_used"]),
+        })
+    path = output_dir / "collapse_criterion_equations.json"
+    with open(path, "w") as fh:
+        json.dump(entries, fh, indent=2)
+    logger.info("Saved: %s", path)
+    return path
 
 
 # ======================================================================
@@ -1190,6 +1252,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     write_results_csv(eps_data, output_dir)
     write_fits_csv(fit_nM, fit_sigma, output_dir)
     print_summary(eps_data, fit_nM, fit_sigma)
+
+    # Equation JSON for run_all summary
+    _write_equation_json(fit_nM, fit_sigma, output_dir)
 
     return 0
 

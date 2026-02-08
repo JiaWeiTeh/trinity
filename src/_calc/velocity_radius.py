@@ -64,6 +64,7 @@ import sys
 import logging
 import argparse
 import csv
+import json
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
@@ -509,6 +510,7 @@ def fit_alpha_vs_params(
     result["mean"] = float(np.mean(alpha_arr))
     result["std"] = float(np.std(alpha_arr))
     result["phase"] = phase_name
+    result["refs"] = refs
     return result
 
 
@@ -908,10 +910,13 @@ def write_fits_csv(
               "R2", "RMS", "N_used", "N_rejected", "mean_alpha", "std_alpha"]
 
     rows = []
+    refs = None
     for phase_name, fit in alpha_fits.items():
         if fit is None:
             rows.append([phase_name, "N/A"] + [""] * 8)
             continue
+        if refs is None and "refs" in fit:
+            refs = fit["refs"]
         for i, name in enumerate(fit["param_names"]):
             rows.append([
                 phase_name, name,
@@ -925,6 +930,10 @@ def write_fits_csv(
             ])
 
     with open(csv_path, "w", newline="") as fh:
+        if refs:
+            fh.write(f"# Normalizations: nCore_ref={refs.get('nCore',0):.0e} cm^-3"
+                     f", mCloud_ref={refs.get('mCloud',0):.0e} Msun"
+                     f", sfe_ref={refs.get('sfe',0):.0e}\n")
         writer = csv.writer(fh)
         writer.writerow(header)
         writer.writerows(rows)
@@ -984,6 +993,49 @@ def print_summary(
 
     print()
     print("=" * 90)
+
+
+# ======================================================================
+# Equation JSON (for run_all summary)
+# ======================================================================
+
+def _write_equation_json(
+    alpha_fits: Dict[str, Optional[Dict]],
+    output_dir: Path,
+) -> Path:
+    """Write equation data for the run_all summary PDF.
+
+    Note: velocity_radius fits alpha (linear), not log-space.
+    We store the mean alpha and the fit R2 for the summary.
+    """
+    entries = []
+    for phase_name, fit in alpha_fits.items():
+        if fit is None:
+            continue
+        refs = fit.get("refs", {})
+        names = fit["param_names"]
+        exponents = {}
+        exponent_unc = {}
+        for i, name in enumerate(names[1:], 1):
+            exponents[name] = float(fit["beta"][i])
+            exponent_unc[name] = float(fit["unc"][i])
+        entries.append({
+            "script": "velocity_radius",
+            "label": f"alpha_{phase_name} (mean={fit['mean']:.3f})",
+            "A": float(fit["beta"][0]),
+            "exponents": exponents,
+            "exponent_unc": exponent_unc,
+            "refs": {k: float(v) for k, v in refs.items()},
+            "R2": float(fit["R2"]),
+            "rms_dex": float(fit["rms_dex"]),
+            "n_used": int(fit["n_used"]),
+            "linear_fit": True,
+        })
+    path = output_dir / "velocity_radius_equations.json"
+    with open(path, "w") as fh:
+        json.dump(entries, fh, indent=2)
+    logger.info("Saved: %s", path)
+    return path
 
 
 # ======================================================================
@@ -1080,6 +1132,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     write_results_csv(records, output_dir)
     write_fits_csv(alpha_fits, output_dir)
     print_summary(records, alpha_fits)
+
+    # Equation JSON for run_all summary
+    _write_equation_json(alpha_fits, output_dir)
 
     return 0
 

@@ -548,6 +548,15 @@ def create_BE_sphere_from_params(params) -> BESphereResult:
         lane_emden_solution=solution
     )
 
+    # Ensure all BE-specific params exist (safety fallback for standalone usage)
+    from src._input.dictionary import DescribedItem
+    for key, info, exclude in [
+        ('densBE_f_m', "Lane-Emden mass interpolation function", True),
+        ('densBE_xi_out', "Dimensionless outer radius at cloud edge", False),
+    ]:
+        if key not in params:
+            params[key] = DescribedItem(None, info=info, exclude_from_snapshot=exclude)
+
     # Update params dictionary
     params['densBE_Teff'].value = result.T_eff
     params['densBE_xi_arr'].value = solution.xi

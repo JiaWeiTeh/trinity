@@ -365,6 +365,8 @@ def read_param(path2file, write_summary=True):
         params['densBE_dudxi_arr'] = DescribedItem([], info="Lane-Emden du/dxi array", ori_units="dimensionless")
         params['densBE_rho_rhoc_arr'] = DescribedItem([], info="Density contrast array", ori_units="dimensionless")
         params['densBE_f_rho_rhoc'] = DescribedItem(0, info="Interpolation function for density contrast", ori_units="dimensionless")
+        params['densBE_f_m'] = DescribedItem(None, info="Lane-Emden mass interpolation function", ori_units="N/A", exclude_from_snapshot=True)
+        params['densBE_xi_out'] = DescribedItem(0, info="Dimensionless outer radius at cloud edge", ori_units="dimensionless")
     
     elif params['dens_profile'].value == 'densPL':
         # Power-law
