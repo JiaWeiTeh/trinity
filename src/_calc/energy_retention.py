@@ -3,24 +3,84 @@
 """
 Energy retention fraction (heating efficiency) from TRINITY parameter sweeps.
 
-Computes the energy retention fraction:
+Physics background
+------------------
+Stellar winds and supernovae inject mechanical luminosity L_w(t) into the
+bubble interior.  Only a fraction of this energy survives as thermal
+energy E_b; the rest is lost to radiative cooling, PdV work on the
+expanding shell, and energy leakage through the shell.  The **energy
+retention fraction**:
 
-    xi(t) = E_b(t) / integral_0^t L_w dt'
+    ξ(t) = E_b(t) / ∫₀ᵗ L_w(t') dt'
 
-where E_b is the bubble thermal energy and L_w is the cumulative
-mechanical luminosity input (winds + SNe).  Also tracks the full energy
-budget: cooling losses, PdV work on the shell, and leakage.
+measures the instantaneous thermalization efficiency of the bubble.
 
-Compares to the Weaver (1977) adiabatic limit (xi ~ 0.77) and the
-momentum-driven limit (xi -> 0).  Fits power-law dependences of xi
-on cloud parameters for use as sub-grid coupling efficiencies.
+In the Weaver et al. (1977) adiabatic wind-bubble solution, the
+bubble energy evolves as dE_b/dt = L_w − 4πR²P_b v (input minus
+PdV work), yielding a constant ξ = 5/11 ≈ 0.45 for a thin-shell
+model, or ξ ≈ 0.77 when the full Weaver profile structure is
+included.  This is an *upper limit* — real bubbles cool.
+
+Energy budget
+^^^^^^^^^^^^^
+TRINITY tracks the full energy ODE:
+
+    dE_b/dt = L_mech − L_cool − 4πR²P_b v − L_leak
+
+where:
+
+* **L_mech** = L_wind + L_SN — total mechanical luminosity injected
+  at the inner wind-termination shock or by SN blast waves.
+* **L_cool** — radiative cooling luminosity of the hot bubble gas
+  (tracked as ``bubble_LTotal`` = L1 + L2 + L3, combining free–free,
+  conductive, and intermediate-temperature losses).
+* **4πR²P_b v** — PdV work done by the bubble pressure on the
+  expanding shell, transferring thermal energy to kinetic energy.
+* **L_leak** — energy leakage through the shell (relevant when the
+  shell becomes porous or fragments).
+
+At any time the budget fractions f_thermal + f_cool + f_pdV + f_leak
+should sum to ≈ 1.  Deviations indicate phases where the bubble ODE
+uses a different solver (e.g. the implicit energy phase).
+
+Characteristic values
+^^^^^^^^^^^^^^^^^^^^^
+* **ξ_peak** — maximum ξ during the energy-driven phase (closest to
+  the Weaver limit; typically 0.3–0.8).
+* **ξ at 1 / 3 Myr** — snapshots at fixed times for comparison with
+  hydrodynamical simulations.
+* **ξ_trans** — ξ at the onset of the transition phase.
+* **ξ_disp** — ξ at dispersal (expanding runs) or at peak radius
+  (collapsing runs); most relevant for sub-grid models.
+* **t_half** — time at which ξ drops below 50 % of ξ_peak, marking
+  when cooling begins to dominate the energy budget.
+
+The Mac Low & McCray (1988) analytic cooling time provides an
+independent comparison:
+
+    t_cool ≈ 16 Myr × (Z/Z☉)^{-35/22} × n^{-8/11} × L₃₈^{3/11}
+
+where L₃₈ = L_mech / 10³⁸ erg/s.  Plotting t_half vs t_cool tests
+whether the bubble cooling onset is well-predicted by this scaling.
+
+Sub-grid relevance
+^^^^^^^^^^^^^^^^^^
+Galaxy-scale simulations that cannot resolve individual HII regions
+parametrise feedback as injecting a fraction ξ of the mechanical
+luminosity as thermal energy.  This script provides ξ(n_c, M_cloud, ε)
+look-up tables from the full parameter sweep, replacing the common
+assumption of a constant ξ = 0.1 or ξ = 1.
+
+References
+----------
+* Weaver, R. et al. (1977), ApJ, 218, 377 — adiabatic bubble model.
+* Mac Low, M.-M. & McCray, R. (1988), ApJ, 324, 776 — cooling time.
+* El-Badry, K. et al. (2019), MNRAS, 490, 1961 — variable ξ sub-grid.
 
 CLI usage
 ---------
     python energy_retention.py -F /path/to/sweep_output
     python energy_retention.py -F /path/to/sweep_output --fmt png
-
-Author: Claude Code
 """
 
 import sys
