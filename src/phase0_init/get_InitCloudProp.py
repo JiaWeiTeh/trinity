@@ -385,23 +385,22 @@ def _ensure_be_params_exist(params) -> None:
     """
     Ensure BE-specific parameters exist in params dictionary.
 
-    Some BE params are not defined in read_param.py and must be
-    created dynamically when computing BE sphere properties.
+    These should normally be created by read_param.py, but this
+    provides a safety fallback for standalone usage.
     """
-    # Simple wrapper class for dynamic params
-    class DynamicParam:
-        def __init__(self, value=None):
-            self.value = value
+    from src._input.dictionary import DescribedItem
 
-    be_params_needed = [
-        'densBE_f_m',         # Lane-Emden mass interpolation function
-        'densBE_xi_out',      # Dimensionless outer radius
-        'densBE_f_rho_rhoc',  # Density ratio interpolation function
-    ]
+    be_params_needed = {
+        'densBE_f_m':        ("Lane-Emden mass interpolation function", True),
+        'densBE_xi_out':     ("Dimensionless outer radius at cloud edge", False),
+        'densBE_f_rho_rhoc': ("Density ratio interpolation function", True),
+    }
 
-    for key in be_params_needed:
+    for key, (info, exclude) in be_params_needed.items():
         if key not in params:
-            params[key] = DynamicParam(None)
+            params[key] = DescribedItem(
+                None, info=info, exclude_from_snapshot=exclude,
+            )
 
 
 # =============================================================================
