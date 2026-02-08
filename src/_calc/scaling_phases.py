@@ -70,6 +70,7 @@ import sys
 import logging
 import argparse
 import csv
+import json
 import os
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -606,11 +607,15 @@ def write_summary(fits: List[Dict], output_dir: Path) -> Path:
         Path to saved CSV.
     """
     csv_path = output_dir / "scaling_summary.csv"
+    refs = fits[0]["refs"]
+    nC_ref = refs["nCore"]
+    mC_ref = refs["mCloud"]
+    sfe_ref = refs["sfe"]
     header = [
         "quantity", "A",
-        "alpha (nCore)", "sigma_alpha",
-        "beta (mCloud)", "sigma_beta",
-        "gamma (SFE)", "sigma_gamma",
+        f"alpha (nCore/{nC_ref:.0e} cm^-3)", "sigma_alpha",
+        f"beta (mCloud/{mC_ref:.0e} Msun)", "sigma_beta",
+        f"gamma (SFE/{sfe_ref:.0e})", "sigma_gamma",
         "R2", "RMS [dex]", "N_used", "N_rejected",
     ]
 
@@ -662,6 +667,32 @@ def write_summary(fits: List[Dict], output_dir: Path) -> Path:
 
 
 # ======================================================================
+# Equation JSON (for run_all summary)
+# ======================================================================
+
+def _write_equation_json(fits: List[Dict], output_dir: Path) -> Path:
+    """Write equation data for the run_all summary PDF."""
+    entries = []
+    for f in fits:
+        entries.append({
+            "script": "scaling_phases",
+            "label": f"{f['quantity']} [Myr]",
+            "A": float(f["A"]),
+            "exponents": {k: float(v) for k, v in f["exponents"].items()},
+            "exponent_unc": {k: float(v) for k, v in f["exponent_unc"].items()},
+            "refs": {k: float(v) for k, v in f["refs"].items()},
+            "R2": float(f["R2"]),
+            "rms_dex": float(f["rms_dex"]),
+            "n_used": int(f["n_used"]),
+        })
+    path = output_dir / "scaling_phases_equations.json"
+    with open(path, "w") as fh:
+        json.dump(entries, fh, indent=2)
+    logger.info("Saved: %s", path)
+    return path
+
+
+# ======================================================================
 # CLI
 # ======================================================================
 
@@ -681,15 +712,15 @@ Examples:
         help="Path to the sweep output directory tree (required).",
     )
     parser.add_argument(
-        "--nCore", type=float, default=1e3,
+        "--nCore-ref", type=float, default=1e3,
         help="Reference normalization for core density [cm^-3] (default: 1e3).",
     )
     parser.add_argument(
-        "--mCloud", type=float, default=1e4,
-        help="Reference normalization for cloud mass [Msun] (default: 1e4).",
+        "--mCloud-ref", type=float, default=1e5,
+        help="Reference normalization for cloud mass [Msun] (default: 1e5).",
     )
     parser.add_argument(
-        "--sfe", type=float, default=0.01,
+        "--sfe-ref", type=float, default=0.01,
         help="Reference normalization for star formation efficiency (default: 0.01).",
     )
     parser.add_argument(
@@ -749,9 +780,9 @@ def main(argv: Optional[List[str]] = None) -> int:
         logger.info("--- Fitting: %s ---", q)
         result = fit_scaling(
             records, q,
-            nCore_ref=args.nCore,
-            mCloud_ref=args.mCloud,
-            sfe_ref=args.sfe,
+            nCore_ref=args.nCore_ref,
+            mCloud_ref=args.mCloud_ref,
+            sfe_ref=args.sfe_ref,
             sigma_clip=args.sigma_clip,
         )
         if result is None:
@@ -768,6 +799,9 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     # Step 4: summary
     write_summary(fits, output_dir)
+
+    # Step 5: equation JSON for run_all summary
+    _write_equation_json(fits, output_dir)
 
     return 0
 

@@ -73,6 +73,7 @@ import sys
 import logging
 import argparse
 import csv
+import json
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
@@ -1007,9 +1008,12 @@ def write_fits_csv(
     header = ["fit_label", "param", "coefficient", "uncertainty",
               "R2", "RMS_dex", "N_used", "N_rejected"]
     rows = []
+    refs = None
     for label, fit in fits:
         if fit is None:
             continue
+        if refs is None and "refs" in fit:
+            refs = fit["refs"]
         for i, name in enumerate(fit["param_names"]):
             rows.append([
                 label, name,
@@ -1020,6 +1024,10 @@ def write_fits_csv(
                 str(fit["n_rejected"]) if i == 0 else "",
             ])
     with open(csv_path, "w", newline="") as fh:
+        if refs:
+            fh.write(f"# Normalizations: nCore_ref={refs.get('nCore',0):.0e} cm^-3"
+                     f", mCloud_ref={refs.get('mCloud',0):.0e} Msun"
+                     f", sfe_ref={refs.get('sfe',0):.0e}\n")
         writer = csv.writer(fh)
         writer.writerow(header)
         writer.writerows(rows)
@@ -1095,6 +1103,46 @@ def print_summary(
 
     print()
     print("=" * 90)
+
+
+# ======================================================================
+# Equation JSON (for run_all summary)
+# ======================================================================
+
+def _write_equation_json(
+    fits: List[Tuple[str, Optional[Dict]]],
+    output_dir: Path,
+    script_name: str,
+) -> Path:
+    """Write equation data for the run_all summary PDF."""
+    entries = []
+    for label, fit in fits:
+        if fit is None:
+            continue
+        A = 10.0 ** fit["beta"][0]
+        refs = fit.get("refs", {})
+        names = fit["param_names"]
+        exponents = {}
+        exponent_unc = {}
+        for i, name in enumerate(names[1:], 1):
+            exponents[name] = float(fit["beta"][i])
+            exponent_unc[name] = float(fit["unc"][i])
+        entries.append({
+            "script": script_name,
+            "label": label,
+            "A": float(A),
+            "exponents": exponents,
+            "exponent_unc": exponent_unc,
+            "refs": {k: float(v) for k, v in refs.items()},
+            "R2": float(fit["R2"]),
+            "rms_dex": float(fit["rms_dex"]),
+            "n_used": int(fit["n_used"]),
+        })
+    path = output_dir / f"{script_name}_equations.json"
+    with open(path, "w") as fh:
+        json.dump(entries, fh, indent=2)
+    logger.info("Saved: %s", path)
+    return path
 
 
 # ======================================================================
@@ -1215,6 +1263,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     write_results_csv(records, output_dir)
     write_fits_csv(fits, output_dir)
     print_summary(records, fits)
+
+    # Equation JSON for run_all summary
+    _write_equation_json(fits, output_dir, "dispersal_timescale")
 
     return 0
 

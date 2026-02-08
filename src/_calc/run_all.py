@@ -27,9 +27,14 @@ Usage
 import sys
 import subprocess
 import argparse
+import json
 import textwrap
 from pathlib import Path
 from typing import List, Optional
+
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
 
 
 # ======================================================================
@@ -160,6 +165,154 @@ def run_scripts(
 
 
 # ======================================================================
+# Equation summary PDF
+# ======================================================================
+
+# LaTeX-friendly labels for parameter names
+_PARAM_LATEX = {
+    "nCore": r"n_c",
+    "mCloud": r"M_{\rm cl}",
+    "sfe": r"\varepsilon",
+    "Sigma": r"\Sigma",
+}
+
+# Quality tiers  (label, colour, R² lower bound)
+_TIERS = [
+    ("Really good",  "#1b7837", 0.95),
+    ("Good",         "#5ab4ac", 0.85),
+    ("Average",      "#d8b365", 0.70),
+    ("Bad",          "#c51b7d", -1.0),
+]
+
+
+def _build_latex_equation(entry: dict) -> str:
+    """Build a LaTeX equation string from an equation-JSON entry."""
+    A = entry["A"]
+    exponents = entry["exponents"]
+    refs = entry["refs"]
+    is_linear = entry.get("linear_fit", False)
+
+    if is_linear:
+        # velocity_radius: alpha = a0 + sum(a_i * log(param/ref))
+        parts = [f"{A:.3f}"]
+        for pname, exp in exponents.items():
+            lab = _PARAM_LATEX.get(pname, pname)
+            ref = refs.get(pname, 1.0)
+            ref_str = f"{ref:.0e}"
+            parts.append(
+                rf"{exp:+.2f}\,\log_{{10}}"
+                rf"\!\left(\frac{{{lab}}}{{{ref_str}}}\right)"
+            )
+        return " ".join(parts)
+
+    # Standard log-space power law:  Y = A * prod( (param/ref)^exp )
+    parts = [f"{A:.3g}"]
+    for pname, exp in exponents.items():
+        if abs(exp) < 1e-6:
+            continue
+        lab = _PARAM_LATEX.get(pname, pname)
+        ref = refs.get(pname, 1.0)
+        ref_str = f"{ref:.0e}"
+        parts.append(
+            rf"\left(\frac{{{lab}}}{{{ref_str}}}\right)"
+            rf"^{{{exp:+.2f}}}"
+        )
+    return r"\;\cdot\;".join(parts)
+
+
+def generate_summary_pdf(output_dir: Path, fmt: str = "pdf") -> Optional[Path]:
+    """
+    Read all *_equations.json files in *output_dir* and produce a
+    single-page summary with LaTeX equations grouped by fit quality.
+    """
+    # Collect all equation entries
+    json_files = sorted(output_dir.glob("*_equations.json"))
+    if not json_files:
+        print("No equation JSON files found — skipping summary PDF.")
+        return None
+
+    all_entries = []
+    for jf in json_files:
+        try:
+            with open(jf) as fh:
+                entries = json.load(fh)
+            all_entries.extend(entries)
+        except Exception as exc:
+            print(f"  Warning: could not read {jf.name}: {exc}")
+
+    if not all_entries:
+        print("No valid equations found — skipping summary PDF.")
+        return None
+
+    # Sort by R² descending
+    all_entries.sort(key=lambda e: e.get("R2", 0), reverse=True)
+
+    # Assign tiers
+    tiered: dict = {label: [] for label, _, _ in _TIERS}
+    for entry in all_entries:
+        r2 = entry.get("R2", 0)
+        for label, _, lb in _TIERS:
+            if r2 >= lb:
+                tiered[label].append(entry)
+                break
+
+    # --- Render figure ---
+    n_eqs = len(all_entries)
+    fig_height = max(4.0, 1.0 + 0.55 * n_eqs)
+    fig, ax = plt.subplots(figsize=(11, fig_height), dpi=150)
+    ax.axis("off")
+
+    y = 0.97   # top of figure in axes coords
+    dy_title = 0.06
+    dy_eq = 0.045
+
+    # Title
+    ax.text(0.5, y, r"\textbf{TRINITY Scaling-Relation Summary}",
+            transform=ax.transAxes, fontsize=14, ha="center", va="top",
+            usetex=False, fontweight="bold")
+    y -= dy_title
+
+    for tier_label, tier_color, _ in _TIERS:
+        entries = tiered[tier_label]
+        if not entries:
+            continue
+
+        # Tier header
+        r2_range = f"$R^2 \\geq {_TIERS[[l for l,_,_ in _TIERS].index(tier_label)][2]:.2f}$"
+        if tier_label == "Bad":
+            r2_range = "$R^2 < 0.70$"
+        ax.text(0.02, y,
+                f"{tier_label}  ({r2_range}, {len(entries)} fit{'s' if len(entries)!=1 else ''})",
+                transform=ax.transAxes, fontsize=11, fontweight="bold",
+                color=tier_color, va="top")
+        y -= dy_title * 0.7
+
+        for entry in entries:
+            latex_eq = _build_latex_equation(entry)
+            label = entry["label"]
+            r2 = entry.get("R2", float("nan"))
+            rms = entry.get("rms_dex", float("nan"))
+            n_used = entry.get("n_used", "?")
+            script = entry.get("script", "")
+
+            line = (f"[{script}]  {label}  $\\approx$  ${latex_eq}$"
+                    f"     ($R^2={r2:.3f}$, RMS$={rms:.3f}$ dex, $N={n_used}$)")
+            ax.text(0.04, y, line,
+                    transform=ax.transAxes, fontsize=8, va="top",
+                    family="monospace", color="0.15")
+            y -= dy_eq
+
+        y -= 0.01  # gap between tiers
+
+    fig.tight_layout()
+    out_path = output_dir / f"scaling_relations_summary.{fmt}"
+    fig.savefig(out_path, bbox_inches="tight")
+    plt.close(fig)
+    print(f"\nSaved scaling-relations summary: {out_path}")
+    return out_path
+
+
+# ======================================================================
 # CLI
 # ======================================================================
 
@@ -243,6 +396,15 @@ def main(argv: Optional[List[str]] = None) -> int:
         extra_args=extra,
         dry_run=args.dry_run,
     )
+
+    # Generate scaling-relations summary PDF (unless dry-run)
+    if not args.dry_run:
+        folder_name = Path(args.folder).name
+        output_dir = PROJECT_ROOT / "fig" / folder_name
+        fmt = args.fmt if args.fmt else "pdf"
+        if output_dir.is_dir():
+            generate_summary_pdf(output_dir, fmt=fmt)
+
     return min(n_fail, 1)   # cap at 1 for exit code
 
 
