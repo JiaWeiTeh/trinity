@@ -745,6 +745,276 @@ def plot_energy_retention(simulations: dict, output_dir: Path, fmt: str = 'pdf',
 
 
 # =============================================================================
+# Helper: map profile tags to data file paths (for external load_run calls)
+# =============================================================================
+
+def _get_profile_data_paths(sweep_dir: str) -> dict:
+    """
+    Get mapping from profile tag -> data file Path.
+
+    Used by the grid figures that call load_run from external modules.
+    """
+    sweep_path = Path(sweep_dir)
+    sim_files = find_all_simulations(sweep_path)
+    paths = {}
+    for data_path in sim_files:
+        tag = identify_profile_tag(data_path.parent.name)
+        if tag and tag in PROFILE_STYLES:
+            paths[tag] = data_path
+    return paths
+
+
+# =============================================================================
+# Figure 9: Feedback Fraction Grid (2x2)
+# =============================================================================
+
+def plot_feedback_grid(sweep_dir: str, output_dir: Path, fmt: str = 'pdf',
+                       show: bool = False) -> None:
+    """
+    Plot feedback fraction stacked areas in a 2x2 grid.
+
+    Each panel shows one density profile using the same stacked-area
+    visualisation as paper_feedback.py.
+    """
+    import src._plots.paper_feedback as _fb
+    from src._plots.plot_markers import get_marker_legend_handles
+
+    logger.info("Figure 9: Feedback Fraction Grid")
+
+    sim_paths = _get_profile_data_paths(sweep_dir)
+    tags_present = [t for t in PROFILE_ORDER if t in sim_paths]
+
+    if not tags_present:
+        logger.warning("No simulations found for feedback grid. Skipping.")
+        return
+
+    nrows, ncols = 2, 2
+    fig, axes = plt.subplots(nrows, ncols, figsize=(8, 6), squeeze=False,
+                             sharey=True)
+
+    for idx, tag in enumerate(tags_present):
+        i, j = divmod(idx, ncols)
+        ax = axes[i, j]
+        s = get_style(tag)
+
+        try:
+            t, R2, phase, base_forces, overlay_forces, rcloud, isCollapse = \
+                _fb.load_run(sim_paths[tag])
+            _fb.plot_run_on_ax(
+                ax, t, R2, phase, base_forces, overlay_forces, rcloud,
+                isCollapse, alpha=0.75, smooth_window=_fb.SMOOTH_WINDOW,
+                phase_change=_fb.PHASE_CHANGE, use_log_x=_fb.USE_LOG_X,
+            )
+        except Exception as e:
+            logger.error(f"Feedback grid {tag}: {e}")
+            ax.text(0.5, 0.5, "error", ha="center", va="center",
+                    transform=ax.transAxes)
+            ax.set_axis_off()
+            continue
+
+        ax.set_title(s['label'])
+        if i == nrows - 1:
+            ax.set_xlabel(r'$t$ [Myr]')
+        if j == 0:
+            ax.set_ylabel(r'$F/F_{\rm tot}$')
+        else:
+            ax.tick_params(labelleft=False)
+
+    for idx in range(len(tags_present), nrows * ncols):
+        i, j = divmod(idx, ncols)
+        axes[i, j].set_visible(False)
+
+    # Global legend
+    handles = []
+    for field, label, color in _fb.FORCE_FIELDS_BASE:
+        ec = '0.4' if color == 'white' else 'none'
+        a = 1.0 if color == 'white' else 0.75
+        handles.append(Patch(facecolor=color, edgecolor=ec, alpha=a,
+                             label=label))
+    if _fb.INCLUDE_ALL_FORCE:
+        handles.append(Patch(facecolor='none', edgecolor=_fb.C_RAM,
+                             hatch='////', label='Wind'))
+        handles.append(Patch(facecolor='none', edgecolor=_fb.C_SN,
+                             hatch='\\\\\\\\', label='SN'))
+    handles.extend(get_marker_legend_handles())
+
+    fig.legend(handles=handles, loc='upper center', ncol=4,
+               frameon=True, facecolor='white', framealpha=0.9,
+               edgecolor='0.2', bbox_to_anchor=(0.5, 1.05), fontsize=8)
+    fig.subplots_adjust(top=0.88)
+
+    savefig(fig, 'densityProfile_feedback', output_dir, fmt)
+    if show:
+        plt.show()
+    plt.close(fig)
+
+
+# =============================================================================
+# Figure 10: Momentum Grid (2x2)
+# =============================================================================
+
+def plot_momentum_grid(sweep_dir: str, output_dir: Path, fmt: str = 'pdf',
+                       show: bool = False) -> None:
+    """
+    Plot cumulative momentum lines in a 2x2 grid.
+
+    Each panel shows one density profile using the same momentum-line
+    visualisation as paper_momentum.py.
+    """
+    import src._plots.paper_momentum as _mom
+    from src._plots.plot_markers import get_marker_legend_handles
+
+    logger.info("Figure 10: Momentum Grid")
+
+    sim_paths = _get_profile_data_paths(sweep_dir)
+    tags_present = [t for t in PROFILE_ORDER if t in sim_paths]
+
+    if not tags_present:
+        logger.warning("No simulations found for momentum grid. Skipping.")
+        return
+
+    nrows, ncols = 2, 2
+    fig, axes = plt.subplots(nrows, ncols, figsize=(8, 6), squeeze=False)
+
+    for idx, tag in enumerate(tags_present):
+        i, j = divmod(idx, ncols)
+        ax = axes[i, j]
+        s = get_style(tag)
+
+        try:
+            t, r, phase, forces, forces_dict, rcloud, isCollapse = \
+                _mom.load_run(sim_paths[tag])
+            _mom.plot_momentum_lines_on_ax(
+                ax, t, r, phase, forces, forces_dict, rcloud, isCollapse,
+                smooth_window=_mom.SMOOTH_WINDOW, phase_change=_mom.PHASE_CHANGE,
+            )
+        except Exception as e:
+            logger.error(f"Momentum grid {tag}: {e}")
+            ax.text(0.5, 0.5, "error", ha="center", va="center",
+                    transform=ax.transAxes)
+            ax.set_axis_off()
+            continue
+
+        ax.set_title(s['label'])
+        if i == nrows - 1:
+            ax.set_xlabel(r'$t$ [Myr]')
+        if j == 0:
+            ax.set_ylabel(r'$p(t) = \int F\,dt$')
+
+    for idx in range(len(tags_present), nrows * ncols):
+        i, j = divmod(idx, ncols)
+        axes[i, j].set_visible(False)
+
+    # Global legend
+    handles = []
+    for _, label, color in _mom.FORCE_FIELDS:
+        handles.append(Line2D([0], [0], color=color, lw=1.6, ls='-',
+                              label=label))
+    for _, label, color in _mom.DASHED_FIELDS:
+        handles.append(Line2D([0], [0], color=color, lw=1.2, ls='--',
+                              label=label))
+    handles.append(Line2D([0], [0], color='darkgrey', lw=2.4, label='Net'))
+    handles.extend(get_marker_legend_handles())
+
+    fig.legend(handles=handles, loc='upper center', ncol=4,
+               frameon=True, facecolor='white', framealpha=0.9,
+               edgecolor='0.2', bbox_to_anchor=(0.5, 1.05), fontsize=8)
+    fig.subplots_adjust(top=0.88)
+
+    savefig(fig, 'densityProfile_momentum', output_dir, fmt)
+    if show:
+        plt.show()
+    plt.close(fig)
+
+
+# =============================================================================
+# Figure 11: Thermal Regime Grid (2x2)
+# =============================================================================
+
+def plot_thermal_grid(sweep_dir: str, output_dir: Path, fmt: str = 'pdf',
+                      show: bool = False) -> None:
+    """
+    Plot thermal regime (w_blend) in a 2x2 grid.
+
+    Each panel shows one density profile using the same thermal-regime
+    visualisation as paper_thermalRegime.py.
+    """
+    import src._plots.paper_thermalRegime as _therm
+    from src._plots.plot_markers import get_marker_legend_handles
+
+    logger.info("Figure 11: Thermal Regime Grid")
+
+    sim_paths = _get_profile_data_paths(sweep_dir)
+    tags_present = [t for t in PROFILE_ORDER if t in sim_paths]
+
+    if not tags_present:
+        logger.warning("No simulations found for thermal grid. Skipping.")
+        return
+
+    nrows, ncols = 2, 2
+    fig, axes = plt.subplots(nrows, ncols, figsize=(8, 6), squeeze=False,
+                             sharey=True)
+
+    for idx, tag in enumerate(tags_present):
+        i, j = divmod(idx, ncols)
+        ax = axes[i, j]
+        s = get_style(tag)
+
+        try:
+            data = _therm.load_run(sim_paths[tag])
+            _therm.plot_run_on_ax(
+                ax, data, smooth_window=_therm.SMOOTH_WINDOW,
+                phase_change=_therm.PHASE_CHANGE,
+                plot_mode=_therm.PLOT_MODE, use_log_x=_therm.USE_LOG_X,
+            )
+        except Exception as e:
+            logger.error(f"Thermal grid {tag}: {e}")
+            ax.text(0.5, 0.5, "error", ha="center", va="center",
+                    transform=ax.transAxes)
+            ax.set_axis_off()
+            continue
+
+        ax.set_title(s['label'])
+        if i == nrows - 1:
+            ax.set_xlabel(r'$t$ [Myr]')
+        if j == 0:
+            ax.set_ylabel(r'$w_{\rm blend}$')
+        else:
+            ax.tick_params(labelleft=False)
+
+    for idx in range(len(tags_present), nrows * ncols):
+        i, j = divmod(idx, ncols)
+        axes[i, j].set_visible(False)
+
+    # Global legend
+    if _therm.PLOT_MODE == 'stacked':
+        handles = [
+            Patch(facecolor=_therm.C_BUBBLE, alpha=0.7,
+                  label=r'$(1-w)$ Bubble'),
+            Patch(facecolor=_therm.C_HII, alpha=0.7, label=r'$w$ HII'),
+        ]
+    else:
+        handles = [
+            Line2D([0], [0], color='black', lw=2, label=r'$w_{\rm blend}$'),
+            Patch(facecolor=_therm.C_BUBBLE, alpha=0.1, edgecolor='none',
+                  label='Bubble regime'),
+            Patch(facecolor=_therm.C_HII, alpha=0.1, edgecolor='none',
+                  label='HII regime'),
+        ]
+    handles.extend(get_marker_legend_handles())
+
+    fig.legend(handles=handles, loc='upper center', ncol=4,
+               frameon=True, facecolor='white', framealpha=0.9,
+               edgecolor='0.2', bbox_to_anchor=(0.5, 1.05), fontsize=8)
+    fig.subplots_adjust(top=0.88)
+
+    savefig(fig, 'densityProfile_thermal', output_dir, fmt)
+    if show:
+        plt.show()
+    plt.close(fig)
+
+
+# =============================================================================
 # Main entry point
 # =============================================================================
 
@@ -819,6 +1089,19 @@ Examples:
     for name, func in plot_functions:
         try:
             func(simulations, output_dir, args.fmt, args.show)
+        except Exception as e:
+            logger.error(f"{name} failed: {e}")
+
+    # Grid figures (reuse plot functions from paper_feedback/momentum/thermal)
+    grid_functions = [
+        ("Figure 9: Feedback Grid",   plot_feedback_grid),
+        ("Figure 10: Momentum Grid",  plot_momentum_grid),
+        ("Figure 11: Thermal Grid",   plot_thermal_grid),
+    ]
+
+    for name, func in grid_functions:
+        try:
+            func(args.folder, output_dir, args.fmt, args.show)
         except Exception as e:
             logger.error(f"{name} failed: {e}")
 
