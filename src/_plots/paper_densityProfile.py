@@ -59,12 +59,12 @@ plt.style.use(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'trinity.
 # Constants
 # =============================================================================
 
-# Color scheme for the four profiles
+# Colourblind-safe palette (Wong 2011) with distinct linestyles
 PROFILE_STYLES = {
-    'PL0':  {'color': 'C0', 'ls': '-',  'label': r'$\alpha=0$ (uniform)'},
-    'PL-1': {'color': 'C1', 'ls': '-',  'label': r'$\alpha=-1$'},
-    'PL-2': {'color': 'C2', 'ls': '-',  'label': r'$\alpha=-2$ (SIS)'},
-    'BE14': {'color': 'C3', 'ls': '--', 'label': r'BE $\Omega=14.1$'},
+    'PL0':  {'color': '#0072B2', 'ls': '-',   'label': r'$\alpha=0$ (uniform)'},
+    'PL-1': {'color': '#D55E00', 'ls': '--',  'label': r'$\alpha=-1$'},
+    'PL-2': {'color': '#009E73', 'ls': '-.',  'label': r'$\alpha=-2$ (SIS)'},
+    'BE14': {'color': '#CC79A7', 'ls': ':',   'label': r'BE $\Omega=14.1$'},
 }
 
 # Ordered list for consistent iteration
@@ -422,16 +422,20 @@ def plot_pressure_budget(simulations: dict, output_dir: Path, fmt: str = 'pdf',
         mask_Pr = P_rad_over_kB > 0
 
         if np.any(mask_Pb):
-            ax.semilogy(t[mask_Pb], Pb_over_kB[mask_Pb], 'C0-', lw=1.2,
+            ax.semilogy(t[mask_Pb], Pb_over_kB[mask_Pb],
+                        color='#0072B2', ls='-', lw=1.2,
                         label=r'$P_{\rm b}$')
         if np.any(mask_Pd):
-            ax.semilogy(t[mask_Pd], P_drive_over_kB[mask_Pd], 'C1-', lw=1.2,
+            ax.semilogy(t[mask_Pd], P_drive_over_kB[mask_Pd],
+                        color='#D55E00', ls='--', lw=1.2,
                         label=r'$P_{\rm drive}$')
         if np.any(mask_IF):
-            ax.semilogy(t[mask_IF], P_IF_over_kB[mask_IF], 'C2--', lw=1.2,
+            ax.semilogy(t[mask_IF], P_IF_over_kB[mask_IF],
+                        color='#009E73', ls='-.', lw=1.2,
                         label=r'$P_{\rm IF}$')
         if np.any(mask_Pr):
-            ax.semilogy(t[mask_Pr], P_rad_over_kB[mask_Pr], 'C3:', lw=1.2,
+            ax.semilogy(t[mask_Pr], P_rad_over_kB[mask_Pr],
+                        color='#CC79A7', ls=':', lw=1.2,
                         label=r'$P_{\rm rad}$')
 
         ax.set_xlabel(r'$t$ [Myr]')
@@ -468,10 +472,10 @@ def plot_force_budget(simulations: dict, output_dir: Path, fmt: str = 'pdf',
     fig, axes = plt.subplots(nrows, ncols, figsize=(8, 6), squeeze=False)
 
     force_fields = [
-        ('F_ram',     r'$F_{\rm ram}$',     'C0', '-'),
-        ('F_grav',    r'$|F_{\rm grav}|$',  'black', '--'),
-        ('F_rad',     r'$F_{\rm rad}$',     'C3', '-'),
-        ('F_ion_out', r'$F_{\rm ion}$',     'C2', '-'),
+        ('F_ram',     r'$F_{\rm ram}$',     '#0072B2', '-'),
+        ('F_grav',    r'$|F_{\rm grav}|$',  '#D55E00', '--'),
+        ('F_rad',     r'$F_{\rm rad}$',     '#009E73', '-.'),
+        ('F_ion_out', r'$F_{\rm ion}$',     '#CC79A7', ':'),
     ]
 
     for idx, tag in enumerate(tags_present):
@@ -562,10 +566,10 @@ def plot_phase_timing(simulations: dict, output_dir: Path, fmt: str = 'pdf',
     fig, ax = plt.subplots(figsize=(6, 3))
 
     phase_colors = {
-        'energy': 'C0',
-        'implicit': 'C0',
-        'transition': 'C1',
-        'momentum': 'C2',
+        'energy': '#0072B2',
+        'implicit': '#0072B2',
+        'transition': '#E69F00',
+        'momentum': '#D55E00',
     }
 
     tags_present = [t for t in PROFILE_ORDER if t in simulations]
@@ -610,9 +614,9 @@ def plot_phase_timing(simulations: dict, output_dir: Path, fmt: str = 'pdf',
 
     # Legend
     legend_handles = [
-        Patch(facecolor='C0', label='Energy-driven'),
-        Patch(facecolor='C1', label='Transition'),
-        Patch(facecolor='C2', label='Momentum-driven'),
+        Patch(facecolor='#0072B2', label='Energy-driven'),
+        Patch(facecolor='#E69F00', label='Transition'),
+        Patch(facecolor='#D55E00', label='Momentum-driven'),
     ]
     ax.legend(handles=legend_handles, loc='upper right', fontsize=9)
 
