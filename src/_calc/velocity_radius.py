@@ -73,6 +73,7 @@ from scipy.signal import savgol_filter
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
 
 # Add project root so imports resolve
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
@@ -184,10 +185,12 @@ def extract_run(data_path: Path) -> Optional[Dict]:
 
     v_kms = v_au * V_AU2KMS
 
-    # Only keep expansion portion (R increasing, v > 0)
+    # Separate expanding and contracting portions
     expanding = (v_au > 0) & (R > 0)
-    if expanding.sum() < MIN_PHASE_PTS:
-        logger.debug("Too few expanding points in %s — skipping",
+    contracting = (v_au < 0) & (R > 0)
+
+    if expanding.sum() < MIN_PHASE_PTS and contracting.sum() < MIN_PHASE_PTS:
+        logger.debug("Too few valid points in %s — skipping",
                       data_path.parent.name)
         return None
 
@@ -200,6 +203,7 @@ def extract_run(data_path: Path) -> Optional[Dict]:
         "rCloud": rCloud if rCloud and rCloud > 0 else None,
         "outcome": outcome,
         "expanding": expanding,
+        "contracting": contracting,
     }
 
 
@@ -388,12 +392,20 @@ def collect_data(folder_path: Path) -> List[Dict]:
         phase = info["phase"]
         expanding = info["expanding"]
 
+        # --- Expanding portion ---
         alpha_local = compute_alpha_local(R, v_au, expanding)
         eta = compute_eta(t, R, v_au)
         phase_fits = fit_phase_power_law(R, v_au, phase, expanding)
         eta_at_R = evaluate_eta_at_radii(t, R, eta, expanding)
         eta_at_t = evaluate_eta_at_times(t, eta, expanding)
         eta_phase = phase_averaged_eta(t, eta, phase, expanding)
+
+        # --- Contracting portion (use |v| for log-space analysis) ---
+        contracting = info["contracting"]
+        alpha_local_contract = compute_alpha_local(
+            R, np.abs(v_au), contracting)
+        phase_fits_contract = fit_phase_power_law(
+            R, np.abs(v_au), phase, contracting)
 
         rec = {
             "nCore": nCore,
@@ -408,10 +420,13 @@ def collect_data(folder_path: Path) -> List[Dict]:
             "v_kms": v_kms,
             "phase": phase,
             "expanding": expanding,
+            "contracting": contracting,
             "alpha_local": alpha_local,
+            "alpha_local_contract": alpha_local_contract,
             "eta": eta,
-            # Per-phase fits
+            # Per-phase fits (expanding)
             "phase_fits": phase_fits,
+            "phase_fits_contract": phase_fits_contract,
             "eta_phase": eta_phase,
             # Observable-point evaluations
             "eta_at_R": eta_at_R,
@@ -577,8 +592,11 @@ def plot_trajectories(
             v = rec["v_kms"]
             phase = rec["phase"]
             expanding = rec["expanding"]
+            contracting = rec.get("contracting",
+                                  np.zeros(len(R), dtype=bool))
             color = cmap(norm(rec["mCloud"]))
 
+            # Expanding segments (solid/dashed by phase)
             for idx_seg, grp in _phase_segments(R, v, phase, expanding):
                 sel = np.array(idx_seg)
                 sel = sel[expanding[sel] & (R[sel] > 0) & (v[sel] > 0)]
@@ -587,6 +605,12 @@ def plot_trajectories(
                 ls = PHASE_LS.get(grp, "-")
                 ax.plot(R[sel], v[sel], color=color, ls=ls, lw=0.9,
                         alpha=0.7, zorder=3)
+
+            # Contracting: plot |v| vs R with thin dotted lines
+            sel_c = contracting & (R > 0) & (np.abs(v) > 0)
+            if sel_c.sum() >= 2:
+                ax.plot(R[sel_c], np.abs(v[sel_c]), color=color, ls=':',
+                        lw=0.7, alpha=0.4, zorder=2)
 
         # Reference power-law slopes
         R_ref = np.geomspace(0.1, 500, 100)
@@ -604,6 +628,15 @@ def plot_trajectories(
         sm.set_array([])
         fig.colorbar(sm, ax=ax, pad=0.02,
                      label=r"$M_{\rm cloud}$ [$M_\odot$]")
+
+        # Legend for expanding vs contracting
+        leg_handles = [
+            Line2D([0], [0], color='0.4', ls='-', lw=1,
+                   label='Expanding'),
+            Line2D([0], [0], color='0.4', ls=':', lw=1,
+                   label=r'Contracting ($|v|$)'),
+        ]
+        ax.legend(handles=leg_handles, loc='lower left', fontsize=6)
 
         ax.set_xscale("log")
         ax.set_yscale("log")
@@ -855,6 +888,180 @@ def plot_eta_at_radii(
 
 
 # ======================================================================
+# Figure 6: v ∝ R^β power-law test
+# ======================================================================
+
+def plot_vR_powerlaw(
+    records: List[Dict],
+    output_dir: Path,
+    fmt: str,
+    nCore_ref: float = 1e3,
+    mCloud_ref: float = 1e5,
+    sfe_ref: float = 0.01,
+) -> Optional[Path]:
+    """
+    Test whether v ∝ R^β holds as a power law.
+
+    Fits log(v) = A + β·log(R) separately for expanding and
+    contracting portions at fiducial parameters.  If no runs
+    match the fiducial, all available runs are used.
+    """
+    logger.info("Figure 6: v ∝ R^β power-law test")
+
+    # Find fiducial runs
+    fiducial = [
+        r for r in records
+        if (abs(np.log10(r["nCore"] / nCore_ref)) < 0.15
+            and abs(np.log10(r["mCloud"] / mCloud_ref)) < 0.15
+            and abs(r["sfe"] - sfe_ref) / max(sfe_ref, 1e-10) < 0.2)
+    ]
+    if not fiducial:
+        logger.info("No fiducial match — using all %d runs", len(records))
+        fiducial = records
+
+    fig, axes = plt.subplots(1, 2, figsize=(11, 4.5), dpi=150)
+
+    # --- Panel (a): v(R) with power-law fits ---
+    ax = axes[0]
+
+    all_logR_exp, all_logv_exp = [], []
+    all_logR_con, all_logv_con = [], []
+
+    for rec in fiducial:
+        R = rec["R"]
+        v = rec["v_kms"]
+        expanding = rec["expanding"]
+        contracting = rec.get("contracting",
+                              np.zeros(len(R), dtype=bool))
+
+        # Expanding data
+        sel = expanding & (R > 0) & (v > 0)
+        if sel.sum() >= 2:
+            ax.plot(R[sel], v[sel], '-', color='#0072B2', lw=1.0,
+                    alpha=0.6, zorder=3)
+            all_logR_exp.append(np.log10(R[sel]))
+            all_logv_exp.append(np.log10(v[sel]))
+
+        # Contracting data
+        sel_c = contracting & (R > 0) & (np.abs(v) > 0)
+        if sel_c.sum() >= 2:
+            ax.plot(R[sel_c], np.abs(v[sel_c]), '--', color='#D55E00',
+                    lw=1.0, alpha=0.6, zorder=3)
+            all_logR_con.append(np.log10(R[sel_c]))
+            all_logv_con.append(np.log10(np.abs(v[sel_c])))
+
+    # Fit expanding
+    beta_exp, R2_exp = None, None
+    if all_logR_exp:
+        logR_cat = np.concatenate(all_logR_exp)
+        logv_cat = np.concatenate(all_logv_exp)
+        X = np.column_stack([np.ones(len(logR_cat)), logR_cat])
+        coeff = np.linalg.lstsq(X, logv_cat, rcond=None)[0]
+        A_exp, beta_exp = coeff
+        ss_res = np.sum((logv_cat - X @ coeff) ** 2)
+        ss_tot = np.sum((logv_cat - logv_cat.mean()) ** 2)
+        R2_exp = 1.0 - ss_res / ss_tot if ss_tot > 0 else 0.0
+
+        R_fit = np.geomspace(10 ** logR_cat.min(),
+                             10 ** logR_cat.max(), 100)
+        v_fit = 10 ** A_exp * R_fit ** beta_exp
+        ax.plot(R_fit, v_fit, '-', color='#0072B2', lw=2.5, alpha=0.9,
+                zorder=5,
+                label=rf'Expand: $\beta={beta_exp:.2f}$, '
+                      rf'$R^2={R2_exp:.3f}$')
+
+    # Fit contracting
+    beta_con, R2_con = None, None
+    if all_logR_con:
+        logR_cat = np.concatenate(all_logR_con)
+        logv_cat = np.concatenate(all_logv_con)
+        X = np.column_stack([np.ones(len(logR_cat)), logR_cat])
+        coeff = np.linalg.lstsq(X, logv_cat, rcond=None)[0]
+        A_con, beta_con = coeff
+        ss_res = np.sum((logv_cat - X @ coeff) ** 2)
+        ss_tot = np.sum((logv_cat - logv_cat.mean()) ** 2)
+        R2_con = 1.0 - ss_res / ss_tot if ss_tot > 0 else 0.0
+
+        R_fit = np.geomspace(10 ** logR_cat.min(),
+                             10 ** logR_cat.max(), 100)
+        v_fit = 10 ** A_con * R_fit ** beta_con
+        ax.plot(R_fit, v_fit, '--', color='#D55E00', lw=2.5, alpha=0.9,
+                zorder=5,
+                label=rf'Contract: $\beta={beta_con:.2f}$, '
+                      rf'$R^2={R2_con:.3f}$')
+
+    # Reference slopes
+    R_ref = np.geomspace(0.1, 500, 100)
+    v_anchor = 30.0
+    for label, alpha in THEORY_SLOPES.items():
+        v_ref = v_anchor * (R_ref / 10.0) ** alpha
+        ax.plot(R_ref, v_ref, color="grey", ls=":", lw=0.6, alpha=0.4)
+
+    ax.set_xscale("log")
+    ax.set_yscale("log")
+    ax.set_xlabel("R [pc]")
+    ax.set_ylabel(r"$v$ [km\,s$^{-1}$]")
+    ax.set_title(r"$v \propto R^{\beta}$ power-law test", fontsize=10)
+    ax.legend(fontsize=7, loc="best")
+
+    # --- Panel (b): alpha_local(R) for fiducial ---
+    ax2 = axes[1]
+
+    for rec in fiducial:
+        R = rec["R"]
+        expanding = rec["expanding"]
+        contracting = rec.get("contracting",
+                              np.zeros(len(R), dtype=bool))
+
+        # Expanding alpha_local
+        alpha = rec["alpha_local"]
+        sel = expanding & np.isfinite(alpha) & (R > 0)
+        if sel.sum() >= 3:
+            ax2.plot(R[sel], alpha[sel], '-', color='#0072B2', lw=0.8,
+                     alpha=0.6, zorder=3)
+
+        # Contracting alpha_local
+        alpha_c = rec.get("alpha_local_contract")
+        if alpha_c is not None:
+            sel_c = contracting & np.isfinite(alpha_c) & (R > 0)
+            if sel_c.sum() >= 3:
+                ax2.plot(R[sel_c], alpha_c[sel_c], '--', color='#D55E00',
+                         lw=0.8, alpha=0.6, zorder=3)
+
+    # Reference slope lines
+    for label, val in THEORY_SLOPES.items():
+        ax2.axhline(val, color="grey", ls=":", lw=0.8, alpha=0.5)
+        ax2.text(0.98, val + 0.04, label, fontsize=6, color="0.5",
+                 ha="right", va="bottom", transform=ax2.get_yaxis_transform())
+
+    # Fitted beta markers
+    leg2 = []
+    if beta_exp is not None:
+        ax2.axhline(beta_exp, color='#0072B2', ls='-', lw=1.5, alpha=0.6)
+        leg2.append(Line2D([0], [0], color='#0072B2', ls='-', lw=1.5,
+                           label=rf'Expand $\beta = {beta_exp:.2f}$'))
+    if beta_con is not None:
+        ax2.axhline(beta_con, color='#D55E00', ls='--', lw=1.5, alpha=0.6)
+        leg2.append(Line2D([0], [0], color='#D55E00', ls='--', lw=1.5,
+                           label=rf'Contract $\beta = {beta_con:.2f}$'))
+    if leg2:
+        ax2.legend(handles=leg2, fontsize=7, loc="best")
+
+    ax2.set_xscale("log")
+    ax2.set_xlabel("R [pc]")
+    ax2.set_ylabel(r"$\alpha_{\rm local} = d\log v / d\log R$")
+    ax2.set_title("Instantaneous power-law index", fontsize=10)
+    ax2.set_ylim(-3, 2)
+
+    fig.tight_layout()
+    out = output_dir / f"velocity_radius_powerlaw.{fmt}"
+    fig.savefig(out, bbox_inches="tight")
+    plt.close(fig)
+    logger.info("Saved: %s", out)
+    return out
+
+
+# ======================================================================
 # Summary output
 # ======================================================================
 
@@ -865,6 +1072,8 @@ def write_results_csv(records: List[Dict], output_dir: Path) -> Path:
         "alpha_energy", "alpha_energy_unc",
         "alpha_transition", "alpha_transition_unc",
         "alpha_momentum", "alpha_momentum_unc",
+        "alpha_energy_contract", "alpha_transition_contract",
+        "alpha_momentum_contract",
         "eta_energy", "eta_transition", "eta_momentum",
     ]
     for R_t in ETA_RADII:
@@ -886,6 +1095,9 @@ def write_results_csv(records: List[Dict], output_dir: Path) -> Path:
                     row.extend([f"{pf['alpha']:.4f}", f"{pf['alpha_unc']:.4f}"])
                 else:
                     row.extend(["N/A", "N/A"])
+            for ph in ["energy", "transition", "momentum"]:
+                pf_c = r.get("phase_fits_contract", {}).get(ph)
+                row.append(f"{pf_c['alpha']:.4f}" if pf_c else "N/A")
             for ph in ["energy", "transition", "momentum"]:
                 val = r["eta_phase"].get(ph)
                 row.append(f"{val:.4f}" if val is not None else "N/A")
@@ -969,6 +1181,36 @@ def print_summary(
                       f"{fit['beta'][i]:+.4f} +/- {fit['unc'][i]:.4f}")
         else:
             print("    Approximately constant across grid")
+
+    # Contracting alpha summary
+    has_contract = False
+    for phase_name in ["energy", "transition", "momentum"]:
+        vals = [
+            r["phase_fits_contract"][phase_name]["alpha"]
+            for r in records
+            if phase_name in r.get("phase_fits_contract", {})
+        ]
+        if vals:
+            if not has_contract:
+                print()
+                print("-" * 90)
+                print("CONTRACTING PORTIONS (|v| vs R)")
+                print("-" * 90)
+                has_contract = True
+            arr = np.array(vals)
+            print(f"  alpha_{phase_name} (contract): "
+                  f"mean = {arr.mean():.3f} +/- {arr.std():.3f}"
+                  f"  (N = {len(vals)})")
+
+    # Outcome breakdown
+    outcomes = [r["outcome"] for r in records]
+    print()
+    print("-" * 90)
+    n_exp = outcomes.count("expand")
+    n_col = outcomes.count("collapse")
+    n_stl = outcomes.count("stalled")
+    print(f"Outcomes: {n_exp} expand, {n_col} collapse, {n_stl} stalled "
+          f"(total {len(records)})")
 
     # eta summary
     print()
@@ -1127,6 +1369,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     plot_eta_evolution(records, output_dir, args.fmt)
     plot_alpha_phase(records, alpha_fits, output_dir, args.fmt)
     plot_eta_at_radii(records, output_dir, args.fmt)
+    plot_vR_powerlaw(records, output_dir, args.fmt,
+                     args.nCore_ref, args.mCloud_ref, args.sfe_ref)
 
     # Step 4: output
     write_results_csv(records, output_dir)
