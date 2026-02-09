@@ -775,6 +775,7 @@ def fit_radius_scaling(
     sigma_clip: float,
     phase_name: str = "energy",
     population: str = "expanding",
+    cloud_region: str = "all",
 ) -> Optional[Dict]:
     """
     Fit a multi-parameter radius scaling relation in log-space.
@@ -798,6 +799,11 @@ def fit_radius_scaling(
     population : str
         ``"expanding"`` for dispersing clouds,
         ``"collapsing"`` for collapsing clouds.
+    cloud_region : str
+        ``"all"`` — use all radii (default).
+        ``"within"`` — only R <= rCloud (expanding within the GMC).
+        ``"beyond"`` — only R > rCloud (plowing into the ISM).
+        Runs without a valid rCloud are skipped for "within"/"beyond".
 
     Returns
     -------
@@ -831,7 +837,21 @@ def fit_radius_scaling(
         else:
             phase_mask = phase == phase_name
 
-        sel = direction_mask & phase_mask & (R > 0) & (t > 0)
+        # Cloud-region filter (for momentum sub-classification)
+        if cloud_region == "within":
+            rCloud = rec.get("rCloud")
+            if rCloud is None or rCloud <= 0:
+                continue
+            region_mask = R <= rCloud
+        elif cloud_region == "beyond":
+            rCloud = rec.get("rCloud")
+            if rCloud is None or rCloud <= 0:
+                continue
+            region_mask = R > rCloud
+        else:
+            region_mask = np.ones(len(R), dtype=bool)
+
+        sel = direction_mask & phase_mask & region_mask & (R > 0) & (t > 0)
         idx = np.where(sel)[0]
         if len(idx) < MIN_PHASE_PTS:
             continue
@@ -950,14 +970,17 @@ def fit_radius_scaling(
     y_pred = X @ beta
 
     pop_label = "dispersing" if population == "expanding" else "collapsing"
+    region_tag = f"/{cloud_region}" if cloud_region != "all" else ""
     logger.info(
-        "[%s/%s] R(t) scaling: %s  (R2=%.3f, rms=%.3f dex, n=%d/%d)",
-        pop_label, phase_name, equation_str, R2, rms_dex, n_used, n_total,
+        "[%s/%s%s] R(t) scaling: %s  (R2=%.3f, rms=%.3f dex, n=%d/%d)",
+        pop_label, phase_name, region_tag, equation_str,
+        R2, rms_dex, n_used, n_total,
     )
 
     return {
         "population": population,
         "phase": phase_name,
+        "cloud_region": cloud_region,
         "A": A,
         "log_A": log_A,
         "sigma_logA": float(unc[0]),
@@ -1755,8 +1778,15 @@ def plot_radius_scaling_parity(
         eq = fit["equation_latex"]
         pop = fit["population"]
         phase = fit["phase"]
+        region = fit.get("cloud_region", "all")
         pop_label = "Dispersing" if pop == "expanding" else "Collapsing"
-        ax.set_title(f"{pop_label} / {phase}: R(t) scaling", fontsize=10)
+        region_suffix = ""
+        if region == "within":
+            region_suffix = r" ($R \leq R_{\rm cloud}$)"
+        elif region == "beyond":
+            region_suffix = r" ($R > R_{\rm cloud}$)"
+        ax.set_title(f"{pop_label} / {phase}{region_suffix}: R(t) scaling",
+                     fontsize=10)
         ax.text(
             0.96, 0.04,
             rf"$R \approx {eq}$",
@@ -1996,8 +2026,14 @@ def print_summary(
                 continue
             pop = fit["population"]
             phase = fit["phase"]
+            region = fit.get("cloud_region", "all")
             pop_label = "Dispersing" if pop == "expanding" else "Collapsing"
-            print(f"\n  [{pop_label} / {phase} phase]")
+            region_tag = ""
+            if region == "within":
+                region_tag = " / R <= R_cloud"
+            elif region == "beyond":
+                region_tag = " / R > R_cloud"
+            print(f"\n  [{pop_label} / {phase} phase{region_tag}]")
             print(f"    {fit['equation_str']}")
             print(f"    R^2 = {fit['R2']:.3f},  "
                   f"RMS = {fit['rms_dex']:.3f} dex,  "
@@ -2089,7 +2125,8 @@ def _write_equation_json(
                 continue
             entries.append({
                 "script": "velocity_radius",
-                "label": f"R_scaling_{fit['population']}_{fit['phase']}",
+                "label": f"R_scaling_{fit['population']}_{fit['phase']}"
+                         f"_{fit.get('cloud_region', 'all')}",
                 "A": float(fit["A"]),
                 "exponents": {k: float(v) for k, v in fit["exponents"].items()},
                 "exponent_unc": {k: float(v) for k, v in fit["exponent_unc"].items()},
@@ -2199,13 +2236,25 @@ def main(argv: Optional[List[str]] = None) -> int:
             records, population=pop, **fit_kwargs)
 
     # Step 2c: radius scaling relation  R = A * t^a * n^b * M^c * sfe^d
+    #   Energy phase: all radii.
+    #   Momentum phase: total, within cloud (R <= rCloud), beyond cloud (R > rCloud).
     rscale_fits: Dict[str, Optional[Dict]] = {}
     for pop in ["expanding", "collapsing"]:
-        for phase in ["energy", "momentum"]:
-            key = f"{pop}_{phase}"
-            logger.info("--- Fitting R(t) scaling (%s / %s) ---", pop, phase)
+        # Energy phase (single fit, all radii)
+        key = f"{pop}_energy"
+        logger.info("--- Fitting R(t) scaling (%s / energy) ---", pop)
+        rscale_fits[key] = fit_radius_scaling(
+            records, phase_name="energy", population=pop, **fit_kwargs)
+
+        # Momentum phase — total, within cloud, beyond cloud
+        for region in ["all", "within", "beyond"]:
+            suffix = {"all": "", "within": "_within", "beyond": "_beyond"}[region]
+            key = f"{pop}_momentum{suffix}"
+            logger.info("--- Fitting R(t) scaling (%s / momentum / %s) ---",
+                        pop, region)
             rscale_fits[key] = fit_radius_scaling(
-                records, phase_name=phase, population=pop, **fit_kwargs)
+                records, phase_name="momentum", population=pop,
+                cloud_region=region, **fit_kwargs)
 
     # Step 3: figures
     plot_trajectories(records, output_dir, args.fmt)
