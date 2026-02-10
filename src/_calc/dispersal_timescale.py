@@ -576,7 +576,7 @@ def plot_t_disp_normalized(
     output_dir: Path,
     fmt: str,
 ) -> Path:
-    """Figure 2: t_disp / t_ff as a function of parameters."""
+    """Figure 2: t_disp / t_ff as a function of parameters, separated by density."""
     fig, ax = plt.subplots(figsize=(6, 4.5), dpi=150)
 
     exp_pts = [r for r in records if r["outcome"] == EXPAND
@@ -594,22 +594,39 @@ def plot_t_disp_normalized(
                                               vmax=all_sfe[0] * 2.0)
     cmap = plt.cm.coolwarm
 
-    if exp_pts:
-        colors = [cmap(sfe_norm(r["sfe"])) for r in exp_pts]
+    # Separate by density — different markers per nCore
+    unique_nCore = sorted(set(r["nCore"] for r in records))
+    nc_to_marker = {nc: _MARKERS[i % len(_MARKERS)]
+                    for i, nc in enumerate(unique_nCore)}
+
+    # Plot expanding runs grouped by nCore
+    for nc in unique_nCore:
+        sub = [r for r in exp_pts if r["nCore"] == nc]
+        if not sub:
+            continue
+        colors = [cmap(sfe_norm(r["sfe"])) for r in sub]
+        nlog = int(np.log10(nc))
         ax.scatter(
-            [r["Sigma"] for r in exp_pts],
-            [r["t_disp_over_tff"] for r in exp_pts],
-            c=colors, marker="o", s=40, edgecolors="k",
-            linewidths=0.3, zorder=5, label="Dispersal",
+            [r["Sigma"] for r in sub],
+            [r["t_disp_over_tff"] for r in sub],
+            c=colors, marker=nc_to_marker[nc], s=40, edgecolors="k",
+            linewidths=0.3, zorder=5,
+            label=rf"Dispersal ($n_c = 10^{{{nlog}}}$)",
         )
 
-    if col_pts:
-        colors = [cmap(sfe_norm(r["sfe"])) for r in col_pts]
+    # Plot collapsing runs grouped by nCore
+    for nc in unique_nCore:
+        sub = [r for r in col_pts if r["nCore"] == nc]
+        if not sub:
+            continue
+        colors = [cmap(sfe_norm(r["sfe"])) for r in sub]
+        nlog = int(np.log10(nc))
         ax.scatter(
-            [r["Sigma"] for r in col_pts],
-            [r["t_collapse_over_tff"] for r in col_pts],
-            c=colors, marker="x", s=40, linewidths=1.2,
-            zorder=4, label="Collapse",
+            [r["Sigma"] for r in sub],
+            [r["t_collapse_over_tff"] for r in sub],
+            c=colors, marker=nc_to_marker[nc], s=40, linewidths=1.2,
+            facecolors="none", zorder=4,
+            label=rf"Collapse ($n_c = 10^{{{nlog}}}$)",
         )
 
     # Reference lines
