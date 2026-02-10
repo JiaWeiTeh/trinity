@@ -12,13 +12,14 @@ Each subplot (one per time snapshot):
 - X-axis: cloud mass (mCloud)
 - Y-axis: star formation efficiency (SFE)
 - Color: dominant feedback force (F_grav, F_ram_wind, F_ram_SN, F_ion_out, F_rad)
-- White: no data (simulation file not found)
+- White: collapsed (simulation ended in shell collapse)
+- Gray: no data (simulation file not found)
 
 F_ram competes as a whole first, then subclassifies to wind (blue) or SN (yellow)
 if it wins. This is the same logic as paper_momentum.py's dominant bar.
 
-For simulations that have ended (t > t_max), the final dominant feedback is
-persisted for later time snapshots.
+For simulations that have ended (t > t_max): if the cloud collapsed, the cell is
+shown as white ("Collapse"); otherwise, the final dominant feedback is persisted.
 
 Usage
 -----
@@ -72,9 +73,11 @@ FORCE_FIELDS = [
 
 # Special values for missing data (must be negative to distinguish from force indices)
 FILE_NOT_FOUND = -1      # Gray: simulation file not found
+COLLAPSED = -2           # White: simulation collapsed
 
 # Missing data colors
 COLOR_FILE_NOT_FOUND = "#808080"      # Gray
+COLOR_COLLAPSED = "#FFFFFF"           # White
 
 # Default parameters
 DEFAULT_TIMES = [1.0, 3.0, 5.0]  # Myr - includes times when SN should be active
@@ -280,6 +283,15 @@ def build_dominance_grid(target_time, mCloud_list, sfe_list, sim_grid):
                 grid[i, j] = FILE_NOT_FOUND
                 continue
 
+            # If past simulation end and cloud collapsed, mark as COLLAPSED
+            if target_time > output.t_max:
+                last_snap = output[-1]
+                is_collapse = last_snap.data.get("isCollapse", False)
+                end_reason = str(last_snap.data.get("SimulationEndReason", "")).lower()
+                if is_collapse or "small radius" in end_reason or "collapsed" in end_reason:
+                    grid[i, j] = COLLAPSED
+                    continue
+
             # Get snapshot (persists final value if t > t_max)
             snapshot = get_snapshot_at_time(output, target_time, persist_final=True)
             dominant = get_dominant_force(snapshot)
@@ -313,6 +325,8 @@ def build_force_grids(target_time, mCloud_list, sfe_list, sim_grid):
         Dictionary {force_key: 2D array} for each force type
     mask : np.ndarray
         Boolean 2D array where True = invalid (file not found)
+    collapse_mask : np.ndarray
+        Boolean 2D array where True = simulation collapsed before target_time
     """
     n_sfe = len(sfe_list)
     n_mass = len(mCloud_list)
@@ -322,6 +336,7 @@ def build_force_grids(target_time, mCloud_list, sfe_list, sim_grid):
         forces_dict[key] = np.full((n_sfe, n_mass), np.nan, dtype=float)
 
     mask = np.zeros((n_sfe, n_mass), dtype=bool)
+    collapse_mask = np.zeros((n_sfe, n_mass), dtype=bool)
 
     for j, mCloud in enumerate(mCloud_list):
         for i, sfe in enumerate(sfe_list):
@@ -337,6 +352,16 @@ def build_force_grids(target_time, mCloud_list, sfe_list, sim_grid):
                 mask[i, j] = True
                 continue
 
+            # If past simulation end and cloud collapsed, mark as collapsed
+            if target_time > output.t_max:
+                last_snap = output[-1]
+                is_collapse = last_snap.data.get("isCollapse", False)
+                end_reason = str(last_snap.data.get("SimulationEndReason", "")).lower()
+                if is_collapse or "small radius" in end_reason or "collapsed" in end_reason:
+                    mask[i, j] = True
+                    collapse_mask[i, j] = True
+                    continue
+
             # Get snapshot (persists final value if t > t_max)
             snapshot = get_snapshot_at_time(output, target_time, persist_final=True)
             force_vals = get_force_values(snapshot)
@@ -347,14 +372,16 @@ def build_force_grids(target_time, mCloud_list, sfe_list, sim_grid):
                 for key in forces_dict:
                     forces_dict[key][i, j] = force_vals.get(key, np.nan)
 
-    return forces_dict, mask
+    return forces_dict, mask, collapse_mask
 
 
-def refine_dominant_map(logM, eps, forces_dict, mask, nref_M=300, nref_eps=300):
+def refine_dominant_map(logM, eps, forces_dict, mask, nref_M=300, nref_eps=300,
+                        collapse_mask=None):
     """
     Interpolate continuous force fields, then take argmax for smooth boundaries.
 
     F_ram competes as a whole, then subclassifies to wind vs SN if it wins.
+    Collapsed cells (from collapse_mask) are shown as COLLAPSED, not interpolated.
     """
     keys = list(forces_dict.keys())
 
@@ -377,6 +404,18 @@ def refine_dominant_map(logM, eps, forces_dict, mask, nref_M=300, nref_eps=300):
             fill_value=np.nan
         )
         fine_fields[k] = itp(pts).reshape(nref_eps, nref_M)
+
+    # Interpolate collapse_mask to fine grid (nearest-neighbor)
+    fine_collapse = None
+    if collapse_mask is not None and np.any(collapse_mask):
+        collapse_float = collapse_mask.astype(float)
+        itp_c = RegularGridInterpolator(
+            (eps, logM), collapse_float,
+            method="nearest",
+            bounds_error=False,
+            fill_value=0.0
+        )
+        fine_collapse = itp_c(pts).reshape(nref_eps, nref_M) > 0.5
 
     # Get interpolated force arrays
     F_grav = np.abs(np.nan_to_num(fine_fields.get("F_grav", 0), nan=0.0))
@@ -414,6 +453,12 @@ def refine_dominant_map(logM, eps, forces_dict, mask, nref_M=300, nref_eps=300):
     dom_f[sn_dominates] = 2    # F_ram_SN (yellow)
     dom_f[wind_dominates] = 1  # F_ram_wind (blue)
 
+    # Overlay collapsed cells
+    if fine_collapse is not None:
+        dom_f[fine_collapse] = COLLAPSED
+        # Un-invalidate collapsed cells so they render (not masked out)
+        invalid_f = invalid_f & ~fine_collapse
+
     # Mask invalid cells
     dom_f = np.ma.array(dom_f, mask=invalid_f)
 
@@ -425,29 +470,34 @@ def refine_dominant_map(logM, eps, forces_dict, mask, nref_M=300, nref_eps=300):
 # =============================================================================
 
 def create_colormap():
-    """Create discrete colormap for force types and missing data."""
+    """Create discrete colormap for force types, missing data, and collapse."""
     n_forces = len(FORCE_FIELDS)
 
     colors = [
-        COLOR_FILE_NOT_FOUND,     # -1
+        COLOR_COLLAPSED,          # -2 (white)
+        COLOR_FILE_NOT_FOUND,     # -1 (gray)
     ] + [field[2] for field in FORCE_FIELDS]
 
     cmap = ListedColormap(colors)
     cmap.set_bad(color='white')
 
-    bounds = [-1.5, -0.5] + [i + 0.5 for i in range(n_forces)]
+    bounds = [-2.5, -1.5, -0.5] + [i + 0.5 for i in range(n_forces)]
     norm = BoundaryNorm(bounds, cmap.N)
 
     return cmap, norm
 
 
 def create_force_colormap():
-    """Create discrete colormap for just force types (for interpolated plots)."""
+    """Create discrete colormap for force types + collapse (for interpolated plots)."""
     n_forces = len(FORCE_FIELDS)
-    colors = [field[2] for field in FORCE_FIELDS]
+    colors = [
+        COLOR_COLLAPSED,      # COLLAPSED = -2
+    ] + [field[2] for field in FORCE_FIELDS]
     cmap = ListedColormap(colors)
     cmap.set_bad(color='white')
-    norm = BoundaryNorm(np.arange(n_forces + 1) - 0.5, n_forces)
+    # Bounds: [-2.5, -0.5] -> collapsed, [-0.5, 0.5] -> force0, ...
+    bounds = [-2.5, -0.5] + [i + 0.5 for i in range(n_forces)]
+    norm = BoundaryNorm(bounds, len(colors))
     return cmap, norm
 
 
@@ -468,7 +518,7 @@ def compute_grid_layout(n_plots):
 
 def plot_single_grid(ax, grid, mCloud_list, sfe_list, target_time, cmap, norm,
                      smooth='none', axis_mode='discrete', forces_dict=None, mask=None,
-                     nref_M=300, nref_eps=300):
+                     collapse_mask=None, nref_M=300, nref_eps=300):
     """Plot a single dominance grid on an axis."""
     n_mass = len(mCloud_list)
     n_sfe = len(sfe_list)
@@ -484,7 +534,8 @@ def plot_single_grid(ax, grid, mCloud_list, sfe_list, target_time, cmap, norm,
 
     if axis_mode == 'continuous' and smooth == 'interp':
         logM_f, eps_f, dom_f = refine_dominant_map(logM, eps, forces_dict, mask,
-                                                    nref_M=nref_M, nref_eps=nref_eps)
+                                                    nref_M=nref_M, nref_eps=nref_eps,
+                                                    collapse_mask=collapse_mask)
 
         force_cmap, force_norm = create_force_colormap()
 
@@ -578,11 +629,14 @@ def plot_single_grid(ax, grid, mCloud_list, sfe_list, target_time, cmap, norm,
 
 
 def create_legend():
-    """Create legend handles for force types and missing data."""
+    """Create legend handles for force types, collapse, and missing data."""
     handles = [
         Patch(facecolor=color, edgecolor='gray', label=label)
         for _, label, color in FORCE_FIELDS
     ]
+    handles.append(
+        Patch(facecolor=COLOR_COLLAPSED, edgecolor='gray', label='Collapse')
+    )
     handles.append(
         Patch(facecolor=COLOR_FILE_NOT_FOUND, edgecolor='gray', label='No data')
     )
@@ -704,7 +758,7 @@ def plot_grid(folder_path, target_times=None, output_dir=None, ndens_filter=None
             print(f"  Building grid for t = {target_time} Myr...")
 
             if smooth == 'interp' and axis_mode == 'continuous':
-                forces_dict, mask = build_force_grids(
+                forces_dict, mask, collapse_mask = build_force_grids(
                     target_time, mCloud_list, sfe_list, sim_grid
                 )
                 grid = build_dominance_grid(
@@ -712,7 +766,8 @@ def plot_grid(folder_path, target_times=None, output_dir=None, ndens_filter=None
                 )
                 plot_single_grid(ax, grid, mCloud_list, sfe_list, target_time, cmap, norm,
                                smooth=smooth, axis_mode=axis_mode,
-                               forces_dict=forces_dict, mask=mask)
+                               forces_dict=forces_dict, mask=mask,
+                               collapse_mask=collapse_mask)
             else:
                 grid = build_dominance_grid(
                     target_time, mCloud_list, sfe_list, sim_grid
@@ -848,7 +903,7 @@ def make_movie(folder_path, output_dir=None, ndens_filter=None,
                 fig, ax = plt.subplots(figsize=(8, 8), constrained_layout=True)
 
                 if smooth == 'interp' and axis_mode == 'continuous':
-                    forces_dict, mask = build_force_grids(
+                    forces_dict, mask, collapse_mask = build_force_grids(
                         target_time, mCloud_list, sfe_list, sim_grid
                     )
                     grid = build_dominance_grid(
@@ -856,7 +911,8 @@ def make_movie(folder_path, output_dir=None, ndens_filter=None,
                     )
                     plot_single_grid(ax, grid, mCloud_list, sfe_list, target_time, cmap, norm,
                                    smooth=smooth, axis_mode=axis_mode,
-                                   forces_dict=forces_dict, mask=mask)
+                                   forces_dict=forces_dict, mask=mask,
+                                   collapse_mask=collapse_mask)
                 else:
                     grid = build_dominance_grid(
                         target_time, mCloud_list, sfe_list, sim_grid
@@ -967,8 +1023,8 @@ Axis modes:
   continuous - Real value spacing (log scale for mCloud, linear for SFE)
 
 Note: F_ram competes as a whole first, then subclassifies to wind (blue) or
-SN (yellow) if it wins. Simulations that have ended persist their final
-dominant feedback for later time snapshots.
+SN (yellow) if it wins. Simulations that ended in collapse are shown as white;
+others that have ended persist their final dominant feedback.
         """
     )
 

@@ -40,7 +40,7 @@ Method
 ------
 1. Each TRINITY run is classified as **expand** (shell escapes the
    cloud), **collapse** (shell re-collapses), or **stalled** (reaches
-   maximum time without clear outcome).
+   maximum time without clear outcome; treated as expand).
 
 2. For every unique (n_c, M_cloud) pair the script identifies the
    SFE boundary between collapse and expansion by bracketing.  The
@@ -323,9 +323,9 @@ def find_epsilon_min(records: List[Dict]) -> List[Dict]:
         # Sort by SFE
         runs_sorted = sorted(runs, key=lambda r: r["sfe"])
 
-        # Classify each SFE (stalled counts as collapse for eps_min)
+        # Classify each SFE (stalled counts as expand for eps_min)
         sfe_vals = np.array([r["sfe"] for r in runs_sorted])
-        is_expand = np.array([r["outcome"] == EXPAND for r in runs_sorted])
+        is_expand = np.array([r["outcome"] in (EXPAND, STALLED) for r in runs_sorted])
 
         # Take derived quantities from first run in group
         ref = runs_sorted[0]
@@ -339,7 +339,7 @@ def find_epsilon_min(records: List[Dict]) -> List[Dict]:
         }
 
         if not is_expand.any():
-            # All collapse/stalled → eps_min is a lower limit
+            # All collapse → eps_min is a lower limit
             base["eps_min"] = sfe_vals.max()
             base["flag"] = LOWER_LIMIT
             logger.info(
