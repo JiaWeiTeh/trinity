@@ -576,16 +576,15 @@ def plot_t_disp_normalized(
     output_dir: Path,
     fmt: str,
 ) -> Path:
-    """Figure 2: t_disp / t_ff as a function of parameters, separated by density."""
-    fig, ax = plt.subplots(figsize=(6, 4.5), dpi=150)
+    """Figure 2: t_disp / t_ff, one subplot per cloud density."""
+    unique_nCore = sorted(set(r["nCore"] for r in records))
+    n_panels = max(len(unique_nCore), 1)
 
-    exp_pts = [r for r in records if r["outcome"] == EXPAND
-               and np.isfinite(r["t_disp_over_tff"]) and r["t_disp_over_tff"] > 0]
-    col_pts = [r for r in records if r["outcome"] == COLLAPSE
-               and np.isfinite(r["t_collapse_over_tff"])
-               and r["t_collapse_over_tff"] > 0]
+    fig, axes = plt.subplots(1, n_panels, figsize=(5.5 * n_panels, 4.5),
+                             squeeze=False, dpi=150)
+    axes = axes.ravel()
 
-    # Color by SFE
+    # Color by SFE (shared across panels)
     all_sfe = [r["sfe"] for r in records if r["sfe"] > 0]
     if len(set(all_sfe)) > 1:
         sfe_norm = matplotlib.colors.LogNorm(vmin=min(all_sfe), vmax=max(all_sfe))
@@ -594,62 +593,62 @@ def plot_t_disp_normalized(
                                               vmax=all_sfe[0] * 2.0)
     cmap = plt.cm.coolwarm
 
-    # Separate by density — different markers per nCore
-    unique_nCore = sorted(set(r["nCore"] for r in records))
-    nc_to_marker = {nc: _MARKERS[i % len(_MARKERS)]
-                    for i, nc in enumerate(unique_nCore)}
+    for pi, nc in enumerate(unique_nCore):
+        ax = axes[pi]
 
-    # Plot expanding runs grouped by nCore
-    for nc in unique_nCore:
-        sub = [r for r in exp_pts if r["nCore"] == nc]
-        if not sub:
-            continue
-        colors = [cmap(sfe_norm(r["sfe"])) for r in sub]
+        exp_sub = [r for r in records if r["nCore"] == nc
+                   and r["outcome"] == EXPAND
+                   and np.isfinite(r["t_disp_over_tff"])
+                   and r["t_disp_over_tff"] > 0]
+        col_sub = [r for r in records if r["nCore"] == nc
+                   and r["outcome"] == COLLAPSE
+                   and np.isfinite(r["t_collapse_over_tff"])
+                   and r["t_collapse_over_tff"] > 0]
+
+        # Expanding runs — filled circles
+        if exp_sub:
+            colors = [cmap(sfe_norm(r["sfe"])) for r in exp_sub]
+            ax.scatter(
+                [r["Sigma"] for r in exp_sub],
+                [r["t_disp_over_tff"] for r in exp_sub],
+                c=colors, marker="o", s=40, edgecolors="k",
+                linewidths=0.3, zorder=5, label="Dispersal",
+            )
+
+        # Collapsing runs — X markers
+        if col_sub:
+            colors = [cmap(sfe_norm(r["sfe"])) for r in col_sub]
+            ax.scatter(
+                [r["Sigma"] for r in col_sub],
+                [r["t_collapse_over_tff"] for r in col_sub],
+                c=colors, marker="X", s=50, edgecolors="k",
+                linewidths=0.3, zorder=4, label="Collapse",
+            )
+
+        # Reference lines
+        for val, lbl in [(1, r"$t/t_{\rm ff} = 1$"),
+                         (2, r"$t/t_{\rm ff} = 2$"),
+                         (4, r"$t/t_{\rm ff} = 4$")]:
+            ax.axhline(val, color="grey", ls=":", lw=0.8, alpha=0.5)
+            ax.text(ax.get_xlim()[1] if ax.get_xlim()[1] > 10 else 1e3,
+                    val * 1.05, lbl, fontsize=6, color="0.5",
+                    ha="right", va="bottom")
+
+        sm = matplotlib.cm.ScalarMappable(cmap=cmap, norm=sfe_norm)
+        sm.set_array([])
+        fig.colorbar(sm, ax=ax, pad=0.02, label=r"SFE ($\varepsilon$)")
+
+        ax.set_xscale("log")
+        ax.set_yscale("log")
+        ax.set_xlabel(r"$\Sigma_{\rm cl}$ [$M_\odot\,$pc$^{-2}$]")
+        if pi == 0:
+            ax.set_ylabel(r"$t / t_{\rm ff}$")
         nlog = int(np.log10(nc))
-        ax.scatter(
-            [r["Sigma"] for r in sub],
-            [r["t_disp_over_tff"] for r in sub],
-            c=colors, marker=nc_to_marker[nc], s=40, edgecolors="k",
-            linewidths=0.3, zorder=5,
-            label=rf"Dispersal ($n_c = 10^{{{nlog}}}$)",
-        )
+        ax.set_title(rf"$n_c = 10^{{{nlog}}}$ cm$^{{-3}}$", fontsize=10)
+        ax.legend(fontsize=7, loc="best", framealpha=0.8)
 
-    # Plot collapsing runs grouped by nCore
-    for nc in unique_nCore:
-        sub = [r for r in col_pts if r["nCore"] == nc]
-        if not sub:
-            continue
-        colors = [cmap(sfe_norm(r["sfe"])) for r in sub]
-        nlog = int(np.log10(nc))
-        ax.scatter(
-            [r["Sigma"] for r in sub],
-            [r["t_collapse_over_tff"] for r in sub],
-            c=colors, marker=nc_to_marker[nc], s=40, linewidths=1.2,
-            facecolors="none", zorder=4,
-            label=rf"Collapse ($n_c = 10^{{{nlog}}}$)",
-        )
-
-    # Reference lines
-    for val, label in [(1, r"$t/t_{\rm ff} = 1$"),
-                       (2, r"$t/t_{\rm ff} = 2$"),
-                       (4, r"$t/t_{\rm ff} = 4$")]:
-        ax.axhline(val, color="grey", ls=":", lw=0.8, alpha=0.5)
-        ax.text(ax.get_xlim()[1] if ax.get_xlim()[1] > 10 else 1e3,
-                val * 1.05, label, fontsize=6, color="0.5",
-                ha="right", va="bottom")
-
-    sm = matplotlib.cm.ScalarMappable(cmap=cmap, norm=sfe_norm)
-    sm.set_array([])
-    cbar = fig.colorbar(sm, ax=ax, pad=0.02)
-    cbar.set_label(r"SFE ($\varepsilon$)")
-
-    ax.set_xscale("log")
-    ax.set_yscale("log")
-    ax.set_xlabel(r"$\Sigma_{\rm cl}$ [$M_\odot\,$pc$^{-2}$]")
-    ax.set_ylabel(r"$t / t_{\rm ff}$")
-    ax.set_title("Dispersal / collapse time normalized by free-fall time",
-                 fontsize=10)
-    ax.legend(fontsize=7, loc="best", framealpha=0.8)
+    for j in range(len(unique_nCore), len(axes)):
+        axes[j].set_visible(False)
 
     fig.tight_layout()
     out = output_dir / f"dispersal_timescale_normalized.{fmt}"
