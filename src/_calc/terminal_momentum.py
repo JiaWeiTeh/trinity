@@ -904,6 +904,27 @@ def print_summary(
 # Equation JSON (for run_all summary)
 # ======================================================================
 
+def _extract_rejected(fit):
+    """Extract identifying info for sigma-clipped (rejected) points."""
+    mask = fit.get("mask")
+    if mask is None:
+        return []
+    rejected = []
+    for i, m in enumerate(mask):
+        if not m:
+            info = {}
+            for k in ("nCore", "mCloud", "sfe"):
+                arr = fit.get(k)
+                if arr is not None and i < len(arr):
+                    info[k] = float(arr[i])
+            flds = fit.get("folders")
+            if flds is not None and i < len(flds):
+                info["folder"] = flds[i]
+            if info:
+                rejected.append(info)
+    return rejected
+
+
 def _write_equation_json(
     fits: List[Tuple[str, Optional[Dict]]],
     output_dir: Path,
@@ -932,6 +953,8 @@ def _write_equation_json(
             "R2": float(fit["R2"]),
             "rms_dex": float(fit["rms_dex"]),
             "n_used": int(fit["n_used"]),
+            "n_rejected": int(fit.get("n_rejected", 0)),
+            "rejected": _extract_rejected(fit),
         })
     path = output_dir / f"{script_name}_equations.json"
     with open(path, "w") as fh:

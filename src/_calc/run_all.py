@@ -314,6 +314,80 @@ def generate_summary_pdf(output_dir: Path, fmt: str = "pdf") -> Optional[Path]:
 
 
 # ======================================================================
+# Sigma-clip rejection summary
+# ======================================================================
+
+def _run_key(info: dict) -> str:
+    """Build a human-readable key for a rejected run from its identifying info."""
+    parts = []
+    if "folder" in info:
+        return info["folder"]
+    if "mCloud" in info:
+        parts.append(f"M={info['mCloud']:.0e}")
+    if "nCore" in info:
+        parts.append(f"n={info['nCore']:.0e}")
+    if "sfe" in info:
+        parts.append(f"sfe={info['sfe']:.3f}")
+    if "Sigma" in info:
+        parts.append(f"Sigma={info['Sigma']:.1f}")
+    return ", ".join(parts) if parts else "unknown"
+
+
+def generate_rejection_summary(output_dir: Path) -> None:
+    """
+    Read all *_equations.json in *output_dir* and print a summary of
+    runs rejected by sigma-clipping, grouped by run.
+    """
+    json_files = sorted(output_dir.glob("*_equations.json"))
+    if not json_files:
+        return
+
+    # Collect: run_key -> list of (script, label) that rejected it
+    from collections import defaultdict
+    rejections_by_run = defaultdict(list)
+    total_rejected = 0
+
+    for jf in json_files:
+        try:
+            with open(jf) as fh:
+                entries = json.load(fh)
+        except Exception:
+            continue
+        for entry in entries:
+            script = entry.get("script", jf.stem)
+            label = entry.get("label", "?")
+            n_rej = entry.get("n_rejected", 0)
+            rejected = entry.get("rejected", [])
+            for info in rejected:
+                key = _run_key(info)
+                rejections_by_run[key].append(f"[{script}] {label}")
+                total_rejected += 1
+
+    if total_rejected == 0:
+        print("\nSigma-clip rejection summary: no runs were rejected.")
+        return
+
+    # Print summary
+    print()
+    print("=" * 90)
+    print("SIGMA-CLIP REJECTION SUMMARY")
+    print("=" * 90)
+    print(f"  Total rejections: {total_rejected} (across all fits)")
+    print(f"  Unique runs affected: {len(rejections_by_run)}")
+    print()
+
+    # Sort by number of rejections (most rejected first)
+    for key in sorted(rejections_by_run, key=lambda k: -len(rejections_by_run[k])):
+        fits = rejections_by_run[key]
+        print(f"  {key}  ({len(fits)} rejection{'s' if len(fits) != 1 else ''}):")
+        for fit_label in fits:
+            print(f"      {fit_label}")
+        print()
+
+    print("=" * 90)
+
+
+# ======================================================================
 # CLI
 # ======================================================================
 
@@ -405,6 +479,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         fmt = args.fmt if args.fmt else "pdf"
         if output_dir.is_dir():
             generate_summary_pdf(output_dir, fmt=fmt)
+            generate_rejection_summary(output_dir)
 
     return min(n_fail, 1)   # cap at 1 for exit code
 

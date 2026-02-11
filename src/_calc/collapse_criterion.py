@@ -1103,6 +1103,27 @@ def print_summary(
 # Equation JSON (for run_all summary)
 # ======================================================================
 
+def _extract_rejected(fit):
+    """Extract identifying info for sigma-clipped (rejected) points."""
+    mask = fit.get("mask")
+    if mask is None:
+        return []
+    rejected = []
+    for i, m in enumerate(mask):
+        if not m:
+            info = {}
+            for k in ("nCore", "mCloud", "sfe", "Sigma"):
+                arr = fit.get(k)
+                if arr is not None and i < len(arr):
+                    info[k] = float(arr[i])
+            flds = fit.get("folders")
+            if flds is not None and i < len(flds):
+                info["folder"] = flds[i]
+            if info:
+                rejected.append(info)
+    return rejected
+
+
 def _write_equation_json(
     fit_nM: Optional[Dict],
     fit_sigma: Optional[Dict],
@@ -1129,6 +1150,8 @@ def _write_equation_json(
             "R2": float(fit_nM["R2"]),
             "rms_dex": float(fit_nM["rms_dex"]),
             "n_used": int(fit_nM["n_used"]),
+            "n_rejected": int(fit_nM.get("n_rejected", 0)),
+            "rejected": _extract_rejected(fit_nM),
         })
     if fit_sigma is not None:
         A = 10.0 ** fit_sigma["beta"][0]
@@ -1148,6 +1171,8 @@ def _write_equation_json(
             "R2": float(fit_sigma["R2"]),
             "rms_dex": float(fit_sigma["rms_dex"]),
             "n_used": int(fit_sigma["n_used"]),
+            "n_rejected": int(fit_sigma.get("n_rejected", 0)),
+            "rejected": _extract_rejected(fit_sigma),
         })
     path = output_dir / "collapse_criterion_equations.json"
     with open(path, "w") as fh:
