@@ -152,7 +152,8 @@ COLLAPSE = "collapse"
 STALLED = "stalled"
 
 
-def extract_run(data_path: Path, decompose: bool = False) -> Optional[Dict]:
+def extract_run(data_path: Path, decompose: bool = False,
+                t_end: float = None) -> Optional[Dict]:
     """
     Load one TRINITY run and extract terminal momentum + metadata.
 
@@ -162,6 +163,8 @@ def extract_run(data_path: Path, decompose: bool = False) -> Optional[Dict]:
         Path to dictionary.jsonl.
     decompose : bool
         If True, also compute cumulative momentum per force component.
+    t_end : float, optional
+        If given, truncate time series at this value [Myr].
 
     Returns
     -------
@@ -187,21 +190,39 @@ def extract_run(data_path: Path, decompose: bool = False) -> Optional[Dict]:
     v2 = np.nan_to_num(v2, nan=0.0)
     shell_mass = np.nan_to_num(shell_mass, nan=0.0)
 
-    # Outcome
-    last = output[-1]
-    first = output[0]
-    is_collapse = last.get("isCollapse", False)
-    is_dissolved = last.get("isDissolved", False)
-    end_reason = str(last.get("SimulationEndReason", "")).lower()
+    # Truncate at t_end if requested
+    _truncated = False
+    if t_end is not None and t[-1] > t_end:
+        mask_t = t <= t_end
+        if mask_t.sum() < 3:
+            logger.info("Fewer than 3 snapshots within t_end=%.3f in %s — skip",
+                        t_end, data_path.parent.name)
+            return None
+        t = t[mask_t]
+        v2 = v2[mask_t]
+        shell_mass = shell_mass[mask_t]
+        R2 = R2[mask_t]
+        _truncated = True
 
-    if is_dissolved or "dissolved" in end_reason or "large radius" in end_reason:
-        outcome = EXPAND
-    elif is_collapse or "small radius" in end_reason or "collapsed" in end_reason:
-        outcome = COLLAPSE
-    elif "stopping time" in end_reason or "max time" in end_reason:
-        outcome = STALLED
-    else:
+    # Outcome
+    first = output[0]
+    if _truncated:
+        # Classify by velocity at truncation point
         outcome = EXPAND if v2[-1] > 0 else COLLAPSE
+    else:
+        last = output[-1]
+        is_collapse = last.get("isCollapse", False)
+        is_dissolved = last.get("isDissolved", False)
+        end_reason = str(last.get("SimulationEndReason", "")).lower()
+
+        if is_dissolved or "dissolved" in end_reason or "large radius" in end_reason:
+            outcome = EXPAND
+        elif is_collapse or "small radius" in end_reason or "collapsed" in end_reason:
+            outcome = COLLAPSE
+        elif "stopping time" in end_reason or "max time" in end_reason:
+            outcome = STALLED
+        else:
+            outcome = EXPAND if v2[-1] > 0 else COLLAPSE
 
     # Cloud / cluster params
     rCloud = first.get("rCloud", None)
@@ -240,6 +261,8 @@ def extract_run(data_path: Path, decompose: bool = False) -> Optional[Dict]:
         components: Dict[str, float] = {}
         for field in MAIN_FORCES + SUB_FORCES:
             F_arr = np.nan_to_num(output.get(field), nan=0.0)
+            if _truncated:
+                F_arr = F_arr[mask_t]
             P_arr = _cumtrapz_1d(F_arr, t)        # Msun * pc/Myr
             components[field] = float(P_arr[i_term])
         rec["components"] = components
@@ -247,13 +270,17 @@ def extract_run(data_path: Path, decompose: bool = False) -> Optional[Dict]:
         # Input momentum (wind + SN injection)
         F_wind = np.nan_to_num(output.get("F_ram_wind"), nan=0.0)
         F_SN = np.nan_to_num(output.get("F_ram_SN"), nan=0.0)
+        if _truncated:
+            F_wind = F_wind[mask_t]
+            F_SN = F_SN[mask_t]
         P_input = _cumtrapz_1d(F_wind + F_SN, t)
         rec["p_input_au"] = float(P_input[i_term])  # Msun * pc/Myr
 
     return rec
 
 
-def collect_data(folder_path: Path, decompose: bool = False) -> List[Dict]:
+def collect_data(folder_path: Path, decompose: bool = False,
+                 t_end: float = None) -> List[Dict]:
     """
     Walk sweep output and collect terminal momentum for every run.
     """
@@ -276,7 +303,7 @@ def collect_data(folder_path: Path, decompose: bool = False) -> List[Dict]:
         mCloud = float(parsed["mCloud"])
         sfe = int(parsed["sfe"]) / 100.0
 
-        info = extract_run(data_path, decompose=decompose)
+        info = extract_run(data_path, decompose=decompose, t_end=t_end)
         if info is None:
             continue
 
@@ -1006,6 +1033,10 @@ Examples:
         "--decompose", action="store_true",
         help="Also fit and plot momentum components (wind, rad, HII, SN).",
     )
+    parser.add_argument(
+        "--t-end", type=float, default=None,
+        help="Maximum time [Myr] to consider in calculations.",
+    )
     return parser
 
 
@@ -1029,7 +1060,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Step 1: collect
-    records = collect_data(folder_path, decompose=args.decompose)
+    records = collect_data(folder_path, decompose=args.decompose, t_end=args.t_end)
     if not records:
         logger.error("No valid data collected — aborting.")
         return 1

@@ -142,9 +142,16 @@ T_MIN_STABLE = 3e-3
 # Data extraction
 # ======================================================================
 
-def extract_run(data_path: Path) -> Optional[Dict]:
+def extract_run(data_path: Path, t_end: float = None) -> Optional[Dict]:
     """
     Load one TRINITY run and extract v(R) trajectory + phase info.
+
+    Parameters
+    ----------
+    data_path : Path
+        Path to dictionary.jsonl.
+    t_end : float, optional
+        If given, truncate time series at this value [Myr].
 
     Returns
     -------
@@ -174,17 +181,34 @@ def extract_run(data_path: Path) -> Optional[Dict]:
 
     rCloud = output[0].get("rCloud", None)
 
+    # Truncate at t_end if requested
+    _truncated = False
+    if t_end is not None and t[-1] > t_end:
+        mask_t = t <= t_end
+        if mask_t.sum() < MIN_PHASE_PTS:
+            logger.info("Fewer than %d snapshots within t_end=%.3f in %s — skip",
+                        MIN_PHASE_PTS, t_end, data_path.parent.name)
+            return None
+        t = t[mask_t]
+        R = R[mask_t]
+        v_au = v_au[mask_t]
+        phase = phase[mask_t]
+        _truncated = True
+
     # Outcome
-    last = output[-1]
-    is_collapse = last.get("isCollapse", False)
-    is_dissolved = last.get("isDissolved", False)
-    end_reason = str(last.get("SimulationEndReason", "")).lower()
-    if is_dissolved or "dissolved" in end_reason or "large radius" in end_reason:
-        outcome = "expand"
-    elif is_collapse or "small radius" in end_reason:
-        outcome = "collapse"
+    if _truncated:
+        outcome = "expand" if v_au[-1] > 0 else "collapse"
     else:
-        outcome = "stalled"
+        last = output[-1]
+        is_collapse = last.get("isCollapse", False)
+        is_dissolved = last.get("isDissolved", False)
+        end_reason = str(last.get("SimulationEndReason", "")).lower()
+        if is_dissolved or "dissolved" in end_reason or "large radius" in end_reason:
+            outcome = "expand"
+        elif is_collapse or "small radius" in end_reason:
+            outcome = "collapse"
+        else:
+            outcome = "stalled"
 
     v_kms = v_au * V_AU2KMS
 
@@ -365,7 +389,7 @@ def phase_averaged_eta(
 # Collect all runs
 # ======================================================================
 
-def collect_data(folder_path: Path) -> List[Dict]:
+def collect_data(folder_path: Path, t_end: float = None) -> List[Dict]:
     """Walk sweep and analyse each run."""
     sim_files = find_all_simulations(folder_path)
     if not sim_files:
@@ -386,7 +410,7 @@ def collect_data(folder_path: Path) -> List[Dict]:
         mCloud = float(parsed["mCloud"])
         sfe = int(parsed["sfe"]) / 100.0
 
-        info = extract_run(data_path)
+        info = extract_run(data_path, t_end=t_end)
         if info is None:
             continue
 
@@ -2217,6 +2241,10 @@ Examples:
         "--fmt", type=str, default="pdf",
         help="Output figure format (default: pdf).",
     )
+    parser.add_argument(
+        "--t-end", type=float, default=None,
+        help="Maximum time [Myr] to consider in calculations.",
+    )
     return parser
 
 
@@ -2240,7 +2268,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Step 1: collect & analyse
-    records = collect_data(folder_path)
+    records = collect_data(folder_path, t_end=args.t_end)
     if not records:
         logger.error("No valid data collected — aborting.")
         return 1

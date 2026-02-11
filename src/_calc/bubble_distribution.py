@@ -113,9 +113,16 @@ LINESTYLES = ["-", "--", "-.", ":"]
 # Data extraction
 # ======================================================================
 
-def extract_bubble_data(data_path: Path) -> Optional[Dict]:
+def extract_bubble_data(data_path: Path, t_end: float = None) -> Optional[Dict]:
     """
     Load one TRINITY run and extract R(t) and v(R) for the expanding phase.
+
+    Parameters
+    ----------
+    data_path : Path
+        Path to dictionary.jsonl.
+    t_end : float, optional
+        If given, truncate time series at this value [Myr].
 
     Returns
     -------
@@ -143,17 +150,34 @@ def extract_bubble_data(data_path: Path) -> Optional[Dict]:
     v_au = np.nan_to_num(v_au, nan=0.0)
     R = np.nan_to_num(R, nan=0.0)
 
+    # Truncate at t_end if requested
+    _truncated = False
+    if t_end is not None and t[-1] > t_end:
+        mask_t = t <= t_end
+        if mask_t.sum() < MIN_PTS:
+            logger.info("Fewer than %d snapshots within t_end=%.3f in %s — skip",
+                        MIN_PTS, t_end, data_path.parent.name)
+            return None
+        t = t[mask_t]
+        R = R[mask_t]
+        v_au = v_au[mask_t]
+        phase = phase[mask_t]
+        _truncated = True
+
     # Outcome
-    last = output[-1]
-    is_collapse = last.get("isCollapse", False)
-    is_dissolved = last.get("isDissolved", False)
-    end_reason = str(last.get("SimulationEndReason", "")).lower()
-    if is_dissolved or "dissolved" in end_reason or "large radius" in end_reason:
-        outcome = "expand"
-    elif is_collapse or "small radius" in end_reason:
-        outcome = "collapse"
+    if _truncated:
+        outcome = "expand" if v_au[-1] > 0 else "collapse"
     else:
-        outcome = "stalled"
+        last = output[-1]
+        is_collapse = last.get("isCollapse", False)
+        is_dissolved = last.get("isDissolved", False)
+        end_reason = str(last.get("SimulationEndReason", "")).lower()
+        if is_dissolved or "dissolved" in end_reason or "large radius" in end_reason:
+            outcome = "expand"
+        elif is_collapse or "small radius" in end_reason:
+            outcome = "collapse"
+        else:
+            outcome = "stalled"
 
     # Only keep expanding portions (v > 0, R > 0) for bubble analysis
     expanding = (v_au > 0) & (R > 0)
@@ -177,7 +201,7 @@ def extract_bubble_data(data_path: Path) -> Optional[Dict]:
     }
 
 
-def collect_data(folder_path: Path) -> List[Dict]:
+def collect_data(folder_path: Path, t_end: float = None) -> List[Dict]:
     """Walk sweep directory and extract bubble data from each run."""
     sim_files = find_all_simulations(folder_path)
     if not sim_files:
@@ -198,7 +222,7 @@ def collect_data(folder_path: Path) -> List[Dict]:
         mCloud = float(parsed["mCloud"])
         sfe = int(parsed["sfe"]) / 100.0
 
-        info = extract_bubble_data(data_path)
+        info = extract_bubble_data(data_path, t_end=t_end)
         if info is None:
             continue
 
@@ -741,6 +765,10 @@ Examples:
         "--no-synthesis", action="store_true",
         help="Skip Part 3 (population synthesis).",
     )
+    parser.add_argument(
+        "--t-end", type=float, default=None,
+        help="Maximum time [Myr] to consider in calculations.",
+    )
     return parser
 
 
@@ -764,7 +792,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Step 1: collect & analyse
-    records = collect_data(folder_path)
+    records = collect_data(folder_path, t_end=args.t_end)
     if not records:
         logger.error("No valid data collected — aborting.")
         return 1

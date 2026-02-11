@@ -113,7 +113,7 @@ QUANTITY_DEFS = {
 }
 
 
-def extract_timescales(data_path: Path) -> Optional[Dict[str, float]]:
+def extract_timescales(data_path: Path, t_end: float = None) -> Optional[Dict[str, float]]:
     """
     Load a single TRINITY run and return its phase-transition timescales.
 
@@ -121,6 +121,8 @@ def extract_timescales(data_path: Path) -> Optional[Dict[str, float]]:
     ----------
     data_path : Path
         Path to dictionary.jsonl (or .json) for the run.
+    t_end : float, optional
+        If given, ignore any timescale exceeding this value [Myr].
 
     Returns
     -------
@@ -148,6 +150,16 @@ def extract_timescales(data_path: Path) -> Optional[Dict[str, float]]:
     if is_collapse:
         logger.info("Run %s ended in collapse — skip", data_path.parent.name)
         return None
+
+    # Truncate at t_end if requested
+    if t_end is not None:
+        mask = t <= t_end
+        t = t[mask]
+        phase = phase[mask]
+        if len(t) < 2:
+            logger.info("Fewer than 2 snapshots within t_end=%.3f in %s — skip",
+                        t_end, data_path.parent.name)
+            return None
 
     # Use the existing helper to find phase transitions
     trans = find_phase_transitions(t, phase)
@@ -180,6 +192,7 @@ def extract_timescales(data_path: Path) -> Optional[Dict[str, float]]:
 
 def collect_data(
     folder_path: Path,
+    t_end: float = None,
 ) -> List[Dict]:
     """
     Walk a sweep output folder and collect (params, timescales) for every run.
@@ -215,7 +228,7 @@ def collect_data(
         mCloud_val = float(parsed["mCloud"])      # Msun
         sfe_val = int(parsed["sfe"]) / 100.0      # fraction
 
-        timescales = extract_timescales(data_path)
+        timescales = extract_timescales(data_path, t_end=t_end)
         if timescales is None:
             continue
 
@@ -933,6 +946,10 @@ Examples:
         "--fmt", type=str, default="pdf",
         help="Output figure format (default: pdf).",
     )
+    parser.add_argument(
+        "--t-end", type=float, default=None,
+        help="Maximum time [Myr] to consider in calculations.",
+    )
     return parser
 
 
@@ -967,7 +984,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             return 1
 
     # Step 1: collect data
-    records = collect_data(folder_path)
+    records = collect_data(folder_path, t_end=args.t_end)
     if not records:
         logger.error("No valid data collected — aborting.")
         return 1
