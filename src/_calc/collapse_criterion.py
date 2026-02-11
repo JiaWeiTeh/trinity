@@ -160,7 +160,7 @@ COLLAPSE = "collapse"
 STALLED = "stalled"
 
 
-def classify_outcome(data_path: Path) -> Optional[Dict]:
+def classify_outcome(data_path: Path, t_end: float = None) -> Optional[Dict]:
     """
     Load a TRINITY run and classify its outcome.
 
@@ -168,6 +168,9 @@ def classify_outcome(data_path: Path) -> Optional[Dict]:
     ----------
     data_path : Path
         Path to dictionary.jsonl for the run.
+    t_end : float, optional
+        If given, evaluate the outcome at this time [Myr] instead of the
+        final snapshot.
 
     Returns
     -------
@@ -185,7 +188,6 @@ def classify_outcome(data_path: Path) -> Optional[Dict]:
         logger.warning("Fewer than 2 snapshots in %s — skipping", data_path)
         return None
 
-    last = output[-1]
     first = output[0]
 
     # Read rCloud from first snapshot (stored in pc)
@@ -194,11 +196,45 @@ def classify_outcome(data_path: Path) -> Optional[Dict]:
     # Read mCloud from first snapshot (stored in Msun)
     mCloud_snap = first.get("mCloud", None)
 
-    # Classify outcome from last snapshot
-    is_collapse = last.get("isCollapse", False)
-    is_dissolved = last.get("isDissolved", False)
-    end_reason = str(last.get("SimulationEndReason", "")).lower()
+    # If t_end is set, evaluate outcome at t_end instead of the final snapshot
+    if t_end is not None:
+        t = output.get("t_now")
+        v2 = output.get("v2")
+        v2 = np.nan_to_num(v2, nan=0.0)
+        valid = t <= t_end
+        if valid.sum() < 2:
+            logger.info("Fewer than 2 snapshots within t_end=%.3f in %s — skip",
+                        t_end, data_path.parent.name)
+            return None
+        # Check if the simulation already ended (collapse/expand) before t_end
+        last_full = output[-1]
+        is_collapse_full = last_full.get("isCollapse", False)
+        is_dissolved_full = last_full.get("isDissolved", False)
+        end_reason_full = str(last_full.get("SimulationEndReason", "")).lower()
+        t_final = float(t[-1])
+        if t_final <= t_end:
+            # Simulation ended before t_end — use original outcome
+            last = last_full
+            is_collapse = is_collapse_full
+            is_dissolved = is_dissolved_full
+            end_reason = end_reason_full
+        else:
+            # Simulation still running at t_end — classify by velocity
+            i_end = int(np.sum(valid)) - 1
+            v_at_end = float(v2[i_end])
+            outcome = EXPAND if v_at_end > 0 else COLLAPSE
+            return {
+                "outcome": outcome,
+                "rCloud": rCloud,
+                "mCloud_snap": mCloud_snap,
+            }
+    else:
+        last = output[-1]
+        is_collapse = last.get("isCollapse", False)
+        is_dissolved = last.get("isDissolved", False)
+        end_reason = str(last.get("SimulationEndReason", "")).lower()
 
+    # Classify outcome from last snapshot
     if is_dissolved or "dissolved" in end_reason or "large radius" in end_reason:
         outcome = EXPAND
     elif is_collapse or "small radius" in end_reason or "collapsed" in end_reason:
@@ -221,7 +257,7 @@ def classify_outcome(data_path: Path) -> Optional[Dict]:
 # Data collection
 # ======================================================================
 
-def collect_data(folder_path: Path) -> List[Dict]:
+def collect_data(folder_path: Path, t_end: float = None) -> List[Dict]:
     """
     Walk a sweep output folder and collect (params, outcome) for every run.
 
@@ -250,7 +286,7 @@ def collect_data(folder_path: Path) -> List[Dict]:
         mCloud_val = float(parsed["mCloud"])       # Msun
         sfe_val = int(parsed["sfe"]) / 100.0       # fraction
 
-        info = classify_outcome(data_path)
+        info = classify_outcome(data_path, t_end=t_end)
         if info is None:
             continue
 
@@ -1220,6 +1256,10 @@ Examples:
         "--fmt", type=str, default="pdf",
         help="Output figure format (default: pdf).",
     )
+    parser.add_argument(
+        "--t-end", type=float, default=None,
+        help="Maximum time [Myr] to consider in calculations.",
+    )
     return parser
 
 
@@ -1243,7 +1283,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Step 1: collect data
-    records = collect_data(folder_path)
+    records = collect_data(folder_path, t_end=args.t_end)
     if not records:
         logger.error("No valid data collected — aborting.")
         return 1

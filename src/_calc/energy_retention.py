@@ -201,9 +201,16 @@ def _analytic_tcool_Myr(nCore_cm3: float, Lmech_avg_cgs: float,
 # Data extraction
 # ======================================================================
 
-def extract_run(data_path: Path) -> Optional[Dict]:
+def extract_run(data_path: Path, t_end: float = None) -> Optional[Dict]:
     """
     Load one TRINITY run and extract energy retention data.
+
+    Parameters
+    ----------
+    data_path : Path
+        Path to dictionary.jsonl.
+    t_end : float, optional
+        If given, truncate time series at this value [Myr].
 
     Returns
     -------
@@ -258,24 +265,48 @@ def extract_run(data_path: Path) -> Optional[Dict]:
         bubble_Leak = np.nan_to_num(bubble_Leak, nan=0.0)
 
     first = output[0]
-    last = output[-1]
 
     rCloud = first.get("rCloud", None)
     mCloud_snap = first.get("mCloud", None)
 
-    # Outcome classification
-    is_collapse = last.get("isCollapse", False)
-    is_dissolved = last.get("isDissolved", False)
-    end_reason = str(last.get("SimulationEndReason", "")).lower()
+    # Truncate at t_end if requested
+    _truncated = False
+    if t_end is not None and t[-1] > t_end:
+        mask_t = t <= t_end
+        if mask_t.sum() < 3:
+            logger.info("Fewer than 3 snapshots within t_end=%.3f in %s — skip",
+                        t_end, data_path.parent.name)
+            return None
+        t = t[mask_t]
+        Eb = Eb[mask_t]
+        R2 = R2[mask_t]
+        v2 = v2[mask_t]
+        Pb = Pb[mask_t]
+        Lmech_total = Lmech_total[mask_t]
+        phase = phase[mask_t]
+        if has_cooling:
+            bubble_LTotal = bubble_LTotal[mask_t]
+        if has_leak:
+            bubble_Leak = bubble_Leak[mask_t]
+        _truncated = True
 
-    if is_dissolved or "dissolved" in end_reason or "large radius" in end_reason:
-        outcome = EXPAND
-    elif is_collapse or "small radius" in end_reason or "collapsed" in end_reason:
-        outcome = COLLAPSE
-    elif "stopping time" in end_reason or "max time" in end_reason:
-        outcome = STALLED
-    else:
+    # Outcome classification
+    if _truncated:
         outcome = EXPAND if v2[-1] > 0 else COLLAPSE
+    else:
+        last = output[-1]
+        is_collapse = last.get("isCollapse", False)
+        is_dissolved = last.get("isDissolved", False)
+        end_reason = str(last.get("SimulationEndReason", "")).lower()
+
+        if is_dissolved or "dissolved" in end_reason or "large radius" in end_reason:
+            outcome = EXPAND
+        elif is_collapse or "small radius" in end_reason or "collapsed" in end_reason:
+            outcome = COLLAPSE
+        elif "stopping time" in end_reason or "max time" in end_reason:
+            outcome = STALLED
+        else:
+            outcome = EXPAND if v2[-1] > 0 else COLLAPSE
 
     # --- Cumulative integrals ---
     E_w_cum = _cumtrapz(Lmech_total, t)                     # cumulative wind energy
@@ -419,7 +450,7 @@ def extract_run(data_path: Path) -> Optional[Dict]:
     }
 
 
-def collect_data(folder_path: Path) -> List[Dict]:
+def collect_data(folder_path: Path, t_end: float = None) -> List[Dict]:
     """Walk sweep output and collect energy retention data."""
     sim_files = find_all_simulations(folder_path)
     if not sim_files:
@@ -440,7 +471,7 @@ def collect_data(folder_path: Path) -> List[Dict]:
         mCloud = float(parsed["mCloud"])
         sfe = int(parsed["sfe"]) / 100.0
 
-        info = extract_run(data_path)
+        info = extract_run(data_path, t_end=t_end)
         if info is None:
             continue
 
@@ -1303,6 +1334,10 @@ Examples:
         "--fmt", type=str, default="pdf",
         help="Output figure format (default: pdf).",
     )
+    parser.add_argument(
+        "--t-end", type=float, default=None,
+        help="Maximum time [Myr] to consider in calculations.",
+    )
     return parser
 
 
@@ -1326,7 +1361,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Step 1: collect data
-    records = collect_data(folder_path)
+    records = collect_data(folder_path, t_end=args.t_end)
     if not records:
         logger.error("No valid data collected — aborting.")
         return 1

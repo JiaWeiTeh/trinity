@@ -64,6 +64,7 @@ SHARED_FLAGS = [
     "--sfe-ref",
     "--sigma-clip",
     "--fmt",
+    "--t-end",
 ]
 
 
@@ -441,6 +442,8 @@ def build_parser() -> argparse.ArgumentParser:
                         help="Sigma-clipping threshold.")
     shared.add_argument("--fmt", type=str, default=None,
                         help="Output figure format (e.g. pdf, png).")
+    shared.add_argument("--t-end", type=float, default=None,
+                        help="Maximum time [Myr] to consider in calculations.")
 
     return parser
 
