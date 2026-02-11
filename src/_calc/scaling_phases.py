@@ -586,6 +586,181 @@ def plot_parity(fit: Dict, output_dir: Path, fmt: str = "pdf") -> Path:
     return out_path
 
 
+def plot_parity_diagnostic(fit: Dict, output_dir: Path, fmt: str = "pdf") -> List[Path]:
+    """
+    Diagnostic parity plots colored by SFE, cluster mass, and residual.
+
+    Produces three figures per quantity to help identify two-population
+    bifurcation in the parity plot.
+    """
+    quantity = fit["quantity"]
+    tX_act = fit["tX_actual"]
+    tX_pred = fit["tX_predicted"]
+    mask = fit["mask"]
+    mCloud = fit["mCloud"]
+    nCore = fit["nCore"]
+    sfe = fit["sfe"]
+
+    unique_nCore = sorted(set(nCore))
+    nCore_to_marker = {
+        nc: _MARKERS[i % len(_MARKERS)] for i, nc in enumerate(unique_nCore)
+    }
+
+    # 1:1 line bounds
+    all_vals = np.concatenate([tX_act, tX_pred])
+    lo, hi = all_vals[all_vals > 0].min() * 0.5, all_vals.max() * 2.0
+
+    # Signed residual in dex
+    residual = np.log10(tX_act) - np.log10(tX_pred)
+
+    # Three diagnostic colorings:
+    #   1. log10(epsilon)
+    #   2. log10(M_cl) = log10(epsilon * M_cloud)
+    #   3. residual (signed)
+    log_sfe = np.log10(sfe)
+    log_Mcl = np.log10(sfe * mCloud)
+
+    diag_configs = [
+        ("sfe",      log_sfe,   r"$\log_{10}(\varepsilon)$",                        "coolwarm"),
+        ("Mcl",      log_Mcl,   r"$\log_{10}(M_{\rm cl}\;/\;M_\odot)$",            "viridis"),
+        ("residual", residual,  r"$\log_{10}(t_{\rm TRINITY}) - \log_{10}(t_{\rm fit})$", "RdBu"),
+    ]
+
+    saved = []
+    for var_name, color_arr, cbar_label, cmap_name in diag_configs:
+        fig, ax = plt.subplots(figsize=(5.5, 5), dpi=150)
+
+        ax.plot([lo, hi], [lo, hi], "k--", lw=1, alpha=0.6, label="1:1")
+
+        vmin, vmax = np.nanmin(color_arr), np.nanmax(color_arr)
+        if vmin == vmax:
+            vmin -= 0.5
+            vmax += 0.5
+        # For residual, centre on zero
+        if var_name == "residual":
+            vlim = max(abs(vmin), abs(vmax), 0.1)
+            vmin, vmax = -vlim, vlim
+        norm = matplotlib.colors.Normalize(vmin=vmin, vmax=vmax)
+
+        for nc in unique_nCore:
+            nc_mask = nCore == nc
+            marker = nCore_to_marker[nc]
+
+            sel = nc_mask & mask
+            if sel.any():
+                ax.scatter(
+                    tX_act[sel], tX_pred[sel],
+                    c=color_arr[sel], cmap=cmap_name, norm=norm,
+                    marker=marker, s=50, edgecolors="k", linewidths=0.4,
+                    zorder=5,
+                    label=rf"$n_c = {nc:.0e}$" + " cm$^{-3}$",
+                )
+
+            sel_out = nc_mask & ~mask
+            if sel_out.any():
+                ax.scatter(
+                    tX_act[sel_out], tX_pred[sel_out],
+                    c=color_arr[sel_out], cmap=cmap_name, norm=norm,
+                    marker=marker, s=50, alpha=0.3,
+                    edgecolors="grey", linewidths=0.8, zorder=3,
+                )
+
+        sm = matplotlib.cm.ScalarMappable(cmap=cmap_name, norm=norm)
+        sm.set_array([])
+        cbar = fig.colorbar(sm, ax=ax, pad=0.02)
+        cbar.set_label(cbar_label)
+
+        ax.set_xscale("log")
+        ax.set_yscale("log")
+        ax.set_xlim(lo, hi)
+        ax.set_ylim(lo, hi)
+        ax.set_xlabel(f"{quantity} from TRINITY [Myr]")
+        ax.set_ylabel(f"{quantity} from power-law fit [Myr]")
+        ax.set_aspect("equal")
+        ax.set_title(f"{quantity} — colored by {var_name}", fontsize=10)
+        ax.legend(fontsize=7, loc="lower right", framealpha=0.8)
+
+        fig.tight_layout()
+        out_path = output_dir / f"scaling_{quantity}_diag_by_{var_name}.{fmt}"
+        fig.savefig(out_path, bbox_inches="tight")
+        plt.close(fig)
+        logger.info("Saved diagnostic: %s", out_path)
+        saved.append(out_path)
+
+    return saved
+
+
+def plot_residuals(fit: Dict, output_dir: Path, fmt: str = "pdf") -> Path:
+    """
+    Residual-vs-parameter panel figure (1x3) for one timescale.
+
+    Panels: residual vs log10(M_cloud), log10(epsilon), log10(M_cl).
+    """
+    quantity = fit["quantity"]
+    tX_act = fit["tX_actual"]
+    tX_pred = fit["tX_predicted"]
+    mask = fit["mask"]
+    mCloud = fit["mCloud"]
+    nCore = fit["nCore"]
+    sfe = fit["sfe"]
+
+    residual = np.log10(tX_act) - np.log10(tX_pred)
+
+    unique_nCore = sorted(set(nCore))
+    nCore_to_marker = {
+        nc: _MARKERS[i % len(_MARKERS)] for i, nc in enumerate(unique_nCore)
+    }
+
+    log_mCloud = np.log10(mCloud)
+    log_sfe = np.log10(sfe)
+    log_Mcl = np.log10(sfe * mCloud)
+
+    panels = [
+        (log_mCloud, r"$\log_{10}(M_{\rm cloud}\;/\;M_\odot)$"),
+        (log_sfe,    r"$\log_{10}(\varepsilon)$"),
+        (log_Mcl,    r"$\log_{10}(M_{\rm cl}\;/\;M_\odot)$"),
+    ]
+
+    fig, axes = plt.subplots(1, 3, figsize=(15, 4.5), dpi=150)
+
+    for ax, (x_arr, xlabel) in zip(axes, panels):
+        ax.axhline(0, color="k", ls="--", lw=1, alpha=0.6)
+
+        for nc in unique_nCore:
+            nc_mask = nCore == nc
+            marker = nCore_to_marker[nc]
+
+            sel = nc_mask & mask
+            if sel.any():
+                ax.scatter(
+                    x_arr[sel], residual[sel],
+                    marker=marker, s=40, edgecolors="k", linewidths=0.3,
+                    zorder=5,
+                    label=rf"$n_c = {nc:.0e}$" + " cm$^{-3}$",
+                )
+
+            sel_out = nc_mask & ~mask
+            if sel_out.any():
+                ax.scatter(
+                    x_arr[sel_out], residual[sel_out],
+                    marker=marker, s=40, alpha=0.3,
+                    edgecolors="grey", linewidths=0.6, zorder=3,
+                )
+
+        ax.set_xlabel(xlabel)
+        ax.set_ylabel(r"$\log_{10}(t_{\rm TRINITY}) - \log_{10}(t_{\rm fit})$")
+        ax.legend(fontsize=7, loc="best", framealpha=0.8)
+
+    fig.suptitle(f"{quantity} — fit residuals", fontsize=11)
+    fig.tight_layout()
+
+    out_path = output_dir / f"scaling_{quantity}_residuals.{fmt}"
+    fig.savefig(out_path, bbox_inches="tight")
+    plt.close(fig)
+    logger.info("Saved residuals: %s", out_path)
+    return out_path
+
+
 # ======================================================================
 # Summary table
 # ======================================================================
@@ -815,6 +990,8 @@ def main(argv: Optional[List[str]] = None) -> int:
 
         # Step 3: plot
         plot_parity(result, output_dir, fmt=args.fmt)
+        plot_parity_diagnostic(result, output_dir, fmt=args.fmt)
+        plot_residuals(result, output_dir, fmt=args.fmt)
 
     if not fits:
         logger.error("No quantities could be fitted.")
