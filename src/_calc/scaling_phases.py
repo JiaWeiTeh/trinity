@@ -670,6 +670,27 @@ def write_summary(fits: List[Dict], output_dir: Path) -> Path:
 # Equation JSON (for run_all summary)
 # ======================================================================
 
+def _extract_rejected(fit):
+    """Extract identifying info for sigma-clipped (rejected) points."""
+    mask = fit.get("mask")
+    if mask is None:
+        return []
+    rejected = []
+    for i, m in enumerate(mask):
+        if not m:
+            info = {}
+            for k in ("nCore", "mCloud", "sfe"):
+                arr = fit.get(k)
+                if arr is not None and i < len(arr):
+                    info[k] = float(arr[i])
+            flds = fit.get("folders")
+            if flds is not None and i < len(flds):
+                info["folder"] = flds[i]
+            if info:
+                rejected.append(info)
+    return rejected
+
+
 def _write_equation_json(fits: List[Dict], output_dir: Path) -> Path:
     """Write equation data for the run_all summary PDF."""
     entries = []
@@ -684,6 +705,8 @@ def _write_equation_json(fits: List[Dict], output_dir: Path) -> Path:
             "R2": float(f["R2"]),
             "rms_dex": float(f["rms_dex"]),
             "n_used": int(f["n_used"]),
+            "n_rejected": int(f.get("n_rejected", 0)),
+            "rejected": _extract_rejected(f),
         })
     path = output_dir / "scaling_phases_equations.json"
     with open(path, "w") as fh:
