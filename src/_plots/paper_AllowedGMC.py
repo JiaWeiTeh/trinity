@@ -112,9 +112,9 @@ def find_valid_rCore_powerlaw(mCloud, nCore, alpha, nISM=N_ISM,
     """
     Find valid rCore values for given (mCloud, nCore, alpha).
 
-    Returns the range of valid rCore values, or NaN if none exist.
+    Returns (min_rCore, rCloud_at_min_rCore), or (NaN, NaN) if none exist.
     """
-    valid_rCores = []
+    valid_pairs = []
 
     for rCore in rCore_range:
         try:
@@ -146,29 +146,34 @@ def find_valid_rCore_powerlaw(mCloud, nCore, alpha, nISM=N_ISM,
                 continue
 
             # All constraints passed
-            valid_rCores.append(rCore)
+            valid_pairs.append((rCore, rCloud))
 
         except (ValueError, ZeroDivisionError, RuntimeError):
             continue
 
-    if valid_rCores:
-        # Return minimum valid rCore
-        return np.min(valid_rCores)
+    if valid_pairs:
+        min_pair = min(valid_pairs, key=lambda x: x[0])
+        return min_pair  # (min_rCore, rCloud)
     else:
-        return np.nan
+        return (np.nan, np.nan)
 
 
 def compute_valid_rCore_grid_powerlaw(alpha):
     """
-    Compute 2D grid of valid rCore values for power-law profile.
+    Compute 2D grids of valid rCore and rCloud values for power-law profile.
+
+    Returns (grid_rCore, grid_rCloud).
     """
-    grid = np.full((len(N_CORE_RANGE), len(M_CLOUD_RANGE)), np.nan)
+    grid_rCore = np.full((len(N_CORE_RANGE), len(M_CLOUD_RANGE)), np.nan)
+    grid_rCloud = np.full((len(N_CORE_RANGE), len(M_CLOUD_RANGE)), np.nan)
 
     for i, nCore in enumerate(N_CORE_RANGE):
         for j, mCloud in enumerate(M_CLOUD_RANGE):
-            grid[i, j] = find_valid_rCore_powerlaw(mCloud, nCore, alpha)
+            rc, rcl = find_valid_rCore_powerlaw(mCloud, nCore, alpha)
+            grid_rCore[i, j] = rc
+            grid_rCloud[i, j] = rcl
 
-    return grid
+    return grid_rCore, grid_rCloud
 
 
 # =============================================================================
@@ -189,10 +194,12 @@ def get_lane_emden_solution():
 def find_valid_rCore_BE(mCloud, nCore, xi_out, nISM=N_ISM,
                          rCloud_max=R_CLOUD_MAX, mu=MU):
     """
-    Find valid rCore (core radius where density is ~constant) for BE sphere.
+    Find valid scale length *a* and cloud radius for a BE sphere.
 
     For BE sphere, "rCore" is approximated as the characteristic length scale a,
     which is where ξ = 1 (where density starts to deviate from central value).
+
+    Returns (a_pc, rCloud), or (NaN, NaN) if invalid.
 
     Physics:
     - a = √(c_s² / (4πGρc)) is the characteristic length scale
@@ -234,39 +241,40 @@ def find_valid_rCore_BE(mCloud, nCore, xi_out, nISM=N_ISM,
 
         # Check constraint 1: rCloud <= rCloud_max
         if rCloud > rCloud_max:
-            return np.nan
+            return (np.nan, np.nan)
 
         # Check constraint 2: nEdge >= nISM
         # nEdge = nCore / Omega (since ρ_edge/ρc = 1/Omega)
         nEdge = nCore / Omega
         if nEdge < nISM:
-            return np.nan
+            return (np.nan, np.nan)
 
-        # "rCore" for BE sphere is the characteristic length scale a
-        # This is where ξ = 1, i.e., where density starts to deviate from core
-        rCore = a_pc
+        # Scale length a — clamp to valid range
+        if a_pc < R_CORE_RANGE[0] or a_pc > R_CORE_RANGE[-1]:
+            return (np.nan, np.nan)
 
-        # Clamp to valid range
-        if rCore < R_CORE_RANGE[0] or rCore > R_CORE_RANGE[-1]:
-            return np.nan
-
-        return rCore
+        return (a_pc, rCloud)
 
     except Exception:
-        return np.nan
+        return (np.nan, np.nan)
 
 
 def compute_valid_rCore_grid_BE(xi_out):
     """
-    Compute 2D grid of valid rCore values for Bonnor-Ebert profile.
+    Compute 2D grids of valid scale-length *a* and rCloud for BE profile.
+
+    Returns (grid_a, grid_rCloud).
     """
-    grid = np.full((len(N_CORE_RANGE), len(M_CLOUD_RANGE)), np.nan)
+    grid_a = np.full((len(N_CORE_RANGE), len(M_CLOUD_RANGE)), np.nan)
+    grid_rCloud = np.full((len(N_CORE_RANGE), len(M_CLOUD_RANGE)), np.nan)
 
     for i, nCore in enumerate(N_CORE_RANGE):
         for j, mCloud in enumerate(M_CLOUD_RANGE):
-            grid[i, j] = find_valid_rCore_BE(mCloud, nCore, xi_out)
+            a, rcl = find_valid_rCore_BE(mCloud, nCore, xi_out)
+            grid_a[i, j] = a
+            grid_rCloud[i, j] = rcl
 
-    return grid
+    return grid_a, grid_rCloud
 
 
 # =============================================================================
@@ -275,63 +283,63 @@ def compute_valid_rCore_grid_BE(xi_out):
 
 def plot_powerlaw_grids():
     """
-    Create figure showing valid rCore for various power-law alpha values.
+    Create figure showing valid parameter space for power-law alpha values.
+
+    Fill colour = rCloud [pc],  contour lines = rCore [pc].
     """
     fig, axes = plt.subplots(2, 2, figsize=(12, 10))
     axes = axes.flatten()
 
-    fig.suptitle('Valid Core Radius for Power-Law Density Profiles\n'
-                 r'Constraints: $r_\mathrm{cloud} \leq 200$ pc, '
-                 r'$n_\mathrm{edge} \geq n_\mathrm{ISM}$, mass error $\leq 0.1\%$',
+    fig.suptitle('Valid Parameter Space for Power-Law Density Profiles\n'
+                 r'Fill: $r_\mathrm{cloud}$ [pc] \quad '
+                 r'Contours: $r_\mathrm{core}$ [pc]',
                  fontsize=12, fontweight='bold')
 
-    # Colormap settings
-    vmin, vmax = 0.01, 5.0
+    # Colourmap for rCloud fill
+    vmin_rCloud, vmax_rCloud = 0.1, 200.0
     cmap = cmr.rainforest.copy()
-    cmap.set_bad('white', 1.0)  # Empty parameter space is white
+    cmap.set_bad('white', 1.0)
 
-    # Contour levels evenly spaced in log
-    contour_levels = np.logspace(np.log10(vmin), np.log10(vmax), CONTOUR_N)
+    # Contour levels for rCore lines
+    contour_levels_rCore = np.logspace(np.log10(0.01), np.log10(5.0), CONTOUR_N)
 
     for idx, alpha in enumerate(ALPHA_VALUES):
         ax = axes[idx]
 
-        print(f"Computing grid for α = {alpha}...")
-        grid = compute_valid_rCore_grid_powerlaw(alpha)
+        print(f"Computing grid for \u03b1 = {alpha}...")
+        grid_rCore, grid_rCloud = compute_valid_rCore_grid_powerlaw(alpha)
 
-        # Count valid cells
-        n_valid = np.sum(~np.isnan(grid))
-        n_total = grid.size
+        # Count valid cells (either grid; both are NaN at the same places)
+        n_valid = np.sum(~np.isnan(grid_rCloud))
+        n_total = grid_rCloud.size
 
-        # Plot pcolormesh for valid regions
+        # Fill colour: rCloud
         im = ax.pcolormesh(
-            M_CLOUD_RANGE, N_CORE_RANGE, grid,
-            cmap=cmap, norm=LogNorm(vmin=vmin, vmax=vmax),
+            M_CLOUD_RANGE, N_CORE_RANGE, grid_rCloud,
+            cmap=cmap, norm=LogNorm(vmin=vmin_rCloud, vmax=vmax_rCloud),
             shading='auto'
         )
 
-        # Draw boundary line between valid and invalid regions
-        boundary_mask = np.isnan(grid).astype(float)
+        # Boundary contour (valid / invalid)
+        boundary_mask = np.isnan(grid_rCloud).astype(float)
         ax.contour(
             M_CLOUD_RANGE, N_CORE_RANGE, boundary_mask,
             levels=[0.5], colors=['k'], linewidths=1.5, linestyles='-'
         )
 
-        # Add contour lines (evenly spaced in log)
-        grid_masked = np.ma.masked_invalid(grid)
+        # White contour lines: rCore
+        grid_rCore_masked = np.ma.masked_invalid(grid_rCore)
         if n_valid > 0:
             try:
                 cs = ax.contour(
-                    M_CLOUD_RANGE, N_CORE_RANGE, grid_masked,
-                    levels=contour_levels,
+                    M_CLOUD_RANGE, N_CORE_RANGE, grid_rCore_masked,
+                    levels=contour_levels_rCore,
                     colors='white', linewidths=0.8, alpha=0.8
                 )
-                # Labels with proper spacing and path effects for readability
                 texts = ax.clabel(
                     cs, inline=True, fontsize=CONTOUR_FONT, fmt='%.2f',
                     inline_spacing=3, rightside_up=True, use_clabeltext=True
                 )
-                # Add stroke effect for better visibility
                 for t in texts:
                     t.set_rotation_mode("anchor")
                     t.set_path_effects([
@@ -339,7 +347,7 @@ def plot_powerlaw_grids():
                         patheffects.Normal()
                     ])
             except ValueError:
-                pass  # No contour lines to draw
+                pass
 
         ax.set_xscale('log')
         ax.set_yscale('log')
@@ -352,8 +360,7 @@ def plot_powerlaw_grids():
             title = rf'$\alpha = {alpha}$'
         ax.set_title(f'{title}\n({n_valid}/{n_total} valid cells)', fontsize=10)
 
-        # Add colorbar
-        cbar = fig.colorbar(im, ax=ax, label=r'min $r_\mathrm{core}$ [pc]')
+        fig.colorbar(im, ax=ax, label=r'$r_\mathrm{cloud}$ [pc]')
 
     plt.tight_layout()
 
@@ -367,63 +374,63 @@ def plot_powerlaw_grids():
 
 def plot_BE_grids():
     """
-    Create figure showing valid rCore for various Bonnor-Ebert xi values.
+    Create figure showing valid parameter space for Bonnor-Ebert xi values.
+
+    Fill colour = rCloud [pc],  contour lines = scale length *a* [pc].
     """
     fig, axes = plt.subplots(2, 2, figsize=(12, 10))
     axes = axes.flatten()
 
-    fig.suptitle('Valid Core Radius for Bonnor-Ebert Density Profiles\n'
-                 r'Constraints: $r_\mathrm{cloud} \leq 200$ pc, '
-                 r'$n_\mathrm{edge} \geq n_\mathrm{ISM}$',
+    fig.suptitle('Valid Parameter Space for Bonnor-Ebert Density Profiles\n'
+                 r'Fill: $r_\mathrm{cloud}$ [pc] \quad '
+                 r'Contours: scale length $a$ [pc]',
                  fontsize=12, fontweight='bold')
 
-    # Colormap settings
-    vmin, vmax = 0.01, 5.0
+    # Colourmap for rCloud fill
+    vmin_rCloud, vmax_rCloud = 0.1, 200.0
     cmap = cmr.rainforest.copy()
-    cmap.set_bad('white', 1.0)  # Empty parameter space is white
+    cmap.set_bad('white', 1.0)
 
-    # Contour levels evenly spaced in log
-    contour_levels = np.logspace(np.log10(vmin), np.log10(vmax), CONTOUR_N)
+    # Contour levels for scale-length a
+    contour_levels_a = np.logspace(np.log10(0.01), np.log10(5.0), CONTOUR_N)
 
     for idx, xi in enumerate(XI_VALUES):
         ax = axes[idx]
 
-        print(f"Computing grid for ξ = {xi:.2f}...")
-        grid = compute_valid_rCore_grid_BE(xi)
+        print(f"Computing grid for \u03be = {xi:.2f}...")
+        grid_a, grid_rCloud = compute_valid_rCore_grid_BE(xi)
 
         # Count valid cells
-        n_valid = np.sum(~np.isnan(grid))
-        n_total = grid.size
+        n_valid = np.sum(~np.isnan(grid_rCloud))
+        n_total = grid_rCloud.size
 
-        # Plot pcolormesh for valid regions
+        # Fill colour: rCloud
         im = ax.pcolormesh(
-            M_CLOUD_RANGE, N_CORE_RANGE, grid,
-            cmap=cmap, norm=LogNorm(vmin=vmin, vmax=vmax),
+            M_CLOUD_RANGE, N_CORE_RANGE, grid_rCloud,
+            cmap=cmap, norm=LogNorm(vmin=vmin_rCloud, vmax=vmax_rCloud),
             shading='auto'
         )
 
-        # Draw boundary line between valid and invalid regions
-        boundary_mask = np.isnan(grid).astype(float)
+        # Boundary contour (valid / invalid)
+        boundary_mask = np.isnan(grid_rCloud).astype(float)
         ax.contour(
             M_CLOUD_RANGE, N_CORE_RANGE, boundary_mask,
             levels=[0.5], colors=['k'], linewidths=1.5, linestyles='-'
         )
 
-        # Add contour lines (evenly spaced in log)
-        grid_masked = np.ma.masked_invalid(grid)
+        # White contour lines: scale length a
+        grid_a_masked = np.ma.masked_invalid(grid_a)
         if n_valid > 0:
             try:
                 cs = ax.contour(
-                    M_CLOUD_RANGE, N_CORE_RANGE, grid_masked,
-                    levels=contour_levels,
+                    M_CLOUD_RANGE, N_CORE_RANGE, grid_a_masked,
+                    levels=contour_levels_a,
                     colors='white', linewidths=0.8, alpha=0.8
                 )
-                # Labels with proper spacing and path effects for readability
                 texts = ax.clabel(
                     cs, inline=True, fontsize=CONTOUR_FONT, fmt='%.2f',
                     inline_spacing=3, rightside_up=True, use_clabeltext=True
                 )
-                # Add stroke effect for better visibility
                 for t in texts:
                     t.set_rotation_mode("anchor")
                     t.set_path_effects([
@@ -431,7 +438,7 @@ def plot_BE_grids():
                         patheffects.Normal()
                     ])
             except ValueError:
-                pass  # No contour lines to draw
+                pass
 
         ax.set_xscale('log')
         ax.set_yscale('log')
@@ -444,8 +451,7 @@ def plot_BE_grids():
             title = rf'$\xi = {xi:.1f}$'
         ax.set_title(f'{title}\n({n_valid}/{n_total} valid cells)', fontsize=10)
 
-        # Add colorbar
-        cbar = fig.colorbar(im, ax=ax, label=r'min $r_\mathrm{core}$ [pc]')
+        fig.colorbar(im, ax=ax, label=r'$r_\mathrm{cloud}$ [pc]')
 
     plt.tight_layout()
 
