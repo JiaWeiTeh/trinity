@@ -1736,48 +1736,49 @@ def main(argv: Optional[List[str]] = None) -> int:
         plot_parity(fit_col_quad, output_dir, args.fmt,
                     suffix="_collapse_quad")
 
-        # Part C — piecewise power-law with automatic break-point
-        logger.info("--- Fit: p_fin/M_* PIECEWISE (expanding) ---")
-        pw_exp = fit_p_mstar_piecewise(
-            records, outcome_filter=EXPAND, **fit_kwargs)
+    # Part C — piecewise power-law (always run; diagnostic plots gated)
+    logger.info("--- Fit: p_fin/M_* PIECEWISE (expanding) ---")
+    pw_exp = fit_p_mstar_piecewise(
+        records, outcome_filter=EXPAND, **fit_kwargs)
+    logger.info("--- Fit: p_peak/M_* PIECEWISE (collapse) ---")
+    pw_col = fit_p_mstar_piecewise(
+        records, outcome_filter=COLLAPSE, **fit_kwargs)
+
+    if args.diagnostics:
         plot_parity_piecewise(pw_exp, output_dir, args.fmt)
         plot_bic_scan(pw_exp, output_dir, args.fmt)
-
-        logger.info("--- Fit: p_peak/M_* PIECEWISE (collapse) ---")
-        pw_col = fit_p_mstar_piecewise(
-            records, outcome_filter=COLLAPSE, **fit_kwargs)
         plot_parity_piecewise(pw_col, output_dir, args.fmt)
         plot_bic_scan(pw_col, output_dir, args.fmt)
 
-        # Print piecewise summary and add to fits if BIC improves
-        for label, pw in [("expand", pw_exp), ("collapse", pw_col)]:
-            if pw is None:
-                continue
-            delta_bic = pw["BIC_single"] - pw["BIC_piecewise"]
-            brk_val = pw["break_log_Mcl"]
-            print(f"\n--- Piecewise fit ({label}) ---")
-            print(f"  Break: log10(M_cl) = {brk_val:.3f}"
-                  f"  (M_cl = {10**brk_val:.1f} Msun)")
-            print(f"  BIC single   = {pw['BIC_single']:.1f}")
-            print(f"  BIC piecewise = {pw['BIC_piecewise']:.1f}"
-                  f"  (Delta = {delta_bic:+.1f})")
-            print(f"  R2 low  = {pw['fit_low']['R2']:.4f}"
-                  f"  (N = {pw['fit_low']['n_used']})")
-            print(f"  R2 high = {pw['fit_high']['R2']:.4f}"
-                  f"  (N = {pw['fit_high']['n_used']})")
+    # Print piecewise summary and add to fits if BIC improves
+    for label, pw in [("expand", pw_exp), ("collapse", pw_col)]:
+        if pw is None:
+            continue
+        delta_bic = pw["BIC_single"] - pw["BIC_piecewise"]
+        brk_val = pw["break_log_Mcl"]
+        print(f"\n--- Piecewise fit ({label}) ---")
+        print(f"  Break: log10(M_cl) = {brk_val:.3f}"
+              f"  (M_cl = {10**brk_val:.1f} Msun)")
+        print(f"  BIC single   = {pw['BIC_single']:.1f}")
+        print(f"  BIC piecewise = {pw['BIC_piecewise']:.1f}"
+              f"  (Delta = {delta_bic:+.1f})")
+        print(f"  R2 low  = {pw['fit_low']['R2']:.4f}"
+              f"  (N = {pw['fit_low']['n_used']})")
+        print(f"  R2 high = {pw['fit_high']['R2']:.4f}"
+              f"  (N = {pw['fit_high']['n_used']})")
 
-            # If piecewise is better, include sub-fits in summary
-            if delta_bic > 0:
-                brk_str = f"Mcl<{10**brk_val:.0f}"
-                fits.append((
-                    f"p/M_* pw-low [{brk_str}] ({label})",
-                    pw["fit_low"],
-                ))
-                brk_str = f"Mcl>{10**brk_val:.0f}"
-                fits.append((
-                    f"p/M_* pw-high [{brk_str}] ({label})",
-                    pw["fit_high"],
-                ))
+        # If piecewise is better, include sub-fits in summary
+        if delta_bic > 0:
+            brk_str = f"Mcl<{10**brk_val:.0f}"
+            fits.append((
+                f"p/M_* pw-low [{brk_str}] ({label})",
+                pw["fit_low"],
+            ))
+            brk_str = f"Mcl>{10**brk_val:.0f}"
+            fits.append((
+                f"p/M_* pw-high [{brk_str}] ({label})",
+                pw["fit_high"],
+            ))
 
     # Step 4: output
     write_results_csv(records, output_dir)

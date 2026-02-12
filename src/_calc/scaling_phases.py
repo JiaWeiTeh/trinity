@@ -1426,49 +1426,49 @@ def main(argv: Optional[List[str]] = None) -> int:
         logger.error("No quantities could be fitted.")
         return 1
 
-    # Step 3b: piecewise fits (gated by --diagnostics)
+    # Step 3b: piecewise fits (always run; diagnostic plots gated)
     pw_entries: List[Tuple[str, Dict]] = []
-    if args.diagnostics:
-        for q in quantities:
-            logger.info("--- Piecewise fitting: %s ---", q)
-            pw = fit_scaling_piecewise(
-                records, q,
-                nCore_ref=args.nCore_ref,
-                mCloud_ref=args.mCloud_ref,
-                sfe_ref=args.sfe_ref,
-                sigma_clip=args.sigma_clip,
-            )
-            if pw is None:
-                continue
+    for q in quantities:
+        logger.info("--- Piecewise fitting: %s ---", q)
+        pw = fit_scaling_piecewise(
+            records, q,
+            nCore_ref=args.nCore_ref,
+            mCloud_ref=args.mCloud_ref,
+            sfe_ref=args.sfe_ref,
+            sigma_clip=args.sigma_clip,
+        )
+        if pw is None:
+            continue
 
+        if args.diagnostics:
             plot_parity_piecewise(pw, output_dir, fmt=args.fmt)
             plot_bic_scan(pw, output_dir, fmt=args.fmt)
 
-            delta_bic = pw["BIC_single"] - pw["BIC_piecewise"]
-            brk_val = pw["break_log_Mcl"]
-            print(f"\n--- Piecewise: {q} ---")
-            print(f"  Break: log10(M_cl) = {brk_val:.3f}"
-                  f"  (M_cl = {10**brk_val:.1f} Msun)")
-            print(f"  BIC single   = {pw['BIC_single']:.1f}")
-            print(f"  BIC piecewise = {pw['BIC_piecewise']:.1f}"
-                  f"  (Delta = {delta_bic:+.1f})")
-            print(f"  R2 low  = {pw['fit_low']['R2']:.4f}"
-                  f"  (N = {pw['fit_low']['n_used']})")
-            print(f"  R2 high = {pw['fit_high']['R2']:.4f}"
-                  f"  (N = {pw['fit_high']['n_used']})")
+        delta_bic = pw["BIC_single"] - pw["BIC_piecewise"]
+        brk_val = pw["break_log_Mcl"]
+        print(f"\n--- Piecewise: {q} ---")
+        print(f"  Break: log10(M_cl) = {brk_val:.3f}"
+              f"  (M_cl = {10**brk_val:.1f} Msun)")
+        print(f"  BIC single   = {pw['BIC_single']:.1f}")
+        print(f"  BIC piecewise = {pw['BIC_piecewise']:.1f}"
+              f"  (Delta = {delta_bic:+.1f})")
+        print(f"  R2 low  = {pw['fit_low']['R2']:.4f}"
+              f"  (N = {pw['fit_low']['n_used']})")
+        print(f"  R2 high = {pw['fit_high']['R2']:.4f}"
+              f"  (N = {pw['fit_high']['n_used']})")
 
-            # If piecewise is better, include sub-fits in summary
-            if delta_bic > 0:
-                brk_str = f"Mcl<{10**brk_val:.0f}"
-                pw_entries.append((
-                    f"{q} pw-low [{brk_str}] [Myr]",
-                    pw["fit_low"],
-                ))
-                brk_str = f"Mcl>{10**brk_val:.0f}"
-                pw_entries.append((
-                    f"{q} pw-high [{brk_str}] [Myr]",
-                    pw["fit_high"],
-                ))
+        # If piecewise is better, include sub-fits in summary
+        if delta_bic > 0:
+            brk_str = f"Mcl<{10**brk_val:.0f}"
+            pw_entries.append((
+                f"{q} pw-low [{brk_str}] [Myr]",
+                pw["fit_low"],
+            ))
+            brk_str = f"Mcl>{10**brk_val:.0f}"
+            pw_entries.append((
+                f"{q} pw-high [{brk_str}] [Myr]",
+                pw["fit_high"],
+            ))
 
     # Step 4: summary
     write_summary(fits, output_dir)
