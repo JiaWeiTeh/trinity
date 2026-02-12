@@ -1509,7 +1509,17 @@ def print_summary(
         for i, name in enumerate(fit["param_names"][1:], 1):
             print(f"  {name}: {fit['beta'][i]:+.4f} +/- {fit['unc'][i]:.4f}")
         print(f"  R^2 = {fit['R2']:.4f}, RMS = {fit['rms_dex']:.4f} dex")
-        print(f"  Scaling: {fit['equation_str']}")
+        eq = fit.get("equation_str")
+        if eq is None:
+            # Build from beta/param_names (piecewise sub-fits)
+            A = 10.0 ** fit["beta"][0]
+            parts = [f"{A:.2f}"]
+            refs = fit.get("refs", {})
+            for i, name in enumerate(fit["param_names"][1:], 1):
+                r = refs.get(name, 1.0)
+                parts.append(f"({name}/{r:.0e})^{{{fit['beta'][i]:+.2f}}}")
+            eq = " * ".join(parts)
+        print(f"  Scaling: {eq}")
 
     print()
     print("=" * 90)
