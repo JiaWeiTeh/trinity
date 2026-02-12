@@ -249,6 +249,53 @@ def collect_data(
 # Fitting
 # ======================================================================
 
+def _ols_sigma_clip(
+    X: np.ndarray,
+    y: np.ndarray,
+    sigma_clip: float,
+    max_iter: int = 10,
+) -> Optional[Dict]:
+    """OLS with iterative sigma-clipping (reusable helper)."""
+    n_total = len(y)
+    mask = np.ones(n_total, dtype=bool)
+
+    for _ in range(max_iter):
+        X_use, y_use = X[mask], y[mask]
+        n_use = mask.sum()
+        if n_use < X.shape[1]:
+            return None
+        XtX = X_use.T @ X_use
+        try:
+            XtX_inv = np.linalg.inv(XtX)
+        except np.linalg.LinAlgError:
+            return None
+        beta = XtX_inv @ (X_use.T @ y_use)
+
+        resid = y - X @ beta
+        rms = np.std(resid[mask], ddof=X.shape[1])
+        if rms == 0:
+            break
+        new_mask = np.abs(resid) <= sigma_clip * rms
+        if np.array_equal(mask, new_mask):
+            break
+        mask = new_mask
+
+    n_used = int(mask.sum())
+    y_pred = X @ beta
+    ss_res = np.sum((y[mask] - y_pred[mask]) ** 2)
+    ss_tot = np.sum((y[mask] - np.mean(y[mask])) ** 2)
+    R2 = 1.0 - ss_res / ss_tot if ss_tot > 0 else float("nan")
+    rms_dex = np.sqrt(ss_res / max(n_used - X.shape[1], 1))
+    s2 = ss_res / max(n_used - X.shape[1], 1)
+    unc = np.sqrt(np.diag(s2 * XtX_inv))
+
+    return {
+        "beta": beta, "unc": unc, "R2": R2, "rms_dex": rms_dex,
+        "n_used": n_used, "n_rejected": n_total - n_used,
+        "mask": mask, "y_pred": y_pred,
+    }
+
+
 def fit_scaling(
     records: List[Dict],
     quantity: str,
@@ -451,6 +498,193 @@ def fit_scaling(
         "mask": mask,
         "folders": folders,
         "refs": ref_map,
+    }
+
+
+def fit_scaling_piecewise(
+    records: List[Dict],
+    quantity: str,
+    nCore_ref: float,
+    mCloud_ref: float,
+    sfe_ref: float,
+    sigma_clip: float = 3.0,
+    n_break_candidates: int = 50,
+) -> Optional[Dict]:
+    """
+    Piecewise power-law for a timescale with automatic break in log10(M_cl).
+
+    Scans candidate break values in log10(M_cl) from the 10th to the 90th
+    percentile and selects the break that minimises total BIC.
+    """
+    # Gather valid points
+    nC_list, mC_list, sfe_list, tX_list, fld_list = [], [], [], [], []
+    for rec in records:
+        if quantity not in rec:
+            continue
+        val = rec[quantity]
+        if val is None or not np.isfinite(val) or val <= 0:
+            continue
+        nC_list.append(rec["nCore"])
+        mC_list.append(rec["mCloud"])
+        sfe_list.append(rec["sfe"])
+        tX_list.append(val)
+        fld_list.append(rec.get("folder", ""))
+
+    if len(tX_list) < 10:
+        logger.warning("Too few points (%d) for piecewise fit of '%s'",
+                        len(tX_list), quantity)
+        return None
+
+    nC = np.array(nC_list)
+    mC = np.array(mC_list)
+    sfe = np.array(sfe_list)
+    tX = np.array(tX_list)
+    folders = np.array(fld_list)
+    log_tX = np.log10(tX)
+    log_Mcl = np.log10(sfe * mC)
+
+    refs = {"nCore": nCore_ref, "mCloud": mCloud_ref, "sfe": sfe_ref}
+
+    def _build_X(indices):
+        """Build design matrix for a subset."""
+        cols = [np.ones(len(indices))]
+        names = ["intercept"]
+        for pname, arr, ref in [("nCore", nC[indices], nCore_ref),
+                                ("mCloud", mC[indices], mCloud_ref),
+                                ("sfe", sfe[indices], sfe_ref)]:
+            if len(np.unique(arr)) >= 2:
+                cols.append(np.log10(arr / ref))
+                names.append(pname)
+        return np.column_stack(cols), names
+
+    def _bic(n, k, rss):
+        if n <= k or rss <= 0:
+            return np.inf
+        return n * np.log(rss / n) + k * np.log(n)
+
+    # Single-fit BIC
+    X_all, names_all = _build_X(np.arange(len(tX)))
+    fit_single = _ols_sigma_clip(X_all, log_tX, sigma_clip)
+    if fit_single is None:
+        return None
+    rss_single = np.sum((log_tX[fit_single["mask"]] -
+                         fit_single["y_pred"][fit_single["mask"]]) ** 2)
+    bic_single = _bic(fit_single["n_used"], X_all.shape[1], rss_single)
+
+    # Scan break candidates
+    lo_pct = np.percentile(log_Mcl, 10)
+    hi_pct = np.percentile(log_Mcl, 90)
+    candidates = np.linspace(lo_pct, hi_pct, n_break_candidates)
+
+    best_bic = np.inf
+    best_break = None
+    best_fit_lo = None
+    best_fit_hi = None
+    best_idx_lo = None
+    best_idx_hi = None
+    best_names_lo = None
+    best_names_hi = None
+    bic_scan = []
+
+    for brk in candidates:
+        idx_lo = np.where(log_Mcl <= brk)[0]
+        idx_hi = np.where(log_Mcl > brk)[0]
+        if len(idx_lo) < 5 or len(idx_hi) < 5:
+            bic_scan.append((brk, np.inf))
+            continue
+
+        X_lo, names_lo = _build_X(idx_lo)
+        X_hi, names_hi = _build_X(idx_hi)
+        fl = _ols_sigma_clip(X_lo, log_tX[idx_lo], sigma_clip)
+        fh = _ols_sigma_clip(X_hi, log_tX[idx_hi], sigma_clip)
+        if fl is None or fh is None:
+            bic_scan.append((brk, np.inf))
+            continue
+
+        rss_lo = np.sum((log_tX[idx_lo][fl["mask"]] -
+                         fl["y_pred"][fl["mask"]]) ** 2)
+        rss_hi = np.sum((log_tX[idx_hi][fh["mask"]] -
+                         fh["y_pred"][fh["mask"]]) ** 2)
+        bic_total = _bic(fl["n_used"], X_lo.shape[1], rss_lo) + \
+                    _bic(fh["n_used"], X_hi.shape[1], rss_hi)
+        bic_scan.append((brk, bic_total))
+
+        if bic_total < best_bic:
+            best_bic = bic_total
+            best_break = brk
+            best_fit_lo = fl
+            best_fit_hi = fh
+            best_idx_lo = idx_lo
+            best_idx_hi = idx_hi
+            best_names_lo = names_lo
+            best_names_hi = names_hi
+
+    if best_fit_lo is None or best_fit_hi is None:
+        logger.warning("Piecewise fit failed for '%s' — no valid break", quantity)
+        return None
+
+    # Combine arrays
+    n_lo = len(best_idx_lo)
+    combined_mask = np.concatenate([best_fit_lo["mask"], best_fit_hi["mask"]])
+    combined_actual = np.concatenate([tX[best_idx_lo], tX[best_idx_hi]])
+    combined_pred = np.concatenate([
+        10.0 ** best_fit_lo["y_pred"],
+        10.0 ** best_fit_hi["y_pred"],
+    ])
+    combined_nCore = np.concatenate([nC[best_idx_lo], nC[best_idx_hi]])
+    combined_mCloud = np.concatenate([mC[best_idx_lo], mC[best_idx_hi]])
+    combined_sfe = np.concatenate([sfe[best_idx_lo], sfe[best_idx_hi]])
+    combined_folders = np.concatenate([folders[best_idx_lo], folders[best_idx_hi]])
+    side_labels = np.array(["low"] * n_lo + ["high"] * (len(combined_mask) - n_lo))
+
+    # Add metadata to sub-fits for _write_equation_json compatibility
+    for subfit, idx, names in [
+        (best_fit_lo, best_idx_lo, best_names_lo),
+        (best_fit_hi, best_idx_hi, best_names_hi),
+    ]:
+        subfit["param_names"] = names
+        subfit["nCore"] = nC[idx]
+        subfit["mCloud"] = mC[idx]
+        subfit["sfe"] = sfe[idx]
+        subfit["folders"] = folders[idx]
+        subfit["tX_actual"] = tX[idx]
+        subfit["tX_predicted"] = 10.0 ** subfit["y_pred"]
+        subfit["refs"] = refs
+        subfit["quantity"] = quantity
+        # Build standard exponents/A for summary compatibility
+        A = 10.0 ** subfit["beta"][0]
+        subfit["A"] = A
+        subfit["log_A"] = subfit["beta"][0]
+        exponents = {}
+        exponent_unc = {}
+        for i, nm in enumerate(names[1:], 1):
+            exponents[nm] = float(subfit["beta"][i])
+            exponent_unc[nm] = float(subfit["unc"][i])
+        # Zero-fill excluded params
+        for pname in ["nCore", "mCloud", "sfe"]:
+            if pname not in exponents:
+                exponents[pname] = 0.0
+                exponent_unc[pname] = 0.0
+        subfit["exponents"] = exponents
+        subfit["exponent_unc"] = exponent_unc
+
+    return {
+        "quantity": quantity,
+        "break_log_Mcl": float(best_break),
+        "fit_low": best_fit_lo,
+        "fit_high": best_fit_hi,
+        "BIC_piecewise": float(best_bic),
+        "BIC_single": float(bic_single),
+        "bic_scan": bic_scan,
+        "tX_actual": combined_actual,
+        "tX_predicted": combined_pred,
+        "mask": combined_mask,
+        "nCore": combined_nCore,
+        "mCloud": combined_mCloud,
+        "sfe": combined_sfe,
+        "folders": combined_folders,
+        "side": side_labels,
+        "refs": refs,
     }
 
 
@@ -774,6 +1008,160 @@ def plot_residuals(fit: Dict, output_dir: Path, fmt: str = "pdf") -> Path:
     return out_path
 
 
+def plot_parity_piecewise(
+    pw: Optional[Dict],
+    output_dir: Path,
+    fmt: str = "pdf",
+) -> Optional[Path]:
+    """
+    Parity plot for a piecewise power-law fit, colored by log10(M_cl).
+
+    Points below the break get thin black edges; points above get thick
+    vermillion edges.
+    """
+    if pw is None:
+        return None
+
+    quantity = pw["quantity"]
+    actual = pw["tX_actual"]
+    predicted = pw["tX_predicted"]
+    mask = pw["mask"]
+    nCore = pw["nCore"]
+    mCloud = pw["mCloud"]
+    sfe = pw["sfe"]
+    side = pw["side"]
+    brk = pw["break_log_Mcl"]
+    fit_lo = pw["fit_low"]
+    fit_hi = pw["fit_high"]
+
+    log_Mcl = np.log10(sfe * mCloud)
+
+    unique_nCore = sorted(set(nCore))
+    nc_to_marker = {
+        nc: _MARKERS[i % len(_MARKERS)] for i, nc in enumerate(unique_nCore)
+    }
+
+    vals = np.concatenate([actual, predicted])
+    lo, hi = vals[vals > 0].min() * 0.5, vals.max() * 2.0
+
+    vmin, vmax = log_Mcl.min(), log_Mcl.max()
+    if vmin == vmax:
+        vmin -= 0.5
+        vmax += 0.5
+    norm = matplotlib.colors.Normalize(vmin=vmin, vmax=vmax)
+
+    fig, ax = plt.subplots(figsize=(5.5, 5), dpi=150)
+    ax.plot([lo, hi], [lo, hi], "k--", lw=1, alpha=0.6, label="1:1")
+
+    for nc in unique_nCore:
+        nc_mask = nCore == nc
+        marker = nc_to_marker[nc]
+
+        for side_val, edgecolor, lw_edge in [("low", "k", 0.4),
+                                              ("high", "#D55E00", 1.2)]:
+            sel = nc_mask & mask & (side == side_val)
+            if sel.any():
+                label_parts = [rf"$n_c = {nc:.0e}$ cm$^{{-3}}$"]
+                if side_val == "low":
+                    label_parts.append(r"($<$ break)")
+                else:
+                    label_parts.append(r"($>$ break)")
+                ax.scatter(
+                    actual[sel], predicted[sel],
+                    c=log_Mcl[sel], cmap="viridis", norm=norm,
+                    marker=marker, s=50,
+                    edgecolors=edgecolor, linewidths=lw_edge,
+                    zorder=5,
+                    label=" ".join(label_parts),
+                )
+
+        sel_out = nc_mask & ~mask
+        if sel_out.any():
+            ax.scatter(
+                actual[sel_out], predicted[sel_out],
+                c=log_Mcl[sel_out], cmap="viridis", norm=norm,
+                marker=marker, s=50, alpha=0.3,
+                edgecolors="grey", linewidths=0.8, zorder=3,
+            )
+
+    sm = matplotlib.cm.ScalarMappable(cmap="viridis", norm=norm)
+    sm.set_array([])
+    cbar = fig.colorbar(sm, ax=ax, pad=0.02)
+    cbar.set_label(r"$\log_{10}(M_{\rm cl}\;/\;M_\odot)$")
+
+    delta_bic = pw["BIC_single"] - pw["BIC_piecewise"]
+    ann = (
+        rf"$R^2_{{\rm low}} = {fit_lo['R2']:.3f}$,"
+        rf"  $R^2_{{\rm high}} = {fit_hi['R2']:.3f}$" + "\n"
+        + rf"Break: $\log_{{10}} M_{{\rm cl}} = {brk:.2f}$" + "\n"
+        + rf"$\Delta$BIC $= {delta_bic:+.1f}$ (single $-$ piecewise)"
+    )
+    ax.text(0.04, 0.96, ann, transform=ax.transAxes, va="top", ha="left",
+            fontsize=7,
+            bbox=dict(facecolor="white", edgecolor="0.7", alpha=0.85,
+                      boxstyle="round,pad=0.3"))
+
+    ax.set_xscale("log")
+    ax.set_yscale("log")
+    ax.set_xlim(lo, hi)
+    ax.set_ylim(lo, hi)
+    ax.set_xlabel(f"{quantity} from TRINITY [Myr]")
+    ax.set_ylabel(f"{quantity} from piecewise fit [Myr]")
+    ax.set_title(f"Piecewise: {quantity}", fontsize=10)
+    ax.set_aspect("equal")
+    ax.legend(fontsize=6, loc="lower right", framealpha=0.8)
+
+    fig.tight_layout()
+    out_path = output_dir / f"scaling_{quantity}_piecewise.{fmt}"
+    fig.savefig(out_path, bbox_inches="tight")
+    plt.close(fig)
+    logger.info("Saved piecewise parity: %s", out_path)
+    return out_path
+
+
+def plot_bic_scan(
+    pw: Optional[Dict],
+    output_dir: Path,
+    fmt: str = "pdf",
+) -> Optional[Path]:
+    """BIC scan: total BIC vs break-point location."""
+    if pw is None or "bic_scan" not in pw:
+        return None
+
+    quantity = pw["quantity"]
+    scan = np.array(pw["bic_scan"])
+    brk_vals = scan[:, 0]
+    bic_vals = scan[:, 1]
+
+    finite = np.isfinite(bic_vals)
+    if finite.sum() < 2:
+        return None
+
+    fig, ax = plt.subplots(figsize=(5.5, 4), dpi=150)
+    ax.plot(brk_vals[finite], bic_vals[finite], "-", color="#0072B2", lw=1.5)
+
+    opt_brk = pw["break_log_Mcl"]
+    opt_bic = pw["BIC_piecewise"]
+    ax.axvline(opt_brk, color="#D55E00", ls="--", lw=1.2,
+               label=rf"Optimum: $\log_{{10}} M_{{\rm cl}} = {opt_brk:.2f}$")
+    ax.plot(opt_brk, opt_bic, "o", color="#D55E00", ms=8, zorder=6)
+
+    ax.axhline(pw["BIC_single"], color="0.5", ls=":", lw=1.0,
+               label=f"Single-fit BIC = {pw['BIC_single']:.1f}")
+
+    ax.set_xlabel(r"Break-point $\log_{10}(M_{\rm cl}\;/\;M_\odot)$")
+    ax.set_ylabel("Total BIC (piecewise)")
+    ax.set_title(f"BIC scan: {quantity}", fontsize=10)
+    ax.legend(fontsize=7, loc="best", framealpha=0.8)
+
+    fig.tight_layout()
+    out_path = output_dir / f"scaling_{quantity}_bic_scan.{fmt}"
+    fig.savefig(out_path, bbox_inches="tight")
+    plt.close(fig)
+    logger.info("Saved BIC scan: %s", out_path)
+    return out_path
+
+
 # ======================================================================
 # Summary table
 # ======================================================================
@@ -879,7 +1267,11 @@ def _extract_rejected(fit):
     return rejected
 
 
-def _write_equation_json(fits: List[Dict], output_dir: Path) -> Path:
+def _write_equation_json(
+    fits: List[Dict],
+    output_dir: Path,
+    pw_entries: Optional[List[Tuple[str, Dict]]] = None,
+) -> Path:
     """Write equation data for the run_all summary PDF."""
     entries = []
     for f in fits:
@@ -896,6 +1288,22 @@ def _write_equation_json(fits: List[Dict], output_dir: Path) -> Path:
             "n_rejected": int(f.get("n_rejected", 0)),
             "rejected": _extract_rejected(f),
         })
+    # Piecewise sub-fit entries (when BIC is better)
+    if pw_entries:
+        for label, sf in pw_entries:
+            entries.append({
+                "script": "scaling_phases",
+                "label": label,
+                "A": float(sf["A"]),
+                "exponents": {k: float(v) for k, v in sf["exponents"].items()},
+                "exponent_unc": {k: float(v) for k, v in sf["exponent_unc"].items()},
+                "refs": {k: float(v) for k, v in sf["refs"].items()},
+                "R2": float(sf["R2"]),
+                "rms_dex": float(sf["rms_dex"]),
+                "n_used": int(sf["n_used"]),
+                "n_rejected": int(sf.get("n_rejected", 0)),
+                "rejected": _extract_rejected(sf),
+            })
     path = output_dir / "scaling_phases_equations.json"
     with open(path, "w") as fh:
         json.dump(entries, fh, indent=2)
@@ -949,6 +1357,10 @@ Examples:
     parser.add_argument(
         "--t-end", type=float, default=None,
         help="Maximum time [Myr] to consider in calculations.",
+    )
+    parser.add_argument(
+        "--diagnostics", action="store_true",
+        help="Enable piecewise power-law fits with automatic break-point detection.",
     )
     return parser
 
@@ -1014,11 +1426,55 @@ def main(argv: Optional[List[str]] = None) -> int:
         logger.error("No quantities could be fitted.")
         return 1
 
+    # Step 3b: piecewise fits (gated by --diagnostics)
+    pw_entries: List[Tuple[str, Dict]] = []
+    if args.diagnostics:
+        for q in quantities:
+            logger.info("--- Piecewise fitting: %s ---", q)
+            pw = fit_scaling_piecewise(
+                records, q,
+                nCore_ref=args.nCore_ref,
+                mCloud_ref=args.mCloud_ref,
+                sfe_ref=args.sfe_ref,
+                sigma_clip=args.sigma_clip,
+            )
+            if pw is None:
+                continue
+
+            plot_parity_piecewise(pw, output_dir, fmt=args.fmt)
+            plot_bic_scan(pw, output_dir, fmt=args.fmt)
+
+            delta_bic = pw["BIC_single"] - pw["BIC_piecewise"]
+            brk_val = pw["break_log_Mcl"]
+            print(f"\n--- Piecewise: {q} ---")
+            print(f"  Break: log10(M_cl) = {brk_val:.3f}"
+                  f"  (M_cl = {10**brk_val:.1f} Msun)")
+            print(f"  BIC single   = {pw['BIC_single']:.1f}")
+            print(f"  BIC piecewise = {pw['BIC_piecewise']:.1f}"
+                  f"  (Delta = {delta_bic:+.1f})")
+            print(f"  R2 low  = {pw['fit_low']['R2']:.4f}"
+                  f"  (N = {pw['fit_low']['n_used']})")
+            print(f"  R2 high = {pw['fit_high']['R2']:.4f}"
+                  f"  (N = {pw['fit_high']['n_used']})")
+
+            # If piecewise is better, include sub-fits in summary
+            if delta_bic > 0:
+                brk_str = f"Mcl<{10**brk_val:.0f}"
+                pw_entries.append((
+                    f"{q} pw-low [{brk_str}] [Myr]",
+                    pw["fit_low"],
+                ))
+                brk_str = f"Mcl>{10**brk_val:.0f}"
+                pw_entries.append((
+                    f"{q} pw-high [{brk_str}] [Myr]",
+                    pw["fit_high"],
+                ))
+
     # Step 4: summary
     write_summary(fits, output_dir)
 
     # Step 5: equation JSON for run_all summary
-    _write_equation_json(fits, output_dir)
+    _write_equation_json(fits, output_dir, pw_entries=pw_entries or None)
 
     return 0
 
