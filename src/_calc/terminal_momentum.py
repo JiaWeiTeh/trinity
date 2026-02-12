@@ -487,6 +487,258 @@ def fit_p_mstar(
     return result
 
 
+def fit_p_mstar_quad(
+    records: List[Dict],
+    nCore_ref: float,
+    mCloud_ref: float,
+    sfe_ref: float,
+    sigma_clip: float,
+    outcome_filter: Optional[str] = None,
+    quantity_key: str = "p_per_mstar_kms",
+) -> Optional[Dict]:
+    """
+    Fit power-law with quadratic log-correction in M_cloud.
+
+    Model:
+        log10(p/M*) = log10(A) + alpha*log10(n_c/n0)
+                     + beta*log10(M/M0) + gamma*log10(eps/eps0)
+                     + delta*[log10(M/M0)]^2
+    """
+    pts = [
+        r for r in records
+        if (outcome_filter is None or r["outcome"] == outcome_filter)
+        and np.isfinite(r[quantity_key]) and r[quantity_key] > 0
+    ]
+    if len(pts) < 2:
+        logger.warning("Too few points (%d) for quad fit (filter=%s)",
+                        len(pts), outcome_filter)
+        return None
+
+    nC = np.array([r["nCore"] for r in pts])
+    mC = np.array([r["mCloud"] for r in pts])
+    sfe = np.array([r["sfe"] for r in pts])
+    val = np.array([r[quantity_key] for r in pts])
+    log_val = np.log10(val)
+
+    # Build design matrix (standard columns + quadratic mCloud term)
+    cols = [np.ones(len(pts))]
+    names = ["intercept"]
+    refs = {"nCore": nCore_ref, "mCloud": mCloud_ref, "sfe": sfe_ref}
+    log_mC_norm = np.log10(mC / mCloud_ref)
+
+    for pname, arr, ref in [("nCore", nC, nCore_ref),
+                            ("mCloud", mC, mCloud_ref),
+                            ("sfe", sfe, sfe_ref)]:
+        if len(np.unique(arr)) >= 2:
+            cols.append(np.log10(arr / ref))
+            names.append(pname)
+
+    # Append quadratic term for mCloud
+    cols.append(log_mC_norm ** 2)
+    names.append("mCloud_sq")
+
+    X = np.column_stack(cols)
+    result = _ols_sigma_clip(X, log_val, sigma_clip)
+    if result is None:
+        return None
+
+    result["param_names"] = names
+    result["nCore"] = nC
+    result["mCloud"] = mC
+    result["sfe"] = sfe
+    result["actual"] = val
+    result["predicted"] = 10.0 ** result["y_pred"]
+    result["refs"] = refs
+    result["outcome_filter"] = outcome_filter
+    result["quantity_key"] = quantity_key
+
+    # Human-readable equation
+    A = 10.0 ** result["beta"][0]
+    parts = [f"{A:.2f} km/s" if "kms" in quantity_key else f"{A:.3g}"]
+    label_map = {"nCore": "n_c", "mCloud": r"M_{\rm cl}", "sfe": r"\varepsilon"}
+    for i, name in enumerate(names[1:], 1):
+        b = result["beta"][i]
+        if name == "mCloud_sq":
+            parts.append(
+                f"10^{{{b:+.3f}[log(M/{mCloud_ref:.0e})]^2}}")
+        else:
+            r_val = refs.get(name, 1.0)
+            parts.append(f"({name}/{r_val:.0e})^{{{b:+.2f}}}")
+    result["equation_str"] = " * ".join(parts)
+
+    return result
+
+
+def fit_p_mstar_piecewise(
+    records: List[Dict],
+    nCore_ref: float,
+    mCloud_ref: float,
+    sfe_ref: float,
+    sigma_clip: float,
+    outcome_filter: Optional[str] = None,
+    quantity_key: str = "p_per_mstar_kms",
+    n_break_candidates: int = 50,
+) -> Optional[Dict]:
+    """
+    Piecewise power-law with automatic break-point detection in log10(M_cl).
+
+    Scans candidate break values in log10(M_cl) from the 10th to the 90th
+    percentile and selects the break that minimises total BIC.
+    """
+    pts = [
+        r for r in records
+        if (outcome_filter is None or r["outcome"] == outcome_filter)
+        and np.isfinite(r[quantity_key]) and r[quantity_key] > 0
+    ]
+    if len(pts) < 10:
+        logger.warning("Too few points (%d) for piecewise fit (filter=%s)",
+                        len(pts), outcome_filter)
+        return None
+
+    nC = np.array([r["nCore"] for r in pts])
+    mC = np.array([r["mCloud"] for r in pts])
+    sfe = np.array([r["sfe"] for r in pts])
+    val = np.array([r[quantity_key] for r in pts])
+    log_val = np.log10(val)
+    log_Mcl = np.log10(sfe * mC)
+    folders = np.array([r.get("folder", "") for r in pts])
+
+    refs = {"nCore": nCore_ref, "mCloud": mCloud_ref, "sfe": sfe_ref}
+
+    def _build_X(indices):
+        """Build standard design matrix for a subset."""
+        cols = [np.ones(len(indices))]
+        names = ["intercept"]
+        nC_sub = nC[indices]
+        mC_sub = mC[indices]
+        sfe_sub = sfe[indices]
+        for pname, arr, ref in [("nCore", nC_sub, nCore_ref),
+                                ("mCloud", mC_sub, mCloud_ref),
+                                ("sfe", sfe_sub, sfe_ref)]:
+            if len(np.unique(arr)) >= 2:
+                cols.append(np.log10(arr / ref))
+                names.append(pname)
+        return np.column_stack(cols), names
+
+    def _bic(n, k, rss):
+        """BIC = n*ln(RSS/n) + k*ln(n)."""
+        if n <= k or rss <= 0:
+            return np.inf
+        return n * np.log(rss / n) + k * np.log(n)
+
+    # Single-fit BIC for comparison
+    X_all, names_all = _build_X(np.arange(len(pts)))
+    fit_single = _ols_sigma_clip(X_all, log_val, sigma_clip)
+    if fit_single is None:
+        return None
+    rss_single = np.sum((log_val[fit_single["mask"]] -
+                         fit_single["y_pred"][fit_single["mask"]]) ** 2)
+    bic_single = _bic(fit_single["n_used"], X_all.shape[1], rss_single)
+
+    # Scan break candidates
+    lo_pct = np.percentile(log_Mcl, 10)
+    hi_pct = np.percentile(log_Mcl, 90)
+    candidates = np.linspace(lo_pct, hi_pct, n_break_candidates)
+
+    best_bic = np.inf
+    best_break = None
+    best_fit_lo = None
+    best_fit_hi = None
+    best_idx_lo = None
+    best_idx_hi = None
+    bic_scan = []
+
+    for brk in candidates:
+        idx_lo = np.where(log_Mcl <= brk)[0]
+        idx_hi = np.where(log_Mcl > brk)[0]
+
+        if len(idx_lo) < 5 or len(idx_hi) < 5:
+            bic_scan.append((brk, np.inf))
+            continue
+
+        X_lo, names_lo = _build_X(idx_lo)
+        X_hi, names_hi = _build_X(idx_hi)
+
+        fit_lo = _ols_sigma_clip(X_lo, log_val[idx_lo], sigma_clip)
+        fit_hi = _ols_sigma_clip(X_hi, log_val[idx_hi], sigma_clip)
+
+        if fit_lo is None or fit_hi is None:
+            bic_scan.append((brk, np.inf))
+            continue
+
+        rss_lo = np.sum(
+            (log_val[idx_lo][fit_lo["mask"]] -
+             fit_lo["y_pred"][fit_lo["mask"]]) ** 2)
+        rss_hi = np.sum(
+            (log_val[idx_hi][fit_hi["mask"]] -
+             fit_hi["y_pred"][fit_hi["mask"]]) ** 2)
+
+        bic_lo = _bic(fit_lo["n_used"], X_lo.shape[1], rss_lo)
+        bic_hi = _bic(fit_hi["n_used"], X_hi.shape[1], rss_hi)
+        bic_total = bic_lo + bic_hi
+
+        bic_scan.append((brk, bic_total))
+
+        if bic_total < best_bic:
+            best_bic = bic_total
+            best_break = brk
+            best_fit_lo = fit_lo
+            best_fit_hi = fit_hi
+            best_idx_lo = idx_lo
+            best_idx_hi = idx_hi
+
+    if best_fit_lo is None or best_fit_hi is None:
+        logger.warning("Piecewise fit failed — no valid break found")
+        return None
+
+    # Package results so plot_parity can consume them
+    # Combine arrays from both subsets
+    n_lo = len(best_idx_lo)
+    combined_mask = np.concatenate([best_fit_lo["mask"], best_fit_hi["mask"]])
+    combined_actual = np.concatenate([val[best_idx_lo], val[best_idx_hi]])
+    combined_pred = np.concatenate([
+        10.0 ** best_fit_lo["y_pred"],
+        10.0 ** best_fit_hi["y_pred"],
+    ])
+    combined_nCore = np.concatenate([nC[best_idx_lo], nC[best_idx_hi]])
+    combined_mCloud = np.concatenate([mC[best_idx_lo], mC[best_idx_hi]])
+    combined_sfe = np.concatenate([sfe[best_idx_lo], sfe[best_idx_hi]])
+    combined_folders = np.concatenate([folders[best_idx_lo], folders[best_idx_hi]])
+    side_labels = np.array(["low"] * n_lo + ["high"] * (len(combined_mask) - n_lo))
+
+    # Add standard fields to sub-fits
+    for subfit, idx in [(best_fit_lo, best_idx_lo), (best_fit_hi, best_idx_hi)]:
+        subfit["nCore"] = nC[idx]
+        subfit["mCloud"] = mC[idx]
+        subfit["sfe"] = sfe[idx]
+        subfit["actual"] = val[idx]
+        subfit["predicted"] = 10.0 ** subfit["y_pred"]
+        subfit["refs"] = refs
+        subfit["outcome_filter"] = outcome_filter
+        subfit["quantity_key"] = quantity_key
+
+    return {
+        "break_log_Mcl": float(best_break),
+        "fit_low": best_fit_lo,
+        "fit_high": best_fit_hi,
+        "BIC_piecewise": float(best_bic),
+        "BIC_single": float(bic_single),
+        "bic_scan": bic_scan,
+        # Combined arrays for plotting
+        "actual": combined_actual,
+        "predicted": combined_pred,
+        "mask": combined_mask,
+        "nCore": combined_nCore,
+        "mCloud": combined_mCloud,
+        "sfe": combined_sfe,
+        "folders": combined_folders,
+        "side": side_labels,
+        "outcome_filter": outcome_filter,
+        "quantity_key": quantity_key,
+        "refs": refs,
+    }
+
+
 # ======================================================================
 # Plotting
 # ======================================================================
@@ -817,6 +1069,334 @@ def plot_p_vs_sigma(
 
 
 # ======================================================================
+# Diagnostic plots (enabled by --diagnostics)
+# ======================================================================
+
+def plot_parity_diagnostic(
+    fit: Optional[Dict],
+    records: List[Dict],
+    output_dir: Path,
+    fmt: str,
+    suffix: str = "",
+) -> List[Path]:
+    """
+    Diagnostic parity plots colored by SFE, M_cl, and residual,
+    plus a residual-vs-parameter panel.
+
+    Produces four figures per fit to help identify curvature or
+    two-population bifurcation.
+    """
+    if fit is None:
+        return []
+
+    actual = fit["actual"]
+    predicted = fit["predicted"]
+    mask = fit["mask"]
+    mCloud = fit["mCloud"]
+    nCore = fit["nCore"]
+    sfe = fit["sfe"]
+    filt = fit.get("outcome_filter", "all")
+
+    unique_nCore = sorted(set(nCore))
+    nc_to_marker = {
+        nc: _MARKERS[i % len(_MARKERS)] for i, nc in enumerate(unique_nCore)
+    }
+
+    # 1:1 line bounds
+    vals = np.concatenate([actual, predicted])
+    lo, hi = vals[vals > 0].min() * 0.5, vals.max() * 2.0
+
+    # Derived arrays
+    residual = np.log10(actual) - np.log10(predicted)
+    log_sfe = np.log10(sfe)
+    log_Mcl = np.log10(sfe * mCloud)
+    log_mCloud = np.log10(mCloud)
+
+    # --- Figures 1-3: parity plots colored by different variables ---
+    diag_configs = [
+        ("sfe",      log_sfe,   r"$\log_{10}(\varepsilon)$",   "coolwarm"),
+        ("Mcl",      log_Mcl,   r"$\log_{10}(M_{\rm cl}\;/\;M_\odot)$", "viridis"),
+        ("residual", residual,
+         r"$\log_{10}({\rm actual}) - \log_{10}({\rm fit})$",  "RdBu_r"),
+    ]
+
+    saved = []
+    for var_name, color_arr, cbar_label, cmap_name in diag_configs:
+        fig, ax = plt.subplots(figsize=(5.5, 5), dpi=150)
+        ax.plot([lo, hi], [lo, hi], "k--", lw=1, alpha=0.6, label="1:1")
+
+        vmin, vmax = np.nanmin(color_arr), np.nanmax(color_arr)
+        if vmin == vmax:
+            vmin -= 0.5
+            vmax += 0.5
+        if var_name == "residual":
+            vlim = max(abs(vmin), abs(vmax), 0.1)
+            vmin, vmax = -vlim, vlim
+        norm = matplotlib.colors.Normalize(vmin=vmin, vmax=vmax)
+
+        for nc in unique_nCore:
+            nc_mask = nCore == nc
+            marker = nc_to_marker[nc]
+
+            sel = nc_mask & mask
+            if sel.any():
+                ax.scatter(
+                    actual[sel], predicted[sel],
+                    c=color_arr[sel], cmap=cmap_name, norm=norm,
+                    marker=marker, s=50, edgecolors="k", linewidths=0.4,
+                    zorder=5,
+                    label=rf"$n_c = {nc:.0e}$ cm$^{{-3}}$",
+                )
+            sel_out = nc_mask & ~mask
+            if sel_out.any():
+                ax.scatter(
+                    actual[sel_out], predicted[sel_out],
+                    c=color_arr[sel_out], cmap=cmap_name, norm=norm,
+                    marker=marker, s=50, alpha=0.3,
+                    edgecolors="grey", linewidths=0.8, zorder=3,
+                )
+
+        sm = matplotlib.cm.ScalarMappable(cmap=cmap_name, norm=norm)
+        sm.set_array([])
+        cbar = fig.colorbar(sm, ax=ax, pad=0.02)
+        cbar.set_label(cbar_label)
+
+        ax.set_xscale("log")
+        ax.set_yscale("log")
+        ax.set_xlim(lo, hi)
+        ax.set_ylim(lo, hi)
+        ax.set_xlabel(r"$p_{\rm fin}/M_*$ from TRINITY [km/s]")
+        ax.set_ylabel(r"$p_{\rm fin}/M_*$ from fit [km/s]")
+        ax.set_aspect("equal")
+        tag = f"_{filt}" if filt else ""
+        ax.set_title(
+            rf"$p_{{\rm fin}}/M_*$ ({filt}) — by {var_name}", fontsize=10)
+        ax.legend(fontsize=7, loc="lower right", framealpha=0.8)
+
+        fig.tight_layout()
+        out = output_dir / (
+            f"terminal_momentum_parity{tag}_diag_by_{var_name}"
+            f"{suffix}.{fmt}")
+        fig.savefig(out, bbox_inches="tight")
+        plt.close(fig)
+        logger.info("Saved diagnostic: %s", out)
+        saved.append(out)
+
+    # --- Figure 4: residual-vs-parameter panel (1x3) ---
+    panels = [
+        (log_mCloud, r"$\log_{10}(M_{\rm cloud}\;/\;M_\odot)$"),
+        (log_sfe,    r"$\log_{10}(\varepsilon)$"),
+        (log_Mcl,    r"$\log_{10}(M_{\rm cl}\;/\;M_\odot)$"),
+    ]
+
+    fig, axes = plt.subplots(1, 3, figsize=(15, 4.5), dpi=150)
+    for ax, (x_arr, xlabel) in zip(axes, panels):
+        ax.axhline(0, color="k", ls="--", lw=1, alpha=0.6)
+        for nc in unique_nCore:
+            nc_mask = nCore == nc
+            marker = nc_to_marker[nc]
+            sel = nc_mask & mask
+            if sel.any():
+                ax.scatter(
+                    x_arr[sel], residual[sel],
+                    marker=marker, s=40, edgecolors="k", linewidths=0.3,
+                    zorder=5,
+                    label=rf"$n_c = {nc:.0e}$ cm$^{{-3}}$",
+                )
+            sel_out = nc_mask & ~mask
+            if sel_out.any():
+                ax.scatter(
+                    x_arr[sel_out], residual[sel_out],
+                    marker=marker, s=40, alpha=0.3,
+                    edgecolors="grey", linewidths=0.6, zorder=3,
+                )
+        ax.set_xlabel(xlabel)
+        ax.set_ylabel(
+            r"$\log_{10}({\rm actual}) - \log_{10}({\rm fit})$")
+        ax.legend(fontsize=7, loc="best", framealpha=0.8)
+
+    tag = f"_{filt}" if filt else ""
+    fig.suptitle(
+        rf"$p_{{\rm fin}}/M_*$ ({filt}) — fit residuals", fontsize=11)
+    fig.tight_layout()
+    out = output_dir / (
+        f"terminal_momentum_residuals{tag}{suffix}.{fmt}")
+    fig.savefig(out, bbox_inches="tight")
+    plt.close(fig)
+    logger.info("Saved residuals: %s", out)
+    saved.append(out)
+
+    return saved
+
+
+def plot_parity_piecewise(
+    pw: Optional[Dict],
+    output_dir: Path,
+    fmt: str,
+    suffix: str = "",
+) -> Optional[Path]:
+    """
+    Parity plot for a piecewise power-law fit, colored by log10(M_cl).
+
+    Points below the break get thin black edges; points above get thick
+    red edges.
+    """
+    if pw is None:
+        return None
+
+    actual = pw["actual"]
+    predicted = pw["predicted"]
+    mask = pw["mask"]
+    nCore = pw["nCore"]
+    mCloud = pw["mCloud"]
+    sfe = pw["sfe"]
+    side = pw["side"]
+    filt = pw.get("outcome_filter", "all")
+    brk = pw["break_log_Mcl"]
+    fit_lo = pw["fit_low"]
+    fit_hi = pw["fit_high"]
+
+    log_Mcl = np.log10(sfe * mCloud)
+
+    unique_nCore = sorted(set(nCore))
+    nc_to_marker = {
+        nc: _MARKERS[i % len(_MARKERS)] for i, nc in enumerate(unique_nCore)
+    }
+
+    vals = np.concatenate([actual, predicted])
+    lo, hi = vals[vals > 0].min() * 0.5, vals.max() * 2.0
+
+    vmin, vmax = log_Mcl.min(), log_Mcl.max()
+    if vmin == vmax:
+        vmin -= 0.5
+        vmax += 0.5
+    norm = matplotlib.colors.Normalize(vmin=vmin, vmax=vmax)
+
+    fig, ax = plt.subplots(figsize=(5.5, 5), dpi=150)
+    ax.plot([lo, hi], [lo, hi], "k--", lw=1, alpha=0.6, label="1:1")
+
+    for nc in unique_nCore:
+        nc_mask = nCore == nc
+        marker = nc_to_marker[nc]
+
+        for side_val, edgecolor, lw_edge in [("low", "k", 0.4),
+                                              ("high", "#D55E00", 1.2)]:
+            sel = nc_mask & mask & (side == side_val)
+            if sel.any():
+                label_parts = [rf"$n_c = {nc:.0e}$ cm$^{{-3}}$"]
+                if side_val == "low":
+                    label_parts.append(r"($<$ break)")
+                else:
+                    label_parts.append(r"($>$ break)")
+                ax.scatter(
+                    actual[sel], predicted[sel],
+                    c=log_Mcl[sel], cmap="viridis", norm=norm,
+                    marker=marker, s=50,
+                    edgecolors=edgecolor, linewidths=lw_edge,
+                    zorder=5,
+                    label=" ".join(label_parts),
+                )
+
+        sel_out = nc_mask & ~mask
+        if sel_out.any():
+            ax.scatter(
+                actual[sel_out], predicted[sel_out],
+                c=log_Mcl[sel_out], cmap="viridis", norm=norm,
+                marker=marker, s=50, alpha=0.3,
+                edgecolors="grey", linewidths=0.8, zorder=3,
+            )
+
+    sm = matplotlib.cm.ScalarMappable(cmap="viridis", norm=norm)
+    sm.set_array([])
+    cbar = fig.colorbar(sm, ax=ax, pad=0.02)
+    cbar.set_label(r"$\log_{10}(M_{\rm cl}\;/\;M_\odot)$")
+
+    delta_bic = pw["BIC_single"] - pw["BIC_piecewise"]
+    ann = (
+        rf"$R^2_{{\rm low}} = {fit_lo['R2']:.3f}$,"
+        rf"  $R^2_{{\rm high}} = {fit_hi['R2']:.3f}$" + "\n"
+        + rf"Break: $\log_{{10}} M_{{\rm cl}} = {brk:.2f}$" + "\n"
+        + rf"$\Delta$BIC $= {delta_bic:+.1f}$ (single $-$ piecewise)"
+    )
+    ax.text(0.04, 0.96, ann, transform=ax.transAxes, va="top", ha="left",
+            fontsize=7,
+            bbox=dict(facecolor="white", edgecolor="0.7", alpha=0.85,
+                      boxstyle="round,pad=0.3"))
+
+    ax.set_xscale("log")
+    ax.set_yscale("log")
+    ax.set_xlim(lo, hi)
+    ax.set_ylim(lo, hi)
+    ax.set_xlabel(r"$p_{\rm fin}/M_*$ from TRINITY [km/s]")
+    ax.set_ylabel(r"$p_{\rm fin}/M_*$ from piecewise fit [km/s]")
+    tag = f"_{filt}" if filt else ""
+    ax.set_title(
+        rf"Piecewise: $p_{{\rm fin}}/M_*$ ({filt})", fontsize=10)
+    ax.set_aspect("equal")
+    ax.legend(fontsize=6, loc="lower right", framealpha=0.8)
+
+    fig.tight_layout()
+    out = output_dir / (
+        f"terminal_momentum_parity{tag}_piecewise{suffix}.{fmt}")
+    fig.savefig(out, bbox_inches="tight")
+    plt.close(fig)
+    logger.info("Saved: %s", out)
+    return out
+
+
+def plot_bic_scan(
+    pw: Optional[Dict],
+    output_dir: Path,
+    fmt: str,
+    suffix: str = "",
+) -> Optional[Path]:
+    """
+    BIC scan plot: total BIC vs break-point location.
+    """
+    if pw is None or "bic_scan" not in pw:
+        return None
+
+    filt = pw.get("outcome_filter", "all")
+    scan = np.array(pw["bic_scan"])
+    brk_vals = scan[:, 0]
+    bic_vals = scan[:, 1]
+
+    # Filter out infinite values for plotting
+    finite = np.isfinite(bic_vals)
+    if finite.sum() < 2:
+        return None
+
+    fig, ax = plt.subplots(figsize=(5.5, 4), dpi=150)
+    ax.plot(brk_vals[finite], bic_vals[finite], "-", color="#0072B2", lw=1.5)
+
+    # Mark optimum
+    opt_brk = pw["break_log_Mcl"]
+    opt_bic = pw["BIC_piecewise"]
+    ax.axvline(opt_brk, color="#D55E00", ls="--", lw=1.2,
+               label=rf"Optimum: $\log_{{10}} M_{{\rm cl}} = {opt_brk:.2f}$")
+    ax.plot(opt_brk, opt_bic, "o", color="#D55E00", ms=8, zorder=6)
+
+    # Single-fit BIC reference
+    ax.axhline(pw["BIC_single"], color="0.5", ls=":", lw=1.0,
+               label=f"Single-fit BIC = {pw['BIC_single']:.1f}")
+
+    ax.set_xlabel(r"Break-point $\log_{10}(M_{\rm cl}\;/\;M_\odot)$")
+    ax.set_ylabel("Total BIC (piecewise)")
+    tag = f"_{filt}" if filt else ""
+    ax.set_title(
+        rf"BIC scan: $p_{{\rm fin}}/M_*$ ({filt})", fontsize=10)
+    ax.legend(fontsize=7, loc="best", framealpha=0.8)
+
+    fig.tight_layout()
+    out = output_dir / (
+        f"terminal_momentum_bic_scan{tag}{suffix}.{fmt}")
+    fig.savefig(out, bbox_inches="tight")
+    plt.close(fig)
+    logger.info("Saved: %s", out)
+    return out
+
+
+# ======================================================================
 # Summary output
 # ======================================================================
 
@@ -1037,6 +1617,11 @@ Examples:
         "--t-end", type=float, default=None,
         help="Maximum time [Myr] to consider in calculations.",
     )
+    parser.add_argument(
+        "--diagnostics", action="store_true",
+        help="Enable diagnostic plots and alternative fits "
+             "(quadratic log-correction, piecewise power-law).",
+    )
     return parser
 
 
@@ -1121,6 +1706,56 @@ def main(argv: Optional[List[str]] = None) -> int:
     if args.decompose:
         plot_momentum_budget(records, output_dir, args.fmt)
         plot_boost(records, output_dir, args.fmt)
+
+    # Step 3b: diagnostic plots and alternative fits (gated by --diagnostics)
+    if args.diagnostics:
+        # Part A — diagnostic parity plots for each standard fit
+        logger.info("--- Diagnostic plots (Part A) ---")
+        plot_parity_diagnostic(fit_exp, records, output_dir, args.fmt)
+        plot_parity_diagnostic(fit_col, records, output_dir, args.fmt)
+
+        # Part B — quadratic log-correction fit
+        logger.info("--- Fit: p_fin/M_* QUAD (expanding) ---")
+        fit_exp_quad = fit_p_mstar_quad(
+            records, outcome_filter=EXPAND, **fit_kwargs)
+        fits.append(("p_fin/M_* quad (expand)", fit_exp_quad))
+        plot_parity(fit_exp_quad, output_dir, args.fmt, suffix="_quad")
+
+        logger.info("--- Fit: p_peak/M_* QUAD (collapse) ---")
+        fit_col_quad = fit_p_mstar_quad(
+            records, outcome_filter=COLLAPSE, **fit_kwargs)
+        fits.append(("p_peak/M_* quad (collapse)", fit_col_quad))
+        plot_parity(fit_col_quad, output_dir, args.fmt,
+                    suffix="_collapse_quad")
+
+        # Part C — piecewise power-law with automatic break-point
+        logger.info("--- Fit: p_fin/M_* PIECEWISE (expanding) ---")
+        pw_exp = fit_p_mstar_piecewise(
+            records, outcome_filter=EXPAND, **fit_kwargs)
+        plot_parity_piecewise(pw_exp, output_dir, args.fmt)
+        plot_bic_scan(pw_exp, output_dir, args.fmt)
+
+        logger.info("--- Fit: p_peak/M_* PIECEWISE (collapse) ---")
+        pw_col = fit_p_mstar_piecewise(
+            records, outcome_filter=COLLAPSE, **fit_kwargs)
+        plot_parity_piecewise(pw_col, output_dir, args.fmt)
+        plot_bic_scan(pw_col, output_dir, args.fmt)
+
+        # Print piecewise summary
+        for label, pw in [("expand", pw_exp), ("collapse", pw_col)]:
+            if pw is None:
+                continue
+            delta_bic = pw["BIC_single"] - pw["BIC_piecewise"]
+            print(f"\n--- Piecewise fit ({label}) ---")
+            print(f"  Break: log10(M_cl) = {pw['break_log_Mcl']:.3f}"
+                  f"  (M_cl = {10**pw['break_log_Mcl']:.1f} Msun)")
+            print(f"  BIC single   = {pw['BIC_single']:.1f}")
+            print(f"  BIC piecewise = {pw['BIC_piecewise']:.1f}"
+                  f"  (Delta = {delta_bic:+.1f})")
+            print(f"  R2 low  = {pw['fit_low']['R2']:.4f}"
+                  f"  (N = {pw['fit_low']['n_used']})")
+            print(f"  R2 high = {pw['fit_high']['R2']:.4f}"
+                  f"  (N = {pw['fit_high']['n_used']})")
 
     # Step 4: output
     write_results_csv(records, output_dir)
