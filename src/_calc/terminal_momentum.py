@@ -1529,6 +1529,24 @@ def print_summary(
 # Equation JSON (for run_all summary)
 # ======================================================================
 
+def _regenerate_summary_pdf(output_dir: Path, fmt: str = "pdf") -> None:
+    """Re-generate the cross-script scaling-relations summary PDF.
+
+    Loads ``run_all.generate_summary_pdf`` via importlib so that this
+    script can update the PDF when run individually (without run_all).
+    """
+    try:
+        import importlib.util
+        _mod_path = str(Path(__file__).resolve().parent / "run_all.py")
+        spec = importlib.util.spec_from_file_location("_run_all", _mod_path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        with plt.rc_context({"text.usetex": False}):
+            mod.generate_summary_pdf(output_dir, fmt=fmt)
+    except Exception as exc:
+        logger.warning("Could not regenerate summary PDF: %s", exc)
+
+
 def _extract_rejected(fit):
     """Extract identifying info for sigma-clipped (rejected) points."""
     mask = fit.get("mask")
@@ -1797,6 +1815,9 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     # Equation JSON for run_all summary
     _write_equation_json(fits, output_dir, "terminal_momentum")
+
+    # Regenerate the cross-script summary PDF
+    _regenerate_summary_pdf(output_dir, fmt=args.fmt or "pdf")
 
     return 0
 
