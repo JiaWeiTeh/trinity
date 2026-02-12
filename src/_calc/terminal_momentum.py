@@ -646,6 +646,8 @@ def fit_p_mstar_piecewise(
     best_fit_hi = None
     best_idx_lo = None
     best_idx_hi = None
+    best_names_lo = None
+    best_names_hi = None
     bic_scan = []
 
     for brk in candidates:
@@ -686,6 +688,8 @@ def fit_p_mstar_piecewise(
             best_fit_hi = fit_hi
             best_idx_lo = idx_lo
             best_idx_hi = idx_hi
+            best_names_lo = names_lo
+            best_names_hi = names_hi
 
     if best_fit_lo is None or best_fit_hi is None:
         logger.warning("Piecewise fit failed — no valid break found")
@@ -707,7 +711,11 @@ def fit_p_mstar_piecewise(
     side_labels = np.array(["low"] * n_lo + ["high"] * (len(combined_mask) - n_lo))
 
     # Add standard fields to sub-fits
-    for subfit, idx in [(best_fit_lo, best_idx_lo), (best_fit_hi, best_idx_hi)]:
+    for subfit, idx, names in [
+        (best_fit_lo, best_idx_lo, best_names_lo),
+        (best_fit_hi, best_idx_hi, best_names_hi),
+    ]:
+        subfit["param_names"] = names
         subfit["nCore"] = nC[idx]
         subfit["mCloud"] = mC[idx]
         subfit["sfe"] = sfe[idx]
@@ -1741,14 +1749,15 @@ def main(argv: Optional[List[str]] = None) -> int:
         plot_parity_piecewise(pw_col, output_dir, args.fmt)
         plot_bic_scan(pw_col, output_dir, args.fmt)
 
-        # Print piecewise summary
+        # Print piecewise summary and add to fits if BIC improves
         for label, pw in [("expand", pw_exp), ("collapse", pw_col)]:
             if pw is None:
                 continue
             delta_bic = pw["BIC_single"] - pw["BIC_piecewise"]
+            brk_val = pw["break_log_Mcl"]
             print(f"\n--- Piecewise fit ({label}) ---")
-            print(f"  Break: log10(M_cl) = {pw['break_log_Mcl']:.3f}"
-                  f"  (M_cl = {10**pw['break_log_Mcl']:.1f} Msun)")
+            print(f"  Break: log10(M_cl) = {brk_val:.3f}"
+                  f"  (M_cl = {10**brk_val:.1f} Msun)")
             print(f"  BIC single   = {pw['BIC_single']:.1f}")
             print(f"  BIC piecewise = {pw['BIC_piecewise']:.1f}"
                   f"  (Delta = {delta_bic:+.1f})")
@@ -1756,6 +1765,19 @@ def main(argv: Optional[List[str]] = None) -> int:
                   f"  (N = {pw['fit_low']['n_used']})")
             print(f"  R2 high = {pw['fit_high']['R2']:.4f}"
                   f"  (N = {pw['fit_high']['n_used']})")
+
+            # If piecewise is better, include sub-fits in summary
+            if delta_bic > 0:
+                brk_str = f"Mcl<{10**brk_val:.0f}"
+                fits.append((
+                    f"p/M_* pw-low [{brk_str}] ({label})",
+                    pw["fit_low"],
+                ))
+                brk_str = f"Mcl>{10**brk_val:.0f}"
+                fits.append((
+                    f"p/M_* pw-high [{brk_str}] ({label})",
+                    pw["fit_high"],
+                ))
 
     # Step 4: output
     write_results_csv(records, output_dir)
