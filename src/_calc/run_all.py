@@ -67,6 +67,11 @@ SHARED_FLAGS = [
     "--t-end",
 ]
 
+# Boolean flags forwarded verbatim (store_true: no value argument).
+SHARED_BOOL_FLAGS = [
+    "--diagnostics",
+]
+
 
 # ======================================================================
 # Helpers
@@ -444,6 +449,8 @@ def build_parser() -> argparse.ArgumentParser:
                         help="Output figure format (e.g. pdf, png).")
     shared.add_argument("--t-end", type=float, default=None,
                         help="Maximum time [Myr] to consider in calculations.")
+    shared.add_argument("--diagnostics", action="store_true", default=False,
+                        help="Generate diagnostic plots in sub-scripts.")
 
     return parser
 
@@ -466,6 +473,10 @@ def main(argv: Optional[List[str]] = None) -> int:
         val = getattr(args, attr, None)
         if val is not None:
             extra.extend([flag, str(val)])
+    for flag in SHARED_BOOL_FLAGS:
+        attr = flag.lstrip("-").replace("-", "_")
+        if getattr(args, attr, False):
+            extra.append(flag)
 
     n_fail = run_scripts(
         folder=args.folder,
