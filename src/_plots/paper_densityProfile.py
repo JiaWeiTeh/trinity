@@ -381,7 +381,8 @@ def plot_pressure_budget(simulations: dict, output_dir: Path, fmt: str = 'pdf',
     nrows = 2
     ncols = 2
 
-    fig, axes = plt.subplots(nrows, ncols, figsize=(8, 6), squeeze=False)
+    fig, axes = plt.subplots(nrows, ncols, figsize=(8, 6), squeeze=False,
+                             sharey=True)
 
     for idx, tag in enumerate(tags_present):
         i, j = divmod(idx, ncols)
@@ -470,7 +471,8 @@ def plot_force_budget(simulations: dict, output_dir: Path, fmt: str = 'pdf',
     nrows = 2
     ncols = 2
 
-    fig, axes = plt.subplots(nrows, ncols, figsize=(8, 6), squeeze=False)
+    fig, axes = plt.subplots(nrows, ncols, figsize=(8, 6), squeeze=False,
+                             sharey=True)
 
     force_fields = [
         ('F_ram',     r'$F_{\rm ram}$',     '#0072B2', '-'),
@@ -875,7 +877,8 @@ def plot_momentum_grid(sweep_dir: str, output_dir: Path, fmt: str = 'pdf',
         return
 
     nrows, ncols = 2, 2
-    fig, axes = plt.subplots(nrows, ncols, figsize=(8, 6), squeeze=False)
+    fig, axes = plt.subplots(nrows, ncols, figsize=(8, 6), squeeze=False,
+                             sharey=True)
 
     for idx, tag in enumerate(tags_present):
         i, j = divmod(idx, ncols)
