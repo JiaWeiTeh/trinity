@@ -531,8 +531,8 @@ def fit_scaling_piecewise(
         fld_list.append(rec.get("folder", ""))
 
     if len(tX_list) < 10:
-        logger.warning("Too few points (%d) for piecewise fit of '%s'",
-                        len(tX_list), quantity)
+        logger.info("Piecewise '%s': too few points (%d < 10) — skipping",
+                     quantity, len(tX_list))
         return None
 
     nC = np.array(nC_list)
@@ -542,6 +542,13 @@ def fit_scaling_piecewise(
     folders = np.array(fld_list)
     log_tX = np.log10(tX)
     log_Mcl = np.log10(sfe * mC)
+
+    n_unique_Mcl = len(np.unique(np.round(log_Mcl, decimals=6)))
+    logger.info("Piecewise '%s': %d points, %d unique log10(sfe*mCloud) values",
+                quantity, len(tX_list), n_unique_Mcl)
+    if n_unique_Mcl < 3:
+        logger.info("Piecewise '%s': fewer than 3 unique sfe*mCloud values — "
+                     "break search will likely fail", quantity)
 
     refs = {"nCore": nCore_ref, "mCloud": mCloud_ref, "sfe": sfe_ref}
 
@@ -566,6 +573,7 @@ def fit_scaling_piecewise(
     X_all, names_all = _build_X(np.arange(len(tX)))
     fit_single = _ols_sigma_clip(X_all, log_tX, sigma_clip)
     if fit_single is None:
+        logger.info("Piecewise '%s': single-fit OLS failed — skipping", quantity)
         return None
     rss_single = np.sum((log_tX[fit_single["mask"]] -
                          fit_single["y_pred"][fit_single["mask"]]) ** 2)
@@ -575,6 +583,8 @@ def fit_scaling_piecewise(
     lo_pct = np.percentile(log_Mcl, 10)
     hi_pct = np.percentile(log_Mcl, 90)
     candidates = np.linspace(lo_pct, hi_pct, n_break_candidates)
+    logger.info("Piecewise '%s': break scan range log10(sfe*mCloud) = [%.3f, %.3f]",
+                quantity, lo_pct, hi_pct)
 
     best_bic = np.inf
     best_break = None
@@ -586,11 +596,16 @@ def fit_scaling_piecewise(
     best_names_hi = None
     bic_scan = []
 
+    n_too_few = 0     # candidates rejected for too few points per side
+    n_ols_fail = 0    # candidates where OLS failed on one side
+    n_valid = 0       # candidates with valid BIC
+
     for brk in candidates:
         idx_lo = np.where(log_Mcl <= brk)[0]
         idx_hi = np.where(log_Mcl > brk)[0]
         if len(idx_lo) < 5 or len(idx_hi) < 5:
             bic_scan.append((brk, np.inf))
+            n_too_few += 1
             continue
 
         X_lo, names_lo = _build_X(idx_lo)
@@ -599,6 +614,7 @@ def fit_scaling_piecewise(
         fh = _ols_sigma_clip(X_hi, log_tX[idx_hi], sigma_clip)
         if fl is None or fh is None:
             bic_scan.append((brk, np.inf))
+            n_ols_fail += 1
             continue
 
         rss_lo = np.sum((log_tX[idx_lo][fl["mask"]] -
@@ -608,6 +624,7 @@ def fit_scaling_piecewise(
         bic_total = _bic(fl["n_used"], X_lo.shape[1], rss_lo) + \
                     _bic(fh["n_used"], X_hi.shape[1], rss_hi)
         bic_scan.append((brk, bic_total))
+        n_valid += 1
 
         if bic_total < best_bic:
             best_bic = bic_total
@@ -619,8 +636,13 @@ def fit_scaling_piecewise(
             best_names_lo = names_lo
             best_names_hi = names_hi
 
+    logger.info("Piecewise '%s': break scan results — %d valid, %d too-few-points, "
+                "%d OLS-failed (out of %d candidates)",
+                quantity, n_valid, n_too_few, n_ols_fail, len(candidates))
+
     if best_fit_lo is None or best_fit_hi is None:
-        logger.warning("Piecewise fit failed for '%s' — no valid break", quantity)
+        logger.info("Piecewise '%s': no valid break found — skipping piecewise",
+                     quantity)
         return None
 
     # Combine arrays
@@ -1448,7 +1470,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     # Step 3b: piecewise fits (always run; diagnostic plots gated)
     pw_entries: List[Tuple[str, Dict]] = []
     for q in quantities:
-        logger.info("--- Piecewise fitting: %s ---", q)
+        print(f"\n--- Piecewise fitting: {q} ---")
         pw = fit_scaling_piecewise(
             records, q,
             nCore_ref=args.nCore_ref,
@@ -1457,6 +1479,8 @@ def main(argv: Optional[List[str]] = None) -> int:
             sigma_clip=args.sigma_clip,
         )
         if pw is None:
+            print(f"  Piecewise fit returned None for '{q}' "
+                  f"(see INFO log above for details)")
             continue
 
         if args.diagnostics:

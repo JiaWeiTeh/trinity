@@ -264,20 +264,35 @@ def generate_summary_pdf(output_dir: Path, fmt: str = "pdf") -> Optional[Path]:
                 break
 
     # --- Render figure ---
+    # Use inch-based spacing so the layout scales with content.
+    TITLE_IN = 0.50       # main title height
+    TIER_HDR_IN = 0.35    # tier header height
+    EQ_LINE_IN = 0.25     # per equation line
+    TIER_GAP_IN = 0.12    # gap between tiers
+    MARGIN_IN = 0.40      # top + bottom margin combined
+
     n_eqs = len(all_entries)
-    fig_height = max(4.0, 1.0 + 0.55 * n_eqs)
+    n_tiers = sum(1 for label, _, _ in _TIERS if tiered[label])
+    fig_height = max(4.0,
+                     MARGIN_IN + TITLE_IN
+                     + n_tiers * (TIER_HDR_IN + TIER_GAP_IN)
+                     + n_eqs * EQ_LINE_IN)
+
     fig, ax = plt.subplots(figsize=(11, fig_height), dpi=150)
     ax.axis("off")
 
-    y = 0.97   # top of figure in axes coords
-    dy_title = 0.06
-    dy_eq = 0.045
+    # Convert inch spacings to figure fractions
+    dy_title = TIER_HDR_IN / fig_height
+    dy_eq = EQ_LINE_IN / fig_height
+    dy_gap = TIER_GAP_IN / fig_height
+
+    y = 1.0 - (MARGIN_IN * 0.5) / fig_height   # start below top margin
 
     # Title
-    ax.text(0.5, y, r"\textbf{TRINITY Scaling-Relation Summary}",
+    ax.text(0.5, y, "TRINITY Scaling-Relation Summary",
             transform=ax.transAxes, fontsize=14, ha="center", va="top",
-            usetex=False, fontweight="bold")
-    y -= dy_title
+            fontweight="bold")
+    y -= TITLE_IN / fig_height
 
     for tier_label, tier_color, _ in _TIERS:
         entries = tiered[tier_label]
@@ -292,7 +307,7 @@ def generate_summary_pdf(output_dir: Path, fmt: str = "pdf") -> Optional[Path]:
                 f"{tier_label}  ({r2_range}, {len(entries)} fit{'s' if len(entries)!=1 else ''})",
                 transform=ax.transAxes, fontsize=11, fontweight="bold",
                 color=tier_color, va="top")
-        y -= dy_title * 0.7
+        y -= dy_title
 
         for entry in entries:
             latex_eq = _build_latex_equation(entry)
@@ -309,7 +324,7 @@ def generate_summary_pdf(output_dir: Path, fmt: str = "pdf") -> Optional[Path]:
                     family="monospace", color="0.15")
             y -= dy_eq
 
-        y -= 0.01  # gap between tiers
+        y -= dy_gap  # gap between tiers
 
     fig.tight_layout()
     out_path = output_dir / f"scaling_relations_summary.{fmt}"
