@@ -286,9 +286,9 @@ def plot_powerlaw_grids():
     Create figure showing valid parameter space for power-law alpha values.
 
     Fill colour = rCloud [pc],  contour lines = rCore [pc].
+    One shared colourbar on the right; shared x/y axis labels.
     """
     fig, axes = plt.subplots(2, 2, figsize=(12, 10))
-    axes = axes.flatten()
 
     fig.suptitle('Valid Parameter Space for Power-Law Density Profiles\n'
                  r'Fill: $r_\mathrm{cloud}$ [pc] \quad '
@@ -303,8 +303,10 @@ def plot_powerlaw_grids():
     # Contour levels for rCore lines
     contour_levels_rCore = np.logspace(np.log10(0.01), np.log10(5.0), CONTOUR_N)
 
+    im = None  # will hold the last pcolormesh for shared colourbar
     for idx, alpha in enumerate(ALPHA_VALUES):
-        ax = axes[idx]
+        ax = axes.flat[idx]
+        row, col = divmod(idx, 2)
 
         print(f"Computing grid for \u03b1 = {alpha}...")
         grid_rCore, grid_rCloud = compute_valid_rCore_grid_powerlaw(alpha)
@@ -351,8 +353,12 @@ def plot_powerlaw_grids():
 
         ax.set_xscale('log')
         ax.set_yscale('log')
-        ax.set_xlabel(r'$M_\mathrm{cloud}$ [M$_\odot$]')
-        ax.set_ylabel(r'$n_\mathrm{core}$ [cm$^{-3}$]')
+
+        # Only show tick labels on outer edges
+        if row == 0:
+            ax.set_xticklabels([])
+        if col == 1:
+            ax.set_yticklabels([])
 
         if alpha == 0:
             title = r'$\alpha = 0$ (homogeneous)'
@@ -360,9 +366,14 @@ def plot_powerlaw_grids():
             title = rf'$\alpha = {alpha}$'
         ax.set_title(f'{title}\n({n_valid}/{n_total} valid cells)', fontsize=10)
 
-        fig.colorbar(im, ax=ax, label=r'$r_\mathrm{cloud}$ [pc]')
+    # Shared axis labels
+    fig.supxlabel(r'$M_\mathrm{cloud}$ [M$_\odot$]', fontsize=12)
+    fig.supylabel(r'$n_\mathrm{core}$ [cm$^{-3}$]', fontsize=12)
 
-    plt.tight_layout()
+    # Shared colourbar on the right
+    fig.subplots_adjust(right=0.88)
+    cbar_ax = fig.add_axes([0.90, 0.08, 0.02, 0.84])
+    fig.colorbar(im, cax=cbar_ax, label=r'$r_\mathrm{cloud}$ [pc]')
 
     if SAVE_PDF:
         out_pdf = FIG_DIR / "paper_AllowedGMC_PowerLaw.pdf"
@@ -377,9 +388,9 @@ def plot_BE_grids():
     Create figure showing valid parameter space for Bonnor-Ebert xi values.
 
     Fill colour = rCloud [pc],  contour lines = scale length *a* [pc].
+    One shared colourbar on the right; shared x/y axis labels.
     """
     fig, axes = plt.subplots(2, 2, figsize=(12, 10))
-    axes = axes.flatten()
 
     fig.suptitle('Valid Parameter Space for Bonnor-Ebert Density Profiles\n'
                  r'Fill: $r_\mathrm{cloud}$ [pc] \quad '
@@ -394,8 +405,10 @@ def plot_BE_grids():
     # Contour levels for scale-length a
     contour_levels_a = np.logspace(np.log10(0.01), np.log10(5.0), CONTOUR_N)
 
+    im = None  # will hold the last pcolormesh for shared colourbar
     for idx, xi in enumerate(XI_VALUES):
-        ax = axes[idx]
+        ax = axes.flat[idx]
+        row, col = divmod(idx, 2)
 
         print(f"Computing grid for \u03be = {xi:.2f}...")
         grid_a, grid_rCloud = compute_valid_rCore_grid_BE(xi)
@@ -442,8 +455,12 @@ def plot_BE_grids():
 
         ax.set_xscale('log')
         ax.set_yscale('log')
-        ax.set_xlabel(r'$M_\mathrm{cloud}$ [M$_\odot$]')
-        ax.set_ylabel(r'$n_\mathrm{core}$ [cm$^{-3}$]')
+
+        # Only show tick labels on outer edges
+        if row == 0:
+            ax.set_xticklabels([])
+        if col == 1:
+            ax.set_yticklabels([])
 
         if abs(xi - XI_CRITICAL) < 0.01:
             title = rf'$\xi = {xi:.2f}$ (critical)'
@@ -451,9 +468,14 @@ def plot_BE_grids():
             title = rf'$\xi = {xi:.1f}$'
         ax.set_title(f'{title}\n({n_valid}/{n_total} valid cells)', fontsize=10)
 
-        fig.colorbar(im, ax=ax, label=r'$r_\mathrm{cloud}$ [pc]')
+    # Shared axis labels
+    fig.supxlabel(r'$M_\mathrm{cloud}$ [M$_\odot$]', fontsize=12)
+    fig.supylabel(r'$n_\mathrm{core}$ [cm$^{-3}$]', fontsize=12)
 
-    plt.tight_layout()
+    # Shared colourbar on the right
+    fig.subplots_adjust(right=0.88)
+    cbar_ax = fig.add_axes([0.90, 0.08, 0.02, 0.84])
+    fig.colorbar(im, cax=cbar_ax, label=r'$r_\mathrm{cloud}$ [pc]')
 
     if SAVE_PDF:
         out_pdf = FIG_DIR / "paper_AllowedGMC_BonnorEbert.pdf"

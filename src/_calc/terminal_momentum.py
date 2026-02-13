@@ -591,8 +591,8 @@ def fit_p_mstar_piecewise(
         and np.isfinite(r[quantity_key]) and r[quantity_key] > 0
     ]
     if len(pts) < 10:
-        logger.warning("Too few points (%d) for piecewise fit (filter=%s)",
-                        len(pts), outcome_filter)
+        logger.info("Piecewise (filter=%s): too few points (%d < 10) — skipping",
+                     outcome_filter, len(pts))
         return None
 
     nC = np.array([r["nCore"] for r in pts])
@@ -602,6 +602,13 @@ def fit_p_mstar_piecewise(
     log_val = np.log10(val)
     log_Mcl = np.log10(sfe * mC)
     folders = np.array([r.get("folder", "") for r in pts])
+
+    n_unique_Mcl = len(np.unique(np.round(log_Mcl, decimals=6)))
+    logger.info("Piecewise (filter=%s): %d points, %d unique log10(sfe*mCloud) values",
+                outcome_filter, len(pts), n_unique_Mcl)
+    if n_unique_Mcl < 3:
+        logger.info("Piecewise (filter=%s): fewer than 3 unique sfe*mCloud values — "
+                     "break search will likely fail", outcome_filter)
 
     refs = {"nCore": nCore_ref, "mCloud": mCloud_ref, "sfe": sfe_ref}
 
@@ -630,6 +637,8 @@ def fit_p_mstar_piecewise(
     X_all, names_all = _build_X(np.arange(len(pts)))
     fit_single = _ols_sigma_clip(X_all, log_val, sigma_clip)
     if fit_single is None:
+        logger.info("Piecewise (filter=%s): single-fit OLS failed — skipping",
+                     outcome_filter)
         return None
     rss_single = np.sum((log_val[fit_single["mask"]] -
                          fit_single["y_pred"][fit_single["mask"]]) ** 2)
@@ -639,6 +648,8 @@ def fit_p_mstar_piecewise(
     lo_pct = np.percentile(log_Mcl, 10)
     hi_pct = np.percentile(log_Mcl, 90)
     candidates = np.linspace(lo_pct, hi_pct, n_break_candidates)
+    logger.info("Piecewise (filter=%s): break scan range log10(sfe*mCloud) = [%.3f, %.3f]",
+                outcome_filter, lo_pct, hi_pct)
 
     best_bic = np.inf
     best_break = None
@@ -650,12 +661,17 @@ def fit_p_mstar_piecewise(
     best_names_hi = None
     bic_scan = []
 
+    n_too_few = 0     # candidates rejected for too few points per side
+    n_ols_fail = 0    # candidates where OLS failed on one side
+    n_valid = 0       # candidates with valid BIC
+
     for brk in candidates:
         idx_lo = np.where(log_Mcl <= brk)[0]
         idx_hi = np.where(log_Mcl > brk)[0]
 
         if len(idx_lo) < 5 or len(idx_hi) < 5:
             bic_scan.append((brk, np.inf))
+            n_too_few += 1
             continue
 
         X_lo, names_lo = _build_X(idx_lo)
@@ -666,6 +682,7 @@ def fit_p_mstar_piecewise(
 
         if fit_lo is None or fit_hi is None:
             bic_scan.append((brk, np.inf))
+            n_ols_fail += 1
             continue
 
         rss_lo = np.sum(
@@ -680,6 +697,7 @@ def fit_p_mstar_piecewise(
         bic_total = bic_lo + bic_hi
 
         bic_scan.append((brk, bic_total))
+        n_valid += 1
 
         if bic_total < best_bic:
             best_bic = bic_total
@@ -691,8 +709,13 @@ def fit_p_mstar_piecewise(
             best_names_lo = names_lo
             best_names_hi = names_hi
 
+    logger.info("Piecewise (filter=%s): break scan results — %d valid, %d too-few-points, "
+                "%d OLS-failed (out of %d candidates)",
+                outcome_filter, n_valid, n_too_few, n_ols_fail, len(candidates))
+
     if best_fit_lo is None or best_fit_hi is None:
-        logger.warning("Piecewise fit failed — no valid break found")
+        logger.info("Piecewise (filter=%s): no valid break found — skipping piecewise",
+                     outcome_filter)
         return None
 
     # Package results so plot_parity can consume them
@@ -1765,12 +1788,19 @@ def main(argv: Optional[List[str]] = None) -> int:
                     suffix="_collapse_quad")
 
     # Part C — piecewise power-law (always run; diagnostic plots gated)
-    logger.info("--- Fit: p_fin/M_* PIECEWISE (expanding) ---")
+    print("\n--- Piecewise fitting: p_fin/M_* (expanding) ---")
     pw_exp = fit_p_mstar_piecewise(
         records, outcome_filter=EXPAND, **fit_kwargs)
-    logger.info("--- Fit: p_peak/M_* PIECEWISE (collapse) ---")
+    if pw_exp is None:
+        print("  Piecewise fit returned None for 'expand' "
+              "(see INFO log above for details)")
+
+    print("\n--- Piecewise fitting: p_peak/M_* (collapse) ---")
     pw_col = fit_p_mstar_piecewise(
         records, outcome_filter=COLLAPSE, **fit_kwargs)
+    if pw_col is None:
+        print("  Piecewise fit returned None for 'collapse' "
+              "(see INFO log above for details)")
 
     if args.diagnostics:
         plot_parity_piecewise(pw_exp, output_dir, args.fmt)
