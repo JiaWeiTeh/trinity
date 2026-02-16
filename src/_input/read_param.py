@@ -455,6 +455,7 @@ def read_param(path2file, write_summary=True):
     params['shell_grav_force_m'] = DescribedItem(np.array([]), info="Gravitational force per unit mass", ori_units="pc/Myr**2")
     params['shell_r_arr'] = DescribedItem(np.array([]), info="Radial grid through ionized+neutral shell", ori_units="pc")
     params['shell_n_arr'] = DescribedItem(np.array([]), info="Number density through ionized+neutral shell", ori_units="1/pc**3")
+    params['shell_ion_idx'] = DescribedItem(-1, info="Last index of ionized region in shell_r/n_arr (-1 if empty)", ori_units="N/A")
     params['shell_mass'] = DescribedItem(0, info="Shell mass", ori_units="Msun")
     params['shell_massDot'] = DescribedItem(0, info="Shell mass accretion rate", ori_units="Msun/Myr")
     params['shell_interpolate_massDot'] = DescribedItem(False, info="Use shell mass interpolation?", ori_units="N/A")

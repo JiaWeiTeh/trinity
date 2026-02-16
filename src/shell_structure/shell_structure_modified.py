@@ -68,6 +68,7 @@ class ShellProperties:
     # Shell density profile arrays (ionized + neutral)
     shell_r_arr: Union[np.ndarray, float]  # Radial grid through shell [pc]
     shell_n_arr: Union[np.ndarray, float]  # Number density through shell [1/pc^3]
+    shell_ion_idx: int  # Last index of ionized region in shell_r/n_arr (-1 if empty)
 
 
 def shell_structure_pure(params) -> ShellProperties:
@@ -212,11 +213,6 @@ def shell_structure_pure(params) -> ShellProperties:
     # Extract ionization front properties (for P_HII convex blend)
     n_IF = nShell_arr_ion[-1]  # Density at ionization front
     R_IF = rShell_arr_ion[-1]  # Radius of ionization front
-
-    # If all shell mass was swept within the ionized region, there is no
-    # neutral layer — the shell is fully ionized even though phi > 0.
-    if is_allMassSwept and not is_fullyIonised:
-        is_fullyIonised = True
 
     # =============================================================================
     # Continue computation if shell hasn't dissolved
@@ -375,7 +371,11 @@ def shell_structure_pure(params) -> ShellProperties:
         shell_F_rad = (f_absorbed * params['Lbol'].value / params['c_light'].value * (1 + tau_kappa_IR * params['dust_KappaIR'].value))
 
         # Combined shell density profile (ionized + neutral)
-        if is_fullyIonised:
+        # shell_ion_idx: last index belonging to the ionized region.
+        # If shell_ion_idx == len(shell_r_arr)-1, the entire shell is ionized
+        # (either is_fullyIonised, or all mass swept with photons leaking out).
+        shell_ion_idx = len(rShell_arr_ion) - 1
+        if is_fullyIonised or (is_allMassSwept and len(rShell_arr_neu) == 0):
             shell_r_arr = rShell_arr_ion
             shell_n_arr = nShell_arr_ion
         else:
@@ -402,6 +402,7 @@ def shell_structure_pure(params) -> ShellProperties:
         R_IF = rShell_previous
         shell_r_arr = np.array([])
         shell_n_arr = np.array([])
+        shell_ion_idx = -1
 
         logger.info('Shell dissolved.')
 
@@ -426,5 +427,6 @@ def shell_structure_pure(params) -> ShellProperties:
         R_IF=R_IF,
         shell_r_arr=shell_r_arr,
         shell_n_arr=shell_n_arr,
+        shell_ion_idx=shell_ion_idx,
     )
 
