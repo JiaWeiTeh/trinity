@@ -595,6 +595,12 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         if betadelta_result.T0 is not None:
             params['residual_T2_guess'].value = betadelta_result.T0
 
+        # Energy balance: luminosity gain and loss
+        if betadelta_result.L_gain is not None:
+            params['bubble_Lgain'].value = betadelta_result.L_gain
+        if betadelta_result.L_loss is not None:
+            params['bubble_Lloss'].value = betadelta_result.L_loss
+
         # ---------------------------------------------------------------------
         # Get R1 and Pb
         # ---------------------------------------------------------------------

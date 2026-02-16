@@ -65,6 +65,10 @@ class ShellProperties:
     n_IF: float  # Density at ionization front (code units)
     R_IF: float  # Radius of ionization front (pc)
 
+    # Shell density profile arrays (ionized + neutral)
+    shell_r_arr: Union[np.ndarray, float]  # Radial grid through shell [pc]
+    shell_n_arr: Union[np.ndarray, float]  # Number density through shell [1/pc^3]
+
 
 def shell_structure_pure(params) -> ShellProperties:
     """
@@ -208,6 +212,11 @@ def shell_structure_pure(params) -> ShellProperties:
     # Extract ionization front properties (for P_HII convex blend)
     n_IF = nShell_arr_ion[-1]  # Density at ionization front
     R_IF = rShell_arr_ion[-1]  # Radius of ionization front
+
+    # If all shell mass was swept within the ionized region, there is no
+    # neutral layer — the shell is fully ionized even though phi > 0.
+    if is_allMassSwept and not is_fullyIonised:
+        is_fullyIonised = True
 
     # =============================================================================
     # Continue computation if shell hasn't dissolved
@@ -365,6 +374,14 @@ def shell_structure_pure(params) -> ShellProperties:
         # Radiation force with IR trapping
         shell_F_rad = (f_absorbed * params['Lbol'].value / params['c_light'].value * (1 + tau_kappa_IR * params['dust_KappaIR'].value))
 
+        # Combined shell density profile (ionized + neutral)
+        if is_fullyIonised:
+            shell_r_arr = rShell_arr_ion
+            shell_n_arr = nShell_arr_ion
+        else:
+            shell_r_arr = np.concatenate([rShell_arr_ion, rShell_arr_neu])
+            shell_n_arr = np.concatenate([nShell_arr_ion, nShell_arr_neu])
+
     elif is_shellDissolved:
         f_absorbed_ion = 1.0
         f_absorbed_neu = 0.0
@@ -383,6 +400,8 @@ def shell_structure_pure(params) -> ShellProperties:
         # No ionization front when dissolved
         n_IF = 0.0
         R_IF = rShell_previous
+        shell_r_arr = np.array([])
+        shell_n_arr = np.array([])
 
         logger.info('Shell dissolved.')
 
@@ -405,5 +424,7 @@ def shell_structure_pure(params) -> ShellProperties:
         is_fullyIonised=is_fullyIonised,
         n_IF=n_IF,
         R_IF=R_IF,
+        shell_r_arr=shell_r_arr,
+        shell_n_arr=shell_n_arr,
     )
 

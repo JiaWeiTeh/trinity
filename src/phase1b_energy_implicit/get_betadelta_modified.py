@@ -119,6 +119,9 @@ class BetaDeltaResult:
     Edot_from_balance: Optional[float] = None   # residual_Edot2_guess
     T_bubble: Optional[float] = None            # residual_T1_guess
     T0: Optional[float] = None                  # residual_T2_guess
+    # Energy balance terms
+    L_gain: Optional[float] = None              # bubble_Lgain
+    L_loss: Optional[float] = None              # bubble_Lloss
 
 
 # =============================================================================
@@ -380,6 +383,8 @@ class ResidualDetails:
     T_bubble: float             # residual_T1_guess
     T0: float                   # residual_T2_guess
     bubble_props: Optional[BubbleProperties] = None
+    L_gain: float = 0.0        # bubble_Lgain
+    L_loss: float = 0.0        # bubble_Lloss
 
 
 def get_residual_detailed(
@@ -462,6 +467,8 @@ def get_residual_detailed(
         T_bubble=T_bubble,
         T0=T0,
         bubble_props=bubble_props,
+        L_gain=L_gain,
+        L_loss=L_loss,
     )
 
 
@@ -641,6 +648,9 @@ def solve_betadelta_pure(
         Edot_from_balance=details.Edot_from_balance,
         T_bubble=details.T_bubble,
         T0=details.T0,
+        # Energy balance terms
+        L_gain=details.L_gain,
+        L_loss=details.L_loss,
     )
 
 
