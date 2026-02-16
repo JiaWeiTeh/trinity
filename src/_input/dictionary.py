@@ -558,6 +558,22 @@ class DescribedDict(dict):
                 new_dict["shell_grav_r"] = self._to_json_ready_value(np.asarray(new_r))
                 continue
 
+            # -----------------------------------------------------------------
+            # Special-case: shell density profile arrays
+            # -----------------------------------------------------------------
+            if key == "shell_r_arr":
+                # saved together with simplified density array as "shell_r_arr"
+                continue
+
+            if key == "shell_n_arr":
+                x_arr = np.asarray(self["shell_r_arr"].value)
+                if x_arr.size > 0:
+                    y_arr = np.log10(np.maximum(np.asarray(val), eps))
+                    new_r, new_y = self.simplify(x_arr, y_arr, keyname=key)
+                    new_dict["log_" + key] = self._to_json_ready_value(np.asarray(new_y))
+                    new_dict["shell_r_arr"] = self._to_json_ready_value(np.asarray(new_r))
+                continue
+
             # Default: store everything as JSON-ready values
             new_dict[key] = self._to_json_ready_value(val)
 
