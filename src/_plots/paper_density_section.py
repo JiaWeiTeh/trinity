@@ -33,6 +33,7 @@ from src._output.trinity_reader import (
     load_output, find_all_simulations, TrinityOutput,
 )
 from src._functions.unit_conversions import CONV, INV_CONV, CGS
+from src.cloud_properties.bonnorEbertSphere import solve_lane_emden
 
 # Configure logging
 logging.basicConfig(
@@ -146,6 +147,83 @@ def add_legend(ax, tags, **kwargs):
         handles.append(Line2D([0], [0], color=s['color'], ls=s['ls'],
                               lw=1.5, label=s['label']))
     ax.legend(handles=handles, **kwargs)
+
+
+# =============================================================================
+# Cloud initial-condition reader (rCore / effective a)
+# =============================================================================
+
+def _parse_summary(sim_folder: Path) -> dict:
+    """Parse ``*_summary.txt`` next to dictionary.jsonl into {key: str}."""
+    for p in sorted(sim_folder.glob('*_summary.txt')):
+        result = {}
+        with open(p, 'r', encoding='utf-8') as fh:
+            for line in fh:
+                line = line.strip()
+                if not line or line.startswith('#'):
+                    continue
+                parts = line.split(None, 1)
+                if len(parts) == 2:
+                    result[parts[0]] = parts[1]
+        return result
+    return {}
+
+
+def _try_float(val_str, fallback=np.nan):
+    try:
+        return float(val_str)
+    except (ValueError, TypeError):
+        return fallback
+
+
+def compute_rCore_for_tag(tag: str, sim_folder: Path) -> float:
+    """
+    Return the core radius (or effective scale length *a* for BE) in pc.
+
+    For power-law profiles: reads ``rCore`` from ``_summary.txt``.
+    For Bonnor-Ebert: computes ``a = (M / (4π m(ξ) ρc))^{1/3}``
+    following the convention in ``paper_AllowedGMC.py``.
+    """
+    raw = _parse_summary(sim_folder)
+    if not raw:
+        return np.nan
+
+    dens_profile = raw.get('dens_profile', '')
+
+    if 'BE' in dens_profile or tag.startswith('BE'):
+        # Effective core length a for Bonnor-Ebert sphere
+        mCloud = _try_float(raw.get('mCloud'))       # Msun (post-SFE)
+        nCore  = _try_float(raw.get('nCore'))         # 1/pc³ (internal)
+        mu_ion = _try_float(raw.get('mu_ion'))        # Msun  (internal)
+
+        if not (np.isfinite(mCloud) and np.isfinite(nCore) and np.isfinite(mu_ion)):
+            return np.nan
+
+        # Omega and xi_out from summary
+        densBE_Omega = _try_float(raw.get('densBE_Omega'), 14.1)
+        le_sol = solve_lane_emden()
+        # Find xi_out where ρ/ρc = 1/Omega
+        xi_out = float(le_sol.f_xi_from_rho(1.0 / densBE_Omega))
+        m_dim  = float(le_sol.f_m(xi_out))
+
+        # CGS constants
+        Msun_g = INV_CONV.Msun2g     # g/Msun
+        pc_cm  = INV_CONV.pc2cm      # cm/pc
+        m_H_g  = CGS.m_H             # g
+
+        # Core mass density in CGS
+        # nCore [1/pc³] * mu_ion [Msun] -> [Msun/pc³]
+        # -> CGS: * Msun_g / pc_cm³
+        rhoCore_cgs = nCore * mu_ion * Msun_g / pc_cm**3
+        M_cgs = mCloud * Msun_g
+
+        # a = (M / (4π m(ξ) ρc))^{1/3}
+        a_cgs = (M_cgs / (4.0 * np.pi * m_dim * rhoCore_cgs))**(1.0 / 3.0)
+        a_pc  = a_cgs / pc_cm
+        return a_pc
+    else:
+        # Power-law: read rCore directly (in pc)
+        return _try_float(raw.get('rCore'))
 
 
 # =============================================================================
@@ -299,6 +377,7 @@ def print_summary_table(all_scalars: dict, tags: list):
     print(sep)
 
     rows = [
+        ('rCore (eff. a for BE) [pc]','rCore',         '{:.3f}'),
         ('R at 1 Myr [pc]',          'R_1Myr',        '{:.3f}'),
         ('v at 1 Myr [km/s]',        'v_1Myr',        '{:.2f}'),
         ('p at 1 Myr [Msun km/s]',   'p_1Myr',        '{:.1f}'),
@@ -544,6 +623,15 @@ Examples:
     print()
 
     # ------------------------------------------------------------------
+    # Build tag -> simulation folder mapping (for _summary.txt lookup)
+    # ------------------------------------------------------------------
+    sim_folders = {}
+    for data_path in find_all_simulations(Path(args.folder)):
+        tag_here = identify_profile_tag(data_path.parent.name)
+        if tag_here and tag_here in PROFILE_STYLES:
+            sim_folders[tag_here] = data_path.parent
+
+    # ------------------------------------------------------------------
     # Extract time-series and scalars
     # ------------------------------------------------------------------
     all_ts = {}
@@ -552,6 +640,13 @@ Examples:
         ts = extract_timeseries(simulations[tag])
         all_ts[tag] = ts
         all_scalars[tag] = extract_scalars(ts)
+
+        # Inject rCore (or effective scale length a for BE)
+        if tag in sim_folders:
+            all_scalars[tag]['rCore'] = compute_rCore_for_tag(
+                tag, sim_folders[tag])
+        else:
+            all_scalars[tag]['rCore'] = np.nan
 
     # ------------------------------------------------------------------
     # Print summary table
