@@ -28,8 +28,11 @@ Units:
 """
 
 import sys
+import logging
 import numpy as np
 from scipy.optimize import brentq
+
+logger = logging.getLogger(__name__)
 
 # =============================================================================
 # Note on units
@@ -142,7 +145,11 @@ def compute_rCloud_powerlaw(M_cloud, nCore, alpha, rCore=None, rCore_fraction=0.
         try:
             rCloud = brentq(mass_residual, r_min, r_max, xtol=1e-10)
         except ValueError:
-            # Fallback to homogeneous approximation
+            logger.warning(
+                f"brentq failed for alpha={alpha}, rCore={rCore:.3f} pc. "
+                f"Falling back to rCloud_homo={rCloud_homo:.3f} pc. "
+                f"Check parameter consistency."
+            )
             rCloud = rCloud_homo
 
         return rCloud, rCore
@@ -161,6 +168,11 @@ def compute_rCloud_powerlaw(M_cloud, nCore, alpha, rCore=None, rCore_fraction=0.
         try:
             rCloud = brentq(mass_residual_fractional, r_min, r_max, xtol=1e-10)
         except ValueError:
+            logger.warning(
+                f"brentq failed for alpha={alpha}, rCore_fraction={rCore_fraction}. "
+                f"Falling back to rCloud_homo={rCloud_homo:.3f} pc. "
+                f"Check parameter consistency."
+            )
             rCloud = rCloud_homo
 
         rCore_out = rCloud * rCore_fraction
