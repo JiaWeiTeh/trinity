@@ -200,113 +200,240 @@ def savefig(fig, name: str, output_dir: Path, fmt: str = 'pdf'):
 
 
 # =============================================================================
-# Figure 1: Enclosed Mass Profile (STATIC)
+# Helpers: read initial-condition parameters from _summary.txt
+# =============================================================================
+
+# Default fallback values (matching density_profile_sweep.param)
+_DEFAULTS = dict(
+    mCloud=1e5 * (1 - 0.01),   # Msun, post-SFE
+    nCore=1e4 * CONV.ndens_cgs2au,  # 1/pc³
+    rCore=1.0,                  # pc
+    nISM=0.1 * CONV.ndens_cgs2au,   # 1/pc³
+    mu_ion=1.4 * CGS.m_H * CONV.g2Msun,  # Msun
+    dens_profile='densPL',
+    densPL_alpha=0.0,
+    densBE_Omega=14.1,
+)
+
+
+def parse_summary_file(summary_path: Path) -> dict:
+    """
+    Parse a TRINITY ``_summary.txt`` file into a {key: value_string} dict.
+
+    Format produced by ``read_param.py``:
+        key (left-padded to 30 chars)  value_repr
+    Lines starting with ``#`` are comments.
+    """
+    result = {}
+    with open(summary_path, 'r', encoding='utf-8') as fh:
+        for line in fh:
+            line = line.strip()
+            if not line or line.startswith('#'):
+                continue
+            # First token is the key, remainder is the value string
+            parts = line.split(None, 1)
+            if len(parts) == 2:
+                result[parts[0]] = parts[1]
+    return result
+
+
+def _try_float(val_str: str, fallback: float = 0.0) -> float:
+    """Safely convert a string to float."""
+    try:
+        return float(val_str)
+    except (ValueError, TypeError):
+        return fallback
+
+
+def get_cloud_params(sim_folder: Path) -> dict:
+    """
+    Read cloud initial-condition parameters for a simulation.
+
+    Looks for ``*_summary.txt`` in *sim_folder* (same directory as
+    ``dictionary.jsonl``).  Falls back to hard-coded defaults if the
+    file is missing.
+
+    Returns a dict with keys:
+        mCloud, nCore, rCore, nISM, mu_ion   – all in internal units
+        dens_profile, densPL_alpha, densBE_Omega
+    """
+    # Look for _summary.txt alongside dictionary.jsonl
+    summaries = sorted(sim_folder.glob('*_summary.txt'))
+    if not summaries:
+        logger.warning(f"No _summary.txt in {sim_folder}; using defaults")
+        return dict(_DEFAULTS)
+
+    raw = parse_summary_file(summaries[0])
+
+    return {
+        'mCloud':        _try_float(raw.get('mCloud'),        _DEFAULTS['mCloud']),
+        'nCore':         _try_float(raw.get('nCore'),         _DEFAULTS['nCore']),
+        'rCore':         _try_float(raw.get('rCore'),         _DEFAULTS['rCore']),
+        'nISM':          _try_float(raw.get('nISM'),          _DEFAULTS['nISM']),
+        'mu_ion':        _try_float(raw.get('mu_ion'),        _DEFAULTS['mu_ion']),
+        'dens_profile':  raw.get('dens_profile',              _DEFAULTS['dens_profile']),
+        'densPL_alpha':  _try_float(raw.get('densPL_alpha'),  _DEFAULTS['densPL_alpha']),
+        'densBE_Omega':  _try_float(raw.get('densBE_Omega'),  _DEFAULTS['densBE_Omega']),
+    }
+
+
+def _get_sim_folders(sweep_dir: str) -> dict:
+    """Return {profile_tag: folder_path} for every sub-simulation."""
+    sweep_path = Path(sweep_dir)
+    sim_files = find_all_simulations(sweep_path)
+    folders = {}
+    for data_path in sim_files:
+        tag = identify_profile_tag(data_path.parent.name)
+        if tag and tag in PROFILE_STYLES:
+            folders[tag] = data_path.parent
+    return folders
+
+
+# Density conversion: internal [1/pc³] -> CGS [cm⁻³]
+NDENS_AU2CGS = INV_CONV.ndens_au2cgs
+
+
+# =============================================================================
+# Figure 1: Cloud Density & Enclosed Mass Profiles (STATIC, 2-panel)
 # =============================================================================
 
 def plot_enclosed_mass(sweep_dir: str, output_dir: Path, fmt: str = 'pdf',
                        show: bool = False) -> None:
     """
-    Plot enclosed mass M_enc(R) for all four density profiles analytically.
+    Plot n(r) density profile and M_enc(r) for all four density profiles.
 
-    This does NOT require simulation output -- it computes M(r) from the
-    cloud properties module using the sweep's physical parameters.
+    Reads cloud parameters from ``_summary.txt`` in each simulation
+    subfolder.  Falls back to hard-coded defaults when unavailable.
+
+    Produces a single figure with two panels:
+      (a) number-density  n(r)  [cm⁻³]  vs  r [pc]
+      (b) enclosed mass   M(<r) [Msun]   vs  r [pc]
     """
-    logger.info("Figure 1: Enclosed Mass Profile")
+    logger.info("Figure 1: Cloud Density & Enclosed Mass Profiles")
 
-    # Read sweep parameters from the .param file or use defaults
-    # These are the fixed parameters from density_profile_sweep.param
-    mCloud = 1e5   # Msun (before SFE)
-    sfe = 0.01
-    nCore_cgs = 1e4  # cm^-3
-    rCore_pc = 1.0   # pc (from density_profile_sweep.param)
-    nISM_cgs = 0.1   # cm^-3
-    mu = 1.4         # mean molecular weight
+    # Discover per-run folders (for reading _summary.txt)
+    sim_folders = _get_sim_folders(sweep_dir)
 
-    # Convert to internal units [Msun, pc, Myr]
-    # After SFE, mCloud_afterSF = mCloud * (1 - sfe)
-    mCloud_afterSF = mCloud * (1 - sfe)
-    nCore = nCore_cgs * CONV.ndens_cgs2au  # 1/pc^3
-    nISM = nISM_cgs * CONV.ndens_cgs2au
-    rCore = rCore_pc  # pc is already AU
-    mu_au = mu * CGS.m_H * CONV.g2Msun  # Msun
-    rhoCore = nCore * mu_au  # Msun/pc^3
-
-    fig, ax = plt.subplots(figsize=(5, 4))
-
-    # Profile configurations: (tag, profile_type, alpha, omega)
+    # Profile configurations: (tag, profile_type, alpha_default, omega_default)
     profiles = [
-        ('PL0',  'densPL', 0,  None),
-        ('PL-1', 'densPL', -1, None),
-        ('PL-2', 'densPL', -2, None),
+        ('PL0',  'densPL', 0,    None),
+        ('PL-1', 'densPL', -1,   None),
+        ('PL-2', 'densPL', -2,   None),
         ('BE14', 'densBE', None, 14.1),
     ]
 
-    for tag, ptype, alpha, omega in profiles:
+    fig, axes = plt.subplots(1, 2, figsize=(9, 4))
+    ax_n, ax_M = axes
+
+    for tag, ptype_default, alpha_default, omega_default in profiles:
         s = get_style(tag)
 
+        # --- Read parameters from _summary.txt (or use defaults) ----------
+        if tag in sim_folders:
+            cp = get_cloud_params(sim_folders[tag])
+        else:
+            cp = dict(_DEFAULTS)
+
+        mCloud  = cp['mCloud']
+        nCore   = cp['nCore']          # 1/pc³
+        rCore   = cp['rCore']          # pc
+        nISM    = cp['nISM']           # 1/pc³
+        mu_au   = cp['mu_ion']         # Msun
+        rhoCore = nCore * mu_au        # Msun/pc³
+
+        # Override profile type / shape params from summary when available
+        ptype = cp['dens_profile'] if cp['dens_profile'] in ('densPL', 'densBE') else ptype_default
+        alpha = cp['densPL_alpha'] if ptype == 'densPL' else alpha_default
+        omega = cp['densBE_Omega'] if ptype == 'densBE' else omega_default
+
+        # --- Compute n(r) and M(r) ----------------------------------------
         if ptype == 'densPL':
-            # Compute rCloud
+            # Cloud radius
             if alpha == 0:
-                rCloud = compute_rCloud_homogeneous(mCloud_afterSF, nCore, mu=mu_au)
+                rCloud = compute_rCloud_homogeneous(mCloud, nCore, mu=mu_au)
             else:
                 rCloud, _ = compute_rCloud_powerlaw(
-                    mCloud_afterSF, nCore, alpha, rCore=rCore, mu=mu_au
+                    mCloud, nCore, alpha, rCore=rCore, mu=mu_au
                 )
 
-            # Create radius array
-            r_arr = np.logspace(np.log10(1e-3), np.log10(rCloud * 1.05), 500)
-            M_arr = np.zeros_like(r_arr)
+            r_arr = np.logspace(np.log10(1e-3), np.log10(rCloud * 1.3), 500)
+            n_arr = np.empty_like(r_arr)
+            M_arr = np.empty_like(r_arr)
 
             if alpha == 0:
                 inside = r_arr <= rCloud
-                M_arr[inside] = (4.0 / 3.0) * np.pi * r_arr[inside]**3 * rhoCore
-                M_arr[~inside] = mCloud_afterSF
+                n_arr[inside]  = nCore
+                n_arr[~inside] = nISM
+                M_arr[inside]  = (4.0 / 3.0) * np.pi * r_arr[inside]**3 * rhoCore
+                M_arr[~inside] = mCloud
             else:
-                # Region 1: r <= rCore
                 reg1 = r_arr <= rCore
-                M_arr[reg1] = (4.0 / 3.0) * np.pi * r_arr[reg1]**3 * rhoCore
-
-                # Region 2: rCore < r <= rCloud
                 reg2 = (r_arr > rCore) & (r_arr <= rCloud)
+                reg3 = r_arr > rCloud
+
+                # density
+                n_arr[reg1] = nCore
+                n_arr[reg2] = nCore * (r_arr[reg2] / rCore) ** alpha
+                n_arr[reg3] = nISM
+
+                # enclosed mass
+                M_arr[reg1] = (4.0 / 3.0) * np.pi * r_arr[reg1]**3 * rhoCore
                 M_arr[reg2] = 4.0 * np.pi * rhoCore * (
                     rCore**3 / 3.0 +
                     (r_arr[reg2]**(3.0 + alpha) - rCore**(3.0 + alpha)) /
                     ((3.0 + alpha) * rCore**alpha)
                 )
-
-                # Region 3: r > rCloud
-                reg3 = r_arr > rCloud
-                M_arr[reg3] = mCloud_afterSF
+                M_arr[reg3] = mCloud
 
         elif ptype == 'densBE':
-            # Use Lane-Emden solution
             le_sol = solve_lane_emden()
             be_result = create_BE_sphere(
-                M_cloud=mCloud_afterSF, n_core=nCore,
+                M_cloud=mCloud, n_core=nCore,
                 Omega=omega, mu=mu_au
             )
-            rCloud = be_result.r_out
-            xi_out = be_result.xi_out
+            rCloud  = be_result.r_out
+            xi_out  = be_result.xi_out
             m_dim_out = float(le_sol.f_m(xi_out))
 
-            r_arr = np.logspace(np.log10(1e-3), np.log10(rCloud * 1.05), 500)
-            M_arr = np.zeros_like(r_arr)
+            r_arr = np.logspace(np.log10(1e-3), np.log10(rCloud * 1.3), 500)
+            n_arr = np.empty_like(r_arr)
+            M_arr = np.empty_like(r_arr)
 
             inside = r_arr <= rCloud
             xi_inside = xi_out * (r_arr[inside] / rCloud)
+            rho_ratio = le_sol.f_rho_rhoc(xi_inside)
+
+            # density
+            n_arr[inside]  = nCore * rho_ratio
+            n_arr[~inside] = nISM
+
+            # enclosed mass
             m_inside = le_sol.f_m(xi_inside)
-            M_arr[inside] = mCloud_afterSF * (m_inside / m_dim_out)
-            M_arr[~inside] = mCloud_afterSF
+            M_arr[inside]  = mCloud * (m_inside / m_dim_out)
+            M_arr[~inside] = mCloud
 
-        ax.loglog(r_arr, M_arr, color=s['color'], ls=s['ls'], lw=1.5,
-                  label=s['label'])
+        # --- Convert density to CGS for display --------------------------
+        n_cgs = n_arr * NDENS_AU2CGS
 
-    ax.set_xlabel(r'$R$ [pc]')
-    ax.set_ylabel(r'$M_{\rm enc}(<R)$ [M$_\odot$]')
-    ax.set_title(r'Enclosed Mass Profile')
+        # --- Plot ---------------------------------------------------------
+        ax_n.loglog(r_arr, n_cgs, color=s['color'], ls=s['ls'], lw=1.5,
+                    label=s['label'])
+        ax_M.loglog(r_arr, M_arr, color=s['color'], ls=s['ls'], lw=1.5,
+                    label=s['label'])
 
-    add_legend(ax, PROFILE_ORDER, loc='lower right')
+    # Panel (a): density
+    ax_n.set_xlabel(r'$r$ [pc]')
+    ax_n.set_ylabel(r'$n(r)$ [cm$^{-3}$]')
+    ax_n.set_title(r'(a) Density Profile')
 
+    # Panel (b): enclosed mass
+    ax_M.set_xlabel(r'$r$ [pc]')
+    ax_M.set_ylabel(r'$M_{\rm enc}(<r)$ [M$_\odot$]')
+    ax_M.set_title(r'(b) Enclosed Mass')
+
+    add_legend(ax_n, PROFILE_ORDER, loc='best', fontsize=9)
+
+    fig.tight_layout()
     savefig(fig, 'densityProfile_Menc', output_dir, fmt)
     if show:
         plt.show()
