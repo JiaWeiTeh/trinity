@@ -411,6 +411,13 @@ def plot_comparison(all_ts: dict, tags: list, output_dir: Path,
                 ax.plot(t[mask], y[mask],
                         color=s['color'], ls=s['ls'], lw=1.5)
 
+            # Add rCloud horizontal line on the R(t) panel
+            if key == 'R':
+                rC = ts['rCloud']
+                if rC.size > 0 and rC[-1] > 0:
+                    ax.axhline(rC[-1], color=s['color'], ls='--',
+                               lw=0.8, alpha=0.5)
+
         ax.set_xlabel(r'$t$ [Myr]')
         ax.set_ylabel(ylabel)
         ax.set_title(title, loc='left', fontsize=12)

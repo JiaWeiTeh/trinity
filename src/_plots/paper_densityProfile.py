@@ -335,8 +335,14 @@ def plot_shell_evolution(simulations: dict, output_dir: Path, fmt: str = 'pdf',
         v2 = safe_get(output, 'v2') * V_AU2KMS  # convert pc/Myr -> km/s
         mshell = safe_get(output, 'shell_mass')
 
-        # Panel (a): R(t)
+        # Cloud radius (constant per run)
+        rCloud = safe_get(output, 'rCloud')
+
+        # Panel (a): R(t) with rCloud line
         axes[0].plot(t, R2, color=s['color'], ls=s['ls'], lw=1.5)
+        if rCloud.size > 0 and rCloud[-1] > 0:
+            axes[0].axhline(rCloud[-1], color=s['color'], ls='--',
+                            lw=0.8, alpha=0.5)
 
         # Panel (b): v(t)
         axes[1].plot(t, v2, color=s['color'], ls=s['ls'], lw=1.5)
