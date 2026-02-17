@@ -272,8 +272,12 @@ def build_composite(shell_snap, bubble_snap, is_partial, nCore_cgs):
     pdot_W = float(bubble_snap.get('pdot_W', 0))
     Lmech_W = float(bubble_snap.get('Lmech_W', 0))
 
-    r_wind_min = max(0.01, R1_rescaled * 0.01)
-    r_wind = np.logspace(np.log10(r_wind_min), np.log10(R1_rescaled), 50)
+    # Ensure R1_rescaled is large enough to display a wind zone
+    R1_rescaled = max(R1_rescaled, R2_shell * 0.02)
+
+    r_wind_min = R1_rescaled * 0.01
+    r_wind = np.logspace(np.log10(r_wind_min), np.log10(R1_rescaled), 50,
+                         endpoint=False)  # exclude R1 itself
 
     if pdot_W > 0 and Lmech_W > 0:
         # v_w = 2 * Lmech / pdot  [pc/Myr]
@@ -296,11 +300,17 @@ def build_composite(shell_snap, bubble_snap, is_partial, nCore_cgs):
 
     # ------------------------------------------------------------------
     # Zone 2: Hot bubble (R1 -> R2)
+    # Clip rescaled bubble arrays strictly to [R1_rescaled, R2_shell]
     # ------------------------------------------------------------------
-    r_bubble = bub_r_n_rescaled
-    n_bubble = bub_n_cgs
-    r_bubble_T = bub_r_T_rescaled
-    T_bubble = bub_T
+    def _clip_zone(r_arr, y_arr, r_lo, r_hi):
+        """Keep only points with r_lo <= r <= r_hi."""
+        mask = (r_arr >= r_lo) & (r_arr <= r_hi)
+        return r_arr[mask], y_arr[mask]
+
+    r_bubble, n_bubble = _clip_zone(
+        bub_r_n_rescaled, bub_n_cgs, R1_rescaled, R2_shell)
+    r_bubble_T, T_bubble = _clip_zone(
+        bub_r_T_rescaled, bub_T, R1_rescaled, R2_shell)
 
     # ------------------------------------------------------------------
     # Zone 3: Ionized shell (R2 -> R_IF)
@@ -350,24 +360,8 @@ def build_composite(shell_snap, bubble_snap, is_partial, nCore_cgs):
     T_ism = np.full_like(r_ism, T_ISM)
 
     # ------------------------------------------------------------------
-    # Collect zones
+    # Zone boundary radii (ordered inside-out)
     # ------------------------------------------------------------------
-    zones = [
-        {'r': r_wind, 'n': n_wind_cgs, 'T': T_wind, 'label': 'Free wind',
-         'color': '#E8F0FE'},
-        {'r_n': r_bubble, 'n': n_bubble,
-         'r_T': r_bubble_T, 'T': T_bubble,
-         'label': 'Hot bubble', 'color': '#FFF3E0'},
-        {'r': r_ion, 'n': n_ion, 'T': T_ion, 'label': r'H\,{\sc ii}',
-         'color': '#E8F5E9'},
-        {'r': r_neu, 'n': n_neu, 'T': T_neu, 'label': 'Neutral shell',
-         'color': '#FBE9E7'},
-        {'r': r_cloud, 'n': n_cloud_cgs, 'T': T_cloud, 'label': 'Cloud',
-         'color': '#F3E5F5'},
-        {'r': r_ism, 'n': n_ism_cgs, 'T': T_ism, 'label': 'ISM',
-         'color': '#E0F7FA'},
-    ]
-
     boundaries = {
         r'$R_1$': R1_rescaled,
         r'$R_2$': R2_shell,
@@ -375,6 +369,29 @@ def build_composite(shell_snap, bubble_snap, is_partial, nCore_cgs):
         r'$r_{\rm Shell}$': rShell_shell,
         r'$r_{\rm Cloud}$': rCloud,
     }
+
+    # Build zone list with explicit radial bounds for shading
+    zones = [
+        {'r': r_wind, 'n': n_wind_cgs, 'T': T_wind,
+         'label': 'Free wind', 'color': '#E8F0FE',
+         'r_lo': r_wind_min, 'r_hi': R1_rescaled},
+        {'r_n': r_bubble, 'n': n_bubble,
+         'r_T': r_bubble_T, 'T': T_bubble,
+         'label': 'Hot bubble', 'color': '#FFF3E0',
+         'r_lo': R1_rescaled, 'r_hi': R2_shell},
+        {'r': r_ion, 'n': n_ion, 'T': T_ion,
+         'label': r'H\,{\sc ii}', 'color': '#E8F5E9',
+         'r_lo': R2_shell, 'r_hi': R_IF_shell},
+        {'r': r_neu, 'n': n_neu, 'T': T_neu,
+         'label': 'Neutral shell', 'color': '#FBE9E7',
+         'r_lo': R_IF_shell, 'r_hi': rShell_shell},
+        {'r': r_cloud, 'n': n_cloud_cgs, 'T': T_cloud,
+         'label': 'Cloud', 'color': '#F3E5F5',
+         'r_lo': rShell_shell, 'r_hi': rCloud},
+        {'r': r_ism, 'n': n_ism_cgs, 'T': T_ism,
+         'label': 'ISM', 'color': '#E0F7FA',
+         'r_lo': rCloud, 'r_hi': 2.0 * rCloud},
+    ]
 
     return zones, boundaries
 
@@ -391,22 +408,18 @@ def plot_schematic(zones, boundaries, save_dir, folder_name):
     ax_T = ax_n.twinx()
 
     # ------------------------------------------------------------------
-    # Zone background shading
+    # Zone background shading (use explicit r_lo/r_hi, not data extents)
     # ------------------------------------------------------------------
-    sorted_bounds = sorted(
-        [(v, k) for k, v in boundaries.items() if v is not None],
-        key=lambda x: x[0],
-    )
-
-    shade_edges = []
     for zone in zones:
+        r_lo = zone.get('r_lo', None)
+        r_hi = zone.get('r_hi', None)
+        if r_lo is None or r_hi is None or r_hi <= r_lo:
+            continue
+        # Skip zones with no data
         r_arr = zone.get('r', zone.get('r_n', np.array([])))
-        if r_arr.size > 0:
-            shade_edges.append((r_arr.min(), r_arr.max(), zone['color'], zone['label']))
-
-    for r_lo, r_hi, color, label in shade_edges:
-        if r_hi > r_lo:
-            ax_n.axvspan(r_lo, r_hi, color=color, alpha=0.35, zorder=0)
+        if r_arr.size == 0:
+            continue
+        ax_n.axvspan(r_lo, r_hi, color=zone['color'], alpha=0.35, zorder=0)
 
     # ------------------------------------------------------------------
     # Density curve (solid, dark blue)
@@ -458,13 +471,15 @@ def plot_schematic(zones, boundaries, save_dir, folder_name):
         )
 
     # ------------------------------------------------------------------
-    # Zone name labels (positioned inside shading)
+    # Zone name labels (positioned at geometric centre of zone bounds)
     # ------------------------------------------------------------------
     for zone in zones:
+        r_lo = zone.get('r_lo', None)
+        r_hi = zone.get('r_hi', None)
         r_arr = zone.get('r', zone.get('r_n', np.array([])))
-        if r_arr.size == 0:
+        if r_lo is None or r_hi is None or r_hi <= r_lo or r_arr.size == 0:
             continue
-        r_mid = np.sqrt(r_arr.min() * r_arr.max())  # geometric mean
+        r_mid = np.sqrt(r_lo * r_hi)  # geometric mean of zone bounds
         ax_n.text(
             r_mid, 0.04, zone['label'],
             transform=ax_n.get_xaxis_transform(),
