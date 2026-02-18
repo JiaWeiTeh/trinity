@@ -30,7 +30,6 @@ Units:
 import sys
 import logging
 import numpy as np
-from scipy.optimize import brentq
 
 logger = logging.getLogger(__name__)
 
@@ -79,12 +78,14 @@ def compute_rCloud_powerlaw(M_cloud, nCore, alpha, rCore=None, rCore_fraction=0.
     """
     Compute cloud radius for power-law density profile.
 
-    Solves for rCloud given M_cloud, nCore, alpha, and either:
-    - Fixed rCore value, or
-    - rCore = rCore_fraction × rCloud (solved iteratively)
+    Uses the analytical inversion of the enclosed-mass formula
+    (Rahner+ 2018 Eq 25) — no numerical root-finding required.
 
-    Mass formula (Rahner+ 2018 Eq 25):
+    Mass formula:
         M = 4πρc [rCore³/3 + (rCloud^(3+α) - rCore^(3+α))/((3+α)×rCore^α)]
+
+    Solving for rCloud (valid for α ≠ 0, α ≠ -3):
+        rCloud = { [M/(4πρc) - rCore³/3] × (3+α) × rCore^α + rCore^(3+α) }^(1/(3+α))
 
     Parameters
     ----------
@@ -107,6 +108,12 @@ def compute_rCloud_powerlaw(M_cloud, nCore, alpha, rCore=None, rCore_fraction=0.
         Cloud radius [pc]
     rCore : float
         Core radius [pc]
+
+    Raises
+    ------
+    ValueError
+        If α ≈ -3 (mass integral diverges) or if the parameters are
+        unphysical (core mass alone exceeds cloud mass).
 
     Examples
     --------
@@ -132,50 +139,75 @@ def compute_rCloud_powerlaw(M_cloud, nCore, alpha, rCore=None, rCore_fraction=0.
             ((3.0 + alpha) * rCore_val**alpha)
         )
 
+    # Guard: α = -3 makes the mass integral diverge
+    if abs(3.0 + alpha) < 1e-14:
+        raise ValueError(
+            "alpha approx -3: mass integral diverges, cannot compute rCloud."
+        )
+
     if rCore is not None:
-        # Fixed rCore: solve directly for rCloud
-        def mass_residual(rCloud_guess):
-            return mass_at_radius(rCloud_guess, rCore) - M_cloud
+        # ----- Fixed rCore: analytical inversion (Rahner+ 2018 Eq 25) -----
+        # M = 4πρc [rc³/3 + (rCl^(3+α) - rc^(3+α)) / ((3+α) rc^α)]
+        # => rCl^(3+α) = [M/(4πρc) - rc³/3] (3+α) rc^α  +  rc^(3+α)
+        A = M_cloud / (4.0 * np.pi * rhoCore) - rCore**3 / 3.0
+        rhs = A * (3.0 + alpha) * rCore**alpha + rCore**(3.0 + alpha)
 
-        # Initial bracket based on homogeneous estimate
-        rCloud_homo = compute_rCloud_homogeneous(M_cloud, nCore, mu)
-        r_min = max(rCore * 1.01, 0.1 * rCloud_homo)  # rCloud must be > rCore
-        r_max = 100.0 * rCloud_homo
-
-        try:
-            rCloud = brentq(mass_residual, r_min, r_max, xtol=1e-10)
-        except ValueError:
-            logger.warning(
-                f"brentq failed for alpha={alpha}, rCore={rCore:.3f} pc. "
-                f"Falling back to rCloud_homo={rCloud_homo:.3f} pc. "
-                f"Check parameter consistency."
+        if rhs <= 0:
+            raise ValueError(
+                f"Unphysical parameters: the uniform core (r<={rCore:.3f} pc) "
+                f"already exceeds the cloud mass budget. "
+                f"M_cloud={M_cloud:.3e}, nCore={nCore:.3e}, alpha={alpha}, "
+                f"rCore={rCore:.3f}"
             )
-            rCloud = rCloud_homo
 
+        rCloud = rhs ** (1.0 / (3.0 + alpha))
+
+        # Forward mass check
+        M_check = mass_at_radius(rCloud, rCore)
+        rel_err = abs(M_check - M_cloud) / M_cloud
+        if rel_err > 1e-6:
+            raise RuntimeError(
+                f"Analytical rCloud failed consistency check: "
+                f"M(rCloud)={M_check:.6e} vs M_cloud={M_cloud:.6e}, "
+                f"rel_err={rel_err:.2e}"
+            )
+        logger.debug(
+            f"rCloud_powerlaw (fixed rCore): alpha={alpha}, "
+            f"rCore={rCore:.4f}, rCloud={rCloud:.4f}, rel_err={rel_err:.2e}"
+        )
         return rCloud, rCore
 
     else:
-        # rCore = fraction × rCloud: solve iteratively
-        def mass_residual_fractional(rCloud_guess):
-            rCore_val = rCloud_guess * rCore_fraction
-            return mass_at_radius(rCloud_guess, rCore_val) - M_cloud
+        # ----- Fractional rCore: rCore = f × rCloud ----------------------
+        # Substituting rCore = f rCl into the mass formula gives
+        #   M = 4πρc rCl³ [ f³/3 + (1 - f^(3+α)) / ((3+α) f^α) ]
+        # so  rCl = [ M / (4πρc g) ]^(1/3)
+        f = rCore_fraction
+        g = f**3 / 3.0 + (1.0 - f**(3.0 + alpha)) / ((3.0 + alpha) * f**alpha)
 
-        # Initial bracket
-        rCloud_homo = compute_rCloud_homogeneous(M_cloud, nCore, mu)
-        r_min = 0.1 * rCloud_homo
-        r_max = 10.0 * rCloud_homo
-
-        try:
-            rCloud = brentq(mass_residual_fractional, r_min, r_max, xtol=1e-10)
-        except ValueError:
-            logger.warning(
-                f"brentq failed for alpha={alpha}, rCore_fraction={rCore_fraction}. "
-                f"Falling back to rCloud_homo={rCloud_homo:.3f} pc. "
-                f"Check parameter consistency."
+        if g <= 0:
+            raise ValueError(
+                f"Unphysical parameters: geometric factor g={g:.6e} <= 0 "
+                f"for alpha={alpha}, rCore_fraction={f}."
             )
-            rCloud = rCloud_homo
 
-        rCore_out = rCloud * rCore_fraction
+        rCloud = (M_cloud / (4.0 * np.pi * rhoCore * g)) ** (1.0 / 3.0)
+        rCore_out = rCloud * f
+
+        # Forward mass check
+        M_check = mass_at_radius(rCloud, rCore_out)
+        rel_err = abs(M_check - M_cloud) / M_cloud
+        if rel_err > 1e-6:
+            raise RuntimeError(
+                f"Analytical rCloud failed consistency check: "
+                f"M(rCloud)={M_check:.6e} vs M_cloud={M_cloud:.6e}, "
+                f"rel_err={rel_err:.2e}"
+            )
+        logger.debug(
+            f"rCloud_powerlaw (fractional rCore): alpha={alpha}, "
+            f"f={f}, rCloud={rCloud:.4f}, rCore={rCore_out:.4f}, "
+            f"rel_err={rel_err:.2e}"
+        )
         return rCloud, rCore_out
 
 
