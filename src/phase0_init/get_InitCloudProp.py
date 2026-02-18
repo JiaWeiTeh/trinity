@@ -186,21 +186,101 @@ def _init_powerlaw_cloud(params) -> CloudProperties:
     # Compute edge density
     nEdge = nCore * (rCloud / rCore) ** alpha if alpha != 0 else nCore
 
-    # Validate edge density - warn user if rCore is too small
+    # ---- Auto-correct if nEdge < nISM (only possible for α ≠ 0) ----------
     if nEdge < nISM and alpha != 0:
-        # Calculate minimum rCore such that nEdge = nISM
+        rCore_orig = rCore
+        nCore_orig = nCore
+        use_nCore_fix = False
+
+        # Option 1: increase rCore to the minimum that gives nEdge = nISM
+        # nEdge = nCore * (rCloud / rCore)^α = nISM
+        # => rCore_min = rCloud * (nCore / nISM)^(1/α)
         rCore_min = rCloud * (nCore / nISM) ** (1.0 / alpha)
-        # Calculate alternative: minimum nCore to keep rCore fixed
-        nCore_min = nISM * (rCloud / rCore) ** (-alpha)
-        logger.warning(
-            f"nEdge ({nEdge:.2e} cm^-3) < nISM ({nISM:.2e} cm^-3)!\n"
-            f"  Current rCore = {rCore:.3f} pc is too small.\n"
-            f"  Option 1: Increase rCore to at least {rCore_min:.3f} pc\n"
-            f"  Option 2: Increase nCore to at least {nCore_min:.2e} cm^-3"
+
+        if rCore_min < rCloud:
+            # Try rCore correction — but recomputing rCloud may make
+            # rCore >= rCloud, so we must verify after recomputation.
+            rCore_try = rCore_min
+            rCloud_try, _ = compute_rCloud_powerlaw(
+                mCloud, nCore, alpha, rCore=rCore_try, mu=mu
+            )
+            if rCore_try < rCloud_try:
+                # Correction is valid
+                logger.warning(
+                    f"nEdge ({nEdge:.2e}) < nISM ({nISM:.2e}): "
+                    f"adjusting rCore from {rCore_orig:.4f} to "
+                    f"{rCore_try:.4f} pc so that nEdge >= nISM."
+                )
+                rCore = rCore_try
+                rCloud = rCloud_try
+                params['rCore'].value = rCore
+                nEdge = nCore * (rCloud / rCore) ** alpha
+            else:
+                # rCore ended up >= rCloud after recomputation — fall through
+                use_nCore_fix = True
+        else:
+            use_nCore_fix = True
+
+        if use_nCore_fix:
+            # Option 2: increase nCore instead (keeps original rCore).
+            # First-order estimate from current rCloud:
+            #   nCore_min = nISM * (rCloud / rCore)^(-α)
+            # Increasing nCore shrinks rCloud, which only helps (nEdge ↑).
+            nCore_min = nISM * (rCloud / rCore) ** (-alpha)
+            logger.warning(
+                f"nEdge ({nEdge:.2e}) < nISM ({nISM:.2e}): "
+                f"cannot fix with rCore alone (rCore_min={rCore_min:.4f} pc "
+                f">= rCloud={rCloud:.4f} pc). "
+                f"Adjusting nCore from {nCore_orig:.4e} to {nCore_min:.4e} "
+                f"so that nEdge >= nISM."
+            )
+            rCore = rCore_orig
+            nCore = nCore_min
+            params['rCore'].value = rCore
+            params['nCore'].value = nCore
+            rCloud, _ = compute_rCloud_powerlaw(
+                mCloud, nCore, alpha, rCore=rCore, mu=mu
+            )
+            # If nCore increase shrank rCloud below rCore, iteratively
+            # halve rCore until rCore < rCloud (recomputing each time).
+            if rCore >= rCloud:
+                logger.warning(
+                    f"After nCore correction rCore ({rCore:.4e} pc) >= "
+                    f"rCloud ({rCloud:.4e} pc). Reducing rCore iteratively."
+                )
+                for _iter in range(50):
+                    rCore = 0.5 * rCloud
+                    rCloud, _ = compute_rCloud_powerlaw(
+                        mCloud, nCore, alpha, rCore=rCore, mu=mu
+                    )
+                    if rCore < rCloud:
+                        break
+                params['rCore'].value = rCore
+            nEdge = nCore * (rCloud / rCore) ** alpha
+
+        # Final safety check — warn if still not satisfied after correction
+        if nEdge < nISM:
+            logger.warning(
+                f"After correction nEdge ({nEdge:.2e}) is still < nISM "
+                f"({nISM:.2e}). Continuing anyway."
+            )
+
+    # ---- Forward mass consistency check ----------------------------------
+    rhoCore = nCore * mu
+    if alpha == 0:
+        M_check = (4.0 / 3.0) * np.pi * rCloud**3 * rhoCore
+    else:
+        M_check = 4.0 * np.pi * rhoCore * (
+            rCore**3 / 3.0 +
+            (rCloud**(3.0 + alpha) - rCore**(3.0 + alpha)) /
+            ((3.0 + alpha) * rCore**alpha)
         )
-        raise ValueError(
-            f"rCore={rCore:.3f} pc too small: nEdge={nEdge:.2e} < nISM={nISM:.2e}. "
-            f"Min rCore={rCore_min:.3f} pc OR min nCore={nCore_min:.2e} cm^-3"
+    mass_rel_err = abs(M_check - mCloud) / mCloud if mCloud > 0 else 0
+    if mass_rel_err > 1e-3:
+        logger.warning(
+            f"Mass consistency: M(rCloud)={M_check:.4e} vs "
+            f"mCloud={mCloud:.4e}, rel_err={mass_rel_err:.2e}. "
+            f"Continuing with current values."
         )
 
     # Store computed values back to params
