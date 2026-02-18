@@ -183,24 +183,30 @@ def compute_rCore_for_tag(tag: str, sim_folder: Path) -> float:
     For power-law profiles: reads ``rCore`` from ``_summary.txt``.
     For Bonnor-Ebert: computes ``a = (M / (4π m(ξ) ρc))^{1/3}``
     following the convention in ``paper_AllowedGMC.py``.
+
+    Falls back to default sweep parameters when ``_summary.txt`` is absent.
     """
     raw = _parse_summary(sim_folder)
-    if not raw:
-        return np.nan
 
-    dens_profile = raw.get('dens_profile', '')
+    # Default sweep parameters (internal units: Msun, pc, 1/pc³)
+    DEF_MCLOUD = 1e5 * (1 - 0.01)                          # Msun, post-SFE
+    DEF_NCORE  = 1e4 * CONV.ndens_cgs2au                   # 1/pc³
+    DEF_RCORE  = 1.0                                         # pc
+    DEF_MU     = 1.4 * CGS.m_H * CONV.g2Msun               # Msun
+    DEF_OMEGA  = 14.1
 
-    if 'BE' in dens_profile or tag.startswith('BE'):
+    is_BE = tag.startswith('BE')
+    if raw:
+        dens_profile = raw.get('dens_profile', '')
+        is_BE = is_BE or 'BE' in dens_profile
+
+    if is_BE:
         # Effective core length a for Bonnor-Ebert sphere
-        mCloud = _try_float(raw.get('mCloud'))       # Msun (post-SFE)
-        nCore  = _try_float(raw.get('nCore'))         # 1/pc³ (internal)
-        mu_ion = _try_float(raw.get('mu_ion'))        # Msun  (internal)
+        mCloud = _try_float(raw.get('mCloud'), DEF_MCLOUD) if raw else DEF_MCLOUD
+        nCore  = _try_float(raw.get('nCore'),  DEF_NCORE)  if raw else DEF_NCORE
+        mu_ion = _try_float(raw.get('mu_ion'), DEF_MU)     if raw else DEF_MU
+        densBE_Omega = _try_float(raw.get('densBE_Omega'), DEF_OMEGA) if raw else DEF_OMEGA
 
-        if not (np.isfinite(mCloud) and np.isfinite(nCore) and np.isfinite(mu_ion)):
-            return np.nan
-
-        # Omega and xi_out from summary
-        densBE_Omega = _try_float(raw.get('densBE_Omega'), 14.1)
         le_sol = solve_lane_emden()
         # Find xi_out where ρ/ρc = 1/Omega
         xi_out = float(le_sol.f_xi_from_rho(1.0 / densBE_Omega))
@@ -209,7 +215,6 @@ def compute_rCore_for_tag(tag: str, sim_folder: Path) -> float:
         # CGS constants
         Msun_g = INV_CONV.Msun2g     # g/Msun
         pc_cm  = INV_CONV.pc2cm      # cm/pc
-        m_H_g  = CGS.m_H             # g
 
         # Core mass density in CGS
         # nCore [1/pc³] * mu_ion [Msun] -> [Msun/pc³]
@@ -222,8 +227,10 @@ def compute_rCore_for_tag(tag: str, sim_folder: Path) -> float:
         a_pc  = a_cgs / pc_cm
         return a_pc
     else:
-        # Power-law: read rCore directly (in pc)
-        return _try_float(raw.get('rCore'))
+        # Power-law: read rCore directly (in pc), fall back to default
+        if raw:
+            return _try_float(raw.get('rCore'), DEF_RCORE)
+        return DEF_RCORE
 
 
 # =============================================================================
