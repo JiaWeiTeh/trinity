@@ -416,24 +416,12 @@ def test_mass_powerlaw_analytical():
     # Physical density in internal units: rho = n * mu directly gives [Msun/pc³]
     rhoCore_physical = nCore_internal * mu_internal
 
-    # Compute rCloud and rCore using internal units
-    # For power-law: solve M = 4πρc[rCore³/3 + (rCloud^(3+α) - rCore^(3+α))/((3+α)×rCore^α)]
-    # with rCore = rCore_fraction × rCloud
+    # Compute rCloud and rCore using the analytical formula
     rCore_fraction = 0.1
-
-    def mass_at_radius(rCloud_guess):
-        rCore_val = rCloud_guess * rCore_fraction
-        return 4.0 * np.pi * rhoCore_physical * (
-            rCore_val**3 / 3.0 +
-            (rCloud_guess**(3.0 + alpha) - rCore_val**(3.0 + alpha)) /
-            ((3.0 + alpha) * rCore_val**alpha)
-        )
-
-    # Find rCloud using bisection
-    from scipy.optimize import brentq
-    rCloud_homo = (3 * mCloud / (4 * np.pi * rhoCore_physical)) ** (1.0/3.0)
-    rCloud = brentq(lambda r: mass_at_radius(r) - mCloud, 0.1 * rCloud_homo, 10 * rCloud_homo)
-    rCore = rCloud * rCore_fraction
+    rCloud, rCore = compute_rCloud_powerlaw(
+        mCloud, nCore_internal, alpha,
+        rCore_fraction=rCore_fraction, mu=mu_internal
+    )
 
     print(f"  Computed rCloud = {rCloud:.3f} pc, rCore = {rCore:.3f} pc")
     print(f"  from mCloud={mCloud:.0e} Msun, α={alpha}")
