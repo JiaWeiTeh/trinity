@@ -494,7 +494,8 @@ def plot_shell_evolution(simulations: dict, output_dir: Path, fmt: str = 'pdf',
                 show_phase=True,
                 show_rcloud=(ax is axes[0]),
                 show_collapse=True,
-                show_labels=False,   # suppress text labels to avoid clutter
+                show_labels=True,
+                show_momentum_labels=False,  # suppress M labels to reduce clutter
             )
 
         # Panel (a): R(t) with horizontal rCloud line

@@ -171,7 +171,8 @@ def find_collapse_time(t, isCollapse):
 
 
 def add_phase_markers(ax, t, phase, dataset_label=None, dataset_color=None,
-                      label_pad_points=4, show_labels=True):
+                      label_pad_points=4, show_labels=True,
+                      show_momentum_labels=None):
     """
     Add phase transition markers (T for transition, M for momentum).
 
@@ -191,6 +192,9 @@ def add_phase_markers(ax, t, phase, dataset_label=None, dataset_color=None,
         Padding in points for text labels
     show_labels : bool
         Whether to show "T" and "M" text labels
+    show_momentum_labels : bool or None
+        If set, override show_labels for "M" labels only.
+        None means follow show_labels.
 
     Returns
     -------
@@ -209,6 +213,9 @@ def add_phase_markers(ax, t, phase, dataset_label=None, dataset_color=None,
         m_style['color'] = dataset_color
         t_style['alpha'] = 0.4  # Increase alpha when using custom colors
         m_style['alpha'] = 0.4
+
+    # Resolve per-marker label visibility
+    show_m_labels = show_momentum_labels if show_momentum_labels is not None else show_labels
 
     # Add transition phase markers
     for x in transitions['t_transition']:
@@ -231,7 +238,7 @@ def add_phase_markers(ax, t, phase, dataset_label=None, dataset_color=None,
     for x in transitions['t_momentum']:
         ax.axvline(x, color=m_style['color'], lw=m_style['lw'],
                    alpha=m_style['alpha'], zorder=0)
-        if show_labels:
+        if show_m_labels:
             label_text = "M"
             if dataset_label:
                 label_text = f"M ({dataset_label})"
@@ -368,7 +375,8 @@ def add_collapse_marker(ax, t, isCollapse, dataset_label=None, dataset_color=Non
 def add_plot_markers(ax, t, phase=None, R2=None, rcloud=None, isCollapse=None,
                      dataset_label=None, dataset_color=None,
                      show_phase=True, show_rcloud=True, show_collapse=True,
-                     show_labels=True, label_pad_points=4):
+                     show_labels=True, show_momentum_labels=None,
+                     label_pad_points=4):
     """
     Add all plot markers (phase transitions, rcloud crossing, collapse).
 
@@ -437,7 +445,8 @@ def add_plot_markers(ax, t, phase=None, R2=None, rcloud=None, isCollapse=None,
             dataset_label=dataset_label,
             dataset_color=dataset_color,
             label_pad_points=label_pad_points,
-            show_labels=show_labels
+            show_labels=show_labels,
+            show_momentum_labels=show_momentum_labels,
         )
         result['t_transition'] = transitions['t_transition']
         result['t_momentum'] = transitions['t_momentum']
