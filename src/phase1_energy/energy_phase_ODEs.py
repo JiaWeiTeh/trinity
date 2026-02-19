@@ -109,11 +109,16 @@ def get_ODE_Edot(y, t, params):
     # if momentum phase, it's just ram
     if params['current_phase'].value in ['momentum']:
         press_bubble = get_bubbleParams.pRam(R2, Lmech_total, v_mech_total)
-    # otherwise, it's calculated from bubble energy
+    # transition phase: max(P_thermal, P_ram) for smooth handoff to momentum
+    elif params['current_phase'].value == 'transition':
+        P_thermal = get_bubbleParams.bubble_E2P(Eb, R2, R1, params['gamma_adia'].value)
+        P_ram = get_bubbleParams.pRam(R2, Lmech_total, v_mech_total)
+        press_bubble = max(P_thermal, P_ram)
+    # energy/implicit phases: calculated from bubble energy
     else:
         if (t > (tmin + params['tSF'].value)):
             press_bubble = get_bubbleParams.bubble_E2P(Eb, R2, R1, params['gamma_adia'].value)
-            
+
         elif (t <= (tmin + params['tSF'].value)):
             R1_tmp = (t-params['tSF'].value)/tmin * R1
             press_bubble = get_bubbleParams.bubble_E2P(Eb, R2, R1_tmp, params['gamma_adia'].value)
