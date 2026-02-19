@@ -44,6 +44,7 @@ from src.cloud_properties.bonnorEbertSphere import (
 from src.cloud_properties.powerLawSphere import (
     compute_rCloud_homogeneous, compute_rCloud_powerlaw
 )
+from src._plots.plot_markers import add_plot_markers, get_marker_legend_handles
 
 # Configure logging
 logging.basicConfig(
@@ -446,7 +447,12 @@ def plot_enclosed_mass(sweep_dir: str, output_dir: Path, fmt: str = 'pdf',
 
 def plot_shell_evolution(simulations: dict, output_dir: Path, fmt: str = 'pdf',
                          show: bool = False) -> None:
-    """Plot R(t), v(t), M_shell(t) for all profiles."""
+    """Plot R(t), v(t), M_shell(t) for all profiles.
+
+    Includes phase-transition vertical lines (T = transition, M = momentum),
+    horizontal rCloud lines on the radius panel, and rCloud-crossing markers,
+    following the conventions in ``paper_radiusEvolution`` and ``plot_markers``.
+    """
     logger.info("Figure 2: Shell Evolution")
 
     fig, axes = plt.subplots(1, 3, figsize=(12, 3.5))
@@ -462,13 +468,39 @@ def plot_shell_evolution(simulations: dict, output_dir: Path, fmt: str = 'pdf',
         v2 = safe_get(output, 'v2') * V_AU2KMS  # convert pc/Myr -> km/s
         mshell = safe_get(output, 'shell_mass')
 
+        # Phase array (for transition markers)
+        phase = output.get('current_phase', as_array=False)
+        if phase is not None:
+            phase = np.asarray([str(p) for p in phase])
+        # Collapse flag
+        isCollapse_raw = output.get('isCollapse', as_array=False)
+        isCollapse = None
+        if isCollapse_raw is not None:
+            isCollapse = np.array([bool(c) for c in isCollapse_raw])
+
         # Cloud radius (constant per run)
         rCloud = safe_get(output, 'rCloud')
+        rCloud_val = rCloud[-1] if rCloud.size > 0 and rCloud[-1] > 0 else None
 
-        # Panel (a): R(t) with rCloud line
+        # --- Add phase markers to all three panels (color-coded per profile) ---
+        for ax in axes:
+            add_plot_markers(
+                ax, t,
+                phase=phase,
+                R2=R2 if ax is axes[0] else None,
+                rcloud=rCloud_val if ax is axes[0] else None,
+                isCollapse=isCollapse,
+                dataset_color=s['color'],
+                show_phase=True,
+                show_rcloud=(ax is axes[0]),
+                show_collapse=True,
+                show_labels=False,   # suppress text labels to avoid clutter
+            )
+
+        # Panel (a): R(t) with horizontal rCloud line
         axes[0].plot(t, R2, color=s['color'], ls=s['ls'], lw=1.5)
-        if rCloud.size > 0 and rCloud[-1] > 0:
-            axes[0].axhline(rCloud[-1], color=s['color'], ls='--',
+        if rCloud_val is not None:
+            axes[0].axhline(rCloud_val, color=s['color'], ls='--',
                             lw=0.8, alpha=0.5)
 
         # Panel (b): v(t)
@@ -490,8 +522,12 @@ def plot_shell_evolution(simulations: dict, output_dir: Path, fmt: str = 'pdf',
     axes[2].set_ylabel(r'$M_{\rm shell}$ [M$_\odot$]')
     axes[2].set_title(r'Shell Mass')
 
+    # Legend: profile colours + marker entries
+    marker_handles = get_marker_legend_handles(
+        include_phase=True, include_rcloud=True, include_collapse=False
+    )
     add_legend(axes[1], [t for t in PROFILE_ORDER if t in simulations],
-               loc='best', fontsize=10)
+               extra_handles=marker_handles, loc='best', fontsize=9)
 
     fig.tight_layout()
     savefig(fig, 'densityProfile_evolution', output_dir, fmt)
