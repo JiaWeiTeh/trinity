@@ -197,8 +197,12 @@ def get_ODE_transition_pure(t: float, y: np.ndarray, snapshot: ODESnapshot,
     """
     Pure ODE function for transition phase.
 
-    Energy decays on sound-crossing timescale.
-    Reads snapshot but does NOT mutate during integration.
+    Uses min(Ed_energy_balance, Ed_soundcrossing) — whichever gives
+    faster energy loss.  This ensures:
+      (a) continuity at the implicit→transition boundary (Ed_energy_balance
+          matches the implicit phase's beta-derived Ed), and
+      (b) energy eventually decays on the sound-crossing timescale once
+          cooling becomes inefficient.
 
     Parameters
     ----------
@@ -220,18 +224,22 @@ def get_ODE_transition_pure(t: float, y: np.ndarray, snapshot: ODESnapshot,
     """
     R2, v2, Eb = y
 
-    # Get rd, vd from energy ODE
+    # Get rd, vd, Ed from the energy-balance ODE (continuous with implicit phase)
     dydt_energy = get_ODE_Edot_pure(t, y, snapshot, params_for_feedback)
     rd = dydt_energy[0]  # = v2
     vd = dydt_energy[1]  # acceleration
+    Ed_energy_balance = dydt_energy[2]  # from energy balance (Lmech - Lcool - PdV)
 
-    # Energy decay: dE/dt = -Eb / t_sound_crossing
-    # t_sound_crossing = R2 / c_sound
+    # Sound-crossing energy decay: dE/dt = -Eb / (R2 / c_sound)
     if c_sound > 0 and R2 > 0:
-        t_sound_crossing = R2 / c_sound
-        Ed = -Eb / t_sound_crossing
+        Ed_soundcrossing = -Eb / (R2 / c_sound)
     else:
-        Ed = 0.0
+        Ed_soundcrossing = 0.0
+
+    # Use whichever gives faster energy loss (more negative Ed).
+    # Early in the transition, Ed_energy_balance is continuous with the
+    # implicit phase.  As cooling diminishes, Ed_soundcrossing takes over.
+    Ed = min(Ed_energy_balance, Ed_soundcrossing)
 
     return np.array([rd, vd, Ed])
 
@@ -476,6 +484,15 @@ def run_phase_transition(params) -> TransitionPhaseResults:
             T_for_sound = 1e6
         c_sound = operations.get_soundspeed(T_for_sound, params)
         params['c_sound'].value = c_sound
+
+        # --- Ed diagnostic at first segment (quantify the original discontinuity) ---
+        if segment_count == 1 and c_sound > 0 and R2 > 0:
+            Ed_soundcrossing_init = -Eb / (R2 / c_sound)
+            logger.warning(
+                f"PHASE BOUNDARY Ed diagnostic: "
+                f"Ed_soundcrossing={Ed_soundcrossing_init:.4e}, "
+                f"c_sound={c_sound:.4e}, R2={R2:.4e}, Eb={Eb:.4e}"
+            )
 
         # ---------------------------------------------------------------------
         # Get R1 and Pb
