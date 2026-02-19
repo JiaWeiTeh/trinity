@@ -480,6 +480,7 @@ def plot_shell_evolution(simulations: dict, output_dir: Path, fmt: str = 'pdf',
     axes[0].set_xlabel(r'$t$ [Myr]')
     axes[0].set_ylabel(r'$R$ [pc]')
     axes[0].set_title(r'Shell Radius')
+    axes[0].set_xlim(0,1)
 
     axes[1].set_xlabel(r'$t$ [Myr]')
     axes[1].set_ylabel(r'$v$ [km\,s$^{-1}$]')
