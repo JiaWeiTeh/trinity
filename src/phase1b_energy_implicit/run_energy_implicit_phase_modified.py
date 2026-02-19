@@ -468,8 +468,18 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
     # Initialization
     # =============================================================================
 
-    # Set initial v2 from alpha
-    params['v2'].value = params['cool_alpha'].value * params['R2'].value / params['t_now'].value
+    # --- PHASE BOUNDARY DIAGNOSTIC ---
+    v2_from_ODE = params['v2'].value
+    v2_from_alpha = params['cool_alpha'].value * params['R2'].value / params['t_now'].value
+    logger.warning(f"PHASE BOUNDARY [energy->implicit]: "
+                   f"v2_ODE={v2_from_ODE:.6e}, v2_alpha={v2_from_alpha:.6e}, "
+                   f"ratio={v2_from_alpha/v2_from_ODE if v2_from_ODE != 0 else float('inf'):.4f}")
+    logger.warning(f"  R2={params['R2'].value:.6e}, shell_mass={params['shell_mass'].value:.6e}, "
+                   f"Eb={params['Eb'].value:.6e}, t_now={params['t_now'].value:.6e}")
+    # --- END DIAGNOSTIC ---
+
+    # Update cool_alpha to match ODE-evolved v2 (preserves ODE continuity)
+    params['cool_alpha'].value = params['t_now'].value / params['R2'].value * params['v2'].value
 
     tmin = params['t_now'].value
     tmax = params['stop_t'].value

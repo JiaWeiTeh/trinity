@@ -342,7 +342,9 @@ def get_effective_bubble_pressure(current_phase, Eb, R2, R1, gamma,
         # Momentum phase: ram pressure from freely streaming wind
         return pRam(R2, Lmech_total, v_mech_total)
     else:
-        # Energy phase: thermal pressure from hot bubble
+        # Energy/implicit/transition phases: thermal pressure from hot bubble.
+        # All three phases use the same bubble_E2P formula, ensuring pressure
+        # continuity across phase boundaries (Eb decays naturally in transition).
         # Include the early-phase R1 ramp-up if timing info provided
         dt_switchon = 1e-3
         tmin = dt_switchon

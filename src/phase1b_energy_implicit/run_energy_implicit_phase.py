@@ -37,8 +37,8 @@ def run_phase_energy(params):
 
     # TODO: add fragmentation mechanics in events 
 
-    # what is the current outer bubble velocity?
-    params['v2'].value = params['cool_alpha'].value * params['R2'].value / (params['t_now'].value) 
+    # Update cool_alpha to match ODE-evolved v2 (preserves ODE continuity)
+    params['cool_alpha'].value = params['t_now'].value / params['R2'].value * params['v2'].value
     
     #-- theoretical minimum and maximum of this phase
     tmin = params['t_now'].value
