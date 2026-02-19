@@ -10,8 +10,11 @@ of the bubble. grep "Section" so jump between different sections.
 """
 # libraries
 import numpy as np
+import logging
 import astropy.units as u
 import src._functions.unit_conversions as cvt
+
+logger = logging.getLogger(__name__)
 
 #--
 
@@ -341,10 +344,20 @@ def get_effective_bubble_pressure(current_phase, Eb, R2, R1, gamma,
     if current_phase == 'momentum':
         # Momentum phase: ram pressure from freely streaming wind
         return pRam(R2, Lmech_total, v_mech_total)
+    elif current_phase == 'transition':
+        # Transition phase: use max(P_thermal, P_ram) to ensure smooth
+        # handoff to momentum phase.  As Eb decays on the sound-crossing
+        # timescale, P_thermal drops while P_ram stays roughly constant.
+        # By the time Eb hits the energy floor, P_ram already dominates,
+        # so switching to momentum phase (P_ram only) is continuous.
+        P_thermal = bubble_E2P(Eb, R2, R1, gamma)
+        P_ram = pRam(R2, Lmech_total, v_mech_total)
+        P_eff = max(P_thermal, P_ram)
+        logger.debug(f"Transition pressure: P_thermal={P_thermal:.4e}, P_ram={P_ram:.4e}, "
+                     f"using={'P_ram' if P_ram >= P_thermal else 'P_thermal'}, Eb={Eb:.4e}")
+        return P_eff
     else:
-        # Energy/implicit/transition phases: thermal pressure from hot bubble.
-        # All three phases use the same bubble_E2P formula, ensuring pressure
-        # continuity across phase boundaries (Eb decays naturally in transition).
+        # Energy/implicit phases: thermal pressure from hot bubble.
         # Include the early-phase R1 ramp-up if timing info provided
         dt_switchon = 1e-3
         tmin = dt_switchon

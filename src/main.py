@@ -37,6 +37,7 @@ from src.phase1c_transition import run_transition_phase_modified
 from src.phase2_momentum import run_momentum_phase
 from src.phase2_momentum import run_momentum_phase_modified
 import src._output.terminal_prints as terminal_prints
+import src.bubble_structure.get_bubbleParams as get_bubbleParams
 from src._input.dictionary import DescribedItem, DescribedDict, COOLING_PHASE_KEYS
 
 # Initialize logger for this module
@@ -340,7 +341,19 @@ def run_expansion(params):
 
     params['current_phase'].value = 'momentum'
 
-    params['Eb'].value = 1
+    # Eb is inherited from the transition phase (near ENERGY_FLOOR = 1e3).
+    # The momentum phase runner sets Eb = 0 at its initialization (line 522).
+    # Do NOT set Eb=1 here — it was dead code that caused confusion.
+    logger.info(f"Entering momentum phase: Eb={params['Eb'].value:.4e} "
+                f"(will be set to 0 by momentum runner)")
+
+    # --- Transition -> Momentum boundary diagnostic ---
+    R2_bnd = params['R2'].value
+    Lmech_bnd = params['Lmech_total'].value
+    v_mech_bnd = params['v_mech_total'].value
+    P_ram_bnd = get_bubbleParams.pRam(R2_bnd, Lmech_bnd, v_mech_bnd)
+    logger.info(f"T->M boundary check: P_ram={P_ram_bnd:.4e} "
+                f"(momentum phase will use this)")
 
     if params['EndSimulationDirectly'].value == False:
         phase2_starttime = datetime.datetime.now()

@@ -59,12 +59,12 @@ plt.style.use(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'trinity.
 # Constants
 # =============================================================================
 
-# Colourblind-safe palette (Wong 2011) with distinct linestyles
+# Colourblind-safe palette (Wong 2011) with solid lines for clarity
 PROFILE_STYLES = {
-    'PL0':  {'color': '#0072B2', 'ls': '-',   'label': r'$\alpha=0$ (uniform)'},
-    'PL-1': {'color': '#D55E00', 'ls': '--',  'label': r'$\alpha=-1$'},
-    'PL-2': {'color': '#009E73', 'ls': '-.',  'label': r'$\alpha=-2$ (SIS)'},
-    'BE14': {'color': '#CC79A7', 'ls': ':',   'label': r'BE $\Omega=14.1$'},
+    'PL0':  {'color': '#0072B2', 'ls': '-',  'label': r'$\alpha=0$ (uniform)'},
+    'PL-1': {'color': '#D55E00', 'ls': '-',  'label': r'$\alpha=-1$'},
+    'PL-2': {'color': '#009E73', 'ls': '-',  'label': r'$\alpha=-2$ (SIS)'},
+    'BE14': {'color': '#CC79A7', 'ls': '-',  'label': r'BE $\Omega=14.1$'},
 }
 
 # Ordered list for consistent iteration
