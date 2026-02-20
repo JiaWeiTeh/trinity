@@ -495,7 +495,7 @@ def plot_shell_evolution(simulations: dict, output_dir: Path, fmt: str = 'pdf',
                 show_rcloud=(ax is axes[0]),
                 show_collapse=True,
                 show_labels=True,
-                show_momentum_labels=False,  # suppress M labels to reduce clutter
+                show_momentum_labels=True,  # suppress M labels to reduce clutter
             )
 
         # Panel (a): R(t) with horizontal rCloud line
@@ -514,6 +514,7 @@ def plot_shell_evolution(simulations: dict, output_dir: Path, fmt: str = 'pdf',
     axes[0].set_ylabel(r'$R$ [pc]')
     axes[0].set_title(r'Shell Radius')
     axes[0].set_xlim(0,1)
+    axes[0].set_ylim(0,5)
 
     axes[1].set_xlabel(r'$t$ [Myr]')
     axes[1].set_ylabel(r'$v$ [km\,s$^{-1}$]')
@@ -785,6 +786,7 @@ def plot_phase_timing(simulations: dict, output_dir: Path, fmt: str = 'pdf',
     ax.set_yticklabels([get_style(t)['label'] for t in tags_present])
     ax.set_xlabel(r'$t$ [Myr]')
     ax.set_title('Phase Timing')
+    ax.set_xlim(0,1)
 
     # Legend
     legend_handles = [

@@ -441,6 +441,10 @@ def get_ODE_implicit_pure(t: float, y: np.ndarray, snapshot: ODESnapshot,
 
     # Use Ed and Td from beta/delta calculations (computed outside ODE)
     return np.array([rd, vd, Ed_from_beta, Td_from_delta])
+    # try to fix kink (see paper/rCloud_bump)
+    # Ed_from_balance = dydt_energy[2]
+    # Ed = min(Ed_from_beta, Ed_from_balance)
+    # return np.array([rd, vd, Ed, Td_from_delta])
 
 
 # =============================================================================
@@ -774,10 +778,15 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         # Adaptive stepping: adjust dt_segment based on parameter changes
         # ---------------------------------------------------------------------
         # Update params with new state for comparison
+        params['t_now'].value = t_now
         params['R2'].value = R2
         params['v2'].value = v2
         params['Eb'].value = Eb
         params['T0'].value = T0
+        
+        # shell mass fix
+        mShell_post = mass_profile.get_mass_profile(R2, params, return_mdot=False)
+        params['shell_mass'].value = mShell_post
 
         values_after = get_monitor_values(params)
         max_dex_change = compute_max_dex_change(values_before, values_after, ADAPTIVE_MONITOR_KEYS)

@@ -634,9 +634,14 @@ def run_phase_transition(params) -> TransitionPhaseResults:
         # ---------------------------------------------------------------------
         # Adaptive stepping: adjust dt_segment based on parameter changes
         # ---------------------------------------------------------------------
+        params['t_now'].value = t_now
         params['R2'].value = R2
         params['v2'].value = v2
         params['Eb'].value = Eb
+        
+        # shell mass fix
+        mShell_post = mass_profile.get_mass_profile(R2, params, return_mdot=False)
+        params['shell_mass'].value = mShell_post
 
         values_after = get_monitor_values(params)
         max_dex_change = compute_max_dex_change(values_before, values_after, ADAPTIVE_MONITOR_KEYS)
