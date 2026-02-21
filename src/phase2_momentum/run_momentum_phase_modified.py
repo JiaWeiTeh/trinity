@@ -726,6 +726,7 @@ def run_phase_momentum(params) -> MomentumPhaseResults:
         params['v2'].value = v2
         
         # shell mass fix
+        # problem!!! this is wrong because its should stay the same if its collapsing.
         mShell_post = mass_profile.get_mass_profile(R2, params, return_mdot=False)
         params['shell_mass'].value = mShell_post
 
