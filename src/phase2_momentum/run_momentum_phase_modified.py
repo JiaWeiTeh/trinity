@@ -725,10 +725,24 @@ def run_phase_momentum(params) -> MomentumPhaseResults:
         params['R2'].value = R2
         params['v2'].value = v2
         
-        # shell mass fix
-        # problem!!! this is wrong because its should stay the same if its collapsing.
-        mShell_post = mass_profile.get_mass_profile(R2, params, return_mdot=False)
-        params['shell_mass'].value = mShell_post
+        # Shell mass update for adaptive stepping comparison.
+        # Apply the same collapse-freeze and never-decrease guards as the
+        # primary shell mass block (lines 580-609).
+        prev_mShell_post = params['shell_mass'].value
+        is_collapse_post = params.get('isCollapse', None)
+        is_collapse_post_val = is_collapse_post.value if is_collapse_post and hasattr(is_collapse_post, 'value') else False
+
+        if is_collapse_post_val:
+            pass  # keep params['shell_mass'] at its previous value
+        else:
+            mShell_post = mass_profile.get_mass_profile(R2, params, return_mdot=False)
+            if hasattr(mShell_post, '__len__') and len(mShell_post) == 1:
+                mShell_post = float(mShell_post[0])
+            # Ensure shell mass never decreases
+            if prev_mShell_post > 0 and mShell_post < prev_mShell_post:
+                pass  # keep params['shell_mass'] at its previous value
+            else:
+                params['shell_mass'].value = mShell_post
 
         values_after = get_monitor_values(params)
         max_dex_change = compute_max_dex_change(values_before, values_after, ADAPTIVE_MONITOR_KEYS)
