@@ -1,45 +1,46 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Bubble size distribution analysis from TRINITY outputs.
+Population-convolved bubble size distribution from TRINITY outputs.
 
 Physics background
 ------------------
 Watkins et al. (2023) measured the bubble size distribution in NGC 628
-and found dN/dR proportional to R^{-2.2}.  From a simple steady-state
-model, the observed size distribution is
+and found dN/dR proportional to R^{-2.2}.  A single decelerating shell
+always gives dN/dR proportional to 1/v(R) with *positive* slope (v
+decreases with R so 1/v increases).  The observed *negative* slope
+arises from a **population** of bubbles driven by clusters spanning a
+luminosity / mass function: many low-mass clusters make small bubbles,
+few high-mass clusters make large ones.
 
-    dN/dR = N_dot / v(R),
+This script tests the population picture by convolving a grid of TRINITY
+trajectories with a cluster mass function (CMF):
 
-where N_dot is the bubble formation rate (number of new bubbles per
-unit time) and v(R) = dR/dt is the expansion velocity at radius R.
-If the formation rate is constant and the expansion follows v ~ R^beta,
-then dN/dR ~ R^{-beta} = R^{-(1-beta)}, giving a power-law index
-of -(1 - beta) on the size distribution.
+    dN/dR = integral over M_cloud [ n(M_cloud) * (dt/dR)|_{M_cloud} ] dM_cloud
 
-This script tests two complementary questions using TRINITY outputs:
+In practice we use Monte Carlo population synthesis on the discrete
+TRINITY grid.
 
-**Part 1 — Inferred N_dot(R):**
-    Assuming the *observed* dN/dR = A R^{-2.2} (Watkins+2023), compute
-    the implied formation rate  N_dot(R) = (dN/dR) * v(R).  If N_dot(R)
-    is constant, the model is self-consistent with a constant birth rate.
-    Deviations indicate that a non-constant formation history or
-    additional physics (e.g. stalling, gravity) is needed.
+**Part 1 — Single-trajectory residence time (diagnostic):**
+    For each TRINITY run, compute 1/v(R) — the time a *single* shell
+    lingers at each radius.  Positive slopes are expected; this is a
+    diagnostic, not a prediction of the observed size distribution.
 
-**Part 2 — Predicted dN/dR:**
-    Assuming constant N_dot, compute dN/dR proportional to 1/v(R) for each
-    TRINITY model.  Fit a power law over the expanding portion and compare
-    the predicted slope to the observed -2.2.
+**Part 2 — Population synthesis:**
+    Sample N_bubble cluster masses from dN/dM_star proportional to
+    M_star^alpha (Lada & Lada 2003, default alpha = -2).  Match each
+    to the closest TRINITY run in M_star = sfe * M_cloud.  Assign a
+    random birth time, evaluate R(age), histogram the surviving R
+    values, and fit a power-law slope to compare with -2.2.
 
-**Part 3 — Forward population synthesis:**
-    Draw N_bubble bubbles with uniformly distributed formation times
-    t_form in [0, t_obs].  Evolve each with TRINITY (interpolated from
-    pre-run output) to obtain R(t_obs - t_form).  Histogram the resulting
-    R values to construct a synthetic dN/dR.  Compare to R^{-2.2}.
+**Part 3 — Parameter sensitivity:**
+    Vary the CMF slope and t_obs to show how the synthetic slope depends
+    on assumptions.
 
 References
 ----------
 * Watkins, E. J. et al. (2023), ApJS, 264, 16 — NGC 628 bubble catalogue.
+* Lada, C. J. & Lada, E. A. (2003), ARA&A, 41, 57 — embedded clusters.
 * Weaver, R. et al. (1977), ApJ, 218, 377 — wind-bubble expansion.
 * Lancaster, L. et al. (2021), ApJ, 914, 89 — size distribution theory.
 
@@ -57,7 +58,6 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 import numpy as np
-from scipy.signal import savgol_filter
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -195,14 +195,28 @@ def extract_bubble_data(data_path: Path, t_end: float = None) -> Optional[Dict]:
         "expanding": expanding,
         "outcome": outcome,
         "folder": data_path.parent.name,
-        # Full-run t and R for interpolation in Part 3
+        # Full-run t and R for interpolation in synthesis
         "t_full": t,
         "R_full": R,
     }
 
 
 def collect_data(folder_path: Path, t_end: float = None) -> List[Dict]:
-    """Walk sweep directory and extract bubble data from each run."""
+    """
+    Walk sweep directory and extract bubble data from each run.
+
+    Parameters
+    ----------
+    folder_path : Path
+        Top-level sweep output directory.
+    t_end : float, optional
+        Maximum time [Myr] to consider.
+
+    Returns
+    -------
+    list of dict
+        One record per valid simulation run.
+    """
     sim_files = find_all_simulations(folder_path)
     if not sim_files:
         logger.error("No simulation files under %s", folder_path)
@@ -241,46 +255,43 @@ def collect_data(folder_path: Path, t_end: float = None) -> List[Dict]:
         v_exp = v_exp[sort_idx]
         t_exp = t_exp[sort_idx]
 
-        # Part 1: Inferred N_dot(R) = (dN/dR) * v(R)
-        # dN/dR = A * R^{-2.2}, so N_dot(R) = A * R^{-2.2} * v(R)
-        # Normalize: N_dot(R) / N_dot(R_0)
-        ndot_unnorm = R_exp ** OBSERVED_ALPHA * v_exp
-        R0_idx = 0  # normalize to smallest R in expanding range
-        if ndot_unnorm[R0_idx] != 0:
-            ndot_norm = ndot_unnorm / ndot_unnorm[R0_idx]
-        else:
-            ndot_norm = np.full_like(ndot_unnorm, np.nan)
-
-        # Part 2: Predicted dN/dR proportional to 1/v(R)
-        # dN/dR = C / v(R), fit power law
+        # Residence time: dN/dR proportional to 1/v(R)
         dNdR_pred = 1.0 / v_exp
-        # Normalize to first point for plotting
         dNdR_norm = dNdR_pred / dNdR_pred[0] if dNdR_pred[0] != 0 else dNdR_pred
 
         # Fit power law: log(dN/dR) = a + slope * log(R)
-        # over the expanding range
         valid = (R_exp > 0) & (v_exp > 0) & np.isfinite(dNdR_pred)
-        pred_slope = np.nan
-        pred_R2 = np.nan
+        residence_slope = np.nan
+        residence_R2 = np.nan
         if valid.sum() >= MIN_PTS:
             logR = np.log10(R_exp[valid])
             log_dNdR = np.log10(dNdR_pred[valid])
-            # OLS fit
             X = np.column_stack([np.ones_like(logR), logR])
             try:
                 beta = np.linalg.lstsq(X, log_dNdR, rcond=None)[0]
-                pred_slope = beta[1]
+                residence_slope = beta[1]
                 resid = log_dNdR - X @ beta
                 ss_res = np.sum(resid ** 2)
                 ss_tot = np.sum((log_dNdR - log_dNdR.mean()) ** 2)
-                pred_R2 = 1.0 - ss_res / ss_tot if ss_tot > 0 else np.nan
+                residence_R2 = 1.0 - ss_res / ss_tot if ss_tot > 0 else np.nan
             except np.linalg.LinAlgError:
                 pass
+
+        # Inferred N_dot(R) = (dN/dR) * v(R) assuming Watkins+2023 dN/dR
+        ndot_unnorm = R_exp ** OBSERVED_ALPHA * v_exp
+        if ndot_unnorm[0] != 0:
+            ndot_norm = ndot_unnorm / ndot_unnorm[0]
+        else:
+            ndot_norm = np.full_like(ndot_unnorm, np.nan)
+
+        # Derived stellar mass
+        M_star = sfe * mCloud
 
         rec = {
             "nCore": nCore,
             "mCloud": mCloud,
             "sfe": sfe,
+            "M_star": M_star,
             "folder": info["folder"],
             "outcome": info["outcome"],
             # Expanding arrays sorted by R
@@ -289,11 +300,10 @@ def collect_data(folder_path: Path, t_end: float = None) -> List[Dict]:
             "t_exp": t_exp,
             # Part 1 results
             "ndot_norm": ndot_norm,
-            # Part 2 results
             "dNdR_norm": dNdR_norm,
-            "pred_slope": pred_slope,
-            "pred_R2": pred_R2,
-            # Full run for Part 3
+            "residence_slope": residence_slope,
+            "residence_R2": residence_R2,
+            # Full run for synthesis
             "t_full": info["t_full"],
             "R_full": info["R_full"],
         }
@@ -304,21 +314,87 @@ def collect_data(folder_path: Path, t_end: float = None) -> List[Dict]:
 
 
 # ======================================================================
-# Part 3: Forward population synthesis
+# Part 2: Population synthesis (CMF-convolved)
 # ======================================================================
+
+def _sample_powerlaw(
+    N: int,
+    M_min: float,
+    M_max: float,
+    alpha: float,
+    rng: np.random.Generator,
+) -> np.ndarray:
+    """
+    Draw N samples from a truncated power-law dN/dM proportional to M^alpha.
+
+    Uses inverse-CDF sampling.
+
+    Parameters
+    ----------
+    N : int
+        Number of samples.
+    M_min, M_max : float
+        Mass range.
+    alpha : float
+        Power-law index (e.g. -2.0).
+    rng : numpy.random.Generator
+        Random number generator.
+
+    Returns
+    -------
+    ndarray
+        Array of sampled masses.
+    """
+    u = rng.uniform(0.0, 1.0, size=N)
+    ap1 = alpha + 1.0
+    if abs(ap1) < 1e-12:
+        # alpha == -1: dN/dM proportional to 1/M => log-uniform
+        log_min = np.log(M_min)
+        log_max = np.log(M_max)
+        return np.exp(log_min + u * (log_max - log_min))
+    else:
+        return (M_min**ap1 + u * (M_max**ap1 - M_min**ap1)) ** (1.0 / ap1)
+
+
+def _match_to_grid(
+    sampled_masses: np.ndarray,
+    grid_masses: np.ndarray,
+) -> np.ndarray:
+    """
+    For each sampled mass, find the index of the closest grid mass in log-space.
+
+    Parameters
+    ----------
+    sampled_masses : ndarray
+        Sampled M_star values.
+    grid_masses : ndarray
+        M_star values from the TRINITY grid.
+
+    Returns
+    -------
+    ndarray of int
+        Index into grid_masses for each sample.
+    """
+    log_grid = np.log10(grid_masses)
+    log_samp = np.log10(sampled_masses)
+    # For each sample, find nearest grid point
+    indices = np.argmin(np.abs(log_samp[:, None] - log_grid[None, :]), axis=1)
+    return indices
+
 
 def run_population_synthesis(
     records: List[Dict],
     N_bubble: int = 2000,
     t_obs: float = 5.0,
+    cmf_slope: float = -2.0,
+    R_complete: float = 30.0,
     seed: int = 42,
+    fixed_sfe: float = None,
+    fixed_ncore: float = None,
 ) -> Optional[Dict]:
     """
-    Forward population synthesis: draw N_bubble bubbles with uniformly
-    distributed formation times, evolve each with TRINITY, histogram R.
-
-    Uses fiducial (first available) run for the R(t) relation.  If multiple
-    runs exist, picks the one that reaches the largest radius.
+    Population synthesis: sample clusters from a CMF, match to TRINITY
+    runs, assign random birth times, histogram surviving radii.
 
     Parameters
     ----------
@@ -327,75 +403,131 @@ def run_population_synthesis(
     N_bubble : int
         Number of synthetic bubbles to draw.
     t_obs : float
-        Observation time [Myr].  Bubbles form at random t_form in [0, t_obs].
+        Observation time [Myr].
+    cmf_slope : float
+        CMF power-law index dN/dM_star proportional to M_star^alpha.
+    R_complete : float
+        Completeness radius [pc] below which bubbles are discarded.
     seed : int
-        Random seed for reproducibility.
+        Random seed.
+    fixed_sfe : float, optional
+        If set, only use runs with this SFE.
+    fixed_ncore : float, optional
+        If set, only use runs with this core density.
 
     Returns
     -------
     dict or None
-        Keys: R_synth, R_bins, dNdR_synth, synth_slope, synth_R2.
+        Synthesis results including R_synth, fitted slope, etc.
     """
     if not records:
         return None
 
-    # Pick the run with the longest expanding trajectory
-    best = max(records, key=lambda r: r["R_exp"].max() if len(r["R_exp"]) > 0 else 0)
-    t_full = best["t_full"]
-    R_full = best["R_full"]
+    # Filter runs if requested
+    filtered = records
+    if fixed_sfe is not None:
+        filtered = [r for r in filtered
+                    if abs(r["sfe"] - fixed_sfe) < 1e-6]
+    if fixed_ncore is not None:
+        filtered = [r for r in filtered
+                    if abs(r["nCore"] - fixed_ncore) / fixed_ncore < 0.1]
 
-    # Need a monotonically increasing t for interpolation
-    # Remove duplicate times
-    _, unique_idx = np.unique(t_full, return_index=True)
-    t_interp = t_full[unique_idx]
-    R_interp = R_full[unique_idx]
-
-    # Ensure t_obs is within the simulation range
-    t_max_sim = t_interp.max()
-    if t_obs > t_max_sim:
-        logger.warning("t_obs=%.2f Myr > simulation max=%.2f Myr; "
-                        "clamping to simulation max", t_obs, t_max_sim)
-        t_obs = t_max_sim
-
-    rng = np.random.default_rng(seed)
-    t_form = rng.uniform(0.0, t_obs, size=N_bubble)
-    ages = t_obs - t_form  # age of each bubble at observation time
-
-    # Interpolate R(age) from TRINITY trajectory
-    # Clamp ages to simulation range
-    ages_clamped = np.clip(ages, t_interp.min(), t_interp.max())
-    R_synth = np.interp(ages_clamped, t_interp, R_interp)
-
-    # Remove non-positive R
-    R_synth = R_synth[R_synth > 0]
-
-    if len(R_synth) < MIN_PTS:
-        logger.warning("Too few valid synthetic bubbles — skipping synthesis")
+    if not filtered:
+        logger.warning("No runs match fixed_sfe=%s, fixed_ncore=%s",
+                        fixed_sfe, fixed_ncore)
         return None
 
-    # Build histogram in log-space
-    log_R = np.log10(R_synth)
+    # Build grid of M_star values
+    grid_Mstar = np.array([r["M_star"] for r in filtered])
+    M_star_min = grid_Mstar.min()
+    M_star_max = grid_Mstar.max()
+
+    if M_star_min <= 0 or M_star_max <= 0:
+        logger.warning("Invalid M_star range [%.2e, %.2e]", M_star_min, M_star_max)
+        return None
+
+    logger.info("M_star grid: [%.2e, %.2e] Msun (%d runs)",
+                M_star_min, M_star_max, len(filtered))
+
+    # Prepare interpolation arrays for each run (deduplicate times)
+    interp_data = []
+    for rec in filtered:
+        t_full = rec["t_full"]
+        R_full = rec["R_full"]
+        _, unique_idx = np.unique(t_full, return_index=True)
+        interp_data.append({
+            "t": t_full[unique_idx],
+            "R": R_full[unique_idx],
+        })
+
+    rng = np.random.default_rng(seed)
+
+    # Step 1: sample cluster masses
+    sampled_Mstar = _sample_powerlaw(N_bubble, M_star_min, M_star_max,
+                                     cmf_slope, rng)
+
+    # Step 2: match to nearest grid run
+    match_idx = _match_to_grid(sampled_Mstar, grid_Mstar)
+
+    # Step 3: assign random birth times and evaluate R(age)
+    t_form = rng.uniform(0.0, t_obs, size=N_bubble)
+    ages = t_obs - t_form
+
+    R_synth = np.full(N_bubble, np.nan)
+    run_usage = np.zeros(len(filtered), dtype=int)
+
+    for i in range(N_bubble):
+        idx = match_idx[i]
+        run_usage[idx] += 1
+        td = interp_data[idx]
+        t_run = td["t"]
+        R_run = td["R"]
+        age = ages[i]
+
+        if age < t_run.min() or age > t_run.max():
+            # Clamp to simulation range
+            age_c = np.clip(age, t_run.min(), t_run.max())
+        else:
+            age_c = age
+
+        R_synth[i] = np.interp(age_c, t_run, R_run)
+
+    # Step 4: apply cuts
+    valid_mask = np.isfinite(R_synth) & (R_synth > 0)
+    recollapsed = np.sum(~valid_mask)
+    R_valid = R_synth[valid_mask]
+
+    below_complete = np.sum(R_valid < R_complete)
+    R_surviving = R_valid[R_valid >= R_complete]
+
+    N_surviving = len(R_surviving)
+    logger.info("Synthesis: %d drawn, %d recollapsed, %d below R_complete=%.0f pc, "
+                "%d surviving",
+                N_bubble, recollapsed, below_complete, R_complete, N_surviving)
+
+    if N_surviving < MIN_PTS:
+        logger.warning("Too few surviving bubbles (%d) — skipping synthesis",
+                        N_surviving)
+        return None
+
+    # Step 5: histogram in log-space
+    log_R = np.log10(R_surviving)
     n_bins = 25
     log_edges = np.linspace(log_R.min(), log_R.max(), n_bins + 1)
     counts, _ = np.histogram(log_R, bins=log_edges)
 
-    # Convert to dN/dR: counts / dR, where dR = 10^edge[i+1] - 10^edge[i]
     R_edges = 10.0 ** log_edges
     dR = np.diff(R_edges)
     R_centres = 0.5 * (R_edges[:-1] + R_edges[1:])
-
     dNdR = counts / dR
-    # Normalize to max for comparison
-    dNdR_max = dNdR.max() if dNdR.max() > 0 else 1.0
-    dNdR_norm = dNdR / dNdR_max
 
-    # Fit power law to non-zero bins
-    valid = dNdR > 0
+    # Step 6: fit power law to non-zero bins above R_complete
+    fit_mask = (dNdR > 0) & (R_centres >= R_complete)
     synth_slope = np.nan
     synth_R2 = np.nan
-    if valid.sum() >= 5:
-        logR_c = np.log10(R_centres[valid])
-        log_dN = np.log10(dNdR[valid])
+    if fit_mask.sum() >= 5:
+        logR_c = np.log10(R_centres[fit_mask])
+        log_dN = np.log10(dNdR[fit_mask])
         X = np.column_stack([np.ones_like(logR_c), logR_c])
         try:
             beta = np.linalg.lstsq(X, log_dN, rcond=None)[0]
@@ -407,17 +539,109 @@ def run_population_synthesis(
         except np.linalg.LinAlgError:
             pass
 
+    # Build run-usage summary
+    runs_used_summary = []
+    for j, rec in enumerate(filtered):
+        if run_usage[j] > 0:
+            runs_used_summary.append(
+                f"{rec['folder']}({run_usage[j]})")
+
     return {
-        "R_synth": R_synth,
+        "R_synth": R_surviving,
         "R_centres": R_centres,
         "dNdR": dNdR,
-        "dNdR_norm": dNdR_norm,
         "synth_slope": synth_slope,
         "synth_R2": synth_R2,
         "N_bubble": N_bubble,
+        "N_surviving": N_surviving,
+        "N_recollapsed": recollapsed,
+        "N_below_complete": below_complete,
         "t_obs": t_obs,
-        "run_used": best["folder"],
+        "cmf_slope": cmf_slope,
+        "R_complete": R_complete,
+        "runs_used": ", ".join(runs_used_summary),
+        "run_usage": run_usage,
+        "filtered_records": filtered,
     }
+
+
+# ======================================================================
+# Part 3: Parameter sensitivity
+# ======================================================================
+
+def run_sensitivity(
+    records: List[Dict],
+    N_bubble: int = 2000,
+    seed: int = 42,
+    R_complete: float = 30.0,
+    cmf_slopes: List[float] = None,
+    t_obs_values: List[float] = None,
+    fixed_sfe: float = None,
+    fixed_ncore: float = None,
+) -> List[Dict]:
+    """
+    Run synthesis for a grid of CMF slopes and t_obs values.
+
+    Parameters
+    ----------
+    records : list of dict
+        Output of collect_data().
+    N_bubble : int
+        Number of synthetic bubbles per run.
+    seed : int
+        Base random seed.
+    R_complete : float
+        Completeness radius [pc].
+    cmf_slopes : list of float, optional
+        CMF slopes to test (default: [-1.5, -2.0, -2.5]).
+    t_obs_values : list of float, optional
+        Observation times to test [Myr] (default: [3, 5, 10]).
+    fixed_sfe : float, optional
+        If set, only use runs with this SFE.
+    fixed_ncore : float, optional
+        If set, only use runs with this core density.
+
+    Returns
+    -------
+    list of dict
+        Each entry has: cmf_slope, t_obs, synth_slope, synth_R2, N_surviving.
+    """
+    if cmf_slopes is None:
+        cmf_slopes = [-1.5, -2.0, -2.5]
+    if t_obs_values is None:
+        t_obs_values = [3.0, 5.0, 10.0]
+
+    results = []
+    for cmf_sl in cmf_slopes:
+        for t_obs in t_obs_values:
+            synth = run_population_synthesis(
+                records,
+                N_bubble=N_bubble,
+                t_obs=t_obs,
+                cmf_slope=cmf_sl,
+                R_complete=R_complete,
+                seed=seed,
+                fixed_sfe=fixed_sfe,
+                fixed_ncore=fixed_ncore,
+            )
+            if synth is not None:
+                results.append({
+                    "cmf_slope": cmf_sl,
+                    "t_obs": t_obs,
+                    "synth_slope": synth["synth_slope"],
+                    "synth_R2": synth["synth_R2"],
+                    "N_surviving": synth["N_surviving"],
+                })
+            else:
+                results.append({
+                    "cmf_slope": cmf_sl,
+                    "t_obs": t_obs,
+                    "synth_slope": np.nan,
+                    "synth_R2": np.nan,
+                    "N_surviving": 0,
+                })
+
+    return results
 
 
 # ======================================================================
@@ -440,13 +664,239 @@ def _assign_styles(records: List[Dict]) -> List[Dict]:
     return records
 
 
+def _color_by_Mstar(records: List[Dict]) -> List[Dict]:
+    """Assign colors based on M_star using a log-scale colormap."""
+    Mstar_vals = np.array([r["M_star"] for r in records])
+    if Mstar_vals.max() > Mstar_vals.min() > 0:
+        log_Mstar = np.log10(Mstar_vals)
+        norm = plt.Normalize(vmin=log_Mstar.min(), vmax=log_Mstar.max())
+        cmap = plt.cm.viridis
+        for i, rec in enumerate(records):
+            rec["_color"] = cmap(norm(log_Mstar[i]))
+    else:
+        _assign_styles(records)
+    return records
+
+
+def plot_residence_time(records: List[Dict], output_dir: Path,
+                        fmt: str = "pdf") -> None:
+    """
+    Figure 1: Single-trajectory residence-time distribution 1/v(R) vs R.
+
+    This shows how long a single shell lingers at each radius.  Positive
+    slopes are expected — this is a diagnostic, not a prediction.
+
+    Parameters
+    ----------
+    records : list of dict
+        Output of collect_data().
+    output_dir : Path
+        Figure output directory.
+    fmt : str
+        Figure format.
+    """
+    records = _color_by_Mstar(records)
+
+    fig, ax = plt.subplots(figsize=(6, 4.5))
+
+    R_range = [np.inf, -np.inf]
+    for rec in records:
+        R = rec["R_exp"]
+        dNdR = rec["dNdR_norm"]
+        if len(R) < 2:
+            continue
+        ax.plot(R, dNdR, color=rec["_color"], ls="-",
+                lw=1.2, alpha=0.85,
+                label=(f"{_model_label(rec)}"
+                       f" ($\\gamma={rec['residence_slope']:.2f}$)"))
+        R_range[0] = min(R_range[0], R.min())
+        R_range[1] = max(R_range[1], R.max())
+
+    # Reference slopes: energy-driven (R^{+2/3}) and momentum-driven (R^{+3})
+    if R_range[0] < R_range[1]:
+        R_ref = np.logspace(np.log10(R_range[0]), np.log10(R_range[1]), 100)
+        R_mid = np.sqrt(R_range[0] * R_range[1])
+        # Energy-driven: v ~ R^{-2/3} => 1/v ~ R^{+2/3}
+        ref_energy = (R_ref / R_mid) ** (2.0 / 3.0)
+        ax.plot(R_ref, ref_energy, color="grey", ls="--", lw=1.5, alpha=0.5,
+                label=r"$R^{+2/3}$ (energy-driven)")
+        # Momentum-driven: v ~ R^{-3} => 1/v ~ R^{+3}
+        ref_momentum = (R_ref / R_mid) ** 3.0
+        ax.plot(R_ref, ref_momentum, color="grey", ls=":", lw=1.5, alpha=0.5,
+                label=r"$R^{+3}$ (momentum-driven)")
+
+    ax.set_xscale("log")
+    ax.set_yscale("log")
+    ax.set_xlabel(r"$R$ [pc]")
+    ax.set_ylabel(r"$1/v(R)$ (normalized)")
+
+    if len(records) <= 8:
+        ax.legend(fontsize=7, loc="best", framealpha=0.7)
+
+    fig.tight_layout()
+    path = output_dir / f"bubble_residence_time.{fmt}"
+    fig.savefig(path, dpi=200)
+    plt.close(fig)
+    logger.info("Saved: %s", path)
+
+
+def plot_synthesis_population(synth: Dict, output_dir: Path,
+                              fmt: str = "pdf") -> None:
+    """
+    Figure 2: Population synthesis results.
+
+    Two panels: (a) histogram of synthetic bubble radii, (b) dN/dR vs R
+    with power-law fit and Watkins+2023 reference.
+
+    Parameters
+    ----------
+    synth : dict
+        Output of run_population_synthesis().
+    output_dir : Path
+        Figure output directory.
+    fmt : str
+        Figure format.
+    """
+    fig, axes = plt.subplots(1, 2, figsize=(10, 4.5))
+
+    R_synth = synth["R_synth"]
+    R_centres = synth["R_centres"]
+    dNdR = synth["dNdR"]
+    R_complete = synth["R_complete"]
+
+    # Panel (a): histogram
+    ax = axes[0]
+    ax.hist(R_synth, bins=30, color=C_SKY, edgecolor=C_BLUE,
+            alpha=0.7, density=False)
+    ax.axvline(R_complete, color=C_VERMILLION, ls=":", lw=1.2, alpha=0.8,
+               label=f"$R_{{\\rm complete}}={R_complete:.0f}$ pc")
+    ax.set_xlabel(r"$R$ [pc]")
+    ax.set_ylabel(r"$N$")
+    ax.legend(fontsize=8, framealpha=0.7)
+    ax.annotate(
+        f"$N={synth['N_bubble']}$, "
+        f"$t_{{\\rm obs}}={synth['t_obs']:.1f}$ Myr\n"
+        f"CMF $\\alpha={synth['cmf_slope']:.1f}$",
+        xy=(0.95, 0.95), xycoords="axes fraction",
+        ha="right", va="top", fontsize=8,
+        bbox=dict(boxstyle="round,pad=0.3", fc="white", alpha=0.7))
+
+    # Panel (b): dN/dR vs R
+    ax = axes[1]
+    valid = dNdR > 0
+    ax.scatter(R_centres[valid], dNdR[valid], color=C_BLUE, s=25,
+               zorder=3, label="Synthesis")
+
+    # Power-law fit
+    slope = synth["synth_slope"]
+    if np.isfinite(slope):
+        fit_mask = valid & (R_centres >= R_complete)
+        if fit_mask.sum() >= 2:
+            logR_c = np.log10(R_centres[fit_mask])
+            log_dN = np.log10(dNdR[fit_mask])
+            X = np.column_stack([np.ones_like(logR_c), logR_c])
+            beta = np.linalg.lstsq(X, log_dN, rcond=None)[0]
+            R_fit = np.logspace(np.log10(R_centres[fit_mask].min()),
+                                np.log10(R_centres[fit_mask].max()), 50)
+            dNdR_fit = 10.0 ** (beta[0] + beta[1] * np.log10(R_fit))
+            ax.plot(R_fit, dNdR_fit, color=C_VERMILLION, ls="--", lw=1.5,
+                    label=f"Fit: $\\gamma={slope:.2f}$")
+
+    # Observed reference
+    if valid.sum() >= 2:
+        R_ref = np.logspace(np.log10(R_centres[valid].min()),
+                            np.log10(R_centres[valid].max()), 50)
+        R_mid = np.sqrt(R_centres[valid].min() * R_centres[valid].max())
+        dN_mid = np.interp(np.log10(R_mid), np.log10(R_centres[valid]),
+                           np.log10(dNdR[valid]))
+        dNdR_obs = 10.0 ** (dN_mid + OBSERVED_ALPHA * (np.log10(R_ref) - np.log10(R_mid)))
+        ax.plot(R_ref, dNdR_obs, color=C_GREEN, ls="-.", lw=1.5,
+                label=r"$R^{-2.2}$ (Watkins+2023)")
+
+    # Completeness line
+    ax.axvline(R_complete, color=C_VERMILLION, ls=":", lw=1.0, alpha=0.6)
+
+    ax.set_xscale("log")
+    ax.set_yscale("log")
+    ax.set_xlabel(r"$R$ [pc]")
+    ax.set_ylabel(r"$\mathrm{d}N/\mathrm{d}R$")
+    ax.legend(fontsize=8, framealpha=0.7)
+
+    fig.tight_layout()
+    path = output_dir / f"bubble_synthesis_population.{fmt}"
+    fig.savefig(path, dpi=200)
+    plt.close(fig)
+    logger.info("Saved: %s", path)
+
+
+def plot_slope_vs_cmf(sensitivity: List[Dict], output_dir: Path,
+                      fmt: str = "pdf") -> None:
+    """
+    Figure 3: Predicted dN/dR slope vs CMF slope for multiple t_obs.
+
+    Parameters
+    ----------
+    sensitivity : list of dict
+        Output of run_sensitivity().
+    output_dir : Path
+        Figure output directory.
+    fmt : str
+        Figure format.
+    """
+    if not sensitivity:
+        logger.warning("No sensitivity data — skipping slope-vs-CMF plot")
+        return
+
+    fig, ax = plt.subplots(figsize=(6, 4.5))
+
+    # Group by t_obs
+    t_obs_vals = sorted(set(s["t_obs"] for s in sensitivity))
+    colors = [C_BLUE, C_VERMILLION, C_GREEN, C_PURPLE, C_ORANGE]
+    markers = ["o", "s", "D", "^", "v"]
+
+    for j, t_obs in enumerate(t_obs_vals):
+        subset = [s for s in sensitivity if s["t_obs"] == t_obs]
+        cmf_sl = np.array([s["cmf_slope"] for s in subset])
+        synth_sl = np.array([s["synth_slope"] for s in subset])
+        valid = np.isfinite(synth_sl)
+        if valid.sum() == 0:
+            continue
+        c = colors[j % len(colors)]
+        m = markers[j % len(markers)]
+        ax.plot(cmf_sl[valid], synth_sl[valid], color=c, marker=m,
+                ms=8, lw=1.5, ls="-", label=f"$t_{{\\rm obs}}={t_obs:.0f}$ Myr")
+
+    # Observed reference
+    ax.axhline(OBSERVED_ALPHA, color="grey", ls="--", lw=1.5, alpha=0.7,
+               label=f"Observed $= {OBSERVED_ALPHA}$")
+
+    ax.set_xlabel(r"CMF slope $\alpha$ ($\mathrm{d}N/\mathrm{d}M_\star \propto M_\star^\alpha$)")
+    ax.set_ylabel(r"Synthetic $\mathrm{d}N/\mathrm{d}R$ slope $\gamma$")
+    ax.legend(fontsize=8, framealpha=0.7)
+
+    fig.tight_layout()
+    path = output_dir / f"bubble_slope_vs_cmf.{fmt}"
+    fig.savefig(path, dpi=200)
+    plt.close(fig)
+    logger.info("Saved: %s", path)
+
+
 def plot_ndot_inferred(records: List[Dict], output_dir: Path,
                        fmt: str = "pdf") -> None:
     """
-    Part 1: Inferred N_dot(R)/N_dot(R_0) vs R.
+    Figure 4: Inferred N_dot(R)/N_dot(R_0) vs R.
 
-    If N_dot is constant, lines should be horizontal.  Deviations show
-    where the constant-formation-rate assumption breaks down.
+    Tests single-trajectory self-consistency only: if N_dot is constant,
+    lines should be horizontal.
+
+    Parameters
+    ----------
+    records : list of dict
+        Output of collect_data().
+    output_dir : Path
+        Figure output directory.
+    fmt : str
+        Figure format.
     """
     records = _assign_styles(records)
 
@@ -460,175 +910,23 @@ def plot_ndot_inferred(records: List[Dict], output_dir: Path,
         ax.plot(R, ndot, color=rec["_color"], ls=rec["_ls"],
                 lw=1.5, label=_model_label(rec), alpha=0.85)
 
-    # Horizontal reference (constant N_dot)
     ax.axhline(1.0, color="grey", ls=":", lw=1.0, alpha=0.6)
 
     ax.set_xscale("log")
     ax.set_yscale("log")
     ax.set_xlabel(r"$R$ [pc]")
     ax.set_ylabel(r"$\dot{N}(R)\;/\;\dot{N}(R_0)$")
-    ax.set_title(r"Inferred $\dot{N}(R)$ assuming $\mathrm{d}N/\mathrm{d}R \propto R^{-2.2}$"
-                 " (Watkins+2023)")
 
     if len(records) <= 8:
         ax.legend(fontsize=7, loc="best", framealpha=0.7)
 
+    ax.annotate("Single-trajectory self-consistency test",
+                xy=(0.05, 0.95), xycoords="axes fraction",
+                ha="left", va="top", fontsize=8, style="italic",
+                color="grey")
+
     fig.tight_layout()
     path = output_dir / f"bubble_ndot_inferred.{fmt}"
-    fig.savefig(path, dpi=200)
-    plt.close(fig)
-    logger.info("Saved: %s", path)
-
-
-def plot_dNdR_predicted(records: List[Dict], output_dir: Path,
-                        fmt: str = "pdf") -> None:
-    """
-    Part 2: Predicted dN/dR proportional to 1/v(R) vs R for each model.
-
-    Overplots the observed R^{-2.2} slope for comparison.
-    """
-    records = _assign_styles(records)
-
-    fig, ax = plt.subplots(figsize=(6, 4.5))
-
-    R_range = [np.inf, -np.inf]
-    for rec in records:
-        R = rec["R_exp"]
-        dNdR = rec["dNdR_norm"]
-        if len(R) < 2:
-            continue
-        ax.plot(R, dNdR, color=rec["_color"], ls=rec["_ls"],
-                lw=1.5, alpha=0.85,
-                label=(f"{_model_label(rec)}"
-                       f" ($\\gamma={rec['pred_slope']:.2f}$)"))
-        R_range[0] = min(R_range[0], R.min())
-        R_range[1] = max(R_range[1], R.max())
-
-    # Observed R^{-2.2} reference slope (arbitrary normalization)
-    if R_range[0] < R_range[1]:
-        R_ref = np.logspace(np.log10(R_range[0]), np.log10(R_range[1]), 100)
-        # Normalize to match predicted curves at geometric mean
-        R_mid = np.sqrt(R_range[0] * R_range[1])
-        dNdR_ref = (R_ref / R_mid) ** OBSERVED_ALPHA
-        # Scale to roughly match the median of predicted curves at R_mid
-        ax.plot(R_ref, dNdR_ref, color="grey", ls="--", lw=2.0,
-                alpha=0.7, label=r"$R^{-2.2}$ (Watkins+2023)")
-
-    ax.set_xscale("log")
-    ax.set_yscale("log")
-    ax.set_xlabel(r"$R$ [pc]")
-    ax.set_ylabel(r"$\mathrm{d}N/\mathrm{d}R$ (normalized)")
-    ax.set_title(r"Predicted $\mathrm{d}N/\mathrm{d}R \propto 1/v(R)$"
-                 " (constant $\\dot{N}$)")
-
-    ax.legend(fontsize=7, loc="best", framealpha=0.7)
-
-    fig.tight_layout()
-    path = output_dir / f"bubble_dNdR_predicted.{fmt}"
-    fig.savefig(path, dpi=200)
-    plt.close(fig)
-    logger.info("Saved: %s", path)
-
-
-def plot_slope_comparison(records: List[Dict], output_dir: Path,
-                          fmt: str = "pdf") -> None:
-    """
-    Summary figure: predicted dN/dR slope vs model parameters.
-
-    Horizontal dashed line at -2.2 (observed).
-    """
-    slopes = [rec["pred_slope"] for rec in records if np.isfinite(rec["pred_slope"])]
-    labels = [rec["folder"] for rec in records if np.isfinite(rec["pred_slope"])]
-    nCores = [rec["nCore"] for rec in records if np.isfinite(rec["pred_slope"])]
-
-    if not slopes:
-        logger.warning("No valid slopes for comparison plot — skipping")
-        return
-
-    fig, ax = plt.subplots(figsize=(6, 4))
-
-    x = np.arange(len(slopes))
-    ax.scatter(x, slopes, color=C_BLUE, s=50, zorder=3, edgecolors="white", lw=0.5)
-    ax.axhline(OBSERVED_ALPHA, color=C_VERMILLION, ls="--", lw=1.5,
-               label=f"Observed = {OBSERVED_ALPHA}")
-
-    ax.set_xticks(x)
-    ax.set_xticklabels(labels, rotation=45, ha="right", fontsize=7)
-    ax.set_ylabel(r"Predicted $\mathrm{d}N/\mathrm{d}R$ slope $\gamma$")
-    ax.set_title("Predicted vs. observed size distribution slope")
-    ax.legend(fontsize=9)
-
-    fig.tight_layout()
-    path = output_dir / f"bubble_slope_comparison.{fmt}"
-    fig.savefig(path, dpi=200)
-    plt.close(fig)
-    logger.info("Saved: %s", path)
-
-
-def plot_synthesis(synth: Dict, output_dir: Path,
-                   fmt: str = "pdf") -> None:
-    """
-    Part 3: Forward population synthesis histogram.
-
-    Two panels: (a) histogram of R values, (b) dN/dR vs R with power-law fit.
-    """
-    fig, axes = plt.subplots(1, 2, figsize=(10, 4.5))
-
-    R_synth = synth["R_synth"]
-    R_centres = synth["R_centres"]
-    dNdR = synth["dNdR"]
-    dNdR_norm = synth["dNdR_norm"]
-
-    # Panel (a): histogram
-    ax = axes[0]
-    ax.hist(R_synth, bins=30, color=C_SKY, edgecolor=C_BLUE,
-            alpha=0.7, density=False)
-    ax.set_xlabel(r"$R$ [pc]")
-    ax.set_ylabel(r"$N$")
-    ax.set_title(f"Synthetic bubble radii ($N={synth['N_bubble']}$, "
-                 f"$t_{{\\rm obs}}={synth['t_obs']:.1f}$ Myr)")
-
-    # Panel (b): dN/dR vs R
-    ax = axes[1]
-    valid = dNdR > 0
-    ax.scatter(R_centres[valid], dNdR[valid], color=C_BLUE, s=25,
-               zorder=3, label="Synthesis")
-
-    # Plot power-law fit
-    slope = synth["synth_slope"]
-    if np.isfinite(slope):
-        R_fit = np.logspace(np.log10(R_centres[valid].min()),
-                            np.log10(R_centres[valid].max()), 50)
-        # Use the fit to compute reference line
-        logR_c = np.log10(R_centres[valid])
-        log_dN = np.log10(dNdR[valid])
-        X = np.column_stack([np.ones_like(logR_c), logR_c])
-        beta = np.linalg.lstsq(X, log_dN, rcond=None)[0]
-        dNdR_fit = 10.0 ** (beta[0] + beta[1] * np.log10(R_fit))
-        ax.plot(R_fit, dNdR_fit, color=C_VERMILLION, ls="--", lw=1.5,
-                label=f"Fit: $\\gamma={slope:.2f}$")
-
-    # Observed reference
-    if valid.sum() >= 2:
-        R_ref = np.logspace(np.log10(R_centres[valid].min()),
-                            np.log10(R_centres[valid].max()), 50)
-        # Normalize to match data at midpoint
-        R_mid = np.sqrt(R_centres[valid].min() * R_centres[valid].max())
-        dN_mid = np.interp(np.log10(R_mid), np.log10(R_centres[valid]),
-                           np.log10(dNdR[valid]))
-        dNdR_obs = 10.0 ** (dN_mid + OBSERVED_ALPHA * (np.log10(R_ref) - np.log10(R_mid)))
-        ax.plot(R_ref, dNdR_obs, color=C_GREEN, ls="-.", lw=1.5,
-                label=r"$R^{-2.2}$ (Watkins+2023)")
-
-    ax.set_xscale("log")
-    ax.set_yscale("log")
-    ax.set_xlabel(r"$R$ [pc]")
-    ax.set_ylabel(r"$\mathrm{d}N/\mathrm{d}R$")
-    ax.set_title("Synthetic size distribution")
-    ax.legend(fontsize=8, framealpha=0.7)
-
-    fig.tight_layout()
-    path = output_dir / f"bubble_synthesis.{fmt}"
     fig.savefig(path, dpi=200)
     plt.close(fig)
     logger.info("Saved: %s", path)
@@ -639,10 +937,24 @@ def plot_synthesis(synth: Dict, output_dir: Path,
 # ======================================================================
 
 def write_results_csv(records: List[Dict], output_dir: Path) -> Path:
-    """Write per-run summary CSV."""
+    """
+    Write per-run summary CSV.
+
+    Parameters
+    ----------
+    records : list of dict
+        Output of collect_data().
+    output_dir : Path
+        Output directory.
+
+    Returns
+    -------
+    Path
+        Path to the written CSV.
+    """
     csv_path = output_dir / "bubble_distribution_results.csv"
-    header = ["folder", "mCloud", "sfe", "nCore", "outcome",
-              "R_min_pc", "R_max_pc", "pred_slope", "pred_R2"]
+    header = ["folder", "mCloud", "sfe", "nCore", "M_star", "outcome",
+              "R_min_pc", "R_max_pc", "residence_slope", "residence_R2"]
 
     with open(csv_path, "w", newline="") as fh:
         writer = csv.writer(fh)
@@ -653,75 +965,141 @@ def write_results_csv(records: List[Dict], output_dir: Path) -> Path:
                 f"{rec['mCloud']:.0e}",
                 f"{rec['sfe']:.3f}",
                 f"{rec['nCore']:.0e}",
+                f"{rec['M_star']:.2e}",
                 rec["outcome"],
                 f"{rec['R_exp'].min():.3f}" if len(rec["R_exp"]) > 0 else "N/A",
                 f"{rec['R_exp'].max():.3f}" if len(rec["R_exp"]) > 0 else "N/A",
-                f"{rec['pred_slope']:.4f}" if np.isfinite(rec["pred_slope"]) else "N/A",
-                f"{rec['pred_R2']:.4f}" if np.isfinite(rec["pred_R2"]) else "N/A",
+                f"{rec['residence_slope']:.4f}" if np.isfinite(rec["residence_slope"]) else "N/A",
+                f"{rec['residence_R2']:.4f}" if np.isfinite(rec["residence_R2"]) else "N/A",
             ])
 
     logger.info("Saved: %s", csv_path)
     return csv_path
 
 
-def print_summary(records: List[Dict], synth: Optional[Dict] = None) -> None:
-    """Print summary table to stdout."""
+def write_synthesis_csv(synth: Optional[Dict], sensitivity: List[Dict],
+                        output_dir: Path) -> Path:
+    """
+    Write synthesis summary CSV.
+
+    Parameters
+    ----------
+    synth : dict or None
+        Output of run_population_synthesis() (primary run).
+    sensitivity : list of dict
+        Output of run_sensitivity().
+    output_dir : Path
+        Output directory.
+
+    Returns
+    -------
+    Path
+        Path to the written CSV.
+    """
+    csv_path = output_dir / "bubble_synthesis_summary.csv"
+    header = ["cmf_slope", "t_obs_Myr", "R_complete_pc", "N_bubble",
+              "N_surviving", "synth_slope", "synth_R2", "runs_used"]
+
+    rows = []
+    if synth is not None:
+        rows.append([
+            f"{synth['cmf_slope']:.2f}",
+            f"{synth['t_obs']:.1f}",
+            f"{synth['R_complete']:.1f}",
+            synth["N_bubble"],
+            synth["N_surviving"],
+            f"{synth['synth_slope']:.4f}" if np.isfinite(synth["synth_slope"]) else "N/A",
+            f"{synth['synth_R2']:.4f}" if np.isfinite(synth["synth_R2"]) else "N/A",
+            synth["runs_used"],
+        ])
+
+    for s in sensitivity:
+        rows.append([
+            f"{s['cmf_slope']:.2f}",
+            f"{s['t_obs']:.1f}",
+            "",
+            "",
+            s["N_surviving"],
+            f"{s['synth_slope']:.4f}" if np.isfinite(s["synth_slope"]) else "N/A",
+            f"{s['synth_R2']:.4f}" if np.isfinite(s["synth_R2"]) else "N/A",
+            "",
+        ])
+
+    with open(csv_path, "w", newline="") as fh:
+        writer = csv.writer(fh)
+        writer.writerow(header)
+        writer.writerows(rows)
+
+    logger.info("Saved: %s", csv_path)
+    return csv_path
+
+
+def print_summary(records: List[Dict], synth: Optional[Dict] = None,
+                  sensitivity: List[Dict] = None) -> None:
+    """
+    Print summary table to stdout.
+
+    Parameters
+    ----------
+    records : list of dict
+        Output of collect_data().
+    synth : dict, optional
+        Output of run_population_synthesis().
+    sensitivity : list of dict, optional
+        Output of run_sensitivity().
+    """
     print()
     print("=" * 80)
     print("BUBBLE SIZE DISTRIBUTION SUMMARY")
     print("=" * 80)
 
-    slopes = [rec["pred_slope"] for rec in records
-              if np.isfinite(rec["pred_slope"])]
-    if slopes:
-        arr = np.array(slopes)
-        print(f"\n  Predicted dN/dR slope (constant N_dot):")
-        print(f"    Mean  = {arr.mean():.3f}")
-        print(f"    Std   = {arr.std():.3f}")
-        print(f"    Range = [{arr.min():.3f}, {arr.max():.3f}]")
-        print(f"    Observed (Watkins+2023) = {OBSERVED_ALPHA}")
-        print(f"    N_runs = {len(slopes)}")
-
     # Per-run table
     print()
     print("-" * 80)
-    print(f"  {'Folder':<35s} {'Outcome':<10s} {'Slope':>8s} {'R2':>8s} "
-          f"{'R_min':>8s} {'R_max':>8s}")
+    print(f"  {'Folder':<35s} {'Outcome':<10s} {'M_star':>10s} "
+          f"{'Res.Slope':>10s} {'R2':>8s} {'R_min':>8s} {'R_max':>8s}")
     print("-" * 80)
     for rec in records:
-        sl = f"{rec['pred_slope']:.3f}" if np.isfinite(rec["pred_slope"]) else "N/A"
-        r2 = f"{rec['pred_R2']:.3f}" if np.isfinite(rec["pred_R2"]) else "N/A"
+        sl = f"{rec['residence_slope']:.3f}" if np.isfinite(rec["residence_slope"]) else "N/A"
+        r2 = f"{rec['residence_R2']:.3f}" if np.isfinite(rec["residence_R2"]) else "N/A"
         rmin = f"{rec['R_exp'].min():.2f}" if len(rec["R_exp"]) > 0 else "N/A"
         rmax = f"{rec['R_exp'].max():.2f}" if len(rec["R_exp"]) > 0 else "N/A"
-        print(f"  {rec['folder']:<35s} {rec['outcome']:<10s} {sl:>8s} {r2:>8s} "
-              f"{rmin:>8s} {rmax:>8s}")
-
-    # N_dot constancy check
-    print()
-    print("-" * 80)
-    print("  N_dot constancy check (ratio of N_dot at R_max vs R_min):")
-    for rec in records:
-        ndot = rec["ndot_norm"]
-        if len(ndot) < 2 or not np.isfinite(ndot).any():
-            continue
-        finite = ndot[np.isfinite(ndot)]
-        if len(finite) < 2:
-            continue
-        ratio = finite[-1] / finite[0] if finite[0] != 0 else np.nan
-        if np.isfinite(ratio):
-            print(f"    {rec['folder']:<35s}  "
-                  f"N_dot(R_max)/N_dot(R_min) = {ratio:.3f}")
+        mstar = f"{rec['M_star']:.2e}"
+        print(f"  {rec['folder']:<35s} {rec['outcome']:<10s} {mstar:>10s} "
+              f"{sl:>10s} {r2:>8s} {rmin:>8s} {rmax:>8s}")
 
     if synth is not None:
         print()
         print("-" * 80)
-        print(f"  Population synthesis (run: {synth['run_used']}):")
-        print(f"    N_bubble = {synth['N_bubble']}")
-        print(f"    t_obs    = {synth['t_obs']:.1f} Myr")
-        print(f"    Fitted slope = {synth['synth_slope']:.3f}"
-              if np.isfinite(synth["synth_slope"]) else "    Fitted slope = N/A")
-        print(f"    R2       = {synth['synth_R2']:.3f}"
-              if np.isfinite(synth["synth_R2"]) else "    R2       = N/A")
+        print("  Population synthesis (primary run):")
+        print(f"    CMF slope    = {synth['cmf_slope']:.1f}")
+        print(f"    N_bubble     = {synth['N_bubble']}")
+        print(f"    t_obs        = {synth['t_obs']:.1f} Myr")
+        print(f"    R_complete   = {synth['R_complete']:.0f} pc")
+        print(f"    N_surviving  = {synth['N_surviving']}")
+        print(f"    N_recollapsed = {synth['N_recollapsed']}")
+        print(f"    N_below_cut  = {synth['N_below_complete']}")
+        if np.isfinite(synth["synth_slope"]):
+            print(f"    Fitted slope = {synth['synth_slope']:.3f}  "
+                  f"(observed = {OBSERVED_ALPHA})")
+        else:
+            print(f"    Fitted slope = N/A")
+        if np.isfinite(synth["synth_R2"]):
+            print(f"    R2           = {synth['synth_R2']:.3f}")
+        print(f"    Runs used    : {synth['runs_used']}")
+
+    if sensitivity:
+        print()
+        print("-" * 80)
+        print("  Parameter sensitivity:")
+        print(f"    {'CMF slope':>10s} {'t_obs':>8s} {'Synth slope':>12s} "
+              f"{'R2':>8s} {'N_surv':>8s}")
+        print("    " + "-" * 50)
+        for s in sensitivity:
+            sl = f"{s['synth_slope']:.3f}" if np.isfinite(s["synth_slope"]) else "N/A"
+            r2 = f"{s['synth_R2']:.3f}" if np.isfinite(s["synth_R2"]) else "N/A"
+            print(f"    {s['cmf_slope']:>10.1f} {s['t_obs']:>8.1f} "
+                  f"{sl:>12s} {r2:>8s} {s['N_surviving']:>8d}")
 
     print()
     print("=" * 80)
@@ -732,13 +1110,15 @@ def print_summary(records: List[Dict], synth: Optional[Dict] = None) -> None:
 # ======================================================================
 
 def build_parser() -> argparse.ArgumentParser:
+    """Build CLI argument parser."""
     parser = argparse.ArgumentParser(
-        description="Bubble size distribution analysis from TRINITY outputs",
+        description="Population-convolved bubble size distribution from TRINITY outputs",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
   python bubble_distribution.py -F /path/to/sweep_output
   python bubble_distribution.py -F /path/to/sweep_output --N-bubble 5000 --fmt png
+  python bubble_distribution.py -F /path/to/sweep_output --cmf-slope -1.8 --R-complete 20
         """,
     )
     parser.add_argument(
@@ -763,11 +1143,27 @@ Examples:
     )
     parser.add_argument(
         "--no-synthesis", action="store_true",
-        help="Skip Part 3 (population synthesis).",
+        help="Skip population synthesis (Parts 2 and 3).",
     )
     parser.add_argument(
         "--t-end", type=float, default=None,
         help="Maximum time [Myr] to consider in calculations.",
+    )
+    parser.add_argument(
+        "--cmf-slope", type=float, default=-2.0,
+        help="Cluster mass function slope dN/dM proportional to M^alpha (default: -2.0).",
+    )
+    parser.add_argument(
+        "--R-complete", type=float, default=30.0,
+        help="Completeness radius [pc] (Watkins+2023 turnover, default: 30.0).",
+    )
+    parser.add_argument(
+        "--fixed-sfe", type=float, default=None,
+        help="If set, only use runs with this SFE for synthesis.",
+    )
+    parser.add_argument(
+        "--fixed-ncore", type=float, default=None,
+        help="If set, only use runs with this core density for synthesis.",
     )
     return parser
 
@@ -797,30 +1193,51 @@ def main(argv: Optional[List[str]] = None) -> int:
         logger.error("No valid data collected — aborting.")
         return 1
 
-    # Step 2: figures
+    # Step 2: Part 1 figures (diagnostics)
+    plot_residence_time(records, output_dir, args.fmt)
     plot_ndot_inferred(records, output_dir, args.fmt)
-    plot_dNdR_predicted(records, output_dir, args.fmt)
-    plot_slope_comparison(records, output_dir, args.fmt)
 
-    # Step 3: population synthesis (optional)
+    # Step 3: population synthesis (Parts 2 & 3)
     synth = None
+    sensitivity = []
     if not args.no_synthesis:
-        logger.info("Running population synthesis (N=%d, t_obs=%.1f Myr)...",
-                     args.N_bubble, args.t_obs)
+        logger.info("Running population synthesis (N=%d, t_obs=%.1f Myr, "
+                     "CMF slope=%.1f, R_complete=%.0f pc)...",
+                     args.N_bubble, args.t_obs, args.cmf_slope, args.R_complete)
+
         synth = run_population_synthesis(
             records,
             N_bubble=args.N_bubble,
             t_obs=args.t_obs,
+            cmf_slope=args.cmf_slope,
+            R_complete=args.R_complete,
             seed=args.seed,
+            fixed_sfe=args.fixed_sfe,
+            fixed_ncore=args.fixed_ncore,
         )
         if synth is not None:
-            plot_synthesis(synth, output_dir, args.fmt)
+            plot_synthesis_population(synth, output_dir, args.fmt)
         else:
             logger.warning("Population synthesis returned no results.")
 
+        # Part 3: sensitivity
+        logger.info("Running parameter sensitivity analysis...")
+        sensitivity = run_sensitivity(
+            records,
+            N_bubble=args.N_bubble,
+            seed=args.seed,
+            R_complete=args.R_complete,
+            fixed_sfe=args.fixed_sfe,
+            fixed_ncore=args.fixed_ncore,
+        )
+        if sensitivity:
+            plot_slope_vs_cmf(sensitivity, output_dir, args.fmt)
+
     # Step 4: output
     write_results_csv(records, output_dir)
-    print_summary(records, synth)
+    if not args.no_synthesis:
+        write_synthesis_csv(synth, sensitivity, output_dir)
+    print_summary(records, synth, sensitivity if sensitivity else None)
 
     return 0
 
