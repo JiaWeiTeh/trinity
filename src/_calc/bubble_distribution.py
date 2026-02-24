@@ -93,6 +93,9 @@ V_AU2KMS = INV_CONV.v_au2kms   # pc/Myr -> km/s  (~0.978)
 # Observed power-law index from Watkins+2023
 OBSERVED_ALPHA = -2.2
 
+# Alternative completeness turnover from Nath+2020
+R_COMPLETE_NATH20 = 100.0
+
 # Minimum expanding points required for analysis
 MIN_PTS = 10
 
@@ -686,6 +689,10 @@ def run_population_synthesis(
     # Step 6: fit power law via MLE on raw radii (no binning needed)
     synth_slope, synth_slope_err, N_fit = _fit_powerlaw_mle(R_valid, R_complete)
 
+    # Second MLE fit with Nath+2020 turnover at 100 pc
+    slope_nath, slope_err_nath, N_fit_nath = _fit_powerlaw_mle(
+        R_valid, R_COMPLETE_NATH20)
+
     # Build run-usage summary (references unique grid records)
     runs_used_summary = []
     for j, rec in enumerate(grid_recs):
@@ -700,6 +707,9 @@ def run_population_synthesis(
         "synth_slope": synth_slope,
         "synth_slope_err": synth_slope_err,
         "N_fit": N_fit,
+        "synth_slope_nath": slope_nath,
+        "synth_slope_err_nath": slope_err_nath,
+        "N_fit_nath": N_fit_nath,
         "N_bubble": N_bubble,
         "N_surviving": N_surviving,
         "N_recollapsed": recollapsed,
@@ -971,11 +981,10 @@ def plot_synthesis_population(synth: Dict, output_dir: Path,
         ax.scatter(R_centres[below], dNdR[below], color=C_BLUE, s=25,
                    zorder=3, alpha=0.25)
 
-    # MLE power-law fit line, normalized to match histogram at R_complete
+    # MLE power-law fit line — Watkins+2023 turnover (R_complete)
     slope = synth["synth_slope"]
     slope_err = synth.get("synth_slope_err", np.nan)
     if np.isfinite(slope) and above.any():
-        # Normalize at the first bin above R_complete
         idx_norm = np.where(above)[0][0]
         R_norm = R_centres[idx_norm]
         dNdR_norm_val = dNdR[idx_norm]
@@ -983,11 +992,32 @@ def plot_synthesis_population(synth: Dict, output_dir: Path,
                             np.log10(R_centres[valid].max()), 50)
         dNdR_fit = dNdR_norm_val * (R_fit / R_norm) ** slope
         if np.isfinite(slope_err):
-            fit_label = f"MLE: $\\gamma={slope:.2f} \\pm {slope_err:.2f}$"
+            fit_label = (f"MLE $R\\geq{R_complete:.0f}$ pc: "
+                         f"$\\gamma={slope:.2f} \\pm {slope_err:.2f}$")
         else:
-            fit_label = f"MLE: $\\gamma={slope:.2f}$"
+            fit_label = f"MLE $R\\geq{R_complete:.0f}$ pc: $\\gamma={slope:.2f}$"
         ax.plot(R_fit, dNdR_fit, color=C_VERMILLION, ls="--", lw=1.5,
                 label=fit_label)
+
+    # MLE power-law fit line — Nath+2020 turnover (100 pc)
+    slope_nath = synth.get("synth_slope_nath", np.nan)
+    slope_err_nath = synth.get("synth_slope_err_nath", np.nan)
+    above_nath = valid & (R_centres >= R_COMPLETE_NATH20)
+    if np.isfinite(slope_nath) and above_nath.any():
+        idx_norm_n = np.where(above_nath)[0][0]
+        R_norm_n = R_centres[idx_norm_n]
+        dNdR_norm_n = dNdR[idx_norm_n]
+        R_fit_n = np.logspace(np.log10(R_COMPLETE_NATH20),
+                              np.log10(R_centres[valid].max()), 50)
+        dNdR_fit_n = dNdR_norm_n * (R_fit_n / R_norm_n) ** slope_nath
+        if np.isfinite(slope_err_nath):
+            fit_label_n = (f"MLE $R\\geq{R_COMPLETE_NATH20:.0f}$ pc: "
+                           f"$\\gamma={slope_nath:.2f} \\pm {slope_err_nath:.2f}$")
+        else:
+            fit_label_n = (f"MLE $R\\geq{R_COMPLETE_NATH20:.0f}$ pc: "
+                           f"$\\gamma={slope_nath:.2f}$")
+        ax.plot(R_fit_n, dNdR_fit_n, color=C_ORANGE, ls="--", lw=1.5,
+                label=fit_label_n)
 
     # Observed reference
     if valid.sum() >= 2:
@@ -1000,8 +1030,9 @@ def plot_synthesis_population(synth: Dict, output_dir: Path,
         ax.plot(R_ref, dNdR_obs, color=C_GREEN, ls="-.", lw=1.5,
                 label=r"$R^{-2.2}$ (Watkins+2023)")
 
-    # Completeness line and shaded incomplete region
+    # Completeness lines
     ax.axvline(R_complete, color=C_VERMILLION, ls=":", lw=1.0, alpha=0.6)
+    ax.axvline(R_COMPLETE_NATH20, color=C_ORANGE, ls=":", lw=1.0, alpha=0.6)
     ax.axvspan(ax.get_xlim()[0], R_complete, color="grey", alpha=0.10,
                zorder=0)
 
@@ -1193,11 +1224,15 @@ def write_synthesis_csv(synth: Optional[Dict], sensitivity: List[Dict],
     csv_path = output_dir / "bubble_synthesis_summary.csv"
     header = ["cmf_slope", "t_obs_Myr", "R_complete_pc", "N_bubble",
               "N_surviving", "N_fit", "synth_slope", "synth_slope_err",
-              "synth_slope_std", "runs_used"]
+              "synth_slope_std",
+              "N_fit_nath100", "slope_nath100", "slope_err_nath100",
+              "runs_used"]
 
     rows = []
     if synth is not None:
         slope_err = synth.get("synth_slope_err", np.nan)
+        slope_nath = synth.get("synth_slope_nath", np.nan)
+        slope_err_nath = synth.get("synth_slope_err_nath", np.nan)
         rows.append([
             f"{synth['cmf_slope']:.2f}",
             f"{synth['t_obs']:.1f}",
@@ -1208,6 +1243,9 @@ def write_synthesis_csv(synth: Optional[Dict], sensitivity: List[Dict],
             f"{synth['synth_slope']:.4f}" if np.isfinite(synth["synth_slope"]) else "N/A",
             f"{slope_err:.4f}" if np.isfinite(slope_err) else "N/A",
             "",
+            synth.get("N_fit_nath", ""),
+            f"{slope_nath:.4f}" if np.isfinite(slope_nath) else "N/A",
+            f"{slope_err_nath:.4f}" if np.isfinite(slope_err_nath) else "N/A",
             synth["runs_used"],
         ])
 
@@ -1224,6 +1262,7 @@ def write_synthesis_csv(synth: Optional[Dict], sensitivity: List[Dict],
             f"{s['synth_slope']:.4f}" if np.isfinite(s["synth_slope"]) else "N/A",
             f"{slope_err:.4f}" if np.isfinite(slope_err) else "N/A",
             f"{slope_std:.4f}" if np.isfinite(slope_std) else "N/A",
+            "", "", "",
             "",
         ])
 
@@ -1284,11 +1323,21 @@ def print_summary(records: List[Dict], synth: Optional[Dict] = None,
         slope_err = synth.get("synth_slope_err", np.nan)
         if np.isfinite(synth["synth_slope"]):
             err_str = f" +/- {slope_err:.3f}" if np.isfinite(slope_err) else ""
-            print(f"    MLE slope    = {synth['synth_slope']:.3f}{err_str}  "
+            print(f"    MLE slope (R>={synth['R_complete']:.0f} pc, Watkins+23)"
+                  f" = {synth['synth_slope']:.3f}{err_str}  "
                   f"(observed = {OBSERVED_ALPHA})")
         else:
-            print(f"    MLE slope    = N/A")
+            print(f"    MLE slope (Watkins+23) = N/A")
         print(f"    N_fit (MLE)  = {synth.get('N_fit', 'N/A')}")
+        slope_nath = synth.get("synth_slope_nath", np.nan)
+        slope_err_nath = synth.get("synth_slope_err_nath", np.nan)
+        if np.isfinite(slope_nath):
+            err_str_n = f" +/- {slope_err_nath:.3f}" if np.isfinite(slope_err_nath) else ""
+            print(f"    MLE slope (R>={R_COMPLETE_NATH20:.0f} pc, Nath+20)"
+                  f"   = {slope_nath:.3f}{err_str_n}")
+        else:
+            print(f"    MLE slope (Nath+20)    = N/A")
+        print(f"    N_fit (Nath) = {synth.get('N_fit_nath', 'N/A')}")
         print(f"    Runs used    : {synth['runs_used']}")
 
     if sensitivity:
