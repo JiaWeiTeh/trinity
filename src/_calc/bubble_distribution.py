@@ -94,7 +94,7 @@ V_AU2KMS = INV_CONV.v_au2kms   # pc/Myr -> km/s  (~0.978)
 OBSERVED_ALPHA = -2.2
 
 # Alternative completeness turnover from Nath+2020
-R_COMPLETE_NATH20 = 80.0
+R_COMPLETE_NATH20 = 100.0
 
 # Minimum expanding points required for analysis
 MIN_PTS = 10
@@ -952,8 +952,11 @@ def _plot_synth_row(axes_row: tuple, synth: Dict, row_label: str) -> None:
                label=f"$R_{{\\rm complete}}={R_complete:.0f}$ pc")
     ax.axvspan(ax.get_xlim()[0], R_complete, color="grey", alpha=0.15,
                zorder=0)
+    ax.set_yscale('log')
+    ax.set_xscale('log')
     ax.set_xlabel(r"$R$ [pc]")
     ax.set_ylabel(r"$N$")
+    ax.set_xlim(10, 1e3)
     ax.legend(
         fontsize=7, framealpha=0.7,
         title=(f"{row_label} $N={synth['N_bubble']}$, "
