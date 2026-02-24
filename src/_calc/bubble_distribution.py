@@ -926,52 +926,44 @@ def plot_residence_time(records: List[Dict], output_dir: Path,
     logger.info("Saved: %s", path)
 
 
-def plot_synthesis_population(synth: Dict, output_dir: Path,
-                              fmt: str = "pdf") -> None:
+def _plot_synth_row(axes_row: tuple, synth: Dict, row_label: str) -> None:
     """
-    Figure 2: Population synthesis results.
-
-    Two panels: (a) histogram of synthetic bubble radii, (b) dN/dR vs R
-    with power-law fit and Watkins+2023 reference.
+    Plot one row (histogram + dN/dR) of the synthesis 2x2 figure.
 
     Parameters
     ----------
+    axes_row : tuple of two Axes
+        (left, right) axes for histogram and dN/dR panels.
     synth : dict
         Output of run_population_synthesis().
-    output_dir : Path
-        Figure output directory.
-    fmt : str
-        Figure format.
+    row_label : str
+        Row label, e.g. "(a)" or "(b)", prepended to panel titles.
     """
-    fig, axes = plt.subplots(1, 2, figsize=(10, 4.5))
-
     R_synth = synth["R_synth"]
     R_centres = synth["R_centres"]
     dNdR = synth["dNdR"]
     R_complete = synth["R_complete"]
 
-    # Panel (a): histogram of full population, fade region below R_complete
-    ax = axes[0]
+    # Left panel: histogram of full population
+    ax = axes_row[0]
     ax.hist(R_synth, bins=30, color=C_SKY, edgecolor=C_BLUE,
             alpha=0.7, density=False)
     ax.axvline(R_complete, color=C_VERMILLION, ls=":", lw=1.2, alpha=0.8,
                label=f"$R_{{\\rm complete}}={R_complete:.0f}$ pc")
-    # Shade the incomplete region
     ax.axvspan(ax.get_xlim()[0], R_complete, color="grey", alpha=0.15,
                zorder=0)
     ax.set_xlabel(r"$R$ [pc]")
     ax.set_ylabel(r"$N$")
-    # Combine annotation info into the legend title to avoid overlap
     ax.legend(
-        fontsize=8, framealpha=0.7,
-        title=(f"$N={synth['N_bubble']}$, "
+        fontsize=7, framealpha=0.7,
+        title=(f"{row_label} $N={synth['N_bubble']}$, "
                f"$t_{{\\rm obs}}={synth['t_obs']:.1f}$ Myr, "
                f"CMF $\\alpha={synth['cmf_slope']:.1f}$"),
         title_fontsize=7,
     )
 
-    # Panel (b): dN/dR vs R — show all bins, fade below R_complete
-    ax = axes[1]
+    # Right panel: dN/dR vs R
+    ax = axes_row[1]
     valid = dNdR > 0
     above = valid & (R_centres >= R_complete)
     below = valid & (R_centres < R_complete)
@@ -981,7 +973,7 @@ def plot_synthesis_population(synth: Dict, output_dir: Path,
         ax.scatter(R_centres[below], dNdR[below], color=C_BLUE, s=25,
                    zorder=3, alpha=0.25)
 
-    # MLE power-law fit line — Watkins+2023 turnover (R_complete)
+    # MLE fit — Watkins+2023 turnover (R_complete)
     slope = synth["synth_slope"]
     slope_err = synth.get("synth_slope_err", np.nan)
     if np.isfinite(slope) and above.any():
@@ -999,7 +991,7 @@ def plot_synthesis_population(synth: Dict, output_dir: Path,
         ax.plot(R_fit, dNdR_fit, color=C_VERMILLION, ls="--", lw=1.5,
                 label=fit_label)
 
-    # MLE power-law fit line — Nath+2020 turnover (100 pc)
+    # MLE fit — Nath+2020 turnover (100 pc)
     slope_nath = synth.get("synth_slope_nath", np.nan)
     slope_err_nath = synth.get("synth_slope_err_nath", np.nan)
     above_nath = valid & (R_centres >= R_COMPLETE_NATH20)
@@ -1040,7 +1032,34 @@ def plot_synthesis_population(synth: Dict, output_dir: Path,
     ax.set_yscale("log")
     ax.set_xlabel(r"$R$ [pc]")
     ax.set_ylabel(r"$\mathrm{d}N/\mathrm{d}R$")
-    ax.legend(fontsize=8, framealpha=0.7)
+    ax.legend(fontsize=7, framealpha=0.7)
+
+
+def plot_synthesis_population(synth_list: list, output_dir: Path,
+                              fmt: str = "pdf") -> None:
+    """
+    Figure 2: Population synthesis results — 2x2 subplot.
+
+    Each row shows one t_obs value: left = histogram, right = dN/dR.
+
+    Parameters
+    ----------
+    synth_list : list of dict
+        List of run_population_synthesis() outputs (one per t_obs).
+    output_dir : Path
+        Figure output directory.
+    fmt : str
+        Figure format.
+    """
+    n_rows = len(synth_list)
+    labels = [chr(ord("a") + i) for i in range(n_rows)]
+
+    fig, axes = plt.subplots(n_rows, 2, figsize=(10, 4.5 * n_rows))
+    if n_rows == 1:
+        axes = axes[np.newaxis, :]
+
+    for i, synth in enumerate(synth_list):
+        _plot_synth_row((axes[i, 0], axes[i, 1]), synth, f"({labels[i]})")
 
     fig.tight_layout()
     path = output_dir / f"bubble_synthesis_population.{fmt}"
@@ -1202,15 +1221,15 @@ def write_results_csv(records: List[Dict], output_dir: Path) -> Path:
     return csv_path
 
 
-def write_synthesis_csv(synth: Optional[Dict], sensitivity: List[Dict],
+def write_synthesis_csv(synth_input, sensitivity: List[Dict],
                         output_dir: Path) -> Path:
     """
     Write synthesis summary CSV.
 
     Parameters
     ----------
-    synth : dict or None
-        Output of run_population_synthesis() (primary run).
+    synth_input : dict, list of dict, or None
+        Output(s) of run_population_synthesis().
     sensitivity : list of dict
         Output of run_sensitivity().
     output_dir : Path
@@ -1221,6 +1240,14 @@ def write_synthesis_csv(synth: Optional[Dict], sensitivity: List[Dict],
     Path
         Path to the written CSV.
     """
+    # Normalise: accept single dict or list
+    if synth_input is None:
+        synth_all = []
+    elif isinstance(synth_input, dict):
+        synth_all = [synth_input]
+    else:
+        synth_all = list(synth_input)
+
     csv_path = output_dir / "bubble_synthesis_summary.csv"
     header = ["cmf_slope", "t_obs_Myr", "R_complete_pc", "N_bubble",
               "N_surviving", "N_fit", "synth_slope", "synth_slope_err",
@@ -1229,7 +1256,7 @@ def write_synthesis_csv(synth: Optional[Dict], sensitivity: List[Dict],
               "runs_used"]
 
     rows = []
-    if synth is not None:
+    for synth in synth_all:
         slope_err = synth.get("synth_slope_err", np.nan)
         slope_nath = synth.get("synth_slope_nath", np.nan)
         slope_err_nath = synth.get("synth_slope_err_nath", np.nan)
@@ -1275,7 +1302,8 @@ def write_synthesis_csv(synth: Optional[Dict], sensitivity: List[Dict],
     return csv_path
 
 
-def print_summary(records: List[Dict], synth: Optional[Dict] = None,
+def print_summary(records: List[Dict],
+                  synth_list: Optional[list] = None,
                   sensitivity: List[Dict] = None) -> None:
     """
     Print summary table to stdout.
@@ -1284,11 +1312,16 @@ def print_summary(records: List[Dict], synth: Optional[Dict] = None,
     ----------
     records : list of dict
         Output of collect_data().
-    synth : dict, optional
-        Output of run_population_synthesis().
+    synth_list : list of dict, optional
+        Outputs of run_population_synthesis() (one per t_obs).
+        Also accepts a single dict for backwards compatibility.
     sensitivity : list of dict, optional
         Output of run_sensitivity().
     """
+    # Normalise input: accept a single dict or a list
+    if synth_list is not None and isinstance(synth_list, dict):
+        synth_list = [synth_list]
+
     print()
     print("=" * 80)
     print("BUBBLE SIZE DISTRIBUTION SUMMARY")
@@ -1309,36 +1342,37 @@ def print_summary(records: List[Dict], synth: Optional[Dict] = None,
         print(f"  {rec['folder']:<35s} {rec['outcome']:<10s} {mstar:>10s} "
               f"{sl:>10s} {r2:>8s} {rmin:>8s} {rmax:>8s}")
 
-    if synth is not None:
-        print()
-        print("-" * 80)
-        print("  Population synthesis (primary run):")
-        print(f"    CMF slope    = {synth['cmf_slope']:.1f}")
-        print(f"    N_bubble     = {synth['N_bubble']}")
-        print(f"    t_obs        = {synth['t_obs']:.1f} Myr")
-        print(f"    R_complete   = {synth['R_complete']:.0f} pc")
-        print(f"    N_surviving  = {synth['N_surviving']}")
-        print(f"    N_recollapsed = {synth['N_recollapsed']}")
-        print(f"    N_below_cut  = {synth['N_below_complete']}")
-        slope_err = synth.get("synth_slope_err", np.nan)
-        if np.isfinite(synth["synth_slope"]):
-            err_str = f" +/- {slope_err:.3f}" if np.isfinite(slope_err) else ""
-            print(f"    MLE slope (R>={synth['R_complete']:.0f} pc, Watkins+23)"
-                  f" = {synth['synth_slope']:.3f}{err_str}  "
-                  f"(observed = {OBSERVED_ALPHA})")
-        else:
-            print(f"    MLE slope (Watkins+23) = N/A")
-        print(f"    N_fit (MLE)  = {synth.get('N_fit', 'N/A')}")
-        slope_nath = synth.get("synth_slope_nath", np.nan)
-        slope_err_nath = synth.get("synth_slope_err_nath", np.nan)
-        if np.isfinite(slope_nath):
-            err_str_n = f" +/- {slope_err_nath:.3f}" if np.isfinite(slope_err_nath) else ""
-            print(f"    MLE slope (R>={R_COMPLETE_NATH20:.0f} pc, Nath+20)"
-                  f"   = {slope_nath:.3f}{err_str_n}")
-        else:
-            print(f"    MLE slope (Nath+20)    = N/A")
-        print(f"    N_fit (Nath) = {synth.get('N_fit_nath', 'N/A')}")
-        print(f"    Runs used    : {synth['runs_used']}")
+    if synth_list:
+        for synth in synth_list:
+            print()
+            print("-" * 80)
+            print(f"  Population synthesis (t_obs = {synth['t_obs']:.1f} Myr):")
+            print(f"    CMF slope    = {synth['cmf_slope']:.1f}")
+            print(f"    N_bubble     = {synth['N_bubble']}")
+            print(f"    t_obs        = {synth['t_obs']:.1f} Myr")
+            print(f"    R_complete   = {synth['R_complete']:.0f} pc")
+            print(f"    N_surviving  = {synth['N_surviving']}")
+            print(f"    N_recollapsed = {synth['N_recollapsed']}")
+            print(f"    N_below_cut  = {synth['N_below_complete']}")
+            slope_err = synth.get("synth_slope_err", np.nan)
+            if np.isfinite(synth["synth_slope"]):
+                err_str = f" +/- {slope_err:.3f}" if np.isfinite(slope_err) else ""
+                print(f"    MLE slope (R>={synth['R_complete']:.0f} pc, Watkins+23)"
+                      f" = {synth['synth_slope']:.3f}{err_str}  "
+                      f"(observed = {OBSERVED_ALPHA})")
+            else:
+                print(f"    MLE slope (Watkins+23) = N/A")
+            print(f"    N_fit (MLE)  = {synth.get('N_fit', 'N/A')}")
+            slope_nath = synth.get("synth_slope_nath", np.nan)
+            slope_err_nath = synth.get("synth_slope_err_nath", np.nan)
+            if np.isfinite(slope_nath):
+                err_str_n = f" +/- {slope_err_nath:.3f}" if np.isfinite(slope_err_nath) else ""
+                print(f"    MLE slope (R>={R_COMPLETE_NATH20:.0f} pc, Nath+20)"
+                      f"   = {slope_nath:.3f}{err_str_n}")
+            else:
+                print(f"    MLE slope (Nath+20)    = N/A")
+            print(f"    N_fit (Nath) = {synth.get('N_fit_nath', 'N/A')}")
+            print(f"    Runs used    : {synth['runs_used']}")
 
     if sensitivity:
         print()
@@ -1492,26 +1526,41 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     # Step 3: population synthesis (Parts 2 & 3)
     synth = None
+    synth_list = []
     sensitivity = []
+    T_OBS_SECOND = 10.0  # second t_obs for comparison
     if not args.no_synthesis:
-        logger.info("Running population synthesis (N=%d, t_obs=%.1f Myr, "
-                     "CMF slope=%.1f, R_complete=%.0f pc)...",
-                     args.N_bubble, args.t_obs, args.cmf_slope, args.R_complete)
+        # Run synthesis for the primary t_obs
+        t_obs_values = [args.t_obs]
+        if args.t_obs != T_OBS_SECOND:
+            t_obs_values.append(T_OBS_SECOND)
 
-        synth = run_population_synthesis(
-            records,
-            N_bubble=args.N_bubble,
-            t_obs=args.t_obs,
-            cmf_slope=args.cmf_slope,
-            R_complete=args.R_complete,
-            seed=args.seed,
-            fixed_sfe=args.fixed_sfe,
-            fixed_ncore=args.fixed_ncore,
-        )
-        if synth is not None:
-            plot_synthesis_population(synth, output_dir, args.fmt)
-        else:
-            logger.warning("Population synthesis returned no results.")
+        for t_obs_run in t_obs_values:
+            logger.info("Running population synthesis (N=%d, t_obs=%.1f Myr, "
+                         "CMF slope=%.1f, R_complete=%.0f pc)...",
+                         args.N_bubble, t_obs_run, args.cmf_slope,
+                         args.R_complete)
+            s = run_population_synthesis(
+                records,
+                N_bubble=args.N_bubble,
+                t_obs=t_obs_run,
+                cmf_slope=args.cmf_slope,
+                R_complete=args.R_complete,
+                seed=args.seed,
+                fixed_sfe=args.fixed_sfe,
+                fixed_ncore=args.fixed_ncore,
+            )
+            if s is not None:
+                synth_list.append(s)
+            else:
+                logger.warning("Population synthesis returned no results "
+                               "for t_obs=%.1f Myr.", t_obs_run)
+
+        # Primary synth is the first (CLI t_obs)
+        synth = synth_list[0] if synth_list else None
+
+        if synth_list:
+            plot_synthesis_population(synth_list, output_dir, args.fmt)
 
         # Part 3: sensitivity
         logger.info("Running parameter sensitivity analysis...")
@@ -1529,8 +1578,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     # Step 4: output
     write_results_csv(records, output_dir)
     if not args.no_synthesis:
-        write_synthesis_csv(synth, sensitivity, output_dir)
-    print_summary(records, synth, sensitivity if sensitivity else None)
+        write_synthesis_csv(synth_list if synth_list else None,
+                            sensitivity, output_dir)
+    print_summary(records, synth_list, sensitivity if sensitivity else None)
 
     return 0
 
