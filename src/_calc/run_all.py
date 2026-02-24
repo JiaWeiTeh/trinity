@@ -65,6 +65,7 @@ SHARED_FLAGS = [
     "--sigma-clip",
     "--fmt",
     "--t-end",
+    "--output-dir",
 ]
 
 # Boolean flags forwarded verbatim (store_true: no value argument).
@@ -464,6 +465,8 @@ def build_parser() -> argparse.ArgumentParser:
                         help="Output figure format (e.g. pdf, png).")
     shared.add_argument("--t-end", type=float, default=None,
                         help="Maximum time [Myr] to consider in calculations.")
+    shared.add_argument("--output-dir", type=str, default=None,
+                        help="Output directory override (default: fig/<folder>/_calc/).")
     shared.add_argument("--diagnostics", action="store_true", default=False,
                         help="Generate diagnostic plots in sub-scripts.")
 
@@ -480,6 +483,13 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     if not args.folder:
         parser.error("-F / --folder is required (or use --list)")
+
+    # Default --output-dir: save into a _calc/ subfolder
+    if args.output_dir is None:
+        folder_name = Path(args.folder).name
+        default_output = PROJECT_ROOT / "fig" / folder_name / "_calc"
+        default_output.mkdir(parents=True, exist_ok=True)
+        args.output_dir = str(default_output)
 
     # Build the extra-args list from shared flags that were actually set
     extra: List[str] = []
@@ -503,8 +513,7 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     # Generate scaling-relations summary PDF (unless dry-run)
     if not args.dry_run:
-        folder_name = Path(args.folder).name
-        output_dir = PROJECT_ROOT / "fig" / folder_name
+        output_dir = Path(args.output_dir)
         fmt = args.fmt if args.fmt else "pdf"
         if output_dir.is_dir():
             generate_summary_pdf(output_dir, fmt=fmt)
