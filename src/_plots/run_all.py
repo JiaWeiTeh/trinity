@@ -265,6 +265,12 @@ def main(argv: Optional[List[str]] = None) -> int:
         extra.extend(["-n", args.nCore])
     if args.output_dir is not None:
         extra.extend(["-o", args.output_dir])
+    else:
+        # Default: save into a _plot/ subfolder under the sweep output dir
+        folder_name = Path(args.folder).name
+        default_output = PROJECT_ROOT / "fig" / folder_name / "_plot"
+        default_output.mkdir(parents=True, exist_ok=True)
+        extra.extend(["-o", str(default_output)])
     if args.mCloud is not None:
         extra.append("--mCloud")
         extra.extend(args.mCloud)

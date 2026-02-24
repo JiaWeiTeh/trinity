@@ -96,6 +96,9 @@ OBSERVED_ALPHA = -2.2
 # Alternative completeness turnover from Nath+2020
 R_COMPLETE_NATH20 = 100.0
 
+# Lower completeness cut at 10 pc
+R_COMPLETE_10PC = 10.0
+
 # Minimum expanding points required for analysis
 MIN_PTS = 10
 
@@ -689,7 +692,11 @@ def run_population_synthesis(
     # Step 6: fit power law via MLE on raw radii (no binning needed)
     synth_slope, synth_slope_err, N_fit = _fit_powerlaw_mle(R_valid, R_complete)
 
-    # Second MLE fit with Nath+2020 turnover at 100 pc
+    # MLE fit with 10 pc turnover
+    slope_10, slope_err_10, N_fit_10 = _fit_powerlaw_mle(
+        R_valid, R_COMPLETE_10PC)
+
+    # MLE fit with Nath+2020 turnover at 100 pc
     slope_nath, slope_err_nath, N_fit_nath = _fit_powerlaw_mle(
         R_valid, R_COMPLETE_NATH20)
 
@@ -707,6 +714,9 @@ def run_population_synthesis(
         "synth_slope": synth_slope,
         "synth_slope_err": synth_slope_err,
         "N_fit": N_fit,
+        "synth_slope_10": slope_10,
+        "synth_slope_err_10": slope_err_10,
+        "N_fit_10": N_fit_10,
         "synth_slope_nath": slope_nath,
         "synth_slope_err_nath": slope_err_nath,
         "N_fit_nath": N_fit_nath,
@@ -976,45 +986,42 @@ def _plot_synth_row(axes_row: tuple, synth: Dict, row_label: str) -> None:
         ax.scatter(R_centres[below], dNdR[below], color=C_BLUE, s=25,
                    zorder=3, alpha=0.25)
 
-    # MLE fit — Watkins+2023 turnover (R_complete)
-    slope = synth["synth_slope"]
-    slope_err = synth.get("synth_slope_err", np.nan)
-    if np.isfinite(slope) and above.any():
-        idx_norm = np.where(above)[0][0]
-        R_norm = R_centres[idx_norm]
-        dNdR_norm_val = dNdR[idx_norm]
-        R_fit = np.logspace(np.log10(R_complete),
-                            np.log10(R_centres[valid].max()), 50)
-        dNdR_fit = dNdR_norm_val * (R_fit / R_norm) ** slope
-        if np.isfinite(slope_err):
-            fit_label = (f"MLE $R\\geq{R_complete:.0f}$ pc: "
-                         f"$\\gamma={slope:.2f} \\pm {slope_err:.2f}$")
+    # Helper: plot an MLE fit line normalized at the first histogram bin
+    def _add_mle_line(ax, slope_val, slope_err_val, R_min_cut, color,
+                      valid_mask, R_centres, dNdR):
+        above_cut = valid_mask & (R_centres >= R_min_cut)
+        if not np.isfinite(slope_val) or not above_cut.any():
+            return
+        idx0 = np.where(above_cut)[0][0]
+        R_norm = R_centres[idx0]
+        dNdR_norm = dNdR[idx0]
+        R_fit = np.logspace(np.log10(R_min_cut),
+                            np.log10(R_centres[valid_mask].max()), 50)
+        dNdR_fit = dNdR_norm * (R_fit / R_norm) ** slope_val
+        if np.isfinite(slope_err_val):
+            label = (f"MLE $R\\geq{R_min_cut:.0f}$ pc: "
+                     f"$\\gamma={slope_val:.2f} \\pm {slope_err_val:.2f}$")
         else:
-            fit_label = f"MLE $R\\geq{R_complete:.0f}$ pc: $\\gamma={slope:.2f}$"
-        ax.plot(R_fit, dNdR_fit, color=C_VERMILLION, ls="--", lw=1.5,
-                label=fit_label)
+            label = (f"MLE $R\\geq{R_min_cut:.0f}$ pc: "
+                     f"$\\gamma={slope_val:.2f}$")
+        ax.plot(R_fit, dNdR_fit, color=color, ls="--", lw=1.5, label=label)
+
+    # MLE fit — 10 pc turnover
+    _add_mle_line(ax, synth.get("synth_slope_10", np.nan),
+                  synth.get("synth_slope_err_10", np.nan),
+                  R_COMPLETE_10PC, C_PURPLE, valid, R_centres, dNdR)
+
+    # MLE fit — Watkins+2023 turnover (R_complete = 30 pc)
+    _add_mle_line(ax, synth["synth_slope"],
+                  synth.get("synth_slope_err", np.nan),
+                  R_complete, C_VERMILLION, valid, R_centres, dNdR)
 
     # MLE fit — Nath+2020 turnover (100 pc)
-    slope_nath = synth.get("synth_slope_nath", np.nan)
-    slope_err_nath = synth.get("synth_slope_err_nath", np.nan)
-    above_nath = valid & (R_centres >= R_COMPLETE_NATH20)
-    if np.isfinite(slope_nath) and above_nath.any():
-        idx_norm_n = np.where(above_nath)[0][0]
-        R_norm_n = R_centres[idx_norm_n]
-        dNdR_norm_n = dNdR[idx_norm_n]
-        R_fit_n = np.logspace(np.log10(R_COMPLETE_NATH20),
-                              np.log10(R_centres[valid].max()), 50)
-        dNdR_fit_n = dNdR_norm_n * (R_fit_n / R_norm_n) ** slope_nath
-        if np.isfinite(slope_err_nath):
-            fit_label_n = (f"MLE $R\\geq{R_COMPLETE_NATH20:.0f}$ pc: "
-                           f"$\\gamma={slope_nath:.2f} \\pm {slope_err_nath:.2f}$")
-        else:
-            fit_label_n = (f"MLE $R\\geq{R_COMPLETE_NATH20:.0f}$ pc: "
-                           f"$\\gamma={slope_nath:.2f}$")
-        ax.plot(R_fit_n, dNdR_fit_n, color=C_ORANGE, ls="--", lw=1.5,
-                label=fit_label_n)
+    _add_mle_line(ax, synth.get("synth_slope_nath", np.nan),
+                  synth.get("synth_slope_err_nath", np.nan),
+                  R_COMPLETE_NATH20, C_ORANGE, valid, R_centres, dNdR)
 
-    # Observed reference
+    # Observed reference — solid line, transparent to reduce clutter
     if valid.sum() >= 2:
         R_ref = np.logspace(np.log10(R_centres[valid].min()),
                             np.log10(R_centres[valid].max()), 50)
@@ -1022,10 +1029,11 @@ def _plot_synth_row(axes_row: tuple, synth: Dict, row_label: str) -> None:
         dN_mid = np.interp(np.log10(R_mid), np.log10(R_centres[valid]),
                            np.log10(dNdR[valid]))
         dNdR_obs = 10.0 ** (dN_mid + OBSERVED_ALPHA * (np.log10(R_ref) - np.log10(R_mid)))
-        ax.plot(R_ref, dNdR_obs, color=C_GREEN, ls="-.", lw=1.5,
+        ax.plot(R_ref, dNdR_obs, color=C_GREEN, ls="-", lw=1.5, alpha=0.35,
                 label=r"$R^{-2.2}$ (Watkins+2023)")
 
     # Completeness lines
+    ax.axvline(R_COMPLETE_10PC, color=C_PURPLE, ls=":", lw=1.0, alpha=0.6)
     ax.axvline(R_complete, color=C_VERMILLION, ls=":", lw=1.0, alpha=0.6)
     ax.axvline(R_COMPLETE_NATH20, color=C_ORANGE, ls=":", lw=1.0, alpha=0.6)
     ax.axvspan(ax.get_xlim()[0], R_complete, color="grey", alpha=0.10,
@@ -1255,12 +1263,15 @@ def write_synthesis_csv(synth_input, sensitivity: List[Dict],
     header = ["cmf_slope", "t_obs_Myr", "R_complete_pc", "N_bubble",
               "N_surviving", "N_fit", "synth_slope", "synth_slope_err",
               "synth_slope_std",
+              "N_fit_10pc", "slope_10pc", "slope_err_10pc",
               "N_fit_nath100", "slope_nath100", "slope_err_nath100",
               "runs_used"]
 
     rows = []
     for synth in synth_all:
         slope_err = synth.get("synth_slope_err", np.nan)
+        slope_10 = synth.get("synth_slope_10", np.nan)
+        slope_err_10 = synth.get("synth_slope_err_10", np.nan)
         slope_nath = synth.get("synth_slope_nath", np.nan)
         slope_err_nath = synth.get("synth_slope_err_nath", np.nan)
         rows.append([
@@ -1273,6 +1284,9 @@ def write_synthesis_csv(synth_input, sensitivity: List[Dict],
             f"{synth['synth_slope']:.4f}" if np.isfinite(synth["synth_slope"]) else "N/A",
             f"{slope_err:.4f}" if np.isfinite(slope_err) else "N/A",
             "",
+            synth.get("N_fit_10", ""),
+            f"{slope_10:.4f}" if np.isfinite(slope_10) else "N/A",
+            f"{slope_err_10:.4f}" if np.isfinite(slope_err_10) else "N/A",
             synth.get("N_fit_nath", ""),
             f"{slope_nath:.4f}" if np.isfinite(slope_nath) else "N/A",
             f"{slope_err_nath:.4f}" if np.isfinite(slope_err_nath) else "N/A",
@@ -1292,6 +1306,7 @@ def write_synthesis_csv(synth_input, sensitivity: List[Dict],
             f"{s['synth_slope']:.4f}" if np.isfinite(s["synth_slope"]) else "N/A",
             f"{slope_err:.4f}" if np.isfinite(slope_err) else "N/A",
             f"{slope_std:.4f}" if np.isfinite(slope_std) else "N/A",
+            "", "", "",
             "", "", "",
             "",
         ])
@@ -1366,6 +1381,15 @@ def print_summary(records: List[Dict],
             else:
                 print(f"    MLE slope (Watkins+23) = N/A")
             print(f"    N_fit (MLE)  = {synth.get('N_fit', 'N/A')}")
+            slope_10 = synth.get("synth_slope_10", np.nan)
+            slope_err_10 = synth.get("synth_slope_err_10", np.nan)
+            if np.isfinite(slope_10):
+                err_str_10 = f" +/- {slope_err_10:.3f}" if np.isfinite(slope_err_10) else ""
+                print(f"    MLE slope (R>={R_COMPLETE_10PC:.0f} pc)"
+                      f"           = {slope_10:.3f}{err_str_10}")
+            else:
+                print(f"    MLE slope (R>=10 pc)   = N/A")
+            print(f"    N_fit (10pc) = {synth.get('N_fit_10', 'N/A')}")
             slope_nath = synth.get("synth_slope_nath", np.nan)
             slope_err_nath = synth.get("synth_slope_err_nath", np.nan)
             if np.isfinite(slope_nath):
@@ -1468,6 +1492,10 @@ Examples:
               "containing '_PL0', 'uniform' keeps only folders without '_PL0', "
               "'all' keeps everything (default: all)."),
     )
+    parser.add_argument(
+        "--output-dir", type=str, default=None,
+        help="Output directory override (default: fig/<folder>/).",
+    )
     return parser
 
 
@@ -1487,7 +1515,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         return 1
 
     folder_name = folder_path.name
-    output_dir = FIG_DIR / folder_name
+    output_dir = Path(args.output_dir) if args.output_dir else FIG_DIR / folder_name
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Step 1: collect & analyse
