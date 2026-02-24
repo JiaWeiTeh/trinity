@@ -1403,6 +1403,10 @@ Examples:
         "--diagnostics", action="store_true",
         help="Enable piecewise power-law fits with automatic break-point detection.",
     )
+    parser.add_argument(
+        "--output-dir", type=str, default=None,
+        help="Output directory override (default: fig/<folder>/).",
+    )
     return parser
 
 
@@ -1424,7 +1428,7 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     # Output into ./fig/{folder_name}/ matching other paper_* scripts
     folder_name = folder_path.name
-    output_dir = FIG_DIR / folder_name
+    output_dir = Path(args.output_dir) if args.output_dir else FIG_DIR / folder_name
     output_dir.mkdir(parents=True, exist_ok=True)
 
     quantities = [q.strip() for q in args.quantities.split(",")]

@@ -1681,6 +1681,10 @@ Examples:
         help="Enable diagnostic plots and alternative fits "
              "(quadratic log-correction, piecewise power-law).",
     )
+    parser.add_argument(
+        "--output-dir", type=str, default=None,
+        help="Output directory override (default: fig/<folder>/).",
+    )
     return parser
 
 
@@ -1700,7 +1704,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         return 1
 
     folder_name = folder_path.name
-    output_dir = FIG_DIR / folder_name
+    output_dir = Path(args.output_dir) if args.output_dir else FIG_DIR / folder_name
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Step 1: collect
