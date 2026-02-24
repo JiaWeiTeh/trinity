@@ -356,30 +356,161 @@ def _sample_powerlaw(
         return (M_min**ap1 + u * (M_max**ap1 - M_min**ap1)) ** (1.0 / ap1)
 
 
-def _match_to_grid(
-    sampled_masses: np.ndarray,
-    grid_masses: np.ndarray,
-) -> np.ndarray:
+def _build_interp_grid(
+    filtered_records: List[Dict],
+) -> Tuple[np.ndarray, List[Dict], List[Dict]]:
     """
-    For each sampled mass, find the index of the closest grid mass in log-space.
+    Build a sorted grid of unique M_star values with associated R(t) tracks.
+
+    For duplicate M_star values (from different M_cloud/sfe combinations),
+    pick the run with the HIGHEST sfe.  Rationale: higher sfe means more of
+    the cloud mass is in the cluster, so the feedback-to-gravity ratio is
+    most favourable and the trajectory best represents the "typical" bubble
+    from that cluster mass.
 
     Parameters
     ----------
-    sampled_masses : ndarray
-        Sampled M_star values.
-    grid_masses : ndarray
-        M_star values from the TRINITY grid.
+    filtered_records : list of dict
+        Records from collect_data(), already filtered by sfe/ncore.
 
     Returns
     -------
-    ndarray of int
-        Index into grid_masses for each sample.
+    grid_logMstar : 1D array, sorted
+        log10(M_star) for each unique grid point.
+    grid_interp_data : list of dict
+        Each dict has keys 't' and 'R' (deduplicated, sorted by t).
+    grid_records : list of dict
+        Corresponding record dicts (for run-usage tracking).
     """
-    log_grid = np.log10(grid_masses)
-    log_samp = np.log10(sampled_masses)
-    # For each sample, find nearest grid point
-    indices = np.argmin(np.abs(log_samp[:, None] - log_grid[None, :]), axis=1)
-    return indices
+    from collections import defaultdict
+
+    # Group by rounded log10(M_star) to handle float comparison issues
+    groups = defaultdict(list)
+    for rec in filtered_records:
+        key = round(np.log10(rec["M_star"]), 2)
+        groups[key].append(rec)
+
+    # Within each group, pick the record with the highest sfe
+    selected = []
+    for key in sorted(groups.keys()):
+        group = groups[key]
+        if len(group) > 1:
+            best = max(group, key=lambda r: r["sfe"])
+            logger.info(
+                "Duplicates resolved: M_star=%.2e had %d runs, picked sfe=%.3f (%s)",
+                10.0 ** key, len(group), best["sfe"], best["folder"],
+            )
+            selected.append(best)
+        else:
+            selected.append(group[0])
+
+    # Sort by M_star
+    selected.sort(key=lambda r: r["M_star"])
+
+    # Build deduplicated interp arrays (t, R) for each
+    grid_logMstar = np.array([np.log10(r["M_star"]) for r in selected])
+    grid_interp_data = []
+    for rec in selected:
+        t_full = rec["t_full"]
+        R_full = rec["R_full"]
+        _, unique_idx = np.unique(t_full, return_index=True)
+        grid_interp_data.append({
+            "t": t_full[unique_idx],
+            "R": R_full[unique_idx],
+        })
+
+    # Log the grid
+    for rec in selected:
+        logger.info(
+            "  M_star = %.2e -> %s (sfe=%.3f)",
+            rec["M_star"], rec["folder"], rec["sfe"],
+        )
+
+    return grid_logMstar, grid_interp_data, selected
+
+
+def _bracket_on_grid(
+    log_Mstar_sampled: float,
+    grid_logMstar: np.ndarray,
+) -> Tuple[int, int, float]:
+    """
+    Find the two bracketing grid points for a sampled log10(M_star) and
+    compute the interpolation weight.
+
+    Parameters
+    ----------
+    log_Mstar_sampled : float
+        log10 of the sampled cluster mass.
+    grid_logMstar : ndarray
+        Sorted array of log10(M_star) on the grid.
+
+    Returns
+    -------
+    idx_lo : int
+        Index of the lower bracketing grid point.
+    idx_hi : int
+        Index of the upper bracketing grid point.
+    w : float
+        Interpolation weight in [0, 1].
+        w = 0 means use idx_lo entirely, w = 1 means use idx_hi entirely.
+        For values below/above the grid, clamp to the nearest endpoint.
+    """
+    n = len(grid_logMstar)
+    idx = np.searchsorted(grid_logMstar, log_Mstar_sampled)
+
+    if idx <= 0:
+        return 0, 0, 0.0
+    elif idx >= n:
+        return n - 1, n - 1, 0.0
+    else:
+        idx_lo = idx - 1
+        idx_hi = idx
+        span = grid_logMstar[idx_hi] - grid_logMstar[idx_lo]
+        if span <= 0:
+            return idx_lo, idx_lo, 0.0
+        w = (log_Mstar_sampled - grid_logMstar[idx_lo]) / span
+        return idx_lo, idx_hi, w
+
+
+def _interpolate_R(
+    age: float,
+    interp_lo: Dict,
+    interp_hi: Dict,
+    w: float,
+) -> float:
+    """
+    Evaluate R(age) by log-interpolating between two grid tracks.
+
+    Parameters
+    ----------
+    age : float
+        Bubble age [Myr].
+    interp_lo, interp_hi : dict
+        Each has 't' and 'R' arrays for the lower/upper bracketing run.
+    w : float
+        Interpolation weight (0 = all lo, 1 = all hi).
+
+    Returns
+    -------
+    R : float
+        Interpolated bubble radius [pc].  Returns NaN if R <= 0 on either track.
+    """
+    # Clamp age to the overlapping time range of both tracks
+    t_min = max(interp_lo["t"].min(), interp_hi["t"].min())
+    t_max = min(interp_lo["t"].max(), interp_hi["t"].max())
+    age_c = np.clip(age, t_min, t_max)
+
+    # Evaluate R on each track
+    R_lo = np.interp(age_c, interp_lo["t"], interp_lo["R"])
+    R_hi = np.interp(age_c, interp_hi["t"], interp_hi["R"])
+
+    # If either track has R <= 0 at this age (collapsed), return NaN
+    if R_lo <= 0 or R_hi <= 0:
+        return np.nan
+
+    # Log-space interpolation
+    log_R = (1.0 - w) * np.log10(R_lo) + w * np.log10(R_hi)
+    return 10.0 ** log_R
 
 
 def _fit_powerlaw_mle(R_values: np.ndarray, R_min: float
@@ -477,28 +608,22 @@ def run_population_synthesis(
                         fixed_sfe, fixed_ncore)
         return None
 
-    # Build grid of M_star values
-    grid_Mstar = np.array([r["M_star"] for r in filtered])
-    M_star_min = grid_Mstar.min()
-    M_star_max = grid_Mstar.max()
+    # Build unique M_star interpolation grid (resolves duplicates)
+    grid_logMstar, grid_interp, grid_recs = _build_interp_grid(filtered)
+
+    if len(grid_logMstar) == 0:
+        logger.warning("Empty M_star grid after deduplication")
+        return None
+
+    M_star_min = 10.0 ** grid_logMstar[0]
+    M_star_max = 10.0 ** grid_logMstar[-1]
 
     if M_star_min <= 0 or M_star_max <= 0:
         logger.warning("Invalid M_star range [%.2e, %.2e]", M_star_min, M_star_max)
         return None
 
-    logger.info("M_star grid: [%.2e, %.2e] Msun (%d runs)",
-                M_star_min, M_star_max, len(filtered))
-
-    # Prepare interpolation arrays for each run (deduplicate times)
-    interp_data = []
-    for rec in filtered:
-        t_full = rec["t_full"]
-        R_full = rec["R_full"]
-        _, unique_idx = np.unique(t_full, return_index=True)
-        interp_data.append({
-            "t": t_full[unique_idx],
-            "R": R_full[unique_idx],
-        })
+    logger.info("Unique M_star grid: %d points from %.2e to %.2e Msun",
+                len(grid_logMstar), M_star_min, M_star_max)
 
     rng = np.random.default_rng(seed)
 
@@ -506,31 +631,30 @@ def run_population_synthesis(
     sampled_Mstar = _sample_powerlaw(N_bubble, M_star_min, M_star_max,
                                      cmf_slope, rng)
 
-    # Step 2: match to nearest grid run
-    match_idx = _match_to_grid(sampled_Mstar, grid_Mstar)
-
-    # Step 3: assign random birth times and evaluate R(age)
+    # Step 2: assign random birth times
     t_form = rng.uniform(0.0, t_obs, size=N_bubble)
     ages = t_obs - t_form
 
+    # Step 3: evaluate R(age) with log-interpolation between grid tracks
     R_synth = np.full(N_bubble, np.nan)
-    run_usage = np.zeros(len(filtered), dtype=int)
+    run_usage = np.zeros(len(grid_recs), dtype=int)
+
+    log_sampled = np.log10(sampled_Mstar)
 
     for i in range(N_bubble):
-        idx = match_idx[i]
-        run_usage[idx] += 1
-        td = interp_data[idx]
-        t_run = td["t"]
-        R_run = td["R"]
-        age = ages[i]
+        idx_lo, idx_hi, w = _bracket_on_grid(log_sampled[i], grid_logMstar)
+        run_usage[idx_lo] += 1
+        if idx_hi != idx_lo:
+            run_usage[idx_hi] += 1
 
-        if age < t_run.min() or age > t_run.max():
-            # Clamp to simulation range
-            age_c = np.clip(age, t_run.min(), t_run.max())
+        if idx_lo == idx_hi:
+            # At grid edge — single track
+            td = grid_interp[idx_lo]
+            age_c = np.clip(ages[i], td["t"].min(), td["t"].max())
+            R_synth[i] = np.interp(age_c, td["t"], td["R"])
         else:
-            age_c = age
-
-        R_synth[i] = np.interp(age_c, t_run, R_run)
+            R_synth[i] = _interpolate_R(ages[i], grid_interp[idx_lo],
+                                         grid_interp[idx_hi], w)
 
     # Step 4: apply cuts — keep ALL R > 0 for histogramming
     valid_mask = np.isfinite(R_synth) & (R_synth > 0)
@@ -562,9 +686,9 @@ def run_population_synthesis(
     # Step 6: fit power law via MLE on raw radii (no binning needed)
     synth_slope, synth_slope_err, N_fit = _fit_powerlaw_mle(R_valid, R_complete)
 
-    # Build run-usage summary
+    # Build run-usage summary (references unique grid records)
     runs_used_summary = []
-    for j, rec in enumerate(filtered):
+    for j, rec in enumerate(grid_recs):
         if run_usage[j] > 0:
             runs_used_summary.append(
                 f"{rec['folder']}({run_usage[j]})")
