@@ -559,6 +559,106 @@ def _fit_powerlaw_mle(R_values: np.ndarray, R_min: float
     return gamma, gamma_err, N
 
 
+def _fit_powerlaw_mle_upper(R_values: np.ndarray,
+                            R_max: float) -> Tuple[float, float, int]:
+    """
+    MLE power-law fit for R <= R_max (upper-truncated Pareto).
+
+    Transforms S = R_max / R (so S >= 1), applies the Hill estimator to
+    obtain alpha_S, then converts back:  gamma = alpha_S - 2.
+
+    Parameters
+    ----------
+    R_values : ndarray
+        Array of radii.
+    R_max : float
+        Upper cutoff — only R <= R_max are used.
+
+    Returns
+    -------
+    gamma : float
+        Fitted dN/dR power-law index for R <= R_max.
+    gamma_err : float
+        Standard error.
+    N_fit : int
+        Number of points used.
+    """
+    R_fit = R_values[(R_values > 0) & (R_values <= R_max)]
+    N = len(R_fit)
+    if N < 10:
+        return np.nan, np.nan, 0
+
+    # S = R_max / R  =>  S >= 1.   dN/dS ~ S^{-(gamma+2)}.
+    # Hill estimator on S:  alpha_S = 1 + N / sum(ln(S_i))
+    log_S = np.log(R_max / R_fit)
+    alpha_S = 1.0 + N / np.sum(log_S)
+    gamma = alpha_S - 2.0            # convert back to dN/dR index
+    gamma_err = (alpha_S - 1.0) / np.sqrt(N)
+
+    return gamma, gamma_err, N
+
+
+def _fit_powerlaw_binned(R_values: np.ndarray, R_min: float,
+                         n_bins: int = 60) -> Tuple[float, float, int]:
+    """
+    Binned log-space least-squares power-law fit for R >= R_min.
+
+    Histograms R in *n_bins* log-spaced bins, converts to dN/dR, then
+    fits log(dN/dR) = gamma * log(R) + const via OLS on non-empty bins.
+
+    Parameters
+    ----------
+    R_values : ndarray
+        Array of radii.
+    R_min : float
+        Lower cutoff — only R >= R_min are used.
+    n_bins : int
+        Number of log-spaced bins.
+
+    Returns
+    -------
+    gamma : float
+        Fitted power-law index.
+    gamma_err : float
+        Standard error of the slope from OLS.
+    N_fit : int
+        Number of non-empty bins used in the fit.
+    """
+    R_fit = R_values[R_values >= R_min]
+    if len(R_fit) < 10:
+        return np.nan, np.nan, 0
+
+    log_edges = np.linspace(np.log10(R_fit.min()), np.log10(R_fit.max()),
+                            n_bins + 1)
+    counts, _ = np.histogram(np.log10(R_fit), bins=log_edges)
+    R_edges = 10.0 ** log_edges
+    dR = np.diff(R_edges)
+    R_c = 0.5 * (R_edges[:-1] + R_edges[1:])
+    dNdR = counts / dR
+
+    good = dNdR > 0
+    N_good = int(good.sum())
+    if N_good < 3:
+        return np.nan, np.nan, 0
+
+    logR = np.log10(R_c[good])
+    logdN = np.log10(dNdR[good])
+
+    # OLS: logdN = gamma * logR + b
+    A = np.vstack([logR, np.ones(N_good)]).T
+    result = np.linalg.lstsq(A, logdN, rcond=None)
+    gamma = result[0][0]
+    residuals = logdN - A @ result[0]
+    if N_good > 2:
+        se2 = np.sum(residuals ** 2) / (N_good - 2)
+        var_gamma = se2 / np.sum((logR - logR.mean()) ** 2)
+        gamma_err = np.sqrt(var_gamma)
+    else:
+        gamma_err = np.nan
+
+    return gamma, gamma_err, N_good
+
+
 def run_population_synthesis(
     records: List[Dict],
     N_bubble: int = 20000,
@@ -692,12 +792,18 @@ def run_population_synthesis(
     # Step 6: fit power law via MLE on raw radii (no binning needed)
     synth_slope, synth_slope_err, N_fit = _fit_powerlaw_mle(R_valid, R_complete)
 
-    # MLE fit with 10 pc turnover
-    slope_10, slope_err_10, N_fit_10 = _fit_powerlaw_mle(
+    # MLE fit for R <= 10 pc (upper-truncated Pareto)
+    slope_le10, slope_err_le10, N_fit_le10 = _fit_powerlaw_mle_upper(
         R_valid, R_COMPLETE_10PC)
 
     # MLE fit with Nath+2020 turnover at 100 pc
     slope_nath, slope_err_nath, N_fit_nath = _fit_powerlaw_mle(
+        R_valid, R_COMPLETE_NATH20)
+
+    # Step 7: binned log-space LSQ fits (finer bins, for comparison)
+    bin_slope_30, bin_slope_err_30, bin_N_30 = _fit_powerlaw_binned(
+        R_valid, R_complete)
+    bin_slope_100, bin_slope_err_100, bin_N_100 = _fit_powerlaw_binned(
         R_valid, R_COMPLETE_NATH20)
 
     # Build run-usage summary (references unique grid records)
@@ -714,12 +820,18 @@ def run_population_synthesis(
         "synth_slope": synth_slope,
         "synth_slope_err": synth_slope_err,
         "N_fit": N_fit,
-        "synth_slope_10": slope_10,
-        "synth_slope_err_10": slope_err_10,
-        "N_fit_10": N_fit_10,
+        "synth_slope_le10": slope_le10,
+        "synth_slope_err_le10": slope_err_le10,
+        "N_fit_le10": N_fit_le10,
         "synth_slope_nath": slope_nath,
         "synth_slope_err_nath": slope_err_nath,
         "N_fit_nath": N_fit_nath,
+        "bin_slope_30": bin_slope_30,
+        "bin_slope_err_30": bin_slope_err_30,
+        "bin_N_30": bin_N_30,
+        "bin_slope_100": bin_slope_100,
+        "bin_slope_err_100": bin_slope_err_100,
+        "bin_N_100": bin_N_100,
         "N_bubble": N_bubble,
         "N_surviving": N_surviving,
         "N_recollapsed": recollapsed,
@@ -936,9 +1048,10 @@ def plot_residence_time(records: List[Dict], output_dir: Path,
     logger.info("Saved: %s", path)
 
 
-def _plot_synth_row(axes_row: tuple, synth: Dict, row_label: str) -> None:
+def _plot_synth_row(axes_row: tuple, synth: Dict, row_label: str,
+                    fit_method: str = "mle") -> None:
     """
-    Plot one row (histogram + dN/dR) of the synthesis 2x2 figure.
+    Plot one row (histogram + dN/dR) of the synthesis figure.
 
     Parameters
     ----------
@@ -948,16 +1061,21 @@ def _plot_synth_row(axes_row: tuple, synth: Dict, row_label: str) -> None:
         Output of run_population_synthesis().
     row_label : str
         Row label, e.g. "(a)" or "(b)", prepended to panel titles.
+    fit_method : str
+        ``"mle"`` for MLE fit lines, ``"binned"`` for binned-LSQ fit lines.
     """
     R_synth = synth["R_synth"]
     R_centres = synth["R_centres"]
     dNdR = synth["dNdR"]
     R_complete = synth["R_complete"]
 
-    # Left panel: histogram of full population
+    # Left panel: histogram of full population (log-spaced bins)
     ax = axes_row[0]
-    ax.hist(R_synth, bins=30, color=C_SKY, edgecolor=C_BLUE,
+    R_pos = R_synth[R_synth > 0]
+    log_bins = np.logspace(np.log10(R_pos.min()), np.log10(R_pos.max()), 31)
+    ax.hist(R_pos, bins=log_bins, color=C_SKY, edgecolor=C_BLUE,
             alpha=0.7, density=False)
+    ax.set_xscale("log")
     ax.axvline(R_complete, color=C_VERMILLION, ls=":", lw=1.2, alpha=0.8,
                label=f"$R_{{\\rm complete}}={R_complete:.0f}$ pc")
     ax.axvspan(ax.get_xlim()[0], R_complete, color="grey", alpha=0.15,
@@ -966,10 +1084,10 @@ def _plot_synth_row(axes_row: tuple, synth: Dict, row_label: str) -> None:
     ax.set_xscale('log')
     ax.set_xlabel(r"$R$ [pc]")
     ax.set_ylabel(r"$N$")
-    ax.set_xlim(10, 1e3)
+    method_tag = "MLE" if fit_method == "mle" else "Binned LSQ"
     ax.legend(
         fontsize=7, framealpha=0.7,
-        title=(f"{row_label} $N={synth['N_bubble']}$, "
+        title=(f"{row_label} [{method_tag}] $N={synth['N_bubble']}$, "
                f"$t_{{\\rm obs}}={synth['t_obs']:.1f}$ Myr, "
                f"CMF $\\alpha={synth['cmf_slope']:.1f}$"),
         title_fontsize=7,
@@ -986,9 +1104,9 @@ def _plot_synth_row(axes_row: tuple, synth: Dict, row_label: str) -> None:
         ax.scatter(R_centres[below], dNdR[below], color=C_BLUE, s=25,
                    zorder=3, alpha=0.25)
 
-    # Helper: plot an MLE fit line normalized at the first histogram bin
-    def _add_mle_line(ax, slope_val, slope_err_val, R_min_cut, color,
-                      valid_mask, R_centres, dNdR):
+    # Helper: plot a fit line normalized at the first histogram bin >= R_cut
+    def _add_fit_line(ax, slope_val, slope_err_val, R_min_cut, color,
+                      tag, valid_mask, R_centres, dNdR):
         above_cut = valid_mask & (R_centres >= R_min_cut)
         if not np.isfinite(slope_val) or not above_cut.any():
             return
@@ -999,27 +1117,62 @@ def _plot_synth_row(axes_row: tuple, synth: Dict, row_label: str) -> None:
                             np.log10(R_centres[valid_mask].max()), 50)
         dNdR_fit = dNdR_norm * (R_fit / R_norm) ** slope_val
         if np.isfinite(slope_err_val):
-            label = (f"MLE $R\\geq{R_min_cut:.0f}$ pc: "
+            label = (f"{tag} $R\\geq{R_min_cut:.0f}$ pc: "
                      f"$\\gamma={slope_val:.2f} \\pm {slope_err_val:.2f}$")
         else:
-            label = (f"MLE $R\\geq{R_min_cut:.0f}$ pc: "
+            label = (f"{tag} $R\\geq{R_min_cut:.0f}$ pc: "
                      f"$\\gamma={slope_val:.2f}$")
         ax.plot(R_fit, dNdR_fit, color=color, ls="--", lw=1.5, label=label)
 
-    # MLE fit — 10 pc turnover
-    _add_mle_line(ax, synth.get("synth_slope_10", np.nan),
-                  synth.get("synth_slope_err_10", np.nan),
-                  R_COMPLETE_10PC, C_PURPLE, valid, R_centres, dNdR)
+    # Helper: plot fit line for R <= R_max (upper-truncated region)
+    def _add_fit_line_upper(ax, slope_val, slope_err_val, R_max_cut, color,
+                            tag, valid_mask, R_centres, dNdR):
+        below_cut = valid_mask & (R_centres <= R_max_cut)
+        if not np.isfinite(slope_val) or not below_cut.any():
+            return
+        idx0 = np.where(below_cut)[0][-1]  # normalize at last bin <= R_max
+        R_norm = R_centres[idx0]
+        dNdR_norm = dNdR[idx0]
+        R_fit = np.logspace(np.log10(R_centres[valid_mask].min()),
+                            np.log10(R_max_cut), 50)
+        dNdR_fit = dNdR_norm * (R_fit / R_norm) ** slope_val
+        if np.isfinite(slope_err_val):
+            label = (f"{tag} $R\\leq{R_max_cut:.0f}$ pc: "
+                     f"$\\gamma={slope_val:.2f} \\pm {slope_err_val:.2f}$")
+        else:
+            label = (f"{tag} $R\\leq{R_max_cut:.0f}$ pc: "
+                     f"$\\gamma={slope_val:.2f}$")
+        ax.plot(R_fit, dNdR_fit, color=color, ls="--", lw=1.5, label=label)
 
-    # MLE fit — Watkins+2023 turnover (R_complete = 30 pc)
-    _add_mle_line(ax, synth["synth_slope"],
-                  synth.get("synth_slope_err", np.nan),
-                  R_complete, C_VERMILLION, valid, R_centres, dNdR)
-
-    # MLE fit — Nath+2020 turnover (100 pc)
-    _add_mle_line(ax, synth.get("synth_slope_nath", np.nan),
-                  synth.get("synth_slope_err_nath", np.nan),
-                  R_COMPLETE_NATH20, C_ORANGE, valid, R_centres, dNdR)
+    if fit_method == "mle":
+        tag = "MLE"
+        # R <= 10 pc fit
+        _add_fit_line_upper(ax, synth.get("synth_slope_le10", np.nan),
+                            synth.get("synth_slope_err_le10", np.nan),
+                            R_COMPLETE_10PC, C_PURPLE, tag,
+                            valid, R_centres, dNdR)
+        # R >= 30 pc (Watkins+23)
+        _add_fit_line(ax, synth["synth_slope"],
+                      synth.get("synth_slope_err", np.nan),
+                      R_complete, C_VERMILLION, tag,
+                      valid, R_centres, dNdR)
+        # R >= 100 pc (Nath+20)
+        _add_fit_line(ax, synth.get("synth_slope_nath", np.nan),
+                      synth.get("synth_slope_err_nath", np.nan),
+                      R_COMPLETE_NATH20, C_ORANGE, tag,
+                      valid, R_centres, dNdR)
+    else:  # binned
+        tag = "Bin"
+        # R >= 30 pc
+        _add_fit_line(ax, synth.get("bin_slope_30", np.nan),
+                      synth.get("bin_slope_err_30", np.nan),
+                      R_complete, C_VERMILLION, tag,
+                      valid, R_centres, dNdR)
+        # R >= 100 pc
+        _add_fit_line(ax, synth.get("bin_slope_100", np.nan),
+                      synth.get("bin_slope_err_100", np.nan),
+                      R_COMPLETE_NATH20, C_ORANGE, tag,
+                      valid, R_centres, dNdR)
 
     # Observed reference — solid line, transparent to reduce clutter
     if valid.sum() >= 2:
@@ -1043,15 +1196,38 @@ def _plot_synth_row(axes_row: tuple, synth: Dict, row_label: str) -> None:
     ax.set_yscale("log")
     ax.set_xlabel(r"$R$ [pc]")
     ax.set_ylabel(r"$\mathrm{d}N/\mathrm{d}R$")
-    ax.legend(fontsize=7, framealpha=0.7)
+    ax.legend(fontsize=6, framealpha=0.7)
+
+
+def _save_synth_figure(synth_list: list, output_dir: Path,
+                       fmt: str, fit_method: str,
+                       suffix: str) -> None:
+    """Build and save one synthesis figure (MLE or binned)."""
+    n_rows = len(synth_list)
+    labels = [chr(ord("a") + i) for i in range(n_rows)]
+
+    fig, axes = plt.subplots(n_rows, 2, figsize=(10, 4.5 * n_rows))
+    if n_rows == 1:
+        axes = axes[np.newaxis, :]
+
+    for i, synth in enumerate(synth_list):
+        _plot_synth_row((axes[i, 0], axes[i, 1]), synth,
+                        f"({labels[i]})", fit_method=fit_method)
+
+    fig.tight_layout()
+    path = output_dir / f"bubble_synthesis_population_{suffix}.{fmt}"
+    fig.savefig(path, dpi=200)
+    plt.close(fig)
+    logger.info("Saved: %s", path)
 
 
 def plot_synthesis_population(synth_list: list, output_dir: Path,
                               fmt: str = "pdf") -> None:
     """
-    Figure 2: Population synthesis results — 2x2 subplot.
+    Figure 2: Population synthesis results — two separate 2x2 figures.
 
-    Each row shows one t_obs value: left = histogram, right = dN/dR.
+    Saves ``bubble_synthesis_population_mle.{fmt}`` (MLE fits) and
+    ``bubble_synthesis_population_binned.{fmt}`` (binned-LSQ fits).
 
     Parameters
     ----------
@@ -1062,21 +1238,10 @@ def plot_synthesis_population(synth_list: list, output_dir: Path,
     fmt : str
         Figure format.
     """
-    n_rows = len(synth_list)
-    labels = [chr(ord("a") + i) for i in range(n_rows)]
-
-    fig, axes = plt.subplots(n_rows, 2, figsize=(10, 4.5 * n_rows))
-    if n_rows == 1:
-        axes = axes[np.newaxis, :]
-
-    for i, synth in enumerate(synth_list):
-        _plot_synth_row((axes[i, 0], axes[i, 1]), synth, f"({labels[i]})")
-
-    fig.tight_layout()
-    path = output_dir / f"bubble_synthesis_population.{fmt}"
-    fig.savefig(path, dpi=200)
-    plt.close(fig)
-    logger.info("Saved: %s", path)
+    _save_synth_figure(synth_list, output_dir, fmt,
+                       fit_method="mle", suffix="mle")
+    _save_synth_figure(synth_list, output_dir, fmt,
+                       fit_method="binned", suffix="binned")
 
 
 def plot_slope_vs_cmf(sensitivity: List[Dict], output_dir: Path,
@@ -1261,19 +1426,20 @@ def write_synthesis_csv(synth_input, sensitivity: List[Dict],
 
     csv_path = output_dir / "bubble_synthesis_summary.csv"
     header = ["cmf_slope", "t_obs_Myr", "R_complete_pc", "N_bubble",
-              "N_surviving", "N_fit", "synth_slope", "synth_slope_err",
-              "synth_slope_std",
-              "N_fit_10pc", "slope_10pc", "slope_err_10pc",
-              "N_fit_nath100", "slope_nath100", "slope_err_nath100",
+              "N_surviving",
+              "N_fit_mle30", "mle_slope_30", "mle_slope_err_30",
+              "mle_slope_std",
+              "N_fit_le10", "mle_slope_le10", "mle_slope_err_le10",
+              "N_fit_mle100", "mle_slope_100", "mle_slope_err_100",
+              "bin_N_30", "bin_slope_30", "bin_slope_err_30",
+              "bin_N_100", "bin_slope_100", "bin_slope_err_100",
               "runs_used"]
+
+    def _fmt(v):
+        return f"{v:.4f}" if np.isfinite(v) else "N/A"
 
     rows = []
     for synth in synth_all:
-        slope_err = synth.get("synth_slope_err", np.nan)
-        slope_10 = synth.get("synth_slope_10", np.nan)
-        slope_err_10 = synth.get("synth_slope_err_10", np.nan)
-        slope_nath = synth.get("synth_slope_nath", np.nan)
-        slope_err_nath = synth.get("synth_slope_err_nath", np.nan)
         rows.append([
             f"{synth['cmf_slope']:.2f}",
             f"{synth['t_obs']:.1f}",
@@ -1281,15 +1447,21 @@ def write_synthesis_csv(synth_input, sensitivity: List[Dict],
             synth["N_bubble"],
             synth["N_surviving"],
             synth.get("N_fit", ""),
-            f"{synth['synth_slope']:.4f}" if np.isfinite(synth["synth_slope"]) else "N/A",
-            f"{slope_err:.4f}" if np.isfinite(slope_err) else "N/A",
+            _fmt(synth["synth_slope"]),
+            _fmt(synth.get("synth_slope_err", np.nan)),
             "",
-            synth.get("N_fit_10", ""),
-            f"{slope_10:.4f}" if np.isfinite(slope_10) else "N/A",
-            f"{slope_err_10:.4f}" if np.isfinite(slope_err_10) else "N/A",
+            synth.get("N_fit_le10", ""),
+            _fmt(synth.get("synth_slope_le10", np.nan)),
+            _fmt(synth.get("synth_slope_err_le10", np.nan)),
             synth.get("N_fit_nath", ""),
-            f"{slope_nath:.4f}" if np.isfinite(slope_nath) else "N/A",
-            f"{slope_err_nath:.4f}" if np.isfinite(slope_err_nath) else "N/A",
+            _fmt(synth.get("synth_slope_nath", np.nan)),
+            _fmt(synth.get("synth_slope_err_nath", np.nan)),
+            synth.get("bin_N_30", ""),
+            _fmt(synth.get("bin_slope_30", np.nan)),
+            _fmt(synth.get("bin_slope_err_30", np.nan)),
+            synth.get("bin_N_100", ""),
+            _fmt(synth.get("bin_slope_100", np.nan)),
+            _fmt(synth.get("bin_slope_err_100", np.nan)),
             synth["runs_used"],
         ])
 
@@ -1303,9 +1475,11 @@ def write_synthesis_csv(synth_input, sensitivity: List[Dict],
             "",
             s["N_surviving"],
             s.get("N_fit", ""),
-            f"{s['synth_slope']:.4f}" if np.isfinite(s["synth_slope"]) else "N/A",
-            f"{slope_err:.4f}" if np.isfinite(slope_err) else "N/A",
-            f"{slope_std:.4f}" if np.isfinite(slope_std) else "N/A",
+            _fmt(s["synth_slope"]),
+            _fmt(slope_err),
+            _fmt(slope_std),
+            "", "", "",
+            "", "", "",
             "", "", "",
             "", "", "",
             "",
@@ -1372,33 +1546,32 @@ def print_summary(records: List[Dict],
             print(f"    N_surviving  = {synth['N_surviving']}")
             print(f"    N_recollapsed = {synth['N_recollapsed']}")
             print(f"    N_below_cut  = {synth['N_below_complete']}")
-            slope_err = synth.get("synth_slope_err", np.nan)
-            if np.isfinite(synth["synth_slope"]):
-                err_str = f" +/- {slope_err:.3f}" if np.isfinite(slope_err) else ""
-                print(f"    MLE slope (R>={synth['R_complete']:.0f} pc, Watkins+23)"
-                      f" = {synth['synth_slope']:.3f}{err_str}  "
-                      f"(observed = {OBSERVED_ALPHA})")
-            else:
-                print(f"    MLE slope (Watkins+23) = N/A")
-            print(f"    N_fit (MLE)  = {synth.get('N_fit', 'N/A')}")
-            slope_10 = synth.get("synth_slope_10", np.nan)
-            slope_err_10 = synth.get("synth_slope_err_10", np.nan)
-            if np.isfinite(slope_10):
-                err_str_10 = f" +/- {slope_err_10:.3f}" if np.isfinite(slope_err_10) else ""
-                print(f"    MLE slope (R>={R_COMPLETE_10PC:.0f} pc)"
-                      f"           = {slope_10:.3f}{err_str_10}")
-            else:
-                print(f"    MLE slope (R>=10 pc)   = N/A")
-            print(f"    N_fit (10pc) = {synth.get('N_fit_10', 'N/A')}")
-            slope_nath = synth.get("synth_slope_nath", np.nan)
-            slope_err_nath = synth.get("synth_slope_err_nath", np.nan)
-            if np.isfinite(slope_nath):
-                err_str_n = f" +/- {slope_err_nath:.3f}" if np.isfinite(slope_err_nath) else ""
-                print(f"    MLE slope (R>={R_COMPLETE_NATH20:.0f} pc, Nath+20)"
-                      f"   = {slope_nath:.3f}{err_str_n}")
-            else:
-                print(f"    MLE slope (Nath+20)    = N/A")
-            print(f"    N_fit (Nath) = {synth.get('N_fit_nath', 'N/A')}")
+            def _slope_str(val, err):
+                if not np.isfinite(val):
+                    return "N/A"
+                e = f" +/- {err:.3f}" if np.isfinite(err) else ""
+                return f"{val:.3f}{e}"
+
+            # MLE slopes
+            print(f"    --- MLE fits ---")
+            print(f"    R<={R_COMPLETE_10PC:.0f} pc : "
+                  f"slope = {_slope_str(synth.get('synth_slope_le10', np.nan), synth.get('synth_slope_err_le10', np.nan))}"
+                  f"  (N={synth.get('N_fit_le10', 'N/A')})")
+            print(f"    R>={synth['R_complete']:.0f} pc (Watkins+23): "
+                  f"slope = {_slope_str(synth['synth_slope'], synth.get('synth_slope_err', np.nan))}"
+                  f"  (N={synth.get('N_fit', 'N/A')})  "
+                  f"[observed = {OBSERVED_ALPHA}]")
+            print(f"    R>={R_COMPLETE_NATH20:.0f} pc (Nath+20)  : "
+                  f"slope = {_slope_str(synth.get('synth_slope_nath', np.nan), synth.get('synth_slope_err_nath', np.nan))}"
+                  f"  (N={synth.get('N_fit_nath', 'N/A')})")
+            # Binned LSQ slopes
+            print(f"    --- Binned LSQ fits (60 log-bins) ---")
+            print(f"    R>={synth['R_complete']:.0f} pc : "
+                  f"slope = {_slope_str(synth.get('bin_slope_30', np.nan), synth.get('bin_slope_err_30', np.nan))}"
+                  f"  (N_bins={synth.get('bin_N_30', 'N/A')})")
+            print(f"    R>={R_COMPLETE_NATH20:.0f} pc: "
+                  f"slope = {_slope_str(synth.get('bin_slope_100', np.nan), synth.get('bin_slope_err_100', np.nan))}"
+                  f"  (N_bins={synth.get('bin_N_100', 'N/A')})")
             print(f"    Runs used    : {synth['runs_used']}")
 
     if sensitivity:
