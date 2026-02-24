@@ -384,7 +384,7 @@ def _match_to_grid(
 
 def run_population_synthesis(
     records: List[Dict],
-    N_bubble: int = 2000,
+    N_bubble: int = 20000,
     t_obs: float = 5.0,
     cmf_slope: float = -2.0,
     R_complete: float = 30.0,
@@ -492,26 +492,24 @@ def run_population_synthesis(
 
         R_synth[i] = np.interp(age_c, t_run, R_run)
 
-    # Step 4: apply cuts
+    # Step 4: apply cuts — keep ALL R > 0 for histogramming
     valid_mask = np.isfinite(R_synth) & (R_synth > 0)
     recollapsed = np.sum(~valid_mask)
     R_valid = R_synth[valid_mask]
 
     below_complete = np.sum(R_valid < R_complete)
-    R_surviving = R_valid[R_valid >= R_complete]
-
-    N_surviving = len(R_surviving)
+    N_surviving = int(np.sum(R_valid >= R_complete))
     logger.info("Synthesis: %d drawn, %d recollapsed, %d below R_complete=%.0f pc, "
                 "%d surviving",
                 N_bubble, recollapsed, below_complete, R_complete, N_surviving)
 
-    if N_surviving < MIN_PTS:
-        logger.warning("Too few surviving bubbles (%d) — skipping synthesis",
-                        N_surviving)
+    if len(R_valid) < MIN_PTS:
+        logger.warning("Too few valid bubbles (%d) — skipping synthesis",
+                        len(R_valid))
         return None
 
-    # Step 5: histogram in log-space
-    log_R = np.log10(R_surviving)
+    # Step 5: histogram in log-space over the FULL R range (no R_complete cut)
+    log_R = np.log10(R_valid)
     n_bins = 25
     log_edges = np.linspace(log_R.min(), log_R.max(), n_bins + 1)
     counts, _ = np.histogram(log_R, bins=log_edges)
@@ -547,7 +545,7 @@ def run_population_synthesis(
                 f"{rec['folder']}({run_usage[j]})")
 
     return {
-        "R_synth": R_surviving,
+        "R_synth": R_valid,
         "R_centres": R_centres,
         "dNdR": dNdR,
         "synth_slope": synth_slope,
@@ -571,16 +569,20 @@ def run_population_synthesis(
 
 def run_sensitivity(
     records: List[Dict],
-    N_bubble: int = 2000,
+    N_bubble: int = 20000,
     seed: int = 42,
     R_complete: float = 30.0,
     cmf_slopes: List[float] = None,
     t_obs_values: List[float] = None,
     fixed_sfe: float = None,
     fixed_ncore: float = None,
+    n_bootstrap: int = 5,
 ) -> List[Dict]:
     """
     Run synthesis for a grid of CMF slopes and t_obs values.
+
+    Each (cmf_slope, t_obs) point is repeated n_bootstrap times with
+    independent seeds to estimate mean ± std of the fitted slope.
 
     Parameters
     ----------
@@ -600,11 +602,14 @@ def run_sensitivity(
         If set, only use runs with this SFE.
     fixed_ncore : float, optional
         If set, only use runs with this core density.
+    n_bootstrap : int
+        Number of independent runs per (cmf_slope, t_obs) for error bars.
 
     Returns
     -------
     list of dict
-        Each entry has: cmf_slope, t_obs, synth_slope, synth_R2, N_surviving.
+        Each entry has: cmf_slope, t_obs, synth_slope, synth_slope_std,
+        synth_R2, N_surviving, n_runs.
     """
     if cmf_slopes is None:
         cmf_slopes = [-1.5, -2.0, -2.5]
@@ -614,31 +619,46 @@ def run_sensitivity(
     results = []
     for cmf_sl in cmf_slopes:
         for t_obs in t_obs_values:
-            synth = run_population_synthesis(
-                records,
-                N_bubble=N_bubble,
-                t_obs=t_obs,
-                cmf_slope=cmf_sl,
-                R_complete=R_complete,
-                seed=seed,
-                fixed_sfe=fixed_sfe,
-                fixed_ncore=fixed_ncore,
-            )
-            if synth is not None:
+            # Deterministic but independent base seed for each configuration
+            run_seed = seed + hash((cmf_sl, t_obs)) % (2**31)
+
+            slopes = []
+            last_N_surviving = 0
+            for k in range(n_bootstrap):
+                synth = run_population_synthesis(
+                    records,
+                    N_bubble=N_bubble,
+                    t_obs=t_obs,
+                    cmf_slope=cmf_sl,
+                    R_complete=R_complete,
+                    seed=run_seed + k,
+                    fixed_sfe=fixed_sfe,
+                    fixed_ncore=fixed_ncore,
+                )
+                if synth is not None:
+                    last_N_surviving = synth["N_surviving"]
+                    if np.isfinite(synth["synth_slope"]):
+                        slopes.append(synth["synth_slope"])
+
+            if slopes:
                 results.append({
                     "cmf_slope": cmf_sl,
                     "t_obs": t_obs,
-                    "synth_slope": synth["synth_slope"],
-                    "synth_R2": synth["synth_R2"],
-                    "N_surviving": synth["N_surviving"],
+                    "synth_slope": np.mean(slopes),
+                    "synth_slope_std": np.std(slopes) if len(slopes) > 1 else 0.0,
+                    "synth_R2": np.nan,
+                    "N_surviving": last_N_surviving,
+                    "n_runs": len(slopes),
                 })
             else:
                 results.append({
                     "cmf_slope": cmf_sl,
                     "t_obs": t_obs,
                     "synth_slope": np.nan,
+                    "synth_slope_std": np.nan,
                     "synth_R2": np.nan,
                     "N_surviving": 0,
+                    "n_runs": 0,
                 })
 
     return results
@@ -764,30 +784,38 @@ def plot_synthesis_population(synth: Dict, output_dir: Path,
     dNdR = synth["dNdR"]
     R_complete = synth["R_complete"]
 
-    # Panel (a): histogram
+    # Panel (a): histogram of full population, fade region below R_complete
     ax = axes[0]
     ax.hist(R_synth, bins=30, color=C_SKY, edgecolor=C_BLUE,
             alpha=0.7, density=False)
     ax.axvline(R_complete, color=C_VERMILLION, ls=":", lw=1.2, alpha=0.8,
                label=f"$R_{{\\rm complete}}={R_complete:.0f}$ pc")
+    # Shade the incomplete region
+    ax.axvspan(ax.get_xlim()[0], R_complete, color="grey", alpha=0.15,
+               zorder=0)
     ax.set_xlabel(r"$R$ [pc]")
     ax.set_ylabel(r"$N$")
-    ax.legend(fontsize=8, framealpha=0.7)
-    ax.annotate(
-        f"$N={synth['N_bubble']}$, "
-        f"$t_{{\\rm obs}}={synth['t_obs']:.1f}$ Myr\n"
-        f"CMF $\\alpha={synth['cmf_slope']:.1f}$",
-        xy=(0.95, 0.95), xycoords="axes fraction",
-        ha="right", va="top", fontsize=8,
-        bbox=dict(boxstyle="round,pad=0.3", fc="white", alpha=0.7))
+    # Combine annotation info into the legend title to avoid overlap
+    ax.legend(
+        fontsize=8, framealpha=0.7,
+        title=(f"$N={synth['N_bubble']}$, "
+               f"$t_{{\\rm obs}}={synth['t_obs']:.1f}$ Myr, "
+               f"CMF $\\alpha={synth['cmf_slope']:.1f}$"),
+        title_fontsize=7,
+    )
 
-    # Panel (b): dN/dR vs R
+    # Panel (b): dN/dR vs R — show all bins, fade below R_complete
     ax = axes[1]
     valid = dNdR > 0
-    ax.scatter(R_centres[valid], dNdR[valid], color=C_BLUE, s=25,
+    above = valid & (R_centres >= R_complete)
+    below = valid & (R_centres < R_complete)
+    ax.scatter(R_centres[above], dNdR[above], color=C_BLUE, s=25,
                zorder=3, label="Synthesis")
+    if below.any():
+        ax.scatter(R_centres[below], dNdR[below], color=C_BLUE, s=25,
+                   zorder=3, alpha=0.25)
 
-    # Power-law fit
+    # Power-law fit (only above R_complete)
     slope = synth["synth_slope"]
     if np.isfinite(slope):
         fit_mask = valid & (R_centres >= R_complete)
@@ -813,8 +841,10 @@ def plot_synthesis_population(synth: Dict, output_dir: Path,
         ax.plot(R_ref, dNdR_obs, color=C_GREEN, ls="-.", lw=1.5,
                 label=r"$R^{-2.2}$ (Watkins+2023)")
 
-    # Completeness line
+    # Completeness line and shaded incomplete region
     ax.axvline(R_complete, color=C_VERMILLION, ls=":", lw=1.0, alpha=0.6)
+    ax.axvspan(ax.get_xlim()[0], R_complete, color="grey", alpha=0.10,
+               zorder=0)
 
     ax.set_xscale("log")
     ax.set_yscale("log")
@@ -858,17 +888,22 @@ def plot_slope_vs_cmf(sensitivity: List[Dict], output_dir: Path,
         subset = [s for s in sensitivity if s["t_obs"] == t_obs]
         cmf_sl = np.array([s["cmf_slope"] for s in subset])
         synth_sl = np.array([s["synth_slope"] for s in subset])
+        synth_std = np.array([s.get("synth_slope_std", 0.0) for s in subset])
+        synth_std = np.nan_to_num(synth_std, nan=0.0)
         valid = np.isfinite(synth_sl)
         if valid.sum() == 0:
             continue
         c = colors[j % len(colors)]
         m = markers[j % len(markers)]
-        ax.plot(cmf_sl[valid], synth_sl[valid], color=c, marker=m,
-                ms=8, lw=1.5, ls="-", label=f"$t_{{\\rm obs}}={t_obs:.0f}$ Myr")
+        ax.errorbar(cmf_sl[valid], synth_sl[valid], yerr=synth_std[valid],
+                     color=c, marker=m, ms=8, lw=1.5, ls="-", capsize=3,
+                     label=f"$t_{{\\rm obs}}={t_obs:.0f}$ Myr")
 
-    # Observed reference
+    # Observed reference with Watkins+2023 uncertainty band
+    ax.axhspan(OBSERVED_ALPHA - 0.1, OBSERVED_ALPHA + 0.1,
+               color="grey", alpha=0.15, zorder=0)
     ax.axhline(OBSERVED_ALPHA, color="grey", ls="--", lw=1.5, alpha=0.7,
-               label=f"Observed $= {OBSERVED_ALPHA}$")
+               label=f"Observed $= {OBSERVED_ALPHA} \\pm 0.1$")
 
     ax.set_xlabel(r"CMF slope $\alpha$ ($\mathrm{d}N/\mathrm{d}M_\star \propto M_\star^\alpha$)")
     ax.set_ylabel(r"Synthetic $\mathrm{d}N/\mathrm{d}R$ slope $\gamma$")
@@ -998,7 +1033,8 @@ def write_synthesis_csv(synth: Optional[Dict], sensitivity: List[Dict],
     """
     csv_path = output_dir / "bubble_synthesis_summary.csv"
     header = ["cmf_slope", "t_obs_Myr", "R_complete_pc", "N_bubble",
-              "N_surviving", "synth_slope", "synth_R2", "runs_used"]
+              "N_surviving", "synth_slope", "synth_slope_std", "synth_R2",
+              "runs_used"]
 
     rows = []
     if synth is not None:
@@ -1009,11 +1045,13 @@ def write_synthesis_csv(synth: Optional[Dict], sensitivity: List[Dict],
             synth["N_bubble"],
             synth["N_surviving"],
             f"{synth['synth_slope']:.4f}" if np.isfinite(synth["synth_slope"]) else "N/A",
+            "",
             f"{synth['synth_R2']:.4f}" if np.isfinite(synth["synth_R2"]) else "N/A",
             synth["runs_used"],
         ])
 
     for s in sensitivity:
+        slope_std = s.get("synth_slope_std", np.nan)
         rows.append([
             f"{s['cmf_slope']:.2f}",
             f"{s['t_obs']:.1f}",
@@ -1021,6 +1059,7 @@ def write_synthesis_csv(synth: Optional[Dict], sensitivity: List[Dict],
             "",
             s["N_surviving"],
             f"{s['synth_slope']:.4f}" if np.isfinite(s["synth_slope"]) else "N/A",
+            f"{slope_std:.4f}" if np.isfinite(slope_std) else "N/A",
             f"{s['synth_R2']:.4f}" if np.isfinite(s["synth_R2"]) else "N/A",
             "",
         ])
@@ -1092,14 +1131,21 @@ def print_summary(records: List[Dict], synth: Optional[Dict] = None,
         print()
         print("-" * 80)
         print("  Parameter sensitivity:")
-        print(f"    {'CMF slope':>10s} {'t_obs':>8s} {'Synth slope':>12s} "
-              f"{'R2':>8s} {'N_surv':>8s}")
-        print("    " + "-" * 50)
+        print(f"    {'CMF slope':>10s} {'t_obs':>8s} {'Synth slope':>18s} "
+              f"{'N_surv':>8s} {'n_runs':>7s}")
+        print("    " + "-" * 55)
         for s in sensitivity:
-            sl = f"{s['synth_slope']:.3f}" if np.isfinite(s["synth_slope"]) else "N/A"
-            r2 = f"{s['synth_R2']:.3f}" if np.isfinite(s["synth_R2"]) else "N/A"
+            slope_std = s.get("synth_slope_std", np.nan)
+            if np.isfinite(s["synth_slope"]):
+                if np.isfinite(slope_std) and slope_std > 0:
+                    sl = f"{s['synth_slope']:.3f} +/- {slope_std:.3f}"
+                else:
+                    sl = f"{s['synth_slope']:.3f}"
+            else:
+                sl = "N/A"
+            n_runs = s.get("n_runs", "")
             print(f"    {s['cmf_slope']:>10.1f} {s['t_obs']:>8.1f} "
-                  f"{sl:>12s} {r2:>8s} {s['N_surviving']:>8d}")
+                  f"{sl:>18s} {s['N_surviving']:>8d} {str(n_runs):>7s}")
 
     print()
     print("=" * 80)
@@ -1126,8 +1172,8 @@ Examples:
         help="Path to the sweep output directory tree (required).",
     )
     parser.add_argument(
-        "--N-bubble", type=int, default=2000,
-        help="Number of synthetic bubbles for population synthesis (default: 2000).",
+        "--N-bubble", type=int, default=20000,
+        help="Number of synthetic bubbles for population synthesis (default: 20000).",
     )
     parser.add_argument(
         "--t-obs", type=float, default=5.0,
@@ -1165,6 +1211,13 @@ Examples:
         "--fixed-ncore", type=float, default=None,
         help="If set, only use runs with this core density for synthesis.",
     )
+    parser.add_argument(
+        "--density-profile", type=str, default="all",
+        choices=["PL0", "uniform", "all"],
+        help=("Filter runs by density profile: 'PL0' keeps only folders "
+              "containing '_PL0', 'uniform' keeps only folders without '_PL0', "
+              "'all' keeps everything (default: all)."),
+    )
     return parser
 
 
@@ -1192,6 +1245,33 @@ def main(argv: Optional[List[str]] = None) -> int:
     if not records:
         logger.error("No valid data collected — aborting.")
         return 1
+
+    # Filter by density profile if requested
+    density_profile = args.density_profile
+    if density_profile == "PL0":
+        before = len(records)
+        records = [r for r in records if "_PL0" in r["folder"]]
+        logger.info("Density profile filter 'PL0': %d -> %d runs",
+                     before, len(records))
+    elif density_profile == "uniform":
+        before = len(records)
+        records = [r for r in records if "_PL0" not in r["folder"]]
+        logger.info("Density profile filter 'uniform': %d -> %d runs",
+                     before, len(records))
+
+    if not records:
+        logger.error("No runs remain after density-profile filter — aborting.")
+        return 1
+
+    # Warn if mixing different n_core values without --fixed-ncore
+    unique_ncores = sorted(set(r["nCore"] for r in records))
+    if len(unique_ncores) > 1 and args.fixed_ncore is None:
+        logger.warning(
+            "Mixing %d different nCore values %s without --fixed-ncore. "
+            "Consider setting --fixed-ncore to avoid incoherent grid matching.",
+            len(unique_ncores),
+            [f"{n:.0e}" for n in unique_ncores],
+        )
 
     # Step 2: Part 1 figures (diagnostics)
     plot_residence_time(records, output_dir, args.fmt)
