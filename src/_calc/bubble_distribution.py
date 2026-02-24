@@ -659,6 +659,63 @@ def _fit_powerlaw_binned(R_values: np.ndarray, R_min: float,
     return gamma, gamma_err, N_good
 
 
+def _fit_powerlaw_binned_upper(R_values: np.ndarray, R_max: float,
+                               n_bins: int = 60) -> Tuple[float, float, int]:
+    """
+    Binned log-space least-squares power-law fit for R <= R_max.
+
+    Parameters
+    ----------
+    R_values : ndarray
+        Array of radii.
+    R_max : float
+        Upper cutoff — only R <= R_max (and R > 0) are used.
+    n_bins : int
+        Number of log-spaced bins.
+
+    Returns
+    -------
+    gamma : float
+        Fitted power-law index.
+    gamma_err : float
+        Standard error of the slope from OLS.
+    N_fit : int
+        Number of non-empty bins used in the fit.
+    """
+    R_fit = R_values[(R_values > 0) & (R_values <= R_max)]
+    if len(R_fit) < 10:
+        return np.nan, np.nan, 0
+
+    log_edges = np.linspace(np.log10(R_fit.min()), np.log10(R_max),
+                            n_bins + 1)
+    counts, _ = np.histogram(np.log10(R_fit), bins=log_edges)
+    R_edges = 10.0 ** log_edges
+    dR = np.diff(R_edges)
+    R_c = 0.5 * (R_edges[:-1] + R_edges[1:])
+    dNdR = counts / dR
+
+    good = dNdR > 0
+    N_good = int(good.sum())
+    if N_good < 3:
+        return np.nan, np.nan, 0
+
+    logR = np.log10(R_c[good])
+    logdN = np.log10(dNdR[good])
+
+    A = np.vstack([logR, np.ones(N_good)]).T
+    result = np.linalg.lstsq(A, logdN, rcond=None)
+    gamma = result[0][0]
+    residuals = logdN - A @ result[0]
+    if N_good > 2:
+        se2 = np.sum(residuals ** 2) / (N_good - 2)
+        var_gamma = se2 / np.sum((logR - logR.mean()) ** 2)
+        gamma_err = np.sqrt(var_gamma)
+    else:
+        gamma_err = np.nan
+
+    return gamma, gamma_err, N_good
+
+
 def run_population_synthesis(
     records: List[Dict],
     N_bubble: int = 20000,
@@ -801,6 +858,8 @@ def run_population_synthesis(
         R_valid, R_COMPLETE_NATH20)
 
     # Step 7: binned log-space LSQ fits (finer bins, for comparison)
+    bin_slope_le10, bin_slope_err_le10, bin_N_le10 = _fit_powerlaw_binned_upper(
+        R_valid, R_COMPLETE_10PC)
     bin_slope_30, bin_slope_err_30, bin_N_30 = _fit_powerlaw_binned(
         R_valid, R_complete)
     bin_slope_100, bin_slope_err_100, bin_N_100 = _fit_powerlaw_binned(
@@ -826,6 +885,9 @@ def run_population_synthesis(
         "synth_slope_nath": slope_nath,
         "synth_slope_err_nath": slope_err_nath,
         "N_fit_nath": N_fit_nath,
+        "bin_slope_le10": bin_slope_le10,
+        "bin_slope_err_le10": bin_slope_err_le10,
+        "bin_N_le10": bin_N_le10,
         "bin_slope_30": bin_slope_30,
         "bin_slope_err_30": bin_slope_err_30,
         "bin_N_30": bin_N_30,
@@ -1070,23 +1132,64 @@ def _plot_synth_row(axes_row: tuple, synth: Dict, row_label: str,
     R_complete = synth["R_complete"]
 
     # Left panel: histogram of full population (log-spaced bins)
-    ax = axes_row[0]
+    ax_hist = axes_row[0]
     R_pos = R_synth[R_synth > 0]
     log_bins = np.logspace(np.log10(R_pos.min()), np.log10(R_pos.max()), 31)
-    ax.hist(R_pos, bins=log_bins, color=C_SKY, edgecolor=C_BLUE,
-            alpha=0.7, density=False)
-    ax.set_xscale("log")
-    ax.axvline(R_complete, color=C_VERMILLION, ls=":", lw=1.2, alpha=0.8,
-               label=f"$R_{{\\rm complete}}={R_complete:.0f}$ pc")
-    ax.axvspan(ax.get_xlim()[0], R_complete, color="grey", alpha=0.15,
-               zorder=0)
-    ax.set_yscale('log')
-    ax.set_xscale('log')
-    ax.set_xlabel(r"$R$ [pc]")
-    ax.set_ylabel(r"$N$")
+    hist_counts, hist_edges = np.histogram(R_pos, bins=log_bins)
+    hist_centres = 0.5 * (hist_edges[:-1] + hist_edges[1:])
+    ax_hist.bar(hist_edges[:-1], hist_counts, width=np.diff(hist_edges),
+                align="edge", color=C_SKY, edgecolor=C_BLUE, alpha=0.7)
+    ax_hist.set_xscale("log")
+    ax_hist.set_yscale("log")
+    ax_hist.axvline(R_complete, color=C_VERMILLION, ls=":", lw=1.2, alpha=0.8)
+    ax_hist.axvspan(ax_hist.get_xlim()[0], R_complete, color="grey",
+                    alpha=0.15, zorder=0)
+    ax_hist.set_xlabel(r"$R$ [pc]")
+    ax_hist.set_ylabel(r"$N$")
+
+    # Helper: overlay a power-law fit on the histogram panel.
+    # Log-spaced bins have dR ∝ R, so counts N ∝ dN/dR * R ∝ R^{gamma+1}.
+    def _add_hist_fit(ax, slope_val, R_range, color, label):
+        if not np.isfinite(slope_val):
+            return
+        R_line = np.logspace(np.log10(R_range[0]), np.log10(R_range[1]), 50)
+        # Find histogram bins within range for normalization
+        in_range = (hist_centres >= R_range[0]) & (hist_centres <= R_range[1])
+        counts_in = hist_counts[in_range]
+        if counts_in.sum() == 0:
+            return
+        R_norm = hist_centres[in_range][np.argmax(counts_in)]
+        N_norm = counts_in.max()
+        N_line = N_norm * (R_line / R_norm) ** (slope_val + 1.0)
+        ax.plot(R_line, N_line, color=color, ls="--", lw=1.5, alpha=0.8,
+                label=label)
+
+    # Overlay fit lines on histogram
+    R_min_all = R_pos.min()
+    R_max_all = R_pos.max()
+    if fit_method == "mle":
+        _add_hist_fit(ax_hist, synth.get("synth_slope_le10", np.nan),
+                      (R_min_all, R_COMPLETE_10PC), C_PURPLE,
+                      f"$R\\leq{R_COMPLETE_10PC:.0f}$")
+        _add_hist_fit(ax_hist, synth["synth_slope"],
+                      (R_complete, R_max_all), C_VERMILLION,
+                      f"$R\\geq{R_complete:.0f}$")
+        _add_hist_fit(ax_hist, synth.get("synth_slope_nath", np.nan),
+                      (R_COMPLETE_NATH20, R_max_all), C_ORANGE,
+                      f"$R\\geq{R_COMPLETE_NATH20:.0f}$")
+    else:
+        _add_hist_fit(ax_hist, synth.get("bin_slope_le10", np.nan),
+                      (R_min_all, R_COMPLETE_10PC), C_PURPLE,
+                      f"$R\\leq{R_COMPLETE_10PC:.0f}$")
+        _add_hist_fit(ax_hist, synth.get("bin_slope_30", np.nan),
+                      (R_complete, R_max_all), C_VERMILLION,
+                      f"$R\\geq{R_complete:.0f}$")
+        _add_hist_fit(ax_hist, synth.get("bin_slope_100", np.nan),
+                      (R_COMPLETE_NATH20, R_max_all), C_ORANGE,
+                      f"$R\\geq{R_COMPLETE_NATH20:.0f}$")
     method_tag = "MLE" if fit_method == "mle" else "Binned LSQ"
-    ax.legend(
-        fontsize=7, framealpha=0.7,
+    ax_hist.legend(
+        fontsize=6, framealpha=0.7,
         title=(f"{row_label} [{method_tag}] $N={synth['N_bubble']}$, "
                f"$t_{{\\rm obs}}={synth['t_obs']:.1f}$ Myr, "
                f"CMF $\\alpha={synth['cmf_slope']:.1f}$"),
@@ -1163,6 +1266,11 @@ def _plot_synth_row(axes_row: tuple, synth: Dict, row_label: str,
                       valid, R_centres, dNdR)
     else:  # binned
         tag = "Bin"
+        # R <= 10 pc
+        _add_fit_line_upper(ax, synth.get("bin_slope_le10", np.nan),
+                            synth.get("bin_slope_err_le10", np.nan),
+                            R_COMPLETE_10PC, C_PURPLE, tag,
+                            valid, R_centres, dNdR)
         # R >= 30 pc
         _add_fit_line(ax, synth.get("bin_slope_30", np.nan),
                       synth.get("bin_slope_err_30", np.nan),
@@ -1429,8 +1537,9 @@ def write_synthesis_csv(synth_input, sensitivity: List[Dict],
               "N_surviving",
               "N_fit_mle30", "mle_slope_30", "mle_slope_err_30",
               "mle_slope_std",
-              "N_fit_le10", "mle_slope_le10", "mle_slope_err_le10",
+              "N_fit_mle_le10", "mle_slope_le10", "mle_slope_err_le10",
               "N_fit_mle100", "mle_slope_100", "mle_slope_err_100",
+              "bin_N_le10", "bin_slope_le10", "bin_slope_err_le10",
               "bin_N_30", "bin_slope_30", "bin_slope_err_30",
               "bin_N_100", "bin_slope_100", "bin_slope_err_100",
               "runs_used"]
@@ -1456,6 +1565,9 @@ def write_synthesis_csv(synth_input, sensitivity: List[Dict],
             synth.get("N_fit_nath", ""),
             _fmt(synth.get("synth_slope_nath", np.nan)),
             _fmt(synth.get("synth_slope_err_nath", np.nan)),
+            synth.get("bin_N_le10", ""),
+            _fmt(synth.get("bin_slope_le10", np.nan)),
+            _fmt(synth.get("bin_slope_err_le10", np.nan)),
             synth.get("bin_N_30", ""),
             _fmt(synth.get("bin_slope_30", np.nan)),
             _fmt(synth.get("bin_slope_err_30", np.nan)),
@@ -1478,6 +1590,7 @@ def write_synthesis_csv(synth_input, sensitivity: List[Dict],
             _fmt(s["synth_slope"]),
             _fmt(slope_err),
             _fmt(slope_std),
+            "", "", "",
             "", "", "",
             "", "", "",
             "", "", "",
@@ -1566,6 +1679,9 @@ def print_summary(records: List[Dict],
                   f"  (N={synth.get('N_fit_nath', 'N/A')})")
             # Binned LSQ slopes
             print(f"    --- Binned LSQ fits (60 log-bins) ---")
+            print(f"    R<={R_COMPLETE_10PC:.0f} pc : "
+                  f"slope = {_slope_str(synth.get('bin_slope_le10', np.nan), synth.get('bin_slope_err_le10', np.nan))}"
+                  f"  (N_bins={synth.get('bin_N_le10', 'N/A')})")
             print(f"    R>={synth['R_complete']:.0f} pc : "
                   f"slope = {_slope_str(synth.get('bin_slope_30', np.nan), synth.get('bin_slope_err_30', np.nan))}"
                   f"  (N_bins={synth.get('bin_N_30', 'N/A')})")
