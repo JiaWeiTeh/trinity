@@ -1080,6 +1080,8 @@ def _plot_synth_row(axes_row: tuple, synth: Dict, row_label: str,
                label=f"$R_{{\\rm complete}}={R_complete:.0f}$ pc")
     ax.axvspan(ax.get_xlim()[0], R_complete, color="grey", alpha=0.15,
                zorder=0)
+    ax.set_yscale('log')
+    ax.set_xscale('log')
     ax.set_xlabel(r"$R$ [pc]")
     ax.set_ylabel(r"$N$")
     method_tag = "MLE" if fit_method == "mle" else "Binned LSQ"

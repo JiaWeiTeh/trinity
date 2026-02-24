@@ -292,11 +292,6 @@ def run_expansion(params):
 
     # make a function that interpolates density so that it goes from top to end of cloud.
 
-
-    # Since cooling is not needed anymore after this phase, we reset values.
-    # COOLING_PHASE_KEYS contains all cooling-related parameters that can be cleared.
-    logger.debug("Resetting cooling-related parameters (no longer needed)...")
-    params.reset_keys(COOLING_PHASE_KEYS)
     
     # =============================================================================
     # Phase 1c: transition phase
@@ -329,6 +324,12 @@ def run_expansion(params):
     #     params.flush()
     # except:
     #     pass
+
+    # Since cooling is not needed anymore after this phase, we reset values.
+    # COOLING_PHASE_KEYS contains all cooling-related parameters that can be cleared.
+    logger.debug("Resetting cooling-related parameters (no longer needed)...")
+    params.reset_keys(COOLING_PHASE_KEYS)
+
 
     # =============================================================================
     # Phase 2: momentum phase
