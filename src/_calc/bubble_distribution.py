@@ -94,7 +94,7 @@ V_AU2KMS = INV_CONV.v_au2kms   # pc/Myr -> km/s  (~0.978)
 OBSERVED_ALPHA = -2.2
 
 # Alternative completeness turnover from Nath+2020
-R_COMPLETE_NATH20 = 100.0
+R_COMPLETE_NATH20 = 80.0
 
 # Minimum expanding points required for analysis
 MIN_PTS = 10
