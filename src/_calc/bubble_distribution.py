@@ -362,6 +362,117 @@ def _sample_powerlaw(
         return (M_min**ap1 + u * (M_max**ap1 - M_min**ap1)) ** (1.0 / ap1)
 
 
+def _sample_lognormal_truncated(
+    N: int,
+    median: float,
+    sigma_dex: float,
+    lo: float,
+    hi: float,
+    rng: np.random.Generator,
+) -> np.ndarray:
+    """
+    Draw N samples from a log-normal truncated to [lo, hi].
+
+    Parameters
+    ----------
+    N : int
+        Number of samples to return.
+    median : float
+        Median of the underlying (untruncated) log-normal.
+    sigma_dex : float
+        Width in dex (std of log10(x)); converted via sigma_ln = sigma_dex * ln(10).
+    lo, hi : float
+        Hard truncation bounds.
+    rng : numpy.random.Generator
+        PRNG instance.
+
+    Returns
+    -------
+    np.ndarray, shape (N,)
+    """
+    mu_ln = np.log(median)
+    sigma_ln = sigma_dex * np.log(10.0)
+
+    samples = np.empty(N)
+    n_accepted = 0
+
+    while n_accepted < N:
+        n_need = N - n_accepted
+        # Oversample by 2x for efficiency
+        candidates = rng.lognormal(mu_ln, sigma_ln, size=2 * n_need)
+        mask = (candidates >= lo) & (candidates <= hi)
+        accepted = candidates[mask]
+        n_take = min(len(accepted), n_need)
+        samples[n_accepted:n_accepted + n_take] = accepted[:n_take]
+        n_accepted += n_take
+
+    return samples
+
+
+def _build_2d_grid(
+    records: List[Dict],
+    fixed_ncore: float = None,
+) -> Tuple[np.ndarray, np.ndarray, Dict, List[Dict]]:
+    """
+    Build a 2D lookup grid of TRINITY runs keyed by (log10 M_cloud, sfe).
+
+    Each TRINITY run maps to a unique (M_cloud, sfe) pair — no degeneracy.
+
+    Parameters
+    ----------
+    records : list of dict
+        Output of collect_data(). Each has keys: 'mCloud', 'sfe', 'nCore',
+        't_full', 'R_full'.
+    fixed_ncore : float, optional
+        If set, only use runs matching this core density (within 10%).
+
+    Returns
+    -------
+    grid_logMcl : 1D array, sorted unique log10(M_cloud) values
+    grid_sfe : 1D array, sorted unique sfe values
+    grid_data : dict mapping (int, int) -> {"t": array, "R": array} or None
+    grid_records : list of dict (all records used)
+    """
+    # Filter by fixed_ncore if specified
+    if fixed_ncore is not None:
+        filtered = [r for r in records
+                    if abs(r["nCore"] - fixed_ncore) / fixed_ncore < 0.10]
+        logger.info("fixed_ncore=%.2e filter: %d -> %d runs",
+                     fixed_ncore, len(records), len(filtered))
+    else:
+        filtered = list(records)
+
+    if not filtered:
+        return np.array([]), np.array([]), {}, []
+
+    # Extract unique grid values (round to avoid float issues)
+    mcl_vals = sorted(set(round(np.log10(r["mCloud"]), 2) for r in filtered))
+    grid_logMcl = np.array(mcl_vals)
+
+    sfe_vals = sorted(set(round(r["sfe"], 4) for r in filtered))
+    grid_sfe = np.array(sfe_vals)
+
+    # Build 2D dict
+    grid_data = {}
+    for rec in filtered:
+        log_mcl_round = round(np.log10(rec["mCloud"]), 2)
+        sfe_round = round(rec["sfe"], 4)
+        i = int(np.searchsorted(grid_logMcl, log_mcl_round))
+        j = int(np.searchsorted(grid_sfe, sfe_round))
+        # Deduplicate time series
+        t_full = rec["t_full"]
+        R_full = rec["R_full"]
+        _, unique_idx = np.unique(t_full, return_index=True)
+        grid_data[(i, j)] = {"t": t_full[unique_idx], "R": R_full[unique_idx]}
+
+    n_total = len(grid_logMcl) * len(grid_sfe)
+    n_filled = len(grid_data)
+    logger.info("2D grid: %d M_cloud x %d sfe = %d cells, %d filled (%.0f%%)",
+                len(grid_logMcl), len(grid_sfe), n_total, n_filled,
+                100.0 * n_filled / max(n_total, 1))
+
+    return grid_logMcl, grid_sfe, grid_data, filtered
+
 
 def _bracket_on_grid(
     log_Mstar_sampled: float,
@@ -444,6 +555,81 @@ def _interpolate_R(
 
     # Log-space interpolation
     log_R = (1.0 - w) * np.log10(R_lo) + w * np.log10(R_hi)
+    return 10.0 ** log_R
+
+
+def _interpolate_R_2d(
+    age: float,
+    log_Mcl_sampled: float,
+    sfe_sampled: float,
+    grid_logMcl: np.ndarray,
+    grid_log_sfe: np.ndarray,
+    grid_data: Dict,
+) -> float:
+    """
+    Evaluate R(age) by bilinear interpolation on the 2D (M_cloud, sfe) grid.
+
+    Brackets the sampled (log M_cloud, log sfe) in each dimension using
+    _bracket_on_grid(), retrieves R(age) from up to 4 corner tracks, and
+    performs bilinear interpolation in log R space. Missing corners are
+    handled by redistributing weights to available corners.
+
+    Parameters
+    ----------
+    age : float
+        Bubble age [Myr].
+    log_Mcl_sampled : float
+        log10 of sampled cloud mass.
+    sfe_sampled : float
+        Sampled star formation efficiency (linear, not log).
+    grid_logMcl : 1D array
+        Sorted log10(M_cloud) grid axis.
+    grid_log_sfe : 1D array
+        Sorted log10(sfe) grid axis.
+    grid_data : dict
+        Maps (i, j) -> {"t": array, "R": array} or None.
+
+    Returns
+    -------
+    float
+        Interpolated radius [pc], or NaN if no valid corners.
+    """
+    log_sfe_sampled = np.log10(sfe_sampled)
+
+    # Bracket in each dimension
+    i_lo, i_hi, w_m = _bracket_on_grid(log_Mcl_sampled, grid_logMcl)
+    j_lo, j_hi, w_s = _bracket_on_grid(log_sfe_sampled, grid_log_sfe)
+
+    # The 4 corners and their bilinear weights
+    corners = [
+        ((i_lo, j_lo), (1.0 - w_m) * (1.0 - w_s)),
+        ((i_hi, j_lo), w_m * (1.0 - w_s)),
+        ((i_lo, j_hi), (1.0 - w_m) * w_s),
+        ((i_hi, j_hi), w_m * w_s),
+    ]
+
+    # Evaluate R(age) at each available corner
+    log_R_vals = []
+    weights = []
+    for (i, j), w in corners:
+        if w < 1e-12:
+            continue
+        track = grid_data.get((i, j))
+        if track is None:
+            continue
+        t_arr, R_arr = track["t"], track["R"]
+        age_c = np.clip(age, t_arr.min(), t_arr.max())
+        R_val = np.interp(age_c, t_arr, R_arr)
+        if R_val > 0:
+            log_R_vals.append(np.log10(R_val))
+            weights.append(w)
+
+    if not log_R_vals:
+        return np.nan
+
+    # Renormalize weights and compute weighted mean in log space
+    total_w = sum(weights)
+    log_R = sum(w * lr for w, lr in zip(weights, log_R_vals)) / total_w
     return 10.0 ** log_R
 
 
@@ -645,7 +831,238 @@ def _fit_powerlaw_binned_upper(R_values: np.ndarray, R_max: float,
 
 
 # ======================================================================
-# Part 3: Parameter sensitivity  (placeholder — synthesis replaced by Prompt 2)
+# Part 2b: 2D (M_cloud, epsilon) population synthesis
+# ======================================================================
+
+def run_population_synthesis_2d(
+    records: List[Dict],
+    N_bubble: int = 20000,
+    t_obs: float = 5.0,
+    cloud_mf_slope: float = -1.7,
+    cloud_mf_max: float = None,
+    sfe_median: float = 0.03,
+    sfe_sigma_dex: float = 0.4,
+    R_complete: float = 30.0,
+    seed: int = 42,
+    fixed_ncore: float = None,
+) -> Optional[Dict]:
+    """
+    Population synthesis by jointly sampling M_cloud and epsilon from their
+    respective astrophysical distributions, then interpolating R(t) on
+    the 2D TRINITY grid.
+
+    The cluster mass function EMERGES as a prediction (M_star = epsilon * M_cloud)
+    rather than being an input — eliminating the SFE degeneracy of previous methods.
+
+    Parameters
+    ----------
+    records : list of dict
+        Output of collect_data().
+    N_bubble : int
+        Number of synthetic bubbles to draw.
+    t_obs : float
+        Observation time [Myr].
+    cloud_mf_slope : float
+        Cloud mass function slope: dN/dM_cl ~ M_cl^beta.
+        Default: -1.7 (Solomon+87, Heyer+01; typical for MW/spiral arms).
+    cloud_mf_max : float or None
+        Schechter exponential truncation mass [Msun].
+        If None, pure power law truncated at grid maximum.
+    sfe_median : float
+        Median of the log-normal SFE distribution.
+        Default: 0.03 (Chevance+2020 NGC 628 lifecycle constraint).
+    sfe_sigma_dex : float
+        Width of the SFE distribution in dex (std of log10(epsilon)).
+        Default: 0.4 (Grudic+2019 scatter, Chevance+2020).
+    R_complete : float
+        Completeness radius [pc] for MLE fitting.
+    seed : int
+        Random seed.
+    fixed_ncore : float, optional
+        If set, only use runs with this core density.
+
+    Returns
+    -------
+    dict or None
+        Keys matching _plot_synth_row expectations:
+        R_synth, R_centres, dNdR,
+        synth_slope, synth_slope_err, N_fit,
+        synth_slope_le10, synth_slope_err_le10, N_fit_le10,
+        synth_slope_nath, synth_slope_err_nath, N_fit_nath,
+        bin_slope_le10, bin_slope_err_le10, bin_N_le10,
+        bin_slope_30, bin_slope_err_30, bin_N_30,
+        bin_slope_100, bin_slope_err_100, bin_N_100,
+        N_bubble, N_surviving, N_recollapsed, N_below_complete,
+        t_obs, R_complete, runs_used, run_usage, filtered_records,
+        method, cloud_mf_slope, cloud_mf_max, sfe_median, sfe_sigma_dex.
+    """
+    # Step A: Build 2D grid
+    if not records:
+        return None
+
+    grid_logMcl, grid_sfe, grid_data, filtered = _build_2d_grid(
+        records, fixed_ncore=fixed_ncore)
+
+    if len(grid_logMcl) == 0 or len(grid_sfe) == 0:
+        logger.warning("Empty 2D grid")
+        return None
+
+    grid_log_sfe = np.log10(grid_sfe)
+
+    Mcl_min = 10.0 ** grid_logMcl[0]
+    Mcl_max = 10.0 ** grid_logMcl[-1]
+    sfe_lo = grid_sfe[0]
+    sfe_hi = grid_sfe[-1]
+
+    logger.info("Sampling M_cloud from [%.2e, %.2e] Msun with slope %.1f",
+                Mcl_min, Mcl_max, cloud_mf_slope)
+    logger.info("Sampling sfe from LN(median=%.3f, sigma=%.1f dex) "
+                "truncated to [%.3f, %.3f]",
+                sfe_median, sfe_sigma_dex, sfe_lo, sfe_hi)
+
+    # Step B: Sample M_cloud
+    rng = np.random.default_rng(seed)
+
+    sampled_Mcl = _sample_powerlaw(N_bubble, Mcl_min, Mcl_max,
+                                   cloud_mf_slope, rng)
+
+    # Apply Schechter truncation if requested
+    if cloud_mf_max is not None and cloud_mf_max > 0:
+        n_accepted = 0
+        Mcl_accepted = np.empty(N_bubble)
+        max_attempts = 20  # safety valve
+        attempt = 0
+        while n_accepted < N_bubble and attempt < max_attempts:
+            n_need = N_bubble - n_accepted
+            candidates = _sample_powerlaw(2 * n_need, Mcl_min, Mcl_max,
+                                          cloud_mf_slope, rng)
+            accept_prob = np.exp(-candidates / cloud_mf_max)
+            mask = rng.uniform(size=len(candidates)) < accept_prob
+            accepted = candidates[mask]
+            n_take = min(len(accepted), n_need)
+            Mcl_accepted[n_accepted:n_accepted + n_take] = accepted[:n_take]
+            n_accepted += n_take
+            attempt += 1
+
+        if n_accepted < N_bubble:
+            logger.warning("Schechter rejection: only got %d/%d after %d attempts",
+                          n_accepted, N_bubble, max_attempts)
+            Mcl_accepted = Mcl_accepted[:n_accepted]
+            N_bubble = n_accepted
+        sampled_Mcl = Mcl_accepted
+
+    # Step C: Sample epsilon
+    sampled_sfe = _sample_lognormal_truncated(
+        N_bubble, sfe_median, sfe_sigma_dex, sfe_lo, sfe_hi, rng)
+
+    # Step D: Assign birth times
+    t_form = rng.uniform(0.0, t_obs, size=N_bubble)
+    ages = t_obs - t_form
+
+    # Step E: Evaluate R(age) via 2D interpolation
+    R_synth = np.full(N_bubble, np.nan)
+    log_Mcl = np.log10(sampled_Mcl)
+
+    run_usage = np.zeros(len(filtered), dtype=int)
+
+    for i in range(N_bubble):
+        R_synth[i] = _interpolate_R_2d(
+            ages[i], log_Mcl[i], sampled_sfe[i],
+            grid_logMcl, grid_log_sfe, grid_data)
+
+    n_nan = np.sum(np.isnan(R_synth))
+    if n_nan > 0:
+        logger.info("2D interpolation: %d/%d returned NaN (no grid coverage)",
+                    n_nan, N_bubble)
+
+    # Step F: Apply cuts + compute fits
+    valid_mask = np.isfinite(R_synth) & (R_synth > 0)
+    recollapsed = int(np.sum(~valid_mask))
+    R_valid = R_synth[valid_mask]
+
+    below_complete = int(np.sum(R_valid < R_complete))
+    N_surviving = int(np.sum(R_valid >= R_complete))
+    logger.info("Synthesis: %d drawn, %d recollapsed/NaN, "
+                "%d below R_complete=%.0f pc, %d surviving",
+                N_bubble, recollapsed, below_complete, R_complete, N_surviving)
+
+    if len(R_valid) < MIN_PTS:
+        logger.warning("Too few valid bubbles (%d) — skipping", len(R_valid))
+        return None
+
+    # Histogram in log-space (40 bins over full range)
+    log_R_all = np.log10(R_valid)
+    n_bins_display = 40
+    log_edges = np.linspace(log_R_all.min(), log_R_all.max(),
+                            n_bins_display + 1)
+    counts, _ = np.histogram(log_R_all, bins=log_edges)
+    R_edges = 10.0 ** log_edges
+    dR = np.diff(R_edges)
+    R_centres = 0.5 * (R_edges[:-1] + R_edges[1:])
+    dNdR = counts / dR
+
+    # MLE fits
+    synth_slope, synth_slope_err, N_fit = _fit_powerlaw_mle(
+        R_valid, R_complete)
+    slope_le10, slope_err_le10, N_fit_le10 = _fit_powerlaw_mle_upper(
+        R_valid, R_COMPLETE_10PC)
+    slope_nath, slope_err_nath, N_fit_nath = _fit_powerlaw_mle(
+        R_valid, R_COMPLETE_NATH20)
+
+    # Binned LSQ fits
+    bin_slope_le10, bin_slope_err_le10, bin_N_le10 = _fit_powerlaw_binned_upper(
+        R_valid, R_COMPLETE_10PC)
+    bin_slope_30, bin_slope_err_30, bin_N_30 = _fit_powerlaw_binned(
+        R_valid, R_complete)
+    bin_slope_100, bin_slope_err_100, bin_N_100 = _fit_powerlaw_binned(
+        R_valid, R_COMPLETE_NATH20)
+
+    # Step G: Build return dict
+    runs_used_summary = [rec["folder"] for rec in filtered]
+
+    return {
+        "method": "2d",
+        "R_synth": R_valid,
+        "R_centres": R_centres,
+        "dNdR": dNdR,
+        "synth_slope": synth_slope,
+        "synth_slope_err": synth_slope_err,
+        "N_fit": N_fit,
+        "synth_slope_le10": slope_le10,
+        "synth_slope_err_le10": slope_err_le10,
+        "N_fit_le10": N_fit_le10,
+        "synth_slope_nath": slope_nath,
+        "synth_slope_err_nath": slope_err_nath,
+        "N_fit_nath": N_fit_nath,
+        "bin_slope_le10": bin_slope_le10,
+        "bin_slope_err_le10": bin_slope_err_le10,
+        "bin_N_le10": bin_N_le10,
+        "bin_slope_30": bin_slope_30,
+        "bin_slope_err_30": bin_slope_err_30,
+        "bin_N_30": bin_N_30,
+        "bin_slope_100": bin_slope_100,
+        "bin_slope_err_100": bin_slope_err_100,
+        "bin_N_100": bin_N_100,
+        "N_bubble": N_bubble,
+        "N_surviving": N_surviving,
+        "N_recollapsed": recollapsed,
+        "N_below_complete": below_complete,
+        "t_obs": t_obs,
+        "cloud_mf_slope": cloud_mf_slope,
+        "cloud_mf_max": cloud_mf_max,
+        "sfe_median": sfe_median,
+        "sfe_sigma_dex": sfe_sigma_dex,
+        "R_complete": R_complete,
+        "runs_used": ", ".join(runs_used_summary[:20]),
+        "run_usage": run_usage,
+        "filtered_records": filtered,
+        # Backward compatibility key (used by _plot_synth_row legend):
+        "cmf_slope": cloud_mf_slope,
+    }
+
+
+# ======================================================================
+# Part 3: Parameter sensitivity
 # ======================================================================
 
 def run_sensitivity(
@@ -653,17 +1070,15 @@ def run_sensitivity(
     N_bubble: int = 20000,
     seed: int = 42,
     R_complete: float = 30.0,
-    cmf_slopes: List[float] = None,
+    cloud_mf_slopes: List[float] = None,
     t_obs_values: List[float] = None,
+    sfe_median: float = 0.03,
+    sfe_sigma_dex: float = 0.4,
     fixed_ncore: float = None,
     n_bootstrap: int = 5,
 ) -> List[Dict]:
     """
-    Run synthesis for a grid of slopes and t_obs values.
-
-    .. note::
-        Currently a no-op placeholder.  Prompt 2 will wire this up to the
-        new 2-D (M_cloud, SFE) synthesis function.
+    Run 2D synthesis across a grid of cloud MF slopes and t_obs values.
 
     Parameters
     ----------
@@ -675,22 +1090,82 @@ def run_sensitivity(
         Base random seed.
     R_complete : float
         Completeness radius [pc].
-    cmf_slopes : list of float, optional
-        Slopes to test.
+    cloud_mf_slopes : list of float, optional
+        Cloud MF slopes to scan (default: [-1.5, -1.7, -1.9, -2.1]).
     t_obs_values : list of float, optional
-        Observation times to test [Myr].
+        Observation times to scan [Myr] (default: [3, 5, 10]).
+    sfe_median : float
+        Median of the log-normal SFE distribution.
+    sfe_sigma_dex : float
+        Width of the SFE distribution in dex.
     fixed_ncore : float, optional
         If set, only use runs with this core density.
     n_bootstrap : int
-        Number of independent runs per point for error bars.
+        Independent draws per (slope, t_obs) for uncertainty.
 
     Returns
     -------
     list of dict
-        Empty list (placeholder).
+        Each with: cmf_slope, t_obs, synth_slope, synth_slope_std,
+        synth_slope_err, N_surviving, N_fit, n_runs.
     """
-    # TODO: Prompt 2 will implement the new synthesis + sensitivity loop
-    return []
+    if cloud_mf_slopes is None:
+        cloud_mf_slopes = [-1.5, -1.7, -1.9, -2.1]
+    if t_obs_values is None:
+        t_obs_values = [3.0, 5.0, 10.0]
+
+    results = []
+    for beta in cloud_mf_slopes:
+        for t_obs in t_obs_values:
+            run_seed = seed + hash((beta, t_obs)) % (2**31)
+            slopes = []
+            last_N_surviving = 0
+            last_slope_err = np.nan
+            last_N_fit = 0
+
+            for k in range(n_bootstrap):
+                synth = run_population_synthesis_2d(
+                    records,
+                    N_bubble=N_bubble,
+                    t_obs=t_obs,
+                    cloud_mf_slope=beta,
+                    sfe_median=sfe_median,
+                    sfe_sigma_dex=sfe_sigma_dex,
+                    R_complete=R_complete,
+                    seed=run_seed + k,
+                    fixed_ncore=fixed_ncore,
+                )
+                if synth is not None:
+                    last_N_surviving = synth["N_surviving"]
+                    last_slope_err = synth["synth_slope_err"]
+                    last_N_fit = synth["N_fit"]
+                    if np.isfinite(synth["synth_slope"]):
+                        slopes.append(synth["synth_slope"])
+
+            if slopes:
+                results.append({
+                    "cmf_slope": beta,
+                    "t_obs": t_obs,
+                    "synth_slope": np.mean(slopes),
+                    "synth_slope_std": np.std(slopes) if len(slopes) > 1 else 0.0,
+                    "synth_slope_err": last_slope_err,
+                    "N_surviving": last_N_surviving,
+                    "N_fit": last_N_fit,
+                    "n_runs": len(slopes),
+                })
+            else:
+                results.append({
+                    "cmf_slope": beta,
+                    "t_obs": t_obs,
+                    "synth_slope": np.nan,
+                    "synth_slope_std": np.nan,
+                    "synth_slope_err": np.nan,
+                    "N_surviving": 0,
+                    "N_fit": 0,
+                    "n_runs": 0,
+                })
+
+    return results
 
 
 # ======================================================================
@@ -867,11 +1342,21 @@ def _plot_synth_row(axes_row: tuple, synth: Dict, row_label: str,
                       (R_COMPLETE_NATH20, R_max_all), C_ORANGE,
                       f"$R\\geq{R_COMPLETE_NATH20:.0f}$")
     method_tag = "MLE" if fit_method == "mle" else "Binned LSQ"
+    sfe_med = synth.get('sfe_median', None)
+    sfe_sig = synth.get('sfe_sigma_dex', None)
+    cloud_beta = synth.get('cloud_mf_slope', synth.get('cmf_slope', 'N/A'))
+    if sfe_med is not None:
+        sfe_str = f"$\\varepsilon \\sim$ LN({sfe_med:.2f}, {sfe_sig:.1f})"
+    else:
+        sfe_str = ""
+    legend_title = (f"{row_label} [{method_tag}] $N={synth['N_bubble']}$, "
+                    f"$t_{{\\rm obs}}={synth['t_obs']:.1f}$ Myr, "
+                    f"$\\beta={cloud_beta}$")
+    if sfe_str:
+        legend_title += f", {sfe_str}"
     ax_hist.legend(
         fontsize=6, framealpha=0.7,
-        title=(f"{row_label} [{method_tag}] $N={synth['N_bubble']}$, "
-               f"$t_{{\\rm obs}}={synth['t_obs']:.1f}$ Myr, "
-               f"$\\beta={synth.get('cloud_mf_slope', synth.get('cmf_slope', 'N/A'))}$"),
+        title=legend_title,
         title_fontsize=7,
     )
 
@@ -1228,8 +1713,9 @@ def write_synthesis_csv(synth_input, sensitivity: List[Dict],
         synth_all = list(synth_input)
 
     csv_path = output_dir / "bubble_synthesis_summary.csv"
-    header = ["cmf_slope", "t_obs_Myr", "R_complete_pc", "N_bubble",
-              "N_surviving",
+    header = ["method", "cloud_mf_slope", "sfe_median", "sfe_sigma_dex",
+              "cloud_mf_max",
+              "t_obs_Myr", "R_complete_pc", "N_bubble", "N_surviving",
               "N_fit_mle30", "mle_slope_30", "mle_slope_err_30",
               "mle_slope_std",
               "N_fit_mle_le10", "mle_slope_le10", "mle_slope_err_le10",
@@ -1245,7 +1731,11 @@ def write_synthesis_csv(synth_input, sensitivity: List[Dict],
     rows = []
     for synth in synth_all:
         rows.append([
-            _fmt(synth.get("cmf_slope", synth.get("cloud_mf_slope", np.nan))),
+            synth.get("method", "2d"),
+            _fmt(synth.get("cloud_mf_slope", np.nan)),
+            _fmt(synth.get("sfe_median", np.nan)),
+            _fmt(synth.get("sfe_sigma_dex", np.nan)),
+            _fmt(synth.get("cloud_mf_max", np.nan)) if synth.get("cloud_mf_max") else "None",
             f"{synth['t_obs']:.1f}",
             f"{synth['R_complete']:.1f}",
             synth["N_bubble"],
@@ -1276,7 +1766,10 @@ def write_synthesis_csv(synth_input, sensitivity: List[Dict],
         slope_err = s.get("synth_slope_err", np.nan)
         slope_std = s.get("synth_slope_std", np.nan)
         rows.append([
+            "2d",
             f"{s['cmf_slope']:.2f}",
+            "", "",
+            "",
             f"{s['t_obs']:.1f}",
             "",
             "",
@@ -1351,8 +1844,16 @@ def print_summary(records: List[Dict],
     def _print_synth_block(synth):
         print()
         print("-" * 80)
-        print(f"  Population synthesis (t_obs = {synth['t_obs']:.1f} Myr):")
-        # print(f"    MF slope     = {synth.get('cloud_mf_slope', 'N/A')}")
+        print(f"  Population synthesis — 2D (M_cloud, sfe) sampling "
+              f"(t_obs = {synth['t_obs']:.1f} Myr):")
+        cloud_beta = synth.get('cloud_mf_slope', 'N/A')
+        sfe_med = synth.get('sfe_median', 'N/A')
+        sfe_sig = synth.get('sfe_sigma_dex', 'N/A')
+        cloud_max = synth.get('cloud_mf_max', None)
+        print(f"    Cloud MF slope = {cloud_beta}")
+        if cloud_max is not None:
+            print(f"    Cloud MF max   = {cloud_max:.2e} Msun")
+        print(f"    SFE dist       = LN(median={sfe_med}, sigma={sfe_sig} dex)")
         print(f"    N_bubble     = {synth['N_bubble']}")
         print(f"    R_complete   = {synth['R_complete']:.0f} pc")
         print(f"    N_surviving  = {synth['N_surviving']}")
@@ -1391,7 +1892,7 @@ def print_summary(records: List[Dict],
         print()
         print("-" * 80)
         print("  Parameter sensitivity:")
-        print(f"    {'CMF slope':>10s} {'t_obs':>8s} {'Synth slope':>18s} "
+        print(f"    {'Cloud MF β':>12s} {'t_obs':>8s} {'Synth slope':>18s} "
               f"{'N_surv':>8s} {'n_runs':>7s}")
         print("    " + "-" * 55)
         for s in sensitivity:
@@ -1422,9 +1923,9 @@ def build_parser() -> argparse.ArgumentParser:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  python bubble_distribution.py -F /path/to/sweep_output
-  python bubble_distribution.py -F /path/to/sweep_output --N-bubble 5000 --fmt png
-  python bubble_distribution.py -F /path/to/sweep_output --R-complete 20
+  python bubble_distribution.py -F /path/to/sweep
+  python bubble_distribution.py -F /path/to/sweep --cloud-mf-slope -1.9 --sfe-median 0.05
+  python bubble_distribution.py -F /path/to/sweep --cloud-mf-max 1e7 --sfe-sigma-dex 0.3
         """,
     )
     parser.add_argument(
@@ -1458,6 +1959,26 @@ Examples:
     parser.add_argument(
         "--R-complete", type=float, default=30.0,
         help="Completeness radius [pc] (Watkins+2023 turnover, default: 30.0).",
+    )
+    parser.add_argument(
+        "--cloud-mf-slope", type=float, default=-1.7,
+        help=("Cloud mass function slope dN/dM_cl ~ M_cl^beta "
+              "(default: -1.7, Solomon+87)."),
+    )
+    parser.add_argument(
+        "--cloud-mf-max", type=float, default=None,
+        help=("Schechter truncation mass [Msun] for the cloud MF. "
+              "If not set, use a pure power law truncated at grid maximum."),
+    )
+    parser.add_argument(
+        "--sfe-median", type=float, default=0.03,
+        help=("Median of the log-normal SFE distribution "
+              "(default: 0.03; Chevance+2020 NGC 628)."),
+    )
+    parser.add_argument(
+        "--sfe-sigma-dex", type=float, default=0.4,
+        help=("Width of the SFE distribution in dex "
+              "(default: 0.4; Grudic+2019 scatter)."),
     )
     parser.add_argument(
         "--fixed-ncore", type=float, default=None,
@@ -1533,9 +2054,62 @@ def main(argv: Optional[List[str]] = None) -> int:
     plot_residence_time(records, output_dir, args.fmt)
     plot_ndot_inferred(records, output_dir, args.fmt)
 
-    # Step 3: population synthesis — replaced by Prompt 2
+    # Step 3: population synthesis (2D sampling)
     synth_list = []
     sensitivity = []
+    T_OBS_SECOND = 10.0
+
+    if not args.no_synthesis:
+        t_obs_values = [args.t_obs]
+        if args.t_obs != T_OBS_SECOND:
+            t_obs_values.append(T_OBS_SECOND)
+
+        for t_obs_run in t_obs_values:
+            logger.info(
+                "2D synthesis: N=%d, t_obs=%.1f Myr, "
+                "cloud MF slope=%.1f, SFE ~ LN(%.3f, %.1f dex)",
+                args.N_bubble, t_obs_run, args.cloud_mf_slope,
+                args.sfe_median, args.sfe_sigma_dex,
+            )
+            s = run_population_synthesis_2d(
+                records,
+                N_bubble=args.N_bubble,
+                t_obs=t_obs_run,
+                cloud_mf_slope=args.cloud_mf_slope,
+                cloud_mf_max=args.cloud_mf_max,
+                sfe_median=args.sfe_median,
+                sfe_sigma_dex=args.sfe_sigma_dex,
+                R_complete=args.R_complete,
+                seed=args.seed,
+                fixed_ncore=args.fixed_ncore,
+            )
+            if s is not None:
+                synth_list.append(s)
+            else:
+                logger.warning("Synthesis returned None for t_obs=%.1f Myr",
+                              t_obs_run)
+
+        if synth_list:
+            plot_synthesis_population(synth_list, output_dir, args.fmt)
+
+        # Sensitivity analysis
+        logger.info("Running sensitivity analysis...")
+        sensitivity = run_sensitivity(
+            records,
+            N_bubble=args.N_bubble,
+            seed=args.seed,
+            R_complete=args.R_complete,
+            sfe_median=args.sfe_median,
+            sfe_sigma_dex=args.sfe_sigma_dex,
+            fixed_ncore=args.fixed_ncore,
+        )
+        if sensitivity:
+            plot_slope_vs_cmf(
+                sensitivity, output_dir, args.fmt,
+                xlabel=(r"Cloud MF slope $\beta$ "
+                        r"($\mathrm{d}N/\mathrm{d}M_{\rm cl}"
+                        r" \propto M_{\rm cl}^\beta$)"),
+            )
 
     # Step 4: output
     write_results_csv(records, output_dir)
