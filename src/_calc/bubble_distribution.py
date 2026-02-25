@@ -1119,9 +1119,12 @@ def run_sensitivity(
         for t_obs in t_obs_values:
             run_seed = seed + hash((beta, t_obs)) % (2**31)
             slopes = []
+            slopes_nath = []
             last_N_surviving = 0
             last_slope_err = np.nan
             last_N_fit = 0
+            last_slope_err_nath = np.nan
+            last_N_fit_nath = 0
 
             for k in range(n_bootstrap):
                 synth = run_population_synthesis_2d(
@@ -1139,8 +1142,13 @@ def run_sensitivity(
                     last_N_surviving = synth["N_surviving"]
                     last_slope_err = synth["synth_slope_err"]
                     last_N_fit = synth["N_fit"]
+                    last_slope_err_nath = synth.get("synth_slope_err_nath", np.nan)
+                    last_N_fit_nath = synth.get("N_fit_nath", 0)
                     if np.isfinite(synth["synth_slope"]):
                         slopes.append(synth["synth_slope"])
+                    nath_val = synth.get("synth_slope_nath", np.nan)
+                    if np.isfinite(nath_val):
+                        slopes_nath.append(nath_val)
 
             if slopes:
                 results.append({
@@ -1149,8 +1157,12 @@ def run_sensitivity(
                     "synth_slope": np.mean(slopes),
                     "synth_slope_std": np.std(slopes) if len(slopes) > 1 else 0.0,
                     "synth_slope_err": last_slope_err,
+                    "synth_slope_nath": np.mean(slopes_nath) if slopes_nath else np.nan,
+                    "synth_slope_nath_std": np.std(slopes_nath) if len(slopes_nath) > 1 else 0.0,
+                    "synth_slope_err_nath": last_slope_err_nath,
                     "N_surviving": last_N_surviving,
                     "N_fit": last_N_fit,
+                    "N_fit_nath": last_N_fit_nath,
                     "n_runs": len(slopes),
                 })
             else:
@@ -1160,8 +1172,12 @@ def run_sensitivity(
                     "synth_slope": np.nan,
                     "synth_slope_std": np.nan,
                     "synth_slope_err": np.nan,
+                    "synth_slope_nath": np.nan,
+                    "synth_slope_nath_std": np.nan,
+                    "synth_slope_err_nath": np.nan,
                     "N_surviving": 0,
                     "N_fit": 0,
+                    "N_fit_nath": 0,
                     "n_runs": 0,
                 })
 
@@ -1547,40 +1563,62 @@ def plot_slope_vs_cmf(sensitivity: List[Dict], output_dir: Path,
         logger.warning("No sensitivity data — skipping slope-vs-CMF plot")
         return
 
-    fig, ax = plt.subplots(figsize=(6, 4.5))
+    fig, ax = plt.subplots(figsize=(7, 5))
 
-    # Group by t_obs
+    # Group by t_obs; use markers for t_obs, colors for R-cut
     t_obs_vals = sorted(set(s["t_obs"] for s in sensitivity))
-    colors = [C_BLUE, C_VERMILLION, C_GREEN, C_PURPLE, C_ORANGE]
     markers = ["o", "s", "D", "^", "v"]
 
     for j, t_obs in enumerate(t_obs_vals):
         subset = [s for s in sensitivity if s["t_obs"] == t_obs]
         cmf_sl = np.array([s["cmf_slope"] for s in subset])
-        synth_sl = np.array([s["synth_slope"] for s in subset])
-        synth_std = np.array([s.get("synth_slope_std", 0.0) for s in subset])
-        synth_std = np.nan_to_num(synth_std, nan=0.0)
-        valid = np.isfinite(synth_sl)
-        if valid.sum() == 0:
-            continue
-        c = colors[j % len(colors)]
         m = markers[j % len(markers)]
-        ax.errorbar(cmf_sl[valid], synth_sl[valid], yerr=synth_std[valid],
-                     color=c, marker=m, ms=8, lw=1.5, ls="-", capsize=3,
-                     label=f"$t_{{\\rm obs}}={t_obs:.0f}$ Myr")
 
-    # Observed reference with Watkins+2023 uncertainty band
+        # R >= 30 pc (Watkins+2023) — blue
+        synth_sl_30 = np.array([s["synth_slope"] for s in subset])
+        synth_std_30 = np.array([s.get("synth_slope_std", 0.0) for s in subset])
+        synth_std_30 = np.nan_to_num(synth_std_30, nan=0.0)
+        valid_30 = np.isfinite(synth_sl_30)
+        if valid_30.sum() > 0:
+            ax.errorbar(cmf_sl[valid_30], synth_sl_30[valid_30],
+                        yerr=synth_std_30[valid_30],
+                        color=C_BLUE, marker=m, ms=8, lw=1.5, ls="-",
+                        capsize=3,
+                        label=(f"$R\\geq 30$ pc, "
+                               f"$t_{{\\rm obs}}={t_obs:.0f}$ Myr"))
+
+        # R >= 100 pc (Nath+2020) — green
+        synth_sl_nath = np.array([s.get("synth_slope_nath", np.nan)
+                                  for s in subset])
+        synth_std_nath = np.array([s.get("synth_slope_nath_std", 0.0)
+                                   for s in subset])
+        synth_std_nath = np.nan_to_num(synth_std_nath, nan=0.0)
+        valid_nath = np.isfinite(synth_sl_nath)
+        if valid_nath.sum() > 0:
+            ax.errorbar(cmf_sl[valid_nath], synth_sl_nath[valid_nath],
+                        yerr=synth_std_nath[valid_nath],
+                        color=C_GREEN, marker=m, ms=8, lw=1.5, ls="--",
+                        capsize=3,
+                        label=(f"$R\\geq 100$ pc, "
+                               f"$t_{{\\rm obs}}={t_obs:.0f}$ Myr"))
+
+    # Observed reference bands
     ax.axhspan(OBSERVED_ALPHA - 0.1, OBSERVED_ALPHA + 0.1,
-               color="grey", alpha=0.15, zorder=0)
-    ax.axhline(OBSERVED_ALPHA, color="grey", ls="--", lw=1.5, alpha=0.7,
-               label=f"Observed $= {OBSERVED_ALPHA} \\pm 0.1$")
+               color=C_BLUE, alpha=0.10, zorder=0)
+    ax.axhline(OBSERVED_ALPHA, color=C_BLUE, ls="--", lw=1.5, alpha=0.5,
+               label=f"Watkins+23 $R\\geq 30$ pc $= {OBSERVED_ALPHA} \\pm 0.1$")
+
+    ax.axhspan(OBSERVED_ALPHA - 0.1, OBSERVED_ALPHA + 0.1,
+               color=C_GREEN, alpha=0.10, zorder=0)
+    ax.axhline(OBSERVED_ALPHA, color=C_GREEN, ls="--", lw=1.5, alpha=0.5,
+               label=f"Nath+20 $R\\geq 100$ pc $= {OBSERVED_ALPHA} \\pm 0.1$")
 
     if xlabel is None:
         xlabel = (r"CMF slope $\alpha$ "
                   r"($\mathrm{d}N/\mathrm{d}M_\star \propto M_\star^\alpha$)")
     ax.set_xlabel(xlabel)
     ax.set_ylabel(r"Synthetic $\mathrm{d}N/\mathrm{d}R$ slope $\gamma$")
-    ax.legend(fontsize=8, framealpha=0.7)
+    ax.legend(fontsize=7, framealpha=0.7, loc="best")
 
     fig.tight_layout()
     path = output_dir / f"{filename}.{fmt}"
