@@ -20,7 +20,7 @@
 
 tuple(dens_profile, densPL_alpha)    [densPL, 0] [densPL, -1] [densPL, -2]
 
-# tuple(dens_profile, densPL_alpha, densBE_Omega)    [densPL, 0, 0] [densPL, -1, 0] [densPL, -2, 0] [densBE, 0, 14.1]
+# tuple(dens_profile, densPL_alpha, densBE_Omega)    [densPL, 0, 0] [densPL, -1, 0] [densPL, -2, 0] [s, 0, 14.1]
 
 # =============================================================================
 # Fixed parameters (constant across all runs)
