@@ -18,11 +18,149 @@ and a cloud-mass-function prior weights the posterior.
 Progressive degeneracy breaking is demonstrated by running inference
 with increasing observable sets: (R,t), (R,t,v), (R,t,n), (R,t,v,n).
 
-CLI usage
----------
-    python infer_cluster_mass.py -F /path/to/sweep --system RCW120
-    python infer_cluster_mass.py -F /path/to/sweep \\
-        --R-obs 10.0 --sigma-R 2.0 --t-obs 1.0 --sigma-t 0.3
+How to run
+----------
+This script requires a TRINITY parameter sweep directory (the same kind
+used by ``bubble_distribution.py``).  The sweep directory must contain
+subfolders with names like ``1e5_sfe010_n1e3/`` or ``m1e7_sfe020_n1e4_PL0/``,
+each holding a ``dictionary.jsonl`` output file produced by TRINITY.
+
+**Required argument:**
+
+  -F / --folder   Path to the sweep output directory tree.
+
+**Specifying observables — two modes:**
+
+1. *Pre-stored system* — use ``--system`` to select a known bubble.  The
+   script ships with four targets: ``RCW120``, ``Carina``, ``Orion_Veil``,
+   and ``N49``.  Their observed R, t, v_exp, and n_edge values (with
+   uncertainties and literature references) are built in.
+
+2. *Manual observables* — supply ``--R-obs``, ``--sigma-R``, ``--t-obs``,
+   ``--sigma-t`` (all four required), plus optionally ``--v-obs``,
+   ``--sigma-v``, ``--n-edge-obs``, ``--sigma-n-edge``.  If ``--system``
+   is also given, the manual flags override the corresponding system
+   defaults, so you can e.g. tweak RCW120's velocity without re-entering
+   everything.
+
+**Optional arguments:**
+
+  --cmf-slope FLOAT     Cloud mass function slope dN/dM ~ M^beta
+                        (default: -1.8).
+  --profile {uniform,sis,steep}
+                        Density profile assumption for the n_edge likelihood.
+                        ``uniform`` = constant density inside R_cloud,
+                        ``sis``     = isothermal sphere n ~ r^{-2},
+                        ``steep``   = n ~ r^{-3} (default: uniform).
+  --fmt FMT             Figure format: pdf (default), png, svg, etc.
+  --tag TAG             String appended to every output filename — useful
+                        for distinguishing multiple runs.
+  --output-dir DIR      Override the output directory (default: fig/<folder>/).
+  --t-end FLOAT         Truncate all TRINITY tracks at this time [Myr].
+
+**Outputs (saved to fig/<folder>/ by default):**
+
+  * ``infer_Mcl_posterior_{system}.pdf``  — overlaid marginal PDFs from
+    progressive inference stages (R,t → R,t,v → R,t,n → R,t,v,n),
+    shaded 68% credible intervals, and optional KDE overlay.
+  * ``infer_Mcl_2d_{system}.pdf``        — 2D scatter of log M_cl vs
+    log n_core with marker size/colour proportional to posterior weight.
+  * ``infer_Mcl_Rt_tracks_{system}.pdf`` — top ~20 highest-weight R(t)
+    grid tracks coloured by log M_cl, with the observed (R, t) point.
+  * ``infer_Mcl_triangle_{system}.pdf``  — 3×3 corner plot of
+    (log M_cl, log n_core, log ε) with weighted histograms and scatter.
+  * Console summary table: median log M_cl, 68% CI, and effective sample
+    size N_eff for each inference stage.
+
+Examples
+--------
+**1. Run on a pre-stored system (simplest usage):**
+
+.. code-block:: bash
+
+    python src/_calc/infer_cluster_mass.py \\
+        -F output/sweep_mCloud_sfe_nCore \\
+        --system RCW120
+
+This loads the RCW120 observables (R = 2.25 ± 0.3 pc, t = 0.15 ± 0.05 Myr,
+v = 15 ± 2 km/s, n_edge = 3000 ± 500 cm⁻³; Luisi+2021), runs four
+progressive inference stages, saves four PDF figures, and prints a summary.
+
+**2. Run on a different pre-stored system with PNG output:**
+
+.. code-block:: bash
+
+    python src/_calc/infer_cluster_mass.py \\
+        -F output/sweep_mCloud_sfe_nCore \\
+        --system Carina --fmt png
+
+Carina has no velocity measurement, so only three stages run: (R,t),
+(R,t,n_edge), and the console summary shows N/A for the velocity stage.
+
+**3. Fully manual observables (no pre-stored system):**
+
+.. code-block:: bash
+
+    python src/_calc/infer_cluster_mass.py \\
+        -F output/sweep_mCloud_sfe_nCore \\
+        --R-obs 10.0 --sigma-R 2.0 \\
+        --t-obs 1.0  --sigma-t 0.3 \\
+        --v-obs 8.0  --sigma-v 2.0 \\
+        --n-edge-obs 500 --sigma-n-edge 100
+
+All four observables are specified, so all four stages run.  The system
+name defaults to "custom".
+
+**4. Override a pre-stored system's velocity:**
+
+.. code-block:: bash
+
+    python src/_calc/infer_cluster_mass.py \\
+        -F output/sweep_mCloud_sfe_nCore \\
+        --system RCW120 \\
+        --v-obs 20.0 --sigma-v 3.0
+
+Uses RCW120 defaults for R, t, n_edge, but overrides v_exp to 20 ± 3 km/s.
+
+**5. Change the mass-function prior and density profile:**
+
+.. code-block:: bash
+
+    python src/_calc/infer_cluster_mass.py \\
+        -F output/sweep_mCloud_sfe_nCore \\
+        --system Orion_Veil \\
+        --cmf-slope -1.7 \\
+        --profile sis \\
+        --tag cmf17_sis
+
+This uses a shallower CMF slope (-1.7 instead of -1.8) and an isothermal-
+sphere density profile for the n_edge likelihood.  The ``--tag`` appends
+``_cmf17_sis`` to every output filename so results are not overwritten.
+
+**6. Truncate tracks and redirect output:**
+
+.. code-block:: bash
+
+    python src/_calc/infer_cluster_mass.py \\
+        -F output/sweep_mCloud_sfe_nCore \\
+        --system N49 \\
+        --t-end 5.0 \\
+        --output-dir results/N49_test
+
+All grid tracks are truncated at 5 Myr, and figures are saved to
+``results/N49_test/`` instead of the default ``fig/`` tree.
+
+**7. Minimal run — radius and age only (no velocity or density):**
+
+.. code-block:: bash
+
+    python src/_calc/infer_cluster_mass.py \\
+        -F output/sweep_mCloud_sfe_nCore \\
+        --R-obs 5.0 --sigma-R 1.0 \\
+        --t-obs 0.5 --sigma-t 0.1
+
+Only the (R, t) stage runs.  The posterior will be broad — this is the
+baseline showing the degeneracy that additional observables break.
 
 References
 ----------
