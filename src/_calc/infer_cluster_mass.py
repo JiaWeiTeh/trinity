@@ -55,10 +55,11 @@ each holding a ``dictionary.jsonl`` output file produced by TRINITY.
   --fmt FMT             Figure format: pdf (default), png, svg, etc.
   --tag TAG             String appended to every output filename — useful
                         for distinguishing multiple runs.
-  --output-dir DIR      Override the output directory (default: fig/<folder>/).
+  --output-dir DIR      Override the output directory
+                        (default: fig/infer_cluster_mass/<folder>/).
   --t-end FLOAT         Truncate all TRINITY tracks at this time [Myr].
 
-**Outputs (saved to fig/<folder>/ by default):**
+**Outputs (saved to fig/infer_cluster_mass/<folder>/ by default):**
 
   * ``infer_Mcl_posterior_{system}.pdf``  — overlaid marginal PDFs from
     progressive inference stages (R,t → R,t,v → R,t,n → R,t,v,n),
@@ -1157,7 +1158,7 @@ Examples:
     )
     parser.add_argument(
         "--output-dir", type=str, default=None,
-        help="Output directory override (default: fig/<folder>/).",
+        help="Output directory override (default: fig/infer_cluster_mass/<folder>/).",
     )
     parser.add_argument(
         "--t-end", type=float, default=None,
@@ -1182,7 +1183,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         return 1
 
     folder_name = folder_path.name
-    output_dir = Path(args.output_dir) if args.output_dir else FIG_DIR / folder_name
+    output_dir = Path(args.output_dir) if args.output_dir else FIG_DIR / "infer_cluster_mass" / folder_name
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Resolve observables: system defaults + manual overrides
