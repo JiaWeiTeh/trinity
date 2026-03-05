@@ -924,9 +924,6 @@ def plot_posterior(stages: List[Dict], system_name: str,
     x_hi = max(s["log_Mcl_bins"].max() for s in stages)
     y_hi = max(s["pdf_Mcl"].max() for s in stages) * 1.10
 
-    # Reference (stage-1) posterior for ghost overlay
-    base_stage = slot_stage[0]
-
     for slot_idx, (pdef, ax) in enumerate(zip(_PANEL_DEFS, axes.flat)):
         stage = slot_stage[slot_idx]
         c = pdef["color"]
@@ -950,16 +947,6 @@ def plot_posterior(stages: List[Dict], system_name: str,
             lo = stage["lo_Mcl"]
             hi = stage["hi_Mcl"]
             n_eff = stage["N_eff"]
-
-            # Ghost: base-stage posterior (panels b, c, d only)
-            if slot_idx > 0 and base_stage is not None:
-                b_bins = base_stage["log_Mcl_bins"]
-                b_pdf = base_stage["pdf_Mcl"]
-                ax.fill_between(b_bins, 0, b_pdf, color="0.7",
-                                alpha=0.30, step="mid")
-                ax.step(b_bins, b_pdf, where="mid", color="0.7",
-                        lw=1.0, alpha=0.5,
-                        label=r"$(R,\,t)$ only" if slot_idx == 1 else None)
 
             # Main PDF: filled curve + solid outline
             ax.fill_between(bins, 0, pdf, color=c, alpha=0.25, step="mid")
@@ -996,6 +983,7 @@ def plot_posterior(stages: List[Dict], system_name: str,
 
             # Literature mass overlay
             if _has_lit:
+                _show_lit_legend = not _lit_label_used
                 _lbl = r"Literature $M_{\rm cl}$" if not _lit_label_used else None
                 ax.axvline(_log_Mcl_true, color=C_GREEN, ls="-", lw=2.0,
                            alpha=0.8, label=_lbl, zorder=5)
@@ -1003,10 +991,8 @@ def plot_posterior(stages: List[Dict], system_name: str,
                            _log_Mcl_true + _sigma_lit_dex,
                            color=C_GREEN, alpha=0.12, zorder=1)
                 _lit_label_used = True
-
-            # Legend only where ghost first appears
-            if slot_idx == 1 or (slot_idx == 0 and _has_lit):
-                ax.legend(fontsize=7, framealpha=0.7, loc="upper left")
+                if _show_lit_legend:
+                    ax.legend(fontsize=7, framealpha=0.7, loc="upper left")
 
         # Shared axis labels / tick-label hiding
         row, col = divmod(slot_idx, 2)
