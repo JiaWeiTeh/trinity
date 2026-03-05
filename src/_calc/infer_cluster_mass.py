@@ -32,8 +32,8 @@ each holding a ``dictionary.jsonl`` output file produced by TRINITY.
 **Specifying observables — two modes:**
 
 1. *Pre-stored system* — use ``--system`` to select a known bubble.  The
-   script ships with four targets: ``RCW120``, ``Carina``, ``Orion_Veil``,
-   and ``N49``.  Their observed R, t, v_exp, and n_edge values (with
+   script ships with five targets: ``RCW120``, ``Orion_Veil``, ``Carina``,
+   ``Rosette``, and ``N49``.  Their observed R, t, v_exp, and n_edge values (with
    uncertainties and literature references) are built in.
 
 2. *Manual observables* — supply ``--R-obs``, ``--sigma-R``, ``--t-obs``,
@@ -241,28 +241,50 @@ OBSERVED_SYSTEMS = {
         "t_obs": 0.15, "sigma_t": 0.05,
         "v_obs": 15.0, "sigma_v": 2.0,
         "n_edge_obs": 3000.0, "sigma_n_edge": 500.0,
-        "ref": "Luisi+2021, Sci. Adv. 7, eabe9511",
+        "Mcl_lit": 1000.0,
+        "sigma_Mcl_lit_dex": 0.3,
+        "ref": "Luisi+2021; Deharveng+2009; Martins+2010",
+        "note": "Single O8V star CD-38 11636 (~30 Msun); Mcl from IMF scaling",
+    },
+    "Orion_Veil": {
+        "R_obs": 2.0, "sigma_R": 0.3,
+        "t_obs": 0.20, "sigma_t": 0.05,
+        "v_obs": 13.0, "sigma_v": 2.0,
+        "n_edge_obs": 1500.0, "sigma_n_edge": 500.0,
+        "Mcl_lit": 1800.0,
+        "sigma_Mcl_lit_dex": 0.15,
+        "ref": "Pabst+2019 Nature; Pabst+2020 A&A; Da Rio+2014",
+        "note": "ONC total stellar mass from census; Veil is half-shell",
     },
     "Carina": {
         "R_obs": 10.0, "sigma_R": 2.0,
         "t_obs": 3.6, "sigma_t": 0.5,
         "v_obs": None, "sigma_v": None,
         "n_edge_obs": 100.0, "sigma_n_edge": 30.0,
-        "ref": "Harper-Clark & Murray 2009, ApJ 693, 1696",
+        "Mcl_lit": 10000.0,
+        "sigma_Mcl_lit_dex": 0.2,
+        "ref": "Harper-Clark & Murray 2009; Smith 2006",
+        "note": "Trumpler 16; ~70 O stars; age from eta Car evolution",
     },
-    "Orion_Veil": {
-        "R_obs": 2.0, "sigma_R": 0.3,
-        "t_obs": 0.2, "sigma_t": 0.05,
-        "v_obs": 13.0, "sigma_v": 2.0,
-        "n_edge_obs": 1000.0, "sigma_n_edge": 200.0,
-        "ref": "Pabst+2019, Nature 565, 618",
+    "Rosette": {
+        "R_obs": 20.0, "sigma_R": 3.0,
+        "t_obs": 2.0, "sigma_t": 0.5,
+        "v_obs": 15.0, "sigma_v": 3.0,
+        "n_edge_obs": 20.0, "sigma_n_edge": 10.0,
+        "Mcl_lit": 2000.0,
+        "sigma_Mcl_lit_dex": 0.2,
+        "ref": "Celnik 1985; Wang+2008; Roman-Zuniga+2008",
+        "note": "NGC 2244 cluster; well-studied wind bubble",
     },
     "N49": {
         "R_obs": 55.0, "sigma_R": 10.0,
         "t_obs": 4.0, "sigma_t": 1.0,
         "v_obs": 12.0, "sigma_v": 3.0,
         "n_edge_obs": None, "sigma_n_edge": None,
+        "Mcl_lit": None,
+        "sigma_Mcl_lit_dex": None,
         "ref": "Watkins+2023; approximate median PHANGS-JWST bubble",
+        "note": "Extragalactic; no individual cluster mass available",
     },
 }
 
@@ -818,6 +840,13 @@ def plot_posterior(stages: List[Dict], system_name: str,
          "panel_label": "(d)", "color": C_PURPLE},
     ]
 
+    # Pre-compute literature mass overlay values
+    _has_lit = obs_dict.get("Mcl_lit") is not None
+    if _has_lit:
+        _log_Mcl_true = np.log10(obs_dict["Mcl_lit"])
+        _sigma_lit_dex = obs_dict.get("sigma_Mcl_lit_dex") or 0.3
+    _lit_label_used = False
+
     # Map stages to fixed slots by matching label substrings
     slot_stage = [None] * 4
     for stage in stages:
@@ -863,6 +892,15 @@ def plot_posterior(stages: List[Dict], system_name: str,
                 ha="right", va="top",
                 bbox=dict(boxstyle="round,pad=0.3", facecolor="white",
                           edgecolor="grey", alpha=0.8))
+
+        if obs_dict.get("Mcl_lit") is not None:
+            log_Mcl_true = np.log10(obs_dict["Mcl_lit"])
+            sigma_dex = obs_dict.get("sigma_Mcl_lit_dex") or 0.3
+            ax.axvline(log_Mcl_true, color=C_GREEN, ls="-", lw=2.0,
+                       alpha=0.8, label=r"Literature $M_{\rm cl}$", zorder=5)
+            ax.axvspan(log_Mcl_true - sigma_dex, log_Mcl_true + sigma_dex,
+                       color=C_GREEN, alpha=0.12, zorder=1)
+            ax.legend(fontsize=8, framealpha=0.7, loc="best")
 
         ax.set_xlabel(r"$\log_{10}\,(M_{\rm cl}\;/\;M_\odot)$")
         ax.set_ylabel(r"$p(\log M_{\rm cl} \mid \mathrm{data})$")
@@ -956,8 +994,18 @@ def plot_posterior(stages: List[Dict], system_name: str,
                     bbox=dict(boxstyle="round,pad=0.3", facecolor="white",
                               edgecolor="grey", alpha=0.8))
 
+            # Literature mass overlay
+            if _has_lit:
+                _lbl = r"Literature $M_{\rm cl}$" if not _lit_label_used else None
+                ax.axvline(_log_Mcl_true, color=C_GREEN, ls="-", lw=2.0,
+                           alpha=0.8, label=_lbl, zorder=5)
+                ax.axvspan(_log_Mcl_true - _sigma_lit_dex,
+                           _log_Mcl_true + _sigma_lit_dex,
+                           color=C_GREEN, alpha=0.12, zorder=1)
+                _lit_label_used = True
+
             # Legend only where ghost first appears
-            if slot_idx == 1:
+            if slot_idx == 1 or (slot_idx == 0 and _has_lit):
                 ax.legend(fontsize=7, framealpha=0.7, loc="upper left")
 
         # Shared axis labels / tick-label hiding
@@ -1089,6 +1137,15 @@ def plot_Rt_tracks(stage: Dict, records: List[Dict],
     cbar = fig.colorbar(sm, ax=ax, pad=0.02)
     cbar.set_label(r"$\log_{10}\,M_{\rm cl}$", fontsize=10)
 
+    if obs_dict.get("Mcl_lit") is not None:
+        ax.annotate(
+            rf"$M_{{\rm cl, lit}} = {obs_dict['Mcl_lit']:.0f}\;M_\odot$",
+            xy=(obs_dict["t_obs"], obs_dict["R_obs"]),
+            xytext=(0.35, 0.15), textcoords="axes fraction",
+            fontsize=8, color=C_GREEN,
+            arrowprops=dict(arrowstyle="->", color=C_GREEN, lw=1.0),
+        )
+
     ax.set_xlabel(r"$t$ [Myr]")
     ax.set_ylabel(r"$R$ [pc]")
     ax.legend(fontsize=9, framealpha=0.7)
@@ -1183,6 +1240,15 @@ def print_inference_summary(system_name: str, stages: List[Dict],
         print(f"  v = {obs_dict['v_obs']:.1f} +/- {obs_dict['sigma_v']:.1f} km/s")
     if obs_dict.get("n_edge_obs") is not None:
         print(f"  n_edge = {obs_dict['n_edge_obs']:.0f} +/- {obs_dict['sigma_n_edge']:.0f} cm^-3")
+    if obs_dict.get("Mcl_lit") is not None:
+        log_lit = np.log10(obs_dict["Mcl_lit"])
+        sig_dex = obs_dict.get("sigma_Mcl_lit_dex")
+        if sig_dex is not None:
+            print(f"  Literature M_cl = {obs_dict['Mcl_lit']:.0f} Msun"
+                  f"  (log = {log_lit:.2f} +/- {sig_dex:.2f} dex)")
+        else:
+            print(f"  Literature M_cl = {obs_dict['Mcl_lit']:.0f} Msun"
+                  f"  (log = {log_lit:.2f})")
     if obs_dict.get("ref"):
         print(f"  Ref: {obs_dict['ref']}")
 
@@ -1291,6 +1357,14 @@ Examples:
         help="Tag appended to output filenames.",
     )
     parser.add_argument(
+        "--Mcl-lit", type=float, default=None,
+        help="Literature cluster mass [Msun] for validation overlay.",
+    )
+    parser.add_argument(
+        "--sigma-Mcl-lit-dex", type=float, default=None,
+        help="Uncertainty in log10(Mcl_lit) [dex].",
+    )
+    parser.add_argument(
         "--output-dir", type=str, default=None,
         help="Output directory override (default: fig/infer_cluster_mass/<folder>/).",
     )
@@ -1343,6 +1417,10 @@ def main(argv: Optional[List[str]] = None) -> int:
         obs["n_edge_obs"] = args.n_edge_obs
     if args.sigma_n_edge is not None:
         obs["sigma_n_edge"] = args.sigma_n_edge
+    if args.Mcl_lit is not None:
+        obs["Mcl_lit"] = args.Mcl_lit
+    if args.sigma_Mcl_lit_dex is not None:
+        obs["sigma_Mcl_lit_dex"] = args.sigma_Mcl_lit_dex
 
     # Validate required observables
     if "R_obs" not in obs or "sigma_R" not in obs:
