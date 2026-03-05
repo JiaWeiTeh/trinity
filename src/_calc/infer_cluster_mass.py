@@ -513,6 +513,257 @@ def compute_n_edge(R: float, n_cl: float, R_cloud: float,
 
 
 # ======================================================================
+# Step 2b: Density grid diagnostics and interpolation
+# ======================================================================
+
+def check_density_coverage(
+    records: List[Dict],
+    n_edge_obs: float = None,
+    max_gap_dex: float = 0.5,
+) -> bool:
+    """
+    Check whether the density grid is sufficiently resolved for inference.
+
+    Issues a WARNING if:
+      (a) the largest gap between adjacent log(n_cl) values exceeds
+          max_gap_dex (default 0.5 dex), OR
+      (b) an observed n_edge value falls in such a gap (meaning no grid
+          model can match it well), OR
+      (c) there are fewer than 3 unique density values.
+
+    Parameters
+    ----------
+    records : list of dict
+        Output of collect_grid().
+    n_edge_obs : float, optional
+        Observed shell-edge density [cm^-3]. If given, checks whether
+        any grid density is close to it.
+    max_gap_dex : float
+        Maximum acceptable gap in log10(n_cl) between adjacent grid
+        values (default 0.5, i.e. factor ~3).
+
+    Returns
+    -------
+    bool
+        True if the grid is adequately resolved, False if interpolation
+        is recommended.
+    """
+    unique_n = np.unique([r["nCore"] for r in records])
+    log_n = np.log10(unique_n)
+    n_densities = len(unique_n)
+
+    is_ok = True
+
+    # Check (c): too few density values
+    if n_densities < 3:
+        logger.warning(
+            "Density grid has only %d unique n_cl value(s): %s. "
+            "Inference results may be unreliable. "
+            "Consider using --interp-density to create virtual models.",
+            n_densities,
+            ", ".join(f"{n:.0f}" for n in unique_n),
+        )
+        is_ok = False
+
+    # Check (a): large gaps
+    if n_densities >= 2:
+        gaps = np.diff(log_n)
+        max_gap = gaps.max()
+        if max_gap > max_gap_dex:
+            idx = np.argmax(gaps)
+            logger.warning(
+                "Large gap in density grid: %.2f dex between "
+                "n_cl = %.0f and %.0f cm^-3. "
+                "Consider using --interp-density to fill this gap.",
+                max_gap, unique_n[idx], unique_n[idx + 1],
+            )
+            is_ok = False
+
+    # Check (b): observed n_edge falls in a gap
+    if n_edge_obs is not None and n_densities >= 1:
+        log_n_obs = np.log10(n_edge_obs)
+        # Distance to nearest grid density
+        dist_to_nearest = np.min(np.abs(log_n - log_n_obs))
+        if dist_to_nearest > max_gap_dex / 2:
+            logger.warning(
+                "Observed n_edge = %.0f cm^-3 (log = %.2f) is %.2f dex "
+                "from the nearest grid density (n_cl = %.0f cm^-3). "
+                "The n_edge likelihood may not be well-resolved. "
+                "Consider using --interp-density.",
+                n_edge_obs, log_n_obs, dist_to_nearest,
+                unique_n[np.argmin(np.abs(log_n - log_n_obs))],
+            )
+            is_ok = False
+
+    if is_ok:
+        logger.info(
+            "Density grid: %d values spanning [%.0f, %.0f] cm^-3, "
+            "max gap = %.2f dex — OK.",
+            n_densities, unique_n.min(), unique_n.max(),
+            np.diff(log_n).max() if n_densities >= 2 else 0.0,
+        )
+
+    return is_ok
+
+
+def interpolate_density_grid(
+    records: List[Dict],
+    n_interp: List[float] = None,
+    n_per_decade: int = 3,
+) -> List[Dict]:
+    """
+    Create virtual grid models at intermediate densities by log-interpolating
+    existing tracks.
+
+    For each (M_cloud, sfe) pair that exists at two or more n_cl values,
+    interpolate R(t) and v(t) in log-space at the requested intermediate
+    densities.
+
+    Parameters
+    ----------
+    records : list of dict
+        Output of collect_grid().
+    n_interp : list of float, optional
+        Specific n_cl values [cm^-3] to interpolate to.
+        If None, auto-generate n_per_decade points per decade between
+        the min and max n_cl in the grid.
+    n_per_decade : int
+        Points per decade when auto-generating (default 3, giving
+        ~0.33 dex spacing).
+
+    Returns
+    -------
+    list of dict
+        Original records + newly created virtual records.
+        Virtual records have folder="interp_nXXXX" to distinguish them.
+    """
+    # Group records by (mCloud, sfe)
+    from collections import defaultdict
+    groups = defaultdict(list)
+    for rec in records:
+        groups[(rec["mCloud"], rec["sfe"])].append(rec)
+
+    # Sort each group by nCore
+    for key in groups:
+        groups[key].sort(key=lambda r: r["nCore"])
+
+    # Determine interpolation targets
+    if n_interp is not None:
+        n_targets = np.asarray(n_interp, dtype=float)
+    else:
+        n_min = min(r["nCore"] for r in records)
+        n_max = max(r["nCore"] for r in records)
+        log_n_min = np.log10(n_min)
+        log_n_max = np.log10(n_max)
+        n_pts = int((log_n_max - log_n_min) * n_per_decade) + 1
+        if n_pts < 2:
+            return list(records)
+        n_targets = np.logspace(log_n_min, log_n_max, n_pts)
+
+    # Remove values that already exist in the grid (within 0.05 dex)
+    existing_log_n = set(
+        round(np.log10(r["nCore"]), 2) for r in records
+    )
+    n_targets = [
+        n for n in n_targets
+        if not any(abs(np.log10(n) - e) < 0.05 for e in existing_log_n)
+    ]
+
+    if not n_targets:
+        logger.info("No new density points to interpolate — grid already dense.")
+        return list(records)
+
+    virtual_records = []
+
+    for (mCloud, sfe), grp in groups.items():
+        if len(grp) < 2:
+            continue
+
+        n_values = np.array([r["nCore"] for r in grp])
+        log_n_values = np.log10(n_values)
+
+        for n_target in n_targets:
+            log_n_target = np.log10(n_target)
+
+            # Find bracketing pair
+            idx_hi = np.searchsorted(log_n_values, log_n_target)
+            if idx_hi == 0 or idx_hi >= len(log_n_values):
+                continue  # outside range for this group
+
+            rec_lo = grp[idx_hi - 1]
+            rec_hi = grp[idx_hi]
+
+            # Interpolation fraction in log-space
+            frac = ((log_n_target - np.log10(rec_lo["nCore"]))
+                    / (np.log10(rec_hi["nCore"]) - np.log10(rec_lo["nCore"])))
+
+            # Use the time array from the track with more points,
+            # interpolate the other onto it. Only go up to the shorter
+            # track's max time (no extrapolation).
+            t_lo, t_hi = rec_lo["t"], rec_hi["t"]
+            t_max = min(t_lo[-1], t_hi[-1])
+
+            if len(t_lo) >= len(t_hi):
+                t_common = t_lo[t_lo <= t_max]
+            else:
+                t_common = t_hi[t_hi <= t_max]
+
+            if len(t_common) < MIN_PTS:
+                continue
+
+            # Interpolate R and v from both tracks onto t_common
+            R_lo = np.interp(t_common, rec_lo["t"], rec_lo["R"])
+            R_hi = np.interp(t_common, rec_hi["t"], rec_hi["R"])
+            v_lo = np.interp(t_common, rec_lo["t"], rec_lo["v_au"])
+            v_hi = np.interp(t_common, rec_hi["t"], rec_hi["v_au"])
+
+            # Log-space interpolation for R
+            safe_R = (R_lo > 0) & (R_hi > 0)
+            R_interp = np.zeros_like(t_common)
+            if safe_R.any():
+                log_R = ((1 - frac) * np.log10(R_lo[safe_R])
+                         + frac * np.log10(R_hi[safe_R]))
+                R_interp[safe_R] = 10.0 ** log_R
+            # Linear fallback for non-positive R
+            lin_R = ~safe_R
+            if lin_R.any():
+                R_interp[lin_R] = (1 - frac) * R_lo[lin_R] + frac * R_hi[lin_R]
+
+            # Log-space interpolation for v (preserve sign)
+            safe_v = (np.abs(v_lo) > 0) & (np.abs(v_hi) > 0)
+            v_interp = np.zeros_like(t_common)
+            if safe_v.any():
+                log_v = ((1 - frac) * np.log10(np.abs(v_lo[safe_v]))
+                         + frac * np.log10(np.abs(v_hi[safe_v])))
+                v_interp[safe_v] = 10.0 ** log_v * np.sign(v_lo[safe_v])
+            # Linear fallback for zero velocities
+            lin_v = ~safe_v
+            if lin_v.any():
+                v_interp[lin_v] = (1 - frac) * v_lo[lin_v] + frac * v_hi[lin_v]
+
+            M_star = sfe * mCloud
+            rCloud = cloud_radius_uniform(mCloud, n_target)
+
+            virtual_records.append({
+                "mCloud": mCloud,
+                "sfe": sfe,
+                "nCore": n_target,
+                "M_star": M_star,
+                "folder": f"interp_n{n_target:.0f}_{mCloud:.0e}_sfe{sfe:.2f}",
+                "profile": "uniform",
+                "t": t_common,
+                "R": R_interp,
+                "v_au": v_interp,
+                "v_kms": v_interp * V_AU2KMS,
+                "rCloud": rCloud,
+                "interpolated": True,
+            })
+
+    logger.info("Created %d virtual (interpolated) density models", len(virtual_records))
+    return list(records) + virtual_records
+
+
+# ======================================================================
 # Step 3: Posterior computation
 # ======================================================================
 
@@ -1374,6 +1625,17 @@ Examples:
         "--t-end", type=float, default=None,
         help="Truncate tracks at this time [Myr].",
     )
+    parser.add_argument(
+        "--interp-density", action="store_true", default=False,
+        help="Interpolate virtual models at intermediate densities "
+             "between existing grid values. Recommended when the script "
+             "warns about sparse density coverage.",
+    )
+    parser.add_argument(
+        "--n-per-decade", type=int, default=3,
+        help="Interpolation points per decade in n_cl (default: 3). "
+             "Only used with --interp-density.",
+    )
     return parser
 
 
@@ -1437,6 +1699,30 @@ def main(argv: Optional[List[str]] = None) -> int:
     if not records:
         logger.error("No valid grid data collected — aborting.")
         return 1
+
+    # Check density grid coverage
+    density_ok = check_density_coverage(
+        records,
+        n_edge_obs=obs.get("n_edge_obs"),
+        max_gap_dex=0.5,
+    )
+
+    # Interpolate density grid if requested
+    if args.interp_density:
+        n_before = len(records)
+        records = interpolate_density_grid(records, n_per_decade=args.n_per_decade)
+        n_real = sum(1 for r in records if not r.get("interpolated", False))
+        n_virtual = sum(1 for r in records if r.get("interpolated", False))
+        logger.info("Density interpolation: %d -> %d models (+%d virtual)",
+                    n_before, len(records), len(records) - n_before)
+        logger.info("Grid: %d real + %d interpolated = %d total",
+                    n_real, n_virtual, len(records))
+    elif not density_ok:
+        logger.warning(
+            ">>> Rerun with --interp-density to create virtual models "
+            "at intermediate densities. This may significantly improve "
+            "the inference accuracy."
+        )
 
     # Run progressive inference
     stages = run_progressive_inference(
