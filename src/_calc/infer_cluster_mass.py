@@ -794,69 +794,203 @@ def plot_posterior(stages: List[Dict], system_name: str,
                   obs_dict: Dict, output_dir: Path,
                   fmt: str = "pdf", tag: str = "") -> None:
     """
-    Fig 1: Overlaid marginal PDFs from progressive inference stages.
+    Fig 1: 2x2 subplot of marginal PDFs from progressive inference stages.
+
+    Panel layout (fixed positions):
+        (a) R, t           (b) R, t, v_exp
+        (c) R, t, n_edge   (d) R, t, v_exp, n_edge
+
+    Panels without data show a centred 'not available' message.
+    Falls back to a single-panel figure if only one stage is present.
     """
     if not stages:
         return
 
-    colors = [C_BLUE, C_VERMILLION, C_GREEN, C_PURPLE]
-    ls_list = ["-", "--", "-.", ":"]
+    # Panel configuration: fixed slot definitions
+    _PANEL_DEFS = [
+        {"missing": None,
+         "panel_label": "(a)", "color": C_BLUE},
+        {"missing": r"No $v_{\rm exp}$ available",
+         "panel_label": "(b)", "color": C_VERMILLION},
+        {"missing": r"No $n_{\rm edge}$ available",
+         "panel_label": "(c)", "color": C_GREEN},
+        {"missing": r"No $v_{\rm exp}$ + $n_{\rm edge}$",
+         "panel_label": "(d)", "color": C_PURPLE},
+    ]
 
-    fig, ax = plt.subplots(figsize=(7, 5))
+    # Map stages to fixed slots by matching label substrings
+    slot_stage = [None] * 4
+    for stage in stages:
+        lbl = stage.get("label", "")
+        # Stage 4 (has both v and n) — check first to avoid false match
+        if "v_{\\rm exp}, n" in lbl or "v_{\\rm exp}, n_{\\rm edge}" in lbl:
+            slot_stage[3] = stage
+        elif "n_{\\rm edge}" in lbl and "v" not in lbl:
+            slot_stage[2] = stage
+        elif "v_{\\rm exp}" in lbl and "n" not in lbl:
+            slot_stage[1] = stage
+        else:
+            slot_stage[0] = stage
 
-    for i, stage in enumerate(stages):
-        c = colors[i % len(colors)]
-        ls = ls_list[i % len(ls_list)]
-
+    # ------------------------------------------------------------------
+    # Fallback: single-panel figure if only one stage
+    # ------------------------------------------------------------------
+    if len(stages) == 1:
+        stage = stages[0]
+        fig, ax = plt.subplots(figsize=(7, 5))
+        c = C_BLUE
         bins = stage["log_Mcl_bins"]
         pdf = stage["pdf_Mcl"]
-        med = stage["median_Mcl"]
-        lo = stage["lo_Mcl"]
-        hi = stage["hi_Mcl"]
+        med, lo, hi = stage["median_Mcl"], stage["lo_Mcl"], stage["hi_Mcl"]
+        n_eff = stage["N_eff"]
 
-        label_str = (f"{stage['label']}: "
-                     f"$\\log M_{{\\rm cl}} = {med:.2f}"
-                     f"_{{-{med - lo:.2f}}}^{{+{hi - med:.2f}}}$")
-
-        # Histogram PDF
-        ax.step(bins, pdf, where="mid", color=c, ls=ls, lw=1.8,
-                label=label_str)
-
-        # Shaded 68% CI
+        ax.fill_between(bins, 0, pdf, color=c, alpha=0.25, step="mid")
+        ax.step(bins, pdf, where="mid", color=c, lw=1.8)
         ci_mask = (bins >= lo) & (bins <= hi)
         if ci_mask.any():
             ax.fill_between(bins[ci_mask], 0, pdf[ci_mask],
-                            color=c, alpha=0.12, step="mid")
-
-        # Median line
-        ax.axvline(med, color=c, ls=":", lw=1.0, alpha=0.6)
-
-        # KDE overlay
+                            color=c, alpha=0.15, step="mid")
+        ax.axvline(med, color=c, ls="--", lw=1.2, alpha=0.7)
         if stage.get("pdf_kde") is not None:
             ax.plot(stage["x_kde"], stage["pdf_kde"],
-                    color=c, ls=ls, lw=0.8, alpha=0.35)
+                    color=c, lw=0.8, alpha=0.5)
 
-    ax.set_xlabel(r"$\log_{10}\,(M_{\rm cl}\;/\;M_\odot)$")
-    ax.set_ylabel(r"$p(\log M_{\rm cl} \mid \mathrm{data})$")
-    ax.legend(fontsize=8, framealpha=0.7, loc="best")
+        info = (f"{stage['label']}\n"
+                f"$\\log M_{{\\rm cl}} = {med:.2f}"
+                f"_{{-{med - lo:.2f}}}^{{+{hi - med:.2f}}}$\n"
+                f"$N_{{\\rm eff}} = {n_eff:.1f}$")
+        ax.text(0.95, 0.95, info, transform=ax.transAxes, fontsize=8,
+                ha="right", va="top",
+                bbox=dict(boxstyle="round,pad=0.3", facecolor="white",
+                          edgecolor="grey", alpha=0.8))
 
-    # Inset text box with observed values
-    obs_lines = [f"System: {system_name}"]
-    obs_lines.append(f"$R = {obs_dict['R_obs']:.1f} \\pm {obs_dict['sigma_R']:.1f}$ pc")
-    obs_lines.append(f"$t = {obs_dict['t_obs']:.2f} \\pm {obs_dict['sigma_t']:.2f}$ Myr")
+        ax.set_xlabel(r"$\log_{10}\,(M_{\rm cl}\;/\;M_\odot)$")
+        ax.set_ylabel(r"$p(\log M_{\rm cl} \mid \mathrm{data})$")
+
+        fig.tight_layout()
+        suffix = f"_{tag}" if tag else ""
+        path = output_dir / f"infer_Mcl_posterior_{system_name}{suffix}.{fmt}"
+        fig.savefig(path, dpi=200)
+        plt.close(fig)
+        logger.info("Saved: %s", path)
+        return
+
+    # ------------------------------------------------------------------
+    # Main path: 2x2 subplot
+    # ------------------------------------------------------------------
+    fig, axes = plt.subplots(2, 2, figsize=(10, 8))
+    fig.subplots_adjust(hspace=0.08, wspace=0.08)
+
+    # Shared axis ranges across all available stages
+    x_lo = min(s["log_Mcl_bins"].min() for s in stages)
+    x_hi = max(s["log_Mcl_bins"].max() for s in stages)
+    y_hi = max(s["pdf_Mcl"].max() for s in stages) * 1.10
+
+    # Reference (stage-1) posterior for ghost overlay
+    base_stage = slot_stage[0]
+
+    for slot_idx, (pdef, ax) in enumerate(zip(_PANEL_DEFS, axes.flat)):
+        stage = slot_stage[slot_idx]
+        c = pdef["color"]
+
+        ax.set_xlim(x_lo, x_hi)
+        ax.set_ylim(0, y_hi)
+
+        # Panel letter
+        ax.text(0.04, 0.96, pdef["panel_label"], transform=ax.transAxes,
+                fontsize=12, fontweight="bold", va="top", ha="left")
+
+        if stage is None:
+            # Empty panel — centred "not available" message
+            ax.text(0.5, 0.5, pdef["missing"], transform=ax.transAxes,
+                    fontsize=10, color="0.5", style="italic",
+                    ha="center", va="center")
+        else:
+            bins = stage["log_Mcl_bins"]
+            pdf = stage["pdf_Mcl"]
+            med = stage["median_Mcl"]
+            lo = stage["lo_Mcl"]
+            hi = stage["hi_Mcl"]
+            n_eff = stage["N_eff"]
+
+            # Ghost: base-stage posterior (panels b, c, d only)
+            if slot_idx > 0 and base_stage is not None:
+                b_bins = base_stage["log_Mcl_bins"]
+                b_pdf = base_stage["pdf_Mcl"]
+                ax.fill_between(b_bins, 0, b_pdf, color="0.7",
+                                alpha=0.30, step="mid")
+                ax.step(b_bins, b_pdf, where="mid", color="0.7",
+                        lw=1.0, alpha=0.5,
+                        label=r"$(R,\,t)$ only" if slot_idx == 1 else None)
+
+            # Main PDF: filled curve + solid outline
+            ax.fill_between(bins, 0, pdf, color=c, alpha=0.25, step="mid")
+            ax.step(bins, pdf, where="mid", color=c, lw=1.8)
+
+            # 68% CI shading
+            ci_mask = (bins >= lo) & (bins <= hi)
+            if ci_mask.any():
+                ax.fill_between(bins[ci_mask], 0, pdf[ci_mask],
+                                color=c, alpha=0.15, step="mid")
+
+            # Median line + annotation
+            ax.axvline(med, color=c, ls="--", lw=1.2, alpha=0.7)
+            ax.annotate(f"{med:.2f}", xy=(med, y_hi * 0.92),
+                        fontsize=7, color=c, ha="center", va="top")
+
+            # KDE overlay
+            if stage.get("pdf_kde") is not None:
+                ax.plot(stage["x_kde"], stage["pdf_kde"],
+                        color=c, lw=0.8, alpha=0.5)
+
+            # Info box
+            info_lines = [stage["label"]]
+            if np.isfinite(med):
+                info_lines.append(
+                    f"$\\log M_{{\\rm cl}} = {med:.2f}"
+                    f"_{{-{med - lo:.2f}}}^{{+{hi - med:.2f}}}$")
+            info_lines.append(f"$N_{{\\rm eff}} = {n_eff:.1f}$")
+            ax.text(0.95, 0.95, "\n".join(info_lines),
+                    transform=ax.transAxes, fontsize=8,
+                    ha="right", va="top",
+                    bbox=dict(boxstyle="round,pad=0.3", facecolor="white",
+                              edgecolor="grey", alpha=0.8))
+
+            # Legend only where ghost first appears
+            if slot_idx == 1:
+                ax.legend(fontsize=7, framealpha=0.7, loc="upper left")
+
+        # Shared axis labels / tick-label hiding
+        row, col = divmod(slot_idx, 2)
+        if row == 0:
+            ax.set_xticklabels([])
+        else:
+            ax.set_xlabel(r"$\log_{10}\,(M_{\rm cl}\;/\;M_\odot)$")
+        if col == 1:
+            ax.set_yticklabels([])
+        else:
+            ax.set_ylabel(r"$p(\log M_{\rm cl} \mid \mathrm{data})$")
+
+    # System info box in panel (a)
+    obs_lines = [system_name]
+    obs_lines.append(
+        f"$R = {obs_dict['R_obs']:.2f} \\pm {obs_dict['sigma_R']:.2f}$ pc")
+    obs_lines.append(
+        f"$t = {obs_dict['t_obs']:.3f} \\pm {obs_dict['sigma_t']:.3f}$ Myr")
     if obs_dict.get("v_obs") is not None:
-        obs_lines.append(f"$v = {obs_dict['v_obs']:.1f} \\pm {obs_dict['sigma_v']:.1f}$ km/s")
+        obs_lines.append(
+            f"$v = {obs_dict['v_obs']:.1f} \\pm "
+            f"{obs_dict['sigma_v']:.1f}$ km/s")
     if obs_dict.get("n_edge_obs") is not None:
-        obs_lines.append(f"$n_{{\\rm edge}} = {obs_dict['n_edge_obs']:.0f} \\pm {obs_dict['sigma_n_edge']:.0f}$ cm$^{{-3}}$")
-    if obs_dict.get("ref"):
-        obs_lines.append(f"Ref: {obs_dict['ref']}")
-    obs_text = "\n".join(obs_lines)
-    ax.text(0.97, 0.97, obs_text, transform=ax.transAxes,
-            fontsize=7, va="top", ha="right",
-            bbox=dict(boxstyle="round,pad=0.3", facecolor="wheat",
-                      edgecolor="grey", alpha=0.7))
+        obs_lines.append(
+            f"$n_{{\\rm edge}} = {obs_dict['n_edge_obs']:.0f}"
+            f" \\pm {obs_dict['sigma_n_edge']:.0f}$ cm$^{{-3}}$")
+    ax_a = axes[0, 0]
+    ax_a.text(0.95, 0.60, "\n".join(obs_lines), transform=ax_a.transAxes,
+              fontsize=7, ha="right", va="top",
+              bbox=dict(boxstyle="round,pad=0.3", facecolor="wheat",
+                        edgecolor="grey", alpha=0.7))
 
-    fig.tight_layout()
     suffix = f"_{tag}" if tag else ""
     path = output_dir / f"infer_Mcl_posterior_{system_name}{suffix}.{fmt}"
     fig.savefig(path, dpi=200)
