@@ -106,6 +106,8 @@ See Also
 """
 
 import json
+import logging
+import sys
 import numpy as np
 from pathlib import Path
 from typing import List, Dict, Any, Optional, Union, Iterator, Literal
@@ -346,7 +348,9 @@ class TrinityOutput:
             except json.JSONDecodeError:
                 snapshots = cls._load_json_format(filepath)
 
-        print(f"[TrinityOutput] Loaded: {filepath} ({len(snapshots)} snapshots)")
+        logging.getLogger(__name__).debug(
+            "Loaded: %s (%d snapshots)", filepath, len(snapshots)
+        )
         return cls(filepath, snapshots)
 
     @classmethod
@@ -849,6 +853,37 @@ def read(filepath: Union[str, Path]) -> TrinityOutput:
 
 # Alias for backwards compatibility
 load_output = read
+
+
+def iter_progress(items: list, label: str = "Processing") -> Iterator:
+    """
+    Iterate over *items* while showing a single-line progress indicator on
+    stderr.  The progress line is overwritten in place and cleared when done.
+
+    Parameters
+    ----------
+    items : list
+        Any list-like (must support ``len()``).
+    label : str
+        Prefix shown before the counter (default "Processing").
+
+    Yields
+    ------
+    item
+        Each element of *items*.
+    """
+    total = len(items)
+    for i, item in enumerate(items, 1):
+        # Show the subfolder name when items are Paths
+        detail = ""
+        if isinstance(item, Path):
+            detail = f" ({item.parent.name})"
+        sys.stderr.write(f"\r  {label}: {i}/{total}{detail}" + " " * 20)
+        sys.stderr.flush()
+        yield item
+    # Clear the progress line
+    sys.stderr.write("\r" + " " * 80 + "\r")
+    sys.stderr.flush()
 
 
 # =============================================================================
