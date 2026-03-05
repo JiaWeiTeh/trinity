@@ -920,7 +920,7 @@ def plot_posterior(stages: List[Dict], system_name: str,
     fig.subplots_adjust(hspace=0.08, wspace=0.08)
 
     # Shared axis ranges across all available stages
-    x_lo = min(s["log_Mcl_bins"].min() for s in stages)
+    x_lo = min(0.0, min(s["log_Mcl_bins"].min() for s in stages))
     x_hi = max(s["log_Mcl_bins"].max() for s in stages)
     y_hi = max(s["pdf_Mcl"].max() for s in stages) * 1.10
 
