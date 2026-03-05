@@ -1312,8 +1312,8 @@ Examples:
         """,
     )
     parser.add_argument(
-        "-F", "--folder", required=True,
-        help="Path to the sweep output directory tree (required).",
+        "-F", "--folder", required=True, nargs="+",
+        help="Path(s) to one or more sweep output directory trees.",
     )
     parser.add_argument(
         "--nCore-ref", type=float, default=1e3,
@@ -1356,17 +1356,20 @@ def main(argv: Optional[List[str]] = None) -> int:
         format="%(levelname)s [%(name)s] %(message)s",
     )
 
-    folder_path = Path(args.folder)
-    if not folder_path.is_dir():
-        logger.error("Folder does not exist: %s", folder_path)
-        return 1
+    folder_paths = [Path(f) for f in args.folder]
+    for fp in folder_paths:
+        if not fp.is_dir():
+            logger.error("Folder does not exist: %s", fp)
+            return 1
 
-    folder_name = folder_path.name
+    folder_name = "+".join(fp.name for fp in folder_paths)
     output_dir = Path(args.output_dir) if args.output_dir else FIG_DIR / folder_name
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Step 1: collect data
-    records = collect_data(folder_path, t_end=args.t_end)
+    records: List[Dict] = []
+    for fp in folder_paths:
+        records.extend(collect_data(fp, t_end=args.t_end))
     if not records:
         logger.error("No valid data collected — aborting.")
         return 1

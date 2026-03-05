@@ -104,14 +104,14 @@ def _print_list() -> None:
 # ======================================================================
 
 def run_scripts(
-    folder: str,
+    folders: List[str],
     only: Optional[List[str]],
     skip: Optional[List[str]],
     extra_args: List[str],
     dry_run: bool = False,
 ) -> int:
     """
-    Run selected scripts, forwarding ``-F folder`` and any extra flags.
+    Run selected scripts, forwarding ``-F folder [folder ...]`` and any extra flags.
 
     Returns the number of scripts that failed (0 = all OK).
     """
@@ -135,7 +135,7 @@ def run_scripts(
         print("Nothing to run.")
         return 0
 
-    print(f"Running {len(to_run)} script(s) on: {folder}")
+    print(f"Running {len(to_run)} script(s) on: {', '.join(folders)}")
     print()
 
     n_fail = 0
@@ -145,7 +145,7 @@ def run_scripts(
             print(f"  [{name}] SKIP — file not found: {script}")
             continue
 
-        cmd = [sys.executable, str(script), "-F", folder] + extra_args
+        cmd = [sys.executable, str(script), "-F"] + list(folders) + extra_args
 
         if dry_run:
             print(f"  [{name}] DRY RUN: {' '.join(cmd)}")
@@ -430,8 +430,8 @@ def build_parser() -> argparse.ArgumentParser:
         """),
     )
     parser.add_argument(
-        "-F", "--folder",
-        help="Path to the sweep output directory tree (required unless --list).",
+        "-F", "--folder", nargs="+",
+        help="Path(s) to one or more sweep output directory trees (required unless --list).",
     )
     parser.add_argument(
         "--only", nargs="+", metavar="NAME",
@@ -486,7 +486,7 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     # Default --output-dir: save into a _calc/ subfolder
     if args.output_dir is None:
-        folder_name = Path(args.folder).name
+        folder_name = "+".join(Path(f).name for f in args.folder)
         default_output = PROJECT_ROOT / "fig" / folder_name / "_calc"
         default_output.mkdir(parents=True, exist_ok=True)
         args.output_dir = str(default_output)
@@ -504,7 +504,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             extra.append(flag)
 
     n_fail = run_scripts(
-        folder=args.folder,
+        folders=args.folder,
         only=args.only,
         skip=args.skip,
         extra_args=extra,
