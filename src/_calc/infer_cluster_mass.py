@@ -191,6 +191,7 @@ from src._output.trinity_reader import (
     load_output,
     find_all_simulations,
     parse_simulation_params,
+    iter_progress,
 )
 from src._functions.unit_conversions import INV_CONV, CONV, CGS
 
@@ -319,7 +320,7 @@ def collect_grid(folder_path: Path, t_end: float = None) -> List[Dict]:
     logger.info("Found %d simulation(s) in %s", len(sim_files), folder_path)
 
     records: List[Dict] = []
-    for data_path in sim_files:
+    for data_path in iter_progress(sim_files, "Loading simulations"):
         folder_name = data_path.parent.name
         parsed = parse_simulation_params(folder_name)
         if parsed is None:
