@@ -702,16 +702,16 @@ def compute_posterior_grid(
     if total > 0:
         pdf_Mcl = pdf_Mcl / total
 
-    # Weighted percentiles via cumulative weight interpolation
+    # Raw weighted percentiles via cumulative weight interpolation
     sorted_idx = np.argsort(log_Mcl)
     cum_w = np.cumsum(weights[sorted_idx])
     if cum_w[-1] > 0:
         cum_w /= cum_w[-1]
-        median_Mcl = np.interp(0.50, cum_w, log_Mcl[sorted_idx])
-        lo_Mcl = np.interp(0.16, cum_w, log_Mcl[sorted_idx])
-        hi_Mcl = np.interp(0.84, cum_w, log_Mcl[sorted_idx])
+        median_Mcl_raw = np.interp(0.50, cum_w, log_Mcl[sorted_idx])
+        lo_Mcl_raw = np.interp(0.16, cum_w, log_Mcl[sorted_idx])
+        hi_Mcl_raw = np.interp(0.84, cum_w, log_Mcl[sorted_idx])
     else:
-        median_Mcl = lo_Mcl = hi_Mcl = np.nan
+        median_Mcl_raw = lo_Mcl_raw = hi_Mcl_raw = np.nan
 
     # KDE smoothing (optional)
     pdf_kde = None
@@ -727,6 +727,19 @@ def compute_posterior_grid(
     except ImportError:
         pass
 
+    # Summary statistics: prefer KDE-based percentiles (smooth, handles
+    # coarse grids); fall back to raw weighted percentiles if KDE unavailable.
+    if pdf_kde is not None and x_kde is not None:
+        cdf_kde = np.cumsum(pdf_kde)
+        cdf_kde /= cdf_kde[-1]
+        median_Mcl = np.interp(0.50, cdf_kde, x_kde)
+        lo_Mcl = np.interp(0.16, cdf_kde, x_kde)
+        hi_Mcl = np.interp(0.84, cdf_kde, x_kde)
+    else:
+        median_Mcl = median_Mcl_raw
+        lo_Mcl = lo_Mcl_raw
+        hi_Mcl = hi_Mcl_raw
+
     return {
         "log_Mcl_bins": bin_centres,
         "pdf_Mcl": pdf_Mcl,
@@ -735,6 +748,9 @@ def compute_posterior_grid(
         "median_Mcl": median_Mcl,
         "lo_Mcl": lo_Mcl,
         "hi_Mcl": hi_Mcl,
+        "median_Mcl_raw": median_Mcl_raw,
+        "lo_Mcl_raw": lo_Mcl_raw,
+        "hi_Mcl_raw": hi_Mcl_raw,
         "observables_used": observables_used,
         "pdf_kde": pdf_kde,
         "x_kde": x_kde,
