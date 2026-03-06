@@ -1763,6 +1763,104 @@ def print_inference_summary(system_name: str, stages: List[Dict],
 # Step 8: CLI
 # ======================================================================
 
+def _build_synthetic_obs(
+    records: List[Dict],
+    frac_sigma: float = 0.10,
+    t_min: float = 0.1,
+    rng_seed: int = None,
+) -> Dict:
+    """
+    Draw a random grid model and sample observables at a random time.
+
+    Picks a random record, chooses a random snapshot with t > *t_min* Myr,
+    and returns synthetic observables (R, t, v, n_edge) with Gaussian
+    uncertainties of *frac_sigma* (fractional, default 10 %).
+    The true stellar mass is stored as ``Mcl_lit`` so the posterior can
+    be compared against the known answer.
+
+    Parameters
+    ----------
+    records : list of dict
+        Grid records from collect_grid().
+    frac_sigma : float
+        Fractional 1-sigma uncertainty applied to R, t, v, n_edge.
+    t_min : float
+        Minimum bubble age [Myr] for the sampled snapshot.
+    rng_seed : int, optional
+        Random seed for reproducibility.
+
+    Returns
+    -------
+    dict
+        Observable dictionary compatible with the rest of the pipeline.
+    """
+    rng = np.random.default_rng(rng_seed)
+
+    # Filter to records that have snapshots past t_min
+    eligible = [r for r in records if r["t"][-1] > t_min]
+    if not eligible:
+        raise ValueError(
+            f"No grid model has snapshots beyond t_min = {t_min} Myr"
+        )
+
+    rec = eligible[rng.integers(len(eligible))]
+
+    # Pick a random time index where t > t_min
+    valid_idx = np.where(rec["t"] > t_min)[0]
+    idx = rng.choice(valid_idx)
+
+    t_sample = float(rec["t"][idx])
+    R_sample = float(rec["R"][idx])
+    v_sample = float(np.abs(rec["v_kms"][idx]))
+
+    # Edge density from the cloud profile
+    R_cloud = rec.get("rCloud", cloud_radius_uniform(rec["mCloud"], rec["nCore"]))
+    profile = rec.get("profile", "uniform")
+    n_edge_sample = float(compute_n_edge(R_sample, rec["nCore"], R_cloud, profile))
+
+    # Fractional uncertainties (floor to avoid zero sigma)
+    sigma_R = max(frac_sigma * R_sample, 1e-3)
+    sigma_t = max(frac_sigma * t_sample, 1e-3)
+    sigma_v = max(frac_sigma * v_sample, 0.5) if v_sample > 0 else None
+    sigma_n = max(frac_sigma * n_edge_sample, 1.0) if n_edge_sample > N_ISM_FLOOR else None
+
+    true_Mcl = rec["M_star"]
+
+    logger.info(
+        "SYNTHETIC test — true answer: M_star = %.0f Msun "
+        "(M_cloud = %.0f, sfe = %.2f, n_cl = %.0f cm^-3, folder = %s)",
+        true_Mcl, rec["mCloud"], rec["sfe"], rec["nCore"], rec["folder"],
+    )
+    logger.info(
+        "  Sampled at t = %.3f Myr: R = %.2f pc, v = %.1f km/s, "
+        "n_edge = %.0f cm^-3",
+        t_sample, R_sample, v_sample, n_edge_sample,
+    )
+
+    obs = {
+        "R_obs": R_sample,
+        "sigma_R": sigma_R,
+        "t_obs": t_sample,
+        "sigma_t": sigma_t,
+        "Mcl_lit": true_Mcl,
+        "sigma_Mcl_lit_dex": 0.01,
+        "ref": "synthetic (self-test)",
+        "note": (f"Drawn from {rec['folder']}; "
+                 f"M_cloud={rec['mCloud']:.0f}, sfe={rec['sfe']:.2f}, "
+                 f"n_cl={rec['nCore']:.0f}"),
+    }
+
+    if v_sample > 0 and sigma_v is not None:
+        obs["v_obs"] = v_sample
+        obs["sigma_v"] = sigma_v
+
+    if n_edge_sample > N_ISM_FLOOR and sigma_n is not None:
+        obs["n_edge_obs"] = n_edge_sample
+        obs["sigma_n_edge"] = sigma_n
+
+    return obs
+
+
 def build_parser() -> argparse.ArgumentParser:
     """Build CLI argument parser."""
     parser = argparse.ArgumentParser(
@@ -1783,8 +1881,9 @@ Examples:
     )
     parser.add_argument(
         "--system", type=str, default=None,
-        choices=list(OBSERVED_SYSTEMS.keys()),
-        help="Pre-stored observational target.",
+        choices=list(OBSERVED_SYSTEMS.keys()) + ["synthetic"],
+        help="Pre-stored observational target, or 'synthetic' to draw "
+             "a random model from the grid as a validation test.",
     )
     parser.add_argument(
         "--R-obs", type=float, default=None,
@@ -1896,11 +1995,24 @@ def main(argv: Optional[List[str]] = None) -> int:
     output_dir = Path(args.output_dir) if args.output_dir else FIG_DIR / "infer_cluster_mass" / folder_name
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    # Collect grid (needed before synthetic system can be built)
+    records: List[Dict] = []
+    for fp in folder_paths:
+        records.extend(collect_grid(fp, t_end=args.t_end))
+    if not records:
+        logger.error("No valid grid data collected — aborting.")
+        return 1
+
     # Resolve observables: system defaults + manual overrides
     obs = {}
-    if args.system is not None:
+    if args.system == "synthetic":
+        obs = _build_synthetic_obs(records)
+        system_name = "synthetic"
+    elif args.system is not None:
         obs = dict(OBSERVED_SYSTEMS[args.system])
-    system_name = args.system or "custom"
+        system_name = args.system
+    else:
+        system_name = "custom"
 
     # Manual overrides
     if args.R_obs is not None:
@@ -1930,14 +2042,6 @@ def main(argv: Optional[List[str]] = None) -> int:
         return 1
     if "t_obs" not in obs or "sigma_t" not in obs:
         logger.error("t_obs and sigma_t are required (use --system or --t-obs)")
-        return 1
-
-    # Collect grid
-    records: List[Dict] = []
-    for fp in folder_paths:
-        records.extend(collect_grid(fp, t_end=args.t_end))
-    if not records:
-        logger.error("No valid grid data collected — aborting.")
         return 1
 
     # Check density grid coverage
