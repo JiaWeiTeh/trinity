@@ -154,7 +154,7 @@ def weaver_radius(Mcl, ncl, t_Myr, alpha=0.76):
     rho0 = ncl * MU_H * CGS.m_H  # g/cm^3
     t_s = t_Myr * 3.156e13  # seconds
     R_cm = alpha * (Lw / rho0) ** 0.2 * t_s ** 0.6
-    return R_cm / CGS.pc  # pc
+    return R_cm * CONV.cm2pc  # pc
 
 
 def cloud_radius_uniform(M_cloud, n_cl, mu=MU_H):
