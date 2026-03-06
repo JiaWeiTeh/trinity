@@ -1100,7 +1100,7 @@ def compute_posterior_grid(
             if v_obs is not None and sigma_v is not None:
                 v_model_au = np.interp(t_eval, t_arr, rec["v_au"])
                 v_model = v_model_au * V_AU2KMS
-                if np.isfinite(v_model) and v_model > 0:
+                if np.isfinite(v_model):
                     log_L += -0.5 * ((v_obs - v_model) / sigma_v) ** 2
 
             # Density likelihood (log-space)
@@ -1124,13 +1124,19 @@ def compute_posterior_grid(
             })
             continue
 
+        # Renormalise time weights for surviving points
+        tw_valid = t_weights[valid_t].copy()
+        tw_valid /= tw_valid.sum()
+
         log_L_marginal = _logsumexp(
-            log_L_t[valid_t] + np.log(t_weights[valid_t])
+            log_L_t[valid_t] + np.log(tw_valid)
         )
 
         # Prior: cloud mass function dN/dM ~ M^beta => ln pi = (beta+1)*ln(M)
-        # SFE and n_cl: log-uniform (flat prior in log space => no contribution)
-        log_prior = (cmf_slope + 1.0) * np.log(rec["mCloud"])
+        # SFE and n_cl: log-uniform (Jeffreys) => p(x) ∝ 1/x => −ln(x)
+        log_prior = ((cmf_slope + 1.0) * np.log(rec["mCloud"])
+                     - np.log(rec["sfe"])
+                     - np.log(rec["nCore"]))
 
         log_weights[idx] = log_L_marginal + log_prior
 
@@ -1148,18 +1154,22 @@ def compute_posterior_grid(
             "log_L": log_L_marginal,
         })
 
-    # Normalise weights
-    valid = np.isfinite(log_weights) & (log_weights > -1e30)
-    if valid.sum() == 0:
+    # Normalise weights using ALL finite models (for correct evidence)
+    finite_mask = np.isfinite(log_weights)
+    if not finite_mask.any():
         logger.warning("No valid grid models — posterior is empty")
         return None
 
-    log_Z = _logsumexp(log_weights[valid])
+    log_Z = _logsumexp(log_weights[finite_mask])
     weights = np.zeros(n_models)
-    weights[valid] = np.exp(log_weights[valid] - log_Z)
+    weights[finite_mask] = np.exp(log_weights[finite_mask] - log_Z)
 
     # Effective sample size
     N_eff = 1.0 / np.sum(weights ** 2) if np.sum(weights ** 2) > 0 else 0.0
+
+    # Restrict to significant models for histogram/KDE range
+    max_log_w = np.max(log_weights[finite_mask])
+    valid = finite_mask & (log_weights > max_log_w - 30)
 
     # Marginal PDF over log10(M_cl)
     log_Mcl = np.array([np.log10(rec["M_star"]) for rec in records])
@@ -1172,9 +1182,6 @@ def compute_posterior_grid(
 
     pdf_Mcl, _ = np.histogram(log_Mcl, bins=bin_edges, weights=weights)
     dbin = np.diff(bin_edges)
-    pdf_Mcl = pdf_Mcl / (dbin * pdf_Mcl.sum() * dbin[0]) if pdf_Mcl.sum() > 0 else pdf_Mcl
-
-    # Normalise so integral over bins = 1
     total = np.sum(pdf_Mcl * dbin)
     if total > 0:
         pdf_Mcl = pdf_Mcl / total
@@ -1412,17 +1419,18 @@ def plot_posterior(stages: List[Dict], system_name: str,
     fig, axes = plt.subplots(2, 2, figsize=(10, 8))
     fig.subplots_adjust(hspace=0.08, wspace=0.08)
 
-    # Shared axis ranges across all available stages
-    x_lo = min(0.0, min(s["log_Mcl_bins"].min() for s in stages))
-    x_hi = max(s["log_Mcl_bins"].max() for s in stages)
-    y_hi = max(s["pdf_Mcl"].max() for s in stages) * 1.10
+    # Shared x-axis range across all available stages
+    x_lo = min(s["log_Mcl_bins"].min() for s in stages) - 0.3
+    x_hi = max(s["log_Mcl_bins"].max() for s in stages) + 0.3
+
+    # Base stage (slot 0) for ghost overlay height in Fix 7
+    base_stage = slot_stage[0]
 
     for slot_idx, (pdef, ax) in enumerate(zip(_PANEL_DEFS, axes.flat)):
         stage = slot_stage[slot_idx]
         c = pdef["color"]
 
         ax.set_xlim(x_lo, x_hi)
-        ax.set_ylim(0, y_hi)
 
         # Panel letter
         ax.text(0.04, 0.96, pdef["panel_label"], transform=ax.transAxes,
@@ -1453,7 +1461,8 @@ def plot_posterior(stages: List[Dict], system_name: str,
 
             # Median line + annotation
             ax.axvline(med, color=c, ls="--", lw=1.2, alpha=0.7)
-            ax.annotate(f"{med:.2f}", xy=(med, y_hi * 0.92),
+            ax.annotate(f"{med:.2f}", xy=(med, 0.92),
+                        xycoords=("data", "axes fraction"),
                         fontsize=7, color=c, ha="center", va="top")
 
             # KDE overlay
@@ -1486,6 +1495,21 @@ def plot_posterior(stages: List[Dict], system_name: str,
                 _lit_label_used = True
                 if _show_lit_legend:
                     ax.legend(fontsize=7, framealpha=0.7, loc="upper left")
+
+        # Per-panel y-limit from histogram and KDE
+        if stage is not None:
+            y_max_hist = stage["pdf_Mcl"].max() if len(stage["pdf_Mcl"]) > 0 else 0
+            y_max_kde = 0
+            if stage.get("pdf_kde") is not None:
+                y_max_kde = stage["pdf_kde"].max()
+            y_hi_panel = max(y_max_hist, y_max_kde) * 1.15
+
+            # Include ghost height so it's not clipped
+            if slot_idx > 0 and base_stage is not None:
+                y_max_ghost = base_stage["pdf_Mcl"].max()
+                y_hi_panel = max(y_hi_panel, y_max_ghost * 1.15)
+
+            ax.set_ylim(0, max(y_hi_panel, 0.1))  # floor avoids empty axis
 
         # Shared axis labels / tick-label hiding
         row, col = divmod(slot_idx, 2)
