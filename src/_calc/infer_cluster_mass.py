@@ -764,6 +764,231 @@ def interpolate_density_grid(
     return list(records) + virtual_records
 
 
+def check_mass_coverage(
+    records: List[Dict],
+    max_gap_dex: float = 0.5,
+) -> bool:
+    """
+    Check whether the cloud-mass grid is sufficiently resolved for inference.
+
+    Issues a WARNING if:
+      (a) the largest gap between adjacent log(M_cloud) values exceeds
+          *max_gap_dex* (default 0.5 dex), or
+      (b) there are fewer than 3 unique mass values.
+
+    Parameters
+    ----------
+    records : list of dict
+        Output of collect_grid().
+    max_gap_dex : float
+        Maximum acceptable gap in log10(M_cloud) between adjacent grid
+        values (default 0.5, i.e. factor ~3).
+
+    Returns
+    -------
+    bool
+        True if the grid is adequately resolved, False if interpolation
+        is recommended.
+    """
+    unique_m = np.unique([r["mCloud"] for r in records])
+    log_m = np.log10(unique_m)
+    n_masses = len(unique_m)
+
+    is_ok = True
+
+    # Check (b): too few mass values
+    if n_masses < 3:
+        logger.warning(
+            "Mass grid has only %d unique M_cloud value(s): %s. "
+            "Inference results may be unreliable. "
+            "Consider using --interp-mass to create virtual models.",
+            n_masses,
+            ", ".join(f"{m:.0f}" for m in unique_m),
+        )
+        is_ok = False
+
+    # Check (a): large gaps
+    if n_masses >= 2:
+        gaps = np.diff(log_m)
+        max_gap = gaps.max()
+        if max_gap > max_gap_dex:
+            idx = np.argmax(gaps)
+            logger.warning(
+                "Large gap in mass grid: %.2f dex between "
+                "M_cloud = %.0f and %.0f Msun. "
+                "Consider using --interp-mass to fill this gap.",
+                max_gap, unique_m[idx], unique_m[idx + 1],
+            )
+            is_ok = False
+
+    if is_ok:
+        logger.info(
+            "Mass grid: %d values spanning [%.0f, %.0f] Msun, "
+            "max gap = %.2f dex — OK.",
+            n_masses, unique_m.min(), unique_m.max(),
+            np.diff(log_m).max() if n_masses >= 2 else 0.0,
+        )
+
+    return is_ok
+
+
+def interpolate_mass_grid(
+    records: List[Dict],
+    m_interp: List[float] = None,
+    m_per_decade: int = 3,
+) -> List[Dict]:
+    """
+    Create virtual grid models at intermediate cloud masses by
+    log-interpolating existing tracks.
+
+    For each (sfe, n_cl) pair that exists at two or more M_cloud values,
+    interpolate R(t) and v(t) in log-space at the requested intermediate
+    masses.
+
+    Parameters
+    ----------
+    records : list of dict
+        Output of collect_grid().
+    m_interp : list of float, optional
+        Specific M_cloud values [Msun] to interpolate to.
+        If None, auto-generate m_per_decade points per decade between
+        the min and max M_cloud in the grid.
+    m_per_decade : int
+        Points per decade when auto-generating (default 3, giving
+        ~0.33 dex spacing).
+
+    Returns
+    -------
+    list of dict
+        Original records + newly created virtual records.
+        Virtual records have folder="interp_mXXXX" to distinguish them.
+    """
+    # Group records by (sfe, nCore)
+    from collections import defaultdict
+    groups = defaultdict(list)
+    for rec in records:
+        groups[(rec["sfe"], rec["nCore"])].append(rec)
+
+    # Sort each group by mCloud
+    for key in groups:
+        groups[key].sort(key=lambda r: r["mCloud"])
+
+    # Determine interpolation targets
+    if m_interp is not None:
+        m_targets = np.asarray(m_interp, dtype=float)
+    else:
+        m_min = min(r["mCloud"] for r in records)
+        m_max = max(r["mCloud"] for r in records)
+        log_m_min = np.log10(m_min)
+        log_m_max = np.log10(m_max)
+        n_pts = int((log_m_max - log_m_min) * m_per_decade) + 1
+        if n_pts < 2:
+            return list(records)
+        m_targets = np.logspace(log_m_min, log_m_max, n_pts)
+
+    # Remove values that already exist in the grid (within 0.05 dex)
+    existing_log_m = set(
+        round(np.log10(r["mCloud"]), 2) for r in records
+    )
+    m_targets = [
+        m for m in m_targets
+        if not any(abs(np.log10(m) - e) < 0.05 for e in existing_log_m)
+    ]
+
+    if not m_targets:
+        logger.info("No new mass points to interpolate — grid already dense.")
+        return list(records)
+
+    virtual_records = []
+
+    for (sfe, nCore), grp in groups.items():
+        if len(grp) < 2:
+            continue
+
+        m_values = np.array([r["mCloud"] for r in grp])
+        log_m_values = np.log10(m_values)
+
+        for m_target in m_targets:
+            log_m_target = np.log10(m_target)
+
+            # Find bracketing pair
+            idx_hi = np.searchsorted(log_m_values, log_m_target)
+            if idx_hi == 0 or idx_hi >= len(log_m_values):
+                continue  # outside range for this group
+
+            rec_lo = grp[idx_hi - 1]
+            rec_hi = grp[idx_hi]
+
+            # Interpolation fraction in log-space
+            frac = ((log_m_target - np.log10(rec_lo["mCloud"]))
+                    / (np.log10(rec_hi["mCloud"]) - np.log10(rec_lo["mCloud"])))
+
+            # Use the time array from the track with more points,
+            # interpolate the other onto it. Only go up to the shorter
+            # track's max time (no extrapolation).
+            t_lo, t_hi = rec_lo["t"], rec_hi["t"]
+            t_max = min(t_lo[-1], t_hi[-1])
+
+            if len(t_lo) >= len(t_hi):
+                t_common = t_lo[t_lo <= t_max]
+            else:
+                t_common = t_hi[t_hi <= t_max]
+
+            if len(t_common) < MIN_PTS:
+                continue
+
+            # Interpolate R and v from both tracks onto t_common
+            R_lo = np.interp(t_common, rec_lo["t"], rec_lo["R"])
+            R_hi = np.interp(t_common, rec_hi["t"], rec_hi["R"])
+            v_lo = np.interp(t_common, rec_lo["t"], rec_lo["v_au"])
+            v_hi = np.interp(t_common, rec_hi["t"], rec_hi["v_au"])
+
+            # Log-space interpolation for R
+            safe_R = (R_lo > 0) & (R_hi > 0)
+            R_interp = np.zeros_like(t_common)
+            if safe_R.any():
+                log_R = ((1 - frac) * np.log10(R_lo[safe_R])
+                         + frac * np.log10(R_hi[safe_R]))
+                R_interp[safe_R] = 10.0 ** log_R
+            # Linear fallback for non-positive R
+            lin_R = ~safe_R
+            if lin_R.any():
+                R_interp[lin_R] = (1 - frac) * R_lo[lin_R] + frac * R_hi[lin_R]
+
+            # Log-space interpolation for v (preserve sign)
+            safe_v = (np.abs(v_lo) > 0) & (np.abs(v_hi) > 0)
+            v_interp = np.zeros_like(t_common)
+            if safe_v.any():
+                log_v = ((1 - frac) * np.log10(np.abs(v_lo[safe_v]))
+                         + frac * np.log10(np.abs(v_hi[safe_v])))
+                v_interp[safe_v] = 10.0 ** log_v * np.sign(v_lo[safe_v])
+            # Linear fallback for zero velocities
+            lin_v = ~safe_v
+            if lin_v.any():
+                v_interp[lin_v] = (1 - frac) * v_lo[lin_v] + frac * v_hi[lin_v]
+
+            M_star = sfe * m_target
+            rCloud = cloud_radius_uniform(m_target, nCore)
+
+            virtual_records.append({
+                "mCloud": m_target,
+                "sfe": sfe,
+                "nCore": nCore,
+                "M_star": M_star,
+                "folder": f"interp_m{m_target:.0e}_sfe{sfe:.2f}_n{nCore:.0f}",
+                "profile": "uniform",
+                "t": t_common,
+                "R": R_interp,
+                "v_au": v_interp,
+                "v_kms": v_interp * V_AU2KMS,
+                "rCloud": rCloud,
+                "interpolated": True,
+            })
+
+    logger.info("Created %d virtual (interpolated) mass models", len(virtual_records))
+    return list(records) + virtual_records
+
+
 # ======================================================================
 # Step 3: Posterior computation
 # ======================================================================
@@ -1637,6 +1862,17 @@ Examples:
         help="Interpolation points per decade in n_cl (default: 3). "
              "Only used with --interp-density.",
     )
+    parser.add_argument(
+        "--interp-mass", action="store_true", default=False,
+        help="Interpolate virtual models at intermediate cloud masses "
+             "between existing grid values. Recommended when the script "
+             "warns about sparse mass coverage.",
+    )
+    parser.add_argument(
+        "--m-per-decade", type=int, default=3,
+        help="Interpolation points per decade in M_cloud (default: 3). "
+             "Only used with --interp-mass.",
+    )
     return parser
 
 
@@ -1725,6 +1961,26 @@ def main(argv: Optional[List[str]] = None) -> int:
         logger.warning(
             ">>> Rerun with --interp-density to create virtual models "
             "at intermediate densities. This may significantly improve "
+            "the inference accuracy."
+        )
+
+    # Check mass grid coverage
+    mass_ok = check_mass_coverage(records, max_gap_dex=0.5)
+
+    # Interpolate mass grid if requested
+    if args.interp_mass:
+        n_before = len(records)
+        records = interpolate_mass_grid(records, m_per_decade=args.m_per_decade)
+        n_real = sum(1 for r in records if not r.get("interpolated", False))
+        n_virtual = sum(1 for r in records if r.get("interpolated", False))
+        logger.info("Mass interpolation: %d -> %d models (+%d virtual)",
+                    n_before, len(records), len(records) - n_before)
+        logger.info("Grid: %d real + %d interpolated = %d total",
+                    n_real, n_virtual, len(records))
+    elif not mass_ok:
+        logger.warning(
+            ">>> Rerun with --interp-mass to create virtual models "
+            "at intermediate cloud masses. This may significantly improve "
             "the inference accuracy."
         )
 
