@@ -28,13 +28,9 @@ from src._output.simulation_end import write_simulation_end
 
 
 
-from src.phase1_energy import run_energy_phase
 from src.phase1_energy import run_energy_phase_modified
-from src.phase1b_energy_implicit import run_energy_implicit_phase
 from src.phase1b_energy_implicit import run_energy_implicit_phase_modified
-from src.phase1c_transition import run_transition_phase
 from src.phase1c_transition import run_transition_phase_modified
-from src.phase2_momentum import run_momentum_phase
 from src.phase2_momentum import run_momentum_phase_modified
 import src._output.terminal_prints as terminal_prints
 import src.bubble_structure.get_bubbleParams as get_bubbleParams
@@ -220,22 +216,7 @@ def run_expansion(params):
 
     phase1a_starttime = datetime.datetime.now()
 
-    # Switch between original (Euler) and modified (solve_ivp) implementations
-    # Set use_adaptive_solver=True to use the modified implementation with:
-    #   - scipy.integrate.solve_ivp with adaptive RK45/RK23 stepping
-    #   - Pure ODE functions that don't mutate params during integration
-    #   - Segment-based integration with params updates only after success
-    use_adaptive_solver = params.get('use_adaptive_solver', False)
-    if hasattr(use_adaptive_solver, 'value'):
-        use_adaptive_solver = use_adaptive_solver.value
-    
-
-    if use_adaptive_solver:
-        logger.info("Using modified energy phase (adaptive solve_ivp)")
-        run_energy_phase_modified.run_energy(params)
-    else:
-        logger.info("Using original energy phase (Euler integration)")
-        run_energy_phase.run_energy(params)
+    run_energy_phase_modified.run_energy(params)
 
     phase1a_endtime = datetime.datetime.now()
     phase1a_elapsed = phase1a_endtime - phase1a_starttime
@@ -272,12 +253,7 @@ def run_expansion(params):
     phase1b_starttime = datetime.datetime.now()
 
 
-    if use_adaptive_solver:
-        logger.info("Using modified energy phase (adaptive solve_ivp)")
-        run_energy_implicit_phase_modified.run_phase_energy(params)
-    else:
-        logger.info("Using original energy phase (Euler integration)")
-        run_energy_implicit_phase.run_phase_energy(params)
+    run_energy_implicit_phase_modified.run_phase_energy(params)
         
 
     phase1b_endtime = datetime.datetime.now()
@@ -307,12 +283,7 @@ def run_expansion(params):
     if params['EndSimulationDirectly'].value == False:
         phase1c_starttime = datetime.datetime.now()
 
-        if use_adaptive_solver:
-            logger.info("Using modified transition phase (adaptive solve_ivp)")
-            run_transition_phase_modified.run_phase_transition(params)
-        else:
-            logger.info("Using original transition phase (Euler integration)")
-            run_transition_phase.run_phase_transition(params)
+        run_transition_phase_modified.run_phase_transition(params)
 
         phase1c_endtime = datetime.datetime.now()
         phase1c_elapsed = phase1c_endtime - phase1c_starttime
@@ -359,12 +330,7 @@ def run_expansion(params):
     if params['EndSimulationDirectly'].value == False:
         phase2_starttime = datetime.datetime.now()
 
-        if use_adaptive_solver:
-            logger.info("Using modified momentum phase (adaptive solve_ivp)")
-            run_momentum_phase_modified.run_phase_momentum(params)
-        else:
-            logger.info("Using original momentum phase (Euler integration)")
-            run_momentum_phase.run_phase_momentum(params)
+        run_momentum_phase_modified.run_phase_momentum(params)
 
         phase2_endtime = datetime.datetime.now()
         phase2_elapsed = phase2_endtime - phase2_starttime
