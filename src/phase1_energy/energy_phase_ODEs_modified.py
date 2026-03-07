@@ -18,9 +18,9 @@ Key difference from energy_phase_ODEs.py:
 import numpy as np
 import scipy.optimize
 import src.cloud_properties.mass_profile as mass_profile
+import src.cloud_properties.density_profile as density_profile
 import src.bubble_structure.get_bubbleParams as get_bubbleParams
 from src.sb99.update_feedback import get_currentSB99feedback
-from src.phase1_energy.energy_phase_ODEs import get_press_ion  # Use existing function
 from src.phase_general.pressure_blend import compute_blend_weight
 from dataclasses import dataclass
 from typing import Optional
@@ -33,6 +33,28 @@ def _scalar(x):
     """Convert len-1 arrays / 0-d arrays to Python scalars; otherwise return x."""
     a = np.asarray(x)
     return a.item() if a.size == 1 else x
+
+
+def get_press_ion(r, params):
+    """
+    Pressure from photoionized part of cloud at radius r.
+
+    Parameters
+    ----------
+    r : float
+        Radius in pc.
+    params : DescribedDict
+        Parameter dictionary.
+
+    Returns
+    -------
+    float
+        Pressure of ionized gas in code units.
+    """
+    r = np.atleast_1d(r)
+    n_r = density_profile.get_density_profile(r, params)
+    P_ion = 2.0 * n_r * params['k_B'].value * params['TShell_ion'].value
+    return _scalar(P_ion)
 
 
 @dataclass
