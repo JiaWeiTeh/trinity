@@ -313,15 +313,13 @@ def run_energy(params):
             params['F_ram'].value = ode_result.F_ram
         if ode_result.F_rad is not None:
             params['F_rad'].value = ode_result.F_rad
-        # P_IF diagnostic quantities (convex blend)
+        # Pressure diagnostic quantities
         if ode_result.n_IF is not None:
             params['n_IF'].value = ode_result.n_IF
         if ode_result.R_IF is not None:
             params['R_IF'].value = ode_result.R_IF
-        if ode_result.P_IF is not None:
-            params['P_IF'].value = ode_result.P_IF
-        if ode_result.w_blend is not None:
-            params['w_blend'].value = ode_result.w_blend
+        if ode_result.P_HII is not None:
+            params['P_HII'].value = ode_result.P_HII
         if ode_result.P_drive is not None:
             params['P_drive'].value = ode_result.P_drive
         if ode_result.F_HII is not None:

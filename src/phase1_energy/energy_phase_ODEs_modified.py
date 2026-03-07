@@ -21,7 +21,6 @@ import src.cloud_properties.mass_profile as mass_profile
 import src.cloud_properties.density_profile as density_profile
 import src.bubble_structure.get_bubbleParams as get_bubbleParams
 from src.sb99.update_feedback import get_currentSB99feedback
-from src.phase_general.pressure_blend import compute_blend_weight
 from dataclasses import dataclass
 from typing import Optional
 import logging
@@ -72,7 +71,7 @@ class ODESnapshot:
     rShell: float
     shell_mass: float
     isCollapse: bool
-    n_IF: float  # Density at ionization front (for P_IF convex blend)
+    n_IF: float  # Density at ionization front (for P_HII)
 
     # Cluster/bubble properties
     mCluster: float
@@ -218,34 +217,25 @@ def get_ODE_Edot_pure(t: float, y: list, snapshot: ODESnapshot, params_for_feedb
         press_HII_in += snapshot.PISM * snapshot.k_B
 
     # ==========================================================================
-    # WARM IONIZED GAS PRESSURE (P_IF) - CONVEX BLEND APPROACH
-    # P_drive = (1-w)*P_b + w*P_IF
-    # Weight uses INDEPENDENT Strömgren pressure to break P_IF ∝ P_b degeneracy:
-    #   w = f_abs_ion * P_HII_Str / (P_HII_Str + P_b)
-    # where P_HII_Str = 2 * n_Str * k_B * T_ion, n_Str = sqrt(3*Qi / (4*pi*alpha_B*R2^3))
-    # P_IF from shell structure is used for the blend VALUE (physically correct IF pressure).
+    # WARM IONIZED GAS PRESSURE — max() SCHEME
+    # Energy/implicit: P_drive = max(P_b, P_HII)
+    # Transition:      P_drive = max(P_b, P_HII + P_ram)
     # ==========================================================================
     T_ion = 1e4  # K — standard HII region temperature
 
-    # Pressure at ionization front (from shell structure) - used for blend VALUE
-    P_IF = 2.0 * snapshot.n_IF * snapshot.k_B * T_ion
+    # HII pressure from shell-structure ionization front density
+    P_HII = 2.0 * snapshot.n_IF * snapshot.k_B * T_ion
 
-    # Blending weight: uses independent Strömgren pressure (breaks P_IF ∝ P_b degeneracy)
-    w_blend, n_Str, P_HII_Str = compute_blend_weight(
-        Qi=snapshot.Qi,
-        caseB_alpha=snapshot.caseB_alpha,
-        R2=R2,
-        k_B=snapshot.k_B,
-        P_b=press_bubble,
-        f_abs_ion=FABSi,
-        T_ion=T_ion
-    )
-
-    # Driving pressure as convex blend: P_drive = (1-w)*P_b + w*P_IF
-    P_drive = (1.0 - w_blend) * press_bubble + w_blend * P_IF
-
-    # Force from warm ionized gas (weighted share of P_drive, always >= 0)
-    F_HII = 4.0 * np.pi * R2**2 * w_blend * P_IF
+    if snapshot.current_phase == 'transition':
+        P_b_ram = get_bubbleParams.pRam(R2, Lmech_total, v_mech_total)
+        P_drive = max(press_bubble, P_HII + P_b_ram)
+        # Diagnostic: full HII force (both terms active in transition)
+        F_HII = 4.0 * np.pi * R2**2 * P_HII
+    else:
+        # energy / implicit phases
+        P_drive = max(press_bubble, P_HII)
+        # Diagnostic: excess of P_HII above bubble pressure, if any
+        F_HII = 4.0 * np.pi * R2**2 * max(0.0, P_HII - press_bubble)
 
     # Radiation force
     F_rad = snapshot.shell_F_rad
@@ -298,16 +288,12 @@ class ODEResult:
     F_ram: Optional[float] = None
     F_rad: Optional[float] = None
 
-    # P_IF diagnostic quantities (ionization front pressure - convex blend)
+    # Pressure diagnostic quantities
     n_IF: Optional[float] = None
     R_IF: Optional[float] = None
-    P_IF: Optional[float] = None
-    w_blend: Optional[float] = None
+    P_HII: Optional[float] = None
     P_drive: Optional[float] = None
     F_HII: Optional[float] = None
-    # Strömgren diagnostics for blend weight (independent of P_b)
-    n_Str: Optional[float] = None
-    P_HII_Str: Optional[float] = None
 
 
 def compute_derived_quantities(t: float, y: list, snapshot: ODESnapshot, params_for_feedback) -> ODEResult:
@@ -371,36 +357,22 @@ def compute_derived_quantities(t: float, y: list, snapshot: ODESnapshot, params_
         press_HII_in += snapshot.PISM * snapshot.k_B
 
     # ==========================================================================
-    # P_IF CALCULATION - CONVEX BLEND (same as in ODE function)
-    # P_drive = (1-w)*P_b + w*P_IF
-    # Weight uses INDEPENDENT Strömgren pressure to break P_IF ∝ P_b degeneracy:
-    #   w = f_abs_ion * P_HII_Str / (P_HII_Str + P_b)
-    # where P_HII_Str = 2 * n_Str * k_B * T_ion, n_Str = sqrt(3*Qi / (4*pi*alpha_B*R2^3))
-    # P_IF from shell structure is used for the blend VALUE (physically correct IF pressure).
+    # WARM IONIZED GAS PRESSURE — max() SCHEME (same as ODE function)
     # ==========================================================================
     T_ion = 1e4  # K — standard HII region temperature
 
-    # Pressure at ionization front (from shell structure via snapshot) - used for blend VALUE
     n_IF = snapshot.n_IF
-    P_IF = 2.0 * n_IF * snapshot.k_B * T_ion
+    P_HII = 2.0 * n_IF * snapshot.k_B * T_ion
 
-    # Blending weight: uses independent Strömgren pressure (breaks P_IF ∝ P_b degeneracy)
-    w_blend, n_Str, P_HII_Str = compute_blend_weight(
-        Qi=snapshot.Qi,
-        caseB_alpha=snapshot.caseB_alpha,
-        R2=R2,
-        k_B=snapshot.k_B,
-        P_b=Pb,
-        f_abs_ion=FABSi,
-        T_ion=T_ion
-    )
+    if snapshot.current_phase == 'transition':
+        P_b_ram = get_bubbleParams.pRam(R2, Lmech_total, v_mech_total)
+        P_drive = max(Pb, P_HII + P_b_ram)
+        F_HII = 4.0 * np.pi * R2**2 * P_HII
+    else:
+        # energy / implicit phases
+        P_drive = max(Pb, P_HII)
+        F_HII = 4.0 * np.pi * R2**2 * max(0.0, P_HII - Pb)
 
-    # Driving pressure as convex blend: P_drive = (1-w)*P_b + w*P_IF
-    P_drive = (1.0 - w_blend) * Pb + w_blend * P_IF
-
-    # Forces
-    # F_HII: weighted warm ionized gas force = 4π R2² w P_IF (always >= 0)
-    F_HII = 4.0 * np.pi * R2**2 * w_blend * P_IF
     # F_ion_out kept for backwards compatibility
     F_ion_out = F_HII
 
@@ -418,14 +390,10 @@ def compute_derived_quantities(t: float, y: list, snapshot: ODESnapshot, params_
         F_ion_out=F_ion_out,
         F_ram=Pb * 4 * np.pi * R2**2,
         F_rad=snapshot.shell_F_rad,
-        # P_IF diagnostic quantities (convex blend)
+        # Pressure diagnostic quantities
         n_IF=n_IF,
-        R_IF=snapshot.rShell,  # Use rShell as proxy for R_IF (updated by shell structure)
-        P_IF=P_IF,
-        w_blend=w_blend,
+        R_IF=snapshot.rShell,
+        P_HII=P_HII,
         P_drive=P_drive,
         F_HII=F_HII,
-        # Strömgren diagnostics (independent of P_b)
-        n_Str=n_Str,
-        P_HII_Str=P_HII_Str,
     )
