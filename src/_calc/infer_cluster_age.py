@@ -517,7 +517,7 @@ def plot_posterior(stages: List[Dict], system_name: str,
                        alpha=0.8, label=r"Observed $t$", zorder=5)
             ax.axvspan(_t_true - _sigma_t, _t_true + _sigma_t,
                        color=C_ORANGE, alpha=0.12, zorder=1)
-            ax.legend(fontsize=8, framealpha=0.7, loc="best")
+            ax.legend(fontsize=8, framealpha=0.7, loc="upper left")
 
         ax.set_xlabel(r"$t$ [Myr]")
         ax.set_ylabel(r"$p(t \mid \mathrm{data})$")
@@ -737,7 +737,7 @@ def plot_Rt_tracks(stage: Dict, records: List[Dict],
 
     ax.set_xlabel(r"$t$ [Myr]")
     ax.set_ylabel(r"$R$ [pc]")
-    ax.legend(fontsize=8, framealpha=0.7, loc="best")
+    ax.legend(fontsize=8, framealpha=0.7, loc="upper left")
 
     fig.tight_layout()
     suffix = f"_{tag}" if tag else ""
