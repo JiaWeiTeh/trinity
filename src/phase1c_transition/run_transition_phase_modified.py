@@ -70,7 +70,6 @@ from src.shell_structure.shell_structure_modified import (
     shell_structure_pure,
     ShellProperties,
 )
-from src.phase_general.pressure_blend import compute_blend_weight
 import src.bubble_structure.get_bubbleParams as get_bubbleParams
 
 # Import centralized event functions
@@ -256,16 +255,12 @@ class ForceProperties:
     F_ion_out: float    # Outward ionization pressure force
     F_ram: float        # Ram pressure force (from bubble pressure)
     F_rad: float        # Radiation pressure force
-    # P_IF diagnostic quantities (ionization front pressure - convex blend)
+    # Pressure diagnostic quantities
     n_IF: float = 0.0
     R_IF: float = 0.0
-    P_IF: float = 0.0
-    w_blend: float = 0.0
+    P_HII: float = 0.0
     P_drive: float = 0.0
     F_HII: float = 0.0
-    # Strömgren diagnostics for blend weight (independent of P_b)
-    n_Str: float = 0.0
-    P_HII_Str: float = 0.0
 
 
 def compute_forces_pure(
@@ -314,12 +309,8 @@ def compute_forces_pure(
         press_HII_in += PISM * k_B
 
     # ==========================================================================
-    # P_IF CALCULATION - CONVEX BLEND
-    # P_drive = (1-w)*P_b + w*P_IF
-    # Weight uses INDEPENDENT Strömgren pressure to break P_IF ∝ P_b degeneracy:
-    #   w = f_abs_ion * P_HII_Str / (P_HII_Str + P_b)
-    # where P_HII_Str = 2 * n_Str * k_B * T_ion, n_Str = sqrt(3*Qi / (4*pi*alpha_B*R2^3))
-    # P_IF from shell structure is used for the blend VALUE (physically correct IF pressure).
+    # WARM IONIZED GAS PRESSURE — max() SCHEME (transition phase)
+    # P_drive = max(P_b, P_HII + P_ram)
     # ==========================================================================
     T_ion = 1e4  # K — standard HII region temperature
 
@@ -327,29 +318,20 @@ def compute_forces_pure(
     n_IF = shell_props.n_IF
     R_IF = shell_props.R_IF
 
-    # Pressure at ionization front (from shell structure) - used for blend VALUE
-    P_IF = 2.0 * n_IF * k_B * T_ion
+    # HII pressure from shell-structure ionization front density
+    P_HII = 2.0 * n_IF * k_B * T_ion
 
-    # Blending weight: uses independent Strömgren pressure (breaks P_IF ∝ P_b degeneracy)
-    Qi = params['Qi'].value
-    caseB_alpha = params['caseB_alpha'].value
-    w_blend, n_Str, P_HII_Str = compute_blend_weight(
-        Qi=Qi,
-        caseB_alpha=caseB_alpha,
-        R2=R2,
-        k_B=k_B,
-        P_b=Pb,
-        f_abs_ion=FABSi,
-        T_ion=T_ion
-    )
+    # Ram pressure contribution
+    Lmech_total = params['Lmech_total'].value
+    v_mech_total = params['v_mech_total'].value
+    P_b_ram = get_bubbleParams.pRam(R2, Lmech_total, v_mech_total)
 
-    # Driving pressure as convex blend: P_drive = (1-w)*P_b + w*P_IF
-    P_drive = (1.0 - w_blend) * Pb + w_blend * P_IF
+    # Transition phase: max(P_b, P_HII + P_ram)
+    P_drive = max(Pb, P_HII + P_b_ram)
 
     # Forces
     F_ion_in = press_HII_in * FOUR_PI * R2**2
-    # F_HII: weighted warm ionized gas force = 4π R2² w P_IF (always >= 0)
-    F_HII = FOUR_PI * R2**2 * w_blend * P_IF
+    F_HII = FOUR_PI * R2**2 * P_HII
     F_ion_out = F_HII  # For backwards compatibility
 
     # Ram pressure force
@@ -366,12 +348,9 @@ def compute_forces_pure(
         F_rad=F_rad,
         n_IF=n_IF,
         R_IF=R_IF,
-        P_IF=P_IF,
-        w_blend=w_blend,
+        P_HII=P_HII,
         P_drive=P_drive,
         F_HII=F_HII,
-        n_Str=n_Str,
-        P_HII_Str=P_HII_Str,
     )
 
 
@@ -536,11 +515,10 @@ def run_phase_transition(params) -> TransitionPhaseResults:
         params['F_ion_out'].value = force_props.F_ion_out
         params['F_ram'].value = force_props.F_ram
         params['F_rad'].value = force_props.F_rad
-        # P_IF diagnostic quantities (convex blend)
+        # Pressure diagnostic quantities
         params['n_IF'].value = force_props.n_IF
         params['R_IF'].value = force_props.R_IF
-        params['P_IF'].value = force_props.P_IF
-        params['w_blend'].value = force_props.w_blend
+        params['P_HII'].value = force_props.P_HII
         params['P_drive'].value = force_props.P_drive
         params['F_HII'].value = force_props.F_HII
         params['F_ram_wind'].value = feedback.pdot_W

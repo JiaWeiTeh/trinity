@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Force fraction grid with ram composition overlay (wind+SN within F_ram),
-PLUS an extra top component: PISM (white band at the top).
+Force fraction grid with ram composition overlay (wind+SN within F_ram).
 
-- Base stack uses: F_grav, F_ram, F_ion_out, F_rad, PISM
+- Base stack uses: F_grav, F_ram, F_ion_out, F_rad
 - Hatched overlays show wind/SN as fractions of F_ram, leaving an unhatched residual.
 - Phase markers: T (enter transition), M (enter momentum)
 - Breakout marker: first time R2 > rCloud (vertical dashed + label)
@@ -37,15 +36,12 @@ C_RAM  = "b"
 C_SN   = "#DAA520"  # golden yellow for SN visibility
 C_ION  = "#d62728"
 C_RAD  = "#9467bd"
-C_PISM = "white"
-
 # Base stacked forces — order matters for stacking + overlay indexing
 FORCE_FIELDS_BASE = [
     ("F_grav",    "Gravity",                 C_GRAV),
     ("F_ram",     r"Ram total $F_{\rm ram}$", C_RAM),
     ("F_ion_out", "Photoionised gas",        C_ION),
     ("F_rad",     "Radiation (dir.+indir.)", C_RAD),
-    ("F_ion_in",      "PISM",                C_PISM),
 ]
 
 # Output directory
@@ -119,7 +115,6 @@ def plot_from_path(data_input: str, output_dir: str = None):
         Patch(facecolor=C_RAM,  edgecolor="none", alpha=0.75, label=r"Ram total"),
         Patch(facecolor=C_ION,  edgecolor="none", alpha=0.75, label="Photoionised gas"),
         Patch(facecolor=C_RAD,  edgecolor="none", alpha=0.75, label="Radiation"),
-        Patch(facecolor=C_PISM, edgecolor="0.4",  alpha=1.0,  label="PISM"),
     ]
     handles.extend(get_marker_legend_handles())
     ax.legend(handles=handles, loc="upper right", framealpha=0.9)
@@ -169,10 +164,6 @@ def load_run(data_path: Path):
     F_wind = get_field("F_ram_wind", np.nan)
     F_sn   = get_field("F_ram_SN", np.nan)
 
-    # PISM: try press_HII_in first, else PISM, else 0
-    F_PISM = get_field("press_HII_in", np.nan)
-    F_PISM = np.nan_to_num(F_PISM, nan=0.0)
-
     # If F_ram missing entirely, reconstruct if possible
     if np.all(np.isnan(F_ram)):
         if not (np.all(np.isnan(F_wind)) and np.all(np.isnan(F_sn))):
@@ -189,12 +180,12 @@ def load_run(data_path: Path):
     if np.any(np.diff(t) < 0):
         order = np.argsort(t)
         t, R2, phase = t[order], R2[order], phase[order]
-        F_grav, F_ram, F_ion, F_rad, F_PISM = F_grav[order], F_ram[order], F_ion[order], F_rad[order], F_PISM[order]
+        F_grav, F_ram, F_ion, F_rad = F_grav[order], F_ram[order], F_ion[order], F_rad[order]
         F_wind, F_sn = F_wind[order], F_sn[order]
         isCollapse = isCollapse[order]
 
     # base forces order must match FORCE_FIELDS_BASE
-    base_forces    = np.vstack([F_grav, F_ram, F_ion, F_rad, F_PISM])
+    base_forces    = np.vstack([F_grav, F_ram, F_ion, F_rad])
     overlay_forces = np.vstack([F_wind, F_sn])
 
     return t, R2, phase, base_forces, overlay_forces, rcloud, isCollapse
@@ -233,10 +224,9 @@ def plot_run_on_ax(
     cum  = np.cumsum(frac, axis=0)
     prev = np.vstack([np.zeros_like(t), cum[:-1]])
 
-    # Fill base stack; make PISM white but visible in legend via edgecolor there
+    # Fill base stack
     for (field, _, color), y0, y1 in zip(FORCE_FIELDS_BASE, prev, cum):
-        a = 1.0 if field == "PISM" else alpha  # keep white crisp
-        ax.fill_between(t, y0, y1, color=color, alpha=a, lw=0, zorder=2)
+        ax.fill_between(t, y0, y1, color=color, alpha=alpha, lw=0, zorder=2)
 
     # --- overlay wind/SN inside ram band, ONLY AFTER TRANSITION PHASE
     if INCLUDE_ALL_FORCE:
@@ -470,7 +460,6 @@ def plot_grid(folder_path, output_dir=None, ndens_filter=None,
             Patch(facecolor=C_RAM,  edgecolor="none", alpha=0.75, label=r"Ram total $F_{\rm ram}$ (blue)"),
             Patch(facecolor=C_ION,  edgecolor="none", alpha=0.75, label="Photoionised gas"),
             Patch(facecolor=C_RAD,  edgecolor="none", alpha=0.75, label="Radiation"),
-            Patch(facecolor=C_PISM, edgecolor="0.4",  alpha=1.0,  label="PISM"),
         ]
 
         if INCLUDE_ALL_FORCE:
@@ -482,23 +471,24 @@ def plot_grid(folder_path, output_dir=None, ndens_filter=None,
 
         handles.extend(get_marker_legend_handles())
 
-        fig.subplots_adjust(top=0.9)
+        fig.subplots_adjust(top=0.88)
 
         leg = fig.legend(
             handles=handles,
             loc="upper center",
-            ncol=3,
+            ncol=4,
             frameon=True,
             facecolor="white",
             framealpha=0.9,
             edgecolor="0.2",
-            bbox_to_anchor=(0.5, 1.05)
+            bbox_to_anchor=(0.5, 1.0),
+            fontsize=7,
         )
         leg.set_zorder(10)
 
         # Title and filename
         ndens_tag = f"n{ndens}"
-        fig.suptitle(f"{folder_name} ({ndens_tag})", fontsize=14, y=1.08)
+        fig.suptitle(f"{folder_name} ({ndens_tag})", fontsize=14, y=1.03)
 
         # Save figure to ./fig/{folder_name}/feedback_n{ndens}.pdf
         fig_dir = Path(output_dir) if output_dir else FIG_DIR / folder_name

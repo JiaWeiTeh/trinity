@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+# DEPRECATED: blend weight scheme replaced by max() pressure scheme.
+# This module is no longer called by any phase ODE.
 """
-Pressure blending utilities for TRINITY phases.
+DEPRECATED — Pressure blending utilities for TRINITY phases.
 
 This module provides the convex blend weight calculation for
 P_drive = (1-w)*P_b + w*P_IF, using an independent Strömgren-based

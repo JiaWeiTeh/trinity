@@ -230,7 +230,6 @@ def add_phase_markers(ax, t, phase, dataset_label=None, dataset_color=None,
                 transform=ax.get_xaxis_transform(),
                 ha="center", va="top",
                 fontsize=8, color=t_style['color'], alpha=0.6,
-                bbox=dict(facecolor="white", edgecolor="none", alpha=0.7, pad=0.2),
                 zorder=5
             )
 
@@ -247,7 +246,6 @@ def add_phase_markers(ax, t, phase, dataset_label=None, dataset_color=None,
                 transform=ax.get_xaxis_transform(),
                 ha="center", va="top",
                 fontsize=8, color=m_style['color'], alpha=0.6,
-                bbox=dict(facecolor="white", edgecolor="none", alpha=0.7, pad=0.2),
                 zorder=5
             )
 

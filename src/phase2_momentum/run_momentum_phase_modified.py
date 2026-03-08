@@ -62,7 +62,6 @@ from src.shell_structure.shell_structure_modified import (
     shell_structure_pure,
     ShellProperties,
 )
-from src.phase_general.pressure_blend import compute_blend_weight
 import src.bubble_structure.get_bubbleParams as get_bubbleParams
 from src.cloud_properties import density_profile
 
@@ -191,16 +190,12 @@ class ForceProperties:
     F_ion_out: float    # Outward ionization pressure force
     F_ram: float        # Ram pressure force
     F_rad: float        # Radiation pressure force
-    # P_IF diagnostic quantities (ionization front pressure - convex blend)
+    # Pressure diagnostic quantities
     n_IF: float = 0.0
     R_IF: float = 0.0
-    P_IF: float = 0.0
-    w_blend: float = 0.0
+    P_HII: float = 0.0
     P_drive: float = 0.0
     F_HII: float = 0.0
-    # Strömgren diagnostics for blend weight (independent of P_b)
-    n_Str: float = 0.0
-    P_HII_Str: float = 0.0
 
 
 def compute_forces_momentum_pure(
@@ -254,12 +249,8 @@ def compute_forces_momentum_pure(
         press_HII_in += PISM * k_B
 
     # ==========================================================================
-    # P_IF CALCULATION - CONVEX BLEND
-    # P_drive = (1-w)*P_ram + w*P_IF
-    # Weight uses INDEPENDENT Strömgren pressure to break P_IF ∝ P_b degeneracy:
-    #   w = f_abs_ion * P_HII_Str / (P_HII_Str + P_ram)
-    # where P_HII_Str = 2 * n_Str * k_B * T_ion, n_Str = sqrt(3*Qi / (4*pi*alpha_B*R2^3))
-    # P_IF from shell structure is used for the blend VALUE (physically correct IF pressure).
+    # WARM IONIZED GAS PRESSURE — max() SCHEME (momentum phase)
+    # P_drive = P_HII + P_ram  (no max() needed; both terms always active)
     # ==========================================================================
     T_ion = 1e4  # K — standard HII region temperature
 
@@ -267,29 +258,15 @@ def compute_forces_momentum_pure(
     n_IF = shell_props.n_IF
     R_IF = shell_props.R_IF
 
-    # Pressure at ionization front (from shell structure) - used for blend VALUE
-    P_IF = 2.0 * n_IF * k_B * T_ion
+    # HII pressure from shell-structure ionization front density
+    P_HII = 2.0 * n_IF * k_B * T_ion
 
-    # Blending weight: uses independent Strömgren pressure (breaks P_IF ∝ P_b degeneracy)
-    Qi = params['Qi'].value
-    caseB_alpha = params['caseB_alpha'].value
-    w_blend, n_Str, P_HII_Str = compute_blend_weight(
-        Qi=Qi,
-        caseB_alpha=caseB_alpha,
-        R2=R2,
-        k_B=k_B,
-        P_b=press_ram,
-        f_abs_ion=FABSi,
-        T_ion=T_ion
-    )
-
-    # Driving pressure as convex blend: P_drive = (1-w)*P_ram + w*P_IF
-    P_drive = (1.0 - w_blend) * press_ram + w_blend * P_IF
+    # Momentum phase: P_drive = P_HII + P_ram
+    P_drive = P_HII + press_ram
 
     # Forces
     F_ion_in = press_HII_in * FOUR_PI * R2**2
-    # F_HII: weighted warm ionized gas force = 4π R2² w P_IF (always >= 0)
-    F_HII = FOUR_PI * R2**2 * w_blend * P_IF
+    F_HII = FOUR_PI * R2**2 * P_HII
     F_ion_out = F_HII  # For backwards compatibility
 
     # Ram pressure force
@@ -306,12 +283,9 @@ def compute_forces_momentum_pure(
         F_rad=F_rad,
         n_IF=n_IF,
         R_IF=R_IF,
-        P_IF=P_IF,
-        w_blend=w_blend,
+        P_HII=P_HII,
         P_drive=P_drive,
         F_HII=F_HII,
-        n_Str=n_Str,
-        P_HII_Str=P_HII_Str,
     )
 
 
@@ -327,14 +301,12 @@ class MomentumODESnapshot:
     Lmech_total: float
     v_mech_total: float
     k_B: float
-    Qi: float
-    caseB_alpha: float
     nISM: float
     PISM: float
     rCloud: float
     rShell: float
     FABSi: float
-    n_IF: float  # Density at ionization front (for P_IF convex blend)
+    n_IF: float  # Density at ionization front (for P_HII)
     F_rad: float
     mShell: float
     mShell_dot: float
@@ -362,8 +334,6 @@ def create_momentum_snapshot(params, shell_props: ShellProperties,
         Lmech_total=params['Lmech_total'].value,
         v_mech_total=params['v_mech_total'].value,
         k_B=params['k_B'].value,
-        Qi=params['Qi'].value,
-        caseB_alpha=params['caseB_alpha'].value,
         nISM=params['nISM'].value,
         PISM=PISM,
         rCloud=params['rCloud'].value,
@@ -446,32 +416,17 @@ def get_ODE_momentum_pure(t: float, y: np.ndarray, snapshot: MomentumODESnapshot
         press_HII_in += snapshot.PISM * k_B
 
     # ==========================================================================
-    # P_IF CALCULATION - CONVEX BLEND (momentum phase uses ram pressure)
-    # P_drive = (1-w)*P_ram + w*P_IF
-    # Weight uses INDEPENDENT Strömgren pressure to break P_IF ∝ P_b degeneracy:
-    #   w = f_abs_ion * P_HII_Str / (P_HII_Str + P_ram)
-    # where P_HII_Str = 2 * n_Str * k_B * T_ion, n_Str = sqrt(3*Qi / (4*pi*alpha_B*R2^3))
-    # P_IF from shell structure is used for the blend VALUE (physically correct IF pressure).
+    # WARM IONIZED GAS PRESSURE — max() SCHEME (momentum phase)
+    # P_drive = P_HII + P_ram  (no max() needed; both terms always active)
     # ==========================================================================
     T_ion = 1e4  # K — standard HII region temperature
 
-    # Pressure at ionization front (from snapshot, set by shell structure) - used for blend VALUE
+    # HII pressure from shell-structure ionization front density
     n_IF = snapshot.n_IF
-    P_IF = 2.0 * n_IF * k_B * T_ion
+    P_HII = 2.0 * n_IF * k_B * T_ion
 
-    # Blending weight: uses independent Strömgren pressure (breaks P_IF ∝ P_b degeneracy)
-    w_blend, n_Str, P_HII_Str = compute_blend_weight(
-        Qi=snapshot.Qi,
-        caseB_alpha=snapshot.caseB_alpha,
-        R2=R2,
-        k_B=k_B,
-        P_b=press_ram,
-        f_abs_ion=FABSi,
-        T_ion=T_ion
-    )
-
-    # Driving pressure as convex blend: P_drive = (1-w)*P_ram + w*P_IF
-    P_drive = (1.0 - w_blend) * press_ram + w_blend * P_IF
+    # Momentum phase: P_drive = P_HII + P_ram
+    P_drive = P_HII + press_ram
 
     # Rename press_HII_in to press_ext for clarity (external/confining pressure)
     press_ext = press_HII_in
@@ -568,6 +523,13 @@ def run_phase_momentum(params) -> MomentumPhaseResults:
         feedback = get_currentSB99feedback(t_now, params)
         updateDict(params, feedback)
 
+        # Set Pb to ram pressure so shell inner-edge density
+        # (nShell0 = Pb / k_B T_ion) is physically meaningful.
+        # Without this, Pb = 0 in momentum phase would give n_IF → 0.
+        Lmech_total_pre = feedback.Lmech_total
+        v_mech_total_pre = feedback.v_mech_total
+        params['Pb'].value = get_bubbleParams.pRam(R2, Lmech_total_pre, v_mech_total_pre)
+
         # Calculate shell structure using pure function
         shell_props = shell_structure_pure(params)
         updateDict(params, shell_props)
@@ -623,11 +585,10 @@ def run_phase_momentum(params) -> MomentumPhaseResults:
         params['F_ion_out'].value = force_props.F_ion_out
         params['F_ram'].value = force_props.F_ram
         params['F_rad'].value = force_props.F_rad
-        # P_IF diagnostic quantities (convex blend)
+        # Pressure diagnostic quantities
         params['n_IF'].value = force_props.n_IF
         params['R_IF'].value = force_props.R_IF
-        params['P_IF'].value = force_props.P_IF
-        params['w_blend'].value = force_props.w_blend
+        params['P_HII'].value = force_props.P_HII
         params['P_drive'].value = force_props.P_drive
         params['F_HII'].value = force_props.F_HII
         params['F_ram_wind'].value = feedback.pdot_W

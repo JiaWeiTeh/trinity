@@ -473,12 +473,11 @@ def read_param(path2file, write_summary=True):
     params['F_rad'] = DescribedItem(0, info="Radiation pressure", ori_units="Msun*pc/Myr**2")
     params['F_ISM'] = DescribedItem(0, info="ISM pressure", ori_units="Msun*pc/Myr**2")
 
-    # HII region / ionization front diagnostic parameters (P_IF convex blend)
+    # HII region / ionization front diagnostic parameters
     params['n_IF'] = DescribedItem(0.0, info="Density at ionization front", ori_units="1/pc**3")
     params['R_IF'] = DescribedItem(0.0, info="Radius of ionization front", ori_units="pc")
-    params['P_IF'] = DescribedItem(0.0, info="Pressure at ionization front", ori_units="Msun/Myr**2/pc")
-    params['w_blend'] = DescribedItem(0.0, info="P_HII blending weight", ori_units="dimensionless")
-    params['P_drive'] = DescribedItem(0.0, info="Total driving pressure (convex blend)", ori_units="Msun/Myr**2/pc")
+    params['P_HII'] = DescribedItem(0.0, info="HII pressure at ionization front", ori_units="Msun/Myr**2/pc")
+    params['P_drive'] = DescribedItem(0.0, info="Total driving pressure", ori_units="Msun/Myr**2/pc")
     params['F_HII'] = DescribedItem(0.0, info="Force from HII pressure", ori_units="Msun*pc/Myr**2")
     
     # Bubble structure
