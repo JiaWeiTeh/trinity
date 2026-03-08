@@ -94,9 +94,6 @@ V_AU2KMS = INV_CONV.v_au2kms   # pc/Myr -> km/s  (~0.978)
 # Observed power-law index from Watkins+2023
 OBSERVED_ALPHA = -2.2
 
-# Alternative completeness turnover from Nath+2020
-R_COMPLETE_NATH20 = 100.0
-
 # Lower completeness cut at 10 pc
 R_COMPLETE_10PC = 10.0
 
@@ -831,6 +828,115 @@ def _fit_powerlaw_binned_upper(R_values: np.ndarray, R_max: float,
     return gamma, gamma_err, N_good
 
 
+def _find_powerlaw_tail_bic(
+    R_values: np.ndarray,
+    n_bins: int = 60,
+    min_tail_bins: int = 5,
+) -> Tuple[float, float, float, int, float]:
+    """
+    Find the onset of the power-law tail using BIC on binned dN/dR.
+
+    Scans candidate break radii and fits a power law (linear in log-log)
+    to bins with R >= R_break.  Selects R_break that minimises the
+    Bayesian Information Criterion:
+
+        BIC = n * ln(RSS/n) + k * ln(n),   k = 2 (slope + intercept).
+
+    At small R the distribution is shaped by completeness and turnover
+    effects, so including those bins worsens the fit (larger RSS).
+    At very large R_break too few bins remain and noise dominates.
+    BIC balances these two regimes.
+
+    Parameters
+    ----------
+    R_values : ndarray
+        Array of bubble radii (all positive, finite values).
+    n_bins : int
+        Number of log-spaced bins for the histogram.
+    min_tail_bins : int
+        Minimum number of non-empty bins required above R_break.
+
+    Returns
+    -------
+    R_break : float
+        Detected power-law tail onset radius [pc].
+    gamma : float
+        Fitted dN/dR power-law index for R >= R_break.
+    gamma_err : float
+        Standard error of the slope from OLS.
+    N_fit : int
+        Number of non-empty bins in the tail fit.
+    bic : float
+        BIC value at the optimal break.
+        Returns (nan, nan, nan, 0, nan) if no valid fit is found.
+    """
+    R_pos = R_values[R_values > 0]
+    if len(R_pos) < 2 * min_tail_bins:
+        return np.nan, np.nan, np.nan, 0, np.nan
+
+    # Build histogram in log-space
+    log_edges = np.linspace(np.log10(R_pos.min()), np.log10(R_pos.max()),
+                            n_bins + 1)
+    counts, _ = np.histogram(np.log10(R_pos), bins=log_edges)
+    R_edges = 10.0 ** log_edges
+    dR = np.diff(R_edges)
+    R_c = 0.5 * (R_edges[:-1] + R_edges[1:])
+    dNdR = counts / dR
+
+    # Only work with non-empty bins
+    good = dNdR > 0
+    logR_all = np.log10(R_c[good])
+    logdN_all = np.log10(dNdR[good])
+    N_total = len(logR_all)
+
+    if N_total < min_tail_bins:
+        return np.nan, np.nan, np.nan, 0, np.nan
+
+    best_bic = np.inf
+    best_result = (np.nan, np.nan, np.nan, 0, np.nan)
+
+    # Scan candidate break points: start from the first non-empty bin
+    # up to N_total - min_tail_bins (ensuring enough tail bins)
+    for start in range(N_total - min_tail_bins + 1):
+        logR = logR_all[start:]
+        logdN = logdN_all[start:]
+        n = len(logR)
+
+        # OLS fit: logdN = gamma * logR + b
+        A = np.vstack([logR, np.ones(n)]).T
+        result = np.linalg.lstsq(A, logdN, rcond=None)
+        coeffs = result[0]
+        residuals = logdN - A @ coeffs
+        rss = np.sum(residuals ** 2)
+
+        if rss <= 0 or n <= 2:
+            continue
+
+        # BIC = n * ln(RSS/n) + k * ln(n), k = 2
+        bic = n * np.log(rss / n) + 2.0 * np.log(n)
+
+        if bic < best_bic:
+            best_bic = bic
+            gamma = coeffs[0]
+            se2 = rss / (n - 2)
+            var_gamma = se2 / np.sum((logR - logR.mean()) ** 2)
+            gamma_err = np.sqrt(var_gamma)
+            R_break = 10.0 ** logR[0]
+            best_result = (R_break, gamma, gamma_err, n, bic)
+
+    return best_result
+
+
+def _fit_powerlaw_mle_from(R_values: np.ndarray, R_min: float
+                           ) -> Tuple[float, float, int]:
+    """
+    MLE power-law fit for R >= R_min (same as _fit_powerlaw_mle).
+
+    Thin wrapper kept for clarity when called with BIC-detected R_break.
+    """
+    return _fit_powerlaw_mle(R_values, R_min)
+
+
 # ======================================================================
 # Part 2b: 2D (M_cloud, epsilon) population synthesis
 # ======================================================================
@@ -887,12 +993,10 @@ def run_population_synthesis_2d(
     dict or None
         Keys matching _plot_synth_row expectations:
         R_synth, R_centres, dNdR,
-        synth_slope, synth_slope_err, N_fit,
+        bic_R_break, bic_slope_bin, bic_slope_err_bin, bic_N_bin, bic_val,
+        bic_slope_mle, bic_slope_err_mle, bic_N_mle,
         synth_slope_le10, synth_slope_err_le10, N_fit_le10,
-        synth_slope_nath, synth_slope_err_nath, N_fit_nath,
         bin_slope_le10, bin_slope_err_le10, bin_N_le10,
-        bin_slope_30, bin_slope_err_30, bin_N_30,
-        bin_slope_100, bin_slope_err_100, bin_N_100,
         N_bubble, N_surviving, N_recollapsed, N_below_complete,
         t_obs, R_complete, runs_used, run_usage, filtered_records,
         method, cloud_mf_slope, cloud_mf_max, sfe_median, sfe_sigma_dex.
@@ -1002,21 +1106,22 @@ def run_population_synthesis_2d(
     R_centres = 0.5 * (R_edges[:-1] + R_edges[1:])
     dNdR = counts / dR
 
-    # MLE fits
-    synth_slope, synth_slope_err, N_fit = _fit_powerlaw_mle(
-        R_valid, R_complete)
+    # R <= 10 pc fits (kept as-is)
     slope_le10, slope_err_le10, N_fit_le10 = _fit_powerlaw_mle_upper(
         R_valid, R_COMPLETE_10PC)
-    slope_nath, slope_err_nath, N_fit_nath = _fit_powerlaw_mle(
-        R_valid, R_COMPLETE_NATH20)
-
-    # Binned LSQ fits
     bin_slope_le10, bin_slope_err_le10, bin_N_le10 = _fit_powerlaw_binned_upper(
         R_valid, R_COMPLETE_10PC)
-    bin_slope_30, bin_slope_err_30, bin_N_30 = _fit_powerlaw_binned(
-        R_valid, R_complete)
-    bin_slope_100, bin_slope_err_100, bin_N_100 = _fit_powerlaw_binned(
-        R_valid, R_COMPLETE_NATH20)
+
+    # BIC-detected power-law tail
+    bic_R_break, bic_slope_bin, bic_slope_err_bin, bic_N_bin, bic_val = \
+        _find_powerlaw_tail_bic(R_valid)
+    # MLE fit from BIC-detected break
+    bic_slope_mle, bic_slope_err_mle, bic_N_mle = _fit_powerlaw_mle(
+        R_valid, bic_R_break) if np.isfinite(bic_R_break) else (np.nan, np.nan, 0)
+    logger.info("BIC tail detection: R_break=%.1f pc, binned slope=%.3f, "
+                "MLE slope=%.3f (N_bin=%d, N_mle=%d)",
+                bic_R_break, bic_slope_bin, bic_slope_mle,
+                bic_N_bin, bic_N_mle)
 
     # Step G: Build return dict
     runs_used_summary = [rec["folder"] for rec in filtered]
@@ -1026,24 +1131,22 @@ def run_population_synthesis_2d(
         "R_synth": R_valid,
         "R_centres": R_centres,
         "dNdR": dNdR,
-        "synth_slope": synth_slope,
-        "synth_slope_err": synth_slope_err,
-        "N_fit": N_fit,
+        # BIC-detected tail fit (primary result)
+        "bic_R_break": bic_R_break,
+        "bic_slope_bin": bic_slope_bin,
+        "bic_slope_err_bin": bic_slope_err_bin,
+        "bic_N_bin": bic_N_bin,
+        "bic_val": bic_val,
+        "bic_slope_mle": bic_slope_mle,
+        "bic_slope_err_mle": bic_slope_err_mle,
+        "bic_N_mle": bic_N_mle,
+        # R <= 10 pc fits
         "synth_slope_le10": slope_le10,
         "synth_slope_err_le10": slope_err_le10,
         "N_fit_le10": N_fit_le10,
-        "synth_slope_nath": slope_nath,
-        "synth_slope_err_nath": slope_err_nath,
-        "N_fit_nath": N_fit_nath,
         "bin_slope_le10": bin_slope_le10,
         "bin_slope_err_le10": bin_slope_err_le10,
         "bin_N_le10": bin_N_le10,
-        "bin_slope_30": bin_slope_30,
-        "bin_slope_err_30": bin_slope_err_30,
-        "bin_N_30": bin_N_30,
-        "bin_slope_100": bin_slope_100,
-        "bin_slope_err_100": bin_slope_err_100,
-        "bin_N_100": bin_N_100,
         "N_bubble": N_bubble,
         "N_surviving": N_surviving,
         "N_recollapsed": recollapsed,
@@ -1120,12 +1223,10 @@ def run_sensitivity(
         for t_obs in t_obs_values:
             run_seed = seed + hash((beta, t_obs)) % (2**31)
             slopes = []
-            slopes_nath = []
             last_N_surviving = 0
             last_slope_err = np.nan
             last_N_fit = 0
-            last_slope_err_nath = np.nan
-            last_N_fit_nath = 0
+            last_R_break = np.nan
 
             for k in range(n_bootstrap):
                 synth = run_population_synthesis_2d(
@@ -1141,15 +1242,12 @@ def run_sensitivity(
                 )
                 if synth is not None:
                     last_N_surviving = synth["N_surviving"]
-                    last_slope_err = synth["synth_slope_err"]
-                    last_N_fit = synth["N_fit"]
-                    last_slope_err_nath = synth.get("synth_slope_err_nath", np.nan)
-                    last_N_fit_nath = synth.get("N_fit_nath", 0)
-                    if np.isfinite(synth["synth_slope"]):
-                        slopes.append(synth["synth_slope"])
-                    nath_val = synth.get("synth_slope_nath", np.nan)
-                    if np.isfinite(nath_val):
-                        slopes_nath.append(nath_val)
+                    last_slope_err = synth.get("bic_slope_err_mle", np.nan)
+                    last_N_fit = synth.get("bic_N_mle", 0)
+                    last_R_break = synth.get("bic_R_break", np.nan)
+                    bic_slope = synth.get("bic_slope_mle", np.nan)
+                    if np.isfinite(bic_slope):
+                        slopes.append(bic_slope)
 
             if slopes:
                 results.append({
@@ -1158,12 +1256,9 @@ def run_sensitivity(
                     "synth_slope": np.mean(slopes),
                     "synth_slope_std": np.std(slopes) if len(slopes) > 1 else 0.0,
                     "synth_slope_err": last_slope_err,
-                    "synth_slope_nath": np.mean(slopes_nath) if slopes_nath else np.nan,
-                    "synth_slope_nath_std": np.std(slopes_nath) if len(slopes_nath) > 1 else 0.0,
-                    "synth_slope_err_nath": last_slope_err_nath,
+                    "bic_R_break": last_R_break,
                     "N_surviving": last_N_surviving,
                     "N_fit": last_N_fit,
-                    "N_fit_nath": last_N_fit_nath,
                     "n_runs": len(slopes),
                 })
             else:
@@ -1173,12 +1268,9 @@ def run_sensitivity(
                     "synth_slope": np.nan,
                     "synth_slope_std": np.nan,
                     "synth_slope_err": np.nan,
-                    "synth_slope_nath": np.nan,
-                    "synth_slope_nath_std": np.nan,
-                    "synth_slope_err_nath": np.nan,
+                    "bic_R_break": np.nan,
                     "N_surviving": 0,
                     "N_fit": 0,
-                    "N_fit_nath": 0,
                     "n_runs": 0,
                 })
 
@@ -1312,9 +1404,6 @@ def _plot_synth_row(axes_row: tuple, synth: Dict, row_label: str,
                 align="edge", color=C_SKY, edgecolor=C_BLUE, alpha=0.7)
     ax_hist.set_xscale("log")
     ax_hist.set_yscale("log")
-    ax_hist.axvline(R_complete, color=C_VERMILLION, ls=":", lw=1.2, alpha=0.8)
-    ax_hist.axvspan(ax_hist.get_xlim()[0], R_complete, color="grey",
-                    alpha=0.15, zorder=0)
     ax_hist.set_xlabel(r"$R$ [pc]")
     ax_hist.set_ylabel(r"$N$")
 
@@ -1338,26 +1427,27 @@ def _plot_synth_row(axes_row: tuple, synth: Dict, row_label: str,
     # Overlay fit lines on histogram
     R_min_all = R_pos.min()
     R_max_all = R_pos.max()
+    bic_R_break = synth.get("bic_R_break", np.nan)
+
     if fit_method == "mle":
         _add_hist_fit(ax_hist, synth.get("synth_slope_le10", np.nan),
                       (R_min_all, R_COMPLETE_10PC), C_PURPLE,
                       f"$R\\leq{R_COMPLETE_10PC:.0f}$")
-        _add_hist_fit(ax_hist, synth["synth_slope"],
-                      (R_complete, R_max_all), C_VERMILLION,
-                      f"$R\\geq{R_complete:.0f}$")
-        _add_hist_fit(ax_hist, synth.get("synth_slope_nath", np.nan),
-                      (R_COMPLETE_NATH20, R_max_all), C_ORANGE,
-                      f"$R\\geq{R_COMPLETE_NATH20:.0f}$")
+        if np.isfinite(bic_R_break):
+            _add_hist_fit(ax_hist, synth.get("bic_slope_mle", np.nan),
+                          (bic_R_break, R_max_all), C_VERMILLION,
+                          f"BIC tail $R\\geq{bic_R_break:.0f}$")
     else:
         _add_hist_fit(ax_hist, synth.get("bin_slope_le10", np.nan),
                       (R_min_all, R_COMPLETE_10PC), C_PURPLE,
                       f"$R\\leq{R_COMPLETE_10PC:.0f}$")
-        _add_hist_fit(ax_hist, synth.get("bin_slope_30", np.nan),
-                      (R_complete, R_max_all), C_VERMILLION,
-                      f"$R\\geq{R_complete:.0f}$")
-        _add_hist_fit(ax_hist, synth.get("bin_slope_100", np.nan),
-                      (R_COMPLETE_NATH20, R_max_all), C_ORANGE,
-                      f"$R\\geq{R_COMPLETE_NATH20:.0f}$")
+        if np.isfinite(bic_R_break):
+            _add_hist_fit(ax_hist, synth.get("bic_slope_bin", np.nan),
+                          (bic_R_break, R_max_all), C_VERMILLION,
+                          f"BIC tail $R\\geq{bic_R_break:.0f}$")
+    # Mark BIC break on histogram
+    if np.isfinite(bic_R_break):
+        ax_hist.axvline(bic_R_break, color=C_VERMILLION, ls=":", lw=1.2, alpha=0.8)
     method_tag = "MLE" if fit_method == "mle" else "Binned LSQ"
     sfe_med = synth.get('sfe_median', None)
     sfe_sig = synth.get('sfe_sigma_dex', None)
@@ -1380,8 +1470,9 @@ def _plot_synth_row(axes_row: tuple, synth: Dict, row_label: str,
     # Right panel: dN/dR vs R
     ax = axes_row[1]
     valid = dNdR > 0
-    above = valid & (R_centres >= R_complete)
-    below = valid & (R_centres < R_complete)
+    R_split = bic_R_break if np.isfinite(bic_R_break) else R_complete
+    above = valid & (R_centres >= R_split)
+    below = valid & (R_centres < R_split)
     ax.scatter(R_centres[above], dNdR[above], color=C_BLUE, s=25,
                zorder=3, label="Synthesis")
     if below.any():
@@ -1435,16 +1526,12 @@ def _plot_synth_row(axes_row: tuple, synth: Dict, row_label: str,
                             synth.get("synth_slope_err_le10", np.nan),
                             R_COMPLETE_10PC, C_PURPLE, tag,
                             valid, R_centres, dNdR)
-        # R >= 30 pc (Watkins+23)
-        _add_fit_line(ax, synth["synth_slope"],
-                      synth.get("synth_slope_err", np.nan),
-                      R_complete, C_VERMILLION, tag,
-                      valid, R_centres, dNdR)
-        # R >= 100 pc (Nath+20)
-        _add_fit_line(ax, synth.get("synth_slope_nath", np.nan),
-                      synth.get("synth_slope_err_nath", np.nan),
-                      R_COMPLETE_NATH20, C_ORANGE, tag,
-                      valid, R_centres, dNdR)
+        # BIC-detected tail
+        if np.isfinite(bic_R_break):
+            _add_fit_line(ax, synth.get("bic_slope_mle", np.nan),
+                          synth.get("bic_slope_err_mle", np.nan),
+                          bic_R_break, C_VERMILLION, f"{tag} BIC",
+                          valid, R_centres, dNdR)
     else:  # binned
         tag = "Bin"
         # R <= 10 pc
@@ -1452,16 +1539,12 @@ def _plot_synth_row(axes_row: tuple, synth: Dict, row_label: str,
                             synth.get("bin_slope_err_le10", np.nan),
                             R_COMPLETE_10PC, C_PURPLE, tag,
                             valid, R_centres, dNdR)
-        # R >= 30 pc
-        _add_fit_line(ax, synth.get("bin_slope_30", np.nan),
-                      synth.get("bin_slope_err_30", np.nan),
-                      R_complete, C_VERMILLION, tag,
-                      valid, R_centres, dNdR)
-        # R >= 100 pc
-        _add_fit_line(ax, synth.get("bin_slope_100", np.nan),
-                      synth.get("bin_slope_err_100", np.nan),
-                      R_COMPLETE_NATH20, C_ORANGE, tag,
-                      valid, R_centres, dNdR)
+        # BIC-detected tail
+        if np.isfinite(bic_R_break):
+            _add_fit_line(ax, synth.get("bic_slope_bin", np.nan),
+                          synth.get("bic_slope_err_bin", np.nan),
+                          bic_R_break, C_VERMILLION, f"{tag} BIC",
+                          valid, R_centres, dNdR)
 
     # Observed reference — solid line, transparent to reduce clutter
     if valid.sum() >= 2:
@@ -1474,10 +1557,10 @@ def _plot_synth_row(axes_row: tuple, synth: Dict, row_label: str,
         ax.plot(R_ref, dNdR_obs, color=C_GREEN, ls="-", lw=1.5, alpha=0.35,
                 label=r"$R^{-2.2}$ (Watkins+2023)")
 
-    # Completeness lines
+    # Completeness / break lines
     ax.axvline(R_COMPLETE_10PC, color=C_PURPLE, ls=":", lw=1.0, alpha=0.6)
-    ax.axvline(R_complete, color=C_VERMILLION, ls=":", lw=1.0, alpha=0.6)
-    ax.axvline(R_COMPLETE_NATH20, color=C_ORANGE, ls=":", lw=1.0, alpha=0.6)
+    if np.isfinite(bic_R_break):
+        ax.axvline(bic_R_break, color=C_VERMILLION, ls=":", lw=1.2, alpha=0.8)
     ax.axvspan(ax.get_xlim()[0], R_complete, color="grey", alpha=0.10,
                zorder=0)
 
@@ -1575,44 +1658,24 @@ def plot_slope_vs_cmf(sensitivity: List[Dict], output_dir: Path,
         cmf_sl = np.array([s["cmf_slope"] for s in subset])
         m = markers[j % len(markers)]
 
-        # R >= 30 pc (Watkins+2023) — blue
-        synth_sl_30 = np.array([s["synth_slope"] for s in subset])
-        synth_std_30 = np.array([s.get("synth_slope_std", 0.0) for s in subset])
-        synth_std_30 = np.nan_to_num(synth_std_30, nan=0.0)
-        valid_30 = np.isfinite(synth_sl_30)
-        if valid_30.sum() > 0:
-            ax.errorbar(cmf_sl[valid_30], synth_sl_30[valid_30],
-                        yerr=synth_std_30[valid_30],
+        # BIC-detected tail slope
+        synth_sl = np.array([s["synth_slope"] for s in subset])
+        synth_std = np.array([s.get("synth_slope_std", 0.0) for s in subset])
+        synth_std = np.nan_to_num(synth_std, nan=0.0)
+        valid_mask = np.isfinite(synth_sl)
+        if valid_mask.sum() > 0:
+            ax.errorbar(cmf_sl[valid_mask], synth_sl[valid_mask],
+                        yerr=synth_std[valid_mask],
                         color=C_BLUE, marker=m, ms=8, lw=1.5, ls="-",
                         capsize=3,
-                        label=(f"$R\\geq 30$ pc, "
+                        label=(f"BIC tail, "
                                f"$t_{{\\rm obs}}={t_obs:.0f}$ Myr"))
 
-        # R >= 100 pc (Nath+2020) — green
-        synth_sl_nath = np.array([s.get("synth_slope_nath", np.nan)
-                                  for s in subset])
-        synth_std_nath = np.array([s.get("synth_slope_nath_std", 0.0)
-                                   for s in subset])
-        synth_std_nath = np.nan_to_num(synth_std_nath, nan=0.0)
-        valid_nath = np.isfinite(synth_sl_nath)
-        if valid_nath.sum() > 0:
-            ax.errorbar(cmf_sl[valid_nath], synth_sl_nath[valid_nath],
-                        yerr=synth_std_nath[valid_nath],
-                        color=C_GREEN, marker=m, ms=8, lw=1.5, ls="--",
-                        capsize=3,
-                        label=(f"$R\\geq 100$ pc, "
-                               f"$t_{{\\rm obs}}={t_obs:.0f}$ Myr"))
-
-    # Observed reference bands
+    # Observed reference band
     ax.axhspan(OBSERVED_ALPHA - 0.1, OBSERVED_ALPHA + 0.1,
                color=C_BLUE, alpha=0.10, zorder=0)
     ax.axhline(OBSERVED_ALPHA, color=C_BLUE, ls="--", lw=1.5, alpha=0.5,
-               label=f"Watkins+23 $R\\geq 30$ pc $= {OBSERVED_ALPHA} \\pm 0.1$")
-
-    ax.axhspan(OBSERVED_ALPHA - 0.1, OBSERVED_ALPHA + 0.1,
-               color=C_GREEN, alpha=0.10, zorder=0)
-    ax.axhline(OBSERVED_ALPHA, color=C_GREEN, ls="--", lw=1.5, alpha=0.5,
-               label=f"Nath+20 $R\\geq 100$ pc $= {OBSERVED_ALPHA} \\pm 0.1$")
+               label=f"Watkins+23 $= {OBSERVED_ALPHA} \\pm 0.1$")
 
     if xlabel is None:
         xlabel = (r"CMF slope $\alpha$ "
@@ -1755,13 +1818,10 @@ def write_synthesis_csv(synth_input, sensitivity: List[Dict],
     header = ["method", "cloud_mf_slope", "sfe_median", "sfe_sigma_dex",
               "cloud_mf_max",
               "t_obs_Myr", "R_complete_pc", "N_bubble", "N_surviving",
-              "N_fit_mle30", "mle_slope_30", "mle_slope_err_30",
-              "mle_slope_std",
+              "bic_R_break_pc", "bic_slope_mle", "bic_slope_err_mle", "bic_N_mle",
+              "bic_slope_bin", "bic_slope_err_bin", "bic_N_bin",
               "N_fit_mle_le10", "mle_slope_le10", "mle_slope_err_le10",
-              "N_fit_mle100", "mle_slope_100", "mle_slope_err_100",
               "bin_N_le10", "bin_slope_le10", "bin_slope_err_le10",
-              "bin_N_30", "bin_slope_30", "bin_slope_err_30",
-              "bin_N_100", "bin_slope_100", "bin_slope_err_100",
               "runs_used"]
 
     def _fmt(v):
@@ -1779,25 +1839,19 @@ def write_synthesis_csv(synth_input, sensitivity: List[Dict],
             f"{synth['R_complete']:.1f}",
             synth["N_bubble"],
             synth["N_surviving"],
-            synth.get("N_fit", ""),
-            _fmt(synth["synth_slope"]),
-            _fmt(synth.get("synth_slope_err", np.nan)),
-            "",
+            _fmt(synth.get("bic_R_break", np.nan)),
+            _fmt(synth.get("bic_slope_mle", np.nan)),
+            _fmt(synth.get("bic_slope_err_mle", np.nan)),
+            synth.get("bic_N_mle", ""),
+            _fmt(synth.get("bic_slope_bin", np.nan)),
+            _fmt(synth.get("bic_slope_err_bin", np.nan)),
+            synth.get("bic_N_bin", ""),
             synth.get("N_fit_le10", ""),
             _fmt(synth.get("synth_slope_le10", np.nan)),
             _fmt(synth.get("synth_slope_err_le10", np.nan)),
-            synth.get("N_fit_nath", ""),
-            _fmt(synth.get("synth_slope_nath", np.nan)),
-            _fmt(synth.get("synth_slope_err_nath", np.nan)),
             synth.get("bin_N_le10", ""),
             _fmt(synth.get("bin_slope_le10", np.nan)),
             _fmt(synth.get("bin_slope_err_le10", np.nan)),
-            synth.get("bin_N_30", ""),
-            _fmt(synth.get("bin_slope_30", np.nan)),
-            _fmt(synth.get("bin_slope_err_30", np.nan)),
-            synth.get("bin_N_100", ""),
-            _fmt(synth.get("bin_slope_100", np.nan)),
-            _fmt(synth.get("bin_slope_err_100", np.nan)),
             synth.get("runs_used", ""),
         ])
 
@@ -1813,12 +1867,10 @@ def write_synthesis_csv(synth_input, sensitivity: List[Dict],
             "",
             "",
             s["N_surviving"],
-            s.get("N_fit", ""),
+            _fmt(s.get("bic_R_break", np.nan)),
             _fmt(s["synth_slope"]),
             _fmt(slope_err),
-            _fmt(slope_std),
-            "", "", "",
-            "", "", "",
+            s.get("N_fit", ""),
             "", "", "",
             "", "", "",
             "", "", "",
@@ -1899,27 +1951,25 @@ def print_summary(records: List[Dict],
         print(f"    N_recollapsed = {synth['N_recollapsed']}")
         print(f"    N_below_cut  = {synth['N_below_complete']}")
 
+        bic_R = synth.get('bic_R_break', np.nan)
+        bic_R_str = f"{bic_R:.1f}" if np.isfinite(bic_R) else "N/A"
+        print(f"    --- BIC tail detection ---")
+        print(f"    R_break (BIC) = {bic_R_str} pc")
         print(f"    --- MLE fits ---")
         print(f"    R<={R_COMPLETE_10PC:.0f} pc : "
               f"slope = {_slope_str(synth.get('synth_slope_le10', np.nan), synth.get('synth_slope_err_le10', np.nan))}"
               f"  (N={synth.get('N_fit_le10', 'N/A')})")
-        print(f"    R>={synth['R_complete']:.0f} pc (Watkins+23): "
-              f"slope = {_slope_str(synth['synth_slope'], synth.get('synth_slope_err', np.nan))}"
-              f"  (N={synth.get('N_fit', 'N/A')})  "
+        print(f"    R>={bic_R_str} pc (BIC): "
+              f"slope = {_slope_str(synth.get('bic_slope_mle', np.nan), synth.get('bic_slope_err_mle', np.nan))}"
+              f"  (N={synth.get('bic_N_mle', 'N/A')})  "
               f"[observed = {OBSERVED_ALPHA}]")
-        print(f"    R>={R_COMPLETE_NATH20:.0f} pc (Nath+20)  : "
-              f"slope = {_slope_str(synth.get('synth_slope_nath', np.nan), synth.get('synth_slope_err_nath', np.nan))}"
-              f"  (N={synth.get('N_fit_nath', 'N/A')})")
-        print(f"    --- Binned LSQ fits (60 log-bins) ---")
+        print(f"    --- Binned LSQ fits ---")
         print(f"    R<={R_COMPLETE_10PC:.0f} pc : "
               f"slope = {_slope_str(synth.get('bin_slope_le10', np.nan), synth.get('bin_slope_err_le10', np.nan))}"
               f"  (N_bins={synth.get('bin_N_le10', 'N/A')})")
-        print(f"    R>={synth['R_complete']:.0f} pc : "
-              f"slope = {_slope_str(synth.get('bin_slope_30', np.nan), synth.get('bin_slope_err_30', np.nan))}"
-              f"  (N_bins={synth.get('bin_N_30', 'N/A')})")
-        print(f"    R>={R_COMPLETE_NATH20:.0f} pc: "
-              f"slope = {_slope_str(synth.get('bin_slope_100', np.nan), synth.get('bin_slope_err_100', np.nan))}"
-              f"  (N_bins={synth.get('bin_N_100', 'N/A')})")
+        print(f"    R>={bic_R_str} pc (BIC): "
+              f"slope = {_slope_str(synth.get('bic_slope_bin', np.nan), synth.get('bic_slope_err_bin', np.nan))}"
+              f"  (N_bins={synth.get('bic_N_bin', 'N/A')})")
         if synth.get("runs_used"):
             print(f"    Runs used    : {synth['runs_used']}")
 
