@@ -1400,7 +1400,7 @@ def plot_posterior(stages: List[Dict], system_name: str,
                        alpha=0.8, label=r"Literature $M_{\rm cl}$", zorder=5)
             ax.axvspan(log_Mcl_true - sigma_dex, log_Mcl_true + sigma_dex,
                        color=C_GREEN, alpha=0.12, zorder=1)
-            ax.legend(fontsize=8, framealpha=0.7, loc="best")
+            ax.legend(fontsize=8, framealpha=0.7, loc="upper left")
 
         ax.set_xlabel(r"$\log_{10}\,(M_{\rm cl}\;/\;M_\odot)$")
         ax.set_ylabel(r"$p(\log M_{\rm cl} \mid \mathrm{data})$")
@@ -1587,7 +1587,7 @@ def plot_2d_scatter(stage: Dict, records: List[Dict],
 
     ax.set_xlabel(r"$\log_{10}\,(M_{\rm cl}\;/\;M_\odot)$")
     ax.set_ylabel(r"$\log_{10}\,(n_{\rm core}\;/\;\mathrm{cm}^{-3})$")
-    ax.legend(fontsize=8, framealpha=0.7, loc="best")
+    ax.legend(fontsize=8, framealpha=0.7, loc="upper left")
 
     fig.tight_layout()
     suffix = f"_{tag}" if tag else ""
@@ -1651,7 +1651,7 @@ def plot_Rt_tracks(stage: Dict, records: List[Dict],
 
     ax.set_xlabel(r"$t$ [Myr]")
     ax.set_ylabel(r"$R$ [pc]")
-    ax.legend(fontsize=9, framealpha=0.7)
+    ax.legend(fontsize=9, framealpha=0.7, loc="upper left")
 
     fig.tight_layout()
     suffix = f"_{tag}" if tag else ""
