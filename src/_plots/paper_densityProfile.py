@@ -482,7 +482,7 @@ def plot_shell_evolution(simulations: dict, output_dir: Path, fmt: str = 'pdf',
         rCloud = safe_get(output, 'rCloud')
         rCloud_val = rCloud[-1] if rCloud.size > 0 and rCloud[-1] > 0 else None
 
-        # --- Add phase markers to all three panels (color-coded per profile) ---
+        # --- Add markers to all three panels (color-coded per profile) ---
         for ax in axes:
             add_plot_markers(
                 ax, t,
@@ -491,11 +491,10 @@ def plot_shell_evolution(simulations: dict, output_dir: Path, fmt: str = 'pdf',
                 rcloud=rCloud_val if ax is axes[0] else None,
                 isCollapse=isCollapse,
                 dataset_color=s['color'],
-                show_phase=True,
+                show_phase=False,
                 show_rcloud=(ax is axes[0]),
                 show_collapse=True,
                 show_labels=True,
-                show_momentum_labels=True,  # suppress M labels to reduce clutter
             )
 
         # Panel (a): R(t) with horizontal rCloud line
@@ -525,7 +524,7 @@ def plot_shell_evolution(simulations: dict, output_dir: Path, fmt: str = 'pdf',
 
     # Legend: profile colours + marker entries
     marker_handles = get_marker_legend_handles(
-        include_phase=True, include_rcloud=True, include_collapse=False
+        include_phase=False, include_rcloud=True, include_collapse=False
     )
     add_legend(axes[1], [t for t in PROFILE_ORDER if t in simulations],
                extra_handles=marker_handles, loc='best', fontsize=9)
