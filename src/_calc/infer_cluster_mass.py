@@ -1792,15 +1792,19 @@ def _build_synthetic_obs(
     frac_sigma: float = 0.10,
     t_min: float = 0.1,
     rng_seed: int = None,
+    max_retries: int = 100,
 ) -> Dict:
     """
     Draw a random grid model and sample observables at a random time.
 
-    Picks a random record, chooses a random snapshot with t > *t_min* Myr,
-    and returns synthetic observables (R, t, v, n_edge) with Gaussian
-    uncertainties of *frac_sigma* (fractional, default 10 %).
+    Picks a random record, chooses a random *expanding* snapshot with
+    t > *t_min* Myr, and returns synthetic observables (R, t, v, n_edge)
+    with Gaussian uncertainties of *frac_sigma* (fractional, default 10 %).
     The true stellar mass is stored as ``Mcl_lit`` so the posterior can
     be compared against the known answer.
+
+    Only expanding snapshots (v > 0, R > 0) are eligible so that the
+    synthetic observation is physically consistent with an expanding bubble.
 
     Parameters
     ----------
@@ -1812,6 +1816,8 @@ def _build_synthetic_obs(
         Minimum bubble age [Myr] for the sampled snapshot.
     rng_seed : int, optional
         Random seed for reproducibility.
+    max_retries : int
+        Maximum attempts to find an eligible model (default 100).
 
     Returns
     -------
@@ -1820,22 +1826,32 @@ def _build_synthetic_obs(
     """
     rng = np.random.default_rng(rng_seed)
 
-    # Filter to records that have snapshots past t_min
-    eligible = [r for r in records if r["t"][-1] > t_min]
+    # Filter to records that have expanding snapshots past t_min
+    eligible = []
+    for r in records:
+        mask = (r["t"] > t_min) & (r["v_kms"] > 0) & (r["R"] > 0)
+        if mask.any():
+            eligible.append(r)
     if not eligible:
         raise ValueError(
-            f"No grid model has snapshots beyond t_min = {t_min} Myr"
+            f"No grid model has expanding snapshots beyond t_min = {t_min} Myr"
         )
 
     rec = eligible[rng.integers(len(eligible))]
 
-    # Pick a random time index where t > t_min
-    valid_idx = np.where(rec["t"] > t_min)[0]
+    # Pick a random time index where t > t_min and shell is expanding
+    valid_idx = np.where(
+        (rec["t"] > t_min) & (rec["v_kms"] > 0) & (rec["R"] > 0)
+    )[0]
     idx = rng.choice(valid_idx)
 
     t_sample = float(rec["t"][idx])
     R_sample = float(rec["R"][idx])
-    v_sample = float(np.abs(rec["v_kms"][idx]))
+    v_sample = float(rec["v_kms"][idx])  # preserve sign (should be > 0)
+
+    assert v_sample > 0, (
+        f"Sampled v = {v_sample} km/s <= 0; filtering logic is broken"
+    )
 
     # Edge density from the cloud profile
     R_cloud = rec.get("rCloud", cloud_radius_uniform(rec["mCloud"], rec["nCore"]))
@@ -1856,9 +1872,9 @@ def _build_synthetic_obs(
         true_Mcl, rec["mCloud"], rec["sfe"], rec["nCore"], rec["folder"],
     )
     logger.info(
-        "  Sampled at t = %.3f Myr: R = %.2f pc, v = %.1f km/s, "
-        "n_edge = %.0f cm^-3",
-        t_sample, R_sample, v_sample, n_edge_sample,
+        "  Sampled at t = %.3f Myr: R = %.2f pc, v = %.1f km/s "
+        "(expanding: %s), n_edge = %.0f cm^-3",
+        t_sample, R_sample, v_sample, v_sample > 0, n_edge_sample,
     )
 
     obs = {
