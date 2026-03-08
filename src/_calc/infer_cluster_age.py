@@ -17,7 +17,9 @@ scoring how well R_model(t), v_model(t), and n_edge(R(t)) match the
 observations.  A cloud-mass-function prior weights the posterior.
 
 Progressive degeneracy breaking is demonstrated by running inference
-with increasing observable sets: (R), (R,v), (R,n), (R,v,n).
+with increasing observable sets.  When M_cl is provided (recommended),
+the stages are: (M_cl,R), (M_cl,R,v), (M_cl,R,n), (M_cl,R,v,n).
+Without M_cl: (R), (R,v), (R,n), (R,v,n).
 
 How to run
 ----------
@@ -34,8 +36,10 @@ used by ``infer_cluster_mass.py``).
    The script ships with the same targets as ``infer_cluster_mass.py``.
 
 2. *Manual observables* -- supply ``--R-obs``, ``--sigma-R``
-   (required), plus optionally ``--v-obs``, ``--sigma-v``,
-   ``--n-edge-obs``, ``--sigma-n-edge``.
+   (required), plus optionally ``--Mcl-obs``, ``--sigma-Mcl-dex``,
+   ``--v-obs``, ``--sigma-v``, ``--n-edge-obs``, ``--sigma-n-edge``.
+   Providing ``--Mcl-obs`` (cluster mass) is highly recommended as
+   it is the single strongest constraint on age.
 
 **Outputs (saved to fig/infer_cluster_age/<folder>/ by default):**
 
@@ -122,6 +126,8 @@ def compute_age_posterior(
     records: List[Dict],
     R_obs: float,
     sigma_R: float,
+    Mcl_obs: float = None,
+    sigma_Mcl_dex: float = None,
     v_obs: float = None,
     sigma_v: float = None,
     n_edge_obs: float = None,
@@ -135,9 +141,9 @@ def compute_age_posterior(
     Compute posterior over bubble age from TRINITY grid trajectories.
 
     For every grid model and every snapshot time t_j, evaluate the
-    Gaussian log-likelihood of the observables (R and optionally v,
-    n_edge).  The prior includes a CMF term and log-uniform priors on
-    sfe and n_core (identical to ``infer_cluster_mass``).
+    Gaussian log-likelihood of the observables (R, and optionally M_cl,
+    v, n_edge).  The prior includes a CMF term and log-uniform priors
+    on sfe and n_core (identical to ``infer_cluster_mass``).
 
     The marginal posterior over age is obtained by summing weights in
     time bins.
@@ -150,6 +156,10 @@ def compute_age_posterior(
         Observed bubble radius [pc].
     sigma_R : float
         Uncertainty in R [pc].
+    Mcl_obs : float, optional
+        Observed / estimated cluster mass [Msun].
+    sigma_Mcl_dex : float, optional
+        Uncertainty in log10(M_cl) [dex].
     v_obs : float, optional
         Observed expansion velocity [km/s].
     sigma_v : float, optional
@@ -178,6 +188,8 @@ def compute_age_posterior(
 
     # Build observable description
     obs_parts = [r"$R$"]
+    if Mcl_obs is not None and sigma_Mcl_dex is not None:
+        obs_parts.append(r"$M_{\rm cl}$")
     if v_obs is not None and sigma_v is not None:
         obs_parts.append(r"$v_{\rm exp}$")
     if n_edge_obs is not None and sigma_n_edge is not None:
@@ -196,6 +208,14 @@ def compute_age_posterior(
         R_cloud = rec["rCloud"]
         if not np.isfinite(R_cloud) or R_cloud <= 0:
             R_cloud = cloud_radius_uniform(rec["mCloud"], rec["nCore"])
+
+        # Cluster mass likelihood (log-space Gaussian, evaluated once per model)
+        log_L_Mcl = 0.0
+        if Mcl_obs is not None and sigma_Mcl_dex is not None:
+            log10_Mcl_model = np.log10(rec["M_star"])
+            log10_Mcl_obs = np.log10(Mcl_obs)
+            log_L_Mcl = -0.5 * ((log10_Mcl_obs - log10_Mcl_model)
+                                 / sigma_Mcl_dex) ** 2
 
         # CMF + Jeffreys prior (same as infer_cluster_mass)
         log_prior = ((cmf_slope + 1.0) * np.log(rec["mCloud"])
@@ -236,7 +256,7 @@ def compute_age_posterior(
                                      / sigma_logn) ** 2
 
             all_t.append(t_j)
-            all_log_w.append(log_L + log_prior)
+            all_log_w.append(log_L + log_L_Mcl + log_prior)
 
     if not all_t:
         logger.warning("No valid (model, snapshot) pairs — posterior is empty")
@@ -328,6 +348,7 @@ def compute_age_posterior(
 def run_progressive_inference(
     records: List[Dict],
     R_obs: float, sigma_R: float,
+    Mcl_obs: float = None, sigma_Mcl_dex: float = None,
     v_obs: float = None, sigma_v: float = None,
     n_edge_obs: float = None, sigma_n_edge: float = None,
     cmf_slope: float = -1.8,
@@ -338,55 +359,71 @@ def run_progressive_inference(
     """
     Run age inference with progressively more observables.
 
+    When M_cl is provided it is included in every stage, since knowing
+    the cluster mass is one of the strongest constraints on age.
+
+    Stages:
+      (a) M_cl, R
+      (b) M_cl, R, v_exp
+      (c) M_cl, R, n_edge
+      (d) M_cl, R, v_exp, n_edge
+
+    If M_cl is not provided, stages use R alone as the baseline.
+
     Returns
     -------
     list of dict
         Each dict is a posterior result with an added 'label' key.
     """
     stages = []
+    has_Mcl = Mcl_obs is not None and sigma_Mcl_dex is not None
 
-    # Stage 1: R only
-    res = compute_age_posterior(
-        records, R_obs, sigma_R,
+    # Common kwargs
+    base_kw = dict(
+        Mcl_obs=Mcl_obs, sigma_Mcl_dex=sigma_Mcl_dex,
         cmf_slope=cmf_slope, profile_assumed=profile_assumed,
-        t_min=t_min, t_max=t_max)
+        t_min=t_min, t_max=t_max,
+    )
+
+    # Stage 1: (M_cl,) R
+    res = compute_age_posterior(
+        records, R_obs, sigma_R, **base_kw)
     if res is not None:
-        res["label"] = r"$R$"
+        res["label"] = r"$M_{\rm cl}, R$" if has_Mcl else r"$R$"
         stages.append(res)
 
-    # Stage 2: R + v_exp
+    # Stage 2: (M_cl,) R, v_exp
     if v_obs is not None and sigma_v is not None:
         res = compute_age_posterior(
             records, R_obs, sigma_R,
-            v_obs=v_obs, sigma_v=sigma_v,
-            cmf_slope=cmf_slope, profile_assumed=profile_assumed,
-            t_min=t_min, t_max=t_max)
+            v_obs=v_obs, sigma_v=sigma_v, **base_kw)
         if res is not None:
-            res["label"] = r"$R, v_{\rm exp}$"
+            res["label"] = (r"$M_{\rm cl}, R, v_{\rm exp}$" if has_Mcl
+                            else r"$R, v_{\rm exp}$")
             stages.append(res)
 
-    # Stage 3: R + n_edge
+    # Stage 3: (M_cl,) R, n_edge
     if n_edge_obs is not None and sigma_n_edge is not None:
         res = compute_age_posterior(
             records, R_obs, sigma_R,
             n_edge_obs=n_edge_obs, sigma_n_edge=sigma_n_edge,
-            cmf_slope=cmf_slope, profile_assumed=profile_assumed,
-            t_min=t_min, t_max=t_max)
+            **base_kw)
         if res is not None:
-            res["label"] = r"$R, n_{\rm edge}$"
+            res["label"] = (r"$M_{\rm cl}, R, n_{\rm edge}$" if has_Mcl
+                            else r"$R, n_{\rm edge}$")
             stages.append(res)
 
-    # Stage 4: R + v + n_edge
+    # Stage 4: (M_cl,) R, v, n_edge
     if (v_obs is not None and sigma_v is not None
             and n_edge_obs is not None and sigma_n_edge is not None):
         res = compute_age_posterior(
             records, R_obs, sigma_R,
             v_obs=v_obs, sigma_v=sigma_v,
             n_edge_obs=n_edge_obs, sigma_n_edge=sigma_n_edge,
-            cmf_slope=cmf_slope, profile_assumed=profile_assumed,
-            t_min=t_min, t_max=t_max)
+            **base_kw)
         if res is not None:
-            res["label"] = r"$R, v_{\rm exp}, n_{\rm edge}$"
+            res["label"] = (r"$M_{\rm cl}, R, v_{\rm exp}, n_{\rm edge}$"
+                            if has_Mcl else r"$R, v_{\rm exp}, n_{\rm edge}$")
             stages.append(res)
 
     return stages
@@ -415,26 +452,28 @@ def plot_posterior(stages: List[Dict], system_name: str,
          "panel_label": "(b)", "color": C_VERMILLION},
         {"missing": r"No $n_{\rm edge}$ available",
          "panel_label": "(c)", "color": C_GREEN},
-        {"missing": r"No $v_{\rm exp}$ + $n_{\rm edge}$",
+        {"missing": r"Requires $v_{\rm exp}$ and $n_{\rm edge}$",
          "panel_label": "(d)", "color": C_PURPLE},
     ]
 
-    # Literature age overlay
+    # Literature / observed age overlay
     _has_lit_t = obs_dict.get("t_obs") is not None
     if _has_lit_t:
         _t_true = obs_dict["t_obs"]
         _sigma_t = obs_dict.get("sigma_t", 0.0)
     _lit_label_used = False
 
-    # Map stages to fixed slots
+    # Map stages to fixed slots by matching observable substrings
     slot_stage = [None] * 4
     for stage in stages:
         lbl = stage.get("label", "")
-        if "v_{\\rm exp}, n" in lbl or "v_{\\rm exp}, n_{\\rm edge}" in lbl:
+        has_v = "v_{\\rm exp}" in lbl
+        has_n = "n_{\\rm edge}" in lbl
+        if has_v and has_n:
             slot_stage[3] = stage
-        elif "n_{\\rm edge}" in lbl and "v" not in lbl:
+        elif has_n and not has_v:
             slot_stage[2] = stage
-        elif "v_{\\rm exp}" in lbl and "n" not in lbl:
+        elif has_v and not has_n:
             slot_stage[1] = stage
         else:
             slot_stage[0] = stage
@@ -589,6 +628,10 @@ def plot_posterior(stages: List[Dict], system_name: str,
 
     # System info in panel (a)
     obs_lines = [system_name]
+    if obs_dict.get("Mcl_obs") is not None:
+        obs_lines.append(
+            f"$M_{{\\rm cl}} = {obs_dict['Mcl_obs']:.0f}"
+            f" \\pm {obs_dict.get('sigma_Mcl_dex', 0.3):.2f}$ dex")
     obs_lines.append(
         f"$R = {obs_dict['R_obs']:.2f} \\pm {obs_dict['sigma_R']:.2f}$ pc")
     if obs_dict.get("v_obs") is not None:
@@ -716,6 +759,10 @@ def print_inference_summary(system_name: str, stages: List[Dict],
     print(f"  AGE INFERENCE SUMMARY -- System: {system_name}")
     print("=" * 76)
 
+    if obs_dict.get("Mcl_obs") is not None:
+        print(f"  M_cl = {obs_dict['Mcl_obs']:.0f} Msun "
+              f"(log = {np.log10(obs_dict['Mcl_obs']):.2f} "
+              f"+/- {obs_dict.get('sigma_Mcl_dex', 0.3):.2f} dex)")
     print(f"  R = {obs_dict['R_obs']:.2f} +/- {obs_dict['sigma_R']:.2f} pc")
     if obs_dict.get("v_obs") is not None:
         print(f"  v = {obs_dict['v_obs']:.1f} +/- {obs_dict['sigma_v']:.1f} km/s")
@@ -739,6 +786,7 @@ def print_inference_summary(system_name: str, stages: List[Dict],
         n_eff = stage["N_eff"]
         label = stage.get("label", "?")
         label_clean = label.replace(r"$", "").replace(r"\rm ", "")
+        label_clean = label_clean.replace(r"M_{\rm cl}", "M_cl")
         label_clean = label_clean.replace(r"_{\rm exp}", "_exp")
         label_clean = label_clean.replace(r"_{\rm edge}", "_edge")
         label_clean = label_clean.replace("\\", "")
@@ -805,10 +853,13 @@ def _build_synthetic_obs(
     sigma_v = max(frac_sigma * v_sample, 0.5) if v_sample > 0 else None
     sigma_n = max(frac_sigma * n_edge_sample, 1.0) if n_edge_sample > N_ISM_FLOOR else None
 
+    true_Mcl = rec["M_star"]
+
     logger.info(
-        "SYNTHETIC age test -- true answer: t = %.3f Myr "
+        "SYNTHETIC age test -- true answer: t = %.3f Myr, M_cl = %.0f Msun "
         "(M_cloud = %.0f, sfe = %.2f, n_cl = %.0f cm^-3, folder = %s)",
-        t_sample, rec["mCloud"], rec["sfe"], rec["nCore"], rec["folder"],
+        t_sample, true_Mcl, rec["mCloud"], rec["sfe"], rec["nCore"],
+        rec["folder"],
     )
     logger.info(
         "  Sampled: R = %.2f pc, v = %.1f km/s, n_edge = %.0f cm^-3",
@@ -818,8 +869,10 @@ def _build_synthetic_obs(
     obs = {
         "R_obs": R_sample,
         "sigma_R": sigma_R,
-        "t_true": t_sample,            # ground truth (not used in inference)
-        "t_obs": t_sample,              # for overlay on plots
+        "Mcl_obs": true_Mcl,
+        "sigma_Mcl_dex": 0.15,          # realistic ~0.15 dex uncertainty
+        "t_true": t_sample,              # ground truth (not used in inference)
+        "t_obs": t_sample,               # for overlay on plots
         "sigma_t": frac_sigma * t_sample,
         "ref": "synthetic (self-test)",
         "note": (f"Drawn from {rec['folder']}; "
@@ -871,6 +924,15 @@ Examples:
     parser.add_argument(
         "--sigma-R", type=float, default=None,
         help="Uncertainty in R [pc].",
+    )
+    parser.add_argument(
+        "--Mcl-obs", type=float, default=None,
+        help="Observed / estimated cluster mass [Msun]. "
+             "Strongly constrains which grid models are plausible.",
+    )
+    parser.add_argument(
+        "--sigma-Mcl-dex", type=float, default=None,
+        help="Uncertainty in log10(Mcl) [dex] (default: 0.3 if Mcl-obs given).",
     )
     parser.add_argument(
         "--v-obs", type=float, default=None,
@@ -973,6 +1035,10 @@ def main(argv: Optional[List[str]] = None) -> int:
     elif args.system is not None:
         obs = dict(OBSERVED_SYSTEMS[args.system])
         system_name = args.system
+        # Map Mcl_lit -> Mcl_obs for age inference (M_cl is an input here)
+        if obs.get("Mcl_lit") is not None and "Mcl_obs" not in obs:
+            obs["Mcl_obs"] = obs["Mcl_lit"]
+            obs["sigma_Mcl_dex"] = obs.get("sigma_Mcl_lit_dex", 0.3)
     else:
         system_name = "custom"
 
@@ -981,6 +1047,13 @@ def main(argv: Optional[List[str]] = None) -> int:
         obs["R_obs"] = args.R_obs
     if args.sigma_R is not None:
         obs["sigma_R"] = args.sigma_R
+    if args.Mcl_obs is not None:
+        obs["Mcl_obs"] = args.Mcl_obs
+    if args.sigma_Mcl_dex is not None:
+        obs["sigma_Mcl_dex"] = args.sigma_Mcl_dex
+    # Default sigma_Mcl_dex if Mcl_obs given without explicit uncertainty
+    if obs.get("Mcl_obs") is not None and obs.get("sigma_Mcl_dex") is None:
+        obs["sigma_Mcl_dex"] = 0.3
     if args.v_obs is not None:
         obs["v_obs"] = args.v_obs
     if args.sigma_v is not None:
@@ -1017,6 +1090,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     stages = run_progressive_inference(
         records,
         R_obs=obs["R_obs"], sigma_R=obs["sigma_R"],
+        Mcl_obs=obs.get("Mcl_obs"),
+        sigma_Mcl_dex=obs.get("sigma_Mcl_dex"),
         v_obs=obs.get("v_obs"), sigma_v=obs.get("sigma_v"),
         n_edge_obs=obs.get("n_edge_obs"),
         sigma_n_edge=obs.get("sigma_n_edge"),
