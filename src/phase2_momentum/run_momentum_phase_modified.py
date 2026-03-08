@@ -386,7 +386,6 @@ def get_ODE_momentum_pure(t: float, y: np.ndarray, snapshot: MomentumODESnapshot
     k_B = snapshot.k_B
     FABSi = snapshot.FABSi
     F_rad = snapshot.F_rad
-    Qi = snapshot.Qi
     mShell = snapshot.mShell
     mShell_dot = snapshot.mShell_dot
 
