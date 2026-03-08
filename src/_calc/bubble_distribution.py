@@ -1430,17 +1430,11 @@ def _plot_synth_row(axes_row: tuple, synth: Dict, row_label: str,
     bic_R_break = synth.get("bic_R_break", np.nan)
 
     if fit_method == "mle":
-        _add_hist_fit(ax_hist, synth.get("synth_slope_le10", np.nan),
-                      (R_min_all, R_COMPLETE_10PC), C_PURPLE,
-                      f"$R\\leq{R_COMPLETE_10PC:.0f}$")
         if np.isfinite(bic_R_break):
             _add_hist_fit(ax_hist, synth.get("bic_slope_mle", np.nan),
                           (bic_R_break, R_max_all), C_VERMILLION,
                           f"BIC tail $R\\geq{bic_R_break:.0f}$")
     else:
-        _add_hist_fit(ax_hist, synth.get("bin_slope_le10", np.nan),
-                      (R_min_all, R_COMPLETE_10PC), C_PURPLE,
-                      f"$R\\leq{R_COMPLETE_10PC:.0f}$")
         if np.isfinite(bic_R_break):
             _add_hist_fit(ax_hist, synth.get("bic_slope_bin", np.nan),
                           (bic_R_break, R_max_all), C_VERMILLION,
@@ -1521,11 +1515,6 @@ def _plot_synth_row(axes_row: tuple, synth: Dict, row_label: str,
 
     if fit_method == "mle":
         tag = "MLE"
-        # R <= 10 pc fit
-        _add_fit_line_upper(ax, synth.get("synth_slope_le10", np.nan),
-                            synth.get("synth_slope_err_le10", np.nan),
-                            R_COMPLETE_10PC, C_PURPLE, tag,
-                            valid, R_centres, dNdR)
         # BIC-detected tail
         if np.isfinite(bic_R_break):
             _add_fit_line(ax, synth.get("bic_slope_mle", np.nan),
@@ -1534,11 +1523,6 @@ def _plot_synth_row(axes_row: tuple, synth: Dict, row_label: str,
                           valid, R_centres, dNdR)
     else:  # binned
         tag = "Bin"
-        # R <= 10 pc
-        _add_fit_line_upper(ax, synth.get("bin_slope_le10", np.nan),
-                            synth.get("bin_slope_err_le10", np.nan),
-                            R_COMPLETE_10PC, C_PURPLE, tag,
-                            valid, R_centres, dNdR)
         # BIC-detected tail
         if np.isfinite(bic_R_break):
             _add_fit_line(ax, synth.get("bic_slope_bin", np.nan),
@@ -1546,23 +1530,9 @@ def _plot_synth_row(axes_row: tuple, synth: Dict, row_label: str,
                           bic_R_break, C_VERMILLION, f"{tag} BIC",
                           valid, R_centres, dNdR)
 
-    # Observed reference — solid line, transparent to reduce clutter
-    if valid.sum() >= 2:
-        R_ref = np.logspace(np.log10(R_centres[valid].min()),
-                            np.log10(R_centres[valid].max()), 50)
-        R_mid = np.sqrt(R_centres[valid].min() * R_centres[valid].max())
-        dN_mid = np.interp(np.log10(R_mid), np.log10(R_centres[valid]),
-                           np.log10(dNdR[valid]))
-        dNdR_obs = 10.0 ** (dN_mid + OBSERVED_ALPHA * (np.log10(R_ref) - np.log10(R_mid)))
-        ax.plot(R_ref, dNdR_obs, color=C_GREEN, ls="-", lw=1.5, alpha=0.35,
-                label=r"$R^{-2.2}$ (Watkins+2023)")
-
-    # Completeness / break lines
-    ax.axvline(R_COMPLETE_10PC, color=C_PURPLE, ls=":", lw=1.0, alpha=0.6)
+    # Break line
     if np.isfinite(bic_R_break):
         ax.axvline(bic_R_break, color=C_VERMILLION, ls=":", lw=1.2, alpha=0.8)
-    ax.axvspan(ax.get_xlim()[0], R_complete, color="grey", alpha=0.10,
-               zorder=0)
 
     ax.set_xscale("log")
     ax.set_yscale("log")
