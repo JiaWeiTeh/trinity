@@ -455,6 +455,8 @@ def plot_shell_evolution(simulations: dict, output_dir: Path, fmt: str = 'pdf',
     """
     logger.info("Figure 2: Shell Evolution")
 
+    T_MAX_EVOLUTION = 5.0  # Myr — only show the first 5 Myr
+
     fig, axes = plt.subplots(1, 3, figsize=(12, 3.5))
 
     for tag in PROFILE_ORDER:
@@ -463,20 +465,30 @@ def plot_shell_evolution(simulations: dict, output_dir: Path, fmt: str = 'pdf',
         output = simulations[tag]
         s = get_style(tag)
 
-        t = output.get('t_now')
-        R2 = safe_get(output, 'R2')
-        v2 = safe_get(output, 'v2') * V_AU2KMS  # convert pc/Myr -> km/s
-        mshell = safe_get(output, 'shell_mass')
+        t_full = output.get('t_now')
+        R2_full = safe_get(output, 'R2')
+        v2_full = safe_get(output, 'v2') * V_AU2KMS  # convert pc/Myr -> km/s
+        mshell_full = safe_get(output, 'shell_mass')
+
+        # Trim to first 5 Myr
+        mask = t_full <= T_MAX_EVOLUTION
+        t = t_full[mask]
+        R2 = R2_full[mask]
+        v2 = v2_full[mask]
+        mshell = mshell_full[mask]
 
         # Phase array (for transition markers)
-        phase = output.get('current_phase', as_array=False)
-        if phase is not None:
-            phase = np.asarray([str(p) for p in phase])
+        phase_raw = output.get('current_phase', as_array=False)
+        phase = None
+        if phase_raw is not None:
+            phase_full = np.asarray([str(p) for p in phase_raw])
+            phase = phase_full[mask]
         # Collapse flag
         isCollapse_raw = output.get('isCollapse', as_array=False)
         isCollapse = None
         if isCollapse_raw is not None:
-            isCollapse = np.array([bool(c) for c in isCollapse_raw])
+            isCollapse_full = np.array([bool(c) for c in isCollapse_raw])
+            isCollapse = isCollapse_full[mask]
 
         # Cloud radius (constant per run)
         rCloud = safe_get(output, 'rCloud')
@@ -508,6 +520,10 @@ def plot_shell_evolution(simulations: dict, output_dir: Path, fmt: str = 'pdf',
 
         # Panel (c): M_shell(t)
         axes[2].plot(t, mshell, color=s['color'], ls=s['ls'], lw=1.5)
+
+    # Set x-axis limit to 5 Myr on all panels
+    for ax in axes:
+        ax.set_xlim(0, T_MAX_EVOLUTION)
 
     axes[0].set_xlabel(r'$t$ [Myr]')
     axes[0].set_ylabel(r'$R$ [pc]')
