@@ -541,14 +541,15 @@ def plot_grid(folder_path, output_dir=None, ndens_filter=None,
         handles.extend(get_marker_legend_handles())
 
         leg = fig.legend(
-            handles=handles, loc="upper center", ncol=3,
+            handles=handles, loc="upper center", ncol=4,
             frameon=True, facecolor="white", framealpha=0.9, edgecolor="0.2",
-            bbox_to_anchor=(0.5, 1.05)
+            bbox_to_anchor=(0.5, 1.0),
+            fontsize=7,
         )
         leg.set_zorder(10)
 
-        fig.subplots_adjust(top=0.91)
-        fig.suptitle(f"{folder_name} (n{ndens})", fontsize=14, y=1.08)
+        fig.subplots_adjust(top=0.88)
+        fig.suptitle(f"{folder_name} (n{ndens})", fontsize=14, y=1.03)
 
         # Save figure to ./fig/{folder_name}/momentum_{ndens_tag}.pdf
         ndens_tag = f"n{ndens}"
