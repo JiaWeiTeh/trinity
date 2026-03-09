@@ -35,26 +35,28 @@ DOMINANCE_STRIP = (0.94, 1)  # (ymin, ymax) in AXES fraction (0..1) - doubled th
 # Main force fields for plotting (solid lines)
 # F_ram is plotted continuously; F_ram_wind and F_ram_SN are plotted dashed separately
 FORCE_FIELDS = [
-    ("F_grav",    "Gravity",                  "black"),
-    ("F_ram",     "Ram (thermal/wind)",       "b"),       # Continuous: thermal bubble + wind ram
-    ("F_ion_out", "Photoionised gas",         "#d62728"),
-    ("F_rad",     "Radiation (dir.+indir.)",  "#9467bd"),
+    ("F_grav",    "Gravity",                  "#1a1a1a"),
+    ("F_ram",     "Ram (thermal/wind)",       "#4878A8"),
+    ("F_ion_out", "Photoionised gas",         "#C0504D"),
+    ("F_rad",     "Radiation (dir.+indir.)",  "#D4839E"),
+    ("F_PISM",    "PISM (inner HII)",         "#999999"),
 ]
 
 # Additional dashed lines for wind/SN breakdown
 DASHED_FIELDS = [
-    ("F_ram_wind", "Wind",       "b"),       # Blue dashed
-    ("F_ram_SN",   "Supernovae", "#FFA500"), # Yellow/orange dashed
+    ("F_ram_wind", "Wind",       "#4878A8"),
+    ("F_ram_SN",   "Supernovae", "#C4A035"),
 ]
 
 # Colors for dominant bar (includes wind/SN subclassification)
 DOMINANT_COLORS = {
-    "F_grav": "black",
-    "F_ram": "b",
-    "F_ram_wind": "b",
-    "F_ram_SN": "#FFA500",
-    "F_ion_out": "#d62728",
-    "F_rad": "#9467bd",
+    "F_grav":     "#1a1a1a",
+    "F_ram":      "#4878A8",
+    "F_ram_wind": "#4878A8",
+    "F_ram_SN":   "#C4A035",
+    "F_ion_out":  "#C0504D",
+    "F_rad":      "#D4839E",
+    "F_PISM":     "#999999",
 }
 
 
@@ -114,11 +116,19 @@ def load_run(data_path: Path):
     # Extract main force fields
     forces_dict = {}
     for field, _, _ in FORCE_FIELDS:
+        if field == "F_PISM":
+            continue  # handled separately below
         forces_dict[field] = np.nan_to_num(output.get(field), nan=0.0)
 
     # Extract dashed force fields (wind/SN breakdown)
     for field, _, _ in DASHED_FIELDS:
         forces_dict[field] = np.nan_to_num(output.get(field), nan=0.0)
+
+    # PISM: press_HII_in is a pressure — convert to force via F = P * 4πR²
+    press_HII_in = np.nan_to_num(output.get('press_HII_in'), nan=0.0)
+    R2_safe = np.nan_to_num(r, nan=0.0)
+    F_PISM = press_HII_in * 4.0 * np.pi * R2_safe**2
+    forces_dict["F_PISM"] = F_PISM
 
     # Stack main forces for integration
     forces = np.vstack([forces_dict[field] for field, _, _ in FORCE_FIELDS])
@@ -166,7 +176,7 @@ def dominant_bins_impulse(t, forces_dict, dt=0.05):
     n_bins = len(edges) - 1
 
     # Fields to consider for dominance (main forces)
-    main_fields = ["F_grav", "F_ram", "F_ion_out", "F_rad"]
+    main_fields = ["F_grav", "F_ram", "F_ion_out", "F_rad", "F_PISM"]
 
     winners = []
 
@@ -261,7 +271,7 @@ def plot_from_path(data_input: str, output_dir: str = None):
 
     ax.set_title(f"Momentum Evolution: {data_path.parent.name}")
     ax.set_xlabel("t [Myr]")
-    ax.set_ylabel(r"$p(t)=\int F\,dt$")
+    ax.set_ylabel(r"$p(t)=\int F\,\mathrm{d}t$ [$M_\odot\,\mathrm{pc}\,\mathrm{Myr}^{-1}$]")
 
     # Legend - force lines + markers from helper
     handles = []
@@ -303,10 +313,7 @@ def plot_momentum_lines_on_ax(
         show_collapse=show_collapse
     )
 
-    # --- optional smoothing before integrating
-    F = smooth_2d(forces, smooth_window, mode=smooth_mode)
-
-    # === Dominant force based on impulse in each bin
+    # === Dominant force based on impulse in each bin (uses raw forces_dict)
     edges, winners = dominant_bins_impulse(t, forces_dict, dt=DOMINANCE_DT)
     y0, y1 = DOMINANCE_STRIP
 
@@ -339,8 +346,9 @@ def plot_momentum_lines_on_ax(
                 zorder=10
             )
 
-    # --- integrate each force: p_i(t) = ∫ F_i dt  (signed)
-    P = cumtrapz_2d(F, t)  # shape (n_forces, n_time)
+    # --- integrate raw forces first, then smooth the resulting momentum curves
+    P_raw = cumtrapz_2d(forces, t)  # shape (n_forces, n_time)
+    P = smooth_2d(P_raw, smooth_window, mode=smooth_mode)
 
     def plot_abs_with_sign_linestyle(ax, x, y, *, color, label=None, lw=1.6, alpha=0.95, zorder=3, base_ls="-"):
         """Plot |y| with solid for positive, dashed for negative."""
@@ -405,18 +413,19 @@ def plot_momentum_lines_on_ax(
     for (field, label, color), Pi in zip(FORCE_FIELDS, P):
         plot_abs_with_sign_linestyle(ax, t, Pi, color=color, label=label, lw=lw, alpha=alpha, zorder=3)
 
-    # --- plot wind/SN breakdown (dashed lines)
+    # --- plot wind/SN breakdown (dashed lines) — integrate raw, then smooth
     for field, label, color in DASHED_FIELDS:
         F_dashed = forces_dict[field]
-        if smooth_window:
-            F_dashed = smooth_1d(F_dashed, smooth_window, mode=smooth_mode)
         P_dashed = cumtrapz_2d(F_dashed[None, :], t)[0]
+        if smooth_window:
+            P_dashed = smooth_1d(P_dashed, smooth_window, mode=smooth_mode)
         plot_abs_with_sign_linestyle(ax, t, P_dashed, color=color, label=label,
                                       lw=lw*0.8, alpha=alpha*0.8, zorder=2, base_ls="--")
 
-    # net momentum (signed): integrate F_net = sum(outward) - gravity
-    F_net = F[1:].sum(axis=0) - F[0]
-    P_net = cumtrapz_2d(F_net[None, :], t)[0]
+    # net momentum (signed): integrate F_net = sum(outward) - gravity, using raw forces
+    F_net = forces[1:].sum(axis=0) - forces[0]
+    P_net_raw = cumtrapz_2d(F_net[None, :], t)[0]
+    P_net = smooth_1d(P_net_raw, smooth_window, mode=smooth_mode) if smooth_window else P_net_raw
     plot_abs_with_sign_linestyle(ax, t, P_net, color="darkgrey", label="Net", lw=net_lw, alpha=0.8, zorder=4)
 
     ax.set_xlim(0, t.max())
@@ -526,7 +535,7 @@ def plot_grid(folder_path, output_dir=None, ndens_filter=None,
                         mlabel = rf"$M_{{\rm cloud}}=10^{{{mexp}}}\,M_\odot$"
                     else:
                         mlabel = rf"$M_{{\rm cloud}}={mcoeff}\times10^{{{mexp}}}\,M_\odot$"
-                    ax.set_ylabel(mlabel + "\n" + r"$p(t)=\int F\,dt$")
+                    ax.set_ylabel(mlabel + "\n" + r"$p(t)=\int F\,\mathrm{d}t$ [$M_\odot\,\mathrm{pc}\,\mathrm{Myr}^{-1}$]")
 
                 if i == nrows - 1:
                     ax.set_xlabel("t [Myr]")
