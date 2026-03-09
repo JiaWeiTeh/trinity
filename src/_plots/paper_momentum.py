@@ -113,19 +113,27 @@ def load_run(data_path: Path):
     # Load isCollapse for collapse indicator
     isCollapse = np.array(output.get('isCollapse', as_array=False))
 
+    # Helper: safely get a numeric field (handles None values from missing keys)
+    def safe_field(field):
+        arr = output.get(field)
+        if arr is None:
+            return np.zeros(len(output))
+        arr = np.where(arr == None, np.nan, arr).astype(float)
+        return np.nan_to_num(arr, nan=0.0)
+
     # Extract main force fields
     forces_dict = {}
     for field, _, _ in FORCE_FIELDS:
         if field == "F_PISM":
             continue  # handled separately below
-        forces_dict[field] = np.nan_to_num(output.get(field), nan=0.0)
+        forces_dict[field] = safe_field(field)
 
     # Extract dashed force fields (wind/SN breakdown)
     for field, _, _ in DASHED_FIELDS:
-        forces_dict[field] = np.nan_to_num(output.get(field), nan=0.0)
+        forces_dict[field] = safe_field(field)
 
     # PISM: press_HII_in is a pressure — convert to force via F = P * 4πR²
-    press_HII_in = np.nan_to_num(output.get('press_HII_in'), nan=0.0)
+    press_HII_in = safe_field('press_HII_in')
     R2_safe = np.nan_to_num(r, nan=0.0)
     F_PISM = press_HII_in * 4.0 * np.pi * R2_safe**2
     forces_dict["F_PISM"] = F_PISM
