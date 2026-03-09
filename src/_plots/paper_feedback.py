@@ -30,12 +30,12 @@ PHASE_CHANGE  = True         # Show phase transition markers
 INCLUDE_ALL_FORCE = True     # Show wind/SN overlays inside the ram band
 USE_LOG_X = False            # Use log scale for x-axis (time)
 
-# Colors — muted, publication-quality palette
+# Colors — Vibrance palette from ChromaPalette
 C_GRAV = "#1a1a1a"
-C_RAM  = "#3A6FA0"
-C_SN   = "#C4A035"
-C_ION  = "#C0504D"
-C_RAD  = "#D4839E"
+C_RAM  = "#508ab2"
+C_SN   = "#d5ba82"
+C_ION  = "#b36a6f"
+C_RAD  = "#a1d0c7"
 C_PISM = "#FFFFFF"
 
 # Base stacked forces — order matters for stacking + overlay indexing

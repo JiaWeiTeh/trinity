@@ -34,28 +34,29 @@ DOMINANCE_STRIP = (0.94, 1)  # (ymin, ymax) in AXES fraction (0..1) - doubled th
 
 # Main force fields for plotting (solid lines)
 # F_ram is plotted continuously; F_ram_wind and F_ram_SN are plotted dashed separately
+# Colors — Vibrance palette from ChromaPalette
 FORCE_FIELDS = [
     ("F_grav",    "Gravity",                  "#1a1a1a"),
-    ("F_ram",     "Ram (thermal/wind)",       "#3A6FA0"),
-    ("F_ion_out", "Photoionised gas",         "#C0504D"),
-    ("F_rad",     "Radiation (dir.+indir.)",  "#D4839E"),
+    ("F_ram",     "Ram (thermal/wind)",       "#508ab2"),
+    ("F_ion_out", "Photoionised gas",         "#b36a6f"),
+    ("F_rad",     "Radiation (dir.+indir.)",  "#a1d0c7"),
     ("F_PISM",    "PISM (inner HII)",         "#999999"),
 ]
 
 # Additional dashed lines for wind/SN breakdown
 DASHED_FIELDS = [
-    ("F_ram_wind", "Wind",       "#3A6FA0"),
-    ("F_ram_SN",   "Supernovae", "#C4A035"),
+    ("F_ram_wind", "Wind",       "#508ab2"),
+    ("F_ram_SN",   "Supernovae", "#d5ba82"),
 ]
 
 # Colors for dominant bar (includes wind/SN subclassification)
 DOMINANT_COLORS = {
     "F_grav":     "#1a1a1a",
-    "F_ram":      "#3A6FA0",
-    "F_ram_wind": "#3A6FA0",
-    "F_ram_SN":   "#C4A035",
-    "F_ion_out":  "#C0504D",
-    "F_rad":      "#D4839E",
+    "F_ram":      "#508ab2",
+    "F_ram_wind": "#508ab2",
+    "F_ram_SN":   "#d5ba82",
+    "F_ion_out":  "#b36a6f",
+    "F_rad":      "#a1d0c7",
     "F_PISM":     "#999999",
 }
 
