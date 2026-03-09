@@ -478,6 +478,8 @@ def read_param(path2file, write_summary=True):
     params['R_IF'] = DescribedItem(0.0, info="Radius of ionization front", ori_units="pc")
     params['P_HII'] = DescribedItem(0.0, info="HII pressure at ionization front", ori_units="Msun/Myr**2/pc")
     params['P_drive'] = DescribedItem(0.0, info="Total driving pressure", ori_units="Msun/Myr**2/pc")
+    params['P_ram'] = DescribedItem(0.0, info="Ram pressure from freely-streaming wind", ori_units="Msun/Myr**2/pc")
+    params['press_HII_in'] = DescribedItem(0.0, info="Inward HII pressure at shell (confining)", ori_units="Msun/Myr**2/pc")
     params['F_HII'] = DescribedItem(0.0, info="Force from HII pressure", ori_units="Msun*pc/Myr**2")
     
     # Bubble structure

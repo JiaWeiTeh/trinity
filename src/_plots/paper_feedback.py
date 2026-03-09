@@ -238,7 +238,7 @@ def plot_run_on_ax(
     for (field, _, color), y0, y1 in zip(FORCE_FIELDS_BASE, prev, cum):
         a = 1.0 if field == "F_ion_in" else alpha
         ax.fill_between(t, y0, y1, facecolor=color, alpha=a,
-                        edgecolor="black", linewidth=0.4, zorder=2)
+                        edgecolor="black", linewidth=0.4, zorder=4)
 
     # --- overlay wind/SN inside ram band, ONLY AFTER TRANSITION PHASE
     if INCLUDE_ALL_FORCE:

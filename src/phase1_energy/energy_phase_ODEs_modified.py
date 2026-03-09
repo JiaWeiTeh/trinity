@@ -217,9 +217,9 @@ def get_ODE_Edot_pure(t: float, y: list, snapshot: ODESnapshot, params_for_feedb
         press_HII_in += snapshot.PISM * snapshot.k_B
 
     # ==========================================================================
-    # WARM IONIZED GAS PRESSURE — max() SCHEME
-    # Energy/implicit: P_drive = max(P_b, P_HII)
-    # Transition:      P_drive = max(P_b, P_HII + P_ram)
+    # WARM IONIZED GAS PRESSURE
+    # Energy/implicit: P_drive = P_b + P_HII
+    # Transition:      P_drive = max(P_b + P_HII, P_HII + P_ram)
     # ==========================================================================
     T_ion = 1e4  # K — standard HII region temperature
 
@@ -228,14 +228,12 @@ def get_ODE_Edot_pure(t: float, y: list, snapshot: ODESnapshot, params_for_feedb
 
     if snapshot.current_phase == 'transition':
         P_b_ram = get_bubbleParams.pRam(R2, Lmech_total, v_mech_total)
-        P_drive = max(press_bubble, P_HII + P_b_ram)
-        # Diagnostic: full HII force (both terms active in transition)
+        P_drive = max(press_bubble + P_HII, P_HII + P_b_ram)
         F_HII = 4.0 * np.pi * R2**2 * P_HII
     else:
         # energy / implicit phases
-        P_drive = max(press_bubble, P_HII)
-        # Diagnostic: excess of P_HII above bubble pressure, if any
-        F_HII = 4.0 * np.pi * R2**2 * max(0.0, P_HII - press_bubble)
+        P_drive = press_bubble + P_HII
+        F_HII = 4.0 * np.pi * R2**2 * P_HII
 
     # Radiation force
     F_rad = snapshot.shell_F_rad
@@ -293,6 +291,8 @@ class ODEResult:
     R_IF: Optional[float] = None
     P_HII: Optional[float] = None
     P_drive: Optional[float] = None
+    P_ram: Optional[float] = None
+    press_HII_in: Optional[float] = None
     F_HII: Optional[float] = None
 
 
@@ -357,7 +357,9 @@ def compute_derived_quantities(t: float, y: list, snapshot: ODESnapshot, params_
         press_HII_in += snapshot.PISM * snapshot.k_B
 
     # ==========================================================================
-    # WARM IONIZED GAS PRESSURE — max() SCHEME (same as ODE function)
+    # WARM IONIZED GAS PRESSURE (same as ODE function)
+    # Energy/implicit: P_drive = P_b + P_HII
+    # Transition:      P_drive = max(P_b + P_HII, P_HII + P_ram)
     # ==========================================================================
     T_ion = 1e4  # K — standard HII region temperature
 
@@ -366,15 +368,21 @@ def compute_derived_quantities(t: float, y: list, snapshot: ODESnapshot, params_
 
     if snapshot.current_phase == 'transition':
         P_b_ram = get_bubbleParams.pRam(R2, Lmech_total, v_mech_total)
-        P_drive = max(Pb, P_HII + P_b_ram)
+        P_drive = max(Pb + P_HII, P_HII + P_b_ram)
         F_HII = 4.0 * np.pi * R2**2 * P_HII
     else:
         # energy / implicit phases
-        P_drive = max(Pb, P_HII)
-        F_HII = 4.0 * np.pi * R2**2 * max(0.0, P_HII - Pb)
+        P_drive = Pb + P_HII
+        F_HII = 4.0 * np.pi * R2**2 * P_HII
 
     # F_ion_out kept for backwards compatibility
     F_ion_out = F_HII
+
+    # P_ram: only relevant in transition; 0 in energy/implicit
+    if snapshot.current_phase == 'transition':
+        P_ram_val = P_b_ram
+    else:
+        P_ram_val = 0.0
 
     return ODEResult(
         R2=R2,
@@ -395,5 +403,7 @@ def compute_derived_quantities(t: float, y: list, snapshot: ODESnapshot, params_
         R_IF=snapshot.rShell,
         P_HII=P_HII,
         P_drive=P_drive,
+        P_ram=P_ram_val,
+        press_HII_in=press_HII_in,
         F_HII=F_HII,
     )
