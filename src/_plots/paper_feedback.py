@@ -3,7 +3,7 @@
 """
 Force fraction grid with ram composition overlay (wind+SN within F_ram).
 
-- Base stack uses: F_grav, F_ram, F_ion_out, F_rad
+- Base stack uses: F_grav, F_ram, F_ion_out, F_rad, F_ion_in (PISM)
 - Hatched overlays show wind/SN as fractions of F_ram, leaving an unhatched residual.
 - Phase markers: T (enter transition), M (enter momentum)
 - Breakout marker: first time R2 > rCloud (vertical dashed + label)
@@ -30,18 +30,21 @@ PHASE_CHANGE  = True         # Show phase transition markers
 INCLUDE_ALL_FORCE = True     # Show wind/SN overlays inside the ram band
 USE_LOG_X = False            # Use log scale for x-axis (time)
 
-# Colors
-C_GRAV = "black"
-C_RAM  = "b"
-C_SN   = "#DAA520"  # golden yellow for SN visibility
-C_ION  = "#d62728"
-C_RAD  = "#9467bd"
+# Colors — muted, publication-quality palette
+C_GRAV = "#1a1a1a"
+C_RAM  = "#4878A8"
+C_SN   = "#C4A035"
+C_ION  = "#C0504D"
+C_RAD  = "#D4839E"
+C_PISM = "#FFFFFF"
+
 # Base stacked forces — order matters for stacking + overlay indexing
 FORCE_FIELDS_BASE = [
     ("F_grav",    "Gravity",                 C_GRAV),
     ("F_ram",     r"Ram total $F_{\rm ram}$", C_RAM),
     ("F_ion_out", "Photoionised gas",        C_ION),
     ("F_rad",     "Radiation (dir.+indir.)", C_RAD),
+    ("F_ion_in",  "PISM (inner HII)",        C_PISM),
 ]
 
 # Output directory
@@ -115,6 +118,7 @@ def plot_from_path(data_input: str, output_dir: str = None):
         Patch(facecolor=C_RAM,  edgecolor="none", alpha=0.75, label=r"Ram total"),
         Patch(facecolor=C_ION,  edgecolor="none", alpha=0.75, label="Photoionised gas"),
         Patch(facecolor=C_RAD,  edgecolor="none", alpha=0.75, label="Radiation"),
+        Patch(facecolor=C_PISM, edgecolor="gray", alpha=1.0,  label="PISM (inner HII)"),
     ]
     handles.extend(get_marker_legend_handles())
     ax.legend(handles=handles, loc="upper right", framealpha=0.9)
@@ -171,6 +175,12 @@ def load_run(data_path: Path):
         else:
             F_ram = np.zeros_like(t)
 
+    # PISM: press_HII_in is a pressure — convert to force via F = P * 4πR²
+    F_PISM_raw = get_field("press_HII_in", np.nan)
+    F_PISM_raw = np.nan_to_num(F_PISM_raw, nan=0.0)
+    R2_safe = np.nan_to_num(R2, nan=0.0)
+    F_PISM = F_PISM_raw * 4.0 * np.pi * R2_safe**2
+
     rcloud = float(output[0].get('rCloud', np.nan))
 
     # Load isCollapse for collapse indicator
@@ -181,11 +191,12 @@ def load_run(data_path: Path):
         order = np.argsort(t)
         t, R2, phase = t[order], R2[order], phase[order]
         F_grav, F_ram, F_ion, F_rad = F_grav[order], F_ram[order], F_ion[order], F_rad[order]
+        F_PISM = F_PISM[order]
         F_wind, F_sn = F_wind[order], F_sn[order]
         isCollapse = isCollapse[order]
 
     # base forces order must match FORCE_FIELDS_BASE
-    base_forces    = np.vstack([F_grav, F_ram, F_ion, F_rad])
+    base_forces    = np.vstack([F_grav, F_ram, F_ion, F_rad, F_PISM])
     overlay_forces = np.vstack([F_wind, F_sn])
 
     return t, R2, phase, base_forces, overlay_forces, rcloud, isCollapse
@@ -213,20 +224,20 @@ def plot_run_on_ax(
         show_collapse=show_collapse
     )
 
-    # --- smoothing
-    base_use = smooth_2d(base_forces, smooth_window, mode=smooth_mode)
+    # --- normalize first (raw fractions), then smooth
+    ftotal = base_forces.sum(axis=0)
+    ftotal = np.where(ftotal == 0.0, np.nan, ftotal)
+    frac_raw = base_forces / ftotal
+    frac = smooth_2d(frac_raw, smooth_window, mode=smooth_mode)
 
     # --- stacked fractions (base)
-    ftotal = base_use.sum(axis=0)
-    ftotal = np.where(ftotal == 0.0, np.nan, ftotal)
-
-    frac = base_use / ftotal  # order: grav, ram, ion, rad, pism
     cum  = np.cumsum(frac, axis=0)
     prev = np.vstack([np.zeros_like(t), cum[:-1]])
 
     # Fill base stack
     for (field, _, color), y0, y1 in zip(FORCE_FIELDS_BASE, prev, cum):
-        ax.fill_between(t, y0, y1, color=color, alpha=alpha, lw=0, zorder=2)
+        a = 1.0 if field == "F_ion_in" else alpha
+        ax.fill_between(t, y0, y1, color=color, alpha=a, lw=0, zorder=2)
 
     # --- overlay wind/SN inside ram band, ONLY AFTER TRANSITION PHASE
     if INCLUDE_ALL_FORCE:
@@ -245,17 +256,15 @@ def plot_run_on_ax(
                 # Slice arrays to transition/momentum phase only
                 t_post = t[transition_start_idx:]
 
-                # Smooth overlay components too
-                Fw  = smooth_1d(np.nan_to_num(Fw_raw,  nan=0.0), smooth_window, mode=smooth_mode)
-                Fsn = smooth_1d(np.nan_to_num(Fsn_raw, nan=0.0), smooth_window, mode=smooth_mode)
+                # Use raw (unsmoothed) forces for wind/SN decomposition
+                Fw_clean  = np.nan_to_num(Fw_raw,  nan=0.0)
+                Fsn_clean = np.nan_to_num(Fsn_raw, nan=0.0)
 
-                # Slice to transition/momentum phase
-                Fw_post = Fw[transition_start_idx:]
-                Fsn_post = Fsn[transition_start_idx:]
+                Fw_post  = Fw_clean[transition_start_idx:]
+                Fsn_post = Fsn_clean[transition_start_idx:]
 
-                # Use smoothed total ram from base stack as denominator
-                Fram = base_use[1].copy()
-                Fram_post = Fram[transition_start_idx:]
+                # Use raw total ram as denominator for wind/SN fractions
+                Fram_post = base_forces[1][transition_start_idx:]
 
                 eps = 1e-30
                 denom = np.where(np.isfinite(Fram_post) & (Fram_post > 0), Fram_post, np.nan)
@@ -301,10 +310,6 @@ def plot_run_on_ax(
                         alpha=0.9,
                         zorder=5
                     )
-
-                # # Helpful boundaries - blue for wind/ram top, yellow for SN top
-                # ax.plot(t_post, y_wind_top, color=C_RAM, lw=0.5, alpha=0.95, zorder=6)
-                # ax.plot(t_post, y_sn_top,   color=C_SN,  lw=0.5, alpha=0.95, zorder=6)
 
                 # Optional: subtle tint to keep "ram is blue" obvious without overpowering
                 ax.fill_between(t_post, ram_bottom_post, ram_top_post, color=C_RAM, alpha=0.10, lw=0, zorder=4)
@@ -460,6 +465,7 @@ def plot_grid(folder_path, output_dir=None, ndens_filter=None,
             Patch(facecolor=C_RAM,  edgecolor="none", alpha=0.75, label=r"Ram total $F_{\rm ram}$ (blue)"),
             Patch(facecolor=C_ION,  edgecolor="none", alpha=0.75, label="Photoionised gas"),
             Patch(facecolor=C_RAD,  edgecolor="none", alpha=0.75, label="Radiation"),
+            Patch(facecolor=C_PISM, edgecolor="gray", alpha=1.0,  label="PISM (inner HII)"),
         ]
 
         if INCLUDE_ALL_FORCE:
