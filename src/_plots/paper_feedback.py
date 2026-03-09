@@ -289,28 +289,42 @@ def plot_run_on_ax(
                 y_wind_top = ram_bottom_post + f_wind * ram_h_post
                 y_sn_top   = y_wind_top + f_sn * ram_h_post
 
-                # --- Wind slice: forward slashes, thin outline
+                # --- Wind slice: forward slashes
                 ax.fill_between(
                     t_post, ram_bottom_post, y_wind_top,
                     facecolor="none",
-                    edgecolor=C_RAM,          # blue
+                    edgecolor=C_RAM,          # blue hatch
                     hatch="////",
-                    linewidth=0.4,
+                    linewidth=0,
                     alpha=0.9,
                     zorder=5
                 )
+                # black dotted outline for wind slice
+                ax.fill_between(
+                    t_post, ram_bottom_post, y_wind_top,
+                    facecolor="none",
+                    edgecolor="black", linestyle=":", linewidth=0.4,
+                    zorder=6
+                )
 
-                # --- SN slice: back slashes, thin outline
+                # --- SN slice: back slashes
                 for _ in range(4):  # draw multiple times for thicker hatch
                     ax.fill_between(
                         t_post, y_wind_top, y_sn_top,
                         facecolor="none",
                         edgecolor=C_SN,       # yellow for SN
                         hatch="\\\\\\\\",     # opposite direction
-                        linewidth=0.4,
+                        linewidth=0,
                         alpha=0.9,
                         zorder=5
                     )
+                # black dotted outline for SN slice
+                ax.fill_between(
+                    t_post, y_wind_top, y_sn_top,
+                    facecolor="none",
+                    edgecolor="black", linestyle=":", linewidth=0.4,
+                    zorder=6
+                )
 
                 # Optional: subtle tint to keep "ram is blue" obvious without overpowering
                 ax.fill_between(t_post, ram_bottom_post, ram_top_post, color=C_RAM, alpha=0.10, lw=0, zorder=4)
