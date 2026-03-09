@@ -32,7 +32,7 @@ USE_LOG_X = False            # Use log scale for x-axis (time)
 
 # Colors — muted, publication-quality palette
 C_GRAV = "#1a1a1a"
-C_RAM  = "#4878A8"
+C_RAM  = "#3A6FA0"
 C_SN   = "#C4A035"
 C_ION  = "#C0504D"
 C_RAD  = "#D4839E"
@@ -289,25 +289,25 @@ def plot_run_on_ax(
                 y_wind_top = ram_bottom_post + f_wind * ram_h_post
                 y_sn_top   = y_wind_top + f_sn * ram_h_post
 
-                # --- Wind slice: forward slashes, no outline
+                # --- Wind slice: forward slashes, thin outline
                 ax.fill_between(
                     t_post, ram_bottom_post, y_wind_top,
                     facecolor="none",
                     edgecolor=C_RAM,          # blue
                     hatch="////",
-                    linewidth=0,
+                    linewidth=0.4,
                     alpha=0.9,
                     zorder=5
                 )
 
-                # --- SN slice: back slashes, no outline
+                # --- SN slice: back slashes, thin outline
                 for _ in range(4):  # draw multiple times for thicker hatch
                     ax.fill_between(
                         t_post, y_wind_top, y_sn_top,
                         facecolor="none",
                         edgecolor=C_SN,       # yellow for SN
                         hatch="\\\\\\\\",     # opposite direction
-                        linewidth=0,
+                        linewidth=0.4,
                         alpha=0.9,
                         zorder=5
                     )
