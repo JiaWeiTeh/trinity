@@ -471,7 +471,7 @@ def plot_grid(folder_path, output_dir=None, ndens_filter=None,
 
         handles.extend(get_marker_legend_handles())
 
-        fig.subplots_adjust(top=0.88)
+        # fig.subplots_adjust(top=0.88)
 
         leg = fig.legend(
             handles=handles,
@@ -481,14 +481,15 @@ def plot_grid(folder_path, output_dir=None, ndens_filter=None,
             facecolor="white",
             framealpha=0.9,
             edgecolor="0.2",
-            bbox_to_anchor=(0.5, 1.0),
+            # bbox_to_anchor=(0.5, 1.0),
+            bbox_to_anchor=(0.5, 1.2),
             fontsize=7,
         )
         leg.set_zorder(10)
 
         # Title and filename
         ndens_tag = f"n{ndens}"
-        fig.suptitle(f"{folder_name} ({ndens_tag})", fontsize=14, y=1.03)
+        # fig.suptitle(f"{folder_name} ({ndens_tag})", fontsize=14, y=1.03)
 
         # Save figure to ./fig/{folder_name}/feedback_n{ndens}.pdf
         fig_dir = Path(output_dir) if output_dir else FIG_DIR / folder_name
