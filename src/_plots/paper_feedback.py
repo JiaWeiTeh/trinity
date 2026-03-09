@@ -297,7 +297,7 @@ def plot_run_on_ax(
                     hatch="////",
                     linewidth=0,
                     alpha=0.9,
-                    zorder=5
+                    zorder=3
                 )
                 # black dotted outline for wind slice
                 ax.fill_between(
@@ -316,7 +316,7 @@ def plot_run_on_ax(
                         hatch="\\\\\\\\",     # opposite direction
                         linewidth=0,
                         alpha=0.9,
-                        zorder=5
+                        zorder=3
                     )
                 # black dotted outline for SN slice
                 ax.fill_between(
