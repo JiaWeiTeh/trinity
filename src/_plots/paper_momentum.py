@@ -36,7 +36,7 @@ DOMINANCE_STRIP = (0.94, 1)  # (ymin, ymax) in AXES fraction (0..1) - doubled th
 # F_ram is plotted continuously; F_ram_wind and F_ram_SN are plotted dashed separately
 FORCE_FIELDS = [
     ("F_grav",    "Gravity",                  "#1a1a1a"),
-    ("F_ram",     "Ram (thermal/wind)",       "#4878A8"),
+    ("F_ram",     "Ram (thermal/wind)",       "#3A6FA0"),
     ("F_ion_out", "Photoionised gas",         "#C0504D"),
     ("F_rad",     "Radiation (dir.+indir.)",  "#D4839E"),
     ("F_PISM",    "PISM (inner HII)",         "#999999"),
@@ -44,15 +44,15 @@ FORCE_FIELDS = [
 
 # Additional dashed lines for wind/SN breakdown
 DASHED_FIELDS = [
-    ("F_ram_wind", "Wind",       "#4878A8"),
+    ("F_ram_wind", "Wind",       "#3A6FA0"),
     ("F_ram_SN",   "Supernovae", "#C4A035"),
 ]
 
 # Colors for dominant bar (includes wind/SN subclassification)
 DOMINANT_COLORS = {
     "F_grav":     "#1a1a1a",
-    "F_ram":      "#4878A8",
-    "F_ram_wind": "#4878A8",
+    "F_ram":      "#3A6FA0",
+    "F_ram_wind": "#3A6FA0",
     "F_ram_SN":   "#C4A035",
     "F_ion_out":  "#C0504D",
     "F_rad":      "#D4839E",
