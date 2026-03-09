@@ -234,10 +234,11 @@ def plot_run_on_ax(
     cum  = np.cumsum(frac, axis=0)
     prev = np.vstack([np.zeros_like(t), cum[:-1]])
 
-    # Fill base stack
+    # Fill base stack with thin black outlines for visibility
     for (field, _, color), y0, y1 in zip(FORCE_FIELDS_BASE, prev, cum):
         a = 1.0 if field == "F_ion_in" else alpha
-        ax.fill_between(t, y0, y1, color=color, alpha=a, lw=0, zorder=2)
+        ax.fill_between(t, y0, y1, facecolor=color, alpha=a,
+                        edgecolor="black", linewidth=0.4, zorder=2)
 
     # --- overlay wind/SN inside ram band, ONLY AFTER TRANSITION PHASE
     if INCLUDE_ALL_FORCE:
@@ -288,25 +289,25 @@ def plot_run_on_ax(
                 y_wind_top = ram_bottom_post + f_wind * ram_h_post
                 y_sn_top   = y_wind_top + f_sn * ram_h_post
 
-                # --- Wind slice: forward slashes, normal hatch density
+                # --- Wind slice: forward slashes, no outline
                 ax.fill_between(
                     t_post, ram_bottom_post, y_wind_top,
                     facecolor="none",
                     edgecolor=C_RAM,          # blue
                     hatch="////",
-                    linewidth=1,            # hatch stroke weight
+                    linewidth=0,
                     alpha=0.9,
                     zorder=5
                 )
 
-                # --- SN slice: back slashes, yellow color for visibility
+                # --- SN slice: back slashes, no outline
                 for _ in range(4):  # draw multiple times for thicker hatch
                     ax.fill_between(
                         t_post, y_wind_top, y_sn_top,
                         facecolor="none",
                         edgecolor=C_SN,       # yellow for SN
                         hatch="\\\\\\\\",     # opposite direction
-                        linewidth=1,        # slightly heavier stroke
+                        linewidth=0,
                         alpha=0.9,
                         zorder=5
                     )
