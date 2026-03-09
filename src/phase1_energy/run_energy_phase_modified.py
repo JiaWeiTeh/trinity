@@ -322,6 +322,10 @@ def run_energy(params):
             params['P_HII'].value = ode_result.P_HII
         if ode_result.P_drive is not None:
             params['P_drive'].value = ode_result.P_drive
+        if ode_result.P_ram is not None:
+            params['P_ram'].value = ode_result.P_ram
+        if ode_result.press_HII_in is not None:
+            params['press_HII_in'].value = ode_result.press_HII_in
         if ode_result.F_HII is not None:
             params['F_HII'].value = ode_result.F_HII
         if ode_result.shell_mass is not None:

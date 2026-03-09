@@ -246,6 +246,8 @@ class ForceProperties:
     R_IF: float = 0.0
     P_HII: float = 0.0
     P_drive: float = 0.0
+    P_ram: float = 0.0
+    press_HII_in: float = 0.0
     F_HII: float = 0.0
 
 
@@ -314,8 +316,8 @@ def compute_forces_pure(
         press_HII_in += PISM * k_B
 
     # ==========================================================================
-    # WARM IONIZED GAS PRESSURE — max() SCHEME (implicit phase = same as energy)
-    # P_drive = max(P_b, P_HII)
+    # WARM IONIZED GAS PRESSURE (implicit phase = same as energy)
+    # P_drive = P_b + P_HII
     # ==========================================================================
     T_ion = 1e4  # K — standard HII region temperature
 
@@ -326,13 +328,12 @@ def compute_forces_pure(
     # HII pressure from shell-structure ionization front density
     P_HII = 2.0 * n_IF * k_B * T_ion
 
-    # Implicit phase: max(P_b, P_HII)
-    P_drive = max(Pb, P_HII)
+    # Implicit phase: P_drive = P_b + P_HII
+    P_drive = Pb + P_HII
 
     # Forces
     F_ion_in = press_HII_in * FOUR_PI * R2**2
-    # Diagnostic: excess of P_HII above bubble pressure, if any
-    F_HII = FOUR_PI * R2**2 * max(0.0, P_HII - Pb)
+    F_HII = FOUR_PI * R2**2 * P_HII
     F_ion_out = F_HII  # For backwards compatibility
 
     # Ram pressure force (from bubble pressure)
@@ -351,6 +352,8 @@ def compute_forces_pure(
         R_IF=R_IF,
         P_HII=P_HII,
         P_drive=P_drive,
+        P_ram=0.0,  # no ram pressure in implicit phase
+        press_HII_in=press_HII_in,
         F_HII=F_HII,
     )
 
@@ -647,6 +650,8 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         params['R_IF'].value = force_props.R_IF
         params['P_HII'].value = force_props.P_HII
         params['P_drive'].value = force_props.P_drive
+        params['P_ram'].value = force_props.P_ram
+        params['press_HII_in'].value = force_props.press_HII_in
         params['F_HII'].value = force_props.F_HII
         params['F_ram_wind'].value = feedback.pdot_W
         params['F_ram_SN'].value = feedback.pdot_SN

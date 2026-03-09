@@ -195,6 +195,8 @@ class ForceProperties:
     R_IF: float = 0.0
     P_HII: float = 0.0
     P_drive: float = 0.0
+    P_ram: float = 0.0
+    press_HII_in: float = 0.0
     F_HII: float = 0.0
 
 
@@ -249,8 +251,8 @@ def compute_forces_momentum_pure(
         press_HII_in += PISM * k_B
 
     # ==========================================================================
-    # WARM IONIZED GAS PRESSURE — max() SCHEME (momentum phase)
-    # P_drive = P_HII + P_ram  (no max() needed; both terms always active)
+    # WARM IONIZED GAS PRESSURE (momentum phase)
+    # P_drive = P_HII + P_ram  (no thermal bubble; both terms always active)
     # ==========================================================================
     T_ion = 1e4  # K — standard HII region temperature
 
@@ -285,6 +287,8 @@ def compute_forces_momentum_pure(
         R_IF=R_IF,
         P_HII=P_HII,
         P_drive=P_drive,
+        P_ram=press_ram,
+        press_HII_in=press_HII_in,
         F_HII=F_HII,
     )
 
@@ -415,8 +419,8 @@ def get_ODE_momentum_pure(t: float, y: np.ndarray, snapshot: MomentumODESnapshot
         press_HII_in += snapshot.PISM * k_B
 
     # ==========================================================================
-    # WARM IONIZED GAS PRESSURE — max() SCHEME (momentum phase)
-    # P_drive = P_HII + P_ram  (no max() needed; both terms always active)
+    # WARM IONIZED GAS PRESSURE (momentum phase)
+    # P_drive = P_HII + P_ram  (no thermal bubble; both terms always active)
     # ==========================================================================
     T_ion = 1e4  # K — standard HII region temperature
 
@@ -589,6 +593,8 @@ def run_phase_momentum(params) -> MomentumPhaseResults:
         params['R_IF'].value = force_props.R_IF
         params['P_HII'].value = force_props.P_HII
         params['P_drive'].value = force_props.P_drive
+        params['P_ram'].value = force_props.P_ram
+        params['press_HII_in'].value = force_props.press_HII_in
         params['F_HII'].value = force_props.F_HII
         params['F_ram_wind'].value = feedback.pdot_W
         params['F_ram_SN'].value = feedback.pdot_SN

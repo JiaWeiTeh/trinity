@@ -260,6 +260,8 @@ class ForceProperties:
     R_IF: float = 0.0
     P_HII: float = 0.0
     P_drive: float = 0.0
+    P_ram: float = 0.0
+    press_HII_in: float = 0.0
     F_HII: float = 0.0
 
 
@@ -309,8 +311,8 @@ def compute_forces_pure(
         press_HII_in += PISM * k_B
 
     # ==========================================================================
-    # WARM IONIZED GAS PRESSURE — max() SCHEME (transition phase)
-    # P_drive = max(P_b, P_HII + P_ram)
+    # WARM IONIZED GAS PRESSURE (transition phase)
+    # P_drive = max(P_b + P_HII, P_HII + P_ram)
     # ==========================================================================
     T_ion = 1e4  # K — standard HII region temperature
 
@@ -326,8 +328,8 @@ def compute_forces_pure(
     v_mech_total = params['v_mech_total'].value
     P_b_ram = get_bubbleParams.pRam(R2, Lmech_total, v_mech_total)
 
-    # Transition phase: max(P_b, P_HII + P_ram)
-    P_drive = max(Pb, P_HII + P_b_ram)
+    # Transition phase: max(P_b + P_HII, P_HII + P_ram)
+    P_drive = max(Pb + P_HII, P_HII + P_b_ram)
 
     # Forces
     F_ion_in = press_HII_in * FOUR_PI * R2**2
@@ -350,6 +352,8 @@ def compute_forces_pure(
         R_IF=R_IF,
         P_HII=P_HII,
         P_drive=P_drive,
+        P_ram=P_b_ram,
+        press_HII_in=press_HII_in,
         F_HII=F_HII,
     )
 
@@ -520,6 +524,8 @@ def run_phase_transition(params) -> TransitionPhaseResults:
         params['R_IF'].value = force_props.R_IF
         params['P_HII'].value = force_props.P_HII
         params['P_drive'].value = force_props.P_drive
+        params['P_ram'].value = force_props.P_ram
+        params['press_HII_in'].value = force_props.press_HII_in
         params['F_HII'].value = force_props.F_HII
         params['F_ram_wind'].value = feedback.pdot_W
         params['F_ram_SN'].value = feedback.pdot_SN
