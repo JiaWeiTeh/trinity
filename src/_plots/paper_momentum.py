@@ -33,29 +33,29 @@ DOMINANCE_ALPHA = 0.9
 DOMINANCE_STRIP = (0.94, 1)  # (ymin, ymax) in AXES fraction (0..1) - doubled thickness
 
 # Main force fields for plotting (solid lines)
-# F_ram is plotted continuously; F_ram_wind and F_ram_SN are plotted dashed separately
+# F_drive = P_drive * 4πR² replaces separate F_ram + F_ion_out
 # Colors — Vibrance palette from ChromaPalette
 FORCE_FIELDS = [
     ("F_grav",    "Gravity",                  "#1a1a1a"),
-    ("F_ram",     "Ram (thermal/wind)",       "#508ab2"),
-    ("F_ion_out", "Photoionised gas",         "#b36a6f"),
+    ("F_drive",   r"$F_{\rm drive}$",         "#508ab2"),
     ("F_rad",     "Radiation (dir.+indir.)",  "#a1d0c7"),
     ("F_PISM",    "PISM (inner HII)",         "#999999"),
 ]
 
-# Additional dashed lines for wind/SN breakdown
+# Additional dashed lines — momentum-phase decomposition of F_drive
 DASHED_FIELDS = [
-    ("F_ram_wind", "Wind",       "#508ab2"),
-    ("F_ram_SN",   "Supernovae", "#d5ba82"),
+    ("F_HII",      r"$P_{\rm HII}$",  "#b36a6f"),   # red
+    ("F_ram_wind", "Wind",             "#8b6ca7"),    # purple
+    ("F_ram_SN",   "Supernovae",       "#d5ba82"),    # yellow
 ]
 
-# Colors for dominant bar (includes wind/SN subclassification)
+# Colors for dominant bar (includes momentum-phase subclassification)
 DOMINANT_COLORS = {
     "F_grav":     "#1a1a1a",
-    "F_ram":      "#508ab2",
-    "F_ram_wind": "#508ab2",
+    "F_drive":    "#508ab2",
+    "F_HII":      "#b36a6f",
+    "F_ram_wind": "#8b6ca7",
     "F_ram_SN":   "#d5ba82",
-    "F_ion_out":  "#b36a6f",
     "F_rad":      "#a1d0c7",
     "F_PISM":     "#999999",
 }
@@ -124,18 +124,27 @@ def load_run(data_path: Path):
 
     # Extract main force fields
     forces_dict = {}
+    R2_safe = np.nan_to_num(r, nan=0.0)
+
     for field, _, _ in FORCE_FIELDS:
         if field == "F_PISM":
             continue  # handled separately below
+        if field == "F_drive":
+            # F_drive = P_drive * 4πR² — the actual driving pressure force
+            P_drive = safe_field('P_drive')
+            forces_dict["F_drive"] = P_drive * 4.0 * np.pi * R2_safe**2
+            continue
         forces_dict[field] = safe_field(field)
 
-    # Extract dashed force fields (wind/SN breakdown)
+    # Extract dashed force fields (momentum-phase decomposition)
     for field, _, _ in DASHED_FIELDS:
-        forces_dict[field] = safe_field(field)
+        if field == "F_HII":
+            forces_dict["F_HII"] = safe_field("F_ion_out")  # = P_HII * 4πR²
+        else:
+            forces_dict[field] = safe_field(field)
 
     # PISM: press_HII_in is a pressure — convert to force via F = P * 4πR²
     press_HII_in = safe_field('press_HII_in')
-    R2_safe = np.nan_to_num(r, nan=0.0)
     F_PISM = press_HII_in * 4.0 * np.pi * R2_safe**2
     forces_dict["F_PISM"] = F_PISM
 
@@ -185,7 +194,7 @@ def dominant_bins_impulse(t, forces_dict, dt=0.05):
     n_bins = len(edges) - 1
 
     # Fields to consider for dominance (main forces)
-    main_fields = ["F_grav", "F_ram", "F_ion_out", "F_rad", "F_PISM"]
+    main_fields = ["F_grav", "F_drive", "F_rad", "F_PISM"]
 
     winners = []
 
@@ -216,28 +225,23 @@ def dominant_bins_impulse(t, forces_dict, dt=0.05):
         # Find winner
         winner = max(impulses, key=impulses.get)
 
-        # If F_ram wins, subclassify into wind vs SN
-        if winner == "F_ram":
-            if not np.any(mask):
-                t_bin = np.array([0.5 * (t0 + t1)])
-                F_wind = _interp_finite(t, forces_dict["F_ram_wind"], t_bin)
-                F_SN = _interp_finite(t, forces_dict["F_ram_SN"], t_bin)
-                J_wind = max(F_wind[0], 0) * dt if np.isfinite(F_wind[0]) else 0.0
-                J_SN = max(F_SN[0], 0) * dt if np.isfinite(F_SN[0]) else 0.0
-            else:
-                F_wind = forces_dict["F_ram_wind"][mask]
-                F_SN = forces_dict["F_ram_SN"][mask]
-                F_wind_pos = np.maximum(F_wind, 0)
-                F_SN_pos = np.maximum(F_SN, 0)
-                if len(F_wind_pos) > 1:
-                    J_wind = np.trapz(F_wind_pos, t_bin)
-                    J_SN = np.trapz(F_SN_pos, t_bin)
+        # If F_drive wins, subclassify into P_HII vs wind vs SN
+        if winner == "F_drive":
+            sub_fields = ["F_HII", "F_ram_wind", "F_ram_SN"]
+            sub_impulses = {}
+            for sf in sub_fields:
+                if not np.any(mask):
+                    t_bin_sub = np.array([0.5 * (t0 + t1)])
+                    F_sub = _interp_finite(t, forces_dict[sf], t_bin_sub)
+                    sub_impulses[sf] = max(F_sub[0], 0) * dt if np.isfinite(F_sub[0]) else 0.0
                 else:
-                    J_wind = F_wind_pos[0] * dt
-                    J_SN = F_SN_pos[0] * dt
-
-            # Subclassify
-            winner = "F_ram_wind" if J_wind >= J_SN else "F_ram_SN"
+                    F_sub = forces_dict[sf][mask]
+                    F_sub_pos = np.maximum(F_sub, 0)
+                    if len(F_sub_pos) > 1:
+                        sub_impulses[sf] = np.trapz(F_sub_pos, t_bin)
+                    else:
+                        sub_impulses[sf] = F_sub_pos[0] * dt
+            winner = max(sub_impulses, key=sub_impulses.get)
 
         winners.append(winner)
 
