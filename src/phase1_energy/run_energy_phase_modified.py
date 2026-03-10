@@ -263,7 +263,7 @@ def run_energy(params):
         # =============================================================================
         # Handle early phase approximation switch
         # =============================================================================
-
+        # TODO: I think this is not used anymore.
         if loop_count == 0 and params['EarlyPhaseApproximation'].value:
             # After first successful segment, disable approximation
             params['EarlyPhaseApproximation'].value = False
