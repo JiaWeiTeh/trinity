@@ -300,7 +300,7 @@ def compute_forces_pure(
             n_r = density_profile.get_density_profile(np.array([rShell]), params)
             if hasattr(n_r, '__len__') and len(n_r) == 1:
                 n_r = n_r[0]
-            press_HII_in = n_r * k_B * TShell_ion
+            press_HII_in = 2.0 * n_r * k_B * TShell_ion  # BUG FIX: factor 2 for fully ionized gas (ions + electrons)
         except Exception:
             press_HII_in = 0.0
     else:
@@ -312,24 +312,23 @@ def compute_forces_pure(
 
     # ==========================================================================
     # WARM IONIZED GAS PRESSURE (transition phase)
-    # P_drive = max(P_b + P_HII, P_HII + P_ram)
+    # P_drive = max(Pb, P_HII + P_ram)
     # ==========================================================================
-    T_ion = 1e4  # K — standard HII region temperature
 
     # Get n_IF from shell_props (ionization front density from shell structure)
     n_IF = shell_props.n_IF
     R_IF = shell_props.R_IF
 
-    # HII pressure from shell-structure ionization front density
-    P_HII = 2.0 * n_IF * k_B * T_ion
+    # BUG FIX: use TShell_ion from params instead of hard-coded 1e4 for thermodynamic consistency
+    P_HII = 2.0 * n_IF * k_B * TShell_ion
 
     # Ram pressure contribution
     Lmech_total = params['Lmech_total'].value
     v_mech_total = params['v_mech_total'].value
     P_b_ram = get_bubbleParams.pRam(R2, Lmech_total, v_mech_total)
 
-    # Transition phase: max(P_b + P_HII, P_HII + P_ram)
-    P_drive = max(Pb + P_HII, P_HII + P_b_ram)
+    # Transition phase: max(Pb, P_HII + P_ram)
+    P_drive = max(Pb, P_HII + P_b_ram)
 
     # Forces
     F_ion_in = press_HII_in * FOUR_PI * R2**2

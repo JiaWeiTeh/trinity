@@ -31,18 +31,20 @@ INCLUDE_ALL_FORCE = True     # Show wind/SN overlays inside the ram band
 USE_LOG_X = False            # Use log scale for x-axis (time)
 
 # Colors — Vibrance palette from ChromaPalette
-C_GRAV = "#1a1a1a"
-C_RAM  = "#508ab2"
-C_SN   = "#d5ba82"
-C_ION  = "#b36a6f"
-C_RAD  = "#a1d0c7"
-C_PISM = "#FFFFFF"
+C_GRAV  = "#1a1a1a"
+C_DRIVE = "#508ab2"    # light blue — P_drive band
+C_SN    = "#d5ba82"    # yellow — SN hatching (momentum phase)
+C_PHII  = "#b36a6f"    # red — P_HII hatching (momentum phase)
+C_RAD   = "#a1d0c7"
+C_PISM  = "#FFFFFF"
+C_WIND  = "#8b6ca7"    # purple — wind hatching (momentum phase)
 
 # Base stacked forces — order matters for stacking + overlay indexing
+# In energy/transition phases P_drive = max(Pb, P_HII) is a single quantity.
+# In momentum phase it decomposes into P_HII + P_ram (shown via hatching).
 FORCE_FIELDS_BASE = [
     ("F_grav",    "Gravity",                 C_GRAV),
-    ("F_ram",     r"Ram total $F_{\rm ram}$", C_RAM),
-    ("F_ion_out", "Photoionised gas",        C_ION),
+    ("F_drive",   r"$F_{\rm drive}$",        C_DRIVE),
     ("F_rad",     "Radiation (dir.+indir.)", C_RAD),
     ("F_ion_in",  "PISM (inner HII)",        C_PISM),
 ]
@@ -114,11 +116,13 @@ def plot_from_path(data_input: str, output_dir: str = None):
 
     # Legend - force colors + markers from helper
     handles = [
-        Patch(facecolor=C_GRAV, edgecolor="none", alpha=0.75, label="Gravity"),
-        Patch(facecolor=C_RAM,  edgecolor="none", alpha=0.75, label=r"Ram total"),
-        Patch(facecolor=C_ION,  edgecolor="none", alpha=0.75, label="Photoionised gas"),
-        Patch(facecolor=C_RAD,  edgecolor="none", alpha=0.75, label="Radiation"),
-        Patch(facecolor=C_PISM, edgecolor="gray", alpha=1.0,  label="PISM (inner HII)"),
+        Patch(facecolor=C_GRAV,  edgecolor="none", alpha=0.75, label="Gravity"),
+        Patch(facecolor=C_DRIVE, edgecolor="none", alpha=0.75, label=r"$F_{\rm drive}$"),
+        Patch(facecolor=C_RAD,   edgecolor="none", alpha=0.75, label="Radiation"),
+        Patch(facecolor=C_PISM,  edgecolor="gray", alpha=1.0,  label="PISM (inner HII)"),
+        Patch(facecolor="none", edgecolor=C_PHII, hatch="xxxx",       label=r"$P_{\rm HII}$ (momentum)"),
+        Patch(facecolor="none", edgecolor=C_WIND, hatch="\\\\\\\\",   label=r"Ram wind (momentum)"),
+        Patch(facecolor="none", edgecolor=C_SN,   hatch="////",       label=r"Ram SN (momentum)"),
     ]
     handles.extend(get_marker_legend_handles())
     ax.legend(handles=handles, loc="upper right", framealpha=0.9)
@@ -158,27 +162,21 @@ def load_run(data_path: Path):
         return np.where(arr == None, default, arr).astype(float)
 
     F_grav = get_field("F_grav", 0.0)
-    F_ion  = get_field("F_ion_out", 0.0)
     F_rad  = get_field("F_rad", 0.0)
 
-    # total ram (energy-balance effective)
-    F_ram  = get_field("F_ram", np.nan)
+    # F_drive = P_drive * 4πR² — the actual driving pressure force used in the ODE
+    P_drive = get_field("P_drive", 0.0)
+    R2_safe = np.nan_to_num(R2, nan=0.0)
+    F_drive = P_drive * 4.0 * np.pi * R2_safe**2
 
-    # decomposition (SPS output)
+    # Overlay components for momentum-phase decomposition
+    F_HII  = get_field("F_ion_out", 0.0)      # = P_HII * 4πR²
     F_wind = get_field("F_ram_wind", np.nan)
     F_sn   = get_field("F_ram_SN", np.nan)
-
-    # If F_ram missing entirely, reconstruct if possible
-    if np.all(np.isnan(F_ram)):
-        if not (np.all(np.isnan(F_wind)) and np.all(np.isnan(F_sn))):
-            F_ram = np.nan_to_num(F_wind, nan=0.0) + np.nan_to_num(F_sn, nan=0.0)
-        else:
-            F_ram = np.zeros_like(t)
 
     # PISM: press_HII_in is a pressure — convert to force via F = P * 4πR²
     F_PISM_raw = get_field("press_HII_in", np.nan)
     F_PISM_raw = np.nan_to_num(F_PISM_raw, nan=0.0)
-    R2_safe = np.nan_to_num(R2, nan=0.0)
     F_PISM = F_PISM_raw * 4.0 * np.pi * R2_safe**2
 
     rcloud = float(output[0].get('rCloud', np.nan))
@@ -190,14 +188,15 @@ def load_run(data_path: Path):
     if np.any(np.diff(t) < 0):
         order = np.argsort(t)
         t, R2, phase = t[order], R2[order], phase[order]
-        F_grav, F_ram, F_ion, F_rad = F_grav[order], F_ram[order], F_ion[order], F_rad[order]
+        F_grav, F_drive, F_rad = F_grav[order], F_drive[order], F_rad[order]
         F_PISM = F_PISM[order]
+        F_HII = F_HII[order]
         F_wind, F_sn = F_wind[order], F_sn[order]
         isCollapse = isCollapse[order]
 
     # base forces order must match FORCE_FIELDS_BASE
-    base_forces    = np.vstack([F_grav, F_ram, F_ion, F_rad, F_PISM])
-    overlay_forces = np.vstack([F_wind, F_sn])
+    base_forces    = np.vstack([F_grav, F_drive, F_rad, F_PISM])
+    overlay_forces = np.vstack([F_HII, F_wind, F_sn])
 
     return t, R2, phase, base_forces, overlay_forces, rcloud, isCollapse
 
@@ -240,94 +239,97 @@ def plot_run_on_ax(
         ax.fill_between(t, y0, y1, facecolor=color, alpha=a,
                         edgecolor="black", linewidth=0.4, zorder=4)
 
-    # --- overlay wind/SN inside ram band, ONLY AFTER TRANSITION PHASE
+    # --- overlay P_HII / wind / SN inside F_drive band, MOMENTUM PHASE ONLY
+    # In energy/transition phases, P_drive = max(Pb, P_HII) is a single quantity.
+    # In momentum phase, P_drive = P_HII + P_ram decomposes into 3 sub-forces.
     if INCLUDE_ALL_FORCE:
-        Fw_raw, Fsn_raw = overlay_forces[0], overlay_forces[1]
+        Fhii_raw, Fw_raw, Fsn_raw = overlay_forces[0], overlay_forces[1], overlay_forces[2]
 
         if not (np.all(np.isnan(Fw_raw)) and np.all(np.isnan(Fsn_raw))):
-            # Find transition phase start index (hatching starts after transition)
-            transition_mask = np.array([p in ('transition', 'momentum') for p in phase])
-            if np.any(transition_mask):
-                transition_start_idx = np.argmax(transition_mask)  # first True index
+            # Find momentum phase start index (hatching only in momentum phase)
+            momentum_mask = np.array([p == 'momentum' for p in phase])
+            if np.any(momentum_mask):
+                momentum_start_idx = np.argmax(momentum_mask)  # first True index
             else:
-                transition_start_idx = len(t)  # no transition phase = no hatching
+                momentum_start_idx = len(t)  # no momentum phase = no hatching
 
-            # Only proceed if we have transition/momentum phase data
-            if transition_start_idx < len(t):
-                # Slice arrays to transition/momentum phase only
-                t_post = t[transition_start_idx:]
+            # Only proceed if we have momentum phase data
+            if momentum_start_idx < len(t):
+                t_post = t[momentum_start_idx:]
 
-                # Use raw (unsmoothed) forces for wind/SN decomposition
-                Fw_clean  = np.nan_to_num(Fw_raw,  nan=0.0)
-                Fsn_clean = np.nan_to_num(Fsn_raw, nan=0.0)
+                # Clean overlay forces
+                Fhii_clean = np.nan_to_num(Fhii_raw, nan=0.0)
+                Fw_clean   = np.nan_to_num(Fw_raw,   nan=0.0)
+                Fsn_clean  = np.nan_to_num(Fsn_raw,  nan=0.0)
 
-                Fw_post  = Fw_clean[transition_start_idx:]
-                Fsn_post = Fsn_clean[transition_start_idx:]
+                Fhii_post = Fhii_clean[momentum_start_idx:]
+                Fw_post   = Fw_clean[momentum_start_idx:]
+                Fsn_post  = Fsn_clean[momentum_start_idx:]
 
-                # Use raw total ram as denominator for wind/SN fractions
-                Fram_post = base_forces[1][transition_start_idx:]
-
+                # Denominator: total of the 3 sub-forces
                 eps = 1e-30
-                denom = np.where(np.isfinite(Fram_post) & (Fram_post > 0), Fram_post, np.nan)
+                Ftotal_post = Fhii_post + Fw_post + Fsn_post
+                denom = np.where(np.isfinite(Ftotal_post) & (Ftotal_post > 0), Ftotal_post, np.nan)
 
-                f_wind = np.nan_to_num(Fw_post  / (denom + eps), nan=0.0)
-                f_sn   = np.nan_to_num(Fsn_post / (denom + eps), nan=0.0)
+                f_hii  = np.nan_to_num(Fhii_post / (denom + eps), nan=0.0)
+                f_wind = np.nan_to_num(Fw_post   / (denom + eps), nan=0.0)
+                f_sn   = np.nan_to_num(Fsn_post  / (denom + eps), nan=0.0)
 
-                # Clip and renormalize if wind+SN > 1
+                # Clip and renormalize if total > 1
+                f_hii  = np.clip(f_hii,  0.0, 1.0)
                 f_wind = np.clip(f_wind, 0.0, 1.0)
                 f_sn   = np.clip(f_sn,   0.0, 1.0)
-                s = f_wind + f_sn
-                mask = s > 1.0
-                f_wind[mask] /= s[mask]
-                f_sn[mask]   /= s[mask]
+                s = f_hii + f_wind + f_sn
+                over = s > 1.0
+                f_hii[over]  /= s[over]
+                f_wind[over] /= s[over]
+                f_sn[over]   /= s[over]
 
-                # Ram band bounds in the stacked fraction plot (still index 1)
-                ram_bottom_post = prev[1][transition_start_idx:]
-                ram_top_post    = cum[1][transition_start_idx:]
-                ram_h_post      = ram_top_post - ram_bottom_post
+                # Drive band bounds in the stacked fraction plot (index 1)
+                drive_bottom = prev[1][momentum_start_idx:]
+                drive_top    = cum[1][momentum_start_idx:]
+                drive_h      = drive_top - drive_bottom
 
-                y_wind_top = ram_bottom_post + f_wind * ram_h_post
-                y_sn_top   = y_wind_top + f_sn * ram_h_post
+                y_hii_top  = drive_bottom + f_hii * drive_h
+                y_wind_top = y_hii_top + f_wind * drive_h
+                y_sn_top   = y_wind_top + f_sn * drive_h
 
-                # --- Wind slice: forward slashes
+                # --- P_HII slice: cross hatching (red)
                 ax.fill_between(
-                    t_post, ram_bottom_post, y_wind_top,
-                    facecolor="none",
-                    edgecolor=C_RAM,          # blue hatch
-                    hatch="////",
-                    linewidth=0,
-                    alpha=0.9,
-                    zorder=3
+                    t_post, drive_bottom, y_hii_top,
+                    facecolor="none", edgecolor=C_PHII,
+                    hatch="xxxx", linewidth=0, alpha=0.9, zorder=3
                 )
-                # black dotted outline for wind slice
                 ax.fill_between(
-                    t_post, ram_bottom_post, y_wind_top,
-                    facecolor="none",
-                    edgecolor="black", linestyle=":", linewidth=0.4,
-                    zorder=6
+                    t_post, drive_bottom, y_hii_top,
+                    facecolor="none", edgecolor="black", linestyle=":", linewidth=0.4, zorder=6
                 )
 
-                # --- SN slice: back slashes
+                # --- Wind slice: back slashes (purple)
+                ax.fill_between(
+                    t_post, y_hii_top, y_wind_top,
+                    facecolor="none", edgecolor=C_WIND,
+                    hatch="\\\\\\\\", linewidth=0, alpha=0.9, zorder=3
+                )
+                ax.fill_between(
+                    t_post, y_hii_top, y_wind_top,
+                    facecolor="none", edgecolor="black", linestyle=":", linewidth=0.4, zorder=6
+                )
+
+                # --- SN slice: forward slashes (yellow)
                 for _ in range(4):  # draw multiple times for thicker hatch
                     ax.fill_between(
                         t_post, y_wind_top, y_sn_top,
-                        facecolor="none",
-                        edgecolor=C_SN,       # yellow for SN
-                        hatch="\\\\\\\\",     # opposite direction
-                        linewidth=0,
-                        alpha=0.9,
-                        zorder=3
+                        facecolor="none", edgecolor=C_SN,
+                        hatch="////", linewidth=0, alpha=0.9, zorder=3
                     )
-                # black dotted outline for SN slice
                 ax.fill_between(
                     t_post, y_wind_top, y_sn_top,
-                    facecolor="none",
-                    edgecolor="black", linestyle=":", linewidth=0.4,
-                    zorder=6
+                    facecolor="none", edgecolor="black", linestyle=":", linewidth=0.4, zorder=6
                 )
 
-                # Optional: subtle tint to keep "ram is blue" obvious without overpowering
-                ax.fill_between(t_post, ram_bottom_post, ram_top_post, color=C_RAM, alpha=0.10, lw=0, zorder=4)
+                # Subtle tint to keep drive-band blue obvious
+                ax.fill_between(t_post, drive_bottom, drive_top, color=C_DRIVE, alpha=0.10, lw=0, zorder=4)
 
     ax.set_ylim(0, 1)
 
@@ -476,18 +478,17 @@ def plot_grid(folder_path, output_dir=None, ndens_filter=None,
 
         # Global legend
         handles = [
-            Patch(facecolor=C_GRAV, edgecolor="none", alpha=0.75, label="Gravity"),
-            Patch(facecolor=C_RAM,  edgecolor="none", alpha=0.75, label=r"Ram total $F_{\rm ram}$ (blue)"),
-            Patch(facecolor=C_ION,  edgecolor="none", alpha=0.75, label="Photoionised gas"),
-            Patch(facecolor=C_RAD,  edgecolor="none", alpha=0.75, label="Radiation"),
-            Patch(facecolor=C_PISM, edgecolor="gray", alpha=1.0,  label="PISM (inner HII)"),
+            Patch(facecolor=C_GRAV,  edgecolor="none", alpha=0.75, label="Gravity"),
+            Patch(facecolor=C_DRIVE, edgecolor="none", alpha=0.75, label=r"$F_{\rm drive}$ (blue)"),
+            Patch(facecolor=C_RAD,   edgecolor="none", alpha=0.75, label="Radiation"),
+            Patch(facecolor=C_PISM,  edgecolor="gray", alpha=1.0,  label="PISM (inner HII)"),
         ]
 
         if INCLUDE_ALL_FORCE:
             handles += [
-                Patch(facecolor="none", edgecolor=C_RAM, hatch="////",   label=r"Ram attributed to winds (blue)"),
-                Patch(facecolor="none", edgecolor=C_SN,  hatch="\\\\\\\\", label=r"Ram attributed to SN (yellow)"),
-                Line2D([0], [0], color=C_RAM, lw=6, label="Unhatched blue = residual"),
+                Patch(facecolor="none", edgecolor=C_PHII, hatch="xxxx",       label=r"$P_{\rm HII}$ (momentum)"),
+                Patch(facecolor="none", edgecolor=C_WIND, hatch="\\\\\\\\",   label=r"Ram wind (momentum)"),
+                Patch(facecolor="none", edgecolor=C_SN,   hatch="////",       label=r"Ram SN (momentum)"),
             ]
 
         handles.extend(get_marker_legend_handles())
