@@ -743,77 +743,314 @@ def plot_cumulative_momentum(simulations: dict, output_dir: Path, fmt: str = 'pd
 
 def plot_phase_timing(simulations: dict, output_dir: Path, fmt: str = 'pdf',
                       show: bool = False) -> None:
+    """Backward-compatible wrapper — calls plot_phase_timeline."""
+    plot_phase_timeline(simulations, output_dir, fmt, show)
+
+
+def _extract_phase_info(output: TrinityOutput) -> dict:
     """
-    Plot phase transition timing as a horizontal stacked bar chart.
+    Extract phase intervals and key event times from a simulation.
 
-    Infers phase timing from the 'current_phase' field. If not available,
-    falls back to Eb(t) analysis.
+    Returns
+    -------
+    dict with keys:
+        intervals : list of (phase_label, t_start, t_end)
+            Phase labels: 'energy', 'transition', 'momentum', 'collapse'
+        t_trans : float or None
+            Time when transition phase begins.
+        t_turn : float or None
+            Shell turnaround time (v2 crosses zero from positive to negative).
+        t_Rcloud : float or None
+            Time when R2 >= rCloud.
+        t_end : float
+            Last timestep.
+        outcome : str
+            'expanding' or 're-collapse'
     """
-    logger.info("Figure 6: Phase Transition Timing")
+    t = output.get('t_now')
+    phases = np.array(output.get('current_phase', as_array=False))
+    v2 = safe_get(output, 'v2')
+    R2 = safe_get(output, 'R2')
+    isCollapse = np.array(output.get('isCollapse', as_array=False))
+    rCloud = float(output[0].get('rCloud', np.nan))
 
-    fig, ax = plt.subplots(figsize=(6, 3))
+    # --- Phase intervals ---
+    # Map energy/implicit -> 'energy' for display
+    def map_phase(p):
+        p = str(p)
+        if p in ('energy', 'implicit'):
+            return 'energy'
+        return p
 
-    phase_colors = {
-        'energy': '#0072B2',
-        'implicit': '#0072B2',
-        'transition': '#E69F00',
-        'momentum': '#D55E00',
+    mapped = [map_phase(p) for p in phases]
+
+    # Build raw intervals
+    raw_intervals = []
+    current = mapped[0]
+    t_start = t[0]
+    for ii in range(1, len(mapped)):
+        if mapped[ii] != current:
+            raw_intervals.append((current, t_start, t[ii]))
+            current = mapped[ii]
+            t_start = t[ii]
+    raw_intervals.append((current, t_start, t[-1]))
+
+    # Detect collapse: find turnaround time where v2 crosses zero
+    # (positive -> negative) after having been positive
+    t_turn = None
+    pos_mask = v2 > 0
+    if np.any(pos_mask):
+        # Find first index where v2 goes from positive to non-positive
+        for ii in range(1, len(v2)):
+            if v2[ii - 1] > 0 and v2[ii] <= 0:
+                # Linear interpolation for exact crossing
+                if v2[ii - 1] != v2[ii]:
+                    t_turn = t[ii - 1] + (0 - v2[ii - 1]) * (t[ii] - t[ii - 1]) / (v2[ii] - v2[ii - 1])
+                else:
+                    t_turn = t[ii]
+                break
+
+    # Determine outcome
+    is_collapse = False
+    if isCollapse is not None:
+        # Check if any isCollapse is True
+        for val in isCollapse:
+            if val is True or val == 'True' or val == 1:
+                is_collapse = True
+                break
+    if t_turn is not None and v2[-1] < 0:
+        is_collapse = True
+    outcome = 're-collapse' if is_collapse else 'expanding'
+
+    # Split final momentum interval at t_turn to show collapse phase
+    intervals = []
+    for phase_name, t0, t1 in raw_intervals:
+        if phase_name == 'momentum' and t_turn is not None and t0 < t_turn < t1:
+            intervals.append(('momentum', t0, t_turn))
+            intervals.append(('collapse', t_turn, t1))
+        else:
+            intervals.append((phase_name, t0, t1))
+
+    # If turnaround happens after last recorded momentum start, and isCollapse
+    # is true, mark remainder as collapse
+    if is_collapse and t_turn is not None:
+        # Check if collapse phase already added
+        has_collapse = any(p == 'collapse' for p, _, _ in intervals)
+        if not has_collapse:
+            # Turnaround might coincide with end of data
+            intervals.append(('collapse', t_turn, t[-1]))
+
+    # --- Event times ---
+    t_trans = None
+    for p in phases:
+        if str(p) == 'transition':
+            idx = np.where(phases == p)[0]
+            if len(idx) > 0:
+                t_trans = t[idx[0]]
+            break
+    # More robust: find first 'transition' phase
+    for ii, p in enumerate(phases):
+        if str(p) == 'transition':
+            t_trans = t[ii]
+            break
+
+    t_Rcloud = None
+    if np.isfinite(rCloud) and rCloud > 0:
+        crossing = np.where(R2 >= rCloud)[0]
+        if len(crossing) > 0:
+            t_Rcloud = t[crossing[0]]
+
+    return {
+        'intervals': intervals,
+        't_trans': t_trans,
+        't_turn': t_turn,
+        't_Rcloud': t_Rcloud,
+        't_end': t[-1],
+        'outcome': outcome,
     }
 
-    tags_present = [t for t in PROFILE_ORDER if t in simulations]
-    y_positions = np.arange(len(tags_present))
+
+def plot_phase_timeline(simulations: dict, output_dir: Path, fmt: str = 'pdf',
+                        show: bool = False) -> None:
+    """
+    Annotated Gantt-style timeline of phase durations for density profile comparison.
+
+    Shows energy-driven, transition, momentum-driven, and re-collapse phases
+    as coloured horizontal bars, with event markers for key transitions.
+    """
+    logger.info("Figure 6: Phase Timeline (annotated Gantt)")
+
+    # Phase colours (muted, distinguishable, colourblind-friendly)
+    PHASE_COLORS = {
+        'energy':     '#4878CF',  # blue
+        'transition': '#E8A838',  # amber/gold
+        'momentum':   '#D55E00',  # warm red/coral
+        'collapse':   '#8C8C8C',  # grey
+    }
+    PHASE_LABELS = {
+        'energy':     'Energy-driven',
+        'transition': 'Transition',
+        'momentum':   'Momentum-driven',
+        'collapse':   'Re-collapse',
+    }
+
+    # Track order: alpha=0, alpha=-1, BE, alpha=-2 (escaping profile at bottom)
+    TRACK_ORDER = ['PL0', 'PL-1', 'BE14', 'PL-2']
+    tags_present = [tag for tag in TRACK_ORDER if tag in simulations]
+    n_tracks = len(tags_present)
+
+    if n_tracks == 0:
+        logger.warning("No simulations found for phase timeline. Skipping.")
+        return
+
+    # Extract phase info for all runs
+    all_info = {}
+    for tag in tags_present:
+        all_info[tag] = _extract_phase_info(simulations[tag])
+
+    # Print all extracted intervals and event times
+    print("\n" + "=" * 80)
+    print("Phase Timeline — Extracted Intervals and Event Times")
+    print("=" * 80)
+    for tag in tags_present:
+        info = all_info[tag]
+        s = get_style(tag)
+        print(f"\n  {s['label']} ({tag}):")
+        print(f"    Intervals:")
+        for phase_name, t0, t1 in info['intervals']:
+            print(f"      {phase_name:12s}  {t0:.4f} — {t1:.4f} Myr  (Δt = {t1-t0:.4f} Myr)")
+        print(f"    t_trans  = {info['t_trans']}")
+        print(f"    t_turn   = {info['t_turn']}")
+        print(f"    t_Rcloud = {info['t_Rcloud']}")
+        print(f"    t_end    = {info['t_end']:.4f} Myr")
+        print(f"    Outcome  = {info['outcome']}")
+
+    # --- Create figure ---
+    fig, ax = plt.subplots(figsize=(7, 3), dpi=150)
+
+    bar_height = 0.55
+    y_positions = np.arange(n_tracks)
+
+    t_max_global = max(info['t_end'] for info in all_info.values())
 
     for yi, tag in enumerate(tags_present):
-        output = simulations[tag]
-        s = get_style(tag)
+        info = all_info[tag]
 
-        t = output.get('t_now')
-        phases = output.get('current_phase', as_array=False)
+        # Draw phase segments
+        for phase_name, t0, t1 in info['intervals']:
+            color = PHASE_COLORS.get(phase_name, 'gray')
+            ax.barh(yi, t1 - t0, left=t0, height=bar_height, color=color,
+                    edgecolor='white', lw=0.8, zorder=2)
 
-        # Determine phase intervals
-        phase_intervals = []
-        if phases is not None and len(phases) > 0:
-            current_phase = str(phases[0])
-            t_start = t[0]
+            # Duration annotation inside segment (if wide enough)
+            dt = t1 - t0
+            frac = dt / t_max_global
+            if frac > 0.06:
+                ax.text(0.5 * (t0 + t1), yi, f'{dt:.2f}',
+                        ha='center', va='center', fontsize=7, color='white',
+                        fontweight='bold', zorder=5)
 
-            for ii in range(1, len(phases)):
-                p = str(phases[ii])
-                if p != current_phase:
-                    phase_intervals.append((current_phase, t_start, t[ii]))
-                    current_phase = p
-                    t_start = t[ii]
-            # Final interval
-            phase_intervals.append((current_phase, t_start, t[-1]))
+        # Event markers
+        marker_kw = dict(zorder=6, clip_on=False)
 
-        # Plot as horizontal bars
-        for phase_name, t0, t1 in phase_intervals:
-            # Map phase names (energy/implicit -> energy phase)
-            display_phase = phase_name
-            if phase_name in ('energy', 'implicit'):
-                display_phase = 'energy'
-            color = phase_colors.get(display_phase, 'gray')
-            ax.barh(yi, t1 - t0, left=t0, height=0.6, color=color,
-                    edgecolor='white', lw=0.5)
+        # t_trans: diamond
+        if info['t_trans'] is not None:
+            ax.plot(info['t_trans'], yi + bar_height / 2 + 0.05, 'D',
+                    color='#E8A838', ms=5, markeredgecolor='black',
+                    markeredgewidth=0.5, **marker_kw)
 
+        # t_turn: downward triangle
+        if info['t_turn'] is not None:
+            ax.plot(info['t_turn'], yi + bar_height / 2 + 0.05, 'v',
+                    color='#8C8C8C', ms=6, markeredgecolor='black',
+                    markeredgewidth=0.5, **marker_kw)
+
+        # t_end for re-collapsing runs: 'x' marker
+        if info['outcome'] == 're-collapse':
+            ax.plot(info['t_end'], yi, 'x', color='black', ms=6,
+                    markeredgewidth=1.5, **marker_kw)
+
+        # Still expanding: right-pointing arrow at end
+        if info['outcome'] == 'expanding':
+            ax.annotate('', xy=(info['t_end'] + 0.08 * t_max_global, yi),
+                        xytext=(info['t_end'], yi),
+                        arrowprops=dict(arrowstyle='->', color='black', lw=1.5),
+                        zorder=6)
+
+    # Reference lines
+    for t_ref in [1.0, 3.0]:
+        if t_ref < t_max_global:
+            ax.axvline(t_ref, color='0.7', ls='--', lw=0.6, zorder=1)
+            ax.text(t_ref, n_tracks - 0.5 + 0.15, f'{t_ref:.0f} Myr',
+                    ha='center', va='bottom', fontsize=7, color='0.5')
+
+    # Y-axis labels
     ax.set_yticks(y_positions)
-    ax.set_yticklabels([get_style(t)['label'] for t in tags_present])
-    ax.set_xlabel(r'$t$ [Myr]')
-    ax.set_title('Phase Timing')
-    ax.set_xlim(0,1)
+    ax.set_yticklabels([get_style(tag)['label'] for tag in tags_present],
+                       fontsize=10)
+    ax.invert_yaxis()  # top-to-bottom ordering
 
-    # Legend
+    # X-axis
+    ax.set_xlabel(r'$t$ [Myr]')
+    ax.set_xlim(0, t_max_global * 1.12)
+
+    # Remove top/right spines for cleaner look
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+
+    # Legend: phase colours + event markers
     legend_handles = [
-        Patch(facecolor='#0072B2', label='Energy-driven'),
-        Patch(facecolor='#E69F00', label='Transition'),
-        Patch(facecolor='#D55E00', label='Momentum-driven'),
+        Patch(facecolor=PHASE_COLORS['energy'],     edgecolor='none', label='Energy-driven'),
+        Patch(facecolor=PHASE_COLORS['transition'],  edgecolor='none', label='Transition'),
+        Patch(facecolor=PHASE_COLORS['momentum'],    edgecolor='none', label='Momentum-driven'),
+        Patch(facecolor=PHASE_COLORS['collapse'],    edgecolor='none', label='Re-collapse'),
+        Line2D([0], [0], marker='D', color='none', markerfacecolor='#E8A838',
+               markeredgecolor='black', ms=5, label=r'$t_{\rm trans}$'),
+        Line2D([0], [0], marker='v', color='none', markerfacecolor='#8C8C8C',
+               markeredgecolor='black', ms=6, label=r'$t_{\rm turn}$ ($v=0$)'),
+        Line2D([0], [0], marker='x', color='black', ms=6,
+               markeredgewidth=1.5, linestyle='none', label='End (collapse)'),
+        Line2D([0], [0], marker='>', color='black', ms=6,
+               linestyle='none', label='Still expanding'),
     ]
-    ax.legend(handles=legend_handles, loc='upper right', fontsize=9)
+    ax.legend(handles=legend_handles, loc='upper center',
+              bbox_to_anchor=(0.5, -0.22), ncol=4, fontsize=8,
+              frameon=False, columnspacing=1.0, handletextpad=0.4)
 
     fig.tight_layout()
-    savefig(fig, 'densityProfile_phaseTime', output_dir, fmt)
+
+    savefig(fig, 'densityProfile_phaseTimeline', output_dir, fmt)
     if show:
         plt.show()
     plt.close(fig)
+
+    # --- Print phase duration summary table ---
+    print("\n" + "=" * 100)
+    print("Phase Duration Summary")
+    print("=" * 100)
+    header = f"{'Profile':<25s} | {'Energy [Myr]':>13s} | {'Trans [Myr]':>12s} | {'Momentum [Myr]':>15s} | {'Collapse [Myr]':>15s} | {'Total [Myr]':>12s} | {'Outcome':<12s}"
+    print(header)
+    print("-" * len(header))
+
+    for tag in tags_present:
+        info = all_info[tag]
+        s = get_style(tag)
+        label = s['label'].replace('$', '').replace(r'\alpha', 'alpha').replace(r'\Omega', 'Omega').replace('\\', '')
+
+        # Sum durations by phase type
+        durations = {'energy': 0.0, 'transition': 0.0, 'momentum': 0.0, 'collapse': 0.0}
+        for phase_name, t0, t1 in info['intervals']:
+            if phase_name in durations:
+                durations[phase_name] += t1 - t0
+
+        total = sum(durations.values())
+
+        def fmt_dur(val):
+            return f'{val:.3f}' if val > 0 else '---'
+
+        print(f"{label:<25s} | {fmt_dur(durations['energy']):>13s} | {fmt_dur(durations['transition']):>12s} | {fmt_dur(durations['momentum']):>15s} | {fmt_dur(durations['collapse']):>15s} | {total:>12.3f} | {info['outcome']:<12s}")
+
+    print("=" * 100 + "\n")
 
 
 # =============================================================================

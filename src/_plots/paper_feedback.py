@@ -120,9 +120,9 @@ def plot_from_path(data_input: str, output_dir: str = None):
         Patch(facecolor=C_DRIVE, edgecolor="none", alpha=0.75, label=r"$F_{\rm drive}$"),
         Patch(facecolor=C_RAD,   edgecolor="none", alpha=0.75, label="Radiation"),
         Patch(facecolor=C_PISM,  edgecolor="gray", alpha=1.0,  label="PISM (inner HII)"),
-        Patch(facecolor="none", edgecolor=C_PHII, hatch="////",       label=r"$P_{\rm HII}$ (momentum)"),
+        Patch(facecolor="none", edgecolor=C_PHII, hatch="xxxx",       label=r"$P_{\rm HII}$ (momentum)"),
         Patch(facecolor="none", edgecolor=C_WIND, hatch="\\\\\\\\",   label=r"Ram wind (momentum)"),
-        Patch(facecolor="none", edgecolor=C_SN,   hatch="xxxx",       label=r"Ram SN (momentum)"),
+        Patch(facecolor="none", edgecolor=C_SN,   hatch="////",       label=r"Ram SN (momentum)"),
     ]
     handles.extend(get_marker_legend_handles())
     ax.legend(handles=handles, loc="upper right", framealpha=0.9)
@@ -294,11 +294,11 @@ def plot_run_on_ax(
                 y_wind_top = y_hii_top + f_wind * drive_h
                 y_sn_top   = y_wind_top + f_sn * drive_h
 
-                # --- P_HII slice: forward slashes (red)
+                # --- P_HII slice: cross hatching (red)
                 ax.fill_between(
                     t_post, drive_bottom, y_hii_top,
                     facecolor="none", edgecolor=C_PHII,
-                    hatch="////", linewidth=0, alpha=0.9, zorder=3
+                    hatch="xxxx", linewidth=0, alpha=0.9, zorder=3
                 )
                 ax.fill_between(
                     t_post, drive_bottom, y_hii_top,
@@ -316,12 +316,12 @@ def plot_run_on_ax(
                     facecolor="none", edgecolor="black", linestyle=":", linewidth=0.4, zorder=6
                 )
 
-                # --- SN slice: cross hatching (yellow)
+                # --- SN slice: forward slashes (yellow)
                 for _ in range(4):  # draw multiple times for thicker hatch
                     ax.fill_between(
                         t_post, y_wind_top, y_sn_top,
                         facecolor="none", edgecolor=C_SN,
-                        hatch="xxxx", linewidth=0, alpha=0.9, zorder=3
+                        hatch="////", linewidth=0, alpha=0.9, zorder=3
                     )
                 ax.fill_between(
                     t_post, y_wind_top, y_sn_top,
@@ -486,9 +486,9 @@ def plot_grid(folder_path, output_dir=None, ndens_filter=None,
 
         if INCLUDE_ALL_FORCE:
             handles += [
-                Patch(facecolor="none", edgecolor=C_PHII, hatch="////",       label=r"$P_{\rm HII}$ (momentum)"),
+                Patch(facecolor="none", edgecolor=C_PHII, hatch="xxxx",       label=r"$P_{\rm HII}$ (momentum)"),
                 Patch(facecolor="none", edgecolor=C_WIND, hatch="\\\\\\\\",   label=r"Ram wind (momentum)"),
-                Patch(facecolor="none", edgecolor=C_SN,   hatch="xxxx",       label=r"Ram SN (momentum)"),
+                Patch(facecolor="none", edgecolor=C_SN,   hatch="////",       label=r"Ram SN (momentum)"),
             ]
 
         handles.extend(get_marker_legend_handles())
