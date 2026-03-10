@@ -221,10 +221,9 @@ def get_ODE_Edot_pure(t: float, y: list, snapshot: ODESnapshot, params_for_feedb
     # Energy/implicit: P_drive = P_b + P_HII
     # Transition:      P_drive = max(P_b + P_HII, P_HII + P_ram)
     # ==========================================================================
-    T_ion = 1e4  # K — standard HII region temperature
-
+    # BUG FIX: use snapshot.TShell_ion instead of hard-coded 1e4 for thermodynamic consistency
     # HII pressure from shell-structure ionization front density
-    P_HII = 2.0 * snapshot.n_IF * snapshot.k_B * T_ion
+    P_HII = 2.0 * snapshot.n_IF * snapshot.k_B * snapshot.TShell_ion
 
     if snapshot.current_phase == 'transition':
         P_b_ram = get_bubbleParams.pRam(R2, Lmech_total, v_mech_total)
@@ -349,11 +348,11 @@ def compute_derived_quantities(t: float, y: list, snapshot: ODESnapshot, params_
 
     FABSi = snapshot.shell_fAbsorbedIon
     if FABSi < 1.0:
-        press_HII_in = get_press_ion(snapshot.rShell, params_for_feedback)
+        press_HII_in = get_press_ion(R2, params_for_feedback)  # BUG FIX: evaluate at R2 for consistency with F_ion_in = press_HII_in * 4π R2²
     else:
         press_HII_in = 0.0
 
-    if snapshot.rShell >= snapshot.rCloud:
+    if R2 >= snapshot.rCloud:  # BUG FIX: use R2 consistently (not frozen rShell)
         press_HII_in += snapshot.PISM * snapshot.k_B
 
     # ==========================================================================
@@ -361,10 +360,9 @@ def compute_derived_quantities(t: float, y: list, snapshot: ODESnapshot, params_
     # Energy/implicit: P_drive = P_b + P_HII
     # Transition:      P_drive = max(P_b + P_HII, P_HII + P_ram)
     # ==========================================================================
-    T_ion = 1e4  # K — standard HII region temperature
-
+    # BUG FIX: use snapshot.TShell_ion instead of hard-coded 1e4 for thermodynamic consistency
     n_IF = snapshot.n_IF
-    P_HII = 2.0 * n_IF * snapshot.k_B * T_ion
+    P_HII = 2.0 * n_IF * snapshot.k_B * snapshot.TShell_ion
 
     if snapshot.current_phase == 'transition':
         P_b_ram = get_bubbleParams.pRam(R2, Lmech_total, v_mech_total)

@@ -240,7 +240,7 @@ def compute_forces_momentum_pure(
             n_r = density_profile.get_density_profile(np.array([rShell]), params)
             if hasattr(n_r, '__len__') and len(n_r) == 1:
                 n_r = n_r[0]
-            press_HII_in = n_r * k_B * TShell_ion
+            press_HII_in = 2.0 * n_r * k_B * TShell_ion  # BUG FIX: factor 2 for fully ionized gas (ions + electrons)
         except Exception:
             press_HII_in = 0.0
     else:
@@ -254,14 +254,13 @@ def compute_forces_momentum_pure(
     # WARM IONIZED GAS PRESSURE (momentum phase)
     # P_drive = P_HII + P_ram  (no thermal bubble; both terms always active)
     # ==========================================================================
-    T_ion = 1e4  # K — standard HII region temperature
 
     # Get n_IF from shell_props (ionization front density from shell structure)
     n_IF = shell_props.n_IF
     R_IF = shell_props.R_IF
 
-    # HII pressure from shell-structure ionization front density
-    P_HII = 2.0 * n_IF * k_B * T_ion
+    # BUG FIX: use TShell_ion from params instead of hard-coded 1e4 for thermodynamic consistency
+    P_HII = 2.0 * n_IF * k_B * TShell_ion
 
     # Momentum phase: P_drive = P_HII + P_ram
     P_drive = P_HII + press_ram
@@ -310,6 +309,7 @@ class MomentumODESnapshot:
     rCloud: float
     rShell: float
     FABSi: float
+    TShell_ion: float  # Ionized shell temperature [K]
     n_IF: float  # Density at ionization front (for P_HII)
     F_rad: float
     mShell: float
@@ -341,6 +341,7 @@ def create_momentum_snapshot(params, shell_props: ShellProperties,
         nISM=params['nISM'].value,
         PISM=PISM,
         rCloud=params['rCloud'].value,
+        TShell_ion=params['TShell_ion'].value,
         rShell=shell_props.rShell,
         FABSi=shell_props.shell_fAbsorbedIon,
         n_IF=shell_props.n_IF,
@@ -408,7 +409,7 @@ def get_ODE_momentum_pure(t: float, y: np.ndarray, snapshot: MomentumODESnapshot
             n_r = density_profile.get_density_profile(np.array([rShell]), params)
             if hasattr(n_r, '__len__') and len(n_r) == 1:
                 n_r = n_r[0]
-            press_HII_in = n_r * k_B * 1e4  # TShell_ion approximation
+            press_HII_in = 2.0 * n_r * k_B * snapshot.TShell_ion  # BUG FIX: factor 2 for fully ionized gas (ions + electrons)
         except Exception:
             press_HII_in = 0.0
     else:
@@ -422,11 +423,10 @@ def get_ODE_momentum_pure(t: float, y: np.ndarray, snapshot: MomentumODESnapshot
     # WARM IONIZED GAS PRESSURE (momentum phase)
     # P_drive = P_HII + P_ram  (no thermal bubble; both terms always active)
     # ==========================================================================
-    T_ion = 1e4  # K — standard HII region temperature
-
+    # BUG FIX: use snapshot.TShell_ion instead of hard-coded 1e4 for thermodynamic consistency
     # HII pressure from shell-structure ionization front density
     n_IF = snapshot.n_IF
-    P_HII = 2.0 * n_IF * k_B * T_ion
+    P_HII = 2.0 * n_IF * k_B * snapshot.TShell_ion
 
     # Momentum phase: P_drive = P_HII + P_ram
     P_drive = P_HII + press_ram
