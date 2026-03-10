@@ -317,7 +317,7 @@ def compute_forces_pure(
 
     # ==========================================================================
     # WARM IONIZED GAS PRESSURE (implicit phase = same as energy)
-    # P_drive = P_b + P_HII
+    # P_drive = max(Pb, P_HII)
     # ==========================================================================
 
     # Get n_IF from shell_props (ionization front density from shell structure)
@@ -327,8 +327,9 @@ def compute_forces_pure(
     # BUG FIX: use TShell_ion from params instead of hard-coded 1e4 for thermodynamic consistency
     P_HII = 2.0 * n_IF * k_B * TShell_ion
 
-    # Implicit phase: P_drive = P_b + P_HII
-    P_drive = Pb + P_HII
+    # Implicit phase: P_drive = max(Pb, P_HII)
+    # max() avoids double-counting where P_HII ≈ Pb at contact discontinuity
+    P_drive = max(Pb, P_HII)
 
     # Forces
     F_ion_in = press_HII_in * FOUR_PI * R2**2

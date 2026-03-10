@@ -312,7 +312,7 @@ def compute_forces_pure(
 
     # ==========================================================================
     # WARM IONIZED GAS PRESSURE (transition phase)
-    # P_drive = max(P_b + P_HII, P_HII + P_ram)
+    # P_drive = max(Pb, P_HII + P_ram)
     # ==========================================================================
 
     # Get n_IF from shell_props (ionization front density from shell structure)
@@ -327,8 +327,8 @@ def compute_forces_pure(
     v_mech_total = params['v_mech_total'].value
     P_b_ram = get_bubbleParams.pRam(R2, Lmech_total, v_mech_total)
 
-    # Transition phase: max(P_b + P_HII, P_HII + P_ram)
-    P_drive = max(Pb + P_HII, P_HII + P_b_ram)
+    # Transition phase: max(Pb, P_HII + P_ram)
+    P_drive = max(Pb, P_HII + P_b_ram)
 
     # Forces
     F_ion_in = press_HII_in * FOUR_PI * R2**2

@@ -218,8 +218,8 @@ def get_ODE_Edot_pure(t: float, y: list, snapshot: ODESnapshot, params_for_feedb
 
     # ==========================================================================
     # WARM IONIZED GAS PRESSURE
-    # Energy/implicit: P_drive = P_b + P_HII
-    # Transition:      P_drive = max(P_b + P_HII, P_HII + P_ram)
+    # Energy/implicit: P_drive = max(Pb, P_HII)
+    # Transition:      P_drive = max(Pb, P_HII + P_ram)
     # ==========================================================================
     # BUG FIX: use snapshot.TShell_ion instead of hard-coded 1e4 for thermodynamic consistency
     # HII pressure from shell-structure ionization front density
@@ -227,11 +227,12 @@ def get_ODE_Edot_pure(t: float, y: list, snapshot: ODESnapshot, params_for_feedb
 
     if snapshot.current_phase == 'transition':
         P_b_ram = get_bubbleParams.pRam(R2, Lmech_total, v_mech_total)
-        P_drive = max(press_bubble + P_HII, P_HII + P_b_ram)
+        P_drive = max(press_bubble, P_HII + P_b_ram)
         F_HII = 4.0 * np.pi * R2**2 * P_HII
     else:
-        # energy / implicit phases
-        P_drive = press_bubble + P_HII
+        # energy / implicit phases: max(Pb, P_HII) — avoids double-counting
+        # at contact discontinuity where P_HII ≈ Pb by pressure equilibrium
+        P_drive = max(press_bubble, P_HII)
         F_HII = 4.0 * np.pi * R2**2 * P_HII
 
     # Radiation force
@@ -357,8 +358,8 @@ def compute_derived_quantities(t: float, y: list, snapshot: ODESnapshot, params_
 
     # ==========================================================================
     # WARM IONIZED GAS PRESSURE (same as ODE function)
-    # Energy/implicit: P_drive = P_b + P_HII
-    # Transition:      P_drive = max(P_b + P_HII, P_HII + P_ram)
+    # Energy/implicit: P_drive = max(Pb, P_HII)
+    # Transition:      P_drive = max(Pb, P_HII + P_ram)
     # ==========================================================================
     # BUG FIX: use snapshot.TShell_ion instead of hard-coded 1e4 for thermodynamic consistency
     n_IF = snapshot.n_IF
@@ -366,11 +367,11 @@ def compute_derived_quantities(t: float, y: list, snapshot: ODESnapshot, params_
 
     if snapshot.current_phase == 'transition':
         P_b_ram = get_bubbleParams.pRam(R2, Lmech_total, v_mech_total)
-        P_drive = max(Pb + P_HII, P_HII + P_b_ram)
+        P_drive = max(Pb, P_HII + P_b_ram)
         F_HII = 4.0 * np.pi * R2**2 * P_HII
     else:
-        # energy / implicit phases
-        P_drive = Pb + P_HII
+        # energy / implicit phases: max(Pb, P_HII)
+        P_drive = max(Pb, P_HII)
         F_HII = 4.0 * np.pi * R2**2 * P_HII
 
     # F_ion_out kept for backwards compatibility
