@@ -246,7 +246,7 @@ def run_energy(params):
         # Check if an event terminated the integration
         event_result = check_event_termination(solution, ode_events)
         if event_result.triggered:
-            logger.info(f"Event '{event_result.name}' triggered at t={event_result.t:.6e} Myr")
+            logger.warning(f"Event '{event_result.name}' triggered at t={event_result.t:.6e} Myr")
             apply_event_result(params, event_result, event_result.t, event_result.y,
                               state_keys=['R2', 'v2', 'Eb'])
             if event_result.is_simulation_ending:
@@ -393,7 +393,7 @@ def run_energy_continuous(params):
     # Check if an event terminated the integration
     event_result = check_event_termination(solution, ode_events)
     if event_result.triggered:
-        logger.info(f"Event '{event_result.name}' triggered at t={event_result.t:.6e} Myr")
+        logger.warning(f"Event '{event_result.name}' triggered at t={event_result.t:.6e} Myr")
         # Apply event result to params
         apply_event_result(params, event_result, event_result.t, event_result.y,
                           state_keys=['R2', 'v2', 'Eb'])

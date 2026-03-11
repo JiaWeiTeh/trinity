@@ -670,7 +670,7 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
             termination_reason = "reached_tmax"
             params['SimulationEndReason'].value = 'Stopping time reached'
             params['EndSimulationDirectly'].value = True
-            logger.info(f"Simulation reached stop_t={tmax} Myr successfully")
+            logger.warning(f"Simulation reached stop_t={tmax} Myr successfully")
             break
 
         # ---------------------------------------------------------------------
@@ -849,7 +849,7 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
 
         if Lgain > 0 and (Lgain - Lloss) / Lgain < threshold:
             termination_reason = "cooling_balance"
-            logger.info(f"Cooling balance reached: Lloss/Lgain ratio below {threshold}")
+            logger.warning(f"Cooling balance reached: Lloss/Lgain ratio below {threshold}")
             break
 
         # Collapse detection: velocity negative AND radius decreasing
