@@ -1258,8 +1258,8 @@ def plot_feedback_grid(sweep_dir: str, output_dir: Path, fmt: str = 'pdf',
         handles.append(Patch(facecolor=color, edgecolor=ec, alpha=a,
                              label=label))
     if _fb.INCLUDE_ALL_FORCE:
-        handles.append(Patch(facecolor='none', edgecolor=_fb.C_RAM,
-                             hatch='////', label='Wind'))
+        handles.append(Patch(facecolor='none', edgecolor=_fb.C_WIND,
+                             hatch='\\\\\\\\', label='Wind'))
         handles.append(Patch(facecolor='none', edgecolor=_fb.C_SN,
                              hatch='\\\\\\\\', label='SN'))
     handles.extend(get_marker_legend_handles())
