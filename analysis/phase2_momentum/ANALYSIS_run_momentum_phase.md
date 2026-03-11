@@ -60,7 +60,7 @@ Eb = 0     # Hard-coded (Line 47)
 1. **Time limit**: t > stop_t
 2. **Collapse**: v < 0 and R < R_collapse
 3. **Large radius**: R > stop_r
-4. **Dissolution**: shell density < stop_n_diss
+4. **Dissolution**: shell_nMax < nISM for stop_t_diss Myr
 5. **Cloud breakout**: R > R_cloud
 
 *(No energy threshold event because E already 0)*

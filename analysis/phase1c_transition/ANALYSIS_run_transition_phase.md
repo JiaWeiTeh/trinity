@@ -51,7 +51,7 @@ Transition phase models the **energy decay** as the bubble transitions from ener
 2. **Time limit**: t > stop_t
 3. **Collapse**: v < 0 and R < R_collapse
 4. **Large radius**: R > stop_r
-5. **Dissolution**: shell density < stop_n_diss
+5. **Dissolution**: shell_nMax < nISM for stop_t_diss Myr
 6. **Cloud breakout**: R > R_cloud (if expansion limited)
 
 ---
@@ -491,7 +491,7 @@ def check_events(params, dt_params):
         return True
 
     # 5. Shell dissolution
-    if params['shell_nMax'].value < params['stop_n_diss'].value:
+    if params['shell_nMax'].value < params['nISM'].value:
         params['isDissolved'].value = True
         params['SimulationEndReason'].value = 'Shell dissolved'
         params['EndSimulationDirectly'].value = True

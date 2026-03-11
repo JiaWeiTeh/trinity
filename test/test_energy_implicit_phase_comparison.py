@@ -308,10 +308,6 @@ def add_physical_constants(params: dict, jsonl_path: str = None) -> dict:
     dust_KappaIR_cgs = defaults.get('dust_KappaIR', 4.0)
     params['dust_KappaIR'] = dust_KappaIR_cgs * cm2_to_pc2 / CONV.g2Msun
 
-    # Thresholds
-    stop_n_diss_cgs = defaults.get('stop_n_diss', 1.0)
-    params['stop_n_diss'] = stop_n_diss_cgs * ndens_cgs2au
-
     if 'nISM' not in params:
         nISM_cgs = defaults.get('nISM', 1.0)
         params['nISM'] = nISM_cgs * ndens_cgs2au
