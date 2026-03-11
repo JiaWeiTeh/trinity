@@ -5,7 +5,7 @@ Force fraction grid with composition overlays within F_drive.
 
 - Base stack uses: F_grav, F_drive, F_rad, F_ion_in (PISM)
 - Hatched overlays decompose F_drive in ALL phases:
-    Energy/Transition: P_b (thermal bubble) vs P_HII (ionized gas)
+    Energy/Transition: ram_wind + ram_SN (as fractions of F_drive)
     Momentum:          P_HII + ram_wind + ram_SN
 - Phase markers: T (enter transition), M (enter momentum)
 - Breakout marker: first time R2 > rCloud (vertical dashed + label)
@@ -40,7 +40,6 @@ C_PHII  = "#b36a6f"    # red — P_HII hatching
 C_RAD   = "#a1d0c7"
 C_PISM  = "#FFFFFF"
 C_WIND  = "#8b6ca7"    # purple — wind hatching
-C_PB    = "#4a7a4a"    # green — thermal bubble pressure hatching
 
 # Base stacked forces — order matters for stacking + overlay indexing
 # In energy/transition phases P_drive = max(Pb, P_HII) is a single quantity.
@@ -122,8 +121,7 @@ def plot_from_path(data_input: str, output_dir: str = None):
         Patch(facecolor=C_DRIVE, edgecolor="none", alpha=0.75, label=r"$F_{\rm drive}$"),
         Patch(facecolor=C_RAD,   edgecolor="none", alpha=0.75, label="Radiation"),
         Patch(facecolor=C_PISM,  edgecolor="gray", alpha=1.0,  label="PISM (inner HII)"),
-        Patch(facecolor="none", edgecolor=C_PB,   hatch="----",       label=r"$P_b$ (thermal)"),
-        Patch(facecolor="none", edgecolor=C_PHII, hatch="xxxx",       label=r"$P_{\rm HII}$"),
+        Patch(facecolor="none", edgecolor=C_PHII, hatch="xxxx",       label=r"$P_{\rm HII}$ (momentum)"),
         Patch(facecolor="none", edgecolor=C_WIND, hatch="\\\\\\\\",   label=r"Ram wind"),
         Patch(facecolor="none", edgecolor=C_SN,   hatch="////",       label=r"Ram SN"),
     ]
@@ -177,10 +175,6 @@ def load_run(data_path: Path):
     F_wind = get_field("F_ram_wind", np.nan)
     F_sn   = get_field("F_ram_SN", np.nan)
 
-    # Bubble thermal pressure force (for energy/transition decomposition)
-    Pb     = get_field("Pb", 0.0)
-    F_Pb   = Pb * 4.0 * np.pi * R2_safe**2
-
     # PISM: press_HII_in is a pressure — convert to force via F = P * 4πR²
     F_PISM_raw = get_field("press_HII_in", np.nan)
     F_PISM_raw = np.nan_to_num(F_PISM_raw, nan=0.0)
@@ -199,12 +193,11 @@ def load_run(data_path: Path):
         F_PISM = F_PISM[order]
         F_HII = F_HII[order]
         F_wind, F_sn = F_wind[order], F_sn[order]
-        F_Pb = F_Pb[order]
         isCollapse = isCollapse[order]
 
     # base forces order must match FORCE_FIELDS_BASE
     base_forces    = np.vstack([F_grav, F_drive, F_rad, F_PISM])
-    overlay_forces = np.vstack([F_HII, F_wind, F_sn, F_Pb])
+    overlay_forces = np.vstack([F_HII, F_wind, F_sn])
 
     return t, R2, phase, base_forces, overlay_forces, rcloud, isCollapse
 
@@ -254,7 +247,6 @@ def plot_run_on_ax(
         Fhii_raw = overlay_forces[0]
         Fw_raw   = overlay_forces[1]
         Fsn_raw  = overlay_forces[2]
-        FPb_raw  = overlay_forces[3]
 
         # Phase masks
         momentum_mask = np.array([p == 'momentum' for p in phase])
@@ -267,53 +259,55 @@ def plot_run_on_ax(
 
         eps = 1e-30
 
-        # ---- Energy / Transition phases: Pb vs P_HII within F_drive ----
+        # ---- Energy / Transition phases: wind + SN ram within F_drive ----
         if np.any(pre_momentum_mask):
             pre_idx = np.where(pre_momentum_mask)[0]
             t_pre = t[pre_idx]
 
-            FPb_clean  = np.nan_to_num(FPb_raw[pre_idx],  nan=0.0)
-            Fhii_clean = np.nan_to_num(Fhii_raw[pre_idx], nan=0.0)
+            Fw_clean  = np.nan_to_num(Fw_raw[pre_idx],  nan=0.0)
+            Fsn_clean = np.nan_to_num(Fsn_raw[pre_idx],  nan=0.0)
 
-            Ftotal_pre = FPb_clean + Fhii_clean
-            denom_pre = np.where(Ftotal_pre > 0, Ftotal_pre, np.nan)
+            # F_drive for these timesteps (from base_forces)
+            Fdrive_pre = base_forces[1][pre_idx]
+            Fdrive_pre = np.where(Fdrive_pre > 0, Fdrive_pre, np.nan)
 
-            f_pb  = np.nan_to_num(FPb_clean  / (denom_pre + eps), nan=0.0)
-            f_hii = np.nan_to_num(Fhii_clean / (denom_pre + eps), nan=0.0)
+            f_wind = np.nan_to_num(Fw_clean  / (Fdrive_pre + eps), nan=0.0)
+            f_sn   = np.nan_to_num(Fsn_clean / (Fdrive_pre + eps), nan=0.0)
 
-            # Clip and renormalize
-            f_pb  = np.clip(f_pb,  0.0, 1.0)
-            f_hii = np.clip(f_hii, 0.0, 1.0)
-            s = f_pb + f_hii
+            # Clip (these are fractions of F_drive, can't exceed 1)
+            f_wind = np.clip(f_wind, 0.0, 1.0)
+            f_sn   = np.clip(f_sn,   0.0, 1.0)
+            s = f_wind + f_sn
             over = s > 1.0
-            f_pb[over]  /= s[over]
-            f_hii[over] /= s[over]
+            f_wind[over] /= s[over]
+            f_sn[over]   /= s[over]
 
             db_pre = drive_bottom[pre_idx]
             dh_pre = drive_h[pre_idx]
 
-            y_pb_top  = db_pre + f_pb * dh_pre
-            y_hii_top = y_pb_top + f_hii * dh_pre
+            y_wind_top = db_pre + f_wind * dh_pre
+            y_sn_top   = y_wind_top + f_sn * dh_pre
 
-            # --- Pb slice: horizontal lines (green)
+            # --- Wind slice: back slashes (purple)
             ax.fill_between(
-                t_pre, db_pre, y_pb_top,
-                facecolor="none", edgecolor=C_PB,
-                hatch="----", linewidth=0, alpha=0.9, zorder=3
+                t_pre, db_pre, y_wind_top,
+                facecolor="none", edgecolor=C_WIND,
+                hatch="\\\\\\\\", linewidth=0, alpha=0.9, zorder=3
             )
             ax.fill_between(
-                t_pre, db_pre, y_pb_top,
+                t_pre, db_pre, y_wind_top,
                 facecolor="none", edgecolor="black", linestyle=":", linewidth=0.4, zorder=6
             )
 
-            # --- P_HII slice: cross hatching (red)
+            # --- SN slice: forward slashes (yellow)
+            for _ in range(4):
+                ax.fill_between(
+                    t_pre, y_wind_top, y_sn_top,
+                    facecolor="none", edgecolor=C_SN,
+                    hatch="////", linewidth=0, alpha=0.9, zorder=3
+                )
             ax.fill_between(
-                t_pre, y_pb_top, y_hii_top,
-                facecolor="none", edgecolor=C_PHII,
-                hatch="xxxx", linewidth=0, alpha=0.9, zorder=3
-            )
-            ax.fill_between(
-                t_pre, y_pb_top, y_hii_top,
+                t_pre, y_wind_top, y_sn_top,
                 facecolor="none", edgecolor="black", linestyle=":", linewidth=0.4, zorder=6
             )
 
@@ -544,8 +538,7 @@ def plot_grid(folder_path, output_dir=None, ndens_filter=None,
 
         if INCLUDE_ALL_FORCE:
             handles += [
-                Patch(facecolor="none", edgecolor=C_PB,   hatch="----",       label=r"$P_b$ (thermal)"),
-                Patch(facecolor="none", edgecolor=C_PHII, hatch="xxxx",       label=r"$P_{\rm HII}$"),
+                Patch(facecolor="none", edgecolor=C_PHII, hatch="xxxx",       label=r"$P_{\rm HII}$ (momentum)"),
                 Patch(facecolor="none", edgecolor=C_WIND, hatch="\\\\\\\\",   label=r"Ram wind"),
                 Patch(facecolor="none", edgecolor=C_SN,   hatch="////",       label=r"Ram SN"),
             ]
