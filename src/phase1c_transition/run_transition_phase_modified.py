@@ -546,7 +546,7 @@ def run_phase_transition(params) -> TransitionPhaseResults:
             termination_reason = "reached_tmax"
             params['SimulationEndReason'].value = 'Stopping time reached'
             params['EndSimulationDirectly'].value = True
-            logger.info(f"Simulation reached stop_t={tmax} Myr successfully")
+            logger.warning(f"Simulation reached stop_t={tmax} Myr successfully")
             break
 
         # ---------------------------------------------------------------------
@@ -729,8 +729,8 @@ def run_phase_transition(params) -> TransitionPhaseResults:
                     termination_reason = "dissolved"
                     params['SimulationEndReason'].value = 'Shell dissolved'
                     params['EndSimulationDirectly'].value = True
-                    logger.info(f"Shell dissolved after {t_now - t_diss_onset:.4f} Myr "
-                                f"below nISM (stop_t_diss={params['stop_t_diss'].value})")
+                    logger.warning(f"Shell dissolved after {t_now - t_diss_onset:.4f} Myr "
+                                   f"below nISM (stop_t_diss={params['stop_t_diss'].value})")
                     break
             else:
                 if t_diss_onset != np.inf:

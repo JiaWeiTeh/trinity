@@ -401,7 +401,7 @@ def shell_structure_pure(params) -> ShellProperties:
         shell_n_arr = np.array([])
         shell_ion_idx = -1
 
-        logger.info('Shell dissolved.')
+        logger.warning('Shell dissolved.')
 
     # Evaluate instantaneous dissolution condition: shell_nMax < nISM
     nISM = params['nISM'].value

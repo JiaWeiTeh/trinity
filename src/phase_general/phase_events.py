@@ -617,4 +617,4 @@ def apply_event_result(params, result: EventResult, t: float, y: np.ndarray,
             if 'isCollapse' in params:
                 params['isCollapse'].value = True
 
-    logger.info(f"Event '{result.name}' applied: {result.reason_message}")
+    logger.warning(f"Event '{result.name}' applied: {result.reason_message}")
