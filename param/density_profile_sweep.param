@@ -32,7 +32,6 @@ rCore     1
 
 # ISM properties
 nISM    1
-stop_n_diss 0.1
 stop_t_diss 1
 
 # Allow expansion beyond cloud

@@ -27,7 +27,6 @@ densBE_Omega    14.1
 
 # ISM density
 nISM    0.1
-stop_n_diss 0.1
 stop_t_diss 1
 
 # Allow expansion beyond cloud

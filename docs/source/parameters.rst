@@ -262,14 +262,10 @@ Conditions that end the simulation.
      - Default
      - Unit
      - Description
-   * - ``stop_n_diss``
-     - ``1``
-     - cm\ :math:`^{-3}`
-     - Shell dissolution threshold density. When shell density falls below this for ``stop_t_diss``, simulation ends.
    * - ``stop_t_diss``
-     - ``2``
+     - ``1``
      - Myr
-     - Duration shell must remain below ``stop_n_diss`` to be considered dissolved.
+     - Duration ``shell_nMax`` must remain below ``nISM`` before dissolution is triggered.
    * - ``stop_r``
      - ``500``
      - pc

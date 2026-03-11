@@ -338,8 +338,8 @@ class PhaseIntegrator(ABC):
     large_radius_event.direction = 1
 
     def dissolution_event(self, t: float, y: np.ndarray) -> float:
-        """Event: Shell dissolution (low density)."""
-        return self.params['shell_nMax'].value - self.params['stop_n_diss'].value
+        """Event: Shell dissolution (shell_nMax < nISM)."""
+        return self.params['shell_nMax'].value - self.params['nISM'].value
 
     dissolution_event.terminal = True
     dissolution_event.direction = -1

@@ -60,6 +60,7 @@ class ShellProperties:
     # State flags
     isDissolved: bool  # Is the shell dissolved?
     is_fullyIonised: bool  # Is the shell fully ionized?
+    diss_condition_met: bool  # Is shell_nMax < nISM this timestep?
 
     # Ionization front properties (for P_HII convex blend)
     n_IF: float  # Density at ionization front (code units)
@@ -116,7 +117,9 @@ def shell_structure_pure(params) -> ShellProperties:
 
     # Initialize logic gates
     is_allMassSwept = False
-    is_shellDissolved = False
+    is_shellDissolved = params.get('isDissolved', False)
+    if hasattr(is_shellDissolved, 'value'):
+        is_shellDissolved = is_shellDissolved.value
     is_fullyIonised = False
 
     # Arrays for ionized region
@@ -193,14 +196,8 @@ def shell_structure_pure(params) -> ShellProperties:
         mShell0 = mShell_arr_cum[idx]
         rShell_start = rShell_arr[idx]
 
-        # Check for shell dissolution
-        # Requires: allowShellDissolution=True AND density < stop_n_diss AND time > stop_t_diss
-        allow_dissolution = params.get('allowShellDissolution', True)
-        if allow_dissolution:
-            t_now_Myr = params['t_now'].value  # Already in Myr
-            if shell_n0 < params['stop_n_diss'].value and t_now_Myr > params['stop_t_diss'].value:
-                is_shellDissolved = True
-                logger.info(f'Shell has dissolved. nShell0 = f{nShell_arr[0]}')
+        # Dissolution condition is now evaluated after shell structure is computed
+        # (see diss_condition_met below); shell_structure_pure is stateless.
 
     # Append final values
     mShell_arr_ion = np.append(mShell_arr_ion, mShell_arr[idx])
@@ -406,6 +403,13 @@ def shell_structure_pure(params) -> ShellProperties:
 
         logger.info('Shell dissolved.')
 
+    # Evaluate instantaneous dissolution condition: shell_nMax < nISM
+    nISM = params['nISM'].value
+    allow_dissolution = params.get('allowShellDissolution', True)
+    if hasattr(allow_dissolution, 'value'):
+        allow_dissolution = allow_dissolution.value
+    diss_condition_met = bool(allow_dissolution and nShell_max < nISM)
+
     # Return dataclass with all properties
     return ShellProperties(
         shell_n0=shell_n0,
@@ -423,6 +427,7 @@ def shell_structure_pure(params) -> ShellProperties:
         shell_grav_force_m=grav_force_m,
         isDissolved=is_shellDissolved,
         is_fullyIonised=is_fullyIonised,
+        diss_condition_met=diss_condition_met,
         n_IF=n_IF,
         R_IF=R_IF,
         shell_r_arr=shell_r_arr,

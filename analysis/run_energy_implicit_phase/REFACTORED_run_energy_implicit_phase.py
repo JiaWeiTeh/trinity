@@ -514,10 +514,10 @@ def event_max_radius(y: np.ndarray, t: float, params: Dict) -> float:
 
 
 def event_dissolution(y: np.ndarray, t: float, params: Dict) -> float:
-    """Event: Shell density below dissolution threshold."""
+    """Event: Shell density below dissolution threshold (shell_nMax < nISM)."""
     # Would need to calculate shell_nMax from current state
     shell_nMax = 0.0  # Placeholder
-    return shell_nMax - params['stop_n_diss'].value
+    return shell_nMax - params['nISM'].value
 
 
 def event_cloud_boundary(y: np.ndarray, t: float, params: Dict) -> float:

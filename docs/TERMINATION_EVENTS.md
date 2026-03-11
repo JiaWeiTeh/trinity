@@ -89,7 +89,7 @@ In addition to solve_ivp events, each phase performs post-integration checks:
 | `reached_tmax` | t_now > stop_t | `EndSimulationDirectly = True` |
 | `small_radius` | R2 < coll_r (if isCollapse) | `EndSimulationDirectly = True` |
 | `large_radius` | R2 > stop_r | `EndSimulationDirectly = True` |
-| `dissolved` | shell_nMax < stop_n_diss | `EndSimulationDirectly = True` |
+| `dissolved` | shell_nMax < nISM for stop_t_diss Myr | `EndSimulationDirectly = True` |
 | `cloud_boundary` | R2 > rCloud (if !expansionBeyondCloud) | `EndSimulationDirectly = True` |
 | `max_segments` | segment_count >= MAX_SEGMENTS | `termination_reason = "max_segments"` |
 

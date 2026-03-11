@@ -494,6 +494,9 @@ def run_phase_momentum(params) -> MomentumPhaseResults:
     # Adaptive time stepping
     dt_segment = DT_SEGMENT_INIT
 
+    # Persistent dissolution timer: track how long shell_nMax < nISM
+    t_diss_onset = np.inf
+
     # =============================================================================
     # Create event functions for safe termination during collapse
     # =============================================================================
@@ -777,15 +780,27 @@ def run_phase_momentum(params) -> MomentumPhaseResults:
             params['EndSimulationDirectly'].value = True
             break
 
-        # Dissolution check
+        # Dissolution check: persistent timer based on shell_nMax < nISM
         shell_nMax = params.get('shell_nMax', None)
         if shell_nMax and hasattr(shell_nMax, 'value'):
-            if shell_nMax.value < params['stop_n_diss'].value:
-                params['isDissolved'].value = True
-                termination_reason = "dissolved"
-                params['SimulationEndReason'].value = 'Shell dissolved'
-                params['EndSimulationDirectly'].value = True
-                break
+            if shell_nMax.value < params['nISM'].value:
+                if t_diss_onset == np.inf:
+                    t_diss_onset = t_now
+                    logger.info(f"Dissolution condition onset at t={t_now:.6e} Myr "
+                                f"(shell_nMax={shell_nMax.value:.4e} < nISM={params['nISM'].value:.4e})")
+                if (t_now - t_diss_onset) >= params['stop_t_diss'].value:
+                    params['isDissolved'].value = True
+                    termination_reason = "dissolved"
+                    params['SimulationEndReason'].value = 'Shell dissolved'
+                    params['EndSimulationDirectly'].value = True
+                    logger.info(f"Shell dissolved after {t_now - t_diss_onset:.4f} Myr "
+                                f"below nISM (stop_t_diss={params['stop_t_diss'].value})")
+                    break
+            else:
+                if t_diss_onset != np.inf:
+                    logger.info(f"Dissolution condition reset at t={t_now:.6e} Myr "
+                                f"(shell_nMax={shell_nMax.value:.4e} >= nISM={params['nISM'].value:.4e})")
+                t_diss_onset = np.inf
 
         # Cloud boundary check
         if params.get('expansionBeyondCloud', True) == False:
