@@ -463,11 +463,9 @@ def read_param(path2file, write_summary=True):
     
     # Forces on shell
     params['F_grav'] = DescribedItem(0, info="Gravitational force", ori_units="Msun*pc/Myr**2")
-    params['F_SN'] = DescribedItem(0, info="Supernova force", ori_units="Msun*pc/Myr**2")
     params['F_ram'] = DescribedItem(0, info="Ram pressure force (from Pb-Eb relation)", ori_units="Msun*pc/Myr**2")
     params['F_ram_wind'] = DescribedItem(0, info="Wind ram pressure force (from SB99)", ori_units="Msun*pc/Myr**2")
     params['F_ram_SN'] = DescribedItem(0, info="SN ram pressure force (from SB99)", ori_units="Msun*pc/Myr**2")
-    params['F_wind'] = DescribedItem(0, info="Wind force", ori_units="Msun*pc/Myr**2")
     params['F_ion_in'] = DescribedItem(0, info="Inward photoionization pressure", ori_units="Msun*pc/Myr**2")
     params['F_ion_out'] = DescribedItem(0, info="Outward photoionization pressure", ori_units="Msun*pc/Myr**2")
     params['F_rad'] = DescribedItem(0, info="Radiation pressure", ori_units="Msun*pc/Myr**2")
