@@ -188,7 +188,7 @@ def shell_structure_pure(params) -> ShellProperties:
 
         # Reinitialize for next iteration
         nShell0 = nShell_arr[idx]
-        phi0 = phiShell_arr[idx]
+        phi0 = max(0.0, phiShell_arr[idx])   # guard against sub-threshold negative phi
         tau0_ion = tauShell_arr[idx]
         mShell0 = mShell_arr_cum[idx]
         rShell_start = rShell_arr[idx]
@@ -198,7 +198,7 @@ def shell_structure_pure(params) -> ShellProperties:
         allow_dissolution = params.get('allowShellDissolution', True)
         if allow_dissolution:
             t_now_Myr = params['t_now'].value  # Already in Myr
-            if nShell_arr[0] < params['stop_n_diss'].value and t_now_Myr > params['stop_t_diss'].value:
+            if shell_n0 < params['stop_n_diss'].value and t_now_Myr > params['stop_t_diss'].value:
                 is_shellDissolved = True
                 logger.info(f'Shell has dissolved. nShell0 = f{nShell_arr[0]}')
 
@@ -383,7 +383,7 @@ def shell_structure_pure(params) -> ShellProperties:
             shell_n_arr = np.concatenate([nShell_arr_ion, nShell_arr_neu])
 
     elif is_shellDissolved:
-        f_absorbed_ion = 1.0
+        f_absorbed_ion = 0.0 # dissolved shell = no absorber; ionizing photons escape freely
         f_absorbed_neu = 0.0
         f_absorbed = (f_absorbed_ion * Li + f_absorbed_neu * Ln) / (Li + Ln)
         f_ionised_dust = np.nan

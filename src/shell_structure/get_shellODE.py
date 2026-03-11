@@ -83,6 +83,12 @@ def get_shellODE(y,
         else:
             neg_exp_tau = np.exp(-tau)
         
+        # Clamp phi: negative values are unphysical (ionizing photons cannot be regenerated).
+        # This prevents the -n*sigma_d*phi term from acting as a photon source
+        # and Li*phi from inverting the radiation pressure gradient.
+        phi = max(0.0, phi)   # <-- add this line
+
+
         # number density
         dndr = mu_p/mu_n/(k_B * t_ion) * (
             nShell * sigma_dust / (4 * np.pi * r**2 * c) * (Ln * neg_exp_tau + Li * phi)\
