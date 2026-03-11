@@ -93,7 +93,6 @@ def plot_from_path(data_input: str, output_dir: str = None):
         print(f"Error: {e}")
         return
 
-    print(f"Loading data from: {data_path}")
 
     try:
         t, R2, phase, base_forces, overlay_forces, rcloud, isCollapse = load_run(data_path)
@@ -433,7 +432,6 @@ def plot_grid(folder_path, output_dir=None, ndens_filter=None,
                     ax.set_axis_off()
                     continue
 
-                print(f"    Loading: {data_path}")
                 try:
                     t, R2, phase, base_forces, overlay_forces, rcloud, isCollapse = load_run(data_path)
                     plot_run_on_ax(

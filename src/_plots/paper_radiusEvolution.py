@@ -291,7 +291,6 @@ def plot_from_path(data_input: str, output_dir: str = None):
         print(f"Error: {e}")
         return
 
-    print(f"Loading data from: {data_path}")
 
     fig, ax = plt.subplots(figsize=(8, 6), dpi=150)
 
@@ -424,7 +423,6 @@ def plot_folder_grid(folder_path, output_dir=None, ndens_filter=None,
                     ax.set_axis_off()
                     continue
 
-                print(f"    Loading: {data_path}")
                 try:
                     t, phase, R1, R2, rShell, rcloud, isCollapse = load_run_radii(data_path)
                     plot_radii_on_ax(
@@ -618,7 +616,6 @@ Examples:
                         ax.set_axis_off()
                         continue
 
-                    print(f"  Loading: {data_path}")
                     try:
                         t, phase, R1, R2, rShell, rcloud, isCollapse = load_run_radii(data_path)
                         plot_radii_on_ax(

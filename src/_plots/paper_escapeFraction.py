@@ -95,7 +95,6 @@ def plot_from_path(data_input: str, output_dir: str = None):
         print(f"Error: {e}")
         return
 
-    print(f"Loading data from: {data_path}")
 
     try:
         t, fesc, isCollapse = load_escape_fraction(data_path)
@@ -207,7 +206,6 @@ def plot_grid(folder_path, output_dir=None, ndens_filter=None,
                 if data_path is None:
                     continue
 
-                print(f"    Loading: {data_path}")
                 try:
                     t, fesc, isCollapse = load_escape_fraction(data_path)
                     fesc_plot = smooth_1d(fesc, SMOOTH_WINDOW)
