@@ -343,29 +343,20 @@ def plot_run_on_ax(
             db_post = drive_bottom[mom_idx]
             dh_post = drive_h[mom_idx]
 
-            y_hii_top  = db_post + f_hii * dh_post
-            y_wind_top = y_hii_top + f_wind * dh_post
+            # Stack order: wind (bottom) → SN → P_HII (top)
+            # so wind/SN flow smoothly from energy/transition phases
+            y_wind_top = db_post + f_wind * dh_post
             y_sn_top   = y_wind_top + f_sn * dh_post
-
-            # --- P_HII slice: cross hatching (red)
-            ax.fill_between(
-                t_post, db_post, y_hii_top,
-                facecolor="none", edgecolor=C_PHII,
-                hatch="xxxx", linewidth=0, alpha=0.9, zorder=3
-            )
-            ax.fill_between(
-                t_post, db_post, y_hii_top,
-                facecolor="none", edgecolor="black", linestyle=":", linewidth=0.4, zorder=6
-            )
+            y_hii_top  = y_sn_top + f_hii * dh_post
 
             # --- Wind slice: back slashes (purple)
             ax.fill_between(
-                t_post, y_hii_top, y_wind_top,
+                t_post, db_post, y_wind_top,
                 facecolor="none", edgecolor=C_WIND,
                 hatch="\\\\\\\\", linewidth=0, alpha=0.9, zorder=3
             )
             ax.fill_between(
-                t_post, y_hii_top, y_wind_top,
+                t_post, db_post, y_wind_top,
                 facecolor="none", edgecolor="black", linestyle=":", linewidth=0.4, zorder=6
             )
 
@@ -378,6 +369,17 @@ def plot_run_on_ax(
                 )
             ax.fill_between(
                 t_post, y_wind_top, y_sn_top,
+                facecolor="none", edgecolor="black", linestyle=":", linewidth=0.4, zorder=6
+            )
+
+            # --- P_HII slice: cross hatching (red) — topmost
+            ax.fill_between(
+                t_post, y_sn_top, y_hii_top,
+                facecolor="none", edgecolor=C_PHII,
+                hatch="xxxx", linewidth=0, alpha=0.9, zorder=3
+            )
+            ax.fill_between(
+                t_post, y_sn_top, y_hii_top,
                 facecolor="none", edgecolor="black", linestyle=":", linewidth=0.4, zorder=6
             )
 
