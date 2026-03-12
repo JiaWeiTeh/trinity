@@ -679,10 +679,24 @@ def run_phase_transition(params) -> TransitionPhaseResults:
         # Check termination conditions
         # ---------------------------------------------------------------------
 
-        # Energy floor reached -> transition to momentum phase
+        # Phase transition criterion: ram pressure dominates bubble pressure.
+        # Also catches absolute energy floor as a safety fallback.
+        RAM_DOMINANCE_THRESHOLD = 0.9  # exit when P_ram/(P_b + P_ram) > this
+        P_b_now = params['Pb'].value
+        P_ram_now = params['P_ram'].value
+        P_total = P_b_now + P_ram_now
+        if P_total > 0:
+            ram_fraction = P_ram_now / P_total
+            if ram_fraction > RAM_DOMINANCE_THRESHOLD:
+                termination_reason = "ram_dominated"
+                logger.warning(f"Ram fraction {ram_fraction:.3f} > {RAM_DOMINANCE_THRESHOLD}, "
+                            f"transitioning to momentum (t={t_now:.4e}, Eb={Eb:.4e})")
+                break
+        
+        # Safety fallback: absolute energy floor
         if Eb < ENERGY_FLOOR:
             termination_reason = "energy_floor"
-            logger.info(f"Energy dropped below floor ({ENERGY_FLOOR}), transitioning to momentum")
+            logger.warning(f"Energy dropped below floor ({ENERGY_FLOOR}), transitioning to momentum")
             break
 
         # Collapse detection: velocity negative AND radius decreasing
@@ -722,7 +736,7 @@ def run_phase_transition(params) -> TransitionPhaseResults:
             if shell_nMax.value < params['nISM'].value:
                 if t_diss_onset == np.inf:
                     t_diss_onset = t_now
-                    logger.info(f"Dissolution condition onset at t={t_now:.6e} Myr "
+                    logger.warning(f"Dissolution condition onset at t={t_now:.6e} Myr "
                                 f"(shell_nMax={shell_nMax.value:.4e} < nISM={params['nISM'].value:.4e})")
                 if (t_now - t_diss_onset) >= params['stop_t_diss'].value:
                     params['isDissolved'].value = True
@@ -734,7 +748,7 @@ def run_phase_transition(params) -> TransitionPhaseResults:
                     break
             else:
                 if t_diss_onset != np.inf:
-                    logger.info(f"Dissolution condition reset at t={t_now:.6e} Myr "
+                    logger.warning(f"Dissolution condition reset at t={t_now:.6e} Myr "
                                 f"(shell_nMax={shell_nMax.value:.4e} >= nISM={params['nISM'].value:.4e})")
                 t_diss_onset = np.inf
 
