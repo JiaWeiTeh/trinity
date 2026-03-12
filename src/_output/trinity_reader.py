@@ -176,8 +176,6 @@ PARAM_DOCS = {
     'F_ion_out': 'Ionization force (outward)',
     'F_rad': 'Radiation pressure force',
     'F_ISM': 'ISM pressure force',
-    'F_SN': 'Supernova force',
-    'F_wind': 'Wind force',
 
     # Shell properties
     'shell_mass': 'Shell mass [Msun]',

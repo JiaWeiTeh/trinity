@@ -36,7 +36,7 @@ USE_LOG_X = False            # Use log scale for x-axis (time)
 C_GRAV  = "#1a1a1a"
 C_DRIVE = "#508ab2"    # light blue — P_drive band
 C_SN    = "#d5ba82"    # yellow — SN hatching
-C_PHII  = "#b36a6f"    # red — P_HII hatching
+C_PHII  = "#e04050"    # bright red — P_HII dotting
 C_RAD   = "#a1d0c7"
 C_PISM  = "#FFFFFF"
 C_WIND  = "#8b6ca7"    # purple — wind hatching
@@ -120,8 +120,8 @@ def plot_from_path(data_input: str, output_dir: str = None):
         Patch(facecolor=C_GRAV,  edgecolor="none", alpha=0.75, label="Gravity"),
         Patch(facecolor=C_DRIVE, edgecolor="none", alpha=0.75, label=r"$F_{\rm drive}$"),
         Patch(facecolor=C_RAD,   edgecolor="none", alpha=0.75, label="Radiation"),
-        Patch(facecolor=C_PISM,  edgecolor="gray", alpha=1.0,  label="PISM (inner HII)"),
-        Patch(facecolor="none", edgecolor=C_PHII, hatch="xxxx",       label=r"$P_{\rm HII}$ (momentum)"),
+        Patch(facecolor=C_PISM,  edgecolor="0.3", linewidth=0.8, alpha=1.0,  label="PISM (inner HII)"),
+        Patch(facecolor="none", edgecolor=C_PHII, hatch="......",     label=r"$P_{\rm HII}$ (momentum)"),
         Patch(facecolor="none", edgecolor=C_WIND, hatch="\\\\\\\\",   label=r"Ram wind"),
         Patch(facecolor="none", edgecolor=C_SN,   hatch="////",       label=r"Ram SN"),
     ]
@@ -372,11 +372,11 @@ def plot_run_on_ax(
                 facecolor="none", edgecolor="black", linestyle=":", linewidth=0.4, zorder=6
             )
 
-            # --- P_HII slice: cross hatching (red) — topmost
+            # --- P_HII slice: bright red dots — topmost
             ax.fill_between(
                 t_post, y_sn_top, y_hii_top,
                 facecolor="none", edgecolor=C_PHII,
-                hatch="xxxx", linewidth=0, alpha=0.9, zorder=3
+                hatch="......", linewidth=0, alpha=0.9, zorder=3
             )
             ax.fill_between(
                 t_post, y_sn_top, y_hii_top,
@@ -535,12 +535,12 @@ def plot_grid(folder_path, output_dir=None, ndens_filter=None,
             Patch(facecolor=C_GRAV,  edgecolor="none", alpha=0.75, label="Gravity"),
             Patch(facecolor=C_DRIVE, edgecolor="none", alpha=0.75, label=r"$F_{\rm drive}$ (blue)"),
             Patch(facecolor=C_RAD,   edgecolor="none", alpha=0.75, label="Radiation"),
-            Patch(facecolor=C_PISM,  edgecolor="gray", alpha=1.0,  label="PISM (inner HII)"),
+            Patch(facecolor=C_PISM,  edgecolor="0.3", linewidth=0.8, alpha=1.0,  label="PISM (inner HII)"),
         ]
 
         if INCLUDE_ALL_FORCE:
             handles += [
-                Patch(facecolor="none", edgecolor=C_PHII, hatch="xxxx",       label=r"$P_{\rm HII}$ (momentum)"),
+                Patch(facecolor="none", edgecolor=C_PHII, hatch="......",     label=r"$P_{\rm HII}$ (momentum)"),
                 Patch(facecolor="none", edgecolor=C_WIND, hatch="\\\\\\\\",   label=r"Ram wind"),
                 Patch(facecolor="none", edgecolor=C_SN,   hatch="////",       label=r"Ram SN"),
             ]
