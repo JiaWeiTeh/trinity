@@ -208,12 +208,12 @@ def get_ODE_Edot_pure(t: float, y: list, snapshot: ODESnapshot, params_for_feedb
     # Uses existing get_press_ion() which only reads from params
     FABSi = snapshot.shell_fAbsorbedIon
     if FABSi < 1.0:
-        press_HII_in = get_press_ion(snapshot.rShell, params_for_feedback)
+        press_HII_in = get_press_ion(R2, params_for_feedback)
     else:
         press_HII_in = 0.0
 
     # Add ISM pressure if shell beyond cloud
-    if snapshot.rShell >= snapshot.rCloud:
+    if R2 >= snapshot.rCloud:
         press_HII_in += snapshot.PISM * snapshot.k_B
 
     # ==========================================================================

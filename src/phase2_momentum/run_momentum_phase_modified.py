@@ -404,9 +404,8 @@ def get_ODE_momentum_pure(t: float, y: np.ndarray, snapshot: MomentumODESnapshot
 
     # HII pressures
     if FABSi < 1.0:
-        rShell = snapshot.rShell
         try:
-            n_r = density_profile.get_density_profile(np.array([rShell]), params)
+            n_r = density_profile.get_density_profile(np.array([R2]), params)
             if hasattr(n_r, '__len__') and len(n_r) == 1:
                 n_r = n_r[0]
             press_HII_in = 2.0 * n_r * k_B * snapshot.TShell_ion  # BUG FIX: factor 2 for fully ionized gas (ions + electrons)
@@ -416,7 +415,7 @@ def get_ODE_momentum_pure(t: float, y: np.ndarray, snapshot: MomentumODESnapshot
         press_HII_in = 0.0
 
     # Add ambient pressure if shell is beyond cloud
-    if snapshot.rShell >= snapshot.rCloud:
+    if R2 >= snapshot.rCloud:
         press_HII_in += snapshot.PISM * k_B
 
     # ==========================================================================
