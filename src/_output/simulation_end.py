@@ -336,13 +336,13 @@ CRITICAL_PARAMS = [
     ('R2', 'Outer radius', 'pc', 1.0),
     ('rShell', 'Shell radius', 'pc', 1.0),
     # Velocities
-    ('v2', 'Shell velocity', 'km/s', 0.9778),  # pc/Myr -> km/s approx
+    ('v2', 'Shell velocity', 'km/s', INV_CONV.v_au2kms),  # pc/Myr -> km/s
     # Energies
     ('Eb', 'Bubble energy', 'erg', 1.0),
     ('Pb', 'Bubble pressure', 'erg/cm³', 1.0),
     # Shell properties
     ('shell_mass', 'Shell mass', 'Msun', 1.0),
-    ('shell_nMax', 'Shell peak density', 'cm⁻³', 1.0),
+    ('shell_nMax', 'Shell peak density', 'cm⁻³', INV_CONV.ndens_au2cgs),
     # Forces
     ('F_grav', 'Gravity force', 'code', 1.0),
     ('F_ram', 'Ram force', 'code', 1.0),
