@@ -31,6 +31,7 @@ Usage
     python run_all.py --list
 """
 
+import os
 import sys
 import subprocess
 import argparse
@@ -169,7 +170,9 @@ def run_scripts(
             continue
 
         print(f"  [{name}] running ...", flush=True)
-        result = subprocess.run(cmd, cwd=str(PROJECT_ROOT))
+        env = os.environ.copy()
+        env["PYTHONPATH"] = str(PROJECT_ROOT) + os.pathsep + env.get("PYTHONPATH", "")
+        result = subprocess.run(cmd, cwd=str(PROJECT_ROOT), env=env)
         if result.returncode != 0:
             print(f"  [{name}] FAILED (exit code {result.returncode})")
             n_fail += 1
