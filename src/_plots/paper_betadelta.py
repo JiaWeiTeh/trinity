@@ -6,15 +6,13 @@ Created on Wed Dec 17 20:03:19 2025
 @author: Jia Wei Teh
 """
 
-import sys
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.transforms as mtransforms
 from pathlib import Path
 from matplotlib.lines import Line2D
 
-# Add project root to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+from src._plots.plot_base import FIG_DIR, smooth_1d
 from src._output.trinity_reader import load_output, resolve_data_input, info_simulations
 
 print("...plotting radius comparison")
@@ -23,26 +21,7 @@ print("...plotting radius comparison")
 SMOOTH_WINDOW = 21
 PHASE_CHANGE = True
 
-# --- output - save to project root's fig/ directory
-FIG_DIR = Path(__file__).parent.parent.parent / "fig"
-FIG_DIR.mkdir(parents=True, exist_ok=True)
 SAVE_PDF = True
-
-import os
-plt.style.use(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'trinity.mplstyle'))
-
-
-# ---------- helpers (reuse your smoothing) ----------
-def smooth_1d(y, window, mode="edge"):
-    if window is None or window <= 1:
-        return y
-    window = int(window)
-    if window % 2 == 0:
-        window += 1
-    kernel = np.ones(window, dtype=float) / window
-    pad = window // 2
-    ypad = np.pad(y, (pad, pad), mode=mode)
-    return np.convolve(ypad, kernel, mode="valid")
 
 # ---------- load beta/delta + R2 ----------
 def load_cooling_run(data_path: Path):

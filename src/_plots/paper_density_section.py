@@ -15,8 +15,6 @@ Usage:
 @author: Jia Wei Teh
 """
 
-import sys
-import os
 import re
 import csv
 import json
@@ -27,8 +25,7 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 from matplotlib.lines import Line2D
 
-# Add project root to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+from src._plots.plot_base import FIG_DIR
 from src._output.trinity_reader import (
     load_output, find_all_simulations, TrinityOutput,
 )
@@ -42,13 +39,6 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Load matplotlib style
-plt.style.use(os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                           'trinity.mplstyle'))
-
-# Output figure directory
-FIG_DIR = Path(__file__).parent.parent.parent / "fig"
-FIG_DIR.mkdir(parents=True, exist_ok=True)
 
 # =============================================================================
 # Constants and unit conversions (from unit_conversions, not hardcoded)

@@ -19,14 +19,14 @@ Plot shows:
 Author: TRINITY Team
 """
 
-import sys
 import numpy as np
 import matplotlib.pyplot as plt
 from pathlib import Path
 from matplotlib.lines import Line2D
 
+from src._plots.plot_base import FIG_DIR, smooth_1d
+
 # Add project root to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from src._output.trinity_reader import load_output, resolve_data_input, info_simulations
 from src._plots.plot_markers import add_plot_markers, get_marker_legend_handles
 from src._functions.unit_conversions import INV_CONV, CGS
@@ -44,8 +44,6 @@ SHOW_PEXT = True  # Show external pressure
 USE_LOG_X = False  # Use log scale for x-axis (time)
 
 # --- output - save to project root's fig/ directory
-FIG_DIR = Path(__file__).parent.parent.parent / "fig"
-FIG_DIR.mkdir(parents=True, exist_ok=True)
 SAVE_PNG = False
 SAVE_PDF = True
 
@@ -55,23 +53,6 @@ PRESSURE_FIELDS = [
     ("P_IF",    r"$P_{\rm IF}$",        "red",   "-",  1.8),
     ("P_drive", r"$P_{\rm drive}$",     "black", "--", 2.2),
 ]
-
-import os
-plt.style.use(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'trinity.mplstyle'))
-
-
-def smooth_1d(y, window, mode="edge"):
-    """Apply 1D smoothing with moving average."""
-    if window is None or window <= 1:
-        return y
-    window = int(window)
-    if window % 2 == 0:
-        window += 1
-    kernel = np.ones(window, dtype=float) / window
-    pad = window // 2
-    ypad = np.pad(y, (pad, pad), mode=mode)
-    return np.convolve(ypad, kernel, mode="valid")
-
 
 def load_run(data_path: Path):
     """Load run data using TrinityOutput reader."""

@@ -35,7 +35,6 @@ Usage
 Author: TRINITY Team
 """
 
-import sys
 import argparse
 import numpy as np
 import matplotlib.pyplot as plt
@@ -46,15 +45,11 @@ from scipy.interpolate import RegularGridInterpolator
 import tempfile
 import shutil
 
-# Add project root to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+from src._plots.plot_base import FIG_DIR
 from src._output.trinity_reader import (
     load_output, find_all_simulations, organize_simulations_for_grid, get_unique_ndens,
     info_simulations
 )
-
-import os
-plt.style.use(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'trinity.mplstyle'))
 
 
 # =============================================================================
@@ -91,7 +86,6 @@ DEFAULT_AXIS_MODE = 'continuous'
 DEFAULT_SMOOTH = 'interp'
 
 # Default directories
-FIG_DIR = Path(__file__).parent.parent.parent / "fig"
 
 
 def build_filename(base_name, **kwargs):

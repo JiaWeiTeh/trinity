@@ -15,15 +15,12 @@ import astropy.units as u
 import scipy.integrate
 import scipy.interpolate
 import sys
-import os
 from pathlib import Path
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import matplotlib.colors as mcolors
 
-# Output - save to project root's fig/ directory
-FIG_DIR = Path(__file__).parent.parent.parent / "fig"
-FIG_DIR.mkdir(parents=True, exist_ok=True)
+from src._plots.plot_base import FIG_DIR
 
 
 # All constants are given in cgs
@@ -185,8 +182,6 @@ rCloud_array = data[:,2] * cm2pc
 cmap = cm.viridis
 norm = mcolors.Normalize(vmin=mStart, vmax=mEnd)
 colors = cmap(norm(np.log10(mCloud_list * g2Msun)))  # Get colors from colormap
-
-plt.style.use(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'trinity.mplstyle'))
 
 
 

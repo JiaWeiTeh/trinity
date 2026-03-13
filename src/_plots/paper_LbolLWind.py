@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import sys
 import numpy as np
 import matplotlib.pyplot as plt
 from pathlib import Path
 from matplotlib.lines import Line2D
 
+from src._plots.plot_base import FIG_DIR, smooth_1d
+
 # Add project root to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from src._output.trinity_reader import load_output, resolve_data_input, info_simulations
 from src._plots.plot_markers import add_plot_markers, get_marker_legend_handles
 
@@ -39,21 +39,7 @@ C_RATIO = "0.2"       # dark gray
 
 
 # --- output - save to project root's fig/ directory
-FIG_DIR = Path(__file__).parent.parent.parent / "fig"
-FIG_DIR.mkdir(parents=True, exist_ok=True)
 SAVE_PDF = True
-
-
-def smooth_1d(y, window, mode="edge"):
-    if window is None or window <= 1:
-        return y
-    window = int(window)
-    if window % 2 == 0:
-        window += 1
-    kernel = np.ones(window, dtype=float) / window
-    pad = window // 2
-    ypad = np.pad(y, (pad, pad), mode=mode)
-    return np.convolve(ypad, kernel, mode="valid")
 
 
 def ev_to_erg(ev):
@@ -172,9 +158,6 @@ def plot_panel(ax, t, phase, Li, Lmech_total, Qi, R2, rcloud, isCollapse=None):
 
 
 # ---------------- main plotting ----------------
-import os
-plt.style.use(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'trinity.mplstyle'))
-
 
 def plot_from_path(data_input: str, output_dir: str = None):
     """

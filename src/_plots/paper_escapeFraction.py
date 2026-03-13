@@ -6,13 +6,11 @@ Created on Tue Dec 16 15:13:21 2025
 @author: Jia Wei Teh
 """
 
-import sys
 import numpy as np
 import matplotlib.pyplot as plt
 from pathlib import Path
 
-# Add project root to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+from src._plots.plot_base import FIG_DIR, smooth_1d
 from src._output.trinity_reader import load_output, resolve_data_input, info_simulations
 from src._plots.plot_markers import add_collapse_marker, get_marker_legend_handles
 
@@ -23,9 +21,6 @@ print("...plotting escape fraction comparison")
 # smoothing: number of snapshots in moving average (None or 1 disables)
 SMOOTH_WINDOW = 7
 
-# --- output - save to project root's fig/ directory
-FIG_DIR = Path(__file__).parent.parent.parent / "fig"
-FIG_DIR.mkdir(parents=True, exist_ok=True)
 SAVE_PNG = False
 SAVE_PDF = True
 
@@ -35,21 +30,6 @@ def range_tag(prefix, values, key=float):
         return f"{prefix}{vals[0]}"
     vmin, vmax = min(vals, key=key), max(vals, key=key)
     return f"{prefix}{vmin}-{vmax}"
-
-
-def smooth_1d(y, window, mode="edge"):
-    """Simple moving-average smoothing. window is in number of snapshots."""
-    if window is None or window <= 1:
-        return y
-
-    window = int(window)
-    if window % 2 == 0:
-        window += 1
-
-    kernel = np.ones(window, dtype=float) / window
-    pad = window // 2
-    ypad = np.pad(y, (pad, pad), mode=mode)
-    return np.convolve(ypad, kernel, mode="valid")
 
 
 def load_escape_fraction(data_path: Path):
@@ -71,9 +51,6 @@ def load_escape_fraction(data_path: Path):
 
     return t, fesc, isCollapse
 
-
-import os
-plt.style.use(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'trinity.mplstyle'))
 
 
 def plot_from_path(data_input: str, output_dir: str = None):

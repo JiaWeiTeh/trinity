@@ -46,9 +46,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from pathlib import Path
 
-# --- output - save to project root's fig/ directory
-FIG_DIR = Path(__file__).parent.parent.parent / "fig"
-FIG_DIR.mkdir(parents=True, exist_ok=True)
+from src._plots.plot_base import FIG_DIR
 SAVE_PDF = True
 
 # ---------------- Parameters ----------------

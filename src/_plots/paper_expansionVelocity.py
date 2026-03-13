@@ -6,14 +6,14 @@ Created on Tue Jan  6 17:45:12 2026
 @author: Jia Wei Teh
 """
 
-import sys
 import numpy as np
 import matplotlib.pyplot as plt
 from pathlib import Path
 from matplotlib.lines import Line2D
 
+from src._plots.plot_base import FIG_DIR, smooth_1d
+
 # Add project root to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from src._output.trinity_reader import load_output, resolve_data_input, info_simulations
 from src._plots.plot_markers import add_plot_markers, get_marker_legend_handles
 
@@ -27,8 +27,6 @@ SMOOTH_MODE = "edge"
 USE_LOG_X = False  # Use log scale for x-axis (time)
 
 # --- output - save to project root's fig/ directory
-FIG_DIR = Path(__file__).parent.parent.parent / "fig"
-FIG_DIR.mkdir(parents=True, exist_ok=True)
 SAVE_PDF = True
 
 # --- unit conversion: pc/Myr -> km/s
@@ -44,18 +42,6 @@ RADIUS_FIELDS = [
 
 # left-axis velocity line style
 V2_STYLE = dict(color="k", lw=1.8, ls="-", alpha=0.95)
-
-
-def smooth_1d(y, window, mode="edge"):
-    if window is None or window <= 1:
-        return y
-    window = int(window)
-    if window % 2 == 0:
-        window += 1
-    kernel = np.ones(window, dtype=float) / window
-    pad = window // 2
-    ypad = np.pad(y, (pad, pad), mode=mode)
-    return np.convolve(ypad, kernel, mode="valid")
 
 
 def load_run_velocity(data_path: Path):
@@ -212,9 +198,6 @@ def plot_velocity_on_ax(
 
 
 # ---------------- main plotting ----------------
-import os
-plt.style.use(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'trinity.mplstyle'))
-
 
 def plot_from_path(data_input: str, output_dir: str = None):
     """
