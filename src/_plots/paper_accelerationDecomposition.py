@@ -24,7 +24,6 @@ Author: TRINITY Team
 """
 
 import numpy as np
-from pathlib import Path
 from matplotlib.lines import Line2D
 from matplotlib.ticker import NullLocator, FixedLocator
 
@@ -65,7 +64,7 @@ ACCEL_FIELDS = [
 # --- output
 SAVE_PDF = True
 
-def load_run(data_path: Path):
+def load_run(data_path):
     """Load run data using TrinityOutput reader."""
     output = load_output(data_path)
 
