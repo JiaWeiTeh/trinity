@@ -31,7 +31,7 @@ nCore     1e5
 rCore     0.21
 
 # ISM properties
-nISM    0.1
+nISM    1
 stop_t_diss 1
 
 # Allow expansion beyond cloud
@@ -45,7 +45,7 @@ use_adaptive_solver True
 
 # Run settings
 stop_r    None
-stop_t    5
+stop_t    10
 
 # Suppress warnings to save memory
 log_level    WARNING

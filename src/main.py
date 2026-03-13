@@ -18,14 +18,8 @@ import src._functions.unit_conversions as cvt
 
 #--
 from src.sb99 import read_SB99
-
-
-
 from src.phase0_init import (get_InitCloudProp, get_InitPhaseParam)
 from src._output.simulation_end import write_simulation_end
-
-
-
 from src.phase1_energy import run_energy_phase_modified
 from src.phase1b_energy_implicit import run_energy_implicit_phase_modified
 from src.phase1c_transition import run_transition_phase_modified
