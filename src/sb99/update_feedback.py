@@ -172,11 +172,7 @@ def get_currentSB99feedback(t, params) -> SB99Feedback:
     # =========================================================================
     # DERIVED VALUES (for backward compatibility with params dictionary)
     # =========================================================================
-
-    # CRITICAL FIX: Wind velocity using WIND-ONLY momentum rate
-    # Formula: v_wind = 2 * L_wind / pdot_wind
-    # OLD BUG: Used pdot_total (wind + SN) instead of pdot_W
-    # This caused 10-80% error depending on SN contribution!
+    # mechanical velocity
     v_mech_total = (2. * Lmech_total / pdot_total)[()]  # ← FIXED!
 
     # Numerical derivative of total momentum rate for time evolution
