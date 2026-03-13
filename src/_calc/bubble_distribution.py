@@ -58,8 +58,6 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 import numpy as np
-import matplotlib
-matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 
@@ -72,24 +70,18 @@ from src._output.trinity_reader import (
     parse_simulation_params,
     iter_progress,
 )
-from src._functions.unit_conversions import INV_CONV
+from src._calc._common.plot_utils import (
+    FIG_DIR, C_BLUE, C_VERMILLION, C_GREEN, C_PURPLE, C_ORANGE, C_SKY, C_BLACK,
+    EXPAND, COLLAPSE, STALLED,
+)
+from src._calc._common.cloud_physics import V_AU2KMS
 
 logger = logging.getLogger(__name__)
-
-# Output directory: ./fig/ at project root, matching other _calc scripts
-FIG_DIR = Path(__file__).parent.parent.parent / "fig"
-
-# Apply trinity plot style if available
-_style_path = Path(__file__).parent.parent / "_plots" / "trinity.mplstyle"
-if _style_path.exists():
-    plt.style.use(str(_style_path))
 
 
 # ======================================================================
 # Constants
 # ======================================================================
-
-V_AU2KMS = INV_CONV.v_au2kms   # pc/Myr -> km/s  (~0.978)
 
 # Observed power-law index from Watkins+2023
 OBSERVED_ALPHA = -2.2
@@ -99,15 +91,6 @@ R_COMPLETE_10PC = 10.0
 
 # Minimum expanding points required for analysis
 MIN_PTS = 10
-
-# Colourblind-safe palette (Wong 2011)
-C_BLUE = "#0072B2"
-C_VERMILLION = "#D55E00"
-C_GREEN = "#009E73"
-C_PURPLE = "#CC79A7"
-C_ORANGE = "#E69F00"
-C_SKY = "#56B4E9"
-C_BLACK = "#000000"
 
 # Line styles for redundant encoding
 LINESTYLES = ["-", "--", "-.", ":"]

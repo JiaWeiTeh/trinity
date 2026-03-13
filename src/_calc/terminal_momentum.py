@@ -92,51 +92,31 @@ from src._output.trinity_reader import (
 )
 from src._functions.unit_conversions import CGS, CONV, INV_CONV
 
+from src._calc._common.plot_utils import (
+    FIG_DIR, MARKERS, OUTCOME_COLORS, OUTCOME_LABELS,
+    EXPAND, COLLAPSE, STALLED,
+)
+from src._calc._common.cloud_physics import (
+    cloud_radius_pc as _cloud_radius_pc,
+    surface_density as _surface_density,
+    cumtrapz as _cumtrapz_1d,
+    MU_MOL, V_AU2KMS,
+)
+from src._calc._common.fitting import ols_sigma_clip as _ols_sigma_clip
+from src._calc._common.io import extract_rejected as _extract_rejected, regenerate_summary_pdf as _regenerate_summary_pdf
+
 logger = logging.getLogger(__name__)
-
-# Output directory: ./fig/ at project root, matching paper_* scripts
-FIG_DIR = Path(__file__).parent.parent.parent / "fig"
-
-# Apply trinity plot style if available
-_style_path = Path(__file__).parent.parent / "_plots" / "trinity.mplstyle"
-if _style_path.exists():
-    plt.style.use(str(_style_path))
 
 
 # ======================================================================
 # Physical constants and helpers
 # ======================================================================
 
-MU_MOL = 1.4            # molecular gas mean molecular weight per H nucleus
 V_WIND_REF = 2000.0     # reference wind velocity [km/s] for loading factor
-
-# Velocity conversion: internal (pc/Myr) → km/s
-V_AU2KMS = INV_CONV.v_au2kms    # ~0.978 km/s per pc/Myr
 
 # Reference p/m* from Martizzi+ 2015 (SN-only, n=100 cm^-3, solar Z)
 P_M_MARTIZZI = 1420.0   # km/s
 
-
-def _cumtrapz_1d(y: np.ndarray, x: np.ndarray) -> np.ndarray:
-    """Cumulative trapezoidal integral with p[0]=0."""
-    dx = np.diff(x)
-    incr = 0.5 * (y[1:] + y[:-1]) * dx
-    out = np.zeros_like(y, dtype=float)
-    out[1:] = np.cumsum(incr)
-    return out
-
-
-def _surface_density(mCloud: float, rCloud: float) -> float:
-    """Sigma = M / (pi R^2) [Msun/pc^2]."""
-    return mCloud / (np.pi * rCloud ** 2)
-
-
-def _cloud_radius_pc(mCloud_Msun: float, nCore_cm3: float) -> float:
-    """Cloud radius for a uniform sphere [pc]."""
-    rho_cgs = MU_MOL * CGS.m_H * nCore_cm3
-    M_g = mCloud_Msun / CONV.g2Msun
-    R_cm = (3.0 * M_g / (4.0 * np.pi * rho_cgs)) ** (1.0 / 3.0)
-    return R_cm * CONV.cm2pc
 
 
 # ======================================================================
@@ -147,11 +127,6 @@ def _cloud_radius_pc(mCloud_Msun: float, nCore_cm3: float) -> float:
 # F_grav is inward (negative contribution); all others are outward (positive).
 MAIN_FORCES = ["F_grav", "F_ram", "F_ion_out", "F_rad"]
 SUB_FORCES = ["F_ram_wind", "F_ram_SN"]
-
-EXPAND = "expand"
-COLLAPSE = "collapse"
-STALLED = "stalled"
-
 
 def extract_run(data_path: Path, decompose: bool = False,
                 t_end: float = None) -> Optional[Dict]:
@@ -368,53 +343,6 @@ def collect_data(folder_path: Path, decompose: bool = False,
 # ======================================================================
 # Fitting (reuses sigma-clipping OLS from scaling_phases.py pattern)
 # ======================================================================
-
-def _ols_sigma_clip(
-    X: np.ndarray,
-    y: np.ndarray,
-    sigma_clip: float,
-    max_iter: int = 10,
-) -> Optional[Dict]:
-    """OLS with iterative sigma-clipping."""
-    n_total = len(y)
-    mask = np.ones(n_total, dtype=bool)
-
-    for _ in range(max_iter):
-        X_use, y_use = X[mask], y[mask]
-        n_use = mask.sum()
-        if n_use < X.shape[1]:
-            return None
-        XtX = X_use.T @ X_use
-        try:
-            XtX_inv = np.linalg.inv(XtX)
-        except np.linalg.LinAlgError:
-            return None
-        beta = XtX_inv @ (X_use.T @ y_use)
-
-        resid = y - X @ beta
-        rms = np.std(resid[mask], ddof=X.shape[1])
-        if rms == 0:
-            break
-        new_mask = np.abs(resid) <= sigma_clip * rms
-        if np.array_equal(mask, new_mask):
-            break
-        mask = new_mask
-
-    n_used = int(mask.sum())
-    y_pred = X @ beta
-    ss_res = np.sum((y[mask] - y_pred[mask]) ** 2)
-    ss_tot = np.sum((y[mask] - np.mean(y[mask])) ** 2)
-    R2 = 1.0 - ss_res / ss_tot if ss_tot > 0 else float("nan")
-    rms_dex = np.sqrt(ss_res / max(n_used - X.shape[1], 1))
-    s2 = ss_res / max(n_used - X.shape[1], 1)
-    unc = np.sqrt(np.diag(s2 * XtX_inv))
-
-    return {
-        "beta": beta, "unc": unc, "R2": R2, "rms_dex": rms_dex,
-        "n_used": n_used, "n_rejected": n_total - n_used,
-        "mask": mask, "y_pred": y_pred,
-    }
-
 
 def fit_p_mstar(
     records: List[Dict],
@@ -775,10 +703,7 @@ def fit_p_mstar_piecewise(
 # Plotting
 # ======================================================================
 
-_MARKERS = ["o", "s", "D", "^", "v", "P", "X", "*"]
-
-OUTCOME_COLORS = {EXPAND: "C0", COLLAPSE: "C3", STALLED: "0.55"}
-OUTCOME_LABELS = {EXPAND: "Dispersal", COLLAPSE: "Collapse", STALLED: "Stalled"}
+_MARKERS = MARKERS
 
 
 def plot_p_vs_sfe(
@@ -1552,45 +1477,6 @@ def print_summary(
 # ======================================================================
 # Equation JSON (for run_all summary)
 # ======================================================================
-
-def _regenerate_summary_pdf(output_dir: Path, fmt: str = "pdf") -> None:
-    """Re-generate the cross-script scaling-relations summary PDF.
-
-    Loads ``run_all.generate_summary_pdf`` via importlib so that this
-    script can update the PDF when run individually (without run_all).
-    """
-    try:
-        import importlib.util
-        _mod_path = str(Path(__file__).resolve().parent / "run_all.py")
-        spec = importlib.util.spec_from_file_location("_run_all", _mod_path)
-        mod = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(mod)
-        with plt.rc_context({"text.usetex": False}):
-            mod.generate_summary_pdf(output_dir, fmt=fmt)
-    except Exception as exc:
-        logger.warning("Could not regenerate summary PDF: %s", exc)
-
-
-def _extract_rejected(fit):
-    """Extract identifying info for sigma-clipped (rejected) points."""
-    mask = fit.get("mask")
-    if mask is None:
-        return []
-    rejected = []
-    for i, m in enumerate(mask):
-        if not m:
-            info = {}
-            for k in ("nCore", "mCloud", "sfe"):
-                arr = fit.get(k)
-                if arr is not None and i < len(arr):
-                    info[k] = float(arr[i])
-            flds = fit.get("folders")
-            if flds is not None and i < len(flds):
-                info["folder"] = flds[i]
-            if info:
-                rejected.append(info)
-    return rejected
-
 
 def _write_equation_json(
     fits: List[Tuple[str, Optional[Dict]]],

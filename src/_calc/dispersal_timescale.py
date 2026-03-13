@@ -79,7 +79,6 @@ from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 import matplotlib
-matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 # Add project root so imports resolve
@@ -91,50 +90,20 @@ from src._output.trinity_reader import (
     parse_simulation_params,
     iter_progress,
 )
-from src._functions.unit_conversions import CGS, CONV, INV_CONV
+from src._calc._common.plot_utils import (
+    FIG_DIR, MARKERS, OUTCOME_COLORS, OUTCOME_LABELS, OUTCOME_MARKERS,
+    EXPAND, COLLAPSE, STALLED,
+)
+from src._calc._common.cloud_physics import (
+    cloud_radius_pc as _cloud_radius_pc,
+    surface_density as _surface_density,
+    freefall_time_Myr as _freefall_time_Myr,
+    MU_MOL, V_AU2KMS,
+)
+from src._calc._common.fitting import ols_sigma_clip as _ols_sigma_clip
+from src._calc._common.io import extract_rejected as _extract_rejected
 
 logger = logging.getLogger(__name__)
-
-# Output directory: ./fig/ at project root
-FIG_DIR = Path(__file__).parent.parent.parent / "fig"
-
-# Apply trinity plot style if available
-_style_path = Path(__file__).parent.parent / "_plots" / "trinity.mplstyle"
-if _style_path.exists():
-    plt.style.use(str(_style_path))
-
-
-# ======================================================================
-# Physical constants and helpers
-# ======================================================================
-
-MU_MOL = 1.4              # mean molecular weight per H nucleus (molecular gas)
-V_AU2KMS = INV_CONV.v_au2kms   # pc/Myr → km/s  (~0.978)
-
-# Outcome labels
-EXPAND = "expand"
-COLLAPSE = "collapse"
-STALLED = "stalled"
-
-
-def _cloud_radius_pc(mCloud_Msun: float, nCore_cm3: float) -> float:
-    """Cloud radius for a uniform sphere [pc]."""
-    rho_cgs = MU_MOL * CGS.m_H * nCore_cm3
-    M_g = mCloud_Msun / CONV.g2Msun
-    R_cm = (3.0 * M_g / (4.0 * np.pi * rho_cgs)) ** (1.0 / 3.0)
-    return R_cm * CONV.cm2pc
-
-
-def _surface_density(mCloud: float, rCloud: float) -> float:
-    """Sigma = M / (pi R^2) [Msun/pc^2]."""
-    return mCloud / (np.pi * rCloud ** 2)
-
-
-def _freefall_time_Myr(nCore_cm3: float) -> float:
-    """Free-fall time t_ff = sqrt(3 pi / (32 G rho)) [Myr]."""
-    rho = MU_MOL * CGS.m_H * nCore_cm3
-    t_ff_s = np.sqrt(3.0 * np.pi / (32.0 * CGS.G * rho))
-    return t_ff_s * CONV.s2Myr
 
 
 # ======================================================================
@@ -375,53 +344,6 @@ def collect_data(folder_path: Path, t_end: float = None) -> List[Dict]:
 # Fitting
 # ======================================================================
 
-def _ols_sigma_clip(
-    X: np.ndarray,
-    y: np.ndarray,
-    sigma_clip: float,
-    max_iter: int = 10,
-) -> Optional[Dict]:
-    """OLS with iterative sigma-clipping."""
-    n_total = len(y)
-    mask = np.ones(n_total, dtype=bool)
-
-    for _ in range(max_iter):
-        X_use, y_use = X[mask], y[mask]
-        n_use = mask.sum()
-        if n_use < X.shape[1]:
-            return None
-        XtX = X_use.T @ X_use
-        try:
-            XtX_inv = np.linalg.inv(XtX)
-        except np.linalg.LinAlgError:
-            return None
-        beta = XtX_inv @ (X_use.T @ y_use)
-
-        resid = y - X @ beta
-        rms = np.std(resid[mask], ddof=X.shape[1])
-        if rms == 0:
-            break
-        new_mask = np.abs(resid) <= sigma_clip * rms
-        if np.array_equal(mask, new_mask):
-            break
-        mask = new_mask
-
-    n_used = int(mask.sum())
-    y_pred = X @ beta
-    ss_res = np.sum((y[mask] - y_pred[mask]) ** 2)
-    ss_tot = np.sum((y[mask] - np.mean(y[mask])) ** 2)
-    R2 = 1.0 - ss_res / ss_tot if ss_tot > 0 else float("nan")
-    rms_dex = np.sqrt(ss_res / max(n_used - X.shape[1], 1))
-    s2 = ss_res / max(n_used - X.shape[1], 1)
-    unc = np.sqrt(np.diag(s2 * XtX_inv))
-
-    return {
-        "beta": beta, "unc": unc, "R2": R2, "rms_dex": rms_dex,
-        "n_used": n_used, "n_rejected": n_total - n_used,
-        "mask": mask, "y_pred": y_pred,
-    }
-
-
 def fit_scaling(
     records: List[Dict],
     quantity_key: str,
@@ -504,11 +426,7 @@ def fit_scaling(
 # Plotting
 # ======================================================================
 
-_MARKERS = ["o", "s", "D", "^", "v", "P", "X", "*"]
-
-OUTCOME_COLORS = {EXPAND: "C0", COLLAPSE: "C3", STALLED: "0.55"}
-OUTCOME_LABELS = {EXPAND: "Dispersal", COLLAPSE: "Collapse", STALLED: "Stalled"}
-OUTCOME_MARKERS = {EXPAND: "o", COLLAPSE: "x", STALLED: "+"}
+_MARKERS = MARKERS
 
 
 def plot_t_disp_vs_sfe(
@@ -1143,27 +1061,6 @@ def print_summary(
 # ======================================================================
 # Equation JSON (for run_all summary)
 # ======================================================================
-
-def _extract_rejected(fit):
-    """Extract identifying info for sigma-clipped (rejected) points."""
-    mask = fit.get("mask")
-    if mask is None:
-        return []
-    rejected = []
-    for i, m in enumerate(mask):
-        if not m:
-            info = {}
-            for k in ("nCore", "mCloud", "sfe"):
-                arr = fit.get(k)
-                if arr is not None and i < len(arr):
-                    info[k] = float(arr[i])
-            flds = fit.get("folders")
-            if flds is not None and i < len(flds):
-                info["folder"] = flds[i]
-            if info:
-                rejected.append(info)
-    return rejected
-
 
 def _write_equation_json(
     fits: List[Tuple[str, Optional[Dict]]],

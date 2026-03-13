@@ -71,7 +71,6 @@ from typing import Dict, List, Optional, Tuple
 import numpy as np
 from scipy.signal import savgol_filter
 import matplotlib
-matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 
@@ -85,24 +84,17 @@ from src._output.trinity_reader import (
     iter_progress,
 )
 from src._plots.plot_markers import find_phase_transitions
-from src._functions.unit_conversions import INV_CONV
+from src._calc._common.plot_utils import FIG_DIR, MARKERS
+from src._calc._common.cloud_physics import V_AU2KMS
+from src._calc._common.fitting import ols_sigma_clip as _ols_sigma_clip
+from src._calc._common.io import extract_rejected as _extract_rejected
 
 logger = logging.getLogger(__name__)
-
-# Output directory: ./fig/ at project root, matching paper_* scripts
-FIG_DIR = Path(__file__).parent.parent.parent / "fig"
-
-# Apply trinity plot style if available
-_style_path = Path(__file__).parent.parent / "_plots" / "trinity.mplstyle"
-if _style_path.exists():
-    plt.style.use(str(_style_path))
 
 
 # ======================================================================
 # Constants
 # ======================================================================
-
-V_AU2KMS = INV_CONV.v_au2kms   # pc/Myr → km/s  (~0.978)
 
 # Theoretical reference slopes  (v ∝ R^alpha)
 THEORY_SLOPES = {
@@ -472,43 +464,6 @@ def collect_data(folder_path: Path, t_end: float = None) -> List[Dict]:
 # ======================================================================
 # Fitting alpha / eta dependence on cloud parameters
 # ======================================================================
-
-def _ols_sigma_clip(X, y, sigma_clip, max_iter=10):
-    """OLS with iterative sigma-clipping."""
-    n = len(y)
-    mask = np.ones(n, dtype=bool)
-    for _ in range(max_iter):
-        X_u, y_u = X[mask], y[mask]
-        if mask.sum() < X.shape[1]:
-            return None
-        XtX = X_u.T @ X_u
-        try:
-            XtX_inv = np.linalg.inv(XtX)
-        except np.linalg.LinAlgError:
-            return None
-        beta = XtX_inv @ (X_u.T @ y_u)
-        resid = y - X @ beta
-        rms = np.std(resid[mask], ddof=X.shape[1])
-        if rms == 0:
-            break
-        new_mask = np.abs(resid) <= sigma_clip * rms
-        if np.array_equal(mask, new_mask):
-            break
-        mask = new_mask
-
-    n_used = int(mask.sum())
-    y_pred = X @ beta
-    ss_res = np.sum((y[mask] - y_pred[mask]) ** 2)
-    ss_tot = np.sum((y[mask] - np.mean(y[mask])) ** 2)
-    R2 = 1.0 - ss_res / ss_tot if ss_tot > 0 else float("nan")
-    rms_dex = np.sqrt(ss_res / max(n_used - X.shape[1], 1))
-    s2 = ss_res / max(n_used - X.shape[1], 1)
-    unc = np.sqrt(np.diag(s2 * XtX_inv))
-    return {
-        "beta": beta, "unc": unc, "R2": R2, "rms_dex": rms_dex,
-        "n_used": n_used, "n_rejected": n - n_used, "mask": mask,
-    }
-
 
 def fit_alpha_vs_params(
     records: List[Dict],
@@ -1040,7 +995,7 @@ def fit_radius_scaling(
 # Plotting helpers
 # ======================================================================
 
-_MARKERS = ["o", "s", "D", "^", "v", "P", "X", "*"]
+_MARKERS = MARKERS
 
 PHASE_LS = {"energy": "-", "implicit": "-", "transition": "--", "momentum": ":"}
 
@@ -2091,27 +2046,6 @@ def print_summary(
 # ======================================================================
 # Equation JSON (for run_all summary)
 # ======================================================================
-
-def _extract_rejected(fit):
-    """Extract identifying info for sigma-clipped (rejected) points."""
-    mask = fit.get("mask")
-    if mask is None:
-        return []
-    rejected = []
-    for i, m in enumerate(mask):
-        if not m:
-            info = {}
-            for k in ("nCore", "mCloud", "sfe"):
-                arr = fit.get(k)
-                if arr is not None and i < len(arr):
-                    info[k] = float(arr[i])
-            flds = fit.get("folders")
-            if flds is not None and i < len(flds):
-                info["folder"] = flds[i]
-            if info:
-                rejected.append(info)
-    return rejected
-
 
 def _write_equation_json(
     alpha_fits: Dict[str, Optional[Dict]],

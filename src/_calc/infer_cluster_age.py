@@ -68,12 +68,15 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 import numpy as np
-import matplotlib
-matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 # Add project root so imports resolve
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+
+from src._calc._common.plot_utils import (
+    FIG_DIR, C_BLUE, C_VERMILLION, C_GREEN, C_PURPLE, C_ORANGE, C_SKY, C_BLACK,
+)
+from src._calc._common.fitting import logsumexp as _logsumexp
 
 # Reuse grid loading and density helpers from infer_cluster_mass
 from src._calc.infer_cluster_mass import (
@@ -89,37 +92,15 @@ from src._calc.infer_cluster_mass import (
     V_AU2KMS,
     N_ISM_FLOOR,
     MIN_PTS,
-    C_BLUE,
-    C_VERMILLION,
-    C_GREEN,
-    C_PURPLE,
-    C_ORANGE,
-    C_SKY,
-    C_BLACK,
     MU_H,
 )
 
 logger = logging.getLogger(__name__)
 
-# Output directory: ./fig/ at project root
-FIG_DIR = Path(__file__).parent.parent.parent / "fig"
-
-# Apply trinity plot style if available
-_style_path = Path(__file__).parent.parent / "_plots" / "trinity.mplstyle"
-if _style_path.exists():
-    plt.style.use(str(_style_path))
-
 
 # ======================================================================
 # Step 1: Posterior computation -- marginalise over t
 # ======================================================================
-
-def _logsumexp(log_vals: np.ndarray) -> float:
-    """Numerically stable log-sum-exp."""
-    a_max = np.max(log_vals)
-    if not np.isfinite(a_max):
-        return -np.inf
-    return a_max + np.log(np.sum(np.exp(log_vals - a_max)))
 
 
 def compute_age_posterior(
