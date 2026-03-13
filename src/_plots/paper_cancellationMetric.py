@@ -27,7 +27,7 @@ from matplotlib.patches import Patch
 from src._plots.plot_base import FIG_DIR, smooth_1d
 
 # Add project root to path for imports
-from src._output.trinity_reader import load_output, resolve_data_input, info_simulations
+from src._output.trinity_reader import load_output, resolve_data_input
 from src._plots.plot_markers import add_plot_markers, get_marker_legend_handles
 
 print("...plotting cancellation metric")
@@ -428,71 +428,10 @@ plot_folder_grid = plot_grid
 
 # ---------------- command-line interface ----------------
 if __name__ == "__main__":
-    import argparse
-
-    parser = argparse.ArgumentParser(
+    from src._plots.cli import dispatch
+    dispatch(
+        script_name="paper_cancellationMetric.py",
         description="Plot TRINITY cancellation metric",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
-Examples:
-  # Single simulation
-  python paper_cancellationMetric.py 1e7_sfe020_n1e4
-  python paper_cancellationMetric.py /path/to/outputs/1e7_sfe020_n1e4
-
-  # Grid plot from folder (auto-discovers simulations)
-  python paper_cancellationMetric.py --folder /path/to/my_experiment/
-  python paper_cancellationMetric.py -F /path/to/simulations/ -n 1e4
-        """
+        plot_from_path_fn=plot_from_path,
+        plot_grid_fn=plot_grid,
     )
-    parser.add_argument(
-        'data', nargs='?', default=None,
-        help='Data input: folder name, folder path, or file path (for single simulation)'
-    )
-    parser.add_argument(
-        '--output-dir', '-o', default=None,
-        help='Directory to save output figures (default: fig/)'
-    )
-    parser.add_argument(
-        '--folder', '-F', default=None,
-        help='Create grid plot from all simulations in folder.'
-    )
-    parser.add_argument(
-        '--nCore', '-n', default=None,
-        help='Filter simulations by cloud density (e.g., "1e4", "1e3").'
-    )
-    parser.add_argument(
-        '--mCloud', nargs='+', default=None,
-        help='Filter simulations by cloud mass (e.g., --mCloud 1e6 1e7).'
-    )
-    parser.add_argument(
-        '--sfe', nargs='+', default=None,
-        help='Filter simulations by SFE (e.g., --sfe 001 010).'
-    )
-    parser.add_argument(
-        '--info', action='store_true',
-        help='Scan folder and print available mCloud, SFE, and nCore values.'
-    )
-
-    args = parser.parse_args()
-
-    if args.info:
-        if not args.folder:
-            parser.print_help()
-            print("\nError: --info requires --folder to be specified.")
-        else:
-            info = info_simulations(args.folder)
-            print("=" * 50)
-            print(f"Simulation parameters in: {args.folder}")
-            print("=" * 50)
-            print(f"  Total simulations: {info['count']}")
-            print(f"  mCloud values: {info['mCloud']}")
-            print(f"  SFE values: {info['sfe']}")
-            print(f"  nCore values: {info['ndens']}")
-    elif args.folder:
-        plot_grid(args.folder, args.output_dir, ndens_filter=args.nCore,
-                  mCloud_filter=args.mCloud, sfe_filter=args.sfe)
-    elif args.data:
-        plot_from_path(args.data, args.output_dir)
-    else:
-        parser.print_help()
-        print("\nError: Please provide either --folder or a data path.")
