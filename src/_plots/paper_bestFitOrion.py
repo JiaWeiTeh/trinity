@@ -48,7 +48,6 @@ Produces:
 """
 
 import sys
-import os
 import numpy as np
 import matplotlib.pyplot as plt
 from pathlib import Path
@@ -58,8 +57,7 @@ import matplotlib.colors as mcolors
 from matplotlib.patches import Patch
 from matplotlib.lines import Line2D
 
-# Add project root to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+from src._plots.plot_base import FIG_DIR
 from src._output.trinity_reader import (
     load_output, find_all_simulations, organize_simulations_for_grid,
     get_unique_ndens, parse_simulation_params, resolve_data_input, info_simulations
@@ -70,15 +68,6 @@ print("...analyzing best-fit models for Orion Nebula (M42)")
 # Unit conversion: 1 km/s ~ 1.0227 pc/Myr
 PC_MYR_TO_KM_S = 1.0 / 1.0227
 
-# --- Output directory
-FIG_DIR = Path(__file__).parent.parent.parent / "fig"
-FIG_DIR.mkdir(parents=True, exist_ok=True)
-
-# Load matplotlib style if available
-try:
-    plt.style.use(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'trinity.mplstyle'))
-except:
-    pass
 
 
 # =============================================================================

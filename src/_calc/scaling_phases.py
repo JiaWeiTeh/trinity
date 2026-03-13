@@ -76,8 +76,6 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 import numpy as np
-import matplotlib
-matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 # Add project root so imports resolve
@@ -90,16 +88,11 @@ from src._output.trinity_reader import (
     iter_progress,
 )
 from src._plots.plot_markers import find_phase_transitions
+from src._calc._common.plot_utils import FIG_DIR, MARKERS
+from src._calc._common.fitting import ols_sigma_clip as _ols_sigma_clip
+from src._calc._common.io import extract_rejected as _extract_rejected, regenerate_summary_pdf as _regenerate_summary_pdf
 
 logger = logging.getLogger(__name__)
-
-# Output directory: ./fig/ at project root, matching other paper_* scripts
-FIG_DIR = Path(__file__).parent.parent.parent / "fig"
-
-# Apply trinity plot style if available
-_style_path = Path(__file__).parent.parent / "_plots" / "trinity.mplstyle"
-if _style_path.exists():
-    plt.style.use(str(_style_path))
 
 
 # ======================================================================
@@ -249,53 +242,6 @@ def collect_data(
 # ======================================================================
 # Fitting
 # ======================================================================
-
-def _ols_sigma_clip(
-    X: np.ndarray,
-    y: np.ndarray,
-    sigma_clip: float,
-    max_iter: int = 10,
-) -> Optional[Dict]:
-    """OLS with iterative sigma-clipping (reusable helper)."""
-    n_total = len(y)
-    mask = np.ones(n_total, dtype=bool)
-
-    for _ in range(max_iter):
-        X_use, y_use = X[mask], y[mask]
-        n_use = mask.sum()
-        if n_use < X.shape[1]:
-            return None
-        XtX = X_use.T @ X_use
-        try:
-            XtX_inv = np.linalg.inv(XtX)
-        except np.linalg.LinAlgError:
-            return None
-        beta = XtX_inv @ (X_use.T @ y_use)
-
-        resid = y - X @ beta
-        rms = np.std(resid[mask], ddof=X.shape[1])
-        if rms == 0:
-            break
-        new_mask = np.abs(resid) <= sigma_clip * rms
-        if np.array_equal(mask, new_mask):
-            break
-        mask = new_mask
-
-    n_used = int(mask.sum())
-    y_pred = X @ beta
-    ss_res = np.sum((y[mask] - y_pred[mask]) ** 2)
-    ss_tot = np.sum((y[mask] - np.mean(y[mask])) ** 2)
-    R2 = 1.0 - ss_res / ss_tot if ss_tot > 0 else float("nan")
-    rms_dex = np.sqrt(ss_res / max(n_used - X.shape[1], 1))
-    s2 = ss_res / max(n_used - X.shape[1], 1)
-    unc = np.sqrt(np.diag(s2 * XtX_inv))
-
-    return {
-        "beta": beta, "unc": unc, "R2": R2, "rms_dex": rms_dex,
-        "n_used": n_used, "n_rejected": n_total - n_used,
-        "mask": mask, "y_pred": y_pred,
-    }
-
 
 def fit_scaling(
     records: List[Dict],
@@ -716,7 +662,7 @@ def fit_scaling_piecewise(
 # ======================================================================
 
 # Marker shapes cycled by nCore
-_MARKERS = ["o", "s", "D", "^", "v", "P", "X", "*"]
+_MARKERS = MARKERS
 
 
 def plot_parity(fit: Dict, output_dir: Path, fmt: str = "pdf") -> Path:
@@ -1268,46 +1214,6 @@ def write_summary(fits: List[Dict], output_dir: Path) -> Path:
 # ======================================================================
 # Equation JSON (for run_all summary)
 # ======================================================================
-
-def _regenerate_summary_pdf(output_dir: Path, fmt: str = "pdf") -> None:
-    """Re-generate the cross-script scaling-relations summary PDF.
-
-    Loads ``run_all.generate_summary_pdf`` via importlib so that this
-    script can update the PDF when run individually (without run_all).
-    """
-    try:
-        import importlib.util
-        _mod_path = str(Path(__file__).resolve().parent / "run_all.py")
-        spec = importlib.util.spec_from_file_location("_run_all", _mod_path)
-        mod = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(mod)
-        # run_all was designed without usetex; honour that inside rc_context
-        with plt.rc_context({"text.usetex": False}):
-            mod.generate_summary_pdf(output_dir, fmt=fmt)
-    except Exception as exc:
-        logger.warning("Could not regenerate summary PDF: %s", exc)
-
-
-def _extract_rejected(fit):
-    """Extract identifying info for sigma-clipped (rejected) points."""
-    mask = fit.get("mask")
-    if mask is None:
-        return []
-    rejected = []
-    for i, m in enumerate(mask):
-        if not m:
-            info = {}
-            for k in ("nCore", "mCloud", "sfe"):
-                arr = fit.get(k)
-                if arr is not None and i < len(arr):
-                    info[k] = float(arr[i])
-            flds = fit.get("folders")
-            if flds is not None and i < len(flds):
-                info["folder"] = flds[i]
-            if info:
-                rejected.append(info)
-    return rejected
-
 
 def _write_equation_json(
     fits: List[Dict],

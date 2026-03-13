@@ -179,8 +179,6 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 import numpy as np
-import matplotlib
-matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 
@@ -193,23 +191,22 @@ from src._output.trinity_reader import (
     parse_simulation_params,
     iter_progress,
 )
-from src._functions.unit_conversions import INV_CONV, CONV, CGS
+from src._functions.unit_conversions import CONV, CGS
+
+from src._calc._common.plot_utils import (
+    FIG_DIR, C_BLUE, C_VERMILLION, C_GREEN, C_PURPLE, C_ORANGE, C_SKY, C_BLACK,
+)
+from src._calc._common.cloud_physics import V_AU2KMS, MU_MOL
+from src._calc._common.fitting import logsumexp as _logsumexp
 
 logger = logging.getLogger(__name__)
-
-# Output directory: ./fig/ at project root
-FIG_DIR = Path(__file__).parent.parent.parent / "fig"
-
-# Apply trinity plot style if available
-_style_path = Path(__file__).parent.parent / "_plots" / "trinity.mplstyle"
-if _style_path.exists():
-    plt.style.use(str(_style_path))
 
 # ======================================================================
 # Constants
 # ======================================================================
 
-V_AU2KMS = INV_CONV.v_au2kms          # pc/Myr -> km/s
+# Alias for backward compatibility (infer_cluster_age imports MU_H)
+MU_H = MU_MOL
 
 # ISM floor density [cm^-3]
 N_ISM_FLOOR = 1.0
@@ -217,19 +214,7 @@ N_ISM_FLOOR = 1.0
 # Minimum expanding points required
 MIN_PTS = 5
 
-# Colourblind-safe palette (Wong 2011)
-C_BLUE = "#0072B2"
-C_VERMILLION = "#D55E00"
-C_GREEN = "#009E73"
-C_PURPLE = "#CC79A7"
-C_ORANGE = "#E69F00"
-C_SKY = "#56B4E9"
-C_BLACK = "#000000"
-
 LINESTYLES = ["-", "--", "-.", ":"]
-
-# Mean molecular weight [m_H units] — same as TRINITY default
-MU_H = 1.4
 
 
 # ======================================================================
@@ -992,14 +977,6 @@ def interpolate_mass_grid(
 # ======================================================================
 # Step 3: Posterior computation
 # ======================================================================
-
-def _logsumexp(log_vals: np.ndarray) -> float:
-    """Numerically stable log-sum-exp."""
-    a_max = np.max(log_vals)
-    if not np.isfinite(a_max):
-        return -np.inf
-    return a_max + np.log(np.sum(np.exp(log_vals - a_max)))
-
 
 def compute_posterior_grid(
     records: List[Dict],

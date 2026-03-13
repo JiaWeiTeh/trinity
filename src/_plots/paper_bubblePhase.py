@@ -14,14 +14,12 @@ USAGE:
 """
 
 import os
-import sys
 import numpy as np
 import matplotlib.pyplot as plt
 from pathlib import Path
 import src._functions.unit_conversions as cvt
 
-# Add project root to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+from src._plots.plot_base import FIG_DIR
 from src._output.trinity_reader import load_output, find_data_path
 from src._plots.plot_markers import add_collapse_marker
 
@@ -45,10 +43,6 @@ path2data2 = find_data_path(base_path2)
 
     
 #--------------
-
-import os
-plt.style.use(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'trinity.mplstyle'))
-
 
 
 
@@ -162,9 +156,6 @@ plt.tight_layout()
 
 
 
-# Output - save to project root's fig/ directory
-FIG_DIR = Path(__file__).parent.parent.parent / "fig"
-FIG_DIR.mkdir(parents=True, exist_ok=True)
 SAVE_PDF = True
 
 if SAVE_PDF:

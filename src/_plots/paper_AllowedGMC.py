@@ -18,7 +18,6 @@ Constraints checked:
 @author: TRINITY Team
 """
 
-import sys
 import numpy as np
 import matplotlib
 matplotlib.use('Agg')
@@ -27,17 +26,9 @@ from matplotlib.colors import LogNorm, Normalize
 from matplotlib.patches import Patch
 from matplotlib import patheffects
 from pathlib import Path
-import os
 import cmasher as cmr
 
-# Add script directory to path for local imports
-sys.path.insert(0, str(Path(__file__).parent))
-
-# Add project root to path
-PROJECT_ROOT = Path(__file__).parent.parent.parent
-sys.path.insert(0, str(PROJECT_ROOT))
-
-# Import TRINITY modules
+from src._plots.plot_base import FIG_DIR
 from src.cloud_properties.powerLawSphere import (
     compute_rCloud_powerlaw,
     compute_rCloud_homogeneous,
@@ -48,8 +39,6 @@ from src.cloud_properties.bonnorEbertSphere import (
     OMEGA_CRITICAL,
 )
 
-# Style
-plt.style.use(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'trinity.mplstyle'))
 
 # =============================================================================
 # Configuration
@@ -72,9 +61,6 @@ ALPHA_VALUES = [-0.5, -1, -1.5, -2]
 # Bonnor-Ebert dimensionless radii to test (including critical ~6.45)
 XI_VALUES = [3.0, 4.0, XI_CRITICAL, 10]
 
-# Output - save to project root's fig/ directory
-FIG_DIR = Path(__file__).parent.parent.parent / "fig"
-FIG_DIR.mkdir(parents=True, exist_ok=True)
 SAVE_PDF = True
 
 # Contours

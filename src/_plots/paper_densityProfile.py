@@ -21,8 +21,6 @@ Usage:
 @author: Jia Wei Teh
 """
 
-import sys
-import os
 import re
 import logging
 import argparse
@@ -32,8 +30,7 @@ from pathlib import Path
 from matplotlib.lines import Line2D
 from matplotlib.patches import Patch
 
-# Add project root to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+from src._plots.plot_base import FIG_DIR
 from src._output.trinity_reader import (
     load_output, find_all_simulations, TrinityOutput
 )
@@ -52,9 +49,6 @@ logging.basicConfig(
     format="%(levelname)s [%(name)s] %(message)s"
 )
 logger = logging.getLogger(__name__)
-
-# Load matplotlib style
-plt.style.use(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'trinity.mplstyle'))
 
 # =============================================================================
 # Constants
@@ -82,10 +76,6 @@ F_AU2CGS = INV_CONV.F_au2cgs
 
 # Pressure conversion: AU -> CGS (dyn/cm^2)
 PB_AU2CGS = INV_CONV.Pb_au2cgs
-
-# Output figure directory
-FIG_DIR = Path(__file__).parent.parent.parent / "fig"
-FIG_DIR.mkdir(parents=True, exist_ok=True)
 
 
 # =============================================================================

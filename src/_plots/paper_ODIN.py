@@ -14,7 +14,6 @@ Produces:
 """
 
 import sys
-import os
 import numpy as np
 import matplotlib.pyplot as plt
 from pathlib import Path
@@ -24,8 +23,7 @@ import matplotlib.colors as mcolors
 from scipy.signal import savgol_filter
 from scipy.interpolate import UnivariateSpline
 
-# Add project root to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+from src._plots.plot_base import FIG_DIR
 from src._output.trinity_reader import (
     load_output, find_all_simulations,
     parse_simulation_params, info_simulations
@@ -38,16 +36,6 @@ PC_MYR_TO_KM_S = 1.0 / 1.0227
 
 # --- Global plot settings ---
 FONTSIZE = 16  # Global font size for labels, ticks, and legends
-
-# --- Output directory
-FIG_DIR = Path(__file__).parent.parent.parent / "fig"
-FIG_DIR.mkdir(parents=True, exist_ok=True)
-
-# Load matplotlib style if available
-try:
-    plt.style.use(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'trinity.mplstyle'))
-except:
-    pass
 
 
 # =============================================================================

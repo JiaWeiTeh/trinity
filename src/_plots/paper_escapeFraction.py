@@ -6,14 +6,12 @@ Created on Tue Dec 16 15:13:21 2025
 @author: Jia Wei Teh
 """
 
-import sys
 import numpy as np
 import matplotlib.pyplot as plt
 from pathlib import Path
 
-# Add project root to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
-from src._output.trinity_reader import load_output, resolve_data_input, info_simulations
+from src._plots.plot_base import FIG_DIR, smooth_1d
+from src._output.trinity_reader import load_output, resolve_data_input
 from src._plots.plot_markers import add_collapse_marker, get_marker_legend_handles
 
 print("...plotting escape fraction comparison")
@@ -23,9 +21,6 @@ print("...plotting escape fraction comparison")
 # smoothing: number of snapshots in moving average (None or 1 disables)
 SMOOTH_WINDOW = 7
 
-# --- output - save to project root's fig/ directory
-FIG_DIR = Path(__file__).parent.parent.parent / "fig"
-FIG_DIR.mkdir(parents=True, exist_ok=True)
 SAVE_PNG = False
 SAVE_PDF = True
 
@@ -35,21 +30,6 @@ def range_tag(prefix, values, key=float):
         return f"{prefix}{vals[0]}"
     vmin, vmax = min(vals, key=key), max(vals, key=key)
     return f"{prefix}{vmin}-{vmax}"
-
-
-def smooth_1d(y, window, mode="edge"):
-    """Simple moving-average smoothing. window is in number of snapshots."""
-    if window is None or window <= 1:
-        return y
-
-    window = int(window)
-    if window % 2 == 0:
-        window += 1
-
-    kernel = np.ones(window, dtype=float) / window
-    pad = window // 2
-    ypad = np.pad(y, (pad, pad), mode=mode)
-    return np.convolve(ypad, kernel, mode="valid")
 
 
 def load_escape_fraction(data_path: Path):
@@ -71,9 +51,6 @@ def load_escape_fraction(data_path: Path):
 
     return t, fesc, isCollapse
 
-
-import os
-plt.style.use(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'trinity.mplstyle'))
 
 
 def plot_from_path(data_input: str, output_dir: str = None):
@@ -274,73 +251,11 @@ def plot_grid(folder_path, output_dir=None, ndens_filter=None,
 plot_folder_grid = plot_grid
 
 
-# ---------------- command-line interface ----------------
 if __name__ == "__main__":
-    import argparse
-
-    parser = argparse.ArgumentParser(
+    from src._plots.cli import dispatch
+    dispatch(
+        script_name="paper_escapeFraction.py",
         description="Plot TRINITY escape fraction",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
-Examples:
-  # Single simulation
-  python paper_escapeFraction.py 1e7_sfe020_n1e4
-  python paper_escapeFraction.py /path/to/outputs/1e7_sfe020_n1e4
-
-  # Grid plot from folder (auto-discovers simulations)
-  python paper_escapeFraction.py --folder /path/to/my_experiment/
-  python paper_escapeFraction.py -F /path/to/simulations/ -n 1e4
-        """
+        plot_from_path_fn=plot_from_path,
+        plot_grid_fn=plot_grid,
     )
-    parser.add_argument(
-        'data', nargs='?', default=None,
-        help='Data input: folder name, folder path, or file path (for single simulation)'
-    )
-    parser.add_argument(
-        '--output-dir', '-o', default=None,
-        help='Directory to save output figures (default: fig/)'
-    )
-    parser.add_argument(
-        '--folder', '-F', default=None,
-        help='Create grid plot from all simulations in folder.'
-    )
-    parser.add_argument(
-        '--nCore', '-n', default=None,
-        help='Filter simulations by cloud density (e.g., "1e4", "1e3").'
-    )
-    parser.add_argument(
-        '--mCloud', nargs='+', default=None,
-        help='Filter simulations by cloud mass (e.g., --mCloud 1e6 1e7).'
-    )
-    parser.add_argument(
-        '--sfe', nargs='+', default=None,
-        help='Filter simulations by SFE (e.g., --sfe 001 010).'
-    )
-    parser.add_argument(
-        '--info', action='store_true',
-        help='Scan folder and print available mCloud, SFE, and nCore values.'
-    )
-
-    args = parser.parse_args()
-
-    if args.info:
-        if not args.folder:
-            parser.print_help()
-            print("\nError: --info requires --folder to be specified.")
-        else:
-            info = info_simulations(args.folder)
-            print("=" * 50)
-            print(f"Simulation parameters in: {args.folder}")
-            print("=" * 50)
-            print(f"  Total simulations: {info['count']}")
-            print(f"  mCloud values: {info['mCloud']}")
-            print(f"  SFE values: {info['sfe']}")
-            print(f"  nCore values: {info['ndens']}")
-    elif args.folder:
-        plot_grid(args.folder, args.output_dir, ndens_filter=args.nCore,
-                  mCloud_filter=args.mCloud, sfe_filter=args.sfe)
-    elif args.data:
-        plot_from_path(args.data, args.output_dir)
-    else:
-        parser.print_help()
-        print("\nError: Please provide either --folder or a data path.")

@@ -43,7 +43,6 @@ from typing import Dict, List, Optional
 
 import numpy as np
 import matplotlib
-matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 
@@ -56,38 +55,24 @@ from src._output.trinity_reader import (
     parse_simulation_params,
     iter_progress,
 )
-from src._functions.unit_conversions import INV_CONV, CONV, CGS
+from src._functions.unit_conversions import CONV, CGS
+from src._calc._common.plot_utils import (
+    FIG_DIR, C_BLUE, C_VERMILLION, C_GREEN, C_PURPLE, C_ORANGE, C_SKY,
+    C_BLACK,
+)
+from src._calc._common.cloud_physics import V_AU2KMS
 
 logger = logging.getLogger(__name__)
-
-# Output directory: ./fig/ at project root
-FIG_DIR = Path(__file__).parent.parent.parent / "fig"
-
-# Apply trinity plot style if available
-_style_path = Path(__file__).parent.parent / "_plots" / "trinity.mplstyle"
-if _style_path.exists():
-    plt.style.use(str(_style_path))
 
 # ======================================================================
 # Constants
 # ======================================================================
-
-V_AU2KMS = INV_CONV.v_au2kms          # pc/Myr -> km/s
 
 # Minimum expanding points required
 MIN_PTS = 5
 
 # Mean molecular weight [m_H units]
 MU_H = 1.4
-
-# Colourblind-safe palette (Wong 2011)
-C_BLUE = "#0072B2"
-C_VERMILLION = "#D55E00"
-C_GREEN = "#009E73"
-C_PURPLE = "#CC79A7"
-C_ORANGE = "#E69F00"
-C_SKY = "#56B4E9"
-C_BLACK = "#000000"
 
 LINESTYLES = ["-", "--", "-.", ":"]
 
