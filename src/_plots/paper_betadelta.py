@@ -7,13 +7,13 @@ Created on Wed Dec 17 20:03:19 2025
 """
 
 import numpy as np
-import matplotlib.pyplot as plt
 import matplotlib.transforms as mtransforms
 from pathlib import Path
 from matplotlib.lines import Line2D
 
-from src._plots.plot_base import FIG_DIR, smooth_1d
-from src._output.trinity_reader import load_output, resolve_data_input
+from src._plots.plot_base import smooth_1d
+from src._output.trinity_reader import load_output
+from src._plots.grid_template import plot_single, plot_grid as _plot_grid
 
 print("...plotting radius comparison")
 
@@ -109,203 +109,92 @@ def plot_cooling_on_ax(
     return axr  # in case you want per-panel tweaks
 
 
-# ---------- plot_from_path for CLI ----------
-def plot_from_path(data_input: str, output_dir: str = None):
-    """
-    Plot cooling parameters from a direct data path/folder.
+# ---------- cell adapters for grid_template ----------
 
-    Parameters
-    ----------
-    data_input : str
-        Can be: folder name, folder path, or file path
-    output_dir : str, optional
-        Base directory for output folders
-    """
-    try:
-        data_path = resolve_data_input(data_input, output_dir)
-    except FileNotFoundError as e:
-        print(f"Error: {e}")
-        return
+def _plot_cell_single(ax, data):
+    """Adapter for single-plot mode."""
+    t, R2, phase, beta, delta, rcloud, additional_param = data
+    return plot_cooling_on_ax(
+        ax, t, R2, phase, beta, delta, rcloud, additional_param,
+        smooth_window=SMOOTH_WINDOW,
+        show_phase_line=PHASE_CHANGE,
+        show_cloud_line=True,
+    )
 
 
-    fig, ax = plt.subplots(figsize=(8, 6), dpi=150)
+def _plot_cell_grid(ax, data):
+    """Adapter for grid-plot mode."""
+    t, R2, phase, beta, delta, rcloud, additional_param = data
+    return plot_cooling_on_ax(
+        ax, t, R2, phase, beta, delta, rcloud, additional_param,
+        smooth_window=7,
+        show_phase_line=True,
+        show_cloud_line=True,
+    )
 
-    try:
-        t, R2, phase, beta, delta, rcloud, additional_param = load_cooling_run(data_path)
-        axr = plot_cooling_on_ax(
-            ax, t, R2, phase, beta, delta, rcloud, additional_param,
-            smooth_window=SMOOTH_WINDOW,
-            show_phase_line=PHASE_CHANGE,
-            show_cloud_line=True,
-        )
-    except Exception as e:
-        print(f"Error loading data: {e}")
-        plt.close(fig)
-        return
 
-    ax.set_title(f"Cooling Parameters: {data_path.parent.name}")
-    ax.set_xlabel("t [Myr]")
-    ax.set_ylabel(r"Cooling: $\beta,\delta$")
-    axr.set_ylabel(r"$P_b$")
-
-    # Legend
-    handles = [
+def _single_legend_handles():
+    return [
         Line2D([0],[0], lw=1.6, label=r"$\beta$"),
         Line2D([0],[0], lw=1.6, label=r"$\delta$"),
         Line2D([0],[0], lw=1.4, alpha=0.8, c='k', label=r"$P_b$"),
         Line2D([0],[0], color="k", ls="--", alpha=0.4, label=r"$R_2>R_{\rm cloud}$"),
         Line2D([0],[0], color="r", lw=2, alpha=0.3, label=r"phase change"),
     ]
-    ax.legend(handles=handles, loc="upper left", framealpha=0.9)
 
-    plt.tight_layout()
 
-    # Save figures
-    run_name = data_path.parent.name
-    out_pdf = FIG_DIR / f"paper_betadelta_{run_name}.pdf"
-    fig.savefig(out_pdf, bbox_inches='tight')
-    print(f"Saved: {out_pdf}")
+def _grid_legend_handles():
+    return [
+        Line2D([0],[0], lw=1.6, label=r"$\beta$"),
+        Line2D([0],[0], lw=1.6, label=r"$\delta$"),
+        Line2D([0],[0], lw=1.4, alpha=0.8, label=r"$R_2$"),
+        Line2D([0],[0], color="k", ls="--", alpha=0.4, label=r"$R_2>R_{\rm cloud}$"),
+        Line2D([0],[0], color="r", lw=2, alpha=0.3, label=r"transition$\to$momentum"),
+    ]
 
-    plt.show()
-    plt.close(fig)
+
+def _post_plot_single(ax, data, extra):
+    """Set right-axis label after plot_single draws."""
+    axr = extra
+    axr.set_ylabel(r"$P_b$")
+
+
+# ---------- plot_from_path for CLI ----------
+def plot_from_path(data_input: str, output_dir: str = None):
+    """Plot cooling parameters from a direct data path/folder."""
+    plot_single(
+        data_input, output_dir,
+        load_run_fn=load_cooling_run,
+        plot_cell_fn=_plot_cell_single,
+        legend_handles_fn=_single_legend_handles,
+        file_prefix="paper_betadelta",
+        ylabel=r"Cooling: $\beta,\delta$",
+        title_fn=lambda p: f"Cooling Parameters: {p.parent.name}",
+        post_plot_fn=_post_plot_single,
+    )
 
 
 # ---------- GRID ----------
 def plot_grid(folder_path, output_dir=None, ndens_filter=None,
               mCloud_filter=None, sfe_filter=None):
-    """
-    Plot grid of cooling parameters from simulations in a folder.
-
-    Parameters
-    ----------
-    folder_path : str or Path
-        Path to folder containing simulation subfolders
-    output_dir : str or Path, optional
-        Directory to save figure (default: FIG_DIR)
-    ndens_filter : str, optional
-        Filter simulations by density (e.g., "1e4"). If None, creates one
-        PDF per unique density found.
-    """
-    from src._output.trinity_reader import find_all_simulations, organize_simulations_for_grid, get_unique_ndens
-
-    folder_path = Path(folder_path)
-    folder_name = folder_path.name
-
-    sim_files = find_all_simulations(folder_path)
-    if not sim_files:
-        print(f"No simulation files found in {folder_path}")
-        return
-
-    if ndens_filter:
-        ndens_to_plot = [ndens_filter]
-    else:
-        ndens_to_plot = get_unique_ndens(sim_files)
-
-    print(f"Found {len(sim_files)} simulations")
-    print(f"  Densities to plot: {ndens_to_plot}")
-
-    for ndens in ndens_to_plot:
-        print(f"\nProcessing n={ndens}...")
-        organized = organize_simulations_for_grid(
-            sim_files, ndens_filter=ndens,
-            mCloud_filter=mCloud_filter, sfe_filter=sfe_filter
-        )
-        mCloud_list_use = organized['mCloud_list']
-        sfe_list_use = organized['sfe_list']
-        grid = organized['grid']
-
-        if not mCloud_list_use or not sfe_list_use:
-            print(f"  Could not organize simulations into grid for n={ndens}")
-            continue
-
-        print(f"  mCloud: {mCloud_list_use}")
-        print(f"  SFE: {sfe_list_use}")
-
-        nrows, ncols = len(mCloud_list_use), len(sfe_list_use)
-        fig, axes = plt.subplots(
-            nrows=nrows, ncols=ncols,
-            figsize=(3.2 * ncols, 2.6 * nrows),
-            sharex=False, sharey=False,
-            dpi=200,
-            squeeze=False,
-            constrained_layout=False
-        )
-
-        fig.subplots_adjust(top=0.82)
-
-        for i, mCloud in enumerate(mCloud_list_use):
-            for j, sfe in enumerate(sfe_list_use):
-                ax = axes[i, j]
-                data_path = grid.get((mCloud, sfe))
-
-                if data_path is None:
-                    run_id = f"{mCloud}_sfe{sfe}_n{ndens}"
-                    print(f"  {run_id}: missing")
-                    ax.text(0.5, 0.5, "missing", ha="center", va="center", transform=ax.transAxes)
-                    ax.set_axis_off()
-                    continue
-
-                try:
-                    t, R2, phase, beta, delta, rcloud, additional_param = load_cooling_run(data_path)
-                    plot_cooling_on_ax(
-                        ax, t, R2, phase, beta, delta, rcloud, additional_param,
-                        smooth_window=7,
-                        show_phase_line=True,
-                        show_cloud_line=True,
-                    )
-                except Exception as e:
-                    print(f"Error loading {data_path}: {e}")
-                    ax.text(0.5, 0.5, "error", ha="center", va="center", transform=ax.transAxes)
-                    ax.set_axis_off()
-                    continue
-
-                if i == 0:
-                    eps = int(sfe) / 100.0
-                    ax.set_title(rf"$\epsilon={eps:.2f}$")
-
-                if j == 0:
-                    mval = float(mCloud)
-                    mexp = int(np.floor(np.log10(mval)))
-                    mcoeff = round(mval / (10 ** mexp))
-                    if mcoeff == 10:
-                        mcoeff = 1
-                        mexp += 1
-                    if mcoeff == 1:
-                        mlabel = rf"$M_{{\rm cloud}}=10^{{{mexp}}}M_\odot$"
-                    else:
-                        mlabel = rf"$M_{{\rm cloud}}={mcoeff}\times10^{{{mexp}}}M_\odot$"
-                    ax.set_ylabel(mlabel + "\n" + r"Cooling: $\beta,\delta$")
-
-                if i == nrows - 1:
-                    ax.set_xlabel("t [Myr]")
-
-        handles = [
-            Line2D([0],[0], lw=1.6, label=r"$\beta$"),
-            Line2D([0],[0], lw=1.6, label=r"$\delta$"),
-            Line2D([0],[0], lw=1.4, alpha=0.8, label=r"$R_2$"),
-            Line2D([0],[0], color="k", ls="--", alpha=0.4, label=r"$R_2>R_{\rm cloud}$"),
-            Line2D([0],[0], color="r", lw=2, alpha=0.3, label=r"transition$\to$momentum"),
-        ]
-        leg = fig.legend(
-            handles=handles, loc="upper center", ncol=3,
-            frameon=True, facecolor="white", framealpha=0.9, edgecolor="0.2",
-            bbox_to_anchor=(0.5, 0.91), bbox_transform=fig.transFigure
-        )
-        leg.set_zorder(10)
-
-        ndens_tag = f"n{ndens}"
-        fig.suptitle(f"{folder_name} ({ndens_tag})", fontsize=14, y=0.98)
-
-        # Save figure to ./fig/{folder_name}/betadelta_{ndens_tag}.pdf
-        fig_dir = Path(output_dir) if output_dir else FIG_DIR / folder_name
-        fig_dir.mkdir(parents=True, exist_ok=True)
-
-        if SAVE_PDF:
-            out_pdf = fig_dir / f"betadelta_{ndens_tag}.pdf"
-            fig.savefig(out_pdf, bbox_inches="tight")
-            print(f"Saved: {out_pdf}")
-
-        plt.close(fig)
+    """Plot grid of cooling parameters from simulations in a folder."""
+    _plot_grid(
+        folder_path, output_dir,
+        ndens_filter=ndens_filter,
+        mCloud_filter=mCloud_filter,
+        sfe_filter=sfe_filter,
+        load_run_fn=load_cooling_run,
+        plot_cell_fn=_plot_cell_grid,
+        legend_handles_fn=_grid_legend_handles,
+        file_prefix="betadelta",
+        ylabel=r"Cooling: $\beta,\delta$",
+        dpi=200,
+        sharey=False,
+        legend_ncol=3,
+        legend_y=0.91,
+        subplots_adjust_top=0.82,
+        save_pdf=SAVE_PDF,
+    )
 
 
 # Backwards compatibility alias
