@@ -4,7 +4,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 from pathlib import Path
 from matplotlib.lines import Line2D
-import matplotlib.transforms as mtransforms
 
 from src._plots.plot_base import FIG_DIR, smooth_1d
 
