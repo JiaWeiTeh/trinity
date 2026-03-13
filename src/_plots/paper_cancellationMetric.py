@@ -23,6 +23,9 @@ from pathlib import Path
 from matplotlib.lines import Line2D
 from matplotlib.patches import Patch
 
+import sys as _sys
+from pathlib import Path as _Path
+_sys.path.insert(0, str(_Path(__file__).parent.parent.parent))
 from src._plots.plot_base import smooth_1d
 
 # Add project root to path for imports

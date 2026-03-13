@@ -28,6 +28,9 @@ from matplotlib import patheffects
 from pathlib import Path
 import cmasher as cmr
 
+import sys as _sys
+from pathlib import Path as _Path
+_sys.path.insert(0, str(_Path(__file__).parent.parent.parent))
 from src._plots.plot_base import FIG_DIR
 from src.cloud_properties.powerLawSphere import (
     compute_rCloud_powerlaw,
