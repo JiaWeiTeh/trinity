@@ -69,6 +69,7 @@ SCRIPTS = [
     ("paper_PPVtest",                "src/_plots/paper_PPVtest.py",                 False),
     ("paper_PHII_Pb_Pram",           "src/_plots/paper_PHII_Pb_Pram.py",            False),
     ("paper_pressureEvolution",      "src/_plots/paper_pressureEvolution.py",       False),
+    ("paper_R2_RIF",                 "src/_plots/paper_R2_RIF.py",                  False),
     ("paper_radiusEvolution",        "src/_plots/paper_radiusEvolution.py",         False),
 ]
 
