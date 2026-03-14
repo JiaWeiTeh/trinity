@@ -396,7 +396,7 @@ def shell_structure_pure(params) -> ShellProperties:
         shell_F_rad = 0.0
         # No ionization front when dissolved
         n_IF = 0.0
-        R_IF = rShell_previous
+        R_IF = 0.0
         shell_r_arr = np.array([])
         shell_n_arr = np.array([])
         shell_ion_idx = -1

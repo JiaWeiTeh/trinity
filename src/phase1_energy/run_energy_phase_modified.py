@@ -193,6 +193,9 @@ def run_energy(params):
             params['shell_grav_r'].value = shell_data.shell_grav_r
             params['shell_grav_phi'].value = shell_data.shell_grav_phi
             params['shell_grav_force_m'].value = shell_data.shell_grav_force_m
+            # Assign n_IF and R_IF immediately so the ODE snapshot picks them up
+            params['n_IF'].value = shell_data.n_IF
+            params['R_IF'].value = shell_data.R_IF
             logger.info('shell complete (modified)')
         else:
             Tavg = T0

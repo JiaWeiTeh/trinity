@@ -72,6 +72,7 @@ class ODESnapshot:
     shell_mass: float
     isCollapse: bool
     n_IF: float  # Density at ionization front (for P_HII)
+    R_IF: float  # Radius of ionization front (pc)
 
     # Cluster/bubble properties
     mCluster: float
@@ -116,6 +117,7 @@ def create_ODE_snapshot(params) -> ODESnapshot:
         shell_mass=params['shell_mass'].value,
         isCollapse=params['isCollapse'].value,
         n_IF=params['n_IF'].value,
+        R_IF=params['R_IF'].value,
         mCluster=params['mCluster'].value,
         bubble_LTotal=params['bubble_LTotal'].value,
         Qi=params['Qi'].value,
@@ -399,7 +401,7 @@ def compute_derived_quantities(t: float, y: list, snapshot: ODESnapshot, params_
         F_rad=snapshot.shell_F_rad,
         # Pressure diagnostic quantities
         n_IF=n_IF,
-        R_IF=snapshot.rShell,
+        R_IF=snapshot.R_IF,
         P_HII=P_HII,
         P_drive=P_drive,
         P_ram=P_ram_val,
