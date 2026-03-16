@@ -196,6 +196,7 @@ def run_energy(params):
             # Assign n_IF and R_IF immediately so the ODE snapshot picks them up
             params['n_IF'].value = shell_data.n_IF
             params['R_IF'].value = shell_data.R_IF
+            params['n_IF_Str'].value = shell_data.n_IF_Str
             logger.info('shell complete (modified)')
         else:
             Tavg = T0
@@ -203,6 +204,51 @@ def run_energy(params):
         # Calculate sound speed
         c_sound = operations.get_soundspeed(Tavg, params)
         params['c_sound'].value = c_sound
+
+        # ------------------------------------------------------------------
+        # ζ diagnostic (Lancaster+2025): quantifies WBB vs PIR dominance.
+        # ζ = R_eq / R_St. ζ > 1: WBB-dominated. ζ < 1: PIR-dominated.
+        # Pure diagnostic — does not feed into any ODE.
+        # ------------------------------------------------------------------
+        _Qi_zeta   = params['Qi'].value
+        _alphaB    = params['caseB_alpha'].value
+        _k_B       = params['k_B'].value
+        _T_ion     = params['TShell_ion'].value
+        _mu_ion    = params['mu_ion'].value
+        _R2_now    = params['R2'].value
+        _rCloud_z  = params['rCloud'].value
+        _pdot_W    = feedback.pdot_W   # feedback must be current at this point
+        # Ambient number density at current shell position.
+        # Use cloud density profile inside cloud; nISM outside.
+        if _R2_now < _rCloud_z:
+            from src.cloud_properties import density_profile as _dp
+            _n_amb = float(np.atleast_1d(
+                _dp.get_density_profile(np.array([_R2_now]), params)
+            )[0])
+        else:
+            _n_amb = params['nISM'].value
+        # Strömgren radius in ambient density
+        if _Qi_zeta > 0.0 and _n_amb > 0.0:
+            _R_St = (3.0 * _Qi_zeta /
+                     (4.0 * np.pi * _alphaB * _n_amb**2))**(1.0 / 3.0)
+        else:
+            _R_St = np.inf
+        # Sound speed in photoionised gas: c_i^2 = k_B T_ion / mu_ion
+        # mu_ion is already in code units (Msun) = mu_dimless * m_H * g2Msun
+        _c_i2 = _k_B * _T_ion / _mu_ion
+        # Equilibrium radius for momentum-driven WBB (Lancaster+2025 Eq.21), α_p=1
+        _rho_amb = _n_amb * _mu_ion
+        if _pdot_W > 0.0 and _rho_amb > 0.0 and _c_i2 > 0.0:
+            _R_eq = np.sqrt(3.0 * _pdot_W /
+                            (16.0 * np.pi * _rho_amb * _c_i2))
+        else:
+            _R_eq = 0.0
+        _zeta = _R_eq / _R_St if (np.isfinite(_R_St) and _R_St > 0.0) else 0.0
+        params['zeta'].value = _zeta
+        if _zeta < 0.5:
+            logger.info(f'ζ={_zeta:.3f} < 0.5: PIR-dominated, n_IF_Str active '
+                        f'(n_IF={params["n_IF"].value:.3e}, '
+                        f'n_IF_Str={params["n_IF_Str"].value:.3e})')
 
         # =============================================================================
         # Create frozen snapshot for ODE integration
