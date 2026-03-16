@@ -178,25 +178,9 @@ def run_energy(params):
 
             # Compute shell structure
             shell_data = shell_structure_modified.shell_structure_pure(params)
-            # Update params with shell properties
-            params['shell_n0'].value = shell_data.shell_n0
-            params['rShell'].value = shell_data.rShell
-            params['isDissolved'].value = shell_data.isDissolved
-            params['shell_fAbsorbedIon'].value = shell_data.shell_fAbsorbedIon
-            params['shell_fAbsorbedNeu'].value = shell_data.shell_fAbsorbedNeu
-            params['shell_fAbsorbedWeightedTotal'].value = shell_data.shell_fAbsorbedWeightedTotal
-            params['shell_fIonisedDust'].value = shell_data.shell_fIonisedDust
-            params['shell_thickness'].value = shell_data.shell_thickness
-            params['shell_nMax'].value = shell_data.shell_nMax
-            params['shell_tauKappaRatio'].value = shell_data.shell_tauKappaRatio
-            params['shell_F_rad'].value = shell_data.shell_F_rad
-            params['shell_grav_r'].value = shell_data.shell_grav_r
-            params['shell_grav_phi'].value = shell_data.shell_grav_phi
-            params['shell_grav_force_m'].value = shell_data.shell_grav_force_m
-            # Assign n_IF and R_IF immediately so the ODE snapshot picks them up
-            params['n_IF'].value = shell_data.n_IF
-            params['R_IF'].value = shell_data.R_IF
-            params['n_IF_Str'].value = shell_data.n_IF_Str
+            # Update params with all shell properties (including n_IF, R_IF,
+            # n_IF_Str, is_fullyIonised, diss_condition_met, shell arrays)
+            updateDict(params, shell_data)
             logger.info('shell complete (modified)')
         else:
             Tavg = T0
@@ -362,11 +346,9 @@ def run_energy(params):
             params['F_ram'].value = ode_result.F_ram
         if ode_result.F_rad is not None:
             params['F_rad'].value = ode_result.F_rad
-        # Pressure diagnostic quantities
-        if ode_result.n_IF is not None:
-            params['n_IF'].value = ode_result.n_IF
-        if ode_result.R_IF is not None:
-            params['R_IF'].value = ode_result.R_IF
+        # Pressure diagnostic quantities (n_IF/R_IF already written by
+        # updateDict(params, shell_data) above; ODE result carries the
+        # same frozen values, so skip redundant re-assignment)
         if ode_result.P_HII is not None:
             params['P_HII'].value = ode_result.P_HII
         if ode_result.P_drive is not None:
@@ -381,6 +363,9 @@ def run_energy(params):
             params['shell_mass'].value = ode_result.shell_mass
         if ode_result.shell_massDot is not None:
             params['shell_massDot'].value = ode_result.shell_massDot
+        # Wind and SN ram force components (consistent with other phases)
+        params['F_ram_wind'].value = feedback.pdot_W
+        params['F_ram_SN'].value = feedback.pdot_SN
 
         # Save snapshot AFTER all params are updated (so it captures current state)
         params.save_snapshot()
