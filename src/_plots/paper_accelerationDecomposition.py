@@ -48,21 +48,13 @@ PHASE_CHANGE = True
 USE_SYMLOG = True  # Use symmetric log scale for accelerations
 USE_LOG_X = False  # Use log scale for x-axis (time)
 
-# Acceleration colors
-C_GAS = "blue"       # Thermal/gas pressure
-C_RAD = "#9467bd"    # Radiation (purple)
-C_GRAV = "black"     # Gravity
-C_ACC = "orange"     # Mass loading
-C_NET = "gray"       # Net acceleration
-
-# Acceleration fields
-ACCEL_FIELDS = [
-    ("a_gas",  r"$a_{\rm gas}$",  C_GAS,  "-",  1.5),
-    ("a_rad",  r"$a_{\rm rad}$",  C_RAD,  "-",  1.5),
-    ("a_grav", r"$a_{\rm grav}$", C_GRAV, "-",  1.5),
-    ("a_acc",  r"$a_{\rm acc}$",  C_ACC,  "-",  1.5),
-    ("a_net",  r"$a_{\rm net}$",  C_NET,  "--", 2.5),
-]
+# Colors — centralised ChromaPalette (switch via set_palette or $TRINITY_PALETTE)
+from src._plots.force_colors import C, ACCEL_FIELDS  # noqa: E402
+C_GAS  = C.GAS
+C_RAD  = C.RAD
+C_GRAV = C.GRAV
+C_ACC  = C.ACC
+C_NET  = C.NET
 
 # --- output
 SAVE_PDF = True

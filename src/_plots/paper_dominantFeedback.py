@@ -59,15 +59,8 @@ from src._output.trinity_reader import (
 # Configuration
 # =============================================================================
 
-# Force field definitions: (key, label, color)
-# F_ram competes as a whole first, then subclassifies to wind or SN if it wins
-FORCE_FIELDS = [
-    ("F_grav",     "Gravity",           "#2c3e50"),  # Dark blue-gray
-    ("F_ram_wind", "Winds",             "#3498db"),  # Blue for winds (when F_ram wins and wind > SN)
-    ("F_ram_SN",   "Supernovae",        "#DAA520"),  # Golden yellow for SN (when F_ram wins and SN > wind)
-    ("F_ion_out",  "Photoionised gas",  "#e74c3c"),  # Red
-    ("F_rad",      "Radiation",         "#9b59b6"),  # Purple
-]
+# Colors — centralised ChromaPalette (switch via set_palette or $TRINITY_PALETTE)
+from src._plots.force_colors import FORCE_FIELDS_GRID as FORCE_FIELDS  # noqa: E402
 
 # Special values for missing data (must be negative to distinguish from force indices)
 FILE_NOT_FOUND = -1      # Gray: simulation file not found

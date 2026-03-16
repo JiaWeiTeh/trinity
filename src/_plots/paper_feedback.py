@@ -33,24 +33,16 @@ PHASE_CHANGE  = True         # Show phase transition markers
 INCLUDE_ALL_FORCE = True     # Show wind/SN overlays inside the ram band
 USE_LOG_X = False            # Use log scale for x-axis (time)
 
-# Colors — Vibrance palette from ChromaPalette
-C_GRAV  = "#1a1a1a"
-C_DRIVE = "#508ab2"    # light blue — P_drive band
-C_SN    = "#d5ba82"    # yellow — SN hatching
-C_PHII  = "#e04050"    # bright red — P_HII dotting
-C_RAD   = "#a1d0c7"
-C_PISM  = "#FFFFFF"
-C_WIND  = "#8b6ca7"    # purple — wind hatching
+# Colors — centralised ChromaPalette (switch via set_palette or $TRINITY_PALETTE)
+from src._plots.force_colors import C, FORCE_FIELDS_BASE  # noqa: E402
 
-# Base stacked forces — order matters for stacking + overlay indexing
-# In energy/transition phases P_drive = max(Pb, P_HII) is a single quantity.
-# In momentum phase it decomposes into P_HII + P_ram (shown via hatching).
-FORCE_FIELDS_BASE = [
-    ("F_grav",    "Gravity",                 C_GRAV),
-    ("F_drive",   r"$F_{\rm drive}$",        C_DRIVE),
-    ("F_rad",     "Radiation (dir.+indir.)", C_RAD),
-    ("F_ion_in",  "PISM (inner HII)",        C_PISM),
-]
+C_GRAV  = C.GRAV
+C_DRIVE = C.DRIVE
+C_SN    = C.SN
+C_PHII  = C.PHII
+C_RAD   = C.RAD
+C_PISM  = C.PISM
+C_WIND  = C.WIND
 
 SAVE_PDF = True
 
