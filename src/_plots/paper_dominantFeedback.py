@@ -1079,8 +1079,16 @@ others that have ended persist their final dominant feedback.
         '--t-end', type=float, default=5.0,
         help='End time for movie in Myr (default: 5.0)'
     )
+    from src._plots.force_colors import get_palette_names, set_palette
+    parser.add_argument(
+        '--palette', choices=get_palette_names(), default=None,
+        help='Colour palette for force plots (default: vibrance).'
+    )
 
     args = parser.parse_args()
+
+    if args.palette is not None:
+        set_palette(args.palette)
 
     if args.info:
         # Info mode: scan folder and print available parameters
