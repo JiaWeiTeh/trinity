@@ -249,6 +249,10 @@ def build_parser() -> argparse.ArgumentParser:
                         help="Filter by cloud mass (one or more values).")
     shared.add_argument("--sfe", nargs="+", default=None,
                         help="Filter by SFE (one or more values).")
+    from src._plots.force_colors import get_palette_names
+    shared.add_argument("--palette", choices=get_palette_names(),
+                        default=None,
+                        help="Colour palette for force plots (default: vibrance).")
 
     return parser
 
@@ -282,6 +286,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     if args.sfe is not None:
         extra.append("--sfe")
         extra.extend(args.sfe)
+    if args.palette is not None:
+        extra.extend(["--palette", args.palette])
 
     n_fail = run_scripts(
         folder=args.folder,
