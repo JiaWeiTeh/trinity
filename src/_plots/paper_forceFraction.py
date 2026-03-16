@@ -40,17 +40,14 @@ SMOOTH_WINDOW = 11  # None or 1 disables
 PHASE_CHANGE = True
 USE_LOG_X = False  # Use log scale for x-axis (time)
 
-# Force colors (consistent with existing TRINITY plots)
-C_GRAV = "black"
-C_THERMAL = "blue"  # Thermal = bubble + HII combined
-C_RAD = "#9467bd"   # Purple for radiation
-
-# Force fields to show
-FORCE_FIELDS = [
-    ("F_grav",    r"$F_{\rm grav}$",    C_GRAV),
-    ("F_thermal", r"$F_{\rm thermal}$", C_THERMAL),
-    ("F_rad",     r"$F_{\rm rad}$",     C_RAD),
-]
+# Colors — centralised ChromaPalette (switch via set_palette or $TRINITY_PALETTE)
+from src._plots.force_colors import (          # noqa: E402
+    C,
+    FORCE_FIELDS_FRACTION as FORCE_FIELDS,
+)
+C_GRAV = C.GRAV
+C_THERMAL = C.THERMAL
+C_RAD = C.RAD
 
 SAVE_PNG = False
 SAVE_PDF = True

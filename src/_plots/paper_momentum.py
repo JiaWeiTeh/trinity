@@ -30,33 +30,12 @@ DOMINANCE_DT = 0.1          # Myr
 DOMINANCE_ALPHA = 0.9
 DOMINANCE_STRIP = (0.94, 1)  # (ymin, ymax) in AXES fraction (0..1) - doubled thickness
 
-# Main force fields for plotting (solid lines)
-# F_drive = P_drive * 4πR² replaces separate F_ram + F_ion_out
-# Colors — Vibrance palette from ChromaPalette
-FORCE_FIELDS = [
-    ("F_grav",    "Gravity",                  "#1a1a1a"),
-    ("F_drive",   r"$F_{\rm drive}$",         "#508ab2"),
-    ("F_rad",     "Radiation (dir.+indir.)",  "#a1d0c7"),
-    ("F_PISM",    "PISM (inner HII)",         "#999999"),
-]
-
-# Additional dashed lines — momentum-phase decomposition of F_drive
-DASHED_FIELDS = [
-    ("F_HII",      r"$P_{\rm HII}$",  "#b36a6f"),   # red
-    ("F_ram_wind", "Wind",             "#8b6ca7"),    # purple
-    ("F_ram_SN",   "Supernovae",       "#d5ba82"),    # yellow
-]
-
-# Colors for dominant bar (includes momentum-phase subclassification)
-DOMINANT_COLORS = {
-    "F_grav":     "#1a1a1a",
-    "F_drive":    "#508ab2",
-    "F_HII":      "#b36a6f",
-    "F_ram_wind": "#8b6ca7",
-    "F_ram_SN":   "#d5ba82",
-    "F_rad":      "#a1d0c7",
-    "F_PISM":     "#999999",
-}
+# Colors — centralised ChromaPalette (switch via set_palette or $TRINITY_PALETTE)
+from src._plots.force_colors import (          # noqa: E402
+    FORCE_FIELDS_MOMENTUM as FORCE_FIELDS,
+    DASHED_FIELDS,
+    DOMINANT_COLORS,
+)
 
 
 

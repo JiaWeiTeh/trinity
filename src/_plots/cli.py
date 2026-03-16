@@ -40,6 +40,7 @@ import sys as _sys
 from pathlib import Path as _Path
 _sys.path.insert(0, str(_Path(__file__).parent.parent.parent))
 from src._output.trinity_reader import info_simulations
+from src._plots.force_colors import set_palette, get_palette_names
 
 
 def build_parser(
@@ -118,6 +119,12 @@ def build_parser(
         action="store_true",
         help="Scan folder and print available mCloud, SFE, and nCore values.",
     )
+    parser.add_argument(
+        "--palette",
+        choices=get_palette_names(),
+        default=None,
+        help="Colour palette for force plots (default: vibrance).",
+    )
     return parser
 
 
@@ -163,6 +170,9 @@ def dispatch(
         parser = build_parser(script_name, description)
 
     args = parser.parse_args()
+
+    if args.palette is not None:
+        set_palette(args.palette)
 
     if pre_dispatch_fn is not None:
         pre_dispatch_fn(args)
