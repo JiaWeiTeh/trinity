@@ -537,6 +537,7 @@ def main():
     """Command-line interface."""
     import argparse
     from pathlib import Path
+    from src._plots.plot_base import FIG_DIR
     from src._output.trinity_reader import load_output, find_all_simulations
 
     parser = argparse.ArgumentParser(
@@ -570,13 +571,20 @@ def main():
     output = load_output(data_path)
     logger.info(f"Loaded {len(output)} snapshots from {model_name}")
 
+    # Output directory: fig/<folder_name>/ (with optional model subfolder)
+    folder_name = folder.name
+    fig_dir = FIG_DIR / folder_name
+    if args.model:
+        fig_dir = fig_dir / args.model
+    fig_dir.mkdir(parents=True, exist_ok=True)
+
     if args.mode == 'gif':
-        out_path = args.output or f'{model_name}_density.gif'
+        out_path = args.output or str(fig_dir / f'{model_name}_density.gif')
         animate_profiles(output, save_path=out_path, fps=args.fps)
         print(f"GIF: {out_path}")
 
     elif args.mode == 'table':
-        out_path = args.output or f'{model_name}_density_table.npz'
+        out_path = args.output or str(fig_dir / f'{model_name}_density_table.npz')
         t_arr, r_grid, n_table = build_profile_table(
             output, max_r_pts=args.max_r_pts)
         np.savez(out_path, t=t_arr, r=r_grid, n=n_table)
