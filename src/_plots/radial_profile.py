@@ -32,6 +32,10 @@ All radii are in **pc**, all densities in **cm⁻³**.
 """
 
 import logging
+import sys as _sys
+from pathlib import Path as _Path
+_sys.path.insert(0, str(_Path(__file__).parent.parent.parent))
+
 import numpy as np
 from dataclasses import dataclass, field
 from typing import List, Optional, Tuple
