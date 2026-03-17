@@ -371,7 +371,6 @@ def read_param(path2file, write_summary=True):
     elif params['dens_profile'].value == 'densPL':
         # Power-law
         params.pop('densBE_Omega')
-        params['densPL_alpha'].exclude_from_snapshot = True
     
     # =============================================================================
     # Step 9: Set snapshot exclusions for constants
@@ -379,7 +378,11 @@ def read_param(path2file, write_summary=True):
     
     # Only track time-varying quantities in snapshots
     # Exclude initial conditions and constants to save memory
-    time_varying_keys = ['model_name', 'mCloud', 'cool_alpha', 'cool_beta', 'cool_delta']
+    time_varying_keys = [
+        'model_name', 'mCloud', 'cool_alpha', 'cool_beta', 'cool_delta',
+        # Cloud profile constants — needed for radial profile reconstruction
+        'nCore', 'nISM', 'rCore', 'dens_profile', 'densPL_alpha',
+    ]
     
     for key, val in params.items():
         if key not in time_varying_keys:
@@ -415,6 +418,11 @@ def read_param(path2file, write_summary=True):
     params['rCloud'] = DescribedItem(0, info="Cloud radius", ori_units="pc")
     params['rShell'] = DescribedItem(0, info="Shell outer radius", ori_units="pc")
     params['nEdge'] = DescribedItem(0, info="Number density at cloud edge", ori_units="1/pc**3")
+
+    # Initial cloud arrays (set once in phase0, constant thereafter)
+    params['initial_cloud_r_arr'] = DescribedItem(np.array([]), info="Initial cloud radius array", ori_units="pc")
+    params['initial_cloud_n_arr'] = DescribedItem(np.array([]), info="Initial cloud density array", ori_units="1/cm**3")
+    params['initial_cloud_m_arr'] = DescribedItem(np.array([]), info="Initial cloud enclosed mass array", ori_units="Msun")
     
     # Feedback from Starburst99
     params['SB99_data'] = DescribedItem(0, info="SB99 datacube", ori_units="N/A", exclude_from_snapshot=True)
