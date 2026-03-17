@@ -72,6 +72,7 @@ SCRIPTS = [
     ("paper_R2_RIF",                 "src/_plots/paper_R2_RIF.py",                  False),
     ("paper_radiusEvolution",        "src/_plots/paper_radiusEvolution.py",         False),
     ("paper_zetaRegime",             "src/_plots/paper_zetaRegime.py",              False),
+    ("paper_pressureZeta",           "src/_plots/paper_pressureZeta.py",            False),
 ]
 
 # Shared flags forwarded to sub-scripts.
