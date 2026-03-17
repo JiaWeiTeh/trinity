@@ -186,6 +186,18 @@ PARAM_DOCS = {
     'nEdge': 'Number density at shell edge [cm^-3]',
     'rShell': 'Shell radius [pc]',
 
+    # Cloud profile parameters (constants, saved for radial profile reconstruction)
+    'nCore': 'Core number density [cm^-3]',
+    'nISM': 'ISM number density [cm^-3]',
+    'rCore': 'Core radius [pc]',
+    'dens_profile': 'Density profile type (densPL or densBE)',
+    'densPL_alpha': 'Power-law density exponent',
+
+    # Initial cloud arrays (constant, set in phase 0)
+    'initial_cloud_r_arr': 'Initial cloud radius array [pc]',
+    'initial_cloud_n_arr': 'Initial cloud density array [cm^-3]',
+    'initial_cloud_m_arr': 'Initial cloud enclosed mass array [Msun]',
+
     # Shell absorption
     'shell_fAbsorbedIon': 'Fraction of ionizing radiation absorbed',
     'shell_fAbsorbedNeu': 'Fraction of non-ionizing radiation absorbed',
