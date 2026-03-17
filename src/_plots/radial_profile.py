@@ -74,6 +74,10 @@ class RadialProfile:
     t: float                       # simulation time [Myr]
     phase: str                     # simulation phase
     zones: List[ZoneProfile]       # ordered list of zone profiles
+    R1: float = 0.0                # wind termination shock [pc]
+    R2: float = 0.0                # inner shell / outer bubble [pc]
+    rShell: float = 0.0            # outer shell boundary [pc]
+    rCloud: float = 0.0            # cloud boundary [pc]
     r: np.ndarray = field(init=False, repr=False)  # concatenated r [pc]
     n: np.ndarray = field(init=False, repr=False)  # concatenated n [cm⁻³]
 
@@ -235,8 +239,11 @@ def _build_cloud(snap, rShell: float, rCloud: float,
     """
     Zone 5: Molecular cloud (rShell → rCloud).
 
-    Uses the saved initial_cloud arrays to interpolate the actual cloud profile.
-    Falls back to a constant nCore if arrays are unavailable.
+    Priority:
+      1. Saved initial_cloud arrays (exact profile).
+      2. Power-law reconstruction from nCore/rCore/densPL_alpha.
+      3. nCore from snapshot or parsed from model_name.
+      4. nEdge fallback.
     """
     if rShell >= rCloud:
         return ZoneProfile('cloud', np.array([]), np.array([]), rShell, rCloud)
@@ -247,19 +254,49 @@ def _build_cloud(snap, rShell: float, rCloud: float,
     r_arr = np.logspace(np.log10(max(rShell, 1e-4)), np.log10(rCloud), n_pts)
 
     if cloud_r.size > 1 and cloud_n.size > 1:
-        # Cloud density arrays are already in cm⁻³
+        # Best case: interpolate the actual saved cloud profile (cm⁻³)
         n_interp = np.interp(r_arr, cloud_r, cloud_n)
     else:
-        # Fallback: use nCore if available
-        nCore = snap.get('nCore', None)
-        if nCore is not None and float(nCore) > 0:
-            n_interp = np.full_like(r_arr, float(nCore))
+        # Try power-law reconstruction: n(r) = nCore * (r/rCore)^alpha
+        nCore = _get_nCore(snap)
+        rCore = snap.get('rCore', None)
+        alpha = snap.get('densPL_alpha', None)
+
+        if nCore and rCore and alpha is not None:
+            rCore = float(rCore)
+            alpha = float(alpha)
+            if alpha != 0 and rCore > 0:
+                n_interp = nCore * (r_arr / rCore) ** alpha
+                n_interp[r_arr <= rCore] = nCore
+            else:
+                n_interp = np.full_like(r_arr, nCore)
+        elif nCore:
+            n_interp = np.full_like(r_arr, nCore)
         else:
-            # Last resort: extrapolate from nEdge
+            # Last resort: use nEdge (density at shell outer edge)
             nEdge = float(snap.get('nEdge', 100) or 100)
             n_interp = np.full_like(r_arr, nEdge)
 
     return ZoneProfile('cloud', r_arr, n_interp, rShell, rCloud)
+
+
+def _get_nCore(snap) -> Optional[float]:
+    """
+    Get nCore [cm⁻³] from snapshot, with fallback to parsing model_name.
+    """
+    # Direct from snapshot (new output format)
+    nCore = snap.get('nCore', None)
+    if nCore is not None and float(nCore) > 0:
+        return float(nCore)
+
+    # Parse from model_name (e.g. "1e7_sfe020_n1e4")
+    model = snap.get('model_name', '')
+    if model:
+        import re
+        m = re.search(r'_n(\d+\.?\d*e\d+)', str(model), re.IGNORECASE)
+        if m:
+            return float(m.group(1))
+    return None
 
 
 def _build_ism(snap, rCloud: float, n_pts: int = 10) -> ZoneProfile:
@@ -359,7 +396,8 @@ def build_radial_profile(snap) -> Optional[RadialProfile]:
     ism_zone = _build_ism(snap, rCloud)
 
     zones = [wind_zone, bubble_zone, ion_zone, neu_zone, cloud_zone, ism_zone]
-    return RadialProfile(t=t_now, phase=phase, zones=zones)
+    return RadialProfile(t=t_now, phase=phase, zones=zones,
+                         R1=R1, R2=R2, rShell=rShell, rCloud=rCloud)
 
 
 # =============================================================================
@@ -496,12 +534,21 @@ def animate_profiles(output, save_path: str = 'density_profile.gif',
                         va='top', fontsize=11)
     phase_text = ax.text(0.02, 0.90, '', transform=ax.transAxes,
                          va='top', fontsize=10, fontstyle='italic', color='0.4')
-    # Store shading patches for clearing
+
+    # Boundary radius markers (colours + labels)
+    _BOUNDARY_STYLE = {
+        'R1':     {'color': '#E69F00', 'label': r'$R_1$'},
+        'R2':     {'color': '#D55E00', 'label': r'$R_2$'},
+        'rShell': {'color': '#009E73', 'label': r'$r_{\rm shell}$'},
+        'rCloud': {'color': '#56B4E9', 'label': r'$r_{\rm cloud}$'},
+    }
+
+    # Store artists for clearing each frame
     _patches = []
 
     def _update(frame):
         prof = profiles[frame]
-        # Clear old shading
+        # Clear old artists
         for p in _patches:
             p.remove()
         _patches.clear()
@@ -513,6 +560,18 @@ def animate_profiles(output, save_path: str = 'density_profile.gif',
             color = ZONE_COLORS.get(z.name, '#F5F5F5')
             patch = ax.axvspan(z.r_lo, z.r_hi, color=color, alpha=0.35, zorder=0)
             _patches.append(patch)
+
+        # Draw boundary radius dashed lines
+        for attr, style in _BOUNDARY_STYLE.items():
+            val = getattr(prof, attr, 0)
+            if val > 0 and r_lo < val < r_hi:
+                vl = ax.axvline(val, color=style['color'], ls='--', lw=1.0,
+                                alpha=0.8, zorder=4)
+                _patches.append(vl)
+                txt = ax.text(val, n_hi * 0.6, style['label'],
+                              color=style['color'], fontsize=7, ha='center',
+                              va='top', rotation=90, zorder=5)
+                _patches.append(txt)
 
         # Update density line
         valid = (prof.r > 0) & (prof.n > 0)
