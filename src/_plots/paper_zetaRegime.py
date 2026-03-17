@@ -83,22 +83,22 @@ def compute_zeta_analytic(log_Mcl_arr, log_n_arr,
     zeta : 2-D array, shape (len(log_Mcl_arr), len(log_n_arr))
         ζ values.  zeta[i, j] corresponds to (log_Mcl_arr[i], log_n_arr[j]).
     """
-    Mcl = 10.0**log_Mcl_arr                   # M_☉
-    n = 10.0**log_n_arr                        # cm⁻³
+    Mcl = np.asarray(10.0**log_Mcl_arr, dtype=np.float64)   # M_☉
+    n = np.asarray(10.0**log_n_arr, dtype=np.float64)       # cm⁻³
 
     # Broadcast: Mcl along axis 0, n along axis 1
     Mcl_2d = Mcl[:, None]
     n_2d = n[None, :]
 
-    Qi = Qi_per_Msun * Mcl_2d                  # s⁻¹
-    pdot_w = pdot_w_per_Msun * Mcl_2d          # g cm s⁻²
+    Qi = np.float64(Qi_per_Msun) * Mcl_2d                  # s⁻¹
+    pdot_w = np.float64(pdot_w_per_Msun) * Mcl_2d          # g cm s⁻²
 
     # Strömgren radius
     R_St = (3.0 * Qi / (4.0 * np.pi * ALPHA_B * n_2d**2))**(1.0 / 3.0)  # cm
 
     # Wind equilibrium radius
     rho = n_2d * MU_NEUTRAL * CGS.m_H         # g cm⁻³
-    R_eq = np.sqrt(3.0 * pdot_w / (16.0 * np.pi * rho * C_I_SQ))  # cm
+    R_eq = np.sqrt(3.0 * pdot_w / (16.0 * np.pi * rho * np.float64(C_I_SQ)))  # cm
 
     zeta = R_eq / R_St
     return zeta
