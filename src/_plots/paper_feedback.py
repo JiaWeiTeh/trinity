@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Force fraction grid with composition overlays within F_drive.
+Force fraction grid with phase-aware composition overlays within F_drive.
 
 - Base stack uses: F_grav, F_drive, F_rad, F_ion_in (PISM)
-- Hatched overlays decompose F_drive in ALL phases:
-    Energy/Transition: ram_wind + ram_SN (as fractions of F_drive)
-    Momentum:          P_HII + ram_wind + ram_SN
+- Energy phase: plain F_drive band + thin driver-indicator strip
+  showing which branch of max(Pb, P_HII) is active.
+- Transition phase: hatched overlay (P_HII + ram_wind + ram_SN)
+  shown only when the non-bubble branch wins max(Pb, P_HII + P_ram).
+- Momentum phase: hatched overlay P_HII + ram_wind + ram_SN (always).
 - Phase markers: T (enter transition), M (enter momentum)
 - Breakout marker: first time R2 > rCloud (vertical dashed + label)
 - X ticks on every subplot; x tick labels only on bottom row.
@@ -65,7 +67,7 @@ def plot_from_path(data_input: str, output_dir: str = None):
 
 
     try:
-        t, R2, phase, base_forces, overlay_forces, rcloud, isCollapse = load_run(data_path)
+        t, R2, phase, base_forces, overlay_forces, rcloud, isCollapse, pressures = load_run(data_path)
     except Exception as e:
         print(f"Error loading data: {e}")
         return
@@ -73,6 +75,7 @@ def plot_from_path(data_input: str, output_dir: str = None):
     fig, ax = plt.subplots(figsize=(8, 6), dpi=150)
     plot_run_on_ax(
         ax, t, R2, phase, base_forces, overlay_forces, rcloud, isCollapse,
+        pressures=pressures,
         alpha=0.75,
         smooth_window=SMOOTH_WINDOW,
         phase_change=PHASE_CHANGE,
@@ -89,9 +92,11 @@ def plot_from_path(data_input: str, output_dir: str = None):
         Patch(facecolor=C_DRIVE, edgecolor="none", alpha=0.75, label=r"$F_{\rm drive}$"),
         Patch(facecolor=C_RAD,   edgecolor="none", alpha=0.75, label="Radiation"),
         Patch(facecolor=C_PISM,  edgecolor="0.3", linewidth=0.8, alpha=1.0,  label="PISM (inner HII)"),
-        Patch(facecolor="none", edgecolor=C_PHII, hatch="......",     label=r"$P_{\rm HII}$ (momentum)"),
+        Patch(facecolor="none", edgecolor=C_PHII, hatch="......",     label=r"$P_{\rm HII}$"),
         Patch(facecolor="none", edgecolor=C_WIND, hatch="\\\\\\\\",   label=r"Ram wind"),
         Patch(facecolor="none", edgecolor=C_SN,   hatch="////",       label=r"Ram SN"),
+        Line2D([0], [0], color=C_PHII, lw=3, alpha=0.7, label=r"Driver: $P_{\rm HII}$"),
+        Line2D([0], [0], color=C_DRIVE, lw=3, alpha=0.7, label=r"Driver: $P_b$"),
     ]
     handles.extend(get_marker_legend_handles())
     ax.legend(handles=handles, loc="upper right", framealpha=0.9)
@@ -143,6 +148,10 @@ def load_run(data_path: Path):
     F_wind = get_field("F_ram_wind", np.nan)
     F_sn   = get_field("F_ram_SN", np.nan)
 
+    # Pressure fields for driver-indicator logic
+    Pb_arr    = get_field("Pb", 0.0)
+    P_HII_arr = get_field("P_HII", 0.0)
+
     # PISM: press_HII_in is a pressure — convert to force via F = P * 4πR²
     F_PISM_raw = get_field("press_HII_in", np.nan)
     F_PISM_raw = np.nan_to_num(F_PISM_raw, nan=0.0)
@@ -161,17 +170,20 @@ def load_run(data_path: Path):
         F_PISM = F_PISM[order]
         F_HII = F_HII[order]
         F_wind, F_sn = F_wind[order], F_sn[order]
+        Pb_arr, P_HII_arr = Pb_arr[order], P_HII_arr[order]
         isCollapse = isCollapse[order]
 
     # base forces order must match FORCE_FIELDS_BASE
     base_forces    = np.vstack([F_grav, F_drive, F_rad, F_PISM])
     overlay_forces = np.vstack([F_HII, F_wind, F_sn])
+    pressures      = np.vstack([Pb_arr, P_HII_arr])
 
-    return t, R2, phase, base_forces, overlay_forces, rcloud, isCollapse
+    return t, R2, phase, base_forces, overlay_forces, rcloud, isCollapse, pressures
 
 
 def plot_run_on_ax(
     ax, t, R2, phase, base_forces, overlay_forces, rcloud, isCollapse=None,
+    pressures=None,
     alpha=0.75,
     smooth_window=None, smooth_mode="edge",
     phase_change=True,
@@ -208,17 +220,16 @@ def plot_run_on_ax(
         ax.fill_between(t, y0, y1, facecolor=color, alpha=a,
                         edgecolor="black", linewidth=0.4, zorder=4)
 
-    # --- overlay sub-force decomposition inside F_drive band (ALL PHASES)
-    # Energy/Transition: P_drive = max(Pb, P_HII) → show Pb and P_HII fractions
-    # Momentum:          P_drive = P_HII + P_ram  → show P_HII, wind, SN fractions
+    # --- Phase-aware overlay decomposition inside F_drive band ---
     if INCLUDE_ALL_FORCE:
         Fhii_raw = overlay_forces[0]
         Fw_raw   = overlay_forces[1]
         Fsn_raw  = overlay_forces[2]
 
-        # Phase masks
-        momentum_mask = np.array([p == 'momentum' for p in phase])
-        pre_momentum_mask = ~momentum_mask  # energy + transition
+        # Three phase masks (energy, transition, momentum)
+        energy_mask     = np.array([p in ('energy', 'energy_implicit') for p in phase])
+        transition_mask = np.array([p == 'transition' for p in phase])
+        momentum_mask   = np.array([p == 'momentum' for p in phase])
 
         # Drive band bounds in the stacked fraction plot (index 1 = F_drive)
         drive_bottom = prev[1]
@@ -227,62 +238,101 @@ def plot_run_on_ax(
 
         eps = 1e-30
 
-        # ---- Energy / Transition phases: wind + SN ram within F_drive ----
-        if np.any(pre_momentum_mask):
-            pre_idx = np.where(pre_momentum_mask)[0]
-            t_pre = t[pre_idx]
+        # ---- Energy phase: NO hatched ram overlay (ram thermalises at R1) ----
+        # Instead, add thin driver-indicator strip at top of F_drive band
+        # showing which branch of max(Pb, P_HII) is active.
+        if np.any(energy_mask) and pressures is not None:
+            en_idx = np.where(energy_mask)[0]
+            t_en = t[en_idx]
+            Pb_en    = pressures[0][en_idx]
+            Phii_en  = pressures[1][en_idx]
 
-            Fw_clean  = np.nan_to_num(Fw_raw[pre_idx],  nan=0.0)
-            Fsn_clean = np.nan_to_num(Fsn_raw[pre_idx],  nan=0.0)
+            dt_en = drive_top[en_idx]
+            strip_h = 0.012  # thin strip in fraction-space
+            strip_bot = dt_en - strip_h
+            strip_bot = np.maximum(strip_bot, drive_bottom[en_idx])
 
-            # F_drive for these timesteps (from base_forces)
-            Fdrive_pre = base_forces[1][pre_idx]
-            Fdrive_pre = np.where(Fdrive_pre > 0, Fdrive_pre, np.nan)
-
-            f_wind = np.nan_to_num(Fw_clean  / (Fdrive_pre + eps), nan=0.0)
-            f_sn   = np.nan_to_num(Fsn_clean / (Fdrive_pre + eps), nan=0.0)
-
-            # Clip (these are fractions of F_drive, can't exceed 1)
-            f_wind = np.clip(f_wind, 0.0, 1.0)
-            f_sn   = np.clip(f_sn,   0.0, 1.0)
-            s = f_wind + f_sn
-            over = s > 1.0
-            f_wind[over] /= s[over]
-            f_sn[over]   /= s[over]
-
-            db_pre = drive_bottom[pre_idx]
-            dh_pre = drive_h[pre_idx]
-
-            y_wind_top = db_pre + f_wind * dh_pre
-            y_sn_top   = y_wind_top + f_sn * dh_pre
-
-            # --- Wind slice: back slashes (purple)
-            ax.fill_between(
-                t_pre, db_pre, y_wind_top,
-                facecolor="none", edgecolor=C_WIND,
-                hatch="\\\\\\\\", linewidth=0, alpha=0.9, zorder=3
-            )
-            ax.fill_between(
-                t_pre, db_pre, y_wind_top,
-                facecolor="none", edgecolor="black", linestyle=":", linewidth=0.4, zorder=6
-            )
-
-            # --- SN slice: forward slashes (yellow)
-            for _ in range(4):
+            # Where P_HII > Pb: teal/red strip (HII is driver)
+            hii_wins = Phii_en > Pb_en
+            if np.any(hii_wins):
+                idx_hii = en_idx[hii_wins]
                 ax.fill_between(
-                    t_pre, y_wind_top, y_sn_top,
-                    facecolor="none", edgecolor=C_SN,
-                    hatch="////", linewidth=0, alpha=0.9, zorder=3
+                    t[idx_hii], drive_top[idx_hii] - strip_h, drive_top[idx_hii],
+                    facecolor=C_PHII, alpha=0.7, lw=0, zorder=5
                 )
-            ax.fill_between(
-                t_pre, y_wind_top, y_sn_top,
-                facecolor="none", edgecolor="black", linestyle=":", linewidth=0.4, zorder=6
-            )
+            # Where Pb >= P_HII: drive colour strip (bubble is driver)
+            pb_wins = ~hii_wins
+            if np.any(pb_wins):
+                idx_pb = en_idx[pb_wins]
+                ax.fill_between(
+                    t[idx_pb], drive_top[idx_pb] - strip_h, drive_top[idx_pb],
+                    facecolor=C_DRIVE, alpha=0.7, lw=0, zorder=5
+                )
 
-            # Subtle tint
-            ax.fill_between(t_pre, db_pre, drive_top[pre_idx], color=C_DRIVE, alpha=0.10, lw=0, zorder=4)
+        # ---- Transition phase: hatched overlay only when non-bubble branch wins ----
+        # P_drive = max(Pb, P_HII + P_ram). Show decomposition only when
+        # P_HII + P_ram > Pb (i.e. the HII+ram branch is active).
+        if np.any(transition_mask):
+            tr_idx = np.where(transition_mask)[0]
 
-        # ---- Momentum phase: P_HII + wind + SN within F_drive ----
+            # Determine which branch is active from pressures
+            if pressures is not None:
+                Pb_tr   = pressures[0][tr_idx]
+                Phii_tr = pressures[1][tr_idx]
+                Fw_tr   = np.nan_to_num(Fw_raw[tr_idx], nan=0.0)
+                Fsn_tr  = np.nan_to_num(Fsn_raw[tr_idx], nan=0.0)
+                Fhii_tr = np.nan_to_num(Fhii_raw[tr_idx], nan=0.0)
+                R2_tr   = R2[tr_idx]
+                # P_ram from force: F_ram = P_ram * 4πR²
+                P_ram_tr = np.where(R2_tr > 0, (Fw_tr + Fsn_tr) / (4.0 * np.pi * R2_tr**2 + eps), 0.0)
+                non_bubble = (Phii_tr + P_ram_tr) > Pb_tr
+            else:
+                non_bubble = np.ones(len(tr_idx), dtype=bool)
+
+            # Only show hatching where non-bubble branch wins
+            show_idx = tr_idx[non_bubble]
+            if len(show_idx) > 0:
+                t_tr = t[show_idx]
+                Fhii_clean = np.nan_to_num(Fhii_raw[show_idx], nan=0.0)
+                Fw_clean   = np.nan_to_num(Fw_raw[show_idx],   nan=0.0)
+                Fsn_clean  = np.nan_to_num(Fsn_raw[show_idx],  nan=0.0)
+
+                Ftotal_tr = Fhii_clean + Fw_clean + Fsn_clean
+                denom_tr = np.where(Ftotal_tr > 0, Ftotal_tr, np.nan)
+
+                f_hii  = np.nan_to_num(Fhii_clean / (denom_tr + eps), nan=0.0)
+                f_wind = np.nan_to_num(Fw_clean   / (denom_tr + eps), nan=0.0)
+                f_sn   = np.nan_to_num(Fsn_clean  / (denom_tr + eps), nan=0.0)
+
+                f_hii  = np.clip(f_hii,  0.0, 1.0)
+                f_wind = np.clip(f_wind, 0.0, 1.0)
+                f_sn   = np.clip(f_sn,   0.0, 1.0)
+                s = f_hii + f_wind + f_sn
+                over = s > 1.0
+                f_hii[over]  /= s[over]
+                f_wind[over] /= s[over]
+                f_sn[over]   /= s[over]
+
+                db_tr = drive_bottom[show_idx]
+                dh_tr = drive_h[show_idx]
+
+                y_wind_top = db_tr + f_wind * dh_tr
+                y_sn_top   = y_wind_top + f_sn * dh_tr
+                y_hii_top  = y_sn_top + f_hii * dh_tr
+
+                _draw_hatched_overlay(ax, t_tr, db_tr, y_wind_top, y_sn_top, y_hii_top)
+                ax.fill_between(t_tr, db_tr, drive_top[show_idx], color=C_DRIVE, alpha=0.10, lw=0, zorder=4)
+
+            # Driver strip for bubble-dominated transition timesteps
+            bubble_idx = tr_idx[~non_bubble]
+            if len(bubble_idx) > 0:
+                strip_h = 0.012
+                ax.fill_between(
+                    t[bubble_idx], drive_top[bubble_idx] - strip_h, drive_top[bubble_idx],
+                    facecolor=C_DRIVE, alpha=0.7, lw=0, zorder=5
+                )
+
+        # ---- Momentum phase: P_HII + wind + SN within F_drive (always) ----
         if np.any(momentum_mask):
             mom_idx = np.where(momentum_mask)[0]
             t_post = t[mom_idx]
@@ -298,7 +348,6 @@ def plot_run_on_ax(
             f_wind = np.nan_to_num(Fw_clean   / (denom_post + eps), nan=0.0)
             f_sn   = np.nan_to_num(Fsn_clean  / (denom_post + eps), nan=0.0)
 
-            # Clip and renormalize
             f_hii  = np.clip(f_hii,  0.0, 1.0)
             f_wind = np.clip(f_wind, 0.0, 1.0)
             f_sn   = np.clip(f_sn,   0.0, 1.0)
@@ -311,47 +360,11 @@ def plot_run_on_ax(
             db_post = drive_bottom[mom_idx]
             dh_post = drive_h[mom_idx]
 
-            # Stack order: wind (bottom) → SN → P_HII (top)
-            # so wind/SN flow smoothly from energy/transition phases
             y_wind_top = db_post + f_wind * dh_post
             y_sn_top   = y_wind_top + f_sn * dh_post
             y_hii_top  = y_sn_top + f_hii * dh_post
 
-            # --- Wind slice: back slashes (purple)
-            ax.fill_between(
-                t_post, db_post, y_wind_top,
-                facecolor="none", edgecolor=C_WIND,
-                hatch="\\\\\\\\", linewidth=0, alpha=0.9, zorder=3
-            )
-            ax.fill_between(
-                t_post, db_post, y_wind_top,
-                facecolor="none", edgecolor="black", linestyle=":", linewidth=0.4, zorder=6
-            )
-
-            # --- SN slice: forward slashes (yellow)
-            for _ in range(4):
-                ax.fill_between(
-                    t_post, y_wind_top, y_sn_top,
-                    facecolor="none", edgecolor=C_SN,
-                    hatch="////", linewidth=0, alpha=0.9, zorder=3
-                )
-            ax.fill_between(
-                t_post, y_wind_top, y_sn_top,
-                facecolor="none", edgecolor="black", linestyle=":", linewidth=0.4, zorder=6
-            )
-
-            # --- P_HII slice: bright red dots — topmost
-            ax.fill_between(
-                t_post, y_sn_top, y_hii_top,
-                facecolor="none", edgecolor=C_PHII,
-                hatch="......", linewidth=0, alpha=0.9, zorder=3
-            )
-            ax.fill_between(
-                t_post, y_sn_top, y_hii_top,
-                facecolor="none", edgecolor="black", linestyle=":", linewidth=0.4, zorder=6
-            )
-
-            # Subtle tint
+            _draw_hatched_overlay(ax, t_post, db_post, y_wind_top, y_sn_top, y_hii_top)
             ax.fill_between(t_post, db_post, drive_top[mom_idx], color=C_DRIVE, alpha=0.10, lw=0, zorder=4)
 
     ax.set_ylim(0, 1)
@@ -364,6 +377,43 @@ def plot_run_on_ax(
             ax.set_xlim(t_pos.min(), t.max())
     else:
         ax.set_xlim(t.min(), t.max())
+
+
+def _draw_hatched_overlay(ax, t_seg, db, y_wind_top, y_sn_top, y_hii_top):
+    """Draw the hatched wind / SN / P_HII overlay within a drive band segment."""
+    # Wind slice: back slashes
+    ax.fill_between(
+        t_seg, db, y_wind_top,
+        facecolor="none", edgecolor=C_WIND,
+        hatch="\\\\\\\\", linewidth=0, alpha=0.9, zorder=3
+    )
+    ax.fill_between(
+        t_seg, db, y_wind_top,
+        facecolor="none", edgecolor="black", linestyle=":", linewidth=0.4, zorder=6
+    )
+
+    # SN slice: forward slashes
+    for _ in range(4):
+        ax.fill_between(
+            t_seg, y_wind_top, y_sn_top,
+            facecolor="none", edgecolor=C_SN,
+            hatch="////", linewidth=0, alpha=0.9, zorder=3
+        )
+    ax.fill_between(
+        t_seg, y_wind_top, y_sn_top,
+        facecolor="none", edgecolor="black", linestyle=":", linewidth=0.4, zorder=6
+    )
+
+    # P_HII slice: dots — topmost
+    ax.fill_between(
+        t_seg, y_sn_top, y_hii_top,
+        facecolor="none", edgecolor=C_PHII,
+        hatch="......", linewidth=0, alpha=0.9, zorder=3
+    )
+    ax.fill_between(
+        t_seg, y_sn_top, y_hii_top,
+        facecolor="none", edgecolor="black", linestyle=":", linewidth=0.4, zorder=6
+    )
 
 
 # ---------------- main loop ----------------
@@ -457,9 +507,10 @@ def plot_grid(folder_path, output_dir=None, ndens_filter=None,
                     continue
 
                 try:
-                    t, R2, phase, base_forces, overlay_forces, rcloud, isCollapse = load_run(data_path)
+                    t, R2, phase, base_forces, overlay_forces, rcloud, isCollapse, pressures = load_run(data_path)
                     plot_run_on_ax(
                         ax, t, R2, phase, base_forces, overlay_forces, rcloud, isCollapse,
+                        pressures=pressures,
                         alpha=0.75,
                         smooth_window=SMOOTH_WINDOW,
                         phase_change=PHASE_CHANGE,
@@ -508,9 +559,11 @@ def plot_grid(folder_path, output_dir=None, ndens_filter=None,
 
         if INCLUDE_ALL_FORCE:
             handles += [
-                Patch(facecolor="none", edgecolor=C_PHII, hatch="......",     label=r"$P_{\rm HII}$ (momentum)"),
+                Patch(facecolor="none", edgecolor=C_PHII, hatch="......",     label=r"$P_{\rm HII}$"),
                 Patch(facecolor="none", edgecolor=C_WIND, hatch="\\\\\\\\",   label=r"Ram wind"),
                 Patch(facecolor="none", edgecolor=C_SN,   hatch="////",       label=r"Ram SN"),
+                Line2D([0], [0], color=C_PHII, lw=3, alpha=0.7, label=r"Driver: $P_{\rm HII}$"),
+                Line2D([0], [0], color=C_DRIVE, lw=3, alpha=0.7, label=r"Driver: $P_b$"),
             ]
 
         handles.extend(get_marker_legend_handles())

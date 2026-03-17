@@ -33,7 +33,6 @@ DOMINANCE_STRIP = (0.94, 1)  # (ymin, ymax) in AXES fraction (0..1) - doubled th
 # Colors — centralised ChromaPalette (switch via set_palette or $TRINITY_PALETTE)
 from src._plots.force_colors import (          # noqa: E402
     FORCE_FIELDS_MOMENTUM as FORCE_FIELDS,
-    DASHED_FIELDS,
     DOMINANT_COLORS,
 )
 
@@ -92,13 +91,6 @@ def load_run(data_path: Path):
             continue
         forces_dict[field] = safe_field(field)
 
-    # Extract dashed force fields (momentum-phase decomposition)
-    for field, _, _ in DASHED_FIELDS:
-        if field == "F_HII":
-            forces_dict["F_HII"] = safe_field("F_ion_out")  # = P_HII * 4πR²
-        else:
-            forces_dict[field] = safe_field(field)
-
     # PISM: press_HII_in is a pressure — convert to force via F = P * 4πR²
     press_HII_in = safe_field('press_HII_in')
     F_PISM = press_HII_in * 4.0 * np.pi * R2_safe**2
@@ -130,13 +122,14 @@ def _interp_finite(x, y, xnew):
     return np.interp(xnew, x[m], y[m])
 
 
-def dominant_bins_impulse(t, forces_dict, dt=0.05):
+def dominant_bins_impulse(t, forces_dict, phase=None, dt=0.05):
     """
     Compute dominant force in each time bin based on impulse added.
 
     ΔJ_i = ∫ max(F_i, 0) dt in each bin.
 
-    If F_ram wins, subclassify into F_ram_wind vs F_ram_SN.
+    F_drive is never sub-classified — the decomposition story is told
+    by paper_feedback.py (force fractions) and the pressure evolution plot.
 
     Returns
     -------
@@ -149,7 +142,7 @@ def dominant_bins_impulse(t, forces_dict, dt=0.05):
     edges = np.arange(t.min(), t.max() + dt, dt)
     n_bins = len(edges) - 1
 
-    # Fields to consider for dominance (main forces)
+    # Fields to consider for dominance (main forces only)
     main_fields = ["F_grav", "F_drive", "F_rad", "F_PISM"]
 
     winners = []
@@ -160,7 +153,6 @@ def dominant_bins_impulse(t, forces_dict, dt=0.05):
         # Find indices in this bin
         mask = (t >= t0) & (t < t1)
         if not np.any(mask):
-            # No data in bin - use interpolation
             t_bin = np.array([0.5 * (t0 + t1)])
             impulses = {}
             for field in main_fields:
@@ -171,34 +163,13 @@ def dominant_bins_impulse(t, forces_dict, dt=0.05):
             impulses = {}
             for field in main_fields:
                 F_bin = forces_dict[field][mask]
-                # ΔJ = ∫ max(F, 0) dt using trapezoidal rule
                 F_pos = np.maximum(F_bin, 0)
                 if len(F_pos) > 1:
                     impulses[field] = np.trapz(F_pos, t_bin)
                 else:
                     impulses[field] = F_pos[0] * dt
 
-        # Find winner
         winner = max(impulses, key=impulses.get)
-
-        # If F_drive wins, subclassify into P_HII vs wind vs SN
-        if winner == "F_drive":
-            sub_fields = ["F_HII", "F_ram_wind", "F_ram_SN"]
-            sub_impulses = {}
-            for sf in sub_fields:
-                if not np.any(mask):
-                    t_bin_sub = np.array([0.5 * (t0 + t1)])
-                    F_sub = _interp_finite(t, forces_dict[sf], t_bin_sub)
-                    sub_impulses[sf] = max(F_sub[0], 0) * dt if np.isfinite(F_sub[0]) else 0.0
-                else:
-                    F_sub = forces_dict[sf][mask]
-                    F_sub_pos = np.maximum(F_sub, 0)
-                    if len(F_sub_pos) > 1:
-                        sub_impulses[sf] = np.trapz(F_sub_pos, t_bin)
-                    else:
-                        sub_impulses[sf] = F_sub_pos[0] * dt
-            winner = max(sub_impulses, key=sub_impulses.get)
-
         winners.append(winner)
 
     return edges, winners
@@ -245,8 +216,6 @@ def plot_from_path(data_input: str, output_dir: str = None):
     handles = []
     for _, lab, c in FORCE_FIELDS:
         handles.append(Line2D([0], [0], color=c, lw=1.6, ls="-", label=lab))
-    for _, lab, c in DASHED_FIELDS:
-        handles.append(Line2D([0], [0], color=c, lw=1.2, ls="--", label=lab))
     handles.append(Line2D([0], [0], color="darkgrey", lw=2.4, label="Net"))
     handles.extend(get_marker_legend_handles())
     ax.legend(handles=handles, loc="upper left", framealpha=0.9)
@@ -282,7 +251,7 @@ def plot_momentum_lines_on_ax(
     )
 
     # === Dominant force based on impulse in each bin (uses raw forces_dict)
-    edges, winners = dominant_bins_impulse(t, forces_dict, dt=DOMINANCE_DT)
+    edges, winners = dominant_bins_impulse(t, forces_dict, phase=phase, dt=DOMINANCE_DT)
     y0, y1 = DOMINANCE_STRIP
 
     # Merge consecutive bins with same winner to avoid white lines
@@ -380,15 +349,6 @@ def plot_momentum_lines_on_ax(
     # --- plot main force components (solid lines)
     for (field, label, color), Pi in zip(FORCE_FIELDS, P):
         plot_abs_with_sign_linestyle(ax, t, Pi, color=color, label=label, lw=lw, alpha=alpha, zorder=3)
-
-    # --- plot wind/SN breakdown (dashed lines) — integrate raw, then smooth
-    for field, label, color in DASHED_FIELDS:
-        F_dashed = forces_dict[field]
-        P_dashed = cumtrapz_2d(F_dashed[None, :], t)[0]
-        if smooth_window:
-            P_dashed = smooth_1d(P_dashed, smooth_window, mode=smooth_mode)
-        plot_abs_with_sign_linestyle(ax, t, P_dashed, color=color, label=label,
-                                      lw=lw*0.8, alpha=alpha*0.8, zorder=2, base_ls="--")
 
     # net momentum (signed): integrate F_net = sum(outward) - gravity, using raw forces
     F_net = forces[1:].sum(axis=0) - forces[0]
@@ -510,8 +470,6 @@ def plot_grid(folder_path, output_dir=None, ndens_filter=None,
         handles = []
         for _, lab, c in FORCE_FIELDS:
             handles.append(Line2D([0], [0], color=c, lw=1.6, ls="-", label=lab))
-        for _, lab, c in DASHED_FIELDS:
-            handles.append(Line2D([0], [0], color=c, lw=1.2, ls="--", label=lab))
         handles.append(Line2D([0], [0], color="darkgrey", lw=2.4,
                               label=r"Net: $| \int (\sum F_{\rm out} - F_{\rm grav})\,dt |$"))
         handles.extend(get_marker_legend_handles())
