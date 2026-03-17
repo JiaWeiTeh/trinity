@@ -65,6 +65,7 @@ class ShellProperties:
     # Ionization front properties (for P_HII convex blend)
     n_IF: float  # Density at ionization front (code units)
     R_IF: float  # Radius of ionization front (pc)
+    n_IF_Str: float  # Strömgren-based n_IF diagnostic (Lancaster+2025)
 
     # Shell density profile arrays (ionized + neutral)
     shell_r_arr: Union[np.ndarray, float]  # Radial grid through shell [pc]
@@ -210,6 +211,45 @@ def shell_structure_pure(params) -> ShellProperties:
     # Extract ionization front properties (for P_HII convex blend)
     n_IF = nShell_arr_ion[-1]  # Density at ionization front
     R_IF = rShell_arr_ion[-1]  # Radius of ionization front
+
+    # ------------------------------------------------------------------
+    # Two-branch n_IF: Strömgren correction (Lancaster+2025)
+    #
+    # The ODE-derived n_IF is anchored to Pb at the inner boundary via
+    # pressure equilibrium (Rahner+2017 Eq.14), with density rising
+    # outward as radiation pressure sets up a thermal pressure gradient.
+    # This captures the bubble-dominated (ζ > 1) regime correctly.
+    #
+    # When the bubble is sub-dominant (ζ < 1), the HII region is
+    # independently pressurised via ionisation balance. The Strömgren
+    # density n_IF_Str = sqrt(3Qi / (4π αB ΔV)) is independent of Pb.
+    # Using max() is conservative: existing behaviour is unchanged
+    # unless n_IF_Str exceeds the ODE value.
+    #
+    # Guards:
+    #   (a) is_fullyIonised=True  → photons escape; R_IF is the shell
+    #       outer edge, not a physical pressure surface. The Strömgren
+    #       volume would absorb zero photons. Skip correction.
+    #   (b) rShell0 >= rCloud     → shell has left the cloud; ambient
+    #       density structure changes and the ionisation balance inside
+    #       the shell is no longer well-defined against a GMC background.
+    #       Skip correction; external ISM pressure is handled separately
+    #       via press_HII_in in the ODE.
+    # ------------------------------------------------------------------
+    _rCloud = params['rCloud'].value
+    _vol_ion = R_IF**3 - rShell0**3   # rShell0 == params['R2'].value
+    if (not is_fullyIonised) and (rShell0 < _rCloud) and (_vol_ion > 0.0) and (Qi > 0.0):
+        n_IF_Str = np.sqrt(
+            3.0 * Qi /
+            (4.0 * np.pi * params['caseB_alpha'].value * _vol_ion)
+        )
+        # Two-branch selection: physics lives here.
+        # P_drive = max(Pb, P_HII) in the ODE remains a safety floor.
+        n_IF = max(n_IF, n_IF_Str)
+    else:
+        # Fully ionised, beyond cloud, or degenerate geometry:
+        # keep ODE-derived n_IF unchanged.
+        n_IF_Str = n_IF
 
     # =============================================================================
     # Continue computation if shell hasn't dissolved
@@ -397,6 +437,7 @@ def shell_structure_pure(params) -> ShellProperties:
         # No ionization front when dissolved
         n_IF = 0.0
         R_IF = 0.0
+        n_IF_Str = 0.0
         shell_r_arr = np.array([])
         shell_n_arr = np.array([])
         shell_ion_idx = -1
@@ -430,6 +471,7 @@ def shell_structure_pure(params) -> ShellProperties:
         diss_condition_met=diss_condition_met,
         n_IF=n_IF,
         R_IF=R_IF,
+        n_IF_Str=n_IF_Str,
         shell_r_arr=shell_r_arr,
         shell_n_arr=shell_n_arr,
         shell_ion_idx=shell_ion_idx,

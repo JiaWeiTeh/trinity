@@ -178,24 +178,9 @@ def run_energy(params):
 
             # Compute shell structure
             shell_data = shell_structure_modified.shell_structure_pure(params)
-            # Update params with shell properties
-            params['shell_n0'].value = shell_data.shell_n0
-            params['rShell'].value = shell_data.rShell
-            params['isDissolved'].value = shell_data.isDissolved
-            params['shell_fAbsorbedIon'].value = shell_data.shell_fAbsorbedIon
-            params['shell_fAbsorbedNeu'].value = shell_data.shell_fAbsorbedNeu
-            params['shell_fAbsorbedWeightedTotal'].value = shell_data.shell_fAbsorbedWeightedTotal
-            params['shell_fIonisedDust'].value = shell_data.shell_fIonisedDust
-            params['shell_thickness'].value = shell_data.shell_thickness
-            params['shell_nMax'].value = shell_data.shell_nMax
-            params['shell_tauKappaRatio'].value = shell_data.shell_tauKappaRatio
-            params['shell_F_rad'].value = shell_data.shell_F_rad
-            params['shell_grav_r'].value = shell_data.shell_grav_r
-            params['shell_grav_phi'].value = shell_data.shell_grav_phi
-            params['shell_grav_force_m'].value = shell_data.shell_grav_force_m
-            # Assign n_IF and R_IF immediately so the ODE snapshot picks them up
-            params['n_IF'].value = shell_data.n_IF
-            params['R_IF'].value = shell_data.R_IF
+            # Update params with all shell properties (including n_IF, R_IF,
+            # n_IF_Str, is_fullyIonised, diss_condition_met, shell arrays)
+            updateDict(params, shell_data)
             logger.info('shell complete (modified)')
         else:
             Tavg = T0
@@ -203,6 +188,51 @@ def run_energy(params):
         # Calculate sound speed
         c_sound = operations.get_soundspeed(Tavg, params)
         params['c_sound'].value = c_sound
+
+        # ------------------------------------------------------------------
+        # ζ diagnostic (Lancaster+2025): quantifies WBB vs PIR dominance.
+        # ζ = R_eq / R_St. ζ > 1: WBB-dominated. ζ < 1: PIR-dominated.
+        # Pure diagnostic — does not feed into any ODE.
+        # ------------------------------------------------------------------
+        _Qi_zeta   = params['Qi'].value
+        _alphaB    = params['caseB_alpha'].value
+        _k_B       = params['k_B'].value
+        _T_ion     = params['TShell_ion'].value
+        _mu_ion    = params['mu_ion'].value
+        _R2_now    = params['R2'].value
+        _rCloud_z  = params['rCloud'].value
+        _pdot_W    = feedback.pdot_W   # feedback must be current at this point
+        # Ambient number density at current shell position.
+        # Use cloud density profile inside cloud; nISM outside.
+        if _R2_now < _rCloud_z:
+            from src.cloud_properties import density_profile as _dp
+            _n_amb = float(np.atleast_1d(
+                _dp.get_density_profile(np.array([_R2_now]), params)
+            )[0])
+        else:
+            _n_amb = params['nISM'].value
+        # Strömgren radius in ambient density
+        if _Qi_zeta > 0.0 and _n_amb > 0.0:
+            _R_St = (3.0 * _Qi_zeta /
+                     (4.0 * np.pi * _alphaB * _n_amb**2))**(1.0 / 3.0)
+        else:
+            _R_St = np.inf
+        # Sound speed in photoionised gas: c_i^2 = k_B T_ion / mu_ion
+        # mu_ion is already in code units (Msun) = mu_dimless * m_H * g2Msun
+        _c_i2 = _k_B * _T_ion / _mu_ion
+        # Equilibrium radius for momentum-driven WBB (Lancaster+2025 Eq.21), α_p=1
+        _rho_amb = _n_amb * _mu_ion
+        if _pdot_W > 0.0 and _rho_amb > 0.0 and _c_i2 > 0.0:
+            _R_eq = np.sqrt(3.0 * _pdot_W /
+                            (16.0 * np.pi * _rho_amb * _c_i2))
+        else:
+            _R_eq = 0.0
+        _zeta = _R_eq / _R_St if (np.isfinite(_R_St) and _R_St > 0.0) else 0.0
+        params['zeta'].value = _zeta
+        if _zeta < 0.5:
+            logger.info(f'ζ={_zeta:.3f} < 0.5: PIR-dominated, n_IF_Str active '
+                        f'(n_IF={params["n_IF"].value:.3e}, '
+                        f'n_IF_Str={params["n_IF_Str"].value:.3e})')
 
         # =============================================================================
         # Create frozen snapshot for ODE integration
@@ -316,11 +346,9 @@ def run_energy(params):
             params['F_ram'].value = ode_result.F_ram
         if ode_result.F_rad is not None:
             params['F_rad'].value = ode_result.F_rad
-        # Pressure diagnostic quantities
-        if ode_result.n_IF is not None:
-            params['n_IF'].value = ode_result.n_IF
-        if ode_result.R_IF is not None:
-            params['R_IF'].value = ode_result.R_IF
+        # Pressure diagnostic quantities (n_IF/R_IF already written by
+        # updateDict(params, shell_data) above; ODE result carries the
+        # same frozen values, so skip redundant re-assignment)
         if ode_result.P_HII is not None:
             params['P_HII'].value = ode_result.P_HII
         if ode_result.P_drive is not None:
@@ -335,6 +363,9 @@ def run_energy(params):
             params['shell_mass'].value = ode_result.shell_mass
         if ode_result.shell_massDot is not None:
             params['shell_massDot'].value = ode_result.shell_massDot
+        # Wind and SN ram force components (consistent with other phases)
+        params['F_ram_wind'].value = feedback.pdot_W
+        params['F_ram_SN'].value = feedback.pdot_SN
 
         # Save snapshot AFTER all params are updated (so it captures current state)
         params.save_snapshot()
