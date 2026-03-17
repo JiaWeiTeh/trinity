@@ -299,17 +299,18 @@ def _get_nCore(snap) -> Optional[float]:
     return None
 
 
-def _build_ism(snap, rCloud: float, n_pts: int = 10) -> ZoneProfile:
-    """Zone 6: ISM (rCloud → 2·rCloud)."""
+def _build_ism(snap, r_start: float, n_pts: int = 10) -> ZoneProfile:
+    """Zone 6: ISM (r_start → 2·r_start)."""
     nISM = snap.get('nISM', None)
     if nISM is not None and float(nISM) > 0:
         n_val = float(nISM)
     else:
         n_val = 0.1  # default ISM density [cm⁻³]
 
-    r_arr = np.linspace(rCloud, 2.0 * rCloud, n_pts)
+    r_end = 2.0 * r_start
+    r_arr = np.linspace(r_start, r_end, n_pts)
     n_arr = np.full_like(r_arr, n_val)
-    return ZoneProfile('ism', r_arr, n_arr, rCloud, 2.0 * rCloud)
+    return ZoneProfile('ism', r_arr, n_arr, r_start, r_end)
 
 
 # =============================================================================
@@ -393,7 +394,10 @@ def build_radial_profile(snap) -> Optional[RadialProfile]:
     cloud_zone = _build_cloud(snap, rShell, rCloud)
 
     # --- Zone 6: ISM ---
-    ism_zone = _build_ism(snap, rCloud)
+    # When the shell has swept past the cloud, start ISM beyond rShell
+    # to avoid a backwards jump in radius.
+    ism_start = max(rShell, rCloud)
+    ism_zone = _build_ism(snap, ism_start)
 
     zones = [wind_zone, bubble_zone, ion_zone, neu_zone, cloud_zone, ism_zone]
     return RadialProfile(t=t_now, phase=phase, zones=zones,
