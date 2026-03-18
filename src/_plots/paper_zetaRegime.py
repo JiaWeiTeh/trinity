@@ -23,7 +23,7 @@ from pathlib import Path as _Path
 _sys.path.insert(0, str(_Path(__file__).parent.parent.parent))
 from src._plots.plot_base import FIG_DIR
 from src._plots.force_colors import C  # noqa: E402
-from src._functions.unit_conversions import CGS, CONV, INV_CONV
+from src._functions.unit_conversions import CGS
 
 print("...plotting zeta regime map")
 
@@ -52,15 +52,17 @@ C_I_SQ = CGS.k_B * T_ION / (MU_ION * CGS.m_H)  # cm² s⁻²
 # ======================================================================
 # For a simple stellar population at ~1 Myr (main-sequence dominated):
 #   Qi ≈ 10^{46.5} × (M_cl / M_☉) s⁻¹  (Leitherer+ 1999, SB99 tables)
-#   pdot_w ≈ 10^{23} × (M_cl / M_☉) g cm s⁻² (typical O-star winds)
+#   pdot_w ≈ 10^{25} × (M_cl / M_☉) g cm s⁻² (SB99 at ~1 Myr, solar Z)
 #
 # These are order-of-magnitude calibrations; the exact values depend on
 # metallicity, IMF, and stellar tracks.  The _shape_ of the ζ map (the
-# ζ=1 contour slope) is robust because ζ ∝ M_cl^{1/6} n^{1/3}.
+# ζ=1 contour slope) is robust because ζ ∝ M_cl^{1/6} n^{-1/6}.
 
 # Default calibration at T_REF ≈ 1 Myr, solar Z, Geneva rot tracks
 QI_PER_MSUN = 10**46.5    # s⁻¹ per M_☉ of cluster mass
-PDOT_W_PER_MSUN = 10**23  # g cm s⁻² per M_☉ of cluster mass
+# TODO: calibrate from SB99 tables.  SB99 at 1 Myr (solar Z, Geneva rot)
+# gives log10(pdot_w) ≈ 31 for a 10^6 Msun cluster → ~10^25 per Msun.
+PDOT_W_PER_MSUN = 10**25  # g cm s⁻² per M_☉ of cluster mass
 
 
 def compute_zeta_analytic(log_Mcl_arr, log_n_arr,
@@ -98,7 +100,8 @@ def compute_zeta_analytic(log_Mcl_arr, log_n_arr,
 
     # Wind equilibrium radius
     rho = n_2d * MU_NEUTRAL * CGS.m_H         # g cm⁻³
-    R_eq = np.sqrt(3.0 * pdot_w / (16.0 * np.pi * rho * np.float64(C_I_SQ)))  # cm
+    # Lancaster+2025 Eq.21 (α_p=1): R_eq² = pdot_w/(4π ρ c_i²)
+    R_eq = np.sqrt(pdot_w / (4.0 * np.pi * rho * C_I_SQ))  # cm
 
     zeta = R_eq / R_St
     return zeta
@@ -110,7 +113,7 @@ def compute_zeta_analytic(log_Mcl_arr, log_n_arr,
 
 def compute_zeta_from_sims(folder_path, t_ref=T_REF):
     """
-    Load simulations and compute ζ at t_ref for each run.
+    Read stored ζ from simulation snapshots at t_ref.
 
     Returns
     -------
@@ -145,41 +148,22 @@ def compute_zeta_from_sims(folder_path, t_ref=T_REF):
             if snap is None:
                 continue
 
-            # Extract quantities from snapshot
-            Qi = snap.get('Qi')             # s⁻¹ (AU-converted in output)
-            pdot_W = snap.get('pdot_W')     # Msun pc / Myr²
+            # Read stored ζ directly — no unit conversions needed
+            zeta = snap.get('zeta')
+            if zeta is None:
+                print(f"  Warning: {folder_name}: 'zeta' not in output "
+                      f"(old run?), skipping")
+                continue
+            zeta = float(zeta)
+            if not (np.isfinite(zeta) and zeta > 0):
+                continue
+
             mCloud_val = snap.get('mCloud')
-            nEdge = snap.get('nEdge')       # cm⁻³ (ambient density)
-
-            if any(v is None for v in [Qi, pdot_W, mCloud_val, nEdge]):
-                continue
-            if nEdge <= 0 or Qi <= 0 or pdot_W <= 0:
+            nEdge = snap.get('nEdge')
+            if mCloud_val is None or nEdge is None:
                 continue
 
-            # Qi is stored in AU (photons/Myr) — convert back to s⁻¹
-            Qi_cgs = float(Qi) * CONV.s2Myr  # photons/Myr × (s/Myr) = photons/s? No.
-            # Actually: output stores Qi with unit conversion s2Myr applied as:
-            #   Qi_AU = Qi_cgs / s2Myr  (since rate = 1/s → 1/Myr)
-            # So to get back to cgs: Qi_cgs = Qi_AU / s2Myr? No.
-            # From read_SB99: Qi = 10^col * f_mass / s2Myr
-            # i.e., Qi_stored = Qi_cgs_per_s / s2Myr = Qi_cgs × Myr2s
-            # To convert back: Qi_cgs = Qi_stored × s2Myr
-            # Wait: 1/s → 1/Myr means multiply by Myr2s = 1/s2Myr
-            # So Qi_stored [1/Myr] = Qi_cgs [1/s] × Myr2s = Qi_cgs / s2Myr
-            # Therefore Qi_cgs = Qi_stored × s2Myr
-            Qi_cgs = float(Qi) * CONV.s2Myr  # back to s⁻¹
-
-            # pdot_W is stored in AU (Msun pc / Myr²) — convert to cgs (g cm / s²)
-            pdot_w_cgs = float(pdot_W) * INV_CONV.pdot_au2cgs
-
-            n_cloud = float(nEdge)  # cm⁻³
-
-            # Compute ζ
-            R_St = (3.0 * Qi_cgs / (4.0 * np.pi * ALPHA_B * n_cloud**2))**(1.0 / 3.0)
-            rho = n_cloud * MU_NEUTRAL * CGS.m_H
-            R_eq = np.sqrt(3.0 * pdot_w_cgs / (16.0 * np.pi * rho * C_I_SQ))
-            zeta = R_eq / R_St
-
+            n_cloud = float(nEdge)
             sfe_val = float(sim_params['sfe']) / 100.0
             mCluster = float(mCloud_val) * sfe_val
 
@@ -288,12 +272,12 @@ def plot_zeta_regime(folder_path=None, output_dir=None, t_ref=T_REF):
 
     # --- Region labels ---
     ax.text(0.05, 0.92, r'HII-dominated ($\zeta < 1$)',
-            transform=ax.transAxes, fontsize=10, color=C.DRIVE,
+            transform=ax.transAxes, fontsize=10, color=C.PHII,
             fontweight='bold', va='top', ha='left',
             bbox=dict(boxstyle='round,pad=0.3', facecolor='white',
                       edgecolor='none', alpha=0.8))
     ax.text(0.95, 0.08, r'Bubble-dominated ($\zeta > 1$)',
-            transform=ax.transAxes, fontsize=10, color=C.PHII,
+            transform=ax.transAxes, fontsize=10, color=C.DRIVE,
             fontweight='bold', va='bottom', ha='right',
             bbox=dict(boxstyle='round,pad=0.3', facecolor='white',
                       edgecolor='none', alpha=0.8))
