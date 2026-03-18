@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Pressure evolution + ζ(t) two-panel figure for each TRINITY simulation run.
+Pressure evolution + n_IF ratio two-panel figure for each TRINITY simulation run.
 
 Top panel:  Pressure terms vs. time (log y, linear x) in CGS (dyn cm⁻²)
-Bottom panel: ζ(t) = R_eq / R_St (log y, same x-axis)
+Bottom panel: n_IF_Str / n_IF_ODE ratio (log y, same x-axis)
 
-Answers the question: "when does P_HII become the independent driver,
-decoupled from the bubble?"
+Answers the question: "when does the Strömgren ionisation balance set
+a higher density at the IF than the ODE boundary condition?"
 """
 
 import numpy as np
@@ -22,9 +22,9 @@ _sys.path.insert(0, str(_Path(__file__).parent.parent.parent))
 from src._plots.plot_base import FIG_DIR, smooth_1d
 from src._output.trinity_reader import load_output, resolve_data_input
 from src._plots.plot_markers import add_plot_markers, get_marker_legend_handles
-from src._functions.unit_conversions import CGS, CONV, INV_CONV
+from src._functions.unit_conversions import CGS, INV_CONV
 
-print("...plotting pressure evolution + zeta")
+print("...plotting pressure evolution + nIF ratio")
 
 # ======================================================================
 # Configuration
@@ -46,13 +46,7 @@ C_GRAV  = C.GRAV
 # ======================================================================
 # Physics constants (CGS)
 # ======================================================================
-ALPHA_B    = 2.56e-13     # Case-B recombination coefficient [cm³ s⁻¹] at T=10⁴ K
 T_ION      = 1e4          # Ionised gas temperature [K]
-MU_ION     = 0.678        # Mean molecular weight (ionised)
-MU_NEUTRAL = 1.27         # Mean molecular weight (neutral)
-
-# Isothermal sound speed squared: c_i² = k_B T_ion / (μ_ion m_H)  [cm² s⁻²]
-C_I_SQ = CGS.k_B * T_ION / (MU_ION * CGS.m_H)
 
 
 # ======================================================================
@@ -61,7 +55,7 @@ C_I_SQ = CGS.k_B * T_ION / (MU_ION * CGS.m_H)
 
 def load_run(data_path: Path):
     """
-    Load run data and compute pressures in CGS + ζ(t).
+    Load run data, compute pressures in CGS, and read n_IF ratio from output.
 
     Returns
     -------
@@ -74,8 +68,8 @@ def load_run(data_path: Path):
     pressures : dict of str → array
         Pressure arrays in CGS (dyn cm⁻²).
         Keys: 'Pb', 'P_HII_Str', 'P_HII_ODE', 'P_ram', 'P_rad', 'P_drive'.
-    zeta : array
-        ζ(t) = R_eq / R_St.
+    nIF_ratio : array
+        n_IF_Str / n_IF_ODE (read from simulation output, code units cancel).
     rcloud : float
         Cloud radius [pc].
     isCollapse : array
@@ -101,11 +95,11 @@ def load_run(data_path: Path):
     P_drive_au = get_field('P_drive', 0.0)
     P_ram_au   = get_field('P_ram', 0.0)
     F_rad_au   = get_field('F_rad', 0.0)        # force, not pressure
-    Qi_au      = get_field('Qi', 0.0)           # 1/Myr
-    pdot_W_au  = get_field('pdot_W', 0.0)       # Msun pc / Myr²
-    nEdge_au   = get_field('nEdge', 0.0)        # 1/pc³
     R2_arr     = get_field('R2', 0.0)           # pc
-    R_IF_arr   = get_field('R_IF', 0.0)         # pc
+
+    # n_IF fields (both in AU, 1/pc³ — ratio is dimensionless)
+    n_IF_Str_au = get_field('n_IF_Str', 0.0)
+    n_IF_au     = get_field('n_IF', 0.0)
 
     rcloud     = float(output[0].get('rCloud', np.nan))
     isCollapse = np.array(output.get('isCollapse', as_array=False))
@@ -117,9 +111,8 @@ def load_run(data_path: Path):
         Pb_au, P_HII_au = Pb_au[order], P_HII_au[order]
         P_drive_au, P_ram_au = P_drive_au[order], P_ram_au[order]
         F_rad_au = F_rad_au[order]
-        Qi_au, pdot_W_au = Qi_au[order], pdot_W_au[order]
-        nEdge_au = nEdge_au[order]
-        R2_arr, R_IF_arr = R2_arr[order], R_IF_arr[order]
+        R2_arr = R2_arr[order]
+        n_IF_Str_au, n_IF_au = n_IF_Str_au[order], n_IF_au[order]
         isCollapse = isCollapse[order]
 
     # --- Convert pressures to CGS (dyn cm⁻²) ---
@@ -134,48 +127,15 @@ def load_run(data_path: Path):
     P_rad_cgs = P_rad_au * INV_CONV.Pb_au2cgs
 
     # --- Compute P_HII,Str from Strömgren ionisation balance ---
-    # n_IF_Str = sqrt(3 Qi / (4π α_B (R_IF³ − R2³)))  [CGS]
-    # P_HII_Str = 2 n_IF_Str k_B T_ion                 [CGS]
-    Qi_cgs     = Qi_au * CONV.s2Myr           # AU (1/Myr) → CGS (1/s)
-    R_IF_cm    = R_IF_arr * INV_CONV.pc2cm    # pc → cm
-    R2_cm      = R2_arr * INV_CONV.pc2cm
+    # P_HII_Str = 2 n_IF_Str k_B T_ion  [CGS]
+    # n_IF_Str is in AU (1/pc³) → convert to CGS (1/cm³)
+    n_IF_Str_cgs = n_IF_Str_au * INV_CONV.ndens_au2cgs
+    P_HII_Str_cgs = 2.0 * n_IF_Str_cgs * CGS.k_B * T_ION
+    # Suppress where n_IF_Str is zero
+    P_HII_Str_cgs[n_IF_Str_cgs <= 0] = 0.0
 
-    vol_HII = (4.0 / 3.0) * np.pi * np.maximum(R_IF_cm**3 - R2_cm**3, 0.0)
-    # Guard: when R_IF ≈ R2, the HII volume is ~0 → n_IF_Str undefined.
-    # In that limit, set P_HII_Str = 0 (no independent Strömgren region).
-    safe_vol = np.where(vol_HII > 0, vol_HII, np.inf)
-    n_IF_Str_sq = 3.0 * Qi_cgs / (ALPHA_B * safe_vol * 3.0)
-    # Simplify: n² = Qi / ((4π/3) α_B (R_IF³ − R2³)) — factor already in vol_HII
-    n_IF_Str_sq = Qi_cgs / (ALPHA_B * safe_vol)
-    n_IF_Str_sq = np.maximum(n_IF_Str_sq, 0.0)
-    n_IF_Str = np.sqrt(n_IF_Str_sq)
-    P_HII_Str_cgs = 2.0 * n_IF_Str * CGS.k_B * T_ION
-
-    # Suppress where Qi is zero or volume is zero
-    invalid = (Qi_cgs <= 0) | (vol_HII <= 0)
-    P_HII_Str_cgs[invalid] = 0.0
-
-    # --- Compute ζ(t) = R_eq / R_St ---
-    # R_St = (3 Qi / (4π α_B n²))^(1/3)    [cm]
-    # R_eq = sqrt(3 ṗ_w / (16π ρ c_i²))    [cm]
-    nEdge_cgs   = nEdge_au * INV_CONV.ndens_au2cgs  # 1/pc³ → 1/cm³
-    pdot_w_cgs  = pdot_W_au * INV_CONV.pdot_au2cgs  # Msun pc/Myr² → dyn
-
-    R_St = np.where(
-        (Qi_cgs > 0) & (nEdge_cgs > 0),
-        (3.0 * Qi_cgs / (4.0 * np.pi * ALPHA_B * nEdge_cgs**2))**(1.0 / 3.0),
-        np.inf
-    )
-
-    rho_cloud = nEdge_cgs * MU_NEUTRAL * CGS.m_H
-    R_eq = np.where(
-        (pdot_w_cgs > 0) & (rho_cloud > 0),
-        # Lancaster+2025 Eq.21 (α_p=1): R_eq² = pdot_w/(4π ρ c_i²)
-        np.sqrt(pdot_w_cgs / (4.0 * np.pi * rho_cloud * C_I_SQ)),
-        0.0
-    )
-
-    zeta = np.where(R_St > 0, R_eq / R_St, np.nan)
+    # --- n_IF ratio: n_IF_Str / n_IF (both in AU, units cancel) ---
+    nIF_ratio = np.where(n_IF_au > 0, n_IF_Str_au / n_IF_au, np.nan)
 
     pressures = {
         'Pb':         Pb_cgs,
@@ -186,7 +146,7 @@ def load_run(data_path: Path):
         'P_drive':    P_drive_cgs,
     }
 
-    return t, R2, phase, pressures, zeta, rcloud, isCollapse
+    return t, R2, phase, pressures, nIF_ratio, rcloud, isCollapse
 
 
 # ======================================================================
@@ -203,7 +163,7 @@ def _smooth(y, window):
 
 
 def plot_pressureZeta_on_ax(
-    ax_top, ax_bot, t, R2, phase, pressures, zeta,
+    ax_top, ax_bot, t, R2, phase, pressures, nIF_ratio,
     rcloud=np.nan, isCollapse=None,
     smooth_window=SMOOTH_WINDOW,
     phase_change=True,
@@ -211,18 +171,18 @@ def plot_pressureZeta_on_ax(
     show_collapse=True,
 ):
     """
-    Plot pressure evolution (top) and ζ(t) (bottom) on given axes.
+    Plot pressure evolution (top) and n_IF ratio (bottom) on given axes.
 
     Parameters
     ----------
     ax_top, ax_bot : Axes
-        Top (pressure) and bottom (ζ) panels.
+        Top (pressure) and bottom (n_IF ratio) panels.
     t : array, R2 : array, phase : array
         Time, outer radius, phase labels.
     pressures : dict
         Keys: 'Pb', 'P_HII_Str', 'P_HII_ODE', 'P_ram', 'P_rad', 'P_drive'.
-    zeta : array
-        ζ(t).
+    nIF_ratio : array
+        n_IF_Str / n_IF_ODE ratio.
     """
     sw = smooth_window
 
@@ -269,10 +229,9 @@ def plot_pressureZeta_on_ax(
                 label=r'$P_{\rm drive}$', zorder=4)
 
     # --- Background shading by dominant driver ---
-    # Where P_HII,Str > Pb: teal (HII-dominated), else: coral (bubble-dominated)
-    Pb_safe = np.nan_to_num(pressures['Pb'], nan=0.0)
-    Pstr_safe = np.nan_to_num(pressures['P_HII_Str'], nan=0.0)
-    hii_dom = Pstr_safe > Pb_safe
+    # Where n_IF_Str/n_IF_ODE > 1: teal (Strömgren dominates), else: coral
+    ratio_safe = np.nan_to_num(nIF_ratio, nan=0.0)
+    hii_dom = ratio_safe > 1.0
 
     if np.any(hii_dom):
         ax_top.fill_between(t, 0, 1, where=hii_dom,
@@ -283,7 +242,7 @@ def plot_pressureZeta_on_ax(
                             color=C_DRIVE, alpha=0.08,
                             transform=ax_top.get_xaxis_transform(), zorder=0)
 
-    # --- Mark the P_HII,Str > Pb crossing ---
+    # --- Mark the n_IF ratio = 1 crossing ---
     crossings = np.where(np.diff(hii_dom.astype(int)) != 0)[0]
     for idx in crossings:
         t_cross = 0.5 * (t[idx] + t[idx + 1])
@@ -303,15 +262,15 @@ def plot_pressureZeta_on_ax(
     ax_top.set_xlim(t.min(), t.max())
 
     # ================================================================
-    # BOTTOM PANEL: ζ(t)
+    # BOTTOM PANEL: n_IF_Str / n_IF_ODE
     # ================================================================
-    zeta_smooth = _smooth(zeta, sw)
-    zeta_pos = np.where(zeta_smooth > 0, zeta_smooth, np.nan)
+    ratio_smooth = _smooth(nIF_ratio, sw)
+    ratio_pos = np.where(ratio_smooth > 0, ratio_smooth, np.nan)
 
-    ax_bot.plot(t, zeta_pos, color='0.15', lw=1.8, ls='-', alpha=0.9,
-                label=r'$\zeta(t)$', zorder=3)
+    ax_bot.plot(t, ratio_pos, color='0.15', lw=1.8, ls='-', alpha=0.9,
+                label=r'$n_{\rm IF,Str}/n_{\rm IF,ODE}$', zorder=3)
 
-    # Horizontal line at ζ = 1
+    # Horizontal line at ratio = 1
     ax_bot.axhline(1.0, color='black', lw=1.5, ls='--', alpha=0.6, zorder=2)
 
     # Background shading matching top panel
@@ -325,15 +284,15 @@ def plot_pressureZeta_on_ax(
                             transform=ax_bot.get_xaxis_transform(), zorder=0)
 
     ax_bot.set_yscale('log')
-    ax_bot.set_ylabel(r'$\zeta = R_{\rm eq}/R_{\rm St}$')
+    ax_bot.set_ylabel(r'$n_{\rm IF,Str} / n_{\rm IF,ODE}$')
     ax_bot.set_xlabel('t [Myr]')
     ax_bot.set_xlim(t.min(), t.max())
 
-    # Sensible y-limits for ζ
-    z_valid = zeta_pos[np.isfinite(zeta_pos)]
-    if len(z_valid) > 0:
-        ax_bot.set_ylim(max(0.01, 0.3 * z_valid.min()),
-                        min(1000, 3.0 * z_valid.max()))
+    # Sensible y-limits for ratio
+    r_valid = ratio_pos[np.isfinite(ratio_pos)]
+    if len(r_valid) > 0:
+        ax_bot.set_ylim(max(0.01, 0.3 * r_valid.min()),
+                        min(1000, 3.0 * r_valid.max()))
 
 
 # ======================================================================
@@ -341,7 +300,7 @@ def plot_pressureZeta_on_ax(
 # ======================================================================
 
 def plot_from_path(data_input: str, output_dir: str = None):
-    """Plot pressure + ζ figure from a single simulation path."""
+    """Plot pressure + n_IF ratio figure from a single simulation path."""
     try:
         data_path = resolve_data_input(data_input, output_dir)
     except FileNotFoundError as e:
@@ -349,7 +308,7 @@ def plot_from_path(data_input: str, output_dir: str = None):
         return
 
     try:
-        t, R2, phase, pressures, zeta, rcloud, isCollapse = load_run(data_path)
+        t, R2, phase, pressures, nIF_ratio, rcloud, isCollapse = load_run(data_path)
     except Exception as e:
         print(f"Error loading data: {e}")
         return
@@ -361,12 +320,12 @@ def plot_from_path(data_input: str, output_dir: str = None):
     )
 
     plot_pressureZeta_on_ax(
-        ax_top, ax_bot, t, R2, phase, pressures, zeta,
+        ax_top, ax_bot, t, R2, phase, pressures, nIF_ratio,
         rcloud=rcloud, isCollapse=isCollapse,
         smooth_window=SMOOTH_WINDOW,
         phase_change=PHASE_CHANGE,
     )
-    ax_top.set_title(f"Pressure + ζ: {data_path.parent.name}")
+    ax_top.set_title(f"Pressure + $n_{{\\rm IF}}$ ratio: {data_path.parent.name}")
 
     # Legend
     handles = _build_legend_handles()
@@ -388,7 +347,7 @@ def plot_from_path(data_input: str, output_dir: str = None):
 
 
 def _build_legend_handles():
-    """Construct legend handles for the pressure + ζ plot."""
+    """Construct legend handles for the pressure + n_IF ratio plot."""
     handles = [
         Line2D([0], [0], color=C_DRIVE, lw=1.4, ls='-',
                label=r'$P_b$ (bubble)'),
@@ -403,9 +362,9 @@ def _build_legend_handles():
         Line2D([0], [0], color='0.15',  lw=2.5, ls='-',
                label=r'$P_{\rm drive}$'),
         Line2D([0], [0], color='0.15',  lw=1.8, ls='-',
-               label=r'$\zeta(t)$'),
+               label=r'$n_{\rm IF,Str}/n_{\rm IF,ODE}$'),
         Line2D([0], [0], color='black', lw=1.5, ls='--', alpha=0.6,
-               label=r'$\zeta = 1$'),
+               label=r'ratio $= 1$'),
     ]
     handles.extend(get_marker_legend_handles())
     return handles
@@ -418,9 +377,9 @@ def _build_legend_handles():
 def plot_grid(folder_path, output_dir=None, ndens_filter=None,
               mCloud_filter=None, sfe_filter=None):
     """
-    Plot grid of pressure + ζ panels from simulations in a folder.
+    Plot grid of pressure + n_IF ratio panels from simulations in a folder.
 
-    Each grid cell contains a two-row subplot (top = pressures, bottom = ζ).
+    Each grid cell contains a two-row subplot (top = pressures, bottom = ratio).
     """
     from src._output.trinity_reader import (
         find_all_simulations, organize_simulations_for_grid, get_unique_ndens
@@ -476,7 +435,7 @@ def plot_grid(folder_path, output_dir=None, ndens_filter=None,
             for j, sfe in enumerate(sfe_list):
                 data_path = grid.get((mCloud, sfe))
 
-                # Inner GridSpec: top (pressure) + bottom (ζ), ratio 3:1
+                # Inner GridSpec: top (pressure) + bottom (n_IF ratio), ratio 3:1
                 inner_gs = GridSpecFromSubplotSpec(
                     2, 1,
                     subplot_spec=outer_gs[i, j],
@@ -496,9 +455,9 @@ def plot_grid(folder_path, output_dir=None, ndens_filter=None,
                     continue
 
                 try:
-                    t, R2, phase, pressures, zeta, rcloud, isCollapse = load_run(data_path)
+                    t, R2, phase, pressures, nIF_ratio, rcloud, isCollapse = load_run(data_path)
                     plot_pressureZeta_on_ax(
-                        ax_top, ax_bot, t, R2, phase, pressures, zeta,
+                        ax_top, ax_bot, t, R2, phase, pressures, nIF_ratio,
                         rcloud=rcloud, isCollapse=isCollapse,
                         smooth_window=SMOOTH_WINDOW,
                         phase_change=PHASE_CHANGE,
@@ -582,7 +541,7 @@ if __name__ == "__main__":
     from src._plots.cli import dispatch
     dispatch(
         script_name="paper_pressureZeta.py",
-        description="Plot TRINITY pressure evolution + zeta",
+        description="Plot TRINITY pressure evolution + nIF ratio",
         plot_from_path_fn=plot_from_path,
         plot_grid_fn=plot_grid,
     )
