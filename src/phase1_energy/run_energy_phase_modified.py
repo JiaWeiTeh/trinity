@@ -222,7 +222,8 @@ def run_energy(params):
         _c_i2 = _k_B * _T_ion / _mu_ion
         # Equilibrium radius for momentum-driven WBB (Lancaster+2025 Eq.21, α_p=1)
         # P_ram(R) = pdot_w/(4π R²) = ρ c_i²  =>  R_eq² = pdot_w/(4π ρ c_i²)
-        _rho_amb = _n_amb * _mu_ion
+        # Ambient gas ahead of the shell is neutral: use mu_atom, not mu_ion
+        _rho_amb = _n_amb * params['mu_atom'].value
         if _pdot_W > 0.0 and _rho_amb > 0.0 and _c_i2 > 0.0:
             _R_eq = np.sqrt(_pdot_W /
                             (4.0 * np.pi * _rho_amb * _c_i2))
