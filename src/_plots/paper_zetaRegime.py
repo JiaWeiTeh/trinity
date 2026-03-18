@@ -30,7 +30,8 @@ print("...plotting zeta regime map")
 # ======================================================================
 # Configuration
 # ======================================================================
-T_REF = 1.0          # Myr — reference time for ζ evaluation
+T_REFS = [0.05, 0.1, 0.5, 1.0]  # Myr — reference times for ζ evaluation
+T_REF = T_REFS[-1]               # default single-time for backward compat
 N_GRID = 200         # resolution for analytic grid
 LOG_N_RANGE = (1, 5)       # log10(n [cm⁻³])
 LOG_MCL_RANGE = (2, 7)     # log10(M_cl [M_☉])
@@ -308,7 +309,8 @@ def plot_zeta_regime(folder_path=None, output_dir=None, t_ref=T_REF):
 
     if SAVE_PDF:
         tag = f"_{Path(folder_path).name}" if folder_path else "_analytic"
-        out_pdf = fig_dir / f"zetaRegime{tag}.pdf"
+        t_tag = f"_t{t_ref:.2f}Myr".replace('.', 'p')
+        out_pdf = fig_dir / f"zetaRegime{tag}{t_tag}.pdf"
         fig.savefig(out_pdf, bbox_inches='tight')
         print(f"Saved: {out_pdf}")
 
@@ -320,8 +322,9 @@ def plot_zeta_regime(folder_path=None, output_dir=None, t_ref=T_REF):
 # ======================================================================
 
 def plot_from_path(data_input: str, output_dir: str = None):
-    """Single-simulation mode: not applicable. Show analytic map instead."""
-    plot_zeta_regime(folder_path=None, output_dir=output_dir)
+    """Single-simulation mode: not applicable. Show analytic maps instead."""
+    for t in T_REFS:
+        plot_zeta_regime(folder_path=None, output_dir=output_dir, t_ref=t)
 
 
 def plot_grid(folder_path, output_dir=None, ndens_filter=None,
@@ -332,7 +335,8 @@ def plot_grid(folder_path, output_dir=None, ndens_filter=None,
     The ndens/mCloud/sfe filters are accepted for CLI compatibility but
     not used (all simulations contribute to the scatter overlay).
     """
-    plot_zeta_regime(folder_path=folder_path, output_dir=output_dir)
+    for t in T_REFS:
+        plot_zeta_regime(folder_path=folder_path, output_dir=output_dir, t_ref=t)
 
 
 if __name__ == "__main__":
