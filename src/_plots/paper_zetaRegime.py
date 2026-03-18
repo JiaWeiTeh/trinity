@@ -98,7 +98,8 @@ def compute_zeta_analytic(log_Mcl_arr, log_n_arr,
 
     # Wind equilibrium radius
     rho = n_2d * MU_NEUTRAL * CGS.m_H         # g cm⁻³
-    R_eq = np.sqrt(3.0 * pdot_w / (16.0 * np.pi * rho * C_I_SQ))  # cm
+    # Lancaster+2025 Eq.21 (α_p=1): R_eq² = pdot_w/(4π ρ c_i²)
+    R_eq = np.sqrt(pdot_w / (4.0 * np.pi * rho * C_I_SQ))  # cm
 
     zeta = R_eq / R_St
     return zeta
@@ -177,7 +178,8 @@ def compute_zeta_from_sims(folder_path, t_ref=T_REF):
             # Compute ζ
             R_St = (3.0 * Qi_cgs / (4.0 * np.pi * ALPHA_B * n_cloud**2))**(1.0 / 3.0)
             rho = n_cloud * MU_NEUTRAL * CGS.m_H
-            R_eq = np.sqrt(3.0 * pdot_w_cgs / (16.0 * np.pi * rho * C_I_SQ))
+            # Lancaster+2025 Eq.21 (α_p=1): R_eq² = pdot_w/(4π ρ c_i²)
+            R_eq = np.sqrt(pdot_w_cgs / (4.0 * np.pi * rho * C_I_SQ))
             zeta = R_eq / R_St
 
             sfe_val = float(sim_params['sfe']) / 100.0

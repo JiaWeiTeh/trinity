@@ -170,7 +170,8 @@ def load_run(data_path: Path):
     rho_cloud = nEdge_cgs * MU_NEUTRAL * CGS.m_H
     R_eq = np.where(
         (pdot_w_cgs > 0) & (rho_cloud > 0),
-        np.sqrt(3.0 * pdot_w_cgs / (16.0 * np.pi * rho_cloud * C_I_SQ)),
+        # Lancaster+2025 Eq.21 (α_p=1): R_eq² = pdot_w/(4π ρ c_i²)
+        np.sqrt(pdot_w_cgs / (4.0 * np.pi * rho_cloud * C_I_SQ)),
         0.0
     )
 

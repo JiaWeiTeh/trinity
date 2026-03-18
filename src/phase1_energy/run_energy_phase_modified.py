@@ -220,11 +220,12 @@ def run_energy(params):
         # Sound speed in photoionised gas: c_i^2 = k_B T_ion / mu_ion
         # mu_ion is already in code units (Msun) = mu_dimless * m_H * g2Msun
         _c_i2 = _k_B * _T_ion / _mu_ion
-        # Equilibrium radius for momentum-driven WBB (Lancaster+2025 Eq.21), α_p=1
+        # Equilibrium radius for momentum-driven WBB (Lancaster+2025 Eq.21, α_p=1)
+        # P_ram(R) = pdot_w/(4π R²) = ρ c_i²  =>  R_eq² = pdot_w/(4π ρ c_i²)
         _rho_amb = _n_amb * _mu_ion
         if _pdot_W > 0.0 and _rho_amb > 0.0 and _c_i2 > 0.0:
-            _R_eq = np.sqrt(3.0 * _pdot_W /
-                            (16.0 * np.pi * _rho_amb * _c_i2))
+            _R_eq = np.sqrt(_pdot_W /
+                            (4.0 * np.pi * _rho_amb * _c_i2))
         else:
             _R_eq = 0.0
         _zeta = _R_eq / _R_St if (np.isfinite(_R_St) and _R_St > 0.0) else 0.0
