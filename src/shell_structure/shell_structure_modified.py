@@ -64,6 +64,7 @@ class ShellProperties:
 
     # Ionization front properties (for P_HII convex blend)
     n_IF: float  # Density at ionization front (code units)
+    n_IF_ODE: float  # Raw ODE-derived n_IF before max() selection (code units)
     R_IF: float  # Radius of ionization front (pc)
     n_IF_Str: float  # Strömgren-based n_IF diagnostic (Lancaster+2025)
 
@@ -210,6 +211,7 @@ def shell_structure_pure(params) -> ShellProperties:
 
     # Extract ionization front properties (for P_HII convex blend)
     n_IF = nShell_arr_ion[-1]  # Density at ionization front
+    n_IF_ODE = n_IF            # Preserve raw ODE value before max() selection
     R_IF = rShell_arr_ion[-1]  # Radius of ionization front
 
     # ------------------------------------------------------------------
@@ -436,6 +438,7 @@ def shell_structure_pure(params) -> ShellProperties:
         shell_F_rad = 0.0
         # No ionization front when dissolved
         n_IF = 0.0
+        n_IF_ODE = 0.0
         R_IF = 0.0
         n_IF_Str = 0.0
         shell_r_arr = np.array([])
@@ -470,6 +473,7 @@ def shell_structure_pure(params) -> ShellProperties:
         is_fullyIonised=is_fullyIonised,
         diss_condition_met=diss_condition_met,
         n_IF=n_IF,
+        n_IF_ODE=n_IF_ODE,
         R_IF=R_IF,
         n_IF_Str=n_IF_Str,
         shell_r_arr=shell_r_arr,
