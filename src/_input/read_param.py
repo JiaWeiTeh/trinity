@@ -481,6 +481,7 @@ def read_param(path2file, write_summary=True):
 
     # HII region / ionization front diagnostic parameters
     params['n_IF'] = DescribedItem(0.0, info="Density at ionization front", ori_units="1/pc**3")
+    params['n_IF_ODE'] = DescribedItem(0.0, info="Raw ODE-derived n_IF before Stroemgren correction", ori_units="1/pc**3")
     params['R_IF'] = DescribedItem(0.0, info="Radius of ionization front", ori_units="pc")
     params['n_IF_Str'] = DescribedItem(0.0, info="Stroemgren-based n_IF diagnostic (Lancaster+2025)", ori_units="1/pc**3")
     params['zeta'] = DescribedItem(1.0, info="WBB vs PIR dominance ratio (Lancaster+2025)", ori_units=None)

@@ -98,8 +98,8 @@ def load_run(data_path: Path):
     R2_arr     = get_field('R2', 0.0)           # pc
 
     # n_IF fields (both in AU, 1/pc³ — ratio is dimensionless)
-    n_IF_Str_au = get_field('n_IF_Str', 0.0)
-    n_IF_au     = get_field('n_IF', 0.0)
+    n_IF_Str_au  = get_field('n_IF_Str', 0.0)
+    n_IF_ODE_au  = get_field('n_IF_ODE', 0.0)
 
     rcloud     = float(output[0].get('rCloud', np.nan))
     isCollapse = np.array(output.get('isCollapse', as_array=False))
@@ -112,7 +112,7 @@ def load_run(data_path: Path):
         P_drive_au, P_ram_au = P_drive_au[order], P_ram_au[order]
         F_rad_au = F_rad_au[order]
         R2_arr = R2_arr[order]
-        n_IF_Str_au, n_IF_au = n_IF_Str_au[order], n_IF_au[order]
+        n_IF_Str_au, n_IF_ODE_au = n_IF_Str_au[order], n_IF_ODE_au[order]
         isCollapse = isCollapse[order]
 
     # --- Convert pressures to CGS (dyn cm⁻²) ---
@@ -134,8 +134,8 @@ def load_run(data_path: Path):
     # Suppress where n_IF_Str is zero
     P_HII_Str_cgs[n_IF_Str_cgs <= 0] = 0.0
 
-    # --- n_IF ratio: n_IF_Str / n_IF (both in AU, units cancel) ---
-    nIF_ratio = np.where(n_IF_au > 0, n_IF_Str_au / n_IF_au, np.nan)
+    # --- n_IF ratio: n_IF_Str / n_IF_ODE (both in AU, units cancel) ---
+    nIF_ratio = np.where(n_IF_ODE_au > 0, n_IF_Str_au / n_IF_ODE_au, np.nan)
 
     pressures = {
         'Pb':         Pb_cgs,
