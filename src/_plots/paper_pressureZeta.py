@@ -91,7 +91,6 @@ def load_run(data_path: Path):
 
     # --- Raw snapshot fields (all in AU) ---
     Pb_au      = get_field('Pb', 0.0)
-    P_HII_au   = get_field('P_HII', 0.0)       # ODE boundary condition value
     P_drive_au = get_field('P_drive', 0.0)
     P_ram_au   = get_field('P_ram', 0.0)
     F_rad_au   = get_field('F_rad', 0.0)        # force, not pressure
@@ -108,7 +107,7 @@ def load_run(data_path: Path):
     if np.any(np.diff(t) < 0):
         order = np.argsort(t)
         t, R2, phase = t[order], R2[order], phase[order]
-        Pb_au, P_HII_au = Pb_au[order], P_HII_au[order]
+        Pb_au = Pb_au[order]
         P_drive_au, P_ram_au = P_drive_au[order], P_ram_au[order]
         F_rad_au = F_rad_au[order]
         R2_arr = R2_arr[order]
@@ -117,7 +116,6 @@ def load_run(data_path: Path):
 
     # --- Convert pressures to CGS (dyn cm⁻²) ---
     Pb_cgs      = Pb_au      * INV_CONV.Pb_au2cgs
-    P_HII_cgs   = P_HII_au   * INV_CONV.Pb_au2cgs  # ODE value
     P_drive_cgs = P_drive_au * INV_CONV.Pb_au2cgs
     P_ram_cgs   = P_ram_au   * INV_CONV.Pb_au2cgs
 
@@ -126,13 +124,24 @@ def load_run(data_path: Path):
     P_rad_au = F_rad_au / (4.0 * np.pi * R2_safe**2)
     P_rad_cgs = P_rad_au * INV_CONV.Pb_au2cgs
 
-    # --- Compute P_HII,Str from Strömgren ionisation balance ---
-    # P_HII_Str = 2 n_IF_Str k_B T_ion  [CGS]
-    # n_IF_Str is in AU (1/pc³) → convert to CGS (1/cm³)
+    # --- Compute P_HII curves from raw density fields ---
+    # P_HII = 2 n_IF k_B T_ion  [CGS]
+    # n_IF fields are in AU (1/pc³) → convert to CGS (1/cm³)
+    #
+    # P_HII_Str: from Strömgren ionisation balance (independent of Pb)
+    # P_HII_ODE: from shell ODE boundary condition (anchored to Pb)
+    #
+    # Note: the snapshot field 'P_HII' uses the post-max n_IF = max(n_IF_ODE, n_IF_Str),
+    # so it collapses to P_HII_Str whenever Strömgren wins.  We recompute both
+    # curves from the raw density fields to make them distinguishable.
     n_IF_Str_cgs = n_IF_Str_au * INV_CONV.ndens_au2cgs
+    n_IF_ODE_cgs = n_IF_ODE_au * INV_CONV.ndens_au2cgs
+
     P_HII_Str_cgs = 2.0 * n_IF_Str_cgs * CGS.k_B * T_ION
-    # Suppress where n_IF_Str is zero
     P_HII_Str_cgs[n_IF_Str_cgs <= 0] = 0.0
+
+    P_HII_ODE_cgs = 2.0 * n_IF_ODE_cgs * CGS.k_B * T_ION
+    P_HII_ODE_cgs[n_IF_ODE_cgs <= 0] = 0.0
 
     # --- n_IF ratio: n_IF_Str / n_IF_ODE (both in AU, units cancel) ---
     nIF_ratio = np.where(n_IF_ODE_au > 0, n_IF_Str_au / n_IF_ODE_au, np.nan)
@@ -140,7 +149,7 @@ def load_run(data_path: Path):
     pressures = {
         'Pb':         Pb_cgs,
         'P_HII_Str':  P_HII_Str_cgs,
-        'P_HII_ODE':  P_HII_cgs,
+        'P_HII_ODE':  P_HII_ODE_cgs,
         'P_ram':      P_ram_cgs,
         'P_rad':      P_rad_cgs,
         'P_drive':    P_drive_cgs,
