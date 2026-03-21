@@ -81,9 +81,8 @@ class ShellProperties:
 
 def _integrate_ionized_to_mass_limit(n0, R2, M_shell_target, params):
     """
-    Integrate the ionized shell ODE from density n0 at radius R2.
-    Stop when cumulative mass reaches M_shell_target.
-    Return phi at that point (residual for root-find).
+    Integrate the ionized shell ODE from density n0 at radius R2
+    until phi drops to zero.  Return mass-based residual for root-find.
 
     Parameters
     ----------
@@ -99,11 +98,11 @@ def _integrate_ionized_to_mass_limit(n0, R2, M_shell_target, params):
 
     Returns
     -------
-    phi_at_mass : float
-        Value of ionizing flux attenuation phi when cumulative mass = M_shell_target.
-        phi > 0 means photons leak (n0 too low).
-        phi = 0 means all Qi absorbed exactly at mass limit (n0 just right).
-        Returns a negative number if phi hit 0 before mass limit (n0 too high).
+    residual : float
+        (M_at_phi_zero - M_shell_target) / M_shell_target.
+        Positive means n0 is too low  (photons ionize past M_shell).
+        Negative means n0 is too high (photons absorbed before M_shell).
+        Zero means n0 is the correct root.
     """
     Qi = params['Qi'].value
     alpha_B = params['caseB_alpha'].value
@@ -118,7 +117,7 @@ def _integrate_ionized_to_mass_limit(n0, R2, M_shell_target, params):
 
     # Guard against degenerate step sizes
     if rShell_step <= 0 or not np.isfinite(rShell_step):
-        return 1.0  # photons leak — n0 too low
+        return 1.0  # n0 too low — photons would leak through infinite volume
 
     f_cover = 1
     rShell_start = R2
@@ -127,10 +126,11 @@ def _integrate_ionized_to_mass_limit(n0, R2, M_shell_target, params):
     tau0_ion = 0.0
     mShell0 = 0.0
 
-    is_allMassSwept = False
-    is_fullyIonised = False
+    # Integration limit: stop if mass exceeds 10x target (n0 clearly too low)
+    max_mass = 10.0 * M_shell_target
+    max_iter = 200  # prevent runaway loops
 
-    while not is_allMassSwept and not is_fullyIonised:
+    for _ in range(max_iter):
         rShell_stop = rShell_start + sliceSize
         rShell_arr = np.arange(rShell_start, rShell_stop, rShell_step)
         if len(rShell_arr) < 2:
@@ -146,43 +146,38 @@ def _integrate_ionized_to_mass_limit(n0, R2, M_shell_target, params):
         phiShell_arr = sol_ODE[:, 1]
         tauShell_arr = sol_ODE[:, 2]
 
-        # Mass of spherical shell
+        # Guard against ODE divergence (NaN/Inf)
+        if not np.all(np.isfinite(phiShell_arr)):
+            # ODE diverged — density too extreme
+            return -1.0
+
+        # Mass of each thin spherical shell
         mShell_arr = np.empty_like(rShell_arr)
         mShell_arr[0] = mShell0
         mShell_arr[1:] = (nShell_arr[1:] * params['mu_ion'].value *
                          4 * np.pi * rShell_arr[1:]**2 * rShell_step)
         mShell_arr_cum = np.cumsum(mShell_arr)
 
-        # Find termination index
-        massCondition = mShell_arr_cum >= M_shell_target
+        # Has phi dropped below threshold?
         phiCondition = phiShell_arr <= 1e-9
+        if np.any(phiCondition):
+            idx_phi = np.nonzero(phiCondition)[0][0]
+            M_at_phi0 = mShell_arr_cum[idx_phi]
+            return (M_at_phi0 - M_shell_target) / M_shell_target
 
-        idx_array = np.nonzero((massCondition | phiCondition))[0]
-        if len(idx_array) == 0:
-            idx = len(rShell_arr) - 1
-        else:
-            idx = idx_array[0]
+        # Has mass exceeded our integration limit? (n0 clearly too low)
+        if mShell_arr_cum[-1] >= max_mass:
+            return (max_mass - M_shell_target) / M_shell_target  # large positive
 
-        is_allMassSwept = any(massCondition)
-        is_fullyIonised = any(phiCondition)
-
-        # If phi hit 0 before mass limit — n0 too high
-        if is_fullyIonised and not is_allMassSwept:
-            cumul_mass_at_phi0 = mShell_arr_cum[idx]
-            return -(M_shell_target - cumul_mass_at_phi0) / M_shell_target
-
-        # If mass limit reached — return phi value (positive = photons leak)
-        if is_allMassSwept:
-            return float(max(0.0, phiShell_arr[idx]))
-
-        # Reinitialize for next iteration
+        # Reinitialize for next slice
+        idx = len(rShell_arr) - 1
         nShell0 = nShell_arr[idx]
         phi0 = max(0.0, phiShell_arr[idx])
         tau0_ion = tauShell_arr[idx]
         mShell0 = mShell_arr_cum[idx]
         rShell_start = rShell_arr[idx]
 
-    # Fallback: if we exited without clear termination, return phi
+    # Fell through without phi→0: n0 is too low, photons leak
     return 1.0
 
 
@@ -223,40 +218,73 @@ def compute_P_HII_free(Qi, R2, M_shell, params):
     k_B = params['k_B'].value
     TShell_ion = params['TShell_ion'].value
 
-    # Analytic floor: density such that recombinations in M_shell consume Qi
+    # Analytic density scale: uniform-shell Strömgren equilibrium
     n_eq = Qi * mu_ion / (alpha_B * M_shell)
 
-    # Root-finding: find n0 where residual changes sign
-    n_low = 0.1 * n_eq
-    n_high = 100.0 * n_eq
+    # Geometry correction: for large R2, the thin-shell equilibrium density
+    # is n ~ n_eq * 3 / (4π R2²), which can be orders of magnitude lower.
+    geo_factor = 3.0 / (4.0 * np.pi * max(R2, 1e-6)**2)
+    n_eq_geo = n_eq * min(geo_factor, 1.0)  # never increase above n_eq
+
+    # Use the geometric estimate as bracket center
+    n_center = n_eq_geo
 
     def residual(n0):
         return _integrate_ionized_to_mass_limit(n0, R2, M_shell, params)
 
     try:
+        # Initial bracket: wide range around geometry-aware estimate
+        n_low = 0.01 * n_center
+        n_high = 100.0 * n_center
         r_low = residual(n_low)
         r_high = residual(n_high)
 
         if r_low * r_high >= 0:
-            # Expand bracket
-            n_low = 0.01 * n_eq
-            n_high = 1000.0 * n_eq
+            # Expand bracket much wider
+            n_low = 1e-4 * n_center
+            n_high = 1e4 * n_center
             r_low = residual(n_low)
             r_high = residual(n_high)
+
+        if r_low * r_high >= 0:
+            # Logarithmic scan across many orders of magnitude
+            # centered on n_eq_geo, scanning 12 decades
+            n_scan_lo, n_scan_hi = n_low, n_high
+            r_scan_lo, r_scan_hi = r_low, r_high
+            for exp in np.linspace(-8, 8, 33):
+                n_test = n_center * 10.0**exp
+                r_test = residual(n_test)
+                if r_scan_lo * r_test < 0:
+                    n_scan_hi = n_test
+                    r_scan_hi = r_test
+                    break
+                if r_scan_hi * r_test < 0:
+                    n_scan_lo = n_test
+                    r_scan_lo = r_test
+                    break
+                # Update the bounds that are closest to a sign change
+                if r_test > 0:
+                    n_scan_lo = n_test
+                    r_scan_lo = r_test
+                elif r_test < 0:
+                    n_scan_hi = n_test
+                    r_scan_hi = r_test
+            n_low, n_high = n_scan_lo, n_scan_hi
+            r_low, r_high = r_scan_lo, r_scan_hi
 
         if r_low * r_high < 0:
             n0_star = scipy.optimize.brentq(residual, n_low, n_high, rtol=1e-3)
         else:
-            # Fallback: use analytic estimate
-            logger.warning(
+            # Fallback: use geometry-aware estimate (best guess)
+            logger.debug(
                 f'P_HII_free root-find bracket failed '
                 f'(r_low={r_low:.3e}, r_high={r_high:.3e}); '
-                f'falling back to n_eq={n_eq:.3e}'
+                f'falling back to n_eq_geo={n_eq_geo:.3e}'
             )
-            n0_star = n_eq
+            n0_star = n_eq_geo
     except Exception as e:
-        logger.warning(f'P_HII_free root-find failed: {e}; falling back to n_eq={n_eq:.3e}')
-        n0_star = n_eq
+        logger.debug(f'P_HII_free root-find failed: {e}; falling back to n_eq_geo={n_eq_geo:.3e}')
+        n0_star = n_eq_geo
 
     P_HII_free = 2.0 * n0_star * k_B * TShell_ion
     return (P_HII_free, n0_star)
