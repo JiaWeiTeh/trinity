@@ -102,6 +102,9 @@ rCore    0.01
 # INFO: Allow shell dissolution to terminate simulation. If False, shell dissolution check is disabled.
 allowShellDissolution    True
 
+# INFO: If True (default): shell inner-edge density nShell0 = Pb/(2 k_B T_ion) in ALL phases (standard Rahner+2017 BC). P_HII_free is computed as diagnostic only. If False: in the MOMENTUM PHASE ONLY, nShell0 = max(Pb, P_HII_free)/(2 k_B T_ion), where P_HII_free is the independent ionization-equilibrium pressure from root-finding.
+use_Pb_BC_for_PHii    True
+
 # INFO: Duration (in Myr) that shell_nMax must remain below nISM before dissolution is triggered.
 # UNIT: [Myr]
 stop_t_diss    1

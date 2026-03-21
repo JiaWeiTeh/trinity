@@ -17,6 +17,7 @@ Key difference from shell_structure.py:
 
 import numpy as np
 import scipy.integrate
+import scipy.optimize
 from dataclasses import dataclass
 from typing import Optional, Union
 import logging
@@ -68,10 +69,197 @@ class ShellProperties:
     R_IF: float  # Radius of ionization front (pc)
     n_IF_Str: float  # Strömgren-based n_IF diagnostic (Lancaster+2025)
 
+    # Independent ionization-equilibrium pressure (root-find diagnostic)
+    P_HII_free: float      # Independent P_HII from root-find (code units)
+    n0_HII_free: float     # Root-find inner-edge density (code units)
+
     # Shell density profile arrays (ionized + neutral)
     shell_r_arr: Union[np.ndarray, float]  # Radial grid through shell [pc]
     shell_n_arr: Union[np.ndarray, float]  # Number density through shell [1/pc^3]
     shell_ion_idx: int  # Last index of ionized region in shell_r/n_arr (-1 if empty)
+
+
+def _integrate_ionized_to_mass_limit(n0, R2, M_shell_target, params):
+    """
+    Integrate the ionized shell ODE from density n0 at radius R2.
+    Stop when cumulative mass reaches M_shell_target.
+    Return phi at that point (residual for root-find).
+
+    Parameters
+    ----------
+    n0 : float
+        Trial inner-edge density (code units, 1/pc³).
+    R2 : float
+        Inner shell radius (pc).
+    M_shell_target : float
+        Total shell mass to integrate through (code units).
+    params : DescribedDict
+        For physical constants only (alpha_B, sigma_d, Qi, Li, Ln, mu_ion,
+        mu_atom, k_B, TShell_ion, c_light). NOT used for Pb.
+
+    Returns
+    -------
+    phi_at_mass : float
+        Value of ionizing flux attenuation phi when cumulative mass = M_shell_target.
+        phi > 0 means photons leak (n0 too low).
+        phi = 0 means all Qi absorbed exactly at mass limit (n0 just right).
+        Returns a negative number if phi hit 0 before mass limit (n0 too high).
+    """
+    Qi = params['Qi'].value
+    alpha_B = params['caseB_alpha'].value
+
+    # Maximum shell radius (Strömgren radius from n0)
+    max_shellRadius = (3 * Qi / (4 * np.pi * alpha_B * n0**2))**(1/3) + R2
+
+    # Integration parameters (same as shell_structure_pure)
+    nsteps = 1e3
+    sliceSize = np.min([1, (max_shellRadius - R2) / 10])
+    rShell_step = sliceSize / nsteps
+
+    # Guard against degenerate step sizes
+    if rShell_step <= 0 or not np.isfinite(rShell_step):
+        return 1.0  # photons leak — n0 too low
+
+    f_cover = 1
+    rShell_start = R2
+    nShell0 = n0
+    phi0 = 1.0
+    tau0_ion = 0.0
+    mShell0 = 0.0
+
+    is_allMassSwept = False
+    is_fullyIonised = False
+
+    while not is_allMassSwept and not is_fullyIonised:
+        rShell_stop = rShell_start + sliceSize
+        rShell_arr = np.arange(rShell_start, rShell_stop, rShell_step)
+        if len(rShell_arr) < 2:
+            break
+
+        is_ionised = True
+        y0 = [nShell0, phi0, tau0_ion]
+        sol_ODE = scipy.integrate.odeint(
+            get_shellODE.get_shellODE, y0, rShell_arr,
+            args=(f_cover, is_ionised, params)
+        )
+        nShell_arr = sol_ODE[:, 0]
+        phiShell_arr = sol_ODE[:, 1]
+        tauShell_arr = sol_ODE[:, 2]
+
+        # Mass of spherical shell
+        mShell_arr = np.empty_like(rShell_arr)
+        mShell_arr[0] = mShell0
+        mShell_arr[1:] = (nShell_arr[1:] * params['mu_ion'].value *
+                         4 * np.pi * rShell_arr[1:]**2 * rShell_step)
+        mShell_arr_cum = np.cumsum(mShell_arr)
+
+        # Find termination index
+        massCondition = mShell_arr_cum >= M_shell_target
+        phiCondition = phiShell_arr <= 1e-9
+
+        idx_array = np.nonzero((massCondition | phiCondition))[0]
+        if len(idx_array) == 0:
+            idx = len(rShell_arr) - 1
+        else:
+            idx = idx_array[0]
+
+        is_allMassSwept = any(massCondition)
+        is_fullyIonised = any(phiCondition)
+
+        # If phi hit 0 before mass limit — n0 too high
+        if is_fullyIonised and not is_allMassSwept:
+            cumul_mass_at_phi0 = mShell_arr_cum[idx]
+            return -(M_shell_target - cumul_mass_at_phi0) / M_shell_target
+
+        # If mass limit reached — return phi value (positive = photons leak)
+        if is_allMassSwept:
+            return float(max(0.0, phiShell_arr[idx]))
+
+        # Reinitialize for next iteration
+        nShell0 = nShell_arr[idx]
+        phi0 = max(0.0, phiShell_arr[idx])
+        tau0_ion = tauShell_arr[idx]
+        mShell0 = mShell_arr_cum[idx]
+        rShell_start = rShell_arr[idx]
+
+    # Fallback: if we exited without clear termination, return phi
+    return 1.0
+
+
+def compute_P_HII_free(Qi, R2, M_shell, params):
+    """
+    Compute independent ionization-equilibrium pressure via root-find.
+
+    Finds n0 such that the ionized shell ODE, starting from n(R2) = n0,
+    absorbs all Qi photons exactly when cumulative mass = M_shell.
+
+    This function NEVER reads params['Pb']. It depends only on Qi,
+    M_shell, and the shell ODE physics constants.
+
+    Parameters
+    ----------
+    Qi : float
+        Ionizing photon rate (code units, 1/Myr).
+    R2 : float
+        Inner shell radius (pc).
+    M_shell : float
+        Total shell mass (code units).
+    params : DescribedDict
+        For physical constants only.
+
+    Returns
+    -------
+    P_HII_free : float
+        Independent ionization-equilibrium pressure (code units).
+    n0_star : float
+        Root-find inner-edge density (code units).
+    """
+    # Guard against degenerate inputs
+    if Qi <= 0 or M_shell <= 0 or R2 <= 0:
+        return (0.0, 0.0)
+
+    alpha_B = params['caseB_alpha'].value
+    mu_ion = params['mu_ion'].value
+    k_B = params['k_B'].value
+    TShell_ion = params['TShell_ion'].value
+
+    # Analytic floor: density such that recombinations in M_shell consume Qi
+    n_eq = Qi * mu_ion / (alpha_B * M_shell)
+
+    # Root-finding: find n0 where residual changes sign
+    n_low = 0.1 * n_eq
+    n_high = 100.0 * n_eq
+
+    def residual(n0):
+        return _integrate_ionized_to_mass_limit(n0, R2, M_shell, params)
+
+    try:
+        r_low = residual(n_low)
+        r_high = residual(n_high)
+
+        if r_low * r_high >= 0:
+            # Expand bracket
+            n_low = 0.01 * n_eq
+            n_high = 1000.0 * n_eq
+            r_low = residual(n_low)
+            r_high = residual(n_high)
+
+        if r_low * r_high < 0:
+            n0_star = scipy.optimize.brentq(residual, n_low, n_high, rtol=1e-3)
+        else:
+            # Fallback: use analytic estimate
+            logger.warning(
+                f'P_HII_free root-find bracket failed '
+                f'(r_low={r_low:.3e}, r_high={r_high:.3e}); '
+                f'falling back to n_eq={n_eq:.3e}'
+            )
+            n0_star = n_eq
+    except Exception as e:
+        logger.warning(f'P_HII_free root-find failed: {e}; falling back to n_eq={n_eq:.3e}')
+        n0_star = n_eq
+
+    P_HII_free = 2.0 * n0_star * k_B * TShell_ion
+    return (P_HII_free, n0_star)
 
 
 def shell_structure_pure(params) -> ShellProperties:
@@ -421,6 +609,23 @@ def shell_structure_pure(params) -> ShellProperties:
             shell_r_arr = np.concatenate([rShell_arr_ion, rShell_arr_neu])
             shell_n_arr = np.concatenate([nShell_arr_ion, nShell_arr_neu])
 
+        # === Independent ionization-equilibrium pressure (root-find) ===
+        # Compute P_HII_free: the pressure the ionized layer would exert
+        # if its density were set by ionization balance alone (no Pb dependence).
+        # This is always computed as a diagnostic. When use_Pb_BC_for_PHii=False,
+        # the momentum-phase runner uses this value upstream to override the
+        # shell BC BEFORE calling shell_structure_pure.
+        _Qi_for_rootfind = Qi
+        _R2_for_rootfind = rShell0    # rShell0 == params['R2'].value == inner shell edge
+        _Msh_for_rootfind = mShell_end
+        if _Qi_for_rootfind > 0.0 and _Msh_for_rootfind > 0.0 and _R2_for_rootfind > 0.0:
+            P_HII_free, n0_HII_free = compute_P_HII_free(
+                _Qi_for_rootfind, _R2_for_rootfind, _Msh_for_rootfind, params
+            )
+        else:
+            P_HII_free = 0.0
+            n0_HII_free = 0.0
+
     elif is_shellDissolved:
         f_absorbed_ion = 0.0 # dissolved shell = no absorber; ionizing photons escape freely
         f_absorbed_neu = 0.0
@@ -441,6 +646,8 @@ def shell_structure_pure(params) -> ShellProperties:
         n_IF_ODE = 0.0
         R_IF = 0.0
         n_IF_Str = 0.0
+        P_HII_free = 0.0
+        n0_HII_free = 0.0
         shell_r_arr = np.array([])
         shell_n_arr = np.array([])
         shell_ion_idx = -1
@@ -476,6 +683,8 @@ def shell_structure_pure(params) -> ShellProperties:
         n_IF_ODE=n_IF_ODE,
         R_IF=R_IF,
         n_IF_Str=n_IF_Str,
+        P_HII_free=P_HII_free,
+        n0_HII_free=n0_HII_free,
         shell_r_arr=shell_r_arr,
         shell_n_arr=shell_n_arr,
         shell_ion_idx=shell_ion_idx,

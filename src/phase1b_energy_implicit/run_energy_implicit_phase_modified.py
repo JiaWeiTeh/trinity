@@ -249,6 +249,11 @@ class ForceProperties:
     P_ram: float = 0.0
     press_HII_in: float = 0.0
     F_HII: float = 0.0
+    # Branch tracking
+    P_HII_free: float = 0.0
+    n0_HII_free: float = 0.0
+    Pb_source: str = ''
+    drive_source: str = ''
 
 
 def compute_forces_pure(
@@ -342,6 +347,19 @@ def compute_forces_pure(
     # Radiation pressure force (from shell structure)
     F_rad = shell_props.shell_F_rad
 
+    # Branch tracking
+    _P_HII_free = shell_props.P_HII_free
+    _n0_HII_free = shell_props.n0_HII_free
+    if shell_props.isDissolved:
+        _Pb_source = 'dissolved'
+        _drive_source = 'dissolved'
+    elif _P_HII_free > Pb:
+        _Pb_source = 'bubble_underlimit'
+        _drive_source = 'bubble' if Pb >= P_HII else 'HII_shell'
+    else:
+        _Pb_source = 'bubble'
+        _drive_source = 'bubble' if Pb >= P_HII else 'HII_shell'
+
     return ForceProperties(
         F_grav=F_grav,
         F_ion_in=F_ion_in,
@@ -355,6 +373,10 @@ def compute_forces_pure(
         P_ram=0.0,  # no ram pressure in implicit phase
         press_HII_in=press_HII_in,
         F_HII=F_HII,
+        P_HII_free=_P_HII_free,
+        n0_HII_free=_n0_HII_free,
+        Pb_source=_Pb_source,
+        drive_source=_drive_source,
     )
 
 
@@ -653,6 +675,11 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         params['P_ram'].value = force_props.P_ram
         params['press_HII_in'].value = force_props.press_HII_in
         params['F_HII'].value = force_props.F_HII
+        # Independent ionization-equilibrium diagnostic
+        params['P_HII_free'].value = force_props.P_HII_free
+        params['n0_HII_free'].value = force_props.n0_HII_free
+        params['Pb_source'].value = force_props.Pb_source
+        params['drive_source'].value = force_props.drive_source
         params['F_ram_wind'].value = feedback.pdot_W
         params['F_ram_SN'].value = feedback.pdot_SN
 

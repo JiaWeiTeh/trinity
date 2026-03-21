@@ -361,6 +361,13 @@ def run_energy(params):
             params['press_HII_in'].value = ode_result.press_HII_in
         if ode_result.F_HII is not None:
             params['F_HII'].value = ode_result.F_HII
+        # Independent ionization-equilibrium diagnostic
+        if ode_result.P_HII_free is not None:
+            params['P_HII_free'].value = ode_result.P_HII_free
+        if ode_result.Pb_source is not None:
+            params['Pb_source'].value = ode_result.Pb_source
+        if ode_result.drive_source is not None:
+            params['drive_source'].value = ode_result.drive_source
         if ode_result.shell_mass is not None:
             params['shell_mass'].value = ode_result.shell_mass
         if ode_result.shell_massDot is not None:

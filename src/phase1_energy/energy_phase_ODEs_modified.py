@@ -102,6 +102,9 @@ class ODESnapshot:
     # Cloud properties
     rCloud: float
 
+    # Independent ionization-equilibrium diagnostic
+    P_HII_free: float  # Independent P_HII from root-find (code units)
+
 
 def create_ODE_snapshot(params) -> ODESnapshot:
     """
@@ -134,6 +137,7 @@ def create_ODE_snapshot(params) -> ODESnapshot:
         current_phase=params['current_phase'].value,
         EarlyPhaseApproximation=params['EarlyPhaseApproximation'].value,
         rCloud=params['rCloud'].value,
+        P_HII_free=params.get('P_HII_free', 0.0).value if hasattr(params.get('P_HII_free', 0.0), 'value') else params.get('P_HII_free', 0.0),
     )
 
 
@@ -297,6 +301,12 @@ class ODEResult:
     press_HII_in: Optional[float] = None
     F_HII: Optional[float] = None
 
+    # Independent ionization-equilibrium diagnostic
+    P_HII_free: Optional[float] = None
+    n0_HII_free: Optional[float] = None
+    Pb_source: Optional[str] = None
+    drive_source: Optional[str] = None
+
 
 def compute_derived_quantities(t: float, y: list, snapshot: ODESnapshot, params_for_feedback) -> ODEResult:
     """
@@ -371,10 +381,25 @@ def compute_derived_quantities(t: float, y: list, snapshot: ODESnapshot, params_
         P_b_ram = get_bubbleParams.pRam(R2, Lmech_total, v_mech_total)
         P_drive = max(Pb, P_HII + P_b_ram)
         F_HII = 4.0 * np.pi * R2**2 * P_HII
+        # Branch tracking
+        drive_source = 'bubble' if Pb >= (P_HII + P_b_ram) else 'HII+ram'
     else:
         # energy / implicit phases: max(Pb, P_HII)
         P_drive = max(Pb, P_HII)
         F_HII = 4.0 * np.pi * R2**2 * P_HII
+        # Branch tracking
+        drive_source = 'bubble' if Pb >= P_HII else 'HII_shell'
+
+    # Pb_source: what set the shell BC this timestep
+    # In energy/implicit/transition phases, BC is always bubble thermal pressure
+    _P_HII_free = snapshot.P_HII_free
+    if snapshot.current_phase in ('energy', 'implicit', 'transition'):
+        if _P_HII_free > Pb:
+            Pb_source = 'bubble_underlimit'
+        else:
+            Pb_source = 'bubble'
+    else:
+        Pb_source = 'bubble'
 
     # F_ion_out kept for backwards compatibility
     F_ion_out = F_HII
@@ -407,4 +432,9 @@ def compute_derived_quantities(t: float, y: list, snapshot: ODESnapshot, params_
         P_ram=P_ram_val,
         press_HII_in=press_HII_in,
         F_HII=F_HII,
+        # Independent ionization-equilibrium diagnostic
+        P_HII_free=_P_HII_free,
+        n0_HII_free=None,  # n0_HII_free stored by shell_structure; not re-derived here
+        Pb_source=Pb_source,
+        drive_source=drive_source,
     )

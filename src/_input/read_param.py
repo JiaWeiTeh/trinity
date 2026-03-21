@@ -490,7 +490,13 @@ def read_param(path2file, write_summary=True):
     params['P_ram'] = DescribedItem(0.0, info="Ram pressure from freely-streaming wind", ori_units="Msun/Myr**2/pc")
     params['press_HII_in'] = DescribedItem(0.0, info="Inward HII pressure at shell (confining)", ori_units="Msun/Myr**2/pc")
     params['F_HII'] = DescribedItem(0.0, info="Force from HII pressure", ori_units="Msun*pc/Myr**2")
-    
+
+    # Independent ionization-equilibrium pressure diagnostic (root-find)
+    params['P_HII_free'] = DescribedItem(0.0, info="Independent ionization-equilibrium pressure from root-find", ori_units="Msun/Myr**2/pc")
+    params['n0_HII_free'] = DescribedItem(0.0, info="Root-find inner-edge density", ori_units="1/pc**3")
+    params['Pb_source'] = DescribedItem('', info="Which branch set the shell BC this timestep", ori_units="N/A")
+    params['drive_source'] = DescribedItem('', info="What dominates P_drive in the ODE", ori_units="N/A")
+
     # Bubble structure
     params['bubble_LTotal'] = DescribedItem(0, info="Total luminosity lost to cooling", ori_units="Msun*pc**2/Myr**3")
     params['bubble_L1Bubble'] = DescribedItem(0, info="Cooling in bubble zone", ori_units="Msun*pc**2/Myr**3")
