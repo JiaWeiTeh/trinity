@@ -69,6 +69,7 @@ from src.phase1b_energy_implicit.get_betadelta_modified import (
 from src.shell_structure.shell_structure_modified import (
     shell_structure_pure,
     ShellProperties,
+    compute_P_HII_free,
 )
 import src.bubble_structure.get_bubbleParams as get_bubbleParams
 
@@ -346,19 +347,6 @@ def compute_forces_pure(
     # Radiation pressure force
     F_rad = shell_props.shell_F_rad
 
-    # Branch tracking
-    _P_HII_free = shell_props.P_HII_free
-    _n0_HII_free = shell_props.n0_HII_free
-    if shell_props.isDissolved:
-        _Pb_source = 'dissolved'
-        _drive_source = 'dissolved'
-    elif _P_HII_free > Pb:
-        _Pb_source = 'bubble_underlimit'
-        _drive_source = 'bubble' if Pb >= (P_HII + P_b_ram) else 'HII+ram'
-    else:
-        _Pb_source = 'bubble'
-        _drive_source = 'bubble' if Pb >= (P_HII + P_b_ram) else 'HII+ram'
-
     return ForceProperties(
         F_grav=F_grav,
         F_ion_in=F_ion_in,
@@ -372,10 +360,11 @@ def compute_forces_pure(
         P_ram=P_b_ram,
         press_HII_in=press_HII_in,
         F_HII=F_HII,
-        P_HII_free=_P_HII_free,
-        n0_HII_free=_n0_HII_free,
-        Pb_source=_Pb_source,
-        drive_source=_drive_source,
+        P_HII_free=shell_props.P_HII_free,
+        n0_HII_free=shell_props.n0_HII_free,
+        # Pb_source and drive_source are set by main loop standalone blocks
+        Pb_source='',
+        drive_source='',
     )
 
 
@@ -554,8 +543,29 @@ def run_phase_transition(params) -> TransitionPhaseResults:
         # Independent ionization-equilibrium diagnostic
         params['P_HII_free'].value = force_props.P_HII_free
         params['n0_HII_free'].value = force_props.n0_HII_free
-        params['Pb_source'].value = force_props.Pb_source
-        params['drive_source'].value = force_props.drive_source
+
+        # === Branch tracking: Pb_source (transition phase) ===
+        _Pb_current = params['Pb'].value
+        _P_HII_free_val = params['P_HII_free'].value
+
+        _is_dissolved = False
+        _diss_check = params.get('isDissolved', None)
+        if _diss_check and hasattr(_diss_check, 'value'):
+            _is_dissolved = bool(_diss_check.value)
+
+        if _is_dissolved:
+            params['Pb_source'].value = 'dissolved'
+        elif _P_HII_free_val > _Pb_current * 1.01:
+            params['Pb_source'].value = 'bubble_underlimit'
+        else:
+            params['Pb_source'].value = 'bubble'
+
+        # drive_source: what did max(Pb, P_HII + P_ram) select?
+        if abs(params['P_drive'].value - params['Pb'].value) < 1e-30 * max(abs(params['P_drive'].value), 1e-99):
+            params['drive_source'].value = 'bubble'
+        else:
+            params['drive_source'].value = 'HII+ram'
+
         params['F_ram_wind'].value = feedback.pdot_W
         params['F_ram_SN'].value = feedback.pdot_SN
 

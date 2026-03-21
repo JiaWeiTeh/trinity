@@ -61,6 +61,7 @@ from src._input.dictionary import updateDict
 from src.shell_structure.shell_structure_modified import (
     shell_structure_pure,
     ShellProperties,
+    compute_P_HII_free,
 )
 import src.bubble_structure.get_bubbleParams as get_bubbleParams
 from src.cloud_properties import density_profile
@@ -281,27 +282,6 @@ def compute_forces_momentum_pure(
     # Radiation pressure force
     F_rad = shell_props.shell_F_rad
 
-    # Branch tracking for momentum phase
-    _P_HII_free = shell_props.P_HII_free
-    _n0_HII_free = shell_props.n0_HII_free
-    # Check if shell dissolved
-    if shell_props.isDissolved:
-        _Pb_source = 'dissolved'
-        _drive_source = 'dissolved'
-    else:
-        # Determine Pb_source: did P_HII_free or P_ram set the BC?
-        # The caller (main loop) decides the actual BC via use_Pb_BC_for_PHii;
-        # here we record which branch was selected.
-        _use_Pb_BC = params.get('use_Pb_BC_for_PHii', True)
-        if hasattr(_use_Pb_BC, 'value'):
-            _use_Pb_BC = _use_Pb_BC.value
-        if not _use_Pb_BC and _P_HII_free > press_ram:
-            _Pb_source = 'HII_free'
-            _drive_source = 'HII_free+ram'
-        else:
-            _Pb_source = 'ram'
-            _drive_source = 'HII+ram'
-
     return ForceProperties(
         F_grav=F_grav,
         F_ion_in=F_ion_in,
@@ -315,10 +295,11 @@ def compute_forces_momentum_pure(
         P_ram=press_ram,
         press_HII_in=press_HII_in,
         F_HII=F_HII,
-        P_HII_free=_P_HII_free,
-        n0_HII_free=_n0_HII_free,
-        Pb_source=_Pb_source,
-        drive_source=_drive_source,
+        P_HII_free=shell_props.P_HII_free,
+        n0_HII_free=shell_props.n0_HII_free,
+        # Pb_source and drive_source are set by main loop standalone blocks
+        Pb_source='',
+        drive_source='',
     )
 
 
@@ -345,6 +326,10 @@ class MomentumODESnapshot:
     mShell: float
     mShell_dot: float
     isCollapse: bool
+    # Independent P_HII diagnostic and branch tracking (carried for output only)
+    P_HII_free: float
+    Pb_source: str
+    drive_source: str
 
 
 def create_momentum_snapshot(params, shell_props: ShellProperties,
@@ -379,6 +364,9 @@ def create_momentum_snapshot(params, shell_props: ShellProperties,
         mShell=mShell,
         mShell_dot=mShell_dot,
         isCollapse=is_collapse,
+        P_HII_free=params['P_HII_free'].value,
+        Pb_source=params['Pb_source'].value,
+        drive_source=params['drive_source'].value,
     )
 
 
@@ -558,28 +546,37 @@ def run_phase_momentum(params) -> MomentumPhaseResults:
         feedback = get_currentSB99feedback(t_now, params)
         updateDict(params, feedback)
 
-        # Set Pb to ram pressure so shell inner-edge density
-        # (nShell0 = Pb / k_B T_ion) is physically meaningful.
-        # Without this, Pb = 0 in momentum phase would give n_IF → 0.
+        # Always compute P_ram — this is the wind ram pressure regardless of BC choice
         Lmech_total_pre = feedback.Lmech_total
         v_mech_total_pre = feedback.v_mech_total
-        _P_ram_pre = get_bubbleParams.pRam(R2, Lmech_total_pre, v_mech_total_pre)
+        P_ram_for_BC = get_bubbleParams.pRam(R2, Lmech_total_pre, v_mech_total_pre)
 
-        # When use_Pb_BC_for_PHii=False, use max(P_ram, P_HII_free) for the
-        # shell BC in the momentum phase. P_HII_free from the previous timestep
-        # is read from params; on the first momentum timestep it defaults to 0.
+        # Check parameter flag
         _use_Pb_BC = params.get('use_Pb_BC_for_PHii', True)
         if hasattr(_use_Pb_BC, 'value'):
             _use_Pb_BC = _use_Pb_BC.value
-        if not _use_Pb_BC:
-            _P_HII_free_prev = params['P_HII_free'].value
-            params['Pb'].value = max(_P_ram_pre, _P_HII_free_prev)
-        else:
-            params['Pb'].value = _P_ram_pre
 
-        # Calculate shell structure using pure function
+        if _use_Pb_BC:
+            # Default mode: standard Rahner BC anchored to ram pressure
+            params['Pb'].value = P_ram_for_BC
+        else:
+            # Root-find mode: compute P_HII_free BEFORE shell structure,
+            # then use max(P_ram, P_HII_free) as the shell BC.
+            # Use shell mass from previous timestep (changes slowly between steps).
+            _Msh_pre = params['shell_mass'].value
+            _Qi_pre = params['Qi'].value
+            _R2_pre = R2
+            _P_HII_free_pre, _n0_pre = compute_P_HII_free(
+                _Qi_pre, _R2_pre, _Msh_pre, params
+            )
+            params['Pb'].value = max(P_ram_for_BC, _P_HII_free_pre)
+
+        # Shell structure uses whatever Pb was set above
         shell_props = shell_structure_pure(params)
         updateDict(params, shell_props)
+
+        # Store P_ram separately (always computed regardless of BC choice)
+        params['P_ram'].value = P_ram_for_BC
 
         # Set R1 = R2 (no inner shock in momentum phase)
         params['R1'].value = R2
@@ -643,8 +640,38 @@ def run_phase_momentum(params) -> MomentumPhaseResults:
         # Independent ionization-equilibrium diagnostic
         params['P_HII_free'].value = force_props.P_HII_free
         params['n0_HII_free'].value = force_props.n0_HII_free
-        params['Pb_source'].value = force_props.Pb_source
-        params['drive_source'].value = force_props.drive_source
+
+        # === Branch tracking: Pb_source (momentum phase) ===
+        _P_ram_val = params['P_ram'].value
+        _P_HII_free_val = params['P_HII_free'].value
+
+        _is_dissolved = False
+        _diss_check = params.get('isDissolved', None)
+        if _diss_check and hasattr(_diss_check, 'value'):
+            _is_dissolved = bool(_diss_check.value)
+
+        _use_Pb_BC = params.get('use_Pb_BC_for_PHii', True)
+        if hasattr(_use_Pb_BC, 'value'):
+            _use_Pb_BC = _use_Pb_BC.value
+
+        if _is_dissolved:
+            params['Pb_source'].value = 'dissolved'
+        elif (not _use_Pb_BC) and _P_HII_free_val > _P_ram_val * 1.01:
+            # Root-find mode AND P_HII_free exceeds P_ram: ionization balance set the BC
+            params['Pb_source'].value = 'HII_free'
+        else:
+            # Default mode, or P_ram dominates: wind ram set the BC
+            params['Pb_source'].value = 'ram'
+
+        # drive_source: P_drive = P_HII + P_ram always, but where did P_HII come from?
+        _pb_src = params['Pb_source'].value
+        if _pb_src == 'HII_free':
+            params['drive_source'].value = 'HII_free+ram'
+        elif _pb_src == 'dissolved':
+            params['drive_source'].value = 'dissolved'
+        else:
+            params['drive_source'].value = 'HII+ram'
+
         params['F_ram_wind'].value = feedback.pdot_W
         params['F_ram_SN'].value = feedback.pdot_SN
 

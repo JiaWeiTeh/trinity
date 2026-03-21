@@ -182,6 +182,27 @@ def run_energy(params):
             # n_IF_Str, is_fullyIonised, diss_condition_met, shell arrays)
             updateDict(params, shell_data)
             logger.info('shell complete (modified)')
+
+            # === Branch tracking: Pb_source ===
+            # In energy phase, Pb is always set by bubble structure.
+            # P_HII_free is a diagnostic only — it does not change the BC.
+            # But we flag when P_HII_free > Pb as 'bubble_underlimit' to indicate
+            # the bubble is losing its ability to confine the HII region.
+            _Pb_current = params['Pb'].value
+            _P_HII_free_val = params['P_HII_free'].value
+
+            _is_dissolved = False
+            _diss_check = params.get('isDissolved', None)
+            if _diss_check and hasattr(_diss_check, 'value'):
+                _is_dissolved = bool(_diss_check.value)
+
+            if _is_dissolved:
+                params['Pb_source'].value = 'dissolved'
+            elif _P_HII_free_val > _Pb_current * 1.01:
+                # P_HII_free exceeds Pb by >1%: bubble is losing confinement
+                params['Pb_source'].value = 'bubble_underlimit'
+            else:
+                params['Pb_source'].value = 'bubble'
         else:
             Tavg = T0
 
@@ -366,8 +387,14 @@ def run_energy(params):
             params['P_HII_free'].value = ode_result.P_HII_free
         if ode_result.Pb_source is not None:
             params['Pb_source'].value = ode_result.Pb_source
+        # drive_source: what did max(Pb, P_HII) select?
         if ode_result.drive_source is not None:
             params['drive_source'].value = ode_result.drive_source
+        else:
+            if abs(params['P_drive'].value - params['Pb'].value) < 1e-30 * max(abs(params['P_drive'].value), 1e-99):
+                params['drive_source'].value = 'bubble'
+            else:
+                params['drive_source'].value = 'HII_shell'
         if ode_result.shell_mass is not None:
             params['shell_mass'].value = ode_result.shell_mass
         if ode_result.shell_massDot is not None:
