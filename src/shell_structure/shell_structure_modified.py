@@ -215,19 +215,16 @@ def compute_P_HII_free(Qi, R2, M_shell, params):
 
     alpha_B = params['caseB_alpha'].value
     mu_ion = params['mu_ion'].value
+    mu_atom = params['mu_atom'].value
     k_B = params['k_B'].value
     TShell_ion = params['TShell_ion'].value
 
-    # Analytic density scale: uniform-shell Strömgren equilibrium
+    # Analytic density scale: uniform-shell Strömgren equilibrium.
+    # From α_B * n * (M_shell / μ_ion) = Qi, geometry-independent.
     n_eq = Qi * mu_ion / (alpha_B * M_shell)
 
-    # Geometry correction: for large R2, the thin-shell equilibrium density
-    # is n ~ n_eq * 3 / (4π R2²), which can be orders of magnitude lower.
-    geo_factor = 3.0 / (4.0 * np.pi * max(R2, 1e-6)**2)
-    n_eq_geo = n_eq * min(geo_factor, 1.0)  # never increase above n_eq
-
-    # Use the geometric estimate as bracket center
-    n_center = n_eq_geo
+    # Use n_eq as bracket center
+    n_center = n_eq
 
     def residual(n0):
         return _integrate_ionized_to_mass_limit(n0, R2, M_shell, params)
@@ -248,7 +245,7 @@ def compute_P_HII_free(Qi, R2, M_shell, params):
 
         if r_low * r_high >= 0:
             # Logarithmic scan across many orders of magnitude
-            # centered on n_eq_geo, scanning 12 decades
+            # centered on n_eq, scanning 16 decades
             n_scan_lo, n_scan_hi = n_low, n_high
             r_scan_lo, r_scan_hi = r_low, r_high
             for exp in np.linspace(-8, 8, 33):
@@ -275,18 +272,21 @@ def compute_P_HII_free(Qi, R2, M_shell, params):
         if r_low * r_high < 0:
             n0_star = scipy.optimize.brentq(residual, n_low, n_high, rtol=1e-3)
         else:
-            # Fallback: use geometry-aware estimate (best guess)
+            # Fallback: use analytic estimate (best guess)
             logger.warning(
                 f'P_HII_free root-find bracket failed '
                 f'(r_low={r_low:.3e}, r_high={r_high:.3e}); '
-                f'falling back to n_eq_geo={n_eq_geo:.3e}'
+                f'falling back to n_eq={n_eq:.3e}'
             )
-            n0_star = n_eq_geo
+            n0_star = n_eq
     except Exception as e:
-        logger.warning(f'P_HII_free root-find failed: {e}; falling back to n_eq_geo={n_eq_geo:.3e}')
-        n0_star = n_eq_geo
+        logger.warning(f'P_HII_free root-find failed: {e}; falling back to n_eq={n_eq:.3e}')
+        n0_star = n_eq
 
-    P_HII_free = 2.0 * n0_star * k_B * TShell_ion
+    # Pressure from density: P = n * (mu_atom / mu_ion) * k_B * T
+    # This is the inverse of the forward relation in shell_structure_pure:
+    #   n = (mu_ion / mu_atom) * P / (k_B * T)
+    P_HII_free = n0_star * (mu_atom / mu_ion) * k_B * TShell_ion
     return (P_HII_free, n0_star)
 
 
