@@ -276,14 +276,14 @@ def compute_P_HII_free(Qi, R2, M_shell, params):
             n0_star = scipy.optimize.brentq(residual, n_low, n_high, rtol=1e-3)
         else:
             # Fallback: use geometry-aware estimate (best guess)
-            logger.debug(
+            logger.warning(
                 f'P_HII_free root-find bracket failed '
                 f'(r_low={r_low:.3e}, r_high={r_high:.3e}); '
                 f'falling back to n_eq_geo={n_eq_geo:.3e}'
             )
             n0_star = n_eq_geo
     except Exception as e:
-        logger.debug(f'P_HII_free root-find failed: {e}; falling back to n_eq_geo={n_eq_geo:.3e}')
+        logger.warning(f'P_HII_free root-find failed: {e}; falling back to n_eq_geo={n_eq_geo:.3e}')
         n0_star = n_eq_geo
 
     P_HII_free = 2.0 * n0_star * k_B * TShell_ion
