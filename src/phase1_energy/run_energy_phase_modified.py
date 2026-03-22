@@ -332,12 +332,40 @@ def run_energy(params):
         R1 = ode_result.R1
         Pb = ode_result.Pb
 
-        # Update params dictionary
+        # Update params dictionary with core state
         updateDict(params,
-                   ['R1', 'R2', 'v2', 'Eb', 't_now', 'Pb', 'shell_mass'],
-                   [R1, R2, v2, Eb, t_now, Pb, mShell])
+                   ['R2', 'v2', 'Eb', 't_now', 'shell_mass'],
+                   [R2, v2, Eb, t_now, mShell])
 
-        # Also update forces from ODE result
+        # ---------------------------------------------------------------------
+        # Recompute bubble and shell structure at the NEW state so that the
+        # snapshot contains values consistent with the current t_now.
+        # Previously, bubble/shell were only computed at the top of the loop
+        # (pre-ODE), causing a one-step lag in snapshots.
+        # ---------------------------------------------------------------------
+        if loop_count > 0:
+            bubble_data = bubble_luminosity_modified.get_bubbleproperties_pure(params)
+            updateDict(params, bubble_data)
+            T0 = params['bubble_T_r_Tb'].value
+            params['T0'].value = T0
+            Tavg = params['bubble_Tavg'].value
+            R1 = bubble_data.R1
+            Pb = bubble_data.Pb
+        else:
+            Tavg = T0
+
+        # Update R1 and Pb (from bubble recompute, or from ode_result on first iter)
+        params['R1'].value = R1
+        params['Pb'].value = Pb
+
+        shell_data = shell_structure_modified.shell_structure_pure(params)
+        updateDict(params, shell_data)
+
+        # Recompute forces with the fresh shell/bubble data
+        snapshot_fresh = energy_phase_ODEs_modified.create_ODE_snapshot(params)
+        ode_result = energy_phase_ODEs_modified.compute_derived_quantities(
+            t_now, [R2, v2, Eb], snapshot_fresh, params
+        )
         if ode_result.F_grav is not None:
             params['F_grav'].value = ode_result.F_grav
         if ode_result.F_ion_in is not None:
@@ -348,9 +376,6 @@ def run_energy(params):
             params['F_ram'].value = ode_result.F_ram
         if ode_result.F_rad is not None:
             params['F_rad'].value = ode_result.F_rad
-        # Pressure diagnostic quantities (n_IF/R_IF already written by
-        # updateDict(params, shell_data) above; ODE result carries the
-        # same frozen values, so skip redundant re-assignment)
         if ode_result.P_HII is not None:
             params['P_HII'].value = ode_result.P_HII
         if ode_result.P_drive is not None:
@@ -369,7 +394,7 @@ def run_energy(params):
         params['F_ram_wind'].value = feedback.pdot_W
         params['F_ram_SN'].value = feedback.pdot_SN
 
-        # Save snapshot AFTER all params are updated (so it captures current state)
+        # Save snapshot — all values now correspond to the current t_now
         params.save_snapshot()
 
         loop_count += 1
