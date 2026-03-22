@@ -489,6 +489,8 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
     t_now = tmin
     segment_count = 0
     termination_reason = None
+    beta = params['cool_beta'].value
+    delta = params['cool_delta'].value
 
     # Track previous R2 for collapse detection
     R2_prev = R2
@@ -928,6 +930,22 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
             params['SimulationEndReason'].value = 'Large radius reached'
             params['EndSimulationDirectly'].value = True
             break
+
+    # =============================================================================
+    # Capture final post-ODE state if not already recorded.
+    # The main result append is now pre-ODE, so termination paths that break
+    # after ODE (cooling_balance, small_radius, etc.) would otherwise lose the
+    # final state.  Event terminations already append at the event point.
+    # =============================================================================
+    if len(t_results) == 0 or t_now != t_results[-1]:
+        t_results.append(t_now)
+        R2_results.append(R2)
+        v2_results.append(v2)
+        Eb_results.append(Eb)
+        T0_results.append(T0)
+        # beta/delta are from the last pre-ODE computation (best available)
+        beta_results.append(beta)
+        delta_results.append(delta)
 
     # =============================================================================
     # Build results

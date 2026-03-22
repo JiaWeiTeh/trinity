@@ -366,6 +366,12 @@ def run_energy(params):
         ode_result = energy_phase_ODEs_modified.compute_derived_quantities(
             t_now, [R2, v2, Eb], snapshot_fresh, params
         )
+        # Update R1/Pb from the fresh recomputation (ensures consistency
+        # even on loop_count==0 where bubble recompute is skipped)
+        params['R1'].value = ode_result.R1
+        params['Pb'].value = ode_result.Pb
+        R1 = ode_result.R1
+        Pb = ode_result.Pb
         if ode_result.F_grav is not None:
             params['F_grav'].value = ode_result.F_grav
         if ode_result.F_ion_in is not None:
