@@ -237,7 +237,8 @@ def compute_forces_momentum_pure(
     FABSi = shell_props.shell_fAbsorbedIon
     if FABSi < 1.0:
         try:
-            n_r = density_profile.get_density_profile(np.array([rShell]), params)
+            # Evaluate density at R2 (state variable) for consistency with ODE functions
+            n_r = density_profile.get_density_profile(np.array([R2]), params)
             if hasattr(n_r, '__len__') and len(n_r) == 1:
                 n_r = n_r[0]
             press_HII_in = 2.0 * n_r * k_B * TShell_ion  # BUG FIX: factor 2 for fully ionized gas (ions + electrons)
@@ -247,7 +248,8 @@ def compute_forces_momentum_pure(
         press_HII_in = 0.0
 
     # Add ISM pressure if shell extends beyond cloud
-    if rShell >= rCloud:
+    # Use R2 (state variable) for consistency with ODE functions
+    if R2 >= rCloud:
         press_HII_in += PISM * k_B
 
     # ==========================================================================
@@ -386,9 +388,13 @@ def get_ODE_momentum_pure(t: float, y: np.ndarray, snapshot: MomentumODESnapshot
     # Get parameters from snapshot
     G = snapshot.G
     mCluster = snapshot.mCluster
-    Lmech_total = snapshot.Lmech_total
-    v_mech_total = snapshot.v_mech_total
     k_B = snapshot.k_B
+
+    # Use live feedback so SN turn-on events mid-segment are visible
+    # (consistent with energy/implicit/transition ODEs)
+    feedback = get_currentSB99feedback(t, params)
+    Lmech_total = feedback.Lmech_total
+    v_mech_total = feedback.v_mech_total
     FABSi = snapshot.FABSi
     F_rad = snapshot.F_rad
     mShell = snapshot.mShell

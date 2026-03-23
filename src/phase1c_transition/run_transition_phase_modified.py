@@ -297,7 +297,8 @@ def compute_forces_pure(
     if FABSi < 1.0:
         from src.cloud_properties import density_profile
         try:
-            n_r = density_profile.get_density_profile(np.array([rShell]), params)
+            # Evaluate density at R2 (state variable) for consistency with ODE functions
+            n_r = density_profile.get_density_profile(np.array([R2]), params)
             if hasattr(n_r, '__len__') and len(n_r) == 1:
                 n_r = n_r[0]
             press_HII_in = 2.0 * n_r * k_B * TShell_ion  # BUG FIX: factor 2 for fully ionized gas (ions + electrons)
@@ -307,7 +308,8 @@ def compute_forces_pure(
         press_HII_in = 0.0
 
     # Add ISM pressure if shell extends beyond cloud
-    if rShell >= rCloud:
+    # Use R2 (state variable) for consistency with ODE functions
+    if R2 >= rCloud:
         press_HII_in += PISM * k_B
 
     # ==========================================================================
@@ -727,13 +729,18 @@ def run_phase_transition(params) -> TransitionPhaseResults:
         # ---------------------------------------------------------------------
 
         # Phase transition criterion: ram pressure dominates bubble pressure.
-        # Also catches absolute energy floor as a safety fallback.
+        # Recompute Pb and P_ram at the post-ODE state so the check uses
+        # current values, not stale pre-ODE ones.
         RAM_DOMINANCE_THRESHOLD = 0.9  # exit when P_ram/(P_b + P_ram) > this
-        P_b_now = params['Pb'].value
-        P_ram_now = params['P_ram'].value
-        P_total = P_b_now + P_ram_now
+        feedback_post = get_currentSB99feedback(t_now, params)
+        gamma_adia = params['gamma_adia'].value
+        R1_post, Pb_post = compute_R1_Pb(R2, Eb, feedback_post.Lmech_total,
+                                          feedback_post.v_mech_total, gamma_adia)
+        P_ram_post = get_bubbleParams.pRam(R2, feedback_post.Lmech_total,
+                                            feedback_post.v_mech_total)
+        P_total = Pb_post + P_ram_post
         if P_total > 0:
-            ram_fraction = P_ram_now / P_total
+            ram_fraction = P_ram_post / P_total
             if ram_fraction > RAM_DOMINANCE_THRESHOLD:
                 termination_reason = "ram_dominated"
                 logger.warning(f"Ram fraction {ram_fraction:.3f} > {RAM_DOMINANCE_THRESHOLD}, "

@@ -131,13 +131,12 @@ def run_energy(params):
 
     # =============================================================================
     # Main loop: segment-based integration
+    # Follows the same compute → save → ODE pattern as phases 1b/1c/2.
     # =============================================================================
 
     continueWeaver = True
 
     while R2 < rCloud and (TFINAL_ENERGY_PHASE - t_now) > DT_EXIT_THRESHOLD and continueWeaver:
-
-        calculate_bubble_shell = loop_count > 0
 
         # Define segment time span
         t_segment_end = min(t_now + SEGMENT_DURATION, TFINAL_ENERGY_PHASE)
@@ -145,199 +144,58 @@ def run_energy(params):
         logger.debug(f'Segment: t={t_now:.6e} to {t_segment_end:.6e} Myr')
 
         # =============================================================================
-        # Calculate bubble and shell structure (between segments, not during ODE)
+        # 1. Update params with current state
         # =============================================================================
+        params['t_now'].value = t_now
+        params['R2'].value = R2
+        params['v2'].value = v2
+        params['Eb'].value = Eb
+        params['T0'].value = T0
 
-        if calculate_bubble_shell:
-            # Use modified bubble_luminosity that returns dataclass
-            bubble_data = bubble_luminosity_modified.get_bubbleproperties_pure(params)
+        # =============================================================================
+        # 2. Get feedback
+        # =============================================================================
+        feedback = get_currentSB99feedback(t_now, params)
+        updateDict(params, feedback)
 
-            # Update params with bubble properties
-            params['bubble_LTotal'].value = bubble_data.bubble_LTotal
-            params['bubble_T_r_Tb'].value = bubble_data.bubble_T_r_Tb
-            params['bubble_Tavg'].value = bubble_data.bubble_Tavg
-            params['bubble_mass'].value = bubble_data.bubble_mass
-            params['bubble_L1Bubble'].value = bubble_data.bubble_L1Bubble
-            params['bubble_L2Conduction'].value = bubble_data.bubble_L2Conduction
-            params['bubble_L3Intermediate'].value = bubble_data.bubble_L3Intermediate
-            params['bubble_v_arr'].value = bubble_data.bubble_v_arr
-            params['bubble_T_arr'].value = bubble_data.bubble_T_arr
-            params['bubble_dTdr_arr'].value = bubble_data.bubble_dTdr_arr
-            params['bubble_r_arr'].value = bubble_data.bubble_r_arr
-            params['bubble_n_arr'].value = bubble_data.bubble_n_arr
-            params['bubble_dMdt'].value = bubble_data.bubble_dMdt
-            params['R1'].value = bubble_data.R1
-            params['Pb'].value = bubble_data.Pb
-            params['bubble_r_Tb'].value = bubble_data.bubble_r_Tb
+        # =============================================================================
+        # 3. Compute bubble structure (always, not conditional on loop_count)
+        # =============================================================================
+        bubble_data = bubble_luminosity_modified.get_bubbleproperties_pure(params)
+        updateDict(params, bubble_data)
 
-            logger.info('bubble complete (modified)')
+        T0 = bubble_data.bubble_T_r_Tb
+        params['T0'].value = T0
+        Tavg = bubble_data.bubble_Tavg
+        R1 = bubble_data.R1
+        Pb = bubble_data.Pb
+        params['R1'].value = R1
+        params['Pb'].value = Pb
 
-            T0 = params['bubble_T_r_Tb'].value
-            params['T0'].value = T0
-            Tavg = params['bubble_Tavg'].value
+        logger.info('bubble complete (modified)')
 
-            # Compute shell structure
-            shell_data = shell_structure_modified.shell_structure_pure(params)
-            # Update params with all shell properties (including n_IF, R_IF,
-            # n_IF_Str, is_fullyIonised, diss_condition_met, shell arrays)
-            updateDict(params, shell_data)
-            logger.info('shell complete (modified)')
-        else:
-            Tavg = T0
+        # =============================================================================
+        # 4. Compute shell structure
+        # =============================================================================
+        shell_data = shell_structure_modified.shell_structure_pure(params)
+        updateDict(params, shell_data)
+        logger.info('shell complete (modified)')
+
+        # Get shell mass
+        mShell = mass_profile.get_mass_profile(R2, params, return_mdot=False)
+        params['shell_mass'].value = mShell
 
         # Calculate sound speed
         c_sound = operations.get_soundspeed(Tavg, params)
         params['c_sound'].value = c_sound
 
-        # ------------------------------------------------------------------
-        # ζ diagnostic (Lancaster+2025): quantifies WBB vs PIR dominance.
-        # ζ = R_eq / R_St. ζ > 1: WBB-dominated. ζ < 1: PIR-dominated.
-        # Pure diagnostic — does not feed into any ODE.
-        # ------------------------------------------------------------------
-        _Qi_zeta   = params['Qi'].value
-        _alphaB    = params['caseB_alpha'].value
-        _k_B       = params['k_B'].value
-        _T_ion     = params['TShell_ion'].value
-        _mu_ion    = params['mu_ion'].value
-        _R2_now    = params['R2'].value
-        _rCloud_z  = params['rCloud'].value
-        _pdot_W    = feedback.pdot_W   # feedback must be current at this point
-        # Ambient number density at current shell position.
-        # Use cloud density profile inside cloud; nISM outside.
-        if _R2_now < _rCloud_z:
-            from src.cloud_properties import density_profile as _dp
-            _n_amb = float(np.atleast_1d(
-                _dp.get_density_profile(np.array([_R2_now]), params)
-            )[0])
-        else:
-            _n_amb = params['nISM'].value
-        # Strömgren radius in ambient density
-        if _Qi_zeta > 0.0 and _n_amb > 0.0:
-            _R_St = (3.0 * _Qi_zeta /
-                     (4.0 * np.pi * _alphaB * _n_amb**2))**(1.0 / 3.0)
-        else:
-            _R_St = np.inf
-        # Sound speed in photoionised gas: c_i^2 = k_B T_ion / mu_ion
-        # mu_ion is already in code units (Msun) = mu_dimless * m_H * g2Msun
-        _c_i2 = _k_B * _T_ion / _mu_ion
-        # Equilibrium radius for momentum-driven WBB (Lancaster+2025 Eq.21, α_p=1)
-        # P_ram(R) = pdot_w/(4π R²) = ρ c_i²  =>  R_eq² = pdot_w/(4π ρ c_i²)
-        # Ambient gas ahead of the shell is neutral: use mu_atom, not mu_ion
-        _rho_amb = _n_amb * params['mu_atom'].value
-        if _pdot_W > 0.0 and _rho_amb > 0.0 and _c_i2 > 0.0:
-            _R_eq = np.sqrt(_pdot_W /
-                            (4.0 * np.pi * _rho_amb * _c_i2))
-        else:
-            _R_eq = 0.0
-        _zeta = _R_eq / _R_St if (np.isfinite(_R_St) and _R_St > 0.0) else 0.0
-        params['zeta'].value = _zeta
-        if _zeta < 0.5:
-            logger.info(f'ζ={_zeta:.3f} < 0.5: PIR-dominated, n_IF_Str active '
-                        f'(n_IF={params["n_IF"].value:.3e}, '
-                        f'n_IF_Str={params["n_IF_Str"].value:.3e})')
-
         # =============================================================================
-        # Create frozen snapshot for ODE integration
+        # 5. Compute forces and diagnostics
         # =============================================================================
-
-        snapshot = energy_phase_ODEs_modified.create_ODE_snapshot(params)
-
-        # =============================================================================
-        # Solve ODE using adaptive solver (solve_ivp)
-        # =============================================================================
-
-        y0 = [R2, v2, Eb]
-
-        # Define ODE function wrapper for solve_ivp (t, y order)
-        def ode_func(t, y):
-            return energy_phase_ODEs_modified.get_ODE_Edot_pure(t, y, snapshot, params)
-
-        # Integrate segment with adaptive solver
-        solution = scipy.integrate.solve_ivp(
-            ode_func,
-            t_span=(t_now, t_segment_end),
-            y0=y0,
-            method='RK45',
-            events=ode_events,
-            rtol=RTOL,
-            atol=ATOL,
-            dense_output=True
-        )
-
-        if not solution.success:
-            logger.warning(f'solve_ivp failed: {solution.message}')
-            # Fallback: take smaller segment
-            t_segment_end = t_now + SEGMENT_DURATION / 10
-            solution = scipy.integrate.solve_ivp(
-                ode_func,
-                t_span=(t_now, t_segment_end),
-                y0=y0,
-                method='RK23',  # More robust method
-                events=ode_events,
-                rtol=RTOL * 10,
-                atol=ATOL * 10
-            )
-
-        # Check if an event terminated the integration
-        event_result = check_event_termination(solution, ode_events)
-        if event_result.triggered:
-            logger.warning(f"Event '{event_result.name}' triggered at t={event_result.t:.6e} Myr")
-            apply_event_result(params, event_result, event_result.t, event_result.y,
-                              state_keys=['R2', 'v2', 'Eb'])
-            if event_result.is_simulation_ending:
-                return  # Exit immediately for simulation-ending events
-            # For phase-ending events (cloud_boundary), exit the loop normally
-            break
-
-        # Extract final state
-        R2_new, v2_new, Eb_new = solution.y[:, -1]
-        t_new = solution.t[-1]
-
-        logger.debug(f'solve_ivp: {len(solution.t)} steps, final t={t_new:.6e}')
-
-        # =============================================================================
-        # Handle early phase approximation switch
-        # =============================================================================
-        # TODO: I think this is not used anymore.
-        if loop_count == 0 and params['EarlyPhaseApproximation'].value:
-            # After first successful segment, disable approximation
-            params['EarlyPhaseApproximation'].value = False
-            logger.info('Switching to no approximation')
-
-        # =============================================================================
-        # Update params with results (only after successful integration)
-        # =============================================================================
-
-        # Compute derived quantities at final state
+        snapshot_for_forces = energy_phase_ODEs_modified.create_ODE_snapshot(params)
         ode_result = energy_phase_ODEs_modified.compute_derived_quantities(
-            t_new, [R2_new, v2_new, Eb_new], snapshot, params
+            t_now, [R2, v2, Eb], snapshot_for_forces, params
         )
-
-        # Update state variables
-        t_now = t_new
-        R2 = R2_new
-        v2 = v2_new
-        Eb = Eb_new
-
-        logger.info(f'Phase values: t: {t_now:.6e}, R2: {R2:.6e}, v2: {v2:.6e}, Eb: {Eb:.6e}, T0: {T0:.2e}')
-
-        # Get shell mass
-        mShell = mass_profile.get_mass_profile(R2, params, return_mdot=False)
-
-        # Update feedback
-        feedback = get_currentSB99feedback(t_now, params)
-        updateDict(params, feedback)
-
-        # Use R1 and Pb from ode_result (computed with phase-aware helper for consistency)
-        R1 = ode_result.R1
-        Pb = ode_result.Pb
-
-        # Update params dictionary
-        updateDict(params,
-                   ['R1', 'R2', 'v2', 'Eb', 't_now', 'Pb', 'shell_mass'],
-                   [R1, R2, v2, Eb, t_now, Pb, mShell])
-
-        # Also update forces from ODE result
         if ode_result.F_grav is not None:
             params['F_grav'].value = ode_result.F_grav
         if ode_result.F_ion_in is not None:
@@ -348,9 +206,6 @@ def run_energy(params):
             params['F_ram'].value = ode_result.F_ram
         if ode_result.F_rad is not None:
             params['F_rad'].value = ode_result.F_rad
-        # Pressure diagnostic quantities (n_IF/R_IF already written by
-        # updateDict(params, shell_data) above; ODE result carries the
-        # same frozen values, so skip redundant re-assignment)
         if ode_result.P_HII is not None:
             params['P_HII'].value = ode_result.P_HII
         if ode_result.P_drive is not None:
@@ -365,12 +220,118 @@ def run_energy(params):
             params['shell_mass'].value = ode_result.shell_mass
         if ode_result.shell_massDot is not None:
             params['shell_massDot'].value = ode_result.shell_massDot
-        # Wind and SN ram force components (consistent with other phases)
         params['F_ram_wind'].value = feedback.pdot_W
         params['F_ram_SN'].value = feedback.pdot_SN
 
-        # Save snapshot AFTER all params are updated (so it captures current state)
+        # ζ diagnostic (Lancaster+2025)
+        _Qi_zeta   = params['Qi'].value
+        _alphaB    = params['caseB_alpha'].value
+        _k_B       = params['k_B'].value
+        _T_ion     = params['TShell_ion'].value
+        _mu_ion    = params['mu_ion'].value
+        _R2_now    = R2
+        _rCloud_z  = rCloud
+        _pdot_W    = feedback.pdot_W
+        if _R2_now < _rCloud_z:
+            from src.cloud_properties import density_profile as _dp
+            _n_amb = float(np.atleast_1d(
+                _dp.get_density_profile(np.array([_R2_now]), params)
+            )[0])
+        else:
+            _n_amb = params['nISM'].value
+        if _Qi_zeta > 0.0 and _n_amb > 0.0:
+            _R_St = (3.0 * _Qi_zeta /
+                     (4.0 * np.pi * _alphaB * _n_amb**2))**(1.0 / 3.0)
+        else:
+            _R_St = np.inf
+        _c_i2 = _k_B * _T_ion / _mu_ion
+        _rho_amb = _n_amb * params['mu_atom'].value
+        if _pdot_W > 0.0 and _rho_amb > 0.0 and _c_i2 > 0.0:
+            _R_eq = np.sqrt(_pdot_W /
+                            (4.0 * np.pi * _rho_amb * _c_i2))
+        else:
+            _R_eq = 0.0
+        _zeta = _R_eq / _R_St if (np.isfinite(_R_St) and _R_St > 0.0) else 0.0
+        params['zeta'].value = _zeta
+        if _zeta < 0.5:
+            logger.info(f'ζ={_zeta:.3f} < 0.5: PIR-dominated, n_IF_Str active '
+                        f'(n_IF={params["n_IF"].value:.3e}, '
+                        f'n_IF_Str={params["n_IF_Str"].value:.3e})')
+
+        # =============================================================================
+        # 6. Save snapshot BEFORE ODE — all values consistent at t_now
+        # =============================================================================
         params.save_snapshot()
+
+        # =============================================================================
+        # 7. Create ODE snapshot and integrate
+        # =============================================================================
+        snapshot = energy_phase_ODEs_modified.create_ODE_snapshot(params)
+
+        y0 = [R2, v2, Eb]
+
+        def ode_func(t, y):
+            return energy_phase_ODEs_modified.get_ODE_Edot_pure(t, y, snapshot, params)
+
+        solution = scipy.integrate.solve_ivp(
+            ode_func,
+            t_span=(t_now, t_segment_end),
+            y0=y0,
+            method='RK45',
+            events=ode_events,
+            rtol=RTOL,
+            atol=ATOL,
+            dense_output=True
+        )
+
+        if not solution.success:
+            logger.warning(f'solve_ivp failed: {solution.message}')
+            t_segment_end = t_now + SEGMENT_DURATION / 10
+            solution = scipy.integrate.solve_ivp(
+                ode_func,
+                t_span=(t_now, t_segment_end),
+                y0=y0,
+                method='RK23',
+                events=ode_events,
+                rtol=RTOL * 10,
+                atol=ATOL * 10
+            )
+
+        # Check if an event terminated the integration
+        event_result = check_event_termination(solution, ode_events)
+        if event_result.triggered:
+            logger.warning(f"Event '{event_result.name}' triggered at t={event_result.t:.6e} Myr")
+            apply_event_result(params, event_result, event_result.t, event_result.y,
+                              state_keys=['R2', 'v2', 'Eb'])
+            if event_result.is_simulation_ending:
+                return
+            break
+
+        # =============================================================================
+        # 8. Extract new state and update local variables
+        # =============================================================================
+        R2_new, v2_new, Eb_new = solution.y[:, -1]
+        t_new = solution.t[-1]
+
+        logger.debug(f'solve_ivp: {len(solution.t)} steps, final t={t_new:.6e}')
+
+        # Handle early phase approximation switch
+        if loop_count == 0 and params['EarlyPhaseApproximation'].value:
+            params['EarlyPhaseApproximation'].value = False
+            logger.info('Switching to no approximation')
+
+        t_now = t_new
+        R2 = R2_new
+        v2 = v2_new
+        Eb = Eb_new
+
+        logger.info(f'Phase values: t: {t_now:.6e}, R2: {R2:.6e}, v2: {v2:.6e}, Eb: {Eb:.6e}, T0: {T0:.2e}')
+
+        # Update params with new state (for next iteration's bubble/shell)
+        params['t_now'].value = t_now
+        params['R2'].value = R2
+        params['v2'].value = v2
+        params['Eb'].value = Eb
 
         loop_count += 1
 

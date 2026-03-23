@@ -299,10 +299,10 @@ def compute_forces_pure(
     # Inward pressure from photoionized gas outside shell
     FABSi = shell_props.shell_fAbsorbedIon
     if FABSi < 1.0:
-        # Get density profile at shell radius for ionized region
+        # Evaluate density at R2 (state variable) for consistency with ODE functions
         from src.cloud_properties import density_profile
         try:
-            n_r = density_profile.get_density_profile(np.array([rShell]), params)
+            n_r = density_profile.get_density_profile(np.array([R2]), params)
             if hasattr(n_r, '__len__') and len(n_r) == 1:
                 n_r = n_r[0]
             press_HII_in = 2.0 * n_r * k_B * TShell_ion  # BUG FIX: factor 2 for fully ionized gas (ions + electrons)
@@ -312,7 +312,8 @@ def compute_forces_pure(
         press_HII_in = 0.0
 
     # Add ISM pressure if shell extends beyond cloud
-    if rShell >= rCloud:
+    # Use R2 (state variable) for consistency with ODE functions
+    if R2 >= rCloud:
         press_HII_in += PISM * k_B
 
     # ==========================================================================
@@ -482,18 +483,15 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
     beta_results = []
     delta_results = []
 
-    # Store initial values
-    t_results.append(tmin)
-    R2_results.append(R2)
-    v2_results.append(v2)
-    Eb_results.append(Eb)
-    T0_results.append(T0)
-    beta_results.append(params['cool_beta'].value)
-    delta_results.append(params['cool_delta'].value)
+    # Initial values are appended inside the loop after all derived
+    # quantities (beta, delta, shell, etc.) are computed at t_now,
+    # ensuring every result entry is self-consistent.
 
     t_now = tmin
     segment_count = 0
     termination_reason = None
+    beta = params['cool_beta'].value
+    delta = params['cool_delta'].value
 
     # Track previous R2 for collapse detection
     R2_prev = R2
@@ -710,6 +708,15 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         # beta, delta, R1, Pb, forces, residuals are all computed for the SAME t_now
         params.save_snapshot()
 
+        # Store results at the same consistent point as the snapshot
+        t_results.append(t_now)
+        R2_results.append(R2)
+        v2_results.append(v2)
+        Eb_results.append(Eb)
+        T0_results.append(T0)
+        beta_results.append(beta)
+        delta_results.append(delta)
+
         # ---------------------------------------------------------------------
         # Check if we've reached stop_t - if so, terminate successfully
         # ---------------------------------------------------------------------
@@ -778,7 +785,9 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
             Eb = float(event_result.y[2])
             T0 = float(event_result.y[3])
             t_now = event_result.t
-            # Add final state to results
+            # Add final state to results.
+            # beta/delta are from the start of this segment (best available;
+            # the event occurred within one segment of their computation).
             t_results.append(t_now)
             R2_results.append(R2)
             v2_results.append(v2)
@@ -861,31 +870,28 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
                 logger.debug(f"Velocity-based: |v2|={abs_v2:.1f} > {VELOCITY_THRESHOLD_COLLAPSE}, "
                             f"dt -> {dt_segment:.3e} Myr")
 
-        # Store results
-        t_results.append(t_now)
-        R2_results.append(R2)
-        v2_results.append(v2)
-        Eb_results.append(Eb)
-        T0_results.append(T0)
-        beta_results.append(beta)
-        delta_results.append(delta)
+        # (Results already appended before ODE at the consistent snapshot point.)
 
         # ---------------------------------------------------------------------
         # Check termination conditions
         # ---------------------------------------------------------------------
 
-        # Get Lgain and Lloss from bubble properties or params
+        # Re-fetch feedback at post-ODE time for the termination check.
+        # Lgain must reflect the current Lmech_total at the new t_now,
+        # especially across SN turn-on boundaries.
+        feedback_post = get_currentSB99feedback(t_now, params)
+        Lgain = feedback_post.Lmech_total
+
+        # Lloss from pre-ODE bubble properties (cannot cheaply recompute
+        # without the betadelta solver; acceptable since Lloss changes slowly)
         if bubble_props is not None:
             Lloss = bubble_props.bubble_LTotal
-            # Add leak if available
             bubble_Leak = params.get('bubble_Leak', None)
             if bubble_Leak is not None and hasattr(bubble_Leak, 'value'):
                 Lloss += bubble_Leak.value
         else:
             Lloss_param = params.get('bubble_Lloss', None)
             Lloss = Lloss_param.value if Lloss_param and hasattr(Lloss_param, 'value') else 0.0
-
-        Lgain = feedback.Lmech_total  # From feedback calculation above
 
         # Get threshold from params (default 0.05)
         phase_switch_threshold = params.get('phaseSwitch_LlossLgain', None)
@@ -929,6 +935,22 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
             params['SimulationEndReason'].value = 'Large radius reached'
             params['EndSimulationDirectly'].value = True
             break
+
+    # =============================================================================
+    # Capture final post-ODE state if not already recorded.
+    # The main result append is now pre-ODE, so termination paths that break
+    # after ODE (cooling_balance, small_radius, etc.) would otherwise lose the
+    # final state.  Event terminations already append at the event point.
+    # =============================================================================
+    if len(t_results) == 0 or t_now != t_results[-1]:
+        t_results.append(t_now)
+        R2_results.append(R2)
+        v2_results.append(v2)
+        Eb_results.append(Eb)
+        T0_results.append(T0)
+        # beta/delta are from the last pre-ODE computation (best available)
+        beta_results.append(beta)
+        delta_results.append(delta)
 
     # =============================================================================
     # Build results
