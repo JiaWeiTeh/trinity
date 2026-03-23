@@ -545,11 +545,6 @@ def plot_grid(folder_path, output_dir=None, ndens_filter=None,
                 # Hide x tick labels on top axis (shared with bottom)
                 plt.setp(ax_top.get_xticklabels(), visible=False)
 
-                # X-axis label only on bottom row
-                if i < nrows - 1:
-                    ax_bot.set_xlabel('')
-                    plt.setp(ax_bot.get_xticklabels(), visible=False)
-
                 # Column titles (top row only)
                 if i == 0:
                     eps = int(sfe) / 100.0
