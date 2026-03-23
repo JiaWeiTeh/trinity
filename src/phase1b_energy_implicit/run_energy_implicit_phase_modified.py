@@ -299,10 +299,10 @@ def compute_forces_pure(
     # Inward pressure from photoionized gas outside shell
     FABSi = shell_props.shell_fAbsorbedIon
     if FABSi < 1.0:
-        # Get density profile at shell radius for ionized region
+        # Evaluate density at R2 (state variable) for consistency with ODE functions
         from src.cloud_properties import density_profile
         try:
-            n_r = density_profile.get_density_profile(np.array([rShell]), params)
+            n_r = density_profile.get_density_profile(np.array([R2]), params)
             if hasattr(n_r, '__len__') and len(n_r) == 1:
                 n_r = n_r[0]
             press_HII_in = 2.0 * n_r * k_B * TShell_ion  # BUG FIX: factor 2 for fully ionized gas (ions + electrons)
@@ -312,7 +312,8 @@ def compute_forces_pure(
         press_HII_in = 0.0
 
     # Add ISM pressure if shell extends beyond cloud
-    if rShell >= rCloud:
+    # Use R2 (state variable) for consistency with ODE functions
+    if R2 >= rCloud:
         press_HII_in += PISM * k_B
 
     # ==========================================================================
@@ -875,18 +876,22 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         # Check termination conditions
         # ---------------------------------------------------------------------
 
-        # Get Lgain and Lloss from bubble properties or params
+        # Re-fetch feedback at post-ODE time for the termination check.
+        # Lgain must reflect the current Lmech_total at the new t_now,
+        # especially across SN turn-on boundaries.
+        feedback_post = get_currentSB99feedback(t_now, params)
+        Lgain = feedback_post.Lmech_total
+
+        # Lloss from pre-ODE bubble properties (cannot cheaply recompute
+        # without the betadelta solver; acceptable since Lloss changes slowly)
         if bubble_props is not None:
             Lloss = bubble_props.bubble_LTotal
-            # Add leak if available
             bubble_Leak = params.get('bubble_Leak', None)
             if bubble_Leak is not None and hasattr(bubble_Leak, 'value'):
                 Lloss += bubble_Leak.value
         else:
             Lloss_param = params.get('bubble_Lloss', None)
             Lloss = Lloss_param.value if Lloss_param and hasattr(Lloss_param, 'value') else 0.0
-
-        Lgain = feedback.Lmech_total  # From feedback calculation above
 
         # Get threshold from params (default 0.05)
         phase_switch_threshold = params.get('phaseSwitch_LlossLgain', None)
