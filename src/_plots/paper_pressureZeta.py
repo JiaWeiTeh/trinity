@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Pressure evolution + n_IF ratio two-panel figure for each TRINITY simulation run.
+Pressure evolution + n_cloud/n_IF diagnostic two-panel figure for each TRINITY simulation run.
 
 Top panel:  Pressure terms vs. time (log y, linear x) in CGS (dyn cm⁻²)
-Bottom panel: n_IF_Str / n_IF_ODE ratio (log y, same x-axis)
+Bottom panel: n_cloud(R₂) / n_IF_ODE ratio (log y, same x-axis)
 
-Answers the question: "when does the Strömgren ionisation balance set
-a higher density at the IF than the ODE boundary condition?"
+Answers the question: "does the ambient cloud density at the current shell
+radius exceed the Pb-anchored ionization front density?" — a necessary
+condition for the Strömgren branch to provide independent P_HII.
 """
 
 import numpy as np
@@ -23,6 +24,7 @@ from src._plots.plot_base import FIG_DIR, smooth_1d
 from src._output.trinity_reader import load_output, resolve_data_input
 from src._plots.plot_markers import add_plot_markers, get_marker_legend_handles
 from src._functions.unit_conversions import CGS, INV_CONV
+import src.cloud_properties.density_profile as density_profile
 
 print("...plotting pressure evolution + nIF ratio")
 
@@ -50,12 +52,57 @@ T_ION      = 1e4          # Ionised gas temperature [K]
 
 
 # ======================================================================
+# Density-profile param adapter
+# ======================================================================
+
+class _ValItem:
+    """Minimal stand-in for DescribedItem: ``item.value`` returns the stored value."""
+    __slots__ = ('value',)
+    def __init__(self, v):
+        self.value = v
+
+
+def _build_density_params(snap):
+    """
+    Build a params-like dict from a TrinityOutput snapshot so that
+    density_profile.get_density_profile(r, params) works.
+
+    Returns None if the required keys are missing (e.g. old output format).
+    """
+    required = ['nISM', 'nCore', 'rCloud', 'rCore', 'dens_profile']
+    d = {}
+    for k in required:
+        v = snap.get(k)
+        if v is None:
+            return None
+        d[k] = _ValItem(v)
+
+    # Profile-specific keys
+    prof = snap.get('dens_profile')
+    if prof == 'densPL':
+        alpha = snap.get('densPL_alpha')
+        if alpha is None:
+            return None
+        d['densPL_alpha'] = _ValItem(alpha)
+    elif prof == 'densBE':
+        for k in ('densBE_f_rho_rhoc', 'densBE_Teff', 'mu_convert', 'gamma_adia'):
+            v = snap.get(k)
+            if v is None:
+                return None
+            d[k] = _ValItem(v)
+    else:
+        return None
+
+    return d
+
+
+# ======================================================================
 # Data loading
 # ======================================================================
 
 def load_run(data_path: Path):
     """
-    Load run data, compute pressures in CGS, and read n_IF ratio from output.
+    Load run data, compute pressures in CGS, and compute n_cloud(R2)/n_IF_ODE.
 
     Returns
     -------
@@ -67,9 +114,10 @@ def load_run(data_path: Path):
         Phase labels.
     pressures : dict of str → array
         Pressure arrays in CGS (dyn cm⁻²).
-        Keys: 'Pb', 'P_HII_Str', 'P_HII_ODE', 'P_ram', 'P_rad', 'P_drive'.
-    nIF_ratio : array
-        n_IF_Str / n_IF_ODE (read from simulation output, code units cancel).
+        Keys: 'Pb', 'P_HII_Str', 'P_HII_ODE', 'P_ram', 'P_rad', 'P_drive',
+              'P_HII_cloud'.
+    nCloud_ratio : array
+        n_cloud(R₂) / n_IF_ODE (dimensionless; both in AU).
     rcloud : float
         Cloud radius [pc].
     isCollapse : array
@@ -127,13 +175,6 @@ def load_run(data_path: Path):
     # --- Compute P_HII curves from raw density fields ---
     # P_HII = 2 n_IF k_B T_ion  [CGS]
     # n_IF fields are in AU (1/pc³) → convert to CGS (1/cm³)
-    #
-    # P_HII_Str: from Strömgren ionisation balance (independent of Pb)
-    # P_HII_ODE: from shell ODE boundary condition (anchored to Pb)
-    #
-    # Note: the snapshot field 'P_HII' uses the post-max n_IF = max(n_IF_ODE, n_IF_Str),
-    # so it collapses to P_HII_Str whenever Strömgren wins.  We recompute both
-    # curves from the raw density fields to make them distinguishable.
     n_IF_Str_cgs = n_IF_Str_au * INV_CONV.ndens_au2cgs
     n_IF_ODE_cgs = n_IF_ODE_au * INV_CONV.ndens_au2cgs
 
@@ -143,19 +184,36 @@ def load_run(data_path: Path):
     P_HII_ODE_cgs = 2.0 * n_IF_ODE_cgs * CGS.k_B * T_ION
     P_HII_ODE_cgs[n_IF_ODE_cgs <= 0] = 0.0
 
-    # --- n_IF ratio: n_IF_Str / n_IF_ODE (both in AU, units cancel) ---
-    nIF_ratio = np.where(n_IF_ODE_au > 0, n_IF_Str_au / n_IF_ODE_au, np.nan)
+    # --- n_cloud(R₂): ambient cloud density at each R₂ ---
+    # get_density_profile returns density in AU (1/pc³), same as n_IF_ODE_au.
+    dens_params = _build_density_params(output[0])
+    if dens_params is not None:
+        n_cloud_au = density_profile.get_density_profile(R2_arr, dens_params)
+        n_cloud_au = np.asarray(n_cloud_au, dtype=float)
+    else:
+        print("  Warning: density profile parameters not found in output; "
+              "n_cloud(R2) ratio will be NaN.")
+        n_cloud_au = np.full_like(R2_arr, np.nan)
+
+    # Ratio: n_cloud(R₂) / n_IF_ODE (both AU, dimensionless)
+    nCloud_ratio = np.where(n_IF_ODE_au > 0, n_cloud_au / n_IF_ODE_au, np.nan)
+
+    # P_HII_cloud = 2 n_cloud k_B T_ion [CGS] — for optional top-panel line
+    n_cloud_cgs = n_cloud_au * INV_CONV.ndens_au2cgs
+    P_HII_cloud_cgs = 2.0 * n_cloud_cgs * CGS.k_B * T_ION
+    P_HII_cloud_cgs[n_cloud_cgs <= 0] = 0.0
 
     pressures = {
-        'Pb':         Pb_cgs,
-        'P_HII_Str':  P_HII_Str_cgs,
-        'P_HII_ODE':  P_HII_ODE_cgs,
-        'P_ram':      P_ram_cgs,
-        'P_rad':      P_rad_cgs,
-        'P_drive':    P_drive_cgs,
+        'Pb':          Pb_cgs,
+        'P_HII_Str':   P_HII_Str_cgs,
+        'P_HII_ODE':   P_HII_ODE_cgs,
+        'P_ram':       P_ram_cgs,
+        'P_rad':       P_rad_cgs,
+        'P_drive':     P_drive_cgs,
+        'P_HII_cloud': P_HII_cloud_cgs,
     }
 
-    return t, R2, phase, pressures, nIF_ratio, rcloud, isCollapse
+    return t, R2, phase, pressures, nCloud_ratio, rcloud, isCollapse
 
 
 # ======================================================================
@@ -172,7 +230,7 @@ def _smooth(y, window):
 
 
 def plot_pressureZeta_on_ax(
-    ax_top, ax_bot, t, R2, phase, pressures, nIF_ratio,
+    ax_top, ax_bot, t, R2, phase, pressures, nCloud_ratio,
     rcloud=np.nan, isCollapse=None,
     smooth_window=SMOOTH_WINDOW,
     phase_change=True,
@@ -180,18 +238,19 @@ def plot_pressureZeta_on_ax(
     show_collapse=True,
 ):
     """
-    Plot pressure evolution (top) and n_IF ratio (bottom) on given axes.
+    Plot pressure evolution (top) and n_cloud/n_IF_ODE ratio (bottom).
 
     Parameters
     ----------
     ax_top, ax_bot : Axes
-        Top (pressure) and bottom (n_IF ratio) panels.
+        Top (pressure) and bottom (density ratio) panels.
     t : array, R2 : array, phase : array
         Time, outer radius, phase labels.
     pressures : dict
-        Keys: 'Pb', 'P_HII_Str', 'P_HII_ODE', 'P_ram', 'P_rad', 'P_drive'.
-    nIF_ratio : array
-        n_IF_Str / n_IF_ODE ratio.
+        Keys: 'Pb', 'P_HII_Str', 'P_HII_ODE', 'P_ram', 'P_rad', 'P_drive',
+              'P_HII_cloud'.
+    nCloud_ratio : array
+        n_cloud(R₂) / n_IF_ODE ratio.
     """
     sw = smooth_window
 
@@ -219,6 +278,7 @@ def plot_pressureZeta_on_ax(
     P_ram      = _smooth(pressures['P_ram'],       sw)
     P_rad      = _smooth(pressures['P_rad'],       sw)
     P_drive    = _smooth(pressures['P_drive'],     sw)
+    P_HII_cloud = _smooth(pressures.get('P_HII_cloud', np.zeros_like(t)), sw)
 
     # Replace zeros with nan for log-scale plotting
     def pos(arr):
@@ -230,6 +290,8 @@ def plot_pressureZeta_on_ax(
                 label=r'$P_{\rm HII,Str}$', zorder=3)
     ax_top.plot(t, pos(P_HII_ODE), color=C_PHII,  lw=0.8, ls=':',  alpha=0.4,
                 label=r'$P_{\rm HII,ODE}$', zorder=2)
+    ax_top.plot(t, pos(P_HII_cloud), color=C_PHII, lw=0.8, ls='--', alpha=0.6,
+                label=r'$P_{\rm HII}(n_{\rm cloud})$', zorder=2)
     ax_top.plot(t, pos(P_ram),     color=C_WIND,  lw=1.2, ls='--', alpha=0.9,
                 label=r'$P_{\rm ram}$', zorder=3)
     ax_top.plot(t, pos(P_rad),     color=C_RAD,   lw=1.2, ls='-.', alpha=0.9,
@@ -238,25 +300,24 @@ def plot_pressureZeta_on_ax(
                 label=r'$P_{\rm drive}$', zorder=4)
 
     # --- Background shading by dominant driver ---
-    # Where n_IF_Str/n_IF_ODE > 1: teal (Strömgren dominates), else: coral
-    ratio_safe = np.nan_to_num(nIF_ratio, nan=0.0)
-    hii_dom = ratio_safe > 1.0
+    # Where n_cloud(R2)/n_IF_ODE > 1: teal (ambient > Pb-anchored), else: coral
+    ratio_safe = np.nan_to_num(nCloud_ratio, nan=0.0)
+    cloud_dom = ratio_safe > 1.0
 
-    if np.any(hii_dom):
-        ax_top.fill_between(t, 0, 1, where=hii_dom,
+    if np.any(cloud_dom):
+        ax_top.fill_between(t, 0, 1, where=cloud_dom,
                             color=C_PHII, alpha=0.08,
                             transform=ax_top.get_xaxis_transform(), zorder=0)
-    if np.any(~hii_dom):
-        ax_top.fill_between(t, 0, 1, where=~hii_dom,
+    if np.any(~cloud_dom):
+        ax_top.fill_between(t, 0, 1, where=~cloud_dom,
                             color=C_DRIVE, alpha=0.08,
                             transform=ax_top.get_xaxis_transform(), zorder=0)
 
-    # --- Mark the n_IF ratio = 1 crossing ---
-    crossings = np.where(np.diff(hii_dom.astype(int)) != 0)[0]
+    # --- Mark the ratio = 1 crossing ---
+    crossings = np.where(np.diff(cloud_dom.astype(int)) != 0)[0]
     for idx in crossings:
         t_cross = 0.5 * (t[idx] + t[idx + 1])
         ax_top.axvline(t_cross, color=C_PHII, lw=1.0, ls=':', alpha=0.5, zorder=1)
-        # Extend crossing indicator into bottom panel
         ax_bot.axvline(t_cross, color=C_PHII, lw=1.0, ls=':', alpha=0.5, zorder=1)
 
     ax_top.set_yscale('log')
@@ -271,29 +332,29 @@ def plot_pressureZeta_on_ax(
     ax_top.set_xlim(t.min(), t.max())
 
     # ================================================================
-    # BOTTOM PANEL: n_IF_Str / n_IF_ODE
+    # BOTTOM PANEL: n_cloud(R₂) / n_IF_ODE
     # ================================================================
-    ratio_smooth = _smooth(nIF_ratio, sw)
+    ratio_smooth = _smooth(nCloud_ratio, sw)
     ratio_pos = np.where(ratio_smooth > 0, ratio_smooth, np.nan)
 
     ax_bot.plot(t, ratio_pos, color='0.15', lw=1.8, ls='-', alpha=0.9,
-                label=r'$n_{\rm IF,Str}/n_{\rm IF,ODE}$', zorder=3)
+                label=r'$n_{\rm cloud}(R_2)/n_{\rm IF,ODE}$', zorder=3)
 
     # Horizontal line at ratio = 1
     ax_bot.axhline(1.0, color='black', lw=1.5, ls='--', alpha=0.6, zorder=2)
 
     # Background shading matching top panel
-    if np.any(hii_dom):
-        ax_bot.fill_between(t, 0, 1, where=hii_dom,
+    if np.any(cloud_dom):
+        ax_bot.fill_between(t, 0, 1, where=cloud_dom,
                             color=C_PHII, alpha=0.08,
                             transform=ax_bot.get_xaxis_transform(), zorder=0)
-    if np.any(~hii_dom):
-        ax_bot.fill_between(t, 0, 1, where=~hii_dom,
+    if np.any(~cloud_dom):
+        ax_bot.fill_between(t, 0, 1, where=~cloud_dom,
                             color=C_DRIVE, alpha=0.08,
                             transform=ax_bot.get_xaxis_transform(), zorder=0)
 
     ax_bot.set_yscale('log')
-    ax_bot.set_ylabel(r'$n_{\rm IF,Str} / n_{\rm IF,ODE}$')
+    ax_bot.set_ylabel(r'$n_{\rm cloud}(R_2) / n_{\rm IF,ODE}$')
     ax_bot.set_xlabel('t [Myr]')
     ax_bot.set_xlim(t.min(), t.max())
 
@@ -317,7 +378,7 @@ def plot_from_path(data_input: str, output_dir: str = None):
         return
 
     try:
-        t, R2, phase, pressures, nIF_ratio, rcloud, isCollapse = load_run(data_path)
+        t, R2, phase, pressures, nCloud_ratio, rcloud, isCollapse = load_run(data_path)
     except Exception as e:
         print(f"Error loading data: {e}")
         return
@@ -329,12 +390,12 @@ def plot_from_path(data_input: str, output_dir: str = None):
     )
 
     plot_pressureZeta_on_ax(
-        ax_top, ax_bot, t, R2, phase, pressures, nIF_ratio,
+        ax_top, ax_bot, t, R2, phase, pressures, nCloud_ratio,
         rcloud=rcloud, isCollapse=isCollapse,
         smooth_window=SMOOTH_WINDOW,
         phase_change=PHASE_CHANGE,
     )
-    ax_top.set_title(f"Pressure + $n_{{\\rm IF}}$ ratio: {data_path.parent.name}")
+    ax_top.set_title(f"Pressure + $n_{{\\rm cloud}}/n_{{\\rm IF}}$: {data_path.parent.name}")
 
     # Legend
     handles = _build_legend_handles()
@@ -356,7 +417,7 @@ def plot_from_path(data_input: str, output_dir: str = None):
 
 
 def _build_legend_handles():
-    """Construct legend handles for the pressure + n_IF ratio plot."""
+    """Construct legend handles for the pressure + density ratio plot."""
     handles = [
         Line2D([0], [0], color=C_DRIVE, lw=1.4, ls='-',
                label=r'$P_b$ (bubble)'),
@@ -364,6 +425,8 @@ def _build_legend_handles():
                label=r'$P_{\rm HII,Str}$ (Strömgren)'),
         Line2D([0], [0], color=C_PHII,  lw=0.8, ls=':', alpha=0.4,
                label=r'$P_{\rm HII,ODE}$ (BC)'),
+        Line2D([0], [0], color=C_PHII,  lw=0.8, ls='--', alpha=0.6,
+               label=r'$P_{\rm HII}(n_{\rm cloud})$'),
         Line2D([0], [0], color=C_WIND,  lw=1.2, ls='--',
                label=r'$P_{\rm ram}$'),
         Line2D([0], [0], color=C_RAD,   lw=1.2, ls='-.',
@@ -371,7 +434,7 @@ def _build_legend_handles():
         Line2D([0], [0], color='0.15',  lw=2.5, ls='-',
                label=r'$P_{\rm drive}$'),
         Line2D([0], [0], color='0.15',  lw=1.8, ls='-',
-               label=r'$n_{\rm IF,Str}/n_{\rm IF,ODE}$'),
+               label=r'$n_{\rm cloud}(R_2)/n_{\rm IF,ODE}$'),
         Line2D([0], [0], color='black', lw=1.5, ls='--', alpha=0.6,
                label=r'ratio $= 1$'),
     ]
@@ -464,9 +527,9 @@ def plot_grid(folder_path, output_dir=None, ndens_filter=None,
                     continue
 
                 try:
-                    t, R2, phase, pressures, nIF_ratio, rcloud, isCollapse = load_run(data_path)
+                    t, R2, phase, pressures, nCloud_ratio, rcloud, isCollapse = load_run(data_path)
                     plot_pressureZeta_on_ax(
-                        ax_top, ax_bot, t, R2, phase, pressures, nIF_ratio,
+                        ax_top, ax_bot, t, R2, phase, pressures, nCloud_ratio,
                         rcloud=rcloud, isCollapse=isCollapse,
                         smooth_window=SMOOTH_WINDOW,
                         phase_change=PHASE_CHANGE,
