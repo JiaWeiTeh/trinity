@@ -397,6 +397,7 @@ def read_param(path2file, write_summary=True):
     params['EndSimulationDirectly'] = DescribedItem(False, info="Flag to immediately end simulation", ori_units="N/A")
     params['SimulationEndReason'] = DescribedItem('', info="Reason for simulation completion", ori_units="N/A")
     params['EarlyPhaseApproximation'] = DescribedItem(True, info="Using approximations for early phase?", ori_units="N/A")
+    params['include_PHII'] = DescribedItem(True, info="Include P_HII in driving pressure", ori_units="N/A")
     
     # Time tracking
     params['tSF'] = DescribedItem(0, info="Time of star formation", ori_units="Myr")
