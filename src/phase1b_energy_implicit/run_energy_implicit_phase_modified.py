@@ -327,6 +327,8 @@ def compute_forces_pure(
 
     # BUG FIX: use TShell_ion from params instead of hard-coded 1e4 for thermodynamic consistency
     P_HII = 2.0 * n_IF * k_B * TShell_ion
+    if not params['include_PHII'].value:
+        P_HII = 0.0
 
     # Implicit phase: P_drive = max(Pb, P_HII)
     # max() avoids double-counting where P_HII ≈ Pb at contact discontinuity

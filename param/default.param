@@ -64,9 +64,12 @@ mCloud    1e7
 # INFO: Star formation effeciency.
 sfe    0.01
 
-# INFO: Cloud metallicity 
+# INFO: Cloud metallicity
 # UNIT: [Zsun]
 ZCloud    1
+
+# INFO: Include warm ionized gas pressure (P_HII) in the driving pressure. When False, P_HII is set to zero in P_drive.
+include_PHII    True
 
 
 # =============================================================================

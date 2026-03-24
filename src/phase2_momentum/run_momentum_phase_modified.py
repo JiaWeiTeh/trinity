@@ -263,6 +263,8 @@ def compute_forces_momentum_pure(
 
     # BUG FIX: use TShell_ion from params instead of hard-coded 1e4 for thermodynamic consistency
     P_HII = 2.0 * n_IF * k_B * TShell_ion
+    if not params['include_PHII'].value:
+        P_HII = 0.0
 
     # Momentum phase: P_drive = P_HII + P_ram
     P_drive = P_HII + press_ram
@@ -313,6 +315,7 @@ class MomentumODESnapshot:
     FABSi: float
     TShell_ion: float  # Ionized shell temperature [K]
     n_IF: float  # Density at ionization front (for P_HII)
+    include_PHII: bool  # Include P_HII in driving pressure
     F_rad: float
     mShell: float
     mShell_dot: float
@@ -347,6 +350,7 @@ def create_momentum_snapshot(params, shell_props: ShellProperties,
         rShell=shell_props.rShell,
         FABSi=shell_props.shell_fAbsorbedIon,
         n_IF=shell_props.n_IF,
+        include_PHII=params['include_PHII'].value,
         F_rad=shell_props.shell_F_rad,
         mShell=mShell,
         mShell_dot=mShell_dot,
@@ -432,6 +436,8 @@ def get_ODE_momentum_pure(t: float, y: np.ndarray, snapshot: MomentumODESnapshot
     # HII pressure from shell-structure ionization front density
     n_IF = snapshot.n_IF
     P_HII = 2.0 * n_IF * k_B * snapshot.TShell_ion
+    if not snapshot.include_PHII:
+        P_HII = 0.0
 
     # Momentum phase: P_drive = P_HII + P_ram
     P_drive = P_HII + press_ram

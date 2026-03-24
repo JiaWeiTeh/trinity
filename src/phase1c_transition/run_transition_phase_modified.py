@@ -323,6 +323,8 @@ def compute_forces_pure(
 
     # BUG FIX: use TShell_ion from params instead of hard-coded 1e4 for thermodynamic consistency
     P_HII = 2.0 * n_IF * k_B * TShell_ion
+    if not params['include_PHII'].value:
+        P_HII = 0.0
 
     # Ram pressure contribution
     Lmech_total = params['Lmech_total'].value
