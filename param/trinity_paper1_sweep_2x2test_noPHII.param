@@ -45,3 +45,6 @@ stop_t    10
 
 #surpress warning to save memory
 log_level    WARNING
+
+# include PHII?
+include_PHII False

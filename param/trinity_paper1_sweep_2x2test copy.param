@@ -13,8 +13,8 @@
 # Sweep parameters (lists) - these will be combined
 # =============================================================================
 
-mCloud    [1e5, 1e8]
-sfe       [0.01, 0.1, 0.5]
+mCloud    [1e5, 1e9]
+sfe       [0.01, 0.5]
 nCore     [1e3, 1e4]
 
 
