@@ -211,13 +211,14 @@ def get_ODE_Edot_pure(t: float, y: list, snapshot: ODESnapshot, params_for_feedb
     # Inward pressure from photoionized gas outside shell
     # Uses existing get_press_ion() which only reads from params
     FABSi = snapshot.shell_fAbsorbedIon
+    rShell = snapshot.rShell
     if FABSi < 1.0:
-        press_HII_in = get_press_ion(R2, params_for_feedback)
+        press_HII_in = get_press_ion(rShell, params_for_feedback)
     else:
         press_HII_in = 0.0
 
     # Add ISM pressure if shell beyond cloud
-    if R2 >= snapshot.rCloud:
+    if rShell >= snapshot.rCloud:
         press_HII_in += snapshot.PISM * snapshot.k_B
 
     # ==========================================================================
@@ -354,12 +355,13 @@ def compute_derived_quantities(t: float, y: list, snapshot: ODESnapshot, params_
     F_grav = snapshot.G * mShell / (R2**2) * (snapshot.mCluster + 0.5 * mShell)
 
     FABSi = snapshot.shell_fAbsorbedIon
+    rShell = snapshot.rShell
     if FABSi < 1.0:
-        press_HII_in = get_press_ion(R2, params_for_feedback)  # BUG FIX: evaluate at R2 for consistency with F_ion_in = press_HII_in * 4π R2²
+        press_HII_in = get_press_ion(rShell, params_for_feedback)
     else:
         press_HII_in = 0.0
 
-    if R2 >= snapshot.rCloud:  # BUG FIX: use R2 consistently (not frozen rShell)
+    if rShell >= snapshot.rCloud:
         press_HII_in += snapshot.PISM * snapshot.k_B
 
     # ==========================================================================
