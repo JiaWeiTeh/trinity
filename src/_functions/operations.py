@@ -8,8 +8,98 @@ Created on Mon Apr 24 19:36:36 2023
 This script contains useful functions that help compute stuffs
 """
 
+from functools import reduce
+from typing import Tuple, Union, Sequence
+
 import numpy as np
 import src._functions.unit_conversions as cvt
+
+def _simplify(
+    x_arr: Union[np.ndarray, Sequence[float]],
+    y_arr: Union[np.ndarray, Sequence[float]],
+    nmin: int = 100,
+    grad_inc: float = 1.0,
+) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Heuristic downsampling of a curve y(x) to approximately nmin points,
+    preserving important features of the curve shape.
+
+    The algorithm keeps:
+    - both endpoints
+    - points where the gradient changes sharply (large fractional second derivative)
+    - local extrema (sign changes in the first derivative)
+    - evenly spaced samples in cumulative-y-distance space
+
+    Parameters
+    ----------
+    x_arr : array-like
+        Independent variable (e.g. position, time).
+    y_arr : array-like
+        Dependent variable (e.g. temperature, density).
+    nmin : int, optional
+        Target minimum number of output samples. Default is 100.
+    grad_inc : float, optional
+        Fractional gradient-change threshold. Points where the gradient
+        changes by more than this fraction are kept. Default is 1.0 (100%).
+
+    Returns
+    -------
+    x_out, y_out : np.ndarray
+        Downsampled x and y arrays.
+    """
+    x = np.asarray(x_arr, dtype=float)
+    y = np.asarray(y_arr, dtype=float)
+
+    if x.size == 0 or y.size == 0:
+        return x, y
+    if x.size != y.size:
+        raise ValueError(
+            f"_simplify(): x and y must have the same length. "
+            f"Got {x.size} and {y.size}"
+        )
+    if nmin >= x.size:
+        return x, y
+    nmin = max(int(nmin), 100)
+
+    # --- 1) Gradient-based feature detection ---
+    grad = np.gradient(y)
+    eps = 1e-30
+    # Safe denominator to avoid division by zero in flat regions
+    denom = np.where(
+        np.abs(grad[:-1]) < eps, eps, grad[:-1]
+    )
+    pct = np.diff(grad) / denom
+    # Points with large fractional gradient change
+    important_grad = np.where(np.abs(pct) > grad_inc)[0]
+    # Points where the derivative changes sign (local extrema)
+    important_sign = np.where(np.diff(np.sign(grad)) != 0)[0]
+
+    # --- 2) Cumulative-distance sampling in y ---
+    yrng = float(np.nanmax(y) - np.nanmin(y))
+    if not np.isfinite(yrng) or yrng == 0:
+        # Flat curve: fall back to uniform spacing
+        idx = np.unique(np.linspace(0, x.size - 1, nmin).astype(int))
+        return x[idx], y[idx]
+
+    maxdist = yrng / nmin
+    y_cum = np.cumsum(np.abs(np.diff(y)))
+    bins = (y_cum / maxdist).astype(int)
+    idx_dist = np.where(bins[:-1] != bins[1:])[0]
+
+    # --- 3) Merge all candidate indices + endpoints ---
+    merged = reduce(
+        np.union1d,
+        [
+            np.array([0], dtype=int),
+            important_grad.astype(int),
+            important_sign.astype(int),
+            idx_dist.astype(int),
+            np.array([x.size - 1], dtype=int),
+        ],
+    )
+    merged = np.unique(np.clip(merged, 0, x.size - 1))
+    return x[merged], y[merged]
+
 
 def find_nearest(array, value):
     """
