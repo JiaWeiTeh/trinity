@@ -25,31 +25,24 @@ Mean clump density : ~10³ cm⁻³             (Williams, Blitz & Stark 1995)
 """
 
 import sys
-import numpy as np
-import matplotlib.pyplot as plt
 from pathlib import Path
 from typing import List
+
+import numpy as np
+import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 
-import sys as _sys
-from pathlib import Path as _Path
-_sys.path.insert(0, str(_Path(__file__).parent.parent.parent))
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from src._plots.plot_base import FIG_DIR
-from src._plots.paper_ODIN import (
+from src._plots.paper_ODIN import (          # noqa: E402
     ObservationalConstraints,
     AnalysisConfig,
     SimulationResult,
     smooth_trajectory,
-    compute_stellar_mass,
-    compute_chi2,
-    nCore_matches,
-    load_simulation_at_time,
     load_sweep_results,
-    PC_MYR_TO_KM_S,
     FONTSIZE,
 )
-from src._output.trinity_reader import info_simulations
+from src._output.trinity_reader import info_simulations  # noqa: E402
 
 print("...creating Rosette trajectory evolution plots")
 
@@ -113,6 +106,11 @@ _R_MAX = 30.0    # pc
 _M_MIN = 10
 _M_MAX = 1e6
 
+# Dust shell extent (Planck XXXIV, 353 GHz) — not part of chi²,
+# shown as a visual band on the radius panel.
+_DUST_SHELL_MIN = 18.0  # pc
+_DUST_SHELL_MAX = 22.0  # pc
+
 
 def plot_trajectory_evolution(results: List[SimulationResult],
                               config: AnalysisConfig,
@@ -168,12 +166,14 @@ def plot_trajectory_evolution(results: List[SimulationResult],
     ax_m.set_yscale('log')
     ax_m.set_ylim(_M_MIN, _M_MAX)
     ax_m.grid(True, alpha=0.3, which='both')
+    ax_m.tick_params(axis='x', pad=10)
+    ax_m.tick_params(axis='y', pad=10)
 
     # --- Radius panel ---
     # HII outer radius (blue)
     ax_r.errorbar(obs.t_obs, obs.R_obs, xerr=obs.t_err, yerr=obs.R_err,
                   fmt='s', color='blue', markersize=14, capsize=5, capthick=2,
-                  label=f'HII outer: {obs.R_obs}±{obs.R_err} pc', zorder=10,
+                  label=f'HII outer: {obs.R_obs}\u00b1{obs.R_err} pc', zorder=10,
                   markeredgecolor='k')
     ax_r.axhspan(obs.R_obs - obs.R_err, obs.R_obs + obs.R_err,
                  alpha=0.15, color='blue', zorder=1)
@@ -181,15 +181,16 @@ def plot_trajectory_evolution(results: List[SimulationResult],
     # Cavity inner radius (green)
     ax_r.errorbar(obs.t_obs, obs.R_obs_Pabst, xerr=obs.t_err, yerr=obs.R_err_Pabst,
                   fmt='s', color='green', markersize=14, capsize=5, capthick=2,
-                  label=f'Cavity: {obs.R_obs_Pabst}±{obs.R_err_Pabst} pc', zorder=10,
+                  label=f'Cavity: {obs.R_obs_Pabst}\u00b1{obs.R_err_Pabst} pc', zorder=10,
                   markeredgecolor='k')
     ax_r.axhspan(obs.R_obs_Pabst - obs.R_err_Pabst,
                  obs.R_obs_Pabst + obs.R_err_Pabst,
                  alpha=0.15, color='green', zorder=1)
 
-    # Dust shell extent band (orange, 18–22 pc)
-    ax_r.axhspan(18, 22, alpha=0.12, color='orange', zorder=1,
-                 label='Dust shell (18–22 pc)')
+    # Dust shell extent band (orange)
+    ax_r.axhspan(_DUST_SHELL_MIN, _DUST_SHELL_MAX, alpha=0.12, color='orange',
+                 zorder=1,
+                 label=f'Dust shell ({_DUST_SHELL_MIN:.0f}\u2013{_DUST_SHELL_MAX:.0f} pc)')
 
     ax_r.axvspan(obs.t_obs - obs.t_err, obs.t_obs + obs.t_err,
                  alpha=0.1, color='gray', zorder=0)
@@ -202,6 +203,8 @@ def plot_trajectory_evolution(results: List[SimulationResult],
     ax_r.set_xlim(0, _T_MAX)
     ax_r.set_ylim(0, _R_MAX)
     ax_r.grid(True, alpha=0.3)
+    ax_r.tick_params(axis='x', pad=10)
+    ax_r.tick_params(axis='y', pad=10)
 
     plt.tight_layout()
     suffix = config.get_filename_suffix()
@@ -275,21 +278,23 @@ def plot_trajectory_evolution_combined(results: List[SimulationResult],
     # --- Radius panel ---
     ax_r.errorbar(obs.t_obs, obs.R_obs, xerr=obs.t_err, yerr=obs.R_err,
                   fmt='s', color='blue', markersize=12, capsize=5, capthick=2,
-                  label=f'HII outer: {obs.R_obs}±{obs.R_err} pc', zorder=10,
+                  label=f'HII outer: {obs.R_obs}\u00b1{obs.R_err} pc', zorder=10,
                   markeredgecolor='k')
     ax_r.axhspan(obs.R_obs - obs.R_err, obs.R_obs + obs.R_err,
                  alpha=0.15, color='blue', zorder=1)
 
     ax_r.errorbar(obs.t_obs, obs.R_obs_Pabst, xerr=obs.t_err, yerr=obs.R_err_Pabst,
                   fmt='s', color='green', markersize=12, capsize=5, capthick=2,
-                  label=f'Cavity: {obs.R_obs_Pabst}±{obs.R_err_Pabst} pc', zorder=10,
+                  label=f'Cavity: {obs.R_obs_Pabst}\u00b1{obs.R_err_Pabst} pc', zorder=10,
                   markeredgecolor='k')
     ax_r.axhspan(obs.R_obs_Pabst - obs.R_err_Pabst,
                  obs.R_obs_Pabst + obs.R_err_Pabst,
                  alpha=0.15, color='green', zorder=1)
 
-    ax_r.axhspan(18, 22, alpha=0.12, color='orange', zorder=1,
-                 label='Dust shell (18–22 pc)')
+    # Dust shell extent band (orange)
+    ax_r.axhspan(_DUST_SHELL_MIN, _DUST_SHELL_MAX, alpha=0.12, color='orange',
+                 zorder=1,
+                 label=f'Dust shell ({_DUST_SHELL_MIN:.0f}\u2013{_DUST_SHELL_MAX:.0f} pc)')
 
     ax_r.axvspan(obs.t_obs - obs.t_err, obs.t_obs + obs.t_err,
                  alpha=0.1, color='gray', zorder=0)
@@ -390,10 +395,6 @@ Default Observational Constraints (Rosette Nebula):
     # Filters
     parser.add_argument('--nCore', '-n', default=None,
                         help='Filter by nCore value (e.g., "1e3")')
-    parser.add_argument('--mCloud', nargs='+', default=None,
-                        help='Filter by cloud mass')
-    parser.add_argument('--sfe', nargs='+', default=None,
-                        help='Filter by SFE')
     parser.add_argument('--info', action='store_true',
                         help='Print available parameter values and exit')
 
