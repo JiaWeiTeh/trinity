@@ -146,7 +146,9 @@ def _simplify(
     .. code-block:: bash
 
         python src/_functions/operations.py profile.csv -o reduced.csv --nmin 200
-        python src/_functions/operations.py profile.csv --plot  # visualise
+        python src/_functions/operations.py profile.csv --metrics          # print error table
+        python src/_functions/operations.py profile.csv --plot             # interactive plot
+        python src/_functions/operations.py profile.csv --animate out.gif  # animated GIF
     """
     # --- Input validation ---
     x = np.asarray(x_arr, dtype=float)
@@ -343,7 +345,7 @@ def _simplify_plot(
     x_simp: Union[np.ndarray, Sequence[float]],
     y_simp: Union[np.ndarray, Sequence[float]],
     title: str = "Curve simplification",
-    save_path: str = None,
+    save_path: Union[str, None] = None,
     show: bool = True,
 ) -> None:
     """
@@ -385,16 +387,14 @@ def _simplify_plot(
     x_s = np.asarray(x_simp, dtype=float)
     y_s = np.asarray(y_simp, dtype=float)
 
-    # Interpolate simplified curve onto original grid for residual.
-    y_interp = np.interp(x_o, x_s, y_s)
-    residual = y_o - y_interp
-
-    # Compute metrics for annotation.
+    # Compute metrics and residual (interpolation done once, inside _simplify_error).
     metrics = _simplify_error(x_o, y_o, x_s, y_s)
+    residual = y_o - np.interp(x_o, x_s, y_s)
 
     fig, (ax1, ax2) = plt.subplots(
         2, 1, figsize=(10, 6), sharex=True,
-        gridspec_kw={"height_ratios": [3, 1], "hspace": 0.08},
+        gridspec_kw={"height_ratios": [3, 1]},
+        layout="constrained",
     )
 
     # --- Top panel: curves ---
@@ -413,7 +413,7 @@ def _simplify_plot(
     ax2.set_ylabel("residual")
     ax2.set_xlabel("x")
 
-    # Annotate with key metrics.
+    # Annotate with key metrics inside the residual panel.
     info = (
         f"RMSE = {metrics['rms_err']:.2e}    "
         f"MAE = {metrics['mean_abs_err']:.2e}    "
@@ -422,12 +422,10 @@ def _simplify_plot(
         f"compression = {metrics['compression']:.1f}x"
     )
     ax2.text(
-        0.5, -0.35, info,
-        transform=ax2.transAxes, ha="center", va="top", fontsize=8,
-        bbox=dict(boxstyle="round,pad=0.3", fc="lightyellow", ec="0.8"),
+        0.5, 0.02, info,
+        transform=ax2.transAxes, ha="center", va="bottom", fontsize=8,
+        bbox=dict(boxstyle="round,pad=0.3", fc="lightyellow", ec="0.8", alpha=0.9),
     )
-
-    fig.tight_layout()
 
     if save_path is not None:
         fig.savefig(save_path, dpi=150, bbox_inches="tight")
@@ -620,7 +618,9 @@ def _simplify_animate(
 
         return line_orig, scatter_moving, line_simp, info_text, err_line, err_fill, err_text
 
-    anim = FuncAnimation(fig, _update, frames=n_frames, blit=True)
+    # blit=False is required because err_fill (PolyCollection) is recreated
+    # each frame — blit=True assumes the same artist objects persist.
+    anim = FuncAnimation(fig, _update, frames=n_frames, blit=False)
 
     # Save — use pillow for GIF, ffmpeg for mp4.
     if save_path.lower().endswith(".mp4"):
@@ -775,6 +775,8 @@ def _simplify_cli():
     Usage
     -----
     python operations.py input.csv -o output.csv --nmin 150 --grad-inc 0.5
+    python operations.py input.csv --metrics --plot
+    python operations.py input.csv --animate simplify.gif --animate-duration 5
 
     Positional arguments
     --------------------
@@ -791,6 +793,19 @@ def _simplify_cli():
         Minimum number of output samples (default: 100).
     --grad-inc : float
         Fractional gradient-change threshold (default: 1.0).
+    --metrics : flag
+        Print error metrics (RMSE, MAE, R², etc.) after simplification.
+    --plot : flag
+        Show an interactive before/after comparison plot with residuals.
+    --plot-save : str
+        Save the comparison plot to a file (e.g. ``comparison.png``).
+    --animate : str
+        Save an animated GIF/MP4 showing the original curve morphing
+        into the simplified points (e.g. ``simplify.gif``).
+    --animate-duration : float
+        Animation duration in seconds (default: 3.0).
+    --animate-fps : int
+        Animation frames per second (default: 30).
     """
     import argparse
 
