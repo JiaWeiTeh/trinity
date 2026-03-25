@@ -86,12 +86,54 @@ def _simplify(
 
     Examples
     --------
+    **1. Basic usage with numpy arrays:**
+
     >>> import numpy as np
+    >>> from src._functions.operations import _simplify
     >>> x = np.linspace(0, 10, 5000)
     >>> y = np.sin(x) + 0.5 * np.sin(5 * x)
     >>> x_s, y_s = _simplify(x, y, nmin=100)
-    >>> print(f"Reduced {x.size} points to {x_s.size} points")
-    Reduced 5000 points to ... points
+    >>> print(f"Reduced {x.size} points -> {x_s.size} points")
+
+    **2. Works with plain Python lists (no numpy needed at call site):**
+
+    >>> x = [0.0, 0.1, 0.2, 0.3, ..., 10.0]
+    >>> y = [1.2, 1.5, 1.3, 1.8, ..., 0.9]
+    >>> x_s, y_s = _simplify(x, y)
+
+    **3. Tuning sensitivity with ``grad_inc``:**
+
+    Lower ``grad_inc`` = keep more points (more sensitive to bends).
+    Higher ``grad_inc`` = keep fewer points (only the sharpest features).
+
+    >>> # Sensitive: keep points where gradient changes by > 50%
+    >>> x_s, y_s = _simplify(x, y, nmin=100, grad_inc=0.5)
+    >>> # Aggressive: only keep points where gradient changes by > 200%
+    >>> x_s, y_s = _simplify(x, y, nmin=100, grad_inc=2.0)
+
+    **4. Reading from a file and simplifying:**
+
+    >>> data = np.loadtxt("profile.csv", delimiter=",")
+    >>> x_s, y_s = _simplify(data[:, 0], data[:, 1], nmin=200)
+    >>> np.savetxt("profile_simplified.csv", np.column_stack([x_s, y_s]),
+    ...            delimiter=",", header="x,y")
+
+    **5. Using in a plotting script (e.g. with matplotlib):**
+
+    >>> import matplotlib.pyplot as plt
+    >>> x = np.linspace(0, 4 * np.pi, 10000)
+    >>> y = np.exp(-0.1 * x) * np.sin(x)
+    >>> x_s, y_s = _simplify(x, y, nmin=150)
+    >>> plt.plot(x, y, 'k-', alpha=0.3, label=f"original ({x.size} pts)")
+    >>> plt.plot(x_s, y_s, 'ro-', ms=2, label=f"simplified ({x_s.size} pts)")
+    >>> plt.legend()
+    >>> plt.show()
+
+    **6. CLI usage (no scripting needed):**
+
+    .. code-block:: bash
+
+        python src/_functions/operations.py profile.csv -o reduced.csv --nmin 200
     """
     # --- Input validation ---
     x = np.asarray(x_arr, dtype=float)
@@ -421,5 +463,45 @@ def _simplify_cli():
 
 
 if __name__ == "__main__":
-    _simplify_cli()
+    import sys
+
+    # If command-line arguments are given, run the file-based CLI.
+    # Otherwise, run a quick interactive demo so users can see how it works.
+    if len(sys.argv) > 1:
+        _simplify_cli()
+    else:
+        # ---- Quick demo ----
+        print("=" * 60)
+        print("  _simplify() — interactive demo")
+        print("=" * 60)
+        print()
+
+        # Generate a test signal: decaying sine with a sharp spike.
+        x = np.linspace(0, 4 * np.pi, 5000)
+        y = np.exp(-0.1 * x) * np.sin(x)
+        # Add a sharp spike at the midpoint to test feature detection.
+        y[2500] += 3.0
+
+        x_s, y_s = _simplify(x, y, nmin=100)
+        print(f"  Original  : {x.size} points")
+        print(f"  Simplified: {x_s.size} points")
+        print(f"  Reduction : {100 * (1 - x_s.size / x.size):.1f}%")
+        print()
+        print("  Endpoints preserved:")
+        print(f"    first = ({x_s[0]:.4f}, {y_s[0]:.4f})")
+        print(f"    last  = ({x_s[-1]:.4f}, {y_s[-1]:.4f})")
+        print()
+        print("  To use in your own script:")
+        print()
+        print("    from src._functions.operations import _simplify")
+        print("    x_s, y_s = _simplify(x, y, nmin=100)")
+        print()
+        print("  Or from the command line:")
+        print()
+        print("    python src/_functions/operations.py data.csv -o out.csv")
+        print()
+        print("  Run with --help for all options:")
+        print()
+        print("    python src/_functions/operations.py --help")
+        print("=" * 60)
 
