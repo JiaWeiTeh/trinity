@@ -61,7 +61,7 @@ class ObservationalConstraints:
     M_shell_combined_err: float = 500.0  # M_sun
 
     # Dynamical age
-    t_obs: float = 0.24          # Myr
+    t_obs: float = 0.25          # Myr
     t_err: float = 0.05          # Myr
 
     # Shell radius (HI)
@@ -587,10 +587,16 @@ def plot_trajectory_evolution(results: List[SimulationResult], config: AnalysisC
                       label=f'{label}', zorder=10,
                       markeredgecolor='k', markeredgewidth=0.5)
 
-    # 0.5 × [CII] shell mass reference line
+    # 0.5 × [CII] shell mass (same band+marker style as [CII], open square)
     M_half_CII = 0.5 * obs.M_shell_CII
-    ax_m.axhline(M_half_CII, color='green', ls='--', lw=1.2, alpha=0.6, zorder=2,
-                 label=r'0.5$\times$[CII]' + f' ({M_half_CII:.0f} ' + r'$M_\odot$)')
+    M_half_CII_err = 0.5 * obs.M_shell_CII_err
+    ax_m.axhspan(M_half_CII - M_half_CII_err, M_half_CII + M_half_CII_err,
+                 alpha=0.15, color='green', zorder=1)
+    ax_m.errorbar(obs.t_obs, M_half_CII, xerr=obs.t_err, yerr=M_half_CII_err,
+                  fmt='s', color='green', markersize=10, capsize=4, capthick=1.5,
+                  label=r'0.5$\times$[CII] ($\sim$' + f'{M_half_CII:.0f} ' + r'$M_\odot$)',
+                  zorder=10, markeredgecolor='green', markeredgewidth=1.5,
+                  markerfacecolor='none')
 
     ax_m.axvspan(obs.t_obs - obs.t_err, obs.t_obs + obs.t_err,
                  alpha=0.1, color='gray', zorder=0)
@@ -669,8 +675,10 @@ def plot_trajectory_evolution_combined(results: List[SimulationResult], config: 
     """
     from scipy.interpolate import interp1d
 
-    # Define colors for different nCore values
+    # Define colors and transparencies for different nCore values
+    # Index 0 → first nCore (e.g. 100), 1 → second (e.g. 500), 2 → third (e.g. 1000)
     nCore_colors = ['orange', 'r', 'darkgray', 'C3', 'C4', 'C5']
+    nCore_alphas = [0.7, 0.45, 0.85, 0.7, 0.7, 0.7]
 
     # 2 subplots: mass (top), radius (bottom) - stacked vertically with shared x-axis
     fig, (ax_m, ax_r) = plt.subplots(2, 1, figsize=(6.5, 6.5), dpi=150, sharex=True)
@@ -678,7 +686,7 @@ def plot_trajectory_evolution_combined(results: List[SimulationResult], config: 
     obs = config.obs
 
     # Common time grid for interpolation
-    t_common = np.linspace(0, 0.3, 500)
+    t_common = np.linspace(0, 0.35, 500)
 
     for nCore_idx, nCore_value in enumerate(nCore_values):
         # Filter for this nCore
@@ -696,8 +704,9 @@ def plot_trajectory_evolution_combined(results: List[SimulationResult], config: 
         else:
             data_to_plot = data_all_sorted[:top_n]
 
-        # Get color for this nCore
+        # Get color and alpha for this nCore
         color = nCore_colors[nCore_idx % len(nCore_colors)]
+        band_alpha = nCore_alphas[nCore_idx % len(nCore_alphas)]
 
         # Collect interpolated trajectories
         M_interp_list = []
@@ -738,7 +747,7 @@ def plot_trajectory_evolution_combined(results: List[SimulationResult], config: 
                 M_max = np.nanmax(M_arr, axis=0)
 
             # Plot shaded region
-            ax_m.fill_between(t_common, M_min, M_max, alpha=0.7, color=color,
+            ax_m.fill_between(t_common, M_min, M_max, alpha=band_alpha, color=color,
                               label=r'$n_{\rm core} = $' + f'{float(nCore_value):g}' + r' $\rm cm^{-3}$')
 
         if R_interp_list:
@@ -748,7 +757,7 @@ def plot_trajectory_evolution_combined(results: List[SimulationResult], config: 
                 R_max = np.nanmax(R_arr, axis=0)
 
             # Plot shaded region
-            ax_r.fill_between(t_common, R_min, R_max, alpha=0.7, color=color,
+            ax_r.fill_between(t_common, R_min, R_max, alpha=band_alpha, color=color,
                               label=r'$n_{\rm core} = $' + f'{float(nCore_value):g}' + r' $\rm cm^{-3}$')
 
     # --- Mass panel (log scale) ---
@@ -764,10 +773,16 @@ def plot_trajectory_evolution_combined(results: List[SimulationResult], config: 
                       label=f'{label}', zorder=10,
                       markeredgecolor='k', markeredgewidth=0.5)
 
-    # 0.5 × [CII] shell mass reference line
+    # 0.5 × [CII] shell mass (same band+marker style, open square)
     M_half_CII = 0.5 * obs.M_shell_CII
-    ax_m.axhline(M_half_CII, color='green', ls='--', lw=1.2, alpha=0.6, zorder=2,
-                 label=r'0.5$\times$[CII]' + f' ({M_half_CII:.0f} ' + r'$M_\odot$)')
+    M_half_CII_err = 0.5 * obs.M_shell_CII_err
+    ax_m.axhspan(M_half_CII - M_half_CII_err, M_half_CII + M_half_CII_err,
+                 alpha=0.15, color='green', zorder=1)
+    ax_m.errorbar(obs.t_obs, M_half_CII, xerr=obs.t_err, yerr=M_half_CII_err,
+                  fmt='s', color='green', markersize=10, capsize=4, capthick=1.5,
+                  label=r'0.5$\times$[CII] ($\sim$' + f'{M_half_CII:.0f} ' + r'$M_\odot$)',
+                  zorder=10, markeredgecolor='green', markeredgewidth=1.5,
+                  markerfacecolor='none')
 
     ax_m.axvspan(obs.t_obs - obs.t_err, obs.t_obs + obs.t_err,
                  alpha=0.1, color='gray', zorder=0)
@@ -911,7 +926,7 @@ Examples:
   python paper_ODIN.py --folder sweep_orion/ --mass-tracer all
 
 Default Observational Constraints:
-  Age:             0.24 +/- 0.05 Myr
+  Age:             0.25 +/- 0.05 Myr
   R_shell (HI):    1.8 +/- 0.2 pc
   R_shell ([CII]): 2.7 pc
   M_star:          34 +/- 5 M_sun
@@ -962,8 +977,8 @@ Shell Mass (shown in plots):
                         help='Combined shell mass [M_sun] (default: 2000.0)')
     parser.add_argument('--M-combined-err', type=float, default=500.0,
                         help='Combined shell mass uncertainty [M_sun] (default: 500.0)')
-    parser.add_argument('--t-obs', type=float, default=0.24,
-                        help='Observed age [Myr] (default: 0.24)')
+    parser.add_argument('--t-obs', type=float, default=0.25,
+                        help='Observed age [Myr] (default: 0.25)')
     parser.add_argument('--t-err', type=float, default=0.05,
                         help='Age uncertainty [Myr] (default: 0.05)')
     parser.add_argument('--R-obs', type=float, default=1.8,
