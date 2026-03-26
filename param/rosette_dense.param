@@ -1,0 +1,37 @@
+# ==============================================================================
+# TRINITY Parameter File: Rosette Nebula — Higher-density variant
+# ==============================================================================
+# Same as rosette.param but with:
+#   - M_cloud = 2e5 Msun (account for gas already dispersed)
+#   - SFE = 0.01 --> M_cl = 2000 Msun (upper end of NGC 2244 mass estimates)
+#   - nCore = 100 cm^-3 (denser cloud, R_cloud ~ 24 pc)
+#   - alpha = -1 (moderate density gradient, rCore = 5 pc)
+# ==============================================================================
+
+model_name    rosette_dense
+path2output    rosette_dense_output
+log_level    WARNING
+
+# --- Physical
+mCloud    2e5
+sfe    0.01
+ZCloud    1
+include_PHII    True
+
+# --- Density profile: power-law with alpha=-1
+dens_profile    densPL
+densPL_alpha    -1
+nCore    100
+nISM    1
+rCore    5
+
+# --- Termination
+allowShellDissolution    True
+stop_t_diss    1
+stop_t    5
+
+expansionBeyondCloud    True
+PISM    0
+
+# --- Phase transition
+use_adaptive_solver    True
