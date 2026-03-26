@@ -316,6 +316,41 @@ def nCore_matches(ndens_str: str, filter_str: str) -> bool:
         return ndens_str == filter_str
 
 
+def _trim_after_end(output, t, v2, M_shell, R):
+    """Truncate time series at the first snapshot where the shell
+    collapses (``isCollapse``) or dissolves (``isDissolved``).
+
+    This prevents misleading constant/frozen tails from appearing on
+    trajectory plots after the bubble has already ended.
+    """
+    if t is None or len(t) == 0:
+        return t, v2, M_shell, R
+
+    # Try the explicit boolean flags first
+    try:
+        is_collapse = np.asarray(output.get('isCollapse'), dtype=bool)
+        is_dissolved = np.asarray(output.get('isDissolved'), dtype=bool)
+        ended = is_collapse | is_dissolved
+    except (TypeError, ValueError):
+        ended = None
+
+    # Find the first index where the simulation has ended
+    cut = None
+    if ended is not None and np.any(ended):
+        cut = int(np.argmax(ended))   # first True
+
+    if cut is not None and cut > 0:
+        # Keep one extra point at the boundary so the line reaches the
+        # collapse/dissolution moment instead of stopping one step early.
+        cut = min(cut + 1, len(t))
+        t = t[:cut]
+        v2 = v2[:cut] if v2 is not None else None
+        M_shell = M_shell[:cut] if M_shell is not None else None
+        R = R[:cut] if R is not None else None
+
+    return t, v2, M_shell, R
+
+
 def load_simulation_at_time(data_path: Path, config: AnalysisConfig) -> Optional[SimulationResult]:
     """
     Load simulation and extract observables at specified time.
@@ -376,6 +411,11 @@ def load_simulation_at_time(data_path: Path, config: AnalysisConfig) -> Optional
         v2_full = output.get('v2')
         M_shell_full = output.get('shell_mass')
         R_full = output.get('R2')
+
+        # Trim trajectories after collapse or dissolution onset so that
+        # frozen/constant tails are not plotted (misleading flat lines).
+        t_full, v2_full, M_shell_full, R_full = _trim_after_end(
+            output, t_full, v2_full, M_shell_full, R_full)
 
         v_full_kms = v2_full * PC_MYR_TO_KM_S if v2_full is not None else None
 
@@ -626,7 +666,6 @@ def plot_trajectory_evolution_combined(results: List[SimulationResult], config: 
 
     # Define colors for different nCore values
     nCore_colors = ['orange', 'r', 'darkgray', 'C3', 'C4', 'C5']
-    nCore_math = ["100", "500", "1000"]
 
     # 2 subplots: mass (top), radius (bottom) - stacked vertically with shared x-axis
     fig, (ax_m, ax_r) = plt.subplots(2, 1, figsize=(6.5, 6.5), dpi=150, sharex=True)
@@ -695,7 +734,7 @@ def plot_trajectory_evolution_combined(results: List[SimulationResult], config: 
 
             # Plot shaded region
             ax_m.fill_between(t_common, M_min, M_max, alpha=0.7, color=color,
-                              label=f'$n_{{\\rm core}} = ${nCore_math[nCore_idx]}'+' $\\rm cm^{-3} $')
+                              label=r'$n_{\rm core} = $' + f'{float(nCore_value):.3g}' + r' $\rm cm^{-3}$')
 
         if R_interp_list:
             R_arr = np.array(R_interp_list)
@@ -705,7 +744,7 @@ def plot_trajectory_evolution_combined(results: List[SimulationResult], config: 
 
             # Plot shaded region
             ax_r.fill_between(t_common, R_min, R_max, alpha=0.7, color=color,
-                              label=f'$n_{{\\rm core}} = ${nCore_math[nCore_idx]}'+' $\\rm cm^{-3} $')
+                              label=r'$n_{\rm core} = $' + f'{float(nCore_value):.3g}' + r' $\rm cm^{-3}$')
 
     # --- Mass panel (log scale) ---
     tracer_bands = [
