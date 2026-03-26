@@ -746,9 +746,10 @@ def plot_trajectory_evolution_combined(results: List[SimulationResult], config: 
                 M_min = np.nanmin(M_arr, axis=0)
                 M_max = np.nanmax(M_arr, axis=0)
 
-            # Plot shaded region
+            # Plot shaded region (label only on mass panel; collected for figure legend)
+            ncore_lbl = r'$n_{\rm core} = $' + f'{float(nCore_value):g}' + r' $\rm cm^{-3}$'
             ax_m.fill_between(t_common, M_min, M_max, alpha=band_alpha, color=color,
-                              label=r'$n_{\rm core} = $' + f'{float(nCore_value):g}' + r' $\rm cm^{-3}$')
+                              label=ncore_lbl)
 
         if R_interp_list:
             R_arr = np.array(R_interp_list)
@@ -756,9 +757,8 @@ def plot_trajectory_evolution_combined(results: List[SimulationResult], config: 
                 R_min = np.nanmin(R_arr, axis=0)
                 R_max = np.nanmax(R_arr, axis=0)
 
-            # Plot shaded region
-            ax_r.fill_between(t_common, R_min, R_max, alpha=band_alpha, color=color,
-                              label=r'$n_{\rm core} = $' + f'{float(nCore_value):g}' + r' $\rm cm^{-3}$')
+            # Plot shaded region (no label — legend handled at figure level)
+            ax_r.fill_between(t_common, R_min, R_max, alpha=band_alpha, color=color)
 
     # --- Mass panel (log scale) ---
     tracer_bands = [
@@ -787,14 +787,36 @@ def plot_trajectory_evolution_combined(results: List[SimulationResult], config: 
     ax_m.axvspan(obs.t_obs - obs.t_err, obs.t_obs + obs.t_err,
                  alpha=0.1, color='gray', zorder=0)
 
+    # Separate nCore handles from observational handles in mass panel
+    all_handles, all_labels = ax_m.get_legend_handles_labels()
+    ncore_handles, ncore_labels = [], []
+    obs_handles, obs_labels = [], []
+    for h, l in zip(all_handles, all_labels):
+        if r'n_{\rm core}' in l:
+            ncore_handles.append(h)
+            ncore_labels.append(l)
+        else:
+            obs_handles.append(h)
+            obs_labels.append(l)
+
+    # Observational legend inside mass panel
     ax_m.set_ylabel(r'Shell Mass [$M_\odot$]', fontsize=FONTSIZE, rotation=90)
     ax_m.tick_params(axis='both', labelsize=FONTSIZE)
     ax_m.tick_params(axis='y', labelrotation=90)
-    legend_m = ax_m.legend(loc='upper left', fontsize=FONTSIZE)
-    legend_m.set_zorder(100)
+    if obs_handles:
+        legend_m = ax_m.legend(obs_handles, obs_labels, loc='upper left',
+                               fontsize=FONTSIZE)
+        legend_m.set_zorder(100)
     ax_m.set_yscale('log')
     ax_m.set_ylim(10, 3e4)
     ax_m.grid(True, alpha=0.3, which='both')
+
+    # nCore legend placed above the top subplot as a figure-level title legend
+    if ncore_handles:
+        fig.legend(ncore_handles, ncore_labels,
+                   loc='upper center', ncol=len(ncore_handles),
+                   fontsize=FONTSIZE, frameon=False,
+                   bbox_to_anchor=(0.5, 1.0))
 
     # --- Radius panel ---
     # HI radius observation (blue)
