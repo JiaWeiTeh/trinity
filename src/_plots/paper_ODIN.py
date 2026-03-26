@@ -55,20 +55,20 @@ class ObservationalConstraints:
     # Shell mass options
     M_shell_HI: float = 100.0        # M_sun
     M_shell_HI_err: float = 10.0     # M_sun
-    M_shell_CII: float = 1000.0      # M_sun
+    M_shell_CII: float = 1100.0      # M_sun
     M_shell_CII_err: float = 100.0   # M_sun
     M_shell_combined: float = 2000.0 # M_sun
     M_shell_combined_err: float = 500.0  # M_sun
 
     # Dynamical age
-    t_obs: float = 0.2           # Myr
+    t_obs: float = 0.24          # Myr
     t_err: float = 0.05          # Myr
 
-    # Shell radius
-    R_obs: float = 4.0           # pc
-    R_err: float = 0.5           # pc
+    # Shell radius (HI)
+    R_obs: float = 1.8           # pc
+    R_err: float = 0.2           # pc
 
-    # Shell radius from Pabst et al. 2020
+    # Shell radius ([CII])
     R_obs_Pabst: float = 2.7     # pc
     R_err_Pabst: float = 0     # pc
 
@@ -587,6 +587,11 @@ def plot_trajectory_evolution(results: List[SimulationResult], config: AnalysisC
                       label=f'{label}', zorder=10,
                       markeredgecolor='k', markeredgewidth=0.5)
 
+    # 0.5 × [CII] shell mass reference line
+    M_half_CII = 0.5 * obs.M_shell_CII
+    ax_m.axhline(M_half_CII, color='green', ls='--', lw=1.2, alpha=0.6, zorder=2,
+                 label=r'0.5$\times$[CII]' + f' ({M_half_CII:.0f} ' + r'$M_\odot$)')
+
     ax_m.axvspan(obs.t_obs - obs.t_err, obs.t_obs + obs.t_err,
                  alpha=0.1, color='gray', zorder=0)
 
@@ -605,14 +610,14 @@ def plot_trajectory_evolution(results: List[SimulationResult], config: AnalysisC
     # HI radius observation (blue)
     ax_r.errorbar(obs.t_obs, obs.R_obs, xerr=obs.t_err, yerr=obs.R_err,
                   fmt='s', color='blue', markersize=14, capsize=5, capthick=2,
-                  label=f'HI: {obs.R_obs}±{obs.R_err} pc', zorder=10, markeredgecolor='k')
+                  label=f'HI: {obs.R_obs}\u00b1{obs.R_err} pc', zorder=10, markeredgecolor='k')
     ax_r.axhspan(obs.R_obs - obs.R_err, obs.R_obs + obs.R_err,
                  alpha=0.15, color='blue', zorder=1)
 
-    # Pabst et al. 2020 radius observation (green)
+    # [CII] radius observation (green)
     ax_r.errorbar(obs.t_obs, obs.R_obs_Pabst, xerr=obs.t_err, yerr=obs.R_err_Pabst,
                   fmt='s', color='green', markersize=14, capsize=5, capthick=2,
-                  label=f'Pabst+20: {obs.R_obs_Pabst} pc', zorder=10, markeredgecolor='k')
+                  label=f'[CII]: {obs.R_obs_Pabst} pc', zorder=10, markeredgecolor='k')
     ax_r.axhspan(obs.R_obs_Pabst - obs.R_err_Pabst, obs.R_obs_Pabst + obs.R_err_Pabst,
                  alpha=0.15, color='green', zorder=1)
 
@@ -625,7 +630,7 @@ def plot_trajectory_evolution(results: List[SimulationResult], config: AnalysisC
     ax_r.tick_params(axis='y', labelrotation=90)
     legend_r = ax_r.legend(loc='lower right', fontsize=FONTSIZE)
     legend_r.set_zorder(100)
-    ax_r.set_xlim(0, 0.3)
+    ax_r.set_xlim(0, 0.35)
     ax_r.set_ylim(0, 6)
     ax_r.grid(True, alpha=0.3)
     ax_r.tick_params(axis='x', pad=10)
@@ -734,7 +739,7 @@ def plot_trajectory_evolution_combined(results: List[SimulationResult], config: 
 
             # Plot shaded region
             ax_m.fill_between(t_common, M_min, M_max, alpha=0.7, color=color,
-                              label=r'$n_{\rm core} = $' + f'{float(nCore_value):.3g}' + r' $\rm cm^{-3}$')
+                              label=r'$n_{\rm core} = $' + f'{float(nCore_value):g}' + r' $\rm cm^{-3}$')
 
         if R_interp_list:
             R_arr = np.array(R_interp_list)
@@ -744,7 +749,7 @@ def plot_trajectory_evolution_combined(results: List[SimulationResult], config: 
 
             # Plot shaded region
             ax_r.fill_between(t_common, R_min, R_max, alpha=0.7, color=color,
-                              label=r'$n_{\rm core} = $' + f'{float(nCore_value):.3g}' + r' $\rm cm^{-3}$')
+                              label=r'$n_{\rm core} = $' + f'{float(nCore_value):g}' + r' $\rm cm^{-3}$')
 
     # --- Mass panel (log scale) ---
     tracer_bands = [
@@ -758,6 +763,11 @@ def plot_trajectory_evolution_combined(results: List[SimulationResult], config: 
                       fmt='s', color=color, markersize=10, capsize=4, capthick=1.5,
                       label=f'{label}', zorder=10,
                       markeredgecolor='k', markeredgewidth=0.5)
+
+    # 0.5 × [CII] shell mass reference line
+    M_half_CII = 0.5 * obs.M_shell_CII
+    ax_m.axhline(M_half_CII, color='green', ls='--', lw=1.2, alpha=0.6, zorder=2,
+                 label=r'0.5$\times$[CII]' + f' ({M_half_CII:.0f} ' + r'$M_\odot$)')
 
     ax_m.axvspan(obs.t_obs - obs.t_err, obs.t_obs + obs.t_err,
                  alpha=0.1, color='gray', zorder=0)
@@ -775,14 +785,14 @@ def plot_trajectory_evolution_combined(results: List[SimulationResult], config: 
     # HI radius observation (blue)
     ax_r.errorbar(obs.t_obs, obs.R_obs, xerr=obs.t_err, yerr=obs.R_err,
                   fmt='s', color='blue', markersize=12, capsize=5, capthick=2,
-                  label=f'HI: {obs.R_obs}±{obs.R_err} pc', zorder=10, markeredgecolor='k')
+                  label=f'HI: {obs.R_obs}\u00b1{obs.R_err} pc', zorder=10, markeredgecolor='k')
     ax_r.axhspan(obs.R_obs - obs.R_err, obs.R_obs + obs.R_err,
                  alpha=0.15, color='blue', zorder=1)
 
-    # Pabst et al. 2020 radius observation (green)
+    # [CII] radius observation (green)
     ax_r.errorbar(obs.t_obs, obs.R_obs_Pabst, xerr=obs.t_err, yerr=obs.R_err_Pabst,
                   fmt='s', color='green', markersize=12, capsize=5, capthick=2,
-                  label=f'Pabst+20: {obs.R_obs_Pabst} pc', zorder=10, markeredgecolor='k')
+                  label=f'[CII]: {obs.R_obs_Pabst} pc', zorder=10, markeredgecolor='k')
     ax_r.axhspan(obs.R_obs_Pabst - obs.R_err_Pabst, obs.R_obs_Pabst + obs.R_err_Pabst,
                  alpha=0.15, color='green', zorder=1)
 
@@ -795,7 +805,7 @@ def plot_trajectory_evolution_combined(results: List[SimulationResult], config: 
     ax_r.tick_params(axis='y', labelrotation=90)
     legend_r = ax_r.legend(loc='upper left', fontsize=FONTSIZE)
     legend_r.set_zorder(100)
-    ax_r.set_xlim(0, 0.3)
+    ax_r.set_xlim(0, 0.35)
     ax_r.set_ylim(0, 6)
     ax_r.grid(True, alpha=0.3)
 
@@ -901,13 +911,14 @@ Examples:
   python paper_ODIN.py --folder sweep_orion/ --mass-tracer all
 
 Default Observational Constraints:
-  Age:             0.2 +/- 0.05 Myr
-  R_shell:         4 +/- 0.5 pc
+  Age:             0.24 +/- 0.05 Myr
+  R_shell (HI):    1.8 +/- 0.2 pc
+  R_shell ([CII]): 2.7 pc
   M_star:          34 +/- 5 M_sun
 
 Shell Mass (shown in plots):
   M_shell (HI):    100 +/- 30 M_sun
-  M_shell ([CII]): 1000 +/- 300 M_sun
+  M_shell ([CII]): 1100 +/- 100 M_sun
   M_shell (comb):  2000 +/- 500 M_sun
         """
     )
@@ -951,14 +962,14 @@ Shell Mass (shown in plots):
                         help='Combined shell mass [M_sun] (default: 2000.0)')
     parser.add_argument('--M-combined-err', type=float, default=500.0,
                         help='Combined shell mass uncertainty [M_sun] (default: 500.0)')
-    parser.add_argument('--t-obs', type=float, default=0.2,
-                        help='Observed age [Myr] (default: 0.2)')
+    parser.add_argument('--t-obs', type=float, default=0.24,
+                        help='Observed age [Myr] (default: 0.24)')
     parser.add_argument('--t-err', type=float, default=0.05,
                         help='Age uncertainty [Myr] (default: 0.05)')
-    parser.add_argument('--R-obs', type=float, default=4.0,
-                        help='Observed radius [pc] (default: 4.0)')
-    parser.add_argument('--R-err', type=float, default=0.5,
-                        help='Radius uncertainty [pc] (default: 0.5)')
+    parser.add_argument('--R-obs', type=float, default=1.8,
+                        help='Observed HI radius [pc] (default: 1.8)')
+    parser.add_argument('--R-err', type=float, default=0.2,
+                        help='HI radius uncertainty [pc] (default: 0.2)')
     parser.add_argument('--Mstar', type=float, default=34.0,
                         help='Target stellar mass [M_sun] (default: 34.0)')
     parser.add_argument('--Mstar-err', type=float, default=5.0,
@@ -972,10 +983,10 @@ Shell Mass (shown in plots):
                         help='HI-derived shell mass [M_sun] (default: 100.0)')
     parser.add_argument('--M-HI-err', type=float, default=30.0,
                         help='HI shell mass uncertainty [M_sun] (default: 30.0)')
-    parser.add_argument('--M-CII', type=float, default=1000.0,
-                        help='[CII]-derived shell mass [M_sun] (default: 1000.0)')
-    parser.add_argument('--M-CII-err', type=float, default=300.0,
-                        help='[CII] shell mass uncertainty [M_sun] (default: 300.0)')
+    parser.add_argument('--M-CII', type=float, default=1100.0,
+                        help='[CII]-derived shell mass [M_sun] (default: 1100.0)')
+    parser.add_argument('--M-CII-err', type=float, default=100.0,
+                        help='[CII] shell mass uncertainty [M_sun] (default: 100.0)')
 
     # Trajectory options
     parser.add_argument('--showall', action='store_true',
