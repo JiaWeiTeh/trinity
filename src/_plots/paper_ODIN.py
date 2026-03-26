@@ -636,7 +636,7 @@ def plot_trajectory_evolution(results: List[SimulationResult], config: AnalysisC
     ax_r.tick_params(axis='y', labelrotation=90)
     legend_r = ax_r.legend(loc='lower right', fontsize=FONTSIZE)
     legend_r.set_zorder(100)
-    ax_r.set_xlim(0, 0.35)
+    ax_r.set_xlim(0, 0.3)
     ax_r.set_ylim(0, 6)
     ax_r.grid(True, alpha=0.3)
     ax_r.tick_params(axis='x', pad=10)
@@ -677,7 +677,7 @@ def plot_trajectory_evolution_combined(results: List[SimulationResult], config: 
 
     # Define colors and transparencies for different nCore values
     # Index 0 → first nCore (e.g. 100), 1 → second (e.g. 500), 2 → third (e.g. 1000)
-    nCore_colors = ['orange', 'r', 'darkgray', 'C3', 'C4', 'C5']
+    nCore_colors = ['orange', 'r', 'black', 'C3', 'C4', 'C5']
     nCore_alphas = [0.7, 0.45, 0.85, 0.7, 0.7, 0.7]
 
     # 2 subplots: mass (top), radius (bottom) - stacked vertically with shared x-axis
@@ -686,7 +686,7 @@ def plot_trajectory_evolution_combined(results: List[SimulationResult], config: 
     obs = config.obs
 
     # Common time grid for interpolation
-    t_common = np.linspace(0, 0.35, 500)
+    t_common = np.linspace(0, 0.3, 500)
 
     for nCore_idx, nCore_value in enumerate(nCore_values):
         # Filter for this nCore
@@ -820,7 +820,7 @@ def plot_trajectory_evolution_combined(results: List[SimulationResult], config: 
     ax_r.tick_params(axis='y', labelrotation=90)
     legend_r = ax_r.legend(loc='upper left', fontsize=FONTSIZE)
     legend_r.set_zorder(100)
-    ax_r.set_xlim(0, 0.35)
+    ax_r.set_xlim(0, 0.3)
     ax_r.set_ylim(0, 6)
     ax_r.grid(True, alpha=0.3)
 
