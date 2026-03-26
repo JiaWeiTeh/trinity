@@ -70,6 +70,7 @@ SCRIPTS = [
     ("paper_InitialCloudRadius",     "src/_plots/paper_InitialCloudRadius.py",      False),
     ("paper_LbolLWind",              "src/_plots/paper_LbolLWind.py",               False),
     ("paper_ODIN",                   "src/_plots/paper_ODIN.py",                    False),
+    ("paper_Rosette",                "src/_plots/paper_Rosette.py",                 False),
     ("paper_PISM",                   "src/_plots/paper_PISM.py",                    False),
     ("paper_PPVtest",                "src/_plots/paper_PPVtest.py",                 False),
     ("paper_PHII_Pb_Pram",           "src/_plots/paper_PHII_Pb_Pram.py",            False),
