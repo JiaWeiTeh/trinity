@@ -555,6 +555,10 @@ def plot_trajectory_evolution(results: List[SimulationResult], config: AnalysisC
         M_smooth = smooth_trajectory(t, M)
         R_smooth = smooth_trajectory(t, R)
 
+        # Scale to 0.5 × shell mass (observations are quoted at this factor)
+        if M_smooth is not None:
+            M_smooth = 0.5 * M_smooth
+
         if config.show_all:
             color = cmap(norm(r.chi2_total))
             alpha = 0.7
@@ -712,6 +716,10 @@ def plot_trajectory_evolution_combined(results: List[SimulationResult], config: 
             # Smooth trajectories
             M_smooth = smooth_trajectory(t, M)
             R_smooth = smooth_trajectory(t, R)
+
+            # Scale to 0.5 × shell mass (observations are quoted at this factor)
+            if M_smooth is not None:
+                M_smooth = 0.5 * M_smooth
 
             # Interpolate to common time grid
             if M_smooth is not None and len(t) > 1:
