@@ -101,31 +101,13 @@ class RadialProfile:
 
 def _build_free_wind(snap, R1: float, n_pts: int = 50) -> ZoneProfile:
     """
-    Zone 1: Free-streaming wind.
+    Zone 1: Free-streaming wind (r < R1).
 
-    n(r) = Mdot_w / (4π r² v_w μ m_H)  ∝ r⁻²
-
-    Uses saved scalars pdot_W and Lmech_W to reconstruct.
+    Treated as effectively empty — density is negligible compared to
+    the bubble and shell.
     """
-    pdot_W = float(snap.get('pdot_W', 0) or 0)
-    Lmech_W = float(snap.get('Lmech_W', 0) or 0)
-
     r_min = R1 * 0.01
-    r_wind = np.logspace(np.log10(max(r_min, 1e-6)), np.log10(R1), n_pts,
-                         endpoint=False)
-
-    if pdot_W > 0 and Lmech_W > 0:
-        v_w = 2.0 * Lmech_W / pdot_W          # pc/Myr
-        Mdot_w = pdot_W / v_w                  # Msun/Myr
-        mu_ion = 0.6
-        m_H_Msun = CGS.m_H * CONV.g2Msun
-        n_code = Mdot_w / (4.0 * np.pi * r_wind**2 * v_w * mu_ion * m_H_Msun)
-        n_cgs = n_code * _NDENS_AU2CGS
-    else:
-        # Fallback: flat low density
-        n_cgs = np.full_like(r_wind, 1e-3)
-
-    return ZoneProfile('free_wind', r_wind, n_cgs, r_min, R1)
+    return ZoneProfile('free_wind', np.array([]), np.array([]), r_min, R1)
 
 
 def _build_hot_bubble(snap, R1: float, R2: float) -> ZoneProfile:
