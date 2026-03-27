@@ -361,12 +361,9 @@ def build_radial_profile(snap) -> Optional[RadialProfile]:
             bubble_zone = _build_bubble_interpolated(
                 snap, R1, R2, n_wind_R1, n_shell_R2)
     else:
-        # Momentum/post-transition: interpolate from wind edge to shell inner
-        R1_eff = R2 * 0.01
-        n_wind_R1 = wind_zone.n[-1] if wind_zone.n.size > 0 else 1e-3
-        n_shell_R2 = shell_n_cgs[0] if shell_n_cgs.size > 0 else 1.0
-        bubble_zone = _build_bubble_interpolated(
-            snap, R1_eff, R2, n_wind_R1, n_shell_R2)
+        # Momentum phase: no bubble, interior is empty
+        bubble_zone = ZoneProfile('hot_bubble', np.array([]), np.array([]),
+                                  R2 * 0.01, R2)
 
     # --- Zones 3 & 4: Ionised and neutral shell ---
     ion_zone = _build_ionised_shell(snap, shell_r, shell_n_cgs, R2, R_IF, ion_idx)
