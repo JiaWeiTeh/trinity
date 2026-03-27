@@ -816,7 +816,7 @@ def plot_trajectory_evolution_combined(results: List[SimulationResult], config: 
         fig.legend(ncore_handles, ncore_labels,
                    loc='upper center', ncol=len(ncore_handles),
                    fontsize=FONTSIZE, frameon=False,
-                   bbox_to_anchor=(0.5, 1.0))
+                   bbox_to_anchor=(0.5, 1.1))
 
     # --- Radius panel ---
     # HI radius observation (blue)
