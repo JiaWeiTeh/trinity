@@ -587,21 +587,10 @@ def plot_trajectory_evolution(results: List[SimulationResult], config: AnalysisC
                       label=f'{label}', zorder=10,
                       markeredgecolor='k', markeredgewidth=0.5)
 
-    # 0.5 × [CII] shell mass (same band+marker style as [CII], open square)
-    M_half_CII = 0.5 * obs.M_shell_CII
-    M_half_CII_err = 0.5 * obs.M_shell_CII_err
-    ax_m.axhspan(M_half_CII - M_half_CII_err, M_half_CII + M_half_CII_err,
-                 alpha=0.15, color='green', zorder=1)
-    ax_m.errorbar(obs.t_obs, M_half_CII, xerr=obs.t_err, yerr=M_half_CII_err,
-                  fmt='s', color='green', markersize=10, capsize=4, capthick=1.5,
-                  label=r'0.5$\times$[CII] ($\sim$' + f'{M_half_CII:.0f} ' + r'$M_\odot$)',
-                  zorder=10, markeredgecolor='green', markeredgewidth=1.5,
-                  markerfacecolor='none')
-
     ax_m.axvspan(obs.t_obs - obs.t_err, obs.t_obs + obs.t_err,
                  alpha=0.1, color='gray', zorder=0)
 
-    ax_m.set_ylabel(r'Shell Mass [$M_\odot$]', fontsize=FONTSIZE, rotation=90)
+    ax_m.set_ylabel(r'0.5 $\times$ Shell Mass [$M_\odot$]', fontsize=FONTSIZE, rotation=90)
     ax_m.tick_params(axis='both', labelsize=FONTSIZE)
     ax_m.tick_params(axis='y', labelrotation=90)
     legend_m = ax_m.legend(loc='upper right', fontsize=FONTSIZE)
@@ -773,17 +762,6 @@ def plot_trajectory_evolution_combined(results: List[SimulationResult], config: 
                       label=f'{label}', zorder=10,
                       markeredgecolor='k', markeredgewidth=0.5)
 
-    # 0.5 × [CII] shell mass (same band+marker style, open square)
-    M_half_CII = 0.5 * obs.M_shell_CII
-    M_half_CII_err = 0.5 * obs.M_shell_CII_err
-    ax_m.axhspan(M_half_CII - M_half_CII_err, M_half_CII + M_half_CII_err,
-                 alpha=0.15, color='green', zorder=1)
-    ax_m.errorbar(obs.t_obs, M_half_CII, xerr=obs.t_err, yerr=M_half_CII_err,
-                  fmt='s', color='green', markersize=10, capsize=4, capthick=1.5,
-                  label=r'0.5$\times$[CII] ($\sim$' + f'{M_half_CII:.0f} ' + r'$M_\odot$)',
-                  zorder=10, markeredgecolor='green', markeredgewidth=1.5,
-                  markerfacecolor='none')
-
     ax_m.axvspan(obs.t_obs - obs.t_err, obs.t_obs + obs.t_err,
                  alpha=0.1, color='gray', zorder=0)
 
@@ -800,7 +778,7 @@ def plot_trajectory_evolution_combined(results: List[SimulationResult], config: 
             obs_labels.append(l)
 
     # Observational legend inside mass panel
-    ax_m.set_ylabel(r'Shell Mass [$M_\odot$]', fontsize=FONTSIZE, rotation=90)
+    ax_m.set_ylabel(r'0.5 $\times$ Shell Mass [$M_\odot$]', fontsize=FONTSIZE, rotation=90)
     ax_m.tick_params(axis='both', labelsize=FONTSIZE)
     ax_m.tick_params(axis='y', labelrotation=90)
     if obs_handles:
