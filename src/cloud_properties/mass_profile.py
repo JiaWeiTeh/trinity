@@ -88,7 +88,7 @@ def get_mass_density(
     Get mass density rho(r) from number density n(r).
 
     This function wraps get_density_profile() from density_profile_integrated.py
-    and converts number density [cm^-3] to mass density [Msun/pc^3].
+    and converts number density [1/pc^3] to mass density [Msun/pc^3].
 
     Parameters
     ----------
@@ -583,9 +583,9 @@ def compute_minimum_rCore(nCore, nISM, rCloud, alpha, margin=1.1):
     Parameters
     ----------
     nCore : float
-        Core number density [cm^-3]
+        Core number density [1/pc^3] (code units)
     nISM : float
-        ISM number density [cm^-3]
+        ISM number density [1/pc^3] (code units)
     rCloud : float
         Cloud outer radius [pc]
     alpha : float
@@ -598,7 +598,7 @@ def compute_minimum_rCore(nCore, nISM, rCloud, alpha, margin=1.1):
     rCore_suggested : float
         Suggested rCore value [pc]
     nEdge : float
-        Edge density at suggested rCore [cm^-3]
+        Edge density at suggested rCore [1/pc^3] (code units)
     is_valid : bool
         Whether nEdge >= nISM
     rCore_min : float

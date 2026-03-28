@@ -159,7 +159,7 @@ def beta2Edot_pure(
     v2 : float
         Outer bubble velocity [pc/Myr]
     Eb : float
-        Bubble energy [erg]
+        Bubble energy [Msun*pc^2/Myr^2] (code units)
     pdot_total : float
         Momentum injection rate
     pdotdot_total : float
@@ -168,7 +168,7 @@ def beta2Edot_pure(
     Returns
     -------
     Edot : float
-        Time derivative of bubble energy [erg/Myr]
+        Time derivative of bubble energy [Msun*pc^2/Myr^3] (code units)
     """
     # dp/dt from beta
     press_dot = -Pb * beta / t_now
@@ -235,7 +235,7 @@ def compute_R1_Pb(
     R2 : float
         Outer bubble radius [pc]
     Eb : float
-        Bubble energy [erg]
+        Bubble energy [Msun*pc^2/Myr^2] (code units)
     Lmech_total : float
         Total mechanical luminosity
     v_mech_total : float

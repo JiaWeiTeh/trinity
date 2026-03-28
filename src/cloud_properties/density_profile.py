@@ -61,8 +61,8 @@ def get_density_profile(r, params):
         Radius/radii of interest [pc]. Can be scalar or array.
     params : dict
         Dictionary containing cloud parameters:
-        - nISM: ISM number density [cm^-3]
-        - nCore: Core number density [cm^-3]
+        - nISM: ISM number density [1/pc^3] (code units)
+        - nCore: Core number density [1/pc^3] (code units)
         - rCloud: Cloud radius [pc]
         - rCore: Core radius [pc]
         - dens_profile: 'densPL' or 'densBE'
@@ -72,7 +72,7 @@ def get_density_profile(r, params):
     Returns
     -------
     n : float or np.ndarray
-        Number density at radius r [cm^-3].
+        Number density at radius r [1/pc^3] (code units).
         Returns scalar if input r is scalar, array if input r is array.
 
     Notes

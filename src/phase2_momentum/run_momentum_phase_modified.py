@@ -252,20 +252,22 @@ def compute_forces_momentum_pure(
 
     # ==========================================================================
     # WARM IONIZED GAS PRESSURE (momentum phase)
-    # P_drive = P_HII + P_ram  (no thermal bubble; both terms always active)
+    # P_HII from shell structure (diagnostic only — anchored to Pb)
+    # P_HII_St from standalone Strömgren (independent, used for P_drive)
     # ==========================================================================
 
     # Get n_IF from shell_props (ionization front density from shell structure)
     n_IF = shell_props.n_IF
     R_IF = shell_props.R_IF
 
-    # BUG FIX: use TShell_ion from params instead of hard-coded 1e4 for thermodynamic consistency
+    # Shell-structure P_HII kept for diagnostics
     P_HII = 2.0 * n_IF * k_B * TShell_ion
     if not params['include_PHII'].value:
         P_HII = 0.0
 
-    # Momentum phase: P_drive = P_HII + P_ram
-    P_drive = P_HII + press_ram
+    # Use standalone Strömgren pressure for driving pressure
+    P_HII_St = params['P_HII_St'].value
+    P_drive = P_HII_St + press_ram
 
     # Forces
     F_ion_in = press_HII_in * FOUR_PI * R2**2
@@ -312,8 +314,9 @@ class MomentumODESnapshot:
     rShell: float
     FABSi: float
     TShell_ion: float  # Ionized shell temperature [K]
-    n_IF: float  # Density at ionization front (for P_HII)
+    n_IF: float  # Density at ionization front (for P_HII diagnostic)
     include_PHII: bool  # Include P_HII in driving pressure
+    P_HII_St: float  # Standalone Strömgren HII pressure (independent of Pb)
     F_rad: float
     mShell: float
     mShell_dot: float
@@ -349,6 +352,7 @@ def create_momentum_snapshot(params, shell_props: ShellProperties,
         FABSi=shell_props.shell_fAbsorbedIon,
         n_IF=shell_props.n_IF,
         include_PHII=params['include_PHII'].value,
+        P_HII_St=params['P_HII_St'].value,
         F_rad=shell_props.shell_F_rad,
         mShell=mShell,
         mShell_dot=mShell_dot,
@@ -429,17 +433,17 @@ def get_ODE_momentum_pure(t: float, y: np.ndarray, snapshot: MomentumODESnapshot
 
     # ==========================================================================
     # WARM IONIZED GAS PRESSURE (momentum phase)
-    # P_drive = P_HII + P_ram  (no thermal bubble; both terms always active)
+    # P_HII from shell structure (diagnostic only — anchored to Pb)
+    # P_HII_St from standalone Strömgren (independent, used for P_drive)
     # ==========================================================================
-    # BUG FIX: use snapshot.TShell_ion instead of hard-coded 1e4 for thermodynamic consistency
-    # HII pressure from shell-structure ionization front density
+    # Shell-structure P_HII kept for diagnostics
     n_IF = snapshot.n_IF
     P_HII = 2.0 * n_IF * k_B * snapshot.TShell_ion
     if not snapshot.include_PHII:
         P_HII = 0.0
 
-    # Momentum phase: P_drive = P_HII + P_ram
-    P_drive = P_HII + press_ram
+    # Use standalone Strömgren pressure for driving pressure
+    P_drive = snapshot.P_HII_St + press_ram
 
     # Rename press_HII_in to press_ext for clarity (external/confining pressure)
     press_ext = press_HII_in
@@ -538,6 +542,15 @@ def run_phase_momentum(params) -> MomentumPhaseResults:
         # ---------------------------------------------------------------------
         feedback = get_currentSB99feedback(t_now, params)
         updateDict(params, feedback)
+
+        # Compute standalone Strömgren HII pressure (cavity-aware: integral from R2)
+        from src.cloud_properties.stromgren import compute_P_HII_Stromgren
+        P_HII_St, R_St_val, n_St_val = compute_P_HII_Stromgren(
+            params['Qi'].value, R2, params
+        )
+        params['P_HII_St'].value = P_HII_St
+        params['R_St'].value = R_St_val
+        params['n_St'].value = n_St_val
 
         # Set Pb to ram pressure so shell inner-edge density
         # (nShell0 = Pb / k_B T_ion) is physically meaningful.
