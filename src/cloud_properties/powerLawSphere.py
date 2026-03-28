@@ -21,10 +21,11 @@ For α ≠ 0: M = 4πρc[rCore³/3 + (rCloud^(3+α) - rCore^(3+α))/((3+α)×rCo
 
 Units:
 ------
-- nCore: number density [cm⁻³]
+All quantities are in code units [Msun, pc, Myr] after conversion by read_param.py:
+- nCore: number density [1/pc³] (converted from cm⁻³ via ndens_cgs2au)
 - mCloud: cloud mass [Msun]
 - rCloud, rCore: radii [pc]
-- mu_ion: mean molecular weight (dimensionless)
+- mu_ion: mean molecular weight [Msun] (converted from m_H)
 """
 
 import sys
@@ -92,7 +93,7 @@ def compute_rCloud_powerlaw(M_cloud, nCore, alpha, rCore=None, rCore_fraction=0.
     M_cloud : float
         Cloud mass [Msun]
     nCore : float
-        Core number density [cm⁻³]
+        Core number density [1/pc³] (code units)
     alpha : float
         Power-law exponent (typically negative, e.g., -2 for isothermal)
     rCore : float, optional
@@ -100,7 +101,7 @@ def compute_rCloud_powerlaw(M_cloud, nCore, alpha, rCore=None, rCore_fraction=0.
     rCore_fraction : float
         Ratio rCore/rCloud (default 0.1). Used when rCore is None.
     mu : float
-        Mean molecular weight (default 1.4)
+        Mean molecular weight [Msun] (code units)
 
     Returns
     -------
@@ -117,8 +118,8 @@ def compute_rCloud_powerlaw(M_cloud, nCore, alpha, rCore=None, rCore_fraction=0.
 
     Examples
     --------
-    >>> # Compute rCloud for 1e5 Msun cloud with nCore=1000 cm⁻³
-    >>> rCloud, rCore = compute_rCloud_powerlaw(1e5, 1000, alpha=-2)
+    >>> # Compute rCloud for 1e5 Msun cloud with nCore and mu in code units
+    >>> rCloud, rCore = compute_rCloud_powerlaw(1e5, nCore, alpha=-2)
     >>> print(f"rCloud = {rCloud:.2f} pc, rCore = {rCore:.2f} pc")
     """
     # Special case: homogeneous
@@ -223,30 +224,30 @@ def compute_consistent_params(M_cloud, nCore, alpha, rCore_fraction=0.1, mu=1.4,
     M_cloud : float
         Cloud mass [Msun]
     nCore : float
-        Core number density [cm⁻³]
+        Core number density [1/pc³] (code units)
     alpha : float
         Power-law exponent
     rCore_fraction : float
         Ratio rCore/rCloud (default 0.1)
     mu : float
-        Mean molecular weight (default 1.4)
+        Mean molecular weight [Msun] (code units)
     nISM : float
-        ISM number density [cm⁻³] (default 1.0)
+        ISM number density [1/pc³] (code units)
 
     Returns
     -------
     dict with keys:
         'rCloud': float [pc]
         'rCore': float [pc]
-        'nEdge': float [cm⁻³]
+        'nEdge': float [1/pc³] (code units)
         'M_cloud': float [Msun]
-        'nCore': float [cm⁻³]
+        'nCore': float [1/pc³] (code units)
         'alpha': float
         'mu': float
 
     Examples
     --------
-    >>> params = compute_consistent_params(M_cloud=1e5, nCore=1000, alpha=-2)
+    >>> params = compute_consistent_params(M_cloud=1e5, nCore=nCore, alpha=-2)
     >>> print(f"rCloud = {params['rCloud']:.2f} pc")
     """
     rCloud, rCore = compute_rCloud_powerlaw(M_cloud, nCore, alpha,
@@ -361,15 +362,15 @@ def validate_cloud_params(mCloud, nCore, rCore, rCloud, nEdge, nISM, alpha, mu,
     mCloud : float
         Expected cloud mass [Msun]
     nCore : float
-        Core number density [cm⁻³]
+        Core number density [1/pc³] (code units)
     rCore : float
         Core radius [pc]
     rCloud : float
         Cloud radius [pc]
     nEdge : float
-        Edge density [cm⁻³]
+        Edge density [1/pc³] (code units)
     nISM : float
-        ISM density [cm⁻³]
+        ISM density [1/pc³] (code units)
     alpha : float
         Power-law exponent
     mu : float
@@ -485,13 +486,13 @@ def find_valid_alternatives(mCloud_orig, nCore_orig, rCore_orig, alpha, nISM, mu
     mCloud_orig : float
         Original cloud mass [Msun]
     nCore_orig : float
-        Original core density [cm⁻³]
+        Original core density [1/pc³] (code units)
     rCore_orig : float
         Original core radius [pc]
     alpha : float
         Power-law exponent
     nISM : float
-        ISM density [cm⁻³]
+        ISM density [1/pc³] (code units)
     mu : float
         Mean molecular weight
     n_suggestions : int

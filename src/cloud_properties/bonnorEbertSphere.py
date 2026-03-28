@@ -10,13 +10,13 @@ verge of gravitational collapse.
 User Inputs:
 ============
 1. Cloud mass (mCloud) [Msun]
-2. Core density (nCore) [cm^-3]
+2. Core density (nCore) [1/pc^3] (code units, converted from cm^-3)
 3. Density contrast (Omega = rho_core / rho_surface)
 
 Outputs:
 ========
 1. Cloud radius (rCloud) [pc]
-2. Edge density (nEdge) [cm^-3]
+2. Edge density (nEdge) [1/pc^3] (code units)
 3. Effective temperature (T_eff) [K]
 4. Density profile function f_rho_rhoc(xi)
 
@@ -142,18 +142,18 @@ class BESphereResult:
         Dimensionless outer radius
     r_out : float [pc]
         Physical outer radius
-    n_out : float [cm⁻³]
-        Surface number density
+    n_out : float [1/pc³]
+        Surface number density (code units)
     T_eff : float [K]
         Effective isothermal temperature
-    c_s : float [cm/s]
-        Isothermal sound speed (CGS)
+    c_s : float [pc/Myr]
+        Isothermal sound speed (code units)
     m_dim : float
         Dimensionless mass
     M_cloud : float [Msun]
         Total cloud mass (input)
-    n_core : float [cm⁻³]
-        Core number density (input)
+    n_core : float [1/pc³]
+        Core number density (code units, input)
     Omega : float
         Density contrast (input)
     is_stable : bool
@@ -312,8 +312,8 @@ def create_BE_sphere(
     -----------
     M_cloud : float [Msun]
         Total cloud mass
-    n_core : float [cm⁻³]
-        Core number density
+    n_core : float [1/pc³]
+        Core number density (code units)
     Omega : float
         Density contrast ρ_core/ρ_surface (must be < 14.04 for stability)
 
@@ -506,7 +506,7 @@ def create_BE_sphere_from_params(params) -> BESphereResult:
     Required params:
     ---------------
     - 'mCloud' : Total cloud mass [Msun]
-    - 'nCore' : Core number density [cm⁻³]
+    - 'nCore' : Core number density [1/pc³] (code units)
     - 'densBE_Omega' : Density contrast
     - 'mu_convert' : Mean molecular weight for mass conversion (=1.4)
     - 'gamma_adia' : Adiabatic index
@@ -522,7 +522,7 @@ def create_BE_sphere_from_params(params) -> BESphereResult:
     - 'densBE_f_m' : Mass interpolation function
     - 'densBE_xi_out' : Outer dimensionless radius
     - 'rCloud' : Cloud radius [pc]
-    - 'nEdge' : Edge number density [cm⁻³]
+    - 'nEdge' : Edge number density [1/pc³] (code units)
 
     Returns
     -------
