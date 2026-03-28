@@ -175,6 +175,17 @@ def run_energy(params):
         logger.info('bubble complete (modified)')
 
         # =============================================================================
+        # 3b. Compute standalone Strömgren HII pressure
+        # =============================================================================
+        from src.cloud_properties.stromgren import compute_P_HII_Stromgren
+        P_HII_St, R_St, n_St = compute_P_HII_Stromgren(
+            params['Qi'].value, R2, params
+        )
+        params['P_HII_St'].value = P_HII_St
+        params['R_St'].value = R_St
+        params['n_St'].value = n_St
+
+        # =============================================================================
         # 4. Compute shell structure
         # =============================================================================
         shell_data = shell_structure_modified.shell_structure_pure(params)

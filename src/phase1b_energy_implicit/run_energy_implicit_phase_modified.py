@@ -315,22 +315,23 @@ def compute_forces_pure(
         press_HII_in += PISM * k_B
 
     # ==========================================================================
-    # WARM IONIZED GAS PRESSURE (implicit phase = same as energy)
-    # P_drive = max(Pb, P_HII)
+    # WARM IONIZED GAS PRESSURE (implicit phase)
+    # P_HII from shell structure (diagnostic only — anchored to Pb)
+    # P_HII_St from standalone Strömgren (independent, used for P_drive)
     # ==========================================================================
 
     # Get n_IF from shell_props (ionization front density from shell structure)
     n_IF = shell_props.n_IF
     R_IF = shell_props.R_IF
 
-    # BUG FIX: use TShell_ion from params instead of hard-coded 1e4 for thermodynamic consistency
+    # Shell-structure P_HII kept for diagnostics
     P_HII = 2.0 * n_IF * k_B * TShell_ion
     if not params['include_PHII'].value:
         P_HII = 0.0
 
-    # Implicit phase: P_drive = max(Pb, P_HII)
-    # max() avoids double-counting where P_HII ≈ Pb at contact discontinuity
-    P_drive = max(Pb, P_HII)
+    # Use standalone Strömgren pressure for driving pressure
+    P_HII_St = params['P_HII_St'].value
+    P_drive = max(Pb, P_HII_St)
 
     # Forces
     F_ion_in = press_HII_in * FOUR_PI * R2**2
@@ -543,7 +544,14 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         feedback = get_currentSB99feedback(t_now, params)
         updateDict(params, feedback)
 
-        # Extract feedback values we'll need later
+        # Compute standalone Strömgren HII pressure (cavity-aware: integral from R2)
+        from src.cloud_properties.stromgren import compute_P_HII_Stromgren
+        P_HII_St, R_St_val, n_St_val = compute_P_HII_Stromgren(
+            params['Qi'].value, R2, params
+        )
+        params['P_HII_St'].value = P_HII_St
+        params['R_St'].value = R_St_val
+        params['n_St'].value = n_St_val
 
         # Calculate shell structure using pure function
         shell_props = shell_structure_pure(params)
