@@ -296,24 +296,22 @@ def compute_forces_pure(
     else:
         PISM = 0.0
 
-    # Inward pressure from photoionized gas outside shell
+    # Inward pressure from photoionized gas outside shell (evaluated at rShell)
     FABSi = shell_props.shell_fAbsorbedIon
     if FABSi < 1.0:
-        # Evaluate density at R2 (state variable) for consistency with ODE functions
         from src.cloud_properties import density_profile
         try:
-            n_r = density_profile.get_density_profile(np.array([R2]), params)
+            n_r = density_profile.get_density_profile(np.array([rShell]), params)
             if hasattr(n_r, '__len__') and len(n_r) == 1:
                 n_r = n_r[0]
-            press_HII_in = 2.0 * n_r * k_B * TShell_ion  # BUG FIX: factor 2 for fully ionized gas (ions + electrons)
+            press_HII_in = 2.0 * n_r * k_B * TShell_ion
         except Exception:
             press_HII_in = 0.0
     else:
         press_HII_in = 0.0
 
     # Add ISM pressure if shell extends beyond cloud
-    # Use R2 (state variable) for consistency with ODE functions
-    if R2 >= rCloud:
+    if rShell >= rCloud:
         press_HII_in += PISM * k_B
 
     # ==========================================================================
