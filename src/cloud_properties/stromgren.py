@@ -60,6 +60,10 @@ def compute_P_HII_Stromgren(Qi, R2, params):
     if Qi <= 0:
         return 0.0, 0.0, 0.0
 
+    # Respect include_PHII flag: when False, HII pressure is disabled entirely
+    if not params['include_PHII'].value:
+        return 0.0, 0.0, 0.0
+
     alpha_B = params['caseB_alpha'].value
     k_B = params['k_B'].value
     T_ion = params['TShell_ion'].value

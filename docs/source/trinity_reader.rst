@@ -292,11 +292,9 @@ Forces
    * - ``F_ram_SN``
      - Ram pressure from supernovae
    * - ``F_ion_out``
-     - Ionization force (outward)
+     - Warm ionized gas force (outward, = P_HII * 4piR2^2, diagnostic)
    * - ``F_rad``
      - Radiation pressure force
-   * - ``F_HII``
-     - Warm ionized gas force
 
 Feedback Properties
 ^^^^^^^^^^^^^^^^^^^

@@ -255,14 +255,15 @@ class ForceProperties:
     F_ion_out: float    # Outward ionization pressure force
     F_ram: float        # Ram pressure force (from bubble pressure)
     F_rad: float        # Radiation pressure force
-    # Pressure diagnostic quantities
+    # Pressure quantities
+    # P_HII: diagnostic only (from shell-structure n_IF, anchored to Pb)
+    # P_drive: actual driving pressure (uses P_HII_St from standalone Strömgren)
     n_IF: float = 0.0
     R_IF: float = 0.0
     P_HII: float = 0.0
     P_drive: float = 0.0
     P_ram: float = 0.0
     press_HII_in: float = 0.0
-    F_HII: float = 0.0
 
 
 def compute_forces_pure(
@@ -300,15 +301,15 @@ def compute_forces_pure(
             n_r = density_profile.get_density_profile(np.array([rShell]), params)
             if hasattr(n_r, '__len__') and len(n_r) == 1:
                 n_r = n_r[0]
-            press_HII_in = 2.0 * n_r * k_B * TShell_ion
+            P_ext = 2.0 * n_r * k_B * TShell_ion
         except Exception:
-            press_HII_in = 0.0
+            P_ext = 0.0
     else:
-        press_HII_in = 0.0
+        P_ext = 0.0
 
     # Add ISM pressure if shell extends beyond cloud
     if rShell >= rCloud:
-        press_HII_in += PISM * k_B
+        P_ext += PISM * k_B
 
     # ==========================================================================
     # WARM IONIZED GAS PRESSURE (transition phase)
@@ -328,16 +329,15 @@ def compute_forces_pure(
     # Ram pressure contribution
     Lmech_total = params['Lmech_total'].value
     v_mech_total = params['v_mech_total'].value
-    P_b_ram = get_bubbleParams.pRam(R2, Lmech_total, v_mech_total)
+    P_ram = get_bubbleParams.pRam(R2, Lmech_total, v_mech_total)
 
     # Use standalone Strömgren pressure for driving pressure
     P_HII_St = params['P_HII_St'].value
-    P_drive = max(Pb, P_HII_St + P_b_ram)
+    P_drive = max(Pb, P_HII_St + P_ram)
 
     # Forces
-    F_ion_in = press_HII_in * FOUR_PI * R2**2
-    F_HII = FOUR_PI * R2**2 * P_HII
-    F_ion_out = F_HII  # For backwards compatibility
+    F_ion_in = P_ext * FOUR_PI * R2**2
+    F_ion_out = FOUR_PI * R2**2 * P_HII
 
     # Ram pressure force
     F_ram = Pb * FOUR_PI * R2**2
@@ -355,9 +355,8 @@ def compute_forces_pure(
         R_IF=R_IF,
         P_HII=P_HII,
         P_drive=P_drive,
-        P_ram=P_b_ram,
-        press_HII_in=press_HII_in,
-        F_HII=F_HII,
+        P_ram=P_ram,
+        press_HII_in=P_ext,
     )
 
 
@@ -541,7 +540,6 @@ def run_phase_transition(params) -> TransitionPhaseResults:
         params['P_drive'].value = force_props.P_drive
         params['P_ram'].value = force_props.P_ram
         params['press_HII_in'].value = force_props.press_HII_in
-        params['F_HII'].value = force_props.F_HII
         params['F_ram_wind'].value = feedback.pdot_W
         params['F_ram_SN'].value = feedback.pdot_SN
 

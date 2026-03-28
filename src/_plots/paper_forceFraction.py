@@ -76,10 +76,10 @@ def load_run(data_path: Path):
     F_grav = get_field('F_grav', 0.0)
     F_rad = get_field('F_rad', 0.0)
 
-    # Thermal force: F_ram (from Pb) + F_HII (from P_IF contribution)
-    # F_ram = Pb * 4*pi*R2^2, F_HII captures the P_IF excess
+    # Thermal force: F_ram (from Pb) + F_ion_out (from P_HII contribution)
+    # F_ram = Pb * 4*pi*R2^2, F_ion_out = P_HII * 4*pi*R2^2
     F_ram = get_field('F_ram', 0.0)
-    F_HII = get_field('F_HII', 0.0)
+    F_ion_out = get_field('F_ion_out', 0.0)
 
     # Alternative: compute from P_drive directly if available
     P_drive = get_field('P_drive', np.nan)
@@ -87,8 +87,8 @@ def load_run(data_path: Path):
         # F_thermal = P_drive * 4*pi*R2^2
         F_thermal = P_drive * 4 * np.pi * R2**2
     else:
-        # Fallback: use F_ram + F_HII
-        F_thermal = np.nan_to_num(F_ram, nan=0.0) + np.nan_to_num(F_HII, nan=0.0)
+        # Fallback: use F_ram + F_ion_out
+        F_thermal = np.nan_to_num(F_ram, nan=0.0) + np.nan_to_num(F_ion_out, nan=0.0)
 
     # Clean up NaN
     F_grav = np.nan_to_num(F_grav, nan=0.0)

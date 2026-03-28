@@ -190,14 +190,15 @@ class ForceProperties:
     F_ion_out: float    # Outward ionization pressure force
     F_ram: float        # Ram pressure force
     F_rad: float        # Radiation pressure force
-    # Pressure diagnostic quantities
+    # Pressure quantities
+    # P_HII: diagnostic only (from shell-structure n_IF, anchored to Pb)
+    # P_drive: actual driving pressure (uses P_HII_St from standalone Strömgren)
     n_IF: float = 0.0
     R_IF: float = 0.0
     P_HII: float = 0.0
     P_drive: float = 0.0
     P_ram: float = 0.0
     press_HII_in: float = 0.0
-    F_HII: float = 0.0
 
 
 def compute_forces_momentum_pure(
@@ -219,7 +220,7 @@ def compute_forces_momentum_pure(
     F_grav = G * mShell / (R2**2) * (mCluster + 0.5 * mShell)
 
     # Ram pressure (momentum phase - no thermal pressure)
-    press_ram = get_bubbleParams.pRam(R2, Lmech_total, v_mech_total)
+    P_ram = get_bubbleParams.pRam(R2, Lmech_total, v_mech_total)
 
     # Ionization pressure forces
     k_B = params['k_B'].value
@@ -240,15 +241,15 @@ def compute_forces_momentum_pure(
             n_r = density_profile.get_density_profile(np.array([rShell]), params)
             if hasattr(n_r, '__len__') and len(n_r) == 1:
                 n_r = n_r[0]
-            press_HII_in = 2.0 * n_r * k_B * TShell_ion
+            P_ext = 2.0 * n_r * k_B * TShell_ion
         except Exception:
-            press_HII_in = 0.0
+            P_ext = 0.0
     else:
-        press_HII_in = 0.0
+        P_ext = 0.0
 
     # Add ISM pressure if shell extends beyond cloud
     if rShell >= rCloud:
-        press_HII_in += PISM * k_B
+        P_ext += PISM * k_B
 
     # ==========================================================================
     # WARM IONIZED GAS PRESSURE (momentum phase)
@@ -267,15 +268,14 @@ def compute_forces_momentum_pure(
 
     # Use standalone Strömgren pressure for driving pressure
     P_HII_St = params['P_HII_St'].value
-    P_drive = P_HII_St + press_ram
+    P_drive = P_HII_St + P_ram
 
     # Forces
-    F_ion_in = press_HII_in * FOUR_PI * R2**2
-    F_HII = FOUR_PI * R2**2 * P_HII
-    F_ion_out = F_HII  # For backwards compatibility
+    F_ion_in = P_ext * FOUR_PI * R2**2
+    F_ion_out = FOUR_PI * R2**2 * P_HII
 
     # Ram pressure force
-    F_ram = press_ram * FOUR_PI * R2**2
+    F_ram = P_ram * FOUR_PI * R2**2
 
     # Radiation pressure force
     F_rad = shell_props.shell_F_rad
@@ -290,9 +290,8 @@ def compute_forces_momentum_pure(
         R_IF=R_IF,
         P_HII=P_HII,
         P_drive=P_drive,
-        P_ram=press_ram,
-        press_HII_in=press_HII_in,
-        F_HII=F_HII,
+        P_ram=P_ram,
+        press_HII_in=P_ext,
     )
 
 
@@ -314,8 +313,8 @@ class MomentumODESnapshot:
     rShell: float
     FABSi: float
     TShell_ion: float  # Ionized shell temperature [K]
-    n_IF: float  # Density at ionization front (for P_HII diagnostic)
-    include_PHII: bool  # Include P_HII in driving pressure
+    n_IF: float  # Density at ionization front (for diagnostic P_HII only, not P_drive)
+    include_PHII: bool  # Gate all HII pressure (both diagnostic P_HII and driving P_HII_St)
     P_HII_St: float  # Standalone Strömgren HII pressure (independent of Pb)
     F_rad: float
     mShell: float
@@ -412,7 +411,7 @@ def get_ODE_momentum_pure(t: float, y: np.ndarray, snapshot: MomentumODESnapshot
     F_grav = G * mShell / (R2**2) * (mCluster + 0.5 * mShell)
 
     # Ram pressure (momentum phase - no thermal pressure)
-    press_ram = get_bubbleParams.pRam(R2, Lmech_total, v_mech_total)
+    P_ram = get_bubbleParams.pRam(R2, Lmech_total, v_mech_total)
 
     # HII pressures (evaluated at rShell)
     rShell = snapshot.rShell
@@ -421,15 +420,15 @@ def get_ODE_momentum_pure(t: float, y: np.ndarray, snapshot: MomentumODESnapshot
             n_r = density_profile.get_density_profile(np.array([rShell]), params)
             if hasattr(n_r, '__len__') and len(n_r) == 1:
                 n_r = n_r[0]
-            press_HII_in = 2.0 * n_r * k_B * snapshot.TShell_ion
+            P_ext = 2.0 * n_r * k_B * snapshot.TShell_ion
         except Exception:
-            press_HII_in = 0.0
+            P_ext = 0.0
     else:
-        press_HII_in = 0.0
+        P_ext = 0.0
 
     # Add ambient pressure if shell is beyond cloud
     if rShell >= snapshot.rCloud:
-        press_HII_in += snapshot.PISM * k_B
+        P_ext += snapshot.PISM * k_B
 
     # ==========================================================================
     # WARM IONIZED GAS PRESSURE (momentum phase)
@@ -443,13 +442,10 @@ def get_ODE_momentum_pure(t: float, y: np.ndarray, snapshot: MomentumODESnapshot
         P_HII = 0.0
 
     # Use standalone Strömgren pressure for driving pressure
-    P_drive = snapshot.P_HII_St + press_ram
-
-    # Rename press_HII_in to press_ext for clarity (external/confining pressure)
-    press_ext = press_HII_in
+    P_drive = snapshot.P_HII_St + P_ram
 
     # Net pressure force using P_drive
-    F_pressure = FOUR_PI * R2**2 * (P_drive - press_ext)
+    F_pressure = FOUR_PI * R2**2 * (P_drive - P_ext)
 
     # Derivatives
     rd = v2
@@ -621,13 +617,12 @@ def run_phase_momentum(params) -> MomentumPhaseResults:
         params['P_drive'].value = force_props.P_drive
         params['P_ram'].value = force_props.P_ram
         params['press_HII_in'].value = force_props.press_HII_in
-        params['F_HII'].value = force_props.F_HII
         params['F_ram_wind'].value = feedback.pdot_W
         params['F_ram_SN'].value = feedback.pdot_SN
 
         # Store Pb (ram pressure)
-        press_ram = get_bubbleParams.pRam(R2, Lmech_total, v_mech_total)
-        params['Pb'].value = press_ram
+        P_ram = get_bubbleParams.pRam(R2, Lmech_total, v_mech_total)
+        params['Pb'].value = P_ram
 
         # ------------------------------------------------------------------
         # ζ diagnostic (Lancaster+2025): quantifies WBB vs PIR dominance.

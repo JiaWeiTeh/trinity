@@ -71,8 +71,8 @@ class ODESnapshot:
     rShell: float
     shell_mass: float
     isCollapse: bool
-    n_IF: float  # Density at ionization front (for P_HII)
-    include_PHII: bool  # Include P_HII in driving pressure
+    n_IF: float  # Density at ionization front (for diagnostic P_HII only, not P_drive)
+    include_PHII: bool  # Gate all HII pressure (both diagnostic P_HII and driving P_HII_St)
     R_IF: float  # Radius of ionization front (pc)
 
     # Cluster/bubble properties
@@ -217,20 +217,20 @@ def get_ODE_Edot_pure(t: float, y: list, snapshot: ODESnapshot, params_for_feedb
     FABSi = snapshot.shell_fAbsorbedIon
     rShell = snapshot.rShell
     if FABSi < 1.0:
-        press_HII_in = get_press_ion(rShell, params_for_feedback)
+        P_ext = get_press_ion(rShell, params_for_feedback)
     else:
-        press_HII_in = 0.0
+        P_ext = 0.0
 
     # Add ISM pressure if shell beyond cloud
     if rShell >= snapshot.rCloud:
-        press_HII_in += snapshot.PISM * snapshot.k_B
+        P_ext += snapshot.PISM * snapshot.k_B
 
     # ==========================================================================
     # WARM IONIZED GAS PRESSURE
     # P_HII from shell structure (diagnostic only — anchored to Pb)
     # P_HII_St from standalone Strömgren (independent, used for P_drive)
     # ==========================================================================
-    # Shell-structure P_HII kept for diagnostics (F_HII, F_ion_out)
+    # Shell-structure P_HII kept for diagnostics (F_ion_out)
     P_HII = 2.0 * snapshot.n_IF * snapshot.k_B * snapshot.TShell_ion
     if not snapshot.include_PHII:
         P_HII = 0.0
@@ -239,23 +239,18 @@ def get_ODE_Edot_pure(t: float, y: list, snapshot: ODESnapshot, params_for_feedb
     P_HII_St = snapshot.P_HII_St
 
     if snapshot.current_phase == 'transition':
-        P_b_ram = get_bubbleParams.pRam(R2, Lmech_total, v_mech_total)
-        P_drive = max(press_bubble, P_HII_St + P_b_ram)
-        F_HII = 4.0 * np.pi * R2**2 * P_HII
+        P_ram = get_bubbleParams.pRam(R2, Lmech_total, v_mech_total)
+        P_drive = max(press_bubble, P_HII_St + P_ram)
     else:
         # energy / implicit phases: max(Pb, P_HII_St)
         P_drive = max(press_bubble, P_HII_St)
-        F_HII = 4.0 * np.pi * R2**2 * P_HII
 
     # Radiation force
     F_rad = snapshot.shell_F_rad
 
-    # Rename press_HII_in to press_ext for clarity (external/confining pressure)
-    press_ext = press_HII_in
-
     # Time derivatives
     rd = v2
-    vd = (4.0 * np.pi * R2**2 * (P_drive - press_ext)
+    vd = (4.0 * np.pi * R2**2 * (P_drive - P_ext)
           - mShell_dot * v2 - F_grav + F_rad) / mShell
 
     # Early phase approximation
@@ -298,14 +293,15 @@ class ODEResult:
     F_ram: Optional[float] = None
     F_rad: Optional[float] = None
 
-    # Pressure diagnostic quantities
+    # Pressure quantities
+    # P_HII: diagnostic only (from shell-structure n_IF, anchored to Pb)
+    # P_drive: actual driving pressure (uses P_HII_St from standalone Strömgren)
     n_IF: Optional[float] = None
     R_IF: Optional[float] = None
     P_HII: Optional[float] = None
     P_drive: Optional[float] = None
     P_ram: Optional[float] = None
     press_HII_in: Optional[float] = None
-    F_HII: Optional[float] = None
 
 
 def compute_derived_quantities(t: float, y: list, snapshot: ODESnapshot, params_for_feedback) -> ODEResult:
@@ -362,12 +358,12 @@ def compute_derived_quantities(t: float, y: list, snapshot: ODESnapshot, params_
     FABSi = snapshot.shell_fAbsorbedIon
     rShell = snapshot.rShell
     if FABSi < 1.0:
-        press_HII_in = get_press_ion(rShell, params_for_feedback)
+        P_ext = get_press_ion(rShell, params_for_feedback)
     else:
-        press_HII_in = 0.0
+        P_ext = 0.0
 
     if rShell >= snapshot.rCloud:
-        press_HII_in += snapshot.PISM * snapshot.k_B
+        P_ext += snapshot.PISM * snapshot.k_B
 
     # ==========================================================================
     # WARM IONIZED GAS PRESSURE (same as ODE function)
@@ -383,20 +379,17 @@ def compute_derived_quantities(t: float, y: list, snapshot: ODESnapshot, params_
     P_HII_St = snapshot.P_HII_St
 
     if snapshot.current_phase == 'transition':
-        P_b_ram = get_bubbleParams.pRam(R2, Lmech_total, v_mech_total)
-        P_drive = max(Pb, P_HII_St + P_b_ram)
-        F_HII = 4.0 * np.pi * R2**2 * P_HII
+        P_ram = get_bubbleParams.pRam(R2, Lmech_total, v_mech_total)
+        P_drive = max(Pb, P_HII_St + P_ram)
     else:
         # energy / implicit phases: max(Pb, P_HII_St)
         P_drive = max(Pb, P_HII_St)
-        F_HII = 4.0 * np.pi * R2**2 * P_HII
 
-    # F_ion_out kept for backwards compatibility
-    F_ion_out = F_HII
+    F_ion_out = 4.0 * np.pi * R2**2 * P_HII
 
     # P_ram: only relevant in transition; 0 in energy/implicit
     if snapshot.current_phase == 'transition':
-        P_ram_val = P_b_ram
+        P_ram_val = P_ram
     else:
         P_ram_val = 0.0
 
@@ -410,7 +403,7 @@ def compute_derived_quantities(t: float, y: list, snapshot: ODESnapshot, params_
         shell_mass=mShell,
         shell_massDot=mShell_dot,
         F_grav=F_grav,
-        F_ion_in=press_HII_in * 4 * np.pi * R2**2,
+        F_ion_in=P_ext * 4 * np.pi * R2**2,
         F_ion_out=F_ion_out,
         F_ram=Pb * 4 * np.pi * R2**2,
         F_rad=snapshot.shell_F_rad,
@@ -420,6 +413,5 @@ def compute_derived_quantities(t: float, y: list, snapshot: ODESnapshot, params_
         P_HII=P_HII,
         P_drive=P_drive,
         P_ram=P_ram_val,
-        press_HII_in=press_HII_in,
-        F_HII=F_HII,
+        press_HII_in=P_ext,
     )
