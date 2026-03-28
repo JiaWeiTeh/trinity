@@ -101,31 +101,13 @@ class RadialProfile:
 
 def _build_free_wind(snap, R1: float, n_pts: int = 50) -> ZoneProfile:
     """
-    Zone 1: Free-streaming wind.
+    Zone 1: Free-streaming wind (r < R1).
 
-    n(r) = Mdot_w / (4π r² v_w μ m_H)  ∝ r⁻²
-
-    Uses saved scalars pdot_W and Lmech_W to reconstruct.
+    Treated as effectively empty — density is negligible compared to
+    the bubble and shell.
     """
-    pdot_W = float(snap.get('pdot_W', 0) or 0)
-    Lmech_W = float(snap.get('Lmech_W', 0) or 0)
-
     r_min = R1 * 0.01
-    r_wind = np.logspace(np.log10(max(r_min, 1e-6)), np.log10(R1), n_pts,
-                         endpoint=False)
-
-    if pdot_W > 0 and Lmech_W > 0:
-        v_w = 2.0 * Lmech_W / pdot_W          # pc/Myr
-        Mdot_w = pdot_W / v_w                  # Msun/Myr
-        mu_ion = 0.6
-        m_H_Msun = CGS.m_H * CONV.g2Msun
-        n_code = Mdot_w / (4.0 * np.pi * r_wind**2 * v_w * mu_ion * m_H_Msun)
-        n_cgs = n_code * _NDENS_AU2CGS
-    else:
-        # Fallback: flat low density
-        n_cgs = np.full_like(r_wind, 1e-3)
-
-    return ZoneProfile('free_wind', r_wind, n_cgs, r_min, R1)
+    return ZoneProfile('free_wind', np.array([]), np.array([]), r_min, R1)
 
 
 def _build_hot_bubble(snap, R1: float, R2: float) -> ZoneProfile:
@@ -379,12 +361,9 @@ def build_radial_profile(snap) -> Optional[RadialProfile]:
             bubble_zone = _build_bubble_interpolated(
                 snap, R1, R2, n_wind_R1, n_shell_R2)
     else:
-        # Momentum/post-transition: interpolate from wind edge to shell inner
-        R1_eff = R2 * 0.01
-        n_wind_R1 = wind_zone.n[-1] if wind_zone.n.size > 0 else 1e-3
-        n_shell_R2 = shell_n_cgs[0] if shell_n_cgs.size > 0 else 1.0
-        bubble_zone = _build_bubble_interpolated(
-            snap, R1_eff, R2, n_wind_R1, n_shell_R2)
+        # Momentum phase: no bubble, interior is empty
+        bubble_zone = ZoneProfile('hot_bubble', np.array([]), np.array([]),
+                                  R2 * 0.01, R2)
 
     # --- Zones 3 & 4: Ionised and neutral shell ---
     ion_zone = _build_ionised_shell(snap, shell_r, shell_n_cgs, R2, R_IF, ion_idx)
