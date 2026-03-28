@@ -190,7 +190,9 @@ class ForceProperties:
     F_ion_out: float    # Outward ionization pressure force
     F_ram: float        # Ram pressure force
     F_rad: float        # Radiation pressure force
-    # Pressure diagnostic quantities
+    # Pressure quantities
+    # P_HII: diagnostic only (from shell-structure n_IF, anchored to Pb)
+    # P_drive: actual driving pressure (uses P_HII_St from standalone Strömgren)
     n_IF: float = 0.0
     R_IF: float = 0.0
     P_HII: float = 0.0
@@ -314,8 +316,8 @@ class MomentumODESnapshot:
     rShell: float
     FABSi: float
     TShell_ion: float  # Ionized shell temperature [K]
-    n_IF: float  # Density at ionization front (for P_HII diagnostic)
-    include_PHII: bool  # Include P_HII in driving pressure
+    n_IF: float  # Density at ionization front (for diagnostic P_HII only, not P_drive)
+    include_PHII: bool  # Gate all HII pressure (both diagnostic P_HII and driving P_HII_St)
     P_HII_St: float  # Standalone Strömgren HII pressure (independent of Pb)
     F_rad: float
     mShell: float

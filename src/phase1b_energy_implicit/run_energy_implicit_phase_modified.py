@@ -241,7 +241,9 @@ class ForceProperties:
     F_ion_out: float    # Outward ionization pressure force
     F_ram: float        # Ram pressure force (from bubble pressure)
     F_rad: float        # Radiation pressure force
-    # Pressure diagnostic quantities
+    # Pressure quantities
+    # P_HII: diagnostic only (from shell-structure n_IF, anchored to Pb)
+    # P_drive: actual driving pressure (uses P_HII_St from standalone Strömgren)
     n_IF: float = 0.0
     R_IF: float = 0.0
     P_HII: float = 0.0

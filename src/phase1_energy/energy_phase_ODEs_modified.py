@@ -71,8 +71,8 @@ class ODESnapshot:
     rShell: float
     shell_mass: float
     isCollapse: bool
-    n_IF: float  # Density at ionization front (for P_HII)
-    include_PHII: bool  # Include P_HII in driving pressure
+    n_IF: float  # Density at ionization front (for diagnostic P_HII only, not P_drive)
+    include_PHII: bool  # Gate all HII pressure (both diagnostic P_HII and driving P_HII_St)
     R_IF: float  # Radius of ionization front (pc)
 
     # Cluster/bubble properties
@@ -298,7 +298,9 @@ class ODEResult:
     F_ram: Optional[float] = None
     F_rad: Optional[float] = None
 
-    # Pressure diagnostic quantities
+    # Pressure quantities
+    # P_HII: diagnostic only (from shell-structure n_IF, anchored to Pb)
+    # P_drive: actual driving pressure (uses P_HII_St from standalone Strömgren)
     n_IF: Optional[float] = None
     R_IF: Optional[float] = None
     P_HII: Optional[float] = None
