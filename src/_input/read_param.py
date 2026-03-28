@@ -478,7 +478,7 @@ def read_param(path2file, write_summary=True):
     params['F_ion_in'] = DescribedItem(0, info="Inward photoionization pressure", ori_units="Msun*pc/Myr**2")
     params['F_ion_out'] = DescribedItem(0, info="Outward photoionization pressure", ori_units="Msun*pc/Myr**2")
     params['F_rad'] = DescribedItem(0, info="Radiation pressure", ori_units="Msun*pc/Myr**2")
-    params['F_ISM'] = DescribedItem(0, info="ISM pressure", ori_units="Msun*pc/Myr**2")
+    params['F_ISM'] = DescribedItem(0, info="ISM pressure force (placeholder, never computed — always 0)", ori_units="Msun*pc/Myr**2")
 
     # HII region / ionization front diagnostic parameters
     params['n_IF'] = DescribedItem(0.0, info="Density at ionization front", ori_units="1/pc**3")
@@ -493,7 +493,6 @@ def read_param(path2file, write_summary=True):
     params['P_drive'] = DescribedItem(0.0, info="Total driving pressure", ori_units="Msun/Myr**2/pc")
     params['P_ram'] = DescribedItem(0.0, info="Ram pressure from freely-streaming wind", ori_units="Msun/Myr**2/pc")
     params['press_HII_in'] = DescribedItem(0.0, info="Inward HII pressure at shell (confining)", ori_units="Msun/Myr**2/pc")
-    params['F_HII'] = DescribedItem(0.0, info="Force from HII pressure", ori_units="Msun*pc/Myr**2")
     
     # Bubble structure
     params['bubble_LTotal'] = DescribedItem(0, info="Total luminosity lost to cooling", ori_units="Msun*pc**2/Myr**3")

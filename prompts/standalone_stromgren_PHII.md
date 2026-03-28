@@ -247,7 +247,7 @@ In `get_ODE_Edot_pure()` and `compute_derived_quantities()`:
   P_drive = max(press_bubble, snapshot.P_HII_St)
   ```
 
-- Keep computing P_HII from n_IF for diagnostics (F_HII, F_ion_out), but
+- Keep computing P_HII from n_IF for diagnostics (F_ion_out), but
   it no longer enters P_drive.
 - The existing phase branching (energy vs transition) for P_ram should
   be preserved — only replace the P_HII term with P_HII_St.

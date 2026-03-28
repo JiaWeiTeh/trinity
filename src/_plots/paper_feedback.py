@@ -144,7 +144,7 @@ def load_run(data_path: Path):
     F_drive = P_drive * 4.0 * np.pi * R2_safe**2
 
     # Overlay components for drive-band decomposition
-    F_HII  = get_field("F_ion_out", 0.0)      # = P_HII * 4πR²
+    F_ion_out = get_field("F_ion_out", 0.0)    # = P_HII * 4πR²
     F_wind = get_field("F_ram_wind", np.nan)
     F_sn   = get_field("F_ram_SN", np.nan)
 
@@ -168,14 +168,14 @@ def load_run(data_path: Path):
         t, R2, phase = t[order], R2[order], phase[order]
         F_grav, F_drive, F_rad = F_grav[order], F_drive[order], F_rad[order]
         F_PISM = F_PISM[order]
-        F_HII = F_HII[order]
+        F_ion_out = F_ion_out[order]
         F_wind, F_sn = F_wind[order], F_sn[order]
         Pb_arr, P_HII_arr = Pb_arr[order], P_HII_arr[order]
         isCollapse = isCollapse[order]
 
     # base forces order must match FORCE_FIELDS_BASE
     base_forces    = np.vstack([F_grav, F_drive, F_rad, F_PISM])
-    overlay_forces = np.vstack([F_HII, F_wind, F_sn])
+    overlay_forces = np.vstack([F_ion_out, F_wind, F_sn])
     pressures      = np.vstack([Pb_arr, P_HII_arr])
 
     return t, R2, phase, base_forces, overlay_forces, rcloud, isCollapse, pressures
