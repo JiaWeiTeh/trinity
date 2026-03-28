@@ -414,7 +414,7 @@ class DescribedDict(dict):
         # Gradient-based features
         grad = np.gradient(y)
         eps = 1e-30
-        denom = np.where(np.abs(grad[:-1]) < eps, np.sign(grad[:-1]) * eps + eps, grad[:-1])
+        denom = np.where(np.abs(grad[:-1]) < eps, eps, grad[:-1])
         pct = np.diff(grad) / denom
         important_percent = np.where(np.abs(pct) > grad_inc)[0]
         important_sign = np.where(np.diff(np.sign(grad)) != 0)[0]
