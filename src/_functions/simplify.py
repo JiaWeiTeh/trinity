@@ -98,7 +98,7 @@ def _simplify(
     **1. Basic usage with numpy arrays:**
 
     >>> import numpy as np
-    >>> from simplify import _simplify
+    >>> from src._functions.simplify import _simplify
     >>> x = np.linspace(0, 10, 5000)
     >>> y = np.sin(x) + 0.5 * np.sin(5 * x)
     >>> x_s, y_s = _simplify(x, y, nmin=100)
@@ -154,10 +154,10 @@ def _simplify(
 
     .. code-block:: bash
 
-        python simplify.py profile.csv -o reduced.csv --nmin 200
-        python simplify.py profile.csv --metrics          # print error table
-        python simplify.py profile.csv --plot             # interactive plot
-        python simplify.py profile.csv --animate out.gif  # animated GIF
+        python src/_functions/simplify.py profile.csv -o reduced.csv --nmin 200
+        python src/_functions/simplify.py profile.csv --metrics          # print error table
+        python src/_functions/simplify.py profile.csv --plot             # interactive plot
+        python src/_functions/simplify.py profile.csv --animate out.gif  # animated GIF
     """
     # --- Input validation ---
     x = np.asarray(x_arr, dtype=float)
@@ -766,9 +766,9 @@ def _simplify_cli():
 
     Usage
     -----
-    python simplify.py input.csv -o output.csv --nmin 150 --grad-inc 0.5
-    python simplify.py input.csv --metrics --plot
-    python simplify.py input.csv --animate simplify.gif --animate-duration 5
+    python src/_functions/simplify.py input.csv -o output.csv --nmin 150 --grad-inc 0.5
+    python src/_functions/simplify.py input.csv --metrics --plot
+    python src/_functions/simplify.py input.csv --animate simplify.gif --animate-duration 5
 
     Positional arguments
     --------------------
@@ -809,7 +809,7 @@ def _simplify_cli():
         ),
         epilog=(
             "Example:\n"
-            "  python simplify.py data.csv -o reduced.csv --nmin 200\n\n"
+            "  python src/_functions/simplify.py data.csv -o reduced.csv --nmin 200\n\n"
             "The algorithm combines three strategies:\n"
             "  1. Gradient-change detection  -- keeps sharp bends\n"
             "  2. Sign-change detection      -- keeps local extrema\n"
@@ -1021,10 +1021,10 @@ if __name__ == "__main__":
         print()
         print("  To use in your own script:")
         print()
-        print("    from simplify import _simplify")
-        print("    from simplify import _simplify_error")
-        print("    from simplify import _simplify_plot")
-        print("    from simplify import _simplify_animate")
+        print("    from src._functions.simplify import _simplify")
+        print("    from src._functions.simplify import _simplify_error")
+        print("    from src._functions.simplify import _simplify_plot")
+        print("    from src._functions.simplify import _simplify_animate")
         print()
         print("    x_s, y_s = _simplify(x, y, nmin=100)")
         print("    metrics  = _simplify_error(x, y, x_s, y_s)")
@@ -1033,9 +1033,9 @@ if __name__ == "__main__":
         print()
         print("  Or from the command line:")
         print()
-        print("    python simplify.py data.csv -o out.csv --metrics")
-        print("    python simplify.py data.csv --plot")
-        print("    python simplify.py data.csv --animate simplify.gif")
+        print("    python src/_functions/simplify.py data.csv -o out.csv --metrics")
+        print("    python src/_functions/simplify.py data.csv --plot")
+        print("    python src/_functions/simplify.py data.csv --animate simplify.gif")
         print()
         print("  Run with --help for all options.")
         print("=" * 60)
