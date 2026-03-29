@@ -449,186 +449,181 @@ def _simplify_plot(
 def _simplify_animate(
     x_orig: Union[np.ndarray, Sequence[float]],
     y_orig: Union[np.ndarray, Sequence[float]],
-    x_simp: Union[np.ndarray, Sequence[float]],
-    y_simp: Union[np.ndarray, Sequence[float]],
     save_path: str = "simplify.gif",
     fps: int = 30,
-    duration: float = 3.0,
+    duration: float = 6.0,
     title: str = "Curve simplification",
+    n_steps: int = 30,
 ) -> None:
     """
-    Create an animated GIF showing the original curve morphing into the
-    simplified representative points.
+    Create an animated GIF showing progressive curve simplification.
 
-    The animation has three phases:
+    The animation sweeps through decreasing numbers of retained points,
+    from the full original down past the optimal simplification and into
+    aggressive over-simplification.  Two panels are shown:
 
-    1. **Fade** (0 -- 40 %): the original dense curve fades from solid to
-       transparent while the simplified points fade in.
-    2. **Collapse** (40 -- 70 %): intermediate original points slide towards
-       their nearest simplified neighbour, visually "collapsing" the dense
-       curve onto the kept points.
-    3. **Hold** (70 -- 100 %): the final simplified curve is shown with
-       error metrics annotated, so the viewer can inspect the result.
+    - **Top panel**: the underlying curve as a thin line, with the current
+      simplified points overlaid as small dots.
+    - **Bottom panel**: RMSE vs. number of retained points, building up
+      as the animation progresses (log-log scale).
 
     Parameters
     ----------
     x_orig, y_orig : array-like
         Original (full-resolution) curve.
-    x_simp, y_simp : array-like
-        Simplified (downsampled) curve.
     save_path : str, optional
         Output file path.  Default: ``"simplify.gif"``.
         Also supports ``.mp4`` if ``ffmpeg`` is installed.
     fps : int, optional
         Frames per second.  Default: 30.
     duration : float, optional
-        Total animation duration in seconds.  Default: 3.0.
+        Total animation duration in seconds.  Default: 6.0.
     title : str, optional
         Figure title.  Default: ``"Curve simplification"``.
+    n_steps : int, optional
+        Number of distinct simplification levels to sweep through.
+        Default: 30.
 
     Examples
     --------
     >>> x = np.linspace(0, 10, 5000)
     >>> y = np.sin(x) + 0.5 * np.sin(5 * x)
-    >>> x_s, y_s = _simplify(x, y, nmin=100)
-    >>> _simplify_animate(x, y, x_s, y_s, "demo.gif", duration=4.0)
+    >>> _simplify_animate(x, y, "demo.gif", duration=6.0)
     """
     import matplotlib.pyplot as plt
     from matplotlib.animation import FuncAnimation
 
+    # --- LaTeX-style serif fonts ---
+    plt.rcParams.update({
+        "font.family": "serif",
+        "mathtext.fontset": "cm",
+        "axes.formatter.use_mathtext": True,
+    })
+
     x_o = np.asarray(x_orig, dtype=float)
     y_o = np.asarray(y_orig, dtype=float)
-    x_s = np.asarray(x_simp, dtype=float)
-    y_s = np.asarray(y_simp, dtype=float)
+    n_orig = x_o.size
 
+    # --- Precompute simplification at many nmin values ---
+    # Sweep from ~n_orig down to a very aggressive level (5 points).
+    # Use log-spaced nmin values so we see smooth progression at both ends.
+    nmin_values = np.unique(
+        np.logspace(np.log10(max(n_orig, 101)), np.log10(5), n_steps)
+        .astype(int)
+    )
+    # Always include endpoints.
+    nmin_values = np.unique(np.concatenate([[n_orig], nmin_values, [5]]))
+    nmin_values = np.sort(nmin_values)[::-1]  # descending
+
+    # Run _simplify for each nmin and store results + error.
+    steps = []
+    for nmin in nmin_values:
+        x_s, y_s = _simplify(x_o, y_o, nmin=int(nmin))
+        m = _simplify_error(x_o, y_o, x_s, y_s)
+        steps.append({
+            "npts": m["n_simp"],
+            "x": x_s,
+            "y": y_s,
+            "rms": m["rms_err"],
+            "r2": m["r_squared"],
+        })
+
+    # Deduplicate steps with same npts (can happen when _simplify returns
+    # more points than nmin).
+    seen = set()
+    unique_steps = []
+    for s in steps:
+        if s["npts"] not in seen:
+            seen.add(s["npts"])
+            unique_steps.append(s)
+    steps = unique_steps
+
+    # Collect arrays for the error subplot.
+    all_npts = np.array([s["npts"] for s in steps])
+    all_rms = np.array([s["rms"] for s in steps])
+
+    # --- Animation timing ---
+    # Each step gets equal time, plus a short hold on the last frame.
+    n_anim_steps = len(steps)
+    hold_frac = 0.15  # fraction of duration to hold the final frame
+    sweep_duration = duration * (1 - hold_frac)
+    hold_duration = duration * hold_frac
     n_frames = int(fps * duration)
-    metrics = _simplify_error(x_o, y_o, x_s, y_s)
+    sweep_frames = int(fps * sweep_duration)
 
-    # For the collapse phase, precompute where each original point
-    # should move to (its nearest simplified point).
-    nearest_idx = np.searchsorted(x_s, x_o).clip(0, x_s.size - 1)
-    # Refine: check if the previous simplified point is actually closer.
-    prev = (nearest_idx - 1).clip(0, x_s.size - 1)
-    use_prev = np.abs(x_o - x_s[prev]) < np.abs(x_o - x_s[nearest_idx])
-    nearest_idx[use_prev] = prev[use_prev]
-    x_target = x_s[nearest_idx]
-    y_target = y_s[nearest_idx]
-
-    # Precompute the final residual for the error subplot.
-    y_interp = np.interp(x_o, x_s, y_s)
-    residual = y_o - y_interp
-    res_max = max(np.max(np.abs(residual)), 1e-30)
-
-    # --- Set up figure with two subplots ---
+    # --- Set up figure ---
     fig, (ax, ax_err) = plt.subplots(
-        2, 1, figsize=(10, 6.5), sharex=True,
-        gridspec_kw={"height_ratios": [3, 1], "hspace": 0.08},
+        2, 1, figsize=(10, 6.5),
+        gridspec_kw={"height_ratios": [3, 1], "hspace": 0.30},
     )
     margin = 0.05 * (np.nanmax(y_o) - np.nanmin(y_o) + 1e-30)
     ax.set_xlim(x_o[0], x_o[-1])
     ax.set_ylim(np.nanmin(y_o) - margin, np.nanmax(y_o) + margin)
-    ax.set_ylabel("y")
-    ax.set_title(title)
+    ax.set_ylabel(r"$y$", fontsize=12)
+    ax.set_xlabel(r"$x$", fontsize=12)
+    ax.set_title(title, fontsize=14)
 
-    ax_err.set_xlim(x_o[0], x_o[-1])
-    ax_err.set_ylim(-res_max * 1.3, res_max * 1.3)
-    ax_err.set_ylabel("residual")
-    ax_err.set_xlabel("x")
-    ax_err.axhline(0, color="k", lw=0.5, ls="--")
+    # Thin underlying curve (always visible).
+    ax.plot(x_o, y_o, "-", color="0.75", lw=0.8, zorder=1)
 
-    # Main plot elements.
-    line_orig, = ax.plot([], [], "-", color="0.4", lw=1.2)
-    scatter_moving = ax.scatter([], [], s=4, color="tab:blue", zorder=3)
-    line_simp, = ax.plot([], [], "o-", color="tab:red", ms=4, lw=1.0, zorder=4)
+    # Simplified dots + connecting line (updated each frame).
+    line_simp, = ax.plot([], [], "-", color="tab:red", lw=0.6, zorder=2)
+    scatter_simp = ax.scatter([], [], s=6, color="tab:red", zorder=3,
+                              edgecolors="none")
     info_text = ax.text(
-        0.5, 0.02, "", transform=ax.transAxes, ha="center", va="bottom",
-        fontsize=8, bbox=dict(boxstyle="round,pad=0.3", fc="lightyellow", ec="0.8"),
+        0.98, 0.96, "", transform=ax.transAxes, ha="right", va="top",
+        fontsize=10,
+        bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="0.7", alpha=0.9),
     )
 
-    # Error subplot elements.
-    err_fill = ax_err.fill_between(x_o, 0, 0, color="tab:blue", alpha=0.0)
-    err_line, = ax_err.plot([], [], "-", color="tab:blue", lw=0.7)
-    err_text = ax_err.text(
-        0.98, 0.95, "", transform=ax_err.transAxes, ha="right", va="top",
-        fontsize=8, bbox=dict(boxstyle="round,pad=0.2", fc="white", ec="0.8", alpha=0.8),
-    )
+    # --- Error subplot: RMSE vs n_points ---
+    rms_nonzero = all_rms[all_rms > 0]
+    if rms_nonzero.size > 0:
+        rms_lo = rms_nonzero.min() * 0.3
+        rms_hi = all_rms.max() * 3.0
+    else:
+        rms_lo, rms_hi = 1e-10, 1.0
+    ax_err.set_xlim(max(all_npts.min() * 0.7, 3), all_npts.max() * 1.5)
+    ax_err.set_ylim(rms_lo, rms_hi)
+    ax_err.set_xscale("log")
+    ax_err.set_yscale("log")
+    ax_err.set_xlabel(r"Number of points $n$", fontsize=12)
+    ax_err.set_ylabel(r"RMSE", fontsize=12)
+    ax_err.invert_xaxis()  # more points on left, fewer on right
+
+    err_line, = ax_err.plot([], [], "o-", color="tab:blue", ms=3, lw=1.0)
+    err_marker = ax_err.scatter([], [], s=40, color="tab:red", zorder=5,
+                                edgecolors="black", linewidths=0.5)
 
     def _update(frame):
-        nonlocal err_fill
-        t = frame / max(n_frames - 1, 1)  # normalised time 0..1
-
-        if t < 0.4:
-            # Phase 1: Fade — original fades out, simplified points fade in.
-            p = t / 0.4  # 0..1 within this phase
-            line_orig.set_data(x_o, y_o)
-            line_orig.set_alpha(1.0 - 0.7 * p)
-            # Show all original points as scatter, fading to blue.
-            scatter_moving.set_offsets(np.column_stack([x_o, y_o]))
-            scatter_moving.set_alpha(p * 0.6)
-            line_simp.set_data([], [])
-            info_text.set_text(
-                f"{metrics['n_orig']} points"
-            )
-            # Error panel: still blank during fade.
-            err_line.set_data([], [])
-            err_fill.remove()
-            err_fill = ax_err.fill_between(x_o, 0, 0, color="tab:blue", alpha=0.0)
-            err_text.set_text("")
-
-        elif t < 0.7:
-            # Phase 2: Collapse — points slide to nearest simplified location.
-            p = (t - 0.4) / 0.3  # 0..1 within this phase
-            # Ease-in-out (smooth step).
-            p = p * p * (3 - 2 * p)
-            x_curr = x_o + p * (x_target - x_o)
-            y_curr = y_o + p * (y_target - y_o)
-            line_orig.set_data(x_o, y_o)
-            line_orig.set_alpha(0.3 * (1 - p))
-            scatter_moving.set_offsets(np.column_stack([x_curr, y_curr]))
-            scatter_moving.set_alpha(0.6)
-            line_simp.set_data([], [])
-            info_text.set_text(
-                f"{metrics['n_orig']} \u2192 {metrics['n_simp']} points"
-            )
-            # Error panel: residual fades in as collapse progresses.
-            current_res = residual * p
-            err_line.set_data(x_o, current_res)
-            err_line.set_alpha(p)
-            err_fill.remove()
-            err_fill = ax_err.fill_between(
-                x_o, current_res, 0, color="tab:blue", alpha=0.25 * p,
-            )
-            err_text.set_text("")
-
+        if frame < sweep_frames:
+            # Map frame to step index.
+            step_idx = int(frame / max(sweep_frames - 1, 1) * (n_anim_steps - 1))
+            step_idx = min(step_idx, n_anim_steps - 1)
         else:
-            # Phase 3: Hold — show final simplified curve with metrics.
-            line_orig.set_data(x_o, y_o)
-            line_orig.set_alpha(0.2)
-            scatter_moving.set_offsets(np.empty((0, 2)))
-            line_simp.set_data(x_s, y_s)
-            line_simp.set_alpha(1.0)
-            info_text.set_text(
-                f"{metrics['n_simp']} pts  |  "
-                f"RMSE={metrics['rms_err']:.2e}  |  "
-                f"R\u00b2={metrics['r_squared']:.4f}  |  "
-                f"{metrics['compression']:.1f}x compression"
-            )
-            # Error panel: full residual with annotation.
-            err_line.set_data(x_o, residual)
-            err_line.set_alpha(1.0)
-            err_fill.remove()
-            err_fill = ax_err.fill_between(
-                x_o, residual, 0, color="tab:blue", alpha=0.3,
-            )
-            err_text.set_text(
-                f"max|err|={metrics['max_abs_err']:.2e}  "
-                f"RMSE={metrics['rms_err']:.2e}"
-            )
+            # Hold phase — stay on last step.
+            step_idx = n_anim_steps - 1
 
-        return line_orig, scatter_moving, line_simp, info_text, err_line, err_fill, err_text
+        s = steps[step_idx]
 
-    # blit=False is required because err_fill (PolyCollection) is recreated
-    # each frame — blit=True assumes the same artist objects persist.
+        # --- Top panel: update simplified points ---
+        line_simp.set_data(s["x"], s["y"])
+        scatter_simp.set_offsets(np.column_stack([s["x"], s["y"]]))
+        info_text.set_text(
+            f"$n = {s['npts']}$    "
+            f"$R^2 = {s['r2']:.6f}$"
+        )
+
+        # --- Bottom panel: build up error curve ---
+        # Show all steps up to current.
+        vis_npts = all_npts[:step_idx + 1]
+        vis_rms = all_rms[:step_idx + 1]
+        err_line.set_data(vis_npts, vis_rms)
+        # Highlight current point.
+        err_marker.set_offsets([[s["npts"], s["rms"]]])
+
+        return line_simp, scatter_simp, info_text, err_line, err_marker
+
     anim = FuncAnimation(fig, _update, frames=n_frames, blit=False)
 
     # Save — use pillow for GIF, ffmpeg for mp4.
@@ -638,6 +633,10 @@ def _simplify_animate(
         writer = "pillow"
     anim.save(save_path, writer=writer, fps=fps, dpi=120)
     plt.close(fig)
+
+    # Restore default rcParams.
+    plt.rcParams.update(plt.rcParamsDefault)
+
     print(f"Animation saved to '{save_path}' ({n_frames} frames, {duration:.1f}s).")
 
 
@@ -972,7 +971,7 @@ def _simplify_cli():
     # --- Optional: animation ---
     if args.animate:
         _simplify_animate(
-            x, y, x_out, y_out,
+            x, y,
             save_path=args.animate,
             fps=args.animate_fps,
             duration=args.animate_duration,
@@ -1030,7 +1029,7 @@ if __name__ == "__main__":
         print("    x_s, y_s = _simplify(x, y, nmin=100)")
         print("    metrics  = _simplify_error(x, y, x_s, y_s)")
         print("    _simplify_plot(x, y, x_s, y_s)")
-        print("    _simplify_animate(x, y, x_s, y_s, 'simplify.gif')")
+        print("    _simplify_animate(x, y, 'simplify.gif')")
         print()
         print("  Or from the command line:")
         print()
