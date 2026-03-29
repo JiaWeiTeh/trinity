@@ -401,7 +401,7 @@ class DescribedDict(dict):
 
         Delegates to the standalone ``simplify`` module (no TRINITY dependencies).
         """
-        from simplify import _simplify
+        from src._functions.simplify import _simplify
         try:
             return _simplify(x_arr, y_arr, nmin=nmin, grad_inc=grad_inc)
         except ValueError:
