@@ -69,7 +69,11 @@ def load_run(data_path):
         return np.where(arr == None, default, arr).astype(float)
 
     # Pressure fields - convert from code units to K/cm^3
-    P_HII_St = get_field('P_HII_St', np.nan) * P_AU_TO_K_CM3
+    # Try P_HII_St first; fall back to P_HII for old output files
+    P_HII_St = get_field('P_HII_St', np.nan)
+    if np.all(np.isnan(P_HII_St)):
+        P_HII_St = get_field('P_HII', np.nan)
+    P_HII_St = P_HII_St * P_AU_TO_K_CM3
     Pb = get_field('Pb', np.nan) * P_AU_TO_K_CM3
     P_ram = get_field('P_ram', np.nan) * P_AU_TO_K_CM3
     P_drive = get_field('P_drive', np.nan) * P_AU_TO_K_CM3
