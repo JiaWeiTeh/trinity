@@ -13,6 +13,7 @@ _simplify          Core downsampling algorithm.
 _simplify_error    Error metrics (RMSE, MAE, R², compression, …).
 _simplify_plot     Static before/after comparison plot.
 _simplify_animate  Animated GIF/MP4 of the simplification process.
+_random_test_curve Generate a random curve that exercises all strategies.
 _simplify_cli      Command-line interface (reads two-column text files).
 """
 
@@ -641,6 +642,119 @@ def _simplify_animate(
 
 
 # =============================================================================
+# Random test-curve generator
+# =============================================================================
+def _random_test_curve(
+    npts: int = 10_000,
+    seed: Union[int, None] = None,
+) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Generate a random 1-D curve that exercises every simplification strategy.
+
+    The curve is built from several additive components, each designed to
+    trigger a different branch of ``_simplify``:
+
+    - **Smooth base** – sum of 3–6 sinusoids with random frequencies,
+      amplitudes and phases.  Produces gentle curvature and many local
+      extrema (tests sign-change detection).
+    - **Flat plateaus** – 1–3 constant-value segments spliced into the
+      curve.  These are "redundant" regions where cumulative-distance
+      sampling should thin aggressively.
+    - **Sharp spikes** – 2–5 narrow Gaussian pulses of random height.
+      Their steep flanks trigger gradient-change detection.
+    - **Step discontinuities** – 1–3 Heaviside-like jumps (smoothed over
+      a handful of points) that create abrupt level shifts.
+    - **Gaussian noise** – low-amplitude noise added everywhere, so the
+      algorithm must distinguish real features from jitter.
+
+    Parameters
+    ----------
+    npts : int, optional
+        Number of points in the output curve.  Default: 10 000.
+    seed : int or None, optional
+        Random seed for reproducibility.  ``None`` gives a different curve
+        each time.
+
+    Returns
+    -------
+    x : np.ndarray, shape (npts,)
+        Independent variable on [0, 1].
+    y : np.ndarray, shape (npts,)
+        Dependent variable (the composite random curve).
+
+    Examples
+    --------
+    >>> x, y = _random_test_curve(npts=8000, seed=42)
+    >>> x_s, y_s = _simplify(x, y, nmin=120)
+    >>> _simplify_plot(x, y, x_s, y_s, title="random test curve")
+    """
+    rng = np.random.default_rng(seed)
+    x = np.linspace(0.0, 1.0, npts)
+    y = np.zeros_like(x)
+
+    # ------------------------------------------------------------------
+    # 1. Smooth sinusoidal base (sign-change + gentle curvature)
+    # ------------------------------------------------------------------
+    n_sines = rng.integers(2, 5)                       # 2–4 terms
+    for _ in range(n_sines):
+        freq  = rng.uniform(1.0, 12.0)                # cycles across [0,1]
+        amp   = rng.uniform(0.3, 2.0)
+        phase = rng.uniform(0.0, 2.0 * np.pi)
+        y += amp * np.sin(2.0 * np.pi * freq * x + phase)
+
+    # ------------------------------------------------------------------
+    # 2. Flat plateaus (redundant regions)
+    #    Use a smooth blend so the entry/exit don't create artificial
+    #    discontinuities that swamp the gradient detector.
+    # ------------------------------------------------------------------
+    n_plateaus = rng.integers(1, 4)                    # 1–3 plateaus
+    for _ in range(n_plateaus):
+        width = rng.uniform(0.05, 0.15)               # 5–15 % of domain
+        centre = rng.uniform(width, 1.0 - width)
+        level = rng.uniform(np.min(y), np.max(y))
+        # Smooth top-hat: product of two logistics (rise then fall).
+        blend_k = npts / 15                            # transition ~15 pts
+        rise = 1.0 / (1.0 + np.exp(np.clip(-blend_k * (x - (centre - width / 2)), -500, 500)))
+        fall = 1.0 / (1.0 + np.exp(np.clip( blend_k * (x - (centre + width / 2)), -500, 500)))
+        window = rise * fall
+        y = y * (1.0 - window) + level * window
+
+    # ------------------------------------------------------------------
+    # 3. Sharp spikes (gradient-change detection)
+    # ------------------------------------------------------------------
+    n_spikes = rng.integers(2, 6)                      # 2–5 spikes
+    for _ in range(n_spikes):
+        loc   = rng.uniform(0.05, 0.95)
+        sigma = rng.uniform(0.002, 0.008)              # narrow but resolved
+        amp   = rng.uniform(2.0, 6.0) * rng.choice([-1, 1])
+        y += amp * np.exp(-0.5 * ((x - loc) / sigma) ** 2)
+
+    # ------------------------------------------------------------------
+    # 4. Step discontinuities (sharp level shifts)
+    #    Steepness is set so the transition spans ~20 grid points —
+    #    sharp enough to trigger gradient detection but not so steep
+    #    that hundreds of transition points are all flagged.
+    # ------------------------------------------------------------------
+    n_steps = rng.integers(1, 4)                       # 1–3 steps
+    for _ in range(n_steps):
+        loc    = rng.uniform(0.10, 0.90)
+        height = rng.uniform(1.0, 4.0) * rng.choice([-1, 1])
+        transition_pts = 20                            # grid points across step
+        steepness = npts / max(transition_pts, 1)
+        arg = np.clip(-steepness * (x - loc), -500.0, 500.0)
+        y += height / (1.0 + np.exp(arg))
+
+    # ------------------------------------------------------------------
+    # 5. Tiny Gaussian noise — just enough to be realistic, not enough
+    #    to trigger gradient-change detection on smooth stretches.
+    # ------------------------------------------------------------------
+    noise_amp = 0.001 * (np.max(y) - np.min(y) + 1e-30)
+    y += rng.normal(0.0, noise_amp, size=npts)
+
+    return x, y
+
+
+# =============================================================================
 # CLI entry point
 # =============================================================================
 def _simplify_cli():
@@ -708,7 +822,10 @@ def _simplify_cli():
     )
     parser.add_argument(
         "infile",
-        help="Path to input data file (two columns: x y).",
+        nargs="?",
+        default=None,
+        help="Path to input data file (two columns: x y).  "
+             "Not required when --random is used.",
     )
     parser.add_argument(
         "-o", "--output",
@@ -764,23 +881,53 @@ def _simplify_cli():
         default=30,
         help="Animation frames per second (default: 30).",
     )
+    parser.add_argument(
+        "--random",
+        action="store_true",
+        help=(
+            "Generate a random test curve instead of reading a file.  "
+            "The curve contains sinusoidal bases, flat plateaus, sharp "
+            "spikes, step discontinuities, and noise — designed to "
+            "exercise every simplification strategy."
+        ),
+    )
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=None,
+        help="Random seed for --random (default: None = non-reproducible).",
+    )
+    parser.add_argument(
+        "--random-npts",
+        type=int,
+        default=10_000,
+        help="Number of points in the random curve (default: 10000).",
+    )
 
     args = parser.parse_args()
 
-    # --- Read input ---
-    # Try comma-delimited first, fall back to whitespace.
-    try:
-        data = np.loadtxt(args.infile, delimiter=",", comments="#")
-    except ValueError:
-        data = np.loadtxt(args.infile, comments="#")
+    # --- Obtain input data ---
+    if args.random:
+        x, y = _random_test_curve(npts=args.random_npts, seed=args.seed)
+        seed_str = f", seed={args.seed}" if args.seed is not None else ""
+        source_label = f"random curve ({args.random_npts} pts{seed_str})"
+        print(f"Generated {source_label}.")
+    elif args.infile is not None:
+        # Try comma-delimited first, fall back to whitespace.
+        try:
+            data = np.loadtxt(args.infile, delimiter=",", comments="#")
+        except ValueError:
+            data = np.loadtxt(args.infile, comments="#")
 
-    if data.ndim != 2 or data.shape[1] < 2:
-        raise SystemExit(
-            f"Error: expected at least 2 columns in '{args.infile}', "
-            f"got shape {data.shape}."
-        )
-
-    x, y = data[:, 0], data[:, 1]
+        if data.ndim != 2 or data.shape[1] < 2:
+            raise SystemExit(
+                f"Error: expected at least 2 columns in '{args.infile}', "
+                f"got shape {data.shape}."
+            )
+        x, y = data[:, 0], data[:, 1]
+        source_label = f"'{args.infile}'"
+    else:
+        parser.error("either provide an input file or use --random.")
 
     # --- Simplify ---
     x_out, y_out = _simplify(x, y, nmin=args.nmin, grad_inc=args.grad_inc)
@@ -817,7 +964,7 @@ def _simplify_cli():
     if args.plot or args.plot_save:
         _simplify_plot(
             x, y, x_out, y_out,
-            title=f"Simplification of '{args.infile}'",
+            title=f"Simplification of {source_label}",
             save_path=args.plot_save,
             show=args.plot,
         )
@@ -829,7 +976,7 @@ def _simplify_cli():
             save_path=args.animate,
             fps=args.animate_fps,
             duration=args.animate_duration,
-            title=f"Simplification of '{args.infile}'",
+            title=f"Simplification of {source_label}",
         )
 
 
