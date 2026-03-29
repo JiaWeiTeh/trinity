@@ -34,7 +34,7 @@ stop_t_diss 1
 expansionBeyondCloud    True
 
 # Output directory (each run creates subfolder like 1e5_sfe001_n1e2/)
-path2output    outputs/trinity_paper1_sweep_2x2test
+path2output    outputs/trinity_paper1_sweep_2x2test_noPHII
 
 # use _modified files with solvers
 use_adaptive_solver True
