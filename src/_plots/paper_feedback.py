@@ -145,13 +145,23 @@ def load_run(data_path: Path):
 
     # Overlay components for drive-band decomposition
     # F_HII_St = P_HII_St * 4πR² (actual driving contribution from Strömgren)
-    F_HII_St = get_field("F_HII_St", 0.0)
+    # Fall back to F_ion_out for old output files without standalone Strömgren
+    F_HII_St = get_field("F_HII_St", np.nan)
+    if np.all(np.isnan(F_HII_St)):
+        F_HII_St = get_field("F_ion_out", 0.0)
+    else:
+        F_HII_St = np.nan_to_num(F_HII_St, nan=0.0)
     F_wind = get_field("F_ram_wind", np.nan)
     F_sn   = get_field("F_ram_SN", np.nan)
 
     # Pressure fields for driver-indicator logic
     Pb_arr      = get_field("Pb", 0.0)
-    P_HII_St_arr = get_field("P_HII_St", 0.0)
+    # Fall back to P_HII for old output files
+    P_HII_St_arr = get_field("P_HII_St", np.nan)
+    if np.all(np.isnan(P_HII_St_arr)):
+        P_HII_St_arr = get_field("P_HII", 0.0)
+    else:
+        P_HII_St_arr = np.nan_to_num(P_HII_St_arr, nan=0.0)
 
     # PISM: press_HII_in is a pressure — convert to force via F = P * 4πR²
     F_PISM_raw = get_field("press_HII_in", np.nan)

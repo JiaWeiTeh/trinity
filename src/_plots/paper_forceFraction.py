@@ -78,7 +78,12 @@ def load_run(data_path: Path):
 
     # Thermal force from P_drive (the actual driving pressure in the EOM)
     F_ram = get_field('F_ram', 0.0)
-    F_HII_St = get_field('F_HII_St', 0.0)
+    # Fall back to F_ion_out for old output files without standalone Strömgren
+    F_HII_St = get_field('F_HII_St', np.nan)
+    if np.all(np.isnan(F_HII_St)):
+        F_HII_St = get_field('F_ion_out', 0.0)
+    else:
+        F_HII_St = np.nan_to_num(F_HII_St, nan=0.0)
 
     # Primary: compute from P_drive directly if available
     P_drive = get_field('P_drive', np.nan)

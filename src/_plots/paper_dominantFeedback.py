@@ -176,7 +176,11 @@ def get_dominant_force(snapshot):
     F_grav = abs(force_vals.get("F_grav", 0.0) or 0.0)
     F_ram_wind = abs(force_vals.get("F_ram_wind", 0.0) or 0.0)
     F_ram_SN = abs(force_vals.get("F_ram_SN", 0.0) or 0.0)
-    F_HII_St = abs(force_vals.get("F_HII_St", 0.0) or 0.0)
+    # Fall back to F_ion_out for old output files without standalone Strömgren
+    _fhii = force_vals.get("F_HII_St")
+    if _fhii is None or not np.isfinite(_fhii):
+        _fhii = force_vals.get("F_ion_out", 0.0)
+    F_HII_St = abs(_fhii or 0.0)
     F_rad = abs(force_vals.get("F_rad", 0.0) or 0.0)
 
     # F_ram competes as total
@@ -225,6 +229,12 @@ def get_force_values(snapshot):
             forces[key] = np.nan
         else:
             forces[key] = abs(val)
+
+    # Also grab F_ion_out as fallback for old outputs without F_HII_St
+    if "F_ion_out" not in forces:
+        val = snapshot.get("F_ion_out")
+        if val is not None and np.isfinite(val):
+            forces["F_ion_out"] = abs(val)
 
     return forces
 
@@ -324,6 +334,8 @@ def build_force_grids(target_time, mCloud_list, sfe_list, sim_grid):
     forces_dict = {}
     for key, _, _ in FORCE_FIELDS:
         forces_dict[key] = np.full((n_sfe, n_mass), np.nan, dtype=float)
+    # Also track F_ion_out as fallback for old outputs without F_HII_St
+    forces_dict["F_ion_out"] = np.full((n_sfe, n_mass), np.nan, dtype=float)
 
     mask = np.zeros((n_sfe, n_mass), dtype=bool)
     collapse_mask = np.zeros((n_sfe, n_mass), dtype=bool)
@@ -411,7 +423,11 @@ def refine_dominant_map(logM, eps, forces_dict, mask, nref_M=300, nref_eps=300,
     F_grav = np.abs(np.nan_to_num(fine_fields.get("F_grav", 0), nan=0.0))
     F_ram_wind = np.abs(np.nan_to_num(fine_fields.get("F_ram_wind", 0), nan=0.0))
     F_ram_SN = np.abs(np.nan_to_num(fine_fields.get("F_ram_SN", 0), nan=0.0))
-    F_HII_St = np.abs(np.nan_to_num(fine_fields.get("F_HII_St", 0), nan=0.0))
+    # Fall back to F_ion_out for old output files without standalone Strömgren
+    _fhii_grid = fine_fields.get("F_HII_St")
+    if _fhii_grid is None or np.all(np.isnan(_fhii_grid)):
+        _fhii_grid = fine_fields.get("F_ion_out", 0)
+    F_HII_St = np.abs(np.nan_to_num(_fhii_grid, nan=0.0))
     F_rad = np.abs(np.nan_to_num(fine_fields.get("F_rad", 0), nan=0.0))
 
     # F_ram competes as total
