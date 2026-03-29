@@ -36,7 +36,6 @@ import dataclasses
 import json
 import signal
 import sys
-from functools import reduce
 from pathlib import Path
 from typing import Any, Dict, Optional, Sequence, Tuple, Union
 
@@ -399,51 +398,11 @@ class DescribedDict(dict):
         - points chosen by cumulative distance in y
 
         Intended use: reduce output size for long profile arrays before snapshotting.
+
+        Delegates to the standalone ``simplify`` module (no TRINITY dependencies).
         """
-        x = np.asarray(x_arr)
-        y = np.asarray(y_arr)
-
-        if x.size == 0 or y.size == 0:
-            return x, y
-        if x.size != y.size:
-            raise ValueError(f"simplify(): x and y must have same length for {keyname}. Instead got {x.size} and {y.size}")
-        if nmin >= x.size:
-            return x, y
-        nmin = max(int(nmin), 100)
-
-        # Gradient-based features
-        grad = np.gradient(y)
-        eps = 1e-30
-        denom = np.where(np.abs(grad[:-1]) < eps, eps, grad[:-1])
-        pct = np.diff(grad) / denom
-        important_percent = np.where(np.abs(pct) > grad_inc)[0]
-        important_sign = np.where(np.diff(np.sign(grad)) != 0)[0]
-
-        # Distance-based sampling in y
-        yrng = float(np.nanmax(y) - np.nanmin(y))
-        if not np.isfinite(yrng) or yrng == 0:
-            # flat curve: uniform indices
-            idx = np.unique(np.linspace(0, x.size - 1, nmin).astype(int))
-            return x[idx], y[idx]
-
-        maxdist = yrng / nmin
-        y_cum = np.cumsum(np.abs(np.diff(y)))
-        bins = (y_cum / maxdist).astype(int)
-        idx_diff = np.where(bins[:-1] != bins[1:])[0]
-
-        # Combine all candidate indices
-        merged = reduce(
-            np.union1d,
-            [
-                np.array([0], dtype=int),
-                important_percent.astype(int),
-                important_sign.astype(int),
-                idx_diff.astype(int),
-                np.array([x.size - 1], dtype=int),
-            ],
-        )
-        merged = np.unique(np.clip(merged, 0, x.size - 1))
-        return x[merged], y[merged]
+        from simplify import _simplify
+        return _simplify(x_arr, y_arr, nmin=nmin, grad_inc=grad_inc)
 
     # -------------------------------------------------------------------------
     # Internal helpers for snapshot serialization
