@@ -250,6 +250,7 @@ class ForceProperties:
     P_drive: float = 0.0
     P_ram: float = 0.0
     press_HII_in: float = 0.0
+    F_HII_St: float = 0.0
 
 
 def compute_forces_pure(
@@ -337,6 +338,7 @@ def compute_forces_pure(
     # Forces
     F_ion_in = P_ext * FOUR_PI * R2**2
     F_ion_out = FOUR_PI * R2**2 * P_HII
+    F_HII_St = FOUR_PI * R2**2 * P_HII_St
 
     # Ram pressure force (from bubble pressure)
     F_ram = Pb * FOUR_PI * R2**2
@@ -356,6 +358,7 @@ def compute_forces_pure(
         P_drive=P_drive,
         P_ram=0.0,  # no ram pressure in implicit phase
         press_HII_in=P_ext,
+        F_HII_St=F_HII_St,
     )
 
 
@@ -657,6 +660,7 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         params['P_drive'].value = force_props.P_drive
         params['P_ram'].value = force_props.P_ram
         params['press_HII_in'].value = force_props.press_HII_in
+        params['F_HII_St'].value = force_props.F_HII_St
         params['F_ram_wind'].value = feedback.pdot_W
         params['F_ram_SN'].value = feedback.pdot_SN
 

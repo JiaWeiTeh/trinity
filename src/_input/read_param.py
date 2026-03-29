@@ -476,7 +476,8 @@ def read_param(path2file, write_summary=True):
     params['F_ram_wind'] = DescribedItem(0, info="Wind ram pressure force (from SB99)", ori_units="Msun*pc/Myr**2")
     params['F_ram_SN'] = DescribedItem(0, info="SN ram pressure force (from SB99)", ori_units="Msun*pc/Myr**2")
     params['F_ion_in'] = DescribedItem(0, info="Inward photoionization pressure", ori_units="Msun*pc/Myr**2")
-    params['F_ion_out'] = DescribedItem(0, info="Outward photoionization pressure", ori_units="Msun*pc/Myr**2")
+    params['F_ion_out'] = DescribedItem(0, info="Outward photoionization pressure (diagnostic, from shell-structure P_HII)", ori_units="Msun*pc/Myr**2")
+    params['F_HII_St'] = DescribedItem(0, info="Stroemgren HII force (= P_HII_St * 4piR2^2, actual driving contribution)", ori_units="Msun*pc/Myr**2")
     params['F_rad'] = DescribedItem(0, info="Radiation pressure", ori_units="Msun*pc/Myr**2")
     params['F_ISM'] = DescribedItem(0, info="ISM pressure force (placeholder, never computed — always 0)", ori_units="Msun*pc/Myr**2")
 

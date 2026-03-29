@@ -302,6 +302,7 @@ class ODEResult:
     P_drive: Optional[float] = None
     P_ram: Optional[float] = None
     press_HII_in: Optional[float] = None
+    F_HII_St: Optional[float] = None
 
 
 def compute_derived_quantities(t: float, y: list, snapshot: ODESnapshot, params_for_feedback) -> ODEResult:
@@ -386,6 +387,7 @@ def compute_derived_quantities(t: float, y: list, snapshot: ODESnapshot, params_
         P_drive = max(Pb, P_HII_St)
 
     F_ion_out = 4.0 * np.pi * R2**2 * P_HII
+    F_HII_St = 4.0 * np.pi * R2**2 * P_HII_St
 
     # P_ram: only relevant in transition; 0 in energy/implicit
     if snapshot.current_phase == 'transition':
@@ -414,4 +416,5 @@ def compute_derived_quantities(t: float, y: list, snapshot: ODESnapshot, params_
         P_drive=P_drive,
         P_ram=P_ram_val,
         press_HII_in=P_ext,
+        F_HII_St=F_HII_St,
     )
