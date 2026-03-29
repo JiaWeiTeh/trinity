@@ -402,7 +402,13 @@ class DescribedDict(dict):
         Delegates to the standalone ``simplify`` module (no TRINITY dependencies).
         """
         from simplify import _simplify
-        return _simplify(x_arr, y_arr, nmin=nmin, grad_inc=grad_inc)
+        try:
+            return _simplify(x_arr, y_arr, nmin=nmin, grad_inc=grad_inc)
+        except ValueError:
+            raise ValueError(
+                f"simplify(): x and y must have same length for {keyname}. "
+                f"Instead got {len(x_arr)} and {len(y_arr)}"
+            )
 
     # -------------------------------------------------------------------------
     # Internal helpers for snapshot serialization
