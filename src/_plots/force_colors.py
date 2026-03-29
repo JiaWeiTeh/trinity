@@ -188,7 +188,7 @@ def _rebuild():
     # -- paper_momentum  (dashed)
     DASHED_FIELDS.clear()
     DASHED_FIELDS.extend([
-        ("F_ion_out",  r"$P_{\rm HII}$", C.DOM_HII),
+        ("F_HII_St",   r"$P_{\rm HII}$", C.DOM_HII),
         ("F_ram_wind", "Wind",            C.DOM_WIND),
         ("F_ram_SN",   "Supernovae",      C.DOM_SN),
     ])
@@ -198,7 +198,7 @@ def _rebuild():
     DOMINANT_COLORS.update({
         "F_grav":     C.DOM_GRAV,
         "F_drive":    C.DOM_DRIVE,
-        "F_ion_out":  C.DOM_HII,
+        "F_HII_St":  C.DOM_HII,
         "F_ram_wind": C.DOM_WIND,
         "F_ram_SN":   C.DOM_SN,
         "F_rad":      C.DOM_RAD,
@@ -211,7 +211,7 @@ def _rebuild():
         ("F_grav",     "Gravity",          C.GRID_GRAV),
         ("F_ram_wind", "Winds",            C.GRID_WIND),
         ("F_ram_SN",   "Supernovae",       C.GRID_SN),
-        ("F_ion_out",  "Photoionised gas", C.GRID_ION_OUT),
+        ("F_HII_St",   "Photoionised gas", C.GRID_ION_OUT),
         ("F_rad",      "Radiation",        C.GRID_RAD),
     ])
 

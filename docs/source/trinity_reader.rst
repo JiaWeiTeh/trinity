@@ -292,7 +292,9 @@ Forces
    * - ``F_ram_SN``
      - Ram pressure from supernovae
    * - ``F_ion_out``
-     - Warm ionized gas force (outward, = P_HII * 4piR2^2, diagnostic)
+     - Warm ionized gas force (diagnostic, = P_HII * 4piR2^2, anchored to Pb)
+   * - ``F_HII_St``
+     - Stroemgren HII force (driving, = P_HII_St * 4piR2^2, independent of Pb)
    * - ``F_rad``
      - Radiation pressure force
 

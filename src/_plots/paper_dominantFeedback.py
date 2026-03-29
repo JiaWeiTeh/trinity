@@ -11,7 +11,7 @@ and star formation efficiency (SFE).
 Each subplot (one per time snapshot):
 - X-axis: cloud mass (mCloud)
 - Y-axis: star formation efficiency (SFE)
-- Color: dominant feedback force (F_grav, F_ram_wind, F_ram_SN, F_ion_out, F_rad)
+- Color: dominant feedback force (F_grav, F_ram_wind, F_ram_SN, F_HII_St, F_rad)
 - White: collapsed (simulation ended in shell collapse)
 - Gray: no data (simulation file not found)
 
@@ -176,14 +176,14 @@ def get_dominant_force(snapshot):
     F_grav = abs(force_vals.get("F_grav", 0.0) or 0.0)
     F_ram_wind = abs(force_vals.get("F_ram_wind", 0.0) or 0.0)
     F_ram_SN = abs(force_vals.get("F_ram_SN", 0.0) or 0.0)
-    F_ion_out = abs(force_vals.get("F_ion_out", 0.0) or 0.0)
+    F_HII_St = abs(force_vals.get("F_HII_St", 0.0) or 0.0)
     F_rad = abs(force_vals.get("F_rad", 0.0) or 0.0)
 
     # F_ram competes as total
     F_ram_total = F_ram_wind + F_ram_SN
 
-    # Compete: {F_grav, F_ram_total, F_ion_out, F_rad}
-    competitors = [F_grav, F_ram_total, F_ion_out, F_rad]
+    # Compete: {F_grav, F_ram_total, F_HII_St, F_rad}
+    competitors = [F_grav, F_ram_total, F_HII_St, F_rad]
     total = sum(competitors)
     if total == 0 or not np.isfinite(total):
         return np.nan
@@ -191,7 +191,7 @@ def get_dominant_force(snapshot):
     winner_idx = int(np.argmax(competitors))
 
     # Map winner to FORCE_FIELDS indices:
-    # 0 = F_grav, 1 = F_ram_wind, 2 = F_ram_SN, 3 = F_ion_out, 4 = F_rad
+    # 0 = F_grav, 1 = F_ram_wind, 2 = F_ram_SN, 3 = F_HII_St, 4 = F_rad
     if winner_idx == 0:  # F_grav wins
         return 0
     elif winner_idx == 1:  # F_ram_total wins -> subclassify
@@ -200,7 +200,7 @@ def get_dominant_force(snapshot):
             return 2  # F_ram_SN (yellow)
         else:
             return 1  # F_ram_wind (blue)
-    elif winner_idx == 2:  # F_ion_out wins
+    elif winner_idx == 2:  # F_HII_St wins
         return 3
     else:  # F_rad wins
         return 4
@@ -411,14 +411,14 @@ def refine_dominant_map(logM, eps, forces_dict, mask, nref_M=300, nref_eps=300,
     F_grav = np.abs(np.nan_to_num(fine_fields.get("F_grav", 0), nan=0.0))
     F_ram_wind = np.abs(np.nan_to_num(fine_fields.get("F_ram_wind", 0), nan=0.0))
     F_ram_SN = np.abs(np.nan_to_num(fine_fields.get("F_ram_SN", 0), nan=0.0))
-    F_ion_out = np.abs(np.nan_to_num(fine_fields.get("F_ion_out", 0), nan=0.0))
+    F_HII_St = np.abs(np.nan_to_num(fine_fields.get("F_HII_St", 0), nan=0.0))
     F_rad = np.abs(np.nan_to_num(fine_fields.get("F_rad", 0), nan=0.0))
 
     # F_ram competes as total
     F_ram_total = F_ram_wind + F_ram_SN
 
-    # Stack competitors: {F_grav, F_ram_total, F_ion_out, F_rad}
-    stack = np.stack([F_grav, F_ram_total, F_ion_out, F_rad], axis=-1)
+    # Stack competitors: {F_grav, F_ram_total, F_HII_St, F_rad}
+    stack = np.stack([F_grav, F_ram_total, F_HII_St, F_rad], axis=-1)
 
     # Identify invalid cells
     invalid_f = np.all(stack == 0, axis=-1)
@@ -430,9 +430,9 @@ def refine_dominant_map(logM, eps, forces_dict, mask, nref_M=300, nref_eps=300,
     dom_f = np.zeros_like(winner_idx, dtype=float)
 
     # Map winners to FORCE_FIELDS indices:
-    # 0 = F_grav, 1 = F_ram_wind, 2 = F_ram_SN, 3 = F_ion_out, 4 = F_rad
+    # 0 = F_grav, 1 = F_ram_wind, 2 = F_ram_SN, 3 = F_HII_St, 4 = F_rad
     dom_f[winner_idx == 0] = 0  # F_grav
-    dom_f[winner_idx == 2] = 3  # F_ion_out
+    dom_f[winner_idx == 2] = 3  # F_HII_St
     dom_f[winner_idx == 3] = 4  # F_rad
 
     # For F_ram winners (winner_idx == 1), subclassify

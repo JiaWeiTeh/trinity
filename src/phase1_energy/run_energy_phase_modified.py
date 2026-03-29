@@ -225,6 +225,8 @@ def run_energy(params):
             params['P_ram'].value = ode_result.P_ram
         if ode_result.press_HII_in is not None:
             params['press_HII_in'].value = ode_result.press_HII_in
+        if ode_result.F_HII_St is not None:
+            params['F_HII_St'].value = ode_result.F_HII_St
         if ode_result.shell_mass is not None:
             params['shell_mass'].value = ode_result.shell_mass
         if ode_result.shell_massDot is not None:
