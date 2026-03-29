@@ -144,13 +144,14 @@ def load_run(data_path: Path):
     F_drive = P_drive * 4.0 * np.pi * R2_safe**2
 
     # Overlay components for drive-band decomposition
-    F_ion_out = get_field("F_ion_out", 0.0)    # = P_HII * 4πR²
+    # F_HII_St = P_HII_St * 4πR² (actual driving contribution from Strömgren)
+    F_HII_St = get_field("F_HII_St", 0.0)
     F_wind = get_field("F_ram_wind", np.nan)
     F_sn   = get_field("F_ram_SN", np.nan)
 
     # Pressure fields for driver-indicator logic
-    Pb_arr    = get_field("Pb", 0.0)
-    P_HII_arr = get_field("P_HII", 0.0)
+    Pb_arr      = get_field("Pb", 0.0)
+    P_HII_St_arr = get_field("P_HII_St", 0.0)
 
     # PISM: press_HII_in is a pressure — convert to force via F = P * 4πR²
     F_PISM_raw = get_field("press_HII_in", np.nan)
@@ -168,15 +169,15 @@ def load_run(data_path: Path):
         t, R2, phase = t[order], R2[order], phase[order]
         F_grav, F_drive, F_rad = F_grav[order], F_drive[order], F_rad[order]
         F_PISM = F_PISM[order]
-        F_ion_out = F_ion_out[order]
+        F_HII_St = F_HII_St[order]
         F_wind, F_sn = F_wind[order], F_sn[order]
-        Pb_arr, P_HII_arr = Pb_arr[order], P_HII_arr[order]
+        Pb_arr, P_HII_St_arr = Pb_arr[order], P_HII_St_arr[order]
         isCollapse = isCollapse[order]
 
     # base forces order must match FORCE_FIELDS_BASE
     base_forces    = np.vstack([F_grav, F_drive, F_rad, F_PISM])
-    overlay_forces = np.vstack([F_ion_out, F_wind, F_sn])
-    pressures      = np.vstack([Pb_arr, P_HII_arr])
+    overlay_forces = np.vstack([F_HII_St, F_wind, F_sn])
+    pressures      = np.vstack([Pb_arr, P_HII_St_arr])
 
     return t, R2, phase, base_forces, overlay_forces, rcloud, isCollapse, pressures
 
@@ -240,27 +241,27 @@ def plot_run_on_ax(
 
         # ---- Energy phase: NO hatched ram overlay (ram thermalises at R1) ----
         # Instead, add thin driver-indicator strip at top of F_drive band
-        # showing which branch of max(Pb, P_HII) is active.
+        # showing which branch of max(Pb, P_HII_St) is active.
         if np.any(energy_mask) and pressures is not None:
             en_idx = np.where(energy_mask)[0]
             t_en = t[en_idx]
-            Pb_en    = pressures[0][en_idx]
-            Phii_en  = pressures[1][en_idx]
+            Pb_en      = pressures[0][en_idx]
+            Phii_St_en = pressures[1][en_idx]
 
             dt_en = drive_top[en_idx]
             strip_h = 0.012  # thin strip in fraction-space
             strip_bot = dt_en - strip_h
             strip_bot = np.maximum(strip_bot, drive_bottom[en_idx])
 
-            # Where P_HII > Pb: teal/red strip (HII is driver)
-            hii_wins = Phii_en > Pb_en
+            # Where P_HII_St > Pb: teal/red strip (HII is driver)
+            hii_wins = Phii_St_en > Pb_en
             if np.any(hii_wins):
                 idx_hii = en_idx[hii_wins]
                 ax.fill_between(
                     t[idx_hii], drive_top[idx_hii] - strip_h, drive_top[idx_hii],
                     facecolor=C_PHII, alpha=0.7, lw=0, zorder=5
                 )
-            # Where Pb >= P_HII: drive colour strip (bubble is driver)
+            # Where Pb >= P_HII_St: drive colour strip (bubble is driver)
             pb_wins = ~hii_wins
             if np.any(pb_wins):
                 idx_pb = en_idx[pb_wins]
@@ -270,22 +271,21 @@ def plot_run_on_ax(
                 )
 
         # ---- Transition phase: hatched overlay only when non-bubble branch wins ----
-        # P_drive = max(Pb, P_HII + P_ram). Show decomposition only when
-        # P_HII + P_ram > Pb (i.e. the HII+ram branch is active).
+        # P_drive = max(Pb, P_HII_St + P_ram). Show decomposition only when
+        # P_HII_St + P_ram > Pb (i.e. the HII+ram branch is active).
         if np.any(transition_mask):
             tr_idx = np.where(transition_mask)[0]
 
             # Determine which branch is active from pressures
             if pressures is not None:
-                Pb_tr   = pressures[0][tr_idx]
-                Phii_tr = pressures[1][tr_idx]
+                Pb_tr       = pressures[0][tr_idx]
+                Phii_St_tr  = pressures[1][tr_idx]
                 Fw_tr   = np.nan_to_num(Fw_raw[tr_idx], nan=0.0)
                 Fsn_tr  = np.nan_to_num(Fsn_raw[tr_idx], nan=0.0)
-                Fhii_tr = np.nan_to_num(Fhii_raw[tr_idx], nan=0.0)
                 R2_tr   = R2[tr_idx]
                 # P_ram from force: F_ram = P_ram * 4πR²
                 P_ram_tr = np.where(R2_tr > 0, (Fw_tr + Fsn_tr) / (4.0 * np.pi * R2_tr**2 + eps), 0.0)
-                non_bubble = (Phii_tr + P_ram_tr) > Pb_tr
+                non_bubble = (Phii_St_tr + P_ram_tr) > Pb_tr
             else:
                 non_bubble = np.ones(len(tr_idx), dtype=bool)
 

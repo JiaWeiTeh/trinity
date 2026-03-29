@@ -656,7 +656,7 @@ def plot_force_budget(simulations: dict, output_dir: Path, fmt: str = 'pdf',
         ('F_ram',     r'$F_{\rm ram}$',     '#0072B2', '-'),
         ('F_grav',    r'$|F_{\rm grav}|$',  '#D55E00', '--'),
         ('F_rad',     r'$F_{\rm rad}$',     '#009E73', '-.'),
-        ('F_ion_out', r'$F_{\rm ion}$',     '#CC79A7', ':'),
+        ('F_HII_St',  r'$F_{\rm HII,St}$',  '#CC79A7', ':'),
     ]
 
     for idx, tag in enumerate(tags_present):

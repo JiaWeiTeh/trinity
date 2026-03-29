@@ -43,9 +43,9 @@ SAVE_PDF = True
 
 # Pressure field styling: (output_key, label, color, linestyle, linewidth)
 PRESSURE_FIELDS = [
-    ("P_HII", r"$P_{\rm HII}$",  "red",    "-",  1.8),
-    ("Pb",    r"$P_b$ (bubble)",  "blue",   "-",  1.8),
-    ("P_ram", r"$P_{\rm ram}$",   "green",  "-",  1.8),
+    ("P_HII_St", r"$P_{\rm HII,St}$",  "red",    "-",  1.8),
+    ("Pb",       r"$P_b$ (bubble)",     "blue",   "-",  1.8),
+    ("P_ram",    r"$P_{\rm ram}$",      "green",  "-",  1.8),
 ]
 
 
@@ -69,7 +69,7 @@ def load_run(data_path):
         return np.where(arr == None, default, arr).astype(float)
 
     # Pressure fields - convert from code units to K/cm^3
-    P_HII = get_field('P_HII', np.nan) * P_AU_TO_K_CM3
+    P_HII_St = get_field('P_HII_St', np.nan) * P_AU_TO_K_CM3
     Pb = get_field('Pb', np.nan) * P_AU_TO_K_CM3
     P_ram = get_field('P_ram', np.nan) * P_AU_TO_K_CM3
     P_drive = get_field('P_drive', np.nan) * P_AU_TO_K_CM3
@@ -84,7 +84,7 @@ def load_run(data_path):
         t = t[order]
         R2 = R2[order]
         phase = phase[order]
-        P_HII = P_HII[order]
+        P_HII_St = P_HII_St[order]
         Pb = Pb[order]
         P_ram = P_ram[order]
         P_drive = P_drive[order]
@@ -92,7 +92,7 @@ def load_run(data_path):
 
     return {
         't': t, 'R2': R2, 'phase': phase,
-        'P_HII': P_HII, 'Pb': Pb, 'P_ram': P_ram, 'P_drive': P_drive,
+        'P_HII_St': P_HII_St, 'Pb': Pb, 'P_ram': P_ram, 'P_drive': P_drive,
         'rcloud': rcloud, 'isCollapse': isCollapse,
     }
 
