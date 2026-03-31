@@ -215,28 +215,16 @@ def shell_structure_pure(params) -> ShellProperties:
     R_IF = rShell_arr_ion[-1]  # Radius of ionization front
 
     # ------------------------------------------------------------------
-    # Two-branch n_IF: Strömgren correction (Lancaster+2025)
+    # Strömgren ionization balance density (Lancaster+2025)
     #
-    # The ODE-derived n_IF is anchored to Pb at the inner boundary via
-    # pressure equilibrium (Rahner+2017 Eq.14), with density rising
-    # outward as radiation pressure sets up a thermal pressure gradient.
-    # This captures the bubble-dominated (ζ > 1) regime correctly.
-    #
-    # When the bubble is sub-dominant (ζ < 1), the HII region is
-    # independently pressurised via ionisation balance. The Strömgren
-    # density n_IF_Str = sqrt(3Qi / (4π αB ΔV)) is independent of Pb.
-    # Using max() is conservative: existing behaviour is unchanged
-    # unless n_IF_Str exceeds the ODE value.
+    # n_IF_Str = sqrt(3Qi / (4π αB ΔV)) is the mean ionized density
+    # from ionization balance in the shell volume. Independent of Pb.
+    # This is the sole source of P_HII used in P_drive.
     #
     # Guards:
     #   (a) is_fullyIonised=True  → photons escape; R_IF is the shell
-    #       outer edge, not a physical pressure surface. The Strömgren
-    #       volume would absorb zero photons. Skip correction.
-    #   (b) rShell0 >= rCloud     → shell has left the cloud; ambient
-    #       density structure changes and the ionisation balance inside
-    #       the shell is no longer well-defined against a GMC background.
-    #       Skip correction; external ISM pressure is handled separately
-    #       via press_HII_in in the ODE.
+    #       outer edge, not a physical pressure surface. Skip.
+    #   (b) rShell0 >= rCloud     → shell has left the cloud. Skip.
     # ------------------------------------------------------------------
     _rCloud = params['rCloud'].value
     _vol_ion = R_IF**3 - rShell0**3   # rShell0 == params['R2'].value
@@ -245,13 +233,8 @@ def shell_structure_pure(params) -> ShellProperties:
             3.0 * Qi /
             (4.0 * np.pi * params['caseB_alpha'].value * _vol_ion)
         )
-        # Two-branch selection: physics lives here.
-        # P_drive = max(Pb, P_HII) in the ODE remains a safety floor.
-        n_IF = max(n_IF, n_IF_Str)
     else:
-        # Fully ionised, beyond cloud, or degenerate geometry:
-        # keep ODE-derived n_IF unchanged.
-        n_IF_Str = n_IF
+        n_IF_Str = 0.0
 
     # =============================================================================
     # Continue computation if shell hasn't dissolved

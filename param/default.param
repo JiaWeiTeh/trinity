@@ -68,7 +68,7 @@ sfe    0.01
 # UNIT: [Zsun]
 ZCloud    1
 
-# INFO: Include warm ionized gas pressure in the driving pressure. When False, both P_HII (diagnostic) and P_HII_St (standalone Strömgren, used in P_drive) are set to zero.
+# INFO: Include HII pressure (from Strömgren ionization balance in shell) in P_drive. When False, P_HII is set to zero.
 include_PHII    True
 
 

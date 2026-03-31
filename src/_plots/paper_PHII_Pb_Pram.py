@@ -5,7 +5,7 @@ Pressure Components Plot for TRINITY
 
 Shows the three key pressure components as a function of time:
 
-- P_HII_St(t): Standalone Stroemgren HII pressure (independent of Pb)
+- P_HII(t): HII pressure from Stroemgren ionization balance in shell
 - Pb(t): Hot bubble pressure
 - P_ram(t): Ram pressure from freely-streaming wind
 
@@ -27,7 +27,7 @@ from src._output.trinity_reader import load_output
 from src._plots.plot_markers import add_plot_markers, get_marker_legend_handles
 from src._functions.unit_conversions import INV_CONV, CGS
 
-print("...plotting pressure components (P_HII_St, Pb, P_ram)")
+print("...plotting pressure components (P_HII, Pb, P_ram)")
 
 # Unit conversion: code units (Msun/pc/Myr^2) -> K/cm^3 (= P/k_B = n*T)
 P_AU_TO_K_CM3 = INV_CONV.Pb_au2cgs / CGS.k_B
@@ -43,9 +43,9 @@ SAVE_PDF = True
 
 # Pressure field styling: (output_key, label, color, linestyle, linewidth)
 PRESSURE_FIELDS = [
-    ("P_HII_St", r"$P_{\rm HII,St}$",  "red",    "-",  1.8),
-    ("Pb",       r"$P_b$ (bubble)",     "blue",   "-",  1.8),
-    ("P_ram",    r"$P_{\rm ram}$",      "green",  "-",  1.8),
+    ("P_HII", r"$P_{\rm HII}$",  "red",    "-",  1.8),
+    ("Pb",    r"$P_b$ (bubble)", "blue",   "-",  1.8),
+    ("P_ram", r"$P_{\rm ram}$",  "green",  "-",  1.8),
 ]
 
 
@@ -69,11 +69,11 @@ def load_run(data_path):
         return np.where(arr == None, default, arr).astype(float)
 
     # Pressure fields - convert from code units to K/cm^3
-    # Try P_HII_St first; fall back to P_HII for old output files
-    P_HII_St = get_field('P_HII_St', np.nan)
-    if np.all(np.isnan(P_HII_St)):
-        P_HII_St = get_field('P_HII', np.nan)
-    P_HII_St = P_HII_St * P_AU_TO_K_CM3
+    # Try P_HII first; fall back to P_HII for old output files
+    P_HII = get_field('P_HII', np.nan)
+    if np.all(np.isnan(P_HII)):
+        P_HII = get_field('P_HII', np.nan)
+    P_HII = P_HII * P_AU_TO_K_CM3
     Pb = get_field('Pb', np.nan) * P_AU_TO_K_CM3
     P_ram = get_field('P_ram', np.nan) * P_AU_TO_K_CM3
     P_drive = get_field('P_drive', np.nan) * P_AU_TO_K_CM3
@@ -88,7 +88,7 @@ def load_run(data_path):
         t = t[order]
         R2 = R2[order]
         phase = phase[order]
-        P_HII_St = P_HII_St[order]
+        P_HII = P_HII[order]
         Pb = Pb[order]
         P_ram = P_ram[order]
         P_drive = P_drive[order]
@@ -96,7 +96,7 @@ def load_run(data_path):
 
     return {
         't': t, 'R2': R2, 'phase': phase,
-        'P_HII_St': P_HII_St, 'Pb': Pb, 'P_ram': P_ram, 'P_drive': P_drive,
+        'P_HII': P_HII, 'Pb': Pb, 'P_ram': P_ram, 'P_drive': P_drive,
         'rcloud': rcloud, 'isCollapse': isCollapse,
     }
 
@@ -157,7 +157,7 @@ def plot_run_on_ax(ax, data, smooth_window=None, phase_change=True,
 
     # Auto y-limits with some padding
     all_pressures = np.concatenate([
-        data['P_HII_St'], data['Pb'], data['P_ram']
+        data['P_HII'], data['Pb'], data['P_ram']
     ])
     valid = all_pressures[np.isfinite(all_pressures) & (all_pressures > 0)]
     if len(valid) > 0:
@@ -175,7 +175,7 @@ def _plot_cell(ax, data):
 def _build_grid_legend():
     """Build legend handles for grid plots."""
     handles = [
-        Line2D([0], [0], color="red", ls="-", lw=1.8, label=r"$P_{\rm HII,St}$"),
+        Line2D([0], [0], color="red", ls="-", lw=1.8, label=r"$P_{\rm HII}$"),
         Line2D([0], [0], color="blue", ls="-", lw=1.8, label=r"$P_b$ (bubble)"),
         Line2D([0], [0], color="green", ls="-", lw=1.8, label=r"$P_{\rm ram}$"),
     ]
@@ -256,7 +256,7 @@ if __name__ == "__main__":
     from src._plots.cli import dispatch
     dispatch(
         script_name="paper_PHII_Pb_Pram.py",
-        description="Plot TRINITY pressure components (P_HII_St, Pb, P_ram)",
+        description="Plot TRINITY pressure components (P_HII, Pb, P_ram)",
         plot_from_path_fn=plot_from_path,
         plot_grid_fn=plot_grid,
     )

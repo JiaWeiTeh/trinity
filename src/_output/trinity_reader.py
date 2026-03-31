@@ -78,7 +78,7 @@ The most commonly used output parameters are:
 **Forces:**
 - F_grav: Gravitational force
 - F_ram: Ram pressure force (total)
-- F_ion_out: Ionization force (outward)
+- F_HII: HII pressure force (outward)
 - F_rad: Radiation pressure force
 
 **Residual Diagnostics (beta-delta solver):**
@@ -173,7 +173,7 @@ PARAM_DOCS = {
     'F_grav': 'Gravitational force',
     'F_ram': 'Ram pressure force',
     'F_ion_in': 'Ionization force (inward)',
-    'F_ion_out': 'Ionization force (outward)',
+    'F_HII': 'HII pressure force (outward)',
     'F_rad': 'Radiation pressure force',
     'F_ISM': 'ISM pressure force',
 
@@ -762,7 +762,7 @@ class TrinityOutput:
             'Cooling': ['cool_alpha', 'cool_beta', 'cool_delta'],
             'Feedback': ['Lmech_W', 'Lmech_SN', 'Lmech_total', 'Lbol', 'Li', 'Ln', 'Qi',
                         'pdot_W', 'pdot_SN', 'pdot_total', 'pdotdot_total', 'v_mech_total'],
-            'Forces': ['F_grav', 'F_ram', 'F_ion_in', 'F_ion_out', 'F_rad', 'F_ISM'],
+            'Forces': ['F_grav', 'F_ram', 'F_ion_in', 'F_HII', 'F_rad', 'F_ISM'],
             'Shell': ['shell_mass', 'shell_massDot', 'shell_thickness', 'nEdge', 'rShell',
                      'shell_n0', 'shell_nMax', 'shell_fAbsorbedIon', 'shell_fAbsorbedNeu'],
             'Bubble': ['bubble_mass', 'bubble_Tavg', 'bubble_T_r_Tb', 'bubble_LTotal',

@@ -397,7 +397,7 @@ def read_param(path2file, write_summary=True):
     params['EndSimulationDirectly'] = DescribedItem(False, info="Flag to immediately end simulation", ori_units="N/A")
     params['SimulationEndReason'] = DescribedItem('', info="Reason for simulation completion", ori_units="N/A")
     params['EarlyPhaseApproximation'] = DescribedItem(True, info="Using approximations for early phase?", ori_units="N/A")
-    params['include_PHII'] = DescribedItem(True, info="Include HII pressure in driving pressure (gates both P_HII diagnostic and P_HII_St driving)", ori_units="N/A")
+    params['include_PHII'] = DescribedItem(True, info="Include HII pressure in driving pressure", ori_units="N/A")
     
     # Time tracking
     params['tSF'] = DescribedItem(0, info="Time of star formation", ori_units="Myr")
@@ -476,8 +476,7 @@ def read_param(path2file, write_summary=True):
     params['F_ram_wind'] = DescribedItem(0, info="Wind ram pressure force (from SB99)", ori_units="Msun*pc/Myr**2")
     params['F_ram_SN'] = DescribedItem(0, info="SN ram pressure force (from SB99)", ori_units="Msun*pc/Myr**2")
     params['F_ion_in'] = DescribedItem(0, info="Inward photoionization pressure", ori_units="Msun*pc/Myr**2")
-    params['F_ion_out'] = DescribedItem(0, info="Outward photoionization pressure (diagnostic, from shell-structure P_HII)", ori_units="Msun*pc/Myr**2")
-    params['F_HII_St'] = DescribedItem(0, info="Stroemgren HII force (= P_HII_St * 4piR2^2, actual driving contribution)", ori_units="Msun*pc/Myr**2")
+    params['F_HII'] = DescribedItem(0, info="Outward HII pressure force (= P_HII * 4piR2^2)", ori_units="Msun*pc/Myr**2")
     params['F_rad'] = DescribedItem(0, info="Radiation pressure", ori_units="Msun*pc/Myr**2")
     params['F_ISM'] = DescribedItem(0, info="ISM pressure force (placeholder, never computed — always 0)", ori_units="Msun*pc/Myr**2")
 
@@ -487,10 +486,7 @@ def read_param(path2file, write_summary=True):
     params['R_IF'] = DescribedItem(0.0, info="Radius of ionization front", ori_units="pc")
     params['n_IF_Str'] = DescribedItem(0.0, info="Stroemgren-based n_IF diagnostic (Lancaster+2025)", ori_units="1/pc**3")
     params['zeta'] = DescribedItem(1.0, info="WBB vs PIR dominance ratio (Lancaster+2025)", ori_units=None)
-    params['P_HII'] = DescribedItem(0.0, info="HII pressure at ionization front (diagnostic only, anchored to Pb; does NOT enter P_drive)", ori_units="Msun/Myr**2/pc")
-    params['P_HII_St'] = DescribedItem(0.0, info="Standalone Stroemgren HII pressure (independent of Pb)", ori_units="Msun/Myr**2/pc")
-    params['R_St'] = DescribedItem(0.0, info="Stroemgren radius from ambient cloud profile", ori_units="pc")
-    params['n_St'] = DescribedItem(0.0, info="Ambient cloud density at Stroemgren radius", ori_units="1/pc**3")
+    params['P_HII'] = DescribedItem(0.0, info="HII pressure from Stroemgren ionization balance in shell (n_IF_Str)", ori_units="Msun/Myr**2/pc")
     params['P_drive'] = DescribedItem(0.0, info="Total driving pressure", ori_units="Msun/Myr**2/pc")
     params['P_ram'] = DescribedItem(0.0, info="Ram pressure from freely-streaming wind", ori_units="Msun/Myr**2/pc")
     params['press_HII_in'] = DescribedItem(0.0, info="Inward HII pressure at shell (confining)", ori_units="Msun/Myr**2/pc")

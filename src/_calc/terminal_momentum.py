@@ -45,7 +45,7 @@ Fitted quantities
 * **p_boost** = p_fin / p_input — momentum boost factor (requires
   ``--decompose``).
 * **Component momenta** — impulse from each force (F_grav, F_ram,
-  F_ion_out, F_rad, F_ram_wind, F_ram_SN) integrated to t_fin.
+  F_HII, F_rad, F_ram_wind, F_ram_SN) integrated to t_fin.
 
 Method
 ------
@@ -124,7 +124,7 @@ P_M_MARTIZZI = 1420.0   # km/s
 
 # Force fields whose impulses we integrate (same order as paper_momentum.py)
 # F_grav is inward (negative contribution); all others are outward (positive).
-MAIN_FORCES = ["F_grav", "F_ram", "F_ion_out", "F_rad"]
+MAIN_FORCES = ["F_grav", "F_ram", "F_HII", "F_rad"]
 SUB_FORCES = ["F_ram_wind", "F_ram_SN"]
 
 def extract_run(data_path: Path, decompose: bool = False,
@@ -796,7 +796,7 @@ def plot_momentum_budget(
     comp_names = [
         ("F_ram_wind", "Wind", "C0"),
         ("F_ram_SN", "SN", "C3"),
-        ("F_ion_out", "HII", "C2"),
+        ("F_HII", "HII", "C2"),
         ("F_rad", "Radiation", "C4"),
     ]
     grav_name = ("F_grav", "Gravity", "0.5")
@@ -1637,7 +1637,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         # Component fits
         # Map from force field to per-M_* key — need to add these to records
         for field, label in [("F_ram_wind", "wind"), ("F_ram_SN", "SN"),
-                             ("F_ion_out", "HII"), ("F_rad", "rad")]:
+                             ("F_HII", "HII"), ("F_rad", "rad")]:
             key = f"p_{label}_per_mstar_kms"
             for r in records:
                 comp = r.get("components", {})

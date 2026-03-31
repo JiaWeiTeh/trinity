@@ -11221,7 +11221,7 @@
   "F_ram_SN": 0,
   "F_wind": 0,
   "F_ion_in": 0,
-  "F_ion_out": 0,
+  "F_HII": 0,
   "F_rad": 0,
   "F_ISM": 0,
   "bubble_LTotal": 0,
