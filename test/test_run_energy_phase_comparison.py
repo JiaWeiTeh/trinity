@@ -328,8 +328,8 @@ def add_physical_constants(params: dict, jsonl_path: str = None) -> dict:
         params['F_grav'] = 0.0
     if 'F_ion_in' not in params:
         params['F_ion_in'] = 0.0
-    if 'F_ion_out' not in params:
-        params['F_ion_out'] = 0.0
+    if 'F_HII' not in params:
+        params['F_HII'] = 0.0
     if 'F_ram' not in params:
         params['F_ram'] = 0.0
 

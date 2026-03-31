@@ -314,7 +314,7 @@ def print_summary(results: list, n_top: int = 30):
         'shell_thickness', 'shell_tauKappaRatio', 'shell_fIonisedDust', 'rShell',
         # Force parameters
         'F_grav', 'F_ram', 'F_ram_wind', 'F_ram_SN',
-        'F_ion_in', 'F_ion_out', 'F_rad', 'F_ISM',
+        'F_ion_in', 'F_HII', 'F_rad', 'F_ISM',
     ]
 
     result_names = [r[0] for r in results]

@@ -175,22 +175,21 @@ def run_energy(params):
         logger.info('bubble complete (modified)')
 
         # =============================================================================
-        # 3b. Compute standalone Strömgren HII pressure
-        # =============================================================================
-        from src.cloud_properties.stromgren import compute_P_HII_Stromgren
-        P_HII_St, R_St, n_St = compute_P_HII_Stromgren(
-            params['Qi'].value, R2, params
-        )
-        params['P_HII_St'].value = P_HII_St
-        params['R_St'].value = R_St
-        params['n_St'].value = n_St
-
-        # =============================================================================
-        # 4. Compute shell structure
+        # 3b. Compute shell structure
         # =============================================================================
         shell_data = shell_structure_modified.shell_structure_pure(params)
         updateDict(params, shell_data)
         logger.info('shell complete (modified)')
+
+        # Compute P_HII from Strömgren ionization balance in shell (n_IF_Str)
+        n_IF_Str = params['n_IF_Str'].value
+        if params['include_PHII'].value and n_IF_Str > 0:
+            P_HII = 2.0 * n_IF_Str * params['k_B'].value * params['TShell_ion'].value
+        else:
+            P_HII = 0.0
+        params['P_HII'].value = P_HII
+        F_HII = 4.0 * np.pi * R2**2 * P_HII
+        params['F_HII'].value = F_HII
 
         # Get shell mass
         mShell = mass_profile.get_mass_profile(R2, params, return_mdot=False)
@@ -211,8 +210,8 @@ def run_energy(params):
             params['F_grav'].value = ode_result.F_grav
         if ode_result.F_ion_in is not None:
             params['F_ion_in'].value = ode_result.F_ion_in
-        if ode_result.F_ion_out is not None:
-            params['F_ion_out'].value = ode_result.F_ion_out
+        if ode_result.F_HII is not None:
+            params['F_HII'].value = ode_result.F_HII
         if ode_result.F_ram is not None:
             params['F_ram'].value = ode_result.F_ram
         if ode_result.F_rad is not None:
@@ -225,8 +224,6 @@ def run_energy(params):
             params['P_ram'].value = ode_result.P_ram
         if ode_result.press_HII_in is not None:
             params['press_HII_in'].value = ode_result.press_HII_in
-        if ode_result.F_HII_St is not None:
-            params['F_HII_St'].value = ode_result.F_HII_St
         if ode_result.shell_mass is not None:
             params['shell_mass'].value = ode_result.shell_mass
         if ode_result.shell_massDot is not None:

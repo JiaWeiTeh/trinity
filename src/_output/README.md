@@ -78,7 +78,7 @@ R2 = output.get('R2')
 ### Forces
 - `F_grav`: Gravitational force
 - `F_ram`: Ram pressure force
-- `F_ion_out`: Ionization force (outward)
+- `F_HII`: HII pressure force (outward)
 - `F_rad`: Radiation pressure force
 
 ### Residual Diagnostics (Beta-Delta Solver)
