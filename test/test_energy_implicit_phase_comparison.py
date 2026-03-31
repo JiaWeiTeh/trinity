@@ -398,7 +398,7 @@ def add_physical_constants(params: dict, jsonl_path: str = None) -> dict:
         params['stop_r'] = rCloud * 2.0  # Allow some expansion beyond cloud
 
     # Feedback force terms
-    for key in ['F_grav', 'F_ion_in', 'F_ion_out', 'F_ram', 'F_rad']:
+    for key in ['F_grav', 'F_ion_in', 'F_HII', 'F_ram', 'F_rad']:
         if key not in params:
             params[key] = 0.0
 

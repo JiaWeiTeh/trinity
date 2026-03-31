@@ -140,7 +140,7 @@ ADAPTIVE_MONITOR_KEYS = [
     'shell_thickness', 'shell_tauKappaRatio', 'shell_fIonisedDust', 'rShell',
     # Force parameters
     'F_grav', 'F_ram', 'F_ram_wind', 'F_ram_SN',
-    'F_ion_in', 'F_ion_out', 'F_rad', 'F_ISM',
+    'F_ion_in', 'F_HII', 'F_rad', 'F_ISM',
 ]
 
 # ODE solver settings
@@ -238,19 +238,16 @@ class ForceProperties:
     """Container for force calculations (pure function output)."""
     F_grav: float       # Gravitational force
     F_ion_in: float     # Inward ionization pressure force
-    F_ion_out: float    # Outward ionization pressure force
+    F_HII: float        # Outward HII pressure force (from n_IF_Str)
     F_ram: float        # Ram pressure force (from bubble pressure)
     F_rad: float        # Radiation pressure force
     # Pressure quantities
-    # P_HII: diagnostic only (from shell-structure n_IF, anchored to Pb)
-    # P_drive: actual driving pressure (uses P_HII_St from standalone Strömgren)
     n_IF: float = 0.0
     R_IF: float = 0.0
     P_HII: float = 0.0
     P_drive: float = 0.0
     P_ram: float = 0.0
     press_HII_in: float = 0.0
-    F_HII_St: float = 0.0
 
 
 def compute_forces_pure(
@@ -318,27 +315,18 @@ def compute_forces_pure(
 
     # ==========================================================================
     # WARM IONIZED GAS PRESSURE (implicit phase)
-    # P_HII from shell structure (diagnostic only — anchored to Pb)
-    # P_HII_St from standalone Strömgren (independent, used for P_drive)
+    # P_HII from Strömgren ionization balance in shell (n_IF_Str)
     # ==========================================================================
-
-    # Get n_IF from shell_props (ionization front density from shell structure)
     n_IF = shell_props.n_IF
     R_IF = shell_props.R_IF
 
-    # Shell-structure P_HII kept for diagnostics
-    P_HII = 2.0 * n_IF * k_B * TShell_ion
-    if not params['include_PHII'].value:
-        P_HII = 0.0
-
-    # Use standalone Strömgren pressure for driving pressure
-    P_HII_St = params['P_HII_St'].value
-    P_drive = max(Pb, P_HII_St)
+    # P_HII pre-computed in phase runner from n_IF_Str
+    P_HII = params['P_HII'].value
+    P_drive = max(Pb, P_HII)
 
     # Forces
     F_ion_in = P_ext * FOUR_PI * R2**2
-    F_ion_out = FOUR_PI * R2**2 * P_HII
-    F_HII_St = FOUR_PI * R2**2 * P_HII_St
+    F_HII = FOUR_PI * R2**2 * P_HII
 
     # Ram pressure force (from bubble pressure)
     F_ram = Pb * FOUR_PI * R2**2
@@ -349,7 +337,7 @@ def compute_forces_pure(
     return ForceProperties(
         F_grav=F_grav,
         F_ion_in=F_ion_in,
-        F_ion_out=F_ion_out,
+        F_HII=F_HII,
         F_ram=F_ram,
         F_rad=F_rad,
         n_IF=n_IF,
@@ -358,7 +346,6 @@ def compute_forces_pure(
         P_drive=P_drive,
         P_ram=0.0,  # no ram pressure in implicit phase
         press_HII_in=P_ext,
-        F_HII_St=F_HII_St,
     )
 
 
@@ -546,18 +533,19 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         feedback = get_currentSB99feedback(t_now, params)
         updateDict(params, feedback)
 
-        # Compute standalone Strömgren HII pressure (cavity-aware: integral from R2)
-        from src.cloud_properties.stromgren import compute_P_HII_Stromgren
-        P_HII_St, R_St_val, n_St_val = compute_P_HII_Stromgren(
-            params['Qi'].value, R2, params
-        )
-        params['P_HII_St'].value = P_HII_St
-        params['R_St'].value = R_St_val
-        params['n_St'].value = n_St_val
-
         # Calculate shell structure using pure function
         shell_props = shell_structure_pure(params)
         updateDict(params, shell_props)
+
+        # Compute P_HII from Strömgren ionization balance in shell (n_IF_Str)
+        n_IF_Str = shell_props.n_IF_Str
+        if params['include_PHII'].value and n_IF_Str > 0:
+            P_HII = 2.0 * n_IF_Str * params['k_B'].value * params['TShell_ion'].value
+        else:
+            P_HII = 0.0
+        params['P_HII'].value = P_HII
+        F_HII = 4.0 * np.pi * R2**2 * P_HII
+        params['F_HII'].value = F_HII
 
         # ---------------------------------------------------------------------
         # Calculate beta and delta using pure function
@@ -650,7 +638,7 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         force_props = compute_forces_pure(R2, mShell, Pb, shell_props, params)
         params['F_grav'].value = force_props.F_grav
         params['F_ion_in'].value = force_props.F_ion_in
-        params['F_ion_out'].value = force_props.F_ion_out
+        params['F_HII'].value = force_props.F_HII
         params['F_ram'].value = force_props.F_ram
         params['F_rad'].value = force_props.F_rad
         # Pressure diagnostic quantities
@@ -660,7 +648,6 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         params['P_drive'].value = force_props.P_drive
         params['P_ram'].value = force_props.P_ram
         params['press_HII_in'].value = force_props.press_HII_in
-        params['F_HII_St'].value = force_props.F_HII_St
         params['F_ram_wind'].value = feedback.pdot_W
         params['F_ram_SN'].value = feedback.pdot_SN
 
