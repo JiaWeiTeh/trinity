@@ -224,11 +224,9 @@ def shell_structure_pure(params) -> ShellProperties:
     # Guards:
     #   (a) is_fullyIonised=True  → photons escape; R_IF is the shell
     #       outer edge, not a physical pressure surface. Skip.
-    #   (b) rShell0 >= rCloud     → shell has left the cloud. Skip.
     # ------------------------------------------------------------------
-    _rCloud = params['rCloud'].value
     _vol_ion = R_IF**3 - rShell0**3   # rShell0 == params['R2'].value
-    if (not is_fullyIonised) and (rShell0 < _rCloud) and (_vol_ion > 0.0) and (Qi > 0.0):
+    if (not is_fullyIonised) and (_vol_ion > 0.0) and (Qi > 0.0):
         n_IF_Str = np.sqrt(
             3.0 * Qi /
             (4.0 * np.pi * params['caseB_alpha'].value * _vol_ion)
