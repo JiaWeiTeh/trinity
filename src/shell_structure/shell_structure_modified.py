@@ -62,11 +62,11 @@ class ShellProperties:
     is_fullyIonised: bool  # Is the shell fully ionized?
     diss_condition_met: bool  # Is shell_nMax < nISM this timestep?
 
-    # Ionization front properties (for P_HII convex blend)
-    n_IF: float  # Density at ionization front (code units)
-    n_IF_ODE: float  # Raw ODE-derived n_IF before max() selection (code units)
+    # Ionization front properties
+    n_IF: float  # Density at ionization front from shell ODE (code units)
+    n_IF_ODE: float  # Same as n_IF (raw ODE value, kept for diagnostics)
     R_IF: float  # Radius of ionization front (pc)
-    n_IF_Str: float  # Strömgren-based n_IF diagnostic (Lancaster+2025)
+    n_IF_Str: float  # Strömgren ionization balance density (Lancaster+2025), sole source of P_HII
 
     # Shell density profile arrays (ionized + neutral)
     shell_r_arr: Union[np.ndarray, float]  # Radial grid through shell [pc]
@@ -209,9 +209,9 @@ def shell_structure_pure(params) -> ShellProperties:
     nShell_arr_ion = np.append(nShell_arr_ion, nShell_arr[idx])
     rShell_arr_ion = np.append(rShell_arr_ion, rShell_arr[idx])
 
-    # Extract ionization front properties (for P_HII convex blend)
-    n_IF = nShell_arr_ion[-1]  # Density at ionization front
-    n_IF_ODE = n_IF            # Preserve raw ODE value before max() selection
+    # Extract ionization front properties
+    n_IF = nShell_arr_ion[-1]  # Density at ionization front from shell ODE
+    n_IF_ODE = n_IF            # Preserve raw ODE value for diagnostics
     R_IF = rShell_arr_ion[-1]  # Radius of ionization front
 
     # ------------------------------------------------------------------
@@ -224,11 +224,9 @@ def shell_structure_pure(params) -> ShellProperties:
     # Guards:
     #   (a) is_fullyIonised=True  → photons escape; R_IF is the shell
     #       outer edge, not a physical pressure surface. Skip.
-    #   (b) rShell0 >= rCloud     → shell has left the cloud. Skip.
     # ------------------------------------------------------------------
-    _rCloud = params['rCloud'].value
     _vol_ion = R_IF**3 - rShell0**3   # rShell0 == params['R2'].value
-    if (not is_fullyIonised) and (rShell0 < _rCloud) and (_vol_ion > 0.0) and (Qi > 0.0):
+    if (not is_fullyIonised) and (_vol_ion > 0.0) and (Qi > 0.0):
         n_IF_Str = np.sqrt(
             3.0 * Qi /
             (4.0 * np.pi * params['caseB_alpha'].value * _vol_ion)
