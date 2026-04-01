@@ -94,13 +94,16 @@ def load_run_R2(data_path):
         except Exception:
             pass
 
-    # Cloud density: try from snapshot, then from folder name
+    # Cloud density: try from snapshot, then from folder name.
+    # Output nCore is in AU (pc⁻³); convert to cm⁻³ for analytic formulae.
     nCore = output[0].get('nCore', None)
-    if nCore is None:
+    if nCore is not None:
+        nCore = nCore * INV_CONV.ndens_au2cgs          # pc⁻³ → cm⁻³
+    else:
         sim_params = parse_simulation_params(data_path.parent.name)
         if sim_params is not None:
             try:
-                nCore = float(sim_params['ndens'])
+                nCore = float(sim_params['ndens'])      # already cm⁻³
             except (KeyError, ValueError):
                 nCore = None
 
