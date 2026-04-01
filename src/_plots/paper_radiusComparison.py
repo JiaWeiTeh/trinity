@@ -169,47 +169,6 @@ def compute_weaver_absolute(t_myr, Lmech_total_au, nCore_cm3, mu_atom=MU_ATOM):
     return R_cm * CONV.cm2pc                                # → pc
 
 
-def compute_momentum_driven_absolute(t_myr, pdot_total_au, nCore_cm3, mu_atom=MU_ATOM):
-    """Absolute momentum-driven radius using double cumulative integral.
-
-    Parameters
-    ----------
-    t_myr : array
-        Time in Myr.
-    pdot_total_au : array
-        Total momentum injection rate in AU units.
-    nCore_cm3 : float
-        Core number density in cm^{-3}.
-    mu_atom : float
-        Mean molecular weight of neutral gas.
-
-    Returns
-    -------
-    R_pc : array
-        Momentum-driven radius in parsec.
-    """
-    # Convert to CGS
-    pdot_cgs = pdot_total_au * INV_CONV.pdot_au2cgs        # dyn (g·cm/s²)
-    t_s = t_myr * INV_CONV.Myr2s                           # seconds
-
-    # First integral: cumulative momentum  p_cum = ∫₀ᵗ ṗ dt′
-    p_cum = np.zeros_like(t_s)
-    p_cum[1:] = cumulative_trapezoid(pdot_cgs, t_s)
-
-    # Second integral: ∫₀ᵗ p_cum(t′) dt′
-    p_cum_integral = np.zeros_like(t_s)
-    p_cum_integral[1:] = cumulative_trapezoid(p_cum, t_s)
-
-    # Ambient mass density
-    rho_0 = nCore_cm3 * mu_atom * CGS.m_H                 # g/cm³
-
-    R_cm = np.where(
-        (t_s > 0) & (p_cum_integral > 0),
-        (3.0 / (np.pi * rho_0) * p_cum_integral) ** 0.25,
-        np.nan,
-    )
-    return R_cm * CONV.cm2pc                                # → pc
-
 
 # ----------------------------------------------------------------
 # Anchored power-law fallbacks
@@ -254,10 +213,9 @@ def compute_momentum_driven_anchored(t, R2, t_anchor=WEAVER_ANCHOR_MYR, exponent
 # Per-cell plotting
 # ----------------------------------------------------------------
 def _can_use_absolute(data):
-    """Check whether absolute analytic solutions can be computed."""
+    """Check whether absolute Weaver solution can be computed."""
     return (
         data.get('Lmech_total') is not None
-        and data.get('pdot_total') is not None
         and data.get('nCore') is not None
         and (data.get('densPL_alpha') is None
              or data['densPL_alpha'] == 0)
@@ -290,26 +248,33 @@ def plot_cell(ax, data_trinity, data_warpfield):
         R2_W = smooth_1d(data_warpfield['R2'], SMOOTH_WINDOW, mode=SMOOTH_MODE)
         ax.plot(t_W, R2_W, color=COLOR_WARPFIELD, lw=2.0, ls='-', zorder=3)
 
-    # Analytic reference lines: prefer absolute, fall back to anchored
+    # Density profile exponent (for scaling exponents)
+    alpha_rho = data_trinity.get('densPL_alpha') or 0
+
+    # --- Weaver (energy-driven): absolute if possible, else anchored ---
     if _can_use_absolute(data_trinity):
         nCore = data_trinity['nCore']
         R_weaver = compute_weaver_absolute(
             t_T, data_trinity['Lmech_total'], nCore,
         )
-        R_mom = compute_momentum_driven_absolute(
-            t_T, data_trinity['pdot_total'], nCore,
-        )
     else:
-        # Determine exponents (corrected for non-uniform density if needed)
-        alpha_rho = data_trinity.get('densPL_alpha') or 0
         exp_weaver = 3.0 / (5.0 - abs(alpha_rho))
-        exp_mom    = 2.0 / (4.0 - abs(alpha_rho))
-
         R_weaver = compute_weaver_anchored(t_T, R2_T, exponent=exp_weaver)
-        R_mom    = compute_momentum_driven_anchored(t_T, R2_T, exponent=exp_mom)
 
     ax.plot(t_T, R_weaver, color=COLOR_WEAVER, lw=1.5, ls='--', zorder=2)
-    ax.plot(t_T, R_mom, color=COLOR_MOMENTUM, lw=1.5, ls=':', zorder=2)
+
+    # --- Momentum-driven: diagnostic slope anchored at momentum phase ---
+    # Find the start of the momentum phase from the phase array
+    phase = data_trinity['phase']
+    exp_mom = 2.0 / (4.0 - abs(alpha_rho))
+    mom_idx = np.where(phase == 'momentum')[0]
+
+    if len(mom_idx) > 0:
+        t_mom_start = t_T[mom_idx[0]]
+        R_mom = compute_momentum_driven_anchored(
+            t_T, R2_T, t_anchor=t_mom_start, exponent=exp_mom,
+        )
+        ax.plot(t_T, R_mom, color=COLOR_MOMENTUM, lw=1.5, ls=':', zorder=2)
 
     ax.set_xlim(t_T.min(), t_T.max())
 
@@ -436,7 +401,7 @@ def plot_comparison_grid(
             Line2D([0], [0], color=COLOR_WEAVER, lw=1.5, ls='--',
                    label=r"Weaver (energy-driven)"),
             Line2D([0], [0], color=COLOR_MOMENTUM, lw=1.5, ls=':',
-                   label=r"Momentum-driven"),
+                   label=r"$R \propto t^{1/2}$ (momentum scaling)"),
         ]
         handles.extend(get_marker_legend_handles())
 
