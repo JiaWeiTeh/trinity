@@ -47,4 +47,4 @@ stop_t    10
 log_level    WARNING
 
 # include PHII?
-include_PHII False
+include_PHII True
