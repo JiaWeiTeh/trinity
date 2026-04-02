@@ -37,7 +37,9 @@ print("...plotting cancellation metric")
 
 # ---------------- configuration ----------------
 SMOOTH_WINDOW = 7  # None or 1 disables
-PHASE_CHANGE = True
+SHOW_PHASE = False
+SHOW_RCLOUD = False
+SHOW_COLLAPSE = False
 SHOW_EQUILIBRIUM_BAND = True  # Shade quasi-equilibrium region
 USE_LOG_X = False  # Use log scale for x-axis (time)
 
@@ -161,8 +163,8 @@ def compute_cancellation_metric(data):
     }
 
 
-def plot_run_on_ax(ax, data, smooth_window=None, phase_change=True,
-                   show_rcloud=True, show_collapse=True,
+def plot_run_on_ax(ax, data, smooth_window=None, phase_change=SHOW_PHASE,
+                   show_rcloud=SHOW_RCLOUD, show_collapse=SHOW_COLLAPSE,
                    show_equilibrium_band=True, use_log_x=False):
     """Plot cancellation metric on given axes."""
     t = data['t']
@@ -232,7 +234,7 @@ def plot_run_on_ax(ax, data, smooth_window=None, phase_change=True,
 def _plot_cell(ax, data):
     """Adapter: call plot_run_on_ax with module-level config."""
     plot_run_on_ax(ax, data, smooth_window=SMOOTH_WINDOW,
-                   phase_change=PHASE_CHANGE,
+                   phase_change=SHOW_PHASE,
                    show_equilibrium_band=SHOW_EQUILIBRIUM_BAND,
                    use_log_x=USE_LOG_X)
 
@@ -245,7 +247,7 @@ def _build_single_legend():
         Patch(facecolor='green', alpha=0.1, edgecolor='none',
               label='Quasi-equilibrium (C<0.3)'),
     ]
-    handles.extend(get_marker_legend_handles())
+    handles.extend(get_marker_legend_handles(include_phase=SHOW_PHASE, include_rcloud=SHOW_RCLOUD, include_collapse=SHOW_COLLAPSE))
     return handles
 
 
@@ -259,7 +261,7 @@ def _build_grid_legend():
         Line2D([0], [0], color='green', ls='--', lw=1, alpha=0.5,
                label='C=0.1'),
     ]
-    handles.extend(get_marker_legend_handles())
+    handles.extend(get_marker_legend_handles(include_phase=SHOW_PHASE, include_rcloud=SHOW_RCLOUD, include_collapse=SHOW_COLLAPSE))
     return handles
 
 
@@ -325,10 +327,11 @@ plot_folder_grid = plot_grid
 
 # ---------------- command-line interface ----------------
 if __name__ == "__main__":
-    from src._plots.cli import dispatch
+    from src._plots.cli import dispatch, marker_pre_dispatch
     dispatch(
         script_name="paper_cancellationMetric.py",
         description="Plot TRINITY cancellation metric",
         plot_from_path_fn=plot_from_path,
         plot_grid_fn=plot_grid,
+        pre_dispatch_fn=marker_pre_dispatch(globals()),
     )

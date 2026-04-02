@@ -125,7 +125,59 @@ def build_parser(
         default=None,
         help="Colour palette for force plots (default: vibrance).",
     )
+
+    # ---- Marker options (off by default for clean paper figures) ----
+    marker_group = parser.add_argument_group("markers",
+        "Diagnostic markers (all off by default for clean figures)")
+    marker_group.add_argument(
+        "--show-phase", action="store_true", default=False,
+        help="Show phase-transition markers (T / M vertical lines).",
+    )
+    marker_group.add_argument(
+        "--show-rcloud", action="store_true", default=False,
+        help="Show R2 > R_cloud breakout marker.",
+    )
+    marker_group.add_argument(
+        "--show-collapse", action="store_true", default=False,
+        help="Show collapse onset marker.",
+    )
+    marker_group.add_argument(
+        "--show-all-markers", action="store_true", default=False,
+        help="Enable all diagnostic markers at once.",
+    )
+
     return parser
+
+
+def get_marker_flags(args) -> dict:
+    """Extract marker visibility flags from parsed CLI arguments.
+
+    Returns dict with keys ``show_phase``, ``show_rcloud``, ``show_collapse``.
+    """
+    all_on = getattr(args, "show_all_markers", False)
+    return dict(
+        show_phase=all_on or getattr(args, "show_phase", False),
+        show_rcloud=all_on or getattr(args, "show_rcloud", False),
+        show_collapse=all_on or getattr(args, "show_collapse", False),
+    )
+
+
+def marker_pre_dispatch(module_globals):
+    """Return a *pre_dispatch_fn* that applies CLI marker flags to module globals.
+
+    Expects the calling module to define ``SHOW_PHASE``, ``SHOW_RCLOUD``,
+    and ``SHOW_COLLAPSE`` (all defaulting to ``False``).
+
+    Usage in a paper script::
+
+        dispatch(..., pre_dispatch_fn=marker_pre_dispatch(globals()))
+    """
+    def _apply(args):
+        flags = get_marker_flags(args)
+        module_globals['SHOW_PHASE'] = flags['show_phase']
+        module_globals['SHOW_RCLOUD'] = flags['show_rcloud']
+        module_globals['SHOW_COLLAPSE'] = flags['show_collapse']
+    return _apply
 
 
 def _print_info(folder: str) -> None:

@@ -37,7 +37,9 @@ print("...plotting force fractions (F_thermal, F_rad, F_grav)")
 
 # ---------------- configuration ----------------
 SMOOTH_WINDOW = 11  # None or 1 disables
-PHASE_CHANGE = True
+SHOW_PHASE = False
+SHOW_RCLOUD = False
+SHOW_COLLAPSE = False
 USE_LOG_X = False  # Use log scale for x-axis (time)
 
 # Colors — centralised ChromaPalette (switch via set_palette or $TRINITY_PALETTE)
@@ -125,8 +127,8 @@ def load_run(data_path: Path):
     }
 
 
-def plot_run_on_ax(ax, data, smooth_window=None, phase_change=True,
-                   show_rcloud=True, show_collapse=True, alpha=0.75,
+def plot_run_on_ax(ax, data, smooth_window=None, phase_change=SHOW_PHASE,
+                   show_rcloud=SHOW_RCLOUD, show_collapse=SHOW_COLLAPSE, alpha=0.75,
                    use_log_x=False):
     """Plot force fractions on given axes."""
     t = data['t']
@@ -189,7 +191,7 @@ def plot_run_on_ax(ax, data, smooth_window=None, phase_change=True,
 def _plot_cell(ax, data):
     """Adapter: call plot_run_on_ax with module-level config."""
     plot_run_on_ax(ax, data, smooth_window=SMOOTH_WINDOW,
-                   phase_change=PHASE_CHANGE, use_log_x=USE_LOG_X)
+                   phase_change=SHOW_PHASE, use_log_x=USE_LOG_X)
 
 
 def _build_single_legend():
@@ -199,7 +201,7 @@ def _build_single_legend():
         Patch(facecolor=C_THERMAL, alpha=0.75, label=r"$F_{\rm thermal}$"),
         Patch(facecolor=C_RAD, alpha=0.75, label=r"$F_{\rm rad}$"),
     ]
-    handles.extend(get_marker_legend_handles())
+    handles.extend(get_marker_legend_handles(include_phase=SHOW_PHASE, include_rcloud=SHOW_RCLOUD, include_collapse=SHOW_COLLAPSE))
     return handles
 
 
@@ -210,7 +212,7 @@ def _build_grid_legend():
         Patch(facecolor=C_THERMAL, alpha=0.75, label=r"$F_{\rm thermal}$ (Thermal pressure)"),
         Patch(facecolor=C_RAD, alpha=0.75, label=r"$F_{\rm rad}$ (Radiation)"),
     ]
-    handles.extend(get_marker_legend_handles())
+    handles.extend(get_marker_legend_handles(include_phase=SHOW_PHASE, include_rcloud=SHOW_RCLOUD, include_collapse=SHOW_COLLAPSE))
     return handles
 
 
@@ -276,10 +278,11 @@ plot_folder_grid = plot_grid
 
 
 if __name__ == "__main__":
-    from src._plots.cli import dispatch
+    from src._plots.cli import dispatch, marker_pre_dispatch
     dispatch(
         script_name="paper_forceFraction.py",
         description="Plot TRINITY force fractions",
         plot_from_path_fn=plot_from_path,
         plot_grid_fn=plot_grid,
+        pre_dispatch_fn=marker_pre_dispatch(globals()),
     )

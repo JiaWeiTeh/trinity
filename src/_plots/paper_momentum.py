@@ -22,7 +22,9 @@ print("...plotting integrated momentum (line plots)")
 
 SAVE_PDF = True
 
-PHASE_CHANGE = True
+SHOW_PHASE = False
+SHOW_RCLOUD = False
+SHOW_COLLAPSE = False
 
 SMOOTH_WINDOW = 11
 
@@ -205,7 +207,7 @@ def plot_from_path(data_input: str, output_dir: str = None):
     plot_momentum_lines_on_ax(
         ax, t, r, phase, forces, forces_dict, rcloud, isCollapse,
         smooth_window=SMOOTH_WINDOW,
-        phase_change=PHASE_CHANGE
+        phase_change=SHOW_PHASE
     )
 
     ax.set_title(f"Momentum Evolution: {data_path.parent.name}")
@@ -217,7 +219,7 @@ def plot_from_path(data_input: str, output_dir: str = None):
     for _, lab, c in FORCE_FIELDS:
         handles.append(Line2D([0], [0], color=c, lw=1.6, ls="-", label=lab))
     handles.append(Line2D([0], [0], color="darkgrey", lw=2.4, label="Net"))
-    handles.extend(get_marker_legend_handles())
+    handles.extend(get_marker_legend_handles(include_phase=SHOW_PHASE, include_rcloud=SHOW_RCLOUD, include_collapse=SHOW_COLLAPSE))
     ax.legend(handles=handles, loc="upper left", framealpha=0.9)
 
     plt.tight_layout()
@@ -235,8 +237,8 @@ def plot_from_path(data_input: str, output_dir: str = None):
 def plot_momentum_lines_on_ax(
     ax, t, r, phase, forces, forces_dict, rcloud, isCollapse=None,
     smooth_window=None, smooth_mode="edge",
-    lw=1.6, net_lw=4, alpha=0.8, phase_change=PHASE_CHANGE,
-    show_rcloud=True, show_collapse=True,
+    lw=1.6, net_lw=4, alpha=0.8, phase_change=SHOW_PHASE,
+    show_rcloud=SHOW_RCLOUD, show_collapse=SHOW_COLLAPSE,
 ):
     # --- Add all time-axis markers using helper module
     add_plot_markers(
@@ -439,7 +441,7 @@ def plot_grid(folder_path, output_dir=None, ndens_filter=None,
                     plot_momentum_lines_on_ax(
                         ax, t, r, phase, forces, forces_dict, rcloud, isCollapse,
                         smooth_window=SMOOTH_WINDOW,
-                        phase_change=PHASE_CHANGE
+                        phase_change=SHOW_PHASE
                     )
                 except Exception as e:
                     print(f"Error loading {data_path}: {e}")
@@ -472,7 +474,7 @@ def plot_grid(folder_path, output_dir=None, ndens_filter=None,
             handles.append(Line2D([0], [0], color=c, lw=1.6, ls="-", label=lab))
         handles.append(Line2D([0], [0], color="darkgrey", lw=2.4,
                               label=r"Net: $| \int (\sum F_{\rm out} - F_{\rm grav})\,dt |$"))
-        handles.extend(get_marker_legend_handles())
+        handles.extend(get_marker_legend_handles(include_phase=SHOW_PHASE, include_rcloud=SHOW_RCLOUD, include_collapse=SHOW_COLLAPSE))
 
         leg = fig.legend(
             handles=handles, loc="upper center", ncol=4,
@@ -502,10 +504,11 @@ plot_folder_grid = plot_grid
 
 
 if __name__ == "__main__":
-    from src._plots.cli import dispatch
+    from src._plots.cli import dispatch, marker_pre_dispatch
     dispatch(
         script_name="paper_momentum.py",
         description="Plot TRINITY momentum",
         plot_from_path_fn=plot_from_path,
         plot_grid_fn=plot_grid,
+        pre_dispatch_fn=marker_pre_dispatch(globals()),
     )

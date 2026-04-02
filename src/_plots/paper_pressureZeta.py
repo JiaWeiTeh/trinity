@@ -32,7 +32,9 @@ print("...plotting pressure evolution + nIF ratio")
 # Configuration
 # ======================================================================
 SMOOTH_WINDOW = 21
-PHASE_CHANGE  = True
+SHOW_PHASE    = False
+SHOW_RCLOUD   = False
+SHOW_COLLAPSE = False
 SAVE_PDF      = True
 
 # Colors — centralised ChromaPalette
@@ -233,9 +235,9 @@ def plot_pressureZeta_on_ax(
     ax_top, ax_bot, t, R2, phase, pressures, nCloud_ratio,
     rcloud=np.nan, isCollapse=None,
     smooth_window=SMOOTH_WINDOW,
-    phase_change=True,
-    show_rcloud=True,
-    show_collapse=True,
+    phase_change=SHOW_PHASE,
+    show_rcloud=SHOW_RCLOUD,
+    show_collapse=SHOW_COLLAPSE,
 ):
     """
     Plot pressure evolution (top) and n_cloud/n_IF_ODE ratio (bottom).
@@ -393,7 +395,7 @@ def plot_from_path(data_input: str, output_dir: str = None):
         ax_top, ax_bot, t, R2, phase, pressures, nCloud_ratio,
         rcloud=rcloud, isCollapse=isCollapse,
         smooth_window=SMOOTH_WINDOW,
-        phase_change=PHASE_CHANGE,
+        phase_change=SHOW_PHASE,
     )
     ax_top.set_title(f"Pressure + $n_{{\\rm cloud}}/n_{{\\rm IF}}$: {data_path.parent.name}")
 
@@ -438,7 +440,7 @@ def _build_legend_handles():
         Line2D([0], [0], color='black', lw=1.5, ls='--', alpha=0.6,
                label=r'ratio $= 1$'),
     ]
-    handles.extend(get_marker_legend_handles())
+    handles.extend(get_marker_legend_handles(include_phase=SHOW_PHASE, include_rcloud=SHOW_RCLOUD, include_collapse=SHOW_COLLAPSE))
     return handles
 
 
@@ -532,7 +534,7 @@ def plot_grid(folder_path, output_dir=None, ndens_filter=None,
                         ax_top, ax_bot, t, R2, phase, pressures, nCloud_ratio,
                         rcloud=rcloud, isCollapse=isCollapse,
                         smooth_window=SMOOTH_WINDOW,
-                        phase_change=PHASE_CHANGE,
+                        phase_change=SHOW_PHASE,
                     )
                 except Exception as e:
                     print(f"Error loading {data_path}: {e}")
@@ -605,10 +607,11 @@ plot_folder_grid = plot_grid
 # ======================================================================
 
 if __name__ == "__main__":
-    from src._plots.cli import dispatch
+    from src._plots.cli import dispatch, marker_pre_dispatch
     dispatch(
         script_name="paper_pressureZeta.py",
         description="Plot TRINITY pressure evolution + nIF ratio",
         plot_from_path_fn=plot_from_path,
         plot_grid_fn=plot_grid,
+        pre_dispatch_fn=marker_pre_dispatch(globals()),
     )

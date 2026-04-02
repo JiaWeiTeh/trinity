@@ -46,6 +46,13 @@ from src.cloud_properties.powerLawSphere import (
 )
 from src._plots.plot_markers import add_plot_markers, get_marker_legend_handles
 
+# =============================================================================
+# MARKER DEFAULTS (off for clean paper figures; enable via CLI --show-*)
+# =============================================================================
+SHOW_PHASE = False
+SHOW_RCLOUD = False
+SHOW_COLLAPSE = False
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -496,9 +503,9 @@ def plot_shell_evolution(simulations: dict, output_dir: Path, fmt: str = 'pdf',
                 rcloud=rCloud_val if ax is axes[0] else None,
                 isCollapse=isCollapse,
                 dataset_color=s['color'],
-                show_phase=False,
-                show_rcloud=(ax is axes[0]),
-                show_collapse=True,
+                show_phase=SHOW_PHASE,
+                show_rcloud=SHOW_RCLOUD and (ax is axes[0]),
+                show_collapse=SHOW_COLLAPSE,
                 show_labels=True,
             )
 
@@ -533,7 +540,7 @@ def plot_shell_evolution(simulations: dict, output_dir: Path, fmt: str = 'pdf',
 
     # Legend: profile colours + marker entries
     marker_handles = get_marker_legend_handles(
-        include_phase=False, include_rcloud=True, include_collapse=False
+        include_phase=False, include_rcloud=SHOW_RCLOUD, include_collapse=False
     )
     add_legend(axes[1], [t for t in PROFILE_ORDER if t in simulations],
                extra_handles=marker_handles, loc='best', fontsize=9)
@@ -1255,7 +1262,9 @@ def plot_feedback_grid(sweep_dir: str, output_dir: Path, fmt: str = 'pdf',
                              hatch='\\\\\\\\', label='Wind'))
         handles.append(Patch(facecolor='none', edgecolor=_fb.C_SN,
                              hatch='\\\\\\\\', label='SN'))
-    handles.extend(get_marker_legend_handles())
+    handles.extend(get_marker_legend_handles(
+        include_phase=SHOW_PHASE, include_rcloud=SHOW_RCLOUD,
+        include_collapse=SHOW_COLLAPSE))
 
     fig.legend(handles=handles, loc='upper center', ncol=4,
                frameon=True, facecolor='white', framealpha=0.9,
@@ -1334,7 +1343,9 @@ def plot_momentum_grid(sweep_dir: str, output_dir: Path, fmt: str = 'pdf',
         handles.append(Line2D([0], [0], color=color, lw=1.2, ls='--',
                               label=label))
     handles.append(Line2D([0], [0], color='darkgrey', lw=2.4, label='Net'))
-    handles.extend(get_marker_legend_handles())
+    handles.extend(get_marker_legend_handles(
+        include_phase=SHOW_PHASE, include_rcloud=SHOW_RCLOUD,
+        include_collapse=SHOW_COLLAPSE))
 
     fig.legend(handles=handles, loc='upper center', ncol=4,
                frameon=True, facecolor='white', framealpha=0.9,
@@ -1421,7 +1432,9 @@ def plot_thermal_grid(sweep_dir: str, output_dir: Path, fmt: str = 'pdf',
             Patch(facecolor=_therm.C_HII, alpha=0.1, edgecolor='none',
                   label='HII regime'),
         ]
-    handles.extend(get_marker_legend_handles())
+    handles.extend(get_marker_legend_handles(
+        include_phase=SHOW_PHASE, include_rcloud=SHOW_RCLOUD,
+        include_collapse=SHOW_COLLAPSE))
 
     fig.legend(handles=handles, loc='upper center', ncol=4,
                frameon=True, facecolor='white', framealpha=0.9,
@@ -1467,7 +1480,30 @@ Examples:
         help='Show figures interactively instead of just saving'
     )
 
+    # Marker options (off by default for clean paper figures)
+    marker_group = parser.add_argument_group(
+        "markers", "Diagnostic markers (all off by default for clean figures)")
+    marker_group.add_argument(
+        '--show-phase', action='store_true', default=False,
+        help='Show phase-transition markers (T / M vertical lines)')
+    marker_group.add_argument(
+        '--show-rcloud', action='store_true', default=False,
+        help='Show R2 > R_cloud breakout marker')
+    marker_group.add_argument(
+        '--show-collapse', action='store_true', default=False,
+        help='Show collapse onset marker')
+    marker_group.add_argument(
+        '--show-all-markers', action='store_true', default=False,
+        help='Enable all diagnostic markers at once')
+
     args = parser.parse_args()
+
+    # Wire CLI marker flags to module-level globals
+    global SHOW_PHASE, SHOW_RCLOUD, SHOW_COLLAPSE
+    _all = args.show_all_markers
+    SHOW_PHASE = _all or args.show_phase
+    SHOW_RCLOUD = _all or args.show_rcloud
+    SHOW_COLLAPSE = _all or args.show_collapse
 
     # Determine output directory
     if args.output_dir:

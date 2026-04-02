@@ -34,7 +34,9 @@ P_AU_TO_K_CM3 = INV_CONV.Pb_au2cgs / CGS.k_B
 
 # ---------------- configuration ----------------
 SMOOTH_WINDOW = 5  # None or 1 disables
-PHASE_CHANGE = True
+SHOW_PHASE = False
+SHOW_RCLOUD = False
+SHOW_COLLAPSE = False
 SHOW_PDRIVE = True  # Show P_drive for reference
 USE_LOG_X = False  # Use log scale for x-axis (time)
 
@@ -101,8 +103,8 @@ def load_run(data_path):
     }
 
 
-def plot_run_on_ax(ax, data, smooth_window=None, phase_change=True,
-                   show_rcloud=True, show_collapse=True, show_pdrive=True,
+def plot_run_on_ax(ax, data, smooth_window=None, phase_change=SHOW_PHASE,
+                   show_rcloud=SHOW_RCLOUD, show_collapse=SHOW_COLLAPSE, show_pdrive=True,
                    use_log_x=False):
     """Plot pressure components on given axes."""
     t = data['t']
@@ -168,7 +170,7 @@ def plot_run_on_ax(ax, data, smooth_window=None, phase_change=True,
 def _plot_cell(ax, data):
     """Adapter for grid_template: calls plot_run_on_ax with module-level config."""
     plot_run_on_ax(ax, data, smooth_window=SMOOTH_WINDOW,
-                   phase_change=PHASE_CHANGE, show_pdrive=SHOW_PDRIVE,
+                   phase_change=SHOW_PHASE, show_pdrive=SHOW_PDRIVE,
                    use_log_x=USE_LOG_X)
 
 
@@ -182,7 +184,7 @@ def _build_grid_legend():
     if SHOW_PDRIVE:
         handles.append(Line2D([0], [0], color="black", ls="--", lw=2.2,
                               alpha=0.8, label=r"$P_{\rm drive}$"))
-    handles.extend(get_marker_legend_handles())
+    handles.extend(get_marker_legend_handles(include_phase=SHOW_PHASE, include_rcloud=SHOW_RCLOUD, include_collapse=SHOW_COLLAPSE))
     return handles
 
 
@@ -253,10 +255,11 @@ plot_folder_grid = plot_grid
 
 # ---------------- command-line interface ----------------
 if __name__ == "__main__":
-    from src._plots.cli import dispatch
+    from src._plots.cli import dispatch, marker_pre_dispatch
     dispatch(
         script_name="paper_PHII_Pb_Pram.py",
         description="Plot TRINITY pressure components (P_HII, Pb, P_ram)",
         plot_from_path_fn=plot_from_path,
         plot_grid_fn=plot_grid,
+        pre_dispatch_fn=marker_pre_dispatch(globals()),
     )

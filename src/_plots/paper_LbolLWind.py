@@ -18,8 +18,9 @@ from src._plots.plot_markers import add_plot_markers, get_marker_legend_handles
 print("...plotting Qi(or Li) vs Lmech_total with ratio on twin axis")
 
 # ---------------- configuration ----------------
-PHASE_LINE    = True
-CLOUD_LINE    = True
+SHOW_PHASE    = False
+SHOW_RCLOUD    = False
+SHOW_COLLAPSE = False
 SMOOTH_WINDOW = None      # e.g. 7 or 21; None/1 disables
 SMOOTH_MODE   = "edge"
 
@@ -86,16 +87,16 @@ def load_run(data_path: Path):
 
 
 def add_phase_and_cloud_markers(ax, t, phase, R2, rcloud, isCollapse=None, label_pad_points=4,
-                                 show_collapse=True):
+                                 show_collapse=SHOW_COLLAPSE):
     """Phase T/M markers + breakout line + collapse line using helper module."""
     add_plot_markers(
         ax, t,
-        phase=phase if PHASE_LINE else None,
-        R2=R2 if CLOUD_LINE else None,
-        rcloud=rcloud if CLOUD_LINE else None,
+        phase=phase if SHOW_PHASE else None,
+        R2=R2 if SHOW_RCLOUD else None,
+        rcloud=rcloud if SHOW_RCLOUD else None,
         isCollapse=isCollapse if show_collapse else None,
-        show_phase=PHASE_LINE,
-        show_rcloud=CLOUD_LINE,
+        show_phase=SHOW_PHASE,
+        show_rcloud=SHOW_RCLOUD,
         show_collapse=show_collapse,
         label_pad_points=label_pad_points
     )
@@ -337,7 +338,7 @@ def plot_grid(folder_path, output_dir=None, ndens_filter=None,
             Line2D([0], [0], color=C_LWIND, lw=1.8, label=r"$L_{\rm Wind}$"),
             ratio_handle,
         ]
-        handles.extend(get_marker_legend_handles())
+        handles.extend(get_marker_legend_handles(include_phase=SHOW_PHASE, include_rcloud=SHOW_RCLOUD, include_collapse=SHOW_COLLAPSE))
 
         leg = fig.legend(
             handles=handles,
@@ -371,10 +372,11 @@ plot_folder_grid = plot_grid
 
 # ---------------- command-line interface ----------------
 if __name__ == "__main__":
-    from src._plots.cli import dispatch
+    from src._plots.cli import dispatch, marker_pre_dispatch
     dispatch(
         script_name="paper_LbolLWind.py",
         description="Plot TRINITY luminosity comparison (Lbol vs Lwind)",
         plot_from_path_fn=plot_from_path,
         plot_grid_fn=plot_grid,
+        pre_dispatch_fn=marker_pre_dispatch(globals()),
     )

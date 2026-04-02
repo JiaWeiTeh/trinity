@@ -32,7 +32,9 @@ print("...plotting R2 vs R_IF comparison")
 
 # ---------------- configuration ----------------
 SMOOTH_WINDOW = None   # None or 1 disables
-PHASE_CHANGE = True
+SHOW_PHASE = False
+SHOW_RCLOUD = False
+SHOW_COLLAPSE = False
 USE_LOG_X = True       # log-log by default
 USE_LOG_Y = True
 
@@ -81,8 +83,8 @@ def load_run(data_path):
     }
 
 
-def plot_run_on_ax(ax, data, smooth_window=None, phase_change=True,
-                   show_rcloud=True, show_collapse=True,
+def plot_run_on_ax(ax, data, smooth_window=None, phase_change=SHOW_PHASE,
+                   show_rcloud=SHOW_RCLOUD, show_collapse=SHOW_COLLAPSE,
                    use_log_x=True, use_log_y=True, machine_eps=MACHINE_EPS):
     """
     Plot R2 and R_IF on the top axes, fractional difference on a twin
@@ -183,7 +185,7 @@ def plot_run_on_ax(ax, data, smooth_window=None, phase_change=True,
 def _plot_cell(ax, data):
     """Adapter for grid_template."""
     plot_run_on_ax(ax, data, smooth_window=SMOOTH_WINDOW,
-                   phase_change=PHASE_CHANGE,
+                   phase_change=SHOW_PHASE,
                    use_log_x=USE_LOG_X, use_log_y=USE_LOG_Y,
                    machine_eps=MACHINE_EPS)
 
@@ -195,7 +197,7 @@ def _build_grid_legend():
         Patch(facecolor='#b0d0ff', alpha=0.35, edgecolor='none',
               label=r'$<10^{-10}$ (machine prec.)'),
     ]
-    handles.extend(get_marker_legend_handles())
+    handles.extend(get_marker_legend_handles(include_phase=SHOW_PHASE, include_rcloud=SHOW_RCLOUD, include_collapse=SHOW_COLLAPSE))
     return handles
 
 
@@ -249,10 +251,11 @@ plot_folder_grid = plot_grid
 
 
 if __name__ == "__main__":
-    from src._plots.cli import dispatch
+    from src._plots.cli import dispatch, marker_pre_dispatch
     dispatch(
         script_name="paper_R2_RIF.py",
         description="Plot TRINITY R2 vs R_IF comparison",
         plot_from_path_fn=plot_from_path,
         plot_grid_fn=plot_grid,
+        pre_dispatch_fn=marker_pre_dispatch(globals()),
     )
