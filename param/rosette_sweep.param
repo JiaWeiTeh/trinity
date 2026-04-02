@@ -1,0 +1,68 @@
+# ==============================================================================
+# Sweep Parameter File: Rosette Nebula — with P_HII
+# ==============================================================================
+#
+# Uses tuple_mode to run specific (mCloud, sfe, nCore, densPL_alpha, rCore)
+# combinations that bracket NGC 2244's cluster mass (1000-2000 Msun).
+#
+# Constraints:
+#   - M_cl = SFE * M_cloud must yield 1000-2000 Msun (Muzic+22, Wang+08)
+#   - R_cloud must exceed R_HII,out ~ 19 pc (Planck XXXIV)
+#   - nCore sets R_cloud for given M_cloud and alpha
+#
+# Usage:
+#   python run_sweep.py param/rosette_sweep.param --dry-run
+#   python run_sweep.py param/rosette_sweep.param --workers 4
+#
+
+# =============================================================================
+# Sweep parameters (tuple mode) — specific physically-motivated combinations
+# =============================================================================
+#
+# Columns: mCloud, sfe, nCore, densPL_alpha, rCore
+#
+#   [5e4,  0.02,  30,   0, 0.1]  M_cl=1000, R_cl~22pc, uniform    (lower bound)
+#   [1e5,  0.015, 30,   0, 0.1]  M_cl=1500, R_cl~28pc, uniform    (★ recommended)
+#   [1e5,  0.02,  30,   0, 0.1]  M_cl=2000, R_cl~28pc, uniform    (upper end)
+#   [2e5,  0.01,  100, -1, 5]    M_cl=2000, R_cl~24pc, PL alpha=-1 (★ higher-density)
+#   [1e5,  0.01,  100,  0, 0.1]  M_cl=1000, R_cl~19pc, uniform    (R_cloud marginal)
+#   [1e5,  0.015, 100, -1, 5]    M_cl=1500, R_cl~19pc, PL alpha=-1 (compact variant)
+#
+tuple(mCloud, sfe, nCore, densPL_alpha, rCore)    [5e4, 0.02, 30, 0, 0.1] [1e5, 0.015, 30, 0, 0.1] [1e5, 0.02, 30, 0, 0.1] [2e5, 0.01, 100, -1, 5] [1e5, 0.01, 100, 0, 0.1] [1e5, 0.015, 100, -1, 5]
+
+
+# =============================================================================
+# Fixed parameters (constant across all runs)
+# =============================================================================
+
+# Density profile
+dens_profile    densPL
+
+# ISM and cloud
+nISM    1
+ZCloud    1
+
+# Termination
+allowShellDissolution    True
+stop_t_diss    1
+stop_r    None
+stop_t    5
+
+# Collapse
+coll_r    1
+
+# Allow expansion beyond cloud (Rosette is partially broken out of RMC)
+expansionBeyondCloud    True
+
+# Solver
+use_adaptive_solver    True
+
+
+# Logging
+log_level    WARNING
+
+# Output
+path2output    outputs/rosette_sweep
+
+# P_HII
+include_PHII    True
