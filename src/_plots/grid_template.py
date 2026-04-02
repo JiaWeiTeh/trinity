@@ -64,6 +64,47 @@ from src._output.trinity_reader import (
 # Helpers
 # ------------------------------------------------------------------
 
+def _compute_legend_layout(fig_height_inches, n_legend_items=6, legend_ncol=4):
+    """Compute adaptive legend / suptitle positioning from fixed physical gaps.
+
+    Instead of hardcoding figure-fraction values (which break when the grid
+    size changes), this function converts constant *inch* gaps into figure
+    fractions so that the spacing looks the same regardless of figure height.
+
+    Parameters
+    ----------
+    fig_height_inches : float
+        Total figure height in inches.
+    n_legend_items : int
+        Number of legend entries (used to estimate legend height).
+    legend_ncol : int
+        Number of legend columns.
+
+    Returns
+    -------
+    dict with keys ``'top'``, ``'legend_y'``, ``'suptitle_y'``
+        All values are figure-fraction coordinates.
+    """
+    # Physical gaps (inches) — tuned so a 3×3 grid at cell_height ≈ 2.6
+    # looks like the previous hardcoded layout.
+    LEGEND_PAD_INCHES = 0.25        # gap: axes top edge → legend centre
+    SUPTITLE_PAD_INCHES = 0.15      # gap: legend top → suptitle baseline
+    LEGEND_ROW_HEIGHT_INCHES = 0.22 # approx height per legend row
+    TITLE_HEIGHT_INCHES = 0.25      # space for suptitle text itself
+
+    n_rows = max(1, -(-n_legend_items // legend_ncol))   # ceil div
+    legend_h = n_rows * LEGEND_ROW_HEIGHT_INCHES
+
+    overhead = LEGEND_PAD_INCHES + legend_h + SUPTITLE_PAD_INCHES + TITLE_HEIGHT_INCHES
+    top = 1.0 - overhead / fig_height_inches
+    top = max(top, 0.70)  # safety: never squash axes below 70 %
+
+    legend_y = 1.0 - (LEGEND_PAD_INCHES + legend_h * 0.5) / fig_height_inches
+    suptitle_y = 1.0 - 0.05 / fig_height_inches  # just inside top edge
+
+    return {"top": top, "legend_y": legend_y, "suptitle_y": suptitle_y}
+
+
 def _mcloud_label(mCloud: str) -> str:
     """LaTeX label for a cloud mass value, e.g. '1e7' → r'$M_{\\rm cloud}=10^{7}M_\\odot$'."""
     mval = float(mCloud)
@@ -216,7 +257,7 @@ def plot_grid(
     sharey: bool = True,
     constrained_layout: bool = False,
     legend_ncol: int = 4,
-    legend_y: float = 1.0,
+    legend_y: Optional[float] = None,
     suptitle: bool = True,
     subplots_adjust_top: Optional[float] = None,
     save_pdf: bool = True,
@@ -320,8 +361,18 @@ def plot_grid(
             constrained_layout=constrained_layout,
         )
 
-        if subplots_adjust_top is not None:
-            fig.subplots_adjust(top=subplots_adjust_top)
+        # Adaptive legend/title positioning — compute once, use below.
+        handles_for_layout = legend_handles_fn()
+        _layout = _compute_legend_layout(
+            cell_height * nrows,
+            n_legend_items=len(handles_for_layout) if handles_for_layout else 0,
+            legend_ncol=legend_ncol,
+        )
+        _top = subplots_adjust_top if subplots_adjust_top is not None else _layout["top"]
+        _legend_y = legend_y if legend_y is not None else _layout["legend_y"]
+        _suptitle_y = suptitle_y if suptitle_y is not None else _layout["suptitle_y"]
+
+        fig.subplots_adjust(top=_top)
 
         if pre_loop_fn is not None:
             pre_loop_fn(fig, axes)
@@ -376,28 +427,25 @@ def plot_grid(
         if post_loop_fn is not None:
             post_loop_fn(fig, axes)
 
-        # Legend
-        handles = legend_handles_fn()
-        if handles:
+        # Legend (reuse handles computed earlier for layout)
+        if handles_for_layout:
             leg = fig.legend(
-                handles=handles,
+                handles=handles_for_layout,
                 loc="upper center",
                 ncol=legend_ncol,
                 frameon=True,
                 facecolor="white",
                 framealpha=0.9,
                 edgecolor="0.2",
-                bbox_to_anchor=(0.5, legend_y),
+                bbox_to_anchor=(0.5, _legend_y),
             )
             leg.set_zorder(10)
 
         # Suptitle
         ndens_tag = f"n{ndens}"
         if suptitle:
-            sup_kw = {"fontsize": 14}
-            if suptitle_y is not None:
-                sup_kw["y"] = suptitle_y
-            fig.suptitle(f"{folder_name} ({ndens_tag})", **sup_kw)
+            fig.suptitle(f"{folder_name} ({ndens_tag})",
+                         fontsize=14, y=_suptitle_y)
 
         # Save
         fig_dir = Path(output_dir) if output_dir else FIG_DIR / folder_name

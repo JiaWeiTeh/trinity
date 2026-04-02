@@ -17,12 +17,15 @@ _sys.path.insert(0, str(_Path(__file__).parent.parent.parent))
 from src._plots.plot_base import FIG_DIR, smooth_1d, smooth_2d
 from src._output.trinity_reader import load_output, resolve_data_input
 from src._plots.plot_markers import add_plot_markers, get_marker_legend_handles
+from src._plots.grid_template import _compute_legend_layout
 
 print("...plotting integrated momentum (line plots)")
 
 SAVE_PDF = True
 
-PHASE_CHANGE = True
+SHOW_PHASE = False
+SHOW_RCLOUD = False
+SHOW_COLLAPSE = False
 
 SMOOTH_WINDOW = 11
 
@@ -205,7 +208,7 @@ def plot_from_path(data_input: str, output_dir: str = None):
     plot_momentum_lines_on_ax(
         ax, t, r, phase, forces, forces_dict, rcloud, isCollapse,
         smooth_window=SMOOTH_WINDOW,
-        phase_change=PHASE_CHANGE
+        phase_change=SHOW_PHASE
     )
 
     ax.set_title(f"Momentum Evolution: {data_path.parent.name}")
@@ -217,7 +220,7 @@ def plot_from_path(data_input: str, output_dir: str = None):
     for _, lab, c in FORCE_FIELDS:
         handles.append(Line2D([0], [0], color=c, lw=1.6, ls="-", label=lab))
     handles.append(Line2D([0], [0], color="darkgrey", lw=2.4, label="Net"))
-    handles.extend(get_marker_legend_handles())
+    handles.extend(get_marker_legend_handles(include_phase=SHOW_PHASE, include_rcloud=SHOW_RCLOUD, include_collapse=SHOW_COLLAPSE))
     ax.legend(handles=handles, loc="upper left", framealpha=0.9)
 
     plt.tight_layout()
@@ -235,8 +238,8 @@ def plot_from_path(data_input: str, output_dir: str = None):
 def plot_momentum_lines_on_ax(
     ax, t, r, phase, forces, forces_dict, rcloud, isCollapse=None,
     smooth_window=None, smooth_mode="edge",
-    lw=1.6, net_lw=4, alpha=0.8, phase_change=PHASE_CHANGE,
-    show_rcloud=True, show_collapse=True,
+    lw=1.6, net_lw=4, alpha=0.8, phase_change=SHOW_PHASE,
+    show_rcloud=SHOW_RCLOUD, show_collapse=SHOW_COLLAPSE,
 ):
     # --- Add all time-axis markers using helper module
     add_plot_markers(
@@ -439,7 +442,7 @@ def plot_grid(folder_path, output_dir=None, ndens_filter=None,
                     plot_momentum_lines_on_ax(
                         ax, t, r, phase, forces, forces_dict, rcloud, isCollapse,
                         smooth_window=SMOOTH_WINDOW,
-                        phase_change=PHASE_CHANGE
+                        phase_change=SHOW_PHASE
                     )
                 except Exception as e:
                     print(f"Error loading {data_path}: {e}")
@@ -472,19 +475,20 @@ def plot_grid(folder_path, output_dir=None, ndens_filter=None,
             handles.append(Line2D([0], [0], color=c, lw=1.6, ls="-", label=lab))
         handles.append(Line2D([0], [0], color="darkgrey", lw=2.4,
                               label=r"Net: $| \int (\sum F_{\rm out} - F_{\rm grav})\,dt |$"))
-        handles.extend(get_marker_legend_handles())
+        handles.extend(get_marker_legend_handles(include_phase=SHOW_PHASE, include_rcloud=SHOW_RCLOUD, include_collapse=SHOW_COLLAPSE))
+
+        _layout = _compute_legend_layout(2.6 * nrows, n_legend_items=len(handles), legend_ncol=4)
+        fig.subplots_adjust(top=_layout['top'])
 
         leg = fig.legend(
             handles=handles, loc="upper center", ncol=4,
             frameon=True, facecolor="white", framealpha=0.9, edgecolor="0.2",
-            # bbox_to_anchor=(0.5, 1.0),
-            bbox_to_anchor=(0.5, 1.2),
+            bbox_to_anchor=(0.5, _layout['legend_y']),
             fontsize=7,
         )
         leg.set_zorder(10)
 
-        # fig.subplots_adjust(top=0.88)
-        # fig.suptitle(f"{folder_name} (n{ndens})", fontsize=14, y=1.03)
+        # fig.suptitle(f"{folder_name} (n{ndens})", fontsize=14, y=_layout['suptitle_y'])
 
         # Save figure to ./fig/{folder_name}/momentum_{ndens_tag}.pdf
         ndens_tag = f"n{ndens}"
@@ -502,10 +506,11 @@ plot_folder_grid = plot_grid
 
 
 if __name__ == "__main__":
-    from src._plots.cli import dispatch
+    from src._plots.cli import dispatch, marker_pre_dispatch
     dispatch(
         script_name="paper_momentum.py",
         description="Plot TRINITY momentum",
         plot_from_path_fn=plot_from_path,
         plot_grid_fn=plot_grid,
+        pre_dispatch_fn=marker_pre_dispatch(globals()),
     )

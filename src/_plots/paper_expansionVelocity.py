@@ -19,12 +19,14 @@ from src._plots.plot_base import FIG_DIR, smooth_1d
 # Add project root to path for imports
 from src._output.trinity_reader import load_output, resolve_data_input
 from src._plots.plot_markers import add_plot_markers, get_marker_legend_handles
+from src._plots.grid_template import _compute_legend_layout
 
 print("...plotting velocity (v2) + radii (twin axis) grid")
 
 # ---------------- configuration ----------------
-PHASE_LINE = True
-CLOUD_LINE = True
+SHOW_PHASE = False
+SHOW_RCLOUD = False
+SHOW_COLLAPSE = False
 SMOOTH_WINDOW = None        # e.g. 7 or 21; None/1 disables
 SMOOTH_MODE = "edge"
 USE_LOG_X = False  # Use log scale for x-axis (time)
@@ -138,7 +140,7 @@ def plot_signed_logline(ax, t, v, *, color="k", lw=1.8, alpha=0.95, label_pos=No
 def plot_velocity_on_ax(
     ax, t, phase, v2_pcmyr, R1, R2, rShell, r_Tb, rcloud, isCollapse=None,
     smooth_window=None, smooth_mode="edge",
-    phase_line=True, cloud_line=True, show_collapse=True,
+    phase_line=SHOW_PHASE, cloud_line=SHOW_RCLOUD, show_collapse=SHOW_COLLAPSE,
     label_pad_points=4, use_log_x=False
 ):
     # smoothing
@@ -228,8 +230,8 @@ def plot_from_path(data_input: str, output_dir: str = None):
             ax, t, phase, v2, R1, R2, rShell, r_Tb, rcloud, isCollapse,
             smooth_window=SMOOTH_WINDOW,
             smooth_mode=SMOOTH_MODE,
-            phase_line=PHASE_LINE,
-            cloud_line=CLOUD_LINE,
+            phase_line=SHOW_PHASE,
+            cloud_line=SHOW_RCLOUD,
             use_log_x=USE_LOG_X
         )
     except Exception as e:
@@ -251,7 +253,7 @@ def plot_from_path(data_input: str, output_dir: str = None):
         Line2D([0], [0], color=RADIUS_FIELDS[2][2], lw=RADIUS_FIELDS[2][4], ls=RADIUS_FIELDS[2][3], label=RADIUS_FIELDS[2][1]),
         Line2D([0], [0], color=RADIUS_FIELDS[3][2], lw=RADIUS_FIELDS[3][4], ls=RADIUS_FIELDS[3][3], label=RADIUS_FIELDS[3][1]),
     ]
-    handles.extend(get_marker_legend_handles())
+    handles.extend(get_marker_legend_handles(include_phase=SHOW_PHASE, include_rcloud=SHOW_RCLOUD, include_collapse=SHOW_COLLAPSE))
     ax.legend(handles=handles, loc="upper left", framealpha=0.9)
 
     plt.tight_layout()
@@ -328,8 +330,6 @@ def plot_grid(folder_path, output_dir=None, ndens_filter=None,
             constrained_layout=False
         )
 
-        fig.subplots_adjust(top=0.90)
-
         for i, mCloud in enumerate(mCloud_list_found):
             for j, sfe in enumerate(sfe_list_found):
                 ax = axes[i, j]
@@ -346,8 +346,8 @@ def plot_grid(folder_path, output_dir=None, ndens_filter=None,
                         ax, t, phase, v2, R1, R2, rShell, r_Tb, rcloud, isCollapse,
                         smooth_window=SMOOTH_WINDOW,
                         smooth_mode=SMOOTH_MODE,
-                        phase_line=PHASE_LINE,
-                        cloud_line=CLOUD_LINE,
+                        phase_line=SHOW_PHASE,
+                        cloud_line=SHOW_RCLOUD,
                         use_log_x=USE_LOG_X
                     )
                 except Exception as e:
@@ -394,7 +394,10 @@ def plot_grid(folder_path, output_dir=None, ndens_filter=None,
             Line2D([0], [0], color=RADIUS_FIELDS[2][2], lw=RADIUS_FIELDS[2][4], ls=RADIUS_FIELDS[2][3], label=RADIUS_FIELDS[2][1]),
             Line2D([0], [0], color=RADIUS_FIELDS[3][2], lw=RADIUS_FIELDS[3][4], ls=RADIUS_FIELDS[3][3], label=RADIUS_FIELDS[3][1]),
         ]
-        handles.extend(get_marker_legend_handles())
+        handles.extend(get_marker_legend_handles(include_phase=SHOW_PHASE, include_rcloud=SHOW_RCLOUD, include_collapse=SHOW_COLLAPSE))
+
+        _layout = _compute_legend_layout(2.6 * nrows, n_legend_items=len(handles), legend_ncol=3)
+        fig.subplots_adjust(top=_layout['top'])
 
         leg = fig.legend(
             handles=handles,
@@ -404,12 +407,12 @@ def plot_grid(folder_path, output_dir=None, ndens_filter=None,
             facecolor="white",
             framealpha=0.9,
             edgecolor="0.2",
-            bbox_to_anchor=(0.5, 0.98),
+            bbox_to_anchor=(0.5, _layout['legend_y']),
             bbox_transform=fig.transFigure
         )
         leg.set_zorder(10)
 
-        fig.suptitle(f"{folder_name} (n{ndens})", fontsize=14, y=1.05)
+        fig.suptitle(f"{folder_name} (n{ndens})", fontsize=14, y=_layout['suptitle_y'])
 
         # Save figure to ./fig/{folder_name}/expansionVelocity_{ndens_tag}.pdf
         ndens_tag = f"n{ndens}"
@@ -428,10 +431,11 @@ plot_folder_grid = plot_grid
 
 # ---------------- command-line interface ----------------
 if __name__ == "__main__":
-    from src._plots.cli import dispatch
+    from src._plots.cli import dispatch, marker_pre_dispatch
     dispatch(
         script_name="paper_expansionVelocity.py",
         description="Plot TRINITY expansion velocity",
         plot_from_path_fn=plot_from_path,
         plot_grid_fn=plot_grid,
+        pre_dispatch_fn=marker_pre_dispatch(globals()),
     )

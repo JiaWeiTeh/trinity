@@ -16,6 +16,8 @@ _sys.path.insert(0, str(_Path(__file__).parent.parent.parent))
 from src._plots.plot_base import FIG_DIR, smooth_1d
 from src._output.trinity_reader import load_output, resolve_data_input
 from src._plots.plot_markers import add_collapse_marker, get_marker_legend_handles
+from src._plots.grid_template import _compute_legend_layout
+from src._plots.cli import marker_pre_dispatch
 
 print("...plotting escape fraction comparison")
 
@@ -23,6 +25,13 @@ print("...plotting escape fraction comparison")
 # --- configuration
 # smoothing: number of snapshots in moving average (None or 1 disables)
 SMOOTH_WINDOW = 7
+
+# =============================================================================
+# MARKER DEFAULTS (off for clean paper figures; enable via CLI --show-*)
+# =============================================================================
+SHOW_PHASE = False
+SHOW_RCLOUD = False
+SHOW_COLLAPSE = False
 
 SAVE_PNG = False
 SAVE_PDF = True
@@ -90,7 +99,8 @@ def plot_from_path(data_input: str, output_dir: str = None):
     ax.plot(t, fesc_plot, lw=1.8, alpha=0.9, label=r"$f_{\rm esc}$")
 
     # --- collapse line using helper module
-    add_collapse_marker(ax, t, isCollapse)
+    if SHOW_COLLAPSE:
+        add_collapse_marker(ax, t, isCollapse)
 
     ax.set_title(f"Escape Fraction: {data_path.parent.name}")
     ax.set_xlabel("t [Myr]")
@@ -171,7 +181,7 @@ def plot_grid(folder_path, output_dir=None, ndens_filter=None,
             sharey=True,
             dpi=200,
             squeeze=False,
-            constrained_layout=True
+            constrained_layout=False
         )
 
         all_line_handles = []
@@ -198,7 +208,8 @@ def plot_grid(folder_path, output_dir=None, ndens_filter=None,
                         all_line_handles.append(line)
                         all_line_labels.append(rf"$\epsilon={eps:.2f}$")
 
-                    add_collapse_marker(ax, t, isCollapse, show_label=False)
+                    if SHOW_COLLAPSE:
+                        add_collapse_marker(ax, t, isCollapse, show_label=False)
                 except Exception as e:
                     print(f"Error loading {data_path}: {e}")
 
@@ -219,13 +230,15 @@ def plot_grid(folder_path, output_dir=None, ndens_filter=None,
             if i == nrows - 1:
                 ax.set_xlabel("t [Myr]")
 
-        fig.suptitle(f"{folder_name} (n{ndens})", fontsize=14, y=1.02)
-
         if all_line_handles:
-            collapse_handles = get_marker_legend_handles(include_phase=False, include_rcloud=False, include_collapse=True)
+            collapse_handles = get_marker_legend_handles(include_phase=False, include_rcloud=False, include_collapse=SHOW_COLLAPSE)
             for h in collapse_handles:
                 all_line_handles.append(h)
                 all_line_labels.append(h.get_label())
+
+            _layout = _compute_legend_layout(2.6 * nrows, n_legend_items=len(all_line_handles), legend_ncol=len(all_line_handles))
+            fig.suptitle(f"{folder_name} (n{ndens})", fontsize=14, y=_layout['suptitle_y'])
+
             leg = fig.legend(
                 handles=all_line_handles,
                 labels=all_line_labels,
@@ -235,9 +248,12 @@ def plot_grid(folder_path, output_dir=None, ndens_filter=None,
                 facecolor="white",
                 framealpha=0.9,
                 edgecolor="0.2",
-                bbox_to_anchor=(0.5, 1.07),
+                bbox_to_anchor=(0.5, _layout['legend_y']),
             )
             leg.set_zorder(10)
+        else:
+            _layout = _compute_legend_layout(2.6 * nrows, n_legend_items=0, legend_ncol=1)
+            fig.suptitle(f"{folder_name} (n{ndens})", fontsize=14, y=_layout['suptitle_y'])
 
         # Save figure to ./fig/{folder_name}/escapeFraction_{ndens_tag}.pdf
         ndens_tag = f"n{ndens}"
@@ -261,4 +277,5 @@ if __name__ == "__main__":
         description="Plot TRINITY escape fraction",
         plot_from_path_fn=plot_from_path,
         plot_grid_fn=plot_grid,
+        pre_dispatch_fn=marker_pre_dispatch(globals()),
     )

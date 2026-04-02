@@ -13,6 +13,7 @@ from src._plots.plot_base import FIG_DIR, smooth_1d
 # Add project root to path for imports
 from src._output.trinity_reader import load_output, find_data_file, resolve_data_input, info_simulations
 from src._plots.plot_markers import add_plot_markers, get_marker_legend_handles
+from src._plots.grid_template import _compute_legend_layout
 
 print("...plotting radius evolution grid")
 
@@ -32,8 +33,9 @@ sfe_list    = ["001", "010", "020", "030", "050", "080"]   # cols
 
 BASE_DIR = Path.home() / "unsync" / "Code" / "Trinity" / "outputs"
 
-PHASE_LINE = True
-CLOUD_LINE = True
+SHOW_PHASE = False
+SHOW_RCLOUD = False
+SHOW_COLLAPSE = False
 SHOW_WEAVER = True  # Show Weaver-like R ∝ t^(3/5) solution
 SMOOTH_WINDOW = None        # e.g. 7 to smooth radii; None/1 disables
 SMOOTH_MODE = "edge"
@@ -143,7 +145,7 @@ def compute_weaver_solution(t, R2, t_ref_frac=0.1):
 
 def plot_radii_on_ax(
     ax, t, phase, R1, R2, rShell, rcloud, isCollapse=None,
-    phase_line=True, cloud_line=True, show_weaver=False,
+    phase_line=SHOW_PHASE, cloud_line=SHOW_RCLOUD, show_weaver=False,
     smooth_window=None, smooth_mode="edge",
     label_pad_points=4, use_log_x=False
 ):
@@ -161,7 +163,7 @@ def plot_radii_on_ax(
         isCollapse=isCollapse,
         show_phase=phase_line,
         show_rcloud=cloud_line,
-        show_collapse=True,
+        show_collapse=SHOW_COLLAPSE,
         label_pad_points=label_pad_points
     )
 
@@ -203,8 +205,8 @@ def plot_single_run(mCloud, sfe, ndens):
         t, phase, R1, R2, rShell, rcloud, isCollapse = load_run_radii(data_path)
         plot_radii_on_ax(
             ax, t, phase, R1, R2, rShell, rcloud, isCollapse,
-            phase_line=PHASE_LINE,
-            cloud_line=CLOUD_LINE,
+            phase_line=SHOW_PHASE,
+            cloud_line=SHOW_RCLOUD,
             show_weaver=SHOW_WEAVER,
             smooth_window=SMOOTH_WINDOW,
             smooth_mode=SMOOTH_MODE,
@@ -245,7 +247,7 @@ def plot_single_run(mCloud, sfe, ndens):
     ]
     if SHOW_WEAVER:
         handles.append(Line2D([0], [0], color="k", ls="--", alpha=0.6, lw=1.5, label=r"Weaver: $R \propto t^{3/5}$"))
-    handles.extend(get_marker_legend_handles())
+    handles.extend(get_marker_legend_handles(include_phase=SHOW_PHASE, include_rcloud=SHOW_RCLOUD, include_collapse=SHOW_COLLAPSE))
     ax.legend(handles=handles, loc="upper left", framealpha=0.9)
 
     # Save
@@ -283,8 +285,8 @@ def plot_from_path(data_input: str, output_dir: str = None):
         t, phase, R1, R2, rShell, rcloud, isCollapse = load_run_radii(data_path)
         plot_radii_on_ax(
             ax, t, phase, R1, R2, rShell, rcloud, isCollapse,
-            phase_line=PHASE_LINE,
-            cloud_line=CLOUD_LINE,
+            phase_line=SHOW_PHASE,
+            cloud_line=SHOW_RCLOUD,
             show_weaver=SHOW_WEAVER,
             smooth_window=SMOOTH_WINDOW,
             smooth_mode=SMOOTH_MODE,
@@ -307,7 +309,7 @@ def plot_from_path(data_input: str, output_dir: str = None):
     ]
     if SHOW_WEAVER:
         handles.append(Line2D([0], [0], color="k", ls="--", alpha=0.6, lw=1.5, label=r"Weaver: $R \propto t^{3/5}$"))
-    handles.extend(get_marker_legend_handles())
+    handles.extend(get_marker_legend_handles(include_phase=SHOW_PHASE, include_rcloud=SHOW_RCLOUD, include_collapse=SHOW_COLLAPSE))
     ax.legend(handles=handles, loc="upper left", framealpha=0.9)
 
     plt.tight_layout()
@@ -412,8 +414,8 @@ def plot_folder_grid(folder_path, output_dir=None, ndens_filter=None,
                     t, phase, R1, R2, rShell, rcloud, isCollapse = load_run_radii(data_path)
                     plot_radii_on_ax(
                         ax, t, phase, R1, R2, rShell, rcloud, isCollapse,
-                        phase_line=PHASE_LINE,
-                        cloud_line=CLOUD_LINE,
+                        phase_line=SHOW_PHASE,
+                        cloud_line=SHOW_RCLOUD,
                         show_weaver=SHOW_WEAVER,
                         smooth_window=SMOOTH_WINDOW,
                         smooth_mode=SMOOTH_MODE,
@@ -454,11 +456,12 @@ def plot_folder_grid(folder_path, output_dir=None, ndens_filter=None,
         ]
         if SHOW_WEAVER:
             handles.append(Line2D([0], [0], color="k", ls="--", alpha=0.6, lw=1.5, label=r"Weaver: $R \propto t^{3/5}$"))
-        handles.extend(get_marker_legend_handles())
+        handles.extend(get_marker_legend_handles(include_phase=SHOW_PHASE, include_rcloud=SHOW_RCLOUD, include_collapse=SHOW_COLLAPSE))
 
-        fig.subplots_adjust(top=0.9)
+        _layout = _compute_legend_layout(2.6 * nrows, n_legend_items=len(handles), legend_ncol=3)
+        fig.subplots_adjust(top=_layout['top'])
         ndens_tag = f"n{ndens}"
-        fig.suptitle(f"{folder_name} ({ndens_tag})", fontsize=14, y=1.05)
+        fig.suptitle(f"{folder_name} ({ndens_tag})", fontsize=14, y=_layout['suptitle_y'])
 
         leg = fig.legend(
             handles=handles,
@@ -468,7 +471,7 @@ def plot_folder_grid(folder_path, output_dir=None, ndens_filter=None,
             facecolor="white",
             framealpha=0.9,
             edgecolor="0.2",
-            bbox_to_anchor=(0.5, 0.98),
+            bbox_to_anchor=(0.5, _layout['legend_y']),
             bbox_transform=fig.transFigure
         )
         leg.set_zorder(10)
@@ -539,8 +542,19 @@ Examples:
         '--info', action='store_true',
         help='Scan folder and print available mCloud, SFE, and nCore values.'
     )
+    parser.add_argument('--show-phase', action='store_true', default=False)
+    parser.add_argument('--show-rcloud', action='store_true', default=False)
+    parser.add_argument('--show-collapse', action='store_true', default=False)
+    parser.add_argument('--show-all-markers', action='store_true', default=False)
 
     args = parser.parse_args()
+
+    # Apply marker flags to module globals
+    from src._plots.cli import get_marker_flags
+    _marker_flags = get_marker_flags(args)
+    SHOW_PHASE = _marker_flags['show_phase']
+    SHOW_RCLOUD = _marker_flags['show_rcloud']
+    SHOW_COLLAPSE = _marker_flags['show_collapse']
 
     if args.log_x:
         USE_LOG_X = True
@@ -580,9 +594,7 @@ Examples:
                 constrained_layout=False
             )
 
-            fig.subplots_adjust(top=0.90)
             nlog = int(np.log10(float(ndens)))
-            fig.suptitle(rf"Radius evolution ($n=10^{{{nlog}}}\,\mathrm{{cm^{{-3}}}}$)", y=1.05)
 
             m_tag   = range_tag("M",   mCloud_list, key=float)
             sfe_tag = range_tag("sfe", sfe_list,    key=int)
@@ -605,8 +617,8 @@ Examples:
                         t, phase, R1, R2, rShell, rcloud, isCollapse = load_run_radii(data_path)
                         plot_radii_on_ax(
                             ax, t, phase, R1, R2, rShell, rcloud, isCollapse,
-                            phase_line=PHASE_LINE,
-                            cloud_line=CLOUD_LINE,
+                            phase_line=SHOW_PHASE,
+                            cloud_line=SHOW_RCLOUD,
                             show_weaver=SHOW_WEAVER,
                             smooth_window=SMOOTH_WINDOW,
                             smooth_mode=SMOOTH_MODE,
@@ -650,9 +662,11 @@ Examples:
             ]
             if SHOW_WEAVER:
                 handles.append(Line2D([0], [0], color="k", ls="--", alpha=0.6, lw=1.5, label=r"Weaver: $R \propto t^{3/5}$"))
-            handles.extend(get_marker_legend_handles())
+            handles.extend(get_marker_legend_handles(include_phase=SHOW_PHASE, include_rcloud=SHOW_RCLOUD, include_collapse=SHOW_COLLAPSE))
 
-            fig.subplots_adjust(top=0.9)
+            _layout = _compute_legend_layout(2.6 * nrows, n_legend_items=len(handles), legend_ncol=3)
+            fig.subplots_adjust(top=_layout['top'])
+            fig.suptitle(rf"Radius evolution ($n=10^{{{nlog}}}\,\mathrm{{cm^{{-3}}}}$)", y=_layout['suptitle_y'])
 
             leg = fig.legend(
                 handles=handles,
@@ -662,7 +676,7 @@ Examples:
                 facecolor="white",
                 framealpha=0.9,
                 edgecolor="0.2",
-                bbox_to_anchor=(0.5, 0.98),
+                bbox_to_anchor=(0.5, _layout['legend_y']),
                 bbox_transform=fig.transFigure
             )
             leg.set_zorder(10)

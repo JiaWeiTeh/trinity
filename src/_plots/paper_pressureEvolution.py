@@ -40,7 +40,9 @@ P_AU_TO_K_CM3 = INV_CONV.Pb_au2cgs / CGS.k_B
 
 # ---------------- configuration ----------------
 SMOOTH_WINDOW = 5  # None or 1 disables
-PHASE_CHANGE = True
+SHOW_PHASE = False
+SHOW_RCLOUD = False
+SHOW_COLLAPSE = False
 SHOW_PEXT = True  # Show external pressure
 USE_LOG_X = False  # Use log scale for x-axis (time)
 
@@ -104,8 +106,8 @@ def load_run(data_path):
     }
 
 
-def plot_run_on_ax(ax, data, smooth_window=None, phase_change=True,
-                   show_rcloud=True, show_collapse=True, show_pext=True,
+def plot_run_on_ax(ax, data, smooth_window=None, phase_change=SHOW_PHASE,
+                   show_rcloud=SHOW_RCLOUD, show_collapse=SHOW_COLLAPSE, show_pext=True,
                    use_log_x=False):
     """Plot pressure evolution on given axes."""
     t = data['t']
@@ -172,7 +174,7 @@ def plot_run_on_ax(ax, data, smooth_window=None, phase_change=True,
 def _plot_cell(ax, data):
     """Adapter for grid_template: calls plot_run_on_ax with module-level config."""
     plot_run_on_ax(ax, data, smooth_window=SMOOTH_WINDOW,
-                   phase_change=PHASE_CHANGE, show_pext=SHOW_PEXT,
+                   phase_change=SHOW_PHASE, show_pext=SHOW_PEXT,
                    use_log_x=USE_LOG_X)
 
 
@@ -186,7 +188,7 @@ def _build_grid_legend():
     if SHOW_PEXT:
         handles.append(Line2D([0], [0], color="gray", ls=":", lw=1.5,
                               alpha=0.7, label=r"$P_{\rm ext}$"))
-    handles.extend(get_marker_legend_handles())
+    handles.extend(get_marker_legend_handles(include_phase=SHOW_PHASE, include_rcloud=SHOW_RCLOUD, include_collapse=SHOW_COLLAPSE))
     return handles
 
 
@@ -239,9 +241,6 @@ def plot_grid(folder_path, output_dir=None, ndens_filter=None,
         sharex=False,
         sharey=False,
         legend_ncol=4,
-        legend_y=1.0,
-        suptitle_y=1.02,
-        subplots_adjust_top=0.9,
         save_pdf=SAVE_PDF,
         mcloud_label_fn=_mcloud_label_short,
         hide_non_left_labels=True,
@@ -254,10 +253,11 @@ plot_folder_grid = plot_grid
 
 # ---------------- command-line interface ----------------
 if __name__ == "__main__":
-    from src._plots.cli import dispatch
+    from src._plots.cli import dispatch, marker_pre_dispatch
     dispatch(
         script_name="paper_pressureEvolution.py",
         description="Plot TRINITY pressure evolution",
         plot_from_path_fn=plot_from_path,
         plot_grid_fn=plot_grid,
+        pre_dispatch_fn=marker_pre_dispatch(globals()),
     )

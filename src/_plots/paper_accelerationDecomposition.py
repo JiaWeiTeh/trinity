@@ -44,7 +44,9 @@ A_AU_TO_KMS_MYR = INV_CONV.v_au2kms  # pc/Myr → km/s, so pc/Myr² → km/s/Myr
 
 # ---------------- configuration ----------------
 SMOOTH_WINDOW = 5  # None or 1 disables
-PHASE_CHANGE = True
+SHOW_PHASE = False
+SHOW_RCLOUD = False
+SHOW_COLLAPSE = False
 USE_SYMLOG = True  # Use symmetric log scale for accelerations
 USE_LOG_X = False  # Use log scale for x-axis (time)
 
@@ -167,8 +169,8 @@ def compute_accelerations(data):
     }
 
 
-def plot_run_on_ax(ax, data, smooth_window=None, phase_change=True,
-                   show_rcloud=True, show_collapse=True, use_symlog=True,
+def plot_run_on_ax(ax, data, smooth_window=None, phase_change=SHOW_PHASE,
+                   show_rcloud=SHOW_RCLOUD, show_collapse=SHOW_COLLAPSE, use_symlog=True,
                    use_log_x=False):
     """Plot acceleration decomposition on given axes."""
     t = data['t']
@@ -247,7 +249,7 @@ def plot_run_on_ax(ax, data, smooth_window=None, phase_change=True,
 def _plot_cell(ax, data):
     """Adapter: call plot_run_on_ax with module-level config."""
     plot_run_on_ax(ax, data, smooth_window=SMOOTH_WINDOW,
-                   phase_change=PHASE_CHANGE, use_symlog=USE_SYMLOG,
+                   phase_change=SHOW_PHASE, use_symlog=USE_SYMLOG,
                    use_log_x=USE_LOG_X)
 
 
@@ -258,7 +260,7 @@ def _build_single_legend():
     ]
     handles.append(Line2D([0], [0], color='gray', ls='-', lw=0.8,
                           alpha=0.5, label=r'$a=0$'))
-    handles.extend(get_marker_legend_handles())
+    handles.extend(get_marker_legend_handles(include_phase=SHOW_PHASE, include_rcloud=SHOW_RCLOUD, include_collapse=SHOW_COLLAPSE))
     return handles
 
 
@@ -267,7 +269,7 @@ def _build_grid_legend():
         Line2D([0], [0], color=c, ls=ls, lw=lw, label=label)
         for _, label, c, ls, lw in ACCEL_FIELDS
     ]
-    handles.extend(get_marker_legend_handles())
+    handles.extend(get_marker_legend_handles(include_phase=SHOW_PHASE, include_rcloud=SHOW_RCLOUD, include_collapse=SHOW_COLLAPSE))
     return handles
 
 
@@ -305,9 +307,6 @@ def plot_grid(folder_path, output_dir=None, ndens_filter=None,
         dpi=300,
         sharey=False,
         legend_ncol=5,
-        legend_y=1.0,
-        subplots_adjust_top=0.9,
-        suptitle_y=1.02,
         save_pdf=SAVE_PDF,
         mcloud_label_fn=_mcloud_label_short,
         hide_non_left_labels=True,
@@ -320,10 +319,11 @@ plot_folder_grid = plot_grid
 
 # ---------------- command-line interface ----------------
 if __name__ == "__main__":
-    from src._plots.cli import dispatch
+    from src._plots.cli import dispatch, marker_pre_dispatch
     dispatch(
         script_name="paper_accelerationDecomposition.py",
         description="Plot TRINITY acceleration decomposition",
         plot_from_path_fn=plot_from_path,
         plot_grid_fn=plot_grid,
+        pre_dispatch_fn=marker_pre_dispatch(globals()),
     )

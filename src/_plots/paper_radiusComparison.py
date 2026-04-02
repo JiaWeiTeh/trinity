@@ -32,7 +32,7 @@ from src._output.trinity_reader import (
     parse_simulation_params,
 )
 from src._plots.plot_markers import add_plot_markers, get_marker_legend_handles
-from src._plots.grid_template import _mcloud_label, _sfe_title
+from src._plots.grid_template import _mcloud_label, _sfe_title, _compute_legend_layout
 from src._functions.unit_conversions import CONV, INV_CONV, CGS
 
 print("...plotting radius comparison (TRINITY vs WARPFIELD vs Weaver)")
@@ -42,8 +42,9 @@ print("...plotting radius comparison (TRINITY vs WARPFIELD vs Weaver)")
 # ----------------------------------------------------------------
 SMOOTH_WINDOW = None       # e.g. 7; None/1 disables
 SMOOTH_MODE = "edge"
-PHASE_LINE = True
-CLOUD_LINE = True
+SHOW_PHASE = False
+SHOW_RCLOUD = False
+SHOW_COLLAPSE = False
 WEAVER_ANCHOR_MYR = 0.01  # anchor Weaver line to TRINITY R2 at this time
 
 # Styling
@@ -230,13 +231,13 @@ def plot_cell(ax, data_trinity, data_warpfield):
     # Phase/cloud markers from TRINITY run
     add_plot_markers(
         ax, t_T,
-        phase=data_trinity['phase'] if PHASE_LINE else None,
-        R2=R2_T if CLOUD_LINE else None,
-        rcloud=data_trinity['rcloud'] if CLOUD_LINE else None,
+        phase=data_trinity['phase'] if SHOW_PHASE else None,
+        R2=R2_T if SHOW_RCLOUD else None,
+        rcloud=data_trinity['rcloud'] if SHOW_RCLOUD else None,
         isCollapse=data_trinity['isCollapse'],
-        show_phase=PHASE_LINE,
-        show_rcloud=CLOUD_LINE,
-        show_collapse=True,
+        show_phase=SHOW_PHASE,
+        show_rcloud=SHOW_RCLOUD,
+        show_collapse=SHOW_COLLAPSE,
     )
 
     # TRINITY R2
@@ -355,8 +356,6 @@ def plot_comparison_grid(
             sharex=False, sharey=False,
             dpi=300, squeeze=False,
         )
-        fig.subplots_adjust(top=0.88)
-
         for i, mCloud in enumerate(mCloud_list):
             for j, sfe in enumerate(sfe_list):
                 ax = axes[i, j]
@@ -403,19 +402,22 @@ def plot_comparison_grid(
             Line2D([0], [0], color=COLOR_MOMENTUM, lw=1.5, ls=':',
                    label=r"$R \propto t^{1/2}$ (momentum scaling)"),
         ]
-        handles.extend(get_marker_legend_handles())
+        handles.extend(get_marker_legend_handles(include_phase=SHOW_PHASE, include_rcloud=SHOW_RCLOUD, include_collapse=SHOW_COLLAPSE))
+
+        _layout = _compute_legend_layout(2.8 * nrows, n_legend_items=len(handles), legend_ncol=4)
+        fig.subplots_adjust(top=_layout['top'])
 
         leg = fig.legend(
             handles=handles, loc="upper center",
             ncol=4, frameon=True, facecolor="white",
             framealpha=0.9, edgecolor="0.2",
-            bbox_to_anchor=(0.5, 0.97),
+            bbox_to_anchor=(0.5, _layout['legend_y']),
         )
         leg.set_zorder(10)
 
         fig.suptitle(
             f"Radius comparison: TRINITY vs WARPFIELD (n{ndens})",
-            fontsize=13, y=1.0,
+            fontsize=13, y=_layout['suptitle_y'],
         )
 
         # Save
@@ -457,8 +459,19 @@ Examples:
                         help='Filter by density (e.g. "1e4")')
     parser.add_argument('--mCloud', nargs='+', default=None)
     parser.add_argument('--sfe', nargs='+', default=None)
+    parser.add_argument('--show-phase', action='store_true', default=False)
+    parser.add_argument('--show-rcloud', action='store_true', default=False)
+    parser.add_argument('--show-collapse', action='store_true', default=False)
+    parser.add_argument('--show-all-markers', action='store_true', default=False)
 
     args = parser.parse_args()
+
+    # Apply marker flags to module globals
+    from src._plots.cli import get_marker_flags
+    _marker_flags = get_marker_flags(args)
+    SHOW_PHASE = _marker_flags['show_phase']
+    SHOW_RCLOUD = _marker_flags['show_rcloud']
+    SHOW_COLLAPSE = _marker_flags['show_collapse']
 
     plot_comparison_grid(
         args.trinity, args.warpfield,

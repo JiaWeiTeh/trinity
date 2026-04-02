@@ -26,12 +26,15 @@ _sys.path.insert(0, str(_Path(__file__).parent.parent.parent))
 from src._plots.plot_base import FIG_DIR, smooth_1d, smooth_2d
 from src._output.trinity_reader import load_output, resolve_data_input
 from src._plots.plot_markers import add_plot_markers, get_marker_legend_handles
+from src._plots.grid_template import _compute_legend_layout
 
 print("...plotting force fractions with ram composition overlay + PISM")
 
 # ---------------- configuration ----------------
 SMOOTH_WINDOW = 21           # None or 1 disables smoothing
-PHASE_CHANGE  = True         # Show phase transition markers
+SHOW_PHASE    = False
+SHOW_RCLOUD   = False
+SHOW_COLLAPSE = False
 INCLUDE_ALL_FORCE = True     # Show wind/SN overlays inside the ram band
 USE_LOG_X = False            # Use log scale for x-axis (time)
 
@@ -78,7 +81,7 @@ def plot_from_path(data_input: str, output_dir: str = None):
         pressures=pressures,
         alpha=0.75,
         smooth_window=SMOOTH_WINDOW,
-        phase_change=PHASE_CHANGE,
+        phase_change=SHOW_PHASE,
         use_log_x=USE_LOG_X
     )
 
@@ -98,7 +101,7 @@ def plot_from_path(data_input: str, output_dir: str = None):
         Line2D([0], [0], color=C_PHII, lw=3, alpha=0.7, label=r"Driver: $P_{\rm HII}$"),
         Line2D([0], [0], color=C_DRIVE, lw=3, alpha=0.7, label=r"Driver: $P_b$"),
     ]
-    handles.extend(get_marker_legend_handles())
+    handles.extend(get_marker_legend_handles(include_phase=SHOW_PHASE, include_rcloud=SHOW_RCLOUD, include_collapse=SHOW_COLLAPSE))
     ax.legend(handles=handles, loc="upper right", framealpha=0.9)
 
     plt.tight_layout()
@@ -198,9 +201,9 @@ def plot_run_on_ax(
     pressures=None,
     alpha=0.75,
     smooth_window=None, smooth_mode="edge",
-    phase_change=True,
-    show_rcloud=True,
-    show_collapse=True,
+    phase_change=SHOW_PHASE,
+    show_rcloud=SHOW_RCLOUD,
+    show_collapse=SHOW_COLLAPSE,
     overlay_alpha=0.55,
     use_log_x=False
 ):
@@ -524,7 +527,7 @@ def plot_grid(folder_path, output_dir=None, ndens_filter=None,
                         pressures=pressures,
                         alpha=0.75,
                         smooth_window=SMOOTH_WINDOW,
-                        phase_change=PHASE_CHANGE,
+                        phase_change=SHOW_PHASE,
                         use_log_x=USE_LOG_X
                     )
                 except Exception as e:
@@ -577,9 +580,10 @@ def plot_grid(folder_path, output_dir=None, ndens_filter=None,
                 Line2D([0], [0], color=C_DRIVE, lw=3, alpha=0.7, label=r"Driver: $P_b$"),
             ]
 
-        handles.extend(get_marker_legend_handles())
+        handles.extend(get_marker_legend_handles(include_phase=SHOW_PHASE, include_rcloud=SHOW_RCLOUD, include_collapse=SHOW_COLLAPSE))
 
-        # fig.subplots_adjust(top=0.88)
+        _layout = _compute_legend_layout(2.6 * nrows, n_legend_items=len(handles), legend_ncol=4)
+        fig.subplots_adjust(top=_layout['top'])
 
         leg = fig.legend(
             handles=handles,
@@ -589,15 +593,14 @@ def plot_grid(folder_path, output_dir=None, ndens_filter=None,
             facecolor="white",
             framealpha=0.9,
             edgecolor="0.2",
-            # bbox_to_anchor=(0.5, 1.0),
-            bbox_to_anchor=(0.5, 1.2),
+            bbox_to_anchor=(0.5, _layout['legend_y']),
             fontsize=7,
         )
         leg.set_zorder(10)
 
         # Title and filename
         ndens_tag = f"n{ndens}"
-        # fig.suptitle(f"{folder_name} ({ndens_tag})", fontsize=14, y=1.03)
+        # fig.suptitle(f"{folder_name} ({ndens_tag})", fontsize=14, y=_layout['suptitle_y'])
 
         # Save figure to ./fig/{folder_name}/feedback_n{ndens}.pdf
         fig_dir = Path(output_dir) if output_dir else FIG_DIR / folder_name
@@ -616,10 +619,11 @@ plot_folder_grid = plot_grid
 
 
 if __name__ == "__main__":
-    from src._plots.cli import dispatch
+    from src._plots.cli import dispatch, marker_pre_dispatch
     dispatch(
         script_name="paper_feedback.py",
         description="Plot TRINITY feedback force fractions",
         plot_from_path_fn=plot_from_path,
         plot_grid_fn=plot_grid,
+        pre_dispatch_fn=marker_pre_dispatch(globals()),
     )

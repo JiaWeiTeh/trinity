@@ -26,6 +26,11 @@ from src._plots.plot_base import FIG_DIR
 from src._output.trinity_reader import load_output, find_data_path
 from src._plots.plot_markers import add_collapse_marker
 
+# =============================================================================
+# MARKER DEFAULTS (off for clean paper figures)
+# =============================================================================
+SHOW_COLLAPSE = False
+
 
 # =============================================================================
 # DATA PATHS - Configure these before running
@@ -76,7 +81,8 @@ for pp, path2data in enumerate([path2data1, path2data2]):
     phaselist[-1] = 'done'
 
     # --- collapse line using helper module
-    add_collapse_marker(axs[pp], tlist, isCollapse_list)
+    if SHOW_COLLAPSE:
+        add_collapse_marker(axs[pp], tlist, isCollapse_list)
 
     colour_map = { 'energy': 'r',
                   'implicit': 'g',
