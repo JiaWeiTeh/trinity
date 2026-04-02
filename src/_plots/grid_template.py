@@ -71,6 +71,10 @@ def _compute_legend_layout(fig_height_inches, n_legend_items=6, legend_ncol=4):
     size changes), this function converts constant *inch* gaps into figure
     fractions so that the spacing looks the same regardless of figure height.
 
+    The vertical stacking order (bottom → top) is::
+
+        axes  →  column titles  →  gap  →  legend  →  gap  →  suptitle
+
     Parameters
     ----------
     fig_height_inches : float
@@ -87,19 +91,24 @@ def _compute_legend_layout(fig_height_inches, n_legend_items=6, legend_ncol=4):
     """
     # Physical gaps (inches) — tuned so a 3×3 grid at cell_height ≈ 2.6
     # looks like the previous hardcoded layout.
-    LEGEND_PAD_INCHES = 0.25        # gap: axes top edge → legend centre
-    SUPTITLE_PAD_INCHES = 0.15      # gap: legend top → suptitle baseline
+    COL_TITLE_HEIGHT_INCHES = 0.25  # room for ax.set_title() on top row
+    LEGEND_PAD_INCHES = 0.12        # gap: column titles top → legend bottom
     LEGEND_ROW_HEIGHT_INCHES = 0.22 # approx height per legend row
+    SUPTITLE_PAD_INCHES = 0.12      # gap: legend top → suptitle baseline
     TITLE_HEIGHT_INCHES = 0.25      # space for suptitle text itself
 
     n_rows = max(1, -(-n_legend_items // legend_ncol))   # ceil div
     legend_h = n_rows * LEGEND_ROW_HEIGHT_INCHES
 
-    overhead = LEGEND_PAD_INCHES + legend_h + SUPTITLE_PAD_INCHES + TITLE_HEIGHT_INCHES
+    overhead = (COL_TITLE_HEIGHT_INCHES + LEGEND_PAD_INCHES
+                + legend_h + SUPTITLE_PAD_INCHES + TITLE_HEIGHT_INCHES)
     top = 1.0 - overhead / fig_height_inches
     top = max(top, 0.70)  # safety: never squash axes below 70 %
 
-    legend_y = 1.0 - (LEGEND_PAD_INCHES + legend_h * 0.5) / fig_height_inches
+    # legend_y: center of legend box (above column titles + pad)
+    legend_bottom = COL_TITLE_HEIGHT_INCHES + LEGEND_PAD_INCHES
+    legend_y = 1.0 - (legend_bottom + legend_h * 0.5) / fig_height_inches
+
     suptitle_y = 1.0 - 0.05 / fig_height_inches  # just inside top edge
 
     return {"top": top, "legend_y": legend_y, "suptitle_y": suptitle_y}
