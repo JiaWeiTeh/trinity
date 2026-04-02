@@ -32,7 +32,7 @@ from src._output.trinity_reader import (
     parse_simulation_params,
 )
 from src._plots.plot_markers import add_plot_markers, get_marker_legend_handles
-from src._plots.grid_template import _mcloud_label, _sfe_title, _compute_legend_layout
+from src._plots.grid_template import _mcloud_label, _compute_legend_layout
 from src._functions.unit_conversions import CONV, INV_CONV, CGS
 
 print("...plotting radius comparison (TRINITY vs WARPFIELD vs Weaver)")
@@ -382,8 +382,6 @@ def plot_comparison_grid(
                     ax.set_axis_off()
                     continue
 
-                if i == 0:
-                    ax.set_title(_sfe_title(sfe))
                 if j == 0:
                     ax.set_ylabel(_mcloud_label(mCloud) + "\nRadius [pc]")
                 else:
@@ -414,11 +412,6 @@ def plot_comparison_grid(
             bbox_to_anchor=(0.5, _layout['legend_y']),
         )
         leg.set_zorder(10)
-
-        fig.suptitle(
-            f"Radius comparison: TRINITY vs WARPFIELD (n{ndens})",
-            fontsize=13, y=_layout['suptitle_y'],
-        )
 
         # Save
         fig_dir = Path(output_dir) if output_dir else FIG_DIR
