@@ -13,6 +13,7 @@ from src._plots.plot_base import FIG_DIR, smooth_1d
 # Add project root to path for imports
 from src._output.trinity_reader import load_output, find_data_file, resolve_data_input, info_simulations
 from src._plots.plot_markers import add_plot_markers, get_marker_legend_handles
+from src._plots.grid_template import _compute_legend_layout
 
 print("...plotting radius evolution grid")
 
@@ -457,9 +458,10 @@ def plot_folder_grid(folder_path, output_dir=None, ndens_filter=None,
             handles.append(Line2D([0], [0], color="k", ls="--", alpha=0.6, lw=1.5, label=r"Weaver: $R \propto t^{3/5}$"))
         handles.extend(get_marker_legend_handles(include_phase=SHOW_PHASE, include_rcloud=SHOW_RCLOUD, include_collapse=SHOW_COLLAPSE))
 
-        fig.subplots_adjust(top=0.9)
+        _layout = _compute_legend_layout(2.6 * nrows, n_legend_items=len(handles), legend_ncol=3)
+        fig.subplots_adjust(top=_layout['top'])
         ndens_tag = f"n{ndens}"
-        fig.suptitle(f"{folder_name} ({ndens_tag})", fontsize=14, y=1.05)
+        fig.suptitle(f"{folder_name} ({ndens_tag})", fontsize=14, y=_layout['suptitle_y'])
 
         leg = fig.legend(
             handles=handles,
@@ -469,7 +471,7 @@ def plot_folder_grid(folder_path, output_dir=None, ndens_filter=None,
             facecolor="white",
             framealpha=0.9,
             edgecolor="0.2",
-            bbox_to_anchor=(0.5, 0.98),
+            bbox_to_anchor=(0.5, _layout['legend_y']),
             bbox_transform=fig.transFigure
         )
         leg.set_zorder(10)
@@ -592,9 +594,7 @@ Examples:
                 constrained_layout=False
             )
 
-            fig.subplots_adjust(top=0.90)
             nlog = int(np.log10(float(ndens)))
-            fig.suptitle(rf"Radius evolution ($n=10^{{{nlog}}}\,\mathrm{{cm^{{-3}}}}$)", y=1.05)
 
             m_tag   = range_tag("M",   mCloud_list, key=float)
             sfe_tag = range_tag("sfe", sfe_list,    key=int)
@@ -664,7 +664,9 @@ Examples:
                 handles.append(Line2D([0], [0], color="k", ls="--", alpha=0.6, lw=1.5, label=r"Weaver: $R \propto t^{3/5}$"))
             handles.extend(get_marker_legend_handles(include_phase=SHOW_PHASE, include_rcloud=SHOW_RCLOUD, include_collapse=SHOW_COLLAPSE))
 
-            fig.subplots_adjust(top=0.9)
+            _layout = _compute_legend_layout(2.6 * nrows, n_legend_items=len(handles), legend_ncol=3)
+            fig.subplots_adjust(top=_layout['top'])
+            fig.suptitle(rf"Radius evolution ($n=10^{{{nlog}}}\,\mathrm{{cm^{{-3}}}}$)", y=_layout['suptitle_y'])
 
             leg = fig.legend(
                 handles=handles,
@@ -674,7 +676,7 @@ Examples:
                 facecolor="white",
                 framealpha=0.9,
                 edgecolor="0.2",
-                bbox_to_anchor=(0.5, 0.98),
+                bbox_to_anchor=(0.5, _layout['legend_y']),
                 bbox_transform=fig.transFigure
             )
             leg.set_zorder(10)

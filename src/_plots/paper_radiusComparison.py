@@ -32,7 +32,7 @@ from src._output.trinity_reader import (
     parse_simulation_params,
 )
 from src._plots.plot_markers import add_plot_markers, get_marker_legend_handles
-from src._plots.grid_template import _mcloud_label, _sfe_title
+from src._plots.grid_template import _mcloud_label, _sfe_title, _compute_legend_layout
 from src._functions.unit_conversions import CONV, INV_CONV, CGS
 
 print("...plotting radius comparison (TRINITY vs WARPFIELD vs Weaver)")
@@ -356,8 +356,6 @@ def plot_comparison_grid(
             sharex=False, sharey=False,
             dpi=300, squeeze=False,
         )
-        fig.subplots_adjust(top=0.88)
-
         for i, mCloud in enumerate(mCloud_list):
             for j, sfe in enumerate(sfe_list):
                 ax = axes[i, j]
@@ -406,17 +404,20 @@ def plot_comparison_grid(
         ]
         handles.extend(get_marker_legend_handles(include_phase=SHOW_PHASE, include_rcloud=SHOW_RCLOUD, include_collapse=SHOW_COLLAPSE))
 
+        _layout = _compute_legend_layout(2.8 * nrows, n_legend_items=len(handles), legend_ncol=4)
+        fig.subplots_adjust(top=_layout['top'])
+
         leg = fig.legend(
             handles=handles, loc="upper center",
             ncol=4, frameon=True, facecolor="white",
             framealpha=0.9, edgecolor="0.2",
-            bbox_to_anchor=(0.5, 0.97),
+            bbox_to_anchor=(0.5, _layout['legend_y']),
         )
         leg.set_zorder(10)
 
         fig.suptitle(
             f"Radius comparison: TRINITY vs WARPFIELD (n{ndens})",
-            fontsize=13, y=1.0,
+            fontsize=13, y=_layout['suptitle_y'],
         )
 
         # Save

@@ -17,6 +17,7 @@ _sys.path.insert(0, str(_Path(__file__).parent.parent.parent))
 from src._plots.plot_base import FIG_DIR, smooth_1d, smooth_2d
 from src._output.trinity_reader import load_output, resolve_data_input
 from src._plots.plot_markers import add_plot_markers, get_marker_legend_handles
+from src._plots.grid_template import _compute_legend_layout
 
 print("...plotting integrated momentum (line plots)")
 
@@ -476,17 +477,18 @@ def plot_grid(folder_path, output_dir=None, ndens_filter=None,
                               label=r"Net: $| \int (\sum F_{\rm out} - F_{\rm grav})\,dt |$"))
         handles.extend(get_marker_legend_handles(include_phase=SHOW_PHASE, include_rcloud=SHOW_RCLOUD, include_collapse=SHOW_COLLAPSE))
 
+        _layout = _compute_legend_layout(2.6 * nrows, n_legend_items=len(handles), legend_ncol=4)
+        fig.subplots_adjust(top=_layout['top'])
+
         leg = fig.legend(
             handles=handles, loc="upper center", ncol=4,
             frameon=True, facecolor="white", framealpha=0.9, edgecolor="0.2",
-            # bbox_to_anchor=(0.5, 1.0),
-            bbox_to_anchor=(0.5, 1.2),
+            bbox_to_anchor=(0.5, _layout['legend_y']),
             fontsize=7,
         )
         leg.set_zorder(10)
 
-        # fig.subplots_adjust(top=0.88)
-        # fig.suptitle(f"{folder_name} (n{ndens})", fontsize=14, y=1.03)
+        # fig.suptitle(f"{folder_name} (n{ndens})", fontsize=14, y=_layout['suptitle_y'])
 
         # Save figure to ./fig/{folder_name}/momentum_{ndens_tag}.pdf
         ndens_tag = f"n{ndens}"

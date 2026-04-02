@@ -16,6 +16,7 @@ _sys.path.insert(0, str(_Path(__file__).parent.parent.parent))
 from src._plots.plot_base import FIG_DIR, smooth_1d
 from src._output.trinity_reader import load_output, resolve_data_input
 from src._plots.plot_markers import add_collapse_marker, get_marker_legend_handles
+from src._plots.grid_template import _compute_legend_layout
 from src._plots.cli import marker_pre_dispatch
 
 print("...plotting escape fraction comparison")
@@ -180,7 +181,7 @@ def plot_grid(folder_path, output_dir=None, ndens_filter=None,
             sharey=True,
             dpi=200,
             squeeze=False,
-            constrained_layout=True
+            constrained_layout=False
         )
 
         all_line_handles = []
@@ -229,13 +230,15 @@ def plot_grid(folder_path, output_dir=None, ndens_filter=None,
             if i == nrows - 1:
                 ax.set_xlabel("t [Myr]")
 
-        fig.suptitle(f"{folder_name} (n{ndens})", fontsize=14, y=1.02)
-
         if all_line_handles:
             collapse_handles = get_marker_legend_handles(include_phase=False, include_rcloud=False, include_collapse=SHOW_COLLAPSE)
             for h in collapse_handles:
                 all_line_handles.append(h)
                 all_line_labels.append(h.get_label())
+
+            _layout = _compute_legend_layout(2.6 * nrows, n_legend_items=len(all_line_handles), legend_ncol=len(all_line_handles))
+            fig.suptitle(f"{folder_name} (n{ndens})", fontsize=14, y=_layout['suptitle_y'])
+
             leg = fig.legend(
                 handles=all_line_handles,
                 labels=all_line_labels,
@@ -245,9 +248,12 @@ def plot_grid(folder_path, output_dir=None, ndens_filter=None,
                 facecolor="white",
                 framealpha=0.9,
                 edgecolor="0.2",
-                bbox_to_anchor=(0.5, 1.07),
+                bbox_to_anchor=(0.5, _layout['legend_y']),
             )
             leg.set_zorder(10)
+        else:
+            _layout = _compute_legend_layout(2.6 * nrows, n_legend_items=0, legend_ncol=1)
+            fig.suptitle(f"{folder_name} (n{ndens})", fontsize=14, y=_layout['suptitle_y'])
 
         # Save figure to ./fig/{folder_name}/escapeFraction_{ndens_tag}.pdf
         ndens_tag = f"n{ndens}"

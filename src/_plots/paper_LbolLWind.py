@@ -14,6 +14,7 @@ from src._plots.plot_base import FIG_DIR, smooth_1d
 # Add project root to path for imports
 from src._output.trinity_reader import load_output, resolve_data_input
 from src._plots.plot_markers import add_plot_markers, get_marker_legend_handles
+from src._plots.grid_template import _compute_legend_layout
 
 print("...plotting Qi(or Li) vs Lmech_total with ratio on twin axis")
 
@@ -274,8 +275,6 @@ def plot_grid(folder_path, output_dir=None, ndens_filter=None,
             constrained_layout=False
         )
 
-        fig.subplots_adjust(top=0.90)
-
         for i, mCloud in enumerate(mCloud_list_found):
             for j, sfe in enumerate(sfe_list_found):
                 ax = axes[i, j]
@@ -340,6 +339,9 @@ def plot_grid(folder_path, output_dir=None, ndens_filter=None,
         ]
         handles.extend(get_marker_legend_handles(include_phase=SHOW_PHASE, include_rcloud=SHOW_RCLOUD, include_collapse=SHOW_COLLAPSE))
 
+        _layout = _compute_legend_layout(2.6 * nrows, n_legend_items=len(handles), legend_ncol=3)
+        fig.subplots_adjust(top=_layout['top'])
+
         leg = fig.legend(
             handles=handles,
             loc="upper center",
@@ -348,12 +350,12 @@ def plot_grid(folder_path, output_dir=None, ndens_filter=None,
             facecolor="white",
             framealpha=0.9,
             edgecolor="0.2",
-            bbox_to_anchor=(0.5, 0.98),
+            bbox_to_anchor=(0.5, _layout['legend_y']),
             bbox_transform=fig.transFigure
         )
         leg.set_zorder(10)
 
-        fig.suptitle(f"{folder_name} (n{ndens})", fontsize=14, y=1.05)
+        fig.suptitle(f"{folder_name} (n{ndens})", fontsize=14, y=_layout['suptitle_y'])
 
         # Save figure to ./fig/{folder_name}/LbolLWind_{ndens_tag}.pdf
         ndens_tag = f"n{ndens}"

@@ -23,6 +23,7 @@ _sys.path.insert(0, str(_Path(__file__).parent.parent.parent))
 from src._plots.plot_base import FIG_DIR, smooth_1d
 from src._output.trinity_reader import load_output, resolve_data_input
 from src._plots.plot_markers import add_plot_markers, get_marker_legend_handles
+from src._plots.grid_template import _compute_legend_layout
 from src._functions.unit_conversions import CGS, INV_CONV
 import src.cloud_properties.density_profile as density_profile
 
@@ -572,6 +573,9 @@ def plot_grid(folder_path, output_dir=None, ndens_filter=None,
 
         # --- Global legend ---
         handles = _build_legend_handles()
+        _layout = _compute_legend_layout(3.4 * nrows, n_legend_items=len(handles), legend_ncol=4)
+        fig.subplots_adjust(top=_layout['top'])
+
         leg = fig.legend(
             handles=handles,
             loc="upper center",
@@ -580,7 +584,7 @@ def plot_grid(folder_path, output_dir=None, ndens_filter=None,
             facecolor="white",
             framealpha=0.9,
             edgecolor="0.2",
-            bbox_to_anchor=(0.5, 1.15),
+            bbox_to_anchor=(0.5, _layout['legend_y']),
             fontsize=7,
         )
         leg.set_zorder(10)
