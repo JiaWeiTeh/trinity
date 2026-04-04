@@ -105,9 +105,11 @@ def _compute_legend_layout(fig_height_inches, n_legend_items=6, legend_ncol=4):
     top = 1.0 - overhead / fig_height_inches
     top = max(top, 0.70)  # safety: never squash axes below 70 %
 
-    # legend_y: center of legend box (above column titles + pad)
-    legend_bottom = COL_TITLE_HEIGHT_INCHES + LEGEND_PAD_INCHES
-    legend_y = 1.0 - (legend_bottom + legend_h * 0.5) / fig_height_inches
+    # legend_y: *top* edge of the legend box — loc="upper center" anchors
+    # the legend's upper-center to this point, so it extends downward.
+    # Position = axes top + column titles + pad + full legend height.
+    legend_y = top + (COL_TITLE_HEIGHT_INCHES + LEGEND_PAD_INCHES
+                      + legend_h) / fig_height_inches
 
     suptitle_y = 1.0 - 0.05 / fig_height_inches  # just inside top edge
 

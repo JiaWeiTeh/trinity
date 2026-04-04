@@ -12,7 +12,7 @@ Observational references
 ------------------------
 Cluster mass       : 1000 ± 70 M☉          (Mužić et al. 2022)
 Stellar population : ~2000 stars            (Wang et al. 2008, Chandra XLF)
-Cluster age        : ~2 Myr                 (Mužić et al. 2022)
+Cluster age        : 2–6 Myr                (Mužić et al. 2022; Román-Zúñiga et al. 2019)
 Distance           : 1489 ± 37 pc           (Mužić et al. 2022, Gaia EDR3)
 Cavity inner radius: ~7 pc                  (Planck XXXIV, Alves et al. 2016)
 HII outer radius   : ~19 pc                 (Planck XXXIV, radio emission)
@@ -64,9 +64,9 @@ def rosette_constraints() -> ObservationalConstraints:
         M_shell_CII_err=0.0,
         M_shell_combined=0.0,
         M_shell_combined_err=0.0,
-        # Cluster age: ~2 Myr  (Mužić et al. 2022)
-        t_obs=2.0,
-        t_err=0.5,
+        # Cluster age: 2–6 Myr  (Mužić et al. 2022; Román-Zúñiga et al. 2019)
+        t_obs=4.0,
+        t_err=2.0,
         # HII outer radius: ~19 pc  (Planck XXXIV, radio)
         R_obs=19.0,
         R_err=2.0,
@@ -101,10 +101,7 @@ def rosette_config(**overrides) -> AnalysisConfig:
 # =============================================================================
 
 # Rosette is much larger and older than Orion ⇒ wider axes
-_T_MAX = 3.0     # Myr
-_R_MAX = 30.0    # pc
-_M_MIN = 10
-_M_MAX = 1e6
+_T_MAX = 7.0     # Myr
 
 # Dust shell extent (Planck XXXIV, 353 GHz) — not part of chi²,
 # shown as a visual band on the radius panel.
@@ -164,36 +161,36 @@ def plot_trajectory_evolution(results: List[SimulationResult],
     ax_m.tick_params(axis='y', labelrotation=90)
     ax_m.legend(loc='upper right', fontsize=FONTSIZE).set_zorder(100)
     ax_m.set_yscale('log')
-    ax_m.set_ylim(_M_MIN, _M_MAX)
     ax_m.grid(True, alpha=0.3, which='both')
     ax_m.tick_params(axis='x', pad=10)
     ax_m.tick_params(axis='y', pad=10)
 
     # --- Radius panel ---
-    # HII outer radius (blue)
-    ax_r.errorbar(obs.t_obs, obs.R_obs, xerr=obs.t_err, yerr=obs.R_err,
-                  fmt='s', color='blue', markersize=14, capsize=5, capthick=2,
-                  label=f'HII outer: {obs.R_obs}\u00b1{obs.R_err} pc', zorder=10,
-                  markeredgecolor='k')
-    ax_r.axhspan(obs.R_obs - obs.R_err, obs.R_obs + obs.R_err,
-                 alpha=0.15, color='blue', zorder=1)
+    t_lo = obs.t_obs - obs.t_err
+    t_hi = obs.t_obs + obs.t_err
 
-    # Cavity inner radius (green)
-    ax_r.errorbar(obs.t_obs, obs.R_obs_Pabst, xerr=obs.t_err, yerr=obs.R_err_Pabst,
-                  fmt='s', color='green', markersize=14, capsize=5, capthick=2,
-                  label=f'Cavity: {obs.R_obs_Pabst}\u00b1{obs.R_err_Pabst} pc', zorder=10,
-                  markeredgecolor='k')
-    ax_r.axhspan(obs.R_obs_Pabst - obs.R_err_Pabst,
-                 obs.R_obs_Pabst + obs.R_err_Pabst,
-                 alpha=0.15, color='green', zorder=1)
+    # Age band (grey, spans both panels)
+    ax_r.axvspan(t_lo, t_hi, alpha=0.1, color='gray', zorder=0,
+                 label=f'Age estimate ({t_lo:.0f}\u2013{t_hi:.0f} Myr)')
 
-    # Dust shell extent band (orange)
-    ax_r.axhspan(_DUST_SHELL_MIN, _DUST_SHELL_MAX, alpha=0.12, color='orange',
-                 zorder=1,
-                 label=f'Dust shell ({_DUST_SHELL_MIN:.0f}\u2013{_DUST_SHELL_MAX:.0f} pc)')
+    # HII outer radius (blue box: age range × radius range)
+    from matplotlib.patches import Rectangle
+    ax_r.add_patch(Rectangle(
+        (t_lo, obs.R_obs - obs.R_err), t_hi - t_lo, 2 * obs.R_err,
+        facecolor='blue', alpha=0.20, edgecolor='blue', lw=1.5, zorder=5,
+        label=f'HII outer: {obs.R_obs}\u00b1{obs.R_err} pc'))
 
-    ax_r.axvspan(obs.t_obs - obs.t_err, obs.t_obs + obs.t_err,
-                 alpha=0.1, color='gray', zorder=0)
+    # Cavity inner radius (green box)
+    ax_r.add_patch(Rectangle(
+        (t_lo, obs.R_obs_Pabst - obs.R_err_Pabst), t_hi - t_lo, 2 * obs.R_err_Pabst,
+        facecolor='green', alpha=0.20, edgecolor='green', lw=1.5, zorder=5,
+        label=f'Cavity: {obs.R_obs_Pabst}\u00b1{obs.R_err_Pabst} pc'))
+
+    # Dust shell extent band (orange box within age range)
+    ax_r.add_patch(Rectangle(
+        (t_lo, _DUST_SHELL_MIN), t_hi - t_lo, _DUST_SHELL_MAX - _DUST_SHELL_MIN,
+        facecolor='orange', alpha=0.15, edgecolor='orange', lw=1.5, zorder=5,
+        label=f'Dust shell ({_DUST_SHELL_MIN:.0f}\u2013{_DUST_SHELL_MAX:.0f} pc)'))
 
     ax_r.set_xlabel('Time [Myr]', fontsize=FONTSIZE)
     ax_r.set_ylabel('Shell Radius [pc]', fontsize=FONTSIZE, rotation=90)
@@ -201,7 +198,6 @@ def plot_trajectory_evolution(results: List[SimulationResult],
     ax_r.tick_params(axis='y', labelrotation=90)
     ax_r.legend(loc='lower right', fontsize=FONTSIZE).set_zorder(100)
     ax_r.set_xlim(0, _T_MAX)
-    ax_r.set_ylim(0, _R_MAX)
     ax_r.grid(True, alpha=0.3)
     ax_r.tick_params(axis='x', pad=10)
     ax_r.tick_params(axis='y', pad=10)
@@ -272,32 +268,30 @@ def plot_trajectory_evolution_combined(results: List[SimulationResult],
     ax_m.tick_params(axis='y', labelrotation=90)
     ax_m.legend(loc='upper left', fontsize=FONTSIZE).set_zorder(100)
     ax_m.set_yscale('log')
-    ax_m.set_ylim(_M_MIN, _M_MAX)
     ax_m.grid(True, alpha=0.3, which='both')
 
     # --- Radius panel ---
-    ax_r.errorbar(obs.t_obs, obs.R_obs, xerr=obs.t_err, yerr=obs.R_err,
-                  fmt='s', color='blue', markersize=12, capsize=5, capthick=2,
-                  label=f'HII outer: {obs.R_obs}\u00b1{obs.R_err} pc', zorder=10,
-                  markeredgecolor='k')
-    ax_r.axhspan(obs.R_obs - obs.R_err, obs.R_obs + obs.R_err,
-                 alpha=0.15, color='blue', zorder=1)
+    t_lo = obs.t_obs - obs.t_err
+    t_hi = obs.t_obs + obs.t_err
 
-    ax_r.errorbar(obs.t_obs, obs.R_obs_Pabst, xerr=obs.t_err, yerr=obs.R_err_Pabst,
-                  fmt='s', color='green', markersize=12, capsize=5, capthick=2,
-                  label=f'Cavity: {obs.R_obs_Pabst}\u00b1{obs.R_err_Pabst} pc', zorder=10,
-                  markeredgecolor='k')
-    ax_r.axhspan(obs.R_obs_Pabst - obs.R_err_Pabst,
-                 obs.R_obs_Pabst + obs.R_err_Pabst,
-                 alpha=0.15, color='green', zorder=1)
+    ax_r.axvspan(t_lo, t_hi, alpha=0.1, color='gray', zorder=0,
+                 label=f'Age estimate ({t_lo:.0f}\u2013{t_hi:.0f} Myr)')
 
-    # Dust shell extent band (orange)
-    ax_r.axhspan(_DUST_SHELL_MIN, _DUST_SHELL_MAX, alpha=0.12, color='orange',
-                 zorder=1,
-                 label=f'Dust shell ({_DUST_SHELL_MIN:.0f}\u2013{_DUST_SHELL_MAX:.0f} pc)')
+    from matplotlib.patches import Rectangle
+    ax_r.add_patch(Rectangle(
+        (t_lo, obs.R_obs - obs.R_err), t_hi - t_lo, 2 * obs.R_err,
+        facecolor='blue', alpha=0.20, edgecolor='blue', lw=1.5, zorder=5,
+        label=f'HII outer: {obs.R_obs}\u00b1{obs.R_err} pc'))
 
-    ax_r.axvspan(obs.t_obs - obs.t_err, obs.t_obs + obs.t_err,
-                 alpha=0.1, color='gray', zorder=0)
+    ax_r.add_patch(Rectangle(
+        (t_lo, obs.R_obs_Pabst - obs.R_err_Pabst), t_hi - t_lo, 2 * obs.R_err_Pabst,
+        facecolor='green', alpha=0.20, edgecolor='green', lw=1.5, zorder=5,
+        label=f'Cavity: {obs.R_obs_Pabst}\u00b1{obs.R_err_Pabst} pc'))
+
+    ax_r.add_patch(Rectangle(
+        (t_lo, _DUST_SHELL_MIN), t_hi - t_lo, _DUST_SHELL_MAX - _DUST_SHELL_MIN,
+        facecolor='orange', alpha=0.15, edgecolor='orange', lw=1.5, zorder=5,
+        label=f'Dust shell ({_DUST_SHELL_MIN:.0f}\u2013{_DUST_SHELL_MAX:.0f} pc)'))
 
     ax_r.set_xlabel('Time [Myr]', fontsize=FONTSIZE)
     ax_r.set_ylabel('Shell Radius [pc]', fontsize=FONTSIZE, rotation=90)
@@ -305,7 +299,6 @@ def plot_trajectory_evolution_combined(results: List[SimulationResult],
     ax_r.tick_params(axis='y', labelrotation=90)
     ax_r.legend(loc='upper left', fontsize=FONTSIZE).set_zorder(100)
     ax_r.set_xlim(0, _T_MAX)
-    ax_r.set_ylim(0, _R_MAX)
     ax_r.grid(True, alpha=0.3)
 
     plt.tight_layout(h_pad=1.0)
@@ -377,7 +370,7 @@ Examples:
   python paper_Rosette.py --folder sweep_rosette/ --combine-nCore
 
 Default Observational Constraints (Rosette Nebula):
-  Age (cluster)      : 2.0 +/- 0.5 Myr     (Muzic et al. 2022)
+  Age (cluster)      : 2-6 Myr              (Muzic+22; Roman-Zuniga+19)
   Expansion velocity : 25 +/- 5 km/s        (Dent et al. 2009)
   HII outer radius   : 19 +/- 2 pc          (Planck XXXIV)
   Cavity inner radius: 7 +/- 1 pc           (Planck XXXIV / Alves+16)
@@ -415,10 +408,10 @@ Default Observational Constraints (Rosette Nebula):
                         help='Expansion velocity [km/s] (default: 25)')
     parser.add_argument('--v-err', type=float, default=5.0,
                         help='Velocity uncertainty [km/s] (default: 5)')
-    parser.add_argument('--t-obs', type=float, default=2.0,
-                        help='Cluster age [Myr] (default: 2.0)')
-    parser.add_argument('--t-err', type=float, default=0.5,
-                        help='Age uncertainty [Myr] (default: 0.5)')
+    parser.add_argument('--t-obs', type=float, default=4.0,
+                        help='Cluster age midpoint [Myr] (default: 4.0)')
+    parser.add_argument('--t-err', type=float, default=2.0,
+                        help='Cluster age half-range [Myr] (default: 2.0, i.e. 2–6 Myr)')
     parser.add_argument('--R-obs', type=float, default=19.0,
                         help='HII outer radius [pc] (default: 19)')
     parser.add_argument('--R-err', type=float, default=2.0,
