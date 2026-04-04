@@ -101,10 +101,7 @@ def rosette_config(**overrides) -> AnalysisConfig:
 # =============================================================================
 
 # Rosette is much larger and older than Orion ⇒ wider axes
-_T_MAX = 8.0     # Myr
-_R_MAX = 30.0    # pc
-_M_MIN = 10
-_M_MAX = 1e6
+_T_MAX = 7.0     # Myr
 
 # Dust shell extent (Planck XXXIV, 353 GHz) — not part of chi²,
 # shown as a visual band on the radius panel.
@@ -164,7 +161,6 @@ def plot_trajectory_evolution(results: List[SimulationResult],
     ax_m.tick_params(axis='y', labelrotation=90)
     ax_m.legend(loc='upper right', fontsize=FONTSIZE).set_zorder(100)
     ax_m.set_yscale('log')
-    ax_m.set_ylim(_M_MIN, _M_MAX)
     ax_m.grid(True, alpha=0.3, which='both')
     ax_m.tick_params(axis='x', pad=10)
     ax_m.tick_params(axis='y', pad=10)
@@ -202,7 +198,6 @@ def plot_trajectory_evolution(results: List[SimulationResult],
     ax_r.tick_params(axis='y', labelrotation=90)
     ax_r.legend(loc='lower right', fontsize=FONTSIZE).set_zorder(100)
     ax_r.set_xlim(0, _T_MAX)
-    ax_r.set_ylim(0, _R_MAX)
     ax_r.grid(True, alpha=0.3)
     ax_r.tick_params(axis='x', pad=10)
     ax_r.tick_params(axis='y', pad=10)
@@ -273,7 +268,6 @@ def plot_trajectory_evolution_combined(results: List[SimulationResult],
     ax_m.tick_params(axis='y', labelrotation=90)
     ax_m.legend(loc='upper left', fontsize=FONTSIZE).set_zorder(100)
     ax_m.set_yscale('log')
-    ax_m.set_ylim(_M_MIN, _M_MAX)
     ax_m.grid(True, alpha=0.3, which='both')
 
     # --- Radius panel ---
@@ -305,7 +299,6 @@ def plot_trajectory_evolution_combined(results: List[SimulationResult],
     ax_r.tick_params(axis='y', labelrotation=90)
     ax_r.legend(loc='upper left', fontsize=FONTSIZE).set_zorder(100)
     ax_r.set_xlim(0, _T_MAX)
-    ax_r.set_ylim(0, _R_MAX)
     ax_r.grid(True, alpha=0.3)
 
     plt.tight_layout(h_pad=1.0)
