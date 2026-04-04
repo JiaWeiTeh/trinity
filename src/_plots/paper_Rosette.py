@@ -170,30 +170,31 @@ def plot_trajectory_evolution(results: List[SimulationResult],
     ax_m.tick_params(axis='y', pad=10)
 
     # --- Radius panel ---
-    # HII outer radius (blue)
-    ax_r.errorbar(obs.t_obs, obs.R_obs, xerr=obs.t_err, yerr=obs.R_err,
-                  fmt='s', color='blue', markersize=14, capsize=5, capthick=2,
-                  label=f'HII outer: {obs.R_obs}\u00b1{obs.R_err} pc', zorder=10,
-                  markeredgecolor='k')
-    ax_r.axhspan(obs.R_obs - obs.R_err, obs.R_obs + obs.R_err,
-                 alpha=0.15, color='blue', zorder=1)
+    t_lo = obs.t_obs - obs.t_err
+    t_hi = obs.t_obs + obs.t_err
 
-    # Cavity inner radius (green)
-    ax_r.errorbar(obs.t_obs, obs.R_obs_Pabst, xerr=obs.t_err, yerr=obs.R_err_Pabst,
-                  fmt='s', color='green', markersize=14, capsize=5, capthick=2,
-                  label=f'Cavity: {obs.R_obs_Pabst}\u00b1{obs.R_err_Pabst} pc', zorder=10,
-                  markeredgecolor='k')
-    ax_r.axhspan(obs.R_obs_Pabst - obs.R_err_Pabst,
-                 obs.R_obs_Pabst + obs.R_err_Pabst,
-                 alpha=0.15, color='green', zorder=1)
+    # Age band (grey, spans both panels)
+    ax_r.axvspan(t_lo, t_hi, alpha=0.1, color='gray', zorder=0,
+                 label=f'Age estimate ({t_lo:.0f}\u2013{t_hi:.0f} Myr)')
 
-    # Dust shell extent band (orange)
-    ax_r.axhspan(_DUST_SHELL_MIN, _DUST_SHELL_MAX, alpha=0.12, color='orange',
-                 zorder=1,
-                 label=f'Dust shell ({_DUST_SHELL_MIN:.0f}\u2013{_DUST_SHELL_MAX:.0f} pc)')
+    # HII outer radius (blue box: age range × radius range)
+    from matplotlib.patches import Rectangle
+    ax_r.add_patch(Rectangle(
+        (t_lo, obs.R_obs - obs.R_err), t_hi - t_lo, 2 * obs.R_err,
+        facecolor='blue', alpha=0.20, edgecolor='blue', lw=1.5, zorder=5,
+        label=f'HII outer: {obs.R_obs}\u00b1{obs.R_err} pc'))
 
-    ax_r.axvspan(obs.t_obs - obs.t_err, obs.t_obs + obs.t_err,
-                 alpha=0.1, color='gray', zorder=0)
+    # Cavity inner radius (green box)
+    ax_r.add_patch(Rectangle(
+        (t_lo, obs.R_obs_Pabst - obs.R_err_Pabst), t_hi - t_lo, 2 * obs.R_err_Pabst,
+        facecolor='green', alpha=0.20, edgecolor='green', lw=1.5, zorder=5,
+        label=f'Cavity: {obs.R_obs_Pabst}\u00b1{obs.R_err_Pabst} pc'))
+
+    # Dust shell extent band (orange box within age range)
+    ax_r.add_patch(Rectangle(
+        (t_lo, _DUST_SHELL_MIN), t_hi - t_lo, _DUST_SHELL_MAX - _DUST_SHELL_MIN,
+        facecolor='orange', alpha=0.15, edgecolor='orange', lw=1.5, zorder=5,
+        label=f'Dust shell ({_DUST_SHELL_MIN:.0f}\u2013{_DUST_SHELL_MAX:.0f} pc)'))
 
     ax_r.set_xlabel('Time [Myr]', fontsize=FONTSIZE)
     ax_r.set_ylabel('Shell Radius [pc]', fontsize=FONTSIZE, rotation=90)
@@ -276,28 +277,27 @@ def plot_trajectory_evolution_combined(results: List[SimulationResult],
     ax_m.grid(True, alpha=0.3, which='both')
 
     # --- Radius panel ---
-    ax_r.errorbar(obs.t_obs, obs.R_obs, xerr=obs.t_err, yerr=obs.R_err,
-                  fmt='s', color='blue', markersize=12, capsize=5, capthick=2,
-                  label=f'HII outer: {obs.R_obs}\u00b1{obs.R_err} pc', zorder=10,
-                  markeredgecolor='k')
-    ax_r.axhspan(obs.R_obs - obs.R_err, obs.R_obs + obs.R_err,
-                 alpha=0.15, color='blue', zorder=1)
+    t_lo = obs.t_obs - obs.t_err
+    t_hi = obs.t_obs + obs.t_err
 
-    ax_r.errorbar(obs.t_obs, obs.R_obs_Pabst, xerr=obs.t_err, yerr=obs.R_err_Pabst,
-                  fmt='s', color='green', markersize=12, capsize=5, capthick=2,
-                  label=f'Cavity: {obs.R_obs_Pabst}\u00b1{obs.R_err_Pabst} pc', zorder=10,
-                  markeredgecolor='k')
-    ax_r.axhspan(obs.R_obs_Pabst - obs.R_err_Pabst,
-                 obs.R_obs_Pabst + obs.R_err_Pabst,
-                 alpha=0.15, color='green', zorder=1)
+    ax_r.axvspan(t_lo, t_hi, alpha=0.1, color='gray', zorder=0,
+                 label=f'Age estimate ({t_lo:.0f}\u2013{t_hi:.0f} Myr)')
 
-    # Dust shell extent band (orange)
-    ax_r.axhspan(_DUST_SHELL_MIN, _DUST_SHELL_MAX, alpha=0.12, color='orange',
-                 zorder=1,
-                 label=f'Dust shell ({_DUST_SHELL_MIN:.0f}\u2013{_DUST_SHELL_MAX:.0f} pc)')
+    from matplotlib.patches import Rectangle
+    ax_r.add_patch(Rectangle(
+        (t_lo, obs.R_obs - obs.R_err), t_hi - t_lo, 2 * obs.R_err,
+        facecolor='blue', alpha=0.20, edgecolor='blue', lw=1.5, zorder=5,
+        label=f'HII outer: {obs.R_obs}\u00b1{obs.R_err} pc'))
 
-    ax_r.axvspan(obs.t_obs - obs.t_err, obs.t_obs + obs.t_err,
-                 alpha=0.1, color='gray', zorder=0)
+    ax_r.add_patch(Rectangle(
+        (t_lo, obs.R_obs_Pabst - obs.R_err_Pabst), t_hi - t_lo, 2 * obs.R_err_Pabst,
+        facecolor='green', alpha=0.20, edgecolor='green', lw=1.5, zorder=5,
+        label=f'Cavity: {obs.R_obs_Pabst}\u00b1{obs.R_err_Pabst} pc'))
+
+    ax_r.add_patch(Rectangle(
+        (t_lo, _DUST_SHELL_MIN), t_hi - t_lo, _DUST_SHELL_MAX - _DUST_SHELL_MIN,
+        facecolor='orange', alpha=0.15, edgecolor='orange', lw=1.5, zorder=5,
+        label=f'Dust shell ({_DUST_SHELL_MIN:.0f}\u2013{_DUST_SHELL_MAX:.0f} pc)'))
 
     ax_r.set_xlabel('Time [Myr]', fontsize=FONTSIZE)
     ax_r.set_ylabel('Shell Radius [pc]', fontsize=FONTSIZE, rotation=90)
