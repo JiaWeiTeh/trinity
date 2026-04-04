@@ -312,6 +312,60 @@ def add_rcloud_marker(ax, t, R2, rcloud, dataset_label=None, dataset_color=None,
     return t_cross
 
 
+def add_rcloud_horizontal_marker(ax, rcloud, dataset_label=None, dataset_color=None,
+                                 show_label=True, label_pad_points=4):
+    """
+    Add a horizontal line at y = rCloud for plots where the y-axis is radius.
+
+    Parameters
+    ----------
+    ax : matplotlib.axes.Axes
+        Axes to add marker to
+    rcloud : float
+        Cloud radius value (in same units as y-axis)
+    dataset_label : str, optional
+        Label for this dataset
+    dataset_color : str, optional
+        Color to use for marker
+    show_label : bool
+        Whether to show text label
+    label_pad_points : int
+        Padding in points for text label
+
+    Returns
+    -------
+    float or None
+        rcloud value drawn, or None if invalid
+    """
+    if not np.isfinite(rcloud):
+        return None
+
+    style = MARKER_STYLES['rcloud'].copy()
+    if dataset_color is not None:
+        style['color'] = dataset_color
+
+    ax.axhline(rcloud, color=style['color'], ls=style['ls'],
+               lw=style['lw'], alpha=style['alpha'], zorder=0)
+
+    if show_label:
+        fig = ax.figure
+        text_trans = ax.get_yaxis_transform() + mtransforms.ScaledTranslation(
+            0, label_pad_points / 72, fig.dpi_scale_trans
+        )
+        label_text = r'$R_{\rm cloud}$'
+        if dataset_label:
+            label_text = f"{label_text} ({dataset_label})"
+        ax.text(
+            0.01, rcloud, label_text,
+            transform=text_trans,
+            ha="left", va="bottom",
+            fontsize=8, color=style['color'], alpha=0.8,
+            zorder=5
+        )
+
+    return rcloud
+
+
 def add_collapse_marker(ax, t, isCollapse, dataset_label=None, dataset_color=None,
                         label_pad_points=4, show_label=True):
     """
@@ -373,6 +427,7 @@ def add_collapse_marker(ax, t, isCollapse, dataset_label=None, dataset_color=Non
 def add_plot_markers(ax, t, phase=None, R2=None, rcloud=None, isCollapse=None,
                      dataset_label=None, dataset_color=None,
                      show_phase=True, show_rcloud=True, show_collapse=True,
+                     show_rcloud_horizontal=False,
                      show_labels=True, show_momentum_labels=None,
                      label_pad_points=4):
     """
@@ -459,6 +514,16 @@ def add_plot_markers(ax, t, phase=None, R2=None, rcloud=None, isCollapse=None,
             show_label=show_labels
         )
 
+    # Horizontal rCloud line (for plots with radius on y-axis)
+    if show_rcloud_horizontal and rcloud is not None:
+        result['rcloud_horizontal'] = add_rcloud_horizontal_marker(
+            ax, rcloud,
+            dataset_label=dataset_label,
+            dataset_color=dataset_color,
+            show_label=show_labels,
+            label_pad_points=label_pad_points,
+        )
+
     # Collapse
     if show_collapse and isCollapse is not None:
         result['t_collapse'] = add_collapse_marker(
@@ -473,7 +538,8 @@ def add_plot_markers(ax, t, phase=None, R2=None, rcloud=None, isCollapse=None,
 
 
 def get_marker_legend_handles(include_phase=True, include_rcloud=True,
-                               include_collapse=True):
+                               include_collapse=True,
+                               include_rcloud_horizontal=False):
     """
     Get legend handles for plot markers.
 
@@ -512,6 +578,17 @@ def get_marker_legend_handles(include_phase=True, include_rcloud=True,
             lw=style['lw'],
             alpha=style['alpha'],
             label=r"$R_2 > R_{\rm cloud}$"
+        ))
+
+    if include_rcloud_horizontal:
+        style = MARKER_STYLES['rcloud']
+        handles.append(Line2D(
+            [0], [0],
+            color=style['color'],
+            ls=style['ls'],
+            lw=style['lw'],
+            alpha=style['alpha'],
+            label=r"$R_{\rm cloud}$"
         ))
 
     if include_collapse:

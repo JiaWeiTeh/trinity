@@ -51,6 +51,7 @@ from src._plots.plot_markers import add_plot_markers, get_marker_legend_handles
 # =============================================================================
 SHOW_PHASE = False
 SHOW_RCLOUD = False
+SHOW_RCLOUD_H = False
 SHOW_COLLAPSE = False
 
 # Configure logging
@@ -455,8 +456,6 @@ def plot_shell_evolution(simulations: dict, output_dir: Path, fmt: str = 'pdf',
     """
     logger.info("Figure 2: Shell Evolution")
 
-    T_MAX_EVOLUTION = 5.0  # Myr — only show the first 5 Myr
-
     fig, axes = plt.subplots(1, 3, figsize=(12, 3.5))
 
     for tag in PROFILE_ORDER:
@@ -465,30 +464,21 @@ def plot_shell_evolution(simulations: dict, output_dir: Path, fmt: str = 'pdf',
         output = simulations[tag]
         s = get_style(tag)
 
-        t_full = output.get('t_now')
-        R2_full = safe_get(output, 'R2')
-        v2_full = safe_get(output, 'v2') * V_AU2KMS  # convert pc/Myr -> km/s
-        mshell_full = safe_get(output, 'shell_mass')
-
-        # Trim to first 5 Myr
-        mask = t_full <= T_MAX_EVOLUTION
-        t = t_full[mask]
-        R2 = R2_full[mask]
-        v2 = v2_full[mask]
-        mshell = mshell_full[mask]
+        t = output.get('t_now')
+        R2 = safe_get(output, 'R2')
+        v2 = safe_get(output, 'v2') * V_AU2KMS  # convert pc/Myr -> km/s
+        mshell = safe_get(output, 'shell_mass')
 
         # Phase array (for transition markers)
         phase_raw = output.get('current_phase', as_array=False)
         phase = None
         if phase_raw is not None:
-            phase_full = np.asarray([str(p) for p in phase_raw])
-            phase = phase_full[mask]
+            phase = np.asarray([str(p) for p in phase_raw])
         # Collapse flag
         isCollapse_raw = output.get('isCollapse', as_array=False)
         isCollapse = None
         if isCollapse_raw is not None:
-            isCollapse_full = np.array([bool(c) for c in isCollapse_raw])
-            isCollapse = isCollapse_full[mask]
+            isCollapse = np.array([bool(c) for c in isCollapse_raw])
 
         # Cloud radius (constant per run)
         rCloud = safe_get(output, 'rCloud')
@@ -505,13 +495,14 @@ def plot_shell_evolution(simulations: dict, output_dir: Path, fmt: str = 'pdf',
                 dataset_color=s['color'],
                 show_phase=SHOW_PHASE,
                 show_rcloud=SHOW_RCLOUD and (ax is axes[0]),
+                show_rcloud_horizontal=SHOW_RCLOUD_H and (ax is axes[0]),
                 show_collapse=SHOW_COLLAPSE,
                 show_labels=True,
             )
 
         # Panel (a): R(t) with horizontal rCloud line
         axes[0].plot(t, R2, color=s['color'], ls=s['ls'], lw=1.5)
-        if rCloud_val is not None:
+        if rCloud_val is not None and SHOW_RCLOUD_H:
             axes[0].axhline(rCloud_val, color=s['color'], ls='--',
                             lw=0.8, alpha=0.5)
 
@@ -521,9 +512,7 @@ def plot_shell_evolution(simulations: dict, output_dir: Path, fmt: str = 'pdf',
         # Panel (c): M_shell(t)
         axes[2].plot(t, mshell, color=s['color'], ls=s['ls'], lw=1.5)
 
-    # Set x-axis limit to 5 Myr on all panels
-    for ax in axes:
-        ax.set_xlim(0, T_MAX_EVOLUTION)
+    # Let x-axis auto-scale to data range
 
     axes[0].set_xlabel(r'$t$ [Myr]')
     axes[0].set_ylabel(r'$R$ [pc]')
@@ -540,7 +529,7 @@ def plot_shell_evolution(simulations: dict, output_dir: Path, fmt: str = 'pdf',
 
     # Legend: profile colours + marker entries
     marker_handles = get_marker_legend_handles(
-        include_phase=False, include_rcloud=SHOW_RCLOUD, include_collapse=False
+        include_phase=False, include_rcloud=SHOW_RCLOUD, include_rcloud_horizontal=SHOW_RCLOUD_H, include_collapse=False
     )
     add_legend(axes[1], [t for t in PROFILE_ORDER if t in simulations],
                extra_handles=marker_handles, loc='best', fontsize=9)
@@ -1490,6 +1479,9 @@ Examples:
         '--show-rcloud', action='store_true', default=False,
         help='Show R2 > R_cloud breakout marker')
     marker_group.add_argument(
+        '--show-rcloud-horizontal', action='store_true', default=False,
+        help='Show horizontal R_cloud line on radius panels')
+    marker_group.add_argument(
         '--show-collapse', action='store_true', default=False,
         help='Show collapse onset marker')
     marker_group.add_argument(
@@ -1499,10 +1491,11 @@ Examples:
     args = parser.parse_args()
 
     # Wire CLI marker flags to module-level globals
-    global SHOW_PHASE, SHOW_RCLOUD, SHOW_COLLAPSE
+    global SHOW_PHASE, SHOW_RCLOUD, SHOW_RCLOUD_H, SHOW_COLLAPSE
     _all = args.show_all_markers
     SHOW_PHASE = _all or args.show_phase
     SHOW_RCLOUD = _all or args.show_rcloud
+    SHOW_RCLOUD_H = _all or args.show_rcloud_horizontal
     SHOW_COLLAPSE = _all or args.show_collapse
 
     # Determine output directory

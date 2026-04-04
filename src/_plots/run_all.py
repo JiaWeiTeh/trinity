@@ -268,6 +268,8 @@ def build_parser() -> argparse.ArgumentParser:
                          help="Show phase-transition markers (T / M).")
     markers.add_argument("--show-rcloud", action="store_true", default=False,
                          help="Show R2 > R_cloud breakout marker.")
+    markers.add_argument("--show-rcloud-horizontal", action="store_true", default=False,
+                         help="Show horizontal R_cloud line (radius y-axis plots).")
     markers.add_argument("--show-collapse", action="store_true", default=False,
                          help="Show collapse onset marker.")
     markers.add_argument("--show-all-markers", action="store_true", default=False,
@@ -314,6 +316,8 @@ def main(argv: Optional[List[str]] = None) -> int:
             extra.append("--show-phase")
         if args.show_rcloud:
             extra.append("--show-rcloud")
+        if args.show_rcloud_horizontal:
+            extra.append("--show-rcloud-horizontal")
         if args.show_collapse:
             extra.append("--show-collapse")
 
