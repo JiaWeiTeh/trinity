@@ -12,7 +12,7 @@ Observational references
 ------------------------
 Cluster mass       : 1000 ± 70 M☉          (Mužić et al. 2022)
 Stellar population : ~2000 stars            (Wang et al. 2008, Chandra XLF)
-Cluster age        : ~2 Myr                 (Mužić et al. 2022)
+Cluster age        : 2–6 Myr                (Mužić et al. 2022; Román-Zúñiga et al. 2019)
 Distance           : 1489 ± 37 pc           (Mužić et al. 2022, Gaia EDR3)
 Cavity inner radius: ~7 pc                  (Planck XXXIV, Alves et al. 2016)
 HII outer radius   : ~19 pc                 (Planck XXXIV, radio emission)
@@ -64,9 +64,9 @@ def rosette_constraints() -> ObservationalConstraints:
         M_shell_CII_err=0.0,
         M_shell_combined=0.0,
         M_shell_combined_err=0.0,
-        # Cluster age: ~2 Myr  (Mužić et al. 2022)
-        t_obs=2.0,
-        t_err=0.5,
+        # Cluster age: 2–6 Myr  (Mužić et al. 2022; Román-Zúñiga et al. 2019)
+        t_obs=4.0,
+        t_err=2.0,
         # HII outer radius: ~19 pc  (Planck XXXIV, radio)
         R_obs=19.0,
         R_err=2.0,
@@ -101,7 +101,7 @@ def rosette_config(**overrides) -> AnalysisConfig:
 # =============================================================================
 
 # Rosette is much larger and older than Orion ⇒ wider axes
-_T_MAX = 3.0     # Myr
+_T_MAX = 8.0     # Myr
 _R_MAX = 30.0    # pc
 _M_MIN = 10
 _M_MAX = 1e6
@@ -377,7 +377,7 @@ Examples:
   python paper_Rosette.py --folder sweep_rosette/ --combine-nCore
 
 Default Observational Constraints (Rosette Nebula):
-  Age (cluster)      : 2.0 +/- 0.5 Myr     (Muzic et al. 2022)
+  Age (cluster)      : 2-6 Myr              (Muzic+22; Roman-Zuniga+19)
   Expansion velocity : 25 +/- 5 km/s        (Dent et al. 2009)
   HII outer radius   : 19 +/- 2 pc          (Planck XXXIV)
   Cavity inner radius: 7 +/- 1 pc           (Planck XXXIV / Alves+16)
@@ -415,10 +415,10 @@ Default Observational Constraints (Rosette Nebula):
                         help='Expansion velocity [km/s] (default: 25)')
     parser.add_argument('--v-err', type=float, default=5.0,
                         help='Velocity uncertainty [km/s] (default: 5)')
-    parser.add_argument('--t-obs', type=float, default=2.0,
-                        help='Cluster age [Myr] (default: 2.0)')
-    parser.add_argument('--t-err', type=float, default=0.5,
-                        help='Age uncertainty [Myr] (default: 0.5)')
+    parser.add_argument('--t-obs', type=float, default=4.0,
+                        help='Cluster age midpoint [Myr] (default: 4.0)')
+    parser.add_argument('--t-err', type=float, default=2.0,
+                        help='Cluster age half-range [Myr] (default: 2.0, i.e. 2–6 Myr)')
     parser.add_argument('--R-obs', type=float, default=19.0,
                         help='HII outer radius [pc] (default: 19)')
     parser.add_argument('--R-err', type=float, default=2.0,
