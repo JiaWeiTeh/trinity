@@ -2,30 +2,12 @@
 # Sweep Parameter File: Rosette Nebula — without P_HII
 # ==============================================================================
 #
-# Same combinations as rosette_sweep.param but with include_PHII = False.
-# Comparison between with/without P_HII tests the Harper-Clark & Murray (2009)
-# claim that HII pressure controls the Rosette's dynamics.
-#
-# Usage:
-#   python run_sweep.py param/rosette_sweep_noPHII.param --dry-run
-#   python run_sweep.py param/rosette_sweep_noPHII.param --workers 4
+# Uses tuple_mode to run specific (mCloud, sfe, nCore, densPL_alpha, rCore)
+# combinations that bracket NGC 2244's cluster mass (1000-2000 Msun).
 #
 
-# =============================================================================
-# Sweep parameters (tuple mode) — specific physically-motivated combinations
-# =============================================================================
-#
-# Columns: mCloud, sfe, nCore, densPL_alpha, rCore
-#
-#   [5e4,  0.02,  30,   0, 0.1]  M_cl=1000, R_cl~22pc, uniform    (lower bound)
-#   [1e5,  0.015, 30,   0, 0.1]  M_cl=1500, R_cl~28pc, uniform    (★ recommended)
-#   [1e5,  0.02,  30,   0, 0.1]  M_cl=2000, R_cl~28pc, uniform    (upper end)
-#   [2e5,  0.01,  100, -1, 5]    M_cl=2000, R_cl~24pc, PL alpha=-1 (★ higher-density)
-#   [1e5,  0.01,  100,  0, 0.1]  M_cl=1000, R_cl~19pc, uniform    (R_cloud marginal)
-#   [1e5,  0.015, 100, -1, 5]    M_cl=1500, R_cl~19pc, PL alpha=-1 (compact variant)
-#
-tuple(mCloud, sfe, nCore, densPL_alpha, rCore)    [5e4, 0.02, 30, 0, 0.1] [1e5, 0.015, 30, 0, 0.1] [1e5, 0.02, 30, 0, 0.1] [2e5, 0.01, 100, -1, 5] [1e5, 0.01, 100, 0, 0.1] [1e5, 0.015, 100, -1, 5]
-
+tuple(mCloud, sfe) [1e5, 0.01] [5e4, 0.02] [1e4, 0.1]  
+nCore [20, 50, 1e2, 5e2 1e3]
 
 # =============================================================================
 # Fixed parameters (constant across all runs)
@@ -42,7 +24,7 @@ ZCloud    1
 allowShellDissolution    True
 stop_t_diss    1
 stop_r    None
-stop_t    5
+stop_t    8
 
 # Collapse
 coll_r    1
