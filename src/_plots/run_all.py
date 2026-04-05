@@ -262,6 +262,19 @@ def build_parser() -> argparse.ArgumentParser:
                         default=None,
                         help="Colour palette for force plots (default: vibrance).")
 
+    markers = parser.add_argument_group(
+        "markers (forwarded to sub-scripts)")
+    markers.add_argument("--show-phase", action="store_true", default=False,
+                         help="Show phase-transition markers (T / M).")
+    markers.add_argument("--show-rcloud", action="store_true", default=False,
+                         help="Show R2 > R_cloud breakout marker.")
+    markers.add_argument("--show-rcloud-horizontal", action="store_true", default=False,
+                         help="Show horizontal R_cloud line (radius y-axis plots).")
+    markers.add_argument("--show-collapse", action="store_true", default=False,
+                         help="Show collapse onset marker.")
+    markers.add_argument("--show-all-markers", action="store_true", default=False,
+                         help="Enable all diagnostic markers at once.")
+
     return parser
 
 
@@ -296,6 +309,17 @@ def main(argv: Optional[List[str]] = None) -> int:
         extra.extend(args.sfe)
     if args.palette is not None:
         extra.extend(["--palette", args.palette])
+    if args.show_all_markers:
+        extra.append("--show-all-markers")
+    else:
+        if args.show_phase:
+            extra.append("--show-phase")
+        if args.show_rcloud:
+            extra.append("--show-rcloud")
+        if args.show_rcloud_horizontal:
+            extra.append("--show-rcloud-horizontal")
+        if args.show_collapse:
+            extra.append("--show-collapse")
 
     n_fail = run_scripts(
         folder=args.folder,

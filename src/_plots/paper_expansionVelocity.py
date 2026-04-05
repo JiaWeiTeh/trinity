@@ -18,7 +18,7 @@ from src._plots.plot_base import FIG_DIR, smooth_1d
 
 # Add project root to path for imports
 from src._output.trinity_reader import load_output, resolve_data_input
-from src._plots.plot_markers import add_plot_markers, get_marker_legend_handles
+from src._plots.plot_markers import add_plot_markers, get_marker_legend_handles, add_rcloud_horizontal_marker
 from src._plots.grid_template import _compute_legend_layout
 
 print("...plotting velocity (v2) + radii (twin axis) grid")
@@ -26,6 +26,7 @@ print("...plotting velocity (v2) + radii (twin axis) grid")
 # ---------------- configuration ----------------
 SHOW_PHASE = False
 SHOW_RCLOUD = False
+SHOW_RCLOUD_H = False
 SHOW_COLLAPSE = False
 SMOOTH_WINDOW = None        # e.g. 7 or 21; None/1 disables
 SMOOTH_MODE = "edge"
@@ -194,6 +195,10 @@ def plot_velocity_on_ax(
     axr.plot(t, rTbs,  color=RADIUS_FIELDS[3][2], ls=RADIUS_FIELDS[3][3], lw=RADIUS_FIELDS[3][4], label=RADIUS_FIELDS[3][1])
     axr.set_ylabel("Radius [pc]")
 
+    # horizontal rCloud marker on the radius axis
+    if SHOW_RCLOUD_H and rcloud is not None and np.isfinite(rcloud):
+        add_rcloud_horizontal_marker(axr, rcloud)
+
     # ensure twin axis is visible (avoid patch covering)
     ax.patch.set_visible(False)
     ax.set_zorder(2)
@@ -253,7 +258,7 @@ def plot_from_path(data_input: str, output_dir: str = None):
         Line2D([0], [0], color=RADIUS_FIELDS[2][2], lw=RADIUS_FIELDS[2][4], ls=RADIUS_FIELDS[2][3], label=RADIUS_FIELDS[2][1]),
         Line2D([0], [0], color=RADIUS_FIELDS[3][2], lw=RADIUS_FIELDS[3][4], ls=RADIUS_FIELDS[3][3], label=RADIUS_FIELDS[3][1]),
     ]
-    handles.extend(get_marker_legend_handles(include_phase=SHOW_PHASE, include_rcloud=SHOW_RCLOUD, include_collapse=SHOW_COLLAPSE))
+    handles.extend(get_marker_legend_handles(include_phase=SHOW_PHASE, include_rcloud=SHOW_RCLOUD, include_rcloud_horizontal=SHOW_RCLOUD_H, include_collapse=SHOW_COLLAPSE))
     ax.legend(handles=handles, loc="upper left", framealpha=0.9)
 
     plt.tight_layout()
@@ -394,7 +399,7 @@ def plot_grid(folder_path, output_dir=None, ndens_filter=None,
             Line2D([0], [0], color=RADIUS_FIELDS[2][2], lw=RADIUS_FIELDS[2][4], ls=RADIUS_FIELDS[2][3], label=RADIUS_FIELDS[2][1]),
             Line2D([0], [0], color=RADIUS_FIELDS[3][2], lw=RADIUS_FIELDS[3][4], ls=RADIUS_FIELDS[3][3], label=RADIUS_FIELDS[3][1]),
         ]
-        handles.extend(get_marker_legend_handles(include_phase=SHOW_PHASE, include_rcloud=SHOW_RCLOUD, include_collapse=SHOW_COLLAPSE))
+        handles.extend(get_marker_legend_handles(include_phase=SHOW_PHASE, include_rcloud=SHOW_RCLOUD, include_rcloud_horizontal=SHOW_RCLOUD_H, include_collapse=SHOW_COLLAPSE))
 
         _layout = _compute_legend_layout(2.6 * nrows, n_legend_items=len(handles), legend_ncol=3)
         fig.subplots_adjust(top=_layout['top'])

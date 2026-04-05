@@ -32,7 +32,7 @@ from src._output.trinity_reader import (
     parse_simulation_params,
 )
 from src._plots.plot_markers import add_plot_markers, get_marker_legend_handles
-from src._plots.grid_template import _mcloud_label, _sfe_title, _compute_legend_layout
+from src._plots.grid_template import _mcloud_label, _compute_legend_layout
 from src._functions.unit_conversions import CONV, INV_CONV, CGS
 
 print("...plotting radius comparison (TRINITY vs WARPFIELD vs Weaver)")
@@ -44,6 +44,7 @@ SMOOTH_WINDOW = None       # e.g. 7; None/1 disables
 SMOOTH_MODE = "edge"
 SHOW_PHASE = False
 SHOW_RCLOUD = False
+SHOW_RCLOUD_H = False
 SHOW_COLLAPSE = False
 WEAVER_ANCHOR_MYR = 0.01  # anchor Weaver line to TRINITY R2 at this time
 
@@ -237,6 +238,7 @@ def plot_cell(ax, data_trinity, data_warpfield):
         isCollapse=data_trinity['isCollapse'],
         show_phase=SHOW_PHASE,
         show_rcloud=SHOW_RCLOUD,
+        show_rcloud_horizontal=SHOW_RCLOUD_H,
         show_collapse=SHOW_COLLAPSE,
     )
 
@@ -382,8 +384,6 @@ def plot_comparison_grid(
                     ax.set_axis_off()
                     continue
 
-                if i == 0:
-                    ax.set_title(_sfe_title(sfe))
                 if j == 0:
                     ax.set_ylabel(_mcloud_label(mCloud) + "\nRadius [pc]")
                 else:
@@ -402,7 +402,7 @@ def plot_comparison_grid(
             Line2D([0], [0], color=COLOR_MOMENTUM, lw=1.5, ls=':',
                    label=r"$R \propto t^{1/2}$ (momentum scaling)"),
         ]
-        handles.extend(get_marker_legend_handles(include_phase=SHOW_PHASE, include_rcloud=SHOW_RCLOUD, include_collapse=SHOW_COLLAPSE))
+        handles.extend(get_marker_legend_handles(include_phase=SHOW_PHASE, include_rcloud=SHOW_RCLOUD, include_rcloud_horizontal=SHOW_RCLOUD_H, include_collapse=SHOW_COLLAPSE))
 
         _layout = _compute_legend_layout(2.8 * nrows, n_legend_items=len(handles), legend_ncol=4)
         fig.subplots_adjust(top=_layout['top'])
@@ -414,11 +414,6 @@ def plot_comparison_grid(
             bbox_to_anchor=(0.5, _layout['legend_y']),
         )
         leg.set_zorder(10)
-
-        fig.suptitle(
-            f"Radius comparison: TRINITY vs WARPFIELD (n{ndens})",
-            fontsize=13, y=_layout['suptitle_y'],
-        )
 
         # Save
         fig_dir = Path(output_dir) if output_dir else FIG_DIR
@@ -461,6 +456,7 @@ Examples:
     parser.add_argument('--sfe', nargs='+', default=None)
     parser.add_argument('--show-phase', action='store_true', default=False)
     parser.add_argument('--show-rcloud', action='store_true', default=False)
+    parser.add_argument('--show-rcloud-horizontal', action='store_true', default=False)
     parser.add_argument('--show-collapse', action='store_true', default=False)
     parser.add_argument('--show-all-markers', action='store_true', default=False)
 
@@ -471,6 +467,7 @@ Examples:
     _marker_flags = get_marker_flags(args)
     SHOW_PHASE = _marker_flags['show_phase']
     SHOW_RCLOUD = _marker_flags['show_rcloud']
+    SHOW_RCLOUD_H = _marker_flags['show_rcloud_horizontal']
     SHOW_COLLAPSE = _marker_flags['show_collapse']
 
     plot_comparison_grid(
