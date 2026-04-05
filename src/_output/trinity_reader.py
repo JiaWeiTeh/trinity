@@ -1171,9 +1171,10 @@ def parse_simulation_params(folder_name: str) -> Optional[Dict[str, str]]:
     """
     import re
     # Pattern: optional 'm' prefix, mCloud, _sfe{sfe}, _n{ndens}
-    # Also handle _modified suffix
+    # ndens can be scientific notation (1e4) or plain integer/float (50, 500)
+    # Also handle _modified suffix or profile tags like _PL0, _BE14
     match = re.search(
-        r'm?(\d+\.?\d*e\d+)_sfe(\d+)_n(\d+\.?\d*e\d+)',
+        r'm?(\d+\.?\d*e\d+)_sfe(\d+)_n(\d+\.?\d*(?:e\d+)?)',
         folder_name,
         re.IGNORECASE
     )
