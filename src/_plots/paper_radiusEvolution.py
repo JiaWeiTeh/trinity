@@ -35,6 +35,7 @@ BASE_DIR = Path.home() / "unsync" / "Code" / "Trinity" / "outputs"
 
 SHOW_PHASE = False
 SHOW_RCLOUD = False
+SHOW_RCLOUD_H = False
 SHOW_COLLAPSE = False
 SHOW_WEAVER = True  # Show Weaver-like R ∝ t^(3/5) solution
 SMOOTH_WINDOW = None        # e.g. 7 to smooth radii; None/1 disables
@@ -163,6 +164,7 @@ def plot_radii_on_ax(
         isCollapse=isCollapse,
         show_phase=phase_line,
         show_rcloud=cloud_line,
+        show_rcloud_horizontal=SHOW_RCLOUD_H,
         show_collapse=SHOW_COLLAPSE,
         label_pad_points=label_pad_points
     )
@@ -247,7 +249,7 @@ def plot_single_run(mCloud, sfe, ndens):
     ]
     if SHOW_WEAVER:
         handles.append(Line2D([0], [0], color="k", ls="--", alpha=0.6, lw=1.5, label=r"Weaver: $R \propto t^{3/5}$"))
-    handles.extend(get_marker_legend_handles(include_phase=SHOW_PHASE, include_rcloud=SHOW_RCLOUD, include_collapse=SHOW_COLLAPSE))
+    handles.extend(get_marker_legend_handles(include_phase=SHOW_PHASE, include_rcloud=SHOW_RCLOUD, include_rcloud_horizontal=SHOW_RCLOUD_H, include_collapse=SHOW_COLLAPSE))
     ax.legend(handles=handles, loc="upper left", framealpha=0.9)
 
     # Save
@@ -309,7 +311,7 @@ def plot_from_path(data_input: str, output_dir: str = None):
     ]
     if SHOW_WEAVER:
         handles.append(Line2D([0], [0], color="k", ls="--", alpha=0.6, lw=1.5, label=r"Weaver: $R \propto t^{3/5}$"))
-    handles.extend(get_marker_legend_handles(include_phase=SHOW_PHASE, include_rcloud=SHOW_RCLOUD, include_collapse=SHOW_COLLAPSE))
+    handles.extend(get_marker_legend_handles(include_phase=SHOW_PHASE, include_rcloud=SHOW_RCLOUD, include_rcloud_horizontal=SHOW_RCLOUD_H, include_collapse=SHOW_COLLAPSE))
     ax.legend(handles=handles, loc="upper left", framealpha=0.9)
 
     plt.tight_layout()
@@ -456,7 +458,7 @@ def plot_folder_grid(folder_path, output_dir=None, ndens_filter=None,
         ]
         if SHOW_WEAVER:
             handles.append(Line2D([0], [0], color="k", ls="--", alpha=0.6, lw=1.5, label=r"Weaver: $R \propto t^{3/5}$"))
-        handles.extend(get_marker_legend_handles(include_phase=SHOW_PHASE, include_rcloud=SHOW_RCLOUD, include_collapse=SHOW_COLLAPSE))
+        handles.extend(get_marker_legend_handles(include_phase=SHOW_PHASE, include_rcloud=SHOW_RCLOUD, include_rcloud_horizontal=SHOW_RCLOUD_H, include_collapse=SHOW_COLLAPSE))
 
         _layout = _compute_legend_layout(2.6 * nrows, n_legend_items=len(handles), legend_ncol=3)
         fig.subplots_adjust(top=_layout['top'])
@@ -544,6 +546,7 @@ Examples:
     )
     parser.add_argument('--show-phase', action='store_true', default=False)
     parser.add_argument('--show-rcloud', action='store_true', default=False)
+    parser.add_argument('--show-rcloud-horizontal', action='store_true', default=False)
     parser.add_argument('--show-collapse', action='store_true', default=False)
     parser.add_argument('--show-all-markers', action='store_true', default=False)
 
@@ -554,6 +557,7 @@ Examples:
     _marker_flags = get_marker_flags(args)
     SHOW_PHASE = _marker_flags['show_phase']
     SHOW_RCLOUD = _marker_flags['show_rcloud']
+    SHOW_RCLOUD_H = _marker_flags['show_rcloud_horizontal']
     SHOW_COLLAPSE = _marker_flags['show_collapse']
 
     if args.log_x:
@@ -662,7 +666,7 @@ Examples:
             ]
             if SHOW_WEAVER:
                 handles.append(Line2D([0], [0], color="k", ls="--", alpha=0.6, lw=1.5, label=r"Weaver: $R \propto t^{3/5}$"))
-            handles.extend(get_marker_legend_handles(include_phase=SHOW_PHASE, include_rcloud=SHOW_RCLOUD, include_collapse=SHOW_COLLAPSE))
+            handles.extend(get_marker_legend_handles(include_phase=SHOW_PHASE, include_rcloud=SHOW_RCLOUD, include_rcloud_horizontal=SHOW_RCLOUD_H, include_collapse=SHOW_COLLAPSE))
 
             _layout = _compute_legend_layout(2.6 * nrows, n_legend_items=len(handles), legend_ncol=3)
             fig.subplots_adjust(top=_layout['top'])

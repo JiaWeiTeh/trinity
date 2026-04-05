@@ -34,6 +34,7 @@ print("...plotting R2 vs R_IF comparison")
 SMOOTH_WINDOW = None   # None or 1 disables
 SHOW_PHASE = False
 SHOW_RCLOUD = False
+SHOW_RCLOUD_H = False
 SHOW_COLLAPSE = False
 USE_LOG_X = True       # log-log by default
 USE_LOG_Y = True
@@ -116,6 +117,7 @@ def plot_run_on_ax(ax, data, smooth_window=None, phase_change=SHOW_PHASE,
         isCollapse=isCollapse if show_collapse else None,
         show_phase=phase_change,
         show_rcloud=show_rcloud,
+        show_rcloud_horizontal=SHOW_RCLOUD_H,
         show_collapse=show_collapse,
     )
 
@@ -197,7 +199,7 @@ def _build_grid_legend():
         Patch(facecolor='#b0d0ff', alpha=0.35, edgecolor='none',
               label=r'$<10^{-10}$ (machine prec.)'),
     ]
-    handles.extend(get_marker_legend_handles(include_phase=SHOW_PHASE, include_rcloud=SHOW_RCLOUD, include_collapse=SHOW_COLLAPSE))
+    handles.extend(get_marker_legend_handles(include_phase=SHOW_PHASE, include_rcloud=SHOW_RCLOUD, include_rcloud_horizontal=SHOW_RCLOUD_H, include_collapse=SHOW_COLLAPSE))
     return handles
 
 

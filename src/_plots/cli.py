@@ -138,6 +138,10 @@ def build_parser(
         help="Show R2 > R_cloud breakout marker.",
     )
     marker_group.add_argument(
+        "--show-rcloud-horizontal", action="store_true", default=False,
+        help="Show horizontal R_cloud line (for plots with radius on y-axis).",
+    )
+    marker_group.add_argument(
         "--show-collapse", action="store_true", default=False,
         help="Show collapse onset marker.",
     )
@@ -158,6 +162,7 @@ def get_marker_flags(args) -> dict:
     return dict(
         show_phase=all_on or getattr(args, "show_phase", False),
         show_rcloud=all_on or getattr(args, "show_rcloud", False),
+        show_rcloud_horizontal=all_on or getattr(args, "show_rcloud_horizontal", False),
         show_collapse=all_on or getattr(args, "show_collapse", False),
     )
 
@@ -176,6 +181,8 @@ def marker_pre_dispatch(module_globals):
         flags = get_marker_flags(args)
         module_globals['SHOW_PHASE'] = flags['show_phase']
         module_globals['SHOW_RCLOUD'] = flags['show_rcloud']
+        if 'SHOW_RCLOUD_H' in module_globals:
+            module_globals['SHOW_RCLOUD_H'] = flags['show_rcloud_horizontal']
         module_globals['SHOW_COLLAPSE'] = flags['show_collapse']
     return _apply
 
