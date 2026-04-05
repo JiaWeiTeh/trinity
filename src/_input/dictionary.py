@@ -552,7 +552,7 @@ class DescribedDict(dict):
         Save the current state into self.previous_snapshot.
 
         Duplicate guard:
-        - If the last saved snapshot has the same t_now or R2, it will not save again.
+        - If the last saved snapshot has the same t_now and R2, it will not save again.
         """
         import logging
         logger = logging.getLogger(__name__)
@@ -562,7 +562,7 @@ class DescribedDict(dict):
             try:
                 t_now = self["t_now"].value
                 r2 = self["R2"].value
-                if ("t_now" in last and t_now == last["t_now"]) or ("R2" in last and r2 == last["R2"]):
+                if ("t_now" in last and t_now == last["t_now"]) and ("R2" in last and r2 == last["R2"]):
                     logger.debug(f"Duplicate detected in save_snapshot at t = {t_now}. Snapshot not saved.")
                     return
             except KeyError:
