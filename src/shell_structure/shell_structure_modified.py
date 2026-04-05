@@ -165,7 +165,7 @@ def shell_structure_pure(params) -> ShellProperties:
         # Mass of spherical shell
         mShell_arr = np.empty_like(rShell_arr)
         mShell_arr[0] = mShell0
-        mShell_arr[1:] = (nShell_arr[1:] * params['mu_ion'].value *
+        mShell_arr[1:] = (nShell_arr[1:] * params['mu_atom'].value *
                          4 * np.pi * rShell_arr[1:]**2 * rShell_step)
         mShell_arr_cum = np.cumsum(mShell_arr)
 
@@ -241,7 +241,7 @@ def shell_structure_pure(params) -> ShellProperties:
         logger.debug('Shell not dissolved, computing gravitational potential')
 
         # Gravitational potential for ionized part
-        grav_ion_rho = nShell_arr_ion * params['mu_ion'].value
+        grav_ion_rho = nShell_arr_ion * params['mu_atom'].value
         grav_ion_r = rShell_arr_ion
         grav_ion_m = grav_ion_rho * 4 * np.pi * grav_ion_r**2 * rShell_step
         grav_ion_m_cum = np.cumsum(grav_ion_m) + mBubble
@@ -370,14 +370,14 @@ def shell_structure_pure(params) -> ShellProperties:
             if phi_rEnd < 0:
                 phi_rEnd = 0
             nShell_max = np.max(nShell_arr_ion)
-            tau_kappa_IR = params['mu_ion'].value * np.sum(nShell_arr_ion[:-1] * dr_ion_arr)
+            tau_kappa_IR = params['mu_atom'].value * np.sum(nShell_arr_ion[:-1] * dr_ion_arr)
         else:
             shellThickness = rShell_arr_neu[-1] - rShell0
             tau_rEnd = tauShell_arr_neu[-1]
             phi_rEnd = 0
             nShell_max = max(np.max(nShell_arr_ion), np.max(nShell_arr_neu))
             dr_neu_arr = rShell_arr_neu[1:] - rShell_arr_neu[:-1]
-            tau_kappa_IR = (params['mu_ion'].value * np.sum(nShell_arr_ion[:-1] * dr_ion_arr) +
+            tau_kappa_IR = (params['mu_atom'].value * np.sum(nShell_arr_ion[:-1] * dr_ion_arr) +
                 params['mu_atom'].value * np.sum(nShell_arr_neu[:-1] * dr_neu_arr))
 
         # Absorption fractions

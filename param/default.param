@@ -85,11 +85,14 @@ densBE_Omega    14.1
 # INFO: if `densPL` is selected, then the power-law coefficient `nCore*(r/rCore)^alpha` (0 = homogeneous, -2 = isothermal) must be specified.
 densPL_alpha    0
 
-# INFO: Number density of cloud core. If `densPL` AND densPL_alpha = 0, this is the average cloud density.
+# INFO: Hydrogen nuclei number density of cloud core (n_H).
+# INFO: Standard GMC/ISM convention. Mass density: rho = nCore * mu_convert * m_H.
+# INFO: If `densPL` AND densPL_alpha = 0, this is the average cloud density.
 # UNIT: [cm**-3]
 nCore    1e5
 
-# INFO: Number density of the ambient interstellar medium (ISM). 
+# INFO: Hydrogen nuclei number density of the ambient ISM (n_H).
+# INFO: Mass density: rho = nISM * mu_convert * m_H.
 # UNIT: [cm**-3]
 nISM    1
 
