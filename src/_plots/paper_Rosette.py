@@ -253,12 +253,23 @@ def plot_trajectory_evolution_combined(results: List[SimulationResult],
         lbl = (r'$n_{\rm core} = $' + nCore_math[idx] + r' $\rm cm^{-3}$')
         if M_interp:
             M_arr = np.array(M_interp)
-            ax_m.fill_between(t_common, np.nanmin(M_arr, 0), np.nanmax(M_arr, 0),
-                              alpha=0.7, color=color, label=lbl)
+            # Mask columns where all values are NaN to avoid RuntimeWarning
+            valid = ~np.all(np.isnan(M_arr), axis=0)
+            t_valid = t_common[valid]
+            if t_valid.size > 0:
+                ax_m.fill_between(t_valid,
+                                  np.nanmin(M_arr[:, valid], 0),
+                                  np.nanmax(M_arr[:, valid], 0),
+                                  alpha=0.7, color=color, label=lbl)
         if R_interp:
             R_arr = np.array(R_interp)
-            ax_r.fill_between(t_common, np.nanmin(R_arr, 0), np.nanmax(R_arr, 0),
-                              alpha=0.7, color=color, label=lbl)
+            valid = ~np.all(np.isnan(R_arr), axis=0)
+            t_valid = t_common[valid]
+            if t_valid.size > 0:
+                ax_r.fill_between(t_valid,
+                                  np.nanmin(R_arr[:, valid], 0),
+                                  np.nanmax(R_arr[:, valid], 0),
+                                  alpha=0.7, color=color, label=lbl)
 
     # --- Mass panel ---
     ax_m.axvspan(obs.t_obs - obs.t_err, obs.t_obs + obs.t_err,
