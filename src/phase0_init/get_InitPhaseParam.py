@@ -74,7 +74,8 @@ def get_y0(params):
     """
 
     # Core properties - handle both DescribedItem and raw value access
-    mu_atom = params['mu_atom'].value
+    mu_atom = params['mu_atom'].value      # mass per particle (neutral atomic gas) — for Weaver Eq. 37
+    mu_convert = params['mu_convert'].value  # mass per H nucleus — for rho = n_H * mu_convert
     nCore = params['nCore'].value
     bubble_xi_Tb = params['bubble_xi_Tb'].value
         
@@ -148,7 +149,8 @@ def get_y0(params):
     # =========================================================================
 
     # Ambient density [AU units: Msun/pc^3]
-    rhoa = nCore * mu_atom
+    # nCore is hydrogen nuclei density n_H; use mu_convert (=1.4) for mass density
+    rhoa = nCore * mu_convert
 
     # Duration of free-streaming phase [Myr]
     # From Rahner thesis Eq. 1.15:
