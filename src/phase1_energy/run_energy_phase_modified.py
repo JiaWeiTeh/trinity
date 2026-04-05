@@ -175,7 +175,15 @@ def run_energy(params):
         logger.info('bubble complete (modified)')
 
         # =============================================================================
-        # 3b. Compute shell structure
+        # 3b. Compute shell mass BEFORE shell structure so that the shell
+        #     termination condition uses the current R2's swept-up mass
+        #     rather than the previous iteration's stale value.
+        # =============================================================================
+        mShell = mass_profile.get_mass_profile(R2, params, return_mdot=False)
+        params['shell_mass'].value = mShell
+
+        # =============================================================================
+        # 3c. Compute shell structure
         # =============================================================================
         shell_data = shell_structure_modified.shell_structure_pure(params)
         updateDict(params, shell_data)
@@ -190,10 +198,6 @@ def run_energy(params):
         params['P_HII'].value = P_HII
         F_HII = 4.0 * np.pi * R2**2 * P_HII
         params['F_HII'].value = F_HII
-
-        # Get shell mass
-        mShell = mass_profile.get_mass_profile(R2, params, return_mdot=False)
-        params['shell_mass'].value = mShell
 
         # Calculate sound speed
         c_sound = operations.get_soundspeed(Tavg, params)

@@ -446,24 +446,22 @@ def run_phase_transition(params) -> TransitionPhaseResults:
         params['T0'].value = T0
 
         # ---------------------------------------------------------------------
-        # Get feedback and shell structure
+        # Get feedback
         # ---------------------------------------------------------------------
         feedback = get_currentSB99feedback(t_now, params)
         updateDict(params, feedback)
 
-        # Calculate shell structure using pure function
-        shell_props = shell_structure_pure(params)
-        updateDict(params, shell_props)
+        # ---------------------------------------------------------------------
+        # Get R1 and Pb BEFORE shell structure so Pb is current when
+        # shell_structure_pure reads it.
+        # ---------------------------------------------------------------------
+        Lmech_total = feedback.Lmech_total
+        v_mech_total = feedback.v_mech_total
+        gamma_adia = params['gamma_adia'].value
 
-        # Compute P_HII from Strömgren ionization balance in shell (n_IF_Str)
-        n_IF_Str = shell_props.n_IF_Str
-        if params['include_PHII'].value and n_IF_Str > 0:
-            P_HII = 2.0 * n_IF_Str * params['k_B'].value * params['TShell_ion'].value
-        else:
-            P_HII = 0.0
-        params['P_HII'].value = P_HII
-        F_HII = 4.0 * np.pi * R2**2 * P_HII
-        params['F_HII'].value = F_HII
+        R1, Pb = compute_R1_Pb(R2, Eb, Lmech_total, v_mech_total, gamma_adia)
+        params['R1'].value = R1
+        params['Pb'].value = Pb
 
         # Get sound speed from bubble average temperature
         bubble_Tavg = params.get('bubble_Tavg', None)
@@ -484,18 +482,8 @@ def run_phase_transition(params) -> TransitionPhaseResults:
             )
 
         # ---------------------------------------------------------------------
-        # Get R1 and Pb
-        # ---------------------------------------------------------------------
-        Lmech_total = feedback.Lmech_total
-        v_mech_total = feedback.v_mech_total
-        gamma_adia = params['gamma_adia'].value
-
-        R1, Pb = compute_R1_Pb(R2, Eb, Lmech_total, v_mech_total, gamma_adia)
-        params['R1'].value = R1
-        params['Pb'].value = Pb
-
-        # ---------------------------------------------------------------------
-        # Compute shell mass and forces BEFORE ODE - all values consistent at t_now
+        # Compute shell mass BEFORE shell structure so that the shell
+        # termination condition uses the current R2's swept-up mass.
         # Two conditions for freezing shell mass:
         # 1. During collapse (isCollapse=True): shell mass is frozen
         # 2. Shell mass can NEVER decrease - once mass is swept up, it stays in shell
@@ -518,6 +506,22 @@ def run_phase_transition(params) -> TransitionPhaseResults:
                 mShell = mShell_new
         params['shell_mass'].value = mShell
         params['shell_massDot'].value = mShell_dot
+
+        # ---------------------------------------------------------------------
+        # Calculate shell structure (now with current Pb and shell_mass)
+        # ---------------------------------------------------------------------
+        shell_props = shell_structure_pure(params)
+        updateDict(params, shell_props)
+
+        # Compute P_HII from Strömgren ionization balance in shell (n_IF_Str)
+        n_IF_Str = shell_props.n_IF_Str
+        if params['include_PHII'].value and n_IF_Str > 0:
+            P_HII = 2.0 * n_IF_Str * params['k_B'].value * params['TShell_ion'].value
+        else:
+            P_HII = 0.0
+        params['P_HII'].value = P_HII
+        F_HII = 4.0 * np.pi * R2**2 * P_HII
+        params['F_HII'].value = F_HII
 
         force_props = compute_forces_pure(R2, mShell, Pb, shell_props, params)
         params['F_grav'].value = force_props.F_grav
