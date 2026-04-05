@@ -103,8 +103,7 @@ def rosette_config(**overrides) -> AnalysisConfig:
 # Rosette is much larger and older than Orion ⇒ wider axes
 _T_MAX = 3.0     # Myr
 _R_MAX = 30.0    # pc
-_M_MIN = 10
-_M_MAX = 1e6
+_V_MAX = 60.0    # km/s
 
 # Dust shell extent (Planck XXXIV, 353 GHz) — not part of chi²,
 # shown as a visual band on the radius panel.
@@ -117,7 +116,7 @@ def plot_trajectory_evolution(results: List[SimulationResult],
                               output_dir: Path,
                               nCore_value: str,
                               top_n: int = 5):
-    """Create M(t) and R(t) trajectory plots for a single nCore value."""
+    """Create v(t) and R(t) trajectory plots for a single nCore value."""
     data = [r for r in results if r.nCore == nCore_value]
     if not data:
         return
@@ -125,7 +124,7 @@ def plot_trajectory_evolution(results: List[SimulationResult],
     data_sorted = sorted(data, key=lambda x: x.chi2_total)
     data_to_plot = data_sorted if config.show_all else data_sorted[:top_n]
 
-    fig, (ax_m, ax_r) = plt.subplots(2, 1, figsize=(6.5, 18), dpi=150, sharex=True)
+    fig, (ax_v, ax_r) = plt.subplots(2, 1, figsize=(6.5, 18), dpi=150, sharex=True)
     obs = config.obs
 
     # Colour scheme
@@ -141,7 +140,7 @@ def plot_trajectory_evolution(results: List[SimulationResult],
         if r.t_full is None:
             continue
 
-        M_smooth = smooth_trajectory(r.t_full, r.M_shell_full)
+        v_smooth = smooth_trajectory(r.t_full, r.v_full_kms)
         R_smooth = smooth_trajectory(r.t_full, r.R_full)
 
         if config.show_all:
@@ -151,23 +150,28 @@ def plot_trajectory_evolution(results: List[SimulationResult],
             label = (f"{r.mCloud}_sfe{r.sfe} "
                      f"(M$_\\star$={r.Mstar:.0f}, $\\chi^2$={r.chi2_total:.1f})")
 
-        if M_smooth is not None:
-            ax_m.plot(r.t_full, M_smooth, color=color, lw=lw, label=label, alpha=alpha)
+        if v_smooth is not None:
+            ax_v.plot(r.t_full, v_smooth, color=color, lw=lw, label=label, alpha=alpha)
         if R_smooth is not None:
             ax_r.plot(r.t_full, R_smooth, color=color, lw=lw, label=label, alpha=alpha)
 
-    # --- Mass panel ---
-    ax_m.axvspan(obs.t_obs - obs.t_err, obs.t_obs + obs.t_err,
+    # --- Velocity panel ---
+    ax_v.errorbar(obs.t_obs, obs.v_obs, xerr=obs.t_err, yerr=obs.v_err,
+                  fmt='s', color='red', markersize=14, capsize=5, capthick=2,
+                  label=f'$v_{{\\rm exp}}$: {obs.v_obs}\u00b1{obs.v_err} km/s', zorder=10,
+                  markeredgecolor='k')
+    ax_v.axhspan(obs.v_obs - obs.v_err, obs.v_obs + obs.v_err,
+                 alpha=0.15, color='red', zorder=1)
+    ax_v.axvspan(obs.t_obs - obs.t_err, obs.t_obs + obs.t_err,
                  alpha=0.1, color='gray', zorder=0)
-    ax_m.set_ylabel(r'Shell Mass [$M_\odot$]', fontsize=FONTSIZE, rotation=90)
-    ax_m.tick_params(axis='both', labelsize=FONTSIZE)
-    ax_m.tick_params(axis='y', labelrotation=90)
-    ax_m.legend(loc='upper right', fontsize=FONTSIZE).set_zorder(100)
-    ax_m.set_yscale('log')
-    ax_m.set_ylim(_M_MIN, _M_MAX)
-    ax_m.grid(True, alpha=0.3, which='both')
-    ax_m.tick_params(axis='x', pad=10)
-    ax_m.tick_params(axis='y', pad=10)
+    ax_v.set_ylabel(r'Expansion Velocity [km s$^{-1}$]', fontsize=FONTSIZE, rotation=90)
+    ax_v.tick_params(axis='both', labelsize=FONTSIZE)
+    ax_v.tick_params(axis='y', labelrotation=90)
+    ax_v.legend(loc='upper right', fontsize=FONTSIZE).set_zorder(100)
+    ax_v.set_ylim(0, _V_MAX)
+    ax_v.grid(True, alpha=0.3)
+    ax_v.tick_params(axis='x', pad=10)
+    ax_v.tick_params(axis='y', pad=10)
 
     # --- Radius panel ---
     # HII outer radius (blue)
@@ -223,9 +227,9 @@ def plot_trajectory_evolution_combined(results: List[SimulationResult],
     from scipy.interpolate import interp1d
 
     nCore_colors = ['orange', 'r', 'darkgray', 'C3', 'C4', 'C5']
-    nCore_math = [f"{float(n):.0e}".replace('+', '') for n in nCore_values]
+    nCore_alphas = [0.7, 0.45, 0.85, 0.7, 0.7, 0.7]
 
-    fig, (ax_m, ax_r) = plt.subplots(2, 1, figsize=(6.5, 6.5), dpi=150, sharex=True)
+    fig, (ax_v, ax_r) = plt.subplots(2, 1, figsize=(6.5, 6.5), dpi=150, sharex=True)
     obs = config.obs
     t_common = np.linspace(0, _T_MAX, 500)
 
@@ -237,16 +241,17 @@ def plot_trajectory_evolution_combined(results: List[SimulationResult],
         data_sorted = sorted(data, key=lambda x: x.chi2_total)
         data_to_plot = data_sorted if config.show_all else data_sorted[:top_n]
         color = nCore_colors[idx % len(nCore_colors)]
+        band_alpha = nCore_alphas[idx % len(nCore_alphas)]
 
-        M_interp, R_interp = [], []
+        v_interp, R_interp = [], []
         for r in data_to_plot:
             if r.t_full is None or len(r.t_full) < 2:
                 continue
-            M_s = smooth_trajectory(r.t_full, r.M_shell_full)
+            v_s = smooth_trajectory(r.t_full, r.v_full_kms)
             R_s = smooth_trajectory(r.t_full, r.R_full)
             try:
-                if M_s is not None:
-                    M_interp.append(interp1d(r.t_full, M_s, bounds_error=False,
+                if v_s is not None:
+                    v_interp.append(interp1d(r.t_full, v_s, bounds_error=False,
                                              fill_value=np.nan)(t_common))
                 if R_s is not None:
                     R_interp.append(interp1d(r.t_full, R_s, bounds_error=False,
@@ -254,26 +259,55 @@ def plot_trajectory_evolution_combined(results: List[SimulationResult],
             except Exception:
                 pass
 
-        lbl = (r'$n_{\rm core} = $' + nCore_math[idx] + r' $\rm cm^{-3}$')
-        if M_interp:
-            M_arr = np.array(M_interp)
-            ax_m.fill_between(t_common, np.nanmin(M_arr, 0), np.nanmax(M_arr, 0),
-                              alpha=0.7, color=color, label=lbl)
+        ncore_lbl = r'$n_{\rm core} = $' + f'{float(nCore_value):g}' + r' $\rm cm^{-3}$'
+        if v_interp:
+            v_arr = np.array(v_interp)
+            ax_v.fill_between(t_common, np.nanmin(v_arr, 0), np.nanmax(v_arr, 0),
+                              alpha=band_alpha, color=color, label=ncore_lbl)
         if R_interp:
             R_arr = np.array(R_interp)
             ax_r.fill_between(t_common, np.nanmin(R_arr, 0), np.nanmax(R_arr, 0),
-                              alpha=0.7, color=color, label=lbl)
+                              alpha=band_alpha, color=color)
 
-    # --- Mass panel ---
-    ax_m.axvspan(obs.t_obs - obs.t_err, obs.t_obs + obs.t_err,
+    # --- Velocity panel ---
+    ax_v.errorbar(obs.t_obs, obs.v_obs, xerr=obs.t_err, yerr=obs.v_err,
+                  fmt='s', color='red', markersize=10, capsize=4, capthick=1.5,
+                  label=f'$v_{{\\rm exp}}$: {obs.v_obs}\u00b1{obs.v_err} km/s', zorder=10,
+                  markeredgecolor='k', markeredgewidth=0.5)
+    ax_v.axhspan(obs.v_obs - obs.v_err, obs.v_obs + obs.v_err,
+                 alpha=0.15, color='red', zorder=1)
+    ax_v.axvspan(obs.t_obs - obs.t_err, obs.t_obs + obs.t_err,
                  alpha=0.1, color='gray', zorder=0)
-    ax_m.set_ylabel(r'Shell Mass [$M_\odot$]', fontsize=FONTSIZE, rotation=90)
-    ax_m.tick_params(axis='both', labelsize=FONTSIZE)
-    ax_m.tick_params(axis='y', labelrotation=90)
-    ax_m.legend(loc='upper left', fontsize=FONTSIZE).set_zorder(100)
-    ax_m.set_yscale('log')
-    ax_m.set_ylim(_M_MIN, _M_MAX)
-    ax_m.grid(True, alpha=0.3, which='both')
+
+    # Separate nCore handles from observational handles
+    all_handles, all_labels = ax_v.get_legend_handles_labels()
+    ncore_handles, ncore_labels = [], []
+    obs_handles, obs_labels = [], []
+    for h, l in zip(all_handles, all_labels):
+        if r'n_{\rm core}' in l:
+            ncore_handles.append(h)
+            ncore_labels.append(l)
+        else:
+            obs_handles.append(h)
+            obs_labels.append(l)
+
+    # Observational legend inside velocity panel
+    ax_v.set_ylabel(r'Expansion Velocity [km s$^{-1}$]', fontsize=FONTSIZE, rotation=90)
+    ax_v.tick_params(axis='both', labelsize=FONTSIZE)
+    ax_v.tick_params(axis='y', labelrotation=90)
+    if obs_handles:
+        legend_v = ax_v.legend(obs_handles, obs_labels, loc='upper left',
+                               fontsize=FONTSIZE)
+        legend_v.set_zorder(100)
+    ax_v.set_ylim(0, _V_MAX)
+    ax_v.grid(True, alpha=0.3)
+
+    # nCore legend placed above the top subplot as a figure-level title legend
+    if ncore_handles:
+        fig.legend(ncore_handles, ncore_labels,
+                   loc='upper center', ncol=len(ncore_handles),
+                   fontsize=FONTSIZE, frameon=False,
+                   bbox_to_anchor=(0.5, 1.1))
 
     # --- Radius panel ---
     ax_r.errorbar(obs.t_obs, obs.R_obs, xerr=obs.t_err, yerr=obs.R_err,
@@ -303,7 +337,8 @@ def plot_trajectory_evolution_combined(results: List[SimulationResult],
     ax_r.set_ylabel('Shell Radius [pc]', fontsize=FONTSIZE, rotation=90)
     ax_r.tick_params(axis='both', labelsize=FONTSIZE)
     ax_r.tick_params(axis='y', labelrotation=90)
-    ax_r.legend(loc='upper left', fontsize=FONTSIZE).set_zorder(100)
+    legend_r = ax_r.legend(loc='upper left', fontsize=FONTSIZE)
+    legend_r.set_zorder(100)
     ax_r.set_xlim(0, _T_MAX)
     ax_r.set_ylim(0, _R_MAX)
     ax_r.grid(True, alpha=0.3)
