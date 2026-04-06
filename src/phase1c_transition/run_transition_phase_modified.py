@@ -819,6 +819,11 @@ def run_phase_transition(params) -> TransitionPhaseResults:
                 params['EndSimulationDirectly'].value = True
                 break
 
+    # Save final post-ODE snapshot so the phase boundary state is recorded.
+    # Without this, the last snapshot would be the pre-ODE save from the
+    # final iteration, creating a gap when the next phase begins.
+    params.save_snapshot()
+
     # =============================================================================
     # Build results
     # =============================================================================

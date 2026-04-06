@@ -347,6 +347,11 @@ def run_energy(params):
 
         loop_count += 1
 
+    # Save final post-ODE snapshot so the phase boundary state is recorded.
+    # Without this, the last snapshot would be the pre-ODE save from the
+    # final iteration, creating a gap when the next phase begins.
+    params.save_snapshot()
+
     logger.info(f'Modified energy phase complete: {loop_count} segments')
     return
 
