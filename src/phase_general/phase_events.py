@@ -618,3 +618,8 @@ def apply_event_result(params, result: EventResult, t: float, y: np.ndarray,
                 params['isCollapse'].value = True
 
     logger.warning(f"Event '{result.name}' applied: {result.reason_message}")
+
+    # Save snapshot so the event-terminated state is recorded.
+    # Without this, the last snapshot would be from the pre-ODE save,
+    # creating a gap in the output data at phase boundaries.
+    params.save_snapshot()
