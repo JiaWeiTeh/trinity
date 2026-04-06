@@ -555,7 +555,6 @@ Default Observational Constraints (Rosette Nebula):
     )
 
     # Apply marker flags
-    global SHOW_PHASE, SHOW_RCLOUD, SHOW_RCLOUD_H, SHOW_COLLAPSE
     _all = args.show_all_markers
     SHOW_PHASE    = _all or args.show_phase
     SHOW_RCLOUD   = _all or args.show_rcloud
