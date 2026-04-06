@@ -32,7 +32,20 @@ from src._output.trinity_reader import (
     parse_simulation_params, info_simulations
 )
 
+from src._plots.plot_markers import (          # noqa: E402
+    add_plot_markers, get_marker_legend_handles,
+    add_rcloud_horizontal_marker,
+)
+
 print("...creating trajectory evolution plots")
+
+# =============================================================================
+# MARKER DEFAULTS (off for clean paper figures; enable via CLI --show-*)
+# =============================================================================
+SHOW_PHASE    = False
+SHOW_RCLOUD   = False
+SHOW_RCLOUD_H = False
+SHOW_COLLAPSE = False
 
 # Unit conversion: 1 km/s ~ 1.0227 pc/Myr
 PC_MYR_TO_KM_S = 1.0 / 1.0227
@@ -170,6 +183,8 @@ class SimulationResult:
     v_full_kms: Optional[np.ndarray] = None
     M_shell_full: Optional[np.ndarray] = None
     R_full: Optional[np.ndarray] = None
+    phase_full: Optional[np.ndarray] = None
+    rcloud: float = np.nan
 
 
 # =============================================================================
@@ -419,6 +434,15 @@ def load_simulation_at_time(data_path: Path, config: AnalysisConfig) -> Optional
 
         v_full_kms = v2_full * PC_MYR_TO_KM_S if v2_full is not None else None
 
+        # Phase and cloud radius for markers
+        phase_raw = output.get('current_phase', as_array=False)
+        phase_full = None
+        if phase_raw is not None:
+            phase_arr = np.asarray([str(p) for p in phase_raw])
+            if t_full is not None and len(phase_arr) >= len(t_full):
+                phase_full = phase_arr[:len(t_full)]
+        rcloud = float(output[0].get('rCloud', np.nan))
+
         return SimulationResult(
             path=str(data_path),
             folder=folder_name,
@@ -448,6 +472,8 @@ def load_simulation_at_time(data_path: Path, config: AnalysisConfig) -> Optional
             v_full_kms=v_full_kms,
             M_shell_full=M_shell_full,
             R_full=R_full,
+            phase_full=phase_full,
+            rcloud=rcloud,
         )
 
     except Exception as e:
@@ -578,6 +604,23 @@ def plot_trajectory_evolution(results: List[SimulationResult], config: AnalysisC
         if R_smooth is not None:
             ax_r.plot(t, R_smooth, color=color, lw=lw, label=label, alpha=alpha)
 
+        # --- Diagnostic markers (vertical lines on both panels) ---
+        if not config.show_all:
+            for ax in (ax_m, ax_r):
+                add_plot_markers(
+                    ax, t,
+                    phase=r.phase_full,
+                    R2=R if (ax is ax_r) else None,
+                    rcloud=r.rcloud if (ax is ax_r) else None,
+                    isCollapse=None,
+                    dataset_color=color,
+                    show_phase=SHOW_PHASE,
+                    show_rcloud=SHOW_RCLOUD and (ax is ax_r),
+                    show_collapse=SHOW_COLLAPSE,
+                    show_rcloud_horizontal=SHOW_RCLOUD_H and (ax is ax_r),
+                    show_labels=False,
+                )
+
     # --- Mass panel (log scale) ---
     tracer_bands = [
         (obs.M_shell_HI, obs.M_shell_HI_err, 'blue', r'HI ($\sim 10^2 M_\odot$)', 0.15),
@@ -597,7 +640,16 @@ def plot_trajectory_evolution(results: List[SimulationResult], config: AnalysisC
     ax_m.set_ylabel(r'0.5 $\times$ Shell Mass [$M_\odot$]', fontsize=FONTSIZE, rotation=90)
     ax_m.tick_params(axis='both', labelsize=FONTSIZE)
     ax_m.tick_params(axis='y', labelrotation=90)
-    legend_m = ax_m.legend(loc='upper right', fontsize=FONTSIZE)
+    marker_handles = get_marker_legend_handles(
+        include_phase=SHOW_PHASE, include_rcloud=SHOW_RCLOUD,
+        include_rcloud_horizontal=SHOW_RCLOUD_H, include_collapse=SHOW_COLLAPSE)
+    if marker_handles:
+        existing_h, existing_l = ax_m.get_legend_handles_labels()
+        legend_m = ax_m.legend(existing_h + marker_handles,
+                               existing_l + [h.get_label() for h in marker_handles],
+                               loc='upper right', fontsize=FONTSIZE)
+    else:
+        legend_m = ax_m.legend(loc='upper right', fontsize=FONTSIZE)
     legend_m.set_zorder(100)
     ax_m.set_yscale('log')
     ax_m.set_ylim(10, 3e4)
@@ -627,7 +679,13 @@ def plot_trajectory_evolution(results: List[SimulationResult], config: AnalysisC
     ax_r.set_ylabel('Shell Radius [pc]', fontsize=FONTSIZE, rotation=90)
     ax_r.tick_params(axis='both', labelsize=FONTSIZE)
     ax_r.tick_params(axis='y', labelrotation=90)
-    legend_r = ax_r.legend(loc='lower right', fontsize=FONTSIZE)
+    if marker_handles:
+        existing_h, existing_l = ax_r.get_legend_handles_labels()
+        legend_r = ax_r.legend(existing_h + marker_handles,
+                               existing_l + [h.get_label() for h in marker_handles],
+                               loc='lower right', fontsize=FONTSIZE)
+    else:
+        legend_r = ax_r.legend(loc='lower right', fontsize=FONTSIZE)
     legend_r.set_zorder(100)
     ax_r.set_xlim(0, 0.3)
     ax_r.set_ylim(0, 6)
@@ -1017,6 +1075,20 @@ Shell Mass (shown in plots):
     parser.add_argument('--combine-nCore', action='store_true',
                         help='Plot all nCore values on the same plot (different linestyles)')
 
+    # Marker options (off by default for clean paper figures)
+    marker_grp = parser.add_argument_group("markers",
+        "Diagnostic markers (all off by default)")
+    marker_grp.add_argument('--show-phase', action='store_true', default=False,
+                            help='Show phase-transition markers (T / M)')
+    marker_grp.add_argument('--show-rcloud', action='store_true', default=False,
+                            help='Show R2 > R_cloud breakout marker (vertical)')
+    marker_grp.add_argument('--show-rcloud-horizontal', action='store_true', default=False,
+                            help='Show horizontal R_cloud line on radius panel')
+    marker_grp.add_argument('--show-collapse', action='store_true', default=False,
+                            help='Show collapse onset marker')
+    marker_grp.add_argument('--show-all-markers', action='store_true', default=False,
+                            help='Enable all diagnostic markers at once')
+
     args = parser.parse_args()
 
     # Handle --info mode
@@ -1054,5 +1126,13 @@ Shell Mass (shown in plots):
         combine_nCore=args.combine_nCore,
         obs=obs,
     )
+
+    # Apply marker flags
+    global SHOW_PHASE, SHOW_RCLOUD, SHOW_RCLOUD_H, SHOW_COLLAPSE
+    _all = args.show_all_markers
+    SHOW_PHASE    = _all or args.show_phase
+    SHOW_RCLOUD   = _all or args.show_rcloud
+    SHOW_RCLOUD_H = _all or args.show_rcloud_horizontal
+    SHOW_COLLAPSE = _all or args.show_collapse
 
     main(args.folder, args.output_dir, config)

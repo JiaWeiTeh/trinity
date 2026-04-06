@@ -42,7 +42,18 @@ from src._plots.paper_ODIN import (          # noqa: E402
     load_sweep_results,
     FONTSIZE,
 )
+from src._plots.plot_markers import (        # noqa: E402
+    add_plot_markers, get_marker_legend_handles,
+)
 from src._output.trinity_reader import info_simulations  # noqa: E402
+
+# =============================================================================
+# MARKER DEFAULTS (off for clean paper figures; enable via CLI --show-*)
+# =============================================================================
+SHOW_PHASE    = False
+SHOW_RCLOUD   = False
+SHOW_RCLOUD_H = False
+SHOW_COLLAPSE = False
 
 print("...creating Rosette trajectory evolution plots")
 
@@ -154,6 +165,22 @@ def plot_trajectory_evolution(results: List[SimulationResult],
             ax_v.plot(r.t_full, v_smooth, color=color, lw=lw, label=label, alpha=alpha)
         if R_smooth is not None:
             ax_r.plot(r.t_full, R_smooth, color=color, lw=lw, label=label, alpha=alpha)
+
+        # Diagnostic markers (only for top-N mode, not show_all)
+        if not config.show_all:
+            for ax in (ax_v, ax_r):
+                add_plot_markers(
+                    ax, r.t_full,
+                    phase=r.phase_full,
+                    R2=r.R_full if (ax is ax_r) else None,
+                    rcloud=r.rcloud if (ax is ax_r) else None,
+                    dataset_color=color,
+                    show_phase=SHOW_PHASE,
+                    show_rcloud=SHOW_RCLOUD and (ax is ax_r),
+                    show_collapse=SHOW_COLLAPSE,
+                    show_rcloud_horizontal=SHOW_RCLOUD_H and (ax is ax_r),
+                    show_labels=False,
+                )
 
     # --- Velocity panel ---
     ax_v.errorbar(obs.t_obs, obs.v_obs, xerr=obs.t_err, yerr=obs.v_err,
@@ -474,6 +501,20 @@ Default Observational Constraints (Rosette Nebula):
                         default='combined',
                         help='Mass tracer for chi² (default: combined)')
 
+    # Marker options
+    marker_grp = parser.add_argument_group("markers",
+        "Diagnostic markers (all off by default)")
+    marker_grp.add_argument('--show-phase', action='store_true', default=False,
+                            help='Show phase-transition markers (T / M)')
+    marker_grp.add_argument('--show-rcloud', action='store_true', default=False,
+                            help='Show R2 > R_cloud breakout marker (vertical)')
+    marker_grp.add_argument('--show-rcloud-horizontal', action='store_true', default=False,
+                            help='Show horizontal R_cloud line on radius panel')
+    marker_grp.add_argument('--show-collapse', action='store_true', default=False,
+                            help='Show collapse onset marker')
+    marker_grp.add_argument('--show-all-markers', action='store_true', default=False,
+                            help='Enable all diagnostic markers at once')
+
     args = parser.parse_args()
 
     # --info mode
@@ -512,5 +553,13 @@ Default Observational Constraints (Rosette Nebula):
         combine_nCore=args.combine_nCore,
         obs=obs,
     )
+
+    # Apply marker flags
+    global SHOW_PHASE, SHOW_RCLOUD, SHOW_RCLOUD_H, SHOW_COLLAPSE
+    _all = args.show_all_markers
+    SHOW_PHASE    = _all or args.show_phase
+    SHOW_RCLOUD   = _all or args.show_rcloud
+    SHOW_RCLOUD_H = _all or args.show_rcloud_horizontal
+    SHOW_COLLAPSE = _all or args.show_collapse
 
     main(args.folder, args.output_dir, config)
