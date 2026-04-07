@@ -37,6 +37,7 @@ from matplotlib.lines import Line2D
 MARKER_STYLES = {
     'transition': {
         'color': 'red',
+        'ls': '-.',
         'lw': 2,
         'alpha': 0.2,
         'label': 'T',
@@ -44,6 +45,7 @@ MARKER_STYLES = {
     },
     'momentum': {
         'color': 'red',
+        'ls': (0, (8, 3)),   # long dash
         'lw': 2,
         'alpha': 0.2,
         'label': 'M',
@@ -219,8 +221,8 @@ def add_phase_markers(ax, t, phase, dataset_label=None, dataset_color=None,
 
     # Add transition phase markers
     for x in transitions['t_transition']:
-        ax.axvline(x, color=t_style['color'], lw=t_style['lw'],
-                   alpha=t_style['alpha'], zorder=0)
+        ax.axvline(x, color=t_style['color'], ls=t_style['ls'],
+                   lw=t_style['lw'], alpha=t_style['alpha'], zorder=0)
         if show_labels:
             label_text = "T"
             if dataset_label:
@@ -235,8 +237,8 @@ def add_phase_markers(ax, t, phase, dataset_label=None, dataset_color=None,
 
     # Add momentum phase markers
     for x in transitions['t_momentum']:
-        ax.axvline(x, color=m_style['color'], lw=m_style['lw'],
-                   alpha=m_style['alpha'], zorder=0)
+        ax.axvline(x, color=m_style['color'], ls=m_style['ls'],
+                   lw=m_style['lw'], alpha=m_style['alpha'], zorder=0)
         if show_m_labels:
             label_text = "M"
             if dataset_label:
@@ -560,13 +562,23 @@ def get_marker_legend_handles(include_phase=True, include_rcloud=True,
     handles = []
 
     if include_phase:
-        style = MARKER_STYLES['transition']
+        t_style = MARKER_STYLES['transition']
+        m_style = MARKER_STYLES['momentum']
         handles.append(Line2D(
             [0], [0],
-            color=style['color'],
-            lw=style['lw'],
+            color=t_style['color'],
+            ls=t_style['ls'],
+            lw=t_style['lw'],
             alpha=0.3,
-            label="Phase change (T/M)"
+            label="Transition (T)"
+        ))
+        handles.append(Line2D(
+            [0], [0],
+            color=m_style['color'],
+            ls=m_style['ls'],
+            lw=m_style['lw'],
+            alpha=0.3,
+            label="Momentum (M)"
         ))
 
     if include_rcloud:
