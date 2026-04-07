@@ -229,16 +229,13 @@ def shell_structure_pure(params) -> ShellProperties:
     #       no bounded ionization front exists. n_IF_Str not applicable.
     # ------------------------------------------------------------------
     _vol_ion = R_IF**3 - rShell0**3   # rShell0 == params['R2'].value
-    if is_phiDepleted and (_vol_ion > 0.0) and (Qi > 0.0):
+    # Minimum resolvable volume: one radial cell thick
+    _vol_min = 3.0 * rShell0**2 * rShell_step
+    if is_phiDepleted and (_vol_ion > _vol_min) and (Qi > 0.0):
         n_IF_Str = np.sqrt(
             3.0 * Qi /
             (4.0 * np.pi * params['caseB_alpha'].value * _vol_ion)
         )
-        # Cap: mean ionized density cannot exceed the ODE density at the
-        # ionization front.  Prevents unphysical spikes when the ionized
-        # volume is very thin (R_IF ≈ R2).
-        if n_IF > 0.0:
-            n_IF_Str = min(n_IF_Str, n_IF)
     else:
         n_IF_Str = 0.0
 
