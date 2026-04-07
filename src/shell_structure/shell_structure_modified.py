@@ -59,7 +59,7 @@ class ShellProperties:
 
     # State flags
     isDissolved: bool  # Is the shell dissolved?
-    is_fullyIonised: bool  # Is the shell fully ionized?
+    is_phiDepleted: bool  # Are ionising photons exhausted inside the shell (φ→0)?
     diss_condition_met: bool  # Is shell_nMax < nISM this timestep?
 
     # Ionization front properties
@@ -122,7 +122,7 @@ def shell_structure_pure(params) -> ShellProperties:
     is_shellDissolved = params.get('isDissolved', False)
     if hasattr(is_shellDissolved, 'value'):
         is_shellDissolved = is_shellDissolved.value
-    is_fullyIonised = False
+    is_phiDepleted = False
 
     # Arrays for ionized region
     mShell_arr_ion = np.array([])
@@ -146,8 +146,8 @@ def shell_structure_pure(params) -> ShellProperties:
     # =============================================================================
     # Ionized region integration
     # =============================================================================
-    while not is_allMassSwept and not is_fullyIonised:
-        logger.debug('Ionised shell loop: not is_allMassSwept and not is_fullyIonised')
+    while not is_allMassSwept and not is_phiDepleted:
+        logger.debug('Ionised shell loop: not is_allMassSwept and not is_phiDepleted (φ still >0)')
 
         rShell_stop = rShell_start + sliceSize
         rShell_arr = np.arange(rShell_start, rShell_stop, rShell_step)
@@ -181,7 +181,7 @@ def shell_structure_pure(params) -> ShellProperties:
 
         mShell_arr_cum[idx + 1:] = 0.0
         is_allMassSwept = any(massCondition)
-        is_fullyIonised = any(phiCondition)
+        is_phiDepleted = any(phiCondition)
 
         # Store values
         mShell_arr_ion = np.concatenate((mShell_arr_ion, mShell_arr[:idx]))
@@ -222,14 +222,14 @@ def shell_structure_pure(params) -> ShellProperties:
     # This is the sole source of P_HII used in P_drive.
     #
     # Guards:
-    #   (a) is_fullyIonised=False → photons escape through entire shell;
+    #   (a) is_phiDepleted=True  → ionising photons consumed inside shell;
+    #       neutral layer exists beyond I-front. I-front bounded at R_IF.
+    #       Strömgren balance is exact (all Qi photons recombine in ionized volume).
+    #   (b) is_phiDepleted=False → photons leak out of shell;
     #       no bounded ionization front exists. n_IF_Str not applicable.
-    #   (b) is_fullyIonised=True  → photons absorbed within shell;
-    #       I-front exists at R_IF. Strömgren balance is exact here
-    #       (all Qi photons recombine in ionized volume).
     # ------------------------------------------------------------------
     _vol_ion = R_IF**3 - rShell0**3   # rShell0 == params['R2'].value
-    if is_fullyIonised and (_vol_ion > 0.0) and (Qi > 0.0):
+    if is_phiDepleted and (_vol_ion > 0.0) and (Qi > 0.0):
         n_IF_Str = np.sqrt(
             3.0 * Qi /
             (4.0 * np.pi * params['caseB_alpha'].value * _vol_ion)
@@ -285,7 +285,7 @@ def shell_structure_pure(params) -> ShellProperties:
         # =============================================================================
         # Neutral region integration (if not fully ionized)
         # =============================================================================
-        if not is_fullyIonised:
+        if not is_phiDepleted:
             logger.debug('Shell not fully ionised, calculating neutral region')
 
             # Temperature/density discontinuity at boundary
@@ -366,7 +366,7 @@ def shell_structure_pure(params) -> ShellProperties:
         # =============================================================================
         # Compute final shell properties
         # =============================================================================
-        if is_fullyIonised:
+        if is_phiDepleted:
             shellThickness = rShell_arr_ion[-1] - rShell0
             tau_rEnd = tauShell_arr_ion[-1]
             phi_rEnd = phiShell_arr_ion[-1]
@@ -396,9 +396,9 @@ def shell_structure_pure(params) -> ShellProperties:
         # Combined shell density profile (ionized + neutral)
         # shell_ion_idx: last index belonging to the ionized region.
         # If shell_ion_idx == len(shell_r_arr)-1, the entire shell is ionized
-        # (either is_fullyIonised, or all mass swept with photons leaking out).
+        # (either is_phiDepleted with no neutral region, or all mass swept with photons leaking out).
         shell_ion_idx = len(rShell_arr_ion) - 1
-        if is_fullyIonised or (is_allMassSwept and len(rShell_arr_neu) == 0):
+        if is_phiDepleted or (is_allMassSwept and len(rShell_arr_neu) == 0):
             shell_r_arr = rShell_arr_ion
             shell_n_arr = nShell_arr_ion
         else:
@@ -410,7 +410,7 @@ def shell_structure_pure(params) -> ShellProperties:
         f_absorbed_neu = 0.0
         f_absorbed = (f_absorbed_ion * Li + f_absorbed_neu * Ln) / (Li + Ln)
         f_ionised_dust = np.nan
-        is_fullyIonised = True
+        is_phiDepleted = True
         shellThickness = np.nan
         nShell_max = params['nISM'].value
         tau_kappa_IR = 0
@@ -454,7 +454,7 @@ def shell_structure_pure(params) -> ShellProperties:
         shell_grav_phi=grav_phi,
         shell_grav_force_m=grav_force_m,
         isDissolved=is_shellDissolved,
-        is_fullyIonised=is_fullyIonised,
+        is_phiDepleted=is_phiDepleted,
         diss_condition_met=diss_condition_met,
         n_IF=n_IF,
         n_IF_ODE=n_IF_ODE,
