@@ -361,7 +361,7 @@ params['current_phase'] = DescribedItem('', ...)       # Uses 'energy', 'implici
 # read_param.py
 'isDissolved'      # Past tense (different key!)
 'isCollapse'       # Present tense
-'is_fullyIonised'  # snake_case with British spelling
+'is_phiDepleted'   # snake_case: ionising photons exhausted in shell
 ```
 
 ### 8.4 Filename convention inconsistency
