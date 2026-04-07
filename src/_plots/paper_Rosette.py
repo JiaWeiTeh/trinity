@@ -34,6 +34,7 @@ import matplotlib.colors as mcolors
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
+from src._plots.plot_base import FIG_DIR      # noqa: E402
 from src._plots.paper_ODIN import (          # noqa: E402
     ObservationalConstraints,
     AnalysisConfig,
@@ -169,22 +170,21 @@ def plot_trajectory_evolution(results: List[SimulationResult],
         if rS_smooth is not None:
             ax_rs.plot(r.t_full, rS_smooth, color=color, lw=lw, label=label, alpha=alpha)
 
-        # Diagnostic markers (only for top-N mode, not show_all)
-        if not config.show_all:
-            radius_axes = (ax_r2, ax_rs)
-            for ax in (ax_v, ax_r2, ax_rs):
-                add_plot_markers(
-                    ax, r.t_full,
-                    phase=r.phase_full,
-                    R2=r.R_full if (ax in radius_axes) else None,
-                    rcloud=r.rcloud if (ax in radius_axes) else None,
-                    dataset_color=color,
-                    show_phase=SHOW_PHASE,
-                    show_rcloud=SHOW_RCLOUD and (ax in radius_axes),
-                    show_collapse=SHOW_COLLAPSE,
-                    show_rcloud_horizontal=SHOW_RCLOUD_H and (ax in radius_axes),
-                    show_labels=False,
-                )
+        # Diagnostic markers
+        radius_axes = (ax_r2, ax_rs)
+        for ax in (ax_v, ax_r2, ax_rs):
+            add_plot_markers(
+                ax, r.t_full,
+                phase=r.phase_full,
+                R2=r.R_full if (ax in radius_axes) else None,
+                rcloud=r.rcloud if (ax in radius_axes) else None,
+                dataset_color=color,
+                show_phase=SHOW_PHASE,
+                show_rcloud=SHOW_RCLOUD and (ax in radius_axes),
+                show_collapse=SHOW_COLLAPSE,
+                show_rcloud_horizontal=SHOW_RCLOUD_H and (ax in radius_axes),
+                show_labels=False,
+            )
 
     # --- Velocity panel ---
     ax_v.errorbar(obs.t_obs, obs.v_obs, xerr=obs.t_err, yerr=obs.v_err,
@@ -237,11 +237,29 @@ def plot_trajectory_evolution(results: List[SimulationResult],
     ax_r2.tick_params(axis='y', pad=10)
 
     # --- Shell radius (rShell) panel ---
-    ax_rs.axvspan(t_lo, t_hi, alpha=0.1, color='gray', zorder=0)
+    ax_rs.axvspan(t_lo, t_hi, alpha=0.1, color='gray', zorder=0,
+                  label=f'Age estimate ({t_lo:.0f}\u2013{t_hi:.0f} Myr)')
+
+    ax_rs.add_patch(Rectangle(
+        (t_lo, obs.R_obs - obs.R_err), t_hi - t_lo, 2 * obs.R_err,
+        facecolor='blue', alpha=0.20, edgecolor='blue', lw=1.5, zorder=5,
+        label=f'HII outer: {obs.R_obs}\u00b1{obs.R_err} pc'))
+
+    ax_rs.add_patch(Rectangle(
+        (t_lo, obs.R_obs_Pabst - obs.R_err_Pabst), t_hi - t_lo, 2 * obs.R_err_Pabst,
+        facecolor='green', alpha=0.20, edgecolor='green', lw=1.5, zorder=5,
+        label=f'Cavity: {obs.R_obs_Pabst}\u00b1{obs.R_err_Pabst} pc'))
+
+    ax_rs.add_patch(Rectangle(
+        (t_lo, _DUST_SHELL_MIN), t_hi - t_lo, _DUST_SHELL_MAX - _DUST_SHELL_MIN,
+        facecolor='orange', alpha=0.15, edgecolor='orange', lw=1.5, zorder=5,
+        label=f'Dust shell ({_DUST_SHELL_MIN:.0f}\u2013{_DUST_SHELL_MAX:.0f} pc)'))
+
     ax_rs.set_xlabel('Time [Myr]', fontsize=FONTSIZE)
     ax_rs.set_ylabel(r'Shell Radius $r_{\rm shell}$ [pc]', fontsize=FONTSIZE, rotation=90)
     ax_rs.tick_params(axis='both', labelsize=FONTSIZE)
     ax_rs.tick_params(axis='y', labelrotation=90)
+    ax_rs.legend(loc='lower right', fontsize=FONTSIZE).set_zorder(100)
     ax_rs.set_xlim(0, _T_MAX)
     ax_rs.grid(True, alpha=0.3)
     ax_rs.tick_params(axis='x', pad=10)
@@ -386,11 +404,31 @@ def plot_trajectory_evolution_combined(results: List[SimulationResult],
     ax_r2.grid(True, alpha=0.3)
 
     # --- Shell radius (rShell) panel ---
-    ax_rs.axvspan(t_lo, t_hi, alpha=0.1, color='gray', zorder=0)
+    ax_rs.axvspan(t_lo, t_hi, alpha=0.1, color='gray', zorder=0,
+                  label=f'Age estimate ({t_lo:.0f}\u2013{t_hi:.0f} Myr)')
+
+    from matplotlib.patches import Rectangle as _Rect
+    ax_rs.add_patch(_Rect(
+        (t_lo, obs.R_obs - obs.R_err), t_hi - t_lo, 2 * obs.R_err,
+        facecolor='blue', alpha=0.20, edgecolor='blue', lw=1.5, zorder=5,
+        label=f'HII outer: {obs.R_obs}\u00b1{obs.R_err} pc'))
+
+    ax_rs.add_patch(_Rect(
+        (t_lo, obs.R_obs_Pabst - obs.R_err_Pabst), t_hi - t_lo, 2 * obs.R_err_Pabst,
+        facecolor='green', alpha=0.20, edgecolor='green', lw=1.5, zorder=5,
+        label=f'Cavity: {obs.R_obs_Pabst}\u00b1{obs.R_err_Pabst} pc'))
+
+    ax_rs.add_patch(_Rect(
+        (t_lo, _DUST_SHELL_MIN), t_hi - t_lo, _DUST_SHELL_MAX - _DUST_SHELL_MIN,
+        facecolor='orange', alpha=0.15, edgecolor='orange', lw=1.5, zorder=5,
+        label=f'Dust shell ({_DUST_SHELL_MIN:.0f}\u2013{_DUST_SHELL_MAX:.0f} pc)'))
+
     ax_rs.set_xlabel('Time [Myr]', fontsize=FONTSIZE)
     ax_rs.set_ylabel(r'Shell Radius $r_{\rm shell}$ [pc]', fontsize=FONTSIZE, rotation=90)
     ax_rs.tick_params(axis='both', labelsize=FONTSIZE)
     ax_rs.tick_params(axis='y', labelrotation=90)
+    legend_rs = ax_rs.legend(loc='upper left', fontsize=FONTSIZE)
+    legend_rs.set_zorder(100)
     ax_rs.set_xlim(0, _T_MAX)
     ax_rs.grid(True, alpha=0.3)
 
@@ -416,8 +454,9 @@ def main(folder_path: str, output_dir: str = None, config: AnalysisConfig = None
         print(f"Error: Folder not found: {folder_path}")
         sys.exit(1)
 
+    folder_name = folder_path.name
     if output_dir is None:
-        output_dir = folder_path / "analysis"
+        output_dir = FIG_DIR / folder_name
     else:
         output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)

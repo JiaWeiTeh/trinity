@@ -416,7 +416,11 @@ def plot_comparison_grid(
         leg.set_zorder(10)
 
         # Save
-        fig_dir = Path(output_dir) if output_dir else FIG_DIR
+        if output_dir:
+            fig_dir = Path(output_dir)
+        else:
+            combined = f"{folder_T.name}_{folder_W.name}"
+            fig_dir = FIG_DIR / combined
         fig_dir.mkdir(parents=True, exist_ok=True)
         out_pdf = fig_dir / f"radiusComparison_n{ndens}.pdf"
         fig.savefig(out_pdf, bbox_inches="tight")

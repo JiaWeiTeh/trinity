@@ -55,7 +55,7 @@ if _PROJECT_ROOT not in sys.path:
 SCRIPTS = [
     ("paper_feedback",               "src/_plots/paper_feedback.py",               True),
     ("paper_momentum",               "src/_plots/paper_momentum.py",               True),
-    ("paper_thermalRegime",          "src/_plots/paper_thermalRegime.py",           True),
+    ("paper_thermalRegime",          "src/_plots/paper_thermalRegime.py",           False),
     ("paper_accelerationDecomposition", "src/_plots/paper_accelerationDecomposition.py", False),
     ("paper_AllowedGMC",             "src/_plots/paper_AllowedGMC.py",              False),
     ("paper_BEprofile",              "src/_plots/paper_BEprofile.py",               False),
@@ -64,7 +64,7 @@ SCRIPTS = [
     ("paper_bubblePhase",            "src/_plots/paper_bubblePhase.py",             False),
     ("paper_cancellationMetric",     "src/_plots/paper_cancellationMetric.py",      False),
     ("paper_dominantFeedback",       "src/_plots/paper_dominantFeedback.py",        False),
-    ("paper_escapeFraction",         "src/_plots/paper_escapeFraction.py",          False),
+    ("paper_escapeFraction",         "src/_plots/paper_escapeFraction.py",          True),
     ("paper_expansionVelocity",      "src/_plots/paper_expansionVelocity.py",       False),
     ("paper_forceFraction",          "src/_plots/paper_forceFraction.py",           False),
     ("paper_InitialCloudRadius",     "src/_plots/paper_InitialCloudRadius.py",      False),
@@ -73,10 +73,10 @@ SCRIPTS = [
     ("paper_Rosette",                "src/_plots/paper_Rosette.py",                 False),
     ("paper_PISM",                   "src/_plots/paper_PISM.py",                    False),
     ("paper_PPVtest",                "src/_plots/paper_PPVtest.py",                 False),
-    ("paper_PHII_Pb_Pram",           "src/_plots/paper_PHII_Pb_Pram.py",            False),
+    ("paper_PHII_Pb_Pram",           "src/_plots/paper_PHII_Pb_Pram.py",            True),
     ("paper_pressureEvolution",      "src/_plots/paper_pressureEvolution.py",       False),
-    ("paper_R2_RIF",                 "src/_plots/paper_R2_RIF.py",                  False),
-    ("paper_radiusEvolution",        "src/_plots/paper_radiusEvolution.py",         False),
+    ("paper_R2_RIF",                 "src/_plots/paper_R2_RIF.py",                  True),
+    ("paper_radiusEvolution",        "src/_plots/paper_radiusEvolution.py",         True),
     ("paper_zetaRegime",             "src/_plots/paper_zetaRegime.py",              False),
     ("paper_pressureZeta",           "src/_plots/paper_pressureZeta.py",            False),
 ]
@@ -296,9 +296,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     if args.output_dir is not None:
         extra.extend(["-o", args.output_dir])
     else:
-        # Default: save into a _plot/ subfolder under the sweep output dir
+        # Default: save into fig/{foldername}/
         folder_name = Path(args.folder).name
-        default_output = PROJECT_ROOT / "fig" / folder_name / "_plot"
+        default_output = PROJECT_ROOT / "fig" / folder_name
         default_output.mkdir(parents=True, exist_ok=True)
         extra.extend(["-o", str(default_output)])
     if args.mCloud is not None:
