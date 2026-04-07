@@ -234,6 +234,11 @@ def shell_structure_pure(params) -> ShellProperties:
             3.0 * Qi /
             (4.0 * np.pi * params['caseB_alpha'].value * _vol_ion)
         )
+        # Cap: mean ionized density cannot exceed the ODE density at the
+        # ionization front.  Prevents unphysical spikes when the ionized
+        # volume is very thin (R_IF ≈ R2).
+        if n_IF > 0.0:
+            n_IF_Str = min(n_IF_Str, n_IF)
     else:
         n_IF_Str = 0.0
 
