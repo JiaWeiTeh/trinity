@@ -382,7 +382,9 @@ def shell_structure_pure(params) -> ShellProperties:
         else:
             shellThickness = rShell_arr_neu[-1] - rShell0
             tau_rEnd = tauShell_arr_neu[-1]
-            phi_rEnd = 0
+            phi_rEnd = phiShell_arr_ion[-1]
+            if phi_rEnd < 0:
+                phi_rEnd = 0
             nShell_max = max(np.max(nShell_arr_ion), np.max(nShell_arr_neu))
             dr_neu_arr = rShell_arr_neu[1:] - rShell_arr_neu[:-1]
             tau_kappa_IR = (params['mu_atom'].value * np.sum(nShell_arr_ion[:-1] * dr_ion_arr) +
