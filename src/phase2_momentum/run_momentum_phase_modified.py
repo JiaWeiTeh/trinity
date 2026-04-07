@@ -862,10 +862,22 @@ def run_phase_momentum(params) -> MomentumPhaseResults:
                 params['EndSimulationDirectly'].value = True
                 break
 
-    # Save final post-ODE snapshot so the phase boundary state is recorded.
-    # Without this, the last snapshot would be the pre-ODE save from the
-    # final iteration, creating a gap when the next phase begins.
-    params.save_snapshot()
+    # =========================================================================
+    # Phase-boundary reconciliation snapshot.
+    # Recompute derived properties with the post-ODE state so the snapshot
+    # is fully consistent.
+    # =========================================================================
+    try:
+        feedback_final = get_currentSB99feedback(t_now, params)
+        updateDict(params, feedback_final)
+        params['Pb'].value = get_bubbleParams.pRam(
+            R2, feedback_final.Lmech_total, feedback_final.v_mech_total)
+        params['R1'].value = R2
+        shell_props_f = shell_structure_pure(params)
+        updateDict(params, shell_props_f)
+        params.save_snapshot()
+    except Exception as e:
+        logger.warning(f"Phase-boundary reconciliation failed: {e}")
 
     # =============================================================================
     # Build results

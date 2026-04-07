@@ -954,10 +954,44 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         beta_results.append(beta)
         delta_results.append(delta)
 
-    # Save final post-ODE snapshot so the phase boundary state is recorded.
-    # Without this, the last snapshot would be the pre-ODE save from the
-    # final iteration, creating a gap when the next phase begins.
-    params.save_snapshot()
+    # =========================================================================
+    # Phase-boundary reconciliation snapshot.
+    # Recompute derived properties (Pb, shell structure, forces) with the
+    # post-ODE state so the snapshot is fully consistent.  A bare
+    # save_snapshot() here would save stale derived values AND block the
+    # next phase's correct first snapshot via the duplicate guard.
+    # =========================================================================
+    try:
+        feedback_final = get_currentSB99feedback(t_now, params)
+        updateDict(params, feedback_final)
+        gamma_adia = params['gamma_adia'].value
+        R1_f, Pb_f = compute_R1_Pb(R2, Eb, feedback_final.Lmech_total,
+                                    feedback_final.v_mech_total, gamma_adia)
+        params['R1'].value = R1_f
+        params['Pb'].value = Pb_f
+        shell_props_f = shell_structure_pure(params)
+        updateDict(params, shell_props_f)
+        # P_HII from Strömgren ionization balance
+        n_IF_Str_f = shell_props_f.n_IF_Str
+        if params['include_PHII'].value and n_IF_Str_f > 0:
+            P_HII_f = 2.0 * n_IF_Str_f * params['k_B'].value * params['TShell_ion'].value
+        else:
+            P_HII_f = 0.0
+        params['P_HII'].value = P_HII_f
+        params['F_HII'].value = FOUR_PI * R2**2 * P_HII_f
+        force_f = compute_forces_pure(R2, params['shell_mass'].value,
+                                      Pb_f, shell_props_f, params)
+        params['F_grav'].value = force_f.F_grav
+        params['F_ion_in'].value = force_f.F_ion_in
+        params['F_HII'].value = force_f.F_HII
+        params['F_ram'].value = force_f.F_ram
+        params['F_rad'].value = force_f.F_rad
+        params['P_HII'].value = force_f.P_HII
+        params['P_drive'].value = force_f.P_drive
+        params['P_ram'].value = force_f.P_ram
+        params.save_snapshot()
+    except Exception as e:
+        logger.warning(f"Phase-boundary reconciliation failed: {e}")
 
     # =============================================================================
     # Build results

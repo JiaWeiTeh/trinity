@@ -347,10 +347,30 @@ def run_energy(params):
 
         loop_count += 1
 
-    # Save final post-ODE snapshot so the phase boundary state is recorded.
-    # Without this, the last snapshot would be the pre-ODE save from the
-    # final iteration, creating a gap when the next phase begins.
-    params.save_snapshot()
+    # =========================================================================
+    # Phase-boundary reconciliation snapshot.
+    # Recompute derived properties (Pb, shell structure) with the post-ODE
+    # state so the snapshot is fully consistent.  A bare save_snapshot()
+    # would save stale derived values AND block the next phase's correct
+    # first snapshot via the duplicate guard.
+    # =========================================================================
+    try:
+        feedback_final = get_currentSB99feedback(t_now, params)
+        updateDict(params, feedback_final)
+        R1_f = scipy.optimize.brentq(
+            get_bubbleParams.get_r1, 1e-3 * R2, R2,
+            args=([feedback_final.Lmech_total, Eb, feedback_final.v_mech_total, R2])
+        )
+        Pb_f = get_bubbleParams.bubble_E2P(Eb, R2, R1_f, params['gamma_adia'].value)
+        params['R1'].value = R1_f
+        params['Pb'].value = Pb_f
+        mShell_f = mass_profile.get_mass_profile(R2, params, return_mdot=False)
+        params['shell_mass'].value = mShell_f
+        shell_f = shell_structure_modified.shell_structure_pure(params)
+        updateDict(params, shell_f)
+        params.save_snapshot()
+    except Exception as e:
+        logger.warning(f"Phase-boundary reconciliation failed: {e}")
 
     logger.info(f'Modified energy phase complete: {loop_count} segments')
     return
