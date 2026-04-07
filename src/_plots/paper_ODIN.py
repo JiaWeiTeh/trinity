@@ -615,22 +615,21 @@ def plot_trajectory_evolution(results: List[SimulationResult], config: AnalysisC
             ax_rs.plot(t, rS_smooth, color=color, lw=lw, label=label, alpha=alpha)
 
         # --- Diagnostic markers (vertical lines on all panels) ---
-        if not config.show_all:
-            radius_axes = (ax_r2, ax_rs)
-            for ax in (ax_m, ax_r2, ax_rs):
-                add_plot_markers(
-                    ax, t,
-                    phase=r.phase_full,
-                    R2=R2 if (ax in radius_axes) else None,
-                    rcloud=r.rcloud if (ax in radius_axes) else None,
-                    isCollapse=None,
-                    dataset_color=color,
-                    show_phase=SHOW_PHASE,
-                    show_rcloud=SHOW_RCLOUD and (ax in radius_axes),
-                    show_collapse=SHOW_COLLAPSE,
-                    show_rcloud_horizontal=SHOW_RCLOUD_H and (ax in radius_axes),
-                    show_labels=False,
-                )
+        radius_axes = (ax_r2, ax_rs)
+        for ax in (ax_m, ax_r2, ax_rs):
+            add_plot_markers(
+                ax, t,
+                phase=r.phase_full,
+                R2=R2 if (ax in radius_axes) else None,
+                rcloud=r.rcloud if (ax in radius_axes) else None,
+                isCollapse=None,
+                dataset_color=color,
+                show_phase=SHOW_PHASE,
+                show_rcloud=SHOW_RCLOUD and (ax in radius_axes),
+                show_collapse=SHOW_COLLAPSE,
+                show_rcloud_horizontal=SHOW_RCLOUD_H and (ax in radius_axes),
+                show_labels=False,
+            )
 
     # --- Mass panel (log scale) ---
     tracer_bands = [
@@ -704,6 +703,19 @@ def plot_trajectory_evolution(results: List[SimulationResult], config: AnalysisC
     ax_r2.tick_params(axis='y', pad=10)
 
     # --- Shell radius (rShell) panel ---
+    # Same observational constraints as R2 panel
+    ax_rs.errorbar(obs.t_obs, obs.R_obs, xerr=obs.t_err, yerr=obs.R_err,
+                   fmt='s', color='blue', markersize=14, capsize=5, capthick=2,
+                   label=f'HI: {obs.R_obs}\u00b1{obs.R_err} pc', zorder=10, markeredgecolor='k')
+    ax_rs.axhspan(obs.R_obs - obs.R_err, obs.R_obs + obs.R_err,
+                  alpha=0.15, color='blue', zorder=1)
+
+    ax_rs.errorbar(obs.t_obs, obs.R_obs_Pabst, xerr=obs.t_err, yerr=obs.R_err_Pabst,
+                   fmt='s', color='green', markersize=14, capsize=5, capthick=2,
+                   label=f'[CII]: {obs.R_obs_Pabst} pc', zorder=10, markeredgecolor='k')
+    ax_rs.axhspan(obs.R_obs_Pabst - obs.R_err_Pabst, obs.R_obs_Pabst + obs.R_err_Pabst,
+                  alpha=0.15, color='green', zorder=1)
+
     ax_rs.axvspan(obs.t_obs - obs.t_err, obs.t_obs + obs.t_err,
                   alpha=0.1, color='gray', zorder=0)
 
@@ -720,6 +732,7 @@ def plot_trajectory_evolution(results: List[SimulationResult], config: AnalysisC
         legend_rs = ax_rs.legend(loc='lower right', fontsize=FONTSIZE)
     legend_rs.set_zorder(100)
     ax_rs.set_xlim(0, 0.3)
+    ax_rs.set_ylim(0, 6)
     ax_rs.grid(True, alpha=0.3)
     ax_rs.tick_params(axis='x', pad=10)
     ax_rs.tick_params(axis='y', pad=10)
@@ -934,6 +947,18 @@ def plot_trajectory_evolution_combined(results: List[SimulationResult], config: 
     ax_r2.grid(True, alpha=0.3)
 
     # --- Shell radius (rShell) panel ---
+    ax_rs.errorbar(obs.t_obs, obs.R_obs, xerr=obs.t_err, yerr=obs.R_err,
+                   fmt='s', color='blue', markersize=12, capsize=5, capthick=2,
+                   label=f'HI: {obs.R_obs}\u00b1{obs.R_err} pc', zorder=10, markeredgecolor='k')
+    ax_rs.axhspan(obs.R_obs - obs.R_err, obs.R_obs + obs.R_err,
+                  alpha=0.15, color='blue', zorder=1)
+
+    ax_rs.errorbar(obs.t_obs, obs.R_obs_Pabst, xerr=obs.t_err, yerr=obs.R_err_Pabst,
+                   fmt='s', color='green', markersize=12, capsize=5, capthick=2,
+                   label=f'[CII]: {obs.R_obs_Pabst} pc', zorder=10, markeredgecolor='k')
+    ax_rs.axhspan(obs.R_obs_Pabst - obs.R_err_Pabst, obs.R_obs_Pabst + obs.R_err_Pabst,
+                  alpha=0.15, color='green', zorder=1)
+
     ax_rs.axvspan(obs.t_obs - obs.t_err, obs.t_obs + obs.t_err,
                   alpha=0.1, color='gray', zorder=0)
 
@@ -941,7 +966,10 @@ def plot_trajectory_evolution_combined(results: List[SimulationResult], config: 
     ax_rs.set_ylabel(r'Shell Radius $r_{\rm shell}$ [pc]', fontsize=FONTSIZE, rotation=90)
     ax_rs.tick_params(axis='both', labelsize=FONTSIZE)
     ax_rs.tick_params(axis='y', labelrotation=90)
+    legend_rs = ax_rs.legend(loc='upper left', fontsize=FONTSIZE)
+    legend_rs.set_zorder(100)
     ax_rs.set_xlim(0, 0.3)
+    ax_rs.set_ylim(0, 6)
     ax_rs.grid(True, alpha=0.3)
 
     plt.tight_layout(h_pad=1.0)
