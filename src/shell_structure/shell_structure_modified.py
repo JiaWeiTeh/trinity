@@ -234,6 +234,8 @@ def shell_structure_pure(params) -> ShellProperties:
             3.0 * Qi /
             (4.0 * np.pi * params['caseB_alpha'].value * _vol_ion)
         )
+        # Cap: thin ionised skin → P_HII cannot exceed P_b (pressure equilibrium)
+        n_IF_Str = min(n_IF_Str, shell_n0)
     else:
         n_IF_Str = 0.0
 
