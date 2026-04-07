@@ -2522,8 +2522,8 @@ def main(folder_path: str, output_dir: str = None, config: AnalysisConfig = None
         Analysis configuration
     """
     folder_path = Path(folder_path)
-    # Default output directory is {folder}/analysis/ per documentation
-    output_dir = Path(output_dir) if output_dir else folder_path / 'analysis'
+    folder_name = folder_path.name
+    output_dir = Path(output_dir) if output_dir else FIG_DIR / folder_name
     output_dir.mkdir(parents=True, exist_ok=True)
 
     if config is None:

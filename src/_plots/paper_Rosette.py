@@ -34,6 +34,7 @@ import matplotlib.colors as mcolors
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
+from src._plots.plot_base import FIG_DIR      # noqa: E402
 from src._plots.paper_ODIN import (          # noqa: E402
     ObservationalConstraints,
     AnalysisConfig,
@@ -453,8 +454,9 @@ def main(folder_path: str, output_dir: str = None, config: AnalysisConfig = None
         print(f"Error: Folder not found: {folder_path}")
         sys.exit(1)
 
+    folder_name = folder_path.name
     if output_dir is None:
-        output_dir = folder_path / "analysis"
+        output_dir = FIG_DIR / folder_name
     else:
         output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)

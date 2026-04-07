@@ -1010,8 +1010,9 @@ def main(folder_path: str, output_dir: str = None, config: AnalysisConfig = None
         sys.exit(1)
 
     # Setup output directory
+    folder_name = folder_path.name
     if output_dir is None:
-        output_dir = folder_path / "analysis"
+        output_dir = FIG_DIR / folder_name
     else:
         output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
