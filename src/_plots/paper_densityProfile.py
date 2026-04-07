@@ -10,8 +10,8 @@ density structure) from a density_profile_sweep run:
   - Power-law alpha = -2 (singular isothermal sphere)
   - Bonnor-Ebert with Omega = 14.1
 
-Produces 8 diagnostic figures examining how cloud density structure affects
-feedback-driven shell evolution.
+Produces 8 diagnostic figures (1 static + 7 simulation-based) examining how
+cloud density structure affects feedback-driven shell evolution.
 
 Usage:
   python paper_densityProfile.py -F <path_to_density_profile_sweep_output>
@@ -688,46 +688,7 @@ def plot_force_budget(simulations: dict, output_dir: Path, fmt: str = 'pdf',
 
 
 # =============================================================================
-# Figure 5: Cumulative Momentum
-# =============================================================================
-
-def plot_cumulative_momentum(simulations: dict, output_dir: Path, fmt: str = 'pdf',
-                             show: bool = False) -> None:
-    """Plot cumulative momentum p = M_shell * v for all profiles."""
-    logger.info("Figure 5: Cumulative Momentum")
-
-    fig, ax = plt.subplots(figsize=(5, 4))
-
-    for tag in PROFILE_ORDER:
-        if tag not in simulations:
-            continue
-        output = simulations[tag]
-        s = get_style(tag)
-
-        t = output.get('t_now')
-        v2 = safe_get(output, 'v2') * V_AU2KMS  # km/s
-        mshell = safe_get(output, 'shell_mass')  # Msun
-
-        # Momentum: M_shell * v [Msun km/s]
-        p = mshell * v2
-
-        ax.plot(t, np.abs(p), color=s['color'], ls=s['ls'], lw=1.5)
-
-    ax.set_xlabel(r'$t$ [Myr]')
-    ax.set_ylabel(r'$p = M_{\rm shell} \times v$ [M$_\odot$\,km\,s$^{-1}$]')
-    ax.set_title(r'Cumulative Momentum')
-    ax.set_yscale('log')
-
-    add_legend(ax, [t for t in PROFILE_ORDER if t in simulations], loc='best')
-
-    savefig(fig, 'densityProfile_momentum', output_dir, fmt)
-    if show:
-        plt.show()
-    plt.close(fig)
-
-
-# =============================================================================
-# Figure 6: Phase Transition Timing
+# Figure 5: Phase Transition Timing
 # =============================================================================
 
 def plot_phase_timing(simulations: dict, output_dir: Path, fmt: str = 'pdf',
@@ -867,7 +828,7 @@ def plot_phase_timeline(simulations: dict, output_dir: Path, fmt: str = 'pdf',
     Shows energy-driven, transition, momentum-driven, and re-collapse phases
     as coloured horizontal bars, with event markers for key transitions.
     """
-    logger.info("Figure 6: Phase Timeline (annotated Gantt)")
+    logger.info("Figure 5: Phase Timeline (annotated Gantt)")
 
     # Phase colours (muted, distinguishable, colourblind-friendly)
     PHASE_COLORS = {
@@ -1043,13 +1004,13 @@ def plot_phase_timeline(simulations: dict, output_dir: Path, fmt: str = 'pdf',
 
 
 # =============================================================================
-# Figure 7: Blend Weight w(t)
+# Figure 6: Blend Weight w(t)
 # =============================================================================
 
 def plot_blend_weight(simulations: dict, output_dir: Path, fmt: str = 'pdf',
                       show: bool = False) -> None:
     """Plot blending weight w_blend(t) for all profiles."""
-    logger.info("Figure 7: Blend Weight")
+    logger.info("Figure 6: Blend Weight")
 
     fig, ax = plt.subplots(figsize=(5, 4))
 
@@ -1086,80 +1047,6 @@ def plot_blend_weight(simulations: dict, output_dir: Path, fmt: str = 'pdf',
 
 
 # =============================================================================
-# Figure 8: Energy Retention
-# =============================================================================
-
-def plot_energy_retention(simulations: dict, output_dir: Path, fmt: str = 'pdf',
-                          show: bool = False) -> None:
-    """
-    Plot energy retention E_b(t) / E_input(t) for all profiles.
-
-    E_input = cumulative integral of Lmech_total over time.
-    If Lmech_total is not available, plots E_b(t) alone.
-    """
-    logger.info("Figure 8: Energy Retention")
-
-    fig, ax = plt.subplots(figsize=(5, 4))
-
-    has_ratio = False
-    for tag in PROFILE_ORDER:
-        if tag not in simulations:
-            continue
-        output = simulations[tag]
-        s = get_style(tag)
-
-        t = output.get('t_now')
-        Eb = safe_get(output, 'Eb')
-
-        # Try to get cumulative wind energy input
-        Lmech = safe_get(output, 'Lmech_total')
-
-        if np.any(Lmech > 0):
-            # Cumulative integral: E_input = integral of Lmech dt
-            # Lmech is in [Msun pc^2 / Myr^3], t in [Myr]
-            E_input = np.zeros_like(t)
-            E_input[1:] = np.cumsum(0.5 * (Lmech[1:] + Lmech[:-1]) * np.diff(t))
-
-            # Retention fraction
-            with np.errstate(divide='ignore', invalid='ignore'):
-                eta = np.where(E_input > 0, Eb / E_input, 0.0)
-
-            mask = (E_input > 0) & np.isfinite(eta)
-            if np.any(mask):
-                has_ratio = True
-                ax.plot(t[mask], eta[mask], color=s['color'], ls=s['ls'], lw=1.5)
-
-    if has_ratio:
-        ax.set_ylabel(r'$E_{\rm b} / E_{\rm input}$')
-        ax.set_title(r'Energy Retention Fraction')
-    else:
-        # Fallback: just plot Eb(t)
-        logger.warning("Lmech_total not available; plotting Eb(t) alone.")
-        for tag in PROFILE_ORDER:
-            if tag not in simulations:
-                continue
-            output = simulations[tag]
-            s = get_style(tag)
-            t = output.get('t_now')
-            Eb = safe_get(output, 'Eb')
-            mask = Eb > 0
-            if np.any(mask):
-                ax.semilogy(t[mask], Eb[mask], color=s['color'], ls=s['ls'],
-                            lw=1.5)
-        ax.set_ylabel(r'$E_{\rm b}$ [internal units]')
-        ax.set_title(r'Bubble Energy')
-
-    ax.set_xlabel(r'$t$ [Myr]')
-
-    add_legend(ax, [t for t in PROFILE_ORDER if t in simulations], loc='best')
-
-    savefig(fig, 'densityProfile_energyRetention', output_dir, fmt)
-    if show:
-        plt.show()
-    plt.close(fig)
-
-
-# =============================================================================
 # Helper: map profile tags to data file paths (for external load_run calls)
 # =============================================================================
 
@@ -1180,7 +1067,7 @@ def _get_profile_data_paths(sweep_dir: str) -> dict:
 
 
 # =============================================================================
-# Figure 9: Feedback Fraction Grid (2x2)
+# Figure 7: Feedback Fraction Grid (2x2)
 # =============================================================================
 
 def plot_feedback_grid(sweep_dir: str, output_dir: Path, fmt: str = 'pdf',
@@ -1194,7 +1081,7 @@ def plot_feedback_grid(sweep_dir: str, output_dir: Path, fmt: str = 'pdf',
     import src._plots.paper_feedback as _fb
     from src._plots.plot_markers import get_marker_legend_handles
 
-    logger.info("Figure 9: Feedback Fraction Grid")
+    logger.info("Figure 7: Feedback Fraction Grid")
 
     sim_paths = _get_profile_data_paths(sweep_dir)
     tags_present = [t for t in PROFILE_ORDER if t in sim_paths]
@@ -1218,7 +1105,7 @@ def plot_feedback_grid(sweep_dir: str, output_dir: Path, fmt: str = 'pdf',
             _fb.plot_run_on_ax(
                 ax, t, R2, phase, base_forces, overlay_forces, rcloud,
                 isCollapse, alpha=0.75, smooth_window=_fb.SMOOTH_WINDOW,
-                phase_change=_fb.PHASE_CHANGE, use_log_x=_fb.USE_LOG_X,
+                phase_change=_fb.SHOW_PHASE, use_log_x=_fb.USE_LOG_X,
             )
         except Exception as e:
             logger.error(f"Feedback grid {tag}: {e}")
@@ -1267,7 +1154,7 @@ def plot_feedback_grid(sweep_dir: str, output_dir: Path, fmt: str = 'pdf',
 
 
 # =============================================================================
-# Figure 10: Momentum Grid (2x2)
+# Figure 8: Momentum Grid (2x2)
 # =============================================================================
 
 def plot_momentum_grid(sweep_dir: str, output_dir: Path, fmt: str = 'pdf',
@@ -1281,7 +1168,7 @@ def plot_momentum_grid(sweep_dir: str, output_dir: Path, fmt: str = 'pdf',
     import src._plots.paper_momentum as _mom
     from src._plots.plot_markers import get_marker_legend_handles
 
-    logger.info("Figure 10: Momentum Grid")
+    logger.info("Figure 8: Momentum Grid")
 
     sim_paths = _get_profile_data_paths(sweep_dir)
     tags_present = [t for t in PROFILE_ORDER if t in sim_paths]
@@ -1342,95 +1229,6 @@ def plot_momentum_grid(sweep_dir: str, output_dir: Path, fmt: str = 'pdf',
     fig.subplots_adjust(top=0.88)
 
     savefig(fig, 'densityProfile_momentum', output_dir, fmt)
-    if show:
-        plt.show()
-    plt.close(fig)
-
-
-# =============================================================================
-# Figure 11: Thermal Regime Grid (2x2)
-# =============================================================================
-
-def plot_thermal_grid(sweep_dir: str, output_dir: Path, fmt: str = 'pdf',
-                      show: bool = False) -> None:
-    """
-    Plot thermal regime (w_blend) in a 2x2 grid.
-
-    Each panel shows one density profile using the same thermal-regime
-    visualisation as paper_thermalRegime.py.
-    """
-    import src._plots.paper_thermalRegime as _therm
-    from src._plots.plot_markers import get_marker_legend_handles
-
-    logger.info("Figure 11: Thermal Regime Grid")
-
-    sim_paths = _get_profile_data_paths(sweep_dir)
-    tags_present = [t for t in PROFILE_ORDER if t in sim_paths]
-
-    if not tags_present:
-        logger.warning("No simulations found for thermal grid. Skipping.")
-        return
-
-    nrows, ncols = 2, 2
-    fig, axes = plt.subplots(nrows, ncols, figsize=(8, 6), squeeze=False,
-                             sharey=True)
-
-    for idx, tag in enumerate(tags_present):
-        i, j = divmod(idx, ncols)
-        ax = axes[i, j]
-        s = get_style(tag)
-
-        try:
-            data = _therm.load_run(sim_paths[tag])
-            _therm.plot_run_on_ax(
-                ax, data, smooth_window=_therm.SMOOTH_WINDOW,
-                phase_change=_therm.PHASE_CHANGE,
-                plot_mode=_therm.PLOT_MODE, use_log_x=_therm.USE_LOG_X,
-            )
-        except Exception as e:
-            logger.error(f"Thermal grid {tag}: {e}")
-            ax.text(0.5, 0.5, "error", ha="center", va="center",
-                    transform=ax.transAxes)
-            ax.set_axis_off()
-            continue
-
-        ax.set_title(s['label'])
-        if i == nrows - 1:
-            ax.set_xlabel(r'$t$ [Myr]')
-        if j == 0:
-            ax.set_ylabel(r'$w_{\rm blend}$')
-        else:
-            ax.tick_params(labelleft=False)
-
-    for idx in range(len(tags_present), nrows * ncols):
-        i, j = divmod(idx, ncols)
-        axes[i, j].set_visible(False)
-
-    # Global legend
-    if _therm.PLOT_MODE == 'stacked':
-        handles = [
-            Patch(facecolor=_therm.C_BUBBLE, alpha=0.7,
-                  label=r'$(1-w)$ Bubble'),
-            Patch(facecolor=_therm.C_HII, alpha=0.7, label=r'$w$ HII'),
-        ]
-    else:
-        handles = [
-            Line2D([0], [0], color='black', lw=2, label=r'$w_{\rm blend}$'),
-            Patch(facecolor=_therm.C_BUBBLE, alpha=0.1, edgecolor='none',
-                  label='Bubble regime'),
-            Patch(facecolor=_therm.C_HII, alpha=0.1, edgecolor='none',
-                  label='HII regime'),
-        ]
-    handles.extend(get_marker_legend_handles(
-        include_phase=SHOW_PHASE, include_rcloud=SHOW_RCLOUD,
-        include_collapse=SHOW_COLLAPSE))
-
-    fig.legend(handles=handles, loc='upper center', ncol=4,
-               frameon=True, facecolor='white', framealpha=0.9,
-               edgecolor='0.2', bbox_to_anchor=(0.5, 1.05), fontsize=8)
-    fig.subplots_adjust(top=0.88)
-
-    savefig(fig, 'densityProfile_thermal', output_dir, fmt)
     if show:
         plt.show()
     plt.close(fig)
@@ -1529,10 +1327,8 @@ Examples:
         ("Figure 2: Shell Evolution",      plot_shell_evolution),
         ("Figure 3: Pressure Budget",       plot_pressure_budget),
         ("Figure 4: Force Budget",          plot_force_budget),
-        ("Figure 5: Cumulative Momentum",   plot_cumulative_momentum),
-        ("Figure 6: Phase Timing",          plot_phase_timing),
-        ("Figure 7: Blend Weight",          plot_blend_weight),
-        ("Figure 8: Energy Retention",      plot_energy_retention),
+        ("Figure 5: Phase Timing",          plot_phase_timing),
+        ("Figure 6: Blend Weight",          plot_blend_weight),
     ]
 
     for name, func in plot_functions:
@@ -1543,9 +1339,8 @@ Examples:
 
     # Grid figures (reuse plot functions from paper_feedback/momentum/thermal)
     grid_functions = [
-        ("Figure 9: Feedback Grid",   plot_feedback_grid),
-        ("Figure 10: Momentum Grid",  plot_momentum_grid),
-        ("Figure 11: Thermal Grid",   plot_thermal_grid),
+        ("Figure 7: Feedback Grid",   plot_feedback_grid),
+        ("Figure 8: Momentum Grid",   plot_momentum_grid),
     ]
 
     for name, func in grid_functions:
