@@ -214,27 +214,22 @@ def shell_structure_pure(params) -> ShellProperties:
     n_IF_ODE = n_IF            # Preserve raw ODE value for diagnostics
     R_IF = rShell_arr_ion[-1]  # Radius of ionization front
 
+    # Ionizing photon escape fraction at shell outer edge
+    f_esc_ion = max(0.0, phiShell_arr_ion[-1])
+
     # ------------------------------------------------------------------
     # Strömgren ionization balance density (Lancaster+2025, generalised)
     #
-    # n_IF_Str = sqrt(3 (1 - f_esc) Qi / (4π αB ΔV))
+    # n_IF_Str = sqrt(3 (1 - f_esc_ion) Qi / (4π αB ΔV))
     #
     # Continuous across regimes:
-    #   is_phiDepleted=True  → ΔV = R_IF³ - R2³,  f_esc ≈ 0
-    #   is_phiDepleted=False → ΔV = R_sh³ - R2³,  f_esc = phi(R_sh)
+    #   is_phiDepleted=True  → ΔV = R_IF³ - R2³,  f_esc_ion ≈ 0
+    #   is_phiDepleted=False → ΔV = R_sh³ - R2³,  f_esc_ion = phi(R_sh)
     # Cap: n_IF_Str ≤ shell_n0 (pressure equilibrium for thin skins)
     # ------------------------------------------------------------------
-    if is_phiDepleted:
-        _R_outer = R_IF
-        _f_esc = max(0.0, phiShell_arr_ion[-1])
-    else:
-        # Shell fully ionised: outer edge is last ionised-array radius
-        # (all shell mass accounted for, no neutral region)
-        _R_outer = rShell_arr_ion[-1]
-        _f_esc = max(0.0, phiShell_arr_ion[-1])
-
-    _vol_ion = _R_outer**3 - rShell0**3
-    _Qi_absorbed = (1.0 - _f_esc) * Qi
+    # R_IF = rShell_arr_ion[-1] in both regimes (I-front or shell edge)
+    _vol_ion = R_IF**3 - rShell0**3
+    _Qi_absorbed = (1.0 - f_esc_ion) * Qi
 
     if (_vol_ion > 0.0) and (_Qi_absorbed > 0.0):
         n_IF_Str = np.sqrt(
@@ -378,24 +373,18 @@ def shell_structure_pure(params) -> ShellProperties:
         if is_phiDepleted:
             shellThickness = rShell_arr_ion[-1] - rShell0
             tau_rEnd = tauShell_arr_ion[-1]
-            phi_rEnd = phiShell_arr_ion[-1]
-            if phi_rEnd < 0:
-                phi_rEnd = 0
             nShell_max = np.max(nShell_arr_ion)
             tau_kappa_IR = params['mu_atom'].value * np.sum(nShell_arr_ion[:-1] * dr_ion_arr)
         else:
             shellThickness = rShell_arr_neu[-1] - rShell0
             tau_rEnd = tauShell_arr_neu[-1]
-            phi_rEnd = phiShell_arr_ion[-1]
-            if phi_rEnd < 0:
-                phi_rEnd = 0
             nShell_max = max(np.max(nShell_arr_ion), np.max(nShell_arr_neu))
             dr_neu_arr = rShell_arr_neu[1:] - rShell_arr_neu[:-1]
             tau_kappa_IR = (params['mu_atom'].value * np.sum(nShell_arr_ion[:-1] * dr_ion_arr) +
                 params['mu_atom'].value * np.sum(nShell_arr_neu[:-1] * dr_neu_arr))
 
-        # Absorption fractions
-        f_absorbed_ion = 1 - phi_rEnd
+        # Absorption fractions (f_esc_ion computed at line 217)
+        f_absorbed_ion = 1.0 - f_esc_ion
         f_absorbed_neu = 1 - np.exp(-tau_rEnd)
         f_absorbed = (f_absorbed_ion * Li + f_absorbed_neu * Ln) / (Li + Ln)
 
