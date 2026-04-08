@@ -67,10 +67,10 @@ logger = logging.getLogger(__name__)
 
 # Colourblind-safe palette (Wong 2011) with solid lines for clarity
 PROFILE_STYLES = {
-    'PL0':  {'color': '#0072B2', 'ls': '-',  'label': r'$\rho \propto r^{0}$ (uniform)'},
+    'PL0':  {'color': '#0072B2', 'ls': '-',  'label': r'$\rho \propto r^{0}$'},
     'PL-1': {'color': '#D55E00', 'ls': '-',  'label': r'$\rho \propto r^{-1}$'},
     'PL-2': {'color': '#009E73', 'ls': '-',  'label': r'$\rho \propto r^{-2}$'},
-    'BE14': {'color': '#CC79A7', 'ls': '-',  'label': r'Critical BE'},
+    'BE14': {'color': '#CC79A7', 'ls': '-',  'label': 'Critical\nBonnor-Ebert'},
 }
 
 # Ordered list for consistent iteration
@@ -870,10 +870,11 @@ def plot_phase_timeline(simulations: dict, output_dir: Path, fmt: str = 'pdf',
         print(f"    Outcome  = {info['outcome']}")
 
     # --- Create figure (single A&A column ≈ 88 mm ≈ 3.46 in) ---
-    fig, ax = plt.subplots(figsize=(3.5, 2.4), dpi=150)
+    fig, ax = plt.subplots(figsize=(3.5, 2.0), dpi=150)
 
     bar_height = 0.25
-    y_positions = np.arange(n_tracks)
+    y_spacing = 0.55
+    y_positions = np.arange(n_tracks) * y_spacing
 
     t_max_global = max(info['t_end'] for info in all_info.values())
 
@@ -887,10 +888,12 @@ def plot_phase_timeline(simulations: dict, output_dir: Path, fmt: str = 'pdf',
                     facecolor=sty['facecolor'], edgecolor=sty['edgecolor'],
                     hatch=sty['hatch'], lw=0.5, zorder=2)
 
-            # Duration label above the bar (if segment wide enough)
-            dt = t1 - t0
+        # Duration labels above bars — only the two widest segments
+        durations = [(t1 - t0, t0, t1) for _, t0, t1 in info['intervals']]
+        durations.sort(reverse=True)
+        for dt, t0, t1 in durations[:2]:
             frac = dt / t_max_global
-            if frac > 0.08:
+            if frac > 0.10:
                 ax.text(0.5 * (t0 + t1), yi - bar_height / 2 - 0.06,
                         f'{dt:.2f}',
                         ha='center', va='bottom', fontsize=5.5, color='black',
@@ -901,18 +904,12 @@ def plot_phase_timeline(simulations: dict, output_dir: Path, fmt: str = 'pdf',
             ax.plot(info['t_end'], yi, 'x', color='black', ms=4,
                     markeredgewidth=1.2, zorder=6, clip_on=False)
 
-        # Still expanding: right-pointing arrow at end
-        if info['outcome'] == 'expanding':
-            ax.annotate('', xy=(info['t_end'] + 0.05 * t_max_global, yi),
-                        xytext=(info['t_end'], yi),
-                        arrowprops=dict(arrowstyle='->', color='black', lw=1.0),
-                        zorder=6)
-
     # Y-axis labels
     ax.set_yticks(y_positions)
     ax.set_yticklabels([get_style(tag)['label'] for tag in tags_present],
                        fontsize=7)
     ax.invert_yaxis()  # top-to-bottom ordering
+    ax.set_ylim(y_positions[-1] + 0.4, -0.5)  # extra pad above first track
 
     # X-axis
     ax.set_xlabel(r'$t$ [Myr]', fontsize=8)
@@ -935,8 +932,6 @@ def plot_phase_timeline(simulations: dict, output_dir: Path, fmt: str = 'pdf',
               label='Re-collapse'),
         Line2D([0], [0], marker='x', color='black', ms=4,
                markeredgewidth=1.2, linestyle='none', label='End (collapse)'),
-        Line2D([0, 1], [0, 0], color='black', lw=1.0,
-               marker='>', markevery=[1], ms=4, label='Still expanding'),
     ]
     ax.legend(handles=legend_handles, loc='lower center',
               bbox_to_anchor=(0.5, 1.0), ncol=3, fontsize=5.5,
