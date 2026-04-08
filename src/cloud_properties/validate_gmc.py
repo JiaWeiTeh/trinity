@@ -51,7 +51,6 @@ from src.cloud_properties.powerLawSphere import (
 from src.cloud_properties.bonnorEbertSphere import (
     create_BE_sphere,
     solve_lane_emden,
-    LaneEmdenSolution,
 )
 
 logger = logging.getLogger(__name__)
@@ -491,7 +490,11 @@ def _suggest_powerlaw_alternatives(
     """
     mCloud_factors = np.array([0.5, 0.8, 0.9, 1.0, 1.1, 1.2, 1.5])
     nCore_factors = np.array([0.5, 0.8, 0.9, 1.0, 1.1, 1.2, 1.5])
-    rCore_factors = np.array([0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5])
+    # For alpha=0 (homogeneous), rCore is irrelevant — only vary mCloud/nCore
+    if alpha == 0 or rCore is None:
+        rCore_factors = np.array([1.0])
+    else:
+        rCore_factors = np.array([0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5])
 
     valid = []
     for mf in mCloud_factors:
@@ -501,7 +504,7 @@ def _suggest_powerlaw_alternatives(
                     continue
                 mc = mCloud * mf
                 nc = nCore * nf
-                rc = rCore * rf
+                rc = rCore * rf if rCore is not None else None
 
                 try:
                     if alpha == 0:
@@ -529,19 +532,21 @@ def _suggest_powerlaw_alternatives(
                 if merr > mass_tolerance:
                     continue
 
-                valid.append({
+                combo = {
                     "mCloud": mc,
                     "nCore": nc,
-                    "rCore": rc,
                     "rCloud": rcl,
                     "nEdge": ne,
                     "mass_error": merr,
-                })
+                }
+                if rc is not None:
+                    combo["rCore"] = rc
+                valid.append(combo)
 
     def _distance(combo):
         d_m = abs(np.log10(combo["mCloud"] / mCloud)) if mCloud > 0 else 0
         d_n = abs(np.log10(combo["nCore"] / nCore)) if nCore > 0 else 0
-        d_r = abs(combo["rCore"] / rCore - 1) if rCore > 0 else 0
+        d_r = abs(combo["rCore"] / rCore - 1) if rCore and rCore > 0 and "rCore" in combo else 0
         return d_m + d_n + d_r
 
     valid.sort(key=_distance)
