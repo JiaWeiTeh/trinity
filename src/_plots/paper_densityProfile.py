@@ -915,6 +915,7 @@ def plot_phase_timeline(simulations: dict, output_dir: Path, fmt: str = 'pdf',
     ax.set_yticklabels([get_style(tag)['label'] for tag in tags_present],
                        fontsize=7)
     ax.invert_yaxis()  # top-to-bottom ordering
+    ax.set_ylim(n_tracks - 0.5, -0.7)  # extra pad above first track
 
     # X-axis
     ax.set_xlabel(r'$t$ [Myr]', fontsize=8)
