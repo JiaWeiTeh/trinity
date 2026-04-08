@@ -926,10 +926,6 @@ def plot_phase_timeline(simulations: dict, output_dir: Path, fmt: str = 'pdf',
                         facecolor=sty['facecolor'], edgecolor=sty['edgecolor'],
                         hatch=sty['hatch'], lw=0.5, zorder=2)
 
-        # End marker: 'x' for re-collapse
-        if info['outcome'] == 're-collapse':
-            ax.plot(info['t_end'], yc, 'x', color='black', ms=5,
-                    markeredgewidth=1.2, zorder=6, clip_on=False)
 
     # Y-axis labels
     ax.set_yticks(y_centres)
@@ -957,8 +953,6 @@ def plot_phase_timeline(simulations: dict, output_dir: Path, fmt: str = 'pdf',
               label='Momentum-driven'),
         Patch(facecolor='#666666', edgecolor='black', lw=0.5,
               label='Re-collapse'),
-        Line2D([0], [0], marker='x', color='black', ms=4,
-               markeredgewidth=1.2, linestyle='none', label='End (collapse)'),
     ]
     ax.legend(handles=legend_handles, loc='lower center',
               bbox_to_anchor=(0.5, 1.02), ncol=3, fontsize=14,
