@@ -67,10 +67,10 @@ logger = logging.getLogger(__name__)
 
 # Colourblind-safe palette (Wong 2011) with solid lines for clarity
 PROFILE_STYLES = {
-    'PL0':  {'color': '#0072B2', 'ls': '-',  'label': r'$\alpha=0$ (uniform)'},
-    'PL-1': {'color': '#D55E00', 'ls': '-',  'label': r'$\alpha=-1$'},
-    'PL-2': {'color': '#009E73', 'ls': '-',  'label': r'$\alpha=-2$ (SIS)'},
-    'BE14': {'color': '#CC79A7', 'ls': '-',  'label': r'BE $\Omega=14.1$'},
+    'PL0':  {'color': '#0072B2', 'ls': '-',  'label': r'$\rho \propto r^{0}$ (uniform)'},
+    'PL-1': {'color': '#D55E00', 'ls': '-',  'label': r'$\rho \propto r^{-1}$'},
+    'PL-2': {'color': '#009E73', 'ls': '-',  'label': r'$\rho \propto r^{-2}$'},
+    'BE14': {'color': '#CC79A7', 'ls': '-',  'label': r'Critical BE'},
 }
 
 # Ordered list for consistent iteration
@@ -825,9 +825,8 @@ def plot_phase_timeline(simulations: dict, output_dir: Path, fmt: str = 'pdf',
     """
     Annotated Gantt-style timeline of phase durations for density profile comparison.
 
-    Minimalistic black-and-white style: phases distinguished by grayscale fills
-    and hatching patterns (energy = white, transition = light gray, momentum =
-    hatched, collapse = dark gray).
+    Minimalistic black-and-white style sized for a single A&A column (~88 mm).
+    Thin bars with duration labels above; legend at top.
     """
     logger.info("Figure 5: Phase Timeline (annotated Gantt)")
 
@@ -837,12 +836,6 @@ def plot_phase_timeline(simulations: dict, output_dir: Path, fmt: str = 'pdf',
         'transition': dict(facecolor='#cccccc', hatch=None,     edgecolor='black'),
         'momentum':   dict(facecolor='white',   hatch='/////',  edgecolor='black'),
         'collapse':   dict(facecolor='#666666', hatch=None,     edgecolor='black'),
-    }
-    PHASE_LABELS = {
-        'energy':     'Energy-driven',
-        'transition': 'Transition',
-        'momentum':   'Momentum-driven',
-        'collapse':   'Re-collapse',
     }
 
     # Order: alpha=0, -1, -2, then BE
@@ -876,10 +869,10 @@ def plot_phase_timeline(simulations: dict, output_dir: Path, fmt: str = 'pdf',
         print(f"    t_end    = {info['t_end']:.4f} Myr")
         print(f"    Outcome  = {info['outcome']}")
 
-    # --- Create figure ---
-    fig, ax = plt.subplots(figsize=(7, 2.5), dpi=150)
+    # --- Create figure (single A&A column ≈ 88 mm ≈ 3.46 in) ---
+    fig, ax = plt.subplots(figsize=(3.5, 2.4), dpi=150)
 
-    bar_height = 0.55
+    bar_height = 0.25
     y_positions = np.arange(n_tracks)
 
     t_max_global = max(info['t_end'] for info in all_info.values())
@@ -892,62 +885,63 @@ def plot_phase_timeline(simulations: dict, output_dir: Path, fmt: str = 'pdf',
             sty = PHASE_STYLE.get(phase_name, PHASE_STYLE['collapse'])
             ax.barh(yi, t1 - t0, left=t0, height=bar_height,
                     facecolor=sty['facecolor'], edgecolor=sty['edgecolor'],
-                    hatch=sty['hatch'], lw=0.6, zorder=2)
+                    hatch=sty['hatch'], lw=0.5, zorder=2)
 
-            # Duration annotation inside segment (if wide enough)
+            # Duration label above the bar (if segment wide enough)
             dt = t1 - t0
             frac = dt / t_max_global
             if frac > 0.08:
-                # Choose text colour for readability
-                txt_color = 'white' if phase_name == 'collapse' else 'black'
-                ax.text(0.5 * (t0 + t1), yi, f'{dt:.2f}',
-                        ha='center', va='center', fontsize=7, color=txt_color,
+                ax.text(0.5 * (t0 + t1), yi - bar_height / 2 - 0.06,
+                        f'{dt:.2f}',
+                        ha='center', va='bottom', fontsize=5.5, color='black',
                         zorder=5)
 
         # End marker: 'x' for re-collapse
         if info['outcome'] == 're-collapse':
-            ax.plot(info['t_end'], yi, 'x', color='black', ms=6,
-                    markeredgewidth=1.5, zorder=6, clip_on=False)
+            ax.plot(info['t_end'], yi, 'x', color='black', ms=4,
+                    markeredgewidth=1.2, zorder=6, clip_on=False)
 
         # Still expanding: right-pointing arrow at end
         if info['outcome'] == 'expanding':
-            ax.annotate('', xy=(info['t_end'] + 0.06 * t_max_global, yi),
+            ax.annotate('', xy=(info['t_end'] + 0.05 * t_max_global, yi),
                         xytext=(info['t_end'], yi),
-                        arrowprops=dict(arrowstyle='->', color='black', lw=1.5),
+                        arrowprops=dict(arrowstyle='->', color='black', lw=1.0),
                         zorder=6)
 
     # Y-axis labels
     ax.set_yticks(y_positions)
     ax.set_yticklabels([get_style(tag)['label'] for tag in tags_present],
-                       fontsize=9)
+                       fontsize=7)
     ax.invert_yaxis()  # top-to-bottom ordering
 
     # X-axis
-    ax.set_xlabel(r'$t$ [Myr]')
+    ax.set_xlabel(r'$t$ [Myr]', fontsize=8)
     ax.set_xlim(0, t_max_global * 1.10)
+    ax.tick_params(axis='x', labelsize=7)
 
     # Remove top/right spines for cleaner look
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
 
-    # Legend: phase styles + end markers
+    # Legend at top
     legend_handles = [
-        Patch(facecolor='white', edgecolor='black', lw=0.6,
+        Patch(facecolor='white', edgecolor='black', lw=0.5,
               label='Energy-driven'),
-        Patch(facecolor='#cccccc', edgecolor='black', lw=0.6,
+        Patch(facecolor='#cccccc', edgecolor='black', lw=0.5,
               label='Transition'),
-        Patch(facecolor='white', edgecolor='black', hatch='/////', lw=0.6,
+        Patch(facecolor='white', edgecolor='black', hatch='/////', lw=0.5,
               label='Momentum-driven'),
-        Patch(facecolor='#666666', edgecolor='black', lw=0.6,
+        Patch(facecolor='#666666', edgecolor='black', lw=0.5,
               label='Re-collapse'),
-        Line2D([0], [0], marker='x', color='black', ms=6,
-               markeredgewidth=1.5, linestyle='none', label='End (collapse)'),
-        Line2D([0], [0], marker='>', color='black', ms=6,
-               linestyle='none', label='Still expanding'),
+        Line2D([0], [0], marker='x', color='black', ms=4,
+               markeredgewidth=1.2, linestyle='none', label='End (collapse)'),
+        Line2D([0, 1], [0, 0], color='black', lw=1.0,
+               marker='>', markevery=[1], ms=4, label='Still expanding'),
     ]
-    ax.legend(handles=legend_handles, loc='upper center',
-              bbox_to_anchor=(0.5, -0.28), ncol=3, fontsize=8,
-              frameon=False, columnspacing=1.2, handletextpad=0.4)
+    ax.legend(handles=legend_handles, loc='lower center',
+              bbox_to_anchor=(0.5, 1.0), ncol=3, fontsize=5.5,
+              frameon=False, columnspacing=0.8, handletextpad=0.3,
+              handlelength=1.5)
 
     fig.tight_layout()
 
