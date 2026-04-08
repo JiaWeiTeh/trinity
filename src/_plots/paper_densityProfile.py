@@ -10,7 +10,7 @@ density structure) from a density_profile_sweep run:
   - Power-law alpha = -2 (singular isothermal sphere)
   - Bonnor-Ebert with Omega = 14.1
 
-Produces 8 diagnostic figures (1 static + 7 simulation-based) examining how
+Produces 7 diagnostic figures (1 static + 6 simulation-based) examining how
 cloud density structure affects feedback-driven shell evolution.
 
 Usage:
@@ -1004,49 +1004,6 @@ def plot_phase_timeline(simulations: dict, output_dir: Path, fmt: str = 'pdf',
 
 
 # =============================================================================
-# Figure 6: Blend Weight w(t)
-# =============================================================================
-
-def plot_blend_weight(simulations: dict, output_dir: Path, fmt: str = 'pdf',
-                      show: bool = False) -> None:
-    """Plot blending weight w_blend(t) for all profiles."""
-    logger.info("Figure 6: Blend Weight")
-
-    fig, ax = plt.subplots(figsize=(5, 4))
-
-    has_data = False
-    for tag in PROFILE_ORDER:
-        if tag not in simulations:
-            continue
-        output = simulations[tag]
-        s = get_style(tag)
-
-        t = output.get('t_now')
-        w = safe_get(output, 'w_blend')
-
-        if np.any(w != 0):
-            has_data = True
-            ax.plot(t, w, color=s['color'], ls=s['ls'], lw=1.5)
-
-    if not has_data:
-        logger.warning("No w_blend data found in any simulation. Skipping Figure 7.")
-        plt.close(fig)
-        return
-
-    ax.set_xlabel(r'$t$ [Myr]')
-    ax.set_ylabel(r'$w_{\rm blend}$')
-    ax.set_ylim(-0.05, 1.05)
-    ax.set_title(r'HII Blending Weight')
-
-    add_legend(ax, [t for t in PROFILE_ORDER if t in simulations], loc='best')
-
-    savefig(fig, 'densityProfile_wblend', output_dir, fmt)
-    if show:
-        plt.show()
-    plt.close(fig)
-
-
-# =============================================================================
 # Helper: map profile tags to data file paths (for external load_run calls)
 # =============================================================================
 
@@ -1067,7 +1024,7 @@ def _get_profile_data_paths(sweep_dir: str) -> dict:
 
 
 # =============================================================================
-# Figure 7: Feedback Fraction Grid (2x2)
+# Figure 6: Feedback Fraction Grid (2x2)
 # =============================================================================
 
 def plot_feedback_grid(sweep_dir: str, output_dir: Path, fmt: str = 'pdf',
@@ -1081,7 +1038,7 @@ def plot_feedback_grid(sweep_dir: str, output_dir: Path, fmt: str = 'pdf',
     import src._plots.paper_feedback as _fb
     from src._plots.plot_markers import get_marker_legend_handles
 
-    logger.info("Figure 7: Feedback Fraction Grid")
+    logger.info("Figure 6: Feedback Fraction Grid")
 
     sim_paths = _get_profile_data_paths(sweep_dir)
     tags_present = [t for t in PROFILE_ORDER if t in sim_paths]
@@ -1100,11 +1057,12 @@ def plot_feedback_grid(sweep_dir: str, output_dir: Path, fmt: str = 'pdf',
         s = get_style(tag)
 
         try:
-            t, R2, phase, base_forces, overlay_forces, rcloud, isCollapse = \
+            t, R2, phase, base_forces, overlay_forces, rcloud, isCollapse, pressures = \
                 _fb.load_run(sim_paths[tag])
             _fb.plot_run_on_ax(
                 ax, t, R2, phase, base_forces, overlay_forces, rcloud,
-                isCollapse, alpha=0.75, smooth_window=_fb.SMOOTH_WINDOW,
+                isCollapse, pressures=pressures, alpha=0.75,
+                smooth_window=_fb.SMOOTH_WINDOW,
                 phase_change=_fb.SHOW_PHASE, use_log_x=_fb.USE_LOG_X,
             )
         except Exception as e:
@@ -1154,7 +1112,7 @@ def plot_feedback_grid(sweep_dir: str, output_dir: Path, fmt: str = 'pdf',
 
 
 # =============================================================================
-# Figure 8: Momentum Grid (2x2)
+# Figure 7: Momentum Grid (2x2)
 # =============================================================================
 
 def plot_momentum_grid(sweep_dir: str, output_dir: Path, fmt: str = 'pdf',
@@ -1168,7 +1126,7 @@ def plot_momentum_grid(sweep_dir: str, output_dir: Path, fmt: str = 'pdf',
     import src._plots.paper_momentum as _mom
     from src._plots.plot_markers import get_marker_legend_handles
 
-    logger.info("Figure 8: Momentum Grid")
+    logger.info("Figure 7: Momentum Grid")
 
     sim_paths = _get_profile_data_paths(sweep_dir)
     tags_present = [t for t in PROFILE_ORDER if t in sim_paths]
@@ -1191,7 +1149,7 @@ def plot_momentum_grid(sweep_dir: str, output_dir: Path, fmt: str = 'pdf',
                 _mom.load_run(sim_paths[tag])
             _mom.plot_momentum_lines_on_ax(
                 ax, t, r, phase, forces, forces_dict, rcloud, isCollapse,
-                smooth_window=_mom.SMOOTH_WINDOW, phase_change=_mom.PHASE_CHANGE,
+                smooth_window=_mom.SMOOTH_WINDOW, phase_change=_mom.SHOW_PHASE,
             )
         except Exception as e:
             logger.error(f"Momentum grid {tag}: {e}")
@@ -1214,9 +1172,6 @@ def plot_momentum_grid(sweep_dir: str, output_dir: Path, fmt: str = 'pdf',
     handles = []
     for _, label, color in _mom.FORCE_FIELDS:
         handles.append(Line2D([0], [0], color=color, lw=1.6, ls='-',
-                              label=label))
-    for _, label, color in _mom.DASHED_FIELDS:
-        handles.append(Line2D([0], [0], color=color, lw=1.2, ls='--',
                               label=label))
     handles.append(Line2D([0], [0], color='darkgrey', lw=2.4, label='Net'))
     handles.extend(get_marker_legend_handles(
@@ -1328,7 +1283,6 @@ Examples:
         ("Figure 3: Pressure Budget",       plot_pressure_budget),
         ("Figure 4: Force Budget",          plot_force_budget),
         ("Figure 5: Phase Timing",          plot_phase_timing),
-        ("Figure 6: Blend Weight",          plot_blend_weight),
     ]
 
     for name, func in plot_functions:
@@ -1339,8 +1293,8 @@ Examples:
 
     # Grid figures (reuse plot functions from paper_feedback/momentum/thermal)
     grid_functions = [
-        ("Figure 7: Feedback Grid",   plot_feedback_grid),
-        ("Figure 8: Momentum Grid",   plot_momentum_grid),
+        ("Figure 6: Feedback Grid",   plot_feedback_grid),
+        ("Figure 7: Momentum Grid",   plot_momentum_grid),
     ]
 
     for name, func in grid_functions:
