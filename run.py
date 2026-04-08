@@ -96,5 +96,26 @@ logger.info(f"Log level set to: {log_level}")
 logger.info(f"Console output: {log_console}, File output: {log_file}")
 
 
+# =============================================================================
+# Validate GMC parameters before running
+# =============================================================================
+from src.cloud_properties.validate_gmc import validate_gmc_from_params
+
+gmc_check = validate_gmc_from_params(params)
+for w in gmc_check.warnings:
+    logger.warning(w)
+if not gmc_check.valid:
+    logger.error("GMC parameter validation failed:")
+    for e in gmc_check.errors:
+        logger.error(f"  {e}")
+    if gmc_check.suggestions:
+        logger.info("Suggested valid alternatives:")
+        for i, s in enumerate(gmc_check.suggestions, 1):
+            parts = ", ".join(f"{k}={v}" for k, v in s.items())
+            logger.info(f"  {i}. {parts}")
+    import sys
+    sys.exit("Simulation stopped: implausible GMC parameters. See errors above.")
+
+
 main.start_expansion(params)
 

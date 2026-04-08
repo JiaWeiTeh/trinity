@@ -60,6 +60,7 @@ from src._input.sweep_runner import (
     SweepReport,
     SimulationResult,
 )
+from src.cloud_properties.validate_gmc import validate_gmc_params
 
 
 def get_optimal_workers() -> int:
@@ -74,6 +75,59 @@ def get_optimal_workers() -> int:
     cpus = multiprocessing.cpu_count()
     optimal = max(1, min(cpus - 1, 8))
     return optimal
+
+
+def _validate_sweep_combination(params_dict):
+    """
+    Validate a single sweep combination's GMC parameters.
+
+    Parameters
+    ----------
+    params_dict : dict
+        Plain parameter dictionary (no .value wrappers).
+
+    Returns
+    -------
+    result : GMCValidationResult or None
+        Validation result, or None if validation cannot be performed
+        (e.g. missing keys).
+    """
+    dens_profile = params_dict.get('dens_profile')
+    if dens_profile not in ('densPL', 'densBE'):
+        return None
+
+    mCloud = params_dict.get('mCloud')
+    nCore = params_dict.get('nCore')
+    if mCloud is None or nCore is None:
+        return None
+
+    mu = float(params_dict.get('mu_convert', 1.4))
+    nISM = float(params_dict.get('nISM', 1.0))
+
+    kwargs = dict(
+        mCloud=float(mCloud), nCore=float(nCore),
+        mu=mu, nISM=nISM, dens_profile=dens_profile,
+    )
+
+    if dens_profile == 'densPL':
+        alpha = params_dict.get('densPL_alpha')
+        rCore = params_dict.get('rCore')
+        if alpha is None:
+            return None
+        kwargs['alpha'] = float(alpha)
+        if rCore is not None:
+            kwargs['rCore'] = float(rCore)
+    elif dens_profile == 'densBE':
+        Omega = params_dict.get('densBE_Omega')
+        if Omega is None:
+            return None
+        kwargs['Omega'] = float(Omega)
+        kwargs['gamma'] = float(params_dict.get('gamma_adia', 5.0 / 3.0))
+
+    try:
+        return validate_gmc_params(**kwargs)
+    except Exception:
+        return None
 
 
 def main():
@@ -235,14 +289,48 @@ def main():
         else:
             varying_keys = sorted(config.sweep_params.keys())
 
+        n_invalid = 0
         for params, name in combinations:
-            print(f"\n{name}:")
+            gmc_result = _validate_sweep_combination(params)
+            if gmc_result is not None and not gmc_result.valid:
+                status = " [INVALID GMC]"
+                n_invalid += 1
+            else:
+                status = ""
+
+            print(f"\n{name}:{status}")
             for k in varying_keys:
                 print(f"  {k}: {params.get(k)}")
+            if gmc_result is not None and not gmc_result.valid:
+                for e in gmc_result.errors:
+                    print(f"    >> {e}")
 
         print(f"\n(Would run {n_combinations} simulations)")
+        if n_invalid > 0:
+            print(f"WARNING: {n_invalid}/{n_combinations} combinations have "
+                  f"implausible GMC parameters and will fail.")
         print("(No simulations were run - dry run mode)")
         sys.exit(0)
+
+    # =============================================================================
+    # Pre-flight GMC validation
+    # =============================================================================
+
+    pre_combinations = list(generate_combinations_from_config(config))
+    invalid_combos = []
+    for params_check, name_check in pre_combinations:
+        gmc_result = _validate_sweep_combination(params_check)
+        if gmc_result is not None and not gmc_result.valid:
+            invalid_combos.append((name_check, gmc_result))
+
+    if invalid_combos:
+        print(f"\nWARNING: {len(invalid_combos)}/{n_combinations} combinations "
+              f"have implausible GMC parameters:")
+        for name_inv, res_inv in invalid_combos:
+            print(f"  {name_inv}:")
+            for e in res_inv.errors:
+                print(f"    - {e}")
+        print()
 
     # =============================================================================
     # Confirmation
@@ -250,7 +338,11 @@ def main():
 
     if not args.yes:
         print("\n" + "-" * 60)
-        response = input(f"Run {n_combinations} simulations with {workers} workers? [y/N]: ")
+        prompt_msg = f"Run {n_combinations} simulations with {workers} workers?"
+        if invalid_combos:
+            prompt_msg += (f" ({len(invalid_combos)} will fail due to invalid "
+                          f"GMC parameters)")
+        response = input(f"{prompt_msg} [y/N]: ")
         if response.lower() not in ('y', 'yes'):
             print("Aborted.")
             sys.exit(0)
