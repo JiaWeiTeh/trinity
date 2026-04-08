@@ -887,10 +887,10 @@ def plot_phase_timeline(simulations: dict, output_dir: Path, fmt: str = 'pdf',
                     facecolor=sty['facecolor'], edgecolor=sty['edgecolor'],
                     hatch=sty['hatch'], lw=0.5, zorder=2)
 
-            # Duration label above the bar (if segment wide enough)
+            # Duration label above the bar (skip transition — always short)
             dt = t1 - t0
             frac = dt / t_max_global
-            if frac > 0.08:
+            if frac > 0.10 and phase_name != 'transition':
                 ax.text(0.5 * (t0 + t1), yi - bar_height / 2 - 0.06,
                         f'{dt:.2f}',
                         ha='center', va='bottom', fontsize=5.5, color='black',
