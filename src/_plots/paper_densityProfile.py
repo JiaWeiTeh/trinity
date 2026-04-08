@@ -10,7 +10,7 @@ density structure) from a density_profile_sweep run:
   - Power-law alpha = -2 (singular isothermal sphere)
   - Bonnor-Ebert with Omega = 14.1
 
-Produces 7 diagnostic figures (1 static + 6 simulation-based) examining how
+Produces 8 diagnostic figures (1 static + 7 simulation-based) examining how
 cloud density structure affects feedback-driven shell evolution.
 
 Usage:
@@ -825,17 +825,18 @@ def plot_phase_timeline(simulations: dict, output_dir: Path, fmt: str = 'pdf',
     """
     Annotated Gantt-style timeline of phase durations for density profile comparison.
 
-    Shows energy-driven, transition, momentum-driven, and re-collapse phases
-    as coloured horizontal bars, with event markers for key transitions.
+    Minimalistic black-and-white style: phases distinguished by grayscale fills
+    and hatching patterns (energy = white, transition = light gray, momentum =
+    hatched, collapse = dark gray).
     """
     logger.info("Figure 5: Phase Timeline (annotated Gantt)")
 
-    # Phase colours (muted, distinguishable, colourblind-friendly)
-    PHASE_COLORS = {
-        'energy':     '#4878CF',  # blue
-        'transition': '#E8A838',  # amber/gold
-        'momentum':   '#D55E00',  # warm red/coral
-        'collapse':   '#8C8C8C',  # grey
+    # Phase styles: (facecolor, hatch, edgecolor)
+    PHASE_STYLE = {
+        'energy':     dict(facecolor='white',   hatch=None,     edgecolor='black'),
+        'transition': dict(facecolor='#cccccc', hatch=None,     edgecolor='black'),
+        'momentum':   dict(facecolor='white',   hatch='/////',  edgecolor='black'),
+        'collapse':   dict(facecolor='#666666', hatch=None,     edgecolor='black'),
     }
     PHASE_LABELS = {
         'energy':     'Energy-driven',
@@ -844,8 +845,8 @@ def plot_phase_timeline(simulations: dict, output_dir: Path, fmt: str = 'pdf',
         'collapse':   'Re-collapse',
     }
 
-    # Track order: alpha=0, alpha=-1, BE, alpha=-2 (escaping profile at bottom)
-    TRACK_ORDER = ['PL0', 'PL-1', 'BE14', 'PL-2']
+    # Order: alpha=0, -1, -2, then BE
+    TRACK_ORDER = ['PL0', 'PL-1', 'PL-2', 'BE14']
     tags_present = [tag for tag in TRACK_ORDER if tag in simulations]
     n_tracks = len(tags_present)
 
@@ -876,7 +877,7 @@ def plot_phase_timeline(simulations: dict, output_dir: Path, fmt: str = 'pdf',
         print(f"    Outcome  = {info['outcome']}")
 
     # --- Create figure ---
-    fig, ax = plt.subplots(figsize=(7, 3), dpi=150)
+    fig, ax = plt.subplots(figsize=(7, 2.5), dpi=150)
 
     bar_height = 0.55
     y_positions = np.arange(n_tracks)
@@ -888,84 +889,65 @@ def plot_phase_timeline(simulations: dict, output_dir: Path, fmt: str = 'pdf',
 
         # Draw phase segments
         for phase_name, t0, t1 in info['intervals']:
-            color = PHASE_COLORS.get(phase_name, 'gray')
-            ax.barh(yi, t1 - t0, left=t0, height=bar_height, color=color,
-                    edgecolor='white', lw=0.8, zorder=2)
+            sty = PHASE_STYLE.get(phase_name, PHASE_STYLE['collapse'])
+            ax.barh(yi, t1 - t0, left=t0, height=bar_height,
+                    facecolor=sty['facecolor'], edgecolor=sty['edgecolor'],
+                    hatch=sty['hatch'], lw=0.6, zorder=2)
 
             # Duration annotation inside segment (if wide enough)
             dt = t1 - t0
             frac = dt / t_max_global
-            if frac > 0.06:
+            if frac > 0.08:
+                # Choose text colour for readability
+                txt_color = 'white' if phase_name == 'collapse' else 'black'
                 ax.text(0.5 * (t0 + t1), yi, f'{dt:.2f}',
-                        ha='center', va='center', fontsize=7, color='white',
-                        fontweight='bold', zorder=5)
+                        ha='center', va='center', fontsize=7, color=txt_color,
+                        zorder=5)
 
-        # Event markers
-        marker_kw = dict(zorder=6, clip_on=False)
-
-        # t_trans: diamond
-        if info['t_trans'] is not None:
-            ax.plot(info['t_trans'], yi + bar_height / 2 + 0.05, 'D',
-                    color='#E8A838', ms=5, markeredgecolor='black',
-                    markeredgewidth=0.5, **marker_kw)
-
-        # t_turn: downward triangle
-        if info['t_turn'] is not None:
-            ax.plot(info['t_turn'], yi + bar_height / 2 + 0.05, 'v',
-                    color='#8C8C8C', ms=6, markeredgecolor='black',
-                    markeredgewidth=0.5, **marker_kw)
-
-        # t_end for re-collapsing runs: 'x' marker
+        # End marker: 'x' for re-collapse
         if info['outcome'] == 're-collapse':
             ax.plot(info['t_end'], yi, 'x', color='black', ms=6,
-                    markeredgewidth=1.5, **marker_kw)
+                    markeredgewidth=1.5, zorder=6, clip_on=False)
 
         # Still expanding: right-pointing arrow at end
         if info['outcome'] == 'expanding':
-            ax.annotate('', xy=(info['t_end'] + 0.08 * t_max_global, yi),
+            ax.annotate('', xy=(info['t_end'] + 0.06 * t_max_global, yi),
                         xytext=(info['t_end'], yi),
                         arrowprops=dict(arrowstyle='->', color='black', lw=1.5),
                         zorder=6)
 
-    # Reference lines
-    for t_ref in [1.0, 3.0]:
-        if t_ref < t_max_global:
-            ax.axvline(t_ref, color='0.7', ls='--', lw=0.6, zorder=1)
-            ax.text(t_ref, n_tracks - 0.5 + 0.15, f'{t_ref:.0f} Myr',
-                    ha='center', va='bottom', fontsize=7, color='0.5')
-
     # Y-axis labels
     ax.set_yticks(y_positions)
     ax.set_yticklabels([get_style(tag)['label'] for tag in tags_present],
-                       fontsize=10)
+                       fontsize=9)
     ax.invert_yaxis()  # top-to-bottom ordering
 
     # X-axis
     ax.set_xlabel(r'$t$ [Myr]')
-    ax.set_xlim(0, t_max_global * 1.12)
+    ax.set_xlim(0, t_max_global * 1.10)
 
     # Remove top/right spines for cleaner look
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
 
-    # Legend: phase colours + event markers
+    # Legend: phase styles + end markers
     legend_handles = [
-        Patch(facecolor=PHASE_COLORS['energy'],     edgecolor='none', label='Energy-driven'),
-        Patch(facecolor=PHASE_COLORS['transition'],  edgecolor='none', label='Transition'),
-        Patch(facecolor=PHASE_COLORS['momentum'],    edgecolor='none', label='Momentum-driven'),
-        Patch(facecolor=PHASE_COLORS['collapse'],    edgecolor='none', label='Re-collapse'),
-        Line2D([0], [0], marker='D', color='none', markerfacecolor='#E8A838',
-               markeredgecolor='black', ms=5, label=r'$t_{\rm trans}$'),
-        Line2D([0], [0], marker='v', color='none', markerfacecolor='#8C8C8C',
-               markeredgecolor='black', ms=6, label=r'$t_{\rm turn}$ ($v=0$)'),
+        Patch(facecolor='white', edgecolor='black', lw=0.6,
+              label='Energy-driven'),
+        Patch(facecolor='#cccccc', edgecolor='black', lw=0.6,
+              label='Transition'),
+        Patch(facecolor='white', edgecolor='black', hatch='/////', lw=0.6,
+              label='Momentum-driven'),
+        Patch(facecolor='#666666', edgecolor='black', lw=0.6,
+              label='Re-collapse'),
         Line2D([0], [0], marker='x', color='black', ms=6,
                markeredgewidth=1.5, linestyle='none', label='End (collapse)'),
         Line2D([0], [0], marker='>', color='black', ms=6,
                linestyle='none', label='Still expanding'),
     ]
     ax.legend(handles=legend_handles, loc='upper center',
-              bbox_to_anchor=(0.5, -0.22), ncol=4, fontsize=8,
-              frameon=False, columnspacing=1.0, handletextpad=0.4)
+              bbox_to_anchor=(0.5, -0.28), ncol=3, fontsize=8,
+              frameon=False, columnspacing=1.2, handletextpad=0.4)
 
     fig.tight_layout()
 
@@ -1024,7 +1006,43 @@ def _get_profile_data_paths(sweep_dir: str) -> dict:
 
 
 # =============================================================================
-# Figure 6: Feedback Fraction Grid (2x2)
+# Figure 6: Escape Fraction
+# =============================================================================
+
+def plot_escape_fraction(simulations: dict, output_dir: Path, fmt: str = 'pdf',
+                         show: bool = False) -> None:
+    """Plot ionising photon escape fraction f_esc(t) for all profiles."""
+    logger.info("Figure 6: Escape Fraction")
+
+    fig, ax = plt.subplots(figsize=(5, 4))
+
+    for tag in PROFILE_ORDER:
+        if tag not in simulations:
+            continue
+        output = simulations[tag]
+        s = get_style(tag)
+
+        t = output.get('t_now')
+        fAbs = safe_get(output, 'shell_fAbsorbedIon')
+        fesc = 1.0 - fAbs
+        fesc = np.clip(fesc, 0.0, 1.0)
+
+        ax.plot(t, fesc, color=s['color'], ls=s['ls'], lw=1.5)
+
+    ax.set_xlabel(r'$t$ [Myr]')
+    ax.set_ylabel(r'$f_{\rm esc,\,ion}$')
+    ax.set_ylim(-0.05, 1.05)
+
+    add_legend(ax, [t for t in PROFILE_ORDER if t in simulations], loc='best')
+
+    savefig(fig, 'densityProfile_escapeFraction', output_dir, fmt)
+    if show:
+        plt.show()
+    plt.close(fig)
+
+
+# =============================================================================
+# Figure 7: Feedback Fraction Grid (2x2)
 # =============================================================================
 
 def plot_feedback_grid(sweep_dir: str, output_dir: Path, fmt: str = 'pdf',
@@ -1038,7 +1056,7 @@ def plot_feedback_grid(sweep_dir: str, output_dir: Path, fmt: str = 'pdf',
     import src._plots.paper_feedback as _fb
     from src._plots.plot_markers import get_marker_legend_handles
 
-    logger.info("Figure 6: Feedback Fraction Grid")
+    logger.info("Figure 7: Feedback Fraction Grid")
 
     sim_paths = _get_profile_data_paths(sweep_dir)
     tags_present = [t for t in PROFILE_ORDER if t in sim_paths]
@@ -1113,7 +1131,7 @@ def plot_feedback_grid(sweep_dir: str, output_dir: Path, fmt: str = 'pdf',
 
 
 # =============================================================================
-# Figure 7: Momentum Grid (2x2)
+# Figure 8: Momentum Grid (2x2)
 # =============================================================================
 
 def plot_momentum_grid(sweep_dir: str, output_dir: Path, fmt: str = 'pdf',
@@ -1127,7 +1145,7 @@ def plot_momentum_grid(sweep_dir: str, output_dir: Path, fmt: str = 'pdf',
     import src._plots.paper_momentum as _mom
     from src._plots.plot_markers import get_marker_legend_handles
 
-    logger.info("Figure 7: Momentum Grid")
+    logger.info("Figure 8: Momentum Grid")
 
     sim_paths = _get_profile_data_paths(sweep_dir)
     tags_present = [t for t in PROFILE_ORDER if t in sim_paths]
@@ -1285,6 +1303,7 @@ Examples:
         ("Figure 3: Pressure Budget",       plot_pressure_budget),
         ("Figure 4: Force Budget",          plot_force_budget),
         ("Figure 5: Phase Timing",          plot_phase_timing),
+        ("Figure 6: Escape Fraction",       plot_escape_fraction),
     ]
 
     for name, func in plot_functions:
@@ -1295,8 +1314,8 @@ Examples:
 
     # Grid figures (reuse plot functions from paper_feedback/momentum/thermal)
     grid_functions = [
-        ("Figure 6: Feedback Grid",   plot_feedback_grid),
-        ("Figure 7: Momentum Grid",   plot_momentum_grid),
+        ("Figure 7: Feedback Grid",   plot_feedback_grid),
+        ("Figure 8: Momentum Grid",   plot_momentum_grid),
     ]
 
     for name, func in grid_functions:
