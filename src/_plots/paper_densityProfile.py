@@ -62,6 +62,18 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # =============================================================================
+# Global matplotlib style (matches paper_ODIN)
+# =============================================================================
+plt.rcParams.update({
+    'font.size':        16,
+    'axes.labelsize':   16,
+    'axes.titlesize':   16,
+    'xtick.labelsize':  14,
+    'ytick.labelsize':  14,
+    'legend.fontsize':  12,
+})
+
+# =============================================================================
 # Constants
 # =============================================================================
 
@@ -433,7 +445,7 @@ def plot_enclosed_mass(sweep_dir: str, output_dir: Path, fmt: str = 'pdf',
     ax_M.set_ylabel(r'$M_{\rm enc}(<r)$ [M$_\odot$]')
     ax_M.set_title(r'(b) Enclosed Mass')
 
-    add_legend(ax_n, PROFILE_ORDER, loc='best', fontsize=9)
+    add_legend(ax_n, PROFILE_ORDER, loc='best')
 
     fig.tight_layout()
     savefig(fig, 'densityProfile_Menc', output_dir, fmt)
@@ -532,7 +544,7 @@ def plot_shell_evolution(simulations: dict, output_dir: Path, fmt: str = 'pdf',
         include_phase=False, include_rcloud=SHOW_RCLOUD, include_rcloud_horizontal=SHOW_RCLOUD_H, include_collapse=False
     )
     add_legend(axes[1], [tag for tag in PROFILE_ORDER if tag in simulations],
-               extra_handles=marker_handles, loc='best', fontsize=9)
+               extra_handles=marker_handles, loc='best')
 
     fig.tight_layout()
     savefig(fig, 'densityProfile_evolution', output_dir, fmt)
@@ -617,7 +629,7 @@ def plot_pressure_budget(simulations: dict, output_dir: Path, fmt: str = 'pdf',
         ax.set_xlabel(r'$t$ [Myr]')
         ax.set_ylabel(r'$P/k_{\rm B}$ [K\,cm$^{-3}$]')
         ax.set_title(s['label'])
-        ax.legend(fontsize=8, loc='best')
+        ax.legend(loc='best')
 
     # Turn off unused panels
     for idx in range(n, nrows * ncols):
@@ -674,7 +686,7 @@ def plot_force_budget(simulations: dict, output_dir: Path, fmt: str = 'pdf',
         ax.set_xlabel(r'$t$ [Myr]')
         ax.set_ylabel(r'$|F|$ [dyn]')
         ax.set_title(s['label'])
-        ax.legend(fontsize=8, loc='best')
+        ax.legend(loc='best')
 
     for idx in range(n, nrows * ncols):
         i, j = divmod(idx, ncols)
@@ -899,7 +911,7 @@ def plot_phase_timeline(simulations: dict, output_dir: Path, fmt: str = 'pdf',
             if frac > 0.10:
                 ax.text(0.5 * (t0 + t1), yb - 0.005,
                         f'{dt:.2f}',
-                        ha='center', va='top', fontsize=7, color='black',
+                        ha='center', va='top', fontsize=12, color='black',
                         zorder=5)
 
         # End marker: 'x' for re-collapse
@@ -912,14 +924,13 @@ def plot_phase_timeline(simulations: dict, output_dir: Path, fmt: str = 'pdf',
     # Wrap long labels for the compact y-axis
     ylabels = [get_style(tag)['label'].replace('Bonnor-Ebert', 'Bonnor-\nEbert')
                for tag in tags_present]
-    ax.set_yticklabels(ylabels, fontsize=9)
+    ax.set_yticklabels(ylabels)
     ax.invert_yaxis()  # top-to-bottom ordering
     ax.set_ylim(0.85, 0.0)
 
     # X-axis
-    ax.set_xlabel(r'$t$ [Myr]', fontsize=10)
+    ax.set_xlabel(r'$t$ [Myr]')
     ax.set_xlim(0, t_max_global * 1.05)
-    ax.tick_params(axis='x', labelsize=9)
 
     # Remove top/right spines for cleaner look
     ax.spines['top'].set_visible(False)
@@ -939,7 +950,7 @@ def plot_phase_timeline(simulations: dict, output_dir: Path, fmt: str = 'pdf',
                markeredgewidth=1.2, linestyle='none', label='End (collapse)'),
     ]
     ax.legend(handles=legend_handles, loc='lower center',
-              bbox_to_anchor=(0.5, 1.02), ncol=3, fontsize=9,
+              bbox_to_anchor=(0.5, 1.02), ncol=3,
               frameon=False, columnspacing=1.0, handletextpad=0.4,
               handlelength=1.5)
 
@@ -1115,7 +1126,7 @@ def plot_feedback_grid(sweep_dir: str, output_dir: Path, fmt: str = 'pdf',
 
     fig.legend(handles=handles, loc='upper center', ncol=4,
                frameon=True, facecolor='white', framealpha=0.9,
-               edgecolor='0.2', bbox_to_anchor=(0.5, 1.05), fontsize=8)
+               edgecolor='0.2', bbox_to_anchor=(0.5, 1.05))
     fig.subplots_adjust(top=0.88)
 
     savefig(fig, 'densityProfile_feedback', output_dir, fmt)
@@ -1194,7 +1205,7 @@ def plot_momentum_grid(sweep_dir: str, output_dir: Path, fmt: str = 'pdf',
 
     fig.legend(handles=handles, loc='upper center', ncol=4,
                frameon=True, facecolor='white', framealpha=0.9,
-               edgecolor='0.2', bbox_to_anchor=(0.5, 1.05), fontsize=8)
+               edgecolor='0.2', bbox_to_anchor=(0.5, 1.05))
     fig.subplots_adjust(top=0.88)
 
     savefig(fig, 'densityProfile_momentum', output_dir, fmt)
