@@ -215,27 +215,34 @@ def shell_structure_pure(params) -> ShellProperties:
     R_IF = rShell_arr_ion[-1]  # Radius of ionization front
 
     # ------------------------------------------------------------------
-    # Strömgren ionization balance density (Lancaster+2025)
+    # Strömgren ionization balance density (Lancaster+2025, generalised)
     #
-    # n_IF_Str = sqrt(3Qi / (4π αB ΔV)) is the mean ionized density
-    # from ionization balance in the shell volume. Independent of Pb.
-    # This is the sole source of P_HII used in P_drive.
+    # n_IF_Str = sqrt(3 (1 - f_esc) Qi / (4π αB ΔV))
     #
-    # Guards:
-    #   (a) is_phiDepleted=True  → ionising photons consumed inside shell;
-    #       neutral layer exists beyond I-front. I-front bounded at R_IF.
-    #       Strömgren balance is exact (all Qi photons recombine in ionized volume).
-    #   (b) is_phiDepleted=False → photons leak out of shell;
-    #       no bounded ionization front exists. n_IF_Str not applicable.
+    # Continuous across regimes:
+    #   is_phiDepleted=True  → ΔV = R_IF³ - R2³,  f_esc ≈ 0
+    #   is_phiDepleted=False → ΔV = R_sh³ - R2³,  f_esc = phi(R_sh)
+    # Cap: n_IF_Str ≤ shell_n0 (pressure equilibrium for thin skins)
     # ------------------------------------------------------------------
-    _vol_ion = R_IF**3 - rShell0**3   # rShell0 == params['R2'].value
-    # Minimum resolvable volume: one radial cell thick
-    _vol_min = 3.0 * rShell0**2 * rShell_step
-    if is_phiDepleted and (_vol_ion > _vol_min) and (Qi > 0.0):
+    if is_phiDepleted:
+        _R_outer = R_IF
+        _f_esc = max(0.0, phiShell_arr_ion[-1])
+    else:
+        # Shell fully ionised: outer edge is last ionised-array radius
+        # (all shell mass accounted for, no neutral region)
+        _R_outer = rShell_arr_ion[-1]
+        _f_esc = max(0.0, phiShell_arr_ion[-1])
+
+    _vol_ion = _R_outer**3 - rShell0**3
+    _Qi_absorbed = (1.0 - _f_esc) * Qi
+
+    if (_vol_ion > 0.0) and (_Qi_absorbed > 0.0):
         n_IF_Str = np.sqrt(
-            3.0 * Qi /
+            3.0 * _Qi_absorbed /
             (4.0 * np.pi * params['caseB_alpha'].value * _vol_ion)
         )
+        # Cap: thin ionised skin → P_HII cannot exceed P_b
+        n_IF_Str = min(n_IF_Str, shell_n0)
     else:
         n_IF_Str = 0.0
 
