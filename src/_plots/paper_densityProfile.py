@@ -902,18 +902,29 @@ def plot_phase_timeline(simulations: dict, output_dir: Path, fmt: str = 'pdf',
         for seg_idx, (phase_name, t0, t1) in enumerate(info['intervals']):
             sty = PHASE_STYLE.get(phase_name, PHASE_STYLE['collapse'])
             is_last = (seg_idx == n_intervals - 1)
-            ax.barh(yc, t1 - t0, left=t0, height=bar_height, align='center',
-                    facecolor=sty['facecolor'], edgecolor=sty['edgecolor'],
-                    hatch=sty['hatch'], lw=0.5, zorder=2)
 
-            # Replace solid right edge with dashed line for still-expanding runs
             if is_last and is_expanding:
-                # Cover the solid right edge with background colour
-                ax.plot([t1, t1], [yc - bar_height/2, yc + bar_height/2],
-                        color='white', lw=1.5, zorder=3)
-                # Draw dashed right edge
-                ax.plot([t1, t1], [yc - bar_height/2, yc + bar_height/2],
-                        color='black', lw=0.8, ls='--', zorder=4)
+                # Draw bar with no edge, then add edges manually
+                from matplotlib.patches import Rectangle
+                y_bot = yc - bar_height / 2
+                rect = Rectangle((t0, y_bot), t1 - t0, bar_height,
+                                 facecolor=sty['facecolor'], edgecolor='none',
+                                 hatch=sty['hatch'], zorder=2)
+                ax.add_patch(rect)
+                # Solid edges: left, top, bottom
+                ax.plot([t0, t0], [y_bot, y_bot + bar_height],
+                        color='black', lw=0.5, zorder=3)
+                ax.plot([t0, t1], [y_bot + bar_height, y_bot + bar_height],
+                        color='black', lw=0.5, zorder=3)
+                ax.plot([t0, t1], [y_bot, y_bot],
+                        color='black', lw=0.5, zorder=3)
+                # Dashed right edge
+                ax.plot([t1, t1], [y_bot, y_bot + bar_height],
+                        color='black', lw=0.8, ls='--', zorder=3)
+            else:
+                ax.barh(yc, t1 - t0, left=t0, height=bar_height, align='center',
+                        facecolor=sty['facecolor'], edgecolor=sty['edgecolor'],
+                        hatch=sty['hatch'], lw=0.5, zorder=2)
 
         # End marker: 'x' for re-collapse
         if info['outcome'] == 're-collapse':
