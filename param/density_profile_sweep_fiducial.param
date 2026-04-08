@@ -20,7 +20,7 @@
 
 tuple(dens_profile, densPL_alpha)    [densPL, 0] [densPL, -1] [densPL, -2]
 
-# tuple(dens_profile, densPL_alpha, densBE_Omega)    [densPL, 0, 0] [densPL, -1, 0] [densPL, -2, 0] [s, 0, 14.1]
+# tuple(dens_profile, densPL_alpha, densBE_Omega)    [densPL, 0, 0] [densPL, -1, 0] [densPL, -2, 0] [densBE, 0, 14.1]
 
 # =============================================================================
 # Fixed parameters (constant across all runs)
@@ -28,8 +28,8 @@ tuple(dens_profile, densPL_alpha)    [densPL, 0] [densPL, -1] [densPL, -2]
 
 # Cloud properties
 mCloud    1e6
-sfe       0.1
-nCore     1e5
+sfe       [0.01, 0.1]
+nCore     1e4
 rCore     0.1
 
 # ISM properties
@@ -40,7 +40,7 @@ stop_t_diss 1
 expansionBeyondCloud    True
 
 # Output directory
-path2output    outputs/density_profile_sweep_heavy
+path2output    outputs/density_profile_sweep_fiducial
 
 # Use adaptive solver
 use_adaptive_solver True
@@ -51,3 +51,6 @@ stop_t    10
 
 # Suppress warnings to save memory
 log_level    WARNING
+
+# include PHII?
+include_PHII True

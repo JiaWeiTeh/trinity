@@ -252,7 +252,7 @@ phaseSwitch_LlossLgain    0.05
 
 # INFO: Use adaptive solver (modified version) instead of original solver for energy phase.
 # If True, uses run_energy_phase_modified.py; if False, uses run_energy_phase.py
-use_adaptive_solver    False
+use_adaptive_solver    True
 
 
 # =============================================================================
