@@ -5,10 +5,10 @@ Density Profile Comparison Diagnostics for TRINITY.
 
 Compares four density profiles (same cloud mass, SFE, core density, but varying
 density structure) from a density_profile_sweep run:
-  - Power-law alpha = 0  (uniform)
-  - Power-law alpha = -1
-  - Power-law alpha = -2 (singular isothermal sphere)
-  - Bonnor-Ebert with Omega = 14.1
+  - Power-law rho ~ r^0  (uniform)
+  - Power-law rho ~ r^-1
+  - Power-law rho ~ r^-2
+  - Critical Bonnor-Ebert sphere
 
 Produces 8 diagnostic figures (1 static + 7 simulation-based) examining how
 cloud density structure affects feedback-driven shell evolution.
@@ -70,7 +70,7 @@ PROFILE_STYLES = {
     'PL0':  {'color': '#0072B2', 'ls': '-',  'label': r'$\rho \propto r^{0}$'},
     'PL-1': {'color': '#D55E00', 'ls': '-',  'label': r'$\rho \propto r^{-1}$'},
     'PL-2': {'color': '#009E73', 'ls': '-',  'label': r'$\rho \propto r^{-2}$'},
-    'BE14': {'color': '#CC79A7', 'ls': '-',  'label': 'Critical\nBonnor-Ebert'},
+    'BE14': {'color': '#CC79A7', 'ls': '-',  'label': 'Critical Bonnor-Ebert'},
 }
 
 # Ordered list for consistent iteration
@@ -531,7 +531,7 @@ def plot_shell_evolution(simulations: dict, output_dir: Path, fmt: str = 'pdf',
     marker_handles = get_marker_legend_handles(
         include_phase=False, include_rcloud=SHOW_RCLOUD, include_rcloud_horizontal=SHOW_RCLOUD_H, include_collapse=False
     )
-    add_legend(axes[1], [t for t in PROFILE_ORDER if t in simulations],
+    add_legend(axes[1], [tag for tag in PROFILE_ORDER if tag in simulations],
                extra_handles=marker_handles, loc='best', fontsize=9)
 
     fig.tight_layout()
@@ -550,7 +550,7 @@ def plot_pressure_budget(simulations: dict, output_dir: Path, fmt: str = 'pdf',
     """Plot pressure evolution for each profile in a 2x2 grid."""
     logger.info("Figure 3: Pressure Budget")
 
-    tags_present = [t for t in PROFILE_ORDER if t in simulations]
+    tags_present = [tag for tag in PROFILE_ORDER if tag in simulations]
     n = len(tags_present)
     nrows = 2
     ncols = 2
@@ -640,7 +640,7 @@ def plot_force_budget(simulations: dict, output_dir: Path, fmt: str = 'pdf',
     """Plot force evolution for each profile in a 2x2 grid."""
     logger.info("Figure 4: Force Budget")
 
-    tags_present = [t for t in PROFILE_ORDER if t in simulations]
+    tags_present = [tag for tag in PROFILE_ORDER if tag in simulations]
     n = len(tags_present)
     nrows = 2
     ncols = 2
@@ -909,8 +909,10 @@ def plot_phase_timeline(simulations: dict, output_dir: Path, fmt: str = 'pdf',
 
     # Y-axis labels
     ax.set_yticks(y_centres)
-    ax.set_yticklabels([get_style(tag)['label'] for tag in tags_present],
-                       fontsize=9)
+    # Wrap long labels for the compact y-axis
+    ylabels = [get_style(tag)['label'].replace('Bonnor-Ebert', 'Bonnor-\nEbert')
+               for tag in tags_present]
+    ax.set_yticklabels(ylabels, fontsize=9)
     ax.invert_yaxis()  # top-to-bottom ordering
     ax.set_ylim(0.85, 0.0)
 
@@ -959,7 +961,7 @@ def plot_phase_timeline(simulations: dict, output_dir: Path, fmt: str = 'pdf',
     for tag in tags_present:
         info = all_info[tag]
         s = get_style(tag)
-        label = s['label'].replace('$', '').replace(r'\alpha', 'alpha').replace(r'\Omega', 'Omega').replace('\\', '')
+        label = s['label'].replace('$', '').replace('\\propto', '~').replace('\\rho', 'rho')
 
         # Sum durations by phase type
         durations = {'energy': 0.0, 'transition': 0.0, 'momentum': 0.0, 'collapse': 0.0}
@@ -1025,7 +1027,7 @@ def plot_escape_fraction(simulations: dict, output_dir: Path, fmt: str = 'pdf',
     ax.set_ylabel(r'$f_{\rm esc,\,ion}$')
     ax.set_ylim(-0.05, 1.05)
 
-    add_legend(ax, [t for t in PROFILE_ORDER if t in simulations], loc='best')
+    add_legend(ax, [tag for tag in PROFILE_ORDER if tag in simulations], loc='best')
 
     savefig(fig, 'densityProfile_escapeFraction', output_dir, fmt)
     if show:
@@ -1051,7 +1053,7 @@ def plot_feedback_grid(sweep_dir: str, output_dir: Path, fmt: str = 'pdf',
     logger.info("Figure 7: Feedback Fraction Grid")
 
     sim_paths = _get_profile_data_paths(sweep_dir)
-    tags_present = [t for t in PROFILE_ORDER if t in sim_paths]
+    tags_present = [tag for tag in PROFILE_ORDER if tag in sim_paths]
 
     if not tags_present:
         logger.warning("No simulations found for feedback grid. Skipping.")
@@ -1140,7 +1142,7 @@ def plot_momentum_grid(sweep_dir: str, output_dir: Path, fmt: str = 'pdf',
     logger.info("Figure 8: Momentum Grid")
 
     sim_paths = _get_profile_data_paths(sweep_dir)
-    tags_present = [t for t in PROFILE_ORDER if t in sim_paths]
+    tags_present = [tag for tag in PROFILE_ORDER if tag in sim_paths]
 
     if not tags_present:
         logger.warning("No simulations found for momentum grid. Skipping.")
