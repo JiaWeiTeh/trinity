@@ -10,7 +10,7 @@ density structure) from a density_profile_sweep run:
   - Power-law alpha = -2 (singular isothermal sphere)
   - Bonnor-Ebert with Omega = 14.1
 
-Produces 7 diagnostic figures (1 static + 6 simulation-based) examining how
+Produces 8 diagnostic figures (1 static + 7 simulation-based) examining how
 cloud density structure affects feedback-driven shell evolution.
 
 Usage:
@@ -1006,7 +1006,43 @@ def _get_profile_data_paths(sweep_dir: str) -> dict:
 
 
 # =============================================================================
-# Figure 6: Feedback Fraction Grid (2x2)
+# Figure 6: Escape Fraction
+# =============================================================================
+
+def plot_escape_fraction(simulations: dict, output_dir: Path, fmt: str = 'pdf',
+                         show: bool = False) -> None:
+    """Plot ionising photon escape fraction f_esc(t) for all profiles."""
+    logger.info("Figure 6: Escape Fraction")
+
+    fig, ax = plt.subplots(figsize=(5, 4))
+
+    for tag in PROFILE_ORDER:
+        if tag not in simulations:
+            continue
+        output = simulations[tag]
+        s = get_style(tag)
+
+        t = output.get('t_now')
+        fAbs = safe_get(output, 'shell_fAbsorbedIon')
+        fesc = 1.0 - fAbs
+        fesc = np.clip(fesc, 0.0, 1.0)
+
+        ax.plot(t, fesc, color=s['color'], ls=s['ls'], lw=1.5)
+
+    ax.set_xlabel(r'$t$ [Myr]')
+    ax.set_ylabel(r'$f_{\rm esc,\,ion}$')
+    ax.set_ylim(-0.05, 1.05)
+
+    add_legend(ax, [t for t in PROFILE_ORDER if t in simulations], loc='best')
+
+    savefig(fig, 'densityProfile_escapeFraction', output_dir, fmt)
+    if show:
+        plt.show()
+    plt.close(fig)
+
+
+# =============================================================================
+# Figure 7: Feedback Fraction Grid (2x2)
 # =============================================================================
 
 def plot_feedback_grid(sweep_dir: str, output_dir: Path, fmt: str = 'pdf',
@@ -1020,7 +1056,7 @@ def plot_feedback_grid(sweep_dir: str, output_dir: Path, fmt: str = 'pdf',
     import src._plots.paper_feedback as _fb
     from src._plots.plot_markers import get_marker_legend_handles
 
-    logger.info("Figure 6: Feedback Fraction Grid")
+    logger.info("Figure 7: Feedback Fraction Grid")
 
     sim_paths = _get_profile_data_paths(sweep_dir)
     tags_present = [t for t in PROFILE_ORDER if t in sim_paths]
@@ -1095,7 +1131,7 @@ def plot_feedback_grid(sweep_dir: str, output_dir: Path, fmt: str = 'pdf',
 
 
 # =============================================================================
-# Figure 7: Momentum Grid (2x2)
+# Figure 8: Momentum Grid (2x2)
 # =============================================================================
 
 def plot_momentum_grid(sweep_dir: str, output_dir: Path, fmt: str = 'pdf',
@@ -1109,7 +1145,7 @@ def plot_momentum_grid(sweep_dir: str, output_dir: Path, fmt: str = 'pdf',
     import src._plots.paper_momentum as _mom
     from src._plots.plot_markers import get_marker_legend_handles
 
-    logger.info("Figure 7: Momentum Grid")
+    logger.info("Figure 8: Momentum Grid")
 
     sim_paths = _get_profile_data_paths(sweep_dir)
     tags_present = [t for t in PROFILE_ORDER if t in sim_paths]
@@ -1267,6 +1303,7 @@ Examples:
         ("Figure 3: Pressure Budget",       plot_pressure_budget),
         ("Figure 4: Force Budget",          plot_force_budget),
         ("Figure 5: Phase Timing",          plot_phase_timing),
+        ("Figure 6: Escape Fraction",       plot_escape_fraction),
     ]
 
     for name, func in plot_functions:
@@ -1277,8 +1314,8 @@ Examples:
 
     # Grid figures (reuse plot functions from paper_feedback/momentum/thermal)
     grid_functions = [
-        ("Figure 6: Feedback Grid",   plot_feedback_grid),
-        ("Figure 7: Momentum Grid",   plot_momentum_grid),
+        ("Figure 7: Feedback Grid",   plot_feedback_grid),
+        ("Figure 8: Momentum Grid",   plot_momentum_grid),
     ]
 
     for name, func in grid_functions:

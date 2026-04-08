@@ -106,7 +106,6 @@ def plot_from_path(data_input: str, output_dir: str = None):
     ax.set_xlabel("t [Myr]")
     ax.set_ylabel(r"$f_{\rm esc}$")
     ax.set_ylim(0, 1)
-    ax.set_xscale('log')
     ax.legend(loc="upper left", framealpha=0.9)
 
     plt.tight_layout()
@@ -225,7 +224,6 @@ def plot_grid(folder_path, output_dir=None, ndens_filter=None,
                 mlabel = rf"$M_{{\rm cloud}}={mcoeff}\times10^{{{mexp}}}\,M_\odot$"
             ax.set_ylabel(rf"$f_\mathrm{{esc}}$" + "\n" + mlabel)
             ax.set_ylim(0, 1)
-            ax.set_xscale('log')
 
             if i == nrows - 1:
                 ax.set_xlabel("t [Myr]")
