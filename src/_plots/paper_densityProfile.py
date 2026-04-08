@@ -82,7 +82,7 @@ PROFILE_STYLES = {
     'PL0':  {'color': '#0072B2', 'ls': '-',  'label': r'$\rho \propto r^{0}$'},
     'PL-1': {'color': '#D55E00', 'ls': '-',  'label': r'$\rho \propto r^{-1}$'},
     'PL-2': {'color': '#009E73', 'ls': '-',  'label': r'$\rho \propto r^{-2}$'},
-    'BE14': {'color': '#CC79A7', 'ls': '-',  'label': 'Critical Bonnor-Ebert'},
+    'BE14': {'color': '#CC79A7', 'ls': '-',  'label': 'Bonnor-Ebert\n(Critical)'},
 }
 
 # Ordered list for consistent iteration
@@ -198,7 +198,7 @@ def add_legend(ax, tags: list, extra_handles: list = None, **kwargs):
     for tag in tags:
         s = get_style(tag)
         handles.append(Line2D([0], [0], color=s['color'], ls=s['ls'], lw=1.5,
-                              label=s['label']))
+                              label=s['label'].replace('\n', ' ')))
     if extra_handles:
         handles.extend(extra_handles)
     ax.legend(handles=handles, **kwargs)
@@ -628,7 +628,7 @@ def plot_pressure_budget(simulations: dict, output_dir: Path, fmt: str = 'pdf',
 
         ax.set_xlabel(r'$t$ [Myr]')
         ax.set_ylabel(r'$P/k_{\rm B}$ [K\,cm$^{-3}$]')
-        ax.set_title(s['label'])
+        ax.set_title(s['label'].replace('\n', ' '))
         ax.legend(loc='best')
 
     # Turn off unused panels
@@ -685,7 +685,7 @@ def plot_force_budget(simulations: dict, output_dir: Path, fmt: str = 'pdf',
 
         ax.set_xlabel(r'$t$ [Myr]')
         ax.set_ylabel(r'$|F|$ [dyn]')
-        ax.set_title(s['label'])
+        ax.set_title(s['label'].replace('\n', ' '))
         ax.legend(loc='best')
 
     for idx in range(n, nrows * ncols):
@@ -882,7 +882,7 @@ def plot_phase_timeline(simulations: dict, output_dir: Path, fmt: str = 'pdf',
         print(f"    Outcome  = {info['outcome']}")
 
     # --- Create figure ---
-    fig, ax = plt.subplots(figsize=(7, 7), dpi=150)
+    fig, ax = plt.subplots(figsize=(7, 5), dpi=150)
 
     bar_height = 0.1
     # Position bar bottoms at 0.1, 0.3, 0.5, 0.7 (centres at 0.15, 0.35, 0.55, 0.75)
@@ -903,17 +903,6 @@ def plot_phase_timeline(simulations: dict, output_dir: Path, fmt: str = 'pdf',
                     facecolor=sty['facecolor'], edgecolor=sty['edgecolor'],
                     hatch=sty['hatch'], lw=0.5, zorder=2)
 
-        # Duration labels above bars — only the two widest segments
-        durations = [(t1 - t0, t0, t1) for _, t0, t1 in info['intervals']]
-        durations.sort(reverse=True)
-        for dt, t0, t1 in durations[:2]:
-            frac = dt / t_max_global
-            if frac > 0.10:
-                ax.text(0.5 * (t0 + t1), yb - 0.005,
-                        f'{dt:.2f}',
-                        ha='center', va='top', fontsize=12, color='black',
-                        zorder=5)
-
         # End marker: 'x' for re-collapse
         if info['outcome'] == 're-collapse':
             ax.plot(info['t_end'], yc, 'x', color='black', ms=5,
@@ -922,8 +911,7 @@ def plot_phase_timeline(simulations: dict, output_dir: Path, fmt: str = 'pdf',
     # Y-axis labels
     ax.set_yticks(y_centres)
     # Wrap long labels for the compact y-axis
-    ylabels = [get_style(tag)['label'].replace('Bonnor-Ebert', 'Bonnor-\nEbert')
-               for tag in tags_present]
+    ylabels = [get_style(tag)['label'] for tag in tags_present]
     ax.set_yticklabels(ylabels)
     ax.invert_yaxis()  # top-to-bottom ordering
     ax.set_ylim(0.85, 0.0)
@@ -950,7 +938,7 @@ def plot_phase_timeline(simulations: dict, output_dir: Path, fmt: str = 'pdf',
                markeredgewidth=1.2, linestyle='none', label='End (collapse)'),
     ]
     ax.legend(handles=legend_handles, loc='lower center',
-              bbox_to_anchor=(0.5, 1.02), ncol=3,
+              bbox_to_anchor=(0.5, 1.02), ncol=3, fontsize=14,
               frameon=False, columnspacing=1.0, handletextpad=0.4,
               handlelength=1.5)
 
@@ -1096,7 +1084,7 @@ def plot_feedback_grid(sweep_dir: str, output_dir: Path, fmt: str = 'pdf',
             ax.set_axis_off()
             continue
 
-        ax.set_title(s['label'])
+        ax.set_title(s['label'].replace('\n', ' '))
         if i == nrows - 1:
             ax.set_xlabel(r'$t$ [Myr]')
         if j == 0:
@@ -1183,7 +1171,7 @@ def plot_momentum_grid(sweep_dir: str, output_dir: Path, fmt: str = 'pdf',
             ax.set_axis_off()
             continue
 
-        ax.set_title(s['label'])
+        ax.set_title(s['label'].replace('\n', ' '))
         if i == nrows - 1:
             ax.set_xlabel(r'$t$ [Myr]')
         if j == 0:
