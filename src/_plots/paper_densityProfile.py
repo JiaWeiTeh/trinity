@@ -870,10 +870,11 @@ def plot_phase_timeline(simulations: dict, output_dir: Path, fmt: str = 'pdf',
         print(f"    Outcome  = {info['outcome']}")
 
     # --- Create figure (single A&A column ≈ 88 mm ≈ 3.46 in) ---
-    fig, ax = plt.subplots(figsize=(3.5, 2.4), dpi=150)
+    fig, ax = plt.subplots(figsize=(3.5, 2.0), dpi=150)
 
     bar_height = 0.25
-    y_positions = np.arange(n_tracks)
+    y_spacing = 0.55
+    y_positions = np.arange(n_tracks) * y_spacing
 
     t_max_global = max(info['t_end'] for info in all_info.values())
 
@@ -903,19 +904,12 @@ def plot_phase_timeline(simulations: dict, output_dir: Path, fmt: str = 'pdf',
             ax.plot(info['t_end'], yi, 'x', color='black', ms=4,
                     markeredgewidth=1.2, zorder=6, clip_on=False)
 
-        # Still expanding: right-pointing arrow at end
-        if info['outcome'] == 'expanding':
-            ax.annotate('', xy=(info['t_end'] + 0.05 * t_max_global, yi),
-                        xytext=(info['t_end'], yi),
-                        arrowprops=dict(arrowstyle='->', color='black', lw=1.0),
-                        zorder=6)
-
     # Y-axis labels
     ax.set_yticks(y_positions)
     ax.set_yticklabels([get_style(tag)['label'] for tag in tags_present],
                        fontsize=7)
     ax.invert_yaxis()  # top-to-bottom ordering
-    ax.set_ylim(n_tracks - 0.5, -0.7)  # extra pad above first track
+    ax.set_ylim(y_positions[-1] + 0.4, -0.5)  # extra pad above first track
 
     # X-axis
     ax.set_xlabel(r'$t$ [Myr]', fontsize=8)
@@ -938,8 +932,6 @@ def plot_phase_timeline(simulations: dict, output_dir: Path, fmt: str = 'pdf',
               label='Re-collapse'),
         Line2D([0], [0], marker='x', color='black', ms=4,
                markeredgewidth=1.2, linestyle='none', label='End (collapse)'),
-        Line2D([0, 1], [0, 0], color='black', lw=1.0,
-               marker='>', markevery=[1], ms=4, label='Still expanding'),
     ]
     ax.legend(handles=legend_handles, loc='lower center',
               bbox_to_anchor=(0.5, 1.0), ncol=3, fontsize=5.5,
