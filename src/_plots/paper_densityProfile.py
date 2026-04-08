@@ -1063,7 +1063,8 @@ def plot_feedback_grid(sweep_dir: str, output_dir: Path, fmt: str = 'pdf',
                 ax, t, R2, phase, base_forces, overlay_forces, rcloud,
                 isCollapse, pressures=pressures, alpha=0.75,
                 smooth_window=_fb.SMOOTH_WINDOW,
-                phase_change=_fb.SHOW_PHASE, use_log_x=_fb.USE_LOG_X,
+                phase_change=SHOW_PHASE, show_rcloud=SHOW_RCLOUD,
+                show_collapse=SHOW_COLLAPSE, use_log_x=_fb.USE_LOG_X,
             )
         except Exception as e:
             logger.error(f"Feedback grid {tag}: {e}")
@@ -1149,7 +1150,8 @@ def plot_momentum_grid(sweep_dir: str, output_dir: Path, fmt: str = 'pdf',
                 _mom.load_run(sim_paths[tag])
             _mom.plot_momentum_lines_on_ax(
                 ax, t, r, phase, forces, forces_dict, rcloud, isCollapse,
-                smooth_window=_mom.SMOOTH_WINDOW, phase_change=_mom.SHOW_PHASE,
+                smooth_window=_mom.SMOOTH_WINDOW, phase_change=SHOW_PHASE,
+                show_rcloud=SHOW_RCLOUD, show_collapse=SHOW_COLLAPSE,
             )
         except Exception as e:
             logger.error(f"Momentum grid {tag}: {e}")
