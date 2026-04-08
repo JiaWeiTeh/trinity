@@ -869,22 +869,25 @@ def plot_phase_timeline(simulations: dict, output_dir: Path, fmt: str = 'pdf',
         print(f"    t_end    = {info['t_end']:.4f} Myr")
         print(f"    Outcome  = {info['outcome']}")
 
-    # --- Create figure (single A&A column ≈ 88 mm ≈ 3.46 in) ---
-    fig, ax = plt.subplots(figsize=(3.5, 2.0), dpi=150)
+    # --- Create figure ---
+    fig, ax = plt.subplots(figsize=(7, 7), dpi=150)
 
-    bar_height = 0.25
-    y_spacing = 0.55
-    y_positions = np.arange(n_tracks) * y_spacing
+    bar_height = 0.1
+    # Position bar bottoms at 0.1, 0.3, 0.5, 0.7 (centres at 0.15, 0.35, 0.55, 0.75)
+    y_positions = np.array([0.1, 0.3, 0.5, 0.7])[:n_tracks]
+    y_centres = y_positions + bar_height / 2
 
     t_max_global = max(info['t_end'] for info in all_info.values())
 
-    for yi, tag in enumerate(tags_present):
+    for idx, tag in enumerate(tags_present):
         info = all_info[tag]
+        yb = y_positions[idx]   # bar bottom
+        yc = y_centres[idx]     # bar centre
 
         # Draw phase segments
         for phase_name, t0, t1 in info['intervals']:
             sty = PHASE_STYLE.get(phase_name, PHASE_STYLE['collapse'])
-            ax.barh(yi, t1 - t0, left=t0, height=bar_height,
+            ax.barh(yc, t1 - t0, left=t0, height=bar_height, align='center',
                     facecolor=sty['facecolor'], edgecolor=sty['edgecolor'],
                     hatch=sty['hatch'], lw=0.5, zorder=2)
 
@@ -894,27 +897,27 @@ def plot_phase_timeline(simulations: dict, output_dir: Path, fmt: str = 'pdf',
         for dt, t0, t1 in durations[:2]:
             frac = dt / t_max_global
             if frac > 0.10:
-                ax.text(0.5 * (t0 + t1), yi - bar_height / 2 - 0.06,
+                ax.text(0.5 * (t0 + t1), yb - 0.005,
                         f'{dt:.2f}',
-                        ha='center', va='bottom', fontsize=5.5, color='black',
+                        ha='center', va='top', fontsize=7, color='black',
                         zorder=5)
 
         # End marker: 'x' for re-collapse
         if info['outcome'] == 're-collapse':
-            ax.plot(info['t_end'], yi, 'x', color='black', ms=4,
+            ax.plot(info['t_end'], yc, 'x', color='black', ms=5,
                     markeredgewidth=1.2, zorder=6, clip_on=False)
 
     # Y-axis labels
-    ax.set_yticks(y_positions)
+    ax.set_yticks(y_centres)
     ax.set_yticklabels([get_style(tag)['label'] for tag in tags_present],
-                       fontsize=7)
+                       fontsize=9)
     ax.invert_yaxis()  # top-to-bottom ordering
-    ax.set_ylim(y_positions[-1] + 0.4, -0.5)  # extra pad above first track
+    ax.set_ylim(0.85, 0.0)
 
     # X-axis
-    ax.set_xlabel(r'$t$ [Myr]', fontsize=8)
-    ax.set_xlim(0, t_max_global * 1.10)
-    ax.tick_params(axis='x', labelsize=7)
+    ax.set_xlabel(r'$t$ [Myr]', fontsize=10)
+    ax.set_xlim(0, t_max_global * 1.05)
+    ax.tick_params(axis='x', labelsize=9)
 
     # Remove top/right spines for cleaner look
     ax.spines['top'].set_visible(False)
@@ -934,8 +937,8 @@ def plot_phase_timeline(simulations: dict, output_dir: Path, fmt: str = 'pdf',
                markeredgewidth=1.2, linestyle='none', label='End (collapse)'),
     ]
     ax.legend(handles=legend_handles, loc='lower center',
-              bbox_to_anchor=(0.5, 1.0), ncol=3, fontsize=5.5,
-              frameon=False, columnspacing=0.8, handletextpad=0.3,
+              bbox_to_anchor=(0.5, 1.02), ncol=3, fontsize=9,
+              frameon=False, columnspacing=1.0, handletextpad=0.4,
               handlelength=1.5)
 
     fig.tight_layout()
