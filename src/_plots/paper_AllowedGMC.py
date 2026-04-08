@@ -41,6 +41,7 @@ from src.cloud_properties.bonnorEbertSphere import (
     XI_CRITICAL,
     OMEGA_CRITICAL,
 )
+from src.cloud_properties.validate_gmc import check_gmc_constraints
 
 
 # =============================================================================
@@ -114,24 +115,17 @@ def find_valid_rCore_powerlaw(mCloud, nCore, alpha, nISM=N_ISM,
                 rCloud, _ = compute_rCloud_powerlaw(mCloud, nCore, alpha,
                                                      rCore=rCore, mu=mu)
 
-            # Check constraint 1: rCloud <= rCloud_max
-            if rCloud > rCloud_max:
-                continue
-
-            # Check constraint 2: nEdge >= nISM
-            if alpha == 0:
-                nEdge = nCore
-            else:
-                nEdge = nCore * (rCloud / rCore) ** alpha
-
-            if nEdge < nISM:
-                continue
-
-            # Check constraint 3: Mass error <= tolerance
+            # Compute derived quantities
+            nEdge = nCore if alpha == 0 else nCore * (rCloud / rCore) ** alpha
             M_computed = compute_mass_powerlaw(rCloud, rCore, nCore, alpha, mu)
-            mass_error = abs(M_computed - mCloud) / mCloud if mCloud > 0 else 0
 
-            if mass_error > MASS_TOLERANCE:
+            # Check all constraints via shared validator
+            issues = check_gmc_constraints(
+                rCloud, nEdge, mCloud, M_computed,
+                nISM=nISM, r_max=rCloud_max,
+                mass_tolerance=MASS_TOLERANCE,
+            )
+            if issues["errors"]:
                 continue
 
             # All constraints passed
@@ -228,14 +222,18 @@ def find_valid_rCore_BE(mCloud, nCore, xi_out, nISM=N_ISM,
         # Physical cloud radius
         rCloud = xi_out * a_pc
 
-        # Check constraint 1: rCloud <= rCloud_max
-        if rCloud > rCloud_max:
-            return (np.nan, np.nan)
+        # Derived quantities for constraint check
+        nEdge = nCore / Omega  # nEdge = nCore / Omega since ρ_edge/ρc = 1/Omega
+        M_computed_cgs = 4.0 * np.pi * m_dim * rhoCore_cgs * a_cgs**3
+        M_computed = M_computed_cgs / Msun_cgs  # [Msun]
 
-        # Check constraint 2: nEdge >= nISM
-        # nEdge = nCore / Omega (since ρ_edge/ρc = 1/Omega)
-        nEdge = nCore / Omega
-        if nEdge < nISM:
+        # Check all constraints via shared validator (including mass error)
+        issues = check_gmc_constraints(
+            rCloud, nEdge, mCloud, M_computed,
+            nISM=nISM, r_max=rCloud_max,
+            mass_tolerance=MASS_TOLERANCE,
+        )
+        if issues["errors"]:
             return (np.nan, np.nan)
 
         # Scale length a — clamp to valid range
