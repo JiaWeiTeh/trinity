@@ -286,7 +286,7 @@ def validate_gmc_from_params(params, r_max=R_CLOUD_MAX, mass_tolerance=MASS_TOLE
     Validate GMC parameters extracted from a TRINITY params dictionary.
 
     Convenience wrapper around :func:`validate_gmc_params` for use in
-    ``run.py`` and ``run_sweep.py``.
+    ``run.py``.
 
     Parameters
     ----------

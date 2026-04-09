@@ -92,18 +92,19 @@ This generates a Cartesian product: 3 x 2 x 2 = 12 total simulations.
 Running Sweeps
 ^^^^^^^^^^^^^^
 
-Use ``run_sweep.py`` to execute parameter sweeps:
+Use ``run.py`` to execute parameter sweeps (sweep mode is auto-detected from
+the parameter file content):
 
 .. code-block:: console
 
     # Preview combinations without running (dry run)
-    python run_sweep.py param/sweep.param --dry-run
+    python run.py param/sweep.param --dry-run
 
     # Run with 4 parallel workers
-    python run_sweep.py param/sweep.param --workers 4
+    python run.py param/sweep.param --workers 4
 
     # Run with automatic worker detection (default: CPU count - 1, max 8)
-    python run_sweep.py param/sweep.param
+    python run.py param/sweep.param
 
 **Command-line options:**
 

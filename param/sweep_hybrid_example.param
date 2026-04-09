@@ -6,7 +6,7 @@
 # independently across all tuple combinations.
 #
 # Usage:
-#   python run_sweep.py param/sweep_hybrid_example.param --dry-run
+#   python run.py param/sweep_hybrid_example.param --dry-run
 #
 
 # =============================================================================
