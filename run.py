@@ -113,8 +113,13 @@ if not gmc_check.valid:
         for i, s in enumerate(gmc_check.suggestions, 1):
             parts = ", ".join(f"{k}={v}" for k, v in s.items())
             logger.info(f"  {i}. {parts}")
-    import sys
-    sys.exit("Simulation stopped: implausible GMC parameters. See errors above.")
+    # Use os._exit to bypass atexit handlers — the DescribedDict atexit
+    # would otherwise read stale snapshots from a previous run and write
+    # a misleading termination_debug.txt.
+    import os
+    logger.error("Simulation stopped: implausible GMC parameters. See errors above.")
+    logging.shutdown()
+    os._exit(1)
 
 
 main.start_expansion(params)
