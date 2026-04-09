@@ -61,6 +61,13 @@ def load_escape_fraction(data_path: Path):
     # Load isCollapse for collapse indicator
     isCollapse = np.array(output.get('isCollapse', as_array=False))
 
+    # Suppress seed-bubble transient: discard snapshots before the shell
+    # first becomes optically thick (f_esc first reaches zero).
+    idx_zero = np.nonzero(fesc <= 0.0)[0]
+    if len(idx_zero) > 0:
+        i0 = idx_zero[0]
+        t, fesc, isCollapse = t[i0:], fesc[i0:], isCollapse[i0:]
+
     return t, fesc, isCollapse
 
 
