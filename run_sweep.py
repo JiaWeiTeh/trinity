@@ -61,6 +61,7 @@ from src._input.sweep_runner import (
     SimulationResult,
 )
 from src.cloud_properties.validate_gmc import validate_gmc_params
+from src._functions.unit_conversions import CONV, CGS
 
 
 def get_optimal_workers() -> int:
@@ -81,6 +82,11 @@ def _validate_sweep_combination(params_dict):
     """
     Validate a single sweep combination's GMC parameters.
 
+    The sweep param file stores values in CGS / user-facing units
+    (nCore in cm⁻³, mu_convert as a dimensionless multiple of m_H, etc.),
+    but ``validate_gmc_params`` expects code units [Msun, pc, Myr].
+    This function applies the same conversions that ``read_param`` performs.
+
     Parameters
     ----------
     params_dict : dict
@@ -97,15 +103,22 @@ def _validate_sweep_combination(params_dict):
         return None
 
     mCloud = params_dict.get('mCloud')
-    nCore = params_dict.get('nCore')
-    if mCloud is None or nCore is None:
+    nCore_cgs = params_dict.get('nCore')
+    if mCloud is None or nCore_cgs is None:
         return None
 
-    mu = float(params_dict.get('mu_convert', 1.4))
-    nISM = float(params_dict.get('nISM', 1.0))
+    mu_mH = float(params_dict.get('mu_convert', 1.4))     # dimensionless × m_H
+    nISM_cgs = float(params_dict.get('nISM', 1.0))         # cm⁻³
+
+    # --- Convert to code units [Msun, pc, Myr] ---
+    # nCore, nISM: cm⁻³ → 1/pc³
+    nCore = float(nCore_cgs) * CONV.ndens_cgs2au
+    nISM = nISM_cgs * CONV.ndens_cgs2au
+    # mu: dimensionless × m_H [g] → Msun
+    mu = mu_mH * CGS.m_H * CONV.g2Msun
 
     kwargs = dict(
-        mCloud=float(mCloud), nCore=float(nCore),
+        mCloud=float(mCloud), nCore=nCore,
         mu=mu, nISM=nISM, dens_profile=dens_profile,
     )
 
