@@ -22,14 +22,9 @@ Usage (sweep - auto-detected):
 
 import argparse
 import logging
-import multiprocessing
 import os
-import signal
 import sys
-from concurrent.futures import ProcessPoolExecutor, as_completed
-from datetime import datetime
 from pathlib import Path
-from threading import Event
 
 
 # =============================================================================
@@ -48,9 +43,6 @@ for lib in ['matplotlib', 'PIL', 'urllib3', 'asyncio', 'parso', 'fontTools', 'nu
 
 early_logger = logging.getLogger(__name__)
 early_logger.debug("Early logging configured (pre-params)")
-
-# Global flag for graceful shutdown on Ctrl+C (sweep mode)
-_shutdown_requested = Event()
 
 TRINITY_ROOT = Path(__file__).parent.resolve()
 
@@ -249,6 +241,12 @@ def _validate_sweep_combination(params_dict):
 
 def run_sweep(args):
     """Run a TRINITY parameter sweep."""
+    import multiprocessing
+    import signal
+    from concurrent.futures import ProcessPoolExecutor, as_completed
+    from datetime import datetime
+    from threading import Event
+
     from src._input.sweep_parser import (
         read_sweep_config,
         generate_combinations_from_config,
@@ -260,6 +258,10 @@ def run_sweep(args):
         SweepReport,
         SimulationResult,
     )
+
+    # Module-level shutdown flag for signal handler access
+    global _shutdown_requested
+    _shutdown_requested = Event()
 
     # Reconfigure logging for sweep mode
     log_level = logging.DEBUG if args.verbose else logging.INFO
