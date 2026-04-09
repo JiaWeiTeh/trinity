@@ -183,7 +183,7 @@ def check_gmc_constraints(
     if nEdge < nISM:
         errors.append(
             f"Edge density ({nEdge:.2e}) < ISM density ({nISM:.2e}). "
-            f"Consider: increasing nCore, decreasing rCore, or reducing |alpha|."
+            f"Consider: increasing nCore, increasing rCore, or reducing |alpha|."
         )
 
     # 3. Mass consistency

@@ -428,7 +428,7 @@ def validate_cloud_params(mCloud, nCore, rCore, rCloud, nEdge, nISM, alpha, mu,
     if nEdge < nISM:
         errors.append(
             f"CRITICAL: Edge density ({nEdge:.2e} cm⁻³) < ISM density ({nISM:.2e} cm⁻³)!\n"
-            f"  Consider: increasing nCore, decreasing rCore, or reducing |alpha|"
+            f"  Consider: increasing nCore, increasing rCore, or reducing |alpha|"
         )
 
     # If critical errors, find and suggest valid alternatives
