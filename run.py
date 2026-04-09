@@ -163,79 +163,6 @@ def run_single(args):
 
 
 # =============================================================================
-# Sweep mode helpers
-# =============================================================================
-
-def get_optimal_workers():
-    """
-    Determine optimal number of worker processes.
-
-    Strategy:
-    - Use (CPU_count - 1) to leave one core for system/monitoring
-    - Cap at 8 to avoid overwhelming I/O
-    - Minimum of 1
-    """
-    cpus = multiprocessing.cpu_count()
-    optimal = max(1, min(cpus - 1, 8))
-    return optimal
-
-
-def _validate_sweep_combination(params_dict):
-    """
-    Validate a single sweep combination's GMC parameters.
-
-    Parameters
-    ----------
-    params_dict : dict
-        Plain parameter dictionary (no .value wrappers).
-
-    Returns
-    -------
-    result : GMCValidationResult or None
-        Validation result, or None if validation cannot be performed
-        (e.g. missing keys).
-    """
-    from src.cloud_properties.validate_gmc import validate_gmc_params
-
-    dens_profile = params_dict.get('dens_profile')
-    if dens_profile not in ('densPL', 'densBE'):
-        return None
-
-    mCloud = params_dict.get('mCloud')
-    nCore = params_dict.get('nCore')
-    if mCloud is None or nCore is None:
-        return None
-
-    mu = float(params_dict.get('mu_convert', 1.4))
-    nISM = float(params_dict.get('nISM', 1.0))
-
-    kwargs = dict(
-        mCloud=float(mCloud), nCore=float(nCore),
-        mu=mu, nISM=nISM, dens_profile=dens_profile,
-    )
-
-    if dens_profile == 'densPL':
-        alpha = params_dict.get('densPL_alpha')
-        rCore = params_dict.get('rCore')
-        if alpha is None:
-            return None
-        kwargs['alpha'] = float(alpha)
-        if rCore is not None:
-            kwargs['rCore'] = float(rCore)
-    elif dens_profile == 'densBE':
-        Omega = params_dict.get('densBE_Omega')
-        if Omega is None:
-            return None
-        kwargs['Omega'] = float(Omega)
-        kwargs['gamma'] = float(params_dict.get('gamma_adia', 5.0 / 3.0))
-
-    try:
-        return validate_gmc_params(**kwargs)
-    except Exception:
-        return None
-
-
-# =============================================================================
 # Sweep mode
 # =============================================================================
 
@@ -258,10 +185,70 @@ def run_sweep(args):
         SweepReport,
         SimulationResult,
     )
+    from src.cloud_properties.validate_gmc import validate_gmc_params
 
     # Module-level shutdown flag for signal handler access
     global _shutdown_requested
     _shutdown_requested = Event()
+
+    # -----------------------------------------------------------------
+    # Sweep helper functions
+    # -----------------------------------------------------------------
+
+    def get_optimal_workers():
+        """
+        Determine optimal number of worker processes.
+
+        Strategy:
+        - Use (CPU_count - 1) to leave one core for system/monitoring
+        - Cap at 8 to avoid overwhelming I/O
+        - Minimum of 1
+        """
+        cpus = multiprocessing.cpu_count()
+        return max(1, min(cpus - 1, 8))
+
+    def _validate_sweep_combination(params_dict):
+        """
+        Validate a single sweep combination's GMC parameters.
+
+        Returns GMCValidationResult or None if validation cannot be performed.
+        """
+        dens_profile = params_dict.get('dens_profile')
+        if dens_profile not in ('densPL', 'densBE'):
+            return None
+
+        mCloud = params_dict.get('mCloud')
+        nCore = params_dict.get('nCore')
+        if mCloud is None or nCore is None:
+            return None
+
+        mu = float(params_dict.get('mu_convert', 1.4))
+        nISM = float(params_dict.get('nISM', 1.0))
+
+        kwargs = dict(
+            mCloud=float(mCloud), nCore=float(nCore),
+            mu=mu, nISM=nISM, dens_profile=dens_profile,
+        )
+
+        if dens_profile == 'densPL':
+            alpha = params_dict.get('densPL_alpha')
+            rCore = params_dict.get('rCore')
+            if alpha is None:
+                return None
+            kwargs['alpha'] = float(alpha)
+            if rCore is not None:
+                kwargs['rCore'] = float(rCore)
+        elif dens_profile == 'densBE':
+            Omega = params_dict.get('densBE_Omega')
+            if Omega is None:
+                return None
+            kwargs['Omega'] = float(Omega)
+            kwargs['gamma'] = float(params_dict.get('gamma_adia', 5.0 / 3.0))
+
+        try:
+            return validate_gmc_params(**kwargs)
+        except Exception:
+            return None
 
     # Reconfigure logging for sweep mode
     log_level = logging.DEBUG if args.verbose else logging.INFO
