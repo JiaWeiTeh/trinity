@@ -65,12 +65,12 @@ logger = logging.getLogger(__name__)
 # Global matplotlib style (matches paper_ODIN)
 # =============================================================================
 plt.rcParams.update({
-    'font.size':        16,
-    'axes.labelsize':   16,
-    'axes.titlesize':   16,
-    'xtick.labelsize':  14,
-    'ytick.labelsize':  14,
-    'legend.fontsize':  12,
+    'font.size':        20,
+    'axes.labelsize':   20,
+    'axes.titlesize':   20,
+    'xtick.labelsize':  18,
+    'ytick.labelsize':  18,
+    'legend.fontsize':  16,
 })
 
 # =============================================================================
@@ -955,7 +955,7 @@ def plot_phase_timeline(simulations: dict, output_dir: Path, fmt: str = 'pdf',
               label='Re-collapse'),
     ]
     ax.legend(handles=legend_handles, loc='lower center',
-              bbox_to_anchor=(0.5, 1.02), ncol=3, fontsize=14,
+              bbox_to_anchor=(0.5, 1.02), ncol=4,
               frameon=False, columnspacing=1.0, handletextpad=0.4,
               handlelength=1.5)
 
