@@ -209,32 +209,30 @@ def shell_structure_pure(params) -> ShellProperties:
     nShell_arr_ion = np.append(nShell_arr_ion, nShell_arr[idx])
     rShell_arr_ion = np.append(rShell_arr_ion, rShell_arr[idx])
 
+    # Neutral region exists only when photons are depleted AND mass remains
+    has_neutral = is_phiDepleted and not is_allMassSwept
+
     # Extract ionization front properties
     n_IF = nShell_arr_ion[-1]  # Density at ionization front from shell ODE
     n_IF_ODE = n_IF            # Preserve raw ODE value for diagnostics
     R_IF = rShell_arr_ion[-1]  # Radius of ionization front
 
+    # Ionizing photon escape fraction at shell outer edge
+    f_esc_ion = max(0.0, phiShell_arr_ion[-1])
+
     # ------------------------------------------------------------------
     # Strömgren ionization balance density (Lancaster+2025, generalised)
     #
-    # n_IF_Str = sqrt(3 (1 - f_esc) Qi / (4π αB ΔV))
+    # n_IF_Str = sqrt(3 (1 - f_esc_ion) Qi / (4π αB ΔV))
     #
     # Continuous across regimes:
-    #   is_phiDepleted=True  → ΔV = R_IF³ - R2³,  f_esc ≈ 0
-    #   is_phiDepleted=False → ΔV = R_sh³ - R2³,  f_esc = phi(R_sh)
+    #   is_phiDepleted=True  → ΔV = R_IF³ - R2³,  f_esc_ion ≈ 0
+    #   is_phiDepleted=False → ΔV = R_sh³ - R2³,  f_esc_ion = phi(R_sh)
     # Cap: n_IF_Str ≤ shell_n0 (pressure equilibrium for thin skins)
     # ------------------------------------------------------------------
-    if is_phiDepleted:
-        _R_outer = R_IF
-        _f_esc = max(0.0, phiShell_arr_ion[-1])
-    else:
-        # Shell fully ionised: outer edge is last ionised-array radius
-        # (all shell mass accounted for, no neutral region)
-        _R_outer = rShell_arr_ion[-1]
-        _f_esc = max(0.0, phiShell_arr_ion[-1])
-
-    _vol_ion = _R_outer**3 - rShell0**3
-    _Qi_absorbed = (1.0 - _f_esc) * Qi
+    # R_IF = rShell_arr_ion[-1] in both regimes (I-front or shell edge)
+    _vol_ion = R_IF**3 - rShell0**3
+    _Qi_absorbed = (1.0 - f_esc_ion) * Qi
 
     if (_vol_ion > 0.0) and (_Qi_absorbed > 0.0):
         n_IF_Str = np.sqrt(
@@ -292,10 +290,10 @@ def shell_structure_pure(params) -> ShellProperties:
         logger.debug('Ready to evaluate neutral shell region')
 
         # =============================================================================
-        # Neutral region integration (if not fully ionized)
+        # Neutral region integration (if φ depleted and mass remains)
         # =============================================================================
-        if not is_phiDepleted:
-            logger.debug('Shell not fully ionised, calculating neutral region')
+        if has_neutral:
+            logger.debug('φ depleted with mass remaining — integrating neutral region')
 
             # Temperature/density discontinuity at boundary
             nShell0 = (nShell0 * params['mu_atom'].value / params['mu_ion'].value *
@@ -375,27 +373,21 @@ def shell_structure_pure(params) -> ShellProperties:
         # =============================================================================
         # Compute final shell properties
         # =============================================================================
-        if is_phiDepleted:
-            shellThickness = rShell_arr_ion[-1] - rShell0
-            tau_rEnd = tauShell_arr_ion[-1]
-            phi_rEnd = phiShell_arr_ion[-1]
-            if phi_rEnd < 0:
-                phi_rEnd = 0
-            nShell_max = np.max(nShell_arr_ion)
-            tau_kappa_IR = params['mu_atom'].value * np.sum(nShell_arr_ion[:-1] * dr_ion_arr)
-        else:
+        if has_neutral:
             shellThickness = rShell_arr_neu[-1] - rShell0
             tau_rEnd = tauShell_arr_neu[-1]
-            phi_rEnd = phiShell_arr_ion[-1]
-            if phi_rEnd < 0:
-                phi_rEnd = 0
             nShell_max = max(np.max(nShell_arr_ion), np.max(nShell_arr_neu))
             dr_neu_arr = rShell_arr_neu[1:] - rShell_arr_neu[:-1]
             tau_kappa_IR = (params['mu_atom'].value * np.sum(nShell_arr_ion[:-1] * dr_ion_arr) +
                 params['mu_atom'].value * np.sum(nShell_arr_neu[:-1] * dr_neu_arr))
+        else:
+            shellThickness = rShell_arr_ion[-1] - rShell0
+            tau_rEnd = tauShell_arr_ion[-1]
+            nShell_max = np.max(nShell_arr_ion)
+            tau_kappa_IR = params['mu_atom'].value * np.sum(nShell_arr_ion[:-1] * dr_ion_arr)
 
-        # Absorption fractions
-        f_absorbed_ion = 1 - phi_rEnd
+        # Absorption fractions (f_esc_ion computed at line 217)
+        f_absorbed_ion = 1.0 - f_esc_ion
         f_absorbed_neu = 1 - np.exp(-tau_rEnd)
         f_absorbed = (f_absorbed_ion * Li + f_absorbed_neu * Ln) / (Li + Ln)
 
@@ -409,12 +401,12 @@ def shell_structure_pure(params) -> ShellProperties:
         # If shell_ion_idx == len(shell_r_arr)-1, the entire shell is ionized
         # (either is_phiDepleted with no neutral region, or all mass swept with photons leaking out).
         shell_ion_idx = len(rShell_arr_ion) - 1
-        if is_phiDepleted or (is_allMassSwept and len(rShell_arr_neu) == 0):
-            shell_r_arr = rShell_arr_ion
-            shell_n_arr = nShell_arr_ion
-        else:
+        if has_neutral:
             shell_r_arr = np.concatenate([rShell_arr_ion, rShell_arr_neu])
             shell_n_arr = np.concatenate([nShell_arr_ion, nShell_arr_neu])
+        else:
+            shell_r_arr = rShell_arr_ion
+            shell_n_arr = nShell_arr_ion
 
     elif is_shellDissolved:
         f_absorbed_ion = 0.0 # dissolved shell = no absorber; ionizing photons escape freely

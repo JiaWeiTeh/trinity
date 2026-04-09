@@ -5,10 +5,10 @@ Density Profile Comparison Diagnostics for TRINITY.
 
 Compares four density profiles (same cloud mass, SFE, core density, but varying
 density structure) from a density_profile_sweep run:
-  - Power-law alpha = 0  (uniform)
-  - Power-law alpha = -1
-  - Power-law alpha = -2 (singular isothermal sphere)
-  - Bonnor-Ebert with Omega = 14.1
+  - Power-law rho ~ r^0  (uniform)
+  - Power-law rho ~ r^-1
+  - Power-law rho ~ r^-2
+  - Critical Bonnor-Ebert sphere
 
 Produces 8 diagnostic figures (1 static + 7 simulation-based) examining how
 cloud density structure affects feedback-driven shell evolution.
@@ -62,6 +62,18 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # =============================================================================
+# Global matplotlib style (matches paper_ODIN)
+# =============================================================================
+plt.rcParams.update({
+    'font.size':        16,
+    'axes.labelsize':   16,
+    'axes.titlesize':   16,
+    'xtick.labelsize':  14,
+    'ytick.labelsize':  14,
+    'legend.fontsize':  12,
+})
+
+# =============================================================================
 # Constants
 # =============================================================================
 
@@ -70,7 +82,7 @@ PROFILE_STYLES = {
     'PL0':  {'color': '#0072B2', 'ls': '-',  'label': r'$\rho \propto r^{0}$'},
     'PL-1': {'color': '#D55E00', 'ls': '-',  'label': r'$\rho \propto r^{-1}$'},
     'PL-2': {'color': '#009E73', 'ls': '-',  'label': r'$\rho \propto r^{-2}$'},
-    'BE14': {'color': '#CC79A7', 'ls': '-',  'label': 'Critical\nBonnor-Ebert'},
+    'BE14': {'color': '#CC79A7', 'ls': '-',  'label': 'Bonnor-Ebert\n(Critical)'},
 }
 
 # Ordered list for consistent iteration
@@ -186,7 +198,7 @@ def add_legend(ax, tags: list, extra_handles: list = None, **kwargs):
     for tag in tags:
         s = get_style(tag)
         handles.append(Line2D([0], [0], color=s['color'], ls=s['ls'], lw=1.5,
-                              label=s['label']))
+                              label=s['label'].replace('\n', ' ')))
     if extra_handles:
         handles.extend(extra_handles)
     ax.legend(handles=handles, **kwargs)
@@ -433,7 +445,7 @@ def plot_enclosed_mass(sweep_dir: str, output_dir: Path, fmt: str = 'pdf',
     ax_M.set_ylabel(r'$M_{\rm enc}(<r)$ [M$_\odot$]')
     ax_M.set_title(r'(b) Enclosed Mass')
 
-    add_legend(ax_n, PROFILE_ORDER, loc='best', fontsize=9)
+    add_legend(ax_n, PROFILE_ORDER, loc='best')
 
     fig.tight_layout()
     savefig(fig, 'densityProfile_Menc', output_dir, fmt)
@@ -531,8 +543,8 @@ def plot_shell_evolution(simulations: dict, output_dir: Path, fmt: str = 'pdf',
     marker_handles = get_marker_legend_handles(
         include_phase=False, include_rcloud=SHOW_RCLOUD, include_rcloud_horizontal=SHOW_RCLOUD_H, include_collapse=False
     )
-    add_legend(axes[1], [t for t in PROFILE_ORDER if t in simulations],
-               extra_handles=marker_handles, loc='best', fontsize=9)
+    add_legend(axes[1], [tag for tag in PROFILE_ORDER if tag in simulations],
+               extra_handles=marker_handles, loc='best')
 
     fig.tight_layout()
     savefig(fig, 'densityProfile_evolution', output_dir, fmt)
@@ -550,7 +562,7 @@ def plot_pressure_budget(simulations: dict, output_dir: Path, fmt: str = 'pdf',
     """Plot pressure evolution for each profile in a 2x2 grid."""
     logger.info("Figure 3: Pressure Budget")
 
-    tags_present = [t for t in PROFILE_ORDER if t in simulations]
+    tags_present = [tag for tag in PROFILE_ORDER if tag in simulations]
     n = len(tags_present)
     nrows = 2
     ncols = 2
@@ -616,8 +628,8 @@ def plot_pressure_budget(simulations: dict, output_dir: Path, fmt: str = 'pdf',
 
         ax.set_xlabel(r'$t$ [Myr]')
         ax.set_ylabel(r'$P/k_{\rm B}$ [K\,cm$^{-3}$]')
-        ax.set_title(s['label'])
-        ax.legend(fontsize=8, loc='best')
+        ax.set_title(s['label'].replace('\n', ' '))
+        ax.legend(loc='best')
 
     # Turn off unused panels
     for idx in range(n, nrows * ncols):
@@ -640,7 +652,7 @@ def plot_force_budget(simulations: dict, output_dir: Path, fmt: str = 'pdf',
     """Plot force evolution for each profile in a 2x2 grid."""
     logger.info("Figure 4: Force Budget")
 
-    tags_present = [t for t in PROFILE_ORDER if t in simulations]
+    tags_present = [tag for tag in PROFILE_ORDER if tag in simulations]
     n = len(tags_present)
     nrows = 2
     ncols = 2
@@ -673,8 +685,8 @@ def plot_force_budget(simulations: dict, output_dir: Path, fmt: str = 'pdf',
 
         ax.set_xlabel(r'$t$ [Myr]')
         ax.set_ylabel(r'$|F|$ [dyn]')
-        ax.set_title(s['label'])
-        ax.legend(fontsize=8, loc='best')
+        ax.set_title(s['label'].replace('\n', ' '))
+        ax.legend(loc='best')
 
     for idx in range(n, nrows * ncols):
         i, j = divmod(idx, ncols)
@@ -869,52 +881,67 @@ def plot_phase_timeline(simulations: dict, output_dir: Path, fmt: str = 'pdf',
         print(f"    t_end    = {info['t_end']:.4f} Myr")
         print(f"    Outcome  = {info['outcome']}")
 
-    # --- Create figure (single A&A column ≈ 88 mm ≈ 3.46 in) ---
-    fig, ax = plt.subplots(figsize=(3.5, 2.0), dpi=150)
+    # --- Create figure ---
+    fig, ax = plt.subplots(figsize=(7, 5), dpi=150)
 
-    bar_height = 0.25
-    y_spacing = 0.55
-    y_positions = np.arange(n_tracks) * y_spacing
+    bar_height = 0.1
+    # Position bar bottoms at 0.1, 0.3, 0.5, 0.7 (centres at 0.15, 0.35, 0.55, 0.75)
+    y_positions = np.array([0.1, 0.3, 0.5, 0.7])[:n_tracks]
+    y_centres = y_positions + bar_height / 2
 
     t_max_global = max(info['t_end'] for info in all_info.values())
 
-    for yi, tag in enumerate(tags_present):
+    for idx, tag in enumerate(tags_present):
         info = all_info[tag]
+        yb = y_positions[idx]   # bar bottom
+        yc = y_centres[idx]     # bar centre
 
         # Draw phase segments
-        for phase_name, t0, t1 in info['intervals']:
+        is_expanding = (info['outcome'] == 'expanding')
+        n_intervals = len(info['intervals'])
+        for seg_idx, (phase_name, t0, t1) in enumerate(info['intervals']):
             sty = PHASE_STYLE.get(phase_name, PHASE_STYLE['collapse'])
-            ax.barh(yi, t1 - t0, left=t0, height=bar_height,
-                    facecolor=sty['facecolor'], edgecolor=sty['edgecolor'],
-                    hatch=sty['hatch'], lw=0.5, zorder=2)
+            is_last = (seg_idx == n_intervals - 1)
 
-        # Duration labels above bars — only the two widest segments
-        durations = [(t1 - t0, t0, t1) for _, t0, t1 in info['intervals']]
-        durations.sort(reverse=True)
-        for dt, t0, t1 in durations[:2]:
-            frac = dt / t_max_global
-            if frac > 0.10:
-                ax.text(0.5 * (t0 + t1), yi - bar_height / 2 - 0.06,
-                        f'{dt:.2f}',
-                        ha='center', va='bottom', fontsize=5.5, color='black',
-                        zorder=5)
+            if is_last and is_expanding:
+                # Draw bar with no edge, then add edges manually
+                from matplotlib.patches import Rectangle
+                y_bot = yc - bar_height / 2
+                rect = Rectangle((t0, y_bot), t1 - t0, bar_height,
+                                 facecolor=sty['facecolor'], edgecolor='none',
+                                 hatch=sty['hatch'], zorder=2)
+                ax.add_patch(rect)
+                # Solid edges: left, top, bottom
+                ax.plot([t0, t0], [y_bot, y_bot + bar_height],
+                        color='black', lw=0.5, zorder=3)
+                ax.plot([t0, t1], [y_bot + bar_height, y_bot + bar_height],
+                        color='black', lw=0.5, zorder=3)
+                ax.plot([t0, t1], [y_bot, y_bot],
+                        color='black', lw=0.5, zorder=3)
+                # Dashed right edge
+                ax.plot([t1, t1], [y_bot, y_bot + bar_height],
+                        color='black', lw=0.8, ls='--', zorder=3)
+            else:
+                ax.barh(yc, t1 - t0, left=t0, height=bar_height, align='center',
+                        facecolor=sty['facecolor'], edgecolor=sty['edgecolor'],
+                        hatch=sty['hatch'], lw=0.5, zorder=2)
 
         # End marker: 'x' for re-collapse
         if info['outcome'] == 're-collapse':
-            ax.plot(info['t_end'], yi, 'x', color='black', ms=4,
+            ax.plot(info['t_end'], yc, 'x', color='black', ms=5,
                     markeredgewidth=1.2, zorder=6, clip_on=False)
 
     # Y-axis labels
-    ax.set_yticks(y_positions)
-    ax.set_yticklabels([get_style(tag)['label'] for tag in tags_present],
-                       fontsize=7)
+    ax.set_yticks(y_centres)
+    # Wrap long labels for the compact y-axis
+    ylabels = [get_style(tag)['label'] for tag in tags_present]
+    ax.set_yticklabels(ylabels)
     ax.invert_yaxis()  # top-to-bottom ordering
-    ax.set_ylim(y_positions[-1] + 0.4, -0.5)  # extra pad above first track
+    ax.set_ylim(0.85, 0.0)
 
     # X-axis
-    ax.set_xlabel(r'$t$ [Myr]', fontsize=8)
-    ax.set_xlim(0, t_max_global * 1.10)
-    ax.tick_params(axis='x', labelsize=7)
+    ax.set_xlabel(r'$t$ [Myr]')
+    ax.set_xlim(0, t_max_global * 1.05)
 
     # Remove top/right spines for cleaner look
     ax.spines['top'].set_visible(False)
@@ -934,8 +961,8 @@ def plot_phase_timeline(simulations: dict, output_dir: Path, fmt: str = 'pdf',
                markeredgewidth=1.2, linestyle='none', label='End (collapse)'),
     ]
     ax.legend(handles=legend_handles, loc='lower center',
-              bbox_to_anchor=(0.5, 1.0), ncol=3, fontsize=5.5,
-              frameon=False, columnspacing=0.8, handletextpad=0.3,
+              bbox_to_anchor=(0.5, 1.02), ncol=3, fontsize=14,
+              frameon=False, columnspacing=1.0, handletextpad=0.4,
               handlelength=1.5)
 
     fig.tight_layout()
@@ -956,7 +983,7 @@ def plot_phase_timeline(simulations: dict, output_dir: Path, fmt: str = 'pdf',
     for tag in tags_present:
         info = all_info[tag]
         s = get_style(tag)
-        label = s['label'].replace('$', '').replace(r'\alpha', 'alpha').replace(r'\Omega', 'Omega').replace('\\', '')
+        label = s['label'].replace('$', '').replace('\\propto', '~').replace('\\rho', 'rho')
 
         # Sum durations by phase type
         durations = {'energy': 0.0, 'transition': 0.0, 'momentum': 0.0, 'collapse': 0.0}
@@ -1022,7 +1049,7 @@ def plot_escape_fraction(simulations: dict, output_dir: Path, fmt: str = 'pdf',
     ax.set_ylabel(r'$f_{\rm esc,\,ion}$')
     ax.set_ylim(-0.05, 1.05)
 
-    add_legend(ax, [t for t in PROFILE_ORDER if t in simulations], loc='best')
+    add_legend(ax, [tag for tag in PROFILE_ORDER if tag in simulations], loc='best')
 
     savefig(fig, 'densityProfile_escapeFraction', output_dir, fmt)
     if show:
@@ -1048,7 +1075,7 @@ def plot_feedback_grid(sweep_dir: str, output_dir: Path, fmt: str = 'pdf',
     logger.info("Figure 7: Feedback Fraction Grid")
 
     sim_paths = _get_profile_data_paths(sweep_dir)
-    tags_present = [t for t in PROFILE_ORDER if t in sim_paths]
+    tags_present = [tag for tag in PROFILE_ORDER if tag in sim_paths]
 
     if not tags_present:
         logger.warning("No simulations found for feedback grid. Skipping.")
@@ -1080,7 +1107,7 @@ def plot_feedback_grid(sweep_dir: str, output_dir: Path, fmt: str = 'pdf',
             ax.set_axis_off()
             continue
 
-        ax.set_title(s['label'])
+        ax.set_title(s['label'].replace('\n', ' '))
         if i == nrows - 1:
             ax.set_xlabel(r'$t$ [Myr]')
         if j == 0:
@@ -1110,7 +1137,7 @@ def plot_feedback_grid(sweep_dir: str, output_dir: Path, fmt: str = 'pdf',
 
     fig.legend(handles=handles, loc='upper center', ncol=4,
                frameon=True, facecolor='white', framealpha=0.9,
-               edgecolor='0.2', bbox_to_anchor=(0.5, 1.05), fontsize=8)
+               edgecolor='0.2', bbox_to_anchor=(0.5, 1.05))
     fig.subplots_adjust(top=0.88)
 
     savefig(fig, 'densityProfile_feedback', output_dir, fmt)
@@ -1137,7 +1164,7 @@ def plot_momentum_grid(sweep_dir: str, output_dir: Path, fmt: str = 'pdf',
     logger.info("Figure 8: Momentum Grid")
 
     sim_paths = _get_profile_data_paths(sweep_dir)
-    tags_present = [t for t in PROFILE_ORDER if t in sim_paths]
+    tags_present = [tag for tag in PROFILE_ORDER if tag in sim_paths]
 
     if not tags_present:
         logger.warning("No simulations found for momentum grid. Skipping.")
@@ -1167,7 +1194,7 @@ def plot_momentum_grid(sweep_dir: str, output_dir: Path, fmt: str = 'pdf',
             ax.set_axis_off()
             continue
 
-        ax.set_title(s['label'])
+        ax.set_title(s['label'].replace('\n', ' '))
         if i == nrows - 1:
             ax.set_xlabel(r'$t$ [Myr]')
         if j == 0:
@@ -1189,7 +1216,7 @@ def plot_momentum_grid(sweep_dir: str, output_dir: Path, fmt: str = 'pdf',
 
     fig.legend(handles=handles, loc='upper center', ncol=4,
                frameon=True, facecolor='white', framealpha=0.9,
-               edgecolor='0.2', bbox_to_anchor=(0.5, 1.05), fontsize=8)
+               edgecolor='0.2', bbox_to_anchor=(0.5, 1.05))
     fig.subplots_adjust(top=0.88)
 
     savefig(fig, 'densityProfile_momentum', output_dir, fmt)
