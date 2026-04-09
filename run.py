@@ -250,6 +250,25 @@ def run_sweep(args):
         except Exception:
             return None
 
+    def _kill_sweep_children(sig_module):
+        """Kill all child processes so simulations don't outlive the sweep."""
+        # Send SIGTERM to our entire process group (workers + their
+        # subprocess children share the group).  Temporarily ignore
+        # SIGTERM in *this* process so we survive to print the report.
+        old = sig_module.signal(sig_module.SIGTERM, sig_module.SIG_IGN)
+        try:
+            os.killpg(os.getpgid(os.getpid()), sig_module.SIGTERM)
+        except (OSError, AttributeError):
+            # Fallback: kill worker processes individually
+            # (e.g. on Windows where killpg is unavailable)
+            if executor is not None:
+                for pid in list(getattr(executor, '_processes', {}).keys()):
+                    try:
+                        os.kill(pid, sig_module.SIGTERM)
+                    except OSError:
+                        pass
+        sig_module.signal(sig_module.SIGTERM, old)
+
     # Reconfigure logging for sweep mode — suppress parser noise
     log_level = logging.DEBUG if args.verbose else logging.WARNING
     logging.basicConfig(
@@ -537,6 +556,11 @@ def run_sweep(args):
                 executor.shutdown(wait=False, cancel_futures=True)
             except TypeError:
                 executor.shutdown(wait=False)
+
+        # Kill all child processes (pool workers + their subprocess children)
+        # so they don't keep running after the main process exits.
+        if _shutdown_requested.is_set():
+            _kill_sweep_children(signal)
 
     progress.close()
     end_time = datetime.now()
