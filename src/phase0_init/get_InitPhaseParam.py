@@ -74,7 +74,6 @@ def get_y0(params):
     """
 
     # Core properties - handle both DescribedItem and raw value access
-    mu_atom = params['mu_atom'].value      # mass per particle (neutral atomic gas) — for Weaver Eq. 37
     mu_convert = params['mu_convert'].value  # mass per H nucleus — for rho = n_H * mu_convert
     nCore = params['nCore'].value
     bubble_xi_Tb = params['bubble_xi_Tb'].value
@@ -99,9 +98,6 @@ def get_y0(params):
     if nCore <= 0:
         raise ValueError(f"nCore must be positive, got {nCore}")
 
-    if mu_atom <= 0:
-        raise ValueError(f"mu_atom must be positive, got {mu_atom}")
-
     if not (0 <= bubble_xi_Tb <= 1):
         raise ValueError(f"bubble_xi_Tb must be in [0,1], got {bubble_xi_Tb}")
 
@@ -109,19 +105,21 @@ def get_y0(params):
     # GET SB99 FEEDBACK VALUES AT tSF
     # =========================================================================
 
-    # CRITICAL: Use WIND-ONLY quantities for wind velocity calculation
-    # Using new naming convention
-    Lmech_total = SB99f['fLmech_total'](tSF)
-    pdot_total = SB99f['fpdot_total'](tSF)
+    # CRITICAL: Use WIND-ONLY quantities for wind velocity calculation.
+    # The free-streaming phase describes the stellar wind expansion before
+    # the Weaver phase. The wind terminal velocity v = 2L/pdot is only
+    # physical when using wind-only L and pdot (not total which includes SNe).
+    Lmech_W = SB99f['fLmech_W'](tSF)
+    pdot_W = SB99f['fpdot_W'](tSF)
 
     # Validate SB99 values
-    if Lmech_total < MIN_LUMINOSITY:
-        logger.warning(f"Lmech_total={Lmech_total} is very small at tSF={tSF} Myr")
-        Lmech_total = MIN_LUMINOSITY
+    if Lmech_W < MIN_LUMINOSITY:
+        logger.warning(f"Lmech_W={Lmech_W} is very small at tSF={tSF} Myr")
+        Lmech_W = MIN_LUMINOSITY
 
-    if pdot_total < MIN_MOMENTUM:
-        logger.warning(f"pdot_total={pdot_total} is very small at tSF={tSF} Myr")
-        pdot_total = MIN_MOMENTUM
+    if pdot_W < MIN_MOMENTUM:
+        logger.warning(f"pdot_W={pdot_W} is very small at tSF={tSF} Myr")
+        pdot_W = MIN_MOMENTUM
 
     # =========================================================================
     # COMPUTE WIND PROPERTIES (WIND-ONLY - BUG FIX)
@@ -130,15 +128,11 @@ def get_y0(params):
     # Mass loss rate from winds [AU units]
     # From: L = 0.5 * Mdot * v^2 and pdot = Mdot * v
     # => Mdot = pdot^2 / (2 * L)
-    Mdot0 = pdot_total**2 / (2.0 * Lmech_total)
+    Mdot0 = pdot_W**2 / (2.0 * Lmech_W)
 
     # Terminal velocity from winds [pc/Myr in AU units]
-    # From: v = 2 * L / pdot
-    #
-    # CRITICAL BUG FIX: Use wind-only quantities!
-    # WRONG:  v0 = 2 * Lmech_total / pdot_total  (includes SNe)
-    # RIGHT:  v0 = 2 * Lmech_W / pdot_W          (wind only)
-    v0 = 2.0 * Lmech_total / pdot_total
+    # From: v = 2 * L / pdot  (wind-only quantities)
+    v0 = 2.0 * Lmech_W / pdot_W
 
     if v0 < MIN_VELOCITY:
         logger.warning(f"v0={v0} is very small, may cause numerical issues")
@@ -170,14 +164,14 @@ def get_y0(params):
     r0 = v0 * dt_phase0
 
     # Initial bubble energy [AU units]
-    # From Weaver+77, Eq. 20: E = (5/11) * L * t
-    E0 = WEAVER_ENERGY_FRACTION * Lmech_total * dt_phase0
+    # From Weaver+77, Eq. 20: E = (5/11) * L_w * t
+    E0 = WEAVER_ENERGY_FRACTION * Lmech_W * dt_phase0
 
     # Initial temperature [K]
     # From Weaver+77, Eq. 37:
     # T = 1.51e6 * (L/10^36)^(8/35) * (n)^(2/35) * t^(-6/35) * (1-xi)^0.4
     T0 = WEAVER_TEMP_COEFFICIENT * \
-         (Lmech_total * cvt.L_au2cgs / WEAVER_L_REF)**(8.0/35.0) * \
+         (Lmech_W * cvt.L_au2cgs / WEAVER_L_REF)**(8.0/35.0) * \
          (nCore * cvt.ndens_au2cgs)**(2.0/35.0) * \
          (dt_phase0)**(-6.0/35.0) * \
          (1.0 - bubble_xi_Tb)**0.4
