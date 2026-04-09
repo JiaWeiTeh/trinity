@@ -63,12 +63,14 @@ def load_escape_fraction(data_path: Path):
 
     # Suppress seed-bubble transient: discard snapshots before the shell
     # first becomes optically thick (f_esc first reaches zero).
+    t_transient = np.array([])
     idx_zero = np.nonzero(fesc <= 0.0)[0]
     if len(idx_zero) > 0:
         i0 = idx_zero[0]
+        t_transient = t[:i0 + 1]
         t, fesc, isCollapse = t[i0:], fesc[i0:], isCollapse[i0:]
 
-    return t, fesc, isCollapse
+    return t, fesc, isCollapse, t_transient
 
 
 
@@ -93,7 +95,7 @@ def plot_from_path(data_input: str, output_dir: str = None):
 
 
     try:
-        t, fesc, isCollapse = load_escape_fraction(data_path)
+        t, fesc, isCollapse, t_transient = load_escape_fraction(data_path)
     except Exception as e:
         print(f"Error loading data: {e}")
         return
@@ -103,7 +105,11 @@ def plot_from_path(data_input: str, output_dir: str = None):
     fesc_plot = smooth_1d(fesc, SMOOTH_WINDOW)
     fesc_plot = np.clip(fesc_plot, 0.0, 1.0)
 
-    ax.plot(t, fesc_plot, lw=1.8, alpha=0.9, label=r"$f_{\rm esc}$")
+    color = ax.plot(t, fesc_plot, lw=1.8, alpha=0.9, label=r"$f_{\rm esc}$")[0].get_color()
+
+    # Dashed line at f_esc=0 for the seed-bubble transient
+    if len(t_transient) > 0:
+        ax.plot(t_transient, np.zeros_like(t_transient), ls='--', lw=1.2, alpha=0.5, color=color)
 
     # --- collapse line using helper module
     if SHOW_COLLAPSE:
@@ -203,12 +209,16 @@ def plot_grid(folder_path, output_dir=None, ndens_filter=None,
                     continue
 
                 try:
-                    t, fesc, isCollapse = load_escape_fraction(data_path)
+                    t, fesc, isCollapse, t_transient = load_escape_fraction(data_path)
                     fesc_plot = smooth_1d(fesc, SMOOTH_WINDOW)
                     fesc_plot = np.clip(fesc_plot, 0.0, 1.0)
 
                     eps = int(sfe) / 100.0
                     (line,) = ax.plot(t, fesc_plot, lw=1.8, alpha=0.9, label=rf"$\epsilon={eps:.2f}$")
+
+                    # Dashed line at f_esc=0 for the seed-bubble transient
+                    if len(t_transient) > 0:
+                        ax.plot(t_transient, np.zeros_like(t_transient), ls='--', lw=1.2, alpha=0.5, color=line.get_color())
 
                     if i == 0:
                         all_line_handles.append(line)
