@@ -250,8 +250,8 @@ def run_sweep(args):
         except Exception:
             return None
 
-    # Reconfigure logging for sweep mode
-    log_level = logging.DEBUG if args.verbose else logging.INFO
+    # Reconfigure logging for sweep mode — suppress parser noise
+    log_level = logging.DEBUG if args.verbose else logging.WARNING
     logging.basicConfig(
         level=log_level,
         format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
@@ -287,75 +287,53 @@ def run_sweep(args):
     print("PARAMETER SWEEP SUMMARY")
     print("=" * 60)
 
-    print(f"\nBase parameters (constant across all runs):")
-    for k, v in sorted(config.base_params.items()):
-        print(f"  {k}: {v}")
+    # Show base params as a compact count (use --verbose for full list)
+    n_base = len(config.base_params)
+    if args.verbose:
+        print(f"\nBase parameters ({n_base} constant):")
+        for k, v in sorted(config.base_params.items()):
+            print(f"  {k}: {v}")
+    else:
+        print(f"\nBase parameters: {n_base} constant across all runs")
 
     if config.is_hybrid_mode:
         print(f"\nHybrid mode:")
-        print(f"  Tuple parameters: {config.tuple_params}")
-        print(f"    {len(config.tuple_values)} explicit combinations:")
-        for i, values in enumerate(config.tuple_values[:5]):  # Show first 5
-            combo_str = ", ".join(f"{p}={v}" for p, v in zip(config.tuple_params, values))
-            print(f"      [{i+1}] {combo_str}")
-        if len(config.tuple_values) > 5:
-            print(f"      ... and {len(config.tuple_values) - 5} more")
-        print(f"  Sweep parameters (Cartesian with tuples):")
-        for k, v in sorted(config.sweep_params.items()):
-            print(f"    {k}: {v} ({len(v)} values)")
-    elif config.is_tuple_mode:
-        print(f"\nTuple mode: {config.tuple_params}")
-        print(f"  {len(config.tuple_values)} explicit combinations:")
-        for i, values in enumerate(config.tuple_values[:5]):  # Show first 5
+        print(f"  Tuple: {config.tuple_params} "
+              f"({len(config.tuple_values)} combinations)")
+        for i, values in enumerate(config.tuple_values[:5]):
             combo_str = ", ".join(f"{p}={v}" for p, v in zip(config.tuple_params, values))
             print(f"    [{i+1}] {combo_str}")
         if len(config.tuple_values) > 5:
             print(f"    ... and {len(config.tuple_values) - 5} more")
-    else:
-        print(f"\nSweep parameters (varying):")
+        print(f"  Sweep (Cartesian with tuples):")
         for k, v in sorted(config.sweep_params.items()):
-            print(f"  {k}: {v} ({len(v)} values)")
-
-    print(f"\nTotal combinations: {n_combinations}")
-
-    # =================================================================
-    # Determine workers
-    # =================================================================
-
-    cpus = multiprocessing.cpu_count()
-    suggested = get_optimal_workers()
-
-    if args.workers is None:
-        workers = suggested
-        print(f"\nAuto-detected {cpus} CPUs")
-        print(f"Suggested parallel workers: {suggested}")
+            print(f"    {k}: {v}")
+    elif config.is_tuple_mode:
+        print(f"\nTuple mode: {config.tuple_params}")
+        for i, values in enumerate(config.tuple_values[:5]):
+            combo_str = ", ".join(f"{p}={v}" for p, v in zip(config.tuple_params, values))
+            print(f"  [{i+1}] {combo_str}")
+        if len(config.tuple_values) > 5:
+            print(f"  ... and {len(config.tuple_values) - 5} more")
     else:
-        workers = args.workers
-        print(f"\nUsing {workers} workers (user-specified)")
-
-    print(f"Will use {workers} parallel worker(s)")
-
-    # Estimate time (rough estimate: 5 minutes per simulation)
-    estimated_time_per_sim = 1000  # seconds
-    estimated_total_seconds = (n_combinations / workers) * estimated_time_per_sim
-    estimated_total_minutes = estimated_total_seconds / 60
-
-    print(f"\nEstimated total time: ~{estimated_total_minutes:.0f} minutes")
-    print(f"  (assuming ~{estimated_time_per_sim} s/sim with {workers} workers)")
+        print(f"\nSweep parameters:")
+        for k, v in sorted(config.sweep_params.items()):
+            print(f"  {k}: {v}")
 
     # =================================================================
-    # Determine output directory
+    # Determine workers and output directory
     # =================================================================
+
+    workers = args.workers if args.workers is not None else get_optimal_workers()
 
     # Use path2output from params if specified, else use 'outputs/'
     base_output_dir = config.base_params.get('path2output', 'outputs')
     if base_output_dir == 'def_dir':
         base_output_dir = os.path.join(os.getcwd(), 'outputs')
-
-    # Make it absolute
     base_output_dir = str(Path(base_output_dir).resolve())
 
-    print(f"\nOutput directory: {base_output_dir}")
+    print(f"\nTotal: {n_combinations} simulations | "
+          f"Workers: {workers} | Output: {base_output_dir}")
 
     # =================================================================
     # Dry run mode
@@ -553,9 +531,12 @@ def run_sweep(args):
         # Restore original signal handler
         signal.signal(signal.SIGINT, original_handler)
 
-        # Shutdown executor
+        # Shutdown executor (cancel_futures added in Python 3.9)
         if executor:
-            executor.shutdown(wait=False, cancel_futures=True)
+            try:
+                executor.shutdown(wait=False, cancel_futures=True)
+            except TypeError:
+                executor.shutdown(wait=False)
 
     progress.close()
     end_time = datetime.now()
@@ -613,44 +594,45 @@ def run_sweep(args):
 # Main entry point
 # =============================================================================
 
-# parser
-parser = argparse.ArgumentParser(
-    description="Run TRINITY simulation or parameter sweep (auto-detected)",
-    formatter_class=argparse.RawDescriptionHelpFormatter,
-)
-# Positional: path to param file
-parser.add_argument(
-    'path2param',
-    help="Path to .param file (single run or sweep with list syntax)"
-)
-# Sweep-specific options (ignored for single runs)
-parser.add_argument(
-    '--workers', '-w',
-    type=int,
-    default=None,
-    help="Number of parallel workers for sweep mode (default: auto-detect CPUs)"
-)
-parser.add_argument(
-    '--dry-run', '-n',
-    action='store_true',
-    help="Show sweep combinations without running simulations"
-)
-parser.add_argument(
-    '--yes', '-y',
-    action='store_true',
-    help="Skip sweep confirmation prompt"
-)
-parser.add_argument(
-    '--verbose', '-v',
-    action='store_true',
-    help="Enable verbose output"
-)
-# grab argument
-args = parser.parse_args()
+if __name__ == '__main__':
+    # parser
+    parser = argparse.ArgumentParser(
+        description="Run TRINITY simulation or parameter sweep (auto-detected)",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    # Positional: path to param file
+    parser.add_argument(
+        'path2param',
+        help="Path to .param file (single run or sweep with list syntax)"
+    )
+    # Sweep-specific options (ignored for single runs)
+    parser.add_argument(
+        '--workers', '-w',
+        type=int,
+        default=None,
+        help="Number of parallel workers for sweep mode (default: auto-detect CPUs)"
+    )
+    parser.add_argument(
+        '--dry-run', '-n',
+        action='store_true',
+        help="Show sweep combinations without running simulations"
+    )
+    parser.add_argument(
+        '--yes', '-y',
+        action='store_true',
+        help="Skip sweep confirmation prompt"
+    )
+    parser.add_argument(
+        '--verbose', '-v',
+        action='store_true',
+        help="Enable verbose output"
+    )
+    # grab argument
+    args = parser.parse_args()
 
-# Auto-detect mode from parameter file content
-if is_sweep_param_file(args.path2param):
-    early_logger.info("Sweep syntax detected in parameter file — entering sweep mode")
-    run_sweep(args)
-else:
-    run_single(args)
+    # Auto-detect mode from parameter file content
+    if is_sweep_param_file(args.path2param):
+        early_logger.info("Sweep syntax detected in parameter file — entering sweep mode")
+        run_sweep(args)
+    else:
+        run_single(args)
