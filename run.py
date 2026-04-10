@@ -550,17 +550,17 @@ def run_sweep(args):
         # Restore original signal handler
         signal.signal(signal.SIGINT, original_handler)
 
-        # Shutdown executor (cancel_futures added in Python 3.9)
         if executor:
-            try:
-                executor.shutdown(wait=False, cancel_futures=True)
-            except TypeError:
-                executor.shutdown(wait=False)
-
-        # Kill all child processes (pool workers + their subprocess children)
-        # so they don't keep running after the main process exits.
-        if _shutdown_requested.is_set():
-            _kill_sweep_children(signal)
+            if _shutdown_requested.is_set():
+                # Ctrl+C: don't wait, kill children
+                try:
+                    executor.shutdown(wait=False, cancel_futures=True)
+                except TypeError:
+                    executor.shutdown(wait=False)
+                _kill_sweep_children(signal)
+            else:
+                # Normal completion: wait for clean shutdown
+                executor.shutdown(wait=True)
 
     progress.close()
     end_time = datetime.now()
