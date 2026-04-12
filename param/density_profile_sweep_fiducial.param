@@ -5,8 +5,8 @@
 # all other parameters fixed.
 #
 # Usage:
-#   python run_sweep.py param/density_profile_sweep.param --dry-run
-#   python run_sweep.py param/density_profile_sweep.param --workers 4
+#   python run.py param/density_profile_sweep.param --dry-run
+#   python run.py param/density_profile_sweep.param --workers 4
 #
 # Runs:
 #   1. Powerlaw with alpha = 0 (uniform)

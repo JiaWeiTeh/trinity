@@ -65,12 +65,12 @@ logger = logging.getLogger(__name__)
 # Global matplotlib style (matches paper_ODIN)
 # =============================================================================
 plt.rcParams.update({
-    'font.size':        16,
-    'axes.labelsize':   16,
-    'axes.titlesize':   16,
-    'xtick.labelsize':  14,
-    'ytick.labelsize':  14,
-    'legend.fontsize':  12,
+    'font.size':        20,
+    'axes.labelsize':   20,
+    'axes.titlesize':   20,
+    'xtick.labelsize':  18,
+    'ytick.labelsize':  18,
+    'legend.fontsize':  16,
 })
 
 # =============================================================================
@@ -896,6 +896,11 @@ def plot_phase_timeline(simulations: dict, output_dir: Path, fmt: str = 'pdf',
         yb = y_positions[idx]   # bar bottom
         yc = y_centres[idx]     # bar centre
 
+        # Profile label centred above the bar (single-line for in-plot text)
+        label_text = get_style(tag)['label'].replace('\n', ' ')
+        ax.text(info['t_end'] / 2.0, yb - 0.015, label_text,
+                ha='center', va='bottom', zorder=5)
+
         # Draw phase segments
         is_expanding = (info['outcome'] == 'expanding')
         n_intervals = len(info['intervals'])
@@ -926,16 +931,9 @@ def plot_phase_timeline(simulations: dict, output_dir: Path, fmt: str = 'pdf',
                         facecolor=sty['facecolor'], edgecolor=sty['edgecolor'],
                         hatch=sty['hatch'], lw=0.5, zorder=2)
 
-        # End marker: 'x' for re-collapse
-        if info['outcome'] == 're-collapse':
-            ax.plot(info['t_end'], yc, 'x', color='black', ms=5,
-                    markeredgewidth=1.2, zorder=6, clip_on=False)
 
-    # Y-axis labels
-    ax.set_yticks(y_centres)
-    # Wrap long labels for the compact y-axis
-    ylabels = [get_style(tag)['label'] for tag in tags_present]
-    ax.set_yticklabels(ylabels)
+    # Y-axis: hide tick labels since profile names are drawn above each bar
+    ax.set_yticks([])
     ax.invert_yaxis()  # top-to-bottom ordering
     ax.set_ylim(0.85, 0.0)
 
@@ -943,9 +941,10 @@ def plot_phase_timeline(simulations: dict, output_dir: Path, fmt: str = 'pdf',
     ax.set_xlabel(r'$t$ [Myr]')
     ax.set_xlim(0, t_max_global * 1.05)
 
-    # Remove top/right spines for cleaner look
+    # Remove top/right/left spines for cleaner look
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
+    ax.spines['left'].set_visible(False)
 
     # Legend at top
     legend_handles = [
@@ -957,11 +956,9 @@ def plot_phase_timeline(simulations: dict, output_dir: Path, fmt: str = 'pdf',
               label='Momentum-driven'),
         Patch(facecolor='#666666', edgecolor='black', lw=0.5,
               label='Re-collapse'),
-        Line2D([0], [0], marker='x', color='black', ms=4,
-               markeredgewidth=1.2, linestyle='none', label='End (collapse)'),
     ]
     ax.legend(handles=legend_handles, loc='lower center',
-              bbox_to_anchor=(0.5, 1.02), ncol=3, fontsize=14,
+              bbox_to_anchor=(0.5, 1.02), ncol=4,
               frameon=False, columnspacing=1.0, handletextpad=0.4,
               handlelength=1.5)
 

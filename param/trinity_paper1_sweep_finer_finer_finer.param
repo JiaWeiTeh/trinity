@@ -5,8 +5,8 @@
 # Parameters with [list, values] will generate all combinations.
 #
 # Usage:
-#   python run_sweep.py param/sweep_example.param --dry-run
-#   python run_sweep.py param/sweep_example.param --workers 4
+#   python run.py param/sweep_example.param --dry-run
+#   python run.py param/sweep_example.param --workers 4
 #
 
 # =============================================================================

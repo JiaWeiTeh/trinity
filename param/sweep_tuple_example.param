@@ -6,8 +6,8 @@
 # runs only the explicitly specified parameter combinations.
 #
 # Usage:
-#   python run_sweep.py param/sweep_tuple_example.param --dry-run
-#   python run_sweep.py param/sweep_tuple_example.param --workers 4
+#   python run.py param/sweep_tuple_example.param --dry-run
+#   python run.py param/sweep_tuple_example.param --workers 4
 #
 
 # =============================================================================
