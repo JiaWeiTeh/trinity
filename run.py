@@ -199,13 +199,16 @@ def run_sweep(args):
         """
         Determine a conservative default number of worker processes.
 
-        Strategy:
-        - Use half the CPU count, so the machine stays responsive for
-          other work (browser, editor, meetings) while the sweep runs.
-        - Cap at 4 to avoid thermal throttling on laptops and to avoid
-          I/O contention on modest disks. On HPC / workstations with
-          many cores, users should pass ``--workers N`` explicitly.
-        - Minimum of 1.
+        Formula: ``max(1, cpu_count // 2 - 1)``.
+
+        - Uses less than half the CPUs so the machine stays responsive
+          for other work (browser, editor, meetings) while the sweep
+          runs. On an 8-core laptop this gives 3 workers, leaving 5
+          cores free; on a 4-core laptop it gives 1 worker.
+        - Minimum of 1 (for 1-2 core machines where the formula would
+          otherwise go to 0 or negative).
+        - On HPC / workstations with many cores, pass ``--workers N``
+          explicitly if you want more parallelism than this default.
 
         Rationale: each worker spawns a full simulation subprocess that
         uses BLAS/LAPACK; even with ``OMP_NUM_THREADS=1`` per worker,
@@ -213,7 +216,7 @@ def run_sweep(args):
         bandwidth and overheat laptops.
         """
         cpus = multiprocessing.cpu_count()
-        return max(1, min(cpus // 2, 4))
+        return max(1, cpus // 2 - 1)
 
     def _validate_sweep_combination(params_dict):
         """
