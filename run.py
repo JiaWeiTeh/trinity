@@ -197,15 +197,23 @@ def run_sweep(args):
 
     def get_optimal_workers():
         """
-        Determine optimal number of worker processes.
+        Determine a conservative default number of worker processes.
 
         Strategy:
-        - Use (CPU_count - 1) to leave one core for system/monitoring
-        - Cap at 8 to avoid overwhelming I/O
-        - Minimum of 1
+        - Use half the CPU count, so the machine stays responsive for
+          other work (browser, editor, meetings) while the sweep runs.
+        - Cap at 4 to avoid thermal throttling on laptops and to avoid
+          I/O contention on modest disks. On HPC / workstations with
+          many cores, users should pass ``--workers N`` explicitly.
+        - Minimum of 1.
+
+        Rationale: each worker spawns a full simulation subprocess that
+        uses BLAS/LAPACK; even with ``OMP_NUM_THREADS=1`` per worker,
+        too many concurrent Python interpreters will saturate memory
+        bandwidth and overheat laptops.
         """
         cpus = multiprocessing.cpu_count()
-        return max(1, min(cpus - 1, 8))
+        return max(1, min(cpus // 2, 4))
 
     def _validate_sweep_combination(params_dict):
         """

@@ -103,7 +103,9 @@ the parameter file content):
     # Run with 4 parallel workers
     python run.py param/sweep.param --workers 4
 
-    # Run with automatic worker detection (default: CPU count - 1, max 8)
+    # Run with automatic worker detection
+    # (default: CPU count / 2, capped at 4 — conservative to keep
+    #  laptops responsive; use --workers N on HPC for more parallelism)
     python run.py param/sweep.param
 
 **Command-line options:**
