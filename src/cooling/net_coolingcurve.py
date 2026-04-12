@@ -43,7 +43,7 @@ def get_dudt(age, ndens, T, phi, params_dict):
     # ndens = ndens * (1/u.cm**3)
     # phi = phi * (1/u.cm**2/u.s)
     ndens /= cvt.ndens_cgs2au #(pc-3 to cm-3)
-    phi /= cvt.phi_cgs2au #(1/pc2/yr to 1/cm2/s)
+    phi /= cvt.phi_cgs2au #(1/pc2/Myr to 1/cm2/s)
     
     # print('ndens', ndens)
     # print('phi', phi)
