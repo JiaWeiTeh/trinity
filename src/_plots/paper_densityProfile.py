@@ -896,6 +896,11 @@ def plot_phase_timeline(simulations: dict, output_dir: Path, fmt: str = 'pdf',
         yb = y_positions[idx]   # bar bottom
         yc = y_centres[idx]     # bar centre
 
+        # Profile label centred above the bar (single-line for in-plot text)
+        label_text = get_style(tag)['label'].replace('\n', ' ')
+        ax.text(info['t_end'] / 2.0, yb - 0.015, label_text,
+                ha='center', va='bottom', zorder=5)
+
         # Draw phase segments
         is_expanding = (info['outcome'] == 'expanding')
         n_intervals = len(info['intervals'])
@@ -927,11 +932,8 @@ def plot_phase_timeline(simulations: dict, output_dir: Path, fmt: str = 'pdf',
                         hatch=sty['hatch'], lw=0.5, zorder=2)
 
 
-    # Y-axis labels
-    ax.set_yticks(y_centres)
-    # Wrap long labels for the compact y-axis
-    ylabels = [get_style(tag)['label'] for tag in tags_present]
-    ax.set_yticklabels(ylabels)
+    # Y-axis: hide tick labels since profile names are drawn above each bar
+    ax.set_yticks([])
     ax.invert_yaxis()  # top-to-bottom ordering
     ax.set_ylim(0.85, 0.0)
 
@@ -939,9 +941,10 @@ def plot_phase_timeline(simulations: dict, output_dir: Path, fmt: str = 'pdf',
     ax.set_xlabel(r'$t$ [Myr]')
     ax.set_xlim(0, t_max_global * 1.05)
 
-    # Remove top/right spines for cleaner look
+    # Remove top/right/left spines for cleaner look
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
+    ax.spines['left'].set_visible(False)
 
     # Legend at top
     legend_handles = [
