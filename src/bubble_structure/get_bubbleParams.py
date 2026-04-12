@@ -65,147 +65,128 @@ def dTdt2delta(t, T, dTdt):
 
 
 
-def beta2Edot(params
-              ):
-    # old code: beta_to_Edot()
+def cool_beta_to_Ebdot(params):
+    # old code: beta_to_Edot(), previously beta2Edot()
     """
-    see pg 80, A12 https://www.imprs-hd.mpg.de/399417/thesis_Rahner.pdf 
+    Convert Weaver cooling parameter beta to dE_b/dt.
 
+    See pg 80, Eq A12 https://www.imprs-hd.mpg.de/399417/thesis_Rahner.pdf
 
-    my_params:: contains
-        
+    Equation implemented (bubble energy rate):
+
+        E_b_dot = [ 2*pi * Pb_dot * d^2
+                  + 3 * E_b * R_b_dot * R_b^2 * (1 - c/(E_b+c))
+                  - a * R_ts^3 * E_b^2 / (E_b + c) ]
+                 / [ d * (1 - c/(E_b+c)) ]
+
+        a ≡ (3/2) * F_ram_dot / F_ram           [1/time]
+        c ≡ (3/4) * F_ram     * R_ts            [energy]
+        d ≡ R_b^3 - R_ts^3                      [length^3]
+
+    Code ↔ equation mapping
+    -----------------------
+    Pb_dot        <- d(P_b)/dt (from beta definition: beta = -(t/Pb)(dPb/dt))
+    Eb            <- E_b (bubble energy)
+    R2, v2        <- R_b (outer bubble radius) and R_b_dot
+    R1            <- R_ts (termination shock radius, inner)
+    pdot_total    <- F_ram (total mechanical momentum injection rate)
+    pdotdot_total <- F_ram_dot
+    a_coeff       <- equation symbol `a`  = (3/2) * pdotdot_total / pdot_total
+    c_coeff       <- equation symbol `c`  = (3/4) * pdot_total * R1
+    d_coeff       <- equation symbol `d`  = R2^3 - R1^3
+    c_frac        <- c/(E_b + c)
+
     Parameters
     ----------
-    bubble_P : float
-        Bubble pressure.
-    bubble_E : float
-        Bubble energy.
-    r1 : float
-        Inner bubble radius.
-    r2 : float
-        Outer bubble radius (aka rShell).
-    beta : float
-        dbubble_P/dt.
-    t_now : float
-        time.
-    pwdot : float
-        dPw/dt.
-    pwdotdot : float
-        dPw/dt/dt.
-    r2dot : float
-        Outer bubble velocity.
+    params : dict-like
+        Must provide .value for: Pb, cool_beta, t_now, R1, R2, v2, Eb,
+        pdot_total, pdotdot_total.
 
     Returns
     -------
-    bubble_Edot : float
-        dE/dt.
-
+    Eb_dot : float
+        d(E_b)/dt.
     """
-    # dp/dt pressure 
-    press_dot = - params['Pb'].value * params['cool_beta'].value / params['t_now'].value
-    # define terms
-    # print('pwdot', pwdot)
-    # print('r1', r1)
-    a = np.sqrt(params['pdot_total'].value/2)
-    b = 1.5 * a**2 * params['R1'].value
-    d = params['R2'].value**3 - params['R1'].value**3
-    adot = 0.25 * params['pdotdot_total'].value / a
-    # print('b', b)
-    # print('bubble_E', bubble_E)
-    e = b / ( b + params['Eb'].value )
-    # main equation
-    bubble_Edot = (2 * np.pi * press_dot * d**2 + 3 * params['Eb'].value * params['v2'].value * params['R2'].value**2 * (1 - e) -\
-                    3 * (adot / a) * params['R1'].value**3 * params['Eb'].value**2 / (params['Eb'].value + b)) / (d * (1 - e))
-    
-    # return 
-    return bubble_Edot
+    # dPb/dt from the Weaver cooling parameter: beta = -(t/Pb)(dPb/dt)
+    Pb_dot = -params['Pb'].value * params['cool_beta'].value / params['t_now'].value
+
+    # Pull state
+    R1 = params['R1'].value                        # R_ts
+    R2 = params['R2'].value                        # R_b
+    v2 = params['v2'].value                        # R_b_dot
+    Eb = params['Eb'].value
+    pdot_total = params['pdot_total'].value        # F_ram
+    pdotdot_total = params['pdotdot_total'].value  # F_ram_dot
+
+    # Equation coefficients (see docstring)
+    a_coeff = 1.5 * pdotdot_total / pdot_total
+    c_coeff = 0.75 * pdot_total * R1
+    d_coeff = R2**3 - R1**3
+    c_frac = c_coeff / (Eb + c_coeff)              # c/(E_b + c)
+
+    # Main equation (Rahner thesis A12)
+    numerator = (
+        2 * np.pi * Pb_dot * d_coeff**2
+        + 3 * Eb * v2 * R2**2 * (1 - c_frac)
+        - a_coeff * R1**3 * Eb**2 / (Eb + c_coeff)
+    )
+    denominator = d_coeff * (1 - c_frac)
+
+    Eb_dot = numerator / denominator
+    return Eb_dot
 
 
-    # converts beta to dE/dt
-    # :param Pb: pressure of bubble
-    # :param R1: inner radius of bubble
-    # :param beta: -(t/Pb)*(dPb/dt), see Weaver+77, eq. 40
-    # :param my_params:
-    # :return: 
-    # """
-    # R2 = my_params['R2']
-    # v2 = my_params["v2"]
-    # E = my_params['Eb']
-    # Pdot = -Pb*beta/my_params["t_now"]
-
-    # pwdot = my_params['pwdot'] # pwdot = 2.*Lw/vw
-
-    # A = np.sqrt(pwdot/2.)
-    # A2 = A**2
-    # C = 1.5*A2*R1
-    # D = R2**3 - R1**3
-    # #Adot = (my_params['Lw_dot']*vw - Lw*my_params['vw_dot'])/(2.*A*vw**2)
-    # Adot = 0.25*my_params['pwdot_dot']/A
-
-    # F = C / (C + E)
-
-    # #Edot = ( 3.*v2 * R2**2 * E + 2.*np.pi*Pdot*D**2 ) / D # does not take into account R1dot
-    # #Edot = ( 2.*np.pi*Pdot*D**2 + 3.*E*v2*R2**2 * (1.-F) ) / (D * (1.-F)) # takes into account R1dot but not time derivative of A
-    # Edot = ( 2.*np.pi*Pdot*D**2 + 3.*E*v2*R2**2 * (1.-F) - 3.*(Adot/A)*R1**3*E**2/(E+C) ) / (D * (1.-F)) # takes everything into account
-
-    # #print "term1", "%.5e"%(2.*np.pi*Pdot*D**2), "term2", "%.5e"%(3.*E*v2*R2**2 * (1.-F)), "term3", "%.5e"%(3.*(Adot/A)*R1**3*E**2/(E+C))
-
-    # #print "Edot", "%.5e"%Edot, "%.5e"%Edot_exact
-
-    # return Edot
-
-
-def Edot2beta(bubble_P, r1, bubble_Edot, my_params
-              ):
-    # old code: Edot_to_beta()
+def Ebdot_to_cool_beta(bubble_P, r1, bubble_Edot, my_params):
+    # old code: Edot_to_beta(), previously Edot2beta()
     """
-    see pg 80, A12 https://www.imprs-hd.mpg.de/399417/thesis_Rahner.pdf 
-    
+    Inverse of cool_beta_to_Ebdot: convert dE_b/dt to Weaver cooling parameter beta.
+
+    See pg 80, Eq A12 https://www.imprs-hd.mpg.de/399417/thesis_Rahner.pdf
+
+    Solves the A12 equation for Pb_dot and then returns
+        cool_beta = - Pb_dot * t_now / P_b.
+
+    See cool_beta_to_Ebdot for the equation↔code variable map.
+
     Parameters
     ----------
     bubble_P : float
-        Bubble pressure.
-    bubble_E : float
-        Bubble energy.
+        Bubble pressure P_b.
     r1 : float
-        Inner bubble radius.
-    r2 : float
-        Outer bubble radius (aka rShell).
+        Termination shock radius R_ts (inner).
     bubble_Edot : float
-        dE/dt.
-    t_now : float
-        time.
-    pwdot : float
-        dPw/dt.
-    pwdotdot : float
-        dPw/dt/dt.
-    r2dot : float
-        Outer bubble velocity.
+        d(E_b)/dt.
+    my_params : dict-like
+        Must provide t_now, pdot_total, pdotdot_total, R2, v2, Eb
+        (plain float values, not .value-wrapped).
 
     Returns
     -------
-    beta : float
-        dbubble_P/dt.
-
+    cool_beta : float
+        Weaver cooling parameter beta = -(t/P_b) * dP_b/dt.
     """
     t_now = my_params["t_now"]
-    pwdot = my_params["pdot_total"]
-    pwdotdot = my_params["pdotdot_total"]
-    r2 = my_params["R2"]
-    r2dot = my_params["v2"]
-    bubble_E = my_params["Eb"]
-    # define terms
-    a = np.sqrt(pwdot/2)
-    b = 1.5 * a**2 * r1
-    d = r2**3 - r1**3
-    adot = 0.25 * pwdotdot / a
-    e = b / ( b + bubble_E ) 
-    # main equation
-    pdot = 1 / (2 * np.pi * d**2 ) *\
-        ( d * (1 - e) * bubble_Edot - 3 * bubble_E * r2dot * r2**2 * (1 - e) + 3 * adot / a * r1**3 * bubble_E**2 / (bubble_E + b))
-    beta = - pdot * t_now / bubble_P
-    # return
-    return beta
+    pdot_total = my_params["pdot_total"]           # F_ram
+    pdotdot_total = my_params["pdotdot_total"]     # F_ram_dot
+    R2 = my_params["R2"]                           # R_b
+    v2 = my_params["v2"]                           # R_b_dot
+    Eb = my_params["Eb"]
+
+    # Equation coefficients
+    a_coeff = 1.5 * pdotdot_total / pdot_total
+    c_coeff = 0.75 * pdot_total * r1
+    d_coeff = R2**3 - r1**3
+    c_frac = c_coeff / (Eb + c_coeff)
+
+    # Invert A12 for Pb_dot
+    Pb_dot = (
+        d_coeff * (1 - c_frac) * bubble_Edot
+        - 3 * Eb * v2 * R2**2 * (1 - c_frac)
+        + a_coeff * r1**3 * Eb**2 / (Eb + c_coeff)
+    ) / (2 * np.pi * d_coeff**2)
+
+    cool_beta = -Pb_dot * t_now / bubble_P
+    return cool_beta
 
 
 

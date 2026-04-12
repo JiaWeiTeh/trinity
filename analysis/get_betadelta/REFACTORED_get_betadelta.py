@@ -259,7 +259,7 @@ def get_residual(beta_delta_guess, params):
     # =========================================================================
 
     # Method 1: Calculate Edot from beta
-    Edot = get_bubbleParams.beta2Edot(params)
+    Edot = get_bubbleParams.cool_beta_to_Ebdot(params)
 
     # Method 2: Calculate Edot from energy balance
     L_gain = params['LWind'].value
@@ -356,7 +356,7 @@ def get_residual(beta_delta_guess, params):
 #
 #     Requires:
 #     - bubble_luminosity.get_bubbleproperties_pure() (also pure)
-#     - get_bubbleParams.beta2Edot_pure() (also pure)
+#     - get_bubbleParams.cool_beta_to_Ebdot_pure() (also pure)
 #
 #     Benefits:
 #     - No deepcopy needed
