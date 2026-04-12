@@ -250,77 +250,120 @@ def run_sweep(args):
         except Exception:
             return None
 
-    def _kill_sweep_children(sig_module):
+    def _build_parent_map():
         """
-        Kill only our own pool workers and any of their descendants.
+        Return ``{ppid: [child_pid, ...]}`` for all processes visible to us.
 
-        Unlike ``os.killpg()``, which would signal every process in our
-        process group (potentially including unrelated processes when
-        launched from a shared shell, IDE, or Jupyter kernel), this
-        function walks the process tree from our known worker PIDs and
-        signals *only* those specific PIDs.
+        Cross-platform best-effort. Uses ``ps`` on POSIX (Linux, macOS,
+        Ubuntu, BSD) and ``wmic`` on Windows (falls back silently if
+        unavailable — e.g. sandboxed environments).
         """
         import subprocess as _sp
+        parent_map = {}
+        is_windows = sys.platform.startswith('win')
+
+        if is_windows:
+            try:
+                result = _sp.run(
+                    ['wmic', 'process', 'get', 'ParentProcessId,ProcessId'],
+                    capture_output=True, text=True, timeout=5,
+                )
+                for line in result.stdout.splitlines()[1:]:  # skip header
+                    parts = line.split()
+                    if len(parts) >= 2:
+                        try:
+                            ppid = int(parts[0])
+                            pid = int(parts[1])
+                        except ValueError:
+                            continue
+                        parent_map.setdefault(ppid, []).append(pid)
+            except (OSError, _sp.SubprocessError, FileNotFoundError):
+                pass
+        else:
+            try:
+                result = _sp.run(
+                    ['ps', '-eo', 'pid=,ppid='],
+                    capture_output=True, text=True, timeout=5,
+                )
+                for line in result.stdout.splitlines():
+                    parts = line.strip().split()
+                    if len(parts) == 2:
+                        try:
+                            pid = int(parts[0])
+                            ppid = int(parts[1])
+                        except ValueError:
+                            continue
+                        parent_map.setdefault(ppid, []).append(pid)
+            except (OSError, _sp.SubprocessError, FileNotFoundError):
+                pass
+
+        return parent_map
+
+    def _kill_sweep_children(worker_pids, sig_module):
+        """
+        Kill only the given pool workers and any of their descendants.
+
+        Safety guarantees (important for shared/HPC environments):
+
+        * Never uses ``os.killpg()`` or any process-group signalling,
+          so unrelated processes sharing our shell/IDE/login-node
+          session group are untouched.
+        * Walks *only downward* from our known worker PIDs through a
+          parent→child map. It is structurally impossible to traverse
+          into another user's (or another job's) process tree because
+          PPID chains can only be followed from parent to child, and
+          our workers were spawned by us.
+        * Every kill goes through ``os.kill(pid, sig)``, which the
+          OS enforces via UID-based permissions. On a shared HPC node,
+          ``os.kill`` on another user's PID returns EPERM and does
+          nothing — even if a PID were (impossibly) misidentified.
+        * Self-guard: never signals our own PID.
+        * Works on Linux, macOS, Ubuntu, BSD, and Windows.
+        """
         import time as _time
 
-        # Start with the worker PIDs we spawned ourselves
-        worker_pids = set()
-        if executor is not None:
-            worker_pids = {
-                pid for pid in getattr(executor, '_processes', {}).keys()
-                if pid and pid != os.getpid()
-            }
-
+        # Defensive filter: drop empties and our own PID.
+        worker_pids = {p for p in worker_pids if p and p != os.getpid()}
         if not worker_pids:
             return
 
         to_kill = set(worker_pids)
 
-        # Walk the process tree to find descendants of our workers
-        # (e.g. the `python run.py <param>` subprocess each worker spawns).
-        try:
-            result = _sp.run(
-                ['ps', '-eo', 'pid=,ppid='],
-                capture_output=True, text=True, timeout=5,
-            )
-            parent_map = {}
-            for line in result.stdout.splitlines():
-                parts = line.strip().split()
-                if len(parts) == 2:
-                    try:
-                        pid = int(parts[0])
-                        ppid = int(parts[1])
-                    except ValueError:
-                        continue
-                    parent_map.setdefault(ppid, []).append(pid)
+        # BFS downward through the parent→child map to find descendants
+        # (e.g. each worker's `python run.py <param>` subprocess).
+        parent_map = _build_parent_map()
+        queue = list(worker_pids)
+        while queue:
+            ppid = queue.pop(0)
+            for child_pid in parent_map.get(ppid, []):
+                if child_pid == os.getpid():
+                    continue  # paranoia: never target ourselves
+                if child_pid not in to_kill:
+                    to_kill.add(child_pid)
+                    queue.append(child_pid)
 
-            queue = list(worker_pids)
-            while queue:
-                ppid = queue.pop(0)
-                for child_pid in parent_map.get(ppid, []):
-                    if child_pid == os.getpid():
-                        continue  # never target ourselves
-                    if child_pid not in to_kill:
-                        to_kill.add(child_pid)
-                        queue.append(child_pid)
-        except (OSError, _sp.SubprocessError):
-            # `ps` unavailable (e.g. Windows) — fall back to workers only.
-            pass
+        # Signal constants differ across platforms (Windows has no SIGKILL).
+        sigterm = getattr(sig_module, 'SIGTERM', None)
+        sigkill = getattr(sig_module, 'SIGKILL', None)
 
-        # Graceful SIGTERM, then SIGKILL for stragglers.
-        for pid in to_kill:
-            try:
-                os.kill(pid, sig_module.SIGTERM)
-            except OSError:
-                pass
+        # Phase 1: polite SIGTERM (on Windows this calls TerminateProcess).
+        if sigterm is not None:
+            for pid in to_kill:
+                try:
+                    os.kill(pid, sigterm)
+                except OSError:
+                    # Process already gone or owned by another user (EPERM) —
+                    # either way, safe to ignore.
+                    pass
+            _time.sleep(0.5)
 
-        _time.sleep(0.5)
-
-        for pid in to_kill:
-            try:
-                os.kill(pid, sig_module.SIGKILL)
-            except (OSError, AttributeError):
-                pass
+        # Phase 2: SIGKILL for stragglers (POSIX only).
+        if sigkill is not None:
+            for pid in to_kill:
+                try:
+                    os.kill(pid, sigkill)
+                except OSError:
+                    pass
 
     # Reconfigure logging for sweep mode — suppress parser noise
     log_level = logging.DEBUG if args.verbose else logging.WARNING
@@ -512,12 +555,23 @@ def run_sweep(args):
     failed = []
     cancelled = []
 
-    # Setup Ctrl+C handler
+    # Setup shutdown handlers. We trap both SIGINT (Ctrl+C) and SIGTERM
+    # (sent by HPC schedulers like SLURM `scancel` or PBS on timeout)
+    # so subprocess simulations don't get orphaned when a cluster job
+    # is cancelled or hits its walltime grace period.
     def signal_handler(signum, frame):
         _shutdown_requested.set()
-        print("\n\n*** Ctrl+C received - cancelling remaining simulations... ***\n")
+        label = "Ctrl+C" if signum == signal.SIGINT else f"signal {signum}"
+        print(f"\n\n*** {label} received - cancelling remaining simulations... ***\n")
 
-    original_handler = signal.signal(signal.SIGINT, signal_handler)
+    original_sigint = signal.signal(signal.SIGINT, signal_handler)
+    original_sigterm = None
+    try:
+        # SIGTERM exists on POSIX and Windows; signal.signal() for SIGTERM
+        # may fail on non-main threads or restricted environments.
+        original_sigterm = signal.signal(signal.SIGTERM, signal_handler)
+    except (AttributeError, ValueError, OSError):
+        pass
 
     # Execute with process pool
     executor = None
@@ -535,7 +589,7 @@ def run_sweep(args):
                     success=False,
                     return_code=-2,
                     duration=0,
-                    error_message="Cancelled by user (Ctrl+C)"
+                    error_message="Cancelled (Ctrl+C or SIGTERM)"
                 ))
                 continue
 
@@ -593,26 +647,37 @@ def run_sweep(args):
                         success=False,
                         return_code=-2,
                         duration=0,
-                        error_message="Cancelled by user (Ctrl+C)"
+                        error_message="Cancelled (Ctrl+C or SIGTERM)"
                     ))
 
     except KeyboardInterrupt:
         print("\n\n*** Sweep cancelled by user ***\n")
         _shutdown_requested.set()
     finally:
-        # Restore original signal handler
-        signal.signal(signal.SIGINT, original_handler)
+        # Restore original signal handlers.
+        signal.signal(signal.SIGINT, original_sigint)
+        if original_sigterm is not None:
+            try:
+                signal.signal(signal.SIGTERM, original_sigterm)
+            except (AttributeError, ValueError, OSError):
+                pass
 
         if executor:
             if _shutdown_requested.is_set():
-                # Ctrl+C: don't wait, kill children
+                # Ctrl+C / SIGTERM path: capture worker PIDs BEFORE shutdown
+                # (shutdown(wait=False) may start clearing _processes), then
+                # kill only our own process tree.
+                worker_pids = set(getattr(executor, '_processes', {}).keys())
                 try:
                     executor.shutdown(wait=False, cancel_futures=True)
                 except TypeError:
+                    # Python 3.8: no cancel_futures kwarg.
                     executor.shutdown(wait=False)
-                _kill_sweep_children(signal)
+                _kill_sweep_children(worker_pids, signal)
             else:
-                # Normal completion: wait for clean shutdown
+                # Normal completion: all futures already resolved, workers
+                # are idle. wait=True simply joins them — no kill, no signal,
+                # no effect on any process outside our pool.
                 executor.shutdown(wait=True)
 
     progress.close()
