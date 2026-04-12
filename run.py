@@ -58,7 +58,13 @@ def is_sweep_param_file(path2file):
     Returns True if the file contains:
     - List syntax with multiple elements: key [val1, val2, ...]
     - Tuple syntax: tuple(param1, param2, ...) [val1, val2] ...
+
+    Exits with a clean error message if the file cannot be opened,
+    so callers get a friendly message instead of a stack trace.
     """
+    if not os.path.exists(path2file):
+        print(f"Error: Parameter file not found: {path2file}", file=sys.stderr)
+        sys.exit(1)
     with open(path2file, 'r', encoding='utf-8') as f:
         for line in f:
             # Strip comments
@@ -646,7 +652,13 @@ def run_sweep(args):
             else:
                 failed.append(result)
                 # Log failed simulation immediately
-                logger.warning(f"FAILED: {result.name} - {result.error_message[:100] if result.error_message else 'Unknown error'}...")
+                if result.error_message:
+                    msg = result.error_message[:100]
+                    if len(result.error_message) > 100:
+                        msg += '...'
+                else:
+                    msg = 'Unknown error'
+                logger.warning(f"FAILED: {result.name} - {msg}")
 
         # If shutdown was requested, mark remaining as cancelled
         if _shutdown_requested.is_set():
@@ -763,7 +775,8 @@ if __name__ == '__main__':
         '--workers', '-w',
         type=int,
         default=None,
-        help="Number of parallel workers for sweep mode (default: auto-detect CPUs)"
+        help="Number of parallel workers for sweep mode "
+             "(default: max(1, cpu_count // 2 - 1))"
     )
     parser.add_argument(
         '--dry-run', '-n',
