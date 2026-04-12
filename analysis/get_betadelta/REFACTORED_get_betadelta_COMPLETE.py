@@ -279,7 +279,7 @@ def get_residual(beta_delta_guess, params):
 
     Method 1 (from β):
     - β = -dPb/dt by definition
-    - Use β to calculate Edot via beta2Edot()
+    - Use β to calculate Edot via cool_beta_to_Ebdot()
 
     Method 2 (from energy balance):
     - Edot = L_gain - L_loss - PdV work
@@ -362,7 +362,7 @@ def get_residual(beta_delta_guess, params):
     # =========================================================================
 
     # Method 1: Calculate Edot from β
-    Edot_from_beta = get_bubbleParams.beta2Edot(params)
+    Edot_from_beta = get_bubbleParams.cool_beta_to_Ebdot(params)
 
     # Method 2: Calculate Edot from energy balance
     L_gain = params['LWind'].value

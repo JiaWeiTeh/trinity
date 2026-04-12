@@ -35,7 +35,7 @@
 3. Recalculate R1 using Brent's method
 4. Calculate bubble pressure Pb
 5. Compare two methods of calculating Edot:
-   - Method 1: From beta using beta2Edot()
+   - Method 1: From beta using cool_beta_to_Ebdot()
    - Method 2: Direct energy balance: Edot = LWind - LCool - PdV
 6. Compare two temperatures:
    - T from bubble structure calculation

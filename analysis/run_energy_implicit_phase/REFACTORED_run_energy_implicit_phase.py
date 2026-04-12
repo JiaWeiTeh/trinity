@@ -222,7 +222,7 @@ def get_ODE_implicit_pure(y: np.ndarray, t: float, params: Dict) -> np.ndarray:
     }
 
     # Convert beta to dE/dt
-    Ed = get_bubbleParams.beta2Edot(current_params)
+    Ed = get_bubbleParams.cool_beta_to_Ebdot(current_params)
 
     # Convert delta to dT/dt
     Td = get_bubbleParams.delta2dTdt(t, T0, delta)

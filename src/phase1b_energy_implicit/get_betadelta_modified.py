@@ -128,7 +128,7 @@ class BetaDeltaResult:
 # Pure Helper Functions
 # =============================================================================
 
-def beta2Edot_pure(
+def cool_beta_to_Ebdot_pure(
     beta: float,
     Pb: float,
     t_now: float,
@@ -140,54 +140,77 @@ def beta2Edot_pure(
     pdotdot_total: float,
 ) -> float:
     """
-    Convert beta to dE/dt (pure function version).
+    Convert Weaver cooling parameter beta to dE_b/dt (pure function version).
 
-    See pg 80, A12 https://www.imprs-hd.mpg.de/399417/thesis_Rahner.pdf
+    See pg 80, Eq A12 https://www.imprs-hd.mpg.de/399417/thesis_Rahner.pdf
+    Previously named beta2Edot_pure().
+
+    Equation implemented:
+
+        E_b_dot = [ 2*pi * Pb_dot * d^2
+                  + 3 * E_b * R_b_dot * R_b^2 * (1 - c/(E_b+c))
+                  - a * R_ts^3 * E_b^2 / (E_b + c) ]
+                 / [ d * (1 - c/(E_b+c)) ]
+
+        a ≡ (3/2) * F_ram_dot / F_ram           [1/time]
+        c ≡ (3/4) * F_ram     * R_ts            [energy]
+        d ≡ R_b^3 - R_ts^3                      [length^3]
+
+    Code ↔ equation mapping
+    -----------------------
+    Pb_dot        <- dP_b/dt (from beta: beta = -(t/Pb)(dPb/dt))
+    R1, R2, v2    <- R_ts, R_b, R_b_dot
+    pdot_total    <- F_ram                (total mechanical momentum rate)
+    pdotdot_total <- F_ram_dot
+    a_coeff       <- equation `a`
+    c_coeff       <- equation `c`
+    d_coeff       <- equation `d`
+    c_frac        <- c/(E_b + c)
 
     Parameters
     ----------
     beta : float
-        -(t/Pb)*(dPb/dt), cooling parameter
+        Weaver cooling parameter -(t/Pb)*(dPb/dt)
     Pb : float
         Bubble pressure [cgs]
     t_now : float
         Current time [Myr]
     R1 : float
-        Inner bubble radius [pc]
+        Termination shock radius R_ts [pc]
     R2 : float
-        Outer bubble radius [pc]
+        Outer bubble radius R_b [pc]
     v2 : float
-        Outer bubble velocity [pc/Myr]
+        Outer bubble velocity R_b_dot [pc/Myr]
     Eb : float
         Bubble energy [Msun*pc^2/Myr^2] (code units)
     pdot_total : float
-        Momentum injection rate
+        Total mechanical momentum injection rate F_ram
     pdotdot_total : float
-        Second derivative of momentum injection
+        Time derivative of F_ram
 
     Returns
     -------
-    Edot : float
-        Time derivative of bubble energy [Msun*pc^2/Myr^3] (code units)
+    Eb_dot : float
+        d(E_b)/dt [Msun*pc^2/Myr^3] (code units)
     """
-    # dp/dt from beta
-    press_dot = -Pb * beta / t_now
+    # dPb/dt from the Weaver cooling parameter: beta = -(t/Pb)(dPb/dt)
+    Pb_dot = -Pb * beta / t_now
 
-    # Define terms
-    a = np.sqrt(pdot_total / 2)
-    b = 1.5 * a**2 * R1
-    d = R2**3 - R1**3
-    adot = 0.25 * pdotdot_total / a if a > 0 else 0.0
+    # Equation coefficients (see docstring)
+    a_coeff = 1.5 * pdotdot_total / pdot_total if pdot_total > 0 else 0.0
+    c_coeff = 0.75 * pdot_total * R1
+    d_coeff = R2**3 - R1**3
 
-    e = b / (b + Eb) if (b + Eb) > 0 else 0.0
+    Ebc = Eb + c_coeff
+    c_frac = c_coeff / Ebc if Ebc > 0 else 0.0     # c/(E_b + c)
 
-    # Main equation (Rahner thesis eq A12)
+    # Main equation (Rahner thesis A12)
     numerator = (
-        2 * np.pi * press_dot * d**2
-        + 3 * Eb * v2 * R2**2 * (1 - e)
-        - 3 * (adot / a) * R1**3 * Eb**2 / (Eb + b)
+        2 * np.pi * Pb_dot * d_coeff**2
+        + 3 * Eb * v2 * R2**2 * (1 - c_frac)
+        - a_coeff * R1**3 * Eb**2 / Ebc
     )
-    denominator = d * (1 - e)
+    denominator = d_coeff * (1 - c_frac)
 
     if abs(denominator) < 1e-300:
         return 0.0
@@ -335,7 +358,7 @@ def get_residual_pure(
     # =============================================================================
 
     # Method 1: Edot from beta
-    Edot_from_beta = beta2Edot_pure(
+    Edot_from_beta = cool_beta_to_Ebdot_pure(
         beta, Pb, t_now, R1, R2, v2, Eb, pdot_total, pdotdot_total
     )
 
@@ -432,7 +455,7 @@ def get_residual_detailed(
     R1, Pb = compute_R1_Pb(R2, Eb, Lmech_total, v_mech_total, gamma_adia)
 
     # Part 1: Calculate Edot values
-    Edot_from_beta = beta2Edot_pure(
+    Edot_from_beta = cool_beta_to_Ebdot_pure(
         beta, Pb, t_now, R1, R2, v2, Eb, pdot_total, pdotdot_total
     )
 

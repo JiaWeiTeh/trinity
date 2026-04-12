@@ -78,7 +78,7 @@ from src.phase1_energy.energy_phase_ODEs_modified import (
 )
 from src.phase1b_energy_implicit.get_betadelta_modified import (
     solve_betadelta_pure,
-    beta2Edot_pure,
+    cool_beta_to_Ebdot_pure,
     delta2dTdt_pure,
     compute_R1_Pb,
     BetaDeltaResult,
@@ -637,7 +637,7 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         # Convert beta/delta to Ed, Td using pure functions
         # ---------------------------------------------------------------------
 
-        Ed = beta2Edot_pure(beta, Pb, t_now, R1, R2, v2, Eb, feedback.pdot_total, feedback.pdotdot_total)
+        Ed = cool_beta_to_Ebdot_pure(beta, Pb, t_now, R1, R2, v2, Eb, feedback.pdot_total, feedback.pdotdot_total)
         Td = delta2dTdt_pure(t_now, T0, delta)
 
         force_props = compute_forces_pure(R2, mShell, Pb, shell_props, params)

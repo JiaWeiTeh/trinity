@@ -249,7 +249,7 @@ def get_residual_pure(beta_delta, params_readonly):
     # =========================================================================
 
     # Method 1: From beta
-    Edot = get_bubbleParams.beta2Edot_pure(beta, R2, v2, Pb)
+    Edot = get_bubbleParams.cool_beta_to_Ebdot_pure(beta, R2, v2, Pb)
 
     # Method 2: From energy balance
     L_gain = LWind
