@@ -130,9 +130,10 @@ def get_currentSB99feedback(t, params) -> SB99Feedback:
 
     Notes
     -----
-    FIXED: Wind velocity now correctly uses wind-only momentum rate!
-    Old (WRONG): v_mech_total = 2 * Lmech_total / (pdot_W + pdot_SN)
-    New (CORRECT): v_mech_total = 2 * Lmech_total / pdot_W
+    Wind velocity (v_mech_total) uses total quantities:
+      v_mech_total = 2 * Lmech_total / pdot_total
+    This is an effective velocity such that pRam = L/(2*pi*r^2*v) yields
+    the correct total ram pressure: pdot_total / (4*pi*r^2).
 
     Naming convention:
     - Wind components: _W suffix (Lmech_W, pdot_W, fLmech_W, fpdot_W)
@@ -172,8 +173,8 @@ def get_currentSB99feedback(t, params) -> SB99Feedback:
     # =========================================================================
     # DERIVED VALUES (for backward compatibility with params dictionary)
     # =========================================================================
-    # mechanical velocity
-    v_mech_total = (2. * Lmech_total / pdot_total)[()]  # ← FIXED!
+    # Effective mechanical velocity: v = 2L/pdot gives P_ram = pdot_total/(4*pi*r^2)
+    v_mech_total = (2. * Lmech_total / pdot_total)[()]
 
     # Numerical derivative of total momentum rate for time evolution
     dt = 1e-9  # Myr (small timestep for derivative)
