@@ -251,23 +251,76 @@ def run_sweep(args):
             return None
 
     def _kill_sweep_children(sig_module):
-        """Kill all child processes so simulations don't outlive the sweep."""
-        # Send SIGTERM to our entire process group (workers + their
-        # subprocess children share the group).  Temporarily ignore
-        # SIGTERM in *this* process so we survive to print the report.
-        old = sig_module.signal(sig_module.SIGTERM, sig_module.SIG_IGN)
+        """
+        Kill only our own pool workers and any of their descendants.
+
+        Unlike ``os.killpg()``, which would signal every process in our
+        process group (potentially including unrelated processes when
+        launched from a shared shell, IDE, or Jupyter kernel), this
+        function walks the process tree from our known worker PIDs and
+        signals *only* those specific PIDs.
+        """
+        import subprocess as _sp
+        import time as _time
+
+        # Start with the worker PIDs we spawned ourselves
+        worker_pids = set()
+        if executor is not None:
+            worker_pids = {
+                pid for pid in getattr(executor, '_processes', {}).keys()
+                if pid and pid != os.getpid()
+            }
+
+        if not worker_pids:
+            return
+
+        to_kill = set(worker_pids)
+
+        # Walk the process tree to find descendants of our workers
+        # (e.g. the `python run.py <param>` subprocess each worker spawns).
         try:
-            os.killpg(os.getpgid(os.getpid()), sig_module.SIGTERM)
-        except (OSError, AttributeError):
-            # Fallback: kill worker processes individually
-            # (e.g. on Windows where killpg is unavailable)
-            if executor is not None:
-                for pid in list(getattr(executor, '_processes', {}).keys()):
+            result = _sp.run(
+                ['ps', '-eo', 'pid=,ppid='],
+                capture_output=True, text=True, timeout=5,
+            )
+            parent_map = {}
+            for line in result.stdout.splitlines():
+                parts = line.strip().split()
+                if len(parts) == 2:
                     try:
-                        os.kill(pid, sig_module.SIGTERM)
-                    except OSError:
-                        pass
-        sig_module.signal(sig_module.SIGTERM, old)
+                        pid = int(parts[0])
+                        ppid = int(parts[1])
+                    except ValueError:
+                        continue
+                    parent_map.setdefault(ppid, []).append(pid)
+
+            queue = list(worker_pids)
+            while queue:
+                ppid = queue.pop(0)
+                for child_pid in parent_map.get(ppid, []):
+                    if child_pid == os.getpid():
+                        continue  # never target ourselves
+                    if child_pid not in to_kill:
+                        to_kill.add(child_pid)
+                        queue.append(child_pid)
+        except (OSError, _sp.SubprocessError):
+            # `ps` unavailable (e.g. Windows) — fall back to workers only.
+            pass
+
+        # Graceful SIGTERM, then SIGKILL for stragglers.
+        for pid in to_kill:
+            try:
+                os.kill(pid, sig_module.SIGTERM)
+            except OSError:
+                pass
+
+        _time.sleep(0.5)
+
+        for pid in to_kill:
+            try:
+                os.kill(pid, sig_module.SIGKILL)
+            except (OSError, AttributeError):
+                pass
 
     # Reconfigure logging for sweep mode — suppress parser noise
     log_level = logging.DEBUG if args.verbose else logging.WARNING
