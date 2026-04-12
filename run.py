@@ -58,7 +58,13 @@ def is_sweep_param_file(path2file):
     Returns True if the file contains:
     - List syntax with multiple elements: key [val1, val2, ...]
     - Tuple syntax: tuple(param1, param2, ...) [val1, val2] ...
+
+    Exits with a clean error message if the file cannot be opened,
+    so callers get a friendly message instead of a stack trace.
     """
+    if not os.path.exists(path2file):
+        print(f"Error: Parameter file not found: {path2file}", file=sys.stderr)
+        sys.exit(1)
     with open(path2file, 'r', encoding='utf-8') as f:
         for line in f:
             # Strip comments
@@ -197,15 +203,26 @@ def run_sweep(args):
 
     def get_optimal_workers():
         """
-        Determine optimal number of worker processes.
+        Determine a conservative default number of worker processes.
 
-        Strategy:
-        - Use (CPU_count - 1) to leave one core for system/monitoring
-        - Cap at 8 to avoid overwhelming I/O
-        - Minimum of 1
+        Formula: ``max(1, cpu_count // 2 - 1)``.
+
+        - Uses less than half the CPUs so the machine stays responsive
+          for other work (browser, editor, meetings) while the sweep
+          runs. On an 8-core laptop this gives 3 workers, leaving 5
+          cores free; on a 4-core laptop it gives 1 worker.
+        - Minimum of 1 (for 1-2 core machines where the formula would
+          otherwise go to 0 or negative).
+        - On HPC / workstations with many cores, pass ``--workers N``
+          explicitly if you want more parallelism than this default.
+
+        Rationale: each worker spawns a full simulation subprocess that
+        uses BLAS/LAPACK; even with ``OMP_NUM_THREADS=1`` per worker,
+        too many concurrent Python interpreters will saturate memory
+        bandwidth and overheat laptops.
         """
         cpus = multiprocessing.cpu_count()
-        return max(1, min(cpus - 1, 8))
+        return max(1, cpus // 2 - 1)
 
     def _validate_sweep_combination(params_dict):
         """
@@ -250,24 +267,120 @@ def run_sweep(args):
         except Exception:
             return None
 
-    def _kill_sweep_children(sig_module):
-        """Kill all child processes so simulations don't outlive the sweep."""
-        # Send SIGTERM to our entire process group (workers + their
-        # subprocess children share the group).  Temporarily ignore
-        # SIGTERM in *this* process so we survive to print the report.
-        old = sig_module.signal(sig_module.SIGTERM, sig_module.SIG_IGN)
-        try:
-            os.killpg(os.getpgid(os.getpid()), sig_module.SIGTERM)
-        except (OSError, AttributeError):
-            # Fallback: kill worker processes individually
-            # (e.g. on Windows where killpg is unavailable)
-            if executor is not None:
-                for pid in list(getattr(executor, '_processes', {}).keys()):
-                    try:
-                        os.kill(pid, sig_module.SIGTERM)
-                    except OSError:
-                        pass
-        sig_module.signal(sig_module.SIGTERM, old)
+    def _build_parent_map():
+        """
+        Return ``{ppid: [child_pid, ...]}`` for all processes visible to us.
+
+        Cross-platform best-effort. Uses ``ps`` on POSIX (Linux, macOS,
+        Ubuntu, BSD) and ``wmic`` on Windows (falls back silently if
+        unavailable — e.g. sandboxed environments).
+        """
+        import subprocess as _sp
+        parent_map = {}
+        is_windows = sys.platform.startswith('win')
+
+        if is_windows:
+            try:
+                result = _sp.run(
+                    ['wmic', 'process', 'get', 'ParentProcessId,ProcessId'],
+                    capture_output=True, text=True, timeout=5,
+                )
+                for line in result.stdout.splitlines()[1:]:  # skip header
+                    parts = line.split()
+                    if len(parts) >= 2:
+                        try:
+                            ppid = int(parts[0])
+                            pid = int(parts[1])
+                        except ValueError:
+                            continue
+                        parent_map.setdefault(ppid, []).append(pid)
+            except (OSError, _sp.SubprocessError, FileNotFoundError):
+                pass
+        else:
+            try:
+                result = _sp.run(
+                    ['ps', '-eo', 'pid=,ppid='],
+                    capture_output=True, text=True, timeout=5,
+                )
+                for line in result.stdout.splitlines():
+                    parts = line.strip().split()
+                    if len(parts) == 2:
+                        try:
+                            pid = int(parts[0])
+                            ppid = int(parts[1])
+                        except ValueError:
+                            continue
+                        parent_map.setdefault(ppid, []).append(pid)
+            except (OSError, _sp.SubprocessError, FileNotFoundError):
+                pass
+
+        return parent_map
+
+    def _kill_sweep_children(worker_pids, sig_module):
+        """
+        Kill only the given pool workers and any of their descendants.
+
+        Safety guarantees (important for shared/HPC environments):
+
+        * Never uses ``os.killpg()`` or any process-group signalling,
+          so unrelated processes sharing our shell/IDE/login-node
+          session group are untouched.
+        * Walks *only downward* from our known worker PIDs through a
+          parent→child map. It is structurally impossible to traverse
+          into another user's (or another job's) process tree because
+          PPID chains can only be followed from parent to child, and
+          our workers were spawned by us.
+        * Every kill goes through ``os.kill(pid, sig)``, which the
+          OS enforces via UID-based permissions. On a shared HPC node,
+          ``os.kill`` on another user's PID returns EPERM and does
+          nothing — even if a PID were (impossibly) misidentified.
+        * Self-guard: never signals our own PID.
+        * Works on Linux, macOS, Ubuntu, BSD, and Windows.
+        """
+        import time as _time
+
+        # Defensive filter: drop empties and our own PID.
+        worker_pids = {p for p in worker_pids if p and p != os.getpid()}
+        if not worker_pids:
+            return
+
+        to_kill = set(worker_pids)
+
+        # BFS downward through the parent→child map to find descendants
+        # (e.g. each worker's `python run.py <param>` subprocess).
+        parent_map = _build_parent_map()
+        queue = list(worker_pids)
+        while queue:
+            ppid = queue.pop(0)
+            for child_pid in parent_map.get(ppid, []):
+                if child_pid == os.getpid():
+                    continue  # paranoia: never target ourselves
+                if child_pid not in to_kill:
+                    to_kill.add(child_pid)
+                    queue.append(child_pid)
+
+        # Signal constants differ across platforms (Windows has no SIGKILL).
+        sigterm = getattr(sig_module, 'SIGTERM', None)
+        sigkill = getattr(sig_module, 'SIGKILL', None)
+
+        # Phase 1: polite SIGTERM (on Windows this calls TerminateProcess).
+        if sigterm is not None:
+            for pid in to_kill:
+                try:
+                    os.kill(pid, sigterm)
+                except OSError:
+                    # Process already gone or owned by another user (EPERM) —
+                    # either way, safe to ignore.
+                    pass
+            _time.sleep(0.5)
+
+        # Phase 2: SIGKILL for stragglers (POSIX only).
+        if sigkill is not None:
+            for pid in to_kill:
+                try:
+                    os.kill(pid, sigkill)
+                except OSError:
+                    pass
 
     # Reconfigure logging for sweep mode — suppress parser noise
     log_level = logging.DEBUG if args.verbose else logging.WARNING
@@ -459,12 +572,23 @@ def run_sweep(args):
     failed = []
     cancelled = []
 
-    # Setup Ctrl+C handler
+    # Setup shutdown handlers. We trap both SIGINT (Ctrl+C) and SIGTERM
+    # (sent by HPC schedulers like SLURM `scancel` or PBS on timeout)
+    # so subprocess simulations don't get orphaned when a cluster job
+    # is cancelled or hits its walltime grace period.
     def signal_handler(signum, frame):
         _shutdown_requested.set()
-        print("\n\n*** Ctrl+C received - cancelling remaining simulations... ***\n")
+        label = "Ctrl+C" if signum == signal.SIGINT else f"signal {signum}"
+        print(f"\n\n*** {label} received - cancelling remaining simulations... ***\n")
 
-    original_handler = signal.signal(signal.SIGINT, signal_handler)
+    original_sigint = signal.signal(signal.SIGINT, signal_handler)
+    original_sigterm = None
+    try:
+        # SIGTERM exists on POSIX and Windows; signal.signal() for SIGTERM
+        # may fail on non-main threads or restricted environments.
+        original_sigterm = signal.signal(signal.SIGTERM, signal_handler)
+    except (AttributeError, ValueError, OSError):
+        pass
 
     # Execute with process pool
     executor = None
@@ -482,7 +606,7 @@ def run_sweep(args):
                     success=False,
                     return_code=-2,
                     duration=0,
-                    error_message="Cancelled by user (Ctrl+C)"
+                    error_message="Cancelled (Ctrl+C or SIGTERM)"
                 ))
                 continue
 
@@ -528,7 +652,13 @@ def run_sweep(args):
             else:
                 failed.append(result)
                 # Log failed simulation immediately
-                logger.warning(f"FAILED: {result.name} - {result.error_message[:100] if result.error_message else 'Unknown error'}...")
+                if result.error_message:
+                    msg = result.error_message[:100]
+                    if len(result.error_message) > 100:
+                        msg += '...'
+                else:
+                    msg = 'Unknown error'
+                logger.warning(f"FAILED: {result.name} - {msg}")
 
         # If shutdown was requested, mark remaining as cancelled
         if _shutdown_requested.is_set():
@@ -540,26 +670,37 @@ def run_sweep(args):
                         success=False,
                         return_code=-2,
                         duration=0,
-                        error_message="Cancelled by user (Ctrl+C)"
+                        error_message="Cancelled (Ctrl+C or SIGTERM)"
                     ))
 
     except KeyboardInterrupt:
         print("\n\n*** Sweep cancelled by user ***\n")
         _shutdown_requested.set()
     finally:
-        # Restore original signal handler
-        signal.signal(signal.SIGINT, original_handler)
+        # Restore original signal handlers.
+        signal.signal(signal.SIGINT, original_sigint)
+        if original_sigterm is not None:
+            try:
+                signal.signal(signal.SIGTERM, original_sigterm)
+            except (AttributeError, ValueError, OSError):
+                pass
 
         if executor:
             if _shutdown_requested.is_set():
-                # Ctrl+C: don't wait, kill children
+                # Ctrl+C / SIGTERM path: capture worker PIDs BEFORE shutdown
+                # (shutdown(wait=False) may start clearing _processes), then
+                # kill only our own process tree.
+                worker_pids = set(getattr(executor, '_processes', {}).keys())
                 try:
                     executor.shutdown(wait=False, cancel_futures=True)
                 except TypeError:
+                    # Python 3.8: no cancel_futures kwarg.
                     executor.shutdown(wait=False)
-                _kill_sweep_children(signal)
+                _kill_sweep_children(worker_pids, signal)
             else:
-                # Normal completion: wait for clean shutdown
+                # Normal completion: all futures already resolved, workers
+                # are idle. wait=True simply joins them — no kill, no signal,
+                # no effect on any process outside our pool.
                 executor.shutdown(wait=True)
 
     progress.close()
@@ -634,7 +775,8 @@ if __name__ == '__main__':
         '--workers', '-w',
         type=int,
         default=None,
-        help="Number of parallel workers for sweep mode (default: auto-detect CPUs)"
+        help="Number of parallel workers for sweep mode "
+             "(default: max(1, cpu_count // 2 - 1))"
     )
     parser.add_argument(
         '--dry-run', '-n',
