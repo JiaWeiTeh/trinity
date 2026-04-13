@@ -14,7 +14,7 @@ from src._plots.plot_base import FIG_DIR, smooth_1d
 # Add project root to path for imports
 from src._output.trinity_reader import load_output, resolve_data_input
 from src._plots.plot_markers import add_plot_markers, get_marker_legend_handles
-from src._plots.grid_template import _compute_legend_layout
+from src._plots.grid_template import _compute_legend_layout, build_param_tag
 
 print("...plotting Qi(or Li) vs Lmech_total with ratio on twin axis")
 
@@ -355,13 +355,13 @@ def plot_grid(folder_path, output_dir=None, ndens_filter=None,
         )
         leg.set_zorder(10)
 
-        fig.suptitle(f"{folder_name} (n{ndens})", fontsize=14, y=_layout['suptitle_y'])
+        param_tag = build_param_tag(mCloud_list_found, sfe_list_found, ndens)
+        fig.suptitle(f"{folder_name} ({param_tag})", fontsize=14, y=_layout['suptitle_y'])
 
-        # Save figure to ./fig/{folder_name}/LbolLWind_{ndens_tag}.pdf
-        ndens_tag = f"n{ndens}"
+        # Save figure to ./fig/{folder_name}/LbolLWind_{param_tag}.pdf
         fig_dir = Path(output_dir) if output_dir else FIG_DIR / folder_name
         fig_dir.mkdir(parents=True, exist_ok=True)
-        out_pdf = fig_dir / f"LbolLWind_{ndens_tag}.pdf"
+        out_pdf = fig_dir / f"LbolLWind_{param_tag}.pdf"
         fig.savefig(out_pdf, bbox_inches="tight")
         print(f"  Saved: {out_pdf}")
 
