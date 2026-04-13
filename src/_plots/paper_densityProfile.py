@@ -946,7 +946,7 @@ def plot_phase_timeline(simulations: dict, output_dir: Path, fmt: str = 'pdf',
         print(f"    Outcome  = {info['outcome']}")
 
     # --- Create figure ---
-    fig, ax = plt.subplots(figsize=(7, 5), dpi=150)
+    fig, ax = plt.subplots(figsize=(7, 7), dpi=150)
 
     bar_height = 0.1
     # Position bar bottoms at 0.1, 0.3, 0.5, 0.7 (centres at 0.15, 0.35, 0.55, 0.75)
@@ -960,10 +960,11 @@ def plot_phase_timeline(simulations: dict, output_dir: Path, fmt: str = 'pdf',
         yb = y_positions[idx]   # bar bottom
         yc = y_centres[idx]     # bar centre
 
-        # Profile label centred above the bar (single-line for in-plot text)
+        # Profile label left-aligned above the bar, at the bar's left edge
         label_text = get_style(tag)['label'].replace('\n', ' ')
-        ax.text(info['t_end'] / 2.0, yb - 0.015, label_text,
-                ha='center', va='bottom', zorder=5,
+        t_left = info['intervals'][0][1] if info['intervals'] else 0.0
+        ax.text(t_left, yb - 0.015, label_text,
+                ha='left', va='bottom', zorder=5,
                 fontsize=plt.rcParams['font.size'] - 0.5)
 
         # Draw phase segments
