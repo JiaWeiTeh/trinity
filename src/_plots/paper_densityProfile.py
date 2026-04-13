@@ -82,7 +82,7 @@ PROFILE_STYLES = {
     'PL0':  {'color': '#0072B2', 'ls': '-',  'label': r'$\rho \propto r^{0}$'},
     'PL-1': {'color': '#D55E00', 'ls': '-',  'label': r'$\rho \propto r^{-1}$'},
     'PL-2': {'color': '#009E73', 'ls': '-',  'label': r'$\rho \propto r^{-2}$'},
-    'BE14': {'color': '#CC79A7', 'ls': '-',  'label': 'Bonnor-Ebert\n(Critical)'},
+    'BE14': {'color': '#CC79A7', 'ls': '-',  'label': 'Bonnor-Ebert'},
 }
 
 # Ordered list for consistent iteration
@@ -882,7 +882,7 @@ def plot_phase_timeline(simulations: dict, output_dir: Path, fmt: str = 'pdf',
         print(f"    Outcome  = {info['outcome']}")
 
     # --- Create figure ---
-    fig, ax = plt.subplots(figsize=(7, 5), dpi=150)
+    fig, ax = plt.subplots(figsize=(7, 7), dpi=150)
 
     bar_height = 0.1
     # Position bar bottoms at 0.1, 0.3, 0.5, 0.7 (centres at 0.15, 0.35, 0.55, 0.75)
@@ -896,10 +896,10 @@ def plot_phase_timeline(simulations: dict, output_dir: Path, fmt: str = 'pdf',
         yb = y_positions[idx]   # bar bottom
         yc = y_centres[idx]     # bar centre
 
-        # Profile label centred above the bar (single-line for in-plot text)
+        # Profile label left-aligned above the start of the bar
         label_text = get_style(tag)['label'].replace('\n', ' ')
-        ax.text(info['t_end'] / 2.0, yb - 0.015, label_text,
-                ha='center', va='bottom', zorder=5)
+        ax.text(0.0, yb - 0.015, label_text,
+                ha='left', va='bottom', zorder=5)
 
         # Draw phase segments
         is_expanding = (info['outcome'] == 'expanding')
