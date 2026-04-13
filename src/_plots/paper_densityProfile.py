@@ -494,17 +494,29 @@ def plot_shell_evolution(simulations: dict, output_dir: Path, fmt: str = 'pdf',
     ax_m   = fig.add_subplot(gs_bot[2, 0], sharex=ax_R)
 
     # Consistent mpl-style inner ticks on all panels (major + minor).
-    for ax in (ax_rho, ax_R, ax_v, ax_m):
+    # The three time-evolution panels get ticks on all four sides.
+    for ax in (ax_R, ax_v, ax_m):
+        ax.minorticks_on()
         ax.tick_params(axis='both', which='both', direction='in',
                        top=True, right=True)
         ax.tick_params(which='major', length=5)
         ax.tick_params(which='minor', length=3)
-    # Twiny: its own right-hand y-axis, inward ticks; left spine belongs to
-    # ax_rho so disable ticks there for ax_M to avoid doubling.
+
+    # Top panel has a twinx: the right-hand y-axis belongs to ax_M
+    # (enclosed mass), so ax_rho must NOT draw its own ticks on the right.
+    ax_rho.minorticks_on()
+    ax_rho.tick_params(axis='x', which='both', direction='in', top=True)
+    ax_rho.tick_params(axis='y', which='both', direction='in',
+                       left=True, right=False)
+    ax_rho.tick_params(which='major', length=5)
+    ax_rho.tick_params(which='minor', length=3)
+
+    ax_M.minorticks_on()
+    # ax_M shares the x-axis with ax_rho; do not draw x-ticks/labels here.
+    ax_M.tick_params(axis='x', which='both', top=False, bottom=False,
+                     labeltop=False, labelbottom=False)
     ax_M.tick_params(axis='y', which='both', direction='in',
-                     right=True, left=False)
-    ax_M.tick_params(axis='x', which='both', direction='in',
-                     top=True, bottom=False, labeltop=False, labelbottom=False)
+                     right=True, left=False, labelleft=False)
     ax_M.tick_params(which='major', length=5)
     ax_M.tick_params(which='minor', length=3)
 
