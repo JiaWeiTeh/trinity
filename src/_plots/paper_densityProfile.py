@@ -308,6 +308,102 @@ NDENS_AU2CGS = INV_CONV.ndens_au2cgs
 
 
 # =============================================================================
+# Density profile ingredients helper (used by Fig. 1 and Fig. 2 top panel)
+# =============================================================================
+
+# Per-tag defaults: (profile_type, alpha_default, omega_default)
+_PROFILE_DEFAULTS = {
+    'PL0':  ('densPL', 0,    None),
+    'PL-1': ('densPL', -1,   None),
+    'PL-2': ('densPL', -2,   None),
+    'BE14': ('densBE', None, 14.1),
+}
+
+
+def _compute_rho_M_profile(tag: str, sim_folders: dict):
+    """Return (r_arr [pc], n_cgs [cm^-3], M_arr [Msun]) for profile *tag*."""
+    ptype_default, alpha_default, omega_default = _PROFILE_DEFAULTS[tag]
+
+    if tag in sim_folders:
+        cp = get_cloud_params(sim_folders[tag])
+    else:
+        cp = dict(_DEFAULTS)
+
+    mCloud  = cp['mCloud']
+    nCore   = cp['nCore']          # 1/pc³
+    rCore   = cp['rCore']          # pc
+    nISM    = cp['nISM']           # 1/pc³
+    mu_au   = cp['mu_ion']         # Msun
+    rhoCore = nCore * mu_au        # Msun/pc³
+
+    ptype = cp['dens_profile'] if cp['dens_profile'] in ('densPL', 'densBE') else ptype_default
+    alpha = cp['densPL_alpha'] if ptype == 'densPL' else alpha_default
+    omega = cp['densBE_Omega'] if ptype == 'densBE' else omega_default
+
+    if ptype == 'densPL':
+        if alpha == 0:
+            rCloud = compute_rCloud_homogeneous(mCloud, nCore, mu=mu_au)
+        else:
+            rCloud, _ = compute_rCloud_powerlaw(
+                mCloud, nCore, alpha, rCore=rCore, mu=mu_au
+            )
+
+        r_arr = np.logspace(np.log10(1e-3), np.log10(rCloud * 1.3), 500)
+        n_arr = np.empty_like(r_arr)
+        M_arr = np.empty_like(r_arr)
+
+        if alpha == 0:
+            inside = r_arr <= rCloud
+            n_arr[inside]  = nCore
+            n_arr[~inside] = nISM
+            M_arr[inside]  = (4.0 / 3.0) * np.pi * r_arr[inside]**3 * rhoCore
+            M_arr[~inside] = mCloud
+        else:
+            reg1 = r_arr <= rCore
+            reg2 = (r_arr > rCore) & (r_arr <= rCloud)
+            reg3 = r_arr > rCloud
+
+            n_arr[reg1] = nCore
+            n_arr[reg2] = nCore * (r_arr[reg2] / rCore) ** alpha
+            n_arr[reg3] = nISM
+
+            M_arr[reg1] = (4.0 / 3.0) * np.pi * r_arr[reg1]**3 * rhoCore
+            M_arr[reg2] = 4.0 * np.pi * rhoCore * (
+                rCore**3 / 3.0 +
+                (r_arr[reg2]**(3.0 + alpha) - rCore**(3.0 + alpha)) /
+                ((3.0 + alpha) * rCore**alpha)
+            )
+            M_arr[reg3] = mCloud
+
+    else:  # densBE
+        le_sol = solve_lane_emden()
+        be_result = create_BE_sphere(
+            M_cloud=mCloud, n_core=nCore,
+            Omega=omega, mu=mu_au
+        )
+        rCloud    = be_result.r_out
+        xi_out    = be_result.xi_out
+        m_dim_out = float(le_sol.f_m(xi_out))
+
+        r_arr = np.logspace(np.log10(1e-3), np.log10(rCloud * 1.3), 500)
+        n_arr = np.empty_like(r_arr)
+        M_arr = np.empty_like(r_arr)
+
+        inside = r_arr <= rCloud
+        xi_inside = xi_out * (r_arr[inside] / rCloud)
+        rho_ratio = le_sol.f_rho_rhoc(xi_inside)
+
+        n_arr[inside]  = nCore * rho_ratio
+        n_arr[~inside] = nISM
+
+        m_inside = le_sol.f_m(xi_inside)
+        M_arr[inside]  = mCloud * (m_inside / m_dim_out)
+        M_arr[~inside] = mCloud
+
+    return r_arr, n_arr * NDENS_AU2CGS, M_arr
+
+
+# =============================================================================
 # Figure 1: Cloud Density & Enclosed Mass Profiles (STATIC, 2-panel)
 # =============================================================================
 
@@ -328,108 +424,13 @@ def plot_enclosed_mass(sweep_dir: str, output_dir: Path, fmt: str = 'pdf',
     # Discover per-run folders (for reading _summary.txt)
     sim_folders = _get_sim_folders(sweep_dir)
 
-    # Profile configurations: (tag, profile_type, alpha_default, omega_default)
-    profiles = [
-        ('PL0',  'densPL', 0,    None),
-        ('PL-1', 'densPL', -1,   None),
-        ('PL-2', 'densPL', -2,   None),
-        ('BE14', 'densBE', None, 14.1),
-    ]
-
     fig, axes = plt.subplots(1, 2, figsize=(9, 4))
     ax_n, ax_M = axes
 
-    for tag, ptype_default, alpha_default, omega_default in profiles:
+    for tag in PROFILE_ORDER:
         s = get_style(tag)
+        r_arr, n_cgs, M_arr = _compute_rho_M_profile(tag, sim_folders)
 
-        # --- Read parameters from _summary.txt (or use defaults) ----------
-        if tag in sim_folders:
-            cp = get_cloud_params(sim_folders[tag])
-        else:
-            cp = dict(_DEFAULTS)
-
-        mCloud  = cp['mCloud']
-        nCore   = cp['nCore']          # 1/pc³
-        rCore   = cp['rCore']          # pc
-        nISM    = cp['nISM']           # 1/pc³
-        mu_au   = cp['mu_ion']         # Msun
-        rhoCore = nCore * mu_au        # Msun/pc³
-
-        # Override profile type / shape params from summary when available
-        ptype = cp['dens_profile'] if cp['dens_profile'] in ('densPL', 'densBE') else ptype_default
-        alpha = cp['densPL_alpha'] if ptype == 'densPL' else alpha_default
-        omega = cp['densBE_Omega'] if ptype == 'densBE' else omega_default
-
-        # --- Compute n(r) and M(r) ----------------------------------------
-        if ptype == 'densPL':
-            # Cloud radius
-            if alpha == 0:
-                rCloud = compute_rCloud_homogeneous(mCloud, nCore, mu=mu_au)
-            else:
-                rCloud, _ = compute_rCloud_powerlaw(
-                    mCloud, nCore, alpha, rCore=rCore, mu=mu_au
-                )
-
-            r_arr = np.logspace(np.log10(1e-3), np.log10(rCloud * 1.3), 500)
-            n_arr = np.empty_like(r_arr)
-            M_arr = np.empty_like(r_arr)
-
-            if alpha == 0:
-                inside = r_arr <= rCloud
-                n_arr[inside]  = nCore
-                n_arr[~inside] = nISM
-                M_arr[inside]  = (4.0 / 3.0) * np.pi * r_arr[inside]**3 * rhoCore
-                M_arr[~inside] = mCloud
-            else:
-                reg1 = r_arr <= rCore
-                reg2 = (r_arr > rCore) & (r_arr <= rCloud)
-                reg3 = r_arr > rCloud
-
-                # density
-                n_arr[reg1] = nCore
-                n_arr[reg2] = nCore * (r_arr[reg2] / rCore) ** alpha
-                n_arr[reg3] = nISM
-
-                # enclosed mass
-                M_arr[reg1] = (4.0 / 3.0) * np.pi * r_arr[reg1]**3 * rhoCore
-                M_arr[reg2] = 4.0 * np.pi * rhoCore * (
-                    rCore**3 / 3.0 +
-                    (r_arr[reg2]**(3.0 + alpha) - rCore**(3.0 + alpha)) /
-                    ((3.0 + alpha) * rCore**alpha)
-                )
-                M_arr[reg3] = mCloud
-
-        elif ptype == 'densBE':
-            le_sol = solve_lane_emden()
-            be_result = create_BE_sphere(
-                M_cloud=mCloud, n_core=nCore,
-                Omega=omega, mu=mu_au
-            )
-            rCloud  = be_result.r_out
-            xi_out  = be_result.xi_out
-            m_dim_out = float(le_sol.f_m(xi_out))
-
-            r_arr = np.logspace(np.log10(1e-3), np.log10(rCloud * 1.3), 500)
-            n_arr = np.empty_like(r_arr)
-            M_arr = np.empty_like(r_arr)
-
-            inside = r_arr <= rCloud
-            xi_inside = xi_out * (r_arr[inside] / rCloud)
-            rho_ratio = le_sol.f_rho_rhoc(xi_inside)
-
-            # density
-            n_arr[inside]  = nCore * rho_ratio
-            n_arr[~inside] = nISM
-
-            # enclosed mass
-            m_inside = le_sol.f_m(xi_inside)
-            M_arr[inside]  = mCloud * (m_inside / m_dim_out)
-            M_arr[~inside] = mCloud
-
-        # --- Convert density to CGS for display --------------------------
-        n_cgs = n_arr * NDENS_AU2CGS
-
-        # --- Plot ---------------------------------------------------------
         ax_n.loglog(r_arr, n_cgs, color=s['color'], ls=s['ls'], lw=1.5,
                     label=s['label'])
         ax_M.loglog(r_arr, M_arr, color=s['color'], ls=s['ls'], lw=1.5,
@@ -459,94 +460,137 @@ def plot_enclosed_mass(sweep_dir: str, output_dir: Path, fmt: str = 'pdf',
 # =============================================================================
 
 def plot_shell_evolution(simulations: dict, output_dir: Path, fmt: str = 'pdf',
-                         show: bool = False) -> None:
-    """Plot R(t), v(t), M_shell(t) for all profiles.
+                         show: bool = False, sweep_dir: str = None) -> None:
+    """Plot stacked density profile (+M_enc) and R(t), v(t), M_shell(t).
 
-    Includes phase-transition vertical lines (T = transition, M = momentum),
-    horizontal rCloud lines on the radius panel, and rCloud-crossing markers,
-    following the conventions in ``paper_radiusEvolution`` and ``plot_markers``.
+    Top row (row 0) shows the density profile as solid lines and the enclosed
+    mass as dashed lines on a twiny axis (x-axis is radius, independent).
+    Rows 1-3 share the same time x-axis and show shell radius, velocity, and
+    mass respectively. Legend is at the top as a figure-level legend.
     """
-    logger.info("Figure 2: Shell Evolution")
+    logger.info("Figure 2: Shell Evolution (stacked)")
 
-    fig, axes = plt.subplots(1, 3, figsize=(12, 3.5))
+    tags_present = [tag for tag in PROFILE_ORDER if tag in simulations]
 
-    for tag in PROFILE_ORDER:
-        if tag not in simulations:
+    # Use gridspec so that the top (ingredients) panel has its own x-axis,
+    # while the three time-evolution panels share a common x-axis.
+    fig = plt.figure(figsize=(6.5, 12))
+    gs = fig.add_gridspec(
+        4, 1,
+        height_ratios=[1, 1, 1, 1],
+        hspace=0.08,
+        left=0.15, right=0.88, top=0.93, bottom=0.06,
+    )
+
+    ax_rho = fig.add_subplot(gs[0, 0])
+    ax_M   = ax_rho.twinx()                               # enclosed mass twiny
+    ax_R   = fig.add_subplot(gs[1, 0])
+    ax_v   = fig.add_subplot(gs[2, 0], sharex=ax_R)
+    ax_m   = fig.add_subplot(gs[3, 0], sharex=ax_R)
+
+    # Apply mpl-style inner ticks (ticks on all four sides, pointing inward)
+    for ax in (ax_rho, ax_R, ax_v, ax_m):
+        ax.tick_params(direction='in', which='both', top=True, right=True)
+    # Twiny axis: inward ticks on the right spine only (avoid double top ticks)
+    ax_M.tick_params(direction='in', which='both', top=False, right=True)
+
+    # --- Row 0: density profile (solid) + enclosed mass (dashed, twiny) ---
+    sim_folders = _get_sim_folders(sweep_dir) if sweep_dir else {}
+    for tag in tags_present:
+        s = get_style(tag)
+        try:
+            r_arr, n_cgs, M_arr = _compute_rho_M_profile(tag, sim_folders)
+        except Exception as e:
+            logger.warning(f"Could not compute profile ingredients for {tag}: {e}")
             continue
+        ax_rho.loglog(r_arr, n_cgs, color=s['color'], ls='-', lw=1.5)
+        ax_M.loglog(r_arr, M_arr,   color=s['color'], ls='--', lw=1.2)
+
+    ax_rho.set_xlabel(r'$r$ [pc]')
+    ax_rho.set_ylabel(r'$n(r)$ [cm$^{-3}$]')
+    ax_M.set_ylabel(r'$M_{\rm enc}(<r)$ [M$_\odot$]')
+
+    # --- Rows 1-3: time evolution, shared x-axis ---
+    for tag in tags_present:
         output = simulations[tag]
         s = get_style(tag)
 
         t = output.get('t_now')
         R2 = safe_get(output, 'R2')
-        v2 = safe_get(output, 'v2') * V_AU2KMS  # convert pc/Myr -> km/s
+        v2 = safe_get(output, 'v2') * V_AU2KMS  # pc/Myr -> km/s
         mshell = safe_get(output, 'shell_mass')
 
-        # Phase array (for transition markers)
         phase_raw = output.get('current_phase', as_array=False)
-        phase = None
-        if phase_raw is not None:
-            phase = np.asarray([str(p) for p in phase_raw])
-        # Collapse flag
+        phase = (np.asarray([str(p) for p in phase_raw])
+                 if phase_raw is not None else None)
         isCollapse_raw = output.get('isCollapse', as_array=False)
-        isCollapse = None
-        if isCollapse_raw is not None:
-            isCollapse = np.array([bool(c) for c in isCollapse_raw])
+        isCollapse = (np.array([bool(c) for c in isCollapse_raw])
+                      if isCollapse_raw is not None else None)
 
-        # Cloud radius (constant per run)
         rCloud = safe_get(output, 'rCloud')
         rCloud_val = rCloud[-1] if rCloud.size > 0 and rCloud[-1] > 0 else None
 
-        # --- Add markers to all three panels (color-coded per profile) ---
-        for ax in axes:
+        for ax in (ax_R, ax_v, ax_m):
             add_plot_markers(
                 ax, t,
                 phase=phase,
-                R2=R2 if ax is axes[0] else None,
-                rcloud=rCloud_val if ax is axes[0] else None,
+                R2=R2 if ax is ax_R else None,
+                rcloud=rCloud_val if ax is ax_R else None,
                 isCollapse=isCollapse,
                 dataset_color=s['color'],
                 show_phase=SHOW_PHASE,
-                show_rcloud=SHOW_RCLOUD and (ax is axes[0]),
-                show_rcloud_horizontal=SHOW_RCLOUD_H and (ax is axes[0]),
+                show_rcloud=SHOW_RCLOUD and (ax is ax_R),
+                show_rcloud_horizontal=SHOW_RCLOUD_H and (ax is ax_R),
                 show_collapse=SHOW_COLLAPSE,
                 show_labels=True,
             )
 
-        # Panel (a): R(t) with horizontal rCloud line
-        axes[0].plot(t, R2, color=s['color'], ls=s['ls'], lw=1.5)
+        ax_R.plot(t, R2,     color=s['color'], ls=s['ls'], lw=1.5)
         if rCloud_val is not None and SHOW_RCLOUD_H:
-            axes[0].axhline(rCloud_val, color=s['color'], ls='--',
-                            lw=0.8, alpha=0.5)
+            ax_R.axhline(rCloud_val, color=s['color'], ls='--',
+                         lw=0.8, alpha=0.5)
+        ax_v.plot(t, v2,     color=s['color'], ls=s['ls'], lw=1.5)
+        ax_m.plot(t, mshell, color=s['color'], ls=s['ls'], lw=1.5)
 
-        # Panel (b): v(t)
-        axes[1].plot(t, v2, color=s['color'], ls=s['ls'], lw=1.5)
+    ax_R.set_ylabel(r'$R$ [pc]')
+    ax_v.set_ylabel(r'$v$ [km\,s$^{-1}$]')
+    ax_v.set_yscale('log')
+    ax_m.set_ylabel(r'$M_{\rm shell}$ [M$_\odot$]')
+    ax_m.set_xlabel(r'$t$ [Myr]')
 
-        # Panel (c): M_shell(t)
-        axes[2].plot(t, mshell, color=s['color'], ls=s['ls'], lw=1.5)
+    # Hide tick labels (not ticks themselves) on shared x-axis for rows 1-2
+    plt.setp(ax_R.get_xticklabels(), visible=False)
+    plt.setp(ax_v.get_xticklabels(), visible=False)
 
-    # Let x-axis auto-scale to data range
-
-    axes[0].set_xlabel(r'$t$ [Myr]')
-    axes[0].set_ylabel(r'$R$ [pc]')
-    axes[0].set_title(r'Shell Radius')
-
-    axes[1].set_xlabel(r'$t$ [Myr]')
-    axes[1].set_ylabel(r'$v$ [km\,s$^{-1}$]')
-    axes[1].set_yscale('log')
-    axes[1].set_title(r'Shell Velocity')
-
-    axes[2].set_xlabel(r'$t$ [Myr]')
-    axes[2].set_ylabel(r'$M_{\rm shell}$ [M$_\odot$]')
-    axes[2].set_title(r'Shell Mass')
-
-    # Legend: profile colours + marker entries
+    # --- Top figure-level legend (profile colours + solid/dashed key) ---
+    profile_handles = [
+        Line2D([0], [0], color=get_style(tag)['color'], ls='-', lw=1.8,
+               label=get_style(tag)['label'].replace('\n', ' '))
+        for tag in tags_present
+    ]
+    style_handles = [
+        Line2D([0], [0], color='black', ls='-',  lw=1.5,
+               label=r'$n(r)$'),
+        Line2D([0], [0], color='black', ls='--', lw=1.2,
+               label=r'$M_{\rm enc}(<r)$'),
+    ]
     marker_handles = get_marker_legend_handles(
-        include_phase=False, include_rcloud=SHOW_RCLOUD, include_rcloud_horizontal=SHOW_RCLOUD_H, include_collapse=False
+        include_phase=False,
+        include_rcloud=SHOW_RCLOUD,
+        include_rcloud_horizontal=SHOW_RCLOUD_H,
+        include_collapse=False,
     )
-    add_legend(axes[1], [tag for tag in PROFILE_ORDER if tag in simulations],
-               extra_handles=marker_handles, loc='best')
+    handles = profile_handles + style_handles + list(marker_handles)
+    fig.legend(
+        handles=handles,
+        loc='upper center',
+        ncol=min(len(handles), 4),
+        bbox_to_anchor=(0.5, 1.0),
+        frameon=False,
+        columnspacing=1.2,
+        handletextpad=0.5,
+    )
 
-    fig.tight_layout()
     savefig(fig, 'densityProfile_evolution', output_dir, fmt)
     if show:
         plt.show()
@@ -899,7 +943,8 @@ def plot_phase_timeline(simulations: dict, output_dir: Path, fmt: str = 'pdf',
         # Profile label centred above the bar (single-line for in-plot text)
         label_text = get_style(tag)['label'].replace('\n', ' ')
         ax.text(info['t_end'] / 2.0, yb - 0.015, label_text,
-                ha='center', va='bottom', zorder=5)
+                ha='center', va='bottom', zorder=5,
+                fontsize=plt.rcParams['font.size'] - 0.5)
 
         # Draw phase segments
         is_expanding = (info['outcome'] == 'expanding')
@@ -941,12 +986,12 @@ def plot_phase_timeline(simulations: dict, output_dir: Path, fmt: str = 'pdf',
     ax.set_xlabel(r'$t$ [Myr]')
     ax.set_xlim(0, t_max_global * 1.05)
 
-    # Remove top/right/left spines for cleaner look
+    # Remove top/right spines for cleaner look; keep the left spine so the
+    # y-axis line is visible (previously hidden).
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
-    ax.spines['left'].set_visible(False)
 
-    # Legend at top
+    # Legend at top (2x2 block instead of a single long row)
     legend_handles = [
         Patch(facecolor='white', edgecolor='black', lw=0.5,
               label='Energy-driven'),
@@ -958,7 +1003,7 @@ def plot_phase_timeline(simulations: dict, output_dir: Path, fmt: str = 'pdf',
               label='Re-collapse'),
     ]
     ax.legend(handles=legend_handles, loc='lower center',
-              bbox_to_anchor=(0.5, 1.02), ncol=4,
+              bbox_to_anchor=(0.5, 1.02), ncol=2,
               frameon=False, columnspacing=1.0, handletextpad=0.4,
               handlelength=1.5)
 
@@ -1024,7 +1069,19 @@ def _get_profile_data_paths(sweep_dir: str) -> dict:
 
 def plot_escape_fraction(simulations: dict, output_dir: Path, fmt: str = 'pdf',
                          show: bool = False) -> None:
-    """Plot ionising photon escape fraction f_esc(t) for all profiles."""
+    """Plot ionising photon escape fraction f_esc(t) for all profiles.
+
+    Uses the same masking/visualisation treatment as ``paper_escapeFraction``:
+      - Suppress the seed-bubble transient before the shell first becomes
+        optically thick (f_esc first reaches zero), showing that stretch as a
+        faint dashed line at f_esc = 0.
+      - Smooth the post-transient curve with the same moving-average window.
+    """
+    from src._plots.paper_escapeFraction import (
+        load_escape_fraction, SMOOTH_WINDOW,
+    )
+    from src._plots.plot_base import smooth_1d
+
     logger.info("Figure 6: Escape Fraction")
 
     fig, ax = plt.subplots(figsize=(5, 4))
@@ -1035,16 +1092,38 @@ def plot_escape_fraction(simulations: dict, output_dir: Path, fmt: str = 'pdf',
         output = simulations[tag]
         s = get_style(tag)
 
-        t = output.get('t_now')
-        fAbs = safe_get(output, 'shell_fAbsorbedIon')
-        fesc = 1.0 - fAbs
-        fesc = np.clip(fesc, 0.0, 1.0)
+        data_path = getattr(output, 'filepath', None)
+        try:
+            if data_path is not None:
+                t, fesc, _isCollapse, t_transient = load_escape_fraction(data_path)
+            else:
+                raise AttributeError("no filepath on TrinityOutput")
+        except Exception:
+            # Fallback: compute f_esc inline with the same transient mask.
+            t_full = output.get('t_now')
+            fAbs = safe_get(output, 'shell_fAbsorbedIon')
+            fAbs = np.nan_to_num(fAbs, nan=0.0)
+            fesc_full = 1.0 - fAbs
+            t_transient = np.array([])
+            idx_zero = np.nonzero(fesc_full <= 0.0)[0]
+            if len(idx_zero) > 0:
+                i0 = idx_zero[0]
+                t_transient = t_full[:i0 + 1]
+                t, fesc = t_full[i0:], fesc_full[i0:]
+            else:
+                t, fesc = t_full, fesc_full
 
-        ax.plot(t, fesc, color=s['color'], ls=s['ls'], lw=1.5)
+        fesc_plot = smooth_1d(fesc, SMOOTH_WINDOW)
+        fesc_plot = np.clip(fesc_plot, 0.0, 1.0)
+
+        ax.plot(t, fesc_plot, color=s['color'], ls=s['ls'], lw=1.5)
+        if len(t_transient) > 0:
+            ax.plot(t_transient, np.zeros_like(t_transient),
+                    color=s['color'], ls='--', lw=1.0, alpha=0.5)
 
     ax.set_xlabel(r'$t$ [Myr]')
     ax.set_ylabel(r'$f_{\rm esc,\,ion}$')
-    ax.set_ylim(-0.05, 1.05)
+    ax.set_ylim(0, 1)
 
     add_legend(ax, [tag for tag in PROFILE_ORDER if tag in simulations], loc='best')
 
@@ -1310,9 +1389,15 @@ Examples:
         logger.error("No valid simulations found. Exiting.")
         return
 
+    # Figure 2 takes sweep_dir as well (for density-profile ingredients)
+    try:
+        plot_shell_evolution(simulations, output_dir, args.fmt, args.show,
+                             sweep_dir=args.folder)
+    except Exception as e:
+        logger.error(f"Figure 2 (Shell Evolution) failed: {e}")
+
     # Generate all simulation-based figures
     plot_functions = [
-        ("Figure 2: Shell Evolution",      plot_shell_evolution),
         ("Figure 3: Pressure Budget",       plot_pressure_budget),
         ("Figure 4: Force Budget",          plot_force_budget),
         ("Figure 5: Phase Timing",          plot_phase_timing),
