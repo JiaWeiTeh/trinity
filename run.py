@@ -228,8 +228,19 @@ def run_sweep(args):
         """
         Validate a single sweep combination's GMC parameters.
 
+        Sweep parameter values come directly from the .param file *without*
+        going through ``read_param``, so they are still in their input
+        units (nCore/nISM in cm⁻³, mu_convert in m_H, mCloud in Msun,
+        rCore in pc).  The GMC validator, however, expects values in
+        TRINITY's astronomy code units (pc⁻³, Msun, pc).  Apply the same
+        ``convert2au`` conversions that ``read_param`` applies on the
+        single-run path so the preflight check matches what the actual
+        simulation will see.
+
         Returns GMCValidationResult or None if validation cannot be performed.
         """
+        from src._functions.unit_conversions import convert2au
+
         dens_profile = params_dict.get('dens_profile')
         if dens_profile not in ('densPL', 'densBE'):
             return None
@@ -239,12 +250,23 @@ def run_sweep(args):
         if mCloud is None or nCore is None:
             return None
 
-        mu = float(params_dict.get('mu_convert', 1.4))
-        nISM = float(params_dict.get('nISM', 1.0))
+        # Unit conversions matching param/default.param unit annotations:
+        #   mCloud:       [Msun]      -> Msun           (factor 1)
+        #   nCore, nISM:  [cm**-3]    -> pc⁻³           (factor ~2.94e+55)
+        #   rCore:        [pc]        -> pc             (factor 1)
+        #   mu_convert:   [m_H]       -> Msun           (factor ~9.42e-58)
+        ndens_factor = convert2au('cm**-3')
+        mu_factor = convert2au('m_H')
+
+        mu = float(params_dict.get('mu_convert', 1.4)) * mu_factor
+        nISM = float(params_dict.get('nISM', 1.0)) * ndens_factor
 
         kwargs = dict(
-            mCloud=float(mCloud), nCore=float(nCore),
-            mu=mu, nISM=nISM, dens_profile=dens_profile,
+            mCloud=float(mCloud),
+            nCore=float(nCore) * ndens_factor,
+            mu=mu,
+            nISM=nISM,
+            dens_profile=dens_profile,
         )
 
         if dens_profile == 'densPL':
@@ -254,12 +276,12 @@ def run_sweep(args):
                 return None
             kwargs['alpha'] = float(alpha)
             if rCore is not None:
-                kwargs['rCore'] = float(rCore)
+                kwargs['rCore'] = float(rCore)  # already in pc
         elif dens_profile == 'densBE':
             Omega = params_dict.get('densBE_Omega')
             if Omega is None:
                 return None
-            kwargs['Omega'] = float(Omega)
+            kwargs['Omega'] = float(Omega)  # dimensionless ratio
             kwargs['gamma'] = float(params_dict.get('gamma_adia', 5.0 / 3.0))
 
         try:
