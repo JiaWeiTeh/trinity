@@ -572,8 +572,14 @@ def _draw_Rb_panel(ax, simulations: dict, tags_present: list) -> None:
     ax.set_ylabel(r'$R_{\rm b}$ [pc]')
 
 
-def _build_profile_figure_legend(fig, tags_present: list):
-    """Figure-level 2x2 legend of profile colours with a border."""
+def _build_profile_figure_legend(fig, tags_present: list,
+                                 legend_y: float = 1.0):
+    """Figure-level 2x2 legend of profile colours with a border.
+
+    ``legend_y`` is the figure-fraction *top* position for the legend box
+    (``loc='upper center'``). Callers should compute this via
+    :func:`_compute_legend_layout` from ``grid_template``.
+    """
     profile_handles = [
         Line2D([0], [0], color=get_style(tag)['color'], ls='-', lw=1.8,
                label=get_style(tag)['label'].replace('\n', ' '))
@@ -589,7 +595,7 @@ def _build_profile_figure_legend(fig, tags_present: list):
         handles=profile_handles + marker_handles,
         loc='upper center',
         ncol=2,
-        bbox_to_anchor=(0.5, 1.0),
+        bbox_to_anchor=(0.5, legend_y),
         frameon=True,
         facecolor='white',
         edgecolor='0.2',
@@ -608,6 +614,8 @@ def plot_shell_evolution(simulations: dict, output_dir: Path, fmt: str = 'pdf',
     Rows 1-3 share the same time x-axis and show shell radius, velocity, and
     mass respectively. Legend is at the top as a figure-level legend.
     """
+    from src._plots.grid_template import _compute_legend_layout
+
     logger.info("Figure 2: Shell Evolution (stacked)")
 
     tags_present = [tag for tag in PROFILE_ORDER if tag in simulations]
@@ -615,15 +623,28 @@ def plot_shell_evolution(simulations: dict, output_dir: Path, fmt: str = 'pdf',
     # Two independent gridspecs so that the top "ingredients" panel (with its
     # own r-axis) is clearly separated from the three time-evolution panels
     # that share a common t-axis.
-    fig = plt.figure(figsize=(6.5, 13))
+    fig_h = 13.0
+    fig = plt.figure(figsize=(6.5, fig_h))
+
+    layout = _compute_legend_layout(
+        fig_h, n_legend_items=len(tags_present), legend_ncol=2,
+    )
+
+    # The ingredient panel occupies the top strip; the three time-panels
+    # fill the rest below.  A gap separates them so the ingredient-panel
+    # xlabel is never overlapped by the R_b panel below.
+    top_of_top_panel = layout['top']
+    bot_of_top_panel = top_of_top_panel - 0.20
+    gap = 0.05
+    top_of_time_panels = bot_of_top_panel - gap
     gs_top = fig.add_gridspec(
         1, 1,
-        top=0.93, bottom=0.73,
+        top=top_of_top_panel, bottom=bot_of_top_panel,
         left=0.15, right=0.87,
     )
     gs_bot = fig.add_gridspec(
         3, 1,
-        top=0.68, bottom=0.05, hspace=0.08,
+        top=top_of_time_panels, bottom=0.05, hspace=0.08,
         left=0.15, right=0.87,
     )
 
@@ -683,7 +704,8 @@ def plot_shell_evolution(simulations: dict, output_dir: Path, fmt: str = 'pdf',
     plt.setp(ax_R.get_xticklabels(), visible=False)
     plt.setp(ax_v.get_xticklabels(), visible=False)
 
-    _build_profile_figure_legend(fig, tags_present)
+    _build_profile_figure_legend(fig, tags_present,
+                                 legend_y=layout['legend_y'])
 
     savefig(fig, 'densityProfile_evolution', output_dir, fmt)
     if show:
@@ -701,27 +723,37 @@ def plot_shell_evolution_paper(simulations: dict, output_dir: Path,
     """Paper-ready 2-panel version of :func:`plot_shell_evolution`.
 
     Shows only the top (density + M_enc ingredients) panel and the R_b(t)
-    panel below it, with the same styling as the full 4-panel figure.
+    panel below it. Legend-spacing follows the ``paper_feedback`` convention
+    via :func:`_compute_legend_layout` so the legend never overlaps the
+    top subplot; a generous ``hspace`` keeps the ingredient-panel xlabel
+    clear of the R_b panel below.
     """
+    from src._plots.grid_template import _compute_legend_layout
+
     logger.info("Figure 2p: Shell Evolution (paper, 2-panel)")
 
     tags_present = [tag for tag in PROFILE_ORDER if tag in simulations]
 
-    fig = plt.figure(figsize=(6.5, 8.5))
-    gs_top = fig.add_gridspec(
-        1, 1,
-        top=0.93, bottom=0.58,
-        left=0.15, right=0.87,
-    )
-    gs_bot = fig.add_gridspec(
-        1, 1,
-        top=0.52, bottom=0.08,
-        left=0.15, right=0.87,
+    fig_h = 7.0
+    fig = plt.figure(figsize=(7, fig_h))
+
+    # Compute legend + axes vertical layout so the legend doesn't clip
+    # the top panel.  Legend has 2 rows (4 handles, ncol=2).
+    layout = _compute_legend_layout(
+        fig_h, n_legend_items=len(tags_present), legend_ncol=2,
     )
 
-    ax_rho = fig.add_subplot(gs_top[0, 0])
+    # Two stacked panels with a wide hspace so the top panel's xlabel
+    # (r [pc]) stays clear of the R_b(t) panel below.
+    gs = fig.add_gridspec(
+        2, 1,
+        hspace=0.45,
+        left=0.14, right=0.86,
+        top=layout['top'], bottom=0.10,
+    )
+    ax_rho = fig.add_subplot(gs[0, 0])
     ax_M   = ax_rho.twinx()
-    ax_R   = fig.add_subplot(gs_bot[0, 0])
+    ax_R   = fig.add_subplot(gs[1, 0])
 
     sim_folders = _get_sim_folders(sweep_dir) if sweep_dir else {}
     _draw_ingredients_panel(ax_rho, ax_M, tags_present, sim_folders)
@@ -729,7 +761,8 @@ def plot_shell_evolution_paper(simulations: dict, output_dir: Path,
 
     ax_R.set_xlabel(r'$t$ [Myr]')
 
-    _build_profile_figure_legend(fig, tags_present)
+    _build_profile_figure_legend(fig, tags_present,
+                                 legend_y=layout['legend_y'])
 
     savefig(fig, 'densityProfile_paper', output_dir, fmt)
     if show:
