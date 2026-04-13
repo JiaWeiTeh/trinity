@@ -82,7 +82,7 @@ PROFILE_STYLES = {
     'PL0':  {'color': '#0072B2', 'ls': '-',  'label': r'$\rho \propto r^{0}$'},
     'PL-1': {'color': '#D55E00', 'ls': '-',  'label': r'$\rho \propto r^{-1}$'},
     'PL-2': {'color': '#009E73', 'ls': '-',  'label': r'$\rho \propto r^{-2}$'},
-    'BE14': {'color': '#CC79A7', 'ls': '-',  'label': 'Bonnor-Ebert\n(Critical)'},
+    'BE14': {'color': '#CC79A7', 'ls': '-',  'label': 'Bonnor-Ebert'},
 }
 
 # Ordered list for consistent iteration
@@ -472,30 +472,45 @@ def plot_shell_evolution(simulations: dict, output_dir: Path, fmt: str = 'pdf',
 
     tags_present = [tag for tag in PROFILE_ORDER if tag in simulations]
 
-    # Use gridspec so that the top (ingredients) panel has its own x-axis,
-    # while the three time-evolution panels share a common x-axis.
-    fig = plt.figure(figsize=(6.5, 12))
-    gs = fig.add_gridspec(
-        4, 1,
-        height_ratios=[1, 1, 1, 1],
-        hspace=0.08,
-        left=0.15, right=0.88, top=0.93, bottom=0.06,
+    # Two independent gridspecs so that the top "ingredients" panel (with its
+    # own r-axis) is clearly separated from the three time-evolution panels
+    # that share a common t-axis.
+    fig = plt.figure(figsize=(6.5, 13))
+    gs_top = fig.add_gridspec(
+        1, 1,
+        top=0.93, bottom=0.73,
+        left=0.15, right=0.87,
+    )
+    gs_bot = fig.add_gridspec(
+        3, 1,
+        top=0.68, bottom=0.05, hspace=0.08,
+        left=0.15, right=0.87,
     )
 
-    ax_rho = fig.add_subplot(gs[0, 0])
+    ax_rho = fig.add_subplot(gs_top[0, 0])
     ax_M   = ax_rho.twinx()                               # enclosed mass twiny
-    ax_R   = fig.add_subplot(gs[1, 0])
-    ax_v   = fig.add_subplot(gs[2, 0], sharex=ax_R)
-    ax_m   = fig.add_subplot(gs[3, 0], sharex=ax_R)
+    ax_R   = fig.add_subplot(gs_bot[0, 0])
+    ax_v   = fig.add_subplot(gs_bot[1, 0], sharex=ax_R)
+    ax_m   = fig.add_subplot(gs_bot[2, 0], sharex=ax_R)
 
-    # Apply mpl-style inner ticks (ticks on all four sides, pointing inward)
+    # Consistent mpl-style inner ticks on all panels (major + minor).
     for ax in (ax_rho, ax_R, ax_v, ax_m):
-        ax.tick_params(direction='in', which='both', top=True, right=True)
-    # Twiny axis: inward ticks on the right spine only (avoid double top ticks)
-    ax_M.tick_params(direction='in', which='both', top=False, right=True)
+        ax.tick_params(axis='both', which='both', direction='in',
+                       top=True, right=True)
+        ax.tick_params(which='major', length=5)
+        ax.tick_params(which='minor', length=3)
+    # Twiny: its own right-hand y-axis, inward ticks; left spine belongs to
+    # ax_rho so disable ticks there for ax_M to avoid doubling.
+    ax_M.tick_params(axis='y', which='both', direction='in',
+                     right=True, left=False)
+    ax_M.tick_params(axis='x', which='both', direction='in',
+                     top=True, bottom=False, labeltop=False, labelbottom=False)
+    ax_M.tick_params(which='major', length=5)
+    ax_M.tick_params(which='minor', length=3)
 
     # --- Row 0: density profile (solid) + enclosed mass (dashed, twiny) ---
     sim_folders = _get_sim_folders(sweep_dir) if sweep_dir else {}
+    M_ALPHA = 0.45  # dashed M_enc line is visually lighter
     for tag in tags_present:
         s = get_style(tag)
         try:
@@ -504,11 +519,22 @@ def plot_shell_evolution(simulations: dict, output_dir: Path, fmt: str = 'pdf',
             logger.warning(f"Could not compute profile ingredients for {tag}: {e}")
             continue
         ax_rho.loglog(r_arr, n_cgs, color=s['color'], ls='-', lw=1.5)
-        ax_M.loglog(r_arr, M_arr,   color=s['color'], ls='--', lw=1.2)
+        ax_M.loglog(r_arr, M_arr,   color=s['color'], ls='--', lw=1.2,
+                    alpha=M_ALPHA)
 
     ax_rho.set_xlabel(r'$r$ [pc]')
     ax_rho.set_ylabel(r'$n(r)$ [cm$^{-3}$]')
     ax_M.set_ylabel(r'$M_{\rm enc}(<r)$ [M$_\odot$]')
+
+    # In-panel legend: solid = density, dashed = enclosed mass.
+    style_handles = [
+        Line2D([0], [0], color='black', ls='-',  lw=1.5,
+               label=r'$n(r)$'),
+        Line2D([0], [0], color='black', ls='--', lw=1.2, alpha=M_ALPHA,
+               label=r'$M_{\rm enc}(<r)$'),
+    ]
+    ax_rho.legend(handles=style_handles, loc='lower left', frameon=False,
+                  handlelength=2.0, handletextpad=0.5)
 
     # --- Rows 1-3: time evolution, shared x-axis ---
     for tag in tags_present:
@@ -562,32 +588,26 @@ def plot_shell_evolution(simulations: dict, output_dir: Path, fmt: str = 'pdf',
     plt.setp(ax_R.get_xticklabels(), visible=False)
     plt.setp(ax_v.get_xticklabels(), visible=False)
 
-    # --- Top figure-level legend (profile colours + solid/dashed key) ---
+    # --- Top figure-level legend: profile colours only, 2x2 block ---
     profile_handles = [
         Line2D([0], [0], color=get_style(tag)['color'], ls='-', lw=1.8,
                label=get_style(tag)['label'].replace('\n', ' '))
         for tag in tags_present
     ]
-    style_handles = [
-        Line2D([0], [0], color='black', ls='-',  lw=1.5,
-               label=r'$n(r)$'),
-        Line2D([0], [0], color='black', ls='--', lw=1.2,
-               label=r'$M_{\rm enc}(<r)$'),
-    ]
-    marker_handles = get_marker_legend_handles(
+    marker_handles = list(get_marker_legend_handles(
         include_phase=False,
         include_rcloud=SHOW_RCLOUD,
         include_rcloud_horizontal=SHOW_RCLOUD_H,
         include_collapse=False,
-    )
-    handles = profile_handles + style_handles + list(marker_handles)
+    ))
+    handles = profile_handles + marker_handles
     fig.legend(
         handles=handles,
         loc='upper center',
-        ncol=min(len(handles), 4),
+        ncol=2,
         bbox_to_anchor=(0.5, 1.0),
         frameon=False,
-        columnspacing=1.2,
+        columnspacing=1.5,
         handletextpad=0.5,
     )
 
