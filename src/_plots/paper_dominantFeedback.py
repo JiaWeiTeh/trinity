@@ -84,11 +84,24 @@ DEFAULT_SMOOTH = 'interp'
 # Default directories
 
 
+def _range_token(prefix, values, key):
+    """Compact range token, e.g. 'M5e4' or 'M1e5-1e8'."""
+    if not values:
+        return None
+    vals = list(values)
+    if len(vals) == 1:
+        return f"{prefix}{vals[0]}"
+    vmin, vmax = min(vals, key=key), max(vals, key=key)
+    return f"{prefix}{vmin}-{vmax}"
+
+
 def build_filename(base_name, **kwargs):
     """Build output filename from base name and keyword arguments."""
     parts = [base_name]
 
     flag_order = [
+        ('mCloud', lambda v: _range_token("M", v, float)),
+        ('sfe', lambda v: _range_token("sfe", v, int)),
         ('nCore', lambda v: f"n{v}"),
         ('axis_mode', lambda v: v if v and v != 'discrete' else None),
         ('smooth', lambda v: v if v and v != 'none' else None),
@@ -820,6 +833,8 @@ def plot_grid(folder_path, target_times=None, output_dir=None, ndens_filter=None
 
         filename = build_filename(
             'dominantFeedback',
+            mCloud=mCloud_list,
+            sfe=sfe_list,
             nCore=ndens,
             axis_mode=axis_mode,
             smooth=smooth if axis_mode == 'continuous' else None

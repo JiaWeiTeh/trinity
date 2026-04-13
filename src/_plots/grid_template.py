@@ -148,6 +148,36 @@ def _sfe_title(sfe: str) -> str:
     return rf"$\epsilon={eps:.2f}$"
 
 
+def _range_tag(prefix: str, values, key=float) -> str:
+    """Return e.g. 'M1e5-1e8' or 'M5e4' (single value) or 'sfe001-080'."""
+    vals = list(values)
+    if not vals:
+        return ""
+    if len(vals) == 1:
+        return f"{prefix}{vals[0]}"
+    vmin, vmax = min(vals, key=key), max(vals, key=key)
+    return f"{prefix}{vmin}-{vmax}"
+
+
+def build_param_tag(mCloud_list, sfe_list, ndens) -> str:
+    """Build a descriptive filename tag from the parameters actually plotted.
+
+    Examples
+    --------
+    Single run:           ``"M5e4_sfe002_n1e2"``
+    Range of mCloud/sfe:  ``"M1e5-1e8_sfe001-080_n1e4"``
+    """
+    parts = []
+    m_tag = _range_tag("M", mCloud_list, key=float)
+    sfe_tag = _range_tag("sfe", sfe_list, key=int)
+    if m_tag:
+        parts.append(m_tag)
+    if sfe_tag:
+        parts.append(sfe_tag)
+    parts.append(f"n{ndens}")
+    return "_".join(parts)
+
+
 # ------------------------------------------------------------------
 # Single-simulation plot
 # ------------------------------------------------------------------
@@ -453,9 +483,9 @@ def plot_grid(
             leg.set_zorder(10)
 
         # Suptitle
-        ndens_tag = f"n{ndens}"
+        param_tag = build_param_tag(mCloud_list, sfe_list, ndens)
         if suptitle:
-            fig.suptitle(f"{folder_name} ({ndens_tag})",
+            fig.suptitle(f"{folder_name} ({param_tag})",
                          fontsize=14, y=_suptitle_y)
 
         # Save
@@ -463,7 +493,7 @@ def plot_grid(
         fig_dir.mkdir(parents=True, exist_ok=True)
 
         if save_pdf:
-            out_pdf = fig_dir / f"{file_prefix}_{ndens_tag}.pdf"
+            out_pdf = fig_dir / f"{file_prefix}_{param_tag}.pdf"
             fig.savefig(out_pdf, bbox_inches="tight")
             print(f"  Saved: {out_pdf}")
 

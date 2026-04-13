@@ -13,7 +13,7 @@ from src._plots.plot_base import FIG_DIR, smooth_1d
 # Add project root to path for imports
 from src._output.trinity_reader import load_output, find_data_file, resolve_data_input, info_simulations
 from src._plots.plot_markers import add_plot_markers, get_marker_legend_handles
-from src._plots.grid_template import _compute_legend_layout
+from src._plots.grid_template import _compute_legend_layout, build_param_tag
 
 print("...plotting radius evolution grid")
 
@@ -462,8 +462,8 @@ def plot_folder_grid(folder_path, output_dir=None, ndens_filter=None,
 
         _layout = _compute_legend_layout(2.6 * nrows, n_legend_items=len(handles), legend_ncol=3)
         fig.subplots_adjust(top=_layout['top'])
-        ndens_tag = f"n{ndens}"
-        fig.suptitle(f"{folder_name} ({ndens_tag})", fontsize=14, y=_layout['suptitle_y'])
+        param_tag = build_param_tag(mCloud_list_found, sfe_list_found, ndens)
+        fig.suptitle(f"{folder_name} ({param_tag})", fontsize=14, y=_layout['suptitle_y'])
 
         leg = fig.legend(
             handles=handles,
@@ -478,10 +478,10 @@ def plot_folder_grid(folder_path, output_dir=None, ndens_filter=None,
         )
         leg.set_zorder(10)
 
-        # Save figure to ./fig/{folder_name}/radiusEvolution_{ndens_tag}.pdf
+        # Save figure to ./fig/{folder_name}/radiusEvolution_{param_tag}.pdf
         fig_dir = Path(output_dir) if output_dir else FIG_DIR / folder_name
         fig_dir.mkdir(parents=True, exist_ok=True)
-        out_pdf = fig_dir / f"radiusEvolution_{ndens_tag}.pdf"
+        out_pdf = fig_dir / f"radiusEvolution_{param_tag}.pdf"
         fig.savefig(out_pdf, bbox_inches="tight")
         print(f"  Saved: {out_pdf}")
 

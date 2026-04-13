@@ -32,7 +32,7 @@ from src._output.trinity_reader import (
     parse_simulation_params,
 )
 from src._plots.plot_markers import add_plot_markers, get_marker_legend_handles
-from src._plots.grid_template import _mcloud_label, _compute_legend_layout
+from src._plots.grid_template import _mcloud_label, _compute_legend_layout, build_param_tag
 from src._functions.unit_conversions import CONV, INV_CONV, CGS
 
 print("...plotting radius comparison (TRINITY vs WARPFIELD vs Weaver)")
@@ -422,7 +422,7 @@ def plot_comparison_grid(
             combined = f"{folder_T.name}_{folder_W.name}"
             fig_dir = FIG_DIR / combined
         fig_dir.mkdir(parents=True, exist_ok=True)
-        out_pdf = fig_dir / f"radiusComparison_n{ndens}.pdf"
+        out_pdf = fig_dir / f"radiusComparison_{build_param_tag(mCloud_list, sfe_list, ndens)}.pdf"
         fig.savefig(out_pdf, bbox_inches="tight")
         print(f"  Saved: {out_pdf}")
 

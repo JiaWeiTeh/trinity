@@ -16,7 +16,7 @@ _sys.path.insert(0, str(_Path(__file__).parent.parent.parent))
 from src._plots.plot_base import FIG_DIR, smooth_1d
 from src._output.trinity_reader import load_output, resolve_data_input
 from src._plots.plot_markers import add_collapse_marker, get_marker_legend_handles
-from src._plots.grid_template import _compute_legend_layout
+from src._plots.grid_template import _compute_legend_layout, build_param_tag
 from src._plots.cli import marker_pre_dispatch
 
 print("...plotting escape fraction comparison")
@@ -252,7 +252,7 @@ def plot_grid(folder_path, output_dir=None, ndens_filter=None,
                 all_line_labels.append(h.get_label())
 
             _layout = _compute_legend_layout(2.6 * nrows, n_legend_items=len(all_line_handles), legend_ncol=len(all_line_handles))
-            fig.suptitle(f"{folder_name} (n{ndens})", fontsize=14, y=_layout['suptitle_y'])
+            fig.suptitle(f"{folder_name} ({build_param_tag(mCloud_list_found, sfe_list_found, ndens)})", fontsize=14, y=_layout['suptitle_y'])
 
             leg = fig.legend(
                 handles=all_line_handles,
@@ -268,13 +268,13 @@ def plot_grid(folder_path, output_dir=None, ndens_filter=None,
             leg.set_zorder(10)
         else:
             _layout = _compute_legend_layout(2.6 * nrows, n_legend_items=0, legend_ncol=1)
-            fig.suptitle(f"{folder_name} (n{ndens})", fontsize=14, y=_layout['suptitle_y'])
+            fig.suptitle(f"{folder_name} ({build_param_tag(mCloud_list_found, sfe_list_found, ndens)})", fontsize=14, y=_layout['suptitle_y'])
 
-        # Save figure to ./fig/{folder_name}/escapeFraction_{ndens_tag}.pdf
-        ndens_tag = f"n{ndens}"
+        # Save figure to ./fig/{folder_name}/escapeFraction_{param_tag}.pdf
+        param_tag = build_param_tag(mCloud_list_found, sfe_list_found, ndens)
         fig_dir = Path(output_dir) if output_dir else FIG_DIR / folder_name
         fig_dir.mkdir(parents=True, exist_ok=True)
-        out_pdf = fig_dir / f"escapeFraction_{ndens_tag}.pdf"
+        out_pdf = fig_dir / f"escapeFraction_{param_tag}.pdf"
         fig.savefig(out_pdf, bbox_inches="tight")
         print(f"  Saved: {out_pdf}")
 
