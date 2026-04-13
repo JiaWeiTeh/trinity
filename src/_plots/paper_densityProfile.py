@@ -521,6 +521,9 @@ def plot_shell_evolution(simulations: dict, output_dir: Path, fmt: str = 'pdf',
     ax_M.tick_params(which='minor', length=3)
 
     # --- Row 0: density profile (solid) + enclosed mass (dashed, twiny) ---
+    # y-axes are plotted as log10 values on a linear scale (rather than log
+    # scale) so that the enormous dynamic range does not suppress minor
+    # ticks; x stays on log scale for the radius axis.
     sim_folders = _get_sim_folders(sweep_dir) if sweep_dir else {}
     M_ALPHA = 0.45  # dashed M_enc line is visually lighter
     for tag in tags_present:
@@ -530,13 +533,19 @@ def plot_shell_evolution(simulations: dict, output_dir: Path, fmt: str = 'pdf',
         except Exception as e:
             logger.warning(f"Could not compute profile ingredients for {tag}: {e}")
             continue
-        ax_rho.loglog(r_arr, n_cgs, color=s['color'], ls='-', lw=1.5)
-        ax_M.loglog(r_arr, M_arr,   color=s['color'], ls='--', lw=1.2,
-                    alpha=M_ALPHA)
+        with np.errstate(divide='ignore', invalid='ignore'):
+            log_n = np.log10(n_cgs)
+            log_M = np.log10(M_arr)
+        ax_rho.plot(r_arr, log_n, color=s['color'], ls='-', lw=1.5)
+        ax_M.plot(r_arr, log_M, color=s['color'], ls='--', lw=1.2,
+                  alpha=M_ALPHA)
+
+    ax_rho.set_xscale('log')
+    ax_M.set_xscale('log')    # twinx shares the x with ax_rho anyway
 
     ax_rho.set_xlabel(r'$r$ [pc]')
-    ax_rho.set_ylabel(r'$n(r)$ [cm$^{-3}$]')
-    ax_M.set_ylabel(r'$M_{\rm enc}(<r)$ [M$_\odot$]')
+    ax_rho.set_ylabel(r'$\log_{10}\!\left(n(r) / {\rm cm}^{-3}\right)$')
+    ax_M.set_ylabel(r'$\log_{10}\!\left(M_{\rm enc}(<r) / {\rm M}_\odot\right)$')
 
     # In-panel legend: solid = density, dashed = enclosed mass.
     style_handles = [
@@ -545,7 +554,7 @@ def plot_shell_evolution(simulations: dict, output_dir: Path, fmt: str = 'pdf',
         Line2D([0], [0], color='black', ls='--', lw=1.2, alpha=M_ALPHA,
                label=r'$M_{\rm enc}(<r)$'),
     ]
-    ax_rho.legend(handles=style_handles, loc='lower left', frameon=False,
+    ax_rho.legend(handles=style_handles, loc='upper left', frameon=False,
                   handlelength=2.0, handletextpad=0.5)
 
     # --- Rows 1-3: time evolution, shared x-axis ---
@@ -618,7 +627,10 @@ def plot_shell_evolution(simulations: dict, output_dir: Path, fmt: str = 'pdf',
         loc='upper center',
         ncol=2,
         bbox_to_anchor=(0.5, 1.0),
-        frameon=False,
+        frameon=True,
+        facecolor='white',
+        edgecolor='0.2',
+        framealpha=0.95,
         columnspacing=1.5,
         handletextpad=0.5,
     )
