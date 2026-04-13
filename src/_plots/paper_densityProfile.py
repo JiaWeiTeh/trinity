@@ -459,6 +459,146 @@ def plot_enclosed_mass(sweep_dir: str, output_dir: Path, fmt: str = 'pdf',
 # Figure 2: Shell Evolution (3-panel)
 # =============================================================================
 
+# Alpha for the dashed M_enc line on the top panel (shared by evolution plots).
+_MENC_ALPHA = 0.45
+
+
+def _setup_time_panel_ticks(ax):
+    """Apply consistent inward major/minor ticks on all four sides."""
+    ax.minorticks_on()
+    ax.tick_params(axis='both', which='both', direction='in',
+                   top=True, right=True)
+    ax.tick_params(which='major', length=5)
+    ax.tick_params(which='minor', length=3)
+
+
+def _draw_ingredients_panel(ax_rho, ax_M, tags_present: list,
+                            sim_folders: dict) -> None:
+    """Draw the density profile (solid) + M_enc (dashed, twinx) top panel.
+
+    Configures ticks, scales, axis labels and the in-panel solid/dashed
+    legend. y-axes are plotted as log10 values on a linear scale so that
+    minor ticks are legible across many decades; x stays on a log scale.
+    """
+    # Ticks: ax_rho owns the left, ax_M owns the right
+    ax_rho.minorticks_on()
+    ax_rho.tick_params(axis='x', which='both', direction='in', top=True)
+    ax_rho.tick_params(axis='y', which='both', direction='in',
+                       left=True, right=False)
+    ax_rho.tick_params(which='major', length=5)
+    ax_rho.tick_params(which='minor', length=3)
+
+    ax_M.minorticks_on()
+    ax_M.tick_params(axis='x', which='both', top=False, bottom=False,
+                     labeltop=False, labelbottom=False)
+    ax_M.tick_params(axis='y', which='both', direction='in',
+                     right=True, left=False, labelleft=False)
+    ax_M.tick_params(which='major', length=5)
+    ax_M.tick_params(which='minor', length=3)
+
+    for tag in tags_present:
+        s = get_style(tag)
+        try:
+            r_arr, n_cgs, M_arr = _compute_rho_M_profile(tag, sim_folders)
+        except Exception as e:
+            logger.warning(f"Could not compute profile ingredients for {tag}: {e}")
+            continue
+        with np.errstate(divide='ignore', invalid='ignore'):
+            log_n = np.log10(n_cgs)
+            log_M = np.log10(M_arr)
+        ax_rho.plot(r_arr, log_n, color=s['color'], ls='-', lw=1.5)
+        ax_M.plot(r_arr, log_M, color=s['color'], ls='--', lw=1.2,
+                  alpha=_MENC_ALPHA)
+
+    ax_rho.set_xscale('log')
+    ax_M.set_xscale('log')
+
+    ax_rho.set_xlabel(r'$r$ [pc]')
+    ax_rho.set_ylabel(r'$\log_{10}\!\left(n_{\rm cloud}(r) / {\rm cm}^{-3}\right)$')
+    # Twiny label: rotated the other way (reading top-to-bottom) to match
+    # the right-hand side of the panel.
+    ax_M.set_ylabel(
+        r'$\log_{10}\!\left(M_{\rm enc}(<r) / {\rm M}_\odot\right)$',
+        rotation=270, labelpad=22, va='bottom',
+    )
+
+    style_handles = [
+        Line2D([0], [0], color='black', ls='-',  lw=1.5,
+               label=r'$n_{\rm cloud}(r)$'),
+        Line2D([0], [0], color='black', ls='--', lw=1.2, alpha=_MENC_ALPHA,
+               label=r'$M_{\rm enc}(<r)$'),
+    ]
+    ax_rho.legend(handles=style_handles, loc='upper left', frameon=False,
+                  handlelength=2.0, handletextpad=0.5)
+
+
+def _draw_Rb_panel(ax, simulations: dict, tags_present: list) -> None:
+    """Draw the R_b(t) panel (outer bubble radius) with phase markers."""
+    _setup_time_panel_ticks(ax)
+    for tag in tags_present:
+        output = simulations[tag]
+        s = get_style(tag)
+
+        t = output.get('t_now')
+        R2 = safe_get(output, 'R2')
+
+        phase_raw = output.get('current_phase', as_array=False)
+        phase = (np.asarray([str(p) for p in phase_raw])
+                 if phase_raw is not None else None)
+        isCollapse_raw = output.get('isCollapse', as_array=False)
+        isCollapse = (np.array([bool(c) for c in isCollapse_raw])
+                      if isCollapse_raw is not None else None)
+        rCloud = safe_get(output, 'rCloud')
+        rCloud_val = rCloud[-1] if rCloud.size > 0 and rCloud[-1] > 0 else None
+
+        add_plot_markers(
+            ax, t,
+            phase=phase,
+            R2=R2,
+            rcloud=rCloud_val,
+            isCollapse=isCollapse,
+            dataset_color=s['color'],
+            show_phase=SHOW_PHASE,
+            show_rcloud=SHOW_RCLOUD,
+            show_rcloud_horizontal=SHOW_RCLOUD_H,
+            show_collapse=SHOW_COLLAPSE,
+            show_labels=True,
+        )
+        ax.plot(t, R2, color=s['color'], ls=s['ls'], lw=1.5)
+        if rCloud_val is not None and SHOW_RCLOUD_H:
+            ax.axhline(rCloud_val, color=s['color'], ls='--',
+                       lw=0.8, alpha=0.5)
+
+    ax.set_ylabel(r'$R_{\rm b}$ [pc]')
+
+
+def _build_profile_figure_legend(fig, tags_present: list):
+    """Figure-level 2x2 legend of profile colours with a border."""
+    profile_handles = [
+        Line2D([0], [0], color=get_style(tag)['color'], ls='-', lw=1.8,
+               label=get_style(tag)['label'].replace('\n', ' '))
+        for tag in tags_present
+    ]
+    marker_handles = list(get_marker_legend_handles(
+        include_phase=False,
+        include_rcloud=SHOW_RCLOUD,
+        include_rcloud_horizontal=SHOW_RCLOUD_H,
+        include_collapse=False,
+    ))
+    fig.legend(
+        handles=profile_handles + marker_handles,
+        loc='upper center',
+        ncol=2,
+        bbox_to_anchor=(0.5, 1.0),
+        frameon=True,
+        facecolor='white',
+        edgecolor='0.2',
+        framealpha=0.95,
+        columnspacing=1.5,
+        handletextpad=0.5,
+    )
+
+
 def plot_shell_evolution(simulations: dict, output_dir: Path, fmt: str = 'pdf',
                          show: bool = False, sweep_dir: str = None) -> None:
     """Plot stacked density profile (+M_enc) and R(t), v(t), M_shell(t).
@@ -493,77 +633,23 @@ def plot_shell_evolution(simulations: dict, output_dir: Path, fmt: str = 'pdf',
     ax_v   = fig.add_subplot(gs_bot[1, 0], sharex=ax_R)
     ax_m   = fig.add_subplot(gs_bot[2, 0], sharex=ax_R)
 
-    # Consistent mpl-style inner ticks on all panels (major + minor).
-    # The three time-evolution panels get ticks on all four sides.
+    # Ticks for the three time-evolution panels
     for ax in (ax_R, ax_v, ax_m):
-        ax.minorticks_on()
-        ax.tick_params(axis='both', which='both', direction='in',
-                       top=True, right=True)
-        ax.tick_params(which='major', length=5)
-        ax.tick_params(which='minor', length=3)
+        _setup_time_panel_ticks(ax)
 
-    # Top panel has a twinx: the right-hand y-axis belongs to ax_M
-    # (enclosed mass), so ax_rho must NOT draw its own ticks on the right.
-    ax_rho.minorticks_on()
-    ax_rho.tick_params(axis='x', which='both', direction='in', top=True)
-    ax_rho.tick_params(axis='y', which='both', direction='in',
-                       left=True, right=False)
-    ax_rho.tick_params(which='major', length=5)
-    ax_rho.tick_params(which='minor', length=3)
-
-    ax_M.minorticks_on()
-    # ax_M shares the x-axis with ax_rho; do not draw x-ticks/labels here.
-    ax_M.tick_params(axis='x', which='both', top=False, bottom=False,
-                     labeltop=False, labelbottom=False)
-    ax_M.tick_params(axis='y', which='both', direction='in',
-                     right=True, left=False, labelleft=False)
-    ax_M.tick_params(which='major', length=5)
-    ax_M.tick_params(which='minor', length=3)
-
-    # --- Row 0: density profile (solid) + enclosed mass (dashed, twiny) ---
-    # y-axes are plotted as log10 values on a linear scale (rather than log
-    # scale) so that the enormous dynamic range does not suppress minor
-    # ticks; x stays on log scale for the radius axis.
+    # --- Row 0: density + M_enc (with ticks, labels, legend) ---
     sim_folders = _get_sim_folders(sweep_dir) if sweep_dir else {}
-    M_ALPHA = 0.45  # dashed M_enc line is visually lighter
-    for tag in tags_present:
-        s = get_style(tag)
-        try:
-            r_arr, n_cgs, M_arr = _compute_rho_M_profile(tag, sim_folders)
-        except Exception as e:
-            logger.warning(f"Could not compute profile ingredients for {tag}: {e}")
-            continue
-        with np.errstate(divide='ignore', invalid='ignore'):
-            log_n = np.log10(n_cgs)
-            log_M = np.log10(M_arr)
-        ax_rho.plot(r_arr, log_n, color=s['color'], ls='-', lw=1.5)
-        ax_M.plot(r_arr, log_M, color=s['color'], ls='--', lw=1.2,
-                  alpha=M_ALPHA)
-
-    ax_rho.set_xscale('log')
-    ax_M.set_xscale('log')    # twinx shares the x with ax_rho anyway
-
-    ax_rho.set_xlabel(r'$r$ [pc]')
-    ax_rho.set_ylabel(r'$\log_{10}\!\left(n(r) / {\rm cm}^{-3}\right)$')
-    ax_M.set_ylabel(r'$\log_{10}\!\left(M_{\rm enc}(<r) / {\rm M}_\odot\right)$')
-
-    # In-panel legend: solid = density, dashed = enclosed mass.
-    style_handles = [
-        Line2D([0], [0], color='black', ls='-',  lw=1.5,
-               label=r'$n(r)$'),
-        Line2D([0], [0], color='black', ls='--', lw=1.2, alpha=M_ALPHA,
-               label=r'$M_{\rm enc}(<r)$'),
-    ]
-    ax_rho.legend(handles=style_handles, loc='upper left', frameon=False,
-                  handlelength=2.0, handletextpad=0.5)
+    _draw_ingredients_panel(ax_rho, ax_M, tags_present, sim_folders)
 
     # --- Rows 1-3: time evolution, shared x-axis ---
+    # The R_b panel is drawn via the shared helper; v and M_shell inline.
+    _draw_Rb_panel(ax_R, simulations, tags_present)
+
     for tag in tags_present:
         output = simulations[tag]
         s = get_style(tag)
 
         t = output.get('t_now')
-        R2 = safe_get(output, 'R2')
         v2 = safe_get(output, 'v2') * V_AU2KMS  # pc/Myr -> km/s
         mshell = safe_get(output, 'shell_mass')
 
@@ -574,32 +660,20 @@ def plot_shell_evolution(simulations: dict, output_dir: Path, fmt: str = 'pdf',
         isCollapse = (np.array([bool(c) for c in isCollapse_raw])
                       if isCollapse_raw is not None else None)
 
-        rCloud = safe_get(output, 'rCloud')
-        rCloud_val = rCloud[-1] if rCloud.size > 0 and rCloud[-1] > 0 else None
-
-        for ax in (ax_R, ax_v, ax_m):
+        for ax in (ax_v, ax_m):
             add_plot_markers(
                 ax, t,
                 phase=phase,
-                R2=R2 if ax is ax_R else None,
-                rcloud=rCloud_val if ax is ax_R else None,
                 isCollapse=isCollapse,
                 dataset_color=s['color'],
                 show_phase=SHOW_PHASE,
-                show_rcloud=SHOW_RCLOUD and (ax is ax_R),
-                show_rcloud_horizontal=SHOW_RCLOUD_H and (ax is ax_R),
                 show_collapse=SHOW_COLLAPSE,
                 show_labels=True,
             )
 
-        ax_R.plot(t, R2,     color=s['color'], ls=s['ls'], lw=1.5)
-        if rCloud_val is not None and SHOW_RCLOUD_H:
-            ax_R.axhline(rCloud_val, color=s['color'], ls='--',
-                         lw=0.8, alpha=0.5)
         ax_v.plot(t, v2,     color=s['color'], ls=s['ls'], lw=1.5)
         ax_m.plot(t, mshell, color=s['color'], ls=s['ls'], lw=1.5)
 
-    ax_R.set_ylabel(r'$R$ [pc]')
     ax_v.set_ylabel(r'$v$ [km\,s$^{-1}$]')
     ax_v.set_yscale('log')
     ax_m.set_ylabel(r'$M_{\rm shell}$ [M$_\odot$]')
@@ -609,33 +683,55 @@ def plot_shell_evolution(simulations: dict, output_dir: Path, fmt: str = 'pdf',
     plt.setp(ax_R.get_xticklabels(), visible=False)
     plt.setp(ax_v.get_xticklabels(), visible=False)
 
-    # --- Top figure-level legend: profile colours only, 2x2 block ---
-    profile_handles = [
-        Line2D([0], [0], color=get_style(tag)['color'], ls='-', lw=1.8,
-               label=get_style(tag)['label'].replace('\n', ' '))
-        for tag in tags_present
-    ]
-    marker_handles = list(get_marker_legend_handles(
-        include_phase=False,
-        include_rcloud=SHOW_RCLOUD,
-        include_rcloud_horizontal=SHOW_RCLOUD_H,
-        include_collapse=False,
-    ))
-    handles = profile_handles + marker_handles
-    fig.legend(
-        handles=handles,
-        loc='upper center',
-        ncol=2,
-        bbox_to_anchor=(0.5, 1.0),
-        frameon=True,
-        facecolor='white',
-        edgecolor='0.2',
-        framealpha=0.95,
-        columnspacing=1.5,
-        handletextpad=0.5,
-    )
+    _build_profile_figure_legend(fig, tags_present)
 
     savefig(fig, 'densityProfile_evolution', output_dir, fmt)
+    if show:
+        plt.show()
+    plt.close(fig)
+
+
+# =============================================================================
+# Figure 2 (paper version): top ingredients panel + R_b(t) only
+# =============================================================================
+
+def plot_shell_evolution_paper(simulations: dict, output_dir: Path,
+                               fmt: str = 'pdf', show: bool = False,
+                               sweep_dir: str = None) -> None:
+    """Paper-ready 2-panel version of :func:`plot_shell_evolution`.
+
+    Shows only the top (density + M_enc ingredients) panel and the R_b(t)
+    panel below it, with the same styling as the full 4-panel figure.
+    """
+    logger.info("Figure 2p: Shell Evolution (paper, 2-panel)")
+
+    tags_present = [tag for tag in PROFILE_ORDER if tag in simulations]
+
+    fig = plt.figure(figsize=(6.5, 8.5))
+    gs_top = fig.add_gridspec(
+        1, 1,
+        top=0.93, bottom=0.58,
+        left=0.15, right=0.87,
+    )
+    gs_bot = fig.add_gridspec(
+        1, 1,
+        top=0.52, bottom=0.08,
+        left=0.15, right=0.87,
+    )
+
+    ax_rho = fig.add_subplot(gs_top[0, 0])
+    ax_M   = ax_rho.twinx()
+    ax_R   = fig.add_subplot(gs_bot[0, 0])
+
+    sim_folders = _get_sim_folders(sweep_dir) if sweep_dir else {}
+    _draw_ingredients_panel(ax_rho, ax_M, tags_present, sim_folders)
+    _draw_Rb_panel(ax_R, simulations, tags_present)
+
+    ax_R.set_xlabel(r'$t$ [Myr]')
+
+    _build_profile_figure_legend(fig, tags_present)
+
+    savefig(fig, 'densityProfile_paper', output_dir, fmt)
     if show:
         plt.show()
     plt.close(fig)
@@ -1442,6 +1538,13 @@ Examples:
                              sweep_dir=args.folder)
     except Exception as e:
         logger.error(f"Figure 2 (Shell Evolution) failed: {e}")
+
+    # Figure 2p: paper-ready 2-panel version (ingredients + R_b(t))
+    try:
+        plot_shell_evolution_paper(simulations, output_dir, args.fmt, args.show,
+                                   sweep_dir=args.folder)
+    except Exception as e:
+        logger.error(f"Figure 2p (Shell Evolution, paper) failed: {e}")
 
     # Generate all simulation-based figures
     plot_functions = [
