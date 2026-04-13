@@ -56,6 +56,10 @@ SHOW_RCLOUD   = False
 SHOW_RCLOUD_H = False
 SHOW_COLLAPSE = False
 
+# Smoothing default: off (matches paper_radiusEvolution behaviour). Enable via
+# CLI --smooth to apply the Savitzky-Golay filter from paper_ODIN.
+SMOOTH_TRAJECTORIES = False
+
 print("...creating Rosette trajectory evolution plots")
 
 
@@ -152,9 +156,14 @@ def plot_trajectory_evolution(results: List[SimulationResult],
         if r.t_full is None:
             continue
 
-        v_smooth = smooth_trajectory(r.t_full, r.v_full_kms)
-        R2_smooth = smooth_trajectory(r.t_full, r.R_full)
-        rS_smooth = smooth_trajectory(r.t_full, r.rShell_full)
+        if SMOOTH_TRAJECTORIES:
+            v_smooth = smooth_trajectory(r.t_full, r.v_full_kms)
+            R2_smooth = smooth_trajectory(r.t_full, r.R_full)
+            rS_smooth = smooth_trajectory(r.t_full, r.rShell_full)
+        else:
+            v_smooth = r.v_full_kms
+            R2_smooth = r.R_full
+            rS_smooth = r.rShell_full
 
         if config.show_all:
             color, alpha, lw, label = cmap(norm(r.chi2_total)), 0.7, 1.0, None
@@ -302,9 +311,14 @@ def plot_trajectory_evolution_combined(results: List[SimulationResult],
         for r in data_to_plot:
             if r.t_full is None or len(r.t_full) < 2:
                 continue
-            v_s = smooth_trajectory(r.t_full, r.v_full_kms)
-            R2_s = smooth_trajectory(r.t_full, r.R_full)
-            rS_s = smooth_trajectory(r.t_full, r.rShell_full)
+            if SMOOTH_TRAJECTORIES:
+                v_s = smooth_trajectory(r.t_full, r.v_full_kms)
+                R2_s = smooth_trajectory(r.t_full, r.R_full)
+                rS_s = smooth_trajectory(r.t_full, r.rShell_full)
+            else:
+                v_s = r.v_full_kms
+                R2_s = r.R_full
+                rS_s = r.rShell_full
             try:
                 if v_s is not None:
                     v_interp.append(interp1d(r.t_full, v_s, bounds_error=False,
@@ -580,6 +594,10 @@ Default Observational Constraints (Rosette Nebula):
     marker_grp.add_argument('--show-all-markers', action='store_true', default=False,
                             help='Enable all diagnostic markers at once')
 
+    parser.add_argument('--smooth', action='store_true', default=False,
+                        help='Apply Savitzky-Golay smoothing to trajectories '
+                             '(off by default; matches paper_radiusEvolution)')
+
     args = parser.parse_args()
 
     # --info mode
@@ -625,5 +643,8 @@ Default Observational Constraints (Rosette Nebula):
     SHOW_RCLOUD   = _all or args.show_rcloud
     SHOW_RCLOUD_H = _all or args.show_rcloud_horizontal
     SHOW_COLLAPSE = _all or args.show_collapse
+
+    # Apply smoothing flag
+    SMOOTH_TRAJECTORIES = args.smooth
 
     main(args.folder, args.output_dir, config)
