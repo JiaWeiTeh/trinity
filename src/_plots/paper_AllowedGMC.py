@@ -7,8 +7,8 @@ This script creates visualizations of valid parameter combinations for
 Giant Molecular Cloud (GMC) simulations in TRINITY.
 
 Produces two PDF files:
-1. paper_AllowedGMC_PowerLaw.pdf - Valid rCore for various power-law alpha values
-2. paper_AllowedGMC_BonnorEbert.pdf - Valid rCore for various dimensionless radii xi
+1. paper_AllowedGMC_PowerLaw.pdf - rCloud at fixed rCore for various power-law alpha values
+2. paper_AllowedGMC_BonnorEbert.pdf - rCloud for various dimensionless radii xi
 
 Constraints checked:
 1. rCloud <= 200 pc (typical GMC limit)
@@ -49,7 +49,15 @@ from src.cloud_properties.validate_gmc import check_gmc_constraints
 # Parameter ranges
 M_CLOUD_RANGE = np.logspace(4, 8, 50)  # 10^4 to 10^8 Msun
 N_CORE_RANGE = np.logspace(2, 6, 50)   # 10^2 to 10^6 cm^-3
-R_CORE_RANGE = np.linspace(0.01, 5.0, 100)  # 0.01 to 5 pc
+
+# Fixed core radius for power-law profiles.
+# The mass equation relates (M, n_core, rCore, rCloud); fixing rCore makes
+# rCloud a unique smooth function of (M, n_core) and avoids the staircase
+# artifact introduced by scanning rCore on a discrete grid.
+R_CORE_FIXED = 0.1  # pc
+
+# Bounds used to flag unphysical BE scale lengths a.
+A_MIN, A_MAX = 0.01, 5.0  # pc
 
 # Physical constraints
 R_CLOUD_MAX = 200.0  # pc - typical GMC limit
@@ -89,67 +97,52 @@ def compute_mass_powerlaw(rCloud, rCore, nCore, alpha, mu=MU):
         )
 
 
-def find_valid_rCore_powerlaw(mCloud, nCore, alpha, nISM=N_ISM,
-                               rCloud_max=R_CLOUD_MAX, mu=MU,
-                               rCore_range=R_CORE_RANGE):
+def compute_rCloud_powerlaw_fixed(mCloud, nCore, alpha, rCore=R_CORE_FIXED,
+                                   nISM=N_ISM, rCloud_max=R_CLOUD_MAX, mu=MU):
     """
-    Find valid rCore values for given (mCloud, nCore, alpha).
+    Compute rCloud for given (mCloud, nCore, alpha) at a fixed rCore.
 
-    Returns (min_rCore, rCloud_at_min_rCore), or (NaN, NaN) if none exist.
+    Returns rCloud [pc] if all constraints pass, else NaN.
     """
-    valid_pairs = []
+    try:
+        if alpha == 0:
+            rCloud = compute_rCloud_homogeneous(mCloud, nCore, mu)
+        else:
+            rCloud, _ = compute_rCloud_powerlaw(mCloud, nCore, alpha,
+                                                 rCore=rCore, mu=mu)
 
-    for rCore in rCore_range:
-        try:
-            # Compute rCloud for this rCore
-            if alpha == 0:
-                rCloud = compute_rCloud_homogeneous(mCloud, nCore, mu)
-            else:
-                rCloud, _ = compute_rCloud_powerlaw(mCloud, nCore, alpha,
-                                                     rCore=rCore, mu=mu)
+        # Derived quantities
+        nEdge = nCore if alpha == 0 else nCore * (rCloud / rCore) ** alpha
+        M_computed = compute_mass_powerlaw(rCloud, rCore, nCore, alpha, mu)
 
-            # Compute derived quantities
-            nEdge = nCore if alpha == 0 else nCore * (rCloud / rCore) ** alpha
-            M_computed = compute_mass_powerlaw(rCloud, rCore, nCore, alpha, mu)
+        issues = check_gmc_constraints(
+            rCloud, nEdge, mCloud, M_computed,
+            nISM=nISM, r_max=rCloud_max,
+            mass_tolerance=MASS_TOLERANCE,
+        )
+        if issues["errors"]:
+            return np.nan
 
-            # Check all constraints via shared validator
-            issues = check_gmc_constraints(
-                rCloud, nEdge, mCloud, M_computed,
-                nISM=nISM, r_max=rCloud_max,
-                mass_tolerance=MASS_TOLERANCE,
-            )
-            if issues["errors"]:
-                continue
+        return rCloud
 
-            # All constraints passed
-            valid_pairs.append((rCore, rCloud))
-
-        except (ValueError, ZeroDivisionError, RuntimeError):
-            continue
-
-    if valid_pairs:
-        min_pair = min(valid_pairs, key=lambda x: x[0])
-        return min_pair  # (min_rCore, rCloud)
-    else:
-        return (np.nan, np.nan)
+    except (ValueError, ZeroDivisionError, RuntimeError):
+        return np.nan
 
 
-def compute_valid_rCore_grid_powerlaw(alpha):
+def compute_rCloud_grid_powerlaw(alpha, rCore=R_CORE_FIXED):
     """
-    Compute 2D grids of valid rCore and rCloud values for power-law profile.
-
-    Returns (grid_rCore, grid_rCloud).
+    Compute 2D grid of rCloud values for power-law profile at fixed rCore.
+    Invalid (M, n_core) cells are NaN.
     """
-    grid_rCore = np.full((len(N_CORE_RANGE), len(M_CLOUD_RANGE)), np.nan)
     grid_rCloud = np.full((len(N_CORE_RANGE), len(M_CLOUD_RANGE)), np.nan)
 
     for i, nCore in enumerate(N_CORE_RANGE):
         for j, mCloud in enumerate(M_CLOUD_RANGE):
-            rc, rcl = find_valid_rCore_powerlaw(mCloud, nCore, alpha)
-            grid_rCore[i, j] = rc
-            grid_rCloud[i, j] = rcl
+            grid_rCloud[i, j] = compute_rCloud_powerlaw_fixed(
+                mCloud, nCore, alpha, rCore=rCore
+            )
 
-    return grid_rCore, grid_rCloud
+    return grid_rCloud
 
 
 # =============================================================================
@@ -229,8 +222,8 @@ def find_valid_rCore_BE(mCloud, nCore, xi_out, nISM=N_ISM,
         if issues["errors"]:
             return (np.nan, np.nan)
 
-        # Scale length a — clamp to valid range
-        if a_pc < R_CORE_RANGE[0] or a_pc > R_CORE_RANGE[-1]:
+        # Scale length a — clamp to a physically sensible range
+        if a_pc < A_MIN or a_pc > A_MAX:
             return (np.nan, np.nan)
 
         return (a_pc, rCloud)
@@ -271,7 +264,8 @@ def plot_powerlaw_grids():
     fig, axes = plt.subplots(2, 2, figsize=(12, 10))
 
     fig.suptitle('Valid Parameter Space for Power-Law Density Profiles\n'
-                 r'Fill: $r_\mathrm{cloud}$ [pc]',
+                 rf'Fill: $r_\mathrm{{cloud}}$ [pc]  '
+                 rf'($r_\mathrm{{core}} = {R_CORE_FIXED}$ pc)',
                  fontsize=12, fontweight='bold')
 
     # Colourmap for rCloud fill
@@ -285,7 +279,7 @@ def plot_powerlaw_grids():
         row, col = divmod(idx, 2)
 
         print(f"Computing grid for \u03b1 = {alpha}...")
-        _, grid_rCloud = compute_valid_rCore_grid_powerlaw(alpha)
+        grid_rCloud = compute_rCloud_grid_powerlaw(alpha)
 
         # Count valid cells
         n_valid = np.sum(~np.isnan(grid_rCloud))
