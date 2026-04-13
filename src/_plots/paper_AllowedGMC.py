@@ -74,10 +74,10 @@ XI_VALUES = [3.0, 4.0, XI_CRITICAL, 10]
 SAVE_PDF = True
 
 # Font sizes
-TICK_FONT = 14
-LABEL_FONT = 18
-PANEL_FONT = 16
-CBAR_LABEL_FONT = 18
+TICK_FONT = 30
+LABEL_FONT = 32
+PANEL_FONT = 24
+CBAR_LABEL_FONT = 34
 
 # Layout (fractions of figure): tight subplot grid with colourbar to the right
 SUBPLOT_LEFT = 0.10
