@@ -22,9 +22,7 @@ import numpy as np
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-from matplotlib.colors import LogNorm, Normalize
-from matplotlib.patches import Patch
-from matplotlib import patheffects
+from matplotlib.colors import LogNorm
 from pathlib import Path
 import cmasher as cmr
 
@@ -66,11 +64,6 @@ ALPHA_VALUES = [-0.5, -1, -1.5, -2]
 XI_VALUES = [3.0, 4.0, XI_CRITICAL, 10]
 
 SAVE_PDF = True
-
-# Contours
-CONTOUR_FONT = 17
-CONTOUR_N = 5
-COLOUR_MAP = cmr.lavender.copy()
 
 
 # =============================================================================
@@ -272,14 +265,13 @@ def plot_powerlaw_grids():
     """
     Create figure showing valid parameter space for power-law alpha values.
 
-    Fill colour = rCloud [pc],  contour lines = rCore [pc].
-    One shared colourbar on the right; shared x/y axis labels.
+    Fill colour = rCloud [pc]. One shared colourbar on the right; shared x/y
+    axis labels.
     """
     fig, axes = plt.subplots(2, 2, figsize=(12, 10))
 
     fig.suptitle('Valid Parameter Space for Power-Law Density Profiles\n'
-                 r'Fill: $r_\mathrm{cloud}$ [pc] \quad '
-                 r'Contours: $r_\mathrm{core}$ [pc]',
+                 r'Fill: $r_\mathrm{cloud}$ [pc]',
                  fontsize=12, fontweight='bold')
 
     # Colourmap for rCloud fill
@@ -287,18 +279,15 @@ def plot_powerlaw_grids():
     cmap = cmr.rainforest.copy()
     cmap.set_bad('white', 1.0)
 
-    # Contour levels for rCore lines
-    contour_levels_rCore = np.logspace(np.log10(0.01), np.log10(5.0), CONTOUR_N)
-
     im = None  # will hold the last pcolormesh for shared colourbar
     for idx, alpha in enumerate(ALPHA_VALUES):
         ax = axes.flat[idx]
         row, col = divmod(idx, 2)
 
         print(f"Computing grid for \u03b1 = {alpha}...")
-        grid_rCore, grid_rCloud = compute_valid_rCore_grid_powerlaw(alpha)
+        _, grid_rCloud = compute_valid_rCore_grid_powerlaw(alpha)
 
-        # Count valid cells (either grid; both are NaN at the same places)
+        # Count valid cells
         n_valid = np.sum(~np.isnan(grid_rCloud))
         n_total = grid_rCloud.size
 
@@ -308,35 +297,6 @@ def plot_powerlaw_grids():
             cmap=cmap, norm=LogNorm(vmin=vmin_rCloud, vmax=vmax_rCloud),
             shading='auto'
         )
-
-        # Boundary contour (valid / invalid)
-        boundary_mask = np.isnan(grid_rCloud).astype(float)
-        ax.contour(
-            M_CLOUD_RANGE, N_CORE_RANGE, boundary_mask,
-            levels=[0.5], colors=['k'], linewidths=1.5, linestyles='-'
-        )
-
-        # White contour lines: rCore
-        grid_rCore_masked = np.ma.masked_invalid(grid_rCore)
-        if n_valid > 0:
-            try:
-                cs = ax.contour(
-                    M_CLOUD_RANGE, N_CORE_RANGE, grid_rCore_masked,
-                    levels=contour_levels_rCore,
-                    colors='white', linewidths=0.8, alpha=0.8
-                )
-                texts = ax.clabel(
-                    cs, inline=True, fontsize=CONTOUR_FONT, fmt='%.2f',
-                    inline_spacing=3, rightside_up=True, use_clabeltext=True
-                )
-                for t in texts:
-                    t.set_rotation_mode("anchor")
-                    t.set_path_effects([
-                        patheffects.Stroke(linewidth=2, foreground='black'),
-                        patheffects.Normal()
-                    ])
-            except ValueError:
-                pass
 
         ax.set_xscale('log')
         ax.set_yscale('log')
@@ -374,14 +334,13 @@ def plot_BE_grids():
     """
     Create figure showing valid parameter space for Bonnor-Ebert xi values.
 
-    Fill colour = rCloud [pc],  contour lines = scale length *a* [pc].
-    One shared colourbar on the right; shared x/y axis labels.
+    Fill colour = rCloud [pc]. One shared colourbar on the right; shared x/y
+    axis labels.
     """
     fig, axes = plt.subplots(2, 2, figsize=(12, 10))
 
     fig.suptitle('Valid Parameter Space for Bonnor-Ebert Density Profiles\n'
-                 r'Fill: $r_\mathrm{cloud}$ [pc] \quad '
-                 r'Contours: scale length $a$ [pc]',
+                 r'Fill: $r_\mathrm{cloud}$ [pc]',
                  fontsize=12, fontweight='bold')
 
     # Colourmap for rCloud fill
@@ -389,16 +348,13 @@ def plot_BE_grids():
     cmap = cmr.rainforest.copy()
     cmap.set_bad('white', 1.0)
 
-    # Contour levels for scale-length a
-    contour_levels_a = np.logspace(np.log10(0.01), np.log10(5.0), CONTOUR_N)
-
     im = None  # will hold the last pcolormesh for shared colourbar
     for idx, xi in enumerate(XI_VALUES):
         ax = axes.flat[idx]
         row, col = divmod(idx, 2)
 
         print(f"Computing grid for \u03be = {xi:.2f}...")
-        grid_a, grid_rCloud = compute_valid_rCore_grid_BE(xi)
+        _, grid_rCloud = compute_valid_rCore_grid_BE(xi)
 
         # Count valid cells
         n_valid = np.sum(~np.isnan(grid_rCloud))
@@ -410,35 +366,6 @@ def plot_BE_grids():
             cmap=cmap, norm=LogNorm(vmin=vmin_rCloud, vmax=vmax_rCloud),
             shading='auto'
         )
-
-        # Boundary contour (valid / invalid)
-        boundary_mask = np.isnan(grid_rCloud).astype(float)
-        ax.contour(
-            M_CLOUD_RANGE, N_CORE_RANGE, boundary_mask,
-            levels=[0.5], colors=['k'], linewidths=1.5, linestyles='-'
-        )
-
-        # White contour lines: scale length a
-        grid_a_masked = np.ma.masked_invalid(grid_a)
-        if n_valid > 0:
-            try:
-                cs = ax.contour(
-                    M_CLOUD_RANGE, N_CORE_RANGE, grid_a_masked,
-                    levels=contour_levels_a,
-                    colors='white', linewidths=0.8, alpha=0.8
-                )
-                texts = ax.clabel(
-                    cs, inline=True, fontsize=CONTOUR_FONT, fmt='%.2f',
-                    inline_spacing=3, rightside_up=True, use_clabeltext=True
-                )
-                for t in texts:
-                    t.set_rotation_mode("anchor")
-                    t.set_path_effects([
-                        patheffects.Stroke(linewidth=2, foreground='black'),
-                        patheffects.Normal()
-                    ])
-            except ValueError:
-                pass
 
         ax.set_xscale('log')
         ax.set_yscale('log')
