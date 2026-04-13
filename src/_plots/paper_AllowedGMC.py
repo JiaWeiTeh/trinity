@@ -73,6 +73,22 @@ XI_VALUES = [3.0, 4.0, XI_CRITICAL, 10]
 
 SAVE_PDF = True
 
+# Font sizes
+TICK_FONT = 14
+LABEL_FONT = 18
+PANEL_FONT = 16
+CBAR_LABEL_FONT = 18
+
+# Layout (fractions of figure): tight subplot grid with colourbar to the right
+SUBPLOT_LEFT = 0.10
+SUBPLOT_RIGHT = 0.87
+SUBPLOT_BOTTOM = 0.09
+SUBPLOT_TOP = 0.98
+SUBPLOT_WSPACE = 0.04
+SUBPLOT_HSPACE = 0.04
+CBAR_LEFT = 0.89
+CBAR_WIDTH = 0.035
+
 
 # =============================================================================
 # Power-Law Cloud Functions
@@ -256,17 +272,17 @@ def compute_valid_rCore_grid_BE(xi_out):
 
 def plot_powerlaw_grids():
     """
-    Create figure showing valid parameter space for power-law alpha values.
-
-    Fill colour = rCloud [pc]. One shared colourbar on the right; shared x/y
-    axis labels.
+    Figure showing rCloud (colour fill) across (M_cloud, n_core) for each
+    power-law alpha, at fixed rCore. Shared colourbar on the right.
     """
     fig, axes = plt.subplots(2, 2, figsize=(12, 10))
 
-    fig.suptitle('Valid Parameter Space for Power-Law Density Profiles\n'
-                 rf'Fill: $r_\mathrm{{cloud}}$ [pc]  '
-                 rf'($r_\mathrm{{core}} = {R_CORE_FIXED}$ pc)',
-                 fontsize=12, fontweight='bold')
+    # Tight subplot grid; leave room on the right for the colourbar
+    fig.subplots_adjust(
+        left=SUBPLOT_LEFT, right=SUBPLOT_RIGHT,
+        bottom=SUBPLOT_BOTTOM, top=SUBPLOT_TOP,
+        wspace=SUBPLOT_WSPACE, hspace=SUBPLOT_HSPACE,
+    )
 
     # Colourmap for rCloud fill
     vmin_rCloud, vmax_rCloud = 0.1, 200.0
@@ -281,19 +297,18 @@ def plot_powerlaw_grids():
         print(f"Computing grid for \u03b1 = {alpha}...")
         grid_rCloud = compute_rCloud_grid_powerlaw(alpha)
 
-        # Count valid cells
         n_valid = np.sum(~np.isnan(grid_rCloud))
         n_total = grid_rCloud.size
 
-        # Fill colour: rCloud
         im = ax.pcolormesh(
             M_CLOUD_RANGE, N_CORE_RANGE, grid_rCloud,
             cmap=cmap, norm=LogNorm(vmin=vmin_rCloud, vmax=vmax_rCloud),
-            shading='auto'
+            shading='auto',
         )
 
         ax.set_xscale('log')
         ax.set_yscale('log')
+        ax.tick_params(labelsize=TICK_FONT)
 
         # Only show tick labels on outer edges
         if row == 0:
@@ -305,20 +320,30 @@ def plot_powerlaw_grids():
             title = r'$\alpha = 0$ (homogeneous)'
         else:
             title = rf'$\alpha = {alpha}$'
-        ax.set_title(f'{title}\n({n_valid}/{n_total} valid cells)', fontsize=10)
+        panel_label = f'{title}\n({n_valid}/{n_total} valid)'
+        ax.text(
+            0.04, 0.04, panel_label,
+            transform=ax.transAxes,
+            ha='left', va='bottom',
+            fontsize=PANEL_FONT,
+            bbox=dict(boxstyle='round,pad=0.4',
+                      facecolor='white', edgecolor='black', alpha=0.9),
+        )
 
     # Shared axis labels
-    fig.supxlabel(r'$M_\mathrm{cloud}$ [M$_\odot$]', fontsize=12)
-    fig.supylabel(r'$n_\mathrm{core}$ [cm$^{-3}$]', fontsize=12)
+    fig.supxlabel(r'$M_\mathrm{cloud}$ [M$_\odot$]', fontsize=LABEL_FONT)
+    fig.supylabel(r'$n_\mathrm{core}$ [cm$^{-3}$]', fontsize=LABEL_FONT)
 
-    # Shared colourbar on the right
-    fig.subplots_adjust(right=0.88)
-    cbar_ax = fig.add_axes([0.90, 0.08, 0.02, 0.84])
-    fig.colorbar(im, cax=cbar_ax, label=r'$r_\mathrm{cloud}$ [pc]')
+    # Shared colourbar — height matches the subplot grid
+    cbar_height = SUBPLOT_TOP - SUBPLOT_BOTTOM
+    cbar_ax = fig.add_axes([CBAR_LEFT, SUBPLOT_BOTTOM, CBAR_WIDTH, cbar_height])
+    cbar = fig.colorbar(im, cax=cbar_ax)
+    cbar.set_label(r'$r_\mathrm{cloud}$ [pc]', fontsize=CBAR_LABEL_FONT)
+    cbar.ax.tick_params(labelsize=TICK_FONT)
 
     if SAVE_PDF:
         out_pdf = FIG_DIR / "paper_AllowedGMC_PowerLaw.pdf"
-        fig.savefig(out_pdf, bbox_inches='tight')
+        fig.savefig(out_pdf)
         print(f"Saved: {out_pdf}")
 
     plt.close(fig)
@@ -326,16 +351,17 @@ def plot_powerlaw_grids():
 
 def plot_BE_grids():
     """
-    Create figure showing valid parameter space for Bonnor-Ebert xi values.
-
-    Fill colour = rCloud [pc]. One shared colourbar on the right; shared x/y
-    axis labels.
+    Figure showing rCloud (colour fill) across (M_cloud, n_core) for each
+    Bonnor-Ebert xi_out value. Shared colourbar on the right.
     """
     fig, axes = plt.subplots(2, 2, figsize=(12, 10))
 
-    fig.suptitle('Valid Parameter Space for Bonnor-Ebert Density Profiles\n'
-                 r'Fill: $r_\mathrm{cloud}$ [pc]',
-                 fontsize=12, fontweight='bold')
+    # Tight subplot grid; leave room on the right for the colourbar
+    fig.subplots_adjust(
+        left=SUBPLOT_LEFT, right=SUBPLOT_RIGHT,
+        bottom=SUBPLOT_BOTTOM, top=SUBPLOT_TOP,
+        wspace=SUBPLOT_WSPACE, hspace=SUBPLOT_HSPACE,
+    )
 
     # Colourmap for rCloud fill
     vmin_rCloud, vmax_rCloud = 0.1, 200.0
@@ -350,19 +376,18 @@ def plot_BE_grids():
         print(f"Computing grid for \u03be = {xi:.2f}...")
         _, grid_rCloud = compute_valid_rCore_grid_BE(xi)
 
-        # Count valid cells
         n_valid = np.sum(~np.isnan(grid_rCloud))
         n_total = grid_rCloud.size
 
-        # Fill colour: rCloud
         im = ax.pcolormesh(
             M_CLOUD_RANGE, N_CORE_RANGE, grid_rCloud,
             cmap=cmap, norm=LogNorm(vmin=vmin_rCloud, vmax=vmax_rCloud),
-            shading='auto'
+            shading='auto',
         )
 
         ax.set_xscale('log')
         ax.set_yscale('log')
+        ax.tick_params(labelsize=TICK_FONT)
 
         # Only show tick labels on outer edges
         if row == 0:
@@ -374,20 +399,30 @@ def plot_BE_grids():
             title = rf'$\xi = {xi:.2f}$ (critical)'
         else:
             title = rf'$\xi = {xi:.1f}$'
-        ax.set_title(f'{title}\n({n_valid}/{n_total} valid cells)', fontsize=10)
+        panel_label = f'{title}\n({n_valid}/{n_total} valid)'
+        ax.text(
+            0.04, 0.04, panel_label,
+            transform=ax.transAxes,
+            ha='left', va='bottom',
+            fontsize=PANEL_FONT,
+            bbox=dict(boxstyle='round,pad=0.4',
+                      facecolor='white', edgecolor='black', alpha=0.9),
+        )
 
     # Shared axis labels
-    fig.supxlabel(r'$M_\mathrm{cloud}$ [M$_\odot$]', fontsize=12)
-    fig.supylabel(r'$n_\mathrm{core}$ [cm$^{-3}$]', fontsize=12)
+    fig.supxlabel(r'$M_\mathrm{cloud}$ [M$_\odot$]', fontsize=LABEL_FONT)
+    fig.supylabel(r'$n_\mathrm{core}$ [cm$^{-3}$]', fontsize=LABEL_FONT)
 
-    # Shared colourbar on the right
-    fig.subplots_adjust(right=0.88)
-    cbar_ax = fig.add_axes([0.90, 0.08, 0.02, 0.84])
-    fig.colorbar(im, cax=cbar_ax, label=r'$r_\mathrm{cloud}$ [pc]')
+    # Shared colourbar — height matches the subplot grid
+    cbar_height = SUBPLOT_TOP - SUBPLOT_BOTTOM
+    cbar_ax = fig.add_axes([CBAR_LEFT, SUBPLOT_BOTTOM, CBAR_WIDTH, cbar_height])
+    cbar = fig.colorbar(im, cax=cbar_ax)
+    cbar.set_label(r'$r_\mathrm{cloud}$ [pc]', fontsize=CBAR_LABEL_FONT)
+    cbar.ax.tick_params(labelsize=TICK_FONT)
 
     if SAVE_PDF:
         out_pdf = FIG_DIR / "paper_AllowedGMC_BonnorEbert.pdf"
-        fig.savefig(out_pdf, bbox_inches='tight')
+        fig.savefig(out_pdf)
         print(f"Saved: {out_pdf}")
 
     plt.close(fig)
