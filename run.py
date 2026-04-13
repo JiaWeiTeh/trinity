@@ -192,6 +192,7 @@ def run_sweep(args):
         SimulationResult,
     )
     from src.cloud_properties.validate_gmc import validate_gmc_params
+    from src._functions.unit_conversions import CONV, CGS
 
     # Module-level shutdown flag for signal handler access
     global _shutdown_requested
@@ -246,8 +247,8 @@ def run_sweep(args):
             return None
 
         mCloud = params_dict.get('mCloud')
-        nCore = params_dict.get('nCore')
-        if mCloud is None or nCore is None:
+        nCore_cgs = params_dict.get('nCore')
+        if mCloud is None or nCore_cgs is None:
             return None
 
         # Unit conversions matching param/default.param unit annotations:

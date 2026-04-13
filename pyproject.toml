@@ -109,7 +109,6 @@ warn_unused_configs = true
 ignore_missing_imports = true
 exclude = [
     "old_doNotRead/",
-    "analysis/",
 ]
 
 [tool.pytest.ini_options]
