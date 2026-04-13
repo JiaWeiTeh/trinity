@@ -972,10 +972,12 @@ def plot_phase_timeline(simulations: dict, output_dir: Path, fmt: str = 'pdf',
         yb = y_positions[idx]   # bar bottom
         yc = y_centres[idx]     # bar centre
 
-        # Profile label left-aligned above the bar, at the bar's left edge
+        # Profile label left-aligned above the bar, with a small padding so
+        # it doesn't sit flush against the y-axis spine.
         label_text = get_style(tag)['label'].replace('\n', ' ')
         t_left = info['intervals'][0][1] if info['intervals'] else 0.0
-        ax.text(t_left, yb - 0.015, label_text,
+        t_pad = 0.01 * t_max_global
+        ax.text(t_left + t_pad, yb - 0.015, label_text,
                 ha='left', va='bottom', zorder=5,
                 fontsize=plt.rcParams['font.size'] - 0.5)
 
