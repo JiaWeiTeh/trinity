@@ -203,7 +203,6 @@ PARAM_DOCS = {
     'shell_fAbsorbedNeu': 'Fraction of non-ionizing radiation absorbed',
     'shell_fAbsorbedWeightedTotal': 'Weighted total absorbed fraction',
     'shell_fIonisedDust': 'Ionized dust fraction',
-    'shell_F_rad': 'Shell radiative force',
 
     # Bubble luminosities
     'bubble_LTotal': 'Total bubble cooling luminosity [erg/Myr]',

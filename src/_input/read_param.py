@@ -455,7 +455,6 @@ def read_param(path2file, write_summary=True):
     params['shell_fAbsorbedNeu'] = DescribedItem(0, info="Fraction of absorbed non-ionizing radiation", ori_units="dimensionless")
     params['shell_fAbsorbedWeightedTotal'] = DescribedItem(0, info="Total absorption fraction (luminosity weighted)", ori_units="dimensionless")
     params['shell_fIonisedDust'] = DescribedItem(0, info="Ionized dust fraction", ori_units="dimensionless")
-    params['shell_F_rad'] = DescribedItem(0, info="Radiation pressure on shell", ori_units="Msun*pc/Myr**2")
     params['shell_thickness'] = DescribedItem(0, info="Shell thickness", ori_units="pc")
     params['shell_nMax'] = DescribedItem(0, info="Maximum shell density", ori_units="1/pc**3")
     params['shell_tauKappaRatio'] = DescribedItem(0, info="tau_IR / kappa_IR ratio", ori_units="Msun/pc**2")

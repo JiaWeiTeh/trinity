@@ -331,8 +331,13 @@ def compute_forces_pure(
     # Ram pressure force (from bubble pressure)
     F_ram = Pb * FOUR_PI * R2**2
 
-    # Radiation pressure force (from shell structure)
-    F_rad = shell_props.shell_F_rad
+    # Radiation pressure force (direct + IR-trapped)
+    if shell_props.isDissolved:
+        F_rad = 0.0
+    else:
+        F_rad = (shell_props.shell_fAbsorbedWeightedTotal
+                 * params['Lbol'].value / params['c_light'].value
+                 * (1.0 + shell_props.shell_tauKappaRatio * params['dust_KappaIR'].value))
 
     return ForceProperties(
         F_grav=F_grav,
@@ -732,7 +737,7 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         # ---------------------------------------------------------------------
         # Build snapshot and integrate segment
         # ---------------------------------------------------------------------
-        snapshot = create_ODE_snapshot(params)
+        snapshot = create_ODE_snapshot(params, shell_props)
 
         # Capture parameter values BEFORE integration for adaptive stepping
         values_before = get_monitor_values(params)
