@@ -1,0 +1,39 @@
+# Pre-commit hooks for TRINITY
+#
+# Purpose: catch bug-class errors before they land on main. In particular,
+# F821 (undefined name) would have caught the `nCore` vs `nCore_cgs`
+# partial-rename NameError crash.
+#
+# Install locally:
+#     pip install pre-commit
+#     pre-commit install
+#
+# Then every `git commit` runs these checks on the staged files.
+# To run manually across the whole repo:
+#     pre-commit run --all-files
+#
+# Rules are intentionally narrow. We select only bug-class checks, not
+# style/cosmetic rules, so existing code doesn't need mass reformatting
+# to unblock commits.
+
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.8.4
+    hooks:
+      - id: ruff
+        name: ruff (bug-class checks only)
+        args:
+          # --isolated: ignore pyproject.toml (it has a pre-existing
+          # [tool.setuptools.packages.find] TOML issue that trips ruff's
+          # config loader; unrelated to linting).
+          - --isolated
+          - --select=F821,F811,F823,E9
+          # F821 - undefined name (catches partial renames like nCore vs nCore_cgs)
+          # F811 - redefinition of unused name
+          # F823 - local variable referenced before assignment
+          # E9   - syntax errors
+          #
+          # Deliberately NOT enabled:
+          #   F401 - unused imports (too much pre-existing noise)
+          #   F841 - unused locals (dozens of test files would fail)
+          #   style/cosmetic rules - out of scope
