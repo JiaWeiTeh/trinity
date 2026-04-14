@@ -202,13 +202,17 @@ Scripts are configured via command-line arguments. Common options:
 Output
 ------
 
-All figures are saved to the ``fig/{folder_name}/`` directory as PDF files:
+All figures are saved to the ``fig/{folder_name}/`` directory as PDF files.
+Filenames include a parameter tag built from the (mCloud, SFE, nCore)
+combination actually plotted, so runs with different parameters never
+overwrite each other:
 
 .. code-block:: text
 
    fig/
    └── sweep_test/
-       ├── feedback_n1e4.pdf
-       ├── dominantFeedback_n1e4_continuous_interp.pdf
-       ├── radiusEvolution_1e7_sfe020_n1e4.pdf
+       ├── feedback_M1e7_sfe020_n1e4.pdf            # single run
+       ├── feedback_M1e5-1e8_sfe001-080_n1e4.pdf    # grid of runs
+       ├── dominantFeedback_M1e7_sfe020_n1e4_continuous_interp.pdf
+       ├── radiusEvolution_M1e7_sfe020_n1e4.pdf
        └── ...

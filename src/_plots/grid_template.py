@@ -9,15 +9,38 @@ Most ``paper_*.py`` scripts follow the same two-mode pattern:
    (mCloud × SFE) grid, plot each cell, add labels/legend, save one
    PDF per density.
 
-This module provides ``plot_single`` and ``plot_grid`` templates that
-encapsulate all the shared infrastructure.  Each script supplies only
-the parts that differ:
+This module offers two complementary usage styles:
 
-- ``load_run_fn(data_path) → data``  — what to extract
-- ``plot_cell_fn(ax, data, **cfg) → extra_artists``  — what to draw
-- ``legend_handles_fn() → list``  — legend entries
+Style A — high-level templates (``plot_single`` / ``plot_grid``).
+  Use when the layout is a flat (mCloud × SFE) axes grid.  Each
+  script supplies only the parts that differ:
 
-Example usage in a paper script::
+  - ``load_run_fn(data_path) → data``  — what to extract
+  - ``plot_cell_fn(ax, data, **cfg) → extra_artists``  — what to draw
+  - ``legend_handles_fn() → list``  — legend entries
+
+Style B — composable helpers for inline grids.
+  When a script needs a nested ``GridSpec``, twin axes, Nx1 overlays,
+  or otherwise can't fit the ``plot_grid`` template, it can still
+  share the repetitive boilerplate via these helpers:
+
+  - ``iter_grid_densities`` — folder → per-density ``(mCloud, sfe, grid)``
+  - ``mark_missing_cell``   — placeholder for empty/errored cells
+  - ``attach_grid_legend``  — adaptive legend + suptitle positioning
+  - ``save_grid_figure``    — standardised PDF path + save
+  - ``set_mcloud_ylabel``   — row-label helper (mexp/mcoeff boilerplate)
+  - ``build_param_tag``     — filename discriminator for (mCloud,sfe,ndens)
+
+Both styles guarantee the two key invariants hold across every grid:
+
+- Filenames are keyed by ``build_param_tag(mCloud_list, sfe_list, ndens)``
+  so runs with different parameters never overwrite each other.
+- Legend / suptitle placement flows through ``_compute_legend_layout``
+  (via ``attach_grid_legend``), so the stacking order axes → col-titles
+  → legend → suptitle scales correctly for any grid size from 1×1 up
+  to 7×7.
+
+Example usage (Style A)::
 
     from src._plots.grid_template import plot_single, plot_grid as _plot_grid
 
@@ -40,6 +63,35 @@ Example usage in a paper script::
             file_prefix="feedback",
             ylabel=r"Force fraction",
         )
+
+Example usage (Style B, inline grid)::
+
+    from src._plots.grid_template import (
+        build_param_tag, iter_grid_densities, mark_missing_cell,
+        attach_grid_legend, save_grid_figure, set_mcloud_ylabel,
+    )
+
+    def plot_grid(folder_path, output_dir=None, **kw):
+        for ndens, mCloud_list, sfe_list, grid, folder_name in \\
+                iter_grid_densities(folder_path, **kw):
+            nrows, ncols = len(mCloud_list), len(sfe_list)
+            fig, axes = plt.subplots(nrows, ncols, squeeze=False, ...)
+            for i, mCloud in enumerate(mCloud_list):
+                for j, sfe in enumerate(sfe_list):
+                    ax = axes[i, j]
+                    data_path = grid.get((mCloud, sfe))
+                    if data_path is None:
+                        mark_missing_cell(ax, "missing"); continue
+                    ...  # custom drawing (nested GridSpec, twinx, …)
+                    if j == 0:
+                        set_mcloud_ylabel(ax, mCloud, extra=r"$y$-label")
+            param_tag = build_param_tag(mCloud_list, sfe_list, ndens)
+            attach_grid_legend(fig, handles, n_rows_for_layout=nrows,
+                               folder_name=folder_name, param_tag=param_tag)
+            save_grid_figure(fig, folder_name=folder_name,
+                             file_prefix="my_script", param_tag=param_tag,
+                             output_dir=output_dir)
+            plt.close(fig)
 """
 
 from pathlib import Path
@@ -513,9 +565,11 @@ def plot_grid(
     legend_y : float
         Vertical position of the legend anchor (in figure fraction).
     suptitle : bool
-        Whether to add a top-level title with folder name and density.
+        If True, adds a figure suptitle ``"{folder_name} ({param_tag})"``
+        where ``param_tag`` is the output of ``build_param_tag``.
     subplots_adjust_top : float, optional
-        If set, call ``fig.subplots_adjust(top=...)``.
+        If set, overrides the adaptive ``top`` computed by
+        ``_compute_legend_layout``.
     save_pdf : bool
     pre_loop_fn : callable(fig, axes), optional
         Hook called after subplot creation but before the cell loop.
@@ -525,7 +579,8 @@ def plot_grid(
         Custom row-label builder.  Defaults to ``_mcloud_label``.
         Use ``_mcloud_label_short`` for the compact variant.
     suptitle_y : float, optional
-        Vertical position of suptitle.  If ``None``, uses matplotlib default.
+        Vertical position of suptitle.  If ``None``, the adaptive
+        ``_compute_legend_layout`` value is used.
     hide_non_left_labels : bool
         If ``True``, hide y-axis tick labels on non-leftmost columns.
     """
