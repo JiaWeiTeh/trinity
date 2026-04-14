@@ -501,7 +501,6 @@ def test_snapshot(snapshot: dict, verbose: bool = False) -> dict:
         ('shell_fIonisedDust', 'shell_fIonisedDust'),
         ('shell_nMax', 'shell_nMax'),
         ('shell_tauKappaRatio', 'shell_tauKappaRatio'),
-        ('shell_F_rad', 'shell_F_rad'),
         ('isDissolved', 'isDissolved'),
     ]
 
@@ -639,7 +638,7 @@ def test_shell_structure_comparison():
 
     results = []
     fields = ['shell_n0', 'rShell', 'shell_thickness', 'shell_fAbsorbedIon',
-              'shell_fAbsorbedNeu', 'shell_nMax', 'shell_F_rad', 'isDissolved']
+              'shell_fAbsorbedNeu', 'shell_nMax', 'isDissolved']
 
     for line_num in snapshot_lines:
         print(f"\nProcessing snapshot {line_num}...", end=" ")

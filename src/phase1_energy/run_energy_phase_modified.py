@@ -206,7 +206,7 @@ def run_energy(params):
         # =============================================================================
         # 5. Compute forces and diagnostics
         # =============================================================================
-        snapshot_for_forces = energy_phase_ODEs_modified.create_ODE_snapshot(params)
+        snapshot_for_forces = energy_phase_ODEs_modified.create_ODE_snapshot(params, shell_data)
         ode_result = energy_phase_ODEs_modified.compute_derived_quantities(
             t_now, [R2, v2, Eb], snapshot_for_forces, params
         )
@@ -278,7 +278,7 @@ def run_energy(params):
         # =============================================================================
         # 7. Create ODE snapshot and integrate
         # =============================================================================
-        snapshot = energy_phase_ODEs_modified.create_ODE_snapshot(params)
+        snapshot = energy_phase_ODEs_modified.create_ODE_snapshot(params, shell_data)
 
         y0 = [R2, v2, Eb]
 
@@ -404,8 +404,10 @@ def run_energy_continuous(params):
     # Energy phase events: cloud_boundary (phase ending), min_radius, velocity_runaway
     ode_events = build_energy_phase_events(params)
 
-    # Create snapshot
-    snapshot = energy_phase_ODEs_modified.create_ODE_snapshot(params)
+    # Create snapshot (needs current shell_props for F_rad)
+    shell_data = shell_structure_modified.shell_structure_pure(params)
+    updateDict(params, shell_data)
+    snapshot = energy_phase_ODEs_modified.create_ODE_snapshot(params, shell_data)
 
     def ode_func(t, y):
         return energy_phase_ODEs_modified.get_ODE_Edot_pure(t, y, snapshot, params)

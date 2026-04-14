@@ -50,7 +50,6 @@ class ShellProperties:
     # Shell properties
     shell_nMax: float  # Maximum density in shell
     shell_tauKappaRatio: float  # tau_IR / kappa_IR = integral(rho dr)
-    shell_F_rad: float  # Radiation force with IR trapping
 
     # Gravitational properties
     shell_grav_r: Union[np.ndarray, float]  # Radius array for gravity
@@ -393,9 +392,6 @@ def shell_structure_pure(params) -> ShellProperties:
 
         rShell = grav_r[-1]
 
-        # Radiation force with IR trapping
-        shell_F_rad = (f_absorbed * params['Lbol'].value / params['c_light'].value * (1 + tau_kappa_IR * params['dust_KappaIR'].value))
-
         # Combined shell density profile (ionized + neutral)
         # shell_ion_idx: last index belonging to the ionized region.
         # If shell_ion_idx == len(shell_r_arr)-1, the entire shell is ionized
@@ -422,7 +418,6 @@ def shell_structure_pure(params) -> ShellProperties:
         grav_force_m = np.nan
         # Keep previous rShell value when dissolved (matches original behavior)
         rShell = rShell_previous
-        shell_F_rad = 0.0
         # No ionization front when dissolved
         n_IF = 0.0
         n_IF_ODE = 0.0
@@ -452,7 +447,6 @@ def shell_structure_pure(params) -> ShellProperties:
         shell_fIonisedDust=f_ionised_dust,
         shell_nMax=nShell_max,
         shell_tauKappaRatio=tau_kappa_IR,
-        shell_F_rad=shell_F_rad,
         shell_grav_r=grav_r,
         shell_grav_phi=grav_phi,
         shell_grav_force_m=grav_force_m,

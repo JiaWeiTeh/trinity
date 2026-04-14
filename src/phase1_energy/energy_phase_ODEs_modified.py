@@ -67,7 +67,7 @@ class ODESnapshot:
     """
     # Shell properties
     shell_fAbsorbedIon: float
-    shell_F_rad: float
+    F_rad: float
     rShell: float
     shell_mass: float
     isCollapse: bool
@@ -107,16 +107,32 @@ class ODESnapshot:
     P_HII: float
 
 
-def create_ODE_snapshot(params) -> ODESnapshot:
+def create_ODE_snapshot(params, shell_props) -> ODESnapshot:
     """
     Create a frozen snapshot of all parameters needed for ODE evaluation.
 
     This should be called once at the start of each integration segment,
     not during ODE evaluation.
+
+    Parameters
+    ----------
+    params : DescribedDict
+        Main parameter dictionary.
+    shell_props : ShellProperties
+        Shell properties from the current shell_structure_pure() call.
+        Used to compute the radiation pressure force inline.
     """
+    # Radiation pressure force (direct + IR-trapped)
+    if shell_props.isDissolved:
+        F_rad = 0.0
+    else:
+        F_rad = (shell_props.shell_fAbsorbedWeightedTotal
+                 * params['Lbol'].value / params['c_light'].value
+                 * (1.0 + shell_props.shell_tauKappaRatio * params['dust_KappaIR'].value))
+
     return ODESnapshot(
         shell_fAbsorbedIon=params['shell_fAbsorbedIon'].value,
-        shell_F_rad=params['shell_F_rad'].value,
+        F_rad=F_rad,
         rShell=params['rShell'].value,
         shell_mass=params['shell_mass'].value,
         isCollapse=params['isCollapse'].value,
@@ -240,7 +256,7 @@ def get_ODE_Edot_pure(t: float, y: list, snapshot: ODESnapshot, params_for_feedb
         P_drive = max(press_bubble, P_HII)
 
     # Radiation force
-    F_rad = snapshot.shell_F_rad
+    F_rad = snapshot.F_rad
 
     # Time derivatives
     rd = v2
@@ -392,7 +408,7 @@ def compute_derived_quantities(t: float, y: list, snapshot: ODESnapshot, params_
         F_ion_in=P_ext * 4 * np.pi * R2**2,
         F_HII=F_HII,
         F_ram=Pb * 4 * np.pi * R2**2,
-        F_rad=snapshot.shell_F_rad,
+        F_rad=snapshot.F_rad,
         # Pressure quantities
         n_IF=snapshot.n_IF,
         R_IF=snapshot.R_IF,

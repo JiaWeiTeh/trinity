@@ -548,8 +548,22 @@ def test_snapshot(snapshot: dict, verbose: bool = False) -> dict:
     result_original = get_ODE_Edot(y.copy(), t_now, params_original)
     time_original = time.perf_counter() - start_orig
 
-    # Create snapshot for modified version
-    snapshot_obj = create_ODE_snapshot(params_modified)
+    # Create snapshot for modified version.
+    # F_rad is now computed inline inside create_ODE_snapshot from shell_props,
+    # so assemble a tiny mock with just the attributes it needs.
+    class _MockShellProps:
+        pass
+    _mock_shell_props = _MockShellProps()
+    _mock_shell_props.isDissolved = bool(
+        getattr(params_modified.get('isDissolved', MockParam(False)), 'value', False)
+    )
+    _mock_shell_props.shell_fAbsorbedWeightedTotal = float(
+        getattr(params_modified.get('shell_fAbsorbedWeightedTotal', MockParam(0.0)), 'value', 0.0)
+    )
+    _mock_shell_props.shell_tauKappaRatio = float(
+        getattr(params_modified.get('shell_tauKappaRatio', MockParam(0.0)), 'value', 0.0)
+    )
+    snapshot_obj = create_ODE_snapshot(params_modified, _mock_shell_props)
 
     # Run modified version with timing
     start_mod = time.perf_counter()

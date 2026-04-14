@@ -267,8 +267,13 @@ def compute_forces_momentum_pure(
     # Ram pressure force
     F_ram = P_ram * FOUR_PI * R2**2
 
-    # Radiation pressure force
-    F_rad = shell_props.shell_F_rad
+    # Radiation pressure force (direct + IR-trapped)
+    if shell_props.isDissolved:
+        F_rad = 0.0
+    else:
+        F_rad = (shell_props.shell_fAbsorbedWeightedTotal
+                 * params['Lbol'].value / params['c_light'].value
+                 * (1.0 + shell_props.shell_tauKappaRatio * params['dust_KappaIR'].value))
 
     return ForceProperties(
         F_grav=F_grav,
@@ -327,6 +332,14 @@ def create_momentum_snapshot(params, shell_props: ShellProperties,
     else:
         is_collapse = False
 
+    # Radiation pressure force (direct + IR-trapped)
+    if shell_props.isDissolved:
+        F_rad = 0.0
+    else:
+        F_rad = (shell_props.shell_fAbsorbedWeightedTotal
+                 * params['Lbol'].value / params['c_light'].value
+                 * (1.0 + shell_props.shell_tauKappaRatio * params['dust_KappaIR'].value))
+
     return MomentumODESnapshot(
         G=params['G'].value,
         mCluster=params['mCluster'].value,
@@ -342,7 +355,7 @@ def create_momentum_snapshot(params, shell_props: ShellProperties,
         n_IF=shell_props.n_IF,
         include_PHII=params['include_PHII'].value,
         P_HII=params['P_HII'].value,
-        F_rad=shell_props.shell_F_rad,
+        F_rad=F_rad,
         mShell=mShell,
         mShell_dot=mShell_dot,
         isCollapse=is_collapse,
