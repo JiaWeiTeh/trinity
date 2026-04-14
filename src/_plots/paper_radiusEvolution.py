@@ -13,7 +13,12 @@ from src._plots.plot_base import FIG_DIR, smooth_1d
 # Add project root to path for imports
 from src._output.trinity_reader import load_output, find_data_file, resolve_data_input, info_simulations
 from src._plots.plot_markers import add_plot_markers, get_marker_legend_handles
-from src._plots.grid_template import _compute_legend_layout, build_param_tag
+from src._plots.grid_template import (
+    build_param_tag,
+    iter_grid_densities, mark_missing_cell, attach_grid_legend,
+    save_grid_figure, set_mcloud_ylabel,
+    _sfe_title,
+)
 
 print("...plotting radius evolution grid")
 
@@ -55,14 +60,6 @@ RADIUS_FIELDS = [
     ("rShell", r"$r_{\rm shell}$",    "#ff7f0e", "-",  1.6),  # orange
 ]
 
-
-def range_tag(prefix, values, key=float):
-    """Return e.g. 'M1e5-1e8' or 'sfe001-080' (or single value if only one)."""
-    vals = list(values)
-    if len(vals) == 1:
-        return f"{prefix}{vals[0]}"
-    vmin, vmax = min(vals, key=key), max(vals, key=key)
-    return f"{prefix}{vmin}-{vmax}"
 
 def load_run_radii(data_path: Path):
     """Load one run and return arrays sorted by snapshot index.
@@ -220,21 +217,11 @@ def plot_single_run(mCloud, sfe, ndens):
         return
 
     # Title with run parameters - properly handle non-power-of-10 masses
-    mval = float(mCloud)
-    mexp = int(np.floor(np.log10(mval)))
-    mcoeff = mval / (10 ** mexp)
-    mcoeff = round(mcoeff)
-    if mcoeff == 10:
-        mcoeff = 1
-        mexp += 1
-    if mcoeff == 1:
-        mlabel = rf"$M_{{\rm cloud}}=10^{{{mexp}}}\,M_\odot$"
-    else:
-        mlabel = rf"$M_{{\rm cloud}}={mcoeff}\times10^{{{mexp}}}\,M_\odot$"
+    from src._plots.grid_template import _mcloud_label
     nlog = int(np.log10(float(ndens)))
     eps = int(sfe) / 100.0
     ax.set_title(
-        mlabel + ", "
+        _mcloud_label(mCloud) + ", "
         rf"$\epsilon={eps:.2f}$, "
         rf"$n=10^{{{nlog}}}\,\mathrm{{cm^{{-3}}}}$"
     )
@@ -355,99 +342,47 @@ def plot_folder_grid(folder_path, output_dir=None, ndens_filter=None,
     Folder names must follow the pattern: {mCloud}_sfe{sfe}_n{ndens}
     Examples: "1e7_sfe020_n1e4", "5e6_sfe010_n1e3"
     """
-    from src._output.trinity_reader import find_all_simulations, organize_simulations_for_grid, get_unique_ndens
+    for ndens, mCloud_list, sfe_list, grid, folder_name in iter_grid_densities(
+            folder_path, ndens_filter=ndens_filter,
+            mCloud_filter=mCloud_filter, sfe_filter=sfe_filter):
 
-    folder_path = Path(folder_path)
-    folder_name = folder_path.name
-
-    sim_files = find_all_simulations(folder_path)
-    if not sim_files:
-        print(f"No simulation files found in {folder_path}")
-        return
-
-    # Determine which densities to plot
-    if ndens_filter:
-        ndens_to_plot = [ndens_filter]
-    else:
-        ndens_to_plot = get_unique_ndens(sim_files)
-
-    print(f"Found {len(sim_files)} simulations")
-    print(f"  Densities to plot: {ndens_to_plot}")
-
-    # Create one grid per density
-    for ndens in ndens_to_plot:
-        print(f"\nProcessing n={ndens}...")
-        organized = organize_simulations_for_grid(
-            sim_files, ndens_filter=ndens,
-            mCloud_filter=mCloud_filter, sfe_filter=sfe_filter
-        )
-        mCloud_list_found = organized['mCloud_list']
-        sfe_list_found = organized['sfe_list']
-        grid = organized['grid']
-
-        if not mCloud_list_found or not sfe_list_found:
-            print(f"  Could not organize simulations into grid for n={ndens}")
-            continue
-
-        print(f"  mCloud: {mCloud_list_found}")
-        print(f"  SFE: {sfe_list_found}")
-
-        nrows, ncols = len(mCloud_list_found), len(sfe_list_found)
+        nrows, ncols = len(mCloud_list), len(sfe_list)
         fig, axes = plt.subplots(
             nrows=nrows, ncols=ncols,
             figsize=(3.2 * ncols, 2.6 * nrows),
             sharex=False, sharey=False,
-            dpi=500,
-            squeeze=False,
-            constrained_layout=False
+            dpi=500, squeeze=False, constrained_layout=False,
         )
 
-        for i, mCloud in enumerate(mCloud_list_found):
-            for j, sfe in enumerate(sfe_list_found):
+        for i, mCloud in enumerate(mCloud_list):
+            for j, sfe in enumerate(sfe_list):
                 ax = axes[i, j]
                 data_path = grid.get((mCloud, sfe))
 
                 if data_path is None:
-                    ax.text(0.5, 0.5, "missing", ha="center", va="center", transform=ax.transAxes)
-                    ax.set_axis_off()
+                    mark_missing_cell(ax, "missing")
                     continue
 
                 try:
                     t, phase, R1, R2, rShell, rcloud, isCollapse = load_run_radii(data_path)
                     plot_radii_on_ax(
                         ax, t, phase, R1, R2, rShell, rcloud, isCollapse,
-                        phase_line=SHOW_PHASE,
-                        cloud_line=SHOW_RCLOUD,
+                        phase_line=SHOW_PHASE, cloud_line=SHOW_RCLOUD,
                         show_weaver=SHOW_WEAVER,
-                        smooth_window=SMOOTH_WINDOW,
-                        smooth_mode=SMOOTH_MODE,
-                        use_log_x=USE_LOG_X
+                        smooth_window=SMOOTH_WINDOW, smooth_mode=SMOOTH_MODE,
+                        use_log_x=USE_LOG_X,
                     )
                 except Exception as e:
                     print(f"Error loading {data_path}: {e}")
-                    ax.text(0.5, 0.5, "error", ha="center", va="center", transform=ax.transAxes)
-                    ax.set_axis_off()
+                    mark_missing_cell(ax, "error")
                     continue
 
                 if i == 0:
-                    eps = int(sfe) / 100.0
-                    ax.set_title(rf"$\epsilon={eps:.2f}$")
-
+                    ax.set_title(_sfe_title(sfe))
                 if j == 0:
-                    mval = float(mCloud)
-                    mexp = int(np.floor(np.log10(mval)))
-                    mcoeff = round(mval / (10 ** mexp))
-                    if mcoeff == 10:
-                        mcoeff = 1
-                        mexp += 1
-                    if mcoeff == 1:
-                        mlabel = rf"$M_{{\rm cloud}}=10^{{{mexp}}}\,M_\odot$"
-                    else:
-                        mlabel = rf"$M_{{\rm cloud}}={mcoeff}\times10^{{{mexp}}}\,M_\odot$"
-                    ax.set_ylabel(mlabel + "\n" + r"Radius [pc]")
+                    set_mcloud_ylabel(ax, mCloud, extra=r"Radius [pc]")
                 else:
                     ax.tick_params(labelleft=False)
-
                 if i == nrows - 1:
                     ax.set_xlabel("t [Myr]")
 
@@ -460,31 +395,15 @@ def plot_folder_grid(folder_path, output_dir=None, ndens_filter=None,
             handles.append(Line2D([0], [0], color="k", ls="--", alpha=0.6, lw=1.5, label=r"Weaver: $R \propto t^{3/5}$"))
         handles.extend(get_marker_legend_handles(include_phase=SHOW_PHASE, include_rcloud=SHOW_RCLOUD, include_rcloud_horizontal=SHOW_RCLOUD_H, include_collapse=SHOW_COLLAPSE))
 
-        _layout = _compute_legend_layout(2.6 * nrows, n_legend_items=len(handles), legend_ncol=3)
-        fig.subplots_adjust(top=_layout['top'])
-        param_tag = build_param_tag(mCloud_list_found, sfe_list_found, ndens)
-        fig.suptitle(f"{folder_name} ({param_tag})", fontsize=14, y=_layout['suptitle_y'])
-
-        leg = fig.legend(
-            handles=handles,
-            loc="upper center",
-            ncol=3,
-            frameon=True,
-            facecolor="white",
-            framealpha=0.9,
-            edgecolor="0.2",
-            bbox_to_anchor=(0.5, _layout['legend_y']),
-            bbox_transform=fig.transFigure
+        param_tag = build_param_tag(mCloud_list, sfe_list, ndens)
+        attach_grid_legend(
+            fig, handles, n_rows_for_layout=nrows,
+            folder_name=folder_name, param_tag=param_tag,
+            legend_ncol=3, legend_bbox_transform_fig=True,
         )
-        leg.set_zorder(10)
-
-        # Save figure to ./fig/{folder_name}/radiusEvolution_{param_tag}.pdf
-        fig_dir = Path(output_dir) if output_dir else FIG_DIR / folder_name
-        fig_dir.mkdir(parents=True, exist_ok=True)
-        out_pdf = fig_dir / f"radiusEvolution_{param_tag}.pdf"
-        fig.savefig(out_pdf, bbox_inches="tight")
-        print(f"  Saved: {out_pdf}")
-
+        save_grid_figure(fig, folder_name=folder_name,
+                         file_prefix="radiusEvolution",
+                         param_tag=param_tag, output_dir=output_dir)
         plt.close(fig)
 
 
@@ -595,15 +514,11 @@ Examples:
                 figsize=(3.2 * ncols, 2.6 * nrows),
                 sharex=False, sharey=False,
                 dpi=500,
-                constrained_layout=False
+                constrained_layout=False,
+                squeeze=False,
             )
 
             nlog = int(np.log10(float(ndens)))
-
-            m_tag   = range_tag("M",   mCloud_list, key=float)
-            sfe_tag = range_tag("sfe", sfe_list,    key=int)
-            n_tag   = f"n{ndens}"
-            tag = f"radius_grid_{m_tag}_{sfe_tag}_{n_tag}"
 
             for i, mCloud in enumerate(mCloud_list):
                 for j, sfe in enumerate(sfe_list):
@@ -613,8 +528,7 @@ Examples:
 
                     if data_path is None:
                         print(f"  {run_name}: missing")
-                        ax.text(0.5, 0.5, "missing", ha="center", va="center", transform=ax.transAxes)
-                        ax.set_axis_off()
+                        mark_missing_cell(ax, "missing")
                         continue
 
                     try:
@@ -630,8 +544,7 @@ Examples:
                         )
                     except Exception as e:
                         print(f"Error in {run_name}: {e}")
-                        ax.text(0.5, 0.5, "error", ha="center", va="center", transform=ax.transAxes)
-                        ax.set_axis_off()
+                        mark_missing_cell(ax, "error")
                         continue
 
                     if i == 0:
@@ -639,19 +552,7 @@ Examples:
                         ax.set_title(rf"$\epsilon={eps:.2f}$")
 
                     if j == 0:
-                        # Parse mCloud to handle non-power-of-10 values (e.g., 5e6)
-                        mval = float(mCloud)
-                        mexp = int(np.floor(np.log10(mval)))
-                        mcoeff = mval / (10 ** mexp)
-                        mcoeff = round(mcoeff)
-                        if mcoeff == 10:
-                            mcoeff = 1
-                            mexp += 1
-                        if mcoeff == 1:
-                            mlabel = rf"$M_{{\rm cloud}}=10^{{{mexp}}}\,M_\odot$"
-                        else:
-                            mlabel = rf"$M_{{\rm cloud}}={mcoeff}\times10^{{{mexp}}}\,M_\odot$"
-                        ax.set_ylabel(mlabel + "\n" + r"Radius [pc]")
+                        set_mcloud_ylabel(ax, mCloud, extra=r"Radius [pc]")
                     else:
                         ax.tick_params(labelleft=False)
 
@@ -668,30 +569,23 @@ Examples:
                 handles.append(Line2D([0], [0], color="k", ls="--", alpha=0.6, lw=1.5, label=r"Weaver: $R \propto t^{3/5}$"))
             handles.extend(get_marker_legend_handles(include_phase=SHOW_PHASE, include_rcloud=SHOW_RCLOUD, include_rcloud_horizontal=SHOW_RCLOUD_H, include_collapse=SHOW_COLLAPSE))
 
-            _layout = _compute_legend_layout(2.6 * nrows, n_legend_items=len(handles), legend_ncol=3)
-            fig.subplots_adjust(top=_layout['top'])
-            fig.suptitle(rf"Radius evolution ($n=10^{{{nlog}}}\,\mathrm{{cm^{{-3}}}}$)", y=_layout['suptitle_y'])
-
-            leg = fig.legend(
-                handles=handles,
-                loc="upper center",
-                ncol=3,
-                frameon=True,
-                facecolor="white",
-                framealpha=0.9,
-                edgecolor="0.2",
-                bbox_to_anchor=(0.5, _layout['legend_y']),
-                bbox_transform=fig.transFigure
+            # Use shared adaptive layout; suptitle here is custom text (not
+            # folder_name), so draw it manually from the returned layout.
+            param_tag = build_param_tag(mCloud_list, sfe_list, ndens)
+            layout = attach_grid_legend(
+                fig, handles, n_rows_for_layout=nrows,
+                folder_name="", param_tag=param_tag,
+                legend_ncol=3, legend_bbox_transform_fig=True,
+                suptitle=False,
             )
-            leg.set_zorder(10)
-
-            m_tag   = range_tag("M",   mCloud_list, key=float)
-            sfe_tag = range_tag("sfe", sfe_list,    key=int)
-            n_tag   = f"n{ndens}"
-            tag = f"radiusEvolution_{m_tag}_{sfe_tag}_{n_tag}"
+            fig.suptitle(
+                rf"Radius evolution ($n=10^{{{nlog}}}\,\mathrm{{cm^{{-3}}}}$)"
+                + f"  ({param_tag})",
+                y=layout['suptitle_y'],
+            )
 
             if SAVE_PDF:
-                out_pdf = FIG_DIR / f"{tag}.pdf"
+                out_pdf = FIG_DIR / f"radiusEvolution_{param_tag}.pdf"
                 fig.savefig(out_pdf, bbox_inches="tight")
                 print(f"Saved: {out_pdf}")
 

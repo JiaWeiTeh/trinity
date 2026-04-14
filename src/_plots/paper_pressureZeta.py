@@ -23,7 +23,12 @@ _sys.path.insert(0, str(_Path(__file__).parent.parent.parent))
 from src._plots.plot_base import FIG_DIR, smooth_1d
 from src._output.trinity_reader import load_output, resolve_data_input
 from src._plots.plot_markers import add_plot_markers, get_marker_legend_handles
-from src._plots.grid_template import _compute_legend_layout, build_param_tag
+from src._plots.grid_template import (
+    build_param_tag,
+    iter_grid_densities,
+    attach_grid_legend,
+    save_grid_figure,
+)
 from src._functions.unit_conversions import CGS, INV_CONV
 import src.cloud_properties.density_profile as density_profile
 
@@ -456,43 +461,9 @@ def plot_grid(folder_path, output_dir=None, ndens_filter=None,
 
     Each grid cell contains a two-row subplot (top = pressures, bottom = ratio).
     """
-    from src._output.trinity_reader import (
-        find_all_simulations, organize_simulations_for_grid, get_unique_ndens
-    )
-
-    folder_path = Path(folder_path)
-    folder_name = folder_path.name
-
-    sim_files = find_all_simulations(folder_path)
-    if not sim_files:
-        print(f"No simulation files found in {folder_path}")
-        return
-
-    if ndens_filter:
-        ndens_to_plot = [ndens_filter]
-    else:
-        ndens_to_plot = get_unique_ndens(sim_files)
-
-    print(f"Found {len(sim_files)} simulations")
-    print(f"  Densities to plot: {ndens_to_plot}")
-
-    for ndens in ndens_to_plot:
-        print(f"\nProcessing n={ndens}...")
-
-        organized = organize_simulations_for_grid(
-            sim_files, ndens_filter=ndens,
-            mCloud_filter=mCloud_filter, sfe_filter=sfe_filter
-        )
-        mCloud_list = organized['mCloud_list']
-        sfe_list    = organized['sfe_list']
-        grid        = organized['grid']
-
-        if not mCloud_list or not sfe_list:
-            print(f"  Could not organize simulations into grid for n={ndens}")
-            continue
-
-        print(f"  mCloud: {mCloud_list}")
-        print(f"  SFE: {sfe_list}")
+    for ndens, mCloud_list, sfe_list, grid, folder_name in iter_grid_densities(
+            folder_path, ndens_filter=ndens_filter,
+            mCloud_filter=mCloud_filter, sfe_filter=sfe_filter):
 
         nrows, ncols = len(mCloud_list), len(sfe_list)
 
@@ -571,34 +542,24 @@ def plot_grid(folder_path, output_dir=None, ndens_filter=None,
                     ax_top.set_ylabel('')
                     ax_bot.set_ylabel('')
 
-        # --- Global legend ---
-        handles = _build_legend_handles()
-        _layout = _compute_legend_layout(3.4 * nrows, n_legend_items=len(handles), legend_ncol=4)
-        fig.subplots_adjust(top=_layout['top'])
-
-        leg = fig.legend(
-            handles=handles,
-            loc="upper center",
-            ncol=4,
-            frameon=True,
-            facecolor="white",
-            framealpha=0.9,
-            edgecolor="0.2",
-            bbox_to_anchor=(0.5, _layout['legend_y']),
-            fontsize=7,
+        # --- Global legend + suptitle (adaptive layout) ---
+        param_tag = build_param_tag(mCloud_list, sfe_list, ndens)
+        attach_grid_legend(
+            fig, _build_legend_handles(),
+            n_rows_for_layout=nrows,
+            cell_height_inches=3.4,
+            folder_name=folder_name,
+            param_tag=param_tag,
+            legend_ncol=4,
+            legend_fontsize=7,
+            suptitle=False,
         )
-        leg.set_zorder(10)
 
         # --- Save ---
-        param_tag = build_param_tag(mCloud_list, sfe_list, ndens)
-        fig_dir = Path(output_dir) if output_dir else FIG_DIR / folder_name
-        fig_dir.mkdir(parents=True, exist_ok=True)
-
-        if SAVE_PDF:
-            out_pdf = fig_dir / f"pressureZeta_{param_tag}.pdf"
-            fig.savefig(out_pdf, bbox_inches="tight")
-            print(f"Saved: {out_pdf}")
-
+        save_grid_figure(
+            fig, folder_name=folder_name, file_prefix="pressureZeta",
+            param_tag=param_tag, output_dir=output_dir, save_pdf=SAVE_PDF,
+        )
         plt.close(fig)
 
 

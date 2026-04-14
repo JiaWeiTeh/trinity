@@ -16,7 +16,13 @@ _sys.path.insert(0, str(_Path(__file__).parent.parent.parent))
 from src._plots.plot_base import FIG_DIR, smooth_1d
 from src._output.trinity_reader import load_output, resolve_data_input
 from src._plots.plot_markers import add_collapse_marker, get_marker_legend_handles
-from src._plots.grid_template import _compute_legend_layout, build_param_tag
+from src._plots.grid_template import (
+    _mcloud_label,
+    build_param_tag,
+    iter_grid_densities,
+    attach_grid_legend,
+    save_grid_figure,
+)
 from src._plots.cli import marker_pre_dispatch
 
 print("...plotting escape fraction comparison")
@@ -35,14 +41,6 @@ SHOW_COLLAPSE = False
 
 SAVE_PNG = False
 SAVE_PDF = True
-
-def range_tag(prefix, values, key=float):
-    vals = list(values)
-    if len(vals) == 1:
-        return f"{prefix}{vals[0]}"
-    vmin, vmax = min(vals, key=key), max(vals, key=key)
-    return f"{prefix}{vmin}-{vmax}"
-
 
 def load_escape_fraction(data_path: Path):
     """Return (t, fesc, isCollapse) arrays using TrinityOutput reader."""
@@ -148,44 +146,11 @@ def plot_grid(folder_path, output_dir=None, ndens_filter=None,
         Filter simulations by density (e.g., "1e4"). If None, creates one
         PDF per unique density found.
     """
-    from src._output.trinity_reader import find_all_simulations, organize_simulations_for_grid, get_unique_ndens
+    for ndens, mCloud_list, sfe_list, grid, folder_name in iter_grid_densities(
+            folder_path, ndens_filter=ndens_filter,
+            mCloud_filter=mCloud_filter, sfe_filter=sfe_filter):
 
-    folder_path = Path(folder_path)
-    folder_name = folder_path.name
-
-    sim_files = find_all_simulations(folder_path)
-    if not sim_files:
-        print(f"No simulation files found in {folder_path}")
-        return
-
-    # Determine which densities to plot
-    if ndens_filter:
-        ndens_to_plot = [ndens_filter]
-    else:
-        ndens_to_plot = get_unique_ndens(sim_files)
-
-    print(f"Found {len(sim_files)} simulations")
-    print(f"  Densities to plot: {ndens_to_plot}")
-
-    # Create one grid per density
-    for ndens in ndens_to_plot:
-        print(f"\nProcessing n={ndens}...")
-        organized = organize_simulations_for_grid(
-            sim_files, ndens_filter=ndens,
-            mCloud_filter=mCloud_filter, sfe_filter=sfe_filter
-        )
-        mCloud_list_found = organized['mCloud_list']
-        sfe_list_found = organized['sfe_list']
-        grid = organized['grid']
-
-        if not mCloud_list_found or not sfe_list_found:
-            print(f"Could not organize simulations into grid")
-            continue
-
-        print(f"  mCloud: {mCloud_list_found}")
-        print(f"  SFE: {sfe_list_found}")
-
-        nrows = len(mCloud_list_found)
+        nrows = len(mCloud_list)
         fig, axes = plt.subplots(
             nrows=nrows, ncols=1,
             figsize=(7.0, 2.6 * nrows),
@@ -193,16 +158,16 @@ def plot_grid(folder_path, output_dir=None, ndens_filter=None,
             sharey=True,
             dpi=200,
             squeeze=False,
-            constrained_layout=False
+            constrained_layout=False,
         )
 
         all_line_handles = []
         all_line_labels = []
 
-        for i, mCloud in enumerate(mCloud_list_found):
+        for i, mCloud in enumerate(mCloud_list):
             ax = axes[i, 0]
 
-            for sfe in sfe_list_found:
+            for sfe in sfe_list:
                 data_path = grid.get((mCloud, sfe))
 
                 if data_path is None:
@@ -229,17 +194,7 @@ def plot_grid(folder_path, output_dir=None, ndens_filter=None,
                 except Exception as e:
                     print(f"Error loading {data_path}: {e}")
 
-            mval = float(mCloud)
-            mexp = int(np.floor(np.log10(mval)))
-            mcoeff = round(mval / (10 ** mexp))
-            if mcoeff == 10:
-                mcoeff = 1
-                mexp += 1
-            if mcoeff == 1:
-                mlabel = rf"$M_{{\rm cloud}}=10^{{{mexp}}}\,M_\odot$"
-            else:
-                mlabel = rf"$M_{{\rm cloud}}={mcoeff}\times10^{{{mexp}}}\,M_\odot$"
-            ax.set_ylabel(rf"$f_\mathrm{{esc}}$" + "\n" + mlabel)
+            ax.set_ylabel(rf"$f_\mathrm{{esc}}$" + "\n" + _mcloud_label(mCloud))
             ax.set_ylim(0, 1)
 
             if i == nrows - 1:
@@ -251,33 +206,19 @@ def plot_grid(folder_path, output_dir=None, ndens_filter=None,
                 all_line_handles.append(h)
                 all_line_labels.append(h.get_label())
 
-            _layout = _compute_legend_layout(2.6 * nrows, n_legend_items=len(all_line_handles), legend_ncol=len(all_line_handles))
-            fig.suptitle(f"{folder_name} ({build_param_tag(mCloud_list_found, sfe_list_found, ndens)})", fontsize=14, y=_layout['suptitle_y'])
+        param_tag = build_param_tag(mCloud_list, sfe_list, ndens)
+        attach_grid_legend(
+            fig, all_line_handles,
+            n_rows_for_layout=nrows,
+            folder_name=folder_name,
+            param_tag=param_tag,
+            legend_ncol=max(len(all_line_handles), 1),
+        )
 
-            leg = fig.legend(
-                handles=all_line_handles,
-                labels=all_line_labels,
-                loc="upper center",
-                ncol=len(all_line_handles),
-                frameon=True,
-                facecolor="white",
-                framealpha=0.9,
-                edgecolor="0.2",
-                bbox_to_anchor=(0.5, _layout['legend_y']),
-            )
-            leg.set_zorder(10)
-        else:
-            _layout = _compute_legend_layout(2.6 * nrows, n_legend_items=0, legend_ncol=1)
-            fig.suptitle(f"{folder_name} ({build_param_tag(mCloud_list_found, sfe_list_found, ndens)})", fontsize=14, y=_layout['suptitle_y'])
-
-        # Save figure to ./fig/{folder_name}/escapeFraction_{param_tag}.pdf
-        param_tag = build_param_tag(mCloud_list_found, sfe_list_found, ndens)
-        fig_dir = Path(output_dir) if output_dir else FIG_DIR / folder_name
-        fig_dir.mkdir(parents=True, exist_ok=True)
-        out_pdf = fig_dir / f"escapeFraction_{param_tag}.pdf"
-        fig.savefig(out_pdf, bbox_inches="tight")
-        print(f"  Saved: {out_pdf}")
-
+        save_grid_figure(
+            fig, folder_name=folder_name, file_prefix="escapeFraction",
+            param_tag=param_tag, output_dir=output_dir,
+        )
         plt.close(fig)
 
 

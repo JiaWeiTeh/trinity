@@ -9,15 +9,38 @@ Most ``paper_*.py`` scripts follow the same two-mode pattern:
    (mCloud × SFE) grid, plot each cell, add labels/legend, save one
    PDF per density.
 
-This module provides ``plot_single`` and ``plot_grid`` templates that
-encapsulate all the shared infrastructure.  Each script supplies only
-the parts that differ:
+This module offers two complementary usage styles:
 
-- ``load_run_fn(data_path) → data``  — what to extract
-- ``plot_cell_fn(ax, data, **cfg) → extra_artists``  — what to draw
-- ``legend_handles_fn() → list``  — legend entries
+Style A — high-level templates (``plot_single`` / ``plot_grid``).
+  Use when the layout is a flat (mCloud × SFE) axes grid.  Each
+  script supplies only the parts that differ:
 
-Example usage in a paper script::
+  - ``load_run_fn(data_path) → data``  — what to extract
+  - ``plot_cell_fn(ax, data, **cfg) → extra_artists``  — what to draw
+  - ``legend_handles_fn() → list``  — legend entries
+
+Style B — composable helpers for inline grids.
+  When a script needs a nested ``GridSpec``, twin axes, Nx1 overlays,
+  or otherwise can't fit the ``plot_grid`` template, it can still
+  share the repetitive boilerplate via these helpers:
+
+  - ``iter_grid_densities`` — folder → per-density ``(mCloud, sfe, grid)``
+  - ``mark_missing_cell``   — placeholder for empty/errored cells
+  - ``attach_grid_legend``  — adaptive legend + suptitle positioning
+  - ``save_grid_figure``    — standardised PDF path + save
+  - ``set_mcloud_ylabel``   — row-label helper (mexp/mcoeff boilerplate)
+  - ``build_param_tag``     — filename discriminator for (mCloud,sfe,ndens)
+
+Both styles guarantee the two key invariants hold across every grid:
+
+- Filenames are keyed by ``build_param_tag(mCloud_list, sfe_list, ndens)``
+  so runs with different parameters never overwrite each other.
+- Legend / suptitle placement flows through ``_compute_legend_layout``
+  (via ``attach_grid_legend``), so the stacking order axes → col-titles
+  → legend → suptitle scales correctly for any grid size from 1×1 up
+  to 7×7.
+
+Example usage (Style A)::
 
     from src._plots.grid_template import plot_single, plot_grid as _plot_grid
 
@@ -40,6 +63,35 @@ Example usage in a paper script::
             file_prefix="feedback",
             ylabel=r"Force fraction",
         )
+
+Example usage (Style B, inline grid)::
+
+    from src._plots.grid_template import (
+        build_param_tag, iter_grid_densities, mark_missing_cell,
+        attach_grid_legend, save_grid_figure, set_mcloud_ylabel,
+    )
+
+    def plot_grid(folder_path, output_dir=None, **kw):
+        for ndens, mCloud_list, sfe_list, grid, folder_name in \\
+                iter_grid_densities(folder_path, **kw):
+            nrows, ncols = len(mCloud_list), len(sfe_list)
+            fig, axes = plt.subplots(nrows, ncols, squeeze=False, ...)
+            for i, mCloud in enumerate(mCloud_list):
+                for j, sfe in enumerate(sfe_list):
+                    ax = axes[i, j]
+                    data_path = grid.get((mCloud, sfe))
+                    if data_path is None:
+                        mark_missing_cell(ax, "missing"); continue
+                    ...  # custom drawing (nested GridSpec, twinx, …)
+                    if j == 0:
+                        set_mcloud_ylabel(ax, mCloud, extra=r"$y$-label")
+            param_tag = build_param_tag(mCloud_list, sfe_list, ndens)
+            attach_grid_legend(fig, handles, n_rows_for_layout=nrows,
+                               folder_name=folder_name, param_tag=param_tag)
+            save_grid_figure(fig, folder_name=folder_name,
+                             file_prefix="my_script", param_tag=param_tag,
+                             output_dir=output_dir)
+            plt.close(fig)
 """
 
 from pathlib import Path
@@ -176,6 +228,180 @@ def build_param_tag(mCloud_list, sfe_list, ndens) -> str:
         parts.append(sfe_tag)
     parts.append(f"n{ndens}")
     return "_".join(parts)
+
+
+# ------------------------------------------------------------------
+# Shared helpers for inline grid implementations
+# ------------------------------------------------------------------
+#
+# Not every paper_*.py can cleanly use ``plot_grid`` (some need nested
+# GridSpec, twin axes, or Nx1 overlay layouts).  The helpers below let
+# those inline grids stay flat while sharing the truly repetitive
+# boilerplate: folder discovery, missing/error cells, legend layout,
+# suptitle, mCloud row label, and PDF saving.
+
+
+def iter_grid_densities(folder_path, ndens_filter=None,
+                        mCloud_filter=None, sfe_filter=None):
+    """Yield ``(ndens, mCloud_list, sfe_list, grid, folder_name)`` per density.
+
+    Handles: find_all_simulations → get_unique_ndens → organize →
+    early-return on empty grid.  Prints the standard progress messages.
+
+    Usage::
+
+        for ndens, mCloud_list, sfe_list, grid, folder_name in \\
+                iter_grid_densities(folder_path, ndens_filter, ...):
+            ...  # build figure, loop cells, save
+    """
+    folder_path = Path(folder_path)
+    folder_name = folder_path.name
+
+    sim_files = find_all_simulations(folder_path)
+    if not sim_files:
+        print(f"No simulation files found in {folder_path}")
+        return
+
+    if ndens_filter:
+        ndens_to_plot = [ndens_filter]
+    else:
+        ndens_to_plot = get_unique_ndens(sim_files)
+
+    print(f"Found {len(sim_files)} simulations")
+    print(f"  Densities to plot: {ndens_to_plot}")
+
+    for ndens in ndens_to_plot:
+        print(f"\nProcessing n={ndens}...")
+        organized = organize_simulations_for_grid(
+            sim_files, ndens_filter=ndens,
+            mCloud_filter=mCloud_filter, sfe_filter=sfe_filter,
+        )
+        mCloud_list = organized["mCloud_list"]
+        sfe_list = organized["sfe_list"]
+        grid = organized["grid"]
+
+        if not mCloud_list or not sfe_list:
+            print(f"  Could not organize simulations into grid for n={ndens}")
+            continue
+
+        print(f"  mCloud: {mCloud_list}")
+        print(f"  SFE: {sfe_list}")
+
+        yield ndens, mCloud_list, sfe_list, grid, folder_name
+
+
+def mark_missing_cell(ax, label: str = "missing"):
+    """Standard placeholder for a grid cell with no data."""
+    ax.text(0.5, 0.5, label, ha="center", va="center", transform=ax.transAxes)
+    ax.set_axis_off()
+
+
+def attach_grid_legend(
+    fig, handles, *,
+    n_rows_for_layout: int,
+    cell_height_inches: float = 2.6,
+    folder_name: str = "",
+    param_tag: str = "",
+    legend_ncol: int = 4,
+    legend_fontsize: Optional[float] = None,
+    legend_bbox_transform_fig: bool = False,
+    suptitle: bool = True,
+    suptitle_fontsize: int = 14,
+) -> dict:
+    """Compute adaptive layout, attach fig.legend and fig.suptitle.
+
+    This is the shared wrapper around ``_compute_legend_layout`` that every
+    grid figure calls at the end.  It guarantees identical adaptive
+    behaviour (legend doesn't cover the top row; suptitle sits above the
+    legend) across every script — whether the grid is 1×1 or 7×7.
+
+    Parameters
+    ----------
+    fig : matplotlib Figure
+    handles : list of Artist
+        Legend handles.  Can be empty; legend is skipped if so.
+    n_rows_for_layout : int
+        Number of grid rows (used to compute figure height for layout).
+    cell_height_inches : float
+        Per-cell vertical size used in ``plt.subplots(figsize=...)``.
+    folder_name, param_tag : str
+        Combined as ``"{folder_name} ({param_tag})"`` for the suptitle.
+    legend_ncol, legend_fontsize :
+        Passed to ``fig.legend``.
+    legend_bbox_transform_fig : bool
+        If True, pass ``bbox_transform=fig.transFigure`` (needed by a few
+        scripts for historical reasons; others use the default).
+    suptitle : bool
+        If False, no suptitle is drawn (some scripts prefer no title).
+
+    Returns
+    -------
+    dict
+        The layout dict from ``_compute_legend_layout`` (``top``,
+        ``legend_y``, ``suptitle_y``).
+    """
+    layout = _compute_legend_layout(
+        cell_height_inches * n_rows_for_layout,
+        n_legend_items=len(handles) if handles else 0,
+        legend_ncol=max(legend_ncol, 1),
+    )
+    fig.subplots_adjust(top=layout["top"])
+
+    if handles:
+        legend_kwargs = dict(
+            loc="upper center",
+            ncol=legend_ncol,
+            frameon=True,
+            facecolor="white",
+            framealpha=0.9,
+            edgecolor="0.2",
+            bbox_to_anchor=(0.5, layout["legend_y"]),
+        )
+        if legend_fontsize is not None:
+            legend_kwargs["fontsize"] = legend_fontsize
+        if legend_bbox_transform_fig:
+            legend_kwargs["bbox_transform"] = fig.transFigure
+        leg = fig.legend(handles=handles, **legend_kwargs)
+        leg.set_zorder(10)
+
+    if suptitle:
+        title = folder_name
+        if param_tag:
+            title = f"{folder_name} ({param_tag})" if folder_name else param_tag
+        fig.suptitle(title, fontsize=suptitle_fontsize, y=layout["suptitle_y"])
+
+    return layout
+
+
+def save_grid_figure(fig, *, folder_name: str, file_prefix: str,
+                     param_tag: str, output_dir=None, save_pdf: bool = True):
+    """Save the figure to ``{FIG_DIR}/{folder_name}/{file_prefix}_{param_tag}.pdf``.
+
+    Uses ``output_dir`` directly if supplied.
+    """
+    if not save_pdf:
+        return None
+    fig_dir = Path(output_dir) if output_dir else FIG_DIR / folder_name
+    fig_dir.mkdir(parents=True, exist_ok=True)
+    out_pdf = fig_dir / f"{file_prefix}_{param_tag}.pdf"
+    fig.savefig(out_pdf, bbox_inches="tight")
+    print(f"  Saved: {out_pdf}")
+    return out_pdf
+
+
+def set_mcloud_ylabel(ax, mCloud: str, *, extra: str = "",
+                      label_fn: Optional[Callable[[str], str]] = None):
+    """Set ``ax.set_ylabel`` to an mCloud row label, optionally with an extra line.
+
+    Replaces the 9-line ``mexp/mcoeff`` block repeated in many paper
+    scripts.  ``label_fn`` defaults to ``_mcloud_label``; pass
+    ``_mcloud_label_short`` for the compact variant.
+    """
+    fn = label_fn or _mcloud_label
+    label = fn(mCloud)
+    if extra:
+        label = label + "\n" + extra
+    ax.set_ylabel(label)
 
 
 # ------------------------------------------------------------------
@@ -339,9 +565,11 @@ def plot_grid(
     legend_y : float
         Vertical position of the legend anchor (in figure fraction).
     suptitle : bool
-        Whether to add a top-level title with folder name and density.
+        If True, adds a figure suptitle ``"{folder_name} ({param_tag})"``
+        where ``param_tag`` is the output of ``build_param_tag``.
     subplots_adjust_top : float, optional
-        If set, call ``fig.subplots_adjust(top=...)``.
+        If set, overrides the adaptive ``top`` computed by
+        ``_compute_legend_layout``.
     save_pdf : bool
     pre_loop_fn : callable(fig, axes), optional
         Hook called after subplot creation but before the cell loop.
@@ -351,44 +579,14 @@ def plot_grid(
         Custom row-label builder.  Defaults to ``_mcloud_label``.
         Use ``_mcloud_label_short`` for the compact variant.
     suptitle_y : float, optional
-        Vertical position of suptitle.  If ``None``, uses matplotlib default.
+        Vertical position of suptitle.  If ``None``, the adaptive
+        ``_compute_legend_layout`` value is used.
     hide_non_left_labels : bool
         If ``True``, hide y-axis tick labels on non-leftmost columns.
     """
-    folder_path = Path(folder_path)
-    folder_name = folder_path.name
-
-    sim_files = find_all_simulations(folder_path)
-    if not sim_files:
-        print(f"No simulation files found in {folder_path}")
-        return
-
-    if ndens_filter:
-        ndens_to_plot = [ndens_filter]
-    else:
-        ndens_to_plot = get_unique_ndens(sim_files)
-
-    print(f"Found {len(sim_files)} simulations")
-    print(f"  Densities to plot: {ndens_to_plot}")
-
-    for ndens in ndens_to_plot:
-        print(f"\nProcessing n={ndens}...")
-        organized = organize_simulations_for_grid(
-            sim_files,
-            ndens_filter=ndens,
-            mCloud_filter=mCloud_filter,
-            sfe_filter=sfe_filter,
-        )
-        mCloud_list = organized["mCloud_list"]
-        sfe_list = organized["sfe_list"]
-        grid = organized["grid"]
-
-        if not mCloud_list or not sfe_list:
-            print(f"  Could not organize simulations into grid for n={ndens}")
-            continue
-
-        print(f"  mCloud: {mCloud_list}")
-        print(f"  SFE: {sfe_list}")
+    for ndens, mCloud_list, sfe_list, grid, folder_name in iter_grid_densities(
+            folder_path, ndens_filter=ndens_filter,
+            mCloud_filter=mCloud_filter, sfe_filter=sfe_filter):
 
         nrows, ncols = len(mCloud_list), len(sfe_list)
         fig, axes = plt.subplots(
@@ -426,12 +624,7 @@ def plot_grid(
                 if data_path is None:
                     run_id = f"{mCloud}_sfe{sfe}_n{ndens}"
                     print(f"  {run_id}: missing")
-                    ax.text(
-                        0.5, 0.5, "missing",
-                        ha="center", va="center",
-                        transform=ax.transAxes,
-                    )
-                    ax.set_axis_off()
+                    mark_missing_cell(ax, "missing")
                     continue
 
                 try:
@@ -439,12 +632,7 @@ def plot_grid(
                     plot_cell_fn(ax, data)
                 except Exception as e:
                     print(f"  Error loading {data_path}: {e}")
-                    ax.text(
-                        0.5, 0.5, "error",
-                        ha="center", va="center",
-                        transform=ax.transAxes,
-                    )
-                    ax.set_axis_off()
+                    mark_missing_cell(ax, "error")
                     continue
 
                 # Column title (top row only)
@@ -452,12 +640,9 @@ def plot_grid(
                     ax.set_title(_sfe_title(sfe))
 
                 # Row label (left column only)
-                _label_fn = mcloud_label_fn or _mcloud_label
                 if j == 0:
-                    row_label = _label_fn(mCloud)
-                    if ylabel:
-                        row_label += "\n" + ylabel
-                    ax.set_ylabel(row_label)
+                    set_mcloud_ylabel(ax, mCloud, extra=ylabel,
+                                      label_fn=mcloud_label_fn)
                 elif hide_non_left_labels:
                     ax.tick_params(labelleft=False)
 
