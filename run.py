@@ -192,7 +192,6 @@ def run_sweep(args):
         SimulationResult,
     )
     from src.cloud_properties.validate_gmc import validate_gmc_params
-    from src._functions.unit_conversions import CONV, CGS
 
     # Module-level shutdown flag for signal handler access
     global _shutdown_requested
@@ -264,7 +263,7 @@ def run_sweep(args):
 
         kwargs = dict(
             mCloud=float(mCloud),
-            nCore=float(nCore) * ndens_factor,
+            nCore=float(nCore_cgs) * ndens_factor,
             mu=mu,
             nISM=nISM,
             dens_profile=dens_profile,
