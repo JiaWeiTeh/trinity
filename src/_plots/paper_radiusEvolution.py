@@ -14,9 +14,9 @@ from src._plots.plot_base import FIG_DIR, smooth_1d
 from src._output.trinity_reader import load_output, find_data_file, resolve_data_input, info_simulations
 from src._plots.plot_markers import add_plot_markers, get_marker_legend_handles
 from src._plots.grid_template import (
-    _compute_legend_layout, build_param_tag,
+    build_param_tag,
     iter_grid_densities, mark_missing_cell, attach_grid_legend,
-    save_grid_figure, set_mcloud_ylabel, _range_tag as range_tag,
+    save_grid_figure, set_mcloud_ylabel,
     _sfe_title,
 )
 
@@ -514,15 +514,11 @@ Examples:
                 figsize=(3.2 * ncols, 2.6 * nrows),
                 sharex=False, sharey=False,
                 dpi=500,
-                constrained_layout=False
+                constrained_layout=False,
+                squeeze=False,
             )
 
             nlog = int(np.log10(float(ndens)))
-
-            m_tag   = range_tag("M",   mCloud_list, key=float)
-            sfe_tag = range_tag("sfe", sfe_list,    key=int)
-            n_tag   = f"n{ndens}"
-            tag = f"radius_grid_{m_tag}_{sfe_tag}_{n_tag}"
 
             for i, mCloud in enumerate(mCloud_list):
                 for j, sfe in enumerate(sfe_list):
@@ -532,8 +528,7 @@ Examples:
 
                     if data_path is None:
                         print(f"  {run_name}: missing")
-                        ax.text(0.5, 0.5, "missing", ha="center", va="center", transform=ax.transAxes)
-                        ax.set_axis_off()
+                        mark_missing_cell(ax, "missing")
                         continue
 
                     try:
@@ -549,8 +544,7 @@ Examples:
                         )
                     except Exception as e:
                         print(f"Error in {run_name}: {e}")
-                        ax.text(0.5, 0.5, "error", ha="center", va="center", transform=ax.transAxes)
-                        ax.set_axis_off()
+                        mark_missing_cell(ax, "error")
                         continue
 
                     if i == 0:
@@ -575,30 +569,23 @@ Examples:
                 handles.append(Line2D([0], [0], color="k", ls="--", alpha=0.6, lw=1.5, label=r"Weaver: $R \propto t^{3/5}$"))
             handles.extend(get_marker_legend_handles(include_phase=SHOW_PHASE, include_rcloud=SHOW_RCLOUD, include_rcloud_horizontal=SHOW_RCLOUD_H, include_collapse=SHOW_COLLAPSE))
 
-            _layout = _compute_legend_layout(2.6 * nrows, n_legend_items=len(handles), legend_ncol=3)
-            fig.subplots_adjust(top=_layout['top'])
-            fig.suptitle(rf"Radius evolution ($n=10^{{{nlog}}}\,\mathrm{{cm^{{-3}}}}$)", y=_layout['suptitle_y'])
-
-            leg = fig.legend(
-                handles=handles,
-                loc="upper center",
-                ncol=3,
-                frameon=True,
-                facecolor="white",
-                framealpha=0.9,
-                edgecolor="0.2",
-                bbox_to_anchor=(0.5, _layout['legend_y']),
-                bbox_transform=fig.transFigure
+            # Use shared adaptive layout; suptitle here is custom text (not
+            # folder_name), so draw it manually from the returned layout.
+            param_tag = build_param_tag(mCloud_list, sfe_list, ndens)
+            layout = attach_grid_legend(
+                fig, handles, n_rows_for_layout=nrows,
+                folder_name="", param_tag=param_tag,
+                legend_ncol=3, legend_bbox_transform_fig=True,
+                suptitle=False,
             )
-            leg.set_zorder(10)
-
-            m_tag   = range_tag("M",   mCloud_list, key=float)
-            sfe_tag = range_tag("sfe", sfe_list,    key=int)
-            n_tag   = f"n{ndens}"
-            tag = f"radiusEvolution_{m_tag}_{sfe_tag}_{n_tag}"
+            fig.suptitle(
+                rf"Radius evolution ($n=10^{{{nlog}}}\,\mathrm{{cm^{{-3}}}}$)"
+                + f"  ({param_tag})",
+                y=layout['suptitle_y'],
+            )
 
             if SAVE_PDF:
-                out_pdf = FIG_DIR / f"{tag}.pdf"
+                out_pdf = FIG_DIR / f"radiusEvolution_{param_tag}.pdf"
                 fig.savefig(out_pdf, bbox_inches="tight")
                 print(f"Saved: {out_pdf}")
 

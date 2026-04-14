@@ -32,7 +32,12 @@ from src._output.trinity_reader import (
     parse_simulation_params,
 )
 from src._plots.plot_markers import add_plot_markers, get_marker_legend_handles
-from src._plots.grid_template import _mcloud_label, _compute_legend_layout, build_param_tag
+from src._plots.grid_template import (
+    _mcloud_label,
+    build_param_tag,
+    mark_missing_cell,
+    attach_grid_legend,
+)
 from src._functions.unit_conversions import CONV, INV_CONV, CGS
 
 print("...plotting radius comparison (TRINITY vs WARPFIELD vs Weaver)")
@@ -364,9 +369,7 @@ def plot_comparison_grid(
                 path_T = grid_T.get((mCloud, sfe))
 
                 if path_T is None:
-                    ax.text(0.5, 0.5, "missing", ha="center", va="center",
-                            transform=ax.transAxes)
-                    ax.set_axis_off()
+                    mark_missing_cell(ax, "missing")
                     continue
 
                 # Look up matched WARPFIELD run
@@ -379,9 +382,7 @@ def plot_comparison_grid(
                     plot_cell(ax, data_T, data_W)
                 except Exception as e:
                     print(f"  Error: {sim_name}: {e}")
-                    ax.text(0.5, 0.5, "error", ha="center", va="center",
-                            transform=ax.transAxes)
-                    ax.set_axis_off()
+                    mark_missing_cell(ax, "error")
                     continue
 
                 if j == 0:
@@ -404,16 +405,15 @@ def plot_comparison_grid(
         ]
         handles.extend(get_marker_legend_handles(include_phase=SHOW_PHASE, include_rcloud=SHOW_RCLOUD, include_rcloud_horizontal=SHOW_RCLOUD_H, include_collapse=SHOW_COLLAPSE))
 
-        _layout = _compute_legend_layout(2.8 * nrows, n_legend_items=len(handles), legend_ncol=4)
-        fig.subplots_adjust(top=_layout['top'])
-
-        leg = fig.legend(
-            handles=handles, loc="upper center",
-            ncol=4, frameon=True, facecolor="white",
-            framealpha=0.9, edgecolor="0.2",
-            bbox_to_anchor=(0.5, _layout['legend_y']),
+        param_tag = build_param_tag(mCloud_list, sfe_list, ndens)
+        attach_grid_legend(
+            fig, handles,
+            n_rows_for_layout=nrows,
+            cell_height_inches=2.8,
+            folder_name="", param_tag=param_tag,
+            legend_ncol=4,
+            suptitle=False,
         )
-        leg.set_zorder(10)
 
         # Save
         if output_dir:
@@ -422,7 +422,7 @@ def plot_comparison_grid(
             combined = f"{folder_T.name}_{folder_W.name}"
             fig_dir = FIG_DIR / combined
         fig_dir.mkdir(parents=True, exist_ok=True)
-        out_pdf = fig_dir / f"radiusComparison_{build_param_tag(mCloud_list, sfe_list, ndens)}.pdf"
+        out_pdf = fig_dir / f"radiusComparison_{param_tag}.pdf"
         fig.savefig(out_pdf, bbox_inches="tight")
         print(f"  Saved: {out_pdf}")
 
