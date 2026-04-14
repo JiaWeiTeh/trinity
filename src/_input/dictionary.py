@@ -403,7 +403,7 @@ class DescribedDict(dict):
 
         After feature detection, an R²-based thinning step selects the
         smallest subset whose linear interpolation reconstructs the
-        original curve with ``R² ≥ 0.999`` (see
+        original curve with ``R² ≥ 0.99`` (see
         ``src/_functions/simplify.py::_simplify`` for the ``r2_target``
         argument).  Hierarchical-bisection ordering guarantees that the
         subset at any budget N is a strict superset of the subset at

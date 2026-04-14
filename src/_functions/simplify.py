@@ -210,7 +210,7 @@ def _simplify(
     y_arr: Union[np.ndarray, Sequence[float]],
     nmin: int = 100,
     grad_inc: float = 1.0,
-    r2_target: float = 0.999,
+    r2_target: float = 0.99,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
     Heuristic downsampling of a curve y(x) to approximately ``nmin`` points,
@@ -289,7 +289,7 @@ def _simplify(
         detection selects important points, the result is thinned to the
         minimum number of points that still achieves this R² value.
         Set to ``None`` to disable R²-based thinning and keep all
-        detected feature points.  Default is 0.999.
+        detected feature points.  Default is 0.99.
 
     Returns
     -------
