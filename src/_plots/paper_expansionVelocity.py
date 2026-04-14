@@ -19,7 +19,13 @@ from src._plots.plot_base import FIG_DIR, smooth_1d
 # Add project root to path for imports
 from src._output.trinity_reader import load_output, resolve_data_input
 from src._plots.plot_markers import add_plot_markers, get_marker_legend_handles, add_rcloud_horizontal_marker
-from src._plots.grid_template import _compute_legend_layout, build_param_tag
+from src._plots.grid_template import (
+    build_param_tag,
+    iter_grid_densities,
+    mark_missing_cell,
+    attach_grid_legend,
+    set_mcloud_ylabel,
+)
 
 print("...plotting velocity (v2) + radii (twin axis) grid")
 
@@ -85,14 +91,6 @@ def load_run_velocity(data_path: Path):
         isCollapse = isCollapse[order]
 
     return t, phase, v2, R1, R2, rShell, r_Tb, rcloud, isCollapse
-
-
-def range_tag(prefix, values, key=float):
-    vals = list(values)
-    if len(vals) == 1:
-        return f"{prefix}{vals[0]}"
-    vmin, vmax = min(vals, key=key), max(vals, key=key)
-    return f"{prefix}{vmin}-{vmax}"
 
 
 #--- plot
@@ -288,61 +286,27 @@ def plot_grid(folder_path, output_dir=None, ndens_filter=None,
         Filter simulations by density (e.g., "1e4"). If None, creates one
         PDF per unique density found.
     """
-    from src._output.trinity_reader import find_all_simulations, organize_simulations_for_grid, get_unique_ndens
+    for ndens, mCloud_list, sfe_list, grid, folder_name in iter_grid_densities(
+            folder_path, ndens_filter=ndens_filter,
+            mCloud_filter=mCloud_filter, sfe_filter=sfe_filter):
 
-    folder_path = Path(folder_path)
-    folder_name = folder_path.name
-
-    sim_files = find_all_simulations(folder_path)
-    if not sim_files:
-        print(f"No simulation files found in {folder_path}")
-        return
-
-    # Determine which densities to plot
-    if ndens_filter:
-        ndens_to_plot = [ndens_filter]
-    else:
-        ndens_to_plot = get_unique_ndens(sim_files)
-
-    print(f"Found {len(sim_files)} simulations")
-    print(f"  Densities to plot: {ndens_to_plot}")
-
-    # Create one grid per density
-    for ndens in ndens_to_plot:
-        print(f"\nProcessing n={ndens}...")
-        organized = organize_simulations_for_grid(
-            sim_files, ndens_filter=ndens,
-            mCloud_filter=mCloud_filter, sfe_filter=sfe_filter
-        )
-        mCloud_list_found = organized['mCloud_list']
-        sfe_list_found = organized['sfe_list']
-        grid = organized['grid']
-
-        if not mCloud_list_found or not sfe_list_found:
-            print(f"Could not organize simulations into grid")
-            continue
-
-        print(f"  mCloud: {mCloud_list_found}")
-        print(f"  SFE: {sfe_list_found}")
-
-        nrows, ncols = len(mCloud_list_found), len(sfe_list_found)
+        nrows, ncols = len(mCloud_list), len(sfe_list)
         fig, axes = plt.subplots(
             nrows=nrows, ncols=ncols,
             figsize=(3.2 * ncols, 2.6 * nrows),
             sharex=False, sharey=False,
             dpi=500,
             squeeze=False,
-            constrained_layout=False
+            constrained_layout=False,
         )
 
-        for i, mCloud in enumerate(mCloud_list_found):
-            for j, sfe in enumerate(sfe_list_found):
+        for i, mCloud in enumerate(mCloud_list):
+            for j, sfe in enumerate(sfe_list):
                 ax = axes[i, j]
                 data_path = grid.get((mCloud, sfe))
 
                 if data_path is None:
-                    ax.text(0.5, 0.5, "missing", ha="center", va="center", transform=ax.transAxes)
-                    ax.set_axis_off()
+                    mark_missing_cell(ax, "missing")
                     continue
 
                 try:
@@ -353,12 +317,11 @@ def plot_grid(folder_path, output_dir=None, ndens_filter=None,
                         smooth_mode=SMOOTH_MODE,
                         phase_line=SHOW_PHASE,
                         cloud_line=SHOW_RCLOUD,
-                        use_log_x=USE_LOG_X
+                        use_log_x=USE_LOG_X,
                     )
                 except Exception as e:
                     print(f"Error loading {data_path}: {e}")
-                    ax.text(0.5, 0.5, "error", ha="center", va="center", transform=ax.transAxes)
-                    ax.set_axis_off()
+                    mark_missing_cell(ax, "error")
                     continue
 
                 if i == 0:
@@ -366,17 +329,7 @@ def plot_grid(folder_path, output_dir=None, ndens_filter=None,
                     ax.set_title(rf"$\epsilon={eps:.2f}$")
 
                 if j == 0:
-                    mval = float(mCloud)
-                    mexp = int(np.floor(np.log10(mval)))
-                    mcoeff = round(mval / (10 ** mexp))
-                    if mcoeff == 10:
-                        mcoeff = 1
-                        mexp += 1
-                    if mcoeff == 1:
-                        mlabel = rf"$M_{{\rm cloud}}=10^{{{mexp}}}\,M_\odot$"
-                    else:
-                        mlabel = rf"$M_{{\rm cloud}}={mcoeff}\times10^{{{mexp}}}\,M_\odot$"
-                    ax.set_ylabel(mlabel + "\n" + r"$v_2$ [km s$^{-1}$]")
+                    set_mcloud_ylabel(ax, mCloud, extra=r"$v_2$ [km s$^{-1}$]")
                 else:
                     ax.tick_params(labelleft=False)
 
@@ -401,26 +354,17 @@ def plot_grid(folder_path, output_dir=None, ndens_filter=None,
         ]
         handles.extend(get_marker_legend_handles(include_phase=SHOW_PHASE, include_rcloud=SHOW_RCLOUD, include_rcloud_horizontal=SHOW_RCLOUD_H, include_collapse=SHOW_COLLAPSE))
 
-        _layout = _compute_legend_layout(2.6 * nrows, n_legend_items=len(handles), legend_ncol=3)
-        fig.subplots_adjust(top=_layout['top'])
-
-        leg = fig.legend(
-            handles=handles,
-            loc="upper center",
-            ncol=3,
-            frameon=True,
-            facecolor="white",
-            framealpha=0.9,
-            edgecolor="0.2",
-            bbox_to_anchor=(0.5, _layout['legend_y']),
-            bbox_transform=fig.transFigure
+        param_tag = build_param_tag(mCloud_list, sfe_list, ndens)
+        attach_grid_legend(
+            fig, handles,
+            n_rows_for_layout=nrows,
+            folder_name=folder_name,
+            param_tag=param_tag,
+            legend_ncol=3,
+            legend_bbox_transform_fig=True,
         )
-        leg.set_zorder(10)
 
-        param_tag = build_param_tag(mCloud_list_found, sfe_list_found, ndens)
-        fig.suptitle(f"{folder_name} ({param_tag})", fontsize=14, y=_layout['suptitle_y'])
-
-        # Save figure to ./fig/{folder_name}/expansionVelocity_{param_tag}.pdf
+        # Save with pad_inches=0.15 (unique to this script — keep inline).
         fig_dir = Path(output_dir) if output_dir else FIG_DIR / folder_name
         fig_dir.mkdir(parents=True, exist_ok=True)
         out_pdf = fig_dir / f"expansionVelocity_{param_tag}.pdf"

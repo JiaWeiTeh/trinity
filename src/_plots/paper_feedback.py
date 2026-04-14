@@ -26,7 +26,10 @@ _sys.path.insert(0, str(_Path(__file__).parent.parent.parent))
 from src._plots.plot_base import FIG_DIR, smooth_1d, smooth_2d
 from src._output.trinity_reader import load_output, resolve_data_input
 from src._plots.plot_markers import add_plot_markers, get_marker_legend_handles
-from src._plots.grid_template import _compute_legend_layout, build_param_tag
+from src._plots.grid_template import (
+    build_param_tag, iter_grid_densities, mark_missing_cell,
+    attach_grid_legend, save_grid_figure, set_mcloud_ylabel, _sfe_title,
+)
 
 print("...plotting force fractions with ram composition overlay + PISM")
 
@@ -459,107 +462,48 @@ def plot_grid(folder_path, output_dir=None, ndens_filter=None,
     Folder names must follow the pattern: {mCloud}_sfe{sfe}_n{ndens}
     Examples: "1e7_sfe020_n1e4", "5e6_sfe010_n1e3"
     """
-    from src._output.trinity_reader import find_all_simulations, organize_simulations_for_grid, get_unique_ndens
+    for ndens, mCloud_list, sfe_list, grid, folder_name in iter_grid_densities(
+            folder_path, ndens_filter=ndens_filter,
+            mCloud_filter=mCloud_filter, sfe_filter=sfe_filter):
 
-    folder_path = Path(folder_path)
-    folder_name = folder_path.name
-
-    # Find all simulations
-    sim_files = find_all_simulations(folder_path)
-    if not sim_files:
-        print(f"No simulation files found in {folder_path}")
-        return
-
-    # Determine which densities to plot
-    if ndens_filter:
-        ndens_to_plot = [ndens_filter]
-    else:
-        ndens_to_plot = get_unique_ndens(sim_files)
-
-    print(f"Found {len(sim_files)} simulations")
-    print(f"  Densities to plot: {ndens_to_plot}")
-
-    # Create one grid per density
-    for ndens in ndens_to_plot:
-        print(f"\nProcessing n={ndens}...")
-
-        organized = organize_simulations_for_grid(
-            sim_files, ndens_filter=ndens,
-            mCloud_filter=mCloud_filter, sfe_filter=sfe_filter
-        )
-        mCloud_list_use = organized['mCloud_list']
-        sfe_list_use = organized['sfe_list']
-        grid = organized['grid']
-
-        if not mCloud_list_use or not sfe_list_use:
-            print(f"  Could not organize simulations into grid for n={ndens}")
-            continue
-
-        print(f"  mCloud: {mCloud_list_use}")
-        print(f"  SFE: {sfe_list_use}")
-
-        nrows, ncols = len(mCloud_list_use), len(sfe_list_use)
+        nrows, ncols = len(mCloud_list), len(sfe_list)
         fig, axes = plt.subplots(
             nrows=nrows, ncols=ncols,
             figsize=(3.2 * ncols, 2.6 * nrows),
             sharex=False, sharey=True,
-            dpi=500,
-            squeeze=False,
-            constrained_layout=False
+            dpi=500, squeeze=False, constrained_layout=False,
         )
 
-        for i, mCloud in enumerate(mCloud_list_use):
-            for j, sfe in enumerate(sfe_list_use):
+        for i, mCloud in enumerate(mCloud_list):
+            for j, sfe in enumerate(sfe_list):
                 ax = axes[i, j]
                 data_path = grid.get((mCloud, sfe))
 
                 if data_path is None:
-                    run_id = f"{mCloud}_sfe{sfe}_n{ndens}"
-                    print(f"  {run_id}: missing")
-                    ax.text(0.5, 0.5, "missing", ha="center", va="center", transform=ax.transAxes)
-                    ax.set_axis_off()
+                    mark_missing_cell(ax, "missing")
                     continue
 
                 try:
                     t, R2, phase, base_forces, overlay_forces, rcloud, isCollapse, pressures = load_run(data_path)
                     plot_run_on_ax(
                         ax, t, R2, phase, base_forces, overlay_forces, rcloud, isCollapse,
-                        pressures=pressures,
-                        alpha=0.75,
+                        pressures=pressures, alpha=0.75,
                         smooth_window=SMOOTH_WINDOW,
-                        phase_change=SHOW_PHASE,
-                        use_log_x=USE_LOG_X
+                        phase_change=SHOW_PHASE, use_log_x=USE_LOG_X,
                     )
                 except Exception as e:
                     print(f"Error loading {data_path}: {e}")
-                    ax.text(0.5, 0.5, "error", ha="center", va="center", transform=ax.transAxes)
-                    ax.set_axis_off()
+                    mark_missing_cell(ax, "error")
                     continue
 
                 # Ticks: show tick marks everywhere, labels only on bottom row
                 ax.tick_params(axis="x", which="both", bottom=True)
                 if i == nrows - 1:
                     ax.set_xlabel("t [Myr]")
-
-                # Column titles (top row only)
                 if i == 0:
-                    eps = int(sfe) / 100.0
-                    ax.set_title(rf"$\epsilon={eps:.2f}$")
-
-                # Row labels (left column only)
+                    ax.set_title(_sfe_title(sfe))
                 if j == 0:
-                    mval = float(mCloud)
-                    mexp = int(np.floor(np.log10(mval)))
-                    mcoeff = mval / (10 ** mexp)
-                    mcoeff = round(mcoeff)
-                    if mcoeff == 10:
-                        mcoeff = 1
-                        mexp += 1
-                    if mcoeff == 1:
-                        mlabel = rf"$M_{{\rm cloud}}=10^{{{mexp}}}\,M_\odot$"
-                    else:
-                        mlabel = rf"$M_{{\rm cloud}}={mcoeff}\times10^{{{mexp}}}\,M_\odot$"
-                    ax.set_ylabel(mlabel + "\n" + r"$F/F_{tot}$")
+                    set_mcloud_ylabel(ax, mCloud, extra=r"$F/F_{tot}$")
                 else:
                     ax.tick_params(labelleft=False)
 
@@ -570,7 +514,6 @@ def plot_grid(folder_path, output_dir=None, ndens_filter=None,
             Patch(facecolor=C_RAD,   edgecolor="none", alpha=0.75, label="Radiation"),
             Patch(facecolor=C_PISM,  edgecolor="0.3", linewidth=0.8, alpha=1.0,  label="PISM (inner HII)"),
         ]
-
         if INCLUDE_ALL_FORCE:
             handles += [
                 Patch(facecolor="none", edgecolor=C_PHII, hatch="......",     label=r"$P_{\rm HII}$"),
@@ -579,38 +522,18 @@ def plot_grid(folder_path, output_dir=None, ndens_filter=None,
                 Line2D([0], [0], color=C_PHII, lw=3, alpha=0.7, label=r"Driver: $P_{\rm HII}$"),
                 Line2D([0], [0], color=C_DRIVE, lw=3, alpha=0.7, label=r"Driver: $P_b$"),
             ]
-
         handles.extend(get_marker_legend_handles(include_phase=SHOW_PHASE, include_rcloud=SHOW_RCLOUD, include_collapse=SHOW_COLLAPSE))
 
-        _layout = _compute_legend_layout(2.6 * nrows, n_legend_items=len(handles), legend_ncol=4)
-        fig.subplots_adjust(top=_layout['top'])
-
-        leg = fig.legend(
-            handles=handles,
-            loc="upper center",
-            ncol=4,
-            frameon=True,
-            facecolor="white",
-            framealpha=0.9,
-            edgecolor="0.2",
-            bbox_to_anchor=(0.5, _layout['legend_y']),
-            fontsize=7,
+        param_tag = build_param_tag(mCloud_list, sfe_list, ndens)
+        attach_grid_legend(
+            fig, handles, n_rows_for_layout=nrows,
+            folder_name=folder_name, param_tag=param_tag,
+            legend_ncol=4, legend_fontsize=7,
+            suptitle=False,  # intentionally hidden in paper_feedback
         )
-        leg.set_zorder(10)
-
-        # Title and filename
-        param_tag = build_param_tag(mCloud_list_use, sfe_list_use, ndens)
-        # fig.suptitle(f"{folder_name} ({param_tag})", fontsize=14, y=_layout['suptitle_y'])
-
-        # Save figure to ./fig/{folder_name}/feedback_{param_tag}.pdf
-        fig_dir = Path(output_dir) if output_dir else FIG_DIR / folder_name
-        fig_dir.mkdir(parents=True, exist_ok=True)
-
-        if SAVE_PDF:
-            out_pdf = fig_dir / f"feedback_{param_tag}.pdf"
-            fig.savefig(out_pdf, bbox_inches="tight")
-            print(f"Saved: {out_pdf}")
-
+        save_grid_figure(fig, folder_name=folder_name,
+                         file_prefix="feedback", param_tag=param_tag,
+                         output_dir=output_dir, save_pdf=SAVE_PDF)
         plt.close(fig)
 
 
