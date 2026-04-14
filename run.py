@@ -264,7 +264,7 @@ def run_sweep(args):
 
         kwargs = dict(
             mCloud=float(mCloud),
-            nCore=float(nCore) * ndens_factor,
+            nCore=float(nCore_cgs) * ndens_factor,
             mu=mu,
             nISM=nISM,
             dens_profile=dens_profile,
