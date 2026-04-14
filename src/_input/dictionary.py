@@ -393,13 +393,38 @@ class DescribedDict(dict):
         """
         Heuristic downsampling of a curve y(x), preserving:
         - endpoints
-        - large gradient-change points
-        - sign-change points
-        - points chosen by cumulative distance in y
+        - sharp bends (points where the Menger curvature of the local
+          triplet exceeds ``grad_inc``; units 1/length)
+        - local extrema (sign-change points of the first derivative)
+        - points chosen by cumulative distance in y (uniform arc-length)
+        - topologically persistent extrema — any peak/trough with
+          prominence ≥ 5 % of the y-range is retained as *mandatory*, so
+          big features never flicker in and out as ``nmin`` varies
 
-        Intended use: reduce output size for long profile arrays before snapshotting.
+        After feature detection, an R²-based thinning step selects the
+        smallest subset whose linear interpolation reconstructs the
+        original curve with ``R² ≥ 0.999`` (see
+        ``src/_functions/simplify.py::_simplify`` for the ``r2_target``
+        argument).  Hierarchical-bisection ordering guarantees that the
+        subset at any budget N is a strict superset of the subset at
+        N−1, so outputs are stable under small changes in ``nmin``.
 
-        Delegates to the standalone ``simplify`` module (no TRINITY dependencies).
+        Input / output contract (unchanged from the previous
+        implementation; only the feature-selection strategy is more
+        rigorous):
+
+        * Input: ``x_arr``, ``y_arr`` are 1-D array-likes of equal
+          length.  ``nmin`` is the target floor (clamped to ≥ 100).
+        * Output: ``(x_out, y_out)`` — two ``np.ndarray``s of equal
+          length, with endpoints preserved and x-values strictly
+          increasing where the input is.
+        * Raises ``ValueError`` if ``len(x_arr) != len(y_arr)``.
+
+        Intended use: reduce output size for long profile arrays before
+        snapshotting.
+
+        Delegates to the standalone ``simplify`` module (no TRINITY
+        dependencies).
         """
         from src._functions.simplify import _simplify
         try:
