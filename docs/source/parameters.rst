@@ -574,43 +574,10 @@ Standard physical constants. Typically not modified.
 Sweep Syntax
 ------------
 
-TRINITY supports three sweep modes, all auto-detected by ``run.py``.
-
-**Cartesian sweep** — list notation generates every combination:
-
-.. code-block:: text
-
-    # Single values (fixed across all runs)
-    dens_profile    densPL
-    densPL_alpha    0
-
-    # List values (generate combinations)
-    mCloud    [1e5, 1e6, 1e7]
-    sfe       [0.01, 0.05, 0.10]
-    nCore     [1e3, 1e4, 1e5]
-
-This generates 3 × 3 × 3 = 27 simulations.
-
-**Tuple sweep** — ``tuple(...)`` runs only the listed combinations (no
-Cartesian expansion):
-
-.. code-block:: text
-
-    tuple(mCloud, sfe, nCore)    [1e5, 0.01, 1e2] [1e7, 0.10, 1e4]
-
-This generates exactly 2 simulations.
-
-**Hybrid sweep** — tuples and lists combined; each tuple combination is
-crossed with the list sweeps:
-
-.. code-block:: text
-
-    tuple(mCloud, sfe)    [1e5, 0.01] [1e7, 0.10]
-    nCore                 [1e3, 1e4]
-
-This generates 2 × 2 = 4 simulations.
-
-See :ref:`sec-running` for full details on running parameter sweeps.
+Any parameter can also be given as a list (``[v1, v2, ...]``) or combined
+into a ``tuple(...)`` directive to launch a parameter sweep. ``run.py`` auto-
+detects this from the file content. See :ref:`sec-running` for the full
+Cartesian, tuple, and hybrid sweep modes.
 
 
 Examples

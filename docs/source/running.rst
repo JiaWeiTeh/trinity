@@ -392,27 +392,18 @@ With ``log_level = INFO``:
     2026-01-08 15:35:00 | INFO     | src.main | === Simulation Finished ===
 
 
-Output Formats
---------------
+Output Data Model
+-----------------
 
-JSONL Output
-^^^^^^^^^^^^
+TRINITY writes simulation state to **JSONL** (JSON Lines) — one JSON object per
+line, one line per snapshot. The format is append-only (O(1) flushes), streams
+without loading into memory, and stays readable after a crash up to the last
+complete line.
 
-TRINITY uses **JSONL** (JSON Lines) format for simulation output, where each line
-is a complete JSON object representing one timestep:
-
-.. code-block:: text
-
-    {"t_now": 0.001, "R2": 0.5, "v2": 100, ...}
-    {"t_now": 0.002, "R2": 0.6, "v2": 98, ...}
-    ...
-
-This format provides:
-
-- **O(1) write performance**: Append-only, no rewriting of previous data
-- **Streaming reads**: Process large files without loading everything into memory
-- **Crash resilience**: Partial files are still readable up to the last complete line
-
+This section describes the in-memory ``DescribedDict`` that mirrors the file,
+the keys contained in each snapshot, the on-disk layout, the save/flush
+workflow, and how to reload snapshots from Python. For higher-level analysis,
+use :ref:`trinity_reader <sec-trinity-reader>`.
 
 Dictionary Structure
 ^^^^^^^^^^^^^^^^^^^^
@@ -616,23 +607,11 @@ as numpy arrays and pandas DataFrames.
 Reading Output Data
 ^^^^^^^^^^^^^^^^^^^
 
-Use the ``trinity_reader`` module to access output data:
-
-.. code-block:: python
-
-    from src._output.trinity_reader import load_output
-
-    output = load_output('/path/to/dictionary.jsonl')
-    output.info()  # Print summary
-
-    # Access time series
-    times = output.get('t_now')
-    radii = output.get('R2')
-
-    # Get snapshot at specific time
-    snap = output.get_at_time(1.0)
-
-See :ref:`sec-trinity-reader` for complete API documentation.
+The ``DescribedDict.load_snapshot`` helpers above give direct access to the raw
+state. For most analysis work — time-series extraction, interpolation between
+snapshots, phase filtering, pandas conversion — use the higher-level
+``trinity_reader`` module instead. See :ref:`sec-trinity-reader` for the full
+API and examples.
 
 
 Troubleshooting

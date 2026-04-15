@@ -383,18 +383,17 @@ Force Balance Analysis
 File Format Notes
 -----------------
 
-TRINITY uses **JSONL** (JSON Lines) format where each line is one timestep:
+The on-disk JSONL layout, the ``DescribedDict`` structure behind each
+snapshot, and the save/flush workflow are documented in
+:ref:`sec-running` (*Output Data Model*). This section covers only details
+specific to the reader.
 
-.. code-block:: text
+**Legacy format**: the reader automatically handles both ``.jsonl`` (current)
+and ``.json`` (legacy, pre-2026) files.
 
-    {"t_now": 0.001, "R2": 0.5, "v2": 100, ...}
-    {"t_now": 0.002, "R2": 0.6, "v2": 98, ...}
-    ...
-
-The reader automatically handles both ``.jsonl`` (new) and ``.json`` (legacy) formats.
-
-**Snapshot Consistency**: All values in a snapshot correspond to the same timestamp
-(``t_now``). Snapshots are saved before ODE integration to ensure consistency.
+**Snapshot consistency**: all values in a snapshot correspond to the same
+timestamp (``t_now``). Snapshots are saved before ODE integration to ensure
+consistency across keys.
 
 **Profile Array Simplification**: A handful of long 1-D profile arrays are
 downsampled before serialisation to keep snapshot size manageable.  Each
