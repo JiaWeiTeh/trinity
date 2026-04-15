@@ -5,12 +5,14 @@
 Output Reader API
 =================
 
-The ``trinity_reader`` module provides a Python interface for
-loading and inspecting TRINITY simulation output. It sits on top of
-the ``DescribedDict`` snapshot format described in :ref:`sec-running`
-and hides the JSONL layout, the distinction between ``.jsonl`` and
-legacy ``.json`` files, and the per-key unit metadata behind a small
-set of high-level classes.
+TRINITY comes with a python module, ``trinity_reader``, which
+contains a small set of routines for reading and manipulating the
+output produced by the main code. For most users, this is the
+simplest way to access simulation data: the module hides the
+JSONL layout, the distinction between ``.jsonl`` and legacy
+``.json`` files, and the per-key unit metadata behind a handful of
+high-level classes. The low-level ``DescribedDict`` format on which
+the module sits is documented in :ref:`sec-running`.
 
 Two objects do most of the work. A :class:`TrinityOutput` represents
 an entire simulation and exposes time-series access, filtering by
@@ -18,11 +20,11 @@ phase or time window, and conversion to a pandas ``DataFrame``. A
 :class:`Snapshot` represents a single time step and behaves like a
 dictionary keyed by parameter name. A companion utility,
 ``find_all_simulations``, walks a directory tree of sweep output
-and returns the paths of every ``dictionary.jsonl`` it finds, which
+and returns the paths of every ``dictionary.jsonl`` it finds; this
 is convenient for building grid plots across a parameter sweep.
-
-Downstream plotting and analysis scripts under ``src/_plots/`` and
-``src/_calc/`` consume their input exclusively through this module.
+The plotting and analysis scripts under ``src/_plots/`` and
+``src/_calc/`` consume their input exclusively through these
+classes.
 
 .. seealso::
 

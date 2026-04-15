@@ -4,19 +4,24 @@ Visualization Tools
 ===================
 
 TRINITY ships with a set of plotting scripts, collected under
-``src/_plots/``, that produce the figures used in the associated
+``src/_plots/``, that generate the figures used in the associated
 papers. Each script is a thin wrapper around the
 :ref:`sec-trinity-reader` API: it loads one or more simulations from
-disk, extracts a small number of time series, and renders them with a
-shared Matplotlib style sheet (``trinity.mplstyle``). The scripts are
-intended both as reproducible figure generators and as worked
-examples of how to drive the reader API.
+disk, extracts a small number of time series, and renders them with
+a shared Matplotlib style sheet, ``trinity.mplstyle``. The scripts
+are intended both as reproducible figure generators and as worked
+examples of how to drive the reader API from user code.
 
-All scripts share the same command-line conventions, accept the same
-folder-based discovery flags, and write their output into a
+All scripts share the same command-line conventions, accept the
+same folder-based discovery flags, and write their output into a
 predictable ``fig/{folder_name}/`` tree whose filenames encode the
-parameter combination that was plotted. The sections below describe
-each script in turn, grouped by the physical quantity it visualises.
+parameter combination that was plotted. To run any of them, just
+do::
+
+    python src/_plots/SCRIPT_NAME.py -F /path/to/outputs
+
+The sections below describe each script in turn, grouped by the
+physical quantity it visualises.
 
 .. seealso::
 

@@ -6,44 +6,47 @@ Parameter Specifications
 ========================
 
 Every TRINITY simulation is driven by a plain-text parameter file.
-The file contains a flat list of ``name value`` lines that are parsed
-at start-up and injected into the simulation's state dictionary. There
-is no hierarchy, no environment variables, and no implicit parameter
-overrides; what the user writes in the file is what the simulation
-uses. Parameters that are not listed in the file fall back to the
-defaults recorded in ``param/default.param``.
+This chapter describes how such files are formatted and enumerates
+every keyword that TRINITY recognises, grouped by physical role:
+cloud and environment, stellar feedback, numerical solver, output,
+and a handful of sweep-mode directives. For each keyword the
+default value, unit, and short description are given. The same
+information can be inspected at run time through the
+``DescribedItem`` objects attached to every entry in the output
+state dictionary (see :ref:`sec-running`, *Output Data Model*).
 
-This chapter enumerates every parameter that TRINITY recognises,
-grouped by physical role: cloud and environment, stellar feedback,
-numerical solver, output, and a handful of sweep-mode directives.
-For each entry the default value, unit, and short description are
-given. The same information can be inspected at run time through the
-``DescribedItem`` objects in the output dictionary (see
-:ref:`sec-running`, *Output Data Model*).
 
-Parameter File Format
----------------------
+File Format
+-----------
 
-Basic Syntax
-^^^^^^^^^^^^
+An example parameter file is shipped as ``param/default.param`` in
+the source tree. Parameter files are generically formatted as a
+series of entries of the form::
 
-Parameter files use a simple space-separated format:
+    keyword    value
 
-.. code-block:: text
+Any line starting with ``#`` is considered a comment and is
+ignored, and anything on a line after a ``#`` is similarly ignored.
+Some general rules on keywords:
 
-    parameter_name    value
-
-**Rules:**
-
-- Lines starting with ``#`` are comments
-- Parameters can appear in any order
-- Unspecified parameters use default values
-- Inline comments are supported: ``mCloud 1e6  # cloud mass``
+* Keywords may appear in any order.
+* Many keywords have default values, indicated in parentheses in
+  the list below. These keywords are optional and need not appear
+  in the parameter file; missing keywords are set to their default
+  values. Keywords that do not have a default are required.
+* Keyword names are case-sensitive.
+* Unless explicitly stated otherwise, the input unit system is CGS
+  extended by :math:`M_\odot` for mass and Myr for time; the
+  internal unit system in which values are reported on output is
+  described below.
+* A value written as a bracketed list (``mCloud [1e5, 1e6]``) or
+  through a ``tuple(...)`` directive turns the file into a sweep;
+  see :ref:`sec-running` for the full sweep syntax.
 
 Supported Value Types
 ^^^^^^^^^^^^^^^^^^^^^
 
-TRINITY automatically parses values in this order of precedence:
+TRINITY parses values in the following order of precedence:
 
 ==================  ========================  ============================
 Type                Example                   Notes

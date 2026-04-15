@@ -5,59 +5,51 @@
 Running TRINITY
 ===============
 
-A TRINITY simulation is fully specified by a single plain-text
-parameter file and is launched through a single entry point,
-``run.py``. The entry point auto-detects whether the parameter file
-describes one simulation or a parameter sweep, and dispatches to a
-serial or a parallel worker pool accordingly. This chapter describes
-the parameter file syntax, the three sweep modes (Cartesian, tuple,
-and hybrid), the command-line options, and the on-disk layout of the
-output produced by each run.
+Basic Runs
+----------
 
-The only Python invocation a user normally needs is
-
-.. code-block:: console
+Once TRINITY is installed, running a simulation is extremely simple.
+A simulation is fully specified by a single plain-text parameter
+file, and the same entry point, ``run.py``, drives both single
+runs and parameter sweeps. The only invocation a user normally
+needs is, from the repository root::
 
     python run.py param/my_run.param
 
-from the root of the repository. The remainder of the chapter
-unpacks what this command does.
+where ``my_run.param`` is a parameter file formatted as described
+in :ref:`sec-parameters`. ``run.py`` inspects the file, decides
+whether it describes one simulation or a grid of simulations, and
+dispatches to either a single run or a parallel worker pool. No
+separate script is needed for sweeps.
 
-
-A minimal run
--------------
-
-A parameter file is a sequence of ``name value`` lines. The following
-three parameters are sufficient to launch a simulation; all other
-inputs fall back to the defaults listed in :ref:`sec-parameters`.
-
-.. code-block:: text
+A minimal parameter file contains only three entries; everything
+else falls back to the defaults listed in :ref:`sec-parameters`::
 
     model_name    my_first_run
     mCloud        1e6
     sfe           0.01
 
-Running ``python run.py param/my_run.param`` then integrates the
-shell to the stopping criterion and writes the output tree described
-in *Output Data Model* below.
+With this file in ``param/my_first_run.param``, just do::
+
+    python run.py param/my_first_run.param
+
+and TRINITY will integrate the shell to the stopping criterion and
+write the output tree described in *Output Data Model* below.
 
 
-Single Simulation Runs
-----------------------
+Paths and Output Directory
+--------------------------
 
-The parameter file passed to ``run.py`` may be given as either an
-absolute path or a path relative to the root of the repository:
-
-.. code-block:: console
+The parameter file passed to ``run.py`` may be given as an absolute
+path or a path relative to the root of the repository; both of the
+following are valid::
 
     python run.py param/example.param
     python run.py /home/user/my_params/custom.param
 
 The destination of the simulation output is controlled by the
 ``path2output`` parameter. TRINITY creates the directory if it does
-not already exist and populates it with three files:
-
-.. code-block:: text
+not already exist and populates it with three files::
 
     path2output/
     ├── dictionary.jsonl            # simulation state, one JSON object per snapshot
