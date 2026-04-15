@@ -500,83 +500,43 @@ Only the ``.value`` of each ``DescribedItem`` is written — ``info`` and
 ``ori_units`` live alongside the code and are reattached automatically when
 you load a snapshot back in.
 
-**Snapshot workflow (save → flush → disk):**
+**Snapshot workflow (save → flush → disk).**
+Snapshots are captured through a two-stage *buffer → flush*
+pipeline so that disk writes stay cheap (append-only, O(1) per
+flush) and a crash can lose at most ``snapshot_interval`` steps of
+progress. The sequence at each ODE step is:
 
-Snapshots are captured through a two-stage *buffer → flush* pipeline. Disk
-writes stay cheap (append-only, O(1) per flush) and a crash can lose at most
-``snapshot_interval`` steps of progress:
-
-.. code-block:: text
-
-    ┌──────────────────────────────────────────────────────────────────────┐
-    │                       SIMULATION MAIN LOOP                           │
-    │                                                                      │
-    │   for each ODE step:                                                 │
-    │       integrate physics ──► update params["R2"], ["v2"], ...         │
-    │       params.save_snapshot()   ───────────────┐                      │
-    │                                               │                      │
-    │   at phase boundary / end of simulation:      │                      │
-    │       params.flush()          ───────────────┐│                      │
-    │                                              ││                      │
-    └──────────────────────────────────────────────┼┼──────────────────────┘
-                                                   ││
-                                                   ▼▼
-    ┌──────────────────────────────────────────────────────────────────────┐
-    │                       DescribedDict internals                        │
-    │                                                                      │
-    │   save_snapshot():                                                   │
-    │     1. Duplicate guard (skip if t_now & R2 unchanged)                │
-    │     2. Serialise non-excluded keys → JSON-ready dict                 │
-    │     3. Stage into self.previous_snapshot[str(save_count)]            │
-    │     4. If save_count % snapshot_interval == 0 → call flush()         │
-    │                                                                      │
-    │   flush():                                                           │
-    │     1. First flush of a fresh run: delete old dictionary.jsonl       │
-    │     2. Append each pending snapshot as one JSON line                 │
-    │     3. Clear self.previous_snapshot, bump flush_count                │
-    │                                                                      │
-    └──────────────────────────────────┬───────────────────────────────────┘
-                                       │ append-only writes
-                                       ▼
-    ┌──────────────────────────────────────────────────────────────────────┐
-    │                  {path2output}/dictionary.jsonl                      │
-    │                                                                      │
-    │   {"snap_id": 0, "t_now": 0.000, "R2": 0.01, ...}                    │
-    │   {"snap_id": 1, "t_now": 0.003, "R2": 0.04, ...}                    │
-    │   {"snap_id": 2, "t_now": 0.008, "R2": 0.09, ...}                    │
-    │   ...                                                                │
-    └──────────────────────────────────────────────────────────────────────┘
-
-Stages in detail:
-
-1. **Mutate the dict.** Physics modules update ``params["R2"].value``,
-   ``params["Eb"].value``, etc. in place.
-2. **Stage a snapshot.** ``params.save_snapshot()`` copies the current state
-   (excluding any key marked ``exclude_from_snapshot=True``) into the
-   in-memory buffer ``params.previous_snapshot``. A duplicate guard compares
-   ``t_now`` + ``R2`` against the last saved entry and silently drops
-   re-runs of the same step.
-3. **Flush in batches.** Every ``snapshot_interval`` calls (default **10**),
-   ``save_snapshot`` triggers ``flush()`` automatically. You can also call
-   ``params.flush()`` manually at phase boundaries or after a critical event.
-4. **Append to disk.** ``flush()`` opens ``dictionary.jsonl`` in append mode
-   and writes one JSON line per pending snapshot, using ``NpEncoder`` to
-   serialise numpy scalars and arrays. The first flush of a fresh run
-   overwrites any existing file; subsequent flushes only append.
-5. **Crash-safe handlers.** On construction, ``DescribedDict`` registers an
-   ``atexit`` hook plus ``SIGINT``/``SIGTERM`` handlers. If the process
-   exits — cleanly, via ``Ctrl+C``, or via ``kill`` / SLURM ``scancel`` — any
-   buffered snapshots are flushed first and a termination debug report is
-   written via ``src/_output/simulation_end.py``. ``SIGKILL`` (``kill -9``)
-   and ``os._exit()`` bypass these hooks and can still lose the pending
+1. **Mutate the dict.** Physics modules update
+   ``params["R2"].value``, ``params["Eb"].value``, etc. in place.
+2. **Stage a snapshot.** ``params.save_snapshot()`` copies the
+   current state (excluding any key marked
+   ``exclude_from_snapshot=True``) into the in-memory buffer
+   ``params.previous_snapshot``. A duplicate guard compares
+   ``t_now`` + ``R2`` against the last saved entry and silently
+   drops re-runs of the same step.
+3. **Flush in batches.** Every ``snapshot_interval`` calls
+   (default **10**), ``save_snapshot`` triggers ``flush()``
+   automatically. ``params.flush()`` may also be called manually
+   at phase boundaries or after a critical event.
+4. **Append to disk.** ``flush()`` opens ``dictionary.jsonl`` in
+   append mode and writes one JSON line per pending snapshot,
+   using ``NpEncoder`` to serialise numpy scalars and arrays. The
+   first flush of a fresh run overwrites any existing file;
+   subsequent flushes only append.
+5. **Crash-safe handlers.** On construction, ``DescribedDict``
+   registers an ``atexit`` hook plus ``SIGINT`` / ``SIGTERM``
+   handlers, so that an exit — clean, via ``Ctrl+C``, or via
+   ``kill`` / SLURM ``scancel`` — flushes any buffered snapshots
+   before termination. ``SIGKILL`` (``kill -9``) and
+   ``os._exit()`` bypass these hooks and can lose the pending
    buffer; everything already on disk is always safe.
 
-Because writes are append-only, the file is readable even after a crash —
-the last line may be partial (one incomplete JSON object) but every prior
-line is a complete snapshot.
+Because writes are append-only, the file is readable even after a
+crash — the last line may be partial (one incomplete JSON object)
+but every prior line is a complete snapshot.
 
-You rarely call these APIs by hand; they are invoked by ``src/main.py`` and
-the phase modules. The public-facing reader is ``trinity_reader``
+These APIs are invoked by ``src/main.py`` and the phase modules;
+user code normally reads output through ``trinity_reader``
 (see :ref:`sec-trinity-reader`).
 
 **Reloading a snapshot:**
@@ -596,28 +556,16 @@ the phase modules. The public-facing reader is ``trinity_reader``
     # Convenience helper for the last snapshot
     params = DescribedDict.load_latest_snapshot("/path/to/outputs/my_run")
 
-For most analysis work, prefer the higher-level
-:ref:`trinity_reader <sec-trinity-reader>` API, which exposes the same data
-as numpy arrays and pandas DataFrames.
-
-Reading Output Data
-^^^^^^^^^^^^^^^^^^^
-
-The ``DescribedDict.load_snapshot`` helpers above give direct access to the
-raw state — useful when you want the exact Python objects the simulation
-worked with. For most analysis work, prefer the higher-level
-``trinity_reader`` module, which layers a ``TrinityOutput`` container on top
-of the same JSONL files and exposes:
-
-- time-series extraction as numpy arrays (``output.get('R2')``),
-- time-indexed snapshots with interpolation (``output.get_at_time(1.0)``),
-- phase and time-range filtering (``output.filter(phase='energy')``),
-- pandas conversion (``output.to_dataframe()``),
-- batch utilities for sweep outputs (``find_all_simulations``,
-  ``organize_simulations_for_grid``).
-
-See :ref:`sec-trinity-reader` for the full API, plotting examples, and
-details on the profile-array simplification applied to long 1-D arrays.
+The ``DescribedDict.load_snapshot`` helpers give direct access to the
+raw state — useful when what is wanted is the exact Python objects
+the simulation worked with. For most analysis work, the higher-level
+``trinity_reader`` module is more convenient: it layers a
+``TrinityOutput`` container on top of the same JSONL files and
+exposes time-series extraction, interpolated snapshots, phase and
+time-range filtering, pandas conversion, and batch utilities for
+sweep outputs. See :ref:`sec-trinity-reader` for the full API,
+plotting examples, and details on the profile-array simplification
+applied to long 1-D arrays.
 
 
 Troubleshooting

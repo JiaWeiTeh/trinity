@@ -266,86 +266,11 @@ Organize simulations by cloud mass and SFE for grid plots:
 Available Parameters
 --------------------
 
-Use ``output.info(verbose=True)`` for complete documentation. Key parameters:
-
-Dynamical Variables
-^^^^^^^^^^^^^^^^^^^
-
-.. list-table::
-   :widths: 20 20 60
-   :header-rows: 1
-
-   * - Parameter
-     - Unit
-     - Description
-   * - ``t_now``
-     - Myr
-     - Current simulation time
-   * - ``R2``
-     - pc
-     - Outer bubble/shell radius
-   * - ``v2``
-     - pc/Myr
-     - Shell expansion velocity
-   * - ``Eb``
-     - erg
-     - Bubble thermal energy
-   * - ``T0``
-     - K
-     - Characteristic bubble temperature
-   * - ``R1``
-     - pc
-     - Inner bubble radius (wind termination shock)
-   * - ``Pb``
-     - dyn/cm²
-     - Bubble pressure
-
-Forces
-^^^^^^
-
-.. list-table::
-   :widths: 20 80
-   :header-rows: 1
-
-   * - Parameter
-     - Description
-   * - ``F_grav``
-     - Gravitational force
-   * - ``F_ram``
-     - Ram pressure force (total)
-   * - ``F_ram_wind``
-     - Ram pressure from stellar winds
-   * - ``F_ram_SN``
-     - Ram pressure from supernovae
-   * - ``F_ion_out``
-     - Warm ionized gas force (diagnostic, = P_HII * 4piR2^2, anchored to Pb)
-   * - ``F_HII_St``
-     - Stroemgren HII force (driving, = P_HII_St * 4piR2^2, independent of Pb)
-   * - ``F_rad``
-     - Radiation pressure force
-
-Feedback Properties
-^^^^^^^^^^^^^^^^^^^
-
-.. list-table::
-   :widths: 20 20 60
-   :header-rows: 1
-
-   * - Parameter
-     - Unit
-     - Description
-   * - ``Lmech_W``
-     - erg/Myr
-     - Mechanical luminosity from winds
-   * - ``Lmech_SN``
-     - erg/Myr
-     - Mechanical luminosity from supernovae
-   * - ``Qi``
-     - photons/s
-     - Ionizing photon rate
-   * - ``Lbol``
-     - erg/s
-     - Bolometric luminosity
+The full list of parameter names, units, and descriptions that can
+appear as keys in a snapshot lives in :ref:`sec-parameters`. For a
+quick look at what is present in a particular output file, call
+``output.info(verbose=True)``, which prints every key along with its
+attached ``info`` string and ``ori_units``.
 
 
 Example: Plotting

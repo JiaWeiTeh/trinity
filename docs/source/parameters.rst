@@ -664,26 +664,9 @@ Bonnor-Ebert Sphere
     nCore           1e5
     rCore           0.1
 
-Parameter Sweep
-^^^^^^^^^^^^^^^
-
-.. code-block:: text
-   :caption: sweep.param
-
-    # Sweep over cloud mass and SFE
-    mCloud    [1e5, 1e6, 1e7]
-    sfe       [0.01, 0.05]
-
-    # Fixed parameters
-    dens_profile    densPL
-    densPL_alpha    0
-    nCore           1e4
-    path2output     outputs/mass_sfe_sweep
-
-    # Generates 6 combinations:
-    # 1e5_sfe001_n1e4, 1e5_sfe005_n1e4,
-    # 1e6_sfe001_n1e4, 1e6_sfe005_n1e4,
-    # 1e7_sfe001_n1e4, 1e7_sfe005_n1e4
+For sweep-style parameter files (``[v1, v2]`` list values and
+``tuple(...)`` directives), see :ref:`sec-running` — *Parameter
+Sweep Runs* — for worked Cartesian, tuple, and hybrid examples.
 
 
 See Also

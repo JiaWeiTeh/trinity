@@ -7,180 +7,84 @@ Physics Architecture
 
 Internally, TRINITY is organised as a small orchestrator that drives
 a sequence of phase-specific solvers, each of which consumes the
-same set of shared physics modules (stellar feedback, cooling,
-density profile, gravity). A single state dictionary, built on the
-``DescribedDict`` container described in :ref:`sec-running`, is
-threaded through every call and is the sole mechanism by which the
-modules exchange information. This chapter documents the module
-layout, the phase transitions, and the data flow that connects them,
-with ASCII diagrams illustrating each piece.
-
-The architecture is deliberately flat. There are no class
-hierarchies, no dependency injection, and no plugin system; physics
-modules are plain functions that read and write named keys on the
-state dictionary. The feedback loop that advances the shell in time
+same set of shared physics modules. A single state dictionary,
+built on the ``DescribedDict`` container described in
+:ref:`sec-running`, is threaded through every call and is the sole
+mechanism by which the modules exchange information. The
+architecture is deliberately flat: there are no class hierarchies,
+no dependency injection, and no plugin system. Physics modules are
+plain functions that read and write named keys on the state
+dictionary, and the feedback loop that advances the shell in time
 is a single ODE right-hand side whose inputs and outputs are
 traceable directly to the equations in :ref:`sec-physics`.
 
 
-Module Organization
+Module Organisation
 -------------------
 
-TRINITY is organized into layered modules: an orchestrator, phase-specific solvers, shared physics modules, and utilities.
+The source tree under ``src/`` is split into four layers:
 
-.. code-block:: text
-
-    ┌─────────────────────────────────────────────────────────────────────┐
-    │                          ORCHESTRATOR                               │
-    │                            main.py                                  │
-    │              start_expansion() ───► run_expansion()                 │
-    └──────────────────────────────┬──────────────────────────────────────┘
-                                   │
-           ┌───────────────────────┼───────────────────────┐
-           │                       │                       │
-           ▼                       ▼                       ▼
-    ┌─────────────┐        ┌─────────────┐        ┌─────────────┐
-    │ phase0_init │        │    sb99/    │        │   cooling/  │
-    │             │        │             │        │             │
-    │ Cloud props │◄───────│  read_SB99  │        │ CIE curves  │
-    │ Init state  │        │  feedback   │        │ non-CIE     │
-    └──────┬──────┘        └──────┬──────┘        └──────┬──────┘
-           │                      │                      │
-           └──────────────────────┼──────────────────────┘
-                                  │
-                                  ▼
-    ┌─────────────────────────────────────────────────────────────────────┐
-    │                        PHASE MODULES                                │
-    │                                                                     │
-    │  ┌────────────┐   ┌────────────┐   ┌────────────┐   ┌────────────┐  │
-    │  │  phase1    │──►│  phase1b   │──►│  phase1c   │──►│  phase2    │  │
-    │  │  _energy   │   │  _implicit │   │  _transit  │   │  _momentum │  │
-    │  │            │   │            │   │            │   │            │  │
-    │  │ Constant   │   │ Adaptive   │   │ Energy ─►  │   │ Pure       │  │
-    │  │ cooling    │   │ cooling    │   │ Momentum   │   │ dynamics   │  │
-    │  └────────────┘   └────────────┘   └────────────┘   └────────────┘  │
-    └──────────────────────────────┬──────────────────────────────────────┘
-                                   │
-                                   ▼
-    ┌─────────────────────────────────────────────────────────────────────┐
-    │                      SHARED PHYSICS MODULES                         │
-    │                                                                     │
-    │  ┌────────────────┐  ┌────────────────┐  ┌────────────────────────┐ │
-    │  │ phase_general/ │  │bubble_structure│  │   shell_structure/     │ │
-    │  │                │  │                │  │                        │ │
-    │  │  phase_ODEs    │  │ get_bubbleParam│  │  shell_structure       │ │
-    │  │  (dv/dt, dE/dt)│  │ bubble_luminosi│  │  get_shellParams       │ │
-    │  └────────────────┘  └────────────────┘  └────────────────────────┘ │
-    │                                                                     │
-    │  ┌────────────────────────────┐  ┌────────────────────────────────┐ │
-    │  │    cloud_properties/       │  │         _functions/            │ │
-    │  │                            │  │                                │ │
-    │  │  density_profile           │  │  unit_conversions              │ │
-    │  │  mass_profile              │  │  operations                    │ │
-    │  │  powerLawSphere            │  │  logging_setup                 │ │
-    │  │  bonnorEbertSphere         │  │                                │ │
-    │  └────────────────────────────┘  └────────────────────────────────┘ │
-    └─────────────────────────────────────────────────────────────────────┘
-                                   │
-                                   ▼
-    ┌─────────────────────────────────────────────────────────────────────┐
-    │                        UTILITY MODULES                              │
-    │                                                                     │
-    │  ┌──────────────────┐              ┌──────────────────┐             │
-    │  │     _input/      │              │     _output/     │             │
-    │  │                  │              │                  │             │
-    │  │  read_param      │              │  trinity_reader  │             │
-    │  │  dictionary      │              │  simulation_end  │             │
-    │  │  (DescribedDict) │              │  terminal_prints │             │
-    │  └──────────────────┘              └──────────────────┘             │
-    └─────────────────────────────────────────────────────────────────────┘
+* **Orchestrator** (``main.py``). Entry point
+  ``start_expansion()`` / ``run_expansion()`` that advances the
+  state dictionary from phase to phase until the stopping
+  criterion is reached.
+* **Phase solvers** (``phase0_init/``, ``phase1_energy/``,
+  ``phase1b_implicit/``, ``phase1c_transit/``,
+  ``phase2_momentum/``). One solver per dynamical regime; each
+  owns its own ODE right-hand side and its own exit condition.
+* **Shared physics modules** (``phase_general/``,
+  ``bubble_structure/``, ``shell_structure/``,
+  ``cloud_properties/``, ``sb99/``, ``cooling/``,
+  ``_functions/``). Pure functions that compute bubble
+  structure, shell structure, cloud density and mass profiles,
+  stellar feedback from Starburst99 tables, cooling functions,
+  and unit conversions. Any phase solver may call any of these.
+* **I/O utilities** (``_input/``, ``_output/``). Parameter-file
+  parsing, the ``DescribedDict`` container, snapshot writing,
+  and the reader API of :ref:`sec-trinity-reader`.
 
 
 Simulation Phases
 -----------------
 
-The simulation progresses through distinct phases, each with different physics assumptions.
+A simulation progresses through up to five phases. Each phase has
+its own physics assumptions and its own exit criterion; the
+orchestrator hands the state dictionary from one phase to the next
+until a terminal condition is met.
 
-.. code-block:: text
-
-    ╔═══════════════════════════════════════════════════════════════════════╗
-    ║                      PHASE 0: INITIALIZATION                          ║
-    ╠═══════════════════════════════════════════════════════════════════════╣
-    ║                                                                       ║
-    ║  1. Read parameter file ──► DescribedDict params                      ║
-    ║  2. Build cloud density profile n(r) and mass profile M(r)            ║
-    ║  3. Load SB99 tables ──► interpolation functions fLmech(t), fQi(t)    ║
-    ║  4. Load cooling curves (CIE + non-CIE)                               ║
-    ║  5. Calculate initial state from free-streaming ──► Weaver solution   ║
-    ║                                                                       ║
-    ║  Output: y₀ = [R2₀, v2₀, Eb₀, T0₀]                                    ║
-    ╚═══════════════════════════════════╤═══════════════════════════════════╝
-                                        │
-                                        ▼
-    ╔═══════════════════════════════════════════════════════════════════════╗
-    ║              PHASE 1a: ENERGY-DRIVEN (Constant Cooling)               ║
-    ╠═══════════════════════════════════════════════════════════════════════╣
-    ║                                                                       ║
-    ║  Physics: Weaver+77 wind-blown bubble with radiative cooling          ║
-    ║                                                                       ║
-    ║  • Bubble pressure Pb drives shell expansion                          ║
-    ║  • Cooling parameters (α, β, δ) held constant                         ║
-    ║  • Shell structure computed at each timestep                          ║
-    ║  • Gravity from cluster + swept-up mass                               ║
-    ║                                                                       ║
-    ║  Exit when: R2 approaches rCloud OR cooling becomes significant       ║
-    ╚═══════════════════════════════════╤═══════════════════════════════════╝
-                                        │
-                                        ▼
-    ╔═══════════════════════════════════════════════════════════════════════╗
-    ║              PHASE 1b: ENERGY-DRIVEN (Adaptive Cooling)               ║
-    ╠═══════════════════════════════════════════════════════════════════════╣
-    ║                                                                       ║
-    ║  Physics: Implicit cooling integration                                ║
-    ║                                                                       ║
-    ║  • α = v2 · t / R2  (expansion parameter)                             ║
-    ║  • β = -dPb/dt      (pressure evolution)                              ║
-    ║  • δ = dT/dt        (temperature evolution)                           ║
-    ║                                                                       ║
-    ║  Monitors: Lgain vs Lloss (energy balance)                            ║
-    ║                                                                       ║
-    ║  Exit when: (Lgain - Lloss)/Lgain < threshold                         ║
-    ╚═══════════════════════════════════╤═══════════════════════════════════╝
-                                        │
-                                        ▼
-    ╔═══════════════════════════════════════════════════════════════════════╗
-    ║                      PHASE 1c: TRANSITION                             ║
-    ╠═══════════════════════════════════════════════════════════════════════╣
-    ║                                                                       ║
-    ║  Physics: Energy dissipation bridge                                   ║
-    ║                                                                       ║
-    ║  • dEb/dt = -Eb / t_soundcrossing                                     ║
-    ║  • Bubble energy Eb ──► 0                                             ║
-    ║  • Shell dynamics continue                                            ║
-    ║                                                                       ║
-    ║  Exit when: Eb < threshold (≈ 0)                                      ║
-    ╚═══════════════════════════════════╤═══════════════════════════════════╝
-                                        │
-                                        ▼
-    ╔═══════════════════════════════════════════════════════════════════════╗
-    ║                    PHASE 2: MOMENTUM-DRIVEN                           ║
-    ╠═══════════════════════════════════════════════════════════════════════╣
-    ║                                                                       ║
-    ║  Physics: No thermal pressure (Eb = 0)                                ║
-    ║                                                                       ║
-    ║  Shell driven by:                                                     ║
-    ║    • Ram pressure from winds: Pram = Lmech / (2π R² vmech)            ║
-    ║    • Radiation pressure: Frad = fabs · Lbol / c                       ║
-    ║    • Gravity: Fgrav = G · Msh · (Mcluster + Msh/2) / R²               ║
-    ║                                                                       ║
-    ║  Exit when: stop_t OR stop_r OR shell dissolved OR collapse           ║
-    ╚═══════════════════════════════════════════════════════════════════════╝
+* **Phase 0 — Initialisation.** Reads the parameter file, builds
+  the cloud density and mass profiles :math:`n(r)` and
+  :math:`M(r)`, loads the Starburst99 interpolation tables and the
+  cooling curves, and computes the initial free-streaming
+  (Weaver) solution used as :math:`y_0`.
+* **Phase 1a — Energy-driven, constant cooling.** Weaver+77
+  wind-blown bubble with the cooling parameters
+  :math:`(\alpha, \beta, \delta)` held constant. The bubble
+  pressure :math:`P_b` drives the shell; exit is triggered when
+  :math:`R_2` approaches :math:`r_{\rm cloud}` or when radiative
+  cooling becomes non-negligible.
+* **Phase 1b — Energy-driven, adaptive cooling.** Implicit
+  integration of the cooling; :math:`(\alpha, \beta, \delta)`
+  are updated at every step. The phase exits when the energy
+  balance :math:`(L_{\rm gain} - L_{\rm loss})/L_{\rm gain}`
+  falls below a threshold.
+* **Phase 1c — Transition.** Energy-dissipation bridge governed
+  by :math:`dE_b/dt = -E_b / t_{\rm sc}`. Shell dynamics continue
+  to be integrated. Exits when :math:`E_b` approaches zero.
+* **Phase 2 — Momentum-driven.** The bubble thermal energy has
+  vanished and the shell is driven by ram pressure
+  :math:`P_{\rm ram} = L_{\rm mech}/(2\pi R^2 v_{\rm mech})`,
+  radiation pressure :math:`F_{\rm rad} = f_{\rm abs} L_{\rm bol}/c`,
+  and gravity. The simulation terminates when the user-specified
+  stopping time, radius, dissolution criterion, or collapse
+  condition is reached.
 
 
 State Variables
 ---------------
 
-The simulation evolves a state vector through the ODE system:
+The simulation evolves a four-component state vector through the
+ODE system:
 
 .. list-table::
    :widths: 15 15 15 55
@@ -200,165 +104,52 @@ The simulation evolves a state vector through the ODE system:
      - Shell radial velocity
    * - ``Eb``
      - :math:`E_b`
-     - AU
-     - Bubble thermal energy (internal units)
+     - AU (internal)
+     - Bubble thermal energy
    * - ``T0``
      - :math:`T_0`
      - K
      - Bubble central temperature
 
-
-Data Flow
----------
-
-Data transforms through the simulation as follows:
-
-.. code-block:: text
-
-    ┌─────────────────────────────────────────────────────────────────────────┐
-    │                        STATE VECTOR                                     │
-    │                                                                         │
-    │              y = [ R2,     v2,      Eb,      T0    ]                     │
-    │                    │       │        │        │                          │
-    │                  Shell   Shell   Bubble   Bubble                        │
-    │                  Radius  Velocity Energy   Temp                         │
-    └────────────────────┼───────┼────────┼────────┼──────────────────────────┘
-                         │       │        │        │
-                         ▼       ▼        ▼        ▼
-    ┌─────────────────────────────────────────────────────────────────────────┐
-    │                     SB99 INTERPOLATION                                  │
-    │                                                                         │
-    │   t_now ────┬────► Qi(t)     ─────────────► Ionizing photon rate        │
-    │             │                                                           │
-    │             ├────► Lbol(t)   ─────────────► Bolometric luminosity       │
-    │             │                                                           │
-    │             ├────► Lmech(t)  ─────────────► Mechanical luminosity       │
-    │             │                  (wind + SN)                              │
-    │             │                                                           │
-    │             └────► pdot(t)   ─────────────► Momentum injection rate     │
-    └──────────────────────────────────┬──────────────────────────────────────┘
-                                       │
-                                       ▼
-    ┌─────────────────────────────────────────────────────────────────────────┐
-    │                     BUBBLE STRUCTURE                                    │
-    │                                                                         │
-    │   Inputs: R2, Eb, Lmech, vWind                                          │
-    │                                                                         │
-    │   ┌───────────────────────────────────────────────────────────────┐     │
-    │   │  R1 = solve( pressure balance at inner discontinuity )        │     │
-    │   │                                                               │     │
-    │   │  Pb = (γ-1) · Eb / [ 4π/3 · (R2³ - R1³) ]                     │     │
-    │   │                                                               │     │
-    │   │  T(r), n(r), v(r) profiles via Weaver+77 Eqs 42-43            │     │
-    │   └───────────────────────────────────────────────────────────────┘     │
-    │                                                                         │
-    │   Outputs: R1, Pb, Lgain, Lloss, bubble profiles                        │
-    └──────────────────────────────────┬──────────────────────────────────────┘
-                                       │
-                                       ▼
-    ┌─────────────────────────────────────────────────────────────────────────┐
-    │                      SHELL STRUCTURE                                    │
-    │                                                                         │
-    │   Inputs: Pb, R2, Mshell, Qi, Li, Ln                                    │
-    │                                                                         │
-    │   ┌───────────────────────────────────────────────────────────────┐     │
-    │   │  nShell₀ = Pb / (kB · Tion)  (pressure equilibrium)           │     │
-    │   │                                                               │     │
-    │   │  Ionized region: ODE for n(r), τ(r) until Qi absorbed         │     │
-    │   │                                                               │     │
-    │   │  Neutral region: density jump, continue to shell edge         │     │
-    │   └───────────────────────────────────────────────────────────────┘     │
-    │                                                                         │
-    │   Outputs: fabs_ion, fabs_neu, nMax, shell_thickness, gravity           │
-    └──────────────────────────────────┬──────────────────────────────────────┘
-                                       │
-                                       ▼
-    ┌─────────────────────────────────────────────────────────────────────────┐
-    │                        ODE SOLVER                                       │
-    │                                                                         │
-    │   ┌───────────────────────────────────────────────────────────────┐     │
-    │   │  dR2/dt = v2                                                  │     │
-    │   │                                                               │     │
-    │   │  dv2/dt = [ 4πR2²·Pb - Fgrav + Frad - (dMsh/dt)·v2 ] / Msh    │     │
-    │   │                                                               │     │
-    │   │  dEb/dt = Lgain - Lloss - Pb·dV/dt                            │     │
-    │   │                                                               │     │
-    │   │  dT0/dt = (T0/t) · δ                                          │     │
-    │   └───────────────────────────────────────────────────────────────┘     │
-    │                                                                         │
-    │   Output: dy/dt ──► integrate ──► y(t + dt)                             │
-    └─────────────────────────────────────────────────────────────────────────┘
+Every other recorded quantity — pressures, forces, luminosities,
+profiles — is derived from this vector together with the shared
+physics modules.
 
 
-Physics Feedback Loop
----------------------
+Feedback Loop
+-------------
 
-The core of TRINITY is a self-consistent feedback loop coupling stellar feedback, bubble dynamics, shell structure, and gravity:
+At each ODE step the right-hand side performs the following
+computation. Given the current state :math:`y = (R_2, v_2, E_b, T_0)`
+and time :math:`t`, Starburst99 interpolation tables are evaluated
+to obtain the mechanical luminosity :math:`L_{\rm mech}`, the
+momentum injection rate :math:`\dot p`, the ionising photon rate
+:math:`Q_i`, and the bolometric luminosity :math:`L_{\rm bol}`.
+The bubble-structure module then solves for the inner shock radius
+:math:`R_1`, the bubble pressure :math:`P_b`, and the cooling
+gain/loss terms. The shell-structure module uses :math:`P_b` and
+the feedback rates to compute the shell density profile, the
+fraction of ionising and bolometric radiation absorbed in the
+shell, and the gravitational contribution of the swept-up mass.
+Finally, the ODE solver advances :math:`y` through
 
-.. code-block:: text
+.. math::
 
-    ┌─────────────────────────────────────────────────────────────────────────┐
-    │                                                                         │
-    │   ╔═══════════════════╗                                                 │
-    │   ║  STELLAR FEEDBACK ║◄──────────────────────────────────────────┐     │
-    │   ║     (SB99)        ║                                           │     │
-    │   ╚═════════╤═════════╝                                           │     │
-    │             │                                                     │     │
-    │             │  Interpolate at t_now:                              │     │
-    │             │    • Lmech (mechanical luminosity)                  │     │
-    │             │    • pdot  (momentum rate)                          │     │
-    │             │    • Qi    (ionizing photons)                       │     │
-    │             │    • Lbol  (bolometric luminosity)                  │     │
-    │             ▼                                                     │     │
-    │   ╔═══════════════════╗                                           │     │
-    │   ║ BUBBLE STRUCTURE  ║                                           │     │
-    │   ╚═════════╤═════════╝                                           │     │
-    │             │                                                     │     │
-    │             │  Calculate:                                         │     │
-    │             │    • R1 (inner shock radius)                        │     │
-    │             │    • Pb (bubble pressure)                           │     │
-    │             │    • T(r), n(r) profiles                            │     │
-    │             │    • Lgain, Lloss (cooling)                         │     │
-    │             ▼                                                     │     │
-    │   ╔═══════════════════╗                                           │     │
-    │   ║  SHELL STRUCTURE  ║                                           │     │
-    │   ╚═════════╤═════════╝                                           │     │
-    │             │                                                     │     │
-    │             │  Calculate:                                         │     │
-    │             │    • Shell density profile                          │     │
-    │             │    • Radiation absorption                           │     │
-    │             │    • Ionization state                               │     │
-    │             ▼                                                     │     │
-    │   ╔═══════════════════╗                                           │     │
-    │   ║      GRAVITY      ║                                           │     │
-    │   ╚═════════╤═════════╝                                           │     │
-    │             │                                                     │     │
-    │             │  Calculate:                                         │     │
-    │             │    • Mshell from cloud profile                      │     │
-    │             │    • Fgrav = G·M·(Mcluster + Msh/2)/R²              │     │
-    │             ▼                                                     │     │
-    │   ╔═══════════════════╗                                           │     │
-    │   ║   ODE DYNAMICS    ║                                           │     │
-    │   ╚═════════╤═════════╝                                           │     │
-    │             │                                                     │     │
-    │             │  Solve: dR2/dt, dv2/dt, dEb/dt, dT0/dt              │     │
-    │             ▼                                                     │     │
-    │   ╔═══════════════════╗                                           │     │
-    │   ║   STATE UPDATE    ║                                           │     │
-    │   ╚═════════╤═════════╝                                           │     │
-    │             │                                                     │     │
-    │             │  y = y + dy·dt                                      │     │
-    │             │  t_now = t_now + dt                                 │     │
-    │             │                                                     │     │
-    │             └─────────────────────────────────────────────────────┘     │
-    │                                                                         │
-    │                            NEXT TIMESTEP                                │
-    └─────────────────────────────────────────────────────────────────────────┘
+   \frac{dR_2}{dt} &= v_2, \\
+   \frac{dv_2}{dt} &= \frac{4\pi R_2^2 P_b - F_{\rm grav} + F_{\rm rad} - \dot M_{\rm sh} v_2}{M_{\rm sh}}, \\
+   \frac{dE_b}{dt} &= L_{\rm gain} - L_{\rm loss} - P_b \frac{dV}{dt}, \\
+   \frac{dT_0}{dt} &= \frac{T_0}{t}\,\delta.
+
+The updated state is written back to the dictionary, a snapshot is
+staged if the save interval has elapsed (see :ref:`sec-running`,
+*Output Data Model*), and control returns to the orchestrator for
+the next step.
 
 
 See Also
 --------
 
-- :ref:`sec-running` for how to execute simulations
-- :ref:`sec-parameters` for parameter specifications and units
-- :ref:`sec-trinity-reader` for reading and analyzing output data
+- :ref:`sec-running` — how to execute simulations.
+- :ref:`sec-parameters` — parameter names, units, and defaults.
+- :ref:`sec-physics` — derivation of the equations integrated above.
+- :ref:`sec-trinity-reader` — API for reading and analysing output.
