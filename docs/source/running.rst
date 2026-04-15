@@ -607,11 +607,21 @@ as numpy arrays and pandas DataFrames.
 Reading Output Data
 ^^^^^^^^^^^^^^^^^^^
 
-The ``DescribedDict.load_snapshot`` helpers above give direct access to the raw
-state. For most analysis work — time-series extraction, interpolation between
-snapshots, phase filtering, pandas conversion — use the higher-level
-``trinity_reader`` module instead. See :ref:`sec-trinity-reader` for the full
-API and examples.
+The ``DescribedDict.load_snapshot`` helpers above give direct access to the
+raw state — useful when you want the exact Python objects the simulation
+worked with. For most analysis work, prefer the higher-level
+``trinity_reader`` module, which layers a ``TrinityOutput`` container on top
+of the same JSONL files and exposes:
+
+- time-series extraction as numpy arrays (``output.get('R2')``),
+- time-indexed snapshots with interpolation (``output.get_at_time(1.0)``),
+- phase and time-range filtering (``output.filter(phase='energy')``),
+- pandas conversion (``output.to_dataframe()``),
+- batch utilities for sweep outputs (``find_all_simulations``,
+  ``organize_simulations_for_grid``).
+
+See :ref:`sec-trinity-reader` for the full API, plotting examples, and
+details on the profile-array simplification applied to long 1-D arrays.
 
 
 Troubleshooting
@@ -638,3 +648,18 @@ Getting Help
 
 For issues and feature requests, visit:
 https://github.com/JiaWeiTeh/trinity/issues
+
+
+See Also
+--------
+
+- :ref:`sec-parameters` — complete reference of input parameters, units,
+  defaults, and the ``# UNIT:`` annotation system used in ``default.param``.
+- :ref:`sec-trinity-reader` — high-level ``TrinityOutput`` API for reading
+  ``dictionary.jsonl`` files into numpy / pandas.
+- :ref:`sec-visualization` — paper-quality plotting scripts that consume
+  sweep output directories.
+- :ref:`sec-analysis` — post-processing analysis scripts (``src/_calc/``)
+  that fit scaling relations to sweep results.
+- :ref:`sec-architecture` — internal module layout and how ``run.py``
+  drives ``main.start_expansion`` through the phase modules.

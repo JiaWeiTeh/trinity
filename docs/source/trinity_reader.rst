@@ -11,6 +11,17 @@ underlying file format and provides convenient access to simulation data.
 
 This is the **recommended way** to access TRINITY output data in scripts and analysis code.
 
+.. seealso::
+
+   - :ref:`sec-running` — *Output Data Model* section — describes the on-disk
+     JSONL layout, the ``DescribedDict`` / ``DescribedItem`` objects, the
+     save/flush workflow, and the low-level ``DescribedDict.load_snapshot``
+     API that the reader sits on top of.
+   - :ref:`sec-parameters` — full list of parameter names and units that can
+     appear as keys in a snapshot.
+   - :ref:`sec-visualization` — ready-made plotting scripts that consume
+     reader output.
+
 
 Quick Start
 -----------
@@ -383,17 +394,20 @@ Force Balance Analysis
 File Format Notes
 -----------------
 
-The on-disk JSONL layout, the ``DescribedDict`` structure behind each
-snapshot, and the save/flush workflow are documented in
-:ref:`sec-running` (*Output Data Model*). This section covers only details
-specific to the reader.
+For the full specification of TRINITY's output — how ``DescribedDict`` maps
+keys to ``DescribedItem`` objects, what each snapshot contains, how the
+save/flush pipeline writes ``dictionary.jsonl``, and how to reload snapshots
+from Python — see :ref:`sec-running` (*Output Data Model*). This section
+covers only details that matter for reader users.
 
-**Legacy format**: the reader automatically handles both ``.jsonl`` (current)
-and ``.json`` (legacy, pre-2026) files.
+**Legacy format**: the reader automatically handles both ``.jsonl`` (current,
+one JSON object per line) and ``.json`` (legacy, pre-2026, a single JSON
+object keyed by snapshot id). You do not need to convert old files.
 
 **Snapshot consistency**: all values in a snapshot correspond to the same
 timestamp (``t_now``). Snapshots are saved before ODE integration to ensure
-consistency across keys.
+consistency across keys, so ``output.get_at_time(t)`` never mixes pre- and
+post-step state.
 
 **Profile Array Simplification**: A handful of long 1-D profile arrays are
 downsampled before serialisation to keep snapshot size manageable.  Each

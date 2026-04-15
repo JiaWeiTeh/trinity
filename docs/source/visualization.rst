@@ -1,8 +1,19 @@
+.. _sec-visualization:
+
 Visualization Tools
 ===================
 
 TRINITY includes a suite of paper-quality visualization scripts for analyzing simulation outputs.
 All scripts are located in ``src/_plots/`` and follow consistent conventions.
+
+.. seealso::
+
+   - :ref:`sec-trinity-reader` — the ``TrinityOutput`` API that every
+     plotting script uses to load ``dictionary.jsonl`` data.
+   - :ref:`sec-running` — how to produce the simulation outputs these
+     scripts consume, including sweep folder layout.
+   - :ref:`sec-parameters` — definitions of the parameters (``R2``,
+     ``Pb``, ``F_*``, etc.) plotted below.
 
 Common Features
 ---------------
@@ -216,3 +227,15 @@ overwrite each other:
        ├── dominantFeedback_M1e7_sfe020_n1e4_continuous_interp.pdf
        ├── radiusEvolution_M1e7_sfe020_n1e4.pdf
        └── ...
+
+
+See Also
+--------
+
+- :ref:`sec-trinity-reader` — programmatic API (``TrinityOutput``,
+  ``load_output``, ``find_all_simulations``) used by every script above.
+- :ref:`sec-running` — producing simulations, sweep folder layout, and
+  how ``path2output`` maps onto the ``fig/{folder_name}/`` tree.
+- :ref:`sec-analysis` — analysis utilities that complement these plots.
+- :ref:`sec-physics` — physical meaning of the forces, pressures, and
+  regimes shown in the paper figures.

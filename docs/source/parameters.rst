@@ -575,9 +575,17 @@ Sweep Syntax
 ------------
 
 Any parameter can also be given as a list (``[v1, v2, ...]``) or combined
-into a ``tuple(...)`` directive to launch a parameter sweep. ``run.py`` auto-
-detects this from the file content. See :ref:`sec-running` for the full
-Cartesian, tuple, and hybrid sweep modes.
+into a ``tuple(...)`` directive to launch a parameter sweep. ``run.py``
+auto-detects this from the file content, so the same script runs both single
+simulations and sweeps.
+
+See :ref:`sec-running` — *Parameter Sweep Runs* — for:
+
+- Worked examples of **Cartesian**, **tuple**, and **hybrid** sweep syntax.
+- Command-line options (``--dry-run``, ``--workers``, ``--yes``,
+  ``--verbose``) and cancellation behaviour.
+- Pre-flight GMC plausibility checks applied to every combination.
+- Auto-generated run names and the resulting output directory layout.
 
 
 Examples
@@ -659,3 +667,16 @@ Parameter Sweep
     # 1e5_sfe001_n1e4, 1e5_sfe005_n1e4,
     # 1e6_sfe001_n1e4, 1e6_sfe005_n1e4,
     # 1e7_sfe001_n1e4, 1e7_sfe005_n1e4
+
+
+See Also
+--------
+
+- :ref:`sec-running` — how to execute single runs and parameter sweeps,
+  including CLI flags, worker defaults, and output directory layout.
+- :ref:`sec-physics` — equations and derivations behind ``dens_profile``,
+  ``densPL_alpha``, ``densBE_Omega``, and the feedback parameters.
+- :ref:`sec-trinity-reader` — reading back the JSONL output written by a
+  simulation configured with these parameters.
+- ``param/default.param`` in the repository — the authoritative,
+  fully-commented reference parameter file.
