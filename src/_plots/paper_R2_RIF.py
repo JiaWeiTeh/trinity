@@ -3,7 +3,7 @@
 """
 R2 vs R_IF Comparison Plot for TRINITY
 
-Shows R2 (outer shell radius) and R_IF (ionization front radius) as a
+Shows R2 (outer bubble radius = inner shell edge) and R_IF (ionization front radius) as a
 function of time on a log-log scale.  Because the two radii are often
 nearly identical, the plot highlights their relative difference:
 

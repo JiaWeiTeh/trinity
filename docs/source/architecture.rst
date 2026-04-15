@@ -97,11 +97,11 @@ ODE system:
    * - ``R2``
      - :math:`R_2`
      - pc
-     - Outer bubble/shell radius
+     - Outer bubble radius (= inner shell edge)
    * - ``v2``
      - :math:`v_2`
      - pc/Myr
-     - Shell radial velocity
+     - Radial velocity at R2 (outer bubble / inner shell edge)
    * - ``Eb``
      - :math:`E_b`
      - AU (internal)

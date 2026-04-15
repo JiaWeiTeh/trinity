@@ -123,7 +123,7 @@ def find_rcloud_crossing(t, R2, rcloud):
     t : array-like
         Time array
     R2 : array-like
-        Outer shell radius array
+        Outer bubble radius array (= inner shell edge)
     rcloud : float
         Cloud radius
 
@@ -266,7 +266,7 @@ def add_rcloud_marker(ax, t, R2, rcloud, dataset_label=None, dataset_color=None,
     t : array-like
         Time array
     R2 : array-like
-        Outer shell radius array
+        Outer bubble radius array (= inner shell edge)
     rcloud : float
         Cloud radius
     dataset_label : str, optional
@@ -446,7 +446,7 @@ def add_plot_markers(ax, t, phase=None, R2=None, rcloud=None, isCollapse=None,
     phase : array-like, optional
         Phase array (for transition markers)
     R2 : array-like, optional
-        Outer shell radius (for rcloud marker)
+        Outer bubble radius (= inner shell edge) (for rcloud marker)
     rcloud : float, optional
         Cloud radius (for rcloud marker)
     isCollapse : array-like, optional
