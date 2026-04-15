@@ -257,10 +257,10 @@ Dynamical Variables
      - Current simulation time
    * - ``R2``
      - pc
-     - Outer bubble/shell radius
+     - Outer bubble radius (= inner shell edge)
    * - ``v2``
      - pc/Myr
-     - Shell expansion velocity
+     - Velocity at R2 (outer bubble / inner shell edge)
    * - ``Eb``
      - erg
      - Bubble thermal energy
