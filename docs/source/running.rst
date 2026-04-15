@@ -413,6 +413,206 @@ This format provides:
 - **Streaming reads**: Process large files without loading everything into memory
 - **Crash resilience**: Partial files are still readable up to the last complete line
 
+
+Dictionary Structure
+^^^^^^^^^^^^^^^^^^^^
+
+Internally, TRINITY carries simulation state in a single ``DescribedDict``
+(defined in ``src/_input/dictionary.py``). Each key maps to a
+``DescribedItem`` object that wraps the raw value together with lightweight
+metadata (a human-readable description and original units).
+
+**In-memory layout:**
+
+.. code-block:: python
+
+    from src._input.dictionary import DescribedDict, DescribedItem
+
+    params = DescribedDict()
+
+    params["R2"]     = DescribedItem(0.0, info="Outer shell radius",      ori_units="pc")
+    params["v2"]     = DescribedItem(0.0, info="Shell expansion velocity", ori_units="pc/Myr")
+    params["Eb"]     = DescribedItem(0.0, info="Bubble thermal energy",    ori_units="Msun*pc**2/Myr**2")
+    params["t_now"]  = DescribedItem(0.0, info="Current simulation time",  ori_units="Myr")
+
+    # Access the raw value
+    r = params["R2"].value           # -> float
+    t = params["t_now"].value        # -> float
+
+    # DescribedItem supports arithmetic/formatting directly
+    area = 4 * 3.14159 * params["R2"] ** 2     # float result
+    print(f"t = {params['t_now']:.3e} Myr")    # works via __format__
+
+Each ``DescribedItem`` exposes three attributes:
+
+.. list-table::
+   :widths: 25 75
+   :header-rows: 1
+
+   * - Attribute
+     - Meaning
+   * - ``value``
+     - The stored scalar, list, or numpy array.
+   * - ``info``
+     - Short human-readable description (seen in ``{model_name}_summary.txt``).
+   * - ``ori_units``
+     - Original-unit label (e.g. ``"pc"``, ``"Msun"``, ``"1/cm**3"``).
+
+Additionally, a per-item ``exclude_from_snapshot`` flag marks keys that are
+*not* persisted to disk — used for large auxiliary objects such as SB99
+interpolation tables that can be rebuilt on load.
+
+**What's in each snapshot:**
+
+Snapshots are grouped into a handful of conceptual categories:
+
+.. list-table::
+   :widths: 30 70
+   :header-rows: 1
+
+   * - Category
+     - Example keys
+   * - Administrative
+     - ``path2output``, ``model_name``, ``current_phase``,
+       ``SimulationEndReason``
+   * - Cloud setup
+     - ``mCloud``, ``sfe``, ``mCluster``, ``rCloud``,
+       ``initial_cloud_r_arr``, ``initial_cloud_n_arr``,
+       ``initial_cloud_m_arr``
+   * - Dynamical state
+     - ``t_now``, ``R2``, ``v2``, ``Eb``, ``T0``, ``R1``, ``Pb``
+   * - Feedback (SB99)
+     - ``Lmech_W``, ``Lmech_SN``, ``Qi``, ``Lbol``, ``pdot``
+   * - Forces
+     - ``F_grav``, ``F_ram``, ``F_ram_wind``, ``F_ram_SN``,
+       ``F_ion_out``, ``F_HII_St``, ``F_rad``
+   * - Bubble profile
+     - ``log_bubble_T_arr`` + ``bubble_T_arr_r_arr``,
+       ``log_bubble_n_arr`` + ``bubble_n_arr_r_arr``,
+       ``bubble_v_arr`` + ``bubble_v_arr_r_arr``
+   * - Shell profile
+     - ``log_shell_n_arr`` + ``shell_r_arr``,
+       ``shell_grav_force_m`` + ``shell_grav_r``
+
+**On-disk form (one line of ``dictionary.jsonl``):**
+
+.. code-block:: json
+
+   {
+     "snap_id": 42,
+     "t_now": 1.523e-01,
+     "current_phase": "energy",
+     "R2": 2.48, "v2": 15.7, "Eb": 9.21e+06, "T0": 7.4e+06,
+     "R1": 0.31, "Pb": 3.1e+04,
+     "Lmech_W": 1.22e+11, "Lmech_SN": 0.0, "Qi": 4.5e+50, "Lbol": 1.1e+40,
+     "F_grav": 9.3e+02, "F_ram": 1.6e+03, "F_rad": 7.2e+02,
+     "log_shell_n_arr": [3.1, 3.2, ...], "shell_r_arr":  [2.48, 2.49, ...]
+   }
+
+Only the ``.value`` of each ``DescribedItem`` is written — ``info`` and
+``ori_units`` live alongside the code and are reattached automatically when
+you load a snapshot back in.
+
+**Snapshot workflow (save → flush → disk):**
+
+Snapshots are captured through a two-stage *buffer → flush* pipeline. Disk
+writes stay cheap (append-only, O(1) per flush) and a crash can lose at most
+``snapshot_interval`` steps of progress:
+
+.. code-block:: text
+
+    ┌──────────────────────────────────────────────────────────────────────┐
+    │                       SIMULATION MAIN LOOP                           │
+    │                                                                      │
+    │   for each ODE step:                                                 │
+    │       integrate physics ──► update params["R2"], ["v2"], ...         │
+    │       params.save_snapshot()   ───────────────┐                      │
+    │                                               │                      │
+    │   at phase boundary / end of simulation:      │                      │
+    │       params.flush()          ───────────────┐│                      │
+    │                                              ││                      │
+    └──────────────────────────────────────────────┼┼──────────────────────┘
+                                                   ││
+                                                   ▼▼
+    ┌──────────────────────────────────────────────────────────────────────┐
+    │                       DescribedDict internals                        │
+    │                                                                      │
+    │   save_snapshot():                                                   │
+    │     1. Duplicate guard (skip if t_now & R2 unchanged)                │
+    │     2. Serialise non-excluded keys → JSON-ready dict                 │
+    │     3. Stage into self.previous_snapshot[str(save_count)]            │
+    │     4. If save_count % snapshot_interval == 0 → call flush()         │
+    │                                                                      │
+    │   flush():                                                           │
+    │     1. First flush of a fresh run: delete old dictionary.jsonl       │
+    │     2. Append each pending snapshot as one JSON line                 │
+    │     3. Clear self.previous_snapshot, bump flush_count                │
+    │                                                                      │
+    └──────────────────────────────────┬───────────────────────────────────┘
+                                       │ append-only writes
+                                       ▼
+    ┌──────────────────────────────────────────────────────────────────────┐
+    │                  {path2output}/dictionary.jsonl                      │
+    │                                                                      │
+    │   {"snap_id": 0, "t_now": 0.000, "R2": 0.01, ...}                    │
+    │   {"snap_id": 1, "t_now": 0.003, "R2": 0.04, ...}                    │
+    │   {"snap_id": 2, "t_now": 0.008, "R2": 0.09, ...}                    │
+    │   ...                                                                │
+    └──────────────────────────────────────────────────────────────────────┘
+
+Stages in detail:
+
+1. **Mutate the dict.** Physics modules update ``params["R2"].value``,
+   ``params["Eb"].value``, etc. in place.
+2. **Stage a snapshot.** ``params.save_snapshot()`` copies the current state
+   (excluding any key marked ``exclude_from_snapshot=True``) into the
+   in-memory buffer ``params.previous_snapshot``. A duplicate guard compares
+   ``t_now`` + ``R2`` against the last saved entry and silently drops
+   re-runs of the same step.
+3. **Flush in batches.** Every ``snapshot_interval`` calls (default **10**),
+   ``save_snapshot`` triggers ``flush()`` automatically. You can also call
+   ``params.flush()`` manually at phase boundaries or after a critical event.
+4. **Append to disk.** ``flush()`` opens ``dictionary.jsonl`` in append mode
+   and writes one JSON line per pending snapshot, using ``NpEncoder`` to
+   serialise numpy scalars and arrays. The first flush of a fresh run
+   overwrites any existing file; subsequent flushes only append.
+5. **Crash-safe handlers.** On construction, ``DescribedDict`` registers an
+   ``atexit`` hook plus ``SIGINT``/``SIGTERM`` handlers. If the process
+   exits — cleanly, via ``Ctrl+C``, or via ``kill`` / SLURM ``scancel`` — any
+   buffered snapshots are flushed first and a termination debug report is
+   written via ``src/_output/simulation_end.py``. ``SIGKILL`` (``kill -9``)
+   and ``os._exit()`` bypass these hooks and can still lose the pending
+   buffer; everything already on disk is always safe.
+
+Because writes are append-only, the file is readable even after a crash —
+the last line may be partial (one incomplete JSON object) but every prior
+line is a complete snapshot.
+
+You rarely call these APIs by hand; they are invoked by ``src/main.py`` and
+the phase modules. The public-facing reader is ``trinity_reader``
+(see :ref:`sec-trinity-reader`).
+
+**Reloading a snapshot:**
+
+.. code-block:: python
+
+    from src._input.dictionary import DescribedDict
+
+    # Load every snapshot into a dict keyed by id
+    snapshots = DescribedDict.load_snapshots("/path/to/outputs/my_run")
+
+    # Load one specific snapshot straight into a DescribedDict
+    params = DescribedDict.load_snapshot("/path/to/outputs/my_run", snap_id=42)
+    r_arr  = params["initial_cloud_r_arr"].value     # numpy array
+    t_now  = params["t_now"].value                   # float
+
+    # Convenience helper for the last snapshot
+    params = DescribedDict.load_latest_snapshot("/path/to/outputs/my_run")
+
+For most analysis work, prefer the higher-level
+:ref:`trinity_reader <sec-trinity-reader>` API, which exposes the same data
+as numpy arrays and pandas DataFrames.
+
 Reading Output Data
 ^^^^^^^^^^^^^^^^^^^
 
