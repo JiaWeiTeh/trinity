@@ -5,7 +5,24 @@
 Physics & Equations
 ===================
 
-This section documents the physics and mathematical formulations implemented in TRINITY. The simulation models HII region evolution using 1D spherical hydrodynamics, coupling stellar feedback with shell dynamics.
+TRINITY treats the region around a young stellar cluster as a
+spherically symmetric two-zone flow. Inside an evacuated cavity, a
+hot wind-blown bubble is bounded by an inner termination shock at
+:math:`R_1` and by a thin swept-up shell at :math:`R_2`; outside the
+shell the ambient cloud retains its initial density profile. The
+shell carries essentially all of the swept-up mass, and its motion
+is governed by the balance between the thermal and ram pressures of
+the interior, the pressure of the photo-ionised gas, direct and
+reprocessed radiation pressure, and the gravitational pull of the
+cluster and the enclosed cloud mass.
+
+This chapter collects the governing equations, the cloud-initialisation
+procedure, the feedback terms drawn from Starburst99, the cooling
+prescriptions, and the numerical scheme that integrates the coupled
+ODEs. The same equations appear verbatim in the source as the
+right-hand side of the integrator, and the symbols used below
+correspond one-to-one with the parameter names recorded in the
+output (see :ref:`sec-parameters`).
 
 
 Cloud Initialization

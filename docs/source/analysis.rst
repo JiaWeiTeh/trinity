@@ -5,11 +5,19 @@
 Post-Processing Analysis (``_calc``)
 ====================================
 
-The ``src/_calc/`` module contains standalone analysis scripts that extract
-scaling relations, timescales, and diagnostic quantities from TRINITY
-parameter-sweep output.  Each script reads the ``dictionary.jsonl`` files
-produced by TRINITY, fits power-law relations to the output, and generates
-publication-quality figures plus CSV summary tables.
+The scripts in ``src/_calc/`` operate on completed TRINITY
+parameter sweeps rather than on individual runs. Each script reads
+the ``dictionary.jsonl`` files under a sweep directory, extracts a
+particular diagnostic — a terminal quantity, a lifetime, or a scaling
+law — fits the result across the sweep, and writes both a figure and
+a CSV summary table to disk.
+
+The module is intentionally kept independent of the main simulation
+loop: the scripts can be re-run at any time against any existing
+sweep directory, and they do not modify the underlying output. All
+input/output goes through the :ref:`sec-trinity-reader` API, so the
+scripts also serve as worked examples of how to post-process TRINITY
+data in user code.
 
 
 Quick Start

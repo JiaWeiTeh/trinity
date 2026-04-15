@@ -5,12 +5,31 @@
 Running TRINITY
 ===============
 
-This section covers how to run TRINITY simulations, from basic single runs to parallel parameter sweeps.
+A TRINITY simulation is fully specified by a single plain-text
+parameter file and is launched through a single entry point,
+``run.py``. The entry point auto-detects whether the parameter file
+describes one simulation or a parameter sweep, and dispatches to a
+serial or a parallel worker pool accordingly. This chapter describes
+the parameter file syntax, the three sweep modes (Cartesian, tuple,
+and hybrid), the command-line options, and the on-disk layout of the
+output produced by each run.
 
-Quick Start
------------
+The only Python invocation a user normally needs is
 
-The simplest way to run TRINITY is with a minimal parameter file. Create a file ``my_run.param``:
+.. code-block:: console
+
+    python run.py param/my_run.param
+
+from the root of the repository. The remainder of the chapter
+unpacks what this command does.
+
+
+A minimal run
+-------------
+
+A parameter file is a sequence of ``name value`` lines. The following
+three parameters are sufficient to launch a simulation; all other
+inputs fall back to the defaults listed in :ref:`sec-parameters`.
 
 .. code-block:: text
 
@@ -18,71 +37,56 @@ The simplest way to run TRINITY is with a minimal parameter file. Create a file 
     mCloud        1e6
     sfe           0.01
 
-Then execute from the TRINITY root directory:
-
-.. code-block:: console
-
-    python run.py param/my_run.param
-
-That's it! TRINITY will use default values for all unspecified parameters.
+Running ``python run.py param/my_run.param`` then integrates the
+shell to the stopping criterion and writes the output tree described
+in *Output Data Model* below.
 
 
 Single Simulation Runs
 ----------------------
 
-Command Syntax
-^^^^^^^^^^^^^^
+The parameter file passed to ``run.py`` may be given as either an
+absolute path or a path relative to the root of the repository:
 
 .. code-block:: console
 
-    python run.py <path_to_parameter_file>
-
-The parameter file path can be absolute or relative to the TRINITY root directory.
-
-**Examples:**
-
-.. code-block:: console
-
-    # Using a file in the param/ directory
     python run.py param/example.param
-
-    # Using an absolute path
     python run.py /home/user/my_params/custom.param
 
-Output Directory Structure
-^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-TRINITY creates the following structure in your output directory (set by ``path2output``):
+The destination of the simulation output is controlled by the
+``path2output`` parameter. TRINITY creates the directory if it does
+not already exist and populates it with three files:
 
 .. code-block:: text
 
     path2output/
-    ├── dictionary.jsonl            # Simulation output data (JSONL format)
-    ├── {model_name}_summary.txt    # Human-readable parameter summary
-    └── trinity.log                 # Log file (if log_file = True)
+    ├── dictionary.jsonl            # simulation state, one JSON object per snapshot
+    ├── {model_name}_summary.txt    # human-readable parameter summary
+    └── trinity.log                 # log file (written when log_file = True)
 
-If ``path2output`` is set to ``def_dir`` (default), outputs are written to the directory where TRINITY is executed.
+If ``path2output`` is set to the sentinel value ``def_dir`` (the
+default), output is written into the current working directory.
 
 
 Parameter Sweep Runs
 --------------------
 
-TRINITY supports running multiple simulations with different parameter combinations.
-``run.py`` is a **unified entry point**: it auto-detects sweep mode from the
-parameter file content and dispatches to either a single run or a parallel
-sweep — you never need a separate script.
+A parameter file that varies one or more inputs across a list of
+values is interpreted as a sweep and executed in parallel through a
+process pool. The detection is lexical: ``run.py`` treats the file as
+a sweep whenever it encounters a multi-element list value such as
+``mCloud [1e5, 1e6, 1e7]`` or a ``tuple(...)`` directive. No separate
+script or flag is required, and no change to the command line is
+needed; the same ``python run.py <file>`` invocation dispatches
+either a single run or a full sweep.
 
-A file is treated as a sweep whenever it contains either:
-
-- A value written as a multi-element list, e.g. ``mCloud [1e5, 1e6, 1e7]``, or
-- A ``tuple(...)`` directive that defines explicit parameter combinations.
-
-Three sweep modes are supported:
-
-- **Cartesian sweep** — list syntax; generates every combination.
-- **Tuple sweep** — ``tuple(...)`` syntax; runs only the listed combinations.
-- **Hybrid sweep** — mix tuples with list sweeps; Cartesian product of each
-  tuple combination with the sweep lists.
+Three sweep modes are supported. A *Cartesian* sweep uses list
+syntax and generates every combination of the listed values. A
+*tuple* sweep uses the ``tuple(name_1, name_2, ...)`` directive to
+declare a set of explicit parameter combinations, so that only the
+named points in parameter space are executed. A *hybrid* sweep
+combines a tuple directive with one or more list sweeps and runs the
+Cartesian product of the tuple combinations and the list values.
 
 Cartesian Sweep Syntax
 ^^^^^^^^^^^^^^^^^^^^^^
@@ -657,7 +661,7 @@ See Also
   defaults, and the ``# UNIT:`` annotation system used in ``default.param``.
 - :ref:`sec-trinity-reader` — high-level ``TrinityOutput`` API for reading
   ``dictionary.jsonl`` files into numpy / pandas.
-- :ref:`sec-visualization` — paper-quality plotting scripts that consume
+- :ref:`sec-visualization` — plotting scripts that consume
   sweep output directories.
 - :ref:`sec-analysis` — post-processing analysis scripts (``src/_calc/``)
   that fit scaling relations to sweep results.

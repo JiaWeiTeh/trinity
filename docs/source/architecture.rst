@@ -5,7 +5,22 @@
 Physics Architecture
 ====================
 
-This section documents the internal architecture of TRINITY, illustrating how the simulation modules interact to model HII region evolution. The diagrams below show module dependencies, simulation phases, data flow, and the core physics feedback loop.
+Internally, TRINITY is organised as a small orchestrator that drives
+a sequence of phase-specific solvers, each of which consumes the
+same set of shared physics modules (stellar feedback, cooling,
+density profile, gravity). A single state dictionary, built on the
+``DescribedDict`` container described in :ref:`sec-running`, is
+threaded through every call and is the sole mechanism by which the
+modules exchange information. This chapter documents the module
+layout, the phase transitions, and the data flow that connects them,
+with ASCII diagrams illustrating each piece.
+
+The architecture is deliberately flat. There are no class
+hierarchies, no dependency injection, and no plugin system; physics
+modules are plain functions that read and write named keys on the
+state dictionary. The feedback loop that advances the shell in time
+is a single ODE right-hand side whose inputs and outputs are
+traceable directly to the equations in :ref:`sec-physics`.
 
 
 Module Organization

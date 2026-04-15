@@ -5,7 +5,21 @@
 Parameter Specifications
 ========================
 
-This section documents all parameters available in TRINITY, organized by category.
+Every TRINITY simulation is driven by a plain-text parameter file.
+The file contains a flat list of ``name value`` lines that are parsed
+at start-up and injected into the simulation's state dictionary. There
+is no hierarchy, no environment variables, and no implicit parameter
+overrides; what the user writes in the file is what the simulation
+uses. Parameters that are not listed in the file fall back to the
+defaults recorded in ``param/default.param``.
+
+This chapter enumerates every parameter that TRINITY recognises,
+grouped by physical role: cloud and environment, stellar feedback,
+numerical solver, output, and a handful of sweep-mode directives.
+For each entry the default value, unit, and short description are
+given. The same information can be inspected at run time through the
+``DescribedItem`` objects in the output dictionary (see
+:ref:`sec-running`, *Output Data Model*).
 
 Parameter File Format
 ---------------------
