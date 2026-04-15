@@ -1,21 +1,49 @@
+.. _sec-visualization:
+
 Visualization Tools
 ===================
 
-TRINITY includes a suite of paper-quality visualization scripts for analyzing simulation outputs.
-All scripts are located in ``src/_plots/`` and follow consistent conventions.
+TRINITY ships with a set of plotting scripts, collected under
+``src/_plots/``, that generate the figures used in the associated
+papers. Each script is a thin wrapper around the
+:ref:`sec-trinity-reader` API: it loads one or more simulations from
+disk, extracts a small number of time series, and renders them with
+a shared Matplotlib style sheet, ``trinity.mplstyle``. The scripts
+are intended both as reproducible figure generators and as worked
+examples of how to drive the reader API from user code.
+
+All scripts share the same command-line conventions, accept the
+same folder-based discovery flags, and write their output into a
+predictable ``fig/{folder_name}/`` tree whose filenames encode the
+parameter combination that was plotted. To run any of them, just
+do::
+
+    python src/_plots/SCRIPT_NAME.py -F /path/to/outputs
+
+The sections below describe each script in turn, grouped by the
+physical quantity it visualises.
+
+.. seealso::
+
+   - :ref:`sec-trinity-reader` — the ``TrinityOutput`` API that every
+     plotting script uses to load ``dictionary.jsonl`` data.
+   - :ref:`sec-running` — how to produce the simulation outputs these
+     scripts consume, including sweep folder layout.
+   - :ref:`sec-parameters` — definitions of the parameters (``R2``,
+     ``Pb``, ``F_*``, etc.) plotted below.
 
 Common Features
 ---------------
 
-All plotting scripts support:
-
-- **Folder-based input**: Auto-discover simulations using ``-F /path/to/outputs``
-- **Density filtering**: Filter by core density with ``--nCore`` or ``-n``
-- **Grid mode**: Generate parameter-space grids (mCloud × SFE)
-- **Consistent styling**: Uses ``trinity.mplstyle`` for publication-quality figures
-- **Phase markers**: Shows transition (T) and momentum (M) phase boundaries
-
-All scripts use the ``trinity_reader`` module (see :ref:`sec-trinity-reader`) for data loading.
+Every plotting script accepts a folder of simulations through the
+``-F`` flag and auto-discovers the individual runs underneath, so
+that a single invocation can render either one simulation or a full
+(mCloud × SFE) grid. Core density is selected through ``--nCore``,
+figure output is redirected through ``-o``, and the shared Matplotlib
+style sheet ``trinity.mplstyle`` ensures that figures from different
+scripts remain visually consistent. Phase boundaries between the
+energy-driven, transition, and momentum-driven regimes are drawn
+automatically where they are relevant.
 
 Usage Examples
 --------------
@@ -216,3 +244,15 @@ overwrite each other:
        ├── dominantFeedback_M1e7_sfe020_n1e4_continuous_interp.pdf
        ├── radiusEvolution_M1e7_sfe020_n1e4.pdf
        └── ...
+
+
+See Also
+--------
+
+- :ref:`sec-trinity-reader` — programmatic API (``TrinityOutput``,
+  ``load_output``, ``find_all_simulations``) used by every script above.
+- :ref:`sec-running` — producing simulations, sweep folder layout, and
+  how ``path2output`` maps onto the ``fig/{folder_name}/`` tree.
+- :ref:`sec-analysis` — analysis utilities that complement these plots.
+- :ref:`sec-physics` — physical meaning of the forces, pressures, and
+  regimes shown in the paper figures.

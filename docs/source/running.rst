@@ -5,79 +5,91 @@
 Running TRINITY
 ===============
 
-This section covers how to run TRINITY simulations, from basic single runs to parallel parameter sweeps.
+Basic Runs
+----------
 
-Quick Start
------------
+Once TRINITY is installed, running a simulation is extremely simple.
+A simulation is fully specified by a single plain-text parameter
+file, and the same entry point, ``run.py``, drives both single
+runs and parameter sweeps. The only invocation a user normally
+needs is, from the repository root::
 
-The simplest way to run TRINITY is with a minimal parameter file. Create a file ``my_run.param``:
+    python run.py param/my_run.param
 
-.. code-block:: text
+where ``my_run.param`` is a parameter file formatted as described
+in :ref:`sec-parameters`. ``run.py`` inspects the file, decides
+whether it describes one simulation or a grid of simulations, and
+dispatches to either a single run or a parallel worker pool. No
+separate script is needed for sweeps.
+
+A minimal parameter file contains only three entries; everything
+else falls back to the defaults listed in :ref:`sec-parameters`::
 
     model_name    my_first_run
     mCloud        1e6
     sfe           0.01
 
-Then execute from the TRINITY root directory:
+With this file in ``param/my_first_run.param``, just do::
 
-.. code-block:: console
+    python run.py param/my_first_run.param
 
-    python run.py param/my_run.param
+and TRINITY will integrate the shell to the stopping criterion and
+write the output tree described in *Output Data Model* below.
 
-That's it! TRINITY will use default values for all unspecified parameters.
 
+Paths and Output Directory
+--------------------------
 
-Single Simulation Runs
-----------------------
+The parameter file passed to ``run.py`` may be given as an absolute
+path or a path relative to the root of the repository; both of the
+following are valid::
 
-Command Syntax
-^^^^^^^^^^^^^^
-
-.. code-block:: console
-
-    python run.py <path_to_parameter_file>
-
-The parameter file path can be absolute or relative to the TRINITY root directory.
-
-**Examples:**
-
-.. code-block:: console
-
-    # Using a file in the param/ directory
     python run.py param/example.param
-
-    # Using an absolute path
     python run.py /home/user/my_params/custom.param
 
-Output Directory Structure
-^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-TRINITY creates the following structure in your output directory (set by ``path2output``):
-
-.. code-block:: text
+The destination of the simulation output is controlled by the
+``path2output`` parameter. TRINITY creates the directory if it does
+not already exist and populates it with three files::
 
     path2output/
-    ├── {model_name}/
-    │   ├── dictionary.jsonl        # Simulation output data (JSONL format)
-    │   ├── {model_name}_summary.txt    # Human-readable parameter summary
-    │   └── {model_name}.log        # Log file (if log_file = True)
+    ├── dictionary.jsonl            # simulation state, one JSON object per snapshot
+    ├── {model_name}_summary.txt    # human-readable parameter summary
+    └── trinity.log                 # log file (written when log_file = True)
 
-If ``path2output`` is set to ``def_dir`` (default), outputs are written to the directory where TRINITY is executed.
+If ``path2output`` is set to the sentinel value ``def_dir`` (the
+default), output is written into the current working directory.
 
 
 Parameter Sweep Runs
 --------------------
 
-TRINITY supports running multiple simulations with different parameter combinations using the sweep system.
+A parameter file that varies one or more inputs across a list of
+values is interpreted as a sweep and executed in parallel through a
+process pool. The detection is lexical: ``run.py`` treats the file as
+a sweep whenever it encounters a multi-element list value such as
+``mCloud [1e5, 1e6, 1e7]`` or a ``tuple(...)`` directive. No separate
+script or flag is required, and no change to the command line is
+needed; the same ``python run.py <file>`` invocation dispatches
+either a single run or a full sweep.
 
-Sweep Syntax
-^^^^^^^^^^^^
+Three sweep modes are supported. A *Cartesian* sweep uses list
+syntax and generates every combination of the listed values. A
+*tuple* sweep uses the ``tuple(name_1, name_2, ...)`` directive to
+declare a set of explicit parameter combinations, so that only the
+named points in parameter space are executed. A *hybrid* sweep
+combines a tuple directive with one or more list sweeps and runs the
+Cartesian product of the tuple combinations and the list values.
 
-In a sweep parameter file, use list notation ``[val1, val2, ...]`` for parameters you want to vary:
+Cartesian Sweep Syntax
+^^^^^^^^^^^^^^^^^^^^^^
+
+Use list notation ``[val1, val2, ...]`` for parameters you want to vary. All
+combinations will be generated:
 
 .. code-block:: text
+   :caption: param/sweep_example.param
 
-    # Sweep parameters - will generate all combinations
+    # Sweep parameters - generate all combinations
     mCloud    [1e5, 1e7, 1e8]
     sfe       [0.01, 0.10]
     nCore     [1e2, 1e3]
@@ -87,13 +99,63 @@ In a sweep parameter file, use list notation ``[val1, val2, ...]`` for parameter
     densPL_alpha    0
     path2output     outputs/my_sweep
 
-This generates a Cartesian product: 3 x 2 x 2 = 12 total simulations.
+This generates a Cartesian product: 3 × 2 × 2 = 12 total simulations.
+
+Tuple Sweep Syntax
+^^^^^^^^^^^^^^^^^^
+
+Use the ``tuple(...)`` directive when you want to run only **specific parameter
+combinations**, rather than every Cartesian combination. Each ``[...]`` block
+after the tuple defines one run:
+
+.. code-block:: text
+   :caption: param/sweep_tuple_example.param
+
+    # Syntax: tuple(param1, param2, ...)  [val1, val2] [val1, val2] ...
+    # Each [...] defines one combination to run.
+    tuple(mCloud, sfe, nCore)   [1e5, 0.01, 1e2] [1e6, 0.05, 1e3] [1e7, 0.10, 1e4]
+
+    # Fixed parameters
+    dens_profile    densPL
+    densPL_alpha    0
+    nISM            0.1
+    path2output     outputs/sweep_tuple_test
+
+This runs exactly 3 simulations — one per tuple, with no Cartesian expansion.
+Tuples are ideal for targeted scans along a physically meaningful curve
+(e.g. fixed surface density) instead of a dense grid.
+
+Hybrid Sweep Syntax
+^^^^^^^^^^^^^^^^^^^
+
+Tuple and list syntax can be combined in the same file. Each tuple combination
+is crossed (Cartesian product) with the list sweeps:
+
+.. code-block:: text
+   :caption: param/sweep_hybrid_example.param
+
+    # Explicit (mCloud, sfe) pairs
+    tuple(mCloud, sfe)    [1e5, 0.01] [1e7, 0.10]
+
+    # nCore is swept across each tuple combination
+    nCore    [1e3, 1e4]
+
+    dens_profile    densPL
+    densPL_alpha    0
+    path2output     outputs/sweep_hybrid_test
+
+This yields 2 tuples × 2 ``nCore`` values = 4 runs:
+
+- ``mCloud=1e5, sfe=0.01, nCore=1e3``
+- ``mCloud=1e5, sfe=0.01, nCore=1e4``
+- ``mCloud=1e7, sfe=0.10, nCore=1e3``
+- ``mCloud=1e7, sfe=0.10, nCore=1e4``
 
 Running Sweeps
 ^^^^^^^^^^^^^^
 
-Use ``run.py`` to execute parameter sweeps (sweep mode is auto-detected from
-the parameter file content):
+Sweep mode is auto-detected from the parameter file content — run the same way
+as a single simulation:
 
 .. code-block:: console
 
@@ -103,19 +165,51 @@ the parameter file content):
     # Run with 4 parallel workers
     python run.py param/sweep.param --workers 4
 
-    # Run with automatic worker detection
-    # (default: max(1, CPU count // 2 - 1) — conservative to keep
-    #  laptops responsive; use --workers N on HPC for more parallelism)
+    # Run with automatic worker detection (see note below)
     python run.py param/sweep.param
+
+    # Skip the interactive confirmation prompt
+    python run.py param/sweep.param --yes
+
+    # Enable verbose diagnostics (show all base params + debug logs)
+    python run.py param/sweep.param --verbose
+
+.. note::
+
+   The default worker count is ``max(1, CPU count // 2 - 1)`` — conservative
+   to keep laptops responsive while a sweep runs in the background. On HPC
+   or workstations, pass ``--workers N`` to use more parallelism.
 
 **Command-line options:**
 
-==================  ============================================================
-Option              Description
-==================  ============================================================
-``--dry-run``       Preview all parameter combinations without executing
-``--workers N``     Number of parallel processes (default: auto-detect)
-==================  ============================================================
+.. list-table::
+   :widths: 25 75
+   :header-rows: 1
+
+   * - Option
+     - Description
+   * - ``--dry-run``, ``-n``
+     - Preview all parameter combinations without executing.
+   * - ``--workers N``, ``-w``
+     - Number of parallel worker processes (default: auto-detect).
+   * - ``--yes``, ``-y``
+     - Skip the interactive confirmation prompt.
+   * - ``--verbose``, ``-v``
+     - Enable verbose output (DEBUG-level logs, full base-param list).
+
+Press ``Ctrl+C`` at any time to cancel the sweep cleanly; in-flight workers
+are terminated and a report of completed/failed/cancelled runs is written to
+the output directory. ``SIGTERM`` (e.g. from SLURM ``scancel`` or PBS walltime)
+is handled the same way.
+
+Pre-flight Validation
+^^^^^^^^^^^^^^^^^^^^^
+
+Before launching, ``run.py`` performs a GMC-parameter plausibility check on
+every combination (cloud mass vs. core density vs. ISM density, cloud radius,
+etc.). Invalid combinations are flagged up front — in ``--dry-run`` mode they
+are listed with the specific errors, and in live mode they are listed before
+the confirmation prompt so you can abort rather than waste compute.
 
 Auto-Generated Run Names
 ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -128,20 +222,22 @@ Each combination automatically receives a descriptive name following this conven
 
 **Examples:**
 
-- ``1e5_sfe001_n1e2`` for mCloud=1e5, sfe=0.01, nCore=1e2
-- ``1e7_sfe010_n1e3`` for mCloud=1e7, sfe=0.10, nCore=1e3
+- ``1e5_sfe001_n1e2`` for ``mCloud=1e5, sfe=0.01, nCore=1e2``
+- ``1e7_sfe010_n1e3`` for ``mCloud=1e7, sfe=0.10, nCore=1e3``
 
-Output files are organized into subdirectories:
+Output files are organized into subdirectories of ``path2output``:
 
 .. code-block:: text
 
     outputs/my_sweep/
     ├── 1e5_sfe001_n1e2/
-    │   ├── dictionary.jsonl            # Simulation output data
-    │   └── 1e5_sfe001_n1e2_summary.txt
+    │   ├── dictionary.jsonl                    # Simulation output data
+    │   ├── 1e5_sfe001_n1e2_summary.txt         # Parameter summary
+    │   └── trinity.log                         # Per-run log file
     ├── 1e5_sfe001_n1e3/
     │   └── ...
-    └── sweep_report.json               # Summary of all runs
+    ├── sweep_report.txt                        # Human-readable sweep summary
+    └── sweep_report.json                       # Machine-readable sweep summary
 
 
 Logging Configuration
@@ -176,7 +272,7 @@ Configure logging in your parameter file:
      - Print log messages to terminal during simulation.
    * - ``log_file``
      - ``True``
-     - Save log messages to ``{path2output}/trinity_YYYYMMDD_HHMMSS.log``.
+     - Save log messages to ``{path2output}/trinity.log``.
    * - ``log_colors``
      - ``True``
      - Color-code terminal output by severity level.
@@ -292,47 +388,184 @@ With ``log_level = INFO``:
     2026-01-08 15:35:00 | INFO     | src.main | === Simulation Finished ===
 
 
-Output Formats
---------------
+Output Data Model
+-----------------
 
-JSONL Output
-^^^^^^^^^^^^
+TRINITY writes simulation state to **JSONL** (JSON Lines) — one JSON object per
+line, one line per snapshot. The format is append-only (O(1) flushes), streams
+without loading into memory, and stays readable after a crash up to the last
+complete line.
 
-TRINITY uses **JSONL** (JSON Lines) format for simulation output, where each line
-is a complete JSON object representing one timestep:
+This section describes the in-memory ``DescribedDict`` that mirrors the file,
+the keys contained in each snapshot, the on-disk layout, the save/flush
+workflow, and how to reload snapshots from Python. For higher-level analysis,
+use :ref:`trinity_reader <sec-trinity-reader>`.
 
-.. code-block:: text
+Dictionary Structure
+^^^^^^^^^^^^^^^^^^^^
 
-    {"t_now": 0.001, "R2": 0.5, "v2": 100, ...}
-    {"t_now": 0.002, "R2": 0.6, "v2": 98, ...}
-    ...
+Internally, TRINITY carries simulation state in a single ``DescribedDict``
+(defined in ``src/_input/dictionary.py``). Each key maps to a
+``DescribedItem`` object that wraps the raw value together with lightweight
+metadata (a human-readable description and original units).
 
-This format provides:
-
-- **O(1) write performance**: Append-only, no rewriting of previous data
-- **Streaming reads**: Process large files without loading everything into memory
-- **Crash resilience**: Partial files are still readable up to the last complete line
-
-Reading Output Data
-^^^^^^^^^^^^^^^^^^^
-
-Use the ``trinity_reader`` module to access output data:
+**In-memory layout:**
 
 .. code-block:: python
 
-    from src._output.trinity_reader import load_output
+    from src._input.dictionary import DescribedDict, DescribedItem
 
-    output = load_output('/path/to/dictionary.jsonl')
-    output.info()  # Print summary
+    params = DescribedDict()
 
-    # Access time series
-    times = output.get('t_now')
-    radii = output.get('R2')
+    params["R2"]     = DescribedItem(0.0, info="Outer shell radius",      ori_units="pc")
+    params["v2"]     = DescribedItem(0.0, info="Shell expansion velocity", ori_units="pc/Myr")
+    params["Eb"]     = DescribedItem(0.0, info="Bubble thermal energy",    ori_units="Msun*pc**2/Myr**2")
+    params["t_now"]  = DescribedItem(0.0, info="Current simulation time",  ori_units="Myr")
 
-    # Get snapshot at specific time
-    snap = output.get_at_time(1.0)
+    # Access the raw value
+    r = params["R2"].value           # -> float
+    t = params["t_now"].value        # -> float
 
-See :ref:`sec-trinity-reader` for complete API documentation.
+    # DescribedItem supports arithmetic/formatting directly
+    area = 4 * 3.14159 * params["R2"] ** 2     # float result
+    print(f"t = {params['t_now']:.3e} Myr")    # works via __format__
+
+Each ``DescribedItem`` exposes three attributes:
+
+.. list-table::
+   :widths: 25 75
+   :header-rows: 1
+
+   * - Attribute
+     - Meaning
+   * - ``value``
+     - The stored scalar, list, or numpy array.
+   * - ``info``
+     - Short human-readable description (seen in ``{model_name}_summary.txt``).
+   * - ``ori_units``
+     - Original-unit label (e.g. ``"pc"``, ``"Msun"``, ``"1/cm**3"``).
+
+Additionally, a per-item ``exclude_from_snapshot`` flag marks keys that are
+*not* persisted to disk — used for large auxiliary objects such as SB99
+interpolation tables that can be rebuilt on load.
+
+**What's in each snapshot:**
+
+Snapshots are grouped into a handful of conceptual categories:
+
+.. list-table::
+   :widths: 30 70
+   :header-rows: 1
+
+   * - Category
+     - Example keys
+   * - Administrative
+     - ``path2output``, ``model_name``, ``current_phase``,
+       ``SimulationEndReason``
+   * - Cloud setup
+     - ``mCloud``, ``sfe``, ``mCluster``, ``rCloud``,
+       ``initial_cloud_r_arr``, ``initial_cloud_n_arr``,
+       ``initial_cloud_m_arr``
+   * - Dynamical state
+     - ``t_now``, ``R2``, ``v2``, ``Eb``, ``T0``, ``R1``, ``Pb``
+   * - Feedback (SB99)
+     - ``Lmech_W``, ``Lmech_SN``, ``Qi``, ``Lbol``, ``pdot``
+   * - Forces
+     - ``F_grav``, ``F_ram``, ``F_ram_wind``, ``F_ram_SN``,
+       ``F_ion_out``, ``F_HII_St``, ``F_rad``
+   * - Bubble profile
+     - ``log_bubble_T_arr`` + ``bubble_T_arr_r_arr``,
+       ``log_bubble_n_arr`` + ``bubble_n_arr_r_arr``,
+       ``bubble_v_arr`` + ``bubble_v_arr_r_arr``
+   * - Shell profile
+     - ``log_shell_n_arr`` + ``shell_r_arr``,
+       ``shell_grav_force_m`` + ``shell_grav_r``
+
+**On-disk form (one line of ``dictionary.jsonl``):**
+
+.. code-block:: json
+
+   {
+     "snap_id": 42,
+     "t_now": 1.523e-01,
+     "current_phase": "energy",
+     "R2": 2.48, "v2": 15.7, "Eb": 9.21e+06, "T0": 7.4e+06,
+     "R1": 0.31, "Pb": 3.1e+04,
+     "Lmech_W": 1.22e+11, "Lmech_SN": 0.0, "Qi": 4.5e+50, "Lbol": 1.1e+40,
+     "F_grav": 9.3e+02, "F_ram": 1.6e+03, "F_rad": 7.2e+02,
+     "log_shell_n_arr": [3.1, 3.2, ...], "shell_r_arr":  [2.48, 2.49, ...]
+   }
+
+Only the ``.value`` of each ``DescribedItem`` is written — ``info`` and
+``ori_units`` live alongside the code and are reattached automatically when
+you load a snapshot back in.
+
+**Snapshot workflow (save → flush → disk).**
+Snapshots are captured through a two-stage *buffer → flush*
+pipeline so that disk writes stay cheap (append-only, O(1) per
+flush) and a crash can lose at most ``snapshot_interval`` steps of
+progress. The sequence at each ODE step is:
+
+1. **Mutate the dict.** Physics modules update
+   ``params["R2"].value``, ``params["Eb"].value``, etc. in place.
+2. **Stage a snapshot.** ``params.save_snapshot()`` copies the
+   current state (excluding any key marked
+   ``exclude_from_snapshot=True``) into the in-memory buffer
+   ``params.previous_snapshot``. A duplicate guard compares
+   ``t_now`` + ``R2`` against the last saved entry and silently
+   drops re-runs of the same step.
+3. **Flush in batches.** Every ``snapshot_interval`` calls
+   (default **10**), ``save_snapshot`` triggers ``flush()``
+   automatically. ``params.flush()`` may also be called manually
+   at phase boundaries or after a critical event.
+4. **Append to disk.** ``flush()`` opens ``dictionary.jsonl`` in
+   append mode and writes one JSON line per pending snapshot,
+   using ``NpEncoder`` to serialise numpy scalars and arrays. The
+   first flush of a fresh run overwrites any existing file;
+   subsequent flushes only append.
+5. **Crash-safe handlers.** On construction, ``DescribedDict``
+   registers an ``atexit`` hook plus ``SIGINT`` / ``SIGTERM``
+   handlers, so that an exit — clean, via ``Ctrl+C``, or via
+   ``kill`` / SLURM ``scancel`` — flushes any buffered snapshots
+   before termination. ``SIGKILL`` (``kill -9``) and
+   ``os._exit()`` bypass these hooks and can lose the pending
+   buffer; everything already on disk is always safe.
+
+Because writes are append-only, the file is readable even after a
+crash — the last line may be partial (one incomplete JSON object)
+but every prior line is a complete snapshot.
+
+These APIs are invoked by ``src/main.py`` and the phase modules;
+user code normally reads output through ``trinity_reader``
+(see :ref:`sec-trinity-reader`).
+
+**Reloading a snapshot:**
+
+.. code-block:: python
+
+    from src._input.dictionary import DescribedDict
+
+    # Load every snapshot into a dict keyed by id
+    snapshots = DescribedDict.load_snapshots("/path/to/outputs/my_run")
+
+    # Load one specific snapshot straight into a DescribedDict
+    params = DescribedDict.load_snapshot("/path/to/outputs/my_run", snap_id=42)
+    r_arr  = params["initial_cloud_r_arr"].value     # numpy array
+    t_now  = params["t_now"].value                   # float
+
+    # Convenience helper for the last snapshot
+    params = DescribedDict.load_latest_snapshot("/path/to/outputs/my_run")
+
+The ``DescribedDict.load_snapshot`` helpers give direct access to the
+raw state — useful when what is wanted is the exact Python objects
+the simulation worked with. For most analysis work, the higher-level
+``trinity_reader`` module is more convenient: it layers a
+``TrinityOutput`` container on top of the same JSONL files and
+exposes time-series extraction, interpolated snapshots, phase and
+time-range filtering, pandas conversion, and batch utilities for
+sweep outputs. See :ref:`sec-trinity-reader` for the full API,
+plotting examples, and details on the profile-array simplification
+applied to long 1-D arrays.
 
 
 Troubleshooting
@@ -359,3 +592,18 @@ Getting Help
 
 For issues and feature requests, visit:
 https://github.com/JiaWeiTeh/trinity/issues
+
+
+See Also
+--------
+
+- :ref:`sec-parameters` — complete reference of input parameters, units,
+  defaults, and the ``# UNIT:`` annotation system used in ``default.param``.
+- :ref:`sec-trinity-reader` — high-level ``TrinityOutput`` API for reading
+  ``dictionary.jsonl`` files into numpy / pandas.
+- :ref:`sec-visualization` — plotting scripts that consume
+  sweep output directories.
+- :ref:`sec-analysis` — post-processing analysis scripts (``src/_calc/``)
+  that fit scaling relations to sweep results.
+- :ref:`sec-architecture` — internal module layout and how ``run.py``
+  drives ``main.start_expansion`` through the phase modules.
