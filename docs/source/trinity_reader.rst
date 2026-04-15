@@ -5,11 +5,37 @@
 Output Reader API
 =================
 
-The ``trinity_reader`` module provides a clean, Pythonic API for reading and analyzing
-TRINITY simulation output files. Similar to ``astropy.io.fits``, it abstracts away the
-underlying file format and provides convenient access to simulation data.
+TRINITY comes with a python module, ``trinity_reader``, which
+contains a small set of routines for reading and manipulating the
+output produced by the main code. For most users, this is the
+simplest way to access simulation data: the module hides the
+JSONL layout, the distinction between ``.jsonl`` and legacy
+``.json`` files, and the per-key unit metadata behind a handful of
+high-level classes. The low-level ``DescribedDict`` format on which
+the module sits is documented in :ref:`sec-running`.
 
-This is the **recommended way** to access TRINITY output data in scripts and analysis code.
+Two objects do most of the work. A :class:`TrinityOutput` represents
+an entire simulation and exposes time-series access, filtering by
+phase or time window, and conversion to a pandas ``DataFrame``. A
+:class:`Snapshot` represents a single time step and behaves like a
+dictionary keyed by parameter name. A companion utility,
+``find_all_simulations``, walks a directory tree of sweep output
+and returns the paths of every ``dictionary.jsonl`` it finds; this
+is convenient for building grid plots across a parameter sweep.
+The plotting and analysis scripts under ``src/_plots/`` and
+``src/_calc/`` consume their input exclusively through these
+classes.
+
+.. seealso::
+
+   - :ref:`sec-running` — *Output Data Model* section — describes the on-disk
+     JSONL layout, the ``DescribedDict`` / ``DescribedItem`` objects, the
+     save/flush workflow, and the low-level ``DescribedDict.load_snapshot``
+     API that the reader sits on top of.
+   - :ref:`sec-parameters` — full list of parameter names and units that can
+     appear as keys in a snapshot.
+   - :ref:`sec-visualization` — ready-made plotting scripts that consume
+     reader output.
 
 
 Quick Start
@@ -240,86 +266,11 @@ Organize simulations by cloud mass and SFE for grid plots:
 Available Parameters
 --------------------
 
-Use ``output.info(verbose=True)`` for complete documentation. Key parameters:
-
-Dynamical Variables
-^^^^^^^^^^^^^^^^^^^
-
-.. list-table::
-   :widths: 20 20 60
-   :header-rows: 1
-
-   * - Parameter
-     - Unit
-     - Description
-   * - ``t_now``
-     - Myr
-     - Current simulation time
-   * - ``R2``
-     - pc
-     - Outer bubble/shell radius
-   * - ``v2``
-     - pc/Myr
-     - Shell expansion velocity
-   * - ``Eb``
-     - erg
-     - Bubble thermal energy
-   * - ``T0``
-     - K
-     - Characteristic bubble temperature
-   * - ``R1``
-     - pc
-     - Inner bubble radius (wind termination shock)
-   * - ``Pb``
-     - dyn/cm²
-     - Bubble pressure
-
-Forces
-^^^^^^
-
-.. list-table::
-   :widths: 20 80
-   :header-rows: 1
-
-   * - Parameter
-     - Description
-   * - ``F_grav``
-     - Gravitational force
-   * - ``F_ram``
-     - Ram pressure force (total)
-   * - ``F_ram_wind``
-     - Ram pressure from stellar winds
-   * - ``F_ram_SN``
-     - Ram pressure from supernovae
-   * - ``F_ion_out``
-     - Warm ionized gas force (diagnostic, = P_HII * 4piR2^2, anchored to Pb)
-   * - ``F_HII_St``
-     - Stroemgren HII force (driving, = P_HII_St * 4piR2^2, independent of Pb)
-   * - ``F_rad``
-     - Radiation pressure force
-
-Feedback Properties
-^^^^^^^^^^^^^^^^^^^
-
-.. list-table::
-   :widths: 20 20 60
-   :header-rows: 1
-
-   * - Parameter
-     - Unit
-     - Description
-   * - ``Lmech_W``
-     - erg/Myr
-     - Mechanical luminosity from winds
-   * - ``Lmech_SN``
-     - erg/Myr
-     - Mechanical luminosity from supernovae
-   * - ``Qi``
-     - photons/s
-     - Ionizing photon rate
-   * - ``Lbol``
-     - erg/s
-     - Bolometric luminosity
+The full list of parameter names, units, and descriptions that can
+appear as keys in a snapshot lives in :ref:`sec-parameters`. For a
+quick look at what is present in a particular output file, call
+``output.info(verbose=True)``, which prints every key along with its
+attached ``info`` string and ``ori_units``.
 
 
 Example: Plotting
@@ -383,18 +334,20 @@ Force Balance Analysis
 File Format Notes
 -----------------
 
-TRINITY uses **JSONL** (JSON Lines) format where each line is one timestep:
+For the full specification of TRINITY's output — how ``DescribedDict`` maps
+keys to ``DescribedItem`` objects, what each snapshot contains, how the
+save/flush pipeline writes ``dictionary.jsonl``, and how to reload snapshots
+from Python — see :ref:`sec-running` (*Output Data Model*). This section
+covers only details that matter for reader users.
 
-.. code-block:: text
+**Legacy format**: the reader automatically handles both ``.jsonl`` (current,
+one JSON object per line) and ``.json`` (legacy, pre-2026, a single JSON
+object keyed by snapshot id). You do not need to convert old files.
 
-    {"t_now": 0.001, "R2": 0.5, "v2": 100, ...}
-    {"t_now": 0.002, "R2": 0.6, "v2": 98, ...}
-    ...
-
-The reader automatically handles both ``.jsonl`` (new) and ``.json`` (legacy) formats.
-
-**Snapshot Consistency**: All values in a snapshot correspond to the same timestamp
-(``t_now``). Snapshots are saved before ODE integration to ensure consistency.
+**Snapshot consistency**: all values in a snapshot correspond to the same
+timestamp (``t_now``). Snapshots are saved before ODE integration to ensure
+consistency across keys, so ``output.get_at_time(t)`` never mixes pre- and
+post-step state.
 
 **Profile Array Simplification**: A handful of long 1-D profile arrays are
 downsampled before serialisation to keep snapshot size manageable.  Each

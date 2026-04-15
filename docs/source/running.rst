@@ -5,84 +5,80 @@
 Running TRINITY
 ===============
 
-This section covers how to run TRINITY simulations, from basic single runs to parallel parameter sweeps.
+Basic Runs
+----------
 
-Quick Start
------------
+Once TRINITY is installed, running a simulation is extremely simple.
+A simulation is fully specified by a single plain-text parameter
+file, and the same entry point, ``run.py``, drives both single
+runs and parameter sweeps. The only invocation a user normally
+needs is, from the repository root::
 
-The simplest way to run TRINITY is with a minimal parameter file. Create a file ``my_run.param``:
+    python run.py param/my_run.param
 
-.. code-block:: text
+where ``my_run.param`` is a parameter file formatted as described
+in :ref:`sec-parameters`. ``run.py`` inspects the file, decides
+whether it describes one simulation or a grid of simulations, and
+dispatches to either a single run or a parallel worker pool. No
+separate script is needed for sweeps.
+
+A minimal parameter file contains only three entries; everything
+else falls back to the defaults listed in :ref:`sec-parameters`::
 
     model_name    my_first_run
     mCloud        1e6
     sfe           0.01
 
-Then execute from the TRINITY root directory:
+With this file in ``param/my_first_run.param``, just do::
 
-.. code-block:: console
+    python run.py param/my_first_run.param
 
-    python run.py param/my_run.param
+and TRINITY will integrate the shell to the stopping criterion and
+write the output tree described in *Output Data Model* below.
 
-That's it! TRINITY will use default values for all unspecified parameters.
 
+Paths and Output Directory
+--------------------------
 
-Single Simulation Runs
-----------------------
+The parameter file passed to ``run.py`` may be given as an absolute
+path or a path relative to the root of the repository; both of the
+following are valid::
 
-Command Syntax
-^^^^^^^^^^^^^^
-
-.. code-block:: console
-
-    python run.py <path_to_parameter_file>
-
-The parameter file path can be absolute or relative to the TRINITY root directory.
-
-**Examples:**
-
-.. code-block:: console
-
-    # Using a file in the param/ directory
     python run.py param/example.param
-
-    # Using an absolute path
     python run.py /home/user/my_params/custom.param
 
-Output Directory Structure
-^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-TRINITY creates the following structure in your output directory (set by ``path2output``):
-
-.. code-block:: text
+The destination of the simulation output is controlled by the
+``path2output`` parameter. TRINITY creates the directory if it does
+not already exist and populates it with three files::
 
     path2output/
-    ├── dictionary.jsonl            # Simulation output data (JSONL format)
-    ├── {model_name}_summary.txt    # Human-readable parameter summary
-    └── trinity.log                 # Log file (if log_file = True)
+    ├── dictionary.jsonl            # simulation state, one JSON object per snapshot
+    ├── {model_name}_summary.txt    # human-readable parameter summary
+    └── trinity.log                 # log file (written when log_file = True)
 
-If ``path2output`` is set to ``def_dir`` (default), outputs are written to the directory where TRINITY is executed.
+If ``path2output`` is set to the sentinel value ``def_dir`` (the
+default), output is written into the current working directory.
 
 
 Parameter Sweep Runs
 --------------------
 
-TRINITY supports running multiple simulations with different parameter combinations.
-``run.py`` is a **unified entry point**: it auto-detects sweep mode from the
-parameter file content and dispatches to either a single run or a parallel
-sweep — you never need a separate script.
+A parameter file that varies one or more inputs across a list of
+values is interpreted as a sweep and executed in parallel through a
+process pool. The detection is lexical: ``run.py`` treats the file as
+a sweep whenever it encounters a multi-element list value such as
+``mCloud [1e5, 1e6, 1e7]`` or a ``tuple(...)`` directive. No separate
+script or flag is required, and no change to the command line is
+needed; the same ``python run.py <file>`` invocation dispatches
+either a single run or a full sweep.
 
-A file is treated as a sweep whenever it contains either:
-
-- A value written as a multi-element list, e.g. ``mCloud [1e5, 1e6, 1e7]``, or
-- A ``tuple(...)`` directive that defines explicit parameter combinations.
-
-Three sweep modes are supported:
-
-- **Cartesian sweep** — list syntax; generates every combination.
-- **Tuple sweep** — ``tuple(...)`` syntax; runs only the listed combinations.
-- **Hybrid sweep** — mix tuples with list sweeps; Cartesian product of each
-  tuple combination with the sweep lists.
+Three sweep modes are supported. A *Cartesian* sweep uses list
+syntax and generates every combination of the listed values. A
+*tuple* sweep uses the ``tuple(name_1, name_2, ...)`` directive to
+declare a set of explicit parameter combinations, so that only the
+named points in parameter space are executed. A *hybrid* sweep
+combines a tuple directive with one or more list sweeps and runs the
+Cartesian product of the tuple combinations and the list values.
 
 Cartesian Sweep Syntax
 ^^^^^^^^^^^^^^^^^^^^^^
@@ -392,27 +388,18 @@ With ``log_level = INFO``:
     2026-01-08 15:35:00 | INFO     | src.main | === Simulation Finished ===
 
 
-Output Formats
---------------
+Output Data Model
+-----------------
 
-JSONL Output
-^^^^^^^^^^^^
+TRINITY writes simulation state to **JSONL** (JSON Lines) — one JSON object per
+line, one line per snapshot. The format is append-only (O(1) flushes), streams
+without loading into memory, and stays readable after a crash up to the last
+complete line.
 
-TRINITY uses **JSONL** (JSON Lines) format for simulation output, where each line
-is a complete JSON object representing one timestep:
-
-.. code-block:: text
-
-    {"t_now": 0.001, "R2": 0.5, "v2": 100, ...}
-    {"t_now": 0.002, "R2": 0.6, "v2": 98, ...}
-    ...
-
-This format provides:
-
-- **O(1) write performance**: Append-only, no rewriting of previous data
-- **Streaming reads**: Process large files without loading everything into memory
-- **Crash resilience**: Partial files are still readable up to the last complete line
-
+This section describes the in-memory ``DescribedDict`` that mirrors the file,
+the keys contained in each snapshot, the on-disk layout, the save/flush
+workflow, and how to reload snapshots from Python. For higher-level analysis,
+use :ref:`trinity_reader <sec-trinity-reader>`.
 
 Dictionary Structure
 ^^^^^^^^^^^^^^^^^^^^
@@ -513,83 +500,43 @@ Only the ``.value`` of each ``DescribedItem`` is written — ``info`` and
 ``ori_units`` live alongside the code and are reattached automatically when
 you load a snapshot back in.
 
-**Snapshot workflow (save → flush → disk):**
+**Snapshot workflow (save → flush → disk).**
+Snapshots are captured through a two-stage *buffer → flush*
+pipeline so that disk writes stay cheap (append-only, O(1) per
+flush) and a crash can lose at most ``snapshot_interval`` steps of
+progress. The sequence at each ODE step is:
 
-Snapshots are captured through a two-stage *buffer → flush* pipeline. Disk
-writes stay cheap (append-only, O(1) per flush) and a crash can lose at most
-``snapshot_interval`` steps of progress:
-
-.. code-block:: text
-
-    ┌──────────────────────────────────────────────────────────────────────┐
-    │                       SIMULATION MAIN LOOP                           │
-    │                                                                      │
-    │   for each ODE step:                                                 │
-    │       integrate physics ──► update params["R2"], ["v2"], ...         │
-    │       params.save_snapshot()   ───────────────┐                      │
-    │                                               │                      │
-    │   at phase boundary / end of simulation:      │                      │
-    │       params.flush()          ───────────────┐│                      │
-    │                                              ││                      │
-    └──────────────────────────────────────────────┼┼──────────────────────┘
-                                                   ││
-                                                   ▼▼
-    ┌──────────────────────────────────────────────────────────────────────┐
-    │                       DescribedDict internals                        │
-    │                                                                      │
-    │   save_snapshot():                                                   │
-    │     1. Duplicate guard (skip if t_now & R2 unchanged)                │
-    │     2. Serialise non-excluded keys → JSON-ready dict                 │
-    │     3. Stage into self.previous_snapshot[str(save_count)]            │
-    │     4. If save_count % snapshot_interval == 0 → call flush()         │
-    │                                                                      │
-    │   flush():                                                           │
-    │     1. First flush of a fresh run: delete old dictionary.jsonl       │
-    │     2. Append each pending snapshot as one JSON line                 │
-    │     3. Clear self.previous_snapshot, bump flush_count                │
-    │                                                                      │
-    └──────────────────────────────────┬───────────────────────────────────┘
-                                       │ append-only writes
-                                       ▼
-    ┌──────────────────────────────────────────────────────────────────────┐
-    │                  {path2output}/dictionary.jsonl                      │
-    │                                                                      │
-    │   {"snap_id": 0, "t_now": 0.000, "R2": 0.01, ...}                    │
-    │   {"snap_id": 1, "t_now": 0.003, "R2": 0.04, ...}                    │
-    │   {"snap_id": 2, "t_now": 0.008, "R2": 0.09, ...}                    │
-    │   ...                                                                │
-    └──────────────────────────────────────────────────────────────────────┘
-
-Stages in detail:
-
-1. **Mutate the dict.** Physics modules update ``params["R2"].value``,
-   ``params["Eb"].value``, etc. in place.
-2. **Stage a snapshot.** ``params.save_snapshot()`` copies the current state
-   (excluding any key marked ``exclude_from_snapshot=True``) into the
-   in-memory buffer ``params.previous_snapshot``. A duplicate guard compares
-   ``t_now`` + ``R2`` against the last saved entry and silently drops
-   re-runs of the same step.
-3. **Flush in batches.** Every ``snapshot_interval`` calls (default **10**),
-   ``save_snapshot`` triggers ``flush()`` automatically. You can also call
-   ``params.flush()`` manually at phase boundaries or after a critical event.
-4. **Append to disk.** ``flush()`` opens ``dictionary.jsonl`` in append mode
-   and writes one JSON line per pending snapshot, using ``NpEncoder`` to
-   serialise numpy scalars and arrays. The first flush of a fresh run
-   overwrites any existing file; subsequent flushes only append.
-5. **Crash-safe handlers.** On construction, ``DescribedDict`` registers an
-   ``atexit`` hook plus ``SIGINT``/``SIGTERM`` handlers. If the process
-   exits — cleanly, via ``Ctrl+C``, or via ``kill`` / SLURM ``scancel`` — any
-   buffered snapshots are flushed first and a termination debug report is
-   written via ``src/_output/simulation_end.py``. ``SIGKILL`` (``kill -9``)
-   and ``os._exit()`` bypass these hooks and can still lose the pending
+1. **Mutate the dict.** Physics modules update
+   ``params["R2"].value``, ``params["Eb"].value``, etc. in place.
+2. **Stage a snapshot.** ``params.save_snapshot()`` copies the
+   current state (excluding any key marked
+   ``exclude_from_snapshot=True``) into the in-memory buffer
+   ``params.previous_snapshot``. A duplicate guard compares
+   ``t_now`` + ``R2`` against the last saved entry and silently
+   drops re-runs of the same step.
+3. **Flush in batches.** Every ``snapshot_interval`` calls
+   (default **10**), ``save_snapshot`` triggers ``flush()``
+   automatically. ``params.flush()`` may also be called manually
+   at phase boundaries or after a critical event.
+4. **Append to disk.** ``flush()`` opens ``dictionary.jsonl`` in
+   append mode and writes one JSON line per pending snapshot,
+   using ``NpEncoder`` to serialise numpy scalars and arrays. The
+   first flush of a fresh run overwrites any existing file;
+   subsequent flushes only append.
+5. **Crash-safe handlers.** On construction, ``DescribedDict``
+   registers an ``atexit`` hook plus ``SIGINT`` / ``SIGTERM``
+   handlers, so that an exit — clean, via ``Ctrl+C``, or via
+   ``kill`` / SLURM ``scancel`` — flushes any buffered snapshots
+   before termination. ``SIGKILL`` (``kill -9``) and
+   ``os._exit()`` bypass these hooks and can lose the pending
    buffer; everything already on disk is always safe.
 
-Because writes are append-only, the file is readable even after a crash —
-the last line may be partial (one incomplete JSON object) but every prior
-line is a complete snapshot.
+Because writes are append-only, the file is readable even after a
+crash — the last line may be partial (one incomplete JSON object)
+but every prior line is a complete snapshot.
 
-You rarely call these APIs by hand; they are invoked by ``src/main.py`` and
-the phase modules. The public-facing reader is ``trinity_reader``
+These APIs are invoked by ``src/main.py`` and the phase modules;
+user code normally reads output through ``trinity_reader``
 (see :ref:`sec-trinity-reader`).
 
 **Reloading a snapshot:**
@@ -609,30 +556,16 @@ the phase modules. The public-facing reader is ``trinity_reader``
     # Convenience helper for the last snapshot
     params = DescribedDict.load_latest_snapshot("/path/to/outputs/my_run")
 
-For most analysis work, prefer the higher-level
-:ref:`trinity_reader <sec-trinity-reader>` API, which exposes the same data
-as numpy arrays and pandas DataFrames.
-
-Reading Output Data
-^^^^^^^^^^^^^^^^^^^
-
-Use the ``trinity_reader`` module to access output data:
-
-.. code-block:: python
-
-    from src._output.trinity_reader import load_output
-
-    output = load_output('/path/to/dictionary.jsonl')
-    output.info()  # Print summary
-
-    # Access time series
-    times = output.get('t_now')
-    radii = output.get('R2')
-
-    # Get snapshot at specific time
-    snap = output.get_at_time(1.0)
-
-See :ref:`sec-trinity-reader` for complete API documentation.
+The ``DescribedDict.load_snapshot`` helpers give direct access to the
+raw state — useful when what is wanted is the exact Python objects
+the simulation worked with. For most analysis work, the higher-level
+``trinity_reader`` module is more convenient: it layers a
+``TrinityOutput`` container on top of the same JSONL files and
+exposes time-series extraction, interpolated snapshots, phase and
+time-range filtering, pandas conversion, and batch utilities for
+sweep outputs. See :ref:`sec-trinity-reader` for the full API,
+plotting examples, and details on the profile-array simplification
+applied to long 1-D arrays.
 
 
 Troubleshooting
@@ -659,3 +592,18 @@ Getting Help
 
 For issues and feature requests, visit:
 https://github.com/JiaWeiTeh/trinity/issues
+
+
+See Also
+--------
+
+- :ref:`sec-parameters` — complete reference of input parameters, units,
+  defaults, and the ``# UNIT:`` annotation system used in ``default.param``.
+- :ref:`sec-trinity-reader` — high-level ``TrinityOutput`` API for reading
+  ``dictionary.jsonl`` files into numpy / pandas.
+- :ref:`sec-visualization` — plotting scripts that consume
+  sweep output directories.
+- :ref:`sec-analysis` — post-processing analysis scripts (``src/_calc/``)
+  that fit scaling relations to sweep results.
+- :ref:`sec-architecture` — internal module layout and how ``run.py``
+  drives ``main.start_expansion`` through the phase modules.
