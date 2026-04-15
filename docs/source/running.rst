@@ -57,10 +57,9 @@ TRINITY creates the following structure in your output directory (set by ``path2
 .. code-block:: text
 
     path2output/
-    ├── {model_name}/
-    │   ├── dictionary.jsonl        # Simulation output data (JSONL format)
-    │   ├── {model_name}_summary.txt    # Human-readable parameter summary
-    │   └── {model_name}.log        # Log file (if log_file = True)
+    ├── dictionary.jsonl            # Simulation output data (JSONL format)
+    ├── {model_name}_summary.txt    # Human-readable parameter summary
+    └── trinity.log                 # Log file (if log_file = True)
 
 If ``path2output`` is set to ``def_dir`` (default), outputs are written to the directory where TRINITY is executed.
 
@@ -68,16 +67,33 @@ If ``path2output`` is set to ``def_dir`` (default), outputs are written to the d
 Parameter Sweep Runs
 --------------------
 
-TRINITY supports running multiple simulations with different parameter combinations using the sweep system.
+TRINITY supports running multiple simulations with different parameter combinations.
+``run.py`` is a **unified entry point**: it auto-detects sweep mode from the
+parameter file content and dispatches to either a single run or a parallel
+sweep — you never need a separate script.
 
-Sweep Syntax
-^^^^^^^^^^^^
+A file is treated as a sweep whenever it contains either:
 
-In a sweep parameter file, use list notation ``[val1, val2, ...]`` for parameters you want to vary:
+- A value written as a multi-element list, e.g. ``mCloud [1e5, 1e6, 1e7]``, or
+- A ``tuple(...)`` directive that defines explicit parameter combinations.
+
+Three sweep modes are supported:
+
+- **Cartesian sweep** — list syntax; generates every combination.
+- **Tuple sweep** — ``tuple(...)`` syntax; runs only the listed combinations.
+- **Hybrid sweep** — mix tuples with list sweeps; Cartesian product of each
+  tuple combination with the sweep lists.
+
+Cartesian Sweep Syntax
+^^^^^^^^^^^^^^^^^^^^^^
+
+Use list notation ``[val1, val2, ...]`` for parameters you want to vary. All
+combinations will be generated:
 
 .. code-block:: text
+   :caption: param/sweep_example.param
 
-    # Sweep parameters - will generate all combinations
+    # Sweep parameters - generate all combinations
     mCloud    [1e5, 1e7, 1e8]
     sfe       [0.01, 0.10]
     nCore     [1e2, 1e3]
@@ -87,13 +103,63 @@ In a sweep parameter file, use list notation ``[val1, val2, ...]`` for parameter
     densPL_alpha    0
     path2output     outputs/my_sweep
 
-This generates a Cartesian product: 3 x 2 x 2 = 12 total simulations.
+This generates a Cartesian product: 3 × 2 × 2 = 12 total simulations.
+
+Tuple Sweep Syntax
+^^^^^^^^^^^^^^^^^^
+
+Use the ``tuple(...)`` directive when you want to run only **specific parameter
+combinations**, rather than every Cartesian combination. Each ``[...]`` block
+after the tuple defines one run:
+
+.. code-block:: text
+   :caption: param/sweep_tuple_example.param
+
+    # Syntax: tuple(param1, param2, ...)  [val1, val2] [val1, val2] ...
+    # Each [...] defines one combination to run.
+    tuple(mCloud, sfe, nCore)   [1e5, 0.01, 1e2] [1e6, 0.05, 1e3] [1e7, 0.10, 1e4]
+
+    # Fixed parameters
+    dens_profile    densPL
+    densPL_alpha    0
+    nISM            0.1
+    path2output     outputs/sweep_tuple_test
+
+This runs exactly 3 simulations — one per tuple, with no Cartesian expansion.
+Tuples are ideal for targeted scans along a physically meaningful curve
+(e.g. fixed surface density) instead of a dense grid.
+
+Hybrid Sweep Syntax
+^^^^^^^^^^^^^^^^^^^
+
+Tuple and list syntax can be combined in the same file. Each tuple combination
+is crossed (Cartesian product) with the list sweeps:
+
+.. code-block:: text
+   :caption: param/sweep_hybrid_example.param
+
+    # Explicit (mCloud, sfe) pairs
+    tuple(mCloud, sfe)    [1e5, 0.01] [1e7, 0.10]
+
+    # nCore is swept across each tuple combination
+    nCore    [1e3, 1e4]
+
+    dens_profile    densPL
+    densPL_alpha    0
+    path2output     outputs/sweep_hybrid_test
+
+This yields 2 tuples × 2 ``nCore`` values = 4 runs:
+
+- ``mCloud=1e5, sfe=0.01, nCore=1e3``
+- ``mCloud=1e5, sfe=0.01, nCore=1e4``
+- ``mCloud=1e7, sfe=0.10, nCore=1e3``
+- ``mCloud=1e7, sfe=0.10, nCore=1e4``
 
 Running Sweeps
 ^^^^^^^^^^^^^^
 
-Use ``run.py`` to execute parameter sweeps (sweep mode is auto-detected from
-the parameter file content):
+Sweep mode is auto-detected from the parameter file content — run the same way
+as a single simulation:
 
 .. code-block:: console
 
@@ -103,19 +169,51 @@ the parameter file content):
     # Run with 4 parallel workers
     python run.py param/sweep.param --workers 4
 
-    # Run with automatic worker detection
-    # (default: max(1, CPU count // 2 - 1) — conservative to keep
-    #  laptops responsive; use --workers N on HPC for more parallelism)
+    # Run with automatic worker detection (see note below)
     python run.py param/sweep.param
+
+    # Skip the interactive confirmation prompt
+    python run.py param/sweep.param --yes
+
+    # Enable verbose diagnostics (show all base params + debug logs)
+    python run.py param/sweep.param --verbose
+
+.. note::
+
+   The default worker count is ``max(1, CPU count // 2 - 1)`` — conservative
+   to keep laptops responsive while a sweep runs in the background. On HPC
+   or workstations, pass ``--workers N`` to use more parallelism.
 
 **Command-line options:**
 
-==================  ============================================================
-Option              Description
-==================  ============================================================
-``--dry-run``       Preview all parameter combinations without executing
-``--workers N``     Number of parallel processes (default: auto-detect)
-==================  ============================================================
+.. list-table::
+   :widths: 25 75
+   :header-rows: 1
+
+   * - Option
+     - Description
+   * - ``--dry-run``, ``-n``
+     - Preview all parameter combinations without executing.
+   * - ``--workers N``, ``-w``
+     - Number of parallel worker processes (default: auto-detect).
+   * - ``--yes``, ``-y``
+     - Skip the interactive confirmation prompt.
+   * - ``--verbose``, ``-v``
+     - Enable verbose output (DEBUG-level logs, full base-param list).
+
+Press ``Ctrl+C`` at any time to cancel the sweep cleanly; in-flight workers
+are terminated and a report of completed/failed/cancelled runs is written to
+the output directory. ``SIGTERM`` (e.g. from SLURM ``scancel`` or PBS walltime)
+is handled the same way.
+
+Pre-flight Validation
+^^^^^^^^^^^^^^^^^^^^^
+
+Before launching, ``run.py`` performs a GMC-parameter plausibility check on
+every combination (cloud mass vs. core density vs. ISM density, cloud radius,
+etc.). Invalid combinations are flagged up front — in ``--dry-run`` mode they
+are listed with the specific errors, and in live mode they are listed before
+the confirmation prompt so you can abort rather than waste compute.
 
 Auto-Generated Run Names
 ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -128,20 +226,22 @@ Each combination automatically receives a descriptive name following this conven
 
 **Examples:**
 
-- ``1e5_sfe001_n1e2`` for mCloud=1e5, sfe=0.01, nCore=1e2
-- ``1e7_sfe010_n1e3`` for mCloud=1e7, sfe=0.10, nCore=1e3
+- ``1e5_sfe001_n1e2`` for ``mCloud=1e5, sfe=0.01, nCore=1e2``
+- ``1e7_sfe010_n1e3`` for ``mCloud=1e7, sfe=0.10, nCore=1e3``
 
-Output files are organized into subdirectories:
+Output files are organized into subdirectories of ``path2output``:
 
 .. code-block:: text
 
     outputs/my_sweep/
     ├── 1e5_sfe001_n1e2/
-    │   ├── dictionary.jsonl            # Simulation output data
-    │   └── 1e5_sfe001_n1e2_summary.txt
+    │   ├── dictionary.jsonl                    # Simulation output data
+    │   ├── 1e5_sfe001_n1e2_summary.txt         # Parameter summary
+    │   └── trinity.log                         # Per-run log file
     ├── 1e5_sfe001_n1e3/
     │   └── ...
-    └── sweep_report.json               # Summary of all runs
+    ├── sweep_report.txt                        # Human-readable sweep summary
+    └── sweep_report.json                       # Machine-readable sweep summary
 
 
 Logging Configuration
@@ -176,7 +276,7 @@ Configure logging in your parameter file:
      - Print log messages to terminal during simulation.
    * - ``log_file``
      - ``True``
-     - Save log messages to ``{path2output}/trinity_YYYYMMDD_HHMMSS.log``.
+     - Save log messages to ``{path2output}/trinity.log``.
    * - ``log_colors``
      - ``True``
      - Color-code terminal output by severity level.

@@ -118,14 +118,14 @@ Configure how TRINITY reports progress and diagnostics.
      - Default
      - Description
    * - ``log_level``
-     - ``INFO``
+     - ``DEBUG``
      - Logging verbosity: ``DEBUG``, ``INFO``, ``WARNING``, ``ERROR``, ``CRITICAL``. See :ref:`sec-running` for details.
    * - ``log_console``
      - ``True``
      - Enable terminal output for log messages.
    * - ``log_file``
      - ``True``
-     - Write log messages to ``{model_name}.log`` file.
+     - Write log messages to ``{path2output}/trinity.log``.
    * - ``log_colors``
      - ``True``
      - Color-code terminal output by severity level.
@@ -156,6 +156,10 @@ Core parameters defining the molecular cloud and star formation.
      - ``1``
      - :math:`Z_\odot`
      - Cloud metallicity. **Currently only solar (1) is supported.**
+   * - ``include_PHII``
+     - ``True``
+     - --
+     - Include HII pressure (from Strömgren ionization balance in the shell) in :math:`P_{\rm drive}`. When ``False``, :math:`P_{\rm HII}` is set to zero.
 
 **Derived quantities:**
 
@@ -262,6 +266,10 @@ Conditions that end the simulation.
      - Default
      - Unit
      - Description
+   * - ``allowShellDissolution``
+     - ``True``
+     - --
+     - Allow shell dissolution to terminate the simulation. If ``False``, the dissolution check is disabled.
    * - ``stop_t_diss``
      - ``1``
      - Myr
@@ -388,6 +396,11 @@ Control transitions between simulation phases.
    * - ``expansionBeyondCloud``
      - ``False``
      - Allow bubble radius to exceed cloud radius.
+   * - ``use_adaptive_solver``
+     - ``True``
+     - Use the adaptive ODE solver for the energy-driven phase
+       (``run_energy_phase_modified.py``). If ``False``, falls back to the
+       original solver (``run_energy_phase.py``).
 
 
 Cooling Parameters
@@ -540,9 +553,9 @@ Standard physical constants. Typically not modified.
      - erg/K
      - Boltzmann constant.
    * - ``PISM``
-     - ``5e3``
+     - ``0``
      - K cm\ :math:`^{-3}`
-     - ISM pressure P/k.
+     - ISM pressure :math:`P/k_B`.
 
 **Bubble Structure:**
 
@@ -561,7 +574,9 @@ Standard physical constants. Typically not modified.
 Sweep Syntax
 ------------
 
-For parameter sweeps, use list notation to specify multiple values:
+TRINITY supports three sweep modes, all auto-detected by ``run.py``.
+
+**Cartesian sweep** — list notation generates every combination:
 
 .. code-block:: text
 
@@ -574,9 +589,28 @@ For parameter sweeps, use list notation to specify multiple values:
     sfe       [0.01, 0.05, 0.10]
     nCore     [1e3, 1e4, 1e5]
 
-This generates all combinations (Cartesian product): 3 x 3 x 3 = 27 simulations.
+This generates 3 × 3 × 3 = 27 simulations.
 
-See :ref:`sec-running` for details on running parameter sweeps.
+**Tuple sweep** — ``tuple(...)`` runs only the listed combinations (no
+Cartesian expansion):
+
+.. code-block:: text
+
+    tuple(mCloud, sfe, nCore)    [1e5, 0.01, 1e2] [1e7, 0.10, 1e4]
+
+This generates exactly 2 simulations.
+
+**Hybrid sweep** — tuples and lists combined; each tuple combination is
+crossed with the list sweeps:
+
+.. code-block:: text
+
+    tuple(mCloud, sfe)    [1e5, 0.01] [1e7, 0.10]
+    nCore                 [1e3, 1e4]
+
+This generates 2 × 2 = 4 simulations.
+
+See :ref:`sec-running` for full details on running parameter sweeps.
 
 
 Examples
