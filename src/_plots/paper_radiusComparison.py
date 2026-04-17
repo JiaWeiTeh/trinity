@@ -3,12 +3,12 @@
 """
 Radius comparison plot: TRINITY vs WARPFIELD-like vs Weaver analytical.
 
-Takes two output folders:
-  -T / --trinity    : folder with include_PHII = True  (full TRINITY)
-  -W / --warpfield  : folder with include_PHII = False (WARPFIELD-like, no P_HII)
+Takes a single output folder containing both runs side-by-side, distinguished
+by the ``_yesPHII`` / ``_noPHII`` suffix that ``run.py`` appends to each
+simulation folder (``include_PHII = True`` → ``_yesPHII``, ``False`` → ``_noPHII``).
 
-For each matched simulation (by subfolder name), plots R2(t) from both
-runs on the same axes, together with the Weaver R ∝ t^{3/5} power-law
+For each matched pair (same base name, differing only by suffix), plots R2(t)
+from both runs on the same axes, together with the Weaver R ∝ t^{3/5} power-law
 anchored to the TRINITY curve at early time.
 
 Grid layout: mCloud (rows) × SFE (columns), one PDF per density.
@@ -288,55 +288,68 @@ def plot_cell(ax, data_trinity, data_warpfield):
 
 
 # ----------------------------------------------------------------
-# Grid builder (two-folder variant)
+# Grid builder (single-folder variant)
 # ----------------------------------------------------------------
-def build_matched_grid(folder_T, folder_W):
-    """Find simulations in both folders and match by subfolder name.
+YES_SUFFIX = "_yesPHII"
+NO_SUFFIX = "_noPHII"
+
+
+def split_by_phii_suffix(folder):
+    """Scan one folder and split simulations by ``_yesPHII`` / ``_noPHII`` suffix.
 
     Returns
     -------
-    dict  mapping subfolder-name → (path_T, path_W)
+    (sim_files_T, matched) where
+      sim_files_T : list of dictionary paths for the TRINITY (yesPHII) runs,
+                    used to discover the mCloud × SFE grid.
+      matched     : dict mapping the shared base-name (suffix stripped) →
+                    (path_yesPHII, path_noPHII). Either may be None if the
+                    partner is missing.
     """
-    def _index(folder):
-        """Map subfolder name → data-file path."""
-        sims = find_all_simulations(folder)
-        return {p.parent.name: p for p in sims}
+    sims = find_all_simulations(folder)
 
-    idx_T = _index(folder_T)
-    idx_W = _index(folder_W)
+    sim_files_T = []
+    idx_T, idx_W = {}, {}
+    for p in sims:
+        name = p.parent.name
+        if name.endswith(YES_SUFFIX):
+            base = name[: -len(YES_SUFFIX)]
+            idx_T[base] = p
+            sim_files_T.append(p)
+        elif name.endswith(NO_SUFFIX):
+            base = name[: -len(NO_SUFFIX)]
+            idx_W[base] = p
+        else:
+            print(f"  Skipping (no _yesPHII/_noPHII suffix): {name}")
 
     matched = {}
-    for name in idx_T:
-        matched[name] = (idx_T[name], idx_W.get(name))
+    for base in idx_T:
+        matched[base] = (idx_T[base], idx_W.get(base))
+    for base in idx_W:
+        if base not in matched:
+            matched[base] = (None, idx_W[base])
 
-    # Also include WARPFIELD-only runs (rare, but be safe)
-    for name in idx_W:
-        if name not in matched:
-            matched[name] = (None, idx_W[name])
-
-    return matched
+    return sim_files_T, matched
 
 
 def plot_comparison_grid(
-    folder_T, folder_W,
+    folder,
     output_dir=None,
     ndens_filter=None,
     mCloud_filter=None,
     sfe_filter=None,
 ):
-    """Create (mCloud × SFE) grid comparing TRINITY vs WARPFIELD."""
-    folder_T, folder_W = Path(folder_T), Path(folder_W)
+    """Create (mCloud × SFE) grid comparing TRINITY (yesPHII) vs WARPFIELD (noPHII)."""
+    folder = Path(folder)
 
-    # Use TRINITY folder to discover the grid structure
-    sim_files_T = find_all_simulations(folder_T)
+    sim_files_T, matched = split_by_phii_suffix(folder)
     if not sim_files_T:
-        print(f"No simulations found in TRINITY folder: {folder_T}")
+        print(f"No _yesPHII simulations found in: {folder}")
         return
 
-    matched = build_matched_grid(folder_T, folder_W)
-
     ndens_to_plot = [ndens_filter] if ndens_filter else get_unique_ndens(sim_files_T)
-    print(f"Found {len(sim_files_T)} TRINITY simulations")
+    print(f"Found {len(sim_files_T)} yesPHII simulations "
+          f"(paired with {sum(1 for _, w in matched.values() if w is not None)} noPHII)")
     print(f"  Densities to plot: {ndens_to_plot}")
 
     for ndens in ndens_to_plot:
@@ -372,9 +385,10 @@ def plot_comparison_grid(
                     mark_missing_cell(ax, "missing")
                     continue
 
-                # Look up matched WARPFIELD run
+                # Look up matched WARPFIELD run (strip _yesPHII suffix to get base name)
                 sim_name = path_T.parent.name
-                _, path_W = matched.get(sim_name, (None, None))
+                base = sim_name[:-len(YES_SUFFIX)] if sim_name.endswith(YES_SUFFIX) else sim_name
+                _, path_W = matched.get(base, (None, None))
 
                 try:
                     data_T = load_run_R2(path_T)
@@ -419,8 +433,7 @@ def plot_comparison_grid(
         if output_dir:
             fig_dir = Path(output_dir)
         else:
-            combined = f"{folder_T.name}_{folder_W.name}"
-            fig_dir = FIG_DIR / combined
+            fig_dir = FIG_DIR / folder.name
         fig_dir.mkdir(parents=True, exist_ok=True)
         out_pdf = fig_dir / f"radiusComparison_{param_tag}.pdf"
         fig.savefig(out_pdf, bbox_inches="tight")
@@ -440,18 +453,18 @@ if __name__ == "__main__":
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  python paper_radiusComparison.py -T /path/to/trinity_runs/ -W /path/to/warpfield_runs/
-  python paper_radiusComparison.py -T /path/to/trinity/ -W /path/to/warpfield/ -n 1e4
-  python paper_radiusComparison.py -T /path/to/trinity/ -W /path/to/warpfield/ --mCloud 1e6 1e7
+  python paper_radiusComparison.py -f /path/to/runs/
+  python paper_radiusComparison.py -f /path/to/runs/ -n 1e4
+  python paper_radiusComparison.py -f /path/to/runs/ --mCloud 1e6 1e7
+
+The folder should contain sibling simulation subfolders whose names end in
+``_yesPHII`` (include_PHII=True, TRINITY) and ``_noPHII`` (include_PHII=False,
+WARPFIELD-like). Runs are paired automatically by their base name.
         """,
     )
     parser.add_argument(
-        '--trinity', '-T', required=True,
-        help='Folder with include_PHII=True runs (full TRINITY)',
-    )
-    parser.add_argument(
-        '--warpfield', '-W', required=True,
-        help='Folder with include_PHII=False runs (WARPFIELD-like)',
+        '--folder', '-f', required=True,
+        help='Folder containing both _yesPHII and _noPHII simulation subfolders',
     )
     parser.add_argument('--output-dir', '-o', default=None)
     parser.add_argument('--nCore', '-n', default=None,
@@ -475,7 +488,7 @@ Examples:
     SHOW_COLLAPSE = _marker_flags['show_collapse']
 
     plot_comparison_grid(
-        args.trinity, args.warpfield,
+        args.folder,
         output_dir=args.output_dir,
         ndens_filter=args.nCore,
         mCloud_filter=args.mCloud,
