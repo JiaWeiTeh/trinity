@@ -180,7 +180,7 @@ def run_expansion(params):
     # =============================================================================
     # t0 = start time for Weaver phase
     # y0 = [r0, v0, E0, T0]
-    # R2 = initial outer bubble/shell radius (pc)
+    # R2 = initial outer bubble radius (= inner shell edge) (pc)
     # v2 = initial velocity (pc/Myr)
     # Eb = initial energy
     # T0 = initial temperature (K)

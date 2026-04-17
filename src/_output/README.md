@@ -64,8 +64,8 @@ R2 = output.get('R2')
 
 ### Dynamical Variables
 - `t_now`: Current simulation time [Myr]
-- `R2`: Outer bubble/shell radius [pc]
-- `v2`: Shell expansion velocity [pc/Myr]
+- `R2`: Outer bubble radius (= inner shell edge) [pc]
+- `v2`: Velocity at R2 (outer bubble / inner shell edge) [pc/Myr]
 - `Eb`: Bubble thermal energy [erg]
 - `T0`: Characteristic bubble temperature [K]
 - `R1`: Inner bubble radius (wind shock) [pc]

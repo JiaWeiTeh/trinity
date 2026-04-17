@@ -404,8 +404,8 @@ def read_param(path2file, write_summary=True):
     params['t_now'] = DescribedItem(0, info="Current simulation time", ori_units="Myr")
     
     # Main bubble parameters
-    params['v2'] = DescribedItem(0, info="Velocity at outer bubble/inner shell radius", ori_units="pc/Myr")
-    params['R2'] = DescribedItem(0, info="Outer bubble/inner shell radius", ori_units="pc")
+    params['v2'] = DescribedItem(0, info="Velocity at R2 (outer bubble radius = inner shell edge)", ori_units="pc/Myr")
+    params['R2'] = DescribedItem(0, info="Outer bubble radius (= inner shell edge)", ori_units="pc")
     params['T0'] = DescribedItem(0, info="Bubble temperature at R2", ori_units="K")
     params['Eb'] = DescribedItem(0, info="Bubble energy", ori_units="Msun*pc**2/Myr**2")
     params['R1'] = DescribedItem(0, info="Inner bubble radius", ori_units="pc")

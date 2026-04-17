@@ -5,31 +5,48 @@
 Parameter Specifications
 ========================
 
-This section documents all parameters available in TRINITY, organized by category.
+Every TRINITY simulation is driven by a plain-text parameter file.
+This chapter describes how such files are formatted and enumerates
+every keyword that TRINITY recognises, grouped by physical role:
+cloud and environment, stellar feedback, numerical solver, output,
+and a handful of sweep-mode directives. For each keyword the
+default value, unit, and short description are given. The same
+information can be inspected at run time through the
+``DescribedItem`` objects attached to every entry in the output
+state dictionary (see :ref:`sec-running`, *Output Data Model*).
 
-Parameter File Format
----------------------
 
-Basic Syntax
-^^^^^^^^^^^^
+File Format
+-----------
 
-Parameter files use a simple space-separated format:
+An example parameter file is shipped as ``param/default.param`` in
+the source tree. Parameter files are generically formatted as a
+series of entries of the form::
 
-.. code-block:: text
+    keyword    value
 
-    parameter_name    value
+Any line starting with ``#`` is considered a comment and is
+ignored, and anything on a line after a ``#`` is similarly ignored.
+Some general rules on keywords:
 
-**Rules:**
-
-- Lines starting with ``#`` are comments
-- Parameters can appear in any order
-- Unspecified parameters use default values
-- Inline comments are supported: ``mCloud 1e6  # cloud mass``
+* Keywords may appear in any order.
+* Many keywords have default values, indicated in parentheses in
+  the list below. These keywords are optional and need not appear
+  in the parameter file; missing keywords are set to their default
+  values. Keywords that do not have a default are required.
+* Keyword names are case-sensitive.
+* Unless explicitly stated otherwise, the input unit system is CGS
+  extended by :math:`M_\odot` for mass and Myr for time; the
+  internal unit system in which values are reported on output is
+  described below.
+* A value written as a bracketed list (``mCloud [1e5, 1e6]``) or
+  through a ``tuple(...)`` directive turns the file into a sweep;
+  see :ref:`sec-running` for the full sweep syntax.
 
 Supported Value Types
 ^^^^^^^^^^^^^^^^^^^^^
 
-TRINITY automatically parses values in this order of precedence:
+TRINITY parses values in the following order of precedence:
 
 ==================  ========================  ============================
 Type                Example                   Notes
@@ -118,14 +135,14 @@ Configure how TRINITY reports progress and diagnostics.
      - Default
      - Description
    * - ``log_level``
-     - ``INFO``
+     - ``DEBUG``
      - Logging verbosity: ``DEBUG``, ``INFO``, ``WARNING``, ``ERROR``, ``CRITICAL``. See :ref:`sec-running` for details.
    * - ``log_console``
      - ``True``
      - Enable terminal output for log messages.
    * - ``log_file``
      - ``True``
-     - Write log messages to ``{model_name}.log`` file.
+     - Write log messages to ``{path2output}/trinity.log``.
    * - ``log_colors``
      - ``True``
      - Color-code terminal output by severity level.
@@ -156,6 +173,10 @@ Core parameters defining the molecular cloud and star formation.
      - ``1``
      - :math:`Z_\odot`
      - Cloud metallicity. **Currently only solar (1) is supported.**
+   * - ``include_PHII``
+     - ``True``
+     - --
+     - Include HII pressure (from Strömgren ionization balance in the shell) in :math:`P_{\rm drive}`. When ``False``, :math:`P_{\rm HII}` is set to zero.
 
 **Derived quantities:**
 
@@ -262,6 +283,10 @@ Conditions that end the simulation.
      - Default
      - Unit
      - Description
+   * - ``allowShellDissolution``
+     - ``True``
+     - --
+     - Allow shell dissolution to terminate the simulation. If ``False``, the dissolution check is disabled.
    * - ``stop_t_diss``
      - ``1``
      - Myr
@@ -388,6 +413,11 @@ Control transitions between simulation phases.
    * - ``expansionBeyondCloud``
      - ``False``
      - Allow bubble radius to exceed cloud radius.
+   * - ``use_adaptive_solver``
+     - ``True``
+     - Use the adaptive ODE solver for the energy-driven phase
+       (``run_energy_phase_modified.py``). If ``False``, falls back to the
+       original solver (``run_energy_phase.py``).
 
 
 Cooling Parameters
@@ -540,9 +570,9 @@ Standard physical constants. Typically not modified.
      - erg/K
      - Boltzmann constant.
    * - ``PISM``
-     - ``5e3``
+     - ``0``
      - K cm\ :math:`^{-3}`
-     - ISM pressure P/k.
+     - ISM pressure :math:`P/k_B`.
 
 **Bubble Structure:**
 
@@ -561,22 +591,18 @@ Standard physical constants. Typically not modified.
 Sweep Syntax
 ------------
 
-For parameter sweeps, use list notation to specify multiple values:
+Any parameter can also be given as a list (``[v1, v2, ...]``) or combined
+into a ``tuple(...)`` directive to launch a parameter sweep. ``run.py``
+auto-detects this from the file content, so the same script runs both single
+simulations and sweeps.
 
-.. code-block:: text
+See :ref:`sec-running` — *Parameter Sweep Runs* — for:
 
-    # Single values (fixed across all runs)
-    dens_profile    densPL
-    densPL_alpha    0
-
-    # List values (generate combinations)
-    mCloud    [1e5, 1e6, 1e7]
-    sfe       [0.01, 0.05, 0.10]
-    nCore     [1e3, 1e4, 1e5]
-
-This generates all combinations (Cartesian product): 3 x 3 x 3 = 27 simulations.
-
-See :ref:`sec-running` for details on running parameter sweeps.
+- Worked examples of **Cartesian**, **tuple**, and **hybrid** sweep syntax.
+- Command-line options (``--dry-run``, ``--workers``, ``--yes``,
+  ``--verbose``) and cancellation behaviour.
+- Pre-flight GMC plausibility checks applied to every combination.
+- Auto-generated run names and the resulting output directory layout.
 
 
 Examples
@@ -638,23 +664,19 @@ Bonnor-Ebert Sphere
     nCore           1e5
     rCore           0.1
 
-Parameter Sweep
-^^^^^^^^^^^^^^^
+For sweep-style parameter files (``[v1, v2]`` list values and
+``tuple(...)`` directives), see :ref:`sec-running` — *Parameter
+Sweep Runs* — for worked Cartesian, tuple, and hybrid examples.
 
-.. code-block:: text
-   :caption: sweep.param
 
-    # Sweep over cloud mass and SFE
-    mCloud    [1e5, 1e6, 1e7]
-    sfe       [0.01, 0.05]
+See Also
+--------
 
-    # Fixed parameters
-    dens_profile    densPL
-    densPL_alpha    0
-    nCore           1e4
-    path2output     outputs/mass_sfe_sweep
-
-    # Generates 6 combinations:
-    # 1e5_sfe001_n1e4, 1e5_sfe005_n1e4,
-    # 1e6_sfe001_n1e4, 1e6_sfe005_n1e4,
-    # 1e7_sfe001_n1e4, 1e7_sfe005_n1e4
+- :ref:`sec-running` — how to execute single runs and parameter sweeps,
+  including CLI flags, worker defaults, and output directory layout.
+- :ref:`sec-physics` — equations and derivations behind ``dens_profile``,
+  ``densPL_alpha``, ``densBE_Omega``, and the feedback parameters.
+- :ref:`sec-trinity-reader` — reading back the JSONL output written by a
+  simulation configured with these parameters.
+- ``param/default.param`` in the repository — the authoritative,
+  fully-commented reference parameter file.
