@@ -218,12 +218,25 @@ Each combination automatically receives a descriptive name following this conven
 
 .. code-block:: text
 
-    {mCloud}_sfe{sfe*100:03d}_n{nCore}
+    {mCloud}_sfe{sfe*100:03d}_n{nCore}[_density-profile][_PHII]
+
+Optional suffixes are appended only when the relevant parameter is explicitly
+set in the sweep file (they stay off when the parameter is left to its
+default in ``default.param``):
+
+- Density profile: ``_PL{alpha}`` for ``dens_profile = densPL``
+  (e.g. ``_PL0``, ``_PL-2``), or ``_BE{Omega}`` for ``dens_profile = densBE``
+  (e.g. ``_BE14``).
+- HII pressure: ``_yesPHII`` when ``include_PHII = True``, ``_noPHII`` when
+  ``include_PHII = False``. Useful when sweeping the flag to compare runs
+  with and without HII-region pressure.
 
 **Examples:**
 
 - ``1e5_sfe001_n1e2`` for ``mCloud=1e5, sfe=0.01, nCore=1e2``
 - ``1e7_sfe010_n1e3`` for ``mCloud=1e7, sfe=0.10, nCore=1e3``
+- ``1e7_sfe010_n1e4_noPHII`` for the same run with ``include_PHII = False``
+- ``1e5_sfe001_n1e4_PL0_yesPHII`` for a power-law profile with HII on
 
 Output files are organized into subdirectories of ``path2output``:
 

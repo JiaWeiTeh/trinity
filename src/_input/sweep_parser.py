@@ -587,12 +587,15 @@ def generate_run_name(params: Dict[str, Any]) -> str:
     """
     Generate output folder name following existing TRINITY convention.
 
-    Format: {mCloud}_sfe{sfe*100:03d}_n{nCore}[_profile_suffix]
+    Format: {mCloud}_sfe{sfe*100:03d}_n{nCore}[_profile_suffix][_PHII_suffix]
     Examples:
-        - 1e7_sfe010_n1e4 (default, no density profile suffix)
+        - 1e7_sfe010_n1e4 (default, no suffixes)
         - 1e5_sfe001_n1e4_PL0 (powerlaw alpha=0)
         - 1e5_sfe001_n1e4_PL-2 (powerlaw alpha=-2)
         - 1e5_sfe001_n1e4_BE14 (Bonnor-Ebert Omega=14.1)
+        - 1e7_sfe010_n1e4_yesPHII (include_PHII=True explicit in sweep)
+        - 1e7_sfe010_n1e4_noPHII  (include_PHII=False explicit in sweep)
+        - 1e5_sfe001_n1e4_PL0_noPHII (combined suffixes)
 
     Parameters
     ----------
@@ -635,6 +638,12 @@ def generate_run_name(params: Dict[str, Any]) -> str:
             # Format omega: 14.1 -> "14", 7.0 -> "7"
             omega_int = int(round(omega))
             base_name += f"_BE{omega_int}"
+
+    # Add PHII suffix only when the user explicitly sets include_PHII in
+    # the sweep file. Matches the density-profile convention above: absent
+    # key -> no tag (runtime falls back to default.param).
+    if 'include_PHII' in params:
+        base_name += "_yesPHII" if params['include_PHII'] else "_noPHII"
 
     return base_name
 
@@ -786,11 +795,20 @@ if __name__ == "__main__":
 
     # Test generate_run_name
     print("\nTesting generate_run_name:")
-    params = {'mCloud': 1e7, 'sfe': 0.10, 'nCore': 1e4}
-    name = generate_run_name(params)
-    expected = "1e7_sfe010_n1e4"
-    status = "PASS" if name == expected else "FAIL"
-    print(f"  {status}: generate_run_name({params}) = '{name}' (expected '{expected}')")
+    name_cases = [
+        ({'mCloud': 1e7, 'sfe': 0.10, 'nCore': 1e4}, "1e7_sfe010_n1e4"),
+        ({'mCloud': 1e7, 'sfe': 0.10, 'nCore': 1e4, 'include_PHII': True},
+         "1e7_sfe010_n1e4_yesPHII"),
+        ({'mCloud': 1e7, 'sfe': 0.10, 'nCore': 1e4, 'include_PHII': False},
+         "1e7_sfe010_n1e4_noPHII"),
+        ({'mCloud': 1e5, 'sfe': 0.01, 'nCore': 1e4, 'dens_profile': 'densPL',
+          'densPL_alpha': 0, 'include_PHII': False},
+         "1e5_sfe001_n1e4_PL0_noPHII"),
+    ]
+    for params, expected in name_cases:
+        name = generate_run_name(params)
+        status = "PASS" if name == expected else "FAIL"
+        print(f"  {status}: generate_run_name({params}) = '{name}' (expected '{expected}')")
 
     # Test parse_tuple_line
     print("\nTesting parse_tuple_line:")
