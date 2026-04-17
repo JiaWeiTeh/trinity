@@ -299,37 +299,24 @@ def split_by_phii_suffix(folder):
 
     Returns
     -------
-    (sim_files_T, matched) where
-      sim_files_T : list of dictionary paths for the TRINITY (yesPHII) runs,
-                    used to discover the mCloud × SFE grid.
-      matched     : dict mapping the shared base-name (suffix stripped) →
-                    (path_yesPHII, path_noPHII). Either may be None if the
-                    partner is missing.
+    (sim_files_T, noPHII_by_base) where
+      sim_files_T    : list of dictionary paths for the TRINITY (yesPHII) runs,
+                       used to discover the mCloud × SFE grid.
+      noPHII_by_base : dict mapping base-name (suffix stripped) → noPHII path,
+                       used to look up each yesPHII run's WARPFIELD-like partner.
     """
-    sims = find_all_simulations(folder)
-
     sim_files_T = []
-    idx_T, idx_W = {}, {}
-    for p in sims:
+    noPHII_by_base = {}
+    for p in find_all_simulations(folder):
         name = p.parent.name
         if name.endswith(YES_SUFFIX):
-            base = name[: -len(YES_SUFFIX)]
-            idx_T[base] = p
             sim_files_T.append(p)
         elif name.endswith(NO_SUFFIX):
-            base = name[: -len(NO_SUFFIX)]
-            idx_W[base] = p
+            noPHII_by_base[name[: -len(NO_SUFFIX)]] = p
         else:
             print(f"  Skipping (no _yesPHII/_noPHII suffix): {name}")
 
-    matched = {}
-    for base in idx_T:
-        matched[base] = (idx_T[base], idx_W.get(base))
-    for base in idx_W:
-        if base not in matched:
-            matched[base] = (None, idx_W[base])
-
-    return sim_files_T, matched
+    return sim_files_T, noPHII_by_base
 
 
 def plot_comparison_grid(
@@ -342,14 +329,18 @@ def plot_comparison_grid(
     """Create (mCloud × SFE) grid comparing TRINITY (yesPHII) vs WARPFIELD (noPHII)."""
     folder = Path(folder)
 
-    sim_files_T, matched = split_by_phii_suffix(folder)
+    sim_files_T, noPHII_by_base = split_by_phii_suffix(folder)
     if not sim_files_T:
         print(f"No _yesPHII simulations found in: {folder}")
         return
 
     ndens_to_plot = [ndens_filter] if ndens_filter else get_unique_ndens(sim_files_T)
+    n_paired = sum(
+        1 for p in sim_files_T
+        if p.parent.name[: -len(YES_SUFFIX)] in noPHII_by_base
+    )
     print(f"Found {len(sim_files_T)} yesPHII simulations "
-          f"(paired with {sum(1 for _, w in matched.values() if w is not None)} noPHII)")
+          f"(paired with {n_paired} noPHII)")
     print(f"  Densities to plot: {ndens_to_plot}")
 
     for ndens in ndens_to_plot:
@@ -385,10 +376,10 @@ def plot_comparison_grid(
                     mark_missing_cell(ax, "missing")
                     continue
 
-                # Look up matched WARPFIELD run (strip _yesPHII suffix to get base name)
+                # Look up matched WARPFIELD run by stripped base name
                 sim_name = path_T.parent.name
-                base = sim_name[:-len(YES_SUFFIX)] if sim_name.endswith(YES_SUFFIX) else sim_name
-                _, path_W = matched.get(base, (None, None))
+                base = sim_name[: -len(YES_SUFFIX)]
+                path_W = noPHII_by_base.get(base)
 
                 try:
                     data_T = load_run_R2(path_T)
