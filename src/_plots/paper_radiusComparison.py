@@ -444,9 +444,9 @@ if __name__ == "__main__":
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  python paper_radiusComparison.py -f /path/to/runs/
-  python paper_radiusComparison.py -f /path/to/runs/ -n 1e4
-  python paper_radiusComparison.py -f /path/to/runs/ --mCloud 1e6 1e7
+  python paper_radiusComparison.py -F /path/to/runs/
+  python paper_radiusComparison.py -F /path/to/runs/ -n 1e4
+  python paper_radiusComparison.py -F /path/to/runs/ --mCloud 1e6 1e7
 
 The folder should contain sibling simulation subfolders whose names end in
 ``_yesPHII`` (include_PHII=True, TRINITY) and ``_noPHII`` (include_PHII=False,
@@ -454,7 +454,7 @@ WARPFIELD-like). Runs are paired automatically by their base name.
         """,
     )
     parser.add_argument(
-        '--folder', '-f', required=True,
+        '--folder', '-F', required=True,
         help='Folder containing both _yesPHII and _noPHII simulation subfolders',
     )
     parser.add_argument('--output-dir', '-o', default=None)
