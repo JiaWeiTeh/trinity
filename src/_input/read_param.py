@@ -261,7 +261,16 @@ def read_param(path2file, write_summary=True):
 
     
     logger.debug(f"Created DescribedDict with {len(params)} parameters")
-    
+
+    # Snapshot: record the DescribedItem instances that originated from
+    # default.param.  Later steps (6/8/10) add runtime-only parameters and
+    # must NOT silently replace any of these — if they do, the user's value
+    # from their .param file is lost.  The post-Step-10 guard below compares
+    # object identity to catch that drift loudly.  Value mutations (e.g.
+    # params['mCloud'].value = ...) don't replace the DescribedItem and
+    # are legitimate.
+    _default_items_before = {k: params[k] for k in default_dict if k in params}
+
     # =============================================================================
     # Step 5: Validate critical parameters
     # =============================================================================
@@ -397,8 +406,7 @@ def read_param(path2file, write_summary=True):
     params['EndSimulationDirectly'] = DescribedItem(False, info="Flag to immediately end simulation", ori_units="N/A")
     params['SimulationEndReason'] = DescribedItem('', info="Reason for simulation completion", ori_units="N/A")
     params['EarlyPhaseApproximation'] = DescribedItem(True, info="Using approximations for early phase?", ori_units="N/A")
-    params['include_PHII'] = DescribedItem(True, info="Include HII pressure in driving pressure", ori_units="N/A")
-    
+
     # Time tracking
     params['tSF'] = DescribedItem(0, info="Time of star formation", ori_units="Myr")
     params['t_now'] = DescribedItem(0, info="Current simulation time", ori_units="Myr")
@@ -524,7 +532,27 @@ def read_param(path2file, write_summary=True):
     params['residual_Edot2_guess'] = DescribedItem(np.nan, info="Edot from energy balance", ori_units="Msun*pc**2/Myr**3")
     params['residual_T1_guess'] = DescribedItem(np.nan, info="T from bubble_Trgoal", ori_units="K")
     params['residual_T2_guess'] = DescribedItem(np.nan, info="T from T0", ori_units="K")
-    
+
+    # =============================================================================
+    # Guard: runtime init must not silently overwrite default.param keys
+    # =============================================================================
+    # A key from default.param that has been replaced (not just mutated) with
+    # a fresh DescribedItem has lost the user's value — the most recent offender
+    # was `include_PHII`, which meant every run integrated with include_PHII=True
+    # regardless of what the .param file said. Fail loudly so this never ships
+    # silently again.
+    _stomped = [
+        k for k, v_before in _default_items_before.items()
+        if k in params and params[k] is not v_before
+    ]
+    if _stomped:
+        raise RuntimeError(
+            f"read_param: runtime init silently overwrote user-facing "
+            f"default.param key(s): {sorted(_stomped)}. User parameters must "
+            f"flow through the default.param merge (Step 4); remove the "
+            f"conflicting assignment(s) from Step 6/8/10."
+        )
+
     # =============================================================================
     # Step 11: Write summary file
     # =============================================================================
