@@ -89,15 +89,9 @@ AGE_LABELS = {
     7.0: r"$10\,\mathrm{Myr}$",
 }
 
-# Light background shades for Panel A: PMS (left of ZAMS) and MS (right).
-PMS_SHADE_COLOR = "#f0f0f0"
-MS_SHADE_COLOR = "#e6f0fa"
-
-# X-axis scale for Panel A.  "symlog" shows PMS features (D-burning plateau,
-# Hayashi-Henyey transition, Henyey hook) on a log scale near ZAMS; low-mass
-# PMS is visible to -1 Myr.  "linear" makes MS timescales proportional but
-# compresses the PMS features against x = 0 and clips >1 Myr of low-mass PMS.
-PANEL_A_XSCALE = "symlog"  # "symlog" or "linear"
+# Panel A per-curve PMS shading opacity (fill_between the curve and the
+# axis bottom for each curve's own PMS segment).
+PMS_FILL_ALPHA = 0.18
 
 # Kroupa (2001) broken power law.  IMF_M_MIN set to 0.1 so log10 = -1.0
 # aligns exactly with the Panel B x-axis left edge.
@@ -225,20 +219,15 @@ def kroupa_xi(M):
 # ---------------------------------------------------------------------------
 
 def plot_panel_A(ax, tracks):
-    """Plot L_bol(t - t_ZAMS) for each mass, split at ZAMS.
+    """Plot L_bol(log t) for each mass on ``ax``.
 
-    The x-axis is (star_age - t_ZAMS) in years on a symlog scale.  The
-    left half (x < 0, grey) is the PMS approach; the right half (x > 0,
-    pale blue) is post-ZAMS.  A dashed vertical line marks ZAMS.  Each
-    curve is additionally marked at its ZAMS crossing with a filled
-    circle.
+    Absolute log10(star_age / yr) on the x-axis so the mass-dependent
+    spread of ZAMS arrival times (~10^5 yr for 60 M_sun vs ~10^8 yr for
+    0.5 M_sun) is preserved -- that spread is the point of the figure.
+    Each curve gets its PMS segment shaded in its own colour at low
+    alpha so the "absent-from-SB99" portion is visible per curve.
     """
-    linthresh = 1e-4  # Myr (= 100 yr); linear region near ZAMS
-    xmin, xmax = -1.0, 10.0  # Myr; clips the pre-bump portion of low-mass PMS
-
-    # Background shading behind the curves.
-    ax.axvspan(xmin, 0.0, color=PMS_SHADE_COLOR, zorder=0)
-    ax.axvspan(0.0, xmax, color=MS_SHADE_COLOR, zorder=0)
+    y_min, y_max = -2.0, 6.5
 
     for mass in MASSES:
         colour = MASS_CMAP(MASS_NORM(mass))
@@ -246,6 +235,7 @@ def plot_panel_A(ax, tracks):
         age = np.asarray(eep.eeps["star_age"], dtype=float)
         log_L = np.asarray(eep.eeps["log_L"], dtype=float)
 
+        # Guard against star_age == 0 at the first EEP (log10 undefined).
         start = 0
         if age.size and age[0] <= 0.0:
             start = 1
@@ -255,44 +245,36 @@ def plot_panel_A(ax, tracks):
             )
         age = age[start:]
         log_L = log_L[start:]
+        log_t = np.log10(age)
+
+        ax.plot(log_t, log_L, color=colour, lw=1.2,
+                label=MASS_LABELS[mass], zorder=3)
 
         zams_idx = find_zams_row(eep)
         if zams_idx is None or zams_idx < start:
-            print(f"  [{mass:>4} Msun] no usable ZAMS row; curve plotted without marker")
-            ax.plot((age - age[0]) / 1e6, log_L, color=colour, lw=1.2,
-                    label=MASS_LABELS[mass], zorder=3)
+            print(f"  [{mass:>4} Msun] no usable ZAMS row; skipping marker and PMS shading")
             continue
 
         zi = zams_idx - start
-        t_zams = age[zi]
-        dt_Myr = (age - t_zams) / 1e6
 
-        ax.plot(dt_Myr, log_L, color=colour, lw=1.2,
-                label=MASS_LABELS[mass], zorder=3)
-        ax.plot(0.0, log_L[zi], marker="o", color=colour,
+        # Fill this curve's PMS segment down to the y-axis bottom.
+        pms_x = log_t[: zi + 1]
+        pms_y = log_L[: zi + 1]
+        ax.fill_between(pms_x, pms_y, y_min,
+                        color=colour, alpha=PMS_FILL_ALPHA,
+                        linewidth=0, zorder=2)
+
+        ax.plot(log_t[zi], log_L[zi], marker="o", color=colour,
                 markersize=5, markeredgecolor="black",
                 markeredgewidth=0.6, linestyle="None", zorder=5)
-        print(f"  [{mass:>4} Msun] ZAMS at log10(t/yr) = {np.log10(t_zams):.3f}")
+        print(f"  [{mass:>4} Msun] ZAMS at log10(t/yr) = {log_t[zi]:.3f}")
 
-    if PANEL_A_XSCALE == "symlog":
-        ax.set_xscale("symlog", linthresh=linthresh)
-        # Asymmetric: MS extends one decade beyond the PMS window.
-        ax.set_xticks([-1.0, -1e-2, -1e-4, 0.0, 1e-4, 1e-2, 1.0, 10.0])
-    elif PANEL_A_XSCALE == "linear":
-        ax.set_xscale("linear")
-        ax.set_xticks([-1, 0, 2, 4, 6, 8, 10])
-    else:
-        raise ValueError(
-            f"PANEL_A_XSCALE = {PANEL_A_XSCALE!r}; expected 'symlog' or 'linear'."
-        )
-    ax.set_xlim(xmin, xmax)
-    ax.set_ylim(-2.0, 6.5)
-    ax.set_xlabel(r"$t - t_{\rm ZAMS} \; [\mathrm{Myr}]$")
+    ax.set_xlim(3.0, 10.5)
+    ax.set_ylim(y_min, y_max)
+    ax.set_xlabel(r"$\log_{10}(t / \mathrm{yr})$")
     ax.set_ylabel(r"$\log_{10}(L_{\rm bol} / L_\odot)$")
 
-    ax.axvline(0.0, linestyle="--", color="0.3", lw=0.8, zorder=2)
-
-    ax.legend(loc="upper left", ncol=2, frameon=False, fontsize=9)
+    ax.legend(loc="upper right", ncol=2, frameon=False, fontsize=9)
 
 
 def plot_panel_B(ax, iso):
