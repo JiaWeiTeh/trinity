@@ -32,6 +32,10 @@ if str(_PROJECT_ROOT) not in sys.path:
 from src._plots.plot_base import FIG_DIR, PROJECT_ROOT  # noqa: E402
 from src._functions.read_mist_models import EEP, ISO  # noqa: E402
 
+# numpy.trapezoid is the 2.0+ name; numpy 1.x has numpy.trapz instead.
+# numpy 2.x has removed trapz, so evaluate lazily.
+_trapezoid = np.trapezoid if hasattr(np, "trapezoid") else np.trapz
+
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -314,10 +318,10 @@ def plot_panel_B(ax, iso):
                 label=AGE_LABELS[log_age], zorder=3)
 
         # Diagnostics: total cluster L_bol and fraction from M > 10 M_sun.
-        L_total = float(np.trapezoid(dL_dlogM, logM))
+        L_total = float(_trapezoid(dL_dlogM, logM))
         hi = logM >= logM_hi_cut
         L_hi = (
-            float(np.trapezoid(dL_dlogM[hi], logM[hi]))
+            float(_trapezoid(dL_dlogM[hi], logM[hi]))
             if hi.sum() >= 2 else 0.0
         )
         frac_hi = L_hi / L_total if L_total > 0 else float("nan")
