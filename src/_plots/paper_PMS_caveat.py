@@ -23,7 +23,6 @@ from pathlib import Path
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm, Normalize
-from matplotlib.cm import ScalarMappable
 from scipy.integrate import quad
 
 # Bootstrap project root and load trinity style via plot_base.
@@ -81,14 +80,18 @@ LOG_AGES = [5.0, 5.5, 6.0, 6.5, 7.0]
 AGE_CMAP = plt.get_cmap("viridis")
 AGE_NORM = Normalize(vmin=min(LOG_AGES), vmax=max(LOG_AGES))
 
-# Tick labels for the Panel B age colourbar.
-AGE_TICK_LABELS = {
-    5.0: r"$0.1$",
-    5.5: r"$0.3$",
-    6.0: r"$1$",
-    6.5: r"$3$",
-    7.0: r"$10$",
+# Legend labels for the Panel B ages.
+AGE_LABELS = {
+    5.0: r"$0.1\,\mathrm{Myr}$",
+    5.5: r"$0.3\,\mathrm{Myr}$",
+    6.0: r"$1\,\mathrm{Myr}$",
+    6.5: r"$3\,\mathrm{Myr}$",
+    7.0: r"$10\,\mathrm{Myr}$",
 }
+
+# Light background shades for Panel A: PMS (left of ZAMS) and MS (right).
+PMS_SHADE_COLOR = "#f0f0f0"
+MS_SHADE_COLOR = "#e6f0fa"
 
 # Kroupa (2001) broken power law.  IMF_M_MIN set to 0.1 so log10 = -1.0
 # aligns exactly with the Panel B x-axis left edge.
@@ -216,18 +219,27 @@ def kroupa_xi(M):
 # ---------------------------------------------------------------------------
 
 def plot_panel_A(ax, tracks):
-    """Plot L_bol(t) for each mass on ``ax``, marking ZAMS on each curve.
+    """Plot L_bol(t - t_ZAMS) for each mass, split at ZAMS.
 
-    Returns the ScalarMappable used for the mass colourbar so the caller
-    can attach it to the figure.
+    The x-axis is (star_age - t_ZAMS) in years on a symlog scale.  The
+    left half (x < 0, grey) is the PMS approach; the right half (x > 0,
+    pale blue) is post-ZAMS.  A dashed vertical line marks ZAMS.  Each
+    curve is additionally marked at its ZAMS crossing with a filled
+    circle.
     """
+    linthresh = 1e3  # yr; linear region near ZAMS so log|t - t_ZAMS| stays finite
+    xmin, xmax = -1e10, 1e10
+
+    # Background shading behind the curves.
+    ax.axvspan(xmin, 0.0, color=PMS_SHADE_COLOR, zorder=0)
+    ax.axvspan(0.0, xmax, color=MS_SHADE_COLOR, zorder=0)
+
     for mass in MASSES:
         colour = MASS_CMAP(MASS_NORM(mass))
         eep = tracks[mass]
         age = np.asarray(eep.eeps["star_age"], dtype=float)
         log_L = np.asarray(eep.eeps["log_L"], dtype=float)
 
-        # Guard against star_age == 0 at the first EEP (log10 undefined).
         start = 0
         if age.size and age[0] <= 0.0:
             start = 1
@@ -237,34 +249,40 @@ def plot_panel_A(ax, tracks):
             )
         age = age[start:]
         log_L = log_L[start:]
-        log_t = np.log10(age)
-
-        ax.plot(log_t, log_L, color=colour, lw=1.2, zorder=3)
 
         zams_idx = find_zams_row(eep)
-        if zams_idx is None:
-            print(f"  [{mass:>4} Msun] no MS phase row found -- ZAMS marker skipped")
+        if zams_idx is None or zams_idx < start:
+            print(f"  [{mass:>4} Msun] no usable ZAMS row; curve plotted without marker")
+            ax.plot(age, log_L, color=colour, lw=1.2,
+                    label=MASS_LABELS[mass], zorder=3)
             continue
-        if zams_idx < start:
-            print(f"  [{mass:>4} Msun] ZAMS row was in the skipped prefix -- skipping marker")
-            continue
+
         zi = zams_idx - start
-        x_zams = log_t[zi]
-        y_zams = log_L[zi]
-        ax.plot(x_zams, y_zams, marker="o", color=colour,
+        t_zams = age[zi]
+        dt = age - t_zams
+
+        ax.plot(dt, log_L, color=colour, lw=1.2,
+                label=MASS_LABELS[mass], zorder=3)
+        ax.plot(0.0, log_L[zi], marker="o", color=colour,
                 markersize=5, markeredgecolor="black",
                 markeredgewidth=0.6, linestyle="None", zorder=5)
-        print(f"  [{mass:>4} Msun] ZAMS at log10(t/yr) = {x_zams:.3f}")
+        print(f"  [{mass:>4} Msun] ZAMS at log10(t/yr) = {np.log10(t_zams):.3f}")
 
-    ax.set_xlim(3.0, 10.5)
+    ax.set_xscale("symlog", linthresh=linthresh)
+    ax.set_xlim(xmin, xmax)
     ax.set_ylim(-2.0, 6.5)
-    ax.set_xlabel(r"$\log_{10}(t / \mathrm{yr})$")
+    # Space symlog ticks every two decades so the labels are legible.
+    ax.set_xticks([-1e10, -1e8, -1e6, -1e4, 0.0, 1e4, 1e6, 1e8, 1e10])
+    ax.set_xlabel(r"$t - t_{\rm ZAMS} \; [\mathrm{yr}]$")
     ax.set_ylabel(r"$\log_{10}(L_{\rm bol} / L_\odot)$")
 
-    ax.text(0.03, 0.96, "(a)", transform=ax.transAxes,
-            ha="left", va="top")
+    ax.axvline(0.0, linestyle="--", color="0.3", lw=0.8, zorder=2)
 
-    return ScalarMappable(norm=MASS_NORM, cmap=MASS_CMAP)
+    ax.legend(loc="upper left", ncol=2, frameon=False, fontsize=9)
+
+    # Panel label in upper-right corner to avoid the legend.
+    ax.text(0.97, 0.96, "(a)", transform=ax.transAxes,
+            ha="right", va="top")
 
 
 def plot_panel_B(ax, iso):
@@ -308,7 +326,8 @@ def plot_panel_B(ax, iso):
         logM = logM[order]
         dL_dlogM = dL_dlogM[order]
 
-        ax.plot(logM, dL_dlogM, color=colour, lw=1.2, zorder=3)
+        ax.plot(logM, dL_dlogM, color=colour, lw=1.2,
+                label=AGE_LABELS[log_age], zorder=3)
 
         # Diagnostics: total cluster L_bol and fraction from M > 10 M_sun.
         L_total = float(_trapezoid(dL_dlogM, logM))
@@ -329,10 +348,10 @@ def plot_panel_B(ax, iso):
     ax.set_xlabel(r"$\log_{10}(M_{\rm init} / M_\odot)$")
     ax.set_ylabel(r"$dL_{\rm bol} / d\log M \; [L_\odot]$")
 
-    ax.text(0.03, 0.96, "(b)", transform=ax.transAxes,
-            ha="left", va="top")
+    ax.legend(loc="upper left", ncol=2, frameon=False, fontsize=9)
 
-    return ScalarMappable(norm=AGE_NORM, cmap=AGE_CMAP)
+    ax.text(0.97, 0.96, "(b)", transform=ax.transAxes,
+            ha="right", va="top")
 
 
 # ---------------------------------------------------------------------------
@@ -361,27 +380,12 @@ def main():
           f"(target {CLUSTER_MASS:.4e})")
 
     # A&A two-column figure, vertically stacked: Panel A on top, Panel B below.
-    # Each panel gets its own colourbar on the right.
     fig, (axA, axB) = plt.subplots(
         2, 1, figsize=(7.0, 5.5),
         gridspec_kw={"hspace": 0.35},
     )
-    sm_A = plot_panel_A(axA, tracks)
-    sm_B = plot_panel_B(axB, iso)
-
-    # Panel A colourbar (mass).  Log-spaced ticks at the six plotted masses.
-    cbar_A = fig.colorbar(sm_A, ax=axA, pad=0.02)
-    cbar_A.set_label(r"$M_{\rm init} \; [M_\odot]$")
-    cbar_A.set_ticks(MASSES)
-    cbar_A.set_ticklabels([f"{m:g}" for m in MASSES])
-    cbar_A.minorticks_off()
-
-    # Panel B colourbar (age in Myr).  Linear in log_age; five ticks.
-    cbar_B = fig.colorbar(sm_B, ax=axB, pad=0.02)
-    cbar_B.set_label(r"$t \; [\mathrm{Myr}]$")
-    cbar_B.set_ticks(LOG_AGES)
-    cbar_B.set_ticklabels([AGE_TICK_LABELS[a] for a in LOG_AGES])
-    cbar_B.minorticks_off()
+    plot_panel_A(axA, tracks)
+    plot_panel_B(axB, iso)
 
     fig.savefig(OUTFILE, format="pdf", bbox_inches="tight")
     plt.close(fig)
