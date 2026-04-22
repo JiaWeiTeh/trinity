@@ -24,6 +24,7 @@ from pathlib import Path
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm, Normalize
+from matplotlib.ticker import PercentFormatter
 from scipy.integrate import quad, cumulative_trapezoid
 
 # Bootstrap project root and load trinity style via plot_base.
@@ -307,15 +308,16 @@ def plot_panel_A(ax, tracks):
 
 
 def _panel_B_style(log_age):
-    """Return (linestyle, alpha) for Panel B.
+    """Return (linestyle, alpha, colour_override) for Panel B.
 
-    Late ages (>= 10 Myr) are drawn dashed to mark the regime where
-    massive stars have died and the instantaneous-ZAMS assumption starts
-    to lose its young-cluster justification.  Younger ages stay solid.
+    Late ages (>= 10 Myr) are drawn as a dashed grey, low-alpha line to
+    read visually as a dying population and recede behind the young
+    ages.  ``colour_override`` is ``None`` for the young curves, which
+    use the viridis colour; a string like "0.5" for the late curves.
     """
     if log_age >= 7.0:
-        return ("--", 0.85)
-    return ("-", 1.0)
+        return ("--", 0.6, "0.5")
+    return ("-", 1.0, None)
 
 
 def plot_panel_B(ax, iso):
@@ -336,8 +338,9 @@ def plot_panel_B(ax, iso):
         Already-loaded basic isochrone set.
     """
     for log_age in LOG_AGES:
-        colour = AGE_CMAP(AGE_NORM(log_age))
-        ls, alpha = _panel_B_style(log_age)
+        ls, alpha, colour_override = _panel_B_style(log_age)
+        colour = colour_override if colour_override is not None \
+            else AGE_CMAP(AGE_NORM(log_age))
         idx = iso.age_index(log_age)
         matched = iso.ages[idx]
         if abs(matched - log_age) > 0.01:
@@ -384,24 +387,16 @@ def plot_panel_B(ax, iso):
     ax.set_xlim(-1.0, 2.1)
     ax.set_ylim(0.90, 1.005)
     ax.set_xlabel(r"$\log_{10}(M_{\rm init} / M_\odot)$")
-    ax.set_ylabel(r"$L_{\rm bol}(>M) / L_{\rm bol,\,tot}$")
+    ax.set_ylabel(r"\% of $L_{\rm bol}$ from stars with $M' > M$")
+    ax.yaxis.set_major_formatter(PercentFormatter(xmax=1.0, decimals=0))
 
-    # Dotted 98% reference line (dotted, not dashed, to avoid clashing with
-    # the dashed 10 Myr curve).
-    ax.axhline(0.98, linestyle=":", color="0.3", lw=0.8, zorder=2)
-    # Place the label on the right edge to avoid collision with the legend.
-    ax.text(2.0, 0.982, r"$F = 0.98$", ha="right", va="bottom",
-            color="0.3", fontsize=9)
-
-    # Annotate why the 10 Myr curve drops off the plot.
-    ax.text(
-        1.1, 0.905,
-        r"$\downarrow$ stars with $M > 20\,M_\odot$" "\n"
-        r"have died by 10 Myr",
-        ha="left", va="bottom",
-        color=AGE_CMAP(AGE_NORM(7.0)),
-        fontsize=8,
-    )
+    # Dotted 98% reference line: dark grey, lowered alpha so the curves
+    # stay visually primary.  Dotted (not dashed) so it does not clash
+    # with the dashed 10 Myr curve.
+    ax.axhline(0.98, linestyle=":", color="0.3", lw=0.8,
+               alpha=0.5, zorder=2)
+    ax.text(2.0, 0.982, r"$98\%$", ha="right", va="bottom",
+            color="0.3", alpha=0.7, fontsize=9)
 
     ax.legend(loc="upper left", ncol=2, frameon=False, fontsize=9)
 
