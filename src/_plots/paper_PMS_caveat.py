@@ -93,6 +93,12 @@ AGE_LABELS = {
 PMS_SHADE_COLOR = "#f0f0f0"
 MS_SHADE_COLOR = "#e6f0fa"
 
+# X-axis scale for Panel A.  "symlog" shows PMS features (D-burning plateau,
+# Hayashi-Henyey transition, Henyey hook) on a log scale near ZAMS; low-mass
+# PMS is visible to -1 Myr.  "linear" makes MS timescales proportional but
+# compresses the PMS features against x = 0 and clips >1 Myr of low-mass PMS.
+PANEL_A_XSCALE = "symlog"  # "symlog" or "linear"
+
 # Kroupa (2001) broken power law.  IMF_M_MIN set to 0.1 so log10 = -1.0
 # aligns exactly with the Panel B x-axis left edge.
 KROUPA_BREAK = 0.5       # M_sun, slope break
@@ -268,11 +274,19 @@ def plot_panel_A(ax, tracks):
                 markeredgewidth=0.6, linestyle="None", zorder=5)
         print(f"  [{mass:>4} Msun] ZAMS at log10(t/yr) = {np.log10(t_zams):.3f}")
 
-    ax.set_xscale("symlog", linthresh=linthresh)
+    if PANEL_A_XSCALE == "symlog":
+        ax.set_xscale("symlog", linthresh=linthresh)
+        # Asymmetric: MS extends one decade beyond the PMS window.
+        ax.set_xticks([-1.0, -1e-2, -1e-4, 0.0, 1e-4, 1e-2, 1.0, 10.0])
+    elif PANEL_A_XSCALE == "linear":
+        ax.set_xscale("linear")
+        ax.set_xticks([-1, 0, 2, 4, 6, 8, 10])
+    else:
+        raise ValueError(
+            f"PANEL_A_XSCALE = {PANEL_A_XSCALE!r}; expected 'symlog' or 'linear'."
+        )
     ax.set_xlim(xmin, xmax)
     ax.set_ylim(-2.0, 6.5)
-    # Explicit ticks: asymmetric because MS extends one decade beyond PMS.
-    ax.set_xticks([-1.0, -1e-2, -1e-4, 0.0, 1e-4, 1e-2, 1.0, 10.0])
     ax.set_xlabel(r"$t - t_{\rm ZAMS} \; [\mathrm{Myr}]$")
     ax.set_ylabel(r"$\log_{10}(L_{\rm bol} / L_\odot)$")
 
