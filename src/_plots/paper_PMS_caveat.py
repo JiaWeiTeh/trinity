@@ -89,9 +89,12 @@ AGE_LABELS = {
     7.0: r"$10\,\mathrm{Myr}$",
 }
 
-# Panel A per-curve PMS shading opacity (fill_between the curve and the
-# axis bottom for each curve's own PMS segment).
+# Panel A per-curve PMS styling: fill_between each curve and the axis
+# bottom over its own PMS segment, and draw the PMS portion of the line
+# itself as a low-alpha dashed curve (MS stays solid at full alpha).
 PMS_FILL_ALPHA = 0.18
+PMS_LINE_ALPHA = 0.6
+PMS_LINE_STYLE = "--"
 
 # Kroupa (2001) broken power law.  IMF_M_MIN set to 0.1 so log10 = -1.0
 # aligns exactly with the Panel B x-axis left edge.
@@ -247,20 +250,25 @@ def plot_panel_A(ax, tracks):
         log_L = log_L[start:]
         log_t = np.log10(age)
 
-        ax.plot(log_t, log_L, color=colour, lw=1.2,
-                label=MASS_LABELS[mass], zorder=3)
-
         zams_idx = find_zams_row(eep)
         if zams_idx is None or zams_idx < start:
-            print(f"  [{mass:>4} Msun] no usable ZAMS row; skipping marker and PMS shading")
+            print(f"  [{mass:>4} Msun] no usable ZAMS row; plotted solid, no shading")
+            ax.plot(log_t, log_L, color=colour, lw=1.2,
+                    label=MASS_LABELS[mass], zorder=3)
             continue
 
         zi = zams_idx - start
 
+        # PMS segment: dashed, lower alpha, no legend entry.
+        ax.plot(log_t[: zi + 1], log_L[: zi + 1], color=colour, lw=1.2,
+                linestyle=PMS_LINE_STYLE, alpha=PMS_LINE_ALPHA, zorder=3)
+        # MS segment: solid, full alpha, carries the legend entry.  Start at
+        # the ZAMS row so the two segments share a common endpoint.
+        ax.plot(log_t[zi:], log_L[zi:], color=colour, lw=1.2,
+                label=MASS_LABELS[mass], zorder=3)
+
         # Fill this curve's PMS segment down to the y-axis bottom.
-        pms_x = log_t[: zi + 1]
-        pms_y = log_L[: zi + 1]
-        ax.fill_between(pms_x, pms_y, y_min,
+        ax.fill_between(log_t[: zi + 1], log_L[: zi + 1], y_min,
                         color=colour, alpha=PMS_FILL_ALPHA,
                         linewidth=0, zorder=2)
 
@@ -271,7 +279,7 @@ def plot_panel_A(ax, tracks):
 
     ax.set_xlim(3.0, 10.5)
     ax.set_ylim(y_min, y_max)
-    ax.set_xlabel(r"$\log_{10}(t / \mathrm{yr})$")
+    ax.set_xlabel(r"$\log_{10}(t) \; [\mathrm{yr}]$")
     ax.set_ylabel(r"$\log_{10}(L_{\rm bol} / L_\odot)$")
 
     ax.legend(loc="upper right", ncol=2, frameon=False, fontsize=9)
