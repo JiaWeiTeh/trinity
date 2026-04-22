@@ -63,8 +63,6 @@ WONG_PALETTE = [
     "#CC79A7",  # reddish purple
 ]
 
-ZAMS_ANNOTATE_MASS = 10.0  # anchor for the "ZAMS" arrow annotation
-
 OUTFILE = FIG_DIR / "paper_PMS_caveat.pdf"
 
 
@@ -127,8 +125,6 @@ def find_zams_row(eep):
 
 def plot_panel_A(ax, tracks):
     """Plot L_bol(t) for each mass on ``ax``, marking ZAMS on each curve."""
-    zams_marker_xy = {}  # mass -> (log_t_zams, log_L_zams) for the annotation anchor
-
     for mass, colour in zip(MASSES, WONG_PALETTE):
         eep = tracks[mass]
         age = np.asarray(eep.eeps["star_age"], dtype=float)
@@ -164,33 +160,23 @@ def plot_panel_A(ax, tracks):
                 markersize=5, markeredgecolor="black",
                 markeredgewidth=0.6, linestyle="None", zorder=5)
         print(f"  [{mass:>4} Msun] ZAMS at log10(t/yr) = {x_zams:.3f}")
-        zams_marker_xy[mass] = (float(x_zams), float(y_zams))
 
     ax.set_xlim(3.0, 10.5)
     ax.set_ylim(-2.0, 6.5)
     ax.set_xlabel(r"$\log_{10}(t / \mathrm{yr})$")
     ax.set_ylabel(r"$\log_{10}(L_{\rm bol} / L_\odot)$")
 
-    ax.legend(loc="lower right", ncol=2)
+    # Legend: 3 columns x 2 rows, placed above the axis (paper_Rosette style).
+    handles, labels = ax.get_legend_handles_labels()
+    ax.figure.legend(
+        handles, labels,
+        loc="upper center", ncol=3,
+        frameon=False, bbox_to_anchor=(0.5, 1.12),
+    )
 
     # Panel label (a)
     ax.text(0.03, 0.96, "(a)", transform=ax.transAxes,
             ha="left", va="top")
-
-    # ZAMS annotation arrow, anchored on the chosen mass if available.
-    anchor = zams_marker_xy.get(ZAMS_ANNOTATE_MASS)
-    if anchor is None and zams_marker_xy:
-        anchor = next(iter(zams_marker_xy.values()))
-    if anchor is not None:
-        x_a, y_a = anchor
-        ax.annotate(
-            "ZAMS",
-            xy=(x_a, y_a),
-            xytext=(x_a - 1.4, y_a + 1.2),
-            ha="center", va="center",
-            arrowprops=dict(arrowstyle="->", color="black", lw=0.8,
-                            shrinkA=0, shrinkB=3),
-        )
 
 
 def plot_panel_B(ax, tracks):
