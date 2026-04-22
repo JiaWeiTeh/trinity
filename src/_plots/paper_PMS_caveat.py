@@ -227,8 +227,8 @@ def plot_panel_A(ax, tracks):
     curve is additionally marked at its ZAMS crossing with a filled
     circle.
     """
-    linthresh = 1e3  # yr; linear region near ZAMS so log|t - t_ZAMS| stays finite
-    xmin, xmax = -1e10, 1e10
+    linthresh = 1e-4  # Myr (= 100 yr); linear region near ZAMS
+    xmin, xmax = -1.0, 10.0  # Myr; clips the pre-bump portion of low-mass PMS
 
     # Background shading behind the curves.
     ax.axvspan(xmin, 0.0, color=PMS_SHADE_COLOR, zorder=0)
@@ -253,15 +253,15 @@ def plot_panel_A(ax, tracks):
         zams_idx = find_zams_row(eep)
         if zams_idx is None or zams_idx < start:
             print(f"  [{mass:>4} Msun] no usable ZAMS row; curve plotted without marker")
-            ax.plot(age, log_L, color=colour, lw=1.2,
+            ax.plot((age - age[0]) / 1e6, log_L, color=colour, lw=1.2,
                     label=MASS_LABELS[mass], zorder=3)
             continue
 
         zi = zams_idx - start
         t_zams = age[zi]
-        dt = age - t_zams
+        dt_Myr = (age - t_zams) / 1e6
 
-        ax.plot(dt, log_L, color=colour, lw=1.2,
+        ax.plot(dt_Myr, log_L, color=colour, lw=1.2,
                 label=MASS_LABELS[mass], zorder=3)
         ax.plot(0.0, log_L[zi], marker="o", color=colour,
                 markersize=5, markeredgecolor="black",
@@ -271,18 +271,14 @@ def plot_panel_A(ax, tracks):
     ax.set_xscale("symlog", linthresh=linthresh)
     ax.set_xlim(xmin, xmax)
     ax.set_ylim(-2.0, 6.5)
-    # Space symlog ticks every two decades so the labels are legible.
-    ax.set_xticks([-1e10, -1e8, -1e6, -1e4, 0.0, 1e4, 1e6, 1e8, 1e10])
-    ax.set_xlabel(r"$t - t_{\rm ZAMS} \; [\mathrm{yr}]$")
+    # Explicit ticks: asymmetric because MS extends one decade beyond PMS.
+    ax.set_xticks([-1.0, -1e-2, -1e-4, 0.0, 1e-4, 1e-2, 1.0, 10.0])
+    ax.set_xlabel(r"$t - t_{\rm ZAMS} \; [\mathrm{Myr}]$")
     ax.set_ylabel(r"$\log_{10}(L_{\rm bol} / L_\odot)$")
 
     ax.axvline(0.0, linestyle="--", color="0.3", lw=0.8, zorder=2)
 
     ax.legend(loc="upper left", ncol=2, frameon=False, fontsize=9)
-
-    # Panel label in upper-right corner to avoid the legend.
-    ax.text(0.97, 0.96, "(a)", transform=ax.transAxes,
-            ha="right", va="top")
 
 
 def plot_panel_B(ax, iso):
@@ -349,9 +345,6 @@ def plot_panel_B(ax, iso):
     ax.set_ylabel(r"$dL_{\rm bol} / d\log M \; [L_\odot]$")
 
     ax.legend(loc="upper left", ncol=2, frameon=False, fontsize=9)
-
-    ax.text(0.97, 0.96, "(b)", transform=ax.transAxes,
-            ha="right", va="top")
 
 
 # ---------------------------------------------------------------------------
