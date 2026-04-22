@@ -306,15 +306,29 @@ def plot_panel_A(ax, tracks):
     ax.legend(loc="upper right", ncol=2, frameon=False, fontsize=9)
 
 
+def _panel_B_style(log_age):
+    """Return (linestyle, alpha) for Panel B.
+
+    Late ages (>= 10 Myr) are drawn dashed to mark the regime where
+    massive stars have died and the instantaneous-ZAMS assumption starts
+    to lose its young-cluster justification.  Younger ages stay solid.
+    """
+    if log_age >= 7.0:
+        return ("--", 0.85)
+    return ("-", 1.0)
+
+
 def plot_panel_B(ax, iso):
     """
     Plot the cumulative luminosity fraction F(>M) at five ages.
 
     F(>M) = L_bol from stars with mass > M, divided by the cluster's
-    total L_bol.  Drops from ~1 on the left to 0 on the right.  A dashed
+    total L_bol.  Drops from ~1 on the left to 0 on the right.  A dotted
     horizontal line at F = 0.98 marks the "98% of light" threshold the
     appendix quotes; the mass where each curve crosses it is printed as
-    log M(F=0.98).
+    log M(F=0.98).  Young-age curves (< 10 Myr) are drawn solid as the
+    argument regime; the 10 Myr curve is drawn dashed to mark the
+    narrative break where massive stars have died.
 
     Parameters
     ----------
@@ -323,6 +337,7 @@ def plot_panel_B(ax, iso):
     """
     for log_age in LOG_AGES:
         colour = AGE_CMAP(AGE_NORM(log_age))
+        ls, alpha = _panel_B_style(log_age)
         idx = iso.age_index(log_age)
         matched = iso.ages[idx]
         if abs(matched - log_age) > 0.01:
@@ -354,8 +369,8 @@ def plot_panel_B(ax, iso):
         F_above = 1.0 - cum_from_below / L_total
 
         logM = np.log10(M)
-        ax.plot(logM, F_above, color=colour, lw=1.2,
-                label=AGE_LABELS[log_age], zorder=3)
+        ax.plot(logM, F_above, color=colour, lw=1.2, linestyle=ls,
+                alpha=alpha, label=AGE_LABELS[log_age], zorder=3)
 
         f_above_10 = _interp_F_at_logM(logM, F_above, 1.0)
         log_M_98 = _logM_at_F(logM, F_above, 0.98)
@@ -367,14 +382,26 @@ def plot_panel_B(ax, iso):
         )
 
     ax.set_xlim(-1.0, 2.1)
-    ax.set_ylim(0.0, 1.02)
+    ax.set_ylim(0.90, 1.005)
     ax.set_xlabel(r"$\log_{10}(M_{\rm init} / M_\odot)$")
     ax.set_ylabel(r"$L_{\rm bol}(>M) / L_{\rm bol,\,tot}$")
 
-    # Dashed reference line at 98% + label.
-    ax.axhline(0.98, linestyle="--", color="0.3", lw=0.8, zorder=2)
-    ax.text(-0.9, 0.98, "98%", ha="left", va="bottom",
+    # Dotted 98% reference line (dotted, not dashed, to avoid clashing with
+    # the dashed 10 Myr curve).
+    ax.axhline(0.98, linestyle=":", color="0.3", lw=0.8, zorder=2)
+    # Place the label on the right edge to avoid collision with the legend.
+    ax.text(2.0, 0.982, r"$F = 0.98$", ha="right", va="bottom",
             color="0.3", fontsize=9)
+
+    # Annotate why the 10 Myr curve drops off the plot.
+    ax.text(
+        1.1, 0.905,
+        r"$\downarrow$ stars with $M > 20\,M_\odot$" "\n"
+        r"have died by 10 Myr",
+        ha="left", va="bottom",
+        color=AGE_CMAP(AGE_NORM(7.0)),
+        fontsize=8,
+    )
 
     ax.legend(loc="upper left", ncol=2, frameon=False, fontsize=9)
 
