@@ -385,9 +385,9 @@ def plot_panel_B(ax, iso):
         )
 
     ax.set_xlim(-1.0, 2.1)
-    ax.set_ylim(0.90, 1.005)
+    ax.set_ylim(0.95, 1.005)
     ax.set_xlabel(r"$\log_{10}(M_{\rm init} / M_\odot)$")
-    ax.set_ylabel(r"\% of $L_{\rm bol}$ from stars with $M' > M$")
+    ax.set_ylabel(r"$L_{\rm bol}(>M) / L_{\rm bol,\,tot}$")
     ax.yaxis.set_major_formatter(PercentFormatter(xmax=1.0, decimals=0))
 
     # Dotted 98% reference line: dark grey, lowered alpha so the curves
@@ -398,7 +398,7 @@ def plot_panel_B(ax, iso):
     ax.text(2.0, 0.982, r"$98\%$", ha="right", va="bottom",
             color="0.3", alpha=0.7, fontsize=9)
 
-    ax.legend(loc="upper left", ncol=2, frameon=False, fontsize=9)
+    ax.legend(loc="lower left", ncol=2, frameon=False, fontsize=9)
 
 
 # ---------------------------------------------------------------------------
