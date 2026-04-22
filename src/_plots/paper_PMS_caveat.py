@@ -8,10 +8,11 @@ Panel A (top): individual-star L_bol(t) tracks for six initial masses
 track, with ZAMS arrival marked on each curve.  Coloured by initial
 mass (plasma colourmap).
 
-Panel B (bottom): Kroupa-IMF-weighted dL_bol/d(log M) at five ages
-(0.1, 0.3, 1, 3, 10 Myr) for a 10^6 M_sun cluster, using MIST basic
-isochrones.  Coloured by age (viridis colourmap).  Shows that the
-bolometric budget is concentrated above ~10 M_sun at all plotted ages.
+Panel B (bottom): cumulative luminosity fraction F(>M) = L_bol(>M) /
+L_bol,tot for a Kroupa 10^6 M_sun cluster at five ages (0.1, 0.3, 1,
+3, 10 Myr), using MIST basic isochrones.  Coloured by age (viridis
+colourmap).  A dashed reference line at F = 0.98 marks the 98%-of-
+light threshold the appendix quotes.
 
 Each panel has its own colourbar; no legends.  Uses MIST v1.2 data at
 [Fe/H] = 0.00, v/v_crit = 0.0 (non-rotating).
@@ -23,7 +24,7 @@ from pathlib import Path
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm, Normalize
-from scipy.integrate import quad
+from scipy.integrate import quad, cumulative_trapezoid
 
 # Bootstrap project root and load trinity style via plot_base.
 _THIS_DIR = Path(__file__).resolve().parent
@@ -33,11 +34,6 @@ if str(_PROJECT_ROOT) not in sys.path:
 
 from src._plots.plot_base import FIG_DIR, PROJECT_ROOT  # noqa: E402
 from src._functions.read_mist_models import EEP, ISO  # noqa: E402
-
-# numpy.trapezoid is the 2.0+ name; numpy 1.x has numpy.trapz instead.
-# numpy 2.x has removed trapz, so evaluate lazily.
-_trapezoid = np.trapezoid if hasattr(np, "trapezoid") else np.trapz
-
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -217,6 +213,31 @@ def kroupa_xi(M):
     return KROUPA_NORM * kroupa_xi_unnormalised(M)
 
 
+def _interp_F_at_logM(logM_sorted, F, logM_target):
+    """Linear-interp F at a given log M; NaN if target is outside the range."""
+    if logM_target < logM_sorted[0] or logM_target > logM_sorted[-1]:
+        return float("nan")
+    i = int(np.searchsorted(logM_sorted, logM_target))
+    if i == 0:
+        return float(F[0])
+    x0, x1 = logM_sorted[i - 1], logM_sorted[i]
+    y0, y1 = F[i - 1], F[i]
+    return float(y0 + (logM_target - x0) * (y1 - y0) / (x1 - x0))
+
+
+def _logM_at_F(logM_sorted, F, F_target):
+    """Linear-interp log M at a given F, where F is monotone decreasing in log M."""
+    below = np.where(F < F_target)[0]
+    if below.size == 0:
+        return float("nan")  # F never drops below the target
+    i = int(below[0])
+    if i == 0:
+        return float(logM_sorted[0])
+    x0, x1 = logM_sorted[i - 1], logM_sorted[i]
+    y0, y1 = F[i - 1], F[i]
+    return float(x0 + (F_target - y0) * (x1 - x0) / (y1 - y0))
+
+
 # ---------------------------------------------------------------------------
 # Plotting
 # ---------------------------------------------------------------------------
@@ -287,15 +308,19 @@ def plot_panel_A(ax, tracks):
 
 def plot_panel_B(ax, iso):
     """
-    Plot dL_bol/d(log M) for a Kroupa cluster at five ages.
+    Plot the cumulative luminosity fraction F(>M) at five ages.
+
+    F(>M) = L_bol from stars with mass > M, divided by the cluster's
+    total L_bol.  Drops from ~1 on the left to 0 on the right.  A dashed
+    horizontal line at F = 0.98 marks the "98% of light" threshold the
+    appendix quotes; the mass where each curve crosses it is printed as
+    log M(F=0.98).
 
     Parameters
     ----------
     iso : read_mist_models.ISO
         Already-loaded basic isochrone set.
     """
-    logM_hi_cut = 1.0  # log10(10 M_sun)
-
     for log_age in LOG_AGES:
         colour = AGE_CMAP(AGE_NORM(log_age))
         idx = iso.age_index(log_age)
@@ -310,43 +335,46 @@ def plot_panel_B(ax, iso):
         M = np.asarray(slice_["initial_mass"], dtype=float)
         log_L = np.asarray(slice_["log_L"], dtype=float)
 
-        # Keep only finite entries and masses within the IMF range.
         good = np.isfinite(M) & np.isfinite(log_L) & (M >= IMF_M_MIN)
         M = M[good]
         log_L = log_L[good]
 
-        # dL/d(log M) = L(M) * xi(M) * M * ln(10)
+        # Sort ascending in M so the cumulative integral is monotonic.
+        order = np.argsort(M)
+        M = M[order]
+        log_L = log_L[order]
+
+        # dL/dM = L * xi (L_sun per M_sun of stellar mass).
         L = 10.0 ** log_L
         xi = kroupa_xi(M)
-        dL_dlogM = L * xi * M * np.log(10.0)
+        dL_dM = L * xi
 
-        # Sort by log M so the curve is monotonic and trapezoid makes sense.
+        cum_from_below = cumulative_trapezoid(dL_dM, M, initial=0.0)
+        L_total = float(cum_from_below[-1])
+        F_above = 1.0 - cum_from_below / L_total
+
         logM = np.log10(M)
-        order = np.argsort(logM)
-        logM = logM[order]
-        dL_dlogM = dL_dlogM[order]
-
-        ax.plot(logM, dL_dlogM, color=colour, lw=1.2,
+        ax.plot(logM, F_above, color=colour, lw=1.2,
                 label=AGE_LABELS[log_age], zorder=3)
 
-        # Diagnostics: total cluster L_bol and fraction from M > 10 M_sun.
-        L_total = float(_trapezoid(dL_dlogM, logM))
-        hi = logM >= logM_hi_cut
-        L_hi = (
-            float(_trapezoid(dL_dlogM[hi], logM[hi]))
-            if hi.sum() >= 2 else 0.0
-        )
-        frac_hi = L_hi / L_total if L_total > 0 else float("nan")
+        f_above_10 = _interp_F_at_logM(logM, F_above, 1.0)
+        log_M_98 = _logM_at_F(logM, F_above, 0.98)
         print(
             f"  [log t = {log_age:.2f} -> matched {matched:.3f}] "
             f"L_total = {L_total:.3e} L_sun, "
-            f"f(M>10) = {frac_hi*100:.1f}%"
+            f"f(M>10) = {f_above_10*100:.1f}%, "
+            f"log M(F=0.98) = {log_M_98:.2f}"
         )
 
     ax.set_xlim(-1.0, 2.1)
-    ax.set_yscale("log")
+    ax.set_ylim(0.0, 1.02)
     ax.set_xlabel(r"$\log_{10}(M_{\rm init} / M_\odot)$")
-    ax.set_ylabel(r"$dL_{\rm bol} / d\log M \; [L_\odot]$")
+    ax.set_ylabel(r"$L_{\rm bol}(>M) / L_{\rm bol,\,tot}$")
+
+    # Dashed reference line at 98% + label.
+    ax.axhline(0.98, linestyle="--", color="0.3", lw=0.8, zorder=2)
+    ax.text(-0.9, 0.98, "98%", ha="left", va="bottom",
+            color="0.3", fontsize=9)
 
     ax.legend(loc="upper left", ncol=2, frameon=False, fontsize=9)
 
