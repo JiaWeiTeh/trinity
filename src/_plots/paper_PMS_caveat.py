@@ -302,7 +302,7 @@ def plot_panel_A(ax, tracks):
     ax.set_xlim(3.0, 10.5)
     ax.set_ylim(y_min, y_max)
     ax.set_xlabel(r"$\log_{10}(t) \; [\mathrm{yr}]$")
-    ax.set_ylabel(r"$\log_{10}(L_{\rm bol} / L_\odot)$")
+    ax.set_ylabel(r"$\log_{10}(L_{\rm bol}) \; [L_\odot]$")
 
     ax.legend(loc="upper right", ncol=2, frameon=False, fontsize=9)
 
@@ -372,7 +372,7 @@ def plot_panel_B(ax, iso):
         F_above = 1.0 - cum_from_below / L_total
 
         logM = np.log10(M)
-        ax.plot(logM, F_above, color=colour, lw=1.2, linestyle=ls,
+        ax.plot(logM, F_above*100, color=colour, lw=1.2, linestyle=ls,
                 alpha=alpha, label=AGE_LABELS[log_age], zorder=3)
 
         f_above_10 = _interp_F_at_logM(logM, F_above, 1.0)
@@ -385,17 +385,21 @@ def plot_panel_B(ax, iso):
         )
 
     ax.set_xlim(-1.0, 2.1)
-    ax.set_ylim(0.95, 1.005)
-    ax.set_xlabel(r"$\log_{10}(M_{\rm init} / M_\odot)$")
-    ax.set_ylabel(r"$L_{\rm bol}(>M) / L_{\rm bol,\,tot}$")
-    ax.yaxis.set_major_formatter(PercentFormatter(xmax=1.0, decimals=0))
+    ax.set_ylim(0.95*100, 1.005*100)
+    ax.set_xlabel(r"$\log_{10}(M_\star) \; [\mathrm{M}_\odot]$")
+    ax.set_ylabel(r"$L_{\rm bol}(>M) / L_{\rm bol,\,tot} \; [\%]$")
+    # ax.yaxis.set_major_formatter(PercentFormatter(xmax=1.0, decimals=0))
 
     # Dotted 98% reference line: dark grey, lowered alpha so the curves
     # stay visually primary.  Dotted (not dashed) so it does not clash
     # with the dashed 10 Myr curve.
-    ax.axhline(0.98, linestyle=":", color="0.3", lw=0.8,
+    ax.axhline(0.98*100, linestyle=":", color="0.3", lw=0.8,
                alpha=0.5, zorder=2)
-    ax.text(2.0, 0.982, r"$98\%$", ha="right", va="bottom",
+    ax.text(2.0, 0.982*100, r"$98\%$", ha="right", va="bottom",
+            color="0.3", alpha=0.7, fontsize=9)
+    ax.axvline(1, linestyle=":", color="0.3", lw=0.8,
+               alpha=0.5, zorder=2)
+    ax.text(1.1, 0.99*100, r"$>\,10\,M_\odot$", ha="left", va="bottom",
             color="0.3", alpha=0.7, fontsize=9)
 
     ax.legend(loc="lower left", ncol=2, frameon=False, fontsize=9)
