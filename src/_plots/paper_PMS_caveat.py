@@ -6,16 +6,21 @@ PMS caveat figure for TRINITY Paper I appendix.
 Panel A (top): individual-star L_bol(t) tracks for six initial masses
 (0.5, 1, 3, 10, 30, 60 M_sun), from first MIST EEP through end of
 track, with ZAMS arrival marked on each curve.  Coloured by initial
-mass (plasma colourmap).
+mass (plasma colourmap).  Each track is drawn piecewise: the PMS
+portion is dashed and low-alpha with its area shaded to the y-axis
+floor, and the post-ZAMS portion is solid and full-alpha.
 
 Panel B (bottom): cumulative luminosity fraction F(>M) = L_bol(>M) /
 L_bol,tot for a Kroupa 10^6 M_sun cluster at five ages (0.1, 0.3, 1,
-3, 10 Myr), using MIST basic isochrones.  Coloured by age (viridis
-colourmap).  A dashed reference line at F = 0.98 marks the 98%-of-
-light threshold the appendix quotes.
+3, 10 Myr), using MIST basic isochrones.  The four young curves use
+the viridis colourmap; the 10 Myr curve is drawn dashed in medium
+grey to read as a dying population.  A dotted reference line at
+F = 0.98 marks the 98%-of-light threshold the appendix quotes.  The
+y-axis is clipped to [95%, 100.5%] since that is where the threshold
+sits; the 10 Myr curve therefore exits through the plot bottom.
 
-Each panel has its own colourbar; no legends.  Uses MIST v1.2 data at
-[Fe/H] = 0.00, v/v_crit = 0.0 (non-rotating).
+Each panel has its own in-plot legend (no colourbars).  Uses MIST
+v1.2 data at [Fe/H] = 0.00, v/v_crit = 0.0 (non-rotating).
 """
 
 import sys
@@ -183,7 +188,10 @@ def _kroupa_xi_scalar(m):
 def kroupa_xi_unnormalised(M):
     """Kroupa 2001 broken power law, unnormalised.  dN/dM.
 
-    Vectorised; accepts arrays or scalars and returns an array.
+    Vectorised; accepts arrays or scalars and returns an array.  Does
+    *not* enforce the IMF support [IMF_M_MIN, IMF_M_MAX]: the raw power
+    law extrapolates beyond those bounds, so callers that need the
+    paper's M <= 120 M_sun cutoff must mask their inputs.
     """
     M = np.asarray(M, dtype=float)
     return np.where(
@@ -249,8 +257,12 @@ def plot_panel_A(ax, tracks):
     Absolute log10(star_age / yr) on the x-axis so the mass-dependent
     spread of ZAMS arrival times (~10^5 yr for 60 M_sun vs ~10^8 yr for
     0.5 M_sun) is preserved -- that spread is the point of the figure.
-    Each curve gets its PMS segment shaded in its own colour at low
-    alpha so the "absent-from-SB99" portion is visible per curve.
+    Each track is drawn piecewise: the PMS segment is a dashed, low-
+    alpha line with its area shaded to the y-axis floor (this is the
+    "absent-from-SB99" portion), and the post-ZAMS segment is solid at
+    full alpha.  The legend entry is attached to the solid segment so
+    each mass appears once; a filled circle at the ZAMS row sits at the
+    boundary between the two styles.
     """
     y_min, y_max = -2.0, 6.5
 
@@ -325,12 +337,22 @@ def plot_panel_B(ax, iso):
     Plot the cumulative luminosity fraction F(>M) at five ages.
 
     F(>M) = L_bol from stars with mass > M, divided by the cluster's
-    total L_bol.  Drops from ~1 on the left to 0 on the right.  A dotted
-    horizontal line at F = 0.98 marks the "98% of light" threshold the
-    appendix quotes; the mass where each curve crosses it is printed as
-    log M(F=0.98).  Young-age curves (< 10 Myr) are drawn solid as the
-    argument regime; the 10 Myr curve is drawn dashed to mark the
-    narrative break where massive stars have died.
+    total L_bol.  Mathematically decreases from 1 at M_MIN to 0 at
+    M_MAX; the plot shows only the [0.95, 1.005] window where the 98%
+    threshold lives, so curves that drop below 95% exit the bottom.  A
+    dotted horizontal line at F = 0.98 marks the "98% of light"
+    threshold the appendix quotes; the mass where each curve crosses it
+    is printed as log M(F=0.98).
+
+    Young-age curves (< 10 Myr) are solid viridis; the 10 Myr curve is
+    dashed medium-grey at lower alpha so it recedes visually and reads
+    as the regime where massive stars have died and the argument
+    weakens.
+
+    The IMF is honoured over [IMF_M_MIN, IMF_M_MAX] only; masses outside
+    that range in the isochrone (MIST basic isochrones extend to ~300
+    M_sun at young ages) are excluded to stay consistent with the
+    paper's M_max = 120 cutoff.
 
     Parameters
     ----------
@@ -353,7 +375,12 @@ def plot_panel_B(ax, iso):
         M = np.asarray(slice_["initial_mass"], dtype=float)
         log_L = np.asarray(slice_["log_L"], dtype=float)
 
-        good = np.isfinite(M) & np.isfinite(log_L) & (M >= IMF_M_MIN)
+        # Enforce both IMF bounds: the paper's Eq. 2 declares M_max = 120,
+        # but MIST basic isochrones extend above that at young ages.  Without
+        # the upper cutoff, kroupa_xi(M) extrapolates the M^-2.3 power law
+        # beyond 120 and those stars leak into L_total.
+        good = np.isfinite(M) & np.isfinite(log_L) \
+            & (M >= IMF_M_MIN) & (M <= IMF_M_MAX)
         M = M[good]
         log_L = log_L[good]
 
