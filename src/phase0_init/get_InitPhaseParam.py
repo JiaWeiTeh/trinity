@@ -29,7 +29,6 @@ WEAVER_ENERGY_FRACTION = 5.0 / 11.0
 
 # Temperature coefficient in Weaver+77, Eq. 37
 # T = 1.51e6 K * (L/10^36 erg/s)^(8/35) * (n/1 cm^-3)^(2/35) * t^(-6/35) * (1-xi)^0.4
-# NOTE: Original code has TODO asking "isn't it 2.07?" - needs verification
 WEAVER_TEMP_COEFFICIENT = 1.51e6  # Kelvin
 
 # Reference luminosity for temperature scaling [erg/s]
@@ -44,33 +43,33 @@ MIN_VELOCITY = 1e-100    # Prevent div by zero in dt_phase0 calculation
 
 def get_y0(params):
     """
-    
-    PHYSICS REFERENCE:
-    ==================
+    Obtain initial values for the energy-driven (Weaver) phase by integrating
+    a brief free-streaming phase from the SB99 wind feedback at tSF.
+
+    Physics references
+    ------------------
     - Free-streaming phase duration: Rahner thesis Eq. 1.15
       https://www.imprs-hd.mpg.de/399417/thesis_Rahner.pdf pg 17
-    
     - Bubble energy: Weaver+77, Eq. 20
     - Bubble temperature: Weaver+77, Eq. 37
 
-    Obtain initial values for the energy driven phase.
-
     Parameters
     ----------
-    tSF : float [Myr]
-        time of last star formation event (or - if no SF ocurred - time of last recollapse).
-    SB99f : func
-        starburst99 interpolation functions.
+    params : DescribedDict
+        Must contain: tSF, SB99f, nCore, mu_convert, bubble_xi_Tb.
 
     Returns
     -------
-    t0 [Myr] : starting time for Weaver phase (free_expansion phase)
-    y0 : An array of initial values. Check comments below for references in the literature
-        r0 : initial separation of bubble edge calculated using (terminal velocity / duration of free expansion phase)
-        v0 : velocity of expanding bubble (terminal velocity) 
-        E0 : energy contained within the bubble
-        T0: temperature
-        
+    t0 : float [Myr]
+        Start time for Weaver phase (= tSF + free-streaming duration).
+    r0 : float [pc]
+        Initial bubble outer radius R2 (= terminal velocity * free-streaming duration).
+    v0 : float [pc/Myr]
+        Initial expansion velocity (wind terminal velocity).
+    E0 : float [au]
+        Initial bubble thermal energy.
+    T0 : float [K]
+        Initial characteristic bubble temperature.
     """
 
     # Core properties - handle both DescribedItem and raw value access
