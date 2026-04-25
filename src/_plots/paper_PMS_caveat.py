@@ -389,7 +389,7 @@ def plot_panel_B(ax, iso):
         cum_from_below = cumulative_trapezoid(dL_dlogM, logM, initial=0.0)
         L_total = float(cum_from_below[-1])
         F_above = 1.0 - cum_from_below / L_total
-        ax.plot(logM, F_above, color=colour, lw=1.2, linestyle=ls,
+        ax.plot(logM, F_above * 100.0, color=colour, lw=1.2, linestyle=ls,
                 alpha=alpha, label=AGE_LABELS[log_age], zorder=3)
 
         f_above_10 = _interp_F_at_logM(logM, F_above, 1.0)
