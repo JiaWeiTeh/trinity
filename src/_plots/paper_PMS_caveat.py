@@ -3,18 +3,19 @@
 """
 PMS caveat figure for TRINITY Paper I appendix.
 
-Panel A (top): individual-star L_bol(t) tracks for six initial masses
+Panel A (left): individual-star L_bol(t) tracks for six initial masses
 (0.5, 1, 3, 10, 30, 60 M_sun), from first MIST EEP through end of
 track, with ZAMS arrival marked on each curve.  Coloured by initial
 mass (plasma colourmap).  Each track is drawn piecewise: the PMS
 portion is dashed and low-alpha with its area shaded to the y-axis
 floor, and the post-ZAMS portion is solid and full-alpha.
 
-Panel B (bottom): cumulative luminosity fraction F(>M) = L_bol(>M) /
+Panel B (right): cumulative luminosity fraction F(>M) = L_bol(>M) /
 L_bol,tot for a Kroupa 10^6 M_sun cluster at five ages (0.1, 0.3, 1,
 3, 10 Myr), using MIST basic isochrones.  Coloured by age (viridis
-colourmap).  A dashed reference line at F = 0.98 marks the 98%-of-
-light threshold the appendix quotes.
+colourmap).  A dotted horizontal reference line at F = 0.98 marks the
+98%-of-light threshold the appendix quotes; a dotted vertical line at
+M = 10 M_sun marks the appendix's mass cut.
 
 Each panel has its own legend.  Uses MIST v1.2 data at
 [Fe/H] = 0.00, v/v_crit = 0.0 (non-rotating).
@@ -67,8 +68,8 @@ MASS_LABELS = {
 }
 
 # Panel A: mass -> colour via plasma colourmap on a log-mass axis.
-# Distinct colourmap from Panel B so the two colourbars are not confused
-# for representing the same quantity.
+# Distinct from Panel B's viridis so the two legends read as different
+# quantities at a glance.
 MASS_CMAP = plt.get_cmap("plasma")
 MASS_NORM = LogNorm(vmin=min(MASSES), vmax=max(MASSES))
 
@@ -95,8 +96,7 @@ PMS_FILL_ALPHA = 0.18
 PMS_LINE_ALPHA = 0.6
 PMS_LINE_STYLE = "--"
 
-# Kroupa (2001) broken power law.  IMF_M_MIN set to 0.1 so log10 = -1.0
-# aligns exactly with the Panel B x-axis left edge.
+# Kroupa (2001) broken power law.
 KROUPA_BREAK = 0.5       # M_sun, slope break
 KROUPA_ALPHA_LO = 1.3    # dN/dM propto M^-alpha for M < 0.5
 KROUPA_ALPHA_HI = 2.3    # dN/dM propto M^-alpha for M >= 0.5
@@ -334,14 +334,15 @@ def plot_panel_B(ax, iso):
     Plot the cumulative luminosity fraction F(>M) at five ages.
 
     F(>M) = L_bol from stars with mass > M, divided by the cluster's
-    total L_bol.  The y-axis is zoomed on F in [0.95, 1.005] so the
-    98%-of-light regime is readable; curves fall off the bottom at
-    higher masses.  A dotted horizontal line at F = 0.98 marks the
-    "98% of light" threshold the
-    appendix quotes; the mass where each curve crosses it is printed as
-    log M(F=0.98).  Young-age curves (< 10 Myr) are drawn solid as the
-    argument regime; the 10 Myr curve is drawn dashed to mark the
-    narrative break where massive stars have died.
+    total L_bol.  The y-axis displays F in percent and zooms on
+    [95, 100.5] so the 98%-of-light regime is readable; curves fall
+    off the bottom at higher masses.  A dotted horizontal line at
+    F = 98% marks the threshold the appendix quotes (the mass where
+    each curve crosses it is printed as log M(F=0.98)); a dotted
+    vertical line at M = 10 M_sun marks the appendix's mass cut.
+    Young-age curves (< 10 Myr) are drawn solid; the 10 Myr curve is
+    drawn dashed in grey to mark the regime where massive stars have
+    died.
 
     Parameters
     ----------
