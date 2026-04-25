@@ -24,7 +24,6 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
-from pathlib import Path
 import cmasher as cmr
 
 import sys as _sys
@@ -38,7 +37,6 @@ from src.cloud_properties.powerLawSphere import (
 from src.cloud_properties.bonnorEbertSphere import (
     solve_lane_emden,
     XI_CRITICAL,
-    OMEGA_CRITICAL,
 )
 from src.cloud_properties.validate_gmc import check_gmc_constraints
 
@@ -339,10 +337,7 @@ def plot_combined_grids():
         if col == 1:
             ax.set_yticklabels([])
 
-        if alpha == 0:
-            title = r'$\alpha = 0$ (homogeneous)'
-        else:
-            title = rf'$\alpha = {alpha}$'
+        title = rf'$\alpha = {alpha}$'
         panel_label = f'{title}\n({n_valid}/{n_total} valid)'
         ax.text(
             0.04, 0.04, panel_label,
