@@ -12,15 +12,12 @@ floor, and the post-ZAMS portion is solid and full-alpha.
 
 Panel B (bottom): cumulative luminosity fraction F(>M) = L_bol(>M) /
 L_bol,tot for a Kroupa 10^6 M_sun cluster at five ages (0.1, 0.3, 1,
-3, 10 Myr), using MIST basic isochrones.  The four young curves use
-the viridis colourmap; the 10 Myr curve is drawn dashed in medium
-grey to read as a dying population.  A dotted reference line at
-F = 0.98 marks the 98%-of-light threshold the appendix quotes.  The
-y-axis is clipped to [95%, 100.5%] since that is where the threshold
-sits; the 10 Myr curve therefore exits through the plot bottom.
+3, 10 Myr), using MIST basic isochrones.  Coloured by age (viridis
+colourmap).  A dashed reference line at F = 0.98 marks the 98%-of-
+light threshold the appendix quotes.
 
-Each panel has its own in-plot legend (no colourbars).  Uses MIST
-v1.2 data at [Fe/H] = 0.00, v/v_crit = 0.0 (non-rotating).
+Each panel has its own legend.  Uses MIST v1.2 data at
+[Fe/H] = 0.00, v/v_crit = 0.0 (non-rotating).
 """
 
 import sys
@@ -103,7 +100,7 @@ PMS_LINE_STYLE = "--"
 KROUPA_BREAK = 0.5       # M_sun, slope break
 KROUPA_ALPHA_LO = 1.3    # dN/dM propto M^-alpha for M < 0.5
 KROUPA_ALPHA_HI = 2.3    # dN/dM propto M^-alpha for M >= 0.5
-IMF_M_MIN = 0.1          # M_sun
+IMF_M_MIN = 0.08         # M_sun, hydrogen-burning limit
 IMF_M_MAX = 120.0        # M_sun
 CLUSTER_MASS = 1e6       # M_sun
 
@@ -337,22 +334,14 @@ def plot_panel_B(ax, iso):
     Plot the cumulative luminosity fraction F(>M) at five ages.
 
     F(>M) = L_bol from stars with mass > M, divided by the cluster's
-    total L_bol.  Mathematically decreases from 1 at M_MIN to 0 at
-    M_MAX; the plot shows only the [0.95, 1.005] window where the 98%
-    threshold lives, so curves that drop below 95% exit the bottom.  A
-    dotted horizontal line at F = 0.98 marks the "98% of light"
-    threshold the appendix quotes; the mass where each curve crosses it
-    is printed as log M(F=0.98).
-
-    Young-age curves (< 10 Myr) are solid viridis; the 10 Myr curve is
-    dashed medium-grey at lower alpha so it recedes visually and reads
-    as the regime where massive stars have died and the argument
-    weakens.
-
-    The IMF is honoured over [IMF_M_MIN, IMF_M_MAX] only; masses outside
-    that range in the isochrone (MIST basic isochrones extend to ~300
-    M_sun at young ages) are excluded to stay consistent with the
-    paper's M_max = 120 cutoff.
+    total L_bol.  The y-axis is zoomed on F in [0.95, 1.005] so the
+    98%-of-light regime is readable; curves fall off the bottom at
+    higher masses.  A dotted horizontal line at F = 0.98 marks the
+    "98% of light" threshold the
+    appendix quotes; the mass where each curve crosses it is printed as
+    log M(F=0.98).  Young-age curves (< 10 Myr) are drawn solid as the
+    argument regime; the 10 Myr curve is drawn dashed to mark the
+    narrative break where massive stars have died.
 
     Parameters
     ----------
@@ -365,7 +354,7 @@ def plot_panel_B(ax, iso):
             else AGE_CMAP(AGE_NORM(log_age))
         idx = iso.age_index(log_age)
         matched = iso.ages[idx]
-        if abs(matched - log_age) > 0.01:
+        if abs(matched - log_age) > 0.025:
             print(
                 f"  [log t = {log_age:.2f}] WARNING: snapped to {matched:.3f} "
                 "(grid does not contain the requested value)"
@@ -388,18 +377,19 @@ def plot_panel_B(ax, iso):
         order = np.argsort(M)
         M = M[order]
         log_L = log_L[order]
+        logM = np.log10(M)
 
-        # dL/dM = L * xi (L_sun per M_sun of stellar mass).
+        # Integrate in log M: the Kroupa integrand L*xi is a steep power
+        # law in linear M but smooth in log M, so trapezoid error drops.
+        # dL = L * xi * dM = L * xi * M * ln(10) * d(log10 M).
         L = 10.0 ** log_L
         xi = kroupa_xi(M)
-        dL_dM = L * xi
+        dL_dlogM = L * xi * M * np.log(10.0)
 
-        cum_from_below = cumulative_trapezoid(dL_dM, M, initial=0.0)
+        cum_from_below = cumulative_trapezoid(dL_dlogM, logM, initial=0.0)
         L_total = float(cum_from_below[-1])
         F_above = 1.0 - cum_from_below / L_total
-
-        logM = np.log10(M)
-        ax.plot(logM, F_above*100, color=colour, lw=1.2, linestyle=ls,
+        ax.plot(logM, F_above, color=colour, lw=1.2, linestyle=ls,
                 alpha=alpha, label=AGE_LABELS[log_age], zorder=3)
 
         f_above_10 = _interp_F_at_logM(logM, F_above, 1.0)
@@ -457,10 +447,10 @@ def main():
     print(f"  Verified integral M*xi dM = {verify_lo + verify_hi:.4e} M_sun "
           f"(target {CLUSTER_MASS:.4e})")
 
-    # A&A two-column figure, vertically stacked: Panel A on top, Panel B below.
+    # A&A wide figure, side-by-side: Panel A on the left, Panel B on the right.
     fig, (axA, axB) = plt.subplots(
-        2, 1, figsize=(7.0, 5.5),
-        gridspec_kw={"hspace": 0.35},
+        1, 2, figsize=(11.0, 4.2),
+        gridspec_kw={"wspace": 0.28},
     )
     plot_panel_A(axA, tracks)
     plot_panel_B(axB, iso)
