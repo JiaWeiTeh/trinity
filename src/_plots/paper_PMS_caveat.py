@@ -403,7 +403,7 @@ def plot_panel_B(ax, iso):
 
     ax.set_xlim(-1.0, 2.1)
     ax.set_ylim(0.95*100, 1.005*100)
-    ax.set_xlabel(r"$\log_{10}(M_\star) \; [\mathrm{M}_\odot]$")
+    ax.set_xlabel(r"$\log_{10}(M_{\rm init}) \; [\mathrm{M}_\odot]$")
     ax.set_ylabel(r"$L_{\rm bol}(>M) / L_{\rm bol,\,tot} \; [\%]$")
     # ax.yaxis.set_major_formatter(PercentFormatter(xmax=1.0, decimals=0))
 
