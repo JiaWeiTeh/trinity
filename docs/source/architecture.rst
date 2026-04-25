@@ -109,7 +109,7 @@ ODE system:
    * - ``T0``
      - :math:`T_0`
      - K
-     - Bubble central temperature
+     - Characteristic bubble temperature
 
 Every other recorded quantity — pressures, forces, luminosities,
 profiles — is derived from this vector together with the shared

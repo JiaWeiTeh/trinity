@@ -1078,7 +1078,7 @@ if __name__ == "__main__":
     
     # Typical scalar parameters
     params["t_now"] = DescribedItem(0.0, info="Current time", ori_units="Myr")
-    params["R2"] = DescribedItem(1.0, info="Bubble radius", ori_units="pc")
+    params["R2"] = DescribedItem(1.0, info="Outer bubble radius (= inner shell edge)", ori_units="pc")
     params["SB99_mass"] = DescribedItem(1e6, info="SB99 cluster mass", ori_units="Msun")
     
     # Example array parameters: one small, one large

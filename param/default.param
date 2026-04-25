@@ -19,9 +19,7 @@
 # 
 # 5. Any line beginning with # is treated as a comment and will be automatically ignored.
 #
-# 6. Any line beginning with INFO is recorded into the dictionary under val.info for future use. 
-#
-# 7. 
+# 6. Any line beginning with INFO is recorded into the dictionary under val.info for future use.
 
 # =============================================================================
 # Basic Parameters
@@ -61,7 +59,7 @@ log_colors    True
 # UNIT: [Msun]
 mCloud    1e7
 
-# INFO: Star formation effeciency.
+# INFO: Star formation efficiency.
 sfe    0.01
 
 # INFO: Cloud metallicity
@@ -150,10 +148,10 @@ SB99_rotation    1
 # UNIT: [Msun]
 SB99_BHCUT    120
 
-# INFO: Fraction of mass injected into the molecular cloud due to sweeping of cold material from protostellar winds and disks.
+# INFO: Fraction of cold mass entrained in stellar winds (increases Mdot_wind, reduces velocity).
 FB_mColdWindFrac   0
 
-# INFO: Fraction of mass injected into the molecular cloud due to cold ejecta from supernovae.
+# INFO: Fraction of cold mass entrained in supernova ejecta (increases Mdot_SN, reduces velocity).
 FB_mColdSNFrac    0
 
 # INFO: Defines the thermalization efficiency for colliding stellar winds.
