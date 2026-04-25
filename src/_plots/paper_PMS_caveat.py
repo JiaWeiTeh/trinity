@@ -6,7 +6,9 @@ PMS caveat figure for TRINITY Paper I appendix.
 Panel A (top): individual-star L_bol(t) tracks for six initial masses
 (0.5, 1, 3, 10, 30, 60 M_sun), from first MIST EEP through end of
 track, with ZAMS arrival marked on each curve.  Coloured by initial
-mass (plasma colourmap).
+mass (plasma colourmap).  Each track is drawn piecewise: the PMS
+portion is dashed and low-alpha with its area shaded to the y-axis
+floor, and the post-ZAMS portion is solid and full-alpha.
 
 Panel B (bottom): cumulative luminosity fraction F(>M) = L_bol(>M) /
 L_bol,tot for a Kroupa 10^6 M_sun cluster at five ages (0.1, 0.3, 1,
@@ -183,7 +185,10 @@ def _kroupa_xi_scalar(m):
 def kroupa_xi_unnormalised(M):
     """Kroupa 2001 broken power law, unnormalised.  dN/dM.
 
-    Vectorised; accepts arrays or scalars and returns an array.
+    Vectorised; accepts arrays or scalars and returns an array.  Does
+    *not* enforce the IMF support [IMF_M_MIN, IMF_M_MAX]: the raw power
+    law extrapolates beyond those bounds, so callers that need the
+    paper's M <= 120 M_sun cutoff must mask their inputs.
     """
     M = np.asarray(M, dtype=float)
     return np.where(
@@ -249,8 +254,12 @@ def plot_panel_A(ax, tracks):
     Absolute log10(star_age / yr) on the x-axis so the mass-dependent
     spread of ZAMS arrival times (~10^5 yr for 60 M_sun vs ~10^8 yr for
     0.5 M_sun) is preserved -- that spread is the point of the figure.
-    Each curve gets its PMS segment shaded in its own colour at low
-    alpha so the "absent-from-SB99" portion is visible per curve.
+    Each track is drawn piecewise: the PMS segment is a dashed, low-
+    alpha line with its area shaded to the y-axis floor (this is the
+    "absent-from-SB99" portion), and the post-ZAMS segment is solid at
+    full alpha.  The legend entry is attached to the solid segment so
+    each mass appears once; a filled circle at the ZAMS row sits at the
+    boundary between the two styles.
     """
     y_min, y_max = -2.0, 6.5
 
@@ -302,7 +311,7 @@ def plot_panel_A(ax, tracks):
     ax.set_xlim(3.0, 10.5)
     ax.set_ylim(y_min, y_max)
     ax.set_xlabel(r"$\log_{10}(t) \; [\mathrm{yr}]$")
-    ax.set_ylabel(r"$\log_{10}(L_{\rm bol} / L_\odot)$")
+    ax.set_ylabel(r"$\log_{10}(L_{\rm bol}) \; [L_\odot]$")
 
     ax.legend(loc="upper right", ncol=2, frameon=False, fontsize=9)
 
@@ -355,7 +364,12 @@ def plot_panel_B(ax, iso):
         M = np.asarray(slice_["initial_mass"], dtype=float)
         log_L = np.asarray(slice_["log_L"], dtype=float)
 
-        good = np.isfinite(M) & np.isfinite(log_L) & (M >= IMF_M_MIN)
+        # Enforce both IMF bounds: the paper's Eq. 2 declares M_max = 120,
+        # but MIST basic isochrones extend above that at young ages.  Without
+        # the upper cutoff, kroupa_xi(M) extrapolates the M^-2.3 power law
+        # beyond 120 and those stars leak into L_total.
+        good = np.isfinite(M) & np.isfinite(log_L) \
+            & (M >= IMF_M_MIN) & (M <= IMF_M_MAX)
         M = M[good]
         log_L = log_L[good]
 
@@ -388,17 +402,21 @@ def plot_panel_B(ax, iso):
         )
 
     ax.set_xlim(-1.0, 2.1)
-    ax.set_ylim(0.95, 1.005)
-    ax.set_xlabel(r"$\log_{10}(M_{\rm init} / M_\odot)$")
-    ax.set_ylabel(r"$L_{\rm bol}(>M) / L_{\rm bol,\,tot}$")
-    ax.yaxis.set_major_formatter(PercentFormatter(xmax=1.0, decimals=0))
+    ax.set_ylim(0.95*100, 1.005*100)
+    ax.set_xlabel(r"$\log_{10}(M_\star) \; [\mathrm{M}_\odot]$")
+    ax.set_ylabel(r"$L_{\rm bol}(>M) / L_{\rm bol,\,tot} \; [\%]$")
+    # ax.yaxis.set_major_formatter(PercentFormatter(xmax=1.0, decimals=0))
 
     # Dotted 98% reference line: dark grey, lowered alpha so the curves
     # stay visually primary.  Dotted (not dashed) so it does not clash
     # with the dashed 10 Myr curve.
-    ax.axhline(0.98, linestyle=":", color="0.3", lw=0.8,
+    ax.axhline(0.98*100, linestyle=":", color="0.3", lw=0.8,
                alpha=0.5, zorder=2)
-    ax.text(2.0, 0.982, r"$98\%$", ha="right", va="bottom",
+    ax.text(2.0, 0.982*100, r"$98\%$", ha="right", va="bottom",
+            color="0.3", alpha=0.7, fontsize=9)
+    ax.axvline(1, linestyle=":", color="0.3", lw=0.8,
+               alpha=0.5, zorder=2)
+    ax.text(1.1, 0.99*100, r"$>\,10\,M_\odot$", ha="left", va="bottom",
             color="0.3", alpha=0.7, fontsize=9)
 
     ax.legend(loc="lower left", ncol=2, frameon=False, fontsize=9)
