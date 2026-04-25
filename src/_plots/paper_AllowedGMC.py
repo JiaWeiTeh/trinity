@@ -6,9 +6,10 @@ Allowed GMC Parameter Space Visualization
 This script creates visualizations of valid parameter combinations for
 Giant Molecular Cloud (GMC) simulations in TRINITY.
 
-Produces two PDF files:
-1. paper_AllowedGMC_PowerLaw.pdf - rCloud at fixed rCore for various power-law alpha values
-2. paper_AllowedGMC_BonnorEbert.pdf - rCloud for various dimensionless radii xi
+Produces one PDF file:
+- paper_AllowedGMC.pdf - combined figure with the power-law 2x2 grid on the
+  left and the Bonnor-Ebert 2x2 grid on the right, sharing axis labels and a
+  single colourbar. Sized for A&A \\begin{figure*} (textwidth).
 
 Constraints checked:
 1. rCloud <= 200 pc (typical GMC limit)
@@ -23,7 +24,6 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
-from pathlib import Path
 import cmasher as cmr
 
 import sys as _sys
@@ -37,7 +37,6 @@ from src.cloud_properties.powerLawSphere import (
 from src.cloud_properties.bonnorEbertSphere import (
     solve_lane_emden,
     XI_CRITICAL,
-    OMEGA_CRITICAL,
 )
 from src.cloud_properties.validate_gmc import check_gmc_constraints
 
@@ -78,16 +77,21 @@ TICK_FONT = 30
 LABEL_FONT = 32
 PANEL_FONT = 24
 CBAR_LABEL_FONT = 34
+SUPTITLE_FONT = 36
 
-# Layout (fractions of figure): tight subplot grid with colourbar to the right
-SUBPLOT_LEFT = 0.10
-SUBPLOT_RIGHT = 0.87
-SUBPLOT_BOTTOM = 0.09
-SUBPLOT_TOP = 0.98
+# Layout (fractions of figure): two 2x2 blocks side by side with one
+# shared colourbar on the right.
+LEFT_PL = 0.065
+RIGHT_PL = 0.45
+LEFT_BE = 0.475
+RIGHT_BE = 0.86
+SUBPLOT_BOTTOM = 0.11
+SUBPLOT_TOP = 0.90
 SUBPLOT_WSPACE = 0.04
 SUBPLOT_HSPACE = 0.04
-CBAR_LEFT = 0.89
-CBAR_WIDTH = 0.035
+CBAR_LEFT = 0.875
+CBAR_WIDTH = 0.014
+SUPTITLE_Y = 0.93
 
 
 # =============================================================================
@@ -270,31 +274,49 @@ def compute_valid_rCore_grid_BE(xi_out):
 # Plotting Functions
 # =============================================================================
 
-def plot_powerlaw_grids():
+def plot_combined_grids():
     """
-    Figure showing rCloud (colour fill) across (M_cloud, n_core) for each
-    power-law alpha, at fixed rCore. Shared colourbar on the right.
-    """
-    fig, axes = plt.subplots(2, 2, figsize=(12, 10))
+    Combined figure (sized for A&A \\begin{figure*}, textwidth).
 
-    # Tight subplot grid; leave room on the right for the colourbar
-    fig.subplots_adjust(
-        left=SUBPLOT_LEFT, right=SUBPLOT_RIGHT,
+    Left half  : 2x2 grid of power-law alpha values.
+    Right half : 2x2 grid of Bonnor-Ebert xi values.
+    A single shared x and y axis label spans across, and a single shared
+    colourbar sits on the right edge. A suptitle labels each block.
+    """
+    fig = plt.figure(figsize=(22, 10))
+
+    gs_pl = fig.add_gridspec(
+        2, 2,
+        left=LEFT_PL, right=RIGHT_PL,
+        bottom=SUBPLOT_BOTTOM, top=SUBPLOT_TOP,
+        wspace=SUBPLOT_WSPACE, hspace=SUBPLOT_HSPACE,
+    )
+    gs_be = fig.add_gridspec(
+        2, 2,
+        left=LEFT_BE, right=RIGHT_BE,
         bottom=SUBPLOT_BOTTOM, top=SUBPLOT_TOP,
         wspace=SUBPLOT_WSPACE, hspace=SUBPLOT_HSPACE,
     )
 
-    # Colourmap for rCloud fill
+    axes_pl = np.array(
+        [[fig.add_subplot(gs_pl[i, j]) for j in range(2)] for i in range(2)]
+    )
+    axes_be = np.array(
+        [[fig.add_subplot(gs_be[i, j]) for j in range(2)] for i in range(2)]
+    )
+
     vmin_rCloud, vmax_rCloud = 0.1, 200.0
     cmap = cmr.rainforest.copy()
     cmap.set_bad('white', 1.0)
 
-    im = None  # will hold the last pcolormesh for shared colourbar
-    for idx, alpha in enumerate(ALPHA_VALUES):
-        ax = axes.flat[idx]
-        row, col = divmod(idx, 2)
+    im = None  # last pcolormesh — used to attach the shared colourbar
 
-        print(f"Computing grid for \u03b1 = {alpha}...")
+    # --- Power-Law block (left) ---
+    for idx, alpha in enumerate(ALPHA_VALUES):
+        row, col = divmod(idx, 2)
+        ax = axes_pl[row, col]
+
+        print(f"Computing grid for α = {alpha}...")
         grid_rCloud = compute_rCloud_grid_powerlaw(alpha)
 
         n_valid = np.sum(~np.isnan(grid_rCloud))
@@ -310,16 +332,12 @@ def plot_powerlaw_grids():
         ax.set_yscale('log')
         ax.tick_params(labelsize=TICK_FONT)
 
-        # Only show tick labels on outer edges
         if row == 0:
             ax.set_xticklabels([])
         if col == 1:
             ax.set_yticklabels([])
 
-        if alpha == 0:
-            title = r'$\alpha = 0$ (homogeneous)'
-        else:
-            title = rf'$\alpha = {alpha}$'
+        title = rf'$\alpha = {alpha}$'
         panel_label = f'{title}\n({n_valid}/{n_total} valid)'
         ax.text(
             0.04, 0.04, panel_label,
@@ -330,50 +348,12 @@ def plot_powerlaw_grids():
                       facecolor='white', edgecolor='black', alpha=0.9),
         )
 
-    # Shared axis labels
-    fig.supxlabel(r'$M_\mathrm{cloud}$ [M$_\odot$]', fontsize=LABEL_FONT)
-    fig.supylabel(r'$n_\mathrm{core}$ [cm$^{-3}$]', fontsize=LABEL_FONT)
-
-    # Shared colourbar — height matches the subplot grid
-    cbar_height = SUBPLOT_TOP - SUBPLOT_BOTTOM
-    cbar_ax = fig.add_axes([CBAR_LEFT, SUBPLOT_BOTTOM, CBAR_WIDTH, cbar_height])
-    cbar = fig.colorbar(im, cax=cbar_ax)
-    cbar.set_label(r'$r_\mathrm{cloud}$ [pc]', fontsize=CBAR_LABEL_FONT)
-    cbar.ax.tick_params(labelsize=TICK_FONT)
-
-    if SAVE_PDF:
-        out_pdf = FIG_DIR / "paper_AllowedGMC_PowerLaw.pdf"
-        fig.savefig(out_pdf)
-        print(f"Saved: {out_pdf}")
-
-    plt.close(fig)
-
-
-def plot_BE_grids():
-    """
-    Figure showing rCloud (colour fill) across (M_cloud, n_core) for each
-    Bonnor-Ebert xi_out value. Shared colourbar on the right.
-    """
-    fig, axes = plt.subplots(2, 2, figsize=(12, 10))
-
-    # Tight subplot grid; leave room on the right for the colourbar
-    fig.subplots_adjust(
-        left=SUBPLOT_LEFT, right=SUBPLOT_RIGHT,
-        bottom=SUBPLOT_BOTTOM, top=SUBPLOT_TOP,
-        wspace=SUBPLOT_WSPACE, hspace=SUBPLOT_HSPACE,
-    )
-
-    # Colourmap for rCloud fill
-    vmin_rCloud, vmax_rCloud = 0.1, 200.0
-    cmap = cmr.rainforest.copy()
-    cmap.set_bad('white', 1.0)
-
-    im = None  # will hold the last pcolormesh for shared colourbar
+    # --- Bonnor-Ebert block (right) ---
     for idx, xi in enumerate(XI_VALUES):
-        ax = axes.flat[idx]
         row, col = divmod(idx, 2)
+        ax = axes_be[row, col]
 
-        print(f"Computing grid for \u03be = {xi:.2f}...")
+        print(f"Computing grid for ξ = {xi:.2f}...")
         _, grid_rCloud = compute_valid_rCore_grid_BE(xi)
 
         n_valid = np.sum(~np.isnan(grid_rCloud))
@@ -389,11 +369,11 @@ def plot_BE_grids():
         ax.set_yscale('log')
         ax.tick_params(labelsize=TICK_FONT)
 
-        # Only show tick labels on outer edges
+        # Drop y tick labels across the whole BE block — the PL block's
+        # leftmost column already carries the shared y ticks for the figure.
+        ax.set_yticklabels([])
         if row == 0:
             ax.set_xticklabels([])
-        if col == 1:
-            ax.set_yticklabels([])
 
         if abs(xi - XI_CRITICAL) < 0.01:
             title = rf'$\xi = {xi:.2f}$ (critical)'
@@ -409,11 +389,25 @@ def plot_BE_grids():
                       facecolor='white', edgecolor='black', alpha=0.9),
         )
 
-    # Shared axis labels
-    fig.supxlabel(r'$M_\mathrm{cloud}$ [M$_\odot$]', fontsize=LABEL_FONT)
-    fig.supylabel(r'$n_\mathrm{core}$ [cm$^{-3}$]', fontsize=LABEL_FONT)
+    # Suptitles above each 2x2 block
+    pl_center = 0.5 * (LEFT_PL + RIGHT_PL)
+    be_center = 0.5 * (LEFT_BE + RIGHT_BE)
+    fig.text(pl_center, SUPTITLE_Y, 'Power-Law',
+             ha='center', va='bottom', fontsize=SUPTITLE_FONT)
+    fig.text(be_center, SUPTITLE_Y, 'Bonnor-Ebert',
+             ha='center', va='bottom', fontsize=SUPTITLE_FONT)
 
-    # Shared colourbar — height matches the subplot grid
+    # Single x/y axis labels spanning across both blocks
+    overall_x_center = 0.5 * (LEFT_PL + RIGHT_BE)
+    overall_y_center = 0.5 * (SUBPLOT_BOTTOM + SUBPLOT_TOP)
+    fig.text(overall_x_center, 0.02,
+             r'$M_\mathrm{cloud}$ [M$_\odot$]',
+             ha='center', va='bottom', fontsize=LABEL_FONT)
+    fig.text(0.012, overall_y_center,
+             r'$n_\mathrm{core}$ [cm$^{-3}$]',
+             ha='left', va='center', rotation=90, fontsize=LABEL_FONT)
+
+    # Single shared colourbar on the right, height matching the panel grid
     cbar_height = SUBPLOT_TOP - SUBPLOT_BOTTOM
     cbar_ax = fig.add_axes([CBAR_LEFT, SUBPLOT_BOTTOM, CBAR_WIDTH, cbar_height])
     cbar = fig.colorbar(im, cax=cbar_ax)
@@ -421,7 +415,7 @@ def plot_BE_grids():
     cbar.ax.tick_params(labelsize=TICK_FONT)
 
     if SAVE_PDF:
-        out_pdf = FIG_DIR / "paper_AllowedGMC_BonnorEbert.pdf"
+        out_pdf = FIG_DIR / "paper_AllowedGMC.pdf"
         fig.savefig(out_pdf)
         print(f"Saved: {out_pdf}")
 
@@ -433,16 +427,12 @@ def plot_BE_grids():
 # =============================================================================
 
 def main():
-    """Generate both visualization PDFs."""
+    """Generate the combined GMC parameter-space figure."""
     print("=" * 70)
-    print("Generating GMC Parameter Space Visualizations")
+    print("Generating GMC Parameter Space Visualization")
     print("=" * 70)
 
-    print("\n--- Power-Law Density Profiles ---")
-    plot_powerlaw_grids()
-
-    print("\n--- Bonnor-Ebert Density Profiles ---")
-    plot_BE_grids()
+    plot_combined_grids()
 
     print("\n" + "=" * 70)
     print("Done!")
