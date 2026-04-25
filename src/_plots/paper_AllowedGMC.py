@@ -374,9 +374,8 @@ def plot_combined_grids():
         ax.set_yscale('log')
         ax.tick_params(labelsize=TICK_FONT)
 
-        # The whole BE block sits to the right of the PL block, so its y
-        # tick labels are dropped — only PL col=0 carries y ticks for the
-        # combined figure. Top-row x ticks hidden as before.
+        # Drop y tick labels across the whole BE block — the PL block's
+        # leftmost column already carries the shared y ticks for the figure.
         ax.set_yticklabels([])
         if row == 0:
             ax.set_xticklabels([])
