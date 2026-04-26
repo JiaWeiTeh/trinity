@@ -49,6 +49,7 @@ from src._output.trinity_reader import (
     get_unique_ndens,
 )
 from src._output.simulation_end import read_simulation_end
+from src._functions.unit_conversions import INV_CONV
 from src._plots.grid_template import (
     _mcloud_label_short,
     _sfe_title,
@@ -73,7 +74,7 @@ V_FAIL_THRESHOLD = 10.0   # pc/Myr
 RCLOUD_BAND_FRAC = 0.05
 
 # Convert pc/Myr → km/s for the secondary y-axis label.
-PC_PER_MYR_TO_KMS = 0.9777922215250843
+V_AU2KMS = INV_CONV.v_au2kms
 
 # Suffixes appended by run.py when include_PHII = [True, False].
 YES_SUFFIX = "_yesPHII"
@@ -337,8 +338,8 @@ def plot_from_path(data_input: str, output_dir: Optional[str] = None):
     # Secondary y-axis showing km/s for paper readers used to that unit.
     ax_kms = ax.secondary_yaxis(
         "right",
-        functions=(lambda v: v * PC_PER_MYR_TO_KMS,
-                   lambda v: v / PC_PER_MYR_TO_KMS),
+        functions=(lambda v: v * V_AU2KMS,
+                   lambda v: v / V_AU2KMS),
     )
     ax_kms.set_ylabel(r"$|v_2|$ [km s$^{-1}$]")
 
@@ -354,6 +355,38 @@ def plot_from_path(data_input: str, output_dir: Optional[str] = None):
 
     plt.show()
     plt.close(fig)
+
+
+# ----------------------------------------------------------------
+# Axis harmonisation
+# ----------------------------------------------------------------
+def _harmonize_axes(populated_axes):
+    """Set a common (xmin, xmax, ymin, ymax) on every populated cell.
+
+    Helps direct visual comparison of where each trajectory sits
+    relative to its rCloud cliff.  Operates only on cells that were
+    actually drawn — passing in cells that received only an axhline
+    would bias the limits with the matplotlib log-scale default range.
+    """
+    if not populated_axes:
+        return
+    xmins, xmaxs, ymins, ymaxs = [], [], [], []
+    for ax in populated_axes:
+        x0, x1 = ax.get_xlim()
+        y0, y1 = ax.get_ylim()
+        if np.isfinite(x0) and np.isfinite(x1) and x1 > x0:
+            xmins.append(x0); xmaxs.append(x1)
+        if np.isfinite(y0) and np.isfinite(y1) and y1 > y0:
+            ymins.append(y0); ymaxs.append(y1)
+    if not xmins or not ymins:
+        return
+    xlo, xhi = min(xmins), max(xmaxs)
+    ylo, yhi = min(ymins), max(ymaxs)
+    # Clip y from below so we don't expose the v=0 floor band.
+    ylo = max(ylo, 1e-2)
+    for ax in populated_axes:
+        ax.set_xlim(xlo, xhi)
+        ax.set_ylim(ylo, yhi)
 
 
 # ----------------------------------------------------------------
@@ -374,8 +407,6 @@ def plot_grid(folder, output_dir=None, ndens_filter=None,
         print(f"No simulations found in: {folder}")
         return
 
-    has_yes = bool(yes_by_base)
-    has_no = bool(no_by_base)
     print(f"Found {len(anchor)} anchor runs "
           f"(_yesPHII: {len(yes_by_base)}, "
           f"_noPHII: {len(no_by_base)}, "
@@ -409,6 +440,8 @@ def plot_grid(folder, output_dir=None, ndens_filter=None,
             dpi=300, squeeze=False,
         )
 
+        populated = []  # cells that received a real trajectory
+
         for i, mCloud in enumerate(mCloud_list):
             for j, sfe in enumerate(sfe_list):
                 ax = axes[i, j]
@@ -437,6 +470,8 @@ def plot_grid(folder, output_dir=None, ndens_filter=None,
                     mark_missing_cell(ax, "error")
                     continue
 
+                populated.append(ax)
+
                 # Column title (top row only).
                 if i == 0:
                     ax.set_title(_sfe_title(sfe))
@@ -457,7 +492,7 @@ def plot_grid(folder, output_dir=None, ndens_filter=None,
 
         # Tie all cells to a common (R_2, |v_2|) range so the cliff
         # location is visually comparable across the grid.
-        _harmonize_axes(axes)
+        _harmonize_axes(populated)
 
         # Legend + suptitle via shared helper.
         param_tag = build_param_tag(mCloud_list, sfe_list, ndens)
@@ -482,36 +517,6 @@ def plot_grid(folder, output_dir=None, ndens_filter=None,
         print(f"  Saved: {out_pdf}")
 
         plt.close(fig)
-
-
-def _harmonize_axes(axes):
-    """Set a common (xmin, xmax, ymin, ymax) on every populated cell.
-
-    Helps direct visual comparison of where each trajectory sits
-    relative to its rCloud cliff.
-    """
-    xmins, xmaxs, ymins, ymaxs = [], [], [], []
-    flat = [ax for row in axes for ax in row]
-    for ax in flat:
-        if not ax.has_data():
-            continue
-        x0, x1 = ax.get_xlim()
-        y0, y1 = ax.get_ylim()
-        if np.isfinite(x0) and np.isfinite(x1) and x1 > x0:
-            xmins.append(x0); xmaxs.append(x1)
-        if np.isfinite(y0) and np.isfinite(y1) and y1 > y0:
-            ymins.append(y0); ymaxs.append(y1)
-    if not xmins or not ymins:
-        return
-    xlo, xhi = min(xmins), max(xmaxs)
-    ylo, yhi = min(ymins), max(ymaxs)
-    # Clip y from below so we don't expose the v=0 floor band.
-    ylo = max(ylo, 1e-2)
-    for ax in flat:
-        if not ax.has_data():
-            continue
-        ax.set_xlim(xlo, xhi)
-        ax.set_ylim(ylo, yhi)
 
 
 # Backwards compatibility alias used by some sweep drivers.
