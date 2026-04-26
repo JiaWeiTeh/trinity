@@ -159,7 +159,7 @@ def compute_spitzer_anchored(t, R2, t_anchor=WEAVER_ANCHOR_MYR, exponent=4.0/7.0
 # ----------------------------------------------------------------
 # Per-cell plotting
 # ----------------------------------------------------------------
-def plot_cell(ax, data_trinity, data_warpfield, inline_label_trinity=False):
+def plot_cell(ax, data_trinity, data_warpfield):
     """Draw TRINITY, WARPFIELD, Weaver, and momentum-driven lines on one axis."""
     t_T  = data_trinity['t']
     R2_T = smooth_1d(data_trinity['R2'], SMOOTH_WINDOW, mode=SMOOTH_MODE)
@@ -215,21 +215,6 @@ def plot_cell(ax, data_trinity, data_warpfield, inline_label_trinity=False):
     R_spitzer = compute_spitzer_anchored(t_T, R2_T, exponent=exp_spitzer)
     ax.plot(t_T, R_spitzer, color=COLOR_SPITZER,
             lw=LW_SCALING, ls='-.', alpha=ALPHA_SCALING, zorder=2)
-
-    # Inline label on the TRINITY curve itself — used in the 1x1 layout
-    # where we drop TRINITY from the legend.
-    if inline_label_trinity:
-        valid = np.isfinite(t_T) & np.isfinite(R2_T) & (R2_T > 0)
-        if np.any(valid):
-            i_last = np.flatnonzero(valid)[-1]
-            ax.annotate(
-                "TRINITY",
-                xy=(t_T[i_last], R2_T[i_last]),
-                xytext=(-4, 4), textcoords="offset points",
-                ha='right', va='bottom',
-                color=COLOR_TRINITY, fontweight='bold',
-                zorder=6,
-            )
 
     if LOGLOG:
         # Anchor x-axis to first positive time so log scale is well-defined.
@@ -346,8 +331,7 @@ def plot_comparison_grid(
                 try:
                     data_T = load_run_R2(path_T)
                     data_W = load_run_R2(path_W) if path_W is not None else None
-                    plot_cell(ax, data_T, data_W,
-                              inline_label_trinity=is_single)
+                    plot_cell(ax, data_T, data_W)
                 except Exception as e:
                     print(f"  Error: {sim_name}: {e}")
                     mark_missing_cell(ax, "error")
@@ -364,16 +348,10 @@ def plot_comparison_grid(
                     if i == nrows - 1:
                         ax.set_xlabel("t [Myr]")
 
-        # Legend entries — analytic scalings carry the demoted style; in
-        # the 1x1 case TRINITY is shown inline on the curve, not in the
-        # legend.
-        handles = []
-        if not is_single:
-            handles.append(
-                Line2D([0], [0], color=COLOR_TRINITY, lw=2.5,
-                       label=r"TRINITY")
-            )
-        handles.extend([
+        # Legend entries — analytic scalings carry the demoted style.
+        handles = [
+            Line2D([0], [0], color=COLOR_TRINITY, lw=2.5,
+                   label=r"TRINITY"),
             Line2D([0], [0], color=COLOR_WARPFIELD, lw=1.6,
                    alpha=ALPHA_WARPFIELD,
                    label=r"WARPFIELD (no $P_{\rm HII}$)"),
@@ -383,7 +361,7 @@ def plot_comparison_grid(
                    alpha=ALPHA_SCALING, label=r"Pure photoionised"),
             Line2D([0], [0], color=COLOR_MOMENTUM, lw=LW_SCALING, ls=':',
                    alpha=ALPHA_SCALING, label=r"Pure momentum"),
-        ])
+        ]
         handles.extend(get_marker_legend_handles(include_phase=SHOW_PHASE, include_rcloud=SHOW_RCLOUD, include_rcloud_horizontal=SHOW_RCLOUD_H, include_collapse=SHOW_COLLAPSE))
 
         param_tag = build_param_tag(mCloud_list, sfe_list, ndens)
