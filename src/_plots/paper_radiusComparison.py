@@ -51,12 +51,14 @@ SHOW_COLLAPSE = False
 LOGLOG = False             # log-log axes for the R(t) panels
 WEAVER_ANCHOR_MYR = 0.01  # anchor Weaver line to TRINITY R2 at this time
 
-# Styling
-COLOR_TRINITY   = "C0"      # blue
-COLOR_WARPFIELD = "C3"     # red
-COLOR_WEAVER    = "0.4"     # grey
-COLOR_MOMENTUM  = "0.4"     # grey (subordinate to data curves)
-COLOR_SPITZER   = "0.4"     # grey (subordinate to data curves)
+# Styling — TRINITY is the hero curve (black, thick); WARPFIELD is the
+# comparison curve (faded red); analytic scalings are subordinate (grey).
+COLOR_TRINITY   = "k"
+COLOR_WARPFIELD = "C3"
+ALPHA_WARPFIELD = 0.5
+COLOR_WEAVER    = "0.4"
+COLOR_MOMENTUM  = "0.4"
+COLOR_SPITZER   = "0.4"
 
 # A&A single-column width (\columnwidth ~ 88 mm) used for the 1x1 layout.
 COLUMN_WIDTH_INCHES = 3.46
@@ -172,14 +174,15 @@ def plot_cell(ax, data_trinity, data_warpfield):
         show_collapse=SHOW_COLLAPSE,
     )
 
-    # TRINITY R2
-    ax.plot(t_T, R2_T, color=COLOR_TRINITY, lw=2.0, ls='-', zorder=4)
+    # TRINITY R2 (hero curve)
+    ax.plot(t_T, R2_T, color=COLOR_TRINITY, lw=2.5, ls='-', zorder=5)
 
-    # WARPFIELD R2
+    # WARPFIELD R2 (faded)
     if data_warpfield is not None:
         t_W  = data_warpfield['t']
         R2_W = smooth_1d(data_warpfield['R2'], SMOOTH_WINDOW, mode=SMOOTH_MODE)
-        ax.plot(t_W, R2_W, color=COLOR_WARPFIELD, lw=2.0, ls='-', zorder=3)
+        ax.plot(t_W, R2_W, color=COLOR_WARPFIELD, lw=1.6, ls='-',
+                alpha=ALPHA_WARPFIELD, zorder=3)
 
     # Density profile exponent (for scaling exponents)
     alpha_rho = data_trinity.get('densPL_alpha') or 0
@@ -341,9 +344,10 @@ def plot_comparison_grid(
 
         # Legend (drop "R_2" mentions; entries describe the curve)
         handles = [
-            Line2D([0], [0], color=COLOR_TRINITY, lw=2.0,
+            Line2D([0], [0], color=COLOR_TRINITY, lw=2.5,
                    label=r"TRINITY"),
-            Line2D([0], [0], color=COLOR_WARPFIELD, lw=2.0,
+            Line2D([0], [0], color=COLOR_WARPFIELD, lw=1.6,
+                   alpha=ALPHA_WARPFIELD,
                    label=r"WARPFIELD (no $P_{\rm HII}$)"),
             Line2D([0], [0], color=COLOR_WEAVER, lw=1.5, ls='--',
                    label=r"Pure energy (wind)"),
