@@ -16,7 +16,6 @@ Grid layout: mCloud (rows) × SFE (columns), one PDF per density.
 
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib.patheffects as pe
 from matplotlib.lines import Line2D
 from pathlib import Path
 
@@ -178,12 +177,8 @@ def plot_cell(ax, data_trinity, data_warpfield, inline_label_trinity=False):
         show_collapse=SHOW_COLLAPSE,
     )
 
-    # TRINITY R2 (hero curve, with white halo so it pops over other curves)
-    ax.plot(
-        t_T, R2_T, color=COLOR_TRINITY, lw=2.5, ls='-', zorder=5,
-        path_effects=[pe.Stroke(linewidth=4.5, foreground='white'),
-                      pe.Normal()],
-    )
+    # TRINITY R2 (hero curve)
+    ax.plot(t_T, R2_T, color=COLOR_TRINITY, lw=2.5, ls='-', zorder=5)
 
     # WARPFIELD R2 (faded)
     if data_warpfield is not None:
@@ -233,8 +228,6 @@ def plot_cell(ax, data_trinity, data_warpfield, inline_label_trinity=False):
                 xytext=(-4, 4), textcoords="offset points",
                 ha='right', va='bottom',
                 color=COLOR_TRINITY, fontweight='bold',
-                path_effects=[pe.Stroke(linewidth=2.5, foreground='white'),
-                              pe.Normal()],
                 zorder=6,
             )
 
