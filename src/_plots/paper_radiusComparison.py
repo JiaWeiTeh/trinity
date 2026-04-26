@@ -342,15 +342,15 @@ def plot_comparison_grid(
         # Legend (drop "R_2" mentions; entries describe the curve)
         handles = [
             Line2D([0], [0], color=COLOR_TRINITY, lw=2.0,
-                   label=r"TRINITY (with $P_{\rm HII}$)"),
+                   label=r"TRINITY"),
             Line2D([0], [0], color=COLOR_WARPFIELD, lw=2.0,
-                   label=r"WARPFIELD-like (no $P_{\rm HII}$)"),
+                   label=r"WARPFIELD (no $P_{\rm HII}$)"),
             Line2D([0], [0], color=COLOR_WEAVER, lw=1.5, ls='--',
-                   label=r"$R \propto t^{3/5}$ (Weaver, energy-driven)"),
+                   label=r"Pure energy (wind)"),
             Line2D([0], [0], color=COLOR_SPITZER, lw=1.5, ls='-.',
-                   label=r"$R \propto t^{4/7}$ (Spitzer, HII expansion)"),
+                   label=r"Pure photoionised"),
             Line2D([0], [0], color=COLOR_MOMENTUM, lw=1.5, ls=':',
-                   label=r"$R \propto t^{1/2}$ (momentum scaling)"),
+                   label=r"Pure momentum"),
         ]
         handles.extend(get_marker_legend_handles(include_phase=SHOW_PHASE, include_rcloud=SHOW_RCLOUD, include_rcloud_horizontal=SHOW_RCLOUD_H, include_collapse=SHOW_COLLAPSE))
 
