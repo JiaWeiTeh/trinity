@@ -101,12 +101,6 @@ def start_expansion(params):
 
     # for metallicity, here we need to take care of both CIE and nonCIE part.
 
-    # maybe move this to read_params
-    # if params['metallicity'].value != 1:
-    #     sys.exit('Need to implement non-solar metallicity.')
-
-    # get path to library
-    # See example_pl.param for more information.
     cooling_path = params['path_cooling_CIE'].value
     logger.debug(f"Loading cooling curve from: {cooling_path}")
     # unpack from file
@@ -119,12 +113,6 @@ def start_expansion(params):
     params['cStruc_cooling_CIE_interpolation'].value = cooling_CIE_interpolation
 
     logger.info(f"Loaded CIE cooling curve (T range: 10^{logT.min():.1f} - 10^{logT.max():.1f} K)")
-    
-    # =============================================================================
-    # These two are currently not being needed. 
-    # =============================================================================
-    # create density law for cloudy
-    # TODO: add CLOUDY support in the future.
     
     # =============================================================================
     # Begin simulation.
@@ -215,20 +203,6 @@ def run_expansion(params):
     logger.info(f"Phase 1a complete. Duration: {phase1a_elapsed}")
     logger.debug(f"  Final R2 = {params['R2'].value:.6e} pc")
     logger.debug(f"  Final v2 = {params['v2'].value:.6e} pc/Myr")
-    
-    
-    # record
-    # try:
-    #     params.flush()
-    # except:
-    #     pass
-
-    # sys.exit('done with phase 1a')
-
-    # ------------
-    # checkout load_dict_halfway.py to understand how to load dictionaries
-    # halfway through the simulation.
-    # ------------
 
     # =============================================================================
     # Phase 1b: implicit energy phase
@@ -251,15 +225,6 @@ def run_expansion(params):
     phase1b_elapsed = phase1b_endtime - phase1b_starttime
     logger.info(f"Phase 1b complete. Duration: {phase1b_elapsed}")
 
-    # record
-    # try:
-    #     params.flush()
-    # except:
-    #     pass
-
-    # make a function that interpolates density so that it goes from top to end of cloud.
-
-    
     # =============================================================================
     # Phase 1c: transition phase
     # =============================================================================
@@ -281,11 +246,6 @@ def run_expansion(params):
         logger.info(f"Phase 1c complete. Duration: {phase1c_elapsed}")
     else:
         logger.warning("EndSimulationDirectly=True, skipping transition phase")
-
-    # try:
-    #     params.flush()
-    # except:
-    #     pass
 
     # Since cooling is not needed anymore after this phase, we reset values.
     # COOLING_PHASE_KEYS contains all cooling-related parameters that can be cleared.

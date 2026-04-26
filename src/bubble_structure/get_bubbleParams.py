@@ -196,24 +196,23 @@ def Ebdot_to_cool_beta(bubble_P, r1, bubble_Edot, my_params):
 
 def bubble_E2P(Eb, r2, r1, gamma):
     """
-    This function relates bubble energy to buble pressure
+    Convert bubble thermal energy to bubble pressure.
 
-    Parameters 
+    Parameters
     ----------
-    Eb : float 
-        Bubble energy.
-    r1 : float 
-        Inner radius of bubble (outer radius of wind cavity).
-    r2 (aka rShell.rBubble) : float 
-        Outer radius of bubble (inner radius of ionised shell).
+    Eb : float
+        Bubble thermal energy [au].
+    r2 : float
+        Outer bubble radius (= inner shell edge) [pc].
+    r1 : float
+        Inner bubble radius (wind termination shock) [pc].
+    gamma : float
+        Adiabatic index.
 
     Returns
     -------
-    bubble_P : float 
-        Bubble pressure.
-
-    # Note:
-        # old code: PfromE()
+    bubble_P : float
+        Bubble pressure [au].
     """
     
     # Make sure units are in cgs
@@ -231,27 +230,26 @@ def bubble_E2P(Eb, r2, r1, gamma):
     
 def bubble_P2E(Pb, r2, r1, gamma):
     """
-    This function relates bubble pressure to buble energy 
+    Convert bubble pressure to bubble thermal energy.
 
-    Parameters [cgs]
+    Inverse of bubble_E2P(). Inputs are astropy quantities (not raw cgs floats).
+
+    Parameters
     ----------
-    Pb : float
-        Bubble pressure.
-    r1 : float
-        Inner radius of bubble (outer radius of wind cavity).
-    r2 (aka rShell): float
-        Outer radius of bubble (inner radius of ionised shell).
+    Pb : astropy Quantity
+        Bubble pressure (convertible to g/cm/s**2).
+    r2 : astropy Quantity
+        Outer bubble radius (= inner shell edge) (convertible to cm).
+    r1 : astropy Quantity
+        Inner bubble radius (wind termination shock) (convertible to cm).
+    gamma : float
+        Adiabatic index.
 
     Returns
     -------
-    Eb : float
-        Bubble energy.
-
+    Eb : astropy Quantity
+        Bubble thermal energy [erg].
     """
-    # Note:
-        # old code: EfromP()
-    # see bubble_E2P()
-    # Make sure units are in cgs
     r2 = r2.to(u.cm)
     r1 = r1.to(u.cm)
     Pb = Pb.to(u.g/u.cm/u.s**2)
@@ -259,29 +257,29 @@ def bubble_P2E(Pb, r2, r1, gamma):
     
     return Eb.to(u.erg)
 
-def pRam(r, Lwind, v_mech_total):
+def pRam(r, Lmech, v_mech):
     """
-    This function calculates the ram pressure.
+    Ram pressure from a freely streaming wind: P_ram = L_mech / (2 pi r^2 v_mech).
 
-    returns in [au].
+    In current usage this is called with the *total* mechanical luminosity
+    (winds + SNe) and the corresponding total mechanical velocity, e.g. in
+    the momentum and transition phases.
 
     Parameters
     ----------
     r : float
-        Radius of outer edge of bubble.
-    Lwind : float
-        Mechanical wind luminosity.
-    v_mech_total : float
-        terminal velocity of wind.
+        Outer bubble radius R2 [pc].
+    Lmech : float
+        Mechanical luminosity (typically Lmech_total) [au].
+    v_mech : float
+        Mechanical terminal velocity (typically v_mech_total) [pc/Myr].
 
     Returns
     -------
-    Ram pressure.
+    P_ram : float
+        Ram pressure [au].
     """
-    # Note:
-        # old code: Pram()
-
-    return Lwind / (2 * np.pi * r**2 * v_mech_total)
+    return Lmech / (2 * np.pi * r**2 * v_mech)
 
 
 def get_effective_bubble_pressure(current_phase, Eb, R2, R1, gamma,

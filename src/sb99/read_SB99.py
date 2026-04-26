@@ -23,8 +23,7 @@ logger = logging.getLogger(__name__)
 EPSILON = 1e-100  # Small number to prevent division by zero
 
 
-# TODO: Implement interpolation function for in-between metallicities/cluster
-    # : Add fmet, where metallicity scaling due to non-existent SB99 file
+# TODO: Support in-between metallicities (currently only Z=1 and Z=0.15 solar are supported).
 
 def read_SB99(f_mass, params):
     """
