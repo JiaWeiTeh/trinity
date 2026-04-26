@@ -16,6 +16,7 @@ Grid layout: mCloud (rows) × SFE (columns), one PDF per density.
 
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.patheffects as pe
 from matplotlib.lines import Line2D
 from pathlib import Path
 
@@ -51,14 +52,17 @@ SHOW_COLLAPSE = False
 LOGLOG = False             # log-log axes for the R(t) panels
 WEAVER_ANCHOR_MYR = 0.01  # anchor Weaver line to TRINITY R2 at this time
 
-# Styling — TRINITY is the hero curve (black, thick); WARPFIELD is the
-# comparison curve (faded red); analytic scalings are subordinate (grey).
+# Styling — TRINITY is the hero curve (black, thick, white halo);
+# WARPFIELD is the comparison curve (faded red); analytic scalings are
+# subordinate (faint grey).
 COLOR_TRINITY   = "k"
 COLOR_WARPFIELD = "C3"
 ALPHA_WARPFIELD = 0.5
 COLOR_WEAVER    = "0.4"
 COLOR_MOMENTUM  = "0.4"
 COLOR_SPITZER   = "0.4"
+ALPHA_SCALING   = 0.5    # alpha for analytic scaling lines
+LW_SCALING      = 1.0    # linewidth for analytic scaling lines
 
 # A&A single-column width (\columnwidth ~ 88 mm) used for the 1x1 layout.
 COLUMN_WIDTH_INCHES = 3.46
@@ -156,7 +160,7 @@ def compute_spitzer_anchored(t, R2, t_anchor=WEAVER_ANCHOR_MYR, exponent=4.0/7.0
 # ----------------------------------------------------------------
 # Per-cell plotting
 # ----------------------------------------------------------------
-def plot_cell(ax, data_trinity, data_warpfield):
+def plot_cell(ax, data_trinity, data_warpfield, inline_label_trinity=False):
     """Draw TRINITY, WARPFIELD, Weaver, and momentum-driven lines on one axis."""
     t_T  = data_trinity['t']
     R2_T = smooth_1d(data_trinity['R2'], SMOOTH_WINDOW, mode=SMOOTH_MODE)
@@ -174,8 +178,12 @@ def plot_cell(ax, data_trinity, data_warpfield):
         show_collapse=SHOW_COLLAPSE,
     )
 
-    # TRINITY R2 (hero curve)
-    ax.plot(t_T, R2_T, color=COLOR_TRINITY, lw=2.5, ls='-', zorder=5)
+    # TRINITY R2 (hero curve, with white halo so it pops over other curves)
+    ax.plot(
+        t_T, R2_T, color=COLOR_TRINITY, lw=2.5, ls='-', zorder=5,
+        path_effects=[pe.Stroke(linewidth=4.5, foreground='white'),
+                      pe.Normal()],
+    )
 
     # WARPFIELD R2 (faded)
     if data_warpfield is not None:
@@ -190,7 +198,8 @@ def plot_cell(ax, data_trinity, data_warpfield):
     # --- Weaver: pure t^{3/(5-|α|)} power-law anchored to TRINITY at early time
     exp_weaver = 3.0 / (5.0 - abs(alpha_rho))
     R_weaver = compute_weaver_anchored(t_T, R2_T, exponent=exp_weaver)
-    ax.plot(t_T, R_weaver, color=COLOR_WEAVER, lw=1.5, ls='--', zorder=2)
+    ax.plot(t_T, R_weaver, color=COLOR_WEAVER,
+            lw=LW_SCALING, ls='--', alpha=ALPHA_SCALING, zorder=2)
 
     # --- Momentum-driven: diagnostic slope anchored at momentum phase ---
     # Find the start of the momentum phase from the phase array
@@ -203,12 +212,31 @@ def plot_cell(ax, data_trinity, data_warpfield):
         R_mom = compute_momentum_driven_anchored(
             t_T, R2_T, t_anchor=t_mom_start, exponent=exp_mom,
         )
-        ax.plot(t_T, R_mom, color=COLOR_MOMENTUM, lw=1.5, ls=':', zorder=2)
+        ax.plot(t_T, R_mom, color=COLOR_MOMENTUM,
+                lw=LW_SCALING, ls=':', alpha=ALPHA_SCALING, zorder=2)
 
     # --- Spitzer-like: D-type HII expansion R ∝ t^{4/(7-2|α|)} anchored at early time
     exp_spitzer = 4.0 / (7.0 - 2.0 * abs(alpha_rho))
     R_spitzer = compute_spitzer_anchored(t_T, R2_T, exponent=exp_spitzer)
-    ax.plot(t_T, R_spitzer, color=COLOR_SPITZER, lw=1.5, ls='-.', zorder=2)
+    ax.plot(t_T, R_spitzer, color=COLOR_SPITZER,
+            lw=LW_SCALING, ls='-.', alpha=ALPHA_SCALING, zorder=2)
+
+    # Inline label on the TRINITY curve itself — used in the 1x1 layout
+    # where we drop TRINITY from the legend.
+    if inline_label_trinity:
+        valid = np.isfinite(t_T) & np.isfinite(R2_T) & (R2_T > 0)
+        if np.any(valid):
+            i_last = np.flatnonzero(valid)[-1]
+            ax.annotate(
+                "TRINITY",
+                xy=(t_T[i_last], R2_T[i_last]),
+                xytext=(-4, 4), textcoords="offset points",
+                ha='right', va='bottom',
+                color=COLOR_TRINITY, fontweight='bold',
+                path_effects=[pe.Stroke(linewidth=2.5, foreground='white'),
+                              pe.Normal()],
+                zorder=6,
+            )
 
     if LOGLOG:
         # Anchor x-axis to first positive time so log scale is well-defined.
@@ -325,7 +353,8 @@ def plot_comparison_grid(
                 try:
                     data_T = load_run_R2(path_T)
                     data_W = load_run_R2(path_W) if path_W is not None else None
-                    plot_cell(ax, data_T, data_W)
+                    plot_cell(ax, data_T, data_W,
+                              inline_label_trinity=is_single)
                 except Exception as e:
                     print(f"  Error: {sim_name}: {e}")
                     mark_missing_cell(ax, "error")
@@ -342,20 +371,26 @@ def plot_comparison_grid(
                     if i == nrows - 1:
                         ax.set_xlabel("t [Myr]")
 
-        # Legend (drop "R_2" mentions; entries describe the curve)
-        handles = [
-            Line2D([0], [0], color=COLOR_TRINITY, lw=2.5,
-                   label=r"TRINITY"),
+        # Legend entries — analytic scalings carry the demoted style; in
+        # the 1x1 case TRINITY is shown inline on the curve, not in the
+        # legend.
+        handles = []
+        if not is_single:
+            handles.append(
+                Line2D([0], [0], color=COLOR_TRINITY, lw=2.5,
+                       label=r"TRINITY")
+            )
+        handles.extend([
             Line2D([0], [0], color=COLOR_WARPFIELD, lw=1.6,
                    alpha=ALPHA_WARPFIELD,
                    label=r"WARPFIELD (no $P_{\rm HII}$)"),
-            Line2D([0], [0], color=COLOR_WEAVER, lw=1.5, ls='--',
-                   label=r"Pure energy (wind)"),
-            Line2D([0], [0], color=COLOR_SPITZER, lw=1.5, ls='-.',
-                   label=r"Pure photoionised"),
-            Line2D([0], [0], color=COLOR_MOMENTUM, lw=1.5, ls=':',
-                   label=r"Pure momentum"),
-        ]
+            Line2D([0], [0], color=COLOR_WEAVER, lw=LW_SCALING, ls='--',
+                   alpha=ALPHA_SCALING, label=r"Pure energy (wind)"),
+            Line2D([0], [0], color=COLOR_SPITZER, lw=LW_SCALING, ls='-.',
+                   alpha=ALPHA_SCALING, label=r"Pure photoionised"),
+            Line2D([0], [0], color=COLOR_MOMENTUM, lw=LW_SCALING, ls=':',
+                   alpha=ALPHA_SCALING, label=r"Pure momentum"),
+        ])
         handles.extend(get_marker_legend_handles(include_phase=SHOW_PHASE, include_rcloud=SHOW_RCLOUD, include_rcloud_horizontal=SHOW_RCLOUD_H, include_collapse=SHOW_COLLAPSE))
 
         param_tag = build_param_tag(mCloud_list, sfe_list, ndens)
