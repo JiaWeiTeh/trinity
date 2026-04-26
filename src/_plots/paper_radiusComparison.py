@@ -48,6 +48,7 @@ SHOW_PHASE = False
 SHOW_RCLOUD = False
 SHOW_RCLOUD_H = False
 SHOW_COLLAPSE = False
+LOGLOG = False             # log-log axes for the R(t) panels
 WEAVER_ANCHOR_MYR = 0.01  # anchor Weaver line to TRINITY R2 at this time
 
 # Styling
@@ -55,6 +56,11 @@ COLOR_TRINITY   = "C0"      # blue
 COLOR_WARPFIELD = "C3"     # red
 COLOR_WEAVER    = "0.4"     # grey
 COLOR_MOMENTUM  = "0.4"     # grey (subordinate to data curves)
+COLOR_SPITZER   = "0.4"     # grey (subordinate to data curves)
+
+# A&A single-column width (\columnwidth ~ 88 mm) used for the 1x1 layout.
+COLUMN_WIDTH_INCHES = 3.46
+COLUMN_HEIGHT_INCHES = 2.8
 
 SAVE_PDF = True
 
@@ -126,6 +132,25 @@ def compute_momentum_driven_anchored(t, R2, t_anchor=WEAVER_ANCHOR_MYR, exponent
     return np.where(t > 0, R_ref * (t / t_ref) ** exponent, np.nan)
 
 
+def compute_spitzer_anchored(t, R2, t_anchor=WEAVER_ANCHOR_MYR, exponent=4.0/7.0):
+    """R ∝ t^exponent anchored to R2 at t_anchor.
+
+    Default exponent 4/7 is the Spitzer (1978) D-type HII-region expansion
+    in a uniform medium: pressure of the photoionised gas drives the shocked
+    shell outward.  For a power-law density profile n ∝ r^{-|α_ρ|}, the
+    generalisation is exponent = 4 / (7 - 2|α_ρ|).
+    """
+    valid = np.isfinite(R2) & (R2 > 0) & np.isfinite(t) & (t > 0)
+    if not np.any(valid):
+        return np.full_like(t, np.nan)
+
+    t_v, R2_v = t[valid], R2[valid]
+    idx = np.argmin(np.abs(t_v - t_anchor))
+    t_ref, R_ref = t_v[idx], R2_v[idx]
+
+    return np.where(t > 0, R_ref * (t / t_ref) ** exponent, np.nan)
+
+
 # ----------------------------------------------------------------
 # Per-cell plotting
 # ----------------------------------------------------------------
@@ -177,7 +202,20 @@ def plot_cell(ax, data_trinity, data_warpfield):
         )
         ax.plot(t_T, R_mom, color=COLOR_MOMENTUM, lw=1.5, ls=':', zorder=2)
 
-    ax.set_xlim(t_T.min(), t_T.max())
+    # --- Spitzer-like: D-type HII expansion R ∝ t^{4/(7-2|α|)} anchored at early time
+    exp_spitzer = 4.0 / (7.0 - 2.0 * abs(alpha_rho))
+    R_spitzer = compute_spitzer_anchored(t_T, R2_T, exponent=exp_spitzer)
+    ax.plot(t_T, R_spitzer, color=COLOR_SPITZER, lw=1.5, ls='-.', zorder=2)
+
+    if LOGLOG:
+        # Anchor x-axis to first positive time so log scale is well-defined.
+        t_pos = t_T[t_T > 0]
+        if len(t_pos) > 0:
+            ax.set_xlim(t_pos.min(), t_T.max())
+        ax.set_xscale('log')
+        ax.set_yscale('log')
+    else:
+        ax.set_xlim(t_T.min(), t_T.max())
 
 
 # ----------------------------------------------------------------
@@ -254,9 +292,16 @@ def plot_comparison_grid(
         print(f"  SFE: {sfe_list}")
 
         nrows, ncols = len(mCloud_list), len(sfe_list)
+        is_single = (nrows == 1 and ncols == 1)
+
+        if is_single:
+            figsize = (COLUMN_WIDTH_INCHES, COLUMN_HEIGHT_INCHES)
+        else:
+            figsize = (3.4 * ncols, 2.8 * nrows)
+
         fig, axes = plt.subplots(
             nrows=nrows, ncols=ncols,
-            figsize=(3.4 * ncols, 2.8 * nrows),
+            figsize=figsize,
             sharex=False, sharey=False,
             dpi=300, squeeze=False,
         )
@@ -283,35 +328,53 @@ def plot_comparison_grid(
                     mark_missing_cell(ax, "error")
                     continue
 
-                if j == 0:
-                    ax.set_ylabel(_mcloud_label(mCloud) + "\nRadius [pc]")
-                else:
-                    ax.tick_params(labelleft=False)
-                if i == nrows - 1:
+                if is_single:
+                    ax.set_ylabel("Radius [pc]")
                     ax.set_xlabel("t [Myr]")
+                else:
+                    if j == 0:
+                        ax.set_ylabel(_mcloud_label(mCloud) + "\nRadius [pc]")
+                    else:
+                        ax.tick_params(labelleft=False)
+                    if i == nrows - 1:
+                        ax.set_xlabel("t [Myr]")
 
-        # Legend
+        # Legend (drop "R_2" mentions; entries describe the curve)
         handles = [
             Line2D([0], [0], color=COLOR_TRINITY, lw=2.0,
-                   label=r"TRINITY ($R_2$, with $P_{\rm HII}$)"),
+                   label=r"TRINITY (with $P_{\rm HII}$)"),
             Line2D([0], [0], color=COLOR_WARPFIELD, lw=2.0,
-                   label=r"WARPFIELD-like ($R_2$, no $P_{\rm HII}$)"),
+                   label=r"WARPFIELD-like (no $P_{\rm HII}$)"),
             Line2D([0], [0], color=COLOR_WEAVER, lw=1.5, ls='--',
                    label=r"$R \propto t^{3/5}$ (Weaver, energy-driven)"),
+            Line2D([0], [0], color=COLOR_SPITZER, lw=1.5, ls='-.',
+                   label=r"$R \propto t^{4/7}$ (Spitzer, HII expansion)"),
             Line2D([0], [0], color=COLOR_MOMENTUM, lw=1.5, ls=':',
                    label=r"$R \propto t^{1/2}$ (momentum scaling)"),
         ]
         handles.extend(get_marker_legend_handles(include_phase=SHOW_PHASE, include_rcloud=SHOW_RCLOUD, include_rcloud_horizontal=SHOW_RCLOUD_H, include_collapse=SHOW_COLLAPSE))
 
         param_tag = build_param_tag(mCloud_list, sfe_list, ndens)
-        attach_grid_legend(
-            fig, handles,
-            n_rows_for_layout=nrows,
-            cell_height_inches=2.8,
-            folder_name="", param_tag=param_tag,
-            legend_ncol=4,
-            suptitle=False,
-        )
+
+        if is_single:
+            # In-axes legend; no row/col labels, no suptitle.
+            axes[0, 0].legend(
+                handles=handles,
+                loc="best",
+                frameon=True, facecolor="white",
+                framealpha=0.9, edgecolor="0.2",
+                fontsize=8,
+            )
+            fig.tight_layout()
+        else:
+            attach_grid_legend(
+                fig, handles,
+                n_rows_for_layout=nrows,
+                cell_height_inches=2.8,
+                folder_name="", param_tag=param_tag,
+                legend_ncol=4,
+                suptitle=False,
+            )
 
         # Save
         if output_dir:
@@ -360,16 +423,19 @@ WARPFIELD-like). Runs are paired automatically by their base name.
     parser.add_argument('--show-rcloud-horizontal', action='store_true', default=False)
     parser.add_argument('--show-collapse', action='store_true', default=False)
     parser.add_argument('--show-all-markers', action='store_true', default=False)
+    parser.add_argument('--loglog', action='store_true', default=False,
+                        help='Plot R(t) on log-log axes')
 
     args = parser.parse_args()
 
     # Apply marker flags to module globals
     from src._plots.cli import get_marker_flags
     _marker_flags = get_marker_flags(args)
-    SHOW_PHASE = _marker_flags['show_phase']
-    SHOW_RCLOUD = _marker_flags['show_rcloud']
-    SHOW_RCLOUD_H = _marker_flags['show_rcloud_horizontal']
-    SHOW_COLLAPSE = _marker_flags['show_collapse']
+    globals()['SHOW_PHASE'] = _marker_flags['show_phase']
+    globals()['SHOW_RCLOUD'] = _marker_flags['show_rcloud']
+    globals()['SHOW_RCLOUD_H'] = _marker_flags['show_rcloud_horizontal']
+    globals()['SHOW_COLLAPSE'] = _marker_flags['show_collapse']
+    globals()['LOGLOG'] = args.loglog
 
     plot_comparison_grid(
         args.folder,
