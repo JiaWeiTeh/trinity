@@ -15,7 +15,11 @@ For Bonnor-Ebert sphere:
     n(r) = nCore * f_rho_rhoc(xi)   for r <= rCloud
     n(r) = nISM                     for r > rCloud
 
-@author: Jia Wei 
+The discontinuous jump from cloud density to nISM at r=rCloud is replaced
+by a tanh bridge of width SMOOTH_FRAC * rCloud (1% by default) so the ODE
+solvers in the phase modules see a C^infty rhs at the cloud boundary.
+
+@author: Jia Wei
 """
 
 import numpy as np
@@ -111,27 +115,37 @@ def get_density_profile(r, params):
     n_arr = np.zeros_like(r_arr)
 
     # =============================================================================
+    # Numerical regularization at rCloud
+    # ---------------------------------
+    # The cloud->ISM transition is mathematically idealized as a step. That
+    # step makes mShell_dot = 4*pi*r^2*rho(r)*v in the phase ODEs jump by
+    # ~10^3 across r=rCloud, which can cause LSODA to stall trying to refine
+    # its step below min_step. We replace the step with a tanh bridge of
+    # width SMOOTH_FRAC*rCloud so the rhs is C^infty everywhere. The width
+    # is well below physical uncertainty in cloud-edge structure; mass
+    # conservation holds to O(SMOOTH_FRAC^2).
+    # =============================================================================
+    SMOOTH_FRAC = 0.01
+    delta = SMOOTH_FRAC * rCloud
+    w_outside = 0.5 * (1.0 + np.tanh((r_arr - rCloud) / delta))
+
+    # =============================================================================
     # Power-law profile
     # =============================================================================
     if params['dens_profile'].value == 'densPL':
         alpha = params['densPL_alpha'].value
 
         if alpha == 0:
-            # Homogeneous cloud: constant density inside, ISM outside
-            n_arr[:] = nISM  # Default to ISM
-            n_arr[r_arr <= rCloud] = nCore
+            # Homogeneous cloud: constant nCore inside, blends to nISM at rCloud
+            n_inside = np.full_like(r_arr, nCore)
         else:
             # Power-law profile: n = nCore * (r/rCore)^alpha
-            # with boundary conditions at rCore and rCloud
+            n_inside = nCore * (r_arr / rCore) ** alpha
+            # Inner core: constant density (rCore is far below rCloud, so the
+            # smoothing band does not reach rCore in any realistic setup)
+            n_inside[r_arr <= rCore] = nCore
 
-            # Default: power-law region
-            n_arr = nCore * (r_arr / rCore) ** alpha
-
-            # Inner core: constant density
-            n_arr[r_arr <= rCore] = nCore
-
-            # Outer ISM: constant density
-            n_arr[r_arr > rCloud] = nISM
+        n_arr = n_inside * (1.0 - w_outside) + nISM * w_outside
 
     # =============================================================================
     # Bonnor-Ebert sphere profile
@@ -142,14 +156,12 @@ def get_density_profile(r, params):
         # Convert radius to dimensionless xi coordinate
         xi_arr = be_r2xi(r_arr, params)
 
-        # Get density ratio from interpolation function
+        # Get density ratio from interpolation function (interpolator already
+        # handles xi values for r > rCloud — same as the original code path)
         rho_rhoc = f_rho_rhoc(xi_arr)
 
-        # Calculate number density
-        n_arr = rho_rhoc * nCore
-
-        # Outside cloud: ISM density
-        n_arr[r_arr > rCloud] = nISM
+        n_inside = rho_rhoc * nCore
+        n_arr = n_inside * (1.0 - w_outside) + nISM * w_outside
 
     else:
         raise ValueError(f"Unknown density profile: {params['dens_profile'].value}")
