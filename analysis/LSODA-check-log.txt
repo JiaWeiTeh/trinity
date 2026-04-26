@@ -1,0 +1,15 @@
+for f in outputs/trinity_fiducial_yesno/*/trinity.log; do
+  dir=$(dirname "$f")
+  name=$(basename "$dir")
+  echo "=== $name ==="
+  echo "-- failures --"
+  grep -A2 "Solver did not succeed\|Bubble properties calculation failed\|Cooling balance reached\|energy_floor\|min_radius" "$f" | head -40
+  echo "-- rCloud --"
+  python3 -c "
+import json, sys
+with open('$dir/dictionary.jsonl') as fp:
+    snap = json.loads(fp.readline())
+print('rCloud =', snap.get('rCloud'))
+print('R2_max  =', max(json.loads(l).get('R2', 0) for l in open('$dir/dictionary.jsonl')))
+"
+done
