@@ -114,7 +114,7 @@ END_MARKER_SIZE = 7
 # an LSODA istate failure (truncated). Same shape, two colors so the
 # trajectory's eye-line stays uncluttered.
 HANDOFF_MARKER       = "D"            # filled diamond
-HANDOFF_FACE_OK      = "#2ca02c"      # green: cooling_balance exit
+HANDOFF_FACE_OK      = "#f0e442"      # yellow: cooling_balance exit (Wong palette, colorblind-safe vs orange)
 HANDOFF_FACE_FAIL    = "#ff7f0e"      # orange: LSODA istate failure
 HANDOFF_MARKER_SIZE  = 5.5
 
