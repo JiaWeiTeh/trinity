@@ -136,19 +136,10 @@ r = np.unique(np.concatenate([r_log, r_band]))
 
 
 # =============================================================================
-# Plot
+# Plot (style is set by trinity.mplstyle via the plot_base import)
 # =============================================================================
-plt.rcParams.update({
-    'font.size':       16,
-    'axes.labelsize':  16,
-    'axes.titlesize':  16,
-    'xtick.labelsize': 13,
-    'ytick.labelsize': 13,
-    'legend.fontsize': 12,
-})
-
 fig, axes = plt.subplots(
-    2, 2, figsize=(12, 9), sharex=True, sharey='row', dpi=150,
+    2, 2, figsize=(12, 9), sharex=True, sharey='row',
 )
 (ax_n_jump, ax_n_blend), (ax_m_jump, ax_m_blend) = axes
 
@@ -192,22 +183,21 @@ ax_n_jump.set_ylim(0.3 * N_ISM_CGS, 5 * N_CORE_CGS)
 ax_n_jump.set_title('previous: discontinuous step')
 ax_n_blend.set_title(r'hyperbolic blend ($\delta = f\,r_\mathrm{cloud}$)')
 
-ax_n_jump.legend(loc='lower left', frameon=False)
-ax_m_jump.legend(loc='lower right', frameon=False)
-ax_n_blend.legend(loc='lower left', frameon=False)
-ax_m_blend.legend(loc='lower right', frameon=False)
+ax_n_jump.legend(loc='lower left')
+ax_m_jump.legend(loc='lower right')
+ax_n_blend.legend(loc='lower left')
+ax_m_blend.legend(loc='lower right')
 
 # Annotate rCloud line on every panel (sharey='row' has set m-axis ylim)
 for ax in (ax_n_jump, ax_n_blend, ax_m_jump, ax_m_blend):
     y_top = ax.get_ylim()[1]
     ax.text(R_CLOUD, y_top, r' $r_\mathrm{cloud}$',
-            color='red', va='top', ha='left', fontsize=11)
+            color='red', va='top', ha='left')
 
 fig.suptitle(
     rf'Fiducial cloud: $M_\mathrm{{cl}}=10^{{6}}\,\mathrm{{M}}_\odot$, '
     rf'$n_\mathrm{{core}}=10^{{3}}\,\mathrm{{cm}}^{{-3}}$, '
     rf'$\alpha={ALPHA}$, $r_\mathrm{{core}}={R_CORE}\,\mathrm{{pc}}$',
-    fontsize=16,
 )
 fig.tight_layout(rect=[0, 0, 1, 0.96])
 
