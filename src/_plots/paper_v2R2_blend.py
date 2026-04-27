@@ -3,26 +3,29 @@
 """
 Before/after blend trajectory comparison on a v_2 vs R_2 phase plot.
 
-Loads a pair of TRINITY snapshot dumps named ``*_before_blend*.jsonl`` and
-``*_after_blend*.jsonl`` from a folder, then overlays both trajectories on a
-single (R_2, |v_2|) panel using the same visual conventions as
-``paper_v2R2.py`` (log-log axes, rCloud cliff band, failure-velocity
-threshold, start/end markers, implicit->transition handoff diamond).
+Expects a *parent* folder containing two TRINITY run subdirectories whose
+names end in ``_before_blend`` and ``_after_blend`` (e.g.
+``1e6_sfe010_n1e3_PL0_yesPHII_before_blend/`` and the matching
+``..._after_blend/``). The standard ``dictionary.jsonl`` inside each is
+loaded and both trajectories are overlaid on a single (R_2, |v_2|) panel
+using the same visual conventions as ``paper_v2R2.py`` (log-log axes,
+rCloud cliff band, failure-velocity threshold, start/end markers,
+implicit->transition handoff diamond).
 
 Designed in two layers so the published-paper migration is trivial:
 
-  load_v2R2_pair(source)   accepts either a folder of .jsonl snapshots
-                           or a single .npz bundle (forward-compatible)
+  load_v2R2_pair(source)   accepts either the parent folder described
+                           above, or a single .npz bundle (forward-compat)
   plot_v2R2_diff(pair, ...) pure plotting; no I/O assumptions
 
-Plus an ``export_v2R2_npz(folder, out_path)`` helper so any folder of blend
-.jsonl files can be reduced to a single self-describing .npz containing
-just the arrays the figure needs.
+Plus an ``export_v2R2_npz(folder, out_path)`` helper that reduces such a
+parent folder to a single self-describing .npz containing only the arrays
+the figure needs.
 
 Usage:
 
-    python paper_v2R2_blend.py <folder-or-npz> [-o out.pdf]
-    python paper_v2R2_blend.py <folder> --export <out.npz>
+    python paper_v2R2_blend.py <parent-folder-or-npz> [-o out.pdf]
+    python paper_v2R2_blend.py <parent-folder> --export <out.npz>
 """
 
 from __future__ import annotations
@@ -54,12 +57,17 @@ from src._plots.paper_v2R2 import (
     END_MARKER_FAIL,
     END_MARKER_SIZE,
 )
+from src._output.trinity_reader import find_data_path
 
 # ----------------------------------------------------------------
 # Configuration
 # ----------------------------------------------------------------
-BEFORE_GLOB = "*_before_blend*"
-AFTER_GLOB  = "*_after_blend*"
+# These match TRINITY's run-folder naming convention: each side of the
+# blend comparison is a full simulation directory whose name ends with
+# the corresponding suffix; the .jsonl lives inside (dictionary.jsonl
+# by TRINITY convention).
+BEFORE_SUFFIX = "_before_blend"
+AFTER_SUFFIX  = "_after_blend"
 
 # Per-variant styling. "after" is the hero (drawn on top, solid black);
 # "before" is the baseline (dashed red), mirroring the yes/noPHII pairing
@@ -77,39 +85,56 @@ STYLE_BEFORE = dict(color="#d62728", lw=1.6, ls="--", alpha=0.95,
 # ----------------------------------------------------------------
 # Layer 1: source-agnostic loading
 # ----------------------------------------------------------------
-def _find_unique(folder: Path, pattern: str) -> Path:
-    matches = sorted(folder.glob(pattern))
-    matches = [m for m in matches if m.is_file()]
+def _find_unique_subfolder(parent: Path, suffix: str) -> Path:
+    """Return the unique subdirectory of ``parent`` whose name ends with ``suffix``."""
+    matches = sorted(p for p in parent.iterdir()
+                     if p.is_dir() and p.name.endswith(suffix))
     if not matches:
         raise FileNotFoundError(
-            f"No file matching '{pattern}' in {folder}"
+            f"No subdirectory ending in '{suffix}' under {parent}"
         )
     if len(matches) > 1:
         raise ValueError(
-            f"Multiple files matching '{pattern}' in {folder}: "
+            f"Multiple subdirectories ending in '{suffix}' under {parent}: "
             f"{[m.name for m in matches]}"
         )
     return matches[0]
 
 
-def _load_pair_from_folder(folder: Path) -> dict:
-    """Find the before/after blend .jsonl files and load both trajectories.
+def _strip_blend_suffix(name: str) -> str:
+    for s in (BEFORE_SUFFIX, AFTER_SUFFIX):
+        if name.endswith(s):
+            return name[: -len(s)]
+    return name
 
-    Note: ``load_run_v2R2`` reads ``simulationEnd.txt`` and ``trinity.log``
-    from the .jsonl's parent directory. Because both blend files share that
-    parent, ``end_ok`` and ``lsoda_failed`` will be identical for the two
-    sides when those sibling files exist (they describe the run that
-    produced both dumps, not each dump independently). When the siblings
-    are absent each side correctly falls back to its own in-snapshot
-    ``SimulationEndReason``.
+
+def _load_pair_from_folder(folder: Path) -> dict:
+    """Find the before/after blend run folders and load both trajectories.
+
+    Each side is a TRINITY run folder (e.g.
+    ``1e6_sfe010_n1e3_PL0_yesPHII_before_blend/``) whose
+    ``dictionary.jsonl`` is loaded via ``load_run_v2R2``. Because the two
+    sides live in *separate* subfolders, each carries its own
+    ``simulationEnd.txt`` / ``trinity.log``, so ``end_ok`` and
+    ``lsoda_failed`` are independent per side (unlike the earlier
+    same-folder layout this script briefly assumed).
     """
-    before_path = _find_unique(folder, BEFORE_GLOB)
-    after_path  = _find_unique(folder, AFTER_GLOB)
+    before_dir = _find_unique_subfolder(folder, BEFORE_SUFFIX)
+    after_dir  = _find_unique_subfolder(folder, AFTER_SUFFIX)
+    before_path = find_data_path(before_dir)
+    after_path  = find_data_path(after_dir)
+
+    # Prefer the stripped run base (e.g. "1e6_sfe010_n1e3_PL0_yesPHII")
+    # over the comparison-folder name as the figure's identity.
+    base_before = _strip_blend_suffix(before_dir.name)
+    base_after  = _strip_blend_suffix(after_dir.name)
+    run_id = base_before if base_before == base_after else folder.name
+
     return dict(
         before=load_run_v2R2(before_path),
         after=load_run_v2R2(after_path),
         meta=dict(
-            run_id=folder.name,
+            run_id=run_id,
             before_path=str(before_path),
             after_path=str(after_path),
         ),
@@ -331,8 +356,8 @@ def main(argv: Optional[list] = None) -> None:
                      "or a published .npz bundle."),
     )
     parser.add_argument("source",
-                        help="folder containing *_before_blend*/*_after_blend* .jsonl files, "
-                             "or a .npz bundle")
+                        help="parent folder containing *_before_blend/ and *_after_blend/ "
+                             "TRINITY run subdirectories, or a .npz bundle")
     parser.add_argument("-o", "--out", default=None,
                         help="output PDF path (default: <FIG_DIR>/paper_v2R2_blend_<id>.pdf)")
     parser.add_argument("--export", default=None,
