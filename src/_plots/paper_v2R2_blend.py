@@ -66,17 +66,20 @@ from src._output.trinity_reader import find_data_path
 BEFORE_SUFFIX = "_before_blend"
 AFTER_SUFFIX  = "_after_blend"
 
-# Per-variant styling. "after" is the hero (drawn on top, solid black);
-# "before" is the baseline (dashed red), mirroring the yes/noPHII pairing
-# in paper_v2R2.py so the visual grammar transfers directly. marker_alpha
-# matches paper_v2R2 (0.55) so the smaller "before" marker pokes through
-# the larger "after" marker where the trajectories coincide.
+# Per-variant styling. "after" (tanh hyperbolic blend at rCloud — the
+# scheme currently in src/cloud_properties/density_profile.py) is the
+# hero, drawn on top in solid black. "before" (the original
+# discontinuous step at rCloud) is the dashed red baseline. Mirrors the
+# yes/noPHII pairing in paper_v2R2.py so the visual grammar transfers.
+# marker_alpha = 0.55 (matches paper_v2R2) so the smaller "step" marker
+# pokes through the larger "tanh" marker where the trajectories coincide.
+# Label convention matches paper_rcloud_smooth.py:126.
 STYLE_AFTER  = dict(color="k",       lw=1.3, ls="-",  alpha=0.95,
                     marker_scale=1.0,  marker_alpha=0.55,
-                    label="after blend")
+                    label="tanh")
 STYLE_BEFORE = dict(color="#d62728", lw=1.6, ls="--", alpha=0.95,
                     marker_scale=0.75, marker_alpha=0.55,
-                    label="before blend")
+                    label="step")
 
 
 # ----------------------------------------------------------------
