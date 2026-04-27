@@ -3,27 +3,17 @@
 """
 Paper figure: cloud-edge smoothing comparison.
 
-Compares the discontinuous step (previous behaviour) against the tanh
-``hyperbolic blend`` used in ``src/cloud_properties/density_profile.py``
-for a fiducial cloud ``mCloud = 1e6 Msun``, ``nCore = 1e3 cm^-3``.
+Single panel n(r) for a fiducial cloud (mCloud = 1e6 Msun,
+nCore = 1e3 cm^-3, alpha = 0, rCore = 0.1 pc) showing four curves:
 
-Layout (2 rows x 2 columns):
-    - top row   : number density n(r)  [cm^-3]
-    - bottom row: enclosed mass M(<r)  [Msun]
-    - left col  : previous discontinuous step at r = rCloud
-    - right col : tanh blend at SMOOTH_FRAC values bracketing the
-                  default 0.01 used in density_profile.py
+    - the original discontinuous step at r = rCloud
+    - the tanh ``hyperbolic blend`` (SMOOTH_FRAC = 0.01) currently used
+      in src/cloud_properties/density_profile.py
+    - one smaller smoothing width (SMOOTH_FRAC = 0.005)
+    - one larger smoothing width (SMOOTH_FRAC = 0.02)
 
-The enclosed mass is obtained by direct cumulative integration of
-``4*pi*r^2*rho(r)`` so that M(r) reflects exactly the n(r) shown above
-(and visualises the negligible mass shift produced by the blend).
-
-Cloud setup follows TRINITY's default.param convention: rCore is a
-standalone input (pc), not a fraction of rCloud, and the homogeneous
-power-law (densPL_alpha = 0) is used so the cloud edge is the full
-nCore -> nISM drop and the smoothing band is visually unambiguous.
-For alpha != 0 the same blend logic applies; only the amplitude of
-the edge jump changes.
+Sized for an A&A ``\\columnwidth`` figure; the figure size is taken
+from ``trinity.mplstyle`` (3.5 x 2.8 in).
 
 Output: ``fig/paper_rcloud_smooth.pdf``
 """
@@ -56,8 +46,9 @@ R_CORE = 0.1            # standalone core radius [pc] (NOT a fraction of rCloud)
 
 # Default smoothing width used in src/cloud_properties/density_profile.py
 SMOOTH_FRAC_DEFAULT = 0.01
-# Two values below the default and two above (bracketed log-spacing)
-SMOOTH_FRACS = [0.002, 0.005, 0.01, 0.02, 0.05]
+# One value below the default and one above
+SMOOTH_FRAC_LOW = 0.005
+SMOOTH_FRAC_HIGH = 0.02
 
 # Code-unit conversions (matches read_param.py conventions)
 MU_CONVERT = 1.4 * cvt.M_H_CGS * cvt.g2Msun     # [Msun]
@@ -94,7 +85,7 @@ def density_inside(r):
 
 
 def density_jump(r):
-    """Previous behaviour: hard step at r = rCloud."""
+    """Original discontinuous step at r = rCloud."""
     return np.where(r <= R_CLOUD, density_inside(r), N_ISM_AU)
 
 
@@ -106,94 +97,53 @@ def density_blend(r, smooth_frac):
     return n_in * (1.0 - w_out) + N_ISM_AU * w_out
 
 
-def cumulative_trapz(y, x):
-    """Cumulative trapezoidal integral; out[0]=0, len(out)=len(x)."""
-    dx = np.diff(x)
-    avg = 0.5 * (y[:-1] + y[1:])
-    return np.concatenate([[0.0], np.cumsum(avg * dx)])
-
-
-def enclosed_mass(r, n_au):
-    """M(<r) = int_0^r 4 pi r'^2 rho(r') dr'  [Msun].
-
-    The grid starts at r[0] > 0; assume the density is approximately
-    constant (= n_au[0]) over (0, r[0]] and add the analytical
-    (4/3) pi r[0]^3 rho[0] offset so that M(r[0]) is the true cumulative
-    mass and the log-axis plot has no zero values.
-    """
-    rho = n_au * MU_CONVERT
-    M_inner = (4.0 / 3.0) * np.pi * r[0] ** 3 * rho[0]
-    return M_inner + cumulative_trapz(4.0 * np.pi * r ** 2 * rho, r)
-
-
 # =============================================================================
 # Radius grid: log-spaced overall, with a fine linear band around rCloud so
 # that the narrow tanh transition is well resolved for every SMOOTH_FRAC.
 # =============================================================================
 r_min = 1e-2 * R_CLOUD
-r_max = 3.0 * R_CLOUD
+r_max = 1.5 * R_CLOUD
 r_log = np.geomspace(r_min, r_max, 4000)
 r_band = np.linspace(0.7 * R_CLOUD, 1.3 * R_CLOUD, 2000)
 r = np.unique(np.concatenate([r_log, r_band]))
 
 
 # =============================================================================
-# Plot (style is set by trinity.mplstyle via the plot_base import)
-# Sized for A&A \columnwidth (~3.5 in) and 25% of \textheight (~2.4 in).
+# Plot (style and figsize set by trinity.mplstyle via the plot_base import)
 # =============================================================================
-fig, axes = plt.subplots(
-    2, 2, figsize=(3.5, 2.4), sharex=True, sharey='row',
-)
-(ax_n_jump, ax_n_blend), (ax_m_jump, ax_m_blend) = axes
+fig, ax = plt.subplots()
 
-# --- previous discontinuous step ---
+# Original discontinuous step
 n_jump = density_jump(r)
-M_jump = enclosed_mass(r, n_jump)
-ax_n_jump.plot(r, n_jump * cvt.ndens_au2cgs, color='k', lw=1.2)
-ax_m_jump.plot(r, M_jump, color='k', lw=1.2)
+ax.plot(r, n_jump * cvt.ndens_au2cgs,
+        color='k', ls='-', lw=1.4, label='step (original)')
 
-# --- tanh blend at several smoothing widths ---
-cmap = plt.get_cmap('viridis')
-log_fracs = np.log10(SMOOTH_FRACS)
-norm = plt.Normalize(log_fracs.min(), log_fracs.max())
-for sf in SMOOTH_FRACS:
+# Three blend widths: below default, default, above default
+blend_specs = [
+    (SMOOTH_FRAC_LOW,     '#0072B2', '--', 1.0),  # below
+    (SMOOTH_FRAC_DEFAULT, '#009E73', '-',  1.6),  # default (highlighted)
+    (SMOOTH_FRAC_HIGH,    '#D55E00', '--', 1.0),  # above
+]
+for sf, color, ls, lw in blend_specs:
     n_b = density_blend(r, sf)
-    M_b = enclosed_mass(r, n_b)
     is_default = np.isclose(sf, SMOOTH_FRAC_DEFAULT)
-    color = cmap(norm(np.log10(sf)))
-    lw = 1.6 if is_default else 1.0
-    ls = '-' if is_default else '--'
-    label = rf'$f={sf:g}$'
-    ax_n_blend.plot(r, n_b * cvt.ndens_au2cgs,
-                    color=color, lw=lw, ls=ls, label=label)
-    ax_m_blend.plot(r, M_b, color=color, lw=lw, ls=ls, label=label)
+    label = rf'$f={sf:g}$' + (' (default)' if is_default else '')
+    ax.plot(r, n_b * cvt.ndens_au2cgs, color=color, ls=ls, lw=lw, label=label)
 
-# Reference markers: rCloud and target cloud mass.
-# x-axis is linear so the narrow tanh band (~+/- f*rCloud around rCloud)
-# is actually visible; y-axes stay log to span the n_core/n_ISM and
-# M(r_min)/M_cloud contrasts.
-for ax in (ax_n_jump, ax_n_blend, ax_m_jump, ax_m_blend):
-    ax.axvline(R_CLOUD, color='red', ls=':', lw=1.0, alpha=0.6)
-    ax.set_yscale('log')
-    ax.set_xlim(0.0, 1.3 * R_CLOUD)
+# r_cloud reference line
+ax.axvline(R_CLOUD, color='red', ls=':', lw=1.0, alpha=0.6)
 
-for ax in (ax_m_jump, ax_m_blend):
-    ax.axhline(M_CLOUD, color='red', ls=':', lw=1.0, alpha=0.6)
-    ax.set_xlabel(r'$r\ [\mathrm{pc}]$')
-ax_m_jump.set_ylabel(r'$M(<r)\ [\mathrm{M}_\odot]$')
+ax.set_yscale('log')
+ax.set_xlim(0.0, 1.3 * R_CLOUD)
+ax.set_ylim(0.3 * N_ISM_CGS, 5 * N_CORE_CGS)
+ax.set_xlabel(r'$r\ [\mathrm{pc}]$')
+ax.set_ylabel(r'$n(r)\ [\mathrm{cm}^{-3}]$')
 
-ax_n_jump.set_ylabel(r'$n(r)\ [\mathrm{cm}^{-3}]$')
-ax_n_jump.set_ylim(0.3 * N_ISM_CGS, 5 * N_CORE_CGS)
-
-ax_n_jump.set_title('step')
-ax_n_blend.set_title('blend')
-
-# Single compact legend on the upper-right blend panel only
-ax_n_blend.legend(loc='lower left', handlelength=1.2, labelspacing=0.2)
+ax.legend(loc='lower left', handlelength=1.6, labelspacing=0.3)
 
 fig.tight_layout()
 
 out_path = FIG_DIR / 'paper_rcloud_smooth.pdf'
-fig.savefig(out_path, bbox_inches='tight')
+fig.savefig(out_path)
 plt.close(fig)
 print(f"Saved: {out_path}")
