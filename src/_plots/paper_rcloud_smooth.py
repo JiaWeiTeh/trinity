@@ -12,6 +12,13 @@ nCore = 1e3 cm^-3, alpha = 0, rCore = 0.1 pc) showing four curves:
     - one smaller smoothing width (SMOOTH_FRAC = 0.005)
     - one larger smoothing width (SMOOTH_FRAC = 0.02)
 
+Both axes are linear so the rotational symmetry of the blend about
+(rCloud, (n_core + n_ISM)/2) is visible by eye -- the same Delta n
+antisymmetry about r = rCloud that buys O(delta^2) mass conservation.
+On a log y axis a referee would (correctly) read equal absolute
+deviations as wildly unequal log shifts, because the outside asymptote
+n_ISM is 1000x smaller than n_core.
+
 Sized for an A&A ``\\columnwidth`` figure; the figure size is taken
 from ``trinity.mplstyle`` (3.5 x 2.8 in).
 
@@ -133,13 +140,19 @@ for sf, color, ls, lw in blend_specs:
 # r_cloud reference line
 ax.axvline(R_CLOUD, color='red', ls=':', lw=1.0, alpha=0.6)
 
-ax.set_yscale('log')
+# Both axes linear so the antisymmetry of (n_blend - n_step) about rCloud
+# -- i.e. the rotational symmetry around (rCloud, (n_core + n_ISM)/2) --
+# is visible by eye.
 ax.set_xlim(0.0, 1.3 * R_CLOUD)
-ax.set_ylim(0.3 * N_ISM_CGS, 5 * N_CORE_CGS)
+ax.set_ylim(-0.05 * N_CORE_CGS, 1.1 * N_CORE_CGS)
 ax.set_xlabel(r'$r\ [\mathrm{pc}]$')
 ax.set_ylabel(r'$n(r)\ [\mathrm{cm}^{-3}]$')
 
-ax.legend(loc='lower left', handlelength=1.6, labelspacing=0.3)
+# Mark the symmetry point of the blend
+ax.axhline(0.5 * (N_CORE_CGS + N_ISM_CGS),
+           color='gray', ls=':', lw=0.8, alpha=0.5)
+
+ax.legend(loc='upper right', handlelength=1.6, labelspacing=0.3)
 
 fig.tight_layout()
 
