@@ -15,7 +15,12 @@ same convention as paper_radiusComparison.py), this script draws a 2-panel
 figure stacked on a shared time axis:
 
     Top:    Pb(t) and P_HII(t) from the yesPHII run, with the PHII-active
-            window (P_HII > Pb) shaded across both panels.
+            window (P_HII > Pb) shaded across all panels.
+    Middle: log10(P_HII / Pb). The Strömgren cap in shell_structure_modified
+            pins P_HII ≤ 2*(mu_ion/mu_atom)*Pb ≈ 0.957*Pb whenever it binds,
+            so the line should sit at log10(0.957) ≈ -0.019 across the
+            cap-binding region and dip below it elsewhere. Reference line
+            drawn at the cap value.
     Bottom: |v_2(t)| from yesPHII (black) and noPHII (red dashed). Shows
             the divergence inside the active window and the convergence
             once Pb takes over.
@@ -60,6 +65,10 @@ LW_PRESSURE = 1.6
 LW_VEL      = 1.6
 
 SMOOTH_WINDOW = None   # set to e.g. 5 to smooth noisy outputs
+
+# Strömgren cap predicts P_HII / Pb = 2 * (mu_ion / mu_atom)
+# With mu_atom = 14/11 (neutral, He) and mu_ion = 14/23 (ionised, He):
+CAP_RATIO = 2.0 * (14.0 / 23.0) / (14.0 / 11.0)   # = 22/23 ≈ 0.9565
 
 
 def load_run(data_path):
@@ -116,11 +125,11 @@ def shade_active_window(ax, segments):
 
 
 def plot_pair(data_yes, data_no, base_name, out_pdf):
-    """Two-panel figure: pressure crossover (top) + |v2| comparison (bottom)."""
-    fig, (ax_p, ax_v) = plt.subplots(
-        nrows=2, ncols=1, sharex=True,
-        figsize=(4.6, 4.4), dpi=300,
-        gridspec_kw=dict(hspace=0.05, height_ratios=[1.0, 1.0]),
+    """Three-panel figure: pressure crossover, P_HII/Pb cap detector, |v2|."""
+    fig, (ax_p, ax_r, ax_v) = plt.subplots(
+        nrows=3, ncols=1, sharex=True,
+        figsize=(4.6, 6.0), dpi=300,
+        gridspec_kw=dict(hspace=0.08, height_ratios=[1.0, 0.6, 1.0]),
     )
 
     t_y  = data_yes['t']
@@ -131,8 +140,7 @@ def plot_pair(data_yes, data_no, base_name, out_pdf):
     t_n  = data_no['t']
     v2_n = smooth_1d(np.abs(data_no['v2']), SMOOTH_WINDOW)
 
-    # PHII active window from the yesPHII run (since that is where
-    # max(Pb, P_HII) actually selects P_HII)
+    # PHII active window (where the energy/implicit-phase max() gate would pick P_HII)
     segments = find_active_segments(t_y, P_HII_y, Pb_y)
 
     # Top: pressures
@@ -143,6 +151,19 @@ def plot_pair(data_yes, data_no, base_name, out_pdf):
     ax_p.set_ylabel(r"$P/k_B$  [K cm$^{-3}$]")
     ax_p.legend(loc="upper right", frameon=False, fontsize=9)
 
+    # Middle: log10(P_HII / Pb) — cap detector.
+    # Strömgren cap pins this at log10(2*mu_ion/mu_atom) ≈ -0.019 wherever it binds.
+    shade_active_window(ax_r, segments)
+    with np.errstate(divide='ignore', invalid='ignore'):
+        ratio = np.where((Pb_y > 0) & (P_HII_y > 0),
+                         np.log10(P_HII_y / Pb_y), np.nan)
+    ax_r.plot(t_y, ratio, color="0.2", lw=1.4)
+    ax_r.axhline(np.log10(CAP_RATIO), color="tab:orange", ls="--", lw=1.0,
+                 label=fr"cap: $\log_{{10}}(2\mu_{{\rm ion}}/\mu_{{\rm atom}})={np.log10(CAP_RATIO):.3f}$")
+    ax_r.axhline(0.0, color="0.5", ls=":", lw=0.8, label=r"$P_{\rm HII}=P_b$")
+    ax_r.set_ylabel(r"$\log_{10}(P_{\rm HII}/P_b)$")
+    ax_r.legend(loc="lower left", frameon=False, fontsize=8)
+
     # Bottom: |v2|
     shade_active_window(ax_v, segments)
     ax_v.plot(t_y, v2_y, color=COLOR_YES, lw=LW_VEL, ls="-",  label="yesPHII")
@@ -152,15 +173,23 @@ def plot_pair(data_yes, data_no, base_name, out_pdf):
     ax_v.set_xlabel(r"$t$  [Myr]")
     ax_v.legend(loc="upper right", frameon=False, fontsize=9)
 
-    # Title: base run name + total active-window duration
+    # Cap-binding fraction: fraction of finite samples within 0.5 dex of the cap line
+    finite = np.isfinite(ratio)
+    if finite.any():
+        near_cap = np.abs(ratio[finite] - np.log10(CAP_RATIO)) < 0.05
+        cap_frac = float(near_cap.mean())
+    else:
+        cap_frac = 0.0
+
     if segments:
         active_dt = sum(t1 - t0 for (t0, t1) in segments)
         active_label = f"PHII-active: {active_dt*1000:.1f} kyr in {len(segments)} window(s)"
     else:
         active_label = r"PHII-active: never ($P_{\rm HII}\le P_b$ throughout)"
-    fig.suptitle(f"{base_name}\n{active_label}", fontsize=9, y=0.995)
+    cap_label = f"cap-binding: {cap_frac*100:.1f}% of samples within 0.05 dex of cap"
+    fig.suptitle(f"{base_name}\n{active_label}\n{cap_label}", fontsize=9, y=0.995)
 
-    fig.tight_layout(rect=(0, 0, 1, 0.96))
+    fig.tight_layout(rect=(0, 0, 1, 0.95))
     fig.savefig(out_pdf, bbox_inches="tight")
     plt.close(fig)
     print(f"  saved: {out_pdf}")
