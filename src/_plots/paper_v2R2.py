@@ -66,6 +66,24 @@ print("...plotting v_2 vs R_2 phase trajectory")
 SMOOTH_WINDOW = None      # None or 1 disables
 SMOOTH_MODE = "edge"
 
+# Marker visibility flags — toggled by the standard CLI flags
+# (--show-phase, --show-rcloud, --show-collapse, --show-all-markers)
+# via marker_pre_dispatch(globals()) in the dispatcher below.
+#
+# Only SHOW_PHASE is meaningful for this script: it controls the
+# energy->implicit and transition->momentum boundary markers along
+# the trajectory. (The implicit->transition handoff is *always*
+# shown because it carries the LSODA-failure signal that's the
+# whole point of this diagnostic plot.)
+#
+# SHOW_RCLOUD and SHOW_COLLAPSE are accepted but no-ops here:
+# - the rCloud cliff is *always* drawn (it's the headline annotation),
+# - collapse already manifests in the trajectory itself (dotted
+#   segment when v_2 < 0).
+SHOW_PHASE    = False
+SHOW_RCLOUD   = False     # no-op (rCloud band always drawn)
+SHOW_COLLAPSE = False     # no-op (collapse shown via dotted line)
+
 # Failure-velocity threshold (pc/Myr).  ~10 pc/Myr is the empirical
 # divider between clean and failed crossings noted in the audit.
 V_FAIL_THRESHOLD = 10.0   # pc/Myr
@@ -91,12 +109,50 @@ END_MARKER_OK   = "o"   # filled circle
 END_MARKER_FAIL = "X"   # heavy X
 END_MARKER_SIZE = 7
 
+# Implicit->transition handoff marker: color tells whether the implicit
+# phase exited via the physical cooling_balance condition (clean) or via
+# an LSODA istate failure (truncated). Same shape, two colors so the
+# trajectory's eye-line stays uncluttered.
+HANDOFF_MARKER       = "D"            # filled diamond
+HANDOFF_FACE_OK      = "#2ca02c"      # green: cooling_balance exit
+HANDOFF_FACE_FAIL    = "#ff7f0e"      # orange: LSODA istate failure
+HANDOFF_MARKER_SIZE  = 5.5
+
+# Other phase-boundary markers — only drawn when SHOW_PHASE is True.
+# Subdued (white-faced) so they don't compete with the LSODA handoff.
+PHASE_E2I_MARKER     = "^"            # energy -> implicit (triangle up)
+PHASE_T2M_MARKER     = "v"            # transition -> momentum (triangle down)
+PHASE_MARKER_SIZE    = 4.5
+
 SAVE_PDF = True
 
 
 # ----------------------------------------------------------------
 # Data loading
 # ----------------------------------------------------------------
+def _check_implicit_lsoda_failure(data_path: Path) -> bool:
+    """Detect an LSODA ``Unexpected istate`` failure inside the implicit phase.
+
+    Scans ``trinity.log`` (sibling of ``data_path``) for the warning
+    emitted by ``run_energy_implicit_phase_modified`` when ``solve_ivp``
+    bails. Implicit-phase only — transition-phase solver hiccups are
+    intentionally excluded so the marker stays specific to the rCloud
+    cliff hypothesis.
+    """
+    log_path = data_path.parent / "trinity.log"
+    if not log_path.exists():
+        return False
+    try:
+        with open(log_path, "r") as fh:
+            for line in fh:
+                if ("Solver did not succeed" in line
+                        and "phase1b_energy_implicit" in line):
+                    return True
+    except Exception:
+        return False
+    return False
+
+
 def load_run_v2R2(data_path: Path) -> dict:
     """Load t, R_2, v_2, rCloud and the simulation-end status.
 
@@ -104,6 +160,14 @@ def load_run_v2R2(data_path: Path) -> dict:
     ``simulationEnd.txt`` exit code in [0, 9] is found; otherwise False
     (treated as a failure / numerical termination).  When the file is
     absent we fall back to the in-snapshot ``SimulationEndReason`` field.
+
+    Also reports the implicit->transition handoff so the cliff plot can
+    annotate where each run handed off and whether LSODA succeeded:
+
+    - ``handoff_idx``       : first snapshot index with ``current_phase ==
+                              'transition'``, or ``None`` if not reached.
+    - ``lsoda_failed``      : True if the implicit-phase LSODA bailed
+                              (read from ``trinity.log``).
     """
     output = load_output(data_path)
     if len(output) == 0:
@@ -112,11 +176,35 @@ def load_run_v2R2(data_path: Path) -> dict:
     t  = output.get("t_now")
     R2 = output.get("R2")
     v2 = output.get("v2")  # pc/Myr
+    phase = output.get("current_phase", as_array=False)
+    phase_arr = np.asarray(phase) if phase is not None else np.array([])
     rcloud = float(output[0].get("rCloud", np.nan))
 
     if np.any(np.diff(t) < 0):
         order = np.argsort(t)
         t, R2, v2 = t[order], R2[order], v2[order]
+        if phase_arr.size:
+            phase_arr = phase_arr[order]
+
+    # Phase-boundary indices: first sample tagged with each downstream phase.
+    # 'implicit' first appearance => energy->implicit boundary
+    # 'transition' first appearance => implicit->transition handoff
+    # 'momentum' first appearance => transition->momentum boundary
+    e2i_idx = None
+    handoff_idx = None
+    t2m_idx = None
+    if phase_arr.size:
+        impl_hits  = np.flatnonzero(phase_arr == "implicit")
+        trans_hits = np.flatnonzero(phase_arr == "transition")
+        mom_hits   = np.flatnonzero(phase_arr == "momentum")
+        if impl_hits.size:
+            e2i_idx = int(impl_hits[0])
+        if trans_hits.size:
+            handoff_idx = int(trans_hits[0])
+        if mom_hits.size:
+            t2m_idx = int(mom_hits[0])
+
+    lsoda_failed = _check_implicit_lsoda_failure(data_path)
 
     # Status: prefer simulationEnd.txt (canonical), else last snapshot reason.
     end_info = read_simulation_end(str(data_path.parent))
@@ -140,6 +228,10 @@ def load_run_v2R2(data_path: Path) -> dict:
         rcloud=rcloud,
         end_ok=end_ok,
         end_reason=end_reason,
+        e2i_idx=e2i_idx,
+        handoff_idx=handoff_idx,
+        t2m_idx=t2m_idx,
+        lsoda_failed=lsoda_failed,
     )
 
 
@@ -182,6 +274,36 @@ def _plot_one_trajectory(ax, data, style, *, smooth_window=None,
             marker="o", markerfacecolor="white",
             markeredgecolor=style["color"], markersize=4.5,
             mew=1.2, zorder=4)
+
+    # Phase-boundary markers placed on the trajectory.
+    # The handoff (implicit->transition) is always shown because it
+    # carries the LSODA-failure signal. The other two boundaries
+    # (energy->implicit, transition->momentum) are gated by SHOW_PHASE.
+    valid_indices = np.flatnonzero(valid)
+
+    def _plot_at_orig_idx(orig_idx, marker, face, size, mew, zorder):
+        """Plot a marker at the snapshot whose original index is orig_idx."""
+        if orig_idx is None or len(valid_indices) == 0:
+            return
+        pos = np.searchsorted(valid_indices, orig_idx, side="left")
+        if pos < len(valid_indices):
+            ax.plot(R2v[pos], mag[pos],
+                    marker=marker, markerfacecolor=face,
+                    markeredgecolor="black",
+                    markersize=size, mew=mew, zorder=zorder)
+
+    # Implicit -> transition handoff (always-on, LSODA-colored)
+    ho_face = (HANDOFF_FACE_FAIL if data.get("lsoda_failed")
+               else HANDOFF_FACE_OK)
+    _plot_at_orig_idx(data.get("handoff_idx"), HANDOFF_MARKER,
+                      ho_face, HANDOFF_MARKER_SIZE, 0.6, 4.5)
+
+    # Other phase boundaries — only with --show-phase
+    if SHOW_PHASE:
+        _plot_at_orig_idx(data.get("e2i_idx"), PHASE_E2I_MARKER,
+                          "white", PHASE_MARKER_SIZE, 0.7, 4.4)
+        _plot_at_orig_idx(data.get("t2m_idx"), PHASE_T2M_MARKER,
+                          "white", PHASE_MARKER_SIZE, 0.7, 4.4)
 
     # End marker (filled) — shape encodes success/failure.
     end_marker = END_MARKER_OK if data.get("end_ok") else END_MARKER_FAIL
@@ -244,6 +366,27 @@ def _build_legend_handles():
         Line2D([0], [0], marker="o", color="0.3",
                markerfacecolor="white", markeredgecolor="0.3",
                linestyle="", markersize=4.5, label="start"),
+        Line2D([0], [0], marker=HANDOFF_MARKER, color="0.3",
+               markerfacecolor=HANDOFF_FACE_OK, markeredgecolor="black",
+               linestyle="", markersize=HANDOFF_MARKER_SIZE,
+               label="implicit→transition (clean)"),
+        Line2D([0], [0], marker=HANDOFF_MARKER, color="0.3",
+               markerfacecolor=HANDOFF_FACE_FAIL, markeredgecolor="black",
+               linestyle="", markersize=HANDOFF_MARKER_SIZE,
+               label="implicit→transition (LSODA fail)"),
+    ]
+    if SHOW_PHASE:
+        handles += [
+            Line2D([0], [0], marker=PHASE_E2I_MARKER, color="0.3",
+                   markerfacecolor="white", markeredgecolor="black",
+                   linestyle="", markersize=PHASE_MARKER_SIZE,
+                   label="energy→implicit"),
+            Line2D([0], [0], marker=PHASE_T2M_MARKER, color="0.3",
+                   markerfacecolor="white", markeredgecolor="black",
+                   linestyle="", markersize=PHASE_MARKER_SIZE,
+                   label="transition→momentum"),
+        ]
+    handles += [
         Line2D([0], [0], marker=END_MARKER_OK, color="0.3",
                markerfacecolor="0.3", markeredgecolor="black",
                linestyle="", markersize=END_MARKER_SIZE,
