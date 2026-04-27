@@ -153,17 +153,18 @@ ax.set_yticks([])
 ax.minorticks_off()  # only one major xtick -> auto minors are nonsensical
 ax.set_ylabel(r'$n(r)$')
 
-# Inline asymptote labels in lieu of numeric y-ticks
-ax.text(0.04 * R_CLOUD, N_CORE_CGS, r'$n_\mathrm{core}$',
+# Inline asymptote labels in lieu of numeric y-ticks (slightly above each line)
+_label_offset = 0.04 * N_CORE_CGS
+ax.text(0.04 * R_CLOUD, N_CORE_CGS + _label_offset, r'$n_\mathrm{core}$',
         va='bottom', ha='left', color='0.25')
-ax.text(1.28 * R_CLOUD, N_ISM_CGS, r'$n_\mathrm{ISM}$',
+ax.text(1.28 * R_CLOUD, N_ISM_CGS + _label_offset, r'$n_\mathrm{ISM}$',
         va='bottom', ha='right', color='0.25')
 
 # Mark the symmetry point of the blend (every s-curve crosses here)
 ax.axhline(0.5 * (N_CORE_CGS + N_ISM_CGS),
            color='gray', ls=':', lw=0.8, alpha=0.5)
 
-ax.legend(loc='upper right', handlelength=1.6, labelspacing=0.3)
+ax.legend(loc='lower left', handlelength=1.6, labelspacing=0.3)
 
 fig.tight_layout()
 
