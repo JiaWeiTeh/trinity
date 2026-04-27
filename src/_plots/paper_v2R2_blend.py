@@ -46,9 +46,6 @@ from src._plots.plot_base import FIG_DIR
 from src._plots.paper_v2R2 import (
     load_run_v2R2,
     _plot_one_trajectory,
-    RCLOUD_BAND_FRAC,
-    V_FAIL_THRESHOLD,
-    V_AU2KMS,
     HANDOFF_MARKER,
     HANDOFF_FACE_OK,
     HANDOFF_FACE_FAIL,
@@ -213,8 +210,6 @@ def _build_legend_handles() -> list:
                label=r"$v_2 < 0$ (recollapse)"),
         Line2D([0], [0], color="0.25", lw=1.2, ls="--",
                label=r"$R_{\rm cloud}$"),
-        Line2D([0], [0], color="#7f7f7f", lw=1.0, ls=":",
-               label=rf"$|v_2| = {V_FAIL_THRESHOLD:.0f}$ pc/Myr"),
         Line2D([0], [0], marker="o", color="0.3",
                markerfacecolor="white", markeredgecolor="0.3",
                linestyle="", markersize=4.5, label="start"),
@@ -236,7 +231,6 @@ def _build_legend_handles() -> list:
 
 
 def plot_v2R2_diff(pair: dict, out_path: Optional[Path] = None,
-                   title: Optional[str] = None,
                    show: bool = False) -> plt.Figure:
     """Overlay the before/after trajectories on a single v_2 vs R_2 panel."""
     before = pair["before"]
@@ -244,17 +238,11 @@ def plot_v2R2_diff(pair: dict, out_path: Optional[Path] = None,
 
     fig, ax = plt.subplots(figsize=(6.5, 5.0), dpi=150)
 
-    # rCloud cliff (use whichever side reports a finite value).
+    # rCloud cliff: single dashed vertical line, no surrounding band.
     rcloud = next((float(d["rcloud"]) for d in (after, before)
                    if np.isfinite(d.get("rcloud", np.nan))), None)
     if rcloud is not None:
-        ax.axvspan(rcloud * (1 - RCLOUD_BAND_FRAC),
-                   rcloud * (1 + RCLOUD_BAND_FRAC),
-                   color="0.55", alpha=0.18, zorder=1)
         ax.axvline(rcloud, color="0.25", lw=1.2, ls="--", alpha=0.7, zorder=2)
-
-    ax.axhline(V_FAIL_THRESHOLD, color="#7f7f7f", lw=1.0, ls=":",
-               alpha=0.8, zorder=2)
 
     # Draw "before" first so "after" (the hero) renders on top.
     _plot_one_trajectory(ax, before, STYLE_BEFORE)
@@ -265,16 +253,6 @@ def plot_v2R2_diff(pair: dict, out_path: Optional[Path] = None,
     ax.grid(True, which="both", ls=":", lw=0.5, alpha=0.4, zorder=0)
     ax.set_xlabel(r"$R_2$ [pc]")
     ax.set_ylabel(r"$|v_2|$ [pc Myr$^{-1}$]")
-
-    if title is None:
-        title = f"$v_2$ vs $R_2$: {pair['meta'].get('run_id', 'blend')}"
-    ax.set_title(title)
-
-    ax_kms = ax.secondary_yaxis(
-        "right",
-        functions=(lambda v: v * V_AU2KMS, lambda v: v / V_AU2KMS),
-    )
-    ax_kms.set_ylabel(r"$|v_2|$ [km s$^{-1}$]")
 
     ax.legend(handles=_build_legend_handles(), loc="lower left",
               fontsize=8, framealpha=0.9)
