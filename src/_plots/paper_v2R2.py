@@ -99,11 +99,12 @@ YES_SUFFIX = "_yesPHII"
 NO_SUFFIX = "_noPHII"
 
 # Per-variant styling.
-# noPHII gets slightly smaller, more transparent markers so the yesPHII
-# (TRINITY) marker shows through when the two trajectories overlap —
-# they coincide for a substantial portion of every run before diverging.
+# Both variants render markers at the same alpha (55%) so they look
+# even-handed; size differentiates them (noPHII smaller) so when the
+# two trajectories coincide the yesPHII marker still shows around
+# the edges of the noPHII marker.
 STYLE_YES = dict(color="#1f77b4", lw=1.6, ls="-",  alpha=0.95,
-                 marker_scale=1.0, marker_alpha=1.0,
+                 marker_scale=1.0, marker_alpha=0.55,
                  label=r"with $P_{\rm HII}$")
 STYLE_NO  = dict(color="#d62728", lw=1.6, ls="--", alpha=0.95,
                  marker_scale=0.75, marker_alpha=0.55,
