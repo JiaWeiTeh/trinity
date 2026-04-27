@@ -18,6 +18,13 @@ The enclosed mass is obtained by direct cumulative integration of
 ``4*pi*r^2*rho(r)`` so that M(r) reflects exactly the n(r) shown above
 (and visualises the negligible mass shift produced by the blend).
 
+Cloud setup follows TRINITY's default.param convention: rCore is a
+standalone input (pc), not a fraction of rCloud, and the homogeneous
+power-law (densPL_alpha = 0) is used so the cloud edge is the full
+nCore -> nISM drop and the smoothing band is visually unambiguous.
+For alpha != 0 the same blend logic applies; only the amplitude of
+the edge jump changes.
+
 Output: ``fig/paper_rcloud_smooth.pdf``
 """
 
@@ -37,13 +44,13 @@ from src.cloud_properties.powerLawSphere import (
 
 
 # =============================================================================
-# Fiducial cloud parameters
+# Fiducial cloud parameters (matches default.param conventions)
 # =============================================================================
 M_CLOUD = 1e6           # Msun
 N_CORE_CGS = 1e3        # cm^-3
 N_ISM_CGS = 1.0         # cm^-3
-ALPHA = -2              # isothermal power-law (typical fiducial)
-RCORE_FRAC = 0.1        # rCore / rCloud (compute_rCloud_powerlaw default)
+ALPHA = 0               # power-law slope (densPL_alpha); 0 = homogeneous
+R_CORE = 0.1            # standalone core radius [pc] (NOT a fraction of rCloud)
 
 # Default smoothing width used in src/cloud_properties/density_profile.py
 SMOOTH_FRAC_DEFAULT = 0.01
@@ -57,21 +64,20 @@ N_ISM_AU = N_ISM_CGS * cvt.ndens_cgs2au          # [1/pc^3]
 
 
 # =============================================================================
-# Resolve cloud geometry from (mCloud, nCore, alpha) self-consistently
+# Resolve rCloud from (mCloud, nCore, alpha, rCore)
 # =============================================================================
 if ALPHA == 0:
+    # Homogeneous: rCore does not enter the rCloud calculation
     R_CLOUD = compute_rCloud_homogeneous(M_CLOUD, N_CORE_AU, mu=MU_CONVERT)
-    R_CORE = R_CLOUD * RCORE_FRAC
 else:
-    R_CLOUD, R_CORE = compute_rCloud_powerlaw(
+    R_CLOUD, _ = compute_rCloud_powerlaw(
         M_CLOUD, N_CORE_AU, ALPHA,
-        rCore_fraction=RCORE_FRAC, mu=MU_CONVERT,
+        rCore=R_CORE, mu=MU_CONVERT,
     )
 
 print(f"Fiducial cloud: M={M_CLOUD:.0e} Msun, "
-      f"nCore={N_CORE_CGS:.0e} cm^-3, alpha={ALPHA}")
+      f"nCore={N_CORE_CGS:.0e} cm^-3, alpha={ALPHA}, rCore={R_CORE} pc")
 print(f"  rCloud = {R_CLOUD:.3f} pc")
-print(f"  rCore  = {R_CORE:.3f} pc")
 
 
 # =============================================================================
@@ -106,9 +112,16 @@ def cumulative_trapz(y, x):
 
 
 def enclosed_mass(r, n_au):
-    """M(<r) = int 4 pi r'^2 rho(r') dr'  [Msun]."""
+    """M(<r) = int_0^r 4 pi r'^2 rho(r') dr'  [Msun].
+
+    The grid starts at r[0] > 0; assume the density is approximately
+    constant (= n_au[0]) over (0, r[0]] and add the analytical
+    (4/3) pi r[0]^3 rho[0] offset so that M(r[0]) is the true cumulative
+    mass and the log-axis plot has no zero values.
+    """
     rho = n_au * MU_CONVERT
-    return cumulative_trapz(4.0 * np.pi * r**2 * rho, r)
+    M_inner = (4.0 / 3.0) * np.pi * r[0] ** 3 * rho[0]
+    return M_inner + cumulative_trapz(4.0 * np.pi * r ** 2 * rho, r)
 
 
 # =============================================================================
@@ -134,7 +147,9 @@ plt.rcParams.update({
     'legend.fontsize': 12,
 })
 
-fig, axes = plt.subplots(2, 2, figsize=(12, 9), sharex=True, dpi=150)
+fig, axes = plt.subplots(
+    2, 2, figsize=(12, 9), sharex=True, sharey='row', dpi=150,
+)
 (ax_n_jump, ax_n_blend), (ax_m_jump, ax_m_blend) = axes
 
 # --- previous discontinuous step ---
@@ -168,12 +183,11 @@ for ax in (ax_n_jump, ax_n_blend, ax_m_jump, ax_m_blend):
 
 for ax in (ax_m_jump, ax_m_blend):
     ax.axhline(M_CLOUD, color='red', ls=':', lw=1.0, alpha=0.6)
-    ax.set_ylabel(r'$M(<r)\ [\mathrm{M}_\odot]$')
     ax.set_xlabel(r'$r\ [\mathrm{pc}]$')
+ax_m_jump.set_ylabel(r'$M(<r)\ [\mathrm{M}_\odot]$')
 
-for ax in (ax_n_jump, ax_n_blend):
-    ax.set_ylabel(r'$n(r)\ [\mathrm{cm}^{-3}]$')
-    ax.set_ylim(0.3 * N_ISM_CGS, 5 * N_CORE_CGS)
+ax_n_jump.set_ylabel(r'$n(r)\ [\mathrm{cm}^{-3}]$')
+ax_n_jump.set_ylim(0.3 * N_ISM_CGS, 5 * N_CORE_CGS)
 
 ax_n_jump.set_title('previous: discontinuous step')
 ax_n_blend.set_title(r'hyperbolic blend ($\delta = f\,r_\mathrm{cloud}$)')
@@ -183,15 +197,16 @@ ax_m_jump.legend(loc='lower right', frameon=False)
 ax_n_blend.legend(loc='lower left', frameon=False)
 ax_m_blend.legend(loc='lower right', frameon=False)
 
-# Annotate rCloud line
-for ax in (ax_n_jump, ax_n_blend):
+# Annotate rCloud line on every panel (sharey='row' has set m-axis ylim)
+for ax in (ax_n_jump, ax_n_blend, ax_m_jump, ax_m_blend):
     y_top = ax.get_ylim()[1]
     ax.text(R_CLOUD, y_top, r' $r_\mathrm{cloud}$',
             color='red', va='top', ha='left', fontsize=11)
 
 fig.suptitle(
     rf'Fiducial cloud: $M_\mathrm{{cl}}=10^{{6}}\,\mathrm{{M}}_\odot$, '
-    rf'$n_\mathrm{{core}}=10^{{3}}\,\mathrm{{cm}}^{{-3}}$, $\alpha={ALPHA}$',
+    rf'$n_\mathrm{{core}}=10^{{3}}\,\mathrm{{cm}}^{{-3}}$, '
+    rf'$\alpha={ALPHA}$, $r_\mathrm{{core}}={R_CORE}\,\mathrm{{pc}}$',
     fontsize=16,
 )
 fig.tight_layout(rect=[0, 0, 1, 0.96])
