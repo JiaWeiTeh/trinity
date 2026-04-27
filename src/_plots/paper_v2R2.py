@@ -332,8 +332,11 @@ def _plot_one_trajectory(ax, data, style, *, smooth_window=None,
         _plot_at_orig_idx(data.get("t2m_idx"), PHASE_T2M_MARKER,
                           "white", PHASE_MARKER_SIZE, 0.7, 4.4)
 
-    # End marker (filled) — shape encodes success/failure.
-    end_marker = END_MARKER_OK if data.get("end_ok") else END_MARKER_FAIL
+    # End marker (filled) — shape encodes success/failure. An LSODA bail
+    # in the implicit phase counts as a failure even if the run later
+    # reached max_time / max_radius, so we OR it into the success test.
+    end_ok = bool(data.get("end_ok")) and not data.get("lsoda_failed")
+    end_marker = END_MARKER_OK if end_ok else END_MARKER_FAIL
     ax.plot(R2v[-1], mag[-1],
             marker=end_marker, markerfacecolor=style["color"],
             markeredgecolor="black",
