@@ -29,6 +29,8 @@ Output: ``fig/paper_rcloud_smooth.pdf``
 """
 
 import numpy as np
+import matplotlib
+matplotlib.use("Agg")        # save-only; no GUI window even if a backend exists
 import matplotlib.pyplot as plt
 
 import sys as _sys
@@ -166,12 +168,14 @@ for sf in SMOOTH_FRACS:
                     color=color, lw=lw, ls=ls, label=label)
     ax_m_blend.plot(r, M_b, color=color, lw=lw, ls=ls, label=label)
 
-# Reference markers: rCloud and target cloud mass
+# Reference markers: rCloud and target cloud mass.
+# x-axis is linear so the narrow tanh band (~+/- f*rCloud around rCloud)
+# is actually visible; y-axes stay log to span the n_core/n_ISM and
+# M(r_min)/M_cloud contrasts.
 for ax in (ax_n_jump, ax_n_blend, ax_m_jump, ax_m_blend):
     ax.axvline(R_CLOUD, color='red', ls=':', lw=1.0, alpha=0.6)
-    ax.set_xscale('log')
     ax.set_yscale('log')
-    ax.set_xlim(r_min, r_max)
+    ax.set_xlim(0.0, 1.3 * R_CLOUD)
 
 for ax in (ax_m_jump, ax_m_blend):
     ax.axhline(M_CLOUD, color='red', ls=':', lw=1.0, alpha=0.6)
@@ -191,5 +195,5 @@ fig.tight_layout()
 
 out_path = FIG_DIR / 'paper_rcloud_smooth.pdf'
 fig.savefig(out_path, bbox_inches='tight')
+plt.close(fig)
 print(f"Saved: {out_path}")
-plt.show()
