@@ -34,7 +34,6 @@ from typing import Optional
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
-from matplotlib.patches import Patch
 
 import sys as _sys
 from pathlib import Path as _Path
@@ -99,15 +98,25 @@ YES_SUFFIX = "_yesPHII"
 NO_SUFFIX = "_noPHII"
 
 # Per-variant styling.
-# noPHII gets slightly smaller, more transparent markers so the yesPHII
-# (TRINITY) marker shows through when the two trajectories overlap —
-# they coincide for a substantial portion of every run before diverging.
-STYLE_YES = dict(color="#1f77b4", lw=1.6, ls="-",  alpha=0.95,
-                 marker_scale=1.0, marker_alpha=1.0,
+# Both variants render markers at the same alpha (55%) so they look
+# even-handed; size differentiates them (noPHII smaller) so when the
+# two trajectories coincide the yesPHII marker still shows around
+# the edges of the noPHII marker.
+STYLE_YES = dict(color="k", lw=1.3, ls="-",  alpha=0.95,
+                 marker_scale=1.0, marker_alpha=0.55,
                  label=r"with $P_{\rm HII}$")
 STYLE_NO  = dict(color="#d62728", lw=1.6, ls="--", alpha=0.95,
                  marker_scale=0.75, marker_alpha=0.55,
                  label=r"without $P_{\rm HII}$")
+
+# Recollapse segments (where v_2 < 0) are rendered as dotted lines with
+# reduced linewidth and alpha so they read as a secondary "echo" of the
+# outbound trajectory rather than competing with the primary expansion
+# curve. The shell traverses each R_2 twice in cells where it
+# recollapses, so without this distinction the cell shows four
+# equal-weight lines.
+RECOLLAPSE_LW_FACTOR    = 0.7
+RECOLLAPSE_ALPHA_FACTOR = 0.55
 
 # Endpoint marker: shape tells success vs failure.
 END_MARKER_OK   = "o"   # filled circle
@@ -268,10 +277,15 @@ def _plot_one_trajectory(ax, data, style, *, smooth_window=None,
     for a, b in zip(starts, ends):
         if b - a < 2:
             continue
-        ls = style.get("ls", "-") if sgn[a] > 0 else ":"
+        is_recollapse = sgn[a] < 0
+        ls = ":" if is_recollapse else style.get("ls", "-")
+        lw = style["lw"] * (RECOLLAPSE_LW_FACTOR if is_recollapse else 1.0)
+        seg_alpha = style.get("alpha", 0.95) * (
+            RECOLLAPSE_ALPHA_FACTOR if is_recollapse else 1.0
+        )
         ax.plot(R2v[a:b], mag[a:b],
-                color=style["color"], lw=style["lw"],
-                ls=ls, alpha=style.get("alpha", 0.95),
+                color=style["color"], lw=lw,
+                ls=ls, alpha=seg_alpha,
                 solid_capstyle="round", zorder=3)
 
     # Per-variant marker scaling. noPHII renders at a smaller size and
@@ -375,8 +389,13 @@ def _build_legend_handles():
         Line2D([0], [0], **{k: STYLE_NO[k] for k in
                             ("color", "lw", "ls", "alpha")},
                label=STYLE_NO["label"]),
+        # Trajectory linestyle switches to dotted where v_2 < 0 (recollapse).
+        Line2D([0], [0], color="0.3", lw=1.4, ls=":",
+               label=r"$v_2 < 0$ (recollapse)"),
+        # Single rCloud entry — covers both the dashed line and the
+        # surrounding ±5% band, which are the same annotation visually.
         Line2D([0], [0], color="0.25", lw=1.2, ls="--",
-               label=r"$R_2 = R_{\rm cloud}$"),
+               label=r"$R_{\rm cloud}$"),
         Line2D([0], [0], color="#7f7f7f", lw=1.0, ls=":",
                label=rf"$|v_2| = {V_FAIL_THRESHOLD:.0f}$ pc/Myr"),
         Line2D([0], [0], marker="o", color="0.3",
@@ -411,8 +430,6 @@ def _build_legend_handles():
                markerfacecolor="0.3", markeredgecolor="black",
                linestyle="", markersize=END_MARKER_SIZE,
                label="end (failed)"),
-        Patch(facecolor="0.55", alpha=0.18, edgecolor="none",
-              label=rf"$R_{{\rm cloud}}\,(1\pm{RCLOUD_BAND_FRAC:g})$"),
     ]
     return handles
 
