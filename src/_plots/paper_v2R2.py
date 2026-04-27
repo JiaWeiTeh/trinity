@@ -99,9 +99,14 @@ YES_SUFFIX = "_yesPHII"
 NO_SUFFIX = "_noPHII"
 
 # Per-variant styling.
+# noPHII gets slightly smaller, more transparent markers so the yesPHII
+# (TRINITY) marker shows through when the two trajectories overlap —
+# they coincide for a substantial portion of every run before diverging.
 STYLE_YES = dict(color="#1f77b4", lw=1.6, ls="-",  alpha=0.95,
+                 marker_scale=1.0, marker_alpha=1.0,
                  label=r"with $P_{\rm HII}$")
 STYLE_NO  = dict(color="#d62728", lw=1.6, ls="--", alpha=0.95,
+                 marker_scale=0.75, marker_alpha=0.55,
                  label=r"without $P_{\rm HII}$")
 
 # Endpoint marker: shape tells success vs failure.
@@ -269,11 +274,18 @@ def _plot_one_trajectory(ax, data, style, *, smooth_window=None,
                 ls=ls, alpha=style.get("alpha", 0.95),
                 solid_capstyle="round", zorder=3)
 
+    # Per-variant marker scaling. noPHII renders at a smaller size and
+    # lower alpha so yesPHII markers stay visible underneath when the
+    # two trajectories coincide.
+    m_scale = style.get("marker_scale", 1.0)
+    m_alpha = style.get("marker_alpha", 1.0)
+
     # Start marker (open) — first valid sample.
     ax.plot(R2v[0], mag[0],
             marker="o", markerfacecolor="white",
-            markeredgecolor=style["color"], markersize=4.5,
-            mew=1.2, zorder=4)
+            markeredgecolor=style["color"],
+            markersize=4.5 * m_scale,
+            mew=1.2, alpha=m_alpha, zorder=4)
 
     # Phase-boundary markers placed on the trajectory.
     # The handoff (implicit->transition) is always shown because it
@@ -290,7 +302,8 @@ def _plot_one_trajectory(ax, data, style, *, smooth_window=None,
             ax.plot(R2v[pos], mag[pos],
                     marker=marker, markerfacecolor=face,
                     markeredgecolor="black",
-                    markersize=size, mew=mew, zorder=zorder)
+                    markersize=size * m_scale, mew=mew,
+                    alpha=m_alpha, zorder=zorder)
 
     # Implicit -> transition handoff (always-on, LSODA-colored)
     ho_face = (HANDOFF_FACE_FAIL if data.get("lsoda_failed")
@@ -309,8 +322,9 @@ def _plot_one_trajectory(ax, data, style, *, smooth_window=None,
     end_marker = END_MARKER_OK if data.get("end_ok") else END_MARKER_FAIL
     ax.plot(R2v[-1], mag[-1],
             marker=end_marker, markerfacecolor=style["color"],
-            markeredgecolor="black", markersize=END_MARKER_SIZE,
-            mew=0.8, zorder=5)
+            markeredgecolor="black",
+            markersize=END_MARKER_SIZE * m_scale,
+            mew=0.8, alpha=m_alpha, zorder=5)
 
 
 def plot_cell(ax, data_yes, data_no):
@@ -334,12 +348,14 @@ def plot_cell(ax, data_yes, data_no):
     ax.axhline(V_FAIL_THRESHOLD, color="#7f7f7f", lw=1.0, ls=":",
                alpha=0.8, zorder=2)
 
-    if data_yes is not None:
-        _plot_one_trajectory(ax, data_yes, STYLE_YES,
-                             smooth_window=SMOOTH_WINDOW,
-                             smooth_mode=SMOOTH_MODE)
+    # Draw noPHII first so yesPHII (the hero) renders on top when
+    # the two trajectories overlap.
     if data_no is not None:
         _plot_one_trajectory(ax, data_no, STYLE_NO,
+                             smooth_window=SMOOTH_WINDOW,
+                             smooth_mode=SMOOTH_MODE)
+    if data_yes is not None:
+        _plot_one_trajectory(ax, data_yes, STYLE_YES,
                              smooth_window=SMOOTH_WINDOW,
                              smooth_mode=SMOOTH_MODE)
 
