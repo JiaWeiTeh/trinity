@@ -29,6 +29,8 @@ Output: ``fig/paper_rcloud_smooth.pdf``
 """
 
 import numpy as np
+import matplotlib
+matplotlib.use("Agg")        # save-only; no GUI window even if a backend exists
 import matplotlib.pyplot as plt
 
 import sys as _sys
@@ -137,17 +139,18 @@ r = np.unique(np.concatenate([r_log, r_band]))
 
 # =============================================================================
 # Plot (style is set by trinity.mplstyle via the plot_base import)
+# Sized for A&A \columnwidth (~3.5 in) and 25% of \textheight (~2.4 in).
 # =============================================================================
 fig, axes = plt.subplots(
-    2, 2, figsize=(12, 9), sharex=True, sharey='row',
+    2, 2, figsize=(3.5, 2.4), sharex=True, sharey='row',
 )
 (ax_n_jump, ax_n_blend), (ax_m_jump, ax_m_blend) = axes
 
 # --- previous discontinuous step ---
 n_jump = density_jump(r)
 M_jump = enclosed_mass(r, n_jump)
-ax_n_jump.plot(r, n_jump * cvt.ndens_au2cgs, color='k', lw=2.0, label='step')
-ax_m_jump.plot(r, M_jump, color='k', lw=2.0, label='step')
+ax_n_jump.plot(r, n_jump * cvt.ndens_au2cgs, color='k', lw=1.2)
+ax_m_jump.plot(r, M_jump, color='k', lw=1.2)
 
 # --- tanh blend at several smoothing widths ---
 cmap = plt.get_cmap('viridis')
@@ -158,19 +161,21 @@ for sf in SMOOTH_FRACS:
     M_b = enclosed_mass(r, n_b)
     is_default = np.isclose(sf, SMOOTH_FRAC_DEFAULT)
     color = cmap(norm(np.log10(sf)))
-    lw = 2.6 if is_default else 1.6
+    lw = 1.6 if is_default else 1.0
     ls = '-' if is_default else '--'
-    label = rf'$f={sf:g}$' + (' (default)' if is_default else '')
+    label = rf'$f={sf:g}$'
     ax_n_blend.plot(r, n_b * cvt.ndens_au2cgs,
                     color=color, lw=lw, ls=ls, label=label)
     ax_m_blend.plot(r, M_b, color=color, lw=lw, ls=ls, label=label)
 
-# Reference markers: rCloud and target cloud mass
+# Reference markers: rCloud and target cloud mass.
+# x-axis is linear so the narrow tanh band (~+/- f*rCloud around rCloud)
+# is actually visible; y-axes stay log to span the n_core/n_ISM and
+# M(r_min)/M_cloud contrasts.
 for ax in (ax_n_jump, ax_n_blend, ax_m_jump, ax_m_blend):
     ax.axvline(R_CLOUD, color='red', ls=':', lw=1.0, alpha=0.6)
-    ax.set_xscale('log')
     ax.set_yscale('log')
-    ax.set_xlim(r_min, r_max)
+    ax.set_xlim(0.0, 1.3 * R_CLOUD)
 
 for ax in (ax_m_jump, ax_m_blend):
     ax.axhline(M_CLOUD, color='red', ls=':', lw=1.0, alpha=0.6)
@@ -180,28 +185,15 @@ ax_m_jump.set_ylabel(r'$M(<r)\ [\mathrm{M}_\odot]$')
 ax_n_jump.set_ylabel(r'$n(r)\ [\mathrm{cm}^{-3}]$')
 ax_n_jump.set_ylim(0.3 * N_ISM_CGS, 5 * N_CORE_CGS)
 
-ax_n_jump.set_title('previous: discontinuous step')
-ax_n_blend.set_title(r'hyperbolic blend ($\delta = f\,r_\mathrm{cloud}$)')
+ax_n_jump.set_title('step')
+ax_n_blend.set_title('blend')
 
-ax_n_jump.legend(loc='lower left')
-ax_m_jump.legend(loc='lower right')
-ax_n_blend.legend(loc='lower left')
-ax_m_blend.legend(loc='lower right')
+# Single compact legend on the upper-right blend panel only
+ax_n_blend.legend(loc='lower left', handlelength=1.2, labelspacing=0.2)
 
-# Annotate rCloud line on every panel (sharey='row' has set m-axis ylim)
-for ax in (ax_n_jump, ax_n_blend, ax_m_jump, ax_m_blend):
-    y_top = ax.get_ylim()[1]
-    ax.text(R_CLOUD, y_top, r' $r_\mathrm{cloud}$',
-            color='red', va='top', ha='left')
-
-fig.suptitle(
-    rf'Fiducial cloud: $M_\mathrm{{cl}}=10^{{6}}\,\mathrm{{M}}_\odot$, '
-    rf'$n_\mathrm{{core}}=10^{{3}}\,\mathrm{{cm}}^{{-3}}$, '
-    rf'$\alpha={ALPHA}$, $r_\mathrm{{core}}={R_CORE}\,\mathrm{{pc}}$',
-)
-fig.tight_layout(rect=[0, 0, 1, 0.96])
+fig.tight_layout()
 
 out_path = FIG_DIR / 'paper_rcloud_smooth.pdf'
 fig.savefig(out_path, bbox_inches='tight')
+plt.close(fig)
 print(f"Saved: {out_path}")
-plt.show()
