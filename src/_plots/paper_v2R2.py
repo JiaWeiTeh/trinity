@@ -34,7 +34,6 @@ from typing import Optional
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
-from matplotlib.patches import Patch
 
 import sys as _sys
 from pathlib import Path as _Path
@@ -103,7 +102,7 @@ NO_SUFFIX = "_noPHII"
 # even-handed; size differentiates them (noPHII smaller) so when the
 # two trajectories coincide the yesPHII marker still shows around
 # the edges of the noPHII marker.
-STYLE_YES = dict(color="#1f77b4", lw=1.6, ls="-",  alpha=0.95,
+STYLE_YES = dict(color="k", lw=1.6, ls="-",  alpha=0.95,
                  marker_scale=1.0, marker_alpha=0.55,
                  label=r"with $P_{\rm HII}$")
 STYLE_NO  = dict(color="#d62728", lw=1.6, ls="--", alpha=0.95,
@@ -376,8 +375,13 @@ def _build_legend_handles():
         Line2D([0], [0], **{k: STYLE_NO[k] for k in
                             ("color", "lw", "ls", "alpha")},
                label=STYLE_NO["label"]),
+        # Trajectory linestyle switches to dotted where v_2 < 0 (recollapse).
+        Line2D([0], [0], color="0.3", lw=1.4, ls=":",
+               label=r"$v_2 < 0$ (recollapse)"),
+        # Single rCloud entry — covers both the dashed line and the
+        # surrounding ±5% band, which are the same annotation visually.
         Line2D([0], [0], color="0.25", lw=1.2, ls="--",
-               label=r"$R_2 = R_{\rm cloud}$"),
+               label=r"$R_{\rm cloud}$"),
         Line2D([0], [0], color="#7f7f7f", lw=1.0, ls=":",
                label=rf"$|v_2| = {V_FAIL_THRESHOLD:.0f}$ pc/Myr"),
         Line2D([0], [0], marker="o", color="0.3",
@@ -412,8 +416,6 @@ def _build_legend_handles():
                markerfacecolor="0.3", markeredgecolor="black",
                linestyle="", markersize=END_MARKER_SIZE,
                label="end (failed)"),
-        Patch(facecolor="0.55", alpha=0.18, edgecolor="none",
-              label=rf"$R_{{\rm cloud}}\,(1\pm{RCLOUD_BAND_FRAC:g})$"),
     ]
     return handles
 
