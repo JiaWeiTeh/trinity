@@ -137,18 +137,29 @@ for sf, color, ls, lw in blend_specs:
     label = rf'$f={sf:g}$' + (' (default)' if is_default else '')
     ax.plot(r, n_b * cvt.ndens_au2cgs, color=color, ls=ls, lw=lw, label=label)
 
-# r_cloud reference line
+# r_cloud reference line (kept thin; the x-tick below also marks it)
 ax.axvline(R_CLOUD, color='red', ls=':', lw=1.0, alpha=0.6)
 
 # Both axes linear so the antisymmetry of (n_blend - n_step) about rCloud
 # -- i.e. the rotational symmetry around (rCloud, (n_core + n_ISM)/2) --
 # is visible by eye.
 ax.set_xlim(0.0, 1.3 * R_CLOUD)
-ax.set_ylim(-0.05 * N_CORE_CGS, 1.1 * N_CORE_CGS)
-ax.set_xlabel(r'$r\ [\mathrm{pc}]$')
-ax.set_ylabel(r'$n(r)\ [\mathrm{cm}^{-3}]$')
+ax.set_ylim(-0.05 * N_CORE_CGS, 1.15 * N_CORE_CGS)
 
-# Mark the symmetry point of the blend
+# Schematic axes: a single x-tick at rCloud, no numeric values.
+ax.set_xticks([R_CLOUD])
+ax.set_xticklabels([r'$R_\mathrm{cloud}$'])
+ax.set_yticks([])
+ax.minorticks_off()  # only one major xtick -> auto minors are nonsensical
+ax.set_ylabel(r'$n(r)$')
+
+# Inline asymptote labels in lieu of numeric y-ticks
+ax.text(0.04 * R_CLOUD, N_CORE_CGS, r'$n_\mathrm{core}$',
+        va='bottom', ha='left', color='0.25')
+ax.text(1.28 * R_CLOUD, N_ISM_CGS, r'$n_\mathrm{ISM}$',
+        va='bottom', ha='right', color='0.25')
+
+# Mark the symmetry point of the blend (every s-curve crosses here)
 ax.axhline(0.5 * (N_CORE_CGS + N_ISM_CGS),
            color='gray', ls=':', lw=0.8, alpha=0.5)
 
