@@ -63,12 +63,14 @@ AFTER_GLOB  = "*_after_blend*"
 
 # Per-variant styling. "after" is the hero (drawn on top, solid black);
 # "before" is the baseline (dashed red), mirroring the yes/noPHII pairing
-# in paper_v2R2.py so the visual grammar transfers directly.
+# in paper_v2R2.py so the visual grammar transfers directly. marker_alpha
+# matches paper_v2R2 (0.55) so the smaller "before" marker pokes through
+# the larger "after" marker where the trajectories coincide.
 STYLE_AFTER  = dict(color="k",       lw=1.3, ls="-",  alpha=0.95,
-                    marker_scale=1.0,  marker_alpha=0.7,
+                    marker_scale=1.0,  marker_alpha=0.55,
                     label="after blend")
 STYLE_BEFORE = dict(color="#d62728", lw=1.6, ls="--", alpha=0.95,
-                    marker_scale=0.75, marker_alpha=0.7,
+                    marker_scale=0.75, marker_alpha=0.55,
                     label="before blend")
 
 
@@ -91,7 +93,16 @@ def _find_unique(folder: Path, pattern: str) -> Path:
 
 
 def _load_pair_from_folder(folder: Path) -> dict:
-    """Find the before/after blend .jsonl files and load both trajectories."""
+    """Find the before/after blend .jsonl files and load both trajectories.
+
+    Note: ``load_run_v2R2`` reads ``simulationEnd.txt`` and ``trinity.log``
+    from the .jsonl's parent directory. Because both blend files share that
+    parent, ``end_ok`` and ``lsoda_failed`` will be identical for the two
+    sides when those sibling files exist (they describe the run that
+    produced both dumps, not each dump independently). When the siblings
+    are absent each side correctly falls back to its own in-snapshot
+    ``SimulationEndReason``.
+    """
     before_path = _find_unique(folder, BEFORE_GLOB)
     after_path  = _find_unique(folder, AFTER_GLOB)
     return dict(
