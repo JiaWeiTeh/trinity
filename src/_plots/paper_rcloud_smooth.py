@@ -118,7 +118,7 @@ r = np.unique(np.concatenate([r_log, r_band]))
 # =============================================================================
 # Plot (style and figsize set by trinity.mplstyle via the plot_base import)
 # =============================================================================
-fig, ax = plt.subplots()
+fig, ax = plt.subplots(figsize=(3.5, 2))
 
 # Original discontinuous step
 n_jump = density_jump(r)
