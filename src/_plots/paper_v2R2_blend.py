@@ -228,10 +228,10 @@ def _build_legend_handles() -> list:
         #       label="implicit$\\to$transition (LSODA fail)"),
         Line2D([0], [0], marker=END_MARKER_OK, color="0.3",
                markerfacecolor="0.3", markeredgecolor="black",
-               linestyle="", markersize=END_MARKER_SIZE, label="end (LSODA succeed)"),
+               linestyle="", markersize=END_MARKER_SIZE, label="LSODA succeed"),
         Line2D([0], [0], marker=END_MARKER_FAIL, color="0.3",
                markerfacecolor="0.3", markeredgecolor="black",
-               linestyle="", markersize=END_MARKER_SIZE, label="end (LSODA failed)"),
+               linestyle="", markersize=END_MARKER_SIZE, label="LSODA failed"),
     ]
 
 
@@ -243,7 +243,7 @@ def plot_v2R2_diff(pair: dict, out_path: Optional[Path] = None,
 
     FONTSIZE = 25
 
-    fig, ax = plt.subplots(figsize=[8, 3], dpi=150)
+    fig, ax = plt.subplots(figsize=[8, 3])
     ax.tick_params(labelsize = FONTSIZE, axis = 'both')
     
 
@@ -264,7 +264,7 @@ def plot_v2R2_diff(pair: dict, out_path: Optional[Path] = None,
     ax.set_ylabel(r"$v_b$ [km s$^{-1}$]", fontsize = FONTSIZE)
 
     ax.legend(handles=_build_legend_handles(), loc="lower left",
-              fontsize= 17, framealpha=0.9)
+              fontsize= 19, framealpha=0.9)
 
     plt.tight_layout()
 
