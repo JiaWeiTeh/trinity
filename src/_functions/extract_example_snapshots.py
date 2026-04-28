@@ -4,7 +4,7 @@
 Extract representative snapshots from a TRINITY simulation output.
 
 Given a folder containing ``dictionary.jsonl``, this script writes 6 single-
-snapshot ``.jsonl`` files into ``output/mockOutputs/<foldername>/``:
+snapshot ``.jsonl`` files into ``outputs/mockOutput/<foldername>/``:
 
     1_begin.jsonl       first snapshot
     2_energy.jsonl      representative snapshot from the 'energy' phase
@@ -82,7 +82,7 @@ def extract(folder: Path) -> None:
     if len(output) == 0:
         raise ValueError(f"No snapshots in {dict_path}")
 
-    out_dir = REPO_ROOT / 'output' / 'mockOutputs' / folder.resolve().name
+    out_dir = REPO_ROOT / 'outputs' / 'mockOutput' / folder.resolve().name
     out_dir.mkdir(parents=True, exist_ok=True)
 
     print(f"Source:  {dict_path}")
