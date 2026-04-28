@@ -35,6 +35,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 
+import src._functions.unit_conversions as cvt
+
+
 import sys as _sys
 from pathlib import Path as _Path
 _sys.path.insert(0, str(_Path(__file__).parent.parent.parent))
@@ -186,10 +189,14 @@ def load_run_v2R2(data_path: Path) -> dict:
     output = load_output(data_path)
     if len(output) == 0:
         raise ValueError(f"No snapshots found in {data_path}")
+	
+    # ISSUE AND BIG BUG 
+    # I added cvt here just so paper_v2R2_blend can be right because it ports this. 
+    # but that means anything downstream in THiS script is incorrect units/labels!
 
     t  = output.get("t_now")
     R2 = output.get("R2")
-    v2 = output.get("v2")  # pc/Myr
+    v2 = output.get("v2") * cvt.v_au2kms
     phase = output.get("current_phase", as_array=False)
     phase_arr = np.asarray(phase) if phase is not None else np.array([])
     rcloud = float(output[0].get("rCloud", np.nan))
@@ -295,11 +302,11 @@ def _plot_one_trajectory(ax, data, style, *, smooth_window=None,
     m_alpha = style.get("marker_alpha", 1.0)
 
     # Start marker (open) — first valid sample.
-    ax.plot(R2v[0], mag[0],
-            marker="o", markerfacecolor="white",
-            markeredgecolor=style["color"],
-            markersize=4.5 * m_scale,
-            mew=1.2, alpha=m_alpha, zorder=4)
+    # TODO DEBUG ax.plot(R2v[0], mag[0],
+    # TODO DEBUG         marker="o", markerfacecolor="white",
+    # TODO DEBUG         markeredgecolor=style["color"],
+    # TODO DEBUG         markersize=4.5 * m_scale,
+    # TODO DEBUG         mew=1.2, alpha=m_alpha, zorder=4)
 
     # Phase-boundary markers placed on the trajectory.
     # The handoff (implicit->transition) is always shown because it
@@ -322,8 +329,8 @@ def _plot_one_trajectory(ax, data, style, *, smooth_window=None,
     # Implicit -> transition handoff (always-on, LSODA-colored)
     ho_face = (HANDOFF_FACE_FAIL if data.get("lsoda_failed")
                else HANDOFF_FACE_OK)
-    _plot_at_orig_idx(data.get("handoff_idx"), HANDOFF_MARKER,
-                      ho_face, HANDOFF_MARKER_SIZE, 0.6, 4.5)
+    # TODO DEBUG _plot_at_orig_idx(data.get("handoff_idx"), HANDOFF_MARKER,
+    # TODO DEBUG                   ho_face, HANDOFF_MARKER_SIZE, 0.6, 4.5)
 
     # Other phase boundaries — only with --show-phase
     if SHOW_PHASE:

@@ -42,6 +42,8 @@ import sys as _sys
 from pathlib import Path as _Path
 _sys.path.insert(0, str(_Path(__file__).parent.parent.parent))
 
+import src._functions.unit_conversions as cvt
+
 from src._plots.plot_base import FIG_DIR
 from src._plots.paper_v2R2 import (
     load_run_v2R2,
@@ -76,10 +78,10 @@ AFTER_SUFFIX  = "_after_blend"
 # Label convention matches paper_rcloud_smooth.py:126.
 STYLE_AFTER  = dict(color="k",       lw=1.3, ls="-",  alpha=0.95,
                     marker_scale=1.0,  marker_alpha=0.55,
-                    label="tanh")
+                    label="after smoothing")
 STYLE_BEFORE = dict(color="#d62728", lw=1.6, ls="--", alpha=0.95,
                     marker_scale=0.75, marker_alpha=0.55,
-                    label="step")
+                    label="before smoothing")
 
 
 # ----------------------------------------------------------------
@@ -205,31 +207,31 @@ def load_v2R2_pair(source: Union[str, Path]) -> dict:
 # ----------------------------------------------------------------
 def _build_legend_handles() -> list:
     return [
-        Line2D([0], [0], **{k: STYLE_AFTER[k]  for k in ("color", "lw", "ls", "alpha")},
-               label=STYLE_AFTER["label"]),
-        Line2D([0], [0], **{k: STYLE_BEFORE[k] for k in ("color", "lw", "ls", "alpha")},
-               label=STYLE_BEFORE["label"]),
-        Line2D([0], [0], color="0.3", lw=1.4, ls=":",
-               label=r"$v_2 < 0$ (recollapse)"),
-        Line2D([0], [0], color="0.25", lw=1.2, ls="--",
-               label=r"$R_{\rm cloud}$"),
-        Line2D([0], [0], marker="o", color="0.3",
-               markerfacecolor="white", markeredgecolor="0.3",
-               linestyle="", markersize=4.5, label="start"),
-        Line2D([0], [0], marker=HANDOFF_MARKER, color="0.3",
-               markerfacecolor=HANDOFF_FACE_OK, markeredgecolor="black",
-               linestyle="", markersize=HANDOFF_MARKER_SIZE,
-               label="implicit$\\to$transition (clean)"),
-        Line2D([0], [0], marker=HANDOFF_MARKER, color="0.3",
-               markerfacecolor=HANDOFF_FACE_FAIL, markeredgecolor="black",
-               linestyle="", markersize=HANDOFF_MARKER_SIZE,
-               label="implicit$\\to$transition (LSODA fail)"),
+        #Line2D([0], [0], **{k: STYLE_AFTER[k]  for k in ("color", "lw", "ls", "alpha")},
+        #       label=STYLE_AFTER["label"]),
+        #Line2D([0], [0], **{k: STYLE_BEFORE[k] for k in ("color", "lw", "ls", "alpha")},
+        #       label=STYLE_BEFORE["label"]),
+        #Line2D([0], [0], color="0.3", lw=1.4, ls=":",
+        #       label=r"$v_2 < 0$ (recollapse)"),
+        #Line2D([0], [0], color="0.25", lw=1.2, ls="--",
+        #       label=r"$R_{\rm cloud}$"),
+        #Line2D([0], [0], marker="o", color="0.3",
+        #       markerfacecolor="white", markeredgecolor="0.3",
+        #       linestyle="", markersize=4.5, label="start"),
+        #Line2D([0], [0], marker=HANDOFF_MARKER, color="0.3",
+        #       markerfacecolor=HANDOFF_FACE_OK, markeredgecolor="black",
+        #       linestyle="", markersize=HANDOFF_MARKER_SIZE,
+        #       label="implicit$\\to$transition (clean)"),
+        #Line2D([0], [0], marker=HANDOFF_MARKER, color="0.3",
+        #       markerfacecolor=HANDOFF_FACE_FAIL, markeredgecolor="black",
+        #       linestyle="", markersize=HANDOFF_MARKER_SIZE,
+        #       label="implicit$\\to$transition (LSODA fail)"),
         Line2D([0], [0], marker=END_MARKER_OK, color="0.3",
                markerfacecolor="0.3", markeredgecolor="black",
-               linestyle="", markersize=END_MARKER_SIZE, label="end (clean)"),
+               linestyle="", markersize=END_MARKER_SIZE, label="end (LSODA succeed)"),
         Line2D([0], [0], marker=END_MARKER_FAIL, color="0.3",
                markerfacecolor="0.3", markeredgecolor="black",
-               linestyle="", markersize=END_MARKER_SIZE, label="end (failed)"),
+               linestyle="", markersize=END_MARKER_SIZE, label="end (LSODA failed)"),
     ]
 
 
@@ -239,7 +241,11 @@ def plot_v2R2_diff(pair: dict, out_path: Optional[Path] = None,
     before = pair["before"]
     after  = pair["after"]
 
-    fig, ax = plt.subplots(figsize=(6.5, 5.0), dpi=150)
+    FONTSIZE = 25
+
+    fig, ax = plt.subplots(figsize=[8, 3], dpi=150)
+    ax.tick_params(labelsize = FONTSIZE, axis = 'both')
+    
 
     # rCloud cliff: single dashed vertical line, no surrounding band.
     rcloud = next((float(d["rcloud"]) for d in (after, before)
@@ -254,11 +260,11 @@ def plot_v2R2_diff(pair: dict, out_path: Optional[Path] = None,
     ax.set_xscale("log")
     ax.set_yscale("log")
     ax.grid(True, which="both", ls=":", lw=0.5, alpha=0.4, zorder=0)
-    ax.set_xlabel(r"$R_2$ [pc]")
-    ax.set_ylabel(r"$|v_2|$ [pc Myr$^{-1}$]")
+    ax.set_xlabel(r"$R_b$ [pc]", fontsize = FONTSIZE)
+    ax.set_ylabel(r"$v_b$ [km s$^{-1}$]", fontsize = FONTSIZE)
 
     ax.legend(handles=_build_legend_handles(), loc="lower left",
-              fontsize=8, framealpha=0.9)
+              fontsize= 17, framealpha=0.9)
 
     plt.tight_layout()
 

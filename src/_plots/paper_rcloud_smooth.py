@@ -118,7 +118,8 @@ r = np.unique(np.concatenate([r_log, r_band]))
 # =============================================================================
 # Plot (style and figsize set by trinity.mplstyle via the plot_base import)
 # =============================================================================
-fig, ax = plt.subplots(figsize=(3.5, 2))
+fig, ax = plt.subplots(figsize=[3.5, 2])
+
 
 # Original discontinuous step
 n_jump = density_jump(r)
@@ -134,7 +135,7 @@ blend_specs = [
 for sf, color, ls, lw in blend_specs:
     n_b = density_blend(r, sf)
     is_default = np.isclose(sf, SMOOTH_FRAC_DEFAULT)
-    label = rf'$f={sf:g}$' + (' (default)' if is_default else '')
+    label = r'$f_{\rm smooth}$'+rf'$={sf:g}$' + (' (default)' if is_default else '')
     ax.plot(r, n_b * cvt.ndens_au2cgs, color=color, ls=ls, lw=lw, label=label)
 
 # r_cloud reference line (kept thin; the x-tick below also marks it)
@@ -144,14 +145,17 @@ ax.axvline(R_CLOUD, color='red', ls=':', lw=1.0, alpha=0.6)
 # -- i.e. the rotational symmetry around (rCloud, (n_core + n_ISM)/2) --
 # is visible by eye.
 ax.set_xlim(0.0, 1.3 * R_CLOUD)
-ax.set_ylim(-0.05 * N_CORE_CGS, 1.15 * N_CORE_CGS)
+ax.set_ylim(-0.2 * N_CORE_CGS, 1.25
+ * N_CORE_CGS)
 
 # Schematic axes: a single x-tick at rCloud, no numeric values.
+ax.tick_params(labelsize = 11, axis = 'both')
+
 ax.set_xticks([R_CLOUD])
 ax.set_xticklabels([r'$R_\mathrm{cloud}$'])
 ax.set_yticks([])
 ax.minorticks_off()  # only one major xtick -> auto minors are nonsensical
-ax.set_ylabel(r'$n(r)$')
+ax.set_ylabel(r'$n(r)$', size = 12)
 
 # Inline asymptote labels in lieu of numeric y-ticks (slightly above each line)
 _label_offset = 0.04 * N_CORE_CGS
@@ -161,10 +165,10 @@ ax.text(1.28 * R_CLOUD, N_ISM_CGS + _label_offset, r'$n_\mathrm{ISM}$',
         va='bottom', ha='right', color='0.25')
 
 # Mark the symmetry point of the blend (every s-curve crosses here)
-ax.axhline(0.5 * (N_CORE_CGS + N_ISM_CGS),
-           color='gray', ls=':', lw=0.8, alpha=0.5)
+#ax.axhline(0.5 * (N_CORE_CGS + N_ISM_CGS),
+#           color='gray', ls=':', lw=0.8, alpha=0.5)
 
-ax.legend(loc='lower left', handlelength=1.6, labelspacing=0.3)
+ax.legend(loc='lower left', handlelength=1.6, labelspacing=0.3, fontsize = 9)
 
 fig.tight_layout()
 
