@@ -245,7 +245,7 @@ def run_expansion(params):
         phase1c_elapsed = phase1c_endtime - phase1c_starttime
         logger.info(f"Phase 1c complete. Duration: {phase1c_elapsed}")
     else:
-        logger.warning("EndSimulationDirectly=True, skipping transition phase")
+        logger.info("EndSimulationDirectly=True, skipping transition phase")
 
     # Since cooling is not needed anymore after this phase, we reset values.
     # COOLING_PHASE_KEYS contains all cooling-related parameters that can be cleared.
@@ -287,7 +287,7 @@ def run_expansion(params):
         phase2_elapsed = phase2_endtime - phase2_starttime
         logger.info(f"Phase 2 (momentum) complete. Duration: {phase2_elapsed}")
     else:
-        logger.warning("EndSimulationDirectly=True, skipping momentum phase")
+        logger.info("EndSimulationDirectly=True, skipping momentum phase")
 
     # Flush parameters to disk
     try:

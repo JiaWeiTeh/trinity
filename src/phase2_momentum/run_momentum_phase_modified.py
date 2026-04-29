@@ -685,7 +685,7 @@ def run_phase_momentum(params) -> MomentumPhaseResults:
             termination_reason = "reached_tmax"
             params['SimulationEndReason'].value = 'Stopping time reached'
             params['EndSimulationDirectly'].value = True
-            logger.warning(f"Simulation reached stop_t={tmax} Myr successfully")
+            logger.info(f"Simulation reached stop_t={tmax} Myr successfully")
             break
 
         # ---------------------------------------------------------------------
@@ -730,8 +730,8 @@ def run_phase_momentum(params) -> MomentumPhaseResults:
         # ---------------------------------------------------------------------
         event_result = check_event_termination(sol, ode_events)
         if event_result.triggered:
-            logger.warning(f"Event '{event_result.name}' triggered at t={event_result.t:.6e} Myr: "
-                          f"R2={event_result.y[0]:.4e} pc, v2={event_result.y[1]:.4e} pc/Myr")
+            logger.info(f"Event '{event_result.name}' triggered at t={event_result.t:.6e} Myr: "
+                        f"R2={event_result.y[0]:.4e} pc, v2={event_result.y[1]:.4e} pc/Myr")
             termination_reason = event_result.reason_code
             # Update state from event
             R2 = float(event_result.y[0])
@@ -858,8 +858,8 @@ def run_phase_momentum(params) -> MomentumPhaseResults:
                     termination_reason = "dissolved"
                     params['SimulationEndReason'].value = 'Shell dissolved'
                     params['EndSimulationDirectly'].value = True
-                    logger.warning(f"Shell dissolved after {t_now - t_diss_onset:.4f} Myr "
-                                   f"below nISM (stop_t_diss={params['stop_t_diss'].value})")
+                    logger.info(f"Shell dissolved after {t_now - t_diss_onset:.4f} Myr "
+                                f"below nISM (stop_t_diss={params['stop_t_diss'].value})")
                     break
             else:
                 if t_diss_onset != np.inf:

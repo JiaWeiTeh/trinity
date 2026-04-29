@@ -216,7 +216,7 @@ def get_bubbleproperties_pure(params) -> BubbleProperties:
     index_cooling_switch = operations.find_nearest_higher(T_array, _coolingswitch)
 
     if any(T_array < 0):
-        logger.error('Negative temperature detected')
+        logger.critical('Negative temperature detected')
         sys.exit('Negative temperature in bubble structure')
 
     # Process CIE/non-CIE transition
@@ -788,7 +788,7 @@ def _get_bubble_ODE(r_arr, initial_ODEs, params, Pb: float):
     v, T, dTdr = initial_ODEs
 
     if np.abs(T - 0) < 1e-5:
-        logger.error('T is zero in bubble ODE')
+        logger.critical('T is zero in bubble ODE')
         sys.exit()
 
     ndens = Pb / (2 * params['k_B'].value * T)

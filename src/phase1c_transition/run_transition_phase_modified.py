@@ -385,11 +385,11 @@ def run_phase_transition(params) -> TransitionPhaseResults:
     # --- PHASE BOUNDARY DIAGNOSTIC ---
     v2_from_ODE = params['v2'].value
     v2_from_alpha = params['cool_alpha'].value * params['R2'].value / params['t_now'].value
-    logger.warning(f"PHASE BOUNDARY [implicit->transition]: "
-                   f"v2_ODE={v2_from_ODE:.6e}, v2_alpha={v2_from_alpha:.6e}, "
-                   f"ratio={v2_from_alpha/v2_from_ODE if v2_from_ODE != 0 else float('inf'):.4f}")
-    logger.warning(f"  R2={params['R2'].value:.6e}, shell_mass={params['shell_mass'].value:.6e}, "
-                   f"Eb={params['Eb'].value:.6e}, t_now={params['t_now'].value:.6e}")
+    logger.info(f"PHASE BOUNDARY [implicit->transition]: "
+                f"v2_ODE={v2_from_ODE:.6e}, v2_alpha={v2_from_alpha:.6e}, "
+                f"ratio={v2_from_alpha/v2_from_ODE if v2_from_ODE != 0 else float('inf'):.4f}")
+    logger.info(f"  R2={params['R2'].value:.6e}, shell_mass={params['shell_mass'].value:.6e}, "
+                f"Eb={params['Eb'].value:.6e}, t_now={params['t_now'].value:.6e}")
     # --- END DIAGNOSTIC ---
 
     # Update cool_alpha to match ODE-evolved v2 (preserves ODE continuity)
@@ -480,7 +480,7 @@ def run_phase_transition(params) -> TransitionPhaseResults:
         # --- Ed diagnostic at first segment (quantify the original discontinuity) ---
         if segment_count == 1 and c_sound > 0 and R2 > 0:
             Ed_soundcrossing_init = -Eb / (R2 / c_sound)
-            logger.warning(
+            logger.info(
                 f"PHASE BOUNDARY Ed diagnostic: "
                 f"Ed_soundcrossing={Ed_soundcrossing_init:.4e}, "
                 f"c_sound={c_sound:.4e}, R2={R2:.4e}, Eb={Eb:.4e}"
@@ -605,7 +605,7 @@ def run_phase_transition(params) -> TransitionPhaseResults:
             termination_reason = "reached_tmax"
             params['SimulationEndReason'].value = 'Stopping time reached'
             params['EndSimulationDirectly'].value = True
-            logger.warning(f"Simulation reached stop_t={tmax} Myr successfully")
+            logger.info(f"Simulation reached stop_t={tmax} Myr successfully")
             break
 
         # ---------------------------------------------------------------------
@@ -650,8 +650,8 @@ def run_phase_transition(params) -> TransitionPhaseResults:
         # ---------------------------------------------------------------------
         event_result = check_event_termination(sol, ode_events)
         if event_result.triggered:
-            logger.warning(f"Event '{event_result.name}' triggered at t={event_result.t:.6e} Myr: "
-                          f"R2={event_result.y[0]:.4e} pc, v2={event_result.y[1]:.4e} pc/Myr, Eb={event_result.y[2]:.4e}")
+            logger.info(f"Event '{event_result.name}' triggered at t={event_result.t:.6e} Myr: "
+                        f"R2={event_result.y[0]:.4e} pc, v2={event_result.y[1]:.4e} pc/Myr, Eb={event_result.y[2]:.4e}")
             termination_reason = event_result.reason_code
             # Update state from event
             R2 = float(event_result.y[0])
@@ -753,14 +753,14 @@ def run_phase_transition(params) -> TransitionPhaseResults:
             ram_fraction = P_ram_post / P_total
             if ram_fraction > RAM_DOMINANCE_THRESHOLD:
                 termination_reason = "ram_dominated"
-                logger.warning(f"Ram fraction {ram_fraction:.3f} > {RAM_DOMINANCE_THRESHOLD}, "
+                logger.info(f"Ram fraction {ram_fraction:.3f} > {RAM_DOMINANCE_THRESHOLD}, "
                             f"transitioning to momentum (t={t_now:.4e}, Eb={Eb:.4e})")
                 break
         
         # Safety fallback: absolute energy floor
         if Eb < ENERGY_FLOOR:
             termination_reason = "energy_floor"
-            logger.warning(f"Energy dropped below floor ({ENERGY_FLOOR}), transitioning to momentum")
+            logger.info(f"Energy dropped below floor ({ENERGY_FLOOR}), transitioning to momentum")
             break
 
         # Collapse detection: velocity negative AND radius decreasing
@@ -800,19 +800,19 @@ def run_phase_transition(params) -> TransitionPhaseResults:
             if shell_nMax.value < params['nISM'].value:
                 if t_diss_onset == np.inf:
                     t_diss_onset = t_now
-                    logger.warning(f"Dissolution condition onset at t={t_now:.6e} Myr "
+                    logger.info(f"Dissolution condition onset at t={t_now:.6e} Myr "
                                 f"(shell_nMax={shell_nMax.value:.4e} < nISM={params['nISM'].value:.4e})")
                 if (t_now - t_diss_onset) >= params['stop_t_diss'].value:
                     params['isDissolved'].value = True
                     termination_reason = "dissolved"
                     params['SimulationEndReason'].value = 'Shell dissolved'
                     params['EndSimulationDirectly'].value = True
-                    logger.warning(f"Shell dissolved after {t_now - t_diss_onset:.4f} Myr "
-                                   f"below nISM (stop_t_diss={params['stop_t_diss'].value})")
+                    logger.info(f"Shell dissolved after {t_now - t_diss_onset:.4f} Myr "
+                                f"below nISM (stop_t_diss={params['stop_t_diss'].value})")
                     break
             else:
                 if t_diss_onset != np.inf:
-                    logger.warning(f"Dissolution condition reset at t={t_now:.6e} Myr "
+                    logger.info(f"Dissolution condition reset at t={t_now:.6e} Myr "
                                 f"(shell_nMax={shell_nMax.value:.4e} >= nISM={params['nISM'].value:.4e})")
                 t_diss_onset = np.inf
 
