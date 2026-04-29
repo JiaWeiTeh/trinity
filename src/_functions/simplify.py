@@ -316,27 +316,37 @@ def _simplify(
             f"Got {x.size} and {y.size}"
         )
 
-    # Detect strictly-decreasing input and work on an ascending copy.
-    # `np.interp` (used in the R²-thinning step) silently returns garbage
-    # for decreasing reference x, which would defeat downsampling. We
-    # restore the caller's orientation on every return below.
-    reversed_input = (
-        x.size >= 2
-        and x[0] > x[-1]
-        and bool(np.all(np.diff(x) < 0))
+    # Sort by x and work on an ascending copy. `np.interp` (used in the
+    # R²-thinning step) requires its reference x to be ascending; the rest
+    # of the algorithm is sequence-based (curvature on triplets, sign
+    # changes, cumulative |Δy|, peak persistence) and is unaffected by
+    # the temporary reordering. Output values are restored to the caller's
+    # original positional order on every return path: ascending stays
+    # ascending, descending stays descending, and a non-monotonic input
+    # comes back as a thinned subsequence in its original order.
+    x_orig = x
+    y_orig = y
+    sort_order = np.argsort(x, kind="stable")
+    needs_reorder = (
+        sort_order.size > 1
+        and not bool(np.array_equal(sort_order, np.arange(sort_order.size)))
     )
-    if reversed_input:
-        x = x[::-1].copy()
-        y = y[::-1].copy()
+    if needs_reorder:
+        x = x[sort_order]
+        y = y[sort_order]
 
-    def _maybe_flip(xo: np.ndarray, yo: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
-        if reversed_input:
-            return xo[::-1], yo[::-1]
-        return xo, yo
+    def _restore(working_idx: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+        """Map indices in the (ascending) working array back to caller's
+        positional order and return the corresponding original values."""
+        idx = np.asarray(working_idx, dtype=np.int64).ravel()
+        if needs_reorder:
+            idx = sort_order[idx]
+        idx = np.sort(idx)
+        return x_orig[idx], y_orig[idx]
 
     # If the array is already short enough, return as-is.
     if nmin >= x.size:
-        return _maybe_flip(x, y)
+        return x_orig, y_orig
     # Enforce a floor of 100 samples so the output is always useful.
     nmin = max(int(nmin), 100)
 
@@ -422,7 +432,7 @@ def _simplify(
         # Special case: perfectly flat curve (or all NaN).
         # Fall back to uniformly spaced indices.
         idx = np.unique(np.linspace(0, x.size - 1, nmin).astype(int))
-        return _maybe_flip(x[idx], y[idx])
+        return _restore(idx)
 
     # Maximum allowed cumulative y-distance between kept points.
     # Dividing the total variation by nmin gives roughly nmin bins.
@@ -538,7 +548,7 @@ def _simplify(
 
             merged = np.sort(np.concatenate([mandatory, optional[:k]]))
 
-    return _maybe_flip(x[merged], y[merged])
+    return _restore(merged)
 
 
 def _simplify_error(
