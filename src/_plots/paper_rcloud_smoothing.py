@@ -336,19 +336,22 @@ def _draw_rcloud_panel(ax, fontsize, top_xmax):
 
     ax.axvline(R_CLOUD, color="0.25", lw=1.2, ls="--", alpha=0.7, zorder=2)
 
+    ax.set_yscale("log")
     ax.set_xlim(0.0, top_xmax)
-    ax.set_ylim(-0.2 * N_CORE_CGS, 1.25 * N_CORE_CGS)
+    ax.set_ylim(0.5 * N_ISM_CGS, 2.0 * N_CORE_CGS)
 
     ax.tick_params(labelsize=fontsize, axis='both')
     ax.set_xticks([])           # vertical alignment with bottom replaces the rcloud tick
     ax.set_ylabel(r'$n(r)$', fontsize=fontsize)
 
     # Inline asymptote labels; pin n_ISM inside the axes if top_xmax is tight.
-    _label_offset = 0.04 * N_CORE_CGS
+    # Use a multiplicative offset so the labels sit just above each
+    # asymptote on the log axis.
+    _label_factor = 1.15
     nism_x = min(1.28 * R_CLOUD, 0.97 * top_xmax)
-    ax.text(0.04 * R_CLOUD, N_CORE_CGS + _label_offset, r'$n_\mathrm{core}$',
+    ax.text(0.04 * R_CLOUD, N_CORE_CGS * _label_factor, r'$n_\mathrm{core}$',
             va='bottom', ha='left', color='0.25', fontsize=fontsize - 4)
-    ax.text(nism_x, N_ISM_CGS + _label_offset, r'$n_\mathrm{ISM}$',
+    ax.text(nism_x, N_ISM_CGS * _label_factor, r'$n_\mathrm{ISM}$',
             va='bottom', ha='right', color='0.25', fontsize=fontsize - 4)
 
     ax.legend(loc='lower left', handlelength=1.6, labelspacing=0.3,
