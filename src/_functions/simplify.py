@@ -259,12 +259,16 @@ def _x_uniform_coverage_idx(
     return np.unique(pool_idx[np.where(pick_hi, hi, lo)])
 
 
+_DEDUP_TOL_DEFAULT = 1e-6
+
+
 def _simplify(
     x_arr: Union[np.ndarray, Sequence[float]],
     y_arr: Union[np.ndarray, Sequence[float]],
     nmin: int = 100,
     grad_inc: float = 1.0,
     warn_below_r2: Optional[float] = 0.9,
+    dedup_tol: float = _DEDUP_TOL_DEFAULT,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
     Heuristic downsampling of a curve y(x) to ``nmin`` points,
@@ -362,6 +366,17 @@ def _simplify(
         selection, the simplified curve is linearly interpolated back
         onto the original x-grid; if R² falls below this value, a
         warning is raised.  Pass ``None`` to disable.  Default is 0.9.
+    dedup_tol : float, optional
+        Relative tolerance (as a fraction of the data range on each
+        axis) for collapsing consecutive (x, y) duplicates introduced
+        by ODE-solver stagnation.  Two consecutive samples are merged
+        only when *both* ``|Δx| ≤ dedup_tol·range_x`` and
+        ``|Δy| ≤ dedup_tol·range_y``, so vertical-drop regions (same
+        x, varying y) and horizontal plateaus (varying x, same y) are
+        preserved.  Default ``1e-6``: catches the float-precision
+        clumps emitted by stalled integrators without folding any
+        meaningful structure unless the input has more than ~10⁶
+        uniformly-sampled points.  Pass ``0`` to disable.
 
     Returns
     -------
@@ -407,18 +422,47 @@ def _simplify(
         x = x[sort_order]
         y = y[sort_order]
 
+    # Collapse runs of (x, y) samples that are indistinguishable on both
+    # axes within ``dedup_tol·range``.  ODE solvers often emit thousands
+    # of micro-steps at the boundary that share a single (x, y) location
+    # to ~10⁻¹⁰ of the data range; if those survive into the candidate
+    # pool the budget-trim step happily picks "every Nth duplicate" and
+    # wastes most of ``nmin`` on a single physical point.  The OR-on-Δ
+    # rule keeps vertical-drop tails (same x, varying y) and horizontal
+    # plateaus (varying x, same y) intact — only joint stagnation in
+    # both axes is folded.
+    if x.size > 1 and dedup_tol > 0:
+        _rx = float(x[-1] - x[0])
+        _ry = float(np.nanmax(y) - np.nanmin(y))
+        _ax = dedup_tol * abs(_rx)
+        _ay = dedup_tol * abs(_ry)
+        keep = np.empty(x.size, dtype=bool)
+        keep[0] = True
+        keep[1:] = (np.abs(x[1:] - x[:-1]) > _ax) | (np.abs(y[1:] - y[:-1]) > _ay)
+        dedupe_idx = np.where(keep)[0]
+        if dedupe_idx.size != x.size:
+            x = x[keep]
+            y = y[keep]
+    else:
+        dedupe_idx = np.arange(x.size, dtype=np.int64)
+
     def _restore(working_idx: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
-        """Map indices in the (ascending) working array back to caller's
-        positional order and return the corresponding original values."""
+        """Map indices in the (deduplicated, ascending) working array
+        back to caller's positional order and return the corresponding
+        original values."""
         idx = np.asarray(working_idx, dtype=np.int64).ravel()
+        idx = dedupe_idx[idx]
         if needs_reorder:
             idx = sort_order[idx]
         idx = np.sort(idx)
         return x_orig[idx], y_orig[idx]
 
-    # If the array is already short enough, return as-is.
+    # If the (deduplicated) array is already short enough, return it
+    # in caller order.  Note this differs from a literal pass-through:
+    # if dedup collapsed a clump, the caller gets the meaningful subset
+    # rather than the duplicate-laden original.
     if nmin >= x.size:
-        return x_orig, y_orig
+        return _restore(np.arange(x.size))
     # Enforce a floor of 100 samples so the output is always useful.
     nmin = max(int(nmin), 100)
 
@@ -604,9 +648,18 @@ def _simplify(
         coverage_idx = _x_uniform_coverage_idx(x, merged)
 
         # Build the priority list with stable first-seen-order deduplication.
+        # ``idx_dist`` is promoted ABOVE bisection_pool: those are the
+        # cumulative-|Δy| bin boundaries (one per nmin-th of total
+        # variation), so they already form a complete, well-spaced
+        # skeleton tracking the curve's shape.  Without this promotion
+        # the bisection-by-position step drops them in favour of evenly-
+        # spaced positions in ``merged``, which silently undersamples
+        # high-gradient regions like vertical drops at the curve's tail.
+        # ``|idx_dist| ≈ nmin`` by construction, so taking it in x-order
+        # is fine — it never overflows the budget.
         endpoints_idx = np.array([0, x.size - 1], dtype=np.int64)
         all_priorities = np.concatenate(
-            [endpoints_idx, prominent_idx, coverage_idx, bisection_pool]
+            [endpoints_idx, prominent_idx, coverage_idx, idx_dist, bisection_pool]
         )
         _, unique_pos = np.unique(all_priorities, return_index=True)
         priority_indices = all_priorities[np.sort(unique_pos)]
