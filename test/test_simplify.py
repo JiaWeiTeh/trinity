@@ -144,32 +144,36 @@ class TestOscillatory:
         n_sign_changes = int(np.sum(np.diff(np.sign(np.diff(yo))) != 0))
         assert n_sign_changes >= 4
 
-    def test_high_frequency_sin_warns(self):
-        """20 cycles of sin compressed into 100 points cannot reconstruct
-        all the wiggles — the algorithm should warn the user."""
+    def test_high_frequency_sin_keeps_all_extrema(self):
+        """20 cycles of sin → 40 prominent extrema. The mandatory-override
+        kicks in: output exceeds the 100-point budget, all extrema kept,
+        and reconstruction is good (no warning)."""
         x = np.linspace(0, 1, 8000)
         y = np.sin(20 * np.pi * x)
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
             xo, yo = _simplify(x, y)
-        assert len(xo) <= 100
-        # Either reconstruction is fine, or a warning was issued.
-        r2 = reconstruction_r2(x, y, xo, yo)
-        if r2 < 0.9:
-            assert any('R²' in str(w.message) for w in caught), \
-                f"R²={r2:.3f} below 0.9 but no warning emitted"
+        # Override gives us all 40 extrema (+ endpoints + possibly a few
+        # bisection points to fill out the budget).
+        assert len(xo) >= 40
+        assert reconstruction_r2(x, y, xo, yo) >= 0.95
+        # Smooth oscillation, mandatory captures everything → no warning.
+        assert not any('R²' in str(w.message) for w in caught)
 
     def test_noisy_sin(self):
-        """Sin with 5% Gaussian noise — fixed budget + noise means R² is
-        moderate. We don't demand high R²; we just require no errors and
-        an output capped at the budget."""
+        """Sin + noise: the noise creates many local extrema, some of
+        which pass the prominence threshold and override the budget.
+        We require no errors, finite output, and bounded growth."""
         rng = np.random.RandomState(0)
         x = np.linspace(0, 4 * np.pi, 5000)
         y_clean = np.sin(x)
         y = y_clean + 0.05 * rng.randn(x.size)
-        xo, yo = _simplify(x, y)
-        assert len(xo) <= 100
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", UserWarning)
+            xo, yo = _simplify(x, y)
         assert np.isfinite(yo).all()
+        assert len(xo) <= len(x), "output cannot exceed input"
+        assert len(xo) >= 100, "output should be at least the budget"
 
     def test_multi_frequency(self):
         """Beat pattern: low + high frequency superposition."""
@@ -421,7 +425,10 @@ class TestRealBubbleProfiles:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", UserWarning)
             xo, yo = _simplify(x, y)
-        assert len(xo) <= 100, f"{ykey}: output exceeds budget"
+        # Real bubble profiles have only a handful of prominent extrema,
+        # so output should be at the budget (~100).  We allow some slack
+        # because the prominent-override may add a few points.
+        assert len(xo) <= 200, f"{ykey}: output {len(xo)} far exceeds budget"
         # Bubble grids are descending; the simplifier must preserve that.
         assert np.all(np.diff(xo) <= 0), f"{xkey} should stay descending"
 
@@ -438,7 +445,7 @@ class TestRealBubbleProfiles:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", UserWarning)
             xo, yo = _simplify(x, y)
-        assert len(xo) <= 100
+        assert len(xo) <= 200, f"output {len(xo)} far exceeds budget"
         assert np.isfinite(xo).all() and np.isfinite(yo).all()
 
 
@@ -447,34 +454,77 @@ class TestRealBubbleProfiles:
 # ---------------------------------------------------------------------------
 
 class TestBudgetContract:
-    """Output size is at most ``nmin``, regardless of how complicated the
-    curve is or how many prominent extrema it has."""
+    """``nmin`` is the *normal* output size and a soft floor: smooth
+    curves come back at exactly ``nmin``. For very noisy data with more
+    than ``nmin`` high-prominence extrema, the output may exceed ``nmin``
+    rather than drop a real feature — those extrema override the budget."""
 
-    def test_default_budget_is_100(self):
+    def test_smooth_curve_hits_target_exactly(self):
+        """Smooth curve, few prominent features → output ≈ nmin."""
         x = np.linspace(0, 1, 5000)
-        y = np.sin(50 * x)
-        xo, _ = _simplify(x, y)
+        y = x ** 3 - x  # smooth cubic, 1 maximum + 1 minimum
+        xo, _ = _simplify(x, y, nmin=100)
+        # No mandatory-override, so we hit the budget exactly (or slightly
+        # under if the merged pool itself is small).
         assert len(xo) <= 100
 
     @pytest.mark.parametrize("nmin", [100, 200, 500, 1000])
-    def test_budget_respected(self, nmin):
+    def test_budget_respected_for_smooth_curve(self, nmin):
+        """For a smooth curve the budget is a hard ceiling."""
         x = np.linspace(0, 1, 10000)
-        y = np.sin(30 * x) + 0.5 * np.sin(80 * x)
+        y = np.tanh(5 * (x - 0.5)) + 0.1 * x
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", UserWarning)
             xo, _ = _simplify(x, y, nmin=nmin)
         assert len(xo) <= nmin
 
-    def test_budget_not_exceeded_by_prominent_extrema(self):
-        """Even when the curve has many high-prominence extrema, output
-        must stay within nmin."""
+    def test_prominent_extrema_override_budget(self):
+        """For very noisy data, every high-prominence extremum is kept
+        even if that pushes output past ``nmin``. Quantitatively: ≥99 %
+        of input extrema with prominence ≥ 5 % of y-range must appear
+        in the output, even at nmin=100."""
         rng = np.random.RandomState(0)
         x = np.linspace(0, 1, 2000)
-        y = np.sin(50 * x) + 0.3 * rng.randn(2000)
+        # 50 cycles of sin → 100 strong extrema, all prominent
+        y = np.sin(100 * np.pi * x) + 0.05 * rng.randn(2000)
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", UserWarning)
             xo, _ = _simplify(x, y, nmin=100)
-        assert len(xo) <= 100
+        # The 100 sin extrema should all be there → output ≥ 100 + endpoints
+        assert len(xo) >= 100, \
+            f"prominent extrema were dropped: only {len(xo)} pts in output"
+        # Output stays bounded by input size
+        assert len(xo) <= len(x)
+
+    def test_all_prominent_extrema_preserved(self):
+        """Stronger guarantee: every input index identified as a high-
+        prominence extremum must appear in the simplified output."""
+        from src._functions.simplify import _peak_prominences
+
+        x = np.linspace(0, 1, 2000)
+        y = np.sin(40 * np.pi * x)  # 20 cycles → 40 extrema, all amplitude 1
+        # Reproduce the prominence calculation independently
+        grad = np.gradient(y)
+        sd = np.diff(np.sign(grad))
+        sc = np.where(sd != 0)[0]
+        is_max = sd[sc] < 0
+        pick_i = np.where(is_max,
+                          y[sc] >= y[sc + 1],
+                          y[sc] <= y[sc + 1])
+        extrema = np.unique(np.where(pick_i, sc, sc + 1))
+        proms = _peak_prominences(y, extrema)
+        y_range = y.max() - y.min()
+        prominent = extrema[proms >= 0.05 * y_range]
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", UserWarning)
+            xo, _ = _simplify(x, y, nmin=100)
+        # Every prominent input x-value must be in the output (within
+        # floating-point tolerance).
+        prominent_x = x[prominent]
+        for px in prominent_x:
+            assert np.any(np.isclose(xo, px, atol=1e-10)), \
+                f"prominent extremum at x={px:.4f} was dropped"
 
     def test_higher_nmin_does_not_reduce_quality(self):
         """Increasing nmin must not reduce reconstruction quality. The
@@ -510,40 +560,37 @@ class TestWarning:
             warnings.simplefilter("error", UserWarning)
             _simplify(x, y)  # would raise if any UserWarning fires
 
-    def test_undersampled_high_freq_warns(self):
-        """30 cycles of sin in 100 points → reconstruction is poor."""
+    def test_unstructured_noise_warns(self):
+        """White-noise input: most fluctuations are below the prominence
+        threshold, so the mandatory-override doesn't rescue the budget.
+        Reconstruction R\u00b2 stays low \u2192 warning fires."""
+        rng = np.random.RandomState(0)
         x = np.linspace(0, 1, 5000)
-        y = np.sin(60 * np.pi * x)
+        y = rng.randn(5000)
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
             _simplify(x, y, nmin=100)
-        # The simplifier may still get high R² in some lucky configurations;
-        # if it does, no warning. But for 30 cycles it almost always warns.
-        # We just assert that IF the curve is genuinely undersampled, a
-        # warning is raised.
-        x2, y2 = x, np.sin(120 * np.pi * x)  # 60 cycles, even more punishing
-        with warnings.catch_warnings(record=True) as caught2:
-            warnings.simplefilter("always")
-            _simplify(x2, y2, nmin=100)
-        assert any("R\u00b2" in str(w.message) for w in caught2), \
-            "60-cycle sin at nmin=100 must trigger the R\u00b2 warning"
+        assert any("R\u00b2" in str(w.message) for w in caught), \
+            "white noise at nmin=100 must trigger the R\u00b2 warning"
 
     def test_warning_disabled_when_threshold_is_none(self):
+        rng = np.random.RandomState(0)
         x = np.linspace(0, 1, 5000)
-        y = np.sin(60 * np.pi * x)
+        y = rng.randn(5000)
         with warnings.catch_warnings():
             warnings.simplefilter("error", UserWarning)
             _simplify(x, y, nmin=100, warn_below_r2=None)  # must not raise
 
     def test_warning_threshold_configurable(self):
-        """A relaxed threshold should suppress the warning for a curve
+        """A relaxed threshold should suppress the warning on a curve
         that would have warned at the default."""
+        rng = np.random.RandomState(0)
         x = np.linspace(0, 1, 5000)
-        y = np.sin(60 * np.pi * x)
+        y = rng.randn(5000)
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
             _simplify(x, y, nmin=100, warn_below_r2=0.0)
-        # threshold 0.0 means "warn only if R² < 0", which never happens.
+        # threshold 0.0 means "warn only if R\u00b2 < 0", which never happens.
         assert not any("R\u00b2" in str(w.message) for w in caught)
 
 

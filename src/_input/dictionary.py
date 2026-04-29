@@ -402,10 +402,12 @@ class DescribedDict(dict):
           prominence ≥ 5 % of the y-range is *mandatory* and never
           dropped from the output
 
-        Output size is at most ``nmin``; remaining slots after the
-        mandatory set are filled in hierarchical-bisection priority,
-        which guarantees the subset at any budget N is a superset of
-        the subset at N−1 (no flicker under small changes in ``nmin``).
+        Output size is normally ``nmin``.  Endpoints and every high-
+        prominence extremum are always retained — for very noisy curves
+        with more than ``nmin`` such extrema, the output may exceed
+        ``nmin`` rather than drop a real feature.  Remaining slots are
+        filled in hierarchical-bisection priority, which keeps the
+        subset stable under small changes in ``nmin``.
 
         After selection, ``_simplify`` computes the linear-interpolation
         R² of the simplified curve against the original grid and emits

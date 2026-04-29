@@ -251,12 +251,14 @@ def _simplify(
        are *mandatory* — they are always kept, so deep dips or tall
        spikes don't flicker in and out as ``nmin`` varies.
 
-    5. **Fixed-budget selection**
-       Output size is the smaller of ``nmin`` and the merged-pool size.
-       Mandatory points are taken first; remaining slots are filled in
-       hierarchical-bisection order (endpoints → midpoint → quartiles →
-       …) so that the subset at any budget N is a superset of the subset
-       at N − 1.
+    5. **Budget-based selection with mandatory override**
+       Output size is normally ``nmin``.  Endpoints and every high-
+       prominence extremum are always retained — if that set already
+       exceeds ``nmin``, output size is the mandatory-set size (we'd
+       rather overshoot the budget than drop a real high-prominence
+       feature).  Remaining slots are filled in hierarchical-bisection
+       order (endpoints → midpoint → quartiles → …) so the subset at
+       any budget N is a superset of the subset at N − 1.
 
     6. **Reconstruction-quality warning** (post-hoc, optional)
        After selection, the linear interpolation R² of the simplified
@@ -284,8 +286,9 @@ def _simplify(
         Dependent variable (e.g., temperature, density, flux).
         Must be the same length as ``x_arr``.
     nmin : int, optional
-        Target output size.  Clamped to >= 100.  Output is at most
-        ``nmin`` points (or the entire input if it's already shorter).
+        Target output size.  Clamped to >= 100.  Output is normally
+        ``nmin`` points; it may be larger when the curve has more than
+        ``nmin`` high-prominence extrema (those are never dropped).
         Default is 100.
     grad_inc : float, optional
         Menger curvature threshold on rescaled ``[0, 1]`` axes.  Lower
@@ -323,13 +326,13 @@ def _simplify(
         )
 
     # Sort by x and work on an ascending copy. `np.interp` (used in the
-    # R²-thinning step) requires its reference x to be ascending; the rest
-    # of the algorithm is sequence-based (curvature on triplets, sign
-    # changes, cumulative |Δy|, peak persistence) and is unaffected by
-    # the temporary reordering. Output values are restored to the caller's
-    # original positional order on every return path: ascending stays
-    # ascending, descending stays descending, and a non-monotonic input
-    # comes back as a thinned subsequence in its original order.
+    # post-hoc R² warning check) requires its reference x to be ascending;
+    # the rest of the algorithm is sequence-based (curvature on triplets,
+    # sign changes, cumulative |Δy|, peak persistence) and is unaffected
+    # by the temporary reordering. Output values are restored to the
+    # caller's original positional order on every return path: ascending
+    # stays ascending, descending stays descending, and a non-monotonic
+    # input comes back as a thinned subsequence in its original order.
     x_orig = x
     y_orig = y
     sort_order = np.argsort(x, kind="stable")
@@ -368,7 +371,8 @@ def _simplify(
     # threshold like ``grad_inc=1.0`` only behaves consistently when the
     # axes share a common scale.  Rescale (x, y) to the unit square for
     # the curvature computation only — the cumulative-distance step,
-    # sign-change detection, and R²-thinning still operate on raw arrays.
+    # sign-change detection, and the post-hoc R² check still operate on
+    # raw arrays.
     range_x = float(x[-1] - x[0])
     range_y = float(np.nanmax(y) - np.nanmin(y))
     inv_x = 1.0 / range_x if range_x > 1e-30 else 1.0
@@ -479,15 +483,18 @@ def _simplify(
     merged = np.where(mask)[0]
 
     # =================================================================
-    # Fixed-budget selection: trim ``merged`` to ``nmin`` points using
-    # an explicit priority order:
+    # Budget-based selection with mandatory-feature override.
+    #
+    # Priority order over candidate indices:
     #   1. endpoints (always — first and last input points)
     #   2. high-prominence extrema, sorted by prominence DESC
     #   3. remaining merged-pool points, in hierarchical-bisection order
-    # The first ``nmin`` unique data indices from this list are kept.
-    # Hierarchical-bisection ordering ensures the subset at any budget
-    # N is a superset of the subset at N − 1 (no flicker under small
-    # changes in nmin).
+    #
+    # Output size is ``max(nmin, |endpoints ∪ prominent_idx|)`` — i.e.
+    # ``nmin`` is the *normal* target, but every high-prominence feature
+    # is always kept even if that pushes the count over ``nmin``. This
+    # matches the user-visible promise that prominent extrema (peak/
+    # trough with prominence ≥ 5 % of the y-range) never disappear.
     # =================================================================
     if len(merged) > nmin:
         # Build hierarchical bisection ordering over merged-pool positions.
@@ -510,14 +517,18 @@ def _simplify(
             queue = next_queue
         bisection_pool = merged[order[:count]]
 
-        # Build the priority list and keep the first nmin unique indices.
+        # Build the priority list with stable first-seen-order deduplication.
         endpoints_idx = np.array([0, x.size - 1], dtype=int)
         all_priorities = np.concatenate([endpoints_idx, prominent_idx, bisection_pool])
-        # Stable first-seen-order deduplication.
         _, unique_pos = np.unique(all_priorities, return_index=True)
         priority_indices = all_priorities[np.sort(unique_pos)]
 
-        budget = min(int(nmin), priority_indices.size)
+        # Mandatory floor: endpoints + every prominent extremum. If this
+        # exceeds nmin, the mandatory floor wins (we'd rather over-shoot
+        # the budget than drop a real high-prominence feature).
+        mandatory_set = np.unique(np.concatenate([endpoints_idx, prominent_idx]))
+        budget = max(int(nmin), int(mandatory_set.size))
+        budget = min(budget, priority_indices.size)
         merged = np.sort(priority_indices[:budget])
 
     # =================================================================
@@ -597,6 +608,13 @@ def _simplify_error(
     y_o = np.asarray(y_orig, dtype=float)
     x_s = np.asarray(x_simp, dtype=float)
     y_s = np.asarray(y_simp, dtype=float)
+
+    # np.interp requires ascending reference x; sort the simplified curve
+    # internally so this works for descending or non-monotonic inputs too.
+    if x_s.size > 1 and not bool(np.all(np.diff(x_s) >= 0)):
+        ord_s = np.argsort(x_s, kind="stable")
+        x_s = x_s[ord_s]
+        y_s = y_s[ord_s]
 
     # Interpolate the simplified curve back onto the original x-grid.
     y_interp = np.interp(x_o, x_s, y_s)
