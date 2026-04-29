@@ -191,7 +191,7 @@ def make_diag_grid(run_dir: Path, output: Path | None = None,
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description=("Render a 3×3 grid comparing original and simplified "
+        description=("Render a 3×4 grid comparing original and simplified "
                      "bubble profile arrays from a mockOutput run."),
     )
     parser.add_argument(

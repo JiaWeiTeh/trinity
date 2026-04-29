@@ -336,8 +336,9 @@ def _simplify(
        ``warn_below_r2``, a ``UserWarning`` is emitted advising the user
        to raise ``nmin``.  Pass ``None`` to disable the warning.
 
-    For a perfectly flat curve (zero total variation), the algorithm
-    falls back to ``nmin`` uniformly spaced indices.
+    For a degenerate curve (all samples stacked at one (x, y) point, or
+    all-NaN), the algorithm falls back to ``nmin`` uniformly spaced
+    indices.
 
     Input/output contract
     ---------------------
@@ -409,8 +410,8 @@ def _simplify(
     # Sort by x and work on an ascending copy. `np.interp` (used in the
     # post-hoc R² warning check) requires its reference x to be ascending;
     # the rest of the algorithm is sequence-based (curvature on triplets,
-    # sign changes, cumulative |Δy|, peak persistence) and is unaffected
-    # by the temporary reordering. Output values are restored to the
+    # sign changes, cumulative arc length, peak persistence) and is
+    # unaffected by the temporary reordering. Output values are restored to the
     # caller's original positional order on every return path: ascending
     # stays ascending, descending stays descending, and a non-monotonic
     # input comes back as a thinned subsequence in its original order.
@@ -600,7 +601,7 @@ def _simplify(
     mask[-1] = True                                 # last point
     mask[important_curv] = True                     # Menger curvature
     mask[important_sign] = True                     # local extrema
-    mask[idx_dist] = True                           # cumulative-distance
+    mask[idx_dist] = True                           # arc-length bins
     merged = np.where(mask)[0]
 
     # =================================================================

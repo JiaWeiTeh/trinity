@@ -528,9 +528,9 @@ class TestBudgetContract:
 
     def test_higher_nmin_does_not_reduce_quality(self):
         """Increasing nmin must not reduce reconstruction quality. The
-        cumulative-distance bin step depends on nmin so the merged pool
-        differs slightly between calls; we test the meaningful property
-        rather than strict subset overlap."""
+        arc-length bin step depends on nmin so the merged pool differs
+        slightly between calls; we test the meaningful property rather
+        than strict subset overlap."""
         x = np.linspace(0, 1, 5000)
         y = np.sin(10 * x) + 0.2 * np.sin(40 * x)
         with warnings.catch_warnings():
