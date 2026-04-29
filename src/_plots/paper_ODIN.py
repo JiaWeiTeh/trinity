@@ -663,7 +663,6 @@ def plot_trajectory_evolution(results: List[SimulationResult], config: AnalysisC
     legend_m.set_zorder(100)
     ax_m.set_yscale('log')
     ax_m.set_ylim(10, 3e4)
-    ax_m.grid(True, alpha=0.3, which='both')
     ax_m.tick_params(axis='x', pad=10)
     ax_m.tick_params(axis='y', pad=10)
 
@@ -698,7 +697,6 @@ def plot_trajectory_evolution(results: List[SimulationResult], config: AnalysisC
     legend_r2.set_zorder(100)
     ax_r2.set_xlim(0, 0.3)
     ax_r2.set_ylim(0, 6)
-    ax_r2.grid(True, alpha=0.3)
     ax_r2.tick_params(axis='x', pad=10)
     ax_r2.tick_params(axis='y', pad=10)
 
@@ -733,7 +731,6 @@ def plot_trajectory_evolution(results: List[SimulationResult], config: AnalysisC
     legend_rs.set_zorder(100)
     ax_rs.set_xlim(0, 0.3)
     ax_rs.set_ylim(0, 6)
-    ax_rs.grid(True, alpha=0.3)
     ax_rs.tick_params(axis='x', pad=10)
     ax_rs.tick_params(axis='y', pad=10)
 
@@ -910,7 +907,6 @@ def plot_trajectory_evolution_combined(results: List[SimulationResult], config: 
         legend_m.set_zorder(100)
     ax_m.set_yscale('log')
     ax_m.set_ylim(10, 3e4)
-    ax_m.grid(True, alpha=0.3, which='both')
 
     # nCore legend placed above the top subplot as a figure-level title legend
     if ncore_handles:
@@ -944,7 +940,6 @@ def plot_trajectory_evolution_combined(results: List[SimulationResult], config: 
     legend_r2.set_zorder(100)
     ax_r2.set_xlim(0, 0.3)
     ax_r2.set_ylim(0, 6)
-    ax_r2.grid(True, alpha=0.3)
 
     # --- Shell radius (rShell) panel ---
     ax_rs.errorbar(obs.t_obs, obs.R_obs, xerr=obs.t_err, yerr=obs.R_err,
@@ -970,7 +965,6 @@ def plot_trajectory_evolution_combined(results: List[SimulationResult], config: 
     legend_rs.set_zorder(100)
     ax_rs.set_xlim(0, 0.3)
     ax_rs.set_ylim(0, 6)
-    ax_rs.grid(True, alpha=0.3)
 
     plt.tight_layout(h_pad=1.0)
 
