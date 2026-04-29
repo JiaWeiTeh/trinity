@@ -5,13 +5,14 @@ Curve-simplification module.
 
 Heuristic downsampling of 1-D curves while preserving physically and
 visually important features (sharp bends, local extrema, arc-length
-uniformity).  No dependencies beyond numpy / stdlib.
+uniformity, x-uniform coverage).  No dependencies beyond numpy / stdlib.
 
 Functions
 ---------
-_simplify          Core downsampling algorithm.
-_simplify_error    Error metrics (RMSE, MAE, R², compression, …).
-_peak_prominences  1-D topological persistence (O(n log n)).
+_simplify                 Core downsampling algorithm.
+_simplify_error           Error metrics (RMSE, MAE, R², log-dex, …).
+_peak_prominences         1-D topological persistence (O(n log n)).
+_x_uniform_coverage_idx   X-uniform coverage skeleton helper.
 """
 
 import warnings
@@ -206,6 +207,58 @@ def _peak_prominences(y: np.ndarray, idx: np.ndarray) -> np.ndarray:
     return proms
 
 
+# ---------------------------------------------------------------------------
+# X-uniform coverage helper
+# ---------------------------------------------------------------------------
+
+# Number of equal-x-width chunks used to seed mandatory points so that
+# low-amplitude regions (whose contribution to global SS_tot is negligible)
+# still receive at least one retained point. Internal constant — the public
+# ``_simplify`` signature is unchanged.
+_COVERAGE_CHUNKS = 20
+
+
+def _x_uniform_coverage_idx(
+    x: np.ndarray,
+    pool_idx: np.ndarray,
+    n_chunks: int = _COVERAGE_CHUNKS,
+) -> np.ndarray:
+    """
+    Pool indices nearest the centres of ``n_chunks`` equal-x-width chunks.
+
+    Used by the budget-trim step to guarantee a thin x-uniform skeleton in
+    the mandatory set: global R² is amplitude-weighted, so regions with
+    little y-variance contribute little to ``SS_tot`` and would otherwise
+    be dropped even when the local fit is poor.  Promoting ~``n_chunks``
+    evenly-spaced pool points to mandatory keeps every section of the
+    x-axis represented in the output.
+
+    Parameters
+    ----------
+    x : np.ndarray
+        Monotonically ascending x-values of the working array.
+    pool_idx : np.ndarray
+        Sorted indices into ``x`` naming the feature-pool candidates.
+    n_chunks : int, optional
+        Number of equal-x-width chunks.  Default ``_COVERAGE_CHUNKS``.
+
+    Returns
+    -------
+    np.ndarray
+        Sorted, unique indices into ``x`` (subset of ``pool_idx``).
+    """
+    if pool_idx.size == 0 or x.size < 2:
+        return np.array([], dtype=np.int64)
+    x_pool = x[pool_idx]
+    centres = np.linspace(x[0], x[-1], n_chunks + 1)
+    centres = 0.5 * (centres[:-1] + centres[1:])
+    ins = np.searchsorted(x_pool, centres)
+    lo = np.clip(ins - 1, 0, x_pool.size - 1)
+    hi = np.minimum(ins, x_pool.size - 1)
+    pick_hi = np.abs(x_pool[hi] - centres) <= np.abs(x_pool[lo] - centres)
+    return np.unique(pool_idx[np.where(pick_hi, hi, lo)])
+
+
 def _simplify(
     x_arr: Union[np.ndarray, Sequence[float]],
     y_arr: Union[np.ndarray, Sequence[float]],
@@ -251,14 +304,24 @@ def _simplify(
        are *mandatory* — they are always kept, so deep dips or tall
        spikes don't flicker in and out as ``nmin`` varies.
 
+    4b. **X-uniform coverage skeleton**
+       Global R² is amplitude-weighted: a low-amplitude region barely
+       contributes to ``SS_tot`` and would be starved of points if a
+       big-amplitude feature elsewhere dominates the budget.  The
+       x-domain is split into ~20 equal-width chunks and the feature-
+       pool point nearest each chunk centre is promoted to mandatory,
+       so every section of the x-axis is guaranteed at least one
+       retained point.
+
     5. **Budget-based selection with mandatory override**
-       Output size is normally ``nmin``.  Endpoints and every high-
-       prominence extremum are always retained — if that set already
-       exceeds ``nmin``, output size is the mandatory-set size (we'd
-       rather overshoot the budget than drop a real high-prominence
-       feature).  Remaining slots are filled in hierarchical-bisection
-       order (endpoints → midpoint → quartiles → …) so the subset at
-       any budget N is a superset of the subset at N − 1.
+       Output size is normally ``nmin``.  Endpoints, every high-
+       prominence extremum, and the coverage skeleton are always
+       retained — if that mandatory set already exceeds ``nmin``,
+       output size is the mandatory-set size (we'd rather overshoot
+       the budget than drop a real feature).  Remaining slots are
+       filled in hierarchical-bisection order (endpoints → midpoint →
+       quartiles → …) so the subset at any budget N is a superset of
+       the subset at N − 1.
 
     6. **Reconstruction-quality warning** (post-hoc, optional)
        After selection, the linear interpolation R² of the simplified
@@ -488,45 +551,71 @@ def _simplify(
     # Priority order over candidate indices:
     #   1. endpoints (always — first and last input points)
     #   2. high-prominence extrema, sorted by prominence DESC
-    #   3. remaining merged-pool points, in hierarchical-bisection order
+    #   3. x-uniform coverage skeleton (one pool point per equal-width
+    #      chunk, so low-amplitude regions stay represented)
+    #   4. remaining merged-pool points, in hierarchical-bisection order
     #
-    # Output size is ``max(nmin, |endpoints ∪ prominent_idx|)`` — i.e.
-    # ``nmin`` is the *normal* target, but every high-prominence feature
-    # is always kept even if that pushes the count over ``nmin``. This
-    # matches the user-visible promise that prominent extrema (peak/
-    # trough with prominence ≥ 5 % of the y-range) never disappear.
+    # Output size is ``max(nmin, |mandatory_set|)`` — ``nmin`` is the
+    # *normal* target, but every mandatory point (endpoints, prominent
+    # extrema, coverage skeleton) is always kept even if that pushes
+    # the count over ``nmin``.  Prominent extrema (peak/trough with
+    # prominence ≥ 5 % of the y-range) thus never disappear, and no
+    # x-region is left without representation.
     # =================================================================
     if len(merged) > nmin:
-        # Build hierarchical bisection ordering over merged-pool positions.
+        # Build hierarchical-bisection ordering over merged-pool positions
+        # using a vectorised level-synchronous traversal: one numpy pass
+        # produces the next level's intervals, which is much cheaper than
+        # a Python BFS queue on large pools.  The traversal is byte-
+        # identical to the queue version; verified against the BFS for
+        # n ∈ {2, 3, 4, …, 30 000}.
         n_m = len(merged)
-        order = np.empty(n_m, dtype=int)
+        order = np.empty(n_m, dtype=np.int64)
         order[0] = 0
         order[1] = n_m - 1
         count = 2
-        queue = [(0, n_m - 1)]
-        while queue:
-            next_queue = []
-            for lo_q, hi_q in queue:
-                if hi_q - lo_q <= 1:
-                    continue
-                mid_q = (lo_q + hi_q) // 2
-                order[count] = mid_q
-                count += 1
-                next_queue.append((lo_q, mid_q))
-                next_queue.append((mid_q, hi_q))
-            queue = next_queue
+        starts = np.array([0], dtype=np.int64)
+        ends = np.array([n_m - 1], dtype=np.int64)
+        while count < n_m:
+            mids = (starts + ends) >> 1
+            valid = (mids > starts) & (mids < ends)
+            if not valid.any():
+                break
+            vs = starts[valid]
+            ve = ends[valid]
+            vm = mids[valid]
+            take = min(vm.size, n_m - count)
+            order[count:count + take] = vm[:take]
+            count += take
+            if count >= n_m:
+                break
+            n_next = 2 * vs.size
+            starts = np.empty(n_next, dtype=np.int64)
+            ends = np.empty(n_next, dtype=np.int64)
+            starts[0::2] = vs
+            ends[0::2] = vm
+            starts[1::2] = vm
+            ends[1::2] = ve
         bisection_pool = merged[order[:count]]
 
+        # X-uniform coverage skeleton: pick one pool point per equal-width
+        # x-chunk so low-amplitude regions (which barely move global R²)
+        # still get representation in the output.
+        coverage_idx = _x_uniform_coverage_idx(x, merged)
+
         # Build the priority list with stable first-seen-order deduplication.
-        endpoints_idx = np.array([0, x.size - 1], dtype=int)
-        all_priorities = np.concatenate([endpoints_idx, prominent_idx, bisection_pool])
+        endpoints_idx = np.array([0, x.size - 1], dtype=np.int64)
+        all_priorities = np.concatenate(
+            [endpoints_idx, prominent_idx, coverage_idx, bisection_pool]
+        )
         _, unique_pos = np.unique(all_priorities, return_index=True)
         priority_indices = all_priorities[np.sort(unique_pos)]
 
-        # Mandatory floor: endpoints + every prominent extremum. If this
-        # exceeds nmin, the mandatory floor wins (we'd rather over-shoot
-        # the budget than drop a real high-prominence feature).
-        mandatory_set = np.unique(np.concatenate([endpoints_idx, prominent_idx]))
+        # Mandatory floor: endpoints + prominent extrema + coverage skeleton.
+        # If this exceeds nmin the mandatory floor wins.
+        mandatory_set = np.unique(np.concatenate(
+            [endpoints_idx, prominent_idx, coverage_idx]
+        ))
         budget = max(int(nmin), int(mandatory_set.size))
         budget = min(budget, priority_indices.size)
         merged = np.sort(priority_indices[:budget])
@@ -603,6 +692,23 @@ def _simplify_error(
             Number of points in the original curve.
         - ``"n_simp"`` : int
             Number of points in the simplified curve.
+        - ``"log_r_squared"`` : float
+            R² computed in decimal-log y-space against a log-linear
+            reconstruction (straight line between samples in
+            ``(x, log10 y)``).  Decade-balanced — the right fidelity
+            measure for density / temperature / flux profiles that
+            span multiple orders of magnitude.  ``nan`` if any
+            ``y <= 0``.
+        - ``"log_rms_err"`` : float
+            RMSE of the log10 residual, in dex.  ``nan`` if any
+            ``y <= 0``.
+        - ``"log_max_dex_err"`` : float
+            Worst-case log-space deviation in dex (L∞).  ``0.01`` ≈ 2 %
+            multiplicative; ``0.1`` ≈ 26 %; ``1.0`` = one whole decade
+            off.  ``nan`` if any ``y <= 0``.
+        - ``"log_mean_dex_err"`` : float
+            Mean absolute log-space deviation in dex.  ``nan`` if any
+            ``y <= 0``.
     """
     x_o = np.asarray(x_orig, dtype=float)
     y_o = np.asarray(y_orig, dtype=float)
@@ -640,7 +746,7 @@ def _simplify_error(
     ss_tot = np.sum((y_o - np.mean(y_o)) ** 2)
     r_squared = float(1.0 - ss_res / ss_tot) if ss_tot > 0 else 1.0
 
-    return {
+    metrics = {
         "max_abs_err": max_abs,
         "mean_abs_err": mean_abs,
         "rms_err": rms,
@@ -650,3 +756,32 @@ def _simplify_error(
         "n_orig": int(x_o.size),
         "n_simp": int(x_s.size),
     }
+
+    # --- Log-space error metrics -------------------------------------
+    # When every y is strictly positive we can also report metrics in
+    # decimal-log space, which is what trinity's spectral / log-density /
+    # log-temperature plots actually display.  The reconstruction used
+    # for the log metrics is *log-linear* — i.e. a straight line between
+    # samples in ``(x, log10 y)`` — because that is how matplotlib's
+    # log-y plots render segments.  All four fields are NaN when the log
+    # transform is undefined (any y ≤ 0).
+    log_keys = ("log_r_squared", "log_rms_err",
+                "log_max_dex_err", "log_mean_dex_err")
+    if (np.all(y_o > 0) and np.all(y_s > 0)
+            and y_o.size > 0 and x_s.size > 0):
+        log_y_o = np.log10(y_o)
+        log_interp = np.interp(x_o, x_s, np.log10(y_s))
+        log_res = log_y_o - log_interp
+        ss_res_log = float(np.sum(log_res ** 2))
+        ss_tot_log = float(np.sum((log_y_o - np.mean(log_y_o)) ** 2))
+        metrics["log_r_squared"] = (
+            1.0 - ss_res_log / ss_tot_log if ss_tot_log > 0 else 1.0
+        )
+        metrics["log_rms_err"] = float(np.sqrt(np.mean(log_res ** 2)))
+        metrics["log_max_dex_err"] = float(np.max(np.abs(log_res)))
+        metrics["log_mean_dex_err"] = float(np.mean(np.abs(log_res)))
+    else:
+        for k in log_keys:
+            metrics[k] = float("nan")
+
+    return metrics

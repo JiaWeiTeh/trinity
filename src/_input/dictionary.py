@@ -401,6 +401,10 @@ class DescribedDict(dict):
         - topologically persistent extrema — any peak/trough with
           prominence ≥ 5 % of the y-range is *mandatory* and never
           dropped from the output
+        - an x-uniform coverage skeleton — one feature-pool point per
+          equal-width x-chunk is promoted to mandatory so low-amplitude
+          regions stay represented even when a big-amplitude feature
+          elsewhere dominates global R²
 
         Output size is normally ``nmin``.  Endpoints and every high-
         prominence extremum are always retained — for very noisy curves

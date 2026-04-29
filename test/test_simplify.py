@@ -595,6 +595,113 @@ class TestWarning:
 
 
 # ---------------------------------------------------------------------------
+# X-uniform coverage skeleton: low-amplitude regions stay represented
+# even when a big-amplitude burst dominates the global SS_tot.
+# ---------------------------------------------------------------------------
+
+class TestCoverageSkeleton:
+    """The x-uniform coverage skeleton (one feature-pool point per
+    equal-width x-chunk promoted to mandatory) prevents amplitude-biased
+    starvation of low-amplitude regions."""
+
+    def test_low_amplitude_region_not_starved(self):
+        """Without coverage the bisection ordering puts almost all points
+        around the big peak (baseline: 2 of 100 land in the quiet region).
+        Coverage promotes feature-pool points near chunk centres into the
+        mandatory set, lifting the quiet-region count noticeably even when
+        the merged pool is sparse there."""
+        N = 5000
+        x = np.linspace(0, 1, N)
+        # Quiet low-amplitude oscillation in the first 70 % of x …
+        y = 0.01 * np.sin(20 * x)
+        # … then a tall narrow bump in the last 30 %.
+        y[int(0.7 * N):] += 5.0 * np.exp(
+            -0.5 * ((x[int(0.7 * N):] - 0.85) / 0.02) ** 2
+        )
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", UserWarning)
+            xo, _ = _simplify(x, y, nmin=100)
+        left_pts = int((xo < 0.7).sum())
+        # Pre-coverage baseline was 2; coverage cannot exceed the pool's
+        # density in the quiet region (where curvature, extrema, and
+        # cum-distance all fire rarely), but it must at least double the
+        # representation.
+        assert left_pts >= 4, (
+            f"only {left_pts} pts in low-amplitude region (was 2 pre-coverage)"
+        )
+
+    def test_coverage_indices_are_subset_of_input_indices(self):
+        """Helper sanity: returned indices index into the original x array."""
+        from src._functions.simplify import _x_uniform_coverage_idx
+        x = np.linspace(0, 1, 1000)
+        pool = np.arange(0, 1000, 5)  # every 5th point
+        idx = _x_uniform_coverage_idx(x, pool, n_chunks=20)
+        assert np.all(np.isin(idx, pool))
+        assert idx.size <= 20
+
+    def test_coverage_handles_short_input(self):
+        from src._functions.simplify import _x_uniform_coverage_idx
+        # Single point — no chunks possible
+        empty = _x_uniform_coverage_idx(np.array([0.5]), np.array([0]))
+        assert empty.size == 0
+        # Empty pool
+        empty = _x_uniform_coverage_idx(np.linspace(0, 1, 100), np.array([], dtype=np.int64))
+        assert empty.size == 0
+
+
+# ---------------------------------------------------------------------------
+# Log-space error metrics — decade-balanced fidelity for spectra and
+# multi-decade physics profiles.
+# ---------------------------------------------------------------------------
+
+class TestLogMetrics:
+
+    def test_log_metrics_present_when_y_positive(self):
+        from src._functions.simplify import _simplify_error
+        x = np.linspace(1.0, 100.0, 5000)
+        y = x ** -1.5  # always positive, ~3 decades of dynamic range
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", UserWarning)
+            xo, yo = _simplify(x, y, nmin=100)
+        m = _simplify_error(x, y, xo, yo)
+        for k in ("log_r_squared", "log_rms_err",
+                  "log_max_dex_err", "log_mean_dex_err"):
+            assert k in m and np.isfinite(m[k]), f"{k} missing/NaN"
+        assert 0.0 <= m["log_r_squared"] <= 1.0
+
+    def test_log_metrics_nan_when_y_crosses_zero(self):
+        from src._functions.simplify import _simplify_error
+        x = np.linspace(0.0, 1.0, 5000)
+        y = np.sin(2 * np.pi * x)  # crosses zero
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", UserWarning)
+            xo, yo = _simplify(x, y, nmin=100)
+        m = _simplify_error(x, y, xo, yo)
+        for k in ("log_r_squared", "log_rms_err",
+                  "log_max_dex_err", "log_mean_dex_err"):
+            assert np.isnan(m[k]), f"{k} should be NaN for sign-crossing y"
+        # Linear-space metrics should still be finite
+        assert np.isfinite(m["r_squared"])
+
+    def test_log_dex_error_units(self):
+        """log_max_dex_err is the L∞ deviation in decimal-log units —
+        a value of 0.01 should correspond to ≈ 2 % relative error."""
+        from src._functions.simplify import _simplify_error
+        x = np.linspace(1.0, 1000.0, 5000)
+        y = 10.0 ** (np.log10(x) * 0.5)  # smooth power-law in log space
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", UserWarning)
+            xo, yo = _simplify(x, y, nmin=100)
+        m = _simplify_error(x, y, xo, yo)
+        # Verify the dex relation: 10^max_dex - 1 ≈ max relative error
+        approx_rel_from_dex = 10.0 ** m["log_max_dex_err"] - 1.0
+        # The two should be the same order of magnitude (within 3×).
+        # (max_rel_err is computed in linear y-space so they're not
+        # identical — but tightly related for a smooth curve.)
+        assert approx_rel_from_dex < 3.0 * (m["max_rel_err"] + 1e-6) + 0.05
+
+
+# ---------------------------------------------------------------------------
 # Timing / efficiency — ensures the algorithm scales reasonably and the
 # fixed-budget version is at least as fast as the input-size dominated
 # work it has to do (curvature, prominence, bisection are all O(n log n)).
