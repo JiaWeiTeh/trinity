@@ -63,9 +63,7 @@ def start_expansion(params):
 
     # Record timestamp
     startdatetime = datetime.datetime.now()
-    logger.info("=" * 60)
-    logger.info("TRINITY Simulation Starting")
-    logger.info("=" * 60)
+    logger.info("=" * 16 + " TRINITY Simulation Starting " + "=" * 15)
     logger.info(f"Start time: {startdatetime}")
     terminal_prints.phase0(startdatetime)
     
@@ -117,20 +115,16 @@ def start_expansion(params):
     # =============================================================================
     # Begin simulation.
     # =============================================================================
-    logger.info("=" * 60)
-    logger.info("Initialization complete. Starting bubble expansion simulation...")
-    logger.info("=" * 60)
+    logger.info("=" * 5 + " Initialization complete. Starting bubble expansion simulation... " + "=" * 5)
 
     run_expansion(params)
 
     # Log completion
     enddatetime = datetime.datetime.now()
     elapsed = enddatetime - startdatetime
-    logger.info("=" * 60)
-    logger.info("TRINITY Simulation Complete")
+    logger.info("=" * 16 + " TRINITY Simulation Complete " + "=" * 15)
     logger.info(f"End time: {enddatetime}")
     logger.info(f"Total elapsed time: {elapsed}")
-    logger.info("=" * 60)
 
     # Write simulation end report to file
     try:
@@ -188,9 +182,7 @@ def run_expansion(params):
     
     params['current_phase'].value = 'energy'
 
-    logger.info("-" * 60)
-    logger.info("PHASE 1a: Energy-driven phase (constant cooling)")
-    logger.info("-" * 60)
+    logger.info("-" * 5 + " PHASE 1a: Energy-driven phase (constant cooling) " + "-" * 5)
     terminal_prints.phase('Entering energy driven phase (constant cooling)')
 
     phase1a_starttime = datetime.datetime.now()
@@ -210,9 +202,7 @@ def run_expansion(params):
 
     params['current_phase'].value = 'implicit'
 
-    logger.info("-" * 60)
-    logger.info("PHASE 1b: Energy-driven phase (adaptive cooling)")
-    logger.info("-" * 60)
+    logger.info("-" * 5 + " PHASE 1b: Energy-driven phase (adaptive cooling) " + "-" * 5)
     terminal_prints.phase('Entering energy driven phase (adaptive cooling)')
 
     phase1b_starttime = datetime.datetime.now()
@@ -229,9 +219,7 @@ def run_expansion(params):
     # Phase 1c: transition phase
     # =============================================================================
 
-    logger.info("-" * 60)
-    logger.info("PHASE 1c: Transition phase (energy -> momentum)")
-    logger.info("-" * 60)
+    logger.info("-" * 5 + " PHASE 1c: Transition phase (energy -> momentum) " + "-" * 5)
     terminal_prints.phase('Entering transition phase (decreasing energy before momentum)')
 
     params['current_phase'].value = 'transition'
@@ -257,9 +245,7 @@ def run_expansion(params):
     # Phase 2: momentum phase
     # =============================================================================
 
-    logger.info("-" * 60)
-    logger.info("PHASE 2: Momentum-driven phase")
-    logger.info("-" * 60)
+    logger.info("-" * 5 + " PHASE 2: Momentum-driven phase " + "-" * 5)
     terminal_prints.phase('Entering momentum phase')
 
     params['current_phase'].value = 'momentum'

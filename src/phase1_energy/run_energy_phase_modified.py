@@ -172,7 +172,7 @@ def run_energy(params):
         params['R1'].value = R1
         params['Pb'].value = Pb
 
-        logger.info('bubble complete (modified)')
+        logger.debug('bubble complete (modified)')
 
         # =============================================================================
         # 3b. Compute shell mass BEFORE shell structure so that the shell
@@ -187,7 +187,7 @@ def run_energy(params):
         # =============================================================================
         shell_data = shell_structure_modified.shell_structure_pure(params)
         updateDict(params, shell_data)
-        logger.info('shell complete (modified)')
+        logger.debug('shell complete (modified)')
 
         # Compute P_HII from Strömgren ionization balance in shell (n_IF_Str)
         n_IF_Str = shell_data.n_IF_Str
@@ -266,9 +266,9 @@ def run_energy(params):
         _zeta = _R_eq / _R_St if (np.isfinite(_R_St) and _R_St > 0.0) else 0.0
         params['zeta'].value = _zeta
         if _zeta < 0.5:
-            logger.info(f'ζ={_zeta:.3f} < 0.5: PIR-dominated, n_IF_Str active '
-                        f'(n_IF={params["n_IF"].value:.3e}, '
-                        f'n_IF_Str={params["n_IF_Str"].value:.3e})')
+            logger.debug(f'ζ={_zeta:.3f} < 0.5: PIR-dominated, n_IF_Str active '
+                         f'(n_IF={params["n_IF"].value:.3e}, '
+                         f'n_IF_Str={params["n_IF_Str"].value:.3e})')
 
         # =============================================================================
         # 6. Save snapshot BEFORE ODE — all values consistent at t_now
@@ -337,7 +337,7 @@ def run_energy(params):
         v2 = v2_new
         Eb = Eb_new
 
-        logger.info(f'Phase values: t: {t_now:.6e}, R2: {R2:.6e}, v2: {v2:.6e}, Eb: {Eb:.6e}, T0: {T0:.2e}')
+        logger.debug(f'Phase values: t: {t_now:.6e}, R2: {R2:.6e}, v2: {v2:.6e}, Eb: {Eb:.6e}, T0: {T0:.2e}')
 
         # Update params with new state (for next iteration's bubble/shell)
         params['t_now'].value = t_now
