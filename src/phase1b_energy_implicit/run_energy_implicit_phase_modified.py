@@ -449,11 +449,11 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
     # --- PHASE BOUNDARY DIAGNOSTIC ---
     v2_from_ODE = params['v2'].value
     v2_from_alpha = params['cool_alpha'].value * params['R2'].value / params['t_now'].value
-    logger.warning(f"PHASE BOUNDARY [energy->implicit]: "
-                   f"v2_ODE={v2_from_ODE:.6e}, v2_alpha={v2_from_alpha:.6e}, "
-                   f"ratio={v2_from_alpha/v2_from_ODE if v2_from_ODE != 0 else float('inf'):.4f}")
-    logger.warning(f"  R2={params['R2'].value:.6e}, shell_mass={params['shell_mass'].value:.6e}, "
-                   f"Eb={params['Eb'].value:.6e}, t_now={params['t_now'].value:.6e}")
+    logger.info(f"PHASE BOUNDARY [energy->implicit]: "
+                f"v2_ODE={v2_from_ODE:.6e}, v2_alpha={v2_from_alpha:.6e}, "
+                f"ratio={v2_from_alpha/v2_from_ODE if v2_from_ODE != 0 else float('inf'):.4f}")
+    logger.info(f"  R2={params['R2'].value:.6e}, shell_mass={params['shell_mass'].value:.6e}, "
+                f"Eb={params['Eb'].value:.6e}, t_now={params['t_now'].value:.6e}")
     # --- END DIAGNOSTIC ---
 
     # Update cool_alpha to match ODE-evolved v2 (preserves ODE continuity)
@@ -731,7 +731,7 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
             termination_reason = "reached_tmax"
             params['SimulationEndReason'].value = 'Stopping time reached'
             params['EndSimulationDirectly'].value = True
-            logger.warning(f"Simulation reached stop_t={tmax} Myr successfully")
+            logger.info(f"Simulation reached stop_t={tmax} Myr successfully")
             break
 
         # ---------------------------------------------------------------------
@@ -772,9 +772,9 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
             break
 
         if not sol.success or len(sol.t) == 0:
-            logger.warning(f"Solver did not succeed: {sol.message}")
-            logger.warning(f"  t_span was: ({t_span[0]:.10e}, {t_span[1]:.10e})")
-            logger.warning(f"  y0 was: R2={y0[0]:.10e}, v2={y0[1]:.6e}")
+            logger.error(f"Solver did not succeed: {sol.message}")
+            logger.error(f"  t_span was: ({t_span[0]:.10e}, {t_span[1]:.10e})")
+            logger.error(f"  y0 was: R2={y0[0]:.10e}, v2={y0[1]:.6e}")
             termination_reason = f"solver_failed: {sol.message}"
             break
 
@@ -783,7 +783,7 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         # ---------------------------------------------------------------------
         event_result = check_event_termination(sol, ode_events)
         if event_result.triggered:
-            logger.warning(f"Event '{event_result.name}' triggered at t={event_result.t:.6e} Myr: "
+            logger.info(f"Event '{event_result.name}' triggered at t={event_result.t:.6e} Myr: "
                           f"R2={event_result.y[0]:.4e} pc, v2={event_result.y[1]:.4e} pc/Myr")
             termination_reason = event_result.reason_code
             # Update state from event
@@ -909,7 +909,7 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
 
         if Lgain > 0 and (Lgain - Lloss) / Lgain < threshold:
             termination_reason = "cooling_balance"
-            logger.warning(f"Cooling balance reached: Lloss/Lgain ratio below {threshold}")
+            logger.info(f"Cooling balance reached: Lloss/Lgain ratio below {threshold}")
             break
 
         # Collapse detection: velocity negative AND radius decreasing
