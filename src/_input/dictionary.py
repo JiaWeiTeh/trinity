@@ -485,7 +485,18 @@ class DescribedDict(dict):
 
         Includes special handling for certain long profile arrays (bubble_*, shell_grav_*)
         where we store a simplified representation (and sometimes log-space).
+
+        Run-constants (``RUN_CONST_KEYS`` from
+        ``src._output.run_constants``) are written to ``metadata.json``
+        once per run, and stripped from every per-snapshot dict here.
         """
+        # Run-constants are written to metadata.json once per run
+        # and never appear in per-snapshot dicts.  Imported lazily
+        # to keep dictionary.py independent of the _output package
+        # at import time.
+        from src._output.run_constants import RUN_CONST_KEYS
+        run_const_keys = frozenset(RUN_CONST_KEYS)
+
         # Refresh excluded sets in case flags changed after insertion
         for k, item in self.items():
             if isinstance(item, DescribedItem):
@@ -500,6 +511,10 @@ class DescribedDict(dict):
             if key in self._excluded_keys:
                 continue
             if not isinstance(item, DescribedItem):
+                continue
+            # Run-constants live in metadata.json (written once per run);
+            # never include them in per-snapshot dicts.
+            if key in run_const_keys:
                 continue
 
             val = item.value
@@ -636,6 +651,11 @@ class DescribedDict(dict):
         """
         Append pending snapshots to dictionary.jsonl (line-delimited JSON).
 
+        On the first flush of a fresh run, also writes ``metadata.json``
+        with the run-constants (input parameters + initial cloud
+        profile).  Run-constants are stripped from every per-snapshot
+        dict; the reader rehydrates them on load.
+
         Performance: O(pending_snapshots) - only writes new data, never reads existing file.
         This is a MASSIVE improvement over the old O(n²) behavior.
 
@@ -646,25 +666,62 @@ class DescribedDict(dict):
             Line 1: snapshot "1" as JSON object
             ...
 
+        Sibling files
+        -------------
+        ``metadata.json`` (one record per run): keys listed in
+        ``src._output.run_constants.RUN_CONST_KEYS`` plus a
+        ``_metadata_version`` field for forward-compat.
+
         Behavior
         --------
         - If flush_count == 0 and file exists: overwrite (fresh run)
         - Else: append new snapshots
         """
         import logging
+        import os
         logger = logging.getLogger(__name__)
+
+        from src._output.run_constants import (
+            RUN_CONST_KEYS, METADATA_FILENAME, METADATA_VERSION,
+        )
 
         path2output = self._get_output_dir()
         path2output.mkdir(parents=True, exist_ok=True)
         path2jsonl = path2output / "dictionary.jsonl"
+        path2metadata = path2output / METADATA_FILENAME
 
-        # Fresh run: delete existing file
-        if self.flush_count == 0 and path2jsonl.exists():
-            path2jsonl.unlink()
-            logger.debug("Starting fresh run: deleted existing dictionary.jsonl")
+        # Fresh run: delete existing files (jsonl AND metadata) so we
+        # never end up with a stale metadata.json next to a new
+        # simulation's snapshots.
+        if self.flush_count == 0:
+            if path2jsonl.exists():
+                path2jsonl.unlink()
+                logger.debug("Starting fresh run: deleted existing dictionary.jsonl")
+            if path2metadata.exists():
+                path2metadata.unlink()
+                logger.debug("Starting fresh run: deleted existing metadata.json")
 
         # Sort snapshot IDs to write in order
         snap_ids = sorted([int(k) for k in self.previous_snapshot.keys()])
+
+        # Write metadata.json on the very first flush of the run.
+        # Atomic via temp-file + rename so a partial write can never
+        # leave a corrupt metadata.json next to a valid jsonl stream.
+        if self.flush_count == 0:
+            metadata: Dict[str, Any] = {"_metadata_version": METADATA_VERSION}
+            for k in RUN_CONST_KEYS:
+                if k in self:
+                    item = self[k]
+                    if isinstance(item, DescribedItem):
+                        metadata[k] = self._to_json_ready_value(item.value)
+            tmp_path = path2metadata.with_suffix(path2metadata.suffix + ".tmp")
+            with open(tmp_path, "w", encoding="utf-8") as f:
+                json.dump(metadata, f, cls=NpEncoder)
+            os.replace(tmp_path, path2metadata)
+            logger.debug(
+                f"Wrote {METADATA_FILENAME} with "
+                f"{len(metadata) - 1} run-const keys"
+            )
 
         # Append each snapshot as one line
         mode = "a" if path2jsonl.exists() else "w"
@@ -712,6 +769,24 @@ class DescribedDict(dict):
                 except json.JSONDecodeError as e:
                     print(f"Warning: Could not parse line {idx}: {e}")
                     continue
+
+        # Rehydrate run-constants from sibling metadata.json (if any).
+        # ``setdefault`` semantics: per-snapshot value wins when both
+        # are present (legacy files keep loading identically).
+        from src._output.run_constants import (
+            METADATA_FILENAME, metadata_keys_to_rehydrate,
+        )
+        path2metadata = path2output / METADATA_FILENAME
+        if path2metadata.exists():
+            try:
+                with open(path2metadata, "r", encoding="utf-8") as f:
+                    metadata = json.load(f)
+                run_consts = metadata_keys_to_rehydrate(metadata)
+                for snap in snapshots.values():
+                    for k, v in run_consts.items():
+                        snap.setdefault(k, v)
+            except (json.JSONDecodeError, OSError) as e:
+                print(f"Warning: could not rehydrate from {METADATA_FILENAME}: {e}")
 
         return snapshots
 

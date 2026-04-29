@@ -381,6 +381,7 @@ class TrinityOutput:
 
         # Sort by snap_id
         snapshots.sort(key=lambda s: s.get('snap_id', 0))
+        cls._rehydrate_metadata(filepath.parent, snapshots)
         return snapshots
 
     @classmethod
@@ -392,7 +393,44 @@ class TrinityOutput:
                 line = line.strip()
                 if line:
                     snapshots.append(json.loads(line))
+        cls._rehydrate_metadata(filepath.parent, snapshots)
         return snapshots
+
+    @staticmethod
+    def _rehydrate_metadata(run_dir: Path, snapshots: List[dict]) -> None:
+        """
+        Merge ``<run_dir>/metadata.json`` into every snapshot's data
+        dict via ``setdefault`` semantics (per-snapshot value wins
+        when both are present).
+
+        Silently skips when ``metadata.json`` is absent — that's the
+        normal case for files written before this feature landed,
+        where every snapshot already contains the run-constants.
+
+        Logs (but does not raise) on a corrupted ``metadata.json``;
+        callers still get the snapshots, just without the rehydrate.
+        """
+        # Lazy import to avoid pulling _output.run_constants into the
+        # module's import graph until we actually load a file.
+        from src._output.run_constants import (
+            METADATA_FILENAME, metadata_keys_to_rehydrate,
+        )
+        metadata_path = run_dir / METADATA_FILENAME
+        if not metadata_path.exists():
+            return
+        try:
+            with open(metadata_path, "r") as f:
+                metadata = json.load(f)
+        except (json.JSONDecodeError, OSError) as e:
+            logging.getLogger(__name__).warning(
+                "Failed to read %s: %s; loading without rehydrate.",
+                metadata_path, e,
+            )
+            return
+        run_consts = metadata_keys_to_rehydrate(metadata)
+        for snap in snapshots:
+            for k, v in run_consts.items():
+                snap.setdefault(k, v)
 
     def __len__(self) -> int:
         """Number of snapshots."""
