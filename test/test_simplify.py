@@ -702,6 +702,108 @@ class TestLogMetrics:
 
 
 # ---------------------------------------------------------------------------
+# Solver-artefact failure modes — two regression cases that motivated the
+# tolerance dedup + ``idx_dist`` priority promotion.  See the discussion
+# in commit history for the full diagnosis; the short version is:
+#
+#   1. ODE solvers can emit thousands of micro-step (x, y) duplicates
+#      that the budget-trim step happily fills with copies of one
+#      physical point, starving the rest of the curve.
+#   2. Even without duplicates, ``idx_dist`` (cumulative-|Δy| boundaries)
+#      used to live only in the ``merged`` mask and got displaced by
+#      bisection-by-position, leaving steep tails sampled by a single
+#      straight line.
+# ---------------------------------------------------------------------------
+
+class TestSolverArtefacts:
+    """Regression tests for ODE-solver clumps and steep-tail dips."""
+
+    def test_clump_at_start_does_not_eat_budget(self):
+        # Mimic a stalled integrator: 5000 micro-steps at the boundary
+        # then a smooth rise.  Per-step Δ is ~10⁻⁹ of the data range —
+        # well below the dedup floor.
+        rng = np.random.RandomState(0)
+        x_clump = 0.06 + 1e-10 * np.cumsum(rng.rand(5000))
+        y_clump = 57.77 + 1e-9 * np.cumsum(rng.rand(5000))
+        x_curve = np.linspace(0.06, 0.075, 200)
+        y_curve = np.linspace(57.77, 60.7, 200)
+        x = np.concatenate([x_clump, x_curve])
+        y = np.concatenate([y_clump, y_curve])
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", UserWarning)
+            xo, yo = _simplify(x, y, nmin=100)
+
+        # At most a handful of output points should land in the clump
+        # x-region (we permit a small constant for the dedup boundary
+        # plus an endpoint coverage point).
+        in_clump = xo < 0.06 + 1e-7
+        assert in_clump.sum() <= 3, (
+            f"{in_clump.sum()} of {xo.size} output points wasted on the clump"
+        )
+        # The actual rise must be densely sampled.
+        assert (~in_clump).sum() >= 90
+        assert reconstruction_r2(x, y, xo, yo) > 0.95
+
+    def test_steep_tail_dip_is_sampled(self):
+        # Smooth slow descent over 95% of x, then a steep drop in the
+        # final 5% — the 3_implicit-T motif.  No duplicates here, so
+        # this isolates the ``idx_dist`` priority-promotion fix.
+        x_slow = np.linspace(0.20, 0.60, 9500)
+        y_slow = 7.4 - 0.7 * (x_slow - 0.20) / 0.40        # 7.4 → 6.7
+        x_dip = np.linspace(0.60, 0.63, 500)
+        # Steep nonlinear drop from 6.7 down to 4.5
+        y_dip = 6.7 - 2.2 * ((x_dip - 0.60) / 0.03) ** 2
+        x = np.concatenate([x_slow, x_dip])
+        y = np.concatenate([y_slow, y_dip])
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", UserWarning)
+            xo, yo = _simplify(x, y, nmin=100)
+
+        in_dip = xo > 0.60
+        # Cumulative-|Δy| weighting: most variation is in the dip, so
+        # most output points should be there.  Without the priority
+        # promotion this number drops to ~5.
+        assert in_dip.sum() >= 40, (
+            f"only {in_dip.sum()} of {xo.size} output points cover the steep dip"
+        )
+        assert reconstruction_r2(x, y, xo, yo) > 0.95
+
+    def test_dedup_preserves_vertical_drop(self):
+        # Same x, varying y is a meaningful "vertical drop" region —
+        # the OR-on-Δ rule must keep these intact.
+        x = np.concatenate([np.linspace(0.0, 1.0, 500),
+                            np.full(50, 1.0)])
+        y = np.concatenate([np.linspace(0.0, 1.0, 500),
+                            np.linspace(1.0, 0.0, 50)])
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", UserWarning)
+            xo, yo = _simplify(x, y, nmin=100)
+        # The trailing vertical drop (50 distinct y at x=1.0) must be
+        # represented by more than just the endpoint.
+        at_tail = np.isclose(xo, 1.0, atol=1e-12)
+        assert at_tail.sum() >= 5, (
+            f"vertical-drop tail collapsed: only {at_tail.sum()} "
+            f"output points at x=1.0"
+        )
+
+    def test_dedup_tol_zero_is_passthrough(self):
+        # Setting dedup_tol=0 must reproduce pre-fix behaviour: no
+        # collapse, every input point counts as a candidate.
+        x = np.concatenate([np.full(1000, 0.05) + 1e-12 * np.arange(1000),
+                            np.linspace(0.05, 0.10, 200)])
+        y = np.concatenate([np.full(1000, 1.0) + 1e-12 * np.arange(1000),
+                            np.linspace(1.0, 5.0, 200)])
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", UserWarning)
+            xo_off, _ = _simplify(x, y, nmin=100, dedup_tol=0.0)
+            xo_on, _ = _simplify(x, y, nmin=100)
+        # With dedup off the clump dominates; with dedup on it does not.
+        assert (xo_off < 0.0501).sum() > (xo_on < 0.0501).sum()
+
+
+# ---------------------------------------------------------------------------
 # Timing / efficiency — ensures the algorithm scales reasonably and the
 # fixed-budget version is at least as fast as the input-size dominated
 # work it has to do (curvature, prominence, bisection are all O(n log n)).
