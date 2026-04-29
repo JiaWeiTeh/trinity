@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Merged figure: rCloud density smoothing schematic (top) over the
+Merged figure: rCloud density-smoothing schematic (top) over the
 before/after LSODA-failure trajectory comparison (bottom).
 
 The two panels share the same narrative: panel 1 motivates the tanh
@@ -10,9 +10,9 @@ step at rCloud, and panel 2 demonstrates the downstream consequence —
 the trajectory that previously triggered an LSODA failure now finishes
 cleanly.
 
-Top panel logic comes from ``paper_rcloud_smooth.py``; bottom panel
-logic comes from ``paper_v2R2_blend.py``. Style follows the lsoda
-demonstration (large tick labels, generous panel size).
+Self-contained: does NOT import from paper_rcloud_smooth, paper_v2R2,
+or paper_v2R2_blend. All loaders, styles, and drawing helpers needed by
+either panel are defined locally.
 
 Usage:
 
@@ -27,21 +27,16 @@ from typing import Optional, Union
 
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
 
 import sys as _sys
 from pathlib import Path as _Path
 _sys.path.insert(0, str(_Path(__file__).parent.parent.parent))
 
 import src._functions.unit_conversions as cvt
-
 from src._plots.plot_base import FIG_DIR
-from src._plots.paper_v2R2_blend import (
-    load_v2R2_pair,
-    STYLE_AFTER,
-    STYLE_BEFORE,
-    _build_legend_handles,
-)
-from src._plots.paper_v2R2 import _plot_one_trajectory
+from src._output.trinity_reader import load_output, find_data_path
+from src._output.simulation_end import read_simulation_end
 from src.cloud_properties.powerLawSphere import (
     compute_rCloud_homogeneous,
     compute_rCloud_powerlaw,
@@ -49,7 +44,7 @@ from src.cloud_properties.powerLawSphere import (
 
 
 # =============================================================================
-# Top-panel: fiducial cloud parameters (mirrors paper_rcloud_smooth.py)
+# Top panel: fiducial cloud parameters and density helpers
 # =============================================================================
 M_CLOUD = 1e6           # Msun
 N_CORE_CGS = 1e3        # cm^-3
@@ -92,18 +87,235 @@ def _density_blend(r, smooth_frac):
     return n_in * (1.0 - w_out) + N_ISM_AU * w_out
 
 
+# =============================================================================
+# Bottom panel: styles, markers, and per-trajectory drawing
+# =============================================================================
+BEFORE_SUFFIX = "_before_blend"
+AFTER_SUFFIX  = "_after_blend"
+
+STYLE_AFTER  = dict(color="k",       lw=1.3, ls="-",  alpha=0.95,
+                    marker_scale=1.0,  marker_alpha=0.55,
+                    label="after smoothing")
+STYLE_BEFORE = dict(color="#d62728", lw=1.6, ls="--", alpha=0.95,
+                    marker_scale=0.75, marker_alpha=0.55,
+                    label="before smoothing")
+
+# Recollapse segments (v_2 < 0) render as dotted lines with reduced
+# linewidth/alpha so they read as a secondary echo of the primary curve.
+RECOLLAPSE_LW_FACTOR    = 0.7
+RECOLLAPSE_ALPHA_FACTOR = 0.55
+
+END_MARKER_OK   = "o"
+END_MARKER_FAIL = "X"
+END_MARKER_SIZE = 7
+
+
+def _check_implicit_lsoda_failure(data_path: Path) -> bool:
+    """True iff trinity.log shows an LSODA bail in the implicit phase."""
+    log_path = data_path.parent / "trinity.log"
+    if not log_path.exists():
+        return False
+    try:
+        with open(log_path, "r") as fh:
+            for line in fh:
+                if ("Solver did not succeed" in line
+                        and "phase1b_energy_implicit" in line):
+                    return True
+    except Exception:
+        return False
+    return False
+
+
+def _load_run_v2R2(data_path: Path) -> dict:
+    """Load t, R_2, v_2 [km/s], rCloud, and the simulation-end status."""
+    output = load_output(data_path)
+    if len(output) == 0:
+        raise ValueError(f"No snapshots found in {data_path}")
+
+    t  = output.get("t_now")
+    R2 = output.get("R2")
+    v2 = output.get("v2") * cvt.v_au2kms
+    rcloud = float(output[0].get("rCloud", np.nan))
+
+    if np.any(np.diff(t) < 0):
+        order = np.argsort(t)
+        t, R2, v2 = t[order], R2[order], v2[order]
+
+    lsoda_failed = _check_implicit_lsoda_failure(data_path)
+
+    end_info = read_simulation_end(str(data_path.parent))
+    end_ok = None
+    end_reason = None
+    if end_info is not None and end_info.get("exit_code") is not None:
+        end_ok = 0 <= int(end_info["exit_code"]) <= 9
+        end_reason = end_info.get("reason")
+    else:
+        last_reason = output[-1].get("SimulationEndReason", None)
+        end_reason = str(last_reason) if last_reason is not None else None
+        if end_reason is not None:
+            ok_keywords = ("max_time", "max_radius", "dissolved",
+                           "complete", "success")
+            end_ok = any(k in end_reason.lower() for k in ok_keywords)
+
+    return dict(
+        t=np.asarray(t, dtype=float),
+        R2=np.asarray(R2, dtype=float),
+        v2=np.asarray(v2, dtype=float),
+        rcloud=rcloud,
+        end_ok=end_ok,
+        end_reason=end_reason,
+        lsoda_failed=lsoda_failed,
+    )
+
+
+def _find_unique_subfolder(parent: Path, suffix: str) -> Path:
+    matches = sorted(p for p in parent.iterdir()
+                     if p.is_dir() and p.name.endswith(suffix))
+    if not matches:
+        raise FileNotFoundError(
+            f"No subdirectory ending in '{suffix}' under {parent}"
+        )
+    if len(matches) > 1:
+        raise ValueError(
+            f"Multiple subdirectories ending in '{suffix}' under {parent}: "
+            f"{[m.name for m in matches]}"
+        )
+    return matches[0]
+
+
+def _strip_blend_suffix(name: str) -> str:
+    for s in (BEFORE_SUFFIX, AFTER_SUFFIX):
+        if name.endswith(s):
+            return name[: -len(s)]
+    return name
+
+
+def _load_pair_from_folder(folder: Path) -> dict:
+    before_dir = _find_unique_subfolder(folder, BEFORE_SUFFIX)
+    after_dir  = _find_unique_subfolder(folder, AFTER_SUFFIX)
+    before_path = find_data_path(before_dir)
+    after_path  = find_data_path(after_dir)
+
+    base_before = _strip_blend_suffix(before_dir.name)
+    base_after  = _strip_blend_suffix(after_dir.name)
+    run_id = base_before if base_before == base_after else folder.name
+
+    return dict(
+        before=_load_run_v2R2(before_path),
+        after=_load_run_v2R2(after_path),
+        meta=dict(run_id=run_id),
+    )
+
+
+def _load_pair_from_npz(path: Path) -> dict:
+    with np.load(path, allow_pickle=False) as z:
+        def _side(prefix: str) -> dict:
+            return dict(
+                t=z[f"{prefix}_t"].astype(float),
+                R2=z[f"{prefix}_R2"].astype(float),
+                v2=z[f"{prefix}_v2"].astype(float),
+                rcloud=float(z["rcloud"]),
+                end_ok=(bool(z[f"end_ok_{prefix}"])
+                        if f"end_ok_{prefix}" in z.files else None),
+                end_reason=(str(z[f"end_reason_{prefix}"])
+                            if f"end_reason_{prefix}" in z.files else None),
+                lsoda_failed=(bool(z[f"lsoda_failed_{prefix}"])
+                              if f"lsoda_failed_{prefix}" in z.files else False),
+            )
+        run_id = str(z["run_id"]) if "run_id" in z.files else path.stem
+        return dict(
+            before=_side("before"),
+            after=_side("after"),
+            meta=dict(run_id=run_id),
+        )
+
+
+def _load_v2R2_pair(source: Union[str, Path]) -> dict:
+    """Load a before/after pair from a folder of .jsonl files or a .npz bundle."""
+    p = Path(source)
+    if p.is_dir():
+        return _load_pair_from_folder(p)
+    if p.is_file() and p.suffix == ".npz":
+        return _load_pair_from_npz(p)
+    raise FileNotFoundError(
+        f"{source} is neither a folder nor a .npz bundle"
+    )
+
+
+def _plot_one_trajectory(ax, data, style):
+    """Draw |v_2| vs R_2 for a single run, plus the success/fail end marker."""
+    R2 = np.asarray(data["R2"], dtype=float)
+    v2 = np.asarray(data["v2"], dtype=float)
+
+    valid = np.isfinite(R2) & np.isfinite(v2) & (R2 > 0)
+    if not np.any(valid):
+        return
+
+    R2v = R2[valid]
+    v2v = v2[valid]
+
+    # Plot |v_2|, switching to a dotted segment where v_2 < 0 (recollapse)
+    # so the trajectory stays continuous on log-y.
+    floor = 1e-3  # pc/Myr — keeps log scale finite if v_2 hits 0
+    mag = np.maximum(np.abs(v2v), floor)
+    sgn = np.sign(v2v)
+    sgn[sgn == 0] = 1
+    cuts = np.flatnonzero(sgn[1:] != sgn[:-1]) + 1
+    starts = np.r_[0, cuts]
+    ends = np.r_[cuts, len(R2v)]
+    for a, b in zip(starts, ends):
+        if b - a < 2:
+            continue
+        is_recollapse = sgn[a] < 0
+        ls = ":" if is_recollapse else style.get("ls", "-")
+        lw = style["lw"] * (RECOLLAPSE_LW_FACTOR if is_recollapse else 1.0)
+        seg_alpha = style.get("alpha", 0.95) * (
+            RECOLLAPSE_ALPHA_FACTOR if is_recollapse else 1.0
+        )
+        ax.plot(R2v[a:b], mag[a:b],
+                color=style["color"], lw=lw,
+                ls=ls, alpha=seg_alpha,
+                solid_capstyle="round", zorder=3)
+
+    m_scale = style.get("marker_scale", 1.0)
+    m_alpha = style.get("marker_alpha", 1.0)
+
+    # End marker: shape encodes LSODA success vs failure.
+    end_ok = bool(data.get("end_ok")) and not data.get("lsoda_failed")
+    end_marker = END_MARKER_OK if end_ok else END_MARKER_FAIL
+    ax.plot(R2v[-1], mag[-1],
+            marker=end_marker, markerfacecolor=style["color"],
+            markeredgecolor="black",
+            markersize=END_MARKER_SIZE * m_scale,
+            mew=0.8, alpha=m_alpha, zorder=5)
+
+
+def _build_v2R2_legend_handles() -> list:
+    return [
+        Line2D([0], [0], marker=END_MARKER_OK, color="0.3",
+               markerfacecolor="0.3", markeredgecolor="black",
+               linestyle="", markersize=END_MARKER_SIZE,
+               label="LSODA succeed"),
+        Line2D([0], [0], marker=END_MARKER_FAIL, color="0.3",
+               markerfacecolor="0.3", markeredgecolor="black",
+               linestyle="", markersize=END_MARKER_SIZE,
+               label="LSODA failed"),
+    ]
+
+
+# =============================================================================
+# Panel drawers
+# =============================================================================
 def _draw_rcloud_panel(ax, fontsize):
     """Top panel: density step vs tanh blends around rCloud."""
     r_log = np.geomspace(1e-2 * R_CLOUD, 1.5 * R_CLOUD, 4000)
     r_band = np.linspace(0.7 * R_CLOUD, 1.3 * R_CLOUD, 2000)
     r = np.unique(np.concatenate([r_log, r_band]))
 
-    # Original discontinuous step
     n_jump = _density_jump(r)
     ax.plot(r, n_jump * cvt.ndens_au2cgs,
             color='k', ls='-', lw=1.6, label='step (original)')
 
-    # Three blend widths: below default, default (highlighted), above default
     blend_specs = [
         (SMOOTH_FRAC_LOW,     '#0072B2', '--', 1.2),
         (SMOOTH_FRAC_DEFAULT, '#009E73', '-',  2.0),
@@ -160,10 +372,13 @@ def _draw_v2R2_panel(ax, pair, fontsize):
     ax.set_xlabel(r"$R_b$ [pc]", fontsize=fontsize)
     ax.set_ylabel(r"$v_b$ [km s$^{-1}$]", fontsize=fontsize)
 
-    ax.legend(handles=_build_legend_handles(), loc="lower left",
+    ax.legend(handles=_build_v2R2_legend_handles(), loc="lower left",
               fontsize=fontsize - 6, framealpha=0.9)
 
 
+# =============================================================================
+# Orchestration
+# =============================================================================
 def plot_merged(pair: dict, out_path: Optional[Path] = None,
                 show: bool = False) -> plt.Figure:
     """Stack the rCloud-smoothing schematic over the v_2 vs R_2 comparison."""
@@ -191,9 +406,9 @@ def plot_merged(pair: dict, out_path: Optional[Path] = None,
     return fig
 
 
-# ----------------------------------------------------------------
+# =============================================================================
 # CLI
-# ----------------------------------------------------------------
+# =============================================================================
 def main(argv: Optional[list] = None) -> None:
     parser = argparse.ArgumentParser(
         description=("Stacked figure: rCloud smoothing schematic on top, "
@@ -212,7 +427,7 @@ def main(argv: Optional[list] = None) -> None:
                         help="open the figure window (in addition to saving)")
     args = parser.parse_args(argv)
 
-    pair = load_v2R2_pair(args.source)
+    pair = _load_v2R2_pair(args.source)
     run_id = pair["meta"].get("run_id", "blend")
     out_path = (Path(args.out) if args.out
                 else FIG_DIR / f"paper_rcloud_smoothing_{run_id}.pdf")
