@@ -341,9 +341,6 @@ def _draw_rcloud_panel(ax, fontsize, top_xmax):
 
     ax.tick_params(labelsize=fontsize, axis='both')
     ax.set_xticks([])           # vertical alignment with bottom replaces the rcloud tick
-    ax.set_yticks([N_ISM_CGS, N_CORE_CGS])
-    ax.set_yticklabels([f"{int(N_ISM_CGS)}", f"{int(N_CORE_CGS)}"])
-    ax.minorticks_off()
     ax.set_ylabel(r'$n(r)$', fontsize=fontsize)
 
     # Inline asymptote labels; pin n_ISM inside the axes if top_xmax is tight.
