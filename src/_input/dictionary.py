@@ -391,33 +391,34 @@ class DescribedDict(dict):
         keyname: str = "",
     ) -> Tuple[np.ndarray, np.ndarray]:
         """
-        Heuristic downsampling of a curve y(x), preserving:
+        Heuristic downsampling of a curve y(x) to ``nmin`` points,
+        preserving:
         - endpoints
-        - sharp bends (points where the Menger curvature of the local
-          triplet exceeds ``grad_inc``; units 1/length)
+        - sharp bends (points where the Menger curvature exceeds
+          ``grad_inc`` on rescaled [0, 1] axes — unit-free threshold)
         - local extrema (sign-change points of the first derivative)
         - points chosen by cumulative distance in y (uniform arc-length)
         - topologically persistent extrema — any peak/trough with
-          prominence ≥ 5 % of the y-range is retained as *mandatory*, so
-          big features never flicker in and out as ``nmin`` varies
+          prominence ≥ 5 % of the y-range is *mandatory* and never
+          dropped from the output
 
-        After feature detection, an R²-based thinning step selects the
-        smallest subset whose linear interpolation reconstructs the
-        original curve with ``R² ≥ 0.99`` (see
-        ``src/_functions/simplify.py::_simplify`` for the ``r2_target``
-        argument).  Hierarchical-bisection ordering guarantees that the
-        subset at any budget N is a strict superset of the subset at
-        N−1, so outputs are stable under small changes in ``nmin``.
+        Output size is at most ``nmin``; remaining slots after the
+        mandatory set are filled in hierarchical-bisection priority,
+        which guarantees the subset at any budget N is a superset of
+        the subset at N−1 (no flicker under small changes in ``nmin``).
 
-        Input / output contract (unchanged from the previous
-        implementation; only the feature-selection strategy is more
-        rigorous):
+        After selection, ``_simplify`` computes the linear-interpolation
+        R² of the simplified curve against the original grid and emits
+        a ``UserWarning`` if it falls below 0.9 — a hint that ``nmin``
+        is too small for this curve.
 
+        Input / output contract:
         * Input: ``x_arr``, ``y_arr`` are 1-D array-likes of equal
-          length.  ``nmin`` is the target floor (clamped to ≥ 100).
+          length.  Input may be ascending, descending, or non-monotonic
+          in x.
         * Output: ``(x_out, y_out)`` — two ``np.ndarray``s of equal
-          length, with endpoints preserved and x-values strictly
-          increasing where the input is.
+          length, with endpoints preserved.  Values come back in the
+          caller's original positional order.
         * Raises ``ValueError`` if ``len(x_arr) != len(y_arr)``.
 
         Intended use: reduce output size for long profile arrays before

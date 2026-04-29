@@ -64,7 +64,6 @@ Repository = "https://github.com/JiaWeiTeh/trinity"
 Issues = "https://github.com/JiaWeiTeh/trinity/issues"
 
 [tool.setuptools]
-packages = ["src"]
 package-dir = {"" = "."}
 
 [tool.setuptools.packages.find]

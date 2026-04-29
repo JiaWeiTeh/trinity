@@ -14,7 +14,8 @@ _simplify_error    Error metrics (RMSE, MAE, R², compression, …).
 _peak_prominences  1-D topological persistence (O(n log n)).
 """
 
-from typing import Tuple, Union, Sequence
+import warnings
+from typing import Optional, Tuple, Union, Sequence
 
 import numpy as np
 
@@ -210,10 +211,10 @@ def _simplify(
     y_arr: Union[np.ndarray, Sequence[float]],
     nmin: int = 100,
     grad_inc: float = 1.0,
-    r2_target: float = 0.99,
+    warn_below_r2: Optional[float] = 0.9,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
-    Heuristic downsampling of a curve y(x) to approximately ``nmin`` points,
+    Heuristic downsampling of a curve y(x) to ``nmin`` points,
     preserving the most physically and visually important features.
 
     This is useful when a simulation or measurement produces thousands of
@@ -224,45 +225,55 @@ def _simplify(
     ------------------
     Three independent strategies select "important" indices, which are
     merged together with the two endpoints into a pool of feature points.
-    A prominence-based filter then marks a subset as mandatory, and a
-    final R²-based thinning step chooses the smallest subset that meets
-    the requested quality target.
+    A prominence-based filter promotes a subset to mandatory, and a fixed
+    point budget then trims the pool down to ``nmin`` points using
+    hierarchical-bisection priority.
 
-    1. **Menger curvature detection** (exact discrete curvature)
+    1. **Menger curvature detection** (on rescaled coordinates)
        Computes the Menger curvature κ for each triplet of consecutive
-       points — the reciprocal of the circumradius of the triangle they
-       form.  Points where ``κ > grad_inc`` are kept.  These mark sharp
-       bends in the curve — shocks, discontinuities, or phase transitions.
+       points using ``(x, y)`` rescaled to ``[0, 1]`` so the threshold
+       is unit-free.  Points where ``κ > grad_inc`` are kept.  These mark
+       sharp bends — shocks, discontinuities, or phase transitions.
 
     2. **Sign-change detection** (local extrema)
        Keeps every point where the first derivative changes sign, i.e.,
        every local minimum and maximum of ``y(x)``.
 
     3. **Cumulative-distance sampling** (uniform arc-length in y)
-       The total variation of ``y`` (i.e., ``sum(|diff(y)|)``) is divided
-       into ``nmin`` equal "distance bins".  One point is selected at each
-       bin boundary.  This gives dense sampling where ``y`` changes rapidly
-       and sparse sampling where ``y`` is nearly flat — adapting
-       automatically to the curve shape.
+       The total variation of ``y`` (``sum(|diff(y)|)``) is divided into
+       ``nmin`` equal bins.  One point is selected at each bin boundary,
+       giving dense sampling where ``y`` changes rapidly and sparse
+       sampling where it is nearly flat.
 
     4. **Topological-persistence filter** (mandatory set)
        ``_peak_prominences`` computes the prominence of every local
-       extremum (the minimum descent required to reach a strictly
-       higher point).  Extrema whose prominence exceeds 5 % of the
-       y-range are flagged as *mandatory* — they are always retained
-       regardless of the R² budget, so a deep dip or tall spike never
-       flickers in and out across neighbouring point counts.
+       extremum.  Extrema whose prominence exceeds 5 % of the y-range
+       are *mandatory* — they are always kept, so deep dips or tall
+       spikes don't flicker in and out as ``nmin`` varies.
 
-    5. **R²-based thinning** (optional, ``r2_target``)
-       The remaining feature points are traversed in hierarchical-
-       bisection order (endpoints → midpoint → quartiles → …) so that
-       the subset at budget N is always a superset of the subset at
-       N-1.  A binary search plus a stability check picks the smallest
-       ``k`` for which the trial  ``mandatory ∪ bisection[:k]``
-       achieves ``R² ≥ r2_target``.
+    5. **Fixed-budget selection**
+       Output size is the smaller of ``nmin`` and the merged-pool size.
+       Mandatory points are taken first; remaining slots are filled in
+       hierarchical-bisection order (endpoints → midpoint → quartiles →
+       …) so that the subset at any budget N is a superset of the subset
+       at N − 1.
 
-    For a perfectly flat curve (zero total variation), the algorithm falls
-    back to uniformly spaced indices.
+    6. **Reconstruction-quality warning** (post-hoc, optional)
+       After selection, the linear interpolation R² of the simplified
+       curve against the original grid is computed.  If it falls below
+       ``warn_below_r2``, a ``UserWarning`` is emitted advising the user
+       to raise ``nmin``.  Pass ``None`` to disable the warning.
+
+    For a perfectly flat curve (zero total variation), the algorithm
+    falls back to ``nmin`` uniformly spaced indices.
+
+    Input/output contract
+    ---------------------
+    Input may be ascending, descending, or non-monotonic in x.  Output
+    values are returned in the caller's original positional order, so
+    ascending stays ascending and descending stays descending.  For
+    non-monotonic input, output is a thinned subsequence in the input's
+    original order.
 
     Parameters
     ----------
@@ -273,23 +284,18 @@ def _simplify(
         Dependent variable (e.g., temperature, density, flux).
         Must be the same length as ``x_arr``.
     nmin : int, optional
-        Target *minimum* number of output samples.  Acts as the number of
-        bins for the cumulative-distance sampler; the final count may
-        differ after curvature/sign-change/prominence merging and the
-        R² thinning step.  Clamped to >= 100.  Default is 100.
+        Target output size.  Clamped to >= 100.  Output is at most
+        ``nmin`` points (or the entire input if it's already shorter).
+        Default is 100.
     grad_inc : float, optional
-        Menger curvature threshold.  A point is flagged as "important"
-        when the Menger curvature of its triplet exceeds this value.
-        Units are 1/length in the (x, y) plane, so the appropriate
-        value depends on the scale of the data.  Lower values keep more
-        points (more sensitive to bends); higher values keep fewer.
+        Menger curvature threshold on rescaled ``[0, 1]`` axes.  Lower
+        values keep more sharp-bend points; higher values keep fewer.
         Default is 1.0.
-    r2_target : float, optional
-        Target R² (coefficient of determination).  After the feature
-        detection selects important points, the result is thinned to the
-        minimum number of points that still achieves this R² value.
-        Set to ``None`` to disable R²-based thinning and keep all
-        detected feature points.  Default is 0.99.
+    warn_below_r2 : float or None, optional
+        Reconstruction R² threshold for emitting a UserWarning.  After
+        selection, the simplified curve is linearly interpolated back
+        onto the original x-grid; if R² falls below this value, a
+        warning is raised.  Pass ``None`` to disable.  Default is 0.9.
 
     Returns
     -------
@@ -391,9 +397,25 @@ def _simplify(
     important_curv = np.where(kappa > grad_inc)[0] + 1
 
     # Keep indices where the derivative changes sign (local extrema).
+    # `np.diff(np.sign(grad))` flags between indices i and i+1, so the raw
+    # sign-change index is half a step before/after the actual extremum.
+    # Refine to the true extremum so prominence classification (which
+    # compares y[i] to its immediate neighbours) sees the real peak/trough.
     grad = np.gradient(y)
-    # np.sign(grad) is -1, 0, or +1; a nonzero diff marks a sign flip.
-    important_sign = np.where(np.diff(np.sign(grad)) != 0)[0]
+    sd = np.diff(np.sign(grad))
+    sc = np.where(sd != 0)[0]
+    if sc.size > 0:
+        is_max_transition = sd[sc] < 0     # + → -  (local maximum)
+        y_at_sc = y[sc]
+        y_at_next = y[sc + 1]
+        pick_i = np.where(
+            is_max_transition,
+            y_at_sc >= y_at_next,           # max: pick whichever y is larger
+            y_at_sc <= y_at_next,           # min: pick whichever y is smaller
+        )
+        important_sign = np.unique(np.where(pick_i, sc, sc + 1))
+    else:
+        important_sign = np.array([], dtype=int)
 
     # ---------------------------------------------------------------
     # Topological persistence: identify the extrema that are large
@@ -411,13 +433,15 @@ def _simplify(
     y_range = float(np.nanmax(y) - np.nanmin(y))
     prom_thresh_frac = 0.05               # 5 % of total y-range
     prom_thresh = prom_thresh_frac * y_range
-    # Prominence is only consumed by the R² thinning step; skip it when
-    # the caller has disabled thinning (``r2_target=None``) to save the
-    # O(n log n) sparse-table build on large inputs.
-    if (r2_target is not None and r2_target < 1.0
-            and important_sign.size > 0 and y_range > 0):
+    # Prominence ranks extrema by amplitude. Stored sorted descending so
+    # the budget-trim step can cheaply take the most prominent first.
+    if important_sign.size > 0 and y_range > 0:
         proms = _peak_prominences(y, important_sign)
-        prominent_idx = important_sign[proms >= prom_thresh]
+        keep_mask = proms >= prom_thresh
+        kept_idx = important_sign[keep_mask]
+        kept_proms = proms[keep_mask]
+        prom_order = np.argsort(kept_proms, kind="stable")[::-1]
+        prominent_idx = kept_idx[prom_order]
     else:
         prominent_idx = np.array([], dtype=int)
 
@@ -455,98 +479,67 @@ def _simplify(
     merged = np.where(mask)[0]
 
     # =================================================================
-    # R²-based build-up: start from 5 points and increase until R² target.
-    # Uses hierarchical bisection of the merged index array so that the
-    # subset at budget N is always a superset of the subset at N-1.
-    # This prevents turning points from randomly appearing/disappearing
-    # at intermediate point counts.
+    # Fixed-budget selection: trim ``merged`` to ``nmin`` points using
+    # an explicit priority order:
+    #   1. endpoints (always — first and last input points)
+    #   2. high-prominence extrema, sorted by prominence DESC
+    #   3. remaining merged-pool points, in hierarchical-bisection order
+    # The first ``nmin`` unique data indices from this list are kept.
+    # Hierarchical-bisection ordering ensures the subset at any budget
+    # N is a superset of the subset at N − 1 (no flicker under small
+    # changes in nmin).
     # =================================================================
-    if r2_target is not None and r2_target < 1.0 and len(merged) > 5:
-        ss_tot = np.sum((y - np.mean(y)) ** 2)
+    if len(merged) > nmin:
+        # Build hierarchical bisection ordering over merged-pool positions.
+        n_m = len(merged)
+        order = np.empty(n_m, dtype=int)
+        order[0] = 0
+        order[1] = n_m - 1
+        count = 2
+        queue = [(0, n_m - 1)]
+        while queue:
+            next_queue = []
+            for lo_q, hi_q in queue:
+                if hi_q - lo_q <= 1:
+                    continue
+                mid_q = (lo_q + hi_q) // 2
+                order[count] = mid_q
+                count += 1
+                next_queue.append((lo_q, mid_q))
+                next_queue.append((mid_q, hi_q))
+            queue = next_queue
+        bisection_pool = merged[order[:count]]
+
+        # Build the priority list and keep the first nmin unique indices.
+        endpoints_idx = np.array([0, x.size - 1], dtype=int)
+        all_priorities = np.concatenate([endpoints_idx, prominent_idx, bisection_pool])
+        # Stable first-seen-order deduplication.
+        _, unique_pos = np.unique(all_priorities, return_index=True)
+        priority_indices = all_priorities[np.sort(unique_pos)]
+
+        budget = min(int(nmin), priority_indices.size)
+        merged = np.sort(priority_indices[:budget])
+
+    # =================================================================
+    # Post-hoc reconstruction-quality warning.  Compute R² of the
+    # linearly interpolated simplified curve against the input grid;
+    # warn if it falls below the threshold so callers know nmin is too
+    # tight for this particular curve.
+    # =================================================================
+    if warn_below_r2 is not None and merged.size >= 2:
+        ss_tot = float(np.sum((y - np.mean(y)) ** 2))
         if ss_tot > 0:
-            # Build a hierarchical bisection ordering of merged indices.
-            # Level 0: endpoints (first and last of merged).
-            # Level 1: midpoint of merged.
-            # Level 2: quartile points.
-            # Level k: 2^(k-1) new points at each level.
-            # Taking the first N from this ordering always includes the
-            # first N-1, and spreads points evenly across the x-range.
-            n_m = len(merged)
-            order = np.empty(n_m, dtype=int)
-            order[0] = 0
-            order[1] = n_m - 1
-            count = 2
-
-            # BFS-style bisection: queue of (lo, hi) intervals to split.
-            queue = [(0, n_m - 1)]
-            while queue:
-                next_queue = []
-                for lo_q, hi_q in queue:
-                    if hi_q - lo_q <= 1:
-                        continue
-                    mid_q = (lo_q + hi_q) // 2
-                    order[count] = mid_q
-                    count += 1
-                    next_queue.append((lo_q, mid_q))
-                    next_queue.append((mid_q, hi_q))
-                queue = next_queue
-
-            # order[:count] maps position-in-merged to bisection priority.
-            # Convert to actual data indices via merged[order].
-            bisection_pool = merged[order[:count]]
-
-            # Split into MANDATORY (prominent extrema, always kept) and
-            # OPTIONAL (bisection pool minus anything already mandatory).
-            # Every trial subset is  mandatory ∪ optional[:k]  — i.e. the
-            # binary search only varies how many optional points to add;
-            # mandatory points are never removable.  This is a strict
-            # strengthening of "prepend prominent to the pool": there is
-            # no value of k for which a mandatory point is absent.
-            if prominent_idx.size > 0:
-                mandatory = prominent_idx
-                rest_mask = ~np.isin(bisection_pool, mandatory)
-                optional = bisection_pool[rest_mask]
-            else:
-                mandatory = np.array([], dtype=int)
-                optional = bisection_pool
-
-            # Helper: compute R² for mandatory ∪ first k of optional.
-            def _r2_at(k):
-                if k <= 0:
-                    trial = np.sort(mandatory) if mandatory.size else optional[:5]
-                else:
-                    trial = np.sort(np.concatenate([mandatory, optional[:k]]))
-                y_interp = np.interp(x, x[trial], y[trial])
-                return 1.0 - np.sum((y - y_interp) ** 2) / ss_tot
-
-            # Minimum optional count so the total trial size is >= 5.
-            k_min = max(0, 5 - int(mandatory.size))
-            k_max = len(optional)
-
-            # Binary search: minimum k for which R² >= target.
-            lo, hi = k_min, k_max
-            while lo < hi:
-                mid = (lo + hi) // 2
-                if _r2_at(mid) >= r2_target:
-                    hi = mid
-                else:
-                    lo = mid + 1
-
-            # Stability check: scan forward from lo until R² >= target
-            # for 3 consecutive k, guarding against local dips caused
-            # by noisy points.
-            stable_run = 0
-            k = lo
-            while k <= k_max:
-                if _r2_at(k) >= r2_target:
-                    stable_run += 1
-                    if stable_run >= 3:
-                        break
-                else:
-                    stable_run = 0
-                k += 1
-
-            merged = np.sort(np.concatenate([mandatory, optional[:k]]))
+            y_interp = np.interp(x, x[merged], y[merged])
+            r2 = 1.0 - float(np.sum((y - y_interp) ** 2)) / ss_tot
+            if r2 < warn_below_r2:
+                warnings.warn(
+                    f"_simplify: reconstruction R²={r2:.3f} below "
+                    f"threshold {warn_below_r2:.2f} "
+                    f"(N_in={x.size}, N_out={merged.size}). "
+                    f"Consider increasing nmin.",
+                    UserWarning,
+                    stacklevel=2,
+                )
 
     return _restore(merged)
 
