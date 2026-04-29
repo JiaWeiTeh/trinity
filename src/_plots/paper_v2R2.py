@@ -385,7 +385,7 @@ def plot_cell(ax, data_yes, data_no):
 
     ax.set_xscale("log")
     ax.set_yscale("log")
-    ax.grid(True, which="both", ls=":", lw=0.5, alpha=0.4, zorder=0)
+    ax.grid(False)
 
 
 # ----------------------------------------------------------------

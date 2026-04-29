@@ -367,7 +367,7 @@ def _draw_v2R2_panel(ax, pair, fontsize):
 
     ax.set_xscale("log")
     ax.set_yscale("log")
-    ax.grid(True, which="both", ls=":", lw=0.5, alpha=0.4, zorder=0)
+    ax.grid(False)
     ax.tick_params(labelsize=fontsize, axis='both')
     ax.set_xlabel(r"$R_b$ [pc]", fontsize=fontsize)
     ax.set_ylabel(r"$v_b$ [km s$^{-1}$]", fontsize=fontsize)

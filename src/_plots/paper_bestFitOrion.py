@@ -1399,7 +1399,7 @@ def plot_trajectory_comparison_2d(results: List[SimulationResult], config: Analy
     # Use symlog scale to handle v<=0 values robustly
     ax_v.set_yscale('symlog', linthresh=1.0)
     ax_v.set_ylim(0.5, 100)
-    ax_v.grid(True, alpha=0.3, which='both')
+    ax_v.grid(False)
 
     # --- Mass panel (log scale) ---
     # Show [CII] vs HI tension bands
@@ -1436,7 +1436,7 @@ def plot_trajectory_comparison_2d(results: List[SimulationResult], config: Analy
     ax_m.set_xlim(0, max(0.5, obs.t_obs * 2.5))
     ax_m.set_yscale('log')
     ax_m.set_ylim(10, 1e4)
-    ax_m.grid(True, alpha=0.3, which='both')
+    ax_m.grid(False)
 
     # --- Radius panel ---
     if time_is_predicted and best_model and best_model.t_predicted is not None:
@@ -1459,7 +1459,7 @@ def plot_trajectory_comparison_2d(results: List[SimulationResult], config: Analy
     ax_r.legend(loc='upper left', fontsize=7)
     ax_r.set_xlim(0, max(0.5, obs.t_obs * 2.5))
     ax_r.set_ylim(0, None)
-    ax_r.grid(True, alpha=0.3)
+    ax_r.grid(False)
 
     # Build title with free parameter estimate
     best = data_all_sorted[0] if data_all_sorted else None
@@ -1601,7 +1601,7 @@ def plot_residual_contours_2d(results: List[SimulationResult], config: AnalysisC
 
     ax.set_title('\n'.join(title_lines))
     ax.legend(loc='upper left', fontsize=8)
-    ax.grid(True, alpha=0.3, which='both')
+    ax.grid(False)
 
     plt.tight_layout()
 
@@ -1830,7 +1830,7 @@ def plot_momentum_comparison(results: List[SimulationResult], config: AnalysisCo
     ax1.set_title('Momentum Evolution')
     ax1.legend(fontsize=7, loc='upper left')
     ax1.set_xlim(0, 0.5)
-    ax1.grid(True, alpha=0.3)
+    ax1.grid(False)
 
     # --- Panel 2: M vs v with momentum contours ---
     ax2 = axes[1]

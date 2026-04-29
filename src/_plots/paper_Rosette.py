@@ -209,7 +209,7 @@ def plot_trajectory_evolution(results: List[SimulationResult],
     ax_v.tick_params(axis='y', labelrotation=90)
     ax_v.legend(loc='upper right', fontsize=FONTSIZE).set_zorder(100)
     ax_v.set_ylim(0, _V_MAX)
-    ax_v.grid(True, alpha=0.3)
+    ax_v.grid(False)
     ax_v.tick_params(axis='x', pad=10)
     ax_v.tick_params(axis='y', pad=10)
 
@@ -241,7 +241,7 @@ def plot_trajectory_evolution(results: List[SimulationResult],
     ax_r2.tick_params(axis='y', labelrotation=90)
     ax_r2.legend(loc='lower right', fontsize=FONTSIZE).set_zorder(100)
     ax_r2.set_xlim(0, _T_MAX)
-    ax_r2.grid(True, alpha=0.3)
+    ax_r2.grid(False)
     ax_r2.tick_params(axis='x', pad=10)
     ax_r2.tick_params(axis='y', pad=10)
 
@@ -270,7 +270,7 @@ def plot_trajectory_evolution(results: List[SimulationResult],
     ax_rs.tick_params(axis='y', labelrotation=90)
     ax_rs.legend(loc='lower right', fontsize=FONTSIZE).set_zorder(100)
     ax_rs.set_xlim(0, _T_MAX)
-    ax_rs.grid(True, alpha=0.3)
+    ax_rs.grid(False)
     ax_rs.tick_params(axis='x', pad=10)
     ax_rs.tick_params(axis='y', pad=10)
 
@@ -377,7 +377,7 @@ def plot_trajectory_evolution_combined(results: List[SimulationResult],
                                fontsize=FONTSIZE)
         legend_v.set_zorder(100)
     ax_v.set_ylim(0, _V_MAX)
-    ax_v.grid(True, alpha=0.3)
+    ax_v.grid(False)
 
     # nCore legend placed above the top subplot as a figure-level title legend
     if ncore_handles:
@@ -415,7 +415,7 @@ def plot_trajectory_evolution_combined(results: List[SimulationResult],
     legend_r2 = ax_r2.legend(loc='upper left', fontsize=FONTSIZE)
     legend_r2.set_zorder(100)
     ax_r2.set_xlim(0, _T_MAX)
-    ax_r2.grid(True, alpha=0.3)
+    ax_r2.grid(False)
 
     # --- Shell radius (rShell) panel ---
     ax_rs.axvspan(t_lo, t_hi, alpha=0.1, color='gray', zorder=0,
@@ -444,7 +444,7 @@ def plot_trajectory_evolution_combined(results: List[SimulationResult],
     legend_rs = ax_rs.legend(loc='upper left', fontsize=FONTSIZE)
     legend_rs.set_zorder(100)
     ax_rs.set_xlim(0, _T_MAX)
-    ax_rs.grid(True, alpha=0.3)
+    ax_rs.grid(False)
 
     plt.tight_layout(h_pad=1.0)
     suffix = config.get_filename_suffix()
