@@ -709,7 +709,7 @@ def _solve_grid(
                     best_residual = residual
                     best_beta, best_delta = beta, delta
             except Exception as e:
-                logger.critical(f"Grid point ({beta:.3f}, {delta:.3f}) failed: {e}")
+                logger.warning(f"Grid point ({beta:.3f}, {delta:.3f}) failed: {e}")
                 continue
 
     return best_beta, best_delta, GRID_SIZE * GRID_SIZE
@@ -751,7 +751,7 @@ def _solve_lbfgsb(
         )
         return result.x[0], result.x[1], result.nit
     except Exception as e:
-        logger.critical(f"Optimizer failed: {e}, using initial guess")
+        logger.error(f"Optimizer failed: {e}, using initial guess")
         return beta_guess, delta_guess, 0
 
 
