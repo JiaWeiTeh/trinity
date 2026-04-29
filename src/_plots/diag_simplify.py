@@ -16,14 +16,20 @@ across the three pre-trim phases (``1_begin``, ``2_energy``,
 
 Reconstruction R² and compression ratio are annotated in each panel.
 
+Output goes to ``fig/diag/`` (created on first use).  The directory
+mirrors the project-wide ``FIG_DIR`` convention from ``plot_base``
+without importing it (``plot_base`` loads the LaTeX-based paper
+mplstyle, which is overkill for a diagnostic plot).
+
 Usage
 -----
     python -m src._plots.diag_simplify
-    python -m src._plots.diag_simplify --output diag_simplify.png
     python -m src._plots.diag_simplify --run path/to/mockOutput/<run-name>
+    python -m src._plots.diag_simplify --output custom.png --no-show
 
 The default mock-run path is
-``outputs/mockOutput/1e6_sfe001_n1e3_PL0_yesPHII``.
+``outputs/mockOutput/1e6_sfe001_n1e3_PL0_yesPHII``; without ``--output``
+the figure is saved to ``fig/diag/diag_simplify_<run-name>.png``.
 
 @author: TRINITY Team
 """
@@ -36,13 +42,25 @@ import sys as _sys
 import warnings
 from pathlib import Path
 
-# Repo-root sys.path shim, matching other src._plots scripts.
-_sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+# Repo-root sys.path shim, matching ``diagnostic_parameter_changes.py``.
+# We deliberately avoid ``plot_base`` here: that module loads the
+# trinity paper mplstyle (which requires LaTeX) — overkill for a
+# diagnostic plot.  We mirror its ``FIG_DIR`` definition instead.
+_PROJECT_ROOT = Path(__file__).resolve().parents[2]
+if str(_PROJECT_ROOT) not in _sys.path:
+    _sys.path.insert(0, str(_PROJECT_ROOT))
 
 import numpy as np
 import matplotlib.pyplot as plt
 
 from src._functions.simplify import _simplify, _simplify_error
+
+# Canonical output directory for diagnostic plots
+# (``<project_root>/fig/diag/``).  Mirrors ``FIG_DIR`` from
+# ``src._plots.plot_base`` but with a ``diag/`` sub-folder.
+FIG_DIR = _PROJECT_ROOT / "fig"
+DIAG_DIR = FIG_DIR / "diag"
+DIAG_DIR.mkdir(parents=True, exist_ok=True)
 
 
 # Arrays to plot per snapshot. Each entry is (y_key, x_key, axis_label).
@@ -159,8 +177,8 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument(
         "--output", "-o", type=Path, default=None,
-        help="If given, save the figure to this path instead of (or in "
-             "addition to) showing it interactively.",
+        help="Override the output path.  Default: "
+             "fig/diag/diag_simplify_<run_name>.png",
     )
     parser.add_argument(
         "--no-show", action="store_true",
@@ -172,7 +190,11 @@ def main(argv: list[str] | None = None) -> int:
     if not run_dir.exists():
         parser.error(f"run directory not found: {run_dir}")
 
-    make_diag_grid(run_dir, output=args.output, show=not args.no_show)
+    output = args.output
+    if output is None:
+        output = DIAG_DIR / f"diag_simplify_{run_dir.name}.png"
+
+    make_diag_grid(run_dir, output=output, show=not args.no_show)
     return 0
 
 
