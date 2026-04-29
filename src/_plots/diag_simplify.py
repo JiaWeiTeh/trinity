@@ -29,11 +29,13 @@ Usage
 -----
     python -m src._plots.diag_simplify
     python -m src._plots.diag_simplify --run path/to/mockOutput/<run-name>
+    python -m src._plots.diag_simplify --npoints 200
     python -m src._plots.diag_simplify --output custom.png --no-show
 
 The default mock-run path is
 ``outputs/mockOutput/1e6_sfe001_n1e3_PL0_yesPHII``; without ``--output``
-the figure is saved to ``fig/diag/diag_simplify_<run-name>.png``.
+the figure is saved to ``fig/diag/diag_simplify_<run-name>.png``
+(or ``..._n<N>.png`` when ``--npoints`` differs from the default).
 
 @author: TRINITY Team
 """
@@ -84,6 +86,7 @@ _ARRAY_TRIPLETS = [
 _PHASES = ("1_begin", "2_energy", "3_implicit")
 
 _DEFAULT_RUN = "outputs/mockOutput/1e6_sfe001_n1e3_PL0_yesPHII"
+_DEFAULT_NPOINTS = 100
 
 
 def _load_snapshot(run_dir: Path, phase: str) -> dict:
@@ -124,7 +127,8 @@ def _plot_panel(ax, x_orig, y_orig, x_simp, y_simp, *, ylabel: str, title: str):
 
 
 def make_diag_grid(run_dir: Path, output: Path | None = None,
-                   show: bool = True) -> None:
+                   show: bool = True,
+                   npoints: int = _DEFAULT_NPOINTS) -> None:
     """Build the 3×4 diagnostic grid for the given mock-run directory."""
     n_cols = len(_ARRAY_TRIPLETS)
     fig, axes = plt.subplots(
@@ -160,7 +164,7 @@ def make_diag_grid(run_dir: Path, output: Path | None = None,
 
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore", UserWarning)
-                x_simp, y_simp = _simplify(x_orig, y_orig)
+                x_simp, y_simp = _simplify(x_orig, y_orig, nmin=npoints)
 
             short_y = (ykey.replace("_arr", "")
                        .replace("log_bubble_", "")
@@ -203,6 +207,12 @@ def main(argv: list[str] | None = None) -> int:
         "--no-show", action="store_true",
         help="Do not display the figure interactively (useful for batch).",
     )
+    parser.add_argument(
+        "--npoints", "-n", type=int, default=_DEFAULT_NPOINTS,
+        help=(f"Target number of simplified points per panel "
+              f"(default: {_DEFAULT_NPOINTS}). _simplify enforces a "
+              f"floor of 100, so values below 100 are clamped."),
+    )
     args = parser.parse_args(argv)
 
     run_dir = args.run.resolve()
@@ -211,9 +221,12 @@ def main(argv: list[str] | None = None) -> int:
 
     output = args.output
     if output is None:
-        output = DIAG_DIR / f"diag_simplify_{run_dir.name}.png"
+        suffix = (f"_n{args.npoints}"
+                  if args.npoints != _DEFAULT_NPOINTS else "")
+        output = DIAG_DIR / f"diag_simplify_{run_dir.name}{suffix}.png"
 
-    make_diag_grid(run_dir, output=output, show=not args.no_show)
+    make_diag_grid(run_dir, output=output, show=not args.no_show,
+                   npoints=args.npoints)
     return 0
 
 
