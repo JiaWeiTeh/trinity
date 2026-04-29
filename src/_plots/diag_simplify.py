@@ -1,13 +1,17 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Diagnostic plot: pre/post simplification for the bubble profile arrays
-in ``outputs/mockOutput``.
+Diagnostic plot: pre/post simplification for the profile arrays in
+``outputs/mockOutput``.
 
-Lays out a 3×3 grid showing the three heaviest bubble arrays
-(``log_bubble_T_arr``, ``log_bubble_n_arr``, ``log_bubble_dTdr_arr``)
-across the three pre-trim phases (``1_begin``, ``2_energy``,
-``3_implicit``).  Each panel overlays:
+Lays out a 3×4 grid showing the three heaviest bubble arrays plus the
+shell density profile across the three pre-trim phases
+(``1_begin``, ``2_energy``, ``3_implicit``):
+
+  Cols:  log_bubble_T_arr | log_bubble_n_arr | log_bubble_dTdr_arr | log_shell_n_arr
+  Rows:  1_begin / 2_energy / 3_implicit
+
+Each panel overlays:
 
     * Original — the saved (large-N) array drawn as a thick, low-alpha
       grey line.
@@ -64,10 +68,16 @@ DIAG_DIR.mkdir(parents=True, exist_ok=True)
 
 
 # Arrays to plot per snapshot. Each entry is (y_key, x_key, axis_label).
+# Three bubble columns + one shell column.  Shell arrays in the saved
+# files are already small (≤ 100 pts) because the *previous* simplify
+# implementation reduced them aggressively; with the current code they
+# would re-simplify to ``min(N_in, 100)``, so the panel typically shows
+# a pass-through.  See the figure caption for context.
 _ARRAY_TRIPLETS = [
     ("log_bubble_T_arr",    "bubble_T_arr_r_arr",    r"$\log_{10}\,T_{\mathrm{bub}}$"),
     ("log_bubble_n_arr",    "bubble_n_arr_r_arr",    r"$\log_{10}\,n_{\mathrm{bub}}$"),
     ("log_bubble_dTdr_arr", "bubble_dTdr_arr_r_arr", r"$\log_{10}|\,dT/dr|$"),
+    ("log_shell_n_arr",     "shell_r_arr",           r"$\log_{10}\,n_{\mathrm{sh}}$"),
 ]
 
 # Phase snapshots laid out top-to-bottom.
@@ -115,9 +125,10 @@ def _plot_panel(ax, x_orig, y_orig, x_simp, y_simp, *, ylabel: str, title: str):
 
 def make_diag_grid(run_dir: Path, output: Path | None = None,
                    show: bool = True) -> None:
-    """Build the 3×3 diagnostic grid for the given mock-run directory."""
+    """Build the 3×4 diagnostic grid for the given mock-run directory."""
+    n_cols = len(_ARRAY_TRIPLETS)
     fig, axes = plt.subplots(
-        3, 3, figsize=(13, 10),
+        3, n_cols, figsize=(3.6 * n_cols, 10),
         constrained_layout=True,
     )
 
@@ -125,7 +136,7 @@ def make_diag_grid(run_dir: Path, output: Path | None = None,
         try:
             snap = _load_snapshot(run_dir, phase)
         except FileNotFoundError:
-            for col in range(3):
+            for col in range(n_cols):
                 axes[row, col].set_visible(False)
             continue
 
@@ -138,6 +149,10 @@ def make_diag_grid(run_dir: Path, output: Path | None = None,
             x_raw = np.asarray(snap[xkey], dtype=float)
             y_raw = np.asarray(snap[ykey], dtype=float)
 
+            if x_raw.size == 0:
+                ax.set_visible(False)
+                continue
+
             # Sort ascending for plotting (bubble grids are stored descending).
             order = np.argsort(x_raw)
             x_orig = x_raw[order]
@@ -147,14 +162,18 @@ def make_diag_grid(run_dir: Path, output: Path | None = None,
                 warnings.simplefilter("ignore", UserWarning)
                 x_simp, y_simp = _simplify(x_orig, y_orig)
 
-            short_y = ykey.replace("_arr", "").replace("log_bubble_", "")
+            short_y = (ykey.replace("_arr", "")
+                       .replace("log_bubble_", "")
+                       .replace("log_shell_", "shell_"))
             title = f"{phase} — {short_y}"
             _plot_panel(ax, x_orig, y_orig, x_simp, y_simp,
                         ylabel=ylabel, title=title)
 
     fig.suptitle(
-        f"_simplify diagnostic: pre vs post on {run_dir.name}",
-        fontsize=12,
+        f"_simplify diagnostic: pre vs post on {run_dir.name}\n"
+        f"(saved shell arrays are already from the OLD simplifier — "
+        f"the current code passes them through unchanged)",
+        fontsize=11,
     )
 
     if output is not None:
