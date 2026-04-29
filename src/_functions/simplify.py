@@ -315,9 +315,28 @@ def _simplify(
             f"_simplify(): x and y must have the same length. "
             f"Got {x.size} and {y.size}"
         )
+
+    # Detect strictly-decreasing input and work on an ascending copy.
+    # `np.interp` (used in the R²-thinning step) silently returns garbage
+    # for decreasing reference x, which would defeat downsampling. We
+    # restore the caller's orientation on every return below.
+    reversed_input = (
+        x.size >= 2
+        and x[0] > x[-1]
+        and bool(np.all(np.diff(x) < 0))
+    )
+    if reversed_input:
+        x = x[::-1].copy()
+        y = y[::-1].copy()
+
+    def _maybe_flip(xo: np.ndarray, yo: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+        if reversed_input:
+            return xo[::-1], yo[::-1]
+        return xo, yo
+
     # If the array is already short enough, return as-is.
     if nmin >= x.size:
-        return x, y
+        return _maybe_flip(x, y)
     # Enforce a floor of 100 samples so the output is always useful.
     nmin = max(int(nmin), 100)
 
@@ -328,10 +347,21 @@ def _simplify(
     # points.  The Menger curvature κ_i is the reciprocal of the
     # circumradius of (P_{i-1}, P_i, P_{i+1}).  High curvature marks
     # sharp bends — shocks, discontinuities, phase transitions.
-    dx1 = np.diff(x[:-1])                          # x[i] - x[i-1]
-    dy1 = np.diff(y[:-1])                          # y[i] - y[i-1]
-    dx2 = np.diff(x[1:])                           # x[i+1] - x[i]
-    dy2 = np.diff(y[1:])                           # y[i+1] - y[i]
+    #
+    # Curvature has units of 1/length in the (x, y) plane, so a fixed
+    # threshold like ``grad_inc=1.0`` only behaves consistently when the
+    # axes share a common scale.  Rescale (x, y) to the unit square for
+    # the curvature computation only — the cumulative-distance step,
+    # sign-change detection, and R²-thinning still operate on raw arrays.
+    range_x = float(x[-1] - x[0])
+    range_y = float(np.nanmax(y) - np.nanmin(y))
+    inv_x = 1.0 / range_x if range_x > 1e-30 else 1.0
+    inv_y = 1.0 / range_y if range_y > 1e-30 else 1.0
+
+    dx1 = np.diff(x[:-1]) * inv_x                  # x[i] - x[i-1]
+    dy1 = np.diff(y[:-1]) * inv_y                  # y[i] - y[i-1]
+    dx2 = np.diff(x[1:])  * inv_x                  # x[i+1] - x[i]
+    dy2 = np.diff(y[1:])  * inv_y                  # y[i+1] - y[i]
 
     # 2× signed area of the triangle formed by the triplet.
     cross = dx1 * (dy1 + dy2) - dy1 * (dx1 + dx2)
@@ -392,7 +422,7 @@ def _simplify(
         # Special case: perfectly flat curve (or all NaN).
         # Fall back to uniformly spaced indices.
         idx = np.unique(np.linspace(0, x.size - 1, nmin).astype(int))
-        return x[idx], y[idx]
+        return _maybe_flip(x[idx], y[idx])
 
     # Maximum allowed cumulative y-distance between kept points.
     # Dividing the total variation by nmin gives roughly nmin bins.
@@ -508,7 +538,7 @@ def _simplify(
 
             merged = np.sort(np.concatenate([mandatory, optional[:k]]))
 
-    return x[merged], y[merged]
+    return _maybe_flip(x[merged], y[merged])
 
 
 def _simplify_error(
