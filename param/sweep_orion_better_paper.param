@@ -13,9 +13,9 @@
 # Sweep parameters (lists) - these will be combined
 # =============================================================================
 
-tuple(mCloud, sfe) [3e3, 0.0113333] [3.5e3, 0.00971429] [4e3, 0.0085] [5e3, 0.0068]
+tuple(mCloud, sfe) [1e3, 0.034] [1.5e3, 0.0226667] [2e3, 0.017] [2.5e3, 0.0136] [3e3, 0.0113333] [3.5e3, 0.00971429] [4e3, 0.0085] [5e3, 0.0068]
 
-nCore     [1e2, 5e2]
+nCore     [1e2, 5e2, 1e3]
 
 # =============================================================================
 # Fixed parameters (constant across all runs)
@@ -33,7 +33,7 @@ stop_t_diss 1
 expansionBeyondCloud    True
 
 # Output directory (each run creates subfolder like 1e5_sfe001_n1e2/)
-path2output    outputs/sweep_orion_better
+path2output    outputs/sweep_orion_better_paper
 
 # use _modified files with solvers
 use_adaptive_solver True
@@ -41,3 +41,4 @@ use_adaptive_solver True
 # run without stopping radius
 stop_r    None
 stop_t    0.3
+log_level    INFO
