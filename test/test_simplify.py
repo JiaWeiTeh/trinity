@@ -709,10 +709,10 @@ class TestLogMetrics:
 #   1. ODE solvers can emit thousands of micro-step (x, y) duplicates
 #      that the budget-trim step happily fills with copies of one
 #      physical point, starving the rest of the curve.
-#   2. Even without duplicates, ``idx_dist`` (cumulative-|Δy| boundaries)
-#      used to live only in the ``merged`` mask and got displaced by
-#      bisection-by-position, leaving steep tails sampled by a single
-#      straight line.
+#   2. Even without duplicates, ``idx_dist`` (cumulative arc-length
+#      boundaries on the rescaled unit square) used to live only in
+#      the ``merged`` mask and got displaced by bisection-by-position,
+#      leaving steep tails sampled by a single straight line.
 # ---------------------------------------------------------------------------
 
 class TestSolverArtefacts:
@@ -762,10 +762,13 @@ class TestSolverArtefacts:
             xo, yo = _simplify(x, y, nmin=100)
 
         in_dip = xo > 0.60
-        # Cumulative-|Δy| weighting: most variation is in the dip, so
-        # most output points should be there.  Without the priority
-        # promotion this number drops to ~5.
-        assert in_dip.sum() >= 40, (
+        # Arc-length-on-rescaled-axes weighting: the dip and the plateau
+        # contribute comparable arc lengths on the unit square, so the
+        # budget splits roughly evenly between them.  The dip should
+        # still be densely sampled — well above the pre-fix worst case
+        # of ~5 — so this assertion is a regression guard, not a
+        # majority-share claim.
+        assert in_dip.sum() >= 30, (
             f"only {in_dip.sum()} of {xo.size} output points cover the steep dip"
         )
         assert reconstruction_r2(x, y, xo, yo) > 0.95

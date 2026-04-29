@@ -296,11 +296,14 @@ def _simplify(
        Keeps every point where the first derivative changes sign, i.e.,
        every local minimum and maximum of ``y(x)``.
 
-    3. **Cumulative-distance sampling** (uniform arc-length in y)
-       The total variation of ``y`` (``sum(|diff(y)|)``) is divided into
-       ``nmin`` equal bins.  One point is selected at each bin boundary,
-       giving dense sampling where ``y`` changes rapidly and sparse
-       sampling where it is nearly flat.
+    3. **Cumulative arc-length sampling** (on rescaled ``[0,1]²`` axes)
+       The total arc length of the curve in the unit square (``sum(
+       sqrt((Δx/range_x)² + (Δy/range_y)²))``) is divided into ``nmin``
+       equal bins.  One point is selected at each bin boundary, giving
+       dense sampling wherever the curve traverses the unit square
+       quickly — whether that's a vertical drop, a horizontal sweep, or
+       a diagonal feature.  Treating both axes symmetrically prevents
+       the bias toward whichever axis happens to span more raw range.
 
     4. **Topological-persistence filter** (mandatory set)
        ``_peak_prominences`` computes the prominence of every local
@@ -477,8 +480,9 @@ def _simplify(
     # Curvature has units of 1/length in the (x, y) plane, so a fixed
     # threshold like ``grad_inc=1.0`` only behaves consistently when the
     # axes share a common scale.  Rescale (x, y) to the unit square for
-    # the curvature computation only — the cumulative-distance step,
-    # sign-change detection, and the post-hoc R² check still operate on
+    # the curvature computation; the cumulative arc-length step (Strategy
+    # 2 below) reuses ``inv_x``/``inv_y`` for the same reason, while
+    # sign-change detection and the post-hoc R² check still operate on
     # raw arrays.
     range_x = float(x[-1] - x[0])
     range_y = float(np.nanmax(y) - np.nanmin(y))
@@ -557,25 +561,35 @@ def _simplify(
         prominent_idx = np.array([], dtype=int)
 
     # =====================================================================
-    # Strategy 2: Cumulative-distance sampling in y
+    # Strategy 2: Cumulative arc-length sampling on rescaled [0,1]² axes
     # =====================================================================
-    # Cumulative absolute change in y (total variation up to each point).
-    y_cum = np.cumsum(np.abs(np.diff(y)))
-    total_variation = float(y_cum[-1]) if y_cum.size > 0 else 0.0
+    # Per-segment arc length on the unit square reuses the rescaling
+    # already computed for Menger curvature (``inv_x``, ``inv_y``).  The
+    # earlier y-only metric ``cumsum(|Δy|)`` made vertical drops dominate
+    # the budget while horizontal plateaus — mathematically the same
+    # trend with axes swapped — got starved.  Arc length on rescaled
+    # axes makes a 10 % horizontal traversal cost the same as a 10 %
+    # vertical traversal, so both feature types share the budget.
+    ds = np.sqrt(
+        (np.diff(x) * inv_x) ** 2 + (np.diff(y) * inv_y) ** 2
+    )
+    s_cum = np.cumsum(ds)
+    total_arc = float(s_cum[-1]) if s_cum.size > 0 else 0.0
 
-    if not np.isfinite(total_variation) or total_variation == 0:
-        # Special case: perfectly flat curve (or all NaN).
-        # Fall back to uniformly spaced indices.
+    if not np.isfinite(total_arc) or total_arc == 0:
+        # Degenerate: stacked points or all-NaN.  Fall back to
+        # uniformly spaced indices.
         idx = np.unique(np.linspace(0, x.size - 1, nmin).astype(int))
         return _restore(idx)
 
-    # Maximum allowed cumulative y-distance between kept points.
-    # Dividing the total variation by nmin gives roughly nmin bins.
-    maxdist = total_variation / nmin
+    # Maximum allowed cumulative arc length between kept points.
+    # Dividing total arc by nmin gives roughly nmin bins.
+    maxdist = total_arc / nmin
 
-    # Assign each point to a "distance bin".  When the bin number changes
-    # between consecutive points, that boundary is a selected sample.
-    bins = (y_cum / maxdist).astype(int)
+    # Assign each point to an arc-length bin.  When the bin number
+    # changes between consecutive points, that boundary is a selected
+    # sample.
+    bins = (s_cum / maxdist).astype(int)
     idx_dist = np.where(bins[:-1] != bins[1:])[0]
 
     # =====================================================================
@@ -649,12 +663,14 @@ def _simplify(
 
         # Build the priority list with stable first-seen-order deduplication.
         # ``idx_dist`` is promoted ABOVE bisection_pool: those are the
-        # cumulative-|Δy| bin boundaries (one per nmin-th of total
-        # variation), so they already form a complete, well-spaced
-        # skeleton tracking the curve's shape.  Without this promotion
-        # the bisection-by-position step drops them in favour of evenly-
-        # spaced positions in ``merged``, which silently undersamples
-        # high-gradient regions like vertical drops at the curve's tail.
+        # cumulative arc-length bin boundaries (one per nmin-th of total
+        # arc length on the rescaled unit square), so they already form a
+        # complete, well-spaced skeleton tracking the curve's shape — and
+        # because arc length on rescaled axes is symmetric in x and y,
+        # vertical drops and horizontal plateaus get equal representation.
+        # Without this promotion the bisection-by-position step drops
+        # them in favour of evenly-spaced positions in ``merged``, which
+        # silently undersamples high-gradient regions in either axis.
         # ``|idx_dist| ≈ nmin`` by construction, so taking it in x-order
         # is fine — it never overflows the budget.
         endpoints_idx = np.array([0, x.size - 1], dtype=np.int64)
