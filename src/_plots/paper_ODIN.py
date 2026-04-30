@@ -21,7 +21,6 @@ from dataclasses import dataclass, field
 from typing import Optional, List, Literal, Tuple
 import matplotlib.colors as mcolors
 from scipy.signal import savgol_filter
-from scipy.interpolate import UnivariateSpline
 
 import sys as _sys
 from pathlib import Path as _Path
@@ -34,7 +33,6 @@ from src._output.trinity_reader import (
 
 from src._plots.plot_markers import (          # noqa: E402
     add_plot_markers, get_marker_legend_handles,
-    add_rcloud_horizontal_marker,
 )
 
 print("...creating trajectory evolution plots")
@@ -705,7 +703,7 @@ def plot_trajectory_evolution_combined(results: List[SimulationResult], config: 
     """
     Create combined trajectory plot with multiple nCore values as shaded regions.
 
-    Each nCore value is shown as a shaded region (min-max envelope) with a median line.
+    Each nCore value is shown as a shaded region (min-max envelope).
     Different nCore values use different colors.
 
     Parameters
@@ -1008,10 +1006,6 @@ Shell Mass (shown in plots):
     # Filter
     parser.add_argument('--nCore', '-n', default=None,
                         help='Filter by nCore value (e.g., "1e4")')
-    parser.add_argument('--mCloud', nargs='+', default=None,
-                        help='Filter simulations by cloud mass (e.g., --mCloud 1e6 1e7).')
-    parser.add_argument('--sfe', nargs='+', default=None,
-                        help='Filter simulations by SFE (e.g., --sfe 001 010).')
     parser.add_argument('--info', action='store_true',
                         help='Scan folder and print available mCloud, SFE, and nCore values.')
 
@@ -1066,7 +1060,7 @@ Shell Mass (shown in plots):
     parser.add_argument('--showall', action='store_true',
                         help='Show all simulation trajectories')
     parser.add_argument('--combine-nCore', action='store_true',
-                        help='Plot all nCore values on the same plot (different linestyles)')
+                        help='Plot all nCore values on the same plot (different colors, shaded envelopes)')
 
     # Marker options (off by default for clean paper figures)
     marker_grp = parser.add_argument_group("markers",
