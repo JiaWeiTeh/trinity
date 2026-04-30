@@ -265,7 +265,7 @@ def plot_top_parameters(results: list, t_values: np.ndarray, n_top: int = 16,
         ax.set_xlabel('Time [Myr]')
         ax.set_ylabel('dex change')
         ax.set_title(f'{name}\nsum={total_dex:.2f}, max={max_dex:.3f}')
-        ax.grid(True, alpha=0.3)
+        ax.grid(False)
         ax.legend(fontsize=6)
 
     # Hide unused subplots

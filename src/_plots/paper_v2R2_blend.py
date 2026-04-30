@@ -259,7 +259,7 @@ def plot_v2R2_diff(pair: dict, out_path: Optional[Path] = None,
 
     ax.set_xscale("log")
     ax.set_yscale("log")
-    ax.grid(True, which="both", ls=":", lw=0.5, alpha=0.4, zorder=0)
+    ax.grid(False)
     ax.set_xlabel(r"$R_b$ [pc]", fontsize = FONTSIZE)
     ax.set_ylabel(r"$v_b$ [km s$^{-1}$]", fontsize = FONTSIZE)
 

@@ -108,7 +108,7 @@ def _plot_panel(ax, x_orig, y_orig, x_simp, y_simp, *, ylabel: str, title: str):
     ax.set_xlabel(r"$r$ [pc]", fontsize=8)
     ax.set_ylabel(ylabel, fontsize=8)
     ax.tick_params(labelsize=7)
-    ax.grid(True, ls=":", lw=0.4, alpha=0.6)
+    ax.grid(False)
     ax.legend(loc="best", fontsize=7, framealpha=0.85)
 
     # Annotate R² + compression in a corner box.
