@@ -36,6 +36,11 @@ path2output    def_dir
 # INFO: Specifies the output format.
 output_format    JSON
 
+# INFO: Target number of points retained for simplified profile arrays in saved snapshots (bubble_T_arr, bubble_n_arr, bubble_dTdr_arr, bubble_v_arr, shell_grav_force_m, shell_n_arr).
+# INFO: Default 100. Larger values give higher-fidelity snapshots at the cost of larger output files.
+# INFO: Note: _simplify currently clamps this to >= 100 — values below the floor are silently raised.
+simplify_npoints    100
+
 # --- Logging parameters
 
 # INFO: Logging level for terminal and file output. Controls how much detail is logged.

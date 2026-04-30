@@ -382,11 +382,11 @@ class DescribedDict(dict):
     # -------------------------------------------------------------------------
     # (Optional) curve simplification for very long profile arrays
     # -------------------------------------------------------------------------
-    @staticmethod
     def simplify(
+        self,
         x_arr: Union[np.ndarray, Sequence[float]],
         y_arr: Union[np.ndarray, Sequence[float]],
-        nmin: int = 100,
+        nmin: Optional[int] = None,
         grad_inc: float = 1.0,
         keyname: str = "",
     ) -> Tuple[np.ndarray, np.ndarray]:
@@ -418,6 +418,10 @@ class DescribedDict(dict):
         a ``UserWarning`` if it falls below 0.9 — a hint that ``nmin``
         is too small for this curve.
 
+        ``nmin`` defaults to the ``simplify_npoints`` parameter on the
+        dict (loaded from default.param), or to 100 if absent.  Pass an
+        explicit ``nmin`` to override per call.
+
         Input / output contract:
         * Input: ``x_arr``, ``y_arr`` are 1-D array-likes of equal
           length.  Input may be ascending, descending, or non-monotonic
@@ -434,6 +438,9 @@ class DescribedDict(dict):
         dependencies).
         """
         from src._functions.simplify import _simplify
+        if nmin is None:
+            item = self.get("simplify_npoints")
+            nmin = int(item.value) if item is not None else 100
         try:
             return _simplify(x_arr, y_arr, nmin=nmin, grad_inc=grad_inc)
         except ValueError:
