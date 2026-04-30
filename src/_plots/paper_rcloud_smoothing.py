@@ -309,12 +309,12 @@ def _build_v2R2_legend_handles() -> list:
 def _draw_rcloud_panel(ax, fontsize, xlim):
     """Top panel: density step vs tanh blends around rCloud.
 
-    Shares the x-axis with the bottom panel so the rcloud verticals
-    line up in figure coords; x-tick labels are suppressed because the
-    bottom panel carries them.
+    Y-axis is configured to mirror the bottom panel exactly (log
+    scale, no grid, identical tick params); the x-axis is linear and
+    shared with the bottom panel, with its tick labels suppressed.
     """
     xlo, xhi = xlim
-    r = np.geomspace(max(xlo, 1e-6), xhi, 4000)
+    r = np.linspace(max(xlo, 0.0), xhi, 4000)
 
     n_jump = _density_jump(r)
     ax.plot(r, n_jump * cvt.ndens_au2cgs,
@@ -335,21 +335,10 @@ def _draw_rcloud_panel(ax, fontsize, xlim):
 
     ax.axvline(R_CLOUD, color="0.25", lw=1.2, ls="--", alpha=0.7, zorder=2)
 
-    ax.set_xscale("log")
     ax.set_yscale("log")
-    ax.set_xlim(xlo, xhi)
-    ax.set_ylim(0.5 * N_ISM_CGS, 5.0 * N_CORE_CGS)
     ax.grid(False)
     ax.tick_params(labelsize=fontsize, axis='both', labelbottom=False)
     ax.set_ylabel(r'$n(r)$', fontsize=fontsize)
-
-    # Inline asymptote labels — multiplicative offset sits just above each
-    # asymptote on the log axis.
-    _label_factor = 1.15
-    ax.text(1.5 * xlo, N_CORE_CGS * _label_factor, r'$n_\mathrm{core}$',
-            va='bottom', ha='left', color='0.25', fontsize=fontsize - 4)
-    ax.text(0.95 * xhi, N_ISM_CGS * _label_factor, r'$n_\mathrm{ISM}$',
-            va='bottom', ha='right', color='0.25', fontsize=fontsize - 4)
 
     ax.legend(loc='lower left', handlelength=1.6, labelspacing=0.3,
               fontsize=fontsize - 6, framealpha=0.9)
@@ -369,7 +358,6 @@ def _draw_v2R2_panel(ax, pair, fontsize):
     _plot_one_trajectory(ax, before, STYLE_BEFORE)
     _plot_one_trajectory(ax, after,  STYLE_AFTER)
 
-    ax.set_xscale("log")
     ax.set_yscale("log")
     ax.grid(False)
     ax.tick_params(labelsize=fontsize, axis='both')
