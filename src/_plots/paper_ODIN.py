@@ -3,12 +3,12 @@
 """
 Trajectory evolution plots for TRINITY parameter sweeps.
 
-This script creates shell mass and radius evolution trajectory plots
+This script creates shell mass and bubble radius evolution trajectory plots
 from TRINITY simulation parameter sweeps.
 
 Produces:
 - Shell mass M(t) trajectory plot
-- Shell radius R(t) trajectory plot
+- Bubble radius R2(t) trajectory plot
 
 @author: Jia Wei Teh
 """
@@ -183,7 +183,6 @@ class SimulationResult:
     v_full_kms: Optional[np.ndarray] = None
     M_shell_full: Optional[np.ndarray] = None
     R_full: Optional[np.ndarray] = None
-    rShell_full: Optional[np.ndarray] = None
     phase_full: Optional[np.ndarray] = None
     rcloud: float = np.nan
 
@@ -332,7 +331,7 @@ def nCore_matches(ndens_str: str, filter_str: str) -> bool:
         return ndens_str == filter_str
 
 
-def _trim_after_end(output, t, v2, M_shell, R, rShell=None):
+def _trim_after_end(output, t, v2, M_shell, R):
     """Truncate time series at the first snapshot where the shell
     collapses (``isCollapse``) or dissolves (``isDissolved``).
 
@@ -340,7 +339,7 @@ def _trim_after_end(output, t, v2, M_shell, R, rShell=None):
     trajectory plots after the bubble has already ended.
     """
     if t is None or len(t) == 0:
-        return t, v2, M_shell, R, rShell
+        return t, v2, M_shell, R
 
     # Try the explicit boolean flags first
     try:
@@ -363,9 +362,8 @@ def _trim_after_end(output, t, v2, M_shell, R, rShell=None):
         v2 = v2[:cut] if v2 is not None else None
         M_shell = M_shell[:cut] if M_shell is not None else None
         R = R[:cut] if R is not None else None
-        rShell = rShell[:cut] if rShell is not None else None
 
-    return t, v2, M_shell, R, rShell
+    return t, v2, M_shell, R
 
 
 def load_simulation_at_time(data_path: Path, config: AnalysisConfig) -> Optional[SimulationResult]:
@@ -428,12 +426,11 @@ def load_simulation_at_time(data_path: Path, config: AnalysisConfig) -> Optional
         v2_full = output.get('v2')
         M_shell_full = output.get('shell_mass')
         R_full = output.get('R2')
-        rShell_full = output.get('rShell')
 
         # Trim trajectories after collapse or dissolution onset so that
         # frozen/constant tails are not plotted (misleading flat lines).
-        t_full, v2_full, M_shell_full, R_full, rShell_full = _trim_after_end(
-            output, t_full, v2_full, M_shell_full, R_full, rShell_full)
+        t_full, v2_full, M_shell_full, R_full = _trim_after_end(
+            output, t_full, v2_full, M_shell_full, R_full)
 
         v_full_kms = v2_full * PC_MYR_TO_KM_S if v2_full is not None else None
 
@@ -475,7 +472,6 @@ def load_simulation_at_time(data_path: Path, config: AnalysisConfig) -> Optional
             v_full_kms=v_full_kms,
             M_shell_full=M_shell_full,
             R_full=R_full,
-            rShell_full=rShell_full,
             phase_full=phase_full,
             rcloud=rcloud,
         )
@@ -529,7 +525,7 @@ def load_sweep_results(folder_path: Path, config: AnalysisConfig) -> List[Simula
 def plot_trajectory_evolution(results: List[SimulationResult], config: AnalysisConfig,
                                output_dir: Path, nCore_value: str, top_n: int = 5):
     """
-    Create shell mass M(t) and radius R(t) trajectory plots.
+    Create shell mass M(t) and bubble radius R2(t) trajectory plots.
 
     Parameters
     ----------
@@ -559,8 +555,8 @@ def plot_trajectory_evolution(results: List[SimulationResult], config: AnalysisC
     else:
         data_to_plot = data_all_sorted[:top_n]
 
-    # 3 subplots: mass (top), R2 bubble (mid), rShell shell (bottom)
-    fig, (ax_m, ax_r2, ax_rs) = plt.subplots(3, 1, figsize=(6.5, 18), dpi=150, sharex=True)
+    # 2 subplots: mass (top), R2 bubble (bottom)
+    fig, (ax_m, ax_r2) = plt.subplots(2, 1, figsize=(6.5, 12), dpi=150, sharex=True)
 
     obs = config.obs
 
@@ -580,12 +576,10 @@ def plot_trajectory_evolution(results: List[SimulationResult], config: AnalysisC
         t = r.t_full
         M = r.M_shell_full
         R2 = r.R_full
-        rS = r.rShell_full
 
         # Smooth trajectories to remove numerical jitters from phase transitions
         M_smooth = smooth_trajectory(t, M)
         R2_smooth = smooth_trajectory(t, R2)
-        rS_smooth = smooth_trajectory(t, rS)
 
         # Scale to 0.5 × shell mass (observations are quoted at this factor)
         if M_smooth is not None:
@@ -610,24 +604,20 @@ def plot_trajectory_evolution(results: List[SimulationResult], config: AnalysisC
         if R2_smooth is not None:
             ax_r2.plot(t, R2_smooth, color=color, lw=lw, label=label, alpha=alpha)
 
-        # Shell radius (rShell) trajectory
-        if rS_smooth is not None:
-            ax_rs.plot(t, rS_smooth, color=color, lw=lw, label=label, alpha=alpha)
-
         # --- Diagnostic markers (vertical lines on all panels) ---
-        radius_axes = (ax_r2, ax_rs)
-        for ax in (ax_m, ax_r2, ax_rs):
+        for ax in (ax_m, ax_r2):
+            is_radius_ax = ax is ax_r2
             add_plot_markers(
                 ax, t,
                 phase=r.phase_full,
-                R2=R2 if (ax in radius_axes) else None,
-                rcloud=r.rcloud if (ax in radius_axes) else None,
+                R2=R2 if is_radius_ax else None,
+                rcloud=r.rcloud if is_radius_ax else None,
                 isCollapse=None,
                 dataset_color=color,
                 show_phase=SHOW_PHASE,
-                show_rcloud=SHOW_RCLOUD and (ax in radius_axes),
+                show_rcloud=SHOW_RCLOUD and is_radius_ax,
                 show_collapse=SHOW_COLLAPSE,
-                show_rcloud_horizontal=SHOW_RCLOUD_H and (ax in radius_axes),
+                show_rcloud_horizontal=SHOW_RCLOUD_H and is_radius_ax,
                 show_labels=False,
             )
 
@@ -684,6 +674,7 @@ def plot_trajectory_evolution(results: List[SimulationResult], config: AnalysisC
     ax_r2.axvspan(obs.t_obs - obs.t_err, obs.t_obs + obs.t_err,
                   alpha=0.1, color='gray', zorder=0)
 
+    ax_r2.set_xlabel('Time [Myr]', fontsize=FONTSIZE)
     ax_r2.set_ylabel('Bubble Radius $R_2$ [pc]', fontsize=FONTSIZE, rotation=90)
     ax_r2.tick_params(axis='both', labelsize=FONTSIZE)
     ax_r2.tick_params(axis='y', labelrotation=90)
@@ -699,40 +690,6 @@ def plot_trajectory_evolution(results: List[SimulationResult], config: AnalysisC
     ax_r2.set_ylim(0, 6)
     ax_r2.tick_params(axis='x', pad=10)
     ax_r2.tick_params(axis='y', pad=10)
-
-    # --- Shell radius (rShell) panel ---
-    # Same observational constraints as R2 panel
-    ax_rs.errorbar(obs.t_obs, obs.R_obs, xerr=obs.t_err, yerr=obs.R_err,
-                   fmt='s', color='blue', markersize=14, capsize=5, capthick=2,
-                   label=f'HI: {obs.R_obs}\u00b1{obs.R_err} pc', zorder=10, markeredgecolor='k')
-    ax_rs.axhspan(obs.R_obs - obs.R_err, obs.R_obs + obs.R_err,
-                  alpha=0.15, color='blue', zorder=1)
-
-    ax_rs.errorbar(obs.t_obs, obs.R_obs_Pabst, xerr=obs.t_err, yerr=obs.R_err_Pabst,
-                   fmt='s', color='green', markersize=14, capsize=5, capthick=2,
-                   label=f'[CII]: {obs.R_obs_Pabst} pc', zorder=10, markeredgecolor='k')
-    ax_rs.axhspan(obs.R_obs_Pabst - obs.R_err_Pabst, obs.R_obs_Pabst + obs.R_err_Pabst,
-                  alpha=0.15, color='green', zorder=1)
-
-    ax_rs.axvspan(obs.t_obs - obs.t_err, obs.t_obs + obs.t_err,
-                  alpha=0.1, color='gray', zorder=0)
-
-    ax_rs.set_xlabel('Time [Myr]', fontsize=FONTSIZE)
-    ax_rs.set_ylabel(r'Shell Radius $r_{\rm shell}$ [pc]', fontsize=FONTSIZE, rotation=90)
-    ax_rs.tick_params(axis='both', labelsize=FONTSIZE)
-    ax_rs.tick_params(axis='y', labelrotation=90)
-    if marker_handles:
-        existing_h, existing_l = ax_rs.get_legend_handles_labels()
-        legend_rs = ax_rs.legend(existing_h + marker_handles,
-                                 existing_l + [h.get_label() for h in marker_handles],
-                                 loc='lower right', fontsize=FONTSIZE)
-    else:
-        legend_rs = ax_rs.legend(loc='lower right', fontsize=FONTSIZE)
-    legend_rs.set_zorder(100)
-    ax_rs.set_xlim(0, 0.3)
-    ax_rs.set_ylim(0, 6)
-    ax_rs.tick_params(axis='x', pad=10)
-    ax_rs.tick_params(axis='y', pad=10)
 
     plt.tight_layout()
 
@@ -771,8 +728,8 @@ def plot_trajectory_evolution_combined(results: List[SimulationResult], config: 
     nCore_colors = ['orange', 'r', 'black', 'C3', 'C4', 'C5']
     nCore_alphas = [0.7, 0.45, 0.85, 0.7, 0.7, 0.7]
 
-    # 3 subplots: mass (top), R2 bubble (mid), rShell shell (bottom)
-    fig, (ax_m, ax_r2, ax_rs) = plt.subplots(3, 1, figsize=(6.5, 9), dpi=150, sharex=True)
+    # 2 subplots: mass (top), R2 bubble (bottom)
+    fig, (ax_m, ax_r2) = plt.subplots(2, 1, figsize=(6.5, 6), dpi=150, sharex=True)
 
     obs = config.obs
 
@@ -802,7 +759,6 @@ def plot_trajectory_evolution_combined(results: List[SimulationResult], config: 
         # Collect interpolated trajectories
         M_interp_list = []
         R2_interp_list = []
-        rS_interp_list = []
 
         for r in data_to_plot:
             if r.t_full is None:
@@ -811,12 +767,10 @@ def plot_trajectory_evolution_combined(results: List[SimulationResult], config: 
             t = r.t_full
             M = r.M_shell_full
             R2 = r.R_full
-            rS = r.rShell_full
 
             # Smooth trajectories
             M_smooth = smooth_trajectory(t, M)
             R2_smooth = smooth_trajectory(t, R2)
-            rS_smooth = smooth_trajectory(t, rS)
 
             # Scale to 0.5 × shell mass (observations are quoted at this factor)
             if M_smooth is not None:
@@ -837,13 +791,6 @@ def plot_trajectory_evolution_combined(results: List[SimulationResult], config: 
                 except Exception:
                     pass
 
-            if rS_smooth is not None and len(t) > 1:
-                try:
-                    f_rS = interp1d(t, rS_smooth, kind='linear', bounds_error=False, fill_value=np.nan)
-                    rS_interp_list.append(f_rS(t_common))
-                except Exception:
-                    pass
-
         # Convert to arrays and compute envelope
         ncore_lbl = r'$n_{\rm core} = $' + f'{float(nCore_value):g}' + r' $\rm cm^{-3}$'
 
@@ -861,13 +808,6 @@ def plot_trajectory_evolution_combined(results: List[SimulationResult], config: 
                 R2_min = np.nanmin(R2_arr, axis=0)
                 R2_max = np.nanmax(R2_arr, axis=0)
             ax_r2.fill_between(t_common, R2_min, R2_max, alpha=band_alpha, color=color)
-
-        if rS_interp_list:
-            rS_arr = np.array(rS_interp_list)
-            with np.errstate(all='ignore'):
-                rS_min = np.nanmin(rS_arr, axis=0)
-                rS_max = np.nanmax(rS_arr, axis=0)
-            ax_rs.fill_between(t_common, rS_min, rS_max, alpha=band_alpha, color=color)
 
     # --- Mass panel (log scale) ---
     tracer_bands = [
@@ -933,6 +873,7 @@ def plot_trajectory_evolution_combined(results: List[SimulationResult], config: 
     ax_r2.axvspan(obs.t_obs - obs.t_err, obs.t_obs + obs.t_err,
                   alpha=0.1, color='gray', zorder=0)
 
+    ax_r2.set_xlabel('Time [Myr]', fontsize=FONTSIZE)
     ax_r2.set_ylabel('Bubble Radius $R_2$ [pc]', fontsize=FONTSIZE, rotation=90)
     ax_r2.tick_params(axis='both', labelsize=FONTSIZE)
     ax_r2.tick_params(axis='y', labelrotation=90)
@@ -940,31 +881,6 @@ def plot_trajectory_evolution_combined(results: List[SimulationResult], config: 
     legend_r2.set_zorder(100)
     ax_r2.set_xlim(0, 0.3)
     ax_r2.set_ylim(0, 6)
-
-    # --- Shell radius (rShell) panel ---
-    ax_rs.errorbar(obs.t_obs, obs.R_obs, xerr=obs.t_err, yerr=obs.R_err,
-                   fmt='s', color='blue', markersize=12, capsize=5, capthick=2,
-                   label=f'HI: {obs.R_obs}\u00b1{obs.R_err} pc', zorder=10, markeredgecolor='k')
-    ax_rs.axhspan(obs.R_obs - obs.R_err, obs.R_obs + obs.R_err,
-                  alpha=0.15, color='blue', zorder=1)
-
-    ax_rs.errorbar(obs.t_obs, obs.R_obs_Pabst, xerr=obs.t_err, yerr=obs.R_err_Pabst,
-                   fmt='s', color='green', markersize=12, capsize=5, capthick=2,
-                   label=f'[CII]: {obs.R_obs_Pabst} pc', zorder=10, markeredgecolor='k')
-    ax_rs.axhspan(obs.R_obs_Pabst - obs.R_err_Pabst, obs.R_obs_Pabst + obs.R_err_Pabst,
-                  alpha=0.15, color='green', zorder=1)
-
-    ax_rs.axvspan(obs.t_obs - obs.t_err, obs.t_obs + obs.t_err,
-                  alpha=0.1, color='gray', zorder=0)
-
-    ax_rs.set_xlabel('Time [Myr]', fontsize=FONTSIZE)
-    ax_rs.set_ylabel(r'Shell Radius $r_{\rm shell}$ [pc]', fontsize=FONTSIZE, rotation=90)
-    ax_rs.tick_params(axis='both', labelsize=FONTSIZE)
-    ax_rs.tick_params(axis='y', labelrotation=90)
-    legend_rs = ax_rs.legend(loc='upper left', fontsize=FONTSIZE)
-    legend_rs.set_zorder(100)
-    ax_rs.set_xlim(0, 0.3)
-    ax_rs.set_ylim(0, 6)
 
     plt.tight_layout(h_pad=1.0)
 
@@ -1050,7 +966,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="""TRINITY trajectory evolution plots
 
-Creates shell mass and radius evolution trajectory plots from TRINITY
+Creates shell mass and bubble radius evolution trajectory plots from TRINITY
 parameter sweep simulations.
 """,
         formatter_class=argparse.RawDescriptionHelpFormatter,
