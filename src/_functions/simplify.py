@@ -312,10 +312,12 @@ def _simplify(
        Global R² is amplitude-weighted: a low-amplitude region barely
        contributes to ``SS_tot`` and would be starved of points if a
        big-amplitude feature elsewhere dominates the budget.  The
-       x-domain is split into ~20 equal-width chunks and the feature-
-       pool point nearest each chunk centre is promoted to mandatory,
-       so every section of the x-axis is guaranteed at least one
-       retained point.
+       x-domain is split into up to ``_COVERAGE_CHUNKS`` (= 20) equal-
+       width chunks and the feature-pool point nearest each chunk
+       centre is promoted to mandatory, so every section of the x-axis
+       is guaranteed at least one retained point.  The chunk count is
+       capped at ``nmin - 2`` (reserving budget for the two endpoints)
+       so coverage never inflates output past ``nmin`` at small budgets.
 
     5. **Budget-based selection with mandatory override**
        Output size is normally ``nmin``.  Endpoints, every high-
@@ -353,10 +355,11 @@ def _simplify(
         Dependent variable (e.g., temperature, density, flux).
         Must be the same length as ``x_arr``.
     nmin : int, optional
-        Target output size.  Clamped to >= 100.  Output is normally
-        ``nmin`` points; it may be larger when the curve has more than
-        ``nmin`` high-prominence extrema (those are never dropped).
-        Default is 100.
+        Target output size.  Clamped to >= 20 (matches the coverage-
+        skeleton chunk count so endpoints + coverage always fit inside
+        the budget).  Output is normally ``nmin`` points; it may be
+        larger when the curve has more than ``nmin`` high-prominence
+        extrema (those are never dropped).  Default is 100.
     grad_inc : float, optional
         Menger curvature threshold on rescaled ``[0, 1]`` axes.  Lower
         values keep more sharp-bend points; higher values keep fewer.
@@ -463,8 +466,11 @@ def _simplify(
     # rather than the duplicate-laden original.
     if nmin >= x.size:
         return _restore(np.arange(x.size))
-    # Enforce a floor of 100 samples so the output is always useful.
-    nmin = max(int(nmin), 100)
+    # Enforce a floor of 20 samples (matches ``_COVERAGE_CHUNKS``) so the
+    # algorithm has enough budget for both endpoints and a meaningful
+    # coverage skeleton.  Below this the post-hoc R² warning is the
+    # natural soft signal — we don't silently clamp further.
+    nmin = max(int(nmin), 20)
 
     # =====================================================================
     # Strategy 1: Menger curvature feature detection
@@ -644,8 +650,14 @@ def _simplify(
 
         # X-uniform coverage skeleton: pick one pool point per equal-width
         # x-chunk so low-amplitude regions (which barely move global R²)
-        # still get representation in the output.
-        coverage_idx = _x_uniform_coverage_idx(x, merged)
+        # still get representation in the output.  Cap chunks at
+        # ``nmin - 2`` so endpoints + coverage never exceeds ``nmin`` —
+        # at small budgets (nmin in [20, 22)) the coverage is reduced
+        # accordingly; at nmin >= 22 the cap is inert and the full
+        # ``_COVERAGE_CHUNKS`` skeleton runs.
+        coverage_idx = _x_uniform_coverage_idx(
+            x, merged, n_chunks=min(_COVERAGE_CHUNKS, max(0, nmin - 2))
+        )
 
         # Build the priority list with stable first-seen-order deduplication.
         # ``idx_dist`` is promoted ABOVE bisection_pool: those are the

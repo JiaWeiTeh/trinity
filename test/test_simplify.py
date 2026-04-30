@@ -468,6 +468,32 @@ class TestBudgetContract:
         # under if the merged pool itself is small).
         assert len(xo) <= 100
 
+    def test_below_old_floor_respected(self):
+        """Sub-100 nmin must produce ~that many points (the old 100 floor
+        no longer silently clamps).  At nmin=30 the smooth cubic has only
+        2 prominent extrema, so the budget is a hard ceiling — coverage
+        is capped at nmin-2 to keep endpoints + coverage <= nmin."""
+        x = np.linspace(0, 1, 5000)
+        y = x ** 3 - x
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", UserWarning)
+            xo, _ = _simplify(x, y, nmin=30)
+        assert len(xo) <= 30, (
+            f"nmin=30 should yield ≤ 30 points, got {len(xo)}"
+        )
+
+    def test_floor_of_twenty_clamps_below(self):
+        """Values below the new floor of 20 silently raise to 20."""
+        x = np.linspace(0, 1, 5000)
+        y = x ** 3 - x
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", UserWarning)
+            xo_low, _ = _simplify(x, y, nmin=5)
+            xo_floor, _ = _simplify(x, y, nmin=20)
+        # Both should produce the same output: 5 → clamped → 20.
+        assert len(xo_low) == len(xo_floor)
+        assert len(xo_low) <= 20
+
     @pytest.mark.parametrize("nmin", [100, 200, 500, 1000])
     def test_budget_respected_for_smooth_curve(self, nmin):
         """For a smooth curve the budget is a hard ceiling."""
