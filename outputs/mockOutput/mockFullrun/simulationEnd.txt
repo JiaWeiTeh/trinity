@@ -1,0 +1,33 @@
+==================================================
+TRINITY Simulation End Report
+==================================================
+Timestamp: 2026-04-30 00:30:37
+Model: 4e3_sfe001_n5e2_PL0
+
+--------------------------------------------------
+TERMINATION
+--------------------------------------------------
+End Reason: Maximum simulation time reached
+Exit Code: 1
+Status: SUCCESS
+Raw Reason: Stopping time reached
+
+--------------------------------------------------
+FINAL STATE
+--------------------------------------------------
+  Time:           0.300 Myr
+  Radius (R2):    2.51 pc
+  Shell nMax:     1.13e+00 cm^-3
+  Shell Velocity: 2.54 km/s
+
+--------------------------------------------------
+INITIAL CLOUD PARAMETERS
+--------------------------------------------------
+  mCloud:  3.97e+03 Msun
+  nCore:   5.00e+02 cm^-3
+  rCloud:  3.80 pc
+  rCore:   0.01 pc
+  alpha:   0.0
+  nISM:    1.00e-01 cm^-3
+
+==================================================

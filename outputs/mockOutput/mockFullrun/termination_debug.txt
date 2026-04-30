@@ -1,0 +1,270 @@
+================================================================================
+TERMINATION DEBUG REPORT
+================================================================================
+Timestamp: 2026-04-30 00:30:37
+Termination Reason: Normal exit / atexit
+Snapshots loaded: 2
+
+--------------------------------------------------------------------------------
+COMPARISON TABLE: Second-to-last vs Last Snapshot
+--------------------------------------------------------------------------------
+Time: 0.263576 → 0.300000 Myr
+Time step (dt): 3.642412e-02 Myr
+
+Parameter                 Old Value            New Value            Change                    Flag
+-----------------------------------------------------------------------------------------------
+Time (t_now)              0.2636               0.3000               +0.0364 (+13.8%)          
+Inner radius (R1)         2.4072               2.5080               +0.101 (+4.2%)            
+Outer radius (R2)         2.4072               2.5080               +0.101 (+4.2%)            
+Shell radius (rShell)     18.5212              19.7760              +1.25 (+6.8%)             
+Shell velocity (v2)       2.8853               2.5382               -0.347 (+12.0%)           
+Bubble energy (Eb)        0.0000e+00           0.0000e+00           —                         
+Bubble pressure (Pb)      5.2803               4.9081               -0.372 (+7.0%)            
+Shell mass (shell_mass)   1011.3154            1143.8430            +133 (+13.1%)             
+Shell peak density (shell 1.2139               1.1276               -0.0863 (+7.1%)           
+Gravity force (F_grav)    423.7053             495.6652             +72 (+17.0%)              
+Ram force (F_ram)         384.4853             387.9604             +3.48 (+0.9%)             
+Radiation force (F_rad)   111.7220             114.4693             +2.75 (+2.5%)             
+Ion force (F_ion)         None                 None                 —                         
+Inner temp (T0)           7.2028e+05           7.2028e+05           —                         
+Avg bubble temp (bubble_T 2.7162e+06           2.7162e+06           —                         
+Phase (current_phase)     momentum             momentum             —                         
+Collapsing (isCollapse)   0.0000e+00           0.0000e+00           —                         
+
+--------------------------------------------------------------------------------
+⚠️  INVALID VALUES IN LAST SNAPSHOT
+--------------------------------------------------------------------------------
+NaN values: cool_beta, cool_delta, t_previousCoolingUpdate, bubble_LTotal, bubble_L1Bubble, bubble_L2Conduction, bubble_L3Intermediate, bubble_dMdt, bubble_Lgain, bubble_Lloss (+7 more)
+
+================================================================================
+SNAPSHOT: SECOND-TO-LAST (t = 0.263576 Myr)
+================================================================================
+
+--- Time & Phase ---
+  current_phase                  = momentum
+  isCollapse                     = False
+  t_now                          = 0.263576
+
+--- Radii ---
+  R1                             = 2.407158
+  R2                             = 2.407158
+  bubble_r_Tb                    = 1.424305
+  rShell                         = 18.521158
+
+--- Velocities ---
+  v2                             = 2.950786
+
+--- Energy & Temperature ---
+  Eb                             = 0.000000e+00
+  Pb                             = 5.280326
+  T0                             = 7.202833e+05
+  bubble_Tavg                    = 2.716150e+06
+
+--- Forces ---
+  F_HII                          = 367.768515
+  F_ISM                          = 0
+  F_grav                         = 423.705261
+  F_ion_in                       = 31.073114
+  F_rad                          = 111.721985
+  F_ram                          = 384.485265
+  F_ram_SN                       = -2.794873e-18
+  F_ram_wind                     = 384.485265
+
+--- Shell Properties ---
+  shell_fAbsorbedIon             = 0.241321
+  shell_fAbsorbedNeu             = 0.085994
+  shell_fAbsorbedWeightedTotal   = 0.172088
+  shell_fIonisedDust             = 0.339748
+  shell_grav_phi                 = -0.362545
+  shell_interpolate_massDot      = False
+  shell_ion_idx                  = 16114
+  shell_mass                     = 1011.315394
+  shell_massDot                  = 3719.127465
+  shell_n0                       = 3.477294e+55
+  shell_nMax                     = 3.566460e+55
+  shell_tauKappaRatio            = 0.611405
+  shell_thickness                = 16.114000
+
+--- Bubble Properties ---
+  bubble_L1Bubble                = nan
+  bubble_L2Conduction            = nan
+  bubble_L3Intermediate          = nan
+  bubble_LTotal                  = nan
+  bubble_Leak                    = nan
+  bubble_Lgain                   = nan
+  bubble_Lloss                   = nan
+  bubble_T_r_Tb                  = 1.082026e+06
+  bubble_Tavg                    = 2.716150e+06
+  bubble_dMdt                    = nan
+  bubble_dMdtGuess               = 0
+  bubble_mass                    = 0.395691
+  bubble_r_Tb                    = 1.424305
+
+--- Other Scalars ---
+  EarlyPhaseApproximation        = False
+  EndSimulationDirectly          = False
+  Lbol                           = 1.989486e+08
+  Li                             = 1.102720e+08
+  Lmech_SN                       = -1.429175e-14
+  Lmech_W                        = 7.038781e+05
+  Lmech_total                    = 7.038781e+05
+  Ln                             = 8.867660e+07
+  P_HII                          = 5.050747
+  P_drive                        = 10.331073
+  P_ram                          = 5.280326
+  Qi                             = 5.860922e+61
+  R_IF                           = 18.521158
+  SimulationEndReason            = 
+  c_sound                        = 253.323747
+  cool_alpha                     = 0.682485
+  cool_beta                      = nan
+  cool_delta                     = nan
+  isDissolved                    = False
+  is_phiDepleted                 = False
+  n_IF                           = 3.566460e+55
+  n_IF_ODE                       = 3.566460e+55
+  n_IF_Str                       = 3.477294e+55
+  pdot_SN                        = -2.794873e-18
+  pdot_W                         = 384.485265
+  pdot_total                     = 384.485265
+  pdotdot_total                  = 97.027254
+  press_HII_in                   = 0.426742
+  residual_Edot1_guess           = nan
+  residual_Edot2_guess           = nan
+
+--- Arrays (12 total) ---
+  bubble_T_arr_r_arr             : shape=(100,), range=[0.124, 1.45]
+  bubble_dTdr_arr_r_arr          : shape=(100,), range=[0.124, 1.45]
+  bubble_n_arr_r_arr             : shape=(100,), range=[0.124, 1.45]
+  bubble_v_arr                   : shape=(100,), range=[-0.0348, 10.9]
+  bubble_v_arr_r_arr             : shape=(100,), range=[0.124, 1.45]
+  log_bubble_T_arr               : shape=(100,), range=[4.48, 6.9]
+  log_bubble_dTdr_arr            : shape=(100,), range=[6.49, 9.24]
+  log_bubble_n_arr               : shape=(100,), range=[55.2, 57.6]
+  log_shell_n_arr                : shape=(100,), range=[55.5, 55.6]
+  shell_grav_force_m             : shape=(100,), range=[-3.51, -1.88]
+  shell_grav_r                   : shape=(100,), range=[2.41, 18.5]
+  shell_r_arr                    : shape=(100,), range=[2.41, 18.5]
+
+================================================================================
+SNAPSHOT: LAST (t = 0.300000 Myr)
+================================================================================
+
+--- Time & Phase ---
+  current_phase                  = momentum
+  isCollapse                     = False
+  t_now                          = 0.300000
+
+--- Radii ---
+  R1                             = 2.508021
+  R2                             = 2.508021
+  bubble_r_Tb                    = 1.424305
+  rShell                         = 19.776021
+
+--- Velocities ---
+  v2                             = 2.595814
+
+--- Energy & Temperature ---
+  Eb                             = 0.000000e+00
+  Pb                             = 4.908121
+  T0                             = 7.202833e+05
+  bubble_Tavg                    = 2.716150e+06
+
+--- Forces ---
+  F_HII                          = 371.092579
+  F_ISM                          = 0
+  F_grav                         = 495.665233
+  F_ion_in                       = 33.731681
+  F_rad                          = 114.469345
+  F_ram                          = 387.960424
+  F_ram_SN                       = -1.420548e-18
+  F_ram_wind                     = 387.960424
+
+--- Shell Properties ---
+  shell_fAbsorbedIon             = 0.248694
+  shell_fAbsorbedNeu             = 0.085633
+  shell_fAbsorbedWeightedTotal   = 0.175732
+  shell_fIonisedDust             = 0.327547
+  shell_grav_phi                 = -0.384312
+  shell_interpolate_massDot      = False
+  shell_ion_idx                  = 17268
+  shell_mass                     = 1143.843029
+  shell_massDot                  = 3551.649630
+  shell_n0                       = 3.232183e+55
+  shell_nMax                     = 3.312864e+55
+  shell_tauKappaRatio            = 0.608717
+  shell_thickness                = 17.268000
+
+--- Bubble Properties ---
+  bubble_L1Bubble                = nan
+  bubble_L2Conduction            = nan
+  bubble_L3Intermediate          = nan
+  bubble_LTotal                  = nan
+  bubble_Leak                    = nan
+  bubble_Lgain                   = nan
+  bubble_Lloss                   = nan
+  bubble_T_r_Tb                  = 1.082026e+06
+  bubble_Tavg                    = 2.716150e+06
+  bubble_dMdt                    = nan
+  bubble_dMdtGuess               = 0
+  bubble_mass                    = 0.395691
+  bubble_r_Tb                    = 1.424305
+
+--- Other Scalars ---
+  EarlyPhaseApproximation        = False
+  EndSimulationDirectly          = False
+  Lbol                           = 1.996148e+08
+  Li                             = 1.102962e+08
+  Lmech_SN                       = -7.264061e-15
+  Lmech_W                        = 7.078517e+05
+  Lmech_total                    = 7.078517e+05
+  Ln                             = 8.931863e+07
+  P_HII                          = 4.694725
+  P_drive                        = 9.602846
+  P_ram                          = 4.908121
+  Qi                             = 5.867265e+61
+  R_IF                           = 19.776021
+  SimulationEndReason            = 
+  c_sound                        = 253.323747
+  cool_alpha                     = 0.682485
+  cool_beta                      = nan
+  cool_delta                     = nan
+  isDissolved                    = False
+  is_phiDepleted                 = False
+  n_IF                           = 3.312864e+55
+  n_IF_ODE                       = 3.312864e+55
+  n_IF_Str                       = 3.232183e+55
+  pdot_SN                        = -1.420548e-18
+  pdot_W                         = 387.960424
+  pdot_total                     = 387.960424
+  pdotdot_total                  = 93.750373
+  press_HII_in                   = 0.426742
+  residual_Edot1_guess           = nan
+  residual_Edot2_guess           = nan
+
+--- Arrays (12 total) ---
+  bubble_T_arr_r_arr             : shape=(100,), range=[0.124, 1.45]
+  bubble_dTdr_arr_r_arr          : shape=(100,), range=[0.124, 1.45]
+  bubble_n_arr_r_arr             : shape=(100,), range=[0.124, 1.45]
+  bubble_v_arr                   : shape=(100,), range=[-0.0348, 10.9]
+  bubble_v_arr_r_arr             : shape=(100,), range=[0.124, 1.45]
+  log_bubble_T_arr               : shape=(100,), range=[4.48, 6.9]
+  log_bubble_dTdr_arr            : shape=(100,), range=[6.49, 9.24]
+  log_bubble_n_arr               : shape=(100,), range=[55.2, 57.6]
+  log_shell_n_arr                : shape=(100,), range=[55.5, 55.5]
+  shell_grav_force_m             : shape=(100,), range=[-3.55, -1.88]
+  shell_grav_r                   : shape=(100,), range=[2.51, 19.8]
+  shell_r_arr                    : shape=(100,), range=[2.51, 19.8]
+
+================================================================================
+DIAGNOSTIC SUMMARY
+================================================================================
+  ❌ R1 >= R2: 2.508 >= 2.508
+  ❌ Eb <= 0: 0.0000e+00
+  ✓ Pb > 0: 4.9081e+00
+  ✓ shell_mass > 0: 1.1438e+03
+  ✓ isCollapse = False
+
+================================================================================
+END OF DEBUG REPORT
+================================================================================
