@@ -306,8 +306,13 @@ def _build_v2R2_legend_handles() -> list:
 # =============================================================================
 # Panel drawers
 # =============================================================================
-def _draw_rcloud_panel(ax, fontsize):
-    """Top panel: density step vs tanh blends around rCloud."""
+def _draw_rcloud_panel(ax, fontsize, top_xmax):
+    """Top panel: density step vs tanh blends around rCloud.
+
+    ``top_xmax`` is chosen by the caller so that R_CLOUD lands at the
+    same axes-fraction as rcloud on the bottom panel; the rcloud x-tick
+    label is dropped because that visual alignment makes it implicit.
+    """
     r_log = np.geomspace(1e-2 * R_CLOUD, 1.5 * R_CLOUD, 4000)
     r_band = np.linspace(0.7 * R_CLOUD, 1.3 * R_CLOUD, 2000)
     r = np.unique(np.concatenate([r_log, r_band]))
@@ -331,20 +336,22 @@ def _draw_rcloud_panel(ax, fontsize):
 
     ax.axvline(R_CLOUD, color="0.25", lw=1.2, ls="--", alpha=0.7, zorder=2)
 
-    ax.set_xlim(0.0, 1.3 * R_CLOUD)
-    ax.set_ylim(-0.2 * N_CORE_CGS, 1.25 * N_CORE_CGS)
+    ax.set_yscale("log")
+    ax.set_xlim(0.0, top_xmax)
+    ax.set_ylim(0.5 * N_ISM_CGS, 2.0 * N_CORE_CGS)
 
     ax.tick_params(labelsize=fontsize, axis='both')
-    ax.set_xticks([R_CLOUD])
-    ax.set_xticklabels([r'$R_\mathrm{cloud}$'])
-    ax.set_yticks([])
-    ax.minorticks_off()
+    ax.set_xticks([])           # vertical alignment with bottom replaces the rcloud tick
     ax.set_ylabel(r'$n(r)$', fontsize=fontsize)
 
-    _label_offset = 0.04 * N_CORE_CGS
-    ax.text(0.04 * R_CLOUD, N_CORE_CGS + _label_offset, r'$n_\mathrm{core}$',
+    # Inline asymptote labels; pin n_ISM inside the axes if top_xmax is tight.
+    # Use a multiplicative offset so the labels sit just above each
+    # asymptote on the log axis.
+    _label_factor = 1.15
+    nism_x = min(1.28 * R_CLOUD, 0.97 * top_xmax)
+    ax.text(0.04 * R_CLOUD, N_CORE_CGS * _label_factor, r'$n_\mathrm{core}$',
             va='bottom', ha='left', color='0.25', fontsize=fontsize - 4)
-    ax.text(1.28 * R_CLOUD, N_ISM_CGS + _label_offset, r'$n_\mathrm{ISM}$',
+    ax.text(nism_x, N_ISM_CGS * _label_factor, r'$n_\mathrm{ISM}$',
             va='bottom', ha='right', color='0.25', fontsize=fontsize - 4)
 
     ax.legend(loc='lower left', handlelength=1.6, labelspacing=0.3,
@@ -381,7 +388,15 @@ def _draw_v2R2_panel(ax, pair, fontsize):
 # =============================================================================
 def plot_merged(pair: dict, out_path: Optional[Path] = None,
                 show: bool = False) -> plt.Figure:
-    """Stack the rCloud-smoothing schematic over the v_2 vs R_2 comparison."""
+    """Stack the rCloud-smoothing schematic over the v_2 vs R_2 comparison.
+
+    The two panels' rCloud vertical lines are forced to share the same
+    figure-x coordinate: we read where rcloud sits inside the bottom
+    panel's log-scaled x-range, choose the top panel's linear xlim so
+    R_CLOUD lands at the same axes-fraction, then copy the bottom
+    panel's horizontal extent onto the top panel after layout so the
+    two axes-fractions also align in figure space.
+    """
     FONTSIZE = 25
 
     fig, (ax_top, ax_bot) = plt.subplots(
@@ -389,10 +404,31 @@ def plot_merged(pair: dict, out_path: Optional[Path] = None,
         gridspec_kw=dict(height_ratios=[1, 1]),
     )
 
-    _draw_rcloud_panel(ax_top, FONTSIZE)
+    # Draw bottom first so we can read its rcloud axes-fraction.
     _draw_v2R2_panel(ax_bot, pair, FONTSIZE)
 
+    rcloud_bot = next(
+        (float(d["rcloud"]) for d in (pair["after"], pair["before"])
+         if np.isfinite(d.get("rcloud", np.nan))),
+        R_CLOUD,
+    )
+    xlo_b, xhi_b = ax_bot.get_xlim()
+    log_lo, log_hi, log_rc = (np.log10(xlo_b), np.log10(xhi_b),
+                              np.log10(rcloud_bot))
+    frac = float(np.clip((log_rc - log_lo) / (log_hi - log_lo), 0.05, 0.95))
+
+    # Top is linear with xmin=0; pick xmax so R_CLOUD lands at `frac`.
+    top_xmax = R_CLOUD / frac
+    _draw_rcloud_panel(ax_top, FONTSIZE, top_xmax=top_xmax)
+
     plt.tight_layout()
+
+    # Force the two axes to share horizontal extent in figure coords so
+    # the matched axes-fraction also lands at the same figure x.
+    pos_bot = ax_bot.get_position()
+    pos_top = ax_top.get_position()
+    ax_top.set_position([pos_bot.x0, pos_top.y0,
+                         pos_bot.width, pos_top.height])
 
     if out_path is not None:
         out_path = Path(out_path)
