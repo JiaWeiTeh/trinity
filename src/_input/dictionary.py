@@ -194,6 +194,11 @@ class DescribedDict(dict):
         # Key flags
         self._excluded_keys: set[str] = set()     # keys to omit from snapshots
 
+        # Per-snapshot counter: how many implicit-phase simplify() calls
+        # have logged their R² so far in the current _clean_for_snapshot
+        # pass.  Reset to 0 at the top of every snapshot build.
+        self._impl_r2_logged: int = 0
+
         # Register crash-safe handlers to flush pending snapshots on exit
         self._register_crash_handlers()
 
@@ -382,11 +387,11 @@ class DescribedDict(dict):
     # -------------------------------------------------------------------------
     # (Optional) curve simplification for very long profile arrays
     # -------------------------------------------------------------------------
-    @staticmethod
     def simplify(
+        self,
         x_arr: Union[np.ndarray, Sequence[float]],
         y_arr: Union[np.ndarray, Sequence[float]],
-        nmin: int = 100,
+        nmin: Optional[int] = None,
         grad_inc: float = 1.0,
         keyname: str = "",
     ) -> Tuple[np.ndarray, np.ndarray]:
@@ -418,6 +423,10 @@ class DescribedDict(dict):
         a ``UserWarning`` if it falls below 0.9 — a hint that ``nmin``
         is too small for this curve.
 
+        ``nmin`` defaults to the ``simplify_npoints`` parameter on the
+        dict (loaded from default.param), or to 100 if absent.  Pass an
+        explicit ``nmin`` to override per call.
+
         Input / output contract:
         * Input: ``x_arr``, ``y_arr`` are 1-D array-likes of equal
           length.  Input may be ascending, descending, or non-monotonic
@@ -433,14 +442,35 @@ class DescribedDict(dict):
         Delegates to the standalone ``simplify`` module (no TRINITY
         dependencies).
         """
-        from src._functions.simplify import _simplify
+        from src._functions.simplify import _simplify, _simplify_error
+        if nmin is None:
+            item = self.get("simplify_npoints")
+            nmin = int(item.value) if item is not None else 100
         try:
-            return _simplify(x_arr, y_arr, nmin=nmin, grad_inc=grad_inc)
+            x_out, y_out = _simplify(x_arr, y_arr, nmin=nmin, grad_inc=grad_inc)
         except ValueError:
             raise ValueError(
                 f"simplify(): x and y must have same length for {keyname}. "
                 f"Instead got {len(x_arr)} and {len(y_arr)}"
             )
+
+        # Log reconstruction R² for the first two simplify() calls of
+        # each implicit-phase snapshot — the implicit phase is where the
+        # bubble profiles are most varied, so this gives quick visibility
+        # into how well ``simplify_npoints`` is serving the run.
+        phase_item = self.get("current_phase")
+        if (phase_item is not None
+                and phase_item.value == "implicit"
+                and self._impl_r2_logged < 2):
+            import logging
+            metrics = _simplify_error(x_arr, y_arr, x_out, y_out)
+            logging.getLogger(__name__).info(
+                f"simplify[{keyname}]: R²={metrics['r_squared']:.4f} "
+                f"(N_in={metrics['n_orig']} → N_out={metrics['n_simp']})"
+            )
+            self._impl_r2_logged += 1
+
+        return x_out, y_out
 
     # -------------------------------------------------------------------------
     # Internal helpers for snapshot serialization
@@ -496,6 +526,10 @@ class DescribedDict(dict):
         # at import time.
         from src._output.run_constants import RUN_CONST_KEYS
         run_const_keys = frozenset(RUN_CONST_KEYS)
+
+        # Reset the per-snapshot R² log counter so each snapshot in the
+        # implicit phase logs its first two simplify() reconstructions.
+        self._impl_r2_logged = 0
 
         # Refresh excluded sets in case flags changed after insertion
         for k, item in self.items():

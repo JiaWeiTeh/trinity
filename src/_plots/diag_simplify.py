@@ -211,7 +211,8 @@ def main(argv: list[str] | None = None) -> int:
         "--npoints", "-n", type=int, default=_DEFAULT_NPOINTS,
         help=(f"Target number of simplified points per panel "
               f"(default: {_DEFAULT_NPOINTS}). _simplify enforces a "
-              f"floor of 100, so values below 100 are clamped."),
+              f"floor of 20 (matches the coverage-skeleton chunk "
+              f"count); values below 20 are clamped."),
     )
     args = parser.parse_args(argv)
 
