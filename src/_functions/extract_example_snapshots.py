@@ -29,6 +29,10 @@ import sys
 from pathlib import Path
 from typing import Optional
 
+REPO_ROOT = Path(__file__).resolve().parents[2]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
 from src._output.trinity_reader import TrinityOutput
 
 
@@ -38,8 +42,6 @@ PHASES = [
     ('4_transition', 'transition'),
     ('5_momentum', 'momentum'),
 ]
-
-REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 def _resolve_dict_path(folder: Path) -> Path:
