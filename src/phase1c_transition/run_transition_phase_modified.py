@@ -439,7 +439,7 @@ def run_phase_transition(params) -> TransitionPhaseResults:
         segment_count += 1
 
         # Log current state at beginning of each segment
-        logger.info(f"[Transition] t={t_now:.6e} Myr, R2={R2:.4e} pc, v2={v2:.4e} pc/Myr, Eb={Eb:.4e}, T0={T0:.4e} K")
+        logger.debug(f"[Transition] t={t_now:.6e} Myr, R2={R2:.4e} pc, v2={v2:.4e} pc/Myr, Eb={Eb:.4e}, T0={T0:.4e} K")
 
         # ---------------------------------------------------------------------
         # Update params with current state
@@ -587,9 +587,9 @@ def run_phase_transition(params) -> TransitionPhaseResults:
         _zeta = _R_eq / _R_St if (np.isfinite(_R_St) and _R_St > 0.0) else 0.0
         params['zeta'].value = _zeta
         if _zeta < 0.5:
-            logger.info(f'ζ={_zeta:.3f} < 0.5: PIR-dominated, n_IF_Str active '
-                        f'(n_IF={params["n_IF"].value:.3e}, '
-                        f'n_IF_Str={params["n_IF_Str"].value:.3e})')
+            logger.debug(f'ζ={_zeta:.3f} < 0.5: PIR-dominated, n_IF_Str active '
+                         f'(n_IF={params["n_IF"].value:.3e}, '
+                         f'n_IF_Str={params["n_IF_Str"].value:.3e})')
 
         # ---------------------------------------------------------------------
         # Save snapshot BEFORE ODE - all values are consistent at t_now
@@ -720,8 +720,8 @@ def run_phase_transition(params) -> TransitionPhaseResults:
             if abs_v2 > VELOCITY_THRESHOLD_EXTREME:
                 # Extreme collapse velocity: use minimum segment duration
                 dt_segment = DT_SEGMENT_COLLAPSE
-                logger.info(f"Velocity-based: |v2|={abs_v2:.1f} > {VELOCITY_THRESHOLD_EXTREME}, "
-                           f"dt -> {dt_segment:.3e} Myr (collapse mode)")
+                logger.debug(f"Velocity-based: |v2|={abs_v2:.1f} > {VELOCITY_THRESHOLD_EXTREME}, "
+                             f"dt -> {dt_segment:.3e} Myr (collapse mode)")
             elif abs_v2 > VELOCITY_THRESHOLD_COLLAPSE:
                 # Moderate collapse velocity: use intermediate segment duration
                 dt_segment = min(dt_segment, DT_SEGMENT_MIN)

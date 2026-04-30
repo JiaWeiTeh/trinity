@@ -91,7 +91,7 @@ def get_bubbleproperties_pure(params) -> BubbleProperties:
     BubbleProperties
         Dataclass containing all bubble properties
     """
-    logger.info('Entering get_bubbleproperties_pure')
+    logger.debug('Entering get_bubbleproperties_pure')
 
     # =============================================================================
     # Step 1: Get necessary parameters
@@ -125,7 +125,7 @@ def get_bubbleproperties_pure(params) -> BubbleProperties:
         # if no guesses, begin from formula
         # if value already exist, use previous as current guess.
         bubble_dMdt = _get_init_dMdt(params, Pb)
-        logger.info(f"Initial dMdt guess: {bubble_dMdt}")
+        logger.debug(f"Initial dMdt guess: {bubble_dMdt}")
 
     # Calculate r_Tb, i.e., radius at which we evaluate bubble temperature
     xi_Tb = params['bubble_xi_Tb'].value
@@ -183,9 +183,9 @@ def get_bubbleproperties_pure(params) -> BubbleProperties:
     dTdr_array = psoln[:, 2]
     n_array = Pb / (2 * params['k_B'].value * T_array)
 
-    logger.info(f'Bubble structure: r=[{r_array[0]:.4f}, {r_array[-1]:.4f}], '
-                f'T=[{T_array[0]:.2e}, {T_array[-1]:.2e}]'
-                f'n=[{n_array[0]:.2e}, {n_array[-1]:.2e}]')
+    logger.debug(f'Bubble structure: r=[{r_array[0]:.4f}, {r_array[-1]:.4f}], '
+                 f'T=[{T_array[0]:.2e}, {T_array[-1]:.2e}]'
+                 f'n=[{n_array[0]:.2e}, {n_array[-1]:.2e}]')
 
     # =============================================================================
     # Step 4: Calculate cooling losses

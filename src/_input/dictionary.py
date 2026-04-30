@@ -634,18 +634,18 @@ class DescribedDict(dict):
 
         # Flush periodically
         if self.save_count % self.snapshot_interval == 0:
-            logger.info(f"Snapshot #{self.save_count} saved. Flushing {pending_count} snapshots to disk...")
+            logger.debug(f"Snapshot #{self.save_count} saved. Flushing {pending_count} snapshots to disk...")
             self.flush()
             try:
-                logger.info(f"All snapshots flushed to JSON at t = {self['t_now'].value:.6e} Myr")
+                logger.debug(f"All snapshots flushed to JSON at t = {self['t_now'].value:.6e} Myr")
             except KeyError:
-                logger.info("All snapshots flushed to JSON.")
+                logger.debug("All snapshots flushed to JSON.")
         else:
             try:
-                logger.info(f"Snapshot #{self.save_count} saved at t = {self['t_now'].value:.6e} Myr "
-                           f"({pending_count} pending, {until_flush} until flush)")
+                logger.debug(f"Snapshot #{self.save_count} saved at t = {self['t_now'].value:.6e} Myr "
+                            f"({pending_count} pending, {until_flush} until flush)")
             except KeyError:
-                logger.info(f"Snapshot #{self.save_count} saved ({pending_count} pending, {until_flush} until flush)")
+                logger.debug(f"Snapshot #{self.save_count} saved ({pending_count} pending, {until_flush} until flush)")
 
     def flush(self) -> None:
         """

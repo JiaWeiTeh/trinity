@@ -567,12 +567,12 @@ def solve_betadelta_pure(
 
             if total_res_grid < RESIDUAL_THRESHOLD:
                 grid_converged = True
-                logger.info(
+                logger.debug(
                     f"Grid search converged: β={beta_grid:.4f}, δ={delta_grid:.4f}, "
                     f"residual={total_res_grid:.2e}"
                 )
             else:
-                logger.info(
+                logger.debug(
                     f"Grid search did not converge: β={beta_grid:.4f}, δ={delta_grid:.4f}, "
                     f"residual={total_res_grid:.2e} (threshold={RESIDUAL_THRESHOLD:.0e})"
                 )
@@ -586,7 +586,7 @@ def solve_betadelta_pure(
     grid_residual = grid_result[2] if grid_result else float('inf')
 
     if not grid_converged and grid_residual > LBFGSB_FALLBACK_THRESHOLD:
-        logger.info(
+        logger.debug(
             f"Grid residual ({grid_residual:.2e}) > fallback threshold ({LBFGSB_FALLBACK_THRESHOLD}), "
             "trying L-BFGS-B"
         )
@@ -607,12 +607,12 @@ def solve_betadelta_pure(
 
                 if total_res_lbfgsb < RESIDUAL_THRESHOLD:
                     lbfgsb_converged = True
-                    logger.info(
+                    logger.debug(
                         f"L-BFGS-B converged: β={beta_lbfgsb:.4f}, δ={delta_lbfgsb:.4f}, "
                         f"residual={total_res_lbfgsb:.2e}"
                     )
                 else:
-                    logger.info(
+                    logger.debug(
                         f"L-BFGS-B did not converge: β={beta_lbfgsb:.4f}, δ={delta_lbfgsb:.4f}, "
                         f"residual={total_res_lbfgsb:.2e}"
                     )
@@ -652,7 +652,7 @@ def solve_betadelta_pure(
     # Get final detailed residuals for best result
     details = get_residual_detailed(best_beta, best_delta, params)
 
-    logger.info(
+    logger.debug(
         f"Beta-delta result ({method_desc}): β={best_beta:.4f}, δ={best_delta:.4f}, "
         f"residual={best_residual:.2e}, converged={converged}"
     )
