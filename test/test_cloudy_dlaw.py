@@ -265,10 +265,11 @@ def test_dlaw_rejects_nan():
 
 
 def test_dlaw_rejects_short_input():
+    # Use valid r_in/r_out so the size check (not the bracket check) is what fires.
     with pytest.raises(DlawError, match="≥2 points"):
         build_dlaw_block(
             np.array([1.0]), np.array([58.0]),
-            r_in_pc=1.0, r_out_pc=1.0, min_rows=2,
+            r_in_pc=0.5, r_out_pc=1.5, min_rows=2,
         )
 
 
@@ -296,3 +297,94 @@ def test_dlaw_rejects_partial_ambient():
             ambient_r_pc=np.array([3.0]),
             r_in_pc=1.0, r_out_pc=2.0, min_rows=2,
         )
+
+
+# --------------------------------------------------------------------------- #
+# Scalar parameter validation (defensive — surfaces misuse with clear errors
+# instead of letting the bracket-check or downstream math produce confusion)
+# --------------------------------------------------------------------------- #
+
+@pytest.mark.parametrize("r_in_pc, r_out_pc", [
+    (float("nan"), 2.0),
+    (1.0, float("nan")),
+    (float("inf"), 2.0),
+    (1.0, float("inf")),
+])
+def test_dlaw_rejects_nonfinite_brackets(r_in_pc, r_out_pc):
+    with pytest.raises(DlawError, match="must be finite"):
+        build_dlaw_block(
+            np.array([1.0, 2.0]), np.array([58.0, 57.0]),
+            r_in_pc=r_in_pc, r_out_pc=r_out_pc, min_rows=2,
+        )
+
+
+@pytest.mark.parametrize("r_in_pc", [0.0, -1.0, -1e-12])
+def test_dlaw_rejects_nonpositive_r_in(r_in_pc):
+    with pytest.raises(DlawError, match="r_in_pc must be positive"):
+        build_dlaw_block(
+            np.array([1.0, 2.0]), np.array([58.0, 57.0]),
+            r_in_pc=r_in_pc, r_out_pc=2.0, min_rows=2,
+        )
+
+
+@pytest.mark.parametrize("r_in_pc, r_out_pc", [
+    (1.0, 1.0),    # equal — zero extent
+    (2.0, 1.0),    # reversed
+])
+def test_dlaw_rejects_r_out_le_r_in(r_in_pc, r_out_pc):
+    with pytest.raises(DlawError, match="must exceed r_in_pc"):
+        build_dlaw_block(
+            np.array([1.0, 2.0]), np.array([58.0, 57.0]),
+            r_in_pc=r_in_pc, r_out_pc=r_out_pc, min_rows=2,
+        )
+
+
+@pytest.mark.parametrize("min_rows", [-1, 0, 1])
+def test_dlaw_rejects_bad_min_rows(min_rows):
+    with pytest.raises(DlawError, match="min_rows must be"):
+        build_dlaw_block(
+            np.array([1.0, 2.0]), np.array([58.0, 57.0]),
+            r_in_pc=1.0, r_out_pc=2.0, min_rows=min_rows,
+        )
+
+
+@pytest.mark.parametrize("edge_threshold", [0.0, -1.0])
+def test_dlaw_rejects_bad_edge_threshold(edge_threshold):
+    with pytest.raises(DlawError, match="edge_threshold must be positive"):
+        build_dlaw_block(
+            np.array([1.0, 2.0]), np.array([58.0, 57.0]),
+            r_in_pc=1.0, r_out_pc=2.0, min_rows=2,
+            edge_threshold=edge_threshold,
+        )
+
+
+# --------------------------------------------------------------------------- #
+# Ambient dedup
+# --------------------------------------------------------------------------- #
+
+def test_dlaw_ambient_dedups_duplicates():
+    """Duplicate r values in ambient survive sorting; splice must dedup
+    (keep last) so the output remains strictly increasing."""
+    shell_r =     np.array([1.0, 2.0])
+    shell_log_n = np.array([58.0, 57.0])
+    # Two entries at r=3.0; second value (55.0) should win.
+    ambient_r =     np.array([3.0, 3.0, 4.0])
+    ambient_log_n = np.array([55.5, 55.0, 54.0])
+
+    block = build_dlaw_block(
+        shell_r, shell_log_n,
+        ambient_r_pc=ambient_r, ambient_log_n_pc3=ambient_log_n,
+        r_in_pc=1.0, r_out_pc=4.0, min_rows=2,
+    )
+    _, rows, _ = _parse_block(block)
+    log_rs = [r for r, _ in rows]
+    assert len(set(log_rs)) == len(log_rs), "duplicate r should be deduped"
+    # shell (2 rows: 1.0, 2.0) + dedup'd ambient past 2.0 (2 rows: 3.0, 4.0)
+    assert len(rows) == 4
+
+    # The kept value at r=3.0 must be the SECOND ambient entry (55.0), not the first.
+    expected_log_n_at_3 = 55.0 + math.log10(INV_CONV.ndens_au2cgs)
+    log_r_at_3 = math.log10(3.0) + math.log10(INV_CONV.pc2cm)
+    matched = [n for r, n in rows if abs(r - log_r_at_3) < 1e-6]
+    assert matched, f"row at r=3.0 not found: {rows}"
+    assert matched[0] == pytest.approx(expected_log_n_at_3, abs=1e-3)

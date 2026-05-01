@@ -90,6 +90,22 @@ def build_dlaw_block(
     str
         Multi-line dlaw block, no trailing newline.
     """
+    # --- 0. Validate scalar parameters --------------------------------------
+    if not (math.isfinite(r_in_pc) and math.isfinite(r_out_pc)):
+        raise DlawError(
+            f"r_in_pc and r_out_pc must be finite; got {r_in_pc}, {r_out_pc}"
+        )
+    if r_in_pc <= 0:
+        raise DlawError(f"r_in_pc must be positive; got {r_in_pc:.3e}")
+    if r_out_pc <= r_in_pc:
+        raise DlawError(
+            f"r_out_pc ({r_out_pc:.3e}) must exceed r_in_pc ({r_in_pc:.3e})"
+        )
+    if min_rows < 2:
+        raise DlawError(f"min_rows must be >= 2; got {min_rows}")
+    if edge_threshold <= 0:
+        raise DlawError(f"edge_threshold must be positive; got {edge_threshold}")
+
     # --- 1. Validate and arrayify inputs ------------------------------------
     r_pc = np.asarray(shell_r_pc, dtype=float)
     log_n_pc3 = np.asarray(shell_log_n_pc3, dtype=float)
@@ -133,6 +149,10 @@ def build_dlaw_block(
         if r_out_pc > r_pc[-1] and a_r.size:
             ord2 = np.argsort(a_r, kind="stable")
             a_r, a_n = a_r[ord2], a_n[ord2]
+            # dedup ambient (keep last value at each unique r), same recipe as shell
+            keep_a = np.ones(a_r.size, dtype=bool)
+            keep_a[:-1] = a_r[:-1] != a_r[1:]
+            a_r, a_n = a_r[keep_a], a_n[keep_a]
             mask = (a_r > r_pc[-1]) & (a_r <= r_out_pc)
             if mask.any():
                 r_pc = np.concatenate([r_pc, a_r[mask]])
