@@ -46,7 +46,34 @@ from src._plots.paper_ODIN import (          # noqa: E402
 from src._plots.plot_markers import (        # noqa: E402
     add_plot_markers, get_marker_legend_handles,
 )
-from src._output.trinity_reader import info_simulations  # noqa: E402
+from src._output.trinity_reader import info_simulations, load_output  # noqa: E402
+
+# Cache rShell trajectories keyed by simulation file path so we avoid
+# reloading the underlying output multiple times across plot functions.
+_RSHELL_CACHE: dict = {}
+
+
+def _get_rShell_full(r: SimulationResult):
+    """Return the shell-radius time series for a SimulationResult, sliced to
+    match the (already-trimmed) ``r.t_full``.
+
+    SimulationResult does not carry rShell directly, so we read it from the
+    simulation file on demand. Returns ``None`` if unavailable.
+    """
+    if r.t_full is None:
+        return None
+    cached = _RSHELL_CACHE.get(r.path)
+    if cached is not None:
+        return cached
+    try:
+        output = load_output(r.path)
+        rShell = output.get('rShell')
+    except Exception:
+        rShell = None
+    if rShell is not None:
+        rShell = np.asarray(rShell)[:len(r.t_full)]
+    _RSHELL_CACHE[r.path] = rShell
+    return rShell
 
 # =============================================================================
 # MARKER DEFAULTS (off for clean paper figures; enable via CLI --show-*)
@@ -156,14 +183,15 @@ def plot_trajectory_evolution(results: List[SimulationResult],
         if r.t_full is None:
             continue
 
+        rShell_full = _get_rShell_full(r)
         if SMOOTH_TRAJECTORIES:
             v_smooth = smooth_trajectory(r.t_full, r.v_full_kms)
             R2_smooth = smooth_trajectory(r.t_full, r.R_full)
-            rS_smooth = smooth_trajectory(r.t_full, r.rShell_full)
+            rS_smooth = smooth_trajectory(r.t_full, rShell_full)
         else:
             v_smooth = r.v_full_kms
             R2_smooth = r.R_full
-            rS_smooth = r.rShell_full
+            rS_smooth = rShell_full
 
         if config.show_all:
             color, alpha, lw, label = cmap(norm(r.chi2_total)), 0.7, 1.0, None
@@ -311,14 +339,15 @@ def plot_trajectory_evolution_combined(results: List[SimulationResult],
         for r in data_to_plot:
             if r.t_full is None or len(r.t_full) < 2:
                 continue
+            rShell_full = _get_rShell_full(r)
             if SMOOTH_TRAJECTORIES:
                 v_s = smooth_trajectory(r.t_full, r.v_full_kms)
                 R2_s = smooth_trajectory(r.t_full, r.R_full)
-                rS_s = smooth_trajectory(r.t_full, r.rShell_full)
+                rS_s = smooth_trajectory(r.t_full, rShell_full)
             else:
                 v_s = r.v_full_kms
                 R2_s = r.R_full
-                rS_s = r.rShell_full
+                rS_s = rShell_full
             try:
                 if v_s is not None:
                     v_interp.append(interp1d(r.t_full, v_s, bounds_error=False,
