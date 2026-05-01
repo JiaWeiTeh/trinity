@@ -4,8 +4,16 @@ Convert a TRINITY run directory into one or more CLOUDY input decks.
 
 ## Quick start
 
+From the repo root, either form works:
+
 ```bash
+# As a module (any cwd that has 'src/' on PYTHONPATH)
 python -m src._output.cloudy.trinity_to_cloudy \
+    -F outputs/mockOutput/mockFullrun/ \
+    --age 0.15
+
+# As a plain file (must be cwd-independent — script bootstraps sys.path)
+python src/_output/cloudy/trinity_to_cloudy.py \
     -F outputs/mockOutput/mockFullrun/ \
     --age 0.15
 ```

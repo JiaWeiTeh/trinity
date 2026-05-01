@@ -7,6 +7,12 @@ Canonical invocation::
         -F outputs/mockOutput/mockFullrun/ \\
         --age 0.1
 
+Also runnable as a plain script from the repo root::
+
+    python src/_output/cloudy/trinity_to_cloudy.py \\
+        -F outputs/mockOutput/mockFullrun/ \\
+        --age 0.1
+
 Writes ``<run_dir>/cloudy/<model>_<index>_<phase>_t<age>myr.in`` plus a
 sidecar ``.dlaw.txt`` with just the dlaw block, plus a copy of the bundled
 ``trinity_linelist.dat``. The ``<<<EDIT_ME>>>`` sentinel in the deck's
@@ -24,6 +30,19 @@ See ``--help`` for full flag list.
 """
 
 from __future__ import annotations
+
+# --- Repo-root bootstrap -----------------------------------------------------
+# When this module is invoked as a plain file
+# (``python src/_output/cloudy/trinity_to_cloudy.py ...``), Python only puts
+# the script's own directory on sys.path, so the ``from src._output...``
+# imports below fail. Detect the file-as-script case and prepend the repo
+# root (three levels up: cloudy/ → _output/ → src/ → repo root) so the
+# package imports resolve. The ``-m`` path is unaffected (``__package__``
+# is set when launched as a module).
+if __name__ == "__main__" and __package__ in (None, ""):
+    import sys as _sys
+    from pathlib import Path as _Path
+    _sys.path.insert(0, str(_Path(__file__).resolve().parents[3]))
 
 import argparse
 import json
