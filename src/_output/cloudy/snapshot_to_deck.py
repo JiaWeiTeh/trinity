@@ -214,6 +214,14 @@ def snapshot_to_values(
     # Ambient splice from metadata, only when actually extending past rShell
     ambient_r_pc = None
     ambient_log_n_pc3 = None
+    if r_out_pc > rShell and not extend_with_ambient:
+        # Without ambient data we cannot satisfy the dlaw bracket check past
+        # rShell — surface this here rather than as a deeper "past dlaw range
+        # end" error from build_dlaw_block.
+        raise SnapshotInvalid(
+            f"radius_out_pc ({r_out_pc:.3e}) > rShell ({rShell:.3e}) requires "
+            f"extend_with_ambient=True (currently False)"
+        )
     if extend_with_ambient and r_out_pc > rShell:
         amb_r = bundle.metadata.get("initial_cloud_r_arr")
         amb_n = bundle.metadata.get("initial_cloud_n_arr")

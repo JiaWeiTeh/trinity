@@ -21,7 +21,7 @@ from __future__ import annotations
 
 import math
 import warnings
-from typing import Optional, Sequence
+from typing import Sequence
 
 import numpy as np
 
@@ -50,8 +50,8 @@ def build_dlaw_block(
     shell_r_pc: Sequence[float],
     shell_log_n_pc3: Sequence[float],
     *,
-    ambient_r_pc: Optional[Sequence[float]] = None,
-    ambient_log_n_pc3: Optional[Sequence[float]] = None,
+    ambient_r_pc: Sequence[float] | None = None,
+    ambient_log_n_pc3: Sequence[float] | None = None,
     r_in_pc: float,
     r_out_pc: float,
     min_rows: int = DEFAULT_MIN_ROWS,

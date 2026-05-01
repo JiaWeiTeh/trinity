@@ -390,6 +390,20 @@ def test_extend_with_ambient_false_uses_no_ambient(tmp_path):
     assert vals["_diagnostics"]["ambient_extended"] is False
 
 
+def test_extend_disabled_but_radius_out_past_rShell_errors(tmp_path):
+    """If the user asks for r_out > rShell but disables ambient, fail in
+    snapshot_to_deck (clear attribution) rather than deeper in dlaw."""
+    bundle = _make_synth_bundle(
+        tmp_path,
+        initial_cloud_r=[1.0, 5.0], initial_cloud_n=[1e58, 1e54],
+    )
+    snap = _good_snap()  # rShell = 1.5
+    with pytest.raises(SnapshotInvalid, match="extend_with_ambient=True"):
+        snapshot_to_values(
+            snap, bundle, radius_out_pc=5.0, extend_with_ambient=False,
+        )
+
+
 # --------------------------------------------------------------------------- #
 # Title and formatting
 # --------------------------------------------------------------------------- #
