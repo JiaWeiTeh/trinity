@@ -39,7 +39,7 @@ use_adaptive_solver    True
 
 
 # Logging
-log_level    WARNING
+log_level    INFO
 
 # Output
 path2output    outputs/rosette_sweep
