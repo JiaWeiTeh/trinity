@@ -1,0 +1,41 @@
+# ─── TRINITY → CLOUDY input template ───
+# Double-curly placeholders are filled by trinity_to_cloudy.py at runtime.
+title {{TITLE}}
+
+# ── Ionising source ────────────────────────────
+table star "{{SB99_MOD}}" age = {{AGE_YR}} years
+Q(H) {{LOG_QH}}
+
+# ── Geometry ───────────────────────────────────
+sphere expanding
+radius {{LOG_RIN}} {{LOG_ROUT}}
+
+# ── Density profile from TRINITY shell ─────────
+dlaw table radius
+{{DLAW_ROWS}}
+end of dlaw
+
+# ── Composition (HII region preset = depleted gas + ISM grains) ──
+abundances HII region
+metals and grains {{ZREL}}
+
+# ── Backgrounds ────────────────────────────────
+cosmic rays background
+cmb redshift 0
+
+# ── Solver ─────────────────────────────────────
+iterate to convergence
+set nend 4000
+
+# ── Stopping criteria ──────────────────────────
+stop temperature 100 K
+stop efrac -2
+
+# ── Output ─────────────────────────────────────
+set save prefix "{{PREFIX}}"
+print line sort wavelength range 3600A to 9800A
+save last overview ".ovr"
+save last hydrogen conditions ".hcon"
+save last continuum ".con" units angstrom
+save last line list ".lines" "trinity_linelist.dat" emergent absolute column
+save last lines emissivity ".emis" "trinity_linelist.dat"
