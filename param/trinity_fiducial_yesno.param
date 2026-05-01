@@ -13,10 +13,11 @@
 # Sweep parameters (lists) - these will be combined
 # =============================================================================
 
-mCloud    [1e6]
+mCloud    [1e5, 1e6]
 sfe       [0.01, 0.1, 0.5]
 nCore     [1e3, 1e4]
-
+# include PHII?
+include_PHII [True, False]
 
 # =============================================================================
 # Fixed parameters (constant across all runs)
@@ -44,7 +45,5 @@ stop_r    None
 stop_t    10
 
 #surpress warning to save memory
-log_level    WARNING
+log_level    INFO
 
-# include PHII?
-include_PHII [True, False]
