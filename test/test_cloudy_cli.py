@@ -214,11 +214,11 @@ def test_e2e_age_writes_deck_sidecar_and_linelist(tmp_path):
     assert (out_dir / LINELIST_FILENAME).is_file()
 
     deck_text = decks[0].read_text()
-    # Sentinel preserved; placeholders all gone
-    assert "<<<EDIT_ME>>>" in deck_text
+    # Default SB99 sentinel preserved in the substituted deck; no leftover {{KEY}}
+    assert '"<<<EDIT_ME>>>"' in deck_text
     assert "{{" not in deck_text
     assert "}}" not in deck_text
-    # Filenames the deck references must match the linelist on disk
+    # Bundled template hardcodes the linelist filename verbatim
     assert f'"{LINELIST_FILENAME}"' in deck_text
 
 
@@ -329,14 +329,28 @@ def test_e2e_z_override_changes_zrel_in_deck(tmp_path):
     assert "metals and grains 0.2000" in deck_text
 
 
-def test_e2e_abundances_flag_overrides_deck_value(tmp_path):
+def test_e2e_sb99_default_is_sentinel(tmp_path):
+    """Default --sb99 is the sentinel, present verbatim in the deck."""
     out_dir = tmp_path / "out"
     rc = main([
-        "-F", str(MOCK_FULLRUN),
-        "--age", "0.15",
-        "--abundances", "GASS",
+        "-F", str(MOCK_FULLRUN), "--age", "0.15", "--out", str(out_dir),
+    ])
+    assert rc == 0
+    deck_text = next(out_dir.glob("*.in")).read_text()
+    assert 'table star "<<<EDIT_ME>>>"' in deck_text
+
+
+def test_e2e_sb99_flag_overrides(tmp_path, capsys):
+    """--sb99 NAME drops NAME into the deck and suppresses the TODO line."""
+    out_dir = tmp_path / "out"
+    rc = main([
+        "-F", str(MOCK_FULLRUN), "--age", "0.15",
+        "--sb99", "starburst99_z020.mod",
         "--out", str(out_dir),
     ])
     assert rc == 0
     deck_text = next(out_dir.glob("*.in")).read_text()
-    assert "abundances GASS" in deck_text
+    assert 'table star "starburst99_z020.mod"' in deck_text
+    assert "<<<EDIT_ME>>>" not in deck_text
+    captured = capsys.readouterr()
+    assert "TODO" not in captured.out

@@ -44,10 +44,15 @@ from src._output.cloudy.snapshot_to_deck import (
 )
 
 
-TEMPLATE_DIR = Path(__file__).parent / "templates"
-DEFAULT_TEMPLATE = TEMPLATE_DIR / "trinity_cloudy.in"
+TEMPLATE_DIR = Path(__file__).parent
+DEFAULT_TEMPLATE = TEMPLATE_DIR / "trinity2cloudy.in_template"
 DEFAULT_LINELIST = TEMPLATE_DIR / "trinity_linelist.dat"
-LINELIST_FILENAME = "trinity_linelist.dat"   # the name embedded into the deck
+LINELIST_FILENAME = "trinity_linelist.dat"   # the name embedded in the deck
+
+# The string substituted for {{SB99_MOD}} when the user doesn't pass --sb99.
+# The user must replace this in the deck before running CLOUDY (CLOUDY will
+# fail loudly on an unknown atmosphere grid name, which is the safe failure).
+DEFAULT_SB99_SENTINEL = "<<<EDIT_ME>>>"
 
 # A {{KEY}} placeholder. Word-boundary match means <<<EDIT_ME>>> is invisible
 # to the renderer (passes through unchanged).
@@ -98,9 +103,16 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
     parser.add_argument("--dry-run", action="store_true",
                         help="print rendered deck to stdout; no writes")
 
-    parser.add_argument("--abundances", type=str, default="HII region",
-                        help='CLOUDY abundances directive value '
-                             '(default "HII region")')
+    parser.add_argument("--abundances", type=str, default=None,
+                        dest="abundances",
+                        help="(reserved, currently unused — abundance directive "
+                             "is hard-coded in the bundled template)")
+    parser.add_argument("--sb99", type=str, default=DEFAULT_SB99_SENTINEL,
+                        dest="sb99_mod",
+                        help="value substituted for {{SB99_MOD}} in the deck "
+                             "(the CLOUDY-compiled atmosphere grid name). "
+                             f"Default {DEFAULT_SB99_SENTINEL!r}; the deck "
+                             f"must be hand-edited before running CLOUDY.")
     parser.add_argument("--radius-out", type=float, default=None,
                         dest="radius_out_pc", metavar="PC",
                         help="extend dlaw past rShell into ambient ISM "
@@ -323,8 +335,7 @@ def main(argv: list[str] | None = None) -> int:
             )
             # Inject the CLI-derived substitution keys
             values["PREFIX"] = prefix
-            values["ABUNDANCES"] = args.abundances
-            values["LINELIST_FILENAME"] = LINELIST_FILENAME
+            values["SB99_MOD"] = args.sb99_mod
 
             deck_text = render_template(template_text, values)
 
@@ -413,11 +424,15 @@ def _write_manifest(out_dir: Path, records: list[dict[str, Any]]) -> None:
 # Closing summary (printed to stdout)
 # --------------------------------------------------------------------------- #
 
-_TODO = (
-    "TODO:  edit <<<EDIT_ME>>> in the `table star` line — replace with the "
-    "name of your CLOUDY-compiled SB99 atmosphere grid before "
-    "`cloudy -r <prefix>`."
-)
+def _todo_line(args: argparse.Namespace) -> str | None:
+    """Closing-summary TODO printed only when the SB99 sentinel is in the deck."""
+    if args.sb99_mod == DEFAULT_SB99_SENTINEL:
+        return (
+            f"TODO:  edit {DEFAULT_SB99_SENTINEL} in the `table star` line — "
+            f"replace with the name of your CLOUDY-compiled SB99 atmosphere "
+            f"grid before `cloudy -r <prefix>`."
+        )
+    return None
 
 
 def _print_summary(
@@ -426,6 +441,7 @@ def _print_summary(
     args: argparse.Namespace,
     out_dir: Path,
 ) -> None:
+    todo = _todo_line(args)
     if len(records) == 1:
         r = records[0]
         if r["status"] == "ok":
@@ -444,7 +460,8 @@ def _print_summary(
             print(f"WROTE: {out_dir / r['deck']}")
             print(f"       {out_dir / r['dlaw_sidecar']}")
             print(f"       {out_dir / LINELIST_FILENAME}")
-            print(_TODO)
+            if todo:
+                print(todo)
         else:
             print(f"FAILED to convert snapshot {r['index']}: {r['reason']}")
     else:
@@ -453,7 +470,8 @@ def _print_summary(
         print(f"Converted {ok} snapshots ({skipped} skipped).")
         print(f"Output:   {out_dir}")
         print(f"Manifest: {out_dir / 'manifest.json'}")
-        print(_TODO)
+        if todo:
+            print(todo)
 
 
 # --------------------------------------------------------------------------- #
