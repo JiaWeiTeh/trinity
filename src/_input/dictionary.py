@@ -464,7 +464,7 @@ class DescribedDict(dict):
                 and self._impl_r2_logged < 2):
             import logging
             metrics = _simplify_error(x_arr, y_arr, x_out, y_out)
-            logging.getLogger(__name__).info(
+            logging.getLogger(__name__).debug(
                 f"simplify[{keyname}]: R²={metrics['r_squared']:.4f} "
                 f"(N_in={metrics['n_orig']} → N_out={metrics['n_simp']})"
             )
