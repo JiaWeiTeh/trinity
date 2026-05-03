@@ -45,8 +45,10 @@ INCLUDE_ALL_FORCE = True     # Show wind/SN overlays inside the ram band
 USE_LOG_X = False            # Use log scale for x-axis (time)
 SHOW_NOPHII = False          # When True, also emit a separate grid for _noPHII runs.
 
-# Folder-name suffixes appended by run.py when include_PHII = [True, False].
-YES_SUFFIX = "_yesPHII"
+# Folder-name suffix appended by run.py when include_PHII = False.
+# The "yes" side of include_PHII = [True, False] sweeps either has no
+# suffix or uses "_yesPHII"; both are kept by default. We only need to
+# match the negative case explicitly.
 NO_SUFFIX = "_noPHII"
 
 # Colors — centralised ChromaPalette (switch via set_palette or $TRINITY_PALETTE)
@@ -472,7 +474,8 @@ def _iter_grid_densities_phii(folder_path, *, phii_mode,
         raise ValueError(f"Unknown phii_mode: {phii_mode!r}")
 
     if not sim_files:
-        print(f"No {phii_mode}PHII simulation files found in {folder_path}")
+        label = "non-noPHII" if phii_mode == "yes" else "noPHII"
+        print(f"No {label} simulation files found in {folder_path}")
         return
 
     if ndens_filter:
@@ -480,11 +483,12 @@ def _iter_grid_densities_phii(folder_path, *, phii_mode,
     else:
         ndens_to_plot = get_unique_ndens(sim_files)
 
-    print(f"Found {len(sim_files)} simulations ({phii_mode}PHII)")
+    label = "non-noPHII" if phii_mode == "yes" else "noPHII"
+    print(f"Found {len(sim_files)} simulations ({label})")
     print(f"  Densities to plot: {ndens_to_plot}")
 
     for ndens in ndens_to_plot:
-        print(f"\nProcessing n={ndens} ({phii_mode}PHII)...")
+        print(f"\nProcessing n={ndens} ({label})...")
         organized = organize_simulations_for_grid(
             sim_files, ndens_filter=ndens,
             mCloud_filter=mCloud_filter, sfe_filter=sfe_filter,
