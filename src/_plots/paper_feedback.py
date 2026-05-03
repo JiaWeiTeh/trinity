@@ -24,10 +24,13 @@ import sys as _sys
 from pathlib import Path as _Path
 _sys.path.insert(0, str(_Path(__file__).parent.parent.parent))
 from src._plots.plot_base import FIG_DIR, smooth_1d, smooth_2d
-from src._output.trinity_reader import load_output, resolve_data_input
+from src._output.trinity_reader import (
+    load_output, resolve_data_input,
+    find_all_simulations, organize_simulations_for_grid, get_unique_ndens,
+)
 from src._plots.plot_markers import add_plot_markers, get_marker_legend_handles
 from src._plots.grid_template import (
-    build_param_tag, iter_grid_densities, mark_missing_cell,
+    build_param_tag, mark_missing_cell,
     attach_grid_legend, save_grid_figure, set_mcloud_ylabel, _sfe_title,
 )
 
@@ -40,6 +43,13 @@ SHOW_RCLOUD   = False
 SHOW_COLLAPSE = False
 INCLUDE_ALL_FORCE = True     # Show wind/SN overlays inside the ram band
 USE_LOG_X = False            # Use log scale for x-axis (time)
+SHOW_NOPHII = False          # When True, also emit a separate grid for _noPHII runs.
+
+# Folder-name suffix appended by run.py when include_PHII = False.
+# The "yes" side of include_PHII = [True, False] sweeps either has no
+# suffix or uses "_yesPHII"; both are kept by default. We only need to
+# match the negative case explicitly.
+NO_SUFFIX = "_noPHII"
 
 # Colors — centralised ChromaPalette (switch via set_palette or $TRINITY_PALETTE)
 from src._plots.force_colors import C, FORCE_FIELDS_BASE  # noqa: E402
@@ -435,35 +445,75 @@ def _draw_hatched_overlay(ax, t_seg, db, y_wind_top, y_sn_top, y_hii_top):
 
 # ---------------- main loop ----------------
 
-def plot_grid(folder_path, output_dir=None, ndens_filter=None,
-              mCloud_filter=None, sfe_filter=None):
+def _iter_grid_densities_phii(folder_path, *, phii_mode,
+                              ndens_filter=None,
+                              mCloud_filter=None, sfe_filter=None):
+    """Like ``iter_grid_densities`` but with PHII suffix filtering.
+
+    ``phii_mode`` selects which variant to keep:
+    - ``"yes"`` keeps folders ending in ``_yesPHII`` plus any folder with
+      no PHII suffix (the default behaviour for paper figures).
+    - ``"no"`` keeps only folders ending in ``_noPHII``.
+
+    The ``(mCloud, sfe)`` keys collide between the two variants in the
+    same sweep folder, so filtering at the file-list level (before
+    ``organize_simulations_for_grid``) is required to avoid one variant
+    silently overwriting the other in the grid dict.
     """
-    Plot grid of feedback fractions from simulations in a folder.
+    folder_path = Path(folder_path)
+    folder_name = folder_path.name
 
-    Dynamically discovers simulations from the folder, organizes them into
-    a grid by mCloud (rows) and SFE (columns).
+    sim_files = find_all_simulations(folder_path)
+    if phii_mode == "yes":
+        sim_files = [p for p in sim_files
+                     if not p.parent.name.endswith(NO_SUFFIX)]
+    elif phii_mode == "no":
+        sim_files = [p for p in sim_files
+                     if p.parent.name.endswith(NO_SUFFIX)]
+    else:
+        raise ValueError(f"Unknown phii_mode: {phii_mode!r}")
 
-    Parameters
-    ----------
-    folder_path : str or Path
-        Path to folder containing simulation subfolders.
-    output_dir : str or Path, optional
-        Directory to save figure (default: FIG_DIR)
-    ndens_filter : str, optional
-        Filter simulations by density (e.g., "1e4"). If None, creates one
-        PDF per unique density found.
-    mCloud_filter : list of str, optional
-        Filter simulations by cloud mass (e.g., ["1e6", "1e7"]).
-    sfe_filter : list of str, optional
-        Filter simulations by SFE (e.g., ["001", "010"]).
+    if not sim_files:
+        label = "non-noPHII" if phii_mode == "yes" else "noPHII"
+        print(f"No {label} simulation files found in {folder_path}")
+        return
 
-    Notes
-    -----
-    Folder names must follow the pattern: {mCloud}_sfe{sfe}_n{ndens}
-    Examples: "1e7_sfe020_n1e4", "5e6_sfe010_n1e3"
-    """
-    for ndens, mCloud_list, sfe_list, grid, folder_name in iter_grid_densities(
-            folder_path, ndens_filter=ndens_filter,
+    if ndens_filter:
+        ndens_to_plot = [ndens_filter]
+    else:
+        ndens_to_plot = get_unique_ndens(sim_files)
+
+    label = "non-noPHII" if phii_mode == "yes" else "noPHII"
+    print(f"Found {len(sim_files)} simulations ({label})")
+    print(f"  Densities to plot: {ndens_to_plot}")
+
+    for ndens in ndens_to_plot:
+        print(f"\nProcessing n={ndens} ({label})...")
+        organized = organize_simulations_for_grid(
+            sim_files, ndens_filter=ndens,
+            mCloud_filter=mCloud_filter, sfe_filter=sfe_filter,
+        )
+        mCloud_list = organized["mCloud_list"]
+        sfe_list = organized["sfe_list"]
+        grid = organized["grid"]
+
+        if not mCloud_list or not sfe_list:
+            print(f"  Could not organize simulations into grid for n={ndens}")
+            continue
+
+        print(f"  mCloud: {mCloud_list}")
+        print(f"  SFE: {sfe_list}")
+
+        yield ndens, mCloud_list, sfe_list, grid, folder_name
+
+
+def _plot_grid_one_variant(folder_path, output_dir, *, phii_mode,
+                           ndens_filter, mCloud_filter, sfe_filter,
+                           file_prefix):
+    """Render the (mCloud × SFE) grid for a single PHII variant."""
+    for ndens, mCloud_list, sfe_list, grid, folder_name in _iter_grid_densities_phii(
+            folder_path, phii_mode=phii_mode,
+            ndens_filter=ndens_filter,
             mCloud_filter=mCloud_filter, sfe_filter=sfe_filter):
 
         nrows, ncols = len(mCloud_list), len(sfe_list)
@@ -532,9 +582,60 @@ def plot_grid(folder_path, output_dir=None, ndens_filter=None,
             suptitle=False,  # intentionally hidden in paper_feedback
         )
         save_grid_figure(fig, folder_name=folder_name,
-                         file_prefix="feedback", param_tag=param_tag,
+                         file_prefix=file_prefix, param_tag=param_tag,
                          output_dir=output_dir, save_pdf=SAVE_PDF)
         plt.close(fig)
+
+
+def plot_grid(folder_path, output_dir=None, ndens_filter=None,
+              mCloud_filter=None, sfe_filter=None):
+    """
+    Plot grid of feedback fractions from simulations in a folder.
+
+    Dynamically discovers simulations from the folder, organizes them into
+    a grid by mCloud (rows) and SFE (columns).
+
+    By default, simulation folders ending in ``_noPHII`` are ignored;
+    only ``_yesPHII`` (and untagged) runs are plotted into a single
+    ``feedback_*.pdf`` per density. When the module-level ``SHOW_NOPHII``
+    flag is enabled (via ``--show-noPHII``), an additional
+    ``feedback_noPHII_*.pdf`` is emitted alongside, holding the noPHII
+    variants only.
+
+    Parameters
+    ----------
+    folder_path : str or Path
+        Path to folder containing simulation subfolders.
+    output_dir : str or Path, optional
+        Directory to save figure (default: FIG_DIR)
+    ndens_filter : str, optional
+        Filter simulations by density (e.g., "1e4"). If None, creates one
+        PDF per unique density found.
+    mCloud_filter : list of str, optional
+        Filter simulations by cloud mass (e.g., ["1e6", "1e7"]).
+    sfe_filter : list of str, optional
+        Filter simulations by SFE (e.g., ["001", "010"]).
+
+    Notes
+    -----
+    Folder names must follow the pattern: {mCloud}_sfe{sfe}_n{ndens}
+    Examples: "1e7_sfe020_n1e4", "5e6_sfe010_n1e3"
+    """
+    _plot_grid_one_variant(
+        folder_path, output_dir,
+        phii_mode="yes",
+        ndens_filter=ndens_filter,
+        mCloud_filter=mCloud_filter, sfe_filter=sfe_filter,
+        file_prefix="feedback",
+    )
+    if SHOW_NOPHII:
+        _plot_grid_one_variant(
+            folder_path, output_dir,
+            phii_mode="no",
+            ndens_filter=ndens_filter,
+            mCloud_filter=mCloud_filter, sfe_filter=sfe_filter,
+            file_prefix="feedback_noPHII",
+        )
 
 
 # Backwards compatibility alias
@@ -542,11 +643,32 @@ plot_folder_grid = plot_grid
 
 
 if __name__ == "__main__":
-    from src._plots.cli import dispatch, marker_pre_dispatch
+    from src._plots.cli import build_parser, dispatch, marker_pre_dispatch
+
+    parser = build_parser(
+        "paper_feedback.py",
+        "Plot TRINITY feedback force fractions",
+    )
+    parser.add_argument(
+        "--show-noPHII",
+        action="store_true",
+        default=False,
+        help=(
+            "Also emit a separate grid for simulation folders ending in "
+            "'_noPHII'. By default these are ignored; only '_yesPHII' (and "
+            "untagged) runs are plotted."
+        ),
+    )
+
+    _apply_markers = marker_pre_dispatch(globals())
+
+    def _pre(args):
+        _apply_markers(args)
+        globals()['SHOW_NOPHII'] = bool(getattr(args, 'show_noPHII', False))
+
     dispatch(
-        script_name="paper_feedback.py",
-        description="Plot TRINITY feedback force fractions",
+        parser=parser,
         plot_from_path_fn=plot_from_path,
         plot_grid_fn=plot_grid,
-        pre_dispatch_fn=marker_pre_dispatch(globals()),
+        pre_dispatch_fn=_pre,
     )
