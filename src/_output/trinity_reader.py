@@ -154,9 +154,9 @@ PARAM_DOCS = {
     'cool_delta': 'Temperature evolution parameter δ',
 
     # Feedback luminosities
-    'Lmech_W': 'Mechanical luminosity from winds [erg/Myr]',
-    'Lmech_SN': 'Mechanical luminosity from supernovae [erg/Myr]',
-    'Lmech_total': 'Total mechanical luminosity [erg/Myr]',
+    'Lmech_W': 'Mechanical luminosity from winds [erg/s]',
+    'Lmech_SN': 'Mechanical luminosity from supernovae [erg/s]',
+    'Lmech_total': 'Total mechanical luminosity [erg/s]',
     'Lbol': 'Bolometric luminosity [erg/s]',
     'Li': 'Ionizing luminosity [erg/s]',
     'Ln': 'Non-ionizing luminosity [erg/s]',
@@ -205,13 +205,13 @@ PARAM_DOCS = {
     'shell_fIonisedDust': 'Ionized dust fraction',
 
     # Bubble luminosities
-    'bubble_LTotal': 'Total bubble cooling luminosity [erg/Myr]',
+    'bubble_LTotal': 'Total bubble cooling luminosity [erg/s]',
     'bubble_L1Bubble': 'Bubble cooling component 1',
     'bubble_L2Conduction': 'Conductive cooling component',
     'bubble_L3Intermediate': 'Intermediate cooling component',
-    'bubble_Leak': 'Energy leak from bubble [erg/Myr]',
-    'bubble_Lgain': 'Energy gain in bubble [erg/Myr]',
-    'bubble_Lloss': 'Energy loss from bubble [erg/Myr]',
+    'bubble_Leak': 'Energy leak from bubble [erg/s]',
+    'bubble_Lgain': 'Energy gain in bubble [erg/s]',
+    'bubble_Lloss': 'Energy loss from bubble [erg/s]',
 
     # Bubble structure
     'bubble_mass': 'Bubble mass [Msun]',
