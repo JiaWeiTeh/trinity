@@ -48,8 +48,11 @@ SHOW_PHASE = False
 SHOW_RCLOUD = False
 SHOW_RCLOUD_H = False
 SHOW_COLLAPSE = False
-LOGLOG = False             # log-log axes for the R(t) panels
-WEAVER_ANCHOR_MYR = 0.01  # anchor Weaver line to TRINITY R2 at this time
+LOG_AXIS = "none"          # one of {"none", "x", "y", "both"} — log scale for R(t) panels
+
+# Fallback anchor time used only if the TRINITY run has no 'energy' phase
+# snapshots (e.g. the run terminated before any energy-phase output).
+ANCHOR_FALLBACK_MYR = 0.01
 
 # Styling — TRINITY is the hero curve (black, thick, white halo);
 # WARPFIELD is the comparison curve (faded red); analytic scalings are
@@ -101,50 +104,24 @@ def load_run_R2(data_path):
 # ----------------------------------------------------------------
 # Anchored power-law references
 # ----------------------------------------------------------------
-def compute_weaver_anchored(t, R2, t_anchor=WEAVER_ANCHOR_MYR, exponent=3.0/5.0):
-    """R ∝ t^exponent anchored to R2 at t_anchor.
+def energy_phase_midpoint(t, phase, fallback=ANCHOR_FALLBACK_MYR):
+    """Return ~half the duration of the TRINITY 'energy' phase.
 
-    Default exponent 3/5 is the energy-driven Weaver solution for uniform density.
-    For non-uniform density with power-law exponent α_ρ, use
-    exponent = 3 / (5 - |α_ρ|).
+    All three scaling relations (Weaver, Spitzer, momentum) are anchored
+    at this single early time so the comparison is internally consistent
+    and lies inside the regime where the energy-driven derivation is valid.
+    Falls back to ``fallback`` if no 'energy' snapshots exist.
     """
-    valid = np.isfinite(R2) & (R2 > 0) & np.isfinite(t) & (t > 0)
-    if not np.any(valid):
-        return np.full_like(t, np.nan)
-
-    t_v, R2_v = t[valid], R2[valid]
-    idx = np.argmin(np.abs(t_v - t_anchor))
-    t_ref, R_ref = t_v[idx], R2_v[idx]
-
-    return np.where(t > 0, R_ref * (t / t_ref) ** exponent, np.nan)
+    energy_idx = np.where(np.asarray(phase) == 'energy')[0]
+    if len(energy_idx) == 0:
+        return fallback
+    t_start = t[energy_idx[0]]
+    t_end = t[energy_idx[-1]]
+    return 0.5 * (t_start + t_end)
 
 
-def compute_momentum_driven_anchored(t, R2, t_anchor=WEAVER_ANCHOR_MYR, exponent=0.5):
-    """R ∝ t^exponent anchored to R2 at t_anchor.
-
-    Default exponent 1/2 is the momentum-driven solution for uniform density.
-    For non-uniform density with power-law exponent α_ρ, use
-    exponent = 2 / (4 - |α_ρ|).
-    """
-    valid = np.isfinite(R2) & (R2 > 0) & np.isfinite(t) & (t > 0)
-    if not np.any(valid):
-        return np.full_like(t, np.nan)
-
-    t_v, R2_v = t[valid], R2[valid]
-    idx = np.argmin(np.abs(t_v - t_anchor))
-    t_ref, R_ref = t_v[idx], R2_v[idx]
-
-    return np.where(t > 0, R_ref * (t / t_ref) ** exponent, np.nan)
-
-
-def compute_spitzer_anchored(t, R2, t_anchor=WEAVER_ANCHOR_MYR, exponent=4.0/7.0):
-    """R ∝ t^exponent anchored to R2 at t_anchor.
-
-    Default exponent 4/7 is the Spitzer (1978) D-type HII-region expansion
-    in a uniform medium: pressure of the photoionised gas drives the shocked
-    shell outward.  For a power-law density profile n ∝ r^{-|α_ρ|}, the
-    generalisation is exponent = 4 / (7 - 2|α_ρ|).
-    """
+def compute_anchored_power_law(t, R2, t_anchor, exponent):
+    """R ∝ t^exponent anchored to R2 at the snapshot closest to t_anchor."""
     valid = np.isfinite(R2) & (R2 > 0) & np.isfinite(t) & (t > 0)
     if not np.any(valid):
         return np.full_like(t, np.nan)
@@ -190,41 +167,42 @@ def plot_cell(ax, data_trinity, data_warpfield):
     # Density profile exponent (for scaling exponents)
     alpha_rho = data_trinity.get('densPL_alpha') or 0
 
-    # --- Weaver: pure t^{3/(5-|α|)} power-law anchored to TRINITY at early time
+    # All three scalings share a single early-time anchor: half the duration
+    # of the TRINITY energy phase.  This keeps the reference lines internally
+    # consistent and pins them inside the regime where the energy-driven
+    # derivation is valid (rather than projecting forward from a point that
+    # has already left the wind-bubble phase).
+    t_anchor = energy_phase_midpoint(t_T, data_trinity['phase'])
+
+    # --- Weaver (energy-driven wind): R ∝ t^{3/(5-|α|)}
     exp_weaver = 3.0 / (5.0 - abs(alpha_rho))
-    R_weaver = compute_weaver_anchored(t_T, R2_T, exponent=exp_weaver)
+    R_weaver = compute_anchored_power_law(t_T, R2_T, t_anchor, exp_weaver)
     ax.plot(t_T, R_weaver, color=COLOR_WEAVER,
             lw=LW_SCALING, ls='--', alpha=ALPHA_SCALING, zorder=2)
 
-    # --- Momentum-driven: diagnostic slope anchored at momentum phase ---
-    # Find the start of the momentum phase from the phase array
-    phase = data_trinity['phase']
-    exp_mom = 2.0 / (4.0 - abs(alpha_rho))
-    mom_idx = np.where(phase == 'momentum')[0]
-
-    if len(mom_idx) > 0:
-        t_mom_start = t_T[mom_idx[0]]
-        R_mom = compute_momentum_driven_anchored(
-            t_T, R2_T, t_anchor=t_mom_start, exponent=exp_mom,
-        )
-        ax.plot(t_T, R_mom, color=COLOR_MOMENTUM,
-                lw=LW_SCALING, ls=':', alpha=ALPHA_SCALING, zorder=2)
-
-    # --- Spitzer-like: D-type HII expansion R ∝ t^{4/(7-2|α|)} anchored at early time
+    # --- Spitzer (D-type HII expansion): R ∝ t^{4/(7-2|α|)}
     exp_spitzer = 4.0 / (7.0 - 2.0 * abs(alpha_rho))
-    R_spitzer = compute_spitzer_anchored(t_T, R2_T, exponent=exp_spitzer)
+    R_spitzer = compute_anchored_power_law(t_T, R2_T, t_anchor, exp_spitzer)
     ax.plot(t_T, R_spitzer, color=COLOR_SPITZER,
             lw=LW_SCALING, ls='-.', alpha=ALPHA_SCALING, zorder=2)
 
-    if LOGLOG:
+    # --- Momentum-driven: R ∝ t^{2/(4-|α|)}
+    exp_mom = 2.0 / (4.0 - abs(alpha_rho))
+    R_mom = compute_anchored_power_law(t_T, R2_T, t_anchor, exp_mom)
+    ax.plot(t_T, R_mom, color=COLOR_MOMENTUM,
+            lw=LW_SCALING, ls=':', alpha=ALPHA_SCALING, zorder=2)
+
+    if LOG_AXIS in ("x", "both"):
         # Anchor x-axis to first positive time so log scale is well-defined.
         t_pos = t_T[t_T > 0]
         if len(t_pos) > 0:
             ax.set_xlim(t_pos.min(), t_T.max())
         ax.set_xscale('log')
-        ax.set_yscale('log')
     else:
         ax.set_xlim(t_T.min(), t_T.max())
+
+    if LOG_AXIS in ("y", "both"):
+        ax.set_yscale('log')
 
 
 # ----------------------------------------------------------------
@@ -439,8 +417,9 @@ WARPFIELD-like). Runs are paired automatically by their base name.
     parser.add_argument('--show-rcloud-horizontal', action='store_true', default=False)
     parser.add_argument('--show-collapse', action='store_true', default=False)
     parser.add_argument('--show-all-markers', action='store_true', default=False)
-    parser.add_argument('--loglog', action='store_true', default=False,
-                        help='Plot R(t) on log-log axes')
+    parser.add_argument('--log-axis', choices=['x', 'y', 'both', 'none'],
+                        default='none',
+                        help='Set log scale on the chosen axis (default: none)')
 
     args = parser.parse_args()
 
@@ -451,7 +430,7 @@ WARPFIELD-like). Runs are paired automatically by their base name.
     globals()['SHOW_RCLOUD'] = _marker_flags['show_rcloud']
     globals()['SHOW_RCLOUD_H'] = _marker_flags['show_rcloud_horizontal']
     globals()['SHOW_COLLAPSE'] = _marker_flags['show_collapse']
-    globals()['LOGLOG'] = args.loglog
+    globals()['LOG_AXIS'] = args.log_axis
 
     plot_comparison_grid(
         args.folder,
