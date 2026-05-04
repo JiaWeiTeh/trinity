@@ -28,6 +28,7 @@ from src._plots.grid_template import (
     iter_grid_densities,
     attach_grid_legend,
     save_grid_figure,
+    phii_file_prefix,
 )
 from src._functions.unit_conversions import CGS, INV_CONV
 import src.cloud_properties.density_profile as density_profile
@@ -455,15 +456,18 @@ def _build_legend_handles():
 # ======================================================================
 
 def plot_grid(folder_path, output_dir=None, ndens_filter=None,
-              mCloud_filter=None, sfe_filter=None):
+              mCloud_filter=None, sfe_filter=None, phii_mode="yes"):
     """
     Plot grid of pressure + n_IF ratio panels from simulations in a folder.
 
     Each grid cell contains a two-row subplot (top = pressures, bottom = ratio).
+    ``phii_mode`` controls PHII suffix filtering (see
+    ``grid_template.filter_sim_files_by_phii``).
     """
     for ndens, mCloud_list, sfe_list, grid, folder_name in iter_grid_densities(
             folder_path, ndens_filter=ndens_filter,
-            mCloud_filter=mCloud_filter, sfe_filter=sfe_filter):
+            mCloud_filter=mCloud_filter, sfe_filter=sfe_filter,
+            phii_mode=phii_mode):
 
         nrows, ncols = len(mCloud_list), len(sfe_list)
 
@@ -557,7 +561,8 @@ def plot_grid(folder_path, output_dir=None, ndens_filter=None,
 
         # --- Save ---
         save_grid_figure(
-            fig, folder_name=folder_name, file_prefix="pressureZeta",
+            fig, folder_name=folder_name,
+            file_prefix=phii_file_prefix("pressureZeta", phii_mode),
             param_tag=param_tag, output_dir=output_dir, save_pdf=SAVE_PDF,
         )
         plt.close(fig)

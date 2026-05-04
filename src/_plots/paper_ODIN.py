@@ -26,6 +26,7 @@ import sys as _sys
 from pathlib import Path as _Path
 _sys.path.insert(0, str(_Path(__file__).parent.parent.parent))
 from src._plots.plot_base import FIG_DIR
+from src._plots.grid_template import filter_sim_files_by_phii
 from src._output.trinity_reader import (
     load_output, find_all_simulations,
     parse_simulation_params, info_simulations
@@ -115,6 +116,9 @@ class AnalysisConfig:
     # Combine multiple nCore values on same plot
     combine_nCore: bool = False
 
+    # PHII suffix variant ("yes" keeps yesPHII + untagged; "no" keeps only noPHII)
+    phii_mode: str = "yes"
+
     # Observational constraints
     obs: ObservationalConstraints = field(default_factory=ObservationalConstraints)
 
@@ -136,6 +140,8 @@ class AnalysisConfig:
             suffix += "_showall"
         if self.combine_nCore:
             suffix += "_combined"
+        if self.phii_mode == "no":
+            suffix += "_noPHII"
         return suffix
 
 
@@ -485,9 +491,11 @@ def load_sweep_results(folder_path: Path, config: AnalysisConfig) -> List[Simula
     """
     folder_path = Path(folder_path)
     sim_files = find_all_simulations(folder_path)
+    sim_files = filter_sim_files_by_phii(sim_files, config.phii_mode)
 
     if not sim_files:
-        print(f"No simulation files found in {folder_path}")
+        label = "non-noPHII" if config.phii_mode == "yes" else "noPHII"
+        print(f"No {label} simulation files found in {folder_path}")
         return []
 
     results = []
@@ -1076,6 +1084,10 @@ Shell Mass (shown in plots):
     marker_grp.add_argument('--show-all-markers', action='store_true', default=False,
                             help='Enable all diagnostic markers at once')
 
+    parser.add_argument('--show-noPHII', action='store_true', default=False,
+                        dest='show_noPHII',
+                        help="Also run on '_noPHII' folders (separate output).")
+
     args = parser.parse_args()
 
     # Handle --info mode
@@ -1101,19 +1113,6 @@ Shell Mass (shown in plots):
         Mstar_obs=args.Mstar, Mstar_err=args.Mstar_err,
     )
 
-    config = AnalysisConfig(
-        constrain_v=not args.no_v,
-        constrain_M_shell=args.include_mshell,
-        constrain_t=not args.no_t,
-        constrain_R=not args.no_R,
-        constrain_Mstar=not args.no_Mstar,
-        nCore_filter=args.nCore,
-        mass_tracer=args.mass_tracer,
-        show_all=args.showall,
-        combine_nCore=args.combine_nCore,
-        obs=obs,
-    )
-
     # Apply marker flags
     _all = args.show_all_markers
     SHOW_PHASE    = _all or args.show_phase
@@ -1121,4 +1120,20 @@ Shell Mass (shown in plots):
     SHOW_RCLOUD_H = _all or args.show_rcloud_horizontal
     SHOW_COLLAPSE = _all or args.show_collapse
 
-    main(args.folder, args.output_dir, config)
+    modes = ["yes", "no"] if args.show_noPHII else ["yes"]
+    for _mode in modes:
+        config = AnalysisConfig(
+            constrain_v=not args.no_v,
+            constrain_M_shell=args.include_mshell,
+            constrain_t=not args.no_t,
+            constrain_R=not args.no_R,
+            constrain_Mstar=not args.no_Mstar,
+            nCore_filter=args.nCore,
+            mass_tracer=args.mass_tracer,
+            show_all=args.showall,
+            combine_nCore=args.combine_nCore,
+            phii_mode=_mode,
+            obs=obs,
+        )
+
+        main(args.folder, args.output_dir, config)

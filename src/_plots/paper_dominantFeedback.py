@@ -53,6 +53,7 @@ from src._output.trinity_reader import (
     load_output, find_all_simulations, organize_simulations_for_grid, get_unique_ndens,
     info_simulations
 )
+from src._plots.grid_template import filter_sim_files_by_phii, phii_file_prefix
 
 
 # =============================================================================
@@ -671,7 +672,8 @@ def create_legend():
 # =============================================================================
 
 def plot_grid(folder_path, target_times=None, output_dir=None, ndens_filter=None,
-              smooth='none', axis_mode='discrete', mCloud_filter=None, sfe_filter=None):
+              smooth='none', axis_mode='discrete', mCloud_filter=None, sfe_filter=None,
+              phii_mode="yes"):
     """
     Plot dominant feedback grid from simulations in a folder.
 
@@ -706,8 +708,10 @@ def plot_grid(folder_path, target_times=None, output_dir=None, ndens_filter=None
 
     # Find all simulations
     sim_files = find_all_simulations(folder_path)
+    sim_files = filter_sim_files_by_phii(sim_files, phii_mode)
     if not sim_files:
-        print(f"No simulation files found in {folder_path}")
+        label = "non-noPHII" if phii_mode == "yes" else "noPHII"
+        print(f"No {label} simulation files found in {folder_path}")
         return
 
     # Determine which densities to plot
@@ -832,7 +836,7 @@ def plot_grid(folder_path, target_times=None, output_dir=None, ndens_filter=None
         save_dir.mkdir(parents=True, exist_ok=True)
 
         filename = build_filename(
-            'dominantFeedback',
+            phii_file_prefix('dominantFeedback', phii_mode),
             mCloud=mCloud_list,
             sfe=sfe_list,
             nCore=ndens,
@@ -854,7 +858,7 @@ def plot_grid(folder_path, target_times=None, output_dir=None, ndens_filter=None
 def make_movie(folder_path, output_dir=None, ndens_filter=None,
                smooth='none', axis_mode='discrete',
                t_start=0.0, t_end=5.0, dt=0.05, fps=10,
-               mCloud_filter=None, sfe_filter=None):
+               mCloud_filter=None, sfe_filter=None, phii_mode="yes"):
     """Create an animated GIF showing the evolution of dominant feedback over time."""
     try:
         from PIL import Image
@@ -868,8 +872,10 @@ def make_movie(folder_path, output_dir=None, ndens_filter=None,
 
     # Find all simulations
     sim_files = find_all_simulations(folder_path)
+    sim_files = filter_sim_files_by_phii(sim_files, phii_mode)
     if not sim_files:
-        print(f"No simulation files found in {folder_path}")
+        label = "non-noPHII" if phii_mode == "yes" else "noPHII"
+        print(f"No {label} simulation files found in {folder_path}")
         return
 
     # Determine which densities to plot
@@ -983,7 +989,7 @@ def make_movie(folder_path, output_dir=None, ndens_filter=None,
             save_dir.mkdir(parents=True, exist_ok=True)
 
             filename = build_filename(
-                'dominantFeedback_movie',
+                phii_file_prefix('dominantFeedback_movie', phii_mode),
                 nCore=ndens,
                 axis_mode=axis_mode,
                 smooth=smooth if axis_mode == 'continuous' else None,
@@ -1119,6 +1125,10 @@ others that have ended persist their final dominant feedback.
         '--palette', choices=get_palette_names(), default=None,
         help='Colour palette for force plots (default: vibrance).'
     )
+    parser.add_argument(
+        '--show-noPHII', action='store_true', default=False, dest='show_noPHII',
+        help="Also emit a separate output for '_noPHII' folders.",
+    )
 
     args = parser.parse_args()
 
@@ -1135,28 +1145,33 @@ others that have ended persist their final dominant feedback.
         print(f"  mCloud values: {info['mCloud']}")
         print(f"  SFE values: {info['sfe']}")
         print(f"  nCore values: {info['ndens']}")
-    elif args.movie:
-        make_movie(
-            args.folder,
-            output_dir=args.output_dir,
-            ndens_filter=args.nCore,
-            smooth=args.smooth,
-            axis_mode=args.axis_mode,
-            t_start=args.t_start,
-            t_end=args.t_end,
-            dt=args.dt,
-            fps=args.fps,
-            mCloud_filter=args.mCloud,
-            sfe_filter=args.sfe
-        )
     else:
-        plot_grid(
-            args.folder,
-            target_times=args.times,
-            output_dir=args.output_dir,
-            ndens_filter=args.nCore,
-            smooth=args.smooth,
-            axis_mode=args.axis_mode,
-            mCloud_filter=args.mCloud,
-            sfe_filter=args.sfe
-        )
+        modes = ["yes", "no"] if args.show_noPHII else ["yes"]
+        for _mode in modes:
+            if args.movie:
+                make_movie(
+                    args.folder,
+                    output_dir=args.output_dir,
+                    ndens_filter=args.nCore,
+                    smooth=args.smooth,
+                    axis_mode=args.axis_mode,
+                    t_start=args.t_start,
+                    t_end=args.t_end,
+                    dt=args.dt,
+                    fps=args.fps,
+                    mCloud_filter=args.mCloud,
+                    sfe_filter=args.sfe,
+                    phii_mode=_mode,
+                )
+            else:
+                plot_grid(
+                    args.folder,
+                    target_times=args.times,
+                    output_dir=args.output_dir,
+                    ndens_filter=args.nCore,
+                    smooth=args.smooth,
+                    axis_mode=args.axis_mode,
+                    mCloud_filter=args.mCloud,
+                    sfe_filter=args.sfe,
+                    phii_mode=_mode,
+                )

@@ -276,6 +276,11 @@ def build_parser() -> argparse.ArgumentParser:
     markers.add_argument("--show-all-markers", action="store_true", default=False,
                          help="Enable all diagnostic markers at once.")
 
+    shared.add_argument("--show-noPHII", action="store_true", default=False,
+                        dest="show_noPHII",
+                        help="Forward --show-noPHII to every sub-script (also "
+                             "emit a separate output for '_noPHII' folders).")
+
     return parser
 
 
@@ -321,6 +326,8 @@ def main(argv: Optional[List[str]] = None) -> int:
             extra.append("--show-rcloud-horizontal")
         if args.show_collapse:
             extra.append("--show-collapse")
+    if args.show_noPHII:
+        extra.append("--show-noPHII")
 
     n_fail = run_scripts(
         folder=args.folder,

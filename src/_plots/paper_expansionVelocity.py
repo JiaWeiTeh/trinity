@@ -25,6 +25,7 @@ from src._plots.grid_template import (
     mark_missing_cell,
     attach_grid_legend,
     set_mcloud_ylabel,
+    phii_file_prefix,
 )
 
 print("...plotting velocity (v2) + radii (twin axis) grid")
@@ -272,7 +273,7 @@ def plot_from_path(data_input: str, output_dir: str = None):
 
 
 def plot_grid(folder_path, output_dir=None, ndens_filter=None,
-              mCloud_filter=None, sfe_filter=None):
+              mCloud_filter=None, sfe_filter=None, phii_mode="yes"):
     """
     Plot grid of expansion velocity from simulations in a folder.
 
@@ -285,10 +286,13 @@ def plot_grid(folder_path, output_dir=None, ndens_filter=None,
     ndens_filter : str, optional
         Filter simulations by density (e.g., "1e4"). If None, creates one
         PDF per unique density found.
+    phii_mode : {"yes", "no"}
+        PHII suffix variant to plot.  See ``grid_template.filter_sim_files_by_phii``.
     """
     for ndens, mCloud_list, sfe_list, grid, folder_name in iter_grid_densities(
             folder_path, ndens_filter=ndens_filter,
-            mCloud_filter=mCloud_filter, sfe_filter=sfe_filter):
+            mCloud_filter=mCloud_filter, sfe_filter=sfe_filter,
+            phii_mode=phii_mode):
 
         nrows, ncols = len(mCloud_list), len(sfe_list)
         fig, axes = plt.subplots(
@@ -367,7 +371,7 @@ def plot_grid(folder_path, output_dir=None, ndens_filter=None,
         # Save with pad_inches=0.15 (unique to this script — keep inline).
         fig_dir = Path(output_dir) if output_dir else FIG_DIR / folder_name
         fig_dir.mkdir(parents=True, exist_ok=True)
-        out_pdf = fig_dir / f"expansionVelocity_{param_tag}.pdf"
+        out_pdf = fig_dir / f"{phii_file_prefix('expansionVelocity', phii_mode)}_{param_tag}.pdf"
         fig.savefig(out_pdf, bbox_inches="tight", pad_inches=0.15)
         print(f"  Saved: {out_pdf}")
 

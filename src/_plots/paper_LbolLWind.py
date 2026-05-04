@@ -21,6 +21,7 @@ from src._plots.grid_template import (
     attach_grid_legend,
     save_grid_figure,
     set_mcloud_ylabel,
+    phii_file_prefix,
 )
 
 print("...plotting Qi(or Li) vs Lmech_total with ratio on twin axis")
@@ -221,7 +222,7 @@ def plot_from_path(data_input: str, output_dir: str = None):
 
 
 def plot_grid(folder_path, output_dir=None, ndens_filter=None,
-              mCloud_filter=None, sfe_filter=None):
+              mCloud_filter=None, sfe_filter=None, phii_mode="yes"):
     """
     Plot grid of luminosity comparison from simulations in a folder.
 
@@ -234,10 +235,13 @@ def plot_grid(folder_path, output_dir=None, ndens_filter=None,
     ndens_filter : str, optional
         Filter simulations by density (e.g., "1e4"). If None, creates one
         PDF per unique density found.
+    phii_mode : {"yes", "no"}
+        PHII suffix variant to plot.  See ``grid_template.filter_sim_files_by_phii``.
     """
     for ndens, mCloud_list, sfe_list, grid, folder_name in iter_grid_densities(
             folder_path, ndens_filter=ndens_filter,
-            mCloud_filter=mCloud_filter, sfe_filter=sfe_filter):
+            mCloud_filter=mCloud_filter, sfe_filter=sfe_filter,
+            phii_mode=phii_mode):
 
         nrows, ncols = len(mCloud_list), len(sfe_list)
         fig, axes = plt.subplots(
@@ -312,7 +316,8 @@ def plot_grid(folder_path, output_dir=None, ndens_filter=None,
         )
 
         save_grid_figure(
-            fig, folder_name=folder_name, file_prefix="LbolLWind",
+            fig, folder_name=folder_name,
+            file_prefix=phii_file_prefix("LbolLWind", phii_mode),
             param_tag=param_tag, output_dir=output_dir,
         )
         plt.close(fig)

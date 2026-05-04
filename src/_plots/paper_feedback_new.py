@@ -50,6 +50,7 @@ from src._plots.plot_markers import (  # noqa: E402
 from src._plots.grid_template import (  # noqa: E402
     build_param_tag, iter_grid_densities, mark_missing_cell,
     attach_grid_legend, save_grid_figure, set_mcloud_ylabel, _sfe_title,
+    phii_file_prefix,
 )
 
 
@@ -385,10 +386,12 @@ def plot_from_path(data_input, output_dir=None):
 
 # ---------------- grid entry ----------------
 def plot_grid(folder_path, output_dir=None,
-              ndens_filter=None, mCloud_filter=None, sfe_filter=None):
+              ndens_filter=None, mCloud_filter=None, sfe_filter=None,
+              phii_mode="yes"):
     for ndens, mCloud_list, sfe_list, grid, folder_name in iter_grid_densities(
             folder_path, ndens_filter=ndens_filter,
-            mCloud_filter=mCloud_filter, sfe_filter=sfe_filter):
+            mCloud_filter=mCloud_filter, sfe_filter=sfe_filter,
+            phii_mode=phii_mode):
 
         nrows, ncols = len(mCloud_list), len(sfe_list)
         fig, axes = plt.subplots(
@@ -446,7 +449,8 @@ def plot_grid(folder_path, output_dir=None,
         )
         save_grid_figure(
             fig, folder_name=folder_name,
-            file_prefix="feedback_new", param_tag=param_tag,
+            file_prefix=phii_file_prefix("feedback_new", phii_mode),
+            param_tag=param_tag,
             output_dir=output_dir, save_pdf=SAVE_PDF,
         )
         plt.close(fig)
