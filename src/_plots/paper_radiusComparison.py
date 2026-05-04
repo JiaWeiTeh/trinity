@@ -370,6 +370,7 @@ def plot_comparison_grid(
             ax_single.legend(
                 handles=handles,
                 loc="upper left",
+                bbox_to_anchor=(0.04, 0.96),
                 frameon=False,
             )
             fig.tight_layout()
