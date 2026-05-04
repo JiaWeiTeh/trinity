@@ -37,6 +37,7 @@ from src._plots.plot_base import FIG_DIR
 from src._output.trinity_reader import (
     load_output, find_all_simulations, TrinityOutput
 )
+from src._plots.grid_template import filter_sim_files_by_phii
 from src._functions.unit_conversions import CONV, INV_CONV, CGS
 from src.cloud_properties.bonnorEbertSphere import (
     solve_lane_emden, create_BE_sphere
@@ -142,6 +143,7 @@ def load_sweep_simulations(sweep_dir: str) -> dict:
     """
     sweep_path = Path(sweep_dir)
     sim_files = find_all_simulations(sweep_path)
+    sim_files = filter_sim_files_by_phii(sim_files, "yes")
 
     if not sim_files:
         raise FileNotFoundError(f"No simulations found in {sweep_path}")
@@ -295,6 +297,7 @@ def _get_sim_folders(sweep_dir: str) -> dict:
     """Return {profile_tag: folder_path} for every sub-simulation."""
     sweep_path = Path(sweep_dir)
     sim_files = find_all_simulations(sweep_path)
+    sim_files = filter_sim_files_by_phii(sim_files, "yes")
     folders = {}
     for data_path in sim_files:
         tag = identify_profile_tag(data_path.parent.name)

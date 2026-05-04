@@ -113,6 +113,55 @@ from src._output.trinity_reader import (
 
 
 # ------------------------------------------------------------------
+# PHII-suffix handling
+# ------------------------------------------------------------------
+#
+# ``run.py`` appends ``_yesPHII`` / ``_noPHII`` to simulation folder
+# names when ``include_PHII`` is varied in a sweep.  The two variants
+# share the same ``(mCloud, sfe, ndens)`` parameters, so they collide
+# in the (mCloud, sfe) grid dict — the second one read silently
+# overwrites the first.  Filtering at the file-list level (before
+# ``organize_simulations_for_grid``) is required to pick a variant
+# deterministically.
+#
+# By default we keep ``_yesPHII`` plus any folder without a PHII
+# suffix (legacy / untagged).  ``--show-noPHII`` opts into a separate
+# pass that keeps only ``_noPHII`` runs and writes a sibling file
+# with ``_noPHII`` appended to the file prefix.
+
+NO_SUFFIX = "_noPHII"
+
+
+def filter_sim_files_by_phii(sim_files, phii_mode: str):
+    """Filter simulation paths by PHII folder-name suffix.
+
+    Parameters
+    ----------
+    sim_files : iterable of Path
+        Paths whose ``parent.name`` is the simulation folder name.
+    phii_mode : {"yes", "no"}
+        ``"yes"`` keeps ``_yesPHII`` and untagged (legacy) folders;
+        ``"no"`` keeps only ``_noPHII`` folders.
+
+    Returns
+    -------
+    list of Path
+    """
+    if phii_mode == "yes":
+        return [p for p in sim_files
+                if not p.parent.name.endswith(NO_SUFFIX)]
+    if phii_mode == "no":
+        return [p for p in sim_files
+                if p.parent.name.endswith(NO_SUFFIX)]
+    raise ValueError(f"unknown phii_mode: {phii_mode!r}")
+
+
+def phii_file_prefix(base: str, phii_mode: str) -> str:
+    """Append ``_noPHII`` to *base* when ``phii_mode == 'no'``."""
+    return f"{base}_noPHII" if phii_mode == "no" else base
+
+
+# ------------------------------------------------------------------
 # Helpers
 # ------------------------------------------------------------------
 
@@ -242,11 +291,17 @@ def build_param_tag(mCloud_list, sfe_list, ndens) -> str:
 
 
 def iter_grid_densities(folder_path, ndens_filter=None,
-                        mCloud_filter=None, sfe_filter=None):
+                        mCloud_filter=None, sfe_filter=None,
+                        phii_mode: str = "yes"):
     """Yield ``(ndens, mCloud_list, sfe_list, grid, folder_name)`` per density.
 
-    Handles: find_all_simulations → get_unique_ndens → organize →
-    early-return on empty grid.  Prints the standard progress messages.
+    Handles: find_all_simulations → PHII filter → get_unique_ndens →
+    organize → early-return on empty grid.  Prints the standard
+    progress messages.
+
+    ``phii_mode`` (default ``"yes"``) controls how the
+    ``_yesPHII``/``_noPHII`` folder suffixes are treated.  See
+    :func:`filter_sim_files_by_phii`.
 
     Usage::
 
@@ -258,8 +313,10 @@ def iter_grid_densities(folder_path, ndens_filter=None,
     folder_name = folder_path.name
 
     sim_files = find_all_simulations(folder_path)
+    sim_files = filter_sim_files_by_phii(sim_files, phii_mode)
     if not sim_files:
-        print(f"No simulation files found in {folder_path}")
+        label = "non-noPHII" if phii_mode == "yes" else "noPHII"
+        print(f"No {label} simulation files found in {folder_path}")
         return
 
     if ndens_filter:
@@ -511,6 +568,7 @@ def plot_grid(
     ndens_filter=None,
     mCloud_filter=None,
     sfe_filter=None,
+    phii_mode: str = "yes",
     load_run_fn: Callable,
     plot_cell_fn: Callable,
     legend_handles_fn: Callable[[], List],
@@ -584,9 +642,12 @@ def plot_grid(
     hide_non_left_labels : bool
         If ``True``, hide y-axis tick labels on non-leftmost columns.
     """
+    effective_file_prefix = phii_file_prefix(file_prefix, phii_mode)
+
     for ndens, mCloud_list, sfe_list, grid, folder_name in iter_grid_densities(
             folder_path, ndens_filter=ndens_filter,
-            mCloud_filter=mCloud_filter, sfe_filter=sfe_filter):
+            mCloud_filter=mCloud_filter, sfe_filter=sfe_filter,
+            phii_mode=phii_mode):
 
         nrows, ncols = len(mCloud_list), len(sfe_list)
         fig, axes = plt.subplots(
@@ -678,7 +739,7 @@ def plot_grid(
         fig_dir.mkdir(parents=True, exist_ok=True)
 
         if save_pdf:
-            out_pdf = fig_dir / f"{file_prefix}_{param_tag}.pdf"
+            out_pdf = fig_dir / f"{effective_file_prefix}_{param_tag}.pdf"
             fig.savefig(out_pdf, bbox_inches="tight")
             print(f"  Saved: {out_pdf}")
 

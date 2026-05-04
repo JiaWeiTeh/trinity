@@ -179,13 +179,14 @@ def plot_from_path(data_input: str, output_dir: str = None):
 
 # ---------- GRID ----------
 def plot_grid(folder_path, output_dir=None, ndens_filter=None,
-              mCloud_filter=None, sfe_filter=None):
+              mCloud_filter=None, sfe_filter=None, phii_mode="yes"):
     """Plot grid of cooling parameters from simulations in a folder."""
     _plot_grid(
         folder_path, output_dir,
         ndens_filter=ndens_filter,
         mCloud_filter=mCloud_filter,
         sfe_filter=sfe_filter,
+        phii_mode=phii_mode,
         load_run_fn=load_cooling_run,
         plot_cell_fn=_plot_cell_grid,
         legend_handles_fn=_grid_legend_handles,

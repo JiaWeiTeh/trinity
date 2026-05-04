@@ -29,6 +29,7 @@ from src._plots.plot_base import FIG_DIR
 from src._output.trinity_reader import (
     load_output, find_all_simulations, parse_simulation_params,
 )
+from src._plots.grid_template import filter_sim_files_by_phii
 from src._functions.unit_conversions import CONV, INV_CONV, CGS
 
 # Configure logging
@@ -594,6 +595,10 @@ Examples:
         '--save-dir', default=None,
         help='Directory to save figures (default: same as -F)',
     )
+    parser.add_argument(
+        '--show-noPHII', action='store_true', default=False, dest='show_noPHII',
+        help="Include '_noPHII' folders (default: skipped).",
+    )
 
     args = parser.parse_args()
     folder = Path(args.folder)
@@ -602,6 +607,8 @@ Examples:
     # Discover simulations
     # ------------------------------------------------------------------
     sim_files = find_all_simulations(folder)
+    if not args.show_noPHII:
+        sim_files = filter_sim_files_by_phii(sim_files, "yes")
     if not sim_files:
         logger.error(f"No simulations found in {folder}")
         return

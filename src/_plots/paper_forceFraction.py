@@ -236,7 +236,7 @@ def plot_from_path(data_input: str, output_dir: str = None):
 
 
 def plot_grid(folder_path, output_dir=None, ndens_filter=None,
-              mCloud_filter=None, sfe_filter=None):
+              mCloud_filter=None, sfe_filter=None, phii_mode="yes"):
     """
     Plot grid of force fractions from simulations in a folder.
 
@@ -249,12 +249,15 @@ def plot_grid(folder_path, output_dir=None, ndens_filter=None,
     ndens_filter : str, optional
         Filter simulations by density (e.g., "1e4"). If None, creates one
         PDF per unique density found.
+    phii_mode : {"yes", "no"}
+        PHII suffix variant to plot.  See ``grid_template.filter_sim_files_by_phii``.
     """
     _plot_grid(
         folder_path, output_dir,
         ndens_filter=ndens_filter,
         mCloud_filter=mCloud_filter,
         sfe_filter=sfe_filter,
+        phii_mode=phii_mode,
         load_run_fn=load_run,
         plot_cell_fn=_plot_cell,
         legend_handles_fn=_build_grid_legend,

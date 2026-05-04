@@ -627,6 +627,10 @@ Default Observational Constraints (Rosette Nebula):
                         help='Apply Savitzky-Golay smoothing to trajectories '
                              '(off by default; matches paper_radiusEvolution)')
 
+    parser.add_argument('--show-noPHII', action='store_true', default=False,
+                        dest='show_noPHII',
+                        help="Also run on '_noPHII' folders (separate output).")
+
     args = parser.parse_args()
 
     # --info mode
@@ -653,19 +657,6 @@ Default Observational Constraints (Rosette Nebula):
         Mstar_obs=args.Mstar, Mstar_err=args.Mstar_err,
     )
 
-    config = AnalysisConfig(
-        constrain_v=not args.no_v,
-        constrain_M_shell=args.include_mshell,
-        constrain_t=not args.no_t,
-        constrain_R=not args.no_R,
-        constrain_Mstar=not args.no_Mstar,
-        nCore_filter=args.nCore,
-        mass_tracer=args.mass_tracer,
-        show_all=args.showall,
-        combine_nCore=args.combine_nCore,
-        obs=obs,
-    )
-
     # Apply marker flags
     _all = args.show_all_markers
     SHOW_PHASE    = _all or args.show_phase
@@ -676,4 +667,20 @@ Default Observational Constraints (Rosette Nebula):
     # Apply smoothing flag
     SMOOTH_TRAJECTORIES = args.smooth
 
-    main(args.folder, args.output_dir, config)
+    modes = ["yes", "no"] if args.show_noPHII else ["yes"]
+    for _mode in modes:
+        config = AnalysisConfig(
+            constrain_v=not args.no_v,
+            constrain_M_shell=args.include_mshell,
+            constrain_t=not args.no_t,
+            constrain_R=not args.no_R,
+            constrain_Mstar=not args.no_Mstar,
+            nCore_filter=args.nCore,
+            mass_tracer=args.mass_tracer,
+            show_all=args.showall,
+            combine_nCore=args.combine_nCore,
+            phii_mode=_mode,
+            obs=obs,
+        )
+
+        main(args.folder, args.output_dir, config)

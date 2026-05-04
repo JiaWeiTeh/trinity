@@ -17,7 +17,7 @@ from src._plots.grid_template import (
     build_param_tag,
     iter_grid_densities, mark_missing_cell, attach_grid_legend,
     save_grid_figure, set_mcloud_ylabel,
-    _sfe_title,
+    _sfe_title, phii_file_prefix,
 )
 
 print("...plotting radius evolution grid")
@@ -315,7 +315,7 @@ def plot_from_path(data_input: str, output_dir: str = None):
 
 # ---------------- command-line interface ----------------
 def plot_folder_grid(folder_path, output_dir=None, ndens_filter=None,
-                     mCloud_filter=None, sfe_filter=None):
+                     mCloud_filter=None, sfe_filter=None, phii_mode="yes"):
     """
     Create grid plot from all simulations found in a folder.
 
@@ -344,7 +344,8 @@ def plot_folder_grid(folder_path, output_dir=None, ndens_filter=None,
     """
     for ndens, mCloud_list, sfe_list, grid, folder_name in iter_grid_densities(
             folder_path, ndens_filter=ndens_filter,
-            mCloud_filter=mCloud_filter, sfe_filter=sfe_filter):
+            mCloud_filter=mCloud_filter, sfe_filter=sfe_filter,
+            phii_mode=phii_mode):
 
         nrows, ncols = len(mCloud_list), len(sfe_list)
         fig, axes = plt.subplots(
@@ -402,7 +403,7 @@ def plot_folder_grid(folder_path, output_dir=None, ndens_filter=None,
             legend_ncol=3, legend_bbox_transform_fig=True,
         )
         save_grid_figure(fig, folder_name=folder_name,
-                         file_prefix="radiusEvolution",
+                         file_prefix=phii_file_prefix("radiusEvolution", phii_mode),
                          param_tag=param_tag, output_dir=output_dir)
         plt.close(fig)
 
@@ -468,6 +469,10 @@ Examples:
     parser.add_argument('--show-rcloud-horizontal', action='store_true', default=False)
     parser.add_argument('--show-collapse', action='store_true', default=False)
     parser.add_argument('--show-all-markers', action='store_true', default=False)
+    parser.add_argument(
+        '--show-noPHII', action='store_true', default=False, dest='show_noPHII',
+        help="Also emit a separate grid for '_noPHII' folders.",
+    )
 
     args = parser.parse_args()
 
@@ -496,8 +501,11 @@ Examples:
             print(f"  SFE values: {info['sfe']}")
             print(f"  nCore values: {info['ndens']}")
     elif args.folder:
-        plot_folder_grid(args.folder, args.output_dir, ndens_filter=args.nCore,
-                         mCloud_filter=args.mCloud, sfe_filter=args.sfe)
+        modes = ["yes", "no"] if args.show_noPHII else ["yes"]
+        for _mode in modes:
+            plot_folder_grid(args.folder, args.output_dir, ndens_filter=args.nCore,
+                             mCloud_filter=args.mCloud, sfe_filter=args.sfe,
+                             phii_mode=_mode)
     elif args.data:
         # Command-line mode: plot from specified path
         plot_from_path(args.data, args.output_dir)

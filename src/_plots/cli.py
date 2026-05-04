@@ -34,6 +34,7 @@ For scripts that need extra arguments::
 """
 
 import argparse
+import inspect
 from typing import Callable, Optional
 
 import sys as _sys
@@ -125,6 +126,17 @@ def build_parser(
         default=None,
         help="Colour palette for force plots (default: vibrance).",
     )
+    parser.add_argument(
+        "--show-noPHII",
+        action="store_true",
+        default=False,
+        dest="show_noPHII",
+        help=(
+            "Also emit a separate grid for simulation folders ending in "
+            "'_noPHII'. By default these are ignored; only '_yesPHII' (and "
+            "untagged) runs are plotted."
+        ),
+    )
 
     # ---- Marker options (off by default for clean paper figures) ----
     marker_group = parser.add_argument_group("markers",
@@ -187,6 +199,23 @@ def marker_pre_dispatch(module_globals):
     return _apply
 
 
+def _accepts_kwarg(fn: Callable, name: str) -> bool:
+    """Return True if *fn* declares *name* as a keyword arg or accepts ``**kwargs``."""
+    try:
+        sig = inspect.signature(fn)
+    except (TypeError, ValueError):
+        return False
+    for p in sig.parameters.values():
+        if p.kind == inspect.Parameter.VAR_KEYWORD:
+            return True
+        if p.name == name and p.kind in (
+            inspect.Parameter.POSITIONAL_OR_KEYWORD,
+            inspect.Parameter.KEYWORD_ONLY,
+        ):
+            return True
+    return False
+
+
 def _print_info(folder: str) -> None:
     """Print available simulation parameters in *folder*."""
     info = info_simulations(folder)
@@ -243,13 +272,26 @@ def dispatch(
         else:
             _print_info(args.folder)
     elif args.folder:
-        plot_grid_fn(
-            args.folder,
-            args.output_dir,
+        common = dict(
             ndens_filter=args.nCore,
             mCloud_filter=args.mCloud,
             sfe_filter=args.sfe,
         )
+        accepts_phii = _accepts_kwarg(plot_grid_fn, "phii_mode")
+        show_no = bool(getattr(args, "show_noPHII", False))
+        if accepts_phii:
+            modes = ["yes", "no"] if show_no else ["yes"]
+            for mode in modes:
+                plot_grid_fn(args.folder, args.output_dir,
+                             phii_mode=mode, **common)
+        else:
+            # Script doesn't honour phii_mode (e.g. yes/no pair plots
+            # like paper_v2R2). Call once unmodified; warn if the user
+            # asked for --show-noPHII so the no-op is visible.
+            if show_no:
+                print("Note: --show-noPHII has no effect for this plot "
+                      "(it does not declare a phii_mode parameter).")
+            plot_grid_fn(args.folder, args.output_dir, **common)
     elif args.data:
         plot_from_path_fn(args.data, args.output_dir)
     else:

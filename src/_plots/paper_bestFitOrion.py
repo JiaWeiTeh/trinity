@@ -65,6 +65,7 @@ from src._output.trinity_reader import (
     load_output, find_all_simulations, organize_simulations_for_grid,
     get_unique_ndens, parse_simulation_params, resolve_data_input, info_simulations
 )
+from src._plots.grid_template import filter_sim_files_by_phii
 
 print("...analyzing best-fit models for Orion Nebula (M42)")
 
@@ -180,6 +181,9 @@ class AnalysisConfig:
     # Show all trajectories (instead of just top N)
     show_all: bool = False
 
+    # PHII suffix variant ("yes" keeps yesPHII + untagged; "no" keeps only noPHII)
+    phii_mode: str = "yes"
+
     # Observational constraints
     obs: ObservationalConstraints = field(default_factory=ObservationalConstraints)
 
@@ -238,6 +242,8 @@ class AnalysisConfig:
             suffix += "_showall"
         if self.free_param:
             suffix += f"_estimate_{self.free_param}"
+        if self.phii_mode == "no":
+            suffix += "_noPHII"
         return suffix
 
     def get_free_param_label(self) -> str:
@@ -981,9 +987,11 @@ def load_sweep_results(folder_path: Path, config: AnalysisConfig) -> List[Simula
     """
     folder_path = Path(folder_path)
     sim_files = find_all_simulations(folder_path)
+    sim_files = filter_sim_files_by_phii(sim_files, config.phii_mode)
 
     if not sim_files:
-        print(f"No simulation files found in {folder_path}")
+        label = "non-noPHII" if config.phii_mode == "yes" else "noPHII"
+        print(f"No {label} simulation files found in {folder_path}")
         return []
 
     results = []
@@ -2751,6 +2759,10 @@ Shell Mass (shown in plots, optional for chi^2):
     parser.add_argument('--debug-checks', action='store_true',
                         help='Run self-tests to verify internal consistency')
 
+    parser.add_argument('--show-noPHII', action='store_true', default=False,
+                        dest='show_noPHII',
+                        help="Also run the analysis on '_noPHII' folders.")
+
     args = parser.parse_args()
 
     # Run debug checks if requested
@@ -2790,19 +2802,22 @@ Shell Mass (shown in plots, optional for chi^2):
     # If nCore specified, force 2D mode
     mode = '2d' if args.nCore else args.mode
 
-    config = AnalysisConfig(
-        mode=mode,
-        constrain_v=not args.no_v,
-        constrain_M_shell=args.include_mshell,  # Only include M_shell if explicitly requested
-        constrain_t=not args.no_t,
-        constrain_R=not args.no_R,
-        constrain_Mstar=not args.no_Mstar,
-        nCore_filter=args.nCore,
-        mass_tracer=args.mass_tracer,
-        blister_mode=args.blister,
-        blister_fraction=args.blister_fraction,
-        show_all=args.showall,
-        obs=obs,
-    )
+    modes = ["yes", "no"] if args.show_noPHII else ["yes"]
+    for _mode in modes:
+        config = AnalysisConfig(
+            mode=mode,
+            constrain_v=not args.no_v,
+            constrain_M_shell=args.include_mshell,  # Only include M_shell if explicitly requested
+            constrain_t=not args.no_t,
+            constrain_R=not args.no_R,
+            constrain_Mstar=not args.no_Mstar,
+            nCore_filter=args.nCore,
+            mass_tracer=args.mass_tracer,
+            blister_mode=args.blister,
+            blister_fraction=args.blister_fraction,
+            show_all=args.showall,
+            phii_mode=_mode,
+            obs=obs,
+        )
 
-    main(args.folder, args.output_dir, config)
+        main(args.folder, args.output_dir, config)

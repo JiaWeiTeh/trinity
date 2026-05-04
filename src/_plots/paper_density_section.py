@@ -32,6 +32,7 @@ from src._plots.plot_base import FIG_DIR
 from src._output.trinity_reader import (
     load_output, find_all_simulations, TrinityOutput,
 )
+from src._plots.grid_template import filter_sim_files_by_phii
 from src._functions.unit_conversions import CONV, INV_CONV, CGS
 from src.cloud_properties.bonnorEbertSphere import solve_lane_emden
 
@@ -104,6 +105,7 @@ def load_sweep(sweep_dir: str) -> dict:
     """
     sweep_path = Path(sweep_dir)
     sim_files = find_all_simulations(sweep_path)
+    sim_files = filter_sim_files_by_phii(sim_files, "yes")
     if not sim_files:
         raise FileNotFoundError(f"No simulations found in {sweep_path}")
 
@@ -616,7 +618,8 @@ Examples:
 
     # Print mapping
     print("\n--- Profile Mapping ---")
-    for data_path in find_all_simulations(Path(args.folder)):
+    for data_path in filter_sim_files_by_phii(
+            find_all_simulations(Path(args.folder)), "yes"):
         folder_name = data_path.parent.name
         tag = identify_profile_tag(folder_name)
         print(f"  {folder_name}  ->  {tag or '(unrecognised)'}")
@@ -626,7 +629,8 @@ Examples:
     # Build tag -> simulation folder mapping (for _summary.txt lookup)
     # ------------------------------------------------------------------
     sim_folders = {}
-    for data_path in find_all_simulations(Path(args.folder)):
+    for data_path in filter_sim_files_by_phii(
+            find_all_simulations(Path(args.folder)), "yes"):
         tag_here = identify_profile_tag(data_path.parent.name)
         if tag_here and tag_here in PROFILE_STYLES:
             sim_folders[tag_here] = data_path.parent

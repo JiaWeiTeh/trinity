@@ -112,7 +112,7 @@ def compute_zeta_analytic(log_Mcl_arr, log_n_arr,
 # Mode A — extract ζ from simulation snapshots
 # ======================================================================
 
-def compute_zeta_from_sims(folder_path, t_ref=T_REF):
+def compute_zeta_from_sims(folder_path, t_ref=T_REF, phii_mode="yes"):
     """
     Read stored ζ from simulation snapshots at t_ref.
 
@@ -125,11 +125,14 @@ def compute_zeta_from_sims(folder_path, t_ref=T_REF):
     from src._output.trinity_reader import (
         load_output, find_all_simulations, parse_simulation_params
     )
+    from src._plots.grid_template import filter_sim_files_by_phii
 
     folder_path = Path(folder_path)
     sim_files = find_all_simulations(folder_path)
+    sim_files = filter_sim_files_by_phii(sim_files, phii_mode)
     if not sim_files:
-        print(f"  No simulations found in {folder_path}")
+        label = "non-noPHII" if phii_mode == "yes" else "noPHII"
+        print(f"  No {label} simulations found in {folder_path}")
         return []
 
     results = []
@@ -188,7 +191,7 @@ def compute_zeta_from_sims(folder_path, t_ref=T_REF):
 # Plotting
 # ======================================================================
 
-def plot_zeta_regime(folder_path=None, output_dir=None, t_ref=T_REF):
+def plot_zeta_regime(folder_path=None, output_dir=None, t_ref=T_REF, phii_mode="yes"):
     """
     Create the ζ regime map figure.
 
@@ -242,7 +245,8 @@ def plot_zeta_regime(folder_path=None, output_dir=None, t_ref=T_REF):
     # --- Mode A: simulation overlay ---
     sim_results = []
     if folder_path is not None:
-        sim_results = compute_zeta_from_sims(folder_path, t_ref=t_ref)
+        sim_results = compute_zeta_from_sims(folder_path, t_ref=t_ref,
+                                             phii_mode=phii_mode)
 
     if sim_results:
         n_vals = np.array([r['n_cloud'] for r in sim_results])
@@ -310,7 +314,8 @@ def plot_zeta_regime(folder_path=None, output_dir=None, t_ref=T_REF):
     if SAVE_PDF:
         tag = f"_{Path(folder_path).name}" if folder_path else "_analytic"
         t_tag = f"_t{t_ref:.2f}Myr".replace('.', 'p')
-        out_pdf = fig_dir / f"zetaRegime{tag}{t_tag}.pdf"
+        phii_tag = "_noPHII" if phii_mode == "no" else ""
+        out_pdf = fig_dir / f"zetaRegime{tag}{t_tag}{phii_tag}.pdf"
         fig.savefig(out_pdf, bbox_inches='tight')
         print(f"Saved: {out_pdf}")
 
@@ -328,15 +333,18 @@ def plot_from_path(data_input: str, output_dir: str = None):
 
 
 def plot_grid(folder_path, output_dir=None, ndens_filter=None,
-              mCloud_filter=None, sfe_filter=None):
+              mCloud_filter=None, sfe_filter=None, phii_mode="yes"):
     """
     Grid mode: analytic background + simulation overlay.
 
     The ndens/mCloud/sfe filters are accepted for CLI compatibility but
     not used (all simulations contribute to the scatter overlay).
+    ``phii_mode`` controls PHII suffix filtering (see
+    ``grid_template.filter_sim_files_by_phii``).
     """
     for t in T_REFS:
-        plot_zeta_regime(folder_path=folder_path, output_dir=output_dir, t_ref=t)
+        plot_zeta_regime(folder_path=folder_path, output_dir=output_dir,
+                         t_ref=t, phii_mode=phii_mode)
 
 
 if __name__ == "__main__":
