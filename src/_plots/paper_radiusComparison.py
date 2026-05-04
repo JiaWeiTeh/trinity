@@ -318,11 +318,11 @@ def plot_comparison_grid(
                     continue
 
                 if is_single:
-                    ax.set_ylabel("Radius [pc]")
+                    ax.set_ylabel(r"$R_{\rm b}$ [pc]")
                     ax.set_xlabel("t [Myr]")
                 else:
                     if j == 0:
-                        ax.set_ylabel(_mcloud_label(mCloud) + "\nRadius [pc]")
+                        ax.set_ylabel(_mcloud_label(mCloud) + "\n" + r"$R_{\rm b}$ [pc]")
                     else:
                         ax.tick_params(labelleft=False)
                     if i == nrows - 1:
