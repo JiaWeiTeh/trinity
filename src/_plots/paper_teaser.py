@@ -76,25 +76,50 @@ _PHASE_LABEL = {
 # ---------------------------------------------------------------------------
 # Data loading
 # ---------------------------------------------------------------------------
+def _to_float_array(values):
+    """Cast an iterable of (float | None | NaN) values to a float ndarray.
+
+    The reader returns ``None`` for any snapshot missing a key, which
+    breaks a direct ``np.asarray(..., dtype=float)`` cast.  Coerce
+    those holes to NaN so downstream masking / gapping logic works.
+    """
+    return np.asarray(
+        [np.nan if v is None else v for v in values],
+        dtype=float,
+    )
+
+
 def load_run(data_path):
     """Return a dict of arrays needed for the four panels."""
     output = load_output(data_path)
     if len(output) == 0:
         raise ValueError(f"No snapshots found in {data_path}")
 
-    t      = np.asarray(output.get("t_now"), dtype=float)
+    t      = _to_float_array(output.get("t_now", as_array=False))
     phase  = np.asarray(output.get("current_phase", as_array=False))
-    R2     = np.asarray(output.get("R2"), dtype=float)              # [pc]
-    v2_au  = np.asarray(output.get("v2"), dtype=float)              # [pc/Myr]
-    Mshell = np.asarray(output.get("shell_mass"), dtype=float)      # [Msun]
+    R2     = _to_float_array(output.get("R2", as_array=False))             # [pc]
+    v2_au  = _to_float_array(output.get("v2", as_array=False))             # [pc/Myr]
+    Mshell = _to_float_array(output.get("shell_mass", as_array=False))     # [Msun]
 
     # Bubble luminosity-budget terms are stored in [Msun*pc^2/Myr^3].
-    Lmech = np.asarray(output.get("Lmech_total"),  dtype=float) * cvt.L_au2cgs
-    Lgain = np.asarray(output.get("bubble_Lgain"), dtype=float) * cvt.L_au2cgs
-    Lloss = np.asarray(output.get("bubble_Lloss"), dtype=float) * cvt.L_au2cgs
+    Lmech = _to_float_array(output.get("Lmech_total",  as_array=False)) * cvt.L_au2cgs
+    Lgain = _to_float_array(output.get("bubble_Lgain", as_array=False)) * cvt.L_au2cgs
+    Lloss = _to_float_array(output.get("bubble_Lloss", as_array=False)) * cvt.L_au2cgs
 
-    fAbs  = np.asarray(output.get("shell_fAbsorbedIon"), dtype=float)
-    fDust = np.asarray(output.get("shell_fIonisedDust"), dtype=float)
+    fAbs  = _to_float_array(output.get("shell_fAbsorbedIon", as_array=False))
+    fDust = _to_float_array(output.get("shell_fIonisedDust", as_array=False))
+
+    # Restore monotonic time ordering if the reader yielded snapshots
+    # out of order — same guard as paper_LgainLloss.py.
+    if np.any(np.diff(t) < 0):
+        order  = np.argsort(t)
+        t      = t[order]
+        phase  = phase[order]
+        R2     = R2[order]
+        v2_au  = v2_au[order]
+        Mshell = Mshell[order]
+        Lmech, Lgain, Lloss = Lmech[order], Lgain[order], Lloss[order]
+        fAbs, fDust         = fAbs[order],  fDust[order]
 
     # The snapshot's mCloud is already the post-SF gas mass:
     # see src/_input/read_param.py:307-309, where
@@ -277,12 +302,18 @@ def plot_from_path(data_input, output_dir=None):
     _draw_phase_boundaries(list(axes) + [ax_av], run["t"], run["phase"])
     _annotate_phase_labels(ax_a, run["t"], run["phase"])
 
-    # Panel-letter labels in upper-left
+    # Panel-letter labels in upper-left.  Panel (d)'s upper-left lies
+    # over the darkest stack fill; a thin white bbox keeps all four
+    # letters legible without per-panel special-casing.
+    _LETTER_BBOX = dict(
+        boxstyle="round,pad=0.18", facecolor="white",
+        edgecolor="none", alpha=0.85,
+    )
     for ax, letter in zip(axes, "abcd"):
         ax.text(
-            0.012, 0.93, f"({letter})",
+            0.012, 0.97, f"({letter})",
             transform=ax.transAxes, ha="left", va="top",
-            fontsize=11,
+            fontsize=11, bbox=_LETTER_BBOX,
         )
 
     # ---- save --------------------------------------------------------------
