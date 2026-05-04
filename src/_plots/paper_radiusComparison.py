@@ -39,6 +39,18 @@ from src._plots.grid_template import (
     attach_grid_legend,
 )
 
+# Shrink fonts relative to the trinity.mplstyle defaults: this script renders
+# at A&A column width (~3.46"), so the style's 15 pt labels look oversized.
+# Pattern mirrors paper_densityProfile.py, just scaled to the smaller canvas.
+plt.rcParams.update({
+    'font.size':        9,
+    'axes.labelsize':   9,
+    'axes.titlesize':   9,
+    'xtick.labelsize':  8,
+    'ytick.labelsize':  8,
+    'legend.fontsize':  7,
+})
+
 print("...plotting radius comparison (TRINITY vs WARPFIELD vs Weaver)")
 
 # ----------------------------------------------------------------
@@ -318,11 +330,11 @@ def plot_comparison_grid(
                     continue
 
                 if is_single:
-                    ax.set_ylabel("Radius [pc]")
+                    ax.set_ylabel(r"$R_{\rm b}$ [pc]")
                     ax.set_xlabel("t [Myr]")
                 else:
                     if j == 0:
-                        ax.set_ylabel(_mcloud_label(mCloud) + "\nRadius [pc]")
+                        ax.set_ylabel(_mcloud_label(mCloud) + "\n" + r"$R_{\rm b}$ [pc]")
                     else:
                         ax.tick_params(labelleft=False)
                     if i == nrows - 1:
@@ -359,7 +371,6 @@ def plot_comparison_grid(
                 handles=handles,
                 loc="upper left",
                 frameon=False,
-                fontsize=8,
             )
             fig.tight_layout()
         else:
