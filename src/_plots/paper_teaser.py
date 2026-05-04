@@ -3,20 +3,23 @@
 """
 Paper I teaser figure (single fiducial run).
 
-Four panels stacked vertically with shared log-time x-axis:
+Four panels stacked vertically with a shared linear-time x-axis:
 
-    (a) bubble radius R_b (left, log [pc]) and shell velocity v_sh
-        (right, linear [km/s])
-    (b) swept-up shell mass [Msun, log] with reference line at the
-        gas-reservoir mass M_cloud(1 - sfe)
-    (c) bubble energy budget (Lmech, Lgain, Lloss [erg/s, log]),
+    (a) bubble radius R_b (left, linear [pc]) and shell velocity
+        v_sh (right, log [km/s])
+    (b) log10 swept-up shell mass [Msun] on a linear axis, with a
+        reference line at the gas-reservoir mass M_cloud(1 - sfe)
+    (c) log10 bubble energy budget (Lmech, Lgain, Lloss [erg/s]),
         masked to the energy + implicit phases where the budget is
         physically meaningful
     (d) ionising-photon budget (gas / dust / escape) as a stacked
         area summing to unity
 
-Vertical dotted grey lines mark phase boundaries across all panels;
-the active phase name is printed above the top panel.
+Vertical dotted grey lines mark phase boundaries across all panels.
+The implicit phase is treated as part of the energy phase for
+display, so only the energy↔transition and transition↔momentum
+boundaries appear; the active display-phase name is printed above
+the top panel.
 
 Unit handling
 -------------
@@ -67,10 +70,38 @@ _BUBBLE_PHASES = ("energy", "implicit")
 
 _PHASE_LABEL = {
     "energy":     r"\textsc{energy}",
-    "implicit":   r"\textsc{implicit}",
     "transition": r"\textsc{transition}",
     "momentum":   r"\textsc{momentum}",
 }
+
+# The implicit phase is a numerical continuation of the energy phase;
+# we suppress its internal boundary and label it as "energy" in the
+# figure.  Mapping is applied only for boundary / annotation use,
+# never to the data masks (which still reference the literal
+# ``"energy"`` and ``"implicit"`` strings).
+_DISPLAY_PHASE_MAP = {"implicit": "energy"}
+
+
+def _display_phase(phase):
+    """Collapse internal sub-phases for boundary/label placement."""
+    p = np.asarray(phase).copy()
+    for src, dst in _DISPLAY_PHASE_MAP.items():
+        p = np.where(p == src, dst, p)
+    return p
+
+
+def _log10_safe(x):
+    """log10 with non-positive / non-finite entries → NaN.
+
+    Used by panels that plot ``log10(value)`` on a linear axis so
+    matplotlib gaps the curve at gaps in the data instead of raising
+    or producing −inf points.
+    """
+    arr = np.asarray(x, dtype=float)
+    out = np.full(arr.shape, np.nan, dtype=float)
+    mask = np.isfinite(arr) & (arr > 0)
+    out[mask] = np.log10(arr[mask])
+    return out
 
 
 # ---------------------------------------------------------------------------
@@ -158,7 +189,7 @@ def _mask_to_phases(values, phase, allowed):
 
 
 def _draw_phase_boundaries(axes, t, phase):
-    bnd = _change_points(phase)
+    bnd = _change_points(_display_phase(phase))
     for ax in axes:
         for i in bnd:
             ax.axvline(t[i], **_PHASE_LINE_KW)
@@ -167,22 +198,23 @@ def _draw_phase_boundaries(axes, t, phase):
 def _annotate_phase_labels(ax_top, t, phase):
     """Place phase names above *ax_top*, centred over each phase's interval.
 
-    Centre is the geometric mean of the segment endpoints since the
-    x-axis is log-scaled.
+    Centre is the arithmetic mean of the segment endpoints; the
+    x-axis is linear (see plot_from_path).
     """
-    bnd    = _change_points(phase)
+    disp   = _display_phase(phase)
+    bnd    = _change_points(disp)
     starts = np.concatenate([[0], bnd])
     ends   = np.concatenate([bnd, [len(t)]])
     for i0, i1 in zip(starts, ends):
         if i1 <= i0:
             continue
-        seg = phase[i0]
+        seg = disp[i0]
         if seg not in _PHASE_LABEL:
             continue
         t_lo, t_hi = t[i0], t[i1 - 1]
-        if not (np.isfinite(t_lo) and np.isfinite(t_hi) and t_lo > 0 and t_hi > 0):
+        if not (np.isfinite(t_lo) and np.isfinite(t_hi)):
             continue
-        xc = np.sqrt(t_lo * t_hi)
+        xc = 0.5 * (t_lo + t_hi)
         ax_top.text(
             xc, 1.02, _PHASE_LABEL[seg],
             ha="center", va="bottom",
@@ -238,37 +270,39 @@ def plot_from_path(data_input, output_dir=None):
     )
     ax_a, ax_b, ax_c, ax_d = axes
 
-    # ---- panel (a) ---------------------------------------------------------
+    # ---- panel (a) — R_b linear (left), v_sh log (right) -------------------
     ax_a.plot(run["t"], run["R2"], color=_C_R, lw=1.5)
-    ax_a.set_yscale("log")
     ax_a.set_ylabel(r"$R_{\rm b}\ [{\rm pc}]$", color=_C_R)
     ax_a.tick_params(axis="y", colors=_C_R)
 
     ax_av = ax_a.twinx()
     ax_av.plot(run["t"], run["v_kms"], color=_C_V, lw=1.5)
+    ax_av.set_yscale("log")
     ax_av.set_ylabel(r"$v_{\rm sh}\ [{\rm km\ s^{-1}}]$", color=_C_V)
     ax_av.tick_params(axis="y", colors=_C_V)
 
-    # ---- panel (b) ---------------------------------------------------------
-    ax_b.plot(run["t"], run["Mshell"], color=_C_R, lw=1.5)
-    ax_b.set_yscale("log")
-    ax_b.set_ylabel(r"$M_{\rm sh}\ [M_{\odot}]$")
-    ax_b.axhline(run["mCloud_gas"], color="0.5", lw=0.8, ls="--", zorder=0)
+    # ---- panel (b) — log10(M_sh) on linear axis ----------------------------
+    ax_b.plot(run["t"], _log10_safe(run["Mshell"]), color=_C_R, lw=1.5)
+    ax_b.set_ylabel(r"$\log_{10} M_{\rm sh}\ [M_{\odot}]$")
+    mcloud_log = float(np.log10(run["mCloud_gas"]))
+    ax_b.axhline(mcloud_log, color="0.5", lw=0.8, ls="--", zorder=0)
     ax_b.text(
-        0.995, run["mCloud_gas"], r"$M_{\rm cloud}(1-\epsilon)$",
+        0.995, mcloud_log, r"$M_{\rm cloud}(1-\epsilon)$",
         transform=ax_b.get_yaxis_transform(),
         ha="right", va="bottom", color="0.4", fontsize=9,
     )
 
-    # ---- panel (c) — bubble energy budget ----------------------------------
+    # ---- panel (c) — bubble energy budget, log10 on linear axis ------------
     Lmech = _mask_to_phases(run["Lmech"], run["phase"], _BUBBLE_PHASES)
     Lgain = _mask_to_phases(run["Lgain"], run["phase"], _BUBBLE_PHASES)
     Lloss = _mask_to_phases(run["Lloss"], run["phase"], _BUBBLE_PHASES)
-    ax_c.plot(run["t"], Lmech, color=_C_LMECH, lw=1.5, label=r"$L_{\rm mech}$")
-    ax_c.plot(run["t"], Lgain, color=_C_LGAIN, lw=1.5, label=r"$L_{\rm gain}$")
-    ax_c.plot(run["t"], Lloss, color=_C_LLOSS, lw=1.5, label=r"$L_{\rm loss}$")
-    ax_c.set_yscale("log")
-    ax_c.set_ylabel(r"$L\ [{\rm erg\ s^{-1}}]$")
+    ax_c.plot(run["t"], _log10_safe(Lmech), color=_C_LMECH, lw=1.5,
+              label=r"$L_{\rm mech}$")
+    ax_c.plot(run["t"], _log10_safe(Lgain), color=_C_LGAIN, lw=1.5,
+              label=r"$L_{\rm gain}$")
+    ax_c.plot(run["t"], _log10_safe(Lloss), color=_C_LLOSS, lw=1.5,
+              label=r"$L_{\rm loss}$")
+    ax_c.set_ylabel(r"$\log_{10} L\ [{\rm erg\ s^{-1}}]$")
     ax_c.legend(
         loc="lower right", frameon=False, fontsize=10, ncol=3,
         handlelength=1.0, columnspacing=0.8,
@@ -289,12 +323,11 @@ def plot_from_path(data_input, output_dir=None):
         handlelength=1.0, columnspacing=0.8,
     )
 
-    # ---- shared x-axis (only bottom panel shows tick labels) ---------------
+    # ---- shared x-axis, linear t (only bottom panel labels ticks) ----------
     for ax in axes[:-1]:
         ax.tick_params(labelbottom=False)
-    ax_d.set_xscale("log")
     ax_d.set_xlabel(r"$t\ [{\rm Myr}]$")
-    finite_t = run["t"][np.isfinite(run["t"]) & (run["t"] > 0)]
+    finite_t = run["t"][np.isfinite(run["t"])]
     if finite_t.size > 0:
         ax_d.set_xlim(finite_t.min(), finite_t.max())
 
