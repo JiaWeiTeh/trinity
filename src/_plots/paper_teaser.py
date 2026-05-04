@@ -3,16 +3,13 @@
 """
 Paper I teaser figure (single fiducial run).
 
-Four panels stacked vertically with a shared linear-time x-axis:
+Three panels stacked vertically with a shared linear-time x-axis:
 
     (a) bubble radius R_b (left, linear [pc]) and shell velocity
         v_sh (right, log [km/s])
-    (b) log10 swept-up shell mass [Msun] on a linear axis, with a
-        reference line at the gas-reservoir mass M_cloud(1 - sfe)
-    (c) log10 bubble energy budget (Lmech, Lgain, Lloss [erg/s]),
-        masked to the energy + implicit phases where the budget is
-        physically meaningful
-    (d) ionising-photon budget (gas / dust / escape) as a stacked
+    (b) feedback force-fraction decomposition with phase-aware
+        overlays (delegated to paper_feedback.plot_run_on_ax)
+    (c) ionising-photon budget (gas / dust / escape) as a stacked
         area summing to unity
 
 Vertical dotted grey lines mark phase boundaries across all panels.
@@ -23,9 +20,6 @@ the top panel.
 
 Unit handling
 -------------
-``Lmech_total``, ``bubble_Lgain``, ``bubble_Lloss`` are stored in
-TRINITY astronomy units [Msun*pc**2/Myr**3]; here we multiply by
-``cvt.L_au2cgs`` to plot in erg/s (matches paper_LgainLloss.py).
 ``v2`` is stored in [pc/Myr]; multiply by ``cvt.v_au2kms`` for km/s.
 
 Run input
@@ -37,6 +31,7 @@ exists on disk.
 
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.patches import Patch
 from pathlib import Path
 
 import sys as _sys
@@ -46,27 +41,27 @@ _sys.path.insert(0, str(_Path(__file__).parent.parent.parent))
 from src._plots.plot_base import FIG_DIR
 from src._output.trinity_reader import load_output, resolve_data_input
 import src._functions.unit_conversions as cvt
-from src._calc._common.plot_utils import C_BLACK, C_BLUE, C_GREEN, C_VERMILLION
+from src._calc._common.plot_utils import C_BLACK, C_VERMILLION
+from src._plots.force_colors import C as _FC
+
+# Re-use the feedback-decomposition machinery wholesale; teaser panel
+# (b) is the same plot as paper_feedback's, just dropped into our
+# multi-panel figure.
+from src._plots import paper_feedback as _pf
 
 
 # ---------------------------------------------------------------------------
-# Wong-palette colour assignments
+# Colour assignments
 # ---------------------------------------------------------------------------
-_C_R     = C_BLACK        # panel (a) bubble radius
-_C_V     = C_VERMILLION   # panel (a) shell velocity
-_C_LMECH = C_BLUE         # panel (c) Lmech
-_C_LGAIN = C_GREEN        # panel (c) Lgain (Wong "bluish green")
-_C_LLOSS = C_VERMILLION   # panel (c) Lloss
+_C_R = C_BLACK        # panel (a) bubble radius
+_C_V = C_VERMILLION   # panel (a) shell velocity
 
-# Panel (d) sequential purple ramp (darkest = gas absorption)
+# Panel (c) sequential purple ramp (darkest = gas absorption)
 _SHADE_GAS    = "#6c4a78"
 _SHADE_DUST   = "#a98ec0"
 _SHADE_ESCAPE = "#dccdec"
 
 _PHASE_LINE_KW = dict(color="0.6", linestyle=":", linewidth=0.8, zorder=0)
-
-# Phases for which the bubble energy budget is well defined.
-_BUBBLE_PHASES = ("energy", "implicit")
 
 _PHASE_LABEL = {
     "energy":     r"\textsc{energy}",
@@ -90,22 +85,8 @@ def _display_phase(phase):
     return p
 
 
-def _log10_safe(x):
-    """log10 with non-positive / non-finite entries → NaN.
-
-    Used by panels that plot ``log10(value)`` on a linear axis so
-    matplotlib gaps the curve at gaps in the data instead of raising
-    or producing −inf points.
-    """
-    arr = np.asarray(x, dtype=float)
-    out = np.full(arr.shape, np.nan, dtype=float)
-    mask = np.isfinite(arr) & (arr > 0)
-    out[mask] = np.log10(arr[mask])
-    return out
-
-
 # ---------------------------------------------------------------------------
-# Data loading
+# Data loading (panels (a) and (c) — panel (b) reuses paper_feedback)
 # ---------------------------------------------------------------------------
 def _to_float_array(values):
     """Cast an iterable of (float | None | NaN) values to a float ndarray.
@@ -121,47 +102,32 @@ def _to_float_array(values):
 
 
 def load_run(data_path):
-    """Return a dict of arrays needed for the four panels."""
+    """Return a dict of arrays for panels (a) and (c)."""
     output = load_output(data_path)
     if len(output) == 0:
         raise ValueError(f"No snapshots found in {data_path}")
 
-    t      = _to_float_array(output.get("t_now", as_array=False))
-    phase  = np.asarray(output.get("current_phase", as_array=False))
-    R2     = _to_float_array(output.get("R2", as_array=False))             # [pc]
-    v2_au  = _to_float_array(output.get("v2", as_array=False))             # [pc/Myr]
-    Mshell = _to_float_array(output.get("shell_mass", as_array=False))     # [Msun]
-
-    # Bubble luminosity-budget terms are stored in [Msun*pc^2/Myr^3].
-    Lmech = _to_float_array(output.get("Lmech_total",  as_array=False)) * cvt.L_au2cgs
-    Lgain = _to_float_array(output.get("bubble_Lgain", as_array=False)) * cvt.L_au2cgs
-    Lloss = _to_float_array(output.get("bubble_Lloss", as_array=False)) * cvt.L_au2cgs
-
-    fAbs  = _to_float_array(output.get("shell_fAbsorbedIon", as_array=False))
-    fDust = _to_float_array(output.get("shell_fIonisedDust", as_array=False))
+    t     = _to_float_array(output.get("t_now", as_array=False))
+    phase = np.asarray(output.get("current_phase", as_array=False))
+    R2    = _to_float_array(output.get("R2", as_array=False))         # [pc]
+    v2_au = _to_float_array(output.get("v2", as_array=False))         # [pc/Myr]
+    fAbs  = _to_float_array(output.get("shell_fAbsorbedIon",  as_array=False))
+    fDust = _to_float_array(output.get("shell_fIonisedDust",  as_array=False))
 
     # Restore monotonic time ordering if the reader yielded snapshots
     # out of order — same guard as paper_LgainLloss.py.
     if np.any(np.diff(t) < 0):
-        order  = np.argsort(t)
-        t      = t[order]
-        phase  = phase[order]
-        R2     = R2[order]
-        v2_au  = v2_au[order]
-        Mshell = Mshell[order]
-        Lmech, Lgain, Lloss = Lmech[order], Lgain[order], Lloss[order]
-        fAbs, fDust         = fAbs[order],  fDust[order]
-
-    # The snapshot's mCloud is already the post-SF gas mass:
-    # see src/_input/read_param.py:307-309, where
-    #   mCloud  ←  mCloud_initial * (1 - sfe).
-    mCloud_gas = float(output[0].get("mCloud"))
+        order = np.argsort(t)
+        t     = t[order]
+        phase = phase[order]
+        R2    = R2[order]
+        v2_au = v2_au[order]
+        fAbs, fDust = fAbs[order], fDust[order]
 
     return dict(
         t=t, phase=phase,
-        R2=R2, v_kms=v2_au * cvt.v_au2kms, Mshell=Mshell,
-        Lmech=Lmech, Lgain=Lgain, Lloss=Lloss,
-        fAbs=fAbs, fDust=fDust, mCloud_gas=mCloud_gas,
+        R2=R2, v_kms=v2_au * cvt.v_au2kms,
+        fAbs=fAbs, fDust=fDust,
     )
 
 
@@ -174,18 +140,6 @@ def _change_points(arr):
     if arr.size <= 1:
         return np.array([], dtype=int)
     return np.where(arr[1:] != arr[:-1])[0] + 1
-
-
-def _mask_to_phases(values, phase, allowed):
-    """Return a copy of *values* with timesteps outside *allowed* set to NaN.
-
-    Inside the kept range, pre-existing NaNs are preserved unchanged so
-    matplotlib gaps them rather than interpolating across.
-    """
-    out = np.array(values, dtype=float, copy=True)
-    keep = np.isin(np.asarray(phase), list(allowed))
-    out[~keep] = np.nan
-    return out
 
 
 def _draw_phase_boundaries(axes, t, phase):
@@ -224,7 +178,7 @@ def _annotate_phase_labels(ax_top, t, phase):
 
 
 # ---------------------------------------------------------------------------
-# Panel (d) decomposition
+# Panel (c) decomposition
 # ---------------------------------------------------------------------------
 def _ionising_components(fAbs, fDust):
     """Return (gas, dust, escape) stack components.
@@ -264,11 +218,11 @@ def plot_from_path(data_input, output_dir=None):
     run = load_run(data_path)
 
     fig, axes = plt.subplots(
-        nrows=4, ncols=1, sharex=True,
-        figsize=(4.0, 8.0),
+        nrows=3, ncols=1, sharex=True,
+        figsize=(4.0, 6.5),
         gridspec_kw=dict(hspace=0.05),
     )
-    ax_a, ax_b, ax_c, ax_d = axes
+    ax_a, ax_b, ax_c = axes
 
     # ---- panel (a) — R_b linear (left), v_sh log (right) -------------------
     ax_a.plot(run["t"], run["R2"], color=_C_R, lw=1.5)
@@ -281,44 +235,48 @@ def plot_from_path(data_input, output_dir=None):
     ax_av.set_ylabel(r"$v_{\rm sh}\ [{\rm km\ s^{-1}}]$", color=_C_V)
     ax_av.tick_params(axis="y", colors=_C_V)
 
-    # ---- panel (b) — log10(M_sh) on linear axis ----------------------------
-    ax_b.plot(run["t"], _log10_safe(run["Mshell"]), color=_C_R, lw=1.5)
-    ax_b.set_ylabel(r"$\log_{10} M_{\rm sh}\ [M_{\odot}]$")
-    mcloud_log = float(np.log10(run["mCloud_gas"]))
-    ax_b.axhline(mcloud_log, color="0.5", lw=0.8, ls="--", zorder=0)
-    ax_b.text(
-        0.995, mcloud_log, r"$M_{\rm cloud}(1-\epsilon)$",
-        transform=ax_b.get_yaxis_transform(),
-        ha="right", va="bottom", color="0.4", fontsize=9,
+    # ---- panel (b) — feedback decomposition (delegated) --------------------
+    # Uses paper_feedback.load_run + plot_run_on_ax verbatim so the
+    # teaser panel stays in lock-step with the standalone figure.
+    fb_t, fb_R2, fb_phase, fb_base, fb_overlay, fb_rcloud, fb_iscoll, fb_press = (
+        _pf.load_run(data_path)
+    )
+    _pf.plot_run_on_ax(
+        ax_b, fb_t, fb_R2, fb_phase, fb_base, fb_overlay, fb_rcloud, fb_iscoll,
+        pressures=fb_press,
+        smooth_window=_pf.SMOOTH_WINDOW,
+        phase_change=False, show_rcloud=False, show_collapse=False,
+        use_log_x=False,
+    )
+    ax_b.set_ylabel(r"$F/F_{\rm tot}$")
+    fb_handles = [
+        Patch(facecolor=_FC.GRAV,  edgecolor="none", alpha=0.75, label="Gravity"),
+        Patch(facecolor=_FC.DRIVE, edgecolor="none", alpha=0.75,
+              label=r"$F_{\rm drive}$"),
+        Patch(facecolor=_FC.RAD,   edgecolor="none", alpha=0.75, label="Radiation"),
+        Patch(facecolor=_FC.PISM,  edgecolor="0.3",  linewidth=0.8, label="PISM"),
+        Patch(facecolor="none", edgecolor=_FC.PHII, hatch="......",
+              label=r"$P_{\rm HII}$"),
+        Patch(facecolor="none", edgecolor=_FC.WIND, hatch="\\\\\\\\", label="Wind"),
+        Patch(facecolor="none", edgecolor=_FC.SN,   hatch="////",     label="SN"),
+    ]
+    ax_b.legend(
+        handles=fb_handles, loc="upper right", frameon=False,
+        fontsize=8, ncol=2, handlelength=1.2, columnspacing=0.8,
+        labelspacing=0.3,
     )
 
-    # ---- panel (c) — bubble energy budget, log10 on linear axis ------------
-    Lmech = _mask_to_phases(run["Lmech"], run["phase"], _BUBBLE_PHASES)
-    Lgain = _mask_to_phases(run["Lgain"], run["phase"], _BUBBLE_PHASES)
-    Lloss = _mask_to_phases(run["Lloss"], run["phase"], _BUBBLE_PHASES)
-    ax_c.plot(run["t"], _log10_safe(Lmech), color=_C_LMECH, lw=1.5,
-              label=r"$L_{\rm mech}$")
-    ax_c.plot(run["t"], _log10_safe(Lgain), color=_C_LGAIN, lw=1.5,
-              label=r"$L_{\rm gain}$")
-    ax_c.plot(run["t"], _log10_safe(Lloss), color=_C_LLOSS, lw=1.5,
-              label=r"$L_{\rm loss}$")
-    ax_c.set_ylabel(r"$\log_{10} L\ [{\rm erg\ s^{-1}}]$")
-    ax_c.legend(
-        loc="lower right", frameon=False, fontsize=10, ncol=3,
-        handlelength=1.0, columnspacing=0.8,
-    )
-
-    # ---- panel (d) — ionising-photon budget --------------------------------
+    # ---- panel (c) — ionising-photon budget --------------------------------
     gas, dust, escape = _ionising_components(run["fAbs"], run["fDust"])
-    ax_d.stackplot(
+    ax_c.stackplot(
         run["t"], gas, dust, escape,
         colors=[_SHADE_GAS, _SHADE_DUST, _SHADE_ESCAPE],
         labels=["gas", "dust", "escape"],
         edgecolor="none",
     )
-    ax_d.set_ylim(0.0, 1.0)
-    ax_d.set_ylabel(r"$Q_{\rm i}$ budget")
-    ax_d.legend(
+    ax_c.set_ylim(0.0, 1.0)
+    ax_c.set_ylabel(r"$Q_{\rm i}$ budget")
+    ax_c.legend(
         loc="lower right", frameon=False, fontsize=10, ncol=3,
         handlelength=1.0, columnspacing=0.8,
     )
@@ -326,23 +284,22 @@ def plot_from_path(data_input, output_dir=None):
     # ---- shared x-axis, linear t (only bottom panel labels ticks) ----------
     for ax in axes[:-1]:
         ax.tick_params(labelbottom=False)
-    ax_d.set_xlabel(r"$t\ [{\rm Myr}]$")
+    ax_c.set_xlabel(r"$t\ [{\rm Myr}]$")
     finite_t = run["t"][np.isfinite(run["t"])]
     if finite_t.size > 0:
-        ax_d.set_xlim(finite_t.min(), finite_t.max())
+        ax_c.set_xlim(finite_t.min(), finite_t.max())
 
     # ---- phase boundaries + top-panel labels -------------------------------
     _draw_phase_boundaries(list(axes) + [ax_av], run["t"], run["phase"])
     _annotate_phase_labels(ax_a, run["t"], run["phase"])
 
-    # Panel-letter labels in upper-left.  Panel (d)'s upper-left lies
-    # over the darkest stack fill; a thin white bbox keeps all four
-    # letters legible without per-panel special-casing.
+    # Panel-letter labels in upper-left, on a thin white bbox so they
+    # stay legible over the dark stack fill in panel (c).
     _LETTER_BBOX = dict(
         boxstyle="round,pad=0.18", facecolor="white",
         edgecolor="none", alpha=0.85,
     )
-    for ax, letter in zip(axes, "abcd"):
+    for ax, letter in zip(axes, "abc"):
         ax.text(
             0.012, 0.97, f"({letter})",
             transform=ax.transAxes, ha="left", va="top",
@@ -371,8 +328,8 @@ if __name__ == "__main__":
     from src._plots.cli import dispatch
     dispatch(
         script_name="paper_teaser.py",
-        description="Paper I teaser figure: bubble dynamics, swept mass, "
-                    "energy budget, and ionising-photon budget.",
+        description="Paper I teaser figure: bubble dynamics, feedback "
+                    "decomposition, and ionising-photon budget.",
         plot_from_path_fn=plot_from_path,
         plot_grid_fn=plot_grid,
     )
