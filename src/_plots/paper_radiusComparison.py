@@ -1,15 +1,17 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Radius comparison plot: TRINITY vs WARPFIELD-like vs Weaver analytical.
+Radius comparison plot: TRINITY vs WARPFIELD-like vs analytic scaling laws.
 
 Takes a single output folder containing both runs side-by-side, distinguished
 by the ``_yesPHII`` / ``_noPHII`` suffix that ``run.py`` appends to each
 simulation folder (``include_PHII = True`` → ``_yesPHII``, ``False`` → ``_noPHII``).
 
 For each matched pair (same base name, differing only by suffix), plots R2(t)
-from both runs on the same axes, together with the Weaver R ∝ t^{3/5} power-law
-anchored to the TRINITY curve at early time.
+from both runs on the same axes, together with three pure-driver scaling lines:
+energy-driven (Weaver), photoionised D-type (Spitzer) and momentum-driven.
+All three are anchored to the TRINITY curve at the midpoint of its energy
+phase, so the comparison is internally consistent.
 
 Grid layout: mCloud (rows) × SFE (columns), one PDF per density.
 """
@@ -77,7 +79,7 @@ SAVE_PDF = True
 # ----------------------------------------------------------------
 def load_run_R2(data_path):
     """Load a single run, return dict with time, R2, phase, rcloud, isCollapse,
-    and the density-profile exponent used to set the Weaver/momentum slopes."""
+    and the density-profile exponent used to set the analytic-scaling slopes."""
     output = load_output(data_path)
     if len(output) == 0:
         raise ValueError(f"No snapshots found in {data_path}")
@@ -137,7 +139,7 @@ def compute_anchored_power_law(t, R2, t_anchor, exponent):
 # Per-cell plotting
 # ----------------------------------------------------------------
 def plot_cell(ax, data_trinity, data_warpfield):
-    """Draw TRINITY, WARPFIELD, Weaver, and momentum-driven lines on one axis."""
+    """Draw TRINITY, WARPFIELD, Weaver, Spitzer, and momentum-driven lines on one axis."""
     t_T  = data_trinity['t']
     R2_T = smooth_1d(data_trinity['R2'], SMOOTH_WINDOW, mode=SMOOTH_MODE)
 
