@@ -35,19 +35,21 @@ _STYLE_PATH = os.path.join(os.path.dirname(__file__), '..', '_plots', 'trinity.m
 # =============================================================================
 # COLORBLIND-FRIENDLY COLORS
 # =============================================================================
-# Based on Paul Tol's color scheme (https://personal.sron.nl/~pault/)
+# Wong (2011) eight-colour palette — https://www.nature.com/articles/nmeth.1618.
+# Hex codes match the canonical Wong scheme; the previous version of this
+# dict had 'orange' and 'red' assigned to the wrong hexes.
 COLORS = {
-    'blue': '#0072B2',
-    'orange': '#D55E00',
-    'green': '#009E73',
-    'pink': '#CC79A7',
-    'yellow': '#F0E442',
-    'cyan': '#56B4E9',
-    'red': '#E69F00',
+    'blue':       '#0072B2',
+    'orange':     '#E69F00',
+    'green':      '#009E73',
+    'pink':       '#CC79A7',
+    'yellow':     '#F0E442',
+    'cyan':       '#56B4E9',
+    'vermillion': '#D55E00',
 }
 
 # Color cycle for line plots
-COLOR_CYCLE = ['#0072B2', '#D55E00', '#009E73', '#CC79A7', '#F0E442', '#56B4E9']
+COLOR_CYCLE = ['#0072B2', '#E69F00', '#009E73', '#CC79A7', '#F0E442', '#56B4E9', '#D55E00']
 
 
 def apply_style(use_tex=True):
