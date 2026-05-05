@@ -6,9 +6,11 @@ Paper I teaser figure (single fiducial run).
 Three panels stacked vertically with a shared linear-time x-axis:
 
     top    bubble radius R_b (left, linear [pc]) and shell velocity
-           v_sh (right, log [km/s])
+           v_sh (right, log [km/s]); the three display phases are
+           tinted in pale background colours
     middle feedback force-fraction decomposition with phase-aware
-           overlays (delegated to paper_feedback.plot_run_on_ax)
+           overlays (rendered locally, not delegated to
+           paper_feedback)
     bottom ionising-photon Q_i budget — stacked area showing the
            fraction of ionising photons absorbed by gas inside the
            shell, by dust inside the shell, and escaping past the
@@ -40,15 +42,17 @@ import sys as _sys
 from pathlib import Path as _Path
 _sys.path.insert(0, str(_Path(__file__).parent.parent.parent))
 
-from src._plots.plot_base import FIG_DIR
+from src._plots.plot_base import FIG_DIR, smooth_2d
 from src._output.trinity_reader import load_output, resolve_data_input
 import src._functions.unit_conversions as cvt
-from src._calc._common.plot_utils import C_BLACK, C_VERMILLION
+from src._calc._common.plot_utils import C_BLACK, C_BLUE
 from src._plots.force_colors import C as _FC
 
-# Re-use the feedback-decomposition machinery wholesale; teaser panel
-# (b) is the same plot as paper_feedback's, just dropped into our
-# multi-panel figure.
+# paper_feedback supplies the data extraction (load_run); its panel
+# renderer is *not* used — we draw the panel locally below so we
+# control phase-aware overlays without paper_feedback's conditional
+# ``non_bubble`` gating, and so the legend uses the F_*/HII/Wind/SN
+# nomenclature requested for this figure.
 from src._plots import paper_feedback as _pf
 
 
@@ -56,14 +60,26 @@ from src._plots import paper_feedback as _pf
 # Colour assignments
 # ---------------------------------------------------------------------------
 _C_R = C_BLACK        # panel (a) bubble radius
-_C_V = C_VERMILLION   # panel (a) shell velocity
+_C_V = C_BLUE         # panel (a) shell velocity
 
 # Panel (c) sequential purple ramp (darkest = gas absorption)
 _SHADE_GAS    = "#6c4a78"
 _SHADE_DUST   = "#a98ec0"
 _SHADE_ESCAPE = "#dccdec"
 
-_PHASE_LINE_KW = dict(color="0.6", linestyle=":", linewidth=0.8, zorder=0)
+# Top-panel phase-region tints (very light, alpha-blended).  Three
+# distinct hues so the eye reads the three regimes at a glance
+# without dominating the curves drawn over them.
+_PHASE_TINT = {
+    "energy":     "#56B4E9",  # Wong sky blue
+    "transition": "#E69F00",  # Wong orange
+    "momentum":   "#D55E00",  # Wong vermillion
+}
+_PHASE_TINT_ALPHA = 0.10
+
+# Phase-boundary lines must sit above all stack fills and overlays so
+# they extend cleanly across the whole panel (zorder=10).
+_PHASE_LINE_KW = dict(color="0.4", linestyle=":", linewidth=0.9, zorder=10)
 
 _PHASE_LABEL = {
     "energy":     r"\textsc{energy}",
@@ -151,6 +167,34 @@ def _draw_phase_boundaries(axes, t, phase):
             ax.axvline(t[i], **_PHASE_LINE_KW)
 
 
+def _draw_phase_tints(ax, t, phase):
+    """Pale background tints behind the curves on the top panel.
+
+    Uses ``_display_phase`` so the energy and implicit phases share
+    a single tint, matching the merged ``ENERGY`` label.
+    """
+    disp   = _display_phase(phase)
+    bnd    = _change_points(disp)
+    starts = np.concatenate([[0], bnd])
+    ends   = np.concatenate([bnd, [len(t)]])
+    for i0, i1 in zip(starts, ends):
+        if i1 <= i0:
+            continue
+        seg = disp[i0]
+        if seg not in _PHASE_TINT:
+            continue
+        t_lo, t_hi = t[i0], t[i1 - 1]
+        if not (np.isfinite(t_lo) and np.isfinite(t_hi)):
+            continue
+        ax.axvspan(
+            t_lo, t_hi,
+            facecolor=_PHASE_TINT[seg],
+            alpha=_PHASE_TINT_ALPHA,
+            edgecolor="none",
+            zorder=-5,
+        )
+
+
 def _annotate_phase_labels(ax_top, t, phase):
     """Place phase names above *ax_top*, centred over each phase's interval.
 
@@ -177,6 +221,137 @@ def _annotate_phase_labels(ax_top, t, phase):
             transform=ax_top.get_xaxis_transform(),
             fontsize=10,
         )
+
+
+# ---------------------------------------------------------------------------
+# Panel (b) — feedback force-fraction decomposition (local renderer)
+# ---------------------------------------------------------------------------
+# Reproduces the spirit of paper_feedback's stack but with three
+# customisations requested for the teaser figure:
+#
+#   1.  Base-stack labels are unified as F_grav / F_drive / F_rad /
+#       F_ext (paper_feedback's "PISM" band actually plots
+#       press_HII_in; see the comment further down).
+#   2.  Transition phase: wind + SN hatched overlay starts at the
+#       very first transition snapshot (no ``non_bubble`` gating)
+#       and HII is *not* drawn — only momentum gets the HII overlay.
+#   3.  Outlines on every hatched slice are the same dotted black
+#       in both phases, so wind / SN edges read consistently.
+#
+# Smoothing window matches paper_feedback's default (21).
+_FB_SMOOTH = 21
+
+
+def _draw_ram_overlay(ax, t_seg, db, y_wind_top, y_sn_top):
+    """Wind + SN hatched slices, shared dotted-black outline."""
+    # Wind (bottom)
+    ax.fill_between(t_seg, db, y_wind_top,
+                    facecolor="none", edgecolor=_FC.WIND,
+                    hatch="\\\\\\\\", linewidth=0, alpha=0.9, zorder=3)
+    ax.fill_between(t_seg, db, y_wind_top,
+                    facecolor="none", edgecolor="black",
+                    linestyle=":", linewidth=0.4, zorder=6)
+    # SN (above wind)
+    ax.fill_between(t_seg, y_wind_top, y_sn_top,
+                    facecolor="none", edgecolor=_FC.SN,
+                    hatch="////", linewidth=0, alpha=0.9, zorder=3)
+    ax.fill_between(t_seg, y_wind_top, y_sn_top,
+                    facecolor="none", edgecolor="black",
+                    linestyle=":", linewidth=0.4, zorder=6)
+
+
+def _draw_hii_overlay(ax, t_seg, y_sn_top, y_hii_top):
+    """HII hatched slice on top of wind+SN (momentum only)."""
+    ax.fill_between(t_seg, y_sn_top, y_hii_top,
+                    facecolor="none", edgecolor=_FC.PHII,
+                    hatch="......", linewidth=0, alpha=0.9, zorder=3)
+    ax.fill_between(t_seg, y_sn_top, y_hii_top,
+                    facecolor="none", edgecolor="black",
+                    linestyle=":", linewidth=0.4, zorder=6)
+
+
+def _plot_feedback_panel(ax, t, phase, base_forces, overlay_forces):
+    """Draw the feedback force-fraction panel onto *ax*.
+
+    ``base_forces`` is the (4, N) array (F_grav, F_drive, F_rad,
+    F_ext) returned by ``paper_feedback.load_run``; ``overlay_forces``
+    is (3, N) = (F_HII, F_wind, F_SN).
+    """
+    F_HII_raw, F_w_raw, F_s_raw = overlay_forces
+    F_drive = base_forces[1]
+
+    # Stack base-fraction (smooth after normalising for stable widths)
+    ftotal   = base_forces.sum(axis=0)
+    ftotal   = np.where(ftotal == 0.0, np.nan, ftotal)
+    frac_raw = base_forces / ftotal
+    frac     = smooth_2d(frac_raw, _FB_SMOOTH, mode="edge")
+    cum      = np.cumsum(frac, axis=0)
+    prev     = np.vstack([np.zeros_like(t), cum[:-1]])
+
+    base_styles = [
+        (_FC.GRAV,  0.75),
+        (_FC.DRIVE, 0.75),
+        (_FC.RAD,   0.75),
+        (_FC.PISM,  1.00),  # ``F_ext`` band (rendered as white)
+    ]
+    for (color, alpha), y0, y1 in zip(base_styles, prev, cum):
+        ax.fill_between(t, y0, y1, facecolor=color, alpha=alpha,
+                        edgecolor="black", linewidth=0.4, zorder=4)
+
+    # F_drive band (the band the overlays live inside)
+    drive_bottom = prev[1]
+    drive_top    = cum[1]
+    drive_h      = drive_top - drive_bottom
+
+    eps      = 1e-30
+    F_HII    = np.nan_to_num(F_HII_raw, nan=0.0)
+    F_w      = np.nan_to_num(F_w_raw,   nan=0.0)
+    F_s      = np.nan_to_num(F_s_raw,   nan=0.0)
+    Fdrive_s = np.where(F_drive > 0, F_drive, np.nan)
+
+    # ---- Transition phase: wind + SN, no HII ------------------------------
+    transition = (np.asarray(phase) == "transition")
+    if np.any(transition):
+        idx = np.where(transition)[0]
+        f_w = np.clip(F_w[idx] / (Fdrive_s[idx] + eps), 0.0, 1.0)
+        f_s = np.clip(F_s[idx] / (Fdrive_s[idx] + eps), 0.0, 1.0)
+        # Renormalise if (f_w + f_s) > 1 (would overflow F_drive band)
+        s = f_w + f_s
+        over = s > 1.0
+        f_w[over] /= s[over]
+        f_s[over] /= s[over]
+
+        db = drive_bottom[idx]
+        dh = drive_h[idx]
+        y_wind_top = db + f_w * dh
+        y_sn_top   = y_wind_top + f_s * dh
+        _draw_ram_overlay(ax, t[idx], db, y_wind_top, y_sn_top)
+
+    # ---- Momentum phase: wind + SN + HII ----------------------------------
+    momentum = (np.asarray(phase) == "momentum")
+    if np.any(momentum):
+        idx   = np.where(momentum)[0]
+        Ftot  = F_w[idx] + F_s[idx] + F_HII[idx]
+        denom = np.where(Ftot > 0, Ftot, np.nan)
+        f_w = np.nan_to_num(F_w[idx]   / denom, nan=0.0)
+        f_s = np.nan_to_num(F_s[idx]   / denom, nan=0.0)
+        f_h = np.nan_to_num(F_HII[idx] / denom, nan=0.0)
+        s = f_w + f_s + f_h
+        over = s > 1.0
+        f_w[over] /= s[over]
+        f_s[over] /= s[over]
+        f_h[over] /= s[over]
+
+        db = drive_bottom[idx]
+        dh = drive_h[idx]
+        y_wind_top = db + f_w * dh
+        y_sn_top   = y_wind_top + f_s * dh
+        y_hii_top  = y_sn_top + f_h * dh
+        _draw_ram_overlay(ax, t[idx], db, y_wind_top, y_sn_top)
+        _draw_hii_overlay(ax, t[idx], y_sn_top, y_hii_top)
+
+    ax.set_ylim(0.0, 1.0)
+    ax.set_xlim(t.min(), t.max())
 
 
 # ---------------------------------------------------------------------------
@@ -227,6 +402,7 @@ def plot_from_path(data_input, output_dir=None):
     ax_a, ax_b, ax_c = axes
 
     # ---- panel (a) — R_b linear (left), v_sh log (right) -------------------
+    _draw_phase_tints(ax_a, run["t"], run["phase"])
     ax_a.plot(run["t"], run["R2"], color=_C_R, lw=1.5)
     ax_a.set_ylabel(r"$R_{\rm b}\ [{\rm pc}]$", color=_C_R)
     ax_a.tick_params(axis="y", colors=_C_R)
@@ -237,43 +413,42 @@ def plot_from_path(data_input, output_dir=None):
     ax_av.set_ylabel(r"$v_{\rm sh}\ [{\rm km\ s^{-1}}]$", color=_C_V)
     ax_av.tick_params(axis="y", colors=_C_V)
 
-    # ---- panel (b) — feedback decomposition (delegated) --------------------
-    # Uses paper_feedback.load_run + plot_run_on_ax verbatim so the
-    # teaser panel stays in lock-step with the standalone figure.
-    fb_t, fb_R2, fb_phase, fb_base, fb_overlay, fb_rcloud, fb_iscoll, fb_press = (
+    # ---- panel (b) — feedback decomposition (local renderer) --------------
+    # paper_feedback.load_run is reused to extract base / overlay
+    # arrays; the panel itself is drawn locally so we control the
+    # transition-phase logic (no ``non_bubble`` gate; HII suppressed
+    # in transition; consistent dotted slice outlines).
+    fb_t, fb_R2, fb_phase, fb_base, fb_overlay, _fb_rc, _fb_ic, _fb_pr = (
         _pf.load_run(data_path)
     )
-    _pf.plot_run_on_ax(
-        ax_b, fb_t, fb_R2, fb_phase, fb_base, fb_overlay, fb_rcloud, fb_iscoll,
-        pressures=fb_press,
-        smooth_window=_pf.SMOOTH_WINDOW,
-        phase_change=False, show_rcloud=False, show_collapse=False,
-        use_log_x=False,
-    )
+    _plot_feedback_panel(ax_b, fb_t, fb_phase, fb_base, fb_overlay)
     ax_b.set_ylabel(r"$F/F_{\rm tot}$")
-    # The band paper_feedback labels "PISM" actually plots the
-    # ``press_HII_in`` field, which is dominated by the photo-ionised
-    # gas pressure outside the shell (P_ext = 2 n_r k_B T_ion, set in
-    # run_*_phase_modified.py once shell_fAbsorbedIon drops below 1)
-    # and only includes the input ``PISM`` parameter as an additive
-    # ``PISM * k_B`` once rShell ≥ rCloud.  Relabel here so the teaser
-    # legend is unambiguous.
+
+    # The fourth base band ("F_ext") plots the snapshot field
+    # ``press_HII_in``, which is dominated by the photo-ionised
+    # inflow pressure 2 n_r k_B T_ion (set in run_*_phase_modified
+    # once shell_fAbsorbedIon < 1) and only adds an additive
+    # ``PISM * k_B`` term once the shell escapes the cloud.
     fb_handles = [
-        Patch(facecolor=_FC.GRAV,  edgecolor="none", alpha=0.75, label="Gravity"),
+        Patch(facecolor=_FC.GRAV,  edgecolor="none", alpha=0.75,
+              label=r"$F_{\rm grav}$"),
         Patch(facecolor=_FC.DRIVE, edgecolor="none", alpha=0.75,
               label=r"$F_{\rm drive}$"),
-        Patch(facecolor=_FC.RAD,   edgecolor="none", alpha=0.75, label="Radiation"),
+        Patch(facecolor=_FC.RAD,   edgecolor="none", alpha=0.75,
+              label=r"$F_{\rm rad}$"),
         Patch(facecolor=_FC.PISM,  edgecolor="0.3",  linewidth=0.8,
-              label=r"$P_{\rm ext}$"),
+              label=r"$F_{\rm ext}$"),
         Patch(facecolor="none", edgecolor=_FC.PHII, hatch="......",
-              label=r"$P_{\rm HII}$"),
-        Patch(facecolor="none", edgecolor=_FC.WIND, hatch="\\\\\\\\", label="Wind"),
-        Patch(facecolor="none", edgecolor=_FC.SN,   hatch="////",     label="SN"),
+              label="HII"),
+        Patch(facecolor="none", edgecolor=_FC.WIND, hatch="\\\\\\\\",
+              label="Wind"),
+        Patch(facecolor="none", edgecolor=_FC.SN,   hatch="////",
+              label="SN"),
     ]
     ax_b.legend(
-        handles=fb_handles, loc="upper right", frameon=False,
+        handles=fb_handles, loc="upper right", frameon=True,
         fontsize=8, ncol=2, handlelength=1.2, columnspacing=0.8,
-        labelspacing=0.3,
+        labelspacing=0.3, framealpha=0.6, edgecolor="0.3",
     )
 
     # ---- panel (c) — ionising-photon budget --------------------------------
