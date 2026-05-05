@@ -69,19 +69,21 @@ _SHADE_DUST   = "#a98ec0"
 _SHADE_ESCAPE = "#dccdec"
 
 # Panel (b) two-tier palette:
-#   structural / baseline forces are rendered in greyscale so they
-#   read as a neutral backdrop, and the actual feedback channels
-#   (HII, wind, SN) sit on top as translucent tinted overlays.
-# Base stack (greyscale)
-_C_GRAV  = "#1a1a1a"   # gravity            (near-black)
-_C_DRIVE = "#dfe2e6"   # bubble-pressure base inside F_drive (light grey)
-_C_RAD   = "#7d848a"   # radiation          (mid grey)
+#   structural / baseline forces are rendered in a monotonic
+#   greyscale ramp (darkest at the bottom of the stack, white at
+#   the top) so they read as a neutral backdrop, and the actual
+#   feedback channels (HII, wind, SN) sit on top as translucent
+#   tinted overlays.
+# Base stack (greyscale, bottom→top: dark → light)
+_C_GRAV  = "#1a1a1a"   # gravity            (near-black, ~10% lightness)
+_C_DRIVE = "#a4a7aa"   # bubble-pressure base inside F_drive (~64%)
+_C_RAD   = "#d4d6d8"   # radiation          (~83%)
 _C_EXT   = "#ffffff"   # external photoionised (pure white)
 # Tinted feedback overlays
 _C_HII   = "#c0392b"   # warm red
 _C_WIND  = "#1d3557"   # navy
 _C_SN    = "#ef6c00"   # vivid orange
-_TINT_ALPHA = 0.65
+_TINT_ALPHA = 0.40
 
 # Top-panel phase-region tints (alpha-blended).  A cool-to-warm
 # green progression so the three regimes read in temporal order
