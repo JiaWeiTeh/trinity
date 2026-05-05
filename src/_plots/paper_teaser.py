@@ -34,7 +34,6 @@ exists on disk.
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
-from matplotlib.ticker import MaxNLocator
 from pathlib import Path
 
 import sys as _sys
@@ -304,18 +303,15 @@ def plot_from_path(data_input, output_dir=None):
     if finite_t.size > 0:
         ax_c.set_xlim(finite_t.min(), finite_t.max())
 
-    # ---- prune top/bottom y-tick labels at panel boundaries ----------------
-    # With ``hspace=0.05`` the boundary tick of one panel sits on top
-    # of the boundary tick of the next.  Remove the outermost labels
-    # on each axis so they do not collide.  ax_av (twinx) and ax_a are
-    # both treated.
-    ax_a.yaxis.set_major_locator(MaxNLocator(prune="lower"))
-    ax_av.yaxis.set_major_locator(MaxNLocator(prune="lower"))
-    # Panel (b) is sandwiched between (a) and (c); explicit interior
-    # ticks avoid the default ``[0, 0.5, 1.0]`` whose endpoints both
-    # land on a panel boundary.
-    ax_b.set_yticks([0.2, 0.4, 0.6, 0.8])
-    ax_c.yaxis.set_major_locator(MaxNLocator(prune="upper"))
+    # ---- explicit y-tick placements (avoid boundary-edge labels) -----------
+    # Top panel: R_b every 50 pc, skipping 0 (panel-bottom border) and the
+    # axis cap; v_sh kept on its default log locator with the lowest decade
+    # dropped so it doesn't collide with the panel below.
+    ax_a.set_yticks([50, 100, 150, 200, 250])
+    # Middle and bottom panels: identical fraction ticks so the eye reads
+    # them as a paired stack.
+    ax_b.set_yticks([0.2, 0.4, 0.6, 0.8, 1.0])
+    ax_c.set_yticks([0.2, 0.4, 0.6, 0.8, 1.0])
 
     # ---- phase boundaries + top-panel labels -------------------------------
     _draw_phase_boundaries(list(axes) + [ax_av], run["t"], run["phase"])
