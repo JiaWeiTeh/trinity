@@ -120,8 +120,9 @@ def identify_profile_tag(folder_name: str) -> str:
     str or None
         Profile tag like 'PL0', 'PL-1', 'PL-2', 'BE14', or None if not recognized.
     """
-    # Match _PL{int} or _BE{int} at end of folder name
-    match = re.search(r'_(PL-?\d+|BE\d+)$', folder_name)
+    # Match _PL{int} or _BE{int} either at end of folder name or before
+    # a trailing _yesPHII / _noPHII (or any other) suffix.
+    match = re.search(r'_(PL-?\d+|BE\d+)(?:_|$)', folder_name)
     if match:
         return match.group(1)
     return None
