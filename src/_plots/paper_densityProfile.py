@@ -406,6 +406,24 @@ def _compute_rho_M_profile(tag: str, sim_folders: dict):
     return r_arr, n_arr * NDENS_AU2CGS, M_arr
 
 
+def _extend_outer_plateau(r_arr, n_cgs, M_arr, r_max):
+    """Append a point at *r_max* so the nISM (and M_cloud) plateau reaches it.
+
+    Different profiles have different rCloud values, so each per-tag r_arr
+    ends at rCloud*1.3. When the curves are overlaid on a shared x-axis,
+    profiles with smaller rCloud would otherwise terminate before the
+    right-hand edge of the plot — extend their final (nISM / M_cloud) value
+    out to the common r_max so the horizontal nISM line is visible all the
+    way across.
+    """
+    if r_arr[-1] >= r_max:
+        return r_arr, n_cgs, M_arr
+    r_arr = np.append(r_arr, r_max)
+    n_cgs = np.append(n_cgs, n_cgs[-1])
+    M_arr = np.append(M_arr, M_arr[-1])
+    return r_arr, n_cgs, M_arr
+
+
 # =============================================================================
 # Figure 1: Cloud Density & Enclosed Mass Profiles (STATIC, 2-panel)
 # =============================================================================
@@ -430,9 +448,17 @@ def plot_enclosed_mass(sweep_dir: str, output_dir: Path, fmt: str = 'pdf',
     fig, axes = plt.subplots(1, 2, figsize=(9, 4))
     ax_n, ax_M = axes
 
+    # Pre-compute every profile so we know the global outer radius, then
+    # extend each curve's nISM plateau out to that radius before plotting
+    # — this keeps the nISM horizontal line visible all the way to the
+    # right-hand edge of the panel even for profiles with smaller rCloud.
+    profiles = {tag: _compute_rho_M_profile(tag, sim_folders)
+                for tag in PROFILE_ORDER}
+    r_max = max(r_arr[-1] for r_arr, _, _ in profiles.values())
+
     for tag in PROFILE_ORDER:
         s = get_style(tag)
-        r_arr, n_cgs, M_arr = _compute_rho_M_profile(tag, sim_folders)
+        r_arr, n_cgs, M_arr = _extend_outer_plateau(*profiles[tag], r_max)
 
         ax_n.loglog(r_arr, n_cgs, color=s['color'], ls=s['ls'], lw=1.5,
                     label=s['label'])
@@ -499,13 +525,25 @@ def _draw_ingredients_panel(ax_rho, ax_M, tags_present: list,
     ax_M.tick_params(which='major', length=5)
     ax_M.tick_params(which='minor', length=3)
 
+    # Pre-compute every profile so we know the global outer radius, then
+    # extend each curve's nISM plateau out to that radius before plotting
+    # — this keeps the nISM horizontal line visible all the way to the
+    # right-hand edge of the panel even for profiles with smaller rCloud.
+    profiles = {}
     for tag in tags_present:
-        s = get_style(tag)
         try:
-            r_arr, n_cgs, M_arr = _compute_rho_M_profile(tag, sim_folders)
+            profiles[tag] = _compute_rho_M_profile(tag, sim_folders)
         except Exception as e:
             logger.warning(f"Could not compute profile ingredients for {tag}: {e}")
+    if not profiles:
+        return
+    r_max = max(r_arr[-1] for r_arr, _, _ in profiles.values())
+
+    for tag in tags_present:
+        if tag not in profiles:
             continue
+        s = get_style(tag)
+        r_arr, n_cgs, M_arr = _extend_outer_plateau(*profiles[tag], r_max)
         with np.errstate(divide='ignore', invalid='ignore'):
             log_n = np.log10(n_cgs)
             log_M = np.log10(M_arr)
