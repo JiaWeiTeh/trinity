@@ -18,9 +18,11 @@ Three panels stacked vertically with a shared linear-time x-axis:
 
 The implicit phase is treated as part of the energy phase for
 display, so only the energy↔transition and transition↔momentum
-breaks register; the top panel's pale phase tints mark the
-regions and the active display-phase name is printed above the
-top panel.
+breaks register.  Vertical dotted grey lines mark these breaks
+on the top two panels (panel (c)'s dark stack fill swallows
+them, so they are skipped there); pale green tints in the top
+panel reinforce the same regions, and the active display-phase
+name is printed above the top panel.
 
 Unit handling
 -------------
@@ -79,19 +81,22 @@ _C_EXT   = "#ffffff"   # external photoionised (pure white)
 _C_HII   = "#c0392b"   # warm red
 _C_WIND  = "#1d3557"   # navy
 _C_SN    = "#ef6c00"   # vivid orange
-_TINT_ALPHA = 0.45
+_TINT_ALPHA = 0.65
 
-# Top-panel phase-region tints (very light, alpha-blended).  A
-# cool-to-warm green progression so the three regimes read in
-# temporal order without colliding with the middle panel's
-# greyscale + red/navy/orange overlays or the bottom panel's
-# purple Q_i ramp.
+# Top-panel phase-region tints (alpha-blended).  A cool-to-warm
+# green progression so the three regimes read in temporal order
+# without colliding with the middle panel's greyscale +
+# red/navy/orange overlays or the bottom panel's purple Q_i ramp.
 _PHASE_TINT = {
     "energy":     "#a4c4a4",  # cool pale sage
     "transition": "#c4c48f",  # olive
     "momentum":   "#c4a48f",  # warm tan
 }
-_PHASE_TINT_ALPHA = 0.20
+_PHASE_TINT_ALPHA = 0.40
+
+# Vertical phase-boundary lines.  zorder=10 keeps them above the
+# stack fills (zorder=4) but below the legends (set_zorder(20)).
+_PHASE_LINE_KW = dict(color="0.4", linestyle=":", linewidth=0.9, zorder=10)
 
 _PHASE_LABEL = {
     "energy":     "energy",
@@ -170,6 +175,13 @@ def _change_points(arr):
     if arr.size <= 1:
         return np.array([], dtype=int)
     return np.where(arr[1:] != arr[:-1])[0] + 1
+
+
+def _draw_phase_boundaries(axes, t, phase):
+    bnd = _change_points(_display_phase(phase))
+    for ax in axes:
+        for i in bnd:
+            ax.axvline(t[i], **_PHASE_LINE_KW)
 
 
 def _draw_phase_tints(ax, t, phase):
@@ -303,7 +315,7 @@ def _plot_feedback_panel(ax, t, phase, base_forces, overlay_forces):
     ]
     for (color, alpha), y0, y1 in zip(base_styles, prev, cum):
         ax.fill_between(t, y0, y1, facecolor=color, alpha=alpha,
-                        edgecolor="black", linewidth=0.4, zorder=4)
+                        edgecolor="none", zorder=4)
 
     # F_drive band (the band the overlays live inside)
     drive_bottom = prev[1]
@@ -498,8 +510,11 @@ def plot_from_path(data_input, output_dir=None):
     ax_b.set_yticks([0.2, 0.4, 0.6, 0.8, 1.0])
     ax_c.set_yticks([0.2, 0.4, 0.6, 0.8, 1.0])
 
-    # Phase labels above the top panel (the pale tints in panel (a)
-    # make the dotted boundary lines redundant — see _draw_phase_tints).
+    # ---- phase boundaries + top-panel labels -------------------------------
+    # Boundary lines on the top two panels only — panel (c)'s dark
+    # stack fill swallows them anyway, and the panel-(a) tints alone
+    # don't make the transition obvious enough.
+    _draw_phase_boundaries([ax_a, ax_av, ax_b], run["t"], run["phase"])
     _annotate_phase_labels(ax_a, run["t"], run["phase"])
 
     # ---- save --------------------------------------------------------------
