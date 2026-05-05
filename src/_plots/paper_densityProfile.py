@@ -1216,13 +1216,13 @@ def plot_phase_timeline(simulations: dict, output_dir: Path, fmt: str = 'pdf',
     # Legend at top (2x2 block instead of a single long row)
     legend_handles = [
         Patch(facecolor='white', edgecolor='black', lw=0.5,
-              label='Energy-driven'),
+              label='energy-driven'),
         Patch(facecolor='#cccccc', edgecolor='black', lw=0.5,
-              label='Transition'),
+              label='transition'),
         Patch(facecolor='white', edgecolor='black', hatch='/////', lw=0.5,
-              label='Momentum-driven'),
+              label='momentum-driven'),
         Patch(facecolor='#666666', edgecolor='black', lw=0.5,
-              label='Re-collapse'),
+              label='re-collapse'),
     ]
     ax.legend(handles=legend_handles, loc='lower center',
               bbox_to_anchor=(0.5, 1.02), ncol=2,
