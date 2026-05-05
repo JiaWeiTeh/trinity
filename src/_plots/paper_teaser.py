@@ -82,9 +82,9 @@ _PHASE_TINT_ALPHA = 0.10
 _PHASE_LINE_KW = dict(color="0.4", linestyle=":", linewidth=0.9, zorder=10)
 
 _PHASE_LABEL = {
-    "energy":     r"\textsc{energy}",
-    "transition": r"\textsc{transition}",
-    "momentum":   r"\textsc{momentum}",
+    "energy":     "energy",
+    "transition": "transition",
+    "momentum":   "momentum",
 }
 
 # The implicit phase is a numerical continuation of the energy phase;
@@ -441,15 +441,18 @@ def plot_from_path(data_input, output_dir=None):
         Patch(facecolor="none", edgecolor=_FC.PHII, hatch="......",
               label="HII"),
         Patch(facecolor="none", edgecolor=_FC.WIND, hatch="\\\\\\\\",
-              label="Wind"),
+              label="wind"),
         Patch(facecolor="none", edgecolor=_FC.SN,   hatch="////",
               label="SN"),
     ]
-    ax_b.legend(
+    leg_b = ax_b.legend(
         handles=fb_handles, loc="upper right", frameon=True,
         fontsize=8, ncol=2, handlelength=1.2, columnspacing=0.8,
-        labelspacing=0.3, framealpha=0.6, edgecolor="0.3",
+        labelspacing=0.3, framealpha=0.85, edgecolor="0.3",
     )
+    # Lift the legend above the dotted phase-boundary lines (zorder=10)
+    # so the lines do not show through the box.
+    leg_b.set_zorder(20)
 
     # ---- panel (c) — ionising-photon budget --------------------------------
     gas, dust, escape = _ionising_components(run["fAbs"], run["fDust"])
@@ -464,11 +467,12 @@ def plot_from_path(data_input, output_dir=None):
     # Top-right boxed legend (the bottom-right of this panel sits in
     # the darkest gas-absorption fill, where text in any colour is
     # hard to read).
-    ax_c.legend(
+    leg_c = ax_c.legend(
         loc="upper right", frameon=True, fontsize=10, ncol=3,
         handlelength=1.0, columnspacing=0.8,
-        framealpha=0.9, edgecolor="0.3",
+        framealpha=0.95, edgecolor="0.3",
     )
+    leg_c.set_zorder(20)
 
     # ---- shared x-axis, linear t (only bottom panel labels ticks) ----------
     for ax in axes[:-1]:
