@@ -454,21 +454,27 @@ class DescribedDict(dict):
                 f"Instead got {len(x_arr)} and {len(y_arr)}"
             )
 
-        # Log reconstruction R² for the first two simplify() calls of
-        # each implicit-phase snapshot — the implicit phase is where the
-        # bubble profiles are most varied, so this gives quick visibility
-        # into how well ``simplify_npoints`` is serving the run.
-        phase_item = self.get("current_phase")
-        if (phase_item is not None
-                and phase_item.value == "implicit"
-                and self._impl_r2_logged < 2):
-            import logging
-            metrics = _simplify_error(x_arr, y_arr, x_out, y_out)
-            logging.getLogger(__name__).debug(
-                f"simplify[{keyname}]: R²={metrics['r_squared']:.4f} "
-                f"(N_in={metrics['n_orig']} → N_out={metrics['n_simp']})"
-            )
-            self._impl_r2_logged += 1
+        # Compute reconstruction R² for every simplify() call.  If the
+        # simplified curve diverges from the original (R² < 0.9) that's
+        # a real signal that simplify_npoints is too small — log it as
+        # a warning regardless of phase or snapshot count.  Otherwise
+        # emit a debug-level sample for the first two implicit-phase
+        # calls per snapshot, enough to confirm the routine is behaving
+        # without flooding the log.
+        import logging
+        metrics = _simplify_error(x_arr, y_arr, x_out, y_out)
+        msg = (f"simplify[{keyname}]: R²={metrics['r_squared']:.4f} "
+               f"(N_in={metrics['n_orig']} → N_out={metrics['n_simp']})")
+
+        if metrics['r_squared'] < 0.9:
+            logging.getLogger(__name__).warning(msg)
+        else:
+            phase_item = self.get("current_phase")
+            if (phase_item is not None
+                    and phase_item.value == "implicit"
+                    and self._impl_r2_logged < 2):
+                logging.getLogger(__name__).debug(msg)
+                self._impl_r2_logged += 1
 
         return x_out, y_out
 
