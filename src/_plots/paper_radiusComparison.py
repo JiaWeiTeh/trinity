@@ -46,8 +46,8 @@ plt.rcParams.update({
     'font.size':        9,
     'axes.labelsize':   10,
     'axes.titlesize':   10,
-    'xtick.labelsize':  9,
-    'ytick.labelsize':  9,
+    'xtick.labelsize':  10,
+    'ytick.labelsize':  10,
     'legend.fontsize':  7,
 })
 
@@ -348,11 +348,11 @@ def plot_comparison_grid(
                    alpha=ALPHA_WARPFIELD,
                    label=r"WARPFIELD (no $P_{\rm HII}$)"),
             Line2D([0], [0], color=COLOR_WEAVER, lw=LW_SCALING, ls='--',
-                   alpha=ALPHA_SCALING, label=r"Pure energy (wind)"),
+                   alpha=ALPHA_SCALING, label=r"pure energy (wind)"),
             Line2D([0], [0], color=COLOR_SPITZER, lw=LW_SCALING, ls='-.',
-                   alpha=ALPHA_SCALING, label=r"Pure photoionised"),
+                   alpha=ALPHA_SCALING, label=r"pure photoionised"),
             Line2D([0], [0], color=COLOR_MOMENTUM, lw=LW_SCALING, ls=':',
-                   alpha=ALPHA_SCALING, label=r"Pure momentum"),
+                   alpha=ALPHA_SCALING, label=r"pure momentum"),
         ]
         handles.extend(get_marker_legend_handles(include_phase=SHOW_PHASE, include_rcloud=SHOW_RCLOUD, include_rcloud_horizontal=SHOW_RCLOUD_H, include_collapse=SHOW_COLLAPSE))
 
