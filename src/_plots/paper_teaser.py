@@ -16,11 +16,11 @@ Three panels stacked vertically with a shared linear-time x-axis:
            shell, by dust inside the shell, and escaping past the
            shell, summing to unity at every timestep
 
-Vertical dotted grey lines mark phase boundaries across all panels.
 The implicit phase is treated as part of the energy phase for
 display, so only the energy↔transition and transition↔momentum
-boundaries appear; the active display-phase name is printed above
-the top panel.
+breaks register; the top panel's pale phase tints mark the
+regions and the active display-phase name is printed above the
+top panel.
 
 Unit handling
 -------------
@@ -81,19 +81,17 @@ _C_WIND  = "#1d3557"   # navy
 _C_SN    = "#ef6c00"   # vivid orange
 _TINT_ALPHA = 0.45
 
-# Top-panel phase-region tints (very light, alpha-blended).  Three
-# distinct hues so the eye reads the three regimes at a glance
-# without dominating the curves drawn over them.
+# Top-panel phase-region tints (very light, alpha-blended).  A
+# cool-to-warm green progression so the three regimes read in
+# temporal order without colliding with the middle panel's
+# greyscale + red/navy/orange overlays or the bottom panel's
+# purple Q_i ramp.
 _PHASE_TINT = {
-    "energy":     "#56B4E9",  # Wong sky blue
-    "transition": "#E69F00",  # Wong orange
-    "momentum":   "#D55E00",  # Wong vermillion
+    "energy":     "#a4c4a4",  # cool pale sage
+    "transition": "#c4c48f",  # olive
+    "momentum":   "#c4a48f",  # warm tan
 }
-_PHASE_TINT_ALPHA = 0.10
-
-# Phase-boundary lines must sit above all stack fills and overlays so
-# they extend cleanly across the whole panel (zorder=10).
-_PHASE_LINE_KW = dict(color="0.4", linestyle=":", linewidth=0.9, zorder=10)
+_PHASE_TINT_ALPHA = 0.20
 
 _PHASE_LABEL = {
     "energy":     "energy",
@@ -174,13 +172,6 @@ def _change_points(arr):
     return np.where(arr[1:] != arr[:-1])[0] + 1
 
 
-def _draw_phase_boundaries(axes, t, phase):
-    bnd = _change_points(_display_phase(phase))
-    for ax in axes:
-        for i in bnd:
-            ax.axvline(t[i], **_PHASE_LINE_KW)
-
-
 def _draw_phase_tints(ax, t, phase):
     """Pale background tints behind the curves on the top panel.
 
@@ -246,11 +237,13 @@ def _annotate_phase_labels(ax_top, t, phase):
 #   1.  Base-stack labels are unified as F_grav / F_drive / F_rad /
 #       F_ext (paper_feedback's "PISM" band actually plots
 #       press_HII_in; see the comment further down).
-#   2.  Transition phase: wind + SN hatched overlay starts at the
-#       very first transition snapshot (no ``non_bubble`` gating)
-#       and HII is *not* drawn — only momentum gets the HII overlay.
-#   3.  Outlines on every hatched slice are the same dotted black
-#       in both phases, so wind / SN edges read consistently.
+#   2.  Transition phase: wind + SN translucent overlay starts at
+#       the very first transition snapshot (no ``non_bubble``
+#       gating) and HII is *not* drawn — only momentum gets the
+#       HII overlay.
+#   3.  Every translucent slice carries the same dotted-black
+#       outline in both phases so wind / SN edges read
+#       consistently.
 #
 # Smoothing window matches paper_feedback's default (21).
 _FB_SMOOTH = 21
@@ -432,7 +425,7 @@ def plot_from_path(data_input, output_dir=None):
     # arrays; the panel itself is drawn locally so we control the
     # transition-phase logic (no ``non_bubble`` gate; HII suppressed
     # in transition; consistent dotted slice outlines).
-    fb_t, fb_R2, fb_phase, fb_base, fb_overlay, _fb_rc, _fb_ic, _fb_pr = (
+    fb_t, _fb_R2, fb_phase, fb_base, fb_overlay, _fb_rc, _fb_ic, _fb_pr = (
         _pf.load_run(data_path)
     )
     _plot_feedback_panel(ax_b, fb_t, fb_phase, fb_base, fb_overlay)
@@ -497,17 +490,16 @@ def plot_from_path(data_input, output_dir=None):
         ax_c.set_xlim(finite_t.min(), finite_t.max())
 
     # ---- explicit y-tick placements (avoid boundary-edge labels) -----------
-    # Top panel: R_b every 50 pc, skipping 0 (panel-bottom border) and the
-    # axis cap; v_sh kept on its default log locator with the lowest decade
-    # dropped so it doesn't collide with the panel below.
+    # Top panel: R_b every 50 pc, skipping 0 (the panel-bottom border)
+    # and the axis cap.  v_sh stays on the default log locator.
     ax_a.set_yticks([50, 100, 150, 200, 250])
     # Middle and bottom panels: identical fraction ticks so the eye reads
     # them as a paired stack.
     ax_b.set_yticks([0.2, 0.4, 0.6, 0.8, 1.0])
     ax_c.set_yticks([0.2, 0.4, 0.6, 0.8, 1.0])
 
-    # ---- phase boundaries + top-panel labels -------------------------------
-    _draw_phase_boundaries(list(axes) + [ax_av], run["t"], run["phase"])
+    # Phase labels above the top panel (the pale tints in panel (a)
+    # make the dotted boundary lines redundant — see _draw_phase_tints).
     _annotate_phase_labels(ax_a, run["t"], run["phase"])
 
     # ---- save --------------------------------------------------------------
