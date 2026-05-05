@@ -44,10 +44,10 @@ from src._plots.grid_template import (
 # Pattern mirrors paper_densityProfile.py, just scaled to the smaller canvas.
 plt.rcParams.update({
     'font.size':        9,
-    'axes.labelsize':   9,
-    'axes.titlesize':   9,
-    'xtick.labelsize':  8,
-    'ytick.labelsize':  8,
+    'axes.labelsize':   10,
+    'axes.titlesize':   10,
+    'xtick.labelsize':  9,
+    'ytick.labelsize':  9,
     'legend.fontsize':  7,
 })
 
