@@ -331,14 +331,14 @@ def plot_comparison_grid(
 
                 if is_single:
                     ax.set_ylabel(r"$R_{\rm b}$ [pc]")
-                    ax.set_xlabel("t [Myr]")
+                    ax.set_xlabel(r"$t$ [Myr]")
                 else:
                     if j == 0:
                         ax.set_ylabel(_mcloud_label(mCloud) + "\n" + r"$R_{\rm b}$ [pc]")
                     else:
                         ax.tick_params(labelleft=False)
                     if i == nrows - 1:
-                        ax.set_xlabel("t [Myr]")
+                        ax.set_xlabel(r"$t$ [Myr]")
 
         # Legend entries — analytic scalings carry the demoted style.
         handles = [
