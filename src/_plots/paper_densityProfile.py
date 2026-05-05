@@ -81,9 +81,9 @@ plt.rcParams.update({
 # Colourblind-safe palette (Wong 2011) with solid lines for clarity
 PROFILE_STYLES = {
     'PL0':  {'color': '#0072B2', 'ls': '-',  'label': r'$\rho \propto r^{0}$'},
-    'PL-1': {'color': '#D55E00', 'ls': '-',  'label': r'$\rho \propto r^{-1}$'},
-    'PL-2': {'color': '#009E73', 'ls': '-',  'label': r'$\rho \propto r^{-2}$'},
-    'BE14': {'color': '#CC79A7', 'ls': '-',  'label': 'Bonnor-Ebert'},
+    'PL-1': {'color': '#E69F00', 'ls': '-',  'label': r'$\rho \propto r^{-1}$'},
+    'PL-2': {'color': '#CC79A7', 'ls': '-',  'label': r'$\rho \propto r^{-2}$'},
+    'BE14': {'color': '#009E73', 'ls': '-',  'label': r'$\rho \propto \exp\{-\psi(\xi)\}$'},
 }
 
 # Ordered list for consistent iteration
@@ -554,13 +554,16 @@ def _draw_ingredients_panel(ax_rho, ax_M, tags_present: list,
 
     ax_rho.set_xscale('log')
     ax_M.set_xscale('log')
+    # Display range starts at 1e-2 pc, not the inner 1e-3 used to compute
+    # the profiles — there is little structure in the inner-most decade.
+    ax_rho.set_xlim(left=1e-2, right=r_max)
 
     ax_rho.set_xlabel(r'$r$ [pc]')
-    ax_rho.set_ylabel(r'$\log_{10}\!\left(n_{\rm cloud}(r) / {\rm cm}^{-3}\right)$')
+    ax_rho.set_ylabel(r'$\log_{10}\!\left(n_{\rm cloud}(r)\right)$ [cm$^{-3}$]')
     # Twiny label: rotated the other way (reading top-to-bottom) to match
     # the right-hand side of the panel.
     ax_M.set_ylabel(
-        r'$\log_{10}\!\left(M_{\rm enc}(<r) / {\rm M}_\odot\right)$',
+        r'$\log_{10}\!\left(M_{\rm enc}(<r)\right)$ [M$_\odot$]',
         rotation=270, labelpad=22, va='bottom',
     )
 
@@ -765,13 +768,11 @@ def plot_shell_evolution_paper(simulations: dict, output_dir: Path,
     """Paper-ready 2-panel version of :func:`plot_shell_evolution`.
 
     Shows only the top (density + M_enc ingredients) panel and the R_b(t)
-    panel below it. Legend-spacing follows the ``paper_feedback`` convention
-    via :func:`_compute_legend_layout` so the legend never overlaps the
-    top subplot; a generous ``hspace`` keeps the ingredient-panel xlabel
-    clear of the R_b panel below.
+    panel below it. The profile-colour legend lives inside the R_b panel
+    (rather than at the top of the figure) to save vertical space; a
+    generous ``hspace`` keeps the ingredient-panel xlabel clear of the
+    R_b panel below.
     """
-    from src._plots.grid_template import _compute_legend_layout
-
     logger.info("Figure 2p: Shell Evolution (paper, 2-panel)")
 
     tags_present = [tag for tag in PROFILE_ORDER if tag in simulations]
@@ -779,19 +780,14 @@ def plot_shell_evolution_paper(simulations: dict, output_dir: Path,
     fig_h = 7.0
     fig = plt.figure(figsize=(7, fig_h))
 
-    # Compute legend + axes vertical layout so the legend doesn't clip
-    # the top panel.  Legend has 2 rows (4 handles, ncol=2).
-    layout = _compute_legend_layout(
-        fig_h, n_legend_items=len(tags_present), legend_ncol=2,
-    )
-
     # Two stacked panels with a wide hspace so the top panel's xlabel
-    # (r [pc]) stays clear of the R_b(t) panel below.
+    # (r [pc]) stays clear of the R_b(t) panel below.  No reservation
+    # for a figure-level legend — it now lives inside the R_b panel.
     gs = fig.add_gridspec(
         2, 1,
         hspace=0.45,
         left=0.14, right=0.86,
-        top=layout['top'], bottom=0.10,
+        top=0.95, bottom=0.10,
     )
     ax_rho = fig.add_subplot(gs[0, 0])
     ax_M   = ax_rho.twinx()
@@ -803,8 +799,16 @@ def plot_shell_evolution_paper(simulations: dict, output_dir: Path,
 
     ax_R.set_xlabel(r'$t$ [Myr]')
 
-    _build_profile_figure_legend(fig, tags_present,
-                                 legend_y=layout['legend_y'])
+    # Profile-colour legend inside the bottom panel (was a figure-level
+    # legend at the top; moved here to save vertical space).
+    profile_handles = [
+        Line2D([0], [0], color=get_style(tag)['color'], ls='-', lw=1.8,
+               label=get_style(tag)['label'].replace('\n', ' '))
+        for tag in tags_present
+    ]
+    ax_R.legend(handles=profile_handles, loc='best', ncol=2,
+                frameon=True, facecolor='white', edgecolor='0.2',
+                framealpha=0.95, columnspacing=1.5, handletextpad=0.5)
 
     savefig(fig, 'densityProfile_paper', output_dir, fmt)
     if show:
@@ -1212,13 +1216,13 @@ def plot_phase_timeline(simulations: dict, output_dir: Path, fmt: str = 'pdf',
     # Legend at top (2x2 block instead of a single long row)
     legend_handles = [
         Patch(facecolor='white', edgecolor='black', lw=0.5,
-              label='Energy-driven'),
+              label='energy-driven'),
         Patch(facecolor='#cccccc', edgecolor='black', lw=0.5,
-              label='Transition'),
+              label='transition'),
         Patch(facecolor='white', edgecolor='black', hatch='/////', lw=0.5,
-              label='Momentum-driven'),
+              label='momentum-driven'),
         Patch(facecolor='#666666', edgecolor='black', lw=0.5,
-              label='Re-collapse'),
+              label='re-collapse'),
     ]
     ax.legend(handles=legend_handles, loc='lower center',
               bbox_to_anchor=(0.5, 1.02), ncol=2,
