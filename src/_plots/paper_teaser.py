@@ -46,12 +46,11 @@ from src._plots.plot_base import FIG_DIR, smooth_2d
 from src._output.trinity_reader import load_output, resolve_data_input
 import src._functions.unit_conversions as cvt
 from src._calc._common.plot_utils import C_BLACK, C_BLUE
-from src._plots.force_colors import C as _FC
 
 # paper_feedback supplies the data extraction (load_run); its panel
 # renderer is *not* used — we draw the panel locally below so we
 # control phase-aware overlays without paper_feedback's conditional
-# ``non_bubble`` gating, and so the legend uses the F_*/HII/Wind/SN
+# ``non_bubble`` gating, and so the legend uses the F_*/HII/wind/SN
 # nomenclature requested for this figure.
 from src._plots import paper_feedback as _pf
 
@@ -66,6 +65,21 @@ _C_V = C_BLUE         # panel (a) shell velocity
 _SHADE_GAS    = "#6c4a78"
 _SHADE_DUST   = "#a98ec0"
 _SHADE_ESCAPE = "#dccdec"
+
+# Panel (b) two-tier palette:
+#   structural / baseline forces are rendered in greyscale so they
+#   read as a neutral backdrop, and the actual feedback channels
+#   (HII, wind, SN) sit on top as translucent tinted overlays.
+# Base stack (greyscale)
+_C_GRAV  = "#1a1a1a"   # gravity            (near-black)
+_C_DRIVE = "#dfe2e6"   # bubble-pressure base inside F_drive (light grey)
+_C_RAD   = "#7d848a"   # radiation          (mid grey)
+_C_EXT   = "#ffffff"   # external photoionised (pure white)
+# Tinted feedback overlays
+_C_HII   = "#c0392b"   # warm red
+_C_WIND  = "#1d3557"   # navy
+_C_SN    = "#ef6c00"   # vivid orange
+_TINT_ALPHA = 0.45
 
 # Top-panel phase-region tints (very light, alpha-blended).  Three
 # distinct hues so the eye reads the three regimes at a glance
@@ -243,28 +257,28 @@ _FB_SMOOTH = 21
 
 
 def _draw_ram_overlay(ax, t_seg, db, y_wind_top, y_sn_top):
-    """Wind + SN hatched slices, shared dotted-black outline."""
+    """Wind + SN translucent slices with shared dotted-black outline."""
     # Wind (bottom)
     ax.fill_between(t_seg, db, y_wind_top,
-                    facecolor="none", edgecolor=_FC.WIND,
-                    hatch="\\\\\\\\", linewidth=0, alpha=0.9, zorder=3)
+                    facecolor=_C_WIND, alpha=_TINT_ALPHA,
+                    edgecolor="none", zorder=3)
     ax.fill_between(t_seg, db, y_wind_top,
                     facecolor="none", edgecolor="black",
                     linestyle=":", linewidth=0.4, zorder=6)
     # SN (above wind)
     ax.fill_between(t_seg, y_wind_top, y_sn_top,
-                    facecolor="none", edgecolor=_FC.SN,
-                    hatch="////", linewidth=0, alpha=0.9, zorder=3)
+                    facecolor=_C_SN, alpha=_TINT_ALPHA,
+                    edgecolor="none", zorder=3)
     ax.fill_between(t_seg, y_wind_top, y_sn_top,
                     facecolor="none", edgecolor="black",
                     linestyle=":", linewidth=0.4, zorder=6)
 
 
 def _draw_hii_overlay(ax, t_seg, y_sn_top, y_hii_top):
-    """HII hatched slice on top of wind+SN (momentum only)."""
+    """HII translucent slice on top of wind+SN (momentum only)."""
     ax.fill_between(t_seg, y_sn_top, y_hii_top,
-                    facecolor="none", edgecolor=_FC.PHII,
-                    hatch="......", linewidth=0, alpha=0.9, zorder=3)
+                    facecolor=_C_HII, alpha=_TINT_ALPHA,
+                    edgecolor="none", zorder=3)
     ax.fill_between(t_seg, y_sn_top, y_hii_top,
                     facecolor="none", edgecolor="black",
                     linestyle=":", linewidth=0.4, zorder=6)
@@ -289,10 +303,10 @@ def _plot_feedback_panel(ax, t, phase, base_forces, overlay_forces):
     prev     = np.vstack([np.zeros_like(t), cum[:-1]])
 
     base_styles = [
-        (_FC.GRAV,  0.75),
-        (_FC.DRIVE, 0.75),
-        (_FC.RAD,   0.75),
-        (_FC.PISM,  1.00),  # ``F_ext`` band (rendered as white)
+        (_C_GRAV,  1.00),
+        (_C_DRIVE, 1.00),
+        (_C_RAD,   1.00),
+        (_C_EXT,   1.00),
     ]
     for (color, alpha), y0, y1 in zip(base_styles, prev, cum):
         ax.fill_between(t, y0, y1, facecolor=color, alpha=alpha,
@@ -430,20 +444,20 @@ def plot_from_path(data_input, output_dir=None):
     # once shell_fAbsorbedIon < 1) and only adds an additive
     # ``PISM * k_B`` term once the shell escapes the cloud.
     fb_handles = [
-        Patch(facecolor=_FC.GRAV,  edgecolor="none", alpha=0.75,
+        Patch(facecolor=_C_GRAV,  edgecolor="black", linewidth=0.4,
               label=r"$F_{\rm grav}$"),
-        Patch(facecolor=_FC.DRIVE, edgecolor="none", alpha=0.75,
+        Patch(facecolor=_C_DRIVE, edgecolor="black", linewidth=0.4,
               label=r"$F_{\rm drive}$"),
-        Patch(facecolor=_FC.RAD,   edgecolor="none", alpha=0.75,
+        Patch(facecolor=_C_RAD,   edgecolor="black", linewidth=0.4,
               label=r"$F_{\rm rad}$"),
-        Patch(facecolor=_FC.PISM,  edgecolor="0.3",  linewidth=0.8,
+        Patch(facecolor=_C_EXT,   edgecolor="black", linewidth=0.4,
               label=r"$F_{\rm ext}$"),
-        Patch(facecolor="none", edgecolor=_FC.PHII, hatch="......",
-              label="HII"),
-        Patch(facecolor="none", edgecolor=_FC.WIND, hatch="\\\\\\\\",
-              label="wind"),
-        Patch(facecolor="none", edgecolor=_FC.SN,   hatch="////",
-              label="SN"),
+        Patch(facecolor=_C_HII,   alpha=_TINT_ALPHA,
+              edgecolor="black", linewidth=0.4, label="HII"),
+        Patch(facecolor=_C_WIND,  alpha=_TINT_ALPHA,
+              edgecolor="black", linewidth=0.4, label="wind"),
+        Patch(facecolor=_C_SN,    alpha=_TINT_ALPHA,
+              edgecolor="black", linewidth=0.4, label="SN"),
     ]
     leg_b = ax_b.legend(
         handles=fb_handles, loc="upper right", frameon=True,
