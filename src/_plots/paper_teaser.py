@@ -5,12 +5,14 @@ Paper I teaser figure (single fiducial run).
 
 Three panels stacked vertically with a shared linear-time x-axis:
 
-    (a) bubble radius R_b (left, linear [pc]) and shell velocity
-        v_sh (right, log [km/s])
-    (b) feedback force-fraction decomposition with phase-aware
-        overlays (delegated to paper_feedback.plot_run_on_ax)
-    (c) ionising-photon budget (gas / dust / escape) as a stacked
-        area summing to unity
+    top    bubble radius R_b (left, linear [pc]) and shell velocity
+           v_sh (right, log [km/s])
+    middle feedback force-fraction decomposition with phase-aware
+           overlays (delegated to paper_feedback.plot_run_on_ax)
+    bottom ionising-photon Q_i budget — stacked area showing the
+           fraction of ionising photons absorbed by gas inside the
+           shell, by dust inside the shell, and escaping past the
+           shell, summing to unity at every timestep
 
 Vertical dotted grey lines mark phase boundaries across all panels.
 The implicit phase is treated as part of the energy phase for
@@ -32,6 +34,7 @@ exists on disk.
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
+from matplotlib.ticker import MaxNLocator
 from pathlib import Path
 
 import sys as _sys
@@ -249,12 +252,20 @@ def plot_from_path(data_input, output_dir=None):
         use_log_x=False,
     )
     ax_b.set_ylabel(r"$F/F_{\rm tot}$")
+    # The band paper_feedback labels "PISM" actually plots the
+    # ``press_HII_in`` field, which is dominated by the photo-ionised
+    # gas pressure outside the shell (P_ext = 2 n_r k_B T_ion, set in
+    # run_*_phase_modified.py once shell_fAbsorbedIon drops below 1)
+    # and only includes the input ``PISM`` parameter as an additive
+    # ``PISM * k_B`` once rShell ≥ rCloud.  Relabel here so the teaser
+    # legend is unambiguous.
     fb_handles = [
         Patch(facecolor=_FC.GRAV,  edgecolor="none", alpha=0.75, label="Gravity"),
         Patch(facecolor=_FC.DRIVE, edgecolor="none", alpha=0.75,
               label=r"$F_{\rm drive}$"),
         Patch(facecolor=_FC.RAD,   edgecolor="none", alpha=0.75, label="Radiation"),
-        Patch(facecolor=_FC.PISM,  edgecolor="0.3",  linewidth=0.8, label="PISM"),
+        Patch(facecolor=_FC.PISM,  edgecolor="0.3",  linewidth=0.8,
+              label=r"$P_{\rm ext}$"),
         Patch(facecolor="none", edgecolor=_FC.PHII, hatch="......",
               label=r"$P_{\rm HII}$"),
         Patch(facecolor="none", edgecolor=_FC.WIND, hatch="\\\\\\\\", label="Wind"),
@@ -276,9 +287,13 @@ def plot_from_path(data_input, output_dir=None):
     )
     ax_c.set_ylim(0.0, 1.0)
     ax_c.set_ylabel(r"$Q_{\rm i}$ budget")
+    # Top-right boxed legend (the bottom-right of this panel sits in
+    # the darkest gas-absorption fill, where text in any colour is
+    # hard to read).
     ax_c.legend(
-        loc="lower right", frameon=False, fontsize=10, ncol=3,
+        loc="upper right", frameon=True, fontsize=10, ncol=3,
         handlelength=1.0, columnspacing=0.8,
+        framealpha=0.9, edgecolor="0.3",
     )
 
     # ---- shared x-axis, linear t (only bottom panel labels ticks) ----------
@@ -289,22 +304,22 @@ def plot_from_path(data_input, output_dir=None):
     if finite_t.size > 0:
         ax_c.set_xlim(finite_t.min(), finite_t.max())
 
+    # ---- prune top/bottom y-tick labels at panel boundaries ----------------
+    # With ``hspace=0.05`` the boundary tick of one panel sits on top
+    # of the boundary tick of the next.  Remove the outermost labels
+    # on each axis so they do not collide.  ax_av (twinx) and ax_a are
+    # both treated.
+    ax_a.yaxis.set_major_locator(MaxNLocator(prune="lower"))
+    ax_av.yaxis.set_major_locator(MaxNLocator(prune="lower"))
+    # Panel (b) is sandwiched between (a) and (c); explicit interior
+    # ticks avoid the default ``[0, 0.5, 1.0]`` whose endpoints both
+    # land on a panel boundary.
+    ax_b.set_yticks([0.2, 0.4, 0.6, 0.8])
+    ax_c.yaxis.set_major_locator(MaxNLocator(prune="upper"))
+
     # ---- phase boundaries + top-panel labels -------------------------------
     _draw_phase_boundaries(list(axes) + [ax_av], run["t"], run["phase"])
     _annotate_phase_labels(ax_a, run["t"], run["phase"])
-
-    # Panel-letter labels in upper-left, on a thin white bbox so they
-    # stay legible over the dark stack fill in panel (c).
-    _LETTER_BBOX = dict(
-        boxstyle="round,pad=0.18", facecolor="white",
-        edgecolor="none", alpha=0.85,
-    )
-    for ax, letter in zip(axes, "abc"):
-        ax.text(
-            0.012, 0.97, f"({letter})",
-            transform=ax.transAxes, ha="left", va="top",
-            fontsize=11, bbox=_LETTER_BBOX,
-        )
 
     # ---- save --------------------------------------------------------------
     out_dir = Path(output_dir) if output_dir else FIG_DIR
