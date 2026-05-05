@@ -251,10 +251,10 @@ def _annotate_phase_labels(ax_top, t, phase):
 #   1.  Base-stack labels are unified as F_grav / F_drive / F_rad /
 #       F_ext (paper_feedback's "PISM" band actually plots
 #       press_HII_in; see the comment further down).
-#   2.  Transition phase: wind + SN translucent overlay starts at
-#       the very first transition snapshot (no ``non_bubble``
-#       gating) and HII is *not* drawn — only momentum gets the
-#       HII overlay.
+#   2.  Only the momentum phase carries the wind / SN / HII
+#       overlay.  The energy and transition phases render the
+#       F_drive band as solid grey, since the bubble-driven and
+#       transition regimes aren't usefully decomposed here.
 #
 # Smoothing window matches paper_feedback's default (21).
 _FB_SMOOTH = 21
@@ -290,7 +290,6 @@ def _plot_feedback_panel(ax, t, phase, base_forces, overlay_forces):
     is (3, N) = (F_HII, F_wind, F_SN).
     """
     F_HII_raw, F_w_raw, F_s_raw = overlay_forces
-    F_drive = base_forces[1]
 
     # Stack base-fraction (smooth after normalising for stable widths)
     ftotal   = base_forces.sum(axis=0)
@@ -315,31 +314,14 @@ def _plot_feedback_panel(ax, t, phase, base_forces, overlay_forces):
     drive_top    = cum[1]
     drive_h      = drive_top - drive_bottom
 
-    eps      = 1e-30
-    F_HII    = np.nan_to_num(F_HII_raw, nan=0.0)
-    F_w      = np.nan_to_num(F_w_raw,   nan=0.0)
-    F_s      = np.nan_to_num(F_s_raw,   nan=0.0)
-    Fdrive_s = np.where(F_drive > 0, F_drive, np.nan)
-
-    # ---- Transition phase: wind + SN, no HII ------------------------------
-    transition = (np.asarray(phase) == "transition")
-    if np.any(transition):
-        idx = np.where(transition)[0]
-        f_w = np.clip(F_w[idx] / (Fdrive_s[idx] + eps), 0.0, 1.0)
-        f_s = np.clip(F_s[idx] / (Fdrive_s[idx] + eps), 0.0, 1.0)
-        # Renormalise if (f_w + f_s) > 1 (would overflow F_drive band)
-        s = f_w + f_s
-        over = s > 1.0
-        f_w[over] /= s[over]
-        f_s[over] /= s[over]
-
-        db = drive_bottom[idx]
-        dh = drive_h[idx]
-        y_wind_top = db + f_w * dh
-        y_sn_top   = y_wind_top + f_s * dh
-        _draw_ram_overlay(ax, t[idx], db, y_wind_top, y_sn_top)
+    F_HII = np.nan_to_num(F_HII_raw, nan=0.0)
+    F_w   = np.nan_to_num(F_w_raw,   nan=0.0)
+    F_s   = np.nan_to_num(F_s_raw,   nan=0.0)
 
     # ---- Momentum phase: wind + SN + HII ----------------------------------
+    # Transition phase deliberately renders solid F_drive only — the
+    # wind/SN ram overlay is reserved for the momentum phase, where
+    # the bubble has been replaced by direct momentum injection.
     momentum = (np.asarray(phase) == "momentum")
     if np.any(momentum):
         idx   = np.where(momentum)[0]
