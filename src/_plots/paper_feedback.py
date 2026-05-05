@@ -247,8 +247,12 @@ def plot_run_on_ax(
         Fw_raw   = overlay_forces[1]
         Fsn_raw  = overlay_forces[2]
 
-        # Three phase masks (energy, transition, momentum)
-        energy_mask     = np.array([p in ('energy', 'energy_implicit') for p in phase])
+        # Three phase masks (energy, transition, momentum).
+        # ``current_phase`` is one of {'energy', 'implicit', 'transition',
+        # 'momentum'} (see src/main.py:183-251); the implicit phase is a
+        # numerical continuation of the energy phase and gets the same
+        # driver-strip overlay here.
+        energy_mask     = np.array([p in ('energy', 'implicit') for p in phase])
         transition_mask = np.array([p == 'transition' for p in phase])
         momentum_mask   = np.array([p == 'momentum' for p in phase])
 
