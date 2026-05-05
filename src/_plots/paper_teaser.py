@@ -16,11 +16,11 @@ Three panels stacked vertically with a shared linear-time x-axis:
            shell, by dust inside the shell, and escaping past the
            shell, summing to unity at every timestep
 
-Vertical dotted grey lines mark phase boundaries across all panels.
 The implicit phase is treated as part of the energy phase for
 display, so only the energy↔transition and transition↔momentum
-boundaries appear; the active display-phase name is printed above
-the top panel.
+breaks register; the top panel's pale phase tints mark the
+regions and the active display-phase name is printed above the
+top panel.
 
 Unit handling
 -------------
@@ -46,12 +46,11 @@ from src._plots.plot_base import FIG_DIR, smooth_2d
 from src._output.trinity_reader import load_output, resolve_data_input
 import src._functions.unit_conversions as cvt
 from src._calc._common.plot_utils import C_BLACK, C_BLUE
-from src._plots.force_colors import C as _FC
 
 # paper_feedback supplies the data extraction (load_run); its panel
 # renderer is *not* used — we draw the panel locally below so we
 # control phase-aware overlays without paper_feedback's conditional
-# ``non_bubble`` gating, and so the legend uses the F_*/HII/Wind/SN
+# ``non_bubble`` gating, and so the legend uses the F_*/HII/wind/SN
 # nomenclature requested for this figure.
 from src._plots import paper_feedback as _pf
 
@@ -67,19 +66,32 @@ _SHADE_GAS    = "#6c4a78"
 _SHADE_DUST   = "#a98ec0"
 _SHADE_ESCAPE = "#dccdec"
 
-# Top-panel phase-region tints (very light, alpha-blended).  Three
-# distinct hues so the eye reads the three regimes at a glance
-# without dominating the curves drawn over them.
-_PHASE_TINT = {
-    "energy":     "#56B4E9",  # Wong sky blue
-    "transition": "#E69F00",  # Wong orange
-    "momentum":   "#D55E00",  # Wong vermillion
-}
-_PHASE_TINT_ALPHA = 0.10
+# Panel (b) two-tier palette:
+#   structural / baseline forces are rendered in greyscale so they
+#   read as a neutral backdrop, and the actual feedback channels
+#   (HII, wind, SN) sit on top as translucent tinted overlays.
+# Base stack (greyscale)
+_C_GRAV  = "#1a1a1a"   # gravity            (near-black)
+_C_DRIVE = "#dfe2e6"   # bubble-pressure base inside F_drive (light grey)
+_C_RAD   = "#7d848a"   # radiation          (mid grey)
+_C_EXT   = "#ffffff"   # external photoionised (pure white)
+# Tinted feedback overlays
+_C_HII   = "#c0392b"   # warm red
+_C_WIND  = "#1d3557"   # navy
+_C_SN    = "#ef6c00"   # vivid orange
+_TINT_ALPHA = 0.45
 
-# Phase-boundary lines must sit above all stack fills and overlays so
-# they extend cleanly across the whole panel (zorder=10).
-_PHASE_LINE_KW = dict(color="0.4", linestyle=":", linewidth=0.9, zorder=10)
+# Top-panel phase-region tints (very light, alpha-blended).  A
+# cool-to-warm green progression so the three regimes read in
+# temporal order without colliding with the middle panel's
+# greyscale + red/navy/orange overlays or the bottom panel's
+# purple Q_i ramp.
+_PHASE_TINT = {
+    "energy":     "#a4c4a4",  # cool pale sage
+    "transition": "#c4c48f",  # olive
+    "momentum":   "#c4a48f",  # warm tan
+}
+_PHASE_TINT_ALPHA = 0.20
 
 _PHASE_LABEL = {
     "energy":     "energy",
@@ -160,13 +172,6 @@ def _change_points(arr):
     return np.where(arr[1:] != arr[:-1])[0] + 1
 
 
-def _draw_phase_boundaries(axes, t, phase):
-    bnd = _change_points(_display_phase(phase))
-    for ax in axes:
-        for i in bnd:
-            ax.axvline(t[i], **_PHASE_LINE_KW)
-
-
 def _draw_phase_tints(ax, t, phase):
     """Pale background tints behind the curves on the top panel.
 
@@ -232,39 +237,41 @@ def _annotate_phase_labels(ax_top, t, phase):
 #   1.  Base-stack labels are unified as F_grav / F_drive / F_rad /
 #       F_ext (paper_feedback's "PISM" band actually plots
 #       press_HII_in; see the comment further down).
-#   2.  Transition phase: wind + SN hatched overlay starts at the
-#       very first transition snapshot (no ``non_bubble`` gating)
-#       and HII is *not* drawn — only momentum gets the HII overlay.
-#   3.  Outlines on every hatched slice are the same dotted black
-#       in both phases, so wind / SN edges read consistently.
+#   2.  Transition phase: wind + SN translucent overlay starts at
+#       the very first transition snapshot (no ``non_bubble``
+#       gating) and HII is *not* drawn — only momentum gets the
+#       HII overlay.
+#   3.  Every translucent slice carries the same dotted-black
+#       outline in both phases so wind / SN edges read
+#       consistently.
 #
 # Smoothing window matches paper_feedback's default (21).
 _FB_SMOOTH = 21
 
 
 def _draw_ram_overlay(ax, t_seg, db, y_wind_top, y_sn_top):
-    """Wind + SN hatched slices, shared dotted-black outline."""
+    """Wind + SN translucent slices with shared dotted-black outline."""
     # Wind (bottom)
     ax.fill_between(t_seg, db, y_wind_top,
-                    facecolor="none", edgecolor=_FC.WIND,
-                    hatch="\\\\\\\\", linewidth=0, alpha=0.9, zorder=3)
+                    facecolor=_C_WIND, alpha=_TINT_ALPHA,
+                    edgecolor="none", zorder=3)
     ax.fill_between(t_seg, db, y_wind_top,
                     facecolor="none", edgecolor="black",
                     linestyle=":", linewidth=0.4, zorder=6)
     # SN (above wind)
     ax.fill_between(t_seg, y_wind_top, y_sn_top,
-                    facecolor="none", edgecolor=_FC.SN,
-                    hatch="////", linewidth=0, alpha=0.9, zorder=3)
+                    facecolor=_C_SN, alpha=_TINT_ALPHA,
+                    edgecolor="none", zorder=3)
     ax.fill_between(t_seg, y_wind_top, y_sn_top,
                     facecolor="none", edgecolor="black",
                     linestyle=":", linewidth=0.4, zorder=6)
 
 
 def _draw_hii_overlay(ax, t_seg, y_sn_top, y_hii_top):
-    """HII hatched slice on top of wind+SN (momentum only)."""
+    """HII translucent slice on top of wind+SN (momentum only)."""
     ax.fill_between(t_seg, y_sn_top, y_hii_top,
-                    facecolor="none", edgecolor=_FC.PHII,
-                    hatch="......", linewidth=0, alpha=0.9, zorder=3)
+                    facecolor=_C_HII, alpha=_TINT_ALPHA,
+                    edgecolor="none", zorder=3)
     ax.fill_between(t_seg, y_sn_top, y_hii_top,
                     facecolor="none", edgecolor="black",
                     linestyle=":", linewidth=0.4, zorder=6)
@@ -289,10 +296,10 @@ def _plot_feedback_panel(ax, t, phase, base_forces, overlay_forces):
     prev     = np.vstack([np.zeros_like(t), cum[:-1]])
 
     base_styles = [
-        (_FC.GRAV,  0.75),
-        (_FC.DRIVE, 0.75),
-        (_FC.RAD,   0.75),
-        (_FC.PISM,  1.00),  # ``F_ext`` band (rendered as white)
+        (_C_GRAV,  1.00),
+        (_C_DRIVE, 1.00),
+        (_C_RAD,   1.00),
+        (_C_EXT,   1.00),
     ]
     for (color, alpha), y0, y1 in zip(base_styles, prev, cum):
         ax.fill_between(t, y0, y1, facecolor=color, alpha=alpha,
@@ -418,7 +425,7 @@ def plot_from_path(data_input, output_dir=None):
     # arrays; the panel itself is drawn locally so we control the
     # transition-phase logic (no ``non_bubble`` gate; HII suppressed
     # in transition; consistent dotted slice outlines).
-    fb_t, fb_R2, fb_phase, fb_base, fb_overlay, _fb_rc, _fb_ic, _fb_pr = (
+    fb_t, _fb_R2, fb_phase, fb_base, fb_overlay, _fb_rc, _fb_ic, _fb_pr = (
         _pf.load_run(data_path)
     )
     _plot_feedback_panel(ax_b, fb_t, fb_phase, fb_base, fb_overlay)
@@ -430,20 +437,20 @@ def plot_from_path(data_input, output_dir=None):
     # once shell_fAbsorbedIon < 1) and only adds an additive
     # ``PISM * k_B`` term once the shell escapes the cloud.
     fb_handles = [
-        Patch(facecolor=_FC.GRAV,  edgecolor="none", alpha=0.75,
+        Patch(facecolor=_C_GRAV,  edgecolor="black", linewidth=0.4,
               label=r"$F_{\rm grav}$"),
-        Patch(facecolor=_FC.DRIVE, edgecolor="none", alpha=0.75,
+        Patch(facecolor=_C_DRIVE, edgecolor="black", linewidth=0.4,
               label=r"$F_{\rm drive}$"),
-        Patch(facecolor=_FC.RAD,   edgecolor="none", alpha=0.75,
+        Patch(facecolor=_C_RAD,   edgecolor="black", linewidth=0.4,
               label=r"$F_{\rm rad}$"),
-        Patch(facecolor=_FC.PISM,  edgecolor="0.3",  linewidth=0.8,
+        Patch(facecolor=_C_EXT,   edgecolor="black", linewidth=0.4,
               label=r"$F_{\rm ext}$"),
-        Patch(facecolor="none", edgecolor=_FC.PHII, hatch="......",
-              label="HII"),
-        Patch(facecolor="none", edgecolor=_FC.WIND, hatch="\\\\\\\\",
-              label="wind"),
-        Patch(facecolor="none", edgecolor=_FC.SN,   hatch="////",
-              label="SN"),
+        Patch(facecolor=_C_HII,   alpha=_TINT_ALPHA,
+              edgecolor="black", linewidth=0.4, label="HII"),
+        Patch(facecolor=_C_WIND,  alpha=_TINT_ALPHA,
+              edgecolor="black", linewidth=0.4, label="wind"),
+        Patch(facecolor=_C_SN,    alpha=_TINT_ALPHA,
+              edgecolor="black", linewidth=0.4, label="SN"),
     ]
     leg_b = ax_b.legend(
         handles=fb_handles, loc="upper right", frameon=True,
@@ -483,17 +490,16 @@ def plot_from_path(data_input, output_dir=None):
         ax_c.set_xlim(finite_t.min(), finite_t.max())
 
     # ---- explicit y-tick placements (avoid boundary-edge labels) -----------
-    # Top panel: R_b every 50 pc, skipping 0 (panel-bottom border) and the
-    # axis cap; v_sh kept on its default log locator with the lowest decade
-    # dropped so it doesn't collide with the panel below.
+    # Top panel: R_b every 50 pc, skipping 0 (the panel-bottom border)
+    # and the axis cap.  v_sh stays on the default log locator.
     ax_a.set_yticks([50, 100, 150, 200, 250])
     # Middle and bottom panels: identical fraction ticks so the eye reads
     # them as a paired stack.
     ax_b.set_yticks([0.2, 0.4, 0.6, 0.8, 1.0])
     ax_c.set_yticks([0.2, 0.4, 0.6, 0.8, 1.0])
 
-    # ---- phase boundaries + top-panel labels -------------------------------
-    _draw_phase_boundaries(list(axes) + [ax_av], run["t"], run["phase"])
+    # Phase labels above the top panel (the pale tints in panel (a)
+    # make the dotted boundary lines redundant — see _draw_phase_tints).
     _annotate_phase_labels(ax_a, run["t"], run["phase"])
 
     # ---- save --------------------------------------------------------------
