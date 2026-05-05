@@ -69,19 +69,21 @@ _SHADE_DUST   = "#a98ec0"
 _SHADE_ESCAPE = "#dccdec"
 
 # Panel (b) two-tier palette:
-#   structural / baseline forces are rendered in greyscale so they
-#   read as a neutral backdrop, and the actual feedback channels
-#   (HII, wind, SN) sit on top as translucent tinted overlays.
-# Base stack (greyscale)
-_C_GRAV  = "#1a1a1a"   # gravity            (near-black)
-_C_DRIVE = "#dfe2e6"   # bubble-pressure base inside F_drive (light grey)
-_C_RAD   = "#7d848a"   # radiation          (mid grey)
+#   structural / baseline forces are rendered in a monotonic
+#   greyscale ramp (darkest at the bottom of the stack, white at
+#   the top) so they read as a neutral backdrop, and the actual
+#   feedback channels (HII, wind, SN) sit on top as translucent
+#   tinted overlays.
+# Base stack (greyscale, bottom→top: dark → light)
+_C_GRAV  = "#1a1a1a"   # gravity            (near-black, ~10% lightness)
+_C_DRIVE = "#a4a7aa"   # bubble-pressure base inside F_drive (~64%)
+_C_RAD   = "#d4d6d8"   # radiation          (~83%)
 _C_EXT   = "#ffffff"   # external photoionised (pure white)
 # Tinted feedback overlays
 _C_HII   = "#c0392b"   # warm red
 _C_WIND  = "#1d3557"   # navy
 _C_SN    = "#ef6c00"   # vivid orange
-_TINT_ALPHA = 0.65
+_TINT_ALPHA = 0.40
 
 # Top-panel phase-region tints (alpha-blended).  A cool-to-warm
 # green progression so the three regimes read in temporal order
@@ -243,7 +245,7 @@ def _annotate_phase_labels(ax_top, t, phase):
 # ---------------------------------------------------------------------------
 # Panel (b) — feedback force-fraction decomposition (local renderer)
 # ---------------------------------------------------------------------------
-# Reproduces the spirit of paper_feedback's stack but with three
+# Reproduces the spirit of paper_feedback's stack but with two
 # customisations requested for the teaser figure:
 #
 #   1.  Base-stack labels are unified as F_grav / F_drive / F_rad /
@@ -253,32 +255,24 @@ def _annotate_phase_labels(ax_top, t, phase):
 #       the very first transition snapshot (no ``non_bubble``
 #       gating) and HII is *not* drawn — only momentum gets the
 #       HII overlay.
-#   3.  Every translucent slice carries the same dotted-black
-#       outline in both phases so wind / SN edges read
-#       consistently.
 #
 # Smoothing window matches paper_feedback's default (21).
 _FB_SMOOTH = 21
 
 
 def _draw_ram_overlay(ax, t_seg, db, y_wind_top, y_sn_top):
-    """Wind + SN translucent slices with shared dotted-black outline."""
-    # Wind (bottom).  Fills must sit *above* the base stack
-    # (zorder=4) so the tint is not painted over by the opaque
-    # grey F_drive band; outline stays at zorder=6.
+    """Wind + SN translucent slices.
+
+    Fills sit at ``zorder=5`` — *above* the base stack at zorder=4
+    so the tint is not painted over by the opaque grey F_drive
+    band, and below the phase-boundary lines at zorder=10.
+    """
     ax.fill_between(t_seg, db, y_wind_top,
                     facecolor=_C_WIND, alpha=_TINT_ALPHA,
                     edgecolor="none", zorder=5)
-    ax.fill_between(t_seg, db, y_wind_top,
-                    facecolor="none", edgecolor="black",
-                    linestyle=":", linewidth=0.4, zorder=6)
-    # SN (above wind)
     ax.fill_between(t_seg, y_wind_top, y_sn_top,
                     facecolor=_C_SN, alpha=_TINT_ALPHA,
                     edgecolor="none", zorder=5)
-    ax.fill_between(t_seg, y_wind_top, y_sn_top,
-                    facecolor="none", edgecolor="black",
-                    linestyle=":", linewidth=0.4, zorder=6)
 
 
 def _draw_hii_overlay(ax, t_seg, y_sn_top, y_hii_top):
@@ -286,9 +280,6 @@ def _draw_hii_overlay(ax, t_seg, y_sn_top, y_hii_top):
     ax.fill_between(t_seg, y_sn_top, y_hii_top,
                     facecolor=_C_HII, alpha=_TINT_ALPHA,
                     edgecolor="none", zorder=5)
-    ax.fill_between(t_seg, y_sn_top, y_hii_top,
-                    facecolor="none", edgecolor="black",
-                    linestyle=":", linewidth=0.4, zorder=6)
 
 
 def _plot_feedback_panel(ax, t, phase, base_forces, overlay_forces):
