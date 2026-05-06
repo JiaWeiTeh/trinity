@@ -32,22 +32,26 @@ class SB99Feedback:
 
     Attributes
     ----------
+    All luminosities are in code units [Msun·pc²/Myr³] (multiply by
+    INV_CONV.L_au2cgs to get erg/s); SB99 raw cgs values are converted
+    to AU at read time in ``read_SB99.py``.
+
     t : float
         Current time [Myr]
     Qi : float
         Ionizing photon rate [s⁻¹]
     Li : float
-        Ionizing luminosity [erg/s]
+        Ionizing luminosity [Msun·pc²/Myr³]
     Ln : float
-        Non-ionizing luminosity [erg/s]
+        Non-ionizing luminosity [Msun·pc²/Myr³]
     Lbol : float
-        Bolometric luminosity [erg/s]
+        Bolometric luminosity [Msun·pc²/Myr³]
     Lmech_W : float
-        Wind mechanical luminosity [erg/s]
+        Wind mechanical luminosity [Msun·pc²/Myr³]
     Lmech_SN : float
-        SN mechanical luminosity [erg/s]
+        SN mechanical luminosity [Msun·pc²/Myr³]
     Lmech_total : float
-        Total mechanical luminosity [erg/s]
+        Total mechanical luminosity [Msun·pc²/Myr³]
     pdot_W : float
         Wind momentum rate [M_sun·pc/Myr²]
     pdot_SN : float
@@ -113,15 +117,16 @@ def get_currentSB99feedback(t, params) -> SB99Feedback:
         - Attribute access: feedback.Lbol, feedback.Qi, etc.
         - Unpacking: (t, Qi, Li, ...) = get_currentSB99feedback(t, params)
 
-        Fields:
+        Fields (luminosities in AU [Msun·pc²/Myr³]; convert to erg/s
+        with INV_CONV.L_au2cgs):
         - t : float, current time [Myr]
         - Qi : float, ionizing photon rate [s⁻¹]
-        - Li : float, ionizing luminosity [erg/s]
-        - Ln : float, non-ionizing luminosity [erg/s]
-        - Lbol : float, bolometric luminosity [erg/s]
-        - Lmech_W : float, wind mechanical luminosity [erg/s]
-        - Lmech_SN : float, SN mechanical luminosity [erg/s]
-        - Lmech_total : float, total mechanical luminosity [erg/s]
+        - Li : float, ionizing luminosity [Msun·pc²/Myr³]
+        - Ln : float, non-ionizing luminosity [Msun·pc²/Myr³]
+        - Lbol : float, bolometric luminosity [Msun·pc²/Myr³]
+        - Lmech_W : float, wind mechanical luminosity [Msun·pc²/Myr³]
+        - Lmech_SN : float, SN mechanical luminosity [Msun·pc²/Myr³]
+        - Lmech_total : float, total mechanical luminosity [Msun·pc²/Myr³]
         - pdot_W : float, wind momentum rate [M_sun·pc/Myr²]
         - pdot_SN : float, SN momentum rate [M_sun·pc/Myr²]
         - pdot_total : float, total momentum rate [M_sun·pc/Myr²]
@@ -156,15 +161,17 @@ def get_currentSB99feedback(t, params) -> SB99Feedback:
             f"Time t={t:.6f} outside SB99 range [{t_min:.6f}, {t_max:.6f}] Myr"
         )
 
-    # Interpolate all raw SB99 values using consistent key naming
+    # Interpolate all raw SB99 values. The interpolators were built in
+    # read_SB99.py from arrays already converted to code units (AU);
+    # luminosities here are [Msun*pc^2/Myr^3], not erg/s.
     Qi = SB99f['fQi'](t)[()]                   # Ionizing photon rate [s⁻¹]
-    Li = SB99f['fLi'](t)[()]                   # Ionizing luminosity [erg/s]
-    Ln = SB99f['fLn'](t)[()]                   # Non-ionizing luminosity [erg/s]
-    Lbol = SB99f['fLbol'](t)[()]               # Bolometric luminosity [erg/s]
+    Li = SB99f['fLi'](t)[()]                   # Ionizing luminosity [Msun*pc^2/Myr^3]
+    Ln = SB99f['fLn'](t)[()]                   # Non-ionizing luminosity [Msun*pc^2/Myr^3]
+    Lbol = SB99f['fLbol'](t)[()]               # Bolometric luminosity [Msun*pc^2/Myr^3]
 
-    Lmech_W = SB99f['fLmech_W'](t)[()]         # Wind mechanical luminosity [erg/s]
-    Lmech_SN = SB99f['fLmech_SN'](t)[()]       # SN mechanical luminosity [erg/s]
-    Lmech_total = SB99f['fLmech_total'](t)[()]  # Total mechanical luminosity [erg/s]
+    Lmech_W = SB99f['fLmech_W'](t)[()]         # Wind mechanical luminosity [Msun*pc^2/Myr^3]
+    Lmech_SN = SB99f['fLmech_SN'](t)[()]       # SN mechanical luminosity [Msun*pc^2/Myr^3]
+    Lmech_total = SB99f['fLmech_total'](t)[()]  # Total mechanical luminosity [Msun*pc^2/Myr^3]
 
     pdot_W = SB99f['fpdot_W'](t)[()]           # Wind momentum rate
     pdot_SN = SB99f['fpdot_SN'](t)[()]       # SN momentum rate

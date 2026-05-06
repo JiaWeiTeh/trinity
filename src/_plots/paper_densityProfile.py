@@ -556,7 +556,7 @@ def _draw_ingredients_panel(ax_rho, ax_M, tags_present: list,
     ax_M.set_xscale('log')
     # Display range starts at 1e-2 pc, not the inner 1e-3 used to compute
     # the profiles — there is little structure in the inner-most decade.
-    ax_rho.set_xlim(left=1e-2, right=r_max)
+    ax_rho.set_xlim(left=1e-2, right=r_max) 
 
     ax_rho.set_xlabel(r'$r$ [pc]')
     ax_rho.set_ylabel(r'$\log_{10}\!\left(n_{\rm cloud}(r)\right)$ [cm$^{-3}$]')
@@ -564,7 +564,7 @@ def _draw_ingredients_panel(ax_rho, ax_M, tags_present: list,
     # primary y-axis label.
     ax_M.set_ylabel(
         r'$\log_{10}\!\left(M_{\rm enc}(<r)\right)$ [M$_\odot$]',
-        rotation=90, labelpad=22, va='bottom',
+        rotation=90, labelpad=5, va='bottom',
     )
 
     style_handles = [
@@ -785,7 +785,7 @@ def plot_shell_evolution_paper(simulations: dict, output_dir: Path,
     # for a figure-level legend — it now lives inside the R_b panel.
     gs = fig.add_gridspec(
         2, 1,
-        hspace=0.45,
+        hspace=0.25,
         left=0.14, right=0.86,
         top=0.95, bottom=0.10,
     )

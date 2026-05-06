@@ -154,12 +154,14 @@ PARAM_DOCS = {
     'cool_delta': 'Temperature evolution parameter δ',
 
     # Feedback luminosities
-    'Lmech_W': 'Mechanical luminosity from winds [erg/s]',
-    'Lmech_SN': 'Mechanical luminosity from supernovae [erg/s]',
-    'Lmech_total': 'Total mechanical luminosity [erg/s]',
-    'Lbol': 'Bolometric luminosity [erg/s]',
-    'Li': 'Ionizing luminosity [erg/s]',
-    'Ln': 'Non-ionizing luminosity [erg/s]',
+    # NOTE: all luminosities below are stored in code units [Msun*pc^2/Myr^3].
+    # Multiply by INV_CONV.L_au2cgs to obtain erg/s.
+    'Lmech_W': 'Mechanical luminosity from winds [Msun*pc^2/Myr^3]',
+    'Lmech_SN': 'Mechanical luminosity from supernovae [Msun*pc^2/Myr^3]',
+    'Lmech_total': 'Total mechanical luminosity [Msun*pc^2/Myr^3]',
+    'Lbol': 'Bolometric luminosity [Msun*pc^2/Myr^3]',
+    'Li': 'Ionizing luminosity [Msun*pc^2/Myr^3]',
+    'Ln': 'Non-ionizing luminosity [Msun*pc^2/Myr^3]',
     'Qi': 'Ionizing photon rate [photons/s]',
 
     # Momentum injection
@@ -205,13 +207,15 @@ PARAM_DOCS = {
     'shell_fIonisedDust': 'Ionized dust fraction',
 
     # Bubble luminosities
-    'bubble_LTotal': 'Total bubble cooling luminosity [erg/s]',
-    'bubble_L1Bubble': 'Bubble cooling component 1',
-    'bubble_L2Conduction': 'Conductive cooling component',
-    'bubble_L3Intermediate': 'Intermediate cooling component',
-    'bubble_Leak': 'Energy leak from bubble [erg/s]',
-    'bubble_Lgain': 'Energy gain in bubble [erg/s]',
-    'bubble_Lloss': 'Energy loss from bubble [erg/s]',
+    # NOTE: all luminosities below are stored in code units [Msun*pc^2/Myr^3].
+    # Multiply by INV_CONV.L_au2cgs to obtain erg/s.
+    'bubble_LTotal': 'Total bubble cooling luminosity [Msun*pc^2/Myr^3]',
+    'bubble_L1Bubble': 'Bubble cooling component 1 [Msun*pc^2/Myr^3]',
+    'bubble_L2Conduction': 'Conductive cooling component [Msun*pc^2/Myr^3]',
+    'bubble_L3Intermediate': 'Intermediate cooling component [Msun*pc^2/Myr^3]',
+    'bubble_Leak': 'Energy leak from bubble [Msun*pc^2/Myr^3]',
+    'bubble_Lgain': 'Energy gain in bubble (= Lmech_total) [Msun*pc^2/Myr^3]',
+    'bubble_Lloss': 'Energy loss from bubble (= bubble_LTotal + bubble_Leak) [Msun*pc^2/Myr^3]',
 
     # Bubble structure
     'bubble_mass': 'Bubble mass [Msun]',

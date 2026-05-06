@@ -164,16 +164,16 @@ def read_SB99(f_mass, params):
     # Ionizing fraction (linear, not log)
     fi = 10**SB99_file[:, 2]
 
-    # Bolometric luminosity: log₁₀(erg/s) → erg/s (AU)
+    # Bolometric luminosity: log₁₀(erg/s) → Msun·pc²/Myr³ (AU)
     Lbol = 10**SB99_file[:, 3] * f_mass * cvt.L_cgs2au
 
-    # Mechanical luminosity (winds + SN): log₁₀(erg/s) → erg/s (AU)
+    # Mechanical luminosity (winds + SN): log₁₀(erg/s) → Msun·pc²/Myr³ (AU)
     Lmech = 10**SB99_file[:, 4] * f_mass * cvt.L_cgs2au
 
-    # Wind momentum rate: log₁₀(g·cm/s²) → g·cm/s² (AU)
+    # Wind momentum rate: log₁₀(g·cm/s²) → Msun·pc/Myr² (AU)
     pdot_wind_raw = 10**SB99_file[:, 5] * f_mass * cvt.pdot_cgs2au
 
-    # Wind mechanical luminosity: log₁₀(erg/s) → erg/s (AU)
+    # Wind mechanical luminosity: log₁₀(erg/s) → Msun·pc²/Myr³ (AU)
     Lmech_wind_raw = 10**SB99_file[:, 6] * f_mass * cvt.L_cgs2au
 
     # Validate all arrays are finite

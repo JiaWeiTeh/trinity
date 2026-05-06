@@ -336,9 +336,10 @@ def _draw_rcloud_panel(ax, fontsize, xlim):
     ax.axvline(R_CLOUD, color="0.25", lw=1.2, ls="--", alpha=0.7, zorder=2)
 
     ax.set_yscale("log")
+    ax.set_xscale('log')
     ax.grid(False)
     ax.tick_params(labelsize=fontsize, axis='both', labelbottom=False)
-    ax.set_ylabel(r'$n(r)$', fontsize=fontsize)
+    ax.set_ylabel(r'$n(r)$ [cm$^{-3}$]', fontsize=fontsize)
 
     ax.legend(loc='lower left', handlelength=1.6, labelspacing=0.3,
               fontsize=fontsize - 6, framealpha=0.9)
@@ -359,6 +360,7 @@ def _draw_v2R2_panel(ax, pair, fontsize):
     _plot_one_trajectory(ax, after,  STYLE_AFTER)
 
     ax.set_yscale("log")
+    ax.set_xscale('log')
     ax.grid(False)
     ax.tick_params(labelsize=fontsize, axis='both')
     ax.set_xlabel(r"$R_b$ [pc]", fontsize=fontsize)

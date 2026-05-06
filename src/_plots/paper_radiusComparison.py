@@ -44,10 +44,10 @@ from src._plots.grid_template import (
 # Pattern mirrors paper_densityProfile.py, just scaled to the smaller canvas.
 plt.rcParams.update({
     'font.size':        9,
-    'axes.labelsize':   9,
-    'axes.titlesize':   9,
-    'xtick.labelsize':  8,
-    'ytick.labelsize':  8,
+    'axes.labelsize':   10,
+    'axes.titlesize':   10,
+    'xtick.labelsize':  10,
+    'ytick.labelsize':  10,
     'legend.fontsize':  7,
 })
 
@@ -331,14 +331,14 @@ def plot_comparison_grid(
 
                 if is_single:
                     ax.set_ylabel(r"$R_{\rm b}$ [pc]")
-                    ax.set_xlabel("t [Myr]")
+                    ax.set_xlabel(r"$t$ [Myr]")
                 else:
                     if j == 0:
                         ax.set_ylabel(_mcloud_label(mCloud) + "\n" + r"$R_{\rm b}$ [pc]")
                     else:
                         ax.tick_params(labelleft=False)
                     if i == nrows - 1:
-                        ax.set_xlabel("t [Myr]")
+                        ax.set_xlabel(r"$t$ [Myr]")
 
         # Legend entries — analytic scalings carry the demoted style.
         handles = [
@@ -348,11 +348,11 @@ def plot_comparison_grid(
                    alpha=ALPHA_WARPFIELD,
                    label=r"WARPFIELD (no $P_{\rm HII}$)"),
             Line2D([0], [0], color=COLOR_WEAVER, lw=LW_SCALING, ls='--',
-                   alpha=ALPHA_SCALING, label=r"Pure energy (wind)"),
+                   alpha=ALPHA_SCALING, label=r"pure energy (wind)"),
             Line2D([0], [0], color=COLOR_SPITZER, lw=LW_SCALING, ls='-.',
-                   alpha=ALPHA_SCALING, label=r"Pure photoionised"),
+                   alpha=ALPHA_SCALING, label=r"pure photoionised"),
             Line2D([0], [0], color=COLOR_MOMENTUM, lw=LW_SCALING, ls=':',
-                   alpha=ALPHA_SCALING, label=r"Pure momentum"),
+                   alpha=ALPHA_SCALING, label=r"pure momentum"),
         ]
         handles.extend(get_marker_legend_handles(include_phase=SHOW_PHASE, include_rcloud=SHOW_RCLOUD, include_rcloud_horizontal=SHOW_RCLOUD_H, include_collapse=SHOW_COLLAPSE))
 
