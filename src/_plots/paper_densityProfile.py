@@ -560,11 +560,11 @@ def _draw_ingredients_panel(ax_rho, ax_M, tags_present: list,
 
     ax_rho.set_xlabel(r'$r$ [pc]')
     ax_rho.set_ylabel(r'$\log_{10}\!\left(n_{\rm cloud}(r)\right)$ [cm$^{-3}$]')
-    # Twiny label: rotated the other way (reading top-to-bottom) to match
-    # the right-hand side of the panel.
+    # Twiny label: same reading orientation (bottom-to-top) as the
+    # primary y-axis label.
     ax_M.set_ylabel(
         r'$\log_{10}\!\left(M_{\rm enc}(<r)\right)$ [M$_\odot$]',
-        rotation=270, labelpad=22, va='bottom',
+        rotation=90, labelpad=22, va='bottom',
     )
 
     style_handles = [
