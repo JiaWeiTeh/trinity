@@ -325,7 +325,10 @@ _PROFILE_DEFAULTS = {
 
 
 def _compute_rho_M_profile(tag: str, sim_folders: dict):
-    """Return (r_arr [pc], n_cgs [cm^-3], M_arr [Msun]) for profile *tag*."""
+    """Return (r_arr [pc], n_cgs [cm^-3], M_arr [Msun], mu_g [g/particle])
+    for profile *tag*.  ``mu_g`` is the mean particle mass in grams so
+    that ``rho_cgs = n_cgs * mu_g`` gives the mass density in g/cm³.
+    """
     ptype_default, alpha_default, omega_default = _PROFILE_DEFAULTS[tag]
 
     if tag in sim_folders:
@@ -404,7 +407,8 @@ def _compute_rho_M_profile(tag: str, sim_folders: dict):
         M_arr[inside]  = mCloud * (m_inside / m_dim_out)
         M_arr[~inside] = mCloud
 
-    return r_arr, n_arr * NDENS_AU2CGS, M_arr
+    mu_g = mu_au * INV_CONV.Msun2g
+    return r_arr, n_arr * NDENS_AU2CGS, M_arr, mu_g
 
 
 def _extend_outer_plateau(r_arr, n_cgs, M_arr, r_max):
@@ -455,11 +459,12 @@ def plot_enclosed_mass(sweep_dir: str, output_dir: Path, fmt: str = 'pdf',
     # right-hand edge of the panel even for profiles with smaller rCloud.
     profiles = {tag: _compute_rho_M_profile(tag, sim_folders)
                 for tag in PROFILE_ORDER}
-    r_max = max(r_arr[-1] for r_arr, _, _ in profiles.values())
+    r_max = max(r_arr[-1] for r_arr, _, _, _ in profiles.values())
 
     for tag in PROFILE_ORDER:
         s = get_style(tag)
-        r_arr, n_cgs, M_arr = _extend_outer_plateau(*profiles[tag], r_max)
+        r_arr, n_cgs, M_arr, _mu = profiles[tag]
+        r_arr, n_cgs, M_arr = _extend_outer_plateau(r_arr, n_cgs, M_arr, r_max)
 
         ax_n.loglog(r_arr, n_cgs, color=s['color'], ls=s['ls'], lw=1.5,
                     label=s['label'])
@@ -538,17 +543,21 @@ def _draw_ingredients_panel(ax_rho, ax_M, tags_present: list,
             logger.warning(f"Could not compute profile ingredients for {tag}: {e}")
     if not profiles:
         return
-    r_max = max(r_arr[-1] for r_arr, _, _ in profiles.values())
+    r_max = max(r_arr[-1] for r_arr, _, _, _ in profiles.values())
 
     for tag in tags_present:
         if tag not in profiles:
             continue
         s = get_style(tag)
-        r_arr, n_cgs, M_arr = _extend_outer_plateau(*profiles[tag], r_max)
+        r_arr, n_cgs, M_arr, mu_g = profiles[tag]
+        r_arr, n_cgs, M_arr = _extend_outer_plateau(r_arr, n_cgs, M_arr, r_max)
+        # Convert number density to mass density using the per-particle
+        # mean molecular mass (mu_g, in grams).
+        rho_cgs = n_cgs * mu_g
         with np.errstate(divide='ignore', invalid='ignore'):
-            log_n = np.log10(n_cgs)
+            log_rho = np.log10(rho_cgs)
             log_M = np.log10(M_arr)
-        ax_rho.plot(r_arr, log_n, color=s['color'], ls='-', lw=1.5)
+        ax_rho.plot(r_arr, log_rho, color=s['color'], ls='-', lw=1.5)
         ax_M.plot(r_arr, log_M, color=s['color'], ls='--', lw=1.2,
                   alpha=_MENC_ALPHA)
 
@@ -556,10 +565,10 @@ def _draw_ingredients_panel(ax_rho, ax_M, tags_present: list,
     ax_M.set_xscale('log')
     # Display range starts at 1e-2 pc, not the inner 1e-3 used to compute
     # the profiles — there is little structure in the inner-most decade.
-    ax_rho.set_xlim(left=1e-2, right=r_max) 
+    ax_rho.set_xlim(left=1e-2, right=r_max)
 
     ax_rho.set_xlabel(r'$r$ [pc]')
-    ax_rho.set_ylabel(r'$\log_{10}\!\left(n_{\rm cloud}(r)\right)$ [cm$^{-3}$]')
+    ax_rho.set_ylabel(r'$\log_{10}\!\left(\rho_{\rm cloud}(r)\right)$ [g cm$^{-3}$]')
     # Twiny label: same reading orientation (bottom-to-top) as the
     # primary y-axis label.
     ax_M.set_ylabel(
@@ -569,7 +578,7 @@ def _draw_ingredients_panel(ax_rho, ax_M, tags_present: list,
 
     style_handles = [
         Line2D([0], [0], color='black', ls='-',  lw=1.5,
-               label=r'$n_{\rm cloud}(r)$'),
+               label=r'$\rho_{\rm cloud}(r)$'),
         Line2D([0], [0], color='black', ls='--', lw=1.2, alpha=_MENC_ALPHA,
                label=r'$M_{\rm enc}(<r)$'),
     ]
