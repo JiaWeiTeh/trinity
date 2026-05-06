@@ -85,16 +85,17 @@ _C_WIND  = "#1d3557"   # navy
 _C_SN    = "#ef6c00"   # vivid orange
 _TINT_ALPHA = 0.40
 
-# Top-panel phase-region tints (alpha-blended).  A cool-to-warm
-# green progression so the three regimes read in temporal order
-# without colliding with the middle panel's greyscale +
+# Top-panel phase-region tints.  A monochromatic light-blue ramp
+# that gets progressively deeper through the three regimes — the
+# eye reads the temporal ordering immediately, and the sequential
+# hue does not collide with the middle panel's greyscale +
 # red/navy/orange overlays or the bottom panel's purple Q_i ramp.
 _PHASE_TINT = {
-    "energy":     "#a4c4a4",  # cool pale sage
-    "transition": "#c4c48f",  # olive
-    "momentum":   "#c4a48f",  # warm tan
+    "energy":     "#e2edf6",  # extremely pale blue
+    "transition": "#b8d3e8",  # pale blue
+    "momentum":   "#8fb6d8",  # light-medium blue
 }
-_PHASE_TINT_ALPHA = 0.40
+_PHASE_TINT_ALPHA = 0.55
 
 # Vertical phase-boundary lines.  zorder=10 keeps them above the
 # stack fills (zorder=4) but below the legends (set_zorder(20)).
