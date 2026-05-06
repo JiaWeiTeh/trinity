@@ -329,9 +329,13 @@ _PROFILE_DEFAULTS = {
 
 
 def _compute_rho_M_profile(tag: str, sim_folders: dict):
-    """Return (r_arr [pc], n_cgs [cm^-3], M_arr [Msun], mu_g [g/particle])
-    for profile *tag*.  ``mu_g`` is the mean particle mass in grams so
-    that ``rho_cgs = n_cgs * mu_g`` gives the mass density in g/cm³.
+    """Return (r_arr [pc], n_cgs [cm^-3], M_arr [Msun], mu_g [g])
+    for profile *tag*.  ``mu_g`` is the mass-conversion mean molecular
+    weight (mu_convert ≈ 1.4 m_H) expressed in grams, so
+    ``rho_cgs = n_cgs * mu_g`` gives the cloud mass density in g/cm³.
+    Using mu_convert here (rather than mu_ion or mu_atom) keeps the
+    n↔ρ mapping ionization-state-independent, matching the rest of
+    TRINITY (mass_profile.py, powerLawSphere, bonnorEbertSphere, …).
     """
     ptype_default, alpha_default, omega_default = _PROFILE_DEFAULTS[tag]
 
@@ -555,8 +559,8 @@ def _draw_ingredients_panel(ax_rho, ax_M, tags_present: list,
         s = get_style(tag)
         r_arr, n_cgs, M_arr, mu_g = profiles[tag]
         r_arr, n_cgs, M_arr = _extend_outer_plateau(r_arr, n_cgs, M_arr, r_max)
-        # Convert number density to mass density using the per-particle
-        # mean molecular mass (mu_g, in grams).
+        # rho = n * mu_convert (in grams) — state-independent mass
+        # conversion, matching the rest of TRINITY.
         rho_cgs = n_cgs * mu_g
         with np.errstate(divide='ignore', invalid='ignore'):
             log_rho = np.log10(rho_cgs)
