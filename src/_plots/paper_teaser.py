@@ -453,7 +453,11 @@ def plot_from_path(data_input, output_dir=None):
     ax_c.stackplot(
         run["t"], gas, dust, escape,
         colors=[_SHADE_GAS, _SHADE_DUST, _SHADE_ESCAPE],
-        labels=["gas", "dust", "escape"],
+        labels=[
+            r"$f_{\rm abs}^{\rm gas}$",
+            r"$f_{\rm abs}^{\rm dust}$",
+            r"$f_{\rm esc}^{\rm LyC}$",
+        ],
         edgecolor="none",
     )
     ax_c.set_ylim(0.0, 1.0)
