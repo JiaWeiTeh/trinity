@@ -564,7 +564,7 @@ def _draw_ingredients_panel(ax_rho, ax_M, tags_present: list,
     # primary y-axis label.
     ax_M.set_ylabel(
         r'$\log_{10}\!\left(M_{\rm enc}(<r)\right)$ [M$_\odot$]',
-        rotation=90, labelpad=5, va='bottom',
+        rotation=90, labelpad=25, va='bottom',
     )
 
     style_handles = [
