@@ -226,7 +226,11 @@ _DEFAULTS = dict(
     nCore=1e4 * CONV.ndens_cgs2au,  # 1/pc³
     rCore=1.0,                  # pc
     nISM=0.1 * CONV.ndens_cgs2au,   # 1/pc³
-    mu_ion=1.4 * CGS.m_H * CONV.g2Msun,  # Msun
+    # Mass-conversion mean molecular weight (mu_convert = 1.4 m_H,
+    # independent of ionization state). This is what the rest of the
+    # codebase uses for n -> rho — mu_ion (~0.61) counts ions+electrons
+    # and is the wrong factor for a neutral / molecular cloud.
+    mu_convert=1.4 * CGS.m_H * CONV.g2Msun,  # Msun
     dens_profile='densPL',
     densPL_alpha=0.0,
     densBE_Omega=14.1,
@@ -271,7 +275,7 @@ def get_cloud_params(sim_folder: Path) -> dict:
     file is missing.
 
     Returns a dict with keys:
-        mCloud, nCore, rCore, nISM, mu_ion   – all in internal units
+        mCloud, nCore, rCore, nISM, mu_convert   – all in internal units
         dens_profile, densPL_alpha, densBE_Omega
     """
     # Look for _summary.txt alongside dictionary.jsonl
@@ -287,7 +291,7 @@ def get_cloud_params(sim_folder: Path) -> dict:
         'nCore':         _try_float(raw.get('nCore'),         _DEFAULTS['nCore']),
         'rCore':         _try_float(raw.get('rCore'),         _DEFAULTS['rCore']),
         'nISM':          _try_float(raw.get('nISM'),          _DEFAULTS['nISM']),
-        'mu_ion':        _try_float(raw.get('mu_ion'),        _DEFAULTS['mu_ion']),
+        'mu_convert':    _try_float(raw.get('mu_convert'),    _DEFAULTS['mu_convert']),
         'dens_profile':  raw.get('dens_profile',              _DEFAULTS['dens_profile']),
         'densPL_alpha':  _try_float(raw.get('densPL_alpha'),  _DEFAULTS['densPL_alpha']),
         'densBE_Omega':  _try_float(raw.get('densBE_Omega'),  _DEFAULTS['densBE_Omega']),
@@ -340,7 +344,7 @@ def _compute_rho_M_profile(tag: str, sim_folders: dict):
     nCore   = cp['nCore']          # 1/pc³
     rCore   = cp['rCore']          # pc
     nISM    = cp['nISM']           # 1/pc³
-    mu_au   = cp['mu_ion']         # Msun
+    mu_au   = cp['mu_convert']     # Msun (state-independent n -> rho factor)
     rhoCore = nCore * mu_au        # Msun/pc³
 
     ptype = cp['dens_profile'] if cp['dens_profile'] in ('densPL', 'densBE') else ptype_default
