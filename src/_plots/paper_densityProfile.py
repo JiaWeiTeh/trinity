@@ -226,7 +226,11 @@ _DEFAULTS = dict(
     nCore=1e4 * CONV.ndens_cgs2au,  # 1/pc³
     rCore=1.0,                  # pc
     nISM=0.1 * CONV.ndens_cgs2au,   # 1/pc³
-    mu_ion=1.4 * CGS.m_H * CONV.g2Msun,  # Msun
+    # Mass-conversion mean molecular weight (mu_convert = 1.4 m_H,
+    # independent of ionization state). This is what the rest of the
+    # codebase uses for n -> rho — mu_ion (~0.61) counts ions+electrons
+    # and is the wrong factor for a neutral / molecular cloud.
+    mu_convert=1.4 * CGS.m_H * CONV.g2Msun,  # Msun
     dens_profile='densPL',
     densPL_alpha=0.0,
     densBE_Omega=14.1,
@@ -271,7 +275,7 @@ def get_cloud_params(sim_folder: Path) -> dict:
     file is missing.
 
     Returns a dict with keys:
-        mCloud, nCore, rCore, nISM, mu_ion   – all in internal units
+        mCloud, nCore, rCore, nISM, mu_convert   – all in internal units
         dens_profile, densPL_alpha, densBE_Omega
     """
     # Look for _summary.txt alongside dictionary.jsonl
@@ -287,7 +291,7 @@ def get_cloud_params(sim_folder: Path) -> dict:
         'nCore':         _try_float(raw.get('nCore'),         _DEFAULTS['nCore']),
         'rCore':         _try_float(raw.get('rCore'),         _DEFAULTS['rCore']),
         'nISM':          _try_float(raw.get('nISM'),          _DEFAULTS['nISM']),
-        'mu_ion':        _try_float(raw.get('mu_ion'),        _DEFAULTS['mu_ion']),
+        'mu_convert':    _try_float(raw.get('mu_convert'),    _DEFAULTS['mu_convert']),
         'dens_profile':  raw.get('dens_profile',              _DEFAULTS['dens_profile']),
         'densPL_alpha':  _try_float(raw.get('densPL_alpha'),  _DEFAULTS['densPL_alpha']),
         'densBE_Omega':  _try_float(raw.get('densBE_Omega'),  _DEFAULTS['densBE_Omega']),
@@ -325,7 +329,14 @@ _PROFILE_DEFAULTS = {
 
 
 def _compute_rho_M_profile(tag: str, sim_folders: dict):
-    """Return (r_arr [pc], n_cgs [cm^-3], M_arr [Msun]) for profile *tag*."""
+    """Return (r_arr [pc], n_cgs [cm^-3], M_arr [Msun], mu_g [g])
+    for profile *tag*.  ``mu_g`` is the mass-conversion mean molecular
+    weight (mu_convert ≈ 1.4 m_H) expressed in grams, so
+    ``rho_cgs = n_cgs * mu_g`` gives the cloud mass density in g/cm³.
+    Using mu_convert here (rather than mu_ion or mu_atom) keeps the
+    n↔ρ mapping ionization-state-independent, matching the rest of
+    TRINITY (mass_profile.py, powerLawSphere, bonnorEbertSphere, …).
+    """
     ptype_default, alpha_default, omega_default = _PROFILE_DEFAULTS[tag]
 
     if tag in sim_folders:
@@ -337,7 +348,7 @@ def _compute_rho_M_profile(tag: str, sim_folders: dict):
     nCore   = cp['nCore']          # 1/pc³
     rCore   = cp['rCore']          # pc
     nISM    = cp['nISM']           # 1/pc³
-    mu_au   = cp['mu_ion']         # Msun
+    mu_au   = cp['mu_convert']     # Msun (state-independent n -> rho factor)
     rhoCore = nCore * mu_au        # Msun/pc³
 
     ptype = cp['dens_profile'] if cp['dens_profile'] in ('densPL', 'densBE') else ptype_default
@@ -404,7 +415,8 @@ def _compute_rho_M_profile(tag: str, sim_folders: dict):
         M_arr[inside]  = mCloud * (m_inside / m_dim_out)
         M_arr[~inside] = mCloud
 
-    return r_arr, n_arr * NDENS_AU2CGS, M_arr
+    mu_g = mu_au * INV_CONV.Msun2g
+    return r_arr, n_arr * NDENS_AU2CGS, M_arr, mu_g
 
 
 def _extend_outer_plateau(r_arr, n_cgs, M_arr, r_max):
@@ -455,11 +467,12 @@ def plot_enclosed_mass(sweep_dir: str, output_dir: Path, fmt: str = 'pdf',
     # right-hand edge of the panel even for profiles with smaller rCloud.
     profiles = {tag: _compute_rho_M_profile(tag, sim_folders)
                 for tag in PROFILE_ORDER}
-    r_max = max(r_arr[-1] for r_arr, _, _ in profiles.values())
+    r_max = max(r_arr[-1] for r_arr, _, _, _ in profiles.values())
 
     for tag in PROFILE_ORDER:
         s = get_style(tag)
-        r_arr, n_cgs, M_arr = _extend_outer_plateau(*profiles[tag], r_max)
+        r_arr, n_cgs, M_arr, _mu = profiles[tag]
+        r_arr, n_cgs, M_arr = _extend_outer_plateau(r_arr, n_cgs, M_arr, r_max)
 
         ax_n.loglog(r_arr, n_cgs, color=s['color'], ls=s['ls'], lw=1.5,
                     label=s['label'])
@@ -538,17 +551,21 @@ def _draw_ingredients_panel(ax_rho, ax_M, tags_present: list,
             logger.warning(f"Could not compute profile ingredients for {tag}: {e}")
     if not profiles:
         return
-    r_max = max(r_arr[-1] for r_arr, _, _ in profiles.values())
+    r_max = max(r_arr[-1] for r_arr, _, _, _ in profiles.values())
 
     for tag in tags_present:
         if tag not in profiles:
             continue
         s = get_style(tag)
-        r_arr, n_cgs, M_arr = _extend_outer_plateau(*profiles[tag], r_max)
+        r_arr, n_cgs, M_arr, mu_g = profiles[tag]
+        r_arr, n_cgs, M_arr = _extend_outer_plateau(r_arr, n_cgs, M_arr, r_max)
+        # rho = n * mu_convert (in grams) — state-independent mass
+        # conversion, matching the rest of TRINITY.
+        rho_cgs = n_cgs * mu_g
         with np.errstate(divide='ignore', invalid='ignore'):
-            log_n = np.log10(n_cgs)
+            log_rho = np.log10(rho_cgs)
             log_M = np.log10(M_arr)
-        ax_rho.plot(r_arr, log_n, color=s['color'], ls='-', lw=1.5)
+        ax_rho.plot(r_arr, log_rho, color=s['color'], ls='-', lw=1.5)
         ax_M.plot(r_arr, log_M, color=s['color'], ls='--', lw=1.2,
                   alpha=_MENC_ALPHA)
 
@@ -556,10 +573,10 @@ def _draw_ingredients_panel(ax_rho, ax_M, tags_present: list,
     ax_M.set_xscale('log')
     # Display range starts at 1e-2 pc, not the inner 1e-3 used to compute
     # the profiles — there is little structure in the inner-most decade.
-    ax_rho.set_xlim(left=1e-2, right=r_max) 
+    ax_rho.set_xlim(left=1e-2, right=r_max)
 
     ax_rho.set_xlabel(r'$r$ [pc]')
-    ax_rho.set_ylabel(r'$\log_{10}\!\left(n_{\rm cloud}(r)\right)$ [cm$^{-3}$]')
+    ax_rho.set_ylabel(r'$\log_{10}\!\left(\rho_{\rm cloud}(r)\right)$ [g cm$^{-3}$]')
     # Twiny label: same reading orientation (bottom-to-top) as the
     # primary y-axis label.
     ax_M.set_ylabel(
@@ -569,7 +586,7 @@ def _draw_ingredients_panel(ax_rho, ax_M, tags_present: list,
 
     style_handles = [
         Line2D([0], [0], color='black', ls='-',  lw=1.5,
-               label=r'$n_{\rm cloud}(r)$'),
+               label=r'$\rho_{\rm cloud}(r)$'),
         Line2D([0], [0], color='black', ls='--', lw=1.2, alpha=_MENC_ALPHA,
                label=r'$M_{\rm enc}(<r)$'),
     ]
