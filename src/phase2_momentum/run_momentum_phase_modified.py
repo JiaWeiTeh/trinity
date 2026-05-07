@@ -50,6 +50,7 @@ MomentumPhaseResults : dataclass
 import numpy as np
 import scipy.integrate
 import logging
+import traceback
 from dataclasses import dataclass
 
 import src._functions.unit_conversions as cvt
@@ -890,7 +891,19 @@ def run_phase_momentum(params) -> MomentumPhaseResults:
         updateDict(params, shell_props_f)
         params.save_snapshot()
     except Exception as e:
-        logger.warning(f"Phase-boundary reconciliation failed: {e}")
+        # Include exception class and deepest traceback frame so the warning
+        # tells us which step (SB99 lookup, pRam, shell_structure, save_snapshot)
+        # actually failed, instead of just the bare message.
+        tb = e.__traceback__
+        where = ''
+        if tb is not None:
+            frame = traceback.extract_tb(tb)[-1]
+            fname = frame.filename.rsplit('/', 1)[-1]
+            where = f' at {fname}:{frame.lineno}'
+        logger.warning(
+            f"Phase-boundary reconciliation failed: "
+            f"{type(e).__name__}: {e or '<no message>'}{where}"
+        )
 
     # =============================================================================
     # Build results
