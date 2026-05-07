@@ -20,6 +20,7 @@ Key improvements over get_betadelta.py:
 import numpy as np
 import scipy.optimize
 import logging
+import traceback
 from dataclasses import dataclass
 from typing import Tuple, Optional
 
@@ -54,6 +55,24 @@ LBFGSB_FALLBACK_THRESHOLD = 5.0
 # Grid search parameters (matching original get_betadelta.py)
 GRID_SIZE = 5  # 5x5 grid (matching original get_betadelta.py)
 GRID_EPSILON = 0.02  # Search range around guess
+
+
+def _describe_exc(e: BaseException) -> str:
+    """Format an exception as 'ClassName: message at file:line' for log warnings.
+
+    Several scipy/numpy internals raise with empty messages, which made the
+    bubble-properties failure warning print as just "failed: " with no clue
+    about what or where. Including the class plus the deepest traceback frame
+    makes the warning self-diagnostic without needing a re-run with a debugger.
+    """
+    msg = str(e) or '<no message>'
+    tb = e.__traceback__
+    where = ''
+    if tb is not None:
+        frame = traceback.extract_tb(tb)[-1]
+        fname = frame.filename.rsplit('/', 1)[-1]
+        where = f' at {fname}:{frame.lineno}'
+    return f"{type(e).__name__}: {msg}{where}"
 
 
 # =============================================================================
@@ -335,7 +354,7 @@ def get_residual_pure(
     try:
         bubble_props = get_bubbleproperties_pure(params_view)
     except Exception as e:
-        logger.warning(f"Bubble properties calculation failed: {e}")
+        logger.warning(f"Bubble properties calculation failed: {_describe_exc(e)}")
         return 100.0, 100.0, None
 
     # Extract needed values from original params (not modified)
@@ -428,7 +447,7 @@ def get_residual_detailed(
     try:
         bubble_props = get_bubbleproperties_pure(params_view)
     except Exception as e:
-        logger.warning(f"Bubble properties calculation failed: {e}")
+        logger.warning(f"Bubble properties calculation failed: {_describe_exc(e)}")
         return ResidualDetails(
             Edot_residual=100.0,
             T_residual=100.0,
