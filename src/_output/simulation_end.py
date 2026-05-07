@@ -492,7 +492,10 @@ def _compute_change(old_val: Any, new_val: Any) -> Tuple[str, float, bool]:
     if abs(diff) < 1e-10:
         change_str = "~0"
     elif rel_change > 10:
-        change_str = f"{diff:+.2e} (×{new_f/old_f if old_f != 0 else 'inf':.1f})"
+        if old_f != 0:
+            change_str = f"{diff:+.2e} (×{new_f/old_f:.1f})"
+        else:
+            change_str = f"{diff:+.2e} (from 0)"
     else:
         change_str = f"{diff:+.3g} ({rel_change:+.1%})"
 
