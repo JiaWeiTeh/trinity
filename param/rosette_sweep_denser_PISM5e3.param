@@ -8,6 +8,7 @@
 
 tuple(mCloud, sfe) [1e5, 0.01] [5e4, 0.02] [1e4, 0.1]  
 nCore [5e3, 1e4, 5e4, 1e5]
+PISM [5e3]
 
 # =============================================================================
 # Fixed parameters (constant across all runs)
@@ -41,7 +42,7 @@ use_adaptive_solver    True
 log_level    INFO
 
 # Output
-path2output    outputs/rosette_sweep_denser
+path2output    outputs/rosette_sweep_denser_PISM5e3
 
 # P_HII
 include_PHII    True
