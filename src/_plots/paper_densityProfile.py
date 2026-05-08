@@ -562,10 +562,10 @@ def plot_shell_evolution_paper(simulations: dict, output_dir: Path,
     """Paper-ready 2-panel figure: density+M_enc ingredients (top) and
     R_b(t) shell radius (bottom).
 
-    The profile-colour legend sits above the top panel as a 2x2 block;
-    the rho/M_enc style legend lives inside the top panel; a generous
-    ``hspace`` keeps the ingredient-panel xlabel clear of the R_b panel
-    below.
+    The profile-colour legend lives in the lower-right of the R_b
+    panel as a single column; the rho/M_enc style legend lives inside
+    the top panel; a generous ``hspace`` keeps the ingredient-panel
+    xlabel clear of the R_b panel below.
     """
     logger.info("densityProfile_paper: ingredients + R_b(t)")
 
@@ -579,14 +579,12 @@ def plot_shell_evolution_paper(simulations: dict, output_dir: Path,
     # Wide hspace because the top panel's x-axis (r [pc], log) is
     # different from the bottom's (t [Myr]) — they don't share x, so
     # the inner xlabel needs room.  Side margins account for the twinx
-    # M_enc label on the right of the top panel.  ``top`` is pulled
-    # down to leave room for the profile-colour legend that sits above
-    # the top panel.
+    # M_enc label on the right of the top panel.
     gs = fig.add_gridspec(
         2, 1,
         hspace=0.30,
         left=0.16, right=0.84,
-        top=0.88, bottom=0.10,
+        top=0.95, bottom=0.10,
     )
     ax_rho = fig.add_subplot(gs[0, 0])
     ax_M   = ax_rho.twinx()
@@ -598,22 +596,17 @@ def plot_shell_evolution_paper(simulations: dict, output_dir: Path,
 
     ax_R.set_xlabel(r'$t$ [Myr]')
 
-    # Profile-colour legend above the top panel.  ``_draw_ingredients_panel``
-    # has already attached a rho/M_enc style legend to ``ax_rho``; preserve
-    # it via add_artist before placing the second legend.
-    style_leg = ax_rho.get_legend()
-    if style_leg is not None:
-        ax_rho.add_artist(style_leg)
-
+    # Profile-colour legend in the lower-right of the R_b panel,
+    # single column, no frame.
     profile_handles = [
         Line2D([0], [0], color=get_style(tag)['color'], ls='-', lw=1.8,
                label=get_style(tag)['label'].replace('\n', ' '))
         for tag in tags_present
     ]
-    ax_rho.legend(handles=profile_handles,
-                  loc='lower center', bbox_to_anchor=(0.5, 1.02),
-                  ncol=2, frameon=False,
-                  columnspacing=1.5, handletextpad=0.5)
+    ax_R.legend(handles=profile_handles,
+                loc='lower right', bbox_to_anchor=(0.99, 0.01),
+                ncol=1, frameon=False,
+                fontsize=10, handletextpad=0.5)
 
     savefig(fig, 'densityProfile_paper', output_dir, fmt)
     if show:
