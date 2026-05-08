@@ -411,4 +411,3 @@ See Also
 - :ref:`sec-running` for simulation execution
 - :ref:`sec-visualization` for plotting scripts that use this API
 - :ref:`sec-parameters` for parameter definitions
-- Full documentation: ``docs/TRINITY_READER.md``

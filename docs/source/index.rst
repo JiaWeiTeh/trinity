@@ -9,7 +9,7 @@ is distributed under the terms of the MIT License; a copy of the
 license notification is included in the main TRINITY directory. If
 you use TRINITY in any published work, please cite the TRINITY
 method paper and acknowledge the code as described in
-:doc:`publications` and :doc:`acknowledgements`.
+:doc:`publications`.
 
 
 What Does TRINITY Do?
@@ -167,4 +167,3 @@ Contents
    trinity_reader
    analysis
    publications
-   acknowledgements
