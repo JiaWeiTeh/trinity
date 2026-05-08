@@ -604,7 +604,7 @@ def plot_shell_evolution_paper(simulations: dict, output_dir: Path,
         for tag in tags_present
     ]
     ax_R.legend(handles=profile_handles,
-                loc='lower right', bbox_to_anchor=(0.99, 0.01),
+                loc='upper left', bbox_to_anchor=(0.99, 0.01),
                 ncol=1, frameon=False,
                 fontsize=10, handletextpad=0.5)
 
