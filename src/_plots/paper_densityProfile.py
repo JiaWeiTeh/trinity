@@ -562,7 +562,7 @@ def plot_shell_evolution_paper(simulations: dict, output_dir: Path,
     """Paper-ready 2-panel figure: density+M_enc ingredients (top) and
     R_b(t) shell radius (bottom).
 
-    The profile-colour legend lives in the lower-right of the R_b
+    The profile-colour legend lives in the upper-left of the R_b
     panel as a single column; the rho/M_enc style legend lives inside
     the top panel; a generous ``hspace`` keeps the ingredient-panel
     xlabel clear of the R_b panel below.
@@ -596,7 +596,7 @@ def plot_shell_evolution_paper(simulations: dict, output_dir: Path,
 
     ax_R.set_xlabel(r'$t$ [Myr]')
 
-    # Profile-colour legend in the lower-right of the R_b panel,
+    # Profile-colour legend in the upper-left of the R_b panel,
     # single column, no frame.
     profile_handles = [
         Line2D([0], [0], color=get_style(tag)['color'], ls='-', lw=1.8,
@@ -604,7 +604,7 @@ def plot_shell_evolution_paper(simulations: dict, output_dir: Path,
         for tag in tags_present
     ]
     ax_R.legend(handles=profile_handles,
-                loc='lower right', bbox_to_anchor=(0.99, 0.01),
+                loc='upper left', bbox_to_anchor=(0.01, 0.99),
                 ncol=1, frameon=False,
                 fontsize=10, handletextpad=0.5)
 
