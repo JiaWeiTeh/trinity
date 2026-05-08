@@ -39,18 +39,6 @@ from src._plots.grid_template import (
     attach_grid_legend,
 )
 
-# Shrink fonts relative to the trinity.mplstyle defaults: this script renders
-# at A&A column width (~3.46"), so the style's 15 pt labels look oversized.
-# Pattern mirrors paper_densityProfile.py, just scaled to the smaller canvas.
-plt.rcParams.update({
-    'font.size':        9,
-    'axes.labelsize':   10,
-    'axes.titlesize':   10,
-    'xtick.labelsize':  10,
-    'ytick.labelsize':  10,
-    'legend.fontsize':  7,
-})
-
 print("...plotting radius comparison (TRINITY vs WARPFIELD vs Weaver)")
 
 # ----------------------------------------------------------------
@@ -80,8 +68,9 @@ COLOR_SPITZER   = "0.4"
 ALPHA_SCALING   = 0.5    # alpha for analytic scaling lines
 LW_SCALING      = 1.0    # linewidth for analytic scaling lines
 
-# A&A single-column width (\columnwidth ~ 88 mm) used for the 1x1 layout.
-COLUMN_WIDTH_INCHES = 3.46
+# Column width matches paper_teaser (4.0"), so the rendered fonts/ticks
+# scale identically when both figures are placed at A&A \columnwidth.
+COLUMN_WIDTH_INCHES = 4.0
 COLUMN_HEIGHT_INCHES = 2.8
 
 SAVE_PDF = True
@@ -304,7 +293,7 @@ def plot_comparison_grid(
             nrows=nrows, ncols=ncols,
             figsize=figsize,
             sharex=False, sharey=False,
-            dpi=300, squeeze=False,
+            squeeze=False,
         )
         for i, mCloud in enumerate(mCloud_list):
             for j, sfe in enumerate(sfe_list):
@@ -372,6 +361,7 @@ def plot_comparison_grid(
                 loc="upper left",
                 bbox_to_anchor=(0.04, 0.96),
                 frameon=False,
+                fontsize=10,
             )
             fig.tight_layout()
         else:

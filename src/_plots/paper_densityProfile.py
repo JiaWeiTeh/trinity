@@ -65,20 +65,21 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # =============================================================================
-# Global matplotlib style (matches paper_ODIN)
+# Constants
 # =============================================================================
-plt.rcParams.update({
+
+# Big-font style for the Gantt phase-timeline figure only.  The paper
+# figure (densityProfile_paper) inherits trinity.mplstyle defaults so it
+# matches paper_teaser at column width.  The Gantt is a standalone full-
+# page figure, so it keeps its own larger-font preset via rc_context().
+_GANTT_RCPARAMS = {
     'font.size':        20,
     'axes.labelsize':   20,
     'axes.titlesize':   20,
     'xtick.labelsize':  18,
     'ytick.labelsize':  18,
     'legend.fontsize':  16,
-})
-
-# =============================================================================
-# Constants
-# =============================================================================
+}
 
 # Colourblind-safe palette (Wong 2011) with solid lines for clarity
 PROFILE_STYLES = {
@@ -498,7 +499,7 @@ def _draw_ingredients_panel(ax_rho, ax_M, tags_present: list,
     # primary y-axis label.
     ax_M.set_ylabel(
         r'$\log_{10}\!\left(M_{\rm enc}(<r)\right)$ [M$_\odot$]',
-        rotation=90, labelpad=25, va='bottom',
+        rotation=90, labelpad=10, va='bottom',
     )
 
     style_handles = [
@@ -569,16 +570,19 @@ def plot_shell_evolution_paper(simulations: dict, output_dir: Path,
 
     tags_present = [tag for tag in PROFILE_ORDER if tag in simulations]
 
-    fig_h = 7.0
-    fig = plt.figure(figsize=(7, fig_h))
+    # Column-width canvas matching paper_teaser (4.0").  Two stacked
+    # panels at ~2.75" each, slightly taller per panel than teaser's
+    # 3-panel 6.5" layout because we have one fewer panel to fit.
+    fig = plt.figure(figsize=(4.0, 5.5))
 
-    # Two stacked panels with a wide hspace so the top panel's xlabel
-    # (r [pc]) stays clear of the R_b(t) panel below.  No reservation
-    # for a figure-level legend — it now lives inside the R_b panel.
+    # Wide hspace because the top panel's x-axis (r [pc], log) is
+    # different from the bottom's (t [Myr]) — they don't share x, so
+    # the inner xlabel needs room.  Side margins account for the twinx
+    # M_enc label on the right of the top panel.
     gs = fig.add_gridspec(
         2, 1,
-        hspace=0.25,
-        left=0.14, right=0.86,
+        hspace=0.30,
+        left=0.16, right=0.84,
         top=0.95, bottom=0.10,
     )
     ax_rho = fig.add_subplot(gs[0, 0])
@@ -785,96 +789,100 @@ def plot_phase_timeline(simulations: dict, output_dir: Path, fmt: str = 'pdf',
         print(f"    Outcome  = {info['outcome']}")
 
     # --- Create figure ---
-    fig, ax = plt.subplots(figsize=(7, 7), dpi=150)
+    # Gantt is a standalone full-page figure (not column-width like the
+    # paper figure), so it gets its own larger-font preset via rc_context
+    # — the rest of this script inherits trinity.mplstyle defaults.
+    with plt.rc_context(_GANTT_RCPARAMS):
+        fig, ax = plt.subplots(figsize=(7, 7), dpi=150)
 
-    bar_height = 0.1
-    # Position bar bottoms at 0.1, 0.3, 0.5, 0.7 (centres at 0.15, 0.35, 0.55, 0.75)
-    y_positions = np.array([0.1, 0.3, 0.5, 0.7])[:n_tracks]
-    y_centres = y_positions + bar_height / 2
+        bar_height = 0.1
+        # Position bar bottoms at 0.1, 0.3, 0.5, 0.7 (centres at 0.15, 0.35, 0.55, 0.75)
+        y_positions = np.array([0.1, 0.3, 0.5, 0.7])[:n_tracks]
+        y_centres = y_positions + bar_height / 2
 
-    t_max_global = max(info['t_end'] for info in all_info.values())
+        t_max_global = max(info['t_end'] for info in all_info.values())
 
-    for idx, tag in enumerate(tags_present):
-        info = all_info[tag]
-        yb = y_positions[idx]   # bar bottom
-        yc = y_centres[idx]     # bar centre
+        for idx, tag in enumerate(tags_present):
+            info = all_info[tag]
+            yb = y_positions[idx]   # bar bottom
+            yc = y_centres[idx]     # bar centre
 
-        # Profile label left-aligned above the bar, with a small padding so
-        # it doesn't sit flush against the y-axis spine.
-        label_text = get_style(tag)['label'].replace('\n', ' ')
-        t_left = info['intervals'][0][1] if info['intervals'] else 0.0
-        t_pad = 0.01 * t_max_global
-        ax.text(t_left + t_pad, yb - 0.015, label_text,
-                ha='left', va='bottom', zorder=5,
-                fontsize=plt.rcParams['font.size'] - 0.5)
+            # Profile label left-aligned above the bar, with a small padding so
+            # it doesn't sit flush against the y-axis spine.
+            label_text = get_style(tag)['label'].replace('\n', ' ')
+            t_left = info['intervals'][0][1] if info['intervals'] else 0.0
+            t_pad = 0.01 * t_max_global
+            ax.text(t_left + t_pad, yb - 0.015, label_text,
+                    ha='left', va='bottom', zorder=5,
+                    fontsize=plt.rcParams['font.size'] - 0.5)
 
-        # Draw phase segments
-        is_expanding = (info['outcome'] == 'expanding')
-        n_intervals = len(info['intervals'])
-        for seg_idx, (phase_name, t0, t1) in enumerate(info['intervals']):
-            sty = PHASE_STYLE.get(phase_name, PHASE_STYLE['collapse'])
-            is_last = (seg_idx == n_intervals - 1)
+            # Draw phase segments
+            is_expanding = (info['outcome'] == 'expanding')
+            n_intervals = len(info['intervals'])
+            for seg_idx, (phase_name, t0, t1) in enumerate(info['intervals']):
+                sty = PHASE_STYLE.get(phase_name, PHASE_STYLE['collapse'])
+                is_last = (seg_idx == n_intervals - 1)
 
-            if is_last and is_expanding:
-                # Draw bar with no edge, then add edges manually
-                from matplotlib.patches import Rectangle
-                y_bot = yc - bar_height / 2
-                rect = Rectangle((t0, y_bot), t1 - t0, bar_height,
-                                 facecolor=sty['facecolor'], edgecolor='none',
-                                 hatch=sty['hatch'], zorder=2)
-                ax.add_patch(rect)
-                # Solid edges: left, top, bottom
-                ax.plot([t0, t0], [y_bot, y_bot + bar_height],
-                        color='black', lw=0.5, zorder=3)
-                ax.plot([t0, t1], [y_bot + bar_height, y_bot + bar_height],
-                        color='black', lw=0.5, zorder=3)
-                ax.plot([t0, t1], [y_bot, y_bot],
-                        color='black', lw=0.5, zorder=3)
-                # Dashed right edge
-                ax.plot([t1, t1], [y_bot, y_bot + bar_height],
-                        color='black', lw=0.8, ls='--', zorder=3)
-            else:
-                ax.barh(yc, t1 - t0, left=t0, height=bar_height, align='center',
-                        facecolor=sty['facecolor'], edgecolor=sty['edgecolor'],
-                        hatch=sty['hatch'], lw=0.5, zorder=2)
+                if is_last and is_expanding:
+                    # Draw bar with no edge, then add edges manually
+                    from matplotlib.patches import Rectangle
+                    y_bot = yc - bar_height / 2
+                    rect = Rectangle((t0, y_bot), t1 - t0, bar_height,
+                                     facecolor=sty['facecolor'], edgecolor='none',
+                                     hatch=sty['hatch'], zorder=2)
+                    ax.add_patch(rect)
+                    # Solid edges: left, top, bottom
+                    ax.plot([t0, t0], [y_bot, y_bot + bar_height],
+                            color='black', lw=0.5, zorder=3)
+                    ax.plot([t0, t1], [y_bot + bar_height, y_bot + bar_height],
+                            color='black', lw=0.5, zorder=3)
+                    ax.plot([t0, t1], [y_bot, y_bot],
+                            color='black', lw=0.5, zorder=3)
+                    # Dashed right edge
+                    ax.plot([t1, t1], [y_bot, y_bot + bar_height],
+                            color='black', lw=0.8, ls='--', zorder=3)
+                else:
+                    ax.barh(yc, t1 - t0, left=t0, height=bar_height, align='center',
+                            facecolor=sty['facecolor'], edgecolor=sty['edgecolor'],
+                            hatch=sty['hatch'], lw=0.5, zorder=2)
 
 
-    # Y-axis: hide tick labels since profile names are drawn above each bar
-    ax.set_yticks([])
-    ax.invert_yaxis()  # top-to-bottom ordering
-    ax.set_ylim(0.85, 0.0)
+        # Y-axis: hide tick labels since profile names are drawn above each bar
+        ax.set_yticks([])
+        ax.invert_yaxis()  # top-to-bottom ordering
+        ax.set_ylim(0.85, 0.0)
 
-    # X-axis
-    ax.set_xlabel(r'$t$ [Myr]')
-    ax.set_xlim(0, t_max_global * 1.05)
+        # X-axis
+        ax.set_xlabel(r'$t$ [Myr]')
+        ax.set_xlim(0, t_max_global * 1.05)
 
-    # Remove top/right spines for cleaner look; keep the left spine so the
-    # y-axis line is visible (previously hidden).
-    ax.spines['top'].set_visible(False)
-    ax.spines['right'].set_visible(False)
+        # Remove top/right spines for cleaner look; keep the left spine so the
+        # y-axis line is visible (previously hidden).
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
 
-    # Legend at top (2x2 block instead of a single long row)
-    legend_handles = [
-        Patch(facecolor='white', edgecolor='black', lw=0.5,
-              label='energy-driven'),
-        Patch(facecolor='#cccccc', edgecolor='black', lw=0.5,
-              label='transition'),
-        Patch(facecolor='white', edgecolor='black', hatch='/////', lw=0.5,
-              label='momentum-driven'),
-        Patch(facecolor='#666666', edgecolor='black', lw=0.5,
-              label='re-collapse'),
-    ]
-    ax.legend(handles=legend_handles, loc='lower center',
-              bbox_to_anchor=(0.5, 1.02), ncol=2,
-              frameon=False, columnspacing=1.0, handletextpad=0.4,
-              handlelength=1.5)
+        # Legend at top (2x2 block instead of a single long row)
+        legend_handles = [
+            Patch(facecolor='white', edgecolor='black', lw=0.5,
+                  label='energy-driven'),
+            Patch(facecolor='#cccccc', edgecolor='black', lw=0.5,
+                  label='transition'),
+            Patch(facecolor='white', edgecolor='black', hatch='/////', lw=0.5,
+                  label='momentum-driven'),
+            Patch(facecolor='#666666', edgecolor='black', lw=0.5,
+                  label='re-collapse'),
+        ]
+        ax.legend(handles=legend_handles, loc='lower center',
+                  bbox_to_anchor=(0.5, 1.02), ncol=2,
+                  frameon=False, columnspacing=1.0, handletextpad=0.4,
+                  handlelength=1.5)
 
-    fig.tight_layout()
+        fig.tight_layout()
 
-    savefig(fig, 'densityProfile_phaseTimeline', output_dir, fmt)
-    if show:
-        plt.show()
-    plt.close(fig)
+        savefig(fig, 'densityProfile_phaseTimeline', output_dir, fmt)
+        if show:
+            plt.show()
+        plt.close(fig)
 
     # --- Print phase duration summary table ---
     print("\n" + "=" * 100)
