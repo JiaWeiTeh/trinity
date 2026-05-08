@@ -96,6 +96,20 @@ PMS_FILL_ALPHA = 0.18
 PMS_LINE_ALPHA = 0.6
 PMS_LINE_STYLE = "--"
 
+# Font sizes (mirrors paper_AllowedGMC's named-constant pattern).  At
+# figsize=(11, 4.2) and \textwidth display, the matplotlib-pt -> print-pt
+# scale factor is ~0.63, so these values print at:
+#   TICK_FONT  15 -> ~9.5 pt  (axis ticks)
+#   LABEL_FONT 16 -> ~10  pt  (axis labels)
+#   LEGEND_FONT 12 -> ~7.6 pt (in-panel legends)
+#   ANNOT_FONT 12 -> ~7.6 pt  (98 %, >10 M_sun text annotations)
+# The legend and annotation sizes match AllowedGMC's panel-label print
+# size so dense in-panel text reads consistently across both figures.
+TICK_FONT = 15
+LABEL_FONT = 16
+LEGEND_FONT = 12
+ANNOT_FONT = 12
+
 # Kroupa (2001) broken power law.
 KROUPA_BREAK = 0.5       # M_sun, slope break
 KROUPA_ALPHA_LO = 1.3    # dN/dM propto M^-alpha for M < 0.5
@@ -310,10 +324,11 @@ def plot_panel_A(ax, tracks):
 
     ax.set_xlim(3.0, 10.5)
     ax.set_ylim(y_min, y_max)
-    ax.set_xlabel(r"$\log_{10}(t) \; [\mathrm{yr}]$")
-    ax.set_ylabel(r"$\log_{10}(L_{\rm bol}) \; [L_\odot]$")
+    ax.set_xlabel(r"$\log_{10}(t) \; [\mathrm{yr}]$", fontsize=LABEL_FONT)
+    ax.set_ylabel(r"$\log_{10}(L_{\rm bol}) \; [L_\odot]$", fontsize=LABEL_FONT)
+    ax.tick_params(labelsize=TICK_FONT)
 
-    ax.legend(loc="upper right", ncol=2, frameon=False, fontsize=9)
+    ax.legend(loc="upper right", ncol=2, frameon=False, fontsize=LEGEND_FONT)
 
 
 def _panel_B_style(log_age):
@@ -404,8 +419,9 @@ def plot_panel_B(ax, iso):
 
     ax.set_xlim(-1.0, 2.1)
     ax.set_ylim(0.95*100, 1.005*100)
-    ax.set_xlabel(r"$\log_{10}(M_{\rm init}) \; [\mathrm{M}_\odot]$")
-    ax.set_ylabel(r"$L_{\rm bol}(>M) / L_{\rm bol,\,tot} \; [\%]$")
+    ax.set_xlabel(r"$\log_{10}(M_{\rm init}) \; [\mathrm{M}_\odot]$", fontsize=LABEL_FONT)
+    ax.set_ylabel(r"$L_{\rm bol}(>M) / L_{\rm bol,\,tot} \; [\%]$", fontsize=LABEL_FONT)
+    ax.tick_params(labelsize=TICK_FONT)
     # ax.yaxis.set_major_formatter(PercentFormatter(xmax=1.0, decimals=0))
 
     # Dotted 98% reference line: dark grey, lowered alpha so the curves
@@ -414,13 +430,13 @@ def plot_panel_B(ax, iso):
     ax.axhline(0.98*100, linestyle=":", color="0.3", lw=0.8,
                alpha=0.5, zorder=2)
     ax.text(2.0, 0.982*100, r"$98\%$", ha="right", va="bottom",
-            color="0.3", alpha=0.7, fontsize=9)
+            color="0.3", alpha=0.7, fontsize=ANNOT_FONT)
     ax.axvline(1, linestyle=":", color="0.3", lw=0.8,
                alpha=0.5, zorder=2)
     ax.text(1.1, 0.99*100, r"$>\,10\,M_\odot$", ha="left", va="bottom",
-            color="0.3", alpha=0.7, fontsize=9)
+            color="0.3", alpha=0.7, fontsize=ANNOT_FONT)
 
-    ax.legend(loc="lower left", ncol=2, frameon=False, fontsize=9)
+    ax.legend(loc="lower left", ncol=2, frameon=False, fontsize=LEGEND_FONT)
 
 
 # ---------------------------------------------------------------------------
