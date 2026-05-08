@@ -8,7 +8,7 @@ Running TRINITY
 Basic Runs
 ----------
 
-Once TRINITY is installed, running a simulation is extremely simple.
+Once TRINITY is installed, running a simulation is straightforward.
 A simulation is fully specified by a single plain-text parameter
 file, and the same entry point, ``run.py``, drives both single
 runs and parameter sweeps. The only invocation a user normally
@@ -29,7 +29,7 @@ else falls back to the defaults listed in :ref:`sec-parameters`::
     mCloud        1e6
     sfe           0.01
 
-With this file in ``param/my_first_run.param``, just do::
+With this file in ``param/my_first_run.param``, run::
 
     python run.py param/my_first_run.param
 
@@ -256,12 +256,10 @@ Output files are organized into subdirectories of ``path2output``:
 Logging Configuration
 ---------------------
 
-TRINITY provides a flexible logging system to help monitor simulation progress and debug issues.
+Logging is controlled by four parameters in the parameter file.
 
 Logging Parameters
 ^^^^^^^^^^^^^^^^^^
-
-Configure logging in your parameter file:
 
 .. code-block:: text
 
@@ -279,7 +277,8 @@ Configure logging in your parameter file:
      - Description
    * - ``log_level``
      - ``INFO``
-     - Controls how much detail you see. Think of it as a volume knob for logging.
+     - Verbosity threshold; messages at this level and more severe
+       are emitted (see *Log Levels* below).
    * - ``log_console``
      - ``True``
      - Print log messages to terminal during simulation.
@@ -294,64 +293,36 @@ Configure logging in your parameter file:
 Log Levels
 ^^^^^^^^^^
 
-Setting a log level shows **that level and everything more severe**:
+Each level includes itself and all more severe levels:
+``CRITICAL > ERROR > WARNING > INFO > DEBUG``. Setting
+``log_level = INFO`` emits ``INFO``, ``WARNING``, ``ERROR``, and
+``CRITICAL`` messages.
 
-.. raw:: html
+.. list-table::
+   :widths: 15 45 40
+   :header-rows: 1
 
-   <style>
-   .log-debug { color: #00CED1; font-weight: bold; }
-   .log-info { color: #32CD32; font-weight: bold; }
-   .log-warning { color: #FFA500; font-weight: bold; }
-   .log-error { color: #FF4444; font-weight: bold; }
-   .log-critical { color: #FF00FF; font-weight: bold; }
-   </style>
-
-.. raw:: html
-
-   <table style="width:100%; border-collapse: collapse; margin: 1em 0;">
-   <tr style="background: #f0f0f0;">
-     <th style="padding: 8px; text-align: left; border: 1px solid #ddd;">Level</th>
-     <th style="padding: 8px; text-align: left; border: 1px solid #ddd;">Shows</th>
-     <th style="padding: 8px; text-align: left; border: 1px solid #ddd;">Use Case</th>
-   </tr>
-   <tr>
-     <td style="padding: 8px; border: 1px solid #ddd;"><span class="log-debug">DEBUG</span></td>
-     <td style="padding: 8px; border: 1px solid #ddd;">All messages</td>
-     <td style="padding: 8px; border: 1px solid #ddd;">Development, debugging specific issues</td>
-   </tr>
-   <tr>
-     <td style="padding: 8px; border: 1px solid #ddd;"><span class="log-info">INFO</span> ⭐</td>
-     <td style="padding: 8px; border: 1px solid #ddd;">INFO + WARNING + ERROR + CRITICAL</td>
-     <td style="padding: 8px; border: 1px solid #ddd;"><strong>Recommended</strong> - Normal simulation runs</td>
-   </tr>
-   <tr>
-     <td style="padding: 8px; border: 1px solid #ddd;"><span class="log-warning">WARNING</span></td>
-     <td style="padding: 8px; border: 1px solid #ddd;">WARNING + ERROR + CRITICAL</td>
-     <td style="padding: 8px; border: 1px solid #ddd;">Production runs, only see potential problems</td>
-   </tr>
-   <tr>
-     <td style="padding: 8px; border: 1px solid #ddd;"><span class="log-error">ERROR</span></td>
-     <td style="padding: 8px; border: 1px solid #ddd;">ERROR + CRITICAL</td>
-     <td style="padding: 8px; border: 1px solid #ddd;">Silent runs, only see actual errors</td>
-   </tr>
-   <tr>
-     <td style="padding: 8px; border: 1px solid #ddd;"><span class="log-critical">CRITICAL</span></td>
-     <td style="padding: 8px; border: 1px solid #ddd;">CRITICAL only</td>
-     <td style="padding: 8px; border: 1px solid #ddd;">Only simulation-stopping errors</td>
-   </tr>
-   </table>
-
-
-What Each Level Shows
-"""""""""""""""""""""
-
-.. raw:: html
-
-   <p><span class="log-debug">DEBUG</span> - Variable values, loop iterations, intermediate calculations, function entry/exit</p>
-   <p><span class="log-info">INFO</span> - Phase transitions, major events (bubble bursts, cloud edge reached), initialization, completion</p>
-   <p><span class="log-warning">WARNING</span> - Values clamped to limits, fallback behavior, unusual but non-critical conditions</p>
-   <p><span class="log-error">ERROR</span> - Calculation failures, unexpected conditions, recoverable errors</p>
-   <p><span class="log-critical">CRITICAL</span> - Unrecoverable errors, fatal failures, simulation crashes</p>
+   * - Level
+     - Typical messages
+     - When to use
+   * - ``DEBUG``
+     - Variable values, loop iterations, intermediate calculations,
+       function entry/exit.
+     - Development; debugging specific issues.
+   * - ``INFO``
+     - Phase transitions, major events (bubble burst, cloud edge
+       reached), initialisation and completion markers.
+     - Normal simulation runs (default).
+   * - ``WARNING``
+     - Values clamped to limits, fallback behaviour, unusual but
+       non-critical conditions.
+     - Production runs where only potential problems matter.
+   * - ``ERROR``
+     - Calculation failures, recoverable errors.
+     - Silent runs where only actual errors matter.
+   * - ``CRITICAL``
+     - Unrecoverable failures, fatal errors.
+     - When only simulation-stopping errors should print.
 
 
 Common Configurations
@@ -404,67 +375,12 @@ With ``log_level = INFO``:
 Output Data Model
 -----------------
 
-TRINITY writes simulation state to **JSONL** (JSON Lines) — one JSON object per
-line, one line per snapshot. The format is append-only (O(1) flushes), streams
-without loading into memory, and stays readable after a crash up to the last
-complete line.
+Each simulation writes its full state to ``dictionary.jsonl`` as a
+stream of newline-delimited JSON objects, one per snapshot. Writes
+are append-only, so the file remains readable after a crash — the
+last line may be partial but every prior line is a complete snapshot.
 
-This section describes the in-memory ``DescribedDict`` that mirrors the file,
-the keys contained in each snapshot, the on-disk layout, the save/flush
-workflow, and how to reload snapshots from Python. For higher-level analysis,
-use :ref:`trinity_reader <sec-trinity-reader>`.
-
-Dictionary Structure
-^^^^^^^^^^^^^^^^^^^^
-
-Internally, TRINITY carries simulation state in a single ``DescribedDict``
-(defined in ``src/_input/dictionary.py``). Each key maps to a
-``DescribedItem`` object that wraps the raw value together with lightweight
-metadata (a human-readable description and original units).
-
-**In-memory layout:**
-
-.. code-block:: python
-
-    from src._input.dictionary import DescribedDict, DescribedItem
-
-    params = DescribedDict()
-
-    params["R2"]     = DescribedItem(0.0, info="Outer shell radius",      ori_units="pc")
-    params["v2"]     = DescribedItem(0.0, info="Shell expansion velocity", ori_units="pc/Myr")
-    params["Eb"]     = DescribedItem(0.0, info="Bubble thermal energy",    ori_units="Msun*pc**2/Myr**2")
-    params["t_now"]  = DescribedItem(0.0, info="Current simulation time",  ori_units="Myr")
-
-    # Access the raw value
-    r = params["R2"].value           # -> float
-    t = params["t_now"].value        # -> float
-
-    # DescribedItem supports arithmetic/formatting directly
-    area = 4 * 3.14159 * params["R2"] ** 2     # float result
-    print(f"t = {params['t_now']:.3e} Myr")    # works via __format__
-
-Each ``DescribedItem`` exposes three attributes:
-
-.. list-table::
-   :widths: 25 75
-   :header-rows: 1
-
-   * - Attribute
-     - Meaning
-   * - ``value``
-     - The stored scalar, list, or numpy array.
-   * - ``info``
-     - Short human-readable description (seen in ``{model_name}_summary.txt``).
-   * - ``ori_units``
-     - Original-unit label (e.g. ``"pc"``, ``"Msun"``, ``"1/cm**3"``).
-
-Additionally, a per-item ``exclude_from_snapshot`` flag marks keys that are
-*not* persisted to disk — used for large auxiliary objects such as SB99
-interpolation tables that can be rebuilt on load.
-
-**What's in each snapshot:**
-
-Snapshots are grouped into a handful of conceptual categories:
+Snapshot keys group into a handful of categories:
 
 .. list-table::
    :widths: 30 70
@@ -494,7 +410,7 @@ Snapshots are grouped into a handful of conceptual categories:
      - ``log_shell_n_arr`` + ``shell_r_arr``,
        ``shell_grav_force_m`` + ``shell_grav_r``
 
-**On-disk form (one line of ``dictionary.jsonl``):**
+A single snapshot row looks like:
 
 .. code-block:: json
 
@@ -509,76 +425,16 @@ Snapshots are grouped into a handful of conceptual categories:
      "log_shell_n_arr": [3.1, 3.2, ...], "shell_r_arr":  [2.48, 2.49, ...]
    }
 
-Only the ``.value`` of each ``DescribedItem`` is written — ``info`` and
-``ori_units`` live alongside the code and are reattached automatically when
-you load a snapshot back in.
+For analysis, load snapshots through :ref:`sec-trinity-reader`,
+which wraps ``dictionary.jsonl`` with a ``TrinityOutput`` container
+and exposes time-series extraction, snapshot interpolation, phase
+and time-range filtering, pandas conversion, and batch helpers for
+sweep outputs.
 
-**Snapshot workflow (save → flush → disk).**
-Snapshots are captured through a two-stage *buffer → flush*
-pipeline so that disk writes stay cheap (append-only, O(1) per
-flush) and a crash can lose at most ``snapshot_interval`` steps of
-progress. The sequence at each ODE step is:
-
-1. **Mutate the dict.** Physics modules update
-   ``params["R2"].value``, ``params["Eb"].value``, etc. in place.
-2. **Stage a snapshot.** ``params.save_snapshot()`` copies the
-   current state (excluding any key marked
-   ``exclude_from_snapshot=True``) into the in-memory buffer
-   ``params.previous_snapshot``. A duplicate guard compares
-   ``t_now`` + ``R2`` against the last saved entry and silently
-   drops re-runs of the same step.
-3. **Flush in batches.** Every ``snapshot_interval`` calls
-   (default **10**), ``save_snapshot`` triggers ``flush()``
-   automatically. ``params.flush()`` may also be called manually
-   at phase boundaries or after a critical event.
-4. **Append to disk.** ``flush()`` opens ``dictionary.jsonl`` in
-   append mode and writes one JSON line per pending snapshot,
-   using ``NpEncoder`` to serialise numpy scalars and arrays. The
-   first flush of a fresh run overwrites any existing file;
-   subsequent flushes only append.
-5. **Crash-safe handlers.** On construction, ``DescribedDict``
-   registers an ``atexit`` hook plus ``SIGINT`` / ``SIGTERM``
-   handlers, so that an exit — clean, via ``Ctrl+C``, or via
-   ``kill`` / SLURM ``scancel`` — flushes any buffered snapshots
-   before termination. ``SIGKILL`` (``kill -9``) and
-   ``os._exit()`` bypass these hooks and can lose the pending
-   buffer; everything already on disk is always safe.
-
-Because writes are append-only, the file is readable even after a
-crash — the last line may be partial (one incomplete JSON object)
-but every prior line is a complete snapshot.
-
-These APIs are invoked by ``src/main.py`` and the phase modules;
-user code normally reads output through ``trinity_reader``
-(see :ref:`sec-trinity-reader`).
-
-**Reloading a snapshot:**
-
-.. code-block:: python
-
-    from src._input.dictionary import DescribedDict
-
-    # Load every snapshot into a dict keyed by id
-    snapshots = DescribedDict.load_snapshots("/path/to/outputs/my_run")
-
-    # Load one specific snapshot straight into a DescribedDict
-    params = DescribedDict.load_snapshot("/path/to/outputs/my_run", snap_id=42)
-    r_arr  = params["initial_cloud_r_arr"].value     # numpy array
-    t_now  = params["t_now"].value                   # float
-
-    # Convenience helper for the last snapshot
-    params = DescribedDict.load_latest_snapshot("/path/to/outputs/my_run")
-
-The ``DescribedDict.load_snapshot`` helpers give direct access to the
-raw state — useful when what is wanted is the exact Python objects
-the simulation worked with. For most analysis work, the higher-level
-``trinity_reader`` module is more convenient: it layers a
-``TrinityOutput`` container on top of the same JSONL files and
-exposes time-series extraction, interpolated snapshots, phase and
-time-range filtering, pandas conversion, and batch utilities for
-sweep outputs. See :ref:`sec-trinity-reader` for the full API,
-plotting examples, and details on the profile-array simplification
-applied to long 1-D arrays.
+Implementation notes — how the in-memory ``DescribedDict`` carries
+state, how the buffer→flush pipeline writes to disk, and how signal
+handlers preserve buffered data on early exit — are documented under
+*Snapshot Persistence* in :ref:`sec-architecture`.
 
 
 Troubleshooting
