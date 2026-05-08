@@ -359,7 +359,7 @@ def plot_comparison_grid(
             ax_single.legend(
                 handles=handles,
                 loc="upper left",
-                bbox_to_anchor=(0.04, 0.96),
+                bbox_to_anchor=(0.04, 0.99),
                 frameon=False,
                 fontsize=10,
             )
