@@ -86,7 +86,7 @@ PROFILE_STYLES = {
     'PL0':  {'color': '#0072B2', 'ls': '-',  'label': r'$\rho \propto r^{0}$'},
     'PL-1': {'color': '#E69F00', 'ls': '-',  'label': r'$\rho \propto r^{-1}$'},
     'PL-2': {'color': '#CC79A7', 'ls': '-',  'label': r'$\rho \propto r^{-2}$'},
-    'BE14': {'color': '#009E73', 'ls': '-',  'label': r'$\rho \propto \exp\{-\psi(\xi)\}$'},
+    'BE14': {'color': '#009E73', 'ls': '-',  'label': r'$\rho \propto \exp\{-\psi(\xi_{\rm cl})\}$'},
 }
 
 # Ordered list for consistent iteration
@@ -605,7 +605,7 @@ def plot_shell_evolution_paper(simulations: dict, output_dir: Path,
     ]
     ax_R.legend(handles=profile_handles,
                 loc='upper left', bbox_to_anchor=(0.01, 0.99),
-                ncol=1, frameon=False,
+                ncol=1, frameon=True,
                 fontsize=10, handletextpad=0.5)
 
     savefig(fig, 'densityProfile_paper', output_dir, fmt)
