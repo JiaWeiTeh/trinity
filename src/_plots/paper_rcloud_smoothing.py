@@ -306,7 +306,12 @@ def _build_v2R2_legend_handles() -> list:
 # =============================================================================
 # Panel drawers
 # =============================================================================
-def _draw_rcloud_panel(ax, fontsize, xlim):
+# Legend fontsize for the small in-panel legends; matches the
+# panel-(c) legend in paper_teaser at column width.
+_LEGEND_FONTSIZE = 10
+
+
+def _draw_rcloud_panel(ax, xlim):
     """Top panel: density step vs tanh blends around rCloud.
 
     Y-axis is configured to mirror the bottom panel exactly (log
@@ -338,14 +343,14 @@ def _draw_rcloud_panel(ax, fontsize, xlim):
     ax.set_yscale("log")
     ax.set_xscale('log')
     ax.grid(False)
-    ax.tick_params(labelsize=fontsize, axis='both', labelbottom=False)
-    ax.set_ylabel(r'$n(r)$ [cm$^{-3}$]', fontsize=fontsize)
+    ax.tick_params(axis='both', labelbottom=False)
+    ax.set_ylabel(r'$n(r)$ [cm$^{-3}$]')
 
     ax.legend(loc='lower left', handlelength=1.6, labelspacing=0.3,
-              fontsize=fontsize - 6, framealpha=0.9)
+              fontsize=_LEGEND_FONTSIZE, framealpha=0.9)
 
 
-def _draw_v2R2_panel(ax, pair, fontsize):
+def _draw_v2R2_panel(ax, pair):
     """Bottom panel: before/after blend trajectories on (R_b, |v_b|)."""
     before = pair["before"]
     after  = pair["after"]
@@ -362,12 +367,11 @@ def _draw_v2R2_panel(ax, pair, fontsize):
     ax.set_yscale("log")
     ax.set_xscale('log')
     ax.grid(False)
-    ax.tick_params(labelsize=fontsize, axis='both')
-    ax.set_xlabel(r"$R_b$ [pc]", fontsize=fontsize)
-    ax.set_ylabel(r"$v_b$ [km s$^{-1}$]", fontsize=fontsize)
+    ax.set_xlabel(r"$R_b$ [pc]")
+    ax.set_ylabel(r"$v_b$ [km s$^{-1}$]")
 
     ax.legend(handles=_build_v2R2_legend_handles(), loc="lower left",
-              fontsize=fontsize - 6, framealpha=0.9)
+              fontsize=_LEGEND_FONTSIZE, framealpha=0.9)
 
 
 # =============================================================================
@@ -378,18 +382,18 @@ def plot_merged(pair: dict, out_path: Optional[Path] = None,
     """Stack the rCloud-smoothing schematic over the v_2 vs R_2 comparison.
 
     Both panels are log-x and share the x-axis, so the rcloud vertical
-    lines align by construction.
+    lines align by construction.  Canvas width matches paper_teaser
+    (4.0") so the rendered fonts/ticks scale identically when both
+    figures are placed at A&A \\columnwidth.
     """
-    FONTSIZE = 25
-
     fig, (ax_top, ax_bot) = plt.subplots(
-        nrows=2, ncols=1, figsize=[8, 6], sharex=True,
+        nrows=2, ncols=1, figsize=(4.0, 5.5), sharex=True,
         gridspec_kw=dict(height_ratios=[1, 1]),
     )
 
     # Draw bottom first so its data-driven xlim drives the top panel.
-    _draw_v2R2_panel(ax_bot, pair, FONTSIZE)
-    _draw_rcloud_panel(ax_top, FONTSIZE, xlim=ax_bot.get_xlim())
+    _draw_v2R2_panel(ax_bot, pair)
+    _draw_rcloud_panel(ax_top, xlim=ax_bot.get_xlim())
 
     plt.tight_layout()
     fig.subplots_adjust(hspace=0.05)
