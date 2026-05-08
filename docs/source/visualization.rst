@@ -15,8 +15,7 @@ examples of how to drive the reader API from user code.
 All scripts share the same command-line conventions, accept the
 same folder-based discovery flags, and write their output into a
 predictable ``fig/{folder_name}/`` tree whose filenames encode the
-parameter combination that was plotted. To run any of them, just
-do::
+parameter combination that was plotted. To run any of them::
 
     python src/_plots/SCRIPT_NAME.py -F /path/to/outputs
 
@@ -89,7 +88,8 @@ Simplified force fraction plot showing the three mechanically distinct forces:
 - **F_rad**: Radiation pressure
 - **F_grav**: Gravitational force
 
-This is physically correct because these forces ARE additive in the momentum equation.
+These three forces enter additively in the momentum equation, so the
+fractions sum exactly to one.
 
 paper_dominantFeedback.py
 ~~~~~~~~~~~~~~~~~~~~~~~~~
