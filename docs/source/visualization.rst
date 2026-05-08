@@ -253,6 +253,5 @@ See Also
   ``load_output``, ``find_all_simulations``) used by every script above.
 - :ref:`sec-running` — producing simulations, sweep folder layout, and
   how ``path2output`` maps onto the ``fig/{folder_name}/`` tree.
-- :ref:`sec-analysis` — analysis utilities that complement these plots.
 - :ref:`sec-physics` — physical meaning of the forces, pressures, and
   regimes shown in the paper figures.

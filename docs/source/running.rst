@@ -472,7 +472,5 @@ See Also
   ``dictionary.jsonl`` files into numpy / pandas.
 - :ref:`sec-visualization` — plotting scripts that consume
   sweep output directories.
-- :ref:`sec-analysis` — post-processing analysis scripts (``src/_calc/``)
-  that fit scaling relations to sweep results.
 - :ref:`sec-architecture` — internal module layout and how ``run.py``
   drives ``main.start_expansion`` through the phase modules.

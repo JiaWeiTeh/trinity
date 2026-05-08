@@ -147,9 +147,8 @@ the data flow between the orchestrator, phase solvers, and shared
 physics modules. :ref:`sec-physics` sets out the governing
 equations and the numerical scheme that integrates them.
 :ref:`sec-trinity-reader` documents the Python API for loading and
-analysing simulation output. :ref:`sec-visualization` and
-:ref:`sec-analysis` describe the plotting and post-processing
-scripts shipped with TRINITY.
+analysing simulation output. :ref:`sec-visualization` describes the
+plotting scripts shipped with TRINITY.
 
 
 Contents
@@ -165,5 +164,4 @@ Contents
    physics
    visualization
    trinity_reader
-   analysis
    publications
