@@ -1,17 +1,19 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Density Profile Comparison Diagnostics for TRINITY.
+Density Profile Comparison Figures for TRINITY (paper version).
 
-Compares four density profiles (same cloud mass, SFE, core density, but varying
-density structure) from a density_profile_sweep run:
+Compares four density profiles (same cloud mass, SFE, core density, but
+varying density structure) from a density_profile_sweep run:
   - Power-law rho ~ r^0  (uniform)
   - Power-law rho ~ r^-1
   - Power-law rho ~ r^-2
   - Critical Bonnor-Ebert sphere
 
-Produces 8 diagnostic figures (1 static + 7 simulation-based) examining how
-cloud density structure affects feedback-driven shell evolution.
+Produces two paper-ready figures:
+  - densityProfile_paper          : top  rho(r) + M_enc(r) ingredients,
+                                    bottom R_b(t) shell radius.
+  - densityProfile_phaseTimeline  : Gantt-style phase timeline.
 
 Usage:
   python paper_densityProfile.py -F <path_to_density_profile_sweep_output>
@@ -45,7 +47,7 @@ from src.cloud_properties.bonnorEbertSphere import (
 from src.cloud_properties.powerLawSphere import (
     compute_rCloud_homogeneous, compute_rCloud_powerlaw
 )
-from src._plots.plot_markers import add_plot_markers, get_marker_legend_handles
+from src._plots.plot_markers import add_plot_markers
 
 # =============================================================================
 # MARKER DEFAULTS (off for clean paper figures; enable via CLI --show-*)
@@ -88,18 +90,6 @@ PROFILE_STYLES = {
 
 # Ordered list for consistent iteration
 PROFILE_ORDER = ['PL0', 'PL-1', 'PL-2', 'BE14']
-
-# Boltzmann constant in CGS
-K_B_CGS = CGS.k_B  # erg/K
-
-# Velocity conversion: pc/Myr -> km/s
-V_AU2KMS = INV_CONV.v_au2kms
-
-# Force conversion: AU -> CGS (dyn)
-F_AU2CGS = INV_CONV.F_au2cgs
-
-# Pressure conversion: AU -> CGS (dyn/cm^2)
-PB_AU2CGS = INV_CONV.Pb_au2cgs
 
 
 # =============================================================================
@@ -193,18 +183,6 @@ def safe_get(output: TrinityOutput, key: str, default_val: float = 0.0) -> np.nd
 def get_style(tag: str) -> dict:
     """Get plotting style for a profile tag."""
     return PROFILE_STYLES.get(tag, {'color': 'gray', 'ls': '-', 'label': tag})
-
-
-def add_legend(ax, tags: list, extra_handles: list = None, **kwargs):
-    """Add a consistent legend for profile tags."""
-    handles = []
-    for tag in tags:
-        s = get_style(tag)
-        handles.append(Line2D([0], [0], color=s['color'], ls=s['ls'], lw=1.5,
-                              label=s['label'].replace('\n', ' ')))
-    if extra_handles:
-        handles.extend(extra_handles)
-    ax.legend(handles=handles, **kwargs)
 
 
 def savefig(fig, name: str, output_dir: Path, fmt: str = 'pdf'):
@@ -438,71 +416,10 @@ def _extend_outer_plateau(r_arr, n_cgs, M_arr, r_max):
 
 
 # =============================================================================
-# Figure 1: Cloud Density & Enclosed Mass Profiles (STATIC, 2-panel)
+# densityProfile_paper: helpers (ticks, ingredients panel, R_b panel)
 # =============================================================================
 
-def plot_enclosed_mass(sweep_dir: str, output_dir: Path, fmt: str = 'pdf',
-                       show: bool = False) -> None:
-    """
-    Plot n(r) density profile and M_enc(r) for all four density profiles.
-
-    Reads cloud parameters from ``_summary.txt`` in each simulation
-    subfolder.  Falls back to hard-coded defaults when unavailable.
-
-    Produces a single figure with two panels:
-      (a) number-density  n(r)  [cm⁻³]  vs  r [pc]
-      (b) enclosed mass   M(<r) [Msun]   vs  r [pc]
-    """
-    logger.info("Figure 1: Cloud Density & Enclosed Mass Profiles")
-
-    # Discover per-run folders (for reading _summary.txt)
-    sim_folders = _get_sim_folders(sweep_dir)
-
-    fig, axes = plt.subplots(1, 2, figsize=(9, 4))
-    ax_n, ax_M = axes
-
-    # Pre-compute every profile so we know the global outer radius, then
-    # extend each curve's nISM plateau out to that radius before plotting
-    # — this keeps the nISM horizontal line visible all the way to the
-    # right-hand edge of the panel even for profiles with smaller rCloud.
-    profiles = {tag: _compute_rho_M_profile(tag, sim_folders)
-                for tag in PROFILE_ORDER}
-    r_max = max(r_arr[-1] for r_arr, _, _, _ in profiles.values())
-
-    for tag in PROFILE_ORDER:
-        s = get_style(tag)
-        r_arr, n_cgs, M_arr, _mu = profiles[tag]
-        r_arr, n_cgs, M_arr = _extend_outer_plateau(r_arr, n_cgs, M_arr, r_max)
-
-        ax_n.loglog(r_arr, n_cgs, color=s['color'], ls=s['ls'], lw=1.5,
-                    label=s['label'])
-        ax_M.loglog(r_arr, M_arr, color=s['color'], ls=s['ls'], lw=1.5,
-                    label=s['label'])
-
-    # Panel (a): density
-    ax_n.set_xlabel(r'$r$ [pc]')
-    ax_n.set_ylabel(r'$n(r)$ [cm$^{-3}$]')
-    ax_n.set_title(r'(a) Density Profile')
-
-    # Panel (b): enclosed mass
-    ax_M.set_xlabel(r'$r$ [pc]')
-    ax_M.set_ylabel(r'$M_{\rm enc}(<r)$ [M$_\odot$]')
-    ax_M.set_title(r'(b) Enclosed Mass')
-
-    add_legend(ax_n, PROFILE_ORDER, loc='best')
-
-    fig.tight_layout()
-    savefig(fig, 'densityProfile_Menc', output_dir, fmt)
-    if show:
-        plt.show()
-    plt.close(fig)
-
-
-# =============================================================================
-# Figure 2: Shell Evolution (3-panel)
-# =============================================================================
-
-# Alpha for the dashed M_enc line on the top panel (shared by evolution plots).
+# Alpha for the dashed M_enc line on the top panel.
 _MENC_ALPHA = 0.45
 
 
@@ -634,163 +551,21 @@ def _draw_Rb_panel(ax, simulations: dict, tags_present: list) -> None:
     ax.set_ylabel(r'$R_{\rm b}$ [pc]')
 
 
-def _build_profile_figure_legend(fig, tags_present: list,
-                                 legend_y: float = 1.0):
-    """Figure-level 2x2 legend of profile colours with a border.
-
-    ``legend_y`` is the figure-fraction *top* position for the legend box
-    (``loc='upper center'``). Callers should compute this via
-    :func:`_compute_legend_layout` from ``grid_template``.
-    """
-    profile_handles = [
-        Line2D([0], [0], color=get_style(tag)['color'], ls='-', lw=1.8,
-               label=get_style(tag)['label'].replace('\n', ' '))
-        for tag in tags_present
-    ]
-    marker_handles = list(get_marker_legend_handles(
-        include_phase=False,
-        include_rcloud=SHOW_RCLOUD,
-        include_rcloud_horizontal=SHOW_RCLOUD_H,
-        include_collapse=False,
-    ))
-    fig.legend(
-        handles=profile_handles + marker_handles,
-        loc='upper center',
-        ncol=2,
-        bbox_to_anchor=(0.5, legend_y),
-        frameon=True,
-        facecolor='white',
-        edgecolor='0.2',
-        framealpha=0.95,
-        columnspacing=1.5,
-        handletextpad=0.5,
-    )
-
-
-def plot_shell_evolution(simulations: dict, output_dir: Path, fmt: str = 'pdf',
-                         show: bool = False, sweep_dir: str = None) -> None:
-    """Plot stacked density profile (+M_enc) and R(t), v(t), M_shell(t).
-
-    Top row (row 0) shows the density profile as solid lines and the enclosed
-    mass as dashed lines on a twiny axis (x-axis is radius, independent).
-    Rows 1-3 share the same time x-axis and show shell radius, velocity, and
-    mass respectively. Legend is at the top as a figure-level legend.
-    """
-    from src._plots.grid_template import _compute_legend_layout
-
-    logger.info("Figure 2: Shell Evolution (stacked)")
-
-    tags_present = [tag for tag in PROFILE_ORDER if tag in simulations]
-
-    # Two independent gridspecs so that the top "ingredients" panel (with its
-    # own r-axis) is clearly separated from the three time-evolution panels
-    # that share a common t-axis.
-    fig_h = 13.0
-    fig = plt.figure(figsize=(6.5, fig_h))
-
-    layout = _compute_legend_layout(
-        fig_h, n_legend_items=len(tags_present), legend_ncol=2,
-    )
-
-    # The ingredient panel occupies the top strip; the three time-panels
-    # fill the rest below.  A gap separates them so the ingredient-panel
-    # xlabel is never overlapped by the R_b panel below.
-    top_of_top_panel = layout['top']
-    bot_of_top_panel = top_of_top_panel - 0.20
-    gap = 0.05
-    top_of_time_panels = bot_of_top_panel - gap
-    gs_top = fig.add_gridspec(
-        1, 1,
-        top=top_of_top_panel, bottom=bot_of_top_panel,
-        left=0.15, right=0.87,
-    )
-    gs_bot = fig.add_gridspec(
-        3, 1,
-        top=top_of_time_panels, bottom=0.05, hspace=0.08,
-        left=0.15, right=0.87,
-    )
-
-    ax_rho = fig.add_subplot(gs_top[0, 0])
-    ax_M   = ax_rho.twinx()                               # enclosed mass twiny
-    ax_R   = fig.add_subplot(gs_bot[0, 0])
-    ax_v   = fig.add_subplot(gs_bot[1, 0], sharex=ax_R)
-    ax_m   = fig.add_subplot(gs_bot[2, 0], sharex=ax_R)
-
-    # Ticks for the three time-evolution panels
-    for ax in (ax_R, ax_v, ax_m):
-        _setup_time_panel_ticks(ax)
-
-    # --- Row 0: density + M_enc (with ticks, labels, legend) ---
-    sim_folders = _get_sim_folders(sweep_dir) if sweep_dir else {}
-    _draw_ingredients_panel(ax_rho, ax_M, tags_present, sim_folders)
-
-    # --- Rows 1-3: time evolution, shared x-axis ---
-    # The R_b panel is drawn via the shared helper; v and M_shell inline.
-    _draw_Rb_panel(ax_R, simulations, tags_present)
-
-    for tag in tags_present:
-        output = simulations[tag]
-        s = get_style(tag)
-
-        t = output.get('t_now')
-        v2 = safe_get(output, 'v2') * V_AU2KMS  # pc/Myr -> km/s
-        mshell = safe_get(output, 'shell_mass')
-
-        phase_raw = output.get('current_phase', as_array=False)
-        phase = (np.asarray([str(p) for p in phase_raw])
-                 if phase_raw is not None else None)
-        isCollapse_raw = output.get('isCollapse', as_array=False)
-        isCollapse = (np.array([bool(c) for c in isCollapse_raw])
-                      if isCollapse_raw is not None else None)
-
-        for ax in (ax_v, ax_m):
-            add_plot_markers(
-                ax, t,
-                phase=phase,
-                isCollapse=isCollapse,
-                dataset_color=s['color'],
-                show_phase=SHOW_PHASE,
-                show_collapse=SHOW_COLLAPSE,
-                show_labels=True,
-            )
-
-        ax_v.plot(t, v2,     color=s['color'], ls=s['ls'], lw=1.5)
-        ax_m.plot(t, mshell, color=s['color'], ls=s['ls'], lw=1.5)
-
-    ax_v.set_ylabel(r'$v$ [km\,s$^{-1}$]')
-    ax_v.set_yscale('log')
-    ax_m.set_ylabel(r'$M_{\rm shell}$ [M$_\odot$]')
-    ax_m.set_xlabel(r'$t$ [Myr]')
-
-    # Hide tick labels (not ticks themselves) on shared x-axis for rows 1-2
-    plt.setp(ax_R.get_xticklabels(), visible=False)
-    plt.setp(ax_v.get_xticklabels(), visible=False)
-
-    _build_profile_figure_legend(fig, tags_present,
-                                 legend_y=layout['legend_y'])
-
-    savefig(fig, 'densityProfile_evolution', output_dir, fmt)
-    if show:
-        plt.show()
-    plt.close(fig)
-
-
 # =============================================================================
-# Figure 2 (paper version): top ingredients panel + R_b(t) only
+# densityProfile_paper: ingredients (rho, M_enc) + R_b(t)
 # =============================================================================
 
 def plot_shell_evolution_paper(simulations: dict, output_dir: Path,
                                fmt: str = 'pdf', show: bool = False,
                                sweep_dir: str = None) -> None:
-    """Paper-ready 2-panel version of :func:`plot_shell_evolution`.
+    """Paper-ready 2-panel figure: density+M_enc ingredients (top) and
+    R_b(t) shell radius (bottom).
 
-    Shows only the top (density + M_enc ingredients) panel and the R_b(t)
-    panel below it. The profile-colour legend lives inside the R_b panel
-    (rather than at the top of the figure) to save vertical space; a
-    generous ``hspace`` keeps the ingredient-panel xlabel clear of the
-    R_b panel below.
+    The profile-colour legend lives inside the R_b panel to save
+    vertical space; a generous ``hspace`` keeps the ingredient-panel
+    xlabel clear of the R_b panel below.
     """
-    logger.info("Figure 2p: Shell Evolution (paper, 2-panel)")
+    logger.info("densityProfile_paper: ingredients + R_b(t)")
 
     tags_present = [tag for tag in PROFILE_ORDER if tag in simulations]
 
@@ -834,160 +609,8 @@ def plot_shell_evolution_paper(simulations: dict, output_dir: Path,
 
 
 # =============================================================================
-# Figure 3: Pressure Budget (2x2 panels)
+# densityProfile_phaseTimeline: phase intervals helper + Gantt timeline
 # =============================================================================
-
-def plot_pressure_budget(simulations: dict, output_dir: Path, fmt: str = 'pdf',
-                         show: bool = False) -> None:
-    """Plot pressure evolution for each profile in a 2x2 grid."""
-    logger.info("Figure 3: Pressure Budget")
-
-    tags_present = [tag for tag in PROFILE_ORDER if tag in simulations]
-    n = len(tags_present)
-    nrows = 2
-    ncols = 2
-
-    fig, axes = plt.subplots(nrows, ncols, figsize=(8, 6), squeeze=False,
-                             sharey=True)
-
-    for idx, tag in enumerate(tags_present):
-        i, j = divmod(idx, ncols)
-        ax = axes[i, j]
-        output = simulations[tag]
-        s = get_style(tag)
-
-        t = output.get('t_now')
-        Pb = safe_get(output, 'Pb')
-        P_drive = safe_get(output, 'P_drive')
-        P_IF = safe_get(output, 'P_IF')
-
-        # Convert pressure from AU to P/k_B [K cm^-3]
-        # Pb [Msun/Myr^2/pc] -> dyn/cm^2 -> P/k_B
-        Pb_cgs = np.abs(Pb) * PB_AU2CGS
-        P_drive_cgs = np.abs(P_drive) * PB_AU2CGS
-        P_IF_cgs = np.abs(P_IF) * PB_AU2CGS
-
-        Pb_over_kB = Pb_cgs / K_B_CGS
-        P_drive_over_kB = P_drive_cgs / K_B_CGS
-        P_IF_over_kB = P_IF_cgs / K_B_CGS
-
-        # Compute radiation pressure from F_rad and R2
-        R2 = safe_get(output, 'R2')
-        F_rad = safe_get(output, 'F_rad')
-        # P_rad = F_rad / (4 pi R^2), need to convert
-        # F_rad is in AU force units, R2 is in pc
-        R2_cm = R2 * INV_CONV.pc2cm
-        F_rad_cgs = np.abs(F_rad) * F_AU2CGS
-        with np.errstate(divide='ignore', invalid='ignore'):
-            P_rad_cgs = np.where(R2_cm > 0,
-                                 F_rad_cgs / (4.0 * np.pi * R2_cm**2), 0.0)
-        P_rad_over_kB = P_rad_cgs / K_B_CGS
-
-        # Plot
-        mask_Pb = Pb_over_kB > 0
-        mask_Pd = P_drive_over_kB > 0
-        mask_IF = P_IF_over_kB > 0
-        mask_Pr = P_rad_over_kB > 0
-
-        if np.any(mask_Pb):
-            ax.semilogy(t[mask_Pb], Pb_over_kB[mask_Pb],
-                        color='#0072B2', ls='-', lw=1.2,
-                        label=r'$P_{\rm b}$')
-        if np.any(mask_Pd):
-            ax.semilogy(t[mask_Pd], P_drive_over_kB[mask_Pd],
-                        color='#D55E00', ls='--', lw=1.2,
-                        label=r'$P_{\rm drive}$')
-        if np.any(mask_IF):
-            ax.semilogy(t[mask_IF], P_IF_over_kB[mask_IF],
-                        color='#009E73', ls='-.', lw=1.2,
-                        label=r'$P_{\rm IF}$')
-        if np.any(mask_Pr):
-            ax.semilogy(t[mask_Pr], P_rad_over_kB[mask_Pr],
-                        color='#CC79A7', ls=':', lw=1.2,
-                        label=r'$P_{\rm rad}$')
-
-        ax.set_xlabel(r'$t$ [Myr]')
-        ax.set_ylabel(r'$P/k_{\rm B}$ [K\,cm$^{-3}$]')
-        ax.set_title(s['label'].replace('\n', ' '))
-        ax.legend(loc='best')
-
-    # Turn off unused panels
-    for idx in range(n, nrows * ncols):
-        i, j = divmod(idx, ncols)
-        axes[i, j].set_visible(False)
-
-    fig.tight_layout()
-    savefig(fig, 'densityProfile_pressure', output_dir, fmt)
-    if show:
-        plt.show()
-    plt.close(fig)
-
-
-# =============================================================================
-# Figure 4: Force Budget (2x2 panels)
-# =============================================================================
-
-def plot_force_budget(simulations: dict, output_dir: Path, fmt: str = 'pdf',
-                      show: bool = False) -> None:
-    """Plot force evolution for each profile in a 2x2 grid."""
-    logger.info("Figure 4: Force Budget")
-
-    tags_present = [tag for tag in PROFILE_ORDER if tag in simulations]
-    n = len(tags_present)
-    nrows = 2
-    ncols = 2
-
-    fig, axes = plt.subplots(nrows, ncols, figsize=(8, 6), squeeze=False,
-                             sharey=True)
-
-    force_fields = [
-        ('F_ram',     r'$F_{\rm ram}$',     '#0072B2', '-'),
-        ('F_grav',    r'$|F_{\rm grav}|$',  '#D55E00', '--'),
-        ('F_rad',     r'$F_{\rm rad}$',     '#009E73', '-.'),
-        ('F_HII',     r'$F_{\rm HII}$',      '#CC79A7', ':'),
-    ]
-
-    for idx, tag in enumerate(tags_present):
-        i, j = divmod(idx, ncols)
-        ax = axes[i, j]
-        output = simulations[tag]
-        s = get_style(tag)
-
-        t = output.get('t_now')
-
-        for field, label, color, ls in force_fields:
-            F = safe_get(output, field)
-            F_cgs = np.abs(F) * F_AU2CGS
-            mask = F_cgs > 0
-            if np.any(mask):
-                ax.semilogy(t[mask], F_cgs[mask], color=color, ls=ls,
-                            lw=1.2, label=label)
-
-        ax.set_xlabel(r'$t$ [Myr]')
-        ax.set_ylabel(r'$|F|$ [dyn]')
-        ax.set_title(s['label'].replace('\n', ' '))
-        ax.legend(loc='best')
-
-    for idx in range(n, nrows * ncols):
-        i, j = divmod(idx, ncols)
-        axes[i, j].set_visible(False)
-
-    fig.tight_layout()
-    savefig(fig, 'densityProfile_force', output_dir, fmt)
-    if show:
-        plt.show()
-    plt.close(fig)
-
-
-# =============================================================================
-# Figure 5: Phase Transition Timing
-# =============================================================================
-
-def plot_phase_timing(simulations: dict, output_dir: Path, fmt: str = 'pdf',
-                      show: bool = False) -> None:
-    """Backward-compatible wrapper — calls plot_phase_timeline."""
-    plot_phase_timeline(simulations, output_dir, fmt, show)
-
 
 def _extract_phase_info(output: TrinityOutput) -> dict:
     """
@@ -1120,7 +743,7 @@ def plot_phase_timeline(simulations: dict, output_dir: Path, fmt: str = 'pdf',
     Minimalistic black-and-white style sized for a single A&A column (~88 mm).
     Thin bars with duration labels above; legend at top.
     """
-    logger.info("Figure 5: Phase Timeline (annotated Gantt)")
+    logger.info("densityProfile_phaseTimeline: annotated Gantt timeline")
 
     # Phase styles: (facecolor, hatch, edgecolor)
     PHASE_STYLE = {
@@ -1283,264 +906,6 @@ def plot_phase_timeline(simulations: dict, output_dir: Path, fmt: str = 'pdf',
 
 
 # =============================================================================
-# Helper: map profile tags to data file paths (for external load_run calls)
-# =============================================================================
-
-def _get_profile_data_paths(sweep_dir: str) -> dict:
-    """
-    Get mapping from profile tag -> data file Path.
-
-    Used by the grid figures that call load_run from external modules.
-    """
-    sweep_path = Path(sweep_dir)
-    sim_files = find_all_simulations(sweep_path)
-    paths = {}
-    for data_path in sim_files:
-        tag = identify_profile_tag(data_path.parent.name)
-        if tag and tag in PROFILE_STYLES:
-            paths[tag] = data_path
-    return paths
-
-
-# =============================================================================
-# Figure 6: Escape Fraction
-# =============================================================================
-
-def plot_escape_fraction(simulations: dict, output_dir: Path, fmt: str = 'pdf',
-                         show: bool = False) -> None:
-    """Plot ionising photon escape fraction f_esc(t) for all profiles.
-
-    Uses the same masking/visualisation treatment as ``paper_escapeFraction``:
-      - Suppress the seed-bubble transient before the shell first becomes
-        optically thick (f_esc first reaches zero), showing that stretch as a
-        faint dashed line at f_esc = 0.
-      - Smooth the post-transient curve with the same moving-average window.
-    """
-    from src._plots.paper_escapeFraction import (
-        load_escape_fraction, SMOOTH_WINDOW,
-    )
-    from src._plots.plot_base import smooth_1d
-
-    logger.info("Figure 6: Escape Fraction")
-
-    fig, ax = plt.subplots(figsize=(5, 4))
-
-    for tag in PROFILE_ORDER:
-        if tag not in simulations:
-            continue
-        output = simulations[tag]
-        s = get_style(tag)
-
-        data_path = getattr(output, 'filepath', None)
-        try:
-            if data_path is not None:
-                t, fesc, _isCollapse, t_transient = load_escape_fraction(data_path)
-            else:
-                raise AttributeError("no filepath on TrinityOutput")
-        except Exception:
-            # Fallback: compute f_esc inline with the same transient mask.
-            t_full = output.get('t_now')
-            fAbs = safe_get(output, 'shell_fAbsorbedIon')
-            fAbs = np.nan_to_num(fAbs, nan=0.0)
-            fesc_full = 1.0 - fAbs
-            t_transient = np.array([])
-            idx_zero = np.nonzero(fesc_full <= 0.0)[0]
-            if len(idx_zero) > 0:
-                i0 = idx_zero[0]
-                t_transient = t_full[:i0 + 1]
-                t, fesc = t_full[i0:], fesc_full[i0:]
-            else:
-                t, fesc = t_full, fesc_full
-
-        fesc_plot = smooth_1d(fesc, SMOOTH_WINDOW)
-        fesc_plot = np.clip(fesc_plot, 0.0, 1.0)
-
-        ax.plot(t, fesc_plot, color=s['color'], ls=s['ls'], lw=1.5)
-        if len(t_transient) > 0:
-            ax.plot(t_transient, np.zeros_like(t_transient),
-                    color=s['color'], ls='--', lw=1.0, alpha=0.5)
-
-    ax.set_xlabel(r'$t$ [Myr]')
-    ax.set_ylabel(r'$f_{\rm esc,\,ion}$')
-    ax.set_ylim(0, 1)
-
-    add_legend(ax, [tag for tag in PROFILE_ORDER if tag in simulations], loc='best')
-
-    savefig(fig, 'densityProfile_escapeFraction', output_dir, fmt)
-    if show:
-        plt.show()
-    plt.close(fig)
-
-
-# =============================================================================
-# Figure 7: Feedback Fraction Grid (2x2)
-# =============================================================================
-
-def plot_feedback_grid(sweep_dir: str, output_dir: Path, fmt: str = 'pdf',
-                       show: bool = False) -> None:
-    """
-    Plot feedback fraction stacked areas in a 2x2 grid.
-
-    Each panel shows one density profile using the same stacked-area
-    visualisation as paper_feedback.py.
-    """
-    import src._plots.paper_feedback as _fb
-    from src._plots.plot_markers import get_marker_legend_handles
-
-    logger.info("Figure 7: Feedback Fraction Grid")
-
-    sim_paths = _get_profile_data_paths(sweep_dir)
-    tags_present = [tag for tag in PROFILE_ORDER if tag in sim_paths]
-
-    if not tags_present:
-        logger.warning("No simulations found for feedback grid. Skipping.")
-        return
-
-    nrows, ncols = 2, 2
-    fig, axes = plt.subplots(nrows, ncols, figsize=(8, 6), squeeze=False,
-                             sharey=True)
-
-    for idx, tag in enumerate(tags_present):
-        i, j = divmod(idx, ncols)
-        ax = axes[i, j]
-        s = get_style(tag)
-
-        try:
-            t, R2, phase, base_forces, overlay_forces, rcloud, isCollapse, pressures = \
-                _fb.load_run(sim_paths[tag])
-            _fb.plot_run_on_ax(
-                ax, t, R2, phase, base_forces, overlay_forces, rcloud,
-                isCollapse, pressures=pressures, alpha=0.75,
-                smooth_window=_fb.SMOOTH_WINDOW,
-                phase_change=SHOW_PHASE, show_rcloud=SHOW_RCLOUD,
-                show_collapse=SHOW_COLLAPSE, use_log_x=_fb.USE_LOG_X,
-            )
-        except Exception as e:
-            logger.error(f"Feedback grid {tag}: {e}")
-            ax.text(0.5, 0.5, "error", ha="center", va="center",
-                    transform=ax.transAxes)
-            ax.set_axis_off()
-            continue
-
-        ax.set_title(s['label'].replace('\n', ' '))
-        if i == nrows - 1:
-            ax.set_xlabel(r'$t$ [Myr]')
-        if j == 0:
-            ax.set_ylabel(r'$F/F_{\rm tot}$')
-        else:
-            ax.tick_params(labelleft=False)
-
-    for idx in range(len(tags_present), nrows * ncols):
-        i, j = divmod(idx, ncols)
-        axes[i, j].set_visible(False)
-
-    # Global legend
-    handles = []
-    for field, label, color in _fb.FORCE_FIELDS_BASE:
-        ec = '0.4' if color == 'white' else 'none'
-        a = 1.0 if color == 'white' else 0.75
-        handles.append(Patch(facecolor=color, edgecolor=ec, alpha=a,
-                             label=label))
-    if _fb.INCLUDE_ALL_FORCE:
-        handles.append(Patch(facecolor='none', edgecolor=_fb.C_WIND,
-                             hatch='\\\\\\\\', label='Wind'))
-        handles.append(Patch(facecolor='none', edgecolor=_fb.C_SN,
-                             hatch='\\\\\\\\', label='SN'))
-    handles.extend(get_marker_legend_handles(
-        include_phase=SHOW_PHASE, include_rcloud=SHOW_RCLOUD,
-        include_collapse=SHOW_COLLAPSE))
-
-    fig.legend(handles=handles, loc='upper center', ncol=4,
-               frameon=True, facecolor='white', framealpha=0.9,
-               edgecolor='0.2', bbox_to_anchor=(0.5, 1.05))
-    fig.subplots_adjust(top=0.88)
-
-    savefig(fig, 'densityProfile_feedback', output_dir, fmt)
-    if show:
-        plt.show()
-    plt.close(fig)
-
-
-# =============================================================================
-# Figure 8: Momentum Grid (2x2)
-# =============================================================================
-
-def plot_momentum_grid(sweep_dir: str, output_dir: Path, fmt: str = 'pdf',
-                       show: bool = False) -> None:
-    """
-    Plot cumulative momentum lines in a 2x2 grid.
-
-    Each panel shows one density profile using the same momentum-line
-    visualisation as paper_momentum.py.
-    """
-    import src._plots.paper_momentum as _mom
-    from src._plots.plot_markers import get_marker_legend_handles
-
-    logger.info("Figure 8: Momentum Grid")
-
-    sim_paths = _get_profile_data_paths(sweep_dir)
-    tags_present = [tag for tag in PROFILE_ORDER if tag in sim_paths]
-
-    if not tags_present:
-        logger.warning("No simulations found for momentum grid. Skipping.")
-        return
-
-    nrows, ncols = 2, 2
-    fig, axes = plt.subplots(nrows, ncols, figsize=(8, 6), squeeze=False,
-                             sharey=True)
-
-    for idx, tag in enumerate(tags_present):
-        i, j = divmod(idx, ncols)
-        ax = axes[i, j]
-        s = get_style(tag)
-
-        try:
-            t, r, phase, forces, forces_dict, rcloud, isCollapse = \
-                _mom.load_run(sim_paths[tag])
-            _mom.plot_momentum_lines_on_ax(
-                ax, t, r, phase, forces, forces_dict, rcloud, isCollapse,
-                smooth_window=_mom.SMOOTH_WINDOW, phase_change=SHOW_PHASE,
-                show_rcloud=SHOW_RCLOUD, show_collapse=SHOW_COLLAPSE,
-            )
-        except Exception as e:
-            logger.error(f"Momentum grid {tag}: {e}")
-            ax.text(0.5, 0.5, "error", ha="center", va="center",
-                    transform=ax.transAxes)
-            ax.set_axis_off()
-            continue
-
-        ax.set_title(s['label'].replace('\n', ' '))
-        if i == nrows - 1:
-            ax.set_xlabel(r'$t$ [Myr]')
-        if j == 0:
-            ax.set_ylabel(r'$p(t) = \int F\,dt$')
-
-    for idx in range(len(tags_present), nrows * ncols):
-        i, j = divmod(idx, ncols)
-        axes[i, j].set_visible(False)
-
-    # Global legend
-    handles = []
-    for _, label, color in _mom.FORCE_FIELDS:
-        handles.append(Line2D([0], [0], color=color, lw=1.6, ls='-',
-                              label=label))
-    handles.append(Line2D([0], [0], color='darkgrey', lw=2.4, label='Net'))
-    handles.extend(get_marker_legend_handles(
-        include_phase=SHOW_PHASE, include_rcloud=SHOW_RCLOUD,
-        include_collapse=SHOW_COLLAPSE))
-
-    fig.legend(handles=handles, loc='upper center', ncol=4,
-               frameon=True, facecolor='white', framealpha=0.9,
-               edgecolor='0.2', bbox_to_anchor=(0.5, 1.05))
-    fig.subplots_adjust(top=0.88)
-
-    savefig(fig, 'densityProfile_momentum', output_dir, fmt)
-    if show:
-        plt.show()
-    plt.close(fig)
-
-
-# =============================================================================
 # Main entry point
 # =============================================================================
 
@@ -1610,63 +975,29 @@ Examples:
         output_dir = FIG_DIR / folder_name
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Figure 1: Enclosed mass (static, no simulation data needed)
-    try:
-        plot_enclosed_mass(args.folder, output_dir, args.fmt, args.show)
-    except Exception as e:
-        logger.error(f"Figure 1 (Enclosed Mass) failed: {e}")
-
-    # Load simulation data for remaining figures
+    # Load simulation data
     try:
         simulations = load_sweep_simulations(args.folder)
     except FileNotFoundError as e:
         logger.error(f"Could not load simulations: {e}")
-        logger.info("Only Figure 1 (static enclosed mass) was generated.")
         return
 
     if not simulations:
         logger.error("No valid simulations found. Exiting.")
         return
 
-    # Figure 2 takes sweep_dir as well (for density-profile ingredients)
-    try:
-        plot_shell_evolution(simulations, output_dir, args.fmt, args.show,
-                             sweep_dir=args.folder)
-    except Exception as e:
-        logger.error(f"Figure 2 (Shell Evolution) failed: {e}")
-
-    # Figure 2p: paper-ready 2-panel version (ingredients + R_b(t))
+    # densityProfile_paper: ingredients (rho, M_enc) + R_b(t)
     try:
         plot_shell_evolution_paper(simulations, output_dir, args.fmt, args.show,
                                    sweep_dir=args.folder)
     except Exception as e:
-        logger.error(f"Figure 2p (Shell Evolution, paper) failed: {e}")
+        logger.error(f"densityProfile_paper failed: {e}")
 
-    # Generate all simulation-based figures
-    plot_functions = [
-        ("Figure 3: Pressure Budget",       plot_pressure_budget),
-        ("Figure 4: Force Budget",          plot_force_budget),
-        ("Figure 5: Phase Timing",          plot_phase_timing),
-        ("Figure 6: Escape Fraction",       plot_escape_fraction),
-    ]
-
-    for name, func in plot_functions:
-        try:
-            func(simulations, output_dir, args.fmt, args.show)
-        except Exception as e:
-            logger.error(f"{name} failed: {e}")
-
-    # Grid figures (reuse plot functions from paper_feedback/momentum/thermal)
-    grid_functions = [
-        ("Figure 7: Feedback Grid",   plot_feedback_grid),
-        ("Figure 8: Momentum Grid",   plot_momentum_grid),
-    ]
-
-    for name, func in grid_functions:
-        try:
-            func(args.folder, output_dir, args.fmt, args.show)
-        except Exception as e:
-            logger.error(f"{name} failed: {e}")
+    # densityProfile_phaseTimeline: Gantt-style phase timeline
+    try:
+        plot_phase_timeline(simulations, output_dir, args.fmt, args.show)
+    except Exception as e:
+        logger.error(f"densityProfile_phaseTimeline failed: {e}")
 
     logger.info(f"All figures saved to: {output_dir}")
 
