@@ -5,11 +5,11 @@ Introduction to TRINITY
 =======================
 
 This is a guide for users of the TRINITY software package. TRINITY
-is distributed under the terms of the MIT License; a copy of the
-license notification is included in the main TRINITY directory. If
-you use TRINITY in any published work, please cite the TRINITY
-method paper and acknowledge the code as described in
-:doc:`publications`.
+is distributed under the terms of the GNU General Public License
+v. 3.0; a copy of the license is included in the main TRINITY
+directory. If you use TRINITY in any published work, please cite
+the TRINITY method paper (in preparation) and acknowledge the code
+as described in :doc:`publications`.
 
 
 What Does TRINITY Do?
