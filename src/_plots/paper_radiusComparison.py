@@ -348,20 +348,15 @@ def plot_comparison_grid(
         param_tag = build_param_tag(mCloud_list, sfe_list, ndens)
 
         if is_single:
-            # In-axes legend at upper-left, no frame; expand the upper
-            # y-limit so the legend doesn't crowd the curves.
+            # In-axes legend at lower-right, single column, no frame.
             ax_single = axes[0, 0]
-            y_lo, y_hi = ax_single.get_ylim()
-            if ax_single.get_yscale() == "log":
-                ax_single.set_ylim(y_lo, y_hi * 3.0)
-            else:
-                ax_single.set_ylim(y_lo, y_hi * 1.4)
             ax_single.legend(
                 handles=handles,
-                loc="upper left",
-                bbox_to_anchor=(0.04, 0.99),
+                loc="lower right",
+                bbox_to_anchor=(0.99, 0.01),
                 frameon=False,
                 fontsize=10,
+                ncol=1,
             )
             fig.tight_layout()
         else:
