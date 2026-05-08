@@ -5,11 +5,11 @@ Introduction to TRINITY
 =======================
 
 This is a guide for users of the TRINITY software package. TRINITY
-is distributed under the terms of the MIT License; a copy of the
-license notification is included in the main TRINITY directory. If
-you use TRINITY in any published work, please cite the TRINITY
-method paper and acknowledge the code as described in
-:doc:`publications` and :doc:`acknowledgements`.
+is distributed under the terms of the GNU General Public License
+v. 3.0; a copy of the license is included in the main TRINITY
+directory. If you use TRINITY in any published work, please cite
+the TRINITY method paper (in preparation) and acknowledge the code
+as described in :doc:`publications`.
 
 
 What Does TRINITY Do?
@@ -147,9 +147,8 @@ the data flow between the orchestrator, phase solvers, and shared
 physics modules. :ref:`sec-physics` sets out the governing
 equations and the numerical scheme that integrates them.
 :ref:`sec-trinity-reader` documents the Python API for loading and
-analysing simulation output. :ref:`sec-visualization` and
-:ref:`sec-analysis` describe the plotting and post-processing
-scripts shipped with TRINITY.
+analysing simulation output. :ref:`sec-visualization` describes the
+plotting scripts shipped with TRINITY.
 
 
 Contents
@@ -165,6 +164,4 @@ Contents
    physics
    visualization
    trinity_reader
-   analysis
    publications
-   acknowledgements

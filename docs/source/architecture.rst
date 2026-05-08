@@ -8,9 +8,9 @@ Physics Architecture
 Internally, TRINITY is organised as a small orchestrator that drives
 a sequence of phase-specific solvers, each of which consumes the
 same set of shared physics modules. A single state dictionary,
-built on the ``DescribedDict`` container described in
-:ref:`sec-running`, is threaded through every call and is the sole
-mechanism by which the modules exchange information. The
+built on the ``DescribedDict`` container documented under
+*Snapshot Persistence* below, is threaded through every call and is
+the sole mechanism by which the modules exchange information. The
 architecture is deliberately flat: there are no class hierarchies,
 no dependency injection, and no plugin system. Physics modules are
 plain functions that read and write named keys on the state
@@ -141,9 +141,56 @@ Finally, the ODE solver advances :math:`y` through
    \frac{dT_0}{dt} &= \frac{T_0}{t}\,\delta.
 
 The updated state is written back to the dictionary, a snapshot is
-staged if the save interval has elapsed (see :ref:`sec-running`,
-*Output Data Model*), and control returns to the orchestrator for
-the next step.
+staged if the save interval has elapsed (see *Snapshot Persistence*
+below), and control returns to the orchestrator for the next step.
+
+
+Snapshot Persistence
+--------------------
+
+Simulation state lives in a single ``DescribedDict`` (defined in
+``src/_input/dictionary.py``). Each key maps to a ``DescribedItem``
+that wraps the raw value together with two pieces of metadata:
+``info`` (a short human-readable description) and ``ori_units``
+(the original-unit label, e.g. ``"pc"``, ``"Msun"``,
+``"1/cm**3"``). A per-item ``exclude_from_snapshot`` flag marks
+keys that are not persisted to disk — used for large auxiliary
+objects such as SB99 interpolation tables that can be rebuilt on
+load.
+
+Snapshots are captured through a two-stage *buffer → flush*
+pipeline so that disk writes stay cheap (append-only, O(1) per
+flush) and a crash can lose at most ``snapshot_interval`` steps of
+progress. The sequence at each ODE step is:
+
+1. **Mutate the dict.** Physics modules update
+   ``params["R2"].value``, ``params["Eb"].value``, etc. in place.
+2. **Stage a snapshot.** ``params.save_snapshot()`` copies the
+   current state (excluding any key marked
+   ``exclude_from_snapshot=True``) into the in-memory buffer
+   ``params.previous_snapshot``. A duplicate guard compares
+   ``t_now`` + ``R2`` against the last saved entry and silently
+   drops re-runs of the same step.
+3. **Flush in batches.** Every ``snapshot_interval`` calls (default
+   **10**), ``save_snapshot`` triggers ``flush()`` automatically.
+   ``params.flush()`` may also be called manually at phase
+   boundaries or after a critical event.
+4. **Append to disk.** ``flush()`` opens ``dictionary.jsonl`` in
+   append mode and writes one JSON line per pending snapshot, using
+   ``NpEncoder`` to serialise numpy scalars and arrays. The first
+   flush of a fresh run overwrites any existing file; subsequent
+   flushes only append.
+5. **Crash-safe handlers.** On construction, ``DescribedDict``
+   registers an ``atexit`` hook plus ``SIGINT`` / ``SIGTERM``
+   handlers, so that an exit — clean, via ``Ctrl+C``, or via
+   ``kill`` / SLURM ``scancel`` — flushes any buffered snapshots
+   before termination. ``SIGKILL`` (``kill -9``) and ``os._exit()``
+   bypass these hooks and can lose the pending buffer; everything
+   already on disk is always safe.
+
+Only the ``.value`` of each ``DescribedItem`` is written to disk —
+``info`` and ``ori_units`` live alongside the code and are
+reattached automatically when a snapshot is loaded back in.
 
 
 See Also

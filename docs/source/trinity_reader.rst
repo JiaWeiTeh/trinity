@@ -28,12 +28,14 @@ classes.
 
 .. seealso::
 
-   - :ref:`sec-running` — *Output Data Model* section — describes the on-disk
-     JSONL layout, the ``DescribedDict`` / ``DescribedItem`` objects, the
+   - :ref:`sec-running` — *Output Data Model* section — describes the
+     on-disk JSONL layout and snapshot key categories.
+   - :ref:`sec-architecture` — *Snapshot Persistence* section — covers
+     the in-memory ``DescribedDict`` / ``DescribedItem`` objects, the
      save/flush workflow, and the low-level ``DescribedDict.load_snapshot``
      API that the reader sits on top of.
-   - :ref:`sec-parameters` — full list of parameter names and units that can
-     appear as keys in a snapshot.
+   - :ref:`sec-parameters` — full list of parameter names and units that
+     can appear as keys in a snapshot.
    - :ref:`sec-visualization` — ready-made plotting scripts that consume
      reader output.
 
@@ -411,4 +413,3 @@ See Also
 - :ref:`sec-running` for simulation execution
 - :ref:`sec-visualization` for plotting scripts that use this API
 - :ref:`sec-parameters` for parameter definitions
-- Full documentation: ``docs/TRINITY_READER.md``
