@@ -90,7 +90,7 @@ In addition to solve_ivp events, each phase performs post-integration checks:
 | `small_radius` | R2 < coll_r (if isCollapse) | `EndSimulationDirectly = True` |
 | `large_radius` | R2 > stop_r | `EndSimulationDirectly = True` |
 | `dissolved` | shell_nMax < nISM for stop_t_diss Myr | `EndSimulationDirectly = True` |
-| `cloud_boundary` | R2 > rCloud (if !expansionBeyondCloud) | `EndSimulationDirectly = True` |
+| `stop_at_rCloud` | R2 > rCloud and `_snapshots_after_rCloud >= stop_at_rCloud_nSnap` (segment-loop check in 1b/1c/2; main.py also short-circuits 1b when `nSnap == 0`) | `EndSimulationDirectly = True` |
 | `max_segments` | segment_count >= MAX_SEGMENTS | `termination_reason = "max_segments"` |
 
 ---
