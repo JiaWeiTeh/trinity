@@ -410,9 +410,16 @@ Control transitions between simulation phases.
    * - ``phaseSwitch_LlossLgain``
      - ``0.05``
      - Threshold for :math:`(L_{\rm gain} - L_{\rm loss})/L_{\rm gain}` to trigger phase transition.
-   * - ``expansionBeyondCloud``
-     - ``False``
-     - Allow bubble radius to exceed cloud radius.
+   * - ``stop_at_rCloud_nSnap``
+     - ``None``
+     - Terminate the simulation after the shell crosses the cloud edge
+       (R2 > rCloud).  ``None`` disables.  ``0`` stops at the edge (only the
+       energy-phase reconciliation snapshot at R2 = rCloud is recorded).
+       ``N > 0`` lets the implicit phase advance for ``N`` more segment-loop
+       snapshots past the crossing before terminating; the implicit phase's
+       end-of-phase reconciliation snapshot adds one extra past-rCloud
+       sample, so the total snapshots with R2 ≥ rCloud is roughly ``N + 2``
+       (1 at-edge + ``N`` in-loop + 1 reconciliation).
    * - ``use_adaptive_solver``
      - ``True``
      - Use the adaptive ODE solver for the energy-driven phase

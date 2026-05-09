@@ -518,6 +518,20 @@ def run_phase_momentum(params) -> MomentumPhaseResults:
     while t_now <= tmax and segment_count < MAX_SEGMENTS:
         segment_count += 1
 
+        # stop_at_rCloud_nSnap: terminate once we've already saved enough
+        # post-rCloud segment-loop snapshots.
+        nSnap_rCloud = params['stop_at_rCloud_nSnap'].value
+        if (nSnap_rCloud is not None
+                and R2 > params['rCloud'].value
+                and params['_snapshots_after_rCloud'].value >= nSnap_rCloud):
+            termination_reason = "stop_at_rCloud"
+            params['SimulationEndReason'].value = (
+                f"Reached {nSnap_rCloud} segment(s) past rCloud "
+                f"(stop_at_rCloud_nSnap)"
+            )
+            params['EndSimulationDirectly'].value = True
+            break
+
         # Log current state at beginning of each segment
         logger.debug(f"[Momentum] t={t_now:.6e} Myr, R2={R2:.4e} pc, v2={v2:.4e} pc/Myr, Eb=0, T0={T0:.4e} K")
 
@@ -677,7 +691,15 @@ def run_phase_momentum(params) -> MomentumPhaseResults:
         # ---------------------------------------------------------------------
         # At this point: t_now, R2, v2, feedback, shell_props, mShell, forces,
         # Pb are all computed for the SAME t_now
+        _save_count_before = params.save_count
         params.save_snapshot()
+
+        # stop_at_rCloud_nSnap: increment past-rCloud counter only when the
+        # save actually wrote (duplicate guard in save_snapshot can skip).
+        if (params['stop_at_rCloud_nSnap'].value is not None
+                and params.save_count > _save_count_before
+                and R2 > params['rCloud'].value):
+            params['_snapshots_after_rCloud'].value += 1
 
         # ---------------------------------------------------------------------
         # Check if we've reached stop_t - if so, terminate successfully
@@ -867,14 +889,6 @@ def run_phase_momentum(params) -> MomentumPhaseResults:
                     logger.info(f"Dissolution condition reset at t={t_now:.6e} Myr "
                                 f"(shell_nMax={shell_nMax.value:.4e} >= nISM={params['nISM'].value:.4e})")
                 t_diss_onset = np.inf
-
-        # Cloud boundary check
-        if params.get('expansionBeyondCloud', True) == False:
-            if R2 > params['rCloud'].value:
-                termination_reason = "cloud_boundary"
-                params['SimulationEndReason'].value = 'Bubble radius larger than cloud'
-                params['EndSimulationDirectly'].value = True
-                break
 
     # =========================================================================
     # Phase-boundary reconciliation snapshot.
