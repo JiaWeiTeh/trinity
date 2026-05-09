@@ -1,0 +1,49 @@
+# ==============================================================================
+# Sweep Parameter File: Pedrini+2026 tau_TOT comparison — density covariance
+# ==============================================================================
+#
+# Tests whether the tau_TOT–M_* trend survives when mCloud and nCore covary
+# (Pedrini Discussion: denser clouds form denser, more massive clusters; the
+# Menon / Lahén regime where radiation pressure on dust dominates emergence).
+#
+# Each tuple keeps M_cloud / n_core ratio scaled so that R_cloud grows mildly
+# while density rises with mass. sfe fixed at 0.05.
+# expansionBeyondCloud = False (tau_TOT only).
+#
+# 4 (mCloud, nCore) tuples = 4 runs.
+#
+
+tuple(mCloud, nCore) [1e5, 1e3] [3e5, 3e3] [1e6, 1e4] [3e6, 3e4]
+sfe    0.05
+
+# =============================================================================
+# Fixed parameters
+# =============================================================================
+
+# Density profile
+dens_profile    densPL
+densPL_alpha    0
+
+# ISM and metallicity
+nISM      1
+ZCloud    1
+
+# Termination — tau_TOT only, stop at breakout
+expansionBeyondCloud    False
+allowShellDissolution   True
+stop_t_diss    1
+stop_r    None
+stop_t    10
+
+# Collapse
+coll_r    1
+
+# Solver
+use_adaptive_solver    True
+
+# Logging and output
+log_level      INFO
+path2output    outputs/pedrini_sweep_density
+
+# Feedback
+include_PHII    True
