@@ -288,6 +288,29 @@ def read_param(path2file, write_summary=True):
             f"Invalid dens_profile '{params['dens_profile'].value}'. "
             f"Must be 'densBE' or 'densPL'."
         )
+
+    # Validate stop_at_rCloud_nSnap: None or non-negative integer.
+    nSnap_raw = params['stop_at_rCloud_nSnap'].value
+    if nSnap_raw is not None:
+        # parse_value() returns floats for numeric strings; accept whole-number
+        # floats (e.g. 5.0 from "5") but reject fractional values.
+        if isinstance(nSnap_raw, bool) or not isinstance(nSnap_raw, (int, float)):
+            raise ParameterFileError(
+                f"Invalid stop_at_rCloud_nSnap '{nSnap_raw}'. "
+                f"Must be None or a non-negative integer."
+            )
+        if isinstance(nSnap_raw, float) and not nSnap_raw.is_integer():
+            raise ParameterFileError(
+                f"Invalid stop_at_rCloud_nSnap '{nSnap_raw}'. "
+                f"Must be a whole-number integer (got fractional value)."
+            )
+        nSnap_int = int(nSnap_raw)
+        if nSnap_int < 0:
+            raise ParameterFileError(
+                f"Invalid stop_at_rCloud_nSnap '{nSnap_raw}'. "
+                f"Must be None or a non-negative integer."
+            )
+        params['stop_at_rCloud_nSnap'].value = nSnap_int
     
     # =============================================================================
     # Step 6: Compute derived parameters
@@ -406,6 +429,13 @@ def read_param(path2file, write_summary=True):
     params['EndSimulationDirectly'] = DescribedItem(False, info="Flag to immediately end simulation", ori_units="N/A")
     params['SimulationEndReason'] = DescribedItem('', info="Reason for simulation completion", ori_units="N/A")
     params['EarlyPhaseApproximation'] = DescribedItem(True, info="Using approximations for early phase?", ori_units="N/A")
+
+    # Counter for stop_at_rCloud_nSnap. Incremented inside the segment loops of
+    # phases 1b/1c/2 each time a snapshot is saved with R2 > rCloud. Reset to 0
+    # at run start; not part of any saved snapshot.
+    rcloud_counter = DescribedItem(0, info="Snapshots saved with R2 > rCloud (used by stop_at_rCloud_nSnap)", ori_units="N/A")
+    rcloud_counter.exclude_from_snapshot = True
+    params['_snapshots_after_rCloud'] = rcloud_counter
 
     # Time tracking
     params['tSF'] = DescribedItem(0, info="Time of star formation", ori_units="Myr")

@@ -509,6 +509,21 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
     while t_now <= tmax and segment_count < MAX_SEGMENTS:
         segment_count += 1
 
+        # stop_at_rCloud_nSnap: terminate once we've already saved enough
+        # post-rCloud segment-loop snapshots.  Checked at top of loop so we
+        # break BEFORE this iteration's save_snapshot fires.
+        nSnap_rCloud = params['stop_at_rCloud_nSnap'].value
+        if (nSnap_rCloud is not None
+                and R2 > params['rCloud'].value
+                and params['_snapshots_after_rCloud'].value >= nSnap_rCloud):
+            termination_reason = "stop_at_rCloud"
+            params['SimulationEndReason'].value = (
+                f"Reached {nSnap_rCloud} segment(s) past rCloud "
+                f"(stop_at_rCloud_nSnap)"
+            )
+            params['EndSimulationDirectly'].value = True
+            break
+
         # Log current state at beginning of each segment
         logger.debug(f"[Implicit] t={t_now:.6e} Myr, R2={R2:.4e} pc, v2={v2:.4e} pc/Myr, Eb={Eb:.4e}, T0={T0:.4e} K")
 
@@ -713,7 +728,17 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         # ---------------------------------------------------------------------
         # At this point: t_now, R2, v2, Eb, T0, feedback, shell_props, bubble_props,
         # beta, delta, R1, Pb, forces, residuals are all computed for the SAME t_now
+        _save_count_before = params.save_count
         params.save_snapshot()
+
+        # stop_at_rCloud_nSnap: increment past-rCloud counter only when the
+        # save actually wrote (save_count delta > 0); the duplicate guard
+        # in save_snapshot can silently skip the first segment of a phase
+        # when its (t_now, R2) match the previous phase's reconciliation.
+        if (params['stop_at_rCloud_nSnap'].value is not None
+                and params.save_count > _save_count_before
+                and R2 > params['rCloud'].value):
+            params['_snapshots_after_rCloud'].value += 1
 
         # Store results at the same consistent point as the snapshot
         t_results.append(t_now)

@@ -118,6 +118,14 @@ stop_v    -1e4
 # UNIT: [Myr]
 stop_t    10
 
+# INFO: Terminate simulation after the shell crosses the cloud edge (R2 > rCloud).
+# Value is the number of post-crossing segment-loop snapshots to record before terminating.
+# Set to None to disable. 0 stops at the edge (1a reconciliation snapshot only). N>0 lets
+# the implicit phase advance for N more segments past the crossing — note the implicit
+# phase's end-of-phase reconciliation snapshot adds one extra past-rCloud sample, so the
+# total snapshots with R2 >= rCloud is roughly N + 2 (1 at-edge + N in-loop + 1 recon).
+stop_at_rCloud_nSnap    None
+
 
 
 # ==============================================================================
@@ -210,9 +218,6 @@ gamma_adia    5/3
 # INFO: The thermal conduction coefficient C 
 # UNIT: [erg * s**-1 * cm**-1 * K**(-7/2)]
 C_thermal    6e-7
-
-# INFO: Should we allow bubble radius to go beyond cloud radius?
-expansionBeyondCloud    False
 
 # INFO: speed of light
 # UNIT: [cm * s**-1]

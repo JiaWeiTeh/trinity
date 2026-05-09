@@ -5,9 +5,10 @@ Paper I teaser figure (single fiducial run).
 
 Three panels stacked vertically with a shared linear-time x-axis:
 
-    top    bubble radius R_b (left, linear [pc]) and shell velocity
-           v_sh (right, log [km/s]); the three display phases are
-           tinted in pale background colours
+    top    bubble radius R_b (left, linear [pc]) and shell
+           velocity v_sh (right, log [km/s]); both rendered in
+           black, distinguished by line style and an in-panel
+           legend
     middle feedback force-fraction decomposition with phase-aware
            overlays (rendered locally, not delegated to
            paper_feedback)
@@ -20,9 +21,8 @@ The implicit phase is treated as part of the energy phase for
 display, so only the energy↔transition and transition↔momentum
 breaks register.  Vertical dotted grey lines mark these breaks
 on the top two panels (panel (c)'s dark stack fill swallows
-them, so they are skipped there); pale green tints in the top
-panel reinforce the same regions, and the active display-phase
-name is printed above the top panel.
+them, so they are skipped there); the active display-phase name
+is printed above the top panel.
 
 Unit handling
 -------------
@@ -38,6 +38,7 @@ exists on disk.
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
+from matplotlib.lines import Line2D
 from pathlib import Path
 
 import sys as _sys
@@ -47,7 +48,7 @@ _sys.path.insert(0, str(_Path(__file__).parent.parent.parent))
 from src._plots.plot_base import FIG_DIR, smooth_2d
 from src._output.trinity_reader import load_output, resolve_data_input
 import src._functions.unit_conversions as cvt
-from src._calc._common.plot_utils import C_BLACK, C_BLUE
+from src._calc._common.plot_utils import C_BLACK
 
 # paper_feedback supplies the data extraction (load_run); its panel
 # renderer is *not* used — we draw the panel locally below so we
@@ -60,8 +61,10 @@ from src._plots import paper_feedback as _pf
 # ---------------------------------------------------------------------------
 # Colour assignments
 # ---------------------------------------------------------------------------
-_C_R = C_BLACK        # panel (a) bubble radius
-_C_V = C_BLUE         # panel (a) shell velocity
+# Panel (a): both R_b and v_sh are drawn black; the line style
+# (solid vs dashed) plus an in-panel Line2D legend distinguishes
+# them.
+_C_TOP = C_BLACK
 
 # Panel (c) sequential purple ramp (darkest = gas absorption)
 _SHADE_GAS    = "#6c4a78"
@@ -84,18 +87,6 @@ _C_HII   = "#c0392b"   # warm red
 _C_WIND  = "#1d3557"   # navy
 _C_SN    = "#ef6c00"   # vivid orange
 _TINT_ALPHA = 0.40
-
-# Top-panel phase-region tints.  A monochromatic light-blue ramp
-# that gets progressively deeper through the three regimes — the
-# eye reads the temporal ordering immediately, and the sequential
-# hue does not collide with the middle panel's greyscale +
-# red/navy/orange overlays or the bottom panel's purple Q_i ramp.
-_PHASE_TINT = {
-    "energy":     "#e2edf6",  # extremely pale blue
-    "transition": "#b8d3e8",  # pale blue
-    "momentum":   "#8fb6d8",  # light-medium blue
-}
-_PHASE_TINT_ALPHA = 0.55
 
 # Vertical phase-boundary lines.  zorder=10 keeps them above the
 # stack fills (zorder=4) but below the legends (set_zorder(20)).
@@ -185,34 +176,6 @@ def _draw_phase_boundaries(axes, t, phase):
     for ax in axes:
         for i in bnd:
             ax.axvline(t[i], **_PHASE_LINE_KW)
-
-
-def _draw_phase_tints(ax, t, phase):
-    """Pale background tints behind the curves on the top panel.
-
-    Uses ``_display_phase`` so the energy and implicit phases share
-    a single tint, matching the merged ``ENERGY`` label.
-    """
-    disp   = _display_phase(phase)
-    bnd    = _change_points(disp)
-    starts = np.concatenate([[0], bnd])
-    ends   = np.concatenate([bnd, [len(t)]])
-    for i0, i1 in zip(starts, ends):
-        if i1 <= i0:
-            continue
-        seg = disp[i0]
-        if seg not in _PHASE_TINT:
-            continue
-        t_lo, t_hi = t[i0], t[i1 - 1]
-        if not (np.isfinite(t_lo) and np.isfinite(t_hi)):
-            continue
-        ax.axvspan(
-            t_lo, t_hi,
-            facecolor=_PHASE_TINT[seg],
-            alpha=_PHASE_TINT_ALPHA,
-            edgecolor="none",
-            zorder=-5,
-        )
 
 
 def _annotate_phase_labels(ax_top, t, phase):
@@ -396,17 +359,26 @@ def plot_from_path(data_input, output_dir=None):
     )
     ax_a, ax_b, ax_c = axes
 
-    # ---- panel (a) — R_b linear (left), v_sh log (right) -------------------
-    _draw_phase_tints(ax_a, run["t"], run["phase"])
-    ax_a.plot(run["t"], run["R2"], color=_C_R, lw=1.5)
-    ax_a.set_ylabel(r"$R_{\rm b}\ [{\rm pc}]$", color=_C_R)
-    ax_a.tick_params(axis="y", colors=_C_R)
+    # ---- panel (a) — R_b solid black (left), v_sh dashed black (right) -----
+    # Both curves rendered in black; a Line2D legend in the upper-
+    # left disambiguates them (same idiom as paper_densityProfile).
+    ax_a.plot(run["t"], run["R2"], color=_C_TOP, lw=1.5, ls="-")
+    ax_a.set_ylabel(r"$R_{\rm b}\ [{\rm pc}]$")
 
     ax_av = ax_a.twinx()
-    ax_av.plot(run["t"], run["v_kms"], color=_C_V, lw=1.5)
+    ax_av.plot(run["t"], run["v_kms"], color=_C_TOP, lw=1.5, ls="--")
     ax_av.set_yscale("log")
-    ax_av.set_ylabel(r"$v_{\rm sh}\ [{\rm km\ s^{-1}}]$", color=_C_V)
-    ax_av.tick_params(axis="y", colors=_C_V)
+    ax_av.set_ylabel(r"$v_{\rm sh}\ [{\rm km\ s^{-1}}]$")
+
+    top_handles = [
+        Line2D([0], [0], color=_C_TOP, ls="-",  lw=1.5, label=r"$R_{\rm b}$"),
+        Line2D([0], [0], color=_C_TOP, ls="--", lw=1.5, label=r"$v_{\rm sh}$"),
+    ]
+    leg_a = ax_a.legend(
+        handles=top_handles, loc="upper left", frameon=False,
+        fontsize=10, handlelength=1.6, labelspacing=0.3,
+    )
+    leg_a.set_zorder(20)
 
     # ---- panel (b) — feedback decomposition (local renderer) --------------
     # paper_feedback.load_run is reused to extract base / overlay

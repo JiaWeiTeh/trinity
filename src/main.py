@@ -196,6 +196,19 @@ def run_expansion(params):
     logger.debug(f"  Final R2 = {params['R2'].value:.6e} pc")
     logger.debug(f"  Final v2 = {params['v2'].value:.6e} pc/Myr")
 
+    # stop_at_rCloud_nSnap == 0: terminate now if R2 has reached the cloud edge.
+    # The energy-phase reconciliation snapshot already captured R2 = rCloud, and
+    # we explicitly do NOT want phases 1b/1c/2 to advance past it.
+    nSnap_rCloud = params['stop_at_rCloud_nSnap'].value
+    if (nSnap_rCloud is not None and nSnap_rCloud == 0
+            and params['R2'].value >= params['rCloud'].value):
+        params['EndSimulationDirectly'].value = True
+        params['SimulationEndReason'].value = (
+            "Reached cloud edge (stop_at_rCloud_nSnap=0)"
+        )
+        logger.info("stop_at_rCloud_nSnap=0 and R2 >= rCloud at end of phase 1a; "
+                    "skipping subsequent phases.")
+
     # =============================================================================
     # Phase 1b: implicit energy phase
     # =============================================================================
@@ -205,15 +218,16 @@ def run_expansion(params):
     logger.info("-" * 5 + " PHASE 1b: Energy-driven phase (adaptive cooling) " + "-" * 5)
     terminal_prints.phase('Entering energy driven phase (adaptive cooling)')
 
-    phase1b_starttime = datetime.datetime.now()
+    if params['EndSimulationDirectly'].value == False:
+        phase1b_starttime = datetime.datetime.now()
 
+        run_energy_implicit_phase_modified.run_phase_energy(params)
 
-    run_energy_implicit_phase_modified.run_phase_energy(params)
-        
-
-    phase1b_endtime = datetime.datetime.now()
-    phase1b_elapsed = phase1b_endtime - phase1b_starttime
-    logger.info(f"Phase 1b complete. Duration: {phase1b_elapsed}")
+        phase1b_endtime = datetime.datetime.now()
+        phase1b_elapsed = phase1b_endtime - phase1b_starttime
+        logger.info(f"Phase 1b complete. Duration: {phase1b_elapsed}")
+    else:
+        logger.info("EndSimulationDirectly=True, skipping implicit phase")
 
     # =============================================================================
     # Phase 1c: transition phase

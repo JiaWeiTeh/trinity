@@ -25,7 +25,7 @@ BASE_PARAMS = [
     ("dens_profile", "densPL"),
     ("densPL_alpha", "0"),
     ("nISM", "0.1"),
-    ("expansionBeyondCloud", "True"),
+    ("stop_at_rCloud_nSnap", "None"),
 ]
 # ----------------------------
 
