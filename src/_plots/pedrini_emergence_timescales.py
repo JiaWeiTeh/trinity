@@ -290,56 +290,89 @@ def load_pedrini_csv(source: str | Path):
     return pd.read_csv(source)
 
 
+def _marker_size(mCloud: float, m_min: float, m_max: float) -> float:
+    """Marker size (in points) scaled linearly with log10(mCloud).
+
+    Maps [log10(m_min), log10(m_max)] -> [MS_MIN, MS_MAX]. Falls back to
+    the midpoint size if all runs share a single mCloud.
+    """
+    MS_MIN, MS_MAX = 4.0, 14.0
+    lo, hi = np.log10(m_min), np.log10(m_max)
+    if hi <= lo:
+        return 0.5 * (MS_MIN + MS_MAX)
+    frac = (np.log10(mCloud) - lo) / (hi - lo)
+    return MS_MIN + frac * (MS_MAX - MS_MIN)
+
+
 def make_plot(rows: list[dict], pedrini_df, out_pdf: Path) -> None:
     plt.style.use(str(STYLE_PATH))
 
-    masses = sorted({r["mCloud"] for r in rows})
-    color_for = {m: WONG[i % len(WONG)] for i, m in enumerate(masses)}
+    masses = [r["mCloud"] for r in rows]
+    m_min, m_max = min(masses), max(masses)
+
+    DATA_COLOR = WONG[0]   # all TRINITY points
+    REF_COLOR  = "k"       # Pedrini+2026 reference data
 
     fig, ax = plt.subplots()
 
     for r in rows:
         x = np.log10(r["M_star"])
-        c = color_for[r["mCloud"]]
+        ms = _marker_size(r["mCloud"], m_min, m_max)
         if not r["breakout"]:
-            ax.plot(x, r["tau_TOT"], marker="^", mfc=c, mec=c,
-                    linestyle="none", markersize=6)
-            ax.plot(x, r["tau_PDR"], marker="^", mfc="none", mec=c,
-                    linestyle="none", markersize=6)
+            ax.plot(x, r["tau_TOT"], marker="^",
+                    mfc=DATA_COLOR, mec=DATA_COLOR,
+                    linestyle="none", markersize=ms)
+            ax.plot(x, r["tau_PDR"], marker="^",
+                    mfc="none", mec=DATA_COLOR,
+                    linestyle="none", markersize=ms)
         else:
-            ax.plot(x, r["tau_TOT"], marker="o", mfc=c, mec=c,
-                    linestyle="none")
-            ax.plot(x, r["tau_PDR"], marker="s", mfc="none", mec=c,
-                    linestyle="none")
+            ax.plot(x, r["tau_TOT"], marker="o",
+                    mfc=DATA_COLOR, mec=DATA_COLOR,
+                    linestyle="none", markersize=ms)
+            ax.plot(x, r["tau_PDR"], marker="s",
+                    mfc="none", mec=DATA_COLOR,
+                    linestyle="none", markersize=ms)
 
     if pedrini_df is not None:
         ax.errorbar(pedrini_df["log_Mstar"], pedrini_df["tau_TOT"],
                     yerr=pedrini_df["tau_TOT_err"],
-                    marker="o", mfc="k", mec="k", ecolor="k",
+                    marker="o", mfc=REF_COLOR, mec=REF_COLOR, ecolor=REF_COLOR,
                     linestyle="none", markersize=7, capsize=2)
         ax.errorbar(pedrini_df["log_Mstar"], pedrini_df["tau_PDR"],
                     yerr=pedrini_df["tau_PDR_err"],
-                    marker="s", mfc="none", mec="k", ecolor="k",
+                    marker="s", mfc="none", mec=REF_COLOR, ecolor=REF_COLOR,
                     linestyle="none", markersize=7, capsize=2)
 
     ax.set_xlabel(r"$\log_{10}(M_\star / M_\odot)$")
     ax.set_ylabel(r"$\tau \,[\mathrm{Myr}]$")
 
-    handles = []
-    for m in masses:
+    # Legend: quantity entries use a fixed mid size, mCloud size-tier swatches
+    # show the min/mid/max marker sizes against the actual data range.
+    mid_ms = 0.5 * (_marker_size(m_min, m_min, m_max)
+                    + _marker_size(m_max, m_min, m_max))
+
+    handles = [
+        Line2D([], [], marker="o", linestyle="none",
+               mfc=DATA_COLOR, mec=DATA_COLOR, markersize=mid_ms,
+               label=r"$\tau_{\rm TOT}$"),
+        Line2D([], [], marker="s", linestyle="none",
+               mfc="none", mec=DATA_COLOR, markersize=mid_ms,
+               label=r"$\tau_{\rm PDR}$"),
+        Line2D([], [], marker="^", linestyle="none",
+               mfc="0.4", mec="0.4", markersize=mid_ms,
+               label="lower limit (no breakout)"),
+    ]
+    log_lo, log_hi = np.log10(m_min), np.log10(m_max)
+    for log_m in (log_lo, 0.5 * (log_lo + log_hi), log_hi):
+        m = 10 ** log_m
+        ms = _marker_size(m, m_min, m_max)
         handles.append(Line2D([], [], marker="o", linestyle="none",
-                              mfc=color_for[m], mec=color_for[m],
-                              label=fr"$M_{{\rm cloud}}={m:.0e}\,M_\odot$"))
-    handles.append(Line2D([], [], marker="o", linestyle="none",
-                          mfc="0.4", mec="0.4", label=r"$\tau_{\rm TOT}$"))
-    handles.append(Line2D([], [], marker="s", linestyle="none",
-                          mfc="none", mec="0.4", label=r"$\tau_{\rm PDR}$"))
-    handles.append(Line2D([], [], marker="^", linestyle="none",
-                          mfc="0.4", mec="0.4",
-                          label="lower limit (no breakout)"))
+                              mfc="0.4", mec="0.4", markersize=ms,
+                              label=fr"$M_{{\rm cloud}}={m:.1e}\,M_\odot$"))
     if pedrini_df is not None:
         handles.append(Line2D([], [], marker="o", linestyle="none",
-                              mfc="k", mec="k", label="Pedrini+2026"))
+                              mfc=REF_COLOR, mec=REF_COLOR, markersize=mid_ms,
+                              label="Pedrini+2026"))
     ax.legend(handles=handles, loc="best")
 
     fig.savefig(out_pdf)
