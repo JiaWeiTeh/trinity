@@ -12,15 +12,39 @@ For each run in a TRINITY sweep, compute:
              (snapshots are saved BEFORE ODE integration, so each snapshot's
              flag value applies for its upcoming segment).
 
-Output:
-  - <FIG_DIR>/<sweep_dir.name>/pedrini_emergence_timescales.pdf
-  - <FIG_DIR>/<sweep_dir.name>/pedrini_emergence_timescales_summary.csv
+Output (under <FIG_DIR>/<sweep_dir.name>/):
+  - pedrini_emergence_timescales.pdf
+  - pedrini_emergence_timescales_summary.csv
 
 Usage
 -----
+Run from the project root:
+
+    python -m src._plots.pedrini_emergence_timescales \
+        --sweep_dir outputs/pedrini_sweep_grid
+
+With Pedrini+2026 overlay:
+
     python -m src._plots.pedrini_emergence_timescales \
         --sweep_dir outputs/pedrini_sweep_grid \
-        [--pedrini_csv path/to/pedrini.csv]
+        --pedrini_csv path/to/pedrini2026.csv
+
+The CSV needs columns log_Mstar, tau_TOT, tau_TOT_err, tau_PDR, tau_PDR_err
+(errors are 1-sigma symmetric in Myr).
+
+Stdout
+------
+While running, one progress line per simulation is printed:
+
+    [pedrini_tau] (i/N) <run_name>
+
+Plus a one-line notice for each run that breaks out, e.g.:
+
+    [pedrini_tau] <run_name>: rCloud crossing interpolated at t=... Myr
+        (snapshots i=k-1/k, R2=...->... pc, t=...->... Myr)
+
+Runs without that notice did not break out, and their tau_TOT is a lower
+limit (t_max), plotted as an open/filled triangle in the figure.
 """
 
 from __future__ import annotations
@@ -176,9 +200,7 @@ def collect_run(run_dir: Path) -> dict:
     tau_PDR = cumulative_phi_time(t, phi, tau_TOT)
 
     # Raw simulation-end reason is recorded for traceability only; breakout
-    # status is derived from the actual R2=rCloud crossing above (the
-    # SimulationEndReason->ExitCode map currently misclassifies stop_at_rCloud
-    # as UNKNOWN, see simulation_end.py:104-133 — fix lives on another branch).
+    # status is derived from the actual R2=rCloud crossing above.
     raw_reason = parse_raw_reason(run_dir)
 
     return {
