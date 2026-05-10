@@ -30,7 +30,7 @@ nISM      1
 ZCloud    1
 
 # Termination — tau_TOT only, stop at breakout
-expansionBeyondCloud    False
+stop_at_rCloud_nSnap    5
 allowShellDissolution   True
 stop_t_diss    1
 stop_r    None
