@@ -12,21 +12,53 @@ For each run in a TRINITY sweep, compute:
              (snapshots are saved BEFORE ODE integration, so each snapshot's
              flag value applies for its upcoming segment).
 
-Output:
-  - <FIG_DIR>/<sweep_dir.name>/pedrini_emergence_timescales.pdf
-  - <FIG_DIR>/<sweep_dir.name>/pedrini_emergence_timescales_summary.csv
+Output (under <FIG_DIR>/<sweep_dir.name>/):
+  - pedrini_emergence_timescales.pdf
+  - pedrini_emergence_timescales_summary.csv
 
 Usage
 -----
-    python -m src._plots.pedrini_emergence_timescales \
+Run from the project root:
+
+    python src/_plots/pedrini_emergence_timescales.py \
+        --sweep_dir outputs/pedrini_sweep_grid
+
+The Pedrini+2026 overlay is optional. Pass `--pedrini_csv mock` to use the
+hand-digitised reference data embedded in this script:
+
+    python src/_plots/pedrini_emergence_timescales.py \
         --sweep_dir outputs/pedrini_sweep_grid \
-        [--pedrini_csv path/to/pedrini.csv]
+        --pedrini_csv mock
+
+Or pass a real CSV path:
+
+    python src/_plots/pedrini_emergence_timescales.py \
+        --sweep_dir outputs/pedrini_sweep_grid \
+        --pedrini_csv path/to/pedrini2026.csv
+
+The CSV needs columns log_Mstar, tau_TOT, tau_TOT_err, tau_PDR, tau_PDR_err
+(errors are 1-sigma symmetric in Myr).
+
+Stdout
+------
+While running, one progress line per simulation is printed:
+
+    [pedrini_tau] (i/N) <run_name>
+
+Plus a one-line notice for each run that breaks out, e.g.:
+
+    [pedrini_tau] <run_name>: rCloud crossing interpolated at t=... Myr
+        (snapshots i=k-1/k, R2=...->... pc, t=...->... Myr)
+
+Runs without that notice did not break out, and their tau_TOT is a lower
+limit (t_max), plotted as an open/filled triangle in the figure.
 """
 
 from __future__ import annotations
 
 import argparse
 import csv
+import io
 import sys
 from pathlib import Path
 
@@ -48,6 +80,29 @@ from src._functions.unit_conversions import INV_CONV
 WONG = ["#0072B2", "#E69F00", "#CC79A7", "#009E73"]
 
 STYLE_PATH = Path(__file__).parent / "trinity.mplstyle"
+
+# Hand-digitised stand-in for Pedrini+2026 Fig. X, used when the real CSV
+# isn't available. Activate with `--pedrini_csv mock`.
+MOCK_PEDRINI_CSV = """\
+log_Mstar,tau_TOT,tau_TOT_err,tau_PDR,tau_PDR_err
+2.25,3.80,0.40,1.85,0.30
+2.35,3.90,0.40,2.10,0.30
+2.45,4.20,0.40,2.60,0.30
+2.55,4.90,0.40,3.20,0.30
+2.65,5.20,0.40,3.40,0.30
+2.75,5.80,0.40,3.70,0.30
+2.85,6.70,0.40,4.50,0.30
+2.95,6.90,0.40,4.80,0.30
+3.05,7.20,0.40,5.00,0.30
+3.15,7.40,0.40,5.00,0.30
+3.25,7.50,0.40,5.00,0.30
+3.35,7.50,0.40,4.90,0.30
+3.45,7.40,0.40,4.80,0.30
+3.55,7.00,0.40,4.40,0.30
+3.72,6.00,0.50,4.10,0.40
+3.92,5.95,0.50,4.30,0.40
+4.62,4.90,0.50,3.60,0.40
+"""
 
 
 # ---------------------------------------------------------------------------
@@ -176,9 +231,7 @@ def collect_run(run_dir: Path) -> dict:
     tau_PDR = cumulative_phi_time(t, phi, tau_TOT)
 
     # Raw simulation-end reason is recorded for traceability only; breakout
-    # status is derived from the actual R2=rCloud crossing above (the
-    # SimulationEndReason->ExitCode map currently misclassifies stop_at_rCloud
-    # as UNKNOWN, see simulation_end.py:104-133 — fix lives on another branch).
+    # status is derived from the actual R2=rCloud crossing above.
     raw_reason = parse_raw_reason(run_dir)
 
     return {
@@ -223,66 +276,103 @@ def write_summary_csv(rows: list[dict], out_path: Path) -> None:
             ])
 
 
-def load_pedrini_csv(path: Path):
+def load_pedrini_csv(source: str | Path):
     """Pedrini+2026 reference data.
 
-    Columns: log_Mstar, tau_TOT, tau_TOT_err, tau_PDR, tau_PDR_err.
-    Errors interpreted as 1-sigma symmetric in linear (Myr) space.
+    `source` is either the literal string ``"mock"`` (use the embedded
+    MOCK_PEDRINI_CSV) or a path to a CSV file with columns
+    log_Mstar, tau_TOT, tau_TOT_err, tau_PDR, tau_PDR_err. Errors are
+    interpreted as 1-sigma symmetric in linear (Myr) space.
     """
     import pandas as pd
-    return pd.read_csv(path)
+    if str(source) == "mock":
+        return pd.read_csv(io.StringIO(MOCK_PEDRINI_CSV))
+    return pd.read_csv(source)
+
+
+def _marker_size(mCloud: float, m_min: float, m_max: float) -> float:
+    """Marker size (in points) scaled linearly with log10(mCloud).
+
+    Maps [log10(m_min), log10(m_max)] -> [MS_MIN, MS_MAX]. Falls back to
+    the midpoint size if all runs share a single mCloud.
+    """
+    MS_MIN, MS_MAX = 4.0, 14.0
+    lo, hi = np.log10(m_min), np.log10(m_max)
+    if hi <= lo:
+        return 0.5 * (MS_MIN + MS_MAX)
+    frac = (np.log10(mCloud) - lo) / (hi - lo)
+    return MS_MIN + frac * (MS_MAX - MS_MIN)
 
 
 def make_plot(rows: list[dict], pedrini_df, out_pdf: Path) -> None:
     plt.style.use(str(STYLE_PATH))
 
-    masses = sorted({r["mCloud"] for r in rows})
-    color_for = {m: WONG[i % len(WONG)] for i, m in enumerate(masses)}
+    masses = [r["mCloud"] for r in rows]
+    m_min, m_max = min(masses), max(masses)
+
+    DATA_COLOR = WONG[0]   # all TRINITY points
+    REF_COLOR  = "k"       # Pedrini+2026 reference data
 
     fig, ax = plt.subplots()
 
     for r in rows:
         x = np.log10(r["M_star"])
-        c = color_for[r["mCloud"]]
+        ms = _marker_size(r["mCloud"], m_min, m_max)
         if not r["breakout"]:
-            ax.plot(x, r["tau_TOT"], marker="^", mfc=c, mec=c,
-                    linestyle="none", markersize=6)
-            ax.plot(x, r["tau_PDR"], marker="^", mfc="none", mec=c,
-                    linestyle="none", markersize=6)
+            ax.plot(x, r["tau_TOT"], marker="^",
+                    mfc=DATA_COLOR, mec=DATA_COLOR,
+                    linestyle="none", markersize=ms)
+            ax.plot(x, r["tau_PDR"], marker="^",
+                    mfc="none", mec=DATA_COLOR,
+                    linestyle="none", markersize=ms)
         else:
-            ax.plot(x, r["tau_TOT"], marker="o", mfc=c, mec=c,
-                    linestyle="none")
-            ax.plot(x, r["tau_PDR"], marker="s", mfc="none", mec=c,
-                    linestyle="none")
+            ax.plot(x, r["tau_TOT"], marker="o",
+                    mfc=DATA_COLOR, mec=DATA_COLOR,
+                    linestyle="none", markersize=ms)
+            ax.plot(x, r["tau_PDR"], marker="s",
+                    mfc="none", mec=DATA_COLOR,
+                    linestyle="none", markersize=ms)
 
     if pedrini_df is not None:
         ax.errorbar(pedrini_df["log_Mstar"], pedrini_df["tau_TOT"],
                     yerr=pedrini_df["tau_TOT_err"],
-                    marker="o", mfc="k", mec="k", ecolor="k",
+                    marker="o", mfc=REF_COLOR, mec=REF_COLOR, ecolor=REF_COLOR,
                     linestyle="none", markersize=7, capsize=2)
         ax.errorbar(pedrini_df["log_Mstar"], pedrini_df["tau_PDR"],
                     yerr=pedrini_df["tau_PDR_err"],
-                    marker="s", mfc="none", mec="k", ecolor="k",
+                    marker="s", mfc="none", mec=REF_COLOR, ecolor=REF_COLOR,
                     linestyle="none", markersize=7, capsize=2)
 
     ax.set_xlabel(r"$\log_{10}(M_\star / M_\odot)$")
     ax.set_ylabel(r"$\tau \,[\mathrm{Myr}]$")
 
-    handles = []
-    for m in masses:
+    # Legend: quantity entries use a fixed mid size, mCloud size-tier swatches
+    # show the min/mid/max marker sizes against the actual data range.
+    mid_ms = 0.5 * (_marker_size(m_min, m_min, m_max)
+                    + _marker_size(m_max, m_min, m_max))
+
+    handles = [
+        Line2D([], [], marker="o", linestyle="none",
+               mfc=DATA_COLOR, mec=DATA_COLOR, markersize=mid_ms,
+               label=r"$\tau_{\rm TOT}$"),
+        Line2D([], [], marker="s", linestyle="none",
+               mfc="none", mec=DATA_COLOR, markersize=mid_ms,
+               label=r"$\tau_{\rm PDR}$"),
+        Line2D([], [], marker="^", linestyle="none",
+               mfc="0.4", mec="0.4", markersize=mid_ms,
+               label="lower limit (no breakout)"),
+    ]
+    log_lo, log_hi = np.log10(m_min), np.log10(m_max)
+    for log_m in (log_lo, 0.5 * (log_lo + log_hi), log_hi):
+        m = 10 ** log_m
+        ms = _marker_size(m, m_min, m_max)
         handles.append(Line2D([], [], marker="o", linestyle="none",
-                              mfc=color_for[m], mec=color_for[m],
-                              label=fr"$M_{{\rm cloud}}={m:.0e}\,M_\odot$"))
-    handles.append(Line2D([], [], marker="o", linestyle="none",
-                          mfc="0.4", mec="0.4", label=r"$\tau_{\rm TOT}$"))
-    handles.append(Line2D([], [], marker="s", linestyle="none",
-                          mfc="none", mec="0.4", label=r"$\tau_{\rm PDR}$"))
-    handles.append(Line2D([], [], marker="^", linestyle="none",
-                          mfc="0.4", mec="0.4",
-                          label="lower limit (no breakout)"))
+                              mfc="0.4", mec="0.4", markersize=ms,
+                              label=fr"$M_{{\rm cloud}}={m:.1e}\,M_\odot$"))
     if pedrini_df is not None:
         handles.append(Line2D([], [], marker="o", linestyle="none",
-                              mfc="k", mec="k", label="Pedrini+2026"))
+                              mfc=REF_COLOR, mec=REF_COLOR, markersize=mid_ms,
+                              label="Pedrini+2026"))
     ax.legend(handles=handles, loc="best")
 
     fig.savefig(out_pdf)
@@ -301,10 +391,12 @@ def main():
     )
     ap.add_argument("--sweep_dir", required=True, type=Path,
                     help="Sweep output directory (contains per-run subdirs).")
-    ap.add_argument("--pedrini_csv", type=Path, default=None,
-                    help="Optional Pedrini+2026 CSV "
+    ap.add_argument("--pedrini_csv", type=str, default=None,
+                    help="Optional Pedrini+2026 CSV path "
                          "(log_Mstar, tau_TOT, tau_TOT_err, tau_PDR, "
-                         "tau_PDR_err; errors are 1-sigma symmetric in Myr).")
+                         "tau_PDR_err; errors are 1-sigma symmetric in Myr). "
+                         "Pass 'mock' to use the digitised reference data "
+                         "embedded in this script.")
     args = ap.parse_args()
 
     sweep_dir = args.sweep_dir.resolve()
@@ -322,7 +414,15 @@ def main():
     write_summary_csv(rows, csv_path)
     print(f"Wrote summary: {csv_path} ({len(rows)} rows)")
 
-    pedrini_df = load_pedrini_csv(args.pedrini_csv) if args.pedrini_csv else None
+    if args.pedrini_csv is None:
+        pedrini_df = None
+    elif args.pedrini_csv == "mock":
+        pedrini_df = load_pedrini_csv("mock")
+    else:
+        csv_in = Path(args.pedrini_csv).resolve()
+        if not csv_in.is_file():
+            ap.error(f"--pedrini_csv not found: {csv_in}")
+        pedrini_df = load_pedrini_csv(csv_in)
 
     pdf_path = fig_dir / "pedrini_emergence_timescales.pdf"
     make_plot(rows, pedrini_df, pdf_path)
