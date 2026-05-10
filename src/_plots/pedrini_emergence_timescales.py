@@ -97,19 +97,30 @@ def parse_raw_reason(run_dir: Path) -> str:
 
 
 def find_rcloud_crossing(t: np.ndarray, R2: np.ndarray,
-                         rCloud: float) -> float | None:
-    """First time R2 reaches rCloud, linearly interpolated. None if never."""
+                         rCloud: float, run_name: str = "") -> float | None:
+    """First time R2 reaches rCloud, linearly interpolated. None if never.
+
+    Prints a one-line notice on every interpolation, matching the
+    [TrinityOutput] convention at trinity_reader.py:607-611, so the caller
+    sees that tau_TOT is an interpolated value rather than a snapshot time.
+    """
     crossed = R2 >= rCloud
     if not crossed.any():
         return None
     j = int(np.argmax(crossed))
+    tag = f"[pedrini_tau] {run_name}" if run_name else "[pedrini_tau]"
     if j == 0:
+        # R2 already at/above rCloud at the first snapshot — no interpolation.
         return float(t[0])
     R0, R1 = R2[j - 1], R2[j]
     if R1 == R0:
         return float(t[j])
     frac = (rCloud - R0) / (R1 - R0)
-    return float(t[j - 1] + frac * (t[j] - t[j - 1]))
+    t_cross = float(t[j - 1] + frac * (t[j] - t[j - 1]))
+    print(f"{tag}: rCloud crossing interpolated at t={t_cross:.6f} Myr "
+          f"(snapshots i={j-1}/{j}, R2={R0:.4f}->{R1:.4f} pc, "
+          f"t={t[j-1]:.6f}->{t[j]:.6f} Myr)")
+    return t_cross
 
 
 def cumulative_phi_time(t: np.ndarray, phi: np.ndarray, t_end: float) -> float:
@@ -153,16 +164,22 @@ def collect_run(run_dir: Path) -> dict:
     sfe = get_run_sfe(run_dir)
     M_star = mCloud * sfe
 
-    raw_reason = parse_raw_reason(run_dir)
-    breakout = "stop_at_rcloud" in raw_reason.lower()
-
-    t_cross = find_rcloud_crossing(t, R2, rCloud)
+    t_cross = find_rcloud_crossing(t, R2, rCloud, run_name=run_dir.name)
     if t_cross is None:
+        # R2 never reached rCloud — run hit stop_t (or another non-breakout
+        # exit). tau_TOT becomes a lower limit set by the run length.
         tau_TOT = float(t[-1])
         breakout = False
     else:
         tau_TOT = t_cross
+        breakout = True
     tau_PDR = cumulative_phi_time(t, phi, tau_TOT)
+
+    # Raw simulation-end reason is recorded for traceability only; breakout
+    # status is derived from the actual R2=rCloud crossing above (the
+    # SimulationEndReason->ExitCode map currently misclassifies stop_at_rCloud
+    # as UNKNOWN, see simulation_end.py:104-133 — fix lives on another branch).
+    raw_reason = parse_raw_reason(run_dir)
 
     return {
         "run_name":   run_dir.name,
@@ -179,7 +196,11 @@ def collect_run(run_dir: Path) -> dict:
 
 def collect_all(sweep_dir: Path) -> list[dict]:
     sim_files = find_all_simulations(sweep_dir)
-    return [collect_run(f.parent) for f in sim_files]
+    rows = []
+    for i, f in enumerate(sim_files, 1):
+        print(f"[pedrini_tau] ({i}/{len(sim_files)}) {f.parent.name}")
+        rows.append(collect_run(f.parent))
+    return rows
 
 
 # ---------------------------------------------------------------------------
@@ -230,9 +251,9 @@ def make_plot(rows: list[dict], pedrini_df, out_pdf: Path) -> None:
                     linestyle="none", markersize=6)
         else:
             ax.plot(x, r["tau_TOT"], marker="o", mfc=c, mec=c,
-                    linestyle="none", markersize=5)
+                    linestyle="none")
             ax.plot(x, r["tau_PDR"], marker="s", mfc="none", mec=c,
-                    linestyle="none", markersize=5)
+                    linestyle="none")
 
     if pedrini_df is not None:
         ax.errorbar(pedrini_df["log_Mstar"], pedrini_df["tau_TOT"],
