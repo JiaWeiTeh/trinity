@@ -110,7 +110,7 @@ Do not include trailers like `https://claude.ai/code/session_...`
 
 
 
-Default `log_level` is `INFO` in `docs/data/default.param:45`. Anything that would print >1 line per segment at info level is too noisy — demote it to debug.
+Default `log_level` lives in `src/_input/default.param` (the schema + defaults file). Anything that would print >1 line per segment at info level is too noisy — demote it to debug.
 
 
 

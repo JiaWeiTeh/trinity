@@ -110,6 +110,7 @@ def get_end_code_from_reason(reason_str: str) -> SimulationEndCode:
         'large radius reached': SimulationEndCode.SUCCESS_MAX_RADIUS,
         'max radius': SimulationEndCode.SUCCESS_MAX_RADIUS,
         'exceeded rcloud': SimulationEndCode.SUCCESS_MAX_RADIUS,
+        'stop_at_rcloud': SimulationEndCode.SUCCESS_MAX_RADIUS,
         'complete': SimulationEndCode.SUCCESS_COMPLETE,
         # Parameter errors
         'invalid cloud parameters': SimulationEndCode.ERROR_INVALID_PARAMS,
