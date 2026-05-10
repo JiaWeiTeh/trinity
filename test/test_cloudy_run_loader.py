@@ -51,7 +51,8 @@ def test_load_run_against_mockFullrun():
     assert bundle.summary["dens_profile"] == "densPL"
     assert bundle.summary["allowShellDissolution"] is True
     # simulationEnd.txt
-    assert bundle.end_state["status"] == "SUCCESS"
+    assert bundle.end_state["outcome"] == "stopping_time"
+    assert bundle.end_state["exit_code"] == 1
     assert bundle.end_state["model_name"] == "4e3_sfe001_n5e2_PL0"
     assert bundle.end_state["t_now_myr"] == pytest.approx(0.300, abs=1e-3)
     # TrinityOutput is open and has the expected snapshot count
@@ -157,10 +158,9 @@ Model: 4e3_sfe001_n5e2_PL0
 --------------------------------------------------
 TERMINATION
 --------------------------------------------------
-End Reason: Maximum simulation time reached
+Outcome: stopping_time
+Detail: Stopping time reached
 Exit Code: 1
-Status: SUCCESS
-Raw Reason: Stopping time reached
 
 --------------------------------------------------
 FINAL STATE
@@ -187,9 +187,8 @@ INITIAL CLOUD PARAMETERS
 def test_parse_simulation_end_full_sample():
     end = _parse_simulation_end(SIM_END_SAMPLE)
     assert end["model_name"] == "4e3_sfe001_n5e2_PL0"
-    assert end["status"] == "SUCCESS"
-    assert end["end_reason"] == "Maximum simulation time reached"
-    assert end["raw_reason"] == "Stopping time reached"
+    assert end["outcome"] == "stopping_time"
+    assert end["detail"] == "Stopping time reached"
     assert end["exit_code"] == 1
     # final state — units stripped, value as float
     assert end["t_now_myr"] == 0.300
@@ -204,17 +203,36 @@ def test_parse_simulation_end_full_sample():
     assert end["nISM_cm3"] == pytest.approx(0.1)
 
 
-def test_parse_simulation_end_failed_status():
-    text = SIM_END_SAMPLE.replace("Status: SUCCESS", "Status: FAILED")
-    assert _parse_simulation_end(text)["status"] == "FAILED"
+def test_parse_simulation_end_collapse_outcome():
+    text = SIM_END_SAMPLE.replace(
+        "Outcome: stopping_time", "Outcome: shell_collapsed"
+    ).replace("Exit Code: 1", "Exit Code: 4")
+    out = _parse_simulation_end(text)
+    assert out["outcome"] == "shell_collapsed"
+    assert out["exit_code"] == 4
 
 
 def test_parse_simulation_end_tolerates_missing_sections():
-    # Just a Status line, nothing else
-    text = "Status: SUCCESS\n"
+    # Just an outcome line, nothing else
+    text = "Outcome: stopping_time\nExit Code: 1\n"
     out = _parse_simulation_end(text)
-    assert out["status"] == "SUCCESS"
+    assert out["outcome"] == "stopping_time"
+    assert out["exit_code"] == 1
     assert "t_now_myr" not in out  # absent → not added
+
+
+def test_parse_simulation_end_legacy_back_compat():
+    """Pre-fix runs wrote Status / End Reason / Raw Reason; we still parse them."""
+    text = (
+        "Status: SUCCESS\n"
+        "End Reason: Maximum simulation time reached\n"
+        "Raw Reason: Stopping time reached\n"
+        "Exit Code: 1\n"
+    )
+    out = _parse_simulation_end(text)
+    assert out["exit_code"] == 1
+    assert out["detail"] == "Stopping time reached"
+    assert out["outcome"] == "legacy_success"
 
 
 # --------------------------------------------------------------------------- #
@@ -241,7 +259,7 @@ def _make_minimal_run_dir(tmp_path: Path, *, write_metadata=True,
         )
     if write_end:
         (rd / "simulationEnd.txt").write_text(
-            "Status: SUCCESS\nEnd Reason: ok\n"
+            "Outcome: stopping_time\nDetail: ok\nExit Code: 1\n"
         )
     if write_jsonl:
         (rd / "dictionary.jsonl").write_text(

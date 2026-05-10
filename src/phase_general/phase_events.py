@@ -56,6 +56,8 @@ import logging
 from dataclasses import dataclass
 from typing import List, Optional, Callable, Tuple, Any
 
+from src._output.simulation_end import SimulationEndCode
+
 logger = logging.getLogger(__name__)
 
 
@@ -85,6 +87,7 @@ class EventResult:
     is_simulation_ending: bool  # True if simulation should end
     reason_code: str  # Short code for termination_reason
     reason_message: str  # Human-readable message for SimulationEndReason
+    end_code: Optional[SimulationEndCode] = None  # Exit code for SimulationEndCode
 
 
 # =============================================================================
@@ -122,6 +125,7 @@ def make_min_radius_event(min_r: float, name: str = "min_radius"):
     event.is_simulation_ending = True
     event.reason_code = "small_radius_event"
     event.reason_message = "Small radius reached (event)"
+    event.end_code = SimulationEndCode.SHELL_COLLAPSED
     return event
 
 
@@ -153,6 +157,7 @@ def make_max_radius_event(max_r: float, name: str = "max_radius"):
     event.is_simulation_ending = True
     event.reason_code = "large_radius_event"
     event.reason_message = "Large radius reached (event)"
+    event.end_code = SimulationEndCode.LARGE_RADIUS
     return event
 
 
@@ -202,6 +207,7 @@ def make_velocity_runaway_event(v_max: float = MAX_VELOCITY_COLLAPSE,
     event.name = name
     event.is_simulation_ending = True
     event.reason_code = "velocity_runaway_event"
+    event.end_code = SimulationEndCode.VELOCITY_RUNAWAY
     return event
 
 
@@ -392,7 +398,8 @@ def check_event_termination(sol, events: List[Callable]) -> EventResult:
                 y=y_ev[0].copy(),
                 is_simulation_ending=getattr(event, 'is_simulation_ending', True),
                 reason_code=getattr(event, 'reason_code', 'unknown_event'),
-                reason_message=getattr(event, 'reason_message', 'Event triggered')
+                reason_message=getattr(event, 'reason_message', 'Event triggered'),
+                end_code=getattr(event, 'end_code', None),
             )
 
     return EventResult(
@@ -610,6 +617,8 @@ def apply_event_result(params, result: EventResult, t: float, y: np.ndarray,
     # Set termination info if simulation-ending
     if result.is_simulation_ending:
         params['SimulationEndReason'].value = result.reason_message
+        if result.end_code is not None and 'SimulationEndCode' in params:
+            params['SimulationEndCode'].value = result.end_code
         params['EndSimulationDirectly'].value = True
 
         # Mark collapse if it's a collapse-related event

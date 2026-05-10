@@ -8,9 +8,6 @@ Provides structured exit codes for batch processing and post-run analysis.
 
 Also provides write_termination_debug_report() to dump the last two snapshots
 with comparison tables for debugging termination issues.
-
-Author: Claude Code
-Date: 2026-01-15
 """
 
 import json
@@ -31,36 +28,43 @@ class SimulationEndCode(Enum):
     Enumeration of simulation end reasons with exit codes.
 
     Exit code ranges:
-    - 0-9: Success states (simulation completed normally)
+    - 0-9:   Clean physical or intentional terminations (auto-trust)
     - 10-19: Parameter/configuration errors
     - 20-29: Numerical/runtime errors
-    - 99: Unknown/unhandled termination
+    - 50-59: Inspection required (completed, but warrants a human look)
+    - 99:    Unknown/unhandled termination (fallback safety net)
+
+    Each member carries (code, outcome_token). The outcome token is the
+    short categorical label written to simulationEnd.txt as 'Outcome:'.
     """
-    # Success states (0-9)
-    SUCCESS_DISSOLVED = (0, "Shell dissolved into ISM")
-    SUCCESS_MAX_TIME = (1, "Maximum simulation time reached")
-    SUCCESS_MAX_RADIUS = (2, "Maximum radius reached (shell exceeded rCloud)")
-    SUCCESS_COMPLETE = (3, "Simulation completed successfully")
+    # Clean (0-9)
+    SHELL_DISSOLVED = (0, "shell_dissolved")
+    STOPPING_TIME = (1, "stopping_time")
+    LARGE_RADIUS = (2, "large_radius")
+    RCLOUD_BOUNDARY = (3, "rcloud_boundary")
+    SHELL_COLLAPSED = (4, "shell_collapsed")
 
     # Parameter errors (10-19)
-    ERROR_INVALID_PARAMS = (10, "Invalid cloud parameters")
-    ERROR_MASS_INCONSISTENCY = (11, "Mass inconsistency > 0.1%")
-    ERROR_EDGE_DENSITY = (12, "Edge density below ISM")
-    ERROR_RADIUS_TOO_LARGE = (13, "Cloud radius exceeds physical limit")
+    ERROR_INVALID_PARAMS = (10, "error_invalid_params")
+    ERROR_MASS_INCONSISTENCY = (11, "error_mass_inconsistency")
+    ERROR_EDGE_DENSITY = (12, "error_edge_density")
+    ERROR_RADIUS_TOO_LARGE = (13, "error_radius_too_large")
 
-    # Numerical/runtime errors (20-29)
-    ERROR_NUMERICAL = (20, "Numerical instability")
-    ERROR_VELOCITY = (21, "Velocity below threshold")
-    ERROR_SOLVER = (22, "ODE solver failed")
-    ERROR_NEGATIVE_VALUES = (23, "Negative physical values encountered")
-    ERROR_SMALL_RADIUS = (24, "Shell radius became too small")
+    # Numerical errors (20-29)
+    ERROR_NUMERICAL = (20, "error_numerical")
+    ERROR_VELOCITY = (21, "error_velocity")
+    ERROR_SOLVER = (22, "error_solver")
+    ERROR_NEGATIVE_VALUES = (23, "error_negative_values")
 
-    # Unknown
-    UNKNOWN = (99, "Unknown termination reason")
+    # Inspection required (50-59)
+    VELOCITY_RUNAWAY = (50, "velocity_runaway")
 
-    def __init__(self, code: int, description: str):
+    # Unknown — also treated as inspection-required
+    UNKNOWN = (99, "unknown")
+
+    def __init__(self, code: int, outcome: str):
         self._code = code
-        self._description = description
+        self._outcome = outcome
 
     @property
     def code(self) -> int:
@@ -68,107 +72,53 @@ class SimulationEndCode(Enum):
         return self._code
 
     @property
-    def description(self) -> str:
-        """Human-readable description."""
-        return self._description
+    def outcome(self) -> str:
+        """Short categorical label written to simulationEnd.txt."""
+        return self._outcome
 
-    def is_success(self) -> bool:
-        """True if this is a success state (code 0-9)."""
+    def is_clean(self) -> bool:
+        """True if the run finished with a clean physical/intentional outcome (0-9)."""
         return 0 <= self._code <= 9
 
     def is_error(self) -> bool:
-        """True if this is an error state (code >= 10)."""
-        return self._code >= 10
+        """True if the run failed with a parameter or numerical error (10-29)."""
+        return 10 <= self._code <= 29
 
+    def is_inspection_required(self) -> bool:
+        """True if the run completed but warrants a human look (50-59 or 99)."""
+        return (50 <= self._code <= 59) or self._code == 99
 
-def get_end_code_from_reason(reason_str: str) -> SimulationEndCode:
-    """
-    Map SimulationEndReason string to SimulationEndCode enum.
-
-    Parameters
-    ----------
-    reason_str : str
-        The reason string from params['SimulationEndReason'].value
-
-    Returns
-    -------
-    SimulationEndCode
-        Matching enum value, or UNKNOWN if no match found
-    """
-    if reason_str is None:
-        return SimulationEndCode.UNKNOWN
-
-    reason_lower = reason_str.lower()
-
-    # Map common reason strings to codes
-    reason_map = {
-        # Success states
-        'shell dissolved': SimulationEndCode.SUCCESS_DISSOLVED,
-        'dissolved': SimulationEndCode.SUCCESS_DISSOLVED,
-        'stopping time reached': SimulationEndCode.SUCCESS_MAX_TIME,
-        'max time': SimulationEndCode.SUCCESS_MAX_TIME,
-        'large radius reached': SimulationEndCode.SUCCESS_MAX_RADIUS,
-        'max radius': SimulationEndCode.SUCCESS_MAX_RADIUS,
-        'exceeded rcloud': SimulationEndCode.SUCCESS_MAX_RADIUS,
-        'stop_at_rcloud': SimulationEndCode.SUCCESS_MAX_RADIUS,
-        'complete': SimulationEndCode.SUCCESS_COMPLETE,
-        # Parameter errors
-        'invalid cloud parameters': SimulationEndCode.ERROR_INVALID_PARAMS,
-        'invalid param': SimulationEndCode.ERROR_INVALID_PARAMS,
-        'mass inconsistency': SimulationEndCode.ERROR_MASS_INCONSISTENCY,
-        'mass error': SimulationEndCode.ERROR_MASS_INCONSISTENCY,
-        'edge density': SimulationEndCode.ERROR_EDGE_DENSITY,
-        'nedge < nism': SimulationEndCode.ERROR_EDGE_DENSITY,
-        # Numerical errors
-        'numerical instability': SimulationEndCode.ERROR_NUMERICAL,
-        'numerical error': SimulationEndCode.ERROR_NUMERICAL,
-        'velocity threshold': SimulationEndCode.ERROR_VELOCITY,
-        'velocity below': SimulationEndCode.ERROR_VELOCITY,
-        'solver failed': SimulationEndCode.ERROR_SOLVER,
-        'ode error': SimulationEndCode.ERROR_SOLVER,
-        'negative': SimulationEndCode.ERROR_NEGATIVE_VALUES,
-        # Radius-related terminations
-        'small radius': SimulationEndCode.ERROR_SMALL_RADIUS,
-        'radius too small': SimulationEndCode.ERROR_SMALL_RADIUS,
-        'shell collapsed': SimulationEndCode.ERROR_SMALL_RADIUS,
-    }
-
-    for key, code in reason_map.items():
-        if key in reason_lower:
-            return code
-
-    return SimulationEndCode.UNKNOWN
+    @classmethod
+    def from_code(cls, code: int) -> "SimulationEndCode":
+        """Look up the enum member by numeric code, or UNKNOWN if no match."""
+        for member in cls:
+            if member._code == code:
+                return member
+        return cls.UNKNOWN
 
 
 def write_simulation_end(params: Dict[str, Any], output_dir: Optional[str] = None) -> int:
     """
     Write simulation end summary to simulationEnd.txt.
 
-    This function should be called at the end of every simulation run
-    to create a structured record of why and how the simulation ended.
+    Called at the end of every run. The exit code and outcome category are
+    read directly from params['SimulationEndCode'] (set at the source by the
+    site that decided to terminate). The verbatim message written to
+    params['SimulationEndReason'] is preserved as 'Detail:'.
 
     Parameters
     ----------
     params : dict
-        TRINITY parameter dictionary containing simulation state.
-        Expected keys: SimulationEndReason, model_name, path2output,
-        t_now, R2, shell_nMax, v_R2, mCloud, nCore, rCloud, densPL_alpha
+        TRINITY parameter dictionary. Expected keys: SimulationEndCode,
+        SimulationEndReason, model_name, path2output, t_now, R2, shell_nMax,
+        v2, mCloud, nCore, rCloud, rCore, densPL_alpha, nISM.
     output_dir : str, optional
-        Output directory. If None, uses params['path2output'].value
+        Output directory. If None, uses params['path2output'].value.
 
     Returns
     -------
     int
-        Exit code from SimulationEndCode enum
-
-    Creates
-    -------
-    simulationEnd.txt in output_dir with structured format including:
-    - Timestamp
-    - Model name
-    - End reason and exit code
-    - Final simulation state
-    - Initial cloud parameters
+        Numeric exit code from SimulationEndCode.
     """
     # Determine output directory
     if output_dir is None:
@@ -177,13 +127,22 @@ def write_simulation_end(params: Dict[str, Any], output_dir: Optional[str] = Non
         else:
             output_dir = '.'
 
-    # Get end reason
+    # Verbatim source-side message
     if 'SimulationEndReason' in params:
-        reason_str = params['SimulationEndReason'].value
+        reason_str = params['SimulationEndReason'].value or 'unknown'
     else:
-        reason_str = 'Unknown'
+        reason_str = 'unknown'
 
-    end_code = get_end_code_from_reason(reason_str)
+    # End code is set at the source (phase runners, main.py, phase_events).
+    # If a site forgot to set it, fall back to UNKNOWN (which is itself an
+    # inspection-required state) and note the missing code in the detail.
+    end_code = SimulationEndCode.UNKNOWN
+    if 'SimulationEndCode' in params:
+        raw = params['SimulationEndCode'].value
+        if isinstance(raw, SimulationEndCode):
+            end_code = raw
+        elif isinstance(raw, int):
+            end_code = SimulationEndCode.from_code(raw)
 
     # Get model name
     if 'model_name' in params:
@@ -202,10 +161,9 @@ def write_simulation_end(params: Dict[str, Any], output_dir: Optional[str] = Non
         "-" * 50,
         "TERMINATION",
         "-" * 50,
-        f"End Reason: {end_code.description}",
+        f"Outcome: {end_code.outcome}",
+        f"Detail: {reason_str}",
         f"Exit Code: {end_code.code}",
-        f"Status: {'SUCCESS' if end_code.is_success() else 'ERROR'}",
-        f"Raw Reason: {reason_str}",
     ]
 
     # Add final state section
@@ -281,16 +239,22 @@ def read_simulation_end(output_dir: str) -> Optional[Dict[str, Any]]:
     """
     Read and parse a simulationEnd.txt file.
 
+    Returns the new layout's keys (outcome, detail, exit_code) and tolerates
+    legacy files written before the format change (Status / End Reason /
+    Raw Reason).
+
     Parameters
     ----------
     output_dir : str
-        Directory containing simulationEnd.txt
+        Directory containing simulationEnd.txt.
 
     Returns
     -------
     dict or None
-        Parsed content with keys: exit_code, reason, status, timestamp, model
-        Returns None if file doesn't exist
+        Keys: exit_code, outcome, detail, timestamp, model.
+        For legacy files, exit_code and detail are still populated; outcome is
+        derived from the exit code.
+        Returns None if the file doesn't exist.
     """
     filepath = os.path.join(output_dir, 'simulationEnd.txt')
 
@@ -299,8 +263,8 @@ def read_simulation_end(output_dir: str) -> Optional[Dict[str, Any]]:
 
     result = {
         'exit_code': None,
-        'reason': None,
-        'status': None,
+        'outcome': None,
+        'detail': None,
         'timestamp': None,
         'model': None,
     }
@@ -311,16 +275,24 @@ def read_simulation_end(output_dir: str) -> Optional[Dict[str, Any]]:
             if line.startswith('Exit Code:'):
                 try:
                     result['exit_code'] = int(line.split(':')[1].strip())
-                except:
+                except (ValueError, IndexError):
                     pass
-            elif line.startswith('End Reason:'):
-                result['reason'] = line.split(':', 1)[1].strip()
-            elif line.startswith('Status:'):
-                result['status'] = line.split(':')[1].strip()
+            elif line.startswith('Outcome:'):
+                result['outcome'] = line.split(':', 1)[1].strip()
+            elif line.startswith('Detail:'):
+                result['detail'] = line.split(':', 1)[1].strip()
             elif line.startswith('Timestamp:'):
                 result['timestamp'] = line.split(':', 1)[1].strip()
             elif line.startswith('Model:'):
-                result['model'] = line.split(':')[1].strip()
+                result['model'] = line.split(':', 1)[1].strip()
+            # Legacy keys (pre-fix runs) — only used as fallback if the
+            # corresponding new key wasn't present.
+            elif line.startswith('Raw Reason:') and result['detail'] is None:
+                result['detail'] = line.split(':', 1)[1].strip()
+
+    # Fill outcome from exit_code if the file lacked it (legacy)
+    if result['outcome'] is None and result['exit_code'] is not None:
+        result['outcome'] = SimulationEndCode.from_code(result['exit_code']).outcome
 
     return result
 

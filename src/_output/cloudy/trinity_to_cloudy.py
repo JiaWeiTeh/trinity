@@ -150,7 +150,7 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
     parser.add_argument("--hard-age-bounds", action="store_true",
                         help="promote the age-band warning to a hard error")
     parser.add_argument("--force", action="store_true",
-                        help="proceed even if simulationEnd Status != SUCCESS")
+                        help="proceed even if simulationEnd exit code is not in the clean range (0-9)")
     parser.add_argument("--min-rows", type=int, default=DEFAULT_MIN_ROWS,
                         help=f"densify dlaw to >= N rows (default {DEFAULT_MIN_ROWS})")
 
@@ -235,15 +235,22 @@ def _pick_snapshots(bundle: RunBundle, args: argparse.Namespace) -> list[PickedS
 # --------------------------------------------------------------------------- #
 
 def _check_status(bundle: RunBundle, *, force: bool) -> None:
-    status = bundle.end_state.get("status")
-    if status == "SUCCESS":
+    """
+    Refuse to convert runs whose simulationEnd.txt is not in the clean range
+    (exit_code 0–9). Inspection-required (50–59 or 99) and error (10–29)
+    outcomes both require --force.
+    """
+    exit_code = bundle.end_state.get("exit_code")
+    outcome = bundle.end_state.get("outcome") or "unknown"
+    is_clean = isinstance(exit_code, int) and 0 <= exit_code <= 9
+    if is_clean:
         return
+    descriptor = f"outcome={outcome!r}, exit_code={exit_code!r}"
     if force:
-        print(f"WARNING: run status is {status!r}; proceeding (--force)",
-              file=sys.stderr)
+        print(f"WARNING: {descriptor}; proceeding (--force)", file=sys.stderr)
         return
     raise SystemExit(
-        f"run status is {status!r}; refusing to convert. Use --force to bypass."
+        f"{descriptor}; refusing to convert. Use --force to bypass."
     )
 
 

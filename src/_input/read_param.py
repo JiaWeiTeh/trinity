@@ -429,6 +429,10 @@ def read_param(path2file, write_summary=True):
     params['current_phase'] = DescribedItem('', info="Current simulation phase: energy/implicit/transition/momentum", ori_units="N/A")
     params['EndSimulationDirectly'] = DescribedItem(False, info="Flag to immediately end simulation", ori_units="N/A")
     params['SimulationEndReason'] = DescribedItem('', info="Reason for simulation completion", ori_units="N/A")
+    # Numeric exit code paired with SimulationEndReason. Set at the same site
+    # that decides to end the run; consumed by write_simulation_end. None until
+    # set; treated as UNKNOWN if the run finishes without it being assigned.
+    params['SimulationEndCode'] = DescribedItem(None, info="Exit code (SimulationEndCode enum) for simulation completion", ori_units="N/A")
     params['EarlyPhaseApproximation'] = DescribedItem(True, info="Using approximations for early phase?", ori_units="N/A")
 
     # Counter for stop_at_rCloud_nSnap. Incremented inside the segment loops of
