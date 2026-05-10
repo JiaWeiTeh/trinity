@@ -7,10 +7,6 @@ For each run in a TRINITY sweep, compute:
   - tau_TOT: time at which R2 first crosses rCloud (cluster emergence),
              linearly interpolated between the two straddling snapshots.
              For runs that never reach rCloud, tau_TOT = t_max (lower limit).
-  - tau_PDR: cumulative time during which is_phiDepleted == True, integrated
-             only over t in [0, tau_TOT] using the left-rectangle rule
-             (snapshots are saved BEFORE ODE integration, so each snapshot's
-             flag value applies for its upcoming segment).
 
 Output (under <FIG_DIR>/<sweep_dir.name>/):
   - pedrini_emergence_timescales.pdf
@@ -36,7 +32,7 @@ Or pass a real CSV path:
         --sweep_dir outputs/pedrini_sweep_grid \
         --pedrini_csv path/to/pedrini2026.csv
 
-The CSV needs columns log_Mstar, tau_TOT, tau_TOT_err, tau_PDR, tau_PDR_err
+The CSV needs columns log_Mstar, tau_TOT, tau_TOT_err
 (errors are 1-sigma symmetric in Myr).
 
 Stdout
@@ -76,32 +72,35 @@ from src._output.trinity_reader import (
 from src._functions.unit_conversions import INV_CONV
 
 
-# Wong 2011 colourblind-safe palette, matching paper_densityProfile.py
-WONG = ["#0072B2", "#E69F00", "#CC79A7", "#009E73"]
+# Wong 2011 colourblind-safe palette, ordered to match paper_densityProfile.py
+# for the first four entries; remaining entries extend to the full eight-colour
+# Wong set so we never run out when a sweep has many sfe values.
+WONG = ["#0072B2", "#E69F00", "#CC79A7", "#009E73",
+        "#D55E00", "#56B4E9", "#F0E442", "#000000"]
 
 STYLE_PATH = Path(__file__).parent / "trinity.mplstyle"
 
 # Hand-digitised stand-in for Pedrini+2026 Fig. X, used when the real CSV
 # isn't available. Activate with `--pedrini_csv mock`.
 MOCK_PEDRINI_CSV = """\
-log_Mstar,tau_TOT,tau_TOT_err,tau_PDR,tau_PDR_err
-2.25,3.80,0.40,1.85,0.30
-2.35,3.90,0.40,2.10,0.30
-2.45,4.20,0.40,2.60,0.30
-2.55,4.90,0.40,3.20,0.30
-2.65,5.20,0.40,3.40,0.30
-2.75,5.80,0.40,3.70,0.30
-2.85,6.70,0.40,4.50,0.30
-2.95,6.90,0.40,4.80,0.30
-3.05,7.20,0.40,5.00,0.30
-3.15,7.40,0.40,5.00,0.30
-3.25,7.50,0.40,5.00,0.30
-3.35,7.50,0.40,4.90,0.30
-3.45,7.40,0.40,4.80,0.30
-3.55,7.00,0.40,4.40,0.30
-3.72,6.00,0.50,4.10,0.40
-3.92,5.95,0.50,4.30,0.40
-4.62,4.90,0.50,3.60,0.40
+log_Mstar,tau_TOT,tau_TOT_err
+2.25,3.80,0.40
+2.35,3.90,0.40
+2.45,4.20,0.40
+2.55,4.90,0.40
+2.65,5.20,0.40
+2.75,5.80,0.40
+2.85,6.70,0.40
+2.95,6.90,0.40
+3.05,7.20,0.40
+3.15,7.40,0.40
+3.25,7.50,0.40
+3.35,7.50,0.40
+3.45,7.40,0.40
+3.55,7.00,0.40
+3.72,6.00,0.50
+3.92,5.95,0.50
+4.62,4.90,0.50
 """
 
 
@@ -178,27 +177,6 @@ def find_rcloud_crossing(t: np.ndarray, R2: np.ndarray,
     return t_cross
 
 
-def cumulative_phi_time(t: np.ndarray, phi: np.ndarray, t_end: float) -> float:
-    """Cumulative duration of is_phiDepleted == True over [t[0], t_end].
-
-    Left-rectangle rule: the snapshot at t[k] reflects the shell structure
-    used for the segment t[k] -> t[k+1] (snapshots saved before ODE integration,
-    see trinity_reader.py:93-99), so mask[k] applies for the whole segment.
-    """
-    if len(t) < 2:
-        return 0.0
-    mask = np.asarray(phi, dtype=bool)
-    total = 0.0
-    for k in range(len(t) - 1):
-        a = t[k]
-        if a >= t_end:
-            break
-        b = min(t[k + 1], t_end)
-        if mask[k]:
-            total += b - a
-    return total
-
-
 def collect_run(run_dir: Path) -> dict:
     data_path = run_dir / "dictionary.jsonl"
     if not data_path.exists():
@@ -207,9 +185,6 @@ def collect_run(run_dir: Path) -> dict:
 
     t   = np.asarray(out.get("t_now"),  dtype=float)
     R2  = np.asarray(out.get("R2"),     dtype=float)
-    phi = np.asarray(
-        [bool(x) for x in out.get("is_phiDepleted", as_array=False)]
-    )
 
     mCloud   = float(out[0].get("mCloud"))
     rCloud   = float(out[0].get("rCloud"))
@@ -228,7 +203,6 @@ def collect_run(run_dir: Path) -> dict:
     else:
         tau_TOT = t_cross
         breakout = True
-    tau_PDR = cumulative_phi_time(t, phi, tau_TOT)
 
     # Raw simulation-end reason is recorded for traceability only; breakout
     # status is derived from the actual R2=rCloud crossing above.
@@ -241,7 +215,6 @@ def collect_run(run_dir: Path) -> dict:
         "nCore_cgs":  nCore_cgs,
         "M_star":     M_star,
         "tau_TOT":    tau_TOT,
-        "tau_PDR":    tau_PDR,
         "breakout":   breakout,
         "end_reason": raw_reason,
     }
@@ -263,7 +236,7 @@ def collect_all(sweep_dir: Path) -> list[dict]:
 def write_summary_csv(rows: list[dict], out_path: Path) -> None:
     fieldnames = [
         "run_name", "mCloud_Msun", "sfe", "nCore_cm-3", "M_star_Msun",
-        "tau_TOT_Myr", "tau_PDR_Myr", "breakout_flag", "end_reason",
+        "tau_TOT_Myr", "breakout_flag", "end_reason",
     ]
     with out_path.open("w", newline="") as f:
         w = csv.writer(f)
@@ -271,7 +244,7 @@ def write_summary_csv(rows: list[dict], out_path: Path) -> None:
         for r in rows:
             w.writerow([
                 r["run_name"], r["mCloud"], r["sfe"], r["nCore_cgs"],
-                r["M_star"], r["tau_TOT"], r["tau_PDR"],
+                r["M_star"], r["tau_TOT"],
                 r["breakout"], r["end_reason"],
             ])
 
@@ -281,8 +254,8 @@ def load_pedrini_csv(source: str | Path):
 
     `source` is either the literal string ``"mock"`` (use the embedded
     MOCK_PEDRINI_CSV) or a path to a CSV file with columns
-    log_Mstar, tau_TOT, tau_TOT_err, tau_PDR, tau_PDR_err. Errors are
-    interpreted as 1-sigma symmetric in linear (Myr) space.
+    log_Mstar, tau_TOT, tau_TOT_err. Errors are interpreted as 1-sigma
+    symmetric in linear (Myr) space.
     """
     import pandas as pd
     if str(source) == "mock":
@@ -304,13 +277,24 @@ def _marker_size(mCloud: float, m_min: float, m_max: float) -> float:
     return MS_MIN + frac * (MS_MAX - MS_MIN)
 
 
+def _sfe_color_map(rows: list[dict]) -> dict[float, str]:
+    """Map each unique sfe (ascending) to a Wong palette colour.
+
+    Cycles the palette if a sweep has more sfe values than colours, which
+    isn't expected for the standard pedrini sweeps but keeps the helper
+    robust.
+    """
+    unique_sfe = sorted({float(r["sfe"]) for r in rows})
+    return {s: WONG[i % len(WONG)] for i, s in enumerate(unique_sfe)}
+
+
 def make_plot(rows: list[dict], pedrini_df, out_pdf: Path) -> None:
     plt.style.use(str(STYLE_PATH))
 
     masses = [r["mCloud"] for r in rows]
     m_min, m_max = min(masses), max(masses)
 
-    DATA_COLOR = WONG[0]   # all TRINITY points
+    sfe_colors = _sfe_color_map(rows)
     REF_COLOR  = "k"       # Pedrini+2026 reference data
 
     fig, ax = plt.subplots()
@@ -318,50 +302,39 @@ def make_plot(rows: list[dict], pedrini_df, out_pdf: Path) -> None:
     for r in rows:
         x = np.log10(r["M_star"])
         ms = _marker_size(r["mCloud"], m_min, m_max)
-        if not r["breakout"]:
-            ax.plot(x, r["tau_TOT"], marker="^",
-                    mfc=DATA_COLOR, mec=DATA_COLOR,
-                    linestyle="none", markersize=ms)
-            ax.plot(x, r["tau_PDR"], marker="^",
-                    mfc="none", mec=DATA_COLOR,
-                    linestyle="none", markersize=ms)
-        else:
-            ax.plot(x, r["tau_TOT"], marker="o",
-                    mfc=DATA_COLOR, mec=DATA_COLOR,
-                    linestyle="none", markersize=ms)
-            ax.plot(x, r["tau_PDR"], marker="s",
-                    mfc="none", mec=DATA_COLOR,
-                    linestyle="none", markersize=ms)
+        color = sfe_colors[float(r["sfe"])]
+        marker = "^" if not r["breakout"] else "o"
+        ax.plot(x, r["tau_TOT"], marker=marker,
+                mfc=color, mec=color,
+                linestyle="none", markersize=ms)
 
     if pedrini_df is not None:
         ax.errorbar(pedrini_df["log_Mstar"], pedrini_df["tau_TOT"],
                     yerr=pedrini_df["tau_TOT_err"],
                     marker="o", mfc=REF_COLOR, mec=REF_COLOR, ecolor=REF_COLOR,
                     linestyle="none", markersize=7, capsize=2)
-        ax.errorbar(pedrini_df["log_Mstar"], pedrini_df["tau_PDR"],
-                    yerr=pedrini_df["tau_PDR_err"],
-                    marker="s", mfc="none", mec=REF_COLOR, ecolor=REF_COLOR,
-                    linestyle="none", markersize=7, capsize=2)
 
     ax.set_xlabel(r"$\log_{10}(M_\star / M_\odot)$")
-    ax.set_ylabel(r"$\tau \,[\mathrm{Myr}]$")
+    ax.set_ylabel(r"$\tau_{\rm TOT}\,[\mathrm{Myr}]$")
 
-    # Legend: quantity entries use a fixed mid size, mCloud size-tier swatches
-    # show the min/mid/max marker sizes against the actual data range.
+    # Legend: shape entries (breakout vs lower-limit) use a fixed mid size,
+    # mCloud size-tier swatches show the min/mid/max marker sizes against the
+    # actual data range, and sfe entries one swatch per unique sfe value.
     mid_ms = 0.5 * (_marker_size(m_min, m_min, m_max)
                     + _marker_size(m_max, m_min, m_max))
 
     handles = [
         Line2D([], [], marker="o", linestyle="none",
-               mfc=DATA_COLOR, mec=DATA_COLOR, markersize=mid_ms,
-               label=r"$\tau_{\rm TOT}$"),
-        Line2D([], [], marker="s", linestyle="none",
-               mfc="none", mec=DATA_COLOR, markersize=mid_ms,
-               label=r"$\tau_{\rm PDR}$"),
+               mfc="0.4", mec="0.4", markersize=mid_ms,
+               label="breakout"),
         Line2D([], [], marker="^", linestyle="none",
                mfc="0.4", mec="0.4", markersize=mid_ms,
                label="lower limit (no breakout)"),
     ]
+    for sfe, color in sfe_colors.items():
+        handles.append(Line2D([], [], marker="o", linestyle="none",
+                              mfc=color, mec=color, markersize=mid_ms,
+                              label=fr"$\mathrm{{sfe}}={sfe:g}$"))
     log_lo, log_hi = np.log10(m_min), np.log10(m_max)
     for log_m in (log_lo, 0.5 * (log_lo + log_hi), log_hi):
         m = 10 ** log_m
@@ -393,8 +366,8 @@ def main():
                     help="Sweep output directory (contains per-run subdirs).")
     ap.add_argument("--pedrini_csv", type=str, default=None,
                     help="Optional Pedrini+2026 CSV path "
-                         "(log_Mstar, tau_TOT, tau_TOT_err, tau_PDR, "
-                         "tau_PDR_err; errors are 1-sigma symmetric in Myr). "
+                         "(log_Mstar, tau_TOT, tau_TOT_err; errors are "
+                         "1-sigma symmetric in Myr). "
                          "Pass 'mock' to use the digitised reference data "
                          "embedded in this script.")
     args = ap.parse_args()
