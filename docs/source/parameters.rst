@@ -19,9 +19,12 @@ state dictionary (see :ref:`sec-running`, *Output Data Model*).
 File Format
 -----------
 
-An example parameter file is shipped as ``param/default.param`` in
-the source tree. Parameter files are generically formatted as a
-series of entries of the form::
+The canonical parameter schema (the set of valid keys and their default
+values) lives at ``src/_input/default.param``. User-facing example
+``.param`` files (one per run configuration) live under ``param/``;
+see ``param/simple_cluster.param`` or ``param/rosette.param`` for
+worked examples. Parameter files are generically formatted as a series
+of entries of the form::
 
     keyword    value
 
@@ -121,6 +124,15 @@ These parameters control simulation naming and output.
    * - ``output_format``
      - ``JSON``
      - Output format. Currently only JSON is supported.
+   * - ``simplify_npoints``
+     - ``100``
+     - Target number of points retained for the simplified profile arrays written
+       into each snapshot (``bubble_T_arr``, ``bubble_n_arr``, ``bubble_dTdr_arr``,
+       ``bubble_v_arr``, ``shell_grav_force_m``, ``shell_n_arr``). Larger values
+       give higher-fidelity snapshots at the cost of larger output files. Clamped
+       to ``>= 20`` (matches the coverage-skeleton chunk count); the first two
+       simplify calls per implicit-phase snapshot log their reconstruction
+       :math:`R^2` at ``INFO`` level so you can verify the chosen budget is faithful.
 
 Logging Parameters
 ^^^^^^^^^^^^^^^^^^
@@ -687,5 +699,6 @@ See Also
   ``densPL_alpha``, ``densBE_Omega``, and the feedback parameters.
 - :ref:`sec-trinity-reader` — reading back the JSONL output written by a
   simulation configured with these parameters.
-- ``param/default.param`` in the repository — the authoritative,
-  fully-commented reference parameter file.
+- ``src/_input/default.param`` in the repository — the authoritative,
+  fully-commented schema + defaults file. User ``.param`` files in
+  ``param/`` override these defaults.
