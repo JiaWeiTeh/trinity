@@ -250,7 +250,7 @@ def run_sweep(args):
         if mCloud is None or nCore_cgs is None:
             return None
 
-        # Unit conversions matching param/default.param unit annotations:
+        # Unit conversions matching src/_input/default.param unit annotations:
         #   mCloud:       [Msun]      -> Msun           (factor 1)
         #   nCore, nISM:  [cm**-3]    -> pc⁻³           (factor ~2.94e+55)
         #   rCore:        [pc]        -> pc             (factor 1)

@@ -99,14 +99,15 @@ def read_param(path2file, write_summary=True):
     # Step 1: Read default.param with INFO and UNIT metadata
     # =============================================================================
     
-    # Get path to default.param relative to this script
+    # Get path to default.param (the schema + defaults file lives next to this
+    # script in src/_input/, not in the user-facing param/ directory).
     script_dir = Path(__file__).parent.resolve()
-    path2default = script_dir.parent.parent / 'param' / 'default.param'
-    
+    path2default = script_dir / 'default.param'
+
     if not path2default.exists():
         raise FileNotFoundError(
             f"Default parameter file not found at: {path2default}\n"
-            f"Expected: <trinity_root>/param/default.param"
+            f"Expected: <trinity_root>/src/_input/default.param"
         )
     
     # Storage: key -> (info, unit, default_value)
