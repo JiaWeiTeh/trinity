@@ -20,12 +20,19 @@ Usage
 -----
 Run from the project root:
 
-    python -m src._plots.pedrini_emergence_timescales \
+    python src/_plots/pedrini_emergence_timescales.py \
         --sweep_dir outputs/pedrini_sweep_grid
 
-With Pedrini+2026 overlay:
+The Pedrini+2026 overlay is optional. Pass `--pedrini_csv mock` to use the
+hand-digitised reference data embedded in this script:
 
-    python -m src._plots.pedrini_emergence_timescales \
+    python src/_plots/pedrini_emergence_timescales.py \
+        --sweep_dir outputs/pedrini_sweep_grid \
+        --pedrini_csv mock
+
+Or pass a real CSV path:
+
+    python src/_plots/pedrini_emergence_timescales.py \
         --sweep_dir outputs/pedrini_sweep_grid \
         --pedrini_csv path/to/pedrini2026.csv
 
@@ -51,6 +58,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import io
 import sys
 from pathlib import Path
 
@@ -72,6 +80,29 @@ from src._functions.unit_conversions import INV_CONV
 WONG = ["#0072B2", "#E69F00", "#CC79A7", "#009E73"]
 
 STYLE_PATH = Path(__file__).parent / "trinity.mplstyle"
+
+# Hand-digitised stand-in for Pedrini+2026 Fig. X, used when the real CSV
+# isn't available. Activate with `--pedrini_csv mock`.
+MOCK_PEDRINI_CSV = """\
+log_Mstar,tau_TOT,tau_TOT_err,tau_PDR,tau_PDR_err
+2.25,3.80,0.40,1.85,0.30
+2.35,3.90,0.40,2.10,0.30
+2.45,4.20,0.40,2.60,0.30
+2.55,4.90,0.40,3.20,0.30
+2.65,5.20,0.40,3.40,0.30
+2.75,5.80,0.40,3.70,0.30
+2.85,6.70,0.40,4.50,0.30
+2.95,6.90,0.40,4.80,0.30
+3.05,7.20,0.40,5.00,0.30
+3.15,7.40,0.40,5.00,0.30
+3.25,7.50,0.40,5.00,0.30
+3.35,7.50,0.40,4.90,0.30
+3.45,7.40,0.40,4.80,0.30
+3.55,7.00,0.40,4.40,0.30
+3.72,6.00,0.50,4.10,0.40
+3.92,5.95,0.50,4.30,0.40
+4.62,4.90,0.50,3.60,0.40
+"""
 
 
 # ---------------------------------------------------------------------------
@@ -245,14 +276,18 @@ def write_summary_csv(rows: list[dict], out_path: Path) -> None:
             ])
 
 
-def load_pedrini_csv(path: Path):
+def load_pedrini_csv(source: str | Path):
     """Pedrini+2026 reference data.
 
-    Columns: log_Mstar, tau_TOT, tau_TOT_err, tau_PDR, tau_PDR_err.
-    Errors interpreted as 1-sigma symmetric in linear (Myr) space.
+    `source` is either the literal string ``"mock"`` (use the embedded
+    MOCK_PEDRINI_CSV) or a path to a CSV file with columns
+    log_Mstar, tau_TOT, tau_TOT_err, tau_PDR, tau_PDR_err. Errors are
+    interpreted as 1-sigma symmetric in linear (Myr) space.
     """
     import pandas as pd
-    return pd.read_csv(path)
+    if str(source) == "mock":
+        return pd.read_csv(io.StringIO(MOCK_PEDRINI_CSV))
+    return pd.read_csv(source)
 
 
 def make_plot(rows: list[dict], pedrini_df, out_pdf: Path) -> None:
@@ -323,10 +358,12 @@ def main():
     )
     ap.add_argument("--sweep_dir", required=True, type=Path,
                     help="Sweep output directory (contains per-run subdirs).")
-    ap.add_argument("--pedrini_csv", type=Path, default=None,
-                    help="Optional Pedrini+2026 CSV "
+    ap.add_argument("--pedrini_csv", type=str, default=None,
+                    help="Optional Pedrini+2026 CSV path "
                          "(log_Mstar, tau_TOT, tau_TOT_err, tau_PDR, "
-                         "tau_PDR_err; errors are 1-sigma symmetric in Myr).")
+                         "tau_PDR_err; errors are 1-sigma symmetric in Myr). "
+                         "Pass 'mock' to use the digitised reference data "
+                         "embedded in this script.")
     args = ap.parse_args()
 
     sweep_dir = args.sweep_dir.resolve()
@@ -344,7 +381,15 @@ def main():
     write_summary_csv(rows, csv_path)
     print(f"Wrote summary: {csv_path} ({len(rows)} rows)")
 
-    pedrini_df = load_pedrini_csv(args.pedrini_csv) if args.pedrini_csv else None
+    if args.pedrini_csv is None:
+        pedrini_df = None
+    elif args.pedrini_csv == "mock":
+        pedrini_df = load_pedrini_csv("mock")
+    else:
+        csv_in = Path(args.pedrini_csv).resolve()
+        if not csv_in.is_file():
+            ap.error(f"--pedrini_csv not found: {csv_in}")
+        pedrini_df = load_pedrini_csv(csv_in)
 
     pdf_path = fig_dir / "pedrini_emergence_timescales.pdf"
     make_plot(rows, pedrini_df, pdf_path)
