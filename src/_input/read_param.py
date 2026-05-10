@@ -622,6 +622,6 @@ if __name__ == "__main__":
         level=logging.DEBUG,
         format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
     )
-    params = read_param('param/Orion_M43_EON.param')
+    params = read_param('param/simple_cluster.param')
     logger.info(f"mCloud = {params['mCloud'].value} {params['mCloud'].ori_units}")
     logger.info(f"  Info: {params['mCloud'].info}")
