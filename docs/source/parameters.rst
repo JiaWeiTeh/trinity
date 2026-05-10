@@ -19,9 +19,12 @@ state dictionary (see :ref:`sec-running`, *Output Data Model*).
 File Format
 -----------
 
-An example parameter file is shipped as ``param/default.param`` in
-the source tree. Parameter files are generically formatted as a
-series of entries of the form::
+The canonical parameter schema (the set of valid keys and their default
+values) lives at ``src/_input/default.param``. User-facing example
+``.param`` files (one per run configuration) live under ``param/``;
+see ``param/simple_cluster.param`` or ``param/rosette.param`` for
+worked examples. Parameter files are generically formatted as a series
+of entries of the form::
 
     keyword    value
 
@@ -121,6 +124,15 @@ These parameters control simulation naming and output.
    * - ``output_format``
      - ``JSON``
      - Output format. Currently only JSON is supported.
+   * - ``simplify_npoints``
+     - ``100``
+     - Target number of points retained for the simplified profile arrays written
+       into each snapshot (``bubble_T_arr``, ``bubble_n_arr``, ``bubble_dTdr_arr``,
+       ``bubble_v_arr``, ``shell_grav_force_m``, ``shell_n_arr``). Larger values
+       give higher-fidelity snapshots at the cost of larger output files. Clamped
+       to ``>= 20`` (matches the coverage-skeleton chunk count); the first two
+       simplify calls per implicit-phase snapshot log their reconstruction
+       :math:`R^2` at ``INFO`` level so you can verify the chosen budget is faithful.
 
 Logging Parameters
 ^^^^^^^^^^^^^^^^^^
@@ -303,12 +315,24 @@ Conditions that end the simulation.
      - ``15``
      - Myr
      - Maximum simulation duration. Set to ``None`` to disable this condition.
+   * - ``stop_at_rCloud_nSnap``
+     - ``None``
+     - --
+     - Terminate after the shell crosses the cloud edge (R2 > rCloud).
+       ``None`` disables.  ``0`` stops at the edge (only the energy-phase
+       reconciliation snapshot at R2 = rCloud is recorded).  ``N > 0`` lets
+       the implicit phase advance for ``N`` more segment-loop snapshots
+       past the crossing before terminating; the implicit phase's
+       end-of-phase reconciliation snapshot adds one extra past-rCloud
+       sample, so the total snapshots with R2 ≥ rCloud is roughly
+       ``N + 2`` (1 at-edge + ``N`` in-loop + 1 reconciliation).
 
 .. note::
 
-   Setting ``stop_r`` or ``stop_t`` to ``None`` disables that termination condition,
-   allowing the simulation to continue until other conditions are met (e.g., shell dissolution,
-   collapse, or cloud boundary).
+   Setting ``stop_r``, ``stop_t``, or ``stop_at_rCloud_nSnap`` to ``None``
+   disables that termination condition, allowing the simulation to continue
+   until other conditions are met (e.g., shell dissolution, collapse, or
+   cloud boundary).
 
 Collapse Parameters
 ^^^^^^^^^^^^^^^^^^^
@@ -410,16 +434,6 @@ Control transitions between simulation phases.
    * - ``phaseSwitch_LlossLgain``
      - ``0.05``
      - Threshold for :math:`(L_{\rm gain} - L_{\rm loss})/L_{\rm gain}` to trigger phase transition.
-   * - ``stop_at_rCloud_nSnap``
-     - ``None``
-     - Terminate the simulation after the shell crosses the cloud edge
-       (R2 > rCloud).  ``None`` disables.  ``0`` stops at the edge (only the
-       energy-phase reconciliation snapshot at R2 = rCloud is recorded).
-       ``N > 0`` lets the implicit phase advance for ``N`` more segment-loop
-       snapshots past the crossing before terminating; the implicit phase's
-       end-of-phase reconciliation snapshot adds one extra past-rCloud
-       sample, so the total snapshots with R2 ≥ rCloud is roughly ``N + 2``
-       (1 at-edge + ``N`` in-loop + 1 reconciliation).
    * - ``use_adaptive_solver``
      - ``True``
      - Use the adaptive ODE solver for the energy-driven phase
@@ -685,5 +699,6 @@ See Also
   ``densPL_alpha``, ``densBE_Omega``, and the feedback parameters.
 - :ref:`sec-trinity-reader` — reading back the JSONL output written by a
   simulation configured with these parameters.
-- ``param/default.param`` in the repository — the authoritative,
-  fully-commented reference parameter file.
+- ``src/_input/default.param`` in the repository — the authoritative,
+  fully-commented schema + defaults file. User ``.param`` files in
+  ``param/`` override these defaults.

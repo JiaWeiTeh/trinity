@@ -52,12 +52,12 @@ where they are declared:
 
 | Constant | Where declared | How to access |
 |----------|---------------|---------------|
-| `caseB_alpha` | `param/default.param` (unit: `cm**3*s**-1`) | `params['caseB_alpha'].value` (code units) |
-| `k_B` | `param/default.param` (unit: `erg*K**-1`) | `params['k_B'].value` (code units) |
-| `TShell_ion` | `param/default.param` (unit: `K`) | `params['TShell_ion'].value` (K, no conversion) |
-| `mu_ion` | `param/default.param` (unit: `m_H`) | `params['mu_ion'].value` (Msun) |
+| `caseB_alpha` | `src/_input/default.param` (unit: `cm**3*s**-1`) | `params['caseB_alpha'].value` (code units) |
+| `k_B` | `src/_input/default.param` (unit: `erg*K**-1`) | `params['k_B'].value` (code units) |
+| `TShell_ion` | `src/_input/default.param` (unit: `K`) | `params['TShell_ion'].value` (K, no conversion) |
+| `mu_ion` | `src/_input/default.param` (unit: `m_H`) | `params['mu_ion'].value` (Msun) |
 | `Qi` | SB99 feedback interpolation | `feedback.Qi` -> copied to `params['Qi'].value` via `updateDict` |
-| `nCore`, `nISM` | `param/default.param` (unit: `cm**-3`) | `params['nCore'].value` (1/pc^3) |
+| `nCore`, `nISM` | `src/_input/default.param` (unit: `cm**-3`) | `params['nCore'].value` (1/pc^3) |
 
 **Rule:** Do NOT say "check `unit_conversions.py` for caseB_alpha" — it's not
 there. `unit_conversions.py` contains *conversion factors* (e.g., `ndens_cgs2au`),
