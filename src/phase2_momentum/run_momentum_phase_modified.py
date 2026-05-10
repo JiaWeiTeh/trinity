@@ -72,6 +72,7 @@ from src.phase_general.phase_events import (
     check_event_termination,
     apply_event_result,
 )
+from src._output.simulation_end import SimulationEndCode
 
 logger = logging.getLogger(__name__)
 
@@ -529,6 +530,7 @@ def run_phase_momentum(params) -> MomentumPhaseResults:
                 f"Reached {nSnap_rCloud} segment(s) past rCloud "
                 f"(stop_at_rCloud_nSnap)"
             )
+            params['SimulationEndCode'].value = SimulationEndCode.RCLOUD_BOUNDARY
             params['EndSimulationDirectly'].value = True
             break
 
@@ -707,6 +709,7 @@ def run_phase_momentum(params) -> MomentumPhaseResults:
         if tmax is not None and t_now >= tmax:
             termination_reason = "reached_tmax"
             params['SimulationEndReason'].value = 'Stopping time reached'
+            params['SimulationEndCode'].value = SimulationEndCode.STOPPING_TIME
             params['EndSimulationDirectly'].value = True
             logger.info(f"Simulation reached stop_t={tmax} Myr successfully")
             break
@@ -848,6 +851,7 @@ def run_phase_momentum(params) -> MomentumPhaseResults:
         if tmax is not None and t_now > tmax:
             termination_reason = "reached_tmax"
             params['SimulationEndReason'].value = 'Stopping time reached'
+            params['SimulationEndCode'].value = SimulationEndCode.STOPPING_TIME
             params['EndSimulationDirectly'].value = True
             break
 
@@ -857,6 +861,7 @@ def run_phase_momentum(params) -> MomentumPhaseResults:
             if R2 < coll_r:
                 termination_reason = "small_radius"
                 params['SimulationEndReason'].value = 'Small radius reached'
+                params['SimulationEndCode'].value = SimulationEndCode.SHELL_COLLAPSED
                 params['EndSimulationDirectly'].value = True
                 break
 
@@ -865,6 +870,7 @@ def run_phase_momentum(params) -> MomentumPhaseResults:
         if stop_r is not None and R2 > stop_r:
             termination_reason = "large_radius"
             params['SimulationEndReason'].value = 'Large radius reached'
+            params['SimulationEndCode'].value = SimulationEndCode.LARGE_RADIUS
             params['EndSimulationDirectly'].value = True
             break
 
@@ -880,6 +886,7 @@ def run_phase_momentum(params) -> MomentumPhaseResults:
                     params['isDissolved'].value = True
                     termination_reason = "dissolved"
                     params['SimulationEndReason'].value = 'Shell dissolved'
+                    params['SimulationEndCode'].value = SimulationEndCode.SHELL_DISSOLVED
                     params['EndSimulationDirectly'].value = True
                     logger.info(f"Shell dissolved after {t_now - t_diss_onset:.4f} Myr "
                                 f"below nISM (stop_t_diss={params['stop_t_diss'].value})")

@@ -67,7 +67,9 @@ def _make_synth_bundle(
         metadata["initial_cloud_n_arr"] = list(initial_cloud_n)
     (rd / "metadata.json").write_text(json.dumps(metadata))
     (rd / f"{model_name}_summary.txt").write_text(f"ZCloud  {ZCloud}\n")
-    (rd / "simulationEnd.txt").write_text("Status: SUCCESS\n")
+    (rd / "simulationEnd.txt").write_text(
+        "Outcome: stopping_time\nDetail: Stopping time reached\nExit Code: 1\n"
+    )
     # Need at least one real snapshot for find_data_path to succeed
     (rd / "dictionary.jsonl").write_text(json.dumps({
         "t_now": 0.15, "current_phase": "transition",
