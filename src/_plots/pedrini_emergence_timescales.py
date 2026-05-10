@@ -288,6 +288,37 @@ def _sfe_color_map(rows: list[dict]) -> dict[float, str]:
     return {s: WONG[i % len(WONG)] for i, s in enumerate(unique_sfe)}
 
 
+def _half_dex_ticks(m_min: float, m_max: float) -> list[float]:
+    """mCloud values at 0.5-dex steps (1e3, 3.16e3, 1e4, ...) inside [m_min, m_max].
+
+    Returns log10 values. Falls back to a single endpoint when the data range
+    is narrower than one half-dex (so the legend always has at least one
+    swatch).
+    """
+    log_lo, log_hi = np.log10(m_min), np.log10(m_max)
+    start = np.ceil(2 * log_lo) / 2.0
+    end   = np.floor(2 * log_hi) / 2.0
+    ticks = list(np.arange(start, end + 1e-9, 0.5))
+    if not ticks:
+        ticks = [log_lo]
+    return ticks
+
+
+def _fmt_half_dex(log_m: float) -> str:
+    """Pretty-print a half-dex value: 10^k for log_m == k, 3*10^k for k+0.5.
+
+    Off-grid values (the single-mCloud fallback) fall back to one-digit
+    scientific notation so the label still reflects the actual mass.
+    """
+    exp = int(np.floor(log_m + 1e-9))
+    frac = log_m - exp
+    if frac < 0.1:
+        return fr"10^{{{exp}}}"
+    if abs(frac - 0.5) < 0.1:
+        return fr"3{{\times}}10^{{{exp}}}"
+    return fr"{10 ** log_m:.1e}"
+
+
 def make_plot(rows: list[dict], pedrini_df, out_pdf: Path) -> None:
     plt.style.use(str(STYLE_PATH))
 
@@ -318,8 +349,8 @@ def make_plot(rows: list[dict], pedrini_df, out_pdf: Path) -> None:
     ax.set_ylabel(r"$\tau_{\rm TOT}\,[\mathrm{Myr}]$")
 
     # Legend: shape entries (breakout vs lower-limit) use a fixed mid size,
-    # mCloud size-tier swatches show the min/mid/max marker sizes against the
-    # actual data range, and sfe entries one swatch per unique sfe value.
+    # mCloud size-tier swatches sit on a 0.5-dex grid (1e3, 3e3, 1e4, ...)
+    # inside the data range, and sfe entries get one swatch per unique value.
     mid_ms = 0.5 * (_marker_size(m_min, m_min, m_max)
                     + _marker_size(m_max, m_min, m_max))
 
@@ -335,13 +366,13 @@ def make_plot(rows: list[dict], pedrini_df, out_pdf: Path) -> None:
         handles.append(Line2D([], [], marker="o", linestyle="none",
                               mfc=color, mec=color, markersize=mid_ms,
                               label=fr"$\mathrm{{sfe}}={sfe:g}$"))
-    log_lo, log_hi = np.log10(m_min), np.log10(m_max)
-    for log_m in (log_lo, 0.5 * (log_lo + log_hi), log_hi):
+    for log_m in _half_dex_ticks(m_min, m_max):
         m = 10 ** log_m
         ms = _marker_size(m, m_min, m_max)
         handles.append(Line2D([], [], marker="o", linestyle="none",
                               mfc="0.4", mec="0.4", markersize=ms,
-                              label=fr"$M_{{\rm cloud}}={m:.1e}\,M_\odot$"))
+                              label=fr"$M_{{\rm cloud}}={_fmt_half_dex(log_m)}"
+                                    r"\,M_\odot$"))
     if pedrini_df is not None:
         handles.append(Line2D([], [], marker="o", linestyle="none",
                               mfc=REF_COLOR, mec=REF_COLOR, markersize=mid_ms,
