@@ -61,6 +61,11 @@ from src._calc._common.plot_utils import (
     C_BLACK,
 )
 from src._calc._common.cloud_physics import V_AU2KMS
+from src._calc._common.io import (
+    add_phii_argument,
+    iter_phii_modes,
+    filter_sim_files_by_phii,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -158,7 +163,8 @@ def cloud_radius_uniform(M_cloud, n_cl, mu=MU_H):
 # Data loading — follows collect_grid() from infer_cluster_mass.py
 # ======================================================================
 
-def collect_grid(folder_path: Path, t_end: float = None) -> List[Dict]:
+def collect_grid(folder_path: Path, t_end: float = None,
+                 phii_mode: str = "yes") -> List[Dict]:
     """
     Walk sweep directory and extract grid tracks for diagnostics.
 
@@ -168,6 +174,9 @@ def collect_grid(folder_path: Path, t_end: float = None) -> List[Dict]:
         Top-level sweep output directory.
     t_end : float, optional
         Maximum time [Myr] to consider.
+    phii_mode : {"yes", "no"}
+        Select which PHII variant is included; see
+        :func:`src._plots.grid_template.filter_sim_files_by_phii`.
 
     Returns
     -------
@@ -177,8 +186,10 @@ def collect_grid(folder_path: Path, t_end: float = None) -> List[Dict]:
         t, R, v_au, v_kms, phase, rCloud.
     """
     sim_files = find_all_simulations(folder_path)
+    sim_files = filter_sim_files_by_phii(sim_files, phii_mode)
     if not sim_files:
-        logger.error("No simulation files under %s", folder_path)
+        label = "non-noPHII" if phii_mode == "yes" else "noPHII"
+        logger.error("No %s simulation files under %s", label, folder_path)
         return []
 
     logger.info("Found %d simulation(s) in %s", len(sim_files), folder_path)
@@ -813,6 +824,7 @@ Examples:
         "--t-end", type=float, default=None,
         help="Truncate tracks at this time [Myr].",
     )
+    add_phii_argument(parser)
     return parser
 
 
@@ -833,9 +845,8 @@ def main(argv=None) -> int:
             return 1
 
     folder_name = "+".join(fp.name for fp in folder_paths)
-    output_dir = (Path(args.output_dir) if args.output_dir
-                  else FIG_DIR / "diagnostic_diagrams" / folder_name)
-    output_dir.mkdir(parents=True, exist_ok=True)
+    base_output_dir = (Path(args.output_dir) if args.output_dir
+                       else FIG_DIR / "diagnostic_diagrams" / folder_name)
 
     # Parse figure selection
     fig_set = set(int(x.strip()) for x in args.figures.split(","))
@@ -843,45 +854,55 @@ def main(argv=None) -> int:
     # Parse isochrone ages
     iso_ages = [float(x.strip()) for x in args.isochrone_ages.split(",")]
 
-    # Load grid
-    records: List[Dict] = []
-    for fp in folder_paths:
-        records.extend(collect_grid(fp, t_end=args.t_end))
-    if not records:
-        logger.error("No valid data collected — aborting.")
-        return 1
+    any_success = False
+    for phii_mode in iter_phii_modes(args):
+        output_dir = (base_output_dir / "_noPHII"
+                      if phii_mode == "no" else base_output_dir)
+        output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Determine default ncl: most populated density bin
-    groups = group_by_density(records)
-    if args.ncl is not None:
-        ncl = args.ncl
-    else:
-        ncl = max(groups, key=lambda k: len(groups[k]))
-        logger.info("Auto-selected ncl=%.1e (%d runs)", ncl, len(groups[ncl]))
+        # Load grid for this PHII variant
+        records: List[Dict] = []
+        for fp in folder_paths:
+            records.extend(collect_grid(fp, t_end=args.t_end,
+                                        phii_mode=phii_mode))
+        if not records:
+            logger.warning("No valid %s data collected — skipping variant.",
+                           "noPHII" if phii_mode == "no" else "yesPHII")
+            continue
 
-    # Produce figures
-    if 1 in fig_set:
-        logger.info("Generating Figure 1: radius–age fan plot ...")
-        plot_fig1(records, ncl, OBSERVED_SYSTEMS, output_dir,
-                  fmt=args.fmt, tag=args.tag)
+        # Determine default ncl: most populated density bin
+        groups = group_by_density(records)
+        if args.ncl is not None:
+            ncl = args.ncl
+        else:
+            ncl = max(groups, key=lambda k: len(groups[k]))
+            logger.info("Auto-selected ncl=%.1e (%d runs)", ncl, len(groups[ncl]))
 
-    if 2 in fig_set:
-        logger.info("Generating Figure 2: mass–radius isochrones ...")
-        plot_fig2(records, ncl, OBSERVED_SYSTEMS, output_dir,
-                  fmt=args.fmt, tag=args.tag, isochrone_ages=iso_ages)
+        # Produce figures
+        if 1 in fig_set:
+            logger.info("Generating Figure 1: radius–age fan plot ...")
+            plot_fig1(records, ncl, OBSERVED_SYSTEMS, output_dir,
+                      fmt=args.fmt, tag=args.tag)
 
-    if 3 in fig_set:
-        logger.info("Generating Figure 3: regime map ...")
-        plot_fig3(records, ncl, args.t_regime, OBSERVED_SYSTEMS, output_dir,
-                  fmt=args.fmt, tag=args.tag)
+        if 2 in fig_set:
+            logger.info("Generating Figure 2: mass–radius isochrones ...")
+            plot_fig2(records, ncl, OBSERVED_SYSTEMS, output_dir,
+                      fmt=args.fmt, tag=args.tag, isochrone_ages=iso_ages)
 
-    if 4 in fig_set:
-        logger.info("Generating Figure 4: multi-panel density slices ...")
-        plot_fig4(records, OBSERVED_SYSTEMS, output_dir,
-                  fmt=args.fmt, tag=args.tag)
+        if 3 in fig_set:
+            logger.info("Generating Figure 3: regime map ...")
+            plot_fig3(records, ncl, args.t_regime, OBSERVED_SYSTEMS, output_dir,
+                      fmt=args.fmt, tag=args.tag)
 
-    logger.info("Done. Output in %s", output_dir)
-    return 0
+        if 4 in fig_set:
+            logger.info("Generating Figure 4: multi-panel density slices ...")
+            plot_fig4(records, OBSERVED_SYSTEMS, output_dir,
+                      fmt=args.fmt, tag=args.tag)
+
+        logger.info("Done. Output in %s", output_dir)
+        any_success = True
+
+    return 0 if any_success else 1
 
 
 if __name__ == "__main__":

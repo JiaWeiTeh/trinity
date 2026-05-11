@@ -118,7 +118,13 @@ from src._calc._common.cloud_physics import (
     MU_MOL, V_AU2KMS,
 )
 from src._calc._common.fitting import ols_sigma_clip as _ols_sigma_clip
-from src._calc._common.io import extract_rejected as _extract_rejected
+from src._calc._common.io import (
+    extract_rejected as _extract_rejected,
+    regenerate_summary_pdf as _regenerate_summary_pdf,
+    add_phii_argument,
+    iter_phii_modes,
+    filter_sim_files_by_phii,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -413,11 +419,18 @@ def extract_run(data_path: Path, t_end: float = None) -> Optional[Dict]:
     }
 
 
-def collect_data(folder_path: Path, t_end: float = None) -> List[Dict]:
-    """Walk sweep output and collect energy retention data."""
+def collect_data(folder_path: Path, t_end: float = None,
+                 phii_mode: str = "yes") -> List[Dict]:
+    """Walk sweep output and collect energy retention data.
+
+    ``phii_mode`` (``"yes"``/``"no"``) selects which PHII variant is
+    included; see :func:`src._plots.grid_template.filter_sim_files_by_phii`.
+    """
     sim_files = find_all_simulations(folder_path)
+    sim_files = filter_sim_files_by_phii(sim_files, phii_mode)
     if not sim_files:
-        logger.error("No simulation files under %s", folder_path)
+        label = "non-noPHII" if phii_mode == "yes" else "noPHII"
+        logger.error("No %s simulation files under %s", label, folder_path)
         return []
 
     logger.info("Found %d simulation(s) in %s", len(sim_files), folder_path)
@@ -1244,6 +1257,7 @@ Examples:
         "--output-dir", type=str, default=None,
         help="Output directory override (default: fig/<folder>/).",
     )
+    add_phii_argument(parser)
     return parser
 
 
@@ -1264,18 +1278,9 @@ def main(argv: Optional[List[str]] = None) -> int:
             return 1
 
     folder_name = "+".join(fp.name for fp in folder_paths)
-    output_dir = Path(args.output_dir) if args.output_dir else FIG_DIR / folder_name
-    output_dir.mkdir(parents=True, exist_ok=True)
+    base_output_dir = (Path(args.output_dir)
+                       if args.output_dir else FIG_DIR / folder_name)
 
-    # Step 1: collect data
-    records: List[Dict] = []
-    for fp in folder_paths:
-        records.extend(collect_data(fp, t_end=args.t_end))
-    if not records:
-        logger.error("No valid data collected — aborting.")
-        return 1
-
-    # Step 2: fits
     fit_kwargs = dict(
         nCore_ref=args.nCore_ref,
         mCloud_ref=args.mCloud_ref,
@@ -1283,50 +1288,70 @@ def main(argv: Optional[List[str]] = None) -> int:
         sigma_clip=args.sigma_clip,
     )
 
-    fits: List[Tuple[str, Optional[Dict]]] = []
+    any_success = False
+    for phii_mode in iter_phii_modes(args):
+        output_dir = (base_output_dir / "_noPHII"
+                      if phii_mode == "no" else base_output_dir)
+        output_dir.mkdir(parents=True, exist_ok=True)
 
-    for key, label in [("xi_1Myr", "xi at 1 Myr"),
-                       ("xi_3Myr", "xi at 3 Myr"),
-                       ("xi_trans", "xi at transition"),
-                       ("xi_disp", "xi at dispersal")]:
-        logger.info("--- Fit: %s ---", label)
-        f = fit_scaling(records, key, **fit_kwargs)
-        fits.append((label, f))
+        # Step 1: collect data for this PHII variant
+        records: List[Dict] = []
+        for fp in folder_paths:
+            records.extend(collect_data(fp, t_end=args.t_end,
+                                        phii_mode=phii_mode))
+        if not records:
+            logger.warning("No valid %s data collected — skipping variant.",
+                           "noPHII" if phii_mode == "no" else "yesPHII")
+            continue
 
-    logger.info("--- Fit: t_half ---")
-    fit_thalf = fit_scaling(records, "t_half", **fit_kwargs)
-    fits.append(("t_half [Myr]", fit_thalf))
+        fits: List[Tuple[str, Optional[Dict]]] = []
 
-    # Budget fractions at dispersal
-    for key, label in [("f_cool_disp", "f_cool at dispersal"),
-                       ("f_pdV_disp", "f_pdV at dispersal")]:
-        logger.info("--- Fit: %s ---", label)
-        f = fit_scaling(records, key, **fit_kwargs)
-        fits.append((label, f))
+        for key, label in [("xi_1Myr", "xi at 1 Myr"),
+                           ("xi_3Myr", "xi at 3 Myr"),
+                           ("xi_trans", "xi at transition"),
+                           ("xi_disp", "xi at dispersal")]:
+            logger.info("--- Fit: %s ---", label)
+            f = fit_scaling(records, key, **fit_kwargs)
+            fits.append((label, f))
 
-    # Step 3: figures
-    plot_xi_evolution(records, output_dir, args.fmt)
-    plot_energy_budget(records, output_dir, args.fmt)
+        logger.info("--- Fit: t_half ---")
+        fit_thalf = fit_scaling(records, "t_half", **fit_kwargs)
+        fits.append(("t_half [Myr]", fit_thalf))
 
-    xi_fits = {key: f for (label, f), key in
-               zip(fits[:4], ["xi_1Myr", "xi_3Myr", "xi_trans", "xi_disp"])}
-    plot_xi_vs_params(records, xi_fits, output_dir, args.fmt)
-    plot_thalf_vs_tcool(records, output_dir, args.fmt)
-    plot_xi_vs_radius(records, output_dir, args.fmt)
+        # Budget fractions at dispersal
+        for key, label in [("f_cool_disp", "f_cool at dispersal"),
+                           ("f_pdV_disp", "f_pdV at dispersal")]:
+            logger.info("--- Fit: %s ---", label)
+            f = fit_scaling(records, key, **fit_kwargs)
+            fits.append((label, f))
 
-    # Parity for xi_disp
-    fit_xi_disp = dict(fits).get("xi at dispersal")
-    plot_parity(fit_xi_disp, output_dir, args.fmt)
+        # Step 3: figures
+        plot_xi_evolution(records, output_dir, args.fmt)
+        plot_energy_budget(records, output_dir, args.fmt)
 
-    # Step 4: output
-    write_results_csv(records, output_dir)
-    write_fits_csv(fits, output_dir)
-    print_summary(records, fits)
+        xi_fits = {key: f for (label, f), key in
+                   zip(fits[:4], ["xi_1Myr", "xi_3Myr", "xi_trans", "xi_disp"])}
+        plot_xi_vs_params(records, xi_fits, output_dir, args.fmt)
+        plot_thalf_vs_tcool(records, output_dir, args.fmt)
+        plot_xi_vs_radius(records, output_dir, args.fmt)
 
-    # Equation JSON for run_all summary
-    _write_equation_json(fits, output_dir, "energy_retention")
+        # Parity for xi_disp
+        fit_xi_disp = dict(fits).get("xi at dispersal")
+        plot_parity(fit_xi_disp, output_dir, args.fmt)
 
-    return 0
+        # Step 4: output
+        write_results_csv(records, output_dir)
+        write_fits_csv(fits, output_dir)
+        print_summary(records, fits)
+
+        # Equation JSON for run_all summary
+        _write_equation_json(fits, output_dir, "energy_retention")
+
+        # Regenerate the cross-script summary PDF (per-mode)
+        _regenerate_summary_pdf(output_dir, fmt=args.fmt or "pdf")
+        any_success = True
+
+    return 0 if any_success else 1
 
 
 if __name__ == "__main__":

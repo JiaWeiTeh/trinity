@@ -75,6 +75,11 @@ from src._calc._common.plot_utils import (
     EXPAND, COLLAPSE, STALLED,
 )
 from src._calc._common.cloud_physics import V_AU2KMS
+from src._calc._common.io import (
+    add_phii_argument,
+    iter_phii_modes,
+    filter_sim_files_by_phii,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -188,7 +193,8 @@ def extract_bubble_data(data_path: Path, t_end: float = None) -> Optional[Dict]:
     }
 
 
-def collect_data(folder_path: Path, t_end: float = None) -> List[Dict]:
+def collect_data(folder_path: Path, t_end: float = None,
+                 phii_mode: str = "yes") -> List[Dict]:
     """
     Walk sweep directory and extract bubble data from each run.
 
@@ -198,6 +204,9 @@ def collect_data(folder_path: Path, t_end: float = None) -> List[Dict]:
         Top-level sweep output directory.
     t_end : float, optional
         Maximum time [Myr] to consider.
+    phii_mode : {"yes", "no"}
+        Select which PHII variant is included; see
+        :func:`src._plots.grid_template.filter_sim_files_by_phii`.
 
     Returns
     -------
@@ -205,8 +214,10 @@ def collect_data(folder_path: Path, t_end: float = None) -> List[Dict]:
         One record per valid simulation run.
     """
     sim_files = find_all_simulations(folder_path)
+    sim_files = filter_sim_files_by_phii(sim_files, phii_mode)
     if not sim_files:
-        logger.error("No simulation files under %s", folder_path)
+        label = "non-noPHII" if phii_mode == "yes" else "noPHII"
+        logger.error("No %s simulation files under %s", label, folder_path)
         return []
 
     logger.info("Found %d simulation(s) in %s", len(sim_files), folder_path)
@@ -2037,6 +2048,7 @@ Examples:
         "--output-dir", type=str, default=None,
         help="Output directory override (default: fig/<folder>/).",
     )
+    add_phii_argument(parser)
     return parser
 
 
@@ -2057,16 +2069,33 @@ def main(argv: Optional[List[str]] = None) -> int:
             return 1
 
     folder_name = "+".join(fp.name for fp in folder_paths)
-    output_dir = Path(args.output_dir) if args.output_dir else FIG_DIR / folder_name
-    output_dir.mkdir(parents=True, exist_ok=True)
+    base_output_dir = (Path(args.output_dir)
+                       if args.output_dir else FIG_DIR / folder_name)
 
-    # Step 1: collect & analyse
-    records: List[Dict] = []
-    for fp in folder_paths:
-        records.extend(collect_data(fp, t_end=args.t_end))
-    if not records:
-        logger.error("No valid data collected — aborting.")
-        return 1
+    any_success = False
+    for phii_mode in iter_phii_modes(args):
+        output_dir = (base_output_dir / "_noPHII"
+                      if phii_mode == "no" else base_output_dir)
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        # Step 1: collect & analyse for this PHII variant
+        records: List[Dict] = []
+        for fp in folder_paths:
+            records.extend(collect_data(fp, t_end=args.t_end,
+                                        phii_mode=phii_mode))
+        if not records:
+            logger.warning("No valid %s data collected — skipping variant.",
+                           "noPHII" if phii_mode == "no" else "yesPHII")
+            continue
+
+        if _run_bubble_distribution_pipeline(records, args, output_dir):
+            any_success = True
+
+    return 0 if any_success else 1
+
+
+def _run_bubble_distribution_pipeline(records, args, output_dir) -> bool:
+    """Run filtering, synthesis and outputs for a single PHII variant."""
 
     # Filter by density profile if requested
     density_profile = args.density_profile
@@ -2083,7 +2112,7 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     if not records:
         logger.error("No runs remain after density-profile filter — aborting.")
-        return 1
+        return False
 
     # Warn if mixing different n_core values without --fixed-ncore
     unique_ncores = sorted(set(r["nCore"] for r in records))
@@ -2162,7 +2191,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         write_synthesis_csv(synth_list or None, sensitivity, output_dir)
     print_summary(records, synth_list or None, sensitivity or None)
 
-    return 0
+    return True
 
 
 if __name__ == "__main__":

@@ -198,6 +198,11 @@ from src._calc._common.plot_utils import (
 )
 from src._calc._common.cloud_physics import V_AU2KMS, MU_MOL
 from src._calc._common.fitting import logsumexp as _logsumexp
+from src._calc._common.io import (
+    add_phii_argument,
+    iter_phii_modes,
+    filter_sim_files_by_phii,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -279,7 +284,8 @@ OBSERVED_SYSTEMS = {
 # Step 1: Data loading
 # ======================================================================
 
-def collect_grid(folder_path: Path, t_end: float = None) -> List[Dict]:
+def collect_grid(folder_path: Path, t_end: float = None,
+                 phii_mode: str = "yes") -> List[Dict]:
     """
     Walk sweep directory and extract grid tracks for inference.
 
@@ -289,6 +295,9 @@ def collect_grid(folder_path: Path, t_end: float = None) -> List[Dict]:
         Top-level sweep output directory.
     t_end : float, optional
         Maximum time [Myr] to consider.
+    phii_mode : {"yes", "no"}
+        Select which PHII variant is included; see
+        :func:`src._plots.grid_template.filter_sim_files_by_phii`.
 
     Returns
     -------
@@ -298,8 +307,10 @@ def collect_grid(folder_path: Path, t_end: float = None) -> List[Dict]:
         t, R, v_au, v_kms, rCloud.
     """
     sim_files = find_all_simulations(folder_path)
+    sim_files = filter_sim_files_by_phii(sim_files, phii_mode)
     if not sim_files:
-        logger.error("No simulation files under %s", folder_path)
+        label = "non-noPHII" if phii_mode == "yes" else "noPHII"
+        logger.error("No %s simulation files under %s", label, folder_path)
         return []
 
     logger.info("Found %d simulation(s) in %s", len(sim_files), folder_path)
@@ -1989,6 +2000,7 @@ Examples:
         help="Interpolation points per decade in M_cloud (default: 3). "
              "Only used with --interp-mass.",
     )
+    add_phii_argument(parser)
     return parser
 
 
@@ -2009,16 +2021,33 @@ def main(argv: Optional[List[str]] = None) -> int:
             return 1
 
     folder_name = "+".join(fp.name for fp in folder_paths)
-    output_dir = Path(args.output_dir) if args.output_dir else FIG_DIR / "infer_cluster_mass" / folder_name
-    output_dir.mkdir(parents=True, exist_ok=True)
+    base_output_dir = (Path(args.output_dir) if args.output_dir
+                       else FIG_DIR / "infer_cluster_mass" / folder_name)
 
-    # Collect grid (needed before synthetic system can be built)
-    records: List[Dict] = []
-    for fp in folder_paths:
-        records.extend(collect_grid(fp, t_end=args.t_end))
-    if not records:
-        logger.error("No valid grid data collected — aborting.")
-        return 1
+    any_success = False
+    for phii_mode in iter_phii_modes(args):
+        output_dir = (base_output_dir / "_noPHII"
+                      if phii_mode == "no" else base_output_dir)
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        # Collect grid for this PHII variant
+        records: List[Dict] = []
+        for fp in folder_paths:
+            records.extend(collect_grid(fp, t_end=args.t_end,
+                                        phii_mode=phii_mode))
+        if not records:
+            logger.warning("No valid %s grid data collected — skipping variant.",
+                           "noPHII" if phii_mode == "no" else "yesPHII")
+            continue
+
+        if _run_inference_pipeline(records, args, output_dir):
+            any_success = True
+
+    return 0 if any_success else 1
+
+
+def _run_inference_pipeline(records, args, output_dir) -> bool:
+    """Run inference and produce outputs for a single PHII variant."""
 
     # Resolve observables: system defaults + manual overrides
     obs = {}
@@ -2056,10 +2085,10 @@ def main(argv: Optional[List[str]] = None) -> int:
     # Validate required observables
     if "R_obs" not in obs or "sigma_R" not in obs:
         logger.error("R_obs and sigma_R are required (use --system or --R-obs)")
-        return 1
+        return False
     if "t_obs" not in obs or "sigma_t" not in obs:
         logger.error("t_obs and sigma_t are required (use --system or --t-obs)")
-        return 1
+        return False
 
     # Check density grid coverage
     density_ok = check_density_coverage(
@@ -2119,7 +2148,7 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     if not stages:
         logger.error("All inference stages returned None — aborting.")
-        return 1
+        return False
 
     # Figures
     plot_posterior(stages, system_name, obs, output_dir,
@@ -2137,7 +2166,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     # Console summary
     print_inference_summary(system_name, stages, obs)
 
-    return 0
+    return True
 
 
 if __name__ == "__main__":
