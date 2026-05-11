@@ -368,11 +368,11 @@ def plot_from_path(data_input, output_dir=None):
     ax_av = ax_a.twinx()
     ax_av.plot(run["t"], run["v_kms"], color=_C_TOP, lw=1.5, ls="--")
     ax_av.set_yscale("log")
-    ax_av.set_ylabel(r"$v_{\rm sh}\ [{\rm km\ s^{-1}}]$")
+    ax_av.set_ylabel(r"$v_{\rm b}\ [{\rm km\ s^{-1}}]$")
 
     top_handles = [
         Line2D([0], [0], color=_C_TOP, ls="-",  lw=1.5, label=r"$R_{\rm b}$"),
-        Line2D([0], [0], color=_C_TOP, ls="--", lw=1.5, label=r"$v_{\rm sh}$"),
+        Line2D([0], [0], color=_C_TOP, ls="--", lw=1.5, label=r"$v_{\rm b}$"),
     ]
     leg_a = ax_a.legend(
         handles=top_handles, loc="upper left", frameon=False,
