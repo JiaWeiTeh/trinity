@@ -403,11 +403,11 @@ def make_plot(rows: list[dict], pedrini_df, out_pdf: Path,
                         marker="s", mfc="none", mec=REF_COLOR, ecolor=REF_COLOR,
                         linestyle="none", markersize=7, capsize=2)
 
-    ax.set_xlabel(r"$\log_{10}(M_\star / M_\odot)$")
+    ax.set_xlabel(r"$\log_{10}\!\left(M_\star\right)$ [$M_\odot$]")
     if show_tau_pdr:
-        ax.set_ylabel(r"$\tau\,[\mathrm{Myr}]$")
+        ax.set_ylabel(r"$\tau$ [Myr]")
     else:
-        ax.set_ylabel(r"$\tau_{\rm TOT}\,[\mathrm{Myr}]$")
+        ax.set_ylabel(r"$\tau_{\rm TOT}$ [Myr]")
 
     # Legend: breakout-shape entries use a fixed mid size; the size legend is
     # capped at three swatches (smallest/middle/biggest half-dex tied to the
@@ -454,9 +454,16 @@ def make_plot(rows: list[dict], pedrini_df, out_pdf: Path,
         handles.append(Line2D([], [], marker="o", linestyle="none",
                               mfc=REF_COLOR, mec=REF_COLOR, markersize=mid_ms,
                               label="Pedrini+2026"))
-    ax.legend(handles=handles, loc="best")
+    # Park the legend above the axes so the data area stays uncluttered.
+    # ncol targets roughly two rows so even the longest legend (tau_PDR mode
+    # with a Pedrini overlay) doesn't stretch into a single thin strip.
+    ncol = max(1, (len(handles) + 1) // 2)
+    ax.legend(handles=handles, loc="lower center",
+              bbox_to_anchor=(0.5, 1.02), ncol=ncol,
+              frameon=False, fontsize="small",
+              handletextpad=0.4, columnspacing=1.2, borderaxespad=0.0)
 
-    fig.savefig(out_pdf)
+    fig.savefig(out_pdf, bbox_inches="tight")
     print(f"Saved: {out_pdf}")
     plt.close(fig)
 
