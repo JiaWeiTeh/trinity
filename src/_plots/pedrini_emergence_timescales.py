@@ -66,7 +66,7 @@ from pathlib import Path
 
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.colors import BoundaryNorm, ListedColormap
+from matplotlib.colors import BoundaryNorm, ListedColormap, LogNorm
 from matplotlib.lines import Line2D
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
@@ -333,15 +333,34 @@ def _marker_size(mCloud: float, m_min: float, m_max: float) -> float:
     return MS_MIN + frac * (MS_MAX - MS_MIN)
 
 
-def _sfe_color_map(rows: list[dict]) -> dict[float, str]:
-    """Map each unique sfe (ascending) to a Wong palette colour.
+def _sfe_color_mapping(rows: list[dict], style: str):
+    """Build (cmap, norm, lookup) for sfe colouring.
 
-    Cycles the palette if a sweep has more sfe values than colours, which
-    isn't expected for the standard pedrini sweeps but keeps the helper
-    robust.
+    style="continuous": viridis with LogNorm across the data range.  When the
+        sweep has a single unique sfe, LogNorm collapses, so fall back to a
+        ±10% window so the colorbar still renders (and matches the single
+        plotted colour).
+    style="discrete": Wong palette as a ListedColormap, one band per unique
+        sfe, indexed 0..N-1 via a BoundaryNorm.
+    `lookup(sfe)` returns the matplotlib colour to use when plotting a row.
     """
     unique_sfe = sorted({float(r["sfe"]) for r in rows})
-    return {s: WONG[i % len(WONG)] for i, s in enumerate(unique_sfe)}
+    if style == "discrete":
+        cmap = ListedColormap([WONG[i % len(WONG)] for i in range(len(unique_sfe))])
+        norm = BoundaryNorm(np.arange(len(unique_sfe) + 1) - 0.5, cmap.N)
+        idx = {s: i for i, s in enumerate(unique_sfe)}
+        lookup = lambda sfe: cmap(norm(idx[float(sfe)]))
+        return cmap, norm, lookup, unique_sfe
+    if style == "continuous":
+        cmap = plt.cm.viridis
+        if len(unique_sfe) > 1:
+            norm = LogNorm(vmin=unique_sfe[0], vmax=unique_sfe[-1])
+        else:
+            v = unique_sfe[0]
+            norm = LogNorm(vmin=v * 0.9, vmax=v * 1.1)
+        lookup = lambda sfe: cmap(norm(float(sfe)))
+        return cmap, norm, lookup, unique_sfe
+    raise ValueError(f"unknown colourbar style: {style!r}")
 
 
 def _size_legend_ticks(m_min: float, m_max: float) -> list[float]:
@@ -370,13 +389,14 @@ def _fmt_log_m(log_m: float) -> str:
 
 
 def make_plot(rows: list[dict], pedrini_df, out_pdf: Path,
-              show_tau_pdr: bool = False) -> None:
+              show_tau_pdr: bool = False,
+              colourbar: str = "continuous") -> None:
     plt.style.use(str(STYLE_PATH))
 
     masses = [r["mCloud"] for r in rows]
     m_min, m_max = min(masses), max(masses)
 
-    sfe_colors = _sfe_color_map(rows)
+    sfe_cmap, sfe_norm, sfe_color, unique_sfe = _sfe_color_mapping(rows, colourbar)
     REF_COLOR  = "k"       # Pedrini+2026 reference data
 
     fig, ax = plt.subplots()
@@ -384,7 +404,7 @@ def make_plot(rows: list[dict], pedrini_df, out_pdf: Path,
     for r in rows:
         x = np.log10(r["M_star"])
         ms = _marker_size(r["mCloud"], m_min, m_max)
-        color = sfe_colors[float(r["sfe"])]
+        color = sfe_color(r["sfe"])
         breakout = r["breakout"]
         # tau_TOT: filled marker, shape encodes breakout (o) vs lower-limit (^).
         tot_marker = "o" if breakout else "^"
@@ -416,20 +436,27 @@ def make_plot(rows: list[dict], pedrini_df, out_pdf: Path,
     else:
         ax.set_ylabel(r"$\tau_{\rm TOT}$ [Myr]")
 
-    # Discrete sfe colorbar on the right of the axes (replaces the per-sfe
-    # legend swatches).  One colour band per unique sfe value, in ascending
-    # order, ticks centred on each band.
-    unique_sfe = sorted(sfe_colors.keys())
-    sfe_cmap = ListedColormap([sfe_colors[s] for s in unique_sfe])
-    sfe_norm = BoundaryNorm(np.arange(len(unique_sfe) + 1) - 0.5, sfe_cmap.N)
+    # sfe colourbar on the right of the axes (replaces the per-sfe legend
+    # swatches).  Continuous mode uses viridis with LogNorm; discrete mode
+    # uses one Wong-palette band per unique sfe value, ticks centred on
+    # each band.  In continuous mode the colourbar ticks are anchored at
+    # the actual sweep sfe values so each plotted point is identifiable.
     sfe_mappable = plt.cm.ScalarMappable(cmap=sfe_cmap, norm=sfe_norm)
     sfe_mappable.set_array([])
-    cbar = fig.colorbar(
-        sfe_mappable, ax=ax, location="right",
-        fraction=0.04, pad=0.01,
-        ticks=np.arange(len(unique_sfe)),
-    )
-    cbar.set_ticklabels([f"{s:g}" for s in unique_sfe])
+    if colourbar == "discrete":
+        cbar = fig.colorbar(
+            sfe_mappable, ax=ax, location="right",
+            fraction=0.04, pad=0.01,
+            ticks=np.arange(len(unique_sfe)),
+        )
+        cbar.set_ticklabels([f"{s:g}" for s in unique_sfe])
+    else:
+        cbar = fig.colorbar(
+            sfe_mappable, ax=ax, location="right",
+            fraction=0.04, pad=0.01,
+            ticks=unique_sfe,
+        )
+        cbar.set_ticklabels([f"{s:g}" for s in unique_sfe])
     cbar.set_label("sfe")
 
     # Remaining legend: shape entries (breakout / lower-limit / tau_PDR)
@@ -520,6 +547,12 @@ def main():
                     help="Also compute, write, and plot tau_PDR (cumulative "
                          "is_phiDepleted time integrated over [0, tau_TOT]). "
                          "Off by default.")
+    ap.add_argument("--colourbar", choices=["continuous", "discrete"],
+                    default="continuous",
+                    help="sfe colourbar style.  'continuous' (default): "
+                         "viridis with LogNorm, ticks anchored at the "
+                         "actual sweep sfe values.  'discrete': Wong "
+                         "palette with one band per unique sfe value.")
     args = ap.parse_args()
 
     sweep_dir = args.sweep_dir.resolve()
@@ -548,7 +581,8 @@ def main():
         pedrini_df = load_pedrini_csv(csv_in)
 
     pdf_path = fig_dir / "pedrini_emergence_timescales.pdf"
-    make_plot(rows, pedrini_df, pdf_path, show_tau_pdr=args.show_tau_pdr)
+    make_plot(rows, pedrini_df, pdf_path, show_tau_pdr=args.show_tau_pdr,
+              colourbar=args.colourbar)
 
 
 if __name__ == "__main__":
