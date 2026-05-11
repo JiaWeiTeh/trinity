@@ -32,6 +32,52 @@ from src._input.dictionary import DescribedItem, DescribedDict, COOLING_PHASE_KE
 logger = logging.getLogger(__name__)
 
 
+# Threshold above which a stop_r value is considered "comfortably above"
+# rCloud — meaning stop_at_rCloud_nSnap will almost certainly fire first.
+# Below this multiple of rCloud, the two termination conditions race.
+_STOP_R_RCLOUD_RACE_FACTOR = 1.5
+
+
+def _check_stop_r_rCloud_interaction(nSnap_rCloud, stop_r, rCloud):
+    """
+    Decide whether stop_r conflicts with stop_at_rCloud_nSnap.
+
+    rCloud is derived from the cloud properties at init time, so a user
+    setting stop_r in a .param file may accidentally pick a value
+    smaller than rCloud and silently disable their stop_at_rCloud_nSnap
+    termination.  Both knobs are valid independently — this is a UX
+    warning, not an error.
+
+    Returns
+    -------
+    (level, message) : tuple
+        level is "warning", "info", or None.  message is the log
+        text (or None when no log is needed).
+    """
+    if nSnap_rCloud is None or stop_r is None:
+        return (None, None)
+
+    if stop_r <= rCloud:
+        return (
+            "warning",
+            f"stop_at_rCloud_nSnap={nSnap_rCloud} but stop_r={stop_r} pc "
+            f"<= rCloud={rCloud:.4f} pc; stop_r will terminate the run "
+            f"before stop_at_rCloud_nSnap can fire.  Increase stop_r "
+            f"or set it to None to use stop_at_rCloud_nSnap."
+        )
+
+    if stop_r <= _STOP_R_RCLOUD_RACE_FACTOR * rCloud:
+        return (
+            "info",
+            f"stop_at_rCloud_nSnap={nSnap_rCloud} and stop_r={stop_r} pc "
+            f"are close to rCloud={rCloud:.4f} pc (within "
+            f"{_STOP_R_RCLOUD_RACE_FACTOR}x); whichever fires first "
+            f"will terminate the run."
+        )
+
+    return (None, None)
+
+
 def start_expansion(params):
     """
     This wrapper takes in the parameters and feed them into smaller
@@ -76,6 +122,18 @@ def start_expansion(params):
     get_InitCloudProp.get_InitCloudProp(params)
     logger.debug(f"Cloud radius: {params['rCloud'].value:.4f} pc")
     logger.debug(f"Core density: {params['nCore'].value*cvt.ndens_au2cgs:.4e} cm-3")
+
+    # rCloud is now known; warn the user if stop_r will starve
+    # stop_at_rCloud_nSnap of any chance to fire (or race with it).
+    _level, _msg = _check_stop_r_rCloud_interaction(
+        params['stop_at_rCloud_nSnap'].value,
+        params['stop_r'].value,
+        params['rCloud'].value,
+    )
+    if _level == "warning":
+        logger.warning(_msg)
+    elif _level == "info":
+        logger.info(_msg)
 
     # Step 2: Obtain parameters from Starburst99
     logger.info("Step 2: Loading Starburst99 stellar feedback data...")
