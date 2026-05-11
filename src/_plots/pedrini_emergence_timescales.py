@@ -8,10 +8,15 @@ For each run in a TRINITY sweep, compute:
              linearly interpolated between the two straddling snapshots.
              For runs that never reach rCloud, tau_TOT = t_max (lower limit).
   - tau_PDR (optional, enable with `--show_tau_pdr`): cumulative time during
-             which is_phiDepleted == True, integrated only over t in
-             [0, tau_TOT] using the left-rectangle rule (snapshots are saved
-             BEFORE ODE integration, so each snapshot's flag value applies
-             for its upcoming segment).
+             which (is_phiDepleted AND NOT isDissolved), integrated only
+             over t in [0, tau_TOT] using the left-rectangle rule (snapshots
+             are saved BEFORE ODE integration, so each snapshot's flag
+             value applies for its upcoming segment).  The dissolved-shell
+             exclusion is a defensive guard — see cumulative_phi_time.
+
+Recollapsing runs (any v2<0 in the trajectory) are excluded from the
+plot since they never emerge in Pedrini's sense.  They remain in the
+CSV with a `recollapse_flag` column for traceability.
 
 Output (under <FIG_DIR>/<sweep_dir.name>/):
   - pedrini_emergence_timescales.pdf
@@ -24,8 +29,12 @@ Run from the project root:
     python src/_plots/pedrini_emergence_timescales.py \
         --sweep_dir outputs/pedrini_sweep_grid
 
-The Pedrini+2026 overlay is optional. Pass `--pedrini_csv mock` to use the
-hand-digitised reference data embedded in this script:
+Add `--show_tau_pdr` to also compute and plot tau_PDR.  Use
+`--colourbar discrete` to swap the default viridis colourbar for a
+Wong-palette band-per-sfe colourbar (useful for narrow sweeps).
+
+The Pedrini+2026 overlay is optional.  Pass `--pedrini_csv mock` to
+use the hand-digitised reference data embedded in this script:
 
     python src/_plots/pedrini_emergence_timescales.py \
         --sweep_dir outputs/pedrini_sweep_grid \
@@ -47,13 +56,16 @@ While running, one progress line per simulation is printed:
 
     [pedrini_tau] (i/N) <run_name>
 
-Plus a one-line notice for each run that breaks out, e.g.:
+A one-line notice for each run that breaks out:
 
     [pedrini_tau] <run_name>: rCloud crossing interpolated at t=... Myr
         (snapshots i=k-1/k, R2=...->... pc, t=...->... Myr)
 
-Runs without that notice did not break out, and their tau_TOT is a lower
-limit (t_max), plotted as an open/filled triangle in the figure.
+Runs without that notice did not break out; their tau_TOT is a lower
+limit (t_max), plotted as an open circle with a dashed edge in the figure.
+
+If any runs recollapsed (v2<0 anywhere), a notice listing the dropped
+run names is printed after the CSV is written.
 """
 
 from __future__ import annotations
@@ -492,7 +504,7 @@ def make_plot(rows: list[dict], pedrini_df, out_pdf: Path,
     sfe_mappable = plt.cm.ScalarMappable(cmap=sfe_cmap, norm=sfe_norm)
     sfe_mappable.set_array([])
     if colourbar == "discrete":
-        # All bands tickled — each is a distinct sweep value worth labelling.
+        # All bands ticked — each is a distinct sweep value worth labelling.
         cbar = fig.colorbar(
             sfe_mappable, ax=ax, location="right",
             fraction=0.04, pad=0.01,
