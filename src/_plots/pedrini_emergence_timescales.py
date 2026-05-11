@@ -581,13 +581,13 @@ def make_plot(rows: list[dict], pedrini_df, out_pdf: Path,
         handles.append(Line2D([], [], marker="o", linestyle="none",
                               mfc=REF_COLOR, mec=REF_COLOR, markersize=mid_ms,
                               label="Pedrini+2026"))
-    # Park the legend inside the axes, upper-right corner.  Single column
-    # keeps it narrow against the right spine; the colourbar sits just
-    # outside that spine so the two stay aligned visually.
-    ax.legend(handles=handles, loc="upper right",
-              ncol=1,
+    # Park the legend above the axes in a two-column layout.  The
+    # colourbar sits on the right, so leaving the strip above the axes
+    # for the legend keeps the data area uncluttered.
+    ax.legend(handles=handles, loc="lower center",
+              bbox_to_anchor=(0.5, 1.02), ncol=2,
               frameon=False, fontsize="small",
-              handletextpad=0.4, borderaxespad=0.5)
+              handletextpad=0.4, columnspacing=1.2, borderaxespad=0.0)
 
     fig.savefig(out_pdf, bbox_inches="tight")
     print(f"Saved: {out_pdf}")
