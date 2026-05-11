@@ -416,17 +416,17 @@ def make_plot(rows: list[dict], pedrini_df, out_pdf: Path,
     else:
         ax.set_ylabel(r"$\tau_{\rm TOT}$ [Myr]")
 
-    # Discrete sfe colorbar above the axes (replaces the per-sfe legend
-    # swatches).  One colour band per unique sfe value, in ascending order,
-    # ticks centred on each band.
+    # Discrete sfe colorbar on the right of the axes (replaces the per-sfe
+    # legend swatches).  One colour band per unique sfe value, in ascending
+    # order, ticks centred on each band.
     unique_sfe = sorted(sfe_colors.keys())
     sfe_cmap = ListedColormap([sfe_colors[s] for s in unique_sfe])
     sfe_norm = BoundaryNorm(np.arange(len(unique_sfe) + 1) - 0.5, sfe_cmap.N)
     sfe_mappable = plt.cm.ScalarMappable(cmap=sfe_cmap, norm=sfe_norm)
     sfe_mappable.set_array([])
     cbar = fig.colorbar(
-        sfe_mappable, ax=ax, location="top",
-        fraction=0.05, pad=0.02,
+        sfe_mappable, ax=ax, location="right",
+        fraction=0.04, pad=0.01,
         ticks=np.arange(len(unique_sfe)),
     )
     cbar.set_ticklabels([f"{s:g}" for s in unique_sfe])
@@ -437,22 +437,33 @@ def make_plot(rows: list[dict], pedrini_df, out_pdf: Path,
     mid_ms = 0.5 * (_marker_size(m_min, m_min, m_max)
                     + _marker_size(m_max, m_min, m_max))
 
+    # Show the breakout/no-breakout shape legend only when both variants
+    # are actually present in the data.  In single-variant sweeps the shape
+    # carries no information and the entry would just be noise.
+    has_breakout    = any(r["breakout"]     for r in rows)
+    has_no_breakout = any(not r["breakout"] for r in rows)
+    mixed_breakout  = has_breakout and has_no_breakout
+
     handles: list[Line2D] = []
     if show_tau_pdr:
-        # When both quantities are shown, separate filled-vs-open from the
-        # breakout shape (circle/triangle) so each axis is independent.
+        # TOT/PDR distinction is always meaningful in tau_PDR mode.  Pick
+        # the marker shapes to match what's actually plotted: o/s for
+        # breakout runs, ^/^ for non-breakout runs.
+        tot_marker_legend = "o" if has_breakout else "^"
+        pdr_marker_legend = "s" if has_breakout else "^"
         handles += [
-            Line2D([], [], marker="o", linestyle="none",
+            Line2D([], [], marker=tot_marker_legend, linestyle="none",
                    mfc="0.4", mec="0.4", markersize=mid_ms,
                    label=r"$\tau_{\rm TOT}$"),
-            Line2D([], [], marker="s", linestyle="none",
+            Line2D([], [], marker=pdr_marker_legend, linestyle="none",
                    mfc="none", mec="0.4", markersize=mid_ms,
                    label=r"$\tau_{\rm PDR}$"),
-            Line2D([], [], marker="^", linestyle="none",
-                   mfc="0.4", mec="0.4", markersize=mid_ms,
-                   label="lower limit (no breakout)"),
         ]
-    else:
+        if mixed_breakout:
+            handles.append(Line2D([], [], marker="^", linestyle="none",
+                                  mfc="0.4", mec="0.4", markersize=mid_ms,
+                                  label="lower limit (no breakout)"))
+    elif mixed_breakout:
         handles += [
             Line2D([], [], marker="o", linestyle="none",
                    mfc="0.4", mec="0.4", markersize=mid_ms,
