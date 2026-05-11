@@ -66,6 +66,7 @@ from pathlib import Path
 
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.colors import BoundaryNorm, ListedColormap
 from matplotlib.lines import Line2D
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
@@ -184,16 +185,25 @@ def find_rcloud_crossing(t: np.ndarray, R2: np.ndarray,
     return t_cross
 
 
-def cumulative_phi_time(t: np.ndarray, phi: np.ndarray, t_end: float) -> float:
-    """Cumulative duration of is_phiDepleted == True over [t[0], t_end].
+def cumulative_phi_time(t: np.ndarray, phi: np.ndarray, diss: np.ndarray,
+                        t_end: float) -> float:
+    """Cumulative duration of (is_phiDepleted AND NOT isDissolved) over [t[0], t_end].
 
     Left-rectangle rule: the snapshot at t[k] reflects the shell structure
     used for the segment t[k] -> t[k+1] (snapshots saved before ODE integration,
     see trinity_reader.py:93-99), so mask[k] applies for the whole segment.
+
+    Dissolved-shell guard: shell_structure_modified.py:412 force-sets
+    is_phiDepleted=True whenever isDissolved=True, but a dissolved shell has
+    dispersed into the ISM — no neutral exterior, no PDR. Under the current
+    code flow only the final reconciliation snap carries isDissolved=True
+    (set post-save in phases 1c/2 termination blocks), and its mask is
+    never indexed by this loop; this is therefore a defensive guard against
+    future changes that might land a dissolved snapshot mid-run.
     """
     if len(t) < 2:
         return 0.0
-    mask = np.asarray(phi, dtype=bool)
+    mask = np.asarray(phi, dtype=bool) & ~np.asarray(diss, dtype=bool)
     total = 0.0
     for k in range(len(t) - 1):
         a = t[k]
@@ -250,7 +260,10 @@ def collect_run(run_dir: Path, show_tau_pdr: bool = False) -> dict:
         phi = np.asarray(
             [bool(x) for x in out.get("is_phiDepleted", as_array=False)]
         )
-        row["tau_PDR"] = cumulative_phi_time(t, phi, tau_TOT)
+        diss = np.asarray(
+            [bool(x) for x in out.get("isDissolved", as_array=False)]
+        )
+        row["tau_PDR"] = cumulative_phi_time(t, phi, diss, tau_TOT)
     return row
 
 
@@ -332,23 +345,17 @@ def _sfe_color_map(rows: list[dict]) -> dict[float, str]:
 
 
 def _size_legend_ticks(m_min: float, m_max: float) -> list[float]:
-    """Up to three log10(mCloud) values for the size legend.
+    """Smallest and largest log10(mCloud) values for the size legend.
 
-    Smallest = nearest half-dex to log10(m_min); biggest = nearest half-dex
-    to log10(m_max); middle = nearest half-dex to their midpoint. Returned
-    list is sorted and deduplicated, so a narrow data range may yield only
-    one or two entries. Single-mCloud sweeps fall back to that one value
-    (formatted via _fmt_log_m).
+    Both snapped to the nearest half-dex.  Single-mCloud sweeps fall back
+    to that one value (formatted via _fmt_log_m).
     """
     log_lo, log_hi = np.log10(m_min), np.log10(m_max)
     if log_hi <= log_lo:
         return [log_lo]
     smallest = round(log_lo * 2) / 2.0
     biggest  = round(log_hi * 2) / 2.0
-    if smallest >= biggest:
-        return sorted({smallest, biggest})
-    middle = round((smallest + biggest) / 2 * 2) / 2.0
-    return sorted({smallest, middle, biggest})
+    return sorted({smallest, biggest})
 
 
 def _fmt_log_m(log_m: float) -> str:
@@ -409,28 +416,54 @@ def make_plot(rows: list[dict], pedrini_df, out_pdf: Path,
     else:
         ax.set_ylabel(r"$\tau_{\rm TOT}$ [Myr]")
 
-    # Legend: breakout-shape entries use a fixed mid size; the size legend is
-    # capped at three swatches (smallest/middle/biggest half-dex tied to the
-    # data range), and sfe entries get one swatch per unique value.
+    # Discrete sfe colorbar on the right of the axes (replaces the per-sfe
+    # legend swatches).  One colour band per unique sfe value, in ascending
+    # order, ticks centred on each band.
+    unique_sfe = sorted(sfe_colors.keys())
+    sfe_cmap = ListedColormap([sfe_colors[s] for s in unique_sfe])
+    sfe_norm = BoundaryNorm(np.arange(len(unique_sfe) + 1) - 0.5, sfe_cmap.N)
+    sfe_mappable = plt.cm.ScalarMappable(cmap=sfe_cmap, norm=sfe_norm)
+    sfe_mappable.set_array([])
+    cbar = fig.colorbar(
+        sfe_mappable, ax=ax, location="right",
+        fraction=0.04, pad=0.01,
+        ticks=np.arange(len(unique_sfe)),
+    )
+    cbar.set_ticklabels([f"{s:g}" for s in unique_sfe])
+    cbar.set_label("sfe")
+
+    # Remaining legend: shape entries (breakout / lower-limit / tau_PDR)
+    # and size entries (smallest + largest mCloud only).
     mid_ms = 0.5 * (_marker_size(m_min, m_min, m_max)
                     + _marker_size(m_max, m_min, m_max))
 
+    # Show the breakout/no-breakout shape legend only when both variants
+    # are actually present in the data.  In single-variant sweeps the shape
+    # carries no information and the entry would just be noise.
+    has_breakout    = any(r["breakout"]     for r in rows)
+    has_no_breakout = any(not r["breakout"] for r in rows)
+    mixed_breakout  = has_breakout and has_no_breakout
+
     handles: list[Line2D] = []
     if show_tau_pdr:
-        # When both quantities are shown, separate filled-vs-open from the
-        # breakout shape (circle/triangle) so each axis is independent.
+        # TOT/PDR distinction is always meaningful in tau_PDR mode.  Pick
+        # the marker shapes to match what's actually plotted: o/s for
+        # breakout runs, ^/^ for non-breakout runs.
+        tot_marker_legend = "o" if has_breakout else "^"
+        pdr_marker_legend = "s" if has_breakout else "^"
         handles += [
-            Line2D([], [], marker="o", linestyle="none",
+            Line2D([], [], marker=tot_marker_legend, linestyle="none",
                    mfc="0.4", mec="0.4", markersize=mid_ms,
                    label=r"$\tau_{\rm TOT}$"),
-            Line2D([], [], marker="s", linestyle="none",
+            Line2D([], [], marker=pdr_marker_legend, linestyle="none",
                    mfc="none", mec="0.4", markersize=mid_ms,
                    label=r"$\tau_{\rm PDR}$"),
-            Line2D([], [], marker="^", linestyle="none",
-                   mfc="0.4", mec="0.4", markersize=mid_ms,
-                   label="lower limit (no breakout)"),
         ]
-    else:
+        if mixed_breakout:
+            handles.append(Line2D([], [], marker="^", linestyle="none",
+                                  mfc="0.4", mec="0.4", markersize=mid_ms,
+                                  label="lower limit (no breakout)"))
+    elif mixed_breakout:
         handles += [
             Line2D([], [], marker="o", linestyle="none",
                    mfc="0.4", mec="0.4", markersize=mid_ms,
@@ -439,10 +472,6 @@ def make_plot(rows: list[dict], pedrini_df, out_pdf: Path,
                    mfc="0.4", mec="0.4", markersize=mid_ms,
                    label="lower limit (no breakout)"),
         ]
-    for sfe, color in sfe_colors.items():
-        handles.append(Line2D([], [], marker="o", linestyle="none",
-                              mfc=color, mec=color, markersize=mid_ms,
-                              label=fr"$\mathrm{{sfe}}={sfe:g}$"))
     for log_m in _size_legend_ticks(m_min, m_max):
         m = 10 ** log_m
         ms = _marker_size(m, m_min, m_max)
@@ -454,12 +483,13 @@ def make_plot(rows: list[dict], pedrini_df, out_pdf: Path,
         handles.append(Line2D([], [], marker="o", linestyle="none",
                               mfc=REF_COLOR, mec=REF_COLOR, markersize=mid_ms,
                               label="Pedrini+2026"))
-    # Park the legend above the axes so the data area stays uncluttered.
-    # ncol targets roughly two rows so even the longest legend (tau_PDR mode
-    # with a Pedrini overlay) doesn't stretch into a single thin strip.
+    # Park the legend below the axes — the colorbar now occupies the space
+    # above.  ncol targets roughly two rows so even the longest legend
+    # (tau_PDR mode with a Pedrini overlay) doesn't stretch into a single
+    # thin strip.
     ncol = max(1, (len(handles) + 1) // 2)
-    ax.legend(handles=handles, loc="lower center",
-              bbox_to_anchor=(0.5, 1.02), ncol=ncol,
+    ax.legend(handles=handles, loc="upper center",
+              bbox_to_anchor=(0.5, -0.18), ncol=ncol,
               frameon=False, fontsize="small",
               handletextpad=0.4, columnspacing=1.2, borderaxespad=0.0)
 
