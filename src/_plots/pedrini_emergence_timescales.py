@@ -8,10 +8,15 @@ For each run in a TRINITY sweep, compute:
              linearly interpolated between the two straddling snapshots.
              For runs that never reach rCloud, tau_TOT = t_max (lower limit).
   - tau_PDR (optional, enable with `--show_tau_pdr`): cumulative time during
-             which is_phiDepleted == True, integrated only over t in
-             [0, tau_TOT] using the left-rectangle rule (snapshots are saved
-             BEFORE ODE integration, so each snapshot's flag value applies
-             for its upcoming segment).
+             which (is_phiDepleted AND NOT isDissolved), integrated only
+             over t in [0, tau_TOT] using the left-rectangle rule (snapshots
+             are saved BEFORE ODE integration, so each snapshot's flag
+             value applies for its upcoming segment).  The dissolved-shell
+             exclusion is a defensive guard — see cumulative_phi_time.
+
+Recollapsing runs (any v2<0 in the trajectory) are excluded from the
+plot since they never emerge in Pedrini's sense.  They remain in the
+CSV with a `recollapse_flag` column for traceability.
 
 Output (under <FIG_DIR>/<sweep_dir.name>/):
   - pedrini_emergence_timescales.pdf
@@ -24,8 +29,12 @@ Run from the project root:
     python src/_plots/pedrini_emergence_timescales.py \
         --sweep_dir outputs/pedrini_sweep_grid
 
-The Pedrini+2026 overlay is optional. Pass `--pedrini_csv mock` to use the
-hand-digitised reference data embedded in this script:
+Add `--show_tau_pdr` to also compute and plot tau_PDR.  Use
+`--colourbar discrete` to swap the default viridis colourbar for a
+Wong-palette band-per-sfe colourbar (useful for narrow sweeps).
+
+The Pedrini+2026 overlay is optional.  Pass `--pedrini_csv mock` to
+use the hand-digitised reference data embedded in this script:
 
     python src/_plots/pedrini_emergence_timescales.py \
         --sweep_dir outputs/pedrini_sweep_grid \
@@ -47,13 +56,16 @@ While running, one progress line per simulation is printed:
 
     [pedrini_tau] (i/N) <run_name>
 
-Plus a one-line notice for each run that breaks out, e.g.:
+A one-line notice for each run that breaks out:
 
     [pedrini_tau] <run_name>: rCloud crossing interpolated at t=... Myr
         (snapshots i=k-1/k, R2=...->... pc, t=...->... Myr)
 
-Runs without that notice did not break out, and their tau_TOT is a lower
-limit (t_max), plotted as an open/filled triangle in the figure.
+Runs without that notice did not break out; their tau_TOT is a lower
+limit (t_max), plotted as an open circle with a dashed edge in the figure.
+
+If any runs recollapsed (v2<0 anywhere), a notice listing the dropped
+run names is printed after the CSV is written.
 """
 
 from __future__ import annotations
@@ -223,6 +235,14 @@ def collect_run(run_dir: Path, show_tau_pdr: bool = False) -> dict:
 
     t   = np.asarray(out.get("t_now"),  dtype=float)
     R2  = np.asarray(out.get("R2"),     dtype=float)
+    v2  = np.asarray(out.get("v2"),     dtype=float)
+
+    # Recollapse detection: any negative velocity over the trajectory.
+    # SimulationEndCode.SHELL_COLLAPSED is the terminal flag, but a run
+    # in progress can turn around without ever crossing coll_r, so v2<0
+    # is the broader (and physically correct) signal that the shell will
+    # not emerge in Pedrini's sense.
+    recollapse = bool(np.any(v2 < 0))
 
     mCloud   = float(out[0].get("mCloud"))
     rCloud   = float(out[0].get("rCloud"))
@@ -254,6 +274,7 @@ def collect_run(run_dir: Path, show_tau_pdr: bool = False) -> dict:
         "M_star":     M_star,
         "tau_TOT":    tau_TOT,
         "breakout":   breakout,
+        "recollapse": recollapse,
         "end_reason": raw_reason,
     }
     if show_tau_pdr:
@@ -288,7 +309,7 @@ def write_summary_csv(rows: list[dict], out_path: Path,
     ]
     if show_tau_pdr:
         fieldnames.append("tau_PDR_Myr")
-    fieldnames += ["breakout_flag", "end_reason"]
+    fieldnames += ["breakout_flag", "recollapse_flag", "end_reason"]
 
     with out_path.open("w", newline="") as f:
         w = csv.writer(f)
@@ -300,7 +321,7 @@ def write_summary_csv(rows: list[dict], out_path: Path,
             ]
             if show_tau_pdr:
                 row.append(r["tau_PDR"])
-            row += [r["breakout"], r["end_reason"]]
+            row += [r["breakout"], r["recollapse"], r["end_reason"]]
             w.writerow(row)
 
 
@@ -393,6 +414,13 @@ def make_plot(rows: list[dict], pedrini_df, out_pdf: Path,
               colourbar: str = "continuous") -> None:
     plt.style.use(str(STYLE_PATH))
 
+    # Defensive: recollapse runs should already have been filtered out by
+    # main(), but guard here too so make_plot is safe to call directly.
+    rows = [r for r in rows if not r.get("recollapse")]
+    if not rows:
+        print("[pedrini_tau] No non-recollapsing runs to plot.")
+        return
+
     masses = [r["mCloud"] for r in rows]
     m_min, m_max = min(masses), max(masses)
 
@@ -401,23 +429,34 @@ def make_plot(rows: list[dict], pedrini_df, out_pdf: Path,
 
     fig, ax = plt.subplots()
 
+    # tau_TOT marker recipe (recollapse already dropped):
+    #   - breakout:        filled circle, solid edge
+    #   - lower limit:     open circle,   dashed edge  (still going at stop_t)
+    # tau_PDR markers echo the same edge-style convention with a square so
+    # the TOT/PDR axes stay visually independent.
+    LW_SOLID  = 1.0
+    LW_DASHED = 1.2
     for r in rows:
         x = np.log10(r["M_star"])
         ms = _marker_size(r["mCloud"], m_min, m_max)
+        s_area = ms ** 2  # scatter `s` is area in pts^2; plot `markersize` is diameter in pts
         color = sfe_color(r["sfe"])
         breakout = r["breakout"]
-        # tau_TOT: filled marker, shape encodes breakout (o) vs lower-limit (^).
-        tot_marker = "o" if breakout else "^"
-        ax.plot(x, r["tau_TOT"], marker=tot_marker,
-                mfc=color, mec=color,
-                linestyle="none", markersize=ms)
-        if show_tau_pdr:
-            # tau_PDR: open marker; square when breakout, triangle as a
-            # lower-limit echo of the tau_TOT triangle when not.
-            pdr_marker = "s" if breakout else "^"
-            ax.plot(x, r["tau_PDR"], marker=pdr_marker,
-                    mfc="none", mec=color,
-                    linestyle="none", markersize=ms)
+        if breakout:
+            ax.scatter([x], [r["tau_TOT"]], s=s_area, c=[color],
+                       marker="o", edgecolors=[color], linewidths=LW_SOLID)
+            if show_tau_pdr:
+                ax.scatter([x], [r["tau_PDR"]], s=s_area,
+                           facecolors="none", edgecolors=[color],
+                           marker="s", linewidths=LW_SOLID)
+        else:
+            ax.scatter([x], [r["tau_TOT"]], s=s_area,
+                       facecolors="none", edgecolors=[color],
+                       marker="o", linestyles="--", linewidths=LW_DASHED)
+            if show_tau_pdr:
+                ax.scatter([x], [r["tau_PDR"]], s=s_area,
+                           facecolors="none", edgecolors=[color],
+                           marker="s", linestyles="--", linewidths=LW_DASHED)
 
     if pedrini_df is not None:
         ax.errorbar(pedrini_df["log_Mstar"], pedrini_df["tau_TOT"],
@@ -436,6 +475,27 @@ def make_plot(rows: list[dict], pedrini_df, out_pdf: Path,
     else:
         ax.set_ylabel(r"$\tau_{\rm TOT}$ [Myr]")
 
+    # Pad axis limits so size-inflated markers don't touch the spines.
+    # y always anchors at 0; top adds 15% headroom over the largest plotted
+    # value (including Pedrini errorbars when overlaid).  x pads 7% of range
+    # on each side, with a 0.2-dex floor for single-mCloud sweeps.
+    all_tau = [r["tau_TOT"] for r in rows]
+    if show_tau_pdr:
+        all_tau += [r["tau_PDR"] for r in rows]
+    if pedrini_df is not None:
+        all_tau += list(pedrini_df["tau_TOT"] + pedrini_df["tau_TOT_err"])
+        if show_tau_pdr and "tau_PDR" in pedrini_df.columns:
+            all_tau += list(pedrini_df["tau_PDR"] + pedrini_df["tau_PDR_err"])
+    y_top = max(all_tau) if all_tau else 1.0
+    ax.set_ylim(0.0, y_top * 1.15)
+
+    all_x = [np.log10(r["M_star"]) for r in rows]
+    if pedrini_df is not None:
+        all_x += list(pedrini_df["log_Mstar"])
+    x_lo, x_hi = min(all_x), max(all_x)
+    x_pad = max(0.2, (x_hi - x_lo) * 0.07)
+    ax.set_xlim(x_lo - x_pad, x_hi + x_pad)
+
     # sfe colourbar on the right of the axes (replaces the per-sfe legend
     # swatches).  Continuous mode uses viridis with LogNorm; discrete mode
     # uses one Wong-palette band per unique sfe value, ticks centred on
@@ -444,6 +504,7 @@ def make_plot(rows: list[dict], pedrini_df, out_pdf: Path,
     sfe_mappable = plt.cm.ScalarMappable(cmap=sfe_cmap, norm=sfe_norm)
     sfe_mappable.set_array([])
     if colourbar == "discrete":
+        # All bands ticked — each is a distinct sweep value worth labelling.
         cbar = fig.colorbar(
             sfe_mappable, ax=ax, location="right",
             fraction=0.04, pad=0.01,
@@ -451,12 +512,14 @@ def make_plot(rows: list[dict], pedrini_df, out_pdf: Path,
         )
         cbar.set_ticklabels([f"{s:g}" for s in unique_sfe])
     else:
+        # Continuous mode: just label the endpoints to keep the axis clean.
+        endpoints = [unique_sfe[0], unique_sfe[-1]]
         cbar = fig.colorbar(
             sfe_mappable, ax=ax, location="right",
             fraction=0.04, pad=0.01,
-            ticks=unique_sfe,
+            ticks=endpoints,
         )
-        cbar.set_ticklabels([f"{s:g}" for s in unique_sfe])
+        cbar.set_ticklabels([f"{v:g}" for v in endpoints])
     cbar.set_label("sfe")
 
     # Remaining legend: shape entries (breakout / lower-limit / tau_PDR)
@@ -471,33 +534,41 @@ def make_plot(rows: list[dict], pedrini_df, out_pdf: Path,
     has_no_breakout = any(not r["breakout"] for r in rows)
     mixed_breakout  = has_breakout and has_no_breakout
 
-    handles: list[Line2D] = []
+    def _lower_limit_proxy(label: str):
+        """Open-circle proxy for the 'lower limit' legend entry.
+
+        Plotted points use scatter with linestyles='--' for a dashed edge,
+        but a PathCollection-as-legend-handle picks up colormap state in
+        practice and renders the swatch in the wrong colour.  A plain
+        Line2D open circle still conveys 'lower limit' next to the filled
+        breakout marker; the dashed edge on the actual data points carries
+        the rest of the signal.
+        """
+        return Line2D([], [], marker="o", linestyle="none",
+                      mfc="none", mec="0.4",
+                      markersize=mid_ms, markeredgewidth=LW_DASHED,
+                      label=label)
+
+    handles: list = []
     if show_tau_pdr:
-        # TOT/PDR distinction is always meaningful in tau_PDR mode.  Pick
-        # the marker shapes to match what's actually plotted: o/s for
-        # breakout runs, ^/^ for non-breakout runs.
-        tot_marker_legend = "o" if has_breakout else "^"
-        pdr_marker_legend = "s" if has_breakout else "^"
+        # TOT/PDR distinction is always meaningful in tau_PDR mode.  Edge
+        # style encodes breakout-vs-lower-limit; shape encodes TOT-vs-PDR.
         handles += [
-            Line2D([], [], marker=tot_marker_legend, linestyle="none",
+            Line2D([], [], marker="o", linestyle="none",
                    mfc="0.4", mec="0.4", markersize=mid_ms,
                    label=r"$\tau_{\rm TOT}$"),
-            Line2D([], [], marker=pdr_marker_legend, linestyle="none",
+            Line2D([], [], marker="s", linestyle="none",
                    mfc="none", mec="0.4", markersize=mid_ms,
                    label=r"$\tau_{\rm PDR}$"),
         ]
         if mixed_breakout:
-            handles.append(Line2D([], [], marker="^", linestyle="none",
-                                  mfc="0.4", mec="0.4", markersize=mid_ms,
-                                  label="lower limit (no breakout)"))
+            handles.append(_lower_limit_proxy("lower limit (stop_t)"))
     elif mixed_breakout:
         handles += [
             Line2D([], [], marker="o", linestyle="none",
                    mfc="0.4", mec="0.4", markersize=mid_ms,
                    label="breakout"),
-            Line2D([], [], marker="^", linestyle="none",
-                   mfc="0.4", mec="0.4", markersize=mid_ms,
-                   label="lower limit (no breakout)"),
+            _lower_limit_proxy("lower limit (stop_t)"),
         ]
     for log_m in _size_legend_ticks(m_min, m_max):
         m = 10 ** log_m
@@ -510,15 +581,13 @@ def make_plot(rows: list[dict], pedrini_df, out_pdf: Path,
         handles.append(Line2D([], [], marker="o", linestyle="none",
                               mfc=REF_COLOR, mec=REF_COLOR, markersize=mid_ms,
                               label="Pedrini+2026"))
-    # Park the legend below the axes — the colorbar now occupies the space
-    # above.  ncol targets roughly two rows so even the longest legend
-    # (tau_PDR mode with a Pedrini overlay) doesn't stretch into a single
-    # thin strip.
-    ncol = max(1, (len(handles) + 1) // 2)
-    ax.legend(handles=handles, loc="upper center",
-              bbox_to_anchor=(0.5, -0.18), ncol=ncol,
+    # Park the legend inside the axes, upper-right corner.  Single column
+    # keeps it narrow against the right spine; the colourbar sits just
+    # outside that spine so the two stay aligned visually.
+    ax.legend(handles=handles, loc="upper right",
+              ncol=1,
               frameon=False, fontsize="small",
-              handletextpad=0.4, columnspacing=1.2, borderaxespad=0.0)
+              handletextpad=0.4, borderaxespad=0.5)
 
     fig.savefig(out_pdf, bbox_inches="tight")
     print(f"Saved: {out_pdf}")
@@ -567,8 +636,23 @@ def main():
     fig_dir.mkdir(parents=True, exist_ok=True)
 
     csv_path = fig_dir / "pedrini_emergence_timescales_summary.csv"
+    # CSV keeps every row (with recollapse_flag) for the audit trail.
     write_summary_csv(rows, csv_path, show_tau_pdr=args.show_tau_pdr)
     print(f"Wrote summary: {csv_path} ({len(rows)} rows)")
+
+    # Recollapse runs don't have a Pedrini-relevant tau_TOT (their shell
+    # turned around before emergence); drop them from the plot and announce
+    # which ones went.
+    recollapsed = [r for r in rows if r.get("recollapse")]
+    if recollapsed:
+        print(f"[pedrini_tau] Dropped {len(recollapsed)} recollapsing run(s) "
+              f"from the plot (v2<0 seen in trajectory):")
+        for r in recollapsed:
+            print(f"  - {r['run_name']}")
+    plot_rows = [r for r in rows if not r.get("recollapse")]
+    if not plot_rows:
+        print("[pedrini_tau] All runs recollapsed — nothing to plot.")
+        return
 
     if args.pedrini_csv is None:
         pedrini_df = None
@@ -581,7 +665,7 @@ def main():
         pedrini_df = load_pedrini_csv(csv_in)
 
     pdf_path = fig_dir / "pedrini_emergence_timescales.pdf"
-    make_plot(rows, pedrini_df, pdf_path, show_tau_pdr=args.show_tau_pdr,
+    make_plot(plot_rows, pedrini_df, pdf_path, show_tau_pdr=args.show_tau_pdr,
               colourbar=args.colourbar)
 
 
