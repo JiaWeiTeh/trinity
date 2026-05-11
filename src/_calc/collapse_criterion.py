@@ -110,7 +110,13 @@ from src._calc._common.cloud_physics import (
     MU_MOL,
 )
 from src._calc._common.fitting import ols_sigma_clip as _ols_sigma_clip
-from src._calc._common.io import extract_rejected as _extract_rejected
+from src._calc._common.io import (
+    extract_rejected as _extract_rejected,
+    regenerate_summary_pdf as _regenerate_summary_pdf,
+    add_phii_argument,
+    iter_phii_modes,
+    filter_sim_files_by_phii,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -223,9 +229,13 @@ def classify_outcome(data_path: Path, t_end: float = None) -> Optional[Dict]:
 # Data collection
 # ======================================================================
 
-def collect_data(folder_path: Path, t_end: float = None) -> List[Dict]:
+def collect_data(folder_path: Path, t_end: float = None,
+                 phii_mode: str = "yes") -> List[Dict]:
     """
     Walk a sweep output folder and collect (params, outcome) for every run.
+
+    ``phii_mode`` (``"yes"``/``"no"``) selects which PHII variant is
+    included; see :func:`src._plots.grid_template.filter_sim_files_by_phii`.
 
     Returns
     -------
@@ -234,8 +244,11 @@ def collect_data(folder_path: Path, t_end: float = None) -> List[Dict]:
         E_bind, outcome, folder.
     """
     sim_files = find_all_simulations(folder_path)
+    sim_files = filter_sim_files_by_phii(sim_files, phii_mode)
     if not sim_files:
-        logger.error("No simulation files found under %s", folder_path)
+        label = "non-noPHII" if phii_mode == "yes" else "noPHII"
+        logger.error("No %s simulation files found under %s",
+                     label, folder_path)
         return []
 
     logger.info("Found %d simulation(s) in %s", len(sim_files), folder_path)
@@ -1145,6 +1158,7 @@ Examples:
         "--output-dir", type=str, default=None,
         help="Output directory override (default: fig/<folder>/).",
     )
+    add_phii_argument(parser)
     return parser
 
 
@@ -1165,51 +1179,65 @@ def main(argv: Optional[List[str]] = None) -> int:
             return 1
 
     folder_name = "+".join(fp.name for fp in folder_paths)
-    output_dir = Path(args.output_dir) if args.output_dir else FIG_DIR / folder_name
-    output_dir.mkdir(parents=True, exist_ok=True)
+    base_output_dir = (Path(args.output_dir)
+                       if args.output_dir else FIG_DIR / folder_name)
 
-    # Step 1: collect data
-    records: List[Dict] = []
-    for fp in folder_paths:
-        records.extend(collect_data(fp, t_end=args.t_end))
-    if not records:
-        logger.error("No valid data collected — aborting.")
-        return 1
+    any_success = False
+    for phii_mode in iter_phii_modes(args):
+        output_dir = (base_output_dir / "_noPHII"
+                      if phii_mode == "no" else base_output_dir)
+        output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Step 2: determine eps_min
-    logger.info("--- Determining eps_min for each (nCore, mCloud) pair ---")
-    eps_data = find_epsilon_min(records)
-    if not eps_data:
-        logger.error("No eps_min values could be determined.")
-        return 1
+        # Step 1: collect data for this PHII variant
+        records: List[Dict] = []
+        for fp in folder_paths:
+            records.extend(collect_data(fp, t_end=args.t_end,
+                                        phii_mode=phii_mode))
+        if not records:
+            logger.warning("No valid %s data collected — skipping variant.",
+                           "noPHII" if phii_mode == "no" else "yesPHII")
+            continue
 
-    # Step 3: fit scaling relations
-    logger.info("--- Fitting eps_min(nCore, mCloud) ---")
-    fit_nM = fit_eps_min_nM(
-        eps_data,
-        nCore_ref=args.nCore_ref,
-        mCloud_ref=args.mCloud_ref,
-        sigma_clip=args.sigma_clip,
-    )
+        # Step 2: determine eps_min
+        logger.info("--- Determining eps_min for each (nCore, mCloud) pair "
+                    "(phii=%s) ---", phii_mode)
+        eps_data = find_epsilon_min(records)
+        if not eps_data:
+            logger.warning("No eps_min values could be determined for phii=%s.",
+                           phii_mode)
+            continue
 
-    logger.info("--- Fitting eps_min(Sigma) ---")
-    fit_sigma = fit_eps_min_sigma(eps_data, sigma_clip=args.sigma_clip)
+        # Step 3: fit scaling relations
+        logger.info("--- Fitting eps_min(nCore, mCloud) ---")
+        fit_nM = fit_eps_min_nM(
+            eps_data,
+            nCore_ref=args.nCore_ref,
+            mCloud_ref=args.mCloud_ref,
+            sigma_clip=args.sigma_clip,
+        )
 
-    # Step 4: figures
-    plot_phase_diagram(records, eps_data, fit_nM, output_dir, args.fmt)
-    plot_eps_vs_sigma(eps_data, fit_sigma, output_dir, args.fmt)
-    plot_parity(fit_nM, output_dir, args.fmt)
-    plot_outcome_fraction(records, output_dir, args.fmt)
+        logger.info("--- Fitting eps_min(Sigma) ---")
+        fit_sigma = fit_eps_min_sigma(eps_data, sigma_clip=args.sigma_clip)
 
-    # Step 5: CSV and summary
-    write_results_csv(eps_data, output_dir)
-    write_fits_csv(fit_nM, fit_sigma, output_dir)
-    print_summary(eps_data, fit_nM, fit_sigma)
+        # Step 4: figures
+        plot_phase_diagram(records, eps_data, fit_nM, output_dir, args.fmt)
+        plot_eps_vs_sigma(eps_data, fit_sigma, output_dir, args.fmt)
+        plot_parity(fit_nM, output_dir, args.fmt)
+        plot_outcome_fraction(records, output_dir, args.fmt)
 
-    # Equation JSON for run_all summary
-    _write_equation_json(fit_nM, fit_sigma, output_dir)
+        # Step 5: CSV and summary
+        write_results_csv(eps_data, output_dir)
+        write_fits_csv(fit_nM, fit_sigma, output_dir)
+        print_summary(eps_data, fit_nM, fit_sigma)
 
-    return 0
+        # Equation JSON for run_all summary
+        _write_equation_json(fit_nM, fit_sigma, output_dir)
+
+        # Regenerate the cross-script summary PDF (per-mode)
+        _regenerate_summary_pdf(output_dir, fmt=args.fmt or "pdf")
+        any_success = True
+
+    return 0 if any_success else 1
 
 
 if __name__ == "__main__":
