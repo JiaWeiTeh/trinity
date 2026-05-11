@@ -430,7 +430,8 @@ def collect_data(folder_path: Path, t_end: float = None,
     sim_files = filter_sim_files_by_phii(sim_files, phii_mode)
     if not sim_files:
         label = "non-noPHII" if phii_mode == "yes" else "noPHII"
-        logger.error("No %s simulation files under %s", label, folder_path)
+        logger.error("No %s simulation files found under %s",
+                     label, folder_path)
         return []
 
     logger.info("Found %d simulation(s) in %s", len(sim_files), folder_path)

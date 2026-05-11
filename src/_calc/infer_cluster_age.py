@@ -1016,7 +1016,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             records.extend(collect_grid(fp, t_end=args.t_end,
                                         phii_mode=phii_mode))
         if not records:
-            logger.warning("No valid %s grid data collected -- skipping variant.",
+            logger.warning("No valid %s grid data collected — skipping variant.",
                            "noPHII" if phii_mode == "no" else "yesPHII")
             continue
 
