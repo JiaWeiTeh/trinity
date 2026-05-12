@@ -17,12 +17,11 @@ dropped in, without shifting a single ULP under the legacy parameter path.
   loader (`read_SB99.py`), the param plumbing (`read_param.py` +
   `default.param`), and the one direct interpolator access in
   `phase0_init/get_InitPhaseParam.py`.
-- **Five PRs**, each back-compat and independently revertable:
+- **Four PRs**, each back-compat and independently revertable:
   1. `sps_path` + `sps_refmass` with legacy fallback (zero math changes)
-  2. Header-driven column mapping (SB99 positional becomes a preset)
-  3. Optional explicit SN columns
-  4. Mechanical rename `SB99f → sps_f`
-  5. Cleanup — delete deprecated params, drop dead import
+  2. In-`.param` column mapping via `sps_col_<canonical>` (SB99 positional remains the legacy preset; strict, no silent fallback; subsumes explicit SN/Li/Ln overrides as the natural consequence of the column-map design)
+  3. Mechanical rename `SB99f → sps_f`
+  4. Cleanup — delete deprecated params, drop dead import
 - **Headline risk: silent ULP drift** through the 10 cubic-spline interpolators
   that drive every phase. The whole test battery exists to make that drift
   impossible to ship undetected.
@@ -89,11 +88,11 @@ pdot_W, pdot_SN, pdot_total, pdotdot_total, Qi, Lbol, Ln, Li`
 
 | # | File:line | Issue | Fix shape |
 |---|-----------|-------|-----------|
-| 1 | `read_SB99.py:285-372` (`get_filename`) | Hardcoded filename grammar; only 2 Z, 2 BH, 2 rotation modes. | Replace with `sps_path` param; move `get_filename` to a legacy-fallback helper in `read_param.py`, then delete in PR-5. |
-| 2 | `read_SB99.py:144-149` | Validates `>=7` columns by position. | Header-driven column map with SB99 preset as legacy fallback. |
-| 3 | `read_SB99.py:158-177` | Hardcoded log-space + cgs assumptions per column. | Per-column unit metadata. |
+| 1 | `read_SB99.py:285-372` (`get_filename`) | Hardcoded filename grammar; only 2 Z, 2 BH, 2 rotation modes. | Replace with `sps_path` param; move `get_filename` to a legacy-fallback helper in `read_param.py`, then delete in PR-4. |
+| 2 | `read_SB99.py:144-149` | Validates `>=7` columns by position. | PR-2: when `sps_path` is user-defined, replace with mandatory `sps_col_<canonical>` declarations in `.param`. Positional ≥7-column check stays for the legacy fallback. |
+| 3 | `read_SB99.py:158-177` | Hardcoded log-space + cgs assumptions per column. | PR-2: per-column units and log/linear declared in `.param` via `sps_col_<canonical>  <file_column>  <units>  <log\|linear>`. |
 | 4 | `read_SB99.py:229-247` | Derives `Lmech_SN` and `pdot_SN` from totals + `FB_vSN`. | Allow direct SN columns when present; fall back to derivation. |
-| 5 | `read_SB99.py:191` | Ionizing fraction at 13.6 eV hardcoded (in SB99's `fi` definition; loader does `Li = Lbol·fi`, `Ln = Lbol·(1−fi)`). | PR-3: accept optional `Li` and `Ln` columns; when both present, skip the derivation and bypass the threshold entirely. |
+| 5 | `read_SB99.py:191` | Ionizing fraction at 13.6 eV hardcoded (in SB99's `fi` definition; loader does `Li = Lbol·fi`, `Ln = Lbol·(1−fi)`). | PR-2: optional `Li`/`Ln` columns in the canonical vocabulary; when both supplied via `sps_col_*`, skip the derivation and bypass the threshold entirely. |
 | 6 | `main.py:142` | `f_mass = mCluster / SB99_mass` couples to reference mass. | Add `sps_refmass` param (defaults to `SB99_mass` for back-compat). |
 | 7 | `update_feedback.py:187` | Hardcoded `Δt=1e-9 Myr` for `pdotdot_total`. | Constant is fine; flag for review only. |
 
@@ -162,7 +161,7 @@ evaluates each, computes `v_mech_total = 2·Lmech_total/pdot_total` (184) and
 `pdotdot_total` by central difference at `dt=1e-9 Myr` (187-188), returns
 `SB99Feedback` dataclass (defined at line 21).
 
-🟡 Optional rename in PR-4: `SB99f → sps_f`, `SB99Feedback → SPSFeedback`,
+🟡 Optional rename in PR-3: `SB99f → sps_f`, `SB99Feedback → SPSFeedback`,
 `get_currentSB99feedback → get_current_sps_feedback`. No functional change.
 
 ### 5.3 `src/phase0_init/get_InitPhaseParam.py` — 🟡
@@ -196,7 +195,7 @@ Lines 58, 405, 552, 906. Same pattern.
 
 Line 33 imports `get_currentSB99feedback` but **never calls it**. Reads
 `params['Lmech_total']`, `params['v_mech_total']`, `params['Qi']` directly
-(lines 104-105, 312, 345, 795). No interpolator access. PR-5 drops the dead
+(lines 104-105, 312, 345, 795). No interpolator access. PR-4 drops the dead
 import.
 
 ### 5.9 `src/_output/cloudy/` and `src/_plots/` — 🟢 (orthogonal)
@@ -217,7 +216,7 @@ import.
 - `read_param.py:474-485` — declares the 12 scalar feedback params.
 
 **Required changes.** Add `sps_path` (and `sps_refmass`); keep `SB99_*` as
-deprecated fallbacks; rename runtime containers in PR-4.
+deprecated fallbacks; rename runtime containers in PR-3.
 
 ### 5.11 `src/cooling/non_CIE/read_cloudy.py` — 🔴 *separate* SB99 coupling
 
@@ -239,17 +238,17 @@ in legacy `read_cloudy_old.py:287`.
 | File | Touches filename? | Touches interpolators? | Touches params dict only? | Change needed |
 |------|:--:|:--:|:--:|--|
 | `src/sb99/read_SB99.py` | ✅ | builds them | — | 🔴 rewrite with column map; move `get_filename()` to legacy fallback |
-| `src/sb99/update_feedback.py` | — | ✅ reads | writes 12 scalars | 🟡 PR-4 rename |
+| `src/sb99/update_feedback.py` | — | ✅ reads | writes 12 scalars | 🟡 PR-3 rename |
 | `src/main.py:142-152` | — | calls `read_SB99` | populates containers | 🔴 swap loader; replace `f_mass = mCluster/SB99_mass` with `sps_refmass` |
 | `src/_input/read_param.py` | declares containers | — | — | 🔴 add `sps_path`/`sps_refmass`; keep legacy as fallback |
 | `src/_input/default.param` | declares legacy params | — | — | 🔴 add `sps_path`; mark SB99_* deprecated |
-| `src/phase0_init/get_InitPhaseParam.py` | — | ✅ reads directly | — | 🟡 PR-4 rename |
+| `src/phase0_init/get_InitPhaseParam.py` | — | ✅ reads directly | — | 🟡 PR-3 rename |
 | `src/phase1_energy/run_energy_phase_modified.py` | — | — | ✅ | 🟢 |
 | `src/phase1_energy/energy_phase_ODEs_modified.py` | — | — | ✅ | 🟢 |
 | `src/phase1b_energy_implicit/run_energy_implicit_phase_modified.py` | — | — | ✅ | 🟢 |
 | `src/phase1c_transition/run_transition_phase_modified.py` | — | — | ✅ | 🟢 |
 | `src/phase2_momentum/run_momentum_phase_modified.py` | — | — | ✅ | 🟢 |
-| `src/bubble_structure/bubble_luminosity_modified.py` | — | — | ✅ (and dead import) | 🟢 (PR-5 drops import) |
+| `src/bubble_structure/bubble_luminosity_modified.py` | — | — | ✅ (and dead import) | 🟢 (PR-4 drops import) |
 | `src/cooling/non_CIE/read_cloudy.py` | ✅ separate filename | — | — | 🔴 own indirection (out of scope) |
 | `src/_output/cloudy/*` | — | — | — | 🟢 (orthogonal) |
 | `src/_plots/*` | — | — | — | 🟢 (comments only) |
@@ -266,8 +265,10 @@ in legacy `read_cloudy_old.py:287`.
 1. Replace the hardcoded SB99 filename grammar with a single `sps_path`
    parameter so users can drop in arbitrary SPS CSVs.
 2. Decouple `f_mass`'s reference mass from `SB99_mass` (add `sps_refmass`).
-3. Allow header-driven column maps so CSV column order / units / log-vs-linear
-   are no longer hardcoded.
+3. Allow per-column declarations of file-column name, units, and log/linear
+   convention inside `.param` (via `sps_col_<canonical>` keys), so CSV
+   column order / units / log convention are no longer hardcoded. **No
+   external sidecar file** — the `.param` is the single source of truth.
 4. Allow optional explicit SN columns (`Lmech_SN`, `pdot_SN`, `Mdot_SN`,
    `v_SN`) and direct ionizing/non-ionizing splits (`Li`, `Ln`) for SPS
    codes that provide them, removing SB99's hardcoded 13.6 eV ionizing
@@ -314,8 +315,8 @@ If a PR breaks any of these invariants, **the PR is broken**, not the tests.
 
 ## 9. Migration / deprecation strategy
 
-Two new params, each with a sentinel default that falls through to legacy
-behavior:
+Three new params (well, two scalars and one family), each with a sentinel
+default that falls through to legacy behavior:
 
 - `sps_path` — full path to an SPS CSV. Default `def_path`.
   - When `def_path` and `SB99_mass / SB99_rotation / SB99_BHCUT / ZCloud` are
@@ -323,13 +324,21 @@ behavior:
     relocated to `read_param.py`). Emit one `DeprecationWarning` at startup
     listing the migration path.
   - When set to anything else: use that path verbatim. Skip legacy grammar.
+    The user is now also required to declare the column map via the
+    `sps_col_*` family below.
 - `sps_refmass` — reference cluster mass for `f_mass = mCluster /
   sps_refmass`. Default `def_value`.
   - When `def_value`: copy `params['SB99_mass'].value`.
   - Else: use directly.
+- `sps_col_<canonical>` family — one line per canonical column the user is
+  declaring, with positional fields `<file_column>  <units>  <log|linear>`
+  (full syntax in §10 PR-2). Required only when `sps_path` is
+  user-defined; entirely ignored under the legacy fallback. PR-2
+  introduces these keys; subsequent PRs do not touch them. **The `.param`
+  is the single source of truth** — no external sidecar file is read.
 
 Legacy params (`SB99_mass`, `SB99_rotation`, `SB99_BHCUT`) keep working
-unchanged through PR-1 through PR-4. PR-5 deletes them; users who have not
+unchanged through PR-1 through PR-3. PR-4 deletes them; users who have not
 migrated by then will see a hard error with a clear message pointing at
 `sps_path`.
 
@@ -378,7 +387,7 @@ phases, interpolators, and dataclass are otherwise untouched.
       remain in the loader.
 - [ ] `main.py:142` uses `sps_refmass`.
 - [ ] No phase code changed.
-- [ ] `bubble_luminosity_modified.py:33` dead import left alone (PR-5
+- [ ] `bubble_luminosity_modified.py:33` dead import left alone (PR-4
       cleanup).
 
 **Tests required to merge.** See §11.2.1 for the full battery. Headline:
@@ -391,109 +400,234 @@ phases, interpolators, and dataclass are otherwise untouched.
 4. E2E snapshot-tree equivalence with `sps_path` set explicitly to the path
    the legacy fallback would have resolved to. Must equal (3).
 
-### PR-2 — Header-driven column mapping
+### PR-2 — In-`.param` column mapping (strict, no silent fallback)
 
-**Scope.** Add the ability to read a CSV with a header row that names columns
-and declares units. SB99's 7-column headerless positional format remains the
-default fallback when no header is detected.
+**Scope.** Add the ability to read a CSV with arbitrary column names and
+per-column units when `sps_path` is user-defined, via mandatory
+`sps_col_<canonical>` declarations in `.param`. SB99's 7-column
+headerless positional layout remains the legacy fallback used when
+`sps_path` is the `def_path` sentinel — entirely back-compat.
+
+The contract is **strict-by-default with no silent fallback**: when
+`sps_path` is set but required `sps_col_*` keys are missing, the loader
+hard-errors with a fillable template printed to stderr. That's what
+"shouts and tells the user to edit" — but it's an error, not a warning,
+because a warning the run ploughs past is exactly the silent-failure
+mode strictness exists to prevent.
+
+**`.param` syntax.** One line per canonical column, three positional
+fields after the key:
+
+```
+sps_col_<canonical>    <file_column>    <units>    <log|linear>
+```
+
+- `<canonical>` is one of the names in the table below.
+- `<file_column>` is the column name exactly as it appears in the SPS
+  file's header row.
+- `<units>` is a string from the recognized set: `yr`, `Myr`, `s`,
+  `erg/s`, `L_sun`, `1/s`, `1/Myr`, `g*cm/s^2`, `Msun*pc/Myr^2`, `cm/s`,
+  `pc/Myr`, `g/s`, `Msun/Myr`, `dimensionless`. Anything else is a hard
+  error.
+- `<log|linear>` declares whether the file column is in log10 space.
+
+Worked example for the user-supplied SPS file shown in discussion:
+
+```
+sps_path    /path/to/your_sps_file.csv
+
+sps_col_t            time         yr          linear
+sps_col_Lbol         l_bol        erg/s       log
+sps_col_Lmech_W      l_wind       erg/s       log
+sps_col_Lmech_SN     l_sn         erg/s       log
+sps_col_Qi           Qilog        1/s         log
+sps_col_pdot_W       pd_windmom   g*cm/s^2    log
+sps_col_Li           l_ion        erg/s       log
+sps_col_Ln           l_non_ion    erg/s       log
+```
+
+Note the file's `l_HI`, `l_HeI`, `l_HeII` sub-columns are unmapped and
+simply ignored — there is no canonical name for a finer ionization
+breakdown.
 
 **Files touched.**
 
-- `src/sb99/read_SB99.py` — refactor `read_SB99()` into:
-  - `_detect_header(path) -> bool`
-  - `_load_with_header(path) -> dict[str, np.ndarray]` (named columns, raw)
-  - `_load_positional_sb99(path) -> dict[str, np.ndarray]` (legacy preset)
-  - `_apply_units(raw_cols, unit_map) -> dict[str, np.ndarray]` (log →
-    linear, cgs → AU)
-  - Existing scaling logic (FB_* corrections) operates on the named dict.
-- (Optionally rename module to `read_sps.py` with a back-compat shim. Defer
-  to PR-4 if it adds churn here — see open question §14.)
+- `src/_input/default.param` — add a commented documentation block
+  showing the `sps_col_*` declaration syntax and listing recognized
+  units. Inactive by default since `sps_path` defaults to `def_path`.
+- `src/_input/read_param.py` — parse `sps_col_*` lines into a structured
+  column-mapping dict on `params['sps_column_map']` (a single
+  `DescribedItem` whose value is `{canonical_name:
+  ColumnSpec(file_column, units, log)}`). Validate that all required
+  canonical names are present when `sps_path != def_path`; build and
+  emit the error template (see below) if not.
+- `src/sb99/read_SB99.py` — refactor the body so it operates on a
+  `column_map` regardless of source:
+  - Legacy fallback (`sps_path == def_path`) → use a hardcoded SB99
+    positional preset `column_map` (constructed once, byte-equivalent
+    to PR-1's loader).
+  - User-defined `sps_path` → take `column_map` from
+    `params['sps_column_map']`. Load the CSV with `np.genfromtxt(...,
+    names=True)` (i.e. read the header), select named columns,
+    exponentiate log columns, convert units to canonical AU, and apply
+    mass scaling (see below) before passing to the existing FB_*
+    correction logic.
+- (Module/symbol renames deferred to PR-3.)
 
-**Column-name vocabulary (canonical).**
+**Canonical columns.** Required = no derivation fallback (loader errors
+without them when `sps_path` is user-defined). Optional = derivation is
+the fallback when absent. For `Li`/`Ln`: the `fi`-based derivation from
+`Lbol` runs only if both are absent. When both are present the hardcoded
+13.6 eV threshold built into SB99's `fi` is bypassed, closing §4
+hot-spot #5.
 
-The header row must use these names; aliases accepted for back-compat:
+| Canonical | Required? | Canonical linear unit | Mass-scaled? | Derivation if absent |
+|-----------|-----------|------------------------|--------------|----------------------|
+| `t`           | yes | yr        | no  | — |
+| `Lbol`        | yes | erg/s     | yes | — |
+| `Lmech_W`     | yes | erg/s     | yes | — |
+| `Qi`          | yes | 1/s       | yes | — |
+| `pdot_W`      | yes | g·cm/s²   | yes | — |
+| `fi`          | yes, unless both `Li` and `Ln` are present | dimensionless | no | — |
+| `Lmech_total` | no  | erg/s     | yes | `Lmech_W + Lmech_SN` |
+| `Lmech_SN`    | no  | erg/s     | yes | `Lmech_total − Lmech_W` |
+| `pdot_SN`     | no  | g·cm/s²   | yes | `Mdot_SN · v_SN` |
+| `Mdot_SN`     | no  | g/s       | yes | `2·Lmech_SN/v_SN²` |
+| `v_SN`        | no  | cm/s      | no  | `FB_vSN` constant |
+| `Li`          | no  | erg/s     | yes | `Lbol · fi` |
+| `Ln`          | no  | erg/s     | yes | `Lbol · (1 − fi)` |
 
-| Canonical | Aliases | Units (linear) | Required |
-|-----------|---------|---------------|----------|
-| `t` | `time`, `age` | yr | yes |
-| `Qi` | `log_Qi`, `ionizing_photon_rate` | 1/s | yes |
-| `fi` | `ionizing_fraction` | dimensionless | yes, unless both `Li` and `Ln` are provided |
-| `Lbol` | `log_Lbol`, `L_bolometric` | erg/s | yes |
-| `Lmech_total` | `log_Lmech`, `L_mech` | erg/s | yes |
-| `pdot_W` | `log_pdot_wind`, `momentum_rate_wind` | g·cm/s² | yes |
-| `Lmech_W` | `log_Lmech_wind`, `L_mech_wind` | erg/s | yes |
-| `Li` | `log_Li`, `L_ionizing` | erg/s | no (derived as `Lbol·fi` if absent — addresses §4 hot-spot #5 by letting the user bypass the hardcoded 13.6 eV threshold built into SB99's `fi`) |
-| `Ln` | `log_Ln`, `L_non_ionizing` | erg/s | no (derived as `Lbol·(1−fi)` if absent) |
-| `Lmech_SN` | `L_mech_SN` | erg/s | no (derived as `Lmech_total − Lmech_W` if absent) |
-| `pdot_SN` | `momentum_rate_SN` | g·cm/s² | no (derived from `Mdot_SN · v_SN` if absent) |
-| `Mdot_SN` | `mass_loss_rate_SN` | g/s | no (derived from `2·Lmech_SN/v_SN²` if absent) |
-| `v_SN` | `SN_velocity` | cm/s | no (uses `FB_vSN` constant if absent) |
+Mass scaling (multiply by `f_mass = mCluster / sps_refmass`) is applied
+post-load by the loader, hardcoded against the "Mass-scaled?" column
+above. The user does **not** declare it per-column — they'd have no way
+to know which canonicals are conventionally normalized to the reference
+mass.
 
-Log-space columns indicated by `log_` prefix in alias or `log_units=true` in a
-sidecar.
+**Behaviour matrix.**
+
+| `sps_path` value | `sps_col_*` keys present? | Behavior |
+|------------------|----------------------------|----------|
+| `def_path` (sentinel) | n/a (ignored) | Legacy SB99 fallback. Loader uses the hardcoded 7-column positional preset. Byte-equivalent to PR-1. |
+| user-defined         | none                          | Hard error. Prints the fillable template (below) to stderr; exits non-zero. |
+| user-defined         | partial (some required missing) | Hard error. Names which required canonicals are missing. Includes the file's actual header columns to make filling-in obvious. |
+| user-defined         | `Li` alone or `Ln` alone        | Hard error: "supply both `Li` and `Ln`, or neither". Avoids partial overrides that silently disagree with `fi`. |
+| user-defined         | complete                        | Use the user-declared mapping. |
+
+**Error template (printed verbatim on missing-mapping error).**
+
+```
+ERROR: sps_path is set to '<resolved-path>' but the column mapping is
+       incomplete.
+
+       Missing required canonical columns: <list>
+
+       Add the following lines to your .param file, filling in the file
+       column names and unit/log declarations to match your SPS file.
+       Each line is:
+           sps_col_<canonical>    <file_column>    <units>    <log|linear>
+
+       Required (no derivation fallback):
+           sps_col_t            <file_column>     yr                  linear
+           sps_col_Lbol         <file_column>     erg/s               log
+           sps_col_Lmech_W      <file_column>     erg/s               log
+           sps_col_Qi           <file_column>     1/s                 log
+           sps_col_pdot_W       <file_column>     g*cm/s^2            log
+           sps_col_fi           <file_column>     dimensionless       linear
+               (OR supply both sps_col_Li and sps_col_Ln instead)
+
+       Optional (skip derivation if provided):
+           sps_col_Lmech_total, sps_col_Lmech_SN, sps_col_pdot_SN,
+           sps_col_Mdot_SN, sps_col_v_SN, sps_col_Li, sps_col_Ln
+
+       Recognized units: yr, Myr, s, erg/s, L_sun, 1/s, 1/Myr,
+                         g*cm/s^2, Msun*pc/Myr^2, cm/s, pc/Myr,
+                         g/s, Msun/Myr, dimensionless
+
+       The SPS file's actual columns (read from its header row):
+           <comma-separated column names from the file's header>
+```
 
 **Code-level checklist.**
 
-- [ ] Header detection: first non-comment line; if any field non-numeric,
-      treat as header.
-- [ ] Positional fallback unchanged when no header (exact same code path as
-      PR-1's loader, just refactored into a private function).
-- [ ] Per-column unit dispatch (`log` or `linear`, `cgs` or `AU`).
-- [ ] Missing optional columns trigger the existing derivation:
-      `Li = Lbol·fi`, `Ln = Lbol·(1−fi)`,
-      `Lmech_SN = Lmech_total − Lmech_W`,
-      `Mdot_SN = 2·Lmech_SN/v_SN²`, `pdot_SN = Mdot_SN·v_SN`.
+- [ ] `.param` parser recognizes `sps_col_*` keys and consolidates them
+      into a single `params['sps_column_map']` `DescribedItem` whose
+      value is a dict `{canonical: ColumnSpec(file_column, units,
+      log)}`. The container is `exclude_from_snapshot=True`.
+- [ ] Each individual `sps_col_<canonical>` key is *also* round-trip
+      preserved via `flush()`, so the user's `.param` survives a
+      load-flush-reload cycle.
+- [ ] `read_param.py` validates the column map when `sps_path !=
+      def_path`. Hard-errors with the template above if required
+      canonicals are missing, or if `Li`/`Ln` are partially supplied,
+      or if a declared `<units>` is not in the recognized set.
+- [ ] User-defined `sps_path` files **must** have a header row. The
+      loader reads it via `np.genfromtxt(..., names=True)`. If the file
+      is detected as headerless (all-numeric first row), hard-error
+      with: "user-defined sps_path files must include a header row;
+      the columns are matched by name against your sps_col_*
+      declarations."
+- [ ] Legacy SB99 fallback (`sps_path == def_path`) does **not** require
+      a header — the existing `np.loadtxt` path stays.
+- [ ] Unit conversion factors live in a single table (logically one
+      `dict[str, float]`) keyed by `(declared_unit, canonical_unit)`.
+      No per-canonical hardcoding scattered through the loader body.
+- [ ] Mass scaling is applied to the canonicals marked "yes" in the
+      table above; never to `t`, `fi`, `v_SN`. Hardcoded list, not
+      user-declared.
+- [ ] `t=0` prepend (currently `read_SB99.py:262-275`) detects an
+      existing t=0 row in the loaded data and skips to avoid
+      double-application on generic CSVs.
 - [ ] No change to FB_* scaling logic.
-- [ ] `t=0` prepend (currently `read_SB99.py:262-275`) detects existing t=0
-      row and skips to avoid double-application on generic CSVs.
 
 **Tests required to merge.**
 
-1. Positional path produces byte-identical arrays to PR-1's loader (no
-   header → same code).
-2. Header-equipped clone of SB99 file (header-declared positions identical
-   to legacy) produces byte-identical arrays.
-3. Linear-units clone (de-logged via `Lbol_lin = 10**Lbol_log` etc.) with
-   `log_units=false` header produces arrays within 4 ULP of log-space load
-   (linear→log→linear is not bitwise reversible).
-4. Subset clone with only 7 SB99 columns (no optional SN cols) routes
-   through derivation; arrays match (1).
-5. E2E snapshot equivalence — same as PR-1 tests but rerun on this branch.
+1. **Legacy fallback unchanged.** With `sps_path = def_path` and no
+   `sps_col_*` keys, the loader produces byte-identical arrays to PR-1.
+2. **User-defined `sps_path` with complete mapping** mirroring SB99's
+   column structure (a clone of the legacy SB99 file with a header row
+   declaring `time, log_Qi, log_fi, log_Lbol, log_Lmech, log_pdot_W,
+   log_Lmech_W` and `sps_col_*` declarations matching exactly) →
+   byte-identical arrays to (1). Confirms the new path is loss-free
+   when used to replicate the legacy file.
+3. **No `sps_col_*` declarations.** User-defined `sps_path`, no
+   `sps_col_*` keys at all → loader exits non-zero; stderr contains the
+   full template *and* the file's actual header columns.
+4. **Partial declarations.** User-defined `sps_path`, missing
+   `sps_col_Qi` only → loader exits non-zero; stderr names `Qi` as the
+   missing canonical (not "every canonical").
+5. **Unknown unit.** `sps_col_Lbol  l_bol  furlongs_per_fortnight  log`
+   → loader exits non-zero with the recognized-units list.
+6. **Headerless user file.** User-defined `sps_path` pointing at a file
+   with no header row → hard error pointing the user at adding one.
+7. **Linear-units declaration.** A clone of the SB99 file with values
+   pre-exponentiated, declared `log: linear` → arrays within 4 ULP of
+   the log-space load (linear→log→linear is not bitwise reversible).
+8. **Missing optional columns route through derivation.** Header file
+   with the 7 required canonicals and no SN/Li/Ln → arrays match (1).
+9. **`Li` + `Ln` both supplied** with values whose ratio differs from
+   SB99's `fi` → file values used, `fi`-based derivation is bypassed.
+   Closes hot-spot #5 in a verifiable way.
+10. **`Li` supplied alone (without `Ln`)** → hard error: "supply both
+    `Li` and `Ln`, or neither".
+11. **Explicit `Lmech_SN` that doesn't match derivation.** Synthetic CSV
+    with `Lmech_SN = 0.5 · (Lmech_total − Lmech_W)` → loader uses the
+    file value; resulting `Mdot_SN` and `velocity_SN` differ from the
+    derivation path in the expected direction. Sanity test that the
+    override path is wired through, not silently overwritten.
+12. **`t=0` prepend idempotent** on a CSV that already has a t=0 row.
+13. **Mass scaling correctness.** Same file loaded with `mCluster =
+    1e6` and `mCluster = 2e6` (with `sps_refmass = 1e6` both times) →
+    mass-scaled arrays differ by exactly 2×; non-mass-scaled arrays
+    (`t`, `fi`, `v_SN`) are identical.
+14. **E2E equivalence** — full trinity run with `sps_path = def_path`
+    on the three anchor configs. Snapshot trees match PR-1 goldens at
+    `rtol=1e-12`.
+15. **E2E with user-defined `sps_path`.** Copy the SB99 file with a
+    header row, add a complete `sps_col_*` block to one anchor `.param`,
+    run trinity. Snapshot tree matches PR-1's golden for that anchor at
+    `rtol=1e-12`. (This is the "did the new path break anything" test.)
 
-### PR-3 — Optional explicit SN columns
-
-**Scope.** When a CSV provides `Lmech_SN`, `pdot_SN`, `Mdot_SN`, `v_SN`,
-`Li`, or `Ln` directly, use them instead of deriving. Falls back to the
-current derivation when absent. Affects the SN scaling block
-(`read_SB99.py:229-247`) and the Li/Ln derivation at lines 191-192.
-
-**Files touched.** `src/sb99/read_SB99.py` only.
-
-**Code-level checklist.**
-
-- [ ] `Lmech_SN` present → skip the `Lmech_total − Lmech_W` subtraction.
-- [ ] `pdot_SN` present → skip implicit derivation from `Mdot_SN · v_SN`.
-- [ ] `Mdot_SN` present → skip implicit derivation from `2·Lmech_SN/v_SN²`.
-- [ ] `v_SN` present → use the column; else use `FB_vSN` constant.
-- [ ] `Li`, `Ln` both present → skip `Lbol·fi` derivation; `fi` becomes
-      optional. This is what closes §4 hot-spot #5 (the hardcoded
-      13.6 eV threshold).
-- [ ] Document interaction with `FB_mColdSNFrac` / `FB_thermCoeffSN` (they
-      still apply on top of explicit columns).
-
-**Tests required to merge.**
-
-1. SB99 file (no SN/Li/Ln cols) → arrays identical to PR-2.
-2. Synthetic CSV with `Lmech_SN = Lmech_total - Lmech_W` (i.e. SN columns
-   that *match* the derivation) → arrays identical to derivation path.
-3. Synthetic CSV with `Lmech_SN = 0.5 * (Lmech_total - Lmech_W)` → loader
-   uses the file value, not derivation (sanity test).
-4. Synthetic CSV with explicit `Li` and `Ln` columns whose sum equals
-   `Lbol` but whose ratio differs from SB99's `fi` → loader uses file
-   values, not `Lbol·fi`. Confirms the 13.6 eV threshold is bypassed.
-5. E2E equivalence — same battery as PR-2.
-
-### PR-4 — Rename `SB99f` → `sps_f`, `SB99_data` → `sps_data`
+### PR-3 — Rename `SB99f` → `sps_f`, `SB99_data` → `sps_data`
 
 **Scope.** Mechanical rename. Every consumer touched. Optional module rename
 `read_SB99.py` → `read_sps.py`. Aliased back-compat in `read_param.py` so
@@ -522,20 +656,20 @@ external code reading `params['SB99f']` still works for one release.
       params['sps_f']` (same underlying object) so external user scripts
       continue to work.
 - [ ] `phase0_init/get_InitPhaseParam.py:88, 111-112` updated.
-- [ ] `bubble_luminosity_modified.py:33` import updated (still dead; PR-5
+- [ ] `bubble_luminosity_modified.py:33` import updated (still dead; PR-4
       removes).
 
 **Tests required to merge.**
 
-1. Full equivalence battery from PR-3, rerun unchanged.
+1. Full equivalence battery from PR-2, rerun unchanged.
 2. New test: `params['SB99f'] is params['sps_f']` (alias works).
 3. New test: importing `get_currentSB99feedback` from `update_feedback`
    raises a clear error pointing at the new name (assuming the old symbol
    is removed; if a transitional alias is kept, this test inverts).
 
-### PR-5 — Cleanup
+### PR-4 — Cleanup
 
-**Scope.** After at least one release cycle on PR-4. Removes deprecated
+**Scope.** After at least one release cycle on PR-3. Removes deprecated
 surface.
 
 **Files touched.**
@@ -554,7 +688,7 @@ surface.
 
 1. Configs that don't set `sps_path` now raise a clear error.
 2. Configs that set `sps_path` continue to work; full E2E equivalence
-   against PR-4 golden.
+   against PR-3 golden.
 3. `bubble_luminosity_modified.py` imports list contains no SB99 references.
 
 ### Out of scope: cooling-table coupling
@@ -713,61 +847,84 @@ def test_deprecation_warning_fires_once():
 #### 11.2.2 PR-2 tests
 
 ```python
-def test_positional_path_byte_identical_to_pr1():
-    """No header → loader produces identical arrays to PR-1."""
+def test_legacy_fallback_byte_identical_to_pr1():
+    """sps_path = def_path, no sps_col_* keys → arrays byte-identical to PR-1."""
+    params = mock_params_legacy()
+    arrays = read_SB99.read_SB99(f_mass=1.0, params=params)
+    golden = pickle.load(open('analysis/sb99-refactor-golden/loader_arrays.pkl', 'rb'))
+    for cur, gold in zip(arrays, golden):
+        assert np.array_equal(cur, gold)
 
-def test_header_path_byte_identical_to_positional():
-    """Same data with header row produces identical arrays."""
+def test_user_sps_path_mirroring_sb99_byte_identical():
+    """Header-equipped clone of SB99 file + complete sps_col_* block →
+    byte-identical to legacy load."""
     write_sb99_with_canonical_header(src=LEGACY_FILE, dst=tmpfile)
-    arrays_hdr = read_SB99.read_SB99(f_mass=1.0,
-                                     params=mock_params_with_path(tmpfile))
-    arrays_pos = read_SB99.read_SB99(f_mass=1.0, params=mock_params_legacy())
-    for hdr, pos in zip(arrays_hdr, arrays_pos):
-        assert np.array_equal(hdr, pos)
+    params = mock_params_with_sps_path(tmpfile, column_map=SB99_LIKE_MAP)
+    arrays_user = read_SB99.read_SB99(f_mass=1.0, params=params)
+    arrays_legacy = read_SB99.read_SB99(f_mass=1.0, params=mock_params_legacy())
+    for u, l in zip(arrays_user, arrays_legacy):
+        assert np.array_equal(u, l)
 
-def test_linear_units_within_4_ulp_of_log_units():
-    """Pre-exponentiated columns with log_units=false match log load to 4 ULP."""
-    write_sb99_with_linear_units(src=LEGACY_FILE, dst=tmpfile)
-    arrays_lin = read_SB99.read_SB99(f_mass=1.0,
-                                     params=mock_params_with_path(tmpfile))
-    arrays_log = read_SB99.read_SB99(f_mass=1.0, params=mock_params_legacy())
-    for lin, log in zip(arrays_lin, arrays_log):
-        assert np.allclose(lin, log, rtol=4e-15, atol=0)
+def test_no_column_map_hard_errors_with_template():
+    """User-defined sps_path with no sps_col_* keys → exit non-zero,
+    stderr contains the fillable template AND the file's actual columns."""
+    params = mock_params_with_sps_path(USER_FILE, column_map={})
+    with pytest.raises(SystemExit) as excinfo:
+        read_param.validate_column_map(params)  # called during read_param
+    assert excinfo.value.code != 0
+    assert 'sps_col_t' in capfd.readouterr().err
+    assert 'time, l_bol, l_wind' in capfd.readouterr().err  # file's actual cols
+
+def test_partial_column_map_names_missing_canonicals():
+    """User-defined sps_path missing only sps_col_Qi → error names Qi specifically."""
+
+def test_unknown_units_hard_errors():
+    """sps_col_Lbol l_bol furlongs_per_fortnight log → error lists recognized units."""
+
+def test_headerless_user_file_hard_errors():
+    """User-defined sps_path pointing at a headerless file → error pointing
+    at adding a header row."""
+
+def test_linear_units_within_4_ulp_of_log():
+    """Pre-exponentiated columns declared 'linear' → arrays within 4 ULP
+    of the log-space load. (10**log10(x) is not exactly x.)"""
 
 def test_missing_optional_cols_fall_back():
-    """7-column header-equipped file (no SN cols) routes through derivation."""
+    """Header file with the 7 required canonicals and no SN/Li/Ln →
+    arrays match the legacy load."""
+
+def test_Li_Ln_both_present_bypass_fi_derivation():
+    """File supplies Li and Ln with a ratio that differs from SB99's fi.
+    Loader uses the file values directly, NOT Lbol·fi."""
+
+def test_Li_alone_hard_errors():
+    """sps_col_Li present without sps_col_Ln → error: supply both or neither."""
+
+def test_explicit_Lmech_SN_overrides_derivation():
+    """Synthetic CSV with Lmech_SN = 0.5 * (Lmech_total - Lmech_W) → file
+    value used. Mdot_SN and velocity_SN differ from the derivation path
+    by exactly the expected factor."""
 
 def test_t0_prepend_idempotent():
-    """Generic CSV that already has t=0 row doesn't get a duplicate after the
-    prepend pass."""
+    """CSV that already has a t=0 row doesn't get a duplicate after prepend."""
     write_csv_with_explicit_t0_row(dst=tmpfile)
-    arrays = read_SB99.read_SB99(f_mass=1.0, params=mock_params_with_path(tmpfile))
+    arrays = read_SB99.read_SB99(f_mass=1.0,
+                                 params=mock_params_with_sps_path(tmpfile))
     assert arrays[0][0] == 0.0 and arrays[0][1] > 0.0  # no double t=0
 
-def test_e2e_equivalence_after_pr2():
-    """E2E battery — same as PR-1."""
+def test_mass_scaling_correctness():
+    """Same file loaded with mCluster ∈ {1e6, 2e6}, sps_refmass = 1e6:
+    mass-scaled arrays differ by exactly 2×; t, fi, v_SN identical."""
+
+def test_e2e_legacy_path_unchanged():
+    """Full trinity run with sps_path = def_path matches PR-1 golden at rtol=1e-12."""
+
+def test_e2e_user_sps_path_matches_legacy():
+    """Full trinity run with sps_path pointing at header-equipped SB99 clone
+    + complete sps_col_* block matches PR-1 golden at rtol=1e-12."""
 ```
 
 #### 11.2.3 PR-3 tests
-
-```python
-def test_no_sn_cols_derivation_unchanged():
-    """SB99 file without SN cols → arrays match PR-2."""
-
-def test_explicit_sn_cols_matching_derivation():
-    """CSV with Lmech_SN that exactly equals (Lmech_total - Lmech_W).
-    Loader-using-cols path and derivation path agree bitwise."""
-
-def test_explicit_sn_cols_overriding_derivation():
-    """CSV with Lmech_SN = 0.5 * (Lmech_total - Lmech_W). Loader uses the
-    file value (not derivation). Verify resulting Mdot_SN, velocity_SN
-    differ from derivation in the expected way."""
-
-def test_e2e_equivalence_after_pr3():
-    """E2E battery."""
-```
-
-#### 11.2.4 PR-4 tests
 
 ```python
 def test_all_phases_run_after_rename():
@@ -780,14 +937,14 @@ def test_renamed_imports_resolve():
     """from src.sb99.update_feedback import get_current_sps_feedback works."""
 ```
 
-#### 11.2.5 PR-5 tests
+#### 11.2.4 PR-4 tests
 
 ```python
 def test_unset_sps_path_raises_clear_error():
     """A config that omits sps_path now hard-errors with migration guidance."""
 
 def test_explicit_sps_path_still_works():
-    """Full E2E equivalence against PR-4 golden."""
+    """Full E2E equivalence against PR-3 golden."""
 ```
 
 ### 11.3 Equivalence tolerance policy
@@ -843,12 +1000,14 @@ trees are too big and ephemeral to commit.
 |------|-----------|----------|------------|
 | Float ULP drift introduced by reordering ops in loader | Medium | High | PR-1 explicitly does NOT touch unit-conversion math. Byte-equivalence test catches it. |
 | Path-resolution drift due to subtle formatting in `get_filename` (mantissa formatter `format_e` at `read_SB99.py:328-333`) | Medium | High | Path-resolution matrix test covers all legal combos. |
-| Header detection false positive on a numeric-looking SB99 file | Low | Medium | PR-2 detection rule is "first non-comment line has any non-numeric token". Test with synthetic edge case. |
+| User mis-declares `log` vs `linear` or wrong units in `sps_col_*` (silent physics-altering bug) | Medium | High | PR-2 hard-errors on unrecognized unit strings. For declared-but-wrong combinations (e.g. `erg/s log` when the file is actually linear erg/s), no automatic detection — `.param` review by the user is the line of defense. Open question §14 #7 below: add a per-canonical "expected order-of-magnitude" sanity check that warns on grossly out-of-range loaded values? |
+| User points `sps_path` at a headerless file expecting it to "just work" | Medium | Low | Hard error directs them to add a header row. Documented in PR-2 error template. |
 | `t=0` prepend hack (loader 262-275) double-applied if generic CSV already has t=0 | Medium | Medium | PR-2 loader detects `t[0] == 0` and skips prepend; explicit `test_t0_prepend_idempotent`. |
+| Constant-column sniff-test false-fires on legitimate SB99 artifacts (e.g. `l_sn` is constant during the pre-SN regime by design) | Medium | Low | No sniff-test in PR-2 — left for later. If added, it would need an allowlist for known-good constant patterns. |
 | Cooling tables silently mismatch generic SPS | High | Medium | Out-of-scope `UserWarning` emitted; tracked separately. |
 | `scipy.interp1d` deprecation in future scipy | Low | Low | Pin scipy in repo deps. Out of scope for this refactor. |
 | Users have configs that set `SB99_mass` to something other than the canonical 1e6 | Medium | Low | `sps_refmass` defaults to `SB99_mass`, back-compat preserved. Test with mass=2.5e6. |
-| PR-4 rename misses a consumer (silently leaves stale `SB99f` reference) | Low | High | `grep -r 'SB99' src/` after PR-4 must show only the back-compat alias declarations and docstrings/comments. |
+| PR-3 rename misses a consumer (silently leaves stale `SB99f` reference) | Low | High | `grep -r 'SB99' src/` after PR-3 must show only the back-compat alias declarations and docstrings/comments. |
 | Anchor configs (`cloud_example_*`) don't exercise some physics regime that breaks the refactor | Low | Medium | Three profiles (PL, BE, homogeneous) span the density-profile space. If a regression slips through, add a fourth anchor and re-golden. |
 
 ## 13. Rollout sequence
@@ -857,13 +1016,13 @@ trees are too big and ephemeral to commit.
    freshly captured tree to itself with zero drift (smoke test).
 2. **Branch `feature/sps-path-fallback`** for PR-1. Run battery; merge when
    green.
-3. **Branch `feature/sps-column-mapping`** for PR-2. Re-run full battery.
-4. **Branch `feature/sps-explicit-sn-cols`** for PR-3. Re-run full battery.
-5. **Branch `feature/sps-rename`** for PR-4. Re-run full battery + new
+3. **Branch `feature/sps-column-mapping`** for PR-2. Re-run full battery
+   (includes the explicit-SN-column and Li/Ln-override paths).
+4. **Branch `feature/sps-rename`** for PR-3. Re-run full battery + new
    alias tests.
-6. **One release cycle** with deprecation warnings in production.
-7. **Branch `fix/drop-sb99-deprecated-params`** for PR-5. Re-run battery
-   against the *post-PR-4 golden* (configs now use `sps_path` natively).
+5. **One release cycle** with deprecation warnings in production.
+6. **Branch `fix/drop-sb99-deprecated-params`** for PR-4. Re-run battery
+   against the *post-PR-3 golden* (configs now use `sps_path` natively).
 
 All branch names use the repo's `feature/` or `fix/` prefix per CLAUDE.md.
 The current audit branch (`claude/sb99-default-parameter-ttQIN`) violates
@@ -875,12 +1034,12 @@ properly-named branch.
 
 Before starting PR-1, please confirm:
 
-1. **Module rename scope.** In PR-4, keep loader at `src/sb99/read_SB99.py`
-   (rename symbols only), or move to `src/sps/read_sps.py`? Affects PR-4
+1. **Module rename scope.** In PR-3, keep loader at `src/sb99/read_SB99.py`
+   (rename symbols only), or move to `src/sps/read_sps.py`? Affects PR-3
    churn substantially. Recommendation: symbols only, keep module path; SB99
    is the canonical SPS for this codebase.
 2. **Deprecation window.** How long should `SB99_mass / SB99_rotation /
-   SB99_BHCUT` continue working before PR-5 deletes them? One release? Two?
+   SB99_BHCUT` continue working before PR-4 deletes them? One release? Two?
 3. **Anchor config selection.** Are `cloud_example_PL.param`,
    `cloud_example_BE.param`, `cloud_example_homogeneous.param` the right
    three for the E2E battery? They're the three tracked single-run example
@@ -895,6 +1054,19 @@ Before starting PR-1, please confirm:
 5. **Cooling coupling timing.** Out of scope here, but: do you want a
    parallel issue/PR opened to address `read_cloudy.py`'s SB99 keying, or
    leave that until the SPS refactor lands?
+6. **`sps_format` shortcut?** Should PR-2 accept a single
+   `sps_format    sb99_positional` key that lets users opt into the
+   7-column legacy preset for a non-default `sps_path` without
+   re-declaring every `sps_col_*` line? Convenience for "I'm just
+   pointing at a different SB99 file." Recommendation: leave out for
+   now — it's a foot-gun if applied to a non-SB99 file, and the explicit
+   `sps_col_*` block is short. Add later only if real friction shows up.
+7. **Order-of-magnitude sniff-test?** Should PR-2 (or a follow-up) add a
+   per-canonical "expected value range" check that warns when a loaded
+   column is grossly out-of-range (e.g. `Qi` linear value < 1e30 or
+   > 1e60)? Catches `log`-vs-`linear` mis-declarations but adds a
+   maintenance burden (the ranges have to be kept honest). Recommendation:
+   not in PR-2; revisit after first real user.
 
 ---
 
@@ -912,7 +1084,7 @@ Before starting PR-1, please confirm:
 - **`path_sps` default.** `lib/sps/starburst99/` is the on-disk default;
   `path_sps` is the indirection.
 - **Dead import.** `bubble_luminosity_modified.py:33` imports
-  `get_currentSB99feedback` and never calls it. PR-5 removes.
+  `get_currentSB99feedback` and never calls it. PR-4 removes.
 - **Boundary edge case.** The numerical derivative step `dt = 1e-9 Myr`
   (`update_feedback.py:187`) is unconditionally small. If a user-supplied
   CSV has `t_min > 0` and queries land near `t_min`, `fpdot_total(t - 1e-9)`
