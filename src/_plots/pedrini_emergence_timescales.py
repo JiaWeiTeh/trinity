@@ -473,7 +473,7 @@ def make_plot(rows: list[dict], pedrini_df, out_pdf: Path,
     if show_tau_pdr:
         ax.set_ylabel(r"$\tau$ [Myr]")
     else:
-        ax.set_ylabel(r"$\tau_{\rm TOT}$ [Myr]")
+        ax.set_ylabel(r"$\tau_{\rm disp}$ [Myr]")
 
     # Pad axis limits so size-inflated markers don't touch the spines.
     # y always anchors at 0; top adds 15% headroom over the largest plotted
@@ -556,7 +556,7 @@ def make_plot(rows: list[dict], pedrini_df, out_pdf: Path,
         handles += [
             Line2D([], [], marker="o", linestyle="none",
                    mfc="0.4", mec="0.4", markersize=mid_ms,
-                   label=r"$\tau_{\rm TOT}$"),
+                   label=r"$\tau_{\rm disp}$"),
             Line2D([], [], marker="s", linestyle="none",
                    mfc="none", mec="0.4", markersize=mid_ms,
                    label=r"$\tau_{\rm PDR}$"),
