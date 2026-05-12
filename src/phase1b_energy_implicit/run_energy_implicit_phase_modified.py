@@ -522,7 +522,7 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
                 f"Reached {nSnap_rCloud} segment(s) past rCloud "
                 f"(stop_at_rCloud_nSnap)"
             )
-            params['SimulationEndCode'].value = SimulationEndCode.RCLOUD_BOUNDARY
+            params['SimulationEndCode'].value = SimulationEndCode.RCLOUD_BOUNDARY.code
             params['EndSimulationDirectly'].value = True
             break
 
@@ -757,7 +757,7 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         if tmax is not None and t_now >= tmax:
             termination_reason = "reached_tmax"
             params['SimulationEndReason'].value = 'Stopping time reached'
-            params['SimulationEndCode'].value = SimulationEndCode.STOPPING_TIME
+            params['SimulationEndCode'].value = SimulationEndCode.STOPPING_TIME.code
             params['EndSimulationDirectly'].value = True
             logger.info(f"Simulation reached stop_t={tmax} Myr successfully")
             break
@@ -951,7 +951,7 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         if tmax is not None and t_now > tmax:
             termination_reason = "reached_tmax"
             params['SimulationEndReason'].value = 'Stopping time reached'
-            params['SimulationEndCode'].value = SimulationEndCode.STOPPING_TIME
+            params['SimulationEndCode'].value = SimulationEndCode.STOPPING_TIME.code
             params['EndSimulationDirectly'].value = True
             break
 
@@ -961,7 +961,7 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
             if R2 < coll_r:
                 termination_reason = "small_radius"
                 params['SimulationEndReason'].value = 'Small radius reached'
-                params['SimulationEndCode'].value = SimulationEndCode.SHELL_COLLAPSED
+                params['SimulationEndCode'].value = SimulationEndCode.SHELL_COLLAPSED.code
                 params['EndSimulationDirectly'].value = True
                 break
 
@@ -970,7 +970,7 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         if stop_r is not None and R2 > stop_r:
             termination_reason = "large_radius"
             params['SimulationEndReason'].value = 'Large radius reached'
-            params['SimulationEndCode'].value = SimulationEndCode.LARGE_RADIUS
+            params['SimulationEndCode'].value = SimulationEndCode.LARGE_RADIUS.code
             params['EndSimulationDirectly'].value = True
             break
 

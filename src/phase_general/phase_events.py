@@ -618,7 +618,7 @@ def apply_event_result(params, result: EventResult, t: float, y: np.ndarray,
     if result.is_simulation_ending:
         params['SimulationEndReason'].value = result.reason_message
         if result.end_code is not None and 'SimulationEndCode' in params:
-            params['SimulationEndCode'].value = result.end_code
+            params['SimulationEndCode'].value = result.end_code.code
         params['EndSimulationDirectly'].value = True
 
         # Mark collapse if it's a collapse-related event
