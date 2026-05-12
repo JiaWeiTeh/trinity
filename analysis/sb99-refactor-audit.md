@@ -300,6 +300,11 @@ legacy.
 
 ## 8. Minimum-viable refactor (concrete sketch)
 
+> **See `analysis/sb99-refactor-implementation-plan.md` for the full phased
+> plan, including the equivalence-test battery that guards against numerical
+> drift.** This section is the original rough sketch and is kept as a quick
+> orientation.
+
 The actual code change to "accept self-defined paths" can be done in two
 small PRs without touching any phase code:
 
