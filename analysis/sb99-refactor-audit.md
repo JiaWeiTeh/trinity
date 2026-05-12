@@ -347,13 +347,3 @@ just by pointing `sps_path` at it. No phase code changes.
   `fpdot_total(t - 1e-9)` near the boundary will raise. Existing SB99 grids
   are coarse enough that this hasn't surfaced; flag for any user-supplied
   CSV whose `t_min > 0`.
-
-## 7. Working notes
-
-- Branch: `claude/sb99-default-parameter-ttQIN` (violates the
-  `feature/bugfix/hotfix/fix` rule in CLAUDE.md — confirm with user before
-  pushing).
-- `SB99f` and `SB99_data` are flagged `exclude_from_snapshot=True`
-  (`read_param.py:472-473`).
-- `grep -ri sb99 src/` returns 174 hits across 18 files (as of 2026-05-12).
-- `lib/sps/starburst99/` is the on-disk default but `path_sps` is the indirection.
