@@ -24,8 +24,8 @@ returns an `SB99Feedback` dataclass while also writing each value back into
 | `SB99_mass` | `default.param:169` | `1e6` | Reference cluster mass; sets `f_mass = mCluster / SB99_mass`. |
 | `SB99_rotation` | `default.param:172` | `1` | Becomes `rot` / `norot` in filename. |
 | `SB99_BHCUT` | `default.param:176` | `120` | Becomes `BH120` / `BH40` in filename. |
-| `ZCloud` | (elsewhere) | — | Becomes `Z0014` / `Z0002` in filename. |
-| `FB_mColdWindFrac`, `FB_mColdSNFrac`, `FB_thermCoeffWind`, `FB_thermCoeffSN`, `FB_vSN` | `default.param:178-192` | — | Post-load corrections; orthogonal to file selection. |
+| `ZCloud` | `default.param:85` | `1` | Becomes `Z0014` / `Z0002` in filename. |
+| `FB_mColdWindFrac`, `FB_mColdSNFrac`, `FB_thermCoeffWind`, `FB_thermCoeffSN`, `FB_vSN` | `default.param:179-192` | `0, 0, 1, 1, 1e4` | Post-load corrections; orthogonal to file selection. |
 
 The filename comes out as `{1e6cluster}_{rot|norot}_{Z0014|Z0002}_{BH120|BH40}.txt`
 (`read_SB99.py:368`).
@@ -335,8 +335,8 @@ just by pointing `sps_path` at it. No phase code changes.
   `feature/bugfix/hotfix/fix` rule — **confirm with user before pushing**).
 - `SB99f` and `SB99_data` are flagged `exclude_from_snapshot=True`
   (`read_param.py:472-473`).
-- Audit covers 174 SB99-keyword hits across 18 files (2026-05-12). Only 6 are
-  real consumers (the rest are comments, docstrings, demo code, or the
+- Audit covers 174 SB99-keyword hits across 19 files (2026-05-12). Only 6 are
+  real runtime consumers (the rest are comments, docstrings, demo code, or the
   separate non-CIE cooling coupling).
 - `lib/sps/starburst99/` is the on-disk default but `path_sps` is the
   indirection.
