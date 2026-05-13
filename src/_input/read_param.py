@@ -31,6 +31,66 @@ from src._input.dictionary import DescribedItem, DescribedDict
 logger = logging.getLogger(__name__)
 
 
+def _get_legacy_sb99_filename(params):
+    """
+    Construct an SB99 filename from the legacy SB99_mass / SB99_rotation /
+    ZCloud / SB99_BHCUT grammar. This is the permanent fallback used when
+    sps_path = def_path (see analysis/sb99-refactor-audit.md §9).
+
+    Returns the bare filename (e.g. "1e6cluster_rot_Z0014_BH120.txt"); the
+    caller joins it with params['path_sps'].value to form the full path.
+
+    Supported combinations:
+    - ZCloud (metallicity): 1.0 (Z0014, solar) or 0.15 (Z0002, 0.15 solar)
+    - SB99_BHCUT (BH cutoff): 120 or 40 Msun
+    - SB99_rotation: truthy ('rot') or falsy ('norot')
+
+    Raises ValueError on unsupported ZCloud or SB99_BHCUT, pointing the user
+    at sps_path as the escape hatch for arbitrary SPS files.
+    """
+    SB99_mass = params.get('SB99_mass').value
+    SB99_rotation = params.get('SB99_rotation').value
+    ZCloud = params.get('ZCloud').value
+    SB99_BHCUT = params.get('SB99_BHCUT').value
+
+    if SB99_mass is None or SB99_mass <= 0:
+        raise ValueError(f"Invalid SB99_mass: {SB99_mass}")
+
+    def format_e(n):
+        """Format a positive number in simplified scientific notation (e.g. 1e6)."""
+        a = '%E' % n
+        mantissa = a.split('E')[0].rstrip('0').rstrip('.')
+        exponent = a.split('E')[1].strip('+').lstrip('0') or '0'
+        return f"{mantissa}e{exponent}"
+
+    SBmass_str = format_e(SB99_mass)
+    rot_str = 'rot' if SB99_rotation else 'norot'
+
+    if ZCloud == 1.0:
+        z_str = 'Z0014'
+    elif ZCloud == 0.15:
+        z_str = 'Z0002'
+    else:
+        raise ValueError(
+            f"Unsupported metallicity for legacy SB99 grammar: ZCloud = {ZCloud}. "
+            "Only 1.0 (solar) and 0.15 (0.15 solar) are supported. "
+            "For other metallicities, set sps_path explicitly to your SPS file."
+        )
+
+    if SB99_BHCUT == 120:
+        BH_str = 'BH120'
+    elif SB99_BHCUT == 40:
+        BH_str = 'BH40'
+    else:
+        raise ValueError(
+            f"Unsupported black hole cutoff for legacy SB99 grammar: "
+            f"SB99_BHCUT = {SB99_BHCUT}. Only 120 and 40 Msun are supported. "
+            "For other cutoffs, set sps_path explicitly to your SPS file."
+        )
+
+    return f"{SBmass_str}cluster_{rot_str}_{z_str}_{BH_str}.txt"
+
+
 def read_param(path2file, write_summary=True):
     """
     Read parameter file and return DescribedDict with all TRINITY parameters.
@@ -381,7 +441,35 @@ def read_param(path2file, write_summary=True):
         path_sps = str(params['path_sps'].value)
         Path(path_sps).mkdir(parents=True, exist_ok=True)
         params['path_sps'].value = path_sps
-    
+
+    # sps_refmass: reference cluster mass used by f_mass = mCluster / sps_refmass.
+    # Default sentinel 'def_value' falls back to SB99_mass so legacy configs
+    # remain bit-identical. See analysis/sb99-refactor-audit.md §9.
+    if params['sps_refmass'].value == 'def_value':
+        params['sps_refmass'].value = params['SB99_mass'].value
+
+    # sps_path: full path to the SPS data file. Default sentinel 'def_path'
+    # routes to the legacy SB99 filename grammar (permanent fallback, §9).
+    # Resolving here means the loader sees a single string, never a sentinel.
+    if params['sps_path'].value == 'def_path':
+        legacy_filename = _get_legacy_sb99_filename(params)
+        params['sps_path'].value = os.path.join(
+            params['path_sps'].value, legacy_filename
+        )
+        # One-time informational notification — NOT a deprecation warning;
+        # the legacy grammar is a permanent supported fallback.
+        logger.info(
+            "Using legacy SB99 parameter grammar "
+            f"(SB99_mass={params['SB99_mass'].value}, "
+            f"SB99_rotation={params['SB99_rotation'].value}, "
+            f"SB99_BHCUT={params['SB99_BHCUT'].value}, "
+            f"ZCloud={params['ZCloud'].value}); "
+            f"resolved sps_path = {params['sps_path'].value}"
+        )
+    else:
+        params['sps_path'].value = str(params['sps_path'].value)
+        logger.info(f"Using user-defined sps_path = {params['sps_path'].value}")
+
     # =============================================================================
     # Step 8: Handle density profile-specific parameters
     # =============================================================================

@@ -139,8 +139,8 @@ def start_expansion(params):
     logger.info("Step 2: Loading Starburst99 stellar feedback data...")
     # Scaling factor for cluster masses. Though this might only be accurate for
     # high mass clusters (~>1e5) in which the IMF is fully sampled.
-    f_mass = params['mCluster'] / params['SB99_mass']
-    logger.debug(f"SB99 mass scaling factor: {f_mass:.4f}")
+    f_mass = params['mCluster'] / params['sps_refmass']
+    logger.debug(f"SPS mass scaling factor: {f_mass:.4f}")
     # Get SB99 data and interpolation functions.
     SB99_data = read_SB99.read_SB99(f_mass, params)
     SB99f = read_SB99.get_interpolation(SB99_data)

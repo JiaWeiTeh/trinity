@@ -164,16 +164,28 @@ coll_r    1
 # Parameters for feedback calculations from Starburst99 
 # ==============================================================================
 
-# INFO: Default star cluster mass used in SB99.
+# INFO: Default star cluster mass used in SB99 (the reference mass the SB99
+#       grid is normalized against). Part of the legacy SB99 grammar
+#       (consulted when sps_path = def_path). When sps_path is set explicitly,
+#       f_mass scaling uses sps_refmass instead.
 # UNIT: [Msun]
 SB99_mass    1e6
 
 # INFO: Determines whether stellar rotation is considered in the stellar track.
+#       Legacy SB99 grammar — only consulted when sps_path = def_path.
 SB99_rotation    1
 
 # INFO: Defines the black hole formation threshold.
+#       Legacy SB99 grammar — only consulted when sps_path = def_path.
 # UNIT: [Msun]
 SB99_BHCUT    120
+
+# INFO: Reference cluster mass used in f_mass = mCluster / sps_refmass.
+#       If def_value (default), copied from SB99_mass at startup so existing
+#       legacy configs are unaffected. Override when sps_path points at an
+#       SPS file normalized to a different reference mass.
+# UNIT: [Msun]
+sps_refmass    def_value
 
 # INFO: Fraction of cold mass entrained in stellar winds (increases Mdot_wind, reduces velocity).
 FB_mColdWindFrac   0
@@ -302,8 +314,18 @@ path_cooling_CIE    3
 # INFO: Specifies the cooling curve folder for non-CIE conditions T < 1e5.5 K
 path_cooling_nonCIE    def_dir
 
-# INFO: Specifies the absolute path to Starburst99 (SPS) files.
+# INFO: Specifies the absolute path to the Starburst99 (SPS) data directory.
+#       Used by the legacy SB99 filename grammar when sps_path = def_path.
 path_sps    def_dir
+
+# INFO: Full path to an SPS data file. If def_path (default), the legacy SB99
+#       filename grammar (SB99_mass / SB99_rotation / SB99_BHCUT / ZCloud +
+#       path_sps) is used to resolve the file. Setting an explicit path
+#       bypasses the grammar — useful for arbitrary-metallicity SB99 runs or
+#       alternative SPS sources that match the 7-column positional format.
+#       The legacy SB99 path is a permanent supported fallback (never
+#       removed) — see analysis/sb99-refactor-audit.md §9.
+sps_path    def_path
 
 
 # =============================================================================

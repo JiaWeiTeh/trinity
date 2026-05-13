@@ -42,8 +42,10 @@ def read_SB99(f_mass, params):
         Cluster mass fraction (f_mass = M_cluster / SB99_mass)
     params : DescribedDict
         TRINITY parameters dictionary containing:
-        - path_sps : str, path to SB99 files
-        - SB99_mass, SB99_rotation, SB99_BHCUT, ZCloud : SB99 file selection
+        - sps_path : str, full path to the SPS data file (already resolved
+          by read_param.py; legacy SB99 grammar is the permanent fallback
+          when the user hasn't overridden sps_path — see
+          analysis/sb99-refactor-audit.md §9)
         - FB_mColdWindFrac, FB_thermCoeffWind : Wind corrections
         - FB_mColdSNFrac, FB_thermCoeffSN, FB_vSN : SN corrections
 
@@ -107,7 +109,7 @@ def read_SB99(f_mass, params):
         )
 
     required_keys = [
-        'path_sps', 'SB99_rotation', 'ZCloud', 'SB99_BHCUT',
+        'sps_path',
         'FB_mColdWindFrac', 'FB_thermCoeffWind',
         'FB_mColdSNFrac', 'FB_thermCoeffSN', 'FB_vSN'
     ]
@@ -119,12 +121,12 @@ def read_SB99(f_mass, params):
     logger.info(f"Reading SB99 data with f_mass = {f_mass}")
 
     # =========================================================================
-    # STEP 1: GET FILENAME AND READ FILE
+    # STEP 1: READ FILE
     # =========================================================================
+    # sps_path is already a resolved file path by the time we get here — see
+    # _get_legacy_sb99_filename in read_param.py for the legacy fallback path.
 
-    filename = get_filename(params)
-    path2sps = params['path_sps']
-    filepath = path2sps + filename
+    filepath = params['sps_path'].value
 
     logger.debug(f"Loading SB99 file: {filepath}")
 
@@ -133,10 +135,9 @@ def read_SB99(f_mass, params):
     except FileNotFoundError:
         raise FileNotFoundError(
             f"SB99 file not found: {filepath}\n"
-            f"Check parameters:\n"
-            f"  - SB99_rotation: {params['SB99_rotation']}\n"
-            f"  - ZCloud: {params['ZCloud']}\n"
-            f"  - SB99_BHCUT: {params['SB99_BHCUT']}"
+            "If sps_path was set explicitly, verify the path exists.\n"
+            "If the legacy SB99 grammar was used (sps_path = def_path),\n"
+            "check SB99_mass, SB99_rotation, ZCloud, and SB99_BHCUT in your .param."
         )
     except Exception as e:
         raise IOError(f"Error reading SB99 file {filepath}: {e}")
@@ -280,96 +281,6 @@ def read_SB99(f_mass, params):
     # Return all separated components
     return [t, Qi, Li, Ln, Lbol, Lmech_W, Lmech_SN, Lmech_total,
             pdot_W, pdot_SN, pdot_total]
-
-
-def get_filename(params):
-    """
-    Construct SB99 filename from simulation parameters.
-
-    Parameters
-    ----------
-    params : dict
-        Must contain:
-        - 'SB99_mass': Cluster mass in SB99 file [Msun]
-        - 'SB99_rotation': Boolean for stellar rotation
-        - 'ZCloud': Metallicity in solar units
-        - 'SB99_BHCUT': Black hole cutoff mass [Msun]
-
-    Returns
-    -------
-    filename : str
-        SB99 filename (e.g., "1e6cluster_rot_Z0014_BH120.txt")
-
-    Raises
-    ------
-    ValueError
-        If metallicity or BH cutoff not supported
-
-    Notes
-    -----
-    Filename format: {mass}cluster_{rotation}_{metallicity}_{BHcutoff}.txt
-
-    Supported combinations:
-    - Metallicity: 1.0 (Z0014, solar) or 0.15 (Z0002, 0.15 solar)
-    - BH cutoff: 120 Msun or 40 Msun
-    - Rotation: 'rot' or 'norot'
-    """
-
-    # Extract parameters with validation
-    SB99_mass = params.get('SB99_mass').value
-    SB99_rotation = params.get('SB99_rotation').value
-    ZCloud = params.get('ZCloud').value
-    SB99_BHCUT = params.get('SB99_BHCUT').value
-
-    if SB99_mass is None or SB99_mass <= 0:
-        raise ValueError(f"Invalid SB99_mass: {SB99_mass}")
-
-    # Format mass (e.g., 1000000 → "1e6")
-    def format_e(n: float) -> str:
-        """Format number in simplified scientific notation."""
-        a = '%E' % n
-        mantissa = a.split('E')[0].rstrip('0').rstrip('.')
-        exponent = a.split('E')[1].strip('+').lstrip('0') or '0'
-        return f"{mantissa}e{exponent}"
-
-    SBmass_str = format_e(SB99_mass)
-
-    # Rotation string
-    if SB99_rotation:
-        rot_str = 'rot'
-    else:
-        rot_str = 'norot'
-
-    # Metallicity string
-    if ZCloud == 1.0:
-        z_str = 'Z0014'  # Solar metallicity
-    elif ZCloud == 0.15:
-        z_str = 'Z0002'  # 0.15 solar
-    else:
-        raise ValueError(
-            f"Unsupported metallicity: ZCloud = {ZCloud}. "
-            "Only 1.0 (solar) and 0.15 (0.15 solar) are currently supported. "
-            "Available SB99 files must be added for other metallicities."
-        )
-
-    # Black hole cutoff string
-    if SB99_BHCUT == 120:
-        BH_str = 'BH120'
-    elif SB99_BHCUT == 40:
-        BH_str = 'BH40'
-    else:
-        raise ValueError(
-            f"Unsupported black hole cutoff mass: SB99_BHCUT = {SB99_BHCUT}. "
-            "Only 120 Msun and 40 Msun are currently supported. "
-            "Available SB99 files must be added for other cutoff masses."
-        )
-
-    # Construct filename
-    filename = f"{SBmass_str}cluster_{rot_str}_{z_str}_{BH_str}.txt"
-
-    logger.debug(f"SB99 filename: {filename}")
-
-    return filename
 
 
 def get_interpolation(SB99, ftype='cubic'):
