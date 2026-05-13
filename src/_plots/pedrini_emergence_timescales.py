@@ -444,7 +444,7 @@ def make_plot(rows: list[dict], pedrini_df, out_pdf: Path,
         breakout = r["breakout"]
         if breakout:
             ax.scatter([x], [r["tau_TOT"]], s=s_area, c=[color],
-                       marker="o", edgecolors=[color], linewidths=LW_SOLID)
+                       marker="o", edgecolors="k", linewidths=LW_SOLID)
             if show_tau_pdr:
                 ax.scatter([x], [r["tau_PDR"]], s=s_area,
                            facecolors="none", edgecolors=[color],
@@ -555,7 +555,7 @@ def make_plot(rows: list[dict], pedrini_df, out_pdf: Path,
         # style encodes breakout-vs-lower-limit; shape encodes TOT-vs-PDR.
         handles += [
             Line2D([], [], marker="o", linestyle="none",
-                   mfc="0.4", mec="0.4", markersize=mid_ms,
+                   mfc="0.4", mec="k", markersize=mid_ms,
                    label=r"$\tau_{\rm disp}$"),
             Line2D([], [], marker="s", linestyle="none",
                    mfc="none", mec="0.4", markersize=mid_ms,
@@ -566,7 +566,7 @@ def make_plot(rows: list[dict], pedrini_df, out_pdf: Path,
     elif mixed_breakout:
         handles += [
             Line2D([], [], marker="o", linestyle="none",
-                   mfc="0.4", mec="0.4", markersize=mid_ms,
+                   mfc="0.4", mec="k", markersize=mid_ms,
                    label="breakout"),
             _lower_limit_proxy("lower limit (stop_t)"),
         ]
@@ -574,7 +574,7 @@ def make_plot(rows: list[dict], pedrini_df, out_pdf: Path,
         m = 10 ** log_m
         ms = _marker_size(m, m_min, m_max)
         handles.append(Line2D([], [], marker="o", linestyle="none",
-                              mfc="0.4", mec="0.4", markersize=ms,
+                              mfc="0.4", mec="k", markersize=ms,
                               label=fr"$M_{{\rm cloud}}={_fmt_log_m(log_m)}"
                                     r"\,M_\odot$"))
     if pedrini_df is not None:
