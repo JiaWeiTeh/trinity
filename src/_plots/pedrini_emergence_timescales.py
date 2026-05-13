@@ -33,6 +33,23 @@ Add `--show_tau_pdr` to also compute and plot tau_PDR.  Use
 `--colourbar discrete` to swap the default viridis colourbar for a
 Wong-palette band-per-sfe colourbar (useful for narrow sweeps).
 
+Merge mode
+----------
+Pass `--merge_dir <other_sweep>` to overlay a second sweep whose runs
+differ from `--sweep_dir` only in their density-profile settings (e.g.
+densPL vs densBE, or two densPL_alpha values). Runs are paired by
+(mCloud, sfe, nCore); unpaired runs are listed and skipped. The
+`--sweep_dir` markers are drawn with solid edges at alpha=0.3
+(70%% transparent), and the `--merge_dir` markers with dashed edges at
+alpha=0.8 (20%% transparent), so overlapping points are still
+distinguishable. The legend is placed inside the top-right of the axes
+in merge mode. Output is `pedrini_emergence_timescales_merge.pdf`
+under the `--sweep_dir` fig dir.
+
+Note: in merge mode the dash pattern encodes the folder, not the
+breakout vs lower-limit status — fill state alone now carries that
+signal (filled circle = breakout, open circle = lower limit).
+
 The Pedrini+2026 overlay is optional.  Pass `--pedrini_csv mock` to
 use the hand-digitised reference data embedded in this script:
 
@@ -62,7 +79,9 @@ A one-line notice for each run that breaks out:
         (snapshots i=k-1/k, R2=...->... pc, t=...->... Myr)
 
 Runs without that notice did not break out; their tau_TOT is a lower
-limit (t_max), plotted as an open circle with a dashed edge in the figure.
+limit (t_max), plotted as an open circle in the figure (with a dashed
+edge in single-folder mode; in merge mode the edge style is reserved for
+the folder encoding, so the open fill alone signals 'lower limit').
 
 If any runs recollapsed (v2<0 anywhere), a notice listing the dropped
 run names is printed after the CSV is written.
@@ -298,6 +317,66 @@ def collect_all(sweep_dir: Path, show_tau_pdr: bool = False) -> list[dict]:
 
 
 # ---------------------------------------------------------------------------
+# Merge-mode helpers
+# ---------------------------------------------------------------------------
+
+def _round_sig(x: float, n: int = 6) -> float:
+    """Round to n significant figures so float keys can be matched reliably."""
+    if x == 0:
+        return 0.0
+    return round(x, -int(np.floor(np.log10(abs(x)))) + (n - 1))
+
+
+def _match_key(row: dict) -> tuple:
+    """Identity used to pair runs across two sweep folders.
+
+    (mCloud, sfe, nCore_cgs) covers the plot's x-axis, colour and the
+    underlying density input — the params the user actually sweeps. Anything
+    else (dens_profile, densPL_alpha, densBE_Omega, ...) is allowed to differ,
+    which is the whole point of the merge mode.
+    """
+    return (_round_sig(row["mCloud"]),
+            _round_sig(row["sfe"]),
+            _round_sig(row["nCore_cgs"]))
+
+
+def pair_runs(rows_a: list[dict], rows_b: list[dict]):
+    """Return (matched_a, matched_b, unmatched_a, unmatched_b).
+
+    matched_a[i] and matched_b[i] share the same _match_key. Unmatched rows
+    are kept around so main() can announce them; they aren't plotted.
+    """
+    keys_a = {_match_key(r): r for r in rows_a}
+    keys_b = {_match_key(r): r for r in rows_b}
+    common = set(keys_a) & set(keys_b)
+    matched_a = [keys_a[k] for k in sorted(common)]
+    matched_b = [keys_b[k] for k in sorted(common)]
+    unmatched_a = [r for r in rows_a if _match_key(r) not in common]
+    unmatched_b = [r for r in rows_b if _match_key(r) not in common]
+    return matched_a, matched_b, unmatched_a, unmatched_b
+
+
+def folder_dens_profile_label(sweep_dir: Path) -> str:
+    """Construct a legend label from the first .param's density-profile settings.
+
+    Reads dens_profile (densPL / densBE) and the relevant shape knob
+    (densPL_alpha or densBE_Omega) from any one run in the sweep. Falls back
+    to the sweep directory name when no .param can be parsed.
+    """
+    try:
+        first_param = next(sweep_dir.rglob("*.param"))
+    except StopIteration:
+        return sweep_dir.name
+    params = parse_param_file(first_param)
+    profile = params.get("dens_profile")
+    if profile == "densPL":
+        return fr"densPL ($\alpha={params.get('densPL_alpha', '?')}$)"
+    if profile == "densBE":
+        return fr"densBE ($\Omega={params.get('densBE_Omega', '?')}$)"
+    return profile or sweep_dir.name
+
+
+# ---------------------------------------------------------------------------
 # Output
 # ---------------------------------------------------------------------------
 
@@ -430,8 +509,12 @@ def make_plot(rows: list[dict], pedrini_df, out_pdf: Path,
     fig, ax = plt.subplots()
 
     # tau_TOT marker recipe (recollapse already dropped):
-    #   - breakout:        filled circle, solid edge
-    #   - lower limit:     open circle,   dashed edge  (still going at stop_t)
+    #   single-folder mode:
+    #     - breakout:     filled circle, solid black edge
+    #     - lower limit:  open circle,   dashed coloured edge (still at stop_t)
+    #   merge mode (rows carry _dashed):
+    #     - line style encodes folder (folder1=solid, folder2=dashed); fill
+    #       still encodes breakout (filled=breakout, open=lower limit).
     # tau_PDR markers echo the same edge-style convention with a square so
     # the TOT/PDR axes stay visually independent.
     LW_SOLID  = 1.0
@@ -442,21 +525,34 @@ def make_plot(rows: list[dict], pedrini_df, out_pdf: Path,
         s_area = ms ** 2  # scatter `s` is area in pts^2; plot `markersize` is diameter in pts
         color = sfe_color(r["sfe"])
         breakout = r["breakout"]
+        alpha = r.get("_alpha", 1.0)  # merge mode pre-tags rows with an alpha
+        # In merge mode the dash pattern is forced by the folder tag, so it
+        # no longer carries the breakout signal — fill state alone does that.
+        if "_dashed" in r:
+            dashed = bool(r["_dashed"])
+        else:
+            dashed = not breakout
+        ls = "--" if dashed else "-"
+        lw = LW_DASHED if dashed else LW_SOLID
         if breakout:
             ax.scatter([x], [r["tau_TOT"]], s=s_area, c=[color],
-                       marker="o", edgecolors="k", linewidths=LW_SOLID)
+                       marker="o", edgecolors="k",
+                       linestyles=ls, linewidths=lw, alpha=alpha)
             if show_tau_pdr:
                 ax.scatter([x], [r["tau_PDR"]], s=s_area,
                            facecolors="none", edgecolors=[color],
-                           marker="s", linewidths=LW_SOLID)
+                           marker="s",
+                           linestyles=ls, linewidths=lw, alpha=alpha)
         else:
             ax.scatter([x], [r["tau_TOT"]], s=s_area,
                        facecolors="none", edgecolors=[color],
-                       marker="o", linestyles="--", linewidths=LW_DASHED)
+                       marker="o",
+                       linestyles=ls, linewidths=lw, alpha=alpha)
             if show_tau_pdr:
                 ax.scatter([x], [r["tau_PDR"]], s=s_area,
                            facecolors="none", edgecolors=[color],
-                           marker="s", linestyles="--", linewidths=LW_DASHED)
+                           marker="s",
+                           linestyles=ls, linewidths=lw, alpha=alpha)
 
     if pedrini_df is not None:
         ax.errorbar(pedrini_df["log_Mstar"], pedrini_df["tau_TOT"],
@@ -527,6 +623,11 @@ def make_plot(rows: list[dict], pedrini_df, out_pdf: Path,
     mid_ms = 0.5 * (_marker_size(m_min, m_min, m_max)
                     + _marker_size(m_max, m_min, m_max))
 
+    # In merge mode the dash pattern encodes the folder, so the lower-limit
+    # legend swatch must use a solid edge — otherwise it would clash with the
+    # folder2 (dashed) encoding and read as "lower limit in folder2 only".
+    in_merge_mode = any("_dashed" in r for r in rows)
+
     # Show the breakout/no-breakout shape legend only when both variants
     # are actually present in the data.  In single-variant sweeps the shape
     # carries no information and the entry would just be noise.
@@ -537,22 +638,30 @@ def make_plot(rows: list[dict], pedrini_df, out_pdf: Path,
     def _lower_limit_proxy(label: str):
         """Open-circle proxy for the 'lower limit' legend entry.
 
-        Plotted points use scatter with linestyles='--' for a dashed edge,
+        Single-folder mode: data points use a dashed coloured edge for
+        lower-limit runs, so the swatch mirrors that with markeredgewidth=
+        LW_DASHED. Merge mode: edge style is reserved for the folder
+        encoding, so the proxy falls back to a solid thin edge and relies
+        on the open fill alone to convey 'lower limit'.
+
+        Plotted points use scatter with linestyles='--' for the dashed edge,
         but a PathCollection-as-legend-handle picks up colormap state in
-        practice and renders the swatch in the wrong colour.  A plain
-        Line2D open circle still conveys 'lower limit' next to the filled
-        breakout marker; the dashed edge on the actual data points carries
-        the rest of the signal.
+        practice and renders the swatch in the wrong colour, hence the
+        plain Line2D handle.
         """
         return Line2D([], [], marker="o", linestyle="none",
                       mfc="none", mec="0.4",
-                      markersize=mid_ms, markeredgewidth=LW_DASHED,
+                      markersize=mid_ms,
+                      markeredgewidth=(LW_SOLID if in_merge_mode else LW_DASHED),
                       label=label)
 
     handles: list = []
     if show_tau_pdr:
-        # TOT/PDR distinction is always meaningful in tau_PDR mode.  Edge
-        # style encodes breakout-vs-lower-limit; shape encodes TOT-vs-PDR.
+        # TOT/PDR distinction is always meaningful in tau_PDR mode. Shape
+        # encodes TOT-vs-PDR; in single-folder mode edge style also encodes
+        # breakout-vs-lower-limit, but in merge mode that signal is carried
+        # by fill state alone (open = lower limit), since edge style is
+        # claimed by the folder encoding.
         handles += [
             Line2D([], [], marker="o", linestyle="none",
                    mfc="0.4", mec="k", markersize=mid_ms,
@@ -581,13 +690,40 @@ def make_plot(rows: list[dict], pedrini_df, out_pdf: Path,
         handles.append(Line2D([], [], marker="o", linestyle="none",
                               mfc=REF_COLOR, mec=REF_COLOR, markersize=mid_ms,
                               label="Pedrini+2026"))
-    # Park the legend above the axes in a two-column layout.  The
-    # colourbar sits on the right, so leaving the strip above the axes
-    # for the legend keeps the data area uncluttered.
-    ax.legend(handles=handles, loc="lower center",
-              bbox_to_anchor=(0.5, 1.02), ncol=2,
-              frameon=False, fontsize="small",
-              handletextpad=0.4, columnspacing=1.2, borderaxespad=0.0)
+
+    # Merge mode: one swatch per folder, with line style + alpha matching the
+    # data points (folder1 → solid, alpha=0.3; folder2 → dashed, alpha=0.8).
+    # Preserves the order in which the folders were tagged in main().
+    seen_groups: list[tuple[str, float, bool]] = []
+    for r in rows:
+        g = r.get("_group")
+        if g is None:
+            continue
+        entry = (g, r.get("_alpha", 1.0), bool(r.get("_dashed", False)))
+        if entry not in seen_groups:
+            seen_groups.append(entry)
+    # The data uses marker-edge dash patterns to encode the folder, but a
+    # Line2D legend handle can't show a dashed marker edge — `linestyle` only
+    # affects its connecting line. So we draw a short connecting line through
+    # the marker and let that line's style carry the solid/dashed signal.
+    for label, alpha, dashed in seen_groups:
+        handles.append(Line2D([], [], marker="o",
+                              linestyle="--" if dashed else "-",
+                              color="0.4", mfc="0.4", mec="k",
+                              markersize=mid_ms,
+                              alpha=alpha, label=label))
+    # Single-folder mode keeps the legend above the axes (colourbar is on the
+    # right). Merge mode parks it inside the top-right corner of the data
+    # area, where the user wants direct visual association with the points.
+    if in_merge_mode:
+        ax.legend(handles=handles, loc="upper right",
+                  frameon=False, fontsize="small",
+                  handletextpad=0.4, borderaxespad=0.5)
+    else:
+        ax.legend(handles=handles, loc="lower center",
+                  bbox_to_anchor=(0.5, 1.02), ncol=2,
+                  frameon=False, fontsize="small",
+                  handletextpad=0.4, columnspacing=1.2, borderaxespad=0.0)
 
     fig.savefig(out_pdf, bbox_inches="tight")
     print(f"Saved: {out_pdf}")
@@ -605,6 +741,14 @@ def main():
     )
     ap.add_argument("--sweep_dir", required=True, type=Path,
                     help="Sweep output directory (contains per-run subdirs).")
+    ap.add_argument("--merge_dir", type=Path, default=None,
+                    help="Optional second sweep directory.  When set, runs in "
+                         "the two folders are paired by (mCloud, sfe, nCore); "
+                         "the matched pairs are drawn together with --sweep_dir "
+                         "as solid edges at alpha=0.3 (70%% transparent) and "
+                         "--merge_dir as dashed edges at alpha=0.8 (20%% "
+                         "transparent).  Output file is "
+                         "pedrini_emergence_timescales_merge.pdf.")
     ap.add_argument("--pedrini_csv", type=str, default=None,
                     help="Optional Pedrini+2026 CSV path "
                          "(log_Mstar, tau_TOT, tau_TOT_err, and optionally "
@@ -635,10 +779,88 @@ def main():
     fig_dir = FIG_DIR / sweep_dir.name
     fig_dir.mkdir(parents=True, exist_ok=True)
 
-    csv_path = fig_dir / "pedrini_emergence_timescales_summary.csv"
+    # In merge mode the per-sweep CSVs use folder-suffixed names so they
+    # don't overwrite the single-folder run's CSV in the same fig_dir.
+    if args.merge_dir is None:
+        csv_path = fig_dir / "pedrini_emergence_timescales_summary.csv"
+    else:
+        csv_path = fig_dir / f"pedrini_emergence_timescales_summary_{sweep_dir.name}.csv"
     # CSV keeps every row (with recollapse_flag) for the audit trail.
     write_summary_csv(rows, csv_path, show_tau_pdr=args.show_tau_pdr)
     print(f"Wrote summary: {csv_path} ({len(rows)} rows)")
+
+    if args.pedrini_csv is None:
+        pedrini_df = None
+    elif args.pedrini_csv == "mock":
+        pedrini_df = load_pedrini_csv("mock")
+    else:
+        csv_in = Path(args.pedrini_csv).resolve()
+        if not csv_in.is_file():
+            ap.error(f"--pedrini_csv not found: {csv_in}")
+        pedrini_df = load_pedrini_csv(csv_in)
+
+    if args.merge_dir is not None:
+        merge_dir = args.merge_dir.resolve()
+        if not merge_dir.is_dir():
+            ap.error(f"--merge_dir not found: {merge_dir}")
+        if merge_dir == sweep_dir:
+            print("[pedrini_tau] --merge_dir matches --sweep_dir; "
+                  "merge mode will pair every run with itself.")
+
+        rows_b = collect_all(merge_dir, show_tau_pdr=args.show_tau_pdr)
+        if not rows_b:
+            ap.error(f"No simulations found under {merge_dir}")
+
+        csv_path_b = fig_dir / f"pedrini_emergence_timescales_summary_{merge_dir.name}.csv"
+        write_summary_csv(rows_b, csv_path_b, show_tau_pdr=args.show_tau_pdr)
+        print(f"Wrote summary: {csv_path_b} ({len(rows_b)} rows)")
+
+        # Recollapse runs lack a Pedrini-relevant tau_TOT, so drop them
+        # BEFORE pairing — otherwise we'd reject a perfectly good run in
+        # folder A only because its partner in folder B recollapsed.
+        rows_a_ok = [r for r in rows  if not r.get("recollapse")]
+        rows_b_ok = [r for r in rows_b if not r.get("recollapse")]
+        n_recol_a = len(rows)   - len(rows_a_ok)
+        n_recol_b = len(rows_b) - len(rows_b_ok)
+        if n_recol_a or n_recol_b:
+            print(f"[pedrini_tau] Dropped recollapsing runs before pairing: "
+                  f"{n_recol_a} from {sweep_dir.name}, "
+                  f"{n_recol_b} from {merge_dir.name}.")
+
+        matched_a, matched_b, unmatched_a, unmatched_b = pair_runs(
+            rows_a_ok, rows_b_ok
+        )
+        if unmatched_a or unmatched_b:
+            print(f"[pedrini_tau] Unpaired runs (no (mCloud, sfe, nCore) match):")
+            for r in unmatched_a:
+                print(f"  - {sweep_dir.name}/{r['run_name']}")
+            for r in unmatched_b:
+                print(f"  - {merge_dir.name}/{r['run_name']}")
+        if not matched_a:
+            ap.error("No paired runs found between the two folders — "
+                     "check that they share (mCloud, sfe, nCore) values.")
+
+        # Encoding per the user's spec:
+        #   folder1 (--sweep_dir): solid edges, alpha=0.3 (70% transparent)
+        #   folder2 (--merge_dir): dashed edges, alpha=0.8 (20% transparent)
+        # Labels come from the density-profile settings in each folder's .param.
+        label_a = folder_dens_profile_label(sweep_dir)
+        label_b = folder_dens_profile_label(merge_dir)
+        for r in matched_a:
+            r["_alpha"]  = 0.3
+            r["_dashed"] = False
+            r["_group"]  = label_a
+        for r in matched_b:
+            r["_alpha"]  = 0.8
+            r["_dashed"] = True
+            r["_group"]  = label_b
+        plot_rows = matched_a + matched_b
+        pdf_path = fig_dir / "pedrini_emergence_timescales_merge.pdf"
+        print(f"[pedrini_tau] Plotting {len(matched_a)} matched pair(s): "
+              f"{label_a} (solid, α=0.3) vs {label_b} (dashed, α=0.8).")
+        make_plot(plot_rows, pedrini_df, pdf_path,
+                  show_tau_pdr=args.show_tau_pdr, colourbar=args.colourbar)
+        return
 
     # Recollapse runs don't have a Pedrini-relevant tau_TOT (their shell
     # turned around before emergence); drop them from the plot and announce
@@ -653,16 +875,6 @@ def main():
     if not plot_rows:
         print("[pedrini_tau] All runs recollapsed — nothing to plot.")
         return
-
-    if args.pedrini_csv is None:
-        pedrini_df = None
-    elif args.pedrini_csv == "mock":
-        pedrini_df = load_pedrini_csv("mock")
-    else:
-        csv_in = Path(args.pedrini_csv).resolve()
-        if not csv_in.is_file():
-            ap.error(f"--pedrini_csv not found: {csv_in}")
-        pedrini_df = load_pedrini_csv(csv_in)
 
     pdf_path = fig_dir / "pedrini_emergence_timescales.pdf"
     make_plot(plot_rows, pedrini_df, pdf_path, show_tau_pdr=args.show_tau_pdr,
