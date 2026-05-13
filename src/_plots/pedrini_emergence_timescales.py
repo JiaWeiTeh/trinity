@@ -39,10 +39,16 @@ Pass `--merge_dir <other_sweep>` to overlay a second sweep whose runs
 differ from `--sweep_dir` only in their density-profile settings (e.g.
 densPL vs densBE, or two densPL_alpha values). Runs are paired by
 (mCloud, sfe, nCore); unpaired runs are listed and skipped. The
-`--sweep_dir` markers are drawn at alpha=0.3 (70%% transparent) and the
-`--merge_dir` markers at alpha=0.8 (20%% transparent), so overlapping
-points are still distinguishable. Output is
-`pedrini_emergence_timescales_merge.pdf` under the `--sweep_dir` fig dir.
+`--sweep_dir` markers are drawn with solid edges at alpha=0.3
+(70%% transparent), and the `--merge_dir` markers with dashed edges at
+alpha=0.8 (20%% transparent), so overlapping points are still
+distinguishable. The legend is placed inside the top-right of the axes
+in merge mode. Output is `pedrini_emergence_timescales_merge.pdf`
+under the `--sweep_dir` fig dir.
+
+Note: in merge mode the dash pattern encodes the folder, not the
+breakout vs lower-limit status — fill state alone now carries that
+signal (filled circle = breakout, open circle = lower limit).
 
 The Pedrini+2026 overlay is optional.  Pass `--pedrini_csv mock` to
 use the hand-digitised reference data embedded in this script:
@@ -73,7 +79,9 @@ A one-line notice for each run that breaks out:
         (snapshots i=k-1/k, R2=...->... pc, t=...->... Myr)
 
 Runs without that notice did not break out; their tau_TOT is a lower
-limit (t_max), plotted as an open circle with a dashed edge in the figure.
+limit (t_max), plotted as an open circle in the figure (with a dashed
+edge in single-folder mode; in merge mode the edge style is reserved for
+the folder encoding, so the open fill alone signals 'lower limit').
 
 If any runs recollapsed (v2<0 anywhere), a notice listing the dropped
 run names is printed after the CSV is written.
@@ -501,8 +509,12 @@ def make_plot(rows: list[dict], pedrini_df, out_pdf: Path,
     fig, ax = plt.subplots()
 
     # tau_TOT marker recipe (recollapse already dropped):
-    #   - breakout:        filled circle, solid edge
-    #   - lower limit:     open circle,   dashed edge  (still going at stop_t)
+    #   single-folder mode:
+    #     - breakout:     filled circle, solid black edge
+    #     - lower limit:  open circle,   dashed coloured edge (still at stop_t)
+    #   merge mode (rows carry _dashed):
+    #     - line style encodes folder (folder1=solid, folder2=dashed); fill
+    #       still encodes breakout (filled=breakout, open=lower limit).
     # tau_PDR markers echo the same edge-style convention with a square so
     # the TOT/PDR axes stay visually independent.
     LW_SOLID  = 1.0
@@ -514,24 +526,33 @@ def make_plot(rows: list[dict], pedrini_df, out_pdf: Path,
         color = sfe_color(r["sfe"])
         breakout = r["breakout"]
         alpha = r.get("_alpha", 1.0)  # merge mode pre-tags rows with an alpha
+        # In merge mode the dash pattern is forced by the folder tag, so it
+        # no longer carries the breakout signal — fill state alone does that.
+        if "_dashed" in r:
+            dashed = bool(r["_dashed"])
+        else:
+            dashed = not breakout
+        ls = "--" if dashed else "-"
+        lw = LW_DASHED if dashed else LW_SOLID
         if breakout:
             ax.scatter([x], [r["tau_TOT"]], s=s_area, c=[color],
-                       marker="o", edgecolors="k", linewidths=LW_SOLID,
-                       alpha=alpha)
+                       marker="o", edgecolors="k",
+                       linestyles=ls, linewidths=lw, alpha=alpha)
             if show_tau_pdr:
                 ax.scatter([x], [r["tau_PDR"]], s=s_area,
                            facecolors="none", edgecolors=[color],
-                           marker="s", linewidths=LW_SOLID, alpha=alpha)
+                           marker="s",
+                           linestyles=ls, linewidths=lw, alpha=alpha)
         else:
             ax.scatter([x], [r["tau_TOT"]], s=s_area,
                        facecolors="none", edgecolors=[color],
-                       marker="o", linestyles="--", linewidths=LW_DASHED,
-                       alpha=alpha)
+                       marker="o",
+                       linestyles=ls, linewidths=lw, alpha=alpha)
             if show_tau_pdr:
                 ax.scatter([x], [r["tau_PDR"]], s=s_area,
                            facecolors="none", edgecolors=[color],
-                           marker="s", linestyles="--", linewidths=LW_DASHED,
-                           alpha=alpha)
+                           marker="s",
+                           linestyles=ls, linewidths=lw, alpha=alpha)
 
     if pedrini_df is not None:
         ax.errorbar(pedrini_df["log_Mstar"], pedrini_df["tau_TOT"],
@@ -602,6 +623,11 @@ def make_plot(rows: list[dict], pedrini_df, out_pdf: Path,
     mid_ms = 0.5 * (_marker_size(m_min, m_min, m_max)
                     + _marker_size(m_max, m_min, m_max))
 
+    # In merge mode the dash pattern encodes the folder, so the lower-limit
+    # legend swatch must use a solid edge — otherwise it would clash with the
+    # folder2 (dashed) encoding and read as "lower limit in folder2 only".
+    in_merge_mode = any("_dashed" in r for r in rows)
+
     # Show the breakout/no-breakout shape legend only when both variants
     # are actually present in the data.  In single-variant sweeps the shape
     # carries no information and the entry would just be noise.
@@ -612,22 +638,30 @@ def make_plot(rows: list[dict], pedrini_df, out_pdf: Path,
     def _lower_limit_proxy(label: str):
         """Open-circle proxy for the 'lower limit' legend entry.
 
-        Plotted points use scatter with linestyles='--' for a dashed edge,
+        Single-folder mode: data points use a dashed coloured edge for
+        lower-limit runs, so the swatch mirrors that with markeredgewidth=
+        LW_DASHED. Merge mode: edge style is reserved for the folder
+        encoding, so the proxy falls back to a solid thin edge and relies
+        on the open fill alone to convey 'lower limit'.
+
+        Plotted points use scatter with linestyles='--' for the dashed edge,
         but a PathCollection-as-legend-handle picks up colormap state in
-        practice and renders the swatch in the wrong colour.  A plain
-        Line2D open circle still conveys 'lower limit' next to the filled
-        breakout marker; the dashed edge on the actual data points carries
-        the rest of the signal.
+        practice and renders the swatch in the wrong colour, hence the
+        plain Line2D handle.
         """
         return Line2D([], [], marker="o", linestyle="none",
                       mfc="none", mec="0.4",
-                      markersize=mid_ms, markeredgewidth=LW_DASHED,
+                      markersize=mid_ms,
+                      markeredgewidth=(LW_SOLID if in_merge_mode else LW_DASHED),
                       label=label)
 
     handles: list = []
     if show_tau_pdr:
-        # TOT/PDR distinction is always meaningful in tau_PDR mode.  Edge
-        # style encodes breakout-vs-lower-limit; shape encodes TOT-vs-PDR.
+        # TOT/PDR distinction is always meaningful in tau_PDR mode. Shape
+        # encodes TOT-vs-PDR; in single-folder mode edge style also encodes
+        # breakout-vs-lower-limit, but in merge mode that signal is carried
+        # by fill state alone (open = lower limit), since edge style is
+        # claimed by the folder encoding.
         handles += [
             Line2D([], [], marker="o", linestyle="none",
                    mfc="0.4", mec="k", markersize=mid_ms,
@@ -657,28 +691,39 @@ def make_plot(rows: list[dict], pedrini_df, out_pdf: Path,
                               mfc=REF_COLOR, mec=REF_COLOR, markersize=mid_ms,
                               label="Pedrini+2026"))
 
-    # Merge mode: one swatch per folder, alpha matches the data points so the
-    # reader can map faded/solid markers in the plot back to the dens-profile
-    # label.  Preserves the order in which the folders were tagged in main().
-    seen_groups: list[tuple[str, float]] = []
+    # Merge mode: one swatch per folder, with line style + alpha matching the
+    # data points (folder1 → solid, alpha=0.3; folder2 → dashed, alpha=0.8).
+    # Preserves the order in which the folders were tagged in main().
+    seen_groups: list[tuple[str, float, bool]] = []
     for r in rows:
         g = r.get("_group")
         if g is None:
             continue
-        entry = (g, r.get("_alpha", 1.0))
+        entry = (g, r.get("_alpha", 1.0), bool(r.get("_dashed", False)))
         if entry not in seen_groups:
             seen_groups.append(entry)
-    for label, alpha in seen_groups:
-        handles.append(Line2D([], [], marker="o", linestyle="none",
-                              mfc="0.4", mec="k", markersize=mid_ms,
+    # The data uses marker-edge dash patterns to encode the folder, but a
+    # Line2D legend handle can't show a dashed marker edge — `linestyle` only
+    # affects its connecting line. So we draw a short connecting line through
+    # the marker and let that line's style carry the solid/dashed signal.
+    for label, alpha, dashed in seen_groups:
+        handles.append(Line2D([], [], marker="o",
+                              linestyle="--" if dashed else "-",
+                              color="0.4", mfc="0.4", mec="k",
+                              markersize=mid_ms,
                               alpha=alpha, label=label))
-    # Park the legend above the axes in a two-column layout.  The
-    # colourbar sits on the right, so leaving the strip above the axes
-    # for the legend keeps the data area uncluttered.
-    ax.legend(handles=handles, loc="lower center",
-              bbox_to_anchor=(0.5, 1.02), ncol=2,
-              frameon=False, fontsize="small",
-              handletextpad=0.4, columnspacing=1.2, borderaxespad=0.0)
+    # Single-folder mode keeps the legend above the axes (colourbar is on the
+    # right). Merge mode parks it inside the top-right corner of the data
+    # area, where the user wants direct visual association with the points.
+    if in_merge_mode:
+        ax.legend(handles=handles, loc="upper right",
+                  frameon=False, fontsize="small",
+                  handletextpad=0.4, borderaxespad=0.5)
+    else:
+        ax.legend(handles=handles, loc="lower center",
+                  bbox_to_anchor=(0.5, 1.02), ncol=2,
+                  frameon=False, fontsize="small",
+                  handletextpad=0.4, columnspacing=1.2, borderaxespad=0.0)
 
     fig.savefig(out_pdf, bbox_inches="tight")
     print(f"Saved: {out_pdf}")
@@ -700,8 +745,9 @@ def main():
                     help="Optional second sweep directory.  When set, runs in "
                          "the two folders are paired by (mCloud, sfe, nCore); "
                          "the matched pairs are drawn together with --sweep_dir "
-                         "at alpha=0.3 (70%% transparent) and --merge_dir at "
-                         "alpha=0.8 (20%% transparent).  Output file is "
+                         "as solid edges at alpha=0.3 (70%% transparent) and "
+                         "--merge_dir as dashed edges at alpha=0.8 (20%% "
+                         "transparent).  Output file is "
                          "pedrini_emergence_timescales_merge.pdf.")
     ap.add_argument("--pedrini_csv", type=str, default=None,
                     help="Optional Pedrini+2026 CSV path "
@@ -794,21 +840,24 @@ def main():
             ap.error("No paired runs found between the two folders — "
                      "check that they share (mCloud, sfe, nCore) values.")
 
-        # alpha values follow the user's spec: 70% transparent for folder1,
-        # 20% transparent for folder2.  Labels come from the density-profile
-        # settings in each folder's .param.
+        # Encoding per the user's spec:
+        #   folder1 (--sweep_dir): solid edges, alpha=0.3 (70% transparent)
+        #   folder2 (--merge_dir): dashed edges, alpha=0.8 (20% transparent)
+        # Labels come from the density-profile settings in each folder's .param.
         label_a = folder_dens_profile_label(sweep_dir)
         label_b = folder_dens_profile_label(merge_dir)
         for r in matched_a:
-            r["_alpha"] = 0.3
-            r["_group"] = label_a
+            r["_alpha"]  = 0.3
+            r["_dashed"] = False
+            r["_group"]  = label_a
         for r in matched_b:
-            r["_alpha"] = 0.8
-            r["_group"] = label_b
+            r["_alpha"]  = 0.8
+            r["_dashed"] = True
+            r["_group"]  = label_b
         plot_rows = matched_a + matched_b
         pdf_path = fig_dir / "pedrini_emergence_timescales_merge.pdf"
         print(f"[pedrini_tau] Plotting {len(matched_a)} matched pair(s): "
-              f"{label_a} (α=0.3) vs {label_b} (α=0.8).")
+              f"{label_a} (solid, α=0.3) vs {label_b} (dashed, α=0.8).")
         make_plot(plot_rows, pedrini_df, pdf_path,
                   show_tau_pdr=args.show_tau_pdr, colourbar=args.colourbar)
         return
