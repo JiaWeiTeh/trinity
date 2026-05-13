@@ -26,6 +26,7 @@ from fractions import Fraction
 import numpy as np
 import src._functions.unit_conversions as cvt
 from src._input.dictionary import DescribedItem, DescribedDict
+import src.sb99.sps_columns as sps_columns
 
 # Initialize logger for this module
 logger = logging.getLogger(__name__)
@@ -451,7 +452,8 @@ def read_param(path2file, write_summary=True):
     # sps_path: full path to the SPS data file. Default sentinel 'def_path'
     # routes to the legacy SB99 filename grammar (permanent fallback, §9).
     # Resolving here means the loader sees a single string, never a sentinel.
-    if params['sps_path'].value == 'def_path':
+    sps_path_is_legacy = (params['sps_path'].value == 'def_path')
+    if sps_path_is_legacy:
         legacy_filename = _get_legacy_sb99_filename(params)
         params['sps_path'].value = os.path.join(
             params['path_sps'].value, legacy_filename
@@ -469,6 +471,35 @@ def read_param(path2file, write_summary=True):
     else:
         params['sps_path'].value = str(params['sps_path'].value)
         logger.info(f"Using user-defined sps_path = {params['sps_path'].value}")
+
+    # sps_column_map: dict[canonical -> ColumnSpec] consumed by read_SB99.
+    #   Legacy branch: hardcoded LEGACY_SB99_COLUMN_MAP (the permanent
+    #     fallback; any sps_col_* declarations a user may have left in
+    #     their .param are silently ignored under the legacy grammar).
+    #   User branch: parse sps_col_* declarations into a ColumnSpec dict
+    #     and validate the required-canonical set strictly. On any
+    #     missing required field, raise ValueError with a fillable
+    #     template — see audit §10 PR-2.
+    if sps_path_is_legacy:
+        column_map = sps_columns.LEGACY_SB99_COLUMN_MAP
+    else:
+        try:
+            column_map = sps_columns.build_user_column_map(params)
+            sps_columns.validate_user_column_map(
+                column_map, params['sps_path'].value
+            )
+        except ValueError as err:
+            # Echo the full template/error to logs as well as raising —
+            # makes the error visible whether the user is running in a
+            # subprocess (stderr captured) or interactively.
+            logger.error(f"SPS column map error:\n{err}")
+            raise
+    params['sps_column_map'] = DescribedItem(
+        column_map,
+        info="SPS column mapping (canonical -> ColumnSpec)",
+        ori_units="N/A",
+        exclude_from_snapshot=True,
+    )
 
     # =============================================================================
     # Step 8: Handle density profile-specific parameters

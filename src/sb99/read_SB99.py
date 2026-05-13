@@ -15,6 +15,7 @@ import sys
 import logging
 
 import src._functions.unit_conversions as cvt
+import src.sb99.sps_columns as sps_columns
 
 # Initialize logger for this module
 logger = logging.getLogger(__name__)
@@ -111,7 +112,7 @@ def read_SB99(f_mass, params):
         )
 
     required_keys = [
-        'sps_path',
+        'sps_path', 'sps_column_map',
         'FB_mColdWindFrac', 'FB_thermCoeffWind',
         'FB_mColdSNFrac', 'FB_thermCoeffSN', 'FB_vSN'
     ]
@@ -120,17 +121,42 @@ def read_SB99(f_mass, params):
         if key not in params:
             raise KeyError(f"Required parameter '{key}' missing from params")
 
-    logger.info(f"Reading SB99 data with f_mass = {f_mass}")
+    logger.info(f"Reading SPS data with f_mass = {f_mass}")
 
     # =========================================================================
-    # STEP 1: READ FILE
+    # DISPATCH: legacy positional layout vs user-defined column layout
     # =========================================================================
-    # sps_path is already a resolved file path by the time we get here — see
-    # _get_legacy_sb99_filename in read_param.py for the legacy fallback path.
+    # The column_map's ColumnSpec.file_column is an int for the legacy SB99
+    # preset (positional load) and a str for user-defined sps_path files
+    # (named header load). We branch here so the legacy code path stays
+    # byte-equivalent to the pre-PR-2 loader (operator order matters for
+    # ULP-level equivalence; see audit §8 Invariants).
 
+    column_map = params['sps_column_map'].value
     filepath = params['sps_path'].value
 
-    logger.debug(f"Loading SB99 file: {filepath}")
+    any_spec = next(iter(column_map.values()))
+    is_legacy_layout = isinstance(any_spec.file_column, int)
+
+    if is_legacy_layout:
+        return _read_sb99_legacy(filepath, f_mass, params)
+    else:
+        return _read_sb99_user(filepath, f_mass, params, column_map)
+
+
+def _read_sb99_legacy(filepath, f_mass, params):
+    """Legacy SB99 7-column positional loader.
+
+    Byte-equivalent to the pre-PR-2 loader for every (mCluster, SB99_mass,
+    SB99_rotation, SB99_BHCUT, ZCloud, FB_*) combination. The operator
+    ordering and arithmetic here is intentionally preserved verbatim so
+    `np.array_equal` against pre-refactor goldens passes.
+
+    Used whenever sps_path was resolved from the legacy SB99 grammar
+    (sps_path = def_path at config-load time).
+    """
+
+    logger.debug(f"Loading SB99 file (legacy positional layout): {filepath}")
 
     try:
         SB99_file = np.loadtxt(filepath)
@@ -281,6 +307,151 @@ def read_SB99(f_mass, params):
     )
 
     # Return all separated components
+    return [t, Qi, Li, Ln, Lbol, Lmech_W, Lmech_SN, Lmech_total,
+            pdot_W, pdot_SN, pdot_total]
+
+
+def _read_sb99_user(filepath, f_mass, params, column_map):
+    """User-defined SPS column layout via sps_col_* declarations.
+
+    Loads a header-equipped CSV/whitespace file, applies per-column unit
+    conversion and mass scaling using the canonical registry in
+    sps_columns.py, then runs the same FB_* correction pipeline as the
+    legacy loader. Missing optional canonicals fall back to the existing
+    derivations:
+
+      - Li, Ln       <- Lbol * fi, Lbol * (1 - fi)      [if not supplied]
+      - Lmech_SN_raw <- Lmech_total - Lmech_W           [if Lmech_SN absent]
+      - Mdot_SN      <- 2 * Lmech_SN_raw / v_SN^2       [if Mdot_SN absent]
+      - v_SN         <- params['FB_vSN'].value          [if v_SN absent]
+      - pdot_SN      <- Mdot_SN_modified * v_SN_mod     [if pdot_SN absent]
+
+    User-supplied columns plug into the pipeline at the points indicated
+    above; FB_mColdSNFrac / FB_thermCoeffSN still apply on top (see audit
+    §10 PR-2). Note this path does NOT guarantee bitwise equivalence to
+    the legacy loader because the operator ordering of unit conversions
+    differs by ULPs — equivalence to legacy is tested at the JSONL
+    snapshot level (rtol=1e-12), not at the loader level.
+    """
+
+    logger.debug(f"Loading SPS file (user-defined column layout): {filepath}")
+
+    try:
+        raw_cols = sps_columns.load_named_columns(filepath, column_map)
+    except FileNotFoundError:
+        raise FileNotFoundError(
+            f"SPS file not found: {filepath}\n"
+            "sps_path is set explicitly; verify the path exists and points "
+            "to a readable file with a header row."
+        )
+
+    # Per-column conversion + mass scaling.
+    cols = {}
+    for canonical, spec in column_map.items():
+        arr = sps_columns.convert_to_canonical_au(
+            raw_cols[canonical], canonical, spec.units, spec.log
+        )
+        if sps_columns.CANONICALS[canonical].mass_scaled:
+            arr = arr * f_mass
+        if not np.all(np.isfinite(arr)):
+            raise ValueError(
+                f"Non-finite values in '{canonical}' from {filepath}"
+            )
+        cols[canonical] = arr
+
+    # Derive Li, Ln if not supplied (matches legacy 13.6 eV behaviour when
+    # only fi is given; bypassed entirely when both Li and Ln are present —
+    # this is what closes audit hot-spot #5).
+    if 'Li' not in cols:
+        cols['Li'] = cols['Lbol'] * cols['fi']
+    if 'Ln' not in cols:
+        cols['Ln'] = cols['Lbol'] * (1.0 - cols['fi'])
+
+    # Derive Lmech_SN_raw if not supplied. Validation in read_param.py
+    # ensures at least one of (Lmech_SN, Lmech_total) is present.
+    if 'Lmech_SN' in cols:
+        Lmech_SN_raw = cols['Lmech_SN']
+    else:
+        Lmech_SN_raw = cols['Lmech_total'] - cols['Lmech_W']
+
+    if np.any(Lmech_SN_raw < 0):
+        logger.warning(
+            "Negative SN mechanical luminosity detected; clamping to zero. "
+            "Check sps_col_Lmech_SN / sps_col_Lmech_total inputs."
+        )
+        Lmech_SN_raw = np.maximum(Lmech_SN_raw, 0)
+
+    # === WIND corrections (same math as the legacy path) ===
+    Lmech_wind_raw = cols['Lmech_W']
+    pdot_wind_raw = cols['pdot_W']
+
+    Mdot_wind = pdot_wind_raw ** 2 / (2 * np.maximum(Lmech_wind_raw, EPSILON))
+    velocity_wind = 2 * Lmech_wind_raw / np.maximum(pdot_wind_raw, EPSILON)
+    Mdot_wind = Mdot_wind * (1 + params['FB_mColdWindFrac'].value)
+    velocity_wind = velocity_wind * np.sqrt(
+        params['FB_thermCoeffWind'].value /
+        (1.0 + params['FB_mColdWindFrac'].value)
+    )
+    pdot_wind = Mdot_wind * velocity_wind
+    Lmech_wind = 0.5 * Mdot_wind * velocity_wind ** 2
+
+    # === SN corrections (with user-override pluggability) ===
+    if 'v_SN' in cols:
+        velocity_SN_base = cols['v_SN']
+    else:
+        velocity_SN_base = params['FB_vSN'].value
+
+    if 'Mdot_SN' in cols:
+        Mdot_SN = np.array(cols['Mdot_SN'], copy=True)
+    else:
+        Mdot_SN = 2 * Lmech_SN_raw / np.maximum(velocity_SN_base ** 2, EPSILON)
+    Mdot_SN = Mdot_SN * (1 + params['FB_mColdSNFrac'].value)
+
+    velocity_SN_modified = velocity_SN_base * np.sqrt(
+        params['FB_thermCoeffSN'].value /
+        (1.0 + params['FB_mColdSNFrac'].value)
+    )
+
+    if 'pdot_SN' in cols:
+        pdot_SN = cols['pdot_SN']
+    else:
+        pdot_SN = Mdot_SN * velocity_SN_modified
+
+    Lmech_SN_final = 0.5 * Mdot_SN * velocity_SN_modified ** 2
+
+    # === Totals ===
+    Lmech_total = Lmech_SN_final + Lmech_wind
+    pdot_total = pdot_SN + pdot_wind
+
+    # Convenience aliases
+    t = cols['t']
+    Qi = cols['Qi']
+    Li = cols['Li']
+    Ln = cols['Ln']
+    Lbol = cols['Lbol']
+    Lmech_W = Lmech_wind
+    Lmech_SN = Lmech_SN_final
+    pdot_W = pdot_wind
+
+    # === t=0 prepend (idempotent — skip if the file already starts at t=0) ===
+    if len(t) == 0 or t[0] != 0.0:
+        t = np.insert(t, 0, 0.0)
+        Qi = np.insert(Qi, 0, Qi[0])
+        Li = np.insert(Li, 0, Li[0])
+        Ln = np.insert(Ln, 0, Ln[0])
+        Lbol = np.insert(Lbol, 0, Lbol[0])
+        Lmech_W = np.insert(Lmech_W, 0, Lmech_W[0])
+        Lmech_SN = np.insert(Lmech_SN, 0, Lmech_SN[0])
+        Lmech_total = np.insert(Lmech_total, 0, Lmech_total[0])
+        pdot_W = np.insert(pdot_W, 0, pdot_W[0])
+        pdot_SN = np.insert(pdot_SN, 0, pdot_SN[0])
+        pdot_total = np.insert(pdot_total, 0, pdot_total[0])
+
+    logger.info(
+        f"SPS data processed: {len(t)} time points, "
+        f"t_max={t[-1]:.2f} Myr"
+    )
+
     return [t, Qi, Li, Ln, Lbol, Lmech_W, Lmech_SN, Lmech_total,
             pdot_W, pdot_SN, pdot_total]
 
