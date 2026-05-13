@@ -163,13 +163,6 @@ LEGACY_SB99_COLUMN_MAP: Dict[str, ColumnSpec] = {
 # --- public helpers -------------------------------------------------------
 
 
-def supported_units_for(canonical: str) -> Tuple[str, ...]:
-    """Return the sorted tuple of recognized unit strings for a canonical."""
-    if canonical not in UNIT_CONVERSIONS:
-        return ()
-    return tuple(sorted(UNIT_CONVERSIONS[canonical].keys()))
-
-
 def convert_to_canonical_au(arr, canonical: str, declared_units: str, log: bool):
     """Convert a raw column to canonical AU units.
 
@@ -382,41 +375,4 @@ def load_named_columns(filepath: str, column_map: Dict[str, ColumnSpec]
     for canonical, spec in column_map.items():
         # Cast to float so downstream math works regardless of file dtype.
         raw[canonical] = np.asarray(data[spec.file_column], dtype=float)
-    return raw
-
-
-def load_positional_columns(filepath: str, column_map: Dict[str, ColumnSpec]
-                            ) -> Dict[str, np.ndarray]:
-    """Load a headerless CSV via np.loadtxt and return a dict keyed by
-    canonical name (raw values, no unit conversion yet).
-
-    Used for the legacy SB99 preset. Validates the file has enough columns.
-    """
-    try:
-        data = np.loadtxt(filepath)
-    except FileNotFoundError:
-        # Surface a useful message; caller may want to enrich it further.
-        raise
-    except Exception as e:
-        raise IOError(f"Error reading SB99 file {filepath}: {e}") from e
-
-    if data.ndim != 2:
-        raise ValueError(
-            f"Invalid SB99 file format in {filepath}: "
-            f"expected a 2D array, got shape {data.shape}."
-        )
-    needed_max_index = max(
-        int(spec.file_column) for spec in column_map.values()
-        if isinstance(spec.file_column, int)
-    )
-    if data.shape[1] <= needed_max_index:
-        raise ValueError(
-            f"Invalid SB99 file format in {filepath}: "
-            f"expected at least {needed_max_index + 1} columns, "
-            f"got shape {data.shape}."
-        )
-
-    raw: Dict[str, np.ndarray] = {}
-    for canonical, spec in column_map.items():
-        raw[canonical] = data[:, int(spec.file_column)]
     return raw

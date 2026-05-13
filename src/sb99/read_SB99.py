@@ -24,18 +24,18 @@ logger = logging.getLogger(__name__)
 EPSILON = 1e-100  # Small number to prevent division by zero
 
 
-# TODO: Support in-between metallicities (currently only Z=1 and Z=0.15 solar are supported).
-
 def read_SB99(f_mass, params):
     """
     Read and process Starburst99 stellar feedback data.
 
-    This function reads SB99 files, scales by cluster mass, applies thermal
-    efficiency and cold mass corrections, and returns time series data with
-    properly separated wind and SN components.
-    
-    Original units from SB99 files are in cgs (except t = Myr). We will convert
-    all of them to astronomical units (AU) here. 
+    Dispatches to either the legacy SB99 7-column positional loader
+    (`_read_sb99_legacy`) or the user-defined column-map loader
+    (`_read_sb99_user`) based on the `params['sps_column_map']` layout.
+    The legacy branch is byte-equivalent to the pre-PR-2 implementation.
+
+    Files for the legacy SB99 grid use cgs units (with time in years);
+    every output of this function is converted to astronomical units
+    (Msun, pc, Myr).
 
     Parameters
     ----------
@@ -190,7 +190,7 @@ def _read_sb99_legacy(filepath, f_mass, params):
     # Ionizing photon rate: log₁₀(1/s) → 1/Myr
     Qi = 10**SB99_file[:, 1] * f_mass / cvt.s2Myr
 
-    # Ionizing fraction (linear, not log)
+    # Ionizing fraction: SB99 stores log10(fi), we want linear fi.
     fi = 10**SB99_file[:, 2]
 
     # Bolometric luminosity: log₁₀(erg/s) → Msun·pc²/Myr³ (AU)
