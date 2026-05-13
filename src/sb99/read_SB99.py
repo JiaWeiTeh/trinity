@@ -39,7 +39,8 @@ def read_SB99(f_mass, params):
     Parameters
     ----------
     f_mass : float
-        Cluster mass fraction (f_mass = M_cluster / SB99_mass)
+        Cluster mass fraction (f_mass = M_cluster / sps_refmass). Computed
+        by main.py before this function is called.
     params : DescribedDict
         TRINITY parameters dictionary containing:
         - sps_path : str, full path to the SPS data file (already resolved
@@ -80,10 +81,11 @@ def read_SB99(f_mass, params):
     Raises
     ------
     ValueError
-        If f_mass <= 0 or is NaN/inf
-        If unsupported metallicity or black hole cutoff mass
+        If f_mass <= 0 or is NaN/inf, or if the file shape is invalid.
+        (Unsupported legacy-grammar metallicity / BH cutoff is raised
+        earlier, by _get_legacy_sb99_filename in read_param.py.)
     FileNotFoundError
-        If SB99 file not found
+        If sps_path points to a file that does not exist.
 
     Notes
     -----
@@ -145,7 +147,7 @@ def read_SB99(f_mass, params):
     # Validate file format
     if SB99_file.ndim != 2 or SB99_file.shape[1] < 7:
         raise ValueError(
-            f"Invalid SB99 file format in {filename}. "
+            f"Invalid SB99 file format in {filepath}. "
             f"Expected 2D array with >= 7 columns, got shape {SB99_file.shape}"
         )
 
