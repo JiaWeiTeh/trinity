@@ -5,8 +5,27 @@ Created on Mon Apr 17 23:06:39 2023
 
 @author: Jia Wei Teh
 
-This script contains functions that will help reading in Starburst99 data.
+Loader for SPS (stellar-population-synthesis) feedback time-series data.
 
+Two entry points into the file:
+
+  read_SB99(f_mass, params)
+      Top-level dispatcher. Picks _read_sb99_legacy or _read_sb99_user
+      based on whether `params['sps_column_map']` carries integer (legacy
+      SB99 positional preset) or string (user-defined header-driven)
+      file_column identifiers.
+
+  get_interpolation(sps, ftype='cubic')
+      Wraps the 11-array tuple returned by read_SB99() in scipy cubic
+      interpolators on `params['sps_f']`.
+
+The legacy branch is byte-equivalent to the pre-refactor SB99-only
+loader (see analysis/sb99-refactor-audit.md §8 Invariants). SB99
+specifics that survive in this module are intentional: the file is
+still called `read_SB99.py`, the helper is `_read_sb99_legacy`, and
+the symbol `read_SB99` is the public entry point, per audit §14
+question 1 ("symbols/file path stay; SB99 remains the canonical SPS
+in this codebase").
 """
 
 import numpy as np
@@ -31,7 +50,8 @@ def read_SB99(f_mass, params):
     Dispatches to either the legacy SB99 7-column positional loader
     (`_read_sb99_legacy`) or the user-defined column-map loader
     (`_read_sb99_user`) based on the `params['sps_column_map']` layout.
-    The legacy branch is byte-equivalent to the pre-PR-2 implementation.
+    The legacy branch is byte-equivalent to the pre-refactor SB99-only
+    implementation (see analysis/sb99-refactor-audit.md §8 Invariants).
 
     Files for the legacy SB99 grid use cgs units (with time in years);
     every output of this function is converted to astronomical units
@@ -129,8 +149,8 @@ def read_SB99(f_mass, params):
     # The column_map's ColumnSpec.file_column is an int for the legacy SB99
     # preset (positional load) and a str for user-defined sps_path files
     # (named header load). We branch here so the legacy code path stays
-    # byte-equivalent to the pre-PR-2 loader (operator order matters for
-    # ULP-level equivalence; see audit §8 Invariants).
+    # byte-equivalent to the pre-refactor SB99-only loader; operator order
+    # matters for ULP-level equivalence (see audit §8 Invariants).
 
     column_map = params['sps_column_map'].value
     filepath = params['sps_path'].value
@@ -147,10 +167,11 @@ def read_SB99(f_mass, params):
 def _read_sb99_legacy(filepath, f_mass, params):
     """Legacy SB99 7-column positional loader.
 
-    Byte-equivalent to the pre-PR-2 loader for every (mCluster, SB99_mass,
-    SB99_rotation, SB99_BHCUT, ZCloud, FB_*) combination. The operator
-    ordering and arithmetic here is intentionally preserved verbatim so
-    `np.array_equal` against pre-refactor goldens passes.
+    Byte-equivalent to the pre-refactor SB99-only loader for every
+    (mCluster, SB99_mass, SB99_rotation, SB99_BHCUT, ZCloud, FB_*)
+    combination. The operator ordering and arithmetic here is
+    intentionally preserved verbatim so `np.array_equal` against
+    pre-refactor goldens passes (audit §8 Invariants).
 
     Used whenever sps_path was resolved from the legacy SB99 grammar
     (sps_path = def_path at config-load time).
@@ -328,10 +349,11 @@ def _read_sb99_user(filepath, f_mass, params, column_map):
 
     User-supplied columns plug into the pipeline at the points indicated
     above; FB_mColdSNFrac / FB_thermCoeffSN still apply on top (see audit
-    §10 PR-2). Note this path does NOT guarantee bitwise equivalence to
-    the legacy loader because the operator ordering of unit conversions
-    differs by ULPs — equivalence to legacy is tested at the JSONL
-    snapshot level (rtol=1e-12), not at the loader level.
+    §10 PR-2). Note this path does NOT guarantee bitwise equivalence
+    to the legacy loader because the operator ordering of unit
+    conversions differs by ULPs — equivalence to legacy is tested at
+    the JSONL snapshot level (rtol=1e-12), not at the loader level
+    (audit §11 Test strategy).
     """
 
     logger.debug(f"Loading SPS file (user-defined column layout): {filepath}")

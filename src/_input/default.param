@@ -161,7 +161,11 @@ coll_r    1
 
 
 # ==============================================================================
-# Parameters for feedback calculations from Starburst99 
+# Parameters for SPS (stellar-population-synthesis) feedback calculations.
+# The three SB99_* params below drive the legacy SB99 filename grammar used
+# when sps_path = def_path; see the sps_path section further down for the
+# modern user-defined alternative. analysis/sb99-refactor-audit.md §9 has
+# the back-compat guarantee.
 # ==============================================================================
 
 # INFO: Default star cluster mass used in SB99 (the reference mass the SB99

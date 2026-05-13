@@ -135,8 +135,10 @@ def start_expansion(params):
     elif _level == "info":
         logger.info(_msg)
 
-    # Step 2: Obtain parameters from Starburst99
-    logger.info("Step 2: Loading Starburst99 stellar feedback data...")
+    # Step 2: Obtain SPS feedback parameters
+    # The loader handles both the legacy SB99 grammar (sps_path = def_path)
+    # and user-defined sps_path files; see read_SB99 module docstring.
+    logger.info("Step 2: Loading SPS stellar feedback data...")
     # Scaling factor for cluster masses. Though this might only be accurate for
     # high mass clusters (~>1e5) in which the IMF is fully sampled.
     f_mass = params['mCluster'] / params['sps_refmass']

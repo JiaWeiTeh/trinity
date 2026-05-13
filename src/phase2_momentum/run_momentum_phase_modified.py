@@ -913,7 +913,7 @@ def run_phase_momentum(params) -> MomentumPhaseResults:
         params.save_snapshot()
     except Exception as e:
         # Include exception class and deepest traceback frame so the warning
-        # tells us which step (SB99 lookup, pRam, shell_structure, save_snapshot)
+        # tells us which step (SPS lookup, pRam, shell_structure, save_snapshot)
         # actually failed, instead of just the bare message.
         tb = e.__traceback__
         where = ''
