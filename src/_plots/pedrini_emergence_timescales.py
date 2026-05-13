@@ -36,14 +36,21 @@ Wong-palette band-per-sfe colourbar (useful for narrow sweeps).
 Merge mode
 ----------
 Pass `--merge_dir <other_sweep>` to overlay a second sweep whose runs
-differ from `--sweep_dir` only in their density-profile settings (e.g.
-densPL vs densBE, or two densPL_alpha values). Runs are paired by
-(mCloud, sfe, nCore); unpaired runs are listed and skipped. The
-`--sweep_dir` markers are drawn with solid edges at alpha=0.3
-(70%% transparent), and the `--merge_dir` markers with dashed edges at
-alpha=0.8 (20%% transparent), so overlapping points are still
-distinguishable. The legend is placed inside the top-right of the axes
-in merge mode. Output is `pedrini_emergence_timescales_merge.pdf`
+differ from `--sweep_dir` only in their density-profile settings.
+Currently supported profiles are densPL with densPL_alpha=0
+(labelled "homogeneous") and densBE (labelled "BE"); any other profile
+aborts the merge plot. Runs are paired by (mCloud, sfe, nCore); unpaired
+runs are listed and skipped.
+
+Encoding (high-alpha pairs with solid, low-alpha with dashed):
+  - `--sweep_dir`: dashed edges, alpha=0.3 (70%% transparent)
+  - `--merge_dir`: solid edges, alpha=0.8 (20%% transparent)
+
+The legend is collapsed to two entries that together convey size,
+line style, alpha, and folder descriptor: a small-mass solid swatch
+for the `--merge_dir` profile, and a large-mass dashed-transparent
+swatch for the `--sweep_dir` profile. The legend sits inside the
+top-right of the axes. Output: `pedrini_emergence_timescales_merge.pdf`
 under the `--sweep_dir` fig dir.
 
 Note: in merge mode the dash pattern encodes the folder, not the
@@ -357,23 +364,49 @@ def pair_runs(rows_a: list[dict], rows_b: list[dict]):
 
 
 def folder_dens_profile_label(sweep_dir: Path) -> str:
-    """Construct a legend label from the first .param's density-profile settings.
+    """Short profile descriptor read from the first .param in the sweep.
 
-    Reads dens_profile (densPL / densBE) and the relevant shape knob
-    (densPL_alpha or densBE_Omega) from any one run in the sweep. Falls back
-    to the sweep directory name when no .param can be parsed.
+    Supported in merge mode:
+      - densPL with densPL_alpha=0  →  "homogeneous"
+      - densBE                       →  "BE"
+
+    Any other density-profile configuration (e.g. densPL with a non-zero
+    alpha) raises ValueError so main() can abort the merge plot. We don't
+    silently fall back to a generic label here because the merge legend
+    bakes the descriptor into a 2-entry compact legend — an unrecognised
+    profile would mislabel half the markers.
     """
     try:
         first_param = next(sweep_dir.rglob("*.param"))
     except StopIteration:
-        return sweep_dir.name
+        raise ValueError(f"No .param file found anywhere under {sweep_dir}")
     params = parse_param_file(first_param)
     profile = params.get("dens_profile")
     if profile == "densPL":
-        return fr"densPL ($\alpha={params.get('densPL_alpha', '?')}$)"
+        alpha_raw = params.get("densPL_alpha")
+        if alpha_raw is None:
+            raise ValueError(
+                f"{first_param}: dens_profile=densPL but densPL_alpha is missing"
+            )
+        try:
+            alpha_val = float(alpha_raw)
+        except ValueError as exc:
+            raise ValueError(
+                f"{first_param}: cannot parse densPL_alpha={alpha_raw!r}"
+            ) from exc
+        if alpha_val == 0:
+            return "homogeneous"
+        raise ValueError(
+            f"{first_param}: densPL_alpha={alpha_val} is not supported in "
+            f"merge mode yet — only densPL_alpha=0 (homogeneous) and densBE "
+            f"are wired up. Aborting."
+        )
     if profile == "densBE":
-        return fr"densBE ($\Omega={params.get('densBE_Omega', '?')}$)"
-    return profile or sweep_dir.name
+        return "BE"
+    raise ValueError(
+        f"{first_param}: unknown dens_profile={profile!r}; expected "
+        f"'densPL' or 'densBE'."
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -618,108 +651,98 @@ def make_plot(rows: list[dict], pedrini_df, out_pdf: Path,
         cbar.set_ticklabels([f"{v:g}" for v in endpoints])
     cbar.set_label("sfe")
 
-    # Remaining legend: shape entries (breakout / lower-limit / tau_PDR)
-    # and size entries (smallest + largest mCloud only).
+    # Legend construction. mid_ms is the "neutral" swatch size used by
+    # shape entries (breakout, tau_PDR, Pedrini, ...).
     mid_ms = 0.5 * (_marker_size(m_min, m_min, m_max)
                     + _marker_size(m_max, m_min, m_max))
 
-    # In merge mode the dash pattern encodes the folder, so the lower-limit
-    # legend swatch must use a solid edge — otherwise it would clash with the
-    # folder2 (dashed) encoding and read as "lower limit in folder2 only".
     in_merge_mode = any("_dashed" in r for r in rows)
 
-    # Show the breakout/no-breakout shape legend only when both variants
-    # are actually present in the data.  In single-variant sweeps the shape
-    # carries no information and the entry would just be noise.
-    has_breakout    = any(r["breakout"]     for r in rows)
-    has_no_breakout = any(not r["breakout"] for r in rows)
-    mixed_breakout  = has_breakout and has_no_breakout
-
-    def _lower_limit_proxy(label: str):
-        """Open-circle proxy for the 'lower limit' legend entry.
-
-        Single-folder mode: data points use a dashed coloured edge for
-        lower-limit runs, so the swatch mirrors that with markeredgewidth=
-        LW_DASHED. Merge mode: edge style is reserved for the folder
-        encoding, so the proxy falls back to a solid thin edge and relies
-        on the open fill alone to convey 'lower limit'.
-
-        Plotted points use scatter with linestyles='--' for the dashed edge,
-        but a PathCollection-as-legend-handle picks up colormap state in
-        practice and renders the swatch in the wrong colour, hence the
-        plain Line2D handle.
-        """
-        return Line2D([], [], marker="o", linestyle="none",
-                      mfc="none", mec="0.4",
-                      markersize=mid_ms,
-                      markeredgewidth=(LW_SOLID if in_merge_mode else LW_DASHED),
-                      label=label)
-
-    handles: list = []
-    if show_tau_pdr:
-        # TOT/PDR distinction is always meaningful in tau_PDR mode. Shape
-        # encodes TOT-vs-PDR; in single-folder mode edge style also encodes
-        # breakout-vs-lower-limit, but in merge mode that signal is carried
-        # by fill state alone (open = lower limit), since edge style is
-        # claimed by the folder encoding.
-        handles += [
-            Line2D([], [], marker="o", linestyle="none",
-                   mfc="0.4", mec="k", markersize=mid_ms,
-                   label=r"$\tau_{\rm disp}$"),
-            Line2D([], [], marker="s", linestyle="none",
-                   mfc="none", mec="0.4", markersize=mid_ms,
-                   label=r"$\tau_{\rm PDR}$"),
-        ]
-        if mixed_breakout:
-            handles.append(_lower_limit_proxy("lower limit (stop_t)"))
-    elif mixed_breakout:
-        handles += [
-            Line2D([], [], marker="o", linestyle="none",
-                   mfc="0.4", mec="k", markersize=mid_ms,
-                   label="breakout"),
-            _lower_limit_proxy("lower limit (stop_t)"),
-        ]
-    for log_m in _size_legend_ticks(m_min, m_max):
-        m = 10 ** log_m
-        ms = _marker_size(m, m_min, m_max)
-        handles.append(Line2D([], [], marker="o", linestyle="none",
-                              mfc="0.4", mec="k", markersize=ms,
-                              label=fr"$M_{{\rm cloud}}={_fmt_log_m(log_m)}"
-                                    r"\,M_\odot$"))
-    if pedrini_df is not None:
-        handles.append(Line2D([], [], marker="o", linestyle="none",
-                              mfc=REF_COLOR, mec=REF_COLOR, markersize=mid_ms,
-                              label="Pedrini+2026"))
-
-    # Merge mode: one swatch per folder, with line style + alpha matching the
-    # data points (folder1 → solid, alpha=0.3; folder2 → dashed, alpha=0.8).
-    # Preserves the order in which the folders were tagged in main().
-    seen_groups: list[tuple[str, float, bool]] = []
-    for r in rows:
-        g = r.get("_group")
-        if g is None:
-            continue
-        entry = (g, r.get("_alpha", 1.0), bool(r.get("_dashed", False)))
-        if entry not in seen_groups:
-            seen_groups.append(entry)
-    # The data uses marker-edge dash patterns to encode the folder, but a
-    # Line2D legend handle can't show a dashed marker edge — `linestyle` only
-    # affects its connecting line. So we draw a short connecting line through
-    # the marker and let that line's style carry the solid/dashed signal.
-    for label, alpha, dashed in seen_groups:
-        handles.append(Line2D([], [], marker="o",
-                              linestyle="--" if dashed else "-",
-                              color="0.4", mfc="0.4", mec="k",
-                              markersize=mid_ms,
-                              alpha=alpha, label=label))
-    # Single-folder mode keeps the legend above the axes (colourbar is on the
-    # right). Merge mode parks it inside the top-right corner of the data
-    # area, where the user wants direct visual association with the points.
     if in_merge_mode:
+        # Compressed merge legend: just two entries that pack mCloud size,
+        # line style, alpha, and the per-folder density-profile descriptor
+        # into one swatch each.  Reading the legend, the user sees that
+        # solid + opaque markers belong to one profile (drawn at the
+        # smallest swept mCloud as the exemplar), and dashed + transparent
+        # markers belong to the other profile (drawn at the largest swept
+        # mCloud).  All breakout / tau_PDR / Pedrini entries are dropped
+        # in merge mode to keep the legend uncluttered as requested.
+        log_ticks = _size_legend_ticks(m_min, m_max)
+        log_small = log_ticks[0]
+        log_large = log_ticks[-1]  # same as log_small for single-mass sweeps
+
+        # Pull each folder's (label, alpha) from the tagged rows. The plot
+        # loop above guarantees both groups are present (matched_a/matched_b).
+        solid_label  = next(r["_group"] for r in rows if not r["_dashed"])
+        solid_alpha  = next(r["_alpha"] for r in rows if not r["_dashed"])
+        dashed_label = next(r["_group"] for r in rows if r["_dashed"])
+        dashed_alpha = next(r["_alpha"] for r in rows if r["_dashed"])
+
+        handles = [
+            Line2D([], [], marker="o", linestyle="-",
+                   color="0.4", mfc="0.4", mec="k",
+                   markersize=_marker_size(10 ** log_small, m_min, m_max),
+                   alpha=solid_alpha,
+                   label=fr"$M_{{\rm cloud}}={_fmt_log_m(log_small)}"
+                         fr"\,M_\odot$, {solid_label}"),
+            Line2D([], [], marker="o", linestyle="--",
+                   color="0.4", mfc="0.4", mec="k",
+                   markersize=_marker_size(10 ** log_large, m_min, m_max),
+                   alpha=dashed_alpha,
+                   label=fr"$M_{{\rm cloud}}={_fmt_log_m(log_large)}"
+                         fr"\,M_\odot$, {dashed_label}"),
+        ]
         ax.legend(handles=handles, loc="upper right",
                   frameon=False, fontsize="small",
                   handletextpad=0.4, borderaxespad=0.5)
     else:
+        # Single-folder legend: breakout/lower-limit shape entries, size
+        # entries (smallest + largest mCloud only), and Pedrini reference
+        # when overlaid.  Parked above the axes since the colourbar is on
+        # the right.
+        has_breakout    = any(r["breakout"]     for r in rows)
+        has_no_breakout = any(not r["breakout"] for r in rows)
+        mixed_breakout  = has_breakout and has_no_breakout
+
+        def _lower_limit_proxy(label: str):
+            # Open-circle proxy with a dashed coloured edge, mirroring the
+            # lower-limit data marker. Using scatter as a legend handle
+            # picks up colormap state, so we use a plain Line2D instead.
+            return Line2D([], [], marker="o", linestyle="none",
+                          mfc="none", mec="0.4",
+                          markersize=mid_ms, markeredgewidth=LW_DASHED,
+                          label=label)
+
+        handles: list = []
+        if show_tau_pdr:
+            handles += [
+                Line2D([], [], marker="o", linestyle="none",
+                       mfc="0.4", mec="k", markersize=mid_ms,
+                       label=r"$\tau_{\rm disp}$"),
+                Line2D([], [], marker="s", linestyle="none",
+                       mfc="none", mec="0.4", markersize=mid_ms,
+                       label=r"$\tau_{\rm PDR}$"),
+            ]
+            if mixed_breakout:
+                handles.append(_lower_limit_proxy("lower limit (stop_t)"))
+        elif mixed_breakout:
+            handles += [
+                Line2D([], [], marker="o", linestyle="none",
+                       mfc="0.4", mec="k", markersize=mid_ms,
+                       label="breakout"),
+                _lower_limit_proxy("lower limit (stop_t)"),
+            ]
+        for log_m in _size_legend_ticks(m_min, m_max):
+            m = 10 ** log_m
+            ms = _marker_size(m, m_min, m_max)
+            handles.append(Line2D([], [], marker="o", linestyle="none",
+                                  mfc="0.4", mec="k", markersize=ms,
+                                  label=fr"$M_{{\rm cloud}}={_fmt_log_m(log_m)}"
+                                        r"\,M_\odot$"))
+        if pedrini_df is not None:
+            handles.append(Line2D([], [], marker="o", linestyle="none",
+                                  mfc=REF_COLOR, mec=REF_COLOR,
+                                  markersize=mid_ms, label="Pedrini+2026"))
         ax.legend(handles=handles, loc="lower center",
                   bbox_to_anchor=(0.5, 1.02), ncol=2,
                   frameon=False, fontsize="small",
@@ -744,11 +767,12 @@ def main():
     ap.add_argument("--merge_dir", type=Path, default=None,
                     help="Optional second sweep directory.  When set, runs in "
                          "the two folders are paired by (mCloud, sfe, nCore); "
-                         "the matched pairs are drawn together with --sweep_dir "
-                         "as solid edges at alpha=0.3 (70%% transparent) and "
-                         "--merge_dir as dashed edges at alpha=0.8 (20%% "
-                         "transparent).  Output file is "
-                         "pedrini_emergence_timescales_merge.pdf.")
+                         "--sweep_dir is drawn with dashed edges at alpha=0.3 "
+                         "(70%% transparent) and --merge_dir with solid edges "
+                         "at alpha=0.8 (20%% transparent). Only dens_profile "
+                         "values 'densPL' (with densPL_alpha=0) and 'densBE' "
+                         "are supported in merge mode; anything else aborts. "
+                         "Output: pedrini_emergence_timescales_merge.pdf.")
     ap.add_argument("--pedrini_csv", type=str, default=None,
                     help="Optional Pedrini+2026 CSV path "
                          "(log_Mstar, tau_TOT, tau_TOT_err, and optionally "
@@ -841,23 +865,28 @@ def main():
                      "check that they share (mCloud, sfe, nCore) values.")
 
         # Encoding per the user's spec:
-        #   folder1 (--sweep_dir): solid edges, alpha=0.3 (70% transparent)
-        #   folder2 (--merge_dir): dashed edges, alpha=0.8 (20% transparent)
-        # Labels come from the density-profile settings in each folder's .param.
-        label_a = folder_dens_profile_label(sweep_dir)
-        label_b = folder_dens_profile_label(merge_dir)
+        #   folder1 (--sweep_dir): dashed edges, alpha=0.3 (70% transparent)
+        #   folder2 (--merge_dir): solid edges,  alpha=0.8 (20% transparent)
+        # High alpha pairs with solid; low alpha pairs with dashed.  Labels
+        # are the density-profile descriptors from each folder's .param; an
+        # unsupported profile raises here and we abort the merge plot.
+        try:
+            label_a = folder_dens_profile_label(sweep_dir)
+            label_b = folder_dens_profile_label(merge_dir)
+        except ValueError as exc:
+            ap.error(str(exc))
         for r in matched_a:
             r["_alpha"]  = 0.3
-            r["_dashed"] = False
+            r["_dashed"] = True
             r["_group"]  = label_a
         for r in matched_b:
             r["_alpha"]  = 0.8
-            r["_dashed"] = True
+            r["_dashed"] = False
             r["_group"]  = label_b
         plot_rows = matched_a + matched_b
         pdf_path = fig_dir / "pedrini_emergence_timescales_merge.pdf"
         print(f"[pedrini_tau] Plotting {len(matched_a)} matched pair(s): "
-              f"{label_a} (solid, α=0.3) vs {label_b} (dashed, α=0.8).")
+              f"{label_a} (dashed, α=0.3) vs {label_b} (solid, α=0.8).")
         make_plot(plot_rows, pedrini_df, pdf_path,
                   show_tau_pdr=args.show_tau_pdr, colourbar=args.colourbar)
         return
