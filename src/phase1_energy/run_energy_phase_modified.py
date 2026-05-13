@@ -35,7 +35,7 @@ import src.cooling.non_CIE.read_cloudy as non_CIE
 import src._functions.operations as operations
 from src._input.dictionary import updateDict
 import src._functions.unit_conversions as cvt
-from src.sb99.update_feedback import get_currentSB99feedback
+from src.sb99.update_feedback import get_current_sps_feedback
 
 # Import centralized event functions
 from src.phase_general.phase_events import (
@@ -89,7 +89,7 @@ def run_energy(params):
     # Initial feedback and bubble parameters
     # =============================================================================
 
-    feedback = get_currentSB99feedback(t_now, params)
+    feedback = get_current_sps_feedback(t_now, params)
     updateDict(params, feedback)
 
     # Calculate initial R1 and Pb
@@ -155,7 +155,7 @@ def run_energy(params):
         # =============================================================================
         # 2. Get feedback
         # =============================================================================
-        feedback = get_currentSB99feedback(t_now, params)
+        feedback = get_current_sps_feedback(t_now, params)
         updateDict(params, feedback)
 
         # =============================================================================
@@ -355,7 +355,7 @@ def run_energy(params):
     # first snapshot via the duplicate guard.
     # =========================================================================
     try:
-        feedback_final = get_currentSB99feedback(t_now, params)
+        feedback_final = get_current_sps_feedback(t_now, params)
         updateDict(params, feedback_final)
         R1_f = scipy.optimize.brentq(
             get_bubbleParams.get_r1, 1e-3 * R2, R2,
@@ -397,7 +397,7 @@ def run_energy_continuous(params):
     Eb = params['Eb'].value
 
     # Initial setup
-    feedback = get_currentSB99feedback(t_now, params)
+    feedback = get_current_sps_feedback(t_now, params)
     updateDict(params, feedback)
 
     # Build events using centralized module

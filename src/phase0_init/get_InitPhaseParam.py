@@ -44,7 +44,7 @@ MIN_VELOCITY = 1e-100    # Prevent div by zero in dt_phase0 calculation
 def get_y0(params):
     """
     Obtain initial values for the energy-driven (Weaver) phase by integrating
-    a brief free-streaming phase from the SB99 wind feedback at tSF.
+    a brief free-streaming phase from the SPS wind feedback at tSF.
 
     Physics references
     ------------------
@@ -56,7 +56,7 @@ def get_y0(params):
     Parameters
     ----------
     params : DescribedDict
-        Must contain: tSF, SB99f, nCore, mu_convert, bubble_xi_Tb.
+        Must contain: tSF, sps_f, nCore, mu_convert, bubble_xi_Tb.
 
     Returns
     -------
@@ -84,8 +84,8 @@ def get_y0(params):
     # Time of star formation [Myr]
     tSF = params['tSF'].value
 
-    # SB99 interpolation functions (with new naming convention)
-    SB99f = params['SB99f'].value
+    # SPS interpolation functions (sps_f naming as of PR-3 of SB99 -> SPS refactor).
+    sps_f = params['sps_f'].value
 
     # =========================================================================
     # INPUT VALIDATION
@@ -101,17 +101,17 @@ def get_y0(params):
         raise ValueError(f"bubble_xi_Tb must be in [0,1], got {bubble_xi_Tb}")
 
     # =========================================================================
-    # GET SB99 FEEDBACK VALUES AT tSF
+    # GET SPS FEEDBACK VALUES AT tSF
     # =========================================================================
 
     # CRITICAL: Use WIND-ONLY quantities for wind velocity calculation.
     # The free-streaming phase describes the stellar wind expansion before
     # the Weaver phase. The wind terminal velocity v = 2L/pdot is only
     # physical when using wind-only L and pdot (not total which includes SNe).
-    Lmech_W = SB99f['fLmech_W'](tSF)
-    pdot_W = SB99f['fpdot_W'](tSF)
+    Lmech_W = sps_f['fLmech_W'](tSF)
+    pdot_W = sps_f['fpdot_W'](tSF)
 
-    # Validate SB99 values
+    # Validate SPS values
     if Lmech_W < MIN_LUMINOSITY:
         logger.warning(f"Lmech_W={Lmech_W} is very small at tSF={tSF} Myr")
         Lmech_W = MIN_LUMINOSITY

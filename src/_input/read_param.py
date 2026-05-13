@@ -587,9 +587,15 @@ def read_param(path2file, write_summary=True):
     params['initial_cloud_n_arr'] = DescribedItem(np.array([]), info="Initial cloud density array", ori_units="1/cm**3")
     params['initial_cloud_m_arr'] = DescribedItem(np.array([]), info="Initial cloud enclosed mass array", ori_units="Msun")
     
-    # Feedback from Starburst99
-    params['SB99_data'] = DescribedItem(0, info="SB99 datacube", ori_units="N/A", exclude_from_snapshot=True)
-    params['SB99f'] = DescribedItem(0, info="SB99 interpolation function", ori_units="N/A", exclude_from_snapshot=True)
+    # Feedback from SPS (Starburst99 by default; arbitrary via sps_path).
+    # The canonical container names are sps_data / sps_f as of PR-3
+    # (audit §10); SB99_data / SB99f are kept as aliases pointing at the
+    # same DescribedItem instance so out-of-tree code continues to work.
+    params['sps_data'] = DescribedItem(0, info="SPS raw 11-array datacube", ori_units="N/A", exclude_from_snapshot=True)
+    params['sps_f'] = DescribedItem(0, info="SPS interpolators (dict of scipy interp1d)", ori_units="N/A", exclude_from_snapshot=True)
+    # Back-compat aliases (PR-3) — same underlying DescribedItem object.
+    params['SB99_data'] = params['sps_data']
+    params['SB99f'] = params['sps_f']
     params['Lmech_W'] = DescribedItem(0, info="Wind mechanical luminosity", ori_units="Msun*pc**2/Myr**3")
     params['Lmech_SN'] = DescribedItem(0, info="SN mechanical luminosity", ori_units="Msun*pc**2/Myr**3")
     params['Lmech_total'] = DescribedItem(0, info="Total mechanical luminosity", ori_units="Msun*pc**2/Myr**3")

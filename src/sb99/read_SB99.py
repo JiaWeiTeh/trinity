@@ -97,8 +97,8 @@ def read_SB99(f_mass, params):
 
     Examples
     --------
-    >>> SB99_data = read_SB99(f_mass=1.0, params=params)
-    >>> t, Qi, Li, Ln, Lbol, Lmech_W, Lmech_SN, Lmech_total, pdot_W, pdot_SN, pdot_total = SB99_data
+    >>> sps_data = read_SB99(f_mass=1.0, params=params)
+    >>> t, Qi, Li, Ln, Lbol, Lmech_W, Lmech_SN, Lmech_total, pdot_W, pdot_SN, pdot_total = sps_data
     >>> print(f"At t={t[50]:.3f} Myr: Wind Lmech={Lmech_W[50]:.3e}, SN Lmech={Lmech_SN[50]:.3e}")
     """
 
@@ -456,9 +456,9 @@ def _read_sb99_user(filepath, f_mass, params, column_map):
             pdot_W, pdot_SN, pdot_total]
 
 
-def get_interpolation(SB99, ftype='cubic'):
+def get_interpolation(sps, ftype='cubic'):
     """
-    Create cubic interpolation functions for SB99 feedback data.
+    Create cubic interpolation functions for SPS feedback data.
 
     This function takes the output from read_SB99() and creates scipy
     interpolation functions for all feedback parameters, with properly
@@ -466,7 +466,7 @@ def get_interpolation(SB99, ftype='cubic'):
 
     Parameters
     ----------
-    SB99 : list
+    sps : list
         Data array from read_SB99():
         [t, Qi, Li, Ln, Lbol, Lmech_W, Lmech_SN, Lmech_total, pdot_W, pdot_SN, pdot_total]
     ftype : str, optional
@@ -476,7 +476,7 @@ def get_interpolation(SB99, ftype='cubic'):
 
     Returns
     -------
-    SB99f : dict
+    sps_f : dict
         Dictionary of interpolation functions with keys matching variable names:
         - 'fQi' : Ionizing photon rate interpolator
         - 'fLi' : Ionizing luminosity interpolator
@@ -498,18 +498,18 @@ def get_interpolation(SB99, ftype='cubic'):
 
     Examples
     --------
-    >>> SB99_data = read_SB99(f_mass=1.0, params=params)
-    >>> SB99f = get_interpolation(SB99_data, ftype='cubic')
+    >>> sps_data = read_SB99(f_mass=1.0, params=params)
+    >>> sps_f = get_interpolation(sps_data, ftype='cubic')
     >>> t = 5.0  # Myr
-    >>> Lmech_W = SB99f['fLmech_W'](t)
-    >>> Lmech_SN = SB99f['fLmech_SN'](t)
-    >>> Lmech_total = SB99f['fLmech_total'](t)
-    >>> v_mech_total = 2.0 * Lmech_W / SB99f['fpdot_W'](t)  # Correct formula!
+    >>> Lmech_W = sps_f['fLmech_W'](t)
+    >>> Lmech_SN = sps_f['fLmech_SN'](t)
+    >>> Lmech_total = sps_f['fLmech_total'](t)
+    >>> v_mech_total = 2.0 * Lmech_W / sps_f['fpdot_W'](t)  # Correct formula!
     """
 
-    # Unpack all SB99 values (with separated components)
+    # Unpack all SPS values (with separated components)
     [t_Myr, Qi, Li, Ln, Lbol, Lmech_W, Lmech_SN, Lmech_total,
-     pdot_W, pdot_SN, pdot_total] = SB99
+     pdot_W, pdot_SN, pdot_total] = sps
 
     # Create interpolation functions for all feedback parameters
     fQi = scipy.interpolate.interp1d(t_Myr, Qi, kind=ftype)
@@ -528,7 +528,7 @@ def get_interpolation(SB99, ftype='cubic'):
     fpdot_total = scipy.interpolate.interp1d(t_Myr, pdot_total, kind=ftype)
 
     # Dictionary of all interpolators with consistent key naming
-    SB99f = {
+    sps_f = {
         'fQi': fQi,
         'fLi': fLi,
         'fLn': fLn,
@@ -541,4 +541,4 @@ def get_interpolation(SB99, ftype='cubic'):
         'fpdot_total': fpdot_total
     }
 
-    return SB99f
+    return sps_f
