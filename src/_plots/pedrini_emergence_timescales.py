@@ -42,18 +42,18 @@ Currently supported profiles are densPL with densPL_alpha=0
 aborts the merge plot. Runs are paired by (mCloud, sfe, nCore); unpaired
 runs are listed and skipped.
 
-Layout: two side-by-side panels sharing x and y axes, BE on the left,
-homogeneous on the right. Each panel uses the same encoding as the
-single-folder plot (colour = sfe, size = mCloud, fill = breakout,
-edge style = breakout vs lower-limit). The Pedrini+2026 overlay,
-when provided, is drawn on both panels for direct side-by-side
-comparison. A single sfe colourbar spans both panels on the right.
+Layout: two panels stacked vertically (one column) sharing x and y
+axes, BE on top, homogeneous on the bottom. Each panel uses the same
+encoding as the single-folder plot (colour = sfe, size = mCloud,
+fill = breakout, edge style = breakout vs lower-limit). The Pedrini+2026
+overlay, when provided, is drawn on both panels for direct comparison.
+A single sfe colourbar spans both panels on the right.
 Output: `pedrini_emergence_timescales_merge.pdf` under the
 `--sweep_dir` fig dir.
 
 Caption note: in merge mode the mCloud size scaling and sfe colour
-encoding are not duplicated in a legend — panel titles label the two
-profiles, and the size / colour scales are documented in the figure
+encoding are not duplicated in a legend — an in-panel text label names
+each profile, and the size / colour scales are documented in the figure
 caption.
 
 The Pedrini+2026 overlay is optional.  Pass `--pedrini_csv mock` to
@@ -594,12 +594,13 @@ def make_plot(rows: list[dict], pedrini_df, out_pdf: Path,
 
     # --- Axes setup and per-row routing -------------------------------
     if in_merge_mode:
-        # Two-panel layout with shared x and y axes. sharex/sharey couple
-        # the limits automatically, but we still recompute padded limits
-        # below to include Pedrini errorbars and to add the same 7% / 15%
-        # margins single-folder mode uses.
+        # Two-panel layout stacked vertically (one column, BE on top,
+        # homogeneous on the bottom) sharing x and y axes. sharex/sharey
+        # couple the limits automatically, but we still recompute padded
+        # limits below to include Pedrini errorbars and to add the same
+        # 7% / 15% margins single-folder mode uses.
         fig, axes_pair = plt.subplots(
-            1, 2, sharex=True, sharey=True, figsize=(9, 4),
+            2, 1, sharex=True, sharey=True, figsize=(5, 7),
         )
         panel_axes = {"BE": axes_pair[0], "homogeneous": axes_pair[1]}
         for r in rows:
@@ -609,14 +610,25 @@ def make_plot(rows: list[dict], pedrini_df, out_pdf: Path,
             _plot_row_on(ax_r, r)
         for panel_ax in axes_pair:
             _plot_pedrini_on(panel_ax)
+        # Profile labels go inside each panel (upper-left in axes
+        # coordinates) instead of using set_title, so the figure header
+        # stays clean and the labels sit next to the data they describe.
         for key, panel_ax in panel_axes.items():
-            panel_ax.set_title(key)
-            panel_ax.set_xlabel(r"$\log_{10}\!\left(M_\star\right)$ [$M_\odot$]")
-        axes_pair[0].set_ylabel(
-            r"$\tau$ [Myr]" if show_tau_pdr else r"$\tau_{\rm disp}$ [Myr]"
-        )
+            panel_ax.text(
+                0.04, 0.95, key,
+                transform=panel_ax.transAxes,
+                ha="left", va="top", fontsize="medium",
+            )
+            panel_ax.set_ylabel(
+                r"$\tau$ [Myr]" if show_tau_pdr else r"$\tau_{\rm disp}$ [Myr]"
+            )
+        # Only the bottom panel gets the x-axis label; sharex links the
+        # tick locators but doesn't auto-hide the upper panel's tick
+        # labels, so suppress them explicitly.
+        axes_pair[0].tick_params(labelbottom=False)
+        axes_pair[1].set_xlabel(r"$\log_{10}\!\left(M_\star\right)$ [$M_\odot$]")
         # Pedrini legend entry: the errorbar markers are otherwise unlabelled
-        # in merge mode (no inline legend by default). Placed in the right
+        # in merge mode (no inline legend by default). Placed on the bottom
         # panel with auto-positioning so it lands away from the data cloud.
         # Skipped if no Pedrini overlay was requested.
         if pedrini_df is not None:
@@ -768,7 +780,7 @@ def main():
                     help="Optional second sweep directory.  When set, runs in "
                          "the two folders are paired by (mCloud, sfe, nCore) "
                          "and rendered as a two-panel figure sharing x and y "
-                         "axes — BE on the left, homogeneous on the right. "
+                         "axes — BE on top, homogeneous on the bottom. "
                          "Each panel uses the same encoding as the "
                          "single-folder plot. Only dens_profile values "
                          "'densPL' (with densPL_alpha=0) and 'densBE' are "
