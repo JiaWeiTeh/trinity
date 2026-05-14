@@ -85,9 +85,8 @@ A one-line notice for each run that breaks out:
         (snapshots i=k-1/k, R2=...->... pc, t=...->... Myr)
 
 Runs without that notice did not break out; their tau_TOT is a lower
-limit (t_max), plotted as an open circle in the figure (with a dashed
-edge in single-folder mode; in merge mode the edge style is reserved for
-the folder encoding, so the open fill alone signals 'lower limit').
+limit (t_max), plotted as an open circle with a dashed coloured edge in
+the figure (same encoding in single-folder and merge modes).
 
 If any runs recollapsed (v2<0 anywhere), a notice listing the dropped
 run names is printed after the CSV is written.
@@ -545,9 +544,9 @@ def make_plot(rows: list[dict], pedrini_df, out_pdf: Path,
     #   lower limit: open circle, dashed coloured edge (still at stop_t)
     # tau_PDR markers (when shown) echo the same edge-style convention with
     # a square so the TOT/PDR axes stay visually independent.
-    # In merge mode, BE rows are plotted to the left panel and homogeneous
-    # rows to the right; within each panel the encoding is identical to the
-    # single-folder mode, so the comparison reduces to a clean side-by-side.
+    # In merge mode, BE rows are routed to the top panel and homogeneous
+    # rows to the bottom; within each panel the encoding is identical to
+    # single-folder mode, so the comparison reduces to a clean stack.
     LW_SOLID  = 1.0
     LW_DASHED = 1.2
 
@@ -703,9 +702,9 @@ def make_plot(rows: list[dict], pedrini_df, out_pdf: Path,
     cbar.set_label("sfe")
 
     # --- Legend (single-folder mode only) -----------------------------
-    # In merge mode the panel titles do the work of labelling BE vs
-    # homogeneous, and the mCloud size and sfe colour scales go in the
-    # figure caption, so no inline legend is drawn.
+    # In merge mode the in-panel text labels name BE vs homogeneous, and
+    # the mCloud size and sfe colour scales go in the figure caption, so
+    # no inline legend is drawn.
     if not in_merge_mode:
         # mid_ms is the "neutral" swatch size used by shape entries
         # (breakout, tau_PDR, Pedrini, ...).
@@ -892,8 +891,11 @@ def main():
             r["_group"] = label_b
         plot_rows = matched_a + matched_b
         pdf_path = fig_dir / "pedrini_emergence_timescales_merge.pdf"
+        # Panel routing is by group name (BE → top, homogeneous → bottom),
+        # not by folder order, so don't tag {label_a}/{label_b} with a
+        # panel position here.
         print(f"[pedrini_tau] Plotting {len(matched_a)} matched pair(s) "
-              f"across two panels: {label_a} (left) vs {label_b} (right).")
+              f"across two panels: {label_a} vs {label_b}.")
         make_plot(plot_rows, pedrini_df, pdf_path,
                   show_tau_pdr=args.show_tau_pdr, colourbar=args.colourbar)
         return
