@@ -70,10 +70,12 @@ SHOW_RADIUS_BOUNDARIES = True
 # ---------------------------------------------------------------------------
 # Colour assignments
 # ---------------------------------------------------------------------------
-# Panel (a): both R_b and v_sh are drawn black; the line style
-# (solid vs dashed) plus an in-panel Line2D legend distinguishes
-# them.
+# Panel (a) radii are rendered black; velocity gets a mid grey so
+# it stays distinguishable from the radius lines even though it
+# lives on a separate (twin) axis.  An in-panel Line2D legend ties
+# the line styles to the labels.
 _C_TOP = C_BLACK
+_C_VEL = "0.5"   # matplotlib mid grey
 
 # Panel (c) sequential purple ramp (darkest = gas absorption)
 _SHADE_GAS    = "#6c4a78"
@@ -388,9 +390,10 @@ def plot_from_path(data_input, output_dir=None):
                     else r"$R_{\rm b}\ [{\rm pc}]$")
 
     ax_av = ax_a.twinx()
-    ax_av.plot(run["t"], run["v_kms"], color=_C_TOP, lw=1.5, ls="--")
+    ax_av.plot(run["t"], run["v_kms"], color=_C_VEL, lw=1.5, ls="--")
     ax_av.set_yscale("log")
-    ax_av.set_ylabel(r"$v_{\rm b}\ [{\rm km\ s^{-1}}]$")
+    ax_av.set_ylabel(r"$v_{\rm b}\ [{\rm km\ s^{-1}}]$", color=_C_VEL)
+    ax_av.tick_params(axis="y", colors=_C_VEL)
 
     top_handles = [
         Line2D([0], [0], color=_C_TOP, ls="-",  lw=1.5, label=r"$R_{\rm b}$"),
@@ -402,7 +405,7 @@ def plot_from_path(data_input, output_dir=None):
             Line2D([0], [0], color=_C_TOP, ls="-.", lw=1.0,
                    label=r"$R_{\rm sh}$"))
     top_handles.append(
-        Line2D([0], [0], color=_C_TOP, ls="--", lw=1.5, label=r"$v_{\rm b}$"))
+        Line2D([0], [0], color=_C_VEL, ls="--", lw=1.5, label=r"$v_{\rm b}$"))
     leg_a = ax_a.legend(
         handles=top_handles, loc="upper left", frameon=False,
         fontsize=10, handlelength=1.6, labelspacing=0.3,
@@ -482,12 +485,11 @@ def plot_from_path(data_input, output_dir=None):
     if finite_t.size > 0:
         ax_c.set_xlim(finite_t.min(), finite_t.max())
 
-    # ---- explicit y-tick placements (avoid boundary-edge labels) -----------
-    # Top panel: R_b every 50 pc, skipping 0 (the panel-bottom border)
-    # and the axis cap.  v_sh stays on the default log locator.
-    ax_a.set_yticks([50, 100, 150, 200, 250])
-    # Middle and bottom panels: identical fraction ticks so the eye reads
-    # them as a paired stack.
+    # ---- explicit y-tick placements for the fraction panels ----------------
+    # Top panel: leave matplotlib's default locator alone — R varies
+    # by run, so a hardcoded tick set is more harm than help.
+    # Middle and bottom panels: identical fraction ticks so the eye
+    # reads them as a paired stack.
     ax_b.set_yticks([0.2, 0.4, 0.6, 0.8, 1.0])
     ax_c.set_yticks([0.2, 0.4, 0.6, 0.8, 1.0])
 
