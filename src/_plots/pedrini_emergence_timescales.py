@@ -60,8 +60,9 @@ axes, --BE_dir on top, --homo_dir on the bottom. Each panel uses the
 same encoding as the single-panel plot (colour = sfe, size = mCloud,
 fill = breakout, edge style = breakout vs lower-limit). The Pedrini+2026
 overlay, when provided, is drawn on both panels for direct comparison.
-A single sfe colourbar spans both panels on the right. The merge PDF is
-written under the --BE_dir fig directory.
+Each panel has its own sfe colourbar on the right; both colourbars are
+built from the same ScalarMappable, so their limits and ticks are
+identical. The merge PDF is written under the --BE_dir fig directory.
 
 Caption note: in merge mode the mCloud size scaling and sfe colour
 encoding are not duplicated in a legend — an in-panel text label names
@@ -613,8 +614,12 @@ def make_plot(rows: list[dict], pedrini_df, out_pdf: Path,
         # couple the limits automatically, but we still recompute padded
         # limits below to include Pedrini errorbars and to add the same
         # 7% / 15% margins single-panel mode uses.
+        # hspace pulls the two panels close together so the eye reads them
+        # as one stacked comparison; a thin gap stays (not 0) so the top
+        # panel's bottom spine doesn't touch the bottom panel's top spine.
         fig, axes_pair = plt.subplots(
             2, 1, sharex=True, sharey=True, figsize=(5, 7),
+            gridspec_kw={"hspace": 0.08},
         )
         panel_axes = {"BE": axes_pair[0], "homogeneous": axes_pair[1]}
         for r in rows:
@@ -653,7 +658,10 @@ def make_plot(rows: list[dict], pedrini_df, out_pdf: Path,
                 loc="best", frameon=False, fontsize="small",
             )
         all_axes = list(axes_pair)
-        cbar_target = axes_pair  # colourbar spans both panels
+        # Each panel gets its own colourbar in merge mode (see colourbar
+        # block below). Both colourbars share the same sfe_mappable, so
+        # their limits and ticks are identical by construction.
+        cbar_targets = list(axes_pair)
     else:
         fig, ax = plt.subplots()
         for r in rows:
@@ -664,7 +672,7 @@ def make_plot(rows: list[dict], pedrini_df, out_pdf: Path,
             r"$\tau$ [Myr]" if show_tau_pdr else r"$\tau_{\rm disp}$ [Myr]"
         )
         all_axes = [ax]
-        cbar_target = ax
+        cbar_targets = [ax]
 
     # --- Shared limits with padding -----------------------------------
     # Pad axis limits so size-inflated markers don't touch the spines.
@@ -696,25 +704,28 @@ def make_plot(rows: list[dict], pedrini_df, out_pdf: Path,
     # Continuous mode uses viridis with LogNorm; discrete mode uses one
     # Wong-palette band per unique sfe value, ticks centred on each band.
     # In continuous mode the colourbar ticks are anchored at the actual
-    # sweep endpoints. In merge mode the colourbar spans both panels.
+    # sweep endpoints. In merge mode each panel gets its own colourbar
+    # on the right; both share the single sfe_mappable, so their limits,
+    # cmap and ticks are identical by construction.
     sfe_mappable = plt.cm.ScalarMappable(cmap=sfe_cmap, norm=sfe_norm)
     sfe_mappable.set_array([])
-    if colourbar == "discrete":
-        cbar = fig.colorbar(
-            sfe_mappable, ax=cbar_target, location="right",
-            fraction=0.04, pad=0.01,
-            ticks=np.arange(len(unique_sfe)),
-        )
-        cbar.set_ticklabels([f"{s:g}" for s in unique_sfe])
-    else:
-        endpoints = [unique_sfe[0], unique_sfe[-1]]
-        cbar = fig.colorbar(
-            sfe_mappable, ax=cbar_target, location="right",
-            fraction=0.04, pad=0.01,
-            ticks=endpoints,
-        )
-        cbar.set_ticklabels([f"{v:g}" for v in endpoints])
-    cbar.set_label("sfe")
+    for cbar_ax in cbar_targets:
+        if colourbar == "discrete":
+            cbar = fig.colorbar(
+                sfe_mappable, ax=cbar_ax, location="right",
+                fraction=0.04, pad=0.01,
+                ticks=np.arange(len(unique_sfe)),
+            )
+            cbar.set_ticklabels([f"{s:g}" for s in unique_sfe])
+        else:
+            endpoints = [unique_sfe[0], unique_sfe[-1]]
+            cbar = fig.colorbar(
+                sfe_mappable, ax=cbar_ax, location="right",
+                fraction=0.04, pad=0.01,
+                ticks=endpoints,
+            )
+            cbar.set_ticklabels([f"{v:g}" for v in endpoints])
+        cbar.set_label("sfe")
 
     # --- Legend (single-panel mode only) -----------------------------
     # In merge mode the in-panel text labels name BE vs homogeneous, and
