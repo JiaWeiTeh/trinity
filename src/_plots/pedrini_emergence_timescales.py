@@ -18,16 +18,33 @@ Recollapsing runs (any v2<0 in the trajectory) are excluded from the
 plot since they never emerge in Pedrini's sense.  They remain in the
 CSV with a `recollapse_flag` column for traceability.
 
-Output (under <FIG_DIR>/<sweep_dir.name>/):
-  - pedrini_emergence_timescales.pdf
-  - pedrini_emergence_timescales_summary.csv
+Output (under <FIG_DIR>/<input.name>/, using the lone folder in
+single-panel mode or --BE_dir in merge mode):
+  - pedrini_emergence_timescales.pdf            (single-panel mode)
+  - pedrini_emergence_timescales_merge.pdf      (merge mode)
+  - pedrini_emergence_timescales_summary*.csv   (one CSV per input folder)
 
 Usage
 -----
-Run from the project root:
+Pass exactly one of --BE_dir / --homo_dir for a single-panel plot, or
+both for the stacked merge plot:
 
+    # Single-panel BE:
     python src/_plots/pedrini_emergence_timescales.py \
-        --sweep_dir outputs/pedrini_sweep_grid
+        --BE_dir outputs/pedrini_sweep_grid_BE
+
+    # Single-panel homogeneous:
+    python src/_plots/pedrini_emergence_timescales.py \
+        --homo_dir outputs/pedrini_sweep_grid
+
+    # Merge mode (BE on top, homogeneous on bottom):
+    python src/_plots/pedrini_emergence_timescales.py \
+        --BE_dir outputs/pedrini_sweep_grid_BE \
+        --homo_dir outputs/pedrini_sweep_grid
+
+Each folder is validated against its flag: --BE_dir must contain
+densBE runs, --homo_dir must contain densPL runs with densPL_alpha=0.
+Mismatches abort up front so panels can never be mislabelled.
 
 Add `--show_tau_pdr` to also compute and plot tau_PDR.  Use
 `--colourbar discrete` to swap the default viridis colourbar for a
@@ -35,21 +52,16 @@ Wong-palette band-per-sfe colourbar (useful for narrow sweeps).
 
 Merge mode
 ----------
-Pass `--merge_dir <other_sweep>` to compare a second sweep whose runs
-differ from `--sweep_dir` only in their density-profile settings.
-Currently supported profiles are densPL with densPL_alpha=0
-(labelled "homogeneous") and densBE (labelled "BE"); any other profile
-aborts the merge plot. Runs are paired by (mCloud, sfe, nCore); unpaired
-runs are listed and skipped.
+When both --BE_dir and --homo_dir are passed, runs are paired by
+(mCloud, sfe, nCore); unpaired runs are listed and skipped.
 
 Layout: two panels stacked vertically (one column) sharing x and y
-axes, BE on top, homogeneous on the bottom. Each panel uses the same
-encoding as the single-folder plot (colour = sfe, size = mCloud,
+axes, --BE_dir on top, --homo_dir on the bottom. Each panel uses the
+same encoding as the single-panel plot (colour = sfe, size = mCloud,
 fill = breakout, edge style = breakout vs lower-limit). The Pedrini+2026
 overlay, when provided, is drawn on both panels for direct comparison.
-A single sfe colourbar spans both panels on the right.
-Output: `pedrini_emergence_timescales_merge.pdf` under the
-`--sweep_dir` fig dir.
+A single sfe colourbar spans both panels on the right. The merge PDF is
+written under the --BE_dir fig directory.
 
 Caption note: in merge mode the mCloud size scaling and sfe colour
 encoding are not duplicated in a legend — an in-panel text label names
@@ -60,13 +72,15 @@ The Pedrini+2026 overlay is optional.  Pass `--pedrini_csv mock` to
 use the hand-digitised reference data embedded in this script:
 
     python src/_plots/pedrini_emergence_timescales.py \
-        --sweep_dir outputs/pedrini_sweep_grid \
+        --BE_dir outputs/pedrini_sweep_grid_BE \
+        --homo_dir outputs/pedrini_sweep_grid \
         --pedrini_csv mock
 
 Or pass a real CSV path:
 
     python src/_plots/pedrini_emergence_timescales.py \
-        --sweep_dir outputs/pedrini_sweep_grid \
+        --BE_dir outputs/pedrini_sweep_grid_BE \
+        --homo_dir outputs/pedrini_sweep_grid \
         --pedrini_csv path/to/pedrini2026.csv
 
 The CSV needs columns log_Mstar, tau_TOT, tau_TOT_err; if `--show_tau_pdr`
@@ -86,7 +100,7 @@ A one-line notice for each run that breaks out:
 
 Runs without that notice did not break out; their tau_TOT is a lower
 limit (t_max), plotted as an open circle with a dashed coloured edge in
-the figure (same encoding in single-folder and merge modes).
+the figure (same encoding in single-panel and merge modes).
 
 If any runs recollapsed (v2<0 anywhere), a notice listing the dropped
 run names is printed after the CSV is written.
@@ -364,15 +378,16 @@ def pair_runs(rows_a: list[dict], rows_b: list[dict]):
 def folder_dens_profile_label(sweep_dir: Path) -> str:
     """Short profile descriptor read from the first .param in the sweep.
 
-    Supported in merge mode:
+    Recognised:
       - densPL with densPL_alpha=0  →  "homogeneous"
       - densBE                       →  "BE"
 
-    Any other density-profile configuration (e.g. densPL with a non-zero
-    alpha) raises ValueError so main() can abort the merge plot. We don't
-    silently fall back to a generic label here because the merge legend
-    bakes the descriptor into a 2-entry compact legend — an unrecognised
-    profile would mislabel half the markers.
+    Used by main() to validate that --BE_dir / --homo_dir point at the
+    profile their flag names advertise (so the panel labels in the
+    figure always match the CLI). Any other density-profile configuration
+    (e.g. densPL with a non-zero alpha) raises ValueError; we don't
+    silently fall back to a generic label because an unrecognised
+    profile here means we can't guarantee the panel routing is correct.
     """
     try:
         first_param = next(sweep_dir.rglob("*.param"))
@@ -546,7 +561,7 @@ def make_plot(rows: list[dict], pedrini_df, out_pdf: Path,
     # a square so the TOT/PDR axes stay visually independent.
     # In merge mode, BE rows are routed to the top panel and homogeneous
     # rows to the bottom; within each panel the encoding is identical to
-    # single-folder mode, so the comparison reduces to a clean stack.
+    # single-panel mode, so the comparison reduces to a clean stack.
     LW_SOLID  = 1.0
     LW_DASHED = 1.2
 
@@ -597,7 +612,7 @@ def make_plot(rows: list[dict], pedrini_df, out_pdf: Path,
         # homogeneous on the bottom) sharing x and y axes. sharex/sharey
         # couple the limits automatically, but we still recompute padded
         # limits below to include Pedrini errorbars and to add the same
-        # 7% / 15% margins single-folder mode uses.
+        # 7% / 15% margins single-panel mode uses.
         fig, axes_pair = plt.subplots(
             2, 1, sharex=True, sharey=True, figsize=(5, 7),
         )
@@ -701,7 +716,7 @@ def make_plot(rows: list[dict], pedrini_df, out_pdf: Path,
         cbar.set_ticklabels([f"{v:g}" for v in endpoints])
     cbar.set_label("sfe")
 
-    # --- Legend (single-folder mode only) -----------------------------
+    # --- Legend (single-panel mode only) -----------------------------
     # In merge mode the in-panel text labels name BE vs homogeneous, and
     # the mCloud size and sfe colour scales go in the figure caption, so
     # no inline legend is drawn.
@@ -773,18 +788,20 @@ def main():
         description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    ap.add_argument("--sweep_dir", required=True, type=Path,
-                    help="Sweep output directory (contains per-run subdirs).")
-    ap.add_argument("--merge_dir", type=Path, default=None,
-                    help="Optional second sweep directory.  When set, runs in "
-                         "the two folders are paired by (mCloud, sfe, nCore) "
-                         "and rendered as a two-panel figure sharing x and y "
-                         "axes — BE on top, homogeneous on the bottom. "
-                         "Each panel uses the same encoding as the "
-                         "single-folder plot. Only dens_profile values "
-                         "'densPL' (with densPL_alpha=0) and 'densBE' are "
-                         "supported in merge mode; anything else aborts. "
-                         "Output: pedrini_emergence_timescales_merge.pdf.")
+    ap.add_argument("--BE_dir", type=Path, default=None,
+                    help="Sweep output directory containing densBE runs. "
+                         "Plotted on the top panel of the merge figure when "
+                         "paired with --homo_dir, or as a single-panel BE "
+                         "plot when passed alone. Validated up front: a "
+                         "non-densBE folder aborts so panels can never be "
+                         "mislabelled.")
+    ap.add_argument("--homo_dir", type=Path, default=None,
+                    help="Sweep output directory containing densPL runs "
+                         "with densPL_alpha=0 (homogeneous cloud). Plotted "
+                         "on the bottom panel of the merge figure when "
+                         "paired with --BE_dir, or as a single-panel "
+                         "homogeneous plot when passed alone. Validated up "
+                         "front (only densPL_alpha=0 accepted).")
     ap.add_argument("--pedrini_csv", type=str, default=None,
                     help="Optional Pedrini+2026 CSV path "
                          "(log_Mstar, tau_TOT, tau_TOT_err, and optionally "
@@ -804,27 +821,36 @@ def main():
                          "palette with one band per unique sfe value.")
     args = ap.parse_args()
 
-    sweep_dir = args.sweep_dir.resolve()
-    if not sweep_dir.is_dir():
-        ap.error(f"--sweep_dir not found: {sweep_dir}")
+    # --- Resolve and validate the folder flags ---------------------------
+    # The flag names hard-code which density profile each folder must
+    # contain. Validate up front against folder_dens_profile_label() so
+    # the panel labels in the figure are guaranteed to match the CLI:
+    # --BE_dir always feeds the BE-labelled panel, --homo_dir always
+    # feeds the homogeneous-labelled panel.
+    be_dir   = args.BE_dir.resolve()   if args.BE_dir   is not None else None
+    homo_dir = args.homo_dir.resolve() if args.homo_dir is not None else None
+    if be_dir is None and homo_dir is None:
+        ap.error("Pass at least one of --BE_dir or --homo_dir "
+                 "(both for merge mode).")
+    for flag, d, expected in (
+        ("--BE_dir",   be_dir,   "BE"),
+        ("--homo_dir", homo_dir, "homogeneous"),
+    ):
+        if d is None:
+            continue
+        if not d.is_dir():
+            ap.error(f"{flag} not found: {d}")
+        try:
+            got = folder_dens_profile_label(d)
+        except ValueError as exc:
+            ap.error(str(exc))
+        if got != expected:
+            ap.error(f"{flag} {d} contains {got!r} runs but {flag} "
+                     f"expects {expected!r}.")
 
-    rows = collect_all(sweep_dir, show_tau_pdr=args.show_tau_pdr)
-    if not rows:
-        ap.error(f"No simulations found under {sweep_dir}")
+    merge_mode = (be_dir is not None) and (homo_dir is not None)
 
-    fig_dir = FIG_DIR / sweep_dir.name
-    fig_dir.mkdir(parents=True, exist_ok=True)
-
-    # In merge mode the per-sweep CSVs use folder-suffixed names so they
-    # don't overwrite the single-folder run's CSV in the same fig_dir.
-    if args.merge_dir is None:
-        csv_path = fig_dir / "pedrini_emergence_timescales_summary.csv"
-    else:
-        csv_path = fig_dir / f"pedrini_emergence_timescales_summary_{sweep_dir.name}.csv"
-    # CSV keeps every row (with recollapse_flag) for the audit trail.
-    write_summary_csv(rows, csv_path, show_tau_pdr=args.show_tau_pdr)
-    print(f"Wrote summary: {csv_path} ({len(rows)} rows)")
-
+    # --- Pedrini overlay (shared by both modes) --------------------------
     if args.pedrini_csv is None:
         pedrini_df = None
     elif args.pedrini_csv == "mock":
@@ -835,70 +861,79 @@ def main():
             ap.error(f"--pedrini_csv not found: {csv_in}")
         pedrini_df = load_pedrini_csv(csv_in)
 
-    if args.merge_dir is not None:
-        merge_dir = args.merge_dir.resolve()
-        if not merge_dir.is_dir():
-            ap.error(f"--merge_dir not found: {merge_dir}")
-        if merge_dir == sweep_dir:
-            print("[pedrini_tau] --merge_dir matches --sweep_dir; "
-                  "merge mode will pair every run with itself.")
+    # --- Output directory ------------------------------------------------
+    # Single-panel mode writes under the lone input folder's fig dir.
+    # Merge mode writes under --BE_dir's fig dir (top panel = the natural
+    # "primary"); the --homo_dir CSV is suffixed to avoid collision.
+    primary_dir = be_dir if be_dir is not None else homo_dir
+    fig_dir = FIG_DIR / primary_dir.name
+    fig_dir.mkdir(parents=True, exist_ok=True)
 
-        rows_b = collect_all(merge_dir, show_tau_pdr=args.show_tau_pdr)
-        if not rows_b:
-            ap.error(f"No simulations found under {merge_dir}")
+    if merge_mode:
+        rows_BE   = collect_all(be_dir,   show_tau_pdr=args.show_tau_pdr)
+        rows_homo = collect_all(homo_dir, show_tau_pdr=args.show_tau_pdr)
+        if not rows_BE:
+            ap.error(f"No simulations found under {be_dir}")
+        if not rows_homo:
+            ap.error(f"No simulations found under {homo_dir}")
 
-        csv_path_b = fig_dir / f"pedrini_emergence_timescales_summary_{merge_dir.name}.csv"
-        write_summary_csv(rows_b, csv_path_b, show_tau_pdr=args.show_tau_pdr)
-        print(f"Wrote summary: {csv_path_b} ({len(rows_b)} rows)")
+        # Per-folder CSVs, suffixed so neither overwrites the other.
+        csv_BE   = fig_dir / f"pedrini_emergence_timescales_summary_{be_dir.name}.csv"
+        csv_homo = fig_dir / f"pedrini_emergence_timescales_summary_{homo_dir.name}.csv"
+        write_summary_csv(rows_BE,   csv_BE,   show_tau_pdr=args.show_tau_pdr)
+        write_summary_csv(rows_homo, csv_homo, show_tau_pdr=args.show_tau_pdr)
+        print(f"Wrote summary: {csv_BE} ({len(rows_BE)} rows)")
+        print(f"Wrote summary: {csv_homo} ({len(rows_homo)} rows)")
 
         # Recollapse runs lack a Pedrini-relevant tau_TOT, so drop them
         # BEFORE pairing — otherwise we'd reject a perfectly good run in
-        # folder A only because its partner in folder B recollapsed.
-        rows_a_ok = [r for r in rows  if not r.get("recollapse")]
-        rows_b_ok = [r for r in rows_b if not r.get("recollapse")]
-        n_recol_a = len(rows)   - len(rows_a_ok)
-        n_recol_b = len(rows_b) - len(rows_b_ok)
-        if n_recol_a or n_recol_b:
+        # the BE folder only because its homogeneous partner recollapsed.
+        rows_BE_ok   = [r for r in rows_BE   if not r.get("recollapse")]
+        rows_homo_ok = [r for r in rows_homo if not r.get("recollapse")]
+        n_recol_BE   = len(rows_BE)   - len(rows_BE_ok)
+        n_recol_homo = len(rows_homo) - len(rows_homo_ok)
+        if n_recol_BE or n_recol_homo:
             print(f"[pedrini_tau] Dropped recollapsing runs before pairing: "
-                  f"{n_recol_a} from {sweep_dir.name}, "
-                  f"{n_recol_b} from {merge_dir.name}.")
+                  f"{n_recol_BE} from --BE_dir ({be_dir.name}), "
+                  f"{n_recol_homo} from --homo_dir ({homo_dir.name}).")
 
-        matched_a, matched_b, unmatched_a, unmatched_b = pair_runs(
-            rows_a_ok, rows_b_ok
+        matched_BE, matched_homo, unmatched_BE, unmatched_homo = pair_runs(
+            rows_BE_ok, rows_homo_ok
         )
-        if unmatched_a or unmatched_b:
+        if unmatched_BE or unmatched_homo:
             print(f"[pedrini_tau] Unpaired runs (no (mCloud, sfe, nCore) match):")
-            for r in unmatched_a:
-                print(f"  - {sweep_dir.name}/{r['run_name']}")
-            for r in unmatched_b:
-                print(f"  - {merge_dir.name}/{r['run_name']}")
-        if not matched_a:
-            ap.error("No paired runs found between the two folders — "
-                     "check that they share (mCloud, sfe, nCore) values.")
+            for r in unmatched_BE:
+                print(f"  - --BE_dir/{be_dir.name}/{r['run_name']}")
+            for r in unmatched_homo:
+                print(f"  - --homo_dir/{homo_dir.name}/{r['run_name']}")
+        if not matched_BE:
+            ap.error("No paired runs found between --BE_dir and --homo_dir "
+                     "— check that they share (mCloud, sfe, nCore) values.")
 
-        # Two-panel encoding: only the density-profile descriptor matters
-        # for routing rows to their panel. Drop the old alpha / dash tags;
-        # within each panel the per-row encoding (colour, size, breakout
-        # fill, edge style) is identical to single-folder mode.
-        try:
-            label_a = folder_dens_profile_label(sweep_dir)
-            label_b = folder_dens_profile_label(merge_dir)
-        except ValueError as exc:
-            ap.error(str(exc))
-        for r in matched_a:
-            r["_group"] = label_a
-        for r in matched_b:
-            r["_group"] = label_b
-        plot_rows = matched_a + matched_b
+        # Tag rows with their panel group; make_plot routes BE → top and
+        # homogeneous → bottom. Labels are hard-coded by the flag the
+        # folder came in on, matching the validation above.
+        for r in matched_BE:
+            r["_group"] = "BE"
+        for r in matched_homo:
+            r["_group"] = "homogeneous"
+
+        plot_rows = matched_BE + matched_homo
         pdf_path = fig_dir / "pedrini_emergence_timescales_merge.pdf"
-        # Panel routing is by group name (BE → top, homogeneous → bottom),
-        # not by folder order, so don't tag {label_a}/{label_b} with a
-        # panel position here.
-        print(f"[pedrini_tau] Plotting {len(matched_a)} matched pair(s) "
-              f"across two panels: {label_a} vs {label_b}.")
+        print(f"[pedrini_tau] Plotting {len(matched_BE)} matched pair(s) "
+              f"across two panels: BE (top, --BE_dir {be_dir.name}) vs "
+              f"homogeneous (bottom, --homo_dir {homo_dir.name}).")
         make_plot(plot_rows, pedrini_df, pdf_path,
                   show_tau_pdr=args.show_tau_pdr, colourbar=args.colourbar)
         return
+
+    # --- Single-panel mode -----------------------------------------------
+    rows = collect_all(primary_dir, show_tau_pdr=args.show_tau_pdr)
+    if not rows:
+        ap.error(f"No simulations found under {primary_dir}")
+    csv_path = fig_dir / "pedrini_emergence_timescales_summary.csv"
+    write_summary_csv(rows, csv_path, show_tau_pdr=args.show_tau_pdr)
+    print(f"Wrote summary: {csv_path} ({len(rows)} rows)")
 
     # Recollapse runs don't have a Pedrini-relevant tau_TOT (their shell
     # turned around before emergence); drop them from the plot and announce
