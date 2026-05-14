@@ -35,27 +35,26 @@ Wong-palette band-per-sfe colourbar (useful for narrow sweeps).
 
 Merge mode
 ----------
-Pass `--merge_dir <other_sweep>` to overlay a second sweep whose runs
+Pass `--merge_dir <other_sweep>` to compare a second sweep whose runs
 differ from `--sweep_dir` only in their density-profile settings.
 Currently supported profiles are densPL with densPL_alpha=0
 (labelled "homogeneous") and densBE (labelled "BE"); any other profile
 aborts the merge plot. Runs are paired by (mCloud, sfe, nCore); unpaired
 runs are listed and skipped.
 
-Encoding (high-alpha pairs with solid, low-alpha with dashed):
-  - `--sweep_dir`: dashed edges, alpha=0.3 (70%% transparent)
-  - `--merge_dir`: solid edges, alpha=0.8 (20%% transparent)
+Layout: two side-by-side panels sharing x and y axes, BE on the left,
+homogeneous on the right. Each panel uses the same encoding as the
+single-folder plot (colour = sfe, size = mCloud, fill = breakout,
+edge style = breakout vs lower-limit). The Pedrini+2026 overlay,
+when provided, is drawn on both panels for direct side-by-side
+comparison. A single sfe colourbar spans both panels on the right.
+Output: `pedrini_emergence_timescales_merge.pdf` under the
+`--sweep_dir` fig dir.
 
-The legend is collapsed to two entries that together convey size,
-line style, alpha, and folder descriptor: a small-mass solid swatch
-for the `--merge_dir` profile, and a large-mass dashed-transparent
-swatch for the `--sweep_dir` profile. The legend sits inside the
-top-right of the axes. Output: `pedrini_emergence_timescales_merge.pdf`
-under the `--sweep_dir` fig dir.
-
-Note: in merge mode the dash pattern encodes the folder, not the
-breakout vs lower-limit status — fill state alone now carries that
-signal (filled circle = breakout, open circle = lower limit).
+Caption note: in merge mode the mCloud size scaling and sfe colour
+encoding are not duplicated in a legend — panel titles label the two
+profiles, and the size / colour scales are documented in the figure
+caption.
 
 The Pedrini+2026 overlay is optional.  Pass `--pedrini_csv mock` to
 use the hand-digitised reference data embedded in this script:
@@ -539,55 +538,50 @@ def make_plot(rows: list[dict], pedrini_df, out_pdf: Path,
     sfe_cmap, sfe_norm, sfe_color, unique_sfe = _sfe_color_mapping(rows, colourbar)
     REF_COLOR  = "k"       # Pedrini+2026 reference data
 
-    fig, ax = plt.subplots()
+    in_merge_mode = any("_group" in r for r in rows)
 
-    # tau_TOT marker recipe (recollapse already dropped):
-    #   single-folder mode:
-    #     - breakout:     filled circle, solid black edge
-    #     - lower limit:  open circle,   dashed coloured edge (still at stop_t)
-    #   merge mode (rows carry _dashed):
-    #     - line style encodes folder (folder1=solid, folder2=dashed); fill
-    #       still encodes breakout (filled=breakout, open=lower limit).
-    # tau_PDR markers echo the same edge-style convention with a square so
-    # the TOT/PDR axes stay visually independent.
+    # tau_TOT marker recipe (recollapse already dropped, both modes):
+    #   breakout:    filled circle, solid black edge
+    #   lower limit: open circle, dashed coloured edge (still at stop_t)
+    # tau_PDR markers (when shown) echo the same edge-style convention with
+    # a square so the TOT/PDR axes stay visually independent.
+    # In merge mode, BE rows are plotted to the left panel and homogeneous
+    # rows to the right; within each panel the encoding is identical to the
+    # single-folder mode, so the comparison reduces to a clean side-by-side.
     LW_SOLID  = 1.0
     LW_DASHED = 1.2
-    for r in rows:
+
+    def _plot_row_on(ax, r):
         x = np.log10(r["M_star"])
         ms = _marker_size(r["mCloud"], m_min, m_max)
         s_area = ms ** 2  # scatter `s` is area in pts^2; plot `markersize` is diameter in pts
         color = sfe_color(r["sfe"])
         breakout = r["breakout"]
-        alpha = r.get("_alpha", 1.0)  # merge mode pre-tags rows with an alpha
-        # In merge mode the dash pattern is forced by the folder tag, so it
-        # no longer carries the breakout signal — fill state alone does that.
-        if "_dashed" in r:
-            dashed = bool(r["_dashed"])
-        else:
-            dashed = not breakout
-        ls = "--" if dashed else "-"
-        lw = LW_DASHED if dashed else LW_SOLID
+        ls = "-" if breakout else "--"
+        lw = LW_SOLID if breakout else LW_DASHED
         if breakout:
             ax.scatter([x], [r["tau_TOT"]], s=s_area, c=[color],
                        marker="o", edgecolors="k",
-                       linestyles=ls, linewidths=lw, alpha=alpha)
+                       linestyles=ls, linewidths=lw)
             if show_tau_pdr:
                 ax.scatter([x], [r["tau_PDR"]], s=s_area,
                            facecolors="none", edgecolors=[color],
                            marker="s",
-                           linestyles=ls, linewidths=lw, alpha=alpha)
+                           linestyles=ls, linewidths=lw)
         else:
             ax.scatter([x], [r["tau_TOT"]], s=s_area,
                        facecolors="none", edgecolors=[color],
                        marker="o",
-                       linestyles=ls, linewidths=lw, alpha=alpha)
+                       linestyles=ls, linewidths=lw)
             if show_tau_pdr:
                 ax.scatter([x], [r["tau_PDR"]], s=s_area,
                            facecolors="none", edgecolors=[color],
                            marker="s",
-                           linestyles=ls, linewidths=lw, alpha=alpha)
+                           linestyles=ls, linewidths=lw)
 
-    if pedrini_df is not None:
+    def _plot_pedrini_on(ax):
+        if pedrini_df is None:
+            return
         ax.errorbar(pedrini_df["log_Mstar"], pedrini_df["tau_TOT"],
                     yerr=pedrini_df["tau_TOT_err"],
                     marker="o", mfc=REF_COLOR, mec=REF_COLOR, ecolor=REF_COLOR,
@@ -598,16 +592,61 @@ def make_plot(rows: list[dict], pedrini_df, out_pdf: Path,
                         marker="s", mfc="none", mec=REF_COLOR, ecolor=REF_COLOR,
                         linestyle="none", markersize=7, capsize=2)
 
-    ax.set_xlabel(r"$\log_{10}\!\left(M_\star\right)$ [$M_\odot$]")
-    if show_tau_pdr:
-        ax.set_ylabel(r"$\tau$ [Myr]")
+    # --- Axes setup and per-row routing -------------------------------
+    if in_merge_mode:
+        # Two-panel layout with shared x and y axes. sharex/sharey couple
+        # the limits automatically, but we still recompute padded limits
+        # below to include Pedrini errorbars and to add the same 7% / 15%
+        # margins single-folder mode uses.
+        fig, axes_pair = plt.subplots(
+            1, 2, sharex=True, sharey=True, figsize=(9, 4),
+        )
+        panel_axes = {"BE": axes_pair[0], "homogeneous": axes_pair[1]}
+        for r in rows:
+            ax_r = panel_axes.get(r.get("_group"))
+            if ax_r is None:
+                continue  # unknown profile — main() blocks this, defensive
+            _plot_row_on(ax_r, r)
+        for panel_ax in axes_pair:
+            _plot_pedrini_on(panel_ax)
+        for key, panel_ax in panel_axes.items():
+            panel_ax.set_title(key)
+            panel_ax.set_xlabel(r"$\log_{10}\!\left(M_\star\right)$ [$M_\odot$]")
+        axes_pair[0].set_ylabel(
+            r"$\tau$ [Myr]" if show_tau_pdr else r"$\tau_{\rm disp}$ [Myr]"
+        )
+        # Pedrini legend entry: the errorbar markers are otherwise unlabelled
+        # in merge mode (no inline legend by default). Placed in the right
+        # panel with auto-positioning so it lands away from the data cloud.
+        # Skipped if no Pedrini overlay was requested.
+        if pedrini_df is not None:
+            axes_pair[1].legend(
+                handles=[Line2D([], [], marker="o", linestyle="none",
+                                mfc=REF_COLOR, mec=REF_COLOR, markersize=7,
+                                label="Pedrini+2026")],
+                loc="best", frameon=False, fontsize="small",
+            )
+        all_axes = list(axes_pair)
+        cbar_target = axes_pair  # colourbar spans both panels
     else:
-        ax.set_ylabel(r"$\tau_{\rm disp}$ [Myr]")
+        fig, ax = plt.subplots()
+        for r in rows:
+            _plot_row_on(ax, r)
+        _plot_pedrini_on(ax)
+        ax.set_xlabel(r"$\log_{10}\!\left(M_\star\right)$ [$M_\odot$]")
+        ax.set_ylabel(
+            r"$\tau$ [Myr]" if show_tau_pdr else r"$\tau_{\rm disp}$ [Myr]"
+        )
+        all_axes = [ax]
+        cbar_target = ax
 
+    # --- Shared limits with padding -----------------------------------
     # Pad axis limits so size-inflated markers don't touch the spines.
     # y always anchors at 0; top adds 15% headroom over the largest plotted
-    # value (including Pedrini errorbars when overlaid).  x pads 7% of range
-    # on each side, with a 0.2-dex floor for single-mCloud sweeps.
+    # value (including Pedrini errorbars when overlaid). x pads 7% of range
+    # on each side, with a 0.2-dex floor for single-mCloud sweeps. In merge
+    # mode sharex / sharey would propagate the first set_*lim, but we apply
+    # to every axis explicitly so the limits are obvious from the code.
     all_tau = [r["tau_TOT"] for r in rows]
     if show_tau_pdr:
         all_tau += [r["tau_PDR"] for r in rows]
@@ -616,90 +655,51 @@ def make_plot(rows: list[dict], pedrini_df, out_pdf: Path,
         if show_tau_pdr and "tau_PDR" in pedrini_df.columns:
             all_tau += list(pedrini_df["tau_PDR"] + pedrini_df["tau_PDR_err"])
     y_top = max(all_tau) if all_tau else 1.0
-    ax.set_ylim(0.0, y_top * 1.15)
 
     all_x = [np.log10(r["M_star"]) for r in rows]
     if pedrini_df is not None:
         all_x += list(pedrini_df["log_Mstar"])
     x_lo, x_hi = min(all_x), max(all_x)
     x_pad = max(0.2, (x_hi - x_lo) * 0.07)
-    ax.set_xlim(x_lo - x_pad, x_hi + x_pad)
 
-    # sfe colourbar on the right of the axes (replaces the per-sfe legend
-    # swatches).  Continuous mode uses viridis with LogNorm; discrete mode
-    # uses one Wong-palette band per unique sfe value, ticks centred on
-    # each band.  In continuous mode the colourbar ticks are anchored at
-    # the actual sweep sfe values so each plotted point is identifiable.
+    for one_ax in all_axes:
+        one_ax.set_ylim(0.0, y_top * 1.15)
+        one_ax.set_xlim(x_lo - x_pad, x_hi + x_pad)
+
+    # --- sfe colourbar -----------------------------------------------
+    # Continuous mode uses viridis with LogNorm; discrete mode uses one
+    # Wong-palette band per unique sfe value, ticks centred on each band.
+    # In continuous mode the colourbar ticks are anchored at the actual
+    # sweep endpoints. In merge mode the colourbar spans both panels.
     sfe_mappable = plt.cm.ScalarMappable(cmap=sfe_cmap, norm=sfe_norm)
     sfe_mappable.set_array([])
     if colourbar == "discrete":
-        # All bands ticked — each is a distinct sweep value worth labelling.
         cbar = fig.colorbar(
-            sfe_mappable, ax=ax, location="right",
+            sfe_mappable, ax=cbar_target, location="right",
             fraction=0.04, pad=0.01,
             ticks=np.arange(len(unique_sfe)),
         )
         cbar.set_ticklabels([f"{s:g}" for s in unique_sfe])
     else:
-        # Continuous mode: just label the endpoints to keep the axis clean.
         endpoints = [unique_sfe[0], unique_sfe[-1]]
         cbar = fig.colorbar(
-            sfe_mappable, ax=ax, location="right",
+            sfe_mappable, ax=cbar_target, location="right",
             fraction=0.04, pad=0.01,
             ticks=endpoints,
         )
         cbar.set_ticklabels([f"{v:g}" for v in endpoints])
     cbar.set_label("sfe")
 
-    # Legend construction. mid_ms is the "neutral" swatch size used by
-    # shape entries (breakout, tau_PDR, Pedrini, ...).
-    mid_ms = 0.5 * (_marker_size(m_min, m_min, m_max)
-                    + _marker_size(m_max, m_min, m_max))
+    # --- Legend (single-folder mode only) -----------------------------
+    # In merge mode the panel titles do the work of labelling BE vs
+    # homogeneous, and the mCloud size and sfe colour scales go in the
+    # figure caption, so no inline legend is drawn.
+    if not in_merge_mode:
+        # mid_ms is the "neutral" swatch size used by shape entries
+        # (breakout, tau_PDR, Pedrini, ...).
+        mid_ms = 0.5 * (_marker_size(m_min, m_min, m_max)
+                        + _marker_size(m_max, m_min, m_max))
 
-    in_merge_mode = any("_dashed" in r for r in rows)
-
-    if in_merge_mode:
-        # Compressed merge legend: just two entries that pack mCloud size,
-        # line style, alpha, and the per-folder density-profile descriptor
-        # into one swatch each.  Reading the legend, the user sees that
-        # solid + opaque markers belong to one profile (drawn at the
-        # smallest swept mCloud as the exemplar), and dashed + transparent
-        # markers belong to the other profile (drawn at the largest swept
-        # mCloud).  All breakout / tau_PDR / Pedrini entries are dropped
-        # in merge mode to keep the legend uncluttered as requested.
-        log_ticks = _size_legend_ticks(m_min, m_max)
-        log_small = log_ticks[0]
-        log_large = log_ticks[-1]  # same as log_small for single-mass sweeps
-
-        # Pull each folder's (label, alpha) from the tagged rows. The plot
-        # loop above guarantees both groups are present (matched_a/matched_b).
-        solid_label  = next(r["_group"] for r in rows if not r["_dashed"])
-        solid_alpha  = next(r["_alpha"] for r in rows if not r["_dashed"])
-        dashed_label = next(r["_group"] for r in rows if r["_dashed"])
-        dashed_alpha = next(r["_alpha"] for r in rows if r["_dashed"])
-
-        handles = [
-            Line2D([], [], marker="o", linestyle="-",
-                   color="0.4", mfc="0.4", mec="k",
-                   markersize=_marker_size(10 ** log_small, m_min, m_max),
-                   alpha=solid_alpha,
-                   label=fr"$M_{{\rm cloud}}={_fmt_log_m(log_small)}"
-                         fr"\,M_\odot$, {solid_label}"),
-            Line2D([], [], marker="o", linestyle="--",
-                   color="0.4", mfc="0.4", mec="k",
-                   markersize=_marker_size(10 ** log_large, m_min, m_max),
-                   alpha=dashed_alpha,
-                   label=fr"$M_{{\rm cloud}}={_fmt_log_m(log_large)}"
-                         fr"\,M_\odot$, {dashed_label}"),
-        ]
-        ax.legend(handles=handles, loc="upper right",
-                  frameon=False, fontsize="small",
-                  handletextpad=0.4, borderaxespad=0.5)
-    else:
-        # Single-folder legend: breakout/lower-limit shape entries, size
-        # entries (smallest + largest mCloud only), and Pedrini reference
-        # when overlaid.  Parked above the axes since the colourbar is on
-        # the right.
         has_breakout    = any(r["breakout"]     for r in rows)
         has_no_breakout = any(not r["breakout"] for r in rows)
         mixed_breakout  = has_breakout and has_no_breakout
@@ -766,12 +766,13 @@ def main():
                     help="Sweep output directory (contains per-run subdirs).")
     ap.add_argument("--merge_dir", type=Path, default=None,
                     help="Optional second sweep directory.  When set, runs in "
-                         "the two folders are paired by (mCloud, sfe, nCore); "
-                         "--sweep_dir is drawn with dashed edges at alpha=0.3 "
-                         "(70%% transparent) and --merge_dir with solid edges "
-                         "at alpha=0.8 (20%% transparent). Only dens_profile "
-                         "values 'densPL' (with densPL_alpha=0) and 'densBE' "
-                         "are supported in merge mode; anything else aborts. "
+                         "the two folders are paired by (mCloud, sfe, nCore) "
+                         "and rendered as a two-panel figure sharing x and y "
+                         "axes — BE on the left, homogeneous on the right. "
+                         "Each panel uses the same encoding as the "
+                         "single-folder plot. Only dens_profile values "
+                         "'densPL' (with densPL_alpha=0) and 'densBE' are "
+                         "supported in merge mode; anything else aborts. "
                          "Output: pedrini_emergence_timescales_merge.pdf.")
     ap.add_argument("--pedrini_csv", type=str, default=None,
                     help="Optional Pedrini+2026 CSV path "
@@ -864,29 +865,23 @@ def main():
             ap.error("No paired runs found between the two folders — "
                      "check that they share (mCloud, sfe, nCore) values.")
 
-        # Encoding per the user's spec:
-        #   folder1 (--sweep_dir): dashed edges, alpha=0.3 (70% transparent)
-        #   folder2 (--merge_dir): solid edges,  alpha=0.8 (20% transparent)
-        # High alpha pairs with solid; low alpha pairs with dashed.  Labels
-        # are the density-profile descriptors from each folder's .param; an
-        # unsupported profile raises here and we abort the merge plot.
+        # Two-panel encoding: only the density-profile descriptor matters
+        # for routing rows to their panel. Drop the old alpha / dash tags;
+        # within each panel the per-row encoding (colour, size, breakout
+        # fill, edge style) is identical to single-folder mode.
         try:
             label_a = folder_dens_profile_label(sweep_dir)
             label_b = folder_dens_profile_label(merge_dir)
         except ValueError as exc:
             ap.error(str(exc))
         for r in matched_a:
-            r["_alpha"]  = 0.3
-            r["_dashed"] = True
-            r["_group"]  = label_a
+            r["_group"] = label_a
         for r in matched_b:
-            r["_alpha"]  = 0.8
-            r["_dashed"] = False
-            r["_group"]  = label_b
+            r["_group"] = label_b
         plot_rows = matched_a + matched_b
         pdf_path = fig_dir / "pedrini_emergence_timescales_merge.pdf"
-        print(f"[pedrini_tau] Plotting {len(matched_a)} matched pair(s): "
-              f"{label_a} (dashed, α=0.3) vs {label_b} (solid, α=0.8).")
+        print(f"[pedrini_tau] Plotting {len(matched_a)} matched pair(s) "
+              f"across two panels: {label_a} (left) vs {label_b} (right).")
         make_plot(plot_rows, pedrini_df, pdf_path,
                   show_tau_pdr=args.show_tau_pdr, colourbar=args.colourbar)
         return
