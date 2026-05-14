@@ -61,7 +61,7 @@ from src._plots import paper_feedback as _pf
 # ---------------------------------------------------------------------------
 # Configurable knobs
 # ---------------------------------------------------------------------------
-# Whether to overlay the inner wind-termination radius R_1 and the
+# Whether to overlay the wind-termination-shock radius R_ts and the
 # outer shell radius R_sh alongside R_b on the top panel.  Set to
 # False to render the minimal two-line R_b + v_sh layout.
 SHOW_RADIUS_BOUNDARIES = True
@@ -70,10 +70,12 @@ SHOW_RADIUS_BOUNDARIES = True
 # ---------------------------------------------------------------------------
 # Colour assignments
 # ---------------------------------------------------------------------------
-# Panel (a) radii are rendered black; velocity gets a mid grey so
-# it stays distinguishable from the radius lines even though it
-# lives on a separate (twin) axis.  An in-panel Line2D legend ties
-# the line styles to the labels.
+# Panel (a): radius curves are rendered black; the velocity curve
+# is drawn mid grey so it stays distinguishable from the radii
+# even though it lives on a separate (twin) axis.  Axis labels
+# and tick labels for both axes stay default-black; only the
+# velocity *line* is grey.  An in-panel Line2D legend ties the
+# line styles to the labels.
 _C_TOP = C_BLACK
 _C_VEL = "0.5"   # matplotlib mid grey
 
@@ -378,10 +380,11 @@ def plot_from_path(data_input, output_dir=None):
     # ---- panel (a) — R_b solid black (left), v_b dashed black (right) -----
     # All curves rendered in black; a Line2D legend in the upper-
     # left disambiguates them (same idiom as paper_densityProfile).
-    # When SHOW_RADIUS_BOUNDARIES is True, R_1 (inner wind shock)
-    # and R_sh (outer shell edge) appear as thinner auxiliary lines
-    # on the same left axis, so the panel resolves the bubble's
-    # radial structure (R_1 < R_b < R_sh) rather than R_b alone.
+    # When SHOW_RADIUS_BOUNDARIES is True, R_ts (wind-termination
+    # shock) and R_sh (outer shell edge) appear as thinner auxiliary
+    # lines on the same left axis, so the panel resolves the
+    # bubble's radial structure (R_ts < R_b < R_sh) rather than R_b
+    # alone.
     ax_a.plot(run["t"], run["R2"], color=_C_TOP, lw=1.5, ls="-")
     if SHOW_RADIUS_BOUNDARIES:
         ax_a.plot(run["t"], run["R1"],     color=_C_TOP, lw=1.0, ls=":")
@@ -392,15 +395,15 @@ def plot_from_path(data_input, output_dir=None):
     ax_av = ax_a.twinx()
     ax_av.plot(run["t"], run["v_kms"], color=_C_VEL, lw=1.5, ls="--")
     ax_av.set_yscale("log")
-    ax_av.set_ylabel(r"$v_{\rm b}\ [{\rm km\ s^{-1}}]$", color=_C_VEL)
-    ax_av.tick_params(axis="y", colors=_C_VEL)
+    ax_av.set_ylabel(r"$v_{\rm b}\ [{\rm km\ s^{-1}}]$")
 
     top_handles = [
         Line2D([0], [0], color=_C_TOP, ls="-",  lw=1.5, label=r"$R_{\rm b}$"),
     ]
     if SHOW_RADIUS_BOUNDARIES:
         top_handles.append(
-            Line2D([0], [0], color=_C_TOP, ls=":",  lw=1.0, label=r"$R_{1}$"))
+            Line2D([0], [0], color=_C_TOP, ls=":",  lw=1.0,
+                   label=r"$R_{\rm ts}$"))
         top_handles.append(
             Line2D([0], [0], color=_C_TOP, ls="-.", lw=1.0,
                    label=r"$R_{\rm sh}$"))
