@@ -64,10 +64,12 @@ Each panel has its own sfe colourbar on the right; both colourbars are
 built from the same ScalarMappable, so their limits and ticks are
 identical. The merge PDF is written under the --BE_dir fig directory.
 
-Caption note: in merge mode the mCloud size scaling and sfe colour
-encoding are not duplicated in a legend — an in-panel text label names
-each profile, and the size / colour scales are documented in the figure
-caption.
+In merge mode, profile names appear as in-panel text labels (upper-left
+of each panel), the sfe colour scale is shown by one colourbar per panel
+(shared limits), and the mCloud size scale is summarised by a 2-entry
+open-circle legend in the upper-right of the bottom panel. The Pedrini
+reference, when overlaid, gets its own auto-positioned legend on the
+bottom panel.
 
 The Pedrini+2026 overlay is optional.  Pass `--pedrini_csv mock` to
 use the hand-digitised reference data embedded in this script:
@@ -646,17 +648,40 @@ def make_plot(rows: list[dict], pedrini_df, out_pdf: Path,
         # labels, so suppress them explicitly.
         axes_pair[0].tick_params(labelbottom=False)
         axes_pair[1].set_xlabel(r"$\log_{10}\!\left(M_\star\right)$ [$M_\odot$]")
-        # Pedrini legend entry: the errorbar markers are otherwise unlabelled
-        # in merge mode (no inline legend by default). Placed on the bottom
-        # panel with auto-positioning so it lands away from the data cloud.
-        # Skipped if no Pedrini overlay was requested.
+        # Pedrini legend (when overlaid): a single open-marker entry,
+        # placed via "best" so matplotlib auto-positions it away from
+        # the data cloud. We capture it via add_artist() so the size
+        # legend added below doesn't clobber it (one axes can only show
+        # one legend at a time unless previous legends are kept as
+        # standalone artists).
         if pedrini_df is not None:
-            axes_pair[1].legend(
+            ped_legend = axes_pair[1].legend(
                 handles=[Line2D([], [], marker="o", linestyle="none",
                                 mfc=REF_COLOR, mec=REF_COLOR, markersize=7,
                                 label="Pedrini+2026")],
                 loc="best", frameon=False, fontsize="small",
             )
+            axes_pair[1].add_artist(ped_legend)
+        # Size legend (top-right of the bottom panel): two open-circle
+        # swatches showing the smallest and largest mCloud in the sweep,
+        # so the reader can decode the size scale without consulting the
+        # figure caption. Empty markers (mfc="none") keep the swatches
+        # encoding-neutral — fill state means breakout/lower-limit in the
+        # data, which is orthogonal to the size axis we're documenting.
+        size_handles = []
+        for log_m in _size_legend_ticks(m_min, m_max):
+            m = 10 ** log_m
+            ms = _marker_size(m, m_min, m_max)
+            size_handles.append(Line2D(
+                [], [], marker="o", linestyle="none",
+                mfc="none", mec="k", markersize=ms,
+                label=fr"$M_{{\rm cloud}}={_fmt_log_m(log_m)}\,M_\odot$",
+            ))
+        axes_pair[1].legend(
+            handles=size_handles, loc="upper right",
+            frameon=False, fontsize="small",
+            handletextpad=0.4, borderaxespad=0.5,
+        )
         all_axes = list(axes_pair)
         # Each panel gets its own colourbar in merge mode (see colourbar
         # block below). Both colourbars share the same sfe_mappable, so
