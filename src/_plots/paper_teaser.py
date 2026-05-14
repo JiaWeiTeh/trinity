@@ -59,6 +59,15 @@ from src._plots import paper_feedback as _pf
 
 
 # ---------------------------------------------------------------------------
+# Configurable knobs
+# ---------------------------------------------------------------------------
+# Whether to overlay the inner wind-termination radius R_1 and the
+# outer shell radius R_sh alongside R_b on the top panel.  Set to
+# False to render the minimal two-line R_b + v_sh layout.
+SHOW_RADIUS_BOUNDARIES = True
+
+
+# ---------------------------------------------------------------------------
 # Colour assignments
 # ---------------------------------------------------------------------------
 # Panel (a): both R_b and v_sh are drawn black; the line style
@@ -136,26 +145,31 @@ def load_run(data_path):
     if len(output) == 0:
         raise ValueError(f"No snapshots found in {data_path}")
 
-    t     = _to_float_array(output.get("t_now", as_array=False))
-    phase = np.asarray(output.get("current_phase", as_array=False))
-    R2    = _to_float_array(output.get("R2", as_array=False))         # [pc]
-    v2_au = _to_float_array(output.get("v2", as_array=False))         # [pc/Myr]
-    fAbs  = _to_float_array(output.get("shell_fAbsorbedIon",  as_array=False))
-    fDust = _to_float_array(output.get("shell_fIonisedDust",  as_array=False))
+    t      = _to_float_array(output.get("t_now",  as_array=False))
+    phase  = np.asarray(output.get("current_phase", as_array=False))
+    R2     = _to_float_array(output.get("R2",     as_array=False))     # [pc]
+    R1     = _to_float_array(output.get("R1",     as_array=False))     # [pc]
+    rShell = _to_float_array(output.get("rShell", as_array=False))     # [pc]
+    v2_au  = _to_float_array(output.get("v2",     as_array=False))     # [pc/Myr]
+    fAbs   = _to_float_array(output.get("shell_fAbsorbedIon", as_array=False))
+    fDust  = _to_float_array(output.get("shell_fIonisedDust", as_array=False))
 
     # Restore monotonic time ordering if the reader yielded snapshots
     # out of order — same guard as paper_LgainLloss.py.
     if np.any(np.diff(t) < 0):
         order = np.argsort(t)
-        t     = t[order]
-        phase = phase[order]
-        R2    = R2[order]
-        v2_au = v2_au[order]
+        t      = t[order]
+        phase  = phase[order]
+        R2     = R2[order]
+        R1     = R1[order]
+        rShell = rShell[order]
+        v2_au  = v2_au[order]
         fAbs, fDust = fAbs[order], fDust[order]
 
     return dict(
         t=t, phase=phase,
-        R2=R2, v_kms=v2_au * cvt.v_au2kms,
+        R2=R2, R1=R1, rShell=rShell,
+        v_kms=v2_au * cvt.v_au2kms,
         fAbs=fAbs, fDust=fDust,
     )
 
@@ -359,11 +373,19 @@ def plot_from_path(data_input, output_dir=None):
     )
     ax_a, ax_b, ax_c = axes
 
-    # ---- panel (a) — R_b solid black (left), v_sh dashed black (right) -----
-    # Both curves rendered in black; a Line2D legend in the upper-
+    # ---- panel (a) — R_b solid black (left), v_b dashed black (right) -----
+    # All curves rendered in black; a Line2D legend in the upper-
     # left disambiguates them (same idiom as paper_densityProfile).
+    # When SHOW_RADIUS_BOUNDARIES is True, R_1 (inner wind shock)
+    # and R_sh (outer shell edge) appear as thinner auxiliary lines
+    # on the same left axis, so the panel resolves the bubble's
+    # radial structure (R_1 < R_b < R_sh) rather than R_b alone.
     ax_a.plot(run["t"], run["R2"], color=_C_TOP, lw=1.5, ls="-")
-    ax_a.set_ylabel(r"$R_{\rm b}\ [{\rm pc}]$")
+    if SHOW_RADIUS_BOUNDARIES:
+        ax_a.plot(run["t"], run["R1"],     color=_C_TOP, lw=1.0, ls=":")
+        ax_a.plot(run["t"], run["rShell"], color=_C_TOP, lw=1.0, ls="-.")
+    ax_a.set_ylabel(r"$R\ [{\rm pc}]$" if SHOW_RADIUS_BOUNDARIES
+                    else r"$R_{\rm b}\ [{\rm pc}]$")
 
     ax_av = ax_a.twinx()
     ax_av.plot(run["t"], run["v_kms"], color=_C_TOP, lw=1.5, ls="--")
@@ -372,8 +394,15 @@ def plot_from_path(data_input, output_dir=None):
 
     top_handles = [
         Line2D([0], [0], color=_C_TOP, ls="-",  lw=1.5, label=r"$R_{\rm b}$"),
-        Line2D([0], [0], color=_C_TOP, ls="--", lw=1.5, label=r"$v_{\rm b}$"),
     ]
+    if SHOW_RADIUS_BOUNDARIES:
+        top_handles.append(
+            Line2D([0], [0], color=_C_TOP, ls=":",  lw=1.0, label=r"$R_{1}$"))
+        top_handles.append(
+            Line2D([0], [0], color=_C_TOP, ls="-.", lw=1.0,
+                   label=r"$R_{\rm sh}$"))
+    top_handles.append(
+        Line2D([0], [0], color=_C_TOP, ls="--", lw=1.5, label=r"$v_{\rm b}$"))
     leg_a = ax_a.legend(
         handles=top_handles, loc="upper left", frameon=False,
         fontsize=10, handlelength=1.6, labelspacing=0.3,
