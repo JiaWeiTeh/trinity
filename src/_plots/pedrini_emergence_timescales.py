@@ -647,7 +647,7 @@ def make_plot(rows: list[dict], pedrini_df, out_pdf: Path,
         # tick locators but doesn't auto-hide the upper panel's tick
         # labels, so suppress them explicitly.
         axes_pair[0].tick_params(labelbottom=False)
-        axes_pair[1].set_xlabel(r"$\log_{10}\!\left(M_\star\right)$ [$M_\odot$]")
+        axes_pair[1].set_xlabel(r"$\log_{10}\!\left(\rm{M}_\star\right)$ [$\rm{M}_\odot$]")
         # Pedrini legend (when overlaid): a single open-marker entry,
         # placed via "best" so matplotlib auto-positions it away from
         # the data cloud. We capture it via add_artist() so the size
@@ -675,7 +675,7 @@ def make_plot(rows: list[dict], pedrini_df, out_pdf: Path,
             size_handles.append(Line2D(
                 [], [], marker="o", linestyle="none",
                 mfc="none", mec="k", markersize=ms,
-                label=fr"$M_{{\rm cloud}}={_fmt_log_m(log_m)}\,M_\odot$",
+                label=fr"$\rm{{M}}_{{\rm cloud}}={_fmt_log_m(log_m)}\,\rm{{M}}_\odot$",
             ))
         axes_pair[1].legend(
             handles=size_handles, loc="upper right",
@@ -692,7 +692,7 @@ def make_plot(rows: list[dict], pedrini_df, out_pdf: Path,
         for r in rows:
             _plot_row_on(ax, r)
         _plot_pedrini_on(ax)
-        ax.set_xlabel(r"$\log_{10}\!\left(M_\star\right)$ [$M_\odot$]")
+        ax.set_xlabel(r"$\log_{10}\!\left(\rm{M}_\star\right)$ [$\rm{M}_\odot$]")
         ax.set_ylabel(
             r"$\tau$ [Myr]" if show_tau_pdr else r"$\tau_{\rm disp}$ [Myr]"
         )
@@ -750,7 +750,7 @@ def make_plot(rows: list[dict], pedrini_df, out_pdf: Path,
                 ticks=endpoints,
             )
             cbar.set_ticklabels([f"{v:g}" for v in endpoints])
-        cbar.set_label("sfe")
+        cbar.set_label(r"$\varepsilon$")
 
     # --- Legend (single-panel mode only) -----------------------------
     # In merge mode the in-panel text labels name BE vs homogeneous, and
@@ -799,8 +799,8 @@ def make_plot(rows: list[dict], pedrini_df, out_pdf: Path,
             ms = _marker_size(m, m_min, m_max)
             handles.append(Line2D([], [], marker="o", linestyle="none",
                                   mfc="0.4", mec="k", markersize=ms,
-                                  label=fr"$M_{{\rm cloud}}={_fmt_log_m(log_m)}"
-                                        r"\,M_\odot$"))
+                                  label=fr"$\rm{{M}}_{{\rm cloud}}={_fmt_log_m(log_m)}"
+                                        r"\,\rm{M}_\odot$"))
         if pedrini_df is not None:
             handles.append(Line2D([], [], marker="o", linestyle="none",
                                   mfc=REF_COLOR, mec=REF_COLOR,
