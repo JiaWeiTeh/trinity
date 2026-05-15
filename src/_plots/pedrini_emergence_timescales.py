@@ -960,6 +960,49 @@ def main():
         print(f"[pedrini_tau] Plotting {len(matched_BE)} matched pair(s) "
               f"across two panels: BE (top, --BE_dir {be_dir.name}) vs "
               f"homogeneous (bottom, --homo_dir {homo_dir.name}).")
+
+        # --- Summary stats: BE vs homogeneous, per-pair % difference ----
+        # Restrict to pairs where BOTH runs broke out — lower-limit pairs
+        # have their tau clamped to t_max, so including them would mix a
+        # real emergence-time difference with a clamping artefact.
+        # We report mean ± SD of (tau_BE - tau_homo) / tau_homo * 100, so
+        # a positive number means BE took longer than homogeneous.
+        both_breakout = [
+            (be, ho) for be, ho in zip(matched_BE, matched_homo)
+            if be["breakout"] and ho["breakout"]
+        ]
+        n_total = len(matched_BE)
+        if both_breakout:
+            rel_TOT = np.array(
+                [(be["tau_TOT"] - ho["tau_TOT"]) / ho["tau_TOT"] * 100.0
+                 for be, ho in both_breakout]
+            )
+            print(f"[pedrini_tau] tau_TOT BE vs homogeneous: "
+                  f"{rel_TOT.mean():+.1f} ± {rel_TOT.std():.1f}% "
+                  f"(mean ± SD over {len(both_breakout)}/{n_total} "
+                  f"breakout pairs)")
+            if args.show_tau_pdr:
+                # A run with no phi-depleted segment has tau_PDR=0; skip
+                # those denominators to avoid division by zero (and the
+                # resulting infinities, which would tank mean/SD).
+                pdr_pairs = [(be, ho) for be, ho in both_breakout
+                             if ho["tau_PDR"] > 0]
+                if pdr_pairs:
+                    rel_PDR = np.array(
+                        [(be["tau_PDR"] - ho["tau_PDR"]) / ho["tau_PDR"] * 100.0
+                         for be, ho in pdr_pairs]
+                    )
+                    print(f"[pedrini_tau] tau_PDR BE vs homogeneous: "
+                          f"{rel_PDR.mean():+.1f} ± {rel_PDR.std():.1f}% "
+                          f"(mean ± SD over {len(pdr_pairs)}/{n_total} "
+                          f"breakout pairs with tau_PDR_homo > 0)")
+                else:
+                    print("[pedrini_tau] tau_PDR: no breakout pair has "
+                          "positive homogeneous tau_PDR; skipping.")
+        else:
+            print("[pedrini_tau] No matched pair has BOTH BE and "
+                  "homogeneous breaking out; skipping summary stats.")
+
         make_plot(plot_rows, pedrini_df, pdf_path,
                   show_tau_pdr=args.show_tau_pdr, colourbar=args.colourbar)
         return
