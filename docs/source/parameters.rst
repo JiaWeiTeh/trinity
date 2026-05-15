@@ -150,7 +150,7 @@ Configure how TRINITY reports progress and diagnostics.
      - ``DEBUG``
      - Logging verbosity: ``DEBUG``, ``INFO``, ``WARNING``, ``ERROR``, ``CRITICAL``. See :ref:`sec-running` for details.
    * - ``log_console``
-     - ``True``
+     - ``False``
      - Enable terminal output for log messages.
    * - ``log_file``
      - ``True``

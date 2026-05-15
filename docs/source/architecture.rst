@@ -193,6 +193,65 @@ Only the ``.value`` of each ``DescribedItem`` is written to disk —
 reattached automatically when a snapshot is loaded back in.
 
 
+Profile Array Downsampling
+--------------------------
+
+A handful of long 1-D profile arrays are downsampled before
+serialisation to keep snapshot size manageable. Each simplified array
+is paired with its own abscissa:
+
+* ``log_bubble_T_arr``     + ``bubble_T_arr_r_arr``     (:math:`\log_{10} T`)
+* ``log_bubble_n_arr``     + ``bubble_n_arr_r_arr``     (:math:`\log_{10} n`)
+* ``log_bubble_dTdr_arr``  + ``bubble_dTdr_arr_r_arr``  (:math:`\log_{10} |dT/dr|`)
+* ``bubble_v_arr``         + ``bubble_v_arr_r_arr``     (velocity, linear)
+* ``shell_grav_force_m``   + ``shell_grav_r``           (:math:`\log_{10} |F_{\rm grav}|`)
+* ``log_shell_n_arr``      + ``shell_r_arr``            (:math:`\log_{10} n_{\rm shell}`)
+
+The simplifier (``src/_functions/simplify.py``) combines three feature
+detectors with a persistence filter and an R²-budgeted thinning step.
+Let :math:`\{(x_i, y_i)\}_{i=0}^{n-1}` denote the input curve.
+
+*Menger curvature* is computed for every interior triplet
+:math:`(P_{i-1}, P_i, P_{i+1})`:
+
+.. math::
+
+    \kappa_i = \frac{2\,|(P_i - P_{i-1}) \times (P_{i+1} - P_i)|}
+                    {\|P_i - P_{i-1}\|\,\|P_{i+1} - P_i\|\,\|P_{i+1} - P_{i-1}\|},
+
+which is the reciprocal of the circumradius of the triplet.  Points with
+:math:`\kappa_i > \texttt{grad\_inc}` mark sharp bends.  Sign-change
+detection (:math:`\mathrm{sign}(y'_{i+1}) \neq \mathrm{sign}(y'_i)`) adds
+every local extremum.
+
+A topological-persistence filter then marks any extremum whose prominence
+satisfies
+
+.. math::
+
+    \mathrm{prom}(i) \;\geq\; 0.05 \, \bigl(\max y - \min y\bigr)
+
+as *mandatory* — such points are present at every output budget, so
+prominent dips/spikes never flicker in and out across snapshots.
+
+Finally, R²-based thinning picks the smallest subset :math:`S` such that
+the linear interpolant :math:`\hat y_S` satisfies
+
+.. math::
+
+    R^2(S) \;=\; 1 - \frac{\sum_i (y_i - \hat y_S(x_i))^2}
+                          {\sum_i (y_i - \bar y)^2}
+           \;\geq\; 0.99
+
+(the ``r2_target`` argument; default :math:`0.99`).  Candidate subsets
+are enumerated in hierarchical-bisection order so that
+:math:`S_{N-1} \subset S_N` for every budget :math:`N`, making the output
+stable under small changes in ``nmin``.
+
+To recover a profile, linearly interpolate between the paired
+``*_r_arr`` abscissa and the (possibly log-space) values.
+
+
 See Also
 --------
 
