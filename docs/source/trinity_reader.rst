@@ -354,11 +354,3 @@ post-step state.
 before serialisation to keep snapshots manageable. See
 :ref:`sec-architecture` (*Profile Array Downsampling*) for the list of
 affected keys and the downsampling algorithm.
-
-
-See Also
---------
-
-- :ref:`sec-running` for simulation execution
-- :ref:`sec-visualization` for plotting scripts that use this API
-- :ref:`sec-parameters` for parameter definitions

@@ -250,12 +250,3 @@ stable under small changes in ``nmin``.
 
 To recover a profile, linearly interpolate between the paired
 ``*_r_arr`` abscissa and the (possibly log-space) values.
-
-
-See Also
---------
-
-- :ref:`sec-running` — how to execute simulations.
-- :ref:`sec-parameters` — parameter names, units, and defaults.
-- :ref:`sec-physics` — derivation of the equations integrated above.
-- :ref:`sec-trinity-reader` — API for reading and analysing output.

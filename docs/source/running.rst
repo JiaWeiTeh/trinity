@@ -384,16 +384,3 @@ Most parameter errors are typos against the schema; the authoritative
 list of valid keywords and defaults is ``src/_input/default.param``,
 mirrored in :ref:`sec-parameters`. For issues and feature requests,
 see https://github.com/JiaWeiTeh/trinity/issues.
-
-
-See Also
---------
-
-- :ref:`sec-parameters` — complete reference of input parameters, units,
-  defaults, and the ``# UNIT:`` annotation system used in ``default.param``.
-- :ref:`sec-trinity-reader` — high-level ``TrinityOutput`` API for reading
-  ``dictionary.jsonl`` files into numpy / pandas.
-- :ref:`sec-visualization` — plotting scripts that consume
-  sweep output directories.
-- :ref:`sec-architecture` — internal module layout and how ``run.py``
-  drives ``main.start_expansion`` through the phase modules.
