@@ -635,9 +635,14 @@ def make_plot(rows: list[dict], pedrini_df, out_pdf: Path,
         # Profile labels go inside each panel (upper-left in axes
         # coordinates) instead of using set_title, so the figure header
         # stays clean and the labels sit next to the data they describe.
+        # The internal routing key stays "BE" (matches the .param
+        # dens_profile string) while the display label is the full
+        # name "Bonnor-Ebert". Offsets (0.05, 0.92) give the label some
+        # breathing room from the top and left spines.
+        panel_display = {"BE": "Bonnor-Ebert", "homogeneous": "homogeneous"}
         for key, panel_ax in panel_axes.items():
             panel_ax.text(
-                0.04, 0.95, key,
+                0.05, 0.92, panel_display[key],
                 transform=panel_ax.transAxes,
                 ha="left", va="top", fontsize=10,
             )
@@ -744,14 +749,20 @@ def make_plot(rows: list[dict], pedrini_df, out_pdf: Path,
             )
             cbar.set_ticklabels([f"{s:g}" for s in unique_sfe])
         else:
-            endpoints = [unique_sfe[0], unique_sfe[-1]]
+            # Anchor ticks at the canonical sfe decades the user labels
+            # in the paper (1% and 10%). Ticks outside the sweep range
+            # will be clipped to the colourbar limits automatically.
+            cbar_ticks = [0.01, 0.1]
             cbar = fig.colorbar(
                 sfe_mappable, ax=cbar_ax, location="right",
                 fraction=0.04, pad=0.01,
-                ticks=endpoints,
+                ticks=cbar_ticks,
             )
-            cbar.set_ticklabels([f"{v:g}" for v in endpoints])
-        cbar.set_label(r"$\varepsilon$")
+            cbar.set_ticklabels([f"{v:g}" for v in cbar_ticks])
+        # Negative labelpad pulls the "epsilon" label in closer to the
+        # tick labels — the trinity.mplstyle default (4) leaves a gap
+        # that looks excessive for a 1-character label like \varepsilon.
+        cbar.set_label(r"$\varepsilon$", labelpad=-3)
 
     # --- Legend (single-panel mode only) -----------------------------
     # In merge mode the in-panel text labels name BE vs homogeneous, and
