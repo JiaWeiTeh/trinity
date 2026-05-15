@@ -616,12 +616,13 @@ def make_plot(rows: list[dict], pedrini_df, out_pdf: Path,
         # couple the limits automatically, but we still recompute padded
         # limits below to include Pedrini errorbars and to add the same
         # 7% / 15% margins single-panel mode uses.
-        # hspace pulls the two panels close together so the eye reads them
-        # as one stacked comparison; a thin gap stays (not 0) so the top
-        # panel's bottom spine doesn't touch the bottom panel's top spine.
+        # figsize / hspace follow the paper_densityProfile + paper_teaser
+        # convention for stacked panels (narrow column-width, tight gap);
+        # +0.5" on the width vs paper_densityProfile to leave room for
+        # the per-panel colourbars on the right.
         fig, axes_pair = plt.subplots(
-            2, 1, sharex=True, sharey=True, figsize=(5, 7),
-            gridspec_kw={"hspace": 0.08},
+            2, 1, sharex=True, sharey=True, figsize=(4.5, 5.5),
+            gridspec_kw={"hspace": 0.05},
         )
         panel_axes = {"BE": axes_pair[0], "homogeneous": axes_pair[1]}
         for r in rows:
