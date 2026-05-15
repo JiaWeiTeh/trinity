@@ -639,7 +639,7 @@ def make_plot(rows: list[dict], pedrini_df, out_pdf: Path,
             panel_ax.text(
                 0.04, 0.95, key,
                 transform=panel_ax.transAxes,
-                ha="left", va="top", fontsize="medium",
+                ha="left", va="top", fontsize=10,
             )
             panel_ax.set_ylabel(
                 r"$\tau$ [Myr]" if show_tau_pdr else r"$\tau_{\rm disp}$ [Myr]"
@@ -660,7 +660,7 @@ def make_plot(rows: list[dict], pedrini_df, out_pdf: Path,
                 handles=[Line2D([], [], marker="o", linestyle="none",
                                 mfc=REF_COLOR, mec=REF_COLOR, markersize=7,
                                 label="Pedrini+2026")],
-                loc="best", frameon=False, fontsize="small",
+                loc="best", frameon=False, fontsize=10,
             )
             axes_pair[1].add_artist(ped_legend)
         # Size legend (top-right of the bottom panel): two open-circle
@@ -680,7 +680,7 @@ def make_plot(rows: list[dict], pedrini_df, out_pdf: Path,
             ))
         axes_pair[1].legend(
             handles=size_handles, loc="upper right",
-            frameon=False, fontsize="small",
+            frameon=False, fontsize=10,
             handletextpad=0.4, borderaxespad=0.5,
         )
         all_axes = list(axes_pair)
@@ -808,7 +808,7 @@ def make_plot(rows: list[dict], pedrini_df, out_pdf: Path,
                                   markersize=mid_ms, label="Pedrini+2026"))
         ax.legend(handles=handles, loc="lower center",
                   bbox_to_anchor=(0.5, 1.02), ncol=2,
-                  frameon=False, fontsize="small",
+                  frameon=False, fontsize=10,
                   handletextpad=0.4, columnspacing=1.2, borderaxespad=0.0)
 
     fig.savefig(out_pdf, bbox_inches="tight")
