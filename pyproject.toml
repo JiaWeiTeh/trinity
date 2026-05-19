@@ -59,7 +59,7 @@ docs = [
 
 [project.urls]
 Homepage = "https://github.com/JiaWeiTeh/trinity"
-Documentation = "https://trinitysf.readthedocs.io/en/latest/"
+Documentation = "https://jiaweiteh.github.io/trinity-web/"
 Repository = "https://github.com/JiaWeiTeh/trinity"
 Issues = "https://github.com/JiaWeiTeh/trinity/issues"
 
