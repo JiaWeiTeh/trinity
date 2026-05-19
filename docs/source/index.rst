@@ -30,20 +30,16 @@ or newer.
 First run
 ---------
 
-Create a parameter file ``param/my_first_run.param`` with three lines::
+From the repository root::
 
-    model_name    my_first_run
-    mCloud        1e6
-    sfe           0.01
+    python run.py param/simple_cluster.param
 
-Then, from the repository root::
-
-    python run.py param/my_first_run.param
-
-TRINITY will integrate the shell to its stopping criterion and write
-its output tree to the directory specified by ``path2output`` (the
-current working directory by default). See :ref:`sec-running` for the
-parameter-file syntax, sweep modes, CLI flags, and output layout.
+This integrates a small, pre-shipped example (a 1e5 :math:`M_\odot`
+cloud at 30% star-formation efficiency, with everything else falling
+back to defaults). Outputs land in the directory specified by
+``path2output`` (the current working directory by default). See
+:ref:`sec-running` for the parameter-file syntax, sweep modes, CLI
+flags, and output layout.
 
 
 Contents
