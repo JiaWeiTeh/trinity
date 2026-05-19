@@ -295,7 +295,7 @@ def _build_v2R2_legend_handles() -> list:
         Line2D([0], [0], marker=END_MARKER_OK, color="0.3",
                markerfacecolor="0.3", markeredgecolor="black",
                linestyle="", markersize=END_MARKER_SIZE,
-               label="LSODA succeed"),
+               label="LSODA succeeded"),
         Line2D([0], [0], marker=END_MARKER_FAIL, color="0.3",
                markerfacecolor="0.3", markeredgecolor="black",
                linestyle="", markersize=END_MARKER_SIZE,

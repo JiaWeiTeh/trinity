@@ -616,12 +616,13 @@ def make_plot(rows: list[dict], pedrini_df, out_pdf: Path,
         # couple the limits automatically, but we still recompute padded
         # limits below to include Pedrini errorbars and to add the same
         # 7% / 15% margins single-panel mode uses.
-        # hspace pulls the two panels close together so the eye reads them
-        # as one stacked comparison; a thin gap stays (not 0) so the top
-        # panel's bottom spine doesn't touch the bottom panel's top spine.
+        # figsize / hspace follow the paper_densityProfile + paper_teaser
+        # convention for stacked panels (narrow column-width, tight gap);
+        # +0.5" on the width vs paper_densityProfile to leave room for
+        # the per-panel colourbars on the right.
         fig, axes_pair = plt.subplots(
-            2, 1, sharex=True, sharey=True, figsize=(5, 7),
-            gridspec_kw={"hspace": 0.08},
+            2, 1, sharex=True, sharey=True, figsize=(4.5, 5.5),
+            gridspec_kw={"hspace": 0.05},
         )
         panel_axes = {"BE": axes_pair[0], "homogeneous": axes_pair[1]}
         for r in rows:
@@ -634,11 +635,16 @@ def make_plot(rows: list[dict], pedrini_df, out_pdf: Path,
         # Profile labels go inside each panel (upper-left in axes
         # coordinates) instead of using set_title, so the figure header
         # stays clean and the labels sit next to the data they describe.
+        # The internal routing key stays "BE" (matches the .param
+        # dens_profile string) while the display label is the full
+        # name "Bonnor-Ebert". Offsets (0.05, 0.92) give the label some
+        # breathing room from the top and left spines.
+        panel_display = {"BE": "Bonnor-Ebert", "homogeneous": "homogeneous"}
         for key, panel_ax in panel_axes.items():
             panel_ax.text(
-                0.04, 0.95, key,
+                0.05, 0.92, panel_display[key],
                 transform=panel_ax.transAxes,
-                ha="left", va="top", fontsize="medium",
+                ha="left", va="top", fontsize=10,
             )
             panel_ax.set_ylabel(
                 r"$\tau$ [Myr]" if show_tau_pdr else r"$\tau_{\rm disp}$ [Myr]"
@@ -647,7 +653,7 @@ def make_plot(rows: list[dict], pedrini_df, out_pdf: Path,
         # tick locators but doesn't auto-hide the upper panel's tick
         # labels, so suppress them explicitly.
         axes_pair[0].tick_params(labelbottom=False)
-        axes_pair[1].set_xlabel(r"$\log_{10}\!\left(M_\star\right)$ [$M_\odot$]")
+        axes_pair[1].set_xlabel(r"$\log_{10}\!\left(\rm{M}_\star\right)$ [$\rm{M}_\odot$]")
         # Pedrini legend (when overlaid): a single open-marker entry,
         # placed via "best" so matplotlib auto-positions it away from
         # the data cloud. We capture it via add_artist() so the size
@@ -659,7 +665,7 @@ def make_plot(rows: list[dict], pedrini_df, out_pdf: Path,
                 handles=[Line2D([], [], marker="o", linestyle="none",
                                 mfc=REF_COLOR, mec=REF_COLOR, markersize=7,
                                 label="Pedrini+2026")],
-                loc="best", frameon=False, fontsize="small",
+                loc="best", frameon=False, fontsize=10,
             )
             axes_pair[1].add_artist(ped_legend)
         # Size legend (top-right of the bottom panel): two open-circle
@@ -675,11 +681,11 @@ def make_plot(rows: list[dict], pedrini_df, out_pdf: Path,
             size_handles.append(Line2D(
                 [], [], marker="o", linestyle="none",
                 mfc="none", mec="k", markersize=ms,
-                label=fr"$M_{{\rm cloud}}={_fmt_log_m(log_m)}\,M_\odot$",
+                label=fr"$\rm{{M}}_{{\rm cloud}}={_fmt_log_m(log_m)}\,\rm{{M}}_\odot$",
             ))
         axes_pair[1].legend(
             handles=size_handles, loc="upper right",
-            frameon=False, fontsize="small",
+            frameon=False, fontsize=10,
             handletextpad=0.4, borderaxespad=0.5,
         )
         all_axes = list(axes_pair)
@@ -692,7 +698,7 @@ def make_plot(rows: list[dict], pedrini_df, out_pdf: Path,
         for r in rows:
             _plot_row_on(ax, r)
         _plot_pedrini_on(ax)
-        ax.set_xlabel(r"$\log_{10}\!\left(M_\star\right)$ [$M_\odot$]")
+        ax.set_xlabel(r"$\log_{10}\!\left(\rm{M}_\star\right)$ [$\rm{M}_\odot$]")
         ax.set_ylabel(
             r"$\tau$ [Myr]" if show_tau_pdr else r"$\tau_{\rm disp}$ [Myr]"
         )
@@ -743,14 +749,20 @@ def make_plot(rows: list[dict], pedrini_df, out_pdf: Path,
             )
             cbar.set_ticklabels([f"{s:g}" for s in unique_sfe])
         else:
-            endpoints = [unique_sfe[0], unique_sfe[-1]]
+            # Anchor ticks at the canonical sfe decades the user labels
+            # in the paper (1% and 10%). Ticks outside the sweep range
+            # will be clipped to the colourbar limits automatically.
+            cbar_ticks = [0.01, 0.1]
             cbar = fig.colorbar(
                 sfe_mappable, ax=cbar_ax, location="right",
                 fraction=0.04, pad=0.01,
-                ticks=endpoints,
+                ticks=cbar_ticks,
             )
-            cbar.set_ticklabels([f"{v:g}" for v in endpoints])
-        cbar.set_label("sfe")
+            cbar.set_ticklabels([f"{v:g}" for v in cbar_ticks])
+        # Negative labelpad pulls the "epsilon" label in closer to the
+        # tick labels — the trinity.mplstyle default (4) leaves a gap
+        # that looks excessive for a 1-character label like \varepsilon.
+        cbar.set_label(r"$\varepsilon$", labelpad=-3)
 
     # --- Legend (single-panel mode only) -----------------------------
     # In merge mode the in-panel text labels name BE vs homogeneous, and
@@ -799,15 +811,15 @@ def make_plot(rows: list[dict], pedrini_df, out_pdf: Path,
             ms = _marker_size(m, m_min, m_max)
             handles.append(Line2D([], [], marker="o", linestyle="none",
                                   mfc="0.4", mec="k", markersize=ms,
-                                  label=fr"$M_{{\rm cloud}}={_fmt_log_m(log_m)}"
-                                        r"\,M_\odot$"))
+                                  label=fr"$\rm{{M}}_{{\rm cloud}}={_fmt_log_m(log_m)}"
+                                        r"\,\rm{M}_\odot$"))
         if pedrini_df is not None:
             handles.append(Line2D([], [], marker="o", linestyle="none",
                                   mfc=REF_COLOR, mec=REF_COLOR,
                                   markersize=mid_ms, label="Pedrini+2026"))
         ax.legend(handles=handles, loc="lower center",
                   bbox_to_anchor=(0.5, 1.02), ncol=2,
-                  frameon=False, fontsize="small",
+                  frameon=False, fontsize=10,
                   handletextpad=0.4, columnspacing=1.2, borderaxespad=0.0)
 
     fig.savefig(out_pdf, bbox_inches="tight")
@@ -959,6 +971,49 @@ def main():
         print(f"[pedrini_tau] Plotting {len(matched_BE)} matched pair(s) "
               f"across two panels: BE (top, --BE_dir {be_dir.name}) vs "
               f"homogeneous (bottom, --homo_dir {homo_dir.name}).")
+
+        # --- Summary stats: BE vs homogeneous, per-pair % difference ----
+        # Restrict to pairs where BOTH runs broke out — lower-limit pairs
+        # have their tau clamped to t_max, so including them would mix a
+        # real emergence-time difference with a clamping artefact.
+        # We report mean ± SD of (tau_BE - tau_homo) / tau_homo * 100, so
+        # a positive number means BE took longer than homogeneous.
+        both_breakout = [
+            (be, ho) for be, ho in zip(matched_BE, matched_homo)
+            if be["breakout"] and ho["breakout"]
+        ]
+        n_total = len(matched_BE)
+        if both_breakout:
+            rel_TOT = np.array(
+                [(be["tau_TOT"] - ho["tau_TOT"]) / ho["tau_TOT"] * 100.0
+                 for be, ho in both_breakout]
+            )
+            print(f"[pedrini_tau] tau_TOT BE vs homogeneous: "
+                  f"{rel_TOT.mean():+.1f} ± {rel_TOT.std():.1f}% "
+                  f"(mean ± SD over {len(both_breakout)}/{n_total} "
+                  f"breakout pairs)")
+            if args.show_tau_pdr:
+                # A run with no phi-depleted segment has tau_PDR=0; skip
+                # those denominators to avoid division by zero (and the
+                # resulting infinities, which would tank mean/SD).
+                pdr_pairs = [(be, ho) for be, ho in both_breakout
+                             if ho["tau_PDR"] > 0]
+                if pdr_pairs:
+                    rel_PDR = np.array(
+                        [(be["tau_PDR"] - ho["tau_PDR"]) / ho["tau_PDR"] * 100.0
+                         for be, ho in pdr_pairs]
+                    )
+                    print(f"[pedrini_tau] tau_PDR BE vs homogeneous: "
+                          f"{rel_PDR.mean():+.1f} ± {rel_PDR.std():.1f}% "
+                          f"(mean ± SD over {len(pdr_pairs)}/{n_total} "
+                          f"breakout pairs with tau_PDR_homo > 0)")
+                else:
+                    print("[pedrini_tau] tau_PDR: no breakout pair has "
+                          "positive homogeneous tau_PDR; skipping.")
+        else:
+            print("[pedrini_tau] No matched pair has BOTH BE and "
+                  "homogeneous breaking out; skipping summary stats.")
+
         make_plot(plot_rows, pedrini_df, pdf_path,
                   show_tau_pdr=args.show_tau_pdr, colourbar=args.colourbar)
         return
