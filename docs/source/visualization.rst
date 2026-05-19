@@ -244,14 +244,3 @@ overwrite each other:
        ├── dominantFeedback_M1e7_sfe020_n1e4_continuous_interp.pdf
        ├── radiusEvolution_M1e7_sfe020_n1e4.pdf
        └── ...
-
-
-See Also
---------
-
-- :ref:`sec-trinity-reader` — programmatic API (``TrinityOutput``,
-  ``load_output``, ``find_all_simulations``) used by every script above.
-- :ref:`sec-running` — producing simulations, sweep folder layout, and
-  how ``path2output`` maps onto the ``fig/{folder_name}/`` tree.
-- :ref:`sec-physics` — physical meaning of the forces, pressures, and
-  regimes shown in the paper figures.

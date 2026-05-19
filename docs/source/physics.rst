@@ -46,9 +46,6 @@ Two density profile types are supported:
 Power-Law Density Profile
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Density Distribution
-""""""""""""""""""""
-
 The power-law profile follows a piecewise function:
 
 .. math::
@@ -60,43 +57,34 @@ The power-law profile follows a piecewise function:
    n_{\rm ISM} & r > r_{\rm cloud}
    \end{cases}
 
-where:
+where :math:`n_{\rm core}` is the core number density (``nCore``),
+:math:`r_{\rm core}` the core radius (``rCore``), :math:`\alpha` the
+power-law exponent (``densPL_alpha``), and :math:`n_{\rm ISM}` the
+ambient ISM density (``nISM``).
 
-- :math:`n_{\rm core}` is the core number density (``nCore`` parameter)
-- :math:`r_{\rm core}` is the core radius (``rCore`` parameter)
-- :math:`\alpha` is the power-law exponent (``densPL_alpha`` parameter)
-- :math:`n_{\rm ISM}` is the ambient ISM density (``nISM`` parameter)
-
-Mass Profile
-""""""""""""
-
-The enclosed mass :math:`M(r)` is obtained by integrating the density profile. Following `Rahner et al. (2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.473.4862R>`_ Eq. 25:
-
-**For homogeneous clouds** (:math:`\alpha = 0`):
+The enclosed mass :math:`M(r)` is obtained by integrating this
+profile, following `Rahner et al. (2018)
+<https://ui.adsabs.harvard.edu/abs/2018MNRAS.473.4862R>`_ Eq. 25.
+For homogeneous clouds (:math:`\alpha = 0`):
 
 .. math::
    :label: eq-mass-homogeneous
 
-   M(r) = \frac{4}{3}\pi r^3 \rho_{\rm core}
+   M(r) = \frac{4}{3}\pi r^3 \rho_{\rm core},
 
-where :math:`\rho_{\rm core} = \mu \, m_{\rm H} \, n_{\rm core}` is the mass density.
-
-**For power-law clouds** (:math:`\alpha \neq 0`):
+with :math:`\rho_{\rm core} = \mu \, m_{\rm H} \, n_{\rm core}`.
+For :math:`\alpha \neq 0` and :math:`r_{\rm core} < r \leq r_{\rm cloud}`:
 
 .. math::
    :label: eq-mass-powerlaw
 
-   M(r) = 4\pi\rho_{\rm core} \left[ \frac{r_{\rm core}^3}{3} + \frac{r^{3+\alpha} - r_{\rm core}^{3+\alpha}}{(3+\alpha) \, r_{\rm core}^\alpha} \right]
+   M(r) = 4\pi\rho_{\rm core} \left[ \frac{r_{\rm core}^3}{3} + \frac{r^{3+\alpha} - r_{\rm core}^{3+\alpha}}{(3+\alpha) \, r_{\rm core}^\alpha} \right].
 
-for :math:`r_{\rm core} < r \leq r_{\rm cloud}`.
+The cloud radius :math:`r_{\rm cloud}` is then determined by solving
+:math:`M(r_{\rm cloud}) = M_{\rm cloud}` via Brent's method.
 
-The cloud radius :math:`r_{\rm cloud}` is determined by solving :math:`M(r_{\rm cloud}) = M_{\rm cloud}` using root-finding (Brent's method).
-
-
-Parameter Interpretation
-""""""""""""""""""""""""
-
-The power-law exponent :math:`\alpha` determines the density gradient:
+The exponent :math:`\alpha` controls the density gradient (valid
+range :math:`-2 \leq \alpha \leq 0`):
 
 .. list-table::
    :widths: 15 25 60
@@ -118,60 +106,32 @@ The power-law exponent :math:`\alpha` determines the density gradient:
      - Isothermal sphere
      - Singular isothermal sphere :math:`\rho \propto r^{-2}`. Self-similar collapse solution.
 
-.. note::
-
-   The parameter ``densPL_alpha`` in the input file corresponds to :math:`\alpha`. Valid range: :math:`-2 \leq \alpha \leq 0`. See :ref:`sec-parameters` for details.
-
 
 Bonnor-Ebert Sphere
 ^^^^^^^^^^^^^^^^^^^
 
-Physical Background
-"""""""""""""""""""
+A Bonnor-Ebert sphere is an isothermal, self-gravitating gas sphere
+in hydrostatic equilibrium, confined by external pressure — relevant
+for molecular cloud cores near the threshold of gravitational
+collapse. It is determined by three properties: isothermality
+(constant temperature/sound speed), self-gravity (density follows
+from pressure–gravity balance), and pressure confinement (external
+pressure truncates the sphere at :math:`r_{\rm cloud}`).
 
-A Bonnor-Ebert sphere is an isothermal, self-gravitating gas sphere in hydrostatic equilibrium, confined by external pressure. It represents a more physically motivated initial condition than a prescribed power-law.
-
-The key physics:
-
-- **Isothermal**: Constant temperature (and sound speed) throughout
-- **Self-gravitating**: Density profile determined by balance of pressure and gravity
-- **Pressure-confined**: External pressure truncates the sphere at :math:`r_{\rm cloud}`
-
-This configuration is relevant for molecular cloud cores near the threshold of gravitational collapse.
-
-
-Lane-Emden Equation
-"""""""""""""""""""
-
-The density structure is governed by the **isothermal Lane-Emden equation**:
+The density structure is governed by the isothermal Lane-Emden
+equation:
 
 .. math::
    :label: eq-lane-emden
 
    \frac{d^2 u}{d\xi^2} + \frac{2}{\xi}\frac{du}{d\xi} = e^{-u}
 
-where:
-
-- :math:`\xi = r/a` is the dimensionless radius
-- :math:`u(\xi)` is the dimensionless gravitational potential
-- :math:`a = c_s / \sqrt{4\pi G \rho_c}` is the scale radius
-
-The density contrast relative to the center is:
-
-.. math::
-   :label: eq-density-contrast
-
-   \frac{\rho(\xi)}{\rho_c} = e^{-u(\xi)}
-
-**Boundary conditions** at the center (:math:`\xi \to 0`):
-
-.. math::
-
-   u(0) = 0, \quad \frac{du}{d\xi}\bigg|_{\xi=0} = 0
-
-
-Key Parameters
-""""""""""""""
+where :math:`\xi = r/a` is the dimensionless radius,
+:math:`u(\xi)` the dimensionless gravitational potential, and
+:math:`a = c_s / \sqrt{4\pi G \rho_c}` the scale radius. Boundary
+conditions at the centre are :math:`u(0) = 0,\ du/d\xi|_{\xi=0} = 0`,
+and the density contrast relative to the centre is
+:math:`\rho(\xi)/\rho_c = e^{-u(\xi)}`.
 
 .. list-table::
    :widths: 20 20 60
@@ -190,36 +150,24 @@ Key Parameters
      - (computed)
      - Isothermal sound speed, determined self-consistently from mass constraint.
 
-The dimensionless mass is computed from the Lane-Emden solution:
-
-.. math::
-   :label: eq-be-mass
-
-   m(\xi) = -\xi^2 \frac{du}{d\xi}
-
-which converts to physical mass via :math:`M = m(\xi) \cdot \rho_c \cdot a^3`.
-
-
-Stability Criterion
-"""""""""""""""""""
-
-Bonnor-Ebert spheres have a **critical density contrast**:
-
-.. math::
-
-   \Omega_{\rm crit} \approx 14.04
-
-corresponding to :math:`\xi_{\rm crit} \approx 6.45`.
+The dimensionless mass from the Lane-Emden solution is
+:math:`m(\xi) = -\xi^2\,du/d\xi`, which converts to physical mass via
+:math:`M = m(\xi)\, \rho_c\, a^3`. The critical density contrast is
+:math:`\Omega_{\rm crit} \approx 14.04`, corresponding to
+:math:`\xi_{\rm crit} \approx 6.45`.
 
 .. warning::
 
-   Spheres with :math:`\Omega > \Omega_{\rm crit}` are **gravitationally unstable** and will collapse. TRINITY allows such configurations but the user should be aware of the physical implications.
+   Spheres with :math:`\Omega > \Omega_{\rm crit}` are
+   gravitationally unstable and will collapse. TRINITY allows such
+   configurations but the user should be aware of the physical
+   implications.
 
 Unlike the power-law profile, the Bonnor-Ebert density is smooth
 throughout the cloud and has no flat core region; it falls
-monotonically from the central value :math:`n_c` to the edge
-density at :math:`r_{\rm cloud}`, beyond which the medium is
-taken to have constant density :math:`n_{\rm ISM}`.
+monotonically from :math:`n_c` at the centre to the edge density at
+:math:`r_{\rm cloud}`, beyond which the medium is taken to have
+constant density :math:`n_{\rm ISM}`.
 
 
 Mass Accretion Rate
@@ -243,59 +191,6 @@ This is the mass flux through a spherical surface moving at velocity :math:`v`.
 .. note::
 
    This formula applies universally to both power-law and Bonnor-Ebert profiles. The profile shape only affects :math:`\rho(r)`.
-
-
-Variable Summary
-^^^^^^^^^^^^^^^^
-
-.. list-table::
-   :widths: 15 20 15 50
-   :header-rows: 1
-
-   * - Symbol
-     - Parameter
-     - Unit
-     - Description
-   * - :math:`M_{\rm cloud}`
-     - ``mCloud``
-     - :math:`M_\odot`
-     - Total cloud mass
-   * - :math:`n_{\rm core}`
-     - ``nCore``
-     - cm\ :sup:`-3`
-     - Core number density
-   * - :math:`r_{\rm core}`
-     - ``rCore``
-     - pc
-     - Core radius (power-law only)
-   * - :math:`\alpha`
-     - ``densPL_alpha``
-     - --
-     - Power-law exponent
-   * - :math:`\Omega`
-     - ``densBE_Omega``
-     - --
-     - BE density contrast
-   * - :math:`n_{\rm ISM}`
-     - ``nISM``
-     - cm\ :sup:`-3`
-     - Ambient ISM density
-   * - :math:`r_{\rm cloud}`
-     - (computed)
-     - pc
-     - Cloud outer radius
-
-
-References
-^^^^^^^^^^
-
-.. [Ebert1955] Ebert, R. (1955). "Über die Verdichtung von H I-Gebieten." *Zeitschrift für Astrophysik*, 37, 217. `ADS <https://ui.adsabs.harvard.edu/abs/1955ZA.....37..217E>`_
-
-.. [Bonnor1956] Bonnor, W. B. (1956). "Boyle's Law and gravitational instability." *MNRAS*, 116, 351. `ADS <https://ui.adsabs.harvard.edu/abs/1956MNRAS.116..351B>`_
-
-.. [Rahner2017] Rahner, D., Pellegrini, E. W., Klessen, R. S., & Glover, S. C. O. (2017). "WARPFIELD: A semi-analytic model of HII region expansion." *MNRAS*, 470, 4453. `ADS <https://ui.adsabs.harvard.edu/abs/2017MNRAS.470.4453R>`_
-
-.. [Rahner2018] Rahner, D., Pellegrini, E. W., Glover, S. C. O., & Klessen, R. S. (2018). "WARPFIELD population synthesis." *MNRAS*, 473, 4862. `ADS <https://ui.adsabs.harvard.edu/abs/2018MNRAS.473.4862R>`_
 
 
 Shell Dynamics
@@ -405,12 +300,3 @@ transition, and momentum-driven — that are implemented as
 separate solvers with their own exit criteria. The per-phase
 solver definitions, exit conditions, and orchestrator flow are
 documented in :ref:`sec-architecture` (*Simulation Phases*).
-
-
-See Also
---------
-
-- :ref:`sec-parameters` for input parameter specifications
-- :ref:`sec-architecture` for code structure and data flow
-- :ref:`sec-visualization` for diagnostic plotting tools
-- :ref:`sec-trinity-reader` for reading output data

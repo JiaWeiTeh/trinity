@@ -15,36 +15,27 @@ information can be inspected at run time through the
 ``DescribedItem`` objects attached to every entry in the output
 state dictionary (see :ref:`sec-running`, *Output Data Model*).
 
+.. seealso::
+
+   ``src/_input/default.param`` in the repository is the authoritative,
+   fully-commented schema + defaults file. User ``.param`` files in
+   ``param/`` override these defaults.
+
 
 File Format
 -----------
 
-The canonical parameter schema (the set of valid keys and their default
-values) lives at ``src/_input/default.param``. User-facing example
-``.param`` files (one per run configuration) live under ``param/``;
-see ``param/simple_cluster.param`` or ``param/rosette.param`` for
-worked examples. Parameter files are generically formatted as a series
-of entries of the form::
+The canonical parameter schema lives at ``src/_input/default.param``;
+worked example files live under ``param/`` (see
+``param/simple_cluster.param`` or ``param/cloud_example_PL.param``). A parameter
+file contains one ``keyword    value`` entry per line. A ``#`` starts
+a comment, either as a whole line or after a value. Keyword names are
+case-sensitive and may appear in any order.
 
-    keyword    value
-
-Any line starting with ``#`` is considered a comment and is
-ignored, and anything on a line after a ``#`` is similarly ignored.
-Some general rules on keywords:
-
-* Keywords may appear in any order.
-* Many keywords have default values, indicated in parentheses in
-  the list below. These keywords are optional and need not appear
-  in the parameter file; missing keywords are set to their default
-  values. Keywords that do not have a default are required.
-* Keyword names are case-sensitive.
-* Unless explicitly stated otherwise, the input unit system is CGS
-  extended by :math:`M_\odot` for mass and Myr for time; the
-  internal unit system in which values are reported on output is
-  described below.
-* A value written as a bracketed list (``mCloud [1e5, 1e6]``) or
-  through a ``tuple(...)`` directive turns the file into a sweep;
-  see :ref:`sec-running` for the full sweep syntax.
+Keywords with a default (listed below) are optional; those without a
+default are required. A value written as a bracketed list
+(``mCloud [1e5, 1e6]``) or through a ``tuple(...)`` directive turns
+the file into a sweep — see :ref:`sec-running` for the sweep syntax.
 
 Supported Value Types
 ^^^^^^^^^^^^^^^^^^^^^
@@ -65,32 +56,12 @@ String              ``densPL``, ``my_model``  Fallback for text values
 Unit System
 -----------
 
-Input Units (CGS)
-^^^^^^^^^^^^^^^^^
-
-Parameters are specified in CGS units in the parameter file. TRINITY internally converts all quantities to astronomy units for numerical stability.
-
-**Common input units:**
-
-=================  ===========================
-Quantity           Input Unit
-=================  ===========================
-Mass               :math:`M_\odot` (solar mass)
-Length             pc (parsec) or cm
-Time               Myr or s
-Number density     cm\ :math:`^{-3}`
-Velocity           km s\ :math:`^{-1}`
-Temperature        K (Kelvin)
-=================  ===========================
-
-Internal Units
-^^^^^^^^^^^^^^
-
-TRINITY uses astronomy units internally: **[Msun, pc, Myr]**
-
-The conversion is handled automatically based on the ``# UNIT:`` annotations in ``default.param``.
-
-**Supported unit strings in annotations:**
+Inputs in the parameter file are CGS, extended by :math:`M_\odot`
+(mass) and Myr (time). Common per-quantity units: pc for length,
+cm\ :math:`^{-3}` for number density, km/s for velocity, K for
+temperature. Internally TRINITY works in ``[Msun, pc, Myr]``;
+conversion is automatic, driven by the ``# UNIT:`` annotations in
+``default.param``. Example annotations:
 
 .. code-block:: text
 
@@ -150,7 +121,7 @@ Configure how TRINITY reports progress and diagnostics.
      - ``DEBUG``
      - Logging verbosity: ``DEBUG``, ``INFO``, ``WARNING``, ``ERROR``, ``CRITICAL``. See :ref:`sec-running` for details.
    * - ``log_console``
-     - ``True``
+     - ``False``
      - Enable terminal output for log messages.
    * - ``log_file``
      - ``True``
@@ -688,17 +659,3 @@ Bonnor-Ebert Sphere
 For sweep-style parameter files (``[v1, v2]`` list values and
 ``tuple(...)`` directives), see :ref:`sec-running` — *Parameter
 Sweep Runs* — for worked Cartesian, tuple, and hybrid examples.
-
-
-See Also
---------
-
-- :ref:`sec-running` — how to execute single runs and parameter sweeps,
-  including CLI flags, worker defaults, and output directory layout.
-- :ref:`sec-physics` — equations and derivations behind ``dens_profile``,
-  ``densPL_alpha``, ``densBE_Omega``, and the feedback parameters.
-- :ref:`sec-trinity-reader` — reading back the JSONL output written by a
-  simulation configured with these parameters.
-- ``src/_input/default.param`` in the repository — the authoritative,
-  fully-commented schema + defaults file. User ``.param`` files in
-  ``param/`` override these defaults.

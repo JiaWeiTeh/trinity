@@ -253,42 +253,13 @@ Output files are organized into subdirectories of ``path2output``:
     └── sweep_report.json                       # Machine-readable sweep summary
 
 
-Logging Configuration
----------------------
+Logging
+-------
 
-Logging is controlled by four parameters in the parameter file.
-
-Logging Parameters
-^^^^^^^^^^^^^^^^^^
-
-.. code-block:: text
-
-    log_level     INFO      # DEBUG, INFO, WARNING, ERROR, CRITICAL
-    log_console   True      # Print to terminal
-    log_file      True      # Write to .log file
-    log_colors    True      # Color-coded terminal output
-
-.. list-table::
-   :widths: 20 15 65
-   :header-rows: 1
-
-   * - Parameter
-     - Default
-     - Description
-   * - ``log_level``
-     - ``INFO``
-     - Verbosity threshold; messages at this level and more severe
-       are emitted (see *Log Levels* below).
-   * - ``log_console``
-     - ``True``
-     - Print log messages to terminal during simulation.
-   * - ``log_file``
-     - ``True``
-     - Save log messages to ``{path2output}/trinity.log``.
-   * - ``log_colors``
-     - ``True``
-     - Color-code terminal output by severity level.
-
+The parameter reference in :ref:`sec-parameters` lists the four
+logging parameters (``log_level``, ``log_console``, ``log_file``,
+``log_colors``) and their defaults. This section covers the
+conceptual ladder of log levels and an example of the output.
 
 Log Levels
 ^^^^^^^^^^
@@ -308,11 +279,11 @@ Each level includes itself and all more severe levels:
    * - ``DEBUG``
      - Variable values, loop iterations, intermediate calculations,
        function entry/exit.
-     - Development; debugging specific issues.
+     - Development; debugging specific issues (default).
    * - ``INFO``
      - Phase transitions, major events (bubble burst, cloud edge
        reached), initialisation and completion markers.
-     - Normal simulation runs (default).
+     - Normal simulation runs.
    * - ``WARNING``
      - Values clamped to limits, fallback behaviour, unusual but
        non-critical conditions.
@@ -325,39 +296,8 @@ Each level includes itself and all more severe levels:
      - When only simulation-stopping errors should print.
 
 
-Common Configurations
-^^^^^^^^^^^^^^^^^^^^^
-
-**Development/Debugging** (maximum detail):
-
-.. code-block:: text
-
-    log_level    DEBUG
-    log_console  True
-    log_file     False
-    log_colors   True
-
-**Normal Run** (recommended):
-
-.. code-block:: text
-
-    log_level    INFO
-    log_console  True
-    log_file     True
-    log_colors   True
-
-**Production/Batch Run** (minimal output):
-
-.. code-block:: text
-
-    log_level    WARNING
-    log_console  False
-    log_file     True
-    log_colors   False
-
-
-Example Log Output
-^^^^^^^^^^^^^^^^^^
+Example Output
+^^^^^^^^^^^^^^
 
 With ``log_level = INFO``:
 
@@ -412,7 +352,7 @@ Snapshot keys group into a handful of categories:
 
 A single snapshot row looks like:
 
-.. code-block:: json
+.. code-block:: text
 
    {
      "snap_id": 42,
@@ -440,37 +380,7 @@ handlers preserve buffered data on early exit — are documented under
 Troubleshooting
 ---------------
 
-Common Issues
-^^^^^^^^^^^^^
-
-**"Parameter not found in default.param"**
-    Your parameter file contains a typo or uses an outdated parameter name.
-    Check :ref:`sec-parameters` for valid parameter names.
-
-**"Only solar metallicity supported"**
-    Currently, TRINITY only supports ``ZCloud = 1`` (solar metallicity).
-
-**"Invalid density profile"**
-    The ``dens_profile`` parameter must be either ``densPL`` or ``densBE``.
-
-**Output directory not created**
-    Ensure the parent directory exists. TRINITY creates the final directory but not parent paths.
-
-Getting Help
-^^^^^^^^^^^^
-
-For issues and feature requests, visit:
-https://github.com/JiaWeiTeh/trinity/issues
-
-
-See Also
---------
-
-- :ref:`sec-parameters` — complete reference of input parameters, units,
-  defaults, and the ``# UNIT:`` annotation system used in ``default.param``.
-- :ref:`sec-trinity-reader` — high-level ``TrinityOutput`` API for reading
-  ``dictionary.jsonl`` files into numpy / pandas.
-- :ref:`sec-visualization` — plotting scripts that consume
-  sweep output directories.
-- :ref:`sec-architecture` — internal module layout and how ``run.py``
-  drives ``main.start_expansion`` through the phase modules.
+Most parameter errors are typos against the schema; the authoritative
+list of valid keywords and defaults is ``src/_input/default.param``,
+mirrored in :ref:`sec-parameters`. For issues and feature requests,
+see https://github.com/JiaWeiTeh/trinity/issues.
