@@ -352,7 +352,7 @@ Snapshot keys group into a handful of categories:
 
 A single snapshot row looks like:
 
-.. code-block:: json
+.. code-block:: text
 
    {
      "snap_id": 42,

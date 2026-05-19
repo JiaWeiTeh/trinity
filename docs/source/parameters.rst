@@ -27,7 +27,7 @@ File Format
 
 The canonical parameter schema lives at ``src/_input/default.param``;
 worked example files live under ``param/`` (see
-``param/simple_cluster.param`` or ``param/rosette.param``). A parameter
+``param/simple_cluster.param`` or ``param/cloud_example_PL.param``). A parameter
 file contains one ``keyword    value`` entry per line. A ``#`` starts
 a comment, either as a whole line or after a value. Keyword names are
 case-sensitive and may appear in any order.

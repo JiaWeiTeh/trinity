@@ -193,59 +193,6 @@ This is the mass flux through a spherical surface moving at velocity :math:`v`.
    This formula applies universally to both power-law and Bonnor-Ebert profiles. The profile shape only affects :math:`\rho(r)`.
 
 
-Variable Summary
-^^^^^^^^^^^^^^^^
-
-.. list-table::
-   :widths: 15 20 15 50
-   :header-rows: 1
-
-   * - Symbol
-     - Parameter
-     - Unit
-     - Description
-   * - :math:`M_{\rm cloud}`
-     - ``mCloud``
-     - :math:`M_\odot`
-     - Total cloud mass
-   * - :math:`n_{\rm core}`
-     - ``nCore``
-     - cm\ :sup:`-3`
-     - Core number density
-   * - :math:`r_{\rm core}`
-     - ``rCore``
-     - pc
-     - Core radius (power-law only)
-   * - :math:`\alpha`
-     - ``densPL_alpha``
-     - --
-     - Power-law exponent
-   * - :math:`\Omega`
-     - ``densBE_Omega``
-     - --
-     - BE density contrast
-   * - :math:`n_{\rm ISM}`
-     - ``nISM``
-     - cm\ :sup:`-3`
-     - Ambient ISM density
-   * - :math:`r_{\rm cloud}`
-     - (computed)
-     - pc
-     - Cloud outer radius
-
-
-References
-^^^^^^^^^^
-
-.. [Ebert1955] Ebert, R. (1955). "Über die Verdichtung von H I-Gebieten." *Zeitschrift für Astrophysik*, 37, 217. `ADS <https://ui.adsabs.harvard.edu/abs/1955ZA.....37..217E>`_
-
-.. [Bonnor1956] Bonnor, W. B. (1956). "Boyle's Law and gravitational instability." *MNRAS*, 116, 351. `ADS <https://ui.adsabs.harvard.edu/abs/1956MNRAS.116..351B>`_
-
-.. [Rahner2017] Rahner, D., Pellegrini, E. W., Klessen, R. S., & Glover, S. C. O. (2017). "WARPFIELD: A semi-analytic model of HII region expansion." *MNRAS*, 470, 4453. `ADS <https://ui.adsabs.harvard.edu/abs/2017MNRAS.470.4453R>`_
-
-.. [Rahner2018] Rahner, D., Pellegrini, E. W., Glover, S. C. O., & Klessen, R. S. (2018). "WARPFIELD population synthesis." *MNRAS*, 473, 4862. `ADS <https://ui.adsabs.harvard.edu/abs/2018MNRAS.473.4862R>`_
-
-
 Shell Dynamics
 --------------
 
