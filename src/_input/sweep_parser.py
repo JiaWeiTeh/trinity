@@ -31,7 +31,7 @@ import re
 from dataclasses import dataclass
 from fractions import Fraction
 from pathlib import Path
-from typing import Any, Dict, Iterator, List, Tuple, Union, Optional
+from typing import Any, Dict, Iterable, Iterator, List, Tuple, Union, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -521,11 +521,14 @@ def generate_combinations_from_config(config: SweepConfig) -> Iterator[Tuple[Dic
                     tuple_base[param_name] = value
 
                 # Generate Cartesian product of sweep params
+                # Both the tuple-varied and sweep-varied parameters change
+                # across runs, so both feed the run-name uniqueness logic.
+                varied_keys = list(config.tuple_params) + sweep_keys
                 for sweep_combo in itertools.product(*sweep_value_lists):
                     params = tuple_base.copy()
                     for key, value in zip(sweep_keys, sweep_combo):
                         params[key] = value
-                    name = generate_run_name(params)
+                    name = generate_run_name(params, varied_keys)
                     yield params, name
         else:
             # Pure tuple mode: use explicit combinations only
@@ -533,7 +536,7 @@ def generate_combinations_from_config(config: SweepConfig) -> Iterator[Tuple[Dic
                 params = config.base_params.copy()
                 for param_name, value in zip(config.tuple_params, values):
                     params[param_name] = value
-                name = generate_run_name(params)
+                name = generate_run_name(params, config.tuple_params)
                 yield params, name
     else:
         # Pure Cartesian mode: use existing logic
@@ -577,17 +580,56 @@ def generate_combinations(
         for key, value in zip(keys, combination):
             params[key] = value
 
-        # Generate output name
-        name = generate_run_name(params)
+        # Generate output name (pass the swept keys so arbitrary varied
+        # parameters get a unique generic suffix).
+        name = generate_run_name(params, keys)
 
         yield params, name
 
 
-def generate_run_name(params: Dict[str, Any]) -> str:
+# Parameters that already have a curated, human-readable slot in the run
+# name (either in the base name or as a special-cased suffix). Any *other*
+# swept parameter falls through to the generic suffix logic below.
+_NAMED_RUN_NAME_KEYS = frozenset({
+    'mCloud', 'sfe', 'nCore',
+    'dens_profile', 'densPL_alpha', 'densBE_Omega',
+    'include_PHII',
+})
+
+
+def _generic_suffix_token(key: str, value: Any) -> str:
+    """
+    Build a single ``{key}{value}`` token for an arbitrary swept parameter
+    that has no curated slot in the run name.
+
+    The token is kept as one clean, filesystem-friendly chunk: snake_case keys
+    become camelCase and decimal points in floats become ``p`` (mirroring the
+    fact that the curated suffixes never contain ``.`` or ``_``). Minus signs
+    are preserved, matching the existing ``_PL-2`` convention.
+
+    Examples
+    --------
+    - coll_counter=True -> "collCounterTrue"
+    - Z=0.5            -> "Z0p5"
+    - kB=3             -> "kB3"
+    """
+    parts = key.split('_')
+    key_token = parts[0] + ''.join(p.capitalize() for p in parts[1:])
+
+    # bool -> "True"/"False"; float "0.5" -> "0p5"; minus signs kept (cf. _PL-2)
+    val_token = str(value).replace('.', 'p')
+
+    return f"{key_token}{val_token}"
+
+
+def generate_run_name(
+    params: Dict[str, Any],
+    swept_keys: Optional[Iterable[str]] = None,
+) -> str:
     """
     Generate output folder name following existing TRINITY convention.
 
-    Format: {mCloud}_sfe{sfe*100:03d}_n{nCore}[_profile_suffix][_PHII_suffix]
+    Format: {mCloud}_sfe{sfe*100:03d}_n{nCore}[_profile][_PHII][_generic...]
     Examples:
         - 1e7_sfe010_n1e4 (default, no suffixes)
         - 1e5_sfe001_n1e4_PL0 (powerlaw alpha=0)
@@ -596,12 +638,20 @@ def generate_run_name(params: Dict[str, Any]) -> str:
         - 1e7_sfe010_n1e4_yesPHII (include_PHII=True explicit in sweep)
         - 1e7_sfe010_n1e4_noPHII  (include_PHII=False explicit in sweep)
         - 1e5_sfe001_n1e4_PL0_noPHII (combined suffixes)
+        - 1e5_sfe001_n1e4_Z0p5 (generic suffix for an arbitrary swept key)
 
     Parameters
     ----------
     params : dict
         Parameter dictionary containing mCloud, sfe, nCore, and optionally
         dens_profile, densPL_alpha, densBE_Omega
+    swept_keys : iterable of str, optional
+        Names of the parameters that actually vary across the sweep. Any swept
+        key without a curated slot in the name (i.e. not in
+        ``_NAMED_RUN_NAME_KEYS``) gets a generic ``_{key}{value}`` suffix so
+        distinct combinations never collapse onto the same folder name. When
+        omitted, only the curated base name and suffixes are produced (back-
+        compatible with single-run callers).
 
     Returns
     -------
@@ -644,6 +694,16 @@ def generate_run_name(params: Dict[str, Any]) -> str:
     # key -> no tag (runtime falls back to default.param).
     if 'include_PHII' in params:
         base_name += "_yesPHII" if params['include_PHII'] else "_noPHII"
+
+    # Generic suffixes for any *other* swept parameter (e.g. Z, kB, a boolean
+    # flag). Without this, two combinations that differ only in such a key
+    # would generate the same folder name and silently overwrite each other.
+    # Sorted for deterministic ordering regardless of sweep-file key order.
+    if swept_keys:
+        for key in sorted(swept_keys):
+            if key in _NAMED_RUN_NAME_KEYS or key not in params:
+                continue
+            base_name += "_" + _generic_suffix_token(key, params[key])
 
     return base_name
 
@@ -809,6 +869,26 @@ if __name__ == "__main__":
         name = generate_run_name(params)
         status = "PASS" if name == expected else "FAIL"
         print(f"  {status}: generate_run_name({params}) = '{name}' (expected '{expected}')")
+
+    # Generic suffixes for arbitrary swept keys (passed via swept_keys)
+    generic_cases = [
+        ({'mCloud': 1e5, 'sfe': 0.01, 'nCore': 1e4, 'Z': 0.5}, ['Z'],
+         "1e5_sfe001_n1e4_Z0p5"),
+        ({'mCloud': 1e5, 'sfe': 0.01, 'nCore': 1e4, 'kB': 3}, ['kB'],
+         "1e5_sfe001_n1e4_kB3"),
+        ({'mCloud': 1e5, 'sfe': 0.01, 'nCore': 1e4, 'coll_counter': True},
+         ['coll_counter'], "1e5_sfe001_n1e4_collCounterTrue"),
+        # Multiple generic keys -> sorted, deterministic order
+        ({'mCloud': 1e5, 'sfe': 0.01, 'nCore': 1e4, 'Z': 1.0, 'kB': 2},
+         ['Z', 'kB'], "1e5_sfe001_n1e4_Z1p0_kB2"),
+        # A curated key passed in swept_keys must NOT be double-encoded
+        ({'mCloud': 1e5, 'sfe': 0.01, 'nCore': 1e4, 'include_PHII': True},
+         ['include_PHII'], "1e5_sfe001_n1e4_yesPHII"),
+    ]
+    for params, swept, expected in generic_cases:
+        name = generate_run_name(params, swept)
+        status = "PASS" if name == expected else "FAIL"
+        print(f"  {status}: generate_run_name({params}, {swept}) = '{name}' (expected '{expected}')")
 
     # Test parse_tuple_line
     print("\nTesting parse_tuple_line:")
