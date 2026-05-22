@@ -13,24 +13,21 @@ and a handful of sweep-mode directives. For each keyword the
 default value, unit, and short description are given. The same
 information can be inspected at run time through the
 ``DescribedItem`` objects attached to every entry in the output
-state dictionary (see :ref:`sec-running`, *Output Data Model*).
-
-.. seealso::
-
-   ``src/_input/default.param`` in the repository is the authoritative,
-   fully-commented schema + defaults file. User ``.param`` files in
-   ``param/`` override these defaults.
+state dictionary (see :ref:`sec-running`, *Snapshot data model*).
 
 
 File Format
 -----------
 
-The canonical parameter schema lives at ``src/_input/default.param``;
-worked example files live under ``param/`` (see
-``param/simple_cluster.param`` or ``param/cloud_example_PL.param``). A parameter
-file contains one ``keyword    value`` entry per line. A ``#`` starts
-a comment, either as a whole line or after a value. Keyword names are
-case-sensitive and may appear in any order.
+The canonical parameter schema — the authoritative, fully-commented
+list of keys and defaults — lives at ``src/_input/default.param``;
+the keywords below mirror it. Worked example files live under
+``param/`` (see ``param/simple_cluster.param`` or
+``param/cloud_example_PL.param``) and override those defaults.
+
+A parameter file contains one ``keyword    value`` entry per line. A
+``#`` starts a comment, either as a whole line or after a value.
+Keyword names are case-sensitive and may appear in any order.
 
 Keywords with a default (listed below) are optional; those without a
 default are required. A value written as a bracketed list
@@ -297,6 +294,10 @@ Conditions that end the simulation.
        end-of-phase reconciliation snapshot adds one extra past-rCloud
        sample, so the total snapshots with R2 ≥ rCloud is roughly
        ``N + 2`` (1 at-edge + ``N`` in-loop + 1 reconciliation).
+   * - ``coll_r``
+     - ``1``
+     - pc
+     - Radius below which the cloud is considered completely collapsed.
 
 .. note::
 
@@ -304,22 +305,6 @@ Conditions that end the simulation.
    disables that termination condition, allowing the simulation to continue
    until other conditions are met (e.g., shell dissolution, collapse, or
    cloud boundary).
-
-Collapse Parameters
-^^^^^^^^^^^^^^^^^^^
-
-.. list-table::
-   :widths: 25 15 15 45
-   :header-rows: 1
-
-   * - Parameter
-     - Default
-     - Unit
-     - Description
-   * - ``coll_r``
-     - ``1``
-     - pc
-     - Radius below which the cloud is considered completely collapsed.
 
 
 Starburst99 Parameters
@@ -580,23 +565,6 @@ Standard physical constants. Typically not modified.
      - Relative radius :math:`\xi = r/R_2` for measuring bubble temperature.
 
 
-Sweep Syntax
-------------
-
-Any parameter can also be given as a list (``[v1, v2, ...]``) or combined
-into a ``tuple(...)`` directive to launch a parameter sweep. ``run.py``
-auto-detects this from the file content, so the same script runs both single
-simulations and sweeps.
-
-See :ref:`sec-running` — *Parameter Sweep Runs* — for:
-
-- Worked examples of **Cartesian**, **tuple**, and **hybrid** sweep syntax.
-- Command-line options (``--dry-run``, ``--workers``, ``--yes``,
-  ``--verbose``) and cancellation behaviour.
-- Pre-flight GMC plausibility checks applied to every combination.
-- Auto-generated run names and the resulting output directory layout.
-
-
 Examples
 --------
 
@@ -656,6 +624,5 @@ Bonnor-Ebert Sphere
     nCore           1e5
     rCore           0.1
 
-For sweep-style parameter files (``[v1, v2]`` list values and
-``tuple(...)`` directives), see :ref:`sec-running` — *Parameter
-Sweep Runs* — for worked Cartesian, tuple, and hybrid examples.
+For sweep-style parameter files (list values and ``tuple(...)``
+directives), see :ref:`sec-running`.
