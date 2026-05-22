@@ -28,7 +28,7 @@ classes.
 
 .. seealso::
 
-   - :ref:`sec-running` — *Output Data Model* section — describes the
+   - :ref:`sec-running` — *Snapshot data model* section — describes the
      on-disk JSONL layout and snapshot key categories.
    - :ref:`sec-architecture` — *Snapshot Persistence* section — covers
      the in-memory ``DescribedDict`` / ``DescribedItem`` objects, the
@@ -337,7 +337,7 @@ File Format Notes
 -----------------
 
 The on-disk JSONL layout and snapshot key categories are described in
-:ref:`sec-running` (*Output Data Model*); the in-memory ``DescribedDict``
+:ref:`sec-running` (*Snapshot data model*); the in-memory ``DescribedDict``
 and the buffer→flush pipeline that produces them are described in
 :ref:`sec-architecture` (*Snapshot Persistence*).
 
