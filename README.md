@@ -2,7 +2,7 @@
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/)
-[![Documentation](https://img.shields.io/badge/docs-trinity--web-brightgreen.svg)](https://jiaweiteh.github.io/trinity-web/)
+<a href="https://jiaweiteh.github.io/trinity-web/" target="_blank" rel="noopener noreferrer"><img src="https://img.shields.io/badge/docs-trinity--web-brightgreen.svg" alt="Documentation"></a>
 
 TRINITY is a feedback-driven HII-region evolution code. For a given
 giant-molecular-cloud mass, star-formation efficiency, density profile,
