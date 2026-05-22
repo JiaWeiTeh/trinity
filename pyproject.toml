@@ -56,6 +56,10 @@ docs = [
     "readthedocs-sphinx-search==0.1.1",
     "sphinx_copybutton",
 ]
+plots = [
+    "cmasher",
+    "Pillow",
+]
 
 [project.urls]
 Homepage = "https://github.com/JiaWeiTeh/trinity"
@@ -70,11 +74,8 @@ package-dir = {"" = "."}
 where = ["."]
 include = ["src*"]
 exclude = [
-    "old_doNotRead*",
-    "analysis*",
     "test*",
     "docs*",
-    "example_scripts*",
 ]
 
 [tool.setuptools.package-data]
@@ -97,7 +98,6 @@ exclude = '''
   | buck-out
   | build
   | dist
-  | old_doNotRead
 )/
 '''
 
@@ -106,9 +106,6 @@ python_version = "3.9"
 warn_return_any = true
 warn_unused_configs = true
 ignore_missing_imports = true
-exclude = [
-    "old_doNotRead/",
-]
 
 [tool.pytest.ini_options]
 testpaths = ["test"]
