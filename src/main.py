@@ -135,21 +135,23 @@ def start_expansion(params):
     elif _level == "info":
         logger.info(_msg)
 
-    # Step 2: Obtain parameters from Starburst99
-    logger.info("Step 2: Loading Starburst99 stellar feedback data...")
+    # Step 2: Obtain SPS feedback parameters
+    # The loader handles both the legacy SB99 grammar (sps_path = def_path)
+    # and user-defined sps_path files; see read_SB99 module docstring.
+    logger.info("Step 2: Loading SPS stellar feedback data...")
     # Scaling factor for cluster masses. Though this might only be accurate for
     # high mass clusters (~>1e5) in which the IMF is fully sampled.
-    f_mass = params['mCluster'] / params['SB99_mass']
-    logger.debug(f"SB99 mass scaling factor: {f_mass:.4f}")
-    # Get SB99 data and interpolation functions.
-    SB99_data = read_SB99.read_SB99(f_mass, params)
-    SB99f = read_SB99.get_interpolation(SB99_data)
+    f_mass = params['mCluster'] / params['sps_refmass']
+    logger.debug(f"SPS mass scaling factor: {f_mass:.4f}")
+    # Get SPS data and interpolation functions.
+    sps_data = read_SB99.read_SB99(f_mass, params)
+    sps_f = read_SB99.get_interpolation(sps_data)
     # TODO:
     # if tSF != 0.: we would actually need to shift the feedback parameters by tSF
     # update
-    params['SB99_data'].value = SB99_data
-    params['SB99f'].value = SB99f
-    logger.info("SB99 data loaded and interpolation functions created")
+    params['sps_data'].value = sps_data
+    params['sps_f'].value = sps_f
+    logger.info("SPS data loaded and interpolation functions created")
     
     # Step 3: get cooling structure for CIE (since it is non time dependent).
     logger.info("Step 3: Loading CIE cooling curve...")
@@ -360,7 +362,7 @@ def run_expansion(params):
     return 
 
 
-def expansion_next(tStart, ODEpar, SB99_data_old, SB99f_old, mypath, cloudypath, ii_coll):
+def expansion_next(tStart, ODEpar, sps_data_old, sps_f_old, mypath, cloudypath, ii_coll):
 
     return
 

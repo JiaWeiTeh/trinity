@@ -54,7 +54,7 @@ from dataclasses import dataclass
 import src.cloud_properties.mass_profile as mass_profile
 import src._functions.unit_conversions as cvt
 import src._functions.operations as operations
-from src.sb99.update_feedback import get_currentSB99feedback
+from src.sb99.update_feedback import get_current_sps_feedback
 from src._input.dictionary import updateDict
 
 # Import pure/modified functions
@@ -469,7 +469,7 @@ def run_phase_transition(params) -> TransitionPhaseResults:
         # ---------------------------------------------------------------------
         # Get feedback
         # ---------------------------------------------------------------------
-        feedback = get_currentSB99feedback(t_now, params)
+        feedback = get_current_sps_feedback(t_now, params)
         updateDict(params, feedback)
 
         # ---------------------------------------------------------------------
@@ -767,7 +767,7 @@ def run_phase_transition(params) -> TransitionPhaseResults:
         # Recompute Pb and P_ram at the post-ODE state so the check uses
         # current values, not stale pre-ODE ones.
         RAM_DOMINANCE_THRESHOLD = 0.9  # exit when P_ram/(P_b + P_ram) > this
-        feedback_post = get_currentSB99feedback(t_now, params)
+        feedback_post = get_current_sps_feedback(t_now, params)
         gamma_adia = params['gamma_adia'].value
         R1_post, Pb_post = compute_R1_Pb(R2, Eb, feedback_post.Lmech_total,
                                           feedback_post.v_mech_total, gamma_adia)
@@ -851,7 +851,7 @@ def run_phase_transition(params) -> TransitionPhaseResults:
     # post-ODE state so the snapshot is fully consistent.
     # =========================================================================
     try:
-        feedback_final = get_currentSB99feedback(t_now, params)
+        feedback_final = get_current_sps_feedback(t_now, params)
         updateDict(params, feedback_final)
         gamma_adia = params['gamma_adia'].value
         R1_f, Pb_f = compute_R1_Pb(R2, Eb, feedback_final.Lmech_total,

@@ -161,19 +161,35 @@ coll_r    1
 
 
 # ==============================================================================
-# Parameters for feedback calculations from Starburst99 
+# Parameters for SPS (stellar-population-synthesis) feedback calculations.
+# The three SB99_* params below drive the legacy SB99 filename grammar used
+# when sps_path = def_path; see the sps_path section further down for the
+# modern user-defined alternative. analysis/sb99-refactor-audit.md §9 has
+# the back-compat guarantee.
 # ==============================================================================
 
-# INFO: Default star cluster mass used in SB99.
+# INFO: Default star cluster mass used in SB99 (the reference mass the SB99
+#       grid is normalized against). Part of the legacy SB99 grammar
+#       (consulted when sps_path = def_path). When sps_path is set explicitly,
+#       f_mass scaling uses sps_refmass instead.
 # UNIT: [Msun]
 SB99_mass    1e6
 
 # INFO: Determines whether stellar rotation is considered in the stellar track.
+#       Legacy SB99 grammar — only consulted when sps_path = def_path.
 SB99_rotation    1
 
 # INFO: Defines the black hole formation threshold.
+#       Legacy SB99 grammar — only consulted when sps_path = def_path.
 # UNIT: [Msun]
 SB99_BHCUT    120
+
+# INFO: Reference cluster mass used in f_mass = mCluster / sps_refmass.
+#       If def_value (default), copied from SB99_mass at startup so existing
+#       legacy configs are unaffected. Override when sps_path points at an
+#       SPS file normalized to a different reference mass.
+# UNIT: [Msun]
+sps_refmass    def_value
 
 # INFO: Fraction of cold mass entrained in stellar winds (increases Mdot_wind, reduces velocity).
 FB_mColdWindFrac   0
@@ -302,8 +318,59 @@ path_cooling_CIE    3
 # INFO: Specifies the cooling curve folder for non-CIE conditions T < 1e5.5 K
 path_cooling_nonCIE    def_dir
 
-# INFO: Specifies the absolute path to Starburst99 (SPS) files.
+# INFO: Specifies the absolute path to the Starburst99 (SPS) data directory.
+#       Used by the legacy SB99 filename grammar when sps_path = def_path.
 path_sps    def_dir
+
+# INFO: Full path to an SPS data file. If def_path (default), the legacy SB99
+#       filename grammar (SB99_mass / SB99_rotation / SB99_BHCUT / ZCloud +
+#       path_sps) is used to resolve the file. Setting an explicit path
+#       bypasses the grammar and requires sps_col_<canonical> declarations
+#       below to describe the file's column layout. The legacy SB99 path is
+#       a permanent supported fallback (never removed) — see
+#       analysis/sb99-refactor-audit.md §9.
+sps_path    def_path
+
+# ==============================================================================
+# SPS column-mapping declarations (used only when sps_path is user-defined).
+# Each entry is parsed as three whitespace-separated fields after the key:
+#
+#     sps_col_<canonical>    <file_column>    <units>    <log|linear>
+#
+#     <canonical>     one of the canonical names (see CANONICALS in
+#                     src/sb99/sps_columns.py)
+#     <file_column>   the column name as it appears in your SPS file's
+#                     header row
+#     <units>         declared units (e.g. erg/s, 1/s, g*cm/s^2 ...). See
+#                     UNIT_CONVERSIONS in sps_columns.py for the recognized
+#                     set per canonical.
+#     <log|linear>    whether the file values are in log10 space.
+#
+# The sentinel "def_unset" means "not declared in this .param"; for legacy
+# (sps_path = def_path) runs ALL of these are def_unset and the hardcoded
+# LEGACY_SB99_COLUMN_MAP positional preset is used instead.
+#
+# Required canonicals (loader cannot run without them when sps_path is set):
+#   t, Lbol, Lmech_W, Qi, pdot_W, and EITHER fi OR both Li and Ln, AND
+#   EITHER Lmech_total OR Lmech_SN.
+# Optional canonicals: Lmech_total, Lmech_SN, pdot_SN, Mdot_SN, v_SN, Li, Ln.
+# (Optional ones fall back to the existing derivation when absent.)
+# See analysis/sb99-refactor-audit.md §10 PR-2 for the full design.
+# ==============================================================================
+
+sps_col_t            def_unset
+sps_col_Qi           def_unset
+sps_col_fi           def_unset
+sps_col_Lbol         def_unset
+sps_col_Lmech_W      def_unset
+sps_col_pdot_W       def_unset
+sps_col_Lmech_total  def_unset
+sps_col_Lmech_SN     def_unset
+sps_col_pdot_SN      def_unset
+sps_col_Mdot_SN      def_unset
+sps_col_v_SN         def_unset
+sps_col_Li           def_unset
+sps_col_Ln           def_unset
 
 
 # =============================================================================

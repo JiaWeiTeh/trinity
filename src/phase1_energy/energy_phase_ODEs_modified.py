@@ -20,7 +20,7 @@ import scipy.optimize
 import src.cloud_properties.mass_profile as mass_profile
 import src.cloud_properties.density_profile as density_profile
 import src.bubble_structure.get_bubbleParams as get_bubbleParams
-from src.sb99.update_feedback import get_currentSB99feedback
+from src.sb99.update_feedback import get_current_sps_feedback
 from dataclasses import dataclass
 from typing import Optional
 import logging
@@ -175,7 +175,7 @@ def get_ODE_Edot_pure(t: float, y: list, snapshot: ODESnapshot, params_for_feedb
     snapshot : ODESnapshot
         Frozen snapshot of parameters
     params_for_feedback : DescribedDict
-        Original params dict, used ONLY for get_currentSB99feedback
+        Original params dict, used ONLY for get_current_sps_feedback
         (which needs interpolation tables that are too large to copy)
 
     Returns
@@ -186,7 +186,7 @@ def get_ODE_Edot_pure(t: float, y: list, snapshot: ODESnapshot, params_for_feedb
     R2, v2, Eb = y
 
     # Get feedback values (this reads from params but doesn't write)
-    feedback = get_currentSB99feedback(t, params_for_feedback)
+    feedback = get_current_sps_feedback(t, params_for_feedback)
     Lmech_total = feedback.Lmech_total
     v_mech_total = feedback.v_mech_total
 
@@ -321,7 +321,7 @@ def compute_derived_quantities(t: float, y: list, snapshot: ODESnapshot, params_
     """
     R2, v2, Eb = y
 
-    feedback = get_currentSB99feedback(t, params_for_feedback)
+    feedback = get_current_sps_feedback(t, params_for_feedback)
     Lmech_total = feedback.Lmech_total
     v_mech_total = feedback.v_mech_total
 
