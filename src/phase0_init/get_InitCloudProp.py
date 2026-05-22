@@ -22,6 +22,7 @@ Supported density profiles:
 import numpy as np
 import logging
 import os
+import shutil
 from dataclasses import dataclass
 import src._functions.unit_conversions as cvt
 
@@ -585,6 +586,11 @@ def plot_initial_cloud_profiles(
     # Get path to trinity style file
     style_path = Path(__file__).parent.parent / '_plots' / 'trinity.mplstyle'
 
+    # The paper style sets text.usetex, which needs a system LaTeX install.
+    # Labels here are mathtext, so fall back to matplotlib's built-in renderer
+    # when no LaTeX is present — keeps a fresh run working out of the box.
+    use_tex = shutil.which('latex') is not None
+
     # Extract data
     r_arr = props.r_arr
     n_arr = props.n_arr
@@ -609,7 +615,7 @@ def plot_initial_cloud_profiles(
         profile_label = profile_type
 
     # Use trinity style for plotting
-    with plt.style.context(str(style_path)):
+    with plt.style.context(str(style_path)), plt.rc_context({'text.usetex': use_tex}):
         # Create figure with two panels (wider for two-panel layout)
         fig, axes = plt.subplots(1, 2, figsize=(7.0, 2.8))
 
