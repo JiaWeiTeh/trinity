@@ -200,7 +200,12 @@ def parse_sps_col_value(canonical: str, raw_value: str) -> ColumnSpec:
     """Parse a single sps_col_<canonical> .param value into a ColumnSpec.
 
     Expected raw_value: "<file_column>  <units>  <log|linear>"  (whitespace-
-    separated, exactly 3 fields). Used for user-defined sps_path mode.
+    separated, exactly 3 fields). The first field is either:
+
+      - a non-negative integer (0-based column index; works on any file,
+        with or without a header), OR
+      - a string column name matching the file's header row (the file
+        must have a header for this to resolve).
 
     Raises ValueError on malformed input or unrecognized units.
     """
@@ -210,7 +215,13 @@ def parse_sps_col_value(canonical: str, raw_value: str) -> ColumnSpec:
             f"sps_col_{canonical} expects 3 fields "
             f"(<file_column> <units> <log|linear>), got: {raw_value!r}"
         )
-    file_column, units, log_or_linear = parts
+    file_column_raw, units, log_or_linear = parts
+
+    # First field: 0-based integer index (any file) OR header-row name
+    # (file must have a header). Auto-detect: all-digits -> int.
+    file_column = (int(file_column_raw)
+                   if file_column_raw.isdigit() else file_column_raw)
+
     if log_or_linear not in ('log', 'linear'):
         raise ValueError(
             f"sps_col_{canonical}: third field must be 'log' or 'linear', "
@@ -222,7 +233,8 @@ def parse_sps_col_value(canonical: str, raw_value: str) -> ColumnSpec:
             f"Recognized for {canonical}: "
             f"{sorted(UNIT_CONVERSIONS[canonical].keys())}"
         )
-    return ColumnSpec(file_column=file_column, units=units, log=(log_or_linear == 'log'))
+    return ColumnSpec(file_column=file_column, units=units,
+                      log=(log_or_linear == 'log'))
 
 
 def build_user_column_map(params) -> Dict[str, ColumnSpec]:
@@ -312,21 +324,23 @@ def _format_missing_template(*, sps_path: str,
     template = (
         f"sps_path is set to {sps_path!r} but the column mapping is incomplete.\n"
         f"{diag_block}\n\n"
-        "Add the following lines to your .param file, filling in the file's\n"
-        "actual column names. Each line is:\n"
-        "    sps_col_<canonical>    <file_column>    <units>    <log|linear>\n\n"
+        "Add the following lines to your .param file. Each line is:\n"
+        "    sps_col_<canonical>    <file_column>    <units>    <log|linear>\n"
+        "where <file_column> is EITHER a 0-based integer column index\n"
+        "(works on any file), OR a header-row name (file must have a\n"
+        "header). Examples shown with the integer style:\n\n"
         "Required (no derivation fallback):\n"
-        "    sps_col_t            <file_column>     yr                  linear\n"
-        "    sps_col_Lbol         <file_column>     erg/s               log\n"
-        "    sps_col_Lmech_W      <file_column>     erg/s               log\n"
-        "    sps_col_Qi           <file_column>     1/s                 log\n"
-        "    sps_col_pdot_W       <file_column>     g*cm/s^2            log\n"
-        "    sps_col_fi           <file_column>     dimensionless       linear\n"
+        "    sps_col_t            0                 yr                  linear\n"
+        "    sps_col_Lbol         3                 erg/s               log\n"
+        "    sps_col_Lmech_W      6                 erg/s               log\n"
+        "    sps_col_Qi           1                 1/s                 log\n"
+        "    sps_col_pdot_W       5                 g*cm/s^2            log\n"
+        "    sps_col_fi           2                 dimensionless       linear\n"
         "        (OR supply BOTH sps_col_Li AND sps_col_Ln instead of sps_col_fi)\n\n"
         "And EITHER (to drive the SN pipeline):\n"
-        "    sps_col_Lmech_total  <file_column>     erg/s               log\n"
+        "    sps_col_Lmech_total  4                 erg/s               log\n"
         "OR:\n"
-        "    sps_col_Lmech_SN     <file_column>     erg/s               log\n\n"
+        "    sps_col_Lmech_SN     <idx_or_name>     erg/s               log\n\n"
         "Optional (skip derivation if provided):\n"
         "    sps_col_pdot_SN, sps_col_Mdot_SN, sps_col_v_SN,\n"
         "    sps_col_Li, sps_col_Ln, sps_col_Lmech_total\n\n"
@@ -337,42 +351,127 @@ def _format_missing_template(*, sps_path: str,
     return template
 
 
-def load_named_columns(filepath: str, column_map: Dict[str, ColumnSpec]
-                       ) -> Dict[str, np.ndarray]:
-    """Load a header-equipped CSV via numpy and return a dict keyed by
+def _can_parse_float(s: str) -> bool:
+    """True iff s parses as a float (covers integers, decimals, scientific
+    notation, inf/nan). Used to distinguish data rows from header rows."""
+    try:
+        float(s)
+        return True
+    except ValueError:
+        return False
+
+
+def _scan_layout(filepath: str):
+    """Scan filepath to determine (data_start, header_names, delimiter).
+
+    Returns
+    -------
+    data_start : int
+        Row index where numeric data begins (rows above are skipped).
+    header_names : list[str]
+        Captured header tokens, or [] if no header was detected. A header
+        is "the non-blank non-# row immediately above data_start that has
+        the same token count as the data row and contains at least one
+        non-numeric token".
+    delimiter : str or None
+        ',' if the first data line contains a comma; else None
+        (whitespace, the np.loadtxt default).
+    """
+    with open(filepath, 'r', encoding='utf-8') as f:
+        lines = f.readlines()
+
+    # Pass 1: find the first all-numeric data line and sniff its delimiter.
+    data_start = None
+    delimiter = None
+    for i, line in enumerate(lines):
+        s = line.strip()
+        if not s or s.startswith('#'):
+            continue
+        line_delim = ',' if ',' in line else None
+        tokens = ([t.strip() for t in line.split(',')] if line_delim
+                  else line.split())
+        if tokens and all(_can_parse_float(t) for t in tokens):
+            data_start = i
+            delimiter = line_delim
+            break
+
+    if data_start is None:
+        raise ValueError(
+            f"No numeric data rows found in {filepath}. "
+            "The file appears to contain only headers/comments/blank lines."
+        )
+
+    # Pass 2: header is the *immediately-preceding* non-blank non-# row,
+    # IF it has matching token count and at least one non-numeric token.
+    header_names = []
+    data_line = lines[data_start]
+    data_tokens = ([t.strip() for t in data_line.split(',')] if delimiter == ','
+                   else data_line.split())
+    for j in range(data_start - 1, -1, -1):
+        s = lines[j].strip()
+        if not s or s.startswith('#'):
+            continue
+        tokens = ([t.strip() for t in lines[j].split(',')] if delimiter == ','
+                  else lines[j].split())
+        if (len(tokens) == len(data_tokens)
+                and any(not _can_parse_float(t) for t in tokens)):
+            header_names = tokens
+        break  # only the immediate predecessor counts
+
+    return data_start, header_names, delimiter
+
+
+def load_user_columns(filepath: str, column_map: Dict[str, ColumnSpec]
+                      ) -> Dict[str, np.ndarray]:
+    """Load a user-defined SPS file (any layout) and return a dict keyed by
     canonical name (raw values, no unit conversion yet).
 
-    Used for user-mode sps_path. The file MUST contain a header row whose
-    names cover every file_column referenced by column_map. Header-less
-    files trigger a clear error.
+    Supports:
+      - .txt (whitespace) and .csv (comma) — delimiter auto-sniffed from
+        the first data line.
+      - Headered and headerless files — header auto-detected.
+      - '#'-prefixed comment lines and blank lines anywhere above the data.
+
+    Each ColumnSpec.file_column resolves as:
+      - int (>= 0)  -> data[:, file_column]  (0-based positional)
+      - str         -> data[:, header_names.index(file_column)]
+                       (raises if no header detected or name not in header)
     """
+    data_start, header_names, delimiter = _scan_layout(filepath)
+
     try:
-        data = np.genfromtxt(filepath, names=True, dtype=None, encoding='utf-8')
+        data = np.loadtxt(filepath, skiprows=data_start, delimiter=delimiter,
+                          comments='#', ndmin=2)
     except Exception as e:
         raise IOError(f"Error reading SPS file {filepath}: {e}") from e
 
-    available = data.dtype.names
-    if available is None:
-        raise ValueError(
-            f"User-defined sps_path {filepath!r} appears to have no header row.\n"
-            "Column matching by name requires a header. Add a comma- or\n"
-            "whitespace-separated header line at the top of the file, then\n"
-            "ensure your sps_col_* declarations reference the names you used."
-        )
-
-    missing_file_cols = [
-        spec.file_column for spec in column_map.values()
-        if spec.file_column not in available
-    ]
-    if missing_file_cols:
-        raise ValueError(
-            f"User-defined sps_path {filepath!r} is missing columns referenced "
-            f"by your sps_col_* declarations: {missing_file_cols}.\n"
-            f"Header columns actually present in the file: {list(available)}."
-        )
+    n_cols = data.shape[1]
 
     raw: Dict[str, np.ndarray] = {}
     for canonical, spec in column_map.items():
-        # Cast to float so downstream math works regardless of file dtype.
-        raw[canonical] = np.asarray(data[spec.file_column], dtype=float)
+        if isinstance(spec.file_column, int):
+            if not 0 <= spec.file_column < n_cols:
+                raise ValueError(
+                    f"sps_col_{canonical} uses index {spec.file_column} "
+                    f"but {filepath} has only {n_cols} columns "
+                    f"(valid indices 0..{n_cols - 1})."
+                )
+            raw[canonical] = np.asarray(data[:, spec.file_column], dtype=float)
+        else:
+            if not header_names:
+                raise ValueError(
+                    f"sps_col_{canonical} uses header name {spec.file_column!r} "
+                    f"but no header row was detected in {filepath}.\n"
+                    "Either add a header row at the top of the file, or "
+                    "rewrite this line with a 0-based integer column "
+                    f"index instead (valid range: 0..{n_cols - 1})."
+                )
+            if spec.file_column not in header_names:
+                raise ValueError(
+                    f"sps_col_{canonical} uses header name {spec.file_column!r} "
+                    f"but {filepath}'s header has: {header_names}.\n"
+                    "Check spelling, or use a 0-based integer column index."
+                )
+            idx = header_names.index(spec.file_column)
+            raw[canonical] = np.asarray(data[:, idx], dtype=float)
     return raw

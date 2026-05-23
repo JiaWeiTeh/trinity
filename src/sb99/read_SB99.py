@@ -335,11 +335,15 @@ def _read_sb99_legacy(filepath, f_mass, params):
 def _read_sb99_user(filepath, f_mass, params, column_map):
     """User-defined SPS column layout via sps_col_* declarations.
 
-    Loads a header-equipped CSV/whitespace file, applies per-column unit
+    Loads any .txt or .csv file (delimiter auto-sniffed, header auto-
+    detected, '#'-comment lines skipped), applies per-column unit
     conversion and mass scaling using the canonical registry in
     sps_columns.py, then runs the same FB_* correction pipeline as the
-    legacy loader. Missing optional canonicals fall back to the existing
-    derivations:
+    legacy loader. Each ColumnSpec.file_column is either a 0-based
+    integer index (works on any file) or a string name resolved against
+    the file's header row.
+
+    Missing optional canonicals fall back to the existing derivations:
 
       - Li, Ln       <- Lbol * fi, Lbol * (1 - fi)      [if not supplied]
       - Lmech_SN_raw <- Lmech_total - Lmech_W           [if Lmech_SN absent]
@@ -359,12 +363,12 @@ def _read_sb99_user(filepath, f_mass, params, column_map):
     logger.debug(f"Loading SPS file (user-defined column layout): {filepath}")
 
     try:
-        raw_cols = sps_columns.load_named_columns(filepath, column_map)
+        raw_cols = sps_columns.load_user_columns(filepath, column_map)
     except FileNotFoundError:
         raise FileNotFoundError(
             f"SPS file not found: {filepath}\n"
             "sps_path is set explicitly; verify the path exists and points "
-            "to a readable file with a header row."
+            "to a readable file."
         )
 
     # Per-column conversion + mass scaling.
