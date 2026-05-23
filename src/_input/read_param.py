@@ -501,6 +501,17 @@ def read_param(path2file, write_summary=True):
         ori_units="N/A",
         exclude_from_snapshot=True,
     )
+    # Explicit dispatch flag for read_SB99: True iff sps_path was resolved
+    # from the legacy SB99 grammar (sps_path = def_path). We need this as a
+    # separate boolean because a user-mode column_map may legitimately
+    # contain integer file_column values now (PR-2 dual-mode), so the
+    # ColumnSpec type alone is no longer a reliable signal.
+    params['sps_layout_is_legacy'] = DescribedItem(
+        sps_path_is_legacy,
+        info="True iff sps_path was resolved from the legacy SB99 grammar",
+        ori_units="N/A",
+        exclude_from_snapshot=True,
+    )
 
     # =============================================================================
     # Step 8: Handle density profile-specific parameters

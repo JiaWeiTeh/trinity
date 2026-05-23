@@ -11,9 +11,10 @@ Two entry points into the file:
 
   read_SB99(f_mass, params)
       Top-level dispatcher. Picks _read_sb99_legacy or _read_sb99_user
-      based on whether `params['sps_column_map']` carries integer (legacy
-      SB99 positional preset) or string (user-defined header-driven)
-      file_column identifiers.
+      based on params['sps_layout_is_legacy'] (set by read_param.py when
+      it resolved sps_path). User-mode column maps may now contain
+      either integer indices OR header-row names (per ColumnSpec), so
+      file_column type alone is no longer a reliable dispatch signal.
 
   get_interpolation(sps, ftype='cubic')
       Wraps the 11-array tuple returned by read_SB99() in scipy cubic
@@ -132,7 +133,7 @@ def read_SB99(f_mass, params):
         )
 
     required_keys = [
-        'sps_path', 'sps_column_map',
+        'sps_path', 'sps_column_map', 'sps_layout_is_legacy',
         'FB_mColdWindFrac', 'FB_thermCoeffWind',
         'FB_mColdSNFrac', 'FB_thermCoeffSN', 'FB_vSN'
     ]
@@ -146,17 +147,18 @@ def read_SB99(f_mass, params):
     # =========================================================================
     # DISPATCH: legacy positional layout vs user-defined column layout
     # =========================================================================
-    # The column_map's ColumnSpec.file_column is an int for the legacy SB99
-    # preset (positional load) and a str for user-defined sps_path files
-    # (named header load). We branch here so the legacy code path stays
-    # byte-equivalent to the pre-refactor SB99-only loader; operator order
-    # matters for ULP-level equivalence (see audit §8 Invariants).
+    # Dispatch on the explicit sps_layout_is_legacy flag set by read_param.py
+    # at the time sps_path was resolved. We can't infer this from the
+    # column_map's ColumnSpec types anymore because, as of the dual-mode
+    # change, user-mode column maps may also contain integer file_column
+    # values (when the user writes sps_col_t 0 yr linear etc.). The legacy
+    # code path stays byte-equivalent to the pre-refactor SB99-only loader;
+    # operator order matters for ULP-level equivalence (see audit §8
+    # Invariants).
 
     column_map = params['sps_column_map'].value
     filepath = params['sps_path'].value
-
-    any_spec = next(iter(column_map.values()))
-    is_legacy_layout = isinstance(any_spec.file_column, int)
+    is_legacy_layout = params['sps_layout_is_legacy'].value
 
     if is_legacy_layout:
         return _read_sb99_legacy(filepath, f_mass, params)

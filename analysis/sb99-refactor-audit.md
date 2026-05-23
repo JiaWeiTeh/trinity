@@ -529,9 +529,11 @@ mass.
 | `sps_path` value | `sps_col_*` keys present? | Behavior |
 |------------------|----------------------------|----------|
 | `def_path` (sentinel) | n/a (ignored) | Legacy SB99 fallback. Loader uses the hardcoded 7-column positional preset. Byte-equivalent to PR-1. |
-| user-defined         | none                          | Hard error. Prints the fillable template (below) to stderr; exits non-zero. |
-| user-defined         | partial (some required missing) | Hard error. Names which required canonicals are missing. Includes the file's actual header columns to make filling-in obvious. |
+| user-defined         | none                          | Hard error. Prints the fillable template to stderr; exits non-zero. |
+| user-defined         | partial (some required missing) | Hard error. Names which required canonicals are missing. |
 | user-defined         | `Li` alone or `Ln` alone        | Hard error: "supply both `Li` and `Ln`, or neither". Avoids partial overrides that silently disagree with `fi`. |
+| user-defined         | complete, integer indices only | Works on any file layout (header optional; `#`-comments tolerated). |
+| user-defined         | complete, includes string names | Works iff a header row is detected; otherwise per-line error suggests integer indices. |
 | user-defined         | complete                        | Use the user-declared mapping. |
 
 **Error template (printed verbatim on missing-mapping error).**
@@ -581,12 +583,16 @@ ERROR: sps_path is set to '<resolved-path>' but the column mapping is
       def_path`. Hard-errors with the template above if required
       canonicals are missing, or if `Li`/`Ln` are partially supplied,
       or if a declared `<units>` is not in the recognized set.
-- [ ] User-defined `sps_path` files **must** have a header row. The
-      loader reads it via `np.genfromtxt(..., names=True)`. If the file
-      is detected as headerless (all-numeric first row), hard-error
-      with: "user-defined sps_path files must include a header row;
-      the columns are matched by name against your sps_col_*
-      declarations."
+- [ ] User-defined `sps_path` files **do not require a header row** —
+      each `sps_col_*` line independently uses either a 0-based integer
+      column index (works on any layout, headerless or headered) or a
+      string name resolved against a detected header row. The loader
+      scans the file to (a) skip blank lines and `#`-comments, (b) find
+      where numeric data starts, (c) sniff `,` vs whitespace from the
+      first data line, and (d) auto-detect a header as the
+      immediately-preceding non-numeric row of matching token count.
+      Using a string name on a headerless file produces a clear error
+      pointing the user at the integer-index escape hatch.
 - [ ] Legacy SB99 fallback (`sps_path == def_path`) does **not** require
       a header — the existing `np.loadtxt` path stays.
 - [ ] Unit conversion factors live in a single table (logically one
@@ -612,14 +618,19 @@ ERROR: sps_path is set to '<resolved-path>' but the column mapping is
    when used to replicate the legacy file.
 3. **No `sps_col_*` declarations.** User-defined `sps_path`, no
    `sps_col_*` keys at all → loader exits non-zero; stderr contains the
-   full template *and* the file's actual header columns.
+   full template (with int-index examples).
 4. **Partial declarations.** User-defined `sps_path`, missing
    `sps_col_Qi` only → loader exits non-zero; stderr names `Qi` as the
    missing canonical (not "every canonical").
 5. **Unknown unit.** `sps_col_Lbol  l_bol  furlongs_per_fortnight  log`
    → loader exits non-zero with the recognized-units list.
-6. **Headerless user file.** User-defined `sps_path` pointing at a file
-   with no header row → hard error pointing the user at adding one.
+6. **Headerless user file, integer indices.** User-defined `sps_path`
+   pointing at a headerless file with all-integer `sps_col_*` indices
+   → loads cleanly; arrays match what positional resolution would
+   produce.
+6b. **Headerless user file, string name.** Same file but at least one
+    `sps_col_*` uses a string name → per-line hard error naming the
+    canonical and suggesting an integer index.
 7. **Linear-units declaration.** A clone of the SB99 file with values
    pre-exponentiated, declared `log: linear` → arrays within 4 ULP of
    the log-space load (linear→log→linear is not bitwise reversible).
@@ -925,9 +936,14 @@ def test_partial_column_map_names_missing_canonicals():
 def test_unknown_units_hard_errors():
     """sps_col_Lbol l_bol furlongs_per_fortnight log → error lists recognized units."""
 
-def test_headerless_user_file_hard_errors():
-    """User-defined sps_path pointing at a headerless file → error pointing
-    at adding a header row."""
+def test_headerless_user_file_with_integer_indices_works():
+    """Headerless user file + all-integer sps_col_* indices → loads
+    cleanly. Arrays match the equivalent legacy positional load."""
+
+def test_headerless_user_file_with_name_errors_clearly():
+    """Headerless user file + at least one sps_col_* using a string name
+    → per-line hard error naming the canonical and pointing at the
+    integer-index alternative."""
 
 def test_linear_units_within_4_ulp_of_log():
     """Pre-exponentiated columns declared 'linear' → arrays within 4 ULP
@@ -1052,7 +1068,8 @@ trees are too big and ephemeral to commit.
 | Float ULP drift introduced by reordering ops in loader | Medium | High | PR-1 explicitly does NOT touch unit-conversion math. Byte-equivalence test catches it. |
 | Path-resolution drift due to subtle formatting in `get_filename` (mantissa formatter `format_e` at `read_SB99.py:328-333`) | Medium | High | Path-resolution matrix test covers all legal combos. |
 | User mis-declares `log` vs `linear` or wrong units in `sps_col_*` (silent physics-altering bug) | Medium | High | PR-2 hard-errors on unrecognized unit strings. For declared-but-wrong combinations (e.g. `erg/s log` when the file is actually linear erg/s), no automatic detection — `.param` review by the user is the line of defense. Open question §14 #7 below: add a per-canonical "expected order-of-magnitude" sanity check that warns on grossly out-of-range loaded values? |
-| User points `sps_path` at a headerless file expecting it to "just work" | Medium | Low | Hard error directs them to add a header row. Documented in PR-2 error template. |
+| User points `sps_path` at a headerless file using string names in `sps_col_*` | Medium | Low | Hard error per missing name, pointing the user at the 0-based integer-index alternative. (Headerless files work fine with integer indices.) |
+| User-mode column map happens to contain all integer indices, dispatcher mis-routes to legacy | Was Medium | Was High | Fixed by the explicit `params['sps_layout_is_legacy']` flag set in `read_param.py`; the dispatcher reads it rather than inspecting `ColumnSpec.file_column` types. |
 | `t=0` prepend hack (loader 262-275) double-applied if generic CSV already has t=0 | Medium | Medium | PR-2 loader detects `t[0] == 0` and skips prepend; explicit `test_t0_prepend_idempotent`. |
 | Constant-column sniff-test false-fires on legitimate SB99 artifacts (e.g. `l_sn` is constant during the pre-SN regime by design) | Medium | Low | No sniff-test in PR-2 — left for later. If added, it would need an allowlist for known-good constant patterns. |
 | Cooling tables silently mismatch generic SPS | High | Medium | Out-of-scope `UserWarning` emitted; tracked separately. |
