@@ -339,12 +339,20 @@ sps_path    def_path
 #
 #     <canonical>     one of the canonical names (see CANONICALS in
 #                     src/sb99/sps_columns.py)
-#     <file_column>   the column name as it appears in your SPS file's
-#                     header row
+#     <file_column>   EITHER a 0-based integer column index (works on any
+#                     file, with or without a header), OR a string name
+#                     matching the file's header row.
 #     <units>         declared units (e.g. erg/s, 1/s, g*cm/s^2 ...). See
 #                     UNIT_CONVERSIONS in sps_columns.py for the recognized
 #                     set per canonical.
 #     <log|linear>    whether the file values are in log10 space.
+#
+# Files can be .txt (whitespace-separated) or .csv (comma-separated) —
+# delimiter is sniffed automatically from the first data row. Lines
+# beginning with '#' and blank lines are treated as comments. If a header
+# row is detected (a non-numeric row immediately above the first data row,
+# with the same token count), its tokens are captured for name-based
+# lookup; otherwise only integer indices resolve.
 #
 # The sentinel "def_unset" means "not declared in this .param"; for legacy
 # (sps_path = def_path) runs ALL of these are def_unset and the hardcoded
