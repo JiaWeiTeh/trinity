@@ -228,43 +228,41 @@ The mass-loading term :math:`\dot{M}_{\rm sh} v` represents momentum loss as new
 Driving Pressure Model
 ^^^^^^^^^^^^^^^^^^^^^^
 
-TRINITY uses a **convex blend model** for the driving pressure that smoothly transitions
-between energy-driven (hot bubble) and momentum-driven (HII region) regimes:
+TRINITY selects the driving pressure :math:`P_{\rm drive}` according
+to which dynamical phase the shell is in:
 
 .. math::
    :label: eq-pdrive
 
-   P_{\rm drive} = (1 - w) P_b + w P_{\rm IF}
+   P_{\rm drive} = \begin{cases}
+   \max(P_b,\; P_{\rm H\,II}) & \text{energy-driven} \\[6pt]
+   \max(P_b,\; P_{\rm H\,II} + P_{\rm ram}) & \text{transition} \\[6pt]
+   P_{\rm H\,II} + P_{\rm ram} & \text{momentum-driven}
+   \end{cases}
 
-where:
+where :math:`P_b` is the hot bubble thermal pressure,
+:math:`P_{\rm H\,II}` is the photoionised-gas thermal pressure (from
+Strömgren ionisation balance in the shell), and :math:`P_{\rm ram}`
+is the wind ram pressure
+:math:`L_{\rm mech}/(2\pi R_2^2\,v_{\rm mech})`.
 
-- :math:`P_b` is the hot bubble thermal pressure
-- :math:`P_{\rm IF}` is the ionization front pressure
-- :math:`w` is the blending weight
+The :math:`\max(P_b, P_{\rm H\,II})` form in the energy-driven phase
+reflects that the cavity gas is in either a hot wind-shock state
+(:math:`P_b` dominates) or a photoionisation-equilibrium state
+(:math:`P_{\rm H\,II}` dominates) — competing equilibria, not
+additive sources — so the shell follows whichever equilibrium is set
+higher. Once thermal energy has drained from the bubble interior
+(momentum-driven phase), the bubble no longer provides a competing
+pressure and the wind injects momentum directly via ram pressure.
 
-The blending weight is determined by:
-
-.. math::
-   :label: eq-wblend
-
-   w = f_{\rm abs,ion} \cdot \frac{P_{\rm IF}}{P_{\rm IF} + P_b}
-
-where :math:`f_{\rm abs,ion}` is the fraction of ionizing photons absorbed in the shell.
-
-**Physical interpretation:**
-
-- **Early times** (:math:`w \approx 0`): Hot bubble pressure dominates (energy-driven expansion)
-- **Late times** (:math:`w \approx 1`): Warm ionized gas pressure dominates (HII-driven expansion)
-- **Transition**: Smooth handoff as bubble cools or leaks
-
-The ionization front pressure is computed from the shell structure:
+The photoionised-gas pressure is computed from the shell structure:
 
 .. math::
 
-   P_{\rm IF} = 2 n_{\rm IF} k_B T_{\rm ion}
+   P_{\rm H\,II} = 2 n_{\rm IF} k_B T_{\rm ion}
 
-where :math:`n_{\rm IF}` is the density at the ionization front and :math:`T_{\rm ion} \approx 10^4` K
-is the ionized gas temperature.
+where :math:`n_{\rm IF}` is the density at the ionisation front and
+:math:`T_{\rm ion} \approx 10^4` K is the ionised-gas temperature.
 
 
 Force Components
