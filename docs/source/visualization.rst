@@ -132,14 +132,10 @@ Line plot showing pressure evolution over time:
 
 - **P_b** (blue solid): Hot bubble pressure
 - **P_IF** (red solid): Ionization front pressure
-- **P_drive** (black dashed): Effective driving pressure (convex blend)
+- **P_drive** (black dashed): Effective driving pressure (selected
+  per phase from :math:`P_b`, :math:`P_{\rm H\,II}`, and
+  :math:`P_{\rm ram}`; see :ref:`sec-physics`, *Driving Pressure Model*)
 - **P_ext** (gray dotted): External pressure (optional)
-
-Demonstrates the convex blend model transition:
-
-.. math::
-
-   P_{\rm drive} = (1 - w) P_b + w P_{\rm IF}
 
 paper_thermalRegime.py
 ~~~~~~~~~~~~~~~~~~~~~~
