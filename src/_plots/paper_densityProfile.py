@@ -235,19 +235,6 @@ def get_cloud_params(sim_folder: Path) -> dict:
     }
 
 
-def _get_sim_folders(sweep_dir: str) -> dict:
-    """Return {profile_tag: folder_path} for every sub-simulation."""
-    sweep_path = Path(sweep_dir)
-    sim_files = find_all_simulations(sweep_path)
-    sim_files = filter_sim_files_by_phii(sim_files, "yes")
-    folders = {}
-    for data_path in sim_files:
-        tag = identify_profile_tag(data_path.parent.name)
-        if tag and tag in PROFILE_STYLES:
-            folders[tag] = data_path.parent
-    return folders
-
-
 # Density conversion: internal [1/pc³] -> CGS [cm⁻³]
 NDENS_AU2CGS = INV_CONV.ndens_au2cgs
 
@@ -274,16 +261,30 @@ def _build_bundle_from_folder(sweep_dir: str) -> dict:
     figures consume, then computes the ρ/M_enc profile ingredients via
     ``_compute_rho_M_profile`` so the bundle is fully self-contained.
     """
-    sim_folders = _get_sim_folders(sweep_dir)
-    if not sim_folders:
+    sweep_path = Path(sweep_dir)
+    sim_files = filter_sim_files_by_phii(
+        find_all_simulations(sweep_path), "yes",
+    )
+    if not sim_files:
         raise FileNotFoundError(f"No density-profile runs found in {sweep_dir}")
+
+    # Pair the data file with its parent folder per tag — ``load_output``
+    # needs the dictionary.jsonl path, while ``_compute_rho_M_profile``
+    # (via ``get_cloud_params``) reads ``*_summary.txt`` from the folder.
+    data_paths = {}
+    sim_folders = {}
+    for data_path in sim_files:
+        tag = identify_profile_tag(data_path.parent.name)
+        if tag and tag in PROFILE_STYLES:
+            data_paths[tag] = data_path
+            sim_folders[tag] = data_path.parent
 
     bundle = {'tags': []}
     for tag in PROFILE_ORDER:
-        if tag not in sim_folders:
+        if tag not in data_paths:
             continue
         try:
-            output = load_output(sim_folders[tag])
+            output = load_output(data_paths[tag])
         except Exception as e:
             logger.warning(f"Skipping {tag}: load failed: {e}")
             continue
