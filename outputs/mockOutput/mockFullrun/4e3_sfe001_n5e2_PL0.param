@@ -3,7 +3,7 @@
 # Generated: 2026-04-29T23:44:30.943727
 
 model_name    4e3_sfe001_n5e2_PL0
-path2output    /Users/jwt/unsync/Code/Trinity/outputs/sweep_orion_better_paper/4e3_sfe001_n5e2_PL0
+path2output    ./outputs/sweep_orion_better_paper/4e3_sfe001_n5e2_PL0
 dens_profile    densPL
 densPL_alpha    0.0
 nISM    0.1

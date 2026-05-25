@@ -133,9 +133,9 @@ def test_parse_summary_txt_handles_nan_and_lists():
 
 
 def test_parse_summary_txt_keeps_paths_as_strings():
-    text = "path_sps   /Users/jwt/lib/sps/starburst99/\n"
+    text = "path_sps   /tmp/lib/sps/starburst99/\n"
     parsed = _parse_summary_txt(text)
-    assert parsed["path_sps"] == "/Users/jwt/lib/sps/starburst99/"
+    assert parsed["path_sps"] == "/tmp/lib/sps/starburst99/"
 
 
 def test_parse_summary_txt_empty_value():
