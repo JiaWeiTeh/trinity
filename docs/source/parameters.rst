@@ -351,10 +351,23 @@ Collapse Parameters
      - Radius below which the cloud is considered completely collapsed.
 
 
-Starburst99 Parameters
-^^^^^^^^^^^^^^^^^^^^^^
+Stellar Feedback (SPS) Parameters
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Configure the stellar population synthesis model for feedback calculations.
+TRINITY reads time-evolving stellar feedback (ionizing photon rate,
+bolometric and mechanical luminosities, wind and SN momentum injection,
+...) from a stellar-population-synthesis (SPS) data file. Two modes are
+supported:
+
+* **Legacy SB99 mode (default)**: leave ``sps_path = def_path``. TRINITY
+  constructs the SB99 filename
+  ``{SB99_mass}cluster_{rot|norot}_{Z0014|Z0002}_{BH120|BH40}.txt`` from
+  the ``SB99_*`` params below and loads it from ``path_sps``. This is
+  the permanent fallback; existing legacy ``.param`` files keep working
+  unchanged.
+* **Custom SPS mode**: set ``sps_path`` to an actual file path, and
+  describe the file's column layout with ``sps_col_*`` declarations
+  (see the *Custom SPS files* subsection below).
 
 .. list-table::
    :widths: 25 15 15 45
@@ -364,18 +377,161 @@ Configure the stellar population synthesis model for feedback calculations.
      - Default
      - Unit
      - Description
+   * - ``sps_path``
+     - ``def_path``
+     - --
+     - Full path to an SPS data file. If ``def_path``, the legacy SB99
+       filename grammar is used; otherwise points directly at any
+       ``.txt`` or ``.csv`` file whose columns are described by the
+       ``sps_col_*`` declarations.
+   * - ``sps_refmass``
+     - ``def_value``
+     - :math:`M_\odot`
+     - Reference cluster mass for the feedback scaling
+       :math:`f_{\rm mass} = M_{\rm cluster} / {\rm sps\_refmass}`. If
+       ``def_value``, copied from ``SB99_mass`` at startup so legacy
+       runs are unaffected. Override when ``sps_path`` points at a file
+       normalized to a different reference mass.
    * - ``SB99_mass``
      - ``1e6``
      - :math:`M_\odot`
-     - Reference cluster mass used in SB99 files. Used for scaling.
+     - Legacy SB99 grammar: reference cluster mass the SB99 grid is
+       normalized against. Only consulted when ``sps_path = def_path``.
    * - ``SB99_rotation``
      - ``1``
      - --
-     - Include stellar rotation (1=yes, 0=no). Rotation extends lifetimes via internal mixing.
+     - Legacy SB99 grammar: ``1`` selects ``..._rot_...``, ``0`` selects
+       ``..._norot_...``. **Also used by the non-CIE cooling-table
+       selection regardless of ``sps_path``**, so keep it consistent
+       with the rotation choice represented by your SPS file.
    * - ``SB99_BHCUT``
      - ``120``
      - :math:`M_\odot`
-     - Black hole formation threshold. Stars above this ZAMS mass collapse directly to BH without SN.
+     - Legacy SB99 grammar: BH formation threshold. ``120`` selects
+       ``..._BH120.txt``, ``40`` selects ``..._BH40.txt``. Stars above
+       this ZAMS mass collapse directly to BH without SN.
+
+
+Custom SPS files (``sps_col_*`` declarations)
+"""""""""""""""""""""""""""""""""""""""""""""
+
+When ``sps_path`` is set to an explicit file path, the file's column
+layout must be described with one ``sps_col_<canonical>`` line per
+mapped column. Each line has three whitespace-separated fields after
+the key:
+
+.. code-block:: text
+
+    sps_col_<canonical>    <file_column>    <units>    <log|linear>
+
+where:
+
+* ``<canonical>`` is one of the canonical names in the table below.
+* ``<file_column>`` is **either** a 0-based integer column index (works
+  on any file, with or without a header), **or** a string name matching
+  the file's header row (the file must have a header for name lookup to
+  resolve).
+* ``<units>`` is the declared unit of the column. The alias ``cgs`` is
+  accepted as shorthand for each canonical's default cgs unit (see
+  table below).
+* ``<log|linear>`` declares whether file values are stored as
+  :math:`\log_{10}` of the linear value.
+
+The file can be ``.txt`` (whitespace-separated) or ``.csv`` (comma-
+separated); the delimiter is sniffed from the first data row. Lines
+beginning with ``#`` and blank lines are treated as comments.
+
+**Required canonicals** (loader will not start without them):
+
+* ``t``, ``Lbol``, ``Lmech_W``, ``Qi``, ``pdot_W``
+* **either** ``fi`` **or both** ``Li`` **and** ``Ln`` (the latter
+  bypasses SB99's hardcoded 13.6 eV ionizing threshold)
+* **either** ``Lmech_total`` **or** ``Lmech_SN`` (one of them drives
+  the SN pipeline)
+
+**Optional canonicals** (loader derives them when absent):
+
+``Lmech_total``, ``Lmech_SN``, ``pdot_SN``, ``Mdot_SN``, ``v_SN``,
+``Li``, ``Ln``.
+
+Per-canonical recognized units:
+
+.. list-table::
+   :widths: 20 20 30 30
+   :header-rows: 1
+
+   * - Canonical
+     - ``cgs`` alias maps to
+     - Other accepted ``<units>``
+     - AU target (loader output)
+   * - ``t``
+     - ``s``
+     - ``yr``, ``Myr``
+     - Myr
+   * - ``Qi``
+     - ``1/s``
+     - ``1/Myr``
+     - 1/Myr
+   * - ``fi``
+     - ``dimensionless``
+     - --
+     - dimensionless
+   * - ``Lbol``, ``Lmech_*``, ``Li``, ``Ln``
+     - ``erg/s``
+     - ``L_sun``
+     - :math:`M_\odot{\rm \cdot pc}^2/{\rm Myr}^3`
+   * - ``pdot_W``, ``pdot_SN``
+     - ``g*cm/s^2``
+     - --
+     - :math:`M_\odot{\rm \cdot pc}/{\rm Myr}^2`
+   * - ``Mdot_SN``
+     - ``g/s``
+     - ``Msun/Myr``
+     - :math:`M_\odot/{\rm Myr}`
+   * - ``v_SN``
+     - ``cm/s``
+     - ``km/s``, ``pc/Myr``
+     - pc/Myr
+
+**Example: headered file with the ``cgs`` alias.** A custom SPS file
+``my_sps.txt`` with first line
+``time Qi fi Lbol Lmech_total pdot_W Lmech_W`` and numeric data below
+in :math:`\log_{10}` cgs (except ``time`` in linear yr and ``fi`` as a
+linear fraction):
+
+.. code-block:: text
+
+    sps_path        /absolute/path/to/my_sps.txt
+
+    sps_col_t            time         yr             linear
+    sps_col_Qi           Qi           cgs            log
+    sps_col_fi           fi           dimensionless  linear
+    sps_col_Lbol         Lbol         cgs            log
+    sps_col_Lmech_total  Lmech_total  cgs            log
+    sps_col_pdot_W       pdot_W       cgs            log
+    sps_col_Lmech_W      Lmech_W      cgs            log
+
+**Example: headerless file by integer index.** The same file with no
+header row, columns mapped by 0-based index:
+
+.. code-block:: text
+
+    sps_path        /absolute/path/to/my_sps.txt
+
+    sps_col_t            0    yr             linear
+    sps_col_Qi           1    cgs            log
+    sps_col_fi           2    dimensionless  linear
+    sps_col_Lbol         3    cgs            log
+    sps_col_Lmech_total  4    cgs            log
+    sps_col_pdot_W       5    cgs            log
+    sps_col_Lmech_W      6    cgs            log
+
+Indices and header names can be mixed within a single ``.param``: each
+``sps_col_*`` line is resolved independently.
+
+If ``sps_col_*`` declarations are missing or inconsistent while
+``sps_path`` is set, the loader hard-errors at startup with a fillable
+template indicating exactly which canonicals are missing.
 
 
 Feedback Parameters
@@ -484,7 +640,10 @@ Specify paths to external data files.
      - Path to non-CIE cooling curves (T < 10\ :sup:`5.5` K).
    * - ``path_sps``
      - ``def_dir``
-     - Path to Starburst99 stellar population files.
+     - Directory containing the legacy SB99 grid (defaults to
+       ``lib/sps/starburst99/``). Only used when ``sps_path = def_path``;
+       irrelevant for the custom-SPS path. See the
+       *Stellar Feedback (SPS) Parameters* section above.
 
 
 Physical Constants

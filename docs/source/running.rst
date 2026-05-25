@@ -365,7 +365,7 @@ With ``log_level = INFO``:
 
     2026-01-08 15:30:00 | INFO     | src.main | === TRINITY Simulation Starting ===
     2026-01-08 15:30:00 | INFO     | src.main | Model: test_simulation
-    2026-01-08 15:30:01 | INFO     | src.sb99.read_SB99 | SB99 data loaded: 201 time points
+    2026-01-08 15:30:01 | INFO     | src.sb99.read_SB99 | SPS data processed: 201 time points, t_max=100.00 Myr
     2026-01-08 15:30:03 | INFO     | src.phase1_energy | Entering energy-driven phase
     2026-01-08 15:30:15 | WARNING  | src.cooling | Temperature below minimum, clamping to 1e4 K
     2026-01-08 15:30:45 | INFO     | src.phase1_energy | Energy phase complete: 150 timesteps
@@ -397,7 +397,7 @@ Snapshot keys group into a handful of categories:
        ``initial_cloud_m_arr``
    * - Dynamical state
      - ``t_now``, ``R2``, ``v2``, ``Eb``, ``T0``, ``R1``, ``Pb``
-   * - Feedback (SB99)
+   * - Feedback (SPS)
      - ``Lmech_W``, ``Lmech_SN``, ``Qi``, ``Lbol``, ``pdot``
    * - Forces
      - ``F_grav``, ``F_ram``, ``F_ram_wind``, ``F_ram_SN``,

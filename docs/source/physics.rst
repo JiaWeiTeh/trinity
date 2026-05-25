@@ -17,7 +17,8 @@ reprocessed radiation pressure, and the gravitational pull of the
 cluster and the enclosed cloud mass.
 
 This chapter collects the governing equations, the cloud-initialisation
-procedure, the feedback terms drawn from Starburst99, the cooling
+procedure, the feedback terms drawn from a stellar-population-synthesis
+table (Starburst99 by default; arbitrary via ``sps_path``), the cooling
 prescriptions, and the numerical scheme that integrates the coupled
 ODEs. The same equations appear verbatim in the source as the
 right-hand side of the integrator, and the symbols used below

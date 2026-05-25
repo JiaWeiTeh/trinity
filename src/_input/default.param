@@ -384,6 +384,40 @@ sps_col_v_SN         def_unset
 sps_col_Li           def_unset
 sps_col_Ln           def_unset
 
+# ------------------------------------------------------------------------------
+# WORKED EXAMPLE (uncomment in your own .param, do NOT edit this default.param).
+#
+# Suppose `my_sps.txt` is a custom SPS file with a header row reading
+#   time Qi fi Lbol Lmech_total pdot_W Lmech_W
+# and numeric data below, all in log10 of the corresponding cgs unit
+# (except `time` which is linear yr and `fi` which is a linear fraction).
+# In your user .param you'd write:
+#
+#     sps_path             /absolute/path/to/my_sps.txt
+#
+#     sps_col_t            time         yr             linear
+#     sps_col_Qi           Qi           cgs            log
+#     sps_col_fi           fi           dimensionless  linear
+#     sps_col_Lbol         Lbol         cgs            log
+#     sps_col_Lmech_total  Lmech_total  cgs            log
+#     sps_col_pdot_W       pdot_W       cgs            log
+#     sps_col_Lmech_W      Lmech_W      cgs            log
+#
+# Or, if `my_sps.txt` is headerless, reference columns by 0-based index:
+#
+#     sps_col_t            0    yr             linear
+#     sps_col_Qi           1    cgs            log
+#     sps_col_fi           2    dimensionless  linear
+#     sps_col_Lbol         3    cgs            log
+#     sps_col_Lmech_total  4    cgs            log
+#     sps_col_pdot_W       5    cgs            log
+#     sps_col_Lmech_W      6    cgs            log
+#
+# See docs/source/parameters.rst -> "Stellar Feedback (SPS) Parameters"
+# for the full reference (recognized units per canonical, optional SN
+# columns, validation rules, etc.).
+# ------------------------------------------------------------------------------
+
 
 # =============================================================================
 # parameters for bubble structures
