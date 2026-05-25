@@ -7,7 +7,7 @@ Dispatches a folder path and shared flags to each registered paper_* script.
 Scripts can be included or excluded via --only / --skip flags.
 
 By default only a curated subset is enabled (paper_feedback,
-paper_momentum, paper_thermalRegime).  Use --all to run every
+paper_momentum, paper_escapeFraction).  Use --all to run every
 registered script, or --only to pick specific ones.
 
 Usage
@@ -25,7 +25,7 @@ Usage
     python run_all.py -F /path/to/sweep --only paper_feedback paper_ODIN
 
     # Run default set minus one
-    python run_all.py -F /path/to/sweep --skip paper_thermalRegime
+    python run_all.py -F /path/to/sweep --skip paper_escapeFraction
 
     # List available scripts without running
     python run_all.py --list
@@ -55,7 +55,6 @@ if _PROJECT_ROOT not in sys.path:
 SCRIPTS = [
     ("paper_feedback",               "src/_plots/paper_feedback.py",               True),
     ("paper_momentum",               "src/_plots/paper_momentum.py",               True),
-    ("paper_thermalRegime",          "src/_plots/paper_thermalRegime.py",           False),
     ("paper_accelerationDecomposition", "src/_plots/paper_accelerationDecomposition.py", False),
     ("paper_AllowedGMC",             "src/_plots/paper_AllowedGMC.py",              False),
     ("paper_BEprofile",              "src/_plots/paper_BEprofile.py",               False),
@@ -218,7 +217,7 @@ def build_parser() -> argparse.ArgumentParser:
           python run_all.py -F /data/sweep -n 1e4 -o ./figures
           python run_all.py -F /data/sweep --all
           python run_all.py -F /data/sweep --only paper_feedback paper_ODIN
-          python run_all.py -F /data/sweep --skip paper_thermalRegime
+          python run_all.py -F /data/sweep --skip paper_escapeFraction
           python run_all.py --list
         """),
     )
