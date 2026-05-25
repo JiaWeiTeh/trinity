@@ -163,7 +163,10 @@ def create_cubes(filename, path2cooling):
     """
 
     # Does the cube already exist?
-    cube_filename = path2cooling + filename.removesuffix('.dat') +'_cube.npy'
+    # NB: str.removesuffix is Python 3.9+; use slice form so this also works
+    # on 3.8 anaconda installs even though pyproject declares >=3.9.
+    _stem = filename[:-4] if filename.endswith('.dat') else filename
+    cube_filename = path2cooling + _stem + '_cube.npy'
     if os.path.exists(cube_filename):
         log_ndens_arr, log_temp_arr, log_phi_arr, cool_cube, heat_cube = np.load(cube_filename, allow_pickle = True)
         return log_ndens_arr, log_temp_arr, log_phi_arr, cool_cube, heat_cube
