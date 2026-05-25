@@ -235,6 +235,12 @@ def _read_sb99_legacy(filepath, f_mass, params):
         if not np.all(np.isfinite(arr)):
             raise ValueError(f"Non-finite values in {name} array from SB99 file")
 
+    # Validate strict monotonicity of t — scipy.interpolate.interp1d
+    # (called later in get_interpolation) requires it, and its native
+    # error is cryptic. This produces a useful message at load time
+    # pointing at the file + the first offending row.
+    sps_columns.validate_t_monotonic(t, filepath)
+
     # =========================================================================
     # STEP 3: CALCULATE DERIVED VALUES
     # =========================================================================
@@ -386,6 +392,14 @@ def _read_sb99_user(filepath, f_mass, params, column_map):
                 f"Non-finite values in '{canonical}' from {filepath}"
             )
         cols[canonical] = arr
+
+    # Validate strict monotonicity of t — scipy.interpolate.interp1d
+    # (called later in get_interpolation) requires it, and its native
+    # error is cryptic. This produces a useful message at load time
+    # pointing at the file + the first offending row. Common cause:
+    # the file's time column was written with too few significant
+    # figures (e.g. '%.2E' collapses 1.001e7, 1.002e7 to '1.00E+007').
+    sps_columns.validate_t_monotonic(cols['t'], filepath)
 
     # Derive Li, Ln if not supplied (matches legacy 13.6 eV behaviour when
     # only fi is given; bypassed entirely when both Li and Ln are present —

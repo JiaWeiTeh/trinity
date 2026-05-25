@@ -366,6 +366,48 @@ def _format_missing_template(*, sps_path: str,
     return template
 
 
+def validate_t_monotonic(t: np.ndarray, filepath: str) -> None:
+    """Validate that the time array is strictly increasing.
+
+    scipy.interpolate.interp1d (used by read_SB99.get_interpolation)
+    requires strict monotonicity; its native error message — "Expect x
+    to not have duplicates" — is cryptic and fires deep in scipy.
+    This check raises a clearer ValueError at load time, pointing at
+    the file and the first offending row.
+
+    Common cause of failure: the file's time column was written with
+    too few significant figures (e.g. '%.2e' format collapses
+    1.001e7, 1.002e7, 1.003e7 all to the same string "1.00e+07"),
+    producing duplicates that scipy refuses to interpolate over.
+
+    Applied by both _read_sb99_legacy and _read_sb99_user in
+    src/sb99/read_SB99.py.
+    """
+    if len(t) < 2:
+        return  # trivially fine.
+    diffs = np.diff(t)
+    if not np.any(diffs <= 0):
+        return  # strictly increasing.
+
+    bad = np.where(diffs <= 0)[0]
+    first = int(bad[0])
+    around = t[max(0, first - 1):first + 3]
+    violation_pairs = [(int(i), int(i + 1)) for i in bad[:5]]
+    suffix = ' ...' if len(bad) > 5 else ''
+    raise ValueError(
+        f"Non-monotonic or duplicate `t` values in {filepath}.\n"
+        f"  First offending row pairs (0-based array indices, "
+        f"post-unit-conversion): {violation_pairs}{suffix}\n"
+        f"  t values around the first offender (Myr): "
+        f"{around.tolist()}\n"
+        f"  scipy.interpolate.interp1d requires strictly-increasing t.\n"
+        f"  Common cause: the time column was written with too few "
+        f"significant figures (e.g. '%.2e' collapses 1.001e7, 1.002e7,\n"
+        f"  1.003e7 all to '1.00e+07'). Regenerate the file with "
+        f"'%.5e' or finer precision on column 0."
+    )
+
+
 def _can_parse_float(s: str) -> bool:
     """True iff s parses as a float (covers integers, decimals, scientific
     notation, inf/nan). Used to distinguish data rows from header rows."""
