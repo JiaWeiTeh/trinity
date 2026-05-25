@@ -518,6 +518,13 @@ hot-spot #5.
 | `Li`          | no  | erg/s     | yes | `Lbol · fi` |
 | `Ln`          | no  | erg/s     | yes | `Lbol · (1 − fi)` |
 
+The "Canonical linear unit" column above is also each canonical's
+default cgs unit (except `t`, where cgs is `s` rather than `yr`); the
+`<units>` field in any `sps_col_*` line accepts the alias `cgs` to mean
+exactly that. So `sps_col_Qi  0  cgs  log` is identical to
+`sps_col_Qi  0  1/s  log`; `sps_col_Lbol  3  cgs  log` is identical to
+`sps_col_Lbol  3  erg/s  log`; etc.
+
 Mass scaling (multiply by `f_mass = mCluster / sps_refmass`) is applied
 post-load by the loader, hardcoded against the "Mass-scaled?" column
 above. The user does **not** declare it per-column — they'd have no way

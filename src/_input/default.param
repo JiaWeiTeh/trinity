@@ -344,7 +344,11 @@ sps_path    def_path
 #                     matching the file's header row.
 #     <units>         declared units (e.g. erg/s, 1/s, g*cm/s^2 ...). See
 #                     UNIT_CONVERSIONS in sps_columns.py for the recognized
-#                     set per canonical.
+#                     set per canonical. The alias 'cgs' is also accepted
+#                     and maps to each canonical's default cgs unit
+#                     (1/s for Qi, erg/s for L*, g*cm/s^2 for pdot_*,
+#                     g/s for Mdot_SN, cm/s for v_SN, s for t,
+#                     dimensionless for fi).
 #     <log|linear>    whether the file values are in log10 space.
 #
 # Files can be .txt (whitespace-separated) or .csv (comma-separated) —
