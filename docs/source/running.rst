@@ -128,6 +128,7 @@ combination, plus two top-level reports:
 
     outputs/my_sweep/
     ├── 1e5_sfe001_n1e3/
+    │   ├── 1e5_sfe001_n1e3.param   # full resolved params for this run
     │   ├── dictionary.jsonl
     │   ├── 1e5_sfe001_n1e3_summary.txt
     │   └── trinity.log
@@ -141,7 +142,7 @@ Auto-generated run names
 
 Each sweep combination is named automatically::
 
-    {mCloud}_sfe{sfe*100:03d}_n{nCore}[_density-profile][_PHII]
+    {mCloud}_sfe{sfe*100:03d}_n{nCore}[_density-profile][_PHII][_other-swept-keys]
 
 The optional suffixes appear only when the relevant parameter is set
 explicitly in the sweep file (not when left at its ``default.param``
@@ -151,9 +152,25 @@ value):
   ``_PL-2``), or ``_BE{Omega}`` for ``densBE`` (e.g. ``_BE14``).
 - ``_yesPHII`` / ``_noPHII`` when ``include_PHII`` is set — useful when
   sweeping the flag to compare runs with and without HII pressure.
+- Any *other* swept parameter without a curated slot above gets a
+  generic ``_{key}{value}`` suffix so distinct combinations never
+  collapse onto the same folder. snake_case keys become camelCase and
+  decimal points in floats become ``p`` (minus signs are kept, as in
+  ``_PL-2``). Examples: sweeping ``ZCloud = [0.5, 1.0]`` yields
+  ``_ZCloud0p5`` / ``_ZCloud1p0``; ``coll_counter = [True, False]``
+  yields ``_collCounterTrue`` / ``_collCounterFalse``. Multiple generic
+  suffixes are emitted in sorted-key order for stability.
 
 For example, ``1e7_sfe010_n1e4_noPHII`` is ``mCloud=1e7, sfe=0.10,
 nCore=1e4`` with ``include_PHII = False``.
+
+The folder name is only a unique human-readable handle: every run also
+writes its full resolved parameter set to a per-run ``.param`` file
+(plus the sweep-wide ``sweep_report.json``), so a run with *no* suffix
+for some key still has that key recorded — it just took the
+``default.param`` value. Master plot scripts that compare across
+sweeps should read parameters from those sidecars rather than parse
+them out of the folder name.
 
     2026-01-08 15:30:00 | INFO     | src.main | === TRINITY Simulation Starting ===
     2026-01-08 15:30:00 | INFO     | src.main | Model: test_simulation
