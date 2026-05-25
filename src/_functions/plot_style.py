@@ -13,9 +13,6 @@ Usage:
     from plot_style import figure_single, figure_double
     fig, ax = figure_single()  # Creates 3.5" wide figure
     fig, ax = figure_double()  # Creates 7.1" wide figure
-
-Author: Claude Code
-Date: 2026-01-13
 """
 
 import os
