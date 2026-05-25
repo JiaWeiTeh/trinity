@@ -54,16 +54,21 @@ DYNAMICS_PARAMS = [
     ("Pb",          r"$P_b$ [dyn/cm$^2$]",        "log"),
 ]
 
+# Luminosity & momentum-injection values are in TRINITY code units
+# (M_sun pc^2 / Myr^3 and M_sun pc / Myr^2 respectively).
+_L_UNIT = r"[M$_\odot$ pc$^2$/Myr$^3$]"
+_PDOT_UNIT = r"[M$_\odot$ pc/Myr$^2$]"
+
 SPS_PARAMS = [
-    ("Qi",           r"$Q_i$ [photons/s]",        "log"),
-    ("Lbol",         r"$L_{\rm bol}$ [code]",     "log"),
-    ("Li",           r"$L_i$ [code]",             "log"),
-    ("Ln",           r"$L_n$ [code]",             "log"),
-    ("Lmech_W",      r"$L_{\rm mech,W}$ [code]",  "log"),
-    ("Lmech_SN",     r"$L_{\rm mech,SN}$ [code]", "log"),
-    ("Lmech_total",  r"$L_{\rm mech}$ [code]",    "log"),
-    ("pdot_W",       r"$\dot p_W$",               "log"),
-    ("pdot_total",   r"$\dot p_{\rm tot}$",       "log"),
+    ("Qi",           r"$Q_i$ [photons/s]",                     "log"),
+    ("Lbol",         rf"$L_{{\rm bol}}$ {_L_UNIT}",            "log"),
+    ("Li",           rf"$L_i$ {_L_UNIT}",                      "log"),
+    ("Ln",           rf"$L_n$ {_L_UNIT}",                      "log"),
+    ("Lmech_W",      rf"$L_{{\rm mech,W}}$ {_L_UNIT}",         "log"),
+    ("Lmech_SN",     rf"$L_{{\rm mech,SN}}$ {_L_UNIT}",        "log"),
+    ("Lmech_total",  rf"$L_{{\rm mech}}$ {_L_UNIT}",           "log"),
+    ("pdot_W",       rf"$\dot p_W$ {_PDOT_UNIT}",              "log"),
+    ("pdot_total",   rf"$\dot p_{{\rm tot}}$ {_PDOT_UNIT}",    "log"),
 ]
 
 FORCE_PARAMS = [
@@ -163,7 +168,7 @@ def plot_category(
         i, j = divmod(idx, ncols)
         ax = axes[i, j]
 
-        any_data = False
+        any_finite = False
         for run_idx, output in enumerate(outputs):
             t, y = time_series(output, key)
             if t is None or t.size == 0:
@@ -172,16 +177,19 @@ def plot_category(
                 y_plot = _safe_log_data(np.abs(y))
             else:
                 y_plot = y
+            if not np.any(np.isfinite(y_plot)):
+                # nothing plottable for this run (e.g. all zeros under log)
+                continue
             style = RUN_STYLES[run_idx]
             ax.plot(
                 t, y_plot,
                 color=style["color"], ls=style["ls"], lw=style["lw"],
                 label=labels[run_idx],
             )
-            any_data = True
+            any_finite = True
 
-        if not any_data:
-            ax.text(0.5, 0.5, f"{key}\n(not present)",
+        if not any_finite:
+            ax.text(0.5, 0.5, f"{key}\n(no valid data)",
                     ha="center", va="center", transform=ax.transAxes,
                     color="grey", fontsize=9)
             ax.set_xticks([])
@@ -203,7 +211,12 @@ def plot_category(
         i, j = divmod(idx, ncols)
         axes[i, j].axis("off")
 
-    # Shared legend up top
+    # Title first, then legend BELOW it -- avoids overlap
+    suptitle = f"Comparison: {category_name}"
+    if title_extra:
+        suptitle += f"  ({title_extra})"
+    fig.suptitle(suptitle, y=0.99, fontsize=13)
+
     legend_handles = [
         Line2D([0], [0],
                color=RUN_STYLES[k]["color"],
@@ -215,16 +228,12 @@ def plot_category(
     fig.legend(
         handles=legend_handles,
         loc="upper center", ncol=len(outputs),
-        bbox_to_anchor=(0.5, 0.995), frameon=False,
-        fontsize=10,
+        bbox_to_anchor=(0.5, 0.955), frameon=False,
+        fontsize=11,
     )
 
-    suptitle = f"Comparison: {category_name}"
-    if title_extra:
-        suptitle += f"  ({title_extra})"
-    fig.suptitle(suptitle, y=0.965, fontsize=12)
-
-    fig.tight_layout(rect=[0, 0, 1, 0.93])
+    # Leave room at the top for both title and legend
+    fig.tight_layout(rect=[0, 0, 1, 0.92])
     fig.savefig(out_path, bbox_inches="tight")
     plt.close(fig)
     print(f"Saved: {out_path}")
