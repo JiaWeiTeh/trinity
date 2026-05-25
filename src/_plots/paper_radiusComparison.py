@@ -214,6 +214,9 @@ def plot_cell(ax, data_trinity, data_warpfield):
 YES_SUFFIX = "_yesPHII"
 NO_SUFFIX = "_noPHII"
 
+# Sentinel for cells whose load raised; rendered with mark_missing_cell("error").
+_CELL_ERROR = "error"
+
 
 def split_by_phii_suffix(folder):
     """Scan one folder and split simulations by ``_yesPHII`` / ``_noPHII`` suffix.
@@ -238,6 +241,148 @@ def split_by_phii_suffix(folder):
             print(f"  Skipping (no _yesPHII/_noPHII suffix): {name}")
 
     return sim_files_T, noPHII_by_base
+
+
+def _build_cells_for_ndens(sim_files_T, noPHII_by_base, ndens,
+                           mCloud_filter=None, sfe_filter=None):
+    """Load every cell of one ndens-grid from a folder.
+
+    Returns ``(mCloud_list, sfe_list, cells)`` where ``cells`` is a dict
+    keyed by ``(mCloud, sfe)`` with values:
+
+      - ``{"yes": data_T, "no": data_W}`` for successful loads,
+      - ``None`` for cells that aren't in the discovered grid,
+      - the string ``"error"`` for cells whose load raised.
+
+    Each ``data_*`` dict is what ``load_run_R2`` returns; ``data_W`` may
+    be ``None`` if the cell has no _noPHII partner.
+    """
+    organized = organize_simulations_for_grid(
+        sim_files_T, ndens_filter=ndens,
+        mCloud_filter=mCloud_filter, sfe_filter=sfe_filter,
+    )
+    mCloud_list = organized['mCloud_list']
+    sfe_list = organized['sfe_list']
+    grid_T = organized['grid']
+
+    cells = {}
+    for mCloud in mCloud_list:
+        for sfe in sfe_list:
+            path_T = grid_T.get((mCloud, sfe))
+            if path_T is None:
+                cells[(mCloud, sfe)] = None
+                continue
+            sim_name = path_T.parent.name
+            base = sim_name[: -len(YES_SUFFIX)]
+            path_W = noPHII_by_base.get(base)
+            try:
+                data_T = load_run_R2(path_T)
+                data_W = load_run_R2(path_W) if path_W is not None else None
+                cells[(mCloud, sfe)] = {"yes": data_T, "no": data_W}
+            except Exception as e:
+                print(f"  Error: {sim_name}: {e}")
+                cells[(mCloud, sfe)] = _CELL_ERROR
+    return mCloud_list, sfe_list, cells
+
+
+def _draw_grid_for_ndens(folder_name, ndens, mCloud_list, sfe_list, cells,
+                         output_dir=None):
+    """Render+save one (mCloud × SFE) grid for a single ndens."""
+    nrows, ncols = len(mCloud_list), len(sfe_list)
+    is_single = (nrows == 1 and ncols == 1)
+
+    if is_single:
+        figsize = (COLUMN_WIDTH_INCHES, COLUMN_HEIGHT_INCHES)
+    else:
+        figsize = (3.4 * ncols, 2.8 * nrows)
+
+    fig, axes = plt.subplots(
+        nrows=nrows, ncols=ncols,
+        figsize=figsize,
+        sharex=False, sharey=False,
+        squeeze=False,
+    )
+    for i, mCloud in enumerate(mCloud_list):
+        for j, sfe in enumerate(sfe_list):
+            ax = axes[i, j]
+            entry = cells.get((mCloud, sfe))
+
+            if entry is None:
+                mark_missing_cell(ax, "missing")
+                continue
+            if entry == _CELL_ERROR:
+                mark_missing_cell(ax, "error")
+                continue
+
+            plot_cell(ax, entry["yes"], entry["no"])
+
+            if is_single:
+                ax.set_ylabel(r"$R_{\rm b}$ [pc]")
+                ax.set_xlabel(r"$t$ [Myr]")
+            else:
+                if j == 0:
+                    ax.set_ylabel(_mcloud_label(mCloud) + "\n" + r"$R_{\rm b}$ [pc]")
+                else:
+                    ax.tick_params(labelleft=False)
+                if i == nrows - 1:
+                    ax.set_xlabel(r"$t$ [Myr]")
+
+    handles = [
+        Line2D([0], [0], color=COLOR_TRINITY, lw=2.5,
+               label=r"TRINITY"),
+        Line2D([0], [0], color=COLOR_WARPFIELD, lw=1.6,
+               alpha=ALPHA_WARPFIELD,
+               label=r"WARPFIELD (no $P_{\rm HII}$)"),
+        Line2D([0], [0], color=COLOR_WEAVER, lw=LW_SCALING, ls='--',
+               alpha=ALPHA_SCALING, label=r"pure energy (wind)"),
+        Line2D([0], [0], color=COLOR_SPITZER, lw=LW_SCALING, ls='-.',
+               alpha=ALPHA_SCALING, label=r"pure photoionised"),
+        Line2D([0], [0], color=COLOR_MOMENTUM, lw=LW_SCALING, ls=':',
+               alpha=ALPHA_SCALING, label=r"pure momentum"),
+    ]
+    handles.extend(get_marker_legend_handles(
+        include_phase=SHOW_PHASE, include_rcloud=SHOW_RCLOUD,
+        include_rcloud_horizontal=SHOW_RCLOUD_H,
+        include_collapse=SHOW_COLLAPSE,
+    ))
+
+    param_tag = build_param_tag(mCloud_list, sfe_list, ndens)
+
+    if is_single:
+        ax_single = axes[0, 0]
+        y_lo, y_hi = ax_single.get_ylim()
+        if ax_single.get_yscale() == "log":
+            ax_single.set_ylim(y_lo, y_hi * 3.0)
+        else:
+            ax_single.set_ylim(y_lo, y_hi * 1.4)
+        ax_single.legend(
+            handles=handles,
+            loc="upper left",
+            bbox_to_anchor=(0.04, 0.99),
+            frameon=False,
+            fontsize=10,
+        )
+        fig.tight_layout()
+    else:
+        attach_grid_legend(
+            fig, handles,
+            n_rows_for_layout=nrows,
+            cell_height_inches=2.8,
+            folder_name="", param_tag=param_tag,
+            legend_ncol=4,
+            suptitle=False,
+        )
+
+    if output_dir:
+        fig_dir = Path(output_dir)
+    else:
+        fig_dir = FIG_DIR / folder_name
+    fig_dir.mkdir(parents=True, exist_ok=True)
+    out_pdf = fig_dir / f"radiusComparison_{param_tag}.pdf"
+    fig.savefig(out_pdf, bbox_inches="tight")
+    print(f"  Saved: {out_pdf}")
+
+    plt.close(fig)
 
 
 def plot_comparison_grid(
@@ -266,13 +411,10 @@ def plot_comparison_grid(
 
     for ndens in ndens_to_plot:
         print(f"\nProcessing n={ndens}...")
-        organized = organize_simulations_for_grid(
-            sim_files_T, ndens_filter=ndens,
+        mCloud_list, sfe_list, cells = _build_cells_for_ndens(
+            sim_files_T, noPHII_by_base, ndens,
             mCloud_filter=mCloud_filter, sfe_filter=sfe_filter,
         )
-        mCloud_list = organized['mCloud_list']
-        sfe_list = organized['sfe_list']
-        grid_T = organized['grid']          # (mCloud, sfe) → path
 
         if not mCloud_list or not sfe_list:
             print(f"  No grid for n={ndens}")
@@ -281,110 +423,178 @@ def plot_comparison_grid(
         print(f"  mCloud: {mCloud_list}")
         print(f"  SFE: {sfe_list}")
 
-        nrows, ncols = len(mCloud_list), len(sfe_list)
-        is_single = (nrows == 1 and ncols == 1)
-
-        if is_single:
-            figsize = (COLUMN_WIDTH_INCHES, COLUMN_HEIGHT_INCHES)
-        else:
-            figsize = (3.4 * ncols, 2.8 * nrows)
-
-        fig, axes = plt.subplots(
-            nrows=nrows, ncols=ncols,
-            figsize=figsize,
-            sharex=False, sharey=False,
-            squeeze=False,
+        _draw_grid_for_ndens(
+            folder.name, ndens, mCloud_list, sfe_list, cells,
+            output_dir=output_dir,
         )
+
+
+# ----------------------------------------------------------------
+# .npz bundle: read, write, and plot
+# ----------------------------------------------------------------
+# Bundle layout (one ndens per file)
+#   ndens                : scalar string (e.g. "1e4")
+#   mCloud_list          : U32 array, length nrows
+#   sfe_list             : U32 array, length ncols
+#   cell_status          : U16 array, length nrows*ncols, values
+#                          {"ok", "missing", "error"}, row-major
+#   For each "ok" cell at flat index ``k = i*ncols + j``:
+#     cell{k}_yes_t              : float array
+#     cell{k}_yes_R2             : float array
+#     cell{k}_yes_phase          : U16 array
+#     cell{k}_yes_isCollapse     : bool array
+#     cell{k}_yes_rcloud         : float scalar
+#     cell{k}_yes_densPL_alpha   : float scalar
+#     cell{k}_no_t               : float array (omitted if no _noPHII partner)
+#     cell{k}_no_R2              : float array (omitted if no _noPHII partner)
+def _flat_idx(i, j, ncols):
+    return i * ncols + j
+
+
+def _write_grid_npz(out_path, ndens, mCloud_list, sfe_list, cells):
+    out_path = Path(out_path)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    ncols = len(sfe_list)
+
+    payload = dict(
+        ndens=str(ndens),
+        mCloud_list=np.array(mCloud_list, dtype="U32"),
+        sfe_list=np.array(sfe_list, dtype="U32"),
+    )
+
+    status = []
+    for i, mCloud in enumerate(mCloud_list):
+        for j, sfe in enumerate(sfe_list):
+            k = _flat_idx(i, j, ncols)
+            entry = cells.get((mCloud, sfe))
+            if entry is None:
+                status.append("missing")
+                continue
+            if entry == _CELL_ERROR:
+                status.append("error")
+                continue
+            status.append("ok")
+
+            yes = entry["yes"]
+            payload[f"cell{k}_yes_t"]            = np.asarray(yes["t"], dtype=float)
+            payload[f"cell{k}_yes_R2"]           = np.asarray(yes["R2"], dtype=float)
+            payload[f"cell{k}_yes_phase"]        = np.asarray(yes["phase"], dtype="U32")
+            payload[f"cell{k}_yes_isCollapse"]   = np.asarray(yes["isCollapse"], dtype=bool)
+            payload[f"cell{k}_yes_rcloud"]       = float(yes["rcloud"])
+            payload[f"cell{k}_yes_densPL_alpha"] = float(yes.get("densPL_alpha") or 0)
+
+            no = entry.get("no")
+            if no is not None:
+                payload[f"cell{k}_no_t"]  = np.asarray(no["t"], dtype=float)
+                payload[f"cell{k}_no_R2"] = np.asarray(no["R2"], dtype=float)
+
+    payload["cell_status"] = np.array(status, dtype="U16")
+    np.savez(out_path, **payload)
+    print(f"Exported: {out_path}")
+    return out_path
+
+
+def _build_cells_from_npz(path):
+    """Load (ndens, mCloud_list, sfe_list, cells) from a bundle written by
+    :func:`export_radius_comparison_npz`."""
+    path = Path(path)
+    with np.load(path, allow_pickle=False) as z:
+        ndens = str(z["ndens"])
+        mCloud_list = [str(s) for s in z["mCloud_list"]]
+        sfe_list = [str(s) for s in z["sfe_list"]]
+        cell_status = [str(s) for s in z["cell_status"]]
+        ncols = len(sfe_list)
+
+        cells = {}
         for i, mCloud in enumerate(mCloud_list):
             for j, sfe in enumerate(sfe_list):
-                ax = axes[i, j]
-                path_T = grid_T.get((mCloud, sfe))
-
-                if path_T is None:
-                    mark_missing_cell(ax, "missing")
+                k = _flat_idx(i, j, ncols)
+                status = cell_status[k]
+                if status == "missing":
+                    cells[(mCloud, sfe)] = None
+                    continue
+                if status == "error":
+                    cells[(mCloud, sfe)] = _CELL_ERROR
                     continue
 
-                # Look up matched WARPFIELD run by stripped base name
-                sim_name = path_T.parent.name
-                base = sim_name[: -len(YES_SUFFIX)]
-                path_W = noPHII_by_base.get(base)
+                yes = dict(
+                    t=z[f"cell{k}_yes_t"].astype(float),
+                    R2=z[f"cell{k}_yes_R2"].astype(float),
+                    phase=np.asarray(z[f"cell{k}_yes_phase"]),
+                    isCollapse=z[f"cell{k}_yes_isCollapse"].astype(bool),
+                    rcloud=float(z[f"cell{k}_yes_rcloud"]),
+                    densPL_alpha=float(z[f"cell{k}_yes_densPL_alpha"]),
+                )
+                no = None
+                if f"cell{k}_no_t" in z.files:
+                    no = dict(
+                        t=z[f"cell{k}_no_t"].astype(float),
+                        R2=z[f"cell{k}_no_R2"].astype(float),
+                    )
+                cells[(mCloud, sfe)] = {"yes": yes, "no": no}
+    return ndens, mCloud_list, sfe_list, cells
 
-                try:
-                    data_T = load_run_R2(path_T)
-                    data_W = load_run_R2(path_W) if path_W is not None else None
-                    plot_cell(ax, data_T, data_W)
-                except Exception as e:
-                    print(f"  Error: {sim_name}: {e}")
-                    mark_missing_cell(ax, "error")
-                    continue
 
-                if is_single:
-                    ax.set_ylabel(r"$R_{\rm b}$ [pc]")
-                    ax.set_xlabel(r"$t$ [Myr]")
-                else:
-                    if j == 0:
-                        ax.set_ylabel(_mcloud_label(mCloud) + "\n" + r"$R_{\rm b}$ [pc]")
-                    else:
-                        ax.tick_params(labelleft=False)
-                    if i == nrows - 1:
-                        ax.set_xlabel(r"$t$ [Myr]")
+def export_radius_comparison_npz(
+    folder,
+    out_path,
+    ndens_filter=None,
+    mCloud_filter=None,
+    sfe_filter=None,
+):
+    """Reduce a TRINITY run folder to one ``.npz`` per ndens.
 
-        # Legend entries — analytic scalings carry the demoted style.
-        handles = [
-            Line2D([0], [0], color=COLOR_TRINITY, lw=2.5,
-                   label=r"TRINITY"),
-            Line2D([0], [0], color=COLOR_WARPFIELD, lw=1.6,
-                   alpha=ALPHA_WARPFIELD,
-                   label=r"WARPFIELD (no $P_{\rm HII}$)"),
-            Line2D([0], [0], color=COLOR_WEAVER, lw=LW_SCALING, ls='--',
-                   alpha=ALPHA_SCALING, label=r"pure energy (wind)"),
-            Line2D([0], [0], color=COLOR_SPITZER, lw=LW_SCALING, ls='-.',
-                   alpha=ALPHA_SCALING, label=r"pure photoionised"),
-            Line2D([0], [0], color=COLOR_MOMENTUM, lw=LW_SCALING, ls=':',
-                   alpha=ALPHA_SCALING, label=r"pure momentum"),
-        ]
-        handles.extend(get_marker_legend_handles(include_phase=SHOW_PHASE, include_rcloud=SHOW_RCLOUD, include_rcloud_horizontal=SHOW_RCLOUD_H, include_collapse=SHOW_COLLAPSE))
+    The bundle holds only what ``plot_cell`` consumes: per-cell time / R2 /
+    phase / rcloud / isCollapse / densPL_alpha for the yesPHII run, plus
+    t / R2 for any noPHII partner. The original run folders can then be
+    discarded.
 
-        param_tag = build_param_tag(mCloud_list, sfe_list, ndens)
+    If more than one ndens needs to be exported, the output filename is
+    suffixed with ``_n<ndens>`` so the bundles stay distinguishable.
+    """
+    folder = Path(folder)
+    out_path = Path(out_path)
 
-        if is_single:
-            # In-axes legend at upper-left, no frame; expand the upper
-            # y-limit so the legend doesn't crowd the curves.
-            ax_single = axes[0, 0]
-            y_lo, y_hi = ax_single.get_ylim()
-            if ax_single.get_yscale() == "log":
-                ax_single.set_ylim(y_lo, y_hi * 3.0)
-            else:
-                ax_single.set_ylim(y_lo, y_hi * 1.4)
-            ax_single.legend(
-                handles=handles,
-                loc="upper left",
-                bbox_to_anchor=(0.04, 0.99),
-                frameon=False,
-                fontsize=10,
-            )
-            fig.tight_layout()
-        else:
-            attach_grid_legend(
-                fig, handles,
-                n_rows_for_layout=nrows,
-                cell_height_inches=2.8,
-                folder_name="", param_tag=param_tag,
-                legend_ncol=4,
-                suptitle=False,
-            )
+    sim_files_T, noPHII_by_base = split_by_phii_suffix(folder)
+    if not sim_files_T:
+        print(f"No _yesPHII simulations found in: {folder}")
+        return []
 
-        # Save
-        if output_dir:
-            fig_dir = Path(output_dir)
-        else:
-            fig_dir = FIG_DIR / folder.name
-        fig_dir.mkdir(parents=True, exist_ok=True)
-        out_pdf = fig_dir / f"radiusComparison_{param_tag}.pdf"
-        fig.savefig(out_pdf, bbox_inches="tight")
-        print(f"  Saved: {out_pdf}")
+    ndens_to_export = [ndens_filter] if ndens_filter else get_unique_ndens(sim_files_T)
+    multi = len(ndens_to_export) > 1
 
-        plt.close(fig)
+    written = []
+    for ndens in ndens_to_export:
+        mCloud_list, sfe_list, cells = _build_cells_for_ndens(
+            sim_files_T, noPHII_by_base, ndens,
+            mCloud_filter=mCloud_filter, sfe_filter=sfe_filter,
+        )
+        if not mCloud_list or not sfe_list:
+            print(f"  No grid for n={ndens}, skipping export")
+            continue
+
+        this_path = (
+            out_path.with_name(f"{out_path.stem}_n{ndens}{out_path.suffix}")
+            if multi else out_path
+        )
+        _write_grid_npz(this_path, ndens, mCloud_list, sfe_list, cells)
+        written.append(this_path)
+    return written
+
+
+def plot_comparison_from_npz(npz_path, output_dir=None):
+    """Reproduce the grid figure straight from a published ``.npz`` bundle."""
+    npz_path = Path(npz_path)
+    ndens, mCloud_list, sfe_list, cells = _build_cells_from_npz(npz_path)
+    if not mCloud_list or not sfe_list:
+        print(f"Empty grid in {npz_path}")
+        return
+    print(f"Loaded bundle {npz_path.name}: ndens={ndens}, "
+          f"mCloud={mCloud_list}, SFE={sfe_list}")
+    _draw_grid_for_ndens(
+        npz_path.stem, ndens, mCloud_list, sfe_list, cells,
+        output_dir=output_dir,
+    )
 
 
 # ----------------------------------------------------------------
@@ -402,20 +612,37 @@ Examples:
   python paper_radiusComparison.py -F /path/to/runs/ -n 1e4
   python paper_radiusComparison.py -F /path/to/runs/ --mCloud 1e6 1e7
 
+  # Collapse a folder into a self-contained .npz bundle for paper-data:
+  python paper_radiusComparison.py -F /path/to/runs/ \\
+      --export paper/data/radiusComparison.npz
+
+  # Reproduce the figure from a published bundle (no run folder needed):
+  python paper_radiusComparison.py --from-npz paper/data/radiusComparison.npz
+
 The folder should contain sibling simulation subfolders whose names end in
 ``_yesPHII`` (include_PHII=True, TRINITY) and ``_noPHII`` (include_PHII=False,
 WARPFIELD-like). Runs are paired automatically by their base name.
         """,
     )
-    parser.add_argument(
-        '--folder', '-F', required=True,
+    source = parser.add_mutually_exclusive_group(required=True)
+    source.add_argument(
+        '--folder', '-F',
         help='Folder containing both _yesPHII and _noPHII simulation subfolders',
+    )
+    source.add_argument(
+        '--from-npz',
+        help='Reproduce the figure from a .npz bundle written by --export',
     )
     parser.add_argument('--output-dir', '-o', default=None)
     parser.add_argument('--nCore', '-n', default=None,
                         help='Filter by density (e.g. "1e4")')
     parser.add_argument('--mCloud', nargs='+', default=None)
     parser.add_argument('--sfe', nargs='+', default=None)
+    parser.add_argument('--export', default=None,
+                        help='Export the source folder to this .npz bundle '
+                             'and exit (no plot). With multiple ndens, the '
+                             'filename is suffixed with _n<ndens> per bundle. '
+                             'Recommended location: paper/data/.')
     parser.add_argument('--show-phase', action='store_true', default=False)
     parser.add_argument('--show-rcloud', action='store_true', default=False)
     parser.add_argument('--show-rcloud-horizontal', action='store_true', default=False)
@@ -436,10 +663,23 @@ WARPFIELD-like). Runs are paired automatically by their base name.
     globals()['SHOW_COLLAPSE'] = _marker_flags['show_collapse']
     globals()['LOG_AXIS'] = args.log_axis
 
-    plot_comparison_grid(
-        args.folder,
-        output_dir=args.output_dir,
-        ndens_filter=args.nCore,
-        mCloud_filter=args.mCloud,
-        sfe_filter=args.sfe,
-    )
+    if args.export:
+        if args.folder is None:
+            parser.error("--export requires --folder (cannot re-export a bundle)")
+        export_radius_comparison_npz(
+            args.folder,
+            args.export,
+            ndens_filter=args.nCore,
+            mCloud_filter=args.mCloud,
+            sfe_filter=args.sfe,
+        )
+    elif args.from_npz:
+        plot_comparison_from_npz(args.from_npz, output_dir=args.output_dir)
+    else:
+        plot_comparison_grid(
+            args.folder,
+            output_dir=args.output_dir,
+            ndens_filter=args.nCore,
+            mCloud_filter=args.mCloud,
+            sfe_filter=args.sfe,
+        )
