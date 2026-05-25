@@ -137,16 +137,6 @@ Line plot showing pressure evolution over time:
   :math:`P_{\rm ram}`; see :ref:`sec-physics`, *Driving Pressure Model*)
 - **P_ext** (gray dotted): External pressure (optional)
 
-paper_thermalRegime.py
-~~~~~~~~~~~~~~~~~~~~~~
-
-Shows the blending weight w(t) which indicates thermal regime:
-
-- **w ≈ 0**: Hot bubble dominates (energy-driven regime)
-- **w ≈ 1**: Warm ionized gas dominates (HII-driven regime)
-
-Supports both line plot and stacked area visualization modes (``--stacked`` flag).
-
 Acceleration Decomposition
 --------------------------
 
