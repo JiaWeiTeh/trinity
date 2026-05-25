@@ -104,35 +104,47 @@ _REQUIRED_ALWAYS = ('t', 'Qi', 'Lbol', 'Lmech_W', 'pdot_W')
 #   Mass-loss: target = Msun/Myr          (Mdot_SN)
 #   Velocity:  target = pc/Myr            (v_SN)
 #   Fraction:  target = dimensionless     (fi)
+#
+# Each per-canonical sub-dict also includes a convenience alias 'cgs' which
+# maps to the canonical's default cgs unit (e.g. erg/s for luminosities,
+# g*cm/s^2 for momentum rates, etc.). For dimensionless quantities 'cgs'
+# is a synonym for 'dimensionless'. This lets users write
+#     sps_col_Qi   0   cgs   log
+# instead of having to remember that Qi's cgs unit is 1/s.
 UNIT_CONVERSIONS: Dict[str, Dict[str, float]] = {
     't': {
         'yr':  1.0e-6,
         'Myr': 1.0,
         's':   cvt.s2Myr,
+        'cgs': cvt.s2Myr,                          # alias for 's'
     },
     'Qi': {
         '1/s':   1.0 / cvt.s2Myr,
         '1/Myr': 1.0,
+        'cgs':   1.0 / cvt.s2Myr,                  # alias for '1/s'
     },
     'fi': {
         'dimensionless': 1.0,
+        'cgs':           1.0,                      # alias for 'dimensionless'
     },
-    'Lbol':        {'erg/s': cvt.L_cgs2au, 'L_sun': _L_SUN_ERG_S * cvt.L_cgs2au},
-    'Lmech_W':     {'erg/s': cvt.L_cgs2au, 'L_sun': _L_SUN_ERG_S * cvt.L_cgs2au},
-    'Lmech_total': {'erg/s': cvt.L_cgs2au, 'L_sun': _L_SUN_ERG_S * cvt.L_cgs2au},
-    'Lmech_SN':    {'erg/s': cvt.L_cgs2au, 'L_sun': _L_SUN_ERG_S * cvt.L_cgs2au},
-    'Li':          {'erg/s': cvt.L_cgs2au, 'L_sun': _L_SUN_ERG_S * cvt.L_cgs2au},
-    'Ln':          {'erg/s': cvt.L_cgs2au, 'L_sun': _L_SUN_ERG_S * cvt.L_cgs2au},
-    'pdot_W':      {'g*cm/s^2': cvt.pdot_cgs2au},
-    'pdot_SN':     {'g*cm/s^2': cvt.pdot_cgs2au},
+    'Lbol':        {'erg/s': cvt.L_cgs2au, 'L_sun': _L_SUN_ERG_S * cvt.L_cgs2au, 'cgs': cvt.L_cgs2au},
+    'Lmech_W':     {'erg/s': cvt.L_cgs2au, 'L_sun': _L_SUN_ERG_S * cvt.L_cgs2au, 'cgs': cvt.L_cgs2au},
+    'Lmech_total': {'erg/s': cvt.L_cgs2au, 'L_sun': _L_SUN_ERG_S * cvt.L_cgs2au, 'cgs': cvt.L_cgs2au},
+    'Lmech_SN':    {'erg/s': cvt.L_cgs2au, 'L_sun': _L_SUN_ERG_S * cvt.L_cgs2au, 'cgs': cvt.L_cgs2au},
+    'Li':          {'erg/s': cvt.L_cgs2au, 'L_sun': _L_SUN_ERG_S * cvt.L_cgs2au, 'cgs': cvt.L_cgs2au},
+    'Ln':          {'erg/s': cvt.L_cgs2au, 'L_sun': _L_SUN_ERG_S * cvt.L_cgs2au, 'cgs': cvt.L_cgs2au},
+    'pdot_W':      {'g*cm/s^2': cvt.pdot_cgs2au, 'cgs': cvt.pdot_cgs2au},
+    'pdot_SN':     {'g*cm/s^2': cvt.pdot_cgs2au, 'cgs': cvt.pdot_cgs2au},
     'Mdot_SN': {
-        'g/s':       cvt.g2Msun / cvt.s2Myr,   # g/s -> Msun/Myr
+        'g/s':       cvt.g2Msun / cvt.s2Myr,       # g/s -> Msun/Myr
         'Msun/Myr':  1.0,
+        'cgs':       cvt.g2Msun / cvt.s2Myr,       # alias for 'g/s'
     },
     'v_SN': {
-        'cm/s':   cvt.cm2pc / cvt.s2Myr,       # cm/s -> pc/Myr
-        'km/s':   cvt.v_kms2au,                # km/s -> pc/Myr
+        'cm/s':   cvt.cm2pc / cvt.s2Myr,           # cm/s -> pc/Myr
+        'km/s':   cvt.v_kms2au,                    # km/s -> pc/Myr
         'pc/Myr': 1.0,
+        'cgs':    cvt.cm2pc / cvt.s2Myr,           # alias for 'cm/s'
     },
 }
 
@@ -328,24 +340,27 @@ def _format_missing_template(*, sps_path: str,
         "    sps_col_<canonical>    <file_column>    <units>    <log|linear>\n"
         "where <file_column> is EITHER a 0-based integer column index\n"
         "(works on any file), OR a header-row name (file must have a\n"
-        "header). Examples shown with the integer style:\n\n"
+        "header). <units> can be the canonical's default cgs unit via\n"
+        "the alias 'cgs', or the explicit unit string. Examples shown\n"
+        "with the integer style and the cgs alias:\n\n"
         "Required (no derivation fallback):\n"
-        "    sps_col_t            0                 yr                  linear\n"
-        "    sps_col_Lbol         3                 erg/s               log\n"
-        "    sps_col_Lmech_W      6                 erg/s               log\n"
-        "    sps_col_Qi           1                 1/s                 log\n"
-        "    sps_col_pdot_W       5                 g*cm/s^2            log\n"
+        "    sps_col_t            0                 cgs                 linear\n"
+        "    sps_col_Lbol         3                 cgs                 log\n"
+        "    sps_col_Lmech_W      6                 cgs                 log\n"
+        "    sps_col_Qi           1                 cgs                 log\n"
+        "    sps_col_pdot_W       5                 cgs                 log\n"
         "    sps_col_fi           2                 dimensionless       linear\n"
         "        (OR supply BOTH sps_col_Li AND sps_col_Ln instead of sps_col_fi)\n\n"
         "And EITHER (to drive the SN pipeline):\n"
-        "    sps_col_Lmech_total  4                 erg/s               log\n"
+        "    sps_col_Lmech_total  4                 cgs                 log\n"
         "OR:\n"
-        "    sps_col_Lmech_SN     <idx_or_name>     erg/s               log\n\n"
+        "    sps_col_Lmech_SN     <idx_or_name>     cgs                 log\n\n"
         "Optional (skip derivation if provided):\n"
         "    sps_col_pdot_SN, sps_col_Mdot_SN, sps_col_v_SN,\n"
         "    sps_col_Li, sps_col_Ln, sps_col_Lmech_total\n\n"
         f"Recognized units (per canonical): see UNIT_CONVERSIONS in\n"
-        f"src/sb99/sps_columns.py.\n\n"
+        f"src/sb99/sps_columns.py. The 'cgs' alias maps to each\n"
+        f"canonical's default cgs unit (1/s for Qi; erg/s for L*; etc.).\n\n"
         f"Currently declared in your .param: {declared}\n"
     )
     return template
