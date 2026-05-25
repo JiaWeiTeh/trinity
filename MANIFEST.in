@@ -18,11 +18,8 @@ recursive-include docs/source *.rst *.py *.txt
 include docs/requirements.txt
 
 # Exclude directories not needed for package installation
-prune old_doNotRead
-prune analysis
 prune docs/build
 prune test
-prune example_scripts
 
 # Exclude development and temporary files
 global-exclude __pycache__

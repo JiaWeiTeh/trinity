@@ -2,15 +2,71 @@
 """
 Shared I/O helpers for ``src._calc`` analysis scripts.
 
-Provides the common ``extract_rejected`` helper and the
-``regenerate_summary_pdf`` hook used by individual scripts.
+Provides the common ``extract_rejected`` helper, the
+``regenerate_summary_pdf`` hook, and the PHII-variant selection
+utilities used by individual scripts.
 """
 
+import argparse
 import logging
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
+# PHII filtering is shared with the paper_* layer; importing keeps the
+# semantics (which folder suffixes count as yes/no) in lockstep.
+from src._plots.grid_template import (
+    filter_sim_files_by_phii,
+    phii_file_prefix,
+)
+
 logger = logging.getLogger(__name__)
+
+
+# ----------------------------------------------------------------------
+# PHII variant selection (mirrors ``src._plots.cli`` for _calc scripts)
+# ----------------------------------------------------------------------
+
+def add_phii_argument(parser: argparse.ArgumentParser) -> None:
+    """Register the standard ``--show-noPHII`` flag on *parser*.
+
+    The default (flag absent) runs the analysis only on ``_yesPHII``
+    folders plus any folder without a PHII suffix (legacy / untagged).
+    When the flag is set, the caller is expected to additionally re-run
+    the analysis on ``_noPHII`` folders and tag those outputs via
+    :func:`phii_file_prefix`.
+    """
+    parser.add_argument(
+        "--show-noPHII",
+        action="store_true",
+        default=False,
+        dest="show_noPHII",
+        help="Also analyse simulation folders ending in '_noPHII'. By "
+             "default these are ignored; only '_yesPHII' and untagged "
+             "(legacy) folders are processed.",
+    )
+
+
+def iter_phii_modes(args) -> List[str]:
+    """Return the PHII modes to run for the parsed CLI ``args``.
+
+    Always yields ``"yes"``; additionally yields ``"no"`` when
+    ``args.show_noPHII`` is true.  Sub-scripts loop over the result so
+    a single run produces both variants when requested.
+    """
+    modes: List[str] = ["yes"]
+    if getattr(args, "show_noPHII", False):
+        modes.append("no")
+    return modes
+
+
+__all__ = [
+    "extract_rejected",
+    "regenerate_summary_pdf",
+    "add_phii_argument",
+    "iter_phii_modes",
+    "filter_sim_files_by_phii",
+    "phii_file_prefix",
+]
 
 
 def extract_rejected(

@@ -133,15 +133,13 @@ def write_simulation_end(params: Dict[str, Any], output_dir: Optional[str] = Non
     else:
         reason_str = 'unknown'
 
-    # End code is set at the source (phase runners, main.py, phase_events).
-    # If a site forgot to set it, fall back to UNKNOWN (which is itself an
-    # inspection-required state) and note the missing code in the detail.
+    # End code is set at the source (phase runners, main.py, phase_events)
+    # as the integer .code so it survives JSON serialization. If a site
+    # forgot to set it, fall back to UNKNOWN (an inspection-required state).
     end_code = SimulationEndCode.UNKNOWN
     if 'SimulationEndCode' in params:
         raw = params['SimulationEndCode'].value
-        if isinstance(raw, SimulationEndCode):
-            end_code = raw
-        elif isinstance(raw, int):
+        if isinstance(raw, int):
             end_code = SimulationEndCode.from_code(raw)
 
     # Get model name

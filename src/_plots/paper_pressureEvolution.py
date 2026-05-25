@@ -3,20 +3,15 @@
 """
 Pressure Evolution Plot for TRINITY
 
-Shows how P_drive transitions between P_b (hot bubble) and P_IF (ionization front)
-over time. This illustrates the convex blend model:
-
-    P_drive = (1 - w) * P_b + w * P_IF
-
-where w = f_abs_ion * P_IF / (P_IF + P_b)
+Shows how P_drive is selected from P_b (hot bubble), P_HII (ionised gas),
+and P_ram (wind ram pressure) across the energy-driven, transition, and
+momentum-driven phases. See physics.rst > Driving Pressure Model.
 
 Plot shows:
 - P_b(t): Hot bubble pressure (blue solid)
 - P_IF(t): Ionization front pressure (red solid)
 - P_drive(t): Effective driving pressure (black dashed)
 - Optionally: P_ext (external pressure, gray dotted)
-
-Author: TRINITY Team
 """
 
 import numpy as np

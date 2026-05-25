@@ -266,7 +266,7 @@ def run_expansion(params):
         params['SimulationEndReason'].value = (
             "Reached cloud edge (stop_at_rCloud_nSnap=0)"
         )
-        params['SimulationEndCode'].value = SimulationEndCode.RCLOUD_BOUNDARY
+        params['SimulationEndCode'].value = SimulationEndCode.RCLOUD_BOUNDARY.code
         logger.info("stop_at_rCloud_nSnap=0 and R2 >= rCloud at end of phase 1a; "
                     "skipping subsequent phases.")
 

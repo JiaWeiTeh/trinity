@@ -163,7 +163,7 @@ def create_cubes(filename, path2cooling):
     """
 
     # Does the cube already exist?
-    cube_filename = path2cooling + filename.rstrip('.dat') +'_cube.npy'
+    cube_filename = path2cooling + filename.removesuffix('.dat') +'_cube.npy'
     if os.path.exists(cube_filename):
         log_ndens_arr, log_temp_arr, log_phi_arr, cool_cube, heat_cube = np.load(cube_filename, allow_pickle = True)
         return log_ndens_arr, log_temp_arr, log_phi_arr, cool_cube, heat_cube
@@ -223,9 +223,9 @@ def create_cubes(filename, path2cooling):
     # fill in cooling cube
     for (ndens_val, temp_val, phi_val, cooling_val) in cool_table:
         # find which index these belong to
-        ndens_index = np.where(log_ndens_arr == np.round(np.log10(ndens_val), decimals = 5))[0][0]
-        temp_index = np.where(log_temp_arr == np.round(np.log10(temp_val), decimals = 5))[0][0]
-        phi_index = np.where(log_phi_arr == np.round(np.log10(phi_val), decimals = 5))[0][0]
+        ndens_index = np.where(log_ndens_arr == np.round(np.log10(ndens_val), decimals = 3))[0][0]
+        temp_index = np.where(log_temp_arr == np.round(np.log10(temp_val), decimals = 3))[0][0]
+        phi_index = np.where(log_phi_arr == np.round(np.log10(phi_val), decimals = 3))[0][0]
         # record into the cube
         cool_cube[ndens_index, temp_index, phi_index] = cooling_val
         

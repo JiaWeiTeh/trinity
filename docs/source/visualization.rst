@@ -132,24 +132,10 @@ Line plot showing pressure evolution over time:
 
 - **P_b** (blue solid): Hot bubble pressure
 - **P_IF** (red solid): Ionization front pressure
-- **P_drive** (black dashed): Effective driving pressure (convex blend)
+- **P_drive** (black dashed): Effective driving pressure (selected
+  per phase from :math:`P_b`, :math:`P_{\rm H\,II}`, and
+  :math:`P_{\rm ram}`; see :ref:`sec-physics`, *Driving Pressure Model*)
 - **P_ext** (gray dotted): External pressure (optional)
-
-Demonstrates the convex blend model transition:
-
-.. math::
-
-   P_{\rm drive} = (1 - w) P_b + w P_{\rm IF}
-
-paper_thermalRegime.py
-~~~~~~~~~~~~~~~~~~~~~~
-
-Shows the blending weight w(t) which indicates thermal regime:
-
-- **w ≈ 0**: Hot bubble dominates (energy-driven regime)
-- **w ≈ 1**: Warm ionized gas dominates (HII-driven regime)
-
-Supports both line plot and stacked area visualization modes (``--stacked`` flag).
 
 Acceleration Decomposition
 --------------------------
@@ -244,14 +230,3 @@ overwrite each other:
        ├── dominantFeedback_M1e7_sfe020_n1e4_continuous_interp.pdf
        ├── radiusEvolution_M1e7_sfe020_n1e4.pdf
        └── ...
-
-
-See Also
---------
-
-- :ref:`sec-trinity-reader` — programmatic API (``TrinityOutput``,
-  ``load_output``, ``find_all_simulations``) used by every script above.
-- :ref:`sec-running` — producing simulations, sweep folder layout, and
-  how ``path2output`` maps onto the ``fig/{folder_name}/`` tree.
-- :ref:`sec-physics` — physical meaning of the forces, pressures, and
-  regimes shown in the paper figures.

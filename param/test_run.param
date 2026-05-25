@@ -1,0 +1,45 @@
+
+# =============================================================================
+# Tuple mode: specify exact (dens_profile, densPL_alpha, densBE_Omega) combos
+# =============================================================================
+
+tuple(dens_profile, densPL_alpha, densBE_Omega) [densPL, -1, 0]
+
+# =============================================================================
+# Fixed parameters (constant across all runs)
+# =============================================================================
+
+# Cloud properties
+mCloud    1e5
+sfe       0.01
+nCore     1e4
+rCore     1
+
+# ISM properties
+nISM    1
+stop_t_diss 1
+
+# Allow expansion beyond cloud
+stop_at_rCloud_nSnap    5
+
+# Output directory
+path2output    outputs/test_run
+
+# Run settings
+stop_r    None
+stop_t    0.6
+
+# Suppress warnings to save memory
+log_level    WARNING
+include_PHII True
+
+# sps stuffs
+sps_path  lib/sps/custom/1e6cluster.csv
+sps_col_t            0
+sps_col_Qi           1
+sps_col_fi           2
+sps_col_Lbol         3
+sps_col_Lmech_W      6
+sps_col_pdot_W       5
+sps_col_Lmech_total  4
+
