@@ -155,8 +155,17 @@ value):
 For example, ``1e7_sfe010_n1e4_noPHII`` is ``mCloud=1e7, sfe=0.10,
 nCore=1e4`` with ``include_PHII = False``.
 
-Snapshot data model
-^^^^^^^^^^^^^^^^^^^
+    2026-01-08 15:30:00 | INFO     | src.main | === TRINITY Simulation Starting ===
+    2026-01-08 15:30:00 | INFO     | src.main | Model: test_simulation
+    2026-01-08 15:30:01 | INFO     | src.sb99.read_SB99 | SPS data processed: 201 time points, t_max=100.00 Myr
+    2026-01-08 15:30:03 | INFO     | src.phase1_energy | Entering energy-driven phase
+    2026-01-08 15:30:15 | WARNING  | src.cooling | Temperature below minimum, clamping to 1e4 K
+    2026-01-08 15:30:45 | INFO     | src.phase1_energy | Energy phase complete: 150 timesteps
+    2026-01-08 15:35:00 | INFO     | src.main | === Simulation Finished ===
+
+
+Output Data Model
+-----------------
 
 Each simulation writes its full state to ``dictionary.jsonl`` as a
 stream of newline-delimited JSON objects, one per snapshot. Writes
@@ -180,7 +189,7 @@ Snapshot keys group into a handful of categories:
        ``initial_cloud_m_arr``
    * - Dynamical state
      - ``t_now``, ``R2``, ``v2``, ``Eb``, ``T0``, ``R1``, ``Pb``
-   * - Feedback (SB99)
+   * - Feedback (SPS)
      - ``Lmech_W``, ``Lmech_SN``, ``Qi``, ``Lbol``, ``pdot``
    * - Forces
      - ``F_grav``, ``F_ram``, ``F_ram_wind``, ``F_ram_SN``,
