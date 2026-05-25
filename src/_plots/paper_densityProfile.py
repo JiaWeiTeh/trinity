@@ -119,48 +119,6 @@ def identify_profile_tag(folder_name: str) -> str:
     return None
 
 
-def load_sweep_simulations(sweep_dir: str) -> dict:
-    """
-    Load all simulations from a density profile sweep directory.
-
-    Parameters
-    ----------
-    sweep_dir : str
-        Path to the sweep output directory.
-
-    Returns
-    -------
-    dict
-        Maps profile tag (e.g. 'PL0', 'BE14') -> TrinityOutput object.
-    """
-    sweep_path = Path(sweep_dir)
-    sim_files = find_all_simulations(sweep_path)
-    sim_files = filter_sim_files_by_phii(sim_files, "yes")
-
-    if not sim_files:
-        raise FileNotFoundError(f"No simulations found in {sweep_path}")
-
-    simulations = {}
-    for data_path in sim_files:
-        folder_name = data_path.parent.name
-        tag = identify_profile_tag(folder_name)
-        if tag is None:
-            logger.warning(f"Could not identify profile from folder: {folder_name}")
-            continue
-
-        if tag not in PROFILE_STYLES:
-            logger.warning(f"Unknown profile tag '{tag}' from folder: {folder_name}")
-            continue
-
-        logger.info(f"Loading {tag}: {data_path}")
-        output = load_output(data_path)
-        simulations[tag] = output
-
-    loaded_tags = list(simulations.keys())
-    logger.info(f"Loaded {len(simulations)} simulations: {loaded_tags}")
-    return simulations
-
-
 # =============================================================================
 # Helper functions
 # =============================================================================
@@ -292,6 +250,157 @@ def _get_sim_folders(sweep_dir: str) -> dict:
 
 # Density conversion: internal [1/pc³] -> CGS [cm⁻³]
 NDENS_AU2CGS = INV_CONV.ndens_au2cgs
+
+
+# =============================================================================
+# In-memory bundle assembly (folder → dict consumed by both drawers)
+# =============================================================================
+# Bundle structure (one density-profile sweep per bundle):
+#   bundle['tags']            : list of tag strings, in PROFILE_ORDER
+#   bundle[<tag>]             : per-tag dict with
+#       t, R2, v2             : float arrays — timeseries used by both figs
+#       phase                 : U16 array  — phase tag per snapshot
+#       isCollapse            : bool array — collapse flag per snapshot
+#       rCloud                : float scalar — cloud radius for this run [pc]
+#       r_arr, n_cgs, M_arr   : profile ingredients for the top panel of
+#                               figure 1 (precomputed so the bundle is
+#                               decoupled from future cloud-shape library
+#                               changes)
+#       mu_g                  : float scalar — mu_convert in grams
+def _build_bundle_from_folder(sweep_dir: str) -> dict:
+    """Load every tag in *sweep_dir* into a single in-memory bundle.
+
+    Reads each tag's TrinityOutput, extracts the timeseries fields both
+    figures consume, then computes the ρ/M_enc profile ingredients via
+    ``_compute_rho_M_profile`` so the bundle is fully self-contained.
+    """
+    sim_folders = _get_sim_folders(sweep_dir)
+    if not sim_folders:
+        raise FileNotFoundError(f"No density-profile runs found in {sweep_dir}")
+
+    bundle = {'tags': []}
+    for tag in PROFILE_ORDER:
+        if tag not in sim_folders:
+            continue
+        try:
+            output = load_output(sim_folders[tag])
+        except Exception as e:
+            logger.warning(f"Skipping {tag}: load failed: {e}")
+            continue
+
+        phase_raw = output.get('current_phase', as_array=False)
+        phase = (np.asarray([str(p) for p in phase_raw], dtype='U16')
+                 if phase_raw is not None
+                 else np.array([], dtype='U16'))
+
+        isCollapse_raw = output.get('isCollapse', as_array=False)
+        if isCollapse_raw is None:
+            isCollapse = np.zeros(len(output), dtype=bool)
+        else:
+            isCollapse = np.array([bool(c) for c in isCollapse_raw], dtype=bool)
+
+        rCloud_arr = safe_get(output, 'rCloud')
+        rCloud_scalar = (float(rCloud_arr[-1])
+                         if rCloud_arr.size > 0 and rCloud_arr[-1] > 0
+                         else float('nan'))
+
+        try:
+            r_arr, n_cgs, M_arr, mu_g = _compute_rho_M_profile(tag, sim_folders)
+        except Exception as e:
+            logger.warning(f"Could not compute profile for {tag}: {e}")
+            r_arr  = np.array([], dtype=float)
+            n_cgs  = np.array([], dtype=float)
+            M_arr  = np.array([], dtype=float)
+            mu_g   = 0.0
+
+        bundle[tag] = dict(
+            t          = np.asarray(output.get('t_now'), dtype=float),
+            R2         = safe_get(output, 'R2').astype(float),
+            v2         = safe_get(output, 'v2').astype(float),
+            phase      = phase,
+            isCollapse = isCollapse,
+            rCloud     = rCloud_scalar,
+            r_arr      = np.asarray(r_arr, dtype=float),
+            n_cgs      = np.asarray(n_cgs, dtype=float),
+            M_arr      = np.asarray(M_arr, dtype=float),
+            mu_g       = float(mu_g),
+        )
+        bundle['tags'].append(tag)
+
+    if not bundle['tags']:
+        raise ValueError(f"No usable density-profile runs in {sweep_dir}")
+    return bundle
+
+
+# =============================================================================
+# .npz bundle: write, read, plot
+# =============================================================================
+_BUNDLE_TS_KEYS      = ('t', 'R2', 'v2', 'phase', 'isCollapse')
+_BUNDLE_SCALAR_KEYS  = ('rCloud', 'mu_g')
+_BUNDLE_PROFILE_KEYS = ('r_arr', 'n_cgs', 'M_arr')
+
+
+def export_densityProfile_npz(sweep_dir, out_path) -> Path:
+    """Reduce a density_profile_sweep folder to a single self-contained ``.npz``.
+
+    Stores everything both figures consume: per-tag timeseries
+    (t/R2/v2/phase/isCollapse/rCloud), the precomputed ρ/M_enc profile
+    ingredients (r_arr, n_cgs, M_arr, mu_g), and the list of tags
+    present. Original run folders + cloud-property summaries can then
+    be discarded for paper reproducibility.
+    """
+    bundle = _build_bundle_from_folder(str(sweep_dir))
+    out_path = Path(out_path)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+
+    payload = {'tags': np.array(bundle['tags'], dtype='U8')}
+    for tag in bundle['tags']:
+        e = bundle[tag]
+        payload[f'{tag}_t']          = e['t']
+        payload[f'{tag}_R2']         = e['R2']
+        payload[f'{tag}_v2']         = e['v2']
+        payload[f'{tag}_phase']      = e['phase']
+        payload[f'{tag}_isCollapse'] = e['isCollapse']
+        payload[f'{tag}_rCloud']     = np.float64(e['rCloud'])
+        payload[f'{tag}_r_arr']      = e['r_arr']
+        payload[f'{tag}_n_cgs']      = e['n_cgs']
+        payload[f'{tag}_M_arr']      = e['M_arr']
+        payload[f'{tag}_mu_g']       = np.float64(e['mu_g'])
+
+    np.savez(out_path, **payload)
+    logger.info(f"Exported: {out_path}")
+    print(f"Exported: {out_path}")
+    return out_path
+
+
+def _build_bundle_from_npz(npz_path) -> dict:
+    """Reconstruct the in-memory bundle from a published ``.npz``."""
+    npz_path = Path(npz_path)
+    with np.load(npz_path, allow_pickle=False) as z:
+        tags = [str(t) for t in z['tags']]
+        bundle = {'tags': tags}
+        for tag in tags:
+            bundle[tag] = dict(
+                t          = z[f'{tag}_t'].astype(float),
+                R2         = z[f'{tag}_R2'].astype(float),
+                v2         = z[f'{tag}_v2'].astype(float),
+                phase      = np.asarray(z[f'{tag}_phase']),
+                isCollapse = z[f'{tag}_isCollapse'].astype(bool),
+                rCloud     = float(z[f'{tag}_rCloud']),
+                r_arr      = z[f'{tag}_r_arr'].astype(float),
+                n_cgs      = z[f'{tag}_n_cgs'].astype(float),
+                M_arr      = z[f'{tag}_M_arr'].astype(float),
+                mu_g       = float(z[f'{tag}_mu_g']),
+            )
+    return bundle
+
+
+def plot_densityProfile_from_npz(npz_path, output_dir: Path,
+                                 fmt: str = 'pdf', show: bool = False) -> None:
+    """Reproduce both figures straight from a published bundle."""
+    bundle = _build_bundle_from_npz(npz_path)
+    plot_shell_evolution_paper(bundle, output_dir, fmt, show)
+    plot_phase_timeline(bundle, output_dir, fmt, show)
 
 
 # =============================================================================
@@ -433,13 +542,18 @@ def _setup_time_panel_ticks(ax):
     ax.tick_params(which='minor', length=3)
 
 
-def _draw_ingredients_panel(ax_rho, ax_M, tags_present: list,
-                            sim_folders: dict) -> None:
+def _draw_ingredients_panel(ax_rho, ax_M, bundle: dict,
+                            tags_present: list) -> None:
     """Draw the density profile (solid) + M_enc (dashed, twinx) top panel.
 
     Configures ticks, scales, axis labels and the in-panel solid/dashed
     legend. y-axes are plotted as log10 values on a linear scale so that
     minor ticks are legible across many decades; x stays on a log scale.
+
+    Profile ingredients (r_arr, n_cgs, M_arr, mu_g) come from the bundle;
+    they were computed at load time so the figure stays reproducible if
+    the underlying profile-shape libraries (Bonnor-Ebert, power-law)
+    ever evolve.
     """
     # Ticks: ax_rho owns the left, ax_M owns the right
     ax_rho.minorticks_on()
@@ -457,16 +571,13 @@ def _draw_ingredients_panel(ax_rho, ax_M, tags_present: list,
     ax_M.tick_params(which='major', length=5)
     ax_M.tick_params(which='minor', length=3)
 
-    # Pre-compute every profile so we know the global outer radius, then
-    # extend each curve's nISM plateau out to that radius before plotting
-    # — this keeps the nISM horizontal line visible all the way to the
-    # right-hand edge of the panel even for profiles with smaller rCloud.
     profiles = {}
     for tag in tags_present:
-        try:
-            profiles[tag] = _compute_rho_M_profile(tag, sim_folders)
-        except Exception as e:
-            logger.warning(f"Could not compute profile ingredients for {tag}: {e}")
+        entry = bundle.get(tag)
+        if not entry or entry['r_arr'].size == 0:
+            continue
+        profiles[tag] = (entry['r_arr'], entry['n_cgs'],
+                         entry['M_arr'], entry['mu_g'])
     if not profiles:
         return
     r_max = max(r_arr[-1] for r_arr, _, _, _ in profiles.values())
@@ -512,24 +623,20 @@ def _draw_ingredients_panel(ax_rho, ax_M, tags_present: list,
                   handlelength=2.0, handletextpad=0.5)
 
 
-def _draw_Rb_panel(ax, simulations: dict, tags_present: list) -> None:
+def _draw_Rb_panel(ax, bundle: dict, tags_present: list) -> None:
     """Draw the R_b(t) panel (outer bubble radius) with phase markers."""
     _setup_time_panel_ticks(ax)
     for tag in tags_present:
-        output = simulations[tag]
+        entry = bundle[tag]
         s = get_style(tag)
 
-        t = output.get('t_now')
-        R2 = safe_get(output, 'R2')
-
-        phase_raw = output.get('current_phase', as_array=False)
-        phase = (np.asarray([str(p) for p in phase_raw])
-                 if phase_raw is not None else None)
-        isCollapse_raw = output.get('isCollapse', as_array=False)
-        isCollapse = (np.array([bool(c) for c in isCollapse_raw])
-                      if isCollapse_raw is not None else None)
-        rCloud = safe_get(output, 'rCloud')
-        rCloud_val = rCloud[-1] if rCloud.size > 0 and rCloud[-1] > 0 else None
+        t = entry['t']
+        R2 = entry['R2']
+        phase = entry['phase']
+        isCollapse = entry['isCollapse']
+        rCloud_val = (float(entry['rCloud'])
+                      if np.isfinite(entry['rCloud']) and entry['rCloud'] > 0
+                      else None)
 
         add_plot_markers(
             ax, t,
@@ -556,9 +663,8 @@ def _draw_Rb_panel(ax, simulations: dict, tags_present: list) -> None:
 # densityProfile_paper: ingredients (rho, M_enc) + R_b(t)
 # =============================================================================
 
-def plot_shell_evolution_paper(simulations: dict, output_dir: Path,
-                               fmt: str = 'pdf', show: bool = False,
-                               sweep_dir: str = None) -> None:
+def plot_shell_evolution_paper(bundle: dict, output_dir: Path,
+                               fmt: str = 'pdf', show: bool = False) -> None:
     """Paper-ready 2-panel figure: density+M_enc ingredients (top) and
     R_b(t) shell radius (bottom).
 
@@ -569,7 +675,7 @@ def plot_shell_evolution_paper(simulations: dict, output_dir: Path,
     """
     logger.info("densityProfile_paper: ingredients + R_b(t)")
 
-    tags_present = [tag for tag in PROFILE_ORDER if tag in simulations]
+    tags_present = [tag for tag in PROFILE_ORDER if tag in bundle['tags']]
 
     # Column-width canvas matching paper_teaser (4.0").  Two stacked
     # panels at ~2.75" each, slightly taller per panel than teaser's
@@ -590,9 +696,8 @@ def plot_shell_evolution_paper(simulations: dict, output_dir: Path,
     ax_M   = ax_rho.twinx()
     ax_R   = fig.add_subplot(gs[1, 0])
 
-    sim_folders = _get_sim_folders(sweep_dir) if sweep_dir else {}
-    _draw_ingredients_panel(ax_rho, ax_M, tags_present, sim_folders)
-    _draw_Rb_panel(ax_R, simulations, tags_present)
+    _draw_ingredients_panel(ax_rho, ax_M, bundle, tags_present)
+    _draw_Rb_panel(ax_R, bundle, tags_present)
 
     ax_R.set_xlabel(r'$t$ [Myr]')
 
@@ -618,9 +723,9 @@ def plot_shell_evolution_paper(simulations: dict, output_dir: Path,
 # densityProfile_phaseTimeline: phase intervals helper + Gantt timeline
 # =============================================================================
 
-def _extract_phase_info(output: TrinityOutput) -> dict:
+def _extract_phase_info(entry: dict) -> dict:
     """
-    Extract phase intervals and key event times from a simulation.
+    Extract phase intervals and key event times from a bundle entry.
 
     Returns
     -------
@@ -638,12 +743,12 @@ def _extract_phase_info(output: TrinityOutput) -> dict:
         outcome : str
             'expanding' or 're-collapse'
     """
-    t = output.get('t_now')
-    phases = np.array(output.get('current_phase', as_array=False))
-    v2 = safe_get(output, 'v2')
-    R2 = safe_get(output, 'R2')
-    isCollapse = np.array(output.get('isCollapse', as_array=False))
-    rCloud = float(output[0].get('rCloud', np.nan))
+    t = entry['t']
+    phases = entry['phase']
+    v2 = entry['v2']
+    R2 = entry['R2']
+    isCollapse = entry['isCollapse']
+    rCloud = float(entry['rCloud'])
 
     # --- Phase intervals ---
     # Map energy/implicit -> 'energy' for display
@@ -741,7 +846,7 @@ def _extract_phase_info(output: TrinityOutput) -> dict:
     }
 
 
-def plot_phase_timeline(simulations: dict, output_dir: Path, fmt: str = 'pdf',
+def plot_phase_timeline(bundle: dict, output_dir: Path, fmt: str = 'pdf',
                         show: bool = False) -> None:
     """
     Annotated Gantt-style timeline of phase durations for density profile comparison.
@@ -761,7 +866,7 @@ def plot_phase_timeline(simulations: dict, output_dir: Path, fmt: str = 'pdf',
 
     # Order: alpha=0, -1, -2, then BE
     TRACK_ORDER = ['PL0', 'PL-1', 'PL-2', 'BE14']
-    tags_present = [tag for tag in TRACK_ORDER if tag in simulations]
+    tags_present = [tag for tag in TRACK_ORDER if tag in bundle['tags']]
     n_tracks = len(tags_present)
 
     if n_tracks == 0:
@@ -771,7 +876,7 @@ def plot_phase_timeline(simulations: dict, output_dir: Path, fmt: str = 'pdf',
     # Extract phase info for all runs
     all_info = {}
     for tag in tags_present:
-        all_info[tag] = _extract_phase_info(simulations[tag])
+        all_info[tag] = _extract_phase_info(bundle[tag])
 
     # Print all extracted intervals and event times
     print("\n" + "=" * 80)
@@ -929,15 +1034,28 @@ Examples:
   python paper_densityProfile.py -F outputs/density_profile_sweep --fmt png
   python paper_densityProfile.py -F outputs/density_profile_sweep --show
   python paper_densityProfile.py -F outputs/density_profile_sweep -o fig/sweep/
+
+  # Collapse a sweep folder to one self-contained .npz bundle (recommended
+  # for paper reproducibility):
+  python paper_densityProfile.py -F outputs/density_profile_sweep \\
+      --export paper/data/densityProfile.npz
+
+  # Reproduce both figures from a published bundle:
+  python paper_densityProfile.py --from-npz paper/data/densityProfile.npz
         """
     )
-    parser.add_argument(
-        '--folder', '-F', required=True,
-        help='Path to density profile sweep output directory (required)'
+    source = parser.add_mutually_exclusive_group(required=True)
+    source.add_argument(
+        '--folder', '-F',
+        help='Path to density profile sweep output directory'
+    )
+    source.add_argument(
+        '--from-npz', dest='from_npz',
+        help='Reproduce both figures from a .npz bundle written by --export'
     )
     parser.add_argument(
         '--output-dir', '-o', default=None,
-        help='Directory to save figures (default: fig/density_profile_sweep/)'
+        help='Directory to save figures (default: fig/<folder_name>/)'
     )
     parser.add_argument(
         '--fmt', default='pdf',
@@ -946,6 +1064,13 @@ Examples:
     parser.add_argument(
         '--show', action='store_true',
         help='Show figures interactively instead of just saving'
+    )
+    parser.add_argument(
+        '--export', default=None,
+        help='Export the sweep folder to this .npz bundle and exit '
+             '(no plot). Bundle contains per-tag timeseries plus the '
+             'precomputed ρ / M_enc profile ingredients, so the original '
+             'sweep folder can be discarded. Recommended location: paper/data/.'
     )
 
     # Marker options (off by default for clean paper figures)
@@ -977,35 +1102,50 @@ Examples:
     SHOW_RCLOUD_H = _all or args.show_rcloud_horizontal
     SHOW_COLLAPSE = _all or args.show_collapse
 
+    # --export short-circuits before any plotting.
+    if args.export:
+        if not args.folder:
+            parser.error("--export requires --folder (cannot re-export a bundle)")
+        try:
+            export_densityProfile_npz(args.folder, args.export)
+        except (FileNotFoundError, ValueError) as e:
+            logger.error(f"Export failed: {e}")
+        return
+
     # Determine output directory
     if args.output_dir:
         output_dir = Path(args.output_dir)
     else:
-        folder_name = Path(args.folder).name
-        output_dir = FIG_DIR / folder_name
+        if args.folder:
+            source_name = Path(args.folder).name
+        else:
+            source_name = Path(args.from_npz).stem
+        output_dir = FIG_DIR / source_name
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Load simulation data
+    # Build the in-memory bundle (one shape, two sources).
     try:
-        simulations = load_sweep_simulations(args.folder)
-    except FileNotFoundError as e:
-        logger.error(f"Could not load simulations: {e}")
+        if args.from_npz:
+            bundle = _build_bundle_from_npz(args.from_npz)
+        else:
+            bundle = _build_bundle_from_folder(args.folder)
+    except (FileNotFoundError, ValueError) as e:
+        logger.error(f"Could not load bundle: {e}")
         return
 
-    if not simulations:
+    if not bundle['tags']:
         logger.error("No valid simulations found. Exiting.")
         return
 
     # densityProfile_paper: ingredients (rho, M_enc) + R_b(t)
     try:
-        plot_shell_evolution_paper(simulations, output_dir, args.fmt, args.show,
-                                   sweep_dir=args.folder)
+        plot_shell_evolution_paper(bundle, output_dir, args.fmt, args.show)
     except Exception as e:
         logger.error(f"densityProfile_paper failed: {e}")
 
     # densityProfile_phaseTimeline: Gantt-style phase timeline
     try:
-        plot_phase_timeline(simulations, output_dir, args.fmt, args.show)
+        plot_phase_timeline(bundle, output_dir, args.fmt, args.show)
     except Exception as e:
         logger.error(f"densityProfile_phaseTimeline failed: {e}")
 
