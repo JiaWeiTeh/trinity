@@ -150,26 +150,35 @@ def _parse_summary_txt(text: str) -> dict[str, Any]:
 
 def _parse_simulation_end(text: str) -> dict[str, Any]:
     """
-    Pull the status flag, end reason, and final-state snapshot from
-    ``simulationEnd.txt``. Section headers (``-----``, ``=====``) are ignored;
-    we look for known ``key: value`` lines wherever they appear.
+    Pull the outcome category, detail message, exit code, and final-state
+    snapshot from ``simulationEnd.txt``. Section headers (``-----``, ``=====``)
+    are ignored; we look for known ``key: value`` lines wherever they appear.
 
     Returned keys (units in the key name where they differ from the summary's
     AU = (Msun, pc, Myr) convention)::
 
-        model_name, status, end_reason, exit_code, raw_reason,
+        model_name, outcome, detail, exit_code,
         t_now_myr, R2_pc, shell_nMax_cm3, shell_v_kms,
         mCloud_msun, nCore_cm3, rCloud_pc, rCore_pc, alpha, nISM_cm3
+
+    Pre-fix runs that wrote ``Status``/``End Reason``/``Raw Reason`` lines are
+    tolerated: those values are accepted as fallbacks for ``outcome``/``detail``
+    when the new keys are absent.
     """
     out: dict[str, Any] = {}
 
     # Map "Key" → (out_key, parser) — parser pulls the value past the colon.
     flat = {
         "Model":      ("model_name", str),
-        "Status":     ("status", str),
-        "End Reason": ("end_reason", str),
-        "Raw Reason": ("raw_reason", str),
+        "Outcome":    ("outcome", str),
+        "Detail":     ("detail", str),
         "Exit Code":  ("exit_code", _safe_int),
+    }
+    # Legacy keys retained for back-compat reading of pre-fix runs.
+    legacy = {
+        "Status":     ("_legacy_status", str),
+        "End Reason": ("_legacy_end_reason", str),
+        "Raw Reason": ("_legacy_raw_reason", str),
     }
     # Final-state numeric fields with units stripped from the value
     numeric_units = {
@@ -195,6 +204,10 @@ def _parse_simulation_end(text: str) -> dict[str, Any]:
             out_key, conv = flat[key]
             out[out_key] = conv(value) if value else None
             continue
+        if key in legacy:
+            out_key, conv = legacy[key]
+            out[out_key] = conv(value) if value else None
+            continue
         if key in numeric_units:
             out_key, _unit = numeric_units[key]
             # value is "<number> <unit>" — take the first whitespace-split token
@@ -203,6 +216,19 @@ def _parse_simulation_end(text: str) -> dict[str, Any]:
                 out[out_key] = float(tok)
             except (ValueError, IndexError):
                 out[out_key] = None
+
+    # Back-compat: derive new fields from legacy ones when new keys are absent.
+    if out.get("detail") is None and out.get("_legacy_raw_reason") is not None:
+        out["detail"] = out["_legacy_raw_reason"]
+    if out.get("outcome") is None:
+        # Old "Status: SUCCESS/FAILED/ERROR" maps to a coarse outcome bucket;
+        # callers should prefer exit_code for fine-grained gating.
+        legacy_status = out.get("_legacy_status")
+        if legacy_status == "SUCCESS":
+            out["outcome"] = "legacy_success"
+        elif legacy_status is not None:
+            out["outcome"] = "legacy_error"
+
     return out
 
 

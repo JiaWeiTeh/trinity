@@ -65,7 +65,7 @@ import src.bubble_structure.get_bubbleParams as get_bubbleParams
 import src._functions.unit_conversions as cvt
 import src.cooling.non_CIE.read_cloudy as non_CIE
 import src._functions.operations as operations
-from src.sb99.update_feedback import get_currentSB99feedback
+from src.sb99.update_feedback import get_current_sps_feedback
 from src._input.dictionary import updateDict
 
 # Import pure/modified functions
@@ -94,6 +94,7 @@ from src.phase_general.phase_events import (
     check_event_termination,
     apply_event_result,
 )
+from src._output.simulation_end import SimulationEndCode
 
 logger = logging.getLogger(__name__)
 
@@ -521,6 +522,7 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
                 f"Reached {nSnap_rCloud} segment(s) past rCloud "
                 f"(stop_at_rCloud_nSnap)"
             )
+            params['SimulationEndCode'].value = SimulationEndCode.RCLOUD_BOUNDARY.code
             params['EndSimulationDirectly'].value = True
             break
 
@@ -550,7 +552,7 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         # ---------------------------------------------------------------------
         # Get feedback
         # ---------------------------------------------------------------------
-        feedback = get_currentSB99feedback(t_now, params)
+        feedback = get_current_sps_feedback(t_now, params)
         updateDict(params, feedback)
 
         # ---------------------------------------------------------------------
@@ -755,6 +757,7 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         if tmax is not None and t_now >= tmax:
             termination_reason = "reached_tmax"
             params['SimulationEndReason'].value = 'Stopping time reached'
+            params['SimulationEndCode'].value = SimulationEndCode.STOPPING_TIME.code
             params['EndSimulationDirectly'].value = True
             logger.info(f"Simulation reached stop_t={tmax} Myr successfully")
             break
@@ -911,7 +914,7 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         # Re-fetch feedback at post-ODE time for the termination check.
         # Lgain must reflect the current Lmech_total at the new t_now,
         # especially across SN turn-on boundaries.
-        feedback_post = get_currentSB99feedback(t_now, params)
+        feedback_post = get_current_sps_feedback(t_now, params)
         Lgain = feedback_post.Lmech_total
 
         # Lloss from pre-ODE bubble properties (cannot cheaply recompute
@@ -948,6 +951,7 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         if tmax is not None and t_now > tmax:
             termination_reason = "reached_tmax"
             params['SimulationEndReason'].value = 'Stopping time reached'
+            params['SimulationEndCode'].value = SimulationEndCode.STOPPING_TIME.code
             params['EndSimulationDirectly'].value = True
             break
 
@@ -957,6 +961,7 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
             if R2 < coll_r:
                 termination_reason = "small_radius"
                 params['SimulationEndReason'].value = 'Small radius reached'
+                params['SimulationEndCode'].value = SimulationEndCode.SHELL_COLLAPSED.code
                 params['EndSimulationDirectly'].value = True
                 break
 
@@ -965,6 +970,7 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         if stop_r is not None and R2 > stop_r:
             termination_reason = "large_radius"
             params['SimulationEndReason'].value = 'Large radius reached'
+            params['SimulationEndCode'].value = SimulationEndCode.LARGE_RADIUS.code
             params['EndSimulationDirectly'].value = True
             break
 
@@ -992,7 +998,7 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
     # next phase's correct first snapshot via the duplicate guard.
     # =========================================================================
     try:
-        feedback_final = get_currentSB99feedback(t_now, params)
+        feedback_final = get_current_sps_feedback(t_now, params)
         updateDict(params, feedback_final)
         gamma_adia = params['gamma_adia'].value
         R1_f, Pb_f = compute_R1_Pb(R2, Eb, feedback_final.Lmech_total,

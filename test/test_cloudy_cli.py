@@ -266,16 +266,20 @@ def test_e2e_all_writes_manifest_and_all_decks(tmp_path):
 
 
 def test_e2e_failed_status_requires_force(tmp_path):
-    """If simulationEnd Status != SUCCESS, refuse without --force."""
-    # Synthesise a copy of mockFullrun with FAILED status
+    """If the simulationEnd exit code is outside the clean range, refuse without --force."""
+    # Synthesise a copy of mockFullrun with a non-clean exit code
     work = tmp_path / "failed_run"
     work.mkdir()
     for src in MOCK_FULLRUN.iterdir():
         if src.is_file():
             (work / src.name).write_bytes(src.read_bytes())
-    # Patch the status line
+    # Patch the outcome lines to a numerical-error code (out of 0-9 range)
     end_path = work / "simulationEnd.txt"
-    end_text = end_path.read_text().replace("Status: SUCCESS", "Status: FAILED")
+    end_text = (
+        end_path.read_text()
+        .replace("Outcome: stopping_time", "Outcome: error_solver")
+        .replace("Exit Code: 1", "Exit Code: 22")
+    )
     end_path.write_text(end_text)
 
     out_dir = tmp_path / "out"

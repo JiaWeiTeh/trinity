@@ -59,12 +59,25 @@ from src._plots import paper_feedback as _pf
 
 
 # ---------------------------------------------------------------------------
+# Configurable knobs
+# ---------------------------------------------------------------------------
+# Whether to overlay the wind-termination-shock radius R_ts and the
+# outer shell radius R_sh alongside R_b on the top panel.  Set to
+# False to render the minimal two-line R_b + v_sh layout.
+SHOW_RADIUS_BOUNDARIES = True
+
+
+# ---------------------------------------------------------------------------
 # Colour assignments
 # ---------------------------------------------------------------------------
-# Panel (a): both R_b and v_sh are drawn black; the line style
-# (solid vs dashed) plus an in-panel Line2D legend distinguishes
-# them.
+# Panel (a): radius curves are rendered black; the velocity curve
+# is drawn mid grey so it stays distinguishable from the radii
+# even though it lives on a separate (twin) axis.  Axis labels
+# and tick labels for both axes stay default-black; only the
+# velocity *line* is grey.  An in-panel Line2D legend ties the
+# line styles to the labels.
 _C_TOP = C_BLACK
+_C_VEL = "0.5"   # matplotlib mid grey
 
 # Panel (c) sequential purple ramp (darkest = gas absorption)
 _SHADE_GAS    = "#6c4a78"
@@ -136,26 +149,31 @@ def load_run(data_path):
     if len(output) == 0:
         raise ValueError(f"No snapshots found in {data_path}")
 
-    t     = _to_float_array(output.get("t_now", as_array=False))
-    phase = np.asarray(output.get("current_phase", as_array=False))
-    R2    = _to_float_array(output.get("R2", as_array=False))         # [pc]
-    v2_au = _to_float_array(output.get("v2", as_array=False))         # [pc/Myr]
-    fAbs  = _to_float_array(output.get("shell_fAbsorbedIon",  as_array=False))
-    fDust = _to_float_array(output.get("shell_fIonisedDust",  as_array=False))
+    t      = _to_float_array(output.get("t_now",  as_array=False))
+    phase  = np.asarray(output.get("current_phase", as_array=False))
+    R2     = _to_float_array(output.get("R2",     as_array=False))     # [pc]
+    R1     = _to_float_array(output.get("R1",     as_array=False))     # [pc]
+    rShell = _to_float_array(output.get("rShell", as_array=False))     # [pc]
+    v2_au  = _to_float_array(output.get("v2",     as_array=False))     # [pc/Myr]
+    fAbs   = _to_float_array(output.get("shell_fAbsorbedIon", as_array=False))
+    fDust  = _to_float_array(output.get("shell_fIonisedDust", as_array=False))
 
     # Restore monotonic time ordering if the reader yielded snapshots
     # out of order — same guard as paper_LgainLloss.py.
     if np.any(np.diff(t) < 0):
         order = np.argsort(t)
-        t     = t[order]
-        phase = phase[order]
-        R2    = R2[order]
-        v2_au = v2_au[order]
+        t      = t[order]
+        phase  = phase[order]
+        R2     = R2[order]
+        R1     = R1[order]
+        rShell = rShell[order]
+        v2_au  = v2_au[order]
         fAbs, fDust = fAbs[order], fDust[order]
 
     return dict(
         t=t, phase=phase,
-        R2=R2, v_kms=v2_au * cvt.v_au2kms,
+        R2=R2, R1=R1, rShell=rShell,
+        v_kms=v2_au * cvt.v_au2kms,
         fAbs=fAbs, fDust=fDust,
     )
 
@@ -346,12 +364,104 @@ def _ionising_components(fAbs, fDust):
 
 
 # ---------------------------------------------------------------------------
-# Main
+# Bundle assembly (folder/path → in-memory dict consumed by the drawer)
 # ---------------------------------------------------------------------------
-def plot_from_path(data_input, output_dir=None):
+def _build_bundle_from_path(data_input):
+    """Load everything the figure consumes for one fiducial run.
+
+    Combines ``load_run`` (panels a/c) with ``paper_feedback.load_run``
+    (panel b base/overlay arrays) into a single dict so the drawer can
+    be source-agnostic.
+    """
     data_path = Path(resolve_data_input(data_input))
     run = load_run(data_path)
+    fb_t, _fb_R2, fb_phase, fb_base, fb_overlay, _fb_rc, _fb_ic, _fb_pr = (
+        _pf.load_run(data_path)
+    )
+    return dict(
+        run_id=data_path.parent.name,
+        t=run["t"], phase=run["phase"],
+        R2=run["R2"], R1=run["R1"], rShell=run["rShell"],
+        v_kms=run["v_kms"],
+        fAbs=run["fAbs"], fDust=run["fDust"],
+        fb_t=np.asarray(fb_t, dtype=float),
+        fb_phase=np.asarray(fb_phase),
+        fb_base=np.asarray(fb_base, dtype=float),
+        fb_overlay=np.asarray(fb_overlay, dtype=float),
+    )
 
+
+# ---------------------------------------------------------------------------
+# .npz bundle: write, read, plot
+# ---------------------------------------------------------------------------
+# Bundle layout (one fiducial run per file)
+#   run_id      : scalar string identifying the source run
+#   t           : float array — panels (a)+(c) time axis
+#   phase       : U32 array — phase tag per snapshot
+#   R2, R1      : float arrays — bubble + termination-shock radius [pc]
+#   rShell      : float array — outer shell radius [pc]
+#   v_kms       : float array — shell velocity [km/s]
+#   fAbs, fDust : float arrays — ionising-photon absorbed / dust fractions
+#   fb_t        : float array — panel (b) time axis (= t modulo reorder)
+#   fb_phase    : U32 array — panel (b) phase tags
+#   fb_base     : float (4, N) — base stack (F_grav, F_drive, F_rad, F_ext)
+#   fb_overlay  : float (3, N) — overlays (F_HII, F_wind, F_SN)
+def export_teaser_npz(data_input, out_path):
+    """Reduce one fiducial run to a single self-contained ``.npz`` bundle.
+
+    Stores only what the three panels consume; the original run folder
+    can be discarded for paper reproducibility.
+    """
+    bundle = _build_bundle_from_path(data_input)
+    out_path = Path(out_path)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+
+    payload = dict(
+        run_id=str(bundle["run_id"]),
+        t=np.asarray(bundle["t"], dtype=float),
+        phase=np.asarray(bundle["phase"], dtype="U32"),
+        R2=np.asarray(bundle["R2"], dtype=float),
+        R1=np.asarray(bundle["R1"], dtype=float),
+        rShell=np.asarray(bundle["rShell"], dtype=float),
+        v_kms=np.asarray(bundle["v_kms"], dtype=float),
+        fAbs=np.asarray(bundle["fAbs"], dtype=float),
+        fDust=np.asarray(bundle["fDust"], dtype=float),
+        fb_t=np.asarray(bundle["fb_t"], dtype=float),
+        fb_phase=np.asarray(bundle["fb_phase"], dtype="U32"),
+        fb_base=np.asarray(bundle["fb_base"], dtype=float),
+        fb_overlay=np.asarray(bundle["fb_overlay"], dtype=float),
+    )
+    np.savez(out_path, **payload)
+    print(f"Exported: {out_path}")
+    return out_path
+
+
+def _build_bundle_from_npz(npz_path):
+    npz_path = Path(npz_path)
+    with np.load(npz_path, allow_pickle=False) as z:
+        run_id = str(z["run_id"]) if "run_id" in z.files else npz_path.stem
+        return dict(
+            run_id=run_id,
+            t=z["t"].astype(float),
+            phase=np.asarray(z["phase"]),
+            R2=z["R2"].astype(float),
+            R1=z["R1"].astype(float),
+            rShell=z["rShell"].astype(float),
+            v_kms=z["v_kms"].astype(float),
+            fAbs=z["fAbs"].astype(float),
+            fDust=z["fDust"].astype(float),
+            fb_t=z["fb_t"].astype(float),
+            fb_phase=np.asarray(z["fb_phase"]),
+            fb_base=z["fb_base"].astype(float),
+            fb_overlay=z["fb_overlay"].astype(float),
+        )
+
+
+# ---------------------------------------------------------------------------
+# Main
+# ---------------------------------------------------------------------------
+def _draw_teaser(bundle, output_dir=None):
+    """Render the three-panel teaser figure from a preloaded bundle."""
     fig, axes = plt.subplots(
         nrows=3, ncols=1, sharex=True,
         figsize=(4.0, 6.5),
@@ -359,21 +469,38 @@ def plot_from_path(data_input, output_dir=None):
     )
     ax_a, ax_b, ax_c = axes
 
-    # ---- panel (a) — R_b solid black (left), v_sh dashed black (right) -----
-    # Both curves rendered in black; a Line2D legend in the upper-
+    # ---- panel (a) — R_b solid black (left), v_b dashed black (right) -----
+    # All curves rendered in black; a Line2D legend in the upper-
     # left disambiguates them (same idiom as paper_densityProfile).
-    ax_a.plot(run["t"], run["R2"], color=_C_TOP, lw=1.5, ls="-")
-    ax_a.set_ylabel(r"$R_{\rm b}\ [{\rm pc}]$")
+    # When SHOW_RADIUS_BOUNDARIES is True, R_ts (wind-termination
+    # shock) and R_sh (outer shell edge) appear as thinner auxiliary
+    # lines on the same left axis, so the panel resolves the
+    # bubble's radial structure (R_ts < R_b < R_sh) rather than R_b
+    # alone.
+    ax_a.plot(bundle["t"], bundle["R2"], color=_C_TOP, lw=1.5, ls="-")
+    if SHOW_RADIUS_BOUNDARIES:
+        ax_a.plot(bundle["t"], bundle["R1"],     color=_C_TOP, lw=1.0, ls=":")
+        ax_a.plot(bundle["t"], bundle["rShell"], color=_C_TOP, lw=1.0, ls="-.")
+    ax_a.set_ylabel(r"$R\ [{\rm pc}]$" if SHOW_RADIUS_BOUNDARIES
+                    else r"$R_{\rm b}\ [{\rm pc}]$")
 
     ax_av = ax_a.twinx()
-    ax_av.plot(run["t"], run["v_kms"], color=_C_TOP, lw=1.5, ls="--")
+    ax_av.plot(bundle["t"], bundle["v_kms"], color=_C_VEL, lw=1.5, ls="--")
     ax_av.set_yscale("log")
-    ax_av.set_ylabel(r"$v_{\rm sh}\ [{\rm km\ s^{-1}}]$")
+    ax_av.set_ylabel(r"$v_{\rm b}\ [{\rm km\ s^{-1}}]$")
 
     top_handles = [
         Line2D([0], [0], color=_C_TOP, ls="-",  lw=1.5, label=r"$R_{\rm b}$"),
-        Line2D([0], [0], color=_C_TOP, ls="--", lw=1.5, label=r"$v_{\rm sh}$"),
     ]
+    if SHOW_RADIUS_BOUNDARIES:
+        top_handles.append(
+            Line2D([0], [0], color=_C_TOP, ls=":",  lw=1.0,
+                   label=r"$R_{\rm ts}$"))
+        top_handles.append(
+            Line2D([0], [0], color=_C_TOP, ls="-.", lw=1.0,
+                   label=r"$R_{\rm sh}$"))
+    top_handles.append(
+        Line2D([0], [0], color=_C_VEL, ls="--", lw=1.5, label=r"$v_{\rm b}$"))
     leg_a = ax_a.legend(
         handles=top_handles, loc="upper left", frameon=False,
         fontsize=10, handlelength=1.6, labelspacing=0.3,
@@ -381,14 +508,10 @@ def plot_from_path(data_input, output_dir=None):
     leg_a.set_zorder(20)
 
     # ---- panel (b) — feedback decomposition (local renderer) --------------
-    # paper_feedback.load_run is reused to extract base / overlay
-    # arrays; the panel itself is drawn locally so we control the
-    # transition-phase logic (no ``non_bubble`` gate; HII suppressed
-    # in transition; consistent dotted slice outlines).
-    fb_t, _fb_R2, fb_phase, fb_base, fb_overlay, _fb_rc, _fb_ic, _fb_pr = (
-        _pf.load_run(data_path)
+    _plot_feedback_panel(
+        ax_b, bundle["fb_t"], bundle["fb_phase"],
+        bundle["fb_base"], bundle["fb_overlay"],
     )
-    _plot_feedback_panel(ax_b, fb_t, fb_phase, fb_base, fb_overlay)
     ax_b.set_ylabel(r"$F/F_{\rm tot}$")
 
     # The fourth base band ("F_ext") plots the snapshot field
@@ -422,9 +545,9 @@ def plot_from_path(data_input, output_dir=None):
     leg_b.set_zorder(20)
 
     # ---- panel (c) — ionising-photon budget --------------------------------
-    gas, dust, escape = _ionising_components(run["fAbs"], run["fDust"])
+    gas, dust, escape = _ionising_components(bundle["fAbs"], bundle["fDust"])
     ax_c.stackplot(
-        run["t"], gas, dust, escape,
+        bundle["t"], gas, dust, escape,
         colors=[_SHADE_GAS, _SHADE_DUST, _SHADE_ESCAPE],
         labels=[
             r"$f_{\rm abs}^{\rm gas}$",
@@ -449,16 +572,15 @@ def plot_from_path(data_input, output_dir=None):
     for ax in axes[:-1]:
         ax.tick_params(labelbottom=False)
     ax_c.set_xlabel(r"$t\ [{\rm Myr}]$")
-    finite_t = run["t"][np.isfinite(run["t"])]
+    finite_t = bundle["t"][np.isfinite(bundle["t"])]
     if finite_t.size > 0:
         ax_c.set_xlim(finite_t.min(), finite_t.max())
 
-    # ---- explicit y-tick placements (avoid boundary-edge labels) -----------
-    # Top panel: R_b every 50 pc, skipping 0 (the panel-bottom border)
-    # and the axis cap.  v_sh stays on the default log locator.
-    ax_a.set_yticks([50, 100, 150, 200, 250])
-    # Middle and bottom panels: identical fraction ticks so the eye reads
-    # them as a paired stack.
+    # ---- explicit y-tick placements for the fraction panels ----------------
+    # Top panel: leave matplotlib's default locator alone — R varies
+    # by run, so a hardcoded tick set is more harm than help.
+    # Middle and bottom panels: identical fraction ticks so the eye
+    # reads them as a paired stack.
     ax_b.set_yticks([0.2, 0.4, 0.6, 0.8, 1.0])
     ax_c.set_yticks([0.2, 0.4, 0.6, 0.8, 1.0])
 
@@ -466,8 +588,8 @@ def plot_from_path(data_input, output_dir=None):
     # Boundary lines on the top two panels only — panel (c)'s dark
     # stack fill swallows them anyway, and the panel-(a) tints alone
     # don't make the transition obvious enough.
-    _draw_phase_boundaries([ax_a, ax_av, ax_b], run["t"], run["phase"])
-    _annotate_phase_labels(ax_a, run["t"], run["phase"])
+    _draw_phase_boundaries([ax_a, ax_av, ax_b], bundle["t"], bundle["phase"])
+    _annotate_phase_labels(ax_a, bundle["t"], bundle["phase"])
 
     # ---- save --------------------------------------------------------------
     out_dir = Path(output_dir) if output_dir else FIG_DIR
@@ -476,6 +598,16 @@ def plot_from_path(data_input, output_dir=None):
     fig.savefig(out_pdf, bbox_inches="tight")
     print(f"Saved: {out_pdf}")
     plt.close(fig)
+
+
+def plot_from_path(data_input, output_dir=None):
+    """Load a fiducial run from a folder/path and render the teaser figure."""
+    _draw_teaser(_build_bundle_from_path(data_input), output_dir=output_dir)
+
+
+def plot_teaser_from_npz(npz_path, output_dir=None):
+    """Reproduce the teaser figure straight from a published ``.npz`` bundle."""
+    _draw_teaser(_build_bundle_from_npz(npz_path), output_dir=output_dir)
 
 
 def plot_grid(folder_path, output_dir=None,
@@ -488,11 +620,40 @@ def plot_grid(folder_path, output_dir=None,
 
 
 if __name__ == "__main__":
-    from src._plots.cli import dispatch
-    dispatch(
-        script_name="paper_teaser.py",
-        description="Paper I teaser figure: bubble dynamics, feedback "
-                    "decomposition, and ionising-photon budget.",
-        plot_from_path_fn=plot_from_path,
-        plot_grid_fn=plot_grid,
+    from src._plots.cli import build_parser, dispatch
+
+    parser = build_parser(
+        "paper_teaser.py",
+        "Paper I teaser figure: bubble dynamics, feedback "
+        "decomposition, and ionising-photon budget.",
     )
+    parser.add_argument(
+        "--export", default=None,
+        help="Export the input run to this .npz bundle and exit (no plot). "
+             "The bundle is self-contained for paper reproducibility — "
+             "the original run folder can be discarded. "
+             "Recommended location: paper/data/.",
+    )
+    parser.add_argument(
+        "--from-npz", default=None,
+        help="Reproduce the teaser figure from a .npz bundle written by "
+             "--export (skips folder loading entirely).",
+    )
+
+    # The teaser only ever plots one run; --export and --from-npz are the
+    # two single-source shortcuts. Bypass the shared dispatch when either
+    # is set; otherwise fall through to normal single-run plotting.
+    args, _ = parser.parse_known_args()
+    if args.export:
+        if not (args.data or args.folder):
+            parser.error("--export needs a run path "
+                         "(positional 'data' or --folder).")
+        export_teaser_npz(args.data or args.folder, args.export)
+    elif args.from_npz:
+        plot_teaser_from_npz(args.from_npz, output_dir=args.output_dir)
+    else:
+        dispatch(
+            parser=parser,
+            plot_from_path_fn=plot_from_path,
+            plot_grid_fn=plot_grid,
+        )

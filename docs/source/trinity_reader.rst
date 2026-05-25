@@ -28,7 +28,7 @@ classes.
 
 .. seealso::
 
-   - :ref:`sec-running` — *Output Data Model* section — describes the
+   - :ref:`sec-running` — *Snapshot data model* section — describes the
      on-disk JSONL layout and snapshot key categories.
    - :ref:`sec-architecture` — *Snapshot Persistence* section — covers
      the in-memory ``DescribedDict`` / ``DescribedItem`` objects, the
@@ -336,11 +336,10 @@ Force Balance Analysis
 File Format Notes
 -----------------
 
-For the full specification of TRINITY's output — how ``DescribedDict`` maps
-keys to ``DescribedItem`` objects, what each snapshot contains, how the
-save/flush pipeline writes ``dictionary.jsonl``, and how to reload snapshots
-from Python — see :ref:`sec-running` (*Output Data Model*). This section
-covers only details that matter for reader users.
+The on-disk JSONL layout and snapshot key categories are described in
+:ref:`sec-running` (*Snapshot data model*); the in-memory ``DescribedDict``
+and the buffer→flush pipeline that produces them are described in
+:ref:`sec-architecture` (*Snapshot Persistence*).
 
 **Legacy format**: the reader automatically handles both ``.jsonl`` (current,
 one JSON object per line) and ``.json`` (legacy, pre-2026, a single JSON
@@ -351,65 +350,7 @@ timestamp (``t_now``). Snapshots are saved before ODE integration to ensure
 consistency across keys, so ``output.get_at_time(t)`` never mixes pre- and
 post-step state.
 
-**Profile Array Simplification**: A handful of long 1-D profile arrays are
-downsampled before serialisation to keep snapshot size manageable.  Each
-simplified array is paired with its own abscissa:
-
-* ``log_bubble_T_arr``     + ``bubble_T_arr_r_arr``     (:math:`\log_{10} T`)
-* ``log_bubble_n_arr``     + ``bubble_n_arr_r_arr``     (:math:`\log_{10} n`)
-* ``log_bubble_dTdr_arr``  + ``bubble_dTdr_arr_r_arr``  (:math:`\log_{10} |dT/dr|`)
-* ``bubble_v_arr``         + ``bubble_v_arr_r_arr``     (velocity, linear)
-* ``shell_grav_force_m``   + ``shell_grav_r``           (:math:`\log_{10} |F_{\rm grav}|`)
-* ``log_shell_n_arr``      + ``shell_r_arr``            (:math:`\log_{10} n_{\rm shell}`)
-
-The simplifier (``src/_functions/simplify.py``) combines three feature
-detectors with a persistence filter and an R²-budgeted thinning step.
-Let :math:`\{(x_i, y_i)\}_{i=0}^{n-1}` denote the input curve.
-
-*Menger curvature* is computed for every interior triplet
-:math:`(P_{i-1}, P_i, P_{i+1})`:
-
-.. math::
-
-    \kappa_i = \frac{2\,|(P_i - P_{i-1}) \times (P_{i+1} - P_i)|}
-                    {\|P_i - P_{i-1}\|\,\|P_{i+1} - P_i\|\,\|P_{i+1} - P_{i-1}\|},
-
-which is the reciprocal of the circumradius of the triplet.  Points with
-:math:`\kappa_i > \texttt{grad\_inc}` mark sharp bends.  Sign-change
-detection (:math:`\mathrm{sign}(y'_{i+1}) \neq \mathrm{sign}(y'_i)`) adds
-every local extremum.
-
-A topological-persistence filter then marks any extremum whose prominence
-satisfies
-
-.. math::
-
-    \mathrm{prom}(i) \;\geq\; 0.05 \, \bigl(\max y - \min y\bigr)
-
-as *mandatory* — such points are present at every output budget, so
-prominent dips/spikes never flicker in and out across snapshots.
-
-Finally, R²-based thinning picks the smallest subset :math:`S` such that
-the linear interpolant :math:`\hat y_S` satisfies
-
-.. math::
-
-    R^2(S) \;=\; 1 - \frac{\sum_i (y_i - \hat y_S(x_i))^2}
-                          {\sum_i (y_i - \bar y)^2}
-           \;\geq\; 0.99
-
-(the ``r2_target`` argument; default :math:`0.99`).  Candidate subsets
-are enumerated in hierarchical-bisection order so that
-:math:`S_{N-1} \subset S_N` for every budget :math:`N`, making the output
-stable under small changes in ``nmin``.
-
-To recover a profile, linearly interpolate between the paired
-``*_r_arr`` abscissa and the (possibly log-space) values.
-
-
-See Also
---------
-
-- :ref:`sec-running` for simulation execution
-- :ref:`sec-visualization` for plotting scripts that use this API
-- :ref:`sec-parameters` for parameter definitions
+**Profile arrays**: a handful of long 1-D profile arrays are downsampled
+before serialisation to keep snapshots manageable. See
+:ref:`sec-architecture` (*Profile Array Downsampling*) for the list of
+affected keys and the downsampling algorithm.

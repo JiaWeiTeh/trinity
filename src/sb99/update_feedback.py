@@ -5,7 +5,15 @@ Created on Tue Jun 17 23:14:53 2025
 
 @author: Jia Wei Teh
 
-Update SB99 feedback values across dictionary
+Evaluate SPS feedback values at a given time and update the params dictionary.
+
+The function name and dataclass were renamed in PR-3 of the SB99 -> SPS
+refactor (see analysis/sb99-refactor-audit.md). Back-compat aliases
+`SB99Feedback = SPSFeedback` and `get_currentSB99feedback =
+get_current_sps_feedback` are kept at the bottom of this module for one
+release; out-of-tree callers can keep using the old names. PR-4 may drop
+the aliases (audit §14 question 2: legacy is permanent, but transitional
+symbol aliases are bounded).
 """
 
 from dataclasses import dataclass
@@ -18,23 +26,23 @@ logger = logging.getLogger(__name__)
 
 
 @dataclass
-class SB99Feedback:
+class SPSFeedback:
     """
-    Container for SB99 stellar feedback parameters.
+    Container for SPS stellar feedback parameters at a single time.
 
     Supports both attribute access and unpacking for backward compatibility:
         # New style (recommended):
-        feedback = get_currentSB99feedback(t, params)
+        feedback = get_current_sps_feedback(t, params)
         print(feedback.Lbol, feedback.Qi)
 
         # Old style (still works):
-        (t, Qi, Li, Ln, Lbol, ...) = get_currentSB99feedback(t, params)
+        (t, Qi, Li, Ln, Lbol, ...) = get_current_sps_feedback(t, params)
 
     Attributes
     ----------
     All luminosities are in code units [Msun·pc²/Myr³] (multiply by
-    INV_CONV.L_au2cgs to get erg/s); SB99 raw cgs values are converted
-    to AU at read time in ``read_SB99.py``.
+    INV_CONV.L_au2cgs to get erg/s); raw cgs values are converted to AU
+    at load time in ``read_SB99.py``.
 
     t : float
         Current time [Myr]
@@ -95,27 +103,29 @@ class SB99Feedback:
         return 13
 
 
-def get_currentSB99feedback(t, params) -> SB99Feedback:
+def get_current_sps_feedback(t, params) -> SPSFeedback:
     """
-    Get stellar feedback parameters at time t from SB99 interpolation.
+    Get stellar feedback parameters at time t from the SPS interpolators.
 
-    This function interpolates Starburst99 data at the given time and updates
-    the params dictionary with current feedback values. Now uses properly
-    separated wind and SN components with consistent naming.
+    Interpolates the SPS feedback time-series at the given time and returns
+    an SPSFeedback dataclass. The interpolators are built by
+    `read_SB99.get_interpolation` from data loaded via `read_SB99.read_SB99`;
+    both branches (legacy SB99 positional and user-defined sps_path) feed
+    the same `params['sps_f']` dict.
 
     Parameters
     ----------
     t : float
         Current time [Myr]
     params : DescribedDict
-        Global parameters dictionary containing SB99f interpolation functions
+        Global parameters dictionary containing the `sps_f` interpolators.
 
     Returns
     -------
-    SB99Feedback
+    SPSFeedback
         Dataclass containing all feedback parameters. Supports both:
         - Attribute access: feedback.Lbol, feedback.Qi, etc.
-        - Unpacking: (t, Qi, Li, ...) = get_currentSB99feedback(t, params)
+        - Unpacking: (t, Qi, Li, ...) = get_current_sps_feedback(t, params)
 
         Fields (luminosities in AU [Msun·pc²/Myr³]; convert to erg/s
         with INV_CONV.L_au2cgs):
@@ -144,51 +154,46 @@ def get_currentSB99feedback(t, params) -> SB99Feedback:
     - Wind components: _W suffix (Lmech_W, pdot_W, fLmech_W, fpdot_W)
     - SN components: _SN suffix (Lmech_SN, pdot_SN, fLmech_SN, fpdot_SN)
     - Total components: _total suffix (Lmech_total, pdot_total)
-
-    Side effects: Updates params dictionary with all feedback parameters including:
-    - Raw SB99 values: Qi, Li, Ln, Lbol, Lmech_total (=Lmech_W)
-    - Derived values: v_mech_total (wind velocity), pdot_total (=pdot_total), pdotdot_total (time derivative)
-    - Separated components: F_ram_wind (=pdot_W), F_ram_SN (=pdot_SN)
     """
 
-    SB99f = params['SB99f'].value
-    
-    t_min = float(SB99f['fQi'].x[0])
-    t_max = float(SB99f['fQi'].x[-1])
+    sps_f = params['sps_f'].value
+
+    t_min = float(sps_f['fQi'].x[0])
+    t_max = float(sps_f['fQi'].x[-1])
 
     if not (t_min <= t <= t_max):
         raise ValueError(
-            f"Time t={t:.6f} outside SB99 range [{t_min:.6f}, {t_max:.6f}] Myr"
+            f"Time t={t:.6f} outside SPS range [{t_min:.6f}, {t_max:.6f}] Myr"
         )
 
-    # Interpolate all raw SB99 values. The interpolators were built in
+    # Interpolate all raw SPS values. The interpolators were built in
     # read_SB99.py from arrays already converted to code units (AU);
     # luminosities here are [Msun*pc^2/Myr^3], not erg/s.
-    Qi = SB99f['fQi'](t)[()]                   # Ionizing photon rate [s⁻¹]
-    Li = SB99f['fLi'](t)[()]                   # Ionizing luminosity [Msun*pc^2/Myr^3]
-    Ln = SB99f['fLn'](t)[()]                   # Non-ionizing luminosity [Msun*pc^2/Myr^3]
-    Lbol = SB99f['fLbol'](t)[()]               # Bolometric luminosity [Msun*pc^2/Myr^3]
+    Qi = sps_f['fQi'](t)[()]                    # Ionizing photon rate [s⁻¹]
+    Li = sps_f['fLi'](t)[()]                    # Ionizing luminosity
+    Ln = sps_f['fLn'](t)[()]                    # Non-ionizing luminosity
+    Lbol = sps_f['fLbol'](t)[()]                # Bolometric luminosity
 
-    Lmech_W = SB99f['fLmech_W'](t)[()]         # Wind mechanical luminosity [Msun*pc^2/Myr^3]
-    Lmech_SN = SB99f['fLmech_SN'](t)[()]       # SN mechanical luminosity [Msun*pc^2/Myr^3]
-    Lmech_total = SB99f['fLmech_total'](t)[()]  # Total mechanical luminosity [Msun*pc^2/Myr^3]
+    Lmech_W = sps_f['fLmech_W'](t)[()]          # Wind mechanical luminosity
+    Lmech_SN = sps_f['fLmech_SN'](t)[()]        # SN mechanical luminosity
+    Lmech_total = sps_f['fLmech_total'](t)[()]  # Total mechanical luminosity
 
-    pdot_W = SB99f['fpdot_W'](t)[()]           # Wind momentum rate
-    pdot_SN = SB99f['fpdot_SN'](t)[()]       # SN momentum rate
-    pdot_total = SB99f['fpdot_total'](t)[()]   # Total momentum rate (wind + SN)
+    pdot_W = sps_f['fpdot_W'](t)[()]            # Wind momentum rate
+    pdot_SN = sps_f['fpdot_SN'](t)[()]          # SN momentum rate
+    pdot_total = sps_f['fpdot_total'](t)[()]    # Total momentum rate
 
     # =========================================================================
-    # DERIVED VALUES (for backward compatibility with params dictionary)
+    # DERIVED VALUES
     # =========================================================================
     # Effective mechanical velocity: v = 2L/pdot gives P_ram = pdot_total/(4*pi*r^2)
     v_mech_total = (2. * Lmech_total / pdot_total)[()]
 
     # Numerical derivative of total momentum rate for time evolution
     dt = 1e-9  # Myr (small timestep for derivative)
-    pdotdot_total = (SB99f['fpdot_total'](t + dt)[()] - SB99f['fpdot_total'](t - dt)[()]) / (2.0 * dt)
+    pdotdot_total = (sps_f['fpdot_total'](t + dt)[()] - sps_f['fpdot_total'](t - dt)[()]) / (2.0 * dt)
 
-    # Return SB99Feedback dataclass (supports both attribute access and unpacking)
-    return SB99Feedback(
+    # Return SPSFeedback dataclass (supports both attribute access and unpacking)
+    return SPSFeedback(
         t=t,
         Qi=Qi,
         Li=Li,
@@ -204,3 +209,13 @@ def get_currentSB99feedback(t, params) -> SB99Feedback:
         v_mech_total=v_mech_total,
     )
 
+
+# -------------------------------------------------------------------------
+# Back-compat aliases (PR-3 of SB99 -> SPS refactor).
+#
+# Out-of-tree code that still imports the old names continues to work
+# transparently. PR-4 may drop these once we're confident no caller
+# depends on them. See analysis/sb99-refactor-audit.md §10 PR-3 / §10 PR-4.
+# -------------------------------------------------------------------------
+SB99Feedback = SPSFeedback
+get_currentSB99feedback = get_current_sps_feedback

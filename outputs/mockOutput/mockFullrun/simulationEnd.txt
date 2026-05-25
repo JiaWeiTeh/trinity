@@ -7,10 +7,9 @@ Model: 4e3_sfe001_n5e2_PL0
 --------------------------------------------------
 TERMINATION
 --------------------------------------------------
-End Reason: Maximum simulation time reached
+Outcome: stopping_time
+Detail: Stopping time reached
 Exit Code: 1
-Status: SUCCESS
-Raw Reason: Stopping time reached
 
 --------------------------------------------------
 FINAL STATE

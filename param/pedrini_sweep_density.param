@@ -2,18 +2,25 @@
 # Sweep Parameter File: Pedrini+2026 tau_TOT comparison — density covariance
 # ==============================================================================
 #
-# Tests whether the tau_TOT–M_* trend survives when mCloud and nCore covary
-# (Pedrini Discussion: denser clouds form denser, more massive clusters; the
-# Menon / Lahén regime where radiation pressure on dust dominates emergence).
+# Tests whether the tau_TOT–M_* trend survives when mCloud and nCore covary,
+# the Menon / Lahén regime invoked in Pedrini+2026 Discussion (denser clouds
+# host denser, more massive clusters; radiation pressure on dust dominates
+# the early dynamics).
 #
-# Each tuple keeps M_cloud / n_core ratio scaled so that R_cloud grows mildly
-# while density rises with mass. sfe fixed at 0.05.
-# expansionBeyondCloud = False (tau_TOT only).
+# Scaling: nCore proportional to mCloud, n/M held at 1e-2, factor 300 in each
+# across the sweep. Pinning n/M fixes R_cloud across all runs (about 9 pc),
+# so Weaver+77 predicts tau_TOT independent of M_cloud — i.e., a flat trend.
+# Deviation from flat would indicate physics beyond the wind-driven kernel
+# (most likely IR-trapped radiation pressure, P_rad ~ (L/c)(1 + tau_IR)).
 #
-# 4 (mCloud, nCore) tuples = 4 runs.
+# 8 (mCloud, nCore) tuples × 1 sfe = 8 runs.
+# sfe = 0.05 matches pedrini_sweep_mcloud_only.param and pedrini_sweep_larson
+# so all three n(M) scalings sit on a single SFE slice.
 #
 
-tuple(mCloud, nCore) [1e5, 1e3] [3e5, 3e3] [1e6, 1e4] [3e6, 3e4]
+tuple(mCloud, nCore) [2e5, 2e3] [5e5, 5e3] [2e6, 2e4] [5e6, 5e4] [1e7, 1e5] [3e7, 3e5]
+# tuple(mCloud, nCore) [1e5, 1e3] [2e5, 2e3] [5e5, 5e3] [1e6, 1e4] [2e6, 2e4] [5e6, 5e4] [1e7, 1e5] [3e7, 3e5]
+
 sfe    0.05
 
 # =============================================================================
@@ -28,8 +35,8 @@ densPL_alpha    0
 nISM      1
 ZCloud    1
 
-# Termination — tau_TOT only, stop at breakout
-expansionBeyondCloud    False
+# Termination — tau_TOT only, save a few snapshots past breakout
+stop_at_rCloud_nSnap    5
 allowShellDissolution   True
 stop_t_diss    1
 stop_r    None

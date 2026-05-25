@@ -1143,7 +1143,7 @@ def updateDict(dictionary: DescribedDict, keys_or_dataclass: Union[Sequence[str]
         updateDict(params, ["R2", "t_now"], [R2, t])
 
     2. Dataclass instance (extracts all fields automatically):
-        feedback = get_currentSB99feedback(t, params)
+        feedback = get_current_sps_feedback(t, params)
         updateDict(params, feedback)
 
     Parameters

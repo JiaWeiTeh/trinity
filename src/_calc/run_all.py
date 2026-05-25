@@ -71,6 +71,7 @@ SHARED_FLAGS = [
 # Boolean flags forwarded verbatim (store_true: no value argument).
 SHARED_BOOL_FLAGS = [
     "--diagnostics",
+    "--show-noPHII",
 ]
 
 
@@ -469,6 +470,12 @@ def build_parser() -> argparse.ArgumentParser:
                         help="Output directory override (default: fig/<folder>/_calc/).")
     shared.add_argument("--diagnostics", action="store_true", default=False,
                         help="Generate diagnostic plots in sub-scripts.")
+    shared.add_argument("--show-noPHII", action="store_true", default=False,
+                        dest="show_noPHII",
+                        help="Also emit a separate analysis for simulation "
+                             "folders ending in '_noPHII'. By default these "
+                             "are ignored; only '_yesPHII' (and untagged "
+                             "legacy) runs are analysed.")
 
     return parser
 
@@ -511,13 +518,18 @@ def main(argv: Optional[List[str]] = None) -> int:
         dry_run=args.dry_run,
     )
 
-    # Generate scaling-relations summary PDF (unless dry-run)
+    # Generate scaling-relations summary PDF (unless dry-run).
+    # Sub-scripts emit yesPHII outputs in ``output_dir`` and noPHII
+    # outputs in ``output_dir / "_noPHII"``; summarise each variant
+    # separately when its JSONs are present.
     if not args.dry_run:
         output_dir = Path(args.output_dir)
         fmt = args.fmt if args.fmt else "pdf"
-        if output_dir.is_dir():
-            generate_summary_pdf(output_dir, fmt=fmt)
-            generate_rejection_summary(output_dir)
+        for variant_dir in (output_dir, output_dir / "_noPHII"):
+            if variant_dir.is_dir() and any(
+                    variant_dir.glob("*_equations.json")):
+                generate_summary_pdf(variant_dir, fmt=fmt)
+                generate_rejection_summary(variant_dir)
 
     return min(n_fail, 1)   # cap at 1 for exit code
 

@@ -55,7 +55,7 @@ from dataclasses import dataclass
 
 import src._functions.unit_conversions as cvt
 import src.cloud_properties.mass_profile as mass_profile
-from src.sb99.update_feedback import get_currentSB99feedback
+from src.sb99.update_feedback import get_current_sps_feedback
 from src._input.dictionary import updateDict
 
 # Import pure/modified functions
@@ -72,6 +72,7 @@ from src.phase_general.phase_events import (
     check_event_termination,
     apply_event_result,
 )
+from src._output.simulation_end import SimulationEndCode
 
 logger = logging.getLogger(__name__)
 
@@ -401,7 +402,7 @@ def get_ODE_momentum_pure(t: float, y: np.ndarray, snapshot: MomentumODESnapshot
 
     # Use live feedback so SN turn-on events mid-segment are visible
     # (consistent with energy/implicit/transition ODEs)
-    feedback = get_currentSB99feedback(t, params)
+    feedback = get_current_sps_feedback(t, params)
     Lmech_total = feedback.Lmech_total
     v_mech_total = feedback.v_mech_total
     FABSi = snapshot.FABSi
@@ -529,6 +530,7 @@ def run_phase_momentum(params) -> MomentumPhaseResults:
                 f"Reached {nSnap_rCloud} segment(s) past rCloud "
                 f"(stop_at_rCloud_nSnap)"
             )
+            params['SimulationEndCode'].value = SimulationEndCode.RCLOUD_BOUNDARY.code
             params['EndSimulationDirectly'].value = True
             break
 
@@ -547,7 +549,7 @@ def run_phase_momentum(params) -> MomentumPhaseResults:
         # ---------------------------------------------------------------------
         # Get feedback
         # ---------------------------------------------------------------------
-        feedback = get_currentSB99feedback(t_now, params)
+        feedback = get_current_sps_feedback(t_now, params)
         updateDict(params, feedback)
 
         # Set Pb to ram pressure so shell inner-edge density
@@ -707,6 +709,7 @@ def run_phase_momentum(params) -> MomentumPhaseResults:
         if tmax is not None and t_now >= tmax:
             termination_reason = "reached_tmax"
             params['SimulationEndReason'].value = 'Stopping time reached'
+            params['SimulationEndCode'].value = SimulationEndCode.STOPPING_TIME.code
             params['EndSimulationDirectly'].value = True
             logger.info(f"Simulation reached stop_t={tmax} Myr successfully")
             break
@@ -848,6 +851,7 @@ def run_phase_momentum(params) -> MomentumPhaseResults:
         if tmax is not None and t_now > tmax:
             termination_reason = "reached_tmax"
             params['SimulationEndReason'].value = 'Stopping time reached'
+            params['SimulationEndCode'].value = SimulationEndCode.STOPPING_TIME.code
             params['EndSimulationDirectly'].value = True
             break
 
@@ -857,6 +861,7 @@ def run_phase_momentum(params) -> MomentumPhaseResults:
             if R2 < coll_r:
                 termination_reason = "small_radius"
                 params['SimulationEndReason'].value = 'Small radius reached'
+                params['SimulationEndCode'].value = SimulationEndCode.SHELL_COLLAPSED.code
                 params['EndSimulationDirectly'].value = True
                 break
 
@@ -865,6 +870,7 @@ def run_phase_momentum(params) -> MomentumPhaseResults:
         if stop_r is not None and R2 > stop_r:
             termination_reason = "large_radius"
             params['SimulationEndReason'].value = 'Large radius reached'
+            params['SimulationEndCode'].value = SimulationEndCode.LARGE_RADIUS.code
             params['EndSimulationDirectly'].value = True
             break
 
@@ -880,6 +886,7 @@ def run_phase_momentum(params) -> MomentumPhaseResults:
                     params['isDissolved'].value = True
                     termination_reason = "dissolved"
                     params['SimulationEndReason'].value = 'Shell dissolved'
+                    params['SimulationEndCode'].value = SimulationEndCode.SHELL_DISSOLVED.code
                     params['EndSimulationDirectly'].value = True
                     logger.info(f"Shell dissolved after {t_now - t_diss_onset:.4f} Myr "
                                 f"below nISM (stop_t_diss={params['stop_t_diss'].value})")
@@ -896,7 +903,7 @@ def run_phase_momentum(params) -> MomentumPhaseResults:
     # is fully consistent.
     # =========================================================================
     try:
-        feedback_final = get_currentSB99feedback(t_now, params)
+        feedback_final = get_current_sps_feedback(t_now, params)
         updateDict(params, feedback_final)
         params['Pb'].value = get_bubbleParams.pRam(
             R2, feedback_final.Lmech_total, feedback_final.v_mech_total)
@@ -906,7 +913,7 @@ def run_phase_momentum(params) -> MomentumPhaseResults:
         params.save_snapshot()
     except Exception as e:
         # Include exception class and deepest traceback frame so the warning
-        # tells us which step (SB99 lookup, pRam, shell_structure, save_snapshot)
+        # tells us which step (SPS lookup, pRam, shell_structure, save_snapshot)
         # actually failed, instead of just the bare message.
         tb = e.__traceback__
         where = ''

@@ -22,8 +22,8 @@ sfe       [0.01, 0.03, 0.1, 0.3]
 
 # Cloud density (uniform)
 nCore           1e3
-dens_profile    densPL
-densPL_alpha    0
+dens_profile    densBE
+densBE_Omega    14.1
 
 # ISM and metallicity
 nISM      1
@@ -44,7 +44,7 @@ use_adaptive_solver    True
 
 # Logging and output
 log_level      INFO
-path2output    outputs/pedrini_sweep_grid
+path2output    outputs/pedrini_sweep_grid_BE
 
 # Feedback
 include_PHII    True

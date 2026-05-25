@@ -90,7 +90,13 @@ from src._output.trinity_reader import (
 from src._plots.plot_markers import find_phase_transitions
 from src._calc._common.plot_utils import FIG_DIR, MARKERS
 from src._calc._common.fitting import ols_sigma_clip as _ols_sigma_clip
-from src._calc._common.io import extract_rejected as _extract_rejected, regenerate_summary_pdf as _regenerate_summary_pdf
+from src._calc._common.io import (
+    extract_rejected as _extract_rejected,
+    regenerate_summary_pdf as _regenerate_summary_pdf,
+    add_phii_argument,
+    iter_phii_modes,
+    filter_sim_files_by_phii,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -187,6 +193,7 @@ def extract_timescales(data_path: Path, t_end: float = None) -> Optional[Dict[st
 def collect_data(
     folder_path: Path,
     t_end: float = None,
+    phii_mode: str = "yes",
 ) -> List[Dict]:
     """
     Walk a sweep output folder and collect (params, timescales) for every run.
@@ -195,6 +202,11 @@ def collect_data(
     ----------
     folder_path : Path
         Root of the sweep output tree.
+    phii_mode : {"yes", "no"}
+        Which PHII variant to include.  ``"yes"`` (default) keeps
+        ``_yesPHII`` plus any untagged/legacy folders; ``"no"`` keeps
+        only ``_noPHII`` folders.  Mixing both would double-count
+        ``(mCloud, sfe, nCore)`` datapoints in the scaling fits.
 
     Returns
     -------
@@ -203,8 +215,11 @@ def collect_data(
         any timescale keys that were successfully extracted.
     """
     sim_files = find_all_simulations(folder_path)
+    sim_files = filter_sim_files_by_phii(sim_files, phii_mode)
     if not sim_files:
-        logger.error("No simulation files found under %s", folder_path)
+        label = "non-noPHII" if phii_mode == "yes" else "noPHII"
+        logger.error("No %s simulation files found under %s",
+                     label, folder_path)
         return []
 
     logger.info("Found %d simulation(s) in %s", len(sim_files), folder_path)
@@ -1314,6 +1329,7 @@ Examples:
         "--output-dir", type=str, default=None,
         help="Output directory override (default: fig/<folder>/).",
     )
+    add_phii_argument(parser)
     return parser
 
 
@@ -1334,10 +1350,13 @@ def main(argv: Optional[List[str]] = None) -> int:
             logger.error("Folder does not exist: %s", fp)
             return 1
 
-    # Output into ./fig/{folder_name}/ matching other paper_* scripts
+    # Output into ./fig/{folder_name}/ matching other paper_* scripts.
+    # PHII variants are kept side-by-side: ``_noPHII`` outputs land in a
+    # sibling subdirectory so the same per-quantity filename can exist
+    # in both without colliding.
     folder_name = "+".join(fp.name for fp in folder_paths)
-    output_dir = Path(args.output_dir) if args.output_dir else FIG_DIR / folder_name
-    output_dir.mkdir(parents=True, exist_ok=True)
+    base_output_dir = (Path(args.output_dir)
+                       if args.output_dir else FIG_DIR / folder_name)
 
     quantities = [q.strip() for q in args.quantities.split(",")]
     for q in quantities:
@@ -1348,95 +1367,105 @@ def main(argv: Optional[List[str]] = None) -> int:
             )
             return 1
 
-    # Step 1: collect data
-    records: List[Dict] = []
-    for fp in folder_paths:
-        records.extend(collect_data(fp, t_end=args.t_end))
-    if not records:
-        logger.error("No valid data collected — aborting.")
-        return 1
+    any_success = False
+    for phii_mode in iter_phii_modes(args):
+        output_dir = (base_output_dir / "_noPHII"
+                      if phii_mode == "no" else base_output_dir)
+        output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Step 2: fit each quantity
-    fits: List[Dict] = []
-    for q in quantities:
-        logger.info("--- Fitting: %s ---", q)
-        result = fit_scaling(
-            records, q,
-            nCore_ref=args.nCore_ref,
-            mCloud_ref=args.mCloud_ref,
-            sfe_ref=args.sfe_ref,
-            sigma_clip=args.sigma_clip,
-        )
-        if result is None:
-            logger.warning("Skipping '%s' (insufficient data or fit failure)", q)
-            continue
-        fits.append(result)
-
-        # Step 3: plot
-        plot_parity(result, output_dir, fmt=args.fmt)
-        plot_parity_diagnostic(result, output_dir, fmt=args.fmt)
-        plot_residuals(result, output_dir, fmt=args.fmt)
-
-    if not fits:
-        logger.error("No quantities could be fitted.")
-        return 1
-
-    # Step 3b: piecewise fits (always run; diagnostic plots gated)
-    pw_entries: List[Tuple[str, Dict]] = []
-    for q in quantities:
-        print(f"\n--- Piecewise fitting: {q} ---")
-        pw = fit_scaling_piecewise(
-            records, q,
-            nCore_ref=args.nCore_ref,
-            mCloud_ref=args.mCloud_ref,
-            sfe_ref=args.sfe_ref,
-            sigma_clip=args.sigma_clip,
-        )
-        if pw is None:
-            print(f"  Piecewise fit returned None for '{q}' "
-                  f"(see INFO log above for details)")
+        # Step 1: collect data for this PHII variant
+        records: List[Dict] = []
+        for fp in folder_paths:
+            records.extend(collect_data(fp, t_end=args.t_end,
+                                        phii_mode=phii_mode))
+        if not records:
+            logger.warning("No valid %s data collected — skipping variant.",
+                           "noPHII" if phii_mode == "no" else "yesPHII")
             continue
 
-        if args.diagnostics:
-            plot_parity_piecewise(pw, output_dir, fmt=args.fmt)
-            plot_bic_scan(pw, output_dir, fmt=args.fmt)
+        # Step 2: fit each quantity
+        fits: List[Dict] = []
+        for q in quantities:
+            logger.info("--- Fitting: %s (phii=%s) ---", q, phii_mode)
+            result = fit_scaling(
+                records, q,
+                nCore_ref=args.nCore_ref,
+                mCloud_ref=args.mCloud_ref,
+                sfe_ref=args.sfe_ref,
+                sigma_clip=args.sigma_clip,
+            )
+            if result is None:
+                logger.warning("Skipping '%s' (insufficient data or fit failure)", q)
+                continue
+            fits.append(result)
 
-        delta_bic = pw["BIC_single"] - pw["BIC_piecewise"]
-        brk_val = pw["break_log_Mcl"]
-        print(f"\n--- Piecewise: {q} ---")
-        print(f"  Break: log10(M_cl) = {brk_val:.3f}"
-              f"  (M_cl = {10**brk_val:.1f} Msun)")
-        print(f"  BIC single   = {pw['BIC_single']:.1f}")
-        print(f"  BIC piecewise = {pw['BIC_piecewise']:.1f}"
-              f"  (Delta = {delta_bic:+.1f})")
-        print(f"  R2 low  = {pw['fit_low']['R2']:.4f}"
-              f"  (N = {pw['fit_low']['n_used']})")
-        print(f"  R2 high = {pw['fit_high']['R2']:.4f}"
-              f"  (N = {pw['fit_high']['n_used']})")
+            # Step 3: plot
+            plot_parity(result, output_dir, fmt=args.fmt)
+            plot_parity_diagnostic(result, output_dir, fmt=args.fmt)
+            plot_residuals(result, output_dir, fmt=args.fmt)
 
-        # If piecewise is better, include sub-fits in summary
-        if delta_bic > 0:
-            brk_str = f"Mcl<{10**brk_val:.0f}"
-            pw_entries.append((
-                f"{q} pw-low [{brk_str}] [Myr]",
-                pw["fit_low"],
-            ))
-            brk_str = f"Mcl>{10**brk_val:.0f}"
-            pw_entries.append((
-                f"{q} pw-high [{brk_str}] [Myr]",
-                pw["fit_high"],
-            ))
+        if not fits:
+            logger.warning("No quantities could be fitted for phii=%s.",
+                           phii_mode)
+            continue
 
-    # Step 4: summary
-    write_summary(fits, output_dir)
+        # Step 3b: piecewise fits (always run; diagnostic plots gated)
+        pw_entries: List[Tuple[str, Dict]] = []
+        for q in quantities:
+            print(f"\n--- Piecewise fitting: {q} ---")
+            pw = fit_scaling_piecewise(
+                records, q,
+                nCore_ref=args.nCore_ref,
+                mCloud_ref=args.mCloud_ref,
+                sfe_ref=args.sfe_ref,
+                sigma_clip=args.sigma_clip,
+            )
+            if pw is None:
+                print(f"  Piecewise fit returned None for '{q}' "
+                      f"(see INFO log above for details)")
+                continue
 
-    # Step 5: equation JSON for run_all summary
-    _write_equation_json(fits, output_dir, pw_entries=pw_entries or None)
+            if args.diagnostics:
+                plot_parity_piecewise(pw, output_dir, fmt=args.fmt)
+                plot_bic_scan(pw, output_dir, fmt=args.fmt)
 
-    # Step 6: regenerate the cross-script summary PDF
-    _regenerate_summary_pdf(output_dir, fmt=args.fmt or "pdf")
+            delta_bic = pw["BIC_single"] - pw["BIC_piecewise"]
+            brk_val = pw["break_log_Mcl"]
+            print(f"\n--- Piecewise: {q} ---")
+            print(f"  Break: log10(M_cl) = {brk_val:.3f}"
+                  f"  (M_cl = {10**brk_val:.1f} Msun)")
+            print(f"  BIC single   = {pw['BIC_single']:.1f}")
+            print(f"  BIC piecewise = {pw['BIC_piecewise']:.1f}"
+                  f"  (Delta = {delta_bic:+.1f})")
+            print(f"  R2 low  = {pw['fit_low']['R2']:.4f}"
+                  f"  (N = {pw['fit_low']['n_used']})")
+            print(f"  R2 high = {pw['fit_high']['R2']:.4f}"
+                  f"  (N = {pw['fit_high']['n_used']})")
 
-    return 0
+            # If piecewise is better, include sub-fits in summary
+            if delta_bic > 0:
+                brk_str = f"Mcl<{10**brk_val:.0f}"
+                pw_entries.append((
+                    f"{q} pw-low [{brk_str}] [Myr]",
+                    pw["fit_low"],
+                ))
+                brk_str = f"Mcl>{10**brk_val:.0f}"
+                pw_entries.append((
+                    f"{q} pw-high [{brk_str}] [Myr]",
+                    pw["fit_high"],
+                ))
+
+        # Step 4: summary
+        write_summary(fits, output_dir)
+
+        # Step 5: equation JSON for run_all summary
+        _write_equation_json(fits, output_dir, pw_entries=pw_entries or None)
+
+        # Step 6: regenerate the cross-script summary PDF (per-mode)
+        _regenerate_summary_pdf(output_dir, fmt=args.fmt or "pdf")
+        any_success = True
+
+    return 0 if any_success else 1
 
 
 if __name__ == "__main__":

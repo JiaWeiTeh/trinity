@@ -17,6 +17,12 @@ either panel are defined locally.
 Usage:
 
     python paper_rcloud_smoothing.py <parent-folder-or-npz> [-o out.pdf]
+    python paper_rcloud_smoothing.py <parent-folder> --export <out.npz>
+
+The .npz bundle is the recommended "ship with the paper" format: it
+holds the before/after trajectory arrays *and* the top-panel cloud
+fiducials, so the figure can be regenerated without the original run
+folders.
 """
 
 from __future__ import annotations
@@ -46,45 +52,66 @@ from src.cloud_properties.powerLawSphere import (
 # =============================================================================
 # Top panel: fiducial cloud parameters and density helpers
 # =============================================================================
-M_CLOUD = 1e6           # Msun
-N_CORE_CGS = 1e3        # cm^-3
-N_ISM_CGS = 1.0         # cm^-3
-ALPHA = 0               # power-law slope; 0 = homogeneous
-R_CORE = 0.1            # standalone core radius [pc]
+# These illustrate the tanh blend; they are *not* read from any run folder.
+# They are persisted into the .npz bundle by ``export_rcloud_smoothing_npz``
+# so the figure stays reproducible if the defaults below ever change.
+DEFAULT_FIDUCIALS = dict(
+    cloud_mass_Msun=1e6,
+    n_core_cgs=1e3,
+    n_ism_cgs=1.0,
+    alpha=0.0,            # power-law slope; 0 = homogeneous
+    r_core_pc=0.1,        # standalone core radius [pc]
+    smooth_frac_default=0.01,
+    smooth_frac_low=0.005,
+    smooth_frac_high=0.02,
+)
 
-SMOOTH_FRAC_DEFAULT = 0.01
-SMOOTH_FRAC_LOW = 0.005
-SMOOTH_FRAC_HIGH = 0.02
-
-MU_CONVERT = 1.4 * cvt.M_H_CGS * cvt.g2Msun
-N_CORE_AU = N_CORE_CGS * cvt.ndens_cgs2au
-N_ISM_AU = N_ISM_CGS * cvt.ndens_cgs2au
-
-if ALPHA == 0:
-    R_CLOUD = compute_rCloud_homogeneous(M_CLOUD, N_CORE_AU, mu=MU_CONVERT)
-else:
-    R_CLOUD, _ = compute_rCloud_powerlaw(
-        M_CLOUD, N_CORE_AU, ALPHA,
-        rCore=R_CORE, mu=MU_CONVERT,
-    )
+# Bundle keys for round-tripping the fiducials through the .npz.
+_FIDUCIAL_KEYS = tuple(DEFAULT_FIDUCIALS.keys())
 
 
-def _density_inside(r):
-    if ALPHA == 0:
-        return np.full_like(r, N_CORE_AU)
-    n = N_CORE_AU * (r / R_CORE) ** ALPHA
-    return np.where(r <= R_CORE, N_CORE_AU, n)
+def _resolve_fiducials(overrides=None):
+    """Merge overrides into the defaults and precompute derived quantities."""
+    fid = dict(DEFAULT_FIDUCIALS)
+    if overrides:
+        fid.update({k: v for k, v in overrides.items()
+                    if k in DEFAULT_FIDUCIALS and v is not None})
+
+    mu = 1.4 * cvt.M_H_CGS * cvt.g2Msun
+    n_core_au = fid["n_core_cgs"] * cvt.ndens_cgs2au
+    n_ism_au = fid["n_ism_cgs"] * cvt.ndens_cgs2au
+    if fid["alpha"] == 0:
+        r_cloud = compute_rCloud_homogeneous(
+            fid["cloud_mass_Msun"], n_core_au, mu=mu,
+        )
+    else:
+        r_cloud, _ = compute_rCloud_powerlaw(
+            fid["cloud_mass_Msun"], n_core_au, fid["alpha"],
+            rCore=fid["r_core_pc"], mu=mu,
+        )
+    fid["_n_core_au"] = n_core_au
+    fid["_n_ism_au"] = n_ism_au
+    fid["_r_cloud_pc"] = r_cloud
+    return fid
 
 
-def _density_jump(r):
-    return np.where(r <= R_CLOUD, _density_inside(r), N_ISM_AU)
+def _density_inside(r, fid):
+    if fid["alpha"] == 0:
+        return np.full_like(r, fid["_n_core_au"])
+    n = fid["_n_core_au"] * (r / fid["r_core_pc"]) ** fid["alpha"]
+    return np.where(r <= fid["r_core_pc"], fid["_n_core_au"], n)
 
 
-def _density_blend(r, smooth_frac):
-    delta = smooth_frac * R_CLOUD
-    w_out = 0.5 * (1.0 + np.tanh((r - R_CLOUD) / delta))
-    n_in = _density_inside(r)
-    return n_in * (1.0 - w_out) + N_ISM_AU * w_out
+def _density_jump(r, fid):
+    return np.where(r <= fid["_r_cloud_pc"],
+                    _density_inside(r, fid), fid["_n_ism_au"])
+
+
+def _density_blend(r, smooth_frac, fid):
+    delta = smooth_frac * fid["_r_cloud_pc"]
+    w_out = 0.5 * (1.0 + np.tanh((r - fid["_r_cloud_pc"]) / delta))
+    n_in = _density_inside(r, fid)
+    return n_in * (1.0 - w_out) + fid["_n_ism_au"] * w_out
 
 
 # =============================================================================
@@ -223,10 +250,11 @@ def _load_pair_from_npz(path: Path) -> dict:
                               if f"lsoda_failed_{prefix}" in z.files else False),
             )
         run_id = str(z["run_id"]) if "run_id" in z.files else path.stem
+        fiducials = {k: float(z[k]) for k in _FIDUCIAL_KEYS if k in z.files}
         return dict(
             before=_side("before"),
             after=_side("after"),
-            meta=dict(run_id=run_id),
+            meta=dict(run_id=run_id, fiducials=fiducials or None),
         )
 
 
@@ -295,7 +323,7 @@ def _build_v2R2_legend_handles() -> list:
         Line2D([0], [0], marker=END_MARKER_OK, color="0.3",
                markerfacecolor="0.3", markeredgecolor="black",
                linestyle="", markersize=END_MARKER_SIZE,
-               label="LSODA succeed"),
+               label="LSODA succeeded"),
         Line2D([0], [0], marker=END_MARKER_FAIL, color="0.3",
                markerfacecolor="0.3", markeredgecolor="black",
                linestyle="", markersize=END_MARKER_SIZE,
@@ -311,7 +339,7 @@ def _build_v2R2_legend_handles() -> list:
 _LEGEND_FONTSIZE = 10
 
 
-def _draw_rcloud_panel(ax, xlim):
+def _draw_rcloud_panel(ax, xlim, fid):
     """Top panel: density step vs tanh blends around rCloud.
 
     Y-axis is configured to mirror the bottom panel exactly (log
@@ -321,24 +349,25 @@ def _draw_rcloud_panel(ax, xlim):
     xlo, xhi = xlim
     r = np.linspace(max(xlo, 0.0), xhi, 4000)
 
-    n_jump = _density_jump(r)
+    n_jump = _density_jump(r, fid)
     ax.plot(r, n_jump * cvt.ndens_au2cgs,
             color='k', ls='-', lw=1.6, label='step (original)')
 
     blend_specs = [
-        (SMOOTH_FRAC_LOW,     '#0072B2', '--', 1.2),
-        (SMOOTH_FRAC_DEFAULT, '#009E73', '-',  2.0),
-        (SMOOTH_FRAC_HIGH,    '#D55E00', '--', 1.2),
+        (fid["smooth_frac_low"],     '#0072B2', '--', 1.2),
+        (fid["smooth_frac_default"], '#009E73', '-',  2.0),
+        (fid["smooth_frac_high"],    '#D55E00', '--', 1.2),
     ]
     for sf, color, ls, lw in blend_specs:
-        n_b = _density_blend(r, sf)
-        is_default = np.isclose(sf, SMOOTH_FRAC_DEFAULT)
+        n_b = _density_blend(r, sf, fid)
+        is_default = np.isclose(sf, fid["smooth_frac_default"])
         label = (r'$f_{\rm smooth}$' + rf'$={sf:g}$'
                  + (' (default)' if is_default else ''))
         ax.plot(r, n_b * cvt.ndens_au2cgs,
                 color=color, ls=ls, lw=lw, label=label)
 
-    ax.axvline(R_CLOUD, color="0.25", lw=1.2, ls="--", alpha=0.7, zorder=2)
+    ax.axvline(fid["_r_cloud_pc"],
+               color="0.25", lw=1.2, ls="--", alpha=0.7, zorder=2)
 
     ax.set_yscale("log")
     ax.set_xscale('log')
@@ -375,6 +404,53 @@ def _draw_v2R2_panel(ax, pair):
 
 
 # =============================================================================
+# Export: folder -> publishable .npz
+# =============================================================================
+def export_rcloud_smoothing_npz(folder: Union[str, Path],
+                                out_path: Union[str, Path]) -> Path:
+    """Reduce a folder of blend .jsonl files to a single .npz figure bundle.
+
+    Stores everything the figure consumes:
+      - bottom panel: time / R2 / v2 arrays for the before+after runs,
+        the per-run rCloud, end status, and LSODA-failure flags;
+      - top panel: the illustrative cloud fiducials in
+        ``DEFAULT_FIDUCIALS`` (cloud mass, n_core, n_ISM, alpha, r_core,
+        and the three smoothing fractions).
+
+    The resulting file is the recommended "ship with the paper" format
+    for this figure — the original run folders can be discarded.
+    """
+    folder = Path(folder)
+    pair = _load_pair_from_folder(folder)
+
+    out_path = Path(out_path)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+
+    payload = dict(
+        run_id=pair["meta"]["run_id"],
+        rcloud=pair["before"]["rcloud"],
+        before_t=pair["before"]["t"],
+        before_R2=pair["before"]["R2"],
+        before_v2=pair["before"]["v2"],
+        after_t=pair["after"]["t"],
+        after_R2=pair["after"]["R2"],
+        after_v2=pair["after"]["v2"],
+        end_ok_before=bool(pair["before"].get("end_ok") or False),
+        end_ok_after=bool(pair["after"].get("end_ok") or False),
+        end_reason_before=str(pair["before"].get("end_reason") or ""),
+        end_reason_after=str(pair["after"].get("end_reason") or ""),
+        lsoda_failed_before=bool(pair["before"].get("lsoda_failed") or False),
+        lsoda_failed_after=bool(pair["after"].get("lsoda_failed") or False),
+    )
+    # Top-panel fiducials (one scalar per key).
+    payload.update({k: float(DEFAULT_FIDUCIALS[k]) for k in _FIDUCIAL_KEYS})
+
+    np.savez(out_path, **payload)
+    print(f"Exported: {out_path}")
+    return out_path
+
+
+# =============================================================================
 # Orchestration
 # =============================================================================
 def plot_merged(pair: dict, out_path: Optional[Path] = None,
@@ -391,9 +467,12 @@ def plot_merged(pair: dict, out_path: Optional[Path] = None,
         gridspec_kw=dict(height_ratios=[1, 1]),
     )
 
+    # Prefer fiducials embedded in the bundle; fall back to defaults.
+    fid = _resolve_fiducials(pair.get("meta", {}).get("fiducials"))
+
     # Draw bottom first so its data-driven xlim drives the top panel.
     _draw_v2R2_panel(ax_bot, pair)
-    _draw_rcloud_panel(ax_top, xlim=ax_bot.get_xlim())
+    _draw_rcloud_panel(ax_top, xlim=ax_bot.get_xlim(), fid=fid)
 
     plt.tight_layout()
     fig.subplots_adjust(hspace=0.05)
@@ -427,9 +506,19 @@ def main(argv: Optional[list] = None) -> None:
     parser.add_argument("-o", "--out", default=None,
                         help="output PDF path "
                              "(default: <FIG_DIR>/paper_rcloud_smoothing_<id>.pdf)")
+    parser.add_argument("--export", default=None,
+                        help="export the source folder to this .npz bundle "
+                             "and exit (no plot). Bundle contains both the "
+                             "trajectory arrays and the top-panel cloud "
+                             "fiducials, so the original folder can be "
+                             "discarded.")
     parser.add_argument("--show", action="store_true",
                         help="open the figure window (in addition to saving)")
     args = parser.parse_args(argv)
+
+    if args.export:
+        export_rcloud_smoothing_npz(args.source, args.export)
+        return
 
     pair = _load_v2R2_pair(args.source)
     run_id = pair["meta"].get("run_id", "blend")

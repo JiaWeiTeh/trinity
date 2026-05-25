@@ -1,7 +1,0 @@
-model_name    test_dict
-mCloud    1e7
-sfe    0.01
-# powerlaw, homogeneous
-dens_profile    densPL
-densPL_alpha    0
-nCore    1e4

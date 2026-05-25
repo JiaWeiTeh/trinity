@@ -77,6 +77,10 @@ from src._calc._common.plot_utils import (
     FIG_DIR, C_BLUE, C_VERMILLION, C_GREEN, C_PURPLE, C_ORANGE, C_SKY, C_BLACK,
 )
 from src._calc._common.fitting import logsumexp as _logsumexp
+from src._calc._common.io import (
+    add_phii_argument,
+    iter_phii_modes,
+)
 
 # Reuse grid loading and density helpers from infer_cluster_mass
 from src._calc.infer_cluster_mass import (
@@ -976,6 +980,7 @@ Examples:
         "--m-per-decade", type=int, default=3,
         help="Interpolation points per decade in M_cloud (default: 3).",
     )
+    add_phii_argument(parser)
     return parser
 
 
@@ -996,17 +1001,33 @@ def main(argv: Optional[List[str]] = None) -> int:
             return 1
 
     folder_name = "+".join(fp.name for fp in folder_paths)
-    output_dir = (Path(args.output_dir) if args.output_dir
-                  else FIG_DIR / "infer_cluster_age" / folder_name)
-    output_dir.mkdir(parents=True, exist_ok=True)
+    base_output_dir = (Path(args.output_dir) if args.output_dir
+                       else FIG_DIR / "infer_cluster_age" / folder_name)
 
-    # Collect grid
-    records: List[Dict] = []
-    for fp in folder_paths:
-        records.extend(collect_grid(fp, t_end=args.t_end))
-    if not records:
-        logger.error("No valid grid data collected -- aborting.")
-        return 1
+    any_success = False
+    for phii_mode in iter_phii_modes(args):
+        output_dir = (base_output_dir / "_noPHII"
+                      if phii_mode == "no" else base_output_dir)
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        # Collect grid for this PHII variant
+        records: List[Dict] = []
+        for fp in folder_paths:
+            records.extend(collect_grid(fp, t_end=args.t_end,
+                                        phii_mode=phii_mode))
+        if not records:
+            logger.warning("No valid %s grid data collected — skipping variant.",
+                           "noPHII" if phii_mode == "no" else "yesPHII")
+            continue
+
+        if _run_age_inference_pipeline(records, args, output_dir):
+            any_success = True
+
+    return 0 if any_success else 1
+
+
+def _run_age_inference_pipeline(records, args, output_dir) -> bool:
+    """Run age inference and produce outputs for a single PHII variant."""
 
     # Resolve observables
     obs = {}
@@ -1047,7 +1068,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     # Validate required observables
     if "R_obs" not in obs or "sigma_R" not in obs:
         logger.error("R_obs and sigma_R are required (use --system or --R-obs)")
-        return 1
+        return False
 
     # Check grid coverage
     density_ok = check_density_coverage(
@@ -1084,7 +1105,7 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     if not stages:
         logger.error("All inference stages returned None -- aborting.")
-        return 1
+        return False
 
     # Figures
     plot_posterior(stages, system_name, obs, output_dir,
@@ -1097,7 +1118,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     # Console summary
     print_inference_summary(system_name, stages, obs)
 
-    return 0
+    return True
 
 
 if __name__ == "__main__":

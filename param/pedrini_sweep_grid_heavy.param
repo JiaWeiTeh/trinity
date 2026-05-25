@@ -13,7 +13,7 @@
 # 4 mCloud × 4 sfe = 16 runs.
 #
 
-mCloud    [1e5, 3e5, 1e6, 3e6]
+mCloud    [1e7, 3e7, 1e8, 3e8]
 sfe       [0.01, 0.03, 0.1, 0.3]
 
 # =============================================================================
@@ -44,7 +44,7 @@ use_adaptive_solver    True
 
 # Logging and output
 log_level      INFO
-path2output    outputs/pedrini_sweep_grid
+path2output    outputs/pedrini_sweep_grid_heavy
 
 # Feedback
 include_PHII    True

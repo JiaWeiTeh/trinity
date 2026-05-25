@@ -101,7 +101,13 @@ from src._calc._common.cloud_physics import (
     MU_MOL, V_AU2KMS,
 )
 from src._calc._common.fitting import ols_sigma_clip as _ols_sigma_clip
-from src._calc._common.io import extract_rejected as _extract_rejected
+from src._calc._common.io import (
+    extract_rejected as _extract_rejected,
+    regenerate_summary_pdf as _regenerate_summary_pdf,
+    add_phii_argument,
+    iter_phii_modes,
+    filter_sim_files_by_phii,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -254,13 +260,20 @@ def extract_run(data_path: Path, t_end: float = None) -> Optional[Dict]:
     }
 
 
-def collect_data(folder_path: Path, t_end: float = None) -> List[Dict]:
+def collect_data(folder_path: Path, t_end: float = None,
+                 phii_mode: str = "yes") -> List[Dict]:
     """
     Walk sweep output and collect timescale data for every run.
+
+    ``phii_mode`` (``"yes"``/``"no"``) selects which PHII variant is
+    included; see :func:`src._plots.grid_template.filter_sim_files_by_phii`.
     """
     sim_files = find_all_simulations(folder_path)
+    sim_files = filter_sim_files_by_phii(sim_files, phii_mode)
     if not sim_files:
-        logger.error("No simulation files found under %s", folder_path)
+        label = "non-noPHII" if phii_mode == "yes" else "noPHII"
+        logger.error("No %s simulation files found under %s",
+                     label, folder_path)
         return []
 
     logger.info("Found %d simulation(s) in %s", len(sim_files), folder_path)
@@ -1146,6 +1159,7 @@ Examples:
         "--output-dir", type=str, default=None,
         help="Output directory override (default: fig/<folder>/).",
     )
+    add_phii_argument(parser)
     return parser
 
 
@@ -1166,18 +1180,9 @@ def main(argv: Optional[List[str]] = None) -> int:
             return 1
 
     folder_name = "+".join(fp.name for fp in folder_paths)
-    output_dir = Path(args.output_dir) if args.output_dir else FIG_DIR / folder_name
-    output_dir.mkdir(parents=True, exist_ok=True)
+    base_output_dir = (Path(args.output_dir)
+                       if args.output_dir else FIG_DIR / folder_name)
 
-    # Step 1: collect data
-    records: List[Dict] = []
-    for fp in folder_paths:
-        records.extend(collect_data(fp, t_end=args.t_end))
-    if not records:
-        logger.error("No valid data collected — aborting.")
-        return 1
-
-    # Step 2: fits
     fit_kwargs = dict(
         nCore_ref=args.nCore_ref,
         mCloud_ref=args.mCloud_ref,
@@ -1185,55 +1190,75 @@ def main(argv: Optional[List[str]] = None) -> int:
         sigma_clip=args.sigma_clip,
     )
 
-    fits: List[Tuple[str, Optional[Dict]]] = []
+    any_success = False
+    for phii_mode in iter_phii_modes(args):
+        output_dir = (base_output_dir / "_noPHII"
+                      if phii_mode == "no" else base_output_dir)
+        output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Fit 1: t_disp (expanding only)
-    logger.info("--- Fit: t_disp (expanding) ---")
-    fit_disp = fit_scaling(records, "t_disp", outcome_filter=EXPAND,
-                           **fit_kwargs)
-    fits.append(("t_disp [Myr]", fit_disp))
+        # Step 1: collect data for this PHII variant
+        records: List[Dict] = []
+        for fp in folder_paths:
+            records.extend(collect_data(fp, t_end=args.t_end,
+                                        phii_mode=phii_mode))
+        if not records:
+            logger.warning("No valid %s data collected — skipping variant.",
+                           "noPHII" if phii_mode == "no" else "yesPHII")
+            continue
 
-    # Fit 2: t_disp / t_ff (expanding only)
-    logger.info("--- Fit: t_disp / t_ff (expanding) ---")
-    fit_disp_norm = fit_scaling(records, "t_disp_over_tff",
-                                outcome_filter=EXPAND, **fit_kwargs)
-    fits.append(("t_disp / t_ff", fit_disp_norm))
+        fits: List[Tuple[str, Optional[Dict]]] = []
 
-    # Fit 3: t_collapse / t_ff (collapsing only)
-    logger.info("--- Fit: t_collapse / t_ff (collapsing) ---")
-    fit_collapse = fit_scaling(records, "t_collapse_over_tff",
-                               outcome_filter=COLLAPSE, **fit_kwargs)
-    fits.append(("t_collapse / t_ff", fit_collapse))
+        # Fit 1: t_disp (expanding only)
+        logger.info("--- Fit: t_disp (expanding) ---")
+        fit_disp = fit_scaling(records, "t_disp", outcome_filter=EXPAND,
+                               **fit_kwargs)
+        fits.append(("t_disp [Myr]", fit_disp))
 
-    # Fit 4: feedback velocity (expanding only)
-    logger.info("--- Fit: v_fb (expanding) ---")
-    fit_vfb = fit_scaling(records, "v_fb", outcome_filter=EXPAND,
-                          **fit_kwargs)
-    fits.append(("v_fb [km/s]", fit_vfb))
+        # Fit 2: t_disp / t_ff (expanding only)
+        logger.info("--- Fit: t_disp / t_ff (expanding) ---")
+        fit_disp_norm = fit_scaling(records, "t_disp_over_tff",
+                                    outcome_filter=EXPAND, **fit_kwargs)
+        fits.append(("t_disp / t_ff", fit_disp_norm))
 
-    # Fit 5: eps_ff (expanding only)
-    logger.info("--- Fit: eps_ff (expanding) ---")
-    fit_eff = fit_scaling(records, "eps_ff", outcome_filter=EXPAND,
-                          **fit_kwargs)
-    fits.append(("eps_ff", fit_eff))
+        # Fit 3: t_collapse / t_ff (collapsing only)
+        logger.info("--- Fit: t_collapse / t_ff (collapsing) ---")
+        fit_collapse = fit_scaling(records, "t_collapse_over_tff",
+                                   outcome_filter=COLLAPSE, **fit_kwargs)
+        fits.append(("t_collapse / t_ff", fit_collapse))
 
-    # Step 3: figures
-    plot_t_disp_vs_sfe(records, fit_disp, output_dir, args.fmt)
-    plot_t_disp_normalized(records, output_dir, args.fmt)
-    plot_feedback_velocity(records, fit_vfb, output_dir, args.fmt)
-    plot_epsilon_ff(records, output_dir, args.fmt)
-    plot_parity(fits, output_dir, args.fmt)
-    plot_collapse_map(records, output_dir, args.fmt)
+        # Fit 4: feedback velocity (expanding only)
+        logger.info("--- Fit: v_fb (expanding) ---")
+        fit_vfb = fit_scaling(records, "v_fb", outcome_filter=EXPAND,
+                              **fit_kwargs)
+        fits.append(("v_fb [km/s]", fit_vfb))
 
-    # Step 4: output
-    write_results_csv(records, output_dir)
-    write_fits_csv(fits, output_dir)
-    print_summary(records, fits)
+        # Fit 5: eps_ff (expanding only)
+        logger.info("--- Fit: eps_ff (expanding) ---")
+        fit_eff = fit_scaling(records, "eps_ff", outcome_filter=EXPAND,
+                              **fit_kwargs)
+        fits.append(("eps_ff", fit_eff))
 
-    # Equation JSON for run_all summary
-    _write_equation_json(fits, output_dir, "dispersal_timescale")
+        # Step 3: figures
+        plot_t_disp_vs_sfe(records, fit_disp, output_dir, args.fmt)
+        plot_t_disp_normalized(records, output_dir, args.fmt)
+        plot_feedback_velocity(records, fit_vfb, output_dir, args.fmt)
+        plot_epsilon_ff(records, output_dir, args.fmt)
+        plot_parity(fits, output_dir, args.fmt)
+        plot_collapse_map(records, output_dir, args.fmt)
 
-    return 0
+        # Step 4: output
+        write_results_csv(records, output_dir)
+        write_fits_csv(fits, output_dir)
+        print_summary(records, fits)
+
+        # Equation JSON for run_all summary
+        _write_equation_json(fits, output_dir, "dispersal_timescale")
+
+        # Regenerate the cross-script summary PDF (per-mode)
+        _regenerate_summary_pdf(output_dir, fmt=args.fmt or "pdf")
+        any_success = True
+
+    return 0 if any_success else 1
 
 
 if __name__ == "__main__":

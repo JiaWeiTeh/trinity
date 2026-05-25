@@ -48,6 +48,39 @@ TRINITY_ROOT = Path(__file__).parent.resolve()
 
 
 # =============================================================================
+# Dependency version advisory
+# =============================================================================
+# Exclusive upper major for each core dependency (matches requirements.txt).
+# TRINITY is tested below these; a newer major may have breaking changes.
+_DEP_MAX_MAJOR = {
+    'numpy': 3, 'scipy': 2, 'astropy': 8, 'matplotlib': 4, 'pandas': 3,
+}
+
+
+def warn_if_unsupported_deps():
+    """Warn (without failing) when an installed core dependency is newer than
+    the tested range, and point the user at the supported set."""
+    from importlib.metadata import version, PackageNotFoundError
+
+    for pkg, max_major in _DEP_MAX_MAJOR.items():
+        try:
+            installed = version(pkg)
+        except PackageNotFoundError:
+            continue
+        try:
+            major = int(installed.split('.')[0])
+        except ValueError:
+            continue
+        if major >= max_major:
+            early_logger.warning(
+                "%s %s is newer than the tested range (<%d). If you hit "
+                "errors, install the supported versions with: "
+                "pip install -r requirements.txt",
+                pkg, installed, max_major,
+            )
+
+
+# =============================================================================
 # Auto-detection
 # =============================================================================
 
@@ -817,6 +850,8 @@ if __name__ == '__main__':
     )
     # grab argument
     args = parser.parse_args()
+
+    warn_if_unsupported_deps()
 
     # Auto-detect mode from parameter file content
     if is_sweep_param_file(args.path2param):

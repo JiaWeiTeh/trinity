@@ -54,7 +54,7 @@ from dataclasses import dataclass
 import src.cloud_properties.mass_profile as mass_profile
 import src._functions.unit_conversions as cvt
 import src._functions.operations as operations
-from src.sb99.update_feedback import get_currentSB99feedback
+from src.sb99.update_feedback import get_current_sps_feedback
 from src._input.dictionary import updateDict
 
 # Import pure/modified functions
@@ -78,6 +78,7 @@ from src.phase_general.phase_events import (
     check_event_termination,
     apply_event_result,
 )
+from src._output.simulation_end import SimulationEndCode
 
 logger = logging.getLogger(__name__)
 
@@ -449,6 +450,7 @@ def run_phase_transition(params) -> TransitionPhaseResults:
                 f"Reached {nSnap_rCloud} segment(s) past rCloud "
                 f"(stop_at_rCloud_nSnap)"
             )
+            params['SimulationEndCode'].value = SimulationEndCode.RCLOUD_BOUNDARY.code
             params['EndSimulationDirectly'].value = True
             break
 
@@ -467,7 +469,7 @@ def run_phase_transition(params) -> TransitionPhaseResults:
         # ---------------------------------------------------------------------
         # Get feedback
         # ---------------------------------------------------------------------
-        feedback = get_currentSB99feedback(t_now, params)
+        feedback = get_current_sps_feedback(t_now, params)
         updateDict(params, feedback)
 
         # ---------------------------------------------------------------------
@@ -626,6 +628,7 @@ def run_phase_transition(params) -> TransitionPhaseResults:
         if tmax is not None and t_now >= tmax:
             termination_reason = "reached_tmax"
             params['SimulationEndReason'].value = 'Stopping time reached'
+            params['SimulationEndCode'].value = SimulationEndCode.STOPPING_TIME.code
             params['EndSimulationDirectly'].value = True
             logger.info(f"Simulation reached stop_t={tmax} Myr successfully")
             break
@@ -764,7 +767,7 @@ def run_phase_transition(params) -> TransitionPhaseResults:
         # Recompute Pb and P_ram at the post-ODE state so the check uses
         # current values, not stale pre-ODE ones.
         RAM_DOMINANCE_THRESHOLD = 0.9  # exit when P_ram/(P_b + P_ram) > this
-        feedback_post = get_currentSB99feedback(t_now, params)
+        feedback_post = get_current_sps_feedback(t_now, params)
         gamma_adia = params['gamma_adia'].value
         R1_post, Pb_post = compute_R1_Pb(R2, Eb, feedback_post.Lmech_total,
                                           feedback_post.v_mech_total, gamma_adia)
@@ -796,6 +799,7 @@ def run_phase_transition(params) -> TransitionPhaseResults:
         if tmax is not None and t_now > tmax:
             termination_reason = "reached_tmax"
             params['SimulationEndReason'].value = 'Stopping time reached'
+            params['SimulationEndCode'].value = SimulationEndCode.STOPPING_TIME.code
             params['EndSimulationDirectly'].value = True
             break
 
@@ -805,6 +809,7 @@ def run_phase_transition(params) -> TransitionPhaseResults:
             if R2 < coll_r:
                 termination_reason = "small_radius"
                 params['SimulationEndReason'].value = 'Small radius reached'
+                params['SimulationEndCode'].value = SimulationEndCode.SHELL_COLLAPSED.code
                 params['EndSimulationDirectly'].value = True
                 break
 
@@ -813,6 +818,7 @@ def run_phase_transition(params) -> TransitionPhaseResults:
         if stop_r is not None and R2 > stop_r:
             termination_reason = "large_radius"
             params['SimulationEndReason'].value = 'Large radius reached'
+            params['SimulationEndCode'].value = SimulationEndCode.LARGE_RADIUS.code
             params['EndSimulationDirectly'].value = True
             break
 
@@ -828,6 +834,7 @@ def run_phase_transition(params) -> TransitionPhaseResults:
                     params['isDissolved'].value = True
                     termination_reason = "dissolved"
                     params['SimulationEndReason'].value = 'Shell dissolved'
+                    params['SimulationEndCode'].value = SimulationEndCode.SHELL_DISSOLVED.code
                     params['EndSimulationDirectly'].value = True
                     logger.info(f"Shell dissolved after {t_now - t_diss_onset:.4f} Myr "
                                 f"below nISM (stop_t_diss={params['stop_t_diss'].value})")
@@ -844,7 +851,7 @@ def run_phase_transition(params) -> TransitionPhaseResults:
     # post-ODE state so the snapshot is fully consistent.
     # =========================================================================
     try:
-        feedback_final = get_currentSB99feedback(t_now, params)
+        feedback_final = get_current_sps_feedback(t_now, params)
         updateDict(params, feedback_final)
         gamma_adia = params['gamma_adia'].value
         R1_f, Pb_f = compute_R1_Pb(R2, Eb, feedback_final.Lmech_total,
