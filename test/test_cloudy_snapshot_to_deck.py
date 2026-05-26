@@ -376,10 +376,14 @@ def test_radius_out_nonfinite_errors(tmp_path):
 
 
 def test_extension_requested_without_metadata_errors(tmp_path):
-    # Bundle without initial_cloud_*_arr in metadata
+    # Bundle without initial_cloud_*_arr in metadata AND without the
+    # v2 scalars needed to reconstruct on demand.
     bundle = _make_synth_bundle(tmp_path)
     snap = _good_snap()
-    with pytest.raises(SnapshotInvalid, match="metadata lacks"):
+    with pytest.raises(
+        SnapshotInvalid,
+        match="initial cloud profile could not be obtained",
+    ):
         snapshot_to_values(snap, bundle, radius_out_pc=5.0)
 
 

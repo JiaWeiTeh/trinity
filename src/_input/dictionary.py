@@ -527,11 +527,19 @@ class DescribedDict(dict):
         once per run, and stripped from every per-snapshot dict here.
         """
         # Run-constants are written to metadata.json once per run
-        # and never appear in per-snapshot dicts.  Imported lazily
-        # to keep dictionary.py independent of the _output package
-        # at import time.
-        from src._output.run_constants import RUN_CONST_KEYS
-        run_const_keys = frozenset(RUN_CONST_KEYS)
+        # and never appear in per-snapshot dicts.  ``DROPPED_IN_V2``
+        # keys are also stripped (they are reconstructed on demand by
+        # the reader from other run-constants), as are
+        # ``METADATA_EXCLUDE`` keys (paths, function tables, empty
+        # placeholders that have no place in either file).  Imported
+        # lazily to keep dictionary.py independent of the _output
+        # package at import time.
+        from src._output.run_constants import (
+            RUN_CONST_KEYS, METADATA_EXCLUDE, DROPPED_IN_V2,
+        )
+        run_const_keys = (
+            frozenset(RUN_CONST_KEYS) | METADATA_EXCLUDE | DROPPED_IN_V2
+        )
 
         # Reset the per-snapshot R² log counter so each snapshot in the
         # implicit phase logs its first two simplify() reconstructions.
@@ -552,8 +560,10 @@ class DescribedDict(dict):
                 continue
             if not isinstance(item, DescribedItem):
                 continue
-            # Run-constants live in metadata.json (written once per run);
-            # never include them in per-snapshot dicts.
+            # Skip:
+            #   * RUN_CONST_KEYS   → live in metadata.json (once per run)
+            #   * METADATA_EXCLUDE → not JSON-serializable (paths, tables)
+            #   * DROPPED_IN_V2    → reconstructible from RUN_CONST_KEYS
             if key in run_const_keys:
                 continue
 
@@ -723,6 +733,7 @@ class DescribedDict(dict):
 
         from src._output.run_constants import (
             RUN_CONST_KEYS, METADATA_FILENAME, METADATA_VERSION,
+            METADATA_EXCLUDE, DROPPED_IN_V2,
         )
 
         path2output = self._get_output_dir()
@@ -750,13 +761,34 @@ class DescribedDict(dict):
         if self.flush_count == 0:
             metadata: Dict[str, Any] = {"_metadata_version": METADATA_VERSION}
             for k in RUN_CONST_KEYS:
-                if k in self:
-                    item = self[k]
-                    if isinstance(item, DescribedItem):
-                        metadata[k] = self._to_json_ready_value(item.value)
+                if k in METADATA_EXCLUDE or k in DROPPED_IN_V2:
+                    continue
+                if k not in self:
+                    continue
+                item = self[k]
+                if not isinstance(item, DescribedItem):
+                    continue
+                # Defensive serialization: if the value can't be JSON-
+                # encoded (e.g. an unexpected interpolator object snuck
+                # into ``params``), log a warning and skip the key
+                # rather than crashing the whole flush.
+                try:
+                    ready = self._to_json_ready_value(item.value)
+                    json.dumps(ready, cls=NpEncoder)
+                except (TypeError, ValueError) as e:
+                    logger.warning(
+                        "metadata.json: skipping non-serializable key %r (%s)",
+                        k, e,
+                    )
+                    continue
+                metadata[k] = ready
             tmp_path = path2metadata.with_suffix(path2metadata.suffix + ".tmp")
             with open(tmp_path, "w", encoding="utf-8") as f:
-                json.dump(metadata, f, cls=NpEncoder)
+                # ``indent=2`` makes the file human-readable (cat / grep);
+                # ``sort_keys=False`` preserves the curated ``RUN_CONST_KEYS``
+                # ordering so identifiers come first.
+                json.dump(metadata, f, cls=NpEncoder, indent=2,
+                          sort_keys=False)
             os.replace(tmp_path, path2metadata)
             logger.debug(
                 f"Wrote {METADATA_FILENAME} with "

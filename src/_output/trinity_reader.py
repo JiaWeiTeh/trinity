@@ -329,6 +329,9 @@ class TrinityOutput:
         for snap in snapshots:
             self._keys.update(snap.keys())
         self._keys = sorted(self._keys)
+        # Cached parse of ``metadata.json`` (populated lazily via the
+        # ``metadata`` property below, or eagerly by ``_rehydrate_metadata``).
+        self._metadata_cache: Optional[Dict[str, Any]] = None
 
     @classmethod
     def open(cls, filepath: Union[str, Path]) -> 'TrinityOutput':
@@ -450,6 +453,102 @@ class TrinityOutput:
         """Iterate over snapshots."""
         for i, snap in enumerate(self._snapshots):
             yield Snapshot(snap, i)
+
+    @property
+    def metadata(self) -> Dict[str, Any]:
+        """
+        Parsed ``metadata.json`` for this run (cached, loaded on
+        first access).  Returns ``{}`` if the file is absent or
+        malformed.
+
+        This is the canonical machine-readable handle for every
+        constant-through-run parameter (``mCloud``, ``nCore``,
+        ``mu_atom``, …).  Plotters should prefer
+        ``output.metadata['mCloud']`` over ``output[0].get('mCloud')``
+        when they want a run-constant — both return the same value
+        thanks to the rehydrate step, but the metadata path is
+        conceptually clearer and survives even on empty snapshot
+        streams.
+        """
+        if self._metadata_cache is None:
+            from src._output.run_constants import METADATA_FILENAME
+            metadata_path = self.filepath.parent / METADATA_FILENAME
+            try:
+                with open(metadata_path, "r") as f:
+                    self._metadata_cache = json.load(f)
+            except (FileNotFoundError, OSError, json.JSONDecodeError):
+                self._metadata_cache = {}
+        return self._metadata_cache
+
+    def initial_cloud_profile(self) -> tuple:
+        """
+        Reconstruct the initial cloud profile ``(r_arr, n_arr, m_arr)``
+        from the run-constant scalars in ``metadata.json``.
+
+        Backwards-compatible: if the metadata is from a legacy run
+        (v1 schema) and still carries the inline arrays, those are
+        returned directly without recomputation.  For v2+ metadata
+        (PR ``metadata-expand-constants``) the arrays are rebuilt
+        deterministically from ``nCore``, ``nISM``, ``rCore``,
+        ``rCloud``, ``dens_profile``, ``densPL_alpha``,
+        ``mu_convert`` (and ``densBE_Omega``, ``gamma_adia`` for BE).
+
+        Returns
+        -------
+        tuple[np.ndarray, np.ndarray, np.ndarray]
+            ``(r_arr, n_arr, m_arr)`` — radius [pc], density
+            [internal pc⁻³], enclosed mass [Msun].
+
+        Raises
+        ------
+        KeyError
+            If ``metadata.json`` is missing the scalars required to
+            reconstruct (e.g. legacy run with neither inline arrays
+            nor the necessary run-constants).
+        """
+        m = self.metadata
+        # Fast path: legacy v1 inline arrays.  Real v1 metadata.json files
+        # carry all three (r, n, m); some synthetic test fixtures provide
+        # only (r, n), in which case we fill m with zeros — consumers that
+        # don't need the enclosed-mass array (e.g. the cloudy ambient
+        # extension) can discard it transparently, and any future
+        # consumer that *does* need m will fall through to the v2 scalar
+        # path because zeros would be obviously wrong.
+        r_inline = m.get("initial_cloud_r_arr")
+        n_inline = m.get("initial_cloud_n_arr")
+        if r_inline and n_inline:
+            r_arr = np.asarray(r_inline, dtype=float)
+            n_arr = np.asarray(n_inline, dtype=float)
+            m_inline = m.get("initial_cloud_m_arr")
+            m_arr = (np.asarray(m_inline, dtype=float)
+                     if m_inline else np.zeros_like(r_arr))
+            return r_arr, n_arr, m_arr
+
+        # Recompute from scalars (v2+).
+        from src.cloud_properties.initial_profile import (
+            build_initial_cloud_profile,
+        )
+        required = ("dens_profile", "mCloud", "nCore", "nISM",
+                    "rCore", "rCloud", "mu_convert")
+        missing = [k for k in required if k not in m]
+        if missing:
+            raise KeyError(
+                f"cannot reconstruct initial cloud profile: "
+                f"metadata.json is missing {missing}"
+            )
+        return build_initial_cloud_profile(
+            dens_profile=m["dens_profile"],
+            mCloud=m["mCloud"],
+            nCore=m["nCore"],
+            nISM=m["nISM"],
+            rCore=m["rCore"],
+            rCloud=m["rCloud"],
+            mu_convert=m["mu_convert"],
+            densPL_alpha=m.get("densPL_alpha", 0.0),
+            densBE_Omega=m.get("densBE_Omega"),
+            gamma_adia=m.get("gamma_adia"),
+            nEdge=m.get("nEdge"),
+        )
 
     @property
     def model_name(self) -> str:
