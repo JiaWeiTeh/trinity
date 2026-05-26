@@ -27,7 +27,7 @@ path2output    outputs/test_run
 
 # Run settings
 stop_r    None
-stop_t    0.6
+stop_t    0.4
 
 # Suppress warnings to save memory
 log_level    INFO
@@ -37,7 +37,7 @@ include_PHII True
 sps_path  lib/sps/custom/1e6cluster_default.csv
 sps_col_t            0 yr linear
 sps_col_Qi           1 cgs log
-sps_col_fi           2 cgs linear
+sps_col_fi           2 cgs log
 sps_col_Lbol         3 cgs log
 sps_col_Lmech_W      6 cgs log
 sps_col_pdot_W       5 cgs log
