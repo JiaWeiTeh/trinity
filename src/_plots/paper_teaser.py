@@ -48,7 +48,6 @@ _sys.path.insert(0, str(_Path(__file__).parent.parent.parent))
 from src._plots.plot_base import FIG_DIR, smooth_2d
 from src._output.trinity_reader import load_output, resolve_data_input
 import src._functions.unit_conversions as cvt
-from src._calc._common.plot_utils import C_BLACK
 
 # paper_feedback supplies the data extraction (load_run); its panel
 # renderer is *not* used — we draw the panel locally below so we
@@ -76,7 +75,7 @@ SHOW_RADIUS_BOUNDARIES = True
 # and tick labels for both axes stay default-black; only the
 # velocity *line* is grey.  An in-panel Line2D legend ties the
 # line styles to the labels.
-_C_TOP = C_BLACK
+_C_TOP = "#000000"
 _C_VEL = "0.5"   # matplotlib mid grey
 
 # Panel (c) sequential purple ramp (darkest = gas absorption)
