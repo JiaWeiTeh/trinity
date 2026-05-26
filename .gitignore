@@ -14,7 +14,6 @@ outputs/*
 txt/
 fig/
 movie.txt
-# CLAUDE.md
 
 # Large test data files (optional - uncomment to exclude from git)
 # test/*.jsonl

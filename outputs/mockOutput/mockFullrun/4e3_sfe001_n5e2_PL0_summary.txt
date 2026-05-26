@@ -5,7 +5,7 @@
 # =============================================================================
 
 model_name                      4e3_sfe001_n5e2_PL0
-path2output                     /Users/jwt/unsync/Code/Trinity/outputs/sweep_orion_better_paper/4e3_sfe001_n5e2_PL0
+path2output                     ./outputs/sweep_orion_better_paper/4e3_sfe001_n5e2_PL0
 output_format                   JSON
 log_level                       INFO
 log_console                     False
@@ -58,9 +58,9 @@ use_adaptive_solver             True
 cool_alpha                      0.6
 cool_beta                       0.8
 cool_delta                      -0.17142857142857143
-path_cooling_CIE                /Users/jwt/unsync/Code/Trinity/lib/cooling/CIE/coolingCIE_3_Gnat-Ferland2012.dat
-path_cooling_nonCIE             /Users/jwt/unsync/Code/Trinity/lib/cooling/opiate/
-path_sps                        /Users/jwt/unsync/Code/Trinity/lib/sps/starburst99/
+path_cooling_CIE                ./lib/cooling/CIE/coolingCIE_3_Gnat-Ferland2012.dat
+path_cooling_nonCIE             ./lib/cooling/opiate/
+path_sps                        ./lib/sps/starburst99/
 bubble_xi_Tb                    0.98
 mCluster                        34.0
 current_phase                   
