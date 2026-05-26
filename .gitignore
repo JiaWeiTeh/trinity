@@ -18,6 +18,9 @@ lib/
 !lib/default/
 !lib/default/**
 
+# Personal scratch/test config — kept locally, not tracked
+param/test_run.param
+
 
 # Large test data files (optional - uncomment to exclude from git)
 # test/*.jsonl
