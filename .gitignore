@@ -14,7 +14,7 @@ outputs/*
 txt/
 fig/
 movie.txt
-lib/
+lib/*
 !lib/default/
 !lib/default/**
 
