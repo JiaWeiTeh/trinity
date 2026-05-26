@@ -6,7 +6,6 @@ __pycache__/
 
 # My files
 */*.icloud
-.DS_Store
 .spyproject/
 outputs/*
 #but not mock outputs
@@ -14,7 +13,7 @@ outputs/*
 txt/
 fig/
 movie.txt
-lib/
+lib/*
 !lib/default/
 !lib/default/**
 
@@ -26,6 +25,8 @@ param/test_run.param
 # test/*.jsonl
 # example_scripts/*.jsonl
 old_doNotRead/
+
+.DS_Store
 
 # IDE settings
 .idea/
