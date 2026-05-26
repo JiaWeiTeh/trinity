@@ -312,58 +312,21 @@ def validate_user_column_map(column_map: Dict[str, ColumnSpec], sps_path: str) -
 def _format_missing_template(*, sps_path: str,
                              missing_required, fi_ok, Li_Ln_partial,
                              sn_input_ok, given) -> str:
-    """Build the user-facing error message with a fillable sps_col_* template."""
-    declared = sorted(given.keys()) or '(none)'
-    diagnosis = []
-    if missing_required:
-        diagnosis.append(f"  Missing required canonicals: {missing_required}")
+    """One-line error: what's expected, what's missing, what was declared."""
+    missing = list(missing_required)
     if not fi_ok:
-        diagnosis.append(
-            "  Need either sps_col_fi, OR both sps_col_Li AND sps_col_Ln "
-            "(to bypass the SB99 13.6 eV threshold)."
-        )
+        missing.append('fi (or Li+Ln)')
     if Li_Ln_partial:
-        diagnosis.append(
-            "  sps_col_Li and sps_col_Ln must both be set, or neither."
-        )
+        missing.append('Li/Ln (both or neither)')
     if not sn_input_ok:
-        diagnosis.append(
-            "  Need either sps_col_Lmech_total or sps_col_Lmech_SN "
-            "(to drive the SN derivation pipeline)."
-        )
-    diag_block = '\n'.join(diagnosis)
-
-    template = (
-        f"sps_path is set to {sps_path!r} but the column mapping is incomplete.\n"
-        f"{diag_block}\n\n"
-        "Add the following lines to your .param file. Each line is:\n"
-        "    sps_col_<canonical>    <file_column>    <units>    <log|linear>\n"
-        "where <file_column> is EITHER a 0-based integer column index\n"
-        "(works on any file), OR a header-row name (file must have a\n"
-        "header). <units> can be the canonical's default cgs unit via\n"
-        "the alias 'cgs', or the explicit unit string. Examples shown\n"
-        "with the integer style and the cgs alias:\n\n"
-        "Required (no derivation fallback):\n"
-        "    sps_col_t            0                 cgs                 linear\n"
-        "    sps_col_Lbol         3                 cgs                 log\n"
-        "    sps_col_Lmech_W      6                 cgs                 log\n"
-        "    sps_col_Qi           1                 cgs                 log\n"
-        "    sps_col_pdot_W       5                 cgs                 log\n"
-        "    sps_col_fi           2                 dimensionless       linear\n"
-        "        (OR supply BOTH sps_col_Li AND sps_col_Ln instead of sps_col_fi)\n\n"
-        "And EITHER (to drive the SN pipeline):\n"
-        "    sps_col_Lmech_total  4                 cgs                 log\n"
-        "OR:\n"
-        "    sps_col_Lmech_SN     <idx_or_name>     cgs                 log\n\n"
-        "Optional (skip derivation if provided):\n"
-        "    sps_col_pdot_SN, sps_col_Mdot_SN, sps_col_v_SN,\n"
-        "    sps_col_Li, sps_col_Ln, sps_col_Lmech_total\n\n"
-        f"Recognized units (per canonical): see UNIT_CONVERSIONS in\n"
-        f"src/sb99/sps_columns.py. The 'cgs' alias maps to each\n"
-        f"canonical's default cgs unit (1/s for Qi; erg/s for L*; etc.).\n\n"
-        f"Currently declared in your .param: {declared}\n"
+        missing.append('Lmech_total (or Lmech_SN)')
+    declared = sorted(given.keys()) or []
+    return (
+        f"sps_path={sps_path!r}: missing sps_col_* for {missing}. "
+        f"Required canonicals: t, Qi, Lbol, Lmech_W, pdot_W, "
+        f"fi (or Li+Ln), Lmech_total (or Lmech_SN). "
+        f"Declared: {declared}."
     )
-    return template
 
 
 def validate_t_monotonic(t: np.ndarray, filepath: str) -> None:
