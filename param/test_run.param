@@ -27,7 +27,7 @@ path2output    outputs/test_run
 
 # Run settings
 stop_r    None
-stop_t    0.6
+stop_t    0.4
 
 # Suppress warnings to save memory
 log_level    INFO
