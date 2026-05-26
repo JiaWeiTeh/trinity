@@ -149,10 +149,12 @@ UNIT_CONVERSIONS: Dict[str, Dict[str, float]] = {
 }
 
 
-# Legacy SB99 7-column positional preset. The permanent fallback used when
-# sps_path = def_path (see analysis/sb99-refactor-audit.md §9).
+# Legacy SB99 7-column positional preset. Injected as the column map for
+# the bundled default file (sps_path = def_path → lib/default/sps/
+# 1e6cluster_default.csv) so users do not need to declare sps_col_* lines.
+# See analysis/sb99-refactor-audit.md §9 for background.
 #
-# Column order matches the existing SB99 files in lib/sps/starburst99/:
+# Column order matches the canonical SB99 export layout:
 #   col 0: time [yr]              (linear)
 #   col 1: log10 Qi [1/s]         (log)
 #   col 2: log10 fi [-]           (log)        ← yes, log-space; the legacy
