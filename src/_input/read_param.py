@@ -28,6 +28,10 @@ import src._functions.unit_conversions as cvt
 from src._input.dictionary import DescribedItem, DescribedDict
 import src.sb99.sps_columns as sps_columns
 
+# Anchor bundled-asset lookups to the repo root, not the CWD: users may launch
+# run.py from anywhere, and the `lib/default/...` defaults must still resolve.
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+
 # Initialize logger for this module
 logger = logging.getLogger(__name__)
 
@@ -423,7 +427,7 @@ def read_param(path2file, write_summary=True):
     # Default sentinel 'def_dir' resolves to the shipped OPIATE cube folder
     # under lib/default/opiate/.
     if params['path_cooling_nonCIE'].value == 'def_dir':
-        params['path_cooling_nonCIE'].value = os.path.join(os.getcwd(), 'lib/default/opiate/')
+        params['path_cooling_nonCIE'].value = str(_REPO_ROOT / 'lib' / 'default' / 'opiate') + os.sep
     else:
         path_cooling = str(params['path_cooling_nonCIE'].value)
         Path(path_cooling).mkdir(parents=True, exist_ok=True)
@@ -441,10 +445,10 @@ def read_param(path2file, write_summary=True):
         }
         cie_choice = int(params['path_cooling_CIE'].value)
         if cie_choice in cie_files:
-            params['path_cooling_CIE'].value = os.path.join(os.getcwd(), cie_files[cie_choice])
+            params['path_cooling_CIE'].value = str(_REPO_ROOT / cie_files[cie_choice])
     elif params['ZCloud'].value == 0.15:
-        params['path_cooling_CIE'].value = os.path.join(
-            os.getcwd(), 'lib/default/CIE/coolingCIE_4_Sutherland-Dopita1993.dat'
+        params['path_cooling_CIE'].value = str(
+            _REPO_ROOT / 'lib' / 'default' / 'CIE' / 'coolingCIE_4_Sutherland-Dopita1993.dat'
         )
     
     # SPS data directory. Sentinel 'def_dir' resolves to
@@ -453,7 +457,7 @@ def read_param(path2file, write_summary=True):
     # branch below resolves sps_path directly to the bundled CSV without
     # joining against path_sps.
     if params['path_sps'].value == 'def_dir':
-        params['path_sps'].value = os.path.join(os.getcwd(), 'lib/default/sps/starburst99/')
+        params['path_sps'].value = str(_REPO_ROOT / 'lib' / 'default' / 'sps' / 'starburst99') + os.sep
     else:
         path_sps = str(params['path_sps'].value)
         Path(path_sps).mkdir(parents=True, exist_ok=True)
@@ -485,7 +489,7 @@ def read_param(path2file, write_summary=True):
     # The historical legacy SB99 filename grammar
     # (_get_legacy_sb99_filename) is no longer wired up under def_path —
     # see that function's docstring for the rationale.
-    DEFAULT_SPS_CSV = os.path.join(os.getcwd(), 'lib/default/sps/starburst99/1e6cluster_default.csv')
+    DEFAULT_SPS_CSV = str(_REPO_ROOT / 'lib' / 'default' / 'sps' / 'starburst99' / '1e6cluster_default.csv')
     sps_path_uses_bundled_default = (params['sps_path'].value == 'def_path')
     if sps_path_uses_bundled_default:
         params['sps_path'].value = DEFAULT_SPS_CSV
