@@ -17,11 +17,13 @@ dropped in, without shifting a single ULP under the legacy parameter path.
   loader (`read_SB99.py`), the param plumbing (`read_param.py` +
   `default.param`), and the one direct interpolator access in
   `phase0_init/get_InitPhaseParam.py`.
-- **Four PRs**, each back-compat and independently revertable:
-  1. `sps_path` + `sps_refmass` with legacy fallback (zero math changes)
-  2. In-`.param` column mapping via `sps_col_<canonical>` (SB99 positional remains the legacy preset; strict, no silent fallback; subsumes explicit SN/Li/Ln overrides as the natural consequence of the column-map design)
-  3. Mechanical rename `SB99f → sps_f`
-  4. Cleanup — drop dead import; **legacy SB99 params (SB99_mass / SB99_rotation / SB99_BHCUT) remain as permanent fallback, never removed**.
+- **Six PRs total** (PRs 1-3 landed; 4-6 plan the eventual removal of the legacy fallback):
+  1. ✅ `sps_path` + `sps_refmass` with legacy fallback (zero math changes)
+  2. ✅ In-`.param` column mapping via `sps_col_<canonical>` (strict, no silent fallback; subsumes explicit SN/Li/Ln overrides)
+  3. ✅ Mechanical rename `SB99f → sps_f`
+  4. **Soft deprecation** — drop dead import; introduce `sps_preset starburst99` one-liner; bump legacy notification from `logger.info` to `logger.warning` + emit `DeprecationWarning`. Legacy path still runs.
+  5. **Hard deprecation** — `sps_path == def_path` raises with a migration recipe; rename `SB99_rotation` → `sps_rotation` (back-compat alias).
+  6. **Removal** — delete `_get_legacy_sb99_filename`, `_read_sb99_legacy`, `SB99_mass`, `SB99_BHCUT`, back-compat aliases. `LEGACY_SB99_COLUMN_MAP` survives as `SPS_PRESETS['starburst99']`.
 - **Headline risk: silent ULP drift** through the 10 cubic-spline interpolators
   that drive every phase. The whole test battery exists to make that drift
   impossible to ship undetected.
@@ -215,8 +217,9 @@ import.
 - `read_param.py:472-473` — declares `SB99_data, SB99f` runtime containers.
 - `read_param.py:474-485` — declares the 12 scalar feedback params.
 
-**Required changes.** Add `sps_path` (and `sps_refmass`); keep `SB99_*` as
-permanent fallback paths (§9); rename runtime containers in PR-3.
+**Required changes.** Add `sps_path` (and `sps_refmass`); retain `SB99_*` as
+the deprecated fallback path (§9) — PRs 4-6 phase it out; rename runtime
+containers in PR-3.
 
 ### 5.11 `src/cooling/non_CIE/read_cloudy.py` — 🔴 *separate* SB99 coupling
 
@@ -241,7 +244,7 @@ in legacy `read_cloudy_old.py:287`.
 | `src/sb99/update_feedback.py` | — | ✅ reads | writes 12 scalars | 🟡 PR-3 rename |
 | `src/main.py:142-152` | — | calls `read_SB99` | populates containers | 🔴 swap loader; replace `f_mass = mCluster/SB99_mass` with `sps_refmass` |
 | `src/_input/read_param.py` | declares containers | — | — | 🔴 add `sps_path`/`sps_refmass`; keep legacy as fallback |
-| `src/_input/default.param` | declares legacy params | — | — | 🔴 add `sps_path`; point INFO line at `sps_path` as alternative. SB99_* params stay (permanent fallback, §9). |
+| `src/_input/default.param` | declares legacy params | — | — | 🔴 add `sps_path`; point INFO line at `sps_path` as alternative. SB99_* params retained as deprecated fallback (§9), removed in PR-6. |
 | `src/phase0_init/get_InitPhaseParam.py` | — | ✅ reads directly | — | 🟡 PR-3 rename |
 | `src/phase1_energy/run_energy_phase_modified.py` | — | — | ✅ | 🟢 |
 | `src/phase1_energy/energy_phase_ODEs_modified.py` | — | — | ✅ | 🟢 |
@@ -338,32 +341,91 @@ default that routes back to the legacy SB99 grammar:
   introduces these keys; subsequent PRs do not touch them. **The `.param`
   is the single source of truth** — no external sidecar file is read.
 
-### Legacy is permanent, not deprecated
+### Legacy is deprecated, scheduled for removal
 
-**Hard guarantee:** the legacy SB99 calling method — a `.param` file that
-declares only `SB99_mass`, `SB99_rotation`, `SB99_BHCUT`, `ZCloud`, and
-`path_sps` (no `sps_path`, no `sps_col_*`) — works forever. **None of
-the four PRs removes it.** This is the "last resort" path the user
-called out: if everything else fails or a user simply doesn't want to
-migrate, the existing grammar continues to function identically to its
-pre-refactor behavior, byte-for-byte.
+**Policy change (post PR-3):** the original plan treated the legacy SB99
+calling method as a permanent supported fallback. That has been revised
+— the legacy path is now on a deprecation track. PR-3 was the last PR
+that the user could rely on the legacy fallback being silent and
+risk-free; PRs 4-6 remove it in three phases.
 
-Concretely, after all four PRs land:
+**What "legacy" means here.** A `.param` file that declares only the
+old SB99 grammar (`SB99_mass`, `SB99_rotation`, `SB99_BHCUT`, `ZCloud`,
+`path_sps`) and no `sps_path` / `sps_col_*` / `sps_preset` lines. As of
+this writing, 22 of the 23 .param files committed under
+`/home/user/trinity/param/` rely on this path (only `test_run.param`
+declares the new SPS syntax — verified 2026-05).
 
-- `SB99_mass / SB99_rotation / SB99_BHCUT` remain declared in
-  `default.param` with their original defaults.
-- `read_param.py` continues to translate them into a resolved file path
-  via the relocated `get_filename()` helper when `sps_path == def_path`.
-- The legacy 7-column positional load path in `read_SB99.py` remains
-  the code that runs in that case (byte-equivalent to PR-1's loader).
-- The startup `logger.info` notification is informational; no warning,
-  no error, no escalation. A user who never sets `sps_path` sees one
-  extra line in the log and nothing else changes.
+#### What goes away
 
-`ZCloud` is **not** affected at all by the SPS refactor (legacy or new).
-It controls dust opacity and other metallicity-keyed physics elsewhere
-(`read_param.py:280, 321, 363, 372`) and is required regardless of which
-SPS path the user takes.
+- `_get_legacy_sb99_filename` in `read_param.py:35` (the relocated
+  filename-grammar helper).
+- `_read_sb99_legacy` in `read_SB99.py` (the verbatim pre-refactor
+  loader).
+- The `sps_path == def_path` sentinel + dispatch flag
+  `sps_layout_is_legacy` set at `read_param.py:509`.
+- `SB99_mass` and `SB99_BHCUT` in `default.param:176, 185` (only ever
+  read by the filename-grammar helper).
+- Back-compat aliases `params['SB99_data']` / `params['SB99f']` at
+  `read_param.py:609-610`.
+
+#### What survives, under new names
+
+- **`SB99_rotation` → `sps_rotation`** (PR-5). It is a property of the
+  underlying stellar tracks (rotating vs non-rotating SED), not a
+  cooling parameter; cooling just consumes it for CLOUDY-library
+  selection (`read_cloudy.py:47`). One-major-version back-compat alias.
+- **`LEGACY_SB99_COLUMN_MAP` → `SPS_PRESETS['starburst99']`**. The
+  7-column positional layout is genuinely useful as a named preset for
+  any SB99-format file the user points at; it just stops being a silent
+  fallback.
+
+#### What is unchanged
+
+- `ZCloud` — drives dust opacity and metallicity-keyed physics
+  (`read_param.py:280, 321, 363, 372`); independent of the SPS refactor
+  and never deprecated.
+- `path_sps` — still the directory that `sps_path` resolves relative to
+  when given a non-absolute path.
+
+#### New `sps_preset` mechanism (PR-4)
+
+To keep simple .param files simple after deprecation, PR-4 introduces
+`sps_preset`. With it, the post-deprecation equivalent of the current
+minimal `simple_cluster.param` is **four lines**:
+
+    mCloud      1e5
+    sfe         0.3
+    sps_path    lib/sps/starburst99/<your-file>.txt
+    sps_preset  starburst99
+
+`sps_preset starburst99` applies `SPS_PRESETS['starburst99']` (the
+renamed `LEGACY_SB99_COLUMN_MAP`) — no `sps_col_*` lines needed. Any
+file whose column layout matches the SB99 7-column convention works
+with this one-liner; users with arbitrary layouts continue to use
+`sps_col_*` declarations.
+
+#### Existing .param files
+
+**Explicit decision (2026-05):** PR-4 does **not** migrate the 21
+committed .param files that currently rely on the legacy fallback. They
+continue to run under the deprecation warning until PR-5 makes that an
+error. Users who maintain those configs are expected to migrate them
+between PR-4 and PR-5; the deprecation warning includes the exact
+4-line replacement snippet.
+
+#### Why the policy changed
+
+Two things forced this:
+1. The legacy fallback is a constant tax on documentation, validation
+   logic, and mental overhead for new contributors who have to learn
+   *both* mechanisms.
+2. The "permanent" framing implied that `SB99_mass`, `SB99_BHCUT`
+   needed forever-maintenance even though their only consumer is the
+   filename grammar — code that nothing else depends on.
+
+Removing them shrinks the surface and leaves exactly one path through
+SPS loading, which is the design goal of the refactor.
 
 ## 10. PR sequence
 
@@ -379,8 +441,9 @@ phases, interpolators, and dataclass are otherwise untouched.
 
 - `src/_input/default.param` — add `sps_path  def_path` and
   `sps_refmass  def_value`. Update `# INFO` lines on the three legacy SB99_*
-  params (169, 172, 176) to point at `sps_path` as the alternative
-  mechanism. Do **not** mark them deprecated — they are permanent (§9).
+  params (169, 172, 176) to point at `sps_path` as the preferred
+  mechanism. (PR-4 escalates these into deprecation notices; PR-6
+  removes `SB99_mass` and `SB99_BHCUT` entirely. See §9.)
 - `src/_input/read_param.py` — new resolution block. If
   `sps_path == 'def_path'`, construct via the legacy grammar (relocate
   `get_filename` logic here). Emit one `logger.info` line stating that
@@ -706,60 +769,156 @@ external code reading `params['SB99f']` still works for one release.
    raises a clear error pointing at the new name (assuming the old symbol
    is removed; if a transitional alias is kept, this test inverts).
 
-### PR-4 — Cleanup (legacy stays)
+### PR-4 — Soft deprecation + `sps_preset`
 
-**Scope.** Cosmetic cleanup only. Does **not** remove any user-facing
-surface. The legacy SB99 calling method (`SB99_mass / SB99_rotation /
-SB99_BHCUT`) remains a permanent supported fallback per §9 — PR-4 does
-not touch it. This is the "last resort" guarantee.
+**Scope.** Mark the legacy fallback as deprecated (still functional);
+introduce the `sps_preset` one-liner; drop the verified dead import.
+No `.param` file migrations — those happen organically between PR-4
+and PR-5.
 
 **Files touched.**
 
+- `src/sb99/sps_columns.py` — rename `LEGACY_SB99_COLUMN_MAP` to
+  `SPS_PRESETS['starburst99']` (keep `LEGACY_SB99_COLUMN_MAP` as a
+  module-level alias for one major version). Add a `resolve_preset(name)
+  -> Dict[str, ColumnSpec]` helper.
+- `src/_input/read_param.py` —
+  - parse `sps_preset` from the .param. If set, apply
+    `SPS_PRESETS[name]` as the column_map (skip `sps_col_*` requirement).
+  - In the legacy resolution branch (`sps_path == def_path`), bump
+    `logger.info` to `logger.warning`, prepend "DEPRECATED:" to the
+    message, and emit `warnings.warn(..., DeprecationWarning,
+    stacklevel=2)` so pytest captures it. Include the 4-line
+    migration snippet in the warning text.
 - `src/bubble_structure/bubble_luminosity_modified.py` — delete the
-  dead `get_currentSB99feedback` import at line 33 (verified
-  zero-call-sites, see §5.8).
-- `src/sb99/update_feedback.py` — optionally remove the transitional
-  `get_currentSB99feedback` alias kept by PR-3, *only if* you're
-  confident no out-of-tree consumer relies on the old name. Otherwise
-  leave it in place permanently.
-- `src/_input/read_param.py` — optionally remove the `params['SB99f']`
-  back-compat alias from PR-3 on the same condition. The
-  `params['sps_column_map']` plumbing and the legacy `get_filename()`
-  helper stay.
+  dead `get_currentSB99feedback` import at line 33.
+- `src/_input/default.param` — add a top-comment block under the
+  SPS section explaining that `SB99_mass`, `SB99_rotation`,
+  `SB99_BHCUT` are deprecated and will be removed in a future
+  release; show the `sps_preset` opt-in.
+- `docs/source/parameters.rst` — document `sps_preset`, add a
+  "deprecated" admonition to the SB99_* section.
 
 **Files explicitly NOT touched.**
 
-- `src/_input/default.param` — `SB99_mass`, `SB99_rotation`, `SB99_BHCUT`
-  remain declared with their original defaults.
-- `src/_input/read_param.py` — the legacy fallback resolution
-  (`sps_path == def_path` → `get_filename(params)`) remains.
-- The startup `logger.info` notification stays.
+- The 22 .param files under `/home/user/trinity/param/`. They keep
+  running under the deprecation warning.
+- `_get_legacy_sb99_filename`, `_read_sb99_legacy`,
+  `LEGACY_SB99_COLUMN_MAP` (alias), `SB99_mass`, `SB99_rotation`,
+  `SB99_BHCUT` — all still functional.
+- Back-compat aliases `params['SB99_data']`, `params['SB99f']`.
 
 **Tests required to merge.**
 
-1. Legacy configs that set only `SB99_mass / SB99_rotation / SB99_BHCUT
-   / ZCloud / path_sps` (and no `sps_path`) still produce snapshot
-   trees byte-equivalent (within `rtol=1e-12`) to the PR-3 golden.
-   This is the "last resort" smoke test.
-2. Configs that set `sps_path` + `sps_col_*` continue to work; full
-   E2E equivalence against PR-3 golden.
-3. `bubble_luminosity_modified.py` imports list contains no
+1. PR-3 equivalence battery rerun unchanged (legacy path still
+   produces byte-equivalent results).
+2. New test: a .param with `sps_path` + `sps_preset starburst99` (no
+   `sps_col_*`) produces a column_map identical to the
+   `LEGACY_SB99_COLUMN_MAP`.
+3. New test: legacy .param triggers exactly one `DeprecationWarning`
+   matching the expected migration recipe substring.
+4. `bubble_luminosity_modified.py` imports list contains no
    `get_currentSB99feedback` reference.
-4. (If the PR-3 transitional aliases are removed) old import paths
-   raise `ImportError` with a clear message pointing at the new names.
+
+### PR-5 — Hard deprecation + `SB99_rotation` rename
+
+**Scope.** Legacy fallback becomes an error; `SB99_rotation` migrates
+to `sps_rotation` with a back-compat alias.
+
+**Files touched.**
+
+- `src/_input/read_param.py` —
+  - The `sps_path == def_path` branch now raises `ValueError` with the
+    full migration recipe. The `_get_legacy_sb99_filename` helper is
+    no longer called from the main path but remains in the file (used
+    only by PR-6 removal).
+  - Read `sps_rotation` (canonical). If absent, fall back to
+    `SB99_rotation` with a `DeprecationWarning`. Write the resolved
+    value back to both keys so downstream code can read either.
+- `src/_input/default.param` — add `sps_rotation` (default mirrors
+  current `SB99_rotation` default). Leave `SB99_rotation` declared
+  for one more release as a deprecated alias.
+- `src/cooling/non_CIE/read_cloudy.py:47` — switch consumer to read
+  `params['sps_rotation'].value`.
+- `src/cooling/non_CIE/read_cloudy.py:266` — rename parameter
+  `SB99_rotation` → `sps_rotation` in the `get_filename` signature
+  (purely a local rename; filename strings are unchanged).
+- `docs/source/parameters.rst` — promote `sps_rotation` to primary
+  documentation; move `SB99_rotation` to a "deprecated alias" note.
+
+**Files explicitly NOT touched.**
+
+- The legacy column-map code path (`_read_sb99_legacy` still exists,
+  but is unreachable from the main entry point because
+  `_get_legacy_sb99_filename` is no longer called).
+- Cooling table filenames on disk (`<...>_rot.dat` vs `<...>_norot.dat`
+  remain — the rename is in code only, not on the filesystem).
+
+**Tests required to merge.**
+
+1. Default-config run with `sps_rotation = 1` produces byte-equivalent
+   snapshot tree to the PR-4 golden.
+2. Default-config run with `SB99_rotation = 1` (no `sps_rotation`)
+   produces the same tree AND emits exactly one
+   `DeprecationWarning` for the rename.
+3. Default-config run with `sps_path == def_path` raises
+   `ValueError` whose message includes the 4-line `sps_path` +
+   `sps_preset starburst99` migration snippet.
+
+### PR-6 — Removal
+
+**Scope.** Delete every legacy code path and parameter that no longer
+has a consumer.
+
+**Files touched.**
+
+- `src/sb99/read_SB99.py` —
+  - Delete `_read_sb99_legacy` (no longer reachable since PR-5).
+  - Inline `_read_sb99_user` into `read_SB99` (no dispatcher needed).
+  - Delete the `sps_layout_is_legacy` flag plumbing.
+- `src/sb99/sps_columns.py` — delete the `LEGACY_SB99_COLUMN_MAP`
+  alias kept for PR-4 back-compat. Only `SPS_PRESETS['starburst99']`
+  remains.
+- `src/_input/read_param.py` —
+  - Delete `_get_legacy_sb99_filename`.
+  - Delete the entire `sps_path == def_path` branch.
+  - Delete the `params['SB99f']` / `params['SB99_data']` aliases.
+  - Delete the `SB99_rotation` → `sps_rotation` translation block.
+- `src/_input/default.param` — delete `SB99_mass`, `SB99_BHCUT`,
+  `SB99_rotation`. Replace the deprecated `def_path` sentinel with a
+  required-field error if `sps_path` is not set.
+- `src/_input/dictionary.py:1204, 1233-1234` — delete the
+  `SB99_mass` declarations and demo lines.
+- `docs/source/parameters.rst` — delete the SB99_* deprecated
+  sections; `sps_path` becomes a required field.
+
+**Tests required to merge.**
+
+1. .param files declaring only `sps_path` + `sps_preset starburst99`
+   produce byte-equivalent snapshot trees to the PR-5 golden.
+2. .param files declaring `sps_path` + explicit `sps_col_*` (no
+   preset) likewise.
+3. A .param file with no `sps_path` raises a clear required-field
+   error (not a `KeyError`).
+4. A .param file with `SB99_mass = 1e6` (no `sps_path`) raises
+   `ValueError` pointing at the removed parameter and the
+   replacement.
 
 ### Out of scope: cooling-table coupling
 
 `src/cooling/non_CIE/read_cloudy.py:47, 263-335` constructs filenames from
-`SB99_rotation` and `ZCloud`. Even after the feedback CSV is decoupled, the
-cooling cubes themselves were generated from SB99-keyed SEDs, so swapping in
-a different SPS does not magically generalize cooling.
+`SB99_rotation` (renamed to `sps_rotation` in PR-5) and `ZCloud`. Even
+after the feedback CSV is decoupled, the cooling cubes themselves were
+generated from SB99-keyed SEDs, so swapping in a different SPS does not
+magically generalize cooling.
 
 **Mitigation in this refactor.** When `sps_path` is set to a non-default
-value, emit a `UserWarning`: "Cooling tables are still keyed by SB99
-rotation+Z; results valid only if the SPS source is SB99-compatible at the
-declared rotation/Z." Tracked as follow-up: add `path_cooling_nonCIE` knob
-analogous to `sps_path`.
+value, emit a `UserWarning`: "Cooling tables are still keyed by stellar
+rotation+Z; results valid only if the SPS source is SB99-compatible at
+the declared rotation/Z." Tracked as follow-up: add a
+`path_cooling_nonCIE` knob analogous to `sps_path`, plus an explicit
+metadata declaration so the cooling-table provenance is no longer
+implicit in `sps_rotation` + `ZCloud`.
 
 ## 11. Test strategy (the substance)
 
@@ -891,9 +1050,9 @@ def test_e2e_with_explicit_sps_path():
         diff_snapshot_trees(gold_out, tmpdir / cfg.stem, rtol=1e-12, atol=0)
 
 def test_legacy_path_emits_one_info_log_per_run(caplog):
-    """Legacy fallback emits exactly one INFO log naming the SB99 grammar
-    — informational, not a warning, not an error. The legacy path is a
-    permanent supported fallback (§9), not deprecated."""
+    """Pre-PR-4 only: legacy fallback emits exactly one INFO log naming
+    the SB99 grammar — informational, not a warning, not an error. PR-4
+    flips this to a WARNING + DeprecationWarning (see PR-4 test below)."""
     with caplog.at_level(logging.INFO):
         load_with_legacy_params()
         load_with_legacy_params()  # second call same process
@@ -901,9 +1060,21 @@ def test_legacy_path_emits_one_info_log_per_run(caplog):
                if r.levelno == logging.INFO
                and 'legacy SB99' in r.message]
     assert len(matches) == 1
-    # And there must be NO warnings of any category about legacy use.
+    # Before PR-4 there must be NO warnings of any category about legacy use.
     assert not any('SB99' in r.message and r.levelno >= logging.WARNING
                    for r in caplog.records)
+
+def test_legacy_path_post_pr4_emits_deprecation(caplog, recwarn):
+    """PR-4 onward: legacy fallback emits exactly one WARNING-level log
+    AND exactly one DeprecationWarning, both naming the migration recipe."""
+    with caplog.at_level(logging.WARNING):
+        load_with_legacy_params()
+    assert any('DEPRECATED' in r.message and r.levelno == logging.WARNING
+               for r in caplog.records)
+    dep = [w for w in recwarn.list if issubclass(w.category, DeprecationWarning)]
+    assert len(dep) == 1
+    assert 'sps_path' in str(dep[0].message)
+    assert 'sps_preset' in str(dep[0].message)
 ```
 
 #### 11.2.2 PR-2 tests
@@ -1004,21 +1175,75 @@ def test_renamed_imports_resolve():
     """from src.sb99.update_feedback import get_current_sps_feedback works."""
 ```
 
-#### 11.2.4 PR-4 tests
+#### 11.2.4 PR-4 tests (soft deprecation + sps_preset)
 
 ```python
-def test_legacy_config_still_works_after_pr4():
-    """The 'last resort' guarantee. A config that sets only SB99_mass /
-    SB99_rotation / SB99_BHCUT / ZCloud / path_sps (no sps_path, no
-    sps_col_*) produces a snapshot tree within rtol=1e-12 of the PR-3
-    golden. Legacy is permanent, not a deprecation timer."""
+def test_legacy_config_still_runs_under_deprecation(recwarn):
+    """A config that sets only SB99_mass / SB99_rotation / SB99_BHCUT /
+    ZCloud / path_sps (no sps_path) STILL produces a snapshot tree within
+    rtol=1e-12 of the PR-3 golden. The math is unchanged; only the
+    warning surface changes."""
 
-def test_sps_path_config_still_works_after_pr4():
-    """Full E2E equivalence against PR-3 golden for an sps_path-based config."""
+def test_sps_preset_starburst99_equivalent_to_legacy_columns():
+    """A config setting sps_path + sps_preset starburst99 (no sps_col_*)
+    produces the same column_map as LEGACY_SB99_COLUMN_MAP and the same
+    snapshot tree (rtol=1e-12) as the legacy config pointing at the same
+    on-disk file."""
+
+def test_sps_path_explicit_config_still_works_after_pr4():
+    """Full E2E equivalence against PR-3 golden for an sps_path +
+    sps_col_* explicit config."""
 
 def test_bubble_luminosity_imports_clean():
     """No reference to get_currentSB99feedback in
     bubble_luminosity_modified.py after the dead-import drop."""
+
+def test_legacy_emits_deprecation_warning_with_migration_recipe(caplog, recwarn):
+    """Legacy fallback now emits exactly one DeprecationWarning whose
+    message contains the 4-line migration snippet (sps_path + sps_preset
+    starburst99)."""
+```
+
+#### 11.2.5 PR-5 tests (hard deprecation + sps_rotation rename)
+
+```python
+def test_def_path_now_raises_with_recipe():
+    """sps_path == def_path raises ValueError; message names sps_path,
+    sps_preset, and points at the surviving SB99 .param files as the
+    migration target."""
+
+def test_sps_rotation_canonical_works():
+    """A config setting sps_rotation directly (no SB99_rotation) produces
+    a snapshot tree byte-equivalent to the PR-4 golden."""
+
+def test_sb99_rotation_alias_emits_deprecation_then_works(recwarn):
+    """A config setting only SB99_rotation produces the same tree as
+    sps_rotation AND emits one DeprecationWarning for the rename."""
+
+def test_cooling_consumes_sps_rotation():
+    """read_cloudy reads params['sps_rotation'].value, not
+    params['SB99_rotation'].value."""
+```
+
+#### 11.2.6 PR-6 tests (removal)
+
+```python
+def test_no_sps_path_now_raises_required_field_error():
+    """A .param with no sps_path raises a clear required-field
+    error (not KeyError)."""
+
+def test_sb99_mass_now_raises_removed_param_error():
+    """A .param with SB99_mass = 1e6 (no sps_path) raises a ValueError
+    naming the removed parameter and the replacement."""
+
+def test_sps_preset_only_config_still_works():
+    """A .param declaring only sps_path + sps_preset starburst99
+    produces the PR-5 golden snapshot tree."""
+
+def test_no_legacy_symbols_in_module():
+    """import src.sb99.read_SB99 — _read_sb99_legacy is gone."""
+    """import src.sb99.sps_columns — LEGACY_SB99_COLUMN_MAP is gone."""
+    """import src._input.read_param — _get_legacy_sb99_filename is gone."""
 ```
 
 ### 11.3 Equivalence tolerance policy
@@ -1096,12 +1321,27 @@ trees are too big and ephemeral to commit.
 4. **Branch `feature/sps-rename`** for PR-3. Re-run full battery + new
    alias tests.
 5. **Soak.** Let PR-3 run in production for at least one release cycle
-   before queueing PR-4. PR-4 is purely cosmetic; nothing user-facing
-   breaks, but soaking catches any unexpected coupling to the dead
-   import or transitional aliases.
-6. **Branch `fix/drop-sb99-dead-import`** for PR-4. Re-run battery
-   against the post-PR-3 golden. **Legacy SB99 params remain
-   permanent** — see §9.
+   before queueing PR-4. Soaking catches any unexpected coupling to the
+   dead import or transitional aliases. PR-4 itself does not break any
+   running config, but it does start emitting `DeprecationWarning` so
+   upstream consumers that treat warnings as errors will notice.
+6. **Branch `feature/sps-soft-deprecation`** for PR-4. Re-run battery
+   against the post-PR-3 golden (math unchanged); verify warning surface.
+7. **Soak again** before PR-5. PR-5 is the first PR that breaks a
+   running `.param` file (the `def_path` sentinel now raises), so allow
+   at least one full release cycle for users to migrate. The PR-4
+   deprecation warning includes the migration recipe, so users running
+   the legacy path already know what to do.
+8. **Branch `feature/sps-hard-deprecation`** for PR-5. Re-run battery;
+   add tests for the `sps_rotation` rename and the `def_path` →
+   ValueError transition.
+9. **Soak again** before PR-6. PR-6 removes code; at this point no
+   in-tree config should rely on the deleted surface. The `param/`
+   directory should have been migrated either organically (between
+   PR-4 and PR-5) or in a dedicated migration PR.
+10. **Branch `feature/sps-legacy-removal`** for PR-6. Re-run battery
+    against the post-PR-5 golden; verify that the `LEGACY_SB99_*`
+    aliases and `_read_sb99_legacy` symbols are gone.
 
 All branch names use the repo's `feature/` or `fix/` prefix per CLAUDE.md.
 The current audit branch (`claude/sb99-default-parameter-ttQIN`) violates
@@ -1117,12 +1357,19 @@ Before starting PR-1, please confirm:
    (rename symbols only), or move to `src/sps/read_sps.py`? Affects PR-3
    churn substantially. Recommendation: symbols only, keep module path; SB99
    is the canonical SPS for this codebase.
-2. **Legacy persistence (confirmation).** §9 now treats `SB99_mass /
-   SB99_rotation / SB99_BHCUT` as a permanent fallback path — none of the
-   four PRs removes them. The startup notification is a one-time
-   `logger.info`, not a `DeprecationWarning`. Confirm this is the
-   intended policy (vs. eventually scheduling removal in a future
-   release).
+2. **Legacy deprecation timeline (RESOLVED 2026-05).** §9 now schedules
+   the legacy SB99 grammar for removal across PRs 4-6:
+   - PR-4 escalates the startup notification from `logger.info` to
+     `logger.warning` + `DeprecationWarning`, and introduces
+     `sps_preset starburst99` as a one-line opt-in for the SB99
+     7-column layout.
+   - PR-5 makes `sps_path == def_path` an error and renames
+     `SB99_rotation` → `sps_rotation` with a back-compat alias.
+   - PR-6 removes `_get_legacy_sb99_filename`, `_read_sb99_legacy`,
+     `SB99_mass`, `SB99_BHCUT`, the `SB99_rotation` alias, and the
+     `params['SB99_data']` / `params['SB99f']` back-compat aliases.
+   No migration of the 22 .param files in `param/` between PR-3 and
+   PR-4; users migrate organically under the deprecation warning.
 3. **Anchor config selection.** Are `cloud_example_PL.param`,
    `cloud_example_BE.param`, `cloud_example_homogeneous.param` the right
    three for the E2E battery? They're the three tracked single-run example
@@ -1137,13 +1384,10 @@ Before starting PR-1, please confirm:
 5. **Cooling coupling timing.** Out of scope here, but: do you want a
    parallel issue/PR opened to address `read_cloudy.py`'s SB99 keying, or
    leave that until the SPS refactor lands?
-6. **`sps_format` shortcut?** Should PR-2 accept a single
-   `sps_format    sb99_positional` key that lets users opt into the
-   7-column legacy preset for a non-default `sps_path` without
-   re-declaring every `sps_col_*` line? Convenience for "I'm just
-   pointing at a different SB99 file." Recommendation: leave out for
-   now — it's a foot-gun if applied to a non-SB99 file, and the explicit
-   `sps_col_*` block is short. Add later only if real friction shows up.
+6. **`sps_format` shortcut (RESOLVED 2026-05).** Originally deferred; now
+   reintroduced as `sps_preset` in PR-4 because it is the migration
+   target for the 22 legacy-fallback .param files. Keeps simple .param
+   files short after the legacy fallback is removed. See §9.
 7. **Order-of-magnitude sniff-test?** Should PR-2 (or a follow-up) add a
    per-canonical "expected value range" check that warns when a loaded
    column is grossly out-of-range (e.g. `Qi` linear value < 1e30 or
