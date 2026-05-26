@@ -176,7 +176,13 @@ coll_r    1
 SB99_mass    1e6
 
 # INFO: Determines whether stellar rotation is considered in the stellar track.
-#       Legacy SB99 grammar — only consulted when sps_path = def_path.
+#       Read by TWO subsystems independently:
+#         (1) Legacy SB99 filename grammar (only when sps_path = def_path).
+#         (2) Non-CIE cooling-table selection
+#             (src/cooling/non_CIE/read_cloudy.py:47), which picks
+#             opiate_cooling_rot_* vs opiate_cooling_norot_* regardless of
+#             whether sps_path is set. So this parameter survives even
+#             after the legacy SPS grammar is removed.
 SB99_rotation    1
 
 # INFO: Defines the black hole formation threshold.
