@@ -14,6 +14,10 @@ outputs/*
 txt/
 fig/
 movie.txt
+lib/
+!lib/default/
+!lib/default/**
+
 
 # Large test data files (optional - uncomment to exclude from git)
 # test/*.jsonl
