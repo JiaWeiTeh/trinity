@@ -19,6 +19,7 @@ lib/*
 
 # Personal scratch/test config — kept locally, not tracked
 param/test_run.param
+src/_calc
 
 
 # Large test data files (optional - uncomment to exclude from git)
