@@ -38,7 +38,7 @@ def _get_legacy_sb99_filename(params):
     ZCloud / SB99_BHCUT grammar.
 
     Currently NOT WIRED UP — `sps_path = def_path` resolves directly to
-    `lib/default/sps/1e6cluster_default.csv` (see `read_param` below).
+    `lib/default/sps/starburst99/1e6cluster_default.csv` (see `read_param` below).
     Preserved here so the four legacy SB99_* params remain meaningful for
     code paths that may opt back into the grammar (e.g. a future
     `sps_path = def_sb99_grammar` sentinel). See
@@ -421,9 +421,9 @@ def read_param(path2file, write_summary=True):
     
     # Cooling directory - non-CIE.
     # Default sentinel 'def_dir' resolves to the shipped OPIATE cube folder
-    # under lib/default/cooling/opiate/.
+    # under lib/default/opiate/.
     if params['path_cooling_nonCIE'].value == 'def_dir':
-        params['path_cooling_nonCIE'].value = os.path.join(os.getcwd(), 'lib/default/cooling/opiate/')
+        params['path_cooling_nonCIE'].value = os.path.join(os.getcwd(), 'lib/default/opiate/')
     else:
         path_cooling = str(params['path_cooling_nonCIE'].value)
         Path(path_cooling).mkdir(parents=True, exist_ok=True)
@@ -432,27 +432,28 @@ def read_param(path2file, write_summary=True):
     # Cooling directory - CIE.
     # Integer-index preset {1, 2, 3} (under ZCloud == 1) selects between the
     # bundled CIE tables; ZCloud == 0.15 auto-pins to the Sutherland-Dopita
-    # file. All resolved paths live under lib/default/cooling/CIE/.
+    # file. All resolved paths live under lib/default/CIE/.
     if params['ZCloud'].value == 1:
         cie_files = {
-            1: 'lib/default/cooling/CIE/coolingCIE_1_Cloudy.dat',
-            2: 'lib/default/cooling/CIE/coolingCIE_2_Cloudy_grains.dat',
-            3: 'lib/default/cooling/CIE/coolingCIE_3_Gnat-Ferland2012.dat'
+            1: 'lib/default/CIE/coolingCIE_1_Cloudy.dat',
+            2: 'lib/default/CIE/coolingCIE_2_Cloudy_grains.dat',
+            3: 'lib/default/CIE/coolingCIE_3_Gnat-Ferland2012.dat'
         }
         cie_choice = int(params['path_cooling_CIE'].value)
         if cie_choice in cie_files:
             params['path_cooling_CIE'].value = os.path.join(os.getcwd(), cie_files[cie_choice])
     elif params['ZCloud'].value == 0.15:
         params['path_cooling_CIE'].value = os.path.join(
-            os.getcwd(), 'lib/default/cooling/CIE/coolingCIE_4_Sutherland-Dopita1993.dat'
+            os.getcwd(), 'lib/default/CIE/coolingCIE_4_Sutherland-Dopita1993.dat'
         )
     
-    # SPS data directory. Sentinel 'def_dir' resolves to lib/default/sps/,
-    # where the shipped 1e6cluster_default.csv lives. Currently only used as
-    # an informational anchor — the def_path branch below resolves sps_path
-    # directly to the bundled CSV without joining against path_sps.
+    # SPS data directory. Sentinel 'def_dir' resolves to
+    # lib/default/sps/starburst99/, where the shipped 1e6cluster_default.csv
+    # lives. Currently only used as an informational anchor — the def_path
+    # branch below resolves sps_path directly to the bundled CSV without
+    # joining against path_sps.
     if params['path_sps'].value == 'def_dir':
-        params['path_sps'].value = os.path.join(os.getcwd(), 'lib/default/sps/')
+        params['path_sps'].value = os.path.join(os.getcwd(), 'lib/default/sps/starburst99/')
     else:
         path_sps = str(params['path_sps'].value)
         Path(path_sps).mkdir(parents=True, exist_ok=True)
@@ -460,7 +461,7 @@ def read_param(path2file, write_summary=True):
 
     # sps_refmass: reference cluster mass used by f_mass = mCluster / sps_refmass.
     # Default sentinel 'def_value' falls back to SB99_mass (1e6) so that the
-    # bundled lib/default/sps/1e6cluster_default.csv — generated at SB99_mass
+    # bundled lib/default/sps/starburst99/1e6cluster_default.csv — generated at SB99_mass
     # = 1e6 — scales correctly out of the box.
     if params['sps_refmass'].value == 'def_value':
         params['sps_refmass'].value = params['SB99_mass'].value
@@ -468,7 +469,7 @@ def read_param(path2file, write_summary=True):
     # sps_path: full path to the SPS data file.
     #
     # Sentinel 'def_path' resolves to the bundled
-    #   lib/default/sps/1e6cluster_default.csv
+    #   lib/default/sps/starburst99/1e6cluster_default.csv
     # — an SB99 grid at rotation=1, ZCloud=1 (solar, Z=0.014), BHCUT=120 Msun,
     # mass=1e6 Msun, exported as CSV. The shipped column layout matches
     # LEGACY_SB99_COLUMN_MAP (t, Qi, fi, Lbol, Lmech_total, pdot_W, Lmech_W
@@ -484,7 +485,7 @@ def read_param(path2file, write_summary=True):
     # The historical legacy SB99 filename grammar
     # (_get_legacy_sb99_filename) is no longer wired up under def_path —
     # see that function's docstring for the rationale.
-    DEFAULT_SPS_CSV = os.path.join(os.getcwd(), 'lib/default/sps/1e6cluster_default.csv')
+    DEFAULT_SPS_CSV = os.path.join(os.getcwd(), 'lib/default/sps/starburst99/1e6cluster_default.csv')
     sps_path_uses_bundled_default = (params['sps_path'].value == 'def_path')
     if sps_path_uses_bundled_default:
         params['sps_path'].value = DEFAULT_SPS_CSV

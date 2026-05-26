@@ -40,7 +40,7 @@ def get_Lambda(T, cooling_CIE_interpolation, metallicity):
         4: Sutherland and Dopita 1993, for [Fe/H] = -1. Auto-pinned when
             ZCloud == 0.15 regardless of `path_cooling_CIE`.
 
-    These files are bundled under lib/default/cooling/CIE/.
+    These files are bundled under lib/default/CIE/.
 
     Returns
     -------
