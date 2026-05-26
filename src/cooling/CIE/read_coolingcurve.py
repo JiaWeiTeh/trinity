@@ -31,16 +31,16 @@ def get_Lambda(T, cooling_CIE_interpolation, metallicity):
     T : float/array
         Temperature.
 
-    Available libraries (specified in .param file) include:
+    Available libraries (set via `path_cooling_CIE` in .param) include:
         1: CLOUDY cooling curve for HII region, solar metallicity.
-        2: CLOUDY cooling curve for HII region, solar metallicity. 
-            Includes the evaporative (sublimation) cooling of icy interstellar 
-            grains (occurs e.g., when heated by cosmic-ray particle)
-        
-        3. Gnat and Ferland 2012 (slightly interpolated for values)
-        4. Sutherland and Dopita 1993, for [Fe/H] = -1].
-    
-    These files are by default stored in path/to/warpfield/lib/cooling_tables/CIE/current/.
+        2: CLOUDY cooling curve for HII region, solar metallicity.
+            Includes the evaporative (sublimation) cooling of icy interstellar
+            grains (occurs e.g., when heated by cosmic-ray particle).
+        3: Gnat and Ferland 2012 (slightly interpolated for values).
+        4: Sutherland and Dopita 1993, for [Fe/H] = -1. Auto-pinned when
+            ZCloud == 0.15 regardless of `path_cooling_CIE`.
+
+    These files are bundled under lib/default/cooling/CIE/.
 
     Returns
     -------

@@ -211,7 +211,8 @@ import.
 - `default.param:163-176` — declares `SB99_mass, SB99_rotation, SB99_BHCUT`.
 - `default.param:306` — declares `path_sps`.
 - `read_param.py:377-383` — resolves `path_sps` (`def_dir` →
-  `lib/sps/starburst99/`).
+  `lib/default/sps/`). (Originally `lib/sps/starburst99/`; relocated
+  when `def_path` was rewired to point at the bundled CSV directly.)
 - `read_param.py:472-473` — declares `SB99_data, SB99f` runtime containers.
 - `read_param.py:474-485` — declares the 12 scalar feedback params.
 
@@ -1164,8 +1165,11 @@ Before starting PR-1, please confirm:
   (2026-05-12). Only 6 are real runtime consumers; rest are comments,
   docstrings, demo code (`dictionary.py:1203-1234`), or the separate non-CIE
   cooling coupling.
-- **`path_sps` default.** `lib/sps/starburst99/` is the on-disk default;
-  `path_sps` is the indirection.
+- **`path_sps` default.** `lib/default/sps/` is the on-disk default;
+  `path_sps` is the indirection. (Previously `lib/sps/starburst99/`;
+  relocated when `def_path` was rewired to point at the bundled
+  `1e6cluster_default.csv` directly, bypassing the legacy filename
+  grammar.)
 - **Dead import.** `bubble_luminosity_modified.py:33` imports
   `get_currentSB99feedback` and never calls it. PR-4 removes.
 - **Boundary edge case.** The numerical derivative step `dt = 1e-9 Myr`
