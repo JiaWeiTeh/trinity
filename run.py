@@ -5,7 +5,7 @@ Created on Sun Jul 24 22:27:38 2022
 
 @author: Jia Wei Teh
 
-This script contains the main file to run WARPFIELD.
+This script contains the main file to run TRINITY.
 
 Unified entry point for single runs and parameter sweeps.
 Auto-detects sweep mode when parameters contain list syntax or tuple definitions.

@@ -28,28 +28,15 @@ def get_nShell0(params):
     # TODO: Add description for BMW nMW
     
     nShell0 = params['mu_atom'].value/params['mu_ion'].value/(params['k_B'].value * params['TShell_ion'].value) * params['Pb'].value
-    
-    # old code
-    # pBubble = pBubble.decompose(bases=u.cgs.bases)
-    # The density of shell at inner edge/radius
-    # nShell0 = warpfield_params.mu_p/warpfield_params.mu_n/(c.k_B.cgs * T.to(u.K)) * pBubble
-    
+
     # TODO: here, CLOUDY stuffs are removed.
-    
+
     # The density of shell at inner edge/radius that is passed to cloudy (usually includes B-field)
-    # Note: this is only used to pass on to CLOUDY and does not affect WARPFIELD.
+    # Note: this is only used to pass on to CLOUDY and does not affect TRINITY.
     # Assuming equipartition and pressure equilibrium, such that
     # Pwind = Pshell, where Pshell = Ptherm + Pturb + Pmag
     #                              = Ptherm + 2Pmag
     # where Pmag \propro n^(gamma/2)
-    
-    # BMW = 10**(warpfield_params.log_BMW)
-    # nMW = 10**(warpfield_params.log_nMW)
-    
-    # def pShell(n, pBubble, T):
-    #     # return function
-    #     return warpfield_params.mu_n/warpfield_params.mu_p * c.k_B.cgs * T * n +\
-    #                 BMW**2 / (4 * np.pi * nMW**warpfield_params.gamma_mag) * n ** (4/3) - pBubble
   
     # nShell0_cloudy = scipy.optimize.fsolve(pShell, x0 = 10,
     #                                        args = (pBubble, T))[0]

@@ -37,7 +37,6 @@ def find_nearest_lower(array, value):
 
     if not monotonic(array):
         print(f"array has to be monotonic! Instead got {array}.")
-        # np.save(warpfield_params.out_dir + 'T_array_monotonic_check.npy', array)
         raise MonotonicError()
 
     # is it increasing?
@@ -88,7 +87,6 @@ def find_nearest_higher(array, value):
 
     if not monotonic(array):
         print(f"array has to be monotonic! Instead got {array}.")
-        # np.save(warpfield_params.out_dir + 'T_array_monotonic_check.npy', array)
         raise MonotonicError()
 
     # is it increasing?
