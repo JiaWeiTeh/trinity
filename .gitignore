@@ -14,7 +14,10 @@ outputs/*
 txt/
 fig/
 movie.txt
-# CLAUDE.md
+lib/
+!lib/default/
+!lib/default/**
+
 
 # Large test data files (optional - uncomment to exclude from git)
 # test/*.jsonl
@@ -44,7 +47,6 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
 lib64/
 parts/
 sdist/

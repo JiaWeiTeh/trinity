@@ -182,9 +182,16 @@ coll_r    1
 # UNIT: [Msun]
 SB99_mass    1e6
 
-# INFO: Whether stellar rotation was included in the SB99 grid generation.
-#       Informational only under the bundled default
-#       (lib/default/sps/1e6cluster_default.csv is rotation=1).
+# INFO: Determines whether stellar rotation is considered in the stellar track.
+#       Read by TWO subsystems independently:
+#         (1) Legacy SB99 filename grammar (currently unwired; see
+#             _get_legacy_sb99_filename in src/_input/read_param.py).
+#         (2) Non-CIE cooling-table selection
+#             (src/cooling/non_CIE/read_cloudy.py:47), which picks
+#             opiate_cooling_rot_* vs opiate_cooling_norot_* regardless of
+#             whether sps_path is set. So this parameter still matters
+#             even though the SPS-grammar path no longer fires under
+#             the bundled default (which is rotation=1).
 SB99_rotation    1
 
 # INFO: Black hole formation threshold used when the SB99 grid was generated.

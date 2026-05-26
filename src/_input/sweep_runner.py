@@ -11,9 +11,6 @@ Features:
 - Progress bar with completed/total, percentage, and ETA
 - Continue on failure, collect and report all errors at end
 - Generate human-readable and JSON reports
-
-Author: Claude Code
-Date: 2026-01-14
 """
 
 import json
