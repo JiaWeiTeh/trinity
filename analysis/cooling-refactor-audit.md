@@ -108,7 +108,7 @@ Non-CIE structures are refreshed periodically during phase 1 / phase
 | Param | File:line | Default | Role |
 |-------|-----------|---------|------|
 | `path_cooling_CIE` | `src/_input/default.param:316` | `3` | Integer index into the hardcoded `{1:Cloudy, 2:Cloudy+grains, 3:Gnat-Ferland}` table (when `ZCloud == 1`). Resolved to a path by `read_param.py:430-432`. **Cannot today be a path string** — `int(...)` at `read_param.py:430` will `ValueError`. |
-| `path_cooling_nonCIE` | `src/_input/default.param:319` | `def_dir` | Directory of OPIATE cubes; resolves to `lib/default/cooling/opiate/` (`read_param.py:417`). Used by `read_cloudy.get_filename()` to build per-age filenames. |
+| `path_cooling_nonCIE` | `src/_input/default.param:319` | `def_dir` | Directory of OPIATE cubes; resolves to `lib/default/opiate/` (`read_param.py:417`). Used by `read_cloudy.get_filename()` to build per-age filenames. |
 | `ZCloud` | `src/_input/default.param:85` | `1` | Drives CIE file selection AND non-CIE filename's `Z_str`. Whitelisted to `{1.0, 0.15}` in both spots. Also drives dust opacity / other metallicity-keyed physics — **not deprecated by this refactor**. |
 | `SB99_rotation` | `src/_input/default.param:180` | `1` | Used by both the SPS loader AND `read_cloudy.get_filename()`'s `{rot|norot}` discriminator. The non-CIE coupling is the §5.1 hot spot. |
 | `cool_alpha` / `cool_beta` / `cool_delta` | `src/_input/default.param:304-308` | `0.6 / 0.8 / -6/35` | Cooling-related physics constants for the analytic bubble model; **orthogonal to the table loaders** — flagged only so they aren't accidentally pulled in. |
@@ -414,7 +414,7 @@ After all four PRs land:
 - `path_cooling_CIE` continues to accept the integer indices `{1, 2, 3}`
   and the `ZCloud == 0.15` Sutherland-Dopita pin.
 - `path_cooling_nonCIE = def_dir` continues to resolve to
-  `lib/default/cooling/opiate/` and the OPIATE filename grammar continues to
+  `lib/default/opiate/` and the OPIATE filename grammar continues to
   drive per-age file discovery.
 - The hardcoded 2-column CIE preset and 5-column OPIATE preset remain
   the loaders' default behavior when no `cool_col_*` keys are declared.
@@ -706,7 +706,7 @@ The harness does **three** independent things per anchor:
    writes the JSONL snapshot tree directly into the golden directory.
 2. **Loader-layer capture (in-process).** Import
    `src.cooling.non_CIE.read_cloudy`; for each OPIATE age present in
-   `lib/default/cooling/opiate/` for the resolved
+   `lib/default/opiate/` for the resolved
    `(ZCloud, SB99_rotation)` combination, call
    `create_cubes(filename, path2cooling)` and pickle the 5-tuple
    `(log_ndens, log_T, log_phi, cool_cube, heat_cube)`. Also pickle
@@ -918,7 +918,7 @@ Before starting PR-1, please confirm:
    cover the subsolar legacy paths. Suggest adding a
    `cloud_example_subsolar.param` derived from one of the three with
    only `ZCloud` flipped (and verifying the requisite `Z0002` OPIATE
-   cubes exist in `lib/default/cooling/opiate/`).
+   cubes exist in `lib/default/opiate/`).
 4. **Order-of-magnitude sniff-test for `Lambda_cool` / `Lambda_heat`?**
    Same recommendation as SPS PR-2 open question #7 — not in PR-2;
    revisit after first real user.
@@ -956,8 +956,8 @@ Before starting PR-1, please confirm:
   - `src/cooling/CIE/read_coolingcurve.py` (75 LOC) — trivial.
   - `src/cooling/net_coolingcurve.py` (166 LOC) — consumer; touches
     constants only.
-- **Default cooling library paths.** `lib/default/cooling/opiate/` and
-  `lib/default/cooling/CIE/*.dat` (only the `lib/default/` subtree is
+- **Default cooling library paths.** `lib/default/opiate/` and
+  `lib/default/CIE/*.dat` (only the `lib/default/` subtree is
   un-ignored by `.gitignore`; the rest of `lib/` is git-ignored).
 - **Cooling-update cadence asymmetry.** Phase 1 uses `5e-2 Myr`
   (`src/phase1_energy/run_energy_phase_modified.py:56`); phase 1b

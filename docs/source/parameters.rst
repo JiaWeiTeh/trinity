@@ -316,7 +316,7 @@ bolometric and mechanical luminosities, wind and SN momentum injection,
 supported:
 
 * **Bundled default (default)**: leave ``sps_path = def_path``. TRINITY
-  loads ``lib/default/sps/1e6cluster_default.csv`` — an SB99 grid at
+  loads ``lib/default/sps/starburst99/1e6cluster_default.csv`` — an SB99 grid at
   rotation=1, ZCloud=1 (solar, Z=0.014), BHCUT=120 :math:`M_\odot`,
   mass=:math:`10^6 M_\odot`, exported as CSV with the canonical
   7-column SB99 layout — and applies the ``LEGACY_SB99_COLUMN_MAP``
@@ -338,7 +338,7 @@ supported:
      - ``def_path``
      - --
      - Full path to an SPS data file. If ``def_path``, resolves to the
-       bundled ``lib/default/sps/1e6cluster_default.csv``. Otherwise
+       bundled ``lib/default/sps/starburst99/1e6cluster_default.csv``. Otherwise
        points directly at any ``.txt`` or ``.csv`` file whose columns
        are described by the ``sps_col_*`` declarations.
    * - ``sps_refmass``
@@ -360,14 +360,14 @@ supported:
      - ``1``
      - --
      - Informational under the bundled default
-       (``lib/default/sps/1e6cluster_default.csv`` is rotation=1).
+       (``lib/default/sps/starburst99/1e6cluster_default.csv`` is rotation=1).
        **Also used by the non-CIE cooling-table selection regardless
        of ``sps_path``**, so keep it consistent with your data choice.
    * - ``SB99_BHCUT``
      - ``120``
      - :math:`M_\odot`
      - Informational under the bundled default
-       (``lib/default/sps/1e6cluster_default.csv`` is BHCUT=120). BH
+       (``lib/default/sps/starburst99/1e6cluster_default.csv`` is BHCUT=120). BH
        formation threshold; stars above this ZAMS mass collapse
        directly to BH without SN.
 
@@ -597,13 +597,13 @@ Specify paths to external data files.
      - Selects the CIE (T > 10\ :sup:`5.5` K) cooling table. Integer
        presets under ZCloud=1: 1=CLOUDY HII, 2=CLOUDY+grains,
        3=Gnat & Ferland 2012; all bundled under
-       ``lib/default/cooling/CIE/``. Under ZCloud=0.15 this is ignored
+       ``lib/default/CIE/``. Under ZCloud=0.15 this is ignored
        and the loader auto-pins to
-       ``lib/default/cooling/CIE/coolingCIE_4_Sutherland-Dopita1993.dat``.
+       ``lib/default/CIE/coolingCIE_4_Sutherland-Dopita1993.dat``.
    * - ``path_cooling_nonCIE``
      - ``def_dir``
      - Folder of non-CIE (T < 10\ :sup:`5.5` K) OPIATE/CLOUDY cubes.
-       Sentinel ``def_dir`` resolves to ``lib/default/cooling/opiate/``.
+       Sentinel ``def_dir`` resolves to ``lib/default/opiate/``.
        Per-age filenames inside follow the OPIATE grammar
        ``opiate_cooling_{rot|norot}_Z{1.00|0.15}_age{a}.dat`` and are
        selected at runtime from ``SB99_rotation`` + ``ZCloud``.
