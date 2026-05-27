@@ -763,9 +763,11 @@ class DescribedDict(dict):
         snap_ids = sorted([int(k) for k in self.previous_snapshot.keys()])
 
         # Write metadata.json on the very first flush of the run.
-        # Atomic via temp-file + rename so a partial write can never
-        # leave a corrupt metadata.json next to a valid jsonl stream.
+        # The shared helper handles atomicity (temp+rename) and
+        # pretty-printed JSON formatting; we just build the payload
+        # of run-constant scalars.
         if self.flush_count == 0:
+            from src._output._metadata_io import write_metadata_atomic
             metadata: Dict[str, Any] = {"_metadata_version": METADATA_VERSION}
             for k in RUN_CONST_KEYS:
                 if k in METADATA_EXCLUDE or k in DROPPED_IN_V2:
@@ -789,14 +791,7 @@ class DescribedDict(dict):
                     )
                     continue
                 metadata[k] = ready
-            tmp_path = path2metadata.with_suffix(path2metadata.suffix + ".tmp")
-            with open(tmp_path, "w", encoding="utf-8") as f:
-                # ``indent=2`` makes the file human-readable (cat / grep);
-                # ``sort_keys=False`` preserves the curated ``RUN_CONST_KEYS``
-                # ordering so identifiers come first.
-                json.dump(metadata, f, cls=NpEncoder, indent=2,
-                          sort_keys=False)
-            os.replace(tmp_path, path2metadata)
+            write_metadata_atomic(path2output, metadata)
             logger.debug(
                 f"Wrote {METADATA_FILENAME} with "
                 f"{len(metadata) - 1} run-const keys"

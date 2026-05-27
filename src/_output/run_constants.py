@@ -39,6 +39,11 @@ Version history
 * v2 — Phase 1: ~57 scalars/strings/bools covering every constant-
   through-run parameter.  ``initial_cloud_*_arr`` dropped; readers
   reconstruct on demand via ``TrinityOutput.initial_cloud_profile()``.
+* v3 — Phase 2: adds top-level ``termination`` and ``final_state``
+  blocks written at run end by ``write_simulation_end()``.  These
+  blocks are NOT rehydrated into snapshots (see
+  ``RESERVED_TOP_LEVEL_KEYS`` below) — they surface via the
+  ``TrinityOutput.termination`` / ``.final_state`` properties.
 """
 
 from __future__ import annotations
@@ -175,20 +180,50 @@ METADATA_FILENAME: str = "metadata.json"
 
 # Schema version of ``metadata.json``.  Increment whenever the
 # layout changes in a backwards-incompatible way.
-METADATA_VERSION: int = 2
+METADATA_VERSION: int = 3
 
-# Reserved key names inside ``metadata.json`` that are NOT
-# rehydrated into snapshots (they describe the metadata file
-# itself, not the simulation).
-_RESERVED_KEYS: frozenset[str] = frozenset({"_metadata_version"})
+# Top-level keys in ``metadata.json`` that are NOT rehydrated into
+# every snapshot's data dict.  Two reasons a key lives up here:
+#
+#   * ``_metadata_version`` — describes the metadata file itself.
+#   * ``termination`` / ``final_state`` — Phase-2 blocks surfaced via
+#     ``TrinityOutput.termination`` / ``.final_state`` properties.
+#     Rehydrating them into each snapshot would smear the run-end
+#     state into every timestep, which is misleading.
+RESERVED_TOP_LEVEL_KEYS: frozenset[str] = frozenset({
+    "_metadata_version",
+    "termination",
+    "final_state",
+})
+
+# Backwards-compat alias for the PR2-era name.  New code should use
+# ``RESERVED_TOP_LEVEL_KEYS``.
+_RESERVED_KEYS = RESERVED_TOP_LEVEL_KEYS
+
+# Keys excluded from the ``final_state`` block.  Long per-snapshot
+# arrays already live in ``dictionary.jsonl`` (the last line is the
+# full final-state profile) — duplicating them in metadata.json would
+# bloat the file by ~10-50 KB with no information gain.  Anything
+# scalar/string/bool flows through to ``final_state``.
+FINAL_STATE_EXCLUDE_ARRAYS: frozenset[str] = frozenset({
+    "bubble_T_arr_r_arr", "log_bubble_T_arr",
+    "bubble_n_arr_r_arr", "log_bubble_n_arr",
+    "bubble_dTdr_arr_r_arr", "log_bubble_dTdr_arr",
+    "bubble_v_arr", "bubble_v_arr_r_arr",
+    "shell_r_arr", "log_shell_n_arr",
+    "shell_grav_r", "shell_grav_force_m",
+})
 
 
 def metadata_keys_to_rehydrate(metadata: dict) -> dict:
     """
-    Return ``metadata`` with the reserved internal keys removed.
+    Return ``metadata`` with the reserved top-level keys removed.
 
     Used by the reader to take a freshly-loaded ``metadata.json``
     and produce the dict whose entries should be merged into every
-    snapshot.
+    snapshot.  Reserved entries (``_metadata_version``, ``termination``,
+    ``final_state``) are surfaced via dedicated ``TrinityOutput``
+    properties instead.
     """
-    return {k: v for k, v in metadata.items() if k not in _RESERVED_KEYS}
+    return {k: v for k, v in metadata.items()
+            if k not in RESERVED_TOP_LEVEL_KEYS}

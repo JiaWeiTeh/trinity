@@ -415,11 +415,14 @@ class TestExpandedScope:
     three ``initial_cloud_*_arr`` arrays.  These tests pin the new
     contract."""
 
-    def test_version_is_v2(self, tmp_path, disable_crash_handlers):
+    def test_version_is_at_least_v2(self, tmp_path, disable_crash_handlers):
+        """Schema must be ≥ 2 (Phase 1 introduced v2; Phase 2 bumps to v3)."""
         _write_three_snapshots(tmp_path)
         with open(tmp_path / METADATA_FILENAME) as f:
             md = json.load(f)
-        assert md["_metadata_version"] == 2
+        assert md["_metadata_version"] >= 2
+        # And matches the module-level constant
+        assert md["_metadata_version"] == METADATA_VERSION
 
     def test_initial_cloud_arrays_are_dropped(
         self, tmp_path, disable_crash_handlers,
@@ -574,7 +577,7 @@ class TestInitialCloudProfileReconstruction:
         md = out.metadata
         assert isinstance(md, dict)
         assert md["model_name"] == "test_run"
-        assert md["_metadata_version"] == 2
+        assert md["_metadata_version"] == METADATA_VERSION
         # Cached across multiple property accesses
         assert out.metadata is md
 
@@ -586,3 +589,216 @@ class TestInitialCloudProfileReconstruction:
             f.write(json.dumps({"t_now": 0.0}) + "\n")
         out = TrinityOutput.open(tmp_path / "dictionary.jsonl")
         assert out.metadata == {}
+
+
+# ---------------------------------------------------------------------------
+# Phase 2 — termination + final_state blocks
+# ---------------------------------------------------------------------------
+
+class TestTerminationBlock:
+    """Phase 2 adds a ``termination`` block to metadata.json that
+    mirrors ``read_simulation_end()``'s return shape."""
+
+    def _make_params_with_end_codes(self, tmp_path, *, exit_code=1,
+                                    reason="Stopping time reached"):
+        from src._output.simulation_end import SimulationEndCode
+        d = _make_params(tmp_path)
+        d["SimulationEndReason"] = DescribedItem(reason)
+        d["SimulationEndCode"] = DescribedItem(exit_code)
+        # Need a snapshot/flush so metadata.json exists first
+        _save_snapshot_with(d, t_now=0.5, R2=2.0)
+        d.flush()
+        return d
+
+    def test_writes_termination_block(self, tmp_path, disable_crash_handlers):
+        from src._output.simulation_end import write_simulation_end
+        d = self._make_params_with_end_codes(tmp_path)
+        write_simulation_end(d, str(tmp_path))
+        with open(tmp_path / METADATA_FILENAME) as f:
+            md = json.load(f)
+        assert "termination" in md
+        t = md["termination"]
+        assert set(t.keys()) == {
+            "exit_code", "outcome", "detail", "timestamp", "model_name",
+        }
+        assert t["exit_code"] == 1
+        assert t["outcome"] == "stopping_time"
+        assert t["detail"] == "Stopping time reached"
+        assert t["model_name"] == "test_run"
+
+    def test_writes_final_state_block(self, tmp_path, disable_crash_handlers):
+        from src._output.simulation_end import write_simulation_end
+        d = self._make_params_with_end_codes(tmp_path)
+        # Tweak some "varying" scalars to simulate end-of-run values
+        d["t_now"] = DescribedItem(0.300)
+        d["R2"] = DescribedItem(2.51)
+        d["v2"] = DescribedItem(2.45e-3)
+        d["Eb"] = DescribedItem(0.0)
+        d["current_phase"] = DescribedItem("momentum")
+        d["isCollapse"] = DescribedItem(False)
+        write_simulation_end(d, str(tmp_path))
+        with open(tmp_path / METADATA_FILENAME) as f:
+            md = json.load(f)
+        assert "final_state" in md
+        fs = md["final_state"]
+        # All the varying scalars we set must be in the block
+        assert fs["t_now"] == pytest.approx(0.300)
+        assert fs["R2"] == pytest.approx(2.51)
+        assert fs["v2"] == pytest.approx(2.45e-3)
+        assert fs["Eb"] == 0.0
+        assert fs["current_phase"] == "momentum"
+        assert fs["isCollapse"] is False
+        # Run-constants must NOT be in final_state (they live up top)
+        assert "mCloud" not in fs
+        assert "nCore" not in fs
+
+    def test_final_state_excludes_long_arrays(
+        self, tmp_path, disable_crash_handlers,
+    ):
+        from src._output.simulation_end import write_simulation_end
+        d = self._make_params_with_end_codes(tmp_path)
+        # Stuff a long array into params under one of the excluded keys
+        d["bubble_T_arr_r_arr"] = DescribedItem(np.linspace(0, 1, 30))
+        d["log_shell_n_arr"] = DescribedItem(np.linspace(50, 60, 30))
+        write_simulation_end(d, str(tmp_path))
+        with open(tmp_path / METADATA_FILENAME) as f:
+            md = json.load(f)
+        fs = md["final_state"]
+        assert "bubble_T_arr_r_arr" not in fs
+        assert "log_shell_n_arr" not in fs
+
+
+class TestTrinityOutputProperties:
+    """Phase 2 surfaces ``termination`` / ``final_state`` /
+    ``is_successful_run`` on ``TrinityOutput``."""
+
+    def _open_run_with_termination(self, tmp_path, *, exit_code=1):
+        from src._output.simulation_end import write_simulation_end
+        d = _make_params(tmp_path)
+        d["SimulationEndReason"] = DescribedItem("Stopping time reached")
+        d["SimulationEndCode"] = DescribedItem(exit_code)
+        _save_snapshot_with(d, t_now=0.5, R2=2.0)
+        d.flush()
+        write_simulation_end(d, str(tmp_path))
+        return TrinityOutput.open(tmp_path / "dictionary.jsonl")
+
+    def test_termination_property(self, tmp_path, disable_crash_handlers):
+        out = self._open_run_with_termination(tmp_path)
+        t = out.termination
+        assert isinstance(t, dict)
+        assert t["outcome"] == "stopping_time"
+        assert t["exit_code"] == 1
+
+    def test_final_state_property(self, tmp_path, disable_crash_handlers):
+        out = self._open_run_with_termination(tmp_path)
+        fs = out.final_state
+        assert isinstance(fs, dict)
+        # The varying-scalar values from _make_params must be present
+        assert "t_now" in fs and "R2" in fs and "v2" in fs
+
+    def test_is_successful_run_true_for_clean_exit(
+        self, tmp_path, disable_crash_handlers,
+    ):
+        out = self._open_run_with_termination(tmp_path, exit_code=1)
+        assert out.is_successful_run is True
+
+    def test_is_successful_run_false_for_bad_exit(
+        self, tmp_path, disable_crash_handlers,
+    ):
+        out = self._open_run_with_termination(tmp_path, exit_code=42)
+        assert out.is_successful_run is False
+
+    def test_is_successful_run_none_when_termination_missing(
+        self, tmp_path, disable_crash_handlers,
+    ):
+        # Run that flushed metadata but never reached write_simulation_end
+        d = _make_params(tmp_path)
+        _save_snapshot_with(d, t_now=0.5, R2=2.0)
+        d.flush()
+        out = TrinityOutput.open(tmp_path / "dictionary.jsonl")
+        assert out.termination is None
+        assert out.final_state is None
+        assert out.is_successful_run is None
+
+    def test_termination_not_rehydrated_into_snapshots(
+        self, tmp_path, disable_crash_handlers,
+    ):
+        """``termination`` and ``final_state`` are reserved top-level
+        blocks — they must NOT smear into every snapshot's data dict."""
+        out = self._open_run_with_termination(tmp_path)
+        snap = out[0]
+        assert "termination" not in snap.data
+        assert "final_state" not in snap.data
+
+
+class TestReadSimulationEndMigration:
+    """``read_simulation_end()`` prefers metadata.json, falls back to text."""
+
+    def _make_termination_run(self, tmp_path):
+        from src._output.simulation_end import write_simulation_end
+        d = _make_params(tmp_path)
+        d["SimulationEndReason"] = DescribedItem("Stopping time reached")
+        d["SimulationEndCode"] = DescribedItem(1)
+        _save_snapshot_with(d, t_now=0.5, R2=2.0)
+        d.flush()
+        write_simulation_end(d, str(tmp_path))
+
+    def test_reads_from_metadata_block(self, tmp_path, disable_crash_handlers):
+        from src._output.simulation_end import read_simulation_end
+        self._make_termination_run(tmp_path)
+        # Delete simulationEnd.txt so we can be sure JSON is the source
+        (tmp_path / "simulationEnd.txt").unlink()
+        result = read_simulation_end(str(tmp_path))
+        assert result is not None
+        assert result["exit_code"] == 1
+        assert result["outcome"] == "stopping_time"
+        assert result["model"] == "test_run"
+
+    def test_falls_back_to_text_for_legacy_runs(
+        self, tmp_path, disable_crash_handlers,
+    ):
+        """Legacy run: no metadata.json (or v1/v2 with no termination
+        block); read_simulation_end falls back to text-parsing."""
+        from src._output.simulation_end import read_simulation_end
+        # Write only simulationEnd.txt, no metadata.json with termination
+        text = (
+            "==================================================\n"
+            "TRINITY Simulation End Report\n"
+            "==================================================\n"
+            "Timestamp: 2026-01-01 00:00:00\n"
+            "Model: legacy_run\n"
+            "\n"
+            "Outcome: stopping_time\n"
+            "Detail: Legacy text-parsed reason\n"
+            "Exit Code: 1\n"
+        )
+        (tmp_path / "simulationEnd.txt").write_text(text)
+        result = read_simulation_end(str(tmp_path))
+        assert result is not None
+        assert result["exit_code"] == 1
+        assert result["outcome"] == "stopping_time"
+        assert result["detail"] == "Legacy text-parsed reason"
+        assert result["model"] == "legacy_run"
+
+    def test_returns_none_when_both_sources_missing(
+        self, tmp_path, disable_crash_handlers,
+    ):
+        from src._output.simulation_end import read_simulation_end
+        assert read_simulation_end(str(tmp_path)) is None
+
+    def test_metadata_block_takes_precedence(
+        self, tmp_path, disable_crash_handlers,
+    ):
+        """When both metadata.json[termination] and simulationEnd.txt
+        exist, the JSON wins (they should agree, but JSON is canonical)."""
+        from src._output.simulation_end import read_simulation_end
+        self._make_termination_run(tmp_path)
+        # Manually rewrite simulationEnd.txt to a different value to detect
+        # which source is consulted
+        (tmp_path / "simulationEnd.txt").write_text(
+            "Outcome: collapse\nDetail: bogus\nExit Code: 99\n"
+        )
+        result = read_simulation_end(str(tmp_path))
+        # JSON wins → exit_code stays at 1, outcome stays at stopping_time
+        assert result["exit_code"] == 1
+        assert result["outcome"] == "stopping_time"

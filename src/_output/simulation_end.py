@@ -230,30 +230,141 @@ def write_simulation_end(params: Dict[str, Any], output_dir: Optional[str] = Non
 
     print(f"Simulation end report written to: {filepath}")
 
+    # --- Phase 2: also mirror structured termination + final_state
+    # into metadata.json so plotters / analysis tools can read it
+    # without text-parsing.  The text file stays as the human-readable
+    # view; both are derived from the same in-memory data, so they
+    # cannot drift.  Imports are local to keep this module's import
+    # graph independent of dictionary.py.
+    try:
+        from src._output._metadata_io import update_metadata_atomic
+
+        termination_block = {
+            "exit_code": int(end_code.code),
+            "outcome": str(end_code.outcome),
+            "detail": str(reason_str),
+            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "model_name": str(model_name),
+        }
+
+        final_state_block = _build_final_state_block(params)
+
+        update_metadata_atomic(
+            Path(output_dir),
+            termination=termination_block,
+            final_state=final_state_block,
+        )
+    except Exception as e:
+        # The text file write succeeded; a metadata.json failure
+        # should not bring down the run.  Log loud-but-non-fatal.
+        import logging
+        logging.getLogger(__name__).warning(
+            "Failed to mirror termination/final_state into metadata.json: %s",
+            e,
+        )
+
     return end_code.code
+
+
+def _build_final_state_block(params: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Build the ``final_state`` block from the runtime params.
+
+    Includes every scalar/string/bool key on ``params`` EXCEPT:
+      * run-constants (already in metadata.json's top-level scalars);
+      * keys in ``METADATA_EXCLUDE`` (paths, function tables, …);
+      * long arrays listed in ``FINAL_STATE_EXCLUDE_ARRAYS`` (their
+        last-snapshot values are still available in the dictionary.jsonl
+        stream's final line);
+      * the ``SimulationEndCode`` proxy (already reflected by
+        ``termination.exit_code``).
+
+    Values are stored in internal units (pc/Myr, pc⁻³ …) to match
+    ``Snapshot.get(key)``.  The text file in ``simulationEnd.txt``
+    still applies km/s and cm⁻³ conversions for human readability.
+
+    NaN / non-finite values are kept as-is — ``json.dump`` emits them
+    as ``NaN``, which Python's ``json.load`` reads back faithfully
+    (technically non-standard JSON; this is the same compromise the
+    snapshot writer makes for fields like ``cool_beta`` in the
+    momentum phase).
+    """
+    from src._input.dictionary import DescribedItem
+    from src._output.run_constants import (
+        RUN_CONST_KEYS, METADATA_EXCLUDE, FINAL_STATE_EXCLUDE_ARRAYS,
+    )
+    skip = (set(RUN_CONST_KEYS) | set(METADATA_EXCLUDE)
+            | set(FINAL_STATE_EXCLUDE_ARRAYS)
+            | {"SimulationEndCode", "path2output"})
+
+    block: Dict[str, Any] = {}
+    for key, item in params.items():
+        if key in skip:
+            continue
+        if not isinstance(item, DescribedItem):
+            continue
+        val = item.value
+        # Skip arrays/lists with any length — final_state is scalars only.
+        if isinstance(val, (list, tuple)) and len(val) > 0:
+            continue
+        if isinstance(val, np.ndarray) and val.size > 0:
+            continue
+        # Coerce numpy scalars / bools / NaN to plain types where possible.
+        try:
+            if isinstance(val, np.integer):
+                val = int(val)
+            elif isinstance(val, np.floating):
+                val = float(val)
+            elif isinstance(val, np.bool_):
+                val = bool(val)
+            # Defensive: only include keys whose final value is JSON-friendly
+            # (json.dumps tolerates None/str/int/float/bool/NaN).
+            json.dumps(val, allow_nan=True)
+        except (TypeError, ValueError):
+            continue
+        block[key] = val
+    return block
 
 
 def read_simulation_end(output_dir: str) -> Optional[Dict[str, Any]]:
     """
-    Read and parse a simulationEnd.txt file.
+    Read the termination summary for a run.
 
-    Returns the new layout's keys (outcome, detail, exit_code) and tolerates
-    legacy files written before the format change (Status / End Reason /
-    Raw Reason).
+    Prefers the ``termination`` block in ``metadata.json`` (v3+ schema,
+    written by :func:`write_simulation_end`); falls back to text-parsing
+    ``simulationEnd.txt`` for legacy runs (v1/v2 metadata or any run
+    that pre-dates the metadata-source-of-truth migration).
 
     Parameters
     ----------
     output_dir : str
-        Directory containing simulationEnd.txt.
+        Directory containing ``metadata.json`` and/or ``simulationEnd.txt``.
 
     Returns
     -------
     dict or None
-        Keys: exit_code, outcome, detail, timestamp, model.
-        For legacy files, exit_code and detail are still populated; outcome is
-        derived from the exit code.
-        Returns None if the file doesn't exist.
+        Keys: ``exit_code``, ``outcome``, ``detail``, ``timestamp``,
+        ``model``.  Returns ``None`` if neither source is present.
     """
+    # --- Preferred path: metadata.json[termination] (Phase 2+) -----
+    try:
+        from src._output._metadata_io import read_metadata
+        metadata = read_metadata(Path(output_dir))
+        block = metadata.get("termination") if metadata else None
+        if isinstance(block, dict) and "exit_code" in block:
+            return {
+                "exit_code": block.get("exit_code"),
+                "outcome": block.get("outcome"),
+                "detail": block.get("detail"),
+                "timestamp": block.get("timestamp"),
+                # Legacy callers expect 'model' (not 'model_name')
+                "model": block.get("model_name") or metadata.get("model_name"),
+            }
+    except Exception:
+        # If the JSON path is broken in any way, fall through to text.
+        pass
+
+    # --- Legacy path: text-parse simulationEnd.txt -----------------
     filepath = os.path.join(output_dir, 'simulationEnd.txt')
 
     if not os.path.exists(filepath):

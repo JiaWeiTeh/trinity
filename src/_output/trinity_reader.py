@@ -459,6 +459,60 @@ class TrinityOutput:
             yield Snapshot(snap, i)
 
     @property
+    def termination(self) -> Optional[Dict[str, Any]]:
+        """
+        ``termination`` block from ``metadata.json`` (Phase 2, v3+
+        schema), or ``None`` if absent.
+
+        Mirrors :func:`src._output.simulation_end.read_simulation_end`'s
+        return shape: ``{exit_code, outcome, detail, timestamp,
+        model_name}``.  Plotters that previously called
+        ``read_simulation_end(run_dir)`` to fetch the exit code should
+        prefer this property — it reads directly from the JSON without
+        re-parsing the text file.
+        """
+        block = self.metadata.get("termination")
+        return block if isinstance(block, dict) else None
+
+    @property
+    def final_state(self) -> Optional[Dict[str, Any]]:
+        """
+        ``final_state`` block from ``metadata.json``, or ``None`` if
+        absent.
+
+        Contains every non-array, non-run-constant scalar from the
+        runtime params at simulation end, in **internal units**
+        (pc/Myr, pc⁻³, …) — same convention as ``Snapshot.get(key)``.
+        ``simulationEnd.txt`` still renders the same data in km/s and
+        cm⁻³ for human reading.
+        """
+        block = self.metadata.get("final_state")
+        return block if isinstance(block, dict) else None
+
+    @property
+    def is_successful_run(self) -> Optional[bool]:
+        """
+        Three-valued success flag derived from
+        ``output.termination['exit_code']``:
+
+        * ``True``  — exit code in [0, 9] (clean termination per the
+          convention in ``paper_v2R2.py``);
+        * ``False`` — exit code outside that range;
+        * ``None``  — no ``termination`` block (legacy run, crash before
+          ``write_simulation_end`` fired).
+        """
+        block = self.termination
+        if block is None:
+            return None
+        ec = block.get("exit_code")
+        if ec is None:
+            return None
+        try:
+            return 0 <= int(ec) <= 9
+        except (TypeError, ValueError):
+            return None
+
+    @property
     def metadata(self) -> Dict[str, Any]:
         """
         Parsed ``metadata.json`` for this run (cached, loaded on

@@ -98,18 +98,29 @@ def load_run(run_dir: str | Path) -> RunBundle:
         )
     summary = _parse_summary_txt(summary_path.read_text())
 
-    # --- simulationEnd.txt (status gate) ------------------------------------
-    end_path = run_dir / "simulationEnd.txt"
-    if not end_path.is_file():
-        raise RunLoadError(f"simulationEnd.txt missing from {run_dir}")
-    end_state = _parse_simulation_end(end_path.read_text())
-
     # --- dictionary.jsonl (per-snapshot data) -------------------------------
     try:
         jsonl_path = find_data_path(run_dir)
     except FileNotFoundError as e:
         raise RunLoadError(f"snapshot stream not found in {run_dir}: {e}") from e
     output = TrinityOutput.open(jsonl_path)
+
+    # --- termination state -------------------------------------------------
+    # Prefer the structured ``termination`` block in metadata.json (v3+
+    # schema, written by :func:`write_simulation_end`).  Fall back to
+    # text-parsing ``simulationEnd.txt`` for legacy runs (v1/v2 metadata
+    # or pre-Phase-2 outputs); this fallback is scheduled for removal
+    # once existing runs are re-processed.
+    if output.termination is not None:
+        end_state = dict(output.termination)
+    else:
+        end_path = run_dir / "simulationEnd.txt"
+        if not end_path.is_file():
+            raise RunLoadError(
+                f"neither metadata.json[termination] nor simulationEnd.txt "
+                f"found in {run_dir}"
+            )
+        end_state = _parse_simulation_end(end_path.read_text())
 
     return RunBundle(
         run_dir=run_dir,
