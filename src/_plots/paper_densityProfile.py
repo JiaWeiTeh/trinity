@@ -207,22 +207,45 @@ def get_cloud_params(sim_folder: Path) -> dict:
     """
     Read cloud initial-condition parameters for a simulation.
 
-    Looks for ``*_summary.txt`` in *sim_folder* (same directory as
-    ``dictionary.jsonl``).  Falls back to hard-coded defaults if the
-    file is missing.
+    Prefers ``metadata.json`` (v2+ schema, every cloud parameter is a
+    top-level scalar).  Falls back to legacy ``*_summary.txt`` for
+    pre-Phase-5 runs, then to hard-coded defaults if neither source is
+    present.
 
     Returns a dict with keys:
         mCloud, nCore, rCore, nISM, mu_convert   – all in internal units
         dens_profile, densPL_alpha, densBE_Omega
     """
-    # Look for _summary.txt alongside dictionary.jsonl
+    # --- Preferred path: metadata.json (v2+) ----------------------------
+    metadata_path = sim_folder / "metadata.json"
+    if metadata_path.is_file():
+        try:
+            import json
+            with open(metadata_path) as f:
+                md = json.load(f)
+            if md.get("_metadata_version", 1) >= 2:
+                return {
+                    'mCloud':       md.get('mCloud',       _DEFAULTS['mCloud']),
+                    'nCore':        md.get('nCore',        _DEFAULTS['nCore']),
+                    'rCore':        md.get('rCore',        _DEFAULTS['rCore']),
+                    'nISM':         md.get('nISM',         _DEFAULTS['nISM']),
+                    'mu_convert':   md.get('mu_convert',   _DEFAULTS['mu_convert']),
+                    'dens_profile': md.get('dens_profile', _DEFAULTS['dens_profile']),
+                    'densPL_alpha': md.get('densPL_alpha', _DEFAULTS['densPL_alpha']),
+                    'densBE_Omega': md.get('densBE_Omega', _DEFAULTS['densBE_Omega']),
+                }
+        except (OSError, ValueError):
+            pass
+
+    # --- Legacy: text-parse _summary.txt --------------------------------
     summaries = sorted(sim_folder.glob('*_summary.txt'))
     if not summaries:
-        logger.warning(f"No _summary.txt in {sim_folder}; using defaults")
+        logger.warning(
+            f"No metadata.json or _summary.txt in {sim_folder}; using defaults"
+        )
         return dict(_DEFAULTS)
 
     raw = parse_summary_file(summaries[0])
-
     return {
         'mCloud':        _try_float(raw.get('mCloud'),        _DEFAULTS['mCloud']),
         'nCore':         _try_float(raw.get('nCore'),         _DEFAULTS['nCore']),

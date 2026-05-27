@@ -5,15 +5,18 @@ Coverage:
 - writer emits ``metadata.json`` once, strips run-constants from snapshots
 - reader (both ``TrinityOutput`` and ``DescribedDict.load_snapshots``)
   rehydrates run-constants transparently
-- legacy files (no ``metadata.json``) keep loading identically
+- legacy v1 files (inline ``initial_cloud_*_arr``) keep loading identically
 - ``setdefault`` semantics: per-snapshot value wins over metadata
 - corrupted / missing metadata is tolerated (warning, not exception)
 - size invariant: a fresh write splits 1.4 MB legacy → ≤ 30 KB total
+- v2 schema: ``initial_cloud_*_arr`` dropped, reconstructed on demand
+- defensive serialization: non-JSON values are skipped with a warning
 """
 
 from __future__ import annotations
 
 import json
+import warnings
 from pathlib import Path
 
 import numpy as np
@@ -21,14 +24,13 @@ import pytest
 
 from src._input.dictionary import DescribedDict, DescribedItem
 from src._output.run_constants import (
-    METADATA_FILENAME, METADATA_VERSION, RUN_CONST_KEYS,
+    METADATA_EXCLUDE, METADATA_FILENAME, METADATA_VERSION,
+    RUN_CONST_KEYS, DROPPED_IN_V2,
 )
 from src._output.trinity_reader import TrinityOutput
 
 
-# Small subset of the run-constants we exercise in tests; the writer
-# only emits keys that are actually present in the params container,
-# so missing entries fall through to the per-snapshot value.
+# Sample arrays used to populate legacy v1 metadata in compat tests.
 _SAMPLE_INIT_R = list(np.linspace(0.0, 10.0, 25))
 _SAMPLE_INIT_N = list(np.linspace(1e3, 1e6, 25))
 _SAMPLE_INIT_M = list(np.linspace(0.0, 1e4, 25))
@@ -43,25 +45,100 @@ def disable_crash_handlers(monkeypatch):
     )
 
 
-def _make_params(out_dir: Path) -> DescribedDict:
-    """Populate a DescribedDict with run-constants + a few varying keys."""
+def _make_params(out_dir: Path, *, include_legacy_arrays: bool = False
+                 ) -> DescribedDict:
+    """
+    Populate a DescribedDict with every v2 run-constant the writer
+    expects, plus a few varying scalars.  Values are chosen for
+    plausibility (Msun, pc, internal units) but are not physically
+    consistent — the writer is unit-blind.
+
+    Parameters
+    ----------
+    include_legacy_arrays
+        When True, also writes the three ``initial_cloud_*_arr`` keys
+        (used to simulate a v1-style metadata.json so legacy-compat
+        tests can verify the inline-array reader fallback).
+    """
     d = DescribedDict()
     d["path2output"] = DescribedItem(str(out_dir), info="Output dir")
-    # Run-constants
-    d["model_name"] = DescribedItem("test_run")
-    d["mCloud"] = DescribedItem(1.0e6)
-    d["dens_profile"] = DescribedItem("densPL")
-    d["densPL_alpha"] = DescribedItem(0.0)
-    d["nCore"] = DescribedItem(1.0e3)
-    d["nISM"] = DescribedItem(1.0)
-    d["rCore"] = DescribedItem(0.5)
-    d["rCloud"] = DescribedItem(20.0)
-    d["nEdge"] = DescribedItem(2.0)
-    d["tSF"] = DescribedItem(0)
-    d["initial_cloud_r_arr"] = DescribedItem(np.asarray(_SAMPLE_INIT_R))
-    d["initial_cloud_n_arr"] = DescribedItem(np.asarray(_SAMPLE_INIT_N))
-    d["initial_cloud_m_arr"] = DescribedItem(np.asarray(_SAMPLE_INIT_M))
-    # Varying scalars
+
+    # --- All v2 RUN_CONST_KEYS, sensible test values ---
+    _scalars: dict[str, object] = {
+        # Identifiers
+        "model_name": "test_run",
+        "mCloud": 1.0e6,
+        "sfe": 0.01,
+        "ZCloud": 1.0,
+        "include_PHII": True,
+        "dens_profile": "densPL",
+        "densPL_alpha": 0.0,
+        "nCore": 1.0e3,
+        "nISM": 1.0,
+        "rCore": 0.5,
+        # Control inputs
+        "allowShellDissolution": True,
+        "stop_t_diss": 1.0,
+        "stop_r": None,
+        "stop_v": -1.0e4,
+        "stop_t": 0.3,
+        "coll_r": 1.0,
+        "expansionBeyondCloud": True,
+        "use_adaptive_solver": True,
+        "adiabaticOnlyInCore": False,
+        "immediate_leak": False,
+        # SB99
+        "SB99_BHCUT": 120.0,
+        "SB99_mass": 1.0e6,
+        "SB99_rotation": 1.0,
+        # Feedback
+        "FB_mColdSNFrac": 0.0,
+        "FB_mColdWindFrac": 0.0,
+        "FB_thermCoeffSN": 1.0,
+        "FB_thermCoeffWind": 1.0,
+        "FB_vSN": 1.0e4,
+        # Solver tuning
+        "phaseSwitch_LlossLgain": 1.0,
+        "bubble_xi_Tb": 0.9,
+        # Logging
+        "output_format": "JSON",
+        "log_level": "INFO",
+        "log_colors": True,
+        "log_console": False,
+        "log_file": True,
+        # Derived
+        "rCloud": 20.0,
+        "nEdge": 2.0,
+        "tSF": 0,
+        "mCluster": 1.0e4,
+        "mu_atom": 1.07e-57,
+        "mu_ion": 5.12e-58,
+        "mu_mol": 1.96e-57,
+        "mu_convert": 1.18e-57,
+        "TShell_ion": 1.0e4,
+        "TShell_neu": 1.0e2,
+        "caseB_alpha": 2.6e-13,
+        "C_thermal": 6.0e-7,
+        "dust_KappaIR": 1.0e-26,
+        "dust_noZ": 1.0,
+        "dust_sigma": 1.5e-21,
+        "gamma_adia": 5.0 / 3.0,
+        # Physical constants
+        "G": 4.498e-3,
+        "c_light": 0.307,
+        "k_B": 1.380e-16,
+        "PISM": 3.6e-13,
+    }
+    for k, v in _scalars.items():
+        d[k] = DescribedItem(v)
+
+    # Optional legacy v1 inline arrays
+    if include_legacy_arrays:
+        d["initial_cloud_r_arr"] = DescribedItem(np.asarray(_SAMPLE_INIT_R))
+        d["initial_cloud_n_arr"] = DescribedItem(np.asarray(_SAMPLE_INIT_N))
+        d["initial_cloud_m_arr"] = DescribedItem(np.asarray(_SAMPLE_INIT_M))
+
+    # Varying scalars (will end up in snapshots, not metadata)
     d["t_now"] = DescribedItem(0.0)
     d["R2"] = DescribedItem(0.1)
     d["v2"] = DescribedItem(100.0)
@@ -99,24 +176,34 @@ class TestWriter:
             md = json.load(f)
         assert md.get("_metadata_version") == METADATA_VERSION
 
-    def test_metadata_contains_all_run_consts(self, tmp_path, disable_crash_handlers):
-        _write_three_snapshots(tmp_path)
+    def test_metadata_contains_all_populated_run_consts(
+        self, tmp_path, disable_crash_handlers,
+    ):
+        """Every RUN_CONST_KEYS entry populated in the test params
+        ends up in metadata.json.  BE-only keys (``densBE_*``) are not
+        populated in this PL test fixture and are correctly absent."""
+        d = _write_three_snapshots(tmp_path)
         with open(tmp_path / METADATA_FILENAME) as f:
             md = json.load(f)
+        # Check the keys that were actually set on the params container
         for k in RUN_CONST_KEYS:
-            assert k in md, f"{k} missing from metadata.json"
+            if k in d:
+                assert k in md, f"{k} missing from metadata.json"
 
     def test_run_consts_stripped_from_snapshots(self, tmp_path, disable_crash_handlers):
-        _write_three_snapshots(tmp_path)
+        d = _write_three_snapshots(tmp_path)
         with open(tmp_path / "dictionary.jsonl") as f:
             lines = [line for line in f if line.strip()]
         assert len(lines) == 3
+        # Strip set = RUN_CONST_KEYS ∪ DROPPED_IN_V2 ∪ METADATA_EXCLUDE
+        strip_set = set(RUN_CONST_KEYS) | DROPPED_IN_V2 | METADATA_EXCLUDE
         for i, line in enumerate(lines):
             snap = json.loads(line)
-            for k in RUN_CONST_KEYS:
-                assert k not in snap, (
-                    f"snapshot {i}: {k} should have been stripped"
-                )
+            for k in strip_set:
+                if k in d:  # only check keys that were actually populated
+                    assert k not in snap, (
+                        f"snapshot {i}: {k} should have been stripped"
+                    )
             # Varying keys must still be there
             assert "t_now" in snap
             assert "R2" in snap
@@ -152,15 +239,18 @@ class TestWriter:
 class TestRehydrate:
 
     def test_trinity_output_rehydrates(self, tmp_path, disable_crash_handlers):
+        """v2: scalar run-constants rehydrate into every snapshot.
+        Arrays were dropped — the inline-array path tested previously is
+        now covered by ``test_legacy_v1_inline_arrays_used`` instead."""
         _write_three_snapshots(tmp_path)
         out = TrinityOutput.open(tmp_path / "dictionary.jsonl")
         assert len(out) == 3
         snap = out[0]
         assert snap.get("model_name") == "test_run"
         assert snap.get("mCloud") == pytest.approx(1.0e6)
-        np.testing.assert_allclose(
-            snap.get("initial_cloud_r_arr"), _SAMPLE_INIT_R
-        )
+        # Several new v2 scalars also rehydrate
+        assert snap.get("mu_atom") == pytest.approx(1.07e-57)
+        assert snap.get("sfe") == pytest.approx(0.01)
 
     def test_describeddict_load_snapshots_rehydrates(
         self, tmp_path, disable_crash_handlers,
@@ -314,3 +404,549 @@ class TestSize:
         # Sanity: the savings should be at least the size of metadata
         # written 5 extra times.
         assert split_total < inline_total - 4 * meta_size
+
+
+# ---------------------------------------------------------------------------
+# Phase 1 — expanded run-constants + dropped initial_cloud_*_arr arrays
+# ---------------------------------------------------------------------------
+
+class TestExpandedScope:
+    """Phase 1 expands RUN_CONST_KEYS to ~57 scalars and drops the
+    three ``initial_cloud_*_arr`` arrays.  These tests pin the new
+    contract."""
+
+    def test_version_is_at_least_v2(self, tmp_path, disable_crash_handlers):
+        """Schema must be ≥ 2 (Phase 1 introduced v2; Phase 2 bumps to v3)."""
+        _write_three_snapshots(tmp_path)
+        with open(tmp_path / METADATA_FILENAME) as f:
+            md = json.load(f)
+        assert md["_metadata_version"] >= 2
+        # And matches the module-level constant
+        assert md["_metadata_version"] == METADATA_VERSION
+
+    def test_initial_cloud_arrays_are_dropped(
+        self, tmp_path, disable_crash_handlers,
+    ):
+        """v2 writer must not emit the three initial_cloud_*_arr keys
+        even if they are populated in params (legacy compat happens at
+        read time only)."""
+        d = _make_params(tmp_path, include_legacy_arrays=True)
+        _save_snapshot_with(d, t_now=0.0, R2=0.1)
+        d.flush()
+        with open(tmp_path / METADATA_FILENAME) as f:
+            md = json.load(f)
+        for k in ("initial_cloud_r_arr", "initial_cloud_n_arr",
+                  "initial_cloud_m_arr"):
+            assert k not in md, f"{k} should be dropped from v2 metadata"
+
+    def test_dropped_arrays_also_stripped_from_snapshots(
+        self, tmp_path, disable_crash_handlers,
+    ):
+        d = _make_params(tmp_path, include_legacy_arrays=True)
+        _save_snapshot_with(d, t_now=0.0, R2=0.1)
+        d.flush()
+        with open(tmp_path / "dictionary.jsonl") as f:
+            snap = json.loads(f.readline())
+        for k in ("initial_cloud_r_arr", "initial_cloud_n_arr",
+                  "initial_cloud_m_arr"):
+            assert k not in snap, f"{k} should be stripped from snapshots"
+
+    def test_metadata_is_pretty_printed(
+        self, tmp_path, disable_crash_handlers,
+    ):
+        """Pretty-printed JSON has newlines and indentation."""
+        _write_three_snapshots(tmp_path)
+        raw = (tmp_path / METADATA_FILENAME).read_text()
+        assert "\n" in raw, "metadata.json should be multi-line"
+        assert '  "' in raw, "metadata.json should be indented"
+
+    def test_writer_skips_non_serializable_value(
+        self, tmp_path, disable_crash_handlers, caplog,
+    ):
+        """An unexpected non-JSON value in params (e.g. a lambda) is
+        logged and skipped rather than crashing the flush."""
+        d = _make_params(tmp_path)
+        # Add a fake function-typed key that happens to be in RUN_CONST_KEYS
+        # to trigger the defensive serialization path.  Use one of the
+        # scalars we already populate but replace its value with a lambda.
+        d["mu_atom"] = DescribedItem(lambda x: x)
+        import logging
+        with caplog.at_level(logging.WARNING):
+            _save_snapshot_with(d, t_now=0.0, R2=0.1)
+            d.flush()
+        with open(tmp_path / METADATA_FILENAME) as f:
+            md = json.load(f)
+        assert "mu_atom" not in md, "non-serializable value should be skipped"
+        # The other run-constants must still be written.
+        assert "mCloud" in md
+        # And the writer should have logged the skip.
+        assert any("non-serializable" in rec.message.lower()
+                   or "mu_atom" in rec.message
+                   for rec in caplog.records)
+
+    def test_writer_skips_metadata_exclude_keys(
+        self, tmp_path, disable_crash_handlers,
+    ):
+        """Keys in METADATA_EXCLUDE (paths, function tables, empty
+        placeholders) are never written even if present in params."""
+        d = _make_params(tmp_path)
+        # Pick a representative key from the exclude set
+        d["path_cooling_CIE"] = DescribedItem("/some/path")
+        _save_snapshot_with(d, t_now=0.0, R2=0.1)
+        d.flush()
+        with open(tmp_path / METADATA_FILENAME) as f:
+            md = json.load(f)
+        for k in METADATA_EXCLUDE:
+            assert k not in md, f"{k} (in METADATA_EXCLUDE) should not be written"
+
+
+class TestInitialCloudProfileReconstruction:
+    """``output.initial_cloud_profile()`` reconstructs (r, n, m) from
+    v2 metadata scalars and falls back to inline arrays for v1 files."""
+
+    def test_reconstructs_powerlaw_from_v2_metadata(
+        self, tmp_path, disable_crash_handlers,
+    ):
+        """v2: metadata has no inline arrays; reconstruction must
+        succeed using only the scalars."""
+        _write_three_snapshots(tmp_path)
+        out = TrinityOutput.open(tmp_path / "dictionary.jsonl")
+        r, n, m = out.initial_cloud_profile()
+        # Should be non-empty arrays of equal length
+        assert r.size > 0 and r.size == n.size == m.size
+        # Radius monotonically increasing
+        assert np.all(np.diff(r) > 0)
+        # Power-law alpha=0 → uniform density inside core, equal to nCore
+        # near the inner part of the array
+        nCore = out.metadata["nCore"]
+        # The first sample (inside rCore) should equal nCore
+        assert abs(r[0]) < float(out.metadata["rCore"]) * 2.0
+        assert abs(n[0] / nCore - 1.0) < 1e-6
+
+    def test_legacy_v1_inline_arrays_used(
+        self, tmp_path, disable_crash_handlers,
+    ):
+        """If metadata.json has inline arrays (v1 schema), the reader
+        returns them directly without recomputing."""
+        # Build a v1-style metadata.json by hand (no writer path
+        # produces this anymore — we simulate a legacy file).
+        v1_md = {
+            "_metadata_version": 1,
+            "model_name": "legacy",
+            "mCloud": 1e6,
+            "nCore": 1e3,
+            "nISM": 1.0,
+            "rCore": 0.5,
+            "rCloud": 20.0,
+            "dens_profile": "densPL",
+            "densPL_alpha": 0.0,
+            "initial_cloud_r_arr": _SAMPLE_INIT_R,
+            "initial_cloud_n_arr": _SAMPLE_INIT_N,
+            "initial_cloud_m_arr": _SAMPLE_INIT_M,
+        }
+        with open(tmp_path / METADATA_FILENAME, "w") as f:
+            json.dump(v1_md, f)
+        with open(tmp_path / "dictionary.jsonl", "w") as f:
+            f.write(json.dumps({"t_now": 0.0, "R2": 0.1}) + "\n")
+        out = TrinityOutput.open(tmp_path / "dictionary.jsonl")
+        r, n, m = out.initial_cloud_profile()
+        np.testing.assert_allclose(r, _SAMPLE_INIT_R)
+        np.testing.assert_allclose(n, _SAMPLE_INIT_N)
+        np.testing.assert_allclose(m, _SAMPLE_INIT_M)
+
+    def test_raises_when_metadata_missing_scalars(
+        self, tmp_path, disable_crash_handlers,
+    ):
+        """If metadata has neither inline arrays nor the required scalars
+        (truly broken/empty), the reconstruction raises a clear KeyError."""
+        broken_md = {"_metadata_version": 2, "model_name": "broken"}
+        with open(tmp_path / METADATA_FILENAME, "w") as f:
+            json.dump(broken_md, f)
+        with open(tmp_path / "dictionary.jsonl", "w") as f:
+            f.write(json.dumps({"t_now": 0.0}) + "\n")
+        out = TrinityOutput.open(tmp_path / "dictionary.jsonl")
+        with pytest.raises(KeyError, match="reconstruct"):
+            out.initial_cloud_profile()
+
+    def test_metadata_property_returns_parsed_json(
+        self, tmp_path, disable_crash_handlers,
+    ):
+        """``output.metadata`` is the parsed metadata.json dict."""
+        _write_three_snapshots(tmp_path)
+        out = TrinityOutput.open(tmp_path / "dictionary.jsonl")
+        md = out.metadata
+        assert isinstance(md, dict)
+        assert md["model_name"] == "test_run"
+        assert md["_metadata_version"] == METADATA_VERSION
+        # Cached across multiple property accesses
+        assert out.metadata is md
+
+    def test_metadata_property_empty_when_file_absent(
+        self, tmp_path, disable_crash_handlers,
+    ):
+        """If metadata.json doesn't exist, ``output.metadata`` returns {}."""
+        with open(tmp_path / "dictionary.jsonl", "w") as f:
+            f.write(json.dumps({"t_now": 0.0}) + "\n")
+        out = TrinityOutput.open(tmp_path / "dictionary.jsonl")
+        assert out.metadata == {}
+
+
+# ---------------------------------------------------------------------------
+# Phase 2 — termination + final_state blocks
+# ---------------------------------------------------------------------------
+
+class TestTerminationBlock:
+    """Phase 2 adds a ``termination`` block to metadata.json that
+    mirrors ``read_simulation_end()``'s return shape."""
+
+    def _make_params_with_end_codes(self, tmp_path, *, exit_code=1,
+                                    reason="Stopping time reached"):
+        from src._output.simulation_end import SimulationEndCode
+        d = _make_params(tmp_path)
+        d["SimulationEndReason"] = DescribedItem(reason)
+        d["SimulationEndCode"] = DescribedItem(exit_code)
+        # Need a snapshot/flush so metadata.json exists first
+        _save_snapshot_with(d, t_now=0.5, R2=2.0)
+        d.flush()
+        return d
+
+    def test_writes_termination_block(self, tmp_path, disable_crash_handlers):
+        from src._output.simulation_end import write_simulation_end
+        d = self._make_params_with_end_codes(tmp_path)
+        write_simulation_end(d, str(tmp_path))
+        with open(tmp_path / METADATA_FILENAME) as f:
+            md = json.load(f)
+        assert "termination" in md
+        t = md["termination"]
+        assert set(t.keys()) == {
+            "exit_code", "outcome", "detail", "timestamp", "model_name",
+        }
+        assert t["exit_code"] == 1
+        assert t["outcome"] == "stopping_time"
+        assert t["detail"] == "Stopping time reached"
+        assert t["model_name"] == "test_run"
+
+    def test_writes_final_state_block(self, tmp_path, disable_crash_handlers):
+        from src._output.simulation_end import write_simulation_end
+        d = self._make_params_with_end_codes(tmp_path)
+        # Tweak some "varying" scalars to simulate end-of-run values
+        d["t_now"] = DescribedItem(0.300)
+        d["R2"] = DescribedItem(2.51)
+        d["v2"] = DescribedItem(2.45e-3)
+        d["Eb"] = DescribedItem(0.0)
+        d["current_phase"] = DescribedItem("momentum")
+        d["isCollapse"] = DescribedItem(False)
+        write_simulation_end(d, str(tmp_path))
+        with open(tmp_path / METADATA_FILENAME) as f:
+            md = json.load(f)
+        assert "final_state" in md
+        fs = md["final_state"]
+        # All the varying scalars we set must be in the block
+        assert fs["t_now"] == pytest.approx(0.300)
+        assert fs["R2"] == pytest.approx(2.51)
+        assert fs["v2"] == pytest.approx(2.45e-3)
+        assert fs["Eb"] == 0.0
+        assert fs["current_phase"] == "momentum"
+        assert fs["isCollapse"] is False
+        # Run-constants must NOT be in final_state (they live up top)
+        assert "mCloud" not in fs
+        assert "nCore" not in fs
+
+    def test_final_state_excludes_long_arrays(
+        self, tmp_path, disable_crash_handlers,
+    ):
+        from src._output.simulation_end import write_simulation_end
+        d = self._make_params_with_end_codes(tmp_path)
+        # Stuff a long array into params under one of the excluded keys
+        d["bubble_T_arr_r_arr"] = DescribedItem(np.linspace(0, 1, 30))
+        d["log_shell_n_arr"] = DescribedItem(np.linspace(50, 60, 30))
+        write_simulation_end(d, str(tmp_path))
+        with open(tmp_path / METADATA_FILENAME) as f:
+            md = json.load(f)
+        fs = md["final_state"]
+        assert "bubble_T_arr_r_arr" not in fs
+        assert "log_shell_n_arr" not in fs
+
+    def test_final_state_excludes_termination_duplicates(
+        self, tmp_path, disable_crash_handlers,
+    ):
+        """``SimulationEndCode`` and ``SimulationEndReason`` already
+        live in the ``termination`` block (as ``exit_code`` and
+        ``detail`` respectively).  Leaking them into ``final_state``
+        too creates two copies with possibly inconsistent values —
+        the snapshot value of ``SimulationEndReason`` is the empty
+        string (save_snapshot ran before the reason was set), while
+        ``write_simulation_end`` sees the populated reason.  Skip
+        both from final_state so there's a single authoritative
+        location for each."""
+        from src._output.simulation_end import write_simulation_end
+        d = self._make_params_with_end_codes(tmp_path)
+        write_simulation_end(d, str(tmp_path))
+        with open(tmp_path / METADATA_FILENAME) as f:
+            md = json.load(f)
+        fs = md["final_state"]
+        assert "SimulationEndReason" not in fs, (
+            "SimulationEndReason duplicates termination.detail — "
+            "exclude from final_state"
+        )
+        assert "SimulationEndCode" not in fs, (
+            "SimulationEndCode duplicates termination.exit_code — "
+            "exclude from final_state"
+        )
+        # And the canonical locations DO have the data:
+        assert md["termination"]["exit_code"] == 1
+        assert md["termination"]["detail"] == "Stopping time reached"
+
+    def test_final_state_excludes_path2output(
+        self, tmp_path, disable_crash_handlers,
+    ):
+        """The absolute path of the run dir leaks personal info
+        (user home) and is redundant — readers know the run dir
+        because that's where they found the file."""
+        from src._output.simulation_end import write_simulation_end
+        d = self._make_params_with_end_codes(tmp_path)
+        write_simulation_end(d, str(tmp_path))
+        with open(tmp_path / METADATA_FILENAME) as f:
+            md = json.load(f)
+        assert "path2output" not in md["final_state"]
+        assert "path2output" not in md  # also excluded from top-level run-consts
+
+
+class TestTrinityOutputProperties:
+    """Phase 2 surfaces ``termination`` / ``final_state`` /
+    ``is_successful_run`` on ``TrinityOutput``."""
+
+    def _open_run_with_termination(self, tmp_path, *, exit_code=1):
+        from src._output.simulation_end import write_simulation_end
+        d = _make_params(tmp_path)
+        d["SimulationEndReason"] = DescribedItem("Stopping time reached")
+        d["SimulationEndCode"] = DescribedItem(exit_code)
+        _save_snapshot_with(d, t_now=0.5, R2=2.0)
+        d.flush()
+        write_simulation_end(d, str(tmp_path))
+        return TrinityOutput.open(tmp_path / "dictionary.jsonl")
+
+    def test_termination_property(self, tmp_path, disable_crash_handlers):
+        out = self._open_run_with_termination(tmp_path)
+        t = out.termination
+        assert isinstance(t, dict)
+        assert t["outcome"] == "stopping_time"
+        assert t["exit_code"] == 1
+
+    def test_final_state_property(self, tmp_path, disable_crash_handlers):
+        out = self._open_run_with_termination(tmp_path)
+        fs = out.final_state
+        assert isinstance(fs, dict)
+        # The varying-scalar values from _make_params must be present
+        assert "t_now" in fs and "R2" in fs and "v2" in fs
+
+    def test_is_successful_run_true_for_clean_exit(
+        self, tmp_path, disable_crash_handlers,
+    ):
+        out = self._open_run_with_termination(tmp_path, exit_code=1)
+        assert out.is_successful_run is True
+
+    def test_is_successful_run_false_for_bad_exit(
+        self, tmp_path, disable_crash_handlers,
+    ):
+        out = self._open_run_with_termination(tmp_path, exit_code=42)
+        assert out.is_successful_run is False
+
+    def test_is_successful_run_none_when_termination_missing(
+        self, tmp_path, disable_crash_handlers,
+    ):
+        # Run that flushed metadata but never reached write_simulation_end
+        d = _make_params(tmp_path)
+        _save_snapshot_with(d, t_now=0.5, R2=2.0)
+        d.flush()
+        out = TrinityOutput.open(tmp_path / "dictionary.jsonl")
+        assert out.termination is None
+        assert out.final_state is None
+        assert out.is_successful_run is None
+
+    def test_termination_not_rehydrated_into_snapshots(
+        self, tmp_path, disable_crash_handlers,
+    ):
+        """``termination`` and ``final_state`` are reserved top-level
+        blocks — they must NOT smear into every snapshot's data dict."""
+        out = self._open_run_with_termination(tmp_path)
+        snap = out[0]
+        assert "termination" not in snap.data
+        assert "final_state" not in snap.data
+
+
+class TestReadSimulationEndMigration:
+    """``read_simulation_end()`` prefers metadata.json, falls back to text."""
+
+    def _make_termination_run(self, tmp_path):
+        from src._output.simulation_end import write_simulation_end
+        d = _make_params(tmp_path)
+        d["SimulationEndReason"] = DescribedItem("Stopping time reached")
+        d["SimulationEndCode"] = DescribedItem(1)
+        _save_snapshot_with(d, t_now=0.5, R2=2.0)
+        d.flush()
+        write_simulation_end(d, str(tmp_path))
+
+    def test_reads_from_metadata_block(self, tmp_path, disable_crash_handlers):
+        from src._output.simulation_end import read_simulation_end
+        self._make_termination_run(tmp_path)
+        # Phase 5+: write_simulation_end no longer writes simulationEnd.txt,
+        # so JSON is by construction the only source.
+        assert not (tmp_path / "simulationEnd.txt").exists()
+        result = read_simulation_end(str(tmp_path))
+        assert result is not None
+        assert result["exit_code"] == 1
+        assert result["outcome"] == "stopping_time"
+        assert result["model"] == "test_run"
+
+    def test_falls_back_to_text_for_legacy_runs(
+        self, tmp_path, disable_crash_handlers,
+    ):
+        """Legacy run: no metadata.json (or v1/v2 with no termination
+        block); read_simulation_end falls back to text-parsing with a
+        DeprecationWarning."""
+        from src._output.simulation_end import read_simulation_end
+        # Write only simulationEnd.txt, no metadata.json with termination
+        text = (
+            "==================================================\n"
+            "TRINITY Simulation End Report\n"
+            "==================================================\n"
+            "Timestamp: 2026-01-01 00:00:00\n"
+            "Model: legacy_run\n"
+            "\n"
+            "Outcome: stopping_time\n"
+            "Detail: Legacy text-parsed reason\n"
+            "Exit Code: 1\n"
+        )
+        (tmp_path / "simulationEnd.txt").write_text(text)
+        with pytest.warns(DeprecationWarning, match="simulationEnd.txt"):
+            result = read_simulation_end(str(tmp_path))
+        assert result is not None
+        assert result["exit_code"] == 1
+        assert result["outcome"] == "stopping_time"
+        assert result["detail"] == "Legacy text-parsed reason"
+        assert result["model"] == "legacy_run"
+
+    def test_returns_none_when_both_sources_missing(
+        self, tmp_path, disable_crash_handlers,
+    ):
+        from src._output.simulation_end import read_simulation_end
+        assert read_simulation_end(str(tmp_path)) is None
+
+    def test_metadata_block_takes_precedence(
+        self, tmp_path, disable_crash_handlers,
+    ):
+        """When both metadata.json[termination] and a stale legacy
+        simulationEnd.txt exist, the JSON wins (no warning is emitted
+        because the text-parse path is never reached)."""
+        import warnings as _warnings
+        from src._output.simulation_end import read_simulation_end
+        self._make_termination_run(tmp_path)
+        # Plant a stale text file to detect which source is consulted
+        (tmp_path / "simulationEnd.txt").write_text(
+            "Outcome: collapse\nDetail: bogus\nExit Code: 99\n"
+        )
+        with _warnings.catch_warnings():
+            _warnings.simplefilter("error", DeprecationWarning)
+            result = read_simulation_end(str(tmp_path))
+        # JSON wins → exit_code stays at 1, outcome stays at stopping_time
+        assert result["exit_code"] == 1
+        assert result["outcome"] == "stopping_time"
+
+
+class TestTerminationDebugBlock:
+    """Phase 5 (v4): ``termination_debug`` block in metadata.json
+    replaces the legacy ``termination_debug.txt`` text file."""
+
+    def _make_run_with_debug(self, tmp_path, *, reason="Stopping time reached"):
+        from src._output.simulation_end import (
+            write_simulation_end, write_termination_debug_report,
+        )
+        d = _make_params(tmp_path)
+        d["SimulationEndReason"] = DescribedItem(reason)
+        d["SimulationEndCode"] = DescribedItem(1)
+        _save_snapshot_with(d, t_now=0.2, R2=1.0)
+        _save_snapshot_with(d, t_now=0.3, R2=2.0)
+        d.flush()
+        write_simulation_end(d, str(tmp_path))
+        write_termination_debug_report(str(tmp_path), reason=reason)
+        return d
+
+    def test_no_termination_debug_txt_written(
+        self, tmp_path, disable_crash_handlers,
+    ):
+        """Phase 5: no text file is ever created."""
+        self._make_run_with_debug(tmp_path)
+        assert not (tmp_path / "termination_debug.txt").exists()
+
+    def test_termination_debug_in_metadata(
+        self, tmp_path, disable_crash_handlers,
+    ):
+        """The debug block lands as a top-level key in metadata.json."""
+        self._make_run_with_debug(tmp_path, reason="Shell dissolved")
+        metadata = json.loads(
+            (tmp_path / METADATA_FILENAME).read_text()
+        )
+        assert "termination_debug" in metadata
+        td = metadata["termination_debug"]
+        assert td["reason"] == "Shell dissolved"
+        assert td["snapshot_count"] == 2
+        assert "timestamp" in td
+
+    def test_termination_debug_has_structured_fields(
+        self, tmp_path, disable_crash_handlers,
+    ):
+        """The block carries comparison/warnings/invalid_values/sanity."""
+        self._make_run_with_debug(tmp_path)
+        td = json.loads((tmp_path / METADATA_FILENAME).read_text())[
+            "termination_debug"
+        ]
+        assert isinstance(td.get("time"), dict)
+        assert td["time"].get("dt") == pytest.approx(0.1)
+        assert isinstance(td.get("comparison"), list)
+        assert len(td["comparison"]) > 0
+        # Each comparison row has the expected shape
+        row = td["comparison"][0]
+        for key in ("key", "label", "unit", "old", "new", "rel_change", "flagged"):
+            assert key in row
+        assert isinstance(td.get("warnings"), list)
+        assert isinstance(td.get("invalid_values"), dict)
+        assert "nan" in td["invalid_values"]
+        assert "inf" in td["invalid_values"]
+        assert isinstance(td.get("sanity_checks"), list)
+
+    def test_termination_debug_property_on_trinity_output(
+        self, tmp_path, disable_crash_handlers,
+    ):
+        """``TrinityOutput.termination_debug`` exposes the block."""
+        self._make_run_with_debug(tmp_path)
+        out = TrinityOutput.open(tmp_path / "dictionary.jsonl")
+        td = out.termination_debug
+        assert isinstance(td, dict)
+        assert td["snapshot_count"] == 2
+
+    def test_termination_debug_not_rehydrated_into_snapshots(
+        self, tmp_path, disable_crash_handlers,
+    ):
+        """Reserved top-level keys must not leak into per-snapshot data."""
+        self._make_run_with_debug(tmp_path)
+        out = TrinityOutput.open(tmp_path / "dictionary.jsonl")
+        for snap in out:
+            assert "termination_debug" not in snap.data
+
+    def test_termination_debug_handles_empty_jsonl(
+        self, tmp_path, disable_crash_handlers,
+    ):
+        """When no snapshots exist, the block still lands with a note."""
+        from src._output.simulation_end import write_termination_debug_report
+        # Empty metadata.json so update_metadata_atomic has something to merge into
+        (tmp_path / METADATA_FILENAME).write_text(json.dumps({
+            "_metadata_version": METADATA_VERSION,
+            "model_name": "empty",
+        }))
+        write_termination_debug_report(str(tmp_path), reason="Crash before flush")
+        metadata = json.loads((tmp_path / METADATA_FILENAME).read_text())
+        td = metadata["termination_debug"]
+        assert td["snapshot_count"] == 0
+        assert "note" in td
+        assert td["reason"] == "Crash before flush"

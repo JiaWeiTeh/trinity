@@ -223,15 +223,16 @@ def snapshot_to_values(
             f"extend_with_ambient=True (currently False)"
         )
     if extend_with_ambient and r_out_pc > rShell:
-        amb_r = bundle.metadata.get("initial_cloud_r_arr")
-        amb_n = bundle.metadata.get("initial_cloud_n_arr")
-        if amb_r is None or amb_n is None:
+        # ``output.initial_cloud_profile()`` reads the arrays inline for
+        # legacy v1 metadata, and reconstructs them from scalars for v2+
+        # (where the arrays were dropped to save ~71 KB per run).
+        try:
+            amb_r, amb_n, _ = bundle.output.initial_cloud_profile()
+        except (KeyError, ValueError) as e:
             raise SnapshotInvalid(
-                "ambient extension requested but metadata lacks "
-                "'initial_cloud_r_arr' / 'initial_cloud_n_arr'"
-            )
-        amb_r = np.asarray(amb_r, dtype=float)
-        amb_n = np.asarray(amb_n, dtype=float)
+                f"ambient extension requested but initial cloud profile "
+                f"could not be obtained: {e}"
+            ) from e
         if amb_r.size == 0:
             raise SnapshotInvalid(
                 "ambient extension requested but initial_cloud arrays empty"

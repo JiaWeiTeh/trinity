@@ -285,8 +285,14 @@ def test_load_run_missing_summary(tmp_path):
 
 
 def test_load_run_missing_simulation_end(tmp_path):
+    # Phase 2: load_run prefers metadata.json[termination]; falls back to
+    # simulationEnd.txt for legacy runs.  With both absent the error
+    # message names both sources.
     rd = _make_minimal_run_dir(tmp_path, write_end=False)
-    with pytest.raises(RunLoadError, match="simulationEnd.txt missing"):
+    with pytest.raises(
+        RunLoadError,
+        match="neither metadata.json.termination. nor simulationEnd.txt",
+    ):
         load_run(rd)
 
 

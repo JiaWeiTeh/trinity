@@ -20,7 +20,6 @@ Key features:
 import logging
 import sys
 import os
-from datetime import datetime
 from pathlib import Path
 from fractions import Fraction
 import numpy as np
@@ -103,17 +102,15 @@ def _get_legacy_sb99_filename(params):
     return f"{SBmass_str}cluster_{rot_str}_{z_str}_{BH_str}.txt"
 
 
-def read_param(path2file, write_summary=True):
+def read_param(path2file):
     """
     Read parameter file and return DescribedDict with all TRINITY parameters.
-    
+
     Parameters
     ----------
     path2file : str or Path
         Path to the user .param file.
-    write_summary : bool, optional
-        Whether to write a summary .txt file in the output directory.
-    
+
     Returns
     -------
     params : DescribedDict
@@ -744,27 +741,11 @@ def read_param(path2file, write_summary=True):
             f"conflicting assignment(s) from Step 6/8/10."
         )
 
-    # =============================================================================
-    # Step 11: Write summary file
-    # =============================================================================
-    
-    if write_summary:
-        now = datetime.now()
-        dt_string = now.strftime("%d/%m/%Y %H:%M:%S")
-        summary_path = os.path.join(path2output, f"{params['model_name'].value}_summary.txt")
-        
-        with open(summary_path, 'w', encoding='utf-8') as f:
-            f.write(f"# {'=' * 77}\n")
-            f.write(f"# Summary of parameters for run: '{params['model_name'].value}'\n")
-            f.write(f"# Units: [Msun, pc, Myr] unless otherwise specified\n")
-            f.write(f"# Created: {dt_string}\n")
-            f.write(f"# {'=' * 77}\n\n")
-            
-            for key, item in params.items():
-                f.write(f"{key:<30}  {item.value}\n")
-        
-        logger.info(f"Summary written to: {summary_path}")
-    
+    # Phase 5 drop: the legacy ``<model_name>_summary.txt`` is no longer
+    # written here.  All run-constants land in ``metadata.json`` (written
+    # by ``DescribedDict.flush()``); ``python -m src._output.show_run``
+    # formats them for human consumption.
+
     return params
 
 

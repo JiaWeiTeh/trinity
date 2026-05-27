@@ -100,7 +100,7 @@ def show_param(params):
     print(f"\tdensity profile: {params['dens_profile'].value}")
     # shorten
     relpath = os.path.relpath(params['path2output'].value, os.getcwd())
-    print(f"{cpr.FILE}Summary: {relpath}/{params['model_name'].value}{'_summary.txt'}{cpr.END}")
+    print(f"{cpr.FILE}Metadata: {relpath}/metadata.json{cpr.END}")
 
     return
 
