@@ -151,7 +151,26 @@ def add_legend(ax, tags, **kwargs):
 # =============================================================================
 
 def _parse_summary(sim_folder: Path) -> dict:
-    """Parse ``*_summary.txt`` next to dictionary.jsonl into {key: str}."""
+    """Read run-constants for *sim_folder* into a {key: str} dict.
+
+    Prefers ``metadata.json`` (v2+); falls back to the legacy
+    ``*_summary.txt`` for pre-Phase-5 runs.  Returns ``{}`` if neither
+    source is present.
+    """
+    metadata_path = sim_folder / "metadata.json"
+    if metadata_path.is_file():
+        try:
+            import json
+            with open(metadata_path) as f:
+                md = json.load(f)
+            if md.get("_metadata_version", 1) >= 2:
+                # _try_float()/raw.get() expect strings; coerce so the
+                # back-compat callers below don't need to change.
+                return {k: str(v) for k, v in md.items()
+                        if not isinstance(v, (dict, list))}
+        except (OSError, ValueError):
+            pass
+
     for p in sorted(sim_folder.glob('*_summary.txt')):
         result = {}
         with open(p, 'r', encoding='utf-8') as fh:

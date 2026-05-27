@@ -44,6 +44,15 @@ Version history
   blocks are NOT rehydrated into snapshots (see
   ``RESERVED_TOP_LEVEL_KEYS`` below) — they surface via the
   ``TrinityOutput.termination`` / ``.final_state`` properties.
+* v4 — Phase 5: adds top-level ``termination_debug`` block (the
+  last-2-snapshot comparison data formerly written to
+  ``termination_debug.txt``).  ``write_simulation_end`` and
+  ``write_termination_debug_report`` no longer write text files;
+  ``read_param.write_summary`` likewise no longer writes
+  ``<run>_summary.txt``.  Output directory shrinks from 7 files to 4
+  (``.param`` + ``trinity_*.log`` + ``dictionary.jsonl`` +
+  ``metadata.json``).  Legacy text-parse readers stay (with
+  ``DeprecationWarning``) for one cycle, then are removed in Phase 6.
 """
 
 from __future__ import annotations
@@ -180,20 +189,24 @@ METADATA_FILENAME: str = "metadata.json"
 
 # Schema version of ``metadata.json``.  Increment whenever the
 # layout changes in a backwards-incompatible way.
-METADATA_VERSION: int = 3
+METADATA_VERSION: int = 4
 
 # Top-level keys in ``metadata.json`` that are NOT rehydrated into
-# every snapshot's data dict.  Two reasons a key lives up here:
+# every snapshot's data dict.  Three reasons a key lives up here:
 #
 #   * ``_metadata_version`` — describes the metadata file itself.
 #   * ``termination`` / ``final_state`` — Phase-2 blocks surfaced via
 #     ``TrinityOutput.termination`` / ``.final_state`` properties.
 #     Rehydrating them into each snapshot would smear the run-end
 #     state into every timestep, which is misleading.
+#   * ``termination_debug`` — Phase-5 block; last-2-snapshot
+#     comparison written by ``write_termination_debug_report``.
+#     Replaces the legacy ``termination_debug.txt`` file.
 RESERVED_TOP_LEVEL_KEYS: frozenset[str] = frozenset({
     "_metadata_version",
     "termination",
     "final_state",
+    "termination_debug",
 })
 
 # Keys excluded from the ``final_state`` block.  Long per-snapshot

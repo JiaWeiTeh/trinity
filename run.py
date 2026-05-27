@@ -132,9 +132,8 @@ def run_single(args):
     from src._output import header
     header.display()
 
-    # Get class and write summary file
     # Note: read_param logging is now captured with early config above
-    params = read_param.read_param(args.path2param, write_summary=True)
+    params = read_param.read_param(args.path2param)
 
     header.show_param(params)
 

@@ -2,15 +2,17 @@
 Load a TRINITY run directory into a typed bundle the trinity_to_cloudy
 driver can consume.
 
-A run directory has this shape (see ``outputs/mockOutput/mockFullrun/``)::
+A v4+ run directory has this shape::
 
     <run_dir>/
     ├── <model>.param                    # raw input config (not parsed here)
-    ├── <model>_summary.txt              # full resolved config (parsed)
-    ├── dictionary.jsonl                 # snapshot stream (opened via TrinityOutput)
-    ├── metadata.json                    # run-invariant data (parsed)
-    ├── simulationEnd.txt                # success / failure (parsed)
-    └── ...                              # plots, debug logs (ignored)
+    ├── dictionary.jsonl                 # snapshot stream (via TrinityOutput)
+    ├── metadata.json                    # run-invariant data + termination
+    └── trinity_*.log                    # logs (ignored)
+
+Legacy runs (pre-Phase-5) additionally carried ``<model>_summary.txt``
+and ``simulationEnd.txt``.  The text-parse fallbacks below still load
+those, with a ``DeprecationWarning``; they will be removed in Phase 6.
 
 Public API::
 
@@ -21,12 +23,13 @@ from __future__ import annotations
 
 import ast
 import json
-import math
+import warnings
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Mapping
 
 from src._output.trinity_reader import TrinityOutput, find_data_path
+from src._output.run_constants import metadata_keys_to_rehydrate
 
 
 # Canonical TRINITY density-profile enum (mirrors src/_input/read_param.py:286).
@@ -43,9 +46,11 @@ class RunBundle:
 
     run_dir: Path
     model_name: str
-    metadata: Mapping[str, Any]      # parsed metadata.json
-    summary: Mapping[str, Any]       # parsed <model>_summary.txt
-    end_state: Mapping[str, Any]     # parsed simulationEnd.txt
+    metadata: Mapping[str, Any]      # raw parsed metadata.json
+    summary: Mapping[str, Any]       # run-constants (metadata.json v2+;
+                                     # legacy <model>_summary.txt v1)
+    end_state: Mapping[str, Any]     # metadata.json[termination] (v3+)
+                                     # or parsed simulationEnd.txt (legacy)
     output: TrinityOutput            # opened from find_data_path(run_dir)
 
 
@@ -90,13 +95,20 @@ def load_run(run_dir: str | Path) -> RunBundle:
             f"expected one of {sorted(VALID_DENS_PROFILES)}"
         )
 
-    # --- <model>_summary.txt (resolved config + ZCloud) ---------------------
-    summary_path = run_dir / f"{model_name}_summary.txt"
-    if not summary_path.is_file():
-        raise RunLoadError(
-            f"summary file missing: expected {summary_path.name} in {run_dir}"
-        )
-    summary = _parse_summary_txt(summary_path.read_text())
+    # --- summary (resolved config + ZCloud, dens_profile, etc.) --------------
+    # v2+ metadata.json carries every run-constant scalar as a top-level
+    # key, so it IS the summary.  We strip the reserved blocks
+    # (termination/final_state/_metadata_version) so the returned mapping
+    # has the same shape as the legacy ``<model>_summary.txt`` parse.
+    if metadata.get("_metadata_version", 1) >= 2:
+        summary = metadata_keys_to_rehydrate(metadata)
+    else:
+        summary_path = run_dir / f"{model_name}_summary.txt"
+        if not summary_path.is_file():
+            raise RunLoadError(
+                f"summary file missing: expected {summary_path.name} in {run_dir}"
+            )
+        summary = _parse_summary_txt(summary_path.read_text())
 
     # --- dictionary.jsonl (per-snapshot data) -------------------------------
     try:
@@ -138,12 +150,23 @@ def load_run(run_dir: str | Path) -> RunBundle:
 
 def _parse_summary_txt(text: str) -> dict[str, Any]:
     """
-    Parse a ``<model>_summary.txt`` produced by the TRINITY driver.
+    Parse a legacy ``<model>_summary.txt`` produced by pre-Phase-5 runs.
 
     Format: ``<key><whitespace><value>`` per line; comments start with ``#``;
     blank lines ignored. Values are coerced (in order): bool, ``None``,
     ``nan``/``inf``, int, float, Python-literal (lists, tuples), else string.
+
+    Deprecated.  V2+ runs ship the same data inside ``metadata.json``;
+    this function is kept only for back-compat with legacy fixtures and
+    will be removed in Phase 6.
     """
+    warnings.warn(
+        "Parsing legacy <model>_summary.txt — run pre-dates Phase 5 of "
+        "the metadata migration.  Re-run to populate metadata.json; the "
+        "text parser will be removed in Phase 6.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     out: dict[str, Any] = {}
     for raw in text.splitlines():
         line = raw.strip()
@@ -162,8 +185,9 @@ def _parse_summary_txt(text: str) -> dict[str, Any]:
 def _parse_simulation_end(text: str) -> dict[str, Any]:
     """
     Pull the outcome category, detail message, exit code, and final-state
-    snapshot from ``simulationEnd.txt``. Section headers (``-----``, ``=====``)
-    are ignored; we look for known ``key: value`` lines wherever they appear.
+    snapshot from a legacy ``simulationEnd.txt``.  Section headers
+    (``-----``, ``=====``) are ignored; we look for known ``key: value``
+    lines wherever they appear.
 
     Returned keys (units in the key name where they differ from the summary's
     AU = (Msun, pc, Myr) convention)::
@@ -175,7 +199,19 @@ def _parse_simulation_end(text: str) -> dict[str, Any]:
     Pre-fix runs that wrote ``Status``/``End Reason``/``Raw Reason`` lines are
     tolerated: those values are accepted as fallbacks for ``outcome``/``detail``
     when the new keys are absent.
+
+    Deprecated.  v3+ runs carry the structured data in
+    ``metadata.json[termination]`` and ``metadata.json[final_state]``;
+    this fallback will be removed in Phase 6.
     """
+    warnings.warn(
+        "Parsing legacy simulationEnd.txt — run pre-dates Phase 2 of "
+        "the metadata migration.  Re-run to populate "
+        "metadata.json[termination]; the text parser will be removed in "
+        "Phase 6.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     out: dict[str, Any] = {}
 
     # Map "Key" → (out_key, parser) — parser pulls the value past the colon.

@@ -184,12 +184,14 @@ def _resolve_run_status(run_dir: Path) -> dict:
     path don't duplicate file reads.
 
     Returns a dict with keys ``metadata``, ``termination``,
-    ``final_state``, ``is_successful``, ``model_name`` — all values
-    may be ``None`` if the relevant source was absent.
+    ``final_state``, ``termination_debug``, ``is_successful``,
+    ``model_name`` — all values may be ``None`` if the relevant source
+    was absent.
     """
     md: dict = {}
     termination: Optional[dict] = None
     final_state: Optional[dict] = None
+    termination_debug: Optional[dict] = None
     is_successful: Optional[bool] = None
     model_name = run_dir.name
 
@@ -201,6 +203,7 @@ def _resolve_run_status(run_dir: Path) -> dict:
         md = output.metadata
         termination = output.termination
         final_state = output.final_state
+        termination_debug = output.termination_debug
         is_successful = output.is_successful_run
         if md.get("model_name"):
             model_name = md["model_name"]
@@ -213,6 +216,8 @@ def _resolve_run_status(run_dir: Path) -> dict:
                     md = json.load(f)
                 termination = md.get("termination")
                 final_state = md.get("final_state")
+                td_block = md.get("termination_debug")
+                termination_debug = td_block if isinstance(td_block, dict) else None
                 if md.get("model_name"):
                     model_name = md["model_name"]
                 if isinstance(termination, dict):
@@ -251,9 +256,55 @@ def _resolve_run_status(run_dir: Path) -> dict:
         "metadata": md,
         "termination": termination,
         "final_state": final_state,
+        "termination_debug": termination_debug,
         "is_successful": is_successful,
         "model_name": model_name,
     }
+
+
+def _termination_debug_section(td: Optional[dict]) -> list[str]:
+    """Render only the actionable bits of the termination_debug block.
+
+    Shows flagged comparisons, NaN/Inf inventory, and failing sanity
+    checks.  A clean run with no warnings collapses to a single line
+    confirming the diagnostic ran.
+    """
+    if not td:
+        return []
+    lines = [_HR_LIGHT, "Termination diagnostics", _HR_LIGHT]
+    reason = td.get("reason")
+    if reason:
+        lines.append(f"  reason        : {reason}")
+    warnings = td.get("warnings") or []
+    invalid = td.get("invalid_values") or {}
+    nans = invalid.get("nan") or []
+    infs = invalid.get("inf") or []
+    failed = [c for c in (td.get("sanity_checks") or [])
+              if not c.get("passed", True)]
+
+    if not warnings and not nans and not infs and not failed:
+        lines.append("  (no flagged changes, no NaN/Inf, all sanity checks passed)")
+        return lines
+
+    if warnings:
+        lines.append(f"  large changes : {len(warnings)}")
+        for w in warnings[:5]:
+            lines.append(f"    - {w.get('label', w.get('key'))}: {w.get('change')}")
+        if len(warnings) > 5:
+            lines.append(f"    ... and {len(warnings) - 5} more")
+    if nans:
+        head = ", ".join(nans[:8])
+        more = f" (+{len(nans) - 8} more)" if len(nans) > 8 else ""
+        lines.append(f"  NaN values    : {head}{more}")
+    if infs:
+        head = ", ".join(infs[:8])
+        more = f" (+{len(infs) - 8} more)" if len(infs) > 8 else ""
+        lines.append(f"  Inf values    : {head}{more}")
+    if failed:
+        lines.append(f"  failed checks : {len(failed)}")
+        for c in failed:
+            lines.append(f"    - {c.get('check')}: {c.get('detail')}")
+    return lines
 
 
 def format_run_summary(run_dir: Path) -> str:
@@ -280,6 +331,7 @@ def format_run_summary(run_dir: Path) -> str:
     md = status["metadata"]
     termination = status["termination"]
     final_state = status["final_state"]
+    termination_debug = status["termination_debug"]
     is_successful = status["is_successful"]
     model_name = status["model_name"]
 
@@ -302,6 +354,12 @@ def format_run_summary(run_dir: Path) -> str:
 
     lines.append("")
     lines.extend(_final_state_section(final_state))
+
+    debug_lines = _termination_debug_section(termination_debug)
+    if debug_lines:
+        lines.append("")
+        lines.extend(debug_lines)
+
     lines.append(_HR_HEAVY)
     return "\n".join(lines)
 

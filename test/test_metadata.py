@@ -790,8 +790,9 @@ class TestReadSimulationEndMigration:
     def test_reads_from_metadata_block(self, tmp_path, disable_crash_handlers):
         from src._output.simulation_end import read_simulation_end
         self._make_termination_run(tmp_path)
-        # Delete simulationEnd.txt so we can be sure JSON is the source
-        (tmp_path / "simulationEnd.txt").unlink()
+        # Phase 5+: write_simulation_end no longer writes simulationEnd.txt,
+        # so JSON is by construction the only source.
+        assert not (tmp_path / "simulationEnd.txt").exists()
         result = read_simulation_end(str(tmp_path))
         assert result is not None
         assert result["exit_code"] == 1
@@ -802,7 +803,8 @@ class TestReadSimulationEndMigration:
         self, tmp_path, disable_crash_handlers,
     ):
         """Legacy run: no metadata.json (or v1/v2 with no termination
-        block); read_simulation_end falls back to text-parsing."""
+        block); read_simulation_end falls back to text-parsing with a
+        DeprecationWarning."""
         from src._output.simulation_end import read_simulation_end
         # Write only simulationEnd.txt, no metadata.json with termination
         text = (
@@ -817,7 +819,8 @@ class TestReadSimulationEndMigration:
             "Exit Code: 1\n"
         )
         (tmp_path / "simulationEnd.txt").write_text(text)
-        result = read_simulation_end(str(tmp_path))
+        with pytest.warns(DeprecationWarning, match="simulationEnd.txt"):
+            result = read_simulation_end(str(tmp_path))
         assert result is not None
         assert result["exit_code"] == 1
         assert result["outcome"] == "stopping_time"
@@ -833,16 +836,117 @@ class TestReadSimulationEndMigration:
     def test_metadata_block_takes_precedence(
         self, tmp_path, disable_crash_handlers,
     ):
-        """When both metadata.json[termination] and simulationEnd.txt
-        exist, the JSON wins (they should agree, but JSON is canonical)."""
+        """When both metadata.json[termination] and a stale legacy
+        simulationEnd.txt exist, the JSON wins (no warning is emitted
+        because the text-parse path is never reached)."""
+        import warnings as _warnings
         from src._output.simulation_end import read_simulation_end
         self._make_termination_run(tmp_path)
-        # Manually rewrite simulationEnd.txt to a different value to detect
-        # which source is consulted
+        # Plant a stale text file to detect which source is consulted
         (tmp_path / "simulationEnd.txt").write_text(
             "Outcome: collapse\nDetail: bogus\nExit Code: 99\n"
         )
-        result = read_simulation_end(str(tmp_path))
+        with _warnings.catch_warnings():
+            _warnings.simplefilter("error", DeprecationWarning)
+            result = read_simulation_end(str(tmp_path))
         # JSON wins → exit_code stays at 1, outcome stays at stopping_time
         assert result["exit_code"] == 1
         assert result["outcome"] == "stopping_time"
+
+
+class TestTerminationDebugBlock:
+    """Phase 5 (v4): ``termination_debug`` block in metadata.json
+    replaces the legacy ``termination_debug.txt`` text file."""
+
+    def _make_run_with_debug(self, tmp_path, *, reason="Stopping time reached"):
+        from src._output.simulation_end import (
+            write_simulation_end, write_termination_debug_report,
+        )
+        d = _make_params(tmp_path)
+        d["SimulationEndReason"] = DescribedItem(reason)
+        d["SimulationEndCode"] = DescribedItem(1)
+        _save_snapshot_with(d, t_now=0.2, R2=1.0)
+        _save_snapshot_with(d, t_now=0.3, R2=2.0)
+        d.flush()
+        write_simulation_end(d, str(tmp_path))
+        write_termination_debug_report(str(tmp_path), reason=reason)
+        return d
+
+    def test_no_termination_debug_txt_written(
+        self, tmp_path, disable_crash_handlers,
+    ):
+        """Phase 5: no text file is ever created."""
+        self._make_run_with_debug(tmp_path)
+        assert not (tmp_path / "termination_debug.txt").exists()
+
+    def test_termination_debug_in_metadata(
+        self, tmp_path, disable_crash_handlers,
+    ):
+        """The debug block lands as a top-level key in metadata.json."""
+        self._make_run_with_debug(tmp_path, reason="Shell dissolved")
+        metadata = json.loads(
+            (tmp_path / METADATA_FILENAME).read_text()
+        )
+        assert "termination_debug" in metadata
+        td = metadata["termination_debug"]
+        assert td["reason"] == "Shell dissolved"
+        assert td["snapshot_count"] == 2
+        assert "timestamp" in td
+
+    def test_termination_debug_has_structured_fields(
+        self, tmp_path, disable_crash_handlers,
+    ):
+        """The block carries comparison/warnings/invalid_values/sanity."""
+        self._make_run_with_debug(tmp_path)
+        td = json.loads((tmp_path / METADATA_FILENAME).read_text())[
+            "termination_debug"
+        ]
+        assert isinstance(td.get("time"), dict)
+        assert td["time"].get("dt") == pytest.approx(0.1)
+        assert isinstance(td.get("comparison"), list)
+        assert len(td["comparison"]) > 0
+        # Each comparison row has the expected shape
+        row = td["comparison"][0]
+        for key in ("key", "label", "unit", "old", "new", "rel_change", "flagged"):
+            assert key in row
+        assert isinstance(td.get("warnings"), list)
+        assert isinstance(td.get("invalid_values"), dict)
+        assert "nan" in td["invalid_values"]
+        assert "inf" in td["invalid_values"]
+        assert isinstance(td.get("sanity_checks"), list)
+
+    def test_termination_debug_property_on_trinity_output(
+        self, tmp_path, disable_crash_handlers,
+    ):
+        """``TrinityOutput.termination_debug`` exposes the block."""
+        self._make_run_with_debug(tmp_path)
+        out = TrinityOutput.open(tmp_path / "dictionary.jsonl")
+        td = out.termination_debug
+        assert isinstance(td, dict)
+        assert td["snapshot_count"] == 2
+
+    def test_termination_debug_not_rehydrated_into_snapshots(
+        self, tmp_path, disable_crash_handlers,
+    ):
+        """Reserved top-level keys must not leak into per-snapshot data."""
+        self._make_run_with_debug(tmp_path)
+        out = TrinityOutput.open(tmp_path / "dictionary.jsonl")
+        for snap in out:
+            assert "termination_debug" not in snap.data
+
+    def test_termination_debug_handles_empty_jsonl(
+        self, tmp_path, disable_crash_handlers,
+    ):
+        """When no snapshots exist, the block still lands with a note."""
+        from src._output.simulation_end import write_termination_debug_report
+        # Empty metadata.json so update_metadata_atomic has something to merge into
+        (tmp_path / METADATA_FILENAME).write_text(json.dumps({
+            "_metadata_version": METADATA_VERSION,
+            "model_name": "empty",
+        }))
+        write_termination_debug_report(str(tmp_path), reason="Crash before flush")
+        metadata = json.loads((tmp_path / METADATA_FILENAME).read_text())
+        td = metadata["termination_debug"]
+        assert td["snapshot_count"] == 0
+        assert "note" in td
+        assert td["reason"] == "Crash before flush"

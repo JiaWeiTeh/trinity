@@ -501,10 +501,25 @@ class TrinityOutput:
         Contains every non-array, non-run-constant scalar from the
         runtime params at simulation end, in **internal units**
         (pc/Myr, pc⁻³, …) — same convention as ``Snapshot.get(key)``.
-        ``simulationEnd.txt`` still renders the same data in km/s and
-        cm⁻³ for human reading.
+        ``python -m src._output.show_run`` re-applies km/s and cm⁻³
+        conversions for human reading.
         """
         block = self.metadata.get("final_state")
+        return block if isinstance(block, dict) else None
+
+    @property
+    def termination_debug(self) -> Optional[Dict[str, Any]]:
+        """
+        ``termination_debug`` block from ``metadata.json`` (Phase 5,
+        v4+ schema), or ``None`` if absent.
+
+        Last-2-snapshot comparison, NaN/Inf inventory, and physics
+        sanity checks — replaces the legacy ``termination_debug.txt``
+        text file.  Keys: ``timestamp``, ``reason``, ``snapshot_count``,
+        ``time``, ``comparison``, ``warnings``, ``invalid_values``,
+        ``sanity_checks``.
+        """
+        block = self.metadata.get("termination_debug")
         return block if isinstance(block, dict) else None
 
     @property

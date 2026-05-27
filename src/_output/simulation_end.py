@@ -4,32 +4,39 @@
 Simulation End Reason Logger
 ============================
 
-End-of-run reporting for TRINITY simulations.  Produces two
-complementary artefacts from a single in-memory dict:
+End-of-run reporting for TRINITY simulations.  All run-end data
+lands in ``metadata.json`` (v4+ schema) as three structured blocks:
 
-* ``simulationEnd.txt`` — human-readable summary (timestamp,
-  outcome, exit code, final state, initial cloud parameters).
-  Pretty-printed with section headers; units converted for display
-  (km/s, cm⁻³).
-* ``metadata.json[termination]`` and ``metadata.json[final_state]``
-  — structured machine-readable blocks merged into ``metadata.json``
-  via :mod:`src._output._metadata_io`.  Internal units (pc/Myr,
-  pc⁻³).  Phase 2 (v3+ schema) of the metadata-source-of-truth
-  migration.
+* ``metadata.json[termination]`` — ``{exit_code, outcome, detail,
+  timestamp, model_name}``.  Written by :func:`write_simulation_end`.
+* ``metadata.json[final_state]`` — every scalar/bool/string on
+  ``params`` at run end, in INTERNAL units (pc/Myr, pc⁻³, …).  Same
+  convention as ``Snapshot.get(key)``; arrays excluded (their last
+  values live in the dictionary.jsonl tail).
+* ``metadata.json[termination_debug]`` — last-2-snapshot diff,
+  NaN/Inf inventory, and physics sanity checks.  Written by
+  :func:`write_termination_debug_report` at emergency-flush time.
 
-Both writes derive from the same in-memory data so they cannot drift.
-A failure to update ``metadata.json`` is logged but does not abort
-the text-file write.
+All writes go through the shared atomic helper in
+:mod:`src._output._metadata_io`, so a partial write can never leave
+a corrupt file.
+
+Phase 5 of the metadata-source-of-truth migration removed three
+text artefacts: ``simulationEnd.txt``, ``termination_debug.txt``,
+and ``<run>_summary.txt``.  Human-readable views come from
+``python -m src._output.show_run <run_dir>`` instead.  Readers
+keep a back-compat path for legacy runs (emit ``DeprecationWarning``
+and parse the old text files); the back-compat path will be
+removed in Phase 6.
 
 Public functions
 ~~~~~~~~~~~~~~~~
 * :func:`write_simulation_end` — called at run end by ``main.py``.
-* :func:`read_simulation_end` — reads from ``metadata.json[termination]``
-  first (clean v3+ path); falls back to text-parsing
-  ``simulationEnd.txt`` for legacy runs.
-* :func:`write_termination_debug_report` — separate debug dump
-  (last-two-snapshot comparison) written to ``termination_debug.txt``.
-  Phase 5 of the migration will merge it into ``simulationEnd.txt``.
+* :func:`read_simulation_end` — reads ``metadata.json[termination]``
+  first (v3+); falls back to text-parsing ``simulationEnd.txt`` (with
+  ``DeprecationWarning``) for legacy runs.
+* :func:`write_termination_debug_report` — last-2-snapshot debug
+  dump, merged into ``metadata.json[termination_debug]``.
 """
 
 import json
@@ -121,34 +128,33 @@ class SimulationEndCode(Enum):
 
 def write_simulation_end(params: Dict[str, Any], output_dir: Optional[str] = None) -> int:
     """
-    Write simulation end summary to ``simulationEnd.txt`` and mirror the
-    structured form into ``metadata.json``.
+    Mirror the end-of-run termination + final-state data into
+    ``metadata.json``.
 
     Called at the end of every run.  The exit code and outcome category
     are read directly from ``params['SimulationEndCode']`` (set at the
     source by the site that decided to terminate); the verbatim
-    ``SimulationEndReason`` message becomes ``Detail:``.
+    ``SimulationEndReason`` message becomes ``termination.detail``.
 
-    Two outputs from one in-memory dict:
+    What gets written (v4+ schema):
 
-    * ``simulationEnd.txt`` — pretty-printed for humans; section
-      headers and unit-converted final-state values (km/s, cm⁻³).
-    * ``metadata.json``     — adds two top-level blocks (v3+ schema):
+    * ``metadata.json[termination]`` — ``{exit_code, outcome, detail,
+      timestamp, model_name}`` — mirrors ``read_simulation_end()``'s
+      return shape so consumer migrations are one-line.
+    * ``metadata.json[final_state]`` — every non-array non-run-constant
+      scalar from ``params`` at run end, in INTERNAL units (pc/Myr,
+      pc⁻³, …) — same convention as ``Snapshot.get(key)``.
 
-        * ``termination``   : ``{exit_code, outcome, detail, timestamp,
-                                 model_name}`` — mirrors
-                                 ``read_simulation_end()``'s return
-                                 shape so consumer migrations are
-                                 one-line.
-        * ``final_state``   : every non-array non-run-constant scalar
-                                 from ``params`` at run end, in
-                                 INTERNAL units (pc/Myr, pc⁻³, …) —
-                                 same convention as
-                                 ``Snapshot.get(key)``.
+    Both blocks land via the shared atomic helper in
+    :mod:`src._output._metadata_io` so a partial write can never leave
+    a corrupt file.
 
-    Both writes go through the same atomic helper so they cannot drift.
-    A failure to update ``metadata.json`` is logged and swallowed —
-    the text-file write succeeds independently.
+    Phase 5 change (this commit): the legacy ``simulationEnd.txt``
+    text file is no longer written.  Human consumers should use
+    ``python -m src._output.show_run <run_dir>`` for the formatted
+    view.  ``read_simulation_end()`` keeps a text-parse fallback
+    (with ``DeprecationWarning``) for runs produced before this
+    phase.
 
     Parameters
     ----------
@@ -194,115 +200,36 @@ def write_simulation_end(params: Dict[str, Any], output_dir: Optional[str] = Non
     else:
         model_name = 'unknown'
 
-    # Build report lines
-    lines = [
-        "=" * 50,
-        "TRINITY Simulation End Report",
-        "=" * 50,
-        f"Timestamp: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
-        f"Model: {model_name}",
-        "",
-        "-" * 50,
-        "TERMINATION",
-        "-" * 50,
-        f"Outcome: {end_code.outcome}",
-        f"Detail: {reason_str}",
-        f"Exit Code: {end_code.code}",
-    ]
-
-    # Add final state section
-    lines.extend([
-        "",
-        "-" * 50,
-        "FINAL STATE",
-        "-" * 50,
-    ])
-
-    # Helper to safely get param values with optional unit conversion
-    def get_param(key, fmt=".4e", default="N/A", conversion=1.0):
-        if key in params:
-            val = params[key].value
-            if val is not None:
-                try:
-                    return f"{val * conversion:{fmt}}"
-                except:
-                    return str(val)
-        return default
-
-    # Unit conversion factors:
-    # - Velocity: pc/Myr -> km/s (INV_CONV.v_au2kms)
-    # - Number density: pc^-3 -> cm^-3 (INV_CONV.ndens_au2cgs)
-
-    lines.append(f"  Time:           {get_param('t_now', '.3f')} Myr")
-    lines.append(f"  Radius (R2):    {get_param('R2', '.2f')} pc")
-    lines.append(f"  Shell nMax:     {get_param('shell_nMax', '.2e', conversion=INV_CONV.ndens_au2cgs)} cm^-3")
-    lines.append(f"  Shell Velocity: {get_param('v2', '.2f', conversion=INV_CONV.v_au2kms)} km/s")
-
-    # Add initial parameters section
-    lines.extend([
-        "",
-        "-" * 50,
-        "INITIAL CLOUD PARAMETERS",
-        "-" * 50,
-        f"  mCloud:  {get_param('mCloud', '.2e')} Msun",
-        f"  nCore:   {get_param('nCore', '.2e', conversion=INV_CONV.ndens_au2cgs)} cm^-3",
-        f"  rCloud:  {get_param('rCloud', '.2f')} pc",
-        f"  rCore:   {get_param('rCore', '.2f')} pc",
-        f"  alpha:   {get_param('densPL_alpha', '.1f')}",
-        f"  nISM:    {get_param('nISM', '.2e', conversion=INV_CONV.ndens_au2cgs)} cm^-3",
-    ])
-
-    # Add validation info if available
-    if 'validation_mass_error' in params:
-        lines.extend([
-            "",
-            "-" * 50,
-            "VALIDATION",
-            "-" * 50,
-            f"  Mass Error: {get_param('validation_mass_error', '.4f')}%",
-        ])
-
-    lines.extend([
-        "",
-        "=" * 50,
-    ])
-
-    # Write to file
+    # Ensure the output dir exists (the metadata writer would create
+    # it too, but having it here keeps an empty-run dir from
+    # producing surprising errors).
     os.makedirs(output_dir, exist_ok=True)
-    filepath = os.path.join(output_dir, 'simulationEnd.txt')
 
-    with open(filepath, 'w') as f:
-        f.write('\n'.join(lines))
+    # Build the structured blocks and write them atomically into
+    # metadata.json.  Phase 5 drop: no longer writes simulationEnd.txt.
+    # Phase 6 will remove read_simulation_end's text-parse fallback;
+    # until then, the migration grace period covers any caller still
+    # reaching for the text file.
+    from src._output._metadata_io import update_metadata_atomic
 
-    print(f"Simulation end report written to: {filepath}")
+    termination_block = {
+        "exit_code": int(end_code.code),
+        "outcome": str(end_code.outcome),
+        "detail": str(reason_str),
+        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "model_name": str(model_name),
+    }
+    final_state_block = _build_final_state_block(params)
 
-    # --- Phase 2: also mirror structured termination + final_state
-    # into metadata.json so plotters / analysis tools can read it
-    # without text-parsing.  The text file stays as the human-readable
-    # view; both are derived from the same in-memory data, so they
-    # cannot drift.  Imports are local to keep this module's import
-    # graph independent of dictionary.py.
     try:
-        from src._output._metadata_io import update_metadata_atomic
-
-        termination_block = {
-            "exit_code": int(end_code.code),
-            "outcome": str(end_code.outcome),
-            "detail": str(reason_str),
-            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "model_name": str(model_name),
-        }
-
-        final_state_block = _build_final_state_block(params)
-
         update_metadata_atomic(
             Path(output_dir),
             termination=termination_block,
             final_state=final_state_block,
         )
     except Exception as e:
-        # The text file write succeeded; a metadata.json failure
-        # should not bring down the run.  Log loud-but-non-fatal.
+        # The exit code is the contract of this function; the
+        # metadata write failing should not bring the run down.
         import logging
         logging.getLogger(__name__).warning(
             "Failed to mirror termination/final_state into metadata.json: %s",
@@ -422,6 +349,19 @@ def read_simulation_end(output_dir: str) -> Optional[Dict[str, Any]]:
 
     if not os.path.exists(filepath):
         return None
+
+    # Phase 5+: this path runs only for pre-Phase-5 runs.  Emit a
+    # warning so consumers know they're on the back-compat branch
+    # (removed in Phase 6).
+    import warnings
+    warnings.warn(
+        "Reading simulationEnd.txt — run pre-dates Phase 5 of the "
+        "metadata migration.  Re-run the simulation to populate "
+        "metadata.json[termination]; the text-parse fallback will be "
+        "removed in Phase 6.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
 
     result = {
         'exit_code': None,
@@ -637,278 +577,187 @@ def _compute_change(old_val: Any, new_val: Any) -> Tuple[str, float, bool]:
     return change_str, rel_change, False  # significance determined by threshold
 
 
-def write_termination_debug_report(output_dir: str, reason: str = "Unknown") -> Optional[str]:
+def write_termination_debug_report(output_dir: str, reason: str = "Unknown") -> None:
     """
-    Write a debug report with the last two snapshots and comparison.
+    Mirror last-2-snapshot debug data into ``metadata.json[termination_debug]``.
 
-    This creates termination_debug.txt with:
-    1. Last two snapshots printed in readable format
-    2. Comparison table highlighting large changes
-    3. Rate of change for key variables
-    4. Warnings for potentially problematic values
+    Builds a structured dict from the dictionary.jsonl tail (comparison
+    rows, NaN/Inf inventory, physics sanity checks) and merges it into
+    ``metadata.json``.
+
+    Phase 5 change (this commit): the legacy ``termination_debug.txt``
+    text file is no longer written.  Human consumers can format the
+    block with ``python -m src._output.show_run <run_dir>`` (or read
+    ``metadata.json[termination_debug]`` directly).  The output dict
+    has stable keys (``comparison``, ``warnings``, ``invalid_values``,
+    ``sanity_checks``) so downstream automation no longer has to parse
+    free-form text.
 
     Parameters
     ----------
     output_dir : str
-        Directory containing dictionary.jsonl and where to write report
+        Directory containing ``dictionary.jsonl`` and ``metadata.json``.
     reason : str
-        Termination reason string
+        Termination reason string (verbatim, surfaced as
+        ``termination_debug.reason``).
 
     Returns
     -------
-    str or None
-        Path to written file, or None if failed
+    None
+        Returns ``None`` for backwards compatibility with the old
+        callers (they only logged the return; the path was never
+        consumed programmatically).
     """
     output_path = Path(output_dir)
-    report_path = output_path / "termination_debug.txt"
+    output_path.mkdir(parents=True, exist_ok=True)
 
-    # Load last two snapshots
     snapshots = _load_last_snapshots(output_dir, n=2)
+    debug_block: Dict[str, Any] = {
+        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "reason": str(reason),
+        "snapshot_count": len(snapshots),
+    }
 
     if not snapshots:
-        # No snapshots - write minimal report
-        with open(report_path, 'w', encoding='utf-8') as f:
-            f.write("=" * 80 + "\n")
-            f.write("TERMINATION DEBUG REPORT\n")
-            f.write("=" * 80 + "\n")
-            f.write(f"Timestamp: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
-            f.write(f"Reason: {reason}\n\n")
-            f.write("No snapshots found in dictionary.jsonl\n")
-        return str(report_path)
+        debug_block["note"] = "No snapshots found in dictionary.jsonl"
+        _merge_termination_debug(output_path, debug_block)
+        return None
 
-    lines = []
-    lines.append("=" * 80)
-    lines.append("TERMINATION DEBUG REPORT")
-    lines.append("=" * 80)
-    lines.append(f"Timestamp: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    lines.append(f"Termination Reason: {reason}")
-    lines.append(f"Snapshots loaded: {len(snapshots)}")
-    lines.append("")
+    snap_new = snapshots[-1]
+    snap_old = snapshots[-2] if len(snapshots) >= 2 else None
 
-    # ==========================================================================
-    # Section 1: Comparison Table (if 2 snapshots)
-    # ==========================================================================
-    if len(snapshots) >= 2:
-        snap_old = snapshots[-2]
-        snap_new = snapshots[-1]
-
-        lines.append("-" * 80)
-        lines.append("COMPARISON TABLE: Second-to-last vs Last Snapshot")
-        lines.append("-" * 80)
-
-        # Time info
-        t_old = snap_old.get('t_now', 'N/A')
-        t_new = snap_new.get('t_now', 'N/A')
-        lines.append(f"Time: {_format_value(t_old)} → {_format_value(t_new)} Myr")
+    # --- Time + dt -------------------------------------------------
+    t_old = snap_old.get('t_now') if snap_old is not None else None
+    t_new = snap_new.get('t_now')
+    time_block: Dict[str, Any] = {"new": _jsonable(t_new)}
+    if snap_old is not None:
+        time_block["old"] = _jsonable(t_old)
         if isinstance(t_old, (int, float)) and isinstance(t_new, (int, float)):
-            dt = t_new - t_old
-            lines.append(f"Time step (dt): {dt:.6e} Myr")
-        lines.append("")
+            time_block["dt"] = float(t_new - t_old)
+    debug_block["time"] = time_block
 
-        # Table header
-        lines.append(f"{'Parameter':<25} {'Old Value':<20} {'New Value':<20} {'Change':<25} {'Flag'}")
-        lines.append("-" * 95)
-
-        warnings = []
-
+    # --- Comparison table + warnings ------------------------------
+    comparison: List[Dict[str, Any]] = []
+    warnings: List[Dict[str, Any]] = []
+    if snap_old is not None:
         for key, label, unit, conv in CRITICAL_PARAMS:
             old_val = snap_old.get(key)
             new_val = snap_new.get(key)
-
-            # Apply conversion
-            if old_val is not None and isinstance(old_val, (int, float)):
+            if old_val is not None and isinstance(old_val, (int, float)) and not isinstance(old_val, bool):
                 old_val = old_val * conv
-            if new_val is not None and isinstance(new_val, (int, float)):
+            if new_val is not None and isinstance(new_val, (int, float)) and not isinstance(new_val, bool):
                 new_val = new_val * conv
 
-            old_str = _format_value(old_val, precision=4)
-            new_str = _format_value(new_val, precision=4)
             change_str, rel_change, is_sig = _compute_change(old_val, new_val)
-
-            # Determine if flagged
             threshold = CHANGE_THRESHOLDS.get(key, CHANGE_THRESHOLDS['default'])
             if threshold == 0:
-                # Categorical - flag any change
                 flagged = is_sig or (old_val != new_val)
             else:
                 flagged = rel_change > threshold
 
-            flag = "⚠️ LARGE" if flagged else ""
-
-            # Truncate for display
-            if len(old_str) > 18:
-                old_str = old_str[:15] + "..."
-            if len(new_str) > 18:
-                new_str = new_str[:15] + "..."
-            if len(change_str) > 23:
-                change_str = change_str[:20] + "..."
-
-            display_label = f"{label} ({key})"[:25]
-            lines.append(f"{display_label:<25} {old_str:<20} {new_str:<20} {change_str:<25} {flag}")
-
+            row: Dict[str, Any] = {
+                "key": key,
+                "label": label,
+                "unit": unit,
+                "old": _jsonable(old_val),
+                "new": _jsonable(new_val),
+                "change": change_str,
+                "rel_change": _jsonable(rel_change),
+                "flagged": bool(flagged),
+            }
+            comparison.append(row)
             if flagged:
-                warnings.append(f"  - {label}: {change_str}")
+                warnings.append({"key": key, "label": label, "change": change_str})
+    debug_block["comparison"] = comparison
+    debug_block["warnings"] = warnings
 
-        lines.append("")
-
-        # Warnings summary
-        if warnings:
-            lines.append("-" * 80)
-            lines.append("⚠️  WARNINGS: Large changes detected")
-            lines.append("-" * 80)
-            for w in warnings:
-                lines.append(w)
-            lines.append("")
-
-        # Check for NaN/Inf values
-        nan_keys = []
-        inf_keys = []
-        for key, val in snap_new.items():
-            if isinstance(val, (int, float)):
-                if np.isnan(val):
-                    nan_keys.append(key)
-                elif np.isinf(val):
-                    inf_keys.append(key)
-            elif isinstance(val, (list, np.ndarray)):
-                arr = np.asarray(val)
+    # --- NaN / Inf inventory --------------------------------------
+    nan_keys: List[str] = []
+    inf_keys: List[str] = []
+    for key, val in snap_new.items():
+        if isinstance(val, bool):
+            continue
+        if isinstance(val, (int, float)):
+            if np.isnan(val):
+                nan_keys.append(key)
+            elif np.isinf(val):
+                inf_keys.append(key)
+        elif isinstance(val, (list, np.ndarray)):
+            arr = np.asarray(val)
+            if arr.size and np.issubdtype(arr.dtype, np.number):
                 if np.any(np.isnan(arr)):
                     nan_keys.append(f"{key} (array)")
                 if np.any(np.isinf(arr)):
                     inf_keys.append(f"{key} (array)")
+    debug_block["invalid_values"] = {"nan": nan_keys, "inf": inf_keys}
 
-        if nan_keys or inf_keys:
-            lines.append("-" * 80)
-            lines.append("⚠️  INVALID VALUES IN LAST SNAPSHOT")
-            lines.append("-" * 80)
-            if nan_keys:
-                lines.append(f"NaN values: {', '.join(nan_keys[:10])}" +
-                           (f" (+{len(nan_keys)-10} more)" if len(nan_keys) > 10 else ""))
-            if inf_keys:
-                lines.append(f"Inf values: {', '.join(inf_keys[:10])}" +
-                           (f" (+{len(inf_keys)-10} more)" if len(inf_keys) > 10 else ""))
-            lines.append("")
+    # --- Physics sanity checks ------------------------------------
+    debug_block["sanity_checks"] = _build_sanity_checks(snap_new)
 
-    # ==========================================================================
-    # Section 2: Full Snapshot Dumps
-    # ==========================================================================
-    for i, snap in enumerate(snapshots):
-        snap_idx = "SECOND-TO-LAST" if i == len(snapshots) - 2 else "LAST"
-        if len(snapshots) == 1:
-            snap_idx = "ONLY"
+    _merge_termination_debug(output_path, debug_block)
+    return None
 
-        lines.append("=" * 80)
-        lines.append(f"SNAPSHOT: {snap_idx} (t = {_format_value(snap.get('t_now'))} Myr)")
-        lines.append("=" * 80)
 
-        # Group keys by category
-        time_keys = ['t_now', 'snap_id', 'current_phase', 'isCollapse']
-        radii_keys = ['R1', 'R2', 'rShell', 'r_Tb', 'bubble_r_Tb', 'rCloud', 'rCore']
-        velocity_keys = ['v2', 'v_R1', 'v_R2']
-        energy_keys = ['Eb', 'Pb', 'T0', 'bubble_Tavg']
-        force_keys = [k for k in snap.keys() if k.startswith('F_')]
-        shell_keys = [k for k in snap.keys() if k.startswith('shell_') and not isinstance(snap[k], list)]
-        bubble_keys = [k for k in snap.keys() if k.startswith('bubble_') and not isinstance(snap[k], list)]
-        array_keys = [k for k in snap.keys() if isinstance(snap[k], list)]
-        other_keys = set(snap.keys()) - set(time_keys) - set(radii_keys) - set(velocity_keys) - \
-                     set(energy_keys) - set(force_keys) - set(shell_keys) - set(bubble_keys) - set(array_keys)
+def _jsonable(val: Any) -> Any:
+    """
+    Coerce a numeric value to a JSON-friendly type.
 
-        def print_section(title, keys):
-            if not keys:
-                return
-            lines.append(f"\n--- {title} ---")
-            for key in sorted(keys):
-                if key in snap:
-                    lines.append(f"  {key:<30} = {_format_value(snap[key])}")
+    ``json.dump(..., allow_nan=True)`` accepts NaN/Inf — same compromise
+    the snapshot writer makes.  numpy scalars are unboxed so they don't
+    leak into the metadata file as ``{"__numpy__": ...}``-style escapes.
+    """
+    if val is None or isinstance(val, (bool, str)):
+        return val
+    if isinstance(val, np.integer):
+        return int(val)
+    if isinstance(val, np.floating):
+        return float(val)
+    if isinstance(val, (int, float)):
+        return val
+    return str(val)
 
-        print_section("Time & Phase", time_keys)
-        print_section("Radii", radii_keys)
-        print_section("Velocities", velocity_keys)
-        print_section("Energy & Temperature", energy_keys)
-        print_section("Forces", force_keys)
-        print_section("Shell Properties", shell_keys)
-        print_section("Bubble Properties", bubble_keys)
-        print_section("Other Scalars", sorted(other_keys)[:30])  # Limit to 30
 
-        if array_keys:
-            lines.append(f"\n--- Arrays ({len(array_keys)} total) ---")
-            for key in sorted(array_keys)[:15]:  # Limit display
-                arr = np.asarray(snap[key])
-                if arr.size == 0:
-                    lines.append(f"  {key:<30} : shape={arr.shape}, range=[empty]")
-                else:
-                    lines.append(f"  {key:<30} : shape={arr.shape}, range=[{np.nanmin(arr):.3g}, {np.nanmax(arr):.3g}]")
-            if len(array_keys) > 15:
-                lines.append(f"  ... and {len(array_keys) - 15} more arrays")
+def _build_sanity_checks(snap: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Run the small set of last-snapshot physics sanity checks."""
+    checks: List[Dict[str, Any]] = []
 
-        lines.append("")
+    R1 = snap.get('R1')
+    R2 = snap.get('R2')
+    if R1 is not None and R2 is not None:
+        checks.append({
+            "check": "R1 < R2",
+            "passed": bool(R1 < R2),
+            "detail": f"R1={R1:.4g}, R2={R2:.4g}",
+        })
 
-    # ==========================================================================
-    # Section 3: Diagnostic Summary
-    # ==========================================================================
-    if len(snapshots) >= 1:
-        snap = snapshots[-1]
-        lines.append("=" * 80)
-        lines.append("DIAGNOSTIC SUMMARY")
-        lines.append("=" * 80)
+    for key, label in (("Eb", "Eb > 0"), ("Pb", "Pb > 0"),
+                       ("shell_mass", "shell_mass > 0")):
+        val = snap.get(key)
+        if val is not None and isinstance(val, (int, float)):
+            checks.append({
+                "check": label,
+                "passed": bool(val > 0),
+                "detail": f"{key}={val:.4e}",
+            })
 
-        # Physics sanity checks
-        checks = []
+    isCollapse = snap.get('isCollapse')
+    if isCollapse is not None:
+        checks.append({
+            "check": "isCollapse",
+            "passed": not bool(isCollapse),
+            "detail": f"isCollapse={bool(isCollapse)}",
+        })
 
-        # Check R1 < R2
-        R1 = snap.get('R1')
-        R2 = snap.get('R2')
-        if R1 is not None and R2 is not None:
-            if R1 >= R2:
-                checks.append(f"❌ R1 >= R2: {R1:.4g} >= {R2:.4g}")
-            else:
-                checks.append(f"✓ R1 < R2: {R1:.4g} < {R2:.4g}")
+    return checks
 
-        # Check positive energy
-        Eb = snap.get('Eb')
-        if Eb is not None:
-            if Eb <= 0:
-                checks.append(f"❌ Eb <= 0: {Eb:.4e}")
-            else:
-                checks.append(f"✓ Eb > 0: {Eb:.4e}")
 
-        # Check positive pressure
-        Pb = snap.get('Pb')
-        if Pb is not None:
-            if Pb <= 0:
-                checks.append(f"❌ Pb <= 0: {Pb:.4e}")
-            else:
-                checks.append(f"✓ Pb > 0: {Pb:.4e}")
-
-        # Check shell mass
-        shell_mass = snap.get('shell_mass')
-        if shell_mass is not None:
-            if shell_mass <= 0:
-                checks.append(f"❌ shell_mass <= 0: {shell_mass:.4e}")
-            else:
-                checks.append(f"✓ shell_mass > 0: {shell_mass:.4e}")
-
-        # Check collapse status
-        isCollapse = snap.get('isCollapse')
-        if isCollapse is not None:
-            if isCollapse:
-                checks.append(f"⚠️ isCollapse = True (shell collapsing)")
-            else:
-                checks.append(f"✓ isCollapse = False")
-
-        for check in checks:
-            lines.append(f"  {check}")
-
-        lines.append("")
-
-    lines.append("=" * 80)
-    lines.append("END OF DEBUG REPORT")
-    lines.append("=" * 80)
-
-    # Write to file
-    output_path.mkdir(parents=True, exist_ok=True)
-    with open(report_path, 'w', encoding='utf-8') as f:
-        f.write('\n'.join(lines))
-
-    print(f"Termination debug report written to: {report_path}")
-
-    return str(report_path)
+def _merge_termination_debug(output_path: Path, block: Dict[str, Any]) -> None:
+    """Merge ``termination_debug`` into metadata.json; never raise."""
+    try:
+        from src._output._metadata_io import update_metadata_atomic
+        update_metadata_atomic(output_path, termination_debug=block)
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning(
+            "Failed to write termination_debug into metadata.json: %s", e,
+        )

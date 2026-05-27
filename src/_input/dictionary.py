@@ -302,22 +302,19 @@ class DescribedDict(dict):
         except Exception as e:
             logger.error(f"Failed to write termination debug report: {e}")
 
-    def write_termination_report(self, reason: str = "Unknown") -> Optional[str]:
+    def write_termination_report(self, reason: str = "Unknown") -> None:
         """
-        Explicitly write termination debug report.
+        Mirror the last-2-snapshot debug block into
+        ``metadata.json[termination_debug]``.
 
-        Call this at simulation end (error or success) to generate a human-readable
-        report of the last two snapshots with comparison tables.
+        Called at simulation end (error or success).  Phase 5+ writes
+        a structured block instead of the legacy ``termination_debug.txt``
+        file; format the block with ``python -m src._output.show_run``.
 
         Parameters
         ----------
         reason : str
             Termination reason (e.g., "Shell dissolved", "ODE solver failed")
-
-        Returns
-        -------
-        str or None
-            Path to the written report, or None if failed
         """
         import logging
         logger = logging.getLogger(__name__)
@@ -329,10 +326,9 @@ class DescribedDict(dict):
 
             output_dir = self._get_output_dir()
             from src._output.simulation_end import write_termination_debug_report
-            return write_termination_debug_report(str(output_dir), reason=reason)
+            write_termination_debug_report(str(output_dir), reason=reason)
         except Exception as e:
-            logger.error(f"Failed to write termination debug report: {e}")
-            return None
+            logger.error(f"Failed to write termination_debug block: {e}")
 
     # -------------------------------------------------------------------------
     # Display helpers
