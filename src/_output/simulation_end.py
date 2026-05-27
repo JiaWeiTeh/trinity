@@ -99,26 +99,50 @@ class SimulationEndCode(Enum):
 
 def write_simulation_end(params: Dict[str, Any], output_dir: Optional[str] = None) -> int:
     """
-    Write simulation end summary to simulationEnd.txt.
+    Write simulation end summary to ``simulationEnd.txt`` and mirror the
+    structured form into ``metadata.json``.
 
-    Called at the end of every run. The exit code and outcome category are
-    read directly from params['SimulationEndCode'] (set at the source by the
-    site that decided to terminate). The verbatim message written to
-    params['SimulationEndReason'] is preserved as 'Detail:'.
+    Called at the end of every run.  The exit code and outcome category
+    are read directly from ``params['SimulationEndCode']`` (set at the
+    source by the site that decided to terminate); the verbatim
+    ``SimulationEndReason`` message becomes ``Detail:``.
+
+    Two outputs from one in-memory dict:
+
+    * ``simulationEnd.txt`` — pretty-printed for humans; section
+      headers and unit-converted final-state values (km/s, cm⁻³).
+    * ``metadata.json``     — adds two top-level blocks (v3+ schema):
+
+        * ``termination``   : ``{exit_code, outcome, detail, timestamp,
+                                 model_name}`` — mirrors
+                                 ``read_simulation_end()``'s return
+                                 shape so consumer migrations are
+                                 one-line.
+        * ``final_state``   : every non-array non-run-constant scalar
+                                 from ``params`` at run end, in
+                                 INTERNAL units (pc/Myr, pc⁻³, …) —
+                                 same convention as
+                                 ``Snapshot.get(key)``.
+
+    Both writes go through the same atomic helper so they cannot drift.
+    A failure to update ``metadata.json`` is logged and swallowed —
+    the text-file write succeeds independently.
 
     Parameters
     ----------
     params : dict
-        TRINITY parameter dictionary. Expected keys: SimulationEndCode,
-        SimulationEndReason, model_name, path2output, t_now, R2, shell_nMax,
-        v2, mCloud, nCore, rCloud, rCore, densPL_alpha, nISM.
+        TRINITY parameter dictionary. Expected keys: ``SimulationEndCode``,
+        ``SimulationEndReason``, ``model_name``, ``path2output``,
+        ``t_now``, ``R2``, ``shell_nMax``, ``v2``, ``mCloud``, ``nCore``,
+        ``rCloud``, ``rCore``, ``densPL_alpha``, ``nISM`` (plus everything
+        else; ``final_state`` collects all scalars).
     output_dir : str, optional
-        Output directory. If None, uses params['path2output'].value.
+        Output directory.  If ``None``, uses ``params['path2output'].value``.
 
     Returns
     -------
     int
-        Numeric exit code from SimulationEndCode.
+        Numeric exit code from ``SimulationEndCode``.
     """
     # Determine output directory
     if output_dir is None:

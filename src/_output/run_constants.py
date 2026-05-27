@@ -196,10 +196,6 @@ RESERVED_TOP_LEVEL_KEYS: frozenset[str] = frozenset({
     "final_state",
 })
 
-# Backwards-compat alias for the PR2-era name.  New code should use
-# ``RESERVED_TOP_LEVEL_KEYS``.
-_RESERVED_KEYS = RESERVED_TOP_LEVEL_KEYS
-
 # Keys excluded from the ``final_state`` block.  Long per-snapshot
 # arrays already live in ``dictionary.jsonl`` (the last line is the
 # full final-state profile) — duplicating them in metadata.json would

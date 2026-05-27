@@ -24,11 +24,17 @@ Files written to params["path2output"].value
 dictionary.jsonl : One JSON object per line, each line = one snapshot
                    (Line 0 = snapshot "0", Line 1 = snapshot "1", ...).
                    Run-constants are stripped from each line.
-metadata.json    : One pretty-printed JSON object with every
-                   constant-through-run scalar
-                   (``src._output.run_constants.RUN_CONST_KEYS``)
-                   and a ``_metadata_version`` schema marker.
-                   Written once at the first flush.
+metadata.json    : One pretty-printed JSON object containing:
+                     - every constant-through-run scalar
+                       (``src._output.run_constants.RUN_CONST_KEYS``)
+                     - a ``_metadata_version`` schema marker
+                     - ``termination`` block (run-end status, v3+)
+                     - ``final_state`` block (last-snapshot scalars, v3+)
+                   The run-const section is written at the first flush;
+                   the termination / final_state blocks are merged in
+                   at run end by ``write_simulation_end()``.  Both
+                   writes use ``_output._metadata_io.write_metadata_atomic``
+                   for atomicity.
 
 Loading
 -------
