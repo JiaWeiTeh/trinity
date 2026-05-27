@@ -217,9 +217,14 @@ def compute_rCore_for_tag(tag: str, sim_folder: Path) -> float:
 
     if is_BE:
         # Effective core length a for Bonnor-Ebert sphere
-        mCloud = _try_float(raw.get('mCloud'), DEF_MCLOUD) if raw else DEF_MCLOUD
-        nCore  = _try_float(raw.get('nCore'),  DEF_NCORE)  if raw else DEF_NCORE
-        mu_ion = _try_float(raw.get('mu_ion'), DEF_MU)     if raw else DEF_MU
+        mCloud = _try_float(raw.get('mCloud'),    DEF_MCLOUD) if raw else DEF_MCLOUD
+        nCore  = _try_float(raw.get('nCore'),     DEF_NCORE)  if raw else DEF_NCORE
+        # Mass-conversion mean molecular weight (1.4 m_H, neutral/molecular
+        # GMC convention) — NOT mu_ion (~0.61), which is the ionised-gas
+        # weight and would give the wrong rhoCore here.  Matches
+        # bonnorEbertSphere.create_BE_sphere_from_params and
+        # paper_densityProfile._DEFAULTS.
+        mu_convert   = _try_float(raw.get('mu_convert'),   DEF_MU)    if raw else DEF_MU
         densBE_Omega = _try_float(raw.get('densBE_Omega'), DEF_OMEGA) if raw else DEF_OMEGA
 
         le_sol = solve_lane_emden()
@@ -232,9 +237,9 @@ def compute_rCore_for_tag(tag: str, sim_folder: Path) -> float:
         pc_cm  = INV_CONV.pc2cm      # cm/pc
 
         # Core mass density in CGS
-        # nCore [1/pc³] * mu_ion [Msun] -> [Msun/pc³]
+        # nCore [1/pc³] * mu_convert [Msun] -> [Msun/pc³]
         # -> CGS: * Msun_g / pc_cm³
-        rhoCore_cgs = nCore * mu_ion * Msun_g / pc_cm**3
+        rhoCore_cgs = nCore * mu_convert * Msun_g / pc_cm**3
         M_cgs = mCloud * Msun_g
 
         # a = (M / (4π m(ξ) ρc))^{1/3}
