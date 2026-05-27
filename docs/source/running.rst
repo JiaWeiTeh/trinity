@@ -161,6 +161,21 @@ value):
   yields ``_collCounterTrue`` / ``_collCounterFalse``. Multiple generic
   suffixes are emitted in sorted-key order for stability.
 
+  Folder-name safety rules applied to generic values:
+
+  - **Hard-rejected** with an immediate ``ValueError`` (no sweep runs):
+    values containing ``/``, ``\``, ``..``, or any control character.
+    This means **filepath-typed parameters cannot be swept** — set them
+    once in your base param file. The check protects against
+    silently nesting directories or escaping the sweep root.
+  - **Sanitised** to ``-``: any character outside ``[A-Za-z0-9.+-]``
+    (spaces, brackets, shell wildcards, unicode, ``=``, ``:`` …). The
+    sweep still runs but with a safe folder name.
+  - **Length-capped** at 200 characters for the full run name; the
+    sweep aborts with a clear error if you cross it (reserve room for
+    ``_modified`` / ``_summary.txt`` siblings within the 255-byte
+    filesystem cap).
+
 For example, ``1e7_sfe010_n1e4_noPHII`` is ``mCloud=1e7, sfe=0.10,
 nCore=1e4`` with ``include_PHII = False``.
 

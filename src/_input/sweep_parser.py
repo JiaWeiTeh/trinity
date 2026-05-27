@@ -593,6 +593,57 @@ _NAMED_RUN_NAME_KEYS = frozenset({
     'include_PHII',
 })
 
+# Total length budget for a generated run name. Most filesystems cap a single
+# path component at 255 bytes; we reserve ~55 for the ``_modified`` tag,
+# ``.param``/``_summary.txt`` siblings, and OS overhead.
+_MAX_RUN_NAME_LEN = 200
+
+# Anything outside this set is sanitised to ``-`` in a generic value token.
+# Keeps alphanumerics plus the printable scaffolding actually needed by the
+# existing convention (`.` survives the sanitiser then becomes `p`; `+`/`-`
+# stay for scientific notation and negatives like `_PL-2`; `_` would split
+# tokens visually so we don't allow it through the value).
+_SAFE_VALUE_CHARS_RE = re.compile(r'[^A-Za-z0-9.+\-]')
+
+
+def _reject_unsafe_sweep_value(key: str, value: Any) -> None:
+    """
+    Raise ``ValueError`` if a swept value would be unsafe to embed in a
+    folder name. Two categories are hard-rejected (no sanitisation):
+
+    1. Anything that looks like a filepath (``/``, ``\\``, or ``..``). The
+       suffix would otherwise inject path separators into the run folder,
+       silently creating nested directories or escaping the sweep root. Per
+       project policy: sweeping filepath-typed parameters is not supported —
+       set the path once in the base param file instead.
+    2. Control characters (ASCII < 32 or 127). These render unpredictably
+       across terminals and tools.
+
+    Non-string values bypass this check (numbers/bools can't contain unsafe
+    chars). Sanitisation of merely-ugly characters (spaces, brackets,
+    wildcards, unicode) happens later in ``_generic_suffix_token``.
+    """
+    if not isinstance(value, str):
+        return
+
+    for bad, why in (('..', 'parent-directory escape'),
+                     ('/', 'path separator'),
+                     ('\\', 'path separator')):
+        if bad in value:
+            raise ValueError(
+                f"Sweep value for {key!r} contains {bad!r} ({why}): "
+                f"{value!r}. The value becomes part of the run folder name, "
+                f"so filepath-typed parameters cannot be swept. Set this "
+                f"parameter once in the base param file instead, and sweep "
+                f"only scalar quantities."
+            )
+
+    if any(ord(c) < 32 or ord(c) == 127 for c in value):
+        raise ValueError(
+            f"Sweep value for {key!r} contains a control character: "
+            f"{value!r}. Folder names must be printable."
+        )
+
 
 def _generic_suffix_token(key: str, value: Any) -> str:
     """
@@ -600,21 +651,31 @@ def _generic_suffix_token(key: str, value: Any) -> str:
     that has no curated slot in the run name.
 
     The token is kept as one clean, filesystem-friendly chunk: snake_case keys
-    become camelCase and decimal points in floats become ``p`` (mirroring the
-    fact that the curated suffixes never contain ``.`` or ``_``). Minus signs
+    become camelCase, decimal points in floats become ``p`` (mirroring the
+    fact that the curated suffixes never contain ``.`` or ``_``), and any
+    char outside ``[A-Za-z0-9.+-]`` is collapsed to ``-`` so spaces, brackets,
+    shell wildcards, and unicode never leak into the folder name. Minus signs
     are preserved, matching the existing ``_PL-2`` convention.
+
+    Truly unsafe values (path separators, ``..``, control chars) are rejected
+    upstream by :func:`_reject_unsafe_sweep_value`.
 
     Examples
     --------
     - coll_counter=True -> "collCounterTrue"
     - Z=0.5            -> "Z0p5"
     - kB=3             -> "kB3"
+    - label="my run"   -> "labelmy-run"
     """
+    _reject_unsafe_sweep_value(key, value)
+
     parts = key.split('_')
     key_token = parts[0] + ''.join(p.capitalize() for p in parts[1:])
 
-    # bool -> "True"/"False"; float "0.5" -> "0p5"; minus signs kept (cf. _PL-2)
-    val_token = str(value).replace('.', 'p')
+    # bool -> "True"/"False"; float "0.5" later -> "0p5"; minus signs kept.
+    val_str = str(value)
+    val_safe = _SAFE_VALUE_CHARS_RE.sub('-', val_str)
+    val_token = val_safe.replace('.', 'p')
 
     return f"{key_token}{val_token}"
 
@@ -701,6 +762,17 @@ def generate_run_name(
             if key in _NAMED_RUN_NAME_KEYS or key not in params:
                 continue
             base_name += "_" + _generic_suffix_token(key, params[key])
+
+    if len(base_name) > _MAX_RUN_NAME_LEN:
+        contributing = sorted(swept_keys) if swept_keys else []
+        raise ValueError(
+            f"Generated run name is too long ({len(base_name)} > "
+            f"{_MAX_RUN_NAME_LEN} chars): {base_name!r}. Filesystems cap a "
+            f"single path component at ~255 bytes and TRINITY also writes "
+            f"`_modified` / `_summary.txt` siblings, so the cap is set lower. "
+            f"Shorten one of the swept parameter names or values, or reduce "
+            f"the number of swept dimensions. Swept keys: {contributing}."
+        )
 
     return base_name
 
@@ -886,6 +958,55 @@ if __name__ == "__main__":
         name = generate_run_name(params, swept)
         status = "PASS" if name == expected else "FAIL"
         print(f"  {status}: generate_run_name({params}, {swept}) = '{name}' (expected '{expected}')")
+
+    # Sanitisation cases: ugly-but-safe chars get collapsed to '-'
+    sanitise_cases = [
+        ({'mCloud': 1e5, 'sfe': 0.01, 'nCore': 1e4, 'label': 'my run'},
+         ['label'], "1e5_sfe001_n1e4_labelmy-run"),
+        ({'mCloud': 1e5, 'sfe': 0.01, 'nCore': 1e4, 'tag': 'a[b]*c?'},
+         ['tag'], "1e5_sfe001_n1e4_taga-b--c-"),
+        ({'mCloud': 1e5, 'sfe': 0.01, 'nCore': 1e4, 'note': 'α=1'},
+         ['note'], "1e5_sfe001_n1e4_note--1"),
+    ]
+    for params, swept, expected in sanitise_cases:
+        name = generate_run_name(params, swept)
+        status = "PASS" if name == expected else "FAIL"
+        print(f"  {status}: sanitise: generate_run_name({params}, {swept}) = '{name}' (expected '{expected}')")
+
+    # Hard-reject cases: unsafe values must raise ValueError
+    print("\nTesting generate_run_name unsafe-value rejection:")
+    reject_cases = [
+        ({'mCloud': 1e5, 'sfe': 0.01, 'nCore': 1e4, 'sps_path': 'lib/a.csv'},
+         ['sps_path'], 'path separator'),
+        ({'mCloud': 1e5, 'sfe': 0.01, 'nCore': 1e4, 'prefix': '../escape'},
+         ['prefix'], 'parent-directory escape'),
+        ({'mCloud': 1e5, 'sfe': 0.01, 'nCore': 1e4, 'win': r'C:\foo'},
+         ['win'], 'path separator'),
+        ({'mCloud': 1e5, 'sfe': 0.01, 'nCore': 1e4, 'ctrl': 'a\tb'},
+         ['ctrl'], 'control character'),
+    ]
+    for params, swept, expect_msg in reject_cases:
+        try:
+            generate_run_name(params, swept)
+        except ValueError as e:
+            ok = expect_msg in str(e)
+            status = "PASS" if ok else "FAIL"
+            print(f"  {status}: rejected with msg containing {expect_msg!r}: {e}")
+        else:
+            print(f"  FAIL: expected ValueError for params={params}")
+
+    # Length guard: a synthetic huge value triggers the cap
+    print("\nTesting generate_run_name length guard:")
+    huge_params = {'mCloud': 1e5, 'sfe': 0.01, 'nCore': 1e4,
+                   'huge': 'x' * 300}
+    try:
+        generate_run_name(huge_params, ['huge'])
+    except ValueError as e:
+        ok = 'too long' in str(e)
+        status = "PASS" if ok else "FAIL"
+        print(f"  {status}: length guard fired: {str(e)[:120]}...")
+    else:
+        print("  FAIL: expected ValueError for oversized run name")
 
     # Test parse_tuple_line
     print("\nTesting parse_tuple_line:")
