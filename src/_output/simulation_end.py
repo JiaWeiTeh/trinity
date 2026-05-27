@@ -341,7 +341,14 @@ def _build_final_state_block(params: Dict[str, Any]) -> Dict[str, Any]:
     )
     skip = (set(RUN_CONST_KEYS) | set(METADATA_EXCLUDE)
             | set(FINAL_STATE_EXCLUDE_ARRAYS)
-            | {"SimulationEndCode", "path2output"})
+            # ``SimulationEndCode`` is already reflected by
+            # ``termination.exit_code``; ``SimulationEndReason`` is the
+            # source string for ``termination.detail``.  Including either
+            # here would leak duplicated (and possibly inconsistent —
+            # the per-snapshot value is set AFTER save_snapshot ran) info
+            # into final_state.  ``path2output`` is the absolute path of
+            # the run dir itself; redundant and a privacy concern.
+            | {"SimulationEndCode", "SimulationEndReason", "path2output"})
 
     block: Dict[str, Any] = {}
     for key, item in params.items():

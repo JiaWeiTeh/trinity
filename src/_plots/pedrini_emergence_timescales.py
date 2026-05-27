@@ -129,6 +129,7 @@ from src._output.trinity_reader import (
     TrinityOutput,
     find_all_simulations,
 )
+from src._output.simulation_end import read_simulation_end
 from src._functions.unit_conversions import INV_CONV
 
 
@@ -201,14 +202,17 @@ def get_run_sfe(run_dir: Path) -> float:
 
 
 def parse_raw_reason(run_dir: Path) -> str:
-    """Return the `Raw Reason:` line from simulationEnd.txt (empty if missing)."""
-    end_path = run_dir / "simulationEnd.txt"
-    if not end_path.exists():
-        return ""
-    for line in end_path.read_text().splitlines():
-        if line.startswith("Raw Reason:"):
-            return line.split(":", 1)[1].strip()
-    return ""
+    """Return the verbatim termination ``Detail:`` string ("" if absent).
+
+    Replaces a custom text-parser that looked for ``Raw Reason:`` —
+    that label was renamed to ``Detail:`` on main (commit ``1c7a517``)
+    so the old parser silently returned "" for every post-rename run.
+    The new path goes through ``read_simulation_end()`` which itself
+    prefers ``metadata.json[termination][detail]`` (Phase 2's JSON-first
+    upgrade) and falls back to text-parsing legacy files.
+    """
+    info = read_simulation_end(str(run_dir))
+    return (info or {}).get("detail") or ""
 
 
 def find_rcloud_crossing(t: np.ndarray, R2: np.ndarray,

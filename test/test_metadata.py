@@ -667,6 +667,50 @@ class TestTerminationBlock:
         assert "bubble_T_arr_r_arr" not in fs
         assert "log_shell_n_arr" not in fs
 
+    def test_final_state_excludes_termination_duplicates(
+        self, tmp_path, disable_crash_handlers,
+    ):
+        """``SimulationEndCode`` and ``SimulationEndReason`` already
+        live in the ``termination`` block (as ``exit_code`` and
+        ``detail`` respectively).  Leaking them into ``final_state``
+        too creates two copies with possibly inconsistent values —
+        the snapshot value of ``SimulationEndReason`` is the empty
+        string (save_snapshot ran before the reason was set), while
+        ``write_simulation_end`` sees the populated reason.  Skip
+        both from final_state so there's a single authoritative
+        location for each."""
+        from src._output.simulation_end import write_simulation_end
+        d = self._make_params_with_end_codes(tmp_path)
+        write_simulation_end(d, str(tmp_path))
+        with open(tmp_path / METADATA_FILENAME) as f:
+            md = json.load(f)
+        fs = md["final_state"]
+        assert "SimulationEndReason" not in fs, (
+            "SimulationEndReason duplicates termination.detail — "
+            "exclude from final_state"
+        )
+        assert "SimulationEndCode" not in fs, (
+            "SimulationEndCode duplicates termination.exit_code — "
+            "exclude from final_state"
+        )
+        # And the canonical locations DO have the data:
+        assert md["termination"]["exit_code"] == 1
+        assert md["termination"]["detail"] == "Stopping time reached"
+
+    def test_final_state_excludes_path2output(
+        self, tmp_path, disable_crash_handlers,
+    ):
+        """The absolute path of the run dir leaks personal info
+        (user home) and is redundant — readers know the run dir
+        because that's where they found the file."""
+        from src._output.simulation_end import write_simulation_end
+        d = self._make_params_with_end_codes(tmp_path)
+        write_simulation_end(d, str(tmp_path))
+        with open(tmp_path / METADATA_FILENAME) as f:
+            md = json.load(f)
+        assert "path2output" not in md["final_state"]
+        assert "path2output" not in md  # also excluded from top-level run-consts
+
 
 class TestTrinityOutputProperties:
     """Phase 2 surfaces ``termination`` / ``final_state`` /
