@@ -174,25 +174,18 @@ def _final_state_section(final_state: Optional[dict]) -> list[str]:
     return lines
 
 
-def format_run_summary(run_dir: Path) -> str:
+def _resolve_run_status(run_dir: Path) -> dict:
     """
-    Build the multi-line pretty-printed summary string.
+    Gather all the bits ``format_run_summary`` and ``main`` need.
 
-    Reads ``metadata.json`` (v3+ preferred) and falls back to
-    ``read_simulation_end()`` for runs that pre-date the
-    metadata-source-of-truth migration.  Pure function — no I/O
-    side effects beyond the file reads.
+    Walks the same fallback chain (v3 metadata block → v1/v2 metadata
+    only → legacy ``simulationEnd.txt`` text-parse) and returns
+    everything in one dict so the formatter and the ``--quiet`` exit
+    path don't duplicate file reads.
 
-    Parameters
-    ----------
-    run_dir : Path
-        Directory containing ``dictionary.jsonl`` (and optionally
-        ``metadata.json`` and/or ``simulationEnd.txt``).
-
-    Returns
-    -------
-    str
-        Multi-line text ready for printing.
+    Returns a dict with keys ``metadata``, ``termination``,
+    ``final_state``, ``is_successful``, ``model_name`` — all values
+    may be ``None`` if the relevant source was absent.
     """
     md: dict = {}
     termination: Optional[dict] = None
@@ -254,7 +247,42 @@ def format_run_summary(run_dir: Path) -> str:
             if termination["model_name"]:
                 model_name = termination["model_name"]
 
-    # ---- Assemble ----
+    return {
+        "metadata": md,
+        "termination": termination,
+        "final_state": final_state,
+        "is_successful": is_successful,
+        "model_name": model_name,
+    }
+
+
+def format_run_summary(run_dir: Path) -> str:
+    """
+    Build the multi-line pretty-printed summary string.
+
+    Reads ``metadata.json`` (v3+ preferred) and falls back to
+    ``read_simulation_end()`` for runs that pre-date the
+    metadata-source-of-truth migration.  Pure function — no I/O
+    side effects beyond the file reads.
+
+    Parameters
+    ----------
+    run_dir : Path
+        Directory containing ``dictionary.jsonl`` (and optionally
+        ``metadata.json`` and/or ``simulationEnd.txt``).
+
+    Returns
+    -------
+    str
+        Multi-line text ready for printing.
+    """
+    status = _resolve_run_status(run_dir)
+    md = status["metadata"]
+    termination = status["termination"]
+    final_state = status["final_state"]
+    is_successful = status["is_successful"]
+    model_name = status["model_name"]
+
     lines = [
         _HR_HEAVY,
         f"TRINITY run: {model_name}",
@@ -320,32 +348,24 @@ def main(argv: Optional[list[str]] = None) -> int:
         print(metadata_path.read_text(), end="")
         return 0
 
-    # --- Build the formatted summary --------------------------------
-    summary = format_run_summary(run_dir)
-
+    # --- --quiet: one-line status + meaningful exit code -------------
     if args.quiet:
-        # First line of the status block is the SUCCESS/ERROR line.
-        for line in summary.splitlines():
-            if line.startswith("Status"):
-                print(line)
-                break
-        # Exit with the run's exit code (capped at 9).
-        for line in summary.splitlines():
-            if line.startswith("Status   : ✓"):
-                return 0
-            if line.startswith("Status   : ✗") or line.startswith("Status   : ?"):
-                # Try to extract exit code from termination
-                try:
-                    output = TrinityOutput.open(find_data_path(run_dir))
-                    t = output.termination
-                    if t and t.get("exit_code") is not None:
-                        return min(max(int(t["exit_code"]), 1), 9)
-                except FileNotFoundError:
-                    pass
+        status = _resolve_run_status(run_dir)
+        print(_status_line(status["termination"], status["is_successful"]))
+        if status["is_successful"] is True:
+            return 0
+        # Failure path: propagate the run's exit_code if we have one,
+        # capped to [1, 9] so the value fits in POSIX.
+        t = status["termination"]
+        if t and t.get("exit_code") is not None:
+            try:
+                return min(max(int(t["exit_code"]), 1), 9)
+            except (TypeError, ValueError):
                 return 1
-        return 1  # status line not found — treat as error
+        return 1
 
-    print(summary)
+    # --- Default: full pretty-print ---------------------------------
+    print(format_run_summary(run_dir))
     return 0
 
 

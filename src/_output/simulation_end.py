@@ -2,12 +2,34 @@
 # -*- coding: utf-8 -*-
 """
 Simulation End Reason Logger
+============================
 
-Writes simulation termination details to simulationEnd.txt in output directory.
-Provides structured exit codes for batch processing and post-run analysis.
+End-of-run reporting for TRINITY simulations.  Produces two
+complementary artefacts from a single in-memory dict:
 
-Also provides write_termination_debug_report() to dump the last two snapshots
-with comparison tables for debugging termination issues.
+* ``simulationEnd.txt`` — human-readable summary (timestamp,
+  outcome, exit code, final state, initial cloud parameters).
+  Pretty-printed with section headers; units converted for display
+  (km/s, cm⁻³).
+* ``metadata.json[termination]`` and ``metadata.json[final_state]``
+  — structured machine-readable blocks merged into ``metadata.json``
+  via :mod:`src._output._metadata_io`.  Internal units (pc/Myr,
+  pc⁻³).  Phase 2 (v3+ schema) of the metadata-source-of-truth
+  migration.
+
+Both writes derive from the same in-memory data so they cannot drift.
+A failure to update ``metadata.json`` is logged but does not abort
+the text-file write.
+
+Public functions
+~~~~~~~~~~~~~~~~
+* :func:`write_simulation_end` — called at run end by ``main.py``.
+* :func:`read_simulation_end` — reads from ``metadata.json[termination]``
+  first (clean v3+ path); falls back to text-parsing
+  ``simulationEnd.txt`` for legacy runs.
+* :func:`write_termination_debug_report` — separate debug dump
+  (last-two-snapshot comparison) written to ``termination_debug.txt``.
+  Phase 5 of the migration will merge it into ``simulationEnd.txt``.
 """
 
 import json

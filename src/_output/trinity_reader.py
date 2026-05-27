@@ -58,6 +58,24 @@ Basic Usage
     # Convert to pandas DataFrame (scalar values only)
     df = output.to_dataframe()
 
+Run-level Metadata (post-Phase-1 / v2+ schema)
+----------------------------------------------
+    output.metadata                  # parsed metadata.json dict
+    output.metadata['mCloud']        # any run-constant scalar
+    r, n, m = output.initial_cloud_profile()
+                                     # reconstruct from scalars
+                                     # (legacy v1 inline arrays also OK)
+
+Termination & Final State (post-Phase-2 / v3+ schema)
+-----------------------------------------------------
+    output.termination               # dict | None — exit_code, outcome,
+                                     # detail, timestamp, model_name
+                                     # (mirrors read_simulation_end())
+    output.final_state               # dict | None — last-snapshot
+                                     # scalars (internal units)
+    output.is_successful_run         # True | False | None — three-valued
+                                     # True iff exit_code in [0, 9]
+
 Key Parameters
 --------------
 The most commonly used output parameters are:
