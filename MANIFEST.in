@@ -10,9 +10,6 @@ include pyproject.toml
 # Include parameter files
 recursive-include param *.param
 
-# Include data files needed for simulations
-recursive-include data *
-
 # Include documentation source
 recursive-include docs/source *.rst *.py *.txt
 include docs/requirements.txt

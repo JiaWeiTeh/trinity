@@ -11,9 +11,6 @@ feedback bubble — shell radius, velocity, thermal state, and force
 budget — and resolves the phase transitions and stopping fate of the
 shell.
 
-<!-- TODO: drop in an overview figure here, e.g. a radius/phase evolution plot.
-     ![TRINITY shell evolution](docs/source/_static/overview.png) -->
-
 Full documentation: <https://jiaweiteh.github.io/trinity-web/>
 
 ## Requirements
@@ -42,8 +39,3 @@ sfe       0.3
 ## License
 
 GPL v3 — see [`LICENSE`](LICENSE).
-
-## Citation
-
-If you use TRINITY in published work, please cite the TRINITY method
-paper (Teh et al., in preparation).
