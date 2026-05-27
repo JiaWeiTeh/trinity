@@ -164,6 +164,18 @@ def plot_category(
         dpi=150, squeeze=False,
     )
 
+    # Use the overlap window [max(t_min), min(t_max)] across the two runs
+    # so a long run doesn't squash the shorter one against the y-axis.
+    t_min_per_run, t_max_per_run = [], []
+    for output in outputs:
+        t_all = _to_float_array(output.get('t_now', as_array=False))
+        t_all = t_all[np.isfinite(t_all)]
+        if t_all.size > 0:
+            t_min_per_run.append(t_all.min())
+            t_max_per_run.append(t_all.max())
+    t_min_shared = max(t_min_per_run) if t_min_per_run else None
+    t_max_shared = min(t_max_per_run) if t_max_per_run else None
+
     for idx, (key, label, yscale) in enumerate(params):
         i, j = divmod(idx, ncols)
         ax = axes[i, j]
@@ -201,6 +213,8 @@ def plot_category(
             ax.set_yscale("log")
         if use_log_x:
             ax.set_xscale("log")
+        if t_max_shared is not None:
+            ax.set_xlim(left=t_min_shared, right=t_max_shared)
         if i == nrows - 1:
             ax.set_xlabel("t [Myr]")
         ax.tick_params(labelsize=8)
