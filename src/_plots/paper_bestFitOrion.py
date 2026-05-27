@@ -66,6 +66,7 @@ from src._output.trinity_reader import (
     get_unique_ndens, parse_simulation_params, resolve_data_input, info_simulations
 )
 from src._plots.grid_template import filter_sim_files_by_phii
+from src._functions.unit_conversions import INV_CONV
 
 print("...analyzing best-fit models for Orion Nebula (M42)")
 
@@ -863,7 +864,14 @@ def load_simulation_at_time(data_path: Path, config: AnalysisConfig) -> Optional
         if len(output) == 0:
             return None
 
-        # Parse folder name for parameters
+        # Folder-name tags drive the filename/grid layout (legitimate use
+        # of the sweep convention) — kept as strings.  Scientific numerics
+        # below come from metadata.json via snapshot rehydration: the
+        # snapshot-side mCloud is the *post-SFE residual* (compatible with
+        # ``compute_stellar_mass``'s M_star = sfe * mCloud / (1 - sfe)),
+        # sfe is the exact .param value (not the 3-digit folder rounding),
+        # and nCore is converted from code units back to cm^-3 to match
+        # the historical axis convention.
         folder_name = data_path.parent.name
         params = parse_simulation_params(folder_name)
 
@@ -874,10 +882,10 @@ def load_simulation_at_time(data_path: Path, config: AnalysisConfig) -> Optional
         sfe_str = params['sfe']
         nCore_str = params['ndens']
 
-        # Convert to floats
-        mCloud_float = float(mCloud_str)
-        sfe_float = int(sfe_str) / 100.0  # sfe is stored as percentage (e.g., "020" -> 0.20)
-        nCore_float = float(nCore_str)
+        snap_consts = output[0]
+        mCloud_float = float(snap_consts.get('mCloud'))
+        sfe_float = float(snap_consts.get('sfe'))
+        nCore_float = float(snap_consts.get('nCore')) * INV_CONV.ndens_au2cgs
 
         # Determine evaluation time: if --no-t, find optimal time; otherwise use t_obs
         t_predicted = None
