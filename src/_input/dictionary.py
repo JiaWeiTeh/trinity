@@ -22,12 +22,19 @@ Provide a "params" container that behaves like a dictionary of objects:
 Files written to params["path2output"].value
 -------------------------------------------
 dictionary.jsonl : One JSON object per line, each line = one snapshot
-                   Line 0 = snapshot "0", Line 1 = snapshot "1", etc.
+                   (Line 0 = snapshot "0", Line 1 = snapshot "1", ...).
+                   Run-constants are stripped from each line.
+metadata.json    : One pretty-printed JSON object with every
+                   constant-through-run scalar
+                   (``src._output.run_constants.RUN_CONST_KEYS``)
+                   and a ``_metadata_version`` schema marker.
+                   Written once at the first flush.
 
 Loading
 -------
 params = DescribedDict.load_snapshot(path2output, snap_id)
-arr = params["initial_cloud_n_arr"].value   # returns numpy array
+mCloud = params["mCloud"].value          # rehydrated from metadata.json
+v2     = params["v2"].value              # genuine per-snapshot value
 """
 
 import atexit

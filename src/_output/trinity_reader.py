@@ -195,10 +195,14 @@ PARAM_DOCS = {
     'dens_profile': 'Density profile type (densPL or densBE)',
     'densPL_alpha': 'Power-law density exponent',
 
-    # Initial cloud arrays (constant, set in phase 0)
-    'initial_cloud_r_arr': 'Initial cloud radius array [pc]',
-    'initial_cloud_n_arr': 'Initial cloud density array [cm^-3]',
-    'initial_cloud_m_arr': 'Initial cloud enclosed mass array [Msun]',
+    # Initial cloud arrays — legacy v1 metadata only.  For v2+ runs
+    # (metadata schema ≥ 2) these keys are absent; the arrays are
+    # reconstructed on demand via ``TrinityOutput.initial_cloud_profile()``
+    # from the run-constant scalars (nCore, nISM, rCore, rCloud,
+    # dens_profile, densPL_alpha, mu_convert).
+    'initial_cloud_r_arr': 'Initial cloud radius array [pc] — v1 only',
+    'initial_cloud_n_arr': 'Initial cloud density array [cm^-3] — v1 only',
+    'initial_cloud_m_arr': 'Initial cloud enclosed mass array [Msun] — v1 only',
 
     # Shell absorption
     'shell_fAbsorbedIon': 'Fraction of ionizing radiation absorbed',
