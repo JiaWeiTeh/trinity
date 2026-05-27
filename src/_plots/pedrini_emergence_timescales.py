@@ -184,23 +184,6 @@ def parse_param_file(param_path: Path) -> dict[str, str]:
     return out
 
 
-def get_run_sfe(run_dir: Path) -> float:
-    """Read `sfe` from the .param file inside a run directory.
-
-    More robust than parsing the folder name (which encodes sfe with rounding,
-    e.g. sfe=0.0085 → 'sfe001').
-    """
-    candidates = list(run_dir.glob("*.param"))
-    if not candidates:
-        raise FileNotFoundError(f"No .param file in {run_dir}")
-    if len(candidates) > 1:
-        raise ValueError(f"Multiple .param files in {run_dir}: {candidates}")
-    params = parse_param_file(candidates[0])
-    if "sfe" not in params:
-        raise KeyError(f"`sfe` not in {candidates[0]}")
-    return float(params["sfe"])
-
-
 def parse_raw_reason(run_dir: Path) -> str:
     """Return the verbatim termination ``Detail:`` string ("" if absent).
 
@@ -289,13 +272,21 @@ def collect_run(run_dir: Path, show_tau_pdr: bool = False) -> dict:
     # not emerge in Pedrini's sense.
     recollapse = bool(np.any(v2 < 0))
 
-    mCloud   = float(out[0].get("mCloud"))
-    rCloud   = float(out[0].get("rCloud"))
-    nCore_au = float(out[0].get("nCore"))
-    nCore_cgs = nCore_au * INV_CONV.ndens_au2cgs
-
-    sfe = get_run_sfe(run_dir)
-    M_star = mCloud * sfe
+    # All run-constants below come from metadata.json via
+    # TrinityOutput._rehydrate_metadata (every snapshot's data dict
+    # picks them up via setdefault).  Notably:
+    #   * mCloud is the post-SFE residual cloud mass (kept for the row
+    #     dict; downstream pair_runs uses it as a match key);
+    #   * mCloud_input is the pre-SFE input GMC mass, needed for the
+    #     cluster-mass formula M_star = mCloud_input * sfe.  Using the
+    #     post-SFE mCloud here would underestimate M_star by (1 - sfe).
+    snap0 = out[0]
+    mCloud       = float(snap0.get("mCloud"))
+    mCloud_input = float(snap0.get("mCloud_input"))
+    rCloud       = float(snap0.get("rCloud"))
+    nCore_cgs    = float(snap0.get("nCore")) * INV_CONV.ndens_au2cgs
+    sfe          = float(snap0.get("sfe"))
+    M_star       = mCloud_input * sfe
 
     t_cross = find_rcloud_crossing(t, R2, rCloud, run_name=run_dir.name)
     if t_cross is None:
