@@ -170,12 +170,24 @@ def _load_run_v2R2(data_path: Path) -> dict:
 
     lsoda_failed = _check_implicit_lsoda_failure(data_path)
 
-    end_info = read_simulation_end(str(data_path.parent))
+    # Termination status:
+    #   * v3+ runs   → ``output.termination`` (read from
+    #                  ``metadata.json[termination]``).
+    #   * legacy runs → ``read_simulation_end`` falls back to text-parsing
+    #                  ``simulationEnd.txt`` itself (Phase 2 made it
+    #                  JSON-first with text fallback).
+    #   * runs missing both → derive from the last snapshot's
+    #                  ``SimulationEndReason`` via the legacy keyword
+    #                  heuristic below.
     end_ok = None
     end_reason = None
+    end_info = output.termination or read_simulation_end(str(data_path.parent))
     if end_info is not None and end_info.get("exit_code") is not None:
         end_ok = 0 <= int(end_info["exit_code"]) <= 9
-        end_reason = end_info.get("reason")
+        # NB: the canonical field is ``detail`` (post-Outcome/Detail
+        # rename on main).  ``read_simulation_end`` exposes it under
+        # the same name, and so does ``output.termination``.
+        end_reason = end_info.get("detail")
     else:
         last_reason = output[-1].get("SimulationEndReason", None)
         end_reason = str(last_reason) if last_reason is not None else None

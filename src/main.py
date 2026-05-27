@@ -194,14 +194,12 @@ def start_expansion(params):
         logger.warning(f"Could not write simulation end report: {e}")
         exit_code = 99
 
-    # Write termination debug report (last 2 snapshots with comparison)
+    # Write termination debug block into metadata.json[termination_debug]
     try:
         reason = params['SimulationEndReason'].value if 'SimulationEndReason' in params else "Unknown"
-        debug_path = params.write_termination_report(reason=reason)
-        if debug_path:
-            logger.info(f"Termination debug report written: {debug_path}")
+        params.write_termination_report(reason=reason)
     except Exception as e:
-        logger.warning(f"Could not write termination debug report: {e}")
+        logger.warning(f"Could not write termination debug block: {e}")
 
 
     # ########### STEP 2: In case of recollapse, prepare next expansion ##########################

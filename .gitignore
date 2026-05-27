@@ -6,7 +6,6 @@ __pycache__/
 
 # My files
 */*.icloud
-.DS_Store
 .spyproject/
 outputs/*
 #but not mock outputs
@@ -14,12 +13,21 @@ outputs/*
 txt/
 fig/
 movie.txt
-# CLAUDE.md
+lib/*
+!lib/default/
+!lib/default/**
+
+# Personal scratch/test config — kept locally, not tracked
+param/test_run.param
+src/_calc
+
 
 # Large test data files (optional - uncomment to exclude from git)
 # test/*.jsonl
 # example_scripts/*.jsonl
 old_doNotRead/
+
+.DS_Store
 
 # IDE settings
 .idea/
@@ -44,7 +52,6 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
 lib64/
 parts/
 sdist/

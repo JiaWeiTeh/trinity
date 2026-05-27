@@ -31,16 +31,16 @@ def get_Lambda(T, cooling_CIE_interpolation, metallicity):
     T : float/array
         Temperature.
 
-    Available libraries (specified in .param file) include:
+    Available libraries (set via `path_cooling_CIE` in .param) include:
         1: CLOUDY cooling curve for HII region, solar metallicity.
-        2: CLOUDY cooling curve for HII region, solar metallicity. 
-            Includes the evaporative (sublimation) cooling of icy interstellar 
-            grains (occurs e.g., when heated by cosmic-ray particle)
-        
-        3. Gnat and Ferland 2012 (slightly interpolated for values)
-        4. Sutherland and Dopita 1993, for [Fe/H] = -1].
-    
-    These files are by default stored in path/to/warpfield/lib/cooling_tables/CIE/current/.
+        2: CLOUDY cooling curve for HII region, solar metallicity.
+            Includes the evaporative (sublimation) cooling of icy interstellar
+            grains (occurs e.g., when heated by cosmic-ray particle).
+        3: Gnat and Ferland 2012 (slightly interpolated for values).
+        4: Sutherland and Dopita 1993, for [Fe/H] = -1. Auto-pinned when
+            ZCloud == 0.15 regardless of `path_cooling_CIE`.
+
+    These files are bundled under lib/default/CIE/.
 
     Returns
     -------
@@ -56,16 +56,7 @@ def get_Lambda(T, cooling_CIE_interpolation, metallicity):
     
     # Might be a problem here because this does not support extrapolation. If
     # this happens, implement a function that does that.
-    
-    # if metallicity != 1:
-    #     sys.exit('Need to implement non-solar metallicity.')
-    # # get path to library
-    # # See example_pl.param for more information.
-    # path2cooling = warpfield_params.path_cooling_CIE
-    # # unpack from file
-    # logT, logLambda = np.loadtxt(path2cooling, unpack = True)
-    # # create interpolation
-    # cooling_CIE_interpolation = scipy.interpolate.interp1d(logT, logLambda, kind = 'linear')
+
     # change temperature to log for interpolation
     T = np.log10(T)
     # find lambda

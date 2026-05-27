@@ -5,7 +5,7 @@ Created on Sun Jul 24 22:27:38 2022
 
 @author: Jia Wei Teh
 
-This script contains the main file to run WARPFIELD.
+This script contains the main file to run TRINITY.
 
 Unified entry point for single runs and parameter sweeps.
 Auto-detects sweep mode when parameters contain list syntax or tuple definitions.
@@ -132,9 +132,8 @@ def run_single(args):
     from src._output import header
     header.display()
 
-    # Get class and write summary file
     # Note: read_param logging is now captured with early config above
-    params = read_param.read_param(args.path2param, write_summary=True)
+    params = read_param.read_param(args.path2param)
 
     header.show_param(params)
 

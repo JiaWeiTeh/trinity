@@ -22,12 +22,25 @@ Provide a "params" container that behaves like a dictionary of objects:
 Files written to params["path2output"].value
 -------------------------------------------
 dictionary.jsonl : One JSON object per line, each line = one snapshot
-                   Line 0 = snapshot "0", Line 1 = snapshot "1", etc.
+                   (Line 0 = snapshot "0", Line 1 = snapshot "1", ...).
+                   Run-constants are stripped from each line.
+metadata.json    : One pretty-printed JSON object containing:
+                     - every constant-through-run scalar
+                       (``src._output.run_constants.RUN_CONST_KEYS``)
+                     - a ``_metadata_version`` schema marker
+                     - ``termination`` block (run-end status, v3+)
+                     - ``final_state`` block (last-snapshot scalars, v3+)
+                   The run-const section is written at the first flush;
+                   the termination / final_state blocks are merged in
+                   at run end by ``write_simulation_end()``.  Both
+                   writes use ``_output._metadata_io.write_metadata_atomic``
+                   for atomicity.
 
 Loading
 -------
 params = DescribedDict.load_snapshot(path2output, snap_id)
-arr = params["initial_cloud_n_arr"].value   # returns numpy array
+mCloud = params["mCloud"].value          # rehydrated from metadata.json
+v2     = params["v2"].value              # genuine per-snapshot value
 """
 
 import atexit
@@ -289,22 +302,19 @@ class DescribedDict(dict):
         except Exception as e:
             logger.error(f"Failed to write termination debug report: {e}")
 
-    def write_termination_report(self, reason: str = "Unknown") -> Optional[str]:
+    def write_termination_report(self, reason: str = "Unknown") -> None:
         """
-        Explicitly write termination debug report.
+        Mirror the last-2-snapshot debug block into
+        ``metadata.json[termination_debug]``.
 
-        Call this at simulation end (error or success) to generate a human-readable
-        report of the last two snapshots with comparison tables.
+        Called at simulation end (error or success).  Phase 5+ writes
+        a structured block instead of the legacy ``termination_debug.txt``
+        file; format the block with ``python -m src._output.show_run``.
 
         Parameters
         ----------
         reason : str
             Termination reason (e.g., "Shell dissolved", "ODE solver failed")
-
-        Returns
-        -------
-        str or None
-            Path to the written report, or None if failed
         """
         import logging
         logger = logging.getLogger(__name__)
@@ -316,10 +326,9 @@ class DescribedDict(dict):
 
             output_dir = self._get_output_dir()
             from src._output.simulation_end import write_termination_debug_report
-            return write_termination_debug_report(str(output_dir), reason=reason)
+            write_termination_debug_report(str(output_dir), reason=reason)
         except Exception as e:
-            logger.error(f"Failed to write termination debug report: {e}")
-            return None
+            logger.error(f"Failed to write termination_debug block: {e}")
 
     # -------------------------------------------------------------------------
     # Display helpers
@@ -527,11 +536,19 @@ class DescribedDict(dict):
         once per run, and stripped from every per-snapshot dict here.
         """
         # Run-constants are written to metadata.json once per run
-        # and never appear in per-snapshot dicts.  Imported lazily
-        # to keep dictionary.py independent of the _output package
-        # at import time.
-        from src._output.run_constants import RUN_CONST_KEYS
-        run_const_keys = frozenset(RUN_CONST_KEYS)
+        # and never appear in per-snapshot dicts.  ``DROPPED_IN_V2``
+        # keys are also stripped (they are reconstructed on demand by
+        # the reader from other run-constants), as are
+        # ``METADATA_EXCLUDE`` keys (paths, function tables, empty
+        # placeholders that have no place in either file).  Imported
+        # lazily to keep dictionary.py independent of the _output
+        # package at import time.
+        from src._output.run_constants import (
+            RUN_CONST_KEYS, METADATA_EXCLUDE, DROPPED_IN_V2,
+        )
+        run_const_keys = (
+            frozenset(RUN_CONST_KEYS) | METADATA_EXCLUDE | DROPPED_IN_V2
+        )
 
         # Reset the per-snapshot R² log counter so each snapshot in the
         # implicit phase logs its first two simplify() reconstructions.
@@ -552,8 +569,10 @@ class DescribedDict(dict):
                 continue
             if not isinstance(item, DescribedItem):
                 continue
-            # Run-constants live in metadata.json (written once per run);
-            # never include them in per-snapshot dicts.
+            # Skip:
+            #   * RUN_CONST_KEYS   → live in metadata.json (once per run)
+            #   * METADATA_EXCLUDE → not JSON-serializable (paths, tables)
+            #   * DROPPED_IN_V2    → reconstructible from RUN_CONST_KEYS
             if key in run_const_keys:
                 continue
 
@@ -718,11 +737,11 @@ class DescribedDict(dict):
         - Else: append new snapshots
         """
         import logging
-        import os
         logger = logging.getLogger(__name__)
 
         from src._output.run_constants import (
             RUN_CONST_KEYS, METADATA_FILENAME, METADATA_VERSION,
+            METADATA_EXCLUDE, DROPPED_IN_V2,
         )
 
         path2output = self._get_output_dir()
@@ -745,19 +764,35 @@ class DescribedDict(dict):
         snap_ids = sorted([int(k) for k in self.previous_snapshot.keys()])
 
         # Write metadata.json on the very first flush of the run.
-        # Atomic via temp-file + rename so a partial write can never
-        # leave a corrupt metadata.json next to a valid jsonl stream.
+        # The shared helper handles atomicity (temp+rename) and
+        # pretty-printed JSON formatting; we just build the payload
+        # of run-constant scalars.
         if self.flush_count == 0:
+            from src._output._metadata_io import write_metadata_atomic
             metadata: Dict[str, Any] = {"_metadata_version": METADATA_VERSION}
             for k in RUN_CONST_KEYS:
-                if k in self:
-                    item = self[k]
-                    if isinstance(item, DescribedItem):
-                        metadata[k] = self._to_json_ready_value(item.value)
-            tmp_path = path2metadata.with_suffix(path2metadata.suffix + ".tmp")
-            with open(tmp_path, "w", encoding="utf-8") as f:
-                json.dump(metadata, f, cls=NpEncoder)
-            os.replace(tmp_path, path2metadata)
+                if k in METADATA_EXCLUDE or k in DROPPED_IN_V2:
+                    continue
+                if k not in self:
+                    continue
+                item = self[k]
+                if not isinstance(item, DescribedItem):
+                    continue
+                # Defensive serialization: if the value can't be JSON-
+                # encoded (e.g. an unexpected interpolator object snuck
+                # into ``params``), log a warning and skip the key
+                # rather than crashing the whole flush.
+                try:
+                    ready = self._to_json_ready_value(item.value)
+                    json.dumps(ready, cls=NpEncoder)
+                except (TypeError, ValueError) as e:
+                    logger.warning(
+                        "metadata.json: skipping non-serializable key %r (%s)",
+                        k, e,
+                    )
+                    continue
+                metadata[k] = ready
+            write_metadata_atomic(path2output, metadata)
             logger.debug(
                 f"Wrote {METADATA_FILENAME} with "
                 f"{len(metadata) - 1} run-const keys"

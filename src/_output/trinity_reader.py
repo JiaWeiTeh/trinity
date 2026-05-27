@@ -58,6 +58,24 @@ Basic Usage
     # Convert to pandas DataFrame (scalar values only)
     df = output.to_dataframe()
 
+Run-level Metadata (post-Phase-1 / v2+ schema)
+----------------------------------------------
+    output.metadata                  # parsed metadata.json dict
+    output.metadata['mCloud']        # any run-constant scalar
+    r, n, m = output.initial_cloud_profile()
+                                     # reconstruct from scalars
+                                     # (legacy v1 inline arrays also OK)
+
+Termination & Final State (post-Phase-2 / v3+ schema)
+-----------------------------------------------------
+    output.termination               # dict | None — exit_code, outcome,
+                                     # detail, timestamp, model_name
+                                     # (mirrors read_simulation_end())
+    output.final_state               # dict | None — last-snapshot
+                                     # scalars (internal units)
+    output.is_successful_run         # True | False | None — three-valued
+                                     # True iff exit_code in [0, 9]
+
 Key Parameters
 --------------
 The most commonly used output parameters are:
@@ -111,7 +129,7 @@ import sys
 import numpy as np
 from pathlib import Path
 from typing import List, Dict, Any, Optional, Union, Iterator, Literal
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 import pandas as pd
 from scipy import interpolate as scipy_interp
 
@@ -195,10 +213,14 @@ PARAM_DOCS = {
     'dens_profile': 'Density profile type (densPL or densBE)',
     'densPL_alpha': 'Power-law density exponent',
 
-    # Initial cloud arrays (constant, set in phase 0)
-    'initial_cloud_r_arr': 'Initial cloud radius array [pc]',
-    'initial_cloud_n_arr': 'Initial cloud density array [cm^-3]',
-    'initial_cloud_m_arr': 'Initial cloud enclosed mass array [Msun]',
+    # Initial cloud arrays — legacy v1 metadata only.  For v2+ runs
+    # (metadata schema ≥ 2) these keys are absent; the arrays are
+    # reconstructed on demand via ``TrinityOutput.initial_cloud_profile()``
+    # from the run-constant scalars (nCore, nISM, rCore, rCloud,
+    # dens_profile, densPL_alpha, mu_convert).
+    'initial_cloud_r_arr': 'Initial cloud radius array [pc] — v1 only',
+    'initial_cloud_n_arr': 'Initial cloud density array [cm^-3] — v1 only',
+    'initial_cloud_m_arr': 'Initial cloud enclosed mass array [Msun] — v1 only',
 
     # Shell absorption
     'shell_fAbsorbedIon': 'Fraction of ionizing radiation absorbed',
@@ -329,6 +351,9 @@ class TrinityOutput:
         for snap in snapshots:
             self._keys.update(snap.keys())
         self._keys = sorted(self._keys)
+        # Cached parse of ``metadata.json`` (populated lazily via the
+        # ``metadata`` property below, or eagerly by ``_rehydrate_metadata``).
+        self._metadata_cache: Optional[Dict[str, Any]] = None
 
     @classmethod
     def open(cls, filepath: Union[str, Path]) -> 'TrinityOutput':
@@ -450,6 +475,171 @@ class TrinityOutput:
         """Iterate over snapshots."""
         for i, snap in enumerate(self._snapshots):
             yield Snapshot(snap, i)
+
+    @property
+    def termination(self) -> Optional[Dict[str, Any]]:
+        """
+        ``termination`` block from ``metadata.json`` (Phase 2, v3+
+        schema), or ``None`` if absent.
+
+        Mirrors :func:`src._output.simulation_end.read_simulation_end`'s
+        return shape: ``{exit_code, outcome, detail, timestamp,
+        model_name}``.  Plotters that previously called
+        ``read_simulation_end(run_dir)`` to fetch the exit code should
+        prefer this property — it reads directly from the JSON without
+        re-parsing the text file.
+        """
+        block = self.metadata.get("termination")
+        return block if isinstance(block, dict) else None
+
+    @property
+    def final_state(self) -> Optional[Dict[str, Any]]:
+        """
+        ``final_state`` block from ``metadata.json``, or ``None`` if
+        absent.
+
+        Contains every non-array, non-run-constant scalar from the
+        runtime params at simulation end, in **internal units**
+        (pc/Myr, pc⁻³, …) — same convention as ``Snapshot.get(key)``.
+        ``python -m src._output.show_run`` re-applies km/s and cm⁻³
+        conversions for human reading.
+        """
+        block = self.metadata.get("final_state")
+        return block if isinstance(block, dict) else None
+
+    @property
+    def termination_debug(self) -> Optional[Dict[str, Any]]:
+        """
+        ``termination_debug`` block from ``metadata.json`` (Phase 5,
+        v4+ schema), or ``None`` if absent.
+
+        Last-2-snapshot comparison, NaN/Inf inventory, and physics
+        sanity checks — replaces the legacy ``termination_debug.txt``
+        text file.  Keys: ``timestamp``, ``reason``, ``snapshot_count``,
+        ``time``, ``comparison``, ``warnings``, ``invalid_values``,
+        ``sanity_checks``.
+        """
+        block = self.metadata.get("termination_debug")
+        return block if isinstance(block, dict) else None
+
+    @property
+    def is_successful_run(self) -> Optional[bool]:
+        """
+        Three-valued success flag derived from
+        ``output.termination['exit_code']``:
+
+        * ``True``  — exit code in [0, 9] (clean termination per the
+          convention in ``paper_v2R2.py``);
+        * ``False`` — exit code outside that range;
+        * ``None``  — no ``termination`` block (legacy run, crash before
+          ``write_simulation_end`` fired).
+        """
+        block = self.termination
+        if block is None:
+            return None
+        ec = block.get("exit_code")
+        if ec is None:
+            return None
+        try:
+            return 0 <= int(ec) <= 9
+        except (TypeError, ValueError):
+            return None
+
+    @property
+    def metadata(self) -> Dict[str, Any]:
+        """
+        Parsed ``metadata.json`` for this run (cached, loaded on
+        first access).  Returns ``{}`` if the file is absent or
+        malformed.
+
+        This is the canonical machine-readable handle for every
+        constant-through-run parameter (``mCloud``, ``nCore``,
+        ``mu_atom``, …).  Plotters should prefer
+        ``output.metadata['mCloud']`` over ``output[0].get('mCloud')``
+        when they want a run-constant — both return the same value
+        thanks to the rehydrate step, but the metadata path is
+        conceptually clearer and survives even on empty snapshot
+        streams.
+        """
+        if self._metadata_cache is None:
+            from src._output.run_constants import METADATA_FILENAME
+            metadata_path = self.filepath.parent / METADATA_FILENAME
+            try:
+                with open(metadata_path, "r") as f:
+                    self._metadata_cache = json.load(f)
+            except (FileNotFoundError, OSError, json.JSONDecodeError):
+                self._metadata_cache = {}
+        return self._metadata_cache
+
+    def initial_cloud_profile(self) -> tuple:
+        """
+        Reconstruct the initial cloud profile ``(r_arr, n_arr, m_arr)``
+        from the run-constant scalars in ``metadata.json``.
+
+        Backwards-compatible: if the metadata is from a legacy run
+        (v1 schema) and still carries the inline arrays, those are
+        returned directly without recomputation.  For v2+ metadata
+        (PR ``metadata-expand-constants``) the arrays are rebuilt
+        deterministically from ``nCore``, ``nISM``, ``rCore``,
+        ``rCloud``, ``dens_profile``, ``densPL_alpha``,
+        ``mu_convert`` (and ``densBE_Omega``, ``gamma_adia`` for BE).
+
+        Returns
+        -------
+        tuple[np.ndarray, np.ndarray, np.ndarray]
+            ``(r_arr, n_arr, m_arr)`` — radius [pc], density
+            [internal pc⁻³], enclosed mass [Msun].
+
+        Raises
+        ------
+        KeyError
+            If ``metadata.json`` is missing the scalars required to
+            reconstruct (e.g. legacy run with neither inline arrays
+            nor the necessary run-constants).
+        """
+        m = self.metadata
+        # Fast path: legacy v1 inline arrays.  Real v1 metadata.json files
+        # carry all three (r, n, m); some synthetic test fixtures provide
+        # only (r, n), in which case we fill m with zeros — consumers that
+        # don't need the enclosed-mass array (e.g. the cloudy ambient
+        # extension) can discard it transparently, and any future
+        # consumer that *does* need m will fall through to the v2 scalar
+        # path because zeros would be obviously wrong.
+        r_inline = m.get("initial_cloud_r_arr")
+        n_inline = m.get("initial_cloud_n_arr")
+        if r_inline and n_inline:
+            r_arr = np.asarray(r_inline, dtype=float)
+            n_arr = np.asarray(n_inline, dtype=float)
+            m_inline = m.get("initial_cloud_m_arr")
+            m_arr = (np.asarray(m_inline, dtype=float)
+                     if m_inline else np.zeros_like(r_arr))
+            return r_arr, n_arr, m_arr
+
+        # Recompute from scalars (v2+).
+        from src.cloud_properties.initial_profile import (
+            build_initial_cloud_profile,
+        )
+        required = ("dens_profile", "mCloud", "nCore", "nISM",
+                    "rCore", "rCloud", "mu_convert")
+        missing = [k for k in required if k not in m]
+        if missing:
+            raise KeyError(
+                f"cannot reconstruct initial cloud profile: "
+                f"metadata.json is missing {missing}"
+            )
+        return build_initial_cloud_profile(
+            dens_profile=m["dens_profile"],
+            mCloud=m["mCloud"],
+            nCore=m["nCore"],
+            nISM=m["nISM"],
+            rCore=m["rCore"],
+            rCloud=m["rCloud"],
+            mu_convert=m["mu_convert"],
+            densPL_alpha=m.get("densPL_alpha", 0.0),
+            densBE_Omega=m.get("densBE_Omega"),
+            gamma_adia=m.get("gamma_adia"),
+            nEdge=m.get("nEdge"),
+        )
 
     @property
     def model_name(self) -> str:

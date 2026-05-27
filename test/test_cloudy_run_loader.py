@@ -133,9 +133,9 @@ def test_parse_summary_txt_handles_nan_and_lists():
 
 
 def test_parse_summary_txt_keeps_paths_as_strings():
-    text = "path_sps   /Users/jwt/lib/sps/starburst99/\n"
+    text = "path_sps   /tmp/lib/sps/starburst99/\n"
     parsed = _parse_summary_txt(text)
-    assert parsed["path_sps"] == "/Users/jwt/lib/sps/starburst99/"
+    assert parsed["path_sps"] == "/tmp/lib/sps/starburst99/"
 
 
 def test_parse_summary_txt_empty_value():
@@ -285,8 +285,14 @@ def test_load_run_missing_summary(tmp_path):
 
 
 def test_load_run_missing_simulation_end(tmp_path):
+    # Phase 2: load_run prefers metadata.json[termination]; falls back to
+    # simulationEnd.txt for legacy runs.  With both absent the error
+    # message names both sources.
     rd = _make_minimal_run_dir(tmp_path, write_end=False)
-    with pytest.raises(RunLoadError, match="simulationEnd.txt missing"):
+    with pytest.raises(
+        RunLoadError,
+        match="neither metadata.json.termination. nor simulationEnd.txt",
+    ):
         load_run(rd)
 
 

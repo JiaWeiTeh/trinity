@@ -76,7 +76,6 @@ SCRIPTS = [
     ("paper_pressureEvolution",      "src/_plots/paper_pressureEvolution.py",       False),
     ("paper_R2_RIF",                 "src/_plots/paper_R2_RIF.py",                  True),
     ("paper_radiusEvolution",        "src/_plots/paper_radiusEvolution.py",         True),
-    ("paper_zetaRegime",             "src/_plots/paper_zetaRegime.py",              False),
     ("paper_pressureZeta",           "src/_plots/paper_pressureZeta.py",            False),
     ("paper_v2R2",                   "src/_plots/paper_v2R2.py",                    False),
 ]

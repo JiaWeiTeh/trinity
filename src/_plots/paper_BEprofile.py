@@ -42,11 +42,9 @@ output = load_output(path2data)
 
 #--------------
 
-# Get initial cloud profile from first snapshot
-first_snap = output[0]
-nlist = np.array(first_snap.get('initial_cloud_n_arr', []))
-rlist = np.array(first_snap.get('initial_cloud_r_arr', []))
-mlist = np.array(first_snap.get('initial_cloud_m_arr', []))
+# Get initial cloud profile (reconstructed on demand for v2+ metadata,
+# or read inline from v1 legacy files).
+rlist, nlist, mlist = output.initial_cloud_profile()
     
 
 #%%

@@ -150,7 +150,7 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
     parser.add_argument("--hard-age-bounds", action="store_true",
                         help="promote the age-band warning to a hard error")
     parser.add_argument("--force", action="store_true",
-                        help="proceed even if simulationEnd exit code is not in the clean range (0-9)")
+                        help="proceed even if the termination exit code is not in the clean range (0-9)")
     parser.add_argument("--min-rows", type=int, default=DEFAULT_MIN_ROWS,
                         help=f"densify dlaw to >= N rows (default {DEFAULT_MIN_ROWS})")
 
@@ -236,9 +236,11 @@ def _pick_snapshots(bundle: RunBundle, args: argparse.Namespace) -> list[PickedS
 
 def _check_status(bundle: RunBundle, *, force: bool) -> None:
     """
-    Refuse to convert runs whose simulationEnd.txt is not in the clean range
-    (exit_code 0–9). Inspection-required (50–59 or 99) and error (10–29)
-    outcomes both require --force.
+    Refuse to convert runs whose termination exit code is not in the clean
+    range (0–9). Inspection-required (50–59 or 99) and error (10–29)
+    outcomes both require --force.  Source: ``bundle.end_state`` —
+    ``metadata.json[termination]`` for v3+, legacy ``simulationEnd.txt``
+    otherwise.
     """
     exit_code = bundle.end_state.get("exit_code")
     outcome = bundle.end_state.get("outcome") or "unknown"

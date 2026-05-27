@@ -19,9 +19,6 @@ Tuple Mode Syntax:
 
 This runs only the specified combinations, not the full Cartesian product.
 Parameters not in the tuple are fixed across all runs.
-
-Author: Claude Code
-Date: 2026-01-14
 """
 
 import itertools

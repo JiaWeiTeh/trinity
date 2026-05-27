@@ -719,11 +719,11 @@ def _get_velocity_residuals(dMdt_init, params, Pb: float, R1: float) -> float:
         dMdt_init, params, Pb, R1
     )
 
-    # Convert to scalar if numpy array (for compatibility)
-    r2Prime_val = float(r2Prime) if hasattr(r2Prime, '__len__') else r2Prime
-    v_init = float(v_r2Prime) if hasattr(v_r2Prime, '__len__') else v_r2Prime
-    T_init = float(T_r2Prime) if hasattr(T_r2Prime, '__len__') else T_r2Prime
-    dTdr_init = float(dTdr_r2Prime) if hasattr(dTdr_r2Prime, '__len__') else dTdr_r2Prime
+    # numpy 2.x: float(size-1 1-d array) errors, so coerce through .item()
+    r2Prime_val = np.asarray(r2Prime).item()
+    v_init      = np.asarray(v_r2Prime).item()
+    T_init      = np.asarray(T_r2Prime).item()
+    dTdr_init   = np.asarray(dTdr_r2Prime).item()
 
     # =============================================================================
     # radius array at which bubble structure is being evaluated.

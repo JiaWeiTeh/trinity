@@ -20,13 +20,16 @@ Key features:
 import logging
 import sys
 import os
-from datetime import datetime
 from pathlib import Path
 from fractions import Fraction
 import numpy as np
 import src._functions.unit_conversions as cvt
 from src._input.dictionary import DescribedItem, DescribedDict
 import src.sb99.sps_columns as sps_columns
+
+# Anchor bundled-asset lookups to the repo root, not the CWD: users may launch
+# run.py from anywhere, and the `lib/default/...` defaults must still resolve.
+_REPO_ROOT = Path(__file__).resolve().parents[2]
 
 # Initialize logger for this module
 logger = logging.getLogger(__name__)
@@ -35,8 +38,15 @@ logger = logging.getLogger(__name__)
 def _get_legacy_sb99_filename(params):
     """
     Construct an SB99 filename from the legacy SB99_mass / SB99_rotation /
-    ZCloud / SB99_BHCUT grammar. This is the permanent fallback used when
-    sps_path = def_path (see analysis/sb99-refactor-audit.md §9).
+    ZCloud / SB99_BHCUT grammar.
+
+    Currently NOT WIRED UP — `sps_path = def_path` resolves directly to
+    `lib/default/sps/starburst99/1e6cluster_default.csv` (see `read_param` below).
+    Preserved here so the four legacy SB99_* params remain meaningful for
+    code paths that may opt back into the grammar (e.g. a future
+    `sps_path = def_sb99_grammar` sentinel). See
+    analysis/sb99-refactor-audit.md §9 for the original "legacy permanent"
+    contract.
 
     Returns the bare filename (e.g. "1e6cluster_rot_Z0014_BH120.txt"); the
     caller joins it with params['path_sps'].value to form the full path.
@@ -92,17 +102,15 @@ def _get_legacy_sb99_filename(params):
     return f"{SBmass_str}cluster_{rot_str}_{z_str}_{BH_str}.txt"
 
 
-def read_param(path2file, write_summary=True):
+def read_param(path2file):
     """
     Read parameter file and return DescribedDict with all TRINITY parameters.
-    
+
     Parameters
     ----------
     path2file : str or Path
         Path to the user .param file.
-    write_summary : bool, optional
-        Whether to write a summary .txt file in the output directory.
-    
+
     Returns
     -------
     params : DescribedDict
@@ -412,78 +420,85 @@ def read_param(path2file, write_summary=True):
         Path(path2output).mkdir(parents=True, exist_ok=True)
         params['path2output'].value = path2output
     
-    # Cooling directory - non-CIE
+    # Cooling directory - non-CIE.
+    # Default sentinel 'def_dir' resolves to the shipped OPIATE cube folder
+    # under lib/default/opiate/.
     if params['path_cooling_nonCIE'].value == 'def_dir':
-        params['path_cooling_nonCIE'].value = os.path.join(os.getcwd(), 'lib/cooling/opiate/')
+        params['path_cooling_nonCIE'].value = str(_REPO_ROOT / 'lib' / 'default' / 'opiate') + os.sep
     else:
         path_cooling = str(params['path_cooling_nonCIE'].value)
         Path(path_cooling).mkdir(parents=True, exist_ok=True)
         params['path_cooling_nonCIE'].value = path_cooling
-    
-    # Cooling directory - CIE
+
+    # Cooling directory - CIE.
+    # Integer-index preset {1, 2, 3} (under ZCloud == 1) selects between the
+    # bundled CIE tables; ZCloud == 0.15 auto-pins to the Sutherland-Dopita
+    # file. All resolved paths live under lib/default/CIE/.
     if params['ZCloud'].value == 1:
         cie_files = {
-            1: 'lib/cooling/CIE/coolingCIE_1_Cloudy.dat',
-            2: 'lib/cooling/CIE/coolingCIE_2_Cloudy_grains.dat',
-            3: 'lib/cooling/CIE/coolingCIE_3_Gnat-Ferland2012.dat'
+            1: 'lib/default/CIE/coolingCIE_1_Cloudy.dat',
+            2: 'lib/default/CIE/coolingCIE_2_Cloudy_grains.dat',
+            3: 'lib/default/CIE/coolingCIE_3_Gnat-Ferland2012.dat'
         }
         cie_choice = int(params['path_cooling_CIE'].value)
         if cie_choice in cie_files:
-            params['path_cooling_CIE'].value = os.path.join(os.getcwd(), cie_files[cie_choice])
+            params['path_cooling_CIE'].value = str(_REPO_ROOT / cie_files[cie_choice])
     elif params['ZCloud'].value == 0.15:
-        params['path_cooling_CIE'].value = os.path.join(
-            os.getcwd(), 'lib/cooling/CIE/coolingCIE_4_Sutherland-Dopita1993.dat'
+        params['path_cooling_CIE'].value = str(
+            _REPO_ROOT / 'lib' / 'default' / 'CIE' / 'coolingCIE_4_Sutherland-Dopita1993.dat'
         )
     
-    # SPS data directory (default: lib/sps/starburst99/, where the legacy
-    # SB99 grid lives). Only used when sps_path is the def_path sentinel.
+    # SPS data directory. Sentinel 'def_dir' resolves to
+    # lib/default/sps/starburst99/, where the shipped 1e6cluster_default.csv
+    # lives. Currently only used as an informational anchor — the def_path
+    # branch below resolves sps_path directly to the bundled CSV without
+    # joining against path_sps.
     if params['path_sps'].value == 'def_dir':
-        params['path_sps'].value = os.path.join(os.getcwd(), 'lib/sps/starburst99/')
+        params['path_sps'].value = str(_REPO_ROOT / 'lib' / 'default' / 'sps' / 'starburst99') + os.sep
     else:
         path_sps = str(params['path_sps'].value)
         Path(path_sps).mkdir(parents=True, exist_ok=True)
         params['path_sps'].value = path_sps
 
     # sps_refmass: reference cluster mass used by f_mass = mCluster / sps_refmass.
-    # Default sentinel 'def_value' falls back to SB99_mass so legacy configs
-    # remain bit-identical. See analysis/sb99-refactor-audit.md §9.
+    # Default sentinel 'def_value' falls back to SB99_mass (1e6) so that the
+    # bundled lib/default/sps/starburst99/1e6cluster_default.csv — generated at SB99_mass
+    # = 1e6 — scales correctly out of the box.
     if params['sps_refmass'].value == 'def_value':
         params['sps_refmass'].value = params['SB99_mass'].value
 
-    # sps_path: full path to the SPS data file. Default sentinel 'def_path'
-    # routes to the legacy SB99 filename grammar (permanent fallback, §9).
-    # Resolving here means the loader sees a single string, never a sentinel.
-    sps_path_is_legacy = (params['sps_path'].value == 'def_path')
-    if sps_path_is_legacy:
-        legacy_filename = _get_legacy_sb99_filename(params)
-        params['sps_path'].value = os.path.join(
-            params['path_sps'].value, legacy_filename
-        )
-        # One-time informational notification — NOT a deprecation warning;
-        # the legacy grammar is a permanent supported fallback.
+    # sps_path: full path to the SPS data file.
+    #
+    # Sentinel 'def_path' resolves to the bundled
+    #   lib/default/sps/starburst99/1e6cluster_default.csv
+    # — an SB99 grid at rotation=1, ZCloud=1 (solar, Z=0.014), BHCUT=120 Msun,
+    # mass=1e6 Msun, exported as CSV. The shipped column layout matches
+    # LEGACY_SB99_COLUMN_MAP (t, Qi, fi, Lbol, Lmech_total, pdot_W, Lmech_W
+    # at positional indices 0..6, with fi in log10 space). The file is
+    # routed through the user-mode loader (which auto-detects and skips the
+    # CSV header); LEGACY_SB99_COLUMN_MAP is injected as the column map so
+    # users do not need to declare sps_col_* lines.
+    #
+    # Setting sps_path to any other value triggers user mode and requires
+    # the user to declare sps_col_<canonical> entries describing their
+    # file's column layout.
+    #
+    # The historical legacy SB99 filename grammar
+    # (_get_legacy_sb99_filename) is no longer wired up under def_path —
+    # see that function's docstring for the rationale.
+    DEFAULT_SPS_CSV = str(_REPO_ROOT / 'lib' / 'default' / 'sps' / 'starburst99' / '1e6cluster_default.csv')
+    sps_path_uses_bundled_default = (params['sps_path'].value == 'def_path')
+    if sps_path_uses_bundled_default:
+        params['sps_path'].value = DEFAULT_SPS_CSV
+        column_map = sps_columns.LEGACY_SB99_COLUMN_MAP
         logger.info(
-            "Using legacy SB99 parameter grammar "
-            f"(SB99_mass={params['SB99_mass'].value}, "
-            f"SB99_rotation={params['SB99_rotation'].value}, "
-            f"SB99_BHCUT={params['SB99_BHCUT'].value}, "
-            f"ZCloud={params['ZCloud'].value}); "
-            f"resolved sps_path = {params['sps_path'].value}"
+            f"Using bundled default SPS file: {params['sps_path'].value} "
+            "(column layout: LEGACY_SB99_COLUMN_MAP — t/Qi/fi/Lbol/"
+            "Lmech_total/pdot_W/Lmech_W at positional indices 0..6)"
         )
     else:
         params['sps_path'].value = str(params['sps_path'].value)
         logger.info(f"Using user-defined sps_path = {params['sps_path'].value}")
-
-    # sps_column_map: dict[canonical -> ColumnSpec] consumed by read_SB99.
-    #   Legacy branch: hardcoded LEGACY_SB99_COLUMN_MAP (the permanent
-    #     fallback; any sps_col_* declarations a user may have left in
-    #     their .param are silently ignored under the legacy grammar).
-    #   User branch: parse sps_col_* declarations into a ColumnSpec dict
-    #     and validate the required-canonical set strictly. On any
-    #     missing required field, raise ValueError with a fillable
-    #     template — see audit §10 PR-2.
-    if sps_path_is_legacy:
-        column_map = sps_columns.LEGACY_SB99_COLUMN_MAP
-    else:
         try:
             column_map = sps_columns.build_user_column_map(params)
             sps_columns.validate_user_column_map(
@@ -495,20 +510,21 @@ def read_param(path2file, write_summary=True):
             # subprocess (stderr captured) or interactively.
             logger.error(f"SPS column map error:\n{err}")
             raise
+
     params['sps_column_map'] = DescribedItem(
         column_map,
         info="SPS column mapping (canonical -> ColumnSpec)",
         ori_units="N/A",
         exclude_from_snapshot=True,
     )
-    # Explicit dispatch flag for read_SB99: True iff sps_path was resolved
-    # from the legacy SB99 grammar (sps_path = def_path). We need this as a
-    # separate boolean because a user-mode column_map may legitimately
-    # contain integer file_column values now (PR-2 dual-mode), so the
-    # ColumnSpec type alone is no longer a reliable signal.
+    # Dispatch flag for read_SB99. The bundled default CSV has a header, so
+    # it must go through the user-mode loader (which auto-detects + skips
+    # headers) even though it uses the LEGACY_SB99_COLUMN_MAP positional
+    # preset. Hence False for the bundled default as well as for explicit
+    # user paths.
     params['sps_layout_is_legacy'] = DescribedItem(
-        sps_path_is_legacy,
-        info="True iff sps_path was resolved from the legacy SB99 grammar",
+        False,
+        info="True iff sps_path was resolved from the legacy SB99 grammar (currently unreachable)",
         ori_units="N/A",
         exclude_from_snapshot=True,
     )
@@ -725,27 +741,11 @@ def read_param(path2file, write_summary=True):
             f"conflicting assignment(s) from Step 6/8/10."
         )
 
-    # =============================================================================
-    # Step 11: Write summary file
-    # =============================================================================
-    
-    if write_summary:
-        now = datetime.now()
-        dt_string = now.strftime("%d/%m/%Y %H:%M:%S")
-        summary_path = os.path.join(path2output, f"{params['model_name'].value}_summary.txt")
-        
-        with open(summary_path, 'w', encoding='utf-8') as f:
-            f.write(f"# {'=' * 77}\n")
-            f.write(f"# Summary of parameters for run: '{params['model_name'].value}'\n")
-            f.write(f"# Units: [Msun, pc, Myr] unless otherwise specified\n")
-            f.write(f"# Created: {dt_string}\n")
-            f.write(f"# {'=' * 77}\n\n")
-            
-            for key, item in params.items():
-                f.write(f"{key:<30}  {item.value}\n")
-        
-        logger.info(f"Summary written to: {summary_path}")
-    
+    # Phase 5 drop: the legacy ``<model_name>_summary.txt`` is no longer
+    # written here.  All run-constants land in ``metadata.json`` (written
+    # by ``DescribedDict.flush()``); ``python -m src._output.show_run``
+    # formats them for human consumption.
+
     return params
 
 
