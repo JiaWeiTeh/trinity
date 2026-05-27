@@ -463,6 +463,31 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
     tmin = params['t_now'].value
     tmax = params['stop_t'].value
 
+    # If the prior phase already advanced past stop_t, there is no work to
+    # do here.  Surface that explicitly instead of silently looping zero
+    # times and reporting termination_reason="unknown".
+    if tmin >= tmax:
+        logger.info(
+            f"Implicit phase skipped: t_now={tmin:.6e} Myr >= stop_t={tmax:.6e} Myr "
+            f"(simulation time limit reached in prior phase)"
+        )
+        params['SimulationEndCode'].value = SimulationEndCode.STOPPING_TIME.code
+        params['SimulationEndReason'].value = (
+            f"Reached stop_t={tmax:.6e} Myr during prior phase"
+        )
+        params['EndSimulationDirectly'].value = True
+        return ImplicitPhaseResults(
+            t=np.array([tmin]),
+            R2=np.array([params['R2'].value]),
+            v2=np.array([params['v2'].value]),
+            Eb=np.array([params['Eb'].value]),
+            T0=np.array([params['T0'].value]),
+            beta=np.array([params['cool_beta'].value]),
+            delta=np.array([params['cool_delta'].value]),
+            termination_reason="skipped_past_stop_t",
+            final_time=tmin,
+        )
+
     # Initialize state
     R2 = params['R2'].value
     v2 = params['v2'].value
@@ -1037,8 +1062,11 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         # If we get here with no termination reason, it's either max_segments or unknown
         termination_reason = "max_segments" if segment_count >= MAX_SEGMENTS else "unknown"
 
-    logger.info(f"Implicit phase completed: {termination_reason}")
-    logger.info(f"  Final time: {t_now:.6e} Myr, Segments: {segment_count}")
+    # "unknown" means we fell through every known exit path — a real bug
+    # surface, not a routine completion.  Surface it loudly.
+    completion_log = logger.warning if termination_reason == "unknown" else logger.info
+    completion_log(f"Implicit phase completed: {termination_reason}")
+    completion_log(f"  Final time: {t_now:.6e} Myr, Segments: {segment_count}")
 
     return ImplicitPhaseResults(
         t=np.array(t_results),
