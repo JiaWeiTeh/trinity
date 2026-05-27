@@ -67,7 +67,8 @@ def _make_params(out_dir: Path, *, include_legacy_arrays: bool = False
     _scalars: dict[str, object] = {
         # Identifiers
         "model_name": "test_run",
-        "mCloud": 1.0e6,
+        "mCloud": 1.0e6,           # post-SFE residual
+        "mCloud_input": 1.01e6,    # pre-SFE input = mCloud + mCluster
         "sfe": 0.01,
         "ZCloud": 1.0,
         "include_PHII": True,

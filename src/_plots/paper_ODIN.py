@@ -31,6 +31,7 @@ from src._output.trinity_reader import (
     load_output, find_all_simulations,
     parse_simulation_params, info_simulations
 )
+from src._functions.unit_conversions import INV_CONV
 
 from src._plots.plot_markers import (          # noqa: E402
     add_plot_markers, get_marker_legend_handles,
@@ -380,7 +381,14 @@ def load_simulation_at_time(data_path: Path, config: AnalysisConfig) -> Optional
         if len(output) == 0:
             return None
 
-        # Parse folder name for parameters
+        # Folder-name tags drive the filename/grid layout (legitimate use
+        # of the sweep convention) — kept as strings.  Scientific numerics
+        # below come from metadata.json via snapshot rehydration: the
+        # snapshot-side mCloud is the *post-SFE residual* (compatible with
+        # ``compute_stellar_mass``'s M_star = sfe * mCloud / (1 - sfe)),
+        # sfe is the exact .param value (not the 3-digit folder rounding),
+        # and nCore is converted from code units back to cm^-3 to match
+        # the historical axis convention.
         folder_name = data_path.parent.name
         params = parse_simulation_params(folder_name)
 
@@ -391,10 +399,10 @@ def load_simulation_at_time(data_path: Path, config: AnalysisConfig) -> Optional
         sfe_str = params['sfe']
         nCore_str = params['ndens']
 
-        # Convert to floats
-        mCloud_float = float(mCloud_str)
-        sfe_float = int(sfe_str) / 100.0  # sfe is stored as percentage
-        nCore_float = float(nCore_str)
+        snap_consts = output[0]
+        mCloud_float = float(snap_consts.get('mCloud'))
+        sfe_float = float(snap_consts.get('sfe'))
+        nCore_float = float(snap_consts.get('nCore')) * INV_CONV.ndens_au2cgs
 
         eval_time = config.obs.t_obs
 

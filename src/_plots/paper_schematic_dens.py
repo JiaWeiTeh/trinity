@@ -27,7 +27,7 @@ from pathlib import Path as _Path
 _sys.path.insert(0, str(_Path(__file__).parent.parent.parent))
 from src._plots.plot_base import FIG_DIR
 from src._output.trinity_reader import (
-    load_output, find_all_simulations, parse_simulation_params,
+    load_output, find_all_simulations,
 )
 from src._plots.grid_template import filter_sim_files_by_phii
 from src._functions.unit_conversions import CONV, INV_CONV, CGS
@@ -658,10 +658,14 @@ Examples:
         bubble_snap = bub_snap
         is_partial = partial
 
-        # Extract nCore from folder name
-        parsed = parse_simulation_params(folder_name)
-        if parsed and 'ndens' in parsed:
-            nCore_cgs = float(parsed['ndens'])
+        # Read nCore from metadata.json (rehydrated into every snapshot's
+        # data dict by TrinityOutput._rehydrate_metadata).  In code units
+        # (pc^-3); convert to cm^-3 for the cloud-density profile.  Folder
+        # regex previously used here lost precision when the sweep used a
+        # non-grid nCore value.
+        nCore_au = output[0].get('nCore')
+        if nCore_au is not None:
+            nCore_cgs = float(nCore_au) * NDENS_AU2CGS
 
         if partial:
             logger.info(
