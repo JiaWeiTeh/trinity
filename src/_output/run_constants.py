@@ -64,7 +64,8 @@ from __future__ import annotations
 RUN_CONST_KEYS: tuple[str, ...] = (
     # --- Identifiers / cloud inputs ---
     "model_name",
-    "mCloud",
+    "mCloud",        # post-SFE residual cloud mass (mutated in read_param)
+    "mCloud_input",  # pre-SFE input GMC mass (= mCloud + mCluster)
     "sfe",
     "ZCloud",
     "include_PHII",

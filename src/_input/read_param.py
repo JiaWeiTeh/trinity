@@ -396,13 +396,30 @@ def read_param(path2file):
     if params['model_name'].value == "default":
         params['model_name'].value = filename
     
-    # Cluster and cloud masses after star formation
-    mCluster = params['mCloud'].value * params['sfe'].value
-    mCloud_after_SF = params['mCloud'].value - mCluster
+    # Cluster and cloud masses after star formation.
+    #
+    # NOTE: params['mCloud'] is rebound here.  Upstream of this block —
+    # in the .param file and the folder name — mCloud is the pre-SFE
+    # input GMC mass.  Downstream — throughout the simulation, in
+    # metadata.json, and in every rehydrated snapshot — it is the
+    # post-SFE residual cloud mass.  The pre-SFE input is preserved as
+    # mCloud_input and the star-formed portion as mCluster; invariant:
+    # mCloud_input == mCloud + mCluster.  Downstream analysis that
+    # wants the input value should read mCloud_input, not back out
+    # mCloud / (1 - sfe).
+    mCloud_input_value = params['mCloud'].value
+    mCluster = mCloud_input_value * params['sfe'].value
+    mCloud_after_SF = mCloud_input_value - mCluster
     params['mCloud'].value = mCloud_after_SF
+    params['mCloud_input'] = DescribedItem(
+        value=mCloud_input_value,
+        info=("Pre-SFE input cloud mass (= mCloud + mCluster). "
+              "Matches the .param file and the sweep folder-name tag."),
+        ori_units="Msun"
+    )
     params['mCluster'] = DescribedItem(
         value=mCluster,
-        info="Cluster mass (mCloud * sfe)",
+        info="Cluster mass (mCloud_input * sfe)",
         ori_units="Msun"
     )
     
