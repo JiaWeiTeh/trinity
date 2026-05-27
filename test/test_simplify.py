@@ -492,7 +492,7 @@ class TestBudgetContract:
             xo_floor, _ = _simplify(x, y, nmin=20)
         # Both should produce the same output: 5 → clamped → 20.
         assert len(xo_low) == len(xo_floor)
-        assert len(xo_low) <= 20
+        assert len(xo_low) <= 20 + 1   # floor of 20 segments includes both endpoints
 
     @pytest.mark.parametrize("nmin", [100, 200, 500, 1000])
     def test_budget_respected_for_smooth_curve(self, nmin):
