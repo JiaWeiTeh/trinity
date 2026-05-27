@@ -741,7 +741,6 @@ class DescribedDict(dict):
         - Else: append new snapshots
         """
         import logging
-        import os
         logger = logging.getLogger(__name__)
 
         from src._output.run_constants import (
