@@ -28,7 +28,7 @@ import re
 from dataclasses import dataclass
 from fractions import Fraction
 from pathlib import Path
-from typing import Any, Dict, Iterator, List, Tuple, Union, Optional
+from typing import Any, Dict, Iterable, Iterator, List, Tuple, Union, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -518,11 +518,14 @@ def generate_combinations_from_config(config: SweepConfig) -> Iterator[Tuple[Dic
                     tuple_base[param_name] = value
 
                 # Generate Cartesian product of sweep params
+                # Both the tuple-varied and sweep-varied parameters change
+                # across runs, so both feed the run-name uniqueness logic.
+                varied_keys = list(config.tuple_params) + sweep_keys
                 for sweep_combo in itertools.product(*sweep_value_lists):
                     params = tuple_base.copy()
                     for key, value in zip(sweep_keys, sweep_combo):
                         params[key] = value
-                    name = generate_run_name(params)
+                    name = generate_run_name(params, varied_keys)
                     yield params, name
         else:
             # Pure tuple mode: use explicit combinations only
@@ -530,7 +533,7 @@ def generate_combinations_from_config(config: SweepConfig) -> Iterator[Tuple[Dic
                 params = config.base_params.copy()
                 for param_name, value in zip(config.tuple_params, values):
                     params[param_name] = value
-                name = generate_run_name(params)
+                name = generate_run_name(params, config.tuple_params)
                 yield params, name
     else:
         # Pure Cartesian mode: use existing logic
@@ -574,17 +577,117 @@ def generate_combinations(
         for key, value in zip(keys, combination):
             params[key] = value
 
-        # Generate output name
-        name = generate_run_name(params)
+        # Generate output name (pass the swept keys so arbitrary varied
+        # parameters get a unique generic suffix).
+        name = generate_run_name(params, keys)
 
         yield params, name
 
 
-def generate_run_name(params: Dict[str, Any]) -> str:
+# Parameters that already have a curated, human-readable slot in the run
+# name (either in the base name or as a special-cased suffix). Any *other*
+# swept parameter falls through to the generic suffix logic below.
+_NAMED_RUN_NAME_KEYS = frozenset({
+    'mCloud', 'sfe', 'nCore',
+    'dens_profile', 'densPL_alpha', 'densBE_Omega',
+    'include_PHII',
+})
+
+# Total length budget for a generated run name. Most filesystems cap a single
+# path component at 255 bytes; we reserve ~55 for the ``_modified`` tag,
+# ``.param``/``_summary.txt`` siblings, and OS overhead.
+_MAX_RUN_NAME_LEN = 200
+
+# Anything outside this set is sanitised to ``-`` in a generic value token.
+# Keeps alphanumerics plus the printable scaffolding actually needed by the
+# existing convention (`.` survives the sanitiser then becomes `p`; `+`/`-`
+# stay for scientific notation and negatives like `_PL-2`; `_` would split
+# tokens visually so we don't allow it through the value).
+_SAFE_VALUE_CHARS_RE = re.compile(r'[^A-Za-z0-9.+\-]')
+
+
+def _reject_unsafe_sweep_value(key: str, value: Any) -> None:
+    """
+    Raise ``ValueError`` if a swept value would be unsafe to embed in a
+    folder name. Two categories are hard-rejected (no sanitisation):
+
+    1. Anything that looks like a filepath (``/``, ``\\``, or ``..``). The
+       suffix would otherwise inject path separators into the run folder,
+       silently creating nested directories or escaping the sweep root. Per
+       project policy: sweeping filepath-typed parameters is not supported —
+       set the path once in the base param file instead.
+    2. Control characters (ASCII < 32 or 127). These render unpredictably
+       across terminals and tools.
+
+    Non-string values bypass this check (numbers/bools can't contain unsafe
+    chars). Sanitisation of merely-ugly characters (spaces, brackets,
+    wildcards, unicode) happens later in ``_generic_suffix_token``.
+    """
+    if not isinstance(value, str):
+        return
+
+    for bad, why in (('..', 'parent-directory escape'),
+                     ('/', 'path separator'),
+                     ('\\', 'path separator')):
+        if bad in value:
+            raise ValueError(
+                f"Sweep value for {key!r} contains {bad!r} ({why}): "
+                f"{value!r}. The value becomes part of the run folder name, "
+                f"so filepath-typed parameters cannot be swept. Set this "
+                f"parameter once in the base param file instead, and sweep "
+                f"only scalar quantities."
+            )
+
+    if any(ord(c) < 32 or ord(c) == 127 for c in value):
+        raise ValueError(
+            f"Sweep value for {key!r} contains a control character: "
+            f"{value!r}. Folder names must be printable."
+        )
+
+
+def _generic_suffix_token(key: str, value: Any) -> str:
+    """
+    Build a single ``{key}{value}`` token for an arbitrary swept parameter
+    that has no curated slot in the run name.
+
+    The token is kept as one clean, filesystem-friendly chunk: snake_case keys
+    become camelCase, decimal points in floats become ``p`` (mirroring the
+    fact that the curated suffixes never contain ``.`` or ``_``), and any
+    char outside ``[A-Za-z0-9.+-]`` is collapsed to ``-`` so spaces, brackets,
+    shell wildcards, and unicode never leak into the folder name. Minus signs
+    are preserved, matching the existing ``_PL-2`` convention.
+
+    Truly unsafe values (path separators, ``..``, control chars) are rejected
+    upstream by :func:`_reject_unsafe_sweep_value`.
+
+    Examples
+    --------
+    - coll_counter=True -> "collCounterTrue"
+    - Z=0.5            -> "Z0p5"
+    - kB=3             -> "kB3"
+    - label="my run"   -> "labelmy-run"
+    """
+    _reject_unsafe_sweep_value(key, value)
+
+    parts = key.split('_')
+    key_token = parts[0] + ''.join(p.capitalize() for p in parts[1:])
+
+    # bool -> "True"/"False"; float "0.5" later -> "0p5"; minus signs kept.
+    val_str = str(value)
+    val_safe = _SAFE_VALUE_CHARS_RE.sub('-', val_str)
+    val_token = val_safe.replace('.', 'p')
+
+    return f"{key_token}{val_token}"
+
+
+def generate_run_name(
+    params: Dict[str, Any],
+    swept_keys: Optional[Iterable[str]] = None,
+) -> str:
     """
     Generate output folder name following existing TRINITY convention.
 
-    Format: {mCloud}_sfe{sfe*100:03d}_n{nCore}[_profile_suffix][_PHII_suffix]
+    Format: {mCloud}_sfe{sfe*100:03d}_n{nCore}[_profile][_PHII][_generic...]
     Examples:
         - 1e7_sfe010_n1e4 (default, no suffixes)
         - 1e5_sfe001_n1e4_PL0 (powerlaw alpha=0)
@@ -593,12 +696,20 @@ def generate_run_name(params: Dict[str, Any]) -> str:
         - 1e7_sfe010_n1e4_yesPHII (include_PHII=True explicit in sweep)
         - 1e7_sfe010_n1e4_noPHII  (include_PHII=False explicit in sweep)
         - 1e5_sfe001_n1e4_PL0_noPHII (combined suffixes)
+        - 1e5_sfe001_n1e4_Z0p5 (generic suffix for an arbitrary swept key)
 
     Parameters
     ----------
     params : dict
         Parameter dictionary containing mCloud, sfe, nCore, and optionally
         dens_profile, densPL_alpha, densBE_Omega
+    swept_keys : iterable of str, optional
+        Names of the parameters that actually vary across the sweep. Any swept
+        key without a curated slot in the name (i.e. not in
+        ``_NAMED_RUN_NAME_KEYS``) gets a generic ``_{key}{value}`` suffix so
+        distinct combinations never collapse onto the same folder name. When
+        omitted, only the curated base name and suffixes are produced (back-
+        compatible with single-run callers).
 
     Returns
     -------
@@ -641,6 +752,27 @@ def generate_run_name(params: Dict[str, Any]) -> str:
     # key -> no tag (runtime falls back to default.param).
     if 'include_PHII' in params:
         base_name += "_yesPHII" if params['include_PHII'] else "_noPHII"
+
+    # Generic suffixes for any *other* swept parameter (e.g. Z, kB, a boolean
+    # flag). Without this, two combinations that differ only in such a key
+    # would generate the same folder name and silently overwrite each other.
+    # Sorted for deterministic ordering regardless of sweep-file key order.
+    if swept_keys:
+        for key in sorted(swept_keys):
+            if key in _NAMED_RUN_NAME_KEYS or key not in params:
+                continue
+            base_name += "_" + _generic_suffix_token(key, params[key])
+
+    if len(base_name) > _MAX_RUN_NAME_LEN:
+        contributing = sorted(swept_keys) if swept_keys else []
+        raise ValueError(
+            f"Generated run name is too long ({len(base_name)} > "
+            f"{_MAX_RUN_NAME_LEN} chars): {base_name!r}. Filesystems cap a "
+            f"single path component at ~255 bytes and TRINITY also writes "
+            f"`_modified` / `_summary.txt` siblings, so the cap is set lower. "
+            f"Shorten one of the swept parameter names or values, or reduce "
+            f"the number of swept dimensions. Swept keys: {contributing}."
+        )
 
     return base_name
 
@@ -806,6 +938,75 @@ if __name__ == "__main__":
         name = generate_run_name(params)
         status = "PASS" if name == expected else "FAIL"
         print(f"  {status}: generate_run_name({params}) = '{name}' (expected '{expected}')")
+
+    # Generic suffixes for arbitrary swept keys (passed via swept_keys)
+    generic_cases = [
+        ({'mCloud': 1e5, 'sfe': 0.01, 'nCore': 1e4, 'Z': 0.5}, ['Z'],
+         "1e5_sfe001_n1e4_Z0p5"),
+        ({'mCloud': 1e5, 'sfe': 0.01, 'nCore': 1e4, 'kB': 3}, ['kB'],
+         "1e5_sfe001_n1e4_kB3"),
+        ({'mCloud': 1e5, 'sfe': 0.01, 'nCore': 1e4, 'coll_counter': True},
+         ['coll_counter'], "1e5_sfe001_n1e4_collCounterTrue"),
+        # Multiple generic keys -> sorted, deterministic order
+        ({'mCloud': 1e5, 'sfe': 0.01, 'nCore': 1e4, 'Z': 1.0, 'kB': 2},
+         ['Z', 'kB'], "1e5_sfe001_n1e4_Z1p0_kB2"),
+        # A curated key passed in swept_keys must NOT be double-encoded
+        ({'mCloud': 1e5, 'sfe': 0.01, 'nCore': 1e4, 'include_PHII': True},
+         ['include_PHII'], "1e5_sfe001_n1e4_yesPHII"),
+    ]
+    for params, swept, expected in generic_cases:
+        name = generate_run_name(params, swept)
+        status = "PASS" if name == expected else "FAIL"
+        print(f"  {status}: generate_run_name({params}, {swept}) = '{name}' (expected '{expected}')")
+
+    # Sanitisation cases: ugly-but-safe chars get collapsed to '-'
+    sanitise_cases = [
+        ({'mCloud': 1e5, 'sfe': 0.01, 'nCore': 1e4, 'label': 'my run'},
+         ['label'], "1e5_sfe001_n1e4_labelmy-run"),
+        ({'mCloud': 1e5, 'sfe': 0.01, 'nCore': 1e4, 'tag': 'a[b]*c?'},
+         ['tag'], "1e5_sfe001_n1e4_taga-b--c-"),
+        ({'mCloud': 1e5, 'sfe': 0.01, 'nCore': 1e4, 'note': 'α=1'},
+         ['note'], "1e5_sfe001_n1e4_note--1"),
+    ]
+    for params, swept, expected in sanitise_cases:
+        name = generate_run_name(params, swept)
+        status = "PASS" if name == expected else "FAIL"
+        print(f"  {status}: sanitise: generate_run_name({params}, {swept}) = '{name}' (expected '{expected}')")
+
+    # Hard-reject cases: unsafe values must raise ValueError
+    print("\nTesting generate_run_name unsafe-value rejection:")
+    reject_cases = [
+        ({'mCloud': 1e5, 'sfe': 0.01, 'nCore': 1e4, 'sps_path': 'lib/a.csv'},
+         ['sps_path'], 'path separator'),
+        ({'mCloud': 1e5, 'sfe': 0.01, 'nCore': 1e4, 'prefix': '../escape'},
+         ['prefix'], 'parent-directory escape'),
+        ({'mCloud': 1e5, 'sfe': 0.01, 'nCore': 1e4, 'win': r'C:\foo'},
+         ['win'], 'path separator'),
+        ({'mCloud': 1e5, 'sfe': 0.01, 'nCore': 1e4, 'ctrl': 'a\tb'},
+         ['ctrl'], 'control character'),
+    ]
+    for params, swept, expect_msg in reject_cases:
+        try:
+            generate_run_name(params, swept)
+        except ValueError as e:
+            ok = expect_msg in str(e)
+            status = "PASS" if ok else "FAIL"
+            print(f"  {status}: rejected with msg containing {expect_msg!r}: {e}")
+        else:
+            print(f"  FAIL: expected ValueError for params={params}")
+
+    # Length guard: a synthetic huge value triggers the cap
+    print("\nTesting generate_run_name length guard:")
+    huge_params = {'mCloud': 1e5, 'sfe': 0.01, 'nCore': 1e4,
+                   'huge': 'x' * 300}
+    try:
+        generate_run_name(huge_params, ['huge'])
+    except ValueError as e:
+        ok = 'too long' in str(e)
+        status = "PASS" if ok else "FAIL"
+        print(f"  {status}: length guard fired: {str(e)[:120]}...")
+    else:
+        print("  FAIL: expected ValueError for oversized run name")
 
     # Test parse_tuple_line
     print("\nTesting parse_tuple_line:")
