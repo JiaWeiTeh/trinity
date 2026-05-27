@@ -115,9 +115,9 @@ def _final_state_section(final_state: Optional[dict]) -> list[str]:
     """Render the 'Final state' section.
 
     Applies unit conversions for human reading (km/s for ``v2``,
-    cm⁻³ for ``shell_nMax``) — same convention used by
-    ``simulationEnd.txt``.  The internal value is shown in parentheses
-    for traceability.
+    cm⁻³ for ``shell_nMax``) — same convention the legacy
+    ``simulationEnd.txt`` used.  The internal value is shown in
+    parentheses for traceability.
     """
     if not final_state:
         return [_HR_LIGHT, "Final state", _HR_LIGHT,
@@ -319,8 +319,9 @@ def format_run_summary(run_dir: Path) -> str:
     Parameters
     ----------
     run_dir : Path
-        Directory containing ``dictionary.jsonl`` (and optionally
-        ``metadata.json`` and/or ``simulationEnd.txt``).
+        Directory containing ``metadata.json`` + ``dictionary.jsonl``
+        (v4+).  Pre-Phase-5 runs with a legacy ``simulationEnd.txt``
+        also work via the back-compat fallback.
 
     Returns
     -------

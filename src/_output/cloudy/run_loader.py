@@ -48,9 +48,9 @@ class RunBundle:
     model_name: str
     metadata: Mapping[str, Any]      # raw parsed metadata.json
     summary: Mapping[str, Any]       # run-constants (metadata.json v2+;
-                                     # legacy <model>_summary.txt v1)
+                                     # pre-Phase-5 <model>_summary.txt)
     end_state: Mapping[str, Any]     # metadata.json[termination] (v3+)
-                                     # or parsed simulationEnd.txt (legacy)
+                                     # or pre-Phase-5 simulationEnd.txt
     output: TrinityOutput            # opened from find_data_path(run_dir)
 
 
@@ -61,8 +61,11 @@ def load_run(run_dir: str | Path) -> RunBundle:
     Parameters
     ----------
     run_dir
-        Path to the directory containing metadata.json, the summary file,
-        simulationEnd.txt, and dictionary.jsonl.
+        Path to the directory containing ``metadata.json`` and
+        ``dictionary.jsonl`` (v4+).  Pre-Phase-5 runs may additionally
+        carry ``<model>_summary.txt`` / ``simulationEnd.txt`` — those
+        are picked up automatically via the back-compat text-parse
+        fallback.
 
     Raises
     ------
@@ -205,10 +208,10 @@ def _parse_simulation_end(text: str) -> dict[str, Any]:
     this fallback will be removed in Phase 6.
     """
     warnings.warn(
-        "Parsing legacy simulationEnd.txt — run pre-dates Phase 2 of "
-        "the metadata migration.  Re-run to populate "
-        "metadata.json[termination]; the text parser will be removed in "
-        "Phase 6.",
+        "Parsing legacy simulationEnd.txt — run pre-dates Phase 5 of "
+        "the metadata migration (or Phase 2, for the termination block "
+        "itself).  Re-run to populate metadata.json[termination]; the "
+        "text parser will be removed in Phase 6.",
         DeprecationWarning,
         stacklevel=2,
     )

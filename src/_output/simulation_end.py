@@ -63,8 +63,8 @@ class SimulationEndCode(Enum):
     - 50-59: Inspection required (completed, but warrants a human look)
     - 99:    Unknown/unhandled termination (fallback safety net)
 
-    Each member carries (code, outcome_token). The outcome token is the
-    short categorical label written to simulationEnd.txt as 'Outcome:'.
+    Each member carries (code, outcome_token). The outcome token is
+    mirrored into ``metadata.json[termination].outcome``.
     """
     # Clean (0-9)
     SHELL_DISSOLVED = (0, "shell_dissolved")
@@ -102,7 +102,7 @@ class SimulationEndCode(Enum):
 
     @property
     def outcome(self) -> str:
-        """Short categorical label written to simulationEnd.txt."""
+        """Short categorical label mirrored into ``metadata.json[termination].outcome``."""
         return self._outcome
 
     def is_clean(self) -> bool:
@@ -253,8 +253,8 @@ def _build_final_state_block(params: Dict[str, Any]) -> Dict[str, Any]:
         ``termination.exit_code``).
 
     Values are stored in internal units (pc/Myr, pc⁻³ …) to match
-    ``Snapshot.get(key)``.  The text file in ``simulationEnd.txt``
-    still applies km/s and cm⁻³ conversions for human readability.
+    ``Snapshot.get(key)``.  ``python -m src._output.show_run`` re-
+    applies km/s and cm⁻³ conversions for human readability.
 
     NaN / non-finite values are kept as-is — ``json.dump`` emits them
     as ``NaN``, which Python's ``json.load`` reads back faithfully
@@ -318,7 +318,8 @@ def read_simulation_end(output_dir: str) -> Optional[Dict[str, Any]]:
     Parameters
     ----------
     output_dir : str
-        Directory containing ``metadata.json`` and/or ``simulationEnd.txt``.
+        Directory containing ``metadata.json`` (and optionally a legacy
+        ``simulationEnd.txt`` from a pre-Phase-5 run).
 
     Returns
     -------
@@ -326,7 +327,7 @@ def read_simulation_end(output_dir: str) -> Optional[Dict[str, Any]]:
         Keys: ``exit_code``, ``outcome``, ``detail``, ``timestamp``,
         ``model``.  Returns ``None`` if neither source is present.
     """
-    # --- Preferred path: metadata.json[termination] (Phase 2+) -----
+    # --- Preferred path: metadata.json[termination] (v3+ schema) -----
     try:
         from src._output._metadata_io import read_metadata
         metadata = read_metadata(Path(output_dir))
@@ -481,30 +482,6 @@ def _load_last_snapshots(output_dir: str, n: int = 2) -> List[Dict[str, Any]]:
             continue
 
     return snapshots
-
-
-def _format_value(val: Any, precision: int = 6) -> str:
-    """Format a value for display."""
-    if val is None:
-        return "None"
-    if isinstance(val, bool):
-        return str(val)
-    if isinstance(val, str):
-        return val
-    if isinstance(val, (list, np.ndarray)):
-        arr = np.asarray(val)
-        if arr.size == 0:
-            return "[]"
-        if arr.size <= 5:
-            return str(arr.tolist())
-        return f"[{arr[0]:.4g}, {arr[1]:.4g}, ... {arr[-1]:.4g}] (len={arr.size})"
-    if isinstance(val, float):
-        if abs(val) < 1e-3 or abs(val) > 1e4:
-            return f"{val:.{precision}e}"
-        return f"{val:.{precision}f}"
-    if isinstance(val, int):
-        return str(val)
-    return str(val)
 
 
 def _compute_change(old_val: Any, new_val: Any) -> Tuple[str, float, bool]:

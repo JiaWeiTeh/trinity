@@ -160,7 +160,6 @@ def _parse_summary(sim_folder: Path) -> dict:
     metadata_path = sim_folder / "metadata.json"
     if metadata_path.is_file():
         try:
-            import json
             with open(metadata_path) as f:
                 md = json.load(f)
             if md.get("_metadata_version", 1) >= 2:
