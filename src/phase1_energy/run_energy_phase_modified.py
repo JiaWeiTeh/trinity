@@ -235,7 +235,6 @@ def run_energy(params):
         params['F_ram_wind'].value = feedback.pdot_W
         params['F_ram_SN'].value = feedback.pdot_SN
 
-
         # =============================================================================
         # 6. Save snapshot BEFORE ODE — all values consistent at t_now
         # =============================================================================

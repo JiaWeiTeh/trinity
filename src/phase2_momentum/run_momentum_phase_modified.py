@@ -662,7 +662,6 @@ def run_phase_momentum(params) -> MomentumPhaseResults:
         P_ram = get_bubbleParams.pRam(R2, Lmech_total, v_mech_total)
         params['Pb'].value = P_ram
 
-
         # ---------------------------------------------------------------------
         # Save snapshot BEFORE ODE - all values are consistent at t_now
         # ---------------------------------------------------------------------

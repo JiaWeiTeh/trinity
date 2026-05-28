@@ -703,7 +703,6 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         params['F_ram_wind'].value = feedback.pdot_W
         params['F_ram_SN'].value = feedback.pdot_SN
 
-
         # ---------------------------------------------------------------------
         # Save snapshot BEFORE ODE - all values are consistent at t_now
         # ---------------------------------------------------------------------
