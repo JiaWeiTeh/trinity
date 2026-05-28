@@ -36,7 +36,7 @@ def display():
     print(f'\t\t         - \033[1m\033[96mBold text{cpr.END} indicates that a file is saved.')
     print(f'\t\t         - {cpr.WARN}Warning message{cpr.END}. Code runs still.')
     print(f'\t\t         - {cpr.FAIL}Error encountered.{cpr.END} Code terminates.\n')
-    print('\t\t      [Version 3.0] 2022. All rights reserved.')
+    print('\t\t      [Version 1.0.0] 2026. All rights reserved.')
     print('\t\t      --------------------------------------------------')
 
     return
@@ -51,7 +51,7 @@ def show_logo():
     _ _\     /_ _      \ \_\  \ \_\ \_\  \ \_\  \ \_\\"\_\  \ \_\    \ \_\  \/\_____\
        /_   _\          \/_/   \/_/ /_/   \/_/   \/_/ \/_/   \/_/     \/_/   \/_____/
      .'  \ /  `.
-          '             © J.W. Teh, R.S. Klessen
+          '             © J.W. Teh, R.S. Klessen, S.C.O. Glover, K. Kreckel
         """)
 
     return
