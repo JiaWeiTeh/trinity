@@ -597,7 +597,6 @@ def read_param(path2file):
     params['n_IF_ODE'] = DescribedItem(0.0, info="Raw ODE-derived n_IF (same as n_IF, kept for diagnostics)", ori_units="1/pc**3")
     params['R_IF'] = DescribedItem(0.0, info="Radius of ionization front", ori_units="pc")
     params['n_IF_Str'] = DescribedItem(0.0, info="Stroemgren ionization balance density (Lancaster+2025), sole source of P_HII", ori_units="1/pc**3")
-    params['zeta'] = DescribedItem(1.0, info="WBB vs PIR dominance ratio (Lancaster+2025)", ori_units=None)
     params['P_HII'] = DescribedItem(0.0, info="HII pressure from Stroemgren ionization balance in shell (n_IF_Str)", ori_units="Msun/Myr**2/pc")
     params['P_drive'] = DescribedItem(0.0, info="Total driving pressure", ori_units="Msun/Myr**2/pc")
     params['P_ram'] = DescribedItem(0.0, info="Ram pressure from freely-streaming wind", ori_units="Msun/Myr**2/pc")
