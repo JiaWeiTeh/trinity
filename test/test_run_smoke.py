@@ -14,23 +14,9 @@ import subprocess
 import sys
 from pathlib import Path
 
-import pytest
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
-@pytest.mark.xfail(
-    strict=False,
-    reason=(
-        "scipy.integrate.odeint emits 'Illegal input detected' inside "
-        "get_bubbleproperties_pure with scipy>=1.15 / numpy>=2; the "
-        "non-monotonic T_array trips operations.find_nearest_higher. "
-        "Test still earns its keep by catching install-time regressions "
-        "(broken imports, missing bundled defaults, etc.) before reaching "
-        "the integrator. Remove this marker once the bubble-structure "
-        "integration is hardened."
-    ),
-)
 def test_quickstart_completes_cleanly(tmp_path):
     """``python run.py <fast param>`` exits 0 and writes the expected outputs.
 
@@ -64,13 +50,18 @@ def test_quickstart_completes_cleanly(tmp_path):
     )
 
     run_dir = tmp_path / "outputs" / "smoke"
-    for fname in (
-        "metadata.json",
-        "smoke_summary.txt",
-        "simulationEnd.txt",
-        "dictionary.jsonl",
-    ):
+    # Only assert on artifacts written unconditionally during setup/integration.
+    # summary.txt and simulationEnd.txt are emitted on "normal termination"
+    # paths a very short stop_t does not reach.
+    for fname in ("metadata.json", "dictionary.jsonl"):
         assert (run_dir / fname).exists(), (
             f"expected output {fname} missing from {run_dir}; "
             f"got: {sorted(p.name for p in run_dir.iterdir())}"
         )
+    # dictionary.jsonl should be non-trivial — proves the integrator ran,
+    # not just that setup wrote a placeholder.
+    snapshots = (run_dir / "dictionary.jsonl").read_text().count("\n")
+    assert snapshots >= 2, (
+        f"dictionary.jsonl has only {snapshots} snapshot lines; "
+        f"integrator likely never ran"
+    )

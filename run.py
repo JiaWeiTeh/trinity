@@ -53,7 +53,7 @@ TRINITY_ROOT = Path(__file__).parent.resolve()
 # Exclusive upper major for each core dependency (matches requirements.txt).
 # TRINITY is tested below these; a newer major may have breaking changes.
 _DEP_MAX_MAJOR = {
-    'numpy': 3, 'scipy': 2, 'astropy': 8, 'matplotlib': 4, 'pandas': 3,
+    'numpy': 2, 'scipy': 2, 'astropy': 8, 'matplotlib': 4, 'pandas': 3,
 }
 
 
