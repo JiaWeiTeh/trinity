@@ -51,7 +51,7 @@ def show_logo():
     _ _\     /_ _      \ \_\  \ \_\ \_\  \ \_\  \ \_\\"\_\  \ \_\    \ \_\  \/\_____\
        /_   _\          \/_/   \/_/ /_/   \/_/   \/_/ \/_/   \/_/     \/_/   \/_____/
      .'  \ /  `.
-          '             © J.W. Teh, R.S. Klessen
+          '             © J.W. Teh, R.S. Klessen, S.C.O. Glover, K. Kreckel
         """)
 
     return
