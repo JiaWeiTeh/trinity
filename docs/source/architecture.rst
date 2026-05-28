@@ -34,7 +34,7 @@ The source tree under ``src/`` is split into four layers:
   owns its own ODE right-hand side and its own exit condition.
 * **Shared physics modules** (``phase_general/``,
   ``bubble_structure/``, ``shell_structure/``,
-  ``cloud_properties/``, ``sb99/``, ``cooling/``,
+  ``cloud_properties/``, ``sps/``, ``cooling/``,
   ``_functions/``). Pure functions that compute bubble
   structure, shell structure, cloud density and mass profiles,
   stellar feedback from Starburst99 tables, cooling functions,
@@ -155,7 +155,7 @@ that wraps the raw value together with two pieces of metadata:
 (the original-unit label, e.g. ``"pc"``, ``"Msun"``,
 ``"1/cm**3"``). A per-item ``exclude_from_snapshot`` flag marks
 keys that are not persisted to disk — used for large auxiliary
-objects such as SB99 interpolation tables that can be rebuilt on
+objects such as SPS interpolation tables that can be rebuilt on
 load.
 
 Snapshots are captured through a two-stage *buffer → flush*

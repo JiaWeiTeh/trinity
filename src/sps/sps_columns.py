@@ -10,12 +10,12 @@ This module is the single source of truth for:
   - which are mass-scaled (f_mass = mCluster / sps_refmass)
   - the canonical AU unit each column ends up in
   - the conversion factor from a declared unit string to canonical AU
-  - the legacy SB99 7-column positional preset (the permanent fallback)
+  - the default 7-column positional preset (the permanent fallback)
   - parsing of sps_col_<canonical> declarations from .param
 
 Used by:
   - src/_input/read_param.py   (builds and validates params['sps_column_map'])
-  - src/sb99/read_SB99.py      (loads the file via the column map)
+  - src/sps/read_sps.py      (loads the file via the column map)
 
 Background: see analysis/sb99-refactor-audit.md, sections 9 (legacy as
 permanent fallback) and 10 PR-2 (column-mapping design).
@@ -39,7 +39,7 @@ class ColumnSpec:
 
     file_column : str or int
         Column identifier. A string (header-row name) for user-defined
-        sps_path. An int (positional index) for the legacy SB99 preset.
+        sps_path. An int (positional index) for the default SPS preset.
     units : str
         Declared unit string. Must be a key in UNIT_CONVERSIONS[canonical].
     log : bool
@@ -57,7 +57,7 @@ class CanonicalSpec:
     mass_scaled: bool
     required: bool
     derivation: Optional[str] = None  # human-readable note; runtime derivation
-                                      # lives in read_SB99.read_SB99 itself.
+                                      # lives in read_sps.read_sps itself.
 
 
 # Canonical AU units the loader produces, regardless of what the file declares.
@@ -163,7 +163,7 @@ UNIT_CONVERSIONS: Dict[str, Dict[str, float]] = {
 #   col 4: log10 Lmech_total[erg/s](log)
 #   col 5: log10 pdot_W [g*cm/s^2](log)
 #   col 6: log10 Lmech_W [erg/s]  (log)
-LEGACY_SB99_COLUMN_MAP: Dict[str, ColumnSpec] = {
+DEFAULT_SPS_COLUMN_MAP: Dict[str, ColumnSpec] = {
     't':           ColumnSpec(file_column=0, units='yr',            log=False),
     'Qi':          ColumnSpec(file_column=1, units='1/s',           log=True),
     'fi':          ColumnSpec(file_column=2, units='dimensionless', log=True),
@@ -334,7 +334,7 @@ def _format_missing_template(*, sps_path: str,
 def validate_t_monotonic(t: np.ndarray, filepath: str) -> None:
     """Validate that the time array is strictly increasing.
 
-    scipy.interpolate.interp1d (used by read_SB99.get_interpolation)
+    scipy.interpolate.interp1d (used by read_sps.get_interpolation)
     requires strict monotonicity; its native error message — "Expect x
     to not have duplicates" — is cryptic and fires deep in scipy.
     This check raises a clearer ValueError at load time, pointing at
@@ -345,7 +345,7 @@ def validate_t_monotonic(t: np.ndarray, filepath: str) -> None:
     1.001e7, 1.002e7, 1.003e7 all to the same string "1.00e+07"),
     producing duplicates that scipy refuses to interpolate over.
 
-    Applied by _read_sb99_user in src/sb99/read_SB99.py.
+    Applied by _read_sps_user in src/sps/read_sps.py.
     """
     if len(t) < 2:
         return  # trivially fine.

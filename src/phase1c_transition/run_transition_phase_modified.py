@@ -54,7 +54,7 @@ from dataclasses import dataclass
 import src.cloud_properties.mass_profile as mass_profile
 import src._functions.unit_conversions as cvt
 import src._functions.operations as operations
-from src.sb99.update_feedback import get_current_sps_feedback
+from src.sps.update_feedback import get_current_sps_feedback
 from src._input.dictionary import updateDict
 
 # Import pure/modified functions

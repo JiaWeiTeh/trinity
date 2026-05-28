@@ -17,7 +17,7 @@ import scipy
 import src._functions.unit_conversions as cvt
 
 #--
-from src.sb99 import read_SB99
+from src.sps import read_sps
 from src.phase0_init import (get_InitCloudProp, get_InitPhaseParam)
 from src._output.simulation_end import write_simulation_end, SimulationEndCode
 from src.phase1_energy import run_energy_phase_modified
@@ -137,15 +137,15 @@ def start_expansion(params):
 
     # Step 2: Obtain SPS feedback parameters
     # The loader handles both the legacy SB99 grammar (sps_path = def_path)
-    # and user-defined sps_path files; see read_SB99 module docstring.
+    # and user-defined sps_path files; see read_sps module docstring.
     logger.info("Step 2: Loading SPS stellar feedback data...")
     # Scaling factor for cluster masses. Though this might only be accurate for
     # high mass clusters (~>1e5) in which the IMF is fully sampled.
     f_mass = params['mCluster'] / params['sps_refmass']
     logger.debug(f"SPS mass scaling factor: {f_mass:.4f}")
     # Get SPS data and interpolation functions.
-    sps_data = read_SB99.read_SB99(f_mass, params)
-    sps_f = read_SB99.get_interpolation(sps_data)
+    sps_data = read_sps.read_sps(f_mass, params)
+    sps_f = read_sps.get_interpolation(sps_data)
     # TODO:
     # if tSF != 0.: we would actually need to shift the feedback parameters by tSF
     # update

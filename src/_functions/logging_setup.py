@@ -512,12 +512,12 @@ if __name__ == "__main__":
     logger_main = logging.getLogger('src.main')
     logger_phase1 = logging.getLogger('src.phase1_energy.run_energy_phase')
     logger_cooling = logging.getLogger('src.cooling.net_coolingcurve')
-    logger_sb99 = logging.getLogger('src.sb99.update_feedback')
+    logger_sps = logging.getLogger('src.sps.update_feedback')
 
     logger_main.info("Starting TRINITY simulation")
     logger_phase1.info("Entering energy-driven phase")
     logger_cooling.debug("Interpolating cooling curve at T=1.5e6 K")
-    logger_sb99.warning("Wind momentum rate near zero, setting v_mech_total=0")
+    logger_sps.warning("Wind momentum rate near zero, setting v_mech_total=0")
     logger_phase1.info("Energy-driven phase complete")
     logger_main.info("Simulation finished")
 

@@ -35,7 +35,7 @@ import src.cooling.non_CIE.read_cloudy as non_CIE
 import src._functions.operations as operations
 from src._input.dictionary import updateDict
 import src._functions.unit_conversions as cvt
-from src.sb99.update_feedback import get_current_sps_feedback
+from src.sps.update_feedback import get_current_sps_feedback
 
 # Import centralized event functions
 from src.phase_general.phase_events import (

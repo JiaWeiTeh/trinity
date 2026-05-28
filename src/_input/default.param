@@ -325,7 +325,7 @@ path_cooling_nonCIE    def_dir
 # INFO: Full path to an SPS data file. If def_path (default), TRINITY uses
 #       the bundled file at lib/default/sps/starburst99/1e6cluster_default.csv
 #       (solar metallicity, rot, 1e6 Msun reference cluster) loaded with the
-#       LEGACY_SB99_COLUMN_MAP positional preset — no sps_col_* declarations
+#       DEFAULT_SPS_COLUMN_MAP positional preset — no sps_col_* declarations
 #       required. Setting sps_path to any other value triggers user mode and
 #       requires sps_col_<canonical> declarations describing your file's
 #       column layout. See analysis/sb99-refactor-audit.md §9.
@@ -338,7 +338,7 @@ sps_path    def_path
 #     sps_col_<canonical>    <file_column>    <units>    <log|linear>
 #
 #     <canonical>     one of the canonical names (see CANONICALS in
-#                     src/sb99/sps_columns.py)
+#                     src/sps/sps_columns.py)
 #     <file_column>   EITHER a 0-based integer column index (works on any
 #                     file, with or without a header), OR a string name
 #                     matching the file's header row.
@@ -360,7 +360,7 @@ sps_path    def_path
 #
 # The sentinel "def_unset" means "not declared in this .param". For the
 # bundled default (sps_path = def_path → lib/default/sps/starburst99/1e6cluster_default.csv)
-# ALL of these are def_unset and the hardcoded LEGACY_SB99_COLUMN_MAP
+# ALL of these are def_unset and the hardcoded DEFAULT_SPS_COLUMN_MAP
 # positional preset is injected automatically.
 #
 # Required canonicals (loader cannot run without them when sps_path is

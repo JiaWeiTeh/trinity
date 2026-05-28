@@ -20,7 +20,7 @@ import scipy.optimize
 import src.cloud_properties.mass_profile as mass_profile
 import src.cloud_properties.density_profile as density_profile
 import src.bubble_structure.get_bubbleParams as get_bubbleParams
-from src.sb99.update_feedback import get_current_sps_feedback
+from src.sps.update_feedback import get_current_sps_feedback
 from dataclasses import dataclass
 from typing import Optional
 import logging
