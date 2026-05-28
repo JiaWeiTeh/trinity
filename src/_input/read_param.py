@@ -25,7 +25,7 @@ from fractions import Fraction
 import numpy as np
 import src._functions.unit_conversions as cvt
 from src._input.dictionary import DescribedItem, DescribedDict
-import src.sb99.sps_columns as sps_columns
+import src.sps.sps_columns as sps_columns
 
 # Anchor bundled-asset lookups to the repo root, not the CWD: users may launch
 # run.py from anywhere, and the `lib/default/...` defaults must still resolve.
@@ -408,7 +408,7 @@ def read_param(path2file):
     # sps_path: full path to the SPS data file. Sentinel 'def_path' resolves
     # to the bundled lib/default/sps/starburst99/1e6cluster_default.csv —
     # an SB99 grid at rotation=1, ZCloud=1, mass=1e6 Msun in CSV form with
-    # the canonical 7-column SB99 layout (LEGACY_SB99_COLUMN_MAP). The
+    # the canonical 7-column SB99 layout (DEFAULT_SPS_COLUMN_MAP). The
     # default rejects combinations the bundled cooling tables can't fulfill;
     # users who need a different metallicity or rotation must set sps_path
     # explicitly. See analysis/sb99-refactor-audit.md §9.
@@ -429,7 +429,7 @@ def read_param(path2file):
         params['sps_path'].value = str(
             _REPO_ROOT / 'lib' / 'default' / 'sps' / 'starburst99' / '1e6cluster_default.csv'
         )
-        column_map = sps_columns.LEGACY_SB99_COLUMN_MAP
+        column_map = sps_columns.DEFAULT_SPS_COLUMN_MAP
         logger.info(
             f"sps_path unset → using default SPS file: {params['sps_path'].value}"
         )

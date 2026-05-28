@@ -84,7 +84,7 @@ def get_y0(params):
     # Time of star formation [Myr]
     tSF = params['tSF'].value
 
-    # SPS interpolation functions (sps_f naming as of PR-3 of SB99 -> SPS refactor).
+    # SPS interpolation functions.
     sps_f = params['sps_f'].value
 
     # =========================================================================

@@ -34,7 +34,7 @@ class SPSFeedback:
     ----------
     All luminosities are in code units [Msun·pc²/Myr³] (multiply by
     INV_CONV.L_au2cgs to get erg/s); raw cgs values are converted to AU
-    at load time in ``read_SB99.py``.
+    at load time in ``read_sps.py``.
 
     t : float
         Current time [Myr]
@@ -101,7 +101,7 @@ def get_current_sps_feedback(t, params) -> SPSFeedback:
 
     Interpolates the SPS feedback time-series at the given time and returns
     an SPSFeedback dataclass. The interpolators are built by
-    `read_SB99.get_interpolation` from data loaded via `read_SB99.read_SB99`;
+    `read_sps.get_interpolation` from data loaded via `read_sps.read_sps`;
     both branches (legacy SB99 positional and user-defined sps_path) feed
     the same `params['sps_f']` dict.
 
@@ -159,7 +159,7 @@ def get_current_sps_feedback(t, params) -> SPSFeedback:
         )
 
     # Interpolate all raw SPS values. The interpolators were built in
-    # read_SB99.py from arrays already converted to code units (AU);
+    # read_sps.py from arrays already converted to code units (AU);
     # luminosities here are [Msun*pc^2/Myr^3], not erg/s.
     Qi = sps_f['fQi'](t)[()]                    # Ionizing photon rate [s⁻¹]
     Li = sps_f['fLi'](t)[()]                    # Ionizing luminosity

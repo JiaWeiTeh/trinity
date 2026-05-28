@@ -9,19 +9,15 @@ Loader for SPS (stellar-population-synthesis) feedback time-series data.
 
 Two entry points into the file:
 
-  read_SB99(f_mass, params)
+  read_sps(f_mass, params)
       Loads sps_path (resolved by read_param.py — either the user's
       sps_path or the bundled default file) and applies the canonical
       column map to extract the feedback time series. The column map
       may use integer column indices or header-row names per ColumnSpec.
 
   get_interpolation(sps, ftype='cubic')
-      Wraps the 11-array tuple returned by read_SB99() in scipy cubic
+      Wraps the 11-array tuple returned by read_sps() in scipy cubic
       interpolators on `params['sps_f']`.
-
-The file is still called `read_SB99.py` and the public entry point
-is still `read_SB99` — SB99 remains the canonical SPS in this
-codebase (audit §14 question 1).
 """
 
 import numpy as np
@@ -30,7 +26,7 @@ import sys
 import logging
 
 import src._functions.unit_conversions as cvt
-import src.sb99.sps_columns as sps_columns
+import src.sps.sps_columns as sps_columns
 
 # Initialize logger for this module
 logger = logging.getLogger(__name__)
@@ -39,7 +35,7 @@ logger = logging.getLogger(__name__)
 EPSILON = 1e-100  # Small number to prevent division by zero
 
 
-def read_SB99(f_mass, params):
+def read_sps(f_mass, params):
     """
     Read and process SPS stellar feedback data.
 
@@ -104,7 +100,7 @@ def read_SB99(f_mass, params):
 
     Examples
     --------
-    >>> sps_data = read_SB99(f_mass=1.0, params=params)
+    >>> sps_data = read_sps(f_mass=1.0, params=params)
     >>> t, Qi, Li, Ln, Lbol, Lmech_W, Lmech_SN, Lmech_total, pdot_W, pdot_SN, pdot_total = sps_data
     >>> print(f"At t={t[50]:.3f} Myr: Wind Lmech={Lmech_W[50]:.3e}, SN Lmech={Lmech_SN[50]:.3e}")
     """
@@ -132,10 +128,10 @@ def read_SB99(f_mass, params):
 
     column_map = params['sps_column_map'].value
     filepath = params['sps_path'].value
-    return _read_sb99_user(filepath, f_mass, params, column_map)
+    return _read_sps_user(filepath, f_mass, params, column_map)
 
 
-def _read_sb99_user(filepath, f_mass, params, column_map):
+def _read_sps_user(filepath, f_mass, params, column_map):
     """SPS loader driven by a canonical -> ColumnSpec map.
 
     Loads any .txt or .csv file (delimiter auto-sniffed, header auto-
@@ -290,14 +286,14 @@ def get_interpolation(sps, ftype='cubic'):
     """
     Create cubic interpolation functions for SPS feedback data.
 
-    This function takes the output from read_SB99() and creates scipy
+    This function takes the output from read_sps() and creates scipy
     interpolation functions for all feedback parameters, with properly
     separated wind and SN components.
 
     Parameters
     ----------
     sps : list
-        Data array from read_SB99():
+        Data array from read_sps():
         [t, Qi, Li, Ln, Lbol, Lmech_W, Lmech_SN, Lmech_total, pdot_W, pdot_SN, pdot_total]
     ftype : str, optional
         Interpolation type for scipy.interpolate.interp1d.
@@ -328,7 +324,7 @@ def get_interpolation(sps, ftype='cubic'):
 
     Examples
     --------
-    >>> sps_data = read_SB99(f_mass=1.0, params=params)
+    >>> sps_data = read_sps(f_mass=1.0, params=params)
     >>> sps_f = get_interpolation(sps_data, ftype='cubic')
     >>> t = 5.0  # Myr
     >>> Lmech_W = sps_f['fLmech_W'](t)
