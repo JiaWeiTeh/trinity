@@ -141,8 +141,12 @@ SPECS: tuple[ParamSpec, ...] = (
     ParamSpec(name='sps_col_Li', default='def_unset', info='', category='input_sps', unit=None, exclude_from_snapshot=True),
     ParamSpec(name='sps_col_Ln', default='def_unset', info='', category='input_sps', unit=None, exclude_from_snapshot=True),
     ParamSpec(name='bubble_xi_Tb', default='0.98', info='The relative radius xi = r/R2, at which we measure the bubble temperature.', category='input_solver', unit=None, exclude_from_snapshot=True, run_const=True),
-    ParamSpec(name='mCloud_input', default=1000000.0, info='Pre-SFE input cloud mass (= mCloud + mCluster). Matches the .param file and the sweep folder-name tag.', category='derived_init', unit='Msun', exclude_from_snapshot=True, run_const=True),
-    ParamSpec(name='mCluster', default=10000.0, info='Cluster mass (mCloud_input * sfe)', category='derived_init', unit='Msun', exclude_from_snapshot=True, run_const=True),
+    # mCloud_input / mCluster have no static default: read_param Step 6
+    # computes them from the input mCloud and sfe (mCloud_input = input
+    # mCloud; mCluster = mCloud_input * sfe). 0.0 is a placeholder; the
+    # value is materialised by the derived-init resolver in Phase 7/10.
+    ParamSpec(name='mCloud_input', default=0.0, info='Pre-SFE input cloud mass (= mCloud + mCluster). Matches the .param file and the sweep folder-name tag.', category='derived_init', unit='Msun', exclude_from_snapshot=True, run_const=True),
+    ParamSpec(name='mCluster', default=0.0, info='Cluster mass (mCloud_input * sfe)', category='derived_init', unit='Msun', exclude_from_snapshot=True, run_const=True),
     ParamSpec(name='sps_column_map', default=None, info='SPS column mapping (canonical -> ColumnSpec)', category='runtime_loaded', unit='N/A', exclude_from_snapshot=True),
     ParamSpec(name='current_phase', default='', info='Current simulation phase: energy/implicit/transition/momentum', category='runtime_state', unit='N/A'),
     ParamSpec(name='EndSimulationDirectly', default=False, info='Flag to immediately end simulation', category='runtime_state', unit='N/A'),

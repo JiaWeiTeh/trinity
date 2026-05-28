@@ -11,19 +11,21 @@ frozen-dataclass + module-level tuple pattern).  Consumed by:
 * ``tools/gen_default_param.py`` (Phase 3+ regenerates
   ``default.param`` from the registry).
 
-Phase 1 lands this file plus an empty registry; no production code
-imports it yet.  See ``test/test_registry.py`` for the guardrails
-that pin the construction-time invariants.
+As of Phase 2 the registry is fully populated (187 specs) but still
+dormant: ``read_param`` and ``run_constants`` are untouched until
+Phases 5–10 wire it in.  See ``test/test_registry.py`` for the
+guardrails that pin the spec set against a live ``read_param`` run.
 """
 from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Any, Callable, Literal, Optional
 
-# Categories drive Phase-5's derivation of RUN_CONST_KEYS /
-# METADATA_EXCLUDE.  Adding a new category is a deliberate act —
-# it must also be added to ``registry._INPUT_LIKE_CATEGORIES`` if
-# it represents a constant-through-run input.
+# Categories are a descriptive grouping used for documentation and the
+# eventual Phase-11 file split — they do NOT drive run-const /
+# metadata-exclude membership (the explicit ``run_const`` /
+# ``metadata_exclude`` booleans do, because membership does not follow
+# category boundaries; see the registry module docstring).
 Category = Literal[
     # ---- Input-side (declared in default.param) ----
     "input_admin",          # model_name, path2output, output_format, log_*, simplify_npoints
@@ -44,8 +46,11 @@ Category = Literal[
 ]
 
 # Prefix for sentinel string defaults: ``def_dir``, ``def_path``,
-# ``def_value``, ``def_unset``.  Any default that matches this prefix
-# must carry a resolver (enforced in ``ParamSpec.__post_init__``).
+# ``def_value``, ``def_unset``.  A sentinel default is resolved against
+# the full params dict by the spec's ``resolver`` (wired in Phase 7).
+# Until then the 17 sentinel specs carry ``resolver=None``; the
+# ``test_every_sentinel_default_has_resolver`` guard (xfail until
+# Phase 7) tracks the gap.
 SENTINEL_PREFIX = "def_"
 
 
