@@ -38,8 +38,20 @@ Category = Literal[
     "input_solver",         # phaseSwitch_LlossLgain, bubble_xi_Tb, cool_alpha/beta/delta
     # ---- Set-once derived (read_param.py Step 6) ----
     "derived_init",         # rCloud, nEdge, tSF, mCluster, mCloud_input, densBE_Teff
-    # ---- Runtime-only (read_param.py Step 10) ----
-    "runtime_state",        # v2, R2, T0, Eb, shell_*, bubble_*, F_*, P_*, residual_*
+    # ---- Runtime, grouped by physical role (mirrors the trinity_reader
+    #      Snapshot table; runtime_control / _residuals / _cloud_profile
+    #      are TRINITY-specific buckets not present in that table). ----
+    "runtime_time",         # t_now, tSF (set-once), t_next, t_previousCoolingUpdate
+    "runtime_radii",        # R1, R2, rShell, R_IF
+    "runtime_bubble",       # T0, Eb, Pb, bubble_r/v/T/dTdr/n_arr, bubble_Tavg/mass/r_Tb/T_r_Tb, bubble_dMdt(Guess)
+    "runtime_bubble_cooling",  # bubble_LTotal/L1Bubble/L2Conduction/L3Intermediate/Lgain/Lloss/Leak
+    "runtime_pressure",     # P_HII, P_drive, P_ram, press_HII_in
+    "runtime_force",        # F_grav, F_ram(_wind/_SN), F_ion_in, F_HII, F_rad, F_ISM
+    "runtime_shell",        # shell_*, c_sound, n_IF/n_IF_ODE/n_IF_Str (densities at IF)
+    "runtime_feedback",     # Qi, Lbol, Ln, Li, Lmech_*, pdot_*, v_mech_total, pdotdot_total
+    "runtime_control",      # phase/end flags, EarlyPhaseApproximation, isCollapse/Dissolved, ...
+    "runtime_residuals",    # residual_* (diagnostics not in the reader table)
+    "runtime_cloud_profile",# initial_cloud_r/n/m_arr (set in phase0, constant thereafter)
     "runtime_loaded",       # sps_data, sps_f, sps_column_map, cStruc_*, densBE_f_*
     # ---- Parsed for back-compat only, never consumed ----
     "deprecated",           # stop_v, adiabaticOnlyInCore, immediate_leak, use_adaptive_solver

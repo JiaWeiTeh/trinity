@@ -280,3 +280,25 @@ def test_active_when_only_on_conditional_specs() -> None:
         "densBE_rho_rhoc_arr", "densBE_f_rho_rhoc", "densBE_f_m", "densBE_xi_out",
     }
     assert with_active == expected
+
+
+def test_runtime_categories_match_reader_table() -> None:
+    """Pins the runtime-bucket split against the trinity_reader Snapshot
+    grouping (Table E.2): a wrong move between buckets — or a regression
+    that collapses runtime_state back — fails loudly here."""
+    by_cat: dict[str, set[str]] = {}
+    for s in SPECS:
+        by_cat.setdefault(s.category, set()).add(s.name)
+
+    assert "runtime_state" not in by_cat, (
+        "runtime_state was removed in Phase 2; specs should now sit in "
+        "a physical-role bucket (runtime_bubble, runtime_shell, …)"
+    )
+    # Spot-check the four answers locked during the recategorisation
+    # review (c_sound→shell, R_IF→radii kept split from n_IF*,
+    # bubble_Leak→bubble_cooling, zeta removed).
+    assert "c_sound" in by_cat["runtime_shell"]
+    assert "R_IF" in by_cat["runtime_radii"]
+    assert {"n_IF", "n_IF_ODE", "n_IF_Str"} <= by_cat["runtime_shell"]
+    assert "bubble_Leak" in by_cat["runtime_bubble_cooling"]
+    assert "zeta" not in {s.name for s in SPECS}
