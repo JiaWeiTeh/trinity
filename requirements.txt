@@ -2,12 +2,13 @@
 # Install with: pip install -r requirements.txt
 
 # Core scientific computing
-# numpy and scipy are exact-pinned to the dev environment because scipy>=1.15 +
-# numpy>=2 changed the LSODA integrator's input validation in ways that trip the
-# bubble-structure code path. Astropy/matplotlib/pandas remain range-pinned —
-# upper caps exclude the next, untested major.
-numpy==1.22.4
-scipy==1.10.1
+# numpy is capped below 2 because numpy 2.x patches occasionally produce
+# floating-point output the bubble-structure integrator's monotonic guard
+# rejects (the actual breakage is non-deterministic across 2.x patches —
+# 2.0/2.3 pass, 2.1/2.2/2.4 fail). The cap should be relaxed once the
+# integration is hardened to tolerate the floating-point dips.
+numpy>=1.20.0,<2
+scipy>=1.7.0,<2
 astropy>=5.0,<8
 matplotlib>=3.5.0,<4
 pandas>=1.3.0,<3
