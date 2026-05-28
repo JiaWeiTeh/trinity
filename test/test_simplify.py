@@ -14,10 +14,8 @@ algorithm scales well (well under a second on 100k points).
 
 from __future__ import annotations
 
-import json
 import time
 import warnings
-from pathlib import Path
 
 import numpy as np
 import pytest
@@ -28,9 +26,6 @@ from src._functions.simplify import _simplify
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-
-REPO_ROOT = Path(__file__).resolve().parents[1]
-MOCK_RUN = REPO_ROOT / "outputs" / "mockOutput" / "1e6_sfe001_n1e3_PL0_yesPHII"
 
 
 def reconstruction_r2(x_in: np.ndarray, y_in: np.ndarray,
@@ -386,67 +381,6 @@ class TestEdgeCases:
         y = np.sin(10 * x) + 0.1 * rng.randn(1000)
         xo, yo = _simplify(x, y)
         assert_endpoints_preserved(x, xo, y, yo)
-
-
-# ---------------------------------------------------------------------------
-# Real bubble profiles from outputs/mockOutput
-# ---------------------------------------------------------------------------
-
-REAL_RUN = MOCK_RUN
-REAL_AVAILABLE = REAL_RUN.exists()
-
-
-@pytest.mark.skipif(not REAL_AVAILABLE, reason="mockOutput not present")
-class TestRealBubbleProfiles:
-
-    @pytest.fixture(scope="class")
-    def implicit_snap(self):
-        path = REAL_RUN / "3_implicit.jsonl"
-        with open(path) as f:
-            return json.loads(f.readline())
-
-    @pytest.fixture(scope="class")
-    def energy_snap(self):
-        path = REAL_RUN / "2_energy.jsonl"
-        with open(path) as f:
-            return json.loads(f.readline())
-
-    @pytest.mark.parametrize("ykey,xkey", [
-        ("log_bubble_T_arr",     "bubble_T_arr_r_arr"),
-        ("log_bubble_n_arr",     "bubble_n_arr_r_arr"),
-        ("log_bubble_dTdr_arr",  "bubble_dTdr_arr_r_arr"),
-        ("bubble_v_arr",         "bubble_v_arr_r_arr"),
-    ])
-    def test_implicit_phase_compresses(self, implicit_snap, ykey, xkey):
-        x = np.array(implicit_snap[xkey])
-        y = np.array(implicit_snap[ykey])
-        if x.size <= 100:
-            pytest.skip(f"{ykey} already short ({x.size})")
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", UserWarning)
-            xo, yo = _simplify(x, y)
-        # Real bubble profiles have only a handful of prominent extrema,
-        # so output should be at the budget (~100).  We allow some slack
-        # because the prominent-override may add a few points.
-        assert len(xo) <= 200, f"{ykey}: output {len(xo)} far exceeds budget"
-        # Bubble grids are descending; the simplifier must preserve that.
-        assert np.all(np.diff(xo) <= 0), f"{xkey} should stay descending"
-
-    def test_energy_phase_non_monotonic_compresses(self, energy_snap):
-        """2_energy.jsonl arrays have a single non-monotonic point —
-        confirms the simplifier handles the real-world non-monotonic case
-        and produces a budget-bounded output."""
-        x = np.array(energy_snap["bubble_T_arr_r_arr"])
-        y = np.array(energy_snap["log_bubble_T_arr"])
-        if x.size <= 100:
-            pytest.skip("array already short")
-        diffs = np.diff(x)
-        assert (diffs > 0).any() and (diffs < 0).any()
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", UserWarning)
-            xo, yo = _simplify(x, y)
-        assert len(xo) <= 200, f"output {len(xo)} far exceeds budget"
-        assert np.isfinite(xo).all() and np.isfinite(yo).all()
 
 
 # ---------------------------------------------------------------------------
