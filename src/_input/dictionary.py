@@ -85,8 +85,8 @@ class DescribedItem:
     Key behavior
     ------------
     - Implements numeric conversions so you can do:
-        '%E' % params['SB99_mass']          # works without .value
-        f"{params['SB99_mass']:.2e}"        # also works
+        '%E' % params['sps_refmass']          # works without .value
+        f"{params['sps_refmass']:.2e}"        # also works
 
     Metadata fields
     ---------------
@@ -1236,38 +1236,28 @@ if __name__ == "__main__":
     # Typical scalar parameters
     params["t_now"] = DescribedItem(0.0, info="Current time", ori_units="Myr")
     params["R2"] = DescribedItem(1.0, info="Outer bubble radius (= inner shell edge)", ori_units="pc")
-    params["SB99_mass"] = DescribedItem(1e6, info="SB99 cluster mass", ori_units="Msun")
-    
+
     # Example array parameters: one small, one large
     params["small_arr"] = DescribedItem(
-        np.linspace(0, 1, 5), 
+        np.linspace(0, 1, 5),
         info="Small array (will show all elements)",
         ori_units="dimensionless"
     )
     params["large_arr"] = DescribedItem(
-        np.linspace(0, 100, 50), 
+        np.linspace(0, 100, 50),
         info="Large array (will be shortened in display)",
         ori_units="pc"
     )
-    
+
     # Test alphabetical sorting and array shortening
     print("\n--- Testing print(params) ---")
     print(params)
-    
+
     # Test that actual array is not modified
     print("\n--- Verifying actual array length is unchanged ---")
     print(f"large_arr length: {len(params['large_arr'].value)}")
     print(f"First 5 elements: {params['large_arr'].value[:5]}")
-    
-    # Test numeric formatting without .value
-    print("\n--- Testing numeric operations without .value ---")
-    def format_e(n):
-        a = "%E" % n
-        return a.split("E")[0].rstrip("0").rstrip(".") + "e" + a.split("E")[1].strip("+").strip("0")
-    
-    SBmass_str = format_e(params["SB99_mass"])  # works because DescribedItem implements __float__
-    print(f"SB99 mass formatted: {SBmass_str}")
-    
+
     # Test saving snapshots
     print("\n--- Testing snapshot saving ---")
     for i in range(3):

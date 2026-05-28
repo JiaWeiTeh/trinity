@@ -87,9 +87,7 @@ RUN_CONST_KEYS: tuple[str, ...] = (
     "adiabaticOnlyInCore",
     "immediate_leak",
 
-    # --- SB99 inputs ---
-    "SB99_BHCUT",
-    "SB99_mass",
+    # --- SPS inputs ---
     "SB99_rotation",
 
     # --- Feedback inputs ---

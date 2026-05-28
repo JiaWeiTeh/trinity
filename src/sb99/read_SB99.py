@@ -10,23 +10,18 @@ Loader for SPS (stellar-population-synthesis) feedback time-series data.
 Two entry points into the file:
 
   read_SB99(f_mass, params)
-      Top-level dispatcher. Picks _read_sb99_legacy or _read_sb99_user
-      based on params['sps_layout_is_legacy'] (set by read_param.py when
-      it resolved sps_path). User-mode column maps may now contain
-      either integer indices OR header-row names (per ColumnSpec), so
-      file_column type alone is no longer a reliable dispatch signal.
+      Loads sps_path (resolved by read_param.py — either the user's
+      sps_path or the bundled default file) and applies the canonical
+      column map to extract the feedback time series. The column map
+      may use integer column indices or header-row names per ColumnSpec.
 
   get_interpolation(sps, ftype='cubic')
       Wraps the 11-array tuple returned by read_SB99() in scipy cubic
       interpolators on `params['sps_f']`.
 
-The legacy branch is byte-equivalent to the pre-refactor SB99-only
-loader (see analysis/sb99-refactor-audit.md §8 Invariants). SB99
-specifics that survive in this module are intentional: the file is
-still called `read_SB99.py`, the helper is `_read_sb99_legacy`, and
-the symbol `read_SB99` is the public entry point, per audit §14
-question 1 ("symbols/file path stay; SB99 remains the canonical SPS
-in this codebase").
+The file is still called `read_SB99.py` and the public entry point
+is still `read_SB99` — SB99 remains the canonical SPS in this
+codebase (audit §14 question 1).
 """
 
 import numpy as np
@@ -46,17 +41,11 @@ EPSILON = 1e-100  # Small number to prevent division by zero
 
 def read_SB99(f_mass, params):
     """
-    Read and process Starburst99 stellar feedback data.
+    Read and process SPS stellar feedback data.
 
-    Dispatches to either the legacy SB99 7-column positional loader
-    (`_read_sb99_legacy`) or the user-defined column-map loader
-    (`_read_sb99_user`) based on the `params['sps_column_map']` layout.
-    The legacy branch is byte-equivalent to the pre-refactor SB99-only
-    implementation (see analysis/sb99-refactor-audit.md §8 Invariants).
-
-    Files for the legacy SB99 grid use cgs units (with time in years);
-    every output of this function is converted to astronomical units
-    (Msun, pc, Myr).
+    Loads the file at `params['sps_path']` (resolved by read_param.py)
+    using the column layout in `params['sps_column_map']`, then converts
+    every output to astronomical units (Msun, pc, Myr).
 
     Parameters
     ----------
@@ -66,9 +55,8 @@ def read_SB99(f_mass, params):
     params : DescribedDict
         TRINITY parameters dictionary containing:
         - sps_path : str, full path to the SPS data file (already resolved
-          by read_param.py; legacy SB99 grammar is the permanent fallback
-          when the user hasn't overridden sps_path — see
-          analysis/sb99-refactor-audit.md §9)
+          by read_param.py; the bundled default file is used when the user
+          hasn't overridden sps_path — see analysis/sb99-refactor-audit.md §9)
         - FB_mColdWindFrac, FB_thermCoeffWind : Wind corrections
         - FB_mColdSNFrac, FB_thermCoeffSN, FB_vSN : SN corrections
 
@@ -104,8 +92,6 @@ def read_SB99(f_mass, params):
     ------
     ValueError
         If f_mass <= 0 or is NaN/inf, or if the file shape is invalid.
-        (Unsupported legacy-grammar metallicity / BH cutoff is raised
-        earlier, by _get_legacy_sb99_filename in read_param.py.)
     FileNotFoundError
         If sps_path points to a file that does not exist.
 
@@ -133,7 +119,7 @@ def read_SB99(f_mass, params):
         )
 
     required_keys = [
-        'sps_path', 'sps_column_map', 'sps_layout_is_legacy',
+        'sps_path', 'sps_column_map',
         'FB_mColdWindFrac', 'FB_thermCoeffWind',
         'FB_mColdSNFrac', 'FB_thermCoeffSN', 'FB_vSN'
     ]
@@ -144,212 +130,20 @@ def read_SB99(f_mass, params):
 
     logger.info(f"Reading SPS data with f_mass = {f_mass}")
 
-    # =========================================================================
-    # DISPATCH: legacy positional layout vs user-defined column layout
-    # =========================================================================
-    # Dispatch on the explicit sps_layout_is_legacy flag set by read_param.py
-    # at the time sps_path was resolved. We can't infer this from the
-    # column_map's ColumnSpec types anymore because, as of the dual-mode
-    # change, user-mode column maps may also contain integer file_column
-    # values (when the user writes sps_col_t 0 yr linear etc.). The legacy
-    # code path stays byte-equivalent to the pre-refactor SB99-only loader;
-    # operator order matters for ULP-level equivalence (see audit §8
-    # Invariants).
-
     column_map = params['sps_column_map'].value
     filepath = params['sps_path'].value
-    is_legacy_layout = params['sps_layout_is_legacy'].value
-
-    if is_legacy_layout:
-        return _read_sb99_legacy(filepath, f_mass, params)
-    else:
-        return _read_sb99_user(filepath, f_mass, params, column_map)
-
-
-def _read_sb99_legacy(filepath, f_mass, params):
-    """Legacy SB99 7-column positional loader.
-
-    Byte-equivalent to the pre-refactor SB99-only loader for every
-    (mCluster, SB99_mass, SB99_rotation, SB99_BHCUT, ZCloud, FB_*)
-    combination. The operator ordering and arithmetic here is
-    intentionally preserved verbatim so `np.array_equal` against
-    pre-refactor goldens passes (audit §8 Invariants).
-
-    Used whenever sps_path was resolved from the legacy SB99 grammar
-    (sps_path = def_path at config-load time).
-    """
-
-    logger.debug(f"Loading SB99 file (legacy positional layout): {filepath}")
-
-    try:
-        SB99_file = np.loadtxt(filepath)
-    except FileNotFoundError:
-        raise FileNotFoundError(
-            f"SB99 file not found: {filepath}\n"
-            "If sps_path was set explicitly, verify the path exists.\n"
-            "If the legacy SB99 grammar was used (sps_path = def_path),\n"
-            "check SB99_mass, SB99_rotation, ZCloud, and SB99_BHCUT in your .param."
-        )
-    except Exception as e:
-        raise IOError(f"Error reading SB99 file {filepath}: {e}")
-
-    # Validate file format
-    if SB99_file.ndim != 2 or SB99_file.shape[1] < 7:
-        raise ValueError(
-            f"Invalid SB99 file format in {filepath}. "
-            f"Expected 2D array with >= 7 columns, got shape {SB99_file.shape}"
-        )
-
-    logger.debug(f"Loaded {len(SB99_file)} time steps from SB99 file")
-
-    # =========================================================================
-    # STEP 2: READ COLUMNS AND CONVERT UNITS
-    # =========================================================================
-
-    # Time: yr → Myr
-    t = SB99_file[:, 0] / 1e6
-
-    # Convert from log space and scale by cluster mass
-    # Ionizing photon rate: log₁₀(1/s) → 1/Myr
-    Qi = 10**SB99_file[:, 1] * f_mass / cvt.s2Myr
-
-    # Ionizing fraction: SB99 stores log10(fi), we want linear fi.
-    fi = 10**SB99_file[:, 2]
-
-    # Bolometric luminosity: log₁₀(erg/s) → Msun·pc²/Myr³ (AU)
-    Lbol = 10**SB99_file[:, 3] * f_mass * cvt.L_cgs2au
-
-    # Mechanical luminosity (winds + SN): log₁₀(erg/s) → Msun·pc²/Myr³ (AU)
-    Lmech = 10**SB99_file[:, 4] * f_mass * cvt.L_cgs2au
-
-    # Wind momentum rate: log₁₀(g·cm/s²) → Msun·pc/Myr² (AU)
-    pdot_wind_raw = 10**SB99_file[:, 5] * f_mass * cvt.pdot_cgs2au
-
-    # Wind mechanical luminosity: log₁₀(erg/s) → Msun·pc²/Myr³ (AU)
-    Lmech_wind_raw = 10**SB99_file[:, 6] * f_mass * cvt.L_cgs2au
-
-    # Validate all arrays are finite
-    for name, arr in [('t', t), ('Qi', Qi), ('fi', fi), ('Lbol', Lbol),
-                       ('Lmech', Lmech), ('pdot_wind_raw', pdot_wind_raw),
-                       ('Lmech_wind_raw', Lmech_wind_raw)]:
-        if not np.all(np.isfinite(arr)):
-            raise ValueError(f"Non-finite values in {name} array from SB99 file")
-
-    # Validate strict monotonicity of t — scipy.interpolate.interp1d
-    # (called later in get_interpolation) requires it, and its native
-    # error is cryptic. This produces a useful message at load time
-    # pointing at the file + the first offending row.
-    sps_columns.validate_t_monotonic(t, filepath)
-
-    # =========================================================================
-    # STEP 3: CALCULATE DERIVED VALUES
-    # =========================================================================
-
-    # Ionizing and non-ionizing luminosity (13.6 eV threshold)
-    Li = Lbol * fi
-    Ln = Lbol * (1 - fi)
-
-    # Mechanical luminosity from SN only (before corrections)
-    Lmech_SN_raw = Lmech - Lmech_wind_raw
-
-    # Validate no negative values
-    if np.any(Lmech_SN_raw < 0):
-        logger.warning(
-            "Negative SN mechanical luminosity detected. "
-            "This may indicate Lmech_wind > Lmech in SB99 file. "
-            "Setting negative values to zero."
-        )
-        Lmech_SN_raw = np.maximum(Lmech_SN_raw, 0)
-
-    # =========================================================================
-    # STEP 4: SCALE WIND PARAMETERS (thermal efficiency + cold mass)
-    # =========================================================================
-
-    # Break down into mass loss and velocity
-    # Protect against division by zero
-    Mdot_wind = pdot_wind_raw ** 2 / (2 * np.maximum(Lmech_wind_raw, EPSILON))
-    velocity_wind = 2 * Lmech_wind_raw / np.maximum(pdot_wind_raw, EPSILON)
-
-    # Add fraction of mass injected due to sweeping cold material
-    Mdot_wind *= (1 + params['FB_mColdWindFrac'].value)
-
-    # Modify terminal velocity according to:
-    # 1) thermal efficiency and 2) cold mass content
-    velocity_wind *= np.sqrt(params['FB_thermCoeffWind'].value / (1. + params['FB_mColdWindFrac'].value))
-
-    # Convert back to momentum rate and luminosity
-    pdot_wind = Mdot_wind * velocity_wind
-    Lmech_wind = 0.5 * Mdot_wind * velocity_wind**2
-
-    # =========================================================================
-    # STEP 5: SCALE SN PARAMETERS (thermal efficiency + cold mass)
-    # =========================================================================
-
-    # Get SN velocity from params
-    velocity_SN = params['FB_vSN'].value
-
-    # Break down into mass loss rate
-    # Protect against division by zero
-    Mdot_SN = 2 * Lmech_SN_raw / np.maximum(velocity_SN**2, EPSILON)
-
-    # Add fraction of mass injected due to sweeping cold material
-    Mdot_SN *= (1 + params['FB_mColdSNFrac'].value)
-
-    # Modify terminal velocity according to thermal efficiency and cold mass
-    velocity_SN *= np.sqrt(params['FB_thermCoeffSN'].value / (1. + params['FB_mColdSNFrac'].value))
-
-    # Convert back to momentum rate and luminosity
-    pdot_SN = Mdot_SN * velocity_SN
-    Lmech_SN = 0.5 * Mdot_SN * velocity_SN**2
-
-    # =========================================================================
-    # STEP 6: CALCULATE TOTALS
-    # =========================================================================
-
-    # Total mechanical luminosity and momentum injection rate
-    Lmech_total = Lmech_SN + Lmech_wind
-    pdot_total = pdot_SN + pdot_wind
-
-    # =========================================================================
-    # STEP 7: INSERT t=0 FOR INTERPOLATION
-    # =========================================================================
-
-    # Insert initial values at t=0 for proper interpolation
-    t = np.insert(t, 0, 0.0)
-    Qi = np.insert(Qi, 0, Qi[0])
-    Li = np.insert(Li, 0, Li[0])
-    Ln = np.insert(Ln, 0, Ln[0])
-    Lbol = np.insert(Lbol, 0, Lbol[0])
-
-    # Insert separated wind and SN components
-    Lmech_W = np.insert(Lmech_wind, 0, Lmech_wind[0])
-    Lmech_SN = np.insert(Lmech_SN, 0, Lmech_SN[0])
-    Lmech_total = np.insert(Lmech_total, 0, Lmech_total[0])
-
-    pdot_W = np.insert(pdot_wind, 0, pdot_wind[0])
-    pdot_SN = np.insert(pdot_SN, 0, pdot_SN[0])
-    pdot_total = np.insert(pdot_total, 0, pdot_total[0])
-
-    logger.info(
-        f"SB99 data processed: {len(t)} time points, "
-        f"t_max={t[-1]:.2f} Myr"
-    )
-
-    # Return all separated components
-    return [t, Qi, Li, Ln, Lbol, Lmech_W, Lmech_SN, Lmech_total,
-            pdot_W, pdot_SN, pdot_total]
+    return _read_sb99_user(filepath, f_mass, params, column_map)
 
 
 def _read_sb99_user(filepath, f_mass, params, column_map):
-    """User-defined SPS column layout via sps_col_* declarations.
+    """SPS loader driven by a canonical -> ColumnSpec map.
 
     Loads any .txt or .csv file (delimiter auto-sniffed, header auto-
     detected, '#'-comment lines skipped), applies per-column unit
     conversion and mass scaling using the canonical registry in
-    sps_columns.py, then runs the same FB_* correction pipeline as the
-    legacy loader. Each ColumnSpec.file_column is either a 0-based
-    integer index (works on any file) or a string name resolved against
-    the file's header row.
+    sps_columns.py, then runs the FB_* correction pipeline. Each
+    ColumnSpec.file_column is either a 0-based integer index (works on
+    any file) or a string name resolved against the file's header row.
 
     Missing optional canonicals fall back to the existing derivations:
 
@@ -360,23 +154,17 @@ def _read_sb99_user(filepath, f_mass, params, column_map):
       - pdot_SN      <- Mdot_SN_modified * v_SN_mod     [if pdot_SN absent]
 
     User-supplied columns plug into the pipeline at the points indicated
-    above; FB_mColdSNFrac / FB_thermCoeffSN still apply on top (see audit
-    §10 PR-2). Note this path does NOT guarantee bitwise equivalence
-    to the legacy loader because the operator ordering of unit
-    conversions differs by ULPs — equivalence to legacy is tested at
-    the JSONL snapshot level (rtol=1e-12), not at the loader level
-    (audit §11 Test strategy).
+    above; FB_mColdSNFrac / FB_thermCoeffSN still apply on top.
     """
 
-    logger.debug(f"Loading SPS file (user-defined column layout): {filepath}")
+    logger.debug(f"Loading SPS file: {filepath}")
 
     try:
         raw_cols = sps_columns.load_user_columns(filepath, column_map)
     except FileNotFoundError:
         raise FileNotFoundError(
             f"SPS file not found: {filepath}\n"
-            "sps_path is set explicitly; verify the path exists and points "
-            "to a readable file."
+            "Verify sps_path points to a readable file."
         )
 
     # Per-column conversion + mass scaling.

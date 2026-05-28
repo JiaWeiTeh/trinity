@@ -165,46 +165,23 @@ coll_r    1
 #
 # The default (sps_path = def_path) routes to the bundled CSV at
 #   lib/default/sps/starburst99/1e6cluster_default.csv
-# — an SB99 grid at rotation=1, ZCloud=1 (solar, Z=0.014), BHCUT=120 Msun,
-# mass=1e6 Msun, exported as CSV with the canonical 7-column SB99 layout.
-#
-# The three SB99_* params below are kept declared for back-compat with
-# configs that reference them, but are NOT consulted under the bundled
-# default — sps_refmass alone drives f_mass scaling (its def_value
-# sentinel still copies SB99_mass at startup so 1e6 normalization works).
-# See _get_legacy_sb99_filename() in src/_input/read_param.py for the
-# (currently unwired) historical filename grammar.
+# — solar metallicity, rotation = on, 1e6 Msun reference cluster, BHCUT=120 Msun.
+# See analysis/sb99-refactor-audit.md §9.
 # ==============================================================================
 
-# INFO: Reference cluster mass the bundled SB99 grid is normalized against.
-#       Read at startup by sps_refmass's def_value fallback. Not used
-#       elsewhere under the bundled default.
-# UNIT: [Msun]
-SB99_mass    1e6
-
-# INFO: Determines whether stellar rotation is considered in the stellar track.
-#       Read by TWO subsystems independently:
-#         (1) Legacy SB99 filename grammar (currently unwired; see
-#             _get_legacy_sb99_filename in src/_input/read_param.py).
-#         (2) Non-CIE cooling-table selection
-#             (src/cooling/non_CIE/read_cloudy.py:47), which picks
-#             opiate_cooling_rot_* vs opiate_cooling_norot_* regardless of
-#             whether sps_path is set. So this parameter still matters
-#             even though the SPS-grammar path no longer fires under
-#             the bundled default (which is rotation=1).
+# INFO: Stellar-rotation flag. Selects rot vs norot non-CIE cooling tables
+#       (src/cooling/non_CIE/read_cloudy.py). Only rot tables ship in
+#       lib/default/opiate/, so 0 (norot) requires the user to supply
+#       matching cooling tables and an sps_path pointing at a norot SPS
+#       file; the default SPS fallback rejects SB99_rotation=0.
+#       NOTE: name retained for stability. May rename to sps_rotation in
+#       a future PR once the cooling subsystem stops being SB99-flavored.
 SB99_rotation    1
 
-# INFO: Black hole formation threshold used when the SB99 grid was generated.
-#       Informational only under the bundled default
-#       (lib/default/sps/starburst99/1e6cluster_default.csv is BHCUT=120).
-# UNIT: [Msun]
-SB99_BHCUT    120
-
 # INFO: Reference cluster mass used in f_mass = mCluster / sps_refmass.
-#       If def_value (default), copied from SB99_mass at startup so the
-#       bundled lib/default/sps/starburst99/1e6cluster_default.csv (built at 1e6 Msun)
-#       scales correctly. Override when sps_path points at an SPS file
-#       normalized to a different reference mass.
+#       If def_value (default), resolves to 1e6 Msun — the reference mass
+#       of the bundled default SPS file. Override when sps_path points at
+#       an SPS file normalized to a different reference mass.
 # UNIT: [Msun]
 sps_refmass    def_value
 
@@ -345,22 +322,13 @@ path_cooling_CIE    3
 #       grammar opiate_cooling_{rot|norot}_Z{1.00|0.15}_age{a}.dat.
 path_cooling_nonCIE    def_dir
 
-# INFO: Directory anchor for SPS data. Sentinel 'def_dir' resolves to
-#       lib/default/sps/, where the bundled 1e6cluster_default.csv lives.
-#       Currently informational only — sps_path's def_path branch resolves
-#       directly to the bundled CSV without joining against path_sps.
-path_sps    def_dir
-
-# INFO: Full path to an SPS data file. If def_path (default), resolves to
-#       the bundled lib/default/sps/starburst99/1e6cluster_default.csv (an SB99 grid:
-#       rotation=1, ZCloud=1, BHCUT=120 Msun, mass=1e6 Msun, exported as
-#       CSV with the canonical 7-column layout). The bundled CSV is loaded
-#       with the LEGACY_SB99_COLUMN_MAP positional preset; the sps_col_*
-#       declarations below are NOT required for the default.
-#
-#       Setting sps_path to any other value triggers user mode and
+# INFO: Full path to an SPS data file. If def_path (default), TRINITY uses
+#       the bundled file at lib/default/sps/starburst99/1e6cluster_default.csv
+#       (solar metallicity, rot, 1e6 Msun reference cluster) loaded with the
+#       LEGACY_SB99_COLUMN_MAP positional preset — no sps_col_* declarations
+#       required. Setting sps_path to any other value triggers user mode and
 #       requires sps_col_<canonical> declarations describing your file's
-#       column layout. See the worked example further down.
+#       column layout. See analysis/sb99-refactor-audit.md §9.
 sps_path    def_path
 
 # ==============================================================================

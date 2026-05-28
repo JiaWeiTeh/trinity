@@ -142,9 +142,10 @@ line as a sentinel. Two ways to handle it:
    `TODO` reminder.
 
 Identify the matching grid from your run's `<model>_summary.txt`:
-`SB99_mass`, `SB99_rotation`, `SB99_BHCUT`, `ZCloud` together name the
-TRINITY-side input file (`get_filename()` in `src/sb99/read_SB99.py`).
-You need to compile a CLOUDY grid from the same STARBURST99 model.
+`sps_path` names the TRINITY-side SPS input file (the bundled default
+is solar metallicity, rotation = on, 1e6 Msun reference cluster).
+`SB99_rotation` separately keys the non-CIE cooling tables, so make
+sure your CLOUDY grid is compiled from the matching STARBURST99 model.
 
 ## Customising the template / line list
 
