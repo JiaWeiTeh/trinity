@@ -64,10 +64,27 @@ class ParamSpec:
     category: Category
 
     unit: Optional[str] = None
-    serializable: bool = True
+
+    # Snapshot/metadata routing — these reproduce the hand-curated lists
+    # in ``src._output.run_constants`` (Phase 5 swaps them to derive from
+    # here).  The three axes are independent:
+    #   * run_const          → written once to metadata.json (RUN_CONST_KEYS)
+    #   * metadata_exclude    → blocked from metadata.json (METADATA_EXCLUDE):
+    #                           paths, loaded tables, empty array placeholders
+    #   * exclude_from_snapshot → the live DescribedItem flag; omit from the
+    #                           per-snapshot jsonl stream
+    # run_const ∩ metadata_exclude is always empty (a key is written to
+    # metadata or blocked from it, never both).
+    run_const: bool = False
+    metadata_exclude: bool = False
     exclude_from_snapshot: bool = False
 
     validator: Optional[Callable[[Any, dict], None]] = None
+    # ``resolver`` resolves a sentinel default (``def_*``) against the full
+    # params dict.  It is OPTIONAL here: Phase 2 declares the 17 sentinel
+    # specs with ``resolver=None``; Phase 7 wires the resolvers and flips
+    # the (currently xfail) ``test_every_sentinel_default_has_resolver``
+    # guard green.  See SENTINEL_PREFIX.
     resolver: Optional[Callable[[Any, dict], Any]] = None
     active_when: Optional[Callable[[dict], bool]] = None
 
@@ -82,12 +99,9 @@ class ParamSpec:
             raise ValueError(
                 f"{self.name}: category='deprecated' requires deprecated_note"
             )
-        if (
-            isinstance(self.default, str)
-            and self.default.startswith(SENTINEL_PREFIX)
-            and self.resolver is None
-        ):
+        if self.run_const and self.metadata_exclude:
             raise ValueError(
-                f"{self.name}: default {self.default!r} is a sentinel "
-                f"but no resolver is registered to resolve it"
+                f"{self.name}: run_const and metadata_exclude are mutually "
+                f"exclusive (a key is either written to metadata.json or "
+                f"blocked from it, never both)"
             )
