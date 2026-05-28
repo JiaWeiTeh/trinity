@@ -27,22 +27,11 @@ import sys
 from pathlib import Path
 
 
-# =============================================================================
-# Configure EARLY logging so read_param messages are captured
-# =============================================================================
-# This is a minimal setup - will be reconfigured after params are loaded
-logging.basicConfig(
-    level=logging.DEBUG,  # Start with DEBUG to capture everything
-    format="%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
-    datefmt='%Y-%m-%d %H:%M:%S',
-)
-
-# Suppress noisy third-party libraries during early logging
-for lib in ['matplotlib', 'PIL', 'urllib3', 'asyncio', 'parso', 'fontTools', 'numba', 'h5py']:
-    logging.getLogger(lib).setLevel(logging.INFO)
-
+# Module-level logger handle. The actual logging.basicConfig() call lives
+# inside __main__ so that ProcessPoolExecutor workers re-importing this
+# module (under 'spawn' on macOS/Windows) don't reconfigure logging and
+# leak messages into the parent terminal.
 early_logger = logging.getLogger(__name__)
-early_logger.debug("Early logging configured (pre-params)")
 
 TRINITY_ROOT = Path(__file__).parent.resolve()
 
@@ -128,11 +117,8 @@ def is_sweep_param_file(path2file):
 def run_single(args):
     """Run a single TRINITY simulation."""
     from src._input import read_param
-
     from src._output import header
-    header.display()
 
-    # Note: read_param logging is now captured with early config above
     params = read_param.read_param(args.path2param)
 
     header.show_param(params)
@@ -436,13 +422,6 @@ def run_sweep(args):
                 except OSError:
                     pass
 
-    # Reconfigure logging for sweep mode — suppress parser noise
-    log_level = logging.DEBUG if args.verbose else logging.WARNING
-    logging.basicConfig(
-        level=log_level,
-        format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
-        force=True,
-    )
     logger = logging.getLogger(__name__)
 
     # Validate input file
@@ -469,9 +448,8 @@ def run_sweep(args):
     # Display sweep summary
     # =================================================================
 
-    print("\n" + "=" * 60)
-    print("PARAMETER SWEEP SUMMARY")
-    print("=" * 60)
+    print("\nSweep summary")
+    print("-" * 50)
 
     # Show base params as a compact count (use --verbose for full list)
     n_base = len(config.base_params)
@@ -526,9 +504,8 @@ def run_sweep(args):
     # =================================================================
 
     if args.dry_run:
-        print("\n" + "-" * 60)
-        print("DRY RUN - Combinations to be generated:")
-        print("-" * 60)
+        print("\nDry run — combinations to be generated:")
+        print("-" * 50)
 
         combinations = list(generate_combinations_from_config(config))
         # Determine which keys to show
@@ -588,7 +565,7 @@ def run_sweep(args):
     # =================================================================
 
     if not args.yes:
-        print("\n" + "-" * 60)
+        print()
         prompt_msg = f"Run {n_combinations} simulations with {workers} workers?"
         if invalid_combos:
             prompt_msg += (f" ({len(invalid_combos)} will fail due to invalid "
@@ -609,10 +586,8 @@ def run_sweep(args):
     # Run sweep
     # =================================================================
 
-    print("\n" + "=" * 60)
-    print("STARTING PARAMETER SWEEP")
-    print("=" * 60)
-    print("(Press Ctrl+C to cancel all remaining simulations)\n")
+    print("\nStarting sweep (Ctrl+C to cancel)")
+    print("-" * 50)
 
     start_time = datetime.now()
 
@@ -850,11 +825,24 @@ if __name__ == '__main__':
     # grab argument
     args = parser.parse_args()
 
+    # Configure logging now that we know --verbose. Kept inside __main__ so
+    # spawn-based ProcessPoolExecutor workers don't reconfigure on re-import.
+    logging.basicConfig(
+        level=logging.DEBUG if args.verbose else logging.WARNING,
+        format="%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
+        datefmt='%Y-%m-%d %H:%M:%S',
+    )
+    for lib in ['matplotlib', 'PIL', 'urllib3', 'asyncio', 'parso', 'fontTools', 'numba', 'h5py']:
+        logging.getLogger(lib).setLevel(logging.INFO)
+
     warn_if_unsupported_deps()
+
+    # Banner first so it shows in both single and sweep modes.
+    from src._output import header
+    header.display()
 
     # Auto-detect mode from parameter file content
     if is_sweep_param_file(args.path2param):
-        early_logger.info("Sweep syntax detected in parameter file — entering sweep mode")
         run_sweep(args)
     else:
         run_single(args)
