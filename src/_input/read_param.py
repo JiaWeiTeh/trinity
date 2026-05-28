@@ -35,73 +35,6 @@ _REPO_ROOT = Path(__file__).resolve().parents[2]
 logger = logging.getLogger(__name__)
 
 
-def _get_legacy_sb99_filename(params):
-    """
-    Construct an SB99 filename from the legacy SB99_mass / SB99_rotation /
-    ZCloud / SB99_BHCUT grammar.
-
-    Currently NOT WIRED UP — `sps_path = def_path` resolves directly to
-    `lib/default/sps/starburst99/1e6cluster_default.csv` (see `read_param` below).
-    Preserved here so the four legacy SB99_* params remain meaningful for
-    code paths that may opt back into the grammar (e.g. a future
-    `sps_path = def_sb99_grammar` sentinel). See
-    analysis/sb99-refactor-audit.md §9 for the original "legacy permanent"
-    contract.
-
-    Returns the bare filename (e.g. "1e6cluster_rot_Z0014_BH120.txt"); the
-    caller joins it with params['path_sps'].value to form the full path.
-
-    Supported combinations:
-    - ZCloud (metallicity): 1.0 (Z0014, solar) or 0.15 (Z0002, 0.15 solar)
-    - SB99_BHCUT (BH cutoff): 120 or 40 Msun
-    - SB99_rotation: truthy ('rot') or falsy ('norot')
-
-    Raises ValueError on unsupported ZCloud or SB99_BHCUT, pointing the user
-    at sps_path as the escape hatch for arbitrary SPS files.
-    """
-    SB99_mass = params.get('SB99_mass').value
-    SB99_rotation = params.get('SB99_rotation').value
-    ZCloud = params.get('ZCloud').value
-    SB99_BHCUT = params.get('SB99_BHCUT').value
-
-    if SB99_mass is None or SB99_mass <= 0:
-        raise ValueError(f"Invalid SB99_mass: {SB99_mass}")
-
-    def format_e(n):
-        """Format a positive number in simplified scientific notation (e.g. 1e6)."""
-        a = '%E' % n
-        mantissa = a.split('E')[0].rstrip('0').rstrip('.')
-        exponent = a.split('E')[1].strip('+').lstrip('0') or '0'
-        return f"{mantissa}e{exponent}"
-
-    SBmass_str = format_e(SB99_mass)
-    rot_str = 'rot' if SB99_rotation else 'norot'
-
-    if ZCloud == 1.0:
-        z_str = 'Z0014'
-    elif ZCloud == 0.15:
-        z_str = 'Z0002'
-    else:
-        raise ValueError(
-            f"Unsupported metallicity for legacy SB99 grammar: ZCloud = {ZCloud}. "
-            "Only 1.0 (solar) and 0.15 (0.15 solar) are supported. "
-            "For other metallicities, set sps_path explicitly to your SPS file."
-        )
-
-    if SB99_BHCUT == 120:
-        BH_str = 'BH120'
-    elif SB99_BHCUT == 40:
-        BH_str = 'BH40'
-    else:
-        raise ValueError(
-            f"Unsupported black hole cutoff for legacy SB99 grammar: "
-            f"SB99_BHCUT = {SB99_BHCUT}. Only 120 and 40 Msun are supported. "
-            "For other cutoffs, set sps_path explicitly to your SPS file."
-        )
-
-    return f"{SBmass_str}cluster_{rot_str}_{z_str}_{BH_str}.txt"
-
-
 def read_param(path2file):
     """
     Read parameter file and return DescribedDict with all TRINITY parameters.
@@ -465,83 +398,56 @@ def read_param(path2file):
             _REPO_ROOT / 'lib' / 'default' / 'CIE' / 'coolingCIE_4_Sutherland-Dopita1993.dat'
         )
     
-    # SPS data directory. Sentinel 'def_dir' resolves to
-    # lib/default/sps/starburst99/, where the shipped 1e6cluster_default.csv
-    # lives. Currently only used as an informational anchor — the def_path
-    # branch below resolves sps_path directly to the bundled CSV without
-    # joining against path_sps.
-    if params['path_sps'].value == 'def_dir':
-        params['path_sps'].value = str(_REPO_ROOT / 'lib' / 'default' / 'sps' / 'starburst99') + os.sep
-    else:
-        path_sps = str(params['path_sps'].value)
-        Path(path_sps).mkdir(parents=True, exist_ok=True)
-        params['path_sps'].value = path_sps
-
     # sps_refmass: reference cluster mass used by f_mass = mCluster / sps_refmass.
-    # Default sentinel 'def_value' falls back to SB99_mass (1e6) so that the
-    # bundled lib/default/sps/starburst99/1e6cluster_default.csv — generated at SB99_mass
-    # = 1e6 — scales correctly out of the box.
+    # Default 'def_value' resolves to 1e6 Msun — the reference mass of the
+    # bundled default CSV. Override when sps_path points at an SPS file
+    # normalized to a different reference mass.
     if params['sps_refmass'].value == 'def_value':
-        params['sps_refmass'].value = params['SB99_mass'].value
+        params['sps_refmass'].value = 1e6
 
-    # sps_path: full path to the SPS data file.
-    #
-    # Sentinel 'def_path' resolves to the bundled
-    #   lib/default/sps/starburst99/1e6cluster_default.csv
-    # — an SB99 grid at rotation=1, ZCloud=1 (solar, Z=0.014), BHCUT=120 Msun,
-    # mass=1e6 Msun, exported as CSV. The shipped column layout matches
-    # LEGACY_SB99_COLUMN_MAP (t, Qi, fi, Lbol, Lmech_total, pdot_W, Lmech_W
-    # at positional indices 0..6, with fi in log10 space). The file is
-    # routed through the user-mode loader (which auto-detects and skips the
-    # CSV header); LEGACY_SB99_COLUMN_MAP is injected as the column map so
-    # users do not need to declare sps_col_* lines.
-    #
-    # Setting sps_path to any other value triggers user mode and requires
-    # the user to declare sps_col_<canonical> entries describing their
-    # file's column layout.
-    #
-    # The historical legacy SB99 filename grammar
-    # (_get_legacy_sb99_filename) is no longer wired up under def_path —
-    # see that function's docstring for the rationale.
-    DEFAULT_SPS_CSV = str(_REPO_ROOT / 'lib' / 'default' / 'sps' / 'starburst99' / '1e6cluster_default.csv')
-    sps_path_uses_bundled_default = (params['sps_path'].value == 'def_path')
-    if sps_path_uses_bundled_default:
-        params['sps_path'].value = DEFAULT_SPS_CSV
+    # sps_path: full path to the SPS data file. Sentinel 'def_path' resolves
+    # to the bundled lib/default/sps/starburst99/1e6cluster_default.csv —
+    # an SB99 grid at rotation=1, ZCloud=1, mass=1e6 Msun in CSV form with
+    # the canonical 7-column SB99 layout (LEGACY_SB99_COLUMN_MAP). The
+    # default rejects combinations the bundled cooling tables can't fulfill;
+    # users who need a different metallicity or rotation must set sps_path
+    # explicitly. See analysis/sb99-refactor-audit.md §9.
+    if params['sps_path'].value == 'def_path':
+        if params['ZCloud'].value != 1.0:
+            raise ValueError(
+                f"ZCloud={params['ZCloud'].value} is not supported with the "
+                "default SPS fallback (only ZCloud=1.0 is bundled). Set "
+                "sps_path explicitly to use a non-solar metallicity SPS file."
+            )
+        if not params['SB99_rotation'].value:
+            raise ValueError(
+                "SB99_rotation=0 is not supported with the default SPS "
+                "fallback (only rot cooling tables are bundled). Set "
+                "sps_path explicitly and supply matching cooling tables "
+                "for the norot case."
+            )
+        params['sps_path'].value = str(
+            _REPO_ROOT / 'lib' / 'default' / 'sps' / 'starburst99' / '1e6cluster_default.csv'
+        )
         column_map = sps_columns.LEGACY_SB99_COLUMN_MAP
         logger.info(
-            f"Using bundled default SPS file: {params['sps_path'].value} "
-            "(column layout: LEGACY_SB99_COLUMN_MAP — t/Qi/fi/Lbol/"
-            "Lmech_total/pdot_W/Lmech_W at positional indices 0..6)"
+            f"sps_path unset → using default SPS file: {params['sps_path'].value}"
         )
     else:
         params['sps_path'].value = str(params['sps_path'].value)
-        logger.info(f"Using user-defined sps_path = {params['sps_path'].value}")
         try:
             column_map = sps_columns.build_user_column_map(params)
             sps_columns.validate_user_column_map(
                 column_map, params['sps_path'].value
             )
         except ValueError as err:
-            # Echo the full template/error to logs as well as raising —
-            # makes the error visible whether the user is running in a
-            # subprocess (stderr captured) or interactively.
             logger.error(f"SPS column map error:\n{err}")
             raise
+        logger.info(f"Using user-defined sps_path = {params['sps_path'].value}")
 
     params['sps_column_map'] = DescribedItem(
         column_map,
         info="SPS column mapping (canonical -> ColumnSpec)",
-        ori_units="N/A",
-        exclude_from_snapshot=True,
-    )
-    # Dispatch flag for read_SB99. The bundled default CSV has a header, so
-    # it must go through the user-mode loader (which auto-detects + skips
-    # headers) even though it uses the LEGACY_SB99_COLUMN_MAP positional
-    # preset. Hence False for the bundled default as well as for explicit
-    # user paths.
-    params['sps_layout_is_legacy'] = DescribedItem(
-        False,
-        info="True iff sps_path was resolved from the legacy SB99 grammar (currently unreachable)",
         ori_units="N/A",
         exclude_from_snapshot=True,
     )
@@ -633,14 +539,8 @@ def read_param(path2file):
     params['initial_cloud_m_arr'] = DescribedItem(np.array([]), info="Initial cloud enclosed mass array", ori_units="Msun")
     
     # Feedback from SPS (Starburst99 by default; arbitrary via sps_path).
-    # The canonical container names are sps_data / sps_f as of PR-3
-    # (audit §10); SB99_data / SB99f are kept as aliases pointing at the
-    # same DescribedItem instance so out-of-tree code continues to work.
     params['sps_data'] = DescribedItem(0, info="SPS raw 11-array datacube", ori_units="N/A", exclude_from_snapshot=True)
     params['sps_f'] = DescribedItem(0, info="SPS interpolators (dict of scipy interp1d)", ori_units="N/A", exclude_from_snapshot=True)
-    # Back-compat aliases (PR-3) — same underlying DescribedItem object.
-    params['SB99_data'] = params['sps_data']
-    params['SB99f'] = params['sps_f']
     params['Lmech_W'] = DescribedItem(0, info="Wind mechanical luminosity", ori_units="Msun*pc**2/Myr**3")
     params['Lmech_SN'] = DescribedItem(0, info="SN mechanical luminosity", ori_units="Msun*pc**2/Myr**3")
     params['Lmech_total'] = DescribedItem(0, info="Total mechanical luminosity", ori_units="Msun*pc**2/Myr**3")

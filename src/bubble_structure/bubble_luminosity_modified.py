@@ -30,7 +30,6 @@ import src._functions.operations as operations
 import src.bubble_structure.get_bubbleParams as get_bubbleParams
 from src.cooling import net_coolingcurve
 import src._functions.unit_conversions as cvt
-from src.sb99.update_feedback import get_current_sps_feedback
 
 logger = logging.getLogger(__name__)
 

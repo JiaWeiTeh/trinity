@@ -345,8 +345,7 @@ def validate_t_monotonic(t: np.ndarray, filepath: str) -> None:
     1.001e7, 1.002e7, 1.003e7 all to the same string "1.00e+07"),
     producing duplicates that scipy refuses to interpolate over.
 
-    Applied by both _read_sb99_legacy and _read_sb99_user in
-    src/sb99/read_SB99.py.
+    Applied by _read_sb99_user in src/sb99/read_SB99.py.
     """
     if len(t) < 2:
         return  # trivially fine.

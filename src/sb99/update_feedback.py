@@ -6,14 +6,6 @@ Created on Tue Jun 17 23:14:53 2025
 @author: Jia Wei Teh
 
 Evaluate SPS feedback values at a given time and update the params dictionary.
-
-The function name and dataclass were renamed in PR-3 of the SB99 -> SPS
-refactor (see analysis/sb99-refactor-audit.md). Back-compat aliases
-`SB99Feedback = SPSFeedback` and `get_currentSB99feedback =
-get_current_sps_feedback` are kept at the bottom of this module for one
-release; out-of-tree callers can keep using the old names. PR-4 may drop
-the aliases (audit §14 question 2: legacy is permanent, but transitional
-symbol aliases are bounded).
 """
 
 from dataclasses import dataclass
@@ -208,14 +200,3 @@ def get_current_sps_feedback(t, params) -> SPSFeedback:
         pdotdot_total=pdotdot_total,
         v_mech_total=v_mech_total,
     )
-
-
-# -------------------------------------------------------------------------
-# Back-compat aliases (PR-3 of SB99 -> SPS refactor).
-#
-# Out-of-tree code that still imports the old names continues to work
-# transparently. PR-4 may drop these once we're confident no caller
-# depends on them. See analysis/sb99-refactor-audit.md §10 PR-3 / §10 PR-4.
-# -------------------------------------------------------------------------
-SB99Feedback = SPSFeedback
-get_currentSB99feedback = get_current_sps_feedback

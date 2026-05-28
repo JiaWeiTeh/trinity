@@ -312,19 +312,18 @@ Stellar Feedback (SPS) Parameters
 
 TRINITY reads time-evolving stellar feedback (ionizing photon rate,
 bolometric and mechanical luminosities, wind and SN momentum injection,
-...) from a stellar-population-synthesis (SPS) data file. Two modes are
-supported:
+...) from a stellar-population-synthesis (SPS) data file.
 
-* **Bundled default (default)**: leave ``sps_path = def_path``. TRINITY
-  loads ``lib/default/sps/starburst99/1e6cluster_default.csv`` — an SB99 grid at
-  rotation=1, ZCloud=1 (solar, Z=0.014), BHCUT=120 :math:`M_\odot`,
-  mass=:math:`10^6 M_\odot`, exported as CSV with the canonical
-  7-column SB99 layout — and applies the ``LEGACY_SB99_COLUMN_MAP``
-  positional preset internally. No ``sps_col_*`` declarations are
-  required.
-* **Custom SPS mode**: set ``sps_path`` to an actual file path, and
-  describe the file's column layout with ``sps_col_*`` declarations
-  (see the *Custom SPS files* subsection below).
+When ``sps_path`` is left at its default ``def_path``, TRINITY loads
+the bundled file
+``lib/default/sps/starburst99/1e6cluster_default.csv`` (solar
+metallicity, rotation = on, :math:`10^6 M_\odot` reference cluster).
+The fallback only accepts ``ZCloud = 1.0`` and ``SB99_rotation = 1``
+because the bundled non-CIE cooling tables are rot-only — other
+combinations require an explicit ``sps_path`` plus matching cooling
+tables. To use a custom SPS file, set ``sps_path`` and describe its
+column layout with ``sps_col_*`` declarations (see the *Custom SPS
+files* subsection below).
 
 .. list-table::
    :widths: 25 15 15 45
@@ -337,39 +336,25 @@ supported:
    * - ``sps_path``
      - ``def_path``
      - --
-     - Full path to an SPS data file. If ``def_path``, resolves to the
-       bundled ``lib/default/sps/starburst99/1e6cluster_default.csv``. Otherwise
-       points directly at any ``.txt`` or ``.csv`` file whose columns
-       are described by the ``sps_col_*`` declarations.
+     - Full path to an SPS data file. If ``def_path``, TRINITY loads
+       the bundled default file. Otherwise points at any ``.txt`` or
+       ``.csv`` file whose columns are described by the ``sps_col_*``
+       declarations.
    * - ``sps_refmass``
      - ``def_value``
      - :math:`M_\odot`
      - Reference cluster mass for the feedback scaling
        :math:`f_{\rm mass} = M_{\rm cluster} / {\rm sps\_refmass}`. If
-       ``def_value``, copied from ``SB99_mass`` at startup so the
-       bundled :math:`10^6 M_\odot` default scales correctly. Override
-       when ``sps_path`` points at a file normalized to a different
-       reference mass.
-   * - ``SB99_mass``
-     - ``1e6``
-     - :math:`M_\odot`
-     - Reference cluster mass the bundled SB99 grid is normalized
-       against. Read by ``sps_refmass``'s ``def_value`` fallback; not
-       used elsewhere under the bundled default.
+       ``def_value``, resolves to ``1e6`` (the reference mass of the
+       bundled default SPS file). Override when ``sps_path`` points at
+       a file normalized to a different reference mass.
    * - ``SB99_rotation``
      - ``1``
      - --
-     - Informational under the bundled default
-       (``lib/default/sps/starburst99/1e6cluster_default.csv`` is rotation=1).
-       **Also used by the non-CIE cooling-table selection regardless
-       of ``sps_path``**, so keep it consistent with your data choice.
-   * - ``SB99_BHCUT``
-     - ``120``
-     - :math:`M_\odot`
-     - Informational under the bundled default
-       (``lib/default/sps/starburst99/1e6cluster_default.csv`` is BHCUT=120). BH
-       formation threshold; stars above this ZAMS mass collapse
-       directly to BH without SN.
+     - Keys the non-CIE cooling-table selection (rot vs norot). Only
+       rot tables ship with the repo; ``0`` requires user-supplied
+       cooling tables and a matching ``sps_path``. Setting ``0`` with
+       ``sps_path = def_path`` raises at config-load.
 
 
 Custom SPS files (``sps_col_*`` declarations)
@@ -607,14 +592,6 @@ Specify paths to external data files.
        Per-age filenames inside follow the OPIATE grammar
        ``opiate_cooling_{rot|norot}_Z{1.00|0.15}_age{a}.dat`` and are
        selected at runtime from ``SB99_rotation`` + ``ZCloud``.
-   * - ``path_sps``
-     - ``def_dir``
-     - SPS data directory anchor. Sentinel ``def_dir`` resolves to
-       ``lib/default/sps/``, where the bundled
-       ``1e6cluster_default.csv`` lives. Currently informational only —
-       ``sps_path``'s ``def_path`` branch resolves directly to the
-       bundled CSV. See the *Stellar Feedback (SPS) Parameters* section
-       above.
 
 
 Physical Constants
