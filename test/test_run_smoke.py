@@ -34,17 +34,19 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 def test_quickstart_completes_cleanly(tmp_path):
     """``python run.py <fast param>`` exits 0 and writes the expected outputs.
 
-    Uses ``stop_t_diss = 1e-3`` Myr so the integrator runs all the way to a
-    normal stopping-time termination instead of bailing out early on an
-    internal solver error. Runs from a fresh CWD (``tmp_path``) — outputs
-    land under ``tmp_path/outputs/smoke/`` and are cleaned by pytest.
+    Uses ``stop_t = 1e-4`` Myr so the run terminates after ~10 snapshots —
+    enough to enter Phase 1 and exercise the bubble-structure code path
+    (where past regressions have lived) without running for minutes.
+    ``stop_t_diss`` is left at its default. Runs from a fresh CWD
+    (``tmp_path``) — outputs land under ``tmp_path/outputs/smoke/`` and
+    are cleaned by pytest.
     """
     param = tmp_path / "smoke.param"
     param.write_text(
-        "mCloud         1e5\n"
-        "sfe            0.3\n"
-        "stop_t_diss    1e-3\n"
-        "model_name     smoke\n"
+        "mCloud      1e5\n"
+        "sfe         0.3\n"
+        "stop_t      1e-4\n"
+        "model_name  smoke\n"
     )
 
     result = subprocess.run(
