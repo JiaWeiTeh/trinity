@@ -19,11 +19,14 @@ state dictionary (see :ref:`sec-running`, *Snapshot data model*).
 File Format
 -----------
 
-The canonical parameter schema — the authoritative, fully-commented
-list of keys and defaults — lives at ``src/_input/default.param``;
-the keywords below mirror it. Worked example files live under
-``param/`` (see ``param/simple_cluster.param`` or
-``param/cloud_example_PL.param``) and override those defaults.
+The parameter schema — the complete set of keys and defaults — is
+defined by the ParamSpec registry at ``src/_input/registry.py``. The
+``src/_input/default.param`` file is generated from it (run
+``python -m tools.gen_default_param --write`` after editing the
+registry) and is what ``read_param`` loads; the keywords below mirror
+it. Worked example files live under ``param/`` (see
+``param/simple_cluster.param`` or ``param/cloud_example_PL.param``)
+and override those defaults.
 
 A parameter file contains one ``keyword    value`` entry per line. A
 ``#`` starts a comment, either as a whole line or after a value.
@@ -580,11 +583,14 @@ Specify paths to external data files.
    * - ``path_cooling_CIE``
      - ``3``
      - Selects the CIE (T > 10\ :sup:`5.5` K) cooling table. Integer
-       presets under ZCloud=1: 1=CLOUDY HII, 2=CLOUDY+grains,
-       3=Gnat & Ferland 2012; all bundled under
-       ``lib/default/CIE/``. Under ZCloud=0.15 this is ignored
-       and the loader auto-pins to
-       ``lib/default/CIE/coolingCIE_4_Sutherland-Dopita1993.dat``.
+       presets under ZCloud=1, bundled under ``lib/default/CIE/``:
+
+       - ``1`` → ``coolingCIE_1_Cloudy.dat`` (CLOUDY HII)
+       - ``2`` → ``coolingCIE_2_Cloudy_grains.dat`` (CLOUDY + grains)
+       - ``3`` → ``coolingCIE_3_Gnat-Ferland2012.dat`` (Gnat & Ferland 2012)
+
+       Under ZCloud=0.15 this is ignored and the loader auto-pins to
+       ``coolingCIE_4_Sutherland-Dopita1993.dat``.
    * - ``path_cooling_nonCIE``
      - ``def_dir``
      - Folder of non-CIE (T < 10\ :sup:`5.5` K) OPIATE/CLOUDY cubes.

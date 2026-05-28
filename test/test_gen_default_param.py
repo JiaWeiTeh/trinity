@@ -48,7 +48,21 @@ def _generated() -> dict:
 
 
 # ---------------------------------------------------------------------------
-# Core drift gate
+# Byte-exact gate (Phase 4: default.param is now a generated artifact)
+# ---------------------------------------------------------------------------
+def test_committed_file_is_byte_identical_to_render() -> None:
+    """default.param must equal render(SPECS) exactly. If this fails,
+    someone hand-edited default.param or changed a spec without
+    regenerating — run: python -m tools.gen_default_param --write"""
+    committed = DEFAULT_PARAM_PATH.read_text(encoding="utf-8")
+    assert committed == render(), (
+        "default.param is out of sync with the registry. "
+        "Regenerate with: python -m tools.gen_default_param --write"
+    )
+
+
+# ---------------------------------------------------------------------------
+# Semantic checks (retained as drift localizers — they say *what* differs)
 # ---------------------------------------------------------------------------
 def test_generated_and_committed_have_same_keys() -> None:
     c, g = _committed(), _generated()
