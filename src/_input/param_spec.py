@@ -58,11 +58,22 @@ Category = Literal[
 ]
 
 # Prefix for sentinel string defaults: ``def_dir``, ``def_path``,
-# ``def_value``, ``def_unset``.  A sentinel default is resolved against
-# the full params dict by the spec's ``resolver`` (wired in Phase 7).
-# Until then the 17 sentinel specs carry ``resolver=None``; the
-# ``test_every_sentinel_default_has_resolver`` guard (xfail until
-# Phase 7) tracks the gap.
+# ``def_value``, ``def_unset``.  A sentinel default is resolved either by
+#
+#   * its own ``resolver`` (the standalone case — ``path2output``,
+#     ``path_cooling_nonCIE``, ``sps_path``, ``sps_refmass``), or
+#   * another spec's resolver, declared via ``consumed_by`` (the
+#     bulk-consumed case — the 13 ``sps_col_*`` specs are read en bloc
+#     inside ``sps_path``'s resolver via
+#     ``sps_columns.build_user_column_map``; when ``sps_path`` is the
+#     default they stay at ``def_unset`` and nothing reads them).
+#
+# Both axes are wired in Phase 7.  Until then the 17 sentinel specs
+# carry ``resolver=None`` (the 13 sps_col_* additionally carry
+# ``consumed_by='sps_path'``); the
+# ``test_every_sentinel_default_has_resolver_or_pointer`` guard (xfail
+# until Phase 7) tracks the gap and goes green once the 4 standalone
+# resolvers land.
 SENTINEL_PREFIX = "def_"
 
 
@@ -98,11 +109,18 @@ class ParamSpec:
 
     validator: Optional[Callable[[Any, dict], None]] = None
     # ``resolver`` resolves a sentinel default (``def_*``) against the full
-    # params dict.  It is OPTIONAL here: Phase 2 declares the 17 sentinel
-    # specs with ``resolver=None``; Phase 7 wires the resolvers and flips
-    # the (currently xfail) ``test_every_sentinel_default_has_resolver``
-    # guard green.  See SENTINEL_PREFIX.
+    # params dict.  Mutually exclusive with ``consumed_by``: a spec either
+    # carries its own resolver OR delegates to another spec's, never both.
+    # Phase 7 wires the 4 standalone resolvers and flips the (currently
+    # xfail) ``test_every_sentinel_default_has_resolver_or_pointer`` guard
+    # green.  See SENTINEL_PREFIX.
     resolver: Optional[Callable[[Any, dict], Any]] = None
+    # ``consumed_by`` names another spec whose resolver bulk-consumes this
+    # one's raw value.  Used today only by the 13 ``sps_col_*`` specs,
+    # which point at ``sps_path`` — its resolver assembles them via
+    # ``sps_columns.build_user_column_map``.  Target existence is checked
+    # by ``test_consumed_by_targets_exist``.
+    consumed_by: Optional[str] = None
     active_when: Optional[Callable[[dict], bool]] = None
 
     deprecated_note: Optional[str] = None
@@ -121,4 +139,10 @@ class ParamSpec:
                 f"{self.name}: run_const and metadata_exclude are mutually "
                 f"exclusive (a key is either written to metadata.json or "
                 f"blocked from it, never both)"
+            )
+        if self.resolver is not None and self.consumed_by is not None:
+            raise ValueError(
+                f"{self.name}: resolver and consumed_by are mutually "
+                f"exclusive (a sentinel default is resolved either by its "
+                f"own resolver or by another spec's, never both)"
             )

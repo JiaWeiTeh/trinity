@@ -172,16 +172,51 @@ def test_sentinel_prefix_constant() -> None:
 
 
 @pytest.mark.xfail(reason="resolvers wired in Phase 7", strict=True)
-def test_every_sentinel_default_has_resolver() -> None:
-    """Every ``def_*`` sentinel default must carry a resolver.  Wired in
-    Phase 7; ``strict=True`` forces removal of this marker once it does."""
+def test_every_sentinel_default_has_resolver_or_pointer() -> None:
+    """Every ``def_*`` sentinel default must either carry its own
+    ``resolver`` (standalone case — ``path2output``,
+    ``path_cooling_nonCIE``, ``sps_path``, ``sps_refmass``) or declare
+    ``consumed_by`` pointing at another spec that does (bulk-consumed
+    case — the 13 ``sps_col_*`` specs delegate to ``sps_path``).
+
+    Wired in Phase 7 once the 4 standalone resolvers land;
+    ``strict=True`` forces removal of this marker when it goes green.
+    """
     offenders = [
         s.name for s in SPECS
         if isinstance(s.default, str)
         and s.default.startswith(SENTINEL_PREFIX)
         and s.resolver is None
+        and s.consumed_by is None
     ]
-    assert not offenders, f"sentinel specs missing resolver: {offenders}"
+    assert not offenders, f"sentinel specs missing resolver/consumed_by: {offenders}"
+
+
+def test_consumed_by_targets_exist() -> None:
+    """Every ``consumed_by`` value names a real spec.  Catches typos and
+    stale pointers left behind by renames."""
+    bad = [
+        (s.name, s.consumed_by) for s in SPECS
+        if s.consumed_by is not None and s.consumed_by not in REGISTRY
+    ]
+    assert not bad, f"consumed_by points at unknown specs: {bad}"
+
+
+def test_consumed_by_only_on_sentinel_defaults() -> None:
+    """``consumed_by`` is meaningful only for sentinel (``def_*``)
+    defaults — it tells the resolver-wiring step which other spec owns
+    the resolution.  Catches accidental annotations on non-sentinel
+    specs.
+    """
+    misplaced = [
+        s.name for s in SPECS
+        if s.consumed_by is not None
+        and not (isinstance(s.default, str)
+                 and s.default.startswith(SENTINEL_PREFIX))
+    ]
+    assert not misplaced, (
+        f"consumed_by set on non-sentinel specs: {misplaced}"
+    )
 
 
 # ---------------------------------------------------------------------------
