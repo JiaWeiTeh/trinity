@@ -321,6 +321,7 @@ Troubleshooting
 ---------------
 
 Most parameter errors are typos against the schema; the authoritative
-list of valid keywords and defaults is ``src/_input/default.param``,
-mirrored in :ref:`sec-parameters`. For issues and feature requests,
-see https://github.com/JiaWeiTeh/trinity/issues.
+list of valid keywords and defaults is the ParamSpec registry
+(``src/_input/registry.py``), from which ``src/_input/default.param``
+is generated, mirrored in :ref:`sec-parameters`. For issues and
+feature requests, see https://github.com/JiaWeiTeh/trinity/issues.

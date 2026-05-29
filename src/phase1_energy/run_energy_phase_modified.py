@@ -235,41 +235,6 @@ def run_energy(params):
         params['F_ram_wind'].value = feedback.pdot_W
         params['F_ram_SN'].value = feedback.pdot_SN
 
-        # ζ diagnostic (Lancaster+2025)
-        _Qi_zeta   = params['Qi'].value
-        _alphaB    = params['caseB_alpha'].value
-        _k_B       = params['k_B'].value
-        _T_ion     = params['TShell_ion'].value
-        _mu_ion    = params['mu_ion'].value
-        _R2_now    = R2
-        _rCloud_z  = rCloud
-        _pdot_W    = feedback.pdot_W
-        if _R2_now < _rCloud_z:
-            from src.cloud_properties import density_profile as _dp
-            _n_amb = float(np.atleast_1d(
-                _dp.get_density_profile(np.array([_R2_now]), params)
-            )[0])
-        else:
-            _n_amb = params['nISM'].value
-        if _Qi_zeta > 0.0 and _n_amb > 0.0:
-            _R_St = (3.0 * _Qi_zeta /
-                     (4.0 * np.pi * _alphaB * _n_amb**2))**(1.0 / 3.0)
-        else:
-            _R_St = np.inf
-        _c_i2 = _k_B * _T_ion / _mu_ion
-        _rho_amb = _n_amb * params['mu_atom'].value
-        if _pdot_W > 0.0 and _rho_amb > 0.0 and _c_i2 > 0.0:
-            _R_eq = np.sqrt(_pdot_W /
-                            (4.0 * np.pi * _rho_amb * _c_i2))
-        else:
-            _R_eq = 0.0
-        _zeta = _R_eq / _R_St if (np.isfinite(_R_St) and _R_St > 0.0) else 0.0
-        params['zeta'].value = _zeta
-        if _zeta < 0.5:
-            logger.debug(f'ζ={_zeta:.3f} < 0.5: PIR-dominated, n_IF_Str active '
-                         f'(n_IF={params["n_IF"].value:.3e}, '
-                         f'n_IF_Str={params["n_IF_Str"].value:.3e})')
-
         # =============================================================================
         # 6. Save snapshot BEFORE ODE — all values consistent at t_now
         # =============================================================================

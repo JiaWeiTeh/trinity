@@ -3,22 +3,27 @@
 """
 Run-constants schema: which keys live in ``metadata.json``.
 
-A small, dependency-free module imported by both the writer
-(``src._input.dictionary``) and the readers
-(``src._output.trinity_reader``, ``src._input.dictionary.load_snapshots``).
-Defining the list in one place ensures the two sides agree on what
-gets stripped from per-snapshot dicts and what gets rehydrated on
-load.
+``RUN_CONST_KEYS`` and ``METADATA_EXCLUDE`` are DERIVED from the
+ParamSpec registry (``src._input.registry``) — the single source of
+truth — via ``run_const_keys()`` / ``metadata_exclude_keys()``.  This
+module re-exports them under their historical names plus the
+output-schema constants (``DROPPED_IN_V2``, ``METADATA_VERSION``,
+``RESERVED_TOP_LEVEL_KEYS``, ``FINAL_STATE_EXCLUDE_ARRAYS``) that are
+genuinely output concerns, not input-spec data.  It is imported by both
+the writer (``src._input.dictionary``) and the readers
+(``src._output.trinity_reader``, the cloudy run-loader) so the two
+sides agree on what gets stripped from per-snapshot dicts and what
+gets rehydrated on load.
 
 Contract
 --------
-The keys listed below are *run-constants*: input parameters or
-set-once derived values that do not change after phase 0 of a
-simulation.  They are written exactly once per run, in
-``<run_dir>/metadata.json``, and stripped from every per-snapshot
-dictionary in ``dictionary.jsonl``.  The reader rehydrates them
-into every snapshot's ``data`` dict via ``setdefault`` (so any
-per-snapshot value, when present, takes precedence).
+The derived keys are *run-constants*: input parameters or set-once
+derived values that do not change after phase 0 of a simulation.  They
+are written exactly once per run, in ``<run_dir>/metadata.json``, and
+stripped from every per-snapshot dictionary in ``dictionary.jsonl``.
+The reader rehydrates them into every snapshot's ``data`` dict via
+``setdefault`` (so any per-snapshot value, when present, takes
+precedence).
 
 State-machine flags that *happen* to be constant in a particular
 run (``EndSimulationDirectly``, ``isCollapse``, ``isDissolved``,
@@ -57,121 +62,25 @@ Version history
 
 from __future__ import annotations
 
-# All keys that get factored out of per-snapshot dicts and into
-# ``metadata.json``.  Ordering mirrors the conceptual grouping:
-# identifiers → physical inputs → solver/control inputs → SB99 inputs
-# → feedback inputs → logging inputs → derived (set-once at init).
-RUN_CONST_KEYS: tuple[str, ...] = (
-    # --- Identifiers / cloud inputs ---
-    "model_name",
-    "mCloud",        # post-SFE residual cloud mass (mutated in read_param)
-    "mCloud_input",  # pre-SFE input GMC mass (= mCloud + mCluster)
-    "sfe",
-    "ZCloud",
-    "include_PHII",
-    "dens_profile",
-    "densPL_alpha",
-    "nCore",
-    "nISM",
-    "rCore",
+from src._input.registry import metadata_exclude_keys, run_const_keys
 
-    # --- Run-control inputs ---
-    "allowShellDissolution",
-    "stop_t_diss",
-    "stop_r",
-    "stop_v",
-    "stop_t",
-    "coll_r",
-    "expansionBeyondCloud",
-    "use_adaptive_solver",
-    "adiabaticOnlyInCore",
-    "immediate_leak",
+# Run-const / metadata-exclude membership is DERIVED from the ParamSpec
+# registry (the single source of truth), not hand-curated here.  Each
+# spec declares ``run_const`` / ``metadata_exclude``; these helpers
+# project those flags.  This is why the four legacy stale entries
+# (``expansionBeyondCloud`` in run-consts; ``SB99_data`` / ``SB99f`` /
+# ``path_sps`` in the exclude set) are gone — they have no spec, so the
+# derivation cannot emit them.
+#
+# RUN_CONST_KEYS: keys written once to metadata.json (constant after
+# phase 0).  Ordering follows registry (SPECS) order.
+RUN_CONST_KEYS: tuple[str, ...] = run_const_keys()
 
-    # --- SPS inputs ---
-    "SB99_rotation",
-
-    # --- Feedback inputs ---
-    "FB_mColdSNFrac",
-    "FB_mColdWindFrac",
-    "FB_thermCoeffSN",
-    "FB_thermCoeffWind",
-    "FB_vSN",
-
-    # --- Solver/physics tuning ---
-    "phaseSwitch_LlossLgain",
-    "bubble_xi_Tb",
-
-    # --- Logging inputs ---
-    "output_format",
-    "log_level",
-    "log_colors",
-    "log_console",
-    "log_file",
-
-    # --- BE-specific inputs (only populated for dens_profile="densBE") ---
-    "densBE_Omega",
-
-    # --- Set-once derived scalars ---
-    "rCloud",
-    "nEdge",
-    "tSF",
-    "mCluster",
-    "mu_atom",
-    "mu_ion",
-    "mu_mol",
-    "mu_convert",
-    "TShell_ion",
-    "TShell_neu",
-    "caseB_alpha",
-    "C_thermal",
-    "dust_KappaIR",
-    "dust_noZ",
-    "dust_sigma",
-    "gamma_adia",
-
-    # --- BE-specific derived (only populated for densBE) ---
-    "densBE_Teff",
-
-    # --- Physical/numerical constants ---
-    "G",
-    "c_light",
-    "k_B",
-    "PISM",
-)
-
-# Keys that look constant-through-run but are NOT JSON-serializable
-# (loaded function tables, interpolators, file paths used at runtime
-# only).  The writer skips them defensively so any future addition
-# can't poison the metadata write.  ``path*`` keys are absolute file
-# paths from the input ``.param`` — preserved there, not duplicated
-# in metadata.
-METADATA_EXCLUDE: frozenset[str] = frozenset({
-    # File paths — already in <run>.param
-    "path2output",
-    "path_cooling_CIE",
-    "path_cooling_nonCIE",
-    "path_sps",
-    # Loaded SB99 tables / function objects
-    "SB99_data",
-    "SB99f",
-    # Cooling-table interpolation function objects
-    "cStruc_cooling_CIE_interpolation",
-    "cStruc_cooling_CIE_logLambda",
-    "cStruc_cooling_CIE_logT",
-    "cStruc_cooling_nonCIE",
-    "cStruc_heating_nonCIE",
-    "cStruc_net_nonCIE_interpolation",
-    # BE Lane-Emden function references
-    "densBE_f_rho_rhoc",
-    "densBE_f_m",
-    "densBE_xi_out",
-    # Empty-array placeholders (real data lives in per-snapshot stream)
-    "bubble_T_arr",
-    "bubble_dTdr_arr",
-    "bubble_n_arr",
-    "bubble_r_arr",
-    "shell_n_arr",
-})
+# METADATA_EXCLUDE: keys that look constant but must NOT land in
+# metadata.json — absolute paths, loaded function tables/interpolators,
+# and empty-array placeholders whose real data lives in the per-snapshot
+# stream.  The writer also skips them defensively.
+METADATA_EXCLUDE: frozenset[str] = metadata_exclude_keys()
 
 # Keys dropped from v1 → v2 because they are reconstructible on
 # demand from other run-constants.  Readers can fall back to inline
