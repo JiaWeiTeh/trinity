@@ -26,7 +26,7 @@ import numpy as np
 import src._functions.unit_conversions as cvt
 from src._input.dictionary import DescribedItem, DescribedDict
 from src._input.errors import ParameterFileError
-from src._input.registry import validate_all
+from src._input.registry import validate_all, validate_companions
 import src.sps.sps_columns as sps_columns
 
 # Anchor bundled-asset lookups to the repo root, not the CWD: users may launch
@@ -213,13 +213,19 @@ def read_param(path2file):
     for key in user_dict.keys():
         if key not in default_dict:
             invalid_keys.append(key)
-    
+
     if invalid_keys:
         available = ', '.join(sorted(default_dict.keys())[:10])
         raise ParameterFileError(
             f"Invalid parameter(s) in {Path(path2file).name}: {', '.join(invalid_keys)}\n"
             f"Available parameters include: {available}..."
         )
+
+    # Enforce trigger/companion bundles (e.g. dens_profile=densPL must
+    # be accompanied by an explicit densPL_alpha).  Runs against the
+    # raw user dict so it fires only when the user actually typed the
+    # trigger, not when it inherited the default.
+    validate_companions(user_dict)
     
     # Merge: user values override defaults
     merged_dict = {}

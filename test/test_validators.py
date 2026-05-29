@@ -11,11 +11,13 @@ import pytest
 
 from src._input.errors import ParameterFileError
 from src._input.registry import (
+    COMPANION_RULES,
     REGISTRY,
     _validate_dens_profile,
     _validate_stop_at_rCloud_nSnap,
     _validate_ZCloud,
     validate_all,
+    validate_companions,
 )
 
 
@@ -120,3 +122,47 @@ def test_validate_all_skips_missing_keys() -> None:
     """A spec with a validator whose key isn't in params is a no-op,
     not a KeyError."""
     validate_all({})  # empty params, must not raise
+
+
+# ---------------------------------------------------------------------------
+# validate_companions: trigger/companion bundle enforcement
+# ---------------------------------------------------------------------------
+def test_validate_companions_empty_user_dict_passes() -> None:
+    """All-defaults case: user touches nothing, no trigger fires."""
+    validate_companions({})  # no raise
+
+
+def test_validate_companions_trigger_without_companion_raises_PL() -> None:
+    with pytest.raises(ParameterFileError, match="densPL_alpha"):
+        validate_companions({"dens_profile": "densPL"})
+
+
+def test_validate_companions_trigger_without_companion_raises_BE() -> None:
+    with pytest.raises(ParameterFileError, match="densBE_Omega"):
+        validate_companions({"dens_profile": "densBE"})
+
+
+def test_validate_companions_trigger_with_companion_passes_PL() -> None:
+    validate_companions({"dens_profile": "densPL", "densPL_alpha": 0})
+
+
+def test_validate_companions_trigger_with_companion_passes_BE() -> None:
+    validate_companions({"dens_profile": "densBE", "densBE_Omega": 14.1})
+
+
+def test_validate_companions_unrelated_user_keys_ignored() -> None:
+    """User-set keys that aren't a CompanionRule trigger don't gate anything."""
+    validate_companions({"mCloud": 1e7, "sfe": 0.01})
+
+
+def test_companion_rules_targets_are_real_spec_names() -> None:
+    """Every trigger and companion in COMPANION_RULES is an actual spec."""
+    bad = []
+    for rule in COMPANION_RULES:
+        if rule.trigger not in REGISTRY:
+            bad.append(("trigger", rule.trigger))
+        for companions in rule.requires.values():
+            for companion in companions:
+                if companion not in REGISTRY:
+                    bad.append(("companion", companion))
+    assert not bad, f"CompanionRule references unknown specs: {bad}"

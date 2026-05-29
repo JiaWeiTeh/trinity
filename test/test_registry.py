@@ -86,7 +86,12 @@ def _parse_default_param() -> dict:
 
 def _write_param(tmp_path: Path, profile: str) -> Path:
     """Write a minimal user .param selecting the given density profile,
-    routing output into tmp_path so no real outputs/ dir is created."""
+    routing output into tmp_path so no real outputs/ dir is created.
+
+    The companion (densPL_alpha for densPL, densBE_Omega for densBE) is
+    declared explicitly because ``validate_companions`` rejects
+    bare-trigger files -- exactly the silent-default trap the rule was
+    added to catch."""
     body = (
         f"model_name    reg_test_{profile}\n"
         f"path2output    {tmp_path / profile}\n"
@@ -94,6 +99,8 @@ def _write_param(tmp_path: Path, profile: str) -> Path:
     )
     if profile == "densBE":
         body += "densBE_Omega    14.1\n"
+    elif profile == "densPL":
+        body += "densPL_alpha    0\n"
     p = tmp_path / f"{profile}.param"
     p.write_text(body, encoding="utf-8")
     return p

@@ -40,10 +40,12 @@ the single source of truth for run-const / metadata-exclude membership.
 from __future__ import annotations
 
 from collections import OrderedDict
-from typing import Iterable
+from dataclasses import dataclass
+from typing import Any, Iterable, Mapping
 
 import numpy as np
 
+from src._input.errors import ParameterFileError
 from src._input.param_spec import Category, ParamSpec
 
 
@@ -354,3 +356,61 @@ def metadata_exclude_keys() -> frozenset[str]:
     ``src._output.run_constants.METADATA_EXCLUDE``.
     """
     return frozenset(s.name for s in SPECS if s.metadata_exclude)
+
+
+# ---------------------------------------------------------------------------
+# Companion-key rules
+# ---------------------------------------------------------------------------
+# Some parameters are silent traps in isolation: setting ``dens_profile
+# densPL`` in a .param without ``densPL_alpha`` silently yields the
+# default alpha=0 (homogeneous) -- almost never what a user who bothered
+# to declare the profile actually wanted.  CompanionRule lets such
+# trigger-companion bundles be declared declaratively; ``read_param``
+# Step 3 calls ``validate_companions`` on the raw user dict (before
+# merging with defaults) so the check fires only when the user
+# explicitly set the trigger, not when the trigger came from
+# default.param.
+@dataclass(frozen=True)
+class CompanionRule:
+    """If the user .param sets ``trigger`` to a value present as a key
+    in ``requires``, every name in ``requires[value]`` must also appear
+    in the same .param file."""
+    trigger: str
+    requires: Mapping[Any, tuple[str, ...]]
+
+
+COMPANION_RULES: tuple[CompanionRule, ...] = (
+    CompanionRule(
+        trigger='dens_profile',
+        requires={
+            'densPL': ('densPL_alpha',),
+            'densBE': ('densBE_Omega',),
+        },
+    ),
+)
+
+
+def validate_companions(user_dict: Mapping[str, Any]) -> None:
+    """Enforce every ``CompanionRule`` against the raw user .param dict.
+
+    Called from ``read_param`` Step 3 with the freshly-parsed user
+    dictionary (post-Step-2, pre-merge).  Raises ``ParameterFileError``
+    on the first violation, listing the missing companion keys.
+    """
+    for rule in COMPANION_RULES:
+        if rule.trigger not in user_dict:
+            continue
+        trigger_value = user_dict[rule.trigger]
+        required = rule.requires.get(trigger_value)
+        if not required:
+            continue
+        missing = [k for k in required if k not in user_dict]
+        if missing:
+            raise ParameterFileError(
+                f"setting {rule.trigger}={trigger_value!r} requires "
+                f"explicit values for: {', '.join(missing)}. "
+                f"The defaults are only safe when {rule.trigger} is "
+                f"left at its default too -- declaring the trigger "
+                f"without its companion silently picks a value the "
+                f"user almost certainly didn't intend."
+            )
