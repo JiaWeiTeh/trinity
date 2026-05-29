@@ -1,10 +1,14 @@
 """Guardrails on the ParamSpec registry.
 
 Phase 1 added the construction-time invariants (frozen, identifier
-names, deprecated-needs-note).  Phase 2 populated ``SPECS`` with all
-187 parameters, so the reconciliation tests below now have teeth:
-they pin the registry against a live ``read_param`` run and against
-the legacy ``run_constants`` hand-lists it will replace in Phase 5.
+names, deprecated-needs-note); Phase 2 populated ``SPECS`` with all
+187 parameters; Phase 5 swapped ``run_constants`` to derive its lists
+from the registry; Phases 6/7/8 wired the ``validator`` / ``resolver``
++ ``consumed_by`` / ``active_when`` axes into ``read_param`` Steps
+5/7/8.  The reconciliation tests below pin the registry against a
+live ``read_param`` run (densBE and densPL fixtures) and against the
+``run_constants`` module that now derives from it — they are the
+byte-identical guard for every phase that touched ``params``.
 """
 from __future__ import annotations
 
@@ -39,8 +43,9 @@ def _disable_crash_handlers(monkeypatch):
 
 def _parse_value(val_str: str):
     """Mirror of ``read_param``'s nested ``parse_value`` (None → bool →
-    float → fraction → str).  Duplicated here because the original is a
-    closure; Phase 6 will lift it to module scope and this can import it.
+    float → fraction → str).  Duplicated here because the original is
+    still a closure inside ``read_param`` — Phase 10's builder will
+    need a module-scope version too, at which point this can import it.
     """
     s = val_str.strip()
     if s.lower() == "none":

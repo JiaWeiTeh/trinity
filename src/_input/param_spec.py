@@ -94,9 +94,11 @@ class ParamSpec:
 
     unit: Optional[str] = None
 
-    # Snapshot/metadata routing — these reproduce the hand-curated lists
-    # in ``src._output.run_constants`` (Phase 5 swaps them to derive from
-    # here).  The three axes are independent:
+    # Snapshot/metadata routing — ``src._output.run_constants`` derives
+    # ``RUN_CONST_KEYS`` / ``METADATA_EXCLUDE`` from these flags via
+    # ``registry.run_const_keys()`` / ``metadata_exclude_keys()`` (Phase 5
+    # made the registry the single source of truth).  The three axes
+    # are independent:
     #   * run_const          → written once to metadata.json (RUN_CONST_KEYS)
     #   * metadata_exclude    → blocked from metadata.json (METADATA_EXCLUDE):
     #                           paths, loaded tables, empty array placeholders
