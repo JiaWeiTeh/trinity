@@ -1,10 +1,11 @@
 """Module-level registry of ParamSpec entries — the single source of truth.
 
-Phase 2 populates ``SPECS`` with one ``ParamSpec`` per parameter that
-TRINITY produces (186 total: 72 declared in ``default.param`` + 114
-runtime/derived created in ``read_param`` Steps 6/8/10).  Nothing in
-production imports this module yet; ``read_param.py`` and
-``run_constants.py`` are untouched until Phases 5–10 wire it in.
+``SPECS`` holds one ``ParamSpec`` per parameter that TRINITY produces
+(186 total: 72 declared in ``default.param`` + 114 runtime/derived
+created in ``read_param`` Steps 6/8/10).  Production wiring:
+``src._output.run_constants`` derives its lists from the registry
+(Phase 5); ``read_param`` Step 5 calls ``validate_all`` (Phase 6).
+Phases 7–10 will wire resolvers, conditional schema, and runtime init.
 
 Runtime specs are split into physical buckets that mirror
 ``trinity_reader``'s ``Snapshot`` grouping (``runtime_time`` /
@@ -64,6 +65,57 @@ def _active_densPL(params) -> bool:
     return _profile_value(params) == "densPL"
 
 
+# ---------------------------------------------------------------------------
+# Validators (consumed by Phase 6; ``validate_all`` invoked from
+# ``read_param`` Step 5).  A validator receives the parameter's current
+# value plus the full params dict and may either raise
+# ``ParameterFileError`` or normalize the value in place (e.g. coerce a
+# whole-number float to ``int``).  Error messages are verbatim from the
+# pre-Phase-6 Step-5 block so existing user diagnostics are preserved.
+# ---------------------------------------------------------------------------
+def _validate_ZCloud(value, params) -> None:
+    from src._input.errors import ParameterFileError
+    if value != 1:
+        raise ParameterFileError(
+            f"Metallicity Z={value} not implemented. "
+            f"Currently only Z=1 (solar) is supported."
+        )
+
+
+def _validate_dens_profile(value, params) -> None:
+    from src._input.errors import ParameterFileError
+    if value not in ('densBE', 'densPL'):
+        raise ParameterFileError(
+            f"Invalid dens_profile '{value}'. "
+            f"Must be 'densBE' or 'densPL'."
+        )
+
+
+def _validate_stop_at_rCloud_nSnap(value, params) -> None:
+    """Validate AND coerce: whole-number floats (e.g. 5.0 from '5')
+    become ints; fractional floats / negatives / non-numerics raise."""
+    from src._input.errors import ParameterFileError
+    if value is None:
+        return
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise ParameterFileError(
+            f"Invalid stop_at_rCloud_nSnap '{value}'. "
+            f"Must be None or a non-negative integer."
+        )
+    if isinstance(value, float) and not value.is_integer():
+        raise ParameterFileError(
+            f"Invalid stop_at_rCloud_nSnap '{value}'. "
+            f"Must be a whole-number integer (got fractional value)."
+        )
+    coerced = int(value)
+    if coerced < 0:
+        raise ParameterFileError(
+            f"Invalid stop_at_rCloud_nSnap '{value}'. "
+            f"Must be None or a non-negative integer."
+        )
+    params['stop_at_rCloud_nSnap'].value = coerced
+
+
 SPECS: tuple[ParamSpec, ...] = (
     ParamSpec(name='model_name', default='default', info='Specifies the model name, which serves as the prefix for all output filenames.', category='input_admin', unit=None, run_const=True),
     ParamSpec(name='path2output', default='def_dir', info='Defines the output directory where all generated files will be stored.', category='input_admin', unit=None, exclude_from_snapshot=True, metadata_exclude=True),
@@ -75,9 +127,9 @@ SPECS: tuple[ParamSpec, ...] = (
     ParamSpec(name='log_colors', default='True', info='Use colored output in terminal. If True, log messages are color-coded by severity (DEBUG=cyan, INFO=green, WARNING=yellow, ERROR=red, CRITICAL=magenta).', category='input_admin', unit=None, exclude_from_snapshot=True, run_const=True),
     ParamSpec(name='mCloud', default='1e7', info='The mass of the molecular cloud.', category='input_physical', unit='Msun', run_const=True),
     ParamSpec(name='sfe', default='0.01', info='Star formation efficiency.', category='input_physical', unit=None, exclude_from_snapshot=True, run_const=True),
-    ParamSpec(name='ZCloud', default='1', info='Cloud metallicity', category='input_physical', unit='Zsun', exclude_from_snapshot=True, run_const=True),
+    ParamSpec(name='ZCloud', default='1', info='Cloud metallicity', category='input_physical', unit='Zsun', exclude_from_snapshot=True, run_const=True, validator=_validate_ZCloud),
     ParamSpec(name='include_PHII', default='True', info='Include HII pressure (from Strömgren ionization balance in shell) in P_drive. When False, P_HII is set to zero.', category='input_physical', unit=None, exclude_from_snapshot=True, run_const=True),
-    ParamSpec(name='dens_profile', default='densPL', info='Specifies how the cloud density scales with radius.', category='input_profile', unit=None, run_const=True),
+    ParamSpec(name='dens_profile', default='densPL', info='Specifies how the cloud density scales with radius.', category='input_profile', unit=None, run_const=True, validator=_validate_dens_profile),
     ParamSpec(name='densBE_Omega', default='14.1', info='if `densBE` is selected, then the ratio `Omega = nCore/nCloudEdge` must be specified.', category='input_profile', unit=None, exclude_from_snapshot=True, run_const=True, active_when=_active_densBE),
     ParamSpec(name='densPL_alpha', default='0', info='if `densPL` is selected, then the power-law coefficient `nCore*(r/rCore)^alpha` (0 = homogeneous, -2 = isothermal) must be specified.', category='input_profile', unit=None, run_const=True, active_when=_active_densPL),
     ParamSpec(name='nCore', default='1e5', info='Hydrogen nuclei number density of cloud core (n_H). Standard GMC/ISM convention. Mass density: rho = nCore * mu_convert * m_H. If `densPL` AND densPL_alpha = 0, this is the average cloud density.', category='input_physical', unit='cm**-3', run_const=True),
@@ -88,7 +140,7 @@ SPECS: tuple[ParamSpec, ...] = (
     ParamSpec(name='stop_r', default='500', info='Maximum radial extent permitted for shell expansion. Set to None to disable this termination condition.', category='input_termination', unit='pc', exclude_from_snapshot=True, run_const=True),
     ParamSpec(name='stop_v', default='-1e4', info='', category='deprecated', unit='km * s**-1', exclude_from_snapshot=True, run_const=True, deprecated_note='Parsed for backward compatibility with existing .param files but NOT consumed by any current code path. Changing this has no effect.'),
     ParamSpec(name='stop_t', default='15', info='Maximum duration of the simulation. Set to None to disable this termination condition.', category='input_termination', unit='Myr', exclude_from_snapshot=True, run_const=True),
-    ParamSpec(name='stop_at_rCloud_nSnap', default='None', info='Terminate simulation after the shell crosses the cloud edge (R2 > rCloud). Value is the number of post-crossing segment-loop snapshots to record before terminating. Set to None to disable. 0 stops at the edge (1a reconciliation snapshot only). N>0 lets the implicit phase advance for N more segments past the crossing — note the implicit phase\'s end-of-phase reconciliation snapshot adds one extra past-rCloud sample, so the total snapshots with R2 >= rCloud is roughly N + 2 (1 at-edge + N in-loop + 1 recon).', category='input_termination', unit=None, exclude_from_snapshot=True),
+    ParamSpec(name='stop_at_rCloud_nSnap', default='None', info='Terminate simulation after the shell crosses the cloud edge (R2 > rCloud). Value is the number of post-crossing segment-loop snapshots to record before terminating. Set to None to disable. 0 stops at the edge (1a reconciliation snapshot only). N>0 lets the implicit phase advance for N more segments past the crossing — note the implicit phase\'s end-of-phase reconciliation snapshot adds one extra past-rCloud sample, so the total snapshots with R2 >= rCloud is roughly N + 2 (1 at-edge + N in-loop + 1 recon).', category='input_termination', unit=None, exclude_from_snapshot=True, validator=_validate_stop_at_rCloud_nSnap),
     ParamSpec(name='coll_r', default='1', info='Radius below which the cloud is considered completely collapsed.', category='input_termination', unit='pc', exclude_from_snapshot=True, run_const=True),
     ParamSpec(name='SB99_rotation', default='1', info='Stellar-rotation flag. Selects rot vs norot non-CIE cooling tables (src/cooling/non_CIE/read_cloudy.py). Only rot tables ship in lib/default/opiate/, so 0 (norot) requires the user to supply matching cooling tables and an sps_path pointing at a norot SPS file; the default SPS fallback rejects SB99_rotation=0. NOTE: name retained for stability. May rename to sps_rotation in a future PR once the cooling subsystem stops being SB99-flavored.', category='input_sps', unit=None, exclude_from_snapshot=True, run_const=True),
     ParamSpec(name='sps_refmass', default='def_value', info='Reference cluster mass used in f_mass = mCluster / sps_refmass.', category='input_sps', unit='Msun', exclude_from_snapshot=True),
@@ -265,6 +317,24 @@ REGISTRY: "OrderedDict[str, ParamSpec]" = OrderedDict(
 def specs_by_category(*categories: Category) -> Iterable[ParamSpec]:
     cat_set = set(categories)
     return (s for s in SPECS if s.category in cat_set)
+
+
+def validate_all(params) -> None:
+    """Run every spec's ``validator`` callable against ``params``.
+
+    Phase-6 entry point for ``read_param`` Step 5.  A validator receives
+    ``(value, params)`` and may either raise
+    ``src._input.errors.ParameterFileError`` on bad input or normalize
+    the value in place (e.g. coerce a whole-number float to ``int``).
+    Order follows ``SPECS``; specs missing from ``params`` are skipped
+    so densBE-only / densPL-only keys don't trigger on the other path.
+    """
+    for spec in SPECS:
+        if spec.validator is None:
+            continue
+        if spec.name not in params:
+            continue
+        spec.validator(params[spec.name].value, params)
 
 
 def run_const_keys() -> tuple[str, ...]:

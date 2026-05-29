@@ -25,6 +25,8 @@ from fractions import Fraction
 import numpy as np
 import src._functions.unit_conversions as cvt
 from src._input.dictionary import DescribedItem, DescribedDict
+from src._input.errors import ParameterFileError
+from src._input.registry import validate_all
 import src.sps.sps_columns as sps_columns
 
 # Anchor bundled-asset lookups to the repo root, not the CWD: users may launch
@@ -275,46 +277,15 @@ def read_param(path2file):
     _default_items_before = {k: params[k] for k in default_dict if k in params}
 
     # =============================================================================
-    # Step 5: Validate critical parameters
+    # Step 5: Validate critical parameters (driven by the registry)
     # =============================================================================
-    
-    # Check metallicity
-    if params['ZCloud'].value != 1:
-        raise ParameterFileError(
-            f"Metallicity Z={params['ZCloud'].value} not implemented. "
-            f"Currently only Z=1 (solar) is supported."
-        )
-    
-    # Validate density profile
-    if params['dens_profile'].value not in ['densBE', 'densPL']:
-        raise ParameterFileError(
-            f"Invalid dens_profile '{params['dens_profile'].value}'. "
-            f"Must be 'densBE' or 'densPL'."
-        )
+    # Each spec carrying a ``validator`` callable is invoked here.  Validators
+    # may raise ``ParameterFileError`` on bad input and/or normalize the value
+    # in place (e.g. coerce whole-number floats to int).  See the validator
+    # definitions in ``src/_input/registry.py``.
+    validate_all(params)
 
-    # Validate stop_at_rCloud_nSnap: None or non-negative integer.
-    nSnap_raw = params['stop_at_rCloud_nSnap'].value
-    if nSnap_raw is not None:
-        # parse_value() returns floats for numeric strings; accept whole-number
-        # floats (e.g. 5.0 from "5") but reject fractional values.
-        if isinstance(nSnap_raw, bool) or not isinstance(nSnap_raw, (int, float)):
-            raise ParameterFileError(
-                f"Invalid stop_at_rCloud_nSnap '{nSnap_raw}'. "
-                f"Must be None or a non-negative integer."
-            )
-        if isinstance(nSnap_raw, float) and not nSnap_raw.is_integer():
-            raise ParameterFileError(
-                f"Invalid stop_at_rCloud_nSnap '{nSnap_raw}'. "
-                f"Must be a whole-number integer (got fractional value)."
-            )
-        nSnap_int = int(nSnap_raw)
-        if nSnap_int < 0:
-            raise ParameterFileError(
-                f"Invalid stop_at_rCloud_nSnap '{nSnap_raw}'. "
-                f"Must be None or a non-negative integer."
-            )
-        params['stop_at_rCloud_nSnap'].value = nSnap_int
-    
+
     # =============================================================================
     # Step 6: Compute derived parameters
     # =============================================================================
@@ -665,9 +636,10 @@ def read_param(path2file):
     return params
 
 
-class ParameterFileError(Exception):
-    """Raised when parameter file has formatting or validation errors."""
-    pass
+# ParameterFileError now lives in src/_input/errors.py — imported at the
+# top of this module and re-exported here for any external caller using
+# ``from src._input.read_param import ParameterFileError``.
+__all__ = ["read_param", "ParameterFileError"]
 
 
 # =============================================================================
