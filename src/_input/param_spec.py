@@ -7,15 +7,17 @@ frozen-dataclass + module-level tuple pattern).  Consumed by:
   ``metadata_exclude_keys`` — Phase 5 drop-in replacements for the
   hand-curated lists in ``src._output.run_constants``).
 * ``src._input.read_param`` (``validator`` wired in Step 5 / Phase 6;
-  ``resolver`` in Step 7 / Phase 7; ``active_when`` in Step 8 / Phase 8).
+  ``resolver`` in Step 7 / Phase 7; ``active_when`` in Step 8 / Phase 8;
+  runtime/derived-init builder in Step 10 / Phase 9).
 * ``tools/gen_default_param.py`` (Phase 3+ regenerates
   ``default.param`` from the registry).
 
 The registry is fully populated (187 specs) and live for run-const /
 metadata derivation (Phase 5), validation (Phase 6), sentinel
-resolution (Phase 7), and conditional schema (Phase 8); runtime init
-(Phases 9–10) is still pending.  See ``test/test_registry.py`` for
-the guardrails that pin the spec set against a live ``read_param``
+resolution (Phase 7), conditional schema (Phase 8), and runtime/
+derived-init materialization (Phase 9); Step 6's derived-init
+resolvers (Phase 10) are still pending.  See ``test/test_registry.py``
+for the guardrails that pin the spec set against a live ``read_param``
 run.
 """
 from __future__ import annotations

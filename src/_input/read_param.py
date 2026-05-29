@@ -21,12 +21,12 @@ import logging
 import sys
 from pathlib import Path
 from fractions import Fraction
-import numpy as np
 import src._functions.unit_conversions as cvt
 from src._input.dictionary import DescribedItem, DescribedDict
 from src._input.errors import ParameterFileError
 from src._input.registry import (
     apply_active_when,
+    materialize_runtime,
     resolve_all,
     validate_all,
     validate_companions,
@@ -394,150 +394,19 @@ def read_param(path2file):
             val.exclude_from_snapshot = True
     
     # =============================================================================
-    # Step 10: Initialize runtime parameters (not from .param files)
+    # Step 10: Materialize runtime / derived-init parameters
     # =============================================================================
-    
-    # Simulation state
-    params['current_phase'] = DescribedItem('', info="Current simulation phase: energy/implicit/transition/momentum", ori_units="N/A")
-    params['EndSimulationDirectly'] = DescribedItem(False, info="Flag to immediately end simulation", ori_units="N/A")
-    params['SimulationEndReason'] = DescribedItem('', info="Reason for simulation completion", ori_units="N/A")
-    # Numeric exit code paired with SimulationEndReason. Set at the same site
-    # that decides to end the run; consumed by write_simulation_end. None until
-    # set; treated as UNKNOWN if the run finishes without it being assigned.
-    params['SimulationEndCode'] = DescribedItem(None, info="Exit code (SimulationEndCode enum) for simulation completion", ori_units="N/A")
-    params['EarlyPhaseApproximation'] = DescribedItem(True, info="Using approximations for early phase?", ori_units="N/A")
-
-    # Counter for stop_at_rCloud_nSnap. Incremented inside the segment loops of
-    # phases 1b/1c/2 each time a snapshot is saved with R2 > rCloud. Reset to 0
-    # at run start; not part of any saved snapshot.
-    rcloud_counter = DescribedItem(0, info="Snapshots saved with R2 > rCloud (used by stop_at_rCloud_nSnap)", ori_units="N/A")
-    rcloud_counter.exclude_from_snapshot = True
-    params['_snapshots_after_rCloud'] = rcloud_counter
-
-    # Time tracking
-    params['tSF'] = DescribedItem(0, info="Time of star formation", ori_units="Myr")
-    params['t_now'] = DescribedItem(0, info="Current simulation time", ori_units="Myr")
-    
-    # Main bubble parameters
-    params['v2'] = DescribedItem(0, info="Velocity at R2 (outer bubble radius = inner shell edge)", ori_units="pc/Myr")
-    params['R2'] = DescribedItem(0, info="Outer bubble radius (= inner shell edge)", ori_units="pc")
-    params['T0'] = DescribedItem(0, info="Characteristic bubble temperature (at xi_Tb fraction of bubble thickness)", ori_units="K")
-    params['Eb'] = DescribedItem(0, info="Bubble energy", ori_units="Msun*pc**2/Myr**2")
-    params['R1'] = DescribedItem(0, info="Inner bubble radius", ori_units="pc")
-    params['Pb'] = DescribedItem(0, info="Bubble pressure", ori_units="Msun/Myr**2/pc")
-    params['c_sound'] = DescribedItem(0, info="Sound speed", ori_units="pc/Myr")
-    
-    # Arrays for shell mass interpolation
-    params['t_next'] = DescribedItem(0, info="Next time for mShell interpolation", ori_units="Myr", exclude_from_snapshot=False)
-    
-    # Cloud and shell geometry
-    params['rCloud'] = DescribedItem(0, info="Cloud radius", ori_units="pc")
-    params['rShell'] = DescribedItem(0, info="Shell outer radius", ori_units="pc")
-    params['nEdge'] = DescribedItem(0, info="Number density at cloud edge", ori_units="1/pc**3")
-
-    # Initial cloud arrays (set once in phase0, constant thereafter)
-    params['initial_cloud_r_arr'] = DescribedItem(np.array([]), info="Initial cloud radius array", ori_units="pc")
-    params['initial_cloud_n_arr'] = DescribedItem(np.array([]), info="Initial cloud density array", ori_units="1/cm**3")
-    params['initial_cloud_m_arr'] = DescribedItem(np.array([]), info="Initial cloud enclosed mass array", ori_units="Msun")
-    
-    # Feedback from SPS (Starburst99 by default; arbitrary via sps_path).
-    params['sps_data'] = DescribedItem(0, info="SPS raw 11-array datacube", ori_units="N/A", exclude_from_snapshot=True)
-    params['sps_f'] = DescribedItem(0, info="SPS interpolators (dict of scipy interp1d)", ori_units="N/A", exclude_from_snapshot=True)
-    params['Lmech_W'] = DescribedItem(0, info="Wind mechanical luminosity", ori_units="Msun*pc**2/Myr**3")
-    params['Lmech_SN'] = DescribedItem(0, info="SN mechanical luminosity", ori_units="Msun*pc**2/Myr**3")
-    params['Lmech_total'] = DescribedItem(0, info="Total mechanical luminosity", ori_units="Msun*pc**2/Myr**3")
-    params['v_mech_total'] = DescribedItem(0, info="mechanical velocity (winds+SN)", ori_units="pc/Myr")
-    params['pdot_W'] = DescribedItem(0, info="Wind momentum rate", ori_units="Msun*pc/Myr**2")
-    params['pdot_SN'] = DescribedItem(0, info="Supernova momentum rate", ori_units="Msun*pc/Myr**2")
-    params['pdot_total'] = DescribedItem(0, info="Total momentum rate", ori_units="Msun*pc/Myr**2")
-    params['pdotdot_total'] = DescribedItem(0, info="Rate of wind momentum rate", ori_units="Msun*pc/Myr**3")
-    params['Qi'] = DescribedItem(0, info="Ionizing photon rate", ori_units="1/Myr")
-    params['Lbol'] = DescribedItem(0, info="Bolometric luminosity", ori_units="Msun*pc**2/Myr**3")
-    params['Ln'] = DescribedItem(0, info="Non-ionizing luminosity", ori_units="Msun*pc**2/Myr**3")
-    params['Li'] = DescribedItem(0, info="Ionizing luminosity", ori_units="Msun*pc**2/Myr**3")
-    
-    # Cooling
-    params['t_previousCoolingUpdate'] = DescribedItem(1e30, info="Time of previous cooling update", ori_units="Myr")
-    params['cStruc_cooling_nonCIE'] = DescribedItem(0, info="Non-CIE cooling cube", ori_units="N/A", exclude_from_snapshot=True)
-    params['cStruc_heating_nonCIE'] = DescribedItem(0, info="Non-CIE heating cube", ori_units="N/A", exclude_from_snapshot=True)
-    params['cStruc_net_nonCIE_interpolation'] = DescribedItem(0, info="Non-CIE net cooling interpolation", ori_units="N/A", exclude_from_snapshot=True)
-    params['cStruc_cooling_CIE_logT'] = DescribedItem(0, info="CIE log temperature array", ori_units="N/A", exclude_from_snapshot=True)
-    params['cStruc_cooling_CIE_logLambda'] = DescribedItem(0, info="CIE log lambda array", ori_units="N/A", exclude_from_snapshot=True)
-    params['cStruc_cooling_CIE_interpolation'] = DescribedItem(0, info="CIE cooling interpolation", ori_units="N/A", exclude_from_snapshot=True)
-    
-    # Shell properties
-    params['shell_fAbsorbedIon'] = DescribedItem(1, info="Fraction of absorbed ionizing radiation", ori_units="dimensionless")
-    params['shell_fAbsorbedNeu'] = DescribedItem(0, info="Fraction of absorbed non-ionizing radiation", ori_units="dimensionless")
-    params['shell_fAbsorbedWeightedTotal'] = DescribedItem(0, info="Total absorption fraction (luminosity weighted)", ori_units="dimensionless")
-    params['shell_fIonisedDust'] = DescribedItem(0, info="Ionized dust fraction", ori_units="dimensionless")
-    params['shell_thickness'] = DescribedItem(0, info="Shell thickness", ori_units="pc")
-    params['shell_nMax'] = DescribedItem(0, info="Maximum shell density", ori_units="1/pc**3")
-    params['shell_tauKappaRatio'] = DescribedItem(0, info="tau_IR / kappa_IR ratio", ori_units="Msun/pc**2")
-    params['shell_grav_r'] = DescribedItem(np.array([]), info="Radius array for gravitational calculations", ori_units="pc")
-    params['shell_grav_phi'] = DescribedItem(np.array([]), info="Gravitational potential", ori_units="pc**2/Myr**2")
-    params['shell_grav_force_m'] = DescribedItem(np.array([]), info="Gravitational force per unit mass", ori_units="pc/Myr**2")
-    params['shell_r_arr'] = DescribedItem(np.array([]), info="Radial grid through ionized+neutral shell", ori_units="pc")
-    params['shell_n_arr'] = DescribedItem(np.array([]), info="Number density through ionized+neutral shell", ori_units="1/pc**3")
-    params['shell_ion_idx'] = DescribedItem(-1, info="Last index of ionized region in shell_r/n_arr (-1 if empty)", ori_units="N/A")
-    params['shell_mass'] = DescribedItem(0, info="Shell mass", ori_units="Msun")
-    params['shell_massDot'] = DescribedItem(0, info="Shell mass accretion rate", ori_units="Msun/Myr")
-    params['shell_interpolate_massDot'] = DescribedItem(False, info="Use shell mass interpolation?", ori_units="N/A")
-    params['shell_n0'] = DescribedItem(0, info="Shell inner density (pressure balance)", ori_units="1/pc**3")
-    
-    # Forces on shell
-    params['F_grav'] = DescribedItem(0, info="Gravitational force", ori_units="Msun*pc/Myr**2")
-    params['F_ram'] = DescribedItem(0, info="Ram pressure force (from Pb-Eb relation)", ori_units="Msun*pc/Myr**2")
-    params['F_ram_wind'] = DescribedItem(0, info="Wind ram pressure force (from SPS interpolators)", ori_units="Msun*pc/Myr**2")
-    params['F_ram_SN'] = DescribedItem(0, info="SN ram pressure force (from SPS interpolators)", ori_units="Msun*pc/Myr**2")
-    params['F_ion_in'] = DescribedItem(0, info="Inward photoionization pressure", ori_units="Msun*pc/Myr**2")
-    params['F_HII'] = DescribedItem(0, info="Outward HII pressure force (= P_HII * 4piR2^2)", ori_units="Msun*pc/Myr**2")
-    params['F_rad'] = DescribedItem(0, info="Radiation pressure", ori_units="Msun*pc/Myr**2")
-    params['F_ISM'] = DescribedItem(0, info="ISM pressure force (placeholder, never computed — always 0)", ori_units="Msun*pc/Myr**2")
-
-    # HII region / ionization front diagnostic parameters
-    params['n_IF'] = DescribedItem(0.0, info="Density at ionization front from shell ODE", ori_units="1/pc**3")
-    params['n_IF_ODE'] = DescribedItem(0.0, info="Raw ODE-derived n_IF (same as n_IF, kept for diagnostics)", ori_units="1/pc**3")
-    params['R_IF'] = DescribedItem(0.0, info="Radius of ionization front", ori_units="pc")
-    params['n_IF_Str'] = DescribedItem(0.0, info="Stroemgren ionization balance density (Lancaster+2025), sole source of P_HII", ori_units="1/pc**3")
-    params['P_HII'] = DescribedItem(0.0, info="HII pressure from Stroemgren ionization balance in shell (n_IF_Str)", ori_units="Msun/Myr**2/pc")
-    params['P_drive'] = DescribedItem(0.0, info="Total driving pressure", ori_units="Msun/Myr**2/pc")
-    params['P_ram'] = DescribedItem(0.0, info="Ram pressure from freely-streaming wind", ori_units="Msun/Myr**2/pc")
-    params['press_HII_in'] = DescribedItem(0.0, info="Inward HII pressure at shell (confining)", ori_units="Msun/Myr**2/pc")
-    
-    # Bubble structure
-    params['bubble_LTotal'] = DescribedItem(0, info="Total luminosity lost to cooling", ori_units="Msun*pc**2/Myr**3")
-    params['bubble_L1Bubble'] = DescribedItem(0, info="Cooling in bubble zone", ori_units="Msun*pc**2/Myr**3")
-    params['bubble_L2Conduction'] = DescribedItem(0, info="Cooling in conduction zone", ori_units="Msun*pc**2/Myr**3")
-    params['bubble_L3Intermediate'] = DescribedItem(0, info="Cooling in intermediate zone", ori_units="Msun*pc**2/Myr**3")
-    params['bubble_Tavg'] = DescribedItem(0, info="Average bubble temperature", ori_units="K")
-    params['bubble_mass'] = DescribedItem(0, info="Bubble mass", ori_units="Msun")
-    params['bubble_r_Tb'] = DescribedItem(0, info="Radius at bubble_xi_Tb * R2", ori_units="pc")
-    params['bubble_T_r_Tb'] = DescribedItem(0, info="Temperature at r_Tb", ori_units="K")
-    
-    # Bubble structure arrays
-    params['bubble_r_arr'] = DescribedItem(np.array([]), info="Bubble radius structure", ori_units="pc")
-    params['bubble_v_arr'] = DescribedItem(np.array([]), info="Bubble velocity structure", ori_units="pc/Myr")
-    params['bubble_T_arr'] = DescribedItem(np.array([]), info="Bubble temperature structure", ori_units="K")
-    params['bubble_dTdr_arr'] = DescribedItem(np.array([]), info="Bubble temperature gradient", ori_units="K/pc")
-    params['bubble_n_arr'] = DescribedItem(np.array([]), info="Bubble density structure", ori_units="1/pc**3")
-    params['bubble_dMdtGuess'] = DescribedItem(0, info="Bubble dM/dt guess", ori_units="Msun/Myr")
-    params['bubble_dMdt'] = DescribedItem(np.nan, info="Bubble mass loss rate (thermal conduction)", ori_units="Msun/Myr")
-    params['bubble_Lgain'] = DescribedItem(np.nan, info="Luminosity gain from winds", ori_units="Msun*pc**2/Myr**3")
-    params['bubble_Lloss'] = DescribedItem(np.nan, info="Luminosity loss from cooling/leaking", ori_units="Msun*pc**2/Myr**3")
-    params['bubble_Leak'] = DescribedItem(0, info="Leaking luminosity", ori_units="Msun*pc**2/Myr**3")
-    
-    # State flags
-    params['isCollapse'] = DescribedItem(False, info="Is cloud collapsing?", ori_units="N/A")
-    params['isDissolved'] = DescribedItem(False, info="Has shell dissolved?", ori_units="N/A")
-    params['is_phiDepleted'] = DescribedItem(False, info="Are ionising photons exhausted inside shell (phi->0)?", ori_units="N/A")
-    
-    # Diagnostic residuals
-    params['residual_deltaT'] = DescribedItem(0, info="Temperature residual (T1-T2)/T2", ori_units="dimensionless")
-    params['residual_betaEdot'] = DescribedItem(0, info="Energy rate residual", ori_units="dimensionless")
-    params['residual_Edot1_guess'] = DescribedItem(np.nan, info="Edot from beta", ori_units="Msun*pc**2/Myr**3")
-    params['residual_Edot2_guess'] = DescribedItem(np.nan, info="Edot from energy balance", ori_units="Msun*pc**2/Myr**3")
-    params['residual_T1_guess'] = DescribedItem(np.nan, info="T from bubble_Trgoal", ori_units="K")
-    params['residual_T2_guess'] = DescribedItem(np.nan, info="T from T0", ori_units="K")
+    # For every spec not yet in params (i.e. not from default.param,
+    # resolve_all, or apply_active_when) and not gated by active_when
+    # (Phase 8) or consumed_by (Phase 7's sps_path bundle), create a
+    # fresh DescribedItem from spec metadata.  Default 103 adds today:
+    # 9 with exclude_from_snapshot=True (cooling cubes, sps_data/sps_f,
+    # rcloud counter) and 94 with False (time-varying simulation state
+    # -- bubble_*, shell_*, forces, residuals -- that snapshots stream).
+    # Must run after Step 9; new items' exclude_from_snapshot comes
+    # straight from the spec and bypasses Step 9's sweep, matching the
+    # pre-Phase-9 behavior where Step 10 also constructed post-sweep.
+    materialize_runtime(params)
 
     # =============================================================================
     # Guard: runtime init must not silently overwrite default.param keys

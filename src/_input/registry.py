@@ -5,8 +5,10 @@
 created in ``read_param`` Steps 6/8/10).  Production wiring:
 ``src._output.run_constants`` derives its lists from the registry
 (Phase 5); ``read_param`` Step 5 calls ``validate_all`` (Phase 6),
-Step 7 calls ``resolve_all`` (Phase 7), and Step 8 calls
-``apply_active_when`` (Phase 8).  Phases 9–10 will wire runtime init.
+Step 7 calls ``resolve_all`` (Phase 7), Step 8 calls
+``apply_active_when`` (Phase 8), and Step 10 calls
+``materialize_runtime`` (Phase 9).  Phase 10 will wire Step 6's
+derived-init resolvers.
 
 Runtime specs are split into physical buckets that mirror
 ``trinity_reader``'s ``Snapshot`` grouping (``runtime_time`` /
@@ -523,6 +525,46 @@ def apply_active_when(params) -> None:
             )
         elif present and not active:
             params.pop(spec.name)
+
+
+def materialize_runtime(params) -> None:
+    """Phase-8/9 entry point for ``read_param`` Step 10.
+
+    Add a fresh ``DescribedItem`` to ``params`` for every spec that
+    isn't already present, isn't gated by ``active_when`` (Phase 8
+    owns those), and isn't ``consumed_by`` another resolver (Phase 7's
+    sps_path bundle owns sps_refmass + sps_col_*).  Each item is
+    constructed from spec metadata: ``copy.deepcopy(spec.default)``
+    (so mutable defaults like ``[]`` / ``np.array([])`` aren't shared
+    across runs), ``info=spec.info``, ``ori_units=spec.unit`` (or
+    ``"N/A"`` when unitless), ``exclude_from_snapshot=spec.exclude_from_snapshot``.
+
+    Order follows ``SPECS``.  Must run AFTER Step 9 — the
+    time-varying-keys sweep treats only items present *at that point*
+    (input/active_when/derived from Step 6/7).  Newly materialized
+    runtime items get their ``exclude_from_snapshot`` straight from
+    the spec, which matches today's behavior since the original Step
+    10 also constructed them after Step 9.
+
+    Today this adds 103 items: 9 with ``exclude_from_snapshot=True``
+    (the cooling cubes, sps_data/sps_f, the rcloud counter) and 94
+    with False (time-varying simulation state — bubble_*, shell_*,
+    forces, residuals, etc.).  mCloud_input / mCluster (Step 6) and
+    sps_column_map (Step 7) are pre-added and skipped here.
+    """
+    for spec in SPECS:
+        if spec.active_when is not None:
+            continue
+        if spec.consumed_by is not None:
+            continue
+        if spec.name in params:
+            continue
+        params[spec.name] = DescribedItem(
+            copy.deepcopy(spec.default),
+            info=spec.info,
+            ori_units=spec.unit if spec.unit is not None else "N/A",
+            exclude_from_snapshot=spec.exclude_from_snapshot,
+        )
 
 
 def run_const_keys() -> tuple[str, ...]:
