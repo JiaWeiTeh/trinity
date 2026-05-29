@@ -1,1 +1,6 @@
-# Defining the exact version will make sure things don't breaksphinx>=7.1,<7.2sphinx_rtd_theme==2.0.0readthedocs-sphinx-search==0.1.1sphinx_copybutton
+# Documentation build requirements (kept for the frozen deprecation
+# mirror at trinitysf.readthedocs.io; the canonical docs live at
+# https://jiaweiteh.github.io/trinity-web/).
+sphinx>=7.1,<7.2
+sphinx_rtd_theme==2.0.0
+sphinx_copybutton
