@@ -30,13 +30,11 @@ tables built in phase 0).
 
 Derivation helpers
 ------------------
-``run_const_keys()`` and ``metadata_exclude_keys()`` reproduce
-``src._output.run_constants.RUN_CONST_KEYS`` and ``METADATA_EXCLUDE``
-exactly from the per-spec ``run_const`` / ``metadata_exclude`` booleans.
-The reconciliation tests in ``test/test_registry.py`` pin the equality
-(modulo the four known-stale legacy entries documented below).  Phase 5
-swaps ``run_constants.py`` to call these helpers and deletes the stale
-entries.
+``run_const_keys()`` and ``metadata_exclude_keys()`` project the
+per-spec ``run_const`` / ``metadata_exclude`` booleans.  As of Phase 5
+``src._output.run_constants`` derives its ``RUN_CONST_KEYS`` /
+``METADATA_EXCLUDE`` directly from these helpers, so the registry is
+the single source of truth for run-const / metadata-exclude membership.
 """
 from __future__ import annotations
 
@@ -64,17 +62,6 @@ def _active_densBE(params) -> bool:
 
 def _active_densPL(params) -> bool:
     return _profile_value(params) == "densPL"
-
-
-# Legacy run_constants entries that refer to keys no longer produced by
-# any code path (cleaned up when Phase 5 swaps the derivation).  Named
-# here so the reconciliation tests can carve them out explicitly.
-KNOWN_STALE_RUN_CONST: frozenset[str] = frozenset({
-    "expansionBeyondCloud",          # never created in params
-})
-KNOWN_STALE_METADATA_EXCLUDE: frozenset[str] = frozenset({
-    "SB99_data", "SB99f", "path_sps",  # removed in PR #627, never cleaned
-})
 
 
 SPECS: tuple[ParamSpec, ...] = (

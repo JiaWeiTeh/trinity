@@ -18,14 +18,11 @@ from src._input.dictionary import DescribedDict
 from src._input.param_spec import SENTINEL_PREFIX, ParamSpec
 from src._input.read_param import read_param
 from src._input.registry import (
-    KNOWN_STALE_METADATA_EXCLUDE,
-    KNOWN_STALE_RUN_CONST,
     REGISTRY,
     SPECS,
     metadata_exclude_keys,
     run_const_keys,
 )
-from src._output.run_constants import METADATA_EXCLUDE, RUN_CONST_KEYS
 
 
 # ---------------------------------------------------------------------------
@@ -242,22 +239,27 @@ def test_exclude_from_snapshot_matches_live(live_keys) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Reconciliation against the legacy run_constants hand-lists (Phase-5 target)
+# run_constants now DERIVES from the registry (Phase 5)
 # ---------------------------------------------------------------------------
-def test_run_const_keys_matches_legacy() -> None:
-    assert set(run_const_keys()) == set(RUN_CONST_KEYS) - KNOWN_STALE_RUN_CONST
+def test_run_constants_module_derives_from_registry() -> None:
+    """src._output.run_constants re-exports the registry derivation
+    verbatim (identity), not a parallel hand-list."""
+    from src._output.run_constants import METADATA_EXCLUDE, RUN_CONST_KEYS
+
+    assert tuple(RUN_CONST_KEYS) == run_const_keys()
+    assert METADATA_EXCLUDE == metadata_exclude_keys()
 
 
-def test_metadata_exclude_matches_legacy() -> None:
-    assert metadata_exclude_keys() == set(METADATA_EXCLUDE) - KNOWN_STALE_METADATA_EXCLUDE
+def test_no_stale_keys_in_run_constants(live_keys) -> None:
+    """The four legacy stale entries are gone now that the lists derive
+    from the registry, and none names a live param (proving their
+    removal didn't drop a real key)."""
+    from src._output.run_constants import METADATA_EXCLUDE, RUN_CONST_KEYS
 
-
-def test_known_stale_keys_are_actually_stale(live_keys) -> None:
-    """The carve-out sets must only contain keys that genuinely no longer
-    exist — otherwise we'd be masking a real spec gap."""
-    live = set(live_keys)
-    for k in KNOWN_STALE_RUN_CONST | KNOWN_STALE_METADATA_EXCLUDE:
-        assert k not in live, f"{k} is marked stale but a live param exists"
+    stale = {"expansionBeyondCloud", "SB99_data", "SB99f", "path_sps"}
+    assert stale.isdisjoint(RUN_CONST_KEYS)
+    assert stale.isdisjoint(METADATA_EXCLUDE)
+    assert stale.isdisjoint(live_keys)
 
 
 # ---------------------------------------------------------------------------
