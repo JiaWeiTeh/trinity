@@ -19,15 +19,13 @@ Key features:
 
 import logging
 import sys
-import os
 from pathlib import Path
 from fractions import Fraction
 import numpy as np
 import src._functions.unit_conversions as cvt
 from src._input.dictionary import DescribedItem, DescribedDict
 from src._input.errors import ParameterFileError
-from src._input.registry import validate_all, validate_companions
-import src.sps.sps_columns as sps_columns
+from src._input.registry import resolve_all, validate_all, validate_companions
 
 # Anchor bundled-asset lookups to the repo root, not the CWD: users may launch
 # run.py from anywhere, and the `lib/default/...` defaults must still resolve.
@@ -334,30 +332,17 @@ def read_param(path2file):
     )
     
     # =============================================================================
-    # Step 7: Set up directory paths
+    # Step 7: Resolve sentinel ('def_*') defaults
     # =============================================================================
-    
-    # Output directory
-    if params['path2output'].value == 'def_dir':
-        path2output = os.path.join(os.getcwd(), 'outputs', params['model_name'].value)
-        Path(path2output).mkdir(parents=True, exist_ok=True)
-        params['path2output'].value = path2output
-    else:
-        path2output = str(params['path2output'].value)
-        Path(path2output).mkdir(parents=True, exist_ok=True)
-        params['path2output'].value = path2output
-    
-    # Cooling directory - non-CIE.
-    # Default sentinel 'def_dir' resolves to the shipped OPIATE cube folder
-    # under lib/default/opiate/.
-    if params['path_cooling_nonCIE'].value == 'def_dir':
-        params['path_cooling_nonCIE'].value = str(_REPO_ROOT / 'lib' / 'default' / 'opiate') + os.sep
-    else:
-        path_cooling = str(params['path_cooling_nonCIE'].value)
-        Path(path_cooling).mkdir(parents=True, exist_ok=True)
-        params['path_cooling_nonCIE'].value = path_cooling
+    # Path + SPS-bundle sentinels resolve via their registry resolvers
+    # (path2output, path_cooling_nonCIE, sps_path). sps_path's resolver
+    # owns the coupled bundle — sps_refmass and the sps_col_* family
+    # (consumed_by='sps_path') — and injects params['sps_column_map'].
+    # Must run after Step 6 (model_name resolved; path2output depends on it).
+    resolve_all(params)
 
-    # Cooling directory - CIE.
+    # Cooling directory - CIE (NOT a def_* sentinel: an integer-index
+    # preset keyed on ZCloud, so it stays inline rather than in a resolver).
     # Integer-index preset {1, 2, 3} (under ZCloud == 1) selects between the
     # bundled CIE tables; ZCloud == 0.15 auto-pins to the Sutherland-Dopita
     # file. All resolved paths live under lib/default/CIE/.
@@ -374,72 +359,6 @@ def read_param(path2file):
         params['path_cooling_CIE'].value = str(
             _REPO_ROOT / 'lib' / 'default' / 'CIE' / 'coolingCIE_4_Sutherland-Dopita1993.dat'
         )
-    
-    # sps_path: full path to the SPS data file. Sentinel 'def_path' resolves
-    # to the bundled lib/default/sps/starburst99/1e6cluster_default.csv —
-    # an SB99 grid at rotation=1, ZCloud=1, mass=1e6 Msun in CSV form with
-    # the canonical 7-column SB99 layout (DEFAULT_SPS_COLUMN_MAP). The
-    # default rejects combinations the bundled cooling tables can't fulfill;
-    # users who need a different metallicity or rotation must set sps_path
-    # explicitly. See analysis/sb99-refactor-audit.md §9.
-    sps_path_is_default = params['sps_path'].value == 'def_path'
-    if sps_path_is_default:
-        if params['ZCloud'].value != 1.0:
-            raise ValueError(
-                f"ZCloud={params['ZCloud'].value} is not supported with the "
-                "default SPS fallback (only ZCloud=1.0 is bundled). Set "
-                "sps_path explicitly to use a non-solar metallicity SPS file."
-            )
-        if not params['SB99_rotation'].value:
-            raise ValueError(
-                "SB99_rotation=0 is not supported with the default SPS "
-                "fallback (only rot cooling tables are bundled). Set "
-                "sps_path explicitly and supply matching cooling tables "
-                "for the norot case."
-            )
-        params['sps_path'].value = str(
-            _REPO_ROOT / 'lib' / 'default' / 'sps' / 'starburst99' / '1e6cluster_default.csv'
-        )
-        column_map = sps_columns.DEFAULT_SPS_COLUMN_MAP
-        logger.info(
-            f"sps_path unset → using default SPS file: {params['sps_path'].value}"
-        )
-    else:
-        params['sps_path'].value = str(params['sps_path'].value)
-        try:
-            column_map = sps_columns.build_user_column_map(params)
-            sps_columns.validate_user_column_map(
-                column_map, params['sps_path'].value
-            )
-        except ValueError as err:
-            logger.error(f"SPS column map error:\n{err}")
-            raise
-        logger.info(f"Using user-defined sps_path = {params['sps_path'].value}")
-
-    # sps_refmass: reference cluster mass used by f_mass = mCluster / sps_refmass.
-    # Default 'def_value' is only meaningful for the bundled SPS file (its
-    # reference mass is 1e6 Msun). When the user supplies sps_path, the
-    # bundled 1e6 is almost certainly wrong for their file — silent fallback
-    # would produce silently-wrong f_mass scaling — so require an explicit
-    # value in that case.
-    if params['sps_refmass'].value == 'def_value':
-        if sps_path_is_default:
-            params['sps_refmass'].value = 1e6
-        else:
-            raise ParameterFileError(
-                f"sps_refmass is required when sps_path is user-set "
-                f"(got sps_path={params['sps_path'].value!r}). The "
-                f"default sps_refmass=1e6 only matches the bundled SPS "
-                f"file; supplying your own sps_path means you must "
-                f"declare the reference cluster mass it was normalized to."
-            )
-
-    params['sps_column_map'] = DescribedItem(
-        column_map,
-        info="SPS column mapping (canonical -> ColumnSpec)",
-        ori_units="N/A",
-        exclude_from_snapshot=True,
-    )
 
     # =============================================================================
     # Step 8: Handle density profile-specific parameters

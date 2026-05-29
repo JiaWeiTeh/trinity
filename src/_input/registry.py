@@ -4,8 +4,9 @@
 (186 total: 72 declared in ``default.param`` + 114 runtime/derived
 created in ``read_param`` Steps 6/8/10).  Production wiring:
 ``src._output.run_constants`` derives its lists from the registry
-(Phase 5); ``read_param`` Step 5 calls ``validate_all`` (Phase 6).
-Phases 7–10 will wire resolvers, conditional schema, and runtime init.
+(Phase 5); ``read_param`` Step 5 calls ``validate_all`` (Phase 6) and
+Step 7 calls ``resolve_all`` (Phase 7).  Phases 8–10 will wire the
+conditional schema (``active_when``) and runtime init.
 
 Runtime specs are split into physical buckets that mirror
 ``trinity_reader``'s ``Snapshot`` grouping (``runtime_time`` /
@@ -39,14 +40,27 @@ the single source of truth for run-const / metadata-exclude membership.
 """
 from __future__ import annotations
 
+import logging
+import os
 from collections import OrderedDict
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Iterable, Mapping
 
 import numpy as np
 
+import src.sps.sps_columns as sps_columns
+from src._input.dictionary import DescribedItem
 from src._input.errors import ParameterFileError
 from src._input.param_spec import Category, ParamSpec
+
+logger = logging.getLogger(__name__)
+
+# Anchor bundled-asset lookups to the repo root, not the CWD (mirrors the
+# constant of the same name in ``read_param``): resolvers below build
+# paths under ``lib/default/...`` that must resolve regardless of where
+# ``run.py`` was launched from.
+_REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 # ---------------------------------------------------------------------------
@@ -118,9 +132,118 @@ def _validate_stop_at_rCloud_nSnap(value, params) -> None:
     params['stop_at_rCloud_nSnap'].value = coerced
 
 
+# ---------------------------------------------------------------------------
+# Resolvers (consumed by Phase 7; ``resolve_all`` invoked from
+# ``read_param`` Step 7).  A resolver receives the parameter's current
+# value plus the full params dict and returns the resolved value, which
+# the driver assigns back to ``params[name].value``.  Resolvers run
+# unconditionally: each handles BOTH the sentinel (``def_*``) branch and
+# the user-supplied branch (e.g. a user path2output is still mkdir'd).
+# Logic and error messages are lifted verbatim from the pre-Phase-7
+# inline Step-7 block so behavior is byte-identical.
+# ---------------------------------------------------------------------------
+def _resolve_path2output(value, params) -> str:
+    """Output directory.  Sentinel 'def_dir' resolves to
+    ``<cwd>/outputs/<model_name>``; a user path is taken as-is.  Either
+    way the directory is created."""
+    if value == 'def_dir':
+        path2output = os.path.join(os.getcwd(), 'outputs', params['model_name'].value)
+    else:
+        path2output = str(value)
+    Path(path2output).mkdir(parents=True, exist_ok=True)
+    return path2output
+
+
+def _resolve_path_cooling_nonCIE(value, params) -> str:
+    """Non-CIE cooling directory.  Sentinel 'def_dir' resolves to the
+    shipped OPIATE cube folder under ``lib/default/opiate/``; a user
+    path is taken as-is (and created)."""
+    if value == 'def_dir':
+        return str(_REPO_ROOT / 'lib' / 'default' / 'opiate') + os.sep
+    path_cooling = str(value)
+    Path(path_cooling).mkdir(parents=True, exist_ok=True)
+    return path_cooling
+
+
+def _resolve_sps_bundle(value, params) -> str:
+    """SPS bundle resolver (sps_path + sps_refmass + sps_column_map).
+
+    These three are physically coupled, so a single resolver owns the
+    whole bundle; ``sps_refmass`` and the 13 ``sps_col_*`` specs declare
+    ``consumed_by='sps_path'`` rather than carrying their own resolvers.
+
+    Sentinel 'def_path' resolves to the bundled
+    ``lib/default/sps/starburst99/1e6cluster_default.csv`` — an SB99 grid
+    at rotation=1, ZCloud=1, mass=1e6 Msun in CSV form with the canonical
+    7-column SB99 layout (DEFAULT_SPS_COLUMN_MAP). The default rejects
+    combinations the bundled cooling tables can't fulfill; users who need
+    a different metallicity or rotation must set sps_path explicitly.
+    See analysis/sb99-refactor-audit.md §9.
+
+    Side effects (the coupled members of the bundle):
+      * ``params['sps_refmass'].value`` — 'def_value' resolves to 1e6 only
+        for the bundled file; a user sps_path requires an explicit value
+        (silent 1e6 would mis-scale f_mass = mCluster / sps_refmass).
+      * ``params['sps_column_map']`` — new DescribedItem holding the
+        canonical->ColumnSpec map (default preset, or built from the
+        user's sps_col_* declarations).
+    """
+    sps_path_is_default = value == 'def_path'
+    if sps_path_is_default:
+        if params['ZCloud'].value != 1.0:
+            raise ValueError(
+                f"ZCloud={params['ZCloud'].value} is not supported with the "
+                "default SPS fallback (only ZCloud=1.0 is bundled). Set "
+                "sps_path explicitly to use a non-solar metallicity SPS file."
+            )
+        if not params['SB99_rotation'].value:
+            raise ValueError(
+                "SB99_rotation=0 is not supported with the default SPS "
+                "fallback (only rot cooling tables are bundled). Set "
+                "sps_path explicitly and supply matching cooling tables "
+                "for the norot case."
+            )
+        sps_path = str(
+            _REPO_ROOT / 'lib' / 'default' / 'sps' / 'starburst99' / '1e6cluster_default.csv'
+        )
+        column_map = sps_columns.DEFAULT_SPS_COLUMN_MAP
+        logger.info(f"sps_path unset → using default SPS file: {sps_path}")
+    else:
+        sps_path = str(value)
+        try:
+            column_map = sps_columns.build_user_column_map(params)
+            sps_columns.validate_user_column_map(column_map, sps_path)
+        except ValueError as err:
+            logger.error(f"SPS column map error:\n{err}")
+            raise
+        logger.info(f"Using user-defined sps_path = {sps_path}")
+
+    # sps_refmass: only meaningful for the bundled file (1e6 Msun). When
+    # the user supplies sps_path, require an explicit value.
+    if params['sps_refmass'].value == 'def_value':
+        if sps_path_is_default:
+            params['sps_refmass'].value = 1e6
+        else:
+            raise ParameterFileError(
+                f"sps_refmass is required when sps_path is user-set "
+                f"(got sps_path={sps_path!r}). The default sps_refmass=1e6 "
+                f"only matches the bundled SPS file; supplying your own "
+                f"sps_path means you must declare the reference cluster "
+                f"mass it was normalized to."
+            )
+
+    params['sps_column_map'] = DescribedItem(
+        column_map,
+        info="SPS column mapping (canonical -> ColumnSpec)",
+        ori_units="N/A",
+        exclude_from_snapshot=True,
+    )
+    return sps_path
+
+
 SPECS: tuple[ParamSpec, ...] = (
     ParamSpec(name='model_name', default='default', info='Specifies the model name, which serves as the prefix for all output filenames.', category='input_admin', unit=None, run_const=True),
-    ParamSpec(name='path2output', default='def_dir', info='Defines the output directory where all generated files will be stored.', category='input_admin', unit=None, exclude_from_snapshot=True, metadata_exclude=True),
+    ParamSpec(name='path2output', default='def_dir', info='Defines the output directory where all generated files will be stored.', category='input_admin', unit=None, exclude_from_snapshot=True, metadata_exclude=True, resolver=_resolve_path2output),
     ParamSpec(name='output_format', default='JSON', info='Specifies the output format.', category='input_admin', unit=None, exclude_from_snapshot=True, run_const=True),
     ParamSpec(name='simplify_npoints', default='100', info='Target number of points retained for simplified profile arrays in saved snapshots (bubble_T_arr, bubble_n_arr, bubble_dTdr_arr, bubble_v_arr, shell_grav_force_m, shell_n_arr). Default 100. Larger values give higher-fidelity snapshots at the cost of larger output files. Clamped to >= 20 (matches the coverage-skeleton chunk count). The first two simplify calls per implicit-phase snapshot log their reconstruction R² at INFO level so you can verify the chosen budget is faithful.', category='input_admin', unit=None, exclude_from_snapshot=True),
     ParamSpec(name='log_level', default='DEBUG', info='Logging level for terminal and file output. Controls how much detail is logged.', category='input_admin', unit=None, exclude_from_snapshot=True, run_const=True),
@@ -145,7 +268,7 @@ SPECS: tuple[ParamSpec, ...] = (
     ParamSpec(name='stop_at_rCloud_nSnap', default='None', info='Terminate simulation after the shell crosses the cloud edge (R2 > rCloud). Value is the number of post-crossing segment-loop snapshots to record before terminating. Set to None to disable. 0 stops at the edge (1a reconciliation snapshot only). N>0 lets the implicit phase advance for N more segments past the crossing — note the implicit phase\'s end-of-phase reconciliation snapshot adds one extra past-rCloud sample, so the total snapshots with R2 >= rCloud is roughly N + 2 (1 at-edge + N in-loop + 1 recon).', category='input_termination', unit=None, exclude_from_snapshot=True, validator=_validate_stop_at_rCloud_nSnap),
     ParamSpec(name='coll_r', default='1', info='Radius below which the cloud is considered completely collapsed.', category='input_termination', unit='pc', exclude_from_snapshot=True, run_const=True),
     ParamSpec(name='SB99_rotation', default='1', info='Stellar-rotation flag. Selects rot vs norot non-CIE cooling tables (src/cooling/non_CIE/read_cloudy.py). Only rot tables ship in lib/default/opiate/, so 0 (norot) requires the user to supply matching cooling tables and an sps_path pointing at a norot SPS file; the default SPS fallback rejects SB99_rotation=0. NOTE: name retained for stability. May rename to sps_rotation in a future PR once the cooling subsystem stops being SB99-flavored.', category='input_sps', unit=None, exclude_from_snapshot=True, run_const=True),
-    ParamSpec(name='sps_refmass', default='def_value', info='Reference cluster mass used in f_mass = mCluster / sps_refmass.', category='input_sps', unit='Msun', exclude_from_snapshot=True),
+    ParamSpec(name='sps_refmass', default='def_value', info='Reference cluster mass used in f_mass = mCluster / sps_refmass.', category='input_sps', unit='Msun', exclude_from_snapshot=True, consumed_by='sps_path'),
     ParamSpec(name='FB_mColdWindFrac', default='0', info='Fraction of cold mass entrained in stellar winds (increases Mdot_wind, reduces velocity).', category='input_sps', unit=None, exclude_from_snapshot=True, run_const=True),
     ParamSpec(name='FB_mColdSNFrac', default='0', info='Fraction of cold mass entrained in supernova ejecta (increases Mdot_SN, reduces velocity).', category='input_sps', unit=None, exclude_from_snapshot=True, run_const=True),
     ParamSpec(name='FB_thermCoeffWind', default='1', info='Defines the thermalization efficiency for colliding stellar winds.', category='input_sps', unit=None, exclude_from_snapshot=True, run_const=True),
@@ -175,8 +298,8 @@ SPECS: tuple[ParamSpec, ...] = (
     ParamSpec(name='cool_beta', default='0.8', info='Cooling related values. beta = - dPb/dt.', category='input_solver', unit=None),
     ParamSpec(name='cool_delta', default='-6/35', info='Cooling related values. delta = dT/dt.', category='input_solver', unit=None),
     ParamSpec(name='path_cooling_CIE', default='3', info='Selects the CIE (T > 10^5.5 K) cooling curve.', category='input_cooling', unit=None, exclude_from_snapshot=True, metadata_exclude=True),
-    ParamSpec(name='path_cooling_nonCIE', default='def_dir', info='Folder containing the non-CIE (T < 10^5.5 K) OPIATE/CLOUDY cubes.', category='input_cooling', unit=None, exclude_from_snapshot=True, metadata_exclude=True),
-    ParamSpec(name='sps_path', default='def_path', info='Full path to an SPS data file. If def_path (default), TRINITY uses', category='input_sps', unit=None, exclude_from_snapshot=True),
+    ParamSpec(name='path_cooling_nonCIE', default='def_dir', info='Folder containing the non-CIE (T < 10^5.5 K) OPIATE/CLOUDY cubes.', category='input_cooling', unit=None, exclude_from_snapshot=True, metadata_exclude=True, resolver=_resolve_path_cooling_nonCIE),
+    ParamSpec(name='sps_path', default='def_path', info='Full path to an SPS data file. If def_path (default), TRINITY uses', category='input_sps', unit=None, exclude_from_snapshot=True, resolver=_resolve_sps_bundle),
     ParamSpec(name='sps_col_t', default='def_unset', info='', category='input_sps', unit=None, exclude_from_snapshot=True, consumed_by='sps_path'),
     ParamSpec(name='sps_col_Qi', default='def_unset', info='', category='input_sps', unit=None, exclude_from_snapshot=True, consumed_by='sps_path'),
     ParamSpec(name='sps_col_fi', default='def_unset', info='', category='input_sps', unit=None, exclude_from_snapshot=True, consumed_by='sps_path'),
@@ -337,6 +460,30 @@ def validate_all(params) -> None:
         if spec.name not in params:
             continue
         spec.validator(params[spec.name].value, params)
+
+
+def resolve_all(params) -> None:
+    """Run every spec's ``resolver`` callable against ``params``.
+
+    Phase-7 entry point for ``read_param`` Step 7.  A resolver receives
+    ``(value, params)`` and returns the resolved value, which is assigned
+    back to ``params[spec.name].value``; it may also raise
+    ``ParameterFileError`` / ``ValueError`` on bad input and mutate
+    ``params`` for documented coupled side effects (see
+    ``_resolve_sps_bundle``).  Order follows ``SPECS``; the three current
+    resolvers (path2output, path_cooling_nonCIE, sps_path) carry no
+    inter-dependencies in that order — sps_refmass and the sps_col_*
+    family are owned by sps_path's resolver via ``consumed_by``, so the
+    one cross-key ordering edge (refmass-after-path) lives inside a single
+    resolver rather than across iterations.  Specs missing from ``params``
+    are skipped.
+    """
+    for spec in SPECS:
+        if spec.resolver is None:
+            continue
+        if spec.name not in params:
+            continue
+        params[spec.name].value = spec.resolver(params[spec.name].value, params)
 
 
 def run_const_keys() -> tuple[str, ...]:

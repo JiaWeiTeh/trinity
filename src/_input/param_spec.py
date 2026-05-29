@@ -6,15 +6,17 @@ frozen-dataclass + module-level tuple pattern).  Consumed by:
 * ``src._input.registry`` derivation helpers (``run_const_keys``,
   ``metadata_exclude_keys`` — Phase 5 drop-in replacements for the
   hand-curated lists in ``src._output.run_constants``).
-* ``src._input.read_param`` (Phase 6+ wires ``validator`` /
-  ``resolver`` / ``active_when`` into Steps 5/7/8).
+* ``src._input.read_param`` (``validator`` wired in Step 5 / Phase 6;
+  ``resolver`` in Step 7 / Phase 7; ``active_when`` in Step 8 / Phase 8).
 * ``tools/gen_default_param.py`` (Phase 3+ regenerates
   ``default.param`` from the registry).
 
-As of Phase 2 the registry is fully populated (187 specs) but still
-dormant: ``read_param`` and ``run_constants`` are untouched until
-Phases 5–10 wire it in.  See ``test/test_registry.py`` for the
-guardrails that pin the spec set against a live ``read_param`` run.
+The registry is fully populated (187 specs) and live for run-const /
+metadata derivation (Phase 5), validation (Phase 6), and sentinel
+resolution (Phase 7); ``active_when`` conditional schema and runtime
+init (Phases 8–10) are still pending.  See ``test/test_registry.py``
+for the guardrails that pin the spec set against a live ``read_param``
+run.
 """
 from __future__ import annotations
 
@@ -61,19 +63,18 @@ Category = Literal[
 # ``def_value``, ``def_unset``.  A sentinel default is resolved either by
 #
 #   * its own ``resolver`` (the standalone case — ``path2output``,
-#     ``path_cooling_nonCIE``, ``sps_path``, ``sps_refmass``), or
+#     ``path_cooling_nonCIE``, ``sps_path``), or
 #   * another spec's resolver, declared via ``consumed_by`` (the
-#     bulk-consumed case — the 13 ``sps_col_*`` specs are read en bloc
-#     inside ``sps_path``'s resolver via
-#     ``sps_columns.build_user_column_map``; when ``sps_path`` is the
-#     default they stay at ``def_unset`` and nothing reads them).
+#     bulk-consumed case — ``sps_refmass`` plus the 13 ``sps_col_*`` specs
+#     are owned by ``sps_path``'s bundle resolver, which reads the columns
+#     en bloc via ``sps_columns.build_user_column_map`` and fills
+#     ``sps_refmass``; when ``sps_path`` is the default the columns stay
+#     at ``def_unset`` and ``sps_refmass`` falls back to 1e6).
 #
-# Both axes are wired in Phase 7.  Until then the 17 sentinel specs
-# carry ``resolver=None`` (the 13 sps_col_* additionally carry
-# ``consumed_by='sps_path'``); the
-# ``test_every_sentinel_default_has_resolver_or_pointer`` guard (xfail
-# until Phase 7) tracks the gap and goes green once the 4 standalone
-# resolvers land.
+# Both axes are wired (Phase 7): ``read_param`` Step 7 drives the three
+# standalone resolvers via ``registry.resolve_all``.  The
+# ``test_every_sentinel_default_has_resolver_or_pointer`` guard enforces
+# that every sentinel spec carries one of the two.
 SENTINEL_PREFIX = "def_"
 
 
@@ -109,17 +110,18 @@ class ParamSpec:
 
     validator: Optional[Callable[[Any, dict], None]] = None
     # ``resolver`` resolves a sentinel default (``def_*``) against the full
-    # params dict.  Mutually exclusive with ``consumed_by``: a spec either
-    # carries its own resolver OR delegates to another spec's, never both.
-    # Phase 7 wires the 4 standalone resolvers and flips the (currently
-    # xfail) ``test_every_sentinel_default_has_resolver_or_pointer`` guard
-    # green.  See SENTINEL_PREFIX.
+    # params dict, returning the resolved value (``read_param`` Step 7
+    # drives these via ``registry.resolve_all``).  Mutually exclusive with
+    # ``consumed_by``: a spec either carries its own resolver OR delegates
+    # to another spec's, never both.  Three specs carry resolvers today
+    # (path2output, path_cooling_nonCIE, sps_path).  See SENTINEL_PREFIX.
     resolver: Optional[Callable[[Any, dict], Any]] = None
     # ``consumed_by`` names another spec whose resolver bulk-consumes this
-    # one's raw value.  Used today only by the 13 ``sps_col_*`` specs,
-    # which point at ``sps_path`` — its resolver assembles them via
-    # ``sps_columns.build_user_column_map``.  Target existence is checked
-    # by ``test_consumed_by_targets_exist``.
+    # one's raw value.  Used by ``sps_refmass`` and the 13 ``sps_col_*``
+    # specs, all pointing at ``sps_path`` — its bundle resolver assembles
+    # the columns via ``sps_columns.build_user_column_map`` and fills
+    # ``sps_refmass``.  Target existence is checked by
+    # ``test_consumed_by_targets_exist``.
     consumed_by: Optional[str] = None
     active_when: Optional[Callable[[dict], bool]] = None
 

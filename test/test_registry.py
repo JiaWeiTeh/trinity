@@ -178,16 +178,15 @@ def test_sentinel_prefix_constant() -> None:
     assert SENTINEL_PREFIX == "def_"
 
 
-@pytest.mark.xfail(reason="resolvers wired in Phase 7", strict=True)
 def test_every_sentinel_default_has_resolver_or_pointer() -> None:
     """Every ``def_*`` sentinel default must either carry its own
     ``resolver`` (standalone case — ``path2output``,
-    ``path_cooling_nonCIE``, ``sps_path``, ``sps_refmass``) or declare
-    ``consumed_by`` pointing at another spec that does (bulk-consumed
-    case — the 13 ``sps_col_*`` specs delegate to ``sps_path``).
+    ``path_cooling_nonCIE``, ``sps_path``) or declare ``consumed_by``
+    pointing at another spec that does (bulk-consumed case — ``sps_refmass``
+    and the 13 ``sps_col_*`` specs delegate to ``sps_path``).
 
-    Wired in Phase 7 once the 4 standalone resolvers land;
-    ``strict=True`` forces removal of this marker when it goes green.
+    Wired in Phase 7: the three standalone resolvers land in the registry
+    and ``read_param`` Step 7 drives them via ``resolve_all``.
     """
     offenders = [
         s.name for s in SPECS
