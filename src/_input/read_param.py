@@ -25,7 +25,12 @@ import numpy as np
 import src._functions.unit_conversions as cvt
 from src._input.dictionary import DescribedItem, DescribedDict
 from src._input.errors import ParameterFileError
-from src._input.registry import resolve_all, validate_all, validate_companions
+from src._input.registry import (
+    apply_active_when,
+    resolve_all,
+    validate_all,
+    validate_companions,
+)
 
 # Anchor bundled-asset lookups to the repo root, not the CWD: users may launch
 # run.py from anywhere, and the `lib/default/...` defaults must still resolve.
@@ -361,27 +366,16 @@ def read_param(path2file):
         )
 
     # =============================================================================
-    # Step 8: Handle density profile-specific parameters
+    # Step 8: Apply active_when (conditional schema)
     # =============================================================================
-    
-    if params['dens_profile'].value == 'densBE':
-        # Bonnor-Ebert sphere
-        params.pop('densPL_alpha')
-        params['densBE_Omega'].exclude_from_snapshot = True
-        
-        # Add BE-specific runtime parameters
-        params['densBE_Teff'] = DescribedItem(0, info="Effective temperature of BE sphere", ori_units="K")
-        params['densBE_xi_arr'] = DescribedItem([], info="Lane-Emden xi array", ori_units="dimensionless")
-        params['densBE_u_arr'] = DescribedItem([], info="Lane-Emden u array", ori_units="dimensionless")
-        params['densBE_dudxi_arr'] = DescribedItem([], info="Lane-Emden du/dxi array", ori_units="dimensionless")
-        params['densBE_rho_rhoc_arr'] = DescribedItem([], info="Density contrast array", ori_units="dimensionless")
-        params['densBE_f_rho_rhoc'] = DescribedItem(0, info="Interpolation function for density contrast", ori_units="dimensionless")
-        params['densBE_f_m'] = DescribedItem(None, info="Lane-Emden mass interpolation function", ori_units="N/A", exclude_from_snapshot=True)
-        params['densBE_xi_out'] = DescribedItem(0, info="Dimensionless outer radius at cloud edge", ori_units="dimensionless")
-    
-    elif params['dens_profile'].value == 'densPL':
-        # Power-law
-        params.pop('densBE_Omega')
+    # Pops keys whose active_when predicate is False (e.g. densPL_alpha on
+    # a densBE run, densBE_Omega on a densPL run) and adds keys whose
+    # predicate is True but which aren't yet present (e.g. the 8
+    # densBE_* runtime params on a densBE run). All metadata (info, unit,
+    # exclude_from_snapshot) comes from the spec; mutable defaults are
+    # deep-copied so runs don't share state. Step 9 below sweeps
+    # exclude_from_snapshot for the final non-time-varying set.
+    apply_active_when(params)
     
     # =============================================================================
     # Step 9: Set snapshot exclusions for constants

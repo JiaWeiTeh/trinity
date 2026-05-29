@@ -12,10 +12,10 @@ frozen-dataclass + module-level tuple pattern).  Consumed by:
   ``default.param`` from the registry).
 
 The registry is fully populated (187 specs) and live for run-const /
-metadata derivation (Phase 5), validation (Phase 6), and sentinel
-resolution (Phase 7); ``active_when`` conditional schema and runtime
-init (Phases 8–10) are still pending.  See ``test/test_registry.py``
-for the guardrails that pin the spec set against a live ``read_param``
+metadata derivation (Phase 5), validation (Phase 6), sentinel
+resolution (Phase 7), and conditional schema (Phase 8); runtime init
+(Phases 9–10) is still pending.  See ``test/test_registry.py`` for
+the guardrails that pin the spec set against a live ``read_param``
 run.
 """
 from __future__ import annotations
@@ -123,6 +123,14 @@ class ParamSpec:
     # ``sps_refmass``.  Target existence is checked by
     # ``test_consumed_by_targets_exist``.
     consumed_by: Optional[str] = None
+    # ``active_when`` is a predicate ``params -> bool`` that decides
+    # *presence*: ``registry.apply_active_when`` (driven by ``read_param``
+    # Step 8) restores the invariant *"this spec is in ``params`` iff
+    # ``active_when(params)`` is True"* — adding a fresh DescribedItem
+    # (with a deep-copied default) when active and absent, popping when
+    # present and inactive.  Today carried only by the densBE / densPL
+    # profile-conditional family; the guard
+    # ``test_active_when_only_on_conditional_specs`` pins the set.
     active_when: Optional[Callable[[dict], bool]] = None
 
     deprecated_note: Optional[str] = None

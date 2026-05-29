@@ -4,9 +4,9 @@
 (186 total: 72 declared in ``default.param`` + 114 runtime/derived
 created in ``read_param`` Steps 6/8/10).  Production wiring:
 ``src._output.run_constants`` derives its lists from the registry
-(Phase 5); ``read_param`` Step 5 calls ``validate_all`` (Phase 6) and
-Step 7 calls ``resolve_all`` (Phase 7).  Phases 8–10 will wire the
-conditional schema (``active_when``) and runtime init.
+(Phase 5); ``read_param`` Step 5 calls ``validate_all`` (Phase 6),
+Step 7 calls ``resolve_all`` (Phase 7), and Step 8 calls
+``apply_active_when`` (Phase 8).  Phases 9–10 will wire runtime init.
 
 Runtime specs are split into physical buckets that mirror
 ``trinity_reader``'s ``Snapshot`` grouping (``runtime_time`` /
@@ -40,6 +40,7 @@ the single source of truth for run-const / metadata-exclude membership.
 """
 from __future__ import annotations
 
+import copy
 import logging
 import os
 from collections import OrderedDict
@@ -64,9 +65,11 @@ _REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 # ---------------------------------------------------------------------------
-# Conditional-schema predicates (consumed by Phase 8; dormant until then).
-# ``read_param`` Step 8 keeps densBE_* / pops densPL_alpha when the cloud
-# uses a Bonnor-Ebert profile, and vice-versa.
+# Conditional-schema predicates (Phase 8: consumed by ``apply_active_when``
+# from ``read_param`` Step 8).  The predicate decides presence: a spec
+# with ``active_when`` is in ``params`` iff its predicate returns True.
+# densBE/densPL profiles are mutually exclusive, so each predicate
+# matches exactly one of the two profile families.
 # ---------------------------------------------------------------------------
 def _profile_value(params) -> object:
     item = params.get("dens_profile")
@@ -484,6 +487,42 @@ def resolve_all(params) -> None:
         if spec.name not in params:
             continue
         params[spec.name].value = spec.resolver(params[spec.name].value, params)
+
+
+def apply_active_when(params) -> None:
+    """Enforce ``active_when`` presence semantics against ``params``.
+
+    Phase-8 entry point for ``read_param`` Step 8.  For every spec
+    carrying an ``active_when`` predicate, the invariant *"the spec is
+    in ``params`` iff ``active_when(params)`` returns True"* is
+    restored:
+
+      * active and absent → add a fresh ``DescribedItem`` (default
+        deep-copied so mutable defaults like ``[]`` aren't shared across
+        runs);
+      * present and inactive → ``pop`` it;
+      * matching presence and activity → no-op.
+
+    Order follows ``SPECS``.  Specs without ``active_when`` are skipped.
+    Must run after Step 5 (validators ensure the gating values — today
+    ``dens_profile`` ∈ {``densBE``, ``densPL``} — are well-formed) and
+    before Step 9 (the snapshot-exclusion sweep, which expects the
+    final key set).
+    """
+    for spec in SPECS:
+        if spec.active_when is None:
+            continue
+        active = spec.active_when(params)
+        present = spec.name in params
+        if active and not present:
+            params[spec.name] = DescribedItem(
+                copy.deepcopy(spec.default),
+                info=spec.info,
+                ori_units=spec.unit if spec.unit is not None else "N/A",
+                exclude_from_snapshot=spec.exclude_from_snapshot,
+            )
+        elif present and not active:
+            params.pop(spec.name)
 
 
 def run_const_keys() -> tuple[str, ...]:
