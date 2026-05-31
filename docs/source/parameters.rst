@@ -278,10 +278,6 @@ Conditions that end the simulation.
      - ``500``
      - pc
      - Maximum shell radius. Exceeding this triggers termination. Set to ``None`` to disable this condition.
-   * - ``stop_v``
-     - ``-1e4``
-     - km/s
-     - Velocity threshold for numerical instability detection.
    * - ``stop_t``
      - ``15``
      - Myr
@@ -529,21 +525,9 @@ Control transitions between simulation phases.
    * - Parameter
      - Default
      - Description
-   * - ``adiabaticOnlyInCore``
-     - ``False``
-     - Restrict adiabatic (energy-driven) phase to within core radius.
-   * - ``immediate_leak``
-     - ``True``
-     - Transition immediately to momentum-driven phase when bubble bursts.
    * - ``phaseSwitch_LlossLgain``
      - ``0.05``
      - Threshold for :math:`(L_{\rm gain} - L_{\rm loss})/L_{\rm gain}` to trigger phase transition.
-   * - ``use_adaptive_solver``
-     - ``True``
-     - Deprecated. Parsed for backward compatibility with existing
-       ``.param`` files but not consumed by any code path — the adaptive
-       solver in ``run_energy_phase.py`` is the only implementation, so
-       this flag has no effect.
 
 
 Cooling Parameters

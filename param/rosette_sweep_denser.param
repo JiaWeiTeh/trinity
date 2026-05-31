@@ -34,7 +34,6 @@ coll_r    1
 expansionBeyondCloud    True
 
 # Solver
-use_adaptive_solver    True
 
 
 # Logging

@@ -311,12 +311,6 @@ def test_no_stale_keys_in_run_constants(live_keys) -> None:
 # ---------------------------------------------------------------------------
 # Per-field consistency
 # ---------------------------------------------------------------------------
-def test_deprecated_specs_have_notes() -> None:
-    dep = [s for s in SPECS if s.category == "deprecated"]
-    assert {s.name for s in dep} == {
-        "stop_v", "adiabaticOnlyInCore", "immediate_leak", "use_adaptive_solver"
-    }
-    assert all(s.deprecated_note for s in dep)
 
 
 def test_active_when_only_on_conditional_specs() -> None:

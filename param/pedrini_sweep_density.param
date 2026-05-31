@@ -46,7 +46,6 @@ stop_t    10
 coll_r    1
 
 # Solver
-use_adaptive_solver    True
 
 # Logging and output
 log_level      INFO

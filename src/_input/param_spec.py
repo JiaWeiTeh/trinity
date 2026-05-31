@@ -58,7 +58,7 @@ Category = Literal[
     "runtime_cloud_profile",# initial_cloud_r/n/m_arr (set in phase0, constant thereafter)
     "runtime_loaded",       # sps_data, sps_f, sps_column_map, cStruc_*, densBE_f_*
     # ---- Parsed for back-compat only, never consumed ----
-    "deprecated",           # stop_v, adiabaticOnlyInCore, immediate_leak, use_adaptive_solver
+    "deprecated",           # back-compat retired specs (currently none; kept for future use)
 ]
 
 # Prefix for sentinel string defaults: ``def_dir``, ``def_path``,

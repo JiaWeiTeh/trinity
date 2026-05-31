@@ -15,7 +15,7 @@ render and relocating the decorative prose to ``docs/`` — happens in
 Phase 4.  Until then nothing here is wired into production.
 
 Only *file-backed* specs are emitted: those whose ``category`` starts
-with ``input_`` or equals ``deprecated`` (the 72 keys that live in
+with ``input_`` or equals ``deprecated`` (the 68 keys that live in
 ``default.param``).  Runtime / derived specs are created in
 ``read_param`` Steps 6/8/10 and never appear in the file.
 

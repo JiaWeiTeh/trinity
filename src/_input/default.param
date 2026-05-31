@@ -270,21 +270,3 @@ cool_delta    -6/35
 
 # INFO: The relative radius xi = r/R2, at which we measure the bubble temperature.
 bubble_xi_Tb    0.98
-
-
-# ==============================================================================
-# Deprecated (parsed for back-compat, not consumed)
-# ==============================================================================
-
-# DEPRECATED: Parsed for backward compatibility with existing .param files but NOT consumed by any current code path. Changing this has no effect.
-# UNIT: [km * s**-1]
-stop_v    -1e4
-
-# DEPRECATED: Parsed for backward compatibility with existing .param files but NOT consumed by any current code path. Changing this has no effect.
-adiabaticOnlyInCore    False
-
-# DEPRECATED: Parsed for backward compatibility with existing .param files but NOT consumed by any current code path. Changing this has no effect.
-immediate_leak    True
-
-# DEPRECATED: Parsed for backward compatibility with existing .param files but NOT consumed by any current code path. The modified adaptive solver is now the only implementation; changing this flag has no effect.
-use_adaptive_solver    True

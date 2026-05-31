@@ -81,13 +81,9 @@ def _make_params(out_dir: Path, *, include_legacy_arrays: bool = False
         "allowShellDissolution": True,
         "stop_t_diss": 1.0,
         "stop_r": None,
-        "stop_v": -1.0e4,
         "stop_t": 0.3,
         "coll_r": 1.0,
         "expansionBeyondCloud": True,
-        "use_adaptive_solver": True,
-        "adiabaticOnlyInCore": False,
-        "immediate_leak": False,
         # SB99
         "SB99_BHCUT": 120.0,
         "SB99_mass": 1.0e6,
