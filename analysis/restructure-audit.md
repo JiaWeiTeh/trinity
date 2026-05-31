@@ -258,8 +258,8 @@ downstream (`paper/`, `examples/`, `scratch/`, `tools/`).
 
 ```
 trinity-repo/
-├── trinity/               # ENGINE ONLY (post src-> rename); no paper code
-│   └── data/default/      # (optional Phase D) bundled tables via importlib.resources
+├── trinity/               # ENGINE ONLY (post src-> rename): pure working code,
+│                          #   no data, no paper code — kept clean by design
 ├── tools/                 # maintained utilities: gen_default_param.py, compare_outputs.py
 ├── paper/                 # reproducibility bundle (public)
 │   ├── data/
@@ -267,7 +267,7 @@ trinity-repo/
 │   │   └── _lib/          # plot_base, plot_markers, cli, force_colors,
 │   │                      #   grid_template, trinity.mplstyle
 │   └── make_figures.py
-├── lib/default/           # bundled tables (until/unless moved into trinity/data)
+├── lib/default/           # bundled tables, top-level by design (keeps trinity/ pure code)
 ├── param/                 # canonical parameter-file library
 ├── examples/              # runnable getting-started scripts (reference param/)
 ├── scratch/               # gitignored personal/diagnostic (NOT "notebooks/")
@@ -309,18 +309,29 @@ object (`TrinityOutput`), never by figure scripts.
 - **`tests/` not `test/`**: plural is the prevailing pytest convention;
   trivial, only worth folding into the rename pass.
 
-## III.3 Optional follow-ups (separate efforts, not part of A–C)
+## III.3 Decided: bundled data stays top-level
 
-- **Phase D — data into the package**: move `lib/default/` →
-  `trinity/data/default/`, access via `importlib.resources`. Modern norm
-  (Astropy/scikit-learn/scipy); removes the top-level `package-data` glob
-  hack; makes wheels relocatable and CWD-independent.
+`lib/default/` **stays a top-level sibling of `trinity/`** — deliberately
+*not* moved inside the package. The intent is to keep `trinity/` pure
+internal working code (no data, no scripts, no figures), so the package
+tree reads as "the engine and nothing else." The bundled tables continue
+to ship via the existing `[tool.setuptools.package-data]` glob in
+`pyproject.toml`.
+
+Trade-off accepted: this keeps the top-level `package-data` glob rather
+than the `importlib.resources` + in-package-data pattern used by
+Astropy/scikit-learn. That pattern is more relocatable, but it pulls data
+into the package, which conflicts with the "trinity/ is pure code" goal.
+The glob already works and the tests pin it, so no change here.
+
+## III.4 Optional follow-up (separate effort, not part of A–C)
+
 - **Console entry point**: add
   `[project.scripts] trinity = "trinity.cli:main"` so users run
   `trinity param/...` instead of `python run.py`; `run.py` becomes a thin
   shim.
 
-## III.4 Enforce the invariant (what makes it stick)
+## III.5 Enforce the invariant (what makes it stick)
 
 Add a CI guard so the structure does not drift back: a test (or an
 `import-linter` contract) asserting the engine package never imports
