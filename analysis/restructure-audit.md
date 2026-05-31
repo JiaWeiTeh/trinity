@@ -350,3 +350,112 @@ erodes within a few months.
   `__main__` style.
 - **`plot_style.py`**: confirm dead vs. live before relocating the
   mplstyle.
+
+---
+
+# Appendix A — Phase A execution detail (drop `_modified`)
+
+Verified against the real tree on branch `feature/reforming-structure`.
+Pure, behavior-preserving rename. Empty `__init__.py` in all six affected
+packages — no re-exports — so only the explicit import sites below matter.
+All 8 target names are collision-free (no surviving `*.py` sibling).
+
+## A.1 File renames (`git mv`, 8)
+
+| From | To |
+|------|----|
+| `src/bubble_structure/bubble_luminosity_modified.py` | `bubble_luminosity.py` |
+| `src/phase1_energy/energy_phase_ODEs_modified.py` | `energy_phase_ODEs.py` |
+| `src/phase1_energy/run_energy_phase_modified.py` | `run_energy_phase.py` |
+| `src/phase1b_energy_implicit/get_betadelta_modified.py` | `get_betadelta.py` |
+| `src/phase1b_energy_implicit/run_energy_implicit_phase_modified.py` | `run_energy_implicit_phase.py` |
+| `src/phase1c_transition/run_transition_phase_modified.py` | `run_transition_phase.py` |
+| `src/phase2_momentum/run_momentum_phase_modified.py` | `run_momentum_phase.py` |
+| `src/shell_structure/shell_structure_modified.py` | `shell_structure.py` |
+
+## A.2 Import-site edits (mandatory — these are what `pytest`/F821 verify)
+
+**`src/main.py`** — 4 imports + 4 call sites:
+- L23 `from src.phase1_energy import run_energy_phase_modified` → `run_energy_phase`; L248 call `run_energy_phase_modified.run_energy(...)` → `run_energy.run_energy(...)`
+- L24 `... import run_energy_implicit_phase_modified` → `run_energy_implicit_phase`; L283 call
+- L25 `... import run_transition_phase_modified` → `run_transition_phase`; L303 call
+- L26 `... import run_momentum_phase_modified` → `run_momentum_phase`; L343 call
+
+**`src/phase1_energy/run_energy_phase_modified.py`** (renamed) — 3 `import … as …_modified` aliases + their call sites; drop `_modified` from both alias and usages:
+- L30 `import src.shell_structure.shell_structure_modified as shell_structure_modified` → `import src.shell_structure.shell_structure as shell_structure`; usages L188, L334, L373
+- L32 `import src.phase1_energy.energy_phase_ODEs_modified as energy_phase_ODEs_modified` → `… energy_phase_ODEs as energy_phase_ODEs`; usages L209, L210, L246, L251, L375, L378
+- L33 `import src.bubble_structure.bubble_luminosity_modified as bubble_luminosity_modified` → `… bubble_luminosity as bubble_luminosity`; usage L164
+
+**`src/phase1b_energy_implicit/get_betadelta_modified.py`** (renamed):
+- L28 `from src.bubble_structure.bubble_luminosity_modified import (` → `bubble_luminosity`
+
+**`src/phase1b_energy_implicit/run_energy_implicit_phase_modified.py`** (renamed):
+- L72 `from src.phase1_energy.energy_phase_ODEs_modified import (` → `energy_phase_ODEs`
+- L79 `from src.phase1b_energy_implicit.get_betadelta_modified import (` → `get_betadelta`
+- L86 `from src.shell_structure.shell_structure_modified import (` → `shell_structure`
+
+**`src/phase1c_transition/run_transition_phase_modified.py`** (renamed):
+- L61 `from src.phase1_energy.energy_phase_ODEs_modified import (` → `energy_phase_ODEs`
+- L66 `from src.phase1b_energy_implicit.get_betadelta_modified import (` → `get_betadelta`
+- L69 `from src.shell_structure.shell_structure_modified import (` → `shell_structure`
+
+**`src/phase2_momentum/run_momentum_phase_modified.py`** (renamed):
+- L62 `from src.shell_structure.shell_structure_modified import (` → `shell_structure`
+
+## A.3 Docstring / comment references to module names or deleted originals (mandatory for accuracy)
+
+These name a `*_modified` module or a deleted original; they become wrong after the rename:
+- `get_betadelta(_modified).py` L9 "Key improvements over get_betadelta.py:" (now self-referential — rewrite to describe what it *is*), L14 "Reuses … from bubble_luminosity_modified"
+- `run_energy_phase(_modified).py` L7 "replacing the manual Euler integration in run_energy_phase.py", L9 "Key differences from run_energy_phase.py:" (self-referential), L13 "Uses dataclass returns from bubble_luminosity_modified"
+- `run_energy_implicit_phase(_modified).py` L33 "The beta-delta solver (get_betadelta_modified.py) uses:"
+
+In other engine files (comments / one f-string that prints the filename):
+- `src/_analysis/check_yesno.py` L13 (comment) and **L220 (f-string output)** reference `energy_phase_ODEs_modified.py:253-256` → `energy_phase_ODEs.py:253-256` (line numbers unchanged by rename)
+- `src/_plots/pedrini_emergence_timescales.py` L236 comment `shell_structure_modified.py:412` → `shell_structure.py:412`
+- `src/_plots/paper_teaser.py` L341 comment `shell_structure_modified.py:411` → `shell_structure.py:411`
+- `src/_plots/paper_phii_window.py` L19 docstring `shell_structure_modified` → `shell_structure`
+
+## A.4 Cosmetic (recommended, not required for correctness)
+
+The literal word "Modified" / "modified" appears in titles and log
+strings that do **not** name a file and do not affect behavior. Clean for
+consistency or leave:
+- Head-docstring titles: `bubble_luminosity` L4, `energy_phase_ODEs` L4, `run_energy_phase` L4, `get_betadelta` L4, `run_energy_implicit_phase` L4, `run_transition_phase` L4, `run_momentum_phase` L4, `shell_structure` L4 ("Modified … with …").
+- Log strings in `run_energy_phase`: L75 "Starting modified energy phase…", L105 "Energy phase initialization (modified):".
+- Comments "Import pure/modified functions" (`run_energy_implicit_phase` L71, `run_transition_phase` L60, `run_momentum_phase` L61).
+- **Do NOT touch** `get_betadelta` L360 "Extract needed values from original params (not modified)" — "modified" here means "not mutated", unrelated to the suffix.
+
+## A.5 Docs
+
+- `docs/dev/TERMINATION_EVENTS.md` L20, L35, L52, L68 — section headers naming the four phase-runner files → drop `_modified`.
+- `docs/source/parameters.rst` L544 — **needs a real rewrite, not a mechanical rename.** It currently reads: "Use the adaptive ODE solver for the energy-driven phase (`run_energy_phase_modified.py`). If `False`, falls back to the original solver (`run_energy_phase.py`)." But `use_adaptive_solver` is registered as **deprecated and never consumed** (`registry.py:301`: *"changing this flag has no effect"*), and the "original" `run_energy_phase.py` does not exist. Proposed replacement aligned with reality: *"Deprecated. Parsed for backward compatibility but not consumed by any code path — the adaptive solver in `run_energy_phase.py` is the only implementation, so this flag has no effect."*
+
+## A.6 Out of scope / do NOT touch
+
+- `docs/source/running.rst` L176 — `_modified` here is an **output-filename** suffix sibling to `_summary.txt` (255-byte cap), unrelated to these modules.
+- `analysis/cooling-refactor-audit.md` and `analysis/sb99-refactor-audit.md` — multiple `*_modified.py` mentions are **historical point-in-time records** of completed refactors. Recommendation: leave as-is (they document what existed then). Optional: a one-line note that files were later renamed in Phase A.
+
+## A.7 Judgment calls (need a decision before executing)
+
+1. **Param comments (3):** `param/trinity_fiducial.param` L39, `param/trinity_fiducial_yesno.param` L40, `param/sweep_orion_better_paper.param` L38 — the comment `# use _modified files with solvers` sits above a `use_adaptive_solver True` line. The comment references both the renamed files *and* a deprecated no-op param. Options: (a) delete the comment line (recommended — it is doubly stale), (b) reword, (c) leave. These are example input files, so editing them is a content change, not a rename.
+2. **`use_adaptive_solver` key itself:** out of scope for Phase A (it is a deprecated-param cleanup, not a rename). The 13+ param files that set it are untouched.
+
+## A.8 Execution order
+
+1. `git mv` all 8 files (A.1).
+2. Apply import edits (A.2) — start with `main.py`, then each renamed runner's internal imports.
+3. Apply docstring/comment accuracy edits (A.3) + docs (A.5) + cosmetic (A.4 if chosen).
+4. Resolve the A.7 param-comment decision.
+
+## A.9 Verification battery
+
+1. `grep -rn "_modified" --include=*.py src run.py` → **only** intentional hits (expected: none; `check_yesno.py`/`_plots` comments fixed in A.3). A non-empty result means a missed reference.
+2. `pre-commit run --all-files` → clean; **F821 (undefined name)** is the precise guard against a half-renamed import.
+3. `python -m pytest test/ -q` → **358 passed** (unchanged).
+4. `python run.py param/simple_cluster.param` exits 0 and writes `metadata.json` + `dictionary.jsonl`.
+
+## A.10 Rollback
+
+Single isolated commit; revert restores the prior state. No data, schema,
+or output-format changes — `dictionary.jsonl`/`metadata.json` are
+byte-unaffected.
