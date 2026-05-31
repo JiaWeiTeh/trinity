@@ -96,12 +96,12 @@ returns `dudt` in AU units.
 
 Non-CIE structures are refreshed periodically during phase 1 / phase
 1b:
-`src/phase1_energy/run_energy_phase_modified.py:125-130`
+`src/phase1_energy/run_energy_phase.py:125-130`
 (`COOLING_UPDATE_INTERVAL = 5e-2 Myr`,
-`src/phase1_energy/run_energy_phase_modified.py:56`) and
-`src/phase1b_energy_implicit/run_energy_implicit_phase_modified.py:535-540`
+`src/phase1_energy/run_energy_phase.py:56`) and
+`src/phase1b_energy_implicit/run_energy_implicit_phase.py:535-540`
 (`COOLING_UPDATE_INTERVAL = 5e-3 Myr`,
-`src/phase1b_energy_implicit/run_energy_implicit_phase_modified.py:108`).
+`src/phase1b_energy_implicit/run_energy_implicit_phase.py:108`).
 
 ## 2. Configuration surface
 
@@ -166,15 +166,15 @@ exactly one function**: `net_coolingcurve.get_dudt(age, ndens, T, phi,
 params)` (`src/cooling/net_coolingcurve.py:22`). The only direct
 loader-imports outside `src/cooling/` are at:
 
-- `src/bubble_structure/bubble_luminosity_modified.py:31` — imports
+- `src/bubble_structure/bubble_luminosity.py:31` — imports
   `net_coolingcurve` only (no direct loader reach-through).
-- `src/phase1_energy/run_energy_phase_modified.py:34` — imports
+- `src/phase1_energy/run_energy_phase.py:34` — imports
   `non_CIE.get_coolingStructure` to refresh the cube periodically.
-- `src/phase1b_energy_implicit/run_energy_implicit_phase_modified.py:66`
+- `src/phase1b_energy_implicit/run_energy_implicit_phase.py:66`
   — same.
 
 The only `get_dudt` call site is
-`src/bubble_structure/bubble_luminosity_modified.py:797`. So every
+`src/bubble_structure/bubble_luminosity.py:797`. So every
 physics consumer is **transparent to the refactor** as long as the new
 loaders produce the same six `cStruc_*` entries under the same keys with
 the same internal shapes. The work concentrates in §5.1, §5.2, §5.3,
@@ -278,13 +278,13 @@ dispatch (`src/cooling/net_coolingcurve.py:102-158`) stays as-is.
 
 ### 5.6 Phase consumers — 🟢
 
-- `src/phase1_energy/run_energy_phase_modified.py:125-130` and
-  `src/phase1b_energy_implicit/run_energy_implicit_phase_modified.py:535-540`
+- `src/phase1_energy/run_energy_phase.py:125-130` and
+  `src/phase1b_energy_implicit/run_energy_implicit_phase.py:535-540`
   call `non_CIE.get_coolingStructure(params)` periodically and write the
   three non-CIE `cStruc_*` entries. As long as the loader returns the
   same `(cooling_data, heating_data, netcooling_interpolation)` triple
   with the same internal shapes, these are transparent to the refactor.
-- `src/bubble_structure/bubble_luminosity_modified.py:797` calls
+- `src/bubble_structure/bubble_luminosity.py:797` calls
   `net_coolingcurve.get_dudt(...)` — interface unchanged.
 
 ### 5.7 `src/_output/snapshot_to_deck.py` and `src/_plots/*` — 🟢 (orthogonal)
@@ -301,9 +301,9 @@ No direct loader access; no `cStruc_*` reads. Unaffected.
 | `src/_input/read_param.py:415-436` | resolves both | — | declares containers | 🔴 add path-vs-int dispatch for CIE; add column-map plumbing; relocate OPIATE grammar |
 | `src/_input/default.param` | declares legacy params | — | — | 🔴 add `cool_col_cie_*` / `cool_col_nonCIE_*` blocks; keep `path_cooling_CIE  3` and OPIATE-style `path_cooling_nonCIE  def_dir` as permanent fallbacks |
 | `src/cooling/net_coolingcurve.py` | — | — | reads them | 🟡 replace literals (`1e4`, `5.5`) with derived limits; PR-4 drops unused `ZCloud` arg |
-| `src/phase1_energy/run_energy_phase_modified.py` | — | — | ✅ refreshes cube | 🟢 |
-| `src/phase1b_energy_implicit/run_energy_implicit_phase_modified.py` | — | — | ✅ refreshes cube | 🟢 |
-| `src/bubble_structure/bubble_luminosity_modified.py` | — | — | calls `get_dudt` | 🟢 |
+| `src/phase1_energy/run_energy_phase.py` | — | — | ✅ refreshes cube | 🟢 |
+| `src/phase1b_energy_implicit/run_energy_implicit_phase.py` | — | — | ✅ refreshes cube | 🟢 |
+| `src/bubble_structure/bubble_luminosity.py` | — | — | calls `get_dudt` | 🟢 |
 | `src/_output/snapshot_to_deck.py` | — | — | — | 🟢 |
 | `src/_plots/*` | — | — | — | 🟢 |
 
@@ -344,8 +344,8 @@ No direct loader access; no `cStruc_*` reads. Unaffected.
   or the linear overlap-zone interpolation. The body that does the
   routing (`src/cooling/net_coolingcurve.py:102-158`) is correct as-is.
 - Not changing the cooling-update cadence (`COOLING_UPDATE_INTERVAL` at
-  `src/phase1_energy/run_energy_phase_modified.py:56` and
-  `src/phase1b_energy_implicit/run_energy_implicit_phase_modified.py:108`).
+  `src/phase1_energy/run_energy_phase.py:56` and
+  `src/phase1b_energy_implicit/run_energy_implicit_phase.py:108`).
 - Not unifying the CIE and non-CIE loaders into one. They genuinely
   describe different physical objects and the parallel-but-separate
   `cool_col_cie_*` / `cool_col_nonCIE_*` registries are clearer than a
@@ -960,9 +960,9 @@ Before starting PR-1, please confirm:
   `lib/default/CIE/*.dat` (only the `lib/default/` subtree is
   un-ignored by `.gitignore`; the rest of `lib/` is git-ignored).
 - **Cooling-update cadence asymmetry.** Phase 1 uses `5e-2 Myr`
-  (`src/phase1_energy/run_energy_phase_modified.py:56`); phase 1b
+  (`src/phase1_energy/run_energy_phase.py:56`); phase 1b
   implicit uses `5e-3 Myr`
-  (`src/phase1b_energy_implicit/run_energy_implicit_phase_modified.py:108`).
+  (`src/phase1b_energy_implicit/run_energy_implicit_phase.py:108`).
   Intentional or accidental? Flagged for review but out of scope.
 - **Logging interface.** `logger_cooling =
   logging.getLogger('src.cooling.net_coolingcurve')` already exists at

@@ -174,24 +174,24 @@ interpolator dict directly. 🟡 rename only — or refactor to use
 
 ### 5.4 `src/phase1_energy/` — 🟢
 
-Call sites: `run_energy_phase_modified.py:92, 158, 358, 400`;
-`energy_phase_ODEs_modified.py:189, 324`. Pattern:
+Call sites: `run_energy_phase.py:92, 158, 358, 400`;
+`energy_phase_ODEs.py:189, 324`. Pattern:
 `feedback = get_currentSB99feedback(t, params); updateDict(params,
 feedback)`. Reads `Lmech_total`, `v_mech_total` off the dataclass.
 
-### 5.5 `src/phase1b_energy_implicit/run_energy_implicit_phase_modified.py` — 🟢
+### 5.5 `src/phase1b_energy_implicit/run_energy_implicit_phase.py` — 🟢
 
 Lines 68, 555, 917, 1001. Same pattern.
 
-### 5.6 `src/phase1c_transition/run_transition_phase_modified.py` — 🟢
+### 5.6 `src/phase1c_transition/run_transition_phase.py` — 🟢
 
 Lines 57, 472, 770, 854. Same pattern.
 
-### 5.7 `src/phase2_momentum/run_momentum_phase_modified.py` — 🟢
+### 5.7 `src/phase2_momentum/run_momentum_phase.py` — 🟢
 
 Lines 58, 405, 552, 906. Same pattern.
 
-### 5.8 `src/bubble_structure/bubble_luminosity_modified.py` — 🟢
+### 5.8 `src/bubble_structure/bubble_luminosity.py` — 🟢
 
 Line 33 imports `get_currentSB99feedback` but **never calls it**. Reads
 `params['Lmech_total']`, `params['v_mech_total']`, `params['Qi']` directly
@@ -253,12 +253,12 @@ Same coupling in legacy `read_cloudy_old.py:287`.
 | `src/_input/read_param.py` | declares containers | — | — | 🔴 add `sps_path`/`sps_refmass`; keep legacy as fallback |
 | `src/_input/default.param` | declares legacy params | — | — | 🔴 add `sps_path`; point INFO line at `sps_path` as alternative. PR-4 **deletes** `SB99_mass` and `SB99_BHCUT` (no consumers after the grammar simplification). `SB99_rotation` stays (both fallback-SPS-file selector AND cooling-table selector — see §9). |
 | `src/phase0_init/get_InitPhaseParam.py` | — | ✅ reads directly | — | 🟡 PR-3 rename |
-| `src/phase1_energy/run_energy_phase_modified.py` | — | — | ✅ | 🟢 |
-| `src/phase1_energy/energy_phase_ODEs_modified.py` | — | — | ✅ | 🟢 |
-| `src/phase1b_energy_implicit/run_energy_implicit_phase_modified.py` | — | — | ✅ | 🟢 |
-| `src/phase1c_transition/run_transition_phase_modified.py` | — | — | ✅ | 🟢 |
-| `src/phase2_momentum/run_momentum_phase_modified.py` | — | — | ✅ | 🟢 |
-| `src/bubble_structure/bubble_luminosity_modified.py` | — | — | ✅ (and dead import) | 🟢 (PR-4 drops import) |
+| `src/phase1_energy/run_energy_phase.py` | — | — | ✅ | 🟢 |
+| `src/phase1_energy/energy_phase_ODEs.py` | — | — | ✅ | 🟢 |
+| `src/phase1b_energy_implicit/run_energy_implicit_phase.py` | — | — | ✅ | 🟢 |
+| `src/phase1c_transition/run_transition_phase.py` | — | — | ✅ | 🟢 |
+| `src/phase2_momentum/run_momentum_phase.py` | — | — | ✅ | 🟢 |
+| `src/bubble_structure/bubble_luminosity.py` | — | — | ✅ (and dead import) | 🟢 (PR-4 drops import) |
 | `src/cooling/non_CIE/read_cloudy.py` | ✅ separate filename | — | — | 🔴 own indirection (out of scope) |
 | `src/_output/cloudy/*` | — | — | — | 🟢 (orthogonal) |
 | `src/_plots/*` | — | — | — | 🟢 (comments only) |
@@ -396,7 +396,7 @@ are baked into the constant.
 - The `sps_refmass == def_value` → `SB99_mass` fallback at
   `read_param.py:450-451`; replace with a literal `1e6` constant.
 - Dead `get_currentSB99feedback` import in
-  `bubble_luminosity_modified.py:33`.
+  `bubble_luminosity.py:33`.
 
 #### What stays
 
@@ -487,7 +487,7 @@ phases, interpolators, and dataclass are otherwise untouched.
       remain in the loader.
 - [ ] `main.py:142` uses `sps_refmass`.
 - [ ] No phase code changed.
-- [ ] `bubble_luminosity_modified.py:33` dead import left alone (PR-4
+- [ ] `bubble_luminosity.py:33` dead import left alone (PR-4
       cleanup).
 
 **Tests required to merge.** See §11.2.1 for the full battery. Headline:
@@ -774,7 +774,7 @@ external code reading `params['SB99f']` still works for one release.
       params['sps_f']` (same underlying object) so external user scripts
       continue to work.
 - [ ] `phase0_init/get_InitPhaseParam.py:88, 111-112` updated.
-- [ ] `bubble_luminosity_modified.py:33` import updated (still dead; PR-4
+- [ ] `bubble_luminosity.py:33` import updated (still dead; PR-4
       removes).
 
 **Tests required to merge.**
@@ -825,7 +825,7 @@ No deprecation warning. The simplified fallback is permanent — see §9.**
     `1e6cluster_<rot|norot>_Z0014_BH120.txt`").
 - `src/_input/dictionary.py` — delete `SB99_mass` references at
   lines 1204 and 1233-1234.
-- `src/bubble_structure/bubble_luminosity_modified.py` — delete the
+- `src/bubble_structure/bubble_luminosity.py` — delete the
   dead `get_currentSB99feedback` import at line 33.
 - `src/_output/cloudy/README.md:145` — drop the SB99_mass /
   SB99_BHCUT mention; rewrite to mention `sps_path` and the simplified
@@ -864,7 +864,7 @@ No deprecation warning. The simplified fallback is permanent — see §9.**
 4. New test: the startup log under the fallback path contains
    exactly one INFO-level line containing "sps_path unset"; no
    WARNING / no `DeprecationWarning`.
-5. `bubble_luminosity_modified.py` imports list contains no
+5. `bubble_luminosity.py` imports list contains no
    `get_currentSB99feedback` reference.
 6. Cooling smoke test: change `SB99_rotation` from `1` to `0`,
    confirm BOTH the SPS file (`_norot_`) AND the cooling tables
@@ -1171,7 +1171,7 @@ def test_fallback_info_log_no_warning(caplog, recwarn):
 
 def test_bubble_luminosity_imports_clean():
     """No reference to get_currentSB99feedback in
-    bubble_luminosity_modified.py after the dead-import drop."""
+    bubble_luminosity.py after the dead-import drop."""
 
 def test_default_param_no_longer_declares_SB99_mass_BHCUT():
     """default.param does not contain 'SB99_mass' or 'SB99_BHCUT' as
@@ -1340,7 +1340,7 @@ Before starting PR-1, please confirm:
   relocated when `def_path` was rewired to point at the bundled
   `1e6cluster_default.csv` directly, bypassing the legacy filename
   grammar.)
-- **Dead import.** `bubble_luminosity_modified.py:33` imports
+- **Dead import.** `bubble_luminosity.py:33` imports
   `get_currentSB99feedback` and never calls it. PR-4 removes.
 - **Boundary edge case.** The numerical derivative step `dt = 1e-9 Myr`
   (`update_feedback.py:187`) is unconditionally small. If a user-supplied

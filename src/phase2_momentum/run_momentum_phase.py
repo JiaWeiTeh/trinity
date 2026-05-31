@@ -98,7 +98,7 @@ VELOCITY_THRESHOLD_EXTREME = 150.0   # pc/Myr - use minimum step when |v2| > thi
 DT_SEGMENT_COLLAPSE = 5e-4           # Myr - segment duration during collapse (0.5 kyr)
 
 # Parameters to monitor for adaptive stepping (keys in params dict)
-# Based on diagnostic_parameter_changes.py analysis of top 30 most variable parameters
+# Based on analysis of the top 30 most variable parameters
 ADAPTIVE_MONITOR_KEYS = [
     # Core state variables
     'R2', 'v2', 'Eb', 'T0', 'Pb', 'R1',

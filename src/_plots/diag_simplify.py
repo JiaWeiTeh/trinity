@@ -48,7 +48,7 @@ import sys as _sys
 import warnings
 from pathlib import Path
 
-# Repo-root sys.path shim, matching ``diagnostic_parameter_changes.py``.
+# Repo-root sys.path shim.
 # We deliberately avoid ``plot_base`` here: that module loads the
 # trinity paper mplstyle (which requires LaTeX) — overkill for a
 # diagnostic plot.  We mirror its ``FIG_DIR`` definition instead.

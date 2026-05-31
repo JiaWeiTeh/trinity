@@ -124,7 +124,7 @@ DT_SEGMENT_COLLAPSE = 5e-5           # Myr - segment duration during collapse (5
 
 # Parameters to monitor for adaptive stepping (keys in params dict)
 # Only scalar (float/int) parameters - no arrays
-# Based on diagnostic_parameter_changes.py analysis of top 30 most variable parameters
+# Based on analysis of the top 30 most variable parameters
 ADAPTIVE_MONITOR_KEYS = [
     # Core state variables
     'R2', 'v2', 'Eb', 'T0', 'Pb', 'R1',

@@ -37,8 +37,7 @@ from pathlib import Path
 from typing import Optional
 
 # Repo-root sys.path shim so direct invocation works without
-# ``pip install -e .``.  Matches the convention used by
-# ``src/_plots/diagnostic_parameter_changes.py``.
+# ``pip install -e .``.
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(_PROJECT_ROOT) not in _sys.path:
     _sys.path.insert(0, str(_PROJECT_ROOT))
