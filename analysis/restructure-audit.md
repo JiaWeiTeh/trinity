@@ -249,6 +249,84 @@ renames with a full test net; Phase C is the only one with an untested
 surface, so it goes last and can be split (C.1 then C.2) or deferred
 without blocking A and B.
 
+# Part III — Final target layout & conventions
+
+The guiding rule (the convention to enshrine): **organize by
+audience/lifecycle with a strict one-way dependency.** Everything may
+import the installed `trinity` package; the engine imports nothing
+downstream (`paper/`, `examples/`, `scratch/`, `tools/`).
+
+```
+trinity-repo/
+├── trinity/               # ENGINE ONLY (post src-> rename); no paper code
+│   └── data/default/      # (optional Phase D) bundled tables via importlib.resources
+├── tools/                 # maintained utilities: gen_default_param.py, compare_outputs.py
+├── paper/                 # reproducibility bundle (public)
+│   ├── data/
+│   ├── figures/           # paper_*/pedrini_* move here
+│   │   └── _lib/          # plot_base, plot_markers, cli, force_colors,
+│   │                      #   grid_template, trinity.mplstyle
+│   └── make_figures.py
+├── lib/default/           # bundled tables (until/unless moved into trinity/data)
+├── param/                 # canonical parameter-file library
+├── examples/              # runnable getting-started scripts (reference param/)
+├── scratch/               # gitignored personal/diagnostic (NOT "notebooks/")
+├── analysis/  docs/  tests/
+├── pyproject.toml  README.md     # run.py -> console entry point
+```
+
+## III.1 What stays in the engine vs. moves out (the audience test)
+
+Criterion: *"would any user run this on their own run output?"* — not
+"is it reused across paper scripts." By that test, the `_plots`
+infrastructure is paper-only and leaves the engine:
+
+| File | Destination | Rationale |
+|------|-------------|-----------|
+| `plot_base.py` | `paper/figures/_lib/` | docstring: "for paper scripts"; hardcodes `parent.parent.parent` + `fig/` (breaks if moved up); not a public API |
+| `plot_markers.py` | `paper/figures/_lib/` | used only by `paper_*` |
+| `cli.py` | `paper/figures/_lib/` | docstring: "CLI builder for `_plots` paper scripts" |
+| `force_colors.py`, `grid_template.py` | `paper/figures/_lib/` | paper-only |
+| `trinity.mplstyle` | `paper/figures/_lib/` | only paper infra loads it |
+| `compare_outputs.py` | `tools/` (or `trinity/viz`) | genuinely user-facing: compares two runs via the public `dictionary.jsonl`; run via `python -m` |
+
+Outcome: `src/_plots/` ends up empty (or holding only `compare_outputs`)
+— delete the folder rather than leave it named after the thing removed.
+The engine's visualization surface should be defined by the public output
+object (`TrinityOutput`), never by figure scripts.
+
+## III.2 Directory conventions
+
+- **`param/` vs `examples/`**: `param/` is the canonical parameter-file
+  library; `examples/` holds narrative getting-started scripts that
+  *reference* `param/` files (no duplicated `.param` content).
+- **`scratch/` not `notebooks/`**: in nearly every project `notebooks/`
+  is a *committed* tutorial asset. Use `scratch/` (gitignored) for
+  personal/ephemeral work; reserve `notebooks/` for committed tutorials
+  if ever wanted. Move `diag_simplify.py` /
+  `diagnostic_parameter_changes.py` to `tools/` (if maintained) or
+  `scratch/` (if personal).
+- **`tests/` not `test/`**: plural is the prevailing pytest convention;
+  trivial, only worth folding into the rename pass.
+
+## III.3 Optional follow-ups (separate efforts, not part of A–C)
+
+- **Phase D — data into the package**: move `lib/default/` →
+  `trinity/data/default/`, access via `importlib.resources`. Modern norm
+  (Astropy/scikit-learn/scipy); removes the top-level `package-data` glob
+  hack; makes wheels relocatable and CWD-independent.
+- **Console entry point**: add
+  `[project.scripts] trinity = "trinity.cli:main"` so users run
+  `trinity param/...` instead of `python run.py`; `run.py` becomes a thin
+  shim.
+
+## III.4 Enforce the invariant (what makes it stick)
+
+Add a CI guard so the structure does not drift back: a test (or an
+`import-linter` contract) asserting the engine package never imports
+`paper`, `examples`, or `scratch`. Without enforcement the separation
+erodes within a few months.
+
 # Open decisions for the user
 
 - **Phase B layout**: minimal `trinity/` at root (recommended) vs.
