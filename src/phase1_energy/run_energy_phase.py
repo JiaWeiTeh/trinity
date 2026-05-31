@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Modified energy phase with adaptive ODE solver.
+Energy-driven phase with adaptive ODE solver.
 
 This module implements the energy-driven phase using scipy.integrate.solve_ivp
-with adaptive stepping, replacing the manual Euler integration in run_energy_phase.py.
+with adaptive stepping (rather than manual Euler integration).
 
-Key differences from run_energy_phase.py:
+Integration approach:
 1. Uses solve_ivp with RK45 adaptive solver instead of manual Euler
 2. Segment-based integration: short segments with params updates only after success
 3. Pure ODE functions that don't mutate params during integration
-4. Uses dataclass returns from bubble_luminosity_modified
+4. Uses dataclass returns from bubble_luminosity
 
 The dictionary mutation problem:
 - Original ODE functions write to params during evaluation
@@ -27,10 +27,10 @@ import scipy.optimize
 import logging
 
 import src.bubble_structure.get_bubbleParams as get_bubbleParams
-import src.shell_structure.shell_structure_modified as shell_structure_modified
+import src.shell_structure.shell_structure as shell_structure
 import src.cloud_properties.mass_profile as mass_profile
-import src.phase1_energy.energy_phase_ODEs_modified as energy_phase_ODEs_modified
-import src.bubble_structure.bubble_luminosity_modified as bubble_luminosity_modified
+import src.phase1_energy.energy_phase_ODEs as energy_phase_ODEs
+import src.bubble_structure.bubble_luminosity as bubble_luminosity
 import src.cooling.non_CIE.read_cloudy as non_CIE
 import src._functions.operations as operations
 from src._input.dictionary import updateDict
@@ -72,7 +72,7 @@ def run_energy(params):
     params : DescribedDict
         Main parameter dictionary
     """
-    logger.info('Starting modified energy phase with adaptive solver')
+    logger.info('Starting energy phase with adaptive solver')
 
     # =============================================================================
     # Initialization
@@ -102,7 +102,7 @@ def run_energy(params):
     mShell = mass_profile.get_mass_profile(R2, params, return_mdot=False)
     Pb = get_bubbleParams.bubble_E2P(Eb, R2, R1, params['gamma_adia'].value)
 
-    logger.info('Energy phase initialization (modified):')
+    logger.info('Energy phase initialization:')
     logger.info(f'  Inner discontinuity (R1): {R1:.6e} pc')
     logger.info(f'  Initial shell mass: {mShell:.6e} Msun')
     logger.info(f'  Initial bubble pressure: {Pb:.6e} Msun/pc/Myr^2')
@@ -161,7 +161,7 @@ def run_energy(params):
         # =============================================================================
         # 3. Compute bubble structure (always, not conditional on loop_count)
         # =============================================================================
-        bubble_data = bubble_luminosity_modified.get_bubbleproperties_pure(params)
+        bubble_data = bubble_luminosity.get_bubbleproperties_pure(params)
         updateDict(params, bubble_data)
 
         T0 = bubble_data.bubble_T_r_Tb
@@ -172,7 +172,7 @@ def run_energy(params):
         params['R1'].value = R1
         params['Pb'].value = Pb
 
-        logger.debug('bubble complete (modified)')
+        logger.debug('bubble complete')
 
         # =============================================================================
         # 3b. Compute shell mass BEFORE shell structure so that the shell
@@ -185,9 +185,9 @@ def run_energy(params):
         # =============================================================================
         # 3c. Compute shell structure
         # =============================================================================
-        shell_data = shell_structure_modified.shell_structure_pure(params)
+        shell_data = shell_structure.shell_structure_pure(params)
         updateDict(params, shell_data)
-        logger.debug('shell complete (modified)')
+        logger.debug('shell complete')
 
         # Compute P_HII from Strömgren ionization balance in shell (n_IF_Str)
         n_IF_Str = shell_data.n_IF_Str
@@ -206,8 +206,8 @@ def run_energy(params):
         # =============================================================================
         # 5. Compute forces and diagnostics
         # =============================================================================
-        snapshot_for_forces = energy_phase_ODEs_modified.create_ODE_snapshot(params, shell_data)
-        ode_result = energy_phase_ODEs_modified.compute_derived_quantities(
+        snapshot_for_forces = energy_phase_ODEs.create_ODE_snapshot(params, shell_data)
+        ode_result = energy_phase_ODEs.compute_derived_quantities(
             t_now, [R2, v2, Eb], snapshot_for_forces, params
         )
         if ode_result.F_grav is not None:
@@ -243,12 +243,12 @@ def run_energy(params):
         # =============================================================================
         # 7. Create ODE snapshot and integrate
         # =============================================================================
-        snapshot = energy_phase_ODEs_modified.create_ODE_snapshot(params, shell_data)
+        snapshot = energy_phase_ODEs.create_ODE_snapshot(params, shell_data)
 
         y0 = [R2, v2, Eb]
 
         def ode_func(t, y):
-            return energy_phase_ODEs_modified.get_ODE_Edot_pure(t, y, snapshot, params)
+            return energy_phase_ODEs.get_ODE_Edot_pure(t, y, snapshot, params)
 
         solution = scipy.integrate.solve_ivp(
             ode_func,
@@ -331,13 +331,13 @@ def run_energy(params):
         params['Pb'].value = Pb_f
         mShell_f = mass_profile.get_mass_profile(R2, params, return_mdot=False)
         params['shell_mass'].value = mShell_f
-        shell_f = shell_structure_modified.shell_structure_pure(params)
+        shell_f = shell_structure.shell_structure_pure(params)
         updateDict(params, shell_f)
         params.save_snapshot()
     except Exception as e:
         logger.warning(f"Phase-boundary reconciliation failed: {e}")
 
-    logger.info(f'Modified energy phase complete: {loop_count} segments')
+    logger.info(f'Energy phase complete: {loop_count} segments')
     return
 
 
@@ -370,12 +370,12 @@ def run_energy_continuous(params):
     ode_events = build_energy_phase_events(params)
 
     # Create snapshot (needs current shell_props for F_rad)
-    shell_data = shell_structure_modified.shell_structure_pure(params)
+    shell_data = shell_structure.shell_structure_pure(params)
     updateDict(params, shell_data)
-    snapshot = energy_phase_ODEs_modified.create_ODE_snapshot(params, shell_data)
+    snapshot = energy_phase_ODEs.create_ODE_snapshot(params, shell_data)
 
     def ode_func(t, y):
-        return energy_phase_ODEs_modified.get_ODE_Edot_pure(t, y, snapshot, params)
+        return energy_phase_ODEs.get_ODE_Edot_pure(t, y, snapshot, params)
 
     # Integrate entire phase
     solution = scipy.integrate.solve_ivp(

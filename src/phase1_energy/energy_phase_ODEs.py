@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Modified energy phase ODEs with pure functions.
+Energy phase ODEs with pure functions.
 
 This module provides ODE functions that do NOT mutate the params dictionary.
 This is essential for using adaptive ODE solvers like scipy.integrate.solve_ivp,

@@ -338,7 +338,7 @@ def _ionising_components(fAbs, fDust):
     - Both fields finite: gas = fAbs*(1-fDust); dust = fAbs*fDust;
       escape = 1 - fAbs.
     - fDust NaN, fAbs finite (post-dissolution path in
-      shell_structure_modified.py:411): force dust=0 and gas=fAbs.
+      shell_structure.py:411): force dust=0 and gas=fAbs.
     - fAbs NaN: every component stays NaN so the stack is gapped.
 
     Components sum to 1 within float epsilon at every non-gapped step.
@@ -515,7 +515,7 @@ def _draw_teaser(bundle, output_dir=None):
 
     # The fourth base band ("F_ext") plots the snapshot field
     # ``press_HII_in``, which is dominated by the photo-ionised
-    # inflow pressure 2 n_r k_B T_ion (set in run_*_phase_modified
+    # inflow pressure 2 n_r k_B T_ion (set in run_*_phase
     # once shell_fAbsorbedIon < 1) and only adds an additive
     # ``PISM * k_B`` term once the shell escapes the cloud.
     fb_handles = [

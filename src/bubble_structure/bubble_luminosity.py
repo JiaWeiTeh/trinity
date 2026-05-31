@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Modified bubble luminosity with dataclass returns.
+Bubble luminosity with dataclass returns.
 
 This module provides bubble property calculations that return a dataclass
 instead of mutating the params dictionary. This is essential for use with

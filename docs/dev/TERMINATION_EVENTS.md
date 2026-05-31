@@ -17,7 +17,7 @@ Events are categorized by their consequence:
 
 ## Events by Phase
 
-### Energy Phase (`run_energy_phase_modified.py`)
+### Energy Phase (`run_energy_phase.py`)
 
 | Event | Type | Trigger Condition | Direction | Consequence |
 |-------|------|-------------------|-----------|-------------|
@@ -32,7 +32,7 @@ Events are categorized by their consequence:
 
 ---
 
-### Implicit Phase (`run_energy_implicit_phase_modified.py`)
+### Implicit Phase (`run_energy_implicit_phase.py`)
 
 | Event | Type | Trigger Condition | Direction | Consequence |
 |-------|------|-------------------|-----------|-------------|
@@ -49,7 +49,7 @@ Events are categorized by their consequence:
 
 ---
 
-### Transition Phase (`run_transition_phase_modified.py`)
+### Transition Phase (`run_transition_phase.py`)
 
 | Event | Type | Trigger Condition | Direction | Consequence |
 |-------|------|-------------------|-----------|-------------|
@@ -65,7 +65,7 @@ Events are categorized by their consequence:
 
 ---
 
-### Momentum Phase (`run_momentum_phase_modified.py`)
+### Momentum Phase (`run_momentum_phase.py`)
 
 | Event | Type | Trigger Condition | Direction | Consequence |
 |-------|------|-------------------|-----------|-------------|

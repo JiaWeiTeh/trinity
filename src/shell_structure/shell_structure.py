@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Modified shell structure with dataclass returns.
+Shell structure with dataclass returns.
 
 This module provides shell structure calculations that return a dataclass
 instead of mutating the params dictionary. This is essential for use with

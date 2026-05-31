@@ -20,10 +20,10 @@ import src._functions.unit_conversions as cvt
 from src.sps import read_sps
 from src.phase0_init import (get_InitCloudProp, get_InitPhaseParam)
 from src._output.simulation_end import write_simulation_end, SimulationEndCode
-from src.phase1_energy import run_energy_phase_modified
-from src.phase1b_energy_implicit import run_energy_implicit_phase_modified
-from src.phase1c_transition import run_transition_phase_modified
-from src.phase2_momentum import run_momentum_phase_modified
+from src.phase1_energy import run_energy_phase
+from src.phase1b_energy_implicit import run_energy_implicit_phase
+from src.phase1c_transition import run_transition_phase
+from src.phase2_momentum import run_momentum_phase
 import src._output.terminal_prints as terminal_prints
 import src.bubble_structure.get_bubbleParams as get_bubbleParams
 from src._input.dictionary import DescribedItem, DescribedDict, COOLING_PHASE_KEYS
@@ -245,7 +245,7 @@ def run_expansion(params):
 
     phase1a_starttime = datetime.datetime.now()
 
-    run_energy_phase_modified.run_energy(params)
+    run_energy_phase.run_energy(params)
 
     phase1a_endtime = datetime.datetime.now()
     phase1a_elapsed = phase1a_endtime - phase1a_starttime
@@ -280,7 +280,7 @@ def run_expansion(params):
     if params['EndSimulationDirectly'].value == False:
         phase1b_starttime = datetime.datetime.now()
 
-        run_energy_implicit_phase_modified.run_phase_energy(params)
+        run_energy_implicit_phase.run_phase_energy(params)
 
         phase1b_endtime = datetime.datetime.now()
         phase1b_elapsed = phase1b_endtime - phase1b_starttime
@@ -300,7 +300,7 @@ def run_expansion(params):
     if params['EndSimulationDirectly'].value == False:
         phase1c_starttime = datetime.datetime.now()
 
-        run_transition_phase_modified.run_phase_transition(params)
+        run_transition_phase.run_phase_transition(params)
 
         phase1c_endtime = datetime.datetime.now()
         phase1c_elapsed = phase1c_endtime - phase1c_starttime
@@ -340,7 +340,7 @@ def run_expansion(params):
     if params['EndSimulationDirectly'].value == False:
         phase2_starttime = datetime.datetime.now()
 
-        run_momentum_phase_modified.run_phase_momentum(params)
+        run_momentum_phase.run_phase_momentum(params)
 
         phase2_endtime = datetime.datetime.now()
         phase2_elapsed = phase2_endtime - phase2_starttime

@@ -297,7 +297,7 @@ def print_summary(results: list, n_top: int = 30):
     print("="*70)
 
     # Check which ADAPTIVE_MONITOR_KEYS are in top results
-    # This list should match ADAPTIVE_MONITOR_KEYS in run_*_phase_modified.py files
+    # This list should match ADAPTIVE_MONITOR_KEYS in run_*_phase.py files
     adaptive_keys = [
         # Core state variables
         'R2', 'v2', 'Eb', 'T0', 'Pb', 'R1',

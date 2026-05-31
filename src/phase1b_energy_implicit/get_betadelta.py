@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Modified beta-delta solver with pure functions.
+Beta-delta solver with pure functions.
 
 This module provides pure function implementations for finding optimal
 beta and delta values without mutating the params dictionary.
 
-Key improvements over get_betadelta.py:
+Key design choices:
 1. Pure functions that return results instead of mutating params
 2. BubbleParamsView avoids expensive deepcopy (25-100x faster per evaluation)
 3. Grid search first (default), then L-BFGS-B fallback if grid doesn't converge
 4. If both fail to converge, picks the best result from grid/L-BFGS-B/original input
-5. Reuses get_bubbleproperties_pure from bubble_luminosity_modified
+5. Reuses get_bubbleproperties_pure from bubble_luminosity
 6. Proper logging instead of print statements
 
 @author: TRINITY Team (refactored for pure functions)
@@ -25,7 +25,7 @@ from dataclasses import dataclass
 from typing import Tuple, Optional
 
 import src.bubble_structure.get_bubbleParams as get_bubbleParams
-from src.bubble_structure.bubble_luminosity_modified import (
+from src.bubble_structure.bubble_luminosity import (
     get_bubbleproperties_pure,
     BubbleProperties,
 )

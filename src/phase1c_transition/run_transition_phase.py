@@ -1,54 +1,45 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Modified Energy Implicit Phase Runner for TRINITY
-=================================================
+Transition Phase Runner for TRINITY
+============================================
 
-This module continues the energy phase with real-time beta/delta calculations,
-using scipy.integrate.solve_ivp instead of manual Euler stepping.
+This module implements the transition phase between energy-driven and
+momentum-driven expansion, using scipy.integrate.solve_ivp.
+
+Overview
+--------
+The transition phase handles the period when bubble thermal energy (Eb)
+becomes negligible as cooling dominates. Energy decays on the sound-crossing
+timescale: dE/dt = -Eb / t_sound.
 
 Key Features
 ------------
-1. **Pure ODE functions**: No dictionary mutations during integration
-2. **scipy.integrate.solve_ivp(LSODA)**: Adaptive integration for accuracy
-3. **Segment-based integration**: Beta/delta updates between segments
-4. **Pre-allocated result arrays**: Efficient memory usage
+1. **Energy decay model**: dE/dt = -Eb / t_sound (sound-crossing timescale)
+2. **Pure ODE functions**: No dictionary mutations during integration
+3. **scipy.integrate.solve_ivp(LSODA)**: Adaptive integration for accuracy
+4. **Segment-based integration**: Parameter updates between segments
 5. **Consistent snapshots**: All values saved at consistent timestamps
 
 Snapshot Consistency (January 2026)
 -----------------------------------
 Snapshots are saved BEFORE ODE integration to ensure all values correspond
 to the same timestamp (t_now). The snapshot includes:
-- t_now, R2, v2, Eb, T0 (current state)
+- t_now, R2, v2, Eb (current state)
 - feedback properties (Lmech, pdot, etc.)
 - shell_props (shell structure)
-- bubble_props (bubble structure from beta-delta solver)
-- beta, delta (cooling parameters)
 - R1, Pb (inner radius and pressure)
 - forces (F_grav, F_ram, F_ion, F_rad)
-- residual diagnostics (Edot and T residuals)
-
-Beta-Delta Solver
------------------
-The beta-delta solver (get_betadelta_modified.py) uses:
-1. Grid search first (4x4 grid by default)
-2. L-BFGS-B fallback only if grid residual > LBFGSB_FALLBACK_THRESHOLD
-3. Best result selection from all candidates
-
-The solver returns a BetaDeltaResult dataclass with:
-- beta, delta: Cooling parameters
-- Edot_residual, T_residual: Normalized residuals
-- Edot_from_beta, Edot_from_balance: Raw Edot values for diagnostics
-- T_bubble, T0: Raw temperature values for diagnostics
+- mShell, mShell_dot (shell mass and accretion rate)
 
 Main Function
 -------------
-run_phase_energy(params) -> ImplicitPhaseResults
+run_phase_transition(params) -> TransitionPhaseResults
 
 Returns
 -------
-ImplicitPhaseResults : dataclass
-    Contains t, R2, v2, Eb, T0, beta, delta arrays and termination info
+TransitionPhaseResults : dataclass
+    Contains t, R2, v2, Eb arrays and termination info
 
 @author: TRINITY Team (refactored for solve_ivp)
 """
@@ -57,40 +48,33 @@ import numpy as np
 import scipy.integrate
 import scipy.optimize
 import logging
-from typing import Dict, Optional, Tuple
+from typing import Tuple
 from dataclasses import dataclass
 
 import src.cloud_properties.mass_profile as mass_profile
-import src.bubble_structure.get_bubbleParams as get_bubbleParams
 import src._functions.unit_conversions as cvt
-import src.cooling.non_CIE.read_cloudy as non_CIE
 import src._functions.operations as operations
 from src.sps.update_feedback import get_current_sps_feedback
 from src._input.dictionary import updateDict
 
-# Import pure/modified functions
-from src.phase1_energy.energy_phase_ODEs_modified import (
+# Import pure functions
+from src.phase1_energy.energy_phase_ODEs import (
     ODESnapshot,
     get_ODE_Edot_pure,
     create_ODE_snapshot,
-    ODEResult,
-    compute_derived_quantities,
 )
-from src.phase1b_energy_implicit.get_betadelta_modified import (
-    solve_betadelta_pure,
-    cool_beta_to_Ebdot_pure,
-    delta2dTdt_pure,
+from src.phase1b_energy_implicit.get_betadelta import (
     compute_R1_Pb,
-    BetaDeltaResult,
 )
-from src.shell_structure.shell_structure_modified import (
+from src.shell_structure.shell_structure import (
     shell_structure_pure,
     ShellProperties,
 )
+import src.bubble_structure.get_bubbleParams as get_bubbleParams
 
 # Import centralized event functions
 from src.phase_general.phase_events import (
-    build_implicit_phase_events,
+    build_transition_phase_events,
     check_event_termination,
     apply_event_result,
 )
@@ -103,27 +87,24 @@ logger = logging.getLogger(__name__)
 # Constants
 # =============================================================================
 
-# TODO: very fine grid in this phase. Only in transition phase it goes coarse. 
-
-COOLING_UPDATE_INTERVAL = 5e-3  # Myr - recalculate cooling
-DT_SEGMENT_INIT = 5e-4  # Myr - initial segment duration
-DT_SEGMENT_MIN = 1e-4   # Myr - minimum segment duration
+DT_SEGMENT_INIT = 2e-3  # Myr - initial segment duration
+DT_SEGMENT_MIN = 1e-3  # Myr - minimum segment duration
 DT_SEGMENT_MAX = 5e-2   # Myr - maximum segment duration
 MAX_SEGMENTS = 5000
+ENERGY_FLOOR = 1e3  # Minimum energy before transition to momentum phase
 FOUR_PI = 4.0 * np.pi
 
 # Adaptive stepping parameters
-ADAPTIVE_THRESHOLD_DEX = 0.05  # dex - threshold for parameter change (10^0.1 ≈ 1.26x)
+ADAPTIVE_THRESHOLD_DEX = 0.1  # dex - threshold for parameter change (10^0.1 ≈ 1.26x)
 ADAPTIVE_FACTOR = 10**0.1     # Factor to increase/decrease DT_SEGMENT (~1.26)
 
 # Velocity-based proactive timestep control (for rapid collapse)
 # When |v2| exceeds threshold, reduce dt_segment to ensure fine temporal resolution
 VELOCITY_THRESHOLD_COLLAPSE = 50.0   # pc/Myr - proactively reduce step when |v2| > this
 VELOCITY_THRESHOLD_EXTREME = 150.0   # pc/Myr - use minimum step when |v2| > this
-DT_SEGMENT_COLLAPSE = 5e-5           # Myr - segment duration during collapse (50 years, tighter than other phases)
+DT_SEGMENT_COLLAPSE = 5e-4           # Myr - segment duration during collapse (0.5 kyr)
 
 # Parameters to monitor for adaptive stepping (keys in params dict)
-# Only scalar (float/int) parameters - no arrays
 # Based on diagnostic_parameter_changes.py analysis of top 30 most variable parameters
 ADAPTIVE_MONITOR_KEYS = [
     # Core state variables
@@ -146,77 +127,39 @@ ADAPTIVE_MONITOR_KEYS = [
 
 # ODE solver settings
 ODE_RTOL = 1e-6      # Relative tolerance
-ODE_ATOL = 1e-8      # Absolute tolerance (relaxed from 1e-9)
+ODE_ATOL = 1e-8      # Absolute tolerance
 ODE_MIN_STEP = 1e-6  # Minimum step size (Myr)
 ODE_MAX_STEP = DT_SEGMENT_MIN / 5  # Max step = 2e-5 Myr (ensures >=5 steps per segment)
-
-# Solver method: 'LSODA' for stiff/non-stiff switching
-ODE_METHOD = 'LSODA'
+ODE_METHOD = 'LSODA' # Auto-switches stiff/non-stiff
 
 
 # =============================================================================
-# Force Properties Dataclass
-# =============================================================================
-# Adaptive Stepping Helper
+# Adaptive Stepping Helpers
 # =============================================================================
 
 def compute_max_dex_change(params_before: dict, params_after: dict, keys: list) -> float:
-    """
-    Compute the maximum dex (log10) change across monitored parameters.
-
-    Parameters
-    ----------
-    params_before : dict
-        Parameter values before the segment
-    params_after : dict
-        Parameter values after the segment
-    keys : list
-        List of parameter keys to monitor
-
-    Returns
-    -------
-    float
-        Maximum absolute dex change across all monitored parameters
-    """
+    """Compute the maximum dex (log10) change across monitored parameters."""
     max_dex = 0.0
     for key in keys:
         old_val = params_before.get(key)
         new_val = params_after.get(key)
-
-        # Skip if values are missing, zero, or opposite signs
         if old_val is None or new_val is None:
             continue
         if old_val == 0 or new_val == 0:
             continue
-        if (old_val > 0) != (new_val > 0):  # Sign change
-            # Large change if sign flips
+        if (old_val > 0) != (new_val > 0):
             max_dex = max(max_dex, 1.0)
             continue
-
-        # Compute dex change: |log10(new/old)|
         try:
             dex_change = abs(np.log10(abs(new_val) / abs(old_val)))
             max_dex = max(max_dex, dex_change)
         except (ValueError, ZeroDivisionError):
             continue
-
     return max_dex
 
 
 def get_monitor_values(params) -> dict:
-    """
-    Extract current values of monitored parameters.
-
-    Parameters
-    ----------
-    params : DescribedDict
-        Parameter dictionary
-
-    Returns
-    -------
-    dict
-        Dictionary of parameter key -> value
-    """
+    """Extract current values of monitored parameters."""
     values = {}
     for key in ADAPTIVE_MONITOR_KEYS:
         try:
@@ -231,7 +174,78 @@ def get_monitor_values(params) -> dict:
 
 
 # =============================================================================
-# Force Properties Dataclass
+# Result Container
+# =============================================================================
+
+@dataclass
+class TransitionPhaseResults:
+    """Container for transition phase results."""
+    t: np.ndarray
+    R2: np.ndarray
+    v2: np.ndarray
+    Eb: np.ndarray
+    termination_reason: str
+    final_time: float
+
+
+# =============================================================================
+# Pure ODE for Transition Phase
+# =============================================================================
+
+def get_ODE_transition_pure(t: float, y: np.ndarray, snapshot: ODESnapshot,
+                            params_for_feedback, c_sound: float) -> np.ndarray:
+    """
+    Pure ODE function for transition phase.
+
+    Uses min(Ed_energy_balance, Ed_soundcrossing) — whichever gives
+    faster energy loss.  This ensures:
+      (a) continuity at the implicit→transition boundary (Ed_energy_balance
+          matches the implicit phase's beta-derived Ed), and
+      (b) energy eventually decays on the sound-crossing timescale once
+          cooling becomes inefficient.
+
+    Parameters
+    ----------
+    t : float
+        Time [Myr]
+    y : ndarray
+        State vector [R2, v2, Eb]
+    snapshot : ODESnapshot
+        Frozen snapshot of parameters
+    params_for_feedback : DescribedDict
+        Original params dict for feedback interpolation
+    c_sound : float
+        Sound speed [pc/Myr]
+
+    Returns
+    -------
+    dydt : ndarray
+        Derivatives [dR2/dt, dv2/dt, dEb/dt]
+    """
+    R2, v2, Eb = y
+
+    # Get rd, vd, Ed from the energy-balance ODE (continuous with implicit phase)
+    dydt_energy = get_ODE_Edot_pure(t, y, snapshot, params_for_feedback)
+    rd = dydt_energy[0]  # = v2
+    vd = dydt_energy[1]  # acceleration
+    Ed_energy_balance = dydt_energy[2]  # from energy balance (Lmech - Lcool - PdV)
+
+    # Sound-crossing energy decay: dE/dt = -Eb / (R2 / c_sound)
+    if c_sound > 0 and R2 > 0:
+        Ed_soundcrossing = -Eb / (R2 / c_sound)
+    else:
+        Ed_soundcrossing = 0.0
+
+    # Use whichever gives faster energy loss (more negative Ed).
+    # Early in the transition, Ed_energy_balance is continuous with the
+    # implicit phase.  As cooling diminishes, Ed_soundcrossing takes over.
+    Ed = min(Ed_energy_balance, Ed_soundcrossing)
+
+    return np.array([rd, vd, Ed])
+
+
+# =============================================================================
+# Force Computation (same as in energy_implicit)
 # =============================================================================
 
 @dataclass
@@ -260,26 +274,8 @@ def compute_forces_pure(
 ) -> ForceProperties:
     """
     Compute all force components without mutating params.
-
-    Parameters
-    ----------
-    R2 : float
-        Shell outer radius
-    mShell : float
-        Shell mass
-    Pb : float
-        Bubble pressure
-    shell_props : ShellProperties
-        Shell structure properties
-    params : dict-like
-        Parameter dictionary (read-only)
-
-    Returns
-    -------
-    ForceProperties
-        Dataclass with all force values
     """
-    # Gravitational force: F = G * mShell / R2^2 * (mCluster + mShell/2)
+    # Gravitational force
     G = params['G'].value
     mCluster = params['mCluster'].value
     F_grav = G * mShell / (R2**2) * (mCluster + 0.5 * mShell)
@@ -315,7 +311,7 @@ def compute_forces_pure(
         P_ext += PISM * k_B
 
     # ==========================================================================
-    # WARM IONIZED GAS PRESSURE (implicit phase)
+    # WARM IONIZED GAS PRESSURE (transition phase)
     # P_HII from Strömgren ionization balance in shell (n_IF_Str)
     # ==========================================================================
     n_IF = shell_props.n_IF
@@ -323,13 +319,19 @@ def compute_forces_pure(
 
     # P_HII pre-computed in phase runner from n_IF_Str
     P_HII = params['P_HII'].value
-    P_drive = max(Pb, P_HII)
+
+    # Ram pressure contribution
+    Lmech_total = params['Lmech_total'].value
+    v_mech_total = params['v_mech_total'].value
+    P_ram = get_bubbleParams.pRam(R2, Lmech_total, v_mech_total)
+
+    P_drive = max(Pb, P_HII + P_ram)
 
     # Forces
     F_ion_in = P_ext * FOUR_PI * R2**2
     F_HII = FOUR_PI * R2**2 * P_HII
 
-    # Ram pressure force (from bubble pressure)
+    # Ram pressure force
     F_ram = Pb * FOUR_PI * R2**2
 
     # Radiation pressure force (direct + IR-trapped)
@@ -350,88 +352,22 @@ def compute_forces_pure(
         R_IF=R_IF,
         P_HII=P_HII,
         P_drive=P_drive,
-        P_ram=0.0,  # no ram pressure in implicit phase
+        P_ram=P_ram,
         press_HII_in=P_ext,
     )
-
-
-# =============================================================================
-# Result Container
-# =============================================================================
-
-@dataclass
-class ImplicitPhaseResults:
-    """Container for implicit phase results."""
-    t: np.ndarray
-    R2: np.ndarray
-    v2: np.ndarray
-    Eb: np.ndarray
-    T0: np.ndarray
-    beta: np.ndarray
-    delta: np.ndarray
-    termination_reason: str
-    final_time: float
-
-
-# =============================================================================
-# Pure ODE for Implicit Phase
-# =============================================================================
-
-def get_ODE_implicit_pure(t: float, y: np.ndarray, snapshot: ODESnapshot,
-                          params_for_feedback,
-                          Ed_from_beta: float, Td_from_delta: float) -> np.ndarray:
-    """
-    Pure ODE function for implicit phase.
-
-    Uses rd, vd from standard energy ODE but Ed, Td from beta/delta.
-
-    Parameters
-    ----------
-    t : float
-        Time [Myr]
-    y : ndarray
-        State vector [R2, v2, Eb, T0]
-    snapshot : ODESnapshot
-        Frozen snapshot of parameters
-    params_for_feedback : DescribedDict
-        Original params dict for feedback interpolation
-    Ed_from_beta : float
-        Energy derivative from beta calculation
-    Td_from_delta : float
-        Temperature derivative from delta calculation
-
-    Returns
-    -------
-    dydt : ndarray
-        Derivatives [dR2/dt, dv2/dt, dEb/dt, dT0/dt]
-    """
-    R2, v2, Eb, T0 = y
-
-    # Get rd, vd from energy ODE (y without T0)
-    y_energy = [R2, v2, Eb]
-    dydt_energy = get_ODE_Edot_pure(t, y_energy, snapshot, params_for_feedback)
-
-    rd = dydt_energy[0]  # = v2
-    vd = dydt_energy[1]  # acceleration from pressure balance
-
-    # Use Ed and Td from beta/delta calculations (computed outside ODE)
-    return np.array([rd, vd, Ed_from_beta, Td_from_delta])
-    # try to fix kink (see paper/rCloud_bump)
-    # Ed_from_balance = dydt_energy[2]
-    # Ed = min(Ed_from_beta, Ed_from_balance)
-    # return np.array([rd, vd, Ed, Td_from_delta])
 
 
 # =============================================================================
 # Main Function
 # =============================================================================
 
-def run_phase_energy(params) -> ImplicitPhaseResults:
+def run_phase_transition(params) -> TransitionPhaseResults:
     """
-    Run the implicit energy phase using solve_ivp.
+    Run the transition phase using solve_ivp.
 
-    This phase solves for real-time beta and delta values (cooling parameters)
-    that were approximated in the initial energy phase.
+    This phase bridges energy-driven and momentum-driven expansion.
+    Energy decays on the sound-crossing timescale until it reaches
+    a floor value, then momentum phase begins.
 
     Parameters
     ----------
@@ -440,8 +376,8 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
 
     Returns
     -------
-    results : ImplicitPhaseResults
-        Results container with arrays and termination info
+    results : TransitionPhaseResults
+        Results container
     """
     # =============================================================================
     # Initialization
@@ -450,7 +386,7 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
     # --- PHASE BOUNDARY DIAGNOSTIC ---
     v2_from_ODE = params['v2'].value
     v2_from_alpha = params['cool_alpha'].value * params['R2'].value / params['t_now'].value
-    logger.info(f"PHASE BOUNDARY [energy->implicit]: "
+    logger.info(f"PHASE BOUNDARY [implicit->transition]: "
                 f"v2_ODE={v2_from_ODE:.6e}, v2_alpha={v2_from_alpha:.6e}, "
                 f"ratio={v2_from_alpha/v2_from_ODE if v2_from_ODE != 0 else float('inf'):.4f}")
     logger.info(f"  R2={params['R2'].value:.6e}, shell_mass={params['shell_mass'].value:.6e}, "
@@ -468,7 +404,7 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
     # times and reporting termination_reason="unknown".
     if tmin >= tmax:
         logger.info(
-            f"Implicit phase skipped: t_now={tmin:.6e} Myr >= stop_t={tmax:.6e} Myr "
+            f"Transition phase skipped: t_now={tmin:.6e} Myr >= stop_t={tmax:.6e} Myr "
             f"(simulation time limit reached in prior phase)"
         )
         params['SimulationEndCode'].value = SimulationEndCode.STOPPING_TIME.code
@@ -476,43 +412,30 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
             f"Reached stop_t={tmax:.6e} Myr during prior phase"
         )
         params['EndSimulationDirectly'].value = True
-        return ImplicitPhaseResults(
+        return TransitionPhaseResults(
             t=np.array([tmin]),
             R2=np.array([params['R2'].value]),
             v2=np.array([params['v2'].value]),
             Eb=np.array([params['Eb'].value]),
-            T0=np.array([params['T0'].value]),
-            beta=np.array([params['cool_beta'].value]),
-            delta=np.array([params['cool_delta'].value]),
             termination_reason="skipped_past_stop_t",
             final_time=tmin,
         )
 
-    # Initialize state
+    # Initialize state (no T0 in state vector for transition)
     R2 = params['R2'].value
     v2 = params['v2'].value
     Eb = params['Eb'].value
     T0 = params['T0'].value
 
-    # Pre-allocate results (estimate based on time range)
-    n_estimate = min(int(200 * np.log10(tmax/tmin)), MAX_SEGMENTS)
-    t_results = []
-    R2_results = []
-    v2_results = []
-    Eb_results = []
-    T0_results = []
-    beta_results = []
-    delta_results = []
-
-    # Initial values are appended inside the loop after all derived
-    # quantities (beta, delta, shell, etc.) are computed at t_now,
-    # ensuring every result entry is self-consistent.
+    # Pre-allocate results
+    t_results = [tmin]
+    R2_results = [R2]
+    v2_results = [v2]
+    Eb_results = [Eb]
 
     t_now = tmin
     segment_count = 0
     termination_reason = None
-    beta = params['cool_beta'].value
-    delta = params['cool_delta'].value
 
     # Track previous R2 for collapse detection
     R2_prev = R2
@@ -520,13 +443,16 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
     # Adaptive time stepping
     dt_segment = DT_SEGMENT_INIT
 
+    # Persistent dissolution timer: track how long shell_nMax < nISM
+    t_diss_onset = np.inf
+
     # =============================================================================
     # Build events for safe termination
     # =============================================================================
 
     # Build events using centralized module
-    # Returns (events_list, cooling_balance_factory)
-    ode_events, cooling_balance_factory = build_implicit_phase_events(params)
+    # Transition phase events: energy_floor (phase ending), min_radius, velocity_runaway
+    ode_events = build_transition_phase_events(params, energy_floor=ENERGY_FLOOR)
 
     # =============================================================================
     # Main loop (segment-based with adaptive stepping)
@@ -536,8 +462,7 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         segment_count += 1
 
         # stop_at_rCloud_nSnap: terminate once we've already saved enough
-        # post-rCloud segment-loop snapshots.  Checked at top of loop so we
-        # break BEFORE this iteration's save_snapshot fires.
+        # post-rCloud segment-loop snapshots.
         nSnap_rCloud = params['stop_at_rCloud_nSnap'].value
         if (nSnap_rCloud is not None
                 and R2 > params['rCloud'].value
@@ -552,17 +477,7 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
             break
 
         # Log current state at beginning of each segment
-        logger.debug(f"[Implicit] t={t_now:.6e} Myr, R2={R2:.4e} pc, v2={v2:.4e} pc/Myr, Eb={Eb:.4e}, T0={T0:.4e} K")
-
-        # ---------------------------------------------------------------------
-        # Update cooling structure periodically
-        # ---------------------------------------------------------------------
-        if abs(params['t_previousCoolingUpdate'].value - t_now) > COOLING_UPDATE_INTERVAL:
-            cooling_nonCIE, heating_nonCIE, netcooling_interpolation = non_CIE.get_coolingStructure(params)
-            params['cStruc_cooling_nonCIE'].value = cooling_nonCIE
-            params['cStruc_heating_nonCIE'].value = heating_nonCIE
-            params['cStruc_net_nonCIE_interpolation'].value = netcooling_interpolation
-            params['t_previousCoolingUpdate'].value = t_now
+        logger.debug(f"[Transition] t={t_now:.6e} Myr, R2={R2:.4e} pc, v2={v2:.4e} pc/Myr, Eb={Eb:.4e}, T0={T0:.4e} K")
 
         # ---------------------------------------------------------------------
         # Update params with current state
@@ -572,7 +487,6 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         params['v2'].value = v2
         params['Eb'].value = Eb
         params['T0'].value = T0
-        params['cool_alpha'].value = t_now / R2 * v2
 
         # ---------------------------------------------------------------------
         # Get feedback
@@ -581,62 +495,34 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         updateDict(params, feedback)
 
         # ---------------------------------------------------------------------
-        # Calculate beta/delta and bubble properties BEFORE shell structure,
-        # so that Pb and bubble_mass are current when shell_structure_pure
-        # reads them (bubble computation does not depend on shell).
+        # Get R1 and Pb BEFORE shell structure so Pb is current when
+        # shell_structure_pure reads it.
         # ---------------------------------------------------------------------
-        betadelta_result = solve_betadelta_pure(
-            params['cool_beta'].value,
-            params['cool_delta'].value,
-            params
-        )
-
-        beta = betadelta_result.beta
-        delta = betadelta_result.delta
-
-        # Update params with new beta/delta
-        params['cool_beta'].value = beta
-        params['cool_delta'].value = delta
-
-        # Get bubble properties from result
-        bubble_props = betadelta_result.bubble_properties
-
-        # Update params with all bubble properties from the pure function result
-        # This is critical: without this, bubble_mass, bubble arrays, etc. remain stale
-        if bubble_props is not None:
-            updateDict(params, bubble_props)
-
-        # Save residual diagnostics to dictionary (after ODE, not during)
-        params['residual_deltaT'].value = betadelta_result.T_residual
-        params['residual_betaEdot'].value = betadelta_result.Edot_residual
-        if betadelta_result.Edot_from_beta is not None:
-            params['residual_Edot1_guess'].value = betadelta_result.Edot_from_beta
-        if betadelta_result.Edot_from_balance is not None:
-            params['residual_Edot2_guess'].value = betadelta_result.Edot_from_balance
-        if betadelta_result.T_bubble is not None:
-            params['residual_T1_guess'].value = betadelta_result.T_bubble
-        if betadelta_result.T0 is not None:
-            params['residual_T2_guess'].value = betadelta_result.T0
-
-        # Energy balance: luminosity gain and loss
-        if betadelta_result.L_gain is not None:
-            params['bubble_Lgain'].value = betadelta_result.L_gain
-        if betadelta_result.L_loss is not None:
-            params['bubble_Lloss'].value = betadelta_result.L_loss
-
-        # ---------------------------------------------------------------------
-        # Get R1 and Pb
-        # ---------------------------------------------------------------------
+        Lmech_total = feedback.Lmech_total
+        v_mech_total = feedback.v_mech_total
         gamma_adia = params['gamma_adia'].value
-        R1, Pb = compute_R1_Pb(R2, Eb, feedback.Lmech_total, feedback.v_mech_total, gamma_adia)
 
+        R1, Pb = compute_R1_Pb(R2, Eb, Lmech_total, v_mech_total, gamma_adia)
         params['R1'].value = R1
         params['Pb'].value = Pb
 
         # Get sound speed from bubble average temperature
-        # (bubble_Tavg is now in params via updateDict above)
-        bubble_Tavg = params['bubble_Tavg'].value if params['bubble_Tavg'].value else 1e6
-        params['c_sound'].value = operations.get_soundspeed(bubble_Tavg, params)
+        bubble_Tavg = params.get('bubble_Tavg', None)
+        if bubble_Tavg and hasattr(bubble_Tavg, 'value') and bubble_Tavg.value:
+            T_for_sound = bubble_Tavg.value
+        else:
+            T_for_sound = 1e6
+        c_sound = operations.get_soundspeed(T_for_sound, params)
+        params['c_sound'].value = c_sound
+
+        # --- Ed diagnostic at first segment (quantify the original discontinuity) ---
+        if segment_count == 1 and c_sound > 0 and R2 > 0:
+            Ed_soundcrossing_init = -Eb / (R2 / c_sound)
+            logger.info(
+                f"PHASE BOUNDARY Ed diagnostic: "
+                f"Ed_soundcrossing={Ed_soundcrossing_init:.4e}, "
+                f"c_sound={c_sound:.4e}, R2={R2:.4e}, Eb={Eb:.4e}"
+            )
 
         # ---------------------------------------------------------------------
         # Compute shell mass BEFORE shell structure so that the shell
@@ -665,7 +551,7 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         params['shell_massDot'].value = mShell_dot
 
         # ---------------------------------------------------------------------
-        # Calculate shell structure (now with current Pb, bubble_mass, shell_mass)
+        # Calculate shell structure (now with current Pb and shell_mass)
         # ---------------------------------------------------------------------
         shell_props = shell_structure_pure(params)
         updateDict(params, shell_props)
@@ -679,13 +565,6 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         params['P_HII'].value = P_HII
         F_HII = 4.0 * np.pi * R2**2 * P_HII
         params['F_HII'].value = F_HII
-
-        # ---------------------------------------------------------------------
-        # Convert beta/delta to Ed, Td using pure functions
-        # ---------------------------------------------------------------------
-
-        Ed = cool_beta_to_Ebdot_pure(beta, Pb, t_now, R1, R2, v2, Eb, feedback.pdot_total, feedback.pdotdot_total)
-        Td = delta2dTdt_pure(t_now, T0, delta)
 
         force_props = compute_forces_pure(R2, mShell, Pb, shell_props, params)
         params['F_grav'].value = force_props.F_grav
@@ -706,28 +585,17 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         # ---------------------------------------------------------------------
         # Save snapshot BEFORE ODE - all values are consistent at t_now
         # ---------------------------------------------------------------------
-        # At this point: t_now, R2, v2, Eb, T0, feedback, shell_props, bubble_props,
-        # beta, delta, R1, Pb, forces, residuals are all computed for the SAME t_now
+        # At this point: t_now, R2, v2, Eb, feedback, shell_props, R1, Pb,
+        # forces, mShell are all computed for the SAME t_now
         _save_count_before = params.save_count
         params.save_snapshot()
 
         # stop_at_rCloud_nSnap: increment past-rCloud counter only when the
-        # save actually wrote (save_count delta > 0); the duplicate guard
-        # in save_snapshot can silently skip the first segment of a phase
-        # when its (t_now, R2) match the previous phase's reconciliation.
+        # save actually wrote (duplicate guard in save_snapshot can skip).
         if (params['stop_at_rCloud_nSnap'].value is not None
                 and params.save_count > _save_count_before
                 and R2 > params['rCloud'].value):
             params['_snapshots_after_rCloud'].value += 1
-
-        # Store results at the same consistent point as the snapshot
-        t_results.append(t_now)
-        R2_results.append(R2)
-        v2_results.append(v2)
-        Eb_results.append(Eb)
-        T0_results.append(T0)
-        beta_results.append(beta)
-        delta_results.append(delta)
 
         # ---------------------------------------------------------------------
         # Check if we've reached stop_t - if so, terminate successfully
@@ -750,16 +618,12 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
 
         t_segment_end = min(t_now + dt_segment, tmax)
         t_span = (t_now, t_segment_end)
-        y0 = np.array([R2, v2, Eb, T0])
-
-        # Debug: log the solve_ivp inputs
-        logger.debug(f"solve_ivp: t_span=({t_span[0]:.10e}, {t_span[1]:.10e}), dt={dt_segment:.3e}, "
-                     f"y0=[R2={y0[0]:.10e}, v2={y0[1]:.6e}, Eb={y0[2]:.6e}, T0={y0[3]:.6e}]")
+        y0 = np.array([R2, v2, Eb])
 
         try:
             # Build solver kwargs (min_step only supported by LSODA)
             solver_kwargs = {
-                'fun': lambda t, y: get_ODE_implicit_pure(t, y, snapshot, params, Ed, Td),
+                'fun': lambda t, y: get_ODE_transition_pure(t, y, snapshot, params, c_sound),
                 't_span': t_span,
                 'y0': y0,
                 'method': ODE_METHOD,
@@ -778,9 +642,6 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
             break
 
         if not sol.success or len(sol.t) == 0:
-            logger.error(f"Solver did not succeed: {sol.message}")
-            logger.error(f"  t_span was: ({t_span[0]:.10e}, {t_span[1]:.10e})")
-            logger.error(f"  y0 was: R2={y0[0]:.10e}, v2={y0[1]:.6e}")
             termination_reason = f"solver_failed: {sol.message}"
             break
 
@@ -790,27 +651,21 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         event_result = check_event_termination(sol, ode_events)
         if event_result.triggered:
             logger.info(f"Event '{event_result.name}' triggered at t={event_result.t:.6e} Myr: "
-                          f"R2={event_result.y[0]:.4e} pc, v2={event_result.y[1]:.4e} pc/Myr")
+                        f"R2={event_result.y[0]:.4e} pc, v2={event_result.y[1]:.4e} pc/Myr, Eb={event_result.y[2]:.4e}")
             termination_reason = event_result.reason_code
             # Update state from event
             R2 = float(event_result.y[0])
             v2 = float(event_result.y[1])
             Eb = float(event_result.y[2])
-            T0 = float(event_result.y[3])
             t_now = event_result.t
-            # Add final state to results.
-            # beta/delta are from the start of this segment (best available;
-            # the event occurred within one segment of their computation).
+            # Add final state to results
             t_results.append(t_now)
             R2_results.append(R2)
             v2_results.append(v2)
             Eb_results.append(Eb)
-            T0_results.append(T0)
-            beta_results.append(beta)
-            delta_results.append(delta)
             # Apply event result to params
             apply_event_result(params, event_result, t_now, event_result.y,
-                              state_keys=['R2', 'v2', 'Eb', 'T0'])
+                              state_keys=['R2', 'v2', 'Eb'])
             break
 
         # ---------------------------------------------------------------------
@@ -819,22 +674,19 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         R2 = float(sol.y[0, -1])
         v2 = float(sol.y[1, -1])
         Eb = float(sol.y[2, -1])
-        T0 = float(sol.y[3, -1])
         t_now = float(sol.t[-1])
 
         # ---------------------------------------------------------------------
         # Adaptive stepping: adjust dt_segment based on parameter changes
         # ---------------------------------------------------------------------
-        # Update params with new state for comparison
         params['t_now'].value = t_now
         params['R2'].value = R2
         params['v2'].value = v2
         params['Eb'].value = Eb
-        params['T0'].value = T0
         
         # Shell mass update for adaptive stepping comparison.
         # Apply the same collapse-freeze and never-decrease guards as the
-        # primary shell mass block (lines 642-662).
+        # primary shell mass block (lines 510-531).
         prev_mShell_post = params['shell_mass'].value
         is_collapse_post = params.get('isCollapse', None)
         is_collapse_post_val = is_collapse_post.value if is_collapse_post and hasattr(is_collapse_post, 'value') else False
@@ -853,18 +705,11 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         max_dex_change = compute_max_dex_change(values_before, values_after, ADAPTIVE_MONITOR_KEYS)
 
         if max_dex_change > ADAPTIVE_THRESHOLD_DEX:
-            # Large change: decrease dt_segment
-            dt_segment_old = dt_segment
             dt_segment = max(dt_segment / ADAPTIVE_FACTOR, DT_SEGMENT_MIN)
-            logger.debug(f"Adaptive: max_dex={max_dex_change:.3f} > {ADAPTIVE_THRESHOLD_DEX}, "
-                        f"dt: {dt_segment_old:.3e} -> {dt_segment:.3e}")
+            logger.debug(f"Adaptive: max_dex={max_dex_change:.3f} > threshold, dt -> {dt_segment:.3e}")
         else:
-            # Small change: increase dt_segment
-            dt_segment_old = dt_segment
             dt_segment = min(dt_segment * ADAPTIVE_FACTOR, DT_SEGMENT_MAX)
-            if dt_segment != dt_segment_old:
-                logger.debug(f"Adaptive: max_dex={max_dex_change:.3f} < {ADAPTIVE_THRESHOLD_DEX}, "
-                            f"dt: {dt_segment_old:.3e} -> {dt_segment:.3e}")
+            logger.debug(f"Adaptive: max_dex={max_dex_change:.3f} < threshold, dt -> {dt_segment:.3e}")
 
         # ---------------------------------------------------------------------
         # Proactive velocity-based timestep control during collapse
@@ -883,39 +728,39 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
                 logger.debug(f"Velocity-based: |v2|={abs_v2:.1f} > {VELOCITY_THRESHOLD_COLLAPSE}, "
                             f"dt -> {dt_segment:.3e} Myr")
 
-        # (Results already appended before ODE at the consistent snapshot point.)
+        # Store results
+        t_results.append(t_now)
+        R2_results.append(R2)
+        v2_results.append(v2)
+        Eb_results.append(Eb)
 
         # ---------------------------------------------------------------------
         # Check termination conditions
         # ---------------------------------------------------------------------
 
-        # Re-fetch feedback at post-ODE time for the termination check.
-        # Lgain must reflect the current Lmech_total at the new t_now,
-        # especially across SN turn-on boundaries.
+        # Phase transition criterion: ram pressure dominates bubble pressure.
+        # Recompute Pb and P_ram at the post-ODE state so the check uses
+        # current values, not stale pre-ODE ones.
+        RAM_DOMINANCE_THRESHOLD = 0.9  # exit when P_ram/(P_b + P_ram) > this
         feedback_post = get_current_sps_feedback(t_now, params)
-        Lgain = feedback_post.Lmech_total
-
-        # Lloss from pre-ODE bubble properties (cannot cheaply recompute
-        # without the betadelta solver; acceptable since Lloss changes slowly)
-        if bubble_props is not None:
-            Lloss = bubble_props.bubble_LTotal
-            bubble_Leak = params.get('bubble_Leak', None)
-            if bubble_Leak is not None and hasattr(bubble_Leak, 'value'):
-                Lloss += bubble_Leak.value
-        else:
-            Lloss_param = params.get('bubble_Lloss', None)
-            Lloss = Lloss_param.value if Lloss_param and hasattr(Lloss_param, 'value') else 0.0
-
-        # Get threshold from params (default 0.05)
-        phase_switch_threshold = params.get('phaseSwitch_LlossLgain', None)
-        if phase_switch_threshold and hasattr(phase_switch_threshold, 'value'):
-            threshold = phase_switch_threshold.value
-        else:
-            threshold = 0.05
-
-        if Lgain > 0 and (Lgain - Lloss) / Lgain < threshold:
-            termination_reason = "cooling_balance"
-            logger.info(f"Cooling balance reached: Lloss/Lgain ratio below {threshold}")
+        gamma_adia = params['gamma_adia'].value
+        R1_post, Pb_post = compute_R1_Pb(R2, Eb, feedback_post.Lmech_total,
+                                          feedback_post.v_mech_total, gamma_adia)
+        P_ram_post = get_bubbleParams.pRam(R2, feedback_post.Lmech_total,
+                                            feedback_post.v_mech_total)
+        P_total = Pb_post + P_ram_post
+        if P_total > 0:
+            ram_fraction = P_ram_post / P_total
+            if ram_fraction > RAM_DOMINANCE_THRESHOLD:
+                termination_reason = "ram_dominated"
+                logger.info(f"Ram fraction {ram_fraction:.3f} > {RAM_DOMINANCE_THRESHOLD}, "
+                            f"transitioning to momentum (t={t_now:.4e}, Eb={Eb:.4e})")
+                break
+        
+        # Safety fallback: absolute energy floor
+        if Eb < ENERGY_FLOOR:
+            termination_reason = "energy_floor"
+            logger.info(f"Energy dropped below floor ({ENERGY_FLOOR}), transitioning to momentum")
             break
 
         # Collapse detection: velocity negative AND radius decreasing
@@ -952,28 +797,33 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
             params['EndSimulationDirectly'].value = True
             break
 
-    # =============================================================================
-    # Capture final post-ODE state if not already recorded.
-    # The main result append is now pre-ODE, so termination paths that break
-    # after ODE (cooling_balance, small_radius, etc.) would otherwise lose the
-    # final state.  Event terminations already append at the event point.
-    # =============================================================================
-    if len(t_results) == 0 or t_now != t_results[-1]:
-        t_results.append(t_now)
-        R2_results.append(R2)
-        v2_results.append(v2)
-        Eb_results.append(Eb)
-        T0_results.append(T0)
-        # beta/delta are from the last pre-ODE computation (best available)
-        beta_results.append(beta)
-        delta_results.append(delta)
+        # Dissolution check: persistent timer based on shell_nMax < nISM
+        shell_nMax = params.get('shell_nMax', None)
+        if shell_nMax and hasattr(shell_nMax, 'value'):
+            if shell_nMax.value < params['nISM'].value:
+                if t_diss_onset == np.inf:
+                    t_diss_onset = t_now
+                    logger.info(f"Dissolution condition onset at t={t_now:.6e} Myr "
+                                f"(shell_nMax={shell_nMax.value:.4e} < nISM={params['nISM'].value:.4e})")
+                if (t_now - t_diss_onset) >= params['stop_t_diss'].value:
+                    params['isDissolved'].value = True
+                    termination_reason = "dissolved"
+                    params['SimulationEndReason'].value = 'Shell dissolved'
+                    params['SimulationEndCode'].value = SimulationEndCode.SHELL_DISSOLVED.code
+                    params['EndSimulationDirectly'].value = True
+                    logger.info(f"Shell dissolved after {t_now - t_diss_onset:.4f} Myr "
+                                f"below nISM (stop_t_diss={params['stop_t_diss'].value})")
+                    break
+            else:
+                if t_diss_onset != np.inf:
+                    logger.info(f"Dissolution condition reset at t={t_now:.6e} Myr "
+                                f"(shell_nMax={shell_nMax.value:.4e} >= nISM={params['nISM'].value:.4e})")
+                t_diss_onset = np.inf
 
     # =========================================================================
     # Phase-boundary reconciliation snapshot.
     # Recompute derived properties (Pb, shell structure, forces) with the
-    # post-ODE state so the snapshot is fully consistent.  A bare
-    # save_snapshot() here would save stale derived values AND block the
-    # next phase's correct first snapshot via the duplicate guard.
+    # post-ODE state so the snapshot is fully consistent.
     # =========================================================================
     try:
         feedback_final = get_current_sps_feedback(t_now, params)
@@ -985,7 +835,6 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         params['Pb'].value = Pb_f
         shell_props_f = shell_structure_pure(params)
         updateDict(params, shell_props_f)
-        # P_HII from Strömgren ionization balance
         n_IF_Str_f = shell_props_f.n_IF_Str
         if params['include_PHII'].value and n_IF_Str_f > 0:
             P_HII_f = 2.0 * n_IF_Str_f * params['k_B'].value * params['TShell_ion'].value
@@ -1018,17 +867,14 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
     # "unknown" means we fell through every known exit path — a real bug
     # surface, not a routine completion.  Surface it loudly.
     completion_log = logger.warning if termination_reason == "unknown" else logger.info
-    completion_log(f"Implicit phase completed: {termination_reason}")
-    completion_log(f"  Final time: {t_now:.6e} Myr, Segments: {segment_count}")
+    completion_log(f"Transition phase completed: {termination_reason}")
+    completion_log(f"  Final time: {t_now:.6e} Myr, Final Eb: {Eb:.6e}, Segments: {segment_count}")
 
-    return ImplicitPhaseResults(
+    return TransitionPhaseResults(
         t=np.array(t_results),
         R2=np.array(R2_results),
         v2=np.array(v2_results),
         Eb=np.array(Eb_results),
-        T0=np.array(T0_results),
-        beta=np.array(beta_results),
-        delta=np.array(delta_results),
         termination_reason=termination_reason,
         final_time=t_now,
     )

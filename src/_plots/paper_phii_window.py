@@ -16,7 +16,7 @@ figure stacked on a shared time axis:
 
     Top:    Pb(t) and P_HII(t) from the yesPHII run, with the PHII-active
             window (P_HII > Pb) shaded across all panels.
-    Middle: log10(P_HII / Pb). The Strömgren cap in shell_structure_modified
+    Middle: log10(P_HII / Pb). The Strömgren cap in shell_structure
             pins P_HII ≤ 2*(mu_ion/mu_atom)*Pb ≈ 0.957*Pb whenever it binds,
             so the line should sit at log10(0.957) ≈ -0.019 across the
             cap-binding region and dip below it elsewhere. Reference line

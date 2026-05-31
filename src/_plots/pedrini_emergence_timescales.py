@@ -233,7 +233,7 @@ def cumulative_phi_time(t: np.ndarray, phi: np.ndarray, diss: np.ndarray,
     used for the segment t[k] -> t[k+1] (snapshots saved before ODE integration,
     see trinity_reader.py:93-99), so mask[k] applies for the whole segment.
 
-    Dissolved-shell guard: shell_structure_modified.py:412 force-sets
+    Dissolved-shell guard: shell_structure.py:412 force-sets
     is_phiDepleted=True whenever isDissolved=True, but a dissolved shell has
     dispersed into the ISM — no neutral exterior, no PDR. Under the current
     code flow only the final reconciliation snap carries isDissolved=True

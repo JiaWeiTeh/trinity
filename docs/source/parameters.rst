@@ -540,9 +540,10 @@ Control transitions between simulation phases.
      - Threshold for :math:`(L_{\rm gain} - L_{\rm loss})/L_{\rm gain}` to trigger phase transition.
    * - ``use_adaptive_solver``
      - ``True``
-     - Use the adaptive ODE solver for the energy-driven phase
-       (``run_energy_phase_modified.py``). If ``False``, falls back to the
-       original solver (``run_energy_phase.py``).
+     - Deprecated. Parsed for backward compatibility with existing
+       ``.param`` files but not consumed by any code path — the adaptive
+       solver in ``run_energy_phase.py`` is the only implementation, so
+       this flag has no effect.
 
 
 Cooling Parameters

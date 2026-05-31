@@ -10,7 +10,7 @@ In the energy / implicit phases TRINITY uses
 
     P_drive = max(Pb, P_HII)
 
-(see ``src/phase1_energy/energy_phase_ODEs_modified.py:253-256``) and in
+(see ``src/phase1_energy/energy_phase_ODEs.py:253-256``) and in
 the transition phase
 
     P_drive = max(Pb, P_HII + P_ram).
@@ -217,7 +217,7 @@ def diagnose_pair(base, yes_path, no_path, r2_tol: float, phii_tol: float):
         print(f"       Pb dominates P_HII at every snapshot, so "
               f"P_drive=max(Pb,P_HII)=Pb identically in both runs.")
         print(f"       Identical R2(t) is the correct consequence of "
-              f"max()-coupling in energy_phase_ODEs_modified.py:253-256.")
+              f"max()-coupling in energy_phase_ODEs.py:253-256.")
     elif trajectories_match and frac_phii_wins > 0:
         status = "UNEXPECTED"
         print(f"  >> DIAGNOSIS: UNEXPECTED")
