@@ -459,3 +459,129 @@ consistency or leave:
 Single isolated commit; revert restores the prior state. No data, schema,
 or output-format changes — `dictionary.jsonl`/`metadata.json` are
 byte-unaffected.
+
+---
+
+# Appendix B — Deprecated-param removal plan
+
+Verified against the tree on `feature/reforming-structure`. Four params
+carry `category='deprecated'` and are **never consumed** by any code path
+(confirmed by grep across `src/` + `run.py`):
+
+| Param | `default.param` | shipped `param/*.param` | tests | docs | mock outputs |
+|-------|:---:|:---:|:---:|:---:|:---:|
+| `stop_v` | L281 | — | metadata L84, registry L317 | rst L281 | summary.txt L26 |
+| `adiabaticOnlyInCore` | L284 | — | metadata L89, registry L317 | rst L532 | summary.txt L54 |
+| `immediate_leak` | L287 | — | metadata L90, registry L317 | rst L535 | summary.txt L55 |
+| `use_adaptive_solver` | L290 | **16 files** | metadata L88, registry L317 | rst L541 | param L12 + summary L57 |
+
+Only `use_adaptive_solver` appears in user-facing `param/*.param` (16
+files). The other three live only in generated/test/doc/mock locations.
+
+## B.1 The blocking constraint (drives the whole approach)
+
+`read_param.py:214-225` rejects any key not in the registry with a hard
+`ParameterFileError: Invalid parameter(s)`. So deleting a spec makes every
+`.param` that still sets it **fail to load** — exactly the back-compat the
+`deprecated` category exists to provide. Two ways forward:
+
+- **Option A — hard break.** Delete the 4 specs; scrub every in-repo
+  reference. Any *external* `.param` still setting one now errors out.
+  Simplest, smallest diff, but a breaking change for a "Production/Stable"
+  release.
+- **Option B — graceful retirement (recommended).** Replace the four
+  full `ParamSpec` entries with a single `RETIRED_KEYS` set that
+  `read_param` strips (with a one-time `logger.warning`) *before* the
+  unknown-key check. Old/external files keep loading; the warning tells
+  users to delete the now-ignored line. This is the correct next step in
+  the deprecation lifecycle (deprecated-in-schema → retired-and-ignored)
+  and is non-breaking.
+
+Both options scrub the 16 shipped `param/*.param` files (leaving a retired
+key would just emit warnings on every run). Option B additionally shields
+external files.
+
+## B.2 Edits — common to both options
+
+1. **`src/_input/registry.py`** — delete the 4 `ParamSpec` lines
+   (L271, L298, L299, L301).
+2. **`src/_input/param_spec.py`** — the `CATEGORIES` list (L48-61):
+   remove the `"deprecated"` entry and its comment (no specs will carry
+   it). *Check*: `gen_default_param.is_file_backed` and
+   `test_only_file_backed_specs_emitted` reference the literal
+   `"deprecated"`; those clauses become dead — simplify them (drop the
+   `or cat == "deprecated"`).
+3. **`src/_input/default.param`** — regenerate, do not hand-edit:
+   `python -m tools.gen_default_param --write`. The 4 lines disappear once
+   the specs are gone (the file is a generated artifact;
+   `test_default_param_matches` enforces byte-equality with `render(SPECS)`).
+4. **Shipped param files** — remove the `use_adaptive_solver` line from
+   the 16 `param/*.param` files (grep-verified list).
+5. **Docs** — `docs/source/parameters.rst`: delete the four table rows
+   (L281 `stop_v`, L532 `adiabaticOnlyInCore`, L535 `immediate_leak`,
+   L541 `use_adaptive_solver`, each a `* - ``name``` row + its value/desc
+   lines).
+6. **Tests**:
+   - `test/test_registry.py` L313 `test_deprecated_specs_have_notes` —
+     asserts the deprecated set is exactly those 4. Remove this test
+     (no deprecated specs remain) **or**, under Option B, repurpose it to
+     assert `RETIRED_KEYS` is non-empty and disjoint from live spec names.
+   - `test/test_gen_default_param.py` L100 `test_deprecated_text_matches`
+     — becomes vacuous (no deprecated keys); remove it.
+     `test_only_file_backed_specs_emitted` (L112) — drop the
+     `or cat == "deprecated"` clause to match B.2-step-2.
+   - `test/test_metadata.py` L84/L88/L89/L90 — remove the four keys from
+     the `_scalars` fixture (the fixture is a hand-built `DescribedDict`,
+     not registry-validated, but these keys should no longer be presented
+     as live `RUN_CONST_KEYS`).
+
+## B.3 Edits — Option B only
+
+7. **`src/_input/read_param.py`** — add near the top:
+   ```python
+   # Keys retired from the schema but still tolerated in .param files so
+   # pre-existing inputs don't hard-error. Stripped (with a warning) before
+   # the unknown-key validation below.
+   RETIRED_KEYS = {"stop_v", "adiabaticOnlyInCore",
+                   "immediate_leak", "use_adaptive_solver"}
+   ```
+   and, just before the `invalid_keys` check (~L214):
+   ```python
+   for key in list(user_dict):
+       if key in RETIRED_KEYS:
+           logger.warning("Parameter '%s' is retired and ignored; "
+                          "remove it from your .param file.", key)
+           del user_dict[key]
+   ```
+   Add one test (e.g. in `test_read_param` / `test_registry`) asserting a
+   `.param` containing a retired key loads without error and the key is
+   absent from the merged dict.
+
+## B.4 Out of scope / leave as-is
+
+- **Mock outputs** (`outputs/mockOutput/mockFullrun/4e3_sfe001_n5e2_PL0.param`
+  and `_summary.txt`): these are frozen artifacts of a historical run and
+  are **not** routed through `read_param` by any test (the cloudy tests
+  parse `dictionary.jsonl` + `_summary.txt` only — verified). Leave them as
+  a faithful record. (Under Option A they'd still be inert; under Option B
+  they'd load fine anyway.)
+
+## B.5 Verification battery
+
+1. `python -m tools.gen_default_param --check` → exit 0 (committed
+   `default.param` matches `render(SPECS)`).
+2. `grep -rn "stop_v\|adiabaticOnlyInCore\|immediate_leak\|use_adaptive_solver" src param docs --include=*` → only the
+   intended residue (Option B: the `RETIRED_KEYS` set + its test; Option A:
+   nothing).
+3. `pre-commit run --all-files` → clean.
+4. `python -m pytest test/ -q` → all pass (the cloudy/mock tests must stay
+   green, proving the mock files were safe to leave).
+5. `python run.py param/trinity_fiducial.param`-style smoke: a param file
+   that *used to* set `use_adaptive_solver` now loads cleanly (Option B:
+   also test a file that still sets it → loads with a warning).
+
+## B.6 Rollback
+
+Single commit; revert restores the specs and the schema. No physics, no
+output-format change. `default.param` is regenerated, not hand-edited, so
+the codegen gate guarantees consistency.
