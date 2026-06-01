@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Run all (or selected) plotting scripts in trinity/_plots/.
+Run all (or selected) plotting scripts in scratch/.
 
 Dispatches a folder path and shared flags to each registered paper_* script.
 Scripts can be included or excluded via --only / --skip flags.
@@ -53,31 +53,31 @@ if _PROJECT_ROOT not in sys.path:
 #   default_on=False → only included with --all or --only
 
 SCRIPTS = [
-    ("paper_feedback",               "trinity/_plots/paper_feedback.py",               True),
-    ("paper_momentum",               "trinity/_plots/paper_momentum.py",               True),
-    ("paper_accelerationDecomposition", "trinity/_plots/paper_accelerationDecomposition.py", False),
-    ("paper_AllowedGMC",             "trinity/_plots/paper_AllowedGMC.py",              False),
-    ("paper_BEprofile",              "trinity/_plots/paper_BEprofile.py",               False),
-    ("paper_bestFitOrion",           "trinity/_plots/paper_bestFitOrion.py",            False),
-    ("paper_betadelta",              "trinity/_plots/paper_betadelta.py",               False),
-    ("paper_bubblePhase",            "trinity/_plots/paper_bubblePhase.py",             False),
-    ("paper_cancellationMetric",     "trinity/_plots/paper_cancellationMetric.py",      False),
-    ("paper_dominantFeedback",       "trinity/_plots/paper_dominantFeedback.py",        False),
-    ("paper_escapeFraction",         "trinity/_plots/paper_escapeFraction.py",          True),
-    ("paper_expansionVelocity",      "trinity/_plots/paper_expansionVelocity.py",       False),
-    ("paper_forceFraction",          "trinity/_plots/paper_forceFraction.py",           False),
-    ("paper_InitialCloudRadius",     "trinity/_plots/paper_InitialCloudRadius.py",      False),
-    ("paper_LbolLWind",              "trinity/_plots/paper_LbolLWind.py",               False),
-    ("paper_ODIN",                   "trinity/_plots/paper_ODIN.py",                    False),
-    ("paper_Rosette",                "trinity/_plots/paper_Rosette.py",                 False),
-    ("paper_PISM",                   "trinity/_plots/paper_PISM.py",                    False),
-    ("paper_PPVtest",                "trinity/_plots/paper_PPVtest.py",                 False),
-    ("paper_PHII_Pb_Pram",           "trinity/_plots/paper_PHII_Pb_Pram.py",            True),
-    ("paper_pressureEvolution",      "trinity/_plots/paper_pressureEvolution.py",       False),
-    ("paper_R2_RIF",                 "trinity/_plots/paper_R2_RIF.py",                  True),
-    ("paper_radiusEvolution",        "trinity/_plots/paper_radiusEvolution.py",         True),
-    ("paper_pressureZeta",           "trinity/_plots/paper_pressureZeta.py",            False),
-    ("paper_v2R2",                   "trinity/_plots/paper_v2R2.py",                    False),
+    ("paper_feedback",               "paper/figures/paper_feedback.py",               True),
+    ("paper_momentum",               "scratch/paper_momentum.py",               True),
+    ("paper_accelerationDecomposition", "scratch/paper_accelerationDecomposition.py", False),
+    ("paper_AllowedGMC",             "scratch/paper_AllowedGMC.py",              False),
+    ("paper_BEprofile",              "scratch/paper_BEprofile.py",               False),
+    ("paper_bestFitOrion",           "scratch/paper_bestFitOrion.py",            False),
+    ("paper_betadelta",              "scratch/paper_betadelta.py",               False),
+    ("paper_bubblePhase",            "scratch/paper_bubblePhase.py",             False),
+    ("paper_cancellationMetric",     "scratch/paper_cancellationMetric.py",      False),
+    ("paper_dominantFeedback",       "scratch/paper_dominantFeedback.py",        False),
+    ("paper_escapeFraction",         "scratch/paper_escapeFraction.py",          True),
+    ("paper_expansionVelocity",      "scratch/paper_expansionVelocity.py",       False),
+    ("paper_forceFraction",          "scratch/paper_forceFraction.py",           False),
+    ("paper_InitialCloudRadius",     "scratch/paper_InitialCloudRadius.py",      False),
+    ("paper_LbolLWind",              "scratch/paper_LbolLWind.py",               False),
+    ("paper_ODIN",                   "scratch/paper_ODIN.py",                    False),
+    ("paper_Rosette",                "scratch/paper_Rosette.py",                 False),
+    ("paper_PISM",                   "scratch/paper_PISM.py",                    False),
+    ("paper_PPVtest",                "scratch/paper_PPVtest.py",                 False),
+    ("paper_PHII_Pb_Pram",           "scratch/paper_PHII_Pb_Pram.py",            True),
+    ("paper_pressureEvolution",      "scratch/paper_pressureEvolution.py",       False),
+    ("paper_R2_RIF",                 "scratch/paper_R2_RIF.py",                  True),
+    ("paper_radiusEvolution",        "scratch/paper_radiusEvolution.py",         True),
+    ("paper_pressureZeta",           "scratch/paper_pressureZeta.py",            False),
+    ("paper_v2R2",                   "scratch/paper_v2R2.py",                    False),
 ]
 
 # Shared flags forwarded to sub-scripts.
@@ -206,7 +206,7 @@ def run_scripts(
 def build_parser() -> argparse.ArgumentParser:
     default_names = ", ".join(_default_names())
     parser = argparse.ArgumentParser(
-        description="Run all (or selected) plotting scripts in trinity/_plots/",
+        description="Run all (or selected) plotting scripts in scratch/",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=textwrap.dedent(f"""\
         Default scripts: {default_names}
@@ -256,7 +256,7 @@ def build_parser() -> argparse.ArgumentParser:
                         help="Filter by cloud mass (one or more values).")
     shared.add_argument("--sfe", nargs="+", default=None,
                         help="Filter by SFE (one or more values).")
-    from trinity._plots.force_colors import get_palette_names
+    from paper.figures._lib.force_colors import get_palette_names
     shared.add_argument("--palette", choices=get_palette_names(),
                         default=None,
                         help="Colour palette for force plots (default: vibrance).")

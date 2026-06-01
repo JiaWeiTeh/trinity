@@ -27,10 +27,10 @@ mplstyle, which is overkill for a diagnostic plot).
 
 Usage
 -----
-    python -m trinity._plots.diag_simplify
-    python -m trinity._plots.diag_simplify --run path/to/mockOutput/<run-name>
-    python -m trinity._plots.diag_simplify --npoints 200
-    python -m trinity._plots.diag_simplify --output custom.png --no-show
+    python -m scratch.diag_simplify
+    python -m scratch.diag_simplify --run path/to/mockOutput/<run-name>
+    python -m scratch.diag_simplify --npoints 200
+    python -m scratch.diag_simplify --output custom.png --no-show
 
 The default mock-run path is
 ``outputs/mockOutput/1e6_sfe001_n1e3_PL0_yesPHII``; without ``--output``
@@ -63,7 +63,7 @@ from trinity._functions.simplify import _simplify, _simplify_error
 
 # Canonical output directory for diagnostic plots
 # (``<project_root>/fig/diag/``).  Mirrors ``FIG_DIR`` from
-# ``trinity._plots.plot_base`` but with a ``diag/`` sub-folder.
+# ``paper.figures._lib.plot_base`` but with a ``diag/`` sub-folder.
 FIG_DIR = _PROJECT_ROOT / "fig"
 DIAG_DIR = FIG_DIR / "diag"
 DIAG_DIR.mkdir(parents=True, exist_ok=True)

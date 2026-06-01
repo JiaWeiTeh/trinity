@@ -49,7 +49,7 @@ from pathlib import Path
 import sys as _sys
 from pathlib import Path as _Path
 _sys.path.insert(0, str(_Path(__file__).parent.parent))
-from trinity._plots.plot_base import FIG_DIR
+from paper.figures._lib.plot_base import FIG_DIR
 SAVE_PDF = True
 
 # ---------------- Parameters ----------------

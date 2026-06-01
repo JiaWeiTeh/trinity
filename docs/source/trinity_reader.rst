@@ -22,7 +22,7 @@ dictionary keyed by parameter name. A companion utility,
 ``find_all_simulations``, walks a directory tree of sweep output
 and returns the paths of every ``dictionary.jsonl`` it finds; this
 is convenient for building grid plots across a parameter sweep.
-The plotting and analysis scripts under ``trinity/_plots/`` and
+The plotting and analysis scripts under ``paper/figures/`` / ``scratch/`` and
 ``trinity/_calc/`` consume their input exclusively through these
 classes.
 

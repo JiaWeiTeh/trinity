@@ -58,7 +58,7 @@ from matplotlib.lines import Line2D
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from trinity._plots.plot_base import FIG_DIR
+from paper.figures._lib.plot_base import FIG_DIR
 from scratch.pedrini_emergence_timescales import (
     collect_all,
     WONG,

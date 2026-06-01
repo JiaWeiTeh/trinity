@@ -36,7 +36,7 @@ _PROJECT_ROOT = _THIS_DIR.parent
 if str(_PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(_PROJECT_ROOT))
 
-from trinity._plots.plot_base import FIG_DIR, PROJECT_ROOT  # noqa: E402
+from paper.figures._lib.plot_base import FIG_DIR, PROJECT_ROOT  # noqa: E402
 from trinity._functions.read_mist_models import EEP, ISO  # noqa: E402
 
 # ---------------------------------------------------------------------------

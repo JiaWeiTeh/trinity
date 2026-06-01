@@ -24,15 +24,15 @@ from pathlib import Path
 import sys as _sys
 _sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from trinity._plots.plot_base import FIG_DIR, smooth_1d
+from paper.figures._lib.plot_base import FIG_DIR, smooth_1d
 from trinity._output.trinity_reader import (
     load_output,
     find_all_simulations,
     organize_simulations_for_grid,
     get_unique_ndens,
 )
-from trinity._plots.plot_markers import add_plot_markers, get_marker_legend_handles
-from trinity._plots.grid_template import (
+from paper.figures._lib.plot_markers import add_plot_markers, get_marker_legend_handles
+from paper.figures._lib.grid_template import (
     _mcloud_label,
     build_param_tag,
     mark_missing_cell,
@@ -655,7 +655,7 @@ WARPFIELD-like). Runs are paired automatically by their base name.
     args = parser.parse_args()
 
     # Apply marker flags to module globals
-    from trinity._plots.cli import get_marker_flags
+    from paper.figures._lib.cli import get_marker_flags
     _marker_flags = get_marker_flags(args)
     globals()['SHOW_PHASE'] = _marker_flags['show_phase']
     globals()['SHOW_RCLOUD'] = _marker_flags['show_rcloud']

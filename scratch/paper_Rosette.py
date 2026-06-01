@@ -34,7 +34,7 @@ import matplotlib.colors as mcolors
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from trinity._plots.plot_base import FIG_DIR      # noqa: E402
+from paper.figures._lib.plot_base import FIG_DIR      # noqa: E402
 from scratch.paper_ODIN import (          # noqa: E402
     ObservationalConstraints,
     AnalysisConfig,
@@ -43,7 +43,7 @@ from scratch.paper_ODIN import (          # noqa: E402
     load_sweep_results,
     FONTSIZE,
 )
-from trinity._plots.plot_markers import (        # noqa: E402
+from paper.figures._lib.plot_markers import (        # noqa: E402
     add_plot_markers, get_marker_legend_handles,
 )
 from trinity._output.trinity_reader import info_simulations, load_output  # noqa: E402

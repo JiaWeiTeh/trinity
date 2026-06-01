@@ -75,6 +75,8 @@ include = ["trinity*"]
 exclude = [
     "test*",
     "docs*",
+    "paper*",
+    "scratch*",
 ]
 
 [tool.setuptools.package-data]

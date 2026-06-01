@@ -28,11 +28,11 @@ from matplotlib.lines import Line2D
 import sys as _sys
 from pathlib import Path as _Path
 _sys.path.insert(0, str(_Path(__file__).parent.parent))
-from trinity._plots.plot_base import FIG_DIR
+from paper.figures._lib.plot_base import FIG_DIR
 from trinity._output.trinity_reader import (
     load_output, find_all_simulations, TrinityOutput,
 )
-from trinity._plots.grid_template import filter_sim_files_by_phii
+from paper.figures._lib.grid_template import filter_sim_files_by_phii
 from trinity._functions.unit_conversions import CONV, INV_CONV, CGS
 from trinity.cloud_properties.bonnorEbertSphere import solve_lane_emden
 

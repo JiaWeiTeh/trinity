@@ -48,12 +48,12 @@ import shutil
 import sys as _sys
 from pathlib import Path as _Path
 _sys.path.insert(0, str(_Path(__file__).parent.parent))
-from trinity._plots.plot_base import FIG_DIR
+from paper.figures._lib.plot_base import FIG_DIR
 from trinity._output.trinity_reader import (
     load_output, find_all_simulations, organize_simulations_for_grid, get_unique_ndens,
     info_simulations
 )
-from trinity._plots.grid_template import filter_sim_files_by_phii, phii_file_prefix
+from paper.figures._lib.grid_template import filter_sim_files_by_phii, phii_file_prefix
 
 
 # =============================================================================
@@ -61,7 +61,7 @@ from trinity._plots.grid_template import filter_sim_files_by_phii, phii_file_pre
 # =============================================================================
 
 # Colors — centralised ChromaPalette (switch via set_palette or $TRINITY_PALETTE)
-from trinity._plots.force_colors import FORCE_FIELDS_GRID as FORCE_FIELDS  # noqa: E402
+from paper.figures._lib.force_colors import FORCE_FIELDS_GRID as FORCE_FIELDS  # noqa: E402
 
 # Special values for missing data (must be negative to distinguish from force indices)
 FILE_NOT_FOUND = -1      # Gray: simulation file not found
@@ -1120,7 +1120,7 @@ others that have ended persist their final dominant feedback.
         '--t-end', type=float, default=5.0,
         help='End time for movie in Myr (default: 5.0)'
     )
-    from trinity._plots.force_colors import get_palette_names, set_palette
+    from paper.figures._lib.force_colors import get_palette_names, set_palette
     parser.add_argument(
         '--palette', choices=get_palette_names(), default=None,
         help='Colour palette for force plots (default: vibrance).'

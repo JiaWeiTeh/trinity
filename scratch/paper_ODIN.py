@@ -25,15 +25,15 @@ from scipy.signal import savgol_filter
 import sys as _sys
 from pathlib import Path as _Path
 _sys.path.insert(0, str(_Path(__file__).parent.parent))
-from trinity._plots.plot_base import FIG_DIR
-from trinity._plots.grid_template import filter_sim_files_by_phii
+from paper.figures._lib.plot_base import FIG_DIR
+from paper.figures._lib.grid_template import filter_sim_files_by_phii
 from trinity._output.trinity_reader import (
     load_output, find_all_simulations,
     parse_simulation_params, info_simulations
 )
 from trinity._functions.unit_conversions import INV_CONV
 
-from trinity._plots.plot_markers import (          # noqa: E402
+from paper.figures._lib.plot_markers import (          # noqa: E402
     add_plot_markers, get_marker_legend_handles,
 )
 

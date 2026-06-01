@@ -28,10 +28,10 @@ from matplotlib.patches import Patch
 import sys as _sys
 from pathlib import Path as _Path
 _sys.path.insert(0, str(_Path(__file__).parent.parent))
-from trinity._plots.plot_base import smooth_1d, smooth_2d
+from paper.figures._lib.plot_base import smooth_1d, smooth_2d
 from trinity._output.trinity_reader import load_output
-from trinity._plots.plot_markers import add_plot_markers, get_marker_legend_handles
-from trinity._plots.grid_template import plot_single, plot_grid as _plot_grid, _mcloud_label_short
+from paper.figures._lib.plot_markers import add_plot_markers, get_marker_legend_handles
+from paper.figures._lib.grid_template import plot_single, plot_grid as _plot_grid, _mcloud_label_short
 
 print("...plotting force fractions (F_thermal, F_rad, F_grav)")
 
@@ -43,7 +43,7 @@ SHOW_COLLAPSE = False
 USE_LOG_X = False  # Use log scale for x-axis (time)
 
 # Colors — centralised ChromaPalette (switch via set_palette or $TRINITY_PALETTE)
-from trinity._plots.force_colors import (          # noqa: E402
+from paper.figures._lib.force_colors import (          # noqa: E402
     C,
     FORCE_FIELDS_FRACTION as FORCE_FIELDS,
 )
@@ -278,7 +278,7 @@ plot_folder_grid = plot_grid
 
 
 if __name__ == "__main__":
-    from trinity._plots.cli import dispatch, marker_pre_dispatch
+    from paper.figures._lib.cli import dispatch, marker_pre_dispatch
     dispatch(
         script_name="paper_forceFraction.py",
         description="Plot TRINITY force fractions",

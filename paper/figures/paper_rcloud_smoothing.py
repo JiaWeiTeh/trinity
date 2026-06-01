@@ -40,7 +40,7 @@ from pathlib import Path as _Path
 _sys.path.insert(0, str(_Path(__file__).parent.parent.parent))
 
 import trinity._functions.unit_conversions as cvt
-from trinity._plots.plot_base import FIG_DIR
+from paper.figures._lib.plot_base import FIG_DIR
 from trinity._output.trinity_reader import load_output, find_data_path
 from trinity._output.simulation_end import read_simulation_end
 from trinity.cloud_properties.powerLawSphere import (

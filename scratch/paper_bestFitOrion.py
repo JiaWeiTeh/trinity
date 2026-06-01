@@ -60,12 +60,12 @@ from matplotlib.lines import Line2D
 import sys as _sys
 from pathlib import Path as _Path
 _sys.path.insert(0, str(_Path(__file__).parent.parent))
-from trinity._plots.plot_base import FIG_DIR
+from paper.figures._lib.plot_base import FIG_DIR
 from trinity._output.trinity_reader import (
     load_output, find_all_simulations, organize_simulations_for_grid,
     get_unique_ndens, parse_simulation_params, resolve_data_input, info_simulations
 )
-from trinity._plots.grid_template import filter_sim_files_by_phii
+from paper.figures._lib.grid_template import filter_sim_files_by_phii
 from trinity._functions.unit_conversions import INV_CONV
 
 print("...analyzing best-fit models for Orion Nebula (M42)")

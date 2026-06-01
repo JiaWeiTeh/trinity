@@ -13,7 +13,7 @@ runs, or by setting the environment variable ``TRINITY_PALETTE``.
 
 Usage
 -----
->>> from trinity._plots.force_colors import C, FORCE_FIELDS_BASE, set_palette
+>>> from paper.figures._lib.force_colors import C, FORCE_FIELDS_BASE, set_palette
 >>> set_palette("eastern")      # switch palette at runtime
 >>> print(C.GRAV)               # access a colour constant
 """

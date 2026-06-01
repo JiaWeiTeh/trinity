@@ -13,10 +13,10 @@ from pathlib import Path
 import sys as _sys
 from pathlib import Path as _Path
 _sys.path.insert(0, str(_Path(__file__).parent.parent))
-from trinity._plots.plot_base import FIG_DIR, smooth_1d
+from paper.figures._lib.plot_base import FIG_DIR, smooth_1d
 from trinity._output.trinity_reader import load_output, resolve_data_input
-from trinity._plots.plot_markers import add_collapse_marker, get_marker_legend_handles
-from trinity._plots.grid_template import (
+from paper.figures._lib.plot_markers import add_collapse_marker, get_marker_legend_handles
+from paper.figures._lib.grid_template import (
     _mcloud_label,
     build_param_tag,
     iter_grid_densities,
@@ -24,7 +24,7 @@ from trinity._plots.grid_template import (
     save_grid_figure,
     phii_file_prefix,
 )
-from trinity._plots.cli import marker_pre_dispatch
+from paper.figures._lib.cli import marker_pre_dispatch
 
 print("...plotting escape fraction comparison")
 
@@ -232,7 +232,7 @@ plot_folder_grid = plot_grid
 
 
 if __name__ == "__main__":
-    from trinity._plots.cli import dispatch
+    from paper.figures._lib.cli import dispatch
     dispatch(
         script_name="paper_escapeFraction.py",
         description="Plot TRINITY escape fraction",

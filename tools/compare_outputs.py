@@ -12,7 +12,7 @@ produces three PDF grid plots — one per category:
 
 Usage
 -----
-  python -m trinity._plots.compare_outputs <folderA> <folderB> [options]
+  python -m tools.compare_outputs <folderA> <folderB> [options]
 
 Each <folder> may be:
   - a run folder containing ``dictionary.jsonl``
@@ -29,9 +29,9 @@ import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 
 import sys as _sys
-_sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+_sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from trinity._plots.plot_base import FIG_DIR  # noqa: E402  applies trinity.mplstyle
+from paper.figures._lib.plot_base import FIG_DIR  # noqa: E402  applies trinity.mplstyle
 from trinity._output.trinity_reader import (  # noqa: E402
     TrinityOutput, resolve_data_input,
 )
@@ -263,9 +263,9 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  python -m trinity._plots.compare_outputs outputs/runA outputs/runB
-  python -m trinity._plots.compare_outputs runA runB --labels baseline modified
-  python -m trinity._plots.compare_outputs A B --log-x --output-dir fig/compare
+  python -m tools.compare_outputs outputs/runA outputs/runB
+  python -m tools.compare_outputs runA runB --labels baseline modified
+  python -m tools.compare_outputs A B --log-x --output-dir fig/compare
         """,
     )
     parser.add_argument("folderA", help="First output folder / file / run name")

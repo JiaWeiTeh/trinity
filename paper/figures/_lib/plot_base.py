@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Shared boilerplate and utilities for ``trinity._plots`` paper scripts.
+Shared boilerplate and utilities for ``paper.figures`` paper scripts.
 
 Provides:
 - ``FIG_DIR``: canonical output directory (``<project_root>/fig/``)
@@ -20,7 +20,7 @@ import matplotlib.pyplot as plt
 # ------------------------------------------------------------------
 # Project root and sys.path
 # ------------------------------------------------------------------
-PROJECT_ROOT = Path(__file__).parent.parent.parent
+PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 

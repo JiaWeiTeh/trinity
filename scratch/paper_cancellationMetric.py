@@ -26,12 +26,12 @@ from matplotlib.patches import Patch
 import sys as _sys
 from pathlib import Path as _Path
 _sys.path.insert(0, str(_Path(__file__).parent.parent))
-from trinity._plots.plot_base import smooth_1d
+from paper.figures._lib.plot_base import smooth_1d
 
 # Add project root to path for imports
 from trinity._output.trinity_reader import load_output
-from trinity._plots.plot_markers import add_plot_markers, get_marker_legend_handles
-from trinity._plots.grid_template import plot_single, plot_grid as _plot_grid, _mcloud_label_short
+from paper.figures._lib.plot_markers import add_plot_markers, get_marker_legend_handles
+from paper.figures._lib.grid_template import plot_single, plot_grid as _plot_grid, _mcloud_label_short
 
 print("...plotting cancellation metric")
 
@@ -327,7 +327,7 @@ plot_folder_grid = plot_grid
 
 # ---------------- command-line interface ----------------
 if __name__ == "__main__":
-    from trinity._plots.cli import dispatch, marker_pre_dispatch
+    from paper.figures._lib.cli import dispatch, marker_pre_dispatch
     dispatch(
         script_name="paper_cancellationMetric.py",
         description="Plot TRINITY cancellation metric",

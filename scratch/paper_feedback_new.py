@@ -42,12 +42,12 @@ _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(_PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(_PROJECT_ROOT))
 
-from trinity._plots.plot_base import FIG_DIR, smooth_1d  # noqa: E402
+from paper.figures._lib.plot_base import FIG_DIR, smooth_1d  # noqa: E402
 from trinity._output.trinity_reader import load_output, resolve_data_input  # noqa: E402
-from trinity._plots.plot_markers import (  # noqa: E402
+from paper.figures._lib.plot_markers import (  # noqa: E402
     add_plot_markers, get_marker_legend_handles,
 )
-from trinity._plots.grid_template import (  # noqa: E402
+from paper.figures._lib.grid_template import (  # noqa: E402
     build_param_tag, iter_grid_densities, mark_missing_cell,
     attach_grid_legend, save_grid_figure, set_mcloud_ylabel, _sfe_title,
     phii_file_prefix,
@@ -461,7 +461,7 @@ plot_folder_grid = plot_grid
 
 
 if __name__ == "__main__":
-    from trinity._plots.cli import dispatch, marker_pre_dispatch
+    from paper.figures._lib.cli import dispatch, marker_pre_dispatch
     dispatch(
         script_name="paper_feedback_new.py",
         description="Plot TRINITY feedback force fractions (renewed)",

@@ -23,7 +23,7 @@ import matplotlib.colors as mcolors
 import sys as _sys
 from pathlib import Path as _Path
 _sys.path.insert(0, str(_Path(__file__).parent.parent))
-from trinity._plots.plot_base import FIG_DIR
+from paper.figures._lib.plot_base import FIG_DIR
 
 
 # All constants are given in cgs

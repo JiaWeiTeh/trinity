@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Shared CLI builder and dispatch logic for ``trinity._plots`` paper scripts.
+Shared CLI builder and dispatch logic for ``paper.figures`` paper scripts.
 
 Most paper_*.py scripts share the same argparse arguments and branching
 logic (info / grid / single / help).  This module provides a builder
@@ -9,7 +9,7 @@ appropriate mode.
 
 Usage in a paper script::
 
-    from trinity._plots.cli import build_parser, dispatch
+    from paper.figures._lib.cli import build_parser, dispatch
 
     if __name__ == "__main__":
         dispatch(
@@ -39,9 +39,9 @@ from typing import Callable, Optional
 
 import sys as _sys
 from pathlib import Path as _Path
-_sys.path.insert(0, str(_Path(__file__).parent.parent.parent))
+_sys.path.insert(0, str(_Path(__file__).parent.parent.parent.parent))
 from trinity._output.trinity_reader import info_simulations
-from trinity._plots.force_colors import set_palette, get_palette_names
+from paper.figures._lib.force_colors import set_palette, get_palette_names
 
 
 def build_parser(

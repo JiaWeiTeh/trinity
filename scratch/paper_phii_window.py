@@ -38,7 +38,7 @@ from matplotlib.lines import Line2D
 import sys as _sys
 _sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from trinity._plots.plot_base import FIG_DIR, smooth_1d
+from paper.figures._lib.plot_base import FIG_DIR, smooth_1d
 from trinity._output.trinity_reader import (
     load_output, find_all_simulations, organize_simulations_for_grid,
     get_unique_ndens,

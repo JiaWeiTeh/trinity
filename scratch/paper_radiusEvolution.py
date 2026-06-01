@@ -8,12 +8,12 @@ from matplotlib.lines import Line2D
 import sys as _sys
 from pathlib import Path as _Path
 _sys.path.insert(0, str(_Path(__file__).parent.parent))
-from trinity._plots.plot_base import FIG_DIR, smooth_1d
+from paper.figures._lib.plot_base import FIG_DIR, smooth_1d
 
 # Add project root to path for imports
 from trinity._output.trinity_reader import load_output, find_data_file, resolve_data_input, info_simulations
-from trinity._plots.plot_markers import add_plot_markers, get_marker_legend_handles
-from trinity._plots.grid_template import (
+from paper.figures._lib.plot_markers import add_plot_markers, get_marker_legend_handles
+from paper.figures._lib.grid_template import (
     build_param_tag,
     iter_grid_densities, mark_missing_cell, attach_grid_legend,
     save_grid_figure, set_mcloud_ylabel,
@@ -217,7 +217,7 @@ def plot_single_run(mCloud, sfe, ndens):
         return
 
     # Title with run parameters - properly handle non-power-of-10 masses
-    from trinity._plots.grid_template import _mcloud_label
+    from paper.figures._lib.grid_template import _mcloud_label
     nlog = int(np.log10(float(ndens)))
     eps = int(sfe) / 100.0
     ax.set_title(
@@ -477,7 +477,7 @@ Examples:
     args = parser.parse_args()
 
     # Apply marker flags to module globals
-    from trinity._plots.cli import get_marker_flags
+    from paper.figures._lib.cli import get_marker_flags
     _marker_flags = get_marker_flags(args)
     SHOW_PHASE = _marker_flags['show_phase']
     SHOW_RCLOUD = _marker_flags['show_rcloud']

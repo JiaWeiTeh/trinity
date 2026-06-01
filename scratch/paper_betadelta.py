@@ -14,9 +14,9 @@ from matplotlib.lines import Line2D
 import sys as _sys
 from pathlib import Path as _Path
 _sys.path.insert(0, str(_Path(__file__).parent.parent))
-from trinity._plots.plot_base import smooth_1d
+from paper.figures._lib.plot_base import smooth_1d
 from trinity._output.trinity_reader import load_output
-from trinity._plots.grid_template import plot_single, plot_grid as _plot_grid
+from paper.figures._lib.grid_template import plot_single, plot_grid as _plot_grid
 
 print("...plotting radius comparison")
 
@@ -206,7 +206,7 @@ plot_folder_grid = plot_grid
 
 
 if __name__ == "__main__":
-    from trinity._plots.cli import dispatch
+    from paper.figures._lib.cli import dispatch
     dispatch(
         script_name="paper_betadelta.py",
         description="Plot TRINITY cooling parameters (beta, delta)",

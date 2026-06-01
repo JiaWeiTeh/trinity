@@ -14,10 +14,10 @@ from matplotlib.lines import Line2D
 import sys as _sys
 from pathlib import Path as _Path
 _sys.path.insert(0, str(_Path(__file__).parent.parent))
-from trinity._plots.plot_base import FIG_DIR, smooth_1d, smooth_2d
+from paper.figures._lib.plot_base import FIG_DIR, smooth_1d, smooth_2d
 from trinity._output.trinity_reader import load_output, resolve_data_input
-from trinity._plots.plot_markers import add_plot_markers, get_marker_legend_handles
-from trinity._plots.grid_template import (
+from paper.figures._lib.plot_markers import add_plot_markers, get_marker_legend_handles
+from paper.figures._lib.grid_template import (
     build_param_tag,
     iter_grid_densities,
     mark_missing_cell,
@@ -42,7 +42,7 @@ DOMINANCE_ALPHA = 0.9
 DOMINANCE_STRIP = (0.94, 1)  # (ymin, ymax) in AXES fraction (0..1) - doubled thickness
 
 # Colors — centralised ChromaPalette (switch via set_palette or $TRINITY_PALETTE)
-from trinity._plots.force_colors import (          # noqa: E402
+from paper.figures._lib.force_colors import (          # noqa: E402
     FORCE_FIELDS_MOMENTUM as FORCE_FIELDS,
     DOMINANT_COLORS,
 )
@@ -470,7 +470,7 @@ plot_folder_grid = plot_grid
 
 
 if __name__ == "__main__":
-    from trinity._plots.cli import dispatch, marker_pre_dispatch
+    from paper.figures._lib.cli import dispatch, marker_pre_dispatch
     dispatch(
         script_name="paper_momentum.py",
         description="Plot TRINITY momentum",

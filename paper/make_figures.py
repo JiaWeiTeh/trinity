@@ -35,28 +35,28 @@ FIGURES = [
     dict(
         name="density",
         description="density profile ingredients + phase timeline",
-        module="trinity._plots.paper_densityProfile",
+        module="paper.figures.paper_densityProfile",
         bundle=DATA_DIR / "densityProfile.npz",
         args=lambda bundle: ["--from-npz", str(bundle)],
     ),
     dict(
         name="teaser",
         description="teaser: R_b/v_b, feedback decomposition, Q_i budget",
-        module="trinity._plots.paper_teaser",
+        module="paper.figures.paper_teaser",
         bundle=DATA_DIR / "diagnostics.npz",
         args=lambda bundle: ["--from-npz", str(bundle)],
     ),
     dict(
         name="radiusComparison",
         description="R(t) comparison: TRINITY vs WARPFIELD vs scaling laws",
-        module="trinity._plots.paper_radiusComparison",
+        module="paper.figures.paper_radiusComparison",
         bundle=DATA_DIR / "radiusComparison.npz",
         args=lambda bundle: ["--from-npz", str(bundle)],
     ),
     dict(
         name="rcloud_smoothing",
         description="rCloud smoothing + before/after LSODA trajectories",
-        module="trinity._plots.paper_rcloud_smoothing",
+        module="paper.figures.paper_rcloud_smoothing",
         bundle=DATA_DIR / "app_LSODA.npz",
         # paper_rcloud_smoothing takes the bundle as a positional argument
         # rather than via ``--from-npz``.
