@@ -12,9 +12,10 @@ End goal:
 1. Drop the vestigial `_modified` suffix from the 8 physics modules.
 2. Rename the importable package `src/` → `trinity/` so the install
    name (`trinity-sf`), the import name, and the brand agree.
-3. Separate the 23.6k-line plotting tree by **role/lifecycle**: the
-   engine (installed), paper-reproduction scripts (public deliverable),
-   and personal diagnostics (gitignored scratch).
+3. Separate the 23k-line plotting tree by **audience/lifecycle**: the
+   engine (installed), the `make_figures.py` reproduction closure (public
+   deliverable, 5 scripts + infra), and 31 personal scripts (tracked
+   `scratch/`, quarantined out of `trinity/` and `paper/`).
 
 All three are **behavior-preserving**. Nothing in this plan changes a
 single physics result; the verification battery is "the same 358 tests
@@ -174,6 +175,12 @@ Decision to confirm with the user before starting Phase B:
 
 ## Phase C — Separate the plotting tree by role  *(largest, do last, incrementally)*
 
+> **Restyled per the audience model — see Appendix D (authoritative).**
+> Public = the *closure of `paper/make_figures.py`* (5 scripts + 5 infra),
+> **not** all 34 `paper_*`. Everything else (31 scripts) is personal and
+> goes to a **tracked** `scratch/` (gitignored would not survive this
+> ephemeral container). The sketch below is updated to match.
+
 Target layout:
 
 ```
@@ -182,52 +189,33 @@ param/              # example .param inputs (public, user-facing)
 paper/              # the reproduction DELIVERABLE
   make_figures.py   #   (already present)
   data/             #   (already present)
-  figures/          #   <- paper_*/pedrini_* move here
+  figures/          #   <- the 5 closure scripts (paper_densityProfile,
+                    #      paper_teaser, paper_radiusComparison,
+                    #      paper_rcloud_smoothing, paper_feedback)
     _lib/           #   <- cli, plot_base, plot_markers, force_colors,
                     #      grid_template, trinity.mplstyle
-scratch/            # gitignored: personal diagnostics / exploratory plots
+scratch/            # TRACKED: the 31 personal paper_*/pedrini_*/diag scripts
+tools/              # compare_outputs.py (user-facing run-diff)
 ```
 
-### C.1 — Carve out personal/diagnostic scripts
-1. Create a gitignored `scratch/` (add to `.gitignore`).
-2. Move `diag_simplify.py`, `diagnostic_parameter_changes.py`, and any
-   other exploratory scripts there. Decide per-file with the test:
-   *"Would a stranger reproduce a paper figure with this?"* If no →
-   scratch.
-3. **Landmine**: `test_phase4_consumer_migration.py` imports
-   `pedrini_emergence_timescales` — that one is a *consumer-migration*
-   pin, keep it on the public side and update its import path in C.2.
+**The step-by-step is now in Appendix D (D.5), restyled around the
+`make_figures.py` closure and a tracked `scratch/`.** In brief:
 
-### C.2 — Move public paper scripts to `paper/figures/`
-1. `git mv src/_plots/{paper_*,pedrini_*}.py paper/figures/`.
-2. `git mv` the infra (`cli.py`, `plot_base.py`, `plot_markers.py`,
-   `force_colors.py`, `grid_template.py`, `radial_profile.py`,
-   `compare_outputs.py`, `run_all.py`, `trinity.mplstyle`) →
-   `paper/figures/_lib/`.
-3. Rewrite imports: `from src._plots.X` → `from figures._lib.X` (or
-   whatever package shape `paper/figures` takes), and engine references
-   → the installed `from trinity._output.trinity_reader import ...`.
-4. Resolve `plot_style.py`: confirm whether it is dead. If only figures
-   use the mplstyle, move `plot_style.py` + `trinity.mplstyle` into
-   `paper/figures/_lib/` and drop the engine's `_plots` asset reference.
-   If genuinely dead, delete it (separate commit, called out).
-5. Update `test_phase4_consumer_migration.py`'s import path (or relocate
-   the test alongside the figures).
-6. Update `docs/source/visualization.rst` (and any `_plots` mentions).
-7. `pyproject.toml`: ensure `paper*` is excluded from the wheel (figures
-   are not installed code), matching the existing `test*`/`docs*`
-   excludes.
+- **C.1** — carve a *tracked* `scratch/`; move the 31 personal scripts
+  (29 `paper_*` + 2 `pedrini_*` + `diag_simplify`) there. Safe stop-point.
+- **C.2** — move the 5 closure scripts → `paper/figures/`, the 5 infra +
+  `trinity.mplstyle` → `paper/figures/_lib/`.
+- **C.3** — rewrite imports + `__file__`-depth shims (D.4); repoint
+  `make_figures.py`'s `python -m` targets; best-effort-rewrite the personal
+  scripts.
+- **C.4** — drop `TestPedriniEmergenceMigration`; `compare_outputs.py` →
+  `tools/`; delete dead `radial_profile.py` + `plot_style.py`; remove the
+  emptied `trinity/_plots/`.
+- **C.5** — `pyproject.toml` wheel-excludes + docs.
 
-### C.3 — Verify (plots are untested)
-- Full battery (the migrated consumer test must pass).
-- **Manual**: run `paper/figures/_lib/run_all.py` (default curated set:
-  `paper_feedback`, `paper_momentum`, `paper_escapeFraction`) against a
-  sample output dir and eyeball the figures render. There is no automated
-  net for the other 31 scripts — note that explicitly.
-
-Risk: **medium**. Untested surface, many import rewrites. Splitting C.1
-from C.2 keeps each commit reviewable and lets you stop after C.1 if the
-full move feels too big.
+Risk: **medium**. Untested surface, real import/depth rewrites, plus a
+best-effort rewrite of 31 personal scripts. C.1 alone is a safe partial
+landing.
 
 ---
 
@@ -270,23 +258,25 @@ trinity-repo/
 ├── tools/                 # maintained utilities: gen_default_param.py, compare_outputs.py
 ├── paper/                 # reproducibility bundle (public)
 │   ├── data/
-│   ├── figures/           # paper_*/pedrini_* move here
+│   ├── figures/           # the 5 make_figures.py closure scripts only
 │   │   └── _lib/          # plot_base, plot_markers, cli, force_colors,
 │   │                      #   grid_template, trinity.mplstyle
 │   └── make_figures.py
 ├── lib/default/           # bundled tables, top-level by design (keeps trinity/ pure code)
 ├── param/                 # canonical parameter-file library
 ├── examples/              # runnable getting-started scripts (reference param/)
-├── scratch/               # gitignored personal/diagnostic (NOT "notebooks/")
+├── scratch/               # TRACKED personal scripts (31 paper_*/pedrini_*/diag)
 ├── analysis/  docs/  tests/
 ├── pyproject.toml  README.md     # run.py -> console entry point
 ```
 
 ## III.1 What stays in the engine vs. moves out (the audience test)
 
-Criterion: *"would any user run this on their own run output?"* — not
-"is it reused across paper scripts." By that test, the `_plots`
-infrastructure is paper-only and leaves the engine:
+Two criteria, applied separately (see Appendix D.0):
+- **Scripts** split by the **`make_figures.py` closure**: in it → public
+  `paper/figures/`; not in it → personal `scratch/` (31 files).
+- **Infra** below moves to the public `_lib/` because the closure scripts
+  import it. The engine keeps none of it:
 
 | File | Destination | Rationale |
 |------|-------------|-----------|
@@ -297,22 +287,22 @@ infrastructure is paper-only and leaves the engine:
 | `trinity.mplstyle` | `paper/figures/_lib/` | only paper infra loads it |
 | `compare_outputs.py` | `tools/` (or `trinity/viz`) | genuinely user-facing: compares two runs via the public `dictionary.jsonl`; run via `python -m` |
 
-Outcome: `src/_plots/` ends up empty (or holding only `compare_outputs`)
-— delete the folder rather than leave it named after the thing removed.
-The engine's visualization surface should be defined by the public output
-object (`TrinityOutput`), never by figure scripts.
+Outcome: `trinity/_plots/` ends up empty — delete the folder rather than
+leave it named after the thing removed. The engine's visualization surface
+should be defined by the public output object (`TrinityOutput`), never by
+figure scripts.
 
 ## III.2 Directory conventions
 
 - **`param/` vs `examples/`**: `param/` is the canonical parameter-file
   library; `examples/` holds narrative getting-started scripts that
   *reference* `param/` files (no duplicated `.param` content).
-- **`scratch/` not `notebooks/`**: in nearly every project `notebooks/`
-  is a *committed* tutorial asset. Use `scratch/` (gitignored) for
-  personal/ephemeral work; reserve `notebooks/` for committed tutorials
-  if ever wanted. Move `diag_simplify.py` /
-  `diagnostic_parameter_changes.py` to `tools/` (if maintained) or
-  `scratch/` (if personal).
+- **`scratch/` not `notebooks/`**: reserve `notebooks/` for committed
+  tutorials if ever wanted. **In this effort `scratch/` is TRACKED**
+  (Appendix D.3): the personal scripts are real work that must survive an
+  ephemeral container, so they are version-controlled but quarantined out
+  of `trinity/` and `paper/`. (A truly gitignored sandbox is a later option
+  on a persistent checkout.) `diag_simplify.py` → `scratch/`.
 - **`tests/` not `test/`**: plural is the prevailing pytest convention;
   trivial, only worth folding into the rename pass.
 
@@ -345,18 +335,23 @@ Add a CI guard so the structure does not drift back: a test (or an
 `paper`, `examples`, or `scratch`. Without enforcement the separation
 erodes within a few months.
 
-# Open decisions for the user
+# Decisions (resolved)
 
-- **Phase B layout**: ~~minimal `trinity/` at root (recommended) vs.
-  `src/trinity/` src-layout proper?~~ **DECIDED: root-level `trinity/`.**
-- **Phase C package shape**: should `paper/figures/` be an importable
-  package (with `__init__.py`, so `run_all.py` can do
-  `from figures._lib import ...`), or a flat script dir run with
-  `python paper/figures/paper_feedback.py` and `sys.path` shims? The
-  former is cleaner; the latter is closer to the current per-script
-  `__main__` style.
-- **`plot_style.py`**: confirm dead vs. live before relocating the
-  mplstyle.
+- **Phase B layout**: ~~minimal `trinity/` at root vs. `src/trinity/`?~~
+  **root-level `trinity/`.** *(Executed.)*
+- **Phase C public surface**: ~~all `paper_*` vs. a subset?~~ **the
+  `make_figures.py` closure only** (5 scripts + 5 infra); the other 31
+  scripts are personal. *(Appendix D.0.)*
+- **Phase C package shape**: ~~importable vs. flat?~~ **importable
+  `paper/figures/` package** (`__init__.py` in `figures/` + `_lib/`).
+- **`scratch/`**: ~~gitignored?~~ **TRACKED** — ephemeral container would
+  lose a gitignored sandbox. *(Appendix D.3.)*
+- **pedrini test coupling**: **drop `TestPedriniEmergenceMigration`**
+  (it pins a 2-line wrapper over the engine-tested `read_simulation_end()`).
+- **Personal-script imports**: **rewrite best-effort** so they still run
+  from `scratch/` (no test harness covers them).
+- **`plot_style.py` / `radial_profile.py`**: both **dead (0 importers) →
+  delete** (re-confirm at execution).
 
 ---
 
@@ -705,108 +700,139 @@ Then `git mv src trinity`.
 
 # Appendix D — Phase C execution detail (separate the plotting tree)
 
-> **STATUS: PLANNED.** Measured against the post-Phase-B tree on
-> `feature/reforming-structure`. This is the one structural phase with an
-> *untested* surface, so it is split into independently-revertable
-> sub-commits and verified partly by hand.
+> **STATUS: PLANNED — restyled per the audience model below.** Measured
+> against the post-Phase-B tree on `feature/reforming-structure`. The
+> earlier draft of this appendix treated *all* 34 `paper_*` as the public
+> deliverable; that was wrong. The user's rule is **"only what
+> `paper/make_figures.py` reproduces is the paper; every other `paper_*`
+> script is personal."** The plan below follows that rule literally, via
+> the measured dependency closure.
+
+## D.0 The audience model (supersedes the I.3 "all plots are the deliverable")
+
+`paper/make_figures.py` is a thin driver that invokes plot scripts by
+`python -m`. The **public set is its transitive closure**, nothing more;
+**everything else is personal**. Measured (not assumed):
+
+- `make_figures.py` drives **4** scripts (the ones with published bundles
+  in `paper/data/`): `paper_densityProfile`, `paper_teaser`,
+  `paper_radiusComparison`, `paper_rcloud_smoothing`.
+- `paper_teaser` additionally imports **`paper_feedback`** → it joins the
+  public set by transitivity. (Closure verified: those 5 scripts import no
+  other `paper_*`/`pedrini_*`.)
+- The infra those 5 actually import: **`cli`, `plot_base`, `plot_markers`,
+  `force_colors`, `grid_template`** (+ `trinity.mplstyle`). Self-contained
+  (none of them imports a personal script).
+
+Everything not in that closure — **31 scripts** (29 other `paper_*`, both
+`pedrini_*`, plus `diag_simplify`) — is **personal**.
 
 ## D.1 Measured blast radius (current tree)
 
 - `trinity/_plots/` = **46 `.py` files, 23,229 lines** (~42% of repo
-  Python). Composition: **34 `paper_*`**, **2 `pedrini_*`**, **1 diag**
-  (`diag_simplify.py`), infra (`cli.py`, `plot_base.py`, `plot_markers.py`,
-  `force_colors.py`, `grid_template.py`, `radial_profile.py`,
-  `run_all.py`), the genuinely-user-facing `compare_outputs.py`, plus
-  `trinity.mplstyle` and `__init__.py`.
-  *(Note: `diagnostic_parameter_changes.py` from the I.3 audit no longer
-  exists — only `diag_simplify.py` remains in the diag bucket.)*
+  Python). Split by the closure above:
+  - **Public (10 tracked files)**: 5 scripts + 5 infra + `trinity.mplstyle`.
+  - **Personal (31 scripts)**: → `scratch/`.
+  - **Dead (delete, 0 importers)**: `radial_profile.py` (grep-confirmed
+    unused), and `trinity/_functions/plot_style.py` (the only engine→plots
+    link — see D.2).
+  - **Relocate**: `compare_outputs.py` → `tools/` (user-facing run-diff,
+    not a figure).
+  *(`diagnostic_parameter_changes.py` from the I.3 audit no longer exists.)*
 
-## D.2 Dependency graph — re-confirmed one-way (post-rename)
+## D.2 Dependency graph — one-way, single dead link
 
-- **The only engine→plots link is dead code.**
+- **The only engine→plots reference is dead code.**
   `trinity/_functions/plot_style.py:30` builds
-  `os.path.join(__file__, '..', '_plots', 'trinity.mplstyle')` — and
-  `plot_style.py` is **imported by nobody** (grep finds only its own
-  definition). So the single asset coupling rides on a dead module.
-  → **Decision: confirm-dead then delete `plot_style.py`** in its own
-  called-out commit; the live styling path is `plot_base.py` (which the
-  paper infra imports), and `trinity.mplstyle` travels with it to
-  `paper/figures/_lib/`.
+  `…/'_plots'/'trinity.mplstyle'`, and `plot_style.py` is imported by
+  nobody. So the engine's lone plot coupling rides on a dead module →
+  **delete `plot_style.py`** (re-confirm zero importers at execution).
+  Live styling is via `plot_base.py`, which travels to the public `_lib/`
+  with `trinity.mplstyle`.
 - **Exactly one test imports a plot**:
-  `test/test_phase4_consumer_migration.py` (4 sites, all
-  `from trinity._plots.pedrini_emergence_timescales import parse_raw_reason`).
-  `pedrini_emergence_timescales` therefore stays on the public side and
-  this test's import path is rewritten in C.2.
-- No other `trinity/**` file references `_plots` / `mplstyle`. The engine
-  is clean to amputate from.
+  `test/test_phase4_consumer_migration.py::TestPedriniEmergenceMigration`
+  (4 sites, `from trinity._plots.pedrini_emergence_timescales import
+  parse_raw_reason`). But `pedrini_emergence_timescales` is **personal**
+  (→ scratch), and `parse_raw_reason` is a 2-line wrapper over the engine's
+  already-tested `read_simulation_end()`. **DECIDED: drop that test class**
+  (its `_build_*` fixtures too if unused elsewhere) — a tracked test must
+  not depend on a personal script, and the underlying engine path keeps its
+  own coverage.
+- No other `trinity/**` file references `_plots` / `mplstyle`.
 
-## D.3 The two `__file__`-depth landmines (must rewrite, not just `git mv`)
+## D.3 Resolved decisions
 
-Phase B was safe *because* it preserved directory depth; Phase C does
-**not** — files move to a different depth, so every repo-root shim in the
-moved files must be re-counted:
+- **`scratch/` is TRACKED, not gitignored.** Rationale: this work happens
+  in an *ephemeral* container; a gitignored `scratch/` would not be pushed
+  and the 31 scripts (~20k lines) would be lost on teardown, surviving only
+  in git history. Tracking `scratch/` keeps them version-controlled and out
+  of both `trinity/` and `paper/`. (Revisit later on a persistent
+  checkout if a truly-ignored sandbox is wanted.)
+- **Personal scripts get their imports rewritten so they still run** from
+  `scratch/` — best-effort (no test harness covers them): `from
+  trinity._plots.<infra>` → the new public `_lib` path, and intra-personal
+  `from trinity._plots.<paper_x>` → the sibling `scratch/` path.
+- **Package shape**: `paper/figures/` is an **importable package**
+  (`__init__.py` in `figures/` and `figures/_lib/`), so `make_figures.py`'s
+  `python -m` targets and the infra imports are clean (no `sys.path` hacks).
+- **`compare_outputs.py` → `tools/`**; **`diag_simplify.py` → `scratch/`**.
+- **`test/` → `tests/`** stays out of scope (fold in separately).
 
-1. **`plot_base.py`** computes repo-root via `parent.parent.parent`
-   (`trinity/_plots/plot_base.py` → 3 parents = repo root) and hardcodes a
-   `fig/` sibling. At `paper/figures/_lib/plot_base.py` the root is **4**
-   parents up — the shim must change (`parents[2]`→`parents[3]`) or the
-   `fig/` output path silently lands in the wrong place. Same audit for
-   `cli.py` and any `paper_*` `__main__` `sys.path` shim.
+## D.4 The `__file__`-depth landmines (must rewrite, not just `git mv`)
+
+Phase B was safe because it preserved directory depth; Phase C is **not** —
+files change depth, so every repo-root shim in a moved file is re-counted:
+
+1. **`plot_base.py`** finds repo-root via `parent.parent.parent`
+   (`trinity/_plots/plot_base.py` → 3 up) and hardcodes a `fig/` sibling.
+   At `paper/figures/_lib/plot_base.py` the root is **4** up — the shim
+   must change or `fig/` output lands in the wrong place. Same audit for
+   `cli.py` and each public script's `__main__` shim.
 2. **`run_all.py`** holds a hardcoded path table of
-   `"trinity/_plots/paper_X.py"` strings (34 rows, rewritten from
-   `src/_plots/…` in Phase B). Every row must be repointed to
-   `paper/figures/paper_X.py`, and `run_all.py`'s own root-depth shim
-   re-counted.
-
-## D.4 Open decisions (recommended answers)
-
-- **Package shape** → **importable `paper/figures/` package** (add
-  `__init__.py` + `paper/figures/_lib/__init__.py`), so `run_all.py` and
-  the consumer test use clean `from figures._lib.cli import …` instead of
-  per-script `sys.path` hacks. (The flat-script alternative keeps the
-  current `__main__` style but multiplies the depth-shim landmines.)
-- **`compare_outputs.py`** → **`tools/`** (or `trinity/viz/`): it is
-  genuinely user-facing (diffs two runs via the public `dictionary.jsonl`,
-  run as `python -m`), not a paper figure. Keep it out of `paper/figures/`.
-- **`diag_simplify.py`** → **`scratch/`** (gitignored) unless it is a
-  maintained diagnostic, in which case `tools/`. Decide with the audience
-  test ("would a stranger reproduce a paper figure with this?" → no).
-- **`test/` → `tests/`** stays out of scope (trivial, fold in separately).
+   `"trinity/_plots/paper_X.py"` strings. Since most targets are now
+   personal, `run_all.py` either moves to `scratch/` with the bulk of the
+   scripts **or** is pared to the public set — decide at execution; do not
+   leave it pointing at moved files.
 
 ## D.5 Execution order (incremental, each its own revertable commit)
 
-1. **C.1** — create gitignored `scratch/`; `git mv diag_simplify.py` there.
-   Stop-point: safe to halt here if the full move is too big.
-2. **C.2a** — `git mv` the 34 `paper_*` + 2 `pedrini_*` → `paper/figures/`;
-   `git mv` infra (`cli`, `plot_base`, `plot_markers`, `force_colors`,
-   `grid_template`, `radial_profile`, `run_all`, `trinity.mplstyle`) →
-   `paper/figures/_lib/`; add the two `__init__.py`.
-3. **C.2b** — rewrite imports: `from trinity._plots.X` → `from figures._lib.X`
-   (infra) and leave engine refs as the *installed*
-   `from trinity._output… import …`. Fix the D.3 depth shims. Repoint
-   `run_all.py`'s path table. Update
-   `test/test_phase4_consumer_migration.py`'s import path.
-4. **C.2c** — `git mv compare_outputs.py tools/`; confirm-dead and delete
-   `trinity/_functions/plot_style.py` (called-out commit).
-5. **C.3** — `pyproject.toml`: exclude `paper*` / `scratch*` from the wheel
-   (mirror the existing `test*`/`docs*` excludes); `_plots` is gone so drop
-   any leftover reference. Update `docs/source/visualization.rst` and any
-   `_plots` doc mentions.
+1. **C.1 — carve scratch (tracked)**: create `scratch/`; `git mv` the 31
+   personal scripts (29 `paper_*` + 2 `pedrini_*`) + `diag_simplify.py`
+   there. Safe stop-point.
+2. **C.2 — public surface**: `git mv` the 5 public scripts → `paper/figures/`
+   and the 5 infra + `trinity.mplstyle` → `paper/figures/_lib/`; add the
+   two `__init__.py`.
+3. **C.3 — rewrite imports + shims**: public scripts/infra
+   `from trinity._plots.X` → `from figures._lib.X`; engine refs stay the
+   installed `from trinity._output… import …`; fix the D.4 depth shims;
+   rewrite the 31 personal scripts' imports (D.3, best-effort);
+   `make_figures.py`'s `module="trinity._plots.paper_X"` →
+   `"figures.paper_X"`.
+4. **C.4 — deletes + relocate + test**: drop
+   `TestPedriniEmergenceMigration`; `git mv compare_outputs.py tools/`;
+   delete dead `radial_profile.py` and `trinity/_functions/plot_style.py`
+   (called-out). `trinity/_plots/` is now empty → remove it.
+5. **C.5 — packaging + docs**: `pyproject.toml` exclude `paper*` /
+   `scratch*` from the wheel (mirror `test*`/`docs*`); update
+   `docs/source/visualization.rst` and any `_plots` doc mentions.
 
 ## D.6 Verification (the untested-surface caveat)
 
-1. Full battery: `pytest test/ -q` (the migrated consumer test must pass),
-   ruff clean, `pip install -e . && import trinity` still OK, wheel build
-   excludes `paper*`.
-2. **Engine-purity guard** (Part III.5): add a test asserting `trinity`
-   imports nothing from `paper`/`scratch` — this is what stops drift.
-3. **Manual** (no automated net for 33 of 34 figures): run
-   `python -m figures._lib.run_all` (curated default set) against a sample
-   output dir and eyeball that figures render. Call out explicitly that the
-   other scripts are unverified.
-4. **Expect the flaky `MonotonicError`** to still surface here (it is
-   orthogonal and unfixed until the final phase) — do not mistake it for a
-   Phase C regression.
+1. Full battery: `pytest test/ -q` (now with the pedrini class dropped),
+   ruff clean, `pip install -e . && import trinity` OK, wheel build
+   excludes `paper*`/`scratch*`.
+2. **Engine-purity guard** (Part III.5): a test asserting `trinity` imports
+   nothing from `paper` / `scratch` — what stops drift.
+3. **Public repro**: `python paper/make_figures.py` regenerates the 4
+   published figures from `paper/data/*.npz` (this is now the *real*
+   acceptance test for the public surface).
+4. **Personal scripts** are best-effort only — note explicitly that their
+   rewrite is unverified beyond import-resolution (`python -c "import ast"`
+   compile-check at most).
+5. **Expect the flaky `MonotonicError`** to still surface — orthogonal,
+   unfixed until the final phase; not a Phase C regression.
 
 Risk: **medium**. Untested surface + real import/depth rewrites (not a pure
-`git mv`). C.1/C.2 split keeps each commit reviewable and revertable.
+`git mv`) + a best-effort rewrite of 31 personal scripts. The C.1→C.5 split
+keeps each commit reviewable and revertable; C.1 alone (carve scratch) is a
+safe partial landing.
