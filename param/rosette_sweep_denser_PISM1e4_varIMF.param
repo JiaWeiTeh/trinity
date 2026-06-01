@@ -6,8 +6,8 @@
 # combinations that bracket NGC 2244's cluster mass (1000-2000 Msun).
 #
 
-tuple(mCloud, sfe) [1e5, 0.01] [5e4, 0.02] [1e4, 0.1]  
-nCore [5e3, 1e4, 5e4, 1e5]
+tuple(mCloud, sfe) [1e5, 0.01]
+nCore [5e3, 1e4]
 PISM [1e4]
 
 # =============================================================================
@@ -34,6 +34,7 @@ coll_r    1
 # Allow expansion beyond cloud
 stop_at_rCloud_nSnap    None
 
+
 # Solver
 
 
@@ -41,18 +42,19 @@ stop_at_rCloud_nSnap    None
 log_level    INFO
 
 # Output
-path2output    outputs/rosette_sweep_denser_PISM1e4
+path2output    outputs/rosette_sweep_denser_PISM1e4_varIMF
 
 # P_HII
 include_PHII    True
 
 # sps stuffs
-sps_path  lib/sps/custom/1e6cluster_default.csv
+sps_path  lib/sps/custom/sb99_output_v0.1.csv
 sps_refmass 1e6
 sps_col_t            0 yr linear
-sps_col_Qi           1 cgs log
-sps_col_fi           2 cgs log
-sps_col_Lbol         3 cgs log
-sps_col_Lmech_W      6 cgs log
-sps_col_pdot_W       5 cgs log
-sps_col_Lmech_total  4 cgs log
+sps_col_Qi           Qilog cgs log
+sps_col_Lbol         l_bol cgs log
+sps_col_Lmech_W      l_wind cgs log
+sps_col_Lmech_SN     l_sn cgs linear
+sps_col_pdot_W       pd_windmom cgs log
+sps_col_Ln           l_non_ion cgs log
+sps_col_Li           l_ion cgs log
