@@ -515,6 +515,15 @@ def run_phase_transition(params) -> TransitionPhaseResults:
         c_sound = operations.get_soundspeed(T_for_sound, params)
         params['c_sound'].value = c_sound
 
+        # Covering-fraction leak diagnostic (Eq. leak). Pb here is the thermal
+        # bubble pressure (compute_R1_Pb = bubble_E2P), which is exactly what the
+        # leak uses and the same Lleak get_ODE_transition_pure subtracts in its
+        # energy-balance branch. Recorded so bubble_Leak is not stale in this
+        # phase (the energy phase records it via ODEResult; this phase does not).
+        params['bubble_Leak'].value = get_bubbleParams.get_leak_luminosity(
+            params['coverFraction'].value, R2, Pb, c_sound, gamma_adia
+        )
+
         # --- Ed diagnostic at first segment (quantify the original discontinuity) ---
         if segment_count == 1 and c_sound > 0 and R2 > 0:
             Ed_soundcrossing_init = -Eb / (R2 / c_sound)

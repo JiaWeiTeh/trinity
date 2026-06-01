@@ -129,11 +129,13 @@ These are **not** handled by the A–C draft and need decisions:
    energy/implicit/transition; in the implicit phase its `Ed` is *discarded* (only `rd`,`vd` used) so the
    leak there comes solely via `bubble_Leak` → `solve_betadelta` (no double-count). Both the RHS and the
    diagnostic now route through the helper. Tests added (`test_cf_leak.py`, 19 pass).
-8. **`bubble_Leak` diagnostic is not refreshed in the transition phase.** The leak is *applied* there
-   (inside `get_ODE_transition_pure → get_ODE_Edot_pure`), but the transition runner never updates
-   `params['bubble_Leak']` (no `compute_derived_quantities` call), so the plotted `bubble_Leak` is stale
-   (last implicit value) during transition. Diagnostic-only; the dynamics are unaffected. **Fix:** record
-   the applied leak in the transition diagnostic/save path.
+8. **RESOLVED — `bubble_Leak` diagnostic now refreshed in the transition phase.** The transition runner
+   now sets `params['bubble_Leak']` before `save_snapshot()` from `get_leak_luminosity(Cf, R2, Pb, c_sound, γ)`,
+   where `Pb` is the thermal pressure from `compute_R1_Pb` (= `bubble_E2P`) — the same `Lleak` the RHS
+   subtracts in its energy-balance branch. Dynamics were always correct; this fixes the recorded value.
+   **Momentum phase (investigated, no change):** `Eb=0` there, so the leak is correctly absent from the
+   dynamics; `bubble_Leak` carries its last value like *all* `bubble_*` quantities (frozen via the design's
+   carry-over), so zeroing only `bubble_Leak` would be *less* consistent. Left as-is.
 9. **Pre-existing (not introduced here):** `operations.get_soundspeed` docstring says "isothermal" but the
    formula `sqrt(γ k_B T/μ)` is the *adiabatic* sound speed — which is what the spec's `cs` wants, so the
    **code is correct** and matches the leak Eq.; only the docstring is stale. Left untouched (surgical).
