@@ -22,7 +22,7 @@ traceable directly to the equations in :ref:`sec-physics`.
 Module Organisation
 -------------------
 
-The source tree under ``src/`` is split into four layers:
+The source tree under ``trinity/`` is split into four layers:
 
 * **Orchestrator** (``main.py``). Entry point
   ``start_expansion()`` / ``run_expansion()`` that advances the
@@ -149,7 +149,7 @@ Snapshot Persistence
 --------------------
 
 Simulation state lives in a single ``DescribedDict`` (defined in
-``src/_input/dictionary.py``). Each key maps to a ``DescribedItem``
+``trinity/_input/dictionary.py``). Each key maps to a ``DescribedItem``
 that wraps the raw value together with two pieces of metadata:
 ``info`` (a short human-readable description) and ``ori_units``
 (the original-unit label, e.g. ``"pc"``, ``"Msun"``,
@@ -207,7 +207,7 @@ is paired with its own abscissa:
 * ``shell_grav_force_m``   + ``shell_grav_r``           (:math:`\log_{10} |F_{\rm grav}|`)
 * ``log_shell_n_arr``      + ``shell_r_arr``            (:math:`\log_{10} n_{\rm shell}`)
 
-The simplifier (``src/_functions/simplify.py``) combines three feature
+The simplifier (``trinity/_functions/simplify.py``) combines three feature
 detectors with a persistence filter and an R²-budgeted thinning step.
 Let :math:`\{(x_i, y_i)\}_{i=0}^{n-1}` denote the input curve.
 

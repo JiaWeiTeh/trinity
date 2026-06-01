@@ -15,8 +15,8 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from src._input.dictionary import DescribedItem
-from src._input.registry import (
+from trinity._input.dictionary import DescribedItem
+from trinity._input.registry import (
     REGISTRY,
     SPECS,
     materialize_runtime,

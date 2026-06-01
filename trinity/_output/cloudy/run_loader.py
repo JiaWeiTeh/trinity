@@ -1,0 +1,345 @@
+"""
+Load a TRINITY run directory into a typed bundle the trinity_to_cloudy
+driver can consume.
+
+A v4+ run directory has this shape::
+
+    <run_dir>/
+    ├── <model>.param                    # raw input config (not parsed here)
+    ├── dictionary.jsonl                 # snapshot stream (via TrinityOutput)
+    ├── metadata.json                    # run-invariant data + termination
+    └── trinity_*.log                    # logs (ignored)
+
+Legacy runs (pre-Phase-5) additionally carried ``<model>_summary.txt``
+and ``simulationEnd.txt``.  The text-parse fallbacks below still load
+those, with a ``DeprecationWarning``; they will be removed in Phase 6.
+
+Public API::
+
+    from trinity._output.cloudy.run_loader import load_run, RunBundle, RunLoadError
+"""
+
+from __future__ import annotations
+
+import ast
+import json
+import warnings
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any, Mapping
+
+from trinity._output.trinity_reader import TrinityOutput, find_data_path
+from trinity._output.run_constants import metadata_keys_to_rehydrate
+
+
+# Canonical TRINITY density-profile enum (mirrors trinity/_input/read_param.py:286).
+VALID_DENS_PROFILES = frozenset({"densBE", "densPL"})
+
+
+class RunLoadError(ValueError):
+    """Raised when a run directory cannot be loaded into a RunBundle."""
+
+
+@dataclass(frozen=True)
+class RunBundle:
+    """Everything trinity_to_cloudy needs about one TRINITY run."""
+
+    run_dir: Path
+    model_name: str
+    metadata: Mapping[str, Any]      # raw parsed metadata.json
+    summary: Mapping[str, Any]       # run-constants (metadata.json v2+;
+                                     # pre-Phase-5 <model>_summary.txt)
+    end_state: Mapping[str, Any]     # metadata.json[termination] (v3+)
+                                     # or pre-Phase-5 simulationEnd.txt
+    output: TrinityOutput            # opened from find_data_path(run_dir)
+
+
+def load_run(run_dir: str | Path) -> RunBundle:
+    """
+    Parse a TRINITY run directory and return a RunBundle.
+
+    Parameters
+    ----------
+    run_dir
+        Path to the directory containing ``metadata.json`` and
+        ``dictionary.jsonl`` (v4+).  Pre-Phase-5 runs may additionally
+        carry ``<model>_summary.txt`` / ``simulationEnd.txt`` — those
+        are picked up automatically via the back-compat text-parse
+        fallback.
+
+    Raises
+    ------
+    RunLoadError
+        If any expected file is missing, malformed, or carries an
+        unknown ``dens_profile``.
+    FileNotFoundError
+        If ``run_dir`` itself does not exist.
+    """
+    run_dir = Path(run_dir)
+    if not run_dir.is_dir():
+        raise FileNotFoundError(f"Run directory not found: {run_dir}")
+
+    # --- metadata.json (run-invariant config) -------------------------------
+    metadata_path = run_dir / "metadata.json"
+    if not metadata_path.is_file():
+        raise RunLoadError(f"metadata.json missing from {run_dir}")
+    try:
+        metadata = json.loads(metadata_path.read_text())
+    except json.JSONDecodeError as e:
+        raise RunLoadError(f"metadata.json malformed: {e}") from e
+    if "model_name" not in metadata:
+        raise RunLoadError("metadata.json lacks a 'model_name' field")
+    model_name = metadata["model_name"]
+
+    dens_profile = metadata.get("dens_profile")
+    if dens_profile not in VALID_DENS_PROFILES:
+        raise RunLoadError(
+            f"unknown dens_profile {dens_profile!r}; "
+            f"expected one of {sorted(VALID_DENS_PROFILES)}"
+        )
+
+    # --- summary (resolved config + ZCloud, dens_profile, etc.) --------------
+    # v2+ metadata.json carries every run-constant scalar as a top-level
+    # key, so it IS the summary.  We strip the reserved blocks
+    # (termination/final_state/_metadata_version) so the returned mapping
+    # has the same shape as the legacy ``<model>_summary.txt`` parse.
+    if metadata.get("_metadata_version", 1) >= 2:
+        summary = metadata_keys_to_rehydrate(metadata)
+    else:
+        summary_path = run_dir / f"{model_name}_summary.txt"
+        if not summary_path.is_file():
+            raise RunLoadError(
+                f"summary file missing: expected {summary_path.name} in {run_dir}"
+            )
+        summary = _parse_summary_txt(summary_path.read_text())
+
+    # --- dictionary.jsonl (per-snapshot data) -------------------------------
+    try:
+        jsonl_path = find_data_path(run_dir)
+    except FileNotFoundError as e:
+        raise RunLoadError(f"snapshot stream not found in {run_dir}: {e}") from e
+    output = TrinityOutput.open(jsonl_path)
+
+    # --- termination state -------------------------------------------------
+    # Prefer the structured ``termination`` block in metadata.json (v3+
+    # schema, written by :func:`write_simulation_end`).  Fall back to
+    # text-parsing ``simulationEnd.txt`` for legacy runs (v1/v2 metadata
+    # or pre-Phase-2 outputs); this fallback is scheduled for removal
+    # once existing runs are re-processed.
+    if output.termination is not None:
+        end_state = dict(output.termination)
+    else:
+        end_path = run_dir / "simulationEnd.txt"
+        if not end_path.is_file():
+            raise RunLoadError(
+                f"neither metadata.json[termination] nor simulationEnd.txt "
+                f"found in {run_dir}"
+            )
+        end_state = _parse_simulation_end(end_path.read_text())
+
+    return RunBundle(
+        run_dir=run_dir,
+        model_name=model_name,
+        metadata=metadata,
+        summary=summary,
+        end_state=end_state,
+        output=output,
+    )
+
+
+# --------------------------------------------------------------------------- #
+# Parsers
+# --------------------------------------------------------------------------- #
+
+def _parse_summary_txt(text: str) -> dict[str, Any]:
+    """
+    Parse a legacy ``<model>_summary.txt`` produced by pre-Phase-5 runs.
+
+    Format: ``<key><whitespace><value>`` per line; comments start with ``#``;
+    blank lines ignored. Values are coerced (in order): bool, ``None``,
+    ``nan``/``inf``, int, float, Python-literal (lists, tuples), else string.
+
+    Deprecated.  V2+ runs ship the same data inside ``metadata.json``;
+    this function is kept only for back-compat with legacy fixtures and
+    will be removed in Phase 6.
+    """
+    warnings.warn(
+        "Parsing legacy <model>_summary.txt — run pre-dates Phase 5 of "
+        "the metadata migration.  Re-run to populate metadata.json; the "
+        "text parser will be removed in Phase 6.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    out: dict[str, Any] = {}
+    for raw in text.splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        # split on first run of whitespace
+        parts = line.split(None, 1)
+        if len(parts) == 1:
+            key, value_str = parts[0], ""
+        else:
+            key, value_str = parts
+        out[key] = _coerce_scalar(value_str)
+    return out
+
+
+def _parse_simulation_end(text: str) -> dict[str, Any]:
+    """
+    Pull the outcome category, detail message, exit code, and final-state
+    snapshot from a legacy ``simulationEnd.txt``.  Section headers
+    (``-----``, ``=====``) are ignored; we look for known ``key: value``
+    lines wherever they appear.
+
+    Returned keys (units in the key name where they differ from the summary's
+    AU = (Msun, pc, Myr) convention)::
+
+        model_name, outcome, detail, exit_code,
+        t_now_myr, R2_pc, shell_nMax_cm3, shell_v_kms,
+        mCloud_msun, nCore_cm3, rCloud_pc, rCore_pc, alpha, nISM_cm3
+
+    Pre-fix runs that wrote ``Status``/``End Reason``/``Raw Reason`` lines are
+    tolerated: those values are accepted as fallbacks for ``outcome``/``detail``
+    when the new keys are absent.
+
+    Deprecated.  v3+ runs carry the structured data in
+    ``metadata.json[termination]`` and ``metadata.json[final_state]``;
+    this fallback will be removed in Phase 6.
+    """
+    warnings.warn(
+        "Parsing legacy simulationEnd.txt — run pre-dates Phase 5 of "
+        "the metadata migration (or Phase 2, for the termination block "
+        "itself).  Re-run to populate metadata.json[termination]; the "
+        "text parser will be removed in Phase 6.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    out: dict[str, Any] = {}
+
+    # Map "Key" → (out_key, parser) — parser pulls the value past the colon.
+    flat = {
+        "Model":      ("model_name", str),
+        "Outcome":    ("outcome", str),
+        "Detail":     ("detail", str),
+        "Exit Code":  ("exit_code", _safe_int),
+    }
+    # Legacy keys retained for back-compat reading of pre-fix runs.
+    legacy = {
+        "Status":     ("_legacy_status", str),
+        "End Reason": ("_legacy_end_reason", str),
+        "Raw Reason": ("_legacy_raw_reason", str),
+    }
+    # Final-state numeric fields with units stripped from the value
+    numeric_units = {
+        "Time":            ("t_now_myr", "Myr"),
+        "Radius (R2)":     ("R2_pc", "pc"),
+        "Shell nMax":      ("shell_nMax_cm3", "cm^-3"),
+        "Shell Velocity":  ("shell_v_kms", "km/s"),
+        "mCloud":          ("mCloud_msun", "Msun"),
+        "nCore":           ("nCore_cm3", "cm^-3"),
+        "rCloud":          ("rCloud_pc", "pc"),
+        "rCore":           ("rCore_pc", "pc"),
+        "alpha":           ("alpha", ""),
+        "nISM":            ("nISM_cm3", "cm^-3"),
+    }
+
+    for raw in text.splitlines():
+        line = raw.strip()
+        if ":" not in line:
+            continue
+        key, _, value = line.partition(":")
+        key, value = key.strip(), value.strip()
+        if key in flat:
+            out_key, conv = flat[key]
+            out[out_key] = conv(value) if value else None
+            continue
+        if key in legacy:
+            out_key, conv = legacy[key]
+            out[out_key] = conv(value) if value else None
+            continue
+        if key in numeric_units:
+            out_key, _unit = numeric_units[key]
+            # value is "<number> <unit>" — take the first whitespace-split token
+            tok = value.split()[0] if value else ""
+            try:
+                out[out_key] = float(tok)
+            except (ValueError, IndexError):
+                out[out_key] = None
+
+    # Back-compat: derive new fields from legacy ones when new keys are absent.
+    if out.get("detail") is None and out.get("_legacy_raw_reason") is not None:
+        out["detail"] = out["_legacy_raw_reason"]
+    if out.get("outcome") is None:
+        # Old "Status: SUCCESS/FAILED/ERROR" maps to a coarse outcome bucket;
+        # callers should prefer exit_code for fine-grained gating.
+        legacy_status = out.get("_legacy_status")
+        if legacy_status == "SUCCESS":
+            out["outcome"] = "legacy_success"
+        elif legacy_status is not None:
+            out["outcome"] = "legacy_error"
+
+    return out
+
+
+# --------------------------------------------------------------------------- #
+# Scalar coercion (used by _parse_summary_txt)
+# --------------------------------------------------------------------------- #
+
+def _coerce_scalar(s: str) -> Any:
+    """
+    Parse a summary-file value string into the most specific Python type
+    that fits. Falls through to ``str``.
+    """
+    if s == "":
+        return ""
+    if s == "True":
+        return True
+    if s == "False":
+        return False
+    if s == "None":
+        return None
+    # nan / inf are NOT Python literals — float() handles them but ast doesn't.
+    low = s.lower()
+    if low in ("nan", "inf", "+inf", "-inf"):
+        return float(s)
+    # int (only if it looks like one — avoid "1.0" → ValueError fallthrough)
+    if _looks_like_int(s):
+        try:
+            return int(s)
+        except ValueError:
+            pass
+    # float (handles scientific notation, signed)
+    try:
+        return float(s)
+    except ValueError:
+        pass
+    # Python literal (lists, tuples, dicts) — must start with a recognisable
+    # literal opener, otherwise we'd accept arbitrary expressions.
+    if s.startswith(("[", "(", "{")):
+        try:
+            return ast.literal_eval(s)
+        except (ValueError, SyntaxError):
+            pass
+    return s
+
+
+def _looks_like_int(s: str) -> bool:
+    t = s[1:] if s[:1] in "+-" else s
+    return t.isdigit()
+
+
+def _safe_int(s: str) -> int | None:
+    try:
+        return int(s)
+    except ValueError:
+        return None
+
+
+# Re-exported helpers (for tests)
+__all__ = [
+    "RunBundle",
+    "RunLoadError",
+    "VALID_DENS_PROFILES",
+    "load_run",
+]

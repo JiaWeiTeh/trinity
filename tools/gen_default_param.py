@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Generate ``src/_input/default.param`` from the ParamSpec registry.
+"""Generate ``trinity/_input/default.param`` from the ParamSpec registry.
 
-The registry (``src._input.registry.SPECS``) is the single source of
+The registry (``trinity._input.registry.SPECS``) is the single source of
 truth for TRINITY's parameters.  ``default.param`` is, as of Phase 4,
 a *generated artifact*: the schema + defaults file that ``read_param``
 reads.  This module renders it.
@@ -15,7 +15,7 @@ render and relocating the decorative prose to ``docs/`` — happens in
 Phase 4.  Until then nothing here is wired into production.
 
 Only *file-backed* specs are emitted: those whose ``category`` starts
-with ``input_`` or equals ``deprecated`` (the 72 keys that live in
+with ``input_`` or equals ``deprecated`` (the 68 keys that live in
 ``default.param``).  Runtime / derived specs are created in
 ``read_param`` Steps 6/8/10 and never appear in the file.
 
@@ -31,12 +31,12 @@ import sys
 from pathlib import Path
 from typing import Iterable
 
-from src._input.param_spec import ParamSpec
-from src._input.registry import SPECS
+from trinity._input.param_spec import ParamSpec
+from trinity._input.registry import SPECS
 
 # Path to the file this module renders.
 DEFAULT_PARAM_PATH = (
-    Path(__file__).resolve().parents[1] / "src" / "_input" / "default.param"
+    Path(__file__).resolve().parents[1] / "trinity" / "_input" / "default.param"
 )
 
 # Generated-file banner.  ``read_param`` ignores all of these comment
@@ -46,7 +46,7 @@ _HEADER = """\
 # TRINITY PARAMETER SCHEMA + DEFAULTS  —  AUTO-GENERATED, DO NOT EDIT BY HAND
 # ------------------------------------------------------------------------------
 # This file is generated from the ParamSpec registry:
-#     src/_input/registry.py
+#     trinity/_input/registry.py
 # Regenerate after changing a spec:
 #     python -m tools.gen_default_param --write
 #

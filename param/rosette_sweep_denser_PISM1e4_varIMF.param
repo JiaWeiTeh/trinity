@@ -36,7 +36,6 @@ stop_at_rCloud_nSnap    None
 
 
 # Solver
-use_adaptive_solver    True
 
 
 # Logging

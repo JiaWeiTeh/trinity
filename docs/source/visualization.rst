@@ -3,24 +3,37 @@
 Visualization Tools
 ===================
 
-TRINITY ships with a set of plotting scripts, collected under
-``src/_plots/``, that generate the figures used in the associated
-papers. Each script is a thin wrapper around the
-:ref:`sec-trinity-reader` API: it loads one or more simulations from
-disk, extracts a small number of time series, and renders them with
-a shared Matplotlib style sheet, ``trinity.mplstyle``. The scripts
-are intended both as reproducible figure generators and as worked
+TRINITY's plotting code lives outside the installed ``trinity``
+package, split by audience:
+
+- **Published paper figures** are regenerated from the bundled
+  ``paper/data/*.npz`` files by a single entry point::
+
+      python paper/make_figures.py
+
+  The figure scripts it drives live under ``paper/figures/`` (with
+  shared infrastructure in ``paper/figures/_lib/``).
+- **Exploratory / personal scripts** — the broader catalogue below —
+  live under ``scratch/``. They are not part of the installed package
+  and are run directly.
+
+Each script is a thin wrapper around the :ref:`sec-trinity-reader`
+API: it loads one or more simulations from disk, extracts a small
+number of time series, and renders them with a shared Matplotlib
+style sheet, ``trinity.mplstyle``. The scripts double as worked
 examples of how to drive the reader API from user code.
 
-All scripts share the same command-line conventions, accept the
-same folder-based discovery flags, and write their output into a
-predictable ``fig/{folder_name}/`` tree whose filenames encode the
-parameter combination that was plotted. To run any of them::
+The scripts share command-line conventions, accept the same
+folder-based discovery flags, and write output into a predictable
+``fig/{folder_name}/`` tree whose filenames encode the parameter
+combination plotted. To run one directly::
 
-    python src/_plots/SCRIPT_NAME.py -F /path/to/outputs
+    python paper/figures/paper_feedback.py -F /path/to/outputs   # paper closure
+    python scratch/SCRIPT_NAME.py -F /path/to/outputs            # personal
 
 The sections below describe each script in turn, grouped by the
-physical quantity it visualises.
+physical quantity it visualises. Unless noted as a paper figure
+(``paper/figures/``), a script lives under ``scratch/``.
 
 .. seealso::
 
@@ -50,22 +63,24 @@ Usage Examples
 .. code-block:: bash
 
    # Plot all simulations from a folder (auto-discovers mCloud/SFE grid)
-   python src/_plots/paper_feedback.py -F /path/to/outputs/sweep_test
+   python paper/figures/paper_feedback.py -F /path/to/outputs/sweep_test
 
    # Filter by core density
-   python src/_plots/paper_feedback.py -F /path/to/outputs --nCore 1e4
+   python paper/figures/paper_feedback.py -F /path/to/outputs --nCore 1e4
 
    # Specify output directory for figures
-   python src/_plots/paper_feedback.py -F /path/to/outputs -o /path/to/figures
+   python paper/figures/paper_feedback.py -F /path/to/outputs -o /path/to/figures
 
    # Single run from explicit path
-   python src/_plots/paper_radiusEvolution.py /path/to/dictionary.jsonl
+   python scratch/paper_radiusEvolution.py /path/to/dictionary.jsonl
 
 Force Budget Plots
 ------------------
 
 paper_feedback.py
 ~~~~~~~~~~~~~~~~~
+
+*(Paper figure — lives under* ``paper/figures/``\ *.)*
 
 Stacked area plot showing relative importance of feedback forces as fractions of total:
 
@@ -114,13 +129,13 @@ For simulations that have ended (t > t_max), the final dominant feedback is pers
 .. code-block:: bash
 
    # Plot from folder
-   python src/_plots/paper_dominantFeedback.py -F /path/to/outputs --nCore 1e4
+   python scratch/paper_dominantFeedback.py -F /path/to/outputs --nCore 1e4
 
    # Custom time snapshots
-   python src/_plots/paper_dominantFeedback.py -F /path/to/outputs --times 1.0 3.0 5.0
+   python scratch/paper_dominantFeedback.py -F /path/to/outputs --times 1.0 3.0 5.0
 
    # Generate animated GIF
-   python src/_plots/paper_dominantFeedback.py -F /path/to/outputs --movie --dt 0.05
+   python scratch/paper_dominantFeedback.py -F /path/to/outputs --movie --dt 0.05
 
 Thermal Regime Plots
 --------------------

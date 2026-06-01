@@ -1,5 +1,5 @@
 """
-Tests for ``src._output.cloudy.run_loader``.
+Tests for ``trinity._output.cloudy.run_loader``.
 
 Covers:
 - End-to-end load against ``outputs/mockOutput/mockFullrun/``: model_name,
@@ -19,13 +19,13 @@ from pathlib import Path
 
 import pytest
 
-from src._output.cloudy.run_loader import (
+from trinity._output.cloudy.run_loader import (
     RunBundle,
     RunLoadError,
     VALID_DENS_PROFILES,
     load_run,
 )
-from src._output.cloudy.run_loader import (
+from trinity._output.cloudy.run_loader import (
     _coerce_scalar,
     _parse_simulation_end,
     _parse_summary_txt,

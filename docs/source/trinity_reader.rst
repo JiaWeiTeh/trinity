@@ -22,8 +22,8 @@ dictionary keyed by parameter name. A companion utility,
 ``find_all_simulations``, walks a directory tree of sweep output
 and returns the paths of every ``dictionary.jsonl`` it finds; this
 is convenient for building grid plots across a parameter sweep.
-The plotting and analysis scripts under ``src/_plots/`` and
-``src/_calc/`` consume their input exclusively through these
+The plotting and analysis scripts under ``paper/figures/`` / ``scratch/`` and
+``trinity/_calc/`` consume their input exclusively through these
 classes.
 
 .. seealso::
@@ -45,7 +45,7 @@ Quick Start
 
 .. code-block:: python
 
-    from src._output.trinity_reader import load_output
+    from trinity._output.trinity_reader import load_output
 
     # Load a simulation
     output = load_output('/path/to/dictionary.jsonl')
@@ -79,7 +79,7 @@ The main reader class for TRINITY output files.
 
 .. code-block:: python
 
-    from src._output.trinity_reader import TrinityOutput
+    from trinity._output.trinity_reader import TrinityOutput
 
     output = TrinityOutput.open('dictionary.jsonl')
 
@@ -219,7 +219,7 @@ Finding Simulations
 
 .. code-block:: python
 
-    from src._output.trinity_reader import find_all_simulations
+    from trinity._output.trinity_reader import find_all_simulations
 
     # Find all simulations recursively
     sim_files = find_all_simulations('/path/to/outputs')
@@ -236,7 +236,7 @@ Organize simulations by cloud mass and SFE for grid plots:
 
 .. code-block:: python
 
-    from src._output.trinity_reader import (
+    from trinity._output.trinity_reader import (
         find_all_simulations,
         organize_simulations_for_grid,
         get_unique_ndens
@@ -284,7 +284,7 @@ Basic Radius Evolution
 .. code-block:: python
 
     import matplotlib.pyplot as plt
-    from src._output.trinity_reader import load_output
+    from trinity._output.trinity_reader import load_output
 
     output = load_output('/path/to/dictionary.jsonl')
 

@@ -20,8 +20,8 @@ File Format
 -----------
 
 The parameter schema — the complete set of keys and defaults — is
-defined by the ParamSpec registry at ``src/_input/registry.py``. The
-``src/_input/default.param`` file is generated from it (run
+defined by the ParamSpec registry at ``trinity/_input/registry.py``. The
+``trinity/_input/default.param`` file is generated from it (run
 ``python -m tools.gen_default_param --write`` after editing the
 registry) and is what ``read_param`` loads; the keywords below mirror
 it. Worked example files live under ``param/`` (see
@@ -278,10 +278,6 @@ Conditions that end the simulation.
      - ``500``
      - pc
      - Maximum shell radius. Exceeding this triggers termination. Set to ``None`` to disable this condition.
-   * - ``stop_v``
-     - ``-1e4``
-     - km/s
-     - Velocity threshold for numerical instability detection.
    * - ``stop_t``
      - ``15``
      - Myr
@@ -529,20 +525,9 @@ Control transitions between simulation phases.
    * - Parameter
      - Default
      - Description
-   * - ``adiabaticOnlyInCore``
-     - ``False``
-     - Restrict adiabatic (energy-driven) phase to within core radius.
-   * - ``immediate_leak``
-     - ``True``
-     - Transition immediately to momentum-driven phase when bubble bursts.
    * - ``phaseSwitch_LlossLgain``
      - ``0.05``
      - Threshold for :math:`(L_{\rm gain} - L_{\rm loss})/L_{\rm gain}` to trigger phase transition.
-   * - ``use_adaptive_solver``
-     - ``True``
-     - Use the adaptive ODE solver for the energy-driven phase
-       (``run_energy_phase_modified.py``). If ``False``, falls back to the
-       original solver (``run_energy_phase.py``).
 
 
 Cooling Parameters

@@ -35,8 +35,6 @@ expansionBeyondCloud    True
 # Output directory (each run creates subfolder like 1e5_sfe001_n1e2/)
 path2output    outputs/sweep_orion_better_paper
 
-# use _modified files with solvers
-use_adaptive_solver True
 
 # run without stopping radius
 stop_r    None

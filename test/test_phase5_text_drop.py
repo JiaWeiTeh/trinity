@@ -17,8 +17,8 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from src._input.dictionary import DescribedDict, DescribedItem
-from src._output.run_constants import METADATA_FILENAME
+from trinity._input.dictionary import DescribedDict, DescribedItem
+from trinity._output.run_constants import METADATA_FILENAME
 
 
 # ---------------------------------------------------------------------------
@@ -39,7 +39,7 @@ def _make_minimal_v4_run(tmp_path: Path) -> DescribedDict:
     Calls ``write_simulation_end`` + ``write_termination_debug_report``
     so we hit every text-writing site that Phase 5 is meant to drop.
     """
-    from src._output.simulation_end import (
+    from trinity._output.simulation_end import (
         write_simulation_end, write_termination_debug_report,
     )
     d = DescribedDict()
@@ -89,7 +89,7 @@ class TestNoLegacyTextWrites:
         signature: the ``write_summary`` kwarg has been removed.
         """
         from inspect import signature
-        from src._input.read_param import read_param
+        from trinity._input.read_param import read_param
         params = signature(read_param).parameters
         assert "write_summary" not in params, (
             "Phase 5 should have removed the write_summary kwarg "
@@ -123,7 +123,7 @@ class TestDeprecationWarnings:
         """``read_simulation_end`` falls back to text-parse when no
         metadata.json[termination] is present; this fallback path
         warns."""
-        from src._output.simulation_end import read_simulation_end
+        from trinity._output.simulation_end import read_simulation_end
         (tmp_path / "simulationEnd.txt").write_text(
             "Outcome: stopping_time\nDetail: bye\nExit Code: 1\nModel: legacy\n"
         )
@@ -135,7 +135,7 @@ class TestDeprecationWarnings:
     def test_cloudy_parse_summary_txt_warns(self):
         """``_parse_summary_txt`` warns on call (it only runs for
         legacy v1 fixtures now)."""
-        from src._output.cloudy.run_loader import _parse_summary_txt
+        from trinity._output.cloudy.run_loader import _parse_summary_txt
         with pytest.warns(DeprecationWarning, match="<model>_summary.txt"):
             out = _parse_summary_txt("ZCloud 1.0\nmCloud 1e6\n")
         assert out["ZCloud"] == 1.0
@@ -143,7 +143,7 @@ class TestDeprecationWarnings:
 
     def test_cloudy_parse_simulation_end_warns(self):
         """``_parse_simulation_end`` warns on call (legacy text)."""
-        from src._output.cloudy.run_loader import _parse_simulation_end
+        from trinity._output.cloudy.run_loader import _parse_simulation_end
         with pytest.warns(DeprecationWarning, match="simulationEnd.txt"):
             out = _parse_simulation_end(
                 "Model: legacy\nOutcome: stopping_time\nExit Code: 1\n"
@@ -156,7 +156,7 @@ class TestDeprecationWarnings:
     ):
         """A clean v4 run drives the JSON-only path and emits zero
         DeprecationWarnings (no text files ever read)."""
-        from src._output.cloudy.run_loader import load_run
+        from trinity._output.cloudy.run_loader import load_run
         _make_minimal_v4_run(tmp_path)
         with warnings.catch_warnings():
             warnings.simplefilter("error", DeprecationWarning)

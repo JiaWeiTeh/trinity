@@ -1,0 +1,1147 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Trajectory evolution plots for TRINITY parameter sweeps.
+
+This script creates shell mass and bubble radius evolution trajectory plots
+from TRINITY simulation parameter sweeps.
+
+Produces:
+- Shell mass M(t) trajectory plot
+- Bubble radius R2(t) trajectory plot
+
+@author: Jia Wei Teh
+"""
+
+import sys
+import numpy as np
+import matplotlib.pyplot as plt
+from pathlib import Path
+from dataclasses import dataclass, field
+from typing import Optional, List, Literal, Tuple
+import matplotlib.colors as mcolors
+from scipy.signal import savgol_filter
+
+import sys as _sys
+from pathlib import Path as _Path
+_sys.path.insert(0, str(_Path(__file__).parent.parent))
+from paper.figures._lib.plot_base import FIG_DIR
+from paper.figures._lib.grid_template import filter_sim_files_by_phii
+from trinity._output.trinity_reader import (
+    load_output, find_all_simulations,
+    parse_simulation_params, info_simulations
+)
+from trinity._functions.unit_conversions import INV_CONV
+
+from paper.figures._lib.plot_markers import (          # noqa: E402
+    add_plot_markers, get_marker_legend_handles,
+)
+
+print("...creating trajectory evolution plots")
+
+# =============================================================================
+# MARKER DEFAULTS (off for clean paper figures; enable via CLI --show-*)
+# =============================================================================
+SHOW_PHASE    = False
+SHOW_RCLOUD   = False
+SHOW_RCLOUD_H = False
+SHOW_COLLAPSE = False
+
+# Unit conversion: 1 km/s ~ 1.0227 pc/Myr
+PC_MYR_TO_KM_S = 1.0 / 1.0227
+
+# --- Global plot settings ---
+FONTSIZE = 16  # Global font size for labels, ticks, and legends
+
+
+# =============================================================================
+# Core Data Structures
+# =============================================================================
+
+@dataclass
+class ObservationalConstraints:
+    """Observational constraints for comparison."""
+    # Expansion velocity
+    v_obs: float = 13.0          # km/s
+    v_err: float = 2.0           # km/s
+
+    # Shell mass options
+    M_shell_HI: float = 100.0        # M_sun
+    M_shell_HI_err: float = 10.0     # M_sun
+    M_shell_CII: float = 1100.0      # M_sun
+    M_shell_CII_err: float = 100.0   # M_sun
+    M_shell_combined: float = 2000.0 # M_sun
+    M_shell_combined_err: float = 500.0  # M_sun
+
+    # Dynamical age
+    t_obs: float = 0.25          # Myr
+    t_err: float = 0.05          # Myr
+
+    # Shell radius (HI)
+    R_obs: float = 1.8           # pc
+    R_err: float = 0.2           # pc
+
+    # Shell radius ([CII])
+    R_obs_Pabst: float = 2.7     # pc
+    R_err_Pabst: float = 0     # pc
+
+    # Stellar mass (derived constraint)
+    Mstar_obs: float = 34.0      # M_sun
+    Mstar_err: float = 5.0       # M_sun
+
+    @property
+    def mass_ratio_CII_HI(self) -> float:
+        """The [CII]/HI mass ratio."""
+        return self.M_shell_CII / self.M_shell_HI
+
+
+@dataclass
+class AnalysisConfig:
+    """Configuration for trajectory analysis."""
+    # Which observables to constrain (include in chi^2)
+    constrain_v: bool = True
+    constrain_M_shell: bool = False
+    constrain_t: bool = True
+    constrain_R: bool = True
+    constrain_Mstar: bool = True
+
+    # Filter by nCore
+    nCore_filter: Optional[str] = None
+
+    # Mass tracer selection
+    mass_tracer: Literal['HI', 'CII', 'combined', 'all'] = 'combined'
+
+    # Show all trajectories
+    show_all: bool = False
+
+    # Combine multiple nCore values on same plot
+    combine_nCore: bool = False
+
+    # PHII suffix variant ("yes" keeps yesPHII + untagged; "no" keeps only noPHII)
+    phii_mode: str = "yes"
+
+    # Observational constraints
+    obs: ObservationalConstraints = field(default_factory=ObservationalConstraints)
+
+    def get_mass_constraint(self) -> Tuple[float, float]:
+        """Return (M_obs, M_err) based on tracer selection."""
+        if self.mass_tracer == 'HI':
+            return self.obs.M_shell_HI, self.obs.M_shell_HI_err
+        elif self.mass_tracer == 'CII':
+            return self.obs.M_shell_CII, self.obs.M_shell_CII_err
+        else:  # 'combined' or 'all'
+            return self.obs.M_shell_combined, self.obs.M_shell_combined_err
+
+    def get_filename_suffix(self) -> str:
+        """Generate filename suffix based on configuration."""
+        suffix = ""
+        if self.mass_tracer != 'combined':
+            suffix += f"_{self.mass_tracer}"
+        if self.show_all:
+            suffix += "_showall"
+        if self.combine_nCore:
+            suffix += "_combined"
+        if self.phii_mode == "no":
+            suffix += "_noPHII"
+        return suffix
+
+
+@dataclass
+class SimulationResult:
+    """Results from a single simulation."""
+    # Input parameters
+    path: str
+    folder: str
+    mCloud: str
+    sfe: str
+    nCore: str
+    mCloud_float: float
+    sfe_float: float
+    nCore_float: float
+
+    # Derived stellar mass
+    Mstar: float
+
+    # Simulation outputs at t_obs
+    t_actual: float
+    v_kms: float
+    M_shell: float
+    R2: float
+
+    # Chi^2 components
+    chi2_v: float
+    chi2_M: float
+    chi2_t: float
+    chi2_R: float
+    chi2_Mstar: float
+    chi2_total: float
+
+    # Residuals (in units of sigma)
+    delta_v: float
+    delta_M: float
+    delta_t: float
+    delta_R: float
+    delta_Mstar: float
+
+    # Full time series (for trajectory plots)
+    t_full: Optional[np.ndarray] = None
+    v_full_kms: Optional[np.ndarray] = None
+    M_shell_full: Optional[np.ndarray] = None
+    R_full: Optional[np.ndarray] = None
+    phase_full: Optional[np.ndarray] = None
+    rcloud: float = np.nan
+
+
+# =============================================================================
+# Core Functions
+# =============================================================================
+
+def smooth_trajectory(t, y, window_frac=0.05, polyorder=3):
+    """
+    Smooth a trajectory array to remove numerical jitters.
+
+    Uses Savitzky-Golay filter which preserves the overall shape
+    while smoothing out local discontinuities.
+
+    Parameters
+    ----------
+    t : array-like
+        Time array
+    y : array-like
+        Data array to smooth
+    window_frac : float
+        Fraction of data length to use as window size (default 0.05 = 5%)
+    polyorder : int
+        Polynomial order for the filter (default 3)
+
+    Returns
+    -------
+    y_smooth : array
+        Smoothed data array
+    """
+    if y is None or len(y) < 10:
+        return y
+
+    # Calculate window length (must be odd)
+    window_length = int(len(y) * window_frac)
+    if window_length < polyorder + 2:
+        window_length = polyorder + 2
+    if window_length % 2 == 0:
+        window_length += 1
+
+    # Apply Savitzky-Golay filter
+    try:
+        y_smooth = savgol_filter(y, window_length, polyorder)
+        return y_smooth
+    except Exception:
+        return y
+
+
+def compute_stellar_mass(mCloud, sfe):
+    """
+    Compute stellar mass from cloud parameters.
+
+    M_star = sfe * mCloud / (1 - sfe)
+    """
+    mCloud = np.asarray(mCloud)
+    sfe = np.asarray(sfe)
+
+    with np.errstate(divide='ignore', invalid='ignore'):
+        result = np.where(sfe >= 1.0, np.inf, sfe * mCloud / (1.0 - sfe))
+
+    if result.ndim == 0:
+        return float(result)
+    return result
+
+
+def compute_chi2(sim_values: dict, config: AnalysisConfig) -> dict:
+    """
+    Compute chi^2 with configurable constraints.
+    """
+    obs = config.obs
+    chi2_terms = {}
+    residuals = {}
+
+    # Velocity
+    if np.isfinite(sim_values['v_kms']) and obs.v_err > 0:
+        delta_v = (sim_values['v_kms'] - obs.v_obs) / obs.v_err
+        chi2_terms['v'] = delta_v**2 if config.constrain_v else 0.0
+        residuals['v'] = delta_v
+    else:
+        chi2_terms['v'] = np.inf if config.constrain_v else 0.0
+        residuals['v'] = np.nan
+
+    # Shell mass
+    M_obs, M_err = config.get_mass_constraint()
+    if np.isfinite(sim_values['M_shell']) and M_err > 0:
+        delta_M = (sim_values['M_shell'] - M_obs) / M_err
+        chi2_terms['M'] = delta_M**2 if config.constrain_M_shell else 0.0
+        residuals['M'] = delta_M
+    else:
+        chi2_terms['M'] = np.inf if config.constrain_M_shell else 0.0
+        residuals['M'] = np.nan
+
+    # Time
+    if np.isfinite(sim_values['t_actual']) and obs.t_err > 0:
+        delta_t = (sim_values['t_actual'] - obs.t_obs) / obs.t_err
+        chi2_terms['t'] = delta_t**2 if config.constrain_t else 0.0
+        residuals['t'] = delta_t
+    else:
+        chi2_terms['t'] = np.inf if config.constrain_t else 0.0
+        residuals['t'] = np.nan
+
+    # Radius
+    if np.isfinite(sim_values['R2']) and obs.R_err > 0:
+        delta_R = (sim_values['R2'] - obs.R_obs) / obs.R_err
+        chi2_terms['R'] = delta_R**2 if config.constrain_R else 0.0
+        residuals['R'] = delta_R
+    else:
+        chi2_terms['R'] = np.inf if config.constrain_R else 0.0
+        residuals['R'] = np.nan
+
+    # Stellar mass constraint
+    Mstar = compute_stellar_mass(sim_values['mCloud'], sim_values['sfe'])
+    if np.isfinite(Mstar) and obs.Mstar_err > 0:
+        delta_Mstar = (Mstar - obs.Mstar_obs) / obs.Mstar_err
+        chi2_terms['Mstar'] = delta_Mstar**2 if config.constrain_Mstar else 0.0
+        residuals['Mstar'] = delta_Mstar
+    else:
+        chi2_terms['Mstar'] = np.inf if config.constrain_Mstar else 0.0
+        residuals['Mstar'] = np.nan
+
+    chi2_total = sum(chi2_terms.values())
+
+    return {
+        'chi2_total': chi2_total,
+        'chi2_v': chi2_terms['v'],
+        'chi2_M': chi2_terms['M'],
+        'chi2_t': chi2_terms['t'],
+        'chi2_R': chi2_terms['R'],
+        'chi2_Mstar': chi2_terms['Mstar'],
+        'delta_v': residuals['v'],
+        'delta_M': residuals['M'],
+        'delta_t': residuals['t'],
+        'delta_R': residuals['R'],
+        'delta_Mstar': residuals['Mstar'],
+        'Mstar': Mstar,
+        'free_value': None,
+    }
+
+
+def nCore_matches(ndens_str: str, filter_str: str) -> bool:
+    """Check if nCore value matches filter (handles 1e4 vs 1e04)."""
+    try:
+        return abs(float(ndens_str) - float(filter_str)) < 1e-6 * max(float(ndens_str), float(filter_str))
+    except ValueError:
+        return ndens_str == filter_str
+
+
+def _trim_after_end(output, t, v2, M_shell, R):
+    """Truncate time series at the first snapshot where the shell
+    collapses (``isCollapse``) or dissolves (``isDissolved``).
+
+    This prevents misleading constant/frozen tails from appearing on
+    trajectory plots after the bubble has already ended.
+    """
+    if t is None or len(t) == 0:
+        return t, v2, M_shell, R
+
+    # Try the explicit boolean flags first
+    try:
+        is_collapse = np.asarray(output.get('isCollapse'), dtype=bool)
+        is_dissolved = np.asarray(output.get('isDissolved'), dtype=bool)
+        ended = is_collapse | is_dissolved
+    except (TypeError, ValueError):
+        ended = None
+
+    # Find the first index where the simulation has ended
+    cut = None
+    if ended is not None and np.any(ended):
+        cut = int(np.argmax(ended))   # first True
+
+    if cut is not None and cut > 0:
+        # Keep one extra point at the boundary so the line reaches the
+        # collapse/dissolution moment instead of stopping one step early.
+        cut = min(cut + 1, len(t))
+        t = t[:cut]
+        v2 = v2[:cut] if v2 is not None else None
+        M_shell = M_shell[:cut] if M_shell is not None else None
+        R = R[:cut] if R is not None else None
+
+    return t, v2, M_shell, R
+
+
+def load_simulation_at_time(data_path: Path, config: AnalysisConfig) -> Optional[SimulationResult]:
+    """
+    Load simulation and extract observables at specified time.
+    """
+    try:
+        output = load_output(data_path)
+
+        if len(output) == 0:
+            return None
+
+        # Folder-name tags drive the filename/grid layout (legitimate use
+        # of the sweep convention) — kept as strings.  Scientific numerics
+        # below come from metadata.json via snapshot rehydration: the
+        # snapshot-side mCloud is the *post-SFE residual* (compatible with
+        # ``compute_stellar_mass``'s M_star = sfe * mCloud / (1 - sfe)),
+        # sfe is the exact .param value (not the 3-digit folder rounding),
+        # and nCore is converted from code units back to cm^-3 to match
+        # the historical axis convention.
+        folder_name = data_path.parent.name
+        params = parse_simulation_params(folder_name)
+
+        if params is None:
+            return None
+
+        mCloud_str = params['mCloud']
+        sfe_str = params['sfe']
+        nCore_str = params['ndens']
+
+        snap_consts = output[0]
+        mCloud_float = float(snap_consts.get('mCloud'))
+        sfe_float = float(snap_consts.get('sfe'))
+        nCore_float = float(snap_consts.get('nCore')) * INV_CONV.ndens_au2cgs
+
+        eval_time = config.obs.t_obs
+
+        # Get snapshot closest to evaluation time
+        snap = output.get_at_time(eval_time, mode='closest', quiet=True)
+
+        if snap is None:
+            return None
+
+        t_actual = snap.get('t_now', np.nan)
+        v2_pcMyr = snap.get('v2', np.nan)
+        shell_mass = snap.get('shell_mass', np.nan)
+        R2 = snap.get('R2', np.nan)
+
+        # Convert velocity to km/s
+        v_kms = v2_pcMyr * PC_MYR_TO_KM_S if np.isfinite(v2_pcMyr) else np.nan
+
+        # Build sim_values dict for chi2 calculation
+        sim_values = {
+            'v_kms': v_kms,
+            'M_shell': shell_mass,
+            't_actual': t_actual,
+            'R2': R2,
+            'mCloud': mCloud_float,
+            'sfe': sfe_float,
+        }
+
+        # Compute chi2 and residuals
+        chi2_result = compute_chi2(sim_values, config)
+
+        # Get full time series for trajectory plots
+        t_full = output.get('t_now')
+        v2_full = output.get('v2')
+        M_shell_full = output.get('shell_mass')
+        R_full = output.get('R2')
+
+        # Trim trajectories after collapse or dissolution onset so that
+        # frozen/constant tails are not plotted (misleading flat lines).
+        t_full, v2_full, M_shell_full, R_full = _trim_after_end(
+            output, t_full, v2_full, M_shell_full, R_full)
+
+        v_full_kms = v2_full * PC_MYR_TO_KM_S if v2_full is not None else None
+
+        # Phase and cloud radius for markers
+        phase_raw = output.get('current_phase', as_array=False)
+        phase_full = None
+        if phase_raw is not None:
+            phase_arr = np.asarray([str(p) for p in phase_raw])
+            if t_full is not None and len(phase_arr) >= len(t_full):
+                phase_full = phase_arr[:len(t_full)]
+        rcloud = float(output[0].get('rCloud', np.nan))
+
+        return SimulationResult(
+            path=str(data_path),
+            folder=folder_name,
+            mCloud=mCloud_str,
+            sfe=sfe_str,
+            nCore=nCore_str,
+            mCloud_float=mCloud_float,
+            sfe_float=sfe_float,
+            nCore_float=nCore_float,
+            Mstar=chi2_result['Mstar'],
+            t_actual=t_actual,
+            v_kms=v_kms,
+            M_shell=shell_mass,
+            R2=R2,
+            chi2_v=chi2_result['chi2_v'],
+            chi2_M=chi2_result['chi2_M'],
+            chi2_t=chi2_result['chi2_t'],
+            chi2_R=chi2_result['chi2_R'],
+            chi2_Mstar=chi2_result['chi2_Mstar'],
+            chi2_total=chi2_result['chi2_total'],
+            delta_v=chi2_result['delta_v'],
+            delta_M=chi2_result['delta_M'],
+            delta_t=chi2_result['delta_t'],
+            delta_R=chi2_result['delta_R'],
+            delta_Mstar=chi2_result['delta_Mstar'],
+            t_full=t_full,
+            v_full_kms=v_full_kms,
+            M_shell_full=M_shell_full,
+            R_full=R_full,
+            phase_full=phase_full,
+            rcloud=rcloud,
+        )
+
+    except Exception as e:
+        print(f"  Error loading {data_path}: {e}")
+        return None
+
+
+def load_sweep_results(folder_path: Path, config: AnalysisConfig) -> List[SimulationResult]:
+    """
+    Load all simulations from a sweep folder.
+    """
+    folder_path = Path(folder_path)
+    sim_files = find_all_simulations(folder_path)
+    sim_files = filter_sim_files_by_phii(sim_files, config.phii_mode)
+
+    if not sim_files:
+        label = "non-noPHII" if config.phii_mode == "yes" else "noPHII"
+        print(f"No {label} simulation files found in {folder_path}")
+        return []
+
+    results = []
+
+    for sim_path in sim_files:
+        folder_name = sim_path.parent.name
+        params = parse_simulation_params(folder_name)
+
+        if params is None:
+            continue
+
+        ndens = params['ndens']
+
+        # Apply nCore filter if specified
+        if config.nCore_filter and not nCore_matches(ndens, config.nCore_filter):
+            continue
+
+        result = load_simulation_at_time(sim_path, config)
+
+        if result is not None:
+            results.append(result)
+
+    # Sort by chi2
+    results.sort(key=lambda x: x.chi2_total)
+
+    return results
+
+
+# =============================================================================
+# Trajectory Plot Function
+# =============================================================================
+
+def plot_trajectory_evolution(results: List[SimulationResult], config: AnalysisConfig,
+                               output_dir: Path, nCore_value: str, top_n: int = 5):
+    """
+    Create shell mass M(t) and bubble radius R2(t) trajectory plots.
+
+    Parameters
+    ----------
+    results : List[SimulationResult]
+        List of simulation results
+    config : AnalysisConfig
+        Analysis configuration
+    output_dir : Path
+        Output directory
+    nCore_value : str
+        nCore value for filtering
+    top_n : int
+        Number of best-fit models to show (ignored if config.show_all is True)
+    """
+    # Filter for this nCore
+    data = [r for r in results if r.nCore == nCore_value]
+
+    if not data:
+        return
+
+    # Sort by chi2
+    data_all_sorted = sorted(data, key=lambda x: x.chi2_total)
+
+    # Decide which simulations to plot
+    if config.show_all:
+        data_to_plot = data_all_sorted
+    else:
+        data_to_plot = data_all_sorted[:top_n]
+
+    # 2 subplots: mass (top), R2 bubble (bottom)
+    fig, (ax_m, ax_r2) = plt.subplots(2, 1, figsize=(6.5, 12), dpi=150, sharex=True)
+
+    obs = config.obs
+
+    # Color map for different simulations
+    if config.show_all:
+        chi2_vals = [r.chi2_total for r in data_to_plot]
+        chi2_min, chi2_max = min(chi2_vals), max(chi2_vals)
+        norm = mcolors.LogNorm(vmin=max(0.1, chi2_min), vmax=max(1, chi2_max))
+        cmap = plt.cm.viridis_r
+    else:
+        colors = plt.cm.tab10(np.linspace(0, 1, len(data_to_plot)))
+
+    for i, r in enumerate(data_to_plot):
+        if r.t_full is None:
+            continue
+
+        t = r.t_full
+        M = r.M_shell_full
+        R2 = r.R_full
+
+        # Smooth trajectories to remove numerical jitters from phase transitions
+        M_smooth = smooth_trajectory(t, M)
+        R2_smooth = smooth_trajectory(t, R2)
+
+        # Scale to 0.5 × shell mass (observations are quoted at this factor)
+        if M_smooth is not None:
+            M_smooth = 0.5 * M_smooth
+
+        if config.show_all:
+            color = cmap(norm(r.chi2_total))
+            alpha = 0.7
+            lw = 1.0
+            label = None
+        else:
+            color = colors[i]
+            alpha = 0.9
+            lw = 1.5
+            label = f"{r.mCloud}_sfe{r.sfe} (M$_\\star$={r.Mstar:.0f}, $\\chi^2$={r.chi2_total:.1f})"
+
+        # Mass trajectory
+        if M_smooth is not None:
+            ax_m.plot(t, M_smooth, color=color, lw=lw, label=label, alpha=alpha)
+
+        # Bubble radius (R2) trajectory
+        if R2_smooth is not None:
+            ax_r2.plot(t, R2_smooth, color=color, lw=lw, label=label, alpha=alpha)
+
+        # --- Diagnostic markers (vertical lines on all panels) ---
+        for ax in (ax_m, ax_r2):
+            is_radius_ax = ax is ax_r2
+            add_plot_markers(
+                ax, t,
+                phase=r.phase_full,
+                R2=R2 if is_radius_ax else None,
+                rcloud=r.rcloud if is_radius_ax else None,
+                isCollapse=None,
+                dataset_color=color,
+                show_phase=SHOW_PHASE,
+                show_rcloud=SHOW_RCLOUD and is_radius_ax,
+                show_collapse=SHOW_COLLAPSE,
+                show_rcloud_horizontal=SHOW_RCLOUD_H and is_radius_ax,
+                show_labels=False,
+            )
+
+    # --- Mass panel (log scale) ---
+    tracer_bands = [
+        (obs.M_shell_HI, obs.M_shell_HI_err, 'blue', r'HI ($\sim 10^2 M_\odot$)', 0.15),
+        (obs.M_shell_CII, obs.M_shell_CII_err, 'green', r'[CII] ($\sim 10^3 M_\odot$)', 0.15),
+    ]
+
+    for M_val, M_err, color, label, alpha in tracer_bands:
+        ax_m.axhspan(M_val - M_err, M_val + M_err, alpha=alpha, color=color, zorder=1)
+        ax_m.errorbar(obs.t_obs, M_val, xerr=obs.t_err, yerr=M_err,
+                      fmt='s', color=color, markersize=10, capsize=4, capthick=1.5,
+                      label=f'{label}', zorder=10,
+                      markeredgecolor='k', markeredgewidth=0.5)
+
+    ax_m.axvspan(obs.t_obs - obs.t_err, obs.t_obs + obs.t_err,
+                 alpha=0.1, color='gray', zorder=0)
+
+    ax_m.set_ylabel(r'0.5 $\times$ Shell Mass [$M_\odot$]', fontsize=FONTSIZE, rotation=90)
+    ax_m.tick_params(axis='both', labelsize=FONTSIZE)
+    ax_m.tick_params(axis='y', labelrotation=90)
+    marker_handles = get_marker_legend_handles(
+        include_phase=SHOW_PHASE, include_rcloud=SHOW_RCLOUD,
+        include_rcloud_horizontal=SHOW_RCLOUD_H, include_collapse=SHOW_COLLAPSE)
+    if marker_handles:
+        existing_h, existing_l = ax_m.get_legend_handles_labels()
+        legend_m = ax_m.legend(existing_h + marker_handles,
+                               existing_l + [h.get_label() for h in marker_handles],
+                               loc='upper right', fontsize=FONTSIZE)
+    else:
+        legend_m = ax_m.legend(loc='upper right', fontsize=FONTSIZE)
+    legend_m.set_zorder(100)
+    ax_m.set_yscale('log')
+    ax_m.set_ylim(10, 3e4)
+    ax_m.tick_params(axis='x', pad=10)
+    ax_m.tick_params(axis='y', pad=10)
+
+    # --- Bubble radius (R2) panel ---
+    # HI radius observation (blue)
+    ax_r2.errorbar(obs.t_obs, obs.R_obs, xerr=obs.t_err, yerr=obs.R_err,
+                   fmt='s', color='blue', markersize=14, capsize=5, capthick=2,
+                   label=f'HI: {obs.R_obs}\u00b1{obs.R_err} pc', zorder=10, markeredgecolor='k')
+    ax_r2.axhspan(obs.R_obs - obs.R_err, obs.R_obs + obs.R_err,
+                  alpha=0.15, color='blue', zorder=1)
+
+    # [CII] radius observation (green)
+    ax_r2.errorbar(obs.t_obs, obs.R_obs_Pabst, xerr=obs.t_err, yerr=obs.R_err_Pabst,
+                   fmt='s', color='green', markersize=14, capsize=5, capthick=2,
+                   label=f'[CII]: {obs.R_obs_Pabst} pc', zorder=10, markeredgecolor='k')
+    ax_r2.axhspan(obs.R_obs_Pabst - obs.R_err_Pabst, obs.R_obs_Pabst + obs.R_err_Pabst,
+                  alpha=0.15, color='green', zorder=1)
+
+    ax_r2.axvspan(obs.t_obs - obs.t_err, obs.t_obs + obs.t_err,
+                  alpha=0.1, color='gray', zorder=0)
+
+    ax_r2.set_xlabel('Time [Myr]', fontsize=FONTSIZE)
+    ax_r2.set_ylabel('Bubble Radius $R_2$ [pc]', fontsize=FONTSIZE, rotation=90)
+    ax_r2.tick_params(axis='both', labelsize=FONTSIZE)
+    ax_r2.tick_params(axis='y', labelrotation=90)
+    if marker_handles:
+        existing_h, existing_l = ax_r2.get_legend_handles_labels()
+        legend_r2 = ax_r2.legend(existing_h + marker_handles,
+                                 existing_l + [h.get_label() for h in marker_handles],
+                                 loc='lower right', fontsize=FONTSIZE)
+    else:
+        legend_r2 = ax_r2.legend(loc='lower right', fontsize=FONTSIZE)
+    legend_r2.set_zorder(100)
+    ax_r2.set_xlim(0, 0.3)
+    ax_r2.set_ylim(0, 6)
+    ax_r2.tick_params(axis='x', pad=10)
+    ax_r2.tick_params(axis='y', pad=10)
+
+    plt.tight_layout()
+
+    suffix = config.get_filename_suffix()
+    out_pdf = output_dir / f'trajectory_n{nCore_value}{suffix}.pdf'
+    fig.savefig(out_pdf, bbox_inches='tight')
+    print(f"  Saved: {out_pdf}")
+    plt.close(fig)
+
+
+def plot_trajectory_evolution_combined(results: List[SimulationResult], config: AnalysisConfig,
+                                        output_dir: Path, nCore_values: List[str], top_n: int = 5):
+    """
+    Create combined trajectory plot with multiple nCore values as shaded regions.
+
+    Each nCore value is shown as a shaded region (min-max envelope).
+    Different nCore values use different colors.
+
+    Parameters
+    ----------
+    results : List[SimulationResult]
+        List of simulation results
+    config : AnalysisConfig
+        Analysis configuration
+    output_dir : Path
+        Output directory
+    nCore_values : List[str]
+        List of nCore values to plot
+    top_n : int
+        Number of best-fit models to include per nCore (ignored if config.show_all is True)
+    """
+    from scipy.interpolate import interp1d
+
+    # Define colors and transparencies for different nCore values
+    # Index 0 → first nCore (e.g. 100), 1 → second (e.g. 500), 2 → third (e.g. 1000)
+    nCore_colors = ['orange', 'r', 'black', 'C3', 'C4', 'C5']
+    nCore_alphas = [0.7, 0.45, 0.85, 0.7, 0.7, 0.7]
+
+    # 2 subplots: mass (top), R2 bubble (bottom)
+    fig, (ax_m, ax_r2) = plt.subplots(2, 1, figsize=(6.5, 6), dpi=150, sharex=True)
+
+    obs = config.obs
+
+    # Common time grid for interpolation
+    t_common = np.linspace(0, 0.3, 500)
+
+    for nCore_idx, nCore_value in enumerate(nCore_values):
+        # Filter for this nCore
+        data = [r for r in results if r.nCore == nCore_value]
+
+        if not data:
+            continue
+
+        # Sort by chi2
+        data_all_sorted = sorted(data, key=lambda x: x.chi2_total)
+
+        # Decide which simulations to include
+        if config.show_all:
+            data_to_plot = data_all_sorted
+        else:
+            data_to_plot = data_all_sorted[:top_n]
+
+        # Get color and alpha for this nCore
+        color = nCore_colors[nCore_idx % len(nCore_colors)]
+        band_alpha = nCore_alphas[nCore_idx % len(nCore_alphas)]
+
+        # Collect interpolated trajectories
+        M_interp_list = []
+        R2_interp_list = []
+
+        for r in data_to_plot:
+            if r.t_full is None:
+                continue
+
+            t = r.t_full
+            M = r.M_shell_full
+            R2 = r.R_full
+
+            # Smooth trajectories
+            M_smooth = smooth_trajectory(t, M)
+            R2_smooth = smooth_trajectory(t, R2)
+
+            # Scale to 0.5 × shell mass (observations are quoted at this factor)
+            if M_smooth is not None:
+                M_smooth = 0.5 * M_smooth
+
+            # Interpolate to common time grid
+            if M_smooth is not None and len(t) > 1:
+                try:
+                    f_M = interp1d(t, M_smooth, kind='linear', bounds_error=False, fill_value=np.nan)
+                    M_interp_list.append(f_M(t_common))
+                except Exception:
+                    pass
+
+            if R2_smooth is not None and len(t) > 1:
+                try:
+                    f_R2 = interp1d(t, R2_smooth, kind='linear', bounds_error=False, fill_value=np.nan)
+                    R2_interp_list.append(f_R2(t_common))
+                except Exception:
+                    pass
+
+        # Convert to arrays and compute envelope
+        ncore_lbl = r'$n_{\rm core} = $' + f'{float(nCore_value):g}' + r' $\rm cm^{-3}$'
+
+        if M_interp_list:
+            M_arr = np.array(M_interp_list)
+            with np.errstate(all='ignore'):
+                M_min = np.nanmin(M_arr, axis=0)
+                M_max = np.nanmax(M_arr, axis=0)
+            ax_m.fill_between(t_common, M_min, M_max, alpha=band_alpha, color=color,
+                              label=ncore_lbl)
+
+        if R2_interp_list:
+            R2_arr = np.array(R2_interp_list)
+            with np.errstate(all='ignore'):
+                R2_min = np.nanmin(R2_arr, axis=0)
+                R2_max = np.nanmax(R2_arr, axis=0)
+            ax_r2.fill_between(t_common, R2_min, R2_max, alpha=band_alpha, color=color)
+
+    # --- Mass panel (log scale) ---
+    tracer_bands = [
+        (obs.M_shell_HI, obs.M_shell_HI_err, 'blue', r'HI ($\sim 10^2 M_\odot$)', 0.15),
+        (obs.M_shell_CII, obs.M_shell_CII_err, 'green', r'[CII] ($\sim 10^3 M_\odot$)', 0.15),
+    ]
+
+    for M_val, M_err, color, label, alpha in tracer_bands:
+        ax_m.axhspan(M_val - M_err, M_val + M_err, alpha=alpha, color=color, zorder=1)
+        ax_m.errorbar(obs.t_obs, M_val, xerr=obs.t_err, yerr=M_err,
+                      fmt='s', color=color, markersize=10, capsize=4, capthick=1.5,
+                      label=f'{label}', zorder=10,
+                      markeredgecolor='k', markeredgewidth=0.5)
+
+    ax_m.axvspan(obs.t_obs - obs.t_err, obs.t_obs + obs.t_err,
+                 alpha=0.1, color='gray', zorder=0)
+
+    # Separate nCore handles from observational handles in mass panel
+    all_handles, all_labels = ax_m.get_legend_handles_labels()
+    ncore_handles, ncore_labels = [], []
+    obs_handles, obs_labels = [], []
+    for h, l in zip(all_handles, all_labels):
+        if r'n_{\rm core}' in l:
+            ncore_handles.append(h)
+            ncore_labels.append(l)
+        else:
+            obs_handles.append(h)
+            obs_labels.append(l)
+
+    # Observational legend inside mass panel
+    ax_m.set_ylabel(r'0.5 $\times$ Shell Mass [$M_\odot$]', fontsize=FONTSIZE, rotation=90)
+    ax_m.tick_params(axis='both', labelsize=FONTSIZE)
+    ax_m.tick_params(axis='y', labelrotation=90)
+    if obs_handles:
+        legend_m = ax_m.legend(obs_handles, obs_labels, loc='upper left',
+                               fontsize=FONTSIZE)
+        legend_m.set_zorder(100)
+    ax_m.set_yscale('log')
+    ax_m.set_ylim(10, 3e4)
+
+    # nCore legend placed above the top subplot as a figure-level title legend
+    if ncore_handles:
+        fig.legend(ncore_handles, ncore_labels,
+                   loc='upper center', ncol=len(ncore_handles),
+                   fontsize=FONTSIZE, frameon=False,
+                   bbox_to_anchor=(0.5, 1.1))
+
+    # --- Bubble radius (R2) panel ---
+    # HI radius observation (blue)
+    ax_r2.errorbar(obs.t_obs, obs.R_obs, xerr=obs.t_err, yerr=obs.R_err,
+                   fmt='s', color='blue', markersize=12, capsize=5, capthick=2,
+                   label=f'HI: {obs.R_obs}\u00b1{obs.R_err} pc', zorder=10, markeredgecolor='k')
+    ax_r2.axhspan(obs.R_obs - obs.R_err, obs.R_obs + obs.R_err,
+                  alpha=0.15, color='blue', zorder=1)
+
+    # [CII] radius observation (green)
+    ax_r2.errorbar(obs.t_obs, obs.R_obs_Pabst, xerr=obs.t_err, yerr=obs.R_err_Pabst,
+                   fmt='s', color='green', markersize=12, capsize=5, capthick=2,
+                   label=f'[CII]: {obs.R_obs_Pabst} pc', zorder=10, markeredgecolor='k')
+    ax_r2.axhspan(obs.R_obs_Pabst - obs.R_err_Pabst, obs.R_obs_Pabst + obs.R_err_Pabst,
+                  alpha=0.15, color='green', zorder=1)
+
+    ax_r2.axvspan(obs.t_obs - obs.t_err, obs.t_obs + obs.t_err,
+                  alpha=0.1, color='gray', zorder=0)
+
+    ax_r2.set_xlabel('Time [Myr]', fontsize=FONTSIZE)
+    ax_r2.set_ylabel('Bubble Radius $R_2$ [pc]', fontsize=FONTSIZE, rotation=90)
+    ax_r2.tick_params(axis='both', labelsize=FONTSIZE)
+    ax_r2.tick_params(axis='y', labelrotation=90)
+    legend_r2 = ax_r2.legend(loc='upper left', fontsize=FONTSIZE)
+    legend_r2.set_zorder(100)
+    ax_r2.set_xlim(0, 0.3)
+    ax_r2.set_ylim(0, 6)
+
+    plt.tight_layout(h_pad=1.0)
+
+    suffix = config.get_filename_suffix()
+    nCore_str = "_".join(nCore_values)
+    out_pdf = output_dir / f'trajectory_n{nCore_str}{suffix}.pdf'
+    fig.savefig(out_pdf, bbox_inches='tight')
+    print(f"  Saved: {out_pdf}")
+    plt.close(fig)
+
+
+# =============================================================================
+# Main Function
+# =============================================================================
+
+def main(folder_path: str, output_dir: str = None, config: AnalysisConfig = None):
+    """
+    Main entry point for trajectory evolution analysis.
+
+    Parameters
+    ----------
+    folder_path : str
+        Path to sweep output folder
+    output_dir : str, optional
+        Output directory for plots
+    config : AnalysisConfig, optional
+        Analysis configuration
+    """
+    if config is None:
+        config = AnalysisConfig()
+
+    # Convert to Path object
+    folder_path = Path(folder_path)
+
+    if not folder_path.exists():
+        print(f"Error: Folder not found: {folder_path}")
+        sys.exit(1)
+
+    # Setup output directory
+    folder_name = folder_path.name
+    if output_dir is None:
+        output_dir = FIG_DIR / folder_name
+    else:
+        output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    print(f"\nLoading simulations from: {folder_path}")
+    print(f"Output directory: {output_dir}")
+
+    # Load all simulation results
+    results = load_sweep_results(folder_path, config)
+
+    if not results:
+        print("No valid simulation results found.")
+        sys.exit(1)
+
+    print(f"\nLoaded {len(results)} simulations")
+
+    # Get unique nCore values
+    nCore_values = sorted(set(r.nCore for r in results), key=lambda x: float(x))
+    print(f"nCore values: {nCore_values}")
+
+    # Create trajectory plots
+    print("\nCreating trajectory evolution plots...")
+    if config.combine_nCore and len(nCore_values) > 1:
+        # Combined plot with all nCore values
+        plot_trajectory_evolution_combined(results, config, output_dir, nCore_values)
+    else:
+        # Separate plots for each nCore
+        for nCore in nCore_values:
+            plot_trajectory_evolution(results, config, output_dir, nCore)
+
+    print("\nDone!")
+
+
+# =============================================================================
+# CLI Entry Point
+# =============================================================================
+
+if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        description="""TRINITY trajectory evolution plots
+
+Creates shell mass and bubble radius evolution trajectory plots from TRINITY
+parameter sweep simulations.
+""",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  # Basic trajectory plots
+  python paper_ODIN.py --folder sweep_orion/
+
+  # Show all simulation trajectories
+  python paper_ODIN.py --folder sweep_orion/ --showall
+
+  # Filter by nCore value
+  python paper_ODIN.py --folder sweep_orion/ --nCore 1e4
+
+  # Compare all mass tracers
+  python paper_ODIN.py --folder sweep_orion/ --mass-tracer all
+
+Default Observational Constraints:
+  Age:             0.25 +/- 0.05 Myr
+  R_shell (HI):    1.8 +/- 0.2 pc
+  R_shell ([CII]): 2.7 pc
+  M_star:          34 +/- 5 M_sun
+
+Shell Mass (shown in plots):
+  M_shell (HI):    100 +/- 30 M_sun
+  M_shell ([CII]): 1100 +/- 100 M_sun
+  M_shell (comb):  2000 +/- 500 M_sun
+        """
+    )
+
+    # Required
+    parser.add_argument('--folder', '-F', required=True,
+                        help='Path to sweep output folder')
+
+    # Output
+    parser.add_argument('--output-dir', '-o', default=None,
+                        help='Output directory (default: {folder}/analysis/)')
+
+    # Filter
+    parser.add_argument('--nCore', '-n', default=None,
+                        help='Filter by nCore value (e.g., "1e4")')
+    parser.add_argument('--info', action='store_true',
+                        help='Scan folder and print available mCloud, SFE, and nCore values.')
+
+    # Constraint configuration
+    parser.add_argument('--include-mshell', action='store_true',
+                        help='Include shell mass in chi^2 calculation')
+    parser.add_argument('--no-Mstar', action='store_true',
+                        help='Do not constrain stellar mass')
+    parser.add_argument('--no-v', action='store_true',
+                        help='Do not constrain velocity')
+    parser.add_argument('--no-t', action='store_true',
+                        help='Do not constrain age')
+    parser.add_argument('--no-R', action='store_true',
+                        help='Do not constrain shell radius')
+
+    # Custom observational values
+    parser.add_argument('--v-obs', type=float, default=13.0,
+                        help='Observed velocity [km/s] (default: 13.0)')
+    parser.add_argument('--v-err', type=float, default=2.0,
+                        help='Velocity uncertainty [km/s] (default: 2.0)')
+    parser.add_argument('--M-combined', type=float, default=2000.0,
+                        help='Combined shell mass [M_sun] (default: 2000.0)')
+    parser.add_argument('--M-combined-err', type=float, default=500.0,
+                        help='Combined shell mass uncertainty [M_sun] (default: 500.0)')
+    parser.add_argument('--t-obs', type=float, default=0.25,
+                        help='Observed age [Myr] (default: 0.25)')
+    parser.add_argument('--t-err', type=float, default=0.05,
+                        help='Age uncertainty [Myr] (default: 0.05)')
+    parser.add_argument('--R-obs', type=float, default=1.8,
+                        help='Observed HI radius [pc] (default: 1.8)')
+    parser.add_argument('--R-err', type=float, default=0.2,
+                        help='HI radius uncertainty [pc] (default: 0.2)')
+    parser.add_argument('--Mstar', type=float, default=34.0,
+                        help='Target stellar mass [M_sun] (default: 34.0)')
+    parser.add_argument('--Mstar-err', type=float, default=5.0,
+                        help='Stellar mass uncertainty [M_sun] (default: 5.0)')
+
+    # Mass tracer
+    parser.add_argument('--mass-tracer', choices=['HI', 'CII', 'combined', 'all'],
+                        default='combined',
+                        help='Mass tracer for plots (default: combined)')
+    parser.add_argument('--M-HI', type=float, default=100.0,
+                        help='HI-derived shell mass [M_sun] (default: 100.0)')
+    parser.add_argument('--M-HI-err', type=float, default=30.0,
+                        help='HI shell mass uncertainty [M_sun] (default: 30.0)')
+    parser.add_argument('--M-CII', type=float, default=1100.0,
+                        help='[CII]-derived shell mass [M_sun] (default: 1100.0)')
+    parser.add_argument('--M-CII-err', type=float, default=100.0,
+                        help='[CII] shell mass uncertainty [M_sun] (default: 100.0)')
+
+    # Trajectory options
+    parser.add_argument('--showall', action='store_true',
+                        help='Show all simulation trajectories')
+    parser.add_argument('--combine-nCore', action='store_true',
+                        help='Plot all nCore values on the same plot (different colors, shaded envelopes)')
+
+    # Marker options (off by default for clean paper figures)
+    marker_grp = parser.add_argument_group("markers",
+        "Diagnostic markers (all off by default)")
+    marker_grp.add_argument('--show-phase', action='store_true', default=False,
+                            help='Show phase-transition markers (T / M)')
+    marker_grp.add_argument('--show-rcloud', action='store_true', default=False,
+                            help='Show R2 > R_cloud breakout marker (vertical)')
+    marker_grp.add_argument('--show-rcloud-horizontal', action='store_true', default=False,
+                            help='Show horizontal R_cloud line on radius panel')
+    marker_grp.add_argument('--show-collapse', action='store_true', default=False,
+                            help='Show collapse onset marker')
+    marker_grp.add_argument('--show-all-markers', action='store_true', default=False,
+                            help='Enable all diagnostic markers at once')
+
+    parser.add_argument('--show-noPHII', action='store_true', default=False,
+                        dest='show_noPHII',
+                        help="Also run on '_noPHII' folders (separate output).")
+
+    args = parser.parse_args()
+
+    # Handle --info mode
+    if args.info:
+        info = info_simulations(args.folder)
+        print("=" * 50)
+        print(f"Simulation parameters in: {args.folder}")
+        print("=" * 50)
+        print(f"  Total simulations: {info['count']}")
+        print(f"  mCloud values: {info['mCloud']}")
+        print(f"  SFE values: {info['sfe']}")
+        print(f"  nCore values: {info['ndens']}")
+        sys.exit(0)
+
+    # Build observational constraints
+    obs = ObservationalConstraints(
+        v_obs=args.v_obs, v_err=args.v_err,
+        M_shell_HI=args.M_HI, M_shell_HI_err=args.M_HI_err,
+        M_shell_CII=args.M_CII, M_shell_CII_err=args.M_CII_err,
+        M_shell_combined=args.M_combined, M_shell_combined_err=args.M_combined_err,
+        t_obs=args.t_obs, t_err=args.t_err,
+        R_obs=args.R_obs, R_err=args.R_err,
+        Mstar_obs=args.Mstar, Mstar_err=args.Mstar_err,
+    )
+
+    # Apply marker flags
+    _all = args.show_all_markers
+    SHOW_PHASE    = _all or args.show_phase
+    SHOW_RCLOUD   = _all or args.show_rcloud
+    SHOW_RCLOUD_H = _all or args.show_rcloud_horizontal
+    SHOW_COLLAPSE = _all or args.show_collapse
+
+    modes = ["yes", "no"] if args.show_noPHII else ["yes"]
+    for _mode in modes:
+        config = AnalysisConfig(
+            constrain_v=not args.no_v,
+            constrain_M_shell=args.include_mshell,
+            constrain_t=not args.no_t,
+            constrain_R=not args.no_R,
+            constrain_Mstar=not args.no_Mstar,
+            nCore_filter=args.nCore,
+            mass_tracer=args.mass_tracer,
+            show_all=args.showall,
+            combine_nCore=args.combine_nCore,
+            phii_mode=_mode,
+            obs=obs,
+        )
+
+        main(args.folder, args.output_dir, config)

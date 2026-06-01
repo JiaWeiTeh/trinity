@@ -41,7 +41,6 @@ expansionBeyondCloud    True
 path2output    outputs/density_profile_sweep
 
 # Use adaptive solver
-use_adaptive_solver True
 
 # Run settings
 stop_r    None

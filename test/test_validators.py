@@ -9,8 +9,8 @@ from __future__ import annotations
 
 import pytest
 
-from src._input.errors import ParameterFileError
-from src._input.registry import (
+from trinity._input.errors import ParameterFileError
+from trinity._input.registry import (
     COMPANION_RULES,
     REGISTRY,
     _validate_dens_profile,

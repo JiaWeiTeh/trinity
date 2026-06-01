@@ -1,5 +1,5 @@
 """
-Tests for ``src._functions.simplify._simplify``.
+Tests for ``trinity._functions.simplify._simplify``.
 
 Covers the fixed-budget contract (output ≤ ``nmin``, default 100),
 orientation preservation (ascending/descending/non-monotonic), endpoint
@@ -20,7 +20,7 @@ import warnings
 import numpy as np
 import pytest
 
-from src._functions.simplify import _simplify
+from trinity._functions.simplify import _simplify
 
 
 # ---------------------------------------------------------------------------
@@ -459,7 +459,7 @@ class TestBudgetContract:
     def test_all_prominent_extrema_preserved(self):
         """Stronger guarantee: every input index identified as a high-
         prominence extremum must appear in the simplified output."""
-        from src._functions.simplify import _peak_prominences
+        from trinity._functions.simplify import _peak_prominences
 
         x = np.linspace(0, 1, 2000)
         y = np.sin(40 * np.pi * x)  # 20 cycles → 40 extrema, all amplitude 1
@@ -592,7 +592,7 @@ class TestCoverageSkeleton:
 
     def test_coverage_indices_are_subset_of_input_indices(self):
         """Helper sanity: returned indices index into the original x array."""
-        from src._functions.simplify import _x_uniform_coverage_idx
+        from trinity._functions.simplify import _x_uniform_coverage_idx
         x = np.linspace(0, 1, 1000)
         pool = np.arange(0, 1000, 5)  # every 5th point
         idx = _x_uniform_coverage_idx(x, pool, n_chunks=20)
@@ -600,7 +600,7 @@ class TestCoverageSkeleton:
         assert idx.size <= 20
 
     def test_coverage_handles_short_input(self):
-        from src._functions.simplify import _x_uniform_coverage_idx
+        from trinity._functions.simplify import _x_uniform_coverage_idx
         # Single point — no chunks possible
         empty = _x_uniform_coverage_idx(np.array([0.5]), np.array([0]))
         assert empty.size == 0
@@ -617,7 +617,7 @@ class TestCoverageSkeleton:
 class TestLogMetrics:
 
     def test_log_metrics_present_when_y_positive(self):
-        from src._functions.simplify import _simplify_error
+        from trinity._functions.simplify import _simplify_error
         x = np.linspace(1.0, 100.0, 5000)
         y = x ** -1.5  # always positive, ~3 decades of dynamic range
         with warnings.catch_warnings():
@@ -630,7 +630,7 @@ class TestLogMetrics:
         assert 0.0 <= m["log_r_squared"] <= 1.0
 
     def test_log_metrics_nan_when_y_crosses_zero(self):
-        from src._functions.simplify import _simplify_error
+        from trinity._functions.simplify import _simplify_error
         x = np.linspace(0.0, 1.0, 5000)
         y = np.sin(2 * np.pi * x)  # crosses zero
         with warnings.catch_warnings():
@@ -646,7 +646,7 @@ class TestLogMetrics:
     def test_log_dex_error_units(self):
         """log_max_dex_err is the L∞ deviation in decimal-log units —
         a value of 0.01 should correspond to ≈ 2 % relative error."""
-        from src._functions.simplify import _simplify_error
+        from trinity._functions.simplify import _simplify_error
         x = np.linspace(1.0, 1000.0, 5000)
         y = 10.0 ** (np.log10(x) * 0.5)  # smooth power-law in log space
         with warnings.catch_warnings():

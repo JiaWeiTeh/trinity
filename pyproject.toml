@@ -71,10 +71,12 @@ package-dir = {"" = "."}
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["src*"]
+include = ["trinity*"]
 exclude = [
     "test*",
     "docs*",
+    "paper*",
+    "scratch*",
 ]
 
 [tool.setuptools.package-data]

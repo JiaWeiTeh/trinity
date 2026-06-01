@@ -1,5 +1,5 @@
 """
-Tests for ``src._output.cloudy.snapshot_to_deck.snapshot_to_values``.
+Tests for ``trinity._output.cloudy.snapshot_to_deck.snapshot_to_values``.
 
 Covers:
 - End-to-end against a real ``mockFullrun`` snapshot at age ~0.15 Myr:
@@ -25,13 +25,13 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from src._functions.unit_conversions import INV_CONV
-from src._output.cloudy.dlaw import (
+from trinity._functions.unit_conversions import INV_CONV
+from trinity._output.cloudy.dlaw import (
     DEFAULT_DLAW_CLOSE,
     DEFAULT_DLAW_OPEN,
 )
-from src._output.cloudy.run_loader import load_run
-from src._output.cloudy.snapshot_to_deck import (
+from trinity._output.cloudy.run_loader import load_run
+from trinity._output.cloudy.snapshot_to_deck import (
     SnapshotInvalid,
     snapshot_to_values,
 )
