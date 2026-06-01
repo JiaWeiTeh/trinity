@@ -11,7 +11,11 @@ import numpy as np
 import pytest
 
 import trinity._functions.unit_conversions as cvt
-from trinity.bubble_structure.get_bubbleParams import get_leak_luminosity
+from trinity.bubble_structure.get_bubbleParams import (
+    get_leak_luminosity,
+    get_leak_thermal_pressure,
+    bubble_E2P,
+)
 from trinity._input.registry import _validate_coverFraction, REGISTRY
 
 GAMMA = 5.0 / 3.0
@@ -83,3 +87,38 @@ def test_validator_rejects_out_of_range(bad):
 @pytest.mark.parametrize('ok', [1.0, 0.99, 0.5, 0.01])
 def test_validator_accepts_valid(ok):
     _validate_coverFraction(ok, {})  # must not raise
+
+
+# --- leak pressure selection (hot-gas thermal Pb, not the driving pressure) ---
+
+def test_leak_pressure_reuses_press_bubble_outside_transition():
+    # Energy/implicit (any non-transition phase): press_bubble is already the
+    # thermal Pb, so it is returned unchanged regardless of Eb/R1.
+    for phase in ('energy', 'implicit'):
+        p = get_leak_thermal_pressure(phase, Eb=123.0, R2=5.0, R1=0.5,
+                                      gamma=GAMMA, press_bubble=7.0)
+        assert p == 7.0
+
+
+def test_leak_pressure_uses_thermal_in_transition():
+    # Transition: recompute the thermal Pb (bubble_E2P), ignoring the effective
+    # max(P_th, P_ram) driving pressure passed in as press_bubble.
+    Eb, R2, R1 = 100.0, 5.0, 0.5
+    thermal = bubble_E2P(Eb, R2, R1, GAMMA)
+    assert thermal > 0.0
+    inflated = thermal * 5.0  # as if ram pressure dominates: press_bubble = max(...)
+    p = get_leak_thermal_pressure('transition', Eb, R2, R1, GAMMA, press_bubble=inflated)
+    assert p == pytest.approx(thermal)
+    assert p < inflated
+
+
+def test_transition_leak_smaller_than_if_ram_pressure_were_used():
+    # The fix: using thermal Pb gives a smaller (correct) leak than the effective
+    # driving pressure would when ram dominates late in the transition.
+    Eb, R2, R1, Cf, cs = 100.0, 5.0, 0.5, 0.9, 12.0
+    thermal = bubble_E2P(Eb, R2, R1, GAMMA)
+    inflated = thermal * 5.0
+    p_used = get_leak_thermal_pressure('transition', Eb, R2, R1, GAMMA, inflated)
+    leak_thermal = get_leak_luminosity(Cf, R2, p_used, cs, GAMMA)
+    leak_inflated = get_leak_luminosity(Cf, R2, inflated, cs, GAMMA)
+    assert 0.0 < leak_thermal < leak_inflated

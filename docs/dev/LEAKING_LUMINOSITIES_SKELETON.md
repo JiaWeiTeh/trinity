@@ -119,15 +119,16 @@ These are **not** handled by the A–C draft and need decisions:
 
 ### Audit findings (from the verification pass) — to resolve with Joel
 
-7. **Transition-phase leak uses the *effective* pressure, not thermal `Pb`.** `get_ODE_Edot_pure`
-   computes `Lleak` from `press_bubble = get_effective_bubble_pressure(...)`, which in the **energy/
-   implicit** phases is the thermal `Pb = bubble_E2P` (✅ correct enthalpy-flux pressure), but in the
-   **transition** phase is `max(P_thermal, P_ram)`. An enthalpy flux of escaping hot gas should use the
-   hot-gas thermal pressure; when `P_ram` dominates late in transition it inflates `Lleak`. The spec
-   says "reuse `press_bubble`," and the transition `min()` selector usually picks the sound-crossing
-   drain so the inflated value is often masked — but at low `Cf` it is not. **Recommendation:** compute
-   the transition leak from thermal `bubble_E2P(Eb,R2,R1,γ)` explicitly (R1 is already in scope), or
-   confirm reusing `press_bubble` is intended. Energy-phase behaviour is unaffected either way.
+7. **RESOLVED — transition-phase leak now uses thermal `Pb`.** The leak (an enthalpy flux of hot gas)
+   must use the thermal `Pb`, not the effective driving pressure. New helper
+   `get_bubbleParams.get_leak_thermal_pressure(current_phase, Eb, R2, R1, γ, press_bubble)` returns
+   `press_bubble` unchanged in the **energy/implicit** phases (already thermal → behaviour identical),
+   and recomputes thermal `bubble_E2P(Eb,R2,R1,γ)` in the **transition** phase (where `press_bubble` is
+   `max(P_th, P_ram)`). The **momentum** phase tracks only `[R2,v2]` and never calls the energy ODE, so
+   the leak is inherently absent there (`Pb_thermal` gone). Verified: `get_ODE_Edot_pure` is called in
+   energy/implicit/transition; in the implicit phase its `Ed` is *discarded* (only `rd`,`vd` used) so the
+   leak there comes solely via `bubble_Leak` → `solve_betadelta` (no double-count). Both the RHS and the
+   diagnostic now route through the helper. Tests added (`test_cf_leak.py`, 19 pass).
 8. **`bubble_Leak` diagnostic is not refreshed in the transition phase.** The leak is *applied* there
    (inside `get_ODE_transition_pure → get_ODE_Edot_pure`), but the transition runner never updates
    `params['bubble_Leak']` (no `compute_derived_quantities` call), so the plotted `bubble_Leak` is stale

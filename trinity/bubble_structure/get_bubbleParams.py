@@ -301,6 +301,29 @@ def get_leak_luminosity(coverFraction, R2, Pb, c_sound, gamma):
         return 0.0
     return gamma / (gamma - 1.0) * (1.0 - coverFraction) * 4.0 * np.pi * R2**2 * Pb * c_sound
 
+
+def get_leak_thermal_pressure(current_phase, Eb, R2, R1, gamma, press_bubble):
+    """
+    Hot-gas thermal pressure that drives the covering-fraction leak (Eq. leak).
+
+    The leak vents HOT interior gas, so its enthalpy flux must use the thermal
+    bubble pressure P_th = (gamma-1) Eb / V_b, not the effective pressure that
+    drives the shell. In the energy and implicit phases ``press_bubble`` is
+    already that thermal value, so it is reused unchanged (the leak is identical
+    to before). In the transition phase ``press_bubble`` is max(P_th, P_ram),
+    chosen for a smooth handoff to the momentum phase; using it would over-count
+    the leak once ram pressure dominates and the hot bubble has nearly drained,
+    so the thermal P_th is recomputed here instead. The momentum phase tracks
+    only [R2, v2] and never calls the energy ODE, so its hot bubble -- and hence
+    the leak -- is already gone; no case is needed.
+
+    Returns the thermal pressure [Msun/pc/Myr**2] to pass to get_leak_luminosity.
+    """
+    if current_phase == 'transition':
+        return bubble_E2P(Eb, R2, R1, gamma)
+    return press_bubble
+
+
 def pRam(r, Lmech, v_mech):
     """
     Ram pressure from a freely streaming wind: P_ram = L_mech / (2 pi r^2 v_mech).

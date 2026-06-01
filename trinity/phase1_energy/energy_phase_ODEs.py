@@ -277,10 +277,15 @@ def get_ODE_Edot_pure(t: float, y: list, snapshot: ODESnapshot, params_for_feedb
     # Energy derivative
     L_bubble = snapshot.bubble_LTotal
     # Geometry-set covering-fraction leak (Eq. leak): computed live from the
-    # same instantaneous Pb and R2 used by the P dV term; cs and Cf are frozen
-    # per segment in the snapshot. Cf=1 -> 0 exactly (sealed Weaver bubble).
+    # instantaneous R2 and the hot-gas THERMAL pressure; cs and Cf are frozen
+    # per segment in the snapshot. The leak vents hot gas, so it uses the
+    # thermal Pb (= press_bubble in energy/implicit; recomputed in transition,
+    # where press_bubble is max(P_th, P_ram)). Cf=1 -> 0 exactly (sealed Weaver).
+    P_leak = get_bubbleParams.get_leak_thermal_pressure(
+        snapshot.current_phase, Eb, R2, R1, snapshot.gamma_adia, press_bubble
+    )
     L_leak = get_bubbleParams.get_leak_luminosity(
-        snapshot.coverFraction, R2, press_bubble, snapshot.c_sound, snapshot.gamma_adia
+        snapshot.coverFraction, R2, P_leak, snapshot.c_sound, snapshot.gamma_adia
     )
     Ed = (Lmech_total - L_bubble) - (4 * np.pi * R2**2 * press_bubble) * v2 - L_leak
 
@@ -410,9 +415,13 @@ def compute_derived_quantities(t: float, y: list, snapshot: ODESnapshot, params_
     else:
         P_ram_val = 0.0
 
-    # Covering-fraction leak diagnostic (same value the RHS subtracts from Edot)
+    # Covering-fraction leak diagnostic (same value the RHS subtracts from Edot;
+    # uses the hot-gas thermal pressure via the same rule as get_ODE_Edot_pure)
+    P_leak = get_bubbleParams.get_leak_thermal_pressure(
+        snapshot.current_phase, Eb, R2, R1, snapshot.gamma_adia, Pb
+    )
     bubble_Leak = get_bubbleParams.get_leak_luminosity(
-        snapshot.coverFraction, R2, Pb, snapshot.c_sound, snapshot.gamma_adia
+        snapshot.coverFraction, R2, P_leak, snapshot.c_sound, snapshot.gamma_adia
     )
 
     return ODEResult(
