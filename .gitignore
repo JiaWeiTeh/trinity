@@ -12,6 +12,7 @@ outputs/*
 !outputs/mockOutput/
 txt/
 fig/
+paper/plots/
 movie.txt
 lib/*
 !lib/default/
