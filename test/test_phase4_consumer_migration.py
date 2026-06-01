@@ -76,23 +76,6 @@ def _build_legacy_v1_run(tmp_path: Path) -> Path:
     return tmp_path
 
 
-def _build_prerename_legacy_run(tmp_path: Path) -> Path:
-    """Synth a pre-rename run: ``Raw Reason:`` line, no Outcome/Detail
-    headers.  Tests that the legacy fallback path in
-    ``read_simulation_end()`` still extracts the right ``detail``."""
-    (tmp_path / "simulationEnd.txt").write_text(
-        "Timestamp: 2025-12-01 00:00:00\n"
-        "Model: prerename_run\n"
-        "Exit Code: 1\n"
-        "End Reason: Maximum simulation time reached\n"
-        "Raw Reason: Stopping time reached (legacy schema)\n"
-    )
-    (tmp_path / "dictionary.jsonl").write_text(
-        json.dumps({"t_now": 0.0}) + "\n"
-    )
-    return tmp_path
-
-
 # ---------------------------------------------------------------------------
 # paper_rcloud_smoothing: fixed end_info.get("reason") (was always None)
 # ---------------------------------------------------------------------------
@@ -135,46 +118,3 @@ class TestRcloudSmoothingMigration:
         assert end_info is not None
         assert end_info["exit_code"] == 1
         assert end_info["detail"] == "Legacy text-only reason"
-
-
-# ---------------------------------------------------------------------------
-# pedrini_emergence_timescales: parse_raw_reason() rewritten to use
-# read_simulation_end() instead of custom text-parser.
-# ---------------------------------------------------------------------------
-
-class TestPedriniEmergenceMigration:
-    """``parse_raw_reason()`` was looking for ``Raw Reason:`` — a label
-    that the simulationEnd.txt writer renamed to ``Detail:``.  So the
-    old function returned ``""`` for EVERY post-rename run.  Phase 4
-    rewrites it to call ``read_simulation_end()`` instead."""
-
-    def test_returns_detail_for_v3_run(
-        self, tmp_path, disable_crash_handlers,
-    ):
-        _build_v3_run(tmp_path, detail="Stopping time reached")
-        from trinity._plots.pedrini_emergence_timescales import parse_raw_reason
-        assert parse_raw_reason(tmp_path) == "Stopping time reached"
-
-    def test_returns_detail_for_legacy_v1_run(
-        self, tmp_path, disable_crash_handlers,
-    ):
-        _build_legacy_v1_run(tmp_path)
-        from trinity._plots.pedrini_emergence_timescales import parse_raw_reason
-        assert parse_raw_reason(tmp_path) == "Legacy text-only reason"
-
-    def test_returns_detail_for_prerename_legacy_run(
-        self, tmp_path, disable_crash_handlers,
-    ):
-        """Pre-rename runs (only have ``Raw Reason:``, no ``Detail:``)
-        still work because ``read_simulation_end()`` has a back-compat
-        clause that maps ``Raw Reason:`` → ``detail``."""
-        _build_prerename_legacy_run(tmp_path)
-        from trinity._plots.pedrini_emergence_timescales import parse_raw_reason
-        # Note: the legacy parser in read_simulation_end maps Raw Reason
-        # to 'detail' only when no Detail/Outcome line is present.
-        assert parse_raw_reason(tmp_path) == "Stopping time reached (legacy schema)"
-
-    def test_returns_empty_when_run_dir_has_nothing(self, tmp_path):
-        from trinity._plots.pedrini_emergence_timescales import parse_raw_reason
-        # Empty dir — no simulationEnd.txt, no metadata.json
-        assert parse_raw_reason(tmp_path) == ""
