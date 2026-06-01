@@ -1,0 +1,1283 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+from __future__ import annotations
+"""
+Created on Wed Jul 26 15:21:52 2023
+Modified: January 2026 - Rewritten for JSONL format with O(n) performance
+
+@author: Jia Wei Teh
+
+Purpose
+-------
+Provide a "params" container that behaves like a dictionary of objects:
+    params["R2"].value
+    params["R2"].value = 10.0
+
+...and supports saving snapshots efficiently using line-delimited JSON (JSONL):
+- All data (scalars + arrays) stored inline in JSON
+- Each snapshot is one line in dictionary.jsonl
+- Append-only writes for O(1) flush performance (vs O(n²) before)
+- No HDF5 dependency - pure JSON architecture
+
+Files written to params["path2output"].value
+-------------------------------------------
+dictionary.jsonl : One JSON object per line, each line = one snapshot
+                   (Line 0 = snapshot "0", Line 1 = snapshot "1", ...).
+                   Run-constants are stripped from each line.
+metadata.json    : One pretty-printed JSON object containing:
+                     - every constant-through-run scalar
+                       (``trinity._output.run_constants.RUN_CONST_KEYS``)
+                     - a ``_metadata_version`` schema marker
+                     - ``termination`` block (run-end status, v3+)
+                     - ``final_state`` block (last-snapshot scalars, v3+)
+                   The run-const section is written at the first flush;
+                   the termination / final_state blocks are merged in
+                   at run end by ``write_simulation_end()``.  Both
+                   writes use ``_output._metadata_io.write_metadata_atomic``
+                   for atomicity.
+
+Loading
+-------
+params = DescribedDict.load_snapshot(path2output, snap_id)
+mCloud = params["mCloud"].value          # rehydrated from metadata.json
+v2     = params["v2"].value              # genuine per-snapshot value
+"""
+
+import atexit
+import collections.abc
+import dataclasses
+import json
+import signal
+import sys
+from pathlib import Path
+from typing import Any, Dict, Optional, Sequence, Tuple, Union
+
+import numpy as np
+
+
+# =============================================================================
+# JSON helper: encode numpy types
+# =============================================================================
+class NpEncoder(json.JSONEncoder):
+    """
+    JSON encoder that converts numpy types to plain Python types.
+    Handles both scalars and arrays.
+    """
+    def default(self, obj: Any) -> Any:
+        if isinstance(obj, np.integer):
+            return int(obj)
+        if isinstance(obj, np.floating):
+            return float(obj)
+        if isinstance(obj, np.bool_):
+            return bool(obj)
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return super().default(obj)
+
+
+# =============================================================================
+# DescribedItem: the stored object at params[key]
+# =============================================================================
+class DescribedItem:
+    """
+    Container for a value (scalar/array) + light metadata.
+
+    Key behavior
+    ------------
+    - Implements numeric conversions so you can do:
+        '%E' % params['sps_refmass']          # works without .value
+        f"{params['sps_refmass']:.2e}"        # also works
+
+    Metadata fields
+    ---------------
+    info : str or None
+        Human-readable description (optional).
+    ori_units : str or None
+        Units label (optional).
+    exclude_from_snapshot : bool
+        If True, key won't be saved into snapshots.
+    """
+
+    __slots__ = ("_value", "info", "ori_units", "exclude_from_snapshot")
+
+    def __init__(
+        self,
+        value: Any = None,
+        info: Optional[str] = None,
+        ori_units: Optional[str] = None,
+        exclude_from_snapshot: bool = False,
+    ):
+        self._value = value
+        self.info = info
+        self.ori_units = ori_units
+        self.exclude_from_snapshot = exclude_from_snapshot
+
+    @property
+    def value(self) -> Any:
+        """Return the stored value."""
+        return self._value
+
+    @value.setter
+    def value(self, v: Any) -> None:
+        """Set the underlying value (scalar or array)."""
+        self._value = v
+
+    # ----- numeric formatting/conversion helpers (quality-of-life) -----
+    def __float__(self) -> float:
+        return float(self.value)
+
+    def __int__(self) -> int:
+        return int(self.value)
+
+    def __complex__(self) -> complex:
+        return complex(self.value)
+
+    def __format__(self, format_spec: str) -> str:
+        return format(self.value, format_spec)
+
+    def __index__(self) -> int:
+        # Allows use in contexts requiring an integer index
+        return int(self.value)
+    # ------------------------------------------------------------------
+
+    def __str__(self) -> str:
+        """Human-friendly string showing value and info."""
+        return f"{self.value}\t({self.info})"
+
+    def __repr__(self) -> str:
+        """Short representation used in lists/debug prints."""
+        return str(self.value)
+
+    @staticmethod
+    def _unwrap(x: Any) -> Any:
+        """Extract numeric value if x is a DescribedItem, else return x."""
+        return x.value if isinstance(x, DescribedItem) else x
+
+    # arithmetic operators allow mixing DescribedItem with numbers
+    def __add__(self, other): return self.value + self._unwrap(other)
+    def __radd__(self, other): return self._unwrap(other) + self.value
+    def __sub__(self, other): return self.value - self._unwrap(other)
+    def __rsub__(self, other): return self._unwrap(other) - self.value
+    def __mul__(self, other): return self.value * self._unwrap(other)
+    def __rmul__(self, other): return self._unwrap(other) * self.value
+    def __truediv__(self, other): return self.value / self._unwrap(other)
+    def __rtruediv__(self, other): return self._unwrap(other) / self.value
+    def __pow__(self, other): return self.value ** self._unwrap(other)
+    def __rpow__(self, other): return self._unwrap(other) ** self.value
+
+    # comparisons
+    def __eq__(self, other): return self.value == self._unwrap(other)
+    def __lt__(self, other): return self.value < self._unwrap(other)
+    def __le__(self, other): return self.value <= self._unwrap(other)
+    def __gt__(self, other): return self.value > self._unwrap(other)
+    def __ge__(self, other): return self.value >= self._unwrap(other)
+
+    # numpy compatibility
+    def __array__(self, dtype=None):
+        return np.array(self.value, dtype=dtype)
+
+
+# =============================================================================
+# DescribedDict: your main "params" container + snapshot machinery
+# =============================================================================
+class DescribedDict(dict):
+    """
+    A dictionary mapping string keys -> DescribedItem.
+
+    Snapshot storage policy
+    -----------------------
+    - All data (scalars, arrays) stored inline in JSON
+    - Each snapshot is one line in dictionary.jsonl
+    - Append-only writes ensure O(1) flush performance (vs O(n²) in old version)
+
+    Required key before saving
+    --------------------------
+    params["path2output"].value must exist and point to the output directory.
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # Snapshot counters
+        self.save_count: int = 0                  # how many snapshots have been saved in-memory
+        self.snapshot_interval: int = 10          # flush every N snapshots
+        self.previous_snapshot: Dict[str, Dict[str, Any]] = {}  # pending snapshots not yet flushed
+        self.flush_count: int = 0                 # number of flush() calls (used for "fresh run" logic)
+
+        # Key flags
+        self._excluded_keys: set[str] = set()     # keys to omit from snapshots
+
+        # Per-snapshot counter: how many implicit-phase simplify() calls
+        # have logged their R² so far in the current _clean_for_snapshot
+        # pass.  Reset to 0 at the top of every snapshot build.
+        self._impl_r2_logged: int = 0
+
+        # Register crash-safe handlers to flush pending snapshots on exit
+        self._register_crash_handlers()
+
+    def __setitem__(self, key: str, value: DescribedItem) -> None:
+        """
+        Enforce that all stored values are DescribedItem.
+        This keeps a consistent interface: params[key].value always exists.
+        """
+        if not isinstance(value, DescribedItem):
+            raise TypeError(
+                f"Value assigned to '{key}' must be a DescribedItem. "
+                f"Did you mean: params['{key}'].value = <val> ?"
+            )
+
+        # Track exclusions based on item flags
+        if value.exclude_from_snapshot:
+            self._excluded_keys.add(key)
+
+        super().__setitem__(key, value)
+
+    # -------------------------------------------------------------------------
+    # Crash-safe snapshot flushing
+    # -------------------------------------------------------------------------
+    def _register_crash_handlers(self) -> None:
+        """
+        Register handlers to flush pending snapshots on exit/crash.
+
+        Covers:
+        - Normal Python exit (atexit)
+        - Ctrl+C (SIGINT)
+        - kill <pid> (SIGTERM)
+
+        Does NOT cover:
+        - kill -9 (SIGKILL) - cannot be caught
+        - os._exit() - bypasses atexit
+        """
+        import logging
+        logger = logging.getLogger(__name__)
+
+        # atexit for normal Python exit and unhandled exceptions
+        def atexit_handler():
+            self._safe_flush(termination_reason="Normal exit / atexit")
+        atexit.register(atexit_handler)
+
+        # Signal handlers for SIGINT (Ctrl+C) and SIGTERM (kill)
+        signal.signal(signal.SIGINT, self._signal_handler)
+        signal.signal(signal.SIGTERM, self._signal_handler)
+
+        logger.debug("Registered crash-safe snapshot handlers")
+
+    def _signal_handler(self, signum: int, frame) -> None:
+        """Handle termination signals by flushing pending snapshots before exit."""
+        import logging
+        logger = logging.getLogger(__name__)
+
+        sig_name = signal.Signals(signum).name if hasattr(signal, 'Signals') else str(signum)
+        logger.warning(f"Received {sig_name}, flushing pending snapshots...")
+        self._safe_flush(termination_reason=f"Signal {sig_name}")
+        sys.exit(128 + signum)  # Standard exit code for signals
+
+    def _safe_flush(self, termination_reason: str = "Unknown") -> None:
+        """
+        Flush pending snapshots and write debug report, catching exceptions.
+
+        Safe to call multiple times - flush() clears the buffer after each call.
+
+        Parameters
+        ----------
+        termination_reason : str
+            Reason for termination (for debug report)
+        """
+        import logging
+        logger = logging.getLogger(__name__)
+
+        if self.previous_snapshot:
+            try:
+                pending_count = len(self.previous_snapshot)
+                logger.info(f"Emergency flush: saving {pending_count} pending snapshot(s)...")
+                self.flush()
+            except Exception as e:
+                logger.error(f"Failed to flush snapshots on exit: {e}")
+
+        # Write termination debug report
+        try:
+            output_dir = self._get_output_dir()
+            from trinity._output.simulation_end import write_termination_debug_report
+            write_termination_debug_report(str(output_dir), reason=termination_reason)
+        except Exception as e:
+            logger.error(f"Failed to write termination debug report: {e}")
+
+    def write_termination_report(self, reason: str = "Unknown") -> None:
+        """
+        Mirror the last-2-snapshot debug block into
+        ``metadata.json[termination_debug]``.
+
+        Called at simulation end (error or success).  Phase 5+ writes
+        a structured block instead of the legacy ``termination_debug.txt``
+        file; format the block with ``python -m trinity._output.show_run``.
+
+        Parameters
+        ----------
+        reason : str
+            Termination reason (e.g., "Shell dissolved", "ODE solver failed")
+        """
+        import logging
+        logger = logging.getLogger(__name__)
+
+        try:
+            # Flush any pending snapshots first
+            if self.previous_snapshot:
+                self.flush()
+
+            output_dir = self._get_output_dir()
+            from trinity._output.simulation_end import write_termination_debug_report
+            write_termination_debug_report(str(output_dir), reason=reason)
+        except Exception as e:
+            logger.error(f"Failed to write termination_debug block: {e}")
+
+    # -------------------------------------------------------------------------
+    # Display helpers
+    # -------------------------------------------------------------------------
+    @staticmethod
+    def shorten_display(arr, nshow: int = 3):
+        """
+        Shorten an array for display purposes to avoid clogging output.
+        
+        Parameters
+        ----------
+        arr : array-like
+            Array or sequence to shorten.
+        nshow : int, optional
+            Number of elements to show at beginning and end (default: 3).
+        
+        Returns
+        -------
+        list
+            Shortened representation of array.
+        """
+        if len(arr) > 10:
+            arr = list(arr[:nshow]) + ['...'] + list(arr[-nshow:])
+        return arr
+
+    def __str__(self) -> str:
+        """
+        Customize the printed string for the dictionary.
+        
+        Features:
+        - Alphabetically sorted by key
+        - Long arrays (>10 elements) are shortened for display
+        - Shows snapshot count
+        - Only displays DescribedItem objects (not internal data)
+        """
+        custom_str = "\n" + "=" * 80 + "\n"
+        custom_str += "DescribedDict Contents\n"
+        custom_str += "=" * 80 + "\n\n"
+        
+        # Sort items alphabetically
+        sorted_items = sorted(self.items())
+        
+        for key, val in sorted_items:
+            # Only display DescribedItem objects (skip internal snapshot data)
+            if not isinstance(val, DescribedItem):
+                continue
+            
+            # Handle arrays/sequences separately for shortening
+            if isinstance(val.value, (collections.abc.Sequence, np.ndarray)):
+                # Check if it has length but is not a string
+                if hasattr(val.value, "__len__") and not isinstance(val.value, str):
+                    shortened_val = self.shorten_display(val.value)
+                    custom_str += f"{key:<35} : {shortened_val}\n"
+                else:
+                    custom_str += f"{key:<35} : {val}\n"
+            else:
+                custom_str += f"{key:<35} : {val}\n"
+        
+        custom_str += "\n" + "-" * 80 + "\n"
+        custom_str += f"Saved snapshot(s): {self.save_count}\n"
+        custom_str += "=" * 80 + "\n"
+        
+        return custom_str
+
+    # -------------------------------------------------------------------------
+    # (Optional) curve simplification for very long profile arrays
+    # -------------------------------------------------------------------------
+    def simplify(
+        self,
+        x_arr: Union[np.ndarray, Sequence[float]],
+        y_arr: Union[np.ndarray, Sequence[float]],
+        nmin: Optional[int] = None,
+        grad_inc: float = 1.0,
+        keyname: str = "",
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        """
+        Heuristic downsampling of a curve y(x) to ``nmin`` points,
+        preserving:
+        - endpoints
+        - sharp bends (points where the Menger curvature exceeds
+          ``grad_inc`` on rescaled [0, 1] axes — unit-free threshold)
+        - local extrema (sign-change points of the first derivative)
+        - points chosen by cumulative distance in y (uniform arc-length)
+        - topologically persistent extrema — any peak/trough with
+          prominence ≥ 5 % of the y-range is *mandatory* and never
+          dropped from the output
+        - an x-uniform coverage skeleton — one feature-pool point per
+          equal-width x-chunk is promoted to mandatory so low-amplitude
+          regions stay represented even when a big-amplitude feature
+          elsewhere dominates global R²
+
+        Output size is normally ``nmin``.  Endpoints and every high-
+        prominence extremum are always retained — for very noisy curves
+        with more than ``nmin`` such extrema, the output may exceed
+        ``nmin`` rather than drop a real feature.  Remaining slots are
+        filled in hierarchical-bisection priority, which keeps the
+        subset stable under small changes in ``nmin``.
+
+        After selection, ``_simplify`` computes the linear-interpolation
+        R² of the simplified curve against the original grid and emits
+        a ``UserWarning`` if it falls below 0.9 — a hint that ``nmin``
+        is too small for this curve.
+
+        ``nmin`` defaults to the ``simplify_npoints`` parameter on the
+        dict (loaded from default.param), or to 100 if absent.  Pass an
+        explicit ``nmin`` to override per call.
+
+        Input / output contract:
+        * Input: ``x_arr``, ``y_arr`` are 1-D array-likes of equal
+          length.  Input may be ascending, descending, or non-monotonic
+          in x.
+        * Output: ``(x_out, y_out)`` — two ``np.ndarray``s of equal
+          length, with endpoints preserved.  Values come back in the
+          caller's original positional order.
+        * Raises ``ValueError`` if ``len(x_arr) != len(y_arr)``.
+
+        Intended use: reduce output size for long profile arrays before
+        snapshotting.
+
+        Delegates to the standalone ``simplify`` module (no TRINITY
+        dependencies).
+        """
+        from trinity._functions.simplify import _simplify, _simplify_error
+        if nmin is None:
+            item = self.get("simplify_npoints")
+            nmin = int(item.value) if item is not None else 100
+        try:
+            x_out, y_out = _simplify(x_arr, y_arr, nmin=nmin, grad_inc=grad_inc)
+        except ValueError:
+            raise ValueError(
+                f"simplify(): x and y must have same length for {keyname}. "
+                f"Instead got {len(x_arr)} and {len(y_arr)}"
+            )
+
+        # Compute reconstruction R² for every simplify() call.  If the
+        # simplified curve diverges from the original (R² < 0.9) that's
+        # a real signal that simplify_npoints is too small — log it as
+        # a warning regardless of phase or snapshot count.  Otherwise
+        # emit a debug-level sample for the first two implicit-phase
+        # calls per snapshot, enough to confirm the routine is behaving
+        # without flooding the log.
+        import logging
+        metrics = _simplify_error(x_arr, y_arr, x_out, y_out)
+        msg = (f"simplify[{keyname}]: R²={metrics['r_squared']:.4f} "
+               f"(N_in={metrics['n_orig']} → N_out={metrics['n_simp']})")
+
+        if metrics['r_squared'] < 0.9:
+            logging.getLogger(__name__).warning(msg)
+        else:
+            phase_item = self.get("current_phase")
+            if (phase_item is not None
+                    and phase_item.value == "implicit"
+                    and self._impl_r2_logged < 2):
+                logging.getLogger(__name__).debug(msg)
+                self._impl_r2_logged += 1
+
+        return x_out, y_out
+
+    # -------------------------------------------------------------------------
+    # Internal helpers for snapshot serialization
+    # -------------------------------------------------------------------------
+    def _get_output_dir(self) -> Path:
+        """
+        Return output directory from params["path2output"].value.
+        Raises a helpful error if missing.
+        """
+        try:
+            return Path(self["path2output"].value)
+        except KeyError as e:
+            raise KeyError("save_snapshot()/flush() require params['path2output'].value") from e
+
+    def _to_json_ready_value(self, val: Any) -> Any:
+        """
+        Convert an arbitrary value to something JSON-storable.
+        All arrays are inlined as lists (no HDF5).
+        """
+        # None, primitives
+        if val is None or isinstance(val, (str, float, int, bool)):
+            return val
+
+        # Numpy types
+        if isinstance(val, (np.integer, np.floating, np.bool_)):
+            return NpEncoder().default(val)
+
+        # Arrays (numpy or sequences)
+        if isinstance(val, np.ndarray):
+            return val.tolist()
+
+        if isinstance(val, (list, tuple)):
+            # Already a list/tuple, but might contain numpy types
+            return [self._to_json_ready_value(item) for item in val]
+
+        # Fallback
+        return val
+
+    def _clean_for_snapshot(self, snap_id: int) -> Dict[str, Any]:
+        """
+        Build a JSON-ready snapshot dict of the current params.
+
+        Includes special handling for certain long profile arrays (bubble_*, shell_grav_*)
+        where we store a simplified representation (and sometimes log-space).
+
+        Run-constants (``RUN_CONST_KEYS`` from
+        ``trinity._output.run_constants``) are written to ``metadata.json``
+        once per run, and stripped from every per-snapshot dict here.
+        """
+        # Run-constants are written to metadata.json once per run
+        # and never appear in per-snapshot dicts.  ``DROPPED_IN_V2``
+        # keys are also stripped (they are reconstructed on demand by
+        # the reader from other run-constants), as are
+        # ``METADATA_EXCLUDE`` keys (paths, function tables, empty
+        # placeholders that have no place in either file).  Imported
+        # lazily to keep dictionary.py independent of the _output
+        # package at import time.
+        from trinity._output.run_constants import (
+            RUN_CONST_KEYS, METADATA_EXCLUDE, DROPPED_IN_V2,
+        )
+        run_const_keys = (
+            frozenset(RUN_CONST_KEYS) | METADATA_EXCLUDE | DROPPED_IN_V2
+        )
+
+        # Reset the per-snapshot R² log counter so each snapshot in the
+        # implicit phase logs its first two simplify() reconstructions.
+        self._impl_r2_logged = 0
+
+        # Refresh excluded sets in case flags changed after insertion
+        for k, item in self.items():
+            if isinstance(item, DescribedItem):
+                if item.exclude_from_snapshot:
+                    self._excluded_keys.add(k)
+
+        new_dict: Dict[str, Any] = {}
+        eps = 1e-300  # used for safe log10()
+
+        for key, item in self.items():
+            # Skip excluded keys and non-DescribedItem values (shouldn't happen)
+            if key in self._excluded_keys:
+                continue
+            if not isinstance(item, DescribedItem):
+                continue
+            # Skip:
+            #   * RUN_CONST_KEYS   → live in metadata.json (once per run)
+            #   * METADATA_EXCLUDE → not JSON-serializable (paths, tables)
+            #   * DROPPED_IN_V2    → reconstructible from RUN_CONST_KEYS
+            if key in run_const_keys:
+                continue
+
+            val = item.value
+
+            # -----------------------------------------------------------------
+            # Special-case: bubble arrays (mirrors your previous behavior)
+            # -----------------------------------------------------------------
+            if key == "bubble_r_arr":
+                # bubble_r_arr is stored alongside each derived bubble array as <key>_r_arr
+                continue
+
+            if key in ("bubble_T_arr", "bubble_n_arr"):
+                x_arr = np.asarray(self["bubble_r_arr"].value)
+                y_arr = np.log10(np.maximum(np.asarray(val), eps))
+                new_r, new_y = self.simplify(x_arr, y_arr, keyname=key)
+
+                new_dict["log_" + key] = self._to_json_ready_value(np.asarray(new_y))
+                new_dict[key + "_r_arr"] = self._to_json_ready_value(np.asarray(new_r))
+                continue
+
+            if key == "bubble_dTdr_arr":
+                x_arr = np.asarray(self["bubble_r_arr"].value)
+                v = np.asarray(val)
+                y_arr = np.log10(np.maximum(np.abs(v), eps))
+                new_r, new_y = self.simplify(x_arr, y_arr, keyname=key)
+
+                new_dict["log_" + key] = self._to_json_ready_value(np.asarray(new_y))
+                new_dict[key + "_r_arr"] = self._to_json_ready_value(np.asarray(new_r))
+                continue
+
+            if key == "bubble_v_arr":
+                x_arr = np.asarray(self["bubble_r_arr"].value)
+                y_arr = np.asarray(val)
+                new_r, new_y = self.simplify(x_arr, y_arr, keyname=key)
+
+                new_dict[key] = self._to_json_ready_value(np.asarray(new_y))
+                new_dict[key + "_r_arr"] = self._to_json_ready_value(np.asarray(new_r))
+                continue
+
+            # -----------------------------------------------------------------
+            # Special-case: shell gravity arrays (mirrors your previous behavior)
+            # -----------------------------------------------------------------
+            if key == "shell_grav_r":
+                # saved together with simplified force arrays as "shell_grav_r"
+                continue
+
+            if key == "shell_grav_force_m":
+                x_arr = np.asarray(self["shell_grav_r"].value)
+                y_arr = np.log10(np.maximum(np.abs(np.asarray(val)), eps))
+                new_r, new_y = self.simplify(x_arr, y_arr, keyname=key)
+
+                new_dict[key] = self._to_json_ready_value(np.asarray(new_y))
+                new_dict["shell_grav_r"] = self._to_json_ready_value(np.asarray(new_r))
+                continue
+
+            # -----------------------------------------------------------------
+            # Special-case: shell density profile arrays
+            # -----------------------------------------------------------------
+            if key == "shell_r_arr":
+                # saved together with simplified density array as "shell_r_arr"
+                continue
+
+            if key == "shell_n_arr":
+                x_arr = np.asarray(self["shell_r_arr"].value)
+                if x_arr.size > 0:
+                    y_arr = np.log10(np.maximum(np.asarray(val), eps))
+                    new_r, new_y = self.simplify(x_arr, y_arr, keyname=key)
+                    new_dict["log_" + key] = self._to_json_ready_value(np.asarray(new_y))
+                    new_dict["shell_r_arr"] = self._to_json_ready_value(np.asarray(new_r))
+                continue
+
+            # Default: store everything as JSON-ready values
+            new_dict[key] = self._to_json_ready_value(val)
+
+        return new_dict
+
+    # -------------------------------------------------------------------------
+    # Public API: snapshot saving and flushing to disk
+    # -------------------------------------------------------------------------
+    def save_snapshot(self) -> None:
+        """
+        Save the current state into self.previous_snapshot.
+
+        Duplicate guard:
+        - If the last saved snapshot has the same t_now and R2, it will not save again.
+        """
+        import logging
+        logger = logging.getLogger(__name__)
+
+        if self.save_count >= 1 and self.previous_snapshot:
+            last = self.previous_snapshot.get(str(self.save_count - 1), {})
+            try:
+                t_now = self["t_now"].value
+                r2 = self["R2"].value
+                if ("t_now" in last and t_now == last["t_now"]) and ("R2" in last and r2 == last["R2"]):
+                    logger.debug(f"Duplicate detected in save_snapshot at t = {t_now}. Snapshot not saved.")
+                    return
+            except KeyError:
+                # If t_now/R2 not present, skip duplicate detection
+                pass
+
+        # Snapshot index is current save_count
+        snap_id = self.save_count
+
+        # Convert to JSON-friendly dict
+        clean_dict = self._clean_for_snapshot(snap_id=snap_id)
+
+        # Store in the "pending" snapshot buffer
+        self.previous_snapshot[str(snap_id)] = clean_dict
+        self.save_count += 1
+
+        # Calculate progress toward next flush
+        pending_count = len(self.previous_snapshot)
+        until_flush = self.snapshot_interval - (self.save_count % self.snapshot_interval)
+        if until_flush == self.snapshot_interval:
+            until_flush = 0  # We're about to flush
+
+        # Flush periodically
+        if self.save_count % self.snapshot_interval == 0:
+            logger.debug(f"Snapshot #{self.save_count} saved. Flushing {pending_count} snapshots to disk...")
+            self.flush()
+            try:
+                logger.debug(f"All snapshots flushed to JSON at t = {self['t_now'].value:.6e} Myr")
+            except KeyError:
+                logger.debug("All snapshots flushed to JSON.")
+        else:
+            try:
+                logger.debug(f"Snapshot #{self.save_count} saved at t = {self['t_now'].value:.6e} Myr "
+                            f"({pending_count} pending, {until_flush} until flush)")
+            except KeyError:
+                logger.debug(f"Snapshot #{self.save_count} saved ({pending_count} pending, {until_flush} until flush)")
+
+    def flush(self) -> None:
+        """
+        Append pending snapshots to dictionary.jsonl (line-delimited JSON).
+
+        On the first flush of a fresh run, also writes ``metadata.json``
+        with the run-constants (input parameters + initial cloud
+        profile).  Run-constants are stripped from every per-snapshot
+        dict; the reader rehydrates them on load.
+
+        Performance: O(pending_snapshots) - only writes new data, never reads existing file.
+        This is a MASSIVE improvement over the old O(n²) behavior.
+
+        Format
+        ------
+        Each line in dictionary.jsonl is one snapshot:
+            Line 0: snapshot "0" as JSON object
+            Line 1: snapshot "1" as JSON object
+            ...
+
+        Sibling files
+        -------------
+        ``metadata.json`` (one record per run): keys listed in
+        ``trinity._output.run_constants.RUN_CONST_KEYS`` plus a
+        ``_metadata_version`` field for forward-compat.
+
+        Behavior
+        --------
+        - If flush_count == 0 and file exists: overwrite (fresh run)
+        - Else: append new snapshots
+        """
+        import logging
+        logger = logging.getLogger(__name__)
+
+        from trinity._output.run_constants import (
+            RUN_CONST_KEYS, METADATA_FILENAME, METADATA_VERSION,
+            METADATA_EXCLUDE, DROPPED_IN_V2,
+        )
+
+        path2output = self._get_output_dir()
+        path2output.mkdir(parents=True, exist_ok=True)
+        path2jsonl = path2output / "dictionary.jsonl"
+        path2metadata = path2output / METADATA_FILENAME
+
+        # Fresh run: delete existing files (jsonl AND metadata) so we
+        # never end up with a stale metadata.json next to a new
+        # simulation's snapshots.
+        if self.flush_count == 0:
+            if path2jsonl.exists():
+                path2jsonl.unlink()
+                logger.debug("Starting fresh run: deleted existing dictionary.jsonl")
+            if path2metadata.exists():
+                path2metadata.unlink()
+                logger.debug("Starting fresh run: deleted existing metadata.json")
+
+        # Sort snapshot IDs to write in order
+        snap_ids = sorted([int(k) for k in self.previous_snapshot.keys()])
+
+        # Write metadata.json on the very first flush of the run.
+        # The shared helper handles atomicity (temp+rename) and
+        # pretty-printed JSON formatting; we just build the payload
+        # of run-constant scalars.
+        if self.flush_count == 0:
+            from trinity._output._metadata_io import write_metadata_atomic
+            metadata: Dict[str, Any] = {"_metadata_version": METADATA_VERSION}
+            for k in RUN_CONST_KEYS:
+                if k in METADATA_EXCLUDE or k in DROPPED_IN_V2:
+                    continue
+                if k not in self:
+                    continue
+                item = self[k]
+                if not isinstance(item, DescribedItem):
+                    continue
+                # Defensive serialization: if the value can't be JSON-
+                # encoded (e.g. an unexpected interpolator object snuck
+                # into ``params``), log a warning and skip the key
+                # rather than crashing the whole flush.
+                try:
+                    ready = self._to_json_ready_value(item.value)
+                    json.dumps(ready, cls=NpEncoder)
+                except (TypeError, ValueError) as e:
+                    logger.warning(
+                        "metadata.json: skipping non-serializable key %r (%s)",
+                        k, e,
+                    )
+                    continue
+                metadata[k] = ready
+            write_metadata_atomic(path2output, metadata)
+            logger.debug(
+                f"Wrote {METADATA_FILENAME} with "
+                f"{len(metadata) - 1} run-const keys"
+            )
+
+        # Append each snapshot as one line
+        mode = "a" if path2jsonl.exists() else "w"
+        with open(path2jsonl, mode, encoding="utf-8") as f:
+            for snap_id in snap_ids:
+                snap_data = self.previous_snapshot[str(snap_id)]
+                json_line = json.dumps(snap_data, cls=NpEncoder)
+                f.write(json_line + "\n")
+
+        logger.debug(f"Flushed {len(snap_ids)} snapshot(s) to dictionary.jsonl")
+
+        # Update counters and clear pending buffer
+        self.flush_count += 1
+        self.previous_snapshot = {}
+
+    # -------------------------------------------------------------------------
+    # Public API: loading snapshots from disk
+    # -------------------------------------------------------------------------
+    @classmethod
+    def load_snapshots(cls, path2output: Union[str, Path]) -> Dict[str, Dict[str, Any]]:
+        """
+        Load dictionary.jsonl and return all snapshots.
+
+        Returns
+        -------
+        Dict[str, Dict[str, Any]]
+            Maps snapshot id (as str) -> snapshot content dict.
+            Line N in file = snapshot str(N).
+        """
+        path2output = Path(path2output)
+        path2jsonl = path2output / "dictionary.jsonl"
+
+        if not path2jsonl.exists():
+            raise FileNotFoundError(f"No dictionary.jsonl found in {path2output}")
+
+        snapshots = {}
+        with open(path2jsonl, "r", encoding="utf-8") as f:
+            for idx, line in enumerate(f):
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    snap_data = json.loads(line)
+                    snapshots[str(idx)] = snap_data
+                except json.JSONDecodeError as e:
+                    print(f"Warning: Could not parse line {idx}: {e}")
+                    continue
+
+        # Rehydrate run-constants from sibling metadata.json (if any).
+        # ``setdefault`` semantics: per-snapshot value wins when both
+        # are present (legacy files keep loading identically).
+        from trinity._output.run_constants import (
+            METADATA_FILENAME, metadata_keys_to_rehydrate,
+        )
+        path2metadata = path2output / METADATA_FILENAME
+        if path2metadata.exists():
+            try:
+                with open(path2metadata, "r", encoding="utf-8") as f:
+                    metadata = json.load(f)
+                run_consts = metadata_keys_to_rehydrate(metadata)
+                for snap in snapshots.values():
+                    for k, v in run_consts.items():
+                        snap.setdefault(k, v)
+            except (json.JSONDecodeError, OSError) as e:
+                print(f"Warning: could not rehydrate from {METADATA_FILENAME}: {e}")
+
+        return snapshots
+
+    @classmethod
+    def load_snapshot(
+        cls,
+        path2output: Union[str, Path],
+        snap_id: Union[int, str],
+    ) -> "DescribedDict":
+        """
+        Load a single snapshot into a DescribedDict.
+
+        This reconstructs:
+        - scalars directly into DescribedItem(value)
+        - list values back into numpy arrays
+
+        Parameters
+        ----------
+        path2output : str or Path
+            Directory containing dictionary.jsonl.
+        snap_id : int or str
+            Snapshot id to load.
+        """
+        path2output = Path(path2output)
+        snapshots = cls.load_snapshots(path2output)
+
+        sid = str(snap_id)
+        if sid not in snapshots:
+            raise KeyError(f"Snapshot {sid} not found. Available: {list(snapshots.keys())[:10]}...")
+
+        snap = snapshots[sid]
+        params = cls()
+
+        # Put path2output back into the dictionary for downstream code that expects it
+        params["path2output"] = DescribedItem(str(path2output), info="Output directory")
+
+        # Reconstruct each key/value
+        for key, val in snap.items():
+            # Lists are converted back to numpy arrays
+            if isinstance(val, list):
+                params[key] = DescribedItem(np.asarray(val))
+            else:
+                params[key] = DescribedItem(val)
+
+        return params
+
+    @classmethod
+    def load_latest_snapshot(cls, path2output: Union[str, Path]) -> "DescribedDict":
+        """
+        Convenience helper: load the snapshot with the largest integer id.
+        """
+        snapshots = cls.load_snapshots(path2output)
+        if not snapshots:
+            raise ValueError("No snapshots found in dictionary.jsonl")
+
+        last_id = max(int(k) for k in snapshots.keys())
+        return cls.load_snapshot(path2output, last_id)
+
+    # -------------------------------------------------------------------------
+    # Bulk reset helper
+    # -------------------------------------------------------------------------
+    def reset_keys(self, keys: Sequence[str], value: Any = np.nan) -> None:
+        """
+        Reset multiple keys to a specified value (default: np.nan).
+
+        This is useful for clearing phase-specific parameters that are no longer
+        needed, reducing memory usage and avoiding stale data.
+
+        Parameters
+        ----------
+        keys : Sequence[str]
+            List of key names to reset.
+        value : Any, optional
+            Value to set for all keys (default: np.nan).
+
+        Notes
+        -----
+        Keys that don't exist in the dictionary are silently skipped.
+
+        Example
+        -------
+        from trinity._input.dictionary import COOLING_PHASE_KEYS
+        params.reset_keys(COOLING_PHASE_KEYS)  # Clear all cooling-related params
+        """
+        import logging
+        logger = logging.getLogger(__name__)
+
+        reset_count = 0
+        for key in keys:
+            if key in self:
+                self[key].value = value
+                reset_count += 1
+
+        logger.debug(f"Reset {reset_count}/{len(keys)} keys to {value}")
+
+
+# =============================================================================
+# Debug snapshot: save raw params for crash debugging
+# =============================================================================
+
+DEBUG_SNAPSHOT_FILE = "debug_snapshot.json"
+
+def save_debug_snapshot(params: DescribedDict, output_path: Optional[Union[str, Path]] = None) -> Path:
+    """
+    Save a RAW snapshot of all params for debugging.
+
+    Unlike regular snapshots, this:
+    - Saves ALL keys without any cleaning/simplification
+    - Skips non-serializable objects (interpolators, etc.) gracefully
+    - Always OVERWRITES the file (captures latest state before crash)
+    - Can be called from anywhere without params['path2output']
+
+    Parameters
+    ----------
+    params : DescribedDict or dict
+        Parameter dictionary to snapshot
+    output_path : str or Path, optional
+        Directory to save to. If None, uses params['path2output'] or current dir.
+
+    Returns
+    -------
+    Path
+        Path to the saved snapshot file
+
+    Usage
+    -----
+    # In your code, call periodically or before risky operations:
+    from trinity._input.dictionary import save_debug_snapshot
+    save_debug_snapshot(params)
+
+    # Or with explicit path:
+    save_debug_snapshot(params, "/tmp/debug")
+    """
+    import logging
+    logger = logging.getLogger(__name__)
+
+    # Determine output directory
+    if output_path is not None:
+        out_dir = Path(output_path)
+    elif hasattr(params, '__getitem__') and 'path2output' in params:
+        try:
+            out_dir = Path(params['path2output'].value if hasattr(params['path2output'], 'value')
+                          else params['path2output'])
+        except:
+            out_dir = Path(".")
+    else:
+        out_dir = Path(".")
+
+    out_dir.mkdir(parents=True, exist_ok=True)
+    snapshot_path = out_dir / DEBUG_SNAPSHOT_FILE
+
+    # Build raw snapshot dict
+    snapshot = {
+        "_meta": {
+            "type": "debug_snapshot",
+            "description": "Raw parameter snapshot for debugging",
+        }
+    }
+
+    skipped_keys = []
+
+    for key, item in params.items():
+        try:
+            # Get the actual value
+            if hasattr(item, 'value'):
+                val = item.value
+            else:
+                val = item
+
+            # Try to serialize
+            if val is None or isinstance(val, (str, int, float, bool)):
+                snapshot[key] = val
+            elif isinstance(val, (np.integer, np.floating, np.bool_)):
+                snapshot[key] = NpEncoder().default(val)
+            elif isinstance(val, np.ndarray):
+                snapshot[key] = val.tolist()
+            elif isinstance(val, (list, tuple)):
+                # Try to convert, may contain numpy types
+                snapshot[key] = json.loads(json.dumps(val, cls=NpEncoder))
+            elif callable(val):
+                # Skip functions/interpolators
+                skipped_keys.append(f"{key} (callable)")
+                continue
+            else:
+                # Try generic serialization
+                try:
+                    snapshot[key] = json.loads(json.dumps(val, cls=NpEncoder))
+                except (TypeError, ValueError):
+                    skipped_keys.append(f"{key} ({type(val).__name__})")
+                    continue
+
+        except Exception as e:
+            skipped_keys.append(f"{key} (error: {e})")
+            continue
+
+    # Add metadata about skipped keys
+    if skipped_keys:
+        snapshot["_meta"]["skipped_keys"] = skipped_keys
+
+    # Write snapshot (always overwrite)
+    with open(snapshot_path, 'w', encoding='utf-8') as f:
+        json.dump(snapshot, f, cls=NpEncoder, indent=2)
+
+    logger.info(f"Debug snapshot saved to {snapshot_path} ({len(snapshot)-1} keys, {len(skipped_keys)} skipped)")
+
+    return snapshot_path
+
+
+def load_debug_snapshot(snapshot_path: Union[str, Path]) -> Dict[str, Any]:
+    """
+    Load a debug snapshot for use in tests.
+
+    Parameters
+    ----------
+    snapshot_path : str or Path
+        Path to debug_snapshot.json file
+
+    Returns
+    -------
+    dict
+        Raw dictionary with values (not DescribedItem wrapped)
+        Arrays are converted back to numpy arrays.
+
+    Usage in tests
+    --------------
+    from trinity._input.dictionary import load_debug_snapshot
+
+    # Load snapshot
+    raw_params = load_debug_snapshot("/path/to/debug_snapshot.json")
+
+    # Convert to MockParam format for tests
+    params = {k: MockParam(v) for k, v in raw_params.items() if not k.startswith('_')}
+    """
+    snapshot_path = Path(snapshot_path)
+
+    if not snapshot_path.exists():
+        raise FileNotFoundError(f"Debug snapshot not found: {snapshot_path}")
+
+    with open(snapshot_path, 'r', encoding='utf-8') as f:
+        snapshot = json.load(f)
+
+    # Convert lists back to numpy arrays
+    result = {}
+    for key, val in snapshot.items():
+        if key.startswith('_'):
+            # Skip metadata
+            continue
+        if isinstance(val, list):
+            result[key] = np.asarray(val)
+        else:
+            result[key] = val
+
+    return result
+
+
+# =============================================================================
+# Constants: Parameter groups for bulk operations
+# =============================================================================
+
+# Cooling-related parameters that can be reset after the implicit energy phase
+COOLING_PHASE_KEYS = [
+    # Residuals from beta/delta solver
+    'residual_deltaT',
+    'residual_betaEdot',
+    'residual_Edot1_guess',
+    'residual_Edot2_guess',
+    'residual_T1_guess',
+    'residual_T2_guess',
+    # Bubble energy balance
+    'bubble_Lgain',
+    'bubble_Lloss',
+    'bubble_Leak',
+    # Bubble luminosity components
+    'bubble_L1Bubble',
+    'bubble_L2Conduction',
+    'bubble_L3Intermediate',
+    'bubble_LTotal',
+    # Bubble temperature/mass
+    # 'bubble_Tavg',
+    # 'bubble_T_r_Tb',
+    # 'bubble_mass',
+    # 'bubble_r_Tb',
+    # Cooling timing
+    't_previousCoolingUpdate',
+    # Non-CIE cooling structures
+    'cStruc_cooling_nonCIE',
+    'cStruc_heating_nonCIE',
+    'cStruc_net_nonCIE_interpolation',
+    # CIE cooling structures
+    'cStruc_cooling_CIE_logT',
+    'cStruc_cooling_CIE_logLambda',
+    'cStruc_cooling_CIE_interpolation',
+    # Beta/delta values
+    'cool_beta',
+    'cool_delta',
+    # Bubble profile arrays
+    # 'bubble_v_arr',
+    # 'bubble_T_arr',
+    # 'bubble_dTdr_arr',
+    # 'bubble_r_arr',
+    # 'bubble_n_arr',
+    'bubble_dMdt',
+]
+
+
+# =============================================================================
+# Convenience helper: bulk updates
+# =============================================================================
+def updateDict(dictionary: DescribedDict, keys_or_dataclass: Union[Sequence[str], Any], values: Optional[Sequence[Any]] = None) -> None:
+    """
+    Bulk update helper supporting two usage patterns:
+
+    1. Keys and values lists:
+        updateDict(params, ["R2", "t_now"], [R2, t])
+
+    2. Dataclass instance (extracts all fields automatically):
+        feedback = get_current_sps_feedback(t, params)
+        updateDict(params, feedback)
+
+    Parameters
+    ----------
+    dictionary : DescribedDict
+        The params dictionary to update.
+    keys_or_dataclass : Sequence[str] or dataclass instance
+        Either a sequence of key names, or a dataclass instance.
+    values : Sequence[Any], optional
+        Values corresponding to keys. Required if keys_or_dataclass is a sequence.
+        Must be None if keys_or_dataclass is a dataclass.
+
+    Notes
+    -----
+    When using dataclass mode, only fields that exist in the dictionary are updated.
+    Missing keys are silently skipped.
+    """
+    # Check if second argument is a dataclass instance
+    if dataclasses.is_dataclass(keys_or_dataclass) and not isinstance(keys_or_dataclass, type):
+        # Dataclass mode: extract all fields
+        if values is not None:
+            raise ValueError("When passing a dataclass, values must be None.")
+
+        for field in dataclasses.fields(keys_or_dataclass):
+            key = field.name
+            val = getattr(keys_or_dataclass, key)
+            # Only update keys that exist in the dictionary
+            if key in dictionary:
+                dictionary[key].value = val
+    else:
+        # Traditional mode: keys and values lists
+        keys = keys_or_dataclass
+        if values is None:
+            raise ValueError("When passing keys as a sequence, values must be provided.")
+        if len(keys) != len(values):
+            raise ValueError("Length of keys must match length of values.")
+        for key, val in zip(keys, values):
+            dictionary[key].value = val
+
+
+# =============================================================================
+# Quick test example
+# =============================================================================
+if __name__ == "__main__":
+    print("=" * 80)
+    print("Testing DescribedDict")
+    print("=" * 80)
+    
+    # Create params container
+    params = DescribedDict()
+    
+    # Required for snapshotting
+    params["path2output"] = DescribedItem("./_example_output", info="Output directory")
+    
+    # Typical scalar parameters
+    params["t_now"] = DescribedItem(0.0, info="Current time", ori_units="Myr")
+    params["R2"] = DescribedItem(1.0, info="Outer bubble radius (= inner shell edge)", ori_units="pc")
+
+    # Example array parameters: one small, one large
+    params["small_arr"] = DescribedItem(
+        np.linspace(0, 1, 5),
+        info="Small array (will show all elements)",
+        ori_units="dimensionless"
+    )
+    params["large_arr"] = DescribedItem(
+        np.linspace(0, 100, 50),
+        info="Large array (will be shortened in display)",
+        ori_units="pc"
+    )
+
+    # Test alphabetical sorting and array shortening
+    print("\n--- Testing print(params) ---")
+    print(params)
+
+    # Test that actual array is not modified
+    print("\n--- Verifying actual array length is unchanged ---")
+    print(f"large_arr length: {len(params['large_arr'].value)}")
+    print(f"First 5 elements: {params['large_arr'].value[:5]}")
+
+    # Test saving snapshots
+    print("\n--- Testing snapshot saving ---")
+    for i in range(3):
+        params["t_now"].value = i * 0.1
+        params["R2"].value = 1.0 + 0.5 * i
+        params.save_snapshot()
+    
+    # Flush pending snapshots
+    params.flush()
+    
+    # Test loading
+    print("\n--- Testing snapshot loading ---")
+    loaded = DescribedDict.load_snapshot("./_example_output", 1)
+    print(f"Loaded t_now: {loaded['t_now'].value}")
+    print(f"Loaded R2: {loaded['R2'].value}")
+    
+    # Test array loading
+    large = loaded["large_arr"].value
+    print(f"Loaded large_arr shape: {large.shape}")
+    
+    print("\n" + "=" * 80)
+    print("All tests passed!")
+    print("=" * 80)

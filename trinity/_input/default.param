@@ -1,0 +1,272 @@
+# ==============================================================================
+# TRINITY PARAMETER SCHEMA + DEFAULTS  —  AUTO-GENERATED, DO NOT EDIT BY HAND
+# ------------------------------------------------------------------------------
+# This file is generated from the ParamSpec registry:
+#     trinity/_input/registry.py
+# Regenerate after changing a spec:
+#     python -m tools.gen_default_param --write
+#
+# Roles (unchanged): (1) SCHEMA — the complete set of valid parameter names;
+# any key not listed here is rejected by read_param.py. (2) DEFAULTS — every
+# value here is used when a user .param omits the key.
+#
+# To configure a run, create a .param file under param/ and override only the
+# keys you need. Human-facing parameter docs (units, allowed values, physics):
+# see docs/source/parameters.rst.
+# ==============================================================================
+
+
+
+# ==============================================================================
+# Administrative & Logging
+# ==============================================================================
+
+# INFO: Specifies the model name, which serves as the prefix for all output filenames.
+model_name    default
+
+# INFO: Defines the output directory where all generated files will be stored.
+path2output    def_dir
+
+# INFO: Specifies the output format.
+output_format    JSON
+
+# INFO: Target number of points retained for simplified profile arrays in saved snapshots (bubble_T_arr, bubble_n_arr, bubble_dTdr_arr, bubble_v_arr, shell_grav_force_m, shell_n_arr). Default 100. Larger values give higher-fidelity snapshots at the cost of larger output files. Clamped to >= 20 (matches the coverage-skeleton chunk count). The first two simplify calls per implicit-phase snapshot log their reconstruction R² at INFO level so you can verify the chosen budget is faithful.
+simplify_npoints    100
+
+# INFO: Logging level for terminal and file output. Controls how much detail is logged.
+log_level    DEBUG
+
+# INFO: Enable console (terminal) output for logging. If True, log messages are printed to terminal.
+log_console    False
+
+# INFO: Enable file output for logging. If True, log messages are written to a .log file in the output directory.
+log_file    True
+
+# INFO: Use colored output in terminal. If True, log messages are color-coded by severity (DEBUG=cyan, INFO=green, WARNING=yellow, ERROR=red, CRITICAL=magenta).
+log_colors    True
+
+
+# ==============================================================================
+# Physical Parameters
+# ==============================================================================
+
+# INFO: The mass of the molecular cloud.
+# UNIT: [Msun]
+mCloud    1e7
+
+# INFO: Star formation efficiency.
+sfe    0.01
+
+# INFO: Cloud metallicity
+# UNIT: [Zsun]
+ZCloud    1
+
+# INFO: Include HII pressure (from Strömgren ionization balance in shell) in P_drive. When False, P_HII is set to zero.
+include_PHII    True
+
+# INFO: Hydrogen nuclei number density of cloud core (n_H). Standard GMC/ISM convention. Mass density: rho = nCore * mu_convert * m_H. If `densPL` AND densPL_alpha = 0, this is the average cloud density.
+# UNIT: [cm**-3]
+nCore    1e5
+
+# INFO: Hydrogen nuclei number density of the ambient ISM (n_H). Mass density: rho = nISM * mu_convert * m_H.
+# UNIT: [cm**-3]
+nISM    1
+
+# INFO: Core radius of the molecular cloud.
+# UNIT: [pc]
+rCore    0.01
+
+
+# ==============================================================================
+# Density Profile
+# ==============================================================================
+
+# INFO: Specifies how the cloud density scales with radius.
+dens_profile    densPL
+
+# INFO: if `densBE` is selected, then the ratio `Omega = nCore/nCloudEdge` must be specified.
+densBE_Omega    14.1
+
+# INFO: if `densPL` is selected, then the power-law coefficient `nCore*(r/rCore)^alpha` (0 = homogeneous, -2 = isothermal) must be specified.
+densPL_alpha    0
+
+
+# ==============================================================================
+# Termination Conditions
+# ==============================================================================
+
+# INFO: Allow shell dissolution to terminate simulation. If False, shell dissolution check is disabled.
+allowShellDissolution    True
+
+# INFO: Duration (in Myr) that shell_nMax must remain below nISM before dissolution is triggered.
+# UNIT: [Myr]
+stop_t_diss    1
+
+# INFO: Maximum radial extent permitted for shell expansion. Set to None to disable this termination condition.
+# UNIT: [pc]
+stop_r    500
+
+# INFO: Maximum duration of the simulation. Set to None to disable this termination condition.
+# UNIT: [Myr]
+stop_t    15
+
+# INFO: Terminate simulation after the shell crosses the cloud edge (R2 > rCloud). Value is the number of post-crossing segment-loop snapshots to record before terminating. Set to None to disable. 0 stops at the edge (1a reconciliation snapshot only). N>0 lets the implicit phase advance for N more segments past the crossing — note the implicit phase's end-of-phase reconciliation snapshot adds one extra past-rCloud sample, so the total snapshots with R2 >= rCloud is roughly N + 2 (1 at-edge + N in-loop + 1 recon).
+stop_at_rCloud_nSnap    None
+
+# INFO: Radius below which the cloud is considered completely collapsed.
+# UNIT: [pc]
+coll_r    1
+
+
+# ==============================================================================
+# Stellar Feedback (SPS)
+# ==============================================================================
+
+# INFO: Stellar-rotation flag. Selects rot vs norot non-CIE cooling tables (trinity/cooling/non_CIE/read_cloudy.py). Only rot tables ship in lib/default/opiate/, so 0 (norot) requires the user to supply matching cooling tables and an sps_path pointing at a norot SPS file; the default SPS fallback rejects SB99_rotation=0. NOTE: name retained for stability. May rename to sps_rotation in a future PR once the cooling subsystem stops being SB99-flavored.
+SB99_rotation    1
+
+# INFO: Reference cluster mass used in f_mass = mCluster / sps_refmass.
+# UNIT: [Msun]
+sps_refmass    def_value
+
+# INFO: Fraction of cold mass entrained in stellar winds (increases Mdot_wind, reduces velocity).
+FB_mColdWindFrac    0
+
+# INFO: Fraction of cold mass entrained in supernova ejecta (increases Mdot_SN, reduces velocity).
+FB_mColdSNFrac    0
+
+# INFO: Defines the thermalization efficiency for colliding stellar winds.
+FB_thermCoeffWind    1
+
+# INFO: Defines the thermalization efficiency for supernova ejecta.
+FB_thermCoeffSN    1
+
+# INFO: Specifies the velocity of supernova ejecta.
+# UNIT: [km * s**-1]
+FB_vSN    1e4
+
+# INFO: Full path to an SPS data file. If def_path (default), TRINITY uses
+sps_path    def_path
+
+sps_col_t    def_unset
+
+sps_col_Qi    def_unset
+
+sps_col_fi    def_unset
+
+sps_col_Lbol    def_unset
+
+sps_col_Lmech_W    def_unset
+
+sps_col_pdot_W    def_unset
+
+sps_col_Lmech_total    def_unset
+
+sps_col_Lmech_SN    def_unset
+
+sps_col_pdot_SN    def_unset
+
+sps_col_Mdot_SN    def_unset
+
+sps_col_v_SN    def_unset
+
+sps_col_Li    def_unset
+
+sps_col_Ln    def_unset
+
+
+# ==============================================================================
+# Cooling Tables
+# ==============================================================================
+
+# INFO: Selects the CIE (T > 10^5.5 K) cooling curve.
+path_cooling_CIE    3
+
+# INFO: Folder containing the non-CIE (T < 10^5.5 K) OPIATE/CLOUDY cubes.
+path_cooling_nonCIE    def_dir
+
+
+# ==============================================================================
+# Physical Constants & Microphysics
+# ==============================================================================
+
+# INFO: Mean molecular weight for neutral atomic gas (HI + He). Dimensionless, in units of m_H. Composition: He:H = 1:10 by number. Formula: (10×1 + 1×4) / 11 = 14/11.
+# UNIT: [m_H]
+mu_atom    14/11
+
+# INFO: Mean molecular weight for fully ionized gas (H+ + He++). Dimensionless, in units of m_H. Composition: He:H = 1:10 by number. Formula: (10×1 + 1×4) / 23 = 14/23.
+# UNIT: [m_H]
+mu_ion    14/23
+
+# INFO: Mean molecular weight for molecular gas (H2 + He). Dimensionless, in units of m_H. Composition: He:H = 1:10 by number. Formula: (10×1 + 1×4) / 6 = 14/6.
+# UNIT: [m_H]
+mu_mol    14/6
+
+# INFO: Conversion factor for mass density calculation (mass integration). Use this for n→rho conversion. Independent of ionization state - ionization changes particle counts but NOT total mass.
+# UNIT: [m_H]
+mu_convert    1.4
+
+# INFO: Temperature of the neutral shell region.
+TShell_neu    1e2
+
+# INFO: Temperature of the ionised shell region.
+TShell_ion    1e4
+
+# INFO: Dust cross-section at solar metallicity.
+# UNIT: [cm**2]
+dust_sigma    1.5e-21
+
+# INFO: Metallicity below which there is effectively no dust
+# UNIT: [Zsun]
+dust_noZ    0.05
+
+# INFO: The Rosseland mean dust opacity kappa_IR.
+# UNIT: [cm**2 * g**-1]
+dust_KappaIR    4
+
+# INFO: The case B recombination coefficient
+# UNIT: [cm**3 * s**-1]
+caseB_alpha    2.59e-13
+
+# INFO: the adiabatic index
+gamma_adia    5/3
+
+# INFO: The thermal conduction coefficient C
+# UNIT: [erg * s**-1 * cm**-1 * K**(-7/2)]
+C_thermal    6e-7
+
+# INFO: speed of light
+# UNIT: [cm * s**-1]
+c_light    29979245800
+
+# INFO: Gravitational constant
+# UNIT: [cm**3 * g**-1 * s**-2]
+G    6.6743e-08
+
+# INFO: Boltzmann constant
+# UNIT: [erg * K**-1]
+k_B    1.380649e-16
+
+# INFO: ISM Pressure, P/k
+# UNIT: [K * cm**-3]
+PISM    0
+
+
+# ==============================================================================
+# Solver / Phase Control
+# ==============================================================================
+
+# INFO: When (Lgain-Lloss)/Lgain approaches this value, begin momentum-driving phase.
+phaseSwitch_LlossLgain    0.05
+
+# INFO: Cooling related values. alpha = v2*t_now/R2
+cool_alpha    0.6
+
+# INFO: Cooling related values. beta = - dPb/dt.
+cool_beta    0.8
+
+# INFO: Cooling related values. delta = dT/dt.
+cool_delta    -6/35
+
+# INFO: The relative radius xi = r/R2, at which we measure the bubble temperature.
+bubble_xi_Tb    0.98

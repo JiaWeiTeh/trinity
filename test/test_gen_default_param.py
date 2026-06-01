@@ -18,7 +18,7 @@ from tools.gen_default_param import (
     is_file_backed,
     render,
 )
-from src._input.registry import SPECS
+from trinity._input.registry import SPECS
 
 
 def _parse_value(s: str):

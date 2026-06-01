@@ -116,15 +116,15 @@ def is_sweep_param_file(path2file):
 
 def run_single(args):
     """Run a single TRINITY simulation."""
-    from src._input import read_param
-    from src._output import header
+    from trinity._input import read_param
+    from trinity._output import header
 
     params = read_param.read_param(args.path2param)
 
     header.show_param(params)
 
 
-    from src import main
+    from trinity import main
 
     # main_dict = create_dictionary.create()
 
@@ -133,7 +133,7 @@ def run_single(args):
     # Reconfigure logging with params settings
     # =================================================================
     # Now reconfigure with user's preferred log level from params
-    from src._functions.logging_setup import setup_logging
+    from trinity._functions.logging_setup import setup_logging
 
     # Get log_level from params (default to INFO if not set)
     log_level = 'INFO'
@@ -166,7 +166,7 @@ def run_single(args):
     # =================================================================
     # Validate GMC parameters before running
     # =================================================================
-    from src.cloud_properties.validate_gmc import validate_gmc_from_params
+    from trinity.cloud_properties.validate_gmc import validate_gmc_from_params
 
     gmc_check = validate_gmc_from_params(params)
     for w in gmc_check.warnings:
@@ -198,18 +198,18 @@ def run_sweep(args):
     from datetime import datetime
     from threading import Event
 
-    from src._input.sweep_parser import (
+    from trinity._input.sweep_parser import (
         read_sweep_config,
         generate_combinations_from_config,
         count_combinations_from_config,
     )
-    from src._input.sweep_runner import (
+    from trinity._input.sweep_runner import (
         run_single_simulation,
         ProgressBar,
         SweepReport,
         SimulationResult,
     )
-    from src.cloud_properties.validate_gmc import validate_gmc_params
+    from trinity.cloud_properties.validate_gmc import validate_gmc_params
 
     # Module-level shutdown flag for signal handler access
     global _shutdown_requested
@@ -257,7 +257,7 @@ def run_sweep(args):
 
         Returns GMCValidationResult or None if validation cannot be performed.
         """
-        from src._functions.unit_conversions import convert2au
+        from trinity._functions.unit_conversions import convert2au
 
         dens_profile = params_dict.get('dens_profile')
         if dens_profile not in ('densPL', 'densBE'):
@@ -268,7 +268,7 @@ def run_sweep(args):
         if mCloud is None or nCore_cgs is None:
             return None
 
-        # Unit conversions matching src/_input/default.param unit annotations:
+        # Unit conversions matching trinity/_input/default.param unit annotations:
         #   mCloud:       [Msun]      -> Msun           (factor 1)
         #   nCore, nISM:  [cm**-3]    -> pc⁻³           (factor ~2.94e+55)
         #   rCore:        [pc]        -> pc             (factor 1)
@@ -838,7 +838,7 @@ if __name__ == '__main__':
     warn_if_unsupported_deps()
 
     # Banner first so it shows in both single and sweep modes.
-    from src._output import header
+    from trinity._output import header
     header.display()
 
     # Auto-detect mode from parameter file content

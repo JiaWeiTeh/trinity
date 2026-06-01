@@ -4,7 +4,7 @@ Visualization Tools
 ===================
 
 TRINITY ships with a set of plotting scripts, collected under
-``src/_plots/``, that generate the figures used in the associated
+``trinity/_plots/``, that generate the figures used in the associated
 papers. Each script is a thin wrapper around the
 :ref:`sec-trinity-reader` API: it loads one or more simulations from
 disk, extracts a small number of time series, and renders them with
@@ -17,7 +17,7 @@ same folder-based discovery flags, and write their output into a
 predictable ``fig/{folder_name}/`` tree whose filenames encode the
 parameter combination that was plotted. To run any of them::
 
-    python src/_plots/SCRIPT_NAME.py -F /path/to/outputs
+    python trinity/_plots/SCRIPT_NAME.py -F /path/to/outputs
 
 The sections below describe each script in turn, grouped by the
 physical quantity it visualises.
@@ -50,16 +50,16 @@ Usage Examples
 .. code-block:: bash
 
    # Plot all simulations from a folder (auto-discovers mCloud/SFE grid)
-   python src/_plots/paper_feedback.py -F /path/to/outputs/sweep_test
+   python trinity/_plots/paper_feedback.py -F /path/to/outputs/sweep_test
 
    # Filter by core density
-   python src/_plots/paper_feedback.py -F /path/to/outputs --nCore 1e4
+   python trinity/_plots/paper_feedback.py -F /path/to/outputs --nCore 1e4
 
    # Specify output directory for figures
-   python src/_plots/paper_feedback.py -F /path/to/outputs -o /path/to/figures
+   python trinity/_plots/paper_feedback.py -F /path/to/outputs -o /path/to/figures
 
    # Single run from explicit path
-   python src/_plots/paper_radiusEvolution.py /path/to/dictionary.jsonl
+   python trinity/_plots/paper_radiusEvolution.py /path/to/dictionary.jsonl
 
 Force Budget Plots
 ------------------
@@ -114,13 +114,13 @@ For simulations that have ended (t > t_max), the final dominant feedback is pers
 .. code-block:: bash
 
    # Plot from folder
-   python src/_plots/paper_dominantFeedback.py -F /path/to/outputs --nCore 1e4
+   python trinity/_plots/paper_dominantFeedback.py -F /path/to/outputs --nCore 1e4
 
    # Custom time snapshots
-   python src/_plots/paper_dominantFeedback.py -F /path/to/outputs --times 1.0 3.0 5.0
+   python trinity/_plots/paper_dominantFeedback.py -F /path/to/outputs --times 1.0 3.0 5.0
 
    # Generate animated GIF
-   python src/_plots/paper_dominantFeedback.py -F /path/to/outputs --movie --dt 0.05
+   python trinity/_plots/paper_dominantFeedback.py -F /path/to/outputs --movie --dt 0.05
 
 Thermal Regime Plots
 --------------------

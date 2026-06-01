@@ -1,0 +1,601 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+import numpy as np
+import matplotlib.pyplot as plt
+from pathlib import Path
+from matplotlib.lines import Line2D
+
+import sys as _sys
+from pathlib import Path as _Path
+_sys.path.insert(0, str(_Path(__file__).parent.parent.parent))
+from trinity._plots.plot_base import FIG_DIR, smooth_1d
+
+# Add project root to path for imports
+from trinity._output.trinity_reader import load_output, find_data_file, resolve_data_input, info_simulations
+from trinity._plots.plot_markers import add_plot_markers, get_marker_legend_handles
+from trinity._plots.grid_template import (
+    build_param_tag,
+    iter_grid_densities, mark_missing_cell, attach_grid_legend,
+    save_grid_figure, set_mcloud_ylabel,
+    _sfe_title, phii_file_prefix,
+)
+
+print("...plotting radius evolution grid")
+
+# ---------------- configuration ----------------
+# Set SINGLE_MODE = True to plot a single run instead of grid
+SINGLE_MODE = True
+
+# Single run configuration (used when SINGLE_MODE = True)
+SINGLE_MCLOUD = "1e7"
+SINGLE_SFE = "020"
+SINGLE_NDENS = "1e4"
+
+# Grid configuration (used when SINGLE_MODE = False)
+mCloud_list = ["1e5", "1e7", "1e8"]                 # rows
+ndens_list  = ["1e2", "1e3", "1e4"]                 # one figure per ndens
+sfe_list    = ["001", "010", "020", "030", "050", "080"]   # cols
+
+BASE_DIR = Path("outputs")
+
+SHOW_PHASE = False
+SHOW_RCLOUD = False
+SHOW_RCLOUD_H = False
+SHOW_COLLAPSE = False
+SHOW_WEAVER = True  # Show Weaver-like R ∝ t^(3/5) solution
+SMOOTH_WINDOW = None        # e.g. 7 to smooth radii; None/1 disables
+SMOOTH_MODE = "edge"
+USE_LOG_X = False  # Use log scale for x-axis (time)
+
+
+# --- output - save to project root's fig/ directory
+SAVE_PNG = False
+SAVE_PDF = True  # set True if you also want PDFs
+
+
+# radius line styles/colors
+RADIUS_FIELDS = [
+    ("R1",     r"$R_1$",              "#9467bd", "-",  1.6),  # purple
+    ("R2",     r"$R_2$",              "k",       "-",  2.0),  # black
+    ("rShell", r"$r_{\rm shell}$",    "#ff7f0e", "-",  1.6),  # orange
+]
+
+
+def load_run_radii(data_path: Path):
+    """Load one run and return arrays sorted by snapshot index.
+
+    Uses TrinityOutput reader for clean data access.
+    Supports both JSON and JSONL formats.
+    """
+    output = load_output(data_path)
+
+    if len(output) == 0:
+        raise ValueError(f"No snapshots found in {data_path}")
+
+    # Use TrinityOutput.get() for clean array extraction
+    t = output.get('t_now')
+    phase = np.array(output.get('current_phase', as_array=False))
+
+    R1 = output.get('R1')
+    R2 = output.get('R2')
+    rShell = output.get('rShell')
+
+    rcloud = float(output[0].get('rCloud', np.nan))
+
+    # Load isCollapse for collapse indicator
+    isCollapse = np.array(output.get('isCollapse', as_array=False))
+
+    # ensure increasing time
+    if np.any(np.diff(t) < 0):
+        order = np.argsort(t)
+        t, phase = t[order], phase[order]
+        R1, R2, rShell = R1[order], R2[order], rShell[order]
+        isCollapse = isCollapse[order]
+
+    return t, phase, R1, R2, rShell, rcloud, isCollapse
+
+
+def compute_weaver_solution(t, R2, t_ref_frac=0.1):
+    """
+    Compute Weaver-like solution R ∝ t^(3/5).
+
+    The classic Weaver et al. (1977) wind-blown bubble solution gives
+    R(t) ∝ (L_wind / ρ_0)^(1/5) * t^(3/5).
+
+    We normalize to match R2 at an early reference time.
+
+    Parameters
+    ----------
+    t : array
+        Time array
+    R2 : array
+        R2 radius array (used for normalization)
+    t_ref_frac : float
+        Fraction of time range to use as reference point (default 0.1 = 10%)
+
+    Returns
+    -------
+    R_weaver : array
+        Weaver solution normalized to R2
+    """
+    # Find valid (finite) R2 values
+    valid_mask = np.isfinite(R2) & (R2 > 0) & np.isfinite(t) & (t > 0)
+    if not np.any(valid_mask):
+        return np.full_like(t, np.nan)
+
+    # Use early time as reference (at t_ref_frac of valid time range)
+    t_valid = t[valid_mask]
+    R2_valid = R2[valid_mask]
+
+    t_min, t_max = t_valid.min(), t_valid.max()
+    t_ref = t_min + t_ref_frac * (t_max - t_min)
+
+    # Find closest time to t_ref
+    ref_idx = np.argmin(np.abs(t_valid - t_ref))
+    t_ref_actual = t_valid[ref_idx]
+    R_ref = R2_valid[ref_idx]
+
+    # Weaver solution: R(t) = R_ref * (t / t_ref)^(3/5)
+    R_weaver = R_ref * (t / t_ref_actual) ** (3.0 / 5.0)
+
+    return R_weaver
+
+
+def plot_radii_on_ax(
+    ax, t, phase, R1, R2, rShell, rcloud, isCollapse=None,
+    phase_line=SHOW_PHASE, cloud_line=SHOW_RCLOUD, show_weaver=False,
+    smooth_window=None, smooth_mode="edge",
+    label_pad_points=4, use_log_x=False
+):
+    # optional smoothing
+    R1s = smooth_1d(R1, smooth_window, mode=smooth_mode)
+    R2s = smooth_1d(R2, smooth_window, mode=smooth_mode)
+    rSs = smooth_1d(rShell, smooth_window, mode=smooth_mode)
+
+    # --- Add plot markers using helper module
+    add_plot_markers(
+        ax, t,
+        phase=phase if phase_line else None,
+        R2=R2s if cloud_line else None,
+        rcloud=rcloud if cloud_line else None,
+        isCollapse=isCollapse,
+        show_phase=phase_line,
+        show_rcloud=cloud_line,
+        show_rcloud_horizontal=SHOW_RCLOUD_H,
+        show_collapse=SHOW_COLLAPSE,
+        label_pad_points=label_pad_points
+    )
+
+    # --- radii lines
+    ax.plot(t, R1s,    lw=RADIUS_FIELDS[0][4], ls=RADIUS_FIELDS[0][3], color=RADIUS_FIELDS[0][2], label=RADIUS_FIELDS[0][1], zorder=3)
+    ax.plot(t, R2s,    lw=RADIUS_FIELDS[1][4], ls=RADIUS_FIELDS[1][3], color=RADIUS_FIELDS[1][2], label=RADIUS_FIELDS[1][1], zorder=4)
+    ax.plot(t, rSs,    lw=RADIUS_FIELDS[2][4], ls=RADIUS_FIELDS[2][3], color=RADIUS_FIELDS[2][2], label=RADIUS_FIELDS[2][1], zorder=3)
+
+    # --- Weaver-like solution: R ∝ t^(3/5)
+    if show_weaver:
+        R_weaver = compute_weaver_solution(t, R2s)
+        ax.plot(t, R_weaver, lw=1.5, ls="--", color="k", alpha=0.6,
+                label=r"Weaver: $R \propto t^{3/5}$", zorder=2)
+
+    # X-axis scale
+    if use_log_x:
+        ax.set_xscale('log')
+        t_pos = t[t > 0]
+        if len(t_pos) > 0:
+            ax.set_xlim(t_pos.min(), t.max())
+    else:
+        ax.set_xlim(t.min(), t.max())
+
+
+# ---------------- run plotting ----------------
+
+def plot_single_run(mCloud, sfe, ndens):
+    """Plot a single run's radius evolution."""
+    run_name = f"{mCloud}_sfe{sfe}_n{ndens}"
+    data_path = find_data_file(BASE_DIR, run_name)
+
+    if data_path is None:
+        print(f"Data file not found for {run_name}")
+        return
+
+    fig, ax = plt.subplots(figsize=(8, 6), dpi=150)
+
+    try:
+        t, phase, R1, R2, rShell, rcloud, isCollapse = load_run_radii(data_path)
+        plot_radii_on_ax(
+            ax, t, phase, R1, R2, rShell, rcloud, isCollapse,
+            phase_line=SHOW_PHASE,
+            cloud_line=SHOW_RCLOUD,
+            show_weaver=SHOW_WEAVER,
+            smooth_window=SMOOTH_WINDOW,
+            smooth_mode=SMOOTH_MODE,
+            use_log_x=USE_LOG_X
+        )
+    except Exception as e:
+        print(f"Error loading {run_name}: {e}")
+        plt.close(fig)
+        return
+
+    # Title with run parameters - properly handle non-power-of-10 masses
+    from trinity._plots.grid_template import _mcloud_label
+    nlog = int(np.log10(float(ndens)))
+    eps = int(sfe) / 100.0
+    ax.set_title(
+        _mcloud_label(mCloud) + ", "
+        rf"$\epsilon={eps:.2f}$, "
+        rf"$n=10^{{{nlog}}}\,\mathrm{{cm^{{-3}}}}$"
+    )
+    ax.set_xlabel("t [Myr]")
+    ax.set_ylabel("Radius [pc]")
+
+    # Legend - radius lines + Weaver + markers from helper
+    handles = [
+        Line2D([0], [0], color=RADIUS_FIELDS[0][2], lw=RADIUS_FIELDS[0][4], ls=RADIUS_FIELDS[0][3], label=RADIUS_FIELDS[0][1]),
+        Line2D([0], [0], color=RADIUS_FIELDS[1][2], lw=RADIUS_FIELDS[1][4], ls=RADIUS_FIELDS[1][3], label=RADIUS_FIELDS[1][1]),
+        Line2D([0], [0], color=RADIUS_FIELDS[2][2], lw=RADIUS_FIELDS[2][4], ls=RADIUS_FIELDS[2][3], label=RADIUS_FIELDS[2][1]),
+    ]
+    if SHOW_WEAVER:
+        handles.append(Line2D([0], [0], color="k", ls="--", alpha=0.6, lw=1.5, label=r"Weaver: $R \propto t^{3/5}$"))
+    handles.extend(get_marker_legend_handles(include_phase=SHOW_PHASE, include_rcloud=SHOW_RCLOUD, include_rcloud_horizontal=SHOW_RCLOUD_H, include_collapse=SHOW_COLLAPSE))
+    ax.legend(handles=handles, loc="upper left", framealpha=0.9)
+
+    # Save
+    tag = f"radiusEvolution_M{mCloud}_sfe{sfe}_n{ndens}"
+    if SAVE_PDF:
+        out_pdf = FIG_DIR / f"{tag}.pdf"
+        fig.savefig(out_pdf, bbox_inches="tight")
+        print(f"Saved: {out_pdf}")
+
+    plt.show()
+    plt.close(fig)
+
+
+def plot_from_path(data_input: str, output_dir: str = None):
+    """
+    Plot radius evolution from a direct data path/folder.
+
+    Parameters
+    ----------
+    data_input : str
+        Can be: folder name, folder path, or file path
+    output_dir : str, optional
+        Base directory for output folders
+    """
+    try:
+        data_path = resolve_data_input(data_input, output_dir)
+    except FileNotFoundError as e:
+        print(f"Error: {e}")
+        return
+
+
+    fig, ax = plt.subplots(figsize=(8, 6), dpi=150)
+
+    try:
+        t, phase, R1, R2, rShell, rcloud, isCollapse = load_run_radii(data_path)
+        plot_radii_on_ax(
+            ax, t, phase, R1, R2, rShell, rcloud, isCollapse,
+            phase_line=SHOW_PHASE,
+            cloud_line=SHOW_RCLOUD,
+            show_weaver=SHOW_WEAVER,
+            smooth_window=SMOOTH_WINDOW,
+            smooth_mode=SMOOTH_MODE,
+            use_log_x=USE_LOG_X
+        )
+    except Exception as e:
+        print(f"Error loading data: {e}")
+        plt.close(fig)
+        return
+
+    ax.set_title(f"Radius Evolution: {data_path.parent.name}")
+    ax.set_xlabel("t [Myr]")
+    ax.set_ylabel("Radius [pc]")
+
+    # Legend - radius lines + Weaver + markers from helper
+    handles = [
+        Line2D([0], [0], color=RADIUS_FIELDS[0][2], lw=RADIUS_FIELDS[0][4], ls=RADIUS_FIELDS[0][3], label=RADIUS_FIELDS[0][1]),
+        Line2D([0], [0], color=RADIUS_FIELDS[1][2], lw=RADIUS_FIELDS[1][4], ls=RADIUS_FIELDS[1][3], label=RADIUS_FIELDS[1][1]),
+        Line2D([0], [0], color=RADIUS_FIELDS[2][2], lw=RADIUS_FIELDS[2][4], ls=RADIUS_FIELDS[2][3], label=RADIUS_FIELDS[2][1]),
+    ]
+    if SHOW_WEAVER:
+        handles.append(Line2D([0], [0], color="k", ls="--", alpha=0.6, lw=1.5, label=r"Weaver: $R \propto t^{3/5}$"))
+    handles.extend(get_marker_legend_handles(include_phase=SHOW_PHASE, include_rcloud=SHOW_RCLOUD, include_rcloud_horizontal=SHOW_RCLOUD_H, include_collapse=SHOW_COLLAPSE))
+    ax.legend(handles=handles, loc="upper left", framealpha=0.9)
+
+    plt.tight_layout()
+
+    # Save figures
+    run_name = data_path.parent.name
+    out_pdf = FIG_DIR / f"paper_radiusEvolution_{run_name}.pdf"
+    fig.savefig(out_pdf, bbox_inches='tight')
+    print(f"Saved: {out_pdf}")
+
+    plt.show()
+    plt.close(fig)
+
+
+# ---------------- command-line interface ----------------
+def plot_folder_grid(folder_path, output_dir=None, ndens_filter=None,
+                     mCloud_filter=None, sfe_filter=None, phii_mode="yes"):
+    """
+    Create grid plot from all simulations found in a folder.
+
+    Searches subfolders for dictionary.jsonl files, parses simulation
+    parameters from folder names (e.g., "1e7_sfe020_n1e4"), and arranges
+    them in a grid sorted by:
+    - Rows: increasing mCloud (top to bottom)
+    - Columns: increasing SFE (left to right)
+
+    Saves PDF as {folder_name}_{ndens}.pdf without displaying.
+
+    Parameters
+    ----------
+    folder_path : str or Path
+        Path to folder containing simulation subfolders
+    output_dir : str or Path, optional
+        Directory to save figure (default: FIG_DIR)
+    ndens_filter : str, optional
+        If provided, only plot simulations with this density (e.g., "1e4").
+        If None, creates one PDF per unique density found.
+
+    Notes
+    -----
+    Folder names must follow the pattern: {mCloud}_sfe{sfe}_n{ndens}
+    Examples: "1e7_sfe020_n1e4", "5e6_sfe010_n1e3"
+    """
+    for ndens, mCloud_list, sfe_list, grid, folder_name in iter_grid_densities(
+            folder_path, ndens_filter=ndens_filter,
+            mCloud_filter=mCloud_filter, sfe_filter=sfe_filter,
+            phii_mode=phii_mode):
+
+        nrows, ncols = len(mCloud_list), len(sfe_list)
+        fig, axes = plt.subplots(
+            nrows=nrows, ncols=ncols,
+            figsize=(3.2 * ncols, 2.6 * nrows),
+            sharex=False, sharey=False,
+            dpi=500, squeeze=False, constrained_layout=False,
+        )
+
+        for i, mCloud in enumerate(mCloud_list):
+            for j, sfe in enumerate(sfe_list):
+                ax = axes[i, j]
+                data_path = grid.get((mCloud, sfe))
+
+                if data_path is None:
+                    mark_missing_cell(ax, "missing")
+                    continue
+
+                try:
+                    t, phase, R1, R2, rShell, rcloud, isCollapse = load_run_radii(data_path)
+                    plot_radii_on_ax(
+                        ax, t, phase, R1, R2, rShell, rcloud, isCollapse,
+                        phase_line=SHOW_PHASE, cloud_line=SHOW_RCLOUD,
+                        show_weaver=SHOW_WEAVER,
+                        smooth_window=SMOOTH_WINDOW, smooth_mode=SMOOTH_MODE,
+                        use_log_x=USE_LOG_X,
+                    )
+                except Exception as e:
+                    print(f"Error loading {data_path}: {e}")
+                    mark_missing_cell(ax, "error")
+                    continue
+
+                if i == 0:
+                    ax.set_title(_sfe_title(sfe))
+                if j == 0:
+                    set_mcloud_ylabel(ax, mCloud, extra=r"Radius [pc]")
+                else:
+                    ax.tick_params(labelleft=False)
+                if i == nrows - 1:
+                    ax.set_xlabel("t [Myr]")
+
+        handles = [
+            Line2D([0], [0], color=RADIUS_FIELDS[0][2], lw=RADIUS_FIELDS[0][4], ls=RADIUS_FIELDS[0][3], label=RADIUS_FIELDS[0][1]),
+            Line2D([0], [0], color=RADIUS_FIELDS[1][2], lw=RADIUS_FIELDS[1][4], ls=RADIUS_FIELDS[1][3], label=RADIUS_FIELDS[1][1]),
+            Line2D([0], [0], color=RADIUS_FIELDS[2][2], lw=RADIUS_FIELDS[2][4], ls=RADIUS_FIELDS[2][3], label=RADIUS_FIELDS[2][1]),
+        ]
+        if SHOW_WEAVER:
+            handles.append(Line2D([0], [0], color="k", ls="--", alpha=0.6, lw=1.5, label=r"Weaver: $R \propto t^{3/5}$"))
+        handles.extend(get_marker_legend_handles(include_phase=SHOW_PHASE, include_rcloud=SHOW_RCLOUD, include_rcloud_horizontal=SHOW_RCLOUD_H, include_collapse=SHOW_COLLAPSE))
+
+        param_tag = build_param_tag(mCloud_list, sfe_list, ndens)
+        attach_grid_legend(
+            fig, handles, n_rows_for_layout=nrows,
+            folder_name=folder_name, param_tag=param_tag,
+            legend_ncol=3, legend_bbox_transform_fig=True,
+        )
+        save_grid_figure(fig, folder_name=folder_name,
+                         file_prefix=phii_file_prefix("radiusEvolution", phii_mode),
+                         param_tag=param_tag, output_dir=output_dir)
+        plt.close(fig)
+
+
+if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        description="Plot TRINITY radius evolution",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  # Single simulation
+  python paper_radiusEvolution.py 1e7_sfe020_n1e4
+  python paper_radiusEvolution.py /path/to/outputs/1e7_sfe020_n1e4
+  python paper_radiusEvolution.py /path/to/dictionary.jsonl
+
+  # Folder-based grid (auto-discovers simulations)
+  python paper_radiusEvolution.py --folder /path/to/my_experiment/
+  python paper_radiusEvolution.py -F /path/to/simulations/
+
+  # Uses config at top of file
+  python paper_radiusEvolution.py
+        """
+    )
+    parser.add_argument(
+        'data', nargs='?', default=None,
+        help='Data input: folder name, folder path, or file path'
+    )
+    parser.add_argument(
+        '--output-dir', '-o', default=None,
+        help='Base directory for output folders (default: TRINITY_OUTPUT_DIR or "outputs")'
+    )
+    parser.add_argument(
+        '--log-x', action='store_true',
+        help='Use log scale for x-axis (time)'
+    )
+    parser.add_argument(
+        '--folder', '-F', default=None,
+        help='Search folder recursively for simulations and create grid plot. '
+             'Auto-organizes by mCloud (rows) and SFE (columns). '
+             'Saves as {folder}_{ndens}.pdf'
+    )
+    parser.add_argument(
+        '--nCore', '-n', default=None,
+        help='Filter simulations by cloud density (e.g., "1e4", "1e3"). '
+             'If not specified with --folder, generates one PDF per density found.'
+    )
+    parser.add_argument(
+        '--mCloud', nargs='+', default=None,
+        help='Filter simulations by cloud mass (e.g., --mCloud 1e6 1e7).'
+    )
+    parser.add_argument(
+        '--sfe', nargs='+', default=None,
+        help='Filter simulations by SFE (e.g., --sfe 001 010).'
+    )
+    parser.add_argument(
+        '--info', action='store_true',
+        help='Scan folder and print available mCloud, SFE, and nCore values.'
+    )
+    parser.add_argument('--show-phase', action='store_true', default=False)
+    parser.add_argument('--show-rcloud', action='store_true', default=False)
+    parser.add_argument('--show-rcloud-horizontal', action='store_true', default=False)
+    parser.add_argument('--show-collapse', action='store_true', default=False)
+    parser.add_argument('--show-all-markers', action='store_true', default=False)
+    parser.add_argument(
+        '--show-noPHII', action='store_true', default=False, dest='show_noPHII',
+        help="Also emit a separate grid for '_noPHII' folders.",
+    )
+
+    args = parser.parse_args()
+
+    # Apply marker flags to module globals
+    from trinity._plots.cli import get_marker_flags
+    _marker_flags = get_marker_flags(args)
+    SHOW_PHASE = _marker_flags['show_phase']
+    SHOW_RCLOUD = _marker_flags['show_rcloud']
+    SHOW_RCLOUD_H = _marker_flags['show_rcloud_horizontal']
+    SHOW_COLLAPSE = _marker_flags['show_collapse']
+
+    if args.log_x:
+        USE_LOG_X = True
+
+    if args.info:
+        if not args.folder:
+            parser.print_help()
+            print("\nError: --info requires --folder to be specified.")
+        else:
+            info = info_simulations(args.folder)
+            print("=" * 50)
+            print(f"Simulation parameters in: {args.folder}")
+            print("=" * 50)
+            print(f"  Total simulations: {info['count']}")
+            print(f"  mCloud values: {info['mCloud']}")
+            print(f"  SFE values: {info['sfe']}")
+            print(f"  nCore values: {info['ndens']}")
+    elif args.folder:
+        modes = ["yes", "no"] if args.show_noPHII else ["yes"]
+        for _mode in modes:
+            plot_folder_grid(args.folder, args.output_dir, ndens_filter=args.nCore,
+                             mCloud_filter=args.mCloud, sfe_filter=args.sfe,
+                             phii_mode=_mode)
+    elif args.data:
+        # Command-line mode: plot from specified path
+        plot_from_path(args.data, args.output_dir)
+    elif SINGLE_MODE:
+        # Config mode: plot single run
+        plot_single_run(SINGLE_MCLOUD, SINGLE_SFE, SINGLE_NDENS)
+    else:
+        # Config mode: plot grid
+        for ndens in ndens_list:
+            nrows, ncols = len(mCloud_list), len(sfe_list)
+
+            fig, axes = plt.subplots(
+                nrows=nrows, ncols=ncols,
+                figsize=(3.2 * ncols, 2.6 * nrows),
+                sharex=False, sharey=False,
+                dpi=500,
+                constrained_layout=False,
+                squeeze=False,
+            )
+
+            nlog = int(np.log10(float(ndens)))
+
+            for i, mCloud in enumerate(mCloud_list):
+                for j, sfe in enumerate(sfe_list):
+                    ax = axes[i, j]
+                    run_name = f"{mCloud}_sfe{sfe}_n{ndens}"
+                    data_path = find_data_file(BASE_DIR, run_name)
+
+                    if data_path is None:
+                        print(f"  {run_name}: missing")
+                        mark_missing_cell(ax, "missing")
+                        continue
+
+                    try:
+                        t, phase, R1, R2, rShell, rcloud, isCollapse = load_run_radii(data_path)
+                        plot_radii_on_ax(
+                            ax, t, phase, R1, R2, rShell, rcloud, isCollapse,
+                            phase_line=SHOW_PHASE,
+                            cloud_line=SHOW_RCLOUD,
+                            show_weaver=SHOW_WEAVER,
+                            smooth_window=SMOOTH_WINDOW,
+                            smooth_mode=SMOOTH_MODE,
+                            use_log_x=USE_LOG_X
+                        )
+                    except Exception as e:
+                        print(f"Error in {run_name}: {e}")
+                        mark_missing_cell(ax, "error")
+                        continue
+
+                    if i == 0:
+                        eps = int(sfe) / 100.0
+                        ax.set_title(rf"$\epsilon={eps:.2f}$")
+
+                    if j == 0:
+                        set_mcloud_ylabel(ax, mCloud, extra=r"Radius [pc]")
+                    else:
+                        ax.tick_params(labelleft=False)
+
+                    if i == nrows - 1:
+                        ax.set_xlabel("t [Myr]")
+
+            # Legend - radius lines + Weaver + markers from helper
+            handles = [
+                Line2D([0], [0], color=RADIUS_FIELDS[0][2], lw=RADIUS_FIELDS[0][4], ls=RADIUS_FIELDS[0][3], label=RADIUS_FIELDS[0][1]),
+                Line2D([0], [0], color=RADIUS_FIELDS[1][2], lw=RADIUS_FIELDS[1][4], ls=RADIUS_FIELDS[1][3], label=RADIUS_FIELDS[1][1]),
+                Line2D([0], [0], color=RADIUS_FIELDS[2][2], lw=RADIUS_FIELDS[2][4], ls=RADIUS_FIELDS[2][3], label=RADIUS_FIELDS[2][1]),
+            ]
+            if SHOW_WEAVER:
+                handles.append(Line2D([0], [0], color="k", ls="--", alpha=0.6, lw=1.5, label=r"Weaver: $R \propto t^{3/5}$"))
+            handles.extend(get_marker_legend_handles(include_phase=SHOW_PHASE, include_rcloud=SHOW_RCLOUD, include_rcloud_horizontal=SHOW_RCLOUD_H, include_collapse=SHOW_COLLAPSE))
+
+            # Use shared adaptive layout; suptitle here is custom text (not
+            # folder_name), so draw it manually from the returned layout.
+            param_tag = build_param_tag(mCloud_list, sfe_list, ndens)
+            layout = attach_grid_legend(
+                fig, handles, n_rows_for_layout=nrows,
+                folder_name="", param_tag=param_tag,
+                legend_ncol=3, legend_bbox_transform_fig=True,
+                suptitle=False,
+            )
+            fig.suptitle(
+                rf"Radius evolution ($n=10^{{{nlog}}}\,\mathrm{{cm^{{-3}}}}$)"
+                + f"  ({param_tag})",
+                y=layout['suptitle_y'],
+            )
+
+            if SAVE_PDF:
+                out_pdf = FIG_DIR / f"radiusEvolution_{param_tag}.pdf"
+                fig.savefig(out_pdf, bbox_inches="tight")
+                print(f"Saved: {out_pdf}")
+
+            plt.show()
+            plt.close(fig)

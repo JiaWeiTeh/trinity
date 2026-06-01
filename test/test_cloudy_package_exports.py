@@ -1,12 +1,12 @@
 """
-Tests that the ``src._output.cloudy`` package re-exports the public API
-so users can do ``from src._output.cloudy import build_dlaw_block`` etc.
+Tests that the ``trinity._output.cloudy`` package re-exports the public API
+so users can do ``from trinity._output.cloudy import build_dlaw_block`` etc.
 
 Trivial smoke check, but guards against accidental dropping from __all__
 when refactoring.
 """
 
-import src._output.cloudy as cloudy
+import trinity._output.cloudy as cloudy
 
 
 def test_package_reexports_public_api():
@@ -26,11 +26,11 @@ def test_package_all_matches_exports():
 
 def test_package_re_exports_are_the_same_objects():
     """Re-exports must point at the canonical objects (not shadowed copies)."""
-    from src._output.cloudy.dlaw import build_dlaw_block, DlawError
-    from src._output.cloudy.run_loader import (
+    from trinity._output.cloudy.dlaw import build_dlaw_block, DlawError
+    from trinity._output.cloudy.run_loader import (
         RunBundle, RunLoadError, load_run,
     )
-    from src._output.cloudy.snapshot_to_deck import (
+    from trinity._output.cloudy.snapshot_to_deck import (
         SnapshotInvalid, snapshot_to_values,
     )
     assert cloudy.build_dlaw_block is build_dlaw_block

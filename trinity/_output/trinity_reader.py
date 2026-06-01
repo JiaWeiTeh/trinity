@@ -1,0 +1,1562 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+TRINITY Output Reader
+=====================
+
+A helper class for reading and processing TRINITY simulation output files (.jsonl).
+Similar to astropy.io.fits, provides easy access to simulation data with a clean,
+Pythonic API.
+
+This module is the recommended way to access TRINITY output data, replacing direct
+JSON parsing in plotting and analysis scripts.
+
+Installation
+------------
+This module is part of the TRINITY package. Import it as:
+
+    from trinity._output.trinity_reader import TrinityOutput, find_data_file, find_data_path
+
+Basic Usage
+-----------
+    from trinity._output.trinity_reader import TrinityOutput
+
+    # Open a TRINITY output file
+    output = TrinityOutput.open('path/to/output.jsonl')
+
+    # Get information about the output
+    output.info()              # Summary
+    output.info(verbose=True)  # Detailed parameter documentation
+
+    # Access time series data as numpy arrays
+    times = output.get('t_now')
+    radii = output.get('R2')
+    velocity = output.get('v2')
+
+    # For non-numeric data, disable array conversion
+    phases = output.get('current_phase', as_array=False)
+
+    # Filter by phase or time range
+    implicit_data = output.filter(phase='implicit')
+    early_data = output.filter(t_max=1.0)
+
+    # Get a specific snapshot by index
+    snapshot = output[100]
+    print(snapshot['R2'], snapshot['v2'])
+
+    # Get snapshot closest to a specific time
+    snap_at_1myr = output.get_at_time(1.0)
+
+    # Get snapshot at a specific time (interpolated by default)
+    snap = output.get_at_time(0.5)  # Returns interpolated snapshot
+    snap = output.get_at_time(0.5, mode='closest')  # Returns closest actual snapshot
+
+    # Iterate over snapshots
+    for snap in output:
+        print(snap.t_now, snap['R2'])
+
+    # Convert to pandas DataFrame (scalar values only)
+    df = output.to_dataframe()
+
+Run-level Metadata (post-Phase-1 / v2+ schema)
+----------------------------------------------
+    output.metadata                  # parsed metadata.json dict
+    output.metadata['mCloud']        # any run-constant scalar
+    r, n, m = output.initial_cloud_profile()
+                                     # reconstruct from scalars
+                                     # (legacy v1 inline arrays also OK)
+
+Termination & Final State (post-Phase-2 / v3+ schema)
+-----------------------------------------------------
+    output.termination               # dict | None — exit_code, outcome,
+                                     # detail, timestamp, model_name
+                                     # (mirrors read_simulation_end())
+    output.final_state               # dict | None — last-snapshot
+                                     # scalars (internal units)
+    output.is_successful_run         # True | False | None — three-valued
+                                     # True iff exit_code in [0, 9]
+
+Key Parameters
+--------------
+The most commonly used output parameters are:
+
+**Dynamical Variables:**
+- t_now: Current simulation time [Myr]
+- R2: Outer bubble radius (= inner shell edge) [pc]
+- v2: Velocity at R2 (outer bubble / inner shell edge) [pc/Myr]
+- Eb: Bubble thermal energy [erg]
+- T0: Characteristic bubble temperature [K]
+- R1: Inner bubble radius (wind termination shock) [pc]
+- Pb: Bubble pressure [dyn/cm^2]
+
+**Cooling Parameters (from beta-delta solver):**
+- cool_beta: Pressure evolution parameter β = -(t/Pb)(dPb/dt)
+- cool_delta: Temperature evolution parameter δ
+
+**Forces:**
+- F_grav: Gravitational force
+- F_ram: Ram pressure force (total)
+- F_HII: HII pressure force (outward)
+- F_rad: Radiation pressure force
+
+**Residual Diagnostics (beta-delta solver):**
+- residual_Edot1_guess: Edot from beta [erg/Myr]
+- residual_Edot2_guess: Edot from energy balance [erg/Myr]
+- residual_T1_guess: Bubble temperature T_bubble [K]
+- residual_T2_guess: Target temperature T0 [K]
+
+Use output.info(verbose=True) for a complete list of available parameters
+with documentation.
+
+Snapshot Consistency
+--------------------
+As of January 2026, TRINITY snapshots are saved BEFORE ODE integration,
+ensuring all values in a snapshot correspond to the same timestamp (t_now).
+This includes: t_now, R2, v2, Eb, T0, feedback properties, shell properties,
+bubble properties, forces, and beta-delta residuals.
+
+See Also
+--------
+- example_scripts/example_reader_overview.py: Comprehensive usage examples
+- example_scripts/example_plot_radius_vs_time.py: Plotting examples
+
+@author: TRINITY Team
+"""
+
+import json
+import logging
+import sys
+import numpy as np
+from pathlib import Path
+from typing import List, Dict, Any, Optional, Union, Iterator, Literal
+from dataclasses import dataclass
+import pandas as pd
+from scipy import interpolate as scipy_interp
+
+
+# =============================================================================
+# Parameter Documentation
+# =============================================================================
+
+PARAM_DOCS = {
+    # Model info
+    'model_name': 'Model identifier/name',
+    'mCloud': 'Initial cloud mass [Msun]',
+    'rCloud': 'Initial cloud radius [pc]',
+
+    # Simulation state
+    'current_phase': 'Current simulation phase (energy/implicit)',
+    't_now': 'Current simulation time [Myr]',
+    't_next': 'Next timestep target [Myr]',
+    'tSF': 'Star formation timescale [Myr]',
+
+    # Termination flags
+    'EndSimulationDirectly': 'Flag to end simulation immediately',
+    'SimulationEndReason': 'Reason for simulation termination',
+    'EarlyPhaseApproximation': 'Using early phase approximation',
+    'isCollapse': 'Shell has collapsed',
+    'isDissolved': 'Cloud has dissolved',
+
+    # Main dynamical variables
+    'R2': 'Outer bubble radius (= inner shell edge) [pc]',
+    'v2': 'Velocity at R2 (outer bubble / inner shell edge) [pc/Myr]',
+    'Eb': 'Bubble thermal energy [erg]',
+    'T0': 'Characteristic bubble temperature [K]',
+    'R1': 'Inner bubble radius (wind termination shock) [pc]',
+    'Pb': 'Bubble pressure [dyn/cm^2]',
+    'c_sound': 'Sound speed in bubble [pc/Myr]',
+
+    # Cooling parameters
+    'cool_alpha': 'Cooling power-law index α',
+    'cool_beta': 'Pressure evolution parameter β = -(t/Pb)(dPb/dt)',
+    'cool_delta': 'Temperature evolution parameter δ',
+
+    # Feedback luminosities
+    # NOTE: all luminosities below are stored in code units [Msun*pc^2/Myr^3].
+    # Multiply by INV_CONV.L_au2cgs to obtain erg/s.
+    'Lmech_W': 'Mechanical luminosity from winds [Msun*pc^2/Myr^3]',
+    'Lmech_SN': 'Mechanical luminosity from supernovae [Msun*pc^2/Myr^3]',
+    'Lmech_total': 'Total mechanical luminosity [Msun*pc^2/Myr^3]',
+    'Lbol': 'Bolometric luminosity [Msun*pc^2/Myr^3]',
+    'Li': 'Ionizing luminosity [Msun*pc^2/Myr^3]',
+    'Ln': 'Non-ionizing luminosity [Msun*pc^2/Myr^3]',
+    'Qi': 'Ionizing photon rate [photons/s]',
+
+    # Momentum injection
+    'pdot_W': 'Momentum injection rate from winds',
+    'pdot_SN': 'Momentum injection rate from supernovae',
+    'pdot_total': 'Total momentum injection rate',
+    'pdotdot_total': 'Second derivative of momentum injection',
+    'v_mech_total': 'Mechanical velocity [km/s]',
+
+    # Forces
+    'F_grav': 'Gravitational force',
+    'F_ram': 'Ram pressure force',
+    'F_ion_in': 'Ionization force (inward)',
+    'F_HII': 'HII pressure force (outward)',
+    'F_rad': 'Radiation pressure force',
+    'F_ISM': 'ISM pressure force',
+
+    # Shell properties
+    'shell_mass': 'Shell mass [Msun]',
+    'shell_massDot': 'Shell mass accretion rate [Msun/Myr]',
+    'shell_thickness': 'Shell thickness [pc]',
+    'shell_n0': 'Shell number density at inner edge [cm^-3]',
+    'shell_nMax': 'Maximum shell number density [cm^-3]',
+    'nEdge': 'Number density at shell edge [cm^-3]',
+    'rShell': 'Shell radius [pc]',
+
+    # Cloud profile parameters (constants, saved for radial profile reconstruction)
+    'nCore': 'Core number density [cm^-3]',
+    'nISM': 'ISM number density [cm^-3]',
+    'rCore': 'Core radius [pc]',
+    'dens_profile': 'Density profile type (densPL or densBE)',
+    'densPL_alpha': 'Power-law density exponent',
+
+    # Initial cloud arrays — legacy v1 metadata only.  For v2+ runs
+    # (metadata schema ≥ 2) these keys are absent; the arrays are
+    # reconstructed on demand via ``TrinityOutput.initial_cloud_profile()``
+    # from the run-constant scalars (nCore, nISM, rCore, rCloud,
+    # dens_profile, densPL_alpha, mu_convert).
+    'initial_cloud_r_arr': 'Initial cloud radius array [pc] — v1 only',
+    'initial_cloud_n_arr': 'Initial cloud density array [cm^-3] — v1 only',
+    'initial_cloud_m_arr': 'Initial cloud enclosed mass array [Msun] — v1 only',
+
+    # Shell absorption
+    'shell_fAbsorbedIon': 'Fraction of ionizing radiation absorbed',
+    'shell_fAbsorbedNeu': 'Fraction of non-ionizing radiation absorbed',
+    'shell_fAbsorbedWeightedTotal': 'Weighted total absorbed fraction',
+    'shell_fIonisedDust': 'Ionized dust fraction',
+
+    # Bubble luminosities
+    # NOTE: all luminosities below are stored in code units [Msun*pc^2/Myr^3].
+    # Multiply by INV_CONV.L_au2cgs to obtain erg/s.
+    'bubble_LTotal': 'Total bubble cooling luminosity [Msun*pc^2/Myr^3]',
+    'bubble_L1Bubble': 'Bubble cooling component 1 [Msun*pc^2/Myr^3]',
+    'bubble_L2Conduction': 'Conductive cooling component [Msun*pc^2/Myr^3]',
+    'bubble_L3Intermediate': 'Intermediate cooling component [Msun*pc^2/Myr^3]',
+    'bubble_Leak': 'Energy leak from bubble [Msun*pc^2/Myr^3]',
+    'bubble_Lgain': 'Energy gain in bubble (= Lmech_total) [Msun*pc^2/Myr^3]',
+    'bubble_Lloss': 'Energy loss from bubble (= bubble_LTotal + bubble_Leak) [Msun*pc^2/Myr^3]',
+
+    # Bubble structure
+    'bubble_mass': 'Bubble mass [Msun]',
+    'bubble_Tavg': 'Average bubble temperature [K]',
+    'bubble_T_r_Tb': 'Bubble temperature at measurement radius [K]',
+    'bubble_r_Tb': 'Radius for temperature measurement [pc]',
+    'bubble_dMdt': 'Bubble mass flow rate [Msun/Myr]',
+    'bubble_dMdtGuess': 'Initial guess for bubble mass flow rate',
+
+    # Bubble arrays (radial profiles)
+    'bubble_v_arr': 'Bubble velocity profile array',
+    'bubble_T_arr_r_arr': 'Bubble temperature profile (T, r)',
+    'bubble_n_arr_r_arr': 'Bubble density profile (n, r)',
+    'bubble_dTdr_arr_r_arr': 'Bubble temperature gradient profile',
+    'bubble_v_arr_r_arr': 'Bubble velocity profile (v, r)',
+    'log_bubble_T_arr': 'Log bubble temperature array',
+    'log_bubble_n_arr': 'Log bubble density array',
+    'log_bubble_dTdr_arr': 'Log bubble temperature gradient array',
+
+    # Residuals (beta-delta solver diagnostics)
+    'residual_deltaT': 'Temperature residual (normalized)',
+    'residual_betaEdot': 'Energy derivative residual (normalized)',
+    'residual_Edot1_guess': 'Edot from beta [erg/Myr]',
+    'residual_Edot2_guess': 'Edot from energy balance [erg/Myr]',
+    'residual_T1_guess': 'Bubble temperature T_bubble [K]',
+    'residual_T2_guess': 'Target temperature T0 [K]',
+
+    # Gravitational potential arrays
+    'shell_grav_r': 'Radii for gravitational potential [pc]',
+    'shell_grav_phi': 'Gravitational potential values',
+    'shell_grav_force_m': 'Gravitational force per unit mass',
+
+    # Cooling update
+    't_previousCoolingUpdate': 'Time of previous cooling structure update [Myr]',
+    'shell_interpolate_massDot': 'Using interpolated mass dot',
+    'shell_tauKappaRatio': 'Optical depth / opacity ratio',
+}
+
+
+# =============================================================================
+# Snapshot Class
+# =============================================================================
+
+@dataclass
+class Snapshot:
+    """A single simulation snapshot."""
+    data: Dict[str, Any]
+    index: int
+    is_interpolated: bool = False
+    interpolation_time: Optional[float] = None
+
+    def __getitem__(self, key: str) -> Any:
+        """Access snapshot data by key."""
+        return self.data.get(key)
+
+    def get(self, key: str, default: Any = None) -> Any:
+        """Get snapshot data with default."""
+        return self.data.get(key, default)
+
+    def keys(self) -> List[str]:
+        """Get all available keys."""
+        return list(self.data.keys())
+
+    @property
+    def t_now(self) -> float:
+        """Current time."""
+        return self.data.get('t_now', 0.0)
+
+    @property
+    def phase(self) -> str:
+        """Current phase."""
+        return self.data.get('current_phase', 'unknown')
+
+    def __repr__(self) -> str:
+        if self.is_interpolated:
+            return f"Snapshot(INTERPOLATED, t={self.t_now:.4e}, phase='{self.phase}')"
+        return f"Snapshot(index={self.index}, t={self.t_now:.4e}, phase='{self.phase}')"
+
+
+# =============================================================================
+# Main Reader Class
+# =============================================================================
+
+class TrinityOutput:
+    """
+    Reader for TRINITY simulation output files (.jsonl).
+
+    Examples
+    --------
+    >>> output = TrinityOutput.open('simulation.jsonl')
+    >>> output.info()
+    >>> times = output.get('t_now')
+    >>> radii = output.get('R2')
+    >>> implicit_data = output.filter(phase='implicit')
+    """
+
+    def __init__(self, filepath: Union[str, Path], snapshots: List[Dict[str, Any]]):
+        """
+        Initialize TrinityOutput.
+
+        Parameters
+        ----------
+        filepath : str or Path
+            Path to the JSONL file
+        snapshots : list
+            List of snapshot dictionaries
+        """
+        self.filepath = Path(filepath)
+        self._snapshots = snapshots
+        self._keys = set()
+        for snap in snapshots:
+            self._keys.update(snap.keys())
+        self._keys = sorted(self._keys)
+        # Cached parse of ``metadata.json`` (populated lazily via the
+        # ``metadata`` property below, or eagerly by ``_rehydrate_metadata``).
+        self._metadata_cache: Optional[Dict[str, Any]] = None
+
+    @classmethod
+    def open(cls, filepath: Union[str, Path]) -> 'TrinityOutput':
+        """
+        Open a TRINITY output file.
+
+        Parameters
+        ----------
+        filepath : str or Path
+            Path to the .json or .jsonl output file
+
+        Returns
+        -------
+        TrinityOutput
+            Reader object for the output file
+        """
+        filepath = Path(filepath)
+        if not filepath.exists():
+            raise FileNotFoundError(f"File not found: {filepath}")
+
+        # Detect format based on extension
+        if filepath.suffix == '.json':
+            snapshots = cls._load_json_format(filepath)
+        elif filepath.suffix == '.jsonl':
+            snapshots = cls._load_jsonl_format(filepath)
+        else:
+            # Try to auto-detect by attempting JSONL first
+            try:
+                snapshots = cls._load_jsonl_format(filepath)
+            except json.JSONDecodeError:
+                snapshots = cls._load_json_format(filepath)
+
+        logging.getLogger(__name__).debug(
+            "Loaded: %s (%d snapshots)", filepath, len(snapshots)
+        )
+        return cls(filepath, snapshots)
+
+    @classmethod
+    def _load_json_format(cls, filepath: Path) -> List[dict]:
+        """Load old-style .json format (single JSON object with all snapshots)."""
+        with open(filepath, 'r') as f:
+            data = json.load(f)
+
+        # Convert dict of snapshots to list
+        snapshots = []
+        for key, snap in data.items():
+            if isinstance(snap, dict):
+                if 'snap_id' not in snap:
+                    try:
+                        snap['snap_id'] = int(key)
+                    except ValueError:
+                        pass
+                snapshots.append(snap)
+
+        # Sort by snap_id
+        snapshots.sort(key=lambda s: s.get('snap_id', 0))
+        cls._rehydrate_metadata(filepath.parent, snapshots)
+        return snapshots
+
+    @classmethod
+    def _load_jsonl_format(cls, filepath: Path) -> List[dict]:
+        """Load new-style .jsonl format (line-delimited JSON)."""
+        snapshots = []
+        with open(filepath, 'r') as f:
+            for line in f:
+                line = line.strip()
+                if line:
+                    snapshots.append(json.loads(line))
+        cls._rehydrate_metadata(filepath.parent, snapshots)
+        return snapshots
+
+    @staticmethod
+    def _rehydrate_metadata(run_dir: Path, snapshots: List[dict]) -> None:
+        """
+        Merge ``<run_dir>/metadata.json`` into every snapshot's data
+        dict via ``setdefault`` semantics (per-snapshot value wins
+        when both are present).
+
+        Silently skips when ``metadata.json`` is absent — that's the
+        normal case for files written before this feature landed,
+        where every snapshot already contains the run-constants.
+
+        Logs (but does not raise) on a corrupted ``metadata.json``;
+        callers still get the snapshots, just without the rehydrate.
+        """
+        # Lazy import to avoid pulling _output.run_constants into the
+        # module's import graph until we actually load a file.
+        from trinity._output.run_constants import (
+            METADATA_FILENAME, metadata_keys_to_rehydrate,
+        )
+        metadata_path = run_dir / METADATA_FILENAME
+        if not metadata_path.exists():
+            return
+        try:
+            with open(metadata_path, "r") as f:
+                metadata = json.load(f)
+        except (json.JSONDecodeError, OSError) as e:
+            logging.getLogger(__name__).warning(
+                "Failed to read %s: %s; loading without rehydrate.",
+                metadata_path, e,
+            )
+            return
+        run_consts = metadata_keys_to_rehydrate(metadata)
+        for snap in snapshots:
+            for k, v in run_consts.items():
+                snap.setdefault(k, v)
+
+    def __len__(self) -> int:
+        """Number of snapshots."""
+        return len(self._snapshots)
+
+    def __getitem__(self, index: int) -> Snapshot:
+        """Get a specific snapshot by index."""
+        if isinstance(index, slice):
+            return [Snapshot(self._snapshots[i], i) for i in range(*index.indices(len(self)))]
+        return Snapshot(self._snapshots[index], index)
+
+    def __iter__(self) -> Iterator[Snapshot]:
+        """Iterate over snapshots."""
+        for i, snap in enumerate(self._snapshots):
+            yield Snapshot(snap, i)
+
+    @property
+    def termination(self) -> Optional[Dict[str, Any]]:
+        """
+        ``termination`` block from ``metadata.json`` (Phase 2, v3+
+        schema), or ``None`` if absent.
+
+        Mirrors :func:`trinity._output.simulation_end.read_simulation_end`'s
+        return shape: ``{exit_code, outcome, detail, timestamp,
+        model_name}``.  Plotters that previously called
+        ``read_simulation_end(run_dir)`` to fetch the exit code should
+        prefer this property — it reads directly from the JSON without
+        re-parsing the text file.
+        """
+        block = self.metadata.get("termination")
+        return block if isinstance(block, dict) else None
+
+    @property
+    def final_state(self) -> Optional[Dict[str, Any]]:
+        """
+        ``final_state`` block from ``metadata.json``, or ``None`` if
+        absent.
+
+        Contains every non-array, non-run-constant scalar from the
+        runtime params at simulation end, in **internal units**
+        (pc/Myr, pc⁻³, …) — same convention as ``Snapshot.get(key)``.
+        ``python -m trinity._output.show_run`` re-applies km/s and cm⁻³
+        conversions for human reading.
+        """
+        block = self.metadata.get("final_state")
+        return block if isinstance(block, dict) else None
+
+    @property
+    def termination_debug(self) -> Optional[Dict[str, Any]]:
+        """
+        ``termination_debug`` block from ``metadata.json`` (Phase 5,
+        v4+ schema), or ``None`` if absent.
+
+        Last-2-snapshot comparison, NaN/Inf inventory, and physics
+        sanity checks — replaces the legacy ``termination_debug.txt``
+        text file.  Keys: ``timestamp``, ``reason``, ``snapshot_count``,
+        ``time``, ``comparison``, ``warnings``, ``invalid_values``,
+        ``sanity_checks``.
+        """
+        block = self.metadata.get("termination_debug")
+        return block if isinstance(block, dict) else None
+
+    @property
+    def is_successful_run(self) -> Optional[bool]:
+        """
+        Three-valued success flag derived from
+        ``output.termination['exit_code']``:
+
+        * ``True``  — exit code in [0, 9] (clean termination per the
+          convention in ``paper_v2R2.py``);
+        * ``False`` — exit code outside that range;
+        * ``None``  — no ``termination`` block (legacy run, crash before
+          ``write_simulation_end`` fired).
+        """
+        block = self.termination
+        if block is None:
+            return None
+        ec = block.get("exit_code")
+        if ec is None:
+            return None
+        try:
+            return 0 <= int(ec) <= 9
+        except (TypeError, ValueError):
+            return None
+
+    @property
+    def metadata(self) -> Dict[str, Any]:
+        """
+        Parsed ``metadata.json`` for this run (cached, loaded on
+        first access).  Returns ``{}`` if the file is absent or
+        malformed.
+
+        This is the canonical machine-readable handle for every
+        constant-through-run parameter (``mCloud``, ``nCore``,
+        ``mu_atom``, …).  Plotters should prefer
+        ``output.metadata['mCloud']`` over ``output[0].get('mCloud')``
+        when they want a run-constant — both return the same value
+        thanks to the rehydrate step, but the metadata path is
+        conceptually clearer and survives even on empty snapshot
+        streams.
+        """
+        if self._metadata_cache is None:
+            from trinity._output.run_constants import METADATA_FILENAME
+            metadata_path = self.filepath.parent / METADATA_FILENAME
+            try:
+                with open(metadata_path, "r") as f:
+                    self._metadata_cache = json.load(f)
+            except (FileNotFoundError, OSError, json.JSONDecodeError):
+                self._metadata_cache = {}
+        return self._metadata_cache
+
+    def initial_cloud_profile(self) -> tuple:
+        """
+        Reconstruct the initial cloud profile ``(r_arr, n_arr, m_arr)``
+        from the run-constant scalars in ``metadata.json``.
+
+        Backwards-compatible: if the metadata is from a legacy run
+        (v1 schema) and still carries the inline arrays, those are
+        returned directly without recomputation.  For v2+ metadata
+        (PR ``metadata-expand-constants``) the arrays are rebuilt
+        deterministically from ``nCore``, ``nISM``, ``rCore``,
+        ``rCloud``, ``dens_profile``, ``densPL_alpha``,
+        ``mu_convert`` (and ``densBE_Omega``, ``gamma_adia`` for BE).
+
+        Returns
+        -------
+        tuple[np.ndarray, np.ndarray, np.ndarray]
+            ``(r_arr, n_arr, m_arr)`` — radius [pc], density
+            [internal pc⁻³], enclosed mass [Msun].
+
+        Raises
+        ------
+        KeyError
+            If ``metadata.json`` is missing the scalars required to
+            reconstruct (e.g. legacy run with neither inline arrays
+            nor the necessary run-constants).
+        """
+        m = self.metadata
+        # Fast path: legacy v1 inline arrays.  Real v1 metadata.json files
+        # carry all three (r, n, m); some synthetic test fixtures provide
+        # only (r, n), in which case we fill m with zeros — consumers that
+        # don't need the enclosed-mass array (e.g. the cloudy ambient
+        # extension) can discard it transparently, and any future
+        # consumer that *does* need m will fall through to the v2 scalar
+        # path because zeros would be obviously wrong.
+        r_inline = m.get("initial_cloud_r_arr")
+        n_inline = m.get("initial_cloud_n_arr")
+        if r_inline and n_inline:
+            r_arr = np.asarray(r_inline, dtype=float)
+            n_arr = np.asarray(n_inline, dtype=float)
+            m_inline = m.get("initial_cloud_m_arr")
+            m_arr = (np.asarray(m_inline, dtype=float)
+                     if m_inline else np.zeros_like(r_arr))
+            return r_arr, n_arr, m_arr
+
+        # Recompute from scalars (v2+).
+        from trinity.cloud_properties.initial_profile import (
+            build_initial_cloud_profile,
+        )
+        required = ("dens_profile", "mCloud", "nCore", "nISM",
+                    "rCore", "rCloud", "mu_convert")
+        missing = [k for k in required if k not in m]
+        if missing:
+            raise KeyError(
+                f"cannot reconstruct initial cloud profile: "
+                f"metadata.json is missing {missing}"
+            )
+        return build_initial_cloud_profile(
+            dens_profile=m["dens_profile"],
+            mCloud=m["mCloud"],
+            nCore=m["nCore"],
+            nISM=m["nISM"],
+            rCore=m["rCore"],
+            rCloud=m["rCloud"],
+            mu_convert=m["mu_convert"],
+            densPL_alpha=m.get("densPL_alpha", 0.0),
+            densBE_Omega=m.get("densBE_Omega"),
+            gamma_adia=m.get("gamma_adia"),
+            nEdge=m.get("nEdge"),
+        )
+
+    @property
+    def model_name(self) -> str:
+        """Model name from first snapshot."""
+        return self._snapshots[0].get('model_name', 'unknown') if self._snapshots else 'unknown'
+
+    @property
+    def keys(self) -> List[str]:
+        """All available parameter keys."""
+        return self._keys
+
+    @property
+    def phases(self) -> List[str]:
+        """List of unique phases in the output."""
+        return list(set(s.get('current_phase', 'unknown') for s in self._snapshots))
+
+    @property
+    def t_min(self) -> float:
+        """Minimum time in output."""
+        return min(s.get('t_now', 0) for s in self._snapshots)
+
+    @property
+    def t_max(self) -> float:
+        """Maximum time in output."""
+        return max(s.get('t_now', 0) for s in self._snapshots)
+
+    def get(self, key: str, as_array: bool = True) -> Union[np.ndarray, List[Any]]:
+        """
+        Get a parameter across all snapshots.
+
+        Parameters
+        ----------
+        key : str
+            Parameter name
+        as_array : bool
+            If True, return numpy array (for numeric data)
+
+        Returns
+        -------
+        array or list
+            Values across all snapshots
+        """
+        values = [s.get(key) for s in self._snapshots]
+        if as_array:
+            try:
+                return np.array(values)
+            except (ValueError, TypeError):
+                return values
+        return values
+
+    def get_at_time(self, t: float, key: Optional[str] = None,
+                    mode: Literal['interpolate', 'closest'] = 'interpolate',
+                    n_neighbors: int = 5, quiet: bool = False) -> Union[Snapshot, Any]:
+        """
+        Get snapshot at a specific time.
+
+        Parameters
+        ----------
+        t : float
+            Target time [Myr]
+        key : str, optional
+            If provided, return just this parameter value
+        mode : str
+            - 'interpolate' (default): Interpolate values from neighboring snapshots.
+              Returns an interpolated snapshot with a warning message.
+            - 'closest': Return the actual snapshot closest to requested time.
+        n_neighbors : int
+            Number of neighbors to use for interpolation (default 5, uses 2-3 on each side)
+        quiet : bool
+            If True, suppress the interpolation warning message
+
+        Returns
+        -------
+        Snapshot or value
+            Snapshot at time t (interpolated or closest), or specific value if key provided
+        """
+        times = self.get('t_now')
+
+        # Check if exact time exists
+        exact_idx = np.where(np.isclose(times, t, rtol=1e-10))[0]
+        if len(exact_idx) > 0:
+            snap = self[exact_idx[0]]
+            if key is not None:
+                return snap[key]
+            return snap
+
+        # Time not exact - use requested mode
+        if mode == 'closest':
+            idx = np.argmin(np.abs(times - t))
+            snap = self[idx]
+            if not quiet:
+                print(f"[TrinityOutput] Time t={t:.6e} Myr not found in snapshots. "
+                      f"Returning closest snapshot at t={times[idx]:.6e} Myr.")
+            if key is not None:
+                return snap[key]
+            return snap
+        else:
+            # Interpolate
+            snap = self._interpolate_snapshot(t, n_neighbors, quiet)
+            if key is not None:
+                return snap[key]
+            return snap
+
+    def _interpolate_snapshot(self, t: float, n_neighbors: int = 5, quiet: bool = False) -> Snapshot:
+        """
+        Create an interpolated snapshot at time t using neighboring snapshots.
+
+        Parameters
+        ----------
+        t : float
+            Target time [Myr]
+        n_neighbors : int
+            Total number of neighbors to use (split between before/after)
+        quiet : bool
+            If True, suppress warning message
+
+        Returns
+        -------
+        Snapshot
+            Interpolated snapshot with is_interpolated=True
+        """
+        times = np.array(self.get('t_now'))
+
+        # Check bounds
+        if t < times.min() or t > times.max():
+            raise ValueError(
+                f"Requested time t={t:.6e} is outside data range "
+                f"[{times.min():.6e}, {times.max():.6e}] Myr"
+            )
+
+        # Find indices of neighbors
+        sorted_indices = np.argsort(times)
+        sorted_times = times[sorted_indices]
+
+        # Find insertion point
+        insert_idx = np.searchsorted(sorted_times, t)
+
+        # Get neighbors on each side (n_neighbors total, roughly split)
+        n_before = n_neighbors // 2
+        n_after = n_neighbors - n_before
+
+        start_idx = max(0, insert_idx - n_before)
+        end_idx = min(len(sorted_times), insert_idx + n_after)
+
+        # Adjust if we hit boundaries
+        if start_idx == 0:
+            end_idx = min(len(sorted_times), n_neighbors)
+        if end_idx == len(sorted_times):
+            start_idx = max(0, len(sorted_times) - n_neighbors)
+
+        neighbor_indices = sorted_indices[start_idx:end_idx]
+        neighbor_times = times[neighbor_indices]
+
+        if not quiet:
+            print(f"[TrinityOutput] Time t={t:.6e} Myr not found in snapshots. "
+                  f"Interpolating from {len(neighbor_indices)} neighbors "
+                  f"(t=[{neighbor_times.min():.6e}, {neighbor_times.max():.6e}] Myr). "
+                  f"NOTE: These are interpolated values, not actual simulation output. "
+                  f"Use mode='closest' for the actual snapshot closest to the requested time.")
+
+        # Build interpolated data dictionary
+        interpolated_data = {}
+
+        # Get all keys from first snapshot
+        all_keys = self._snapshots[neighbor_indices[0]].keys()
+
+        for key in all_keys:
+            try:
+                # Get values from neighbor snapshots
+                values = [self._snapshots[idx].get(key) for idx in neighbor_indices]
+
+                # Determine if this is interpolatable
+                first_val = values[0]
+
+                if first_val is None:
+                    interpolated_data[key] = None
+                    continue
+
+                # Handle strings/phases - use closest
+                if isinstance(first_val, str):
+                    closest_idx = neighbor_indices[np.argmin(np.abs(neighbor_times - t))]
+                    interpolated_data[key] = self._snapshots[closest_idx].get(key)
+                    continue
+
+                # Handle booleans - use closest
+                if isinstance(first_val, bool):
+                    closest_idx = neighbor_indices[np.argmin(np.abs(neighbor_times - t))]
+                    interpolated_data[key] = self._snapshots[closest_idx].get(key)
+                    continue
+
+                # Handle numeric scalars
+                if isinstance(first_val, (int, float)):
+                    y_vals = np.array(values, dtype=float)
+
+                    # Handle NaN values
+                    valid_mask = np.isfinite(y_vals)
+                    if not np.any(valid_mask):
+                        interpolated_data[key] = np.nan
+                        continue
+
+                    if np.sum(valid_mask) < 2:
+                        # Not enough points to interpolate
+                        interpolated_data[key] = y_vals[valid_mask][0] if np.any(valid_mask) else np.nan
+                        continue
+
+                    # Use linear interpolation
+                    valid_times = neighbor_times[valid_mask]
+                    valid_vals = y_vals[valid_mask]
+
+                    interp_func = scipy_interp.interp1d(
+                        valid_times, valid_vals,
+                        kind='linear',
+                        bounds_error=False,
+                        fill_value='extrapolate'
+                    )
+                    interpolated_data[key] = float(interp_func(t))
+                    continue
+
+                # Handle arrays/lists
+                if isinstance(first_val, (list, np.ndarray)):
+                    # For arrays, interpolate element-wise if same length
+                    arr_lengths = [len(v) if v is not None else 0 for v in values]
+
+                    if len(set(arr_lengths)) == 1 and arr_lengths[0] > 0:
+                        # All same length - interpolate each element
+                        arr_len = arr_lengths[0]
+                        result = []
+
+                        for elem_idx in range(arr_len):
+                            elem_values = np.array([v[elem_idx] for v in values], dtype=float)
+                            valid_mask = np.isfinite(elem_values)
+
+                            if np.sum(valid_mask) < 2:
+                                result.append(elem_values[0] if len(elem_values) > 0 else np.nan)
+                            else:
+                                valid_times = neighbor_times[valid_mask]
+                                valid_vals = elem_values[valid_mask]
+                                interp_func = scipy_interp.interp1d(
+                                    valid_times, valid_vals,
+                                    kind='linear',
+                                    bounds_error=False,
+                                    fill_value='extrapolate'
+                                )
+                                result.append(float(interp_func(t)))
+
+                        interpolated_data[key] = result
+                    else:
+                        # Different lengths or empty - use closest
+                        closest_idx = neighbor_indices[np.argmin(np.abs(neighbor_times - t))]
+                        interpolated_data[key] = self._snapshots[closest_idx].get(key)
+                    continue
+
+                # Default: use closest value
+                closest_idx = neighbor_indices[np.argmin(np.abs(neighbor_times - t))]
+                interpolated_data[key] = self._snapshots[closest_idx].get(key)
+
+            except Exception:
+                # If interpolation fails for any reason, use closest value
+                closest_idx = neighbor_indices[np.argmin(np.abs(neighbor_times - t))]
+                interpolated_data[key] = self._snapshots[closest_idx].get(key)
+
+        # Set the interpolated time
+        interpolated_data['t_now'] = t
+
+        return Snapshot(
+            data=interpolated_data,
+            index=-1,  # -1 indicates interpolated
+            is_interpolated=True,
+            interpolation_time=t
+        )
+
+    def filter(self, phase: Optional[str] = None,
+               t_min: Optional[float] = None,
+               t_max: Optional[float] = None) -> 'TrinityOutput':
+        """
+        Filter snapshots by criteria.
+
+        Parameters
+        ----------
+        phase : str, optional
+            Filter by simulation phase
+        t_min : float, optional
+            Minimum time
+        t_max : float, optional
+            Maximum time
+
+        Returns
+        -------
+        TrinityOutput
+            New TrinityOutput with filtered snapshots
+        """
+        filtered = []
+        for snap in self._snapshots:
+            t = snap.get('t_now', 0)
+            p = snap.get('current_phase', '')
+
+            if phase is not None and p != phase:
+                continue
+            if t_min is not None and t < t_min:
+                continue
+            if t_max is not None and t > t_max:
+                continue
+
+            filtered.append(snap)
+
+        return TrinityOutput(self.filepath, filtered)
+
+    def info(self, verbose: bool = False) -> None:
+        """
+        Print information about the output file.
+
+        Parameters
+        ----------
+        verbose : bool
+            If True, show all parameters with documentation
+        """
+        print("=" * 70)
+        print(f"TRINITY Output: {self.filepath.name}")
+        print("=" * 70)
+        print()
+        print(f"  Model name:    {self.model_name}")
+        print(f"  Snapshots:     {len(self)}")
+        print(f"  Time range:    [{self.t_min:.4e}, {self.t_max:.4e}] Myr")
+        print(f"  Parameters:    {len(self.keys)}")
+        print()
+
+        # Phase breakdown
+        print("  Phases:")
+        for phase in sorted(self.phases):
+            phase_snaps = [s for s in self._snapshots if s.get('current_phase') == phase]
+            t_vals = [s.get('t_now', 0) for s in phase_snaps]
+            print(f"    {phase:12s}: {len(phase_snaps):4d} snapshots, "
+                  f"t=[{min(t_vals):.4e}, {max(t_vals):.4e}]")
+        print()
+
+        if verbose:
+            self._print_parameters()
+
+    def _print_parameters(self) -> None:
+        """Print all parameters with documentation."""
+        print("  Parameters:")
+        print("  " + "-" * 66)
+
+        # Group parameters
+        groups = {
+            'Model': ['model_name', 'mCloud', 'rCloud'],
+            'Time': ['t_now', 't_next', 'tSF', 't_previousCoolingUpdate'],
+            'State': ['current_phase', 'EndSimulationDirectly', 'SimulationEndReason',
+                     'EarlyPhaseApproximation', 'isCollapse', 'isDissolved'],
+            'Dynamics': ['R2', 'v2', 'Eb', 'T0', 'R1', 'Pb', 'c_sound'],
+            'Cooling': ['cool_alpha', 'cool_beta', 'cool_delta'],
+            'Feedback': ['Lmech_W', 'Lmech_SN', 'Lmech_total', 'Lbol', 'Li', 'Ln', 'Qi',
+                        'pdot_W', 'pdot_SN', 'pdot_total', 'pdotdot_total', 'v_mech_total'],
+            'Forces': ['F_grav', 'F_ram', 'F_ion_in', 'F_HII', 'F_rad', 'F_ISM'],
+            'Shell': ['shell_mass', 'shell_massDot', 'shell_thickness', 'nEdge', 'rShell',
+                     'shell_n0', 'shell_nMax', 'shell_fAbsorbedIon', 'shell_fAbsorbedNeu'],
+            'Bubble': ['bubble_mass', 'bubble_Tavg', 'bubble_T_r_Tb', 'bubble_LTotal',
+                      'bubble_Leak', 'bubble_Lgain', 'bubble_Lloss', 'bubble_dMdt'],
+            'Residuals': ['residual_deltaT', 'residual_betaEdot',
+                         'residual_Edot1_guess', 'residual_Edot2_guess',
+                         'residual_T1_guess', 'residual_T2_guess'],
+        }
+
+        documented_keys = set()
+        for group_name, keys in groups.items():
+            group_keys = [k for k in keys if k in self._keys]
+            if not group_keys:
+                continue
+
+            print(f"\n  [{group_name}]")
+            for key in group_keys:
+                doc = PARAM_DOCS.get(key, '')
+                sample = self._snapshots[0].get(key, None)
+                stype = type(sample).__name__ if sample is not None else '?'
+                if isinstance(sample, list):
+                    stype = f'array[{len(sample)}]'
+                elif isinstance(sample, float) and not np.isnan(sample):
+                    stype = f'float'
+                print(f"    {key:30s} ({stype:10s}) : {doc}")
+                documented_keys.add(key)
+
+        # Show undocumented keys
+        other_keys = [k for k in self._keys if k not in documented_keys]
+        if other_keys:
+            print(f"\n  [Other]")
+            for key in other_keys:
+                sample = self._snapshots[0].get(key, None)
+                stype = type(sample).__name__ if sample is not None else '?'
+                if isinstance(sample, list):
+                    stype = f'array[{len(sample)}]'
+                doc = PARAM_DOCS.get(key, '')
+                print(f"    {key:30s} ({stype:10s}) : {doc}")
+
+    def to_dataframe(self) -> 'pd.DataFrame':
+        """
+        Convert to pandas DataFrame (scalar values only).
+
+        Returns
+        -------
+        DataFrame
+            Pandas DataFrame with one row per snapshot
+        """
+        try:
+            import pandas as pd
+        except ImportError:
+            raise ImportError("pandas is required for to_dataframe()")
+
+        # Only include scalar values
+        scalar_keys = []
+        for key in self._keys:
+            sample = self._snapshots[0].get(key)
+            if isinstance(sample, (int, float, str, bool, type(None))):
+                scalar_keys.append(key)
+
+        data = {key: self.get(key, as_array=False) for key in scalar_keys}
+        return pd.DataFrame(data)
+
+    def __repr__(self) -> str:
+        return (f"TrinityOutput('{self.filepath.name}', "
+                f"snapshots={len(self)}, t=[{self.t_min:.4e}, {self.t_max:.4e}])")
+
+
+# =============================================================================
+# Convenience function
+# =============================================================================
+
+def read(filepath: Union[str, Path]) -> TrinityOutput:
+    """
+    Open a TRINITY output file (convenience function).
+
+    Parameters
+    ----------
+    filepath : str or Path
+        Path to the .jsonl output file
+
+    Returns
+    -------
+    TrinityOutput
+        Reader object for the output file
+
+    Examples
+    --------
+    >>> import trinity._output.trinity_reader as trinity
+    >>> output = trinity.read('simulation.jsonl')
+    >>> output.info()
+
+    # Or use the class method directly:
+    >>> output = TrinityOutput.open('simulation.jsonl')
+    """
+    return TrinityOutput.open(filepath)
+
+
+# Alias for backwards compatibility
+load_output = read
+
+
+def iter_progress(items: list, label: str = "Processing") -> Iterator:
+    """
+    Iterate over *items* while showing a single-line progress indicator on
+    stderr.  The progress line is overwritten in place and cleared when done.
+
+    Parameters
+    ----------
+    items : list
+        Any list-like (must support ``len()``).
+    label : str
+        Prefix shown before the counter (default "Processing").
+
+    Yields
+    ------
+    item
+        Each element of *items*.
+    """
+    total = len(items)
+    for i, item in enumerate(items, 1):
+        # Show the subfolder name when items are Paths
+        detail = ""
+        if isinstance(item, Path):
+            detail = f" ({item.parent.name})"
+        sys.stderr.write(f"\r  {label}: {i}/{total}{detail}" + " " * 20)
+        sys.stderr.flush()
+        yield item
+    # Clear the progress line
+    sys.stderr.write("\r" + " " * 80 + "\r")
+    sys.stderr.flush()
+
+
+# =============================================================================
+# Path Finding Utilities
+# =============================================================================
+
+def find_data_file(base_dir: Union[str, Path], run_name: str) -> Optional[Path]:
+    """
+    Find the data file for a run, preferring _modified folders and JSONL over JSON.
+
+    Search order (first found wins):
+    1. {run_name}_modified folder (new runs)
+    2. {run_name} folder (original runs)
+
+    Within each folder, prefers: dictionary.jsonl > dictionary.json
+
+    Parameters
+    ----------
+    base_dir : Path or str
+        Base directory containing run folders
+    run_name : str
+        Name of the run (e.g., "1e7_sfe020_n1e4")
+
+    Returns
+    -------
+    Optional[Path]
+        Path to data file, or None if not found
+    """
+    base_dir = Path(base_dir)
+
+    # Try _modified folder first, then original
+    folder_candidates = [
+        base_dir / f"{run_name}_modified",  # Modified runs first
+        base_dir / run_name,                 # Then original runs
+    ]
+
+    for run_dir in folder_candidates:
+        if not run_dir.exists():
+            continue
+
+        # Check various file names within the folder
+        file_candidates = [
+            run_dir / "dictionary.jsonl",
+            run_dir / "dictionary.json",
+            run_dir / f"{run_name}_dictionary.jsonl",
+        ]
+
+        for path in file_candidates:
+            if path.exists():
+                return path
+
+    # Also check if the file is directly in base_dir with run_name prefix
+    direct_candidates = [
+        base_dir / f"{run_name}_modified_dictionary.jsonl",
+        base_dir / f"{run_name}_dictionary.jsonl",
+        base_dir / f"{run_name}_dictionary.json",
+    ]
+
+    for path in direct_candidates:
+        if path.exists():
+            return path
+
+    return None
+
+
+def find_data_path(base_path: Union[str, Path]) -> Path:
+    """
+    Find the data file, preferring JSONL over JSON.
+
+    Given a base path (with or without extension), searches for:
+    1. {base_path}.jsonl (if base_path has no extension)
+    2. {base_path}.json (if base_path has no extension)
+    3. {base_path} as-is (if it has an extension and exists)
+    4. {base_path with .json replaced by .jsonl} (if base_path ends with .json)
+
+    Parameters
+    ----------
+    base_path : str or Path
+        Base path to the data file. Can be:
+        - Path without extension: will try .jsonl then .json
+        - Path with .json: will try .jsonl first, then .json
+        - Path with .jsonl: will use as-is if exists
+
+    Returns
+    -------
+    Path
+        Path to the found data file
+
+    Raises
+    ------
+    FileNotFoundError
+        If no data file is found
+    """
+    base_path = Path(base_path)
+
+    # If the path exists as-is, check if we should prefer .jsonl
+    if base_path.suffix == '.json':
+        # Try .jsonl first
+        jsonl_path = base_path.with_suffix('.jsonl')
+        if jsonl_path.exists():
+            return jsonl_path
+        if base_path.exists():
+            return base_path
+    elif base_path.suffix == '.jsonl':
+        if base_path.exists():
+            return base_path
+        # Fall back to .json
+        json_path = base_path.with_suffix('.json')
+        if json_path.exists():
+            return json_path
+    else:
+        # No extension - try adding .jsonl then .json
+        jsonl_path = Path(str(base_path) + '.jsonl')
+        if jsonl_path.exists():
+            return jsonl_path
+        json_path = Path(str(base_path) + '.json')
+        if json_path.exists():
+            return json_path
+        # Also try as directory with dictionary files
+        if base_path.is_dir():
+            for suffix in ['.jsonl', '.json']:
+                dict_path = base_path / f'dictionary{suffix}'
+                if dict_path.exists():
+                    return dict_path
+
+    raise FileNotFoundError(
+        f"No data file found for: {base_path}\n"
+        f"Tried: .jsonl and .json variants"
+    )
+
+
+def resolve_data_input(data_input: Union[str, Path],
+                       output_dir: Union[str, Path] = None) -> Path:
+    """
+    Resolve various data input formats to a data file path.
+
+    Accepts:
+    1. Output folder name (e.g., "1e7_sfe020_n1e4") - searches in output_dir
+    2. Folder path (e.g., "/path/to/outputs/1e7_sfe020_n1e4") - looks for dictionary inside
+    3. File path (e.g., "/path/to/dictionary.jsonl") - uses directly
+
+    Parameters
+    ----------
+    data_input : str or Path
+        The input to resolve. Can be a folder name, folder path, or file path.
+    output_dir : str or Path, optional
+        Base directory for output folders. Defaults to 'outputs' or TRINITY_OUTPUT_DIR env var.
+
+    Returns
+    -------
+    Path
+        Resolved path to the data file
+
+    Raises
+    ------
+    FileNotFoundError
+        If no data file can be found
+    """
+    import os
+
+    data_input = Path(data_input)
+
+    # Default output directory
+    if output_dir is None:
+        output_dir = Path(os.environ.get('TRINITY_OUTPUT_DIR', 'outputs'))
+    else:
+        output_dir = Path(output_dir)
+
+    # Case 1: It's a file that exists
+    if data_input.is_file():
+        return data_input
+
+    # Case 2: It's a directory - look for dictionary files inside
+    if data_input.is_dir():
+        for suffix in ['.jsonl', '.json']:
+            dict_path = data_input / f'dictionary{suffix}'
+            if dict_path.exists():
+                return dict_path
+        raise FileNotFoundError(
+            f"No dictionary.jsonl or dictionary.json found in: {data_input}"
+        )
+
+    # Case 3: Check if it's a path with extension that doesn't exist yet
+    if data_input.suffix in ['.json', '.jsonl']:
+        # Try find_data_path which handles .jsonl/.json priority
+        try:
+            return find_data_path(data_input)
+        except FileNotFoundError:
+            pass
+
+    # Case 4: It might be a folder name - check in output_dir
+    folder_path = output_dir / data_input
+    if folder_path.is_dir():
+        for suffix in ['.jsonl', '.json']:
+            dict_path = folder_path / f'dictionary{suffix}'
+            if dict_path.exists():
+                return dict_path
+
+    # Case 5: Try as a base path (no extension) with find_data_path
+    try:
+        return find_data_path(data_input)
+    except FileNotFoundError:
+        pass
+
+    # Case 6: Try in output_dir as base path
+    try:
+        return find_data_path(output_dir / data_input / 'dictionary')
+    except FileNotFoundError:
+        pass
+
+    raise FileNotFoundError(
+        f"Could not resolve data input: {data_input}\n"
+        f"Tried as: file, directory, folder name in {output_dir}"
+    )
+
+
+def find_all_simulations(base_dir: Union[str, Path]) -> List[Path]:
+    """
+    Recursively search for all simulation .jsonl files in a directory.
+
+    Searches for dictionary.jsonl (preferred) or dictionary.json files
+    in all subdirectories of the given base directory.
+
+    Parameters
+    ----------
+    base_dir : str or Path
+        Base directory to search recursively
+
+    Returns
+    -------
+    List[Path]
+        Sorted list of paths to dictionary files found.
+        Returns empty list if base_dir doesn't exist or contains no simulations.
+
+    Examples
+    --------
+    >>> sim_files = find_all_simulations('/path/to/outputs')
+    >>> for data_path in sim_files:
+    ...     output = load_output(data_path)
+    ...     # process each simulation...
+    """
+    base_dir = Path(base_dir)
+    if not base_dir.is_dir():
+        return []
+
+    found = []
+
+    # Search for dictionary.jsonl files recursively (preferred format)
+    for jsonl_file in base_dir.rglob("dictionary.jsonl"):
+        found.append(jsonl_file)
+
+    # Also search for dictionary.json as fallback
+    for json_file in base_dir.rglob("dictionary.json"):
+        # Only add if no .jsonl version exists in same directory
+        jsonl_version = json_file.with_suffix('.jsonl')
+        if jsonl_version not in found:
+            found.append(json_file)
+
+    return sorted(found)
+
+
+def parse_simulation_params(folder_name: str) -> Optional[Dict[str, str]]:
+    """
+    Extract mCloud, sfe, ndens from simulation folder name.
+
+    Parameters
+    ----------
+    folder_name : str
+        Folder name like "1e7_sfe020_n1e4" or "m1e7_sfe020_n1e4"
+
+    Returns
+    -------
+    dict or None
+        {'mCloud': '1e7', 'sfe': '020', 'ndens': '1e4'} or None if no match
+    """
+    import re
+    # Pattern: optional 'm' prefix, mCloud, _sfe{sfe}, _n{ndens}
+    # ndens can be scientific notation (1e4) or plain integer/float (50, 500)
+    # Also handle _modified suffix or profile tags like _PL0, _BE14
+    match = re.search(
+        r'm?(\d+\.?\d*e\d+)_sfe(\d+)_n(\d+\.?\d*(?:e\d+)?)',
+        folder_name,
+        re.IGNORECASE
+    )
+    if match:
+        return {
+            'mCloud': match.group(1),
+            'sfe': match.group(2),
+            'ndens': match.group(3)
+        }
+    return None
+
+
+def get_unique_ndens(sim_files: List[Path]) -> List[str]:
+    """
+    Get list of unique ndens values from simulation files.
+
+    Parameters
+    ----------
+    sim_files : List[Path]
+        List of paths to dictionary.jsonl files
+
+    Returns
+    -------
+    List[str]
+        Sorted list of unique ndens values (e.g., ['1e3', '1e4'])
+    """
+    ndens_set = set()
+    for sim_file in sim_files:
+        folder_name = sim_file.parent.name
+        params = parse_simulation_params(folder_name)
+        if params:
+            ndens_set.add(params['ndens'])
+    return sorted(ndens_set, key=lambda x: float(x))
+
+
+def organize_simulations_for_grid(
+    sim_files: List[Path],
+    ndens_filter: str = None,
+    mCloud_filter: List[str] = None,
+    sfe_filter: List[str] = None
+) -> Dict:
+    """
+    Organize simulation files into a grid structure for plotting.
+
+    Parameters
+    ----------
+    sim_files : List[Path]
+        List of paths to dictionary.jsonl files
+    ndens_filter : str, optional
+        If provided, only include simulations with this ndens value (e.g., "1e4").
+        If None, includes all simulations.
+    mCloud_filter : list of str, optional
+        If provided, only include simulations with mCloud in this list (e.g., ["1e6", "1e7"]).
+    sfe_filter : list of str, optional
+        If provided, only include simulations with sfe in this list (e.g., ["001", "010"]).
+
+    Returns
+    -------
+    dict with keys:
+        'mCloud_list': sorted list of unique mCloud values (rows, increasing)
+        'sfe_list': sorted list of unique SFE values (columns, increasing)
+        'grid': dict mapping (mCloud, sfe) -> file path
+        'ndens': common ndens value (or None if mixed)
+        'ndens_list': list of all unique ndens values found
+    """
+    grid = {}
+    mCloud_set = set()
+    sfe_set = set()
+    ndens_set = set()
+
+    for sim_file in sim_files:
+        # Get parent folder name (the simulation folder)
+        folder_name = sim_file.parent.name
+        params = parse_simulation_params(folder_name)
+
+        if params is None:
+            print(f"Warning: Could not parse folder name: {folder_name}")
+            continue
+
+        mCloud = params['mCloud']
+        sfe = params['sfe']
+        ndens = params['ndens']
+
+        # Apply ndens filter if specified
+        if ndens_filter is not None and ndens != ndens_filter:
+            continue
+
+        # Apply mCloud filter if specified
+        if mCloud_filter is not None and mCloud not in mCloud_filter:
+            continue
+
+        # Apply sfe filter if specified
+        if sfe_filter is not None and sfe not in sfe_filter:
+            continue
+
+        mCloud_set.add(mCloud)
+        sfe_set.add(sfe)
+        ndens_set.add(ndens)
+        grid[(mCloud, sfe)] = sim_file
+
+    # Sort by numerical value
+    mCloud_list = sorted(mCloud_set, key=lambda x: float(x))
+    sfe_list = sorted(sfe_set, key=lambda x: int(x))
+    ndens_list = sorted(ndens_set, key=lambda x: float(x))
+
+    return {
+        'mCloud_list': mCloud_list,
+        'sfe_list': sfe_list,
+        'grid': grid,
+        'ndens': ndens_list[0] if len(ndens_list) == 1 else None,
+        'ndens_list': ndens_list
+    }
+
+
+def info_simulations(folder_path) -> Dict:
+    """
+    Scan a folder and return available simulation parameters.
+
+    Parameters
+    ----------
+    folder_path : str or Path
+        Path to folder containing simulation subfolders.
+
+    Returns
+    -------
+    dict with keys:
+        'mCloud': sorted list of unique mCloud values
+        'sfe': sorted list of unique SFE values
+        'ndens': sorted list of unique ndens values
+        'count': total number of simulations found
+    """
+    from pathlib import Path
+
+    folder_path = Path(folder_path)
+    sim_files = find_all_simulations(folder_path)
+
+    mCloud_set = set()
+    sfe_set = set()
+    ndens_set = set()
+
+    for sim_file in sim_files:
+        folder_name = sim_file.parent.name
+        params = parse_simulation_params(folder_name)
+        if params:
+            mCloud_set.add(params['mCloud'])
+            sfe_set.add(params['sfe'])
+            ndens_set.add(params['ndens'])
+
+    return {
+        'mCloud': sorted(mCloud_set, key=lambda x: float(x)),
+        'sfe': sorted(sfe_set, key=lambda x: int(x)),
+        'ndens': sorted(ndens_set, key=lambda x: float(x)),
+        'count': len(sim_files)
+    }

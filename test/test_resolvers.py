@@ -13,8 +13,8 @@ from pathlib import Path
 
 import pytest
 
-from src._input.errors import ParameterFileError
-from src._input.registry import (
+from trinity._input.errors import ParameterFileError
+from trinity._input.registry import (
     REGISTRY,
     _REPO_ROOT,
     _resolve_path2output,
@@ -22,7 +22,7 @@ from src._input.registry import (
     _resolve_sps_bundle,
     resolve_all,
 )
-from src.sps import sps_columns
+from trinity.sps import sps_columns
 
 
 class _Item:

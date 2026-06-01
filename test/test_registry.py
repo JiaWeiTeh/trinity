@@ -18,10 +18,10 @@ from pathlib import Path
 
 import pytest
 
-from src._input.dictionary import DescribedDict
-from src._input.param_spec import SENTINEL_PREFIX, ParamSpec
-from src._input.read_param import read_param
-from src._input.registry import (
+from trinity._input.dictionary import DescribedDict
+from trinity._input.param_spec import SENTINEL_PREFIX, ParamSpec
+from trinity._input.read_param import read_param
+from trinity._input.registry import (
     REGISTRY,
     SPECS,
     metadata_exclude_keys,
@@ -68,7 +68,7 @@ def _parse_value(val_str: str):
 def _parse_default_param() -> dict:
     """Return {key: (raw_value, unit_or_None)} parsed from default.param,
     using the same INFO/UNIT grammar as read_param."""
-    path = Path(__file__).resolve().parents[1] / "src" / "_input" / "default.param"
+    path = Path(__file__).resolve().parents[1] / "trinity" / "_input" / "default.param"
     out: dict[str, tuple] = {}
     unit = None
     for line in path.read_text(encoding="utf-8").splitlines():
@@ -288,9 +288,9 @@ def test_exclude_from_snapshot_matches_live(live_keys) -> None:
 # run_constants now DERIVES from the registry (Phase 5)
 # ---------------------------------------------------------------------------
 def test_run_constants_module_derives_from_registry() -> None:
-    """src._output.run_constants re-exports the registry derivation
+    """trinity._output.run_constants re-exports the registry derivation
     verbatim (identity), not a parallel hand-list."""
-    from src._output.run_constants import METADATA_EXCLUDE, RUN_CONST_KEYS
+    from trinity._output.run_constants import METADATA_EXCLUDE, RUN_CONST_KEYS
 
     assert tuple(RUN_CONST_KEYS) == run_const_keys()
     assert METADATA_EXCLUDE == metadata_exclude_keys()
@@ -300,7 +300,7 @@ def test_no_stale_keys_in_run_constants(live_keys) -> None:
     """The four legacy stale entries are gone now that the lists derive
     from the registry, and none names a live param (proving their
     removal didn't drop a real key)."""
-    from src._output.run_constants import METADATA_EXCLUDE, RUN_CONST_KEYS
+    from trinity._output.run_constants import METADATA_EXCLUDE, RUN_CONST_KEYS
 
     stale = {"expansionBeyondCloud", "SB99_data", "SB99f", "path_sps"}
     assert stale.isdisjoint(RUN_CONST_KEYS)

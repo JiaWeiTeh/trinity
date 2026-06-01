@@ -1,5 +1,5 @@
 """
-Tests for ``src/_output/show_run.py`` — the human-readable run summary CLI.
+Tests for ``trinity/_output/show_run.py`` — the human-readable run summary CLI.
 
 Covers:
 - ``format_run_summary()`` on synthetic v3 runs (full Phase 1+2 path)
@@ -20,9 +20,9 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from src._input.dictionary import DescribedDict, DescribedItem
-from src._output.run_constants import METADATA_FILENAME, METADATA_VERSION
-from src._output.show_run import format_run_summary, main
+from trinity._input.dictionary import DescribedDict, DescribedItem
+from trinity._output.run_constants import METADATA_FILENAME, METADATA_VERSION
+from trinity._output.show_run import format_run_summary, main
 
 
 @pytest.fixture
@@ -42,7 +42,7 @@ def _write_v3_run(tmp_path: Path, *, exit_code: int = 1,
     — callers pick an ``exit_code`` whose mapped outcome they want to
     test.
     """
-    from src._output.simulation_end import write_simulation_end
+    from trinity._output.simulation_end import write_simulation_end
 
     d = DescribedDict()
     d["path2output"] = DescribedItem(str(tmp_path))

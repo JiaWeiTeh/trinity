@@ -12,8 +12,8 @@ from __future__ import annotations
 
 import pytest
 
-from src._input.dictionary import DescribedItem
-from src._input.registry import (
+from trinity._input.dictionary import DescribedItem
+from trinity._input.registry import (
     REGISTRY,
     _active_densBE,
     _active_densPL,

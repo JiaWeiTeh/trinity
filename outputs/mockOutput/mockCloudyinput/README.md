@@ -33,7 +33,7 @@ yet broken out.
 To regenerate from a copy of that run directory:
 
 ```bash
-python -m src._output.cloudy.trinity_to_cloudy \
+python -m trinity._output.cloudy.trinity_to_cloudy \
     -F outputs/.../1e5_sfe001_n20_PL0_yesPHII/ \
     --age 2.0 \
     --out outputs/mockOutput/mockCloudyinput/
@@ -96,4 +96,4 @@ deliberately doesn't pick one for you — replace the sentinel by hand,
 or regenerate with `--sb99 your_grid.mod`.
 
 Full details (and why the TRINITY-side `1e6cluster_*.txt` files are NOT
-a substitute) are in `src/_output/cloudy/README.md`.
+a substitute) are in `trinity/_output/cloudy/README.md`.

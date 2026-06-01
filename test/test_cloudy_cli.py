@@ -1,5 +1,5 @@
 """
-Tests for ``src._output.cloudy.trinity_to_cloudy`` (the CLI driver).
+Tests for ``trinity._output.cloudy.trinity_to_cloudy`` (the CLI driver).
 
 Covers:
 - ``render_template``: substitutes {{KEY}}, leaves <<<EDIT_ME>>> alone, raises
@@ -21,7 +21,7 @@ from pathlib import Path
 
 import pytest
 
-from src._output.cloudy.trinity_to_cloudy import (
+from trinity._output.cloudy.trinity_to_cloudy import (
     LINELIST_FILENAME,
     UnsubstitutedPlaceholder,
     _build_prefix,
@@ -100,8 +100,8 @@ def test_parse_args_age_picker():
 
 def test_build_prefix_replaces_dots_with_p(tmp_path):
     """Auto-built prefix must avoid '.' (problematic in filenames + CLOUDY)."""
-    from src._output.cloudy.trinity_to_cloudy import PickedSnapshot
-    from src._output.cloudy.run_loader import load_run
+    from trinity._output.cloudy.trinity_to_cloudy import PickedSnapshot
+    from trinity._output.cloudy.run_loader import load_run
     bundle = load_run(MOCK_FULLRUN)
     snap = bundle.output[170]
     pick = PickedSnapshot(index=170, snap=snap)
@@ -113,8 +113,8 @@ def test_build_prefix_replaces_dots_with_p(tmp_path):
 
 
 def test_build_prefix_sanitizes_user_supplied(tmp_path):
-    from src._output.cloudy.trinity_to_cloudy import PickedSnapshot
-    from src._output.cloudy.run_loader import load_run
+    from trinity._output.cloudy.trinity_to_cloudy import PickedSnapshot
+    from trinity._output.cloudy.run_loader import load_run
     bundle = load_run(MOCK_FULLRUN)
     pick = PickedSnapshot(index=0, snap=bundle.output[0])
     args = _parse_args(
@@ -132,7 +132,7 @@ def test_build_prefix_sanitizes_user_supplied(tmp_path):
 # --------------------------------------------------------------------------- #
 
 def test_pick_age(tmp_path):
-    from src._output.cloudy.run_loader import load_run
+    from trinity._output.cloudy.run_loader import load_run
     bundle = load_run(MOCK_FULLRUN)
     args = _parse_args(["-F", str(MOCK_FULLRUN), "--age", "0.15"])
     picks = _pick_snapshots(bundle, args)
@@ -143,7 +143,7 @@ def test_pick_age(tmp_path):
 
 
 def test_pick_index_negative(tmp_path):
-    from src._output.cloudy.run_loader import load_run
+    from trinity._output.cloudy.run_loader import load_run
     bundle = load_run(MOCK_FULLRUN)
     args = _parse_args(["-F", str(MOCK_FULLRUN), "--index", "-1"])
     picks = _pick_snapshots(bundle, args)
@@ -152,7 +152,7 @@ def test_pick_index_negative(tmp_path):
 
 
 def test_pick_index_out_of_range_errors():
-    from src._output.cloudy.run_loader import load_run
+    from trinity._output.cloudy.run_loader import load_run
     bundle = load_run(MOCK_FULLRUN)
     args = _parse_args(["-F", str(MOCK_FULLRUN), "--index", "999"])
     with pytest.raises(SystemExit, match="out of range"):
@@ -160,7 +160,7 @@ def test_pick_index_out_of_range_errors():
 
 
 def test_pick_phase_last():
-    from src._output.cloudy.run_loader import load_run
+    from trinity._output.cloudy.run_loader import load_run
     bundle = load_run(MOCK_FULLRUN)
     args = _parse_args(["-F", str(MOCK_FULLRUN), "--phase", "transition", "--pick", "last"])
     picks = _pick_snapshots(bundle, args)
@@ -170,7 +170,7 @@ def test_pick_phase_last():
 
 
 def test_pick_phase_first():
-    from src._output.cloudy.run_loader import load_run
+    from trinity._output.cloudy.run_loader import load_run
     bundle = load_run(MOCK_FULLRUN)
     args = _parse_args(["-F", str(MOCK_FULLRUN), "--phase", "transition", "--pick", "first"])
     picks = _pick_snapshots(bundle, args)
@@ -179,7 +179,7 @@ def test_pick_phase_first():
 
 
 def test_pick_phase_unknown_errors():
-    from src._output.cloudy.run_loader import load_run
+    from trinity._output.cloudy.run_loader import load_run
     bundle = load_run(MOCK_FULLRUN)
     args = _parse_args(["-F", str(MOCK_FULLRUN), "--phase", "nonexistent"])
     with pytest.raises(SystemExit, match="no snapshots in phase"):
@@ -187,7 +187,7 @@ def test_pick_phase_unknown_errors():
 
 
 def test_pick_all():
-    from src._output.cloudy.run_loader import load_run
+    from trinity._output.cloudy.run_loader import load_run
     bundle = load_run(MOCK_FULLRUN)
     args = _parse_args(["-F", str(MOCK_FULLRUN), "--all"])
     picks = _pick_snapshots(bundle, args)

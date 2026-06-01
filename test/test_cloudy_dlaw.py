@@ -1,5 +1,5 @@
 """
-Tests for ``src._output.cloudy.dlaw.build_dlaw_block``.
+Tests for ``trinity._output.cloudy.dlaw.build_dlaw_block``.
 
 Covers:
 - Format: header / continue-prefixed rows / footer.
@@ -21,8 +21,8 @@ import math
 import numpy as np
 import pytest
 
-from src._functions.unit_conversions import INV_CONV
-from src._output.cloudy.dlaw import (
+from trinity._functions.unit_conversions import INV_CONV
+from trinity._output.cloudy.dlaw import (
     DEFAULT_DLAW_CLOSE,
     DEFAULT_DLAW_OPEN,
     DEFAULT_DLAW_ROW_PREFIX,

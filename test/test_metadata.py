@@ -22,12 +22,12 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from src._input.dictionary import DescribedDict, DescribedItem
-from src._output.run_constants import (
+from trinity._input.dictionary import DescribedDict, DescribedItem
+from trinity._output.run_constants import (
     METADATA_EXCLUDE, METADATA_FILENAME, METADATA_VERSION,
     RUN_CONST_KEYS, DROPPED_IN_V2,
 )
-from src._output.trinity_reader import TrinityOutput
+from trinity._output.trinity_reader import TrinityOutput
 
 
 # Sample arrays used to populate legacy v1 metadata in compat tests.
@@ -598,7 +598,7 @@ class TestTerminationBlock:
 
     def _make_params_with_end_codes(self, tmp_path, *, exit_code=1,
                                     reason="Stopping time reached"):
-        from src._output.simulation_end import SimulationEndCode
+        from trinity._output.simulation_end import SimulationEndCode
         d = _make_params(tmp_path)
         d["SimulationEndReason"] = DescribedItem(reason)
         d["SimulationEndCode"] = DescribedItem(exit_code)
@@ -608,7 +608,7 @@ class TestTerminationBlock:
         return d
 
     def test_writes_termination_block(self, tmp_path, disable_crash_handlers):
-        from src._output.simulation_end import write_simulation_end
+        from trinity._output.simulation_end import write_simulation_end
         d = self._make_params_with_end_codes(tmp_path)
         write_simulation_end(d, str(tmp_path))
         with open(tmp_path / METADATA_FILENAME) as f:
@@ -624,7 +624,7 @@ class TestTerminationBlock:
         assert t["model_name"] == "test_run"
 
     def test_writes_final_state_block(self, tmp_path, disable_crash_handlers):
-        from src._output.simulation_end import write_simulation_end
+        from trinity._output.simulation_end import write_simulation_end
         d = self._make_params_with_end_codes(tmp_path)
         # Tweak some "varying" scalars to simulate end-of-run values
         d["t_now"] = DescribedItem(0.300)
@@ -652,7 +652,7 @@ class TestTerminationBlock:
     def test_final_state_excludes_long_arrays(
         self, tmp_path, disable_crash_handlers,
     ):
-        from src._output.simulation_end import write_simulation_end
+        from trinity._output.simulation_end import write_simulation_end
         d = self._make_params_with_end_codes(tmp_path)
         # Stuff a long array into params under one of the excluded keys
         d["bubble_T_arr_r_arr"] = DescribedItem(np.linspace(0, 1, 30))
@@ -676,7 +676,7 @@ class TestTerminationBlock:
         ``write_simulation_end`` sees the populated reason.  Skip
         both from final_state so there's a single authoritative
         location for each."""
-        from src._output.simulation_end import write_simulation_end
+        from trinity._output.simulation_end import write_simulation_end
         d = self._make_params_with_end_codes(tmp_path)
         write_simulation_end(d, str(tmp_path))
         with open(tmp_path / METADATA_FILENAME) as f:
@@ -700,7 +700,7 @@ class TestTerminationBlock:
         """The absolute path of the run dir leaks personal info
         (user home) and is redundant — readers know the run dir
         because that's where they found the file."""
-        from src._output.simulation_end import write_simulation_end
+        from trinity._output.simulation_end import write_simulation_end
         d = self._make_params_with_end_codes(tmp_path)
         write_simulation_end(d, str(tmp_path))
         with open(tmp_path / METADATA_FILENAME) as f:
@@ -714,7 +714,7 @@ class TestTrinityOutputProperties:
     ``is_successful_run`` on ``TrinityOutput``."""
 
     def _open_run_with_termination(self, tmp_path, *, exit_code=1):
-        from src._output.simulation_end import write_simulation_end
+        from trinity._output.simulation_end import write_simulation_end
         d = _make_params(tmp_path)
         d["SimulationEndReason"] = DescribedItem("Stopping time reached")
         d["SimulationEndCode"] = DescribedItem(exit_code)
@@ -776,7 +776,7 @@ class TestReadSimulationEndMigration:
     """``read_simulation_end()`` prefers metadata.json, falls back to text."""
 
     def _make_termination_run(self, tmp_path):
-        from src._output.simulation_end import write_simulation_end
+        from trinity._output.simulation_end import write_simulation_end
         d = _make_params(tmp_path)
         d["SimulationEndReason"] = DescribedItem("Stopping time reached")
         d["SimulationEndCode"] = DescribedItem(1)
@@ -785,7 +785,7 @@ class TestReadSimulationEndMigration:
         write_simulation_end(d, str(tmp_path))
 
     def test_reads_from_metadata_block(self, tmp_path, disable_crash_handlers):
-        from src._output.simulation_end import read_simulation_end
+        from trinity._output.simulation_end import read_simulation_end
         self._make_termination_run(tmp_path)
         # Phase 5+: write_simulation_end no longer writes simulationEnd.txt,
         # so JSON is by construction the only source.
@@ -802,7 +802,7 @@ class TestReadSimulationEndMigration:
         """Legacy run: no metadata.json (or v1/v2 with no termination
         block); read_simulation_end falls back to text-parsing with a
         DeprecationWarning."""
-        from src._output.simulation_end import read_simulation_end
+        from trinity._output.simulation_end import read_simulation_end
         # Write only simulationEnd.txt, no metadata.json with termination
         text = (
             "==================================================\n"
@@ -827,7 +827,7 @@ class TestReadSimulationEndMigration:
     def test_returns_none_when_both_sources_missing(
         self, tmp_path, disable_crash_handlers,
     ):
-        from src._output.simulation_end import read_simulation_end
+        from trinity._output.simulation_end import read_simulation_end
         assert read_simulation_end(str(tmp_path)) is None
 
     def test_metadata_block_takes_precedence(
@@ -837,7 +837,7 @@ class TestReadSimulationEndMigration:
         simulationEnd.txt exist, the JSON wins (no warning is emitted
         because the text-parse path is never reached)."""
         import warnings as _warnings
-        from src._output.simulation_end import read_simulation_end
+        from trinity._output.simulation_end import read_simulation_end
         self._make_termination_run(tmp_path)
         # Plant a stale text file to detect which source is consulted
         (tmp_path / "simulationEnd.txt").write_text(
@@ -856,7 +856,7 @@ class TestTerminationDebugBlock:
     replaces the legacy ``termination_debug.txt`` text file."""
 
     def _make_run_with_debug(self, tmp_path, *, reason="Stopping time reached"):
-        from src._output.simulation_end import (
+        from trinity._output.simulation_end import (
             write_simulation_end, write_termination_debug_report,
         )
         d = _make_params(tmp_path)
@@ -935,7 +935,7 @@ class TestTerminationDebugBlock:
         self, tmp_path, disable_crash_handlers,
     ):
         """When no snapshots exist, the block still lands with a note."""
-        from src._output.simulation_end import write_termination_debug_report
+        from trinity._output.simulation_end import write_termination_debug_report
         # Empty metadata.json so update_metadata_atomic has something to merge into
         (tmp_path / METADATA_FILENAME).write_text(json.dumps({
             "_metadata_version": METADATA_VERSION,

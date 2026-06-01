@@ -1,0 +1,746 @@
+# -*- coding: utf-8 -*-
+"""
+Shared grid-plot and single-plot infrastructure for ``trinity._plots``.
+
+Most ``paper_*.py`` scripts follow the same two-mode pattern:
+
+1. **Single mode** — load one run, plot on a single axis, save.
+2. **Grid mode** — discover simulations in a folder, organise into an
+   (mCloud × SFE) grid, plot each cell, add labels/legend, save one
+   PDF per density.
+
+This module offers two complementary usage styles:
+
+Style A — high-level templates (``plot_single`` / ``plot_grid``).
+  Use when the layout is a flat (mCloud × SFE) axes grid.  Each
+  script supplies only the parts that differ:
+
+  - ``load_run_fn(data_path) → data``  — what to extract
+  - ``plot_cell_fn(ax, data, **cfg) → extra_artists``  — what to draw
+  - ``legend_handles_fn() → list``  — legend entries
+
+Style B — composable helpers for inline grids.
+  When a script needs a nested ``GridSpec``, twin axes, Nx1 overlays,
+  or otherwise can't fit the ``plot_grid`` template, it can still
+  share the repetitive boilerplate via these helpers:
+
+  - ``iter_grid_densities`` — folder → per-density ``(mCloud, sfe, grid)``
+  - ``mark_missing_cell``   — placeholder for empty/errored cells
+  - ``attach_grid_legend``  — adaptive legend + suptitle positioning
+  - ``save_grid_figure``    — standardised PDF path + save
+  - ``set_mcloud_ylabel``   — row-label helper (mexp/mcoeff boilerplate)
+  - ``build_param_tag``     — filename discriminator for (mCloud,sfe,ndens)
+
+Both styles guarantee the two key invariants hold across every grid:
+
+- Filenames are keyed by ``build_param_tag(mCloud_list, sfe_list, ndens)``
+  so runs with different parameters never overwrite each other.
+- Legend / suptitle placement flows through ``_compute_legend_layout``
+  (via ``attach_grid_legend``), so the stacking order axes → col-titles
+  → legend → suptitle scales correctly for any grid size from 1×1 up
+  to 7×7.
+
+Example usage (Style A)::
+
+    from trinity._plots.grid_template import plot_single, plot_grid as _plot_grid
+
+    def plot_from_path(data_input, output_dir=None):
+        plot_single(
+            data_input, output_dir,
+            load_run_fn=load_run,
+            plot_cell_fn=plot_run_on_ax,
+            legend_handles_fn=build_legend_handles,
+            file_prefix="paper_feedback",
+            ylabel=r"Force fraction",
+        )
+
+    def plot_grid(folder_path, output_dir=None, **kw):
+        _plot_grid(
+            folder_path, output_dir, **kw,
+            load_run_fn=load_run,
+            plot_cell_fn=plot_run_on_ax,
+            legend_handles_fn=build_legend_handles,
+            file_prefix="feedback",
+            ylabel=r"Force fraction",
+        )
+
+Example usage (Style B, inline grid)::
+
+    from trinity._plots.grid_template import (
+        build_param_tag, iter_grid_densities, mark_missing_cell,
+        attach_grid_legend, save_grid_figure, set_mcloud_ylabel,
+    )
+
+    def plot_grid(folder_path, output_dir=None, **kw):
+        for ndens, mCloud_list, sfe_list, grid, folder_name in \\
+                iter_grid_densities(folder_path, **kw):
+            nrows, ncols = len(mCloud_list), len(sfe_list)
+            fig, axes = plt.subplots(nrows, ncols, squeeze=False, ...)
+            for i, mCloud in enumerate(mCloud_list):
+                for j, sfe in enumerate(sfe_list):
+                    ax = axes[i, j]
+                    data_path = grid.get((mCloud, sfe))
+                    if data_path is None:
+                        mark_missing_cell(ax, "missing"); continue
+                    ...  # custom drawing (nested GridSpec, twinx, …)
+                    if j == 0:
+                        set_mcloud_ylabel(ax, mCloud, extra=r"$y$-label")
+            param_tag = build_param_tag(mCloud_list, sfe_list, ndens)
+            attach_grid_legend(fig, handles, n_rows_for_layout=nrows,
+                               folder_name=folder_name, param_tag=param_tag)
+            save_grid_figure(fig, folder_name=folder_name,
+                             file_prefix="my_script", param_tag=param_tag,
+                             output_dir=output_dir)
+            plt.close(fig)
+"""
+
+from pathlib import Path
+from typing import Any, Callable, Dict, List, Optional, Sequence
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+import sys as _sys
+from pathlib import Path as _Path
+_sys.path.insert(0, str(_Path(__file__).parent.parent.parent))
+from trinity._plots.plot_base import FIG_DIR
+from trinity._output.trinity_reader import (
+    resolve_data_input,
+    find_all_simulations,
+    organize_simulations_for_grid,
+    get_unique_ndens,
+)
+
+
+# ------------------------------------------------------------------
+# PHII-suffix handling
+# ------------------------------------------------------------------
+#
+# ``run.py`` appends ``_yesPHII`` / ``_noPHII`` to simulation folder
+# names when ``include_PHII`` is varied in a sweep.  The two variants
+# share the same ``(mCloud, sfe, ndens)`` parameters, so they collide
+# in the (mCloud, sfe) grid dict — the second one read silently
+# overwrites the first.  Filtering at the file-list level (before
+# ``organize_simulations_for_grid``) is required to pick a variant
+# deterministically.
+#
+# By default we keep ``_yesPHII`` plus any folder without a PHII
+# suffix (legacy / untagged).  ``--show-noPHII`` opts into a separate
+# pass that keeps only ``_noPHII`` runs and writes a sibling file
+# with ``_noPHII`` appended to the file prefix.
+
+NO_SUFFIX = "_noPHII"
+
+
+def filter_sim_files_by_phii(sim_files, phii_mode: str):
+    """Filter simulation paths by PHII folder-name suffix.
+
+    Parameters
+    ----------
+    sim_files : iterable of Path
+        Paths whose ``parent.name`` is the simulation folder name.
+    phii_mode : {"yes", "no"}
+        ``"yes"`` keeps ``_yesPHII`` and untagged (legacy) folders;
+        ``"no"`` keeps only ``_noPHII`` folders.
+
+    Returns
+    -------
+    list of Path
+    """
+    if phii_mode == "yes":
+        return [p for p in sim_files
+                if not p.parent.name.endswith(NO_SUFFIX)]
+    if phii_mode == "no":
+        return [p for p in sim_files
+                if p.parent.name.endswith(NO_SUFFIX)]
+    raise ValueError(f"unknown phii_mode: {phii_mode!r}")
+
+
+def phii_file_prefix(base: str, phii_mode: str) -> str:
+    """Append ``_noPHII`` to *base* when ``phii_mode == 'no'``."""
+    return f"{base}_noPHII" if phii_mode == "no" else base
+
+
+# ------------------------------------------------------------------
+# Helpers
+# ------------------------------------------------------------------
+
+def _compute_legend_layout(fig_height_inches, n_legend_items=6, legend_ncol=4):
+    """Compute adaptive legend / suptitle positioning from fixed physical gaps.
+
+    Instead of hardcoding figure-fraction values (which break when the grid
+    size changes), this function converts constant *inch* gaps into figure
+    fractions so that the spacing looks the same regardless of figure height.
+
+    The vertical stacking order (bottom → top) is::
+
+        axes  →  column titles  →  gap  →  legend  →  gap  →  suptitle
+
+    Parameters
+    ----------
+    fig_height_inches : float
+        Total figure height in inches.
+    n_legend_items : int
+        Number of legend entries (used to estimate legend height).
+    legend_ncol : int
+        Number of legend columns.
+
+    Returns
+    -------
+    dict with keys ``'top'``, ``'legend_y'``, ``'suptitle_y'``
+        All values are figure-fraction coordinates.
+    """
+    # Physical gaps (inches) — tuned so a 3×3 grid at cell_height ≈ 2.6
+    # looks like the previous hardcoded layout.
+    COL_TITLE_HEIGHT_INCHES = 0.25  # room for ax.set_title() on top row
+    LEGEND_PAD_INCHES = 0.12        # gap: column titles top → legend bottom
+    LEGEND_ROW_HEIGHT_INCHES = 0.22 # approx height per legend row
+    SUPTITLE_PAD_INCHES = 0.12      # gap: legend top → suptitle baseline
+    TITLE_HEIGHT_INCHES = 0.25      # space for suptitle text itself
+
+    n_rows = max(1, -(-n_legend_items // legend_ncol))   # ceil div
+    legend_h = n_rows * LEGEND_ROW_HEIGHT_INCHES
+
+    overhead = (COL_TITLE_HEIGHT_INCHES + LEGEND_PAD_INCHES
+                + legend_h + SUPTITLE_PAD_INCHES + TITLE_HEIGHT_INCHES)
+    top = 1.0 - overhead / fig_height_inches
+    top = max(top, 0.70)  # safety: never squash axes below 70 %
+
+    # legend_y: *top* edge of the legend box — loc="upper center" anchors
+    # the legend's upper-center to this point, so it extends downward.
+    # Position = axes top + column titles + pad + full legend height.
+    legend_y = top + (COL_TITLE_HEIGHT_INCHES + LEGEND_PAD_INCHES
+                      + legend_h) / fig_height_inches
+
+    suptitle_y = 1.0 - 0.05 / fig_height_inches  # just inside top edge
+
+    return {"top": top, "legend_y": legend_y, "suptitle_y": suptitle_y}
+
+
+def _mcloud_label(mCloud: str) -> str:
+    """LaTeX label for a cloud mass value, e.g. '1e7' → r'$M_{\\rm cloud}=10^{7}M_\\odot$'."""
+    mval = float(mCloud)
+    mexp = int(np.floor(np.log10(mval)))
+    mcoeff = round(mval / (10 ** mexp))
+    if mcoeff == 10:
+        mcoeff = 1
+        mexp += 1
+    if mcoeff == 1:
+        return rf"$M_{{\rm cloud}}=10^{{{mexp}}}\,M_\odot$"
+    return rf"$M_{{\rm cloud}}={mcoeff}\times10^{{{mexp}}}\,M_\odot$"
+
+
+def _mcloud_label_short(mCloud: str) -> str:
+    """Short LaTeX label, e.g. '1e7' → r'$M_{\\rm cl}=10^{7}$'."""
+    mval = float(mCloud)
+    mexp = int(np.floor(np.log10(mval)))
+    mcoeff = round(mval / (10 ** mexp))
+    if mcoeff == 10:
+        mcoeff = 1
+        mexp += 1
+    if mcoeff == 1:
+        return rf"$M_{{\rm cl}}=10^{{{mexp}}}$"
+    return rf"$M_{{\rm cl}}={mcoeff}\times10^{{{mexp}}}$"
+
+
+def _sfe_title(sfe: str) -> str:
+    """Column title for an SFE tag, e.g. '010' → r'$\\epsilon=0.10$'."""
+    eps = int(sfe) / 100.0
+    return rf"$\epsilon={eps:.2f}$"
+
+
+def _range_tag(prefix: str, values, key=float) -> str:
+    """Return e.g. 'M1e5-1e8' or 'M5e4' (single value) or 'sfe001-080'."""
+    vals = list(values)
+    if not vals:
+        return ""
+    if len(vals) == 1:
+        return f"{prefix}{vals[0]}"
+    vmin, vmax = min(vals, key=key), max(vals, key=key)
+    return f"{prefix}{vmin}-{vmax}"
+
+
+def build_param_tag(mCloud_list, sfe_list, ndens) -> str:
+    """Build a descriptive filename tag from the parameters actually plotted.
+
+    Examples
+    --------
+    Single run:           ``"M5e4_sfe002_n1e2"``
+    Range of mCloud/sfe:  ``"M1e5-1e8_sfe001-080_n1e4"``
+    """
+    parts = []
+    m_tag = _range_tag("M", mCloud_list, key=float)
+    sfe_tag = _range_tag("sfe", sfe_list, key=int)
+    if m_tag:
+        parts.append(m_tag)
+    if sfe_tag:
+        parts.append(sfe_tag)
+    parts.append(f"n{ndens}")
+    return "_".join(parts)
+
+
+# ------------------------------------------------------------------
+# Shared helpers for inline grid implementations
+# ------------------------------------------------------------------
+#
+# Not every paper_*.py can cleanly use ``plot_grid`` (some need nested
+# GridSpec, twin axes, or Nx1 overlay layouts).  The helpers below let
+# those inline grids stay flat while sharing the truly repetitive
+# boilerplate: folder discovery, missing/error cells, legend layout,
+# suptitle, mCloud row label, and PDF saving.
+
+
+def iter_grid_densities(folder_path, ndens_filter=None,
+                        mCloud_filter=None, sfe_filter=None,
+                        phii_mode: str = "yes"):
+    """Yield ``(ndens, mCloud_list, sfe_list, grid, folder_name)`` per density.
+
+    Handles: find_all_simulations → PHII filter → get_unique_ndens →
+    organize → early-return on empty grid.  Prints the standard
+    progress messages.
+
+    ``phii_mode`` (default ``"yes"``) controls how the
+    ``_yesPHII``/``_noPHII`` folder suffixes are treated.  See
+    :func:`filter_sim_files_by_phii`.
+
+    Usage::
+
+        for ndens, mCloud_list, sfe_list, grid, folder_name in \\
+                iter_grid_densities(folder_path, ndens_filter, ...):
+            ...  # build figure, loop cells, save
+    """
+    folder_path = Path(folder_path)
+    folder_name = folder_path.name
+
+    sim_files = find_all_simulations(folder_path)
+    sim_files = filter_sim_files_by_phii(sim_files, phii_mode)
+    if not sim_files:
+        label = "non-noPHII" if phii_mode == "yes" else "noPHII"
+        print(f"No {label} simulation files found in {folder_path}")
+        return
+
+    if ndens_filter:
+        ndens_to_plot = [ndens_filter]
+    else:
+        ndens_to_plot = get_unique_ndens(sim_files)
+
+    print(f"Found {len(sim_files)} simulations")
+    print(f"  Densities to plot: {ndens_to_plot}")
+
+    for ndens in ndens_to_plot:
+        print(f"\nProcessing n={ndens}...")
+        organized = organize_simulations_for_grid(
+            sim_files, ndens_filter=ndens,
+            mCloud_filter=mCloud_filter, sfe_filter=sfe_filter,
+        )
+        mCloud_list = organized["mCloud_list"]
+        sfe_list = organized["sfe_list"]
+        grid = organized["grid"]
+
+        if not mCloud_list or not sfe_list:
+            print(f"  Could not organize simulations into grid for n={ndens}")
+            continue
+
+        print(f"  mCloud: {mCloud_list}")
+        print(f"  SFE: {sfe_list}")
+
+        yield ndens, mCloud_list, sfe_list, grid, folder_name
+
+
+def mark_missing_cell(ax, label: str = "missing"):
+    """Standard placeholder for a grid cell with no data."""
+    ax.text(0.5, 0.5, label, ha="center", va="center", transform=ax.transAxes)
+    ax.set_axis_off()
+
+
+def attach_grid_legend(
+    fig, handles, *,
+    n_rows_for_layout: int,
+    cell_height_inches: float = 2.6,
+    folder_name: str = "",
+    param_tag: str = "",
+    legend_ncol: int = 4,
+    legend_fontsize: Optional[float] = None,
+    legend_bbox_transform_fig: bool = False,
+    suptitle: bool = True,
+    suptitle_fontsize: int = 14,
+) -> dict:
+    """Compute adaptive layout, attach fig.legend and fig.suptitle.
+
+    This is the shared wrapper around ``_compute_legend_layout`` that every
+    grid figure calls at the end.  It guarantees identical adaptive
+    behaviour (legend doesn't cover the top row; suptitle sits above the
+    legend) across every script — whether the grid is 1×1 or 7×7.
+
+    Parameters
+    ----------
+    fig : matplotlib Figure
+    handles : list of Artist
+        Legend handles.  Can be empty; legend is skipped if so.
+    n_rows_for_layout : int
+        Number of grid rows (used to compute figure height for layout).
+    cell_height_inches : float
+        Per-cell vertical size used in ``plt.subplots(figsize=...)``.
+    folder_name, param_tag : str
+        Combined as ``"{folder_name} ({param_tag})"`` for the suptitle.
+    legend_ncol, legend_fontsize :
+        Passed to ``fig.legend``.
+    legend_bbox_transform_fig : bool
+        If True, pass ``bbox_transform=fig.transFigure`` (needed by a few
+        scripts for historical reasons; others use the default).
+    suptitle : bool
+        If False, no suptitle is drawn (some scripts prefer no title).
+
+    Returns
+    -------
+    dict
+        The layout dict from ``_compute_legend_layout`` (``top``,
+        ``legend_y``, ``suptitle_y``).
+    """
+    layout = _compute_legend_layout(
+        cell_height_inches * n_rows_for_layout,
+        n_legend_items=len(handles) if handles else 0,
+        legend_ncol=max(legend_ncol, 1),
+    )
+    fig.subplots_adjust(top=layout["top"])
+
+    if handles:
+        legend_kwargs = dict(
+            loc="upper center",
+            ncol=legend_ncol,
+            frameon=True,
+            facecolor="white",
+            framealpha=0.9,
+            edgecolor="0.2",
+            bbox_to_anchor=(0.5, layout["legend_y"]),
+        )
+        if legend_fontsize is not None:
+            legend_kwargs["fontsize"] = legend_fontsize
+        if legend_bbox_transform_fig:
+            legend_kwargs["bbox_transform"] = fig.transFigure
+        leg = fig.legend(handles=handles, **legend_kwargs)
+        leg.set_zorder(10)
+
+    if suptitle:
+        title = folder_name
+        if param_tag:
+            title = f"{folder_name} ({param_tag})" if folder_name else param_tag
+        fig.suptitle(title, fontsize=suptitle_fontsize, y=layout["suptitle_y"])
+
+    return layout
+
+
+def save_grid_figure(fig, *, folder_name: str, file_prefix: str,
+                     param_tag: str, output_dir=None, save_pdf: bool = True):
+    """Save the figure to ``{FIG_DIR}/{folder_name}/{file_prefix}_{param_tag}.pdf``.
+
+    Uses ``output_dir`` directly if supplied.
+    """
+    if not save_pdf:
+        return None
+    fig_dir = Path(output_dir) if output_dir else FIG_DIR / folder_name
+    fig_dir.mkdir(parents=True, exist_ok=True)
+    out_pdf = fig_dir / f"{file_prefix}_{param_tag}.pdf"
+    fig.savefig(out_pdf, bbox_inches="tight")
+    print(f"  Saved: {out_pdf}")
+    return out_pdf
+
+
+def set_mcloud_ylabel(ax, mCloud: str, *, extra: str = "",
+                      label_fn: Optional[Callable[[str], str]] = None):
+    """Set ``ax.set_ylabel`` to an mCloud row label, optionally with an extra line.
+
+    Replaces the 9-line ``mexp/mcoeff`` block repeated in many paper
+    scripts.  ``label_fn`` defaults to ``_mcloud_label``; pass
+    ``_mcloud_label_short`` for the compact variant.
+    """
+    fn = label_fn or _mcloud_label
+    label = fn(mCloud)
+    if extra:
+        label = label + "\n" + extra
+    ax.set_ylabel(label)
+
+
+# ------------------------------------------------------------------
+# Single-simulation plot
+# ------------------------------------------------------------------
+
+def plot_single(
+    data_input: str,
+    output_dir: Optional[str] = None,
+    *,
+    load_run_fn: Callable,
+    plot_cell_fn: Callable,
+    legend_handles_fn: Optional[Callable[[], List]] = None,
+    file_prefix: str,
+    ylabel: str = "",
+    xlabel: str = "t [Myr]",
+    figsize: tuple = (8, 6),
+    dpi: int = 150,
+    title_fn: Optional[Callable[[Path], str]] = None,
+    post_plot_fn: Optional[Callable] = None,
+    legend_loc: str = "upper left",
+    legend_ncol: int = 1,
+) -> None:
+    """Plot a single simulation run.
+
+    Parameters
+    ----------
+    data_input : path-like
+        Folder name, folder path, or file path.
+    output_dir : str, optional
+        Base directory for output folders.
+    load_run_fn : callable(data_path) → data
+        Returns whatever the per-cell plotter needs.
+    plot_cell_fn : callable(ax, data, **cfg)
+        Draws on the axis.  May return extra artists (e.g. twin axes).
+    legend_handles_fn : callable() → list, optional
+        Returns matplotlib legend handles.  If ``None``, uses automatic
+        legend from plot labels.
+    file_prefix : str
+        Filename prefix, e.g. ``"paper_feedback"``.
+    ylabel, xlabel : str
+        Axis labels.
+    figsize, dpi : plot dimensions.
+    title_fn : callable(data_path) → str, optional
+        Custom title builder.  Default: uses the parent folder name.
+    post_plot_fn : callable(ax, data, extra_artists), optional
+        Hook called after plot_cell_fn for extra customisation.
+    legend_loc : str
+        Legend location for single plot (default ``"upper left"``).
+    legend_ncol : int
+        Number of legend columns (default 1).
+    """
+    try:
+        data_path = resolve_data_input(data_input, output_dir)
+    except FileNotFoundError as e:
+        print(f"Error: {e}")
+        return
+
+    fig, ax = plt.subplots(figsize=figsize, dpi=dpi)
+
+    try:
+        data = load_run_fn(data_path)
+        extra = plot_cell_fn(ax, data)
+    except Exception as e:
+        print(f"Error loading data: {e}")
+        plt.close(fig)
+        return
+
+    if title_fn is not None:
+        ax.set_title(title_fn(data_path))
+    else:
+        ax.set_title(f"{file_prefix}: {data_path.parent.name}")
+
+    ax.set_xlabel(xlabel)
+    if ylabel:
+        ax.set_ylabel(ylabel)
+
+    if post_plot_fn is not None:
+        post_plot_fn(ax, data, extra)
+
+    if legend_handles_fn is not None:
+        handles = legend_handles_fn()
+        ax.legend(handles=handles, loc=legend_loc, framealpha=0.9,
+                  ncol=legend_ncol)
+    else:
+        ax.legend(loc=legend_loc, framealpha=0.9, ncol=legend_ncol)
+
+    plt.tight_layout()
+
+    run_name = data_path.parent.name
+    out_pdf = FIG_DIR / f"{file_prefix}_{run_name}.pdf"
+    fig.savefig(out_pdf, bbox_inches="tight")
+    print(f"Saved: {out_pdf}")
+
+    plt.show()
+    plt.close(fig)
+
+
+# ------------------------------------------------------------------
+# Grid plot
+# ------------------------------------------------------------------
+
+def plot_grid(
+    folder_path,
+    output_dir=None,
+    *,
+    ndens_filter=None,
+    mCloud_filter=None,
+    sfe_filter=None,
+    phii_mode: str = "yes",
+    load_run_fn: Callable,
+    plot_cell_fn: Callable,
+    legend_handles_fn: Callable[[], List],
+    file_prefix: str,
+    ylabel: str = "",
+    xlabel: str = "t [Myr]",
+    cell_width: float = 3.2,
+    cell_height: float = 2.6,
+    dpi: int = 500,
+    sharex: bool = False,
+    sharey: bool = True,
+    constrained_layout: bool = False,
+    legend_ncol: int = 4,
+    legend_y: Optional[float] = None,
+    suptitle: bool = True,
+    subplots_adjust_top: Optional[float] = None,
+    save_pdf: bool = True,
+    pre_loop_fn: Optional[Callable] = None,
+    post_loop_fn: Optional[Callable] = None,
+    mcloud_label_fn: Optional[Callable[[str], str]] = None,
+    suptitle_y: Optional[float] = None,
+    hide_non_left_labels: bool = False,
+) -> None:
+    """Create an (mCloud × SFE) grid plot for every density found.
+
+    Parameters
+    ----------
+    folder_path : path-like
+        Directory containing simulation sub-folders.
+    output_dir : str, optional
+        Override output directory.
+    ndens_filter, mCloud_filter, sfe_filter :
+        Passed to ``organize_simulations_for_grid``.
+    load_run_fn : callable(data_path) → data
+        Returns whatever the per-cell plotter needs.
+    plot_cell_fn : callable(ax, data, **cfg)
+        Draws on the axis.
+    legend_handles_fn : callable() → list
+        Returns matplotlib legend handles.
+    file_prefix : str
+        Filename stem, e.g. ``"feedback"``.
+    ylabel : str
+        Y-axis label prepended to the mCloud row label on col 0.
+    xlabel : str
+        X-axis label on the bottom row.
+    cell_width, cell_height : float
+        Per-cell figure size multipliers.
+    dpi : int
+    sharex, sharey : bool
+    constrained_layout : bool
+    legend_ncol : int
+    legend_y : float
+        Vertical position of the legend anchor (in figure fraction).
+    suptitle : bool
+        If True, adds a figure suptitle ``"{folder_name} ({param_tag})"``
+        where ``param_tag`` is the output of ``build_param_tag``.
+    subplots_adjust_top : float, optional
+        If set, overrides the adaptive ``top`` computed by
+        ``_compute_legend_layout``.
+    save_pdf : bool
+    pre_loop_fn : callable(fig, axes), optional
+        Hook called after subplot creation but before the cell loop.
+    post_loop_fn : callable(fig, axes), optional
+        Hook called after the cell loop but before legend/save.
+    mcloud_label_fn : callable(mCloud) → str, optional
+        Custom row-label builder.  Defaults to ``_mcloud_label``.
+        Use ``_mcloud_label_short`` for the compact variant.
+    suptitle_y : float, optional
+        Vertical position of suptitle.  If ``None``, the adaptive
+        ``_compute_legend_layout`` value is used.
+    hide_non_left_labels : bool
+        If ``True``, hide y-axis tick labels on non-leftmost columns.
+    """
+    effective_file_prefix = phii_file_prefix(file_prefix, phii_mode)
+
+    for ndens, mCloud_list, sfe_list, grid, folder_name in iter_grid_densities(
+            folder_path, ndens_filter=ndens_filter,
+            mCloud_filter=mCloud_filter, sfe_filter=sfe_filter,
+            phii_mode=phii_mode):
+
+        nrows, ncols = len(mCloud_list), len(sfe_list)
+        fig, axes = plt.subplots(
+            nrows=nrows,
+            ncols=ncols,
+            figsize=(cell_width * ncols, cell_height * nrows),
+            sharex=sharex,
+            sharey=sharey,
+            dpi=dpi,
+            squeeze=False,
+            constrained_layout=constrained_layout,
+        )
+
+        # Adaptive legend/title positioning — compute once, use below.
+        handles_for_layout = legend_handles_fn()
+        _layout = _compute_legend_layout(
+            cell_height * nrows,
+            n_legend_items=len(handles_for_layout) if handles_for_layout else 0,
+            legend_ncol=legend_ncol,
+        )
+        _top = subplots_adjust_top if subplots_adjust_top is not None else _layout["top"]
+        _legend_y = legend_y if legend_y is not None else _layout["legend_y"]
+        _suptitle_y = suptitle_y if suptitle_y is not None else _layout["suptitle_y"]
+
+        fig.subplots_adjust(top=_top)
+
+        if pre_loop_fn is not None:
+            pre_loop_fn(fig, axes)
+
+        for i, mCloud in enumerate(mCloud_list):
+            for j, sfe in enumerate(sfe_list):
+                ax = axes[i, j]
+                data_path = grid.get((mCloud, sfe))
+
+                if data_path is None:
+                    run_id = f"{mCloud}_sfe{sfe}_n{ndens}"
+                    print(f"  {run_id}: missing")
+                    mark_missing_cell(ax, "missing")
+                    continue
+
+                try:
+                    data = load_run_fn(data_path)
+                    plot_cell_fn(ax, data)
+                except Exception as e:
+                    print(f"  Error loading {data_path}: {e}")
+                    mark_missing_cell(ax, "error")
+                    continue
+
+                # Column title (top row only)
+                if i == 0:
+                    ax.set_title(_sfe_title(sfe))
+
+                # Row label (left column only)
+                if j == 0:
+                    set_mcloud_ylabel(ax, mCloud, extra=ylabel,
+                                      label_fn=mcloud_label_fn)
+                elif hide_non_left_labels:
+                    ax.tick_params(labelleft=False)
+
+                # X-axis label (bottom row only)
+                if i == nrows - 1:
+                    ax.set_xlabel(xlabel)
+
+        if post_loop_fn is not None:
+            post_loop_fn(fig, axes)
+
+        # Legend (reuse handles computed earlier for layout)
+        if handles_for_layout:
+            leg = fig.legend(
+                handles=handles_for_layout,
+                loc="upper center",
+                ncol=legend_ncol,
+                frameon=True,
+                facecolor="white",
+                framealpha=0.9,
+                edgecolor="0.2",
+                bbox_to_anchor=(0.5, _legend_y),
+            )
+            leg.set_zorder(10)
+
+        # Suptitle
+        param_tag = build_param_tag(mCloud_list, sfe_list, ndens)
+        if suptitle:
+            fig.suptitle(f"{folder_name} ({param_tag})",
+                         fontsize=14, y=_suptitle_y)
+
+        # Save
+        fig_dir = Path(output_dir) if output_dir else FIG_DIR / folder_name
+        fig_dir.mkdir(parents=True, exist_ok=True)
+
+        if save_pdf:
+            out_pdf = fig_dir / f"{effective_file_prefix}_{param_tag}.pdf"
+            fig.savefig(out_pdf, bbox_inches="tight")
+            print(f"  Saved: {out_pdf}")
+
+        plt.close(fig)

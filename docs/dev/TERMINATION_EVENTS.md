@@ -1,7 +1,7 @@
 # TRINITY Termination Events Overview
 
 This document describes all termination events used across simulation phases.
-Events are handled by the centralized module `src/phase_general/phase_events.py`.
+Events are handled by the centralized module `trinity/phase_general/phase_events.py`.
 
 ## Event Categories
 
@@ -132,7 +132,7 @@ class EventResult:
 ## Usage Example
 
 ```python
-from src.phase_general.phase_events import (
+from trinity.phase_general.phase_events import (
     build_momentum_phase_events,
     check_event_termination,
     apply_event_result,

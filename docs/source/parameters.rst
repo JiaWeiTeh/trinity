@@ -20,8 +20,8 @@ File Format
 -----------
 
 The parameter schema — the complete set of keys and defaults — is
-defined by the ParamSpec registry at ``src/_input/registry.py``. The
-``src/_input/default.param`` file is generated from it (run
+defined by the ParamSpec registry at ``trinity/_input/registry.py``. The
+``trinity/_input/default.param`` file is generated from it (run
 ``python -m tools.gen_default_param --write`` after editing the
 registry) and is what ``read_param`` loads; the keywords below mirror
 it. Worked example files live under ``param/`` (see

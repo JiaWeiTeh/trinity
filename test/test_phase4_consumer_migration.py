@@ -17,8 +17,8 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from src._input.dictionary import DescribedDict, DescribedItem
-from src._output.run_constants import METADATA_FILENAME
+from trinity._input.dictionary import DescribedDict, DescribedItem
+from trinity._output.run_constants import METADATA_FILENAME
 
 
 @pytest.fixture
@@ -35,7 +35,7 @@ def _build_v3_run(tmp_path: Path, *, exit_code: int = 1,
 
     Mirrors the simpler fixture in ``test_show_run.py``.
     """
-    from src._output.simulation_end import write_simulation_end
+    from trinity._output.simulation_end import write_simulation_end
     d = DescribedDict()
     d["path2output"] = DescribedItem(str(tmp_path))
     for k, v in [
@@ -111,8 +111,8 @@ class TestRcloudSmoothingMigration:
         """v3 run: ``end_reason`` populates from ``termination.detail``."""
         _build_v3_run(tmp_path, detail="Stopping time reached")
         # Emulate the field-name resolution paper_rcloud_smoothing does
-        from src._output.trinity_reader import TrinityOutput
-        from src._output.simulation_end import read_simulation_end
+        from trinity._output.trinity_reader import TrinityOutput
+        from trinity._output.simulation_end import read_simulation_end
         output = TrinityOutput.open(tmp_path / "dictionary.jsonl")
         end_info = output.termination or read_simulation_end(str(tmp_path))
         assert end_info is not None
@@ -127,8 +127,8 @@ class TestRcloudSmoothingMigration:
     ):
         """Legacy run: the text-parse path still feeds the same key."""
         _build_legacy_v1_run(tmp_path)
-        from src._output.trinity_reader import TrinityOutput
-        from src._output.simulation_end import read_simulation_end
+        from trinity._output.trinity_reader import TrinityOutput
+        from trinity._output.simulation_end import read_simulation_end
         output = TrinityOutput.open(tmp_path / "dictionary.jsonl")
         # v1 → output.termination is None → falls back to text-parse
         end_info = output.termination or read_simulation_end(str(tmp_path))
@@ -152,14 +152,14 @@ class TestPedriniEmergenceMigration:
         self, tmp_path, disable_crash_handlers,
     ):
         _build_v3_run(tmp_path, detail="Stopping time reached")
-        from src._plots.pedrini_emergence_timescales import parse_raw_reason
+        from trinity._plots.pedrini_emergence_timescales import parse_raw_reason
         assert parse_raw_reason(tmp_path) == "Stopping time reached"
 
     def test_returns_detail_for_legacy_v1_run(
         self, tmp_path, disable_crash_handlers,
     ):
         _build_legacy_v1_run(tmp_path)
-        from src._plots.pedrini_emergence_timescales import parse_raw_reason
+        from trinity._plots.pedrini_emergence_timescales import parse_raw_reason
         assert parse_raw_reason(tmp_path) == "Legacy text-only reason"
 
     def test_returns_detail_for_prerename_legacy_run(
@@ -169,12 +169,12 @@ class TestPedriniEmergenceMigration:
         still work because ``read_simulation_end()`` has a back-compat
         clause that maps ``Raw Reason:`` → ``detail``."""
         _build_prerename_legacy_run(tmp_path)
-        from src._plots.pedrini_emergence_timescales import parse_raw_reason
+        from trinity._plots.pedrini_emergence_timescales import parse_raw_reason
         # Note: the legacy parser in read_simulation_end maps Raw Reason
         # to 'detail' only when no Detail/Outcome line is present.
         assert parse_raw_reason(tmp_path) == "Stopping time reached (legacy schema)"
 
     def test_returns_empty_when_run_dir_has_nothing(self, tmp_path):
-        from src._plots.pedrini_emergence_timescales import parse_raw_reason
+        from trinity._plots.pedrini_emergence_timescales import parse_raw_reason
         # Empty dir — no simulationEnd.txt, no metadata.json
         assert parse_raw_reason(tmp_path) == ""
