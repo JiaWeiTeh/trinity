@@ -125,6 +125,7 @@ class EventResult:
     is_simulation_ending: bool  # True if simulation should end
     reason_code: str          # Short code (e.g., "small_radius_event")
     reason_message: str       # Human-readable message
+    end_code: Optional[SimulationEndCode] = None  # Exit code (SimulationEndCode enum)
 ```
 
 ---

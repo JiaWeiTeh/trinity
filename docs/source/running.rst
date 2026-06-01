@@ -20,8 +20,9 @@ sweep across a parallel worker pool, otherwise it runs a single
 simulation. There is no separate command or flag for sweeps.
 
 Output is written to the directory named by the ``path2output``
-parameter; the sentinel ``def_dir`` (the default) means the current
-working directory. See *Outputs* below for the file layout.
+parameter; the default sentinel ``def_dir`` resolves to
+``outputs/<model_name>/`` under the current working directory. See
+*Outputs* below for the file layout.
 
 
 Parameter-file formats
@@ -112,17 +113,18 @@ Outputs
 File layout
 ^^^^^^^^^^^
 
-A single run writes three files into ``path2output``:
+A single run writes these files into ``path2output``:
 
 .. code-block:: text
 
     path2output/
     ├── dictionary.jsonl            # simulation state, one JSON object per snapshot
-    ├── {model_name}_summary.txt    # human-readable parameter summary
+    ├── metadata.json               # run constants + termination + final-state blocks
     └── trinity.log                 # log file (written when log_file = True)
 
-A sweep writes those same three files into one subdirectory per
-combination, plus two top-level reports:
+A sweep writes those same files into one subdirectory per combination,
+adds a fully-resolved ``.param`` sidecar to each, and writes two
+top-level reports:
 
 .. code-block:: text
 
@@ -130,7 +132,7 @@ combination, plus two top-level reports:
     ├── 1e5_sfe001_n1e3/
     │   ├── 1e5_sfe001_n1e3.param   # full resolved params for this run
     │   ├── dictionary.jsonl
-    │   ├── 1e5_sfe001_n1e3_summary.txt
+    │   ├── metadata.json
     │   └── trinity.log
     ├── 1e5_sfe001_n1e4/
     │   └── ...
@@ -173,36 +175,33 @@ value):
     sweep still runs but with a safe folder name.
   - **Length-capped** at 200 characters for the full run name; the
     sweep aborts with a clear error if you cross it (reserve room for
-    ``_modified`` / ``_summary.txt`` siblings within the 255-byte
-    filesystem cap).
+    sibling filenames within the 255-byte filesystem cap).
 
 For example, ``1e7_sfe010_n1e4_noPHII`` is ``mCloud=1e7, sfe=0.10,
 nCore=1e4`` with ``include_PHII = False``.
 
-The folder name is only a unique human-readable handle: every run also
-writes its full resolved parameter set to a per-run ``.param`` file
-(plus the sweep-wide ``sweep_report.json``), so a run with *no* suffix
-for some key still has that key recorded — it just took the
-``default.param`` value. Master plot scripts that compare across
-sweeps should read parameters from those sidecars rather than parse
-them out of the folder name.
-
-    2026-01-08 15:30:00 | INFO     | trinity.main | === TRINITY Simulation Starting ===
-    2026-01-08 15:30:00 | INFO     | trinity.main | Model: test_simulation
-    2026-01-08 15:30:01 | INFO     | trinity.sps.read_sps | SPS data processed: 201 time points, t_max=100.00 Myr
-    2026-01-08 15:30:03 | INFO     | trinity.phase1_energy | Entering energy-driven phase
-    2026-01-08 15:30:15 | WARNING  | trinity.cooling | Temperature below minimum, clamping to 1e4 K
-    2026-01-08 15:30:45 | INFO     | trinity.phase1_energy | Energy phase complete: 150 timesteps
-    2026-01-08 15:35:00 | INFO     | trinity.main | === Simulation Finished ===
+The folder name is only a unique human-readable handle: every sweep run
+also writes its full resolved parameter set to a per-run ``.param``
+file (plus the sweep-wide ``sweep_report.json``), so a run with *no*
+suffix for some key still has that key recorded — it just took the
+``default.param`` value. Master plot scripts that compare across sweeps
+should read parameters from those sidecars rather than parse them out of
+the folder name.
 
 
-Output Data Model
+Output data model
 -----------------
 
+dictionary.jsonl
+^^^^^^^^^^^^^^^^
+
 Each simulation writes its full state to ``dictionary.jsonl`` as a
-stream of newline-delimited JSON objects, one per snapshot. Writes
-are append-only, so the file remains readable after a crash — the
-last line may be partial but every prior line is a complete snapshot.
+stream of newline-delimited JSON objects, one per snapshot. Writes are
+append-only and crash-safe (the run flushes buffered snapshots on a
+clean exit, ``Ctrl+C``, or ``SIGTERM``), so the file remains readable
+after a crash — the last line may be partial but every prior line is a
+complete snapshot. Snapshots are saved *before* each ODE step, so all
+values in one snapshot share a single ``t_now``.
 
 Snapshot keys group into a handful of categories:
 
@@ -213,49 +212,83 @@ Snapshot keys group into a handful of categories:
    * - Category
      - Example keys
    * - Administrative
-     - ``path2output``, ``model_name``, ``current_phase``,
-       ``SimulationEndReason``
+     - ``model_name``, ``current_phase``, ``SimulationEndReason``
    * - Cloud setup
-     - ``mCloud``, ``sfe``, ``mCluster``, ``rCloud``,
-       ``initial_cloud_r_arr``, ``initial_cloud_n_arr``,
-       ``initial_cloud_m_arr``
+     - ``mCloud``, ``mCluster``, ``rCloud``, ``nEdge``
    * - Dynamical state
      - ``t_now``, ``R2``, ``v2``, ``Eb``, ``T0``, ``R1``, ``Pb``
    * - Feedback (SPS)
-     - ``Lmech_W``, ``Lmech_SN``, ``Qi``, ``Lbol``, ``pdot``
+     - ``Lmech_W``, ``Lmech_SN``, ``Qi``, ``Lbol``, ``pdot_total``
+   * - Pressures
+     - ``P_drive``, ``P_HII``, ``P_ram``
    * - Forces
      - ``F_grav``, ``F_ram``, ``F_ram_wind``, ``F_ram_SN``,
-       ``F_ion_out``, ``F_HII_St``, ``F_rad``
-   * - Bubble profile
+       ``F_HII``, ``F_rad``
+   * - Bubble / shell profiles
      - ``log_bubble_T_arr`` + ``bubble_T_arr_r_arr``,
-       ``log_bubble_n_arr`` + ``bubble_n_arr_r_arr``,
-       ``bubble_v_arr`` + ``bubble_v_arr_r_arr``
-   * - Shell profile
-     - ``log_shell_n_arr`` + ``shell_r_arr``,
-       ``shell_grav_force_m`` + ``shell_grav_r``
+       ``bubble_v_arr`` + ``bubble_v_arr_r_arr``,
+       ``log_shell_n_arr`` + ``shell_r_arr``
 
-A single snapshot row looks like:
+A handful of long 1-D profile arrays are downsampled before
+serialisation to keep snapshots manageable. Each simplified array is
+paired with its own abscissa (``*_r_arr``) and, where the values span
+many decades, stored in :math:`\log_{10}` space (``log_*``). The
+target point budget is set by ``simplify_npoints`` (see
+:ref:`sec-parameters`). To recover a profile, linearly interpolate the
+paired abscissa against the (possibly log-space) values.
 
-.. code-block:: text
+The recommended way to read the file is the reader API in
+:ref:`sec-trinity-reader`, which hides the JSONL layout, the per-key
+unit metadata, and the legacy ``.json`` format behind a small set of
+classes.
 
-   {
-     "snap_id": 42,
-     "t_now": 1.523e-01,
-     "current_phase": "energy",
-     "R2": 2.48, "v2": 15.7, "Eb": 9.21e+06, "T0": 7.4e+06,
-     "R1": 0.31, "Pb": 3.1e+04,
-     "Lmech_W": 1.22e+11, "Lmech_SN": 0.0, "Qi": 4.5e+50, "Lbol": 1.1e+40,
-     "F_grav": 9.3e+02, "F_ram": 1.6e+03, "F_rad": 7.2e+02,
-     "log_shell_n_arr": [3.1, 3.2, ...], "shell_r_arr":  [2.48, 2.49, ...]
-   }
+metadata.json
+^^^^^^^^^^^^^
 
-For analysis, load snapshots through :ref:`sec-trinity-reader`, which
-wraps ``dictionary.jsonl`` with a ``TrinityOutput`` container and
-exposes time-series extraction, snapshot interpolation, phase and
-time-range filtering, pandas conversion, and batch helpers for sweep
-outputs. The in-memory ``DescribedDict`` and the buffer→flush pipeline
-that produce the file are documented under *Snapshot Persistence* in
-:ref:`sec-architecture`.
+Run-constant parameters and end-of-run summaries live in a sibling
+``metadata.json`` (current schema version 4) rather than being repeated
+in every snapshot. The reader rehydrates the run constants into each
+snapshot on load, so consumers never have to read this file directly —
+but it is small and human-inspectable. Its top-level blocks are:
+
+.. list-table::
+   :widths: 24 76
+   :header-rows: 1
+
+   * - Block
+     - Contents
+   * - run constants
+     - Every input parameter / set-once derived value that does not
+       change after phase 0 (``mCloud``, ``sfe``, ``dens_profile``,
+       physical constants, …). Membership is derived from the ParamSpec
+       registry (see :ref:`sec-parameters`), so it always matches the
+       schema.
+   * - ``termination``
+     - ``{exit_code, outcome, detail, timestamp, model_name}`` — how the
+       run ended.
+   * - ``final_state``
+     - Every scalar / bool / string on the state dict at run end, in
+       internal units (pc, Myr, pc⁻³). Long arrays are excluded — their
+       final values are the last line of ``dictionary.jsonl``.
+   * - ``termination_debug``
+     - Last-two-snapshot diff, a NaN/Inf inventory, and physics sanity
+       checks, for post-mortem debugging.
+
+All writes go through an atomic helper, so an interrupted write can
+never leave a corrupt file.
+
+show_run
+^^^^^^^^
+
+For a quick human-readable view of a finished run — run context,
+termination reason, and final state — without writing any plotting
+code::
+
+    python -m trinity._output.show_run path2output/
+
+It reads ``metadata.json`` and pretty-prints a curated subset; pass
+``--json`` for the full dump or ``--quiet`` for a scriptable exit code
+(useful in batch loops over a sweep tree).
 
 
 Logging
@@ -263,11 +296,8 @@ Logging
 
 The parameter reference in :ref:`sec-parameters` lists the four
 logging parameters (``log_level``, ``log_console``, ``log_file``,
-``log_colors``) and their defaults. This section covers the
-conceptual ladder of log levels and an example of the output.
-
-Log Levels
-^^^^^^^^^^
+``log_colors``) and their defaults. This section covers the conceptual
+ladder of log levels.
 
 Each level includes itself and all more severe levels:
 ``CRITICAL > ERROR > WARNING > INFO > DEBUG``. Setting
@@ -300,21 +330,15 @@ Each level includes itself and all more severe levels:
      - Unrecoverable failures, fatal errors.
      - When only simulation-stopping errors should print.
 
-
-Example Output
-^^^^^^^^^^^^^^
-
-With ``log_level = INFO``:
+With ``log_level = INFO``, console output looks like:
 
 .. code-block:: text
 
     2026-01-08 15:30:00 | INFO     | trinity.main | === TRINITY Simulation Starting ===
     2026-01-08 15:30:00 | INFO     | trinity.main | Model: test_simulation
-    2026-01-08 15:30:01 | INFO     | trinity.sps.read_sps | SPS data processed: 201 time points
+    2026-01-08 15:30:01 | INFO     | trinity.sps.read_sps | SPS data processed
     2026-01-08 15:30:03 | INFO     | trinity.phase1_energy | Entering energy-driven phase
-    2026-01-08 15:30:15 | WARNING  | trinity.cooling | Temperature below minimum, clamping to 1e4 K
-    2026-01-08 15:30:45 | INFO     | trinity.phase1_energy | Energy phase complete: 150 timesteps
-    2026-01-08 15:35:00 | INFO     | trinity.main | === Simulation Finished ===
+    2026-01-08 15:30:45 | INFO     | trinity.main | === TRINITY Simulation Complete ===
 
 
 Troubleshooting
@@ -323,5 +347,5 @@ Troubleshooting
 Most parameter errors are typos against the schema; the authoritative
 list of valid keywords and defaults is the ParamSpec registry
 (``trinity/_input/registry.py``), from which ``trinity/_input/default.param``
-is generated, mirrored in :ref:`sec-parameters`. For issues and
+is generated and mirrored in :ref:`sec-parameters`. For issues and
 feature requests, see https://github.com/JiaWeiTeh/trinity/issues.
