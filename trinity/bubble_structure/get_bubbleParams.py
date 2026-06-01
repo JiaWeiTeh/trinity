@@ -254,8 +254,52 @@ def bubble_P2E(Pb, r2, r1, gamma):
     r1 = r1.to(u.cm)
     Pb = Pb.to(u.g/u.cm/u.s**2)
     Eb = 4 * np.pi / 3 / (gamma - 1) * (r2**3 - r1**3) * Pb
-    
+
     return Eb.to(u.erg)
+
+def get_leak_luminosity(coverFraction, R2, Pb, c_sound, gamma):
+    """
+    Geometry-set covering-fraction energy leak (enthalpy flux through the
+    open fraction of the bubble wall):
+
+        Lleak = gamma/(gamma-1) * (1 - Cf) * 4*pi*R2**2 * Pb * c_sound
+
+    Cf = coverFraction is the *closed* fraction of the wall; Cf = 1 is a
+    sealed (Weaver) bubble and returns exactly 0. Hot gas escapes through the
+    open area (1-Cf)*4*pi*R2**2 at the interior sound speed, carrying its
+    enthalpy. See the leakage spec, Eq. (leak).
+
+    All quantities are in code units [Msun, pc, Myr]; the product
+    Pb*c_sound*R2**2 already lands in the luminosity unit Msun*pc**2/Myr**3,
+    so no conversion is applied (asserted in test/test_cf_leak.py).
+
+    Parameters
+    ----------
+    coverFraction : float
+        Closed fraction of the bubble wall, Cf in (0, 1].
+    R2 : float
+        Outer bubble radius (contact discontinuity) [pc].
+    Pb : float
+        Bubble (interior) pressure [Msun/pc/Myr**2].
+    c_sound : float
+        Hot-bubble sound speed [pc/Myr], evaluated at bubble_Tavg (NOT the
+        cold-shell value).
+    gamma : float
+        Adiabatic index.
+
+    Returns
+    -------
+    float
+        Leak luminosity [Msun*pc**2/Myr**3], >= 0. Returns 0 when Cf >= 1
+        (sealed), Pb <= 0 (depressurised / numerical undershoot), or
+        c_sound <= 0 (no hot-gas temperature yet), so the term self-limits
+        and never injects energy.
+    """
+    # Cf = 1 must reproduce the sealed bubble exactly; the other guards keep
+    # the leak from injecting energy when the bubble state is degenerate.
+    if coverFraction >= 1.0 or Pb <= 0.0 or c_sound <= 0.0:
+        return 0.0
+    return gamma / (gamma - 1.0) * (1.0 - coverFraction) * 4.0 * np.pi * R2**2 * Pb * c_sound
 
 def pRam(r, Lmech, v_mech):
     """

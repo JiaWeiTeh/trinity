@@ -64,6 +64,9 @@ ZCloud    1
 # INFO: Include HII pressure (from Strömgren ionization balance in shell) in P_drive. When False, P_HII is set to zero.
 include_PHII    True
 
+# INFO: Closed fraction of the bubble wall (covering fraction Cf). Geometry-set energy/mass leak: hot gas vents through the open area (1-Cf)*4*pi*R2^2 at the interior sound speed, draining bubble energy (and, when the mass sink is enabled, mass). Cf=1 recovers the sealed (Weaver) bubble exactly; not fragmentation-triggered. Usable range ~0.9-0.99; Cf near 0 drains the bubble within a step and stresses the integrator.
+coverFraction    1.0
+
 # INFO: Hydrogen nuclei number density of cloud core (n_H). Standard GMC/ISM convention. Mass density: rho = nCore * mu_convert * m_H. If `densPL` AND densPL_alpha = 0, this is the average cloud density.
 # UNIT: [cm**-3]
 nCore    1e5
