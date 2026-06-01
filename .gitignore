@@ -20,7 +20,7 @@ lib/*
 # Personal scratch/test config — kept locally, not tracked
 param/test_run.param
 param/test_run_fast.param
-trinity/_calc
+trinity/scratch/_calc/
 
 
 # Large test data files (optional - uncomment to exclude from git)
