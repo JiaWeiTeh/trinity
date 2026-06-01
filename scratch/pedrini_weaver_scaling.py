@@ -30,7 +30,7 @@ Usage
 -----
 Run from project root:
 
-    python trinity/_plots/pedrini_weaver_scaling.py \\
+    python scratch/pedrini_weaver_scaling.py \\
         --sweep outputs/pedrini_sweep_mcloud_only 0 \\
         --sweep outputs/pedrini_sweep_larson 0.5 \\
         --sweep outputs/pedrini_sweep_density 1.0

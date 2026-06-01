@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Centralised force-colour palette for all ``_plots`` paper scripts.
+Centralised force-colour palette for all ``paper.figures`` paper scripts.
 
 Three ChromaPalette-based schemes are provided:
 

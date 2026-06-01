@@ -30,15 +30,15 @@ Pass exactly one of --BE_dir / --homo_dir for a single-panel plot, or
 both for the stacked merge plot:
 
     # Single-panel BE:
-    python trinity/_plots/pedrini_emergence_timescales.py \
+    python scratch/pedrini_emergence_timescales.py \
         --BE_dir outputs/pedrini_sweep_grid_BE
 
     # Single-panel homogeneous:
-    python trinity/_plots/pedrini_emergence_timescales.py \
+    python scratch/pedrini_emergence_timescales.py \
         --homo_dir outputs/pedrini_sweep_grid
 
     # Merge mode (BE on top, homogeneous on bottom):
-    python trinity/_plots/pedrini_emergence_timescales.py \
+    python scratch/pedrini_emergence_timescales.py \
         --BE_dir outputs/pedrini_sweep_grid_BE \
         --homo_dir outputs/pedrini_sweep_grid
 
@@ -74,14 +74,14 @@ bottom panel.
 The Pedrini+2026 overlay is optional.  Pass `--pedrini_csv mock` to
 use the hand-digitised reference data embedded in this script:
 
-    python trinity/_plots/pedrini_emergence_timescales.py \
+    python scratch/pedrini_emergence_timescales.py \
         --BE_dir outputs/pedrini_sweep_grid_BE \
         --homo_dir outputs/pedrini_sweep_grid \
         --pedrini_csv mock
 
 Or pass a real CSV path:
 
-    python trinity/_plots/pedrini_emergence_timescales.py \
+    python scratch/pedrini_emergence_timescales.py \
         --BE_dir outputs/pedrini_sweep_grid_BE \
         --homo_dir outputs/pedrini_sweep_grid \
         --pedrini_csv path/to/pedrini2026.csv
