@@ -68,9 +68,13 @@ G. Photon budget (Q4) + X-ray calibration (S4.6) .... NOT STARTED (no L_X in cod
 - Codegen gate `tools.gen_default_param --check`: **in sync**.
 - Full suite: **369 pass**; the one failure is `test_run_smoke.py::test_quickstart_completes_cleanly`,
   a `MonotonicError` in the bubble-structure integrator that occurs **before** any leak code runs
-  in the loop and reproduces independently of `Cf`. Treated as pre-existing integrator flakiness
-  (the repo's own `requirements.txt` documents this class of non-deterministic breakage); see §6
-  for the determinism probe.
+  in the loop. **Confirmed pre-existing flakiness, not a regression**: with *identical* (my) code
+  the smoke test gave fail, fail, pass, pass across 4 runs (a thread-pinned run also passed). Same
+  code → both outcomes ⇒ environmental (the repo's own `requirements.txt` documents this class of
+  non-deterministic breakage). Also consistent with `Cf=1 ⇒ Ėb` bit-identical to baseline.
+- Numeric end-to-end check (real functions): `cs(10⁶ K)=150 km/s`; `Cf=1 ⇒ Lleak=0` exactly;
+  `t_leak = Eb/Lleak = 13,010 yr` at `Cf=0.9`, matching the analytic `R/(3γ(1−Cf)cs)` and the
+  spec's ~10⁴ yr. Confirms the enthalpy coefficient and unit landing in practice.
 
 ## 5. Remaining gates to run (S4)
 
@@ -112,4 +116,34 @@ These are **not** handled by the A–C draft and need decisions:
    `Cf` to the Townsley plasma pressure (spec §calib) lands in CLOUDY post-processing — out of scope for A–D.
 6. **Transition `min` vs leak interaction at `Cf < ~0.8`.** By Q1 this is correct-by-construction, but
    it has not been exercised numerically; confirm continuity of `Ėb` across the transition entry once Cf<1 runs exist.
+
+### Audit findings (from the verification pass) — to resolve with Joel
+
+7. **Transition-phase leak uses the *effective* pressure, not thermal `Pb`.** `get_ODE_Edot_pure`
+   computes `Lleak` from `press_bubble = get_effective_bubble_pressure(...)`, which in the **energy/
+   implicit** phases is the thermal `Pb = bubble_E2P` (✅ correct enthalpy-flux pressure), but in the
+   **transition** phase is `max(P_thermal, P_ram)`. An enthalpy flux of escaping hot gas should use the
+   hot-gas thermal pressure; when `P_ram` dominates late in transition it inflates `Lleak`. The spec
+   says "reuse `press_bubble`," and the transition `min()` selector usually picks the sound-crossing
+   drain so the inflated value is often masked — but at low `Cf` it is not. **Recommendation:** compute
+   the transition leak from thermal `bubble_E2P(Eb,R2,R1,γ)` explicitly (R1 is already in scope), or
+   confirm reusing `press_bubble` is intended. Energy-phase behaviour is unaffected either way.
+8. **`bubble_Leak` diagnostic is not refreshed in the transition phase.** The leak is *applied* there
+   (inside `get_ODE_transition_pure → get_ODE_Edot_pure`), but the transition runner never updates
+   `params['bubble_Leak']` (no `compute_derived_quantities` call), so the plotted `bubble_Leak` is stale
+   (last implicit value) during transition. Diagnostic-only; the dynamics are unaffected. **Fix:** record
+   the applied leak in the transition diagnostic/save path.
+9. **Pre-existing (not introduced here):** `operations.get_soundspeed` docstring says "isothermal" but the
+   formula `sqrt(γ k_B T/μ)` is the *adiabatic* sound speed — which is what the spec's `cs` wants, so the
+   **code is correct** and matches the leak Eq.; only the docstring is stale. Left untouched (surgical).
+10. **Phase-D mechanism is under-specified given that density is `Pb`-derived (key design gap).**
+    Trinity reconstructs `n(r) = Pb/(2 k_B T)` and `bubble_mass = ∫ n μ 4πr² dr` every step, and `Pb`
+    is closed from `Eb`. So the **already-implemented energy leak** (lowering `Eb → Pb → n`) *already*
+    lowers the reconstructed density and mass — but by an energy-coupled amount, **not** by the advective
+    `Ṁleak = (1−Cf)·4πR²·ρ·cs`. A naive "density-level reduction" (Q2 Option A) layered on top would
+    therefore **double-count** the `Pb`-mediated drop. To impose the *advective* mass deficit specifically,
+    Phase D likely needs a tracked deficit factor `f_M = M_tracked / M_structure` applied only where density
+    feeds `Lcool`/X-ray (effectively Q2 Option B), combined with the `Mb=0 / Ṁb<0` clamp of item 1. The
+    exact coupling (and whether any separate mass sink is even needed beyond the `Pb` effect) must be
+    settled **before** coding D — this is the crux of the mass half.
 ```
