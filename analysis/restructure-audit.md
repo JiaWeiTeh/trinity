@@ -241,8 +241,8 @@ without blocking A and B.
 flaky `MonotonicError` robustness fix. It is deliberately *not* part of the
 A–C restructure (those are byte-preserving; this one changes a runtime code
 path), so it lives in its own doc, `analysis/bubble-integrator-robustness.md`,
-and must land after the structural churn settles. Status of A/B done:
-executed; C: planned (Appendix D); integrator: planned (separate doc).
+and must land after the structural churn settles. Status: A/B/C all
+executed; integrator: planned (separate doc) — the only remaining phase.
 
 # Part III — Final target layout & conventions
 
@@ -700,13 +700,17 @@ Then `git mv src trinity`.
 
 # Appendix D — Phase C execution detail (separate the plotting tree)
 
-> **STATUS: PLANNED — restyled per the audience model below.** Measured
-> against the post-Phase-B tree on `feature/reforming-structure`. The
-> earlier draft of this appendix treated *all* 34 `paper_*` as the public
-> deliverable; that was wrong. The user's rule is **"only what
+> **STATUS: EXECUTED (C.1–C.5).** Done in two commits: C.1 carved the 33
+> personal scripts into a tracked `scratch/`; C.2–C.5 moved the 5-script
+> `make_figures.py` closure to `paper/figures/` (+ infra in `_lib/`),
+> relocated `compare_outputs.py` to `tools/`, deleted dead
+> `radial_profile.py`/`plot_style.py`, removed `trinity/_plots/`, and added
+> `test_engine_purity` to lock the one-way dependency. Verified: 352 tests +
+> purity guard, `import trinity` clean, `make_figures.py` drives the
+> relocated scripts (3 latex failures are a missing system binary, not the
+> refactor). The audience rule below is what was implemented: **"only what
 > `paper/make_figures.py` reproduces is the paper; every other `paper_*`
-> script is personal."** The plan below follows that rule literally, via
-> the measured dependency closure.
+> script is personal,"** via the measured dependency closure.
 
 ## D.0 The audience model (supersedes the I.3 "all plots are the deliverable")
 
