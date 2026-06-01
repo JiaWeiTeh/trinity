@@ -249,6 +249,13 @@ renames with a full test net; Phase C is the only one with an untested
 surface, so it goes last and can be split (C.1 then C.2) or deferred
 without blocking A and B.
 
+**A separate, behavior-AFFECTING follow-up — sequenced dead last —** is the
+flaky `MonotonicError` robustness fix. It is deliberately *not* part of the
+A–C restructure (those are byte-preserving; this one changes a runtime code
+path), so it lives in its own doc, `analysis/bubble-integrator-robustness.md`,
+and must land after the structural churn settles. Status of A/B done:
+executed; C: planned (Appendix D); integrator: planned (separate doc).
+
 # Part III — Final target layout & conventions
 
 The guiding rule (the convention to enshrine): **organize by
@@ -340,8 +347,8 @@ erodes within a few months.
 
 # Open decisions for the user
 
-- **Phase B layout**: minimal `trinity/` at root (recommended) vs.
-  `src/trinity/` src-layout proper?
+- **Phase B layout**: ~~minimal `trinity/` at root (recommended) vs.
+  `src/trinity/` src-layout proper?~~ **DECIDED: root-level `trinity/`.**
 - **Phase C package shape**: should `paper/figures/` be an importable
   package (with `__init__.py`, so `run_all.py` can do
   `from figures._lib import ...`), or a flat script dir run with
@@ -354,6 +361,10 @@ erodes within a few months.
 ---
 
 # Appendix A — Phase A execution detail (drop `_modified`)
+
+> **STATUS: EXECUTED.** All 8 `*_modified.py` files renamed, the 17 import
+> sites + docstrings/docs/param-comments updated. Verified: full battery
+> green. (Committed on `feature/reforming-structure`.)
 
 Verified against the real tree on branch `feature/reforming-structure`.
 Pure, behavior-preserving rename. Empty `__init__.py` in all six affected
@@ -597,6 +608,19 @@ the codegen gate guarantees consistency.
 
 # Appendix C — Phase B execution detail (`src/` → `trinity/`)
 
+> **STATUS: EXECUTED via root-level `trinity/` (recommended option); `test/`
+> → `tests/` deferred.** `git mv src trinity` + an anchored find/replace
+> (every `src.`/`src/` replacement anchored on the known sub-package names,
+> so the local `src` loop/param variables in `test_cloudy_cli.py` and
+> `trinity_to_cloudy.py` were left untouched). 156 files, 127 renames,
+> 621/621 balanced line swaps. `default.param` regenerated. Verified:
+> `pip install -e . && import trinity` OK, `gen_default_param --check` in
+> sync, ruff clean, **356/357 tests pass** — the lone failure is the
+> *pre-existing* flaky `MonotonicError` in the bubble integrator (numpy
+> 1.26.4, passed 2 of 3 identical re-runs; unrelated to the rename). That
+> flake is the subject of the final phase — see
+> `analysis/bubble-integrator-robustness.md`.
+
 Measured on `feature/reforming-structure` after Phase A + the
 deprecated-param removal. Pure, behavior-preserving package rename.
 
@@ -676,3 +700,113 @@ Then `git mv src trinity`.
 - External notebooks/scripts doing `from src…` will break and must be
   hand-updated (call out in the commit/PR).
 - Single commit; revert restores the prior layout. No physics/output change.
+
+---
+
+# Appendix D — Phase C execution detail (separate the plotting tree)
+
+> **STATUS: PLANNED.** Measured against the post-Phase-B tree on
+> `feature/reforming-structure`. This is the one structural phase with an
+> *untested* surface, so it is split into independently-revertable
+> sub-commits and verified partly by hand.
+
+## D.1 Measured blast radius (current tree)
+
+- `trinity/_plots/` = **46 `.py` files, 23,229 lines** (~42% of repo
+  Python). Composition: **34 `paper_*`**, **2 `pedrini_*`**, **1 diag**
+  (`diag_simplify.py`), infra (`cli.py`, `plot_base.py`, `plot_markers.py`,
+  `force_colors.py`, `grid_template.py`, `radial_profile.py`,
+  `run_all.py`), the genuinely-user-facing `compare_outputs.py`, plus
+  `trinity.mplstyle` and `__init__.py`.
+  *(Note: `diagnostic_parameter_changes.py` from the I.3 audit no longer
+  exists — only `diag_simplify.py` remains in the diag bucket.)*
+
+## D.2 Dependency graph — re-confirmed one-way (post-rename)
+
+- **The only engine→plots link is dead code.**
+  `trinity/_functions/plot_style.py:30` builds
+  `os.path.join(__file__, '..', '_plots', 'trinity.mplstyle')` — and
+  `plot_style.py` is **imported by nobody** (grep finds only its own
+  definition). So the single asset coupling rides on a dead module.
+  → **Decision: confirm-dead then delete `plot_style.py`** in its own
+  called-out commit; the live styling path is `plot_base.py` (which the
+  paper infra imports), and `trinity.mplstyle` travels with it to
+  `paper/figures/_lib/`.
+- **Exactly one test imports a plot**:
+  `test/test_phase4_consumer_migration.py` (4 sites, all
+  `from trinity._plots.pedrini_emergence_timescales import parse_raw_reason`).
+  `pedrini_emergence_timescales` therefore stays on the public side and
+  this test's import path is rewritten in C.2.
+- No other `trinity/**` file references `_plots` / `mplstyle`. The engine
+  is clean to amputate from.
+
+## D.3 The two `__file__`-depth landmines (must rewrite, not just `git mv`)
+
+Phase B was safe *because* it preserved directory depth; Phase C does
+**not** — files move to a different depth, so every repo-root shim in the
+moved files must be re-counted:
+
+1. **`plot_base.py`** computes repo-root via `parent.parent.parent`
+   (`trinity/_plots/plot_base.py` → 3 parents = repo root) and hardcodes a
+   `fig/` sibling. At `paper/figures/_lib/plot_base.py` the root is **4**
+   parents up — the shim must change (`parents[2]`→`parents[3]`) or the
+   `fig/` output path silently lands in the wrong place. Same audit for
+   `cli.py` and any `paper_*` `__main__` `sys.path` shim.
+2. **`run_all.py`** holds a hardcoded path table of
+   `"trinity/_plots/paper_X.py"` strings (34 rows, rewritten from
+   `src/_plots/…` in Phase B). Every row must be repointed to
+   `paper/figures/paper_X.py`, and `run_all.py`'s own root-depth shim
+   re-counted.
+
+## D.4 Open decisions (recommended answers)
+
+- **Package shape** → **importable `paper/figures/` package** (add
+  `__init__.py` + `paper/figures/_lib/__init__.py`), so `run_all.py` and
+  the consumer test use clean `from figures._lib.cli import …` instead of
+  per-script `sys.path` hacks. (The flat-script alternative keeps the
+  current `__main__` style but multiplies the depth-shim landmines.)
+- **`compare_outputs.py`** → **`tools/`** (or `trinity/viz/`): it is
+  genuinely user-facing (diffs two runs via the public `dictionary.jsonl`,
+  run as `python -m`), not a paper figure. Keep it out of `paper/figures/`.
+- **`diag_simplify.py`** → **`scratch/`** (gitignored) unless it is a
+  maintained diagnostic, in which case `tools/`. Decide with the audience
+  test ("would a stranger reproduce a paper figure with this?" → no).
+- **`test/` → `tests/`** stays out of scope (trivial, fold in separately).
+
+## D.5 Execution order (incremental, each its own revertable commit)
+
+1. **C.1** — create gitignored `scratch/`; `git mv diag_simplify.py` there.
+   Stop-point: safe to halt here if the full move is too big.
+2. **C.2a** — `git mv` the 34 `paper_*` + 2 `pedrini_*` → `paper/figures/`;
+   `git mv` infra (`cli`, `plot_base`, `plot_markers`, `force_colors`,
+   `grid_template`, `radial_profile`, `run_all`, `trinity.mplstyle`) →
+   `paper/figures/_lib/`; add the two `__init__.py`.
+3. **C.2b** — rewrite imports: `from trinity._plots.X` → `from figures._lib.X`
+   (infra) and leave engine refs as the *installed*
+   `from trinity._output… import …`. Fix the D.3 depth shims. Repoint
+   `run_all.py`'s path table. Update
+   `test/test_phase4_consumer_migration.py`'s import path.
+4. **C.2c** — `git mv compare_outputs.py tools/`; confirm-dead and delete
+   `trinity/_functions/plot_style.py` (called-out commit).
+5. **C.3** — `pyproject.toml`: exclude `paper*` / `scratch*` from the wheel
+   (mirror the existing `test*`/`docs*` excludes); `_plots` is gone so drop
+   any leftover reference. Update `docs/source/visualization.rst` and any
+   `_plots` doc mentions.
+
+## D.6 Verification (the untested-surface caveat)
+
+1. Full battery: `pytest test/ -q` (the migrated consumer test must pass),
+   ruff clean, `pip install -e . && import trinity` still OK, wheel build
+   excludes `paper*`.
+2. **Engine-purity guard** (Part III.5): add a test asserting `trinity`
+   imports nothing from `paper`/`scratch` — this is what stops drift.
+3. **Manual** (no automated net for 33 of 34 figures): run
+   `python -m figures._lib.run_all` (curated default set) against a sample
+   output dir and eyeball that figures render. Call out explicitly that the
+   other scripts are unverified.
+4. **Expect the flaky `MonotonicError`** to still surface here (it is
+   orthogonal and unfixed until the final phase) — do not mistake it for a
+   Phase C regression.
+
+Risk: **medium**. Untested surface + real import/depth rewrites (not a pure
+`git mv`). C.1/C.2 split keeps each commit reviewable and revertable.
