@@ -137,8 +137,14 @@ Finally, the ODE solver advances :math:`y` through
 
    \frac{dR_2}{dt} &= v_2, \\
    \frac{dv_2}{dt} &= \frac{4\pi R_2^2 P_b - F_{\rm grav} + F_{\rm rad} - \dot M_{\rm sh} v_2}{M_{\rm sh}}, \\
-   \frac{dE_b}{dt} &= L_{\rm gain} - L_{\rm loss} - P_b \frac{dV}{dt}, \\
+   \frac{dE_b}{dt} &= L_{\rm gain} - L_{\rm loss} - L_{\rm leak} - P_b \frac{dV}{dt}, \\
    \frac{dT_0}{dt} &= \frac{T_0}{t}\,\delta.
+
+Here :math:`L_{\rm leak}` is the geometry-set covering-fraction leak, the
+enthalpy flux of hot gas venting through the open fraction
+:math:`(1-C_{\rm f})` of the bubble wall. It is zero by default
+(:math:`C_{\rm f}=1`, sealed bubble) and active only when
+``coverFraction`` :math:`< 1`; see the parameter of that name.
 
 The updated state is written back to the dictionary, a snapshot is
 staged if the save interval has elapsed (see *Snapshot Persistence*

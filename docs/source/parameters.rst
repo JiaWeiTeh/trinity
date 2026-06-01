@@ -160,6 +160,10 @@ Core parameters defining the molecular cloud and star formation.
      - ``True``
      - --
      - Include HII pressure (from Strömgren ionization balance in the shell) in :math:`P_{\rm drive}`. When ``False``, :math:`P_{\rm HII}` is set to zero.
+   * - ``coverFraction``
+     - ``1.0``
+     - --
+     - Closed fraction of the bubble wall, :math:`C_{\rm f} \in (0, 1]`. Hot gas vents through the open area :math:`(1-C_{\rm f})\,4\pi R_2^2` at the interior sound speed, draining bubble energy via :math:`L_{\rm leak}`. ``1.0`` recovers the sealed (Weaver) bubble exactly; geometry-set, not fragmentation-triggered. Usable range ~0.9--0.99.
 
 **Derived quantities:**
 

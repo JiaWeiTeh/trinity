@@ -228,7 +228,7 @@ def get_ODE_transition_pure(t: float, y: np.ndarray, snapshot: ODESnapshot,
     dydt_energy = get_ODE_Edot_pure(t, y, snapshot, params_for_feedback)
     rd = dydt_energy[0]  # = v2
     vd = dydt_energy[1]  # acceleration
-    Ed_energy_balance = dydt_energy[2]  # from energy balance (Lmech - Lcool - PdV)
+    Ed_energy_balance = dydt_energy[2]  # energy balance (Lmech - Lcool - Lleak - PdV)
 
     # Sound-crossing energy decay: dE/dt = -Eb / (R2 / c_sound)
     if c_sound > 0 and R2 > 0:

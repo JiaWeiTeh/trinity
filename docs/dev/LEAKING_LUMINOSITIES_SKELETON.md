@@ -149,4 +149,21 @@ These are **not** handled by the A–C draft and need decisions:
     feeds `Lcool`/X-ray (effectively Q2 Option B), combined with the `Mb=0 / Ṁb<0` clamp of item 1. The
     exact coupling (and whether any separate mass sink is even needed beyond the `Pb` effect) must be
     settled **before** coding D — this is the crux of the mass half.
+
+### Full-codebase sweep (folders outside the four phases) — results
+
+11. **No missed energy-budget consumer.** A sweep of `_analysis/`, `_output/`, `sps/`, `cooling/`,
+    `shell_structure/`, `cloud_properties/`, `phase0_init/`, `phase_general/` found **no** independent
+    recomputation of the bubble energy ledger / `dEb/dt` outside the four audited phases — so nothing
+    else is silently inconsistent with the leak. `phase0_init` sets `E0=(5/11)Lw·dt` and `T0` (Weaver);
+    correct as-is (no bubble exists yet at `tSF`, so no leak at init; `Cf` is a run-const).
+12. **Phase-G insertion points located (photon budget, NOT implemented).** When `fleak=1−Cf` is added:
+    - `shell_structure/shell_structure.py` (~219–234): `f_esc_ion` and `_Qi_absorbed=(1-f_esc_ion)·Qi`
+      — the ionizing-photon escape/absorption is computed here; the lateral photon leak couples at this point.
+    - `_output/cloudy/snapshot_to_deck.py` (~108,140): `Qi`→`log_qh` is passed raw to the CLOUDY deck;
+      either write a leak-reduced `Qi` to snapshots or apply `fleak` here.
+13. **RESOLVED — stale docs fixed by this sweep:** `docs/source/architecture.rst` `dEb/dt` equation now
+    includes `-L_leak` (+ a note); `docs/source/parameters.rst` Physical-Parameters table now lists
+    `coverFraction`; the stale `# ... (Lmech - Lcool - PdV)` comment in `run_transition_phase.py` now
+    reads `(Lmech - Lcool - Lleak - PdV)`.
 ```
