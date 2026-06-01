@@ -46,6 +46,22 @@ intersphinx_disabled_domains = ['std']
 # templates_path = ['_templates']
 
 
+# -- Deprecation banner ------------------------------------------------------
+#
+# This site (trinitysf.readthedocs.io) is a frozen mirror of the in-repo
+# Sphinx sources. The canonical, actively-maintained documentation now lives
+# at https://jiaweiteh.github.io/trinity-web/. ``rst_prolog`` prepends a
+# warning admonition to every page so visitors landing on any URL of the
+# old site see the notice without having to scroll.
+rst_prolog = """
+.. warning::
+
+   **This documentation site is deprecated and no longer maintained.**
+   The current TRINITY documentation lives at
+   `jiaweiteh.github.io/trinity-web <https://jiaweiteh.github.io/trinity-web/>`_.
+"""
+
+
 # -- Options for HTML output -------------------------------------------------
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
@@ -88,6 +104,10 @@ html_last_updated_fmt = "%a %d %b %Y"
 # html_sidebars = {}
 
 html_split_index = True
+
+# Canonical URL for SEO — tells search engines that the real, indexable
+# version of each page lives at trinity-web, not on this deprecated mirror.
+html_baseurl = "https://jiaweiteh.github.io/trinity-web/"
 
 
 
