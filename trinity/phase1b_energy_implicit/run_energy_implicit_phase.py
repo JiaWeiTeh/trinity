@@ -581,6 +581,21 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         updateDict(params, feedback)
 
         # ---------------------------------------------------------------------
+        # Covering-fraction energy leak (Eq. leak), consumed by the
+        # energy-balance branch of solve_betadelta_pure below. Pb and c_sound
+        # are carried from the previous segment (1-step frozen), consistent
+        # with this phase's slowly-varying Lloss treatment. Cf=1 -> 0, so the
+        # sealed-bubble trajectory is reproduced exactly.
+        # ---------------------------------------------------------------------
+        params['bubble_Leak'].value = get_bubbleParams.get_leak_luminosity(
+            params['coverFraction'].value,
+            params['R2'].value,
+            params['Pb'].value,
+            params['c_sound'].value,
+            params['gamma_adia'].value,
+        )
+
+        # ---------------------------------------------------------------------
         # Calculate beta/delta and bubble properties BEFORE shell structure,
         # so that Pb and bubble_mass are current when shell_structure_pure
         # reads them (bubble computation does not depend on shell).

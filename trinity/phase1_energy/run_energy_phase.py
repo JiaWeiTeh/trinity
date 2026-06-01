@@ -232,6 +232,8 @@ def run_energy(params):
             params['shell_mass'].value = ode_result.shell_mass
         if ode_result.shell_massDot is not None:
             params['shell_massDot'].value = ode_result.shell_massDot
+        if ode_result.bubble_Leak is not None:
+            params['bubble_Leak'].value = ode_result.bubble_Leak
         params['F_ram_wind'].value = feedback.pdot_W
         params['F_ram_SN'].value = feedback.pdot_SN
 

@@ -137,6 +137,21 @@ def _validate_stop_at_rCloud_nSnap(value, params) -> None:
     params['stop_at_rCloud_nSnap'].value = coerced
 
 
+def _validate_coverFraction(value, params) -> None:
+    """Covering fraction Cf must be a number in (0, 1]. Cf=1 is a sealed
+    bubble (no leak); Cf=0 is unphysical here (would vent the whole wall)."""
+    from trinity._input.errors import ParameterFileError
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise ParameterFileError(
+            f"Invalid coverFraction '{value}'. Must be a number in (0, 1]."
+        )
+    if not (0.0 < value <= 1.0):
+        raise ParameterFileError(
+            f"Invalid coverFraction '{value}'. Must satisfy 0 < Cf <= 1 "
+            f"(Cf=1 recovers the sealed bubble)."
+        )
+
+
 # ---------------------------------------------------------------------------
 # Resolvers (consumed by Phase 7; ``resolve_all`` invoked from
 # ``read_param`` Step 7).  A resolver receives the parameter's current
@@ -259,6 +274,7 @@ SPECS: tuple[ParamSpec, ...] = (
     ParamSpec(name='sfe', default='0.01', info='Star formation efficiency.', category='input_physical', unit=None, exclude_from_snapshot=True, run_const=True),
     ParamSpec(name='ZCloud', default='1', info='Cloud metallicity', category='input_physical', unit='Zsun', exclude_from_snapshot=True, run_const=True, validator=_validate_ZCloud),
     ParamSpec(name='include_PHII', default='True', info='Include HII pressure (from Strömgren ionization balance in shell) in P_drive. When False, P_HII is set to zero.', category='input_physical', unit=None, exclude_from_snapshot=True, run_const=True),
+    ParamSpec(name='coverFraction', default='1.0', info='Closed fraction of the bubble wall (covering fraction Cf). Geometry-set energy/mass leak: hot gas vents through the open area (1-Cf)*4*pi*R2^2 at the interior sound speed, draining bubble energy (and, when the mass sink is enabled, mass). Cf=1 recovers the sealed (Weaver) bubble exactly; not fragmentation-triggered. Usable range ~0.9-0.99; Cf near 0 drains the bubble within a step and stresses the integrator.', category='input_physical', unit=None, exclude_from_snapshot=True, run_const=True, validator=_validate_coverFraction),
     ParamSpec(name='dens_profile', default='densPL', info='Specifies how the cloud density scales with radius.', category='input_profile', unit=None, run_const=True, validator=_validate_dens_profile),
     ParamSpec(name='densBE_Omega', default='14.1', info='if `densBE` is selected, then the ratio `Omega = nCore/nCloudEdge` must be specified.', category='input_profile', unit=None, exclude_from_snapshot=True, run_const=True, active_when=_active_densBE),
     ParamSpec(name='densPL_alpha', default='0', info='if `densPL` is selected, then the power-law coefficient `nCore*(r/rCore)^alpha` (0 = homogeneous, -2 = isothermal) must be specified.', category='input_profile', unit=None, run_const=True, active_when=_active_densPL),

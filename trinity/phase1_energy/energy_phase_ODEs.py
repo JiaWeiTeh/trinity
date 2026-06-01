@@ -106,6 +106,11 @@ class ODESnapshot:
     # HII pressure from Strömgren ionization balance in shell (n_IF_Str)
     P_HII: float
 
+    # Covering-fraction leak: Cf=1 -> sealed bubble (no leak); c_sound is the
+    # hot-bubble sound speed (from bubble_Tavg), frozen per segment.
+    coverFraction: float
+    c_sound: float
+
 
 def create_ODE_snapshot(params, shell_props) -> ODESnapshot:
     """
@@ -156,6 +161,8 @@ def create_ODE_snapshot(params, shell_props) -> ODESnapshot:
         rCloud=params['rCloud'].value,
         include_PHII=params['include_PHII'].value,
         P_HII=params['P_HII'].value,
+        coverFraction=params['coverFraction'].value,
+        c_sound=params['c_sound'].value,
     )
 
 
@@ -269,7 +276,12 @@ def get_ODE_Edot_pure(t: float, y: list, snapshot: ODESnapshot, params_for_feedb
 
     # Energy derivative
     L_bubble = snapshot.bubble_LTotal
-    L_leak = 0  # Future: add cover fraction
+    # Geometry-set covering-fraction leak (Eq. leak): computed live from the
+    # same instantaneous Pb and R2 used by the P dV term; cs and Cf are frozen
+    # per segment in the snapshot. Cf=1 -> 0 exactly (sealed Weaver bubble).
+    L_leak = get_bubbleParams.get_leak_luminosity(
+        snapshot.coverFraction, R2, press_bubble, snapshot.c_sound, snapshot.gamma_adia
+    )
     Ed = (Lmech_total - L_bubble) - (4 * np.pi * R2**2 * press_bubble) * v2 - L_leak
 
     logger.debug(f'Pure ODE: t={t:.6f}, R2={R2:.6e}, v2={v2:.6e}, Eb={Eb:.6e}')
@@ -310,6 +322,9 @@ class ODEResult:
     P_drive: Optional[float] = None
     P_ram: Optional[float] = None
     press_HII_in: Optional[float] = None
+
+    # Covering-fraction energy leak (registered output; 0 when Cf=1)
+    bubble_Leak: Optional[float] = None
 
 
 def compute_derived_quantities(t: float, y: list, snapshot: ODESnapshot, params_for_feedback) -> ODEResult:
@@ -395,6 +410,11 @@ def compute_derived_quantities(t: float, y: list, snapshot: ODESnapshot, params_
     else:
         P_ram_val = 0.0
 
+    # Covering-fraction leak diagnostic (same value the RHS subtracts from Edot)
+    bubble_Leak = get_bubbleParams.get_leak_luminosity(
+        snapshot.coverFraction, R2, Pb, snapshot.c_sound, snapshot.gamma_adia
+    )
+
     return ODEResult(
         R2=R2,
         v2=v2,
@@ -416,4 +436,5 @@ def compute_derived_quantities(t: float, y: list, snapshot: ODESnapshot, params_
         P_drive=P_drive,
         P_ram=P_ram_val,
         press_HII_in=P_ext,
+        bubble_Leak=bubble_Leak,
     )
