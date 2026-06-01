@@ -464,6 +464,13 @@ byte-unaffected.
 
 # Appendix B — Deprecated-param removal plan
 
+> **STATUS: EXECUTED via Option A (hard break).** The 4 specs were removed
+> from the registry; a `.param` still setting one now errors. The empty
+> `deprecated` category machinery was kept for future use (the
+> `test_deprecated_category_requires_note` probe still guards it), so the
+> `RETIRED_KEYS` shim of Option B (§B.3) was not added. Mock outputs (§B.4)
+> were left untouched.
+
 Verified against the tree on `feature/reforming-structure`. Four params
 carry `category='deprecated'` and are **never consumed** by any code path
 (confirmed by grep across `src/` + `run.py`):
@@ -585,3 +592,87 @@ external files.
 Single commit; revert restores the specs and the schema. No physics, no
 output-format change. `default.param` is regenerated, not hand-edited, so
 the codegen gate guarantees consistency.
+
+---
+
+# Appendix C — Phase B execution detail (`src/` → `trinity/`)
+
+Measured on `feature/reforming-structure` after Phase A + the
+deprecated-param removal. Pure, behavior-preserving package rename.
+
+## C.1 Layout decision (recommended: minimal `trinity/` at repo root)
+
+`git mv src trinity` at the **repo root**, preserving directory depth.
+This matters: 100+ call sites compute the repo root via `__file__`-relative
+depth — `Path(__file__).resolve().parents[2]`,
+`parent.parent.parent` (`show_run.py:41`, `plot_base.py:23`,
+`cli.py:42`, all `paper_*` shims), and `parents[3]`
+(`trinity_to_cloudy.py:45`). A root-level `trinity/` keeps every such
+shim valid **unchanged**. A `src/trinity/` layout would add one level and
+break all of them. → **Recommend root-level `trinity/`.**
+
+`test/` → `tests/` is intentionally **out of scope** here (separate
+trivial change: rename dir + `pyproject.toml testpaths`). Keep Phase B a
+pure package rename.
+
+## C.2 Blast radius
+
+- **103 files / 446 import lines**: `from src…` / `import src…`.
+- **84 additional `.py` lines** with *non-import* package references
+  (docstrings, `python -m src._output.show_run` usage examples,
+  `:mod:`src._…`` / ``` ``src._…`` ``` cross-refs, `python src/_plots/…`
+  invocations). These must change too or the docs/examples go stale.
+- **2 path-string literals** (not import lines, easy to miss):
+  - `test/test_registry.py:71` — `… / "src" / "_input" / "default.param"`
+  - `tools/gen_default_param.py:39` — same pattern
+- **`pyproject.toml:74`** — `include = ["src*"]` → `["trinity*"]`
+  (`package-dir = {"" = "."}` and `where = ["."]` stay; `pythonpath=["."]`
+  and `testpaths=["test"]` stay).
+- **`src/__init__.py:8,9,15`** — usage-example docstrings
+  (`from src._input import read_param`, …).
+- **Docs**: `architecture.rst`, `visualization.rst`, `running.rst`,
+  `parameters.rst`, `trinity_reader.rst`, `docs/dev/TERMINATION_EVENTS.md`.
+
+## C.3 Transformation recipe (targeted — avoids the two traps)
+
+Apply over tracked `.py` + `.rst` + `.md` + `pyproject.toml`, **excluding**
+the traps in C.4:
+
+1. `from src.`  → `from trinity.`
+2. `from src import` → `from trinity import`
+3. `import src.` → `import trinity.`
+4. `import src` (eol / `as`) → `import trinity`
+5. `src._`  → `trinity._`   (covers `:mod:`, backticks, `python -m`)
+6. `src/_`  → `trinity/_`    (covers `python src/_plots/…` and path strings)
+7. The 2 path-literals in C.2: `"src"` → `"trinity"` (those two lines only)
+8. `pyproject.toml`: `["src*"]` → `["trinity*"]`
+
+Then `git mv src trinity`.
+
+## C.4 Do NOT touch (blind-replace traps)
+
+- `test/test_cloudy_cli.py:273` — `for src in MOCK_FULLRUN.iterdir():`
+  (`src` is a **loop variable**, not the package).
+- `README.md:5` — `<img src="…badge…">` (HTML attribute).
+
+## C.5 Verification battery
+
+1. `grep -rnE "\bsrc\b" --include=* . | grep -v /.git/` → only the two C.4
+   lines remain. Anything else is a missed reference.
+2. `pip install -e . && python -c "import trinity; import trinity.main"` →
+   clean (proves the package is importable under the new name).
+3. `python -m tools.gen_default_param --check` → in sync (its path literal
+   now points at `trinity/_input/default.param`).
+4. `pre-commit run --all-files` → clean (ruff **F821** catches any half-
+   renamed import).
+5. `python -m pytest test/ -q` → 357 pass.
+6. `python run.py param/simple_cluster.param` → exits 0, writes outputs;
+   logs now show `trinity.*` module paths.
+
+## C.6 Notes / rollback
+
+- Keep it a **pure rename commit** — no opportunistic edits — so review and
+  `git blame` stay clean; `git mv` lets history follow.
+- External notebooks/scripts doing `from src…` will break and must be
+  hand-updated (call out in the commit/PR).
+- Single commit; revert restores the prior layout. No physics/output change.
