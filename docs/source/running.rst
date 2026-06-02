@@ -17,7 +17,9 @@ The path may be absolute or relative to the repository root.
 ``run.py`` scans the file and dispatches automatically: if the file
 contains list (``[...]``) or ``tuple(...)`` syntax it runs a parameter
 sweep across a parallel worker pool, otherwise it runs a single
-simulation. There is no separate command or flag for sweeps.
+simulation. There is no separate command or flag for sweeps. On an HPC
+cluster you can instead generate a SLURM job array with ``--emit-jobs``
+(see *Running on a cluster (SLURM)* below).
 
 Output is written to the directory named by the ``path2output``
 parameter; the sentinel ``def_dir`` (the default) means the current
@@ -78,8 +80,9 @@ The hybrid example therefore runs 2 tuple pairs × 2 ``nCore`` values =
 Command-line flags
 ------------------
 
-All flags are optional and take effect when the file triggers sweep
-mode (they are ignored for single runs):
+All flags are optional. Most take effect only in sweep mode; for a
+single run, ``--dry-run`` prints the resolved file and exits without
+running, while ``--workers`` and ``--yes`` are ignored:
 
 .. list-table::
    :widths: 25 75
@@ -90,12 +93,23 @@ mode (they are ignored for single runs):
    * - ``--dry-run``, ``-n``
      - Preview all combinations (with any GMC warnings) without running.
    * - ``--workers N``, ``-w``
-     - Number of parallel workers. Default ``max(1, CPU count // 2 - 1)``
-       — conservative so a laptop stays responsive; raise it on HPC nodes.
+     - Parallel workers for the in-process sweep pool — or the array
+       concurrency cap with ``--emit-jobs``. Default inside a SLURM job:
+       the full allocation (``SLURM_CPUS_PER_TASK``, else
+       ``SLURM_CPUS_ON_NODE`` / CPU affinity); on a laptop:
+       ``max(1, CPU count // 2 - 1)``. Must be ``>= 1``; refused if it
+       exceeds the cores available to this process.
    * - ``--yes``, ``-y``
      - Skip the interactive confirmation prompt.
    * - ``--verbose``, ``-v``
      - DEBUG-level logs and the full base-parameter list.
+   * - ``--emit-jobs DIR``
+     - Generate a SLURM job-array bundle in ``DIR`` (one task per
+       combination) instead of running locally; requires a sweep file.
+       Mutually exclusive with ``--collect-report`` (see below).
+   * - ``--collect-report DIR``
+     - Aggregate a finished ``--emit-jobs`` bundle into
+       ``sweep_report.txt`` / ``.json``; needs no parameter file.
 
 Before launching, ``run.py`` runs a GMC-parameter plausibility check
 (cloud mass vs. core/ISM density, cloud radius, …) on every
@@ -104,6 +118,53 @@ than waste compute. Press ``Ctrl+C`` — or send ``SIGTERM``, e.g. from
 SLURM ``scancel`` — to cancel cleanly: in-flight workers are stopped
 and a report of completed / failed / cancelled runs is written to the
 output directory.
+
+
+Running on a cluster (SLURM)
+----------------------------
+
+On a laptop or a single multi-core node, a sweep runs across an
+in-process worker pool sized by ``--workers``. To scale across nodes on
+an HPC cluster (e.g. bwForCluster Helix / bwUniCluster), generate a
+SLURM **job array** instead — one array task per combination, so the
+scheduler packs them across nodes and restarts failures independently::
+
+    python run.py param/sweep_example.param --emit-jobs jobs/
+    # edit jobs/submit_sweep.sbatch: --account, --partition, --time, --mem
+    sbatch jobs/submit_sweep.sbatch
+    python run.py --collect-report jobs/      # after the array finishes
+
+Running the in-process pool on a *login* node is discouraged; ``run.py``
+prints a warning when SLURM is detected without an active job.
+
+``--emit-jobs DIR`` writes a self-contained, submittable bundle:
+
+.. code-block:: text
+
+    jobs/
+    ├── params/<run_name>.param   # one per combination, absolute path2output
+    ├── runs.tsv                  # param_path <TAB> output_dir; line N = array task N
+    ├── manifest.json             # index: names, params, output dirs
+    ├── submit_sweep.sbatch       # #SBATCH --array=1-N[%K]; one sim per task
+    └── logs/                     # %A_%a.out per task
+
+Each array task runs ``python run.py <combo>.param`` with one CPU and
+math-library threads pinned to one (``OMP_NUM_THREADS=1`` …,
+``MPLBACKEND=Agg``); parallelism comes from running many tasks, not from
+threading one. Passing ``--workers K`` at emit time caps concurrency as
+``--array=1-N%K``.
+
+When the array finishes, ``--collect-report DIR`` reads each task's
+``.exit_code`` / ``.duration`` sentinels and writes the same
+``sweep_report.txt`` / ``.json`` as a local sweep, then prints a ready
+``sbatch --array=<failed ids> jobs/submit_sweep.sbatch`` to rerun only
+the failures.
+
+Outputs land in the same ``path2output/<run_name>/`` layout as a local
+sweep (see *Outputs* below). Bundled inputs (SPS, cooling tables,
+``lib/default/``) resolve relative to the package, so the clone location
+does not matter; only ``path2output`` follows the launch directory — set
+it to an absolute path on a work/scratch filesystem for cluster runs.
 
 
 Outputs

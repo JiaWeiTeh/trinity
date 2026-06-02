@@ -18,6 +18,11 @@ Usage (sweep - auto-detected):
     python run.py param/sweep.param --workers 4
     python run.py param/sweep.param --dry-run
     python run.py param/sweep.param --yes
+
+Usage (cluster job array - SLURM, e.g. bwForCluster Helix):
+    python run.py param/sweep.param --emit-jobs jobs/
+    sbatch jobs/submit_sweep.sbatch
+    python run.py --collect-report jobs/
 """
 
 import argparse

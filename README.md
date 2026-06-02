@@ -36,6 +36,24 @@ mCloud    1e5
 sfe       0.3
 ```
 
+## Running on a cluster (SLURM)
+
+On a laptop or a single node, a sweep runs across an in-process worker
+pool (`--workers N`). To scale across nodes on an HPC cluster
+(e.g. bwForCluster Helix / bwUniCluster), generate a SLURM job array
+instead — one task per combination:
+
+```bash
+python run.py param/sweep_example.param --emit-jobs jobs/
+# edit jobs/submit_sweep.sbatch: set --account / --partition / --time / --mem
+sbatch jobs/submit_sweep.sbatch
+python run.py --collect-report jobs/      # after the array finishes
+```
+
+Set an absolute `path2output` on a work/scratch filesystem for cluster
+runs. See the [documentation](https://jiaweiteh.github.io/trinity-web/)
+for the full workflow.
+
 ## License
 
 GPL v3 — see [`LICENSE`](LICENSE).
