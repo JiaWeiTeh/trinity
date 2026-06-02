@@ -163,21 +163,35 @@ def load_cf_runs(folder_path: Path, phii_mode: str = 'yes',
 # =============================================================================
 
 def _panel_title(base_key: str) -> str:
-    """Readable column title from a base-condition key."""
+    """Readable column title from a base-condition key.
+
+    Appends any folder suffix ``parse_simulation_params`` ignores (e.g. ``PL0``,
+    ``yesPHII``) so columns that differ only by such a tag stay distinguishable.
+    """
     p = parse_simulation_params(base_key)
     if p is None:
         return base_key
     sfe_pct = int(p['sfe']) / 100.0
-    return (rf"$M_{{\rm cloud}}={p['mCloud']}\,M_\odot$, "
-            rf"sfe$={sfe_pct:g}$, $n={p['ndens']}$")
+    title = (rf"$M_{{\rm cloud}}={p['mCloud']}\,M_\odot$, "
+             rf"sfe$={sfe_pct:g}$, $n={p['ndens']}$")
+    core = f"{p['mCloud']}_sfe{p['sfe']}_n{p['ndens']}"
+    idx = base_key.find(core)
+    suffix = base_key[idx + len(core):].strip('_') if idx != -1 else ""
+    if suffix:
+        title += f" [{suffix}]"
+    return title
 
 
 def _sort_key(base_key: str):
-    """Order columns by (mCloud, sfe, nCore) when parseable, else by name."""
+    """Order columns by (mCloud, sfe, nCore) when parseable, else by name.
+
+    ``base_key`` is the final tiebreaker so suffix-only variants (e.g.
+    yesPHII/noPHII) keep a stable, distinct ordering.
+    """
     p = parse_simulation_params(base_key)
     if p is None:
         return (1, base_key)
-    return (0, float(p['mCloud']), int(p['sfe']), float(p['ndens']))
+    return (0, float(p['mCloud']), int(p['sfe']), float(p['ndens']), base_key)
 
 
 def _draw_obs_velocity(ax, obs: ObservationalConstraints):
@@ -241,16 +255,20 @@ def plot_cf_grid(groups: Dict[str, List[dict]], output_dir: Path,
                     ax.plot(run['t'], y, color=cmap(norm(run['cf'])),
                             lw=1.6, alpha=0.9)
             # Observation overlay per panel.
-            if key == 'v':
-                _draw_obs_velocity(ax, obs)
-                ax.set_ylim(0, _V_MAX)
-            else:
-                _draw_obs_radius(ax, obs)
-                ax.set_ylim(bottom=0)
-            ax.set_xlim(0, x_hi)
+            _draw_obs_velocity(ax, obs) if key == 'v' else _draw_obs_radius(ax, obs)
             ax.grid(False)
             ax.tick_params(axis='both', labelsize=FONTSIZE - 4)
         axes[0, col].set_title(_panel_title(base_key), fontsize=FONTSIZE - 3)
+
+    # Set limits only after every curve + obs patch is drawn: an explicit
+    # set_ylim disables autoscale for the whole shared row, so doing it mid-loop
+    # would freeze the y-range to the first column and clip taller later columns.
+    for col in range(ncols):
+        for row in range(nrows):
+            axes[row, col].set_xlim(0, x_hi)
+        axes[0, col].set_ylim(0, _V_MAX)          # velocity capped like paper_Rosette
+        axes[1, col].set_ylim(bottom=0)
+        axes[2, col].set_ylim(bottom=0)
 
     # Row labels (left column) and time labels (bottom row).
     for row, (_key, ylabel) in enumerate(_ROWS):
