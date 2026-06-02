@@ -773,7 +773,10 @@ if __name__ == '__main__':
     # Positional: path to param file
     parser.add_argument(
         'path2param',
-        help="Path to .param file (single run or sweep with list syntax)"
+        nargs='?',
+        default=None,
+        help="Path to .param file (single run or sweep with list syntax). "
+             "Optional only with --collect-report."
     )
     # Sweep-specific options (ignored for single runs)
     parser.add_argument(
@@ -800,6 +803,19 @@ if __name__ == '__main__':
         action='store_true',
         help="Enable verbose output"
     )
+    # Cluster job-array options (mutually exclusive).
+    cluster_group = parser.add_mutually_exclusive_group()
+    cluster_group.add_argument(
+        '--emit-jobs', metavar='DIR', default=None,
+        help="Generate a SLURM job-array bundle (one task per sweep "
+             "combination) in DIR instead of running locally. Requires a "
+             "sweep param file."
+    )
+    cluster_group.add_argument(
+        '--collect-report', metavar='DIR', default=None,
+        help="Aggregate results from an --emit-jobs DIR into "
+             "sweep_report.txt/.json (run after the array finishes)."
+    )
     # grab argument
     args = parser.parse_args()
 
@@ -818,6 +834,34 @@ if __name__ == '__main__':
     # Banner first so it shows in both single and sweep modes.
     from trinity._output import header
     header.display()
+
+    # Cluster job-array collection: self-contained from the manifest, so it
+    # needs no param file.
+    if args.collect_report is not None:
+        from trinity._input.sweep_jobs import collect_report
+        collect_report(args.collect_report)
+        sys.exit(0)
+
+    if args.path2param is None:
+        parser.error("path2param is required unless using --collect-report")
+
+    # Cluster job-array generation (opt-in; requires a sweep param file).
+    if args.emit_jobs is not None:
+        if not is_sweep_param_file(args.path2param):
+            sys.exit("--emit-jobs requires a sweep param file (list/tuple syntax).")
+        from trinity._input.sweep_parser import read_sweep_config
+        from trinity._input.sweep_jobs import emit_jobs
+        config = read_sweep_config(args.path2param)
+        emit_jobs(
+            config,
+            resolve_base_output_dir(config),
+            args.emit_jobs,
+            TRINITY_ROOT,
+            concurrency=args.workers,
+            dry_run=args.dry_run,
+            sweep_file=args.path2param,
+        )
+        sys.exit(0)
 
     # Auto-detect mode from parameter file content
     if is_sweep_param_file(args.path2param):
