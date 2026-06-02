@@ -89,12 +89,16 @@ def _base_condition(folder_name: str) -> str:
     return _CF_TOKEN_RE.sub('', folder_name)
 
 
-def load_cf_runs(folder_path: Path, radius_key: str, phii_mode: str = 'yes') -> Dict[str, List[dict]]:
+def load_cf_runs(folder_path: Path, radius_key: str, phii_mode: str = 'yes',
+                 trim: bool = True) -> Dict[str, List[dict]]:
     """Load Cf-sweep trajectories grouped by initial condition.
 
     Returns ``{base_condition: [run, ...]}`` where each run is a dict with
-    ``cf``, ``t`` and ``R`` (the chosen radius series, trimmed after
-    collapse/dissolution), sorted by ``cf`` within each group.
+    ``cf``, ``t`` and ``R`` (the chosen radius series), sorted by ``cf`` within
+    each group.  When ``trim`` is True the series is cut after the first
+    collapse/dissolution snapshot (drops frozen tails); set it False to keep
+    the full trajectory.  ``t_raw_max``/``n_snaps`` record the untrimmed span
+    so callers can report how much trimming removed.
     """
     sim_files = find_all_simulations(folder_path)
     sim_files = filter_sim_files_by_phii(sim_files, phii_mode)
@@ -121,13 +125,16 @@ def load_cf_runs(folder_path: Path, radius_key: str, phii_mode: str = 'yes') -> 
         R = output.get(radius_key)
         if R is None or t is None or len(t) == 0:
             continue
-        # Reuse the ODIN trimmer to drop frozen tails after collapse/dissolve.
-        t, _, _, R = _trim_after_end(output, t, None, None, R)
+        t_raw = np.asarray(t, dtype=float)
+        if trim:
+            # Reuse the ODIN trimmer to drop frozen tails after collapse/dissolve.
+            t, _, _, R = _trim_after_end(output, t, None, None, R)
         if R is None:
             continue
 
         groups.setdefault(_base_condition(folder_name), []).append(
-            {'cf': cf, 't': np.asarray(t), 'R': np.asarray(R), 'folder': folder_name})
+            {'cf': cf, 't': np.asarray(t), 'R': np.asarray(R), 'folder': folder_name,
+             't_raw_max': float(t_raw.max()), 'n_snaps': int(len(t_raw))})
 
     for runs in groups.values():
         runs.sort(key=lambda r: r['cf'])
@@ -213,7 +220,7 @@ def plot_cf_grid(groups: Dict[str, List[dict]], output_dir: Path,
 # =============================================================================
 
 def main(folder_path: str, output_dir: Optional[str] = None,
-         radius_key: str = 'R2', phii_mode: str = 'yes'):
+         radius_key: str = 'R2', phii_mode: str = 'yes', trim: bool = True):
     folder_path = Path(folder_path)
     if not folder_path.exists():
         print(f"Error: Folder not found: {folder_path}")
@@ -223,13 +230,26 @@ def main(folder_path: str, output_dir: Optional[str] = None,
     out_dir = Path(output_dir) if output_dir else FIG_DIR / folder_name
 
     print(f"\nLoading simulations from: {folder_path}")
-    groups = load_cf_runs(folder_path, radius_key, phii_mode)
+    groups = load_cf_runs(folder_path, radius_key, phii_mode, trim)
     if not groups:
         print("No valid Cf simulation results found.")
         sys.exit(1)
 
     n_runs = sum(len(v) for v in groups.values())
-    print(f"Loaded {n_runs} runs across {len(groups)} initial condition(s)")
+    print(f"Loaded {n_runs} runs across {len(groups)} initial condition(s)"
+          f"  (trim={'on' if trim else 'off'})")
+
+    # Per-panel diagnostic: how many Cf values landed in each condition, and
+    # how far the plotted series reaches vs the full (untrimmed) run. A big gap
+    # between t_plotted and t_raw means the collapse/dissolution trimmer is
+    # what's shrinking the x-axis — rerun with --no-trim to see the full curve.
+    for base_key in sorted(groups, key=_sort_key):
+        runs = groups[base_key]
+        cfs = ", ".join(f"{r['cf']:g}" for r in runs)
+        t_plot = max(r['t'].max() for r in runs)
+        t_raw = max(r['t_raw_max'] for r in runs)
+        print(f"  {base_key}: {len(runs)} run(s), Cf=[{cfs}], "
+              f"t_plotted_max={t_plot:.4g} Myr, t_full_max={t_raw:.4g} Myr")
     print(f"Output directory: {out_dir}")
 
     plot_cf_grid(groups, out_dir, folder_name, radius_key)
@@ -256,6 +276,9 @@ Examples:
     parser.add_argument('--phii', choices=['yes', 'no'], default='yes',
                         help="PHII folder filter: 'yes' keeps yesPHII+untagged, "
                              "'no' keeps only noPHII (default: yes)")
+    parser.add_argument('--no-trim', dest='trim', action='store_false',
+                        help='Plot the full trajectory instead of cutting it at '
+                             'the first collapse/dissolution snapshot (default: trim)')
 
     args = parser.parse_args()
-    main(args.folder, args.output_dir, args.radius, args.phii)
+    main(args.folder, args.output_dir, args.radius, args.phii, args.trim)
