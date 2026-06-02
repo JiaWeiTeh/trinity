@@ -18,6 +18,7 @@ TODO: add docstrings for each function
 """
 
 import numpy as np
+import os
 import sys
 import scipy.optimize
 import scipy.integrate
@@ -37,6 +38,118 @@ logger = logging.getLogger(__name__)
 _trapezoid = getattr(np, 'trapezoid', None) or np.trapz
 
 MIN_SPACING = 1e-12
+
+# =============================================================================
+# Gated bubble-integration diagnostic (observational only).
+#
+# Set the environment variable TRINITY_BUBBLE_DIAG=1 to capture every
+# problematic bubble temperature profile from the L172 odeint call:
+# the arrays + integration context are saved to <path2output>/bubble_diag/
+# and a one-line mode classification is logged. This exists to disambiguate
+# the two known triggers of the downstream `MonotonicError`
+# (see analysis/bubble-integrator-robustness.md):
+#   - "dead_integrator": LSODA gives up, T-profile has a zero/non-finite
+#     tail at the hot (inner) end.
+#   - "boundary_transient": a small, smooth dip at the T_init=3e4 (outer)
+#     edge, confined to the first ~0.1% of points; the bulk is monotonic.
+#
+# IMPORTANT: this is purely observational. When the flag is unset the
+# odeint call and all control flow are byte-identical to before; when set
+# it only saves files and logs — it never alters T_array or the result.
+_BUBBLE_DIAG_MAX = 100          # cap on saved events per process
+_bubble_diag_count = 0
+
+
+def _bubble_diag_enabled():
+    """True iff the gated bubble-integration diagnostic is requested."""
+    return bool(os.environ.get('TRINITY_BUBBLE_DIAG'))
+
+
+def _capture_bubble_integration(params, r_array, psoln, infodict,
+                                R1, Pb, initial_conditions, bubble_dMdt):
+    """Save + classify a problematic bubble T-profile (gated diagnostic).
+
+    Called only when TRINITY_BUBBLE_DIAG is set. Returns immediately unless
+    the profile is non-finite, non-monotonic, or has a sub-floor tail, so a
+    healthy run produces no output. Never mutates state or raises into the
+    caller.
+    """
+    global _bubble_diag_count
+    try:
+        T = np.asarray(psoln[:, 1], dtype=float)
+        n = T.size
+        if n < 2:
+            return
+        finite = bool(np.isfinite(T).all())
+        diffs = np.diff(T)
+        negs = np.where(diffs < 0)[0]
+        strictly_monotonic = (negs.size == 0
+                              or bool(np.all(diffs >= 0))
+                              or bool(np.all(diffs <= 0)))
+        floor = 1e4
+        tail = T[-max(10, n // 100):]
+        tail_below_floor = int(np.sum(tail < floor))
+        problem = (not finite) or (not strictly_monotonic) or (tail_below_floor > 0)
+        if not problem:
+            return
+
+        cmax = np.maximum.accumulate(T)
+        drawdown = (cmax - T) / np.maximum(np.abs(cmax), 1e-300)
+        max_dd = float(drawdown.max())
+        dd_loc = int(np.argmax(drawdown))
+        last_bad = int(negs.max()) if negs.size else -1
+
+        if (not finite) or tail_below_floor > 0:
+            mode = "dead_integrator(zero/nonfinite tail)"
+        elif max_dd <= 1e-2 and (last_bad < 0.01 * n):
+            mode = "boundary_transient"
+        else:
+            mode = "bulk_nonmonotonic(possible real inversion)"
+
+        ier = None
+        message = ""
+        if isinstance(infodict, dict):
+            _ier = infodict.get('ier')
+            ier = int(_ier) if _ier is not None else None
+            message = str(infodict.get('message', ''))
+
+        beta = params['cool_beta'].value
+        delta = params['cool_delta'].value
+        R2 = params['R2'].value
+        Eb = params['Eb'].value
+        t_now = params['t_now'].value
+
+        logger.warning(
+            f"[bubble-diag] mode={mode} ier={ier} "
+            f"max_drawdown={max_dd:.3e}@frac{dd_loc / n:.4f} "
+            f"last_bad_idx={last_bad}/{n} T0={T[0]:.3e} Tend={T[-1]:.3e} "
+            f"dMdt={bubble_dMdt:.3e} beta={beta:.4f} delta={delta:.4f} "
+            f"R2={R2:.4e} Eb={Eb:.4e} t={t_now:.4e} msg={message!r}"
+        )
+
+        if _bubble_diag_count >= _BUBBLE_DIAG_MAX:
+            return
+        outdir = os.path.join(params['path2output'].value, 'bubble_diag')
+        os.makedirs(outdir, exist_ok=True)
+        fname = os.path.join(outdir, f"event_{_bubble_diag_count:04d}_t{t_now:.6e}.npz")
+        np.savez(
+            fname,
+            r=r_array, v=psoln[:, 0], T=T, dTdr=psoln[:, 2],
+            ier=(ier if ier is not None else -999), message=message,
+            R1=R1, Pb=Pb, R2=R2, Eb=Eb, t_now=t_now,
+            beta=beta, delta=delta, bubble_dMdt=bubble_dMdt,
+            initial_conditions=np.asarray(initial_conditions, dtype=float),
+            mode=mode, max_drawdown=max_dd, last_bad_idx=last_bad,
+        )
+        _bubble_diag_count += 1
+        if _bubble_diag_count == _BUBBLE_DIAG_MAX:
+            logger.warning(
+                f"[bubble-diag] reached cap of {_BUBBLE_DIAG_MAX} saved "
+                "events; suppressing further saves (logging continues)"
+            )
+    except Exception as e:
+        logger.warning(f"[bubble-diag] capture failed (ignored): {e}")
+
 
 @dataclass
 class BubbleProperties:
@@ -169,13 +282,34 @@ def get_bubbleproperties_pure(params) -> BubbleProperties:
 
     # Always use cleaned legacy grid for now (adaptive grid causes accuracy issues)
     r_array = _create_legacy_radius_grid(R1, r2Prime)
-    psoln = scipy.integrate.odeint(
-        _get_bubble_ODE,
-        initial_conditions,
-        r_array,
-        args=(params, Pb),
-        tfirst=True
-    )
+    # When the diagnostic is off this is byte-identical to the original call
+    # (full_output defaults to False); when on we keep the same psoln and also
+    # retain LSODA's infodict for the capture below.
+    _diag = _bubble_diag_enabled()
+    if _diag:
+        psoln, _infodict = scipy.integrate.odeint(
+            _get_bubble_ODE,
+            initial_conditions,
+            r_array,
+            args=(params, Pb),
+            tfirst=True,
+            full_output=True,
+        )
+    else:
+        psoln = scipy.integrate.odeint(
+            _get_bubble_ODE,
+            initial_conditions,
+            r_array,
+            args=(params, Pb),
+            tfirst=True
+        )
+        _infodict = None
+
+    if _diag:
+        _capture_bubble_integration(
+            params, r_array, psoln, _infodict, R1, Pb,
+            initial_conditions, bubble_dMdt,
+        )
 
     v_array = psoln[:, 0]
     T_array = psoln[:, 1]
