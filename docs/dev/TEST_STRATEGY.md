@@ -43,7 +43,7 @@ the science is barely tested at all:
 |------|----------|-------|
 | `_output/cloudy/*`, `_functions/simplify.py`, `_input/registry` | 88–97 % | I/O & parameter plumbing |
 | `phase1_energy`, `phase1b_energy_implicit`, `phase1c_transition`, `phase2_momentum` | **0 %** | the actual physics phases |
-| `bubble_structure/bubble_luminosity.py`, `shell_structure/*`, `cooling/*`, `sps/*`, `phase_events.py`, `main.py` | **0 %** | core engine |
+| `phase0_init/*`, `bubble_structure/bubble_luminosity.py`, `shell_structure/*`, `cooling/*`, `sps/*`, `phase_events.py`, `main.py` | **0–26 %** | initialization + core engine |
 
 The engine is exercised only by `test_run_smoke.py`, which runs `run.py` as a
 subprocess and asserts only that it exited 0 and wrote ≥2 snapshot lines. It
@@ -88,7 +88,10 @@ markers: physics, slow
 - **Feedback mock seam:** every phase ODE calls
   `trinity.sps.update_feedback.get_current_sps_feedback(t, params)`, which
   returns a plain `SPSFeedback` dataclass. `monkeypatch` it to inject constant
-  `Lmech` / `ṗ` for analytic-limit tests.
+  `Lmech` / `ṗ` for analytic-limit tests. *Phase 0 is the exception:
+  `get_InitPhaseParam.get_y0` reads the SPS interpolators directly via
+  `params['sps_f']['fLmech_W'](tSF)` / `['fpdot_W'](tSF)`, so mock that dict
+  instead.*
 - **Pure ODE right-hand sides:** `get_ODE_Edot_pure(t, y, snapshot, params)`
   (`phase1_energy/energy_phase_ODEs.py:169`) and
   `get_ODE_momentum_pure(t, y, snapshot, params)`
@@ -111,6 +114,7 @@ Close the 0 % gap on standalone helpers. Direct calls, no mocking.
 | `get_density_profile` (`cloud_properties/density_profile.py:55`) | Power-law slope `n ∝ r^α` |
 | `get_mass_profile` (`cloud_properties/mass_profile.py:131`) | Matches closed form `M = 4π/3·ρr³` for uniform ρ |
 | `get_shellODE` (`shell_structure/get_shellODE.py:24`) | φ stays in [0,1]; ionizing flux conserved |
+| `get_InitPhaseParam.get_y0` (`phase0_init/get_InitPhaseParam.py:44`) | Closed-form Weaver/Rahner init: `E0 = (5/11)·Lw·dt` (Weaver+77 Eq 20), `T0` (Eq 37), free-streaming `dt` (Rahner Eq 1.15); mock `params['sps_f']` interpolators; negative tests on the `tSF≥0` / `nCore>0` / `bubble_xi_Tb∈[0,1]` guards |
 
 *~15–20 tests.*
 
@@ -133,7 +137,7 @@ exponent to ~1–2 %.
 | Test | Assertion |
 |------|-----------|
 | Energy budget (energy-phase RHS) | `dEb/dt ≈ L_mech − L_cool − 4πR2²·Pb·v − L_leak` (residual ≈ 0) |
-| **Unit-landing** | Physical inputs land in code units with no hidden factor. *Pin the `Eb` / energy-floor unit convention explicitly — the convention is currently ambiguous in the source (erg vs code units), which is itself a reason to test it.* Extend the `test_cf_leak` pattern |
+| **Unit-landing** | Physical inputs land in code units with no hidden factor. *`Eb` and `ENERGY_FLOOR = 1e3` are in **code (AU) units**, not erg — verified in `get_InitPhaseParam.get_y0` (`E0 = (5/11)·Lw·dt`, docstring `[au]`) and `phase1c_transition/run_transition_phase.py:94`. The genuine subtlety worth pinning: `get_y0`'s `T0` formula switches to cgs internally (`L_au2cgs`, `ndens_au2cgs`).* Extend the `test_cf_leak` pattern |
 | Scaling invariant | Doubling `Lmech` shifts Weaver `R2(t)` by `2^{1/5}` |
 | Sealed-bubble invariant | `Cf = 1` ⇒ leak = 0 (already covered by `test_cf_leak`) |
 
