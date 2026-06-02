@@ -90,15 +90,15 @@ def _base_condition(folder_name: str) -> str:
 
 
 def load_cf_runs(folder_path: Path, radius_key: str, phii_mode: str = 'yes',
-                 trim: bool = True) -> Dict[str, List[dict]]:
+                 trim: bool = False) -> Dict[str, List[dict]]:
     """Load Cf-sweep trajectories grouped by initial condition.
 
     Returns ``{base_condition: [run, ...]}`` where each run is a dict with
     ``cf``, ``t`` and ``R`` (the chosen radius series), sorted by ``cf`` within
-    each group.  When ``trim`` is True the series is cut after the first
-    collapse/dissolution snapshot (drops frozen tails); set it False to keep
-    the full trajectory.  ``t_raw_max``/``n_snaps`` record the untrimmed span
-    so callers can report how much trimming removed.
+    each group.  By default the full trajectory is kept; set ``trim`` True to
+    cut each series after the first collapse/dissolution snapshot (drops frozen
+    tails).  ``t_raw_max``/``n_snaps`` record the untrimmed span so callers can
+    report how much trimming removed.
     """
     sim_files = find_all_simulations(folder_path)
     sim_files = filter_sim_files_by_phii(sim_files, phii_mode)
@@ -220,7 +220,7 @@ def plot_cf_grid(groups: Dict[str, List[dict]], output_dir: Path,
 # =============================================================================
 
 def main(folder_path: str, output_dir: Optional[str] = None,
-         radius_key: str = 'R2', phii_mode: str = 'yes', trim: bool = True):
+         radius_key: str = 'R2', phii_mode: str = 'yes', trim: bool = False):
     folder_path = Path(folder_path)
     if not folder_path.exists():
         print(f"Error: Folder not found: {folder_path}")
@@ -276,9 +276,9 @@ Examples:
     parser.add_argument('--phii', choices=['yes', 'no'], default='yes',
                         help="PHII folder filter: 'yes' keeps yesPHII+untagged, "
                              "'no' keeps only noPHII (default: yes)")
-    parser.add_argument('--no-trim', dest='trim', action='store_false',
-                        help='Plot the full trajectory instead of cutting it at '
-                             'the first collapse/dissolution snapshot (default: trim)')
+    parser.add_argument('--trim', dest='trim', action='store_true',
+                        help='Cut each trajectory at the first collapse/dissolution '
+                             'snapshot (default: keep the full trajectory)')
 
     args = parser.parse_args()
     main(args.folder, args.output_dir, args.radius, args.phii, args.trim)
