@@ -170,6 +170,56 @@ L100–104 → a wrong CIE/cooling-switch index. A tolerance fix must therefore
 (provably equivalent to `kindof_increasing` for any array that passes the
 strict guard, and correct for the tolerated case).
 
+## I.6 Addendum (2026-06): diagnostic results + the single-point spike
+
+Running the Step-0 `TRINITY_BUBBLE_DIAG` capture on the real
+`1e5_sfe001_n1e4_PL0_yesPHII` case classified **every** guard trip as benign:
+6 `boundary_transient` (the I.5 cold-edge dip) and 2 `bulk_nonmonotonic`,
+with **zero** `dead_integrator` events — the I.1 zero-tail mode did **not**
+fire in this run.
+
+The 2 `bulk_nonmonotonic` events are one physical structure (captured twice):
+a **single isolated +0.7 % spike at one grid point** — `T` jumps
+≈163 160 → 164 320 K then immediately returns to trend (one wrong-direction
+step; cumulative drawdown **7.06e-3**), at index ≈19 671 (≈33 % of the array),
+`T≈1.6e5`. It is **not** a physical inversion (one point, neighbours on a
+smooth rise, hot tail) and **not** at `rCloud` (index 20 474) nor exactly at a
+grid stitch (≈20 000).
+
+**Measured fact — the outer grid is pathologically over-refined.**
+`_create_legacy_radius_grid` Step 2 packs 20 000 points into a ~1.6e-4 pc
+sliver near `r2Prime`, so `dr ≈ 5e-9 pc` (relative spacing ~1.3e-9) — `r` is
+constant to six decimals across thousands of consecutive indices. The cleaner
+(`MIN_SPACING = 1e-12` relative) sits far below 1.3e-9, so these
+**near-duplicate radii survive**. The spike sits in that over-dense band.
+
+**Leading hypothesis (to be confirmed from the new step-size capture).** These
+near-duplicate output radii are exactly what stresses LSODA's dense-output
+interpolation (cf. the "intdy-- t illegal" warnings in I.1); one unlucky
+interpolation returns a single off sample → the spike ("once, then nothing").
+The exact spike was *not* reproducible with a guessed `v2` (state-sensitive),
+consistent with a rare interpolation hiccup rather than a feature. Note that
+**both** benign modes (I.5 dip + this spike) live in the over-dense front
+band — two faces of the same over-refined-grid fragility, which strengthens
+the Step-3 grid-hygiene angle.
+
+**Diagnostic enrichment (this commit).** `_capture_bubble_integration` now
+also records `rCloud`/`rCore` and the full LSODA `infodict`
+(`info_hu` step sizes, `info_mused`, `info_nst`, …; note `odeint` has no
+`ier` — success is read from `message`). `tools/inspect_bubble_diag.py` now
+plots grid spacing (`dr`) with the over-dense band shaded, reference lines
+(rCloud, R1/R2, stitches, CIE/cool switches), the step-size panel, and prints
+a per-event geometric **verdict** — so the interpolation-glitch hypothesis is
+checkable from `info_hu` on the next run.
+
+**Implication for the fix.** Every observed trip is benign, so a guard
+*tolerance* (cumulative-drawdown ≤ `rtol`, with the spike at 7.06e-3 setting
+`rtol` ≳ 1e-2) is safe. The more fundamental cure is **de-refining the grid**
+(Step 3): raise the clean threshold / cap the front density so near-duplicate
+radii never reach LSODA — this removes *both* faces at the source, but it
+changes the success-path sampling and so carries the strict byte-identity
+caveat.
+
 ---
 
 # Part II — Phased fix
