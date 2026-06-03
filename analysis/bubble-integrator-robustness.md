@@ -33,6 +33,12 @@ must stay byte-identical; only the failing path may change.*
   codebase already carries an unused `solve_ivp` path), (3) guard the RHS
   so `T` cannot cross the physical floor. Prove with an N-run stress
   harness, not a single pass.
+- **Addendum (2026-06)**: a **second, distinct trigger** of the same guard
+  was later identified — a small, smooth, *deterministic* startup transient
+  at the `T_init=3e4` outer boundary (not the zero tail). It is benign and
+  is *caught* (penalty, not crash) in long low-SFE runs. See **I.5**; the
+  fix differs by mode, and the **Step-0 `TRINITY_BUBBLE_DIAG` diagnostic**
+  (now implemented) tells the two modes apart on real runs.
 
 ---
 
@@ -112,6 +118,58 @@ wrappers and a second `odeint` call site (L279, L734). Prior hands clearly
 hit this and started a `solve_ivp` route. The fix should finish/wire that
 rather than add a third parallel solver.
 
+## I.5 Addendum (2026-06): a second, distinct trigger — the boundary startup transient
+
+The mechanism in I.1–I.3 (a **dead integrator** leaving a *zero tail* at the
+hot/inner end of `T_array`) is **not the only** way the L214 guard trips. A
+separate investigation of a long, low-SFE run — `mCloud 1e5 / sfe 0.01 /
+nCore 1e4 / densPL_alpha 0 / PHII` (the `rosette_sweep_denser_PISM1e4` case;
+terminated `shell_collapsed`, exit 4), whose log showed several *caught*
+`MonotonicError` warnings clustered late in Phase 1b — found a **second,
+benign, deterministic** trigger that is the *opposite* of the zero tail:
+
+- **Shape**: the T-profile is fully populated and ends hot
+  (`T[-1] ≈ 1e7`). The only non-monotonicity is a **single smooth dip at the
+  outer/cold start** — the hardcoded `T_init = 3e4` boundary in
+  `_get_bubble_ODE_initial_conditions` (L765). `T` decreases for the first
+  handful of points, reaches one trough, then rises monotonically. It is the
+  *other end* of the array from the I.1 zero tail, and the integrator
+  reports success (`full_output` `message = 'Integration successful.'`,
+  no `ier` error).
+- **Magnitude (measured)**: confined to the first ≲0.12 % of the 59 992-point
+  grid (≤72 points); worst *cumulative relative drawdown* **1.3e-3** (≈39 K
+  out of 30 000 K) at the corner β=1, δ=0. It scales smoothly with
+  **(β+δ)** and is **0.000 for most of Phase 1b**, emerging only near the
+  energy→momentum transition (drawdown vs t: ≈0 at t≲0.3 → 3.6e-5 at t=0.6 →
+  1.3e-3 at t=0.846). Evidence: a faithful reconstruction at the run's logged
+  transition state (`R2=4.12, Eb=1.637e6, t=0.846`) with the real cooling
+  tables and ODE, swept over the full (β,δ) domain.
+- **Severity**: unlike the intermittent crash in I.3, this mode is
+  **deterministic** and, in the observed run, **caught** —
+  `get_betadelta.get_residual_pure` (`get_betadelta.py:356`) swallows the
+  `MonotonicError` and returns the `(100, 100)` sentinel residual. That
+  biases the β/δ solver away from the (physically fine) high-(β+δ) region
+  and discards the structure; when the *chosen* candidate trips,
+  `bubble_props` comes back `None` and `run_energy_implicit_phase.py:621`
+  silently carries stale bubble physics forward. The run completes, but the
+  trajectory can be perturbed — so the `shell_collapsed` (exit 4) outcome
+  **cannot be assumed physical** until this mode is removed.
+- **Caveat**: the reconstruction used a formula-restarted `bubble_dMdt`,
+  whereas the live run warm-starts it. Whether the real run's events are this
+  mode, the I.1 zero-tail mode, or both, is exactly what the Step-0
+  diagnostic (below) settles on the actual machine/sweep.
+
+**Caution for any guard-relaxation fix.** `find_nearest_higher` /
+`find_nearest_lower` determine direction with
+`mon_incr = kindof_increasing(array)` (`operations.py:93`, `:43`) **after**
+the monotonic guard. If the guard is loosened to tolerate the boundary dip,
+that *strict* `kindof_increasing` returns `False` for a now-tolerated dippy
+*increasing* array, flips `mon_incr`, and corrupts the index step at
+L100–104 → a wrong CIE/cooling-switch index. A tolerance fix must therefore
+**also** make the direction robust, e.g. `mon_incr = array[-1] >= array[0]`
+(provably equivalent to `kindof_increasing` for any array that passes the
+strict guard, and correct for the tolerated case).
+
 ---
 
 # Part II — Phased fix
@@ -133,6 +191,22 @@ Capture the failing case with `full_output=True`: record `infodict['ier']`,
 `initial_conditions` that triggered it. This confirms the mechanism and
 tells us whether the failure is "LSODA gave up" vs "NaN already in the
 initial conditions."
+
+**Step 0 realized (2026-06): the `TRINITY_BUBBLE_DIAG` capture.** A gated,
+observational diagnostic is now wired at the L172 `odeint` site
+(`bubble_luminosity._capture_bubble_integration`). With
+`TRINITY_BUBBLE_DIAG=1`, every problematic T-profile (non-finite,
+non-monotonic, or sub-floor tail) is saved to
+`<path2output>/bubble_diag/event_*.npz` (the `r/v/T/dTdr` arrays plus
+`ier`, `message`, `bubble_dMdt`, `initial_conditions`, β, δ, R2, Eb, t) and a
+one-line **mode classification** is logged: `dead_integrator` (I.1) |
+`boundary_transient` (I.5) | `bulk_nonmonotonic`. With the flag unset the
+call path is **byte-identical** (it even gates `full_output`, so the `odeint`
+call is the original), so this respects the success-path bar and ships
+ahead of Steps 1-3. This is the disambiguator between the I.1 and I.5 modes
+on real runs — run it before choosing a fix. (Capture is at the L172 site
+that feeds the L214 guard; the other `odeint` sites at L279/L734 are not
+instrumented.)
 
 ## Step 1 — Determinism (cheapest; possibly sufficient)
 
@@ -220,6 +294,16 @@ last, behind the Step 2 net, and only if Steps 1-2 don't fully close it.
 
 # Open decisions for the user
 
+- **The fix is mode-dependent — confirm the mode (Step-0 diagnostic) before
+  applying any fix.** Mode (b) (zero-tail / dead integrator, I.1) → Steps
+  1-3 (make it loud, recover, RHS floor); do **not** mask it. Mode (a)
+  (boundary transient, I.5) → a *tolerance* on the monotonic guard
+  (cumulative-drawdown ≤ `rtol`; measured envelope ≈1.3e-3 ⇒ `rtol`≈1e-2
+  leaves ~8× margin while a real inversion is ≫ that) **plus** the
+  `mon_incr` direction fix from I.5 — failing path only, success path
+  byte-identical. The two fixes are compatible (a drawdown-tolerant guard
+  still rejects the ~100 %-drawdown zero tail), but the tolerance must not
+  be applied blind, or it would silence mode (b).
 - **Is Step-1 thread-pinning acceptable as a shipped default?** It makes
   runs reproducible but serializes BLAS (a possible perf hit on
   large/parallel sweeps). Alternative: pin only in tests/CI, leave

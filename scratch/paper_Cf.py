@@ -40,6 +40,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 from matplotlib.cm import ScalarMappable
+from matplotlib.patches import Rectangle
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
