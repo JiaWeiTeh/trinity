@@ -173,6 +173,13 @@ Core parameters defining the molecular cloud and star formation.
      - ``0.01``
      - pc
      - Core radius. Not used for homogeneous clouds.
+   * - ``rCloud_max``
+     - ``200``
+     - pc
+     - Maximum plausible cloud radius for the pre-run GMC validation. If
+       the computed ``rCloud`` exceeds this, the run is rejected as
+       implausibly diffuse for the given mass. Raise it to allow larger,
+       more diffuse clouds.
 
 **Derived quantities:**
 
