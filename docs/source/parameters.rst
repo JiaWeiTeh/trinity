@@ -153,12 +153,13 @@ Core parameters defining the molecular cloud and star formation.
      - ``1.0``
      - --
      - Closed fraction :math:`C_f` of the bubble wall (geometry-set
-       energy/mass leak). Hot gas vents through the open area
+       energy leak). Hot gas vents through the open area
        :math:`(1-C_f)\,4\pi R_2^2` at the interior sound speed, draining
        bubble energy. ``1.0`` recovers the sealed (Weaver) bubble
        exactly; validated to ``0 < Cf <= 1``. Usable range ~0.9–0.99 —
        values near 0 drain the bubble within a step and stress the
-       integrator.
+       integrator. Only the energy leak is implemented so far; the
+       matching mass sink is not yet modelled.
    * - ``nCore``
      - ``1e5``
      - cm\ :math:`^{-3}`
