@@ -13,6 +13,15 @@ runtime code path. It is therefore sequenced **dead last**, after the
 structural churn settles, and held to a stricter bar: *the success path
 must stay byte-identical; only the failing path may change.*
 
+> **Status (2026-06): the guard shipped, made shape-aware (Part A).**
+> `find_nearest_higher` now tolerates *shallow + localized* numerical
+> non-monotonicity and still rejects *deep / sustained-interior* cases
+> (`monotonic()` itself is unchanged, so the success path is byte-identical).
+> The grid de-refinement (the deeper root-cause angle) is **deferred** pending
+> an output-diff and model-author sign-off. **Part I below is the original
+> audit (pre-fix "what is").** See **§I.7** for exactly what changed and why
+> the grid fix is deferred, and **§I.6** for the diagnostic evidence.
+
 ## TL;DR
 
 - **Symptom**: `run.py` intermittently aborts with a bare `MonotonicError`
