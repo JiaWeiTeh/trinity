@@ -92,6 +92,10 @@ def load(f):
     rCore = _get(d, "rCore"); rCore = float(rCore) if rCore is not None else None
     info_hu = _get(d, "info_hu")
     info_hu = np.asarray(info_hu, float) if info_hu is not None else None
+    info_nst = _get(d, "info_nst")
+    info_nst = np.asarray(info_nst, float) if info_nst is not None else None
+    info_mused = _get(d, "info_mused")
+    info_mused = np.asarray(info_mused, float) if info_mused is not None else None
 
     tail = T[-max(10, n // 100):]
     return dict(
@@ -106,6 +110,7 @@ def load(f):
         Tmin=float(T.min()), Tend=float(T[-1]), tailmin=float(tail.min()),
         dr=dr, med_dr=med_dr, od_lo=od_lo, od_hi=od_hi, stitches=stitches,
         rCloud=rCloud, rCore=rCore, info_hu=info_hu,
+        info_nst=info_nst, info_mused=info_mused,
     )
 
 
@@ -171,6 +176,12 @@ for e in detail:
         extra = (f"; rCore={e['rCore']:.4f} -> idx {_idx_at_r(r, e['rCore'])}"
                  if e["rCore"] is not None else "")
         print(f"  rCloud={e['rCloud']:.4f} pc -> idx {_idx_at_r(r, e['rCloud'])}{extra}")
+    if e["info_nst"] is not None and e["info_nst"].size:
+        nsteps = int(np.max(e["info_nst"]))
+        method = ("Adams" if (e["info_mused"] is not None and np.all(e["info_mused"] == 1))
+                  else "mixed/BDF")
+        print(f"  LSODA: {nsteps} internal steps for {n} output points "
+              f"(~{n / max(nsteps, 1):.0f}x dense-output interpolation), method={method}")
     print(f"  VERDICT: worst violation is {verdict(e)}")
     lo = max(0, e['i_dd'] - 4); hi = min(n, e['i_dd'] + 6)
     print(f"  T[{lo}:{hi}] = " + np.array2string(T[lo:hi], precision=4, floatmode='maxprec'))
@@ -209,11 +220,14 @@ for e in detail:
         ax[1, 0].set_ylabel("dr [pc]"); ax[1, 0].legend(fontsize=7, loc='lower right')
 
         if e["info_hu"] is not None and e["info_hu"].size:
-            hu = e["info_hu"]
-            ax[1, 1].semilogy(np.arange(hu.size), hu, lw=0.8)
+            # odeint integrates over decreasing r, so hu < 0; plot the magnitude
+            hu = np.abs(e["info_hu"])
+            ax[1, 1].semilogy(np.arange(hu.size), np.where(hu > 0, hu, np.nan), lw=0.8)
+            if e["od_lo"] >= 0:
+                ax[1, 1].axvspan(e["od_lo"], e["od_hi"], color='orange', alpha=0.12)
             ax[1, 1].axvline(e['i_dd'], color='r', ls='--', lw=1)
-            ax[1, 1].set_title("LSODA step size (info_hu) vs index")
-            ax[1, 1].set_ylabel("hu [pc]")
+            ax[1, 1].set_title("LSODA |step size| (|info_hu|) vs index")
+            ax[1, 1].set_ylabel("|hu| [pc]")
         else:
             ax[1, 1].plot(idx, e["dd"], lw=0.8)
             ax[1, 1].axvline(e['i_dd'], color='r', ls='--', lw=1)

@@ -193,15 +193,20 @@ constant to six decimals across thousands of consecutive indices. The cleaner
 (`MIN_SPACING = 1e-12` relative) sits far below 1.3e-9, so these
 **near-duplicate radii survive**. The spike sits in that over-dense band.
 
-**Leading hypothesis (to be confirmed from the new step-size capture).** These
-near-duplicate output radii are exactly what stresses LSODA's dense-output
-interpolation (cf. the "intdy-- t illegal" warnings in I.1); one unlucky
-interpolation returns a single off sample → the spike ("once, then nothing").
-The exact spike was *not* reproducible with a guessed `v2` (state-sensitive),
-consistent with a rare interpolation hiccup rather than a feature. Note that
-**both** benign modes (I.5 dip + this spike) live in the over-dense front
-band — two faces of the same over-refined-grid fragility, which strengthens
-the Step-3 grid-hygiene angle.
+**Mechanism (confirmed from the captured step diagnostics).** The captured
+LSODA `infodict` is the smoking gun: only **~854 internal steps for the
+~60 000 output radii** (≈70× dense-output *interpolation*), with the step size
+`|hu|` collapsing to ~`dr` (~5e-9 pc) throughout the over-dense band and
+jumping to ~1e-2 pc outside it (`mused ≡ 1`, Adams throughout — no stiff
+switch). Requesting thousands of near-duplicate output radii inside a handful
+of real steps is exactly what stresses LSODA's dense-output interpolation
+(cf. the "intdy-- t illegal" warnings in I.1); one unlucky interpolation
+returns a single off sample → the spike ("once, then nothing"). The exact
+single sample was *not* reproducible with a guessed `v2` (state-sensitive),
+consistent with a rare interpolation hiccup rather than a physical feature.
+Note that **both** benign modes (I.5 dip + this spike) live in the over-dense
+front band — two faces of the same over-refined-grid fragility, which
+strengthens the Step-3 grid-hygiene angle.
 
 **Diagnostic enrichment (this commit).** `_capture_bubble_integration` now
 also records `rCloud`/`rCore` and the full LSODA `infodict`
