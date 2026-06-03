@@ -65,6 +65,10 @@ _ROWS = [
     ('rShell', r'Shell Radius $r_{\rm shell}$ [pc]'),
 ]
 
+# Both radius panels share a fixed 0-25 pc window so columns are comparable and
+# the (<=22 pc) observation bands stay in view.
+_RADIUS_YLIM = (0.0, 25.0)
+
 # Matches the ``_coverFraction<token>`` run-name suffix produced by
 # trinity._input.sweep_parser for a swept coverFraction (e.g. "0p2", "1").
 _CF_TOKEN_RE = re.compile(r'_coverFraction([0-9pP.eE+\-]+)')
@@ -202,6 +206,14 @@ def _sort_key(base_key: str):
     return (0, float(p['mCloud']), int(p['sfe']), float(p['ndens']), base_key)
 
 
+def _cf_ticks(cf_all, step: float = 0.05):
+    """Colourbar ticks at multiples of ``step`` within the swept Cf range."""
+    lo, hi = min(cf_all), max(cf_all)
+    start = np.ceil(lo / step - 1e-9) * step
+    ticks = np.round(np.arange(start, hi + 1e-9, step), 10)
+    return ticks if len(ticks) else np.array([lo])
+
+
 # =============================================================================
 # Observation overlays
 # =============================================================================
@@ -214,20 +226,31 @@ def _draw_age_marker(ax, obs: ObservationalConstraints):
     ax.axvline(obs.t_obs, color='k', ls='--', lw=1.2, alpha=0.7, zorder=2,
                label=f'Assumed age {obs.t_obs:g} Myr')
 
+# =============================================================================
+# Observation overlays
+# =============================================================================
 
 def _obs_points(key: str, obs: ObservationalConstraints):
     """(value, error, colour, marker, label) tuples for the observation(s)
-    relevant to a given row key."""
+    that constrain a given row.
+
+    Each radius panel shows only its own observable.  Per TRINITY's variable
+    definitions — R2 is the outer bubble radius (= inner shell edge), rShell is
+    the (outer) shell radius — R2 is compared to the cavity inner radius, and
+    rShell to the HII outer radius and dust shell.
+    """
     if key == 'v':
         return [(obs.v_obs, obs.v_err, 'red', 's',
                  fr'$v_{{\rm exp}}$: {obs.v_obs:g}$\pm${obs.v_err:g} km/s')]
+    if key == 'R2':
+        return [(obs.R_obs_Pabst, obs.R_err_Pabst, 'green', '^',
+                 fr'Cavity: {obs.R_obs_Pabst:g}$\pm${obs.R_err_Pabst:g} pc')]
+    # rShell
     dust_mid = 0.5 * (_DUST_SHELL_MIN + _DUST_SHELL_MAX)
     dust_err = 0.5 * (_DUST_SHELL_MAX - _DUST_SHELL_MIN)
     return [
         (obs.R_obs, obs.R_err, 'blue', 'o',
          fr'HII outer: {obs.R_obs:g}$\pm${obs.R_err:g} pc'),
-        (obs.R_obs_Pabst, obs.R_err_Pabst, 'green', '^',
-         fr'Cavity: {obs.R_obs_Pabst:g}$\pm${obs.R_err_Pabst:g} pc'),
         (dust_mid, dust_err, 'orange', 'D',
          f'Dust shell ({_DUST_SHELL_MIN:.0f}–{_DUST_SHELL_MAX:.0f} pc)'),
     ]
@@ -293,8 +316,8 @@ def plot_cf_trajectory(groups: Dict[str, List[dict]], output_dir: Path,
         for row in range(nrows):
             axes[row, col].set_xlim(0, x_hi)
         axes[0, col].set_ylim(0, _V_MAX)          # velocity capped like paper_Rosette
-        axes[1, col].set_ylim(bottom=0)
-        axes[2, col].set_ylim(bottom=0)
+        axes[1, col].set_ylim(*_RADIUS_YLIM)      # bubble radius (0-25 pc)
+        axes[2, col].set_ylim(*_RADIUS_YLIM)      # shell radius  (0-25 pc)
 
     for row, (_key, ylabel) in enumerate(_ROWS):
         axes[row, 0].set_ylabel(ylabel, fontsize=FONTSIZE)
@@ -303,10 +326,14 @@ def plot_cf_trajectory(groups: Dict[str, List[dict]], output_dir: Path,
     for row in range(nrows):
         axes[row, 0].legend(loc='upper left', fontsize=FONTSIZE - 6)
 
+    # Colourbar spanning the full height of all three rows, ticked at 0.05.
+    fig.tight_layout(rect=[0, 0, 0.90, 1.0])
     sm = ScalarMappable(norm=norm, cmap=cmap)
     sm.set_array([])
-    cbar = fig.colorbar(sm, ax=axes.ravel().tolist(), fraction=0.02, pad=0.02,
-                        ticks=cf_all)
+    pos_top = axes[0, -1].get_position()
+    pos_bot = axes[-1, -1].get_position()
+    cax = fig.add_axes([0.915, pos_bot.y0, 0.022, pos_top.y1 - pos_bot.y0])
+    cbar = fig.colorbar(sm, cax=cax, ticks=_cf_ticks(cf_all))
     cbar.set_label(r'Covering fraction $C_f$', fontsize=FONTSIZE)
     cbar.ax.tick_params(labelsize=FONTSIZE - 4)
 
