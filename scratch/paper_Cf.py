@@ -1,19 +1,27 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Covering-fraction (Cf) trajectory plots.
+Covering-fraction (Cf) trajectory and constraint plots.
 
 Companion to paper_Rosette / paper_ODIN, for sweeps that vary the bubble
 covering fraction ``coverFraction`` (Cf) while holding the initial cloud
 condition fixed — e.g. the ``rosette_sweep_denser_PISM1e4_Cf`` sweep.
 
-For every distinct initial condition (everything *except* Cf) it draws the
-paper_Rosette triptych — expansion velocity v(t), bubble radius R2(t) and shell
-radius rShell(t) — overlaying one curve per Cf value, coloured by Cf, with the
-Rosette observational constraints drawn on each panel.  The three quantities
-are the rows; each initial condition is a column, so a single-condition sweep
+Produces two figures per run, both grouped by initial condition (everything
+*except* Cf), with one column per condition (so a single-condition sweep
 reproduces paper_Rosette's three stacked panels and multi-condition sweeps fan
-out into a 3 x N grid.
+out into a 3 x N grid):
+
+1. ``cf_trajectory_*`` — the paper_Rosette triptych v(t) / R2(t) / rShell(t),
+   one curve per Cf coloured by Cf.  The cluster age is assumed *fixed*, so the
+   observations are drawn as y-only error bars AT that age (with a thin age
+   uncertainty span), not as time-spanning boxes — a box would let a curve
+   "match" by crossing it at the wrong epoch.
+
+2. ``cf_constraint_*`` — the observable evaluated at the assumed age vs Cf, with
+   the measured value as a horizontal band.  Where the model curve enters the
+   band tells you which Cf reproduces the observation.  The grey band around the
+   model curve is its spread over the age uncertainty.
 
 Cf is the *closed* fraction of the bubble wall: hot gas vents through the open
 area (1-Cf)*4*pi*R2^2, draining bubble energy.  Cf=1 recovers the sealed
@@ -48,7 +56,7 @@ from trinity._output.trinity_reader import (                  # noqa: E402
     load_output, find_all_simulations, parse_simulation_params,
 )
 
-print("...creating covering-fraction (Cf) trajectory plots")
+print("...creating covering-fraction (Cf) plots")
 
 # Panel rows: (run-dict key, y-axis label).  Velocity is stored in km/s.
 _ROWS = [
@@ -159,7 +167,7 @@ def load_cf_runs(folder_path: Path, phii_mode: str = 'yes',
 
 
 # =============================================================================
-# Plotting
+# Labels / ordering
 # =============================================================================
 
 def _panel_title(base_key: str) -> str:
@@ -194,40 +202,63 @@ def _sort_key(base_key: str):
     return (0, float(p['mCloud']), int(p['sfe']), float(p['ndens']), base_key)
 
 
-def _draw_obs_velocity(ax, obs: ObservationalConstraints):
-    """Velocity-panel observation overlay (matches paper_Rosette)."""
-    ax.errorbar(obs.t_obs, obs.v_obs, xerr=obs.t_err, yerr=obs.v_err,
-                fmt='s', color='red', markersize=10, capsize=4, capthick=1.5,
-                markeredgecolor='k', markeredgewidth=0.5, zorder=10,
-                label=fr'$v_{{\rm exp}}$: {obs.v_obs:g}$\pm${obs.v_err:g} km/s')
-    ax.axhspan(obs.v_obs - obs.v_err, obs.v_obs + obs.v_err,
-               alpha=0.15, color='red', zorder=1)
-    ax.axvspan(obs.t_obs - obs.t_err, obs.t_obs + obs.t_err,
-               alpha=0.1, color='gray', zorder=0)
+# =============================================================================
+# Observation overlays
+# =============================================================================
+
+def _draw_age_marker(ax, obs: ObservationalConstraints):
+    """Vertical line at the assumed age, with a thin age-uncertainty span."""
+    if obs.t_err > 0:
+        ax.axvspan(obs.t_obs - obs.t_err, obs.t_obs + obs.t_err,
+                   color='gray', alpha=0.12, zorder=0)
+    ax.axvline(obs.t_obs, color='k', ls='--', lw=1.2, alpha=0.7, zorder=2,
+               label=f'Assumed age {obs.t_obs:g} Myr')
 
 
-def _draw_obs_radius(ax, obs: ObservationalConstraints):
-    """Radius-panel observation overlay (matches paper_Rosette)."""
-    t_lo, t_hi = obs.t_obs - obs.t_err, obs.t_obs + obs.t_err
-    ax.axvspan(t_lo, t_hi, alpha=0.1, color='gray', zorder=0,
-               label=f'Age ({t_lo:.0f}–{t_hi:.0f} Myr)')
-    ax.add_patch(Rectangle(
-        (t_lo, obs.R_obs - obs.R_err), t_hi - t_lo, 2 * obs.R_err,
-        facecolor='blue', alpha=0.20, edgecolor='blue', lw=1.5, zorder=5,
-        label=fr'HII outer: {obs.R_obs:g}$\pm${obs.R_err:g} pc'))
-    ax.add_patch(Rectangle(
-        (t_lo, obs.R_obs_Pabst - obs.R_err_Pabst), t_hi - t_lo, 2 * obs.R_err_Pabst,
-        facecolor='green', alpha=0.20, edgecolor='green', lw=1.5, zorder=5,
-        label=fr'Cavity: {obs.R_obs_Pabst:g}$\pm${obs.R_err_Pabst:g} pc'))
-    ax.add_patch(Rectangle(
-        (t_lo, _DUST_SHELL_MIN), t_hi - t_lo, _DUST_SHELL_MAX - _DUST_SHELL_MIN,
-        facecolor='orange', alpha=0.15, edgecolor='orange', lw=1.5, zorder=5,
-        label=f'Dust shell ({_DUST_SHELL_MIN:.0f}–{_DUST_SHELL_MAX:.0f} pc)'))
+def _obs_points(key: str, obs: ObservationalConstraints):
+    """(value, error, colour, marker, label) tuples for the observation(s)
+    relevant to a given row key."""
+    if key == 'v':
+        return [(obs.v_obs, obs.v_err, 'red', 's',
+                 fr'$v_{{\rm exp}}$: {obs.v_obs:g}$\pm${obs.v_err:g} km/s')]
+    dust_mid = 0.5 * (_DUST_SHELL_MIN + _DUST_SHELL_MAX)
+    dust_err = 0.5 * (_DUST_SHELL_MAX - _DUST_SHELL_MIN)
+    return [
+        (obs.R_obs, obs.R_err, 'blue', 'o',
+         fr'HII outer: {obs.R_obs:g}$\pm${obs.R_err:g} pc'),
+        (obs.R_obs_Pabst, obs.R_err_Pabst, 'green', '^',
+         fr'Cavity: {obs.R_obs_Pabst:g}$\pm${obs.R_err_Pabst:g} pc'),
+        (dust_mid, dust_err, 'orange', 'D',
+         f'Dust shell ({_DUST_SHELL_MIN:.0f}–{_DUST_SHELL_MAX:.0f} pc)'),
+    ]
 
 
-def plot_cf_grid(groups: Dict[str, List[dict]], output_dir: Path,
-                 folder_name: str, obs: ObservationalConstraints):
-    """3 rows (v, R2, rShell) x N initial-condition columns; one line per Cf."""
+def _draw_obs_at_age(ax, key: str, obs: ObservationalConstraints):
+    """Trajectory-panel overlay: error bar(s) at the assumed age (y-only)."""
+    _draw_age_marker(ax, obs)
+    for val, err, color, marker, label in _obs_points(key, obs):
+        ax.errorbar(obs.t_obs, val, yerr=err, fmt=marker, color=color,
+                    markersize=9, capsize=4, capthick=1.5,
+                    markeredgecolor='k', markeredgewidth=0.5, zorder=10,
+                    label=label)
+
+
+def _draw_obs_hbands(ax, key: str, obs: ObservationalConstraints):
+    """Constraint-panel overlay: measured value(s) as horizontal band(s)."""
+    for val, err, color, _marker, label in _obs_points(key, obs):
+        ax.axhspan(val - err, val + err, color=color, alpha=0.18, zorder=0,
+                   label=label)
+        ax.axhline(val, color=color, lw=1.0, ls='--', alpha=0.6, zorder=1)
+
+
+# =============================================================================
+# Trajectory plot
+# =============================================================================
+
+def plot_cf_trajectory(groups: Dict[str, List[dict]], output_dir: Path,
+                       folder_name: str, obs: ObservationalConstraints):
+    """3 rows (v, R2, rShell) x N initial-condition columns; one line per Cf,
+    with observations drawn at the assumed age."""
     base_keys = sorted(groups, key=_sort_key)
     ncols = len(base_keys)
     nrows = len(_ROWS)
@@ -235,16 +266,13 @@ def plot_cf_grid(groups: Dict[str, List[dict]], output_dir: Path,
     fig, axes = plt.subplots(nrows, ncols, figsize=(5.5 * ncols + 1.6, 4.2 * nrows),
                              dpi=150, sharex=True, sharey='row', squeeze=False)
 
-    # Shared Cf colour scale across all panels.
     cf_all = sorted({r['cf'] for runs in groups.values() for r in runs})
     norm = mcolors.Normalize(vmin=min(cf_all), vmax=max(cf_all))
     cmap = plt.cm.viridis
 
-    # x-range wide enough to show both the trajectories and the (later-time)
-    # observation markers, which sit at t up to t_obs + t_err.
     t_data_max = max((r['t'].max() for runs in groups.values() for r in runs),
                      default=1.0)
-    x_hi = max(t_data_max, obs.t_obs + obs.t_err) * 1.05
+    x_hi = max(t_data_max, obs.t_obs + obs.t_err) * 1.02
 
     for col, base_key in enumerate(base_keys):
         for row, (key, _ylabel) in enumerate(_ROWS):
@@ -254,15 +282,13 @@ def plot_cf_grid(groups: Dict[str, List[dict]], output_dir: Path,
                 if y is not None:
                     ax.plot(run['t'], y, color=cmap(norm(run['cf'])),
                             lw=1.6, alpha=0.9)
-            # Observation overlay per panel.
-            _draw_obs_velocity(ax, obs) if key == 'v' else _draw_obs_radius(ax, obs)
+            _draw_obs_at_age(ax, key, obs)
             ax.grid(False)
             ax.tick_params(axis='both', labelsize=FONTSIZE - 4)
         axes[0, col].set_title(_panel_title(base_key), fontsize=FONTSIZE - 3)
 
-    # Set limits only after every curve + obs patch is drawn: an explicit
-    # set_ylim disables autoscale for the whole shared row, so doing it mid-loop
-    # would freeze the y-range to the first column and clip taller later columns.
+    # Limits after all curves+markers are drawn (a mid-loop set_ylim would
+    # freeze the shared-row y-range to the first column and clip taller ones).
     for col in range(ncols):
         for row in range(nrows):
             axes[row, col].set_xlim(0, x_hi)
@@ -270,18 +296,13 @@ def plot_cf_grid(groups: Dict[str, List[dict]], output_dir: Path,
         axes[1, col].set_ylim(bottom=0)
         axes[2, col].set_ylim(bottom=0)
 
-    # Row labels (left column) and time labels (bottom row).
     for row, (_key, ylabel) in enumerate(_ROWS):
         axes[row, 0].set_ylabel(ylabel, fontsize=FONTSIZE)
     for col in range(ncols):
         axes[-1, col].set_xlabel('Time [Myr]', fontsize=FONTSIZE)
+    for row in range(nrows):
+        axes[row, 0].legend(loc='upper left', fontsize=FONTSIZE - 6)
 
-    # Observation legends, once per row on the left column.
-    axes[0, 0].legend(loc='upper right', fontsize=FONTSIZE - 6)
-    axes[1, 0].legend(loc='upper left', fontsize=FONTSIZE - 6)
-    axes[2, 0].legend(loc='upper left', fontsize=FONTSIZE - 6)
-
-    # Shared Cf colourbar, ticked at the actual Cf values.
     sm = ScalarMappable(norm=norm, cmap=cmap)
     sm.set_array([])
     cbar = fig.colorbar(sm, ax=axes.ravel().tolist(), fraction=0.02, pad=0.02,
@@ -297,11 +318,82 @@ def plot_cf_grid(groups: Dict[str, List[dict]], output_dir: Path,
 
 
 # =============================================================================
+# Constraint plot (observable at the assumed age vs Cf)
+# =============================================================================
+
+def _value_at_age(run: dict, key: str, age: float, age_err: float):
+    """Return (value_at_age, lo, hi) for one observable, where [lo, hi] is the
+    model's spread over the age window.  Returns NaNs when the run does not
+    cover the age (so clamped/extrapolated values are not plotted as matches)."""
+    y = run[key]
+    t = run['t']
+    if y is None or len(t) < 2 or age < t.min() or age > t.max():
+        return np.nan, np.nan, np.nan
+    val = float(np.interp(age, t, y))
+    grid = np.linspace(max(t.min(), age - age_err), min(t.max(), age + age_err), 9)
+    w = np.interp(grid, t, y)
+    return val, float(w.min()), float(w.max())
+
+
+def plot_cf_constraint(groups: Dict[str, List[dict]], output_dir: Path,
+                       folder_name: str, obs: ObservationalConstraints):
+    """3 rows (v, R2, rShell) x N columns of observable-at-age vs Cf, with the
+    measured value as a horizontal band.  The model/obs band overlap gives the
+    Cf range consistent with each observation."""
+    base_keys = sorted(groups, key=_sort_key)
+    ncols = len(base_keys)
+    nrows = len(_ROWS)
+    age, age_err = obs.t_obs, obs.t_err
+
+    fig, axes = plt.subplots(nrows, ncols, figsize=(5.5 * ncols + 0.4, 4.2 * nrows),
+                             dpi=150, sharex=True, sharey='row', squeeze=False)
+
+    ylabels = [
+        fr'Velocity at {age:g} Myr [km s$^{{-1}}$]',
+        fr'$R_2$ at {age:g} Myr [pc]',
+        fr'$r_{{\rm shell}}$ at {age:g} Myr [pc]',
+    ]
+
+    for col, base_key in enumerate(base_keys):
+        runs = groups[base_key]
+        cfs = np.array([r['cf'] for r in runs])
+        for row, (key, _ylabel) in enumerate(_ROWS):
+            ax = axes[row, col]
+            vals, los, his = zip(*(_value_at_age(r, key, age, age_err) for r in runs))
+            vals, los, his = np.array(vals), np.array(los), np.array(his)
+            if age_err > 0 and np.any(np.isfinite(los)):
+                ax.fill_between(cfs, los, his, color='0.6', alpha=0.25, zorder=1,
+                                label=f'age $\\pm$ {age_err:g} Myr')
+            ax.plot(cfs, vals, '-', color='0.5', lw=1.0, zorder=2)
+            ax.plot(cfs, vals, 'o', color='C0', markersize=6,
+                    markeredgecolor='k', markeredgewidth=0.4, zorder=3)
+            _draw_obs_hbands(ax, key, obs)
+            ax.set_ylim(bottom=0)
+            ax.grid(False)
+            ax.tick_params(axis='both', labelsize=FONTSIZE - 4)
+        axes[0, col].set_title(_panel_title(base_key), fontsize=FONTSIZE - 3)
+
+    for row in range(nrows):
+        axes[row, 0].set_ylabel(ylabels[row], fontsize=FONTSIZE)
+        axes[row, 0].legend(loc='upper left', fontsize=FONTSIZE - 6)
+    for col in range(ncols):
+        axes[-1, col].set_xlabel(r'Covering fraction $C_f$', fontsize=FONTSIZE)
+
+    fig.tight_layout()
+    output_dir.mkdir(parents=True, exist_ok=True)
+    out_pdf = output_dir / f'cf_constraint_{folder_name}.pdf'
+    fig.savefig(out_pdf, bbox_inches='tight')
+    print(f"  Saved: {out_pdf}")
+    plt.close(fig)
+
+
+# =============================================================================
 # Main / CLI
 # =============================================================================
 
 def main(folder_path: str, output_dir: Optional[str] = None,
-         phii_mode: str = 'yes', trim: bool = False):
+         phii_mode: str = 'yes', trim: bool = False,
+         age: float = 2.0, age_err: float = 0.5):
     folder_path = Path(folder_path)
     if not folder_path.exists():
         print(f"Error: Folder not found: {folder_path}")
@@ -309,6 +401,10 @@ def main(folder_path: str, output_dir: Optional[str] = None,
 
     folder_name = folder_path.name
     out_dir = Path(output_dir) if output_dir else FIG_DIR / folder_name
+
+    # Rosette constraints, but with the cluster age fixed to the assumed value.
+    obs = rosette_constraints()
+    obs.t_obs, obs.t_err = age, age_err
 
     print(f"\nLoading simulations from: {folder_path}")
     groups = load_cf_runs(folder_path, phii_mode, trim)
@@ -318,22 +414,23 @@ def main(folder_path: str, output_dir: Optional[str] = None,
 
     n_runs = sum(len(v) for v in groups.values())
     print(f"Loaded {n_runs} runs across {len(groups)} initial condition(s)"
-          f"  (trim={'on' if trim else 'off'})")
+          f"  (trim={'on' if trim else 'off'}, age={age:g}±{age_err:g} Myr)")
 
-    # Per-column diagnostic: how many Cf values landed in each condition, and
-    # how far the plotted series reaches vs the full (untrimmed) run. A big gap
-    # between t_plotted and t_full means the collapse/dissolution trimmer is
-    # what's shrinking the x-axis — run without --trim to see the full curve.
+    # Per-column diagnostic: Cf membership, plotted vs full time span, and
+    # whether each condition's runs actually reach the assumed age.
     for base_key in sorted(groups, key=_sort_key):
         runs = groups[base_key]
         cfs = ", ".join(f"{r['cf']:g}" for r in runs)
         t_plot = max(r['t'].max() for r in runs)
         t_raw = max(r['t_raw_max'] for r in runs)
+        n_reach = sum(r['t'].max() >= age for r in runs)
         print(f"  {base_key}: {len(runs)} run(s), Cf=[{cfs}], "
-              f"t_plotted_max={t_plot:.4g} Myr, t_full_max={t_raw:.4g} Myr")
+              f"t_plotted_max={t_plot:.4g} Myr, t_full_max={t_raw:.4g} Myr, "
+              f"{n_reach}/{len(runs)} reach {age:g} Myr")
     print(f"Output directory: {out_dir}")
 
-    plot_cf_grid(groups, out_dir, folder_name, rosette_constraints())
+    plot_cf_trajectory(groups, out_dir, folder_name, obs)
+    plot_cf_constraint(groups, out_dir, folder_name, obs)
     print("\nDone!")
 
 
@@ -341,18 +438,23 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(
-        description="TRINITY covering-fraction (Cf) trajectory plots "
-                    "(velocity, bubble radius, shell radius vs Rosette obs)",
+        description="TRINITY covering-fraction (Cf) plots: trajectory triptych "
+                    "+ observable-vs-Cf constraint at a fixed cluster age",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
   python paper_Cf.py --folder outputs/rosette_sweep_denser_PISM1e4_Cf
-  python paper_Cf.py --folder outputs/rosette_sweep_denser_PISM1e4_Cf --trim
+  python paper_Cf.py --folder outputs/rosette_sweep_denser_PISM1e4_Cf --age 4 --age-err 2
 """)
     parser.add_argument('--folder', '-F', required=True,
                         help='Path to sweep output folder')
     parser.add_argument('--output-dir', '-o', default=None,
                         help='Output directory (default: fig/{folder})')
+    parser.add_argument('--age', type=float, default=2.0,
+                        help='Assumed cluster age [Myr] for the observation '
+                             'comparison (default: 2.0)')
+    parser.add_argument('--age-err', type=float, default=0.5,
+                        help='Age uncertainty [Myr] (default: 0.5)')
     parser.add_argument('--phii', choices=['yes', 'no'], default='yes',
                         help="PHII folder filter: 'yes' keeps yesPHII+untagged, "
                              "'no' keeps only noPHII (default: yes)")
@@ -361,4 +463,4 @@ Examples:
                              'snapshot (default: keep the full trajectory)')
 
     args = parser.parse_args()
-    main(args.folder, args.output_dir, args.phii, args.trim)
+    main(args.folder, args.output_dir, args.phii, args.trim, args.age, args.age_err)
