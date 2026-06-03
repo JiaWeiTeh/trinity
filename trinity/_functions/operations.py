@@ -73,24 +73,82 @@ def monotonic(L):
     return kindof_increasing(L) or kindof_decreasing(L)
 
 
+# --- Tolerant monotonicity for find_nearest_higher --------------------------
+# A backward bubble-temperature integration can leave tiny, provably-numerical
+# non-monotonicities in T_array: a sub-percent dip at the T_init=3e4 outer edge
+# (startup transient) or an isolated single-point spike from LSODA dense-output
+# interpolation. These must not crash find_nearest_higher's directional search,
+# but a *sustained* interior inversion (a possible real feature, or a dead
+# integrator's zero/non-finite tail) must still be rejected. We tolerate only
+# non-monotonicity that is both shallow (relative drawdown <= MONOTONIC_RTOL)
+# and localized (confined to the leading BOUNDARY_FRAC of the array, or an
+# isolated run <= MAX_SPIKE_LEN long).
+MONOTONIC_RTOL = 1e-2     # max relative drawdown treated as numerical noise
+BOUNDARY_FRAC = 0.01      # leading fraction treated as a startup transient
+MAX_SPIKE_LEN = 2         # longest wrong-direction run treated as an isolated spike
+
+
+def _is_monotonic_or_tolerable(L, rtol=MONOTONIC_RTOL,
+                               boundary_frac=BOUNDARY_FRAC,
+                               max_spike_len=MAX_SPIKE_LEN):
+    """
+    True if L is monotonic, or non-monotonic only in a shallow, localized way
+    (numerical noise). False for deep or sustained interior non-monotonicity,
+    so the caller still raises MonotonicError on genuinely bad profiles.
+    """
+    L = np.asarray(L, dtype=float)
+    n = L.size
+    if n < 2 or monotonic(L):
+        return True
+    increasing = L[-1] >= L[0]
+    # signed step in the intended direction; wrong-direction steps are < 0
+    step = np.diff(L) if increasing else -np.diff(L)
+    wrong = step < 0
+    if not wrong.any():
+        return True
+    boundary_cut = max(1, int(np.ceil(boundary_frac * n)))
+    i = 0
+    while i < wrong.size:
+        if not wrong[i]:
+            i += 1
+            continue
+        start = i
+        while i < wrong.size and wrong[i]:
+            i += 1
+        end = i  # wrong-direction run covers steps [start, end); values L[start..end]
+        # relative depth of the dip/spike across this run
+        drop = abs(L[start] - L[end])
+        if drop / max(abs(L[start]), 1e-300) > rtol:
+            return False
+        within_boundary = end <= boundary_cut
+        isolated = (end - start) <= max_spike_len
+        if not (within_boundary or isolated):
+            return False
+    return True
+
+
 def find_nearest_higher(array, value):
     """
     This fucntion finds idx in array for which array[idx] satisfies:
         1) higher or equal to value; and
         2) closest to value.
-    Elements in array need be monotonically increasing or decreasing!
+    Elements in array should be monotonically increasing or decreasing. A
+    shallow, localized numerical non-monotonicity (e.g. a sub-percent
+    single-point spike, or a startup dip in the leading fraction) is tolerated;
+    a deep or sustained-interior inversion still raises MonotonicError.
     """
     # check whether array is monotonic
     # debug
     if any(array < 0):
         print(array)
 
-    if not monotonic(array):
+    if not _is_monotonic_or_tolerable(array):
         print(f"array has to be monotonic! Instead got {array}.")
         raise MonotonicError()
 
-    # is it increasing?
-    mon_incr = kindof_increasing(array)
+    # is it increasing? (use endpoints: robust to a tolerated local spike that
+    # would otherwise make the all-pairs kindof_increasing() return False)
+    mon_incr = array[-1] >= array[0]
 
 
     # get index

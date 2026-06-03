@@ -13,6 +13,15 @@ runtime code path. It is therefore sequenced **dead last**, after the
 structural churn settles, and held to a stricter bar: *the success path
 must stay byte-identical; only the failing path may change.*
 
+> **Status (2026-06): the guard shipped, made shape-aware (Part A).**
+> `find_nearest_higher` now tolerates *shallow + localized* numerical
+> non-monotonicity and still rejects *deep / sustained-interior* cases
+> (`monotonic()` itself is unchanged, so the success path is byte-identical).
+> The grid de-refinement (the deeper root-cause angle) is **deferred** pending
+> an output-diff and model-author sign-off. **Part I below is the original
+> audit (pre-fix "what is").** See **§I.7** for exactly what changed and why
+> the grid fix is deferred, and **§I.6** for the diagnostic evidence.
+
 ## TL;DR
 
 - **Symptom**: `run.py` intermittently aborts with a bare `MonotonicError`
@@ -193,15 +202,20 @@ constant to six decimals across thousands of consecutive indices. The cleaner
 (`MIN_SPACING = 1e-12` relative) sits far below 1.3e-9, so these
 **near-duplicate radii survive**. The spike sits in that over-dense band.
 
-**Leading hypothesis (to be confirmed from the new step-size capture).** These
-near-duplicate output radii are exactly what stresses LSODA's dense-output
-interpolation (cf. the "intdy-- t illegal" warnings in I.1); one unlucky
-interpolation returns a single off sample → the spike ("once, then nothing").
-The exact spike was *not* reproducible with a guessed `v2` (state-sensitive),
-consistent with a rare interpolation hiccup rather than a feature. Note that
-**both** benign modes (I.5 dip + this spike) live in the over-dense front
-band — two faces of the same over-refined-grid fragility, which strengthens
-the Step-3 grid-hygiene angle.
+**Mechanism (confirmed from the captured step diagnostics).** The captured
+LSODA `infodict` is the smoking gun: only **~854 internal steps for the
+~60 000 output radii** (≈70× dense-output *interpolation*), with the step size
+`|hu|` collapsing to ~`dr` (~5e-9 pc) throughout the over-dense band and
+jumping to ~1e-2 pc outside it (`mused ≡ 1`, Adams throughout — no stiff
+switch). Requesting thousands of near-duplicate output radii inside a handful
+of real steps is exactly what stresses LSODA's dense-output interpolation
+(cf. the "intdy-- t illegal" warnings in I.1); one unlucky interpolation
+returns a single off sample → the spike ("once, then nothing"). The exact
+single sample was *not* reproducible with a guessed `v2` (state-sensitive),
+consistent with a rare interpolation hiccup rather than a physical feature.
+Note that **both** benign modes (I.5 dip + this spike) live in the over-dense
+front band — two faces of the same over-refined-grid fragility, which
+strengthens the Step-3 grid-hygiene angle.
 
 **Diagnostic enrichment (this commit).** `_capture_bubble_integration` now
 also records `rCloud`/`rCore` and the full LSODA `infodict`
@@ -219,6 +233,54 @@ checkable from `info_hu` on the next run.
 radii never reach LSODA — this removes *both* faces at the source, but it
 changes the success-path sampling and so carries the strict byte-identity
 caveat.
+
+---
+
+## I.7 Addendum (2026-06): what shipped (guard) + why grid de-refinement is deferred
+
+**Shipped — the Step-3 guard, made shape-aware (Part A).** `find_nearest_higher`
+now uses `_is_monotonic_or_tolerable` instead of the strict `monotonic()`. It
+refines I.6's plain cumulative-drawdown idea: a trip is tolerated only when it
+is **both shallow** (relative drawdown ≤ `MONOTONIC_RTOL = 1e-2`, covering the
+7.06e-3 spike and the I.5 dip) **and localized** (confined to the leading
+`BOUNDARY_FRAC = 0.01`, or an isolated run ≤ `MAX_SPIKE_LEN = 2`). A
+*sustained interior* inversion (a possible real local `T` maximum) or a
+dead-integrator zero/non-finite tail (~100 % drawdown) is therefore still
+**rejected** → `get_betadelta` penalises that `(β,δ)` `(100,100)`. This
+distinguishes numerical noise from a genuinely bad profile by *shape*, not
+magnitude alone. `monotonic()` is left strict, so `find_nearest_lower` and the
+`_get_velocity_residuals` check (the `return 1e2` penalty) are byte-identical.
+The direction test also moves to `array[-1] >= array[0]` (the all-pairs
+`kindof_increasing()` returned the wrong direction once a spike was tolerated).
+
+**Correction to I.6 — "raise the clean threshold" is NOT a valid
+de-refinement (measured).** `_clean_radius_grid` compares each point to its
+*immediate predecessor*, not the last *kept* point. The over-dense band is
+uniformly ~1.3e-9 spaced, so **any** threshold above that deletes the **whole**
+band at once: `clean@{5e-9, 1e-8, 1e-7}` all leave **1 point** in the
+conduction sliver (total 59 992 → 39 993). That collapses the steep
+`T 3e4→1.6e5` conduction zone to a single point → wrong cooling (the exact
+failure mode I.1/§295 warns about). Raising `MIN_SPACING` is off the table.
+
+**Viable de-refinement (deferred).** Reduce the Step-2 point count (line 677,
+`int(2e4)`). Step 2 is largely **redundant** with Step 1: Step 1's reflected
+logspace already samples the outer edge at rel-spacing ~`1.6e-7`; Step 2 only
+stacks the extra `1.3e-9` near-duplicate layer that is the LSODA stressor.
+Measured (build grid, count outer-band density):
+
+| Step-2 N | total pts | min rel-spacing | LSODA stress? | conduction pts |
+|---------:|----------:|----------------:|:-------------:|---------------:|
+| 20 000 (now) | 59 992 | `1.3e-9` | **yes** | ~20 650 |
+| 500 | 40 492 | `5.2e-8` | no | ~650 |
+| 200 | 40 192 | `1.3e-7` | no | ~350 |
+
+`N≈500` lifts the spacing out of the stress zone while Step 1 keeps the
+conduction zone well above the ≥100-point floor (§301). **But** it changes the
+conduction-zone integration resolution for *every* run, so it shifts
+`L2Conduction`/downstream outputs by an amount that must be measured
+(output-diff) and blessed by the model author — a physics-accuracy choice, not
+a guessed constant. **Decision (2026-06, user):** ship the shape-aware guard
+alone; treat grid de-refinement as a separate, validated change.
 
 ---
 
