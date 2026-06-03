@@ -40,6 +40,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 from matplotlib.cm import ScalarMappable
+from matplotlib.patches import Rectangle
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -225,6 +226,9 @@ def _draw_age_marker(ax, obs: ObservationalConstraints):
     ax.axvline(obs.t_obs, color='k', ls='--', lw=1.2, alpha=0.7, zorder=2,
                label=f'Assumed age {obs.t_obs:g} Myr')
 
+# =============================================================================
+# Observation overlays
+# =============================================================================
 
 def _obs_points(key: str, obs: ObservationalConstraints):
     """(value, error, colour, marker, label) tuples for the observation(s)
