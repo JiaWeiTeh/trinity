@@ -132,7 +132,10 @@ def find_nearest_higher(array, value):
     This fucntion finds idx in array for which array[idx] satisfies:
         1) higher or equal to value; and
         2) closest to value.
-    Elements in array need be monotonically increasing or decreasing!
+    Elements in array should be monotonically increasing or decreasing. A
+    shallow, localized numerical non-monotonicity (e.g. a sub-percent
+    single-point spike, or a startup dip in the leading fraction) is tolerated;
+    a deep or sustained-interior inversion still raises MonotonicError.
     """
     # check whether array is monotonic
     # debug
