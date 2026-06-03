@@ -37,7 +37,8 @@ From the repository root::
 This integrates a small, pre-shipped example (a 1e5 :math:`M_\odot`
 cloud at 30% star-formation efficiency, with everything else falling
 back to defaults). Outputs land in the directory specified by
-``path2output`` (the current working directory by default). See
+``path2output``; the default sentinel ``def_dir`` writes to
+``outputs/<model_name>/`` under the current working directory. See
 :ref:`sec-running` for the parameter-file syntax, sweep modes, CLI
 flags, and output layout.
 
@@ -50,8 +51,6 @@ Contents
 
    running
    parameters
-   physics
-   architecture
    trinity_reader
    visualization
    publications

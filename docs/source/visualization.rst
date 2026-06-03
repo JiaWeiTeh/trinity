@@ -9,31 +9,21 @@ package, split by audience:
 - **Published paper figures** are regenerated from the bundled
   ``paper/data/*.npz`` files by a single entry point::
 
-      python paper/make_figures.py
+      python paper/make_figures.py            # all published figures
+      python paper/make_figures.py teaser     # one figure (prefix match)
 
-  The figure scripts it drives live under ``paper/figures/`` (with
-  shared infrastructure in ``paper/figures/_lib/``).
+  Output lands in ``paper/plots/``. The figure scripts it drives live
+  under ``paper/figures/`` (with shared infrastructure in
+  ``paper/figures/_lib/``); see *Published Paper Figures* below.
 - **Exploratory / personal scripts** — the broader catalogue below —
   live under ``scratch/``. They are not part of the installed package
-  and are run directly.
+  and are run directly, writing to ``fig/{folder_name}/``.
 
 Each script is a thin wrapper around the :ref:`sec-trinity-reader`
-API: it loads one or more simulations from disk, extracts a small
-number of time series, and renders them with a shared Matplotlib
-style sheet, ``trinity.mplstyle``. The scripts double as worked
+API: it loads one or more simulations, extracts a few time series, and
+renders them with a shared Matplotlib style sheet,
+``paper/figures/_lib/trinity.mplstyle``. The scripts double as worked
 examples of how to drive the reader API from user code.
-
-The scripts share command-line conventions, accept the same
-folder-based discovery flags, and write output into a predictable
-``fig/{folder_name}/`` tree whose filenames encode the parameter
-combination plotted. To run one directly::
-
-    python paper/figures/paper_feedback.py -F /path/to/outputs   # paper closure
-    python scratch/SCRIPT_NAME.py -F /path/to/outputs            # personal
-
-The sections below describe each script in turn, grouped by the
-physical quantity it visualises. Unless noted as a paper figure
-(``paper/figures/``), a script lives under ``scratch/``.
 
 .. seealso::
 
@@ -44,35 +34,73 @@ physical quantity it visualises. Unless noted as a paper figure
    - :ref:`sec-parameters` — definitions of the parameters (``R2``,
      ``Pb``, ``F_*``, etc.) plotted below.
 
-Common Features
+
+Common features
 ---------------
 
-Every plotting script accepts a folder of simulations through the
-``-F`` flag and auto-discovers the individual runs underneath, so
-that a single invocation can render either one simulation or a full
-(mCloud × SFE) grid. Core density is selected through ``--nCore``,
-figure output is redirected through ``-o``, and the shared Matplotlib
-style sheet ``trinity.mplstyle`` ensures that figures from different
-scripts remain visually consistent. Phase boundaries between the
-energy-driven, transition, and momentum-driven regimes are drawn
-automatically where they are relevant.
+Most plotting scripts share a common parser
+(``paper/figures/_lib/cli.py``): they accept a folder of simulations
+through ``-F`` and auto-discover the individual runs underneath, so a
+single invocation can render either one simulation or a full
+(mCloud × SFE) grid. Core density is selected through ``-n``/``--nCore``,
+figure output is redirected through ``-o``, and the shared style sheet
+keeps figures from different scripts visually consistent. Phase, cloud-
+edge, and collapse markers are drawn via ``--show-*`` flags.
 
-Usage Examples
+Usage examples
 --------------
 
 .. code-block:: bash
 
-   # Plot all simulations from a folder (auto-discovers mCloud/SFE grid)
+   # All runs in a folder (auto-discovers the mCloud/SFE grid)
    python paper/figures/paper_feedback.py -F /path/to/outputs/sweep_test
 
    # Filter by core density
    python paper/figures/paper_feedback.py -F /path/to/outputs --nCore 1e4
 
-   # Specify output directory for figures
+   # Custom output directory
    python paper/figures/paper_feedback.py -F /path/to/outputs -o /path/to/figures
 
-   # Single run from explicit path
+   # Single run from an explicit path
    python scratch/paper_radiusEvolution.py /path/to/dictionary.jsonl
+
+
+Published Paper Figures
+-----------------------
+
+These are driven by ``paper/make_figures.py`` from the bundled
+``paper/data/*.npz`` files and rendered into ``paper/plots/``. Each row
+maps a short name (usable as a prefix on the command line) to its
+script and bundle:
+
+.. list-table::
+   :widths: 18 30 52
+   :header-rows: 1
+
+   * - Name
+     - Script (``paper/figures/``)
+     - Figure
+   * - ``density``
+     - ``paper_densityProfile.py``
+     - Density-profile ingredients (uniform, :math:`r^{-1}`,
+       :math:`r^{-2}`, Bonnor-Ebert) plus the phase timeline.
+   * - ``teaser``
+     - ``paper_teaser.py``
+     - Three-panel teaser: :math:`R_b`/:math:`v_b`, feedback-force
+       decomposition, and the :math:`Q_i` photon budget.
+   * - ``radiusComparison``
+     - ``paper_radiusComparison.py``
+     - :math:`R(t)` comparison of TRINITY against WARPFIELD and the
+       analytic scaling laws (Weaver, Spitzer, momentum).
+   * - ``rcloud_smoothing``
+     - ``paper_rcloud_smoothing.py``
+     - Cloud-edge density-smoothing schematic with before/after LSODA
+       trajectories.
+
+The remaining ``paper/figures/`` script, ``paper_feedback.py``
+(*Force Budget Plots* below), and the ``scratch/`` catalogue are run
+directly rather than through ``make_figures.py``.
+
 
 Force Budget Plots
 ------------------
@@ -80,62 +108,38 @@ Force Budget Plots
 paper_feedback.py
 ~~~~~~~~~~~~~~~~~
 
-*(Paper figure — lives under* ``paper/figures/``\ *.)*
+*(Lives under* ``paper/figures/``\ *; run directly.)* Stacked-area plot
+showing the relative importance of feedback forces as fractions of the
+total:
 
-Stacked area plot showing relative importance of feedback forces as fractions of total:
-
-- **Gravity** (black): Gravitational force
-- **Ram pressure** (blue): Total ram pressure with wind/SN decomposition overlay
-
-  - Blue forward hatch: Wind-attributed ram pressure
-  - Yellow backward hatch: SN-attributed ram pressure
-
-- **Photoionised gas** (red): Ionization pressure
-- **Radiation** (purple): Direct and indirect radiation pressure
-- **PISM** (white): External ISM pressure
+- **Gravity** (black)
+- **Ram pressure** (blue) with wind/SN decomposition overlay
+- **Photoionised gas** (red)
+- **Radiation** (purple): direct and reprocessed radiation pressure
+- **PISM** (white): external ISM pressure
 
 paper_forceFraction.py
 ~~~~~~~~~~~~~~~~~~~~~~
 
-Simplified force fraction plot showing the three mechanically distinct forces:
-
-- **F_thermal**: Combined thermal driving pressure (hot bubble + warm HII)
-- **F_rad**: Radiation pressure
-- **F_grav**: Gravitational force
-
-These three forces enter additively in the momentum equation, so the
-fractions sum exactly to one.
+Simplified force-fraction plot showing the three mechanically distinct
+forces that enter the momentum equation additively (so the fractions
+sum to one): combined thermal driving pressure (``F_thermal``),
+radiation (``F_rad``), and gravity (``F_grav``).
 
 paper_dominantFeedback.py
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Grid plot showing which feedback mechanism dominates across parameter space:
-
-- X-axis: Cloud mass (mCloud)
-- Y-axis: Star formation efficiency (SFE)
-- Colors: Dominant force at each point
-
-Force categories:
-
-- **Gravity** (dark blue-gray)
-- **Winds** (blue): Ram pressure from stellar winds
-- **Supernovae** (yellow): Ram pressure from SN
-- **Photoionised gas** (red)
-- **Radiation** (purple)
-
-F_ram competes as a whole first, then subclassifies to wind (blue) or SN (yellow) if it wins.
-For simulations that have ended (t > t_max), the final dominant feedback is persisted.
+Grid plot of which feedback mechanism dominates across parameter space
+(x: cloud mass, y: SFE). ``F_ram`` competes as a whole first, then
+subclassifies to wind (blue) or SN (yellow) if it wins. This script
+carries extra flags beyond the shared set (see *Configuration*).
 
 .. code-block:: bash
 
-   # Plot from folder
    python scratch/paper_dominantFeedback.py -F /path/to/outputs --nCore 1e4
-
-   # Custom time snapshots
    python scratch/paper_dominantFeedback.py -F /path/to/outputs --times 1.0 3.0 5.0
-
-   # Generate animated GIF
    python scratch/paper_dominantFeedback.py -F /path/to/outputs --movie --dt 0.05
+
 
 Thermal Regime Plots
 --------------------
@@ -143,14 +147,12 @@ Thermal Regime Plots
 paper_pressureEvolution.py
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Line plot showing pressure evolution over time:
+Line plot of pressure evolution over time: hot bubble pressure
+(``P_b``), ionization-front pressure (``P_IF``), the effective driving
+pressure (``P_drive``, selected per phase from :math:`P_b`,
+:math:`P_{\rm HII}`, and :math:`P_{\rm ram}`), and optionally the
+external pressure.
 
-- **P_b** (blue solid): Hot bubble pressure
-- **P_IF** (red solid): Ionization front pressure
-- **P_drive** (black dashed): Effective driving pressure (selected
-  per phase from :math:`P_b`, :math:`P_{\rm H\,II}`, and
-  :math:`P_{\rm ram}`; see :ref:`sec-physics`, *Driving Pressure Model*)
-- **P_ext** (gray dotted): External pressure (optional)
 
 Acceleration Decomposition
 --------------------------
@@ -158,34 +160,19 @@ Acceleration Decomposition
 paper_accelerationDecomposition.py
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Multi-line plot showing acceleration components from force balance:
-
-- **a_gas** (blue): Gas pressure acceleration
-- **a_rad** (purple): Radiation pressure acceleration
-- **a_grav** (black): Gravitational acceleration (negative = inward)
-- **a_acc** (orange): Mass loading acceleration
-- **a_net** (gray dashed): Net acceleration = sum of above
-
-Uses symmetric log scale by default. The sign of a_net indicates:
-
-- a_net > 0: Shell accelerating outward
-- a_net ≈ 0: Quasi-equilibrium / coasting
-- a_net < 0: Shell decelerating (may collapse)
+Multi-line plot of the acceleration components from the force balance:
+gas-pressure (``a_gas``), radiation (``a_rad``), gravity (``a_grav``),
+mass-loading (``a_acc``), and the net (``a_net``). Symmetric-log scale
+by default; the sign of ``a_net`` indicates accelerating / coasting /
+decelerating.
 
 paper_cancellationMetric.py
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Shows force cancellation metric:
+Shows the force-cancellation metric
+:math:`\mathcal{C} = |a_{\rm net}| / \sum_i |a_i|`. Near 1, one force
+dominates; near 0, forces nearly cancel.
 
-.. math::
-
-   \mathcal{C} = \frac{|a_{\rm net}|}{\sum |a_i|}
-
-Interpretation:
-
-- **C ≈ 1**: One force dominates completely
-- **C ≈ 0**: Large cancellation, forces nearly balance
-- **C ~ 0.1-0.3**: Typical quasi-equilibrium expansion
 
 Shell Evolution Plots
 ---------------------
@@ -193,48 +180,69 @@ Shell Evolution Plots
 paper_radiusEvolution.py
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-Shows shell radius R₂(t) evolution with phase markers.
+Shell radius :math:`R_2(t)` with phase markers.
 
 paper_expansionVelocity.py
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Shows shell velocity v₂(t) evolution.
+Shell velocity :math:`v_2(t)`.
 
 paper_momentum.py
 ~~~~~~~~~~~~~~~~~
 
-Shows cumulative momentum evolution with force contributions.
+Cumulative momentum evolution with force contributions.
+
 
 Configuration
 -------------
 
-Scripts are configured via command-line arguments. Common options:
+Most scripts share a common parser (``paper/figures/_lib/cli.py``),
+which provides:
 
 .. code-block:: bash
 
-   # Required: folder containing simulations
-   -F, --folder PATH     Path to folder with simulation subfolders
+   # Input (use a folder OR a single dictionary.jsonl path)
+   data                  Positional path to one dictionary.jsonl (optional)
+   -F, --folder PATH     Folder of simulation subfolders to auto-discover
 
    # Filtering
    -n, --nCore VALUE     Filter by core density (e.g., "1e4")
+   --mCloud VALUES       Filter by cloud mass (one or more)
+   --sfe VALUES          Filter by star-formation efficiency (one or more)
 
-   # Output
+   # Output / styling
    -o, --output-dir PATH Directory to save figures (default: fig/)
+   --palette NAME        Colour palette
+   --info                Print discovered runs and exit
 
-   # Time selection (for grid plots)
+   # Marker overlays
+   --show-phase          Energy/transition/momentum phase boundaries
+   --show-rcloud         Cloud-edge crossing
+   --show-collapse       Collapse onset
+   --show-noPHII         Overlay the no-PHII companion run
+   --show-all-markers    Enable all of the above
+
+``paper_dominantFeedback.py`` carries its own extra flags on top of the
+shared set:
+
+.. code-block:: bash
+
    -t, --times VALUES    Time snapshots in Myr (e.g., 1.0 3.0 5.0)
-
-   # Display options
    --smooth METHOD       Smoothing: 'none' or 'interp'
    --axis-mode MODE      'discrete' or 'continuous'
+   --movie               Render an animated GIF over time
+   --dt VALUE            Frame spacing for --movie
+
 
 Output
 ------
 
-All figures are saved to the ``fig/{folder_name}/`` directory as PDF files.
-Filenames include a parameter tag built from the (mCloud, SFE, nCore)
-combination actually plotted, so runs with different parameters never
-overwrite each other:
+Standalone scripts (run directly) save their figures to the
+``fig/{folder_name}/`` directory as PDF files; the ``make_figures.py``
+entry point instead collects the published figures in ``paper/plots/``.
+Standalone filenames include a parameter tag built from the (mCloud,
+SFE, nCore) combination actually plotted, so runs with different
+parameters never overwrite each other:
 
 .. code-block:: text
 
@@ -242,6 +250,5 @@ overwrite each other:
    └── sweep_test/
        ├── feedback_M1e7_sfe020_n1e4.pdf            # single run
        ├── feedback_M1e5-1e8_sfe001-080_n1e4.pdf    # grid of runs
-       ├── dominantFeedback_M1e7_sfe020_n1e4_continuous_interp.pdf
        ├── radiusEvolution_M1e7_sfe020_n1e4.pdf
        └── ...

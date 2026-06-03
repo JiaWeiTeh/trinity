@@ -16,11 +16,11 @@
 # -- Project information
 
 project = 'TRINITY'
-copyright = '2022, Jia Wei Teh, et al.'
+copyright = '2022-2026, Jia Wei Teh, et al.'
 author = 'Jia Wei Teh'
 
-release = '0.1'
-version = '0.1.0'
+release = '1.0.0'
+version = '1.0'
 
     
 # -- General configuration
