@@ -25,7 +25,7 @@ def find_nearest(array, value):
 
 def find_nearest_lower(array, value):
     """
-    This fucntion finds idx in array for which array[idx] satisfies:
+    This function finds idx in array for which array[idx] satisfies:
         1) smaller or equal to value; and
         2) closest to value.
     Elements in array need be monotonically increasing or decreasing!
@@ -129,7 +129,7 @@ def _is_monotonic_or_tolerable(L, rtol=MONOTONIC_RTOL,
 
 def find_nearest_higher(array, value):
     """
-    This fucntion finds idx in array for which array[idx] satisfies:
+    This function finds idx in array for which array[idx] satisfies:
         1) higher or equal to value; and
         2) closest to value.
     Elements in array should be monotonically increasing or decreasing. A

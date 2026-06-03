@@ -618,7 +618,7 @@ def _clean_radius_grid(r_array: np.ndarray, min_relative_spacing: float = MIN_SP
     min_relative_spacing : float
         Minimum allowed relative difference between consecutive points.
         Points closer than this (relative to their magnitude) are removed.
-        Default is 1e-10.
+        Default is 1e-12 (MIN_SPACING).
 
     Returns
     -------
