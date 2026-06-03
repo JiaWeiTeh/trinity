@@ -18,6 +18,11 @@ Usage (sweep - auto-detected):
     python run.py param/sweep.param --workers 4
     python run.py param/sweep.param --dry-run
     python run.py param/sweep.param --yes
+
+Usage (cluster job array - SLURM, e.g. bwForCluster Helix):
+    python run.py param/sweep.param --emit-jobs jobs/
+    sbatch jobs/submit_sweep.sbatch
+    python run.py --collect-report jobs/
 """
 
 import argparse
@@ -111,6 +116,39 @@ def is_sweep_param_file(path2file):
 
 
 # =============================================================================
+# Worker / output-path helpers
+# =============================================================================
+
+def positive_int(value):
+    """argparse type: a strictly positive integer (for --workers).
+
+    Rejecting <= 0 here yields a clean argparse error (exit 2) instead of a
+    ProcessPoolExecutor ``ValueError`` traceback later in the run.
+    """
+    try:
+        n = int(value)
+    except (TypeError, ValueError):
+        raise argparse.ArgumentTypeError(f"expected an integer, got {value!r}")
+    if n < 1:
+        raise argparse.ArgumentTypeError(f"must be >= 1, got {n}")
+    return n
+
+
+def resolve_base_output_dir(config):
+    """Absolute base output directory for a sweep.
+
+    Mirrors the single-run sentinel handling: 'def_dir' (or an unset
+    path2output) -> ``<cwd>/outputs``; a user path is taken as given. Always
+    returns an absolute path so emitted job-array param files and the
+    in-process runner agree regardless of the launch directory.
+    """
+    base = config.base_params.get('path2output', 'outputs')
+    if base == 'def_dir':
+        base = os.path.join(os.getcwd(), 'outputs')
+    return str(Path(base).resolve())
+
+
+# =============================================================================
 # Single-run mode
 # =============================================================================
 
@@ -161,6 +199,7 @@ def run_single(args):
     logger.info(f"Parameter file loaded: {args.path2param}")
     logger.info(f"Log level set to: {log_level}")
     logger.info(f"Console output: {log_console}, File output: {log_file}")
+    logger.info(f"Output directory: {os.path.abspath(params['path2output'].value)}")
 
 
     # =================================================================
@@ -192,12 +231,13 @@ def run_single(args):
 
 def run_sweep(args):
     """Run a TRINITY parameter sweep."""
-    import multiprocessing
+    import shutil
     import signal
     from concurrent.futures import ProcessPoolExecutor, as_completed
     from datetime import datetime
     from threading import Event
 
+    from trinity._functions.cluster import detect_allocated_cpus, get_optimal_workers
     from trinity._input.sweep_parser import (
         read_sweep_config,
         generate_combinations_from_config,
@@ -208,8 +248,8 @@ def run_sweep(args):
         ProgressBar,
         SweepReport,
         SimulationResult,
+        _validate_sweep_combination,
     )
-    from trinity.cloud_properties.validate_gmc import validate_gmc_params
 
     # Module-level shutdown flag for signal handler access
     global _shutdown_requested
@@ -218,94 +258,6 @@ def run_sweep(args):
     # -----------------------------------------------------------------
     # Sweep helper functions
     # -----------------------------------------------------------------
-
-    def get_optimal_workers():
-        """
-        Determine a conservative default number of worker processes.
-
-        Formula: ``max(1, cpu_count // 2 - 1)``.
-
-        - Uses less than half the CPUs so the machine stays responsive
-          for other work (browser, editor, meetings) while the sweep
-          runs. On an 8-core laptop this gives 3 workers, leaving 5
-          cores free; on a 4-core laptop it gives 1 worker.
-        - Minimum of 1 (for 1-2 core machines where the formula would
-          otherwise go to 0 or negative).
-        - On HPC / workstations with many cores, pass ``--workers N``
-          explicitly if you want more parallelism than this default.
-
-        Rationale: each worker spawns a full simulation subprocess that
-        uses BLAS/LAPACK; even with ``OMP_NUM_THREADS=1`` per worker,
-        too many concurrent Python interpreters will saturate memory
-        bandwidth and overheat laptops.
-        """
-        cpus = multiprocessing.cpu_count()
-        return max(1, cpus // 2 - 1)
-
-    def _validate_sweep_combination(params_dict):
-        """
-        Validate a single sweep combination's GMC parameters.
-
-        Sweep parameter values come directly from the .param file *without*
-        going through ``read_param``, so they are still in their input
-        units (nCore/nISM in cm⁻³, mu_convert in m_H, mCloud in Msun,
-        rCore in pc).  The GMC validator, however, expects values in
-        TRINITY's astronomy code units (pc⁻³, Msun, pc).  Apply the same
-        ``convert2au`` conversions that ``read_param`` applies on the
-        single-run path so the preflight check matches what the actual
-        simulation will see.
-
-        Returns GMCValidationResult or None if validation cannot be performed.
-        """
-        from trinity._functions.unit_conversions import convert2au
-
-        dens_profile = params_dict.get('dens_profile')
-        if dens_profile not in ('densPL', 'densBE'):
-            return None
-
-        mCloud = params_dict.get('mCloud')
-        nCore_cgs = params_dict.get('nCore')
-        if mCloud is None or nCore_cgs is None:
-            return None
-
-        # Unit conversions matching trinity/_input/default.param unit annotations:
-        #   mCloud:       [Msun]      -> Msun           (factor 1)
-        #   nCore, nISM:  [cm**-3]    -> pc⁻³           (factor ~2.94e+55)
-        #   rCore:        [pc]        -> pc             (factor 1)
-        #   mu_convert:   [m_H]       -> Msun           (factor ~9.42e-58)
-        ndens_factor = convert2au('cm**-3')
-        mu_factor = convert2au('m_H')
-
-        mu = float(params_dict.get('mu_convert', 1.4)) * mu_factor
-        nISM = float(params_dict.get('nISM', 1.0)) * ndens_factor
-
-        kwargs = dict(
-            mCloud=float(mCloud),
-            nCore=float(nCore_cgs) * ndens_factor,
-            mu=mu,
-            nISM=nISM,
-            dens_profile=dens_profile,
-        )
-
-        if dens_profile == 'densPL':
-            alpha = params_dict.get('densPL_alpha')
-            rCore = params_dict.get('rCore')
-            if alpha is None:
-                return None
-            kwargs['alpha'] = float(alpha)
-            if rCore is not None:
-                kwargs['rCore'] = float(rCore)  # already in pc
-        elif dens_profile == 'densBE':
-            Omega = params_dict.get('densBE_Omega')
-            if Omega is None:
-                return None
-            kwargs['Omega'] = float(Omega)  # dimensionless ratio
-            kwargs['gamma'] = float(params_dict.get('gamma_adia', 5.0 / 3.0))
-
-        try:
-            return validate_gmc_params(**kwargs)
-        except Exception:
-            return None
 
     def _build_parent_map():
         """
@@ -488,16 +440,19 @@ def run_sweep(args):
     # Determine workers and output directory
     # =================================================================
 
-    workers = args.workers if args.workers is not None else get_optimal_workers()
+    if args.workers is not None:
+        workers = args.workers
+        worker_source = "explicit --workers"
+    else:
+        workers = get_optimal_workers()
+        worker_source = ("SLURM allocation" if os.environ.get("SLURM_JOB_ID")
+                         else "laptop default")
 
-    # Use path2output from params if specified, else use 'outputs/'
-    base_output_dir = config.base_params.get('path2output', 'outputs')
-    if base_output_dir == 'def_dir':
-        base_output_dir = os.path.join(os.getcwd(), 'outputs')
-    base_output_dir = str(Path(base_output_dir).resolve())
+    # Resolve to an absolute base output directory (see resolve_base_output_dir).
+    base_output_dir = resolve_base_output_dir(config)
 
     print(f"\nTotal: {n_combinations} simulations | "
-          f"Workers: {workers} | Output: {base_output_dir}")
+          f"Workers: {workers} ({worker_source}) | Output: {base_output_dir}")
 
     # =================================================================
     # Dry run mode
@@ -539,6 +494,32 @@ def run_sweep(args):
                   f"implausible GMC parameters and will fail.")
         print("(No simulations were run - dry run mode)")
         sys.exit(0)
+
+    # =================================================================
+    # Worker budget + environment advisories (real runs only)
+    # =================================================================
+    # An explicit --workers larger than the cores actually available to this
+    # process oversubscribes the machine (or the SLURM allocation), so we
+    # refuse rather than thrash. The default path is never capped here:
+    # get_optimal_workers() already respects the allocation.
+    if args.workers is not None:
+        n_alloc, alloc_source = detect_allocated_cpus()
+        if args.workers > n_alloc:
+            sys.exit(
+                f"Error: --workers {args.workers} exceeds the {n_alloc} core(s) "
+                f"available to this process (detected via {alloc_source}). "
+                f"Re-run with --workers <= {n_alloc}."
+            )
+
+    # Nudge toward conventional cluster usage (advisory only).
+    if os.environ.get('SLURM_JOB_ID'):
+        print("\nNote: the in-process pool inside a SLURM job uses only this "
+              "node's allocation. For multi-node scaling, generate a job array:\n"
+              "  python run.py <param> --emit-jobs jobs/ && sbatch jobs/submit_sweep.sbatch")
+    elif shutil.which('sbatch') is not None:
+        print("\nNote: SLURM detected but no active job - you may be on a login "
+              "node. Running a sweep here is discouraged; submit a batch job or "
+              "use --emit-jobs to generate a job array.")
 
     # =================================================================
     # Pre-flight GMC validation
@@ -797,15 +778,20 @@ if __name__ == '__main__':
     # Positional: path to param file
     parser.add_argument(
         'path2param',
-        help="Path to .param file (single run or sweep with list syntax)"
+        nargs='?',
+        default=None,
+        help="Path to .param file (single run or sweep with list syntax). "
+             "Optional only with --collect-report."
     )
     # Sweep-specific options (ignored for single runs)
     parser.add_argument(
         '--workers', '-w',
-        type=int,
+        type=positive_int,
         default=None,
-        help="Number of parallel workers for sweep mode "
-             "(default: max(1, cpu_count // 2 - 1))"
+        help="Number of parallel workers for sweep mode (must be >= 1; "
+             "default: full SLURM allocation in a job, else "
+             "max(1, cpu_count // 2 - 1)). Refused if it exceeds the cores "
+             "available to this process."
     )
     parser.add_argument(
         '--dry-run', '-n',
@@ -821,6 +807,19 @@ if __name__ == '__main__':
         '--verbose', '-v',
         action='store_true',
         help="Enable verbose output"
+    )
+    # Cluster job-array options (mutually exclusive).
+    cluster_group = parser.add_mutually_exclusive_group()
+    cluster_group.add_argument(
+        '--emit-jobs', metavar='DIR', default=None,
+        help="Generate a SLURM job-array bundle (one task per sweep "
+             "combination) in DIR instead of running locally. Requires a "
+             "sweep param file."
+    )
+    cluster_group.add_argument(
+        '--collect-report', metavar='DIR', default=None,
+        help="Aggregate results from an --emit-jobs DIR into "
+             "sweep_report.txt/.json (run after the array finishes)."
     )
     # grab argument
     args = parser.parse_args()
@@ -841,8 +840,52 @@ if __name__ == '__main__':
     from trinity._output import header
     header.display()
 
+    # Cluster job-array collection: self-contained from the manifest, so it
+    # needs no param file.
+    if args.collect_report is not None:
+        from trinity._input.sweep_jobs import collect_report
+        collect_report(args.collect_report)
+        sys.exit(0)
+
+    if args.path2param is None:
+        parser.error("path2param is required unless using --collect-report")
+
+    # Cluster job-array generation (opt-in; requires a sweep param file).
+    if args.emit_jobs is not None:
+        if not is_sweep_param_file(args.path2param):
+            sys.exit("--emit-jobs requires a sweep param file (list/tuple syntax).")
+        from trinity._input.sweep_parser import read_sweep_config
+        from trinity._input.sweep_jobs import emit_jobs
+        config = read_sweep_config(args.path2param)
+        emit_jobs(
+            config,
+            resolve_base_output_dir(config),
+            args.emit_jobs,
+            TRINITY_ROOT,
+            concurrency=args.workers,
+            dry_run=args.dry_run,
+            sweep_file=args.path2param,
+        )
+        sys.exit(0)
+
     # Auto-detect mode from parameter file content
     if is_sweep_param_file(args.path2param):
         run_sweep(args)
     else:
+        # Single-run mode. The sweep-only flags have no effect here. Rather
+        # than silently ignore them (a foot-gun, especially for --dry-run,
+        # which a user may expect to suppress the run), handle them explicitly.
+        if args.dry_run:
+            print("Single run - dry run, nothing executed.")
+            print(f"Parameter file: {args.path2param}")
+            print("-" * 50)
+            with open(args.path2param, 'r', encoding='utf-8') as f:
+                print(f.read())
+            sys.exit(0)
+        ignored = [flag for flag, used in
+                   (('--workers', args.workers is not None), ('--yes', args.yes))
+                   if used]
+        if ignored:
+            print(f"Note: {', '.join(ignored)} only apply to sweeps; "
+                  f"ignoring for single run.")
         run_single(args)
