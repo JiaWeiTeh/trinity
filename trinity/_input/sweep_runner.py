@@ -94,7 +94,7 @@ def _validate_sweep_combination(params_dict):
     this module stays cheap on the single-run path.
     """
     from trinity._functions.unit_conversions import convert2au
-    from trinity.cloud_properties.validate_gmc import validate_gmc_params
+    from trinity.cloud_properties.validate_gmc import validate_gmc_params, R_CLOUD_MAX
 
     dens_profile = params_dict.get('dens_profile')
     if dens_profile not in ('densPL', 'densBE'):
@@ -122,6 +122,9 @@ def _validate_sweep_combination(params_dict):
         mu=mu,
         nISM=nISM,
         dens_profile=dens_profile,
+        # rCloud_max is in pc (identity conversion), matching the computed
+        # rCloud; fall back to the module default when not overridden.
+        r_max=float(params_dict.get('rCloud_max', R_CLOUD_MAX)),
     )
 
     if dens_profile == 'densPL':

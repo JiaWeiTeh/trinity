@@ -281,7 +281,7 @@ def validate_gmc_params(
 # High-level: validate from TRINITY params dict
 # ============================================================================
 
-def validate_gmc_from_params(params, r_max=R_CLOUD_MAX, mass_tolerance=MASS_TOLERANCE):
+def validate_gmc_from_params(params, r_max=None, mass_tolerance=MASS_TOLERANCE):
     """
     Validate GMC parameters extracted from a TRINITY params dictionary.
 
@@ -292,8 +292,9 @@ def validate_gmc_from_params(params, r_max=R_CLOUD_MAX, mass_tolerance=MASS_TOLE
     ----------
     params : dict-like
         TRINITY parameter dictionary with ``.value`` attribute access.
-    r_max : float
-        Maximum cloud radius [pc] (default 200).
+    r_max : float, optional
+        Maximum cloud radius [pc]. When None (default), the ``rCloud_max``
+        parameter is used if present, otherwise ``R_CLOUD_MAX`` (200).
     mass_tolerance : float
         Maximum relative mass error (default 0.001).
 
@@ -301,6 +302,11 @@ def validate_gmc_from_params(params, r_max=R_CLOUD_MAX, mass_tolerance=MASS_TOLE
     -------
     GMCValidationResult
     """
+    # Resolve the max-radius threshold: an explicit argument wins; otherwise
+    # read the rCloud_max parameter [pc]; fall back to the module default.
+    if r_max is None:
+        r_max = params["rCloud_max"].value if "rCloud_max" in params else R_CLOUD_MAX
+
     mCloud = params["mCloud"].value
     nCore = params["nCore"].value
     mu = params["mu_convert"].value
