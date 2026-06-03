@@ -1,5 +1,3 @@
-.. highlight:: rest
-
 .. _sec-license:
 
 License
@@ -11,4 +9,4 @@ TRINITY is distributed under the terms of the
 included at the repository root (``LICENSE``).
 
 If you use TRINITY in any published work, please cite the TRINITY
-method paper (in preparation).
+method paper (in preparation); see :ref:`sec-publications`.
