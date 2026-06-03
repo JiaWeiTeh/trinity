@@ -129,6 +129,26 @@ def _capture_bubble_integration(params, r_array, psoln, infodict,
 
         if _bubble_diag_count >= _BUBBLE_DIAG_MAX:
             return
+        # geometry context — lets the inspector localize an event against the
+        # cloud/grid (rCloud was a red herring for the spike; kept as reference).
+        geom = {}
+        for _gk in ('rCloud', 'rCore'):
+            try:
+                geom[_gk] = float(params[_gk].value)
+            except Exception:
+                pass
+        # full LSODA step diagnostics (present because the gated call used
+        # full_output=True): info_hu (step sizes), info_mused (method),
+        # info_nst (cumulative steps), info_tcur/info_tsw, scalars. These
+        # confirm whether the solver hiccuped at the violation. NB: odeint's
+        # infodict has no 'ier' key (success is via 'message').
+        info_save = {}
+        if isinstance(infodict, dict):
+            for _k, _v in infodict.items():
+                try:
+                    info_save[f"info_{_k}"] = np.asarray(_v)
+                except Exception:
+                    pass
         outdir = os.path.join(params['path2output'].value, 'bubble_diag')
         os.makedirs(outdir, exist_ok=True)
         fname = os.path.join(outdir, f"event_{_bubble_diag_count:04d}_t{t_now:.6e}.npz")
@@ -140,6 +160,7 @@ def _capture_bubble_integration(params, r_array, psoln, infodict,
             beta=beta, delta=delta, bubble_dMdt=bubble_dMdt,
             initial_conditions=np.asarray(initial_conditions, dtype=float),
             mode=mode, max_drawdown=max_dd, last_bad_idx=last_bad,
+            **geom, **info_save,
         )
         _bubble_diag_count += 1
         if _bubble_diag_count == _BUBBLE_DIAG_MAX:
