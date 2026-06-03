@@ -227,6 +227,54 @@ caveat.
 
 ---
 
+## I.7 Addendum (2026-06): what shipped (guard) + why grid de-refinement is deferred
+
+**Shipped — the Step-3 guard, made shape-aware (Part A).** `find_nearest_higher`
+now uses `_is_monotonic_or_tolerable` instead of the strict `monotonic()`. It
+refines I.6's plain cumulative-drawdown idea: a trip is tolerated only when it
+is **both shallow** (relative drawdown ≤ `MONOTONIC_RTOL = 1e-2`, covering the
+7.06e-3 spike and the I.5 dip) **and localized** (confined to the leading
+`BOUNDARY_FRAC = 0.01`, or an isolated run ≤ `MAX_SPIKE_LEN = 2`). A
+*sustained interior* inversion (a possible real local `T` maximum) or a
+dead-integrator zero/non-finite tail (~100 % drawdown) is therefore still
+**rejected** → `get_betadelta` penalises that `(β,δ)` `(100,100)`. This
+distinguishes numerical noise from a genuinely bad profile by *shape*, not
+magnitude alone. `monotonic()` is left strict, so `find_nearest_lower` and the
+`_get_velocity_residuals` check (the `return 1e2` penalty) are byte-identical.
+The direction test also moves to `array[-1] >= array[0]` (the all-pairs
+`kindof_increasing()` returned the wrong direction once a spike was tolerated).
+
+**Correction to I.6 — "raise the clean threshold" is NOT a valid
+de-refinement (measured).** `_clean_radius_grid` compares each point to its
+*immediate predecessor*, not the last *kept* point. The over-dense band is
+uniformly ~1.3e-9 spaced, so **any** threshold above that deletes the **whole**
+band at once: `clean@{5e-9, 1e-8, 1e-7}` all leave **1 point** in the
+conduction sliver (total 59 992 → 39 993). That collapses the steep
+`T 3e4→1.6e5` conduction zone to a single point → wrong cooling (the exact
+failure mode I.1/§295 warns about). Raising `MIN_SPACING` is off the table.
+
+**Viable de-refinement (deferred).** Reduce the Step-2 point count (line 677,
+`int(2e4)`). Step 2 is largely **redundant** with Step 1: Step 1's reflected
+logspace already samples the outer edge at rel-spacing ~`1.6e-7`; Step 2 only
+stacks the extra `1.3e-9` near-duplicate layer that is the LSODA stressor.
+Measured (build grid, count outer-band density):
+
+| Step-2 N | total pts | min rel-spacing | LSODA stress? | conduction pts |
+|---------:|----------:|----------------:|:-------------:|---------------:|
+| 20 000 (now) | 59 992 | `1.3e-9` | **yes** | ~20 650 |
+| 500 | 40 492 | `5.2e-8` | no | ~650 |
+| 200 | 40 192 | `1.3e-7` | no | ~350 |
+
+`N≈500` lifts the spacing out of the stress zone while Step 1 keeps the
+conduction zone well above the ≥100-point floor (§301). **But** it changes the
+conduction-zone integration resolution for *every* run, so it shifts
+`L2Conduction`/downstream outputs by an amount that must be measured
+(output-diff) and blessed by the model author — a physics-accuracy choice, not
+a guessed constant. **Decision (2026-06, user):** ship the shape-aware guard
+alone; treat grid de-refinement as a separate, validated change.
+
+---
+
 # Part II — Phased fix
 
 Each step is independently committable and independently revertable. **Do
