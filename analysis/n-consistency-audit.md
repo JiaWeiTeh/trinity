@@ -9,16 +9,42 @@ sign on the bubble before the paper pinned the convention — see §0.1).
 > denote hydrogen nuclei densities."* Every `n` in the code must therefore be
 > `n_H`, with mass via `μ_H` and pressure via the `μ_H/μ` factor.
 
+## Decisions (locked 2026-06) & verification status
+
+- **Branch:** `hotfix/mu-audit`.
+- **Composition is the single source of truth.** `x_He`, `Z_He` become input
+  params; **everything else is derived** (μ_H, μ_n, μ_p, μ_mol, and the electron
+  factor `chi_e = n_e/n_H = 1+Z_He·x_He`). Chosen over keeping the hardcoded μ.
+- **Defaults stay byte-identical.** Naive float division shifts `mu_atom` by 1
+  ULP (`float(Fraction('14/11'))=1.2727272727272727` vs `1.4/1.1=…25`), which
+  can nudge the FP-sensitive bubble integrator. **Resolution:** do the Phase-0
+  derivation in exact `fractions.Fraction` arithmetic (`x_He=Fraction(1,10)`,
+  `Z_He=2`) and cast to float once → all four μ reproduce today's values
+  exactly (verified), and `chi_e=1.2`. The other three μ are already
+  bit-identical under either method.
+- **Status:** every ❌ site below has been read in the actual source (not grep,
+  not comment). The μ *values* are correct; the defects are the **absent
+  `chi_e`** and μ used with the **wrong partner**.
+- **Do-not-trust-comments evidence:** `bubble_luminosity.py:970`
+  (`rho = n*mu_ion  # Mass density`) asserts wrong physics — mass needs `μ_H`;
+  the shell stores `nShell=ρ/μ_atom` (≈1.1 n_H) yet `dlaw.py:11` exports it to
+  CLOUDY labelled `n_H` (mislabelled ×1.1).
+- **Still open (no assumption made):** §4 CIE-curve normalisation; §3.5 BE EOS μ.
+- **Implementation:** NOT started. Plan-only per request.
+
 ## 0. Canonical reference (derived from the paper)
 
 Composition: `x_He = 0.1`, helium **doubly ionised** `Z_He = 2`.
+Per H nucleus there are `(1+x_He)` particles when neutral, `(2+x_He(1+Z_He))`
+when ionised, `(½+x_He)` when molecular, and `(1+Z_He·x_He)` free electrons.
 
-| symbol | paper | code param | value |
+| symbol | paper (derived from x_He, Z_He) | code param | value |
 |---|---|---|---|
-| `μ_H`  | mass per H nucleus | `mu_convert` | `1.4 m_H` |
+| `μ_H`  | `(1+4 x_He) m_H`, mass per H nucleus | `mu_convert` | `1.4 m_H` |
 | `μ_n`  | `μ_H/(1+x_He)`, neutral mean mass/particle | `mu_atom` | `14/11 m_H` |
 | `μ_p`  | `μ_H/(2+x_He(1+Z_He))`, ionised mean mass/particle | `mu_ion` | `14/23 m_H` |
-| `μ_mol`| molecular mean mass/particle | `mu_mol` | `14/6 m_H` |
+| `μ_mol`| `μ_H/(½+x_He)`, molecular mean mass/particle | `mu_mol` | `14/6 m_H` |
+| `chi_e`| `1+Z_He·x_He`, electrons per H nucleus `n_e/n_H` | **(absent)** | `1.2` |
 
 **Rules every `n`-line must obey (n = n_H):**
 
@@ -81,7 +107,7 @@ Legend: ✅ already matches paper · ❌ must change · ⚪ convention-independe
 | `get_shellODE.py:98` | `dphidr` recomb `α_B n²` | `(1+Z_He x_He)α_B n²` | ❌ ×1.2 |
 | `get_shellODE.py:118` | neutral `dndr` prefactor `1` | `μ_n/μ_H` | ❌ `1`→`mu_atom/mu_convert` |
 | `shell_structure.py:115` | `nShell0=(mu_ion/mu_atom)Pb/(k_B T)` | `(μ_p/μ_H)Pb/(k_B T)` (Eq. nShell0) | ❌ `mu_atom`→`mu_convert` |
-| `shell_structure.py:167,253,359` | mass `nShell*mu_atom` | `ρ=μ_H n` | ❌ `mu_atom`→`mu_convert` |
+| `shell_structure.py:167,253,324,357` | mass/grav `nShell*mu_atom` (ion+neutral) | `ρ=μ_H n` | ❌ `mu_atom`→`mu_convert` |
 | `shell_structure.py:135` | `max_shellRadius` Strömgren `α_B n²` | `(1+Z_He x_He)α_B n²` | ❌ ×1.2 |
 | `shell_structure.py:237-239` | `n_IF_Str` (Eq. nIF_Str) | `(1+Z_He x_He)` in denom | ❌ ×1.2 |
 | `shell_structure.py:272-273` | `phi_hydrogen` recomb `α_B n²` | `(1+Z_He x_He)α_B n²` | ❌ ×1.2 |
@@ -106,6 +132,12 @@ Legend: ✅ already matches paper · ❌ must change · ⚪ convention-independe
 
 ## 2. Phased fix plan (each phase independently testable)
 
+- **Phase 0 — composition foundation (locked design).** Add `x_He` (1/10),
+  `Z_He` (2) as input params. Derive μ_H, μ_n, μ_p, μ_mol and `chi_e` from them
+  using exact `Fraction` arithmetic, cast to float once → byte-identical μ
+  defaults (verified) + new `chi_e=1.2`. Expose `chi_e` (and the ratios
+  `mu_convert/mu_ion`, `mu_convert/mu_atom`) for the later phases. No physics
+  result changes in Phase 0 alone (pure plumbing); verify with full suite.
 - **Phase 1 — ionised pressure prefactor `2.0 → μ_H/μ_p`.** All `P_HII`/`P_ext`
   sites (energy, implicit, transition, momentum). Self-contained; changes the
   HII/back-pressure by ×1.15. Verify: smoke test + assert factor = `mu_convert/mu_ion`.
