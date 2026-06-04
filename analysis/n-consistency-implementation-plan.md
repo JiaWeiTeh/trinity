@@ -114,7 +114,7 @@ factor equals `mu_convert/mu_ion` (≈2.3) in a unit test.
 
 ---
 
-## Phase 2 — bubble interior `n→n_H`, `ρ→μ_H·n`, CIE cooling `×chi_e` (ATOMIC)
+## Phase 2 — bubble interior `n→n_H`, `ρ→μ_H·n`, CIE cooling `×chi_e` (ATOMIC — VERIFIED against source)
 
 `bubble_luminosity.py` density (5 sites): `Pb/(2*k_B*T)` →
 `(mu_ion/mu_convert)*Pb/(k_B*T)`.
@@ -150,6 +150,57 @@ wrong); CIE `chi_e` must accompany `n=n_H` (else off by chi_e). **Effects:**
 `n` ×(2/2.3)=×0.87; `ρ`,`bubble_mass`,self-gravity ×2.0 net; CIE cooling
 ×(0.87²·1.2)=×0.91. **Verify:** suite; smoke 2×; assert
 `ρ == μ_ion·Pb/(k_B T)·…` closed form.
+
+### Phase 2 — source-verification addendum (no assumptions, re-read at commit `0ec91ba`)
+
+**Physics (paper):** the hot bubble is fully ionised, `n ≡ n_H`.
+`P_b = n_tot k_B T`, `n_tot = ρ/μ_p`, `ρ = μ_H n_H`
+⟹ `n_H = (μ_p/μ_H) P_b/(k_B T) = P_b / ((μ_H/μ_p) k_B T)`. The factor
+`μ_H/μ_p = mu_convert/mu_ion = 2.3` is the **same** as Phase 1 (here we
+**divide** by it, P→n). Cooling: `dU/dt = −n_e n_H Λ = −chi_e n_H² Λ`
+(Gnat-Ferland solar is normalised per `n_e n_H` — your confirmation).
+
+**Exhaustive site list (grep-verified, not the stale audit — Phase 1 taught
+that lesson):** 5 P→n (`bubble_luminosity.py:338,390,465,498,948`), 1 ρ
+(`:970`), 4 CIE (`:411`, `:520`, `net_coolingcurve.py:126,149`). No others.
+`:970` hides behind a trailing `# Mass density` comment (first filter missed
+it); it IS present and in scope.
+
+**Scope confirmed by reading the enclosing defs:** the P→n + ρ + CIE-bubble
+sites are inside `get_bubbleproperties_pure(params)`,
+`_get_bubble_ODE(..., params, ...)`, and `_get_mass_and_grav(n, r, params)`;
+`get_dudt` is called at `:951` with the full `params`, so
+`params_dict['chi_e']` is reachable in `net_coolingcurve`. Every handle is
+`params` (no snapshot) ⟹ `params['chi_e'/'mu_convert'/'mu_ion'].value` all work.
+
+**Exact edit form (P→n):** replace the literal `2` with
+`(params['mu_convert'].value / params['mu_ion'].value)` inside the existing
+`Pb / ( … * params['k_B'].value * X )` — minimal diff, mirrors Phase 1.
+
+**No-change, re-verified vs paper:** `_get_init_dMdt` (`:591,:595`) and
+`_get_bubble_ODE_initial_conditions` (`:923,:927,:933`) use `mu_ion` as the
+mean-mass-per-particle μ_p in Weaver Eqs (Mbdot)/(Tprofile)/(vprofile) —
+**correct, untouched**. Non-CIE table path (`:471-478`, `:510-516`,
+`get_dudt:118`) is volumetric on `n_H` ⟹ fixed by the n→n_H change alone,
+**no** chi_e.
+
+**Downstream of changed quantities:** `n_array → bubble_n_arr` (diagnostic
+output); `_get_mass_and_grav(n_array) → bubble_mass` → shell gravity base
+`mBubble` in `shell_structure.py` (small vs shell mass) + bubble self-gravity;
+`get_dudt`/`L_bubble` → bubble energy ODE (Pb, transition timing). **No
+pressure term consumes bubble `n`** (P_HII/P_ext use shell `n_IF_Str` / cloud
+`n_r`), so Phase 2 is independent of Phase 1.
+
+**Atomic — one commit:** 2A (5) + 2B (1) + 2C (4) together; any intermediate
+state is physically wrong (`ρ=n_H·μ_p`, or CIE missing chi_e).
+
+**Expected shifts (sanity targets):** `n_H ×0.87` (2/2.3); `ρ`, `bubble_mass`,
+self-grav `×2.0`; CIE `L_cool ×(1.2·0.87²)=×0.91`; non-CIE recomputed at the
+correct `n_H`. Bubble T-structure, `Pb`, transition timing move (real, expected).
+
+**Verify:** deterministic suite (407, no golden values) + smoke 2×; closed-form
+unit check `n_H=(μ_p/μ_H)Pb/(k_BT)` ⟹ `ρ=μ_H·n_H=μ_p·Pb/(k_BT)`; log
+`bubble_mass` (≈×2) and `L_cool` (≈×0.91) deltas to confirm direction.
 
 ---
 
