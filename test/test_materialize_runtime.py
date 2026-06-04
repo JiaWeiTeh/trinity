@@ -73,6 +73,7 @@ def _step10_entry_state(profile: str) -> dict:
     state = {k: _item(None) for k in inputs}
     state["mCloud_input"] = _item(0.0)                  # Step 6
     state["mCluster"] = _item(0.0)                      # Step 6
+    state["chi_e"] = _item(1.2)                         # Step 6 (composition)
     state["sps_column_map"] = _item(None)               # Step 7 (sps bundle)
     if profile == "densPL":
         del state["densBE_Omega"]                       # Step 8 pop

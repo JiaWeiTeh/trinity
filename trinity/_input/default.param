@@ -213,6 +213,12 @@ mu_mol    14/6
 # UNIT: [m_H]
 mu_convert    1.4
 
+# INFO: Helium-to-hydrogen number ratio n_He/n_H. Composition source of truth: mu_atom, mu_ion, mu_mol, mu_convert and chi_e are all derived from x_He and Z_He at load (read_param Step 6).
+x_He    0.1
+
+# INFO: Helium ionisation state in the ionised gas (2 = doubly ionised). Sets the electron-per-hydrogen factor chi_e = 1 + Z_He*x_He.
+Z_He    2
+
 # INFO: Temperature of the neutral shell region.
 TShell_neu    1e2
 
