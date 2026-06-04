@@ -82,11 +82,19 @@ number moves (μ unchanged, `chi_e` not yet consumed).
 
 ---
 
-## Phase 1 — ionised-gas pressure prefactor `2.0 → μ_H/μ_p` (6 sites)
+## Phase 1 — ionised-gas pressure prefactor `2.0 → μ_H/μ_p` (11 sites — IMPLEMENTED)
 
 Replace the pure-H factor `2.0` with `mu_convert/mu_ion` (= μ_H/μ_p). Each
 site already feeds the correct n_H (`n_r` from the cloud profile, or
 `n_IF_Str`). `+= PISM*k_B` untouched.
+
+> **Correction (found during line-by-line implementation):** the audit table
+> below listed **6** sites; an exhaustive re-grep found **11**. The 5 missed
+> were `P_HII`/`P_HII_f` in the *segment* and *final-value* functions:
+> `run_momentum_phase.py:630`, `run_transition_phase.py:562` & `:840`,
+> `run_energy_implicit_phase.py:691` & `:1006` — same `2.0 * n_IF_Str(_f) *
+> k_B * T_ion` form, same fix, `params` in scope at each. All 11 done;
+> `grep` confirms zero `2*n` pressure patterns remain.
 
 | file:line | before | after |
 |---|---|---|
