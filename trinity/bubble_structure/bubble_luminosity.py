@@ -20,6 +20,7 @@ TODO: add docstrings for each function
 import numpy as np
 import os
 import sys
+import pickle
 import scipy.optimize
 import scipy.integrate
 from scipy.interpolate import interp1d
@@ -170,6 +171,60 @@ def _capture_bubble_integration(params, r_array, psoln, infodict,
             )
     except Exception as e:
         logger.warning(f"[bubble-diag] capture failed (ignored): {e}")
+
+
+# =============================================================================
+# Gated bubble-state dump (observational only) — for the offline audit harness.
+#
+# Set TRINITY_BUBBLE_STATE_DUMP=<N> to pickle the first N bubble-structure call
+# states to <path2output>/bubble_state/. Each dump holds every picklable param
+# value (the runtime cooling cubes are skipped — they are reconstructed
+# deterministically offline via read_param + get_coolingStructure), the solved
+# inputs (R1, Pb, dMdt, r2Prime, initial_conditions), and the structure arrays
+# so the harness can verify it reproduces this exact call. Byte-identical to
+# before when unset; never mutates state or raises into the caller.
+_bubble_state_dump_count = 0
+
+
+def _dump_bubble_state(params, R1, Pb, bubble_dMdt, bubble_r_Tb, r2Prime,
+                       initial_conditions, r_array, v_array, T_array, dTdr_array):
+    """Pickle one bubble-call state for the offline correctness audit (gated)."""
+    global _bubble_state_dump_count
+    try:
+        cap = int(os.environ.get('TRINITY_BUBBLE_STATE_DUMP') or 0)
+        if cap <= 0 or _bubble_state_dump_count >= cap:
+            return
+        pvals, skipped = {}, []
+        for k in params.keys():
+            try:
+                v = params[k].value
+                pickle.dumps(v)
+                pvals[k] = v
+            except Exception:
+                skipped.append(k)
+        state = {
+            'param_values': pvals,
+            'skipped_param_keys': skipped,
+            'R1': float(R1), 'Pb': float(Pb),
+            'bubble_dMdt': float(bubble_dMdt), 'bubble_r_Tb': float(bubble_r_Tb),
+            'r2Prime': float(r2Prime),
+            'initial_conditions': np.asarray(initial_conditions, dtype=float),
+            'r_array': np.asarray(r_array, dtype=float),
+            'v_array': np.asarray(v_array, dtype=float),
+            'T_array': np.asarray(T_array, dtype=float),
+            'dTdr_array': np.asarray(dTdr_array, dtype=float),
+        }
+        t_now = params['t_now'].value
+        outdir = os.path.join(params['path2output'].value, 'bubble_state')
+        os.makedirs(outdir, exist_ok=True)
+        fname = os.path.join(outdir, f"state_{_bubble_state_dump_count:04d}_t{t_now:.6e}.pkl")
+        with open(fname, 'wb') as fh:
+            pickle.dump(state, fh)
+        _bubble_state_dump_count += 1
+        logger.warning(f"[bubble-state] dumped {fname} "
+                       f"(skipped {len(skipped)} unpicklable params)")
+    except Exception as e:
+        logger.warning(f"[bubble-state] dump failed (ignored): {e}")
 
 
 @dataclass
@@ -340,6 +395,10 @@ def get_bubbleproperties_pure(params) -> BubbleProperties:
     logger.debug(f'Bubble structure: r=[{r_array[0]:.4f}, {r_array[-1]:.4f}], '
                  f'T=[{T_array[0]:.2e}, {T_array[-1]:.2e}]'
                  f'n=[{n_array[0]:.2e}, {n_array[-1]:.2e}]')
+
+    if os.environ.get('TRINITY_BUBBLE_STATE_DUMP'):
+        _dump_bubble_state(params, R1, Pb, bubble_dMdt, bubble_r_Tb, r2Prime,
+                           initial_conditions, r_array, v_array, T_array, dTdr_array)
 
     # =============================================================================
     # Step 4: Calculate cooling losses
