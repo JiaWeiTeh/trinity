@@ -204,9 +204,17 @@ unit check `n_H=(μ_p/μ_H)Pb/(k_BT)` ⟹ `ρ=μ_H·n_H=μ_p·Pb/(k_BT)`; log
 
 ---
 
-## Phase 3 — shell to true n_H + `chi_e` recombination (ATOMIC)
+## Phase 3 — shell to true n_H + `chi_e` recombination (ATOMIC — VERIFIED against source @ HEAD 8873cac)
 
-**`get_shellODE.py`** — add to the unpack block (~L63):
+**Re-derived vs paper (no assumptions on sign or code):** the radiation force
+`f_rad = −(1/4πr²c)·d/dr(L_n e^{−τ_d}+L_iφ_f)`; substituting `dτ/dr=n_sh σ_d`
+and `dφ/dr=−(4πr²/Q_i)·chi_e·α_B n_sh² − n_sh σ_d φ` gives
+`f_rad = +(n_sh σ_d/4πr²c)(L_n e^{−τ}+L_iφ) + chi_e·α_B n_sh² L_i/(Q_i c)`
+— **both terms positive**, matching the code's `+`-sign `dndr`. So the code
+sign/structure are correct; Phase-3 edits are **magnitude-only** (μ prefactor +
+`chi_e`), sign-preserving.
+
+**`get_shellODE.py`** — add to the unpack block (after `mu_p` ~L64):
 ```python
 mu_H  = params['mu_convert'].value
 chi_e = params['chi_e'].value
@@ -215,34 +223,50 @@ chi_e = params['chi_e'].value
 |---|---|---|
 | `:93` | `dndr = mu_p/mu_n/(k_B * t_ion) * (` | `dndr = mu_p/mu_H/(k_B * t_ion) * (` |
 | `:95` | `+ nShell**2 * alpha_B * Li / Qi / c` | `+ chi_e * nShell**2 * alpha_B * Li / Qi / c` |
-| `:98` | `dphidr = - 4*pi*r**2 * alpha_B * nShell**2 / Qi - nShell*sigma_dust*phi` | `dphidr = - 4*pi*r**2 * chi_e * alpha_B * nShell**2 / Qi - nShell*sigma_dust*phi` |
+| `:98` | `dphidr = - 4 * np.pi * r**2 * alpha_B * nShell**2 / Qi - …` | `dphidr = - 4 * np.pi * r**2 * chi_e * alpha_B * nShell**2 / Qi - …` |
 | `:118` | `dndr = 1/(k_B * t_neu) * (` | `dndr = mu_n/mu_H/(k_B * t_neu) * (` |
 
-(`mu_n` stays the existing `params['mu_atom'].value`; `mu_p` stays `mu_ion`.)
+Dust terms (`:94`,`:119`) and `dτ/dr` (`:100`,`:122`) are **unchanged** — they
+already use `nShell`, which now *means* n_H (so dust opacity becomes correct).
 
-**`shell_structure.py`**
-| line | before | after |
-|---|---|---|
-| `:115` | `nShell0 = (params['mu_ion'].value / params['mu_atom'].value / (k_B*T_ion) * Pb)` | `… params['mu_ion'].value / params['mu_convert'].value …` |
-| `:135` | `(3*Qi/(4*pi*caseB_alpha*nShell0**2))**(1/3)` | `(3*Qi/(4*pi*chi_e*caseB_alpha*nShell0**2))**(1/3)` ‡ |
-| `:167` | `nShell_arr[1:] * params['mu_atom'].value` | `… params['mu_convert'].value` |
-| `:237-239` | `np.sqrt(3.0*_Qi_absorbed / (4π*caseB_alpha*_vol_ion))` | `np.sqrt(3.0*_Qi_absorbed / (4π*chi_e*caseB_alpha*_vol_ion))` |
-| `:253` | `grav_ion_rho = nShell_arr_ion * params['mu_atom'].value` | `… params['mu_convert'].value` |
-| `:273` | `params['caseB_alpha'].value * nShell_arr_ion[:-1]**2` | `params['chi_e'].value * params['caseB_alpha'].value * nShell_arr_ion[:-1]**2` |
-| `:298` | `nShell0 * mu_atom/mu_ion * T_ion/T_neu` | **NO CHANGE** (μ_H cancels — pressure-continuity jump, verified) |
-| `:324` | `nShell_arr[1:] * params['mu_atom'].value` | `… params['mu_convert'].value` |
-| `:357` | `grav_neu_rho = nShell_arr_neu * params['mu_atom'].value` | `… params['mu_convert'].value` |
+**`shell_structure.py`** (11 edits; `:298` no-change):
+| line | before | after | role |
+|---|---|---|---|
+| `:115` | `params['mu_ion'].value / params['mu_atom'].value` | `params['mu_ion'].value / params['mu_convert'].value` | BC `nShell0=(μ_p/μ_H)Pb/kT` (Eq nShell0) |
+| `:135` | `4*np.pi*params['caseB_alpha'].value*nShell0**2` | `4*np.pi*params['chi_e'].value*params['caseB_alpha'].value*nShell0**2` | Strömgren integration bound |
+| `:167` | `nShell_arr[1:] * params['mu_atom'].value` | `nShell_arr[1:] * params['mu_convert'].value` | ion mass |
+| `:239` | `4.0*np.pi*params['caseB_alpha'].value*_vol_ion` | `4.0*np.pi*params['chi_e'].value*params['caseB_alpha'].value*_vol_ion` | `n_IF_Str` (Eq nIF_Str) |
+| `:253` | `nShell_arr_ion * params['mu_atom'].value` | `nShell_arr_ion * params['mu_convert'].value` | ion grav ρ |
+| `:273` | `params['caseB_alpha'].value * nShell_arr_ion[:-1]**2` | `params['chi_e'].value * params['caseB_alpha'].value * nShell_arr_ion[:-1]**2` | φ_hydrogen recomb |
+| `:298` | `nShell0 * mu_atom/mu_ion * T_ion/T_neu` | **NO CHANGE** | I-front jump — μ_H cancels (re-derived: `n_neu=n_ion·(μ_n/μ_p)·T_ion/T_neu`) |
+| `:324` | `nShell_arr[1:] * params['mu_atom'].value` | `nShell_arr[1:] * params['mu_convert'].value` | neutral mass |
+| `:357` | `nShell_arr_neu * params['mu_atom'].value` | `nShell_arr_neu * params['mu_convert'].value` | neutral grav ρ |
+| `:380` | `params['mu_atom'].value * np.sum(nShell_arr_ion…)` | `params['mu_convert'].value * …` | τ_IR/κ_IR mass column, ion **[MISSED in earlier audit]** |
+| `:381` | `params['mu_atom'].value * np.sum(nShell_arr_neu…)` | `params['mu_convert'].value * …` | τ_IR/κ_IR mass column, neu **[MISSED]** |
+| `:386` | `params['mu_atom'].value * np.sum(nShell_arr_ion…)` | `params['mu_convert'].value * …` | τ_IR/κ_IR mass column, ion-only **[MISSED]** |
 
-‡ `chi_e` reference needs `params['chi_e'].value`.
+**Scope confirmed:** all `shell_structure.py` sites are inside
+`shell_structure_pure(params)`; `get_shellODE` unpacks from `params`. `chi_e`
+present at runtime (Phase 0). `n_IF_Str` is capped at `shell_n0` (`:242`) —
+both n_H after the change; it feeds `P_HII` (already Phase-1-correct).
 
-**Why atomic:** BC (`:115`) + ODE prefactors (`get_shellODE :93,:118`) +
-mass weights (`:167,:253,:324,:357`) redefine `nShell` from `ρ/μ_n` to
-`n_H=ρ/μ_H` — they are one coherent change; and the `chi_e` recombination
-terms are only correct once `nShell=n_H`. **Effects:** total shell **mass is
-invariant** (variable renormalises); the I-front position and `n_IF_Str`
-shift (`n_IF_Str` ×1/√1.2≈0.91). Downstream bonus: `dlaw.py:11` CLOUDY export
-(`log10(n_H)`) becomes truthful. **Verify:** suite; smoke 2×; assert shell
-total mass unchanged vs Phase-2 baseline within integrator tolerance.
+**Atomic — ONE commit.** BC + ODE prefactors + all mass/τ weights redefine
+`nShell` from `ρ/μ_n` to `n_H=ρ/μ_H`; `chi_e` recomb/Strömgren terms are only
+correct once `nShell=n_H`. Any partial application is physically wrong.
+
+**Effects (CORRECTED — NOT mass-invariant):** σ_d is *per H nucleus*, so
+`dτ_d/dr=n_sh σ_d` currently runs on `nShell≈1.1 n_H`; converting to true n_H
+lowers dust opacity ~10% and **shifts the shell profile, mass, τ_IR and the
+I-front by order μ_H/μ_n≈1.1**. Recomb barely moves (old `n_old²≈1.21 n_H²`
+vs new `chi_e·n_H²=1.2 n_H²`, ~1%); Strömgren `n_IF_Str ×1/√1.2≈0.913`. (My
+earlier "mass invariant" note was **wrong** — the old code was internally
+inconsistent, not a clean rescaling. Caught by re-derivation.) Downstream:
+`dlaw.py:11` CLOUDY export (`log10(n_H)`) becomes truthful.
+
+**Verify:** deterministic suite (407) + smoke ×2; closed-form checks
+`nShell0=(μ_p/μ_H)Pb/kT` and `ρ_edge=nShell0·μ_H=μ_p·Pb/kT`;
+`n_IF_Str ×0.913` vs Phase-2 baseline; log `shell_mass`/`R_IF` deltas
+(expect ~10% from the dust correction, direction as above).
 
 ---
 
