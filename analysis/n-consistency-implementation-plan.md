@@ -5,6 +5,16 @@ Companion to `n-consistency-audit.md` (physics rationale) — this is the
 (`n ≡ n_H`). Every before-block below was read in source at audit time; line
 numbers are as-of-audit and may drift as edits land.
 
+> **Status — what actually shipped (`hotfix/mu-audit`):** Phases 0–3 and 5.1 as
+> written below. **Phase 6** shipped as *6A* (the `get_soundspeed` docstring fix)
+> plus **exposing `densBE_sigma`** and relabelling `densBE_Teff` as an *effective
+> (turbulent)* temperature — the `μ_mol`/isothermal "6B" rewrite in §Phase 6 was
+> **rejected** (it would only rescale a round-trip-cancelling diagnostic, and
+> `μ_mol` makes it hotter, not cooler; see `n-consistency-audit.md`). **Phase A**
+> (added after): the ~10⁴ K shell/HII region is now **singly-ionised He**
+> (`Z_He_shell=1` → `mu_ion_shell`, `chi_e_shell`); the hot bubble stays doubly
+> ionised. All pinned by `test/test_mu_audit_drift.py`.
+
 **Ground rules**
 - Do not assume code comments are correct; the paper is authoritative.
 - Phase 0 must keep μ defaults **byte-identical** (use `Fraction` arithmetic).

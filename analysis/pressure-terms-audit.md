@@ -1,5 +1,13 @@
 # Pressure terms & the meaning of `n`: the `2nkT` / `mu_p`,`mu_n` audit
 
+> **⚠️ SUPERSEDED (historical).** This first pass — written *before* the model
+> paper fixed the convention — reached the *opposite* conclusion on the bubble
+> (it treated `mu_ion` as the mass-conversion weight). The paper pins
+> `n ≡ n_H`, so mass uses `mu_convert` (=μ_H) and the bubble factor is `μ_H/μ_p`,
+> not 1. The authoritative record is **`n-consistency-audit.md`** (physics) and
+> **`n-consistency-implementation-plan.md`** (what shipped). Kept only to show
+> the reasoning that led there.
+
 Single source of truth for the hand-wavy pressure conversions in TRINITY —
 the `P = 2nkT` factors and the `mu_p/mu_n` ratios — and whether they are
 internally consistent with the **doubly-ionised helium** composition the
