@@ -4,9 +4,10 @@ Background: a backward bubble-temperature integration can leave tiny,
 provably-numerical non-monotonicities in T_array (a sub-percent dip at the
 T_init=3e4 outer edge, or an isolated single-point dense-output spike).  These
 used to crash ``find_nearest_higher`` with a ``MonotonicError``.  The guard now
-tolerates *shallow + localized* noise while still rejecting *deep* or
-*sustained interior* non-monotonicity (a possible real inversion or a dead
-integrator).  ``monotonic`` itself is left strict and unchanged.
+tolerates numerical noise -- an isolated single-point spike (any depth) or a
+shallow, localized multi-point wiggle -- while still rejecting non-finite
+profiles and *deep* or *sustained interior* non-monotonicity (a real inversion
+or a dead integrator).  ``monotonic`` itself is left strict and unchanged.
 """
 import numpy as np
 import pytest
@@ -64,10 +65,27 @@ def test_reject_sustained_interior_inversion_even_if_shallow():
     assert not ops._is_monotonic_or_tolerable(L)
 
 
-def test_reject_deep_spike():
-    # a single but *deep* (>1%) spike is rejected (not benign noise)
+def test_tolerate_isolated_deep_spike():
+    # an isolated single-point spike is tolerated regardless of depth: one point
+    # cannot be a physical inversion (closes the >1% single-point crash gap).
     L = np.linspace(1.0, 2.0, 200)
     L[100] += 0.5 * L[100]
+    assert ops._is_monotonic_or_tolerable(L)
+
+
+def test_reject_multipoint_deep_inversion():
+    # a *multi-point* deep run (>=2 wrong steps) is still rejected -- the
+    # single-point tolerance must not leak to genuine multi-point inversions.
+    L = np.linspace(1.0, 2.0, 1000)
+    L[500] = L[499] * 0.97
+    L[501] = L[499] * 0.94   # two consecutive descending steps (~6% deep)
+    assert not ops._is_monotonic_or_tolerable(L)
+
+
+def test_reject_nonfinite():
+    # a non-finite profile (e.g. a dead integrator) is a genuine failure
+    L = np.linspace(1.0, 2.0, 200)
+    L[150] = np.nan
     assert not ops._is_monotonic_or_tolerable(L)
 
 
