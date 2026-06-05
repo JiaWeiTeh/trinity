@@ -46,7 +46,8 @@ _coolingswitch = 1e4
 
 
 def reference_bubble_luminosity(params, R1, Pb, r2Prime, initial_conditions,
-                                bubble_r_Tb, rtol=1e-10, atol=1e-13, quad_limit=200):
+                                bubble_r_Tb, rtol=1e-10, atol=1e-13,
+                                quad_limit=200, epsrel=1e-8):
     """Tolerance-controlled reference for one bubble-structure state."""
     kB = params['k_B'].value
     mu_ion = params['mu_ion'].value
@@ -82,7 +83,7 @@ def reference_bubble_luminosity(params, R1, Pb, r2Prime, initial_conditions,
         # are benign (validated <0.5% vs the dense production grid).
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", scipy.integrate.IntegrationWarning)
-            val, _ = scipy.integrate.quad(integrand, a, b, limit=quad_limit, epsrel=1e-8)
+            val, _ = scipy.integrate.quad(integrand, a, b, limit=quad_limit, epsrel=epsrel)
         return abs(val)
 
     # --- 1.2 L1 Bubble (CIE, T>3.16e5) over [R1, r_CIEswitch]  (prod 460-474)
