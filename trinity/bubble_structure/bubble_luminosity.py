@@ -20,6 +20,7 @@ TODO: add docstrings for each function
 import numpy as np
 import os
 import sys
+import pickle
 import scipy.optimize
 import scipy.integrate
 from scipy.interpolate import interp1d
@@ -172,6 +173,69 @@ def _capture_bubble_integration(params, r_array, psoln, infodict,
         logger.warning(f"[bubble-diag] capture failed (ignored): {e}")
 
 
+# =============================================================================
+# Gated bubble-state dump (observational only) — for the offline audit harness.
+#
+# Set TRINITY_BUBBLE_STATE_DUMP=<N> to pickle the first N bubble-structure call
+# states to <path2output>/bubble_state/. Each dump holds every picklable param
+# value (the runtime cooling cubes are skipped — they are reconstructed
+# deterministically offline via read_param + get_coolingStructure), the solved
+# inputs (R1, Pb, dMdt, r2Prime, initial_conditions), and the structure arrays
+# so the harness can verify it reproduces this exact call. Byte-identical to
+# before when unset; never mutates state or raises into the caller.
+_bubble_state_dump_count = 0
+_bubble_state_last_t = 0.0
+
+
+def _dump_bubble_state(params, R1, Pb, bubble_dMdt, bubble_r_Tb, r2Prime,
+                       initial_conditions, r_array, v_array, T_array, dTdr_array):
+    """Pickle one bubble-call state for the offline correctness audit (gated)."""
+    global _bubble_state_dump_count, _bubble_state_last_t
+    try:
+        cap = int(os.environ.get('TRINITY_BUBBLE_STATE_DUMP') or 0)
+        if cap <= 0 or _bubble_state_dump_count >= cap:
+            return
+        # Optional log-spacing in time so dumped states span the evolution:
+        # require t_now to have grown by TRINITY_BUBBLE_STATE_DT between dumps
+        # (default 1.0 = no spacing = first-N behavior).
+        dt_factor = float(os.environ.get('TRINITY_BUBBLE_STATE_DT') or 1.0)
+        t_now = params['t_now'].value
+        if _bubble_state_dump_count > 0 and t_now < _bubble_state_last_t * dt_factor:
+            return
+        _bubble_state_last_t = t_now
+        pvals, skipped = {}, []
+        for k in params.keys():
+            try:
+                v = params[k].value
+                pickle.dumps(v)
+                pvals[k] = v
+            except Exception:
+                skipped.append(k)
+        state = {
+            'param_values': pvals,
+            'skipped_param_keys': skipped,
+            'R1': float(R1), 'Pb': float(Pb),
+            'bubble_dMdt': float(bubble_dMdt), 'bubble_r_Tb': float(bubble_r_Tb),
+            'r2Prime': float(r2Prime),
+            'initial_conditions': np.asarray(initial_conditions, dtype=float),
+            'r_array': np.asarray(r_array, dtype=float),
+            'v_array': np.asarray(v_array, dtype=float),
+            'T_array': np.asarray(T_array, dtype=float),
+            'dTdr_array': np.asarray(dTdr_array, dtype=float),
+        }
+        t_now = params['t_now'].value
+        outdir = os.path.join(params['path2output'].value, 'bubble_state')
+        os.makedirs(outdir, exist_ok=True)
+        fname = os.path.join(outdir, f"state_{_bubble_state_dump_count:04d}_t{t_now:.6e}.pkl")
+        with open(fname, 'wb') as fh:
+            pickle.dump(state, fh)
+        _bubble_state_dump_count += 1
+        logger.warning(f"[bubble-state] dumped {fname} "
+                       f"(skipped {len(skipped)} unpicklable params)")
+    except Exception as e:
+        logger.warning(f"[bubble-state] dump failed (ignored): {e}")
+
+
 @dataclass
 class BubbleProperties:
     """
@@ -301,6 +365,21 @@ def get_bubbleproperties_pure(params) -> BubbleProperties:
     # at lines 267+ expect ~100+ points between index_cooling_switch and index_CIE_switch.
     initial_conditions = [v_r2Prime, T_r2Prime, dTdr_r2Prime]
 
+    # Step 1 of the solve_ivp rewrite: the grid-based luminosity is extracted
+    # into _bubble_luminosity_legacy (below) and retained as the runtime
+    # fallback. The solve_ivp primary path + try/fallback is added next.
+    return _bubble_luminosity_legacy(
+        params, R1, Pb, r2Prime, initial_conditions, bubble_r_Tb, bubble_dMdt)
+
+
+def _bubble_luminosity_legacy(params, R1, Pb, r2Prime, initial_conditions,
+                              bubble_r_Tb, bubble_dMdt):
+    """Legacy grid-based bubble luminosity, retained as a runtime fallback.
+
+    60k-point legacy grid + odeint + find_nearest_higher region split +
+    trapezoid integration (the original get_bubbleproperties_pure body). Kept
+    so the solve_ivp path can fall back here on failure.
+    """
     # Always use cleaned legacy grid for now (adaptive grid causes accuracy issues)
     r_array = _create_legacy_radius_grid(R1, r2Prime)
     # When the diagnostic is off this is byte-identical to the original call
@@ -340,6 +419,10 @@ def get_bubbleproperties_pure(params) -> BubbleProperties:
     logger.debug(f'Bubble structure: r=[{r_array[0]:.4f}, {r_array[-1]:.4f}], '
                  f'T=[{T_array[0]:.2e}, {T_array[-1]:.2e}]'
                  f'n=[{n_array[0]:.2e}, {n_array[-1]:.2e}]')
+
+    if os.environ.get('TRINITY_BUBBLE_STATE_DUMP'):
+        _dump_bubble_state(params, R1, Pb, bubble_dMdt, bubble_r_Tb, r2Prime,
+                           initial_conditions, r_array, v_array, T_array, dTdr_array)
 
     # =============================================================================
     # Step 4: Calculate cooling losses
@@ -527,17 +610,22 @@ def get_bubbleproperties_pure(params) -> BubbleProperties:
     L_total = L_bubble + L_conduction + L_intermediate
 
     # Average temperature (volume-weighted)
-    # <T> = ∫T dV / ∫dV = 3 × Σ(∫T r² dr) / Σ(r_outer³ - r_inner³)
+    # <T> = ∫T dV / ∫dV = 3 × Σ(∫T r² dr) / Σ|r_outer³ - r_inner³|
+    # abs(): r_bubble/r_conduction are descending slices of the grid while
+    # r_interm = linspace(r2Prime, R2_coolingswitch) is ascending, so the
+    # intermediate term would otherwise carry the wrong sign and (incorrectly)
+    # subtract its volume. With abs() the three terms telescope to the true
+    # full-domain volume R2_coolingswitch³ - R1³.
     if index_cooling_switch != index_CIE_switch:
         total_Tr2_integral = Tavg_bubble + Tavg_conduction + Tavg_intermediate
-        total_volume = ((r_bubble[0]**3 - r_bubble[-1]**3) +
-                        (r_conduction[0]**3 - r_conduction[-1]**3) +
-                        (r_interm[0]**3 - r_interm[-1]**3))
+        total_volume = (abs(r_bubble[0]**3 - r_bubble[-1]**3) +
+                        abs(r_conduction[0]**3 - r_conduction[-1]**3) +
+                        abs(r_interm[0]**3 - r_interm[-1]**3))
         Tavg = 3 * total_Tr2_integral / total_volume
     else:
         total_Tr2_integral = Tavg_bubble + Tavg_intermediate
-        total_volume = ((r_bubble[0]**3 - r_bubble[-1]**3) +
-                        (r_interm[0]**3 - r_interm[-1]**3))
+        total_volume = (abs(r_bubble[0]**3 - r_bubble[-1]**3) +
+                        abs(r_interm[0]**3 - r_interm[-1]**3))
         Tavg = 3 * total_Tr2_integral / total_volume
 
     # Temperature at r_Tb
