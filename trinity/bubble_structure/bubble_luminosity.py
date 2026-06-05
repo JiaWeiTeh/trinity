@@ -365,6 +365,21 @@ def get_bubbleproperties_pure(params) -> BubbleProperties:
     # at lines 267+ expect ~100+ points between index_cooling_switch and index_CIE_switch.
     initial_conditions = [v_r2Prime, T_r2Prime, dTdr_r2Prime]
 
+    # Step 1 of the solve_ivp rewrite: the grid-based luminosity is extracted
+    # into _bubble_luminosity_legacy (below) and retained as the runtime
+    # fallback. The solve_ivp primary path + try/fallback is added next.
+    return _bubble_luminosity_legacy(
+        params, R1, Pb, r2Prime, initial_conditions, bubble_r_Tb, bubble_dMdt)
+
+
+def _bubble_luminosity_legacy(params, R1, Pb, r2Prime, initial_conditions,
+                              bubble_r_Tb, bubble_dMdt):
+    """Legacy grid-based bubble luminosity, retained as a runtime fallback.
+
+    60k-point legacy grid + odeint + find_nearest_higher region split +
+    trapezoid integration (the original get_bubbleproperties_pure body). Kept
+    so the solve_ivp path can fall back here on failure.
+    """
     # Always use cleaned legacy grid for now (adaptive grid causes accuracy issues)
     r_array = _create_legacy_radius_grid(R1, r2Prime)
     # When the diagnostic is off this is byte-identical to the original call
