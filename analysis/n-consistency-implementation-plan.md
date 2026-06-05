@@ -270,23 +270,44 @@ inconsistent, not a clean rescaling. Caught by re-derivation.) Downstream:
 
 ---
 
-## Phase 5 — housekeeping
+## Phase 5 — housekeeping (re-verified @ HEAD 149f76a; no assumptions)
 
-**5.1 dead `get_shellParams.py:30`** (never imported): either delete the
-module/function or fix to the paper BC `params['mu_ion'].value /
-params['mu_convert'].value / (k_B*T_ion) * Pb`. Recommend delete (it shadows
-the live `shell_structure.py:115`).
+**5.1 Delete dead `get_shellParams.py`.** `get_nShell0` is defined there and
+**never imported or called** anywhere (grep across `trinity/`+`test/` returns
+only its own `def`). Its formula `mu_atom/mu_ion · Pb/(k_B T_ion)` is both the
+*reciprocal* of the live BC and on the wrong μ (μ_n vs μ_H) — a pure landmine.
+The file contains nothing else. **Action:** `git rm
+trinity/shell_structure/get_shellParams.py`. **Verify:** no remaining
+references; full suite green.
 
-**5.2 BE EOS μ → μ_n (mass μ stays μ_H).** In `bonnorEbertSphere.py` each
-helper holds **one** `mu = params['mu_convert'].value` used for **both**
-`c_s=√(γk_BT/μ)` (EOS) and `rho_core=n·μ` (mass). Split them: EOS μ → `μ_n`
-(`mu_atom`), mass μ → `μ_H` (`mu_convert`). Sites (verify exact lines):
-`:430` `T_eff = mu*MSUN_TO_G*c_s²/(γ k_B)` (EOS→mu_atom);
-`:603` & `:643` `c_s=√(γ K_B_CGS T_eff/(mu*MSUN_TO_G))` (EOS→mu_atom);
-`:608` `rho_core=n_core*mu*…` (mass→keep mu_convert). Introduce a second local
-`mu_eos = params['mu_atom'].value` rather than swapping the single `mu`.
-**Effect:** changes BE-profile physical scale (`c_s↔T_eff↔ξ`) for BE runs only;
-power-law runs untouched. Confirm intended before landing.
+**5.2 BE EOS μ — CORRECTED: do NOT change to μ_n. (Earlier plan was wrong.)**
+Re-derivation from source:
+- In `compute_BE_sphere`, `c_s` is derived from `M`, `ρ_core`, `m_dim`
+  (`:401-408`); **the EOS μ never enters `c_s`** — only `ρ_core = n_core·mu`
+  (`:402`), the *mass* density, which correctly uses `mu_convert = μ_H`.
+- `T_eff` is back-computed from `c_s` via μ,γ (`:430`); `r2xi`/`xi2r`
+  reconstruct `c_s` from `T_eff` via the **same** μ,γ (`:603`,`:643`). All three
+  use `mu_convert`+`gamma_adia`, so **μ and γ cancel exactly** in
+  `c_s→T_eff→c_s`. The cloud structure (`ξ=√(4πGρ_core/c_s²)·r`, `n(r)`,
+  `r_out`, mass) depends only on `c_s` and `ρ_core` → **independent of the EOS
+  μ/γ choice** (`density_profile` reaches it via `be_r2xi`).
+- Consequences:
+  1. Changing the EOS μ moves **only the reported diagnostic `densBE_Teff`**,
+     never any dynamics → **not** a results-correctness fix and **outside the
+     n_H audit** (the n→ρ mass conversion already uses μ_H).
+  2. `μ_n` is wrong regardless: the paper's cloud is **molecular** (GMC /
+     prestellar cores / Barnard 68), so mean mass per particle is
+     **`μ_mol=14/6`**, not `μ_n=14/11`.
+  3. The paper's BE EOS is **isothermal** `c_s²=k_BT/μ` (no γ); the code carries
+     `γ=γ_adia`. A literal temperature would also drop γ.
+- **Recommendation:** leave the code as-is (zero result change); optionally add
+  a one-line comment that `densBE_Teff` is an *effective* (`mu_convert`,`γ_adia`)
+  temperature that cancels in the r↔ξ round-trip — not a literal gas
+  temperature. *Only if* a physical `T_eff` diagnostic is wanted: switch all
+  three sites (`:430`,`:603`,`:643`) **consistently** to `μ_mol` and drop γ
+  (changes the printed `T_eff` only, structure unchanged). **Never use `μ_n`,
+  and never change only some sites — that breaks the round-trip and corrupts
+  the BE profile.**
 
 ---
 
