@@ -184,16 +184,25 @@ def _capture_bubble_integration(params, r_array, psoln, infodict,
 # so the harness can verify it reproduces this exact call. Byte-identical to
 # before when unset; never mutates state or raises into the caller.
 _bubble_state_dump_count = 0
+_bubble_state_last_t = 0.0
 
 
 def _dump_bubble_state(params, R1, Pb, bubble_dMdt, bubble_r_Tb, r2Prime,
                        initial_conditions, r_array, v_array, T_array, dTdr_array):
     """Pickle one bubble-call state for the offline correctness audit (gated)."""
-    global _bubble_state_dump_count
+    global _bubble_state_dump_count, _bubble_state_last_t
     try:
         cap = int(os.environ.get('TRINITY_BUBBLE_STATE_DUMP') or 0)
         if cap <= 0 or _bubble_state_dump_count >= cap:
             return
+        # Optional log-spacing in time so dumped states span the evolution:
+        # require t_now to have grown by TRINITY_BUBBLE_STATE_DT between dumps
+        # (default 1.0 = no spacing = first-N behavior).
+        dt_factor = float(os.environ.get('TRINITY_BUBBLE_STATE_DT') or 1.0)
+        t_now = params['t_now'].value
+        if _bubble_state_dump_count > 0 and t_now < _bubble_state_last_t * dt_factor:
+            return
+        _bubble_state_last_t = t_now
         pvals, skipped = {}, []
         for k in params.keys():
             try:
