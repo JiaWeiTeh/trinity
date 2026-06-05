@@ -311,6 +311,65 @@ Re-derivation from source:
 
 ---
 
+## Phase 6 — sound-speed cleanup (VERIFIED @ HEAD 1fa10ae; do not assume)
+
+Audited every `c_s`. **Only one dynamical sound speed:** `operations.get_soundspeed`
+(`mu_ion` if T>1e4 else `mu_atom` = mean mass per particle; verified numerically
+to 1e-12). All dynamical consumers (bubble leak `get_bubbleParams:302`, transition
+sound-crossing `run_transition_phase:235,520`, energy-phase leak) route through it.
+**Consistent and correct — no dynamical change.** The only μ-outlier is the BE
+`c_s↔T_eff` diagnostic round-trip (`mu_convert`), which cancels.
+
+### 6A — `get_soundspeed` docstring only (operations.py:177-197) — ZERO behavior change
+The function uses `gamma_adia` (adiabatic) — correct for a hot-bubble sound-crossing —
+but the docstring says "isothermal", and "Units: Myr/pc" is inverted
+(`v_cms2au = cm/s→pc/Myr`, so c_s is **pc/Myr**). Fixes (comments only):
+- `:179` "isothermal soundspeed" → "adiabatic soundspeed".
+- `:189` "Units: Myr/pc" → "Units: pc/Myr".
+- clarify μ is `mu_ion` (T>1e4) / `mu_atom` (else), i.e. mean mass per particle.
+**No code line changes.** Verify: value identical before/after; suite green.
+
+### 6B — BE `densBE_Teff` → `μ_mol` + isothermal (diagnostic only; structure PROVABLY unchanged)
+**Physics:** BE sphere is isothermal (paper *and* `BESphereResult` docstring say so).
+`c_s²=k_B T/μ ⇒ T=μ c_s²/k_B` (no γ); the cloud is **molecular** ⇒ `μ=μ_mol=14/6`.
+Code now: `T_eff = μ_convert c_s²/(γ k_B)` — wrong μ (mass-per-H) **and** spurious γ.
+**Round-trip safety (the whole point):** `T_eff` is computed once
+(`create_BE_sphere:430`) and inverted back to `c_s` (`r2xi:603`, `xi2r:643`); the
+cloud structure (`ξ=√(4πGρ_core/c_s²)·r`, `n(r)`, `r_out`, mass) depends only on
+`c_s` and `ρ_core`. If all three sites use the **same** `μ_thermal` and drop γ
+**together**, `c_s` reconstructs exactly → **structure byte-identical**; only the
+printed `T_eff` changes (by exactly `μ_mol/μ_convert · γ = (5/3)·(5/3) = 25/9 ≈ 2.78×`).
+`ρ_core` stays `μ_convert` (mass) at **all** sites (`:402,:608,:648`).
+
+**Edits (verified line/arg):**
+- `create_BE_sphere` signature `:297-305`: replace `gamma: float = 5.0/3.0` with
+  `mu_thermal: float = 14.0/6.0`. (`gamma` is used **only** at `:430` — confirmed —
+  so removing it is clean.)
+- `:430`: `T_eff = mu * MSUN_TO_G * c_s**2 / (gamma * K_B_CGS)` →
+  `T_eff = mu_thermal * MSUN_TO_G * c_s**2 / K_B_CGS`. (`mu` at `:402` for ρ_core
+  unchanged.)
+- `r2xi` `:599` drop `gamma = params['gamma_adia'].value`; add
+  `mu_thermal = params['mu_mol'].value`; `:603` →
+  `c_s = np.sqrt(K_B_CGS * T_eff / (mu_thermal * MSUN_TO_G))`. Keep `mu=mu_convert`
+  for ρ_core (`:608`).
+- `xi2r` `:639`,`:643`: same as r2xi.
+- **4 callers** drop `gamma=gamma`, add `mu_thermal=params['mu_mol'].value`:
+  `create_BE_sphere_from_params:542-549` (and drop its now-unused `gamma` read `:536`
+  *only if* unused elsewhere — verify), `get_InitCloudProp:324-331`,
+  `validate_gmc:420-427` & `:587-591`. (Leave each caller's local `gamma` read alone
+  unless confirmed unused — it may serve other code.)
+
+**Atomic:** the `:430`/`:603`/`:643` trio + the 4 caller kwargs land together (a
+partial change breaks the round-trip and corrupts the BE cloud). **Verify:**
+deterministic suite + a new test asserting (i) `rCloud`/`n(r)` **unchanged** vs the
+pre-6B baseline on a `densBE` param, and (ii) `densBE_Teff` ×`25/9`; smoke ×2 on a
+BE param; extend `test_mu_audit_drift.py` with the BE `T_eff` validation.
+
+**Open sub-decision:** removing the `gamma` *parameter* (consistent, my
+recommendation) vs. keeping it vestigial (smaller diff). I recommend removing.
+
+---
+
 ## Dependency / ordering
 
 ```
