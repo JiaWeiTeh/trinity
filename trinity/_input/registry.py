@@ -152,6 +152,21 @@ def _validate_coverFraction(value, params) -> None:
         )
 
 
+def _validate_rCloud_max(value, params) -> None:
+    """Maximum plausible cloud radius (rCloud_max) must be a positive number
+    [pc].  It caps the pre-run GMC plausibility check in
+    ``trinity.cloud_properties.validate_gmc``."""
+    from trinity._input.errors import ParameterFileError
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise ParameterFileError(
+            f"Invalid rCloud_max '{value}'. Must be a positive number in pc."
+        )
+    if value <= 0:
+        raise ParameterFileError(
+            f"Invalid rCloud_max '{value}'. Must be > 0 (pc)."
+        )
+
+
 # ---------------------------------------------------------------------------
 # Resolvers (consumed by Phase 7; ``resolve_all`` invoked from
 # ``read_param`` Step 7).  A resolver receives the parameter's current
@@ -281,6 +296,7 @@ SPECS: tuple[ParamSpec, ...] = (
     ParamSpec(name='nCore', default='1e5', info='Hydrogen nuclei number density of cloud core (n_H). Standard GMC/ISM convention. Mass density: rho = nCore * mu_convert * m_H. If `densPL` AND densPL_alpha = 0, this is the average cloud density.', category='input_physical', unit='cm**-3', run_const=True),
     ParamSpec(name='nISM', default='1', info='Hydrogen nuclei number density of the ambient ISM (n_H). Mass density: rho = nISM * mu_convert * m_H.', category='input_physical', unit='cm**-3', run_const=True),
     ParamSpec(name='rCore', default='0.01', info='Core radius of the molecular cloud.', category='input_physical', unit='pc', run_const=True),
+    ParamSpec(name='rCloud_max', default='200', info='Maximum plausible cloud radius used by the pre-run GMC parameter validation. If the computed rCloud exceeds this, the run is rejected as implausibly diffuse for the given mass. Increase to allow larger, more diffuse clouds.', category='input_physical', unit='pc', exclude_from_snapshot=True, run_const=True, validator=_validate_rCloud_max),
     ParamSpec(name='allowShellDissolution', default='True', info='Allow shell dissolution to terminate simulation. If False, shell dissolution check is disabled.', category='input_termination', unit=None, exclude_from_snapshot=True, run_const=True),
     ParamSpec(name='stop_t_diss', default='1', info='Duration (in Myr) that shell_nMax must remain below nISM before dissolution is triggered.', category='input_termination', unit='Myr', exclude_from_snapshot=True, run_const=True),
     ParamSpec(name='stop_r', default='500', info='Maximum radial extent permitted for shell expansion. Set to None to disable this termination condition.', category='input_termination', unit='pc', exclude_from_snapshot=True, run_const=True),
