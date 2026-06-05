@@ -138,9 +138,12 @@ def reference_bubble_luminosity(params, R1, Pb, r2Prime, initial_conditions,
     L_total = L_bubble + L_conduction + L_intermediate
 
     # --- 1.6 Tavg (volume-weighted; replicate prod endpoint signs 588-600) ---
-    vol_bubble = r_CIEswitch ** 3 - R1 ** 3
-    vol_cond = r2Prime ** 3 - r_CIEswitch ** 3
-    vol_interm = r2Prime ** 3 - R2_coolingswitch ** 3   # negative, matches prod
+    # abs(): the intermediate region extends outward (R2_coolingswitch > r2Prime),
+    # so its signed term would be negative; abs() makes all three positive and
+    # they telescope to the true full-domain volume R2_coolingswitch**3 - R1**3.
+    vol_bubble = abs(r_CIEswitch ** 3 - R1 ** 3)
+    vol_cond = abs(r2Prime ** 3 - r_CIEswitch ** 3)
+    vol_interm = abs(r2Prime ** 3 - R2_coolingswitch ** 3)
     total_Tr2 = Tavg_bubble + Tavg_conduction + Tavg_intermediate
     total_vol = vol_bubble + vol_cond + vol_interm
     Tavg = 3 * total_Tr2 / total_vol

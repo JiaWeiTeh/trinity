@@ -595,17 +595,22 @@ def get_bubbleproperties_pure(params) -> BubbleProperties:
     L_total = L_bubble + L_conduction + L_intermediate
 
     # Average temperature (volume-weighted)
-    # <T> = ∫T dV / ∫dV = 3 × Σ(∫T r² dr) / Σ(r_outer³ - r_inner³)
+    # <T> = ∫T dV / ∫dV = 3 × Σ(∫T r² dr) / Σ|r_outer³ - r_inner³|
+    # abs(): r_bubble/r_conduction are descending slices of the grid while
+    # r_interm = linspace(r2Prime, R2_coolingswitch) is ascending, so the
+    # intermediate term would otherwise carry the wrong sign and (incorrectly)
+    # subtract its volume. With abs() the three terms telescope to the true
+    # full-domain volume R2_coolingswitch³ - R1³.
     if index_cooling_switch != index_CIE_switch:
         total_Tr2_integral = Tavg_bubble + Tavg_conduction + Tavg_intermediate
-        total_volume = ((r_bubble[0]**3 - r_bubble[-1]**3) +
-                        (r_conduction[0]**3 - r_conduction[-1]**3) +
-                        (r_interm[0]**3 - r_interm[-1]**3))
+        total_volume = (abs(r_bubble[0]**3 - r_bubble[-1]**3) +
+                        abs(r_conduction[0]**3 - r_conduction[-1]**3) +
+                        abs(r_interm[0]**3 - r_interm[-1]**3))
         Tavg = 3 * total_Tr2_integral / total_volume
     else:
         total_Tr2_integral = Tavg_bubble + Tavg_intermediate
-        total_volume = ((r_bubble[0]**3 - r_bubble[-1]**3) +
-                        (r_interm[0]**3 - r_interm[-1]**3))
+        total_volume = (abs(r_bubble[0]**3 - r_bubble[-1]**3) +
+                        abs(r_interm[0]**3 - r_interm[-1]**3))
         Tavg = 3 * total_Tr2_integral / total_volume
 
     # Temperature at r_Tb
