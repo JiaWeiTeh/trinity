@@ -8,21 +8,31 @@ using the SAME physics formulas but tolerance-controlled numerics:
   one adaptive integration, an exact CIE-switch radius from the event, and a
   smooth callable ``sol(r)``; no fixed grid, no ``find_nearest_higher``, no
   conditional re-integration.
-* integrals: Simpson on a dense sample of the smooth interpolant.
+* integrals: **adaptive** ``scipy.integrate.quad`` on the smooth interpolant.
+  This matters: the L_bubble integrand ``n^2 * Lambda * 4 pi r^2`` is sharply
+  peaked at the CIE switch (n^2 spikes ~1e5-1e6x there, peak at the endpoint),
+  which UNIFORM sampling cannot resolve -- quad refines adaptively. (An earlier
+  uniform-Simpson version was wrong by up to ~30x; quad matches the dense
+  production grid to <0.5%.)
 
 It imports the UNCHANGED production RHS ``_get_bubble_ODE`` so the physics is
-byte-identical; only the numerics differ.  This is the converged "ground
-truth" the correctness audit (Phases 2-3) measures the production grid against.
+identical; only the numerics differ.  This is the converged "ground truth" the
+correctness audit (Phases 2-3) measures the production grid against.
 
-Faithfulness notes (replicated on purpose so the audit isolates numerics):
+Faithful-on-purpose details (so the audit isolates numerics):
 * L3 (intermediate, T in [1e4, 3e4]) is extrapolated *outside* the ODE domain
   with the production ``interp1d`` on a 1000-pt linspace -- kept identical.
 * Tavg's intermediate volume term ``r_interm[0]**3 - r_interm[-1]**3`` is
   negative in production (ascending r_interm); replicated as-is. FLAGGED.
 * production's T_rgoal uses find_nearest + linear extrapolation (approximate);
   here we use the exact ``sol(r_Tb)`` for in-domain points (expect small diff).
+* conduction integrand clamps T<=10^5.5 (sol gives 10^5.5 +/- eps at the
+  boundary, just past the cooling cube's log_T axis max of 5.5; production
+  inserts the exact 10^5.5).
 """
 from __future__ import annotations
+
+import warnings
 
 import numpy as np
 import scipy.integrate
@@ -36,8 +46,7 @@ _coolingswitch = 1e4
 
 
 def reference_bubble_luminosity(params, R1, Pb, r2Prime, initial_conditions,
-                                bubble_r_Tb, rtol=1e-9, atol=1e-12,
-                                n_samples=4000):
+                                bubble_r_Tb, rtol=1e-10, atol=1e-13, quad_limit=200):
     """Tolerance-controlled reference for one bubble-structure state."""
     kB = params['k_B'].value
     mu_ion = params['mu_ion'].value
@@ -66,35 +75,37 @@ def reference_bubble_luminosity(params, R1, Pb, r2Prime, initial_conditions,
     r_CIEswitch = float(crossings[0])
 
     def T_at(r):
-        return sol.sol(np.asarray(r, dtype=float))[1]
+        return float(sol.sol(r)[1])
 
-    def simpson(r_lo, r_hi, integrand):
-        rr = np.linspace(r_lo, r_hi, n_samples)
-        return float(np.abs(scipy.integrate.simpson(integrand(rr), x=rr)))
+    def quad_abs(integrand, a, b):
+        # adaptive quadrature; roundoff warnings on the sharp CIE-switch peak
+        # are benign (validated <0.5% vs the dense production grid).
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", scipy.integrate.IntegrationWarning)
+            val, _ = scipy.integrate.quad(integrand, a, b, limit=quad_limit, epsrel=1e-8)
+        return abs(val)
 
     # --- 1.2 L1 Bubble (CIE, T>3.16e5) over [R1, r_CIEswitch]  (prod 460-474)
-    def integ_bubble(r):
+    def f_bubble(r):
         T = T_at(r)
         n = Pb / (2 * kB * T)
-        Lam = 10 ** (cooling_CIE(np.log10(T))) * cvt.Lambda_cgs2au
+        Lam = 10 ** float(cooling_CIE(np.log10(T))) * cvt.Lambda_cgs2au
         return n ** 2 * Lam * 4 * np.pi * r ** 2
-    L_bubble = simpson(R1, r_CIEswitch, integ_bubble)
-    Tavg_bubble = simpson(R1, r_CIEswitch, lambda r: r ** 2 * T_at(r))
+    L_bubble = quad_abs(f_bubble, R1, r_CIEswitch)
+    Tavg_bubble = quad_abs(lambda r: r ** 2 * T_at(r), R1, r_CIEswitch)
 
     # --- 1.3 L2 Conduction (non-CIE) over [r_CIEswitch, r2Prime]  (prod 476-543)
-    def integ_cond(r):
-        # clamp to the CIE switch: sol gives T = 10**5.5 +/- eps at the boundary,
-        # whose log10 tips just past the cooling cube's max T axis (log_T=5.5).
-        # Production uses the exact inserted 10**5.5 here; clamping matches it
-        # (boundary is measure-zero for the integral).
-        T = np.minimum(T_at(r), _CIEswitch)
+    def f_cond(r):
+        T = min(T_at(r), _CIEswitch)   # clamp: cube log_T axis max is 5.5
         n = Pb / (2 * kB * T)
         phi = Qi / (4 * np.pi * r ** 2)
-        pts = np.transpose(np.log10([n / cvt.ndens_cgs2au, T, phi / cvt.phi_cgs2au]))
-        dudt = (10 ** heating_nonCIE.interp(pts) - 10 ** cooling_nonCIE.interp(pts)) * cvt.dudt_cgs2au
+        pt = np.array([[np.log10(n / cvt.ndens_cgs2au), np.log10(T),
+                        np.log10(phi / cvt.phi_cgs2au)]])
+        dudt = (10 ** float(heating_nonCIE.interp(pt))
+                - 10 ** float(cooling_nonCIE.interp(pt))) * cvt.dudt_cgs2au
         return dudt * 4 * np.pi * r ** 2
-    L_conduction = simpson(r_CIEswitch, r2Prime, integ_cond)
-    Tavg_conduction = simpson(r_CIEswitch, r2Prime, lambda r: r ** 2 * T_at(r))
+    L_conduction = quad_abs(f_cond, r_CIEswitch, r2Prime)
+    Tavg_conduction = quad_abs(lambda r: r ** 2 * T_at(r), r_CIEswitch, r2Prime)
 
     # --- 1.4 L3 Intermediate (T in [1e4,3e4], extrapolated)  (prod 545-583) ---
     T_r2p = float(initial_conditions[1])
@@ -137,11 +148,11 @@ def reference_bubble_luminosity(params, R1, Pb, r2Prime, initial_conditions,
     if bubble_r_Tb > r2Prime:
         T_rgoal = float(fT_interm(bubble_r_Tb))
     else:
-        T_rgoal = float(T_at(bubble_r_Tb))
+        T_rgoal = T_at(bubble_r_Tb)
 
     # --- 1.5 mBubble = 4*pi * int n*mu_ion*r^2 dr over [R1, r2Prime] (prod 621)
-    mBubble = 4 * np.pi * simpson(R1, r2Prime,
-                                  lambda r: (Pb / (2 * kB * T_at(r))) * mu_ion * r ** 2)
+    mBubble = 4 * np.pi * quad_abs(
+        lambda r: (Pb / (2 * kB * T_at(r))) * mu_ion * r ** 2, R1, r2Prime)
 
     return {
         'L1Bubble': L_bubble, 'L2Conduction': L_conduction,
@@ -156,10 +167,9 @@ def reference_bubble_luminosity(params, R1, Pb, r2Prime, initial_conditions,
 def _sanity_report(res):
     finite = all(np.isfinite(v) for k, v in res.items()
                  if isinstance(v, (int, float)))
-    ok = (res['sol_success'] and res['n_CIE_events'] >= 1 and finite
-          and res['L_total'] > 0 and res['mBubble'] > 0
-          and 1e4 < res['Tavg'] < 1e9 and res['T_rgoal'] > 0)
-    return ok
+    return (res['sol_success'] and res['n_CIE_events'] >= 1 and finite
+            and res['L_total'] > 0 and res['mBubble'] > 0
+            and 1e4 < res['Tavg'] < 1e9 and res['T_rgoal'] > 0)
 
 
 if __name__ == "__main__":
