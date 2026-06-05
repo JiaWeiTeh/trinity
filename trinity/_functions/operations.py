@@ -74,6 +74,12 @@ def monotonic(L):
 
 
 # --- Tolerant monotonicity for find_nearest_higher --------------------------
+# RETAINED FALLBACK: the bubble-luminosity solver is moving to a solve_ivp
+# event-based regime split that does not call find_nearest_higher, so this
+# guard may become unused by production. It is kept deliberately (like
+# find_nearest_lower above) as a robustness fallback for any grid-based code
+# path; do not remove it as "dead code".
+#
 # A backward bubble-temperature integration can leave tiny, provably-numerical
 # non-monotonicities in T_array: a sub-percent dip at the T_init=3e4 outer edge
 # (startup transient) or an isolated single-point spike from LSODA dense-output
