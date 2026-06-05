@@ -298,7 +298,55 @@ def read_param(path2file):
     # =============================================================================
     # Step 6: Compute derived parameters
     # =============================================================================
-    
+
+    # ---- Composition: derive mu_* and chi_e from x_He, Z_He ----
+    # x_He (n_He/n_H) and Z_He (helium ionisation state) are the single source
+    # of truth for the gas composition. Exact-rational (Fraction) arithmetic
+    # keeps the mu_* values byte-identical to the historical 14/11, 14/23,
+    # 14/6, 1.4 encodings when x_He=0.1, Z_He=2 (verified). The 'm_H' unit
+    # factor matches what Step 4 applied to the former numeric defaults.
+    _xHe = Fraction(params['x_He'].value).limit_denominator(10**6)   # 0.1 -> 1/10
+    _ZHe = Fraction(params['Z_He'].value).limit_denominator(10**6)   # 2.0 -> 2
+    _muH    = 1 + 4 * _xHe                       # mass per H nucleus [m_H]
+    _mu_n   = _muH / (1 + _xHe)                  # neutral mean mass/particle
+    _mu_p   = _muH / (2 + _xHe * (1 + _ZHe))     # ionised mean mass/particle
+    _mu_mol = _muH / (Fraction(1, 2) + _xHe)     # molecular mean mass/particle
+    _chi_e  = 1 + _ZHe * _xHe                    # electrons per H nucleus, n_e/n_H
+    _mH_au  = cvt.convert2au('m_H')              # m_H in Msun
+    params['mu_convert'].value = float(_muH)    * _mH_au
+    params['mu_atom'].value    = float(_mu_n)   * _mH_au
+    params['mu_ion'].value     = float(_mu_p)   * _mH_au
+    params['mu_mol'].value     = float(_mu_mol) * _mH_au
+    params['chi_e'] = DescribedItem(
+        value=float(_chi_e),
+        info=('Electron-per-hydrogen-nucleus factor n_e/n_H = 1 + Z_He*x_He '
+              'for the HOT bubble (doubly-ionised He). Derived at load from '
+              'x_He, Z_He. Multiplies n_H^2 in the bubble CIE cooling.'),
+        ori_units='dimensionless',
+    )
+
+    # Shell / HII region (~1e4 K) is singly ionised (Z_He_shell), unlike the
+    # hot doubly-ionised bubble: derive its ionised mu and electron factor.
+    _ZHe_sh = Fraction(params['Z_He_shell'].value).limit_denominator(10**6)  # 1.0 -> 1
+    _mu_p_sh = _muH / (2 + _xHe * (1 + _ZHe_sh))    # singly-ionised mean mass/particle
+    _chi_e_sh = 1 + _ZHe_sh * _xHe                  # electrons per H nucleus (singly)
+    params['mu_ion_shell'] = DescribedItem(
+        value=float(_mu_p_sh) * _mH_au,
+        info=('Ionised mean mass per particle for the ~1e4 K shell / HII region '
+              '(singly-ionised He): mu_H/(2 + x_He*(1+Z_He_shell)). Derived at '
+              'load from x_He, Z_He_shell. Used for the HII gas pressure and the '
+              'shell structure (the hot bubble uses mu_ion instead).'),
+        ori_units='m_H',
+    )
+    params['chi_e_shell'] = DescribedItem(
+        value=float(_chi_e_sh),
+        info=('Electron-per-hydrogen-nucleus factor n_e/n_H = 1 + Z_He_shell*x_He '
+              'for the ~1e4 K shell / HII region (singly-ionised He). Derived at '
+              'load from x_He, Z_He_shell. Multiplies n_H^2 in shell recombination '
+              'and the Stroemgren balance.'),
+        ori_units='dimensionless',
+    )
+
     # Dust cross-section scaling with metallicity
     if params['ZCloud'].value >= params['dust_noZ'].value:
         params['dust_sigma'].value = params['dust_sigma'].value * params['ZCloud'].value

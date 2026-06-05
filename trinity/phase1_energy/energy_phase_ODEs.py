@@ -52,7 +52,7 @@ def get_press_ion(r, params):
     """
     r = np.atleast_1d(r)
     n_r = density_profile.get_density_profile(r, params)
-    P_ion = 2.0 * n_r * params['k_B'].value * params['TShell_ion'].value
+    P_ion = (params['mu_convert'].value / params['mu_ion_shell'].value) * n_r * params['k_B'].value * params['TShell_ion'].value
     return _scalar(P_ion)
 
 

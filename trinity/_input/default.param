@@ -197,21 +197,30 @@ path_cooling_nonCIE    def_dir
 # Physical Constants & Microphysics
 # ==============================================================================
 
-# INFO: Mean molecular weight for neutral atomic gas (HI + He). Dimensionless, in units of m_H. Composition: He:H = 1:10 by number. Formula: (10×1 + 1×4) / 11 = 14/11.
+# INFO: Mean mass per particle for neutral atomic gas (HI + He) = mu_H/(1+x_He). Derived at load from x_He (default 14/11 at x_He=0.1). In units of m_H.
 # UNIT: [m_H]
 mu_atom    14/11
 
-# INFO: Mean molecular weight for fully ionized gas (H+ + He++). Dimensionless, in units of m_H. Composition: He:H = 1:10 by number. Formula: (10×1 + 1×4) / 23 = 14/23.
+# INFO: Mean mass per particle for the HOT bubble interior (fully ionised H+ + He2+) = mu_H/(2+x_He*(1+Z_He)). Derived at load from x_He, Z_He (default 14/23 at x_He=0.1, Z_He=2). The ~1e4 K ionised shell uses mu_ion_shell (singly-ionised He) instead. In units of m_H.
 # UNIT: [m_H]
 mu_ion    14/23
 
-# INFO: Mean molecular weight for molecular gas (H2 + He). Dimensionless, in units of m_H. Composition: He:H = 1:10 by number. Formula: (10×1 + 1×4) / 6 = 14/6.
+# INFO: Mean mass per particle for molecular gas (H2 + He) = mu_H/(0.5+x_He). Derived at load from x_He (default 14/6 at x_He=0.1). In units of m_H.
 # UNIT: [m_H]
 mu_mol    14/6
 
-# INFO: Conversion factor for mass density calculation (mass integration). Use this for n→rho conversion. Independent of ionization state - ionization changes particle counts but NOT total mass.
+# INFO: Mass per hydrogen nucleus mu_H = (1+4*x_He) (=1.4 at x_He=0.1), in units of m_H. Use for the n_H -> rho mass conversion (rho = mu_convert * n_H); independent of ionisation state. Derived at load from x_He. All densities n in TRINITY are hydrogen-nuclei densities n_H.
 # UNIT: [m_H]
 mu_convert    1.4
+
+# INFO: Helium-to-hydrogen number ratio n_He/n_H. Composition source of truth: mu_atom, mu_ion, mu_mol, mu_convert and chi_e are all derived from x_He and Z_He at load (read_param Step 6).
+x_He    0.1
+
+# INFO: Helium ionisation state in the HOT bubble interior (T~1e6-1e7 K): 2 = doubly ionised (He2+). Sets mu_ion and the bubble electron factor chi_e = 1 + Z_He*x_He.
+Z_He    2
+
+# INFO: Helium ionisation state in the ~1e4 K ionised shell / HII region: 1 = singly ionised (He+). Sets mu_ion_shell and chi_e_shell = 1 + Z_He_shell*x_He. (He2+ needs ~1e5 K, so the photoionised shell is singly ionised.)
+Z_He_shell    1
 
 # INFO: Temperature of the neutral shell region.
 TShell_neu    1e2

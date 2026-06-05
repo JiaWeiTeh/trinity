@@ -344,6 +344,10 @@ def _init_bonnor_ebert_cloud(params) -> CloudProperties:
     # Ensure BE-specific params exist (may not be in read_param.py)
     _ensure_be_params_exist(params)
 
+    # Expose the support velocity dispersion sigma = c_s (the transparent
+    # physical quantity behind the effective densBE_Teff). be_result.c_s is cm/s.
+    params['densBE_sigma'].value = be_result.c_s / 1.0e5  # cm/s -> km/s
+
     # Store Lane-Emden interpolation functions
     params['densBE_xi_out'].value = xi_out
     params['densBE_f_rho_rhoc'].value = le_solution.f_rho_rhoc
@@ -464,6 +468,7 @@ def _ensure_be_params_exist(params) -> None:
         'densBE_f_m':        ("Lane-Emden mass interpolation function", True),
         'densBE_xi_out':     ("Dimensionless outer radius at cloud edge", False),
         'densBE_f_rho_rhoc': ("Density ratio interpolation function", True),
+        'densBE_sigma':      ("Effective velocity dispersion sigma = c_s [km/s]", True),
     }
 
     for key, (info, exclude) in be_params_needed.items():

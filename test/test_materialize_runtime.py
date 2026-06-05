@@ -73,12 +73,15 @@ def _step10_entry_state(profile: str) -> dict:
     state = {k: _item(None) for k in inputs}
     state["mCloud_input"] = _item(0.0)                  # Step 6
     state["mCluster"] = _item(0.0)                      # Step 6
+    state["chi_e"] = _item(1.2)                         # Step 6 (composition)
+    state["mu_ion_shell"] = _item(0.0)                  # Step 6 (shell composition)
+    state["chi_e_shell"] = _item(1.1)                   # Step 6 (shell composition)
     state["sps_column_map"] = _item(None)               # Step 7 (sps bundle)
     if profile == "densPL":
         del state["densBE_Omega"]                       # Step 8 pop
     elif profile == "densBE":
         del state["densPL_alpha"]                       # Step 8 pop
-        for k in ("densBE_Teff", "densBE_xi_arr", "densBE_u_arr",
+        for k in ("densBE_Teff", "densBE_sigma", "densBE_xi_arr", "densBE_u_arr",
                   "densBE_dudxi_arr", "densBE_rho_rhoc_arr",
                   "densBE_f_rho_rhoc", "densBE_f_m", "densBE_xi_out"):
             state[k] = _item(None)                      # Step 8 adds

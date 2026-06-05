@@ -146,8 +146,9 @@ class BESphereResult:
         Surface number density (code units)
     T_eff : float [K]
         Effective isothermal temperature
-    c_s : float [pc/Myr]
-        Isothermal sound speed (code units)
+    c_s : float [cm/s]
+        Effective sound speed (= velocity dispersion supporting the BE
+        sphere; turbulent, not thermal, for GMC-mass clouds)
     m_dim : float
         Dimensionless mass
     M_cloud : float [Msun]
@@ -553,12 +554,14 @@ def create_BE_sphere_from_params(params) -> BESphereResult:
     for key, info, exclude in [
         ('densBE_f_m', "Lane-Emden mass interpolation function", True),
         ('densBE_xi_out', "Dimensionless outer radius at cloud edge", False),
+        ('densBE_sigma', "Effective velocity dispersion sigma = c_s [km/s]", True),
     ]:
         if key not in params:
             params[key] = DescribedItem(None, info=info, exclude_from_snapshot=exclude)
 
     # Update params dictionary
     params['densBE_Teff'].value = result.T_eff
+    params['densBE_sigma'].value = result.c_s / 1.0e5  # c_s [cm/s] -> sigma [km/s]
     params['densBE_xi_arr'].value = solution.xi
     params['densBE_u_arr'].value = solution.u
     params['densBE_dudxi_arr'].value = solution.dudxi

@@ -61,7 +61,9 @@ def get_shellODE(y,
 
     sigma_dust = params['dust_sigma'].value
     mu_n = params['mu_atom'].value
-    mu_p = params['mu_ion'].value 
+    mu_p = params['mu_ion_shell'].value   # shell HII is singly ionised (Z_He_shell)
+    mu_H = params['mu_convert'].value
+    chi_e = params['chi_e_shell'].value   # shell electron factor (singly ionised)
     t_ion = params['TShell_ion'].value
     t_neu = params['TShell_neu'].value
     alpha_B = params['caseB_alpha'].value  #cm3/s (au)
@@ -90,12 +92,12 @@ def get_shellODE(y,
 
 
         # number density
-        dndr = mu_p/mu_n/(k_B * t_ion) * (
+        dndr = mu_p/mu_H/(k_B * t_ion) * (
             nShell * sigma_dust / (4 * np.pi * r**2 * c) * (Ln * neg_exp_tau + Li * phi)\
-                + nShell**2 * alpha_B * Li / Qi / c
+                + chi_e * nShell**2 * alpha_B * Li / Qi / c
             )
         # ionising photons
-        dphidr = - 4 * np.pi * r**2 * alpha_B * nShell**2 / Qi - nShell * sigma_dust * phi
+        dphidr = - 4 * np.pi * r**2 * chi_e * alpha_B * nShell**2 / Qi - nShell * sigma_dust * phi
         # optical depth
         dtaudr = nShell * sigma_dust * f_cover
         
@@ -115,7 +117,7 @@ def get_shellODE(y,
             neg_exp_tau = np.exp(-tau)        
             
         # number density
-        dndr = 1/(k_B * t_neu) * (
+        dndr = mu_n/mu_H/(k_B * t_neu) * (
             nShell * sigma_dust / (4 * np.pi * r**2 * c) * (Ln * neg_exp_tau) 
             )
         # optical depth

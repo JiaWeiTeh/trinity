@@ -414,7 +414,7 @@ def _bubble_luminosity_legacy(params, R1, Pb, r2Prime, initial_conditions,
     v_array = psoln[:, 0]
     T_array = psoln[:, 1]
     dTdr_array = psoln[:, 2]
-    n_array = Pb / (2 * params['k_B'].value * T_array)
+    n_array = Pb / ((params['mu_convert'].value / params['mu_ion'].value) * params['k_B'].value * T_array)
 
     logger.debug(f'Bubble structure: r=[{r_array[0]:.4f}, {r_array[-1]:.4f}], '
                  f'T=[{T_array[0]:.2e}, {T_array[-1]:.2e}]'
@@ -470,7 +470,7 @@ def _bubble_luminosity_legacy(params, R1, Pb, r2Prime, initial_conditions,
 
         # calculate quantities
         r_CIEswitch = scipy.optimize.brentq(fT_interp, np.min(r_interp), np.max(r_interp), xtol=1e-8)
-        n_CIEswitch = Pb / (2 * params['k_B'].value * _CIEswitch)
+        n_CIEswitch = Pb / ((params['mu_convert'].value / params['mu_ion'].value) * params['k_B'].value * _CIEswitch)
         dTdr_CIEswitch = fdTdr_interp(r_CIEswitch)
         v_CIEswitch = fv_interp(r_CIEswitch)
 
@@ -491,7 +491,7 @@ def _bubble_luminosity_legacy(params, R1, Pb, r2Prime, initial_conditions,
     # cooling rate [au]
     Lambda_bubble = 10**(cooling_CIE(np.log10(T_bubble))) * cvt.Lambda_cgs2au
 
-    integrand_bubble = n_bubble**2 * Lambda_bubble * 4 * np.pi * r_bubble**2
+    integrand_bubble = params['chi_e'].value * n_bubble**2 * Lambda_bubble * 4 * np.pi * r_bubble**2
     # calculate power loss due to cooling
     L_bubble = np.abs(_trapezoid(integrand_bubble, x=r_bubble))
     # intermediate result for calculation of average temperature [K pc3]
@@ -545,7 +545,7 @@ def _bubble_luminosity_legacy(params, R1, Pb, r2Prime, initial_conditions,
             dTdr_cond = dTdr_array[:index_CIE_switch + 1]
             dTdR_coolingswitch = dTdr_cond[0]
         # calculate array [au]
-        n_cond = Pb / (2 * params['k_B'].value * T_cond)
+        n_cond = Pb / ((params['mu_convert'].value / params['mu_ion'].value) * params['k_B'].value * T_cond)
         phi_cond = params['Qi'].value / (4 * np.pi * r_conduction**2)
         # import values from two cooling curves
         cooling_nonCIE = params['cStruc_cooling_nonCIE'].value
@@ -578,7 +578,7 @@ def _bubble_luminosity_legacy(params, R1, Pb, r2Prime, initial_conditions,
 
     r_interm = np.linspace(r_array[index_cooling_switch], R2_coolingswitch, num=1000, endpoint=True)
     T_interm = fT_interp_interm(r_interm)
-    n_interm = Pb / (2 * params['k_B'].value * T_interm)
+    n_interm = Pb / ((params['mu_convert'].value / params['mu_ion'].value) * params['k_B'].value * T_interm)
     phi_interm = params['Qi'].value / (4 * np.pi * r_interm**2)
     # get cooling, taking into account for both CIE and non-CIE regimes
     L_intermediate = 0.0
@@ -600,7 +600,7 @@ def _bubble_luminosity_legacy(params, R1, Pb, r2Prime, initial_conditions,
             integrand_int = dudt_int * 4 * np.pi * r_interm[mask]**2
         else:
             Lambda_int = 10**(cooling_CIE(np.log10(T_interm[mask]))) * cvt.Lambda_cgs2au
-            integrand_int = n_interm[mask]**2 * Lambda_int * 4 * np.pi * r_interm[mask]**2
+            integrand_int = params['chi_e'].value * n_interm[mask]**2 * Lambda_int * 4 * np.pi * r_interm[mask]**2
         # calculate power loss due to cooling
         L_intermediate += np.abs(_trapezoid(integrand_int, x=r_interm[mask]))
 
@@ -1033,7 +1033,7 @@ def _get_bubble_ODE(r_arr, initial_ODEs, params, Pb: float):
         logger.critical('T is zero in bubble ODE')
         sys.exit()
 
-    ndens = Pb / (2 * params['k_B'].value * T)
+    ndens = Pb / ((params['mu_convert'].value / params['mu_ion'].value) * params['k_B'].value * T)
     phi = params['Qi'].value / (4 * np.pi * r_arr**2)
 
     dudt = net_coolingcurve.get_dudt(params['t_now'].value, ndens, T, phi, params)
@@ -1055,7 +1055,7 @@ def _get_mass_and_grav(n, r, params):
     """Calculate cumulative mass and gravitational potential."""
     # Flip arrays to be monotonically increasing
     r_new = r[::-1]
-    rho_new = n[::-1] * params['mu_ion'].value # Mass density [Msun/pc³]
+    rho_new = n[::-1] * params['mu_convert'].value # Mass density [Msun/pc³] (rho = mu_H * n_H)
 
     # Calculate cumulative mass using O(n) cumulative integration
     # instead of O(n²) loop with simps

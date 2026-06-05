@@ -190,8 +190,10 @@ class MonotonicError(Exception):
 
 def get_soundspeed(T, params):
     """
-    This function computes the isothermal soundspeed, c_s, given temperature
-    T and mean molecular weight mu.
+    Compute the adiabatic soundspeed
+        c_s = sqrt(gamma_adia * k_B * T / mu),
+    using the mean mass per particle mu = mu_ion (T > 1e4 K, ionised) or
+    mu_atom (T <= 1e4 K, neutral) -- NOT mu_convert (mass per H nucleus).
 
     Parameters
     ----------
@@ -200,7 +202,7 @@ def get_soundspeed(T, params):
 
     Returns
     -------
-    The isothermal soundspeed c_s (Units: Myr/pc)
+    The adiabatic soundspeed c_s (Units: pc/Myr)
 
     """
     if T > 1e4:

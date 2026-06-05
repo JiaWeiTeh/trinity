@@ -192,7 +192,7 @@ def run_energy(params):
         # Compute P_HII from Strömgren ionization balance in shell (n_IF_Str)
         n_IF_Str = shell_data.n_IF_Str
         if params['include_PHII'].value and n_IF_Str > 0:
-            P_HII = 2.0 * n_IF_Str * params['k_B'].value * params['TShell_ion'].value
+            P_HII = (params['mu_convert'].value / params['mu_ion_shell'].value) * n_IF_Str * params['k_B'].value * params['TShell_ion'].value
         else:
             P_HII = 0.0
         params['P_HII'].value = P_HII

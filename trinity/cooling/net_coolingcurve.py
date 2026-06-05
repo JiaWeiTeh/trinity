@@ -123,7 +123,7 @@ def get_dudt(age, ndens, T, phi, params_dict):
     elif np.log10(T) >= CIE_Tcutoff:
         # print(f'{cpr.WARN}Entering CIE regime...{cpr.END}')
         # get CIE cooling rate
-        dudt = ndens**2 * Lambda_CIE
+        dudt = params_dict['chi_e'].value * ndens**2 * Lambda_CIE
         return -1 * dudt * cvt.dudt_cgs2au
         
     # if temperature is between, do interpolation
@@ -146,7 +146,7 @@ def get_dudt(age, ndens, T, phi, params_dict):
     
         # # get CIE cooling rate
         Lambda = CIE.get_Lambda(10**CIE_Tcutoff, CIE_interp, params_dict['ZCloud'].value)
-        dudt_CIE = (ndens**2 * Lambda)#.to(u.erg / u.cm**3 / u.s)
+        dudt_CIE = (params_dict['chi_e'].value * ndens**2 * Lambda)#.to(u.erg / u.cm**3 / u.s)
         
         # =============================================================================
         # Do interpolation now

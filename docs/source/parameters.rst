@@ -552,28 +552,63 @@ Physical constants
 Standard physical constants. Typically not modified. Defaults are shown
 as they appear in the registry (fractions where exact).
 
-**Mean molecular weights** (in units of :math:`m_{\rm H}`):
+**Gas composition.** The helium fraction ``x_He`` (:math:`=n_{\rm He}/n_{\rm H}`)
+and the helium ionisation states ``Z_He`` (hot bubble) and ``Z_He_shell``
+(:math:`\sim10^4`\ K shell / HII region) are the single source of truth: the mean
+masses per particle and electron factors below are all *derived* from them at
+load. **All number densities** :math:`n` **in TRINITY are hydrogen-nuclei
+densities** :math:`n_{\rm H}`, with mass density :math:`\rho=\mu_{\rm H}\,n_{\rm H}`.
 
-.. list-table::
-   :widths: 20 20 60
+.. list-table:: Composition inputs
+   :widths: 20 16 64
    :header-rows: 1
 
    * - Parameter
      - Default
      - Description
-   * - ``mu_atom``
-     - ``14/11``
-     - Neutral atomic gas (HI + He), :math:`\approx 1.273`.
-   * - ``mu_ion``
-     - ``14/23``
-     - Fully ionized gas (H+ + He++), :math:`\approx 0.609`.
-   * - ``mu_mol``
-     - ``14/6``
-     - Molecular gas (H2 + He), :math:`\approx 2.333`.
+   * - ``x_He``
+     - ``0.1``
+     - Helium-to-hydrogen number ratio :math:`n_{\rm He}/n_{\rm H}`.
+   * - ``Z_He``
+     - ``2``
+     - He ionisation in the hot bubble (2 = doubly ionised, He\ :math:`^{2+}`).
+   * - ``Z_He_shell``
+     - ``1``
+     - He ionisation in the :math:`\sim10^4`\ K shell (1 = singly ionised, He\ :math:`^{+}`).
+
+**Derived mean masses per particle** (units of :math:`m_{\rm H}`) and electron
+factors :math:`\chi_e=n_e/n_{\rm H}`:
+
+.. list-table::
+   :widths: 22 16 62
+   :header-rows: 1
+
+   * - Parameter
+     - Default
+     - Description
    * - ``mu_convert``
      - ``1.4``
-     - Mass-density conversion factor (n → :math:`\rho`), independent of
-       ionization state.
+     - :math:`\mu_{\rm H}=(1+4x_{\rm He})`, mass per H nucleus; use for
+       :math:`\rho=\mu_{\rm H}n_{\rm H}` (ionisation-independent).
+   * - ``mu_atom``
+     - ``14/11``
+     - Neutral atomic gas, :math:`\mu_{\rm H}/(1+x_{\rm He})\approx1.273`.
+   * - ``mu_mol``
+     - ``14/6``
+     - Molecular gas, :math:`\mu_{\rm H}/(0.5+x_{\rm He})\approx2.333`.
+   * - ``mu_ion``
+     - ``14/23``
+     - Hot bubble (He\ :math:`^{2+}`),
+       :math:`\mu_{\rm H}/(2+x_{\rm He}(1+Z_{\rm He}))\approx0.609`.
+   * - ``mu_ion_shell``
+     - *(derived)*
+     - :math:`\sim10^4`\ K shell (He\ :math:`^{+}`), :math:`=14/22\approx0.636`.
+   * - ``chi_e``
+     - *(derived)*
+     - Bubble electron factor :math:`1+Z_{\rm He}\,x_{\rm He}=1.2`.
+   * - ``chi_e_shell``
+     - *(derived)*
+     - Shell electron factor :math:`1+Z_{\rm He,shell}\,x_{\rm He}=1.1`.
 
 **Temperatures, dust, and fundamental constants:**
 
@@ -592,7 +627,8 @@ as they appear in the registry (fractions where exact).
    * - ``TShell_ion``
      - ``1e4``
      - K
-     - Ionized shell temperature.
+     - Ionised shell / HII-region temperature (He singly ionised; see
+       ``Z_He_shell``).
    * - ``dust_sigma``
      - ``1.5e-21``
      - cm\ :math:`^2`

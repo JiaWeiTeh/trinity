@@ -318,7 +318,8 @@ def test_active_when_only_on_conditional_specs() -> None:
     with_active = {s.name for s in SPECS if s.active_when is not None}
     expected = {
         "densBE_Omega", "densPL_alpha",
-        "densBE_Teff", "densBE_xi_arr", "densBE_u_arr", "densBE_dudxi_arr",
+        "densBE_Teff", "densBE_sigma",
+        "densBE_xi_arr", "densBE_u_arr", "densBE_dudxi_arr",
         "densBE_rho_rhoc_arr", "densBE_f_rho_rhoc", "densBE_f_m", "densBE_xi_out",
     }
     assert with_active == expected
