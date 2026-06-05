@@ -74,6 +74,8 @@ def _step10_entry_state(profile: str) -> dict:
     state["mCloud_input"] = _item(0.0)                  # Step 6
     state["mCluster"] = _item(0.0)                      # Step 6
     state["chi_e"] = _item(1.2)                         # Step 6 (composition)
+    state["mu_ion_shell"] = _item(0.0)                  # Step 6 (shell composition)
+    state["chi_e_shell"] = _item(1.1)                   # Step 6 (shell composition)
     state["sps_column_map"] = _item(None)               # Step 7 (sps bundle)
     if profile == "densPL":
         del state["densBE_Omega"]                       # Step 8 pop

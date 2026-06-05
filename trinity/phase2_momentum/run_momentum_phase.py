@@ -241,7 +241,7 @@ def compute_forces_momentum_pure(
             n_r = density_profile.get_density_profile(np.array([rShell]), params)
             if hasattr(n_r, '__len__') and len(n_r) == 1:
                 n_r = n_r[0]
-            P_ext = (params['mu_convert'].value / params['mu_ion'].value) * n_r * k_B * TShell_ion
+            P_ext = (params['mu_convert'].value / params['mu_ion_shell'].value) * n_r * k_B * TShell_ion
         except Exception:
             P_ext = 0.0
     else:
@@ -425,7 +425,7 @@ def get_ODE_momentum_pure(t: float, y: np.ndarray, snapshot: MomentumODESnapshot
             n_r = density_profile.get_density_profile(np.array([rShell]), params)
             if hasattr(n_r, '__len__') and len(n_r) == 1:
                 n_r = n_r[0]
-            P_ext = (params['mu_convert'].value / params['mu_ion'].value) * n_r * k_B * snapshot.TShell_ion
+            P_ext = (params['mu_convert'].value / params['mu_ion_shell'].value) * n_r * k_B * snapshot.TShell_ion
         except Exception:
             P_ext = 0.0
     else:
@@ -627,7 +627,7 @@ def run_phase_momentum(params) -> MomentumPhaseResults:
         # Compute P_HII from Strömgren ionization balance in shell (n_IF_Str)
         n_IF_Str = shell_props.n_IF_Str
         if params['include_PHII'].value and n_IF_Str > 0:
-            P_HII = (params['mu_convert'].value / params['mu_ion'].value) * n_IF_Str * params['k_B'].value * params['TShell_ion'].value
+            P_HII = (params['mu_convert'].value / params['mu_ion_shell'].value) * n_IF_Str * params['k_B'].value * params['TShell_ion'].value
         else:
             P_HII = 0.0
         params['P_HII'].value = P_HII

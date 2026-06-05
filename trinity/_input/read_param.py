@@ -320,8 +320,30 @@ def read_param(path2file):
     params['chi_e'] = DescribedItem(
         value=float(_chi_e),
         info=('Electron-per-hydrogen-nucleus factor n_e/n_H = 1 + Z_He*x_He '
-              '(derived at load from x_He, Z_He). Multiplies n_H^2 in '
-              'recombination, Stroemgren balance, and CIE cooling.'),
+              'for the HOT bubble (doubly-ionised He). Derived at load from '
+              'x_He, Z_He. Multiplies n_H^2 in the bubble CIE cooling.'),
+        ori_units='dimensionless',
+    )
+
+    # Shell / HII region (~1e4 K) is singly ionised (Z_He_shell), unlike the
+    # hot doubly-ionised bubble: derive its ionised mu and electron factor.
+    _ZHe_sh = Fraction(params['Z_He_shell'].value).limit_denominator(10**6)  # 1.0 -> 1
+    _mu_p_sh = _muH / (2 + _xHe * (1 + _ZHe_sh))    # singly-ionised mean mass/particle
+    _chi_e_sh = 1 + _ZHe_sh * _xHe                  # electrons per H nucleus (singly)
+    params['mu_ion_shell'] = DescribedItem(
+        value=float(_mu_p_sh) * _mH_au,
+        info=('Ionised mean mass per particle for the ~1e4 K shell / HII region '
+              '(singly-ionised He): mu_H/(2 + x_He*(1+Z_He_shell)). Derived at '
+              'load from x_He, Z_He_shell. Used for the HII gas pressure and the '
+              'shell structure (the hot bubble uses mu_ion instead).'),
+        ori_units='m_H',
+    )
+    params['chi_e_shell'] = DescribedItem(
+        value=float(_chi_e_sh),
+        info=('Electron-per-hydrogen-nucleus factor n_e/n_H = 1 + Z_He_shell*x_He '
+              'for the ~1e4 K shell / HII region (singly-ionised He). Derived at '
+              'load from x_He, Z_He_shell. Multiplies n_H^2 in shell recombination '
+              'and the Stroemgren balance.'),
         ori_units='dimensionless',
     )
 

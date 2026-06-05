@@ -61,9 +61,9 @@ def get_shellODE(y,
 
     sigma_dust = params['dust_sigma'].value
     mu_n = params['mu_atom'].value
-    mu_p = params['mu_ion'].value
+    mu_p = params['mu_ion_shell'].value   # shell HII is singly ionised (Z_He_shell)
     mu_H = params['mu_convert'].value
-    chi_e = params['chi_e'].value
+    chi_e = params['chi_e_shell'].value   # shell electron factor (singly ionised)
     t_ion = params['TShell_ion'].value
     t_neu = params['TShell_neu'].value
     alpha_B = params['caseB_alpha'].value  #cm3/s (au)

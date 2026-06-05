@@ -112,7 +112,7 @@ def shell_structure_pure(params) -> ShellProperties:
     mShell0 = 0
 
     # Density at inner edge of shell
-    nShell0 = (params['mu_ion'].value / params['mu_convert'].value /
+    nShell0 = (params['mu_ion_shell'].value / params['mu_convert'].value /
                (params['k_B'].value * params['TShell_ion'].value) * params['Pb'].value)
     shell_n0 = nShell0  # Store for output
 
@@ -132,7 +132,7 @@ def shell_structure_pure(params) -> ShellProperties:
     rShell_arr_ion = np.array([])
 
     # Maximum shell radius (for integration bounds)
-    max_shellRadius = (3 * Qi / (4 * np.pi * params['chi_e'].value * params['caseB_alpha'].value * nShell0**2))**(1/3) + rShell_start
+    max_shellRadius = (3 * Qi / (4 * np.pi * params['chi_e_shell'].value * params['caseB_alpha'].value * nShell0**2))**(1/3) + rShell_start
 
     # Integration parameters
     nsteps = 1e3
@@ -236,7 +236,7 @@ def shell_structure_pure(params) -> ShellProperties:
     if (_vol_ion > 0.0) and (_Qi_absorbed > 0.0):
         n_IF_Str = np.sqrt(
             3.0 * _Qi_absorbed /
-            (4.0 * np.pi * params['chi_e'].value * params['caseB_alpha'].value * _vol_ion)
+            (4.0 * np.pi * params['chi_e_shell'].value * params['caseB_alpha'].value * _vol_ion)
         )
         # Cap: thin ionised skin → P_HII cannot exceed P_b
         n_IF_Str = min(n_IF_Str, shell_n0)
@@ -270,7 +270,7 @@ def shell_structure_pure(params) -> ShellProperties:
         )
         phi_hydrogen = np.sum(
             -4 * np.pi * rShell_arr_ion[:-1]**2 / Qi *
-            params['chi_e'].value * params['caseB_alpha'].value * nShell_arr_ion[:-1]**2 * dr_ion_arr
+            params['chi_e_shell'].value * params['caseB_alpha'].value * nShell_arr_ion[:-1]**2 * dr_ion_arr
         )
 
         if (phi_dust + phi_hydrogen) == 0.0:
@@ -295,7 +295,7 @@ def shell_structure_pure(params) -> ShellProperties:
             logger.debug('φ depleted with mass remaining — integrating neutral region')
 
             # Temperature/density discontinuity at boundary
-            nShell0 = (nShell0 * params['mu_atom'].value / params['mu_ion'].value *
+            nShell0 = (nShell0 * params['mu_atom'].value / params['mu_ion_shell'].value *
                       params['TShell_ion'].value / params['TShell_neu'].value)
             tau0_neu = tau0_ion
 

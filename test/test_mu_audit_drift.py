@@ -67,17 +67,15 @@ def test_phase0_chi_e_is_new_and_correct():
 # Phase 1 — ionised-gas pressure prefactor: original 2.0 -> mu_H/mu_p
 # =====================================================================
 def test_phase1_pressure_factor_vs_original():
+    """The ~1e4 K HII / shell pressure uses the SINGLY-ionised shell factor
+    mu_H/mu_p,shell = mu_convert/mu_ion_shell = 2.2 -- NOT the bubble's
+    doubly-ionised 2.3, and NOT the original pure-H 2.0."""
     p = _p()
-    f_new = p["mu_convert"].value / p["mu_ion"].value  # implemented factor
+    f_new = p["mu_convert"].value / p["mu_ion_shell"].value  # implemented HII factor
     f_orig = 2.0  # pre-fix pure-hydrogen value
-    assert abs(f_new - 2.3) < 1e-12  # He-aware mu_H/mu_p
-    assert abs(f_new / f_orig - 1.15) < 1e-12  # intended change ratio
-
-    # For identical (n, kB, T) the refined pressure is exactly 1.15x original.
-    n, kB, T = 3.3e4, p["k_B"].value, p["TShell_ion"].value
-    P_orig = f_orig * n * kB * T
-    P_new = f_new * n * kB * T
-    assert np.isclose(P_new / P_orig, 1.15, rtol=1e-12)
+    assert abs(f_new - 2.2) < 1e-12                                  # singly mu_H/mu_p,shell
+    assert abs(p["mu_convert"].value / p["mu_ion"].value - 2.3) < 1e-12  # bubble stays doubly
+    assert np.isclose(f_new / f_orig, 1.1, rtol=1e-12)              # intended change vs original
 
 
 def test_phase1_all_eleven_sites_refined_and_no_original_remains():
@@ -90,15 +88,18 @@ def test_phase1_all_eleven_sites_refined_and_no_original_remains():
         "trinity/phase1c_transition/run_transition_phase.py",
         "trinity/phase2_momentum/run_momentum_phase.py",
     ]
-    factor = "(params['mu_convert'].value / params['mu_ion'].value)"
+    factor = "(params['mu_convert'].value / params['mu_ion_shell'].value)"
     total = 0
     for rel in files:
         s = _src(rel)
         for orig in ("P_ion = 2.0 *", "P_HII = 2.0 *", "P_ext = 2.0 *",
                      "P_HII_f = 2.0 *"):
             assert orig not in s, f"{rel}: original op '{orig}' reverted"
+        # the doubly-ionised bubble factor must NOT leak into the HII/shell sites
+        assert "params['mu_convert'].value / params['mu_ion'].value" not in s, (
+            f"{rel}: HII pressure must use mu_ion_shell (singly), not mu_ion")
         total += s.count(factor)
-    assert total == 11, f"expected 11 refined ionised-pressure sites, found {total}"
+    assert total == 11, f"expected 11 refined HII-pressure sites, found {total}"
 
 
 # =====================================================================
@@ -181,18 +182,19 @@ def _shell_params():
 
 
 def test_phase3_shellODE_ion_vs_original():
-    """Ionised shell ODE: dndr must equal the REFINED formula (mu_p/mu_H
-    prefactor + chi_e recombination) and NOT the original (mu_p/mu_n, no
-    chi_e); dphidr recomb gains chi_e; dtaudr (dust) is invariant."""
+    """Ionised shell ODE uses the SINGLY-ionised shell composition: prefactor
+    mu_p,shell/mu_H + chi_e_shell recombination -- NOT the pre-audit (mu_ion/
+    mu_atom, no chi_e), and NOT the bubble's doubly-ionised mu_ion/chi_e."""
     from trinity.shell_structure.get_shellODE import get_shellODE
     p = _shell_params()
     n, phi, tau, r = 1.0e3, 0.5, 0.3, 5.0
     dndr, dphidr, dtaudr = get_shellODE([n, phi, tau], r, 1.0, True, p)
 
     mu_n = p["mu_atom"].value
-    mu_p = p["mu_ion"].value
+    mu_p_shell = p["mu_ion_shell"].value   # shell HII is singly-ionised
+    mu_ion = p["mu_ion"].value             # bubble (doubly) -- must NOT drive the shell
     mu_H = p["mu_convert"].value
-    chi = p["chi_e"].value
+    chi_sh = p["chi_e_shell"].value
     kB = p["k_B"].value
     c = p["c_light"].value
     sd = p["dust_sigma"].value
@@ -203,13 +205,13 @@ def test_phase3_shellODE_ion_vs_original():
     net = np.exp(-tau)
     dust = n * sd / (4 * np.pi * r**2 * c) * (Ln * net + Li * phi)
     recomb = n**2 * aB * Li / Qi / c
-    dndr_refined = mu_p / mu_H / (kB * tion) * (dust + chi * recomb)
-    dndr_original = mu_p / mu_n / (kB * tion) * (dust + recomb)
+    dndr_refined = mu_p_shell / mu_H / (kB * tion) * (dust + chi_sh * recomb)
+    dndr_original = mu_ion / mu_n / (kB * tion) * (dust + recomb)  # pre-audit
 
-    assert np.isclose(dndr, dndr_refined, rtol=1e-12)      # function == refined
-    assert not np.isclose(dndr, dndr_original, rtol=1e-6)  # and != original
+    assert np.isclose(dndr, dndr_refined, rtol=1e-12)      # function == refined (singly)
+    assert not np.isclose(dndr, dndr_original, rtol=1e-6)  # and != pre-audit
 
-    dphidr_refined = -4 * np.pi * r**2 * chi * aB * n**2 / Qi - n * sd * phi
+    dphidr_refined = -4 * np.pi * r**2 * chi_sh * aB * n**2 / Qi - n * sd * phi
     assert np.isclose(dphidr, dphidr_refined, rtol=1e-12)
     assert np.isclose(dtaudr, n * sd * 1.0, rtol=1e-12)    # dust term: invariant
 
@@ -239,16 +241,18 @@ def test_phase3_shellODE_neutral_vs_original():
 
 
 def test_phase3_shell_structure_coefficients_and_no_original():
-    """Closed-form coefficients + structural anti-drift for shell_structure.py:
-    BC mu_ion/mu_convert; mass/grav/tau weights mu_convert x8; chi_e x3;
-    mu_atom survives ONLY at the convention-independent I-front jump (:298)."""
+    """shell_structure.py uses the SINGLY-ionised shell composition: BC and
+    I-front jump on mu_ion_shell; chi_e_shell x3; mass/grav/tau weights
+    mu_convert x8; mu_atom only at the jump numerator; the bubble's doubly-
+    ionised mu_ion / chi_e never appear in the shell."""
     s = _src("trinity/shell_structure/shell_structure.py")
-    assert "params['mu_ion'].value / params['mu_convert'].value" in s   # refined BC
-    assert "params['mu_ion'].value / params['mu_atom'].value" not in s  # original BC gone
+    assert "params['mu_ion_shell'].value / params['mu_convert'].value" in s  # refined BC (singly)
+    assert "params['mu_ion'].value" not in s            # bubble (doubly) mu_ion must not leak
     assert s.count("params['mu_convert'].value") == 8   # 7 mass/grav/tau + BC
-    assert s.count("params['mu_atom'].value") == 1      # only the I-front jump
-    assert "params['mu_atom'].value / params['mu_ion'].value" in s      # the :298 jump
-    assert s.count("params['chi_e'].value") == 3        # max_shellRadius, n_IF_Str, phi_hydrogen
+    assert s.count("params['mu_atom'].value") == 1      # only the I-front jump numerator
+    assert "params['mu_atom'].value / params['mu_ion_shell'].value" in s  # the :298 jump (singly)
+    assert s.count("params['chi_e_shell'].value") == 3  # max_shellRadius, n_IF_Str, phi_hydrogen
+    assert "params['chi_e'].value" not in s             # bubble chi_e must not leak
 
 
 def test_phase3_coefficients_reduce_to_original_at_pure_H():
@@ -300,3 +304,27 @@ def test_phase6b_densBE_sigma_exposed_and_Teff_mu_unchanged():
     Teff_orig = (p["mu_convert"].value * MSUN_TO_G * res.c_s**2
                  / (p["gamma_adia"].value * K_B_CGS))
     assert np.isclose(p["densBE_Teff"].value, Teff_orig, rtol=1e-9)
+
+
+# =====================================================================
+# Phase A — region-dependent He ionisation (bubble doubly / shell singly)
+# =====================================================================
+def test_phaseA_region_dependent_ionisation():
+    """Hot bubble is doubly-ionised (Z_He=2); the ~1e4 K shell/HII region is
+    singly-ionised (Z_He_shell=1). The two composition sets must not cross-leak."""
+    import trinity._functions.unit_conversions as cvt
+    p = _p()
+    mH = cvt.convert2au("m_H")
+    # bubble (doubly): Z_He=2 -> mu_ion=14/23, chi_e=1.2
+    assert p["Z_He"].value == 2
+    assert np.isclose(p["mu_ion"].value / mH, 14 / 23, rtol=1e-12)
+    assert np.isclose(p["chi_e"].value, 1.2, rtol=1e-12)
+    # shell/HII (singly): Z_He_shell=1 -> mu_ion_shell=14/22, chi_e_shell=1.1
+    assert p["Z_He_shell"].value == 1
+    assert np.isclose(p["mu_ion_shell"].value / mH, 14 / 22, rtol=1e-12)
+    assert np.isclose(p["chi_e_shell"].value, 1.1, rtol=1e-12)
+    # no cross-leak: bubble code keeps mu_ion (doubly) and never uses *_shell;
+    # shell code (checked elsewhere) never uses the bubble mu_ion/chi_e.
+    bub = _src("trinity/bubble_structure/bubble_luminosity.py")
+    assert "params['mu_convert'].value / params['mu_ion'].value" in bub  # bubble n keeps doubly
+    assert "mu_ion_shell" not in bub and "chi_e_shell" not in bub

@@ -216,8 +216,11 @@ mu_convert    1.4
 # INFO: Helium-to-hydrogen number ratio n_He/n_H. Composition source of truth: mu_atom, mu_ion, mu_mol, mu_convert and chi_e are all derived from x_He and Z_He at load (read_param Step 6).
 x_He    0.1
 
-# INFO: Helium ionisation state in the ionised gas (2 = doubly ionised). Sets the electron-per-hydrogen factor chi_e = 1 + Z_He*x_He.
+# INFO: Helium ionisation state in the HOT bubble interior (T~1e6-1e7 K): 2 = doubly ionised (He2+). Sets mu_ion and the bubble electron factor chi_e = 1 + Z_He*x_He.
 Z_He    2
+
+# INFO: Helium ionisation state in the ~1e4 K ionised shell / HII region: 1 = singly ionised (He+). Sets mu_ion_shell and chi_e_shell = 1 + Z_He_shell*x_He. (He2+ needs ~1e5 K, so the photoionised shell is singly ionised.)
+Z_He_shell    1
 
 # INFO: Temperature of the neutral shell region.
 TShell_neu    1e2
