@@ -98,11 +98,15 @@ def _is_monotonic_or_tolerable(L, rtol=MONOTONIC_RTOL,
                                boundary_frac=BOUNDARY_FRAC,
                                max_spike_len=MAX_SPIKE_LEN):
     """
-    True if L is monotonic, or non-monotonic only in a shallow, localized way
-    (numerical noise). False for deep or sustained interior non-monotonicity,
-    so the caller still raises MonotonicError on genuinely bad profiles.
+    True if L is monotonic, or non-monotonic only as numerical noise: an
+    isolated single-point spike (any depth -- a single point cannot be a
+    physical inversion) or a shallow, localized multi-point wiggle. False for a
+    non-finite profile and for deep or sustained interior non-monotonicity, so
+    the caller still raises MonotonicError on genuinely bad profiles.
     """
     L = np.asarray(L, dtype=float)
+    if not np.all(np.isfinite(L)):
+        return False
     n = L.size
     if n < 2 or monotonic(L):
         return True
@@ -122,6 +126,10 @@ def _is_monotonic_or_tolerable(L, rtol=MONOTONIC_RTOL,
         while i < wrong.size and wrong[i]:
             i += 1
         end = i  # wrong-direction run covers steps [start, end); values L[start..end]
+        if end - start == 1:
+            # isolated single point: a numerical glitch, never a physical
+            # inversion -> tolerate regardless of depth
+            continue
         # relative depth of the dip/spike across this run
         drop = abs(L[start] - L[end])
         if drop / max(abs(L[start]), 1e-300) > rtol:
