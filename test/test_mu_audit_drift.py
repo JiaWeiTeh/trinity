@@ -262,3 +262,41 @@ def test_phase3_coefficients_reduce_to_original_at_pure_H():
     chi_e = 1 + ZHe * xHe
     assert mu_n == muH    # => mu_p/mu_H == mu_p/mu_n (original prefactor) at x_He=0
     assert chi_e == 1     # => recomb/Stromgren collapse to the original
+
+
+# =====================================================================
+# Phase 6 — sound-speed docstring (6A) + BE sigma expose (no mu/structure change)
+# =====================================================================
+def test_phase6a_get_soundspeed_docstring_and_value():
+    """6A is docstring-only: 'adiabatic' + 'pc/Myr', and the returned value is
+    unchanged (still sqrt(gamma*kB*T/mu_ion) for the hot bubble)."""
+    import trinity._functions.operations as ops
+    import trinity._functions.unit_conversions as cvt
+    doc = ops.get_soundspeed.__doc__.lower()
+    assert "adiabatic" in doc and "isothermal" not in doc
+    assert "pc/myr" in doc and "myr/pc" not in doc
+    p = _p()
+    T = 1.0e6
+    mu = p["mu_ion"].value * cvt.Msun2g
+    expect = np.sqrt(p["gamma_adia"].value * (p["k_B"].value * cvt.k_B_au2cgs)
+                     * T / mu) * cvt.v_cms2au
+    assert np.isclose(ops.get_soundspeed(T, p), expect, rtol=1e-12)
+
+
+def test_phase6b_densBE_sigma_exposed_and_Teff_mu_unchanged():
+    """6B exposes sigma = c_s [km/s] but does NOT touch the BE EOS mu/gamma:
+    densBE_Teff still equals the ORIGINAL mu_convert*c_s^2/(gamma*kB), so the
+    cloud structure is provably unchanged (this rejects the abandoned mu_mol
+    plan)."""
+    from trinity.cloud_properties.bonnorEbertSphere import (
+        create_BE_sphere_from_params, K_B_CGS, MSUN_TO_G,
+    )
+    p = read_param(str(REPO / "param" / "cloud_example_BE.param"))
+    res = create_BE_sphere_from_params(p)
+    # sigma is the support velocity dispersion c_s, in km/s
+    assert np.isclose(p["densBE_sigma"].value, res.c_s / 1.0e5, rtol=1e-12)
+    assert p["densBE_sigma"].ori_units == "km/s"
+    # densBE_Teff still uses the ORIGINAL mu_convert + gamma_adia (no mu_mol drift)
+    Teff_orig = (p["mu_convert"].value * MSUN_TO_G * res.c_s**2
+                 / (p["gamma_adia"].value * K_B_CGS))
+    assert np.isclose(p["densBE_Teff"].value, Teff_orig, rtol=1e-9)

@@ -79,7 +79,7 @@ def _step10_entry_state(profile: str) -> dict:
         del state["densBE_Omega"]                       # Step 8 pop
     elif profile == "densBE":
         del state["densPL_alpha"]                       # Step 8 pop
-        for k in ("densBE_Teff", "densBE_xi_arr", "densBE_u_arr",
+        for k in ("densBE_Teff", "densBE_sigma", "densBE_xi_arr", "densBE_u_arr",
                   "densBE_dudxi_arr", "densBE_rho_rhoc_arr",
                   "densBE_f_rho_rhoc", "densBE_f_m", "densBE_xi_out"):
             state[k] = _item(None)                      # Step 8 adds
