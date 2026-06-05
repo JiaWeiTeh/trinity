@@ -329,44 +329,32 @@ but the docstring says "isothermal", and "Units: Myr/pc" is inverted
 - clarify μ is `mu_ion` (T>1e4) / `mu_atom` (else), i.e. mean mass per particle.
 **No code line changes.** Verify: value identical before/after; suite green.
 
-### 6B — BE `densBE_Teff` → `μ_mol` + isothermal (diagnostic only; structure PROVABLY unchanged)
-**Physics:** BE sphere is isothermal (paper *and* `BESphereResult` docstring say so).
-`c_s²=k_B T/μ ⇒ T=μ c_s²/k_B` (no γ); the cloud is **molecular** ⇒ `μ=μ_mol=14/6`.
-Code now: `T_eff = μ_convert c_s²/(γ k_B)` — wrong μ (mass-per-H) **and** spurious γ.
-**Round-trip safety (the whole point):** `T_eff` is computed once
-(`create_BE_sphere:430`) and inverted back to `c_s` (`r2xi:603`, `xi2r:643`); the
-cloud structure (`ξ=√(4πGρ_core/c_s²)·r`, `n(r)`, `r_out`, mass) depends only on
-`c_s` and `ρ_core`. If all three sites use the **same** `μ_thermal` and drop γ
-**together**, `c_s` reconstructs exactly → **structure byte-identical**; only the
-printed `T_eff` changes (by exactly `μ_mol/μ_convert · γ = (5/3)·(5/3) = 25/9 ≈ 2.78×`).
-`ρ_core` stays `μ_convert` (mass) at **all** sites (`:402,:608,:648`).
+### 6B — REJECTED (μ_mol); replaced by expose-σ + relabel. ✓ IMPLEMENTED (09cdfe6)
+**Why μ_mol is wrong (computed, not assumed):** for a real BE param (M=10⁶ M⊙,
+n_core=10⁴ cm⁻³) the code gives `c_s = 10.5 km/s`, `densBE_Teff ≈ 1.1×10⁴ K`. The
+thermal molecular sound speed at 10 K is 0.19 km/s — the BE `c_s` is **56× thermal**:
+it is the **turbulent support velocity dispersion** (Larson-law for a ~16 pc GMC),
+not a thermal sound speed. A thermal BE sphere at 10 K has a Jeans/BE mass ~1 M⊙
+(Barnard-68 scale); you cannot make a 10⁶ M⊙ BE sphere thermal. So `T_eff` is high
+*because the support is turbulent*, and **no μ fixes it** — `μ_mol (2.33) >
+μ_convert (1.4)` makes `T_eff` **2.78× hotter** (3.1×10⁴ K), the opposite of the
+goal. The earlier "make `T_eff` physical via μ" premise was false.
 
-**Edits (verified line/arg):**
-- `create_BE_sphere` signature `:297-305`: replace `gamma: float = 5.0/3.0` with
-  `mu_thermal: float = 14.0/6.0`. (`gamma` is used **only** at `:430` — confirmed —
-  so removing it is clean.)
-- `:430`: `T_eff = mu * MSUN_TO_G * c_s**2 / (gamma * K_B_CGS)` →
-  `T_eff = mu_thermal * MSUN_TO_G * c_s**2 / K_B_CGS`. (`mu` at `:402` for ρ_core
-  unchanged.)
-- `r2xi` `:599` drop `gamma = params['gamma_adia'].value`; add
-  `mu_thermal = params['mu_mol'].value`; `:603` →
-  `c_s = np.sqrt(K_B_CGS * T_eff / (mu_thermal * MSUN_TO_G))`. Keep `mu=mu_convert`
-  for ρ_core (`:608`).
-- `xi2r` `:639`,`:643`: same as r2xi.
-- **4 callers** drop `gamma=gamma`, add `mu_thermal=params['mu_mol'].value`:
-  `create_BE_sphere_from_params:542-549` (and drop its now-unused `gamma` read `:536`
-  *only if* unused elsewhere — verify), `get_InitCloudProp:324-331`,
-  `validate_gmc:420-427` & `:587-591`. (Leave each caller's local `gamma` read alone
-  unless confirmed unused — it may serve other code.)
+**What was done instead (no μ/γ/structure change):**
+- New derived param **`densBE_sigma = c_s [km/s]`** (mirrors `densBE_Teff`:
+  `derived_init`, `active_when=_active_densBE`, `run_const`), set in both BE paths.
+- **Relabel** `densBE_Teff` as an *effective (turbulent)* temperature (encodes `c_s`
+  for the r↔ξ round-trip), and fix `BESphereResult.c_s` units (`pc/Myr`→`cm/s`).
+- `μ`/`γ` untouched ⇒ `densBE_Teff`, `rCloud`, `n(r)` **byte-identical** (verified).
+- Tests: `test_registry` active_when set + `test_materialize_runtime` densBE block;
+  `test_mu_audit_drift` gains 6A + 6B checks (σ exposed; `densBE_Teff` still on the
+  ORIGINAL μ_convert+γ — i.e. μ_mol was *not* applied).
+- Validated: 420 suite + 13 anti-drift green; full BE run writes `densBE_sigma` to
+  metadata (4.74 km/s, consistent with `densBE_Teff`).
 
-**Atomic:** the `:430`/`:603`/`:643` trio + the 4 caller kwargs land together (a
-partial change breaks the round-trip and corrupts the BE cloud). **Verify:**
-deterministic suite + a new test asserting (i) `rCloud`/`n(r)` **unchanged** vs the
-pre-6B baseline on a `densBE` param, and (ii) `densBE_Teff` ×`25/9`; smoke ×2 on a
-BE param; extend `test_mu_audit_drift.py` with the BE `T_eff` validation.
-
-**Open sub-decision:** removing the `gamma` *parameter* (consistent, my
-recommendation) vs. keeping it vestigial (smaller diff). I recommend removing.
+**Open modelling question (author's call, not a code bug):** using the BE *shape*
+for whole-GMC masses with turbulent `c_s` is a defensible idealisation but differs
+from the paper's dense-*core* motivation. Out of scope for the n-audit.
 
 ---
 
