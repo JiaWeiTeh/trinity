@@ -112,7 +112,7 @@ def shell_structure_pure(params) -> ShellProperties:
     mShell0 = 0
 
     # Density at inner edge of shell
-    nShell0 = (params['mu_ion'].value / params['mu_atom'].value /
+    nShell0 = (params['mu_ion'].value / params['mu_convert'].value /
                (params['k_B'].value * params['TShell_ion'].value) * params['Pb'].value)
     shell_n0 = nShell0  # Store for output
 
@@ -132,7 +132,7 @@ def shell_structure_pure(params) -> ShellProperties:
     rShell_arr_ion = np.array([])
 
     # Maximum shell radius (for integration bounds)
-    max_shellRadius = (3 * Qi / (4 * np.pi * params['caseB_alpha'].value * nShell0**2))**(1/3) + rShell_start
+    max_shellRadius = (3 * Qi / (4 * np.pi * params['chi_e'].value * params['caseB_alpha'].value * nShell0**2))**(1/3) + rShell_start
 
     # Integration parameters
     nsteps = 1e3
@@ -164,7 +164,7 @@ def shell_structure_pure(params) -> ShellProperties:
         # Mass of spherical shell
         mShell_arr = np.empty_like(rShell_arr)
         mShell_arr[0] = mShell0
-        mShell_arr[1:] = (nShell_arr[1:] * params['mu_atom'].value *
+        mShell_arr[1:] = (nShell_arr[1:] * params['mu_convert'].value *
                          4 * np.pi * rShell_arr[1:]**2 * rShell_step)
         mShell_arr_cum = np.cumsum(mShell_arr)
 
@@ -236,7 +236,7 @@ def shell_structure_pure(params) -> ShellProperties:
     if (_vol_ion > 0.0) and (_Qi_absorbed > 0.0):
         n_IF_Str = np.sqrt(
             3.0 * _Qi_absorbed /
-            (4.0 * np.pi * params['caseB_alpha'].value * _vol_ion)
+            (4.0 * np.pi * params['chi_e'].value * params['caseB_alpha'].value * _vol_ion)
         )
         # Cap: thin ionised skin → P_HII cannot exceed P_b
         n_IF_Str = min(n_IF_Str, shell_n0)
@@ -250,7 +250,7 @@ def shell_structure_pure(params) -> ShellProperties:
         logger.debug('Shell not dissolved, computing gravitational potential')
 
         # Gravitational potential for ionized part
-        grav_ion_rho = nShell_arr_ion * params['mu_atom'].value
+        grav_ion_rho = nShell_arr_ion * params['mu_convert'].value
         grav_ion_r = rShell_arr_ion
         grav_ion_m = grav_ion_rho * 4 * np.pi * grav_ion_r**2 * rShell_step
         grav_ion_m_cum = np.cumsum(grav_ion_m) + mBubble
@@ -270,7 +270,7 @@ def shell_structure_pure(params) -> ShellProperties:
         )
         phi_hydrogen = np.sum(
             -4 * np.pi * rShell_arr_ion[:-1]**2 / Qi *
-            params['caseB_alpha'].value * nShell_arr_ion[:-1]**2 * dr_ion_arr
+            params['chi_e'].value * params['caseB_alpha'].value * nShell_arr_ion[:-1]**2 * dr_ion_arr
         )
 
         if (phi_dust + phi_hydrogen) == 0.0:
@@ -321,7 +321,7 @@ def shell_structure_pure(params) -> ShellProperties:
 
                 mShell_arr = np.empty_like(rShell_arr)
                 mShell_arr[0] = mShell0
-                mShell_arr[1:] = (nShell_arr[1:] * params['mu_atom'].value *
+                mShell_arr[1:] = (nShell_arr[1:] * params['mu_convert'].value *
                                  4 * np.pi * rShell_arr[1:]**2 * rShell_step)
                 mShell_arr_cum = np.cumsum(mShell_arr)
 
@@ -354,7 +354,7 @@ def shell_structure_pure(params) -> ShellProperties:
             rShell_arr_neu = np.append(rShell_arr_neu, rShell_arr[idx])
 
             # Gravitational potential for neutral part
-            grav_neu_rho = nShell_arr_neu * params['mu_atom'].value
+            grav_neu_rho = nShell_arr_neu * params['mu_convert'].value
             grav_neu_r = rShell_arr_neu
             grav_neu_m = grav_neu_rho * 4 * np.pi * grav_neu_r**2 * rShell_step
             grav_neu_m_cum = np.cumsum(grav_neu_m) + grav_ion_m_cum[-1]
@@ -377,13 +377,13 @@ def shell_structure_pure(params) -> ShellProperties:
             tau_rEnd = tauShell_arr_neu[-1]
             nShell_max = max(np.max(nShell_arr_ion), np.max(nShell_arr_neu))
             dr_neu_arr = rShell_arr_neu[1:] - rShell_arr_neu[:-1]
-            tau_kappa_IR = (params['mu_atom'].value * np.sum(nShell_arr_ion[:-1] * dr_ion_arr) +
-                params['mu_atom'].value * np.sum(nShell_arr_neu[:-1] * dr_neu_arr))
+            tau_kappa_IR = (params['mu_convert'].value * np.sum(nShell_arr_ion[:-1] * dr_ion_arr) +
+                params['mu_convert'].value * np.sum(nShell_arr_neu[:-1] * dr_neu_arr))
         else:
             shellThickness = rShell_arr_ion[-1] - rShell0
             tau_rEnd = tauShell_arr_ion[-1]
             nShell_max = np.max(nShell_arr_ion)
-            tau_kappa_IR = params['mu_atom'].value * np.sum(nShell_arr_ion[:-1] * dr_ion_arr)
+            tau_kappa_IR = params['mu_convert'].value * np.sum(nShell_arr_ion[:-1] * dr_ion_arr)
 
         # Absorption fractions (f_esc_ion computed at line 217)
         f_absorbed_ion = 1.0 - f_esc_ion

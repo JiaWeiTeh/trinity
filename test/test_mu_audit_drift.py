@@ -164,3 +164,101 @@ def test_phase2_conduction_sites_untouched():
     assert "* mu_ion / k_B" in bub                       # _get_init_dMdt
     assert "constant = (25/4 * k_B / mu_ion / C_thermal)" in bub
     assert "* k_B * T / mu_ion / Pb)" in bub
+
+
+# =====================================================================
+# Phase 3 — shell to n_H: validate the real get_shellODE against the
+# ORIGINAL and the REFINED formula, plus structural coefficient guards.
+# =====================================================================
+def _shell_params():
+    """Params with runtime feedback values (default 0) set to positive test
+    values so get_shellODE's radiation/recombination terms are non-trivial."""
+    p = _p()
+    p["Ln"].value = 1.0e3
+    p["Li"].value = 2.0e3
+    p["Qi"].value = 1.0e5
+    return p
+
+
+def test_phase3_shellODE_ion_vs_original():
+    """Ionised shell ODE: dndr must equal the REFINED formula (mu_p/mu_H
+    prefactor + chi_e recombination) and NOT the original (mu_p/mu_n, no
+    chi_e); dphidr recomb gains chi_e; dtaudr (dust) is invariant."""
+    from trinity.shell_structure.get_shellODE import get_shellODE
+    p = _shell_params()
+    n, phi, tau, r = 1.0e3, 0.5, 0.3, 5.0
+    dndr, dphidr, dtaudr = get_shellODE([n, phi, tau], r, 1.0, True, p)
+
+    mu_n = p["mu_atom"].value
+    mu_p = p["mu_ion"].value
+    mu_H = p["mu_convert"].value
+    chi = p["chi_e"].value
+    kB = p["k_B"].value
+    c = p["c_light"].value
+    sd = p["dust_sigma"].value
+    aB = p["caseB_alpha"].value
+    Ln, Li, Qi = p["Ln"].value, p["Li"].value, p["Qi"].value
+    tion = p["TShell_ion"].value
+
+    net = np.exp(-tau)
+    dust = n * sd / (4 * np.pi * r**2 * c) * (Ln * net + Li * phi)
+    recomb = n**2 * aB * Li / Qi / c
+    dndr_refined = mu_p / mu_H / (kB * tion) * (dust + chi * recomb)
+    dndr_original = mu_p / mu_n / (kB * tion) * (dust + recomb)
+
+    assert np.isclose(dndr, dndr_refined, rtol=1e-12)      # function == refined
+    assert not np.isclose(dndr, dndr_original, rtol=1e-6)  # and != original
+
+    dphidr_refined = -4 * np.pi * r**2 * chi * aB * n**2 / Qi - n * sd * phi
+    assert np.isclose(dphidr, dphidr_refined, rtol=1e-12)
+    assert np.isclose(dtaudr, n * sd * 1.0, rtol=1e-12)    # dust term: invariant
+
+
+def test_phase3_shellODE_neutral_vs_original():
+    """Neutral shell ODE: prefactor 1 -> mu_n/mu_H (dust-only RHS)."""
+    from trinity.shell_structure.get_shellODE import get_shellODE
+    p = _shell_params()
+    n, tau, r = 1.0e3, 0.3, 5.0
+    dndr, dtaudr = get_shellODE([n, tau], r, 1.0, False, p)
+
+    mu_n = p["mu_atom"].value
+    mu_H = p["mu_convert"].value
+    kB = p["k_B"].value
+    c = p["c_light"].value
+    sd = p["dust_sigma"].value
+    Ln = p["Ln"].value
+    tneu = p["TShell_neu"].value
+
+    net = np.exp(-tau)
+    dust = n * sd / (4 * np.pi * r**2 * c) * (Ln * net)
+    dndr_refined = mu_n / mu_H / (kB * tneu) * dust
+    dndr_original = 1.0 / (kB * tneu) * dust
+
+    assert np.isclose(dndr, dndr_refined, rtol=1e-12)
+    assert not np.isclose(dndr, dndr_original, rtol=1e-6)
+
+
+def test_phase3_shell_structure_coefficients_and_no_original():
+    """Closed-form coefficients + structural anti-drift for shell_structure.py:
+    BC mu_ion/mu_convert; mass/grav/tau weights mu_convert x8; chi_e x3;
+    mu_atom survives ONLY at the convention-independent I-front jump (:298)."""
+    s = _src("trinity/shell_structure/shell_structure.py")
+    assert "params['mu_ion'].value / params['mu_convert'].value" in s   # refined BC
+    assert "params['mu_ion'].value / params['mu_atom'].value" not in s  # original BC gone
+    assert s.count("params['mu_convert'].value") == 8   # 7 mass/grav/tau + BC
+    assert s.count("params['mu_atom'].value") == 1      # only the I-front jump
+    assert "params['mu_atom'].value / params['mu_ion'].value" in s      # the :298 jump
+    assert s.count("params['chi_e'].value") == 3        # max_shellRadius, n_IF_Str, phi_hydrogen
+
+
+def test_phase3_coefficients_reduce_to_original_at_pure_H():
+    """Faithful-generalisation check: at x_He=0 (pure H) mu_n=mu_H so the
+    refined prefactor mu_p/mu_H collapses onto the original mu_p/mu_n, and
+    chi_e=1 (recomb unchanged). This is what lets us attribute the helium-run
+    drift to physics rather than to a different/buggy formula."""
+    xHe, ZHe = Fraction(0), Fraction(2)
+    muH = 1 + 4 * xHe
+    mu_n = muH / (1 + xHe)
+    chi_e = 1 + ZHe * xHe
+    assert mu_n == muH    # => mu_p/mu_H == mu_p/mu_n (original prefactor) at x_He=0
+    assert chi_e == 1     # => recomb/Stromgren collapse to the original
