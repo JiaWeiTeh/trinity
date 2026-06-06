@@ -414,7 +414,7 @@ CRITICAL_PARAMS = [
     # Velocities
     ('v2', 'Shell velocity', 'km/s', INV_CONV.v_au2kms),  # pc/Myr -> km/s
     # Energies
-    ('Eb', 'Bubble energy', 'erg', 1.0),
+    ('Eb', 'Bubble energy', 'erg', INV_CONV.E_au2cgs),  # Msun*pc^2/Myr^2 -> erg
     ('Pb', 'Bubble pressure', 'K cm⁻³', Pb_au2_KcmInv),  # P/k_B
     # Shell properties
     ('shell_mass', 'Shell mass', 'Msun', 1.0),

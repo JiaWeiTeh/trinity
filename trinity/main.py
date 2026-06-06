@@ -326,7 +326,7 @@ def run_expansion(params):
     # Eb is inherited from the transition phase (near ENERGY_FLOOR = 1e3).
     # The momentum phase runner sets Eb = 0 at its initialization (line 522).
     # Do NOT set Eb=1 here — it was dead code that caused confusion.
-    logger.info(f"Entering momentum phase: Eb={params['Eb'].value:.4e} "
+    logger.info(f"Entering momentum phase: Eb={params['Eb'].value * cvt.E_au2cgs:.4e} erg "
                 f"(will be set to 0 by momentum runner)")
 
     # --- Transition -> Momentum boundary diagnostic ---

@@ -156,9 +156,14 @@ def _final_state_section(final_state: Optional[dict]) -> list[str]:
         pb_KcmInv = pb * Pb_au2_KcmInv
         rows.append(("Pb", f"{_fmt_or_na(pb_KcmInv, '.3e')} K cm⁻³ (P/k_B)    "
                           f"({_fmt_or_na(pb, '.3e')} internal)"))
-    # Eb, T0, bubble_Tavg (internal units)
+    # Eb in erg with internal in parens (like Pb / shell_nMax / v2)
+    eb = final_state.get("Eb")
+    if eb is not None:
+        eb_cgs = eb * INV_CONV.E_au2cgs
+        rows.append(("Eb", f"{_fmt_or_na(eb_cgs, '.3e')} erg    "
+                          f"({_fmt_or_na(eb, '.3e')} internal)"))
+    # T0, bubble_Tavg (internal units)
     for key, fmt, units in [
-        ("Eb", ".3e", "erg (internal)"),
         ("T0", ".3e", "K"),
         ("bubble_Tavg", ".3e", "K"),
     ]:

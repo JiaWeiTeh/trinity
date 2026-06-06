@@ -64,7 +64,7 @@ def read_sps(f_mass, params):
         t : ndarray
             Time [Myr]
         Qi : ndarray
-            Ionizing photon rate [s⁻¹] (AU)
+            Ionizing photon rate [1/Myr] (AU; × s2Myr → 1/s)
         Li : ndarray
             Ionizing luminosity (>13.6 eV) [erg/s] (AU)
         Ln : ndarray

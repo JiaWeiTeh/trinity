@@ -257,6 +257,8 @@ Pb_au2cgs = INV_CONV.Pb_au2cgs
 # Pressure expressed as P/k_B: internal [Msun/pc/Myr²] → [K cm⁻³]
 # (= internal→cgs dyn/cm² via Pb_au2cgs, divided by k_B in cgs erg/K).
 Pb_au2_KcmInv = Pb_au2cgs / K_B_CGS   # ≈ 4.6867e+03
+# Mass-loss rate: internal [Msun/Myr] → [Msun/yr]  (1 Myr = 1e6 yr)
+Mdot_au2Msunyr = 1e-6
 k_B_cgs2au = CONV.k_B_cgs2au
 k_B_au2cgs = INV_CONV.k_B_au2cgs
 c_therm_cgs2au = CONV.c_therm_cgs2au
