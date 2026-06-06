@@ -322,7 +322,7 @@ def get_bubbleproperties_pure(params) -> BubbleProperties:
         # if no guesses, begin from formula
         # if value already exist, use previous as current guess.
         bubble_dMdt = _get_init_dMdt(params, Pb)
-        logger.debug(f"Initial dMdt guess: {bubble_dMdt}")
+        logger.debug(f"Initial dMdt guess: {bubble_dMdt:.3e} Msun/Myr")
 
     # Calculate r_Tb, i.e., radius at which we evaluate bubble temperature
     xi_Tb = params['bubble_xi_Tb'].value

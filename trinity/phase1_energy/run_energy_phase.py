@@ -105,7 +105,7 @@ def run_energy(params):
     logger.info('Energy phase initialization:')
     logger.info(f'  Inner discontinuity (R1): {R1:.6e} pc')
     logger.info(f'  Initial shell mass: {mShell:.6e} Msun')
-    logger.info(f'  Initial bubble pressure: {Pb:.6e} Msun/pc/Myr^2')
+    logger.info(f'  Initial bubble pressure: {Pb*cvt.Pb_au2_KcmInv:.6e} K cm⁻³ (P/k_B)')
 
     params['Pb'].value = Pb
     params['R1'].value = R1

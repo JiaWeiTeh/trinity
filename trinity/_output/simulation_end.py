@@ -49,7 +49,7 @@ from typing import Optional, Dict, Any, List, Tuple
 import numpy as np
 
 # Import unit conversions for display
-from trinity._functions.unit_conversions import INV_CONV
+from trinity._functions.unit_conversions import INV_CONV, Pb_au2_KcmInv
 
 
 class SimulationEndCode(Enum):
@@ -414,8 +414,8 @@ CRITICAL_PARAMS = [
     # Velocities
     ('v2', 'Shell velocity', 'km/s', INV_CONV.v_au2kms),  # pc/Myr -> km/s
     # Energies
-    ('Eb', 'Bubble energy', 'erg', 1.0),
-    ('Pb', 'Bubble pressure', 'erg/cm³', 1.0),
+    ('Eb', 'Bubble energy', 'erg', INV_CONV.E_au2cgs),  # Msun*pc^2/Myr^2 -> erg
+    ('Pb', 'Bubble pressure', 'K cm⁻³', Pb_au2_KcmInv),  # P/k_B
     # Shell properties
     ('shell_mass', 'Shell mass', 'Msun', 1.0),
     ('shell_nMax', 'Shell peak density', 'cm⁻³', INV_CONV.ndens_au2cgs),

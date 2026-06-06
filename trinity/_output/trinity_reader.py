@@ -84,10 +84,10 @@ The most commonly used output parameters are:
 - t_now: Current simulation time [Myr]
 - R2: Outer bubble radius (= inner shell edge) [pc]
 - v2: Velocity at R2 (outer bubble / inner shell edge) [pc/Myr]
-- Eb: Bubble thermal energy [erg]
+- Eb: Bubble thermal energy [Msun*pc^2/Myr^2] (internal; × INV_CONV.E_au2cgs → erg)
 - T0: Characteristic bubble temperature [K]
 - R1: Inner bubble radius (wind termination shock) [pc]
-- Pb: Bubble pressure [dyn/cm^2]
+- Pb: Bubble pressure [Msun/pc/Myr^2] (internal units)
 
 **Cooling Parameters (from beta-delta solver):**
 - cool_beta: Pressure evolution parameter β = -(t/Pb)(dPb/dt)
@@ -100,8 +100,8 @@ The most commonly used output parameters are:
 - F_rad: Radiation pressure force
 
 **Residual Diagnostics (beta-delta solver):**
-- residual_Edot1_guess: Edot from beta [erg/Myr]
-- residual_Edot2_guess: Edot from energy balance [erg/Myr]
+- residual_Edot1_guess: Edot from beta [Msun*pc^2/Myr^3] (internal; × INV_CONV.L_au2cgs → erg/s)
+- residual_Edot2_guess: Edot from energy balance [Msun*pc^2/Myr^3] (internal; × INV_CONV.L_au2cgs → erg/s)
 - residual_T1_guess: Bubble temperature T_bubble [K]
 - residual_T2_guess: Target temperature T0 [K]
 
@@ -160,10 +160,10 @@ PARAM_DOCS = {
     # Main dynamical variables
     'R2': 'Outer bubble radius (= inner shell edge) [pc]',
     'v2': 'Velocity at R2 (outer bubble / inner shell edge) [pc/Myr]',
-    'Eb': 'Bubble thermal energy [erg]',
+    'Eb': 'Bubble thermal energy [Msun*pc^2/Myr^2] (× INV_CONV.E_au2cgs → erg)',
     'T0': 'Characteristic bubble temperature [K]',
     'R1': 'Inner bubble radius (wind termination shock) [pc]',
-    'Pb': 'Bubble pressure [dyn/cm^2]',
+    'Pb': 'Bubble pressure [Msun/pc/Myr^2] (internal units)',
     'c_sound': 'Sound speed in bubble [pc/Myr]',
 
     # Cooling parameters
@@ -180,7 +180,7 @@ PARAM_DOCS = {
     'Lbol': 'Bolometric luminosity [Msun*pc^2/Myr^3]',
     'Li': 'Ionizing luminosity [Msun*pc^2/Myr^3]',
     'Ln': 'Non-ionizing luminosity [Msun*pc^2/Myr^3]',
-    'Qi': 'Ionizing photon rate [photons/s]',
+    'Qi': 'Ionizing photon rate [1/Myr] (× s2Myr → photons/s)',
 
     # Momentum injection
     'pdot_W': 'Momentum injection rate from winds',
@@ -260,8 +260,8 @@ PARAM_DOCS = {
     # Residuals (beta-delta solver diagnostics)
     'residual_deltaT': 'Temperature residual (normalized)',
     'residual_betaEdot': 'Energy derivative residual (normalized)',
-    'residual_Edot1_guess': 'Edot from beta [erg/Myr]',
-    'residual_Edot2_guess': 'Edot from energy balance [erg/Myr]',
+    'residual_Edot1_guess': 'Edot from beta [Msun*pc^2/Myr^3] (× INV_CONV.L_au2cgs → erg/s)',
+    'residual_Edot2_guess': 'Edot from energy balance [Msun*pc^2/Myr^3] (× INV_CONV.L_au2cgs → erg/s)',
     'residual_T1_guess': 'Bubble temperature T_bubble [K]',
     'residual_T2_guess': 'Target temperature T0 [K]',
 

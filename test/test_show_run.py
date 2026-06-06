@@ -34,7 +34,8 @@ def disable_crash_handlers(monkeypatch):
 
 
 def _write_v3_run(tmp_path: Path, *, exit_code: int = 1,
-                  detail: str = "Stopping time reached") -> Path:
+                  detail: str = "Stopping time reached",
+                  eb: float = 0.0) -> Path:
     """Produce a complete v3-format run directory the CLI can read.
 
     The ``outcome`` field of the termination block is set automatically
@@ -69,7 +70,7 @@ def _write_v3_run(tmp_path: Path, *, exit_code: int = 1,
     d["current_phase"] = DescribedItem("momentum")
     d["shell_mass"] = DescribedItem(1143.84)
     d["shell_nMax"] = DescribedItem(3.31e55)
-    d["Eb"] = DescribedItem(0.0)
+    d["Eb"] = DescribedItem(eb)
     d["Pb"] = DescribedItem(4.91)
     d.save_snapshot()
     d.flush()
@@ -145,6 +146,32 @@ class TestFormatRunSummary:
         assert "shell_mass" in out
         assert "phase" in out and "momentum" in out
         assert "collapsed" in out and "no" in out
+
+    def test_eb_rendered_in_erg_with_internal_preserved(
+        self, tmp_path, disable_crash_handlers,
+    ):
+        # Eb is stored internal [Msun*pc^2/Myr^2]; the summary must show it
+        # in erg (= internal * E_au2cgs) with the internal value in parens.
+        # A non-zero, non-unity Eb defeats the 0*x==0 / 1*x==x coincidences.
+        import trinity._functions.unit_conversions as cvt
+        _write_v3_run(tmp_path, eb=2.0)
+        out = format_run_summary(tmp_path)
+        expected_erg = f"{2.0 * cvt.INV_CONV.E_au2cgs:.3e} erg"  # ~3.802e+43 erg
+        assert expected_erg in out          # right constant + direction applied
+        assert "2.000e+00 internal" in out  # internal value preserved in parens
+        assert "erg (internal)" not in out  # old mislabel (internal shown AS erg) gone
+
+    def test_eb_stored_value_stays_internal(
+        self, tmp_path, disable_crash_handlers,
+    ):
+        # Display-only invariant: the erg conversion happens at render time,
+        # NOT at storage time. metadata.json[final_state][Eb] must remain the
+        # raw internal value (2.0), never 2.0 * E_au2cgs.
+        import trinity._functions.unit_conversions as cvt
+        _write_v3_run(tmp_path, eb=2.0)
+        md = json.loads((tmp_path / METADATA_FILENAME).read_text())
+        assert md["final_state"]["Eb"] == 2.0
+        assert md["final_state"]["Eb"] != pytest.approx(2.0 * cvt.INV_CONV.E_au2cgs)
 
     def test_legacy_v1_run_falls_back_to_text(self, tmp_path):
         _write_legacy_v1_run(tmp_path)

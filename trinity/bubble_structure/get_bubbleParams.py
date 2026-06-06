@@ -376,7 +376,8 @@ def get_effective_bubble_pressure(current_phase, Eb, R2, R1, gamma,
         P_thermal = bubble_E2P(Eb, R2, R1, gamma)
         P_ram = pRam(R2, Lmech_total, v_mech_total)
         P_eff = max(P_thermal, P_ram)
-        logger.debug(f"Transition pressure: P_thermal={P_thermal:.4e}, P_ram={P_ram:.4e}, "
+        logger.debug(f"Transition pressure (P/k_B): P_thermal={P_thermal*cvt.Pb_au2_KcmInv:.4e}, "
+                     f"P_ram={P_ram*cvt.Pb_au2_KcmInv:.4e} K cm⁻³, "
                      f"using={'P_ram' if P_ram >= P_thermal else 'P_thermal'}, Eb={Eb:.4e}")
         return P_eff
     else:

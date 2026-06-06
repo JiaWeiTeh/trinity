@@ -39,7 +39,7 @@ class SPSFeedback:
     t : float
         Current time [Myr]
     Qi : float
-        Ionizing photon rate [s⁻¹]
+        Ionizing photon rate [1/Myr] (internal; × s2Myr → 1/s)
     Li : float
         Ionizing luminosity [Msun·pc²/Myr³]
     Ln : float
@@ -122,7 +122,7 @@ def get_current_sps_feedback(t, params) -> SPSFeedback:
         Fields (luminosities in AU [Msun·pc²/Myr³]; convert to erg/s
         with INV_CONV.L_au2cgs):
         - t : float, current time [Myr]
-        - Qi : float, ionizing photon rate [s⁻¹]
+        - Qi : float, ionizing photon rate [1/Myr] (internal; × s2Myr → 1/s)
         - Li : float, ionizing luminosity [Msun·pc²/Myr³]
         - Ln : float, non-ionizing luminosity [Msun·pc²/Myr³]
         - Lbol : float, bolometric luminosity [Msun·pc²/Myr³]
@@ -161,7 +161,7 @@ def get_current_sps_feedback(t, params) -> SPSFeedback:
     # Interpolate all raw SPS values. The interpolators were built in
     # read_sps.py from arrays already converted to code units (AU);
     # luminosities here are [Msun*pc^2/Myr^3], not erg/s.
-    Qi = sps_f['fQi'](t)[()]                    # Ionizing photon rate [s⁻¹]
+    Qi = sps_f['fQi'](t)[()]                    # Ionizing photon rate [1/Myr] (internal)
     Li = sps_f['fLi'](t)[()]                    # Ionizing luminosity
     Ln = sps_f['fLn'](t)[()]                    # Non-ionizing luminosity
     Lbol = sps_f['fLbol'](t)[()]                # Bolometric luminosity
