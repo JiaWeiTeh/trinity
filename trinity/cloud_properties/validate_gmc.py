@@ -41,6 +41,7 @@ Constraint-only (pre-computed rCloud/nEdge)::
 
 import numpy as np
 import logging
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from typing import List, Optional
 
@@ -52,8 +53,56 @@ from trinity.cloud_properties.bonnorEbertSphere import (
     create_BE_sphere,
     solve_lane_emden,
 )
+from trinity._functions.unit_conversions import ndens_au2cgs
 
 logger = logging.getLogger(__name__)
+
+
+@contextmanager
+def _quiet_loggers(*names, level=logging.INFO):
+    """
+    Temporarily raise the level of named loggers (restored on exit).
+
+    Used to silence the per-trial DEBUG output of the rCloud / BE-sphere
+    solvers during a suggestion grid search, which would otherwise emit
+    hundreds of lines. A concise summary is logged by the caller instead.
+    """
+    loggers = [logging.getLogger(n) for n in names]
+    saved = [lg.level for lg in loggers]
+    for lg in loggers:
+        lg.setLevel(level)
+    try:
+        yield
+    finally:
+        for lg, lvl in zip(loggers, saved):
+            lg.setLevel(lvl)
+
+
+def format_suggestion(s: dict) -> str:
+    """
+    Format a suggestion dict for display, with densities in cm^-3.
+
+    Internal densities are stored in code units [1/pc^3], which are hard to
+    read; nCore/nEdge are converted to cm^-3 (the same unit used in the
+    parameter file) so a user can copy the values straight across. Other
+    fields (masses [Msun], radii [pc]) are already in familiar units.
+    """
+    parts = []
+    if "mCloud" in s:
+        parts.append(f"mCloud={s['mCloud']:.4g} Msun")
+    if "nCore" in s:
+        parts.append(f"nCore={s['nCore'] * ndens_au2cgs:.4g} cm^-3")
+    if "rCore" in s:
+        parts.append(f"rCore={s['rCore']:.4g} pc")
+    if "Omega" in s:
+        parts.append(f"Omega={s['Omega']:.4g}")
+    if "rCloud" in s:
+        parts.append(f"rCloud={s['rCloud']:.4g} pc")
+    if "nEdge" in s:
+        parts.append(f"nEdge={s['nEdge'] * ndens_au2cgs:.4g} cm^-3")
+    if "mass_error" in s:
+        parts.append(f"mass_error={s['mass_error']:.2%}")
+    return ", ".join(parts)
 
 # ============================================================================
 # Default physical constraints
@@ -120,8 +169,7 @@ class GMCValidationResult:
         if self.suggestions:
             lines.append("  Suggested valid alternatives:")
             for i, s in enumerate(self.suggestions, 1):
-                parts = ", ".join(f"{k}={v}" for k, v in s.items())
-                lines.append(f"    {i}. {parts}")
+                lines.append(f"    {i}. {format_suggestion(s)}")
 
         return "\n".join(lines)
 
@@ -502,52 +550,68 @@ def _suggest_powerlaw_alternatives(
     else:
         rCore_factors = np.array([0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5])
 
+    n_combos = mCloud_factors.size * nCore_factors.size * rCore_factors.size - 1
+    logger.debug(
+        "Searching power-law alternatives: %d mCloud x %d nCore x %d rCore "
+        "= %d nearby combinations (per-trial solver logs suppressed).",
+        mCloud_factors.size, nCore_factors.size, rCore_factors.size, n_combos,
+    )
+
     valid = []
-    for mf in mCloud_factors:
-        for nf in nCore_factors:
-            for rf in rCore_factors:
-                if mf == 1.0 and nf == 1.0 and rf == 1.0:
-                    continue
-                mc = mCloud * mf
-                nc = nCore * nf
-                rc = rCore * rf if rCore is not None else None
+    # Silence the rCloud solver's per-call DEBUG line during the grid search;
+    # otherwise every one of the ~n_combos trials logs a line.
+    with _quiet_loggers(compute_rCloud_powerlaw.__module__):
+        for mf in mCloud_factors:
+            for nf in nCore_factors:
+                for rf in rCore_factors:
+                    if mf == 1.0 and nf == 1.0 and rf == 1.0:
+                        continue
+                    mc = mCloud * mf
+                    nc = nCore * nf
+                    rc = rCore * rf if rCore is not None else None
 
-                try:
+                    try:
+                        if alpha == 0:
+                            rcl = compute_rCloud_homogeneous(mc, nc, mu)
+                            ne = nc
+                        else:
+                            rcl, _ = compute_rCloud_powerlaw(mc, nc, alpha, rCore=rc, mu=mu)
+                            ne = nc * (rcl / rc) ** alpha
+                    except Exception:
+                        continue
+
+                    if rcl > r_max or ne < nISM:
+                        continue
+
+                    rhoCore = nc * mu
                     if alpha == 0:
-                        rcl = compute_rCloud_homogeneous(mc, nc, mu)
-                        ne = nc
+                        M_c = (4.0 / 3.0) * np.pi * rcl**3 * rhoCore
                     else:
-                        rcl, _ = compute_rCloud_powerlaw(mc, nc, alpha, rCore=rc, mu=mu)
-                        ne = nc * (rcl / rc) ** alpha
-                except Exception:
-                    continue
+                        M_c = 4.0 * np.pi * rhoCore * (
+                            rc**3 / 3.0
+                            + (rcl ** (3.0 + alpha) - rc ** (3.0 + alpha))
+                            / ((3.0 + alpha) * rc**alpha)
+                        )
+                    merr = abs(M_c - mc) / mc if mc > 0 else 0.0
+                    if merr > mass_tolerance:
+                        continue
 
-                if rcl > r_max or ne < nISM:
-                    continue
+                    combo = {
+                        "mCloud": mc,
+                        "nCore": nc,
+                        "rCloud": rcl,
+                        "nEdge": ne,
+                        "mass_error": merr,
+                    }
+                    if rc is not None:
+                        combo["rCore"] = rc
+                    valid.append(combo)
 
-                rhoCore = nc * mu
-                if alpha == 0:
-                    M_c = (4.0 / 3.0) * np.pi * rcl**3 * rhoCore
-                else:
-                    M_c = 4.0 * np.pi * rhoCore * (
-                        rc**3 / 3.0
-                        + (rcl ** (3.0 + alpha) - rc ** (3.0 + alpha))
-                        / ((3.0 + alpha) * rc**alpha)
-                    )
-                merr = abs(M_c - mc) / mc if mc > 0 else 0.0
-                if merr > mass_tolerance:
-                    continue
-
-                combo = {
-                    "mCloud": mc,
-                    "nCore": nc,
-                    "rCloud": rcl,
-                    "nEdge": ne,
-                    "mass_error": merr,
-                }
-                if rc is not None:
-                    combo["rCore"] = rc
-                valid.append(combo)
+    logger.debug(
+        "Power-law alternative search: %d of %d combinations valid; "
+        "returning top %d.",
+        len(valid), n_combos, min(n_suggestions, len(valid)),
+    )
 
     def _distance(combo):
         d_m = abs(np.log10(combo["mCloud"] / mCloud)) if mCloud > 0 else 0
@@ -575,45 +639,60 @@ def _suggest_bonnor_ebert_alternatives(
     if lane_emden_solution is None:
         lane_emden_solution = solve_lane_emden()
 
+    n_combos = mCloud_factors.size * nCore_factors.size - 1
+    logger.debug(
+        "Searching Bonnor-Ebert alternatives: %d mCloud x %d nCore "
+        "= %d nearby combinations (per-trial solver logs suppressed).",
+        mCloud_factors.size, nCore_factors.size, n_combos,
+    )
+
     valid = []
-    for mf in mCloud_factors:
-        for nf in nCore_factors:
-            if mf == 1.0 and nf == 1.0:
-                continue
-            mc = mCloud * mf
-            nc = nCore * nf
+    # Silence create_BE_sphere's per-call DEBUG lines during the grid search.
+    with _quiet_loggers(create_BE_sphere.__module__):
+        for mf in mCloud_factors:
+            for nf in nCore_factors:
+                if mf == 1.0 and nf == 1.0:
+                    continue
+                mc = mCloud * mf
+                nc = nCore * nf
 
-            try:
-                be = create_BE_sphere(
-                    M_cloud=mc, n_core=nc, Omega=Omega,
-                    mu=mu, gamma=gamma, validate=False,
-                    lane_emden_solution=lane_emden_solution,
-                )
-            except Exception:
-                continue
+                try:
+                    be = create_BE_sphere(
+                        M_cloud=mc, n_core=nc, Omega=Omega,
+                        mu=mu, gamma=gamma, validate=False,
+                        lane_emden_solution=lane_emden_solution,
+                    )
+                except Exception:
+                    continue
 
-            rcl = be.r_out
-            ne = be.n_out
+                rcl = be.r_out
+                ne = be.n_out
 
-            if rcl > r_max or ne < nISM:
-                continue
+                if rcl > r_max or ne < nISM:
+                    continue
 
-            # Mass check
-            rhoCore = nc * mu
-            a_pc = rcl / be.xi_out
-            M_c = 4.0 * np.pi * be.m_dim * rhoCore * a_pc**3
-            merr = abs(M_c - mc) / mc if mc > 0 else 0.0
-            if merr > mass_tolerance:
-                continue
+                # Mass check
+                rhoCore = nc * mu
+                a_pc = rcl / be.xi_out
+                M_c = 4.0 * np.pi * be.m_dim * rhoCore * a_pc**3
+                merr = abs(M_c - mc) / mc if mc > 0 else 0.0
+                if merr > mass_tolerance:
+                    continue
 
-            valid.append({
-                "mCloud": mc,
-                "nCore": nc,
-                "Omega": Omega,
-                "rCloud": rcl,
-                "nEdge": ne,
-                "mass_error": merr,
-            })
+                valid.append({
+                    "mCloud": mc,
+                    "nCore": nc,
+                    "Omega": Omega,
+                    "rCloud": rcl,
+                    "nEdge": ne,
+                    "mass_error": merr,
+                })
+
+    logger.debug(
+        "Bonnor-Ebert alternative search: %d of %d combinations valid; "
+        "returning top %d.",
+        len(valid), n_combos, min(n_suggestions, len(valid)),
+    )
 
     def _distance(combo):
         d_m = abs(np.log10(combo["mCloud"] / mCloud)) if mCloud > 0 else 0

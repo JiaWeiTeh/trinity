@@ -207,6 +207,13 @@ class DescribedDict(dict):
         # Key flags
         self._excluded_keys: set[str] = set()     # keys to omit from snapshots
 
+        # Optional override for the atexit termination reason. When a caller
+        # bails out via sys.exit() for a known cause (e.g. failed GMC
+        # validation before the run starts), it can set this so the
+        # atexit handler records the real reason instead of the generic
+        # "Normal exit / atexit".
+        self._termination_reason: Optional[str] = None
+
         # Per-snapshot counter: how many implicit-phase simplify() calls
         # have logged their R² so far in the current _clean_for_snapshot
         # pass.  Reset to 0 at the top of every snapshot build.
@@ -251,9 +258,12 @@ class DescribedDict(dict):
         import logging
         logger = logging.getLogger(__name__)
 
-        # atexit for normal Python exit and unhandled exceptions
+        # atexit for normal Python exit and unhandled exceptions. A caller
+        # can set self._termination_reason to surface a known cause (e.g.
+        # "GMC validation failed") instead of the generic default.
         def atexit_handler():
-            self._safe_flush(termination_reason="Normal exit / atexit")
+            reason = self._termination_reason or "Normal exit / atexit"
+            self._safe_flush(termination_reason=reason)
         atexit.register(atexit_handler)
 
         # Signal handlers for SIGINT (Ctrl+C) and SIGTERM (kill)
@@ -301,6 +311,17 @@ class DescribedDict(dict):
             write_termination_debug_report(str(output_dir), reason=termination_reason)
         except Exception as e:
             logger.error(f"Failed to write termination debug report: {e}")
+
+    def set_termination_reason(self, reason: str) -> None:
+        """
+        Record the reason the process is about to exit.
+
+        The atexit handler uses this (when set) in place of the generic
+        "Normal exit / atexit", so the ``termination_debug`` block reflects
+        the real cause — e.g. a caller exiting after failed pre-run
+        validation, before any snapshot is written.
+        """
+        self._termination_reason = reason
 
     def write_termination_report(self, reason: str = "Unknown") -> None:
         """

@@ -215,10 +215,16 @@ def run_single(args):
         for e in gmc_check.errors:
             logger.error(f"  {e}")
         if gmc_check.suggestions:
+            from trinity.cloud_properties.validate_gmc import format_suggestion
             logger.info("Suggested valid alternatives:")
             for i, s in enumerate(gmc_check.suggestions, 1):
-                parts = ", ".join(f"{k}={v}" for k, v in s.items())
-                logger.info(f"  {i}. {parts}")
+                logger.info(f"  {i}. {format_suggestion(s)}")
+        # Record the real cause so the atexit-driven termination_debug block
+        # reports it instead of the generic "Normal exit / atexit".
+        params.set_termination_reason(
+            "GMC validation failed: implausible cloud parameters "
+            "(simulation not started)"
+        )
         sys.exit("Simulation stopped: implausible GMC parameters. See errors above.")
 
 
