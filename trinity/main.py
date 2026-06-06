@@ -334,7 +334,7 @@ def run_expansion(params):
     Lmech_bnd = params['Lmech_total'].value
     v_mech_bnd = params['v_mech_total'].value
     P_ram_bnd = get_bubbleParams.pRam(R2_bnd, Lmech_bnd, v_mech_bnd)
-    logger.info(f"T->M boundary check: P_ram={P_ram_bnd:.4e} "
+    logger.info(f"T->M boundary check: P_ram={P_ram_bnd*cvt.Pb_au2_KcmInv:.4e} K cm⁻³ (P/k_B) "
                 f"(momentum phase will use this)")
 
     if params['EndSimulationDirectly'].value == False:

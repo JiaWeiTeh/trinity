@@ -87,7 +87,7 @@ The most commonly used output parameters are:
 - Eb: Bubble thermal energy [erg]
 - T0: Characteristic bubble temperature [K]
 - R1: Inner bubble radius (wind termination shock) [pc]
-- Pb: Bubble pressure [dyn/cm^2]
+- Pb: Bubble pressure [Msun/pc/Myr^2] (internal units)
 
 **Cooling Parameters (from beta-delta solver):**
 - cool_beta: Pressure evolution parameter β = -(t/Pb)(dPb/dt)
@@ -163,7 +163,7 @@ PARAM_DOCS = {
     'Eb': 'Bubble thermal energy [erg]',
     'T0': 'Characteristic bubble temperature [K]',
     'R1': 'Inner bubble radius (wind termination shock) [pc]',
-    'Pb': 'Bubble pressure [dyn/cm^2]',
+    'Pb': 'Bubble pressure [Msun/pc/Myr^2] (internal units)',
     'c_sound': 'Sound speed in bubble [pc/Myr]',
 
     # Cooling parameters
