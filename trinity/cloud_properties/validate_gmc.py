@@ -186,6 +186,7 @@ def check_gmc_constraints(
     nISM=1.0,
     r_max=R_CLOUD_MAX,
     mass_tolerance=MASS_TOLERANCE,
+    ndens_to_cgs=None,
 ):
     """
     Check the three GMC plausibility constraints on pre-computed values.
@@ -209,6 +210,11 @@ def check_gmc_constraints(
         Maximum cloud radius [pc] (default 200).
     mass_tolerance : float
         Maximum relative mass error (default 0.001 = 0.1%).
+    ndens_to_cgs : float, optional
+        Factor converting the density unit of ``nEdge``/``nISM`` to cm^-3.
+        When given (internal-unit callers like the validation path), the
+        edge-density error is rendered in cm^-3 for readability; when
+        omitted (e.g. plotting scripts), densities are shown verbatim.
 
     Returns
     -------
@@ -229,8 +235,14 @@ def check_gmc_constraints(
 
     # 2. Edge density
     if nEdge < nISM:
+        if ndens_to_cgs is not None:
+            edge_str = f"{nEdge * ndens_to_cgs:.2e} cm^-3"
+            ism_str = f"{nISM * ndens_to_cgs:.2e} cm^-3"
+        else:
+            edge_str = f"{nEdge:.2e}"
+            ism_str = f"{nISM:.2e}"
         errors.append(
-            f"Edge density ({nEdge:.2e}) < ISM density ({nISM:.2e}). "
+            f"Edge density ({edge_str}) < ISM density ({ism_str}). "
             f"Consider: increasing nCore, increasing rCore, or reducing |alpha|."
         )
 
@@ -429,6 +441,7 @@ def _validate_powerlaw(mCloud, nCore, mu, nISM, alpha, rCore,
     # Check constraints
     checks = check_gmc_constraints(
         rCloud, nEdge, mCloud, M_computed, nISM, r_max, mass_tolerance,
+        ndens_to_cgs=ndens_au2cgs,
     )
 
     errors = checks["errors"]
@@ -496,6 +509,7 @@ def _validate_bonnor_ebert(mCloud, nCore, mu, nISM, Omega, gamma,
     # Check constraints
     checks = check_gmc_constraints(
         rCloud, nEdge, mCloud, M_computed, nISM, r_max, mass_tolerance,
+        ndens_to_cgs=ndens_au2cgs,
     )
 
     errors = checks["errors"]
