@@ -42,7 +42,7 @@ _PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(_PROJECT_ROOT) not in _sys.path:
     _sys.path.insert(0, str(_PROJECT_ROOT))
 
-from trinity._functions.unit_conversions import INV_CONV
+from trinity._functions.unit_conversions import INV_CONV, Pb_au2_KcmInv
 from trinity._output.run_constants import METADATA_FILENAME
 from trinity._output.simulation_end import read_simulation_end
 from trinity._output.trinity_reader import TrinityOutput, find_data_path
@@ -89,22 +89,26 @@ def _cloud_section(md: dict) -> list[str]:
     mCluster = md.get("mCluster")
     if mCluster is None and "mCloud" in md and "sfe" in md:
         mCluster = md["mCloud"] * md["sfe"]
+    # Each row carries a conv factor applied to numeric values for display.
+    # nCore/nISM are stored internally in pc⁻³; show them in cm⁻³ (the input
+    # unit) via ndens_au2cgs. conv is only applied in the numeric branch, so
+    # string rows (dens_profile) keep conv=1.0 and the None guard runs first.
     rows = [
-        ("mCloud",        md.get("mCloud"),  ".2e", "Msun"),
-        ("nCore",         md.get("nCore"),   ".2e", "pc⁻³"),
-        ("rCloud",        md.get("rCloud"),  ".3f", "pc"),
-        ("rCore",         md.get("rCore"),   ".3f", "pc"),
-        ("dens_profile",  md.get("dens_profile"), "", ""),
-        ("densPL_alpha",  md.get("densPL_alpha"), ".2f", ""),
-        ("nISM",          md.get("nISM"),    ".2e", "pc⁻³"),
-        ("sfe",           md.get("sfe"),     ".4f", ""),
-        ("mCluster",      mCluster,          ".2e", "Msun"),
-        ("ZCloud",        md.get("ZCloud"),  ".2f", "Z☉"),
+        ("mCloud",        md.get("mCloud"),  ".2e", "Msun", 1.0),
+        ("nCore",         md.get("nCore"),   ".2e", "cm⁻³", INV_CONV.ndens_au2cgs),
+        ("rCloud",        md.get("rCloud"),  ".3f", "pc",   1.0),
+        ("rCore",         md.get("rCore"),   ".3f", "pc",   1.0),
+        ("dens_profile",  md.get("dens_profile"), "", "",   1.0),
+        ("densPL_alpha",  md.get("densPL_alpha"), ".2f", "", 1.0),
+        ("nISM",          md.get("nISM"),    ".2e", "cm⁻³", INV_CONV.ndens_au2cgs),
+        ("sfe",           md.get("sfe"),     ".4f", "",     1.0),
+        ("mCluster",      mCluster,          ".2e", "Msun", 1.0),
+        ("ZCloud",        md.get("ZCloud"),  ".2f", "Z☉",   1.0),
     ]
-    for name, value, fmt, units in rows:
+    for name, value, fmt, units, conv in rows:
         if value is None:
             continue
-        formatted = _fmt_or_na(value, fmt) if fmt else str(value)
+        formatted = _fmt_or_na(value * conv, fmt) if fmt else str(value)
         unit_str = f"  {units}" if units else ""
         lines.append(f"  {name:14s}: {formatted}{unit_str}")
     return lines
@@ -146,10 +150,20 @@ def _final_state_section(final_state: Optional[dict]) -> list[str]:
         snm_cgs = snm * INV_CONV.ndens_au2cgs
         rows.append(("shell_nMax", f"{_fmt_or_na(snm_cgs, '.3e')} cm⁻³    "
                                   f"({_fmt_or_na(snm, '.3e')} pc⁻³)"))
-    # Eb, Pb (internal units)
+    # Pb as P/k_B in K cm⁻³ with internal in parens (like v2 / shell_nMax)
+    pb = final_state.get("Pb")
+    if pb is not None:
+        pb_KcmInv = pb * Pb_au2_KcmInv
+        rows.append(("Pb", f"{_fmt_or_na(pb_KcmInv, '.3e')} K cm⁻³ (P/k_B)    "
+                          f"({_fmt_or_na(pb, '.3e')} internal)"))
+    # Eb in erg with internal in parens (like Pb / shell_nMax / v2)
+    eb = final_state.get("Eb")
+    if eb is not None:
+        eb_cgs = eb * INV_CONV.E_au2cgs
+        rows.append(("Eb", f"{_fmt_or_na(eb_cgs, '.3e')} erg    "
+                          f"({_fmt_or_na(eb, '.3e')} internal)"))
+    # T0, bubble_Tavg (internal units)
     for key, fmt, units in [
-        ("Eb", ".3e", "erg (internal)"),
-        ("Pb", ".3e", "erg/cm³ (internal)"),
         ("T0", ".3e", "K"),
         ("bubble_Tavg", ".3e", "K"),
     ]:

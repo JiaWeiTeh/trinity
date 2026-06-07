@@ -82,8 +82,8 @@ R2 = output.get('R2')
 - `F_rad`: Radiation pressure force
 
 ### Residual Diagnostics (Beta-Delta Solver)
-- `residual_Edot1_guess`: Edot from beta [erg/Myr]
-- `residual_Edot2_guess`: Edot from energy balance [erg/Myr]
+- `residual_Edot1_guess`: Edot from beta [Msun*pc^2/Myr^3] (× INV_CONV.L_au2cgs → erg/s)
+- `residual_Edot2_guess`: Edot from energy balance [Msun*pc^2/Myr^3] (× INV_CONV.L_au2cgs → erg/s)
 - `residual_T1_guess`: Bubble temperature [K]
 - `residual_T2_guess`: Target temperature T0 [K]
 

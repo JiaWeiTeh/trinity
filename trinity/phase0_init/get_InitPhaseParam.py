@@ -113,7 +113,7 @@ def get_y0(params):
 
     # Validate SPS values
     if Lmech_W < MIN_LUMINOSITY:
-        logger.warning(f"Lmech_W={Lmech_W} is very small at tSF={tSF} Myr")
+        logger.warning(f"Lmech_W={Lmech_W * cvt.L_au2cgs:.3e} erg/s is very small at tSF={tSF} Myr")
         Lmech_W = MIN_LUMINOSITY
 
     if pdot_W < MIN_MOMENTUM:
@@ -181,7 +181,20 @@ def get_y0(params):
         f"t0={t0:.6f} Myr, r0={r0:.6e} pc, v0={v0:.6e} pc/Myr, "
         f"E0={E0:.6e}, T0={T0:.2e} K"
     )
-        
+
+    # One-time feedback summary at SF onset, in conventional (paper) units:
+    #   log Q [1/s], L [erg/s], Mdot [Msun/yr], E0 [erg].
+    Qi_tSF = float(sps_f['fQi'](tSF))      # internal [1/Myr]
+    Lbol_tSF = float(sps_f['fLbol'](tSF))  # internal [Msun*pc^2/Myr^3]
+    logger.info(
+        "Feedback at SF onset (tSF=%.4f Myr): log Q=%.3f [1/s], "
+        "Lbol=%.3e erg/s, Lmech_wind=%.3e erg/s, "
+        "Mdot_wind=%.3e Msun/yr, E0=%.3e erg"
+        % (tSF, np.log10(Qi_tSF * cvt.s2Myr),
+           Lbol_tSF * cvt.L_au2cgs, Lmech_W * cvt.L_au2cgs,
+           Mdot0 * cvt.Mdot_au2Msunyr, E0 * cvt.E_au2cgs)
+    )
+
     return t0, r0, v0, E0, T0
 
 
