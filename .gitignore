@@ -13,6 +13,7 @@ outputs/*
 txt/
 fig/
 paper/plots/
+paper/barnes26/plots/
 movie.txt
 lib/*
 !lib/default/
