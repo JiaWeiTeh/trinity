@@ -19,8 +19,10 @@ lib/*
 !lib/default/**
 
 # Personal scratch/test config — kept locally, not tracked
-param/test_run.param
-param/test_run_fast.param
+param/*
+!param/cloud_*
+!param/*_example.param
+!param/simple_cluster.param
 scratch/
 
 
