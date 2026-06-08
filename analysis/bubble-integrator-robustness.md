@@ -1,5 +1,12 @@
 # Bubble-integrator robustness: the flaky `MonotonicError`
 
+> ⚠️ **This document may be out of date.** It is a planning/analysis record,
+> not a maintained spec, and the code moves faster than it does. **Always
+> re-verify every claim, code snippet, and line number against the current
+> source before treating anything here as ground truth** — line numbers in
+> particular drift with every edit. Last reconciled with the code: 2026-06-08,
+> through commit `a245c29` (#659).
+
 Single source of truth for eliminating the intermittent
 `trinity._functions.operations.MonotonicError` raised from the bubble
 luminosity solver. Same shape as the sibling audits: (Part I) the audit —
@@ -22,6 +29,17 @@ must stay byte-identical; only the failing path may change.*
 > audit (pre-fix "what is").** See **§I.7** for exactly what changed and why
 > the grid fix is deferred, and **§I.6** for the diagnostic evidence.
 
+> **Status (2026-06, #659): the detect-and-fail-loud half of Step 2 also
+> shipped, and the root-cause model changed.** `odeint` is now wrapped by
+> `_odeint_checked` (`bubble_luminosity.py:71`), which reads LSODA's status so a
+> failed solve is never consumed; callers raise `BubbleSolverError` (`:63`) or
+> return the `_SOLVER_FAIL_RESIDUAL` penalty (`:60`) instead of garbage.
+> Critically, #659 found the real source of the *non-determinism* is `odeint`
+> returning **uninitialised memory** for the un-integrated tail — *not* BLAS
+> thread FP noise — so the §I.3 theory and the Step-1 thread-pinning remedy are
+> **superseded** (see the dated corrections in §I.3 and Step 1). The `solve_ivp`
+> *recovery* path (Step 2 item 3) is still **not** wired.
+
 ## TL;DR
 
 - **Symptom**: `run.py` intermittently aborts with a bare `MonotonicError`
@@ -33,15 +51,19 @@ must stay byte-identical; only the failing path may change.*
   (`[30000 … 0. 0. 0.]`), and that non-monotonic tail trips a monotonicity
   guard far downstream. The real failure (a dead integrator) is swallowed;
   the symptom is a cryptic error in an unrelated helper.
-- **Root trigger**: `fsolve` for `bubble_dMdt` is FP/thread-sensitive;
-  small run-to-run perturbations occasionally land the integration in a
-  regime where `T → 0`, and the RHS terms `∝ 1/T`, `1/T^{5/2}`,
-  `dTdr²/T` blow up → LSODA gives up.
+- **Root trigger** *(superseded — see the §I.3 correction)*: originally
+  attributed to `fsolve`/BLAS FP-thread sensitivity nudging `bubble_dMdt` into
+  a regime where `T → 0` and the RHS terms `∝ 1/T`, `1/T^{5/2}`, `dTdr²/T`
+  blow up → LSODA gives up. #659 found the dominant cause of the *flake* is
+  instead `odeint` handing back uninitialised memory on a failed solve
+  (single-threaded + fixed seed still flaked).
 - **Fix posture**: (1) make it *deterministic* (cheap), (2) make the
   failure *loud and recoverable* (`full_output` + a real fallback — the
   codebase already carries an unused `solve_ivp` path), (3) guard the RHS
   so `T` cannot cross the physical floor. Prove with an N-run stress
-  harness, not a single pass.
+  harness, not a single pass. *(Update: (2)'s detect/fail-loud half shipped in
+  #659 via `_odeint_checked`; the `solve_ivp` recovery is still pending. (1)
+  was achieved by detection, not thread-pinning — see Step 1.)*
 - **Addendum (2026-06)**: a **second, distinct trigger** of the same guard
   was later identified — a small, smooth, *deterministic* startup transient
   at the `T_init=3e4` outer boundary (not the zero tail). It is benign and
@@ -58,22 +80,29 @@ must stay byte-identical; only the failing path may change.*
 `trinity/bubble_structure/bubble_luminosity.py`, in
 `get_bubbleproperties_pure`:
 
-1. **L141** — `scipy.optimize.fsolve(velocity_residuals_wrapper, …,
-   xtol=1e-4, factor=50, epsfcn=1e-4)` solves for `bubble_dMdt` from a
-   velocity boundary condition. `fsolve` internally does finite-difference
-   Jacobians and BLAS-backed linear algebra → output is sensitive to
-   floating-point summation order (which varies with BLAS threading).
-2. **L172** — `scipy.integrate.odeint(_get_bubble_ODE, initial_conditions,
-   r_array, args=(params, Pb), tfirst=True)`. **No `full_output`, no return
-   check.** When LSODA fails it prints
-   `ODEintWarning: Illegal input detected (internal error)` to stderr and
-   returns an array whose unintegrated tail is **zeros**.
-3. **L183** — `n_array = Pb / (2 k_B T_array)` then divides by those zeros
-   → `RuntimeWarning: divide by zero` (the visible breadcrumb).
-4. **L214** — `operations.find_nearest_higher(T_array, _CIEswitch)`.
-   `find_nearest_higher` (`trinity/_functions/operations.py:88`) calls
-   `monotonic(array)` and **raises `MonotonicError`** because the
-   `[…, 0., 0., 0.]` tail is neither increasing nor decreasing.
+1. **`bubble_luminosity.py:381`** — `scipy.optimize.fsolve(
+   velocity_residuals_wrapper, …, xtol=1e-4, factor=50, epsfcn=1e-4)` solves
+   for `bubble_dMdt` from a velocity boundary condition. `fsolve` internally
+   does finite-difference Jacobians and BLAS-backed linear algebra → output is
+   sensitive to floating-point summation order (which varies with BLAS
+   threading). *(But see the §I.3 correction: this FP sensitivity is not the
+   dominant cause of the run-to-run flake.)*
+2. **`:430`** — `odeint(_get_bubble_ODE, initial_conditions, r_array,
+   args=(params, Pb), tfirst=True)`, now wrapped by `_odeint_checked` (`:71`).
+   **Originally had no `full_output` / no return check** (the bug): when LSODA
+   fails it prints `ODEintWarning: Illegal input detected (internal error)` to
+   stderr and returns an array whose unintegrated tail is **uninitialised
+   memory** (often zeros). *(Fixed in #659 — `_odeint_checked` reads LSODA's
+   status and the caller raises `BubbleSolverError` instead of consuming the
+   tail.)*
+3. **`:446`** — `n_array = Pb / ((mu_convert/mu_ion)·k_B·T_array)` then divides
+   by any zero tail → `RuntimeWarning: divide by zero` (the visible
+   breadcrumb). *(Formula updated by the mu audit, #657; was `Pb/(2·k_B·T)`.)*
+4. **`:481`** — `operations.find_nearest_higher(T_array, _CIEswitch)`.
+   `find_nearest_higher` (`trinity/_functions/operations.py:144`) runs the
+   monotonicity guard and **raises `MonotonicError`** because the
+   `[…, 0., 0., 0.]` tail is neither increasing nor decreasing. *(The guard is
+   now `_is_monotonic_or_tolerable`, not strict `monotonic()` — see §I.7.)*
 
 The exception is raised ~100 lines and one module away from the actual
 fault. Nothing logs *"the integrator failed"*; you get a bare
@@ -81,12 +110,12 @@ fault. Nothing logs *"the integrator failed"*; you get a bare
 
 ## I.2 Why the RHS is fragile
 
-`_get_bubble_ODE` (`bubble_luminosity.py:785`, Weaver+77 Eq. 42-43):
+`_get_bubble_ODE` (`bubble_luminosity.py:1063`, Weaver+77 Eq. 42-43):
 
 ```python
 if np.abs(T - 0) < 1e-5:
-    logger.critical('T is zero in bubble ODE'); sys.exit()
-ndens = Pb / (2 * k_B * T)
+    logger.critical('T is zero in bubble ODE'); sys.exit()   # :1067-1069
+ndens = Pb / ((mu_convert/mu_ion) * k_B * T)                 # :1071 (mu audit #657; was 2*k_B*T)
 dTdrr = (Pb / (C_thermal * T**(5/2)) * ( … + 2.5*(v - v_term)*dTdr/T - dudt/Pb )
          - 2.5 * dTdr**2 / T - 2 * dTdr / r_arr)
 dvdr  = ( … + (v - v_term)*dTdr/T - 2*v/r_arr )
@@ -101,6 +130,20 @@ not on the gradual collapse that actually happens, and `sys.exit` is itself
 a hostile failure mode for a library function.
 
 ## I.3 Why it is non-deterministic
+
+> **Correction (2026-06, #659) — the theory below is superseded.** The flake is
+> **not** primarily BLAS/OpenMP thread FP order. #659 reproduced the OK/crash
+> coin-flip **single-threaded with a fixed `PYTHONHASHSEED`** (measured
+> 794/786/792 `odeint` calls across identical runs). The real mechanism: when
+> LSODA bails (istate ≠ 2), `scipy.integrate.odeint` returns **uninitialised
+> memory** for the un-integrated tail, and *those bytes* vary run-to-run (e.g.
+> denormals like `1.58e-318`). Consuming that garbage is what made the whole
+> bubble solve non-deterministic — `fsolve` could converge on a ~0 garbage
+> residual, and `T_array` could gain a random tail that intermittently tripped
+> `MonotonicError`. The fix (#659, scipy 1.17.1 / numpy 1.26.4) is to **detect**
+> the failed solve (`_odeint_checked`) and never consume the tail; that alone
+> makes runs byte-identical. Thread-pinning (the old Step 1) is therefore not
+> the cure. The original theory is kept below as the historical record.
 
 Identical `.param`, identical numpy 1.26.4, different outcomes across runs
 (observed: passed 2 of 3 identical re-runs in Phase B verification). The
@@ -121,16 +164,18 @@ numpy `<2` for — and pinning numpy only narrows it, it does not close it.
 
 ## I.4 Existing scaffolding (use it, don't reinvent)
 
-`bubble_luminosity.py` already contains an **unused alternative solver
-path** built on `scipy.integrate.solve_ivp` (≈ L664-708) plus `try/except`
-wrappers and a second `odeint` call site (L279, L734). Prior hands clearly
-hit this and started a `solve_ivp` route. The fix should finish/wire that
-rather than add a third parallel solver.
+`bubble_luminosity.py` already contains **unused alternative solver
+scaffolding** built on `scipy.integrate.solve_ivp`: `_solve_bubble_ode_with_ivp`
+(`:935`, no callers) and the solve_ivp-based `_create_adaptive_radius_grid`
+(`:809`, disabled — see the NOTE at `:400`). The `odeint` calls themselves are
+now all routed through `_odeint_checked` (sites at `:430`, `:546`, `:1008`).
+Prior hands clearly started a `solve_ivp` route; the recovery fix should
+finish/wire that rather than add a third parallel solver.
 
 ## I.5 Addendum (2026-06): a second, distinct trigger — the boundary startup transient
 
 The mechanism in I.1–I.3 (a **dead integrator** leaving a *zero tail* at the
-hot/inner end of `T_array`) is **not the only** way the L214 guard trips. A
+hot/inner end of `T_array`) is **not the only** way the `:481` guard trips. A
 separate investigation of a long, low-SFE run — `mCloud 1e5 / sfe 0.01 /
 nCore 1e4 / densPL_alpha 0 / PHII` (the `rosette_sweep_denser_PISM1e4` case;
 terminated `shell_collapsed`, exit 4), whose log showed several *caught*
@@ -140,8 +185,9 @@ benign, deterministic** trigger that is the *opposite* of the zero tail:
 - **Shape**: the T-profile is fully populated and ends hot
   (`T[-1] ≈ 1e7`). The only non-monotonicity is a **single smooth dip at the
   outer/cold start** — the hardcoded `T_init = 3e4` boundary in
-  `_get_bubble_ODE_initial_conditions` (L765). `T` decreases for the first
-  handful of points, reaches one trough, then rises monotonically. It is the
+  `_get_bubble_ODE_initial_conditions` (`:1041`; `T_init = 3e4` at `:1043`).
+  `T` decreases for the first handful of points, reaches one trough, then
+  rises monotonically. It is the
   *other end* of the array from the I.1 zero tail, and the integrator
   reports success (`full_output` `message = 'Integration successful.'`,
   no `ier` error).
@@ -155,8 +201,9 @@ benign, deterministic** trigger that is the *opposite* of the zero tail:
   tables and ODE, swept over the full (β,δ) domain.
 - **Severity**: unlike the intermittent crash in I.3, this mode is
   **deterministic** and, in the observed run, **caught** —
-  `get_betadelta.get_residual_pure` (`get_betadelta.py:356`) swallows the
-  `MonotonicError` and returns the `(100, 100)` sentinel residual. That
+  `get_betadelta.get_residual_pure` (`get_betadelta.py:316`; broad
+  `except Exception` at `:356` → `return 100.0, 100.0, None` at `:358`) swallows
+  the `MonotonicError` and returns the `(100, 100)` sentinel residual. That
   biases the β/δ solver away from the (physically fine) high-(β+δ) region
   and discards the structure; when the *chosen* candidate trips,
   `bubble_props` comes back `None` and `run_energy_implicit_phase.py:621`
@@ -168,16 +215,17 @@ benign, deterministic** trigger that is the *opposite* of the zero tail:
   mode, the I.1 zero-tail mode, or both, is exactly what the Step-0
   diagnostic (below) settles on the actual machine/sweep.
 
-**Caution for any guard-relaxation fix.** `find_nearest_higher` /
-`find_nearest_lower` determine direction with
-`mon_incr = kindof_increasing(array)` (`operations.py:93`, `:43`) **after**
-the monotonic guard. If the guard is loosened to tolerate the boundary dip,
-that *strict* `kindof_increasing` returns `False` for a now-tolerated dippy
-*increasing* array, flips `mon_incr`, and corrupts the index step at
-L100–104 → a wrong CIE/cooling-switch index. A tolerance fix must therefore
-**also** make the direction robust, e.g. `mon_incr = array[-1] >= array[0]`
-(provably equivalent to `kindof_increasing` for any array that passes the
-strict guard, and correct for the tolerated case).
+**Caution for any guard-relaxation fix** *(now addressed — see §I.7)*.
+`find_nearest_higher` / `find_nearest_lower` determine direction with
+`mon_incr = kindof_increasing(array)` (`operations.py:66`) **after** the
+monotonic guard. If the guard is loosened to tolerate the boundary dip, that
+*strict* `kindof_increasing` returns `False` for a now-tolerated dippy
+*increasing* array, flips `mon_incr`, and corrupts the index step → a wrong
+CIE/cooling-switch index. The shipped fix did exactly what this section
+prescribes: `find_nearest_higher`'s direction test is now
+`mon_incr = array[-1] >= array[0]` (`operations.py:165`); `find_nearest_lower`
+(`:43`) still uses strict `kindof_increasing` (it keeps the strict guard, so it
+is safe).
 
 ## I.6 Addendum (2026-06): diagnostic results + the single-point spike
 
@@ -260,10 +308,12 @@ uniformly ~1.3e-9 spaced, so **any** threshold above that deletes the **whole**
 band at once: `clean@{5e-9, 1e-8, 1e-7}` all leave **1 point** in the
 conduction sliver (total 59 992 → 39 993). That collapses the steep
 `T 3e4→1.6e5` conduction zone to a single point → wrong cooling (the exact
-failure mode I.1/§295 warns about). Raising `MIN_SPACING` is off the table.
+failure mode the conduction-zone grid comment at `bubble_luminosity.py:400-407`
+warns about). Raising `MIN_SPACING` is off the table.
 
-**Viable de-refinement (deferred).** Reduce the Step-2 point count (line 677,
-`int(2e4)`). Step 2 is largely **redundant** with Step 1: Step 1's reflected
+**Viable de-refinement (deferred).** Reduce the Step-2 point count
+(`_create_legacy_radius_grid:796`, `int(2e4)` — the middle of three `int(2e4)`
+chunks). Step 2 is largely **redundant** with Step 1: Step 1's reflected
 logspace already samples the outer edge at rel-spacing ~`1.6e-7`; Step 2 only
 stacks the extra `1.3e-9` near-duplicate layer that is the LSODA stressor.
 Measured (build grid, count outer-band density):
@@ -275,7 +325,8 @@ Measured (build grid, count outer-band density):
 | 200 | 40 192 | `1.3e-7` | no | ~350 |
 
 `N≈500` lifts the spacing out of the stress zone while Step 1 keeps the
-conduction zone well above the ≥100-point floor (§301). **But** it changes the
+conduction zone well above the ≥100-point floor (the `~100+ points` requirement
+noted at `bubble_luminosity.py:407`). **But** it changes the
 conduction-zone integration resolution for *every* run, so it shifts
 `L2Conduction`/downstream outputs by an amount that must be measured
 (output-diff) and blessed by the model author — a physics-accuracy choice, not
@@ -305,22 +356,33 @@ tells us whether the failure is "LSODA gave up" vs "NaN already in the
 initial conditions."
 
 **Step 0 realized (2026-06): the `TRINITY_BUBBLE_DIAG` capture.** A gated,
-observational diagnostic is now wired at the L172 `odeint` site
-(`bubble_luminosity._capture_bubble_integration`). With
+observational diagnostic is now wired at the `:430` `odeint` site
+(`bubble_luminosity._capture_bubble_integration`, called at `:434`). With
 `TRINITY_BUBBLE_DIAG=1`, every problematic T-profile (non-finite,
 non-monotonic, or sub-floor tail) is saved to
 `<path2output>/bubble_diag/event_*.npz` (the `r/v/T/dTdr` arrays plus
 `ier`, `message`, `bubble_dMdt`, `initial_conditions`, β, δ, R2, Eb, t) and a
 one-line **mode classification** is logged: `dead_integrator` (I.1) |
-`boundary_transient` (I.5) | `bulk_nonmonotonic`. With the flag unset the
-call path is **byte-identical** (it even gates `full_output`, so the `odeint`
-call is the original), so this respects the success-path bar and ships
-ahead of Steps 1-3. This is the disambiguator between the I.1 and I.5 modes
-on real runs — run it before choosing a fix. (Capture is at the L172 site
-that feeds the L214 guard; the other `odeint` sites at L279/L734 are not
-instrumented.)
+`boundary_transient` (I.5) | `bulk_nonmonotonic`. The capture only saves files
+and logs — it never mutates `T_array` or control flow, so the success path is
+byte-identical. *(Originally the diagnostic gated `full_output`; since #659
+`_odeint_checked` always passes `full_output=True`, which is byte-identical on
+success — it only adds the infodict.)* This is the disambiguator between the I.1
+and I.5 modes on real runs — run it before choosing a fix. (Capture is at the
+`:430` site that feeds the `:481` guard; the other odeint sites — `:546`
+conduction, `:1008` velocity-residual — are not instrumented.)
 
 ## Step 1 — Determinism (cheapest; possibly sufficient)
+
+> **Superseded (2026-06, #659).** This step assumed the flake was BLAS thread
+> FP noise. It is not: #659 reproduced the crash **single-threaded with a fixed
+> `PYTHONHASHSEED`** (an OK/crash coin-flip), proving the non-determinism comes
+> from `odeint` consuming an **uninitialised** failure tail, not thread FP
+> order. Determinism was won by *detecting* the failed solve (`_odeint_checked`),
+> not by thread-pinning. NB: `OMP/MKL/OPENBLAS/NUMEXPR_NUM_THREADS=1` *is* set
+> elsewhere — `sweep_runner.py:276` and the SLURM template `sweep_jobs.py` — but
+> for an unrelated reason (avoid CPU oversubscription across parallel sweep
+> workers), not as this fix, and not in `run.py`/`conftest`.
 
 Pin the BLAS/OpenMP thread counts to 1 (`OPENBLAS_NUM_THREADS`,
 `OMP_NUM_THREADS`, `MKL_NUM_THREADS`, `NUMEXPR_NUM_THREADS`) for the run —
@@ -340,8 +402,19 @@ de-risks CI immediately.
 
 ## Step 2 — Make the failure loud and recoverable
 
-In `get_bubbleproperties_pure`, replace the bare `odeint` (L172) with a
-checked call:
+> **Partly shipped (2026-06, #659).** The *detect / fail-loud* half landed:
+> `_odeint_checked` (`:71`) runs `odeint` with `full_output=True` and reports
+> LSODA's status; on failure `_bubble_luminosity_legacy` raises
+> `BubbleSolverError` (`:440`/`:553`) and `_get_velocity_residuals` returns the
+> deterministic `_SOLVER_FAIL_RESIDUAL = 1e3` penalty (`:1018`) so `fsolve` is
+> steered off the infeasible `dMdt` instead of converging on garbage. **The
+> design diverged from items 3–4 below:** there is **no** `solve_ivp` recovery
+> and **no** terminal-event integration yet (that scaffolding is still unused —
+> §I.4); a failed structure solve raises rather than recovers. The `sys.exit` in
+> `_get_bubble_ODE` (item 4) is **also not yet fixed** — still at `:1069`.
+
+In `get_bubbleproperties_pure`, the original plan was to replace the bare
+`odeint` (then L172, now `:430`) with a checked call:
 
 1. `psoln, infodict = odeint(..., full_output=True)`.
 2. Detect failure: `infodict['ier'] != 2`, or any non-finite / zero-tail in
@@ -353,7 +426,7 @@ checked call:
 4. If recovery also fails, raise a **descriptive** domain error
    (`BubbleIntegrationError` with `bubble_dMdt`, `Pb`, `t_now`, `ier`,
    message) — never a bare `MonotonicError`, and never `sys.exit` from a
-   library function (fix the L789 `sys.exit` too).
+   library function (fix the `:1069` `sys.exit` too).
 
 Net effect: the cryptic far-away symptom becomes an actionable,
 near-the-cause error, and the common case self-heals.
@@ -364,8 +437,8 @@ near-the-cause error, and the common case self-heals.
   (clamp `T` to a small positive physical value when evaluating the
   stiff terms), turning a blow-up into a bounded derivative the solver can
   step through — rather than `sys.exit`.
-- Audit `_create_legacy_radius_grid` (L497) so the grid does not over-reach
-  past the physical conduction zone (the existing comment at L160-167 warns
+- Audit `_create_legacy_radius_grid` (`:771`) so the grid does not over-reach
+  past the physical conduction zone (the existing comment at `:400-407` warns
   the adaptive grid under-sampled this zone — keep the constraint in mind).
 
 Step 3 is the deepest and the only one touching physics expressions; do it
