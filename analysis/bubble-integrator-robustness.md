@@ -1,11 +1,15 @@
 # Bubble-integrator robustness: the flaky `MonotonicError`
 
-> ⚠️ **This document may be out of date.** It is a planning/analysis record,
-> not a maintained spec, and the code moves faster than it does. **Always
-> re-verify every claim, code snippet, and line number against the current
-> source before treating anything here as ground truth** — line numbers in
-> particular drift with every edit. Last reconciled with the code: 2026-06-08,
-> through commit `a245c29` (#659).
+> ⚠️ **This document may be out of date — verify before trusting it.** It is a
+> point-in-time analysis/audit, not a maintained spec; the code moves faster
+> than these notes (paths, line numbers, and "what shipped" status drift).
+> **Any agent or person reading this: treat it as unverified. Flag that it may
+> be stale and re-check each claim, snippet, and line reference against the
+> current source before relying on it.**
+>
+> **Audit status (2026-06-08):** reconciled with the code through commit
+> `a245c29` (#659); see the Status notes in §I.3 / Step 1 / Step 2 for what
+> shipped vs. what's still pending.
 
 Single source of truth for eliminating the intermittent
 `trinity._functions.operations.MonotonicError` raised from the bubble

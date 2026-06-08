@@ -4,7 +4,7 @@ Visualization Tools
 ===================
 
 TRINITY's plotting code lives outside the installed ``trinity``
-package, split by audience:
+package, under ``paper/figures/``, with two entry points:
 
 - **Published paper figures** are regenerated from the bundled
   ``paper/data/*.npz`` files by a single entry point::
@@ -15,9 +15,9 @@ package, split by audience:
   Output lands in ``paper/plots/``. The figure scripts it drives live
   under ``paper/figures/`` (with shared infrastructure in
   ``paper/figures/_lib/``); see *Published Paper Figures* below.
-- **Exploratory / personal scripts** — the broader catalogue below —
-  live under ``scratch/``. They are not part of the installed package
-  and are run directly, writing to ``fig/{folder_name}/``.
+- **Run-directly scripts** — e.g. ``paper_feedback.py`` (below) — also
+  live under ``paper/figures/`` but are invoked directly rather than
+  through ``make_figures.py``, writing to ``fig/{folder_name}/``.
 
 Each script is a thin wrapper around the :ref:`sec-trinity-reader`
 API: it loads one or more simulations, extracts a few time series, and
@@ -62,7 +62,7 @@ Usage examples
    python paper/figures/paper_feedback.py -F /path/to/outputs -o /path/to/figures
 
    # Single run from an explicit path
-   python scratch/paper_radiusEvolution.py /path/to/dictionary.jsonl
+   python paper/figures/paper_feedback.py /path/to/dictionary.jsonl
 
 
 Published Paper Figures
@@ -98,8 +98,8 @@ script and bundle:
        trajectories.
 
 The remaining ``paper/figures/`` script, ``paper_feedback.py``
-(*Force Budget Plots* below), and the ``scratch/`` catalogue are run
-directly rather than through ``make_figures.py``.
+(*Force Budget Plots* below), is run directly rather than through
+``make_figures.py``.
 
 
 Force Budget Plots
@@ -117,81 +117,6 @@ total:
 - **Photoionised gas** (red)
 - **Radiation** (purple): direct and reprocessed radiation pressure
 - **PISM** (white): external ISM pressure
-
-paper_forceFraction.py
-~~~~~~~~~~~~~~~~~~~~~~
-
-Simplified force-fraction plot showing the three mechanically distinct
-forces that enter the momentum equation additively (so the fractions
-sum to one): combined thermal driving pressure (``F_thermal``),
-radiation (``F_rad``), and gravity (``F_grav``).
-
-paper_dominantFeedback.py
-~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Grid plot of which feedback mechanism dominates across parameter space
-(x: cloud mass, y: SFE). ``F_ram`` competes as a whole first, then
-subclassifies to wind (blue) or SN (yellow) if it wins. This script
-carries extra flags beyond the shared set (see *Configuration*).
-
-.. code-block:: bash
-
-   python scratch/paper_dominantFeedback.py -F /path/to/outputs --nCore 1e4
-   python scratch/paper_dominantFeedback.py -F /path/to/outputs --times 1.0 3.0 5.0
-   python scratch/paper_dominantFeedback.py -F /path/to/outputs --movie --dt 0.05
-
-
-Thermal Regime Plots
---------------------
-
-paper_pressureEvolution.py
-~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Line plot of pressure evolution over time: hot bubble pressure
-(``P_b``), ionization-front pressure (``P_IF``), the effective driving
-pressure (``P_drive``, selected per phase from :math:`P_b`,
-:math:`P_{\rm HII}`, and :math:`P_{\rm ram}`), and optionally the
-external pressure.
-
-
-Acceleration Decomposition
---------------------------
-
-paper_accelerationDecomposition.py
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Multi-line plot of the acceleration components from the force balance:
-gas-pressure (``a_gas``), radiation (``a_rad``), gravity (``a_grav``),
-mass-loading (``a_acc``), and the net (``a_net``). Symmetric-log scale
-by default; the sign of ``a_net`` indicates accelerating / coasting /
-decelerating.
-
-paper_cancellationMetric.py
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Shows the force-cancellation metric
-:math:`\mathcal{C} = |a_{\rm net}| / \sum_i |a_i|`. Near 1, one force
-dominates; near 0, forces nearly cancel.
-
-
-Shell Evolution Plots
----------------------
-
-paper_radiusEvolution.py
-~~~~~~~~~~~~~~~~~~~~~~~~
-
-Shell radius :math:`R_2(t)` with phase markers.
-
-paper_expansionVelocity.py
-~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Shell velocity :math:`v_2(t)`.
-
-paper_momentum.py
-~~~~~~~~~~~~~~~~~
-
-Cumulative momentum evolution with force contributions.
-
 
 Configuration
 -------------
@@ -222,18 +147,6 @@ which provides:
    --show-noPHII         Overlay the no-PHII companion run
    --show-all-markers    Enable all of the above
 
-``paper_dominantFeedback.py`` carries its own extra flags on top of the
-shared set:
-
-.. code-block:: bash
-
-   -t, --times VALUES    Time snapshots in Myr (e.g., 1.0 3.0 5.0)
-   --smooth METHOD       Smoothing: 'none' or 'interp'
-   --axis-mode MODE      'discrete' or 'continuous'
-   --movie               Render an animated GIF over time
-   --dt VALUE            Frame spacing for --movie
-
-
 Output
 ------
 
@@ -250,5 +163,4 @@ parameters never overwrite each other:
    └── sweep_test/
        ├── feedback_M1e7_sfe020_n1e4.pdf            # single run
        ├── feedback_M1e5-1e8_sfe001-080_n1e4.pdf    # grid of runs
-       ├── radiusEvolution_M1e7_sfe020_n1e4.pdf
        └── ...

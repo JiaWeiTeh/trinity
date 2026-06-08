@@ -52,7 +52,7 @@ def read_sps(f_mass, params):
         TRINITY parameters dictionary containing:
         - sps_path : str, full path to the SPS data file (already resolved
           by read_param.py; the bundled default file is used when the user
-          hasn't overridden sps_path — see analysis/sb99-refactor-audit.md §9)
+          hasn't overridden sps_path — see analysis/archive/sb99-refactor-audit.md §9)
         - FB_mColdWindFrac, FB_thermCoeffWind : Wind corrections
         - FB_mColdSNFrac, FB_thermCoeffSN, FB_vSN : SN corrections
 

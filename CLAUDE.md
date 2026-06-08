@@ -60,6 +60,22 @@ For multi-step tasks, state a brief plan:
 
 Strong success criteria let you loop independently. Weak criteria ("make it work") require constant clarification.
 
+## 5. Treat `analysis/` & `docs/dev/` plan docs as unverified
+
+**The `analysis/*.md` files (and the plan/skeleton docs under `docs/dev/`) are point-in-time audits/plans, not a maintained spec.** They go stale fast — paths, line numbers, and "what shipped" status drift as the code moves.
+
+- **Reading one:** do not treat it as ground truth. Flag to the user that it may be outdated, and re-verify every claim, snippet, and line reference against the current source before relying on it.
+- **Every such doc must carry this caution banner** at the top (right under the H1), and any new analysis or `docs/dev/` plan doc must include it:
+
+```markdown
+> ⚠️ **This document may be out of date — verify before trusting it.** It is a
+> point-in-time analysis/audit, not a maintained spec; the code moves faster
+> than these notes (paths, line numbers, and "what shipped" status drift).
+> **Any agent or person reading this: treat it as unverified. Flag that it may
+> be stale and re-check each claim, snippet, and line reference against the
+> current source before relying on it.**
+```
+
 ---
 
 **These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, and clarifying questions come before implementation rather than after mistakes.
