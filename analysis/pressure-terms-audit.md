@@ -1,5 +1,17 @@
 # Pressure terms & the meaning of `n`: the `2nkT` / `mu_p`,`mu_n` audit
 
+> ⚠️ **This document may be out of date — verify before trusting it.** It is a
+> point-in-time analysis/audit, not a maintained spec; the code moves faster
+> than these notes (paths, line numbers, and "what shipped" status drift).
+> **Any agent or person reading this: treat it as unverified. Flag that it may
+> be stale and re-check each claim, snippet, and line reference against the
+> current source before relying on it.**
+>
+> **Audit status (2026-06-08):** this file is **already self-declared SUPERSEDED**
+> (banner below) and remains accurate **as a historical record** — its pointer to
+> `n-consistency-audit.md` / `n-consistency-implementation-plan.md` is valid and
+> its μ constants are correct. No content fix needed.
+
 > **⚠️ SUPERSEDED (historical).** This first pass — written *before* the model
 > paper fixed the convention — reached the *opposite* conclusion on the bubble
 > (it treated `mu_ion` as the mass-conversion weight). The paper pins

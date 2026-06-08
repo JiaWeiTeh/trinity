@@ -213,7 +213,7 @@ def _resolve_sps_bundle(value, params) -> str:
     7-column SB99 layout (DEFAULT_SPS_COLUMN_MAP). The default rejects
     combinations the bundled cooling tables can't fulfill; users who need
     a different metallicity or rotation must set sps_path explicitly.
-    See analysis/sb99-refactor-audit.md §9.
+    See analysis/archive/sb99-refactor-audit.md §9.
 
     Side effects (the coupled members of the bundle):
       * ``params['sps_refmass'].value`` — 'def_value' resolves to 1e6 only

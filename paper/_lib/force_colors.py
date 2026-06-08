@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Centralised force-colour palette for all ``paper.figures`` paper scripts.
+Centralised force-colour palette for all ``paper.*.figures`` paper scripts.
 
 Three ChromaPalette-based schemes are provided:
 
@@ -13,7 +13,7 @@ runs, or by setting the environment variable ``TRINITY_PALETTE``.
 
 Usage
 -----
->>> from paper.figures._lib.force_colors import C, FORCE_FIELDS_BASE, set_palette
+>>> from paper._lib.force_colors import C, FORCE_FIELDS_BASE, set_palette
 >>> set_palette("eastern")      # switch palette at runtime
 >>> print(C.GRAV)               # access a colour constant
 """

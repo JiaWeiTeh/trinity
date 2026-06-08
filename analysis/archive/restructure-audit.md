@@ -1,5 +1,19 @@
 # Repository restructure: audit + phased plan
 
+> ⚠️ **This document may be out of date — verify before trusting it.** It is a
+> point-in-time analysis/audit, not a maintained spec; the code moves faster
+> than these notes (paths, line numbers, and "what shipped" status drift).
+> **Any agent or person reading this: treat it as unverified. Flag that it may
+> be stale and re-check each claim, snippet, and line reference against the
+> current source before relying on it.**
+>
+> **Audit status (2026-06-08):** **all three phases (A `_modified` drop, B
+> `src/→trinity`, C plotting split) have shipped**, as has the "only remaining"
+> integrator follow-up (#659) — this reads as a forward plan but describes
+> completed work. The target-layout and design-decision records still hold; the
+> blast-radius metrics and the "tracked `scratch/`" outcome do **not** (scratch
+> was instead **deleted**, commit `b4e2996`).
+
 Single source of truth for three structural changes raised in the
 codebase review, in the same shape as `analysis/sb99-refactor-audit.md`
 and `analysis/cooling-refactor-audit.md`: (Part I) the audit — *what is*

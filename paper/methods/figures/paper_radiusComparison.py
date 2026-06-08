@@ -24,15 +24,15 @@ from pathlib import Path
 import sys as _sys
 _sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from paper.figures._lib.plot_base import FIG_DIR, smooth_1d
+from paper._lib.plot_base import FIG_DIR, smooth_1d
 from trinity._output.trinity_reader import (
     load_output,
     find_all_simulations,
     organize_simulations_for_grid,
     get_unique_ndens,
 )
-from paper.figures._lib.plot_markers import add_plot_markers, get_marker_legend_handles
-from paper.figures._lib.grid_template import (
+from paper._lib.plot_markers import add_plot_markers, get_marker_legend_handles
+from paper._lib.grid_template import (
     _mcloud_label,
     build_param_tag,
     mark_missing_cell,
@@ -614,10 +614,10 @@ Examples:
 
   # Collapse a folder into a self-contained .npz bundle for paper-data:
   python paper_radiusComparison.py -F /path/to/runs/ \\
-      --export paper/data/radiusComparison.npz
+      --export paper/methods/data/radiusComparison.npz
 
   # Reproduce the figure from a published bundle (no run folder needed):
-  python paper_radiusComparison.py --from-npz paper/data/radiusComparison.npz
+  python paper_radiusComparison.py --from-npz paper/methods/data/radiusComparison.npz
 
 The folder should contain sibling simulation subfolders whose names end in
 ``_yesPHII`` (include_PHII=True, TRINITY) and ``_noPHII`` (include_PHII=False,
@@ -642,7 +642,7 @@ WARPFIELD-like). Runs are paired automatically by their base name.
                         help='Export the source folder to this .npz bundle '
                              'and exit (no plot). With multiple ndens, the '
                              'filename is suffixed with _n<ndens> per bundle. '
-                             'Recommended location: paper/data/.')
+                             'Recommended location: paper/methods/data/.')
     parser.add_argument('--show-phase', action='store_true', default=False)
     parser.add_argument('--show-rcloud', action='store_true', default=False)
     parser.add_argument('--show-rcloud-horizontal', action='store_true', default=False)
@@ -655,7 +655,7 @@ WARPFIELD-like). Runs are paired automatically by their base name.
     args = parser.parse_args()
 
     # Apply marker flags to module globals
-    from paper.figures._lib.cli import get_marker_flags
+    from paper._lib.cli import get_marker_flags
     _marker_flags = get_marker_flags(args)
     globals()['SHOW_PHASE'] = _marker_flags['show_phase']
     globals()['SHOW_RCLOUD'] = _marker_flags['show_rcloud']

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Shared boilerplate and utilities for ``paper.figures`` paper scripts.
+Shared boilerplate and utilities for ``paper.*.figures`` paper scripts.
 
 Provides:
 - ``FIG_DIR``: canonical output directory (``<project_root>/fig/``)

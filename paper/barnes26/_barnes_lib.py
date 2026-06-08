@@ -1,0 +1,166 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""Shared helpers for the Barnes 2026 (PHANGS) comparison scripts.
+
+Everything here is *TRINITY-only*: it reads finished TRINITY runs and puts
+the relevant pressures on Barnes' ``P/k`` [K cm^-3] basis. No Barnes data is
+overlaid yet — these helpers just expose TRINITY's own quantities in the
+units a Barnes comparison will eventually need.
+
+Pressure basis
+--------------
+``PISM`` is stored as ``P/k`` [K cm^-3]; the runtime pressures (``P_HII``,
+``Pb``, ``P_ram``, ``P_drive``) are in code units [Msun/Myr^2/pc]. The single
+constant ``Pb_au2_KcmInv`` from ``trinity._functions.unit_conversions``
+converts the latter onto the former, so everything lands on one axis.
+
+Radiation pressure
+------------------
+TRINITY does not store a ``P_rad`` scalar; it stores a radiation *force*
+``F_rad = f_abs_weighted * Lbol / c * (1 + tau_IR * kappa_IR)`` (single
+weighted absorbed fraction, IR-trapping boosted). Two definitions are
+exposed:
+
+* :func:`p_rad_native` — ``F_rad / (4 pi R2^2)``: the pressure TRINITY
+  actually exerts on the shell, converted to K cm^-3 with the same factor
+  as the other pressures.
+* :func:`p_rad_barnes` — Barnes' analytic ``prefactor * L / (4 pi r^2 c)``
+  recomputed on TRINITY's luminosities (single-scattering, no IR boost).
+  The prefactor (the "3") is UNVERIFIED against the paper; see
+  :data:`BARNES_PRAD_PREFACTOR`.
+"""
+
+import math
+from pathlib import Path
+
+import numpy as np
+
+from trinity._output.trinity_reader import load_output, find_all_simulations
+from trinity._functions.unit_conversions import (
+    Pb_au2_KcmInv,   # code pressure [Msun/Myr^2/pc] -> P/k [K cm^-3]
+    L_au2cgs,        # code luminosity [Msun pc^2/Myr^3] -> erg/s
+    pc2cm,           # pc -> cm
+    K_B_CGS,         # Boltzmann constant [erg/K]
+    ndens_au2cgs,    # number density [pc^-3] -> [cm^-3]
+)
+
+# Universal constant (does not vary per run); avoids depending on whether a
+# given run's metadata.json carries c_light.
+C_LIGHT_CGS = 2.99792458e10  # speed of light [cm/s]
+
+FOUR_PI = 4.0 * math.pi
+
+# Default stellar ages [Myr] at which each run is sampled (one plot row each).
+DEFAULT_AGES_MYR = (0.5, 1.0, 3.0)
+
+# Prefactor in Barnes' P_rad = prefactor * L / (4 pi r^2 c). The pasted
+# analysis cites 3; this is UNVERIFIED against the Barnes paper and is kept
+# as a named constant so it is trivial to correct once the paper is in hand.
+BARNES_PRAD_PREFACTOR = 3.0
+
+
+# ---------------------------------------------------------------------------
+# Pressure conversions
+# ---------------------------------------------------------------------------
+def to_Pk(P_code):
+    """Code pressure [Msun/Myr^2/pc] -> Barnes' ``P/k`` basis [K cm^-3]."""
+    return np.asarray(P_code, dtype=float) * Pb_au2_KcmInv
+
+
+def pism_to_Pk(PISM_code):
+    """``PISM`` (stored as P/k with density in pc^-3, i.e. K pc^-3) -> K cm^-3.
+
+    PISM is declared in the schema as P/k [K cm^-3] but persisted internally
+    with the density part in pc^-3, so it needs ``ndens_au2cgs`` (pc^-3 ->
+    cm^-3) rather than the code-pressure factor used by :func:`to_Pk`. This
+    puts PISM on the same K cm^-3 axis as the converted runtime pressures.
+    """
+    return np.asarray(PISM_code, dtype=float) * ndens_au2cgs
+
+
+def p_rad_native(F_rad, R2):
+    """TRINITY's native radiation pressure on the shell, in K cm^-3.
+
+    ``P_rad = F_rad / (4 pi R2^2)`` using the radiation force TRINITY itself
+    applies (IR-trapping boost included). Inputs in code units.
+    """
+    F_rad = np.asarray(F_rad, dtype=float)
+    R2 = np.asarray(R2, dtype=float)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        P_code = F_rad / (FOUR_PI * R2 ** 2)
+    return to_Pk(P_code)
+
+
+def p_rad_barnes(Lbol, Li, R_pc, f_neu, f_ion,
+                 prefactor=BARNES_PRAD_PREFACTOR):
+    """Barnes-formula radiation pressure recomputed on TRINITY luminosities.
+
+    ``P_rad = prefactor * (f_neu*Lbol + f_ion*Li) / (4 pi R^2 c) / k_B``
+    (single-scattering, no IR boost). ``Lbol``/``Li`` in code units, ``R_pc``
+    in pc; output in K cm^-3. The direct term uses the non-ionizing absorbed
+    fraction (Barnes' ``1 - e^-tau_UV`` analog) and the ionizing term the
+    ionizing absorbed fraction.
+    """
+    Lbol = np.asarray(Lbol, dtype=float) * L_au2cgs     # erg/s
+    Li = np.asarray(Li, dtype=float) * L_au2cgs         # erg/s
+    R_cm = np.asarray(R_pc, dtype=float) * pc2cm
+    f_neu = np.asarray(f_neu, dtype=float)
+    f_ion = np.asarray(f_ion, dtype=float)
+    L_abs = f_neu * Lbol + f_ion * Li
+    with np.errstate(divide="ignore", invalid="ignore"):
+        P_cgs = prefactor * L_abs / (FOUR_PI * R_cm ** 2 * C_LIGHT_CGS)  # dyn/cm^2
+    return P_cgs / K_B_CGS   # K cm^-3
+
+
+# ---------------------------------------------------------------------------
+# Run loading and sampling
+# ---------------------------------------------------------------------------
+def load_runs(folder):
+    """Return a ``TrinityOutput`` for every run under *folder* (sorted)."""
+    return [load_output(p) for p in find_all_simulations(folder)]
+
+
+def _f(value):
+    """Coerce to float, mapping ``None`` to NaN."""
+    return float(value) if isinstance(value, (int, float)) else float("nan")
+
+
+def sample_run_at_age(output, age_myr):
+    """Sample one run at *age_myr* (closest snapshot).
+
+    Returns a dict of the quantities the Barnes plots need (code units for
+    luminosities/forces, pc for radii, plus the ``PISM``/``mCluster``
+    run-constants), or ``None`` if the run never reaches *age_myr*.
+    """
+    if age_myr < output.t_min or age_myr > output.t_max:
+        return None
+    snap = output.get_at_time(age_myr, mode="closest", quiet=True)
+    md = output.metadata
+    return dict(
+        name=output.filepath.parent.name,
+        t=_f(snap.t_now),
+        R2=_f(snap["R2"]),
+        R_IF=_f(snap["R_IF"]),
+        F_rad=_f(snap["F_rad"]),
+        P_HII=_f(snap["P_HII"]),
+        Lbol=_f(snap["Lbol"]),
+        Li=_f(snap["Li"]),
+        f_neu=_f(snap["shell_fAbsorbedNeu"]),
+        f_ion=_f(snap["shell_fAbsorbedIon"]),
+        mCluster=_f(md.get("mCluster")),
+        PISM=_f(md.get("PISM")),
+    )
+
+
+def collect_age_records(outputs, ages):
+    """Map each age -> list of per-run records that reach it."""
+    by_age = {}
+    for age in ages:
+        recs = [sample_run_at_age(o, age) for o in outputs]
+        by_age[age] = [r for r in recs if r is not None]
+    return by_age
+
+
+def project_root():
+    """Repository root (two levels above this file: barnes26 -> paper -> root)."""
+    return Path(__file__).resolve().parents[2]

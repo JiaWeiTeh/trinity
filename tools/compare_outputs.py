@@ -31,7 +31,7 @@ from matplotlib.lines import Line2D
 import sys as _sys
 _sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from paper.figures._lib.plot_base import FIG_DIR  # noqa: E402  applies trinity.mplstyle
+from paper._lib.plot_base import FIG_DIR  # noqa: E402  applies trinity.mplstyle
 from trinity._output.trinity_reader import (  # noqa: E402
     TrinityOutput, resolve_data_input,
 )

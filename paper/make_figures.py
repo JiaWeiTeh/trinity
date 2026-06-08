@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Reproduce every paper figure from the bundled ``.npz`` files in ``paper/data/``.
+"""Reproduce every paper figure from the bundled ``.npz`` files in ``paper/methods/data/``.
 
 This is the entry point for paper reproducibility: after cloning the
 repo, run
 
     python paper/make_figures.py
 
-and every figure whose bundle is present in ``paper/data/`` will be
+and every figure whose bundle is present in ``paper/methods/data/`` will be
 regenerated into ``paper/plots/`` — a single directory holding the
 published paper figures, so readers don't have to hunt through the
 per-run subfolders that standalone scripts write to. Bundles that
@@ -27,7 +27,7 @@ import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-DATA_DIR = REPO_ROOT / "paper" / "data"
+DATA_DIR = REPO_ROOT / "paper" / "methods" / "data"
 # Single home for the published paper figures (see module docstring).
 PLOTS_DIR = REPO_ROOT / "paper" / "plots"
 
@@ -41,28 +41,28 @@ FIGURES = [
     dict(
         name="density",
         description="density profile ingredients + phase timeline",
-        module="paper.figures.paper_densityProfile",
+        module="paper.methods.figures.paper_densityProfile",
         bundle=DATA_DIR / "densityProfile.npz",
         args=lambda bundle, outdir: ["--from-npz", str(bundle), "-o", str(outdir)],
     ),
     dict(
         name="teaser",
         description="teaser: R_b/v_b, feedback decomposition, Q_i budget",
-        module="paper.figures.paper_teaser",
+        module="paper.methods.figures.paper_teaser",
         bundle=DATA_DIR / "diagnostics.npz",
         args=lambda bundle, outdir: ["--from-npz", str(bundle), "-o", str(outdir)],
     ),
     dict(
         name="radiusComparison",
         description="R(t) comparison: TRINITY vs WARPFIELD vs scaling laws",
-        module="paper.figures.paper_radiusComparison",
+        module="paper.methods.figures.paper_radiusComparison",
         bundle=DATA_DIR / "radiusComparison.npz",
         args=lambda bundle, outdir: ["--from-npz", str(bundle), "-o", str(outdir)],
     ),
     dict(
         name="rcloud_smoothing",
         description="rCloud smoothing + before/after LSODA trajectories",
-        module="paper.figures.paper_rcloud_smoothing",
+        module="paper.methods.figures.paper_rcloud_smoothing",
         bundle=DATA_DIR / "app_LSODA.npz",
         # paper_rcloud_smoothing takes the bundle as a positional argument,
         # and its ``-o`` is a full output file path rather than a directory.
