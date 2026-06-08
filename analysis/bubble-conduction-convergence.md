@@ -121,3 +121,36 @@ not a silent shift.
   intermediate) convergence is the Commit 3 output-diff deliverable.
 - `solve_ivp` here uses `method='LSODA'` to match the production stiff solver;
   Commit 2 will confirm the success-path delta vs `odeint` on non-failing runs.
+
+## Post-fix verification (Commits 2-3)
+
+The integrator switch shipped as Commit 2 (main structure solve -> `solve_ivp`,
+sampled on the legacy grid) and Commit 3 (conduction zone sampled from the
+dense-output solution at `_CONDUCTION_NPTS=2000`, deleting the fragile re-solve).
+End-to-end success-path output-diffs (single-threaded smoke runs, field-by-field
+over `dictionary.jsonl`, 98 snapshots, 67 numeric fields):
+
+| transition | scenario | max field change | `LTotal` | `L2Conduction` | fields >1% | wall time |
+|---|---|---|---|---|---|---|
+| odeint -> Commit 2 (main solve) | quickstart (`1e5`/`0.3`) | 1.4e-3 (`dMdt`) | 4.3e-4 | 1.1e-4 | 0/67 | -- |
+| Commit 2 -> Commit 3 (conduction) | quickstart (`1e5`/`0.3`) | 8.9e-3 (`L2Conduction`) | 1.8e-3 | **8.9e-3** | 0/67 | 226.2s -> 227.7s (+0.7%) |
+| Commit 2 -> Commit 3 (conduction) | denser low-SFE (`1e5`/`0.1`/`nCore 1e4`) | 1.5e-2 (`L2Conduction`) | 3.7e-3 | **1.5e-2** | 1/67 | -- |
+
+Reading:
+- **Commit 2** (integrator swap, same output grid) is essentially neutral
+  (max 0.14%); the conduction term barely moves because its re-solve is still
+  `odeint` at that point.
+- **Commit 3** moves `L2Conduction` to the converged value -- the documented
+  physics correction. It is **bounded** (<=0.9% quickstart, <=1.5% denser case)
+  and **concentrated at the thin early-bubble state** (snapshot 0, `R1 ~ r2Prime`)
+  where the old ~100-point re-solve was most under-resolved; every other
+  snapshot moves less. `LTotal` shifts <=0.4% (`L_conduction` is one additive
+  term). The intermediate region (`L3Intermediate`) shifts <=0.3% via the
+  `dTdR_coolingswitch` cool-end slope.
+- **Perf is neutral** (+0.7% wall time): K=2000 dense-output sampling + cooling
+  lookup costs ~1 ms/call, negligible against the per-step `solve_ivp` integration.
+
+Conclusion: the crash is removed at both structure-solve sites and the
+conduction luminosity is converged, at a small, bounded, explicitly-documented
+cost in the reported numbers (a correction *toward* the converged value, not a
+regression) -- the change for model-author sign-off.
