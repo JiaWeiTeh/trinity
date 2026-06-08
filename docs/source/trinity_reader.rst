@@ -19,7 +19,7 @@ time window, and conversion to a pandas ``DataFrame``. A
 dictionary keyed by parameter name. A companion utility,
 ``find_all_simulations``, walks a directory tree of sweep output and
 returns the path of every ``dictionary.jsonl`` it finds. The plotting
-scripts under ``paper/figures/`` and ``scratch/`` consume their input
+scripts under ``paper/methods/figures/`` and ``scratch/`` consume their input
 exclusively through these classes.
 
 .. seealso::
