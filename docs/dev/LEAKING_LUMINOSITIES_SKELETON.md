@@ -1,5 +1,17 @@
 # Phase plan — Geometry-set covering-fraction leak (`coverFraction`)
 
+> ⚠️ **This document may be out of date — verify before trusting it.** It is a
+> point-in-time plan/skeleton, not a maintained spec; the code moves faster than
+> these notes (paths, line numbers, and "what shipped" status drift).
+> **Any agent or person reading this: treat it as unverified. Flag that it may
+> be stale and re-check each claim, snippet, and line reference against the
+> current source before relying on it.**
+>
+> **Note (2026-06-08, not re-audited):** the `coverFraction`/`Cf` feature has
+> progressed since this skeleton (commits `#641 Feature/add cf`, `#647`/`#648`
+> plot-cf, plus the `rosette_cf*` params). The Status line below predates that —
+> re-verify which phases actually shipped before relying on it.
+
 > **Status (v2): Phase A–C drafted on branch `feature/add-Cf`.** The energy leak is wired;
 > the **mass sink (Phase D) and X-ray/photon work (Phase G) are NOT implemented** and several
 > edge cases are open (§7). Decisions Q1–Q4 are resolved per the leakage spec v2 (its §S5).

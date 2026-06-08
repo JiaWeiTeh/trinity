@@ -17,7 +17,7 @@ Used by:
   - trinity/_input/read_param.py   (builds and validates params['sps_column_map'])
   - trinity/sps/read_sps.py      (loads the file via the column map)
 
-Background: see analysis/sb99-refactor-audit.md, sections 9 (legacy as
+Background: see analysis/archive/sb99-refactor-audit.md, sections 9 (legacy as
 permanent fallback) and 10 PR-2 (column-mapping design).
 """
 
@@ -152,7 +152,7 @@ UNIT_CONVERSIONS: Dict[str, Dict[str, float]] = {
 # Legacy SB99 7-column positional preset. Injected as the column map for
 # the bundled default file (sps_path = def_path → lib/default/sps/
 # starburst99/1e6cluster_default.csv) so users do not need to declare
-# sps_col_* lines. See analysis/sb99-refactor-audit.md §9 for background.
+# sps_col_* lines. See analysis/archive/sb99-refactor-audit.md §9 for background.
 #
 # Column order matches the canonical SB99 export layout:
 #   col 0: time [yr]              (linear)
@@ -277,7 +277,7 @@ def build_user_column_map(params) -> Dict[str, ColumnSpec]:
 
 def validate_user_column_map(column_map: Dict[str, ColumnSpec], sps_path: str) -> None:
     """Strict validation for user-mode column maps. Raises ValueError with a
-    fillable template on failure -- see analysis/sb99-refactor-audit.md §10
+    fillable template on failure -- see analysis/archive/sb99-refactor-audit.md §10
     PR-2.
 
     Rules:
