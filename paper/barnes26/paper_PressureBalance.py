@@ -45,9 +45,11 @@ from paper.barnes26._barnes_lib import (  # noqa: E402
     to_Pk, pism_to_Pk, p_rad_native, p_rad_barnes, sigma_gas, project_root,
 )
 
+# Okabe-Ito colour-blind-safe palette + redundant marker shapes, so the two
+# P_rad series are distinguishable in greyscale / full colour-blindness.
 PRAD_STYLES = {
-    "native": dict(color="#1f77b4", label=r"$P_{\rm rad}$ native"),
-    "barnes": dict(color="#d62728", label=r"$P_{\rm rad}$ Barnes formula"),
+    "native": dict(color="#0072B2", marker="o", label=r"$P_{\rm rad}$ native"),
+    "barnes": dict(color="#D55E00", marker="^", label=r"$P_{\rm rad}$ Barnes formula"),
 }
 
 
@@ -123,7 +125,7 @@ def plot_figure(records_by_age, ages, prad_modes, out_path):
         for mode, Ptot in series.items():
             st = PRAD_STYLES[mode]
             m = np.isfinite(PISM) & np.isfinite(Ptot) & (PISM > 0) & (Ptot > 0)
-            ax_abs.scatter(PISM[m], Ptot[m], s=28, color=st["color"],
+            ax_abs.scatter(PISM[m], Ptot[m], s=28, color=st["color"], marker=st["marker"],
                            edgecolor="k", linewidth=0.4, alpha=0.85)
             all_pos.append(Ptot[m])
         lims = np.concatenate([a[np.isfinite(a) & (a > 0)] for a in all_pos if a.size])
@@ -137,23 +139,32 @@ def plot_figure(records_by_age, ages, prad_modes, out_path):
         ax_abs.set_xlabel(r"$P_{\rm ISM}/k$ [K cm$^{-3}$]")
 
         # --- rows 1 & 2: log10(P_tot)-log10(P_ISM) (linear y) vs P_tot / Sigma_gas ---
-        for ax, xvals, xlabel, xlog in (
-            (ax_pt,  None,  r"$P_{\rm tot}/k$ [K cm$^{-3}$]", True),
-            (ax_sig, Sigma, r"$\Sigma_{\rm gas}$ [M$_\odot$ pc$^{-2}$]", True),
+        for ax, xvals, xlabel in (
+            (ax_pt,  None,  r"$P_{\rm tot}/k$ [K cm$^{-3}$]"),
+            (ax_sig, Sigma, r"$\Sigma_{\rm gas}$ [M$_\odot$ pc$^{-2}$]"),
         ):
             for mode, Ptot in series.items():
                 st = PRAD_STYLES[mode]
                 y = _logratio(Ptot, PISM)
                 x = Ptot if xvals is None else xvals
                 m = np.isfinite(x) & np.isfinite(y) & (x > 0)
-                ax.scatter(x[m], y[m], s=28, color=st["color"],
+                ax.scatter(x[m], y[m], s=28, color=st["color"], marker=st["marker"],
                            edgecolor="k", linewidth=0.4, alpha=0.85)
-            ax.axhline(0.0, color="0.4", ls="--", lw=1.0, zorder=1)
-            if xlog:
-                ax.set_xscale("log")
+            ax.set_xscale("log")
+            # dashed equilibrium line at log-ratio = 0 splits the regimes; keep it
+            # in view so over- (y>0) vs under-pressured (y<0) is always visible.
+            ax.axhline(0.0, color="0.35", ls="--", lw=1.3, zorder=1)
+            ymin, ymax = ax.get_ylim()
+            lo, hi = min(ymin, 0.0), max(ymax, 0.0)
+            pad = 0.08 * (hi - lo) if hi > lo else 0.5
+            ax.set_ylim(lo - pad, hi + pad)
             ax.grid(True, which="both", alpha=0.25, lw=0.5)
             if j == 0:
                 ax.set_ylabel(_LOGRATIO_LABEL)
+                ax.text(0.03, 0.97, "over-pressured", transform=ax.transAxes,
+                        va="top", ha="left", fontsize=7, style="italic", color="0.4")
+                ax.text(0.03, 0.03, "under-pressured", transform=ax.transAxes,
+                        va="bottom", ha="left", fontsize=7, style="italic", color="0.4")
             ax.set_xlabel(xlabel)
 
     handles = [
