@@ -40,6 +40,19 @@ _trapezoid = getattr(np, 'trapezoid', None) or np.trapz
 
 MIN_SPACING = 1e-12
 
+# Outer/cold boundary temperature [K] for the backward bubble-structure
+# integration. This single value plays THREE coupled roles, all of which must
+# move together (hence one constant, not three literals):
+#   1. the integration anchor in _get_bubble_ODE_initial_conditions (sets dR2,
+#      r2Prime and the initial T/dTdr/v);
+#   2. the rejection floor in _get_velocity_residuals (min_T below the anchor is
+#      penalised so fsolve is steered away);
+#   3. the scale of that rejection penalty.
+# It is NOT the physical "no cooling below" floor -- that is _coolingswitch=1e4,
+# a deliberately separate quantity. See analysis/bubble-integrator-robustness.md
+# (the "T_init=3e4" boundary-transient discussion).
+_T_INIT_BOUNDARY = 3e4
+
 # =============================================================================
 # Deterministic handling of LSODA (odeint) solver failures.
 #
@@ -1023,9 +1036,9 @@ def _get_velocity_residuals(dMdt_init, params, Pb: float, R1: float) -> float:
     residual = (v_array[-1] - 0) / (v_array[0] + 1e-4)
 
     min_T = np.min(T_array)
-    if min_T < 3e4:
+    if min_T < _T_INIT_BOUNDARY:
         logger.debug(f'Rejected. min T: {min_T}')
-        return residual * (3e4 / (min_T + 1e-1))**2
+        return residual * (_T_INIT_BOUNDARY / (min_T + 1e-1))**2
 
     if np.isnan(min_T):
         logger.debug('Rejected. nan temperature')
@@ -1040,7 +1053,7 @@ def _get_velocity_residuals(dMdt_init, params, Pb: float, R1: float) -> float:
 
 def _get_bubble_ODE_initial_conditions(dMdt, params, Pb: float, R1: float):
     """Get initial conditions for bubble ODE (Eq 44 in Weaver+77)."""
-    T_init = 3e4
+    T_init = _T_INIT_BOUNDARY
 
     k_B = params['k_B'].value
     mu_ion = params['mu_ion'].value
