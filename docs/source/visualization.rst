@@ -9,8 +9,8 @@ package, under ``paper/figures/``, with two entry points:
 - **Published paper figures** are regenerated from the bundled
   ``paper/methods/data/*.npz`` files by a single entry point::
 
-      python paper/make_figures.py            # all published figures
-      python paper/make_figures.py teaser     # one figure (prefix match)
+      python paper/methods/make_figures.py            # all published figures
+      python paper/methods/make_figures.py teaser     # one figure (prefix match)
 
   Output lands in ``paper/plots/``. The figure scripts it drives live
   under ``paper/methods/figures/`` (with shared infrastructure in
@@ -68,7 +68,7 @@ Usage examples
 Published Paper Figures
 -----------------------
 
-These are driven by ``paper/make_figures.py`` from the bundled
+These are driven by ``paper/methods/make_figures.py`` from the bundled
 ``paper/methods/data/*.npz`` files and rendered into ``paper/plots/``. Each row
 maps a short name (usable as a prefix on the command line) to its
 script and bundle:
