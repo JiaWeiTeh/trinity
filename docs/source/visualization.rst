@@ -4,7 +4,7 @@ Visualization Tools
 ===================
 
 TRINITY's plotting code lives outside the installed ``trinity``
-package, under ``paper/figures/``, with two entry points:
+package, under ``paper/methods/figures/``, with two entry points:
 
 - **Published paper figures** are regenerated from the bundled
   ``paper/methods/data/*.npz`` files by a single entry point::
@@ -62,7 +62,7 @@ Usage examples
    python paper/methods/figures/paper_feedback.py -F /path/to/outputs -o /path/to/figures
 
    # Single run from an explicit path
-   python paper/figures/paper_feedback.py /path/to/dictionary.jsonl
+   python paper/methods/figures/paper_feedback.py /path/to/dictionary.jsonl
 
 
 Published Paper Figures
