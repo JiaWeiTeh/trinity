@@ -67,6 +67,14 @@ _SOLVER_FAIL_RESIDUAL = 1e3
 _BUBBLE_RTOL = 1e-8
 _BUBBLE_ATOL = 1e-10
 
+# Number of points used to sample the dense-output solution across the
+# conduction band for the L_conduction / Tavg_conduction trapezoids. The
+# integrand is smooth and the sampled solution is exact, so the trapezoid
+# converges fast (~1/K**2): K=2000 is within ~7e-5 of the K->infinity value at
+# ~1 ms/call (analysis/bubble-conduction-convergence.md), far better resolved
+# than the former ~100-point conduction re-solve while remaining cheap.
+_CONDUCTION_NPTS = 2000
+
 
 class BubbleSolverError(Exception):
     """Raised when a bubble-structure odeint solve fails (LSODA istate != 2).
@@ -598,49 +606,25 @@ def _bubble_luminosity_legacy(params, R1, Pb, r2Prime, initial_conditions,
     dTdR_coolingswitch = dTdr_bubble[0]
 
     if index_cooling_switch != index_CIE_switch:
-        # if this zone is not well resolved, solve ODE again with high resolution (IMPROVE BY ALWAYS INTERPOLATING)
-        if index_CIE_switch - index_cooling_switch < 100:
-             # This is the original array that is too short
-            lowres_r = r_array[:index_CIE_switch + 1]
-            _highres = 1e2
-             # how many intervales in high-res version? [::-1] included because r is reversed.
-            r_conduction = np.arange(
-                min(lowres_r), max(lowres_r),
-                (max(lowres_r) - min(lowres_r)) / _highres
-            )[::-1]
-            # rerun structure with greater precision
-            psoln_cond, _ok_cond, _info_cond = _odeint_checked(
-                _get_bubble_ODE,
-                [v_array[index_cooling_switch], T_array[index_cooling_switch], dTdr_array[index_cooling_switch]],
-                r_conduction,
-                args=(params, Pb),
-            )
-            if not _ok_cond:
-                raise BubbleSolverError(
-                    f"conduction-zone odeint failed (LSODA): {_info_cond['message']}")
+        # Sample the bubble structure across the conduction band
+        # [r2Prime -> r(T=10**5.5)] from the dense-output solution computed
+        # above (_sol), rather than re-integrating on a fragile high-resolution
+        # grid. _sol is the continuous solution over [R1, r2Prime], so this
+        # needs no re-solve -- removing the near-duplicate-radii LSODA crash --
+        # and the trapezoids below are converged (_CONDUCTION_NPTS; see
+        # analysis/bubble-conduction-convergence.md). The non-CIE cooling table
+        # is only defined for T < 10**5.5, so the band is masked to it.
+        r_conduction = np.linspace(
+            r_array[0], r_array[index_CIE_switch], _CONDUCTION_NPTS)
+        _cond = _sol.sol(r_conduction)
+        T_cond = _cond[1]
+        dTdr_cond = _cond[2]
 
-            # Here, something needs to be done. Because of the precision of the solver, 
-            # it may return temperature with values > 10**5.5K eventhough that was the maximum limit (i.e., 10**5.500001).
-            # This will crash the interpolator. To fix this, we simple shave away values in the array where T > 10**5.5, 
-            # and concatenate to the low-rez limit. 
-            
-            # Actually, the final value may not be required; the value is already included
-            # in the first zone, so we don't have to worry about them here.
-            
-            v_cond = psoln_cond[:, 0]
-            T_cond = psoln_cond[:, 1]
-            dTdr_cond = psoln_cond[:, 2]
-
-            mask = T_cond < _CIEswitch
-            r_conduction = r_conduction[mask]
-            T_cond = T_cond[mask]
-            dTdr_cond = dTdr_cond[mask]
-            dTdR_coolingswitch = dTdr_cond[0] if len(dTdr_cond) > 0 else dTdr_bubble[0]
-        else:
-            r_conduction = r_array[:index_CIE_switch + 1]
-            T_cond = T_array[:index_CIE_switch + 1]
-            dTdr_cond = dTdr_array[:index_CIE_switch + 1]
-            dTdR_coolingswitch = dTdr_cond[0]
+        mask = T_cond < _CIEswitch
+        r_conduction = r_conduction[mask]
+        T_cond = T_cond[mask]
+        dTdr_cond = dTdr_cond[mask]
+        dTdR_coolingswitch = dTdr_cond[0] if len(dTdr_cond) > 0 else dTdr_bubble[0]
         # calculate array [au]
         n_cond = Pb / ((params['mu_convert'].value / params['mu_ion'].value) * params['k_B'].value * T_cond)
         phi_cond = params['Qi'].value / (4 * np.pi * r_conduction**2)
