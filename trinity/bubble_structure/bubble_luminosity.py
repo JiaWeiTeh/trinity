@@ -59,6 +59,14 @@ _ODEINT_SUCCESS_MSG = 'Integration successful.'
 # instead of falsely converging on a garbage (~0) residual.
 _SOLVER_FAIL_RESIDUAL = 1e3
 
+# solve_ivp tolerances for the bubble-structure integration. rtol=1e-8 matches
+# odeint's former default accuracy (~1.49e-8) and sits well inside the regime
+# where the integrated bubble outputs are rtol-independent (verified in
+# analysis/bubble-conduction-convergence.md), so the success-path delta vs the
+# former odeint solve is minimal.
+_BUBBLE_RTOL = 1e-8
+_BUBBLE_ATOL = 1e-10
+
 
 class BubbleSolverError(Exception):
     """Raised when a bubble-structure odeint solve fails (LSODA istate != 2).
@@ -80,6 +88,61 @@ def _odeint_checked(func, y0, t, *, args, tfirst=True):
     psoln, infodict = scipy.integrate.odeint(
         func, y0, t, args=args, tfirst=tfirst, full_output=True)
     return psoln, infodict['message'] == _ODEINT_SUCCESS_MSG, infodict
+
+
+def _solve_bubble_structure(initial_conditions, r_array, params, Pb):
+    """Integrate the bubble-structure ODE and sample it on ``r_array``.
+
+    Uses ``solve_ivp(dense_output=True)``: the integrator chooses its own
+    adaptive steps (accuracy set by rtol/atol) and the output grid is sampled
+    from the *continuous* solution. This decouples integration accuracy from
+    output sampling -- the near-duplicate radii in ``r_array`` that make
+    ``odeint``'s dense-output interpolation intermittently fail (the
+    nondeterministic bubble-solver crash; see
+    analysis/bubble-integrator-robustness.md) are never requested of the
+    integrator.
+
+    Returns ``(psoln, ok, infodict, sol)``:
+      * ``psoln`` -- ``(len(r_array), 3)`` array [v, T, dTdr], matching the
+        former ``odeint`` output (``psoln[0]`` is the initial condition).
+      * ``ok`` -- ``sol.success``; when False the caller must not consume psoln.
+      * ``infodict`` -- dict (``message``/``status``/``nfev``/``nst``/``hu``)
+        compatible with ``_capture_bubble_integration``'s odeint-style reader.
+      * ``sol`` -- the dense-output solution object (reused for the conduction
+        zone in a later step; unused here).
+
+    ``t_span`` is the actual grid span ``(r_array[0], r_array[-1])`` so sampling
+    ``r_array`` never extrapolates outside the integrated interval.
+    """
+    # solve_ivp validates its inputs and RAISES (ValueError) on a non-finite
+    # y0 rather than returning success=False. Convert that to the same
+    # deterministic failure the caller already handles, so a bad initial
+    # condition is reported as ok=False (-> BubbleSolverError) instead of
+    # escaping as a raw, uncontrolled error.
+    if not np.all(np.isfinite(initial_conditions)):
+        psoln = np.full((len(r_array), 3), np.nan)
+        return psoln, False, {'message': 'non-finite initial conditions'}, None
+    sol = scipy.integrate.solve_ivp(
+        fun=lambda r, y: _get_bubble_ODE(r, y, params, Pb),
+        t_span=(r_array[0], r_array[-1]),
+        y0=initial_conditions,
+        method='LSODA',
+        dense_output=True,
+        rtol=_BUBBLE_RTOL,
+        atol=_BUBBLE_ATOL,
+    )
+    # On success sol.sol is the continuous solution; if the solve failed before
+    # any step it can be None, in which case there is nothing to sample.
+    psoln = (sol.sol(r_array).T if sol.sol is not None
+             else np.full((len(r_array), 3), np.nan))
+    infodict = {
+        'message': sol.message,
+        'status': sol.status,
+        'nfev': sol.nfev,
+        'nst': int(sol.t.size),
+        'hu': np.abs(np.diff(sol.t)),
+    }
+    return psoln, sol.success, infodict, sol
 
 
 # =============================================================================
@@ -424,11 +487,14 @@ def _bubble_luminosity_legacy(params, R1, Pb, r2Prime, initial_conditions,
     """
     # Always use cleaned legacy grid for now (adaptive grid causes accuracy issues)
     r_array = _create_legacy_radius_grid(R1, r2Prime)
-    # Always request LSODA's status so a failed solve is detected rather than
-    # silently consumed (its un-integrated tail is uninitialised memory). On
-    # success psoln is byte-identical to the former full_output=False call.
-    psoln, _ok, _infodict = _odeint_checked(
-        _get_bubble_ODE, initial_conditions, r_array, args=(params, Pb))
+    # Integrate with solve_ivp(dense_output): the integrator picks its own
+    # adaptive steps and we sample the continuous solution on r_array, so the
+    # near-duplicate radii that make odeint's dense-output interpolation fail
+    # are never requested of the integrator. _ok reports solver success so a
+    # failed solve is detected rather than consumed. (_sol is the dense-output
+    # object, reused for the conduction zone in a later step.)
+    psoln, _ok, _infodict, _sol = _solve_bubble_structure(
+        initial_conditions, r_array, params, Pb)
 
     if _bubble_diag_enabled():
         _capture_bubble_integration(
@@ -438,7 +504,7 @@ def _bubble_luminosity_legacy(params, R1, Pb, r2Prime, initial_conditions,
 
     if not _ok:
         raise BubbleSolverError(
-            f"bubble structure odeint failed (LSODA): {_infodict['message']}")
+            f"bubble structure solve_ivp failed (LSODA): {_infodict['message']}")
 
     v_array = psoln[:, 0]
     T_array = psoln[:, 1]
