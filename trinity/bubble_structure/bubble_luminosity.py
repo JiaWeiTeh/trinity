@@ -41,6 +41,48 @@ _trapezoid = getattr(np, 'trapezoid', None) or np.trapz
 MIN_SPACING = 1e-12
 
 # =============================================================================
+# Deterministic handling of LSODA (odeint) solver failures.
+#
+# scipy.integrate.odeint returns UNINITIALISED memory for the un-integrated
+# tail when LSODA bails (istate != 2: "Excess work" / "Illegal input"). That
+# tail is nondeterministic run-to-run (verified: its bytes vary between calls,
+# e.g. denormals like 1.58e-318), so consuming it makes the whole bubble solve
+# nondeterministic -- fsolve converges on a garbage residual, or T_array gets a
+# random tail that intermittently trips MonotonicError / the cooling lookup.
+# _odeint_checked reports LSODA's status so a failed solve is never consumed;
+# callers handle the failure deterministically.
+# See analysis/bubble-integrator-robustness.md.
+_ODEINT_SUCCESS_MSG = 'Integration successful.'
+
+# Deterministic residual returned to fsolve when a velocity-residual solve
+# fails: large and non-zero so fsolve is steered away from the infeasible dMdt
+# instead of falsely converging on a garbage (~0) residual.
+_SOLVER_FAIL_RESIDUAL = 1e3
+
+
+class BubbleSolverError(Exception):
+    """Raised when a bubble-structure odeint solve fails (LSODA istate != 2).
+
+    Replaces silent consumption of odeint's uninitialised-memory output with an
+    explicit, deterministic failure so behaviour is reproducible.
+    """
+
+
+def _odeint_checked(func, y0, t, *, args, tfirst=True):
+    """odeint wrapper that reports LSODA success instead of returning garbage.
+
+    Returns ``(psoln, ok, infodict)``. ``ok`` is True iff LSODA reported
+    "Integration successful."; when False, ``psoln`` contains an un-integrated
+    (uninitialised) tail and must not be consumed. On success ``psoln`` is
+    byte-identical to the former ``full_output=False`` call -- ``full_output``
+    only adds the infodict, it does not change the solution.
+    """
+    psoln, infodict = scipy.integrate.odeint(
+        func, y0, t, args=args, tfirst=tfirst, full_output=True)
+    return psoln, infodict['message'] == _ODEINT_SUCCESS_MSG, infodict
+
+
+# =============================================================================
 # Gated bubble-integration diagnostic (observational only).
 #
 # Set the environment variable TRINITY_BUBBLE_DIAG=1 to capture every
@@ -382,34 +424,21 @@ def _bubble_luminosity_legacy(params, R1, Pb, r2Prime, initial_conditions,
     """
     # Always use cleaned legacy grid for now (adaptive grid causes accuracy issues)
     r_array = _create_legacy_radius_grid(R1, r2Prime)
-    # When the diagnostic is off this is byte-identical to the original call
-    # (full_output defaults to False); when on we keep the same psoln and also
-    # retain LSODA's infodict for the capture below.
-    _diag = _bubble_diag_enabled()
-    if _diag:
-        psoln, _infodict = scipy.integrate.odeint(
-            _get_bubble_ODE,
-            initial_conditions,
-            r_array,
-            args=(params, Pb),
-            tfirst=True,
-            full_output=True,
-        )
-    else:
-        psoln = scipy.integrate.odeint(
-            _get_bubble_ODE,
-            initial_conditions,
-            r_array,
-            args=(params, Pb),
-            tfirst=True
-        )
-        _infodict = None
+    # Always request LSODA's status so a failed solve is detected rather than
+    # silently consumed (its un-integrated tail is uninitialised memory). On
+    # success psoln is byte-identical to the former full_output=False call.
+    psoln, _ok, _infodict = _odeint_checked(
+        _get_bubble_ODE, initial_conditions, r_array, args=(params, Pb))
 
-    if _diag:
+    if _bubble_diag_enabled():
         _capture_bubble_integration(
             params, r_array, psoln, _infodict, R1, Pb,
             initial_conditions, bubble_dMdt,
         )
+
+    if not _ok:
+        raise BubbleSolverError(
+            f"bubble structure odeint failed (LSODA): {_infodict['message']}")
 
     v_array = psoln[:, 0]
     T_array = psoln[:, 1]
@@ -514,13 +543,15 @@ def _bubble_luminosity_legacy(params, R1, Pb, r2Prime, initial_conditions,
                 (max(lowres_r) - min(lowres_r)) / _highres
             )[::-1]
             # rerun structure with greater precision
-            psoln_cond = scipy.integrate.odeint(
+            psoln_cond, _ok_cond, _info_cond = _odeint_checked(
                 _get_bubble_ODE,
                 [v_array[index_cooling_switch], T_array[index_cooling_switch], dTdr_array[index_cooling_switch]],
                 r_conduction,
                 args=(params, Pb),
-                tfirst=True
             )
+            if not _ok_cond:
+                raise BubbleSolverError(
+                    f"conduction-zone odeint failed (LSODA): {_info_cond['message']}")
 
             # Here, something needs to be done. Because of the precision of the solver, 
             # it may return temperature with values > 10**5.5K eventhough that was the maximum limit (i.e., 10**5.500001).
@@ -974,13 +1005,17 @@ def _get_velocity_residuals(dMdt_init, params, Pb: float, R1: float) -> float:
     r_array = _create_legacy_radius_grid(R1, r2Prime_val)
 
     # tfirst = True because get_bubble_ODE() is defined as f(t, y).
-    psoln = scipy.integrate.odeint(
+    psoln, _ok, _ = _odeint_checked(
         _get_bubble_ODE,
         [v_init, T_init, dTdr_init],
         r_array,
         args=(params, Pb),
-        tfirst=True
     )
+    # A failed solve leaves an uninitialised tail; return a deterministic,
+    # large, non-zero penalty so fsolve is steered away from this dMdt instead
+    # of falsely converging on garbage (a zero tail would give residual ~ 0).
+    if not _ok:
+        return _SOLVER_FAIL_RESIDUAL
 
     v_array = psoln[:, 0]
     T_array = psoln[:, 1]
