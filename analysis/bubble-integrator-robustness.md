@@ -308,7 +308,8 @@ uniformly ~1.3e-9 spaced, so **any** threshold above that deletes the **whole**
 band at once: `clean@{5e-9, 1e-8, 1e-7}` all leave **1 point** in the
 conduction sliver (total 59 992 → 39 993). That collapses the steep
 `T 3e4→1.6e5` conduction zone to a single point → wrong cooling (the exact
-failure mode I.1/§295 warns about). Raising `MIN_SPACING` is off the table.
+failure mode the conduction-zone grid comment at `bubble_luminosity.py:400-407`
+warns about). Raising `MIN_SPACING` is off the table.
 
 **Viable de-refinement (deferred).** Reduce the Step-2 point count
 (`_create_legacy_radius_grid:796`, `int(2e4)` — the middle of three `int(2e4)`
@@ -324,7 +325,8 @@ Measured (build grid, count outer-band density):
 | 200 | 40 192 | `1.3e-7` | no | ~350 |
 
 `N≈500` lifts the spacing out of the stress zone while Step 1 keeps the
-conduction zone well above the ≥100-point floor (§301). **But** it changes the
+conduction zone well above the ≥100-point floor (the `~100+ points` requirement
+noted at `bubble_luminosity.py:407`). **But** it changes the
 conduction-zone integration resolution for *every* run, so it shifts
 `L2Conduction`/downstream outputs by an amount that must be measured
 (output-diff) and blessed by the model author — a physics-accuracy choice, not
