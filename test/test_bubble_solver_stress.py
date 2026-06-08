@@ -21,9 +21,9 @@ Measured baseline (negative control — proves this harness *detects* the bug):
     * CI: ~100% red on py3.11/3.12 (scipy >= 1.16) on the unfixed code
       (commits #657-#659 all failed the smoke scenario).
     * Local A/B (12 runs each, default threads): the first-red commit #657
-      failed 1/12; the prior-green commit #656 failed 0/12.
-    * Local, current main, default threads: a lower-rate flake (the multi-core
-      runner here is more robust than CI's). See git log for the measured rate.
+      failed 1/12; the prior-green commit #656 failed 0/12. The local rate is
+      far below CI's (this multi-core runner is more robust than GitHub's), so
+      a clean local sweep is necessary but not sufficient -- CI is the gate.
 
 A single green run therefore proves nothing; this test exists to drive the
 rate to 0 across many runs. CI's py3.11/3.12 matrix is the ultimate gate.
