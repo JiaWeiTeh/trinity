@@ -347,6 +347,21 @@ def read_param(path2file):
         ori_units='dimensionless',
     )
 
+    # caseB_alpha (the case-B recombination coefficient, default 2.59e-13 cm^3/s)
+    # is fixed at its ~1e4 K value and is NOT recomputed from TShell_ion. Since
+    # alpha_B(T) ~ T^-0.7, moving the ionised-shell temperature far from ~1e4 K
+    # leaves the Stroemgren balance (n_IF_Str) and P_HII/F_HII internally
+    # inconsistent unless caseB_alpha is adjusted to match. Warn once at load.
+    _T_shell_ion = params['TShell_ion'].value
+    if not (8000.0 <= _T_shell_ion <= 1.1e4):
+        logger.warning(
+            f"TShell_ion = {_T_shell_ion:.4g} K is outside the ~8000-11000 K range "
+            f"that the default caseB_alpha (case-B recombination coefficient) assumes. "
+            f"alpha_B is temperature-dependent (~T^-0.7) and is NOT auto-adjusted, so "
+            f"the Stroemgren n_IF_Str and P_HII/F_HII may be internally inconsistent. "
+            f"Set caseB_alpha to the case-B value at your TShell_ion."
+        )
+
     # Dust cross-section scaling with metallicity
     if params['ZCloud'].value >= params['dust_noZ'].value:
         params['dust_sigma'].value = params['dust_sigma'].value * params['ZCloud'].value
