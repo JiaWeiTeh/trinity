@@ -35,11 +35,11 @@ from matplotlib.patches import Patch
 import sys as _sys
 from pathlib import Path as _Path
 _sys.path.insert(0, str(_Path(__file__).parent.parent.parent))
-from paper.figures._lib.plot_base import FIG_DIR
+from paper._lib.plot_base import FIG_DIR
 from trinity._output.trinity_reader import (
     load_output, find_all_simulations, TrinityOutput
 )
-from paper.figures._lib.grid_template import filter_sim_files_by_phii
+from paper._lib.grid_template import filter_sim_files_by_phii
 from trinity._functions.unit_conversions import CONV, INV_CONV, CGS
 from trinity.cloud_properties.bonnorEbertSphere import (
     solve_lane_emden, create_BE_sphere
@@ -47,7 +47,7 @@ from trinity.cloud_properties.bonnorEbertSphere import (
 from trinity.cloud_properties.powerLawSphere import (
     compute_rCloud_homogeneous, compute_rCloud_powerlaw
 )
-from paper.figures._lib.plot_markers import add_plot_markers
+from paper._lib.plot_markers import add_plot_markers
 
 # =============================================================================
 # MARKER DEFAULTS (off for clean paper figures; enable via CLI --show-*)
@@ -1062,10 +1062,10 @@ Examples:
   # Collapse a sweep folder to one self-contained .npz bundle (recommended
   # for paper reproducibility):
   python paper_densityProfile.py -F outputs/density_profile_sweep \\
-      --export paper/data/densityProfile.npz
+      --export paper/methods/data/densityProfile.npz
 
   # Reproduce both figures from a published bundle:
-  python paper_densityProfile.py --from-npz paper/data/densityProfile.npz
+  python paper_densityProfile.py --from-npz paper/methods/data/densityProfile.npz
         """
     )
     source = parser.add_mutually_exclusive_group(required=True)
@@ -1094,7 +1094,7 @@ Examples:
         help='Export the sweep folder to this .npz bundle and exit '
              '(no plot). Bundle contains per-tag timeseries plus the '
              'precomputed ρ / M_enc profile ingredients, so the original '
-             'sweep folder can be discarded. Recommended location: paper/data/.'
+             'sweep folder can be discarded. Recommended location: paper/methods/data/.'
     )
 
     # Marker options (off by default for clean paper figures)

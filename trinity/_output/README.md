@@ -45,7 +45,7 @@ df = output.to_dataframe()
 
 ### From Plotting Scripts
 
-In `paper/figures/` scripts:
+In `paper/methods/figures/` scripts:
 
 ```python
 import sys
@@ -127,4 +127,4 @@ See `example_scripts/` for comprehensive examples:
 
 ## See Also
 
-- `paper/figures/paper_*.py`: Paper figure scripts using TrinityOutput
+- `paper/methods/figures/paper_*.py`: Paper figure scripts using TrinityOutput

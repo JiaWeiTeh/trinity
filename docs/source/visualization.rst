@@ -7,22 +7,22 @@ TRINITY's plotting code lives outside the installed ``trinity``
 package, under ``paper/figures/``, with two entry points:
 
 - **Published paper figures** are regenerated from the bundled
-  ``paper/data/*.npz`` files by a single entry point::
+  ``paper/methods/data/*.npz`` files by a single entry point::
 
       python paper/make_figures.py            # all published figures
       python paper/make_figures.py teaser     # one figure (prefix match)
 
   Output lands in ``paper/plots/``. The figure scripts it drives live
-  under ``paper/figures/`` (with shared infrastructure in
-  ``paper/figures/_lib/``); see *Published Paper Figures* below.
-- **Run-directly scripts** — e.g. ``paper_feedback.py`` (below) — also
-  live under ``paper/figures/`` but are invoked directly rather than
-  through ``make_figures.py``, writing to ``fig/{folder_name}/``.
+  under ``paper/methods/figures/`` (with shared infrastructure in
+  ``paper/_lib/``); see *Published Paper Figures* below.
+- **Exploratory / personal scripts** — the broader catalogue below —
+  live under ``scratch/``. They are not part of the installed package
+  and are run directly, writing to ``fig/{folder_name}/``.
 
 Each script is a thin wrapper around the :ref:`sec-trinity-reader`
 API: it loads one or more simulations, extracts a few time series, and
 renders them with a shared Matplotlib style sheet,
-``paper/figures/_lib/trinity.mplstyle``. The scripts double as worked
+``paper/_lib/trinity.mplstyle``. The scripts double as worked
 examples of how to drive the reader API from user code.
 
 .. seealso::
@@ -39,7 +39,7 @@ Common features
 ---------------
 
 Most plotting scripts share a common parser
-(``paper/figures/_lib/cli.py``): they accept a folder of simulations
+(``paper/_lib/cli.py``): they accept a folder of simulations
 through ``-F`` and auto-discover the individual runs underneath, so a
 single invocation can render either one simulation or a full
 (mCloud × SFE) grid. Core density is selected through ``-n``/``--nCore``,
@@ -53,13 +53,13 @@ Usage examples
 .. code-block:: bash
 
    # All runs in a folder (auto-discovers the mCloud/SFE grid)
-   python paper/figures/paper_feedback.py -F /path/to/outputs/sweep_test
+   python paper/methods/figures/paper_feedback.py -F /path/to/outputs/sweep_test
 
    # Filter by core density
-   python paper/figures/paper_feedback.py -F /path/to/outputs --nCore 1e4
+   python paper/methods/figures/paper_feedback.py -F /path/to/outputs --nCore 1e4
 
    # Custom output directory
-   python paper/figures/paper_feedback.py -F /path/to/outputs -o /path/to/figures
+   python paper/methods/figures/paper_feedback.py -F /path/to/outputs -o /path/to/figures
 
    # Single run from an explicit path
    python paper/figures/paper_feedback.py /path/to/dictionary.jsonl
@@ -69,7 +69,7 @@ Published Paper Figures
 -----------------------
 
 These are driven by ``paper/make_figures.py`` from the bundled
-``paper/data/*.npz`` files and rendered into ``paper/plots/``. Each row
+``paper/methods/data/*.npz`` files and rendered into ``paper/plots/``. Each row
 maps a short name (usable as a prefix on the command line) to its
 script and bundle:
 
@@ -78,7 +78,7 @@ script and bundle:
    :header-rows: 1
 
    * - Name
-     - Script (``paper/figures/``)
+     - Script (``paper/methods/figures/``)
      - Figure
    * - ``density``
      - ``paper_densityProfile.py``
@@ -97,9 +97,9 @@ script and bundle:
      - Cloud-edge density-smoothing schematic with before/after LSODA
        trajectories.
 
-The remaining ``paper/figures/`` script, ``paper_feedback.py``
-(*Force Budget Plots* below), is run directly rather than through
-``make_figures.py``.
+The remaining ``paper/methods/figures/`` script, ``paper_feedback.py``
+(*Force Budget Plots* below), and the ``scratch/`` catalogue are run
+directly rather than through ``make_figures.py``.
 
 
 Force Budget Plots
@@ -108,7 +108,7 @@ Force Budget Plots
 paper_feedback.py
 ~~~~~~~~~~~~~~~~~
 
-*(Lives under* ``paper/figures/``\ *; run directly.)* Stacked-area plot
+*(Lives under* ``paper/methods/figures/``\ *; run directly.)* Stacked-area plot
 showing the relative importance of feedback forces as fractions of the
 total:
 
@@ -121,7 +121,7 @@ total:
 Configuration
 -------------
 
-Most scripts share a common parser (``paper/figures/_lib/cli.py``),
+Most scripts share a common parser (``paper/_lib/cli.py``),
 which provides:
 
 .. code-block:: bash

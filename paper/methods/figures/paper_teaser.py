@@ -45,7 +45,7 @@ import sys as _sys
 from pathlib import Path as _Path
 _sys.path.insert(0, str(_Path(__file__).parent.parent.parent))
 
-from paper.figures._lib.plot_base import FIG_DIR, smooth_2d
+from paper._lib.plot_base import FIG_DIR, smooth_2d
 from trinity._output.trinity_reader import load_output, resolve_data_input
 import trinity._functions.unit_conversions as cvt
 
@@ -54,7 +54,7 @@ import trinity._functions.unit_conversions as cvt
 # control phase-aware overlays without paper_feedback's conditional
 # ``non_bubble`` gating, and so the legend uses the F_*/HII/wind/SN
 # nomenclature requested for this figure.
-from paper.figures import paper_feedback as _pf
+from paper.methods.figures import paper_feedback as _pf
 
 
 # ---------------------------------------------------------------------------
@@ -619,7 +619,7 @@ def plot_grid(folder_path, output_dir=None,
 
 
 if __name__ == "__main__":
-    from paper.figures._lib.cli import build_parser, dispatch
+    from paper._lib.cli import build_parser, dispatch
 
     parser = build_parser(
         "paper_teaser.py",
@@ -631,7 +631,7 @@ if __name__ == "__main__":
         help="Export the input run to this .npz bundle and exit (no plot). "
              "The bundle is self-contained for paper reproducibility — "
              "the original run folder can be discarded. "
-             "Recommended location: paper/data/.",
+             "Recommended location: paper/methods/data/.",
     )
     parser.add_argument(
         "--from-npz", default=None,
