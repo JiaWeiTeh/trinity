@@ -112,6 +112,19 @@ def p_rad_barnes(Lbol, Li, R_pc, f_neu, f_ion,
     return P_cgs / K_B_CGS   # K cm^-3
 
 
+def sigma_gas(mCloud, rCloud):
+    """Cloud gas surface density ``mCloud / (pi rCloud^2)`` [Msun/pc^2].
+
+    ``mCloud`` is the post-SFE cloud *gas* mass (mCloud_input = mCloud +
+    mCluster) and ``rCloud`` the cloud radius — both run-constants in Msun
+    and pc — so this is a per-run constant, the environmental Sigma_gas.
+    """
+    mCloud = np.asarray(mCloud, dtype=float)
+    rCloud = np.asarray(rCloud, dtype=float)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        return mCloud / (math.pi * rCloud ** 2)
+
+
 # ---------------------------------------------------------------------------
 # Run loading and sampling
 # ---------------------------------------------------------------------------
@@ -149,6 +162,8 @@ def sample_run_at_age(output, age_myr):
         f_ion=_f(snap["shell_fAbsorbedIon"]),
         mCluster=_f(md.get("mCluster")),
         PISM=_f(md.get("PISM")),
+        mCloud=_f(md.get("mCloud")),
+        rCloud=_f(md.get("rCloud")),
     )
 
 
