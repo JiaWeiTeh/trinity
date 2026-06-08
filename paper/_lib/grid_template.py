@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Shared grid-plot and single-plot infrastructure for ``paper.figures``.
+Shared grid-plot and single-plot infrastructure for ``paper.*.figures``.
 
 Most ``paper_*.py`` scripts follow the same two-mode pattern:
 
@@ -42,7 +42,7 @@ Both styles guarantee the two key invariants hold across every grid:
 
 Example usage (Style A)::
 
-    from paper.figures._lib.grid_template import plot_single, plot_grid as _plot_grid
+    from paper._lib.grid_template import plot_single, plot_grid as _plot_grid
 
     def plot_from_path(data_input, output_dir=None):
         plot_single(
@@ -66,7 +66,7 @@ Example usage (Style A)::
 
 Example usage (Style B, inline grid)::
 
-    from paper.figures._lib.grid_template import (
+    from paper._lib.grid_template import (
         build_param_tag, iter_grid_densities, mark_missing_cell,
         attach_grid_legend, save_grid_figure, set_mcloud_ylabel,
     )
@@ -103,7 +103,7 @@ import matplotlib.pyplot as plt
 import sys as _sys
 from pathlib import Path as _Path
 _sys.path.insert(0, str(_Path(__file__).parent.parent.parent.parent))
-from paper.figures._lib.plot_base import FIG_DIR
+from paper._lib.plot_base import FIG_DIR
 from trinity._output.trinity_reader import (
     resolve_data_input,
     find_all_simulations,
