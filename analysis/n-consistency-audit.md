@@ -36,15 +36,22 @@ sign on the bubble before the paper pinned the convention — see §0.1).
   `Z_He=2`) and cast to float once → all four μ reproduce today's values
   exactly (verified), and `chi_e=1.2`. The other three μ are already
   bit-identical under either method.
-- **Status:** every ❌ site below has been read in the actual source (not grep,
-  not comment). The μ *values* are correct; the defects are the **absent
-  `chi_e`** and μ used with the **wrong partner**.
+- **Status:** every ❌ site below was read in the actual source (not grep,
+  not comment) at audit time, and has since been fixed in #657. The μ *values*
+  are correct; the defects were the **absent `chi_e`** and μ used with the
+  **wrong partner**.
 - **Do-not-trust-comments evidence:** `bubble_luminosity.py:970`
   (`rho = n*mu_ion  # Mass density`) asserts wrong physics — mass needs `μ_H`;
   the shell stores `nShell=ρ/μ_atom` (≈1.1 n_H) yet `dlaw.py:11` exports it to
   CLOUDY labelled `n_H` (mislabelled ×1.1).
-- **Still open (no assumption made):** §4 CIE-curve normalisation; §3.5 BE EOS μ.
-- **Implementation:** NOT started. Plan-only per request.
+- **Flagged at audit time (no assumption made), since resolved in #657:** §4
+  CIE-curve normalisation (chi_e applied to the CIE branch); §3.5 BE EOS μ
+  (left on μ_H — see implementation plan Phase 5.2/6B).
+- **Implementation:** SHIPPED in #657 (`Hotfix/mu audit`). The fixes below
+  landed in Phases 0–3, 5 and 6 of `n-consistency-implementation-plan.md`, with
+  a later **Phase A** splitting shell vs bubble ionisation (see note below).
+  This section is retained as the audit-time record; the ❌ verdicts mark what
+  *was* defective and has since been fixed, not open work.
 
 ## 0. Canonical reference (derived from the paper)
 
@@ -77,6 +84,18 @@ when ionised, `(½+x_He)` when molecular, and `(1+Z_He·x_He)` free electrons.
 
 **Key identities:** `μ_H/μ_p = mu_convert/mu_ion = 2.3`,
 `μ_H/μ_n = mu_convert/mu_atom = 1.1`, `(1+Z_He x_He) = 1.2`.
+
+> **Phase A correction (shipped in #657, after this table was written):** the
+> table above assumes a single ionised composition (doubly-ionised He
+> everywhere). The shipped code splits it by region. The **hot bubble** keeps
+> these values (doubly-ionised, `Z_He=2` → `mu_ion=14/23`, factor
+> `mu_convert/mu_ion=2.3`, `chi_e=1.2`). The **~10⁴ K shell / HII region** is
+> singly-ionised (`Z_He_shell=1` → `mu_ion_shell=14/22`, factor
+> `mu_convert/mu_ion_shell=2.2`, `chi_e_shell=1.1`). So for the **ionised gas
+> pressure**, **electron density**, **volumetric cooling**, **recombination
+> rate** and **Strömgren density** rows above, the bubble uses `2.3`/`1.2` but
+> the shell/HII uses `2.2`/`1.1` (`mu_ion_shell`/`chi_e_shell`). Neutral-gas and
+> mass-density (μ_H) rows are unaffected.
 
 ### 0.1 Why this reverses `pressure-terms-audit.md`
 That earlier audit, lacking the paper, treated `mu_ion = 14/23` (mean mass
@@ -128,6 +147,14 @@ Legend: ✅ already matches paper · ❌ must change · ⚪ convention-independe
 | `shell_structure.py:298` | I-front jump `*mu_atom/mu_ion*T_ion/T_neu` | `μ_n/μ_p·T_ion/T_neu` (μ_H cancels) | ⚪ no change |
 | `get_shellParams.py:30` | `nShell0=(mu_atom/mu_ion)…` (**dead**) | inverted **and** wrong μ | ❌ §5 (or delete) |
 
+> **Phase A (#657):** these shell sites shipped using the singly-ionised shell
+> composition, not the bubble `mu_ion`/`chi_e` shown in this audit-time table.
+> The fixed code uses `mu_ion_shell` (factor 2.2) for the ionised `nShell0` BC
+> and ODE pressure prefactor, and `chi_e_shell = 1.1` for the recombination /
+> Strömgren factors (in place of the `×1.2` written above). See
+> `get_shellODE.py` (`mu_p=mu_ion_shell`, `chi_e=chi_e_shell`) and
+> `shell_structure.py:115,135,239,273,298`.
+
 ### Phases: energy / implicit / transition / momentum (`phase1*`, `phase2*`)
 | file:line | code | paper | verdict |
 |---|---|---|---|
@@ -141,6 +168,13 @@ Legend: ✅ already matches paper · ❌ must change · ⚪ convention-independe
 
 **Totals:** ~6 pressure-prefactor sites, ~6 bubble sites, ~10 shell sites,
 ~4 cooling-factor sites, plus 2 flagged (BE μ, dead code).
+
+> **Phase A (#657):** the `P_HII`/`P_ext` sites above are the **HII/shell**
+> ionised pressure, so the shipped prefactor is `mu_convert/mu_ion_shell = 2.2`
+> (singly-ionised), **not** the `2.3` shown (which is the bubble's
+> `mu_convert/mu_ion`). The bubble interior `n`/`ρ`/CIE sites in the
+> bubble-structure table above are unaffected — they correctly keep `mu_ion`
+> (2.3) and `chi_e` (1.2).
 
 ---
 

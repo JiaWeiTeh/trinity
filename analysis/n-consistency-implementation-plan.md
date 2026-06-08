@@ -133,8 +133,18 @@ site already feeds the correct n_H (`n_r` from the cloud profile, or
 from `params`/`snapshot` in the same scope (verify the local handle before
 editing — `snapshot` in the `_pure` momentum fn, `params` elsewhere).
 
-**Effect:** P_HII / P_ext ×(2.3/2.0)=×1.15. **Verify:** full suite; assert the
-factor equals `mu_convert/mu_ion` (≈2.3) in a unit test.
+> **Phase A correction (shipped in #657):** every site in this table is the
+> **HII / ionised-shell** back-pressure, which is **singly-ionised** He. The
+> shipped code therefore uses `params['mu_ion_shell'].value` (not `mu_ion`) at
+> all of them — i.e. the "after" cells read
+> `(params['mu_convert'].value/params['mu_ion_shell'].value) * …`. The factor
+> is `mu_convert/mu_ion_shell = 2.2` (not 2.3), so the effect is ×(2.2/2.0)=×1.10
+> (not ×1.15). The bubble's `mu_ion` (2.3) is unchanged and is **not** used at
+> these pressure sites.
+
+**Effect:** P_HII / P_ext ×(2.2/2.0)=×1.10 (singly-ionised shell, Phase A).
+**Verify:** full suite; assert the factor equals `mu_convert/mu_ion_shell`
+(≈2.2) in a unit test.
 
 ---
 
@@ -243,6 +253,12 @@ sign/structure are correct; Phase-3 edits are **magnitude-only** (μ prefactor +
 mu_H  = params['mu_convert'].value
 chi_e = params['chi_e'].value
 ```
+> **Phase A correction (shipped in #657):** the shell is **singly-ionised**, so
+> the shipped unpack binds the *shell* composition to these locals:
+> `mu_p = params['mu_ion_shell'].value` and `chi_e = params['chi_e_shell'].value`
+> (instead of `mu_ion`/`chi_e`). The ODE expressions below are unchanged — they
+> use the local names `mu_p`/`chi_e` — but those now carry `14/22` and `1.1`,
+> not `14/23` and `1.2`.
 | line | before | after |
 |---|---|---|
 | `:93` | `dndr = mu_p/mu_n/(k_B * t_ion) * (` | `dndr = mu_p/mu_H/(k_B * t_ion) * (` |
@@ -269,10 +285,21 @@ already use `nShell`, which now *means* n_H (so dust opacity becomes correct).
 | `:381` | `params['mu_atom'].value * np.sum(nShell_arr_neu…)` | `params['mu_convert'].value * …` | τ_IR/κ_IR mass column, neu **[MISSED]** |
 | `:386` | `params['mu_atom'].value * np.sum(nShell_arr_ion…)` | `params['mu_convert'].value * …` | τ_IR/κ_IR mass column, ion-only **[MISSED]** |
 
+> **Phase A correction (shipped in #657):** the shell is **singly-ionised**, so
+> the shipped `shell_structure.py` uses the *shell* composition wherever the
+> table above names `mu_ion`/`chi_e`: `:115` divides by `mu_ion_shell` (BC
+> `nShell0=(μ_p,shell/μ_H)Pb/kT`, factor `mu_ion_shell/mu_convert`), and the
+> Strömgren/recombination weights at `:135`, `:239`, `:273` use
+> `params['chi_e_shell'].value` (= 1.1, not 1.2). The I-front jump `:298` uses
+> `mu_ion_shell` (still `NO CHANGE` to the μ-cancelling structure). The mass /
+> τ_IR weights (`:167,:253,:324,:357,:380,:381,:386`) use `mu_convert` (μ_H) and
+> are **unaffected** by the split.
+
 **Scope confirmed:** all `shell_structure.py` sites are inside
 `shell_structure_pure(params)`; `get_shellODE` unpacks from `params`. `chi_e`
-present at runtime (Phase 0). `n_IF_Str` is capped at `shell_n0` (`:242`) —
-both n_H after the change; it feeds `P_HII` (already Phase-1-correct).
+(shell: `chi_e_shell`) present at runtime (Phase 0/A). `n_IF_Str` is capped at
+`shell_n0` (`:242`) — both n_H after the change; it feeds `P_HII` (already
+Phase-1-correct).
 
 **Atomic — ONE commit.** BC + ODE prefactors + all mass/τ weights redefine
 `nShell` from `ρ/μ_n` to `n_H=ρ/μ_H`; `chi_e` recomb/Strömgren terms are only
@@ -284,7 +311,11 @@ lowers dust opacity ~10% and **shifts the shell profile, mass, τ_IR and the
 I-front by order μ_H/μ_n≈1.1**. Recomb barely moves (old `n_old²≈1.21 n_H²`
 vs new `chi_e·n_H²=1.2 n_H²`, ~1%); Strömgren `n_IF_Str ×1/√1.2≈0.913`. (My
 earlier "mass invariant" note was **wrong** — the old code was internally
-inconsistent, not a clean rescaling. Caught by re-derivation.) Downstream:
+inconsistent, not a clean rescaling. Caught by re-derivation.)
+> **Phase A correction (#657):** these numbers assume `chi_e=1.2`. With the
+> shipped singly-ionised shell, `chi_e_shell=1.1`, so the recomb term is
+> `1.1 n_H²` and the Strömgren scaling is `n_IF_Str ×1/√1.1≈0.953` (not 0.913).
+Downstream:
 `dlaw.py:11` CLOUDY export (`log10(n_H)`) becomes truthful.
 
 **Verify:** deterministic suite (407) + smoke ×2; closed-form checks
