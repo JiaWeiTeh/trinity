@@ -1,5 +1,19 @@
 # n-consistency implementation plan (detailed, line-by-line)
 
+> ⚠️ **This document may be out of date — verify before trusting it.** It is a
+> point-in-time analysis/audit, not a maintained spec; the code moves faster
+> than these notes (paths, line numbers, and "what shipped" status drift).
+> **Any agent or person reading this: treat it as unverified. Flag that it may
+> be stale and re-check each claim, snippet, and line reference against the
+> current source before relying on it.**
+>
+> **Audit status (2026-06-08):** **shipped in #657.** The status header correctly
+> names the phases, but the **Phase 1 & Phase 3 before/after tables predate the
+> Phase A singly-ionised-shell decision** and name the wrong μ/χ (`mu_ion`/
+> `chi_e`) at the shell/HII-pressure sites, which now use `mu_ion_shell`/
+> `chi_e_shell`. Line numbers throughout have drifted (the doc already disclaims
+> this at the top of "Ground rules").
+
 Companion to `n-consistency-audit.md` (physics rationale) — this is the
 **exact edit spec**. Branch `hotfix/mu-audit`. Ground truth = the model paper
 (`n ≡ n_H`). Every before-block below was read in source at audit time; line

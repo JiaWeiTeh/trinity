@@ -1,5 +1,19 @@
 # `n` consistency audit against the paper (`n ≡ n_H`)
 
+> ⚠️ **This document may be out of date — verify before trusting it.** It is a
+> point-in-time analysis/audit, not a maintained spec; the code moves faster
+> than these notes (paths, line numbers, and "what shipped" status drift).
+> **Any agent or person reading this: treat it as unverified. Flag that it may
+> be stale and re-check each claim, snippet, and line reference against the
+> current source before relying on it.**
+>
+> **Audit status (2026-06-08):** **the implementation shipped in #657** — the
+> `Implementation: NOT started` / "every ❌ site still open" framing is obsolete.
+> The μ physics and values still hold, but the single-composition tables predate
+> the **Phase A** split: the ~10⁴ K shell/HII region is now singly-ionised He
+> (`mu_ion_shell=14/22`, `chi_e_shell=1.1`), while only the hot bubble stays
+> doubly-ionised (`mu_ion=14/23`, `chi_e=1.2`).
+
 Single source of truth for making **every** density/pressure/mass/cooling
 term in TRINITY consistent with the model paper. Supersedes the convention
 discussion in `pressure-terms-audit.md` (that file reached the *opposite*

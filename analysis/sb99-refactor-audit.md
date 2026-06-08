@@ -1,5 +1,19 @@
 # SB99 → generic SPS refactor: audit + implementation plan
 
+> ⚠️ **This document may be out of date — verify before trusting it.** It is a
+> point-in-time analysis/audit, not a maintained spec; the code moves faster
+> than these notes (paths, line numbers, and "what shipped" status drift).
+> **Any agent or person reading this: treat it as unverified. Flag that it may
+> be stale and re-check each claim, snippet, and line reference against the
+> current source before relying on it.**
+>
+> **Audit status (2026-06-08):** **all four PRs described here have shipped.** A
+> later `src/→trinity` + ParamSpec-registry/resolver restructure (auto-generated
+> `default.param`, CSV default, removal of `path_sps`/`SB99_mass`/`SB99_BHCUT`,
+> rename `SB99f → sps_f` / `read_SB99.py → sps/read_sps.py`) postdates the doc —
+> so the design intent matches reality, but nearly every path, line number, and
+> named helper symbol here is wrong against current code.
+
 Single source of truth. Combines (Part I) the architectural audit — *what is* —
 with (Part II) the phased refactor plan and its equivalence-test battery —
 *what to do, in what order, and how to prove nothing changed*.

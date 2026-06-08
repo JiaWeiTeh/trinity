@@ -1,5 +1,20 @@
 # Cooling-table refactor: audit + implementation plan
 
+> ⚠️ **This document may be out of date — verify before trusting it.** It is a
+> point-in-time analysis/audit, not a maintained spec; the code moves faster
+> than these notes (paths, line numbers, and "what shipped" status drift).
+> **Any agent or person reading this: treat it as unverified. Flag that it may
+> be stale and re-check each claim, snippet, and line reference against the
+> current source before relying on it.**
+>
+> **Audit status (2026-06-08):** the planned cooling refactor has **not** shipped
+> (the plan is still actionable; the cooling source is byte-stable), **but** the
+> world around it moved — every `src/…` path is now `trinity/…`, the config layer
+> was rebuilt into a `registry.py`/resolver system (so `read_param.py`
+> line/mechanism refs are obsolete), and the SPS `_get_legacy_sb99_filename`
+> helper this plan says to mirror never existed (the SPS refactor landed as a
+> single-file resolver).
+
 Single source of truth for decoupling the cooling-table loaders from the
 hardcoded SB99/OPIATE/CLOUDY assumptions, in the same shape as
 `analysis/sb99-refactor-audit.md`. Combines (Part I) the architectural
