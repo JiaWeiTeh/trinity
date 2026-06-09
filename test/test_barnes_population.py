@@ -230,3 +230,29 @@ def test_synthesize_population_smoke(tmp_path):
     assert set(records[0]) == _RECORD_KEYS
     M_in = np.array([r["mCluster"] / 0.1 for r in records])  # epsilon=0.1 (single-SFE)
     assert M_in.min() >= 1e6 - 1 and M_in.max() <= 1e7 + 1
+
+
+def test_synthesize_multi_pism_environments(tmp_path):
+    base = tmp_path / "sweep_pism"
+    # 2 mCloud x 2 PISM (single SFE) -> two environments, each a 2-mass grid.
+    for M, mcl, mgas in [(1e6, 1e5, 9e5), (1e7, 1e6, 9e6)]:
+        for pism in (2.9e59, 2.9e61):
+            _write_run(base / f"{M:.0e}_p{pism:.0e}", _snaps([1, 5, 10]),
+                       dict(mCloud_input=M, sfe=0.1, nCore=1e3, rCloud=20.0,
+                            PISM=pism, mCloud=mgas, mCluster=mcl))
+    outs = [load_output(p) for p in find_all_simulations(base)]
+    records, info = synthesize_population(outs, t_obs=0.8, n_bubble=400, seed=3)
+    assert info["n_environments"] == 2
+    # the combined population spans BOTH ambient pressures; cluster the values
+    # by relative closeness (the log-space combine leaves only ~1e-15 round-off).
+    uniq = []
+    for p in sorted(r["PISM"] for r in records):
+        if not uniq or not np.isclose(p, uniq[-1], rtol=1e-6):
+            uniq.append(p)
+    assert len(uniq) == 2
+    assert np.isclose(uniq[0], 2.9e59, rtol=1e-6)
+    assert np.isclose(uniq[1], 2.9e61, rtol=1e-6)
+    # split roughly evenly across environments
+    assert len(info["per_env_counts"]) == 2
+    assert min(info["per_env_counts"]) > 0
+

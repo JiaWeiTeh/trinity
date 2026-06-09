@@ -304,6 +304,56 @@ def build_grid(outputs, fixed_ncore=None, logM_round=2, sfe_round=4):
 # ---------------------------------------------------------------------------
 # Population synthesis
 # ---------------------------------------------------------------------------
+def _group_by_pism(outputs):
+    """Group runs by their ambient pressure ``PISM`` (Barnes' P_DE environment).
+
+    Returns ``{pism_value | None: [outputs]}``. Runs lacking ``PISM`` go under
+    ``None`` (their bubbles get PISM=NaN and are dropped by the pressure
+    figure's P_ISM>0 filter).
+    """
+    groups: Dict = {}
+    for o in outputs:
+        p = o.metadata.get("PISM")
+        key = round(float(p), 6) if isinstance(p, (int, float)) else None
+        groups.setdefault(key, []).append(o)
+    return groups
+
+
+def _synthesize_on_grid(grid, n, *, t_obs, cmf_slope, m_range, sfe_median,
+                        sfe_sigma_dex, fixed_sfe, rng):
+    """Draw and place ``n`` bubbles on a single 2D (mCloud, sfe) grid.
+
+    Returns ``(records, n_excluded)``. The shared ``rng`` advances across calls
+    so multiple environments stay reproducible from one seed.
+    """
+    logM = grid["logM"]
+    if m_range is None:
+        m_min, m_max = 10.0 ** float(logM[0]), 10.0 ** float(logM[-1])
+    else:
+        m_min, m_max = m_range
+
+    M = sample_powerlaw(n, m_min, m_max, cmf_slope, rng)
+    if fixed_sfe is not None:
+        sfe = np.full(n, float(fixed_sfe))
+    else:
+        s_lo, s_hi = float(grid["sfe"][0]), float(grid["sfe"][-1])
+        if grid["single_sfe"]:
+            logger.info("single-SFE grid: holding epsilon = %.4g for all bubbles", s_lo)
+        sfe = sample_lognormal_truncated(n, sfe_median, sfe_sigma_dex, s_lo, s_hi, rng)
+    ages = rng.uniform(0.0, t_obs, size=n)
+    log_M = np.log10(M)
+
+    records: List[Dict] = []
+    n_excluded = 0
+    for k in range(n):
+        rec = interpolate_bubble(float(ages[k]), float(log_M[k]), float(sfe[k]), grid)
+        if rec is None:
+            n_excluded += 1
+            continue
+        records.append(rec)
+    return records, n_excluded
+
+
 def synthesize_population(
     outputs,
     *,
@@ -319,51 +369,56 @@ def synthesize_population(
 ) -> Tuple[List[Dict], Dict]:
     """Synthesize a bubble population from a grid of TRINITY runs.
 
+    Each distinct ``PISM`` (Barnes' P_DE environment) is treated as its own 2D
+    (mCloud, sfe) sub-grid; ``n_bubble`` is split evenly across the environments
+    and the sub-populations are concatenated, so a bubble keeps the ambient
+    pressure of the environment it was drawn in.
+
     Returns ``(records, info)``: ``records`` is a list of per-bubble dicts with
     the ``sample_run_at_age`` key set (so the figure scripts plot them as they
     would per-run records); ``info`` carries the sampling parameters and counts.
     """
-    grid = build_grid(outputs, fixed_ncore=fixed_ncore)
-    if not grid["cells"]:
+    groups = _group_by_pism(outputs)
+    env_grids = []
+    for pism_key in sorted(groups, key=lambda k: (k is None, k)):
+        grid = build_grid(groups[pism_key], fixed_ncore=fixed_ncore)
+        if grid["cells"]:
+            env_grids.append((pism_key, grid))
+
+    if not env_grids:
         return [], dict(t_obs=t_obs, n_bubble=n_bubble, n_surviving=0,
-                        n_excluded=0, cmf_slope=cmf_slope, reason="empty grid")
+                        n_excluded=0, cmf_slope=cmf_slope, n_environments=0,
+                        reason="empty grid")
 
     rng = np.random.default_rng(seed)
-    logM = grid["logM"]
-    if m_range is None:
-        m_min, m_max = 10.0 ** float(logM[0]), 10.0 ** float(logM[-1])
-    else:
-        m_min, m_max = m_range
-
-    M = sample_powerlaw(n_bubble, m_min, m_max, cmf_slope, rng)
-    if fixed_sfe is not None:
-        sfe = np.full(n_bubble, float(fixed_sfe))
-    else:
-        s_lo, s_hi = float(grid["sfe"][0]), float(grid["sfe"][-1])
-        if grid["single_sfe"]:
-            logger.info("single-SFE grid: holding epsilon = %.4g for all bubbles", s_lo)
-        sfe = sample_lognormal_truncated(n_bubble, sfe_median, sfe_sigma_dex,
-                                         s_lo, s_hi, rng)
-    ages = rng.uniform(0.0, t_obs, size=n_bubble)
-    log_M = np.log10(M)
+    n_env = len(env_grids)
+    per_env = max(1, n_bubble // n_env)
 
     records: List[Dict] = []
     n_excluded = 0
-    for k in range(n_bubble):
-        rec = interpolate_bubble(float(ages[k]), float(log_M[k]), float(sfe[k]), grid)
-        if rec is None:
-            n_excluded += 1
-            continue
-        records.append(rec)
+    pism_values, per_env_counts = [], []
+    for pism_key, grid in env_grids:
+        recs, nx = _synthesize_on_grid(
+            grid, per_env, t_obs=t_obs, cmf_slope=cmf_slope, m_range=m_range,
+            sfe_median=sfe_median, sfe_sigma_dex=sfe_sigma_dex,
+            fixed_sfe=fixed_sfe, rng=rng,
+        )
+        records.extend(recs)
+        n_excluded += nx
+        pism_values.append(pism_key)
+        per_env_counts.append(len(recs))
+        logger.info("environment PISM=%s: %d/%d bubbles survived",
+                    pism_key, len(recs), per_env)
 
     info = dict(
-        t_obs=t_obs, n_bubble=n_bubble, n_surviving=len(records),
-        n_excluded=n_excluded, cmf_slope=cmf_slope, m_range=(m_min, m_max),
+        t_obs=t_obs, n_bubble=per_env * n_env, n_surviving=len(records),
+        n_excluded=n_excluded, cmf_slope=cmf_slope,
         sfe_median=sfe_median, sfe_sigma_dex=sfe_sigma_dex,
         fixed_sfe=fixed_sfe, seed=seed,
+        n_environments=n_env, pism_values=pism_values, per_env_counts=per_env_counts,
     )
-    logger.info("population: drew %d, excluded %d (age > run t_max / no coverage), "
-                "%d surviving", n_bubble, n_excluded, len(records))
+    logger.info("population: %d environment(s), %d drawn, %d excluded, %d surviving",
+                n_env, per_env * n_env, n_excluded, len(records))
     return records, info
 
 
