@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Regenerate every Barnes 2026 (PHANGS) comparison figure with one command.
 
-Sibling of ``paper/make_figures.py`` (the methods-paper driver), but pointed
+Sibling of ``paper/methods/make_figures.py`` (the methods-paper driver), but pointed
 at a folder of TRINITY runs rather than ``.npz`` bundles: the barnes26 scripts
 read live simulation output via ``-F``, so this driver forwards a runs folder
 to each of them and funnels the PDFs into ``paper/barnes26/plots/``.

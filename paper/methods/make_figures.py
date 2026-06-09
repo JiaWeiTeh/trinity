@@ -4,7 +4,7 @@
 This is the entry point for paper reproducibility: after cloning the
 repo, run
 
-    python paper/make_figures.py
+    python paper/methods/make_figures.py
 
 and every figure whose bundle is present in ``paper/methods/data/`` will be
 regenerated into ``paper/plots/`` — a single directory holding the
@@ -16,8 +16,8 @@ Each row in ``FIGURES`` below maps one published bundle to the plot
 script that consumes it. To regenerate a single figure, pass its
 short name (or any unique prefix):
 
-    python paper/make_figures.py teaser
-    python paper/make_figures.py density rcloud
+    python paper/methods/make_figures.py teaser
+    python paper/methods/make_figures.py density rcloud
 """
 
 from __future__ import annotations
@@ -26,7 +26,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
+REPO_ROOT = Path(__file__).resolve().parents[2]
 DATA_DIR = REPO_ROOT / "paper" / "methods" / "data"
 # Single home for the published paper figures (see module docstring).
 PLOTS_DIR = REPO_ROOT / "paper" / "plots"

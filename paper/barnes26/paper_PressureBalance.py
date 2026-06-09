@@ -2,13 +2,19 @@
 # -*- coding: utf-8 -*-
 """Barnes 2026 comparison — pressure balance against the ambient ISM.
 
-TRINITY-only (no Barnes overlay yet). Two rows of panels, one column per
+TRINITY-only (no Barnes overlay yet). Three rows of panels, one column per
 stellar age (default 0.5, 1, 3 Myr); every marker is one TRINITY run sampled
-at that age. All pressures are on Barnes' ``P/k`` [K cm^-3] basis.
+at that age.
 
-    top row    : P_ISM (x) vs P_tot (y), with the P_tot = P_ISM line
-    bottom row : P_tot (x) vs P_tot - P_ISM (y), with the zero line
-                 (y > 0 => over-pressured w.r.t. the ambient ISM)
+    row 0 : P_ISM (x) vs P_tot (y), log-log [K cm^-3], with the P_tot=P_ISM line
+    row 1 : P_tot (x) vs log10(P_tot) - log10(P_ISM) (y), with the zero line
+    row 2 : Sigma_gas (x) vs log10(P_tot) - log10(P_ISM) (y), with the zero line
+
+The over/under-pressure rows use ``log10(P_tot) - log10(P_ISM)`` (= the dex
+ratio log10(P_tot/P_ISM)) on a *linear* y-axis: both pressures are positive so
+each log is defined, and the difference crosses zero (y > 0 over-pressured,
+y < 0 under-pressured) without dropping any points. ``Sigma_gas`` is the
+environmental cloud gas surface density ``mCloud/(pi rCloud^2)`` [Msun/pc^2].
 
 ``P_tot = P_thermal + P_radiation`` where P_thermal is TRINITY's HII
 ionization-balance pressure ``P_HII`` and P_radiation is the radiation
@@ -36,12 +42,14 @@ _sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from paper._lib.plot_base import FIG_DIR  # noqa: E402  applies trinity.mplstyle
 from paper.barnes26._barnes_lib import (  # noqa: E402
     DEFAULT_AGES_MYR, load_runs, collect_age_records,
-    to_Pk, pism_to_Pk, p_rad_native, p_rad_barnes, project_root,
+    to_Pk, pism_to_Pk, p_rad_native, p_rad_barnes, sigma_gas, project_root,
 )
 
+# Okabe-Ito colour-blind-safe palette + redundant marker shapes, so the two
+# P_rad series are distinguishable in greyscale / full colour-blindness.
 PRAD_STYLES = {
-    "native": dict(color="#1f77b4", label=r"$P_{\rm rad}$ native"),
-    "barnes": dict(color="#d62728", label=r"$P_{\rm rad}$ Barnes formula"),
+    "native": dict(color="#0072B2", marker="o", label=r"$P_{\rm rad}$ native"),
+    "barnes": dict(color="#D55E00", marker="^", label=r"$P_{\rm rad}$ Barnes formula"),
 }
 
 
@@ -70,32 +78,38 @@ def _ptot_series(recs, prad_modes):
     return PISM, series
 
 
-def _symlog_y(ax, y):
-    """Set a symlog y-scale with a robust linthresh for signed wide-range data."""
-    absy = np.abs(y[np.isfinite(y) & (y != 0)])
-    linthresh = float(np.percentile(absy, 25)) if absy.size else 1.0
-    ax.set_yscale("symlog", linthresh=max(linthresh, 1e-300))
+def _logratio(Ptot, PISM):
+    """log10(P_tot) - log10(P_ISM) = log10(P_tot/P_ISM), NaN where either <= 0."""
+    Ptot = np.asarray(Ptot, dtype=float)
+    PISM = np.asarray(PISM, dtype=float)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        return np.where((Ptot > 0) & (PISM > 0),
+                        np.log10(Ptot) - np.log10(PISM), np.nan)
+
+
+# y-axis label shared by the two over/under-pressure rows.
+_LOGRATIO_LABEL = r"$\log_{10}P_{\rm tot}-\log_{10}P_{\rm ISM}$"
 
 
 def plot_figure(records_by_age, ages, prad_modes, out_path):
     ncols = len(ages)
     fig, axes = plt.subplots(
-        nrows=2, ncols=ncols,
-        figsize=(3.4 * ncols, 5.6),
+        nrows=3, ncols=ncols,
+        figsize=(3.4 * ncols, 8.4),
         squeeze=False,
     )
 
     for j, age in enumerate(ages):
-        ax_top, ax_bot = axes[0, j], axes[1, j]
+        ax_abs, ax_pt, ax_sig = axes[0, j], axes[1, j], axes[2, j]
         recs_all = records_by_age.get(age, [])
         recs, n_skipped = _with_positive_pism(recs_all)
 
-        ax_top.set_title(f"t = {age:g} Myr"
+        ax_abs.set_title(f"t = {age:g} Myr"
                          + (f"  ({n_skipped} skipped: P_ISM<=0)" if n_skipped else ""),
                          fontsize=9)
 
         if not recs:
-            for ax in (ax_top, ax_bot):
+            for ax in (ax_abs, ax_pt, ax_sig):
                 ax.text(0.5, 0.5, "no runs with P_ISM > 0",
                         ha="center", va="center", transform=ax.transAxes,
                         color="grey", fontsize=9)
@@ -103,42 +117,55 @@ def plot_figure(records_by_age, ages, prad_modes, out_path):
             continue
 
         PISM, series = _ptot_series(recs, prad_modes)
+        Sigma = sigma_gas(np.array([r["mCloud"] for r in recs], dtype=float),
+                          np.array([r["rCloud"] for r in recs], dtype=float))
 
-        # --- top: P_ISM vs P_tot ---
+        # --- row 0: P_ISM vs P_tot (log-log) ---
         all_pos = [PISM]
         for mode, Ptot in series.items():
             st = PRAD_STYLES[mode]
             m = np.isfinite(PISM) & np.isfinite(Ptot) & (PISM > 0) & (Ptot > 0)
-            ax_top.scatter(PISM[m], Ptot[m], s=28, color=st["color"],
+            ax_abs.scatter(PISM[m], Ptot[m], s=28, color=st["color"], marker=st["marker"],
                            edgecolor="k", linewidth=0.4, alpha=0.85)
             all_pos.append(Ptot[m])
         lims = np.concatenate([a[np.isfinite(a) & (a > 0)] for a in all_pos if a.size])
         if lims.size:
             lo, hi = lims.min(), lims.max()
-            ax_top.plot([lo, hi], [lo, hi], color="0.4", ls="--", lw=1.0, zorder=1)
-        ax_top.set_xscale("log"); ax_top.set_yscale("log")
-        ax_top.grid(True, which="both", alpha=0.25, lw=0.5)
+            ax_abs.plot([lo, hi], [lo, hi], color="0.4", ls="--", lw=1.0, zorder=1)
+        ax_abs.set_xscale("log"); ax_abs.set_yscale("log")
+        ax_abs.grid(True, which="both", alpha=0.25, lw=0.5)
         if j == 0:
-            ax_top.set_ylabel(r"$P_{\rm tot}/k$ [K cm$^{-3}$]")
-        ax_top.set_xlabel(r"$P_{\rm ISM}/k$ [K cm$^{-3}$]")
+            ax_abs.set_ylabel(r"$P_{\rm tot}/k$ [K cm$^{-3}$]")
+        ax_abs.set_xlabel(r"$P_{\rm ISM}/k$ [K cm$^{-3}$]")
 
-        # --- bottom: P_tot vs (P_tot - P_ISM) ---
-        diff_for_scale = []
-        for mode, Ptot in series.items():
-            st = PRAD_STYLES[mode]
-            diff = Ptot - PISM
-            m = np.isfinite(Ptot) & np.isfinite(diff) & (Ptot > 0)
-            ax_bot.scatter(Ptot[m], diff[m], s=28, color=st["color"],
+        # --- rows 1 & 2: log10(P_tot)-log10(P_ISM) (linear y) vs P_tot / Sigma_gas ---
+        for ax, xvals, xlabel in (
+            (ax_pt,  None,  r"$P_{\rm tot}/k$ [K cm$^{-3}$]"),
+            (ax_sig, Sigma, r"$\Sigma_{\rm gas}$ [M$_\odot$ pc$^{-2}$]"),
+        ):
+            for mode, Ptot in series.items():
+                st = PRAD_STYLES[mode]
+                y = _logratio(Ptot, PISM)
+                x = Ptot if xvals is None else xvals
+                m = np.isfinite(x) & np.isfinite(y) & (x > 0)
+                ax.scatter(x[m], y[m], s=28, color=st["color"], marker=st["marker"],
                            edgecolor="k", linewidth=0.4, alpha=0.85)
-            diff_for_scale.append(diff[m])
-        ax_bot.axhline(0.0, color="0.4", ls="--", lw=1.0, zorder=1)
-        ax_bot.set_xscale("log")
-        if diff_for_scale:
-            _symlog_y(ax_bot, np.concatenate(diff_for_scale))
-        ax_bot.grid(True, which="both", alpha=0.25, lw=0.5)
-        if j == 0:
-            ax_bot.set_ylabel(r"$(P_{\rm tot}-P_{\rm ISM})/k$ [K cm$^{-3}$]")
-        ax_bot.set_xlabel(r"$P_{\rm tot}/k$ [K cm$^{-3}$]")
+            ax.set_xscale("log")
+            # dashed equilibrium line at log-ratio = 0 splits the regimes; keep it
+            # in view so over- (y>0) vs under-pressured (y<0) is always visible.
+            ax.axhline(0.0, color="0.35", ls="--", lw=1.3, zorder=1)
+            ymin, ymax = ax.get_ylim()
+            lo, hi = min(ymin, 0.0), max(ymax, 0.0)
+            pad = 0.08 * (hi - lo) if hi > lo else 0.5
+            ax.set_ylim(lo - pad, hi + pad)
+            ax.grid(True, which="both", alpha=0.25, lw=0.5)
+            if j == 0:
+                ax.set_ylabel(_LOGRATIO_LABEL)
+                ax.text(0.03, 0.97, "over-pressured", transform=ax.transAxes,
+                        va="top", ha="left", fontsize=7, style="italic", color="0.4")
+                ax.text(0.03, 0.03, "under-pressured", transform=ax.transAxes,
+                        va="bottom", ha="left", fontsize=7, style="italic", color="0.4")
+            ax.set_xlabel(xlabel)
 
     handles = [
         Line2D([0], [0], marker="o", ls="", color=PRAD_STYLES[m]["color"],

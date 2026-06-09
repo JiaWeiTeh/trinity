@@ -40,8 +40,10 @@ from paper.barnes26._barnes_lib import (  # noqa: E402
     p_rad_native, p_rad_barnes, project_root,
 )
 
-COLOR_NATIVE = "#1f77b4"   # TRINITY-native P_rad
-COLOR_BARNES = "#d62728"   # Barnes-formula recompute
+COLOR_NATIVE = "#0072B2"   # Okabe-Ito blue (colour-blind safe), TRINITY-native P_rad
+COLOR_BARNES = "#D55E00"   # Okabe-Ito vermillion (colour-blind safe), Barnes-formula recompute
+MARKER_NATIVE = "o"        # redundant shape encoding so the two series are
+MARKER_BARNES = "^"        # distinguishable in greyscale / full colour-blindness
 
 
 def _column_specs(radius_key):
@@ -96,10 +98,13 @@ def plot_figure(records_by_age, ages, radius_key, out_path):
                 continue
 
             xvals = np.array([getx(r) for r in recs], dtype=float)
-            for p_arr, color in ((p_native, COLOR_NATIVE), (p_barnes, COLOR_BARNES)):
+            for p_arr, color, marker in (
+                (p_native, COLOR_NATIVE, MARKER_NATIVE),
+                (p_barnes, COLOR_BARNES, MARKER_BARNES),
+            ):
                 xf, yf = _finite_positive(xvals, p_arr)
                 if xf.size:
-                    ax.scatter(xf, yf, s=28, color=color,
+                    ax.scatter(xf, yf, s=28, color=color, marker=marker,
                                edgecolor="k", linewidth=0.4, alpha=0.85)
 
             ax.set_xscale("log")
@@ -111,9 +116,9 @@ def plot_figure(records_by_age, ages, radius_key, out_path):
                 ax.set_xlabel(xlabel)
 
     handles = [
-        Line2D([0], [0], marker="o", ls="", color=COLOR_NATIVE,
+        Line2D([0], [0], marker=MARKER_NATIVE, ls="", color=COLOR_NATIVE,
                markeredgecolor="k", label=r"TRINITY-native ($F_{\rm rad}/4\pi R_2^2$)"),
-        Line2D([0], [0], marker="o", ls="", color=COLOR_BARNES,
+        Line2D([0], [0], marker=MARKER_BARNES, ls="", color=COLOR_BARNES,
                markeredgecolor="k", label=r"Barnes formula ($3L/4\pi r^2 c$)"),
     ]
     fig.legend(handles=handles, loc="upper center", ncol=2,
