@@ -145,6 +145,16 @@ def test_log_midpoint_is_geometric_mean():
     assert abs(rec["R2"] - math.sqrt(10.0 * 100.0)) < 1e-6
 
 
+def test_interior_bilinear_is_geometric_mean():
+    grid = _grid_2x2()
+    # interior point: logM=6.5 (w_m=0.5) and sfe=10**-1.5 (w_s=0.5) -> all four
+    # corners weight 0.25 -> log-space combine is the geometric mean of the
+    # corner R2 values (10, 100, 30, 300).
+    rec = interpolate_bubble(1.0, 6.5, 10.0 ** -1.5, grid)
+    assert abs(rec["R2"] - (10.0 * 100.0 * 30.0 * 300.0) ** 0.25) < 1e-6
+    assert abs(rec["f_neu"] - 0.5) < 1e-9   # linear combine of equal corners
+
+
 def test_exclude_age_beyond_lifetime():
     grid = _grid_2x2()
     # all cells have t_max = 2.0
