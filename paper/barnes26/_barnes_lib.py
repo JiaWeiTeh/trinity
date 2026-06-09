@@ -128,17 +128,18 @@ def sigma_gas(mCloud, rCloud):
 def ir_fraction(records):
     """Fraction of the *true total* radiation pressure that is dust-reprocessed IR.
 
-    TRINITY's radiation force carries an IR-trapping boost (1 + tau_IR), with
-    tau_IR = shell_tauKappaRatio * dust_KappaIR, so
+    TRINITY's radiation force carries an IR-trapping boost (1 + tau_IR), where
+    ``tau_IR`` (the dimensionless IR optical depth carried on each record) is
+    shell_tauKappaRatio * dust_KappaIR in code units. Hence
 
         P_rad,total = P_rad,(dir+ion) * (1 + tau_IR),
 
     and the share Barnes omits (it keeps only dir+ion) is
     f_IR = P_IR / P_rad,total = tau_IR / (1 + tau_IR), in [0, 1). Returns an
-    array over *records* (NaN where tau_IR is non-finite).
+    array over *records* (NaN where tau_IR is non-finite, e.g. dust_KappaIR
+    absent).
     """
-    tau = np.array([r["shell_tauKappaRatio"] * r["dust_KappaIR"] for r in records],
-                   dtype=float)
+    tau = np.array([r["tau_IR"] for r in records], dtype=float)
     with np.errstate(invalid="ignore"):
         return tau / (1.0 + tau)
 
@@ -182,8 +183,10 @@ def sample_run_at_age(output, age_myr):
         PISM=_f(md.get("PISM")),
         mCloud=_f(md.get("mCloud")),
         rCloud=_f(md.get("rCloud")),
-        shell_tauKappaRatio=_f(snap["shell_tauKappaRatio"]),
-        dust_KappaIR=float(md.get("dust_KappaIR")) if md.get("dust_KappaIR") is not None else 4.0,
+        # IR optical depth (dimensionless): shell column * Rosseland opacity,
+        # both in code units. NaN if dust_KappaIR is absent.
+        tau_IR=(_f(snap["shell_tauKappaRatio"]) * float(md["dust_KappaIR"])
+                if md.get("dust_KappaIR") is not None else float("nan")),
     )
 
 

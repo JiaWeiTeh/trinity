@@ -27,8 +27,7 @@ from trinity._output.run_constants import METADATA_FILENAME
 # Keys every per-bubble record must carry (matches _barnes_lib.sample_run_at_age).
 _RECORD_KEYS = {
     "name", "t", "R2", "R_IF", "F_rad", "P_HII", "Lbol", "Li",
-    "f_neu", "f_ion", "mCluster", "PISM", "mCloud", "rCloud",
-    "shell_tauKappaRatio", "dust_KappaIR",
+    "f_neu", "f_ion", "mCluster", "PISM", "mCloud", "rCloud", "tau_IR",
 }
 
 
@@ -47,10 +46,9 @@ def _cell(t, R2, Lbol, rCloud, PISM):
         P_HII=np.full(t.size, 1e3),
         f_neu=np.full(t.size, 0.5),
         f_ion=np.full(t.size, 1.0),
-        shell_tauKappaRatio=np.full(t.size, 0.1),
+        tau_IR=np.full(t.size, 0.1),
         rCloud=float(rCloud),
         PISM=float(PISM),
-        dust_KappaIR=4.0,
         t_max=float(t[-1]),
     )
 
@@ -223,10 +221,10 @@ def test_synthesize_population_smoke(tmp_path):
     base = tmp_path / "sweep3"
     _write_run(base / "1e6_sfe010", _snaps([1, 5, 10]),
                dict(mCloud_input=1e6, sfe=0.1, nCore=1e3, rCloud=18.0,
-                    PISM=2.9e59, mCloud=9e5, mCluster=1e5))
+                    PISM=2.9e59, mCloud=9e5, mCluster=1e5, dust_KappaIR=8.35e-4))
     _write_run(base / "1e7_sfe010", _snaps([1, 8, 16]),
                dict(mCloud_input=1e7, sfe=0.1, nCore=1e3, rCloud=40.0,
-                    PISM=2.9e59, mCloud=9e6, mCluster=1e6))
+                    PISM=2.9e59, mCloud=9e6, mCluster=1e6, dust_KappaIR=8.35e-4))
     outs = [load_output(p) for p in find_all_simulations(base)]
     records, info = synthesize_population(
         outs, t_obs=0.8, n_bubble=500, cmf_slope=-1.7, seed=7)
@@ -235,6 +233,9 @@ def test_synthesize_population_smoke(tmp_path):
     assert set(records[0]) == _RECORD_KEYS
     M_in = np.array([r["mCluster"] / 0.1 for r in records])  # epsilon=0.1 (single-SFE)
     assert M_in.min() >= 1e6 - 1 and M_in.max() <= 1e7 + 1
+    # tau_IR plumbed through (dust_KappaIR present) -> finite IR fraction in [0, 1)
+    f = ir_fraction(records)
+    assert np.all(np.isfinite(f)) and f.min() >= 0.0 and f.max() < 1.0
 
 
 def test_synthesize_multi_pism_environments(tmp_path):
@@ -263,14 +264,11 @@ def test_synthesize_multi_pism_environments(tmp_path):
 
 
 def test_ir_fraction():
-    # f_IR = tau_IR / (1 + tau_IR), tau_IR = shell_tauKappaRatio * dust_KappaIR
-    recs = [
-        {"shell_tauKappaRatio": 0.0, "dust_KappaIR": 4.0},    # tau=0   -> 0
-        {"shell_tauKappaRatio": 0.25, "dust_KappaIR": 4.0},   # tau=1   -> 0.5
-        {"shell_tauKappaRatio": 100.0, "dust_KappaIR": 4.0},  # tau=400 -> ~0.9975
-    ]
-    f = ir_fraction(recs)
+    # f_IR = tau_IR / (1 + tau_IR)
+    f = ir_fraction([{"tau_IR": 0.0}, {"tau_IR": 1.0}, {"tau_IR": 400.0}])
     assert np.isclose(f[0], 0.0)
     assert np.isclose(f[1], 0.5)
     assert f[2] > 0.99
+    # NaN tau_IR (e.g. dust_KappaIR absent) -> NaN, so it drops out of the plot
+    assert np.isnan(ir_fraction([{"tau_IR": float("nan")}])[0])
 

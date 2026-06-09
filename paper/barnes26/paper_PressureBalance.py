@@ -23,9 +23,9 @@ non-positive are skipped (a Barnes P_ISM = P_DE comparison needs P_ISM > 0).
 Modes
 -----
 * ``--population`` (default): synthesize a bubble population at a single
-  ``--t-obs`` (see ``paper.barnes26._population``) and show it as a hexbin
-  density + median per row (single column); the primary ``--prad`` mode is the
-  density, any other mode is a median line. Output:
+  ``--t-obs`` (see ``paper.barnes26._population``) and show each row as a
+  scatter coloured by P_DE environment with per-environment medians (single
+  column; P_tot uses the primary ``--prad`` mode, native by default). Output:
   ``barnes26_PressureBalance_{prad}_population.pdf``.
 * ``--no-population``: one marker per run, one column per ``--ages`` value.
   Output: ``barnes26_PressureBalance_{prad}.pdf``.

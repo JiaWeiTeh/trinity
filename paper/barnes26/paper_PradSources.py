@@ -13,11 +13,15 @@ acts); the radius column is a size proxy on the x-axis only.
 Modes
 -----
 * ``--population`` (default): synthesize a bubble population at a single
-  ``--t-obs`` — sampling a cloud mass function + SFE across the run grid (see
-  ``paper.barnes26._population``) — and show it as a hexbin density + median;
-  the Barnes-formula P_rad is overlaid as a median line. One row, three
-  columns. Output: ``barnes26_PradSources_{R2,R_IF}_population.pdf``.
-* ``--no-population``: one marker per run, one row per ``--ages`` value.
+  ``--t-obs`` (cloud mass function + SFE across the run grid; see
+  ``paper.barnes26._population``) and show native P_rad as a scatter coloured
+  by P_DE environment with per-environment medians. Emits three figures:
+  ``barnes26_PradSources_{R2,R_IF}_population.pdf`` (P_rad vs L_bol / M_star /
+  radius), ``..._nativeVsBarnes_population.pdf`` (native vs Barnes-formula
+  P_rad, 1:1), and ``..._IRfraction_population.pdf`` (the % of P_rad that is
+  dust-reprocessed IR, which Barnes omits).
+* ``--no-population``: one marker per run, one row per ``--ages`` value, with
+  native and Barnes-formula P_rad shown together.
   Output: ``barnes26_PradSources_{R2,R_IF}.pdf``.
 
 Usage
