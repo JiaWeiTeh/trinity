@@ -232,29 +232,48 @@ def binned_median(x, y, *, xscale="log", nbins=12, min_count=5):
     return np.array(cx), np.array(cy)
 
 
-def hexbin_median(ax, x, y, *, xscale="log", yscale="log", cmap="cividis",
-                  gridsize=30, mincnt=1, median=True, median_color="k",
-                  median_lw=2.2, nbins=12, min_count=5):
-    """Draw a hexbin density of ``(x, y)`` on ``ax`` plus a binned-median line.
+# Okabe-Ito qualitative palette for discrete environments (the swept P_DE/PISM).
+ENV_COLORS = ("#0072B2", "#E69F00", "#009E73", "#CC79A7", "#56B4E9", "#D55E00", "#000000")
 
-    Non-finite points are dropped (and non-positive ones on a log axis).
-    ``cividis`` is a colour-blind-safe sequential map. Returns the hexbin
-    handle, or ``None`` if nothing is plottable.
+
+def pde_env_labels(records):
+    """Map each distinct ``PISM`` (code units) in *records* to a P_DE legend label."""
+    labels = {}
+    for v in sorted({r["PISM"] for r in records if np.isfinite(r["PISM"])}):
+        pk = float(pism_to_Pk(v))
+        labels[v] = (rf"$P_{{\rm DE}}=10^{{{np.log10(pk):.1f}}}$ K cm$^{{-3}}$"
+                     if pk > 0 else r"$P_{\rm DE}$ n/a")
+    return labels
+
+
+def scatter_median_by_env(ax, x, y, env, *, xscale="log", yscale="log",
+                          env_labels=None, median=True, s=7, alpha=0.18,
+                          nbins=12, min_count=20):
+    """Scatter ``(x, y)`` coloured by environment + a per-environment median line.
+
+    ``env`` is a per-point key (e.g. PISM). One Okabe-Ito colour per distinct
+    environment (sorted ascending); the median line gets a white halo for
+    contrast over the scatter. Returns ``[(label, colour), ...]`` for the
+    legend. Uses only Axes methods + numpy (no matplotlib import here).
     """
     x = np.asarray(x, dtype=float)
     y = np.asarray(y, dtype=float)
-    m = np.isfinite(x) & np.isfinite(y)
+    env = np.asarray(env)
+    finite = np.isfinite(x) & np.isfinite(y)
     if xscale == "log":
-        m &= x > 0
+        finite &= x > 0
     if yscale == "log":
-        m &= y > 0
-    x, y = x[m], y[m]
-    if x.size == 0:
-        return None
-    hb = ax.hexbin(x, y, xscale=xscale, yscale=yscale, gridsize=gridsize,
-                   mincnt=mincnt, cmap=cmap, linewidths=0)
-    if median:
-        cx, cy = binned_median(x, y, xscale=xscale, nbins=nbins, min_count=min_count)
-        if cx.size:
-            ax.plot(cx, cy, color=median_color, lw=median_lw, zorder=5)
-    return hb
+        finite &= y > 0
+    handles = []
+    for i, e in enumerate(sorted(set(env[finite].tolist()))):
+        c = ENV_COLORS[i % len(ENV_COLORS)]
+        m = finite & (env == e)
+        ax.scatter(x[m], y[m], s=s, color=c, alpha=alpha, linewidths=0, rasterized=True)
+        if median:
+            cx, cy = binned_median(x[m], y[m], xscale=xscale, nbins=nbins, min_count=min_count)
+            if cx.size:
+                ax.plot(cx, cy, color="white", lw=4.0, zorder=5, solid_capstyle="round")
+                ax.plot(cx, cy, color=c, lw=2.2, zorder=6, solid_capstyle="round")
+        label = env_labels.get(e) if env_labels else str(e)
+        handles.append((label, c))
+    return handles

@@ -61,7 +61,7 @@ _sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from paper.barnes26._barnes_lib import (  # noqa: E402
     DEFAULT_AGES_MYR, load_runs, collect_age_records,
     to_Pk, pism_to_Pk, p_rad_native, p_rad_barnes, sigma_gas, project_root,
-    apply_trinity_style, binned_median, hexbin_median,
+    apply_trinity_style, scatter_median_by_env, pde_env_labels,
 )
 from paper.barnes26._population import (  # noqa: E402
     synthesize_population, add_population_cli,
@@ -207,14 +207,10 @@ def plot_figure(records_by_age, ages, prad_modes, out_path):
     print(f"Saved: {out_path}")
 
 
-def _finish_population(fig, prad_modes, info, n_skipped, out_path):
-    primary = prad_modes[0]
-    handles = [Line2D([0], [0], color="k", lw=2.2,
-                      label=rf"$P_{{\rm rad}}$ {primary} (density + median)")]
-    for mode in prad_modes[1:]:
-        handles.append(Line2D([0], [0], color=PRAD_STYLES[mode]["color"], ls="--",
-                              lw=2.0, label=rf"$P_{{\rm rad}}$ {mode} (median)"))
-    fig.legend(handles=handles, loc="upper center", ncol=len(handles), frameon=False,
+def _finish_population(fig, handles, info, n_skipped, out_path):
+    leg = [Line2D([0], [0], marker="o", ls="", color=c, markersize=7, label=lab)
+           for lab, c in handles]
+    fig.legend(handles=leg, loc="upper center", ncol=max(2, len(leg)), frameon=False,
                fontsize=9, bbox_to_anchor=(0.5, 1.0))
     extra = f"  ({n_skipped} skipped: P_ISM<=0)" if n_skipped else ""
     fig.suptitle("Pressure balance — synthetic population "
@@ -229,13 +225,14 @@ def _finish_population(fig, prad_modes, info, n_skipped, out_path):
 
 
 def plot_population(records, info, prad_modes, out_path):
-    """Population mode: hexbin density at one t_obs (3 rows, single column).
+    """Population mode: 3 rows at one t_obs, coloured by P_DE environment.
 
-    The density + black median use the primary --prad mode; any other requested
-    mode is overlaid as a dashed median line (no second density).
+    P_tot uses the primary --prad mode (native by default). Each panel is a
+    transparent scatter coloured by ambient pressure (P_DE) with a
+    per-environment median line.
     """
     recs, n_skipped = _with_positive_pism(records)
-    fig, axes = plt.subplots(3, 1, figsize=(4.4, 9.8), squeeze=False)
+    fig, axes = plt.subplots(3, 1, figsize=(4.8, 10.2), squeeze=False)
     ax_abs, ax_pt, ax_sig = axes[0, 0], axes[1, 0], axes[2, 0]
 
     if not recs:
@@ -243,26 +240,23 @@ def plot_population(records, info, prad_modes, out_path):
             ax.text(0.5, 0.5, "no bubbles with P_ISM > 0", ha="center", va="center",
                     transform=ax.transAxes, color="grey", fontsize=9)
             ax.set_xticks([]); ax.set_yticks([])
-        _finish_population(fig, prad_modes, info, n_skipped, out_path)
+        _finish_population(fig, [], info, n_skipped, out_path)
         return
 
     PISM, series = _ptot_series(recs, prad_modes)
+    Ptot = series[prad_modes[0]]
     Sigma = sigma_gas(np.array([r["mCloud"] for r in recs], dtype=float),
                       np.array([r["rCloud"] for r in recs], dtype=float))
-    primary = prad_modes[0]
-    Ptot_p = series[primary]
+    env = np.array([r["PISM"] for r in recs], dtype=float)
+    labels = pde_env_labels(recs)
 
-    # --- row 0: P_ISM vs P_tot (log-log) ---
-    hexbin_median(ax_abs, PISM, Ptot_p, xscale="log", yscale="log", median_color="k")
-    for mode in prad_modes[1:]:
-        bx, by = binned_median(PISM, series[mode], xscale="log")
-        if bx.size:
-            ax_abs.plot(bx, by, color=PRAD_STYLES[mode]["color"], ls="--", lw=2.0, zorder=6)
-    pos = [v[np.isfinite(v) & (v > 0)] for v in (PISM, Ptot_p)]
-    pos = [a for a in pos if a.size]
-    if pos:
-        allv = np.concatenate(pos)
-        ax_abs.plot([allv.min(), allv.max()], [allv.min(), allv.max()],
+    # --- row 0: P_ISM vs P_tot (log-log), coloured by env; P_tot=P_ISM line ---
+    scatter_median_by_env(ax_abs, PISM, Ptot, env, xscale="log", yscale="log",
+                          env_labels=labels, median=False)
+    pos = np.concatenate([PISM, Ptot])
+    pos = pos[np.isfinite(pos) & (pos > 0)]
+    if pos.size:
+        ax_abs.plot([pos.min(), pos.max()], [pos.min(), pos.max()],
                     color="0.4", ls="--", lw=1.0, zorder=1)
     ax_abs.set_xscale("log"); ax_abs.set_yscale("log")
     ax_abs.grid(True, which="both", alpha=0.25, lw=0.5)
@@ -270,19 +264,14 @@ def plot_population(records, info, prad_modes, out_path):
     ax_abs.set_xlabel(r"$P_{\rm ISM}/k$ [K cm$^{-3}$]")
 
     # --- rows 1 & 2: log10(P_tot)-log10(P_ISM) (linear y) vs P_tot / Sigma_gas ---
-    y_primary = _logratio(Ptot_p, PISM)
-    for ax, x_primary, x_others, xlabel in (
-        (ax_pt,  Ptot_p, {m: series[m] for m in prad_modes[1:]},
-         r"$P_{\rm tot}/k$ [K cm$^{-3}$]"),
-        (ax_sig, Sigma,  {m: Sigma for m in prad_modes[1:]},
-         r"$\Sigma_{\rm gas}$ [M$_\odot$ pc$^{-2}$]"),
+    ylr = _logratio(Ptot, PISM)
+    handles = []
+    for ax, xvals, xlabel in (
+        (ax_pt,  Ptot,  r"$P_{\rm tot}/k$ [K cm$^{-3}$]"),
+        (ax_sig, Sigma, r"$\Sigma_{\rm gas}$ [M$_\odot$ pc$^{-2}$]"),
     ):
-        hexbin_median(ax, x_primary, y_primary, xscale="log", yscale="linear",
-                      median_color="k")
-        for mode, xm in x_others.items():
-            bx, by = binned_median(xm, _logratio(series[mode], PISM), xscale="log")
-            if bx.size:
-                ax.plot(bx, by, color=PRAD_STYLES[mode]["color"], ls="--", lw=2.0, zorder=6)
+        handles = scatter_median_by_env(ax, xvals, ylr, env, xscale="log",
+                                        yscale="linear", env_labels=labels)
         ax.set_xscale("log")
         ax.axhline(0.0, color="0.35", ls="--", lw=1.3, zorder=1)
         ymin, ymax = ax.get_ylim()
@@ -297,7 +286,7 @@ def plot_population(records, info, prad_modes, out_path):
                 va="bottom", ha="left", fontsize=7, style="italic", color="0.4")
         ax.set_xlabel(xlabel)
 
-    _finish_population(fig, prad_modes, info, n_skipped, out_path)
+    _finish_population(fig, handles, info, n_skipped, out_path)
 
 
 def main():

@@ -402,6 +402,12 @@ def synthesize_population(
             sfe_median=sfe_median, sfe_sigma_dex=sfe_sigma_dex,
             fixed_sfe=fixed_sfe, rng=rng,
         )
+        # PISM is the environment's exact ambient pressure, not something to
+        # interpolate; stamp it so the log-combine's per-bubble float noise
+        # doesn't fragment one environment into many.
+        if pism_key is not None:
+            for r in recs:
+                r["PISM"] = pism_key
         records.extend(recs)
         n_excluded += nx
         pism_values.append(pism_key)
