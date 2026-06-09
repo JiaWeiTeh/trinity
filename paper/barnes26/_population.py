@@ -106,8 +106,8 @@ def sample_lognormal_truncated(N, median, sigma_dex, lo, hi, rng, max_iter=1000)
 # ---------------------------------------------------------------------------
 # Quantities interpolated in age then combined across grid corners.
 _TS_LOG = ("R2", "R_IF", "Lbol", "Li", "F_rad", "P_HII")   # positive -> log space
-_TS_LIN = ("f_neu", "f_ion")                               # in [0,1] -> linear
-_SCALAR_LOG = ("rCloud", "PISM")                           # per-run constants
+_TS_LIN = ("f_neu", "f_ion", "shell_tauKappaRatio")        # in [0,1] / >=0 -> linear
+_SCALAR_LOG = ("rCloud", "PISM", "dust_KappaIR")           # per-run constants
 
 
 def _bracket(x, axis):
@@ -202,6 +202,7 @@ def interpolate_bubble(age, log_Mcl, sfe, grid):
         Lbol=out["Lbol"], Li=out["Li"], f_neu=out["f_neu"], f_ion=out["f_ion"],
         mCluster=sfe * m_input, PISM=out["PISM"],
         mCloud=(1.0 - sfe) * m_input, rCloud=out["rCloud"],
+        shell_tauKappaRatio=out["shell_tauKappaRatio"], dust_KappaIR=out["dust_KappaIR"],
     )
 
 
@@ -270,8 +271,10 @@ def build_grid(outputs, fixed_ncore=None, logM_round=2, sfe_round=4):
             R2=ser("R2"), R_IF=ser("R_IF"), Lbol=ser("Lbol"), Li=ser("Li"),
             F_rad=ser("F_rad"), P_HII=ser("P_HII"),
             f_neu=ser("shell_fAbsorbedNeu"), f_ion=ser("shell_fAbsorbedIon"),
+            shell_tauKappaRatio=ser("shell_tauKappaRatio"),
             rCloud=float(md.get("rCloud") if md.get("rCloud") is not None else np.nan),
             PISM=float(md.get("PISM") if md.get("PISM") is not None else np.nan),
+            dust_KappaIR=float(md.get("dust_KappaIR") if md.get("dust_KappaIR") is not None else 4.0),
         )
         cell["t_max"] = float(cell["t"][-1])
         rows.append((round(math.log10(m_input), logM_round),

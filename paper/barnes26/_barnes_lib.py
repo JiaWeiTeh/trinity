@@ -125,6 +125,24 @@ def sigma_gas(mCloud, rCloud):
         return mCloud / (math.pi * rCloud ** 2)
 
 
+def ir_fraction(records):
+    """Fraction of the *true total* radiation pressure that is dust-reprocessed IR.
+
+    TRINITY's radiation force carries an IR-trapping boost (1 + tau_IR), with
+    tau_IR = shell_tauKappaRatio * dust_KappaIR, so
+
+        P_rad,total = P_rad,(dir+ion) * (1 + tau_IR),
+
+    and the share Barnes omits (it keeps only dir+ion) is
+    f_IR = P_IR / P_rad,total = tau_IR / (1 + tau_IR), in [0, 1). Returns an
+    array over *records* (NaN where tau_IR is non-finite).
+    """
+    tau = np.array([r["shell_tauKappaRatio"] * r["dust_KappaIR"] for r in records],
+                   dtype=float)
+    with np.errstate(invalid="ignore"):
+        return tau / (1.0 + tau)
+
+
 # ---------------------------------------------------------------------------
 # Run loading and sampling
 # ---------------------------------------------------------------------------
@@ -164,6 +182,8 @@ def sample_run_at_age(output, age_myr):
         PISM=_f(md.get("PISM")),
         mCloud=_f(md.get("mCloud")),
         rCloud=_f(md.get("rCloud")),
+        shell_tauKappaRatio=_f(snap["shell_tauKappaRatio"]),
+        dust_KappaIR=float(md.get("dust_KappaIR")) if md.get("dust_KappaIR") is not None else 4.0,
     )
 
 

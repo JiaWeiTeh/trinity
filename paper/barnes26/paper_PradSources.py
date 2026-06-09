@@ -51,7 +51,7 @@ from trinity._functions.unit_conversions import L_au2cgs  # noqa: E402
 from paper.barnes26._barnes_lib import (  # noqa: E402
     DEFAULT_AGES_MYR, load_runs, collect_age_records,
     p_rad_native, p_rad_barnes, project_root, apply_trinity_style,
-    scatter_median_by_env, pde_env_labels,
+    scatter_median_by_env, pde_env_labels, ir_fraction, sigma_gas,
 )
 from paper.barnes26._population import (  # noqa: E402
     synthesize_population, add_population_cli,
@@ -228,6 +228,46 @@ def plot_native_vs_barnes(records, info, out_path):
     print(f"Saved: {out_path}")
 
 
+def plot_ir_fraction(records, info, out_path):
+    """Fraction of the *true total* P_rad that is dust-reprocessed IR.
+
+    Two panels (vs Sigma_gas, vs R2); y = 100 * P_IR/P_rad,total [%] — the share
+    of the true radiation pressure that Barnes (dir+ion only) omits — coloured
+    by P_DE environment with per-environment medians.
+    """
+    f_pct = 100.0 * ir_fraction(records)
+    env = np.array([r["PISM"] for r in records], dtype=float)
+    labels = pde_env_labels(records)
+    Sigma = sigma_gas(np.array([r["mCloud"] for r in records], dtype=float),
+                      np.array([r["rCloud"] for r in records], dtype=float))
+    R2 = np.array([r["R2"] for r in records], dtype=float)
+
+    fig, axes = plt.subplots(1, 2, figsize=(8.2, 3.6), squeeze=False)
+    handles = []
+    for ax, x, xlabel in (
+        (axes[0, 0], Sigma, r"$\Sigma_{\rm gas}$ [M$_\odot$ pc$^{-2}$]"),
+        (axes[0, 1], R2,    r"$R_2$ [pc]"),
+    ):
+        handles = scatter_median_by_env(ax, x, f_pct, env, xscale="log",
+                                        yscale="linear", env_labels=labels)
+        ax.set_xscale("log")
+        ax.set_ylim(-3, 103)
+        ax.grid(True, which="both", alpha=0.25, lw=0.5)
+        ax.set_xlabel(xlabel)
+    axes[0, 0].set_ylabel(r"$P_{\rm IR}/P_{\rm rad}$ [\%]  (omitted by Barnes)")
+    fig.legend(handles=_env_legend(handles), loc="upper center",
+               ncol=max(2, len(handles)), frameon=False, fontsize=9,
+               bbox_to_anchor=(0.5, 1.0))
+    fig.suptitle(r"Dust-reprocessed IR share of $P_{\rm rad}$ — synthetic population"
+                 f"  (N={info['n_surviving']}, "
+                 rf"$t_{{\rm obs}}$={info['t_obs']:g} Myr)", y=1.03, fontsize=11)
+    fig.tight_layout(rect=[0, 0, 1, 0.95])
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out_path, bbox_inches="tight")
+    plt.close(fig)
+    print(f"Saved: {out_path}")
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="P_rad vs source properties for Barnes-matched TRINITY runs.",
@@ -267,6 +307,8 @@ def main():
                             out_dir / f"barnes26_PradSources_{radius_key}_population.pdf")
         plot_native_vs_barnes(records, info,
                               out_dir / "barnes26_PradSources_nativeVsBarnes_population.pdf")
+        plot_ir_fraction(records, info,
+                         out_dir / "barnes26_PradSources_IRfraction_population.pdf")
         return
 
     print(f"Loaded {len(outputs)} run(s); ages = {args.ages} Myr")
