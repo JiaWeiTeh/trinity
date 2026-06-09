@@ -35,7 +35,6 @@ keys.
 
 from __future__ import annotations
 
-import argparse
 import logging
 import math
 from typing import Dict, List, Optional, Tuple
@@ -428,9 +427,13 @@ def add_population_cli(parser):
     Co-located with the synthesis so both figure scripts share one definition
     (defaults match :func:`synthesize_population`).
     """
-    parser.add_argument("--population", action=argparse.BooleanOptionalAction, default=True,
-                        help="Synthesize a bubble population at a single --t-obs (default). "
-                             "--no-population reverts to per-run markers at fixed --ages.")
+    # store_true/store_false pair instead of argparse.BooleanOptionalAction,
+    # which only exists on Python >= 3.9.
+    pop = parser.add_mutually_exclusive_group()
+    pop.add_argument("--population", dest="population", action="store_true", default=True,
+                     help="Synthesize a bubble population at a single --t-obs (default).")
+    pop.add_argument("--no-population", dest="population", action="store_false",
+                     help="Revert to per-run markers at fixed --ages.")
     parser.add_argument("--t-obs", type=float, default=5.0,
                         help="Observation time [Myr] for the population (default: 5).")
     parser.add_argument("--n-bubble", type=int, default=20000,

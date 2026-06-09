@@ -94,9 +94,13 @@ def main(argv=None):
                         help="Figure name(s) to run (unique prefix); default all")
     parser.add_argument("-F", "--folder", required=True,
                         help="Folder of TRINITY run subfolders (each with dictionary.jsonl)")
-    parser.add_argument("--population", action=argparse.BooleanOptionalAction, default=True,
-                        help="Synthesize a bubble population (default). --no-population "
-                             "forwards the per-run, fixed-age mode to each script.")
+    # store_true/store_false pair instead of argparse.BooleanOptionalAction,
+    # which only exists on Python >= 3.9.
+    pop = parser.add_mutually_exclusive_group()
+    pop.add_argument("--population", dest="population", action="store_true", default=True,
+                     help="Synthesize a bubble population (default).")
+    pop.add_argument("--no-population", dest="population", action="store_false",
+                     help="Forward the per-run, fixed-age mode to each script.")
     args = parser.parse_args(argv)
 
     if not find_all_simulations(args.folder):
