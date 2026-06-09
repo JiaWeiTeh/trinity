@@ -30,8 +30,8 @@ densPL_alpha    0
 # ISM density
 nISM    0.1
 
-# Allow expansion beyond cloud
-expansionBeyondCloud    True
+# Don't terminate when the shell crosses the cloud edge (None = expand beyond)
+stop_at_rCloud_nSnap    None
 
 # Output directory (each run creates subfolder like 1e5_sfe001_n1e2/)
 path2output    outputs/sweep_test
