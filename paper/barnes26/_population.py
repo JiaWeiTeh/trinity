@@ -35,6 +35,7 @@ keys.
 
 from __future__ import annotations
 
+import argparse
 import logging
 import math
 from typing import Dict, List, Optional, Tuple
@@ -364,3 +365,30 @@ def synthesize_population(
     logger.info("population: drew %d, excluded %d (age > run t_max / no coverage), "
                 "%d surviving", n_bubble, n_excluded, len(records))
     return records, info
+
+
+def add_population_cli(parser):
+    """Register the shared ``--population`` synthesis options on an argparse parser.
+
+    Co-located with the synthesis so both figure scripts share one definition
+    (defaults match :func:`synthesize_population`).
+    """
+    parser.add_argument("--population", action=argparse.BooleanOptionalAction, default=True,
+                        help="Synthesize a bubble population at a single --t-obs (default). "
+                             "--no-population reverts to per-run markers at fixed --ages.")
+    parser.add_argument("--t-obs", type=float, default=5.0,
+                        help="Observation time [Myr] for the population (default: 5).")
+    parser.add_argument("--n-bubble", type=int, default=20000,
+                        help="Number of synthetic bubbles (default: 20000).")
+    parser.add_argument("--cmf-slope", type=float, default=-1.7,
+                        help="Cloud mass function slope dN/dM ~ M^slope (default: -1.7).")
+    parser.add_argument("--sfe-median", type=float, default=0.03,
+                        help="SFE log-normal median (default: 0.03).")
+    parser.add_argument("--sfe-sigma-dex", type=float, default=0.4,
+                        help="SFE log-normal width [dex] (default: 0.4).")
+    parser.add_argument("--fixed-sfe", type=float, default=None,
+                        help="Hold SFE fixed at this value (overrides the SFE distribution).")
+    parser.add_argument("--fixed-ncore", type=float, default=None,
+                        help="Use only grid runs with this core density.")
+    parser.add_argument("--seed", type=int, default=42,
+                        help="Population RNG seed (default: 42).")
