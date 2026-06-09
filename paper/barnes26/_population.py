@@ -440,7 +440,7 @@ def add_population_cli(parser):
                      help="Synthesize a bubble population at a single --t-obs (default).")
     pop.add_argument("--no-population", dest="population", action="store_false",
                      help="Revert to per-run markers at fixed --ages.")
-    parser.add_argument("--t-obs", type=float, default=5.0,
+    parser.add_argument("--t-obs", type=float, default=3.0,
                         help="Observation time [Myr] for the population (default: 5).")
     parser.add_argument("--n-bubble", type=int, default=20000,
                         help="Number of synthetic bubbles (default: 20000).")
