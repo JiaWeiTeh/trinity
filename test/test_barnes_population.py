@@ -20,6 +20,7 @@ from paper.barnes26._population import (
     interpolate_bubble,
     synthesize_population,
 )
+from paper.barnes26._barnes_lib import ir_fraction
 from trinity._output.trinity_reader import load_output, find_all_simulations
 from trinity._output.run_constants import METADATA_FILENAME
 
@@ -27,6 +28,7 @@ from trinity._output.run_constants import METADATA_FILENAME
 _RECORD_KEYS = {
     "name", "t", "R2", "R_IF", "F_rad", "P_HII", "Lbol", "Li",
     "f_neu", "f_ion", "mCluster", "PISM", "mCloud", "rCloud",
+    "shell_tauKappaRatio", "dust_KappaIR",
 }
 
 
@@ -45,8 +47,10 @@ def _cell(t, R2, Lbol, rCloud, PISM):
         P_HII=np.full(t.size, 1e3),
         f_neu=np.full(t.size, 0.5),
         f_ion=np.full(t.size, 1.0),
+        shell_tauKappaRatio=np.full(t.size, 0.1),
         rCloud=float(rCloud),
         PISM=float(PISM),
+        dust_KappaIR=4.0,
         t_max=float(t[-1]),
     )
 
@@ -69,7 +73,8 @@ def _snaps(R2vals):
     t = [0.0, 0.5, 1.0]
     return [
         dict(t_now=t[i], R2=R2vals[i], R_IF=R2vals[i] * 0.5, Lbol=1e6, Li=1e5,
-             F_rad=1e3, P_HII=1e3, shell_fAbsorbedNeu=0.5, shell_fAbsorbedIon=1.0)
+             F_rad=1e3, P_HII=1e3, shell_fAbsorbedNeu=0.5, shell_fAbsorbedIon=1.0,
+             shell_tauKappaRatio=0.1)
         for i in range(3)
     ]
 
@@ -255,4 +260,17 @@ def test_synthesize_multi_pism_environments(tmp_path):
     # split roughly evenly across environments
     assert len(info["per_env_counts"]) == 2
     assert min(info["per_env_counts"]) > 0
+
+
+def test_ir_fraction():
+    # f_IR = tau_IR / (1 + tau_IR), tau_IR = shell_tauKappaRatio * dust_KappaIR
+    recs = [
+        {"shell_tauKappaRatio": 0.0, "dust_KappaIR": 4.0},    # tau=0   -> 0
+        {"shell_tauKappaRatio": 0.25, "dust_KappaIR": 4.0},   # tau=1   -> 0.5
+        {"shell_tauKappaRatio": 100.0, "dust_KappaIR": 4.0},  # tau=400 -> ~0.9975
+    ]
+    f = ir_fraction(recs)
+    assert np.isclose(f[0], 0.0)
+    assert np.isclose(f[1], 0.5)
+    assert f[2] > 0.99
 
