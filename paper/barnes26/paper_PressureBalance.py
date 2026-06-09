@@ -39,11 +39,13 @@ from matplotlib.lines import Line2D
 import sys as _sys
 _sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from paper._lib.plot_base import FIG_DIR  # noqa: E402  applies trinity.mplstyle
 from paper.barnes26._barnes_lib import (  # noqa: E402
     DEFAULT_AGES_MYR, load_runs, collect_age_records,
     to_Pk, pism_to_Pk, p_rad_native, p_rad_barnes, sigma_gas, project_root,
+    apply_trinity_style,
 )
+
+apply_trinity_style()  # trinity.mplstyle, without plot_base's stray-fig/ side effect
 
 # Okabe-Ito colour-blind-safe palette + redundant marker shapes, so the two
 # P_rad series are distinguishable in greyscale / full colour-blindness.

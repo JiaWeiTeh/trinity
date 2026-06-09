@@ -20,7 +20,11 @@ import matplotlib.pyplot as plt
 # ------------------------------------------------------------------
 # Project root and sys.path
 # ------------------------------------------------------------------
-PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
+# paper/_lib/plot_base.py -> parents[2] is the repo root. (Was
+# parent*4, correct only when this lived at paper/figures/_lib/; the
+# per-paper reorg moved _lib up a level, which made it overshoot to the
+# directory *above* the repo and create a stray fig/ there.)
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 

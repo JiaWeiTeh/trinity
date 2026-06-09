@@ -33,12 +33,13 @@ from matplotlib.lines import Line2D
 import sys as _sys
 _sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from paper._lib.plot_base import FIG_DIR  # noqa: E402  applies trinity.mplstyle
 from trinity._functions.unit_conversions import L_au2cgs  # noqa: E402
 from paper.barnes26._barnes_lib import (  # noqa: E402
     DEFAULT_AGES_MYR, load_runs, collect_age_records,
-    p_rad_native, p_rad_barnes, project_root,
+    p_rad_native, p_rad_barnes, project_root, apply_trinity_style,
 )
+
+apply_trinity_style()  # trinity.mplstyle, without plot_base's stray-fig/ side effect
 
 COLOR_NATIVE = "#0072B2"   # Okabe-Ito blue (colour-blind safe), TRINITY-native P_rad
 COLOR_BARNES = "#D55E00"   # Okabe-Ito vermillion (colour-blind safe), Barnes-formula recompute

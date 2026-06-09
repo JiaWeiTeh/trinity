@@ -179,3 +179,17 @@ def collect_age_records(outputs, ages):
 def project_root():
     """Repository root (two levels above this file: barnes26 -> paper -> root)."""
     return Path(__file__).resolve().parents[2]
+
+
+def apply_trinity_style():
+    """Apply the shared ``trinity.mplstyle`` to matplotlib.
+
+    Used instead of importing ``paper._lib.plot_base`` (whose module-level
+    ``FIG_DIR.mkdir`` materialises a stray ``fig/`` directory as an import
+    side effect). matplotlib is imported lazily so this module stays
+    import-light.
+    """
+    import matplotlib.pyplot as plt
+    style = Path(__file__).resolve().parents[1] / "_lib" / "trinity.mplstyle"
+    if style.exists():
+        plt.style.use(str(style))
