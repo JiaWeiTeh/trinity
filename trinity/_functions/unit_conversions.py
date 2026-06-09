@@ -25,7 +25,6 @@ See test suite at bottom for accuracy verification.
 """
 
 import re
-import ast
 from typing import Optional, Dict
 from dataclasses import dataclass
 from fractions import Fraction
@@ -320,7 +319,7 @@ def convert2au(unit_string: Optional[str]) -> float:
     
     Notes
     -----
-    Does NOT use eval() - parses and computes safely using ast.literal_eval
+    Does NOT use eval() - parses and computes safely using fractions.Fraction
     for exponents only.
     """
     
@@ -400,80 +399,52 @@ def convert2au(unit_string: Optional[str]) -> float:
     # Track total conversion factor
     total_factor = 1.0
 
-    # Process numerator units
-    for unit in numerator_units:
-        # Parse: base_unit**exponent (allow underscores in unit names like m_H)
-        match = re.match(r'^([a-zA-Z_][a-zA-Z0-9_]*)(\*\*(.+))?$', unit)
+    def accumulate(units, invert):
+        """Multiply total_factor by each unit's base factor raised to its
+        exponent. When invert is True the units are denominators, so the
+        exponent is negated."""
+        nonlocal total_factor
+        for unit in units:
+            # Parse: base_unit**exponent (allow underscores in unit names like m_H)
+            match = re.match(r'^([a-zA-Z_][a-zA-Z0-9_]*)(\*\*(.+))?$', unit)
 
-        if not match:
-            raise UnitConversionError(f"Cannot parse unit: '{unit}' in '{unit_string}'")
+            if not match:
+                raise UnitConversionError(f"Cannot parse unit: '{unit}' in '{unit_string}'")
 
-        base_unit = match.group(1)
-        exponent_str = match.group(3)
+            base_unit = match.group(1)
+            exponent_str = match.group(3)
 
-        # Get base conversion factor
-        if base_unit not in unit_map:
-            raise UnitConversionError(
-                f"Unknown unit '{base_unit}'. "
-                f"Known units: {', '.join(unit_map.keys())}"
-            )
-
-        base_factor = unit_map[base_unit]
-
-        # Handle exponent
-        if exponent_str:
-            # Strip surrounding parentheses if present (e.g., "(-7/2)" -> "-7/2")
-            exponent_str = exponent_str.strip('()')
-            # Use Fraction for safe evaluation (handles division like "-7/2")
-            try:
-                exponent = float(Fraction(exponent_str))
-            except (ValueError, ZeroDivisionError):
+            # Get base conversion factor
+            if base_unit not in unit_map:
                 raise UnitConversionError(
-                    f"Invalid exponent '{exponent_str}' in unit '{unit}'"
+                    f"Unknown unit '{base_unit}'. "
+                    f"Known units: {', '.join(unit_map.keys())}"
                 )
-        else:
-            exponent = 1.0
 
-        # Apply conversion with exponent
-        total_factor *= base_factor ** exponent
+            base_factor = unit_map[base_unit]
 
-    # Process denominator units (negative exponent)
-    for unit in denominator_units:
-        # Parse: base_unit**exponent (allow underscores in unit names like m_H)
-        match = re.match(r'^([a-zA-Z_][a-zA-Z0-9_]*)(\*\*(.+))?$', unit)
+            # Handle exponent
+            if exponent_str:
+                # Strip surrounding parentheses if present (e.g., "(-7/2)" -> "-7/2")
+                exponent_str = exponent_str.strip('()')
+                # Use Fraction for safe evaluation (handles division like "-7/2")
+                try:
+                    exponent = float(Fraction(exponent_str))
+                except (ValueError, ZeroDivisionError):
+                    raise UnitConversionError(
+                        f"Invalid exponent '{exponent_str}' in unit '{unit}'"
+                    )
+            else:
+                exponent = 1.0
 
-        if not match:
-            raise UnitConversionError(f"Cannot parse unit: '{unit}' in '{unit_string}'")
+            # Denominator units contribute a negative exponent
+            if invert:
+                exponent = -exponent
+            total_factor *= base_factor ** exponent
 
-        base_unit = match.group(1)
-        exponent_str = match.group(3)
+    accumulate(numerator_units, invert=False)
+    accumulate(denominator_units, invert=True)
 
-        # Get base conversion factor
-        if base_unit not in unit_map:
-            raise UnitConversionError(
-                f"Unknown unit '{base_unit}'. "
-                f"Known units: {', '.join(unit_map.keys())}"
-            )
-
-        base_factor = unit_map[base_unit]
-
-        # Handle exponent
-        if exponent_str:
-            # Strip surrounding parentheses if present
-            exponent_str = exponent_str.strip('()')
-            # Use Fraction for safe evaluation (handles division like "-7/2")
-            try:
-                exponent = float(Fraction(exponent_str))
-            except (ValueError, ZeroDivisionError):
-                raise UnitConversionError(
-                    f"Invalid exponent '{exponent_str}' in unit '{unit}'"
-                )
-        else:
-            exponent = 1.0
-
-        # Apply conversion with negative exponent (denominator)
-        total_factor *= base_factor ** (-exponent)
-    
     return total_factor
 
 
