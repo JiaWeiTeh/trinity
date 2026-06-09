@@ -35,5 +35,5 @@ nCore    [1e3, 1e4]
 dens_profile    densPL
 densPL_alpha    0
 nISM    0.1
-expansionBeyondCloud    True
+stop_at_rCloud_nSnap    None
 path2output    outputs/sweep_hybrid_test
