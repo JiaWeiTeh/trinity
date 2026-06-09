@@ -112,7 +112,10 @@ ignore_missing_imports = true
 pythonpath = ["."]
 testpaths = ["test"]
 python_files = ["test_*.py"]
-addopts = "-v --tb=short"
+addopts = "-v --tb=short -m 'not stress'"
+markers = [
+    "stress: opt-in slow stress tests (deselected by default; run with `pytest -m stress`)",
+]
 filterwarnings = [
     "ignore::DeprecationWarning",
 ]
