@@ -2,25 +2,39 @@
 # -*- coding: utf-8 -*-
 """Barnes 2026 comparison — radiation pressure vs source properties.
 
-TRINITY-only (no Barnes overlay yet). A grid of P_rad vs source property:
+TRINITY-only (no Barnes overlay yet). P_rad vs three source properties
+(L_bol, M_star, radius), shown two ways per panel: TRINITY-native
+``F_rad/(4 pi R2^2)`` (the force the model actually exerts, IR-boosted) and the
+Barnes-formula recompute ``prefactor * L / (4 pi r^2 c)``. Two figures are
+written, one with ``R2`` and one with ``R_IF`` on the radius axis. P_rad is
+always evaluated at the shell radius ``R2`` (where TRINITY's radiation force
+acts); the radius column is a size proxy on the x-axis only.
 
-    columns : L_bol, M_star, radius
-    rows    : stellar ages (default 0.5, 1, 3 Myr)
-
-Each marker is one TRINITY run sampled at that age (closest snapshot). P_rad
-is shown two ways per panel: TRINITY-native ``F_rad/(4 pi R2^2)`` (the force
-the model actually exerts, IR-boosted) and the Barnes-formula recompute
-``prefactor * L / (4 pi r^2 c)``.
-
-Two figures are produced — the radius column uses ``R2`` in one and ``R_IF``
-in the other. P_rad itself is always evaluated at the shell radius ``R2``
-(that is where TRINITY's radiation force acts); the radius column is a size
-proxy on the x-axis only. Evaluating P_rad at the matched size is deferred to
-when Barnes data is overlaid.
+Modes
+-----
+* ``--population`` (default): synthesize a bubble population at a single
+  ``--t-obs`` — sampling a cloud mass function + SFE across the run grid (see
+  ``paper.barnes26._population``) — and show it as a hexbin density + median;
+  the Barnes-formula P_rad is overlaid as a median line. One row, three
+  columns. Output: ``barnes26_PradSources_{R2,R_IF}_population.pdf``.
+* ``--no-population``: one marker per run, one row per ``--ages`` value.
+  Output: ``barnes26_PradSources_{R2,R_IF}.pdf``.
 
 Usage
 -----
-  python -m paper.barnes26.paper_PradSources -F <runs-folder> [options]
+  # both figures via the driver (population mode by default):
+  python paper/barnes26/make_figures.py -F outputs/<sweep>
+
+  # this figure directly, with synthesis knobs:
+  python -m paper.barnes26.paper_PradSources -F outputs/<sweep> --t-obs 5 --cmf-slope -1.7 --radius both
+
+  # per-run / fixed-age fallback:
+  python -m paper.barnes26.paper_PradSources -F outputs/<sweep> --no-population --ages 0.5 1 3
+
+  python -m paper.barnes26.paper_PradSources --help   # full option list
+
+The PISM (Barnes' P_DE) sweep is handled automatically: each PISM value is a
+separate environment, combined into one population.
 """
 
 import argparse

@@ -2,9 +2,7 @@
 # -*- coding: utf-8 -*-
 """Barnes 2026 comparison — pressure balance against the ambient ISM.
 
-TRINITY-only (no Barnes overlay yet). Three rows of panels, one column per
-stellar age (default 0.5, 1, 3 Myr); every marker is one TRINITY run sampled
-at that age.
+TRINITY-only (no Barnes overlay yet). Three rows of panels:
 
     row 0 : P_ISM (x) vs P_tot (y), log-log [K cm^-3], with the P_tot=P_ISM line
     row 1 : P_tot (x) vs log10(P_tot) - log10(P_ISM) (y), with the zero line
@@ -18,15 +16,36 @@ environmental cloud gas surface density ``mCloud/(pi rCloud^2)`` [Msun/pc^2].
 
 ``P_tot = P_thermal + P_radiation`` where P_thermal is TRINITY's HII
 ionization-balance pressure ``P_HII`` and P_radiation is the radiation
-pressure (native ``F_rad/(4 pi R2^2)`` by default; ``--prad`` selects the
-Barnes-formula recompute or both).
+pressure (native ``F_rad/(4 pi R2^2)``; ``--prad`` selects native, the
+Barnes-formula recompute, or both). Runs whose ``PISM`` is absent or
+non-positive are skipped (a Barnes P_ISM = P_DE comparison needs P_ISM > 0).
 
-Runs whose ``PISM`` is absent or non-positive are skipped (a Barnes
-P_ISM = P_DE comparison requires P_ISM > 0).
+Modes
+-----
+* ``--population`` (default): synthesize a bubble population at a single
+  ``--t-obs`` (see ``paper.barnes26._population``) and show it as a hexbin
+  density + median per row (single column); the primary ``--prad`` mode is the
+  density, any other mode is a median line. Output:
+  ``barnes26_PressureBalance_{prad}_population.pdf``.
+* ``--no-population``: one marker per run, one column per ``--ages`` value.
+  Output: ``barnes26_PressureBalance_{prad}.pdf``.
+
+The PISM (Barnes' P_DE) sweep is handled automatically: each PISM value is a
+separate environment, combined into one population (row 0 then shows a column
+of points per P_DE).
 
 Usage
 -----
-  python -m paper.barnes26.paper_PressureBalance -F <runs-folder> [options]
+  # both figures via the driver (population mode by default):
+  python paper/barnes26/make_figures.py -F outputs/<sweep>
+
+  # this figure directly, with synthesis knobs:
+  python -m paper.barnes26.paper_PressureBalance -F outputs/<sweep> --prad both --t-obs 5 --cmf-slope -1.7
+
+  # per-run / fixed-age fallback:
+  python -m paper.barnes26.paper_PressureBalance -F outputs/<sweep> --no-population --ages 0.5 1 3
+
+  python -m paper.barnes26.paper_PressureBalance --help   # full option list
 """
 
 import argparse
