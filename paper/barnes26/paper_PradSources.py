@@ -51,7 +51,7 @@ from trinity._functions.unit_conversions import L_au2cgs  # noqa: E402
 from paper.barnes26._barnes_lib import (  # noqa: E402
     DEFAULT_AGES_MYR, load_runs, collect_age_records,
     p_rad_native, p_rad_barnes, project_root, apply_trinity_style,
-    binned_median, hexbin_median,
+    scatter_median_by_env, pde_env_labels,
 )
 from paper.barnes26._population import (  # noqa: E402
     synthesize_population, add_population_cli,
@@ -151,46 +151,77 @@ def plot_figure(records_by_age, ages, radius_key, out_path):
     print(f"Saved: {out_path}")
 
 
+def _env_legend(handles):
+    return [Line2D([0], [0], marker="o", ls="", color=c, markersize=7, label=lab)
+            for lab, c in handles]
+
+
 def _pop_title(info, radius_key):
-    return (r"$P_{\rm rad}$ vs source properties — synthetic population"
+    return (r"$P_{\rm rad}$ (native) vs source properties — synthetic population"
             f"  (radius={radius_key}; N={info['n_surviving']}, "
             rf"$t_{{\rm obs}}$={info['t_obs']:g} Myr, $\beta$={info['cmf_slope']})")
 
 
 def plot_population(records, info, radius_key, out_path):
-    """Population mode: hexbin density of P_rad vs source property at one t_obs.
+    """Population mode: native P_rad vs source properties, coloured by P_DE.
 
-    One row, three columns (L_bol, M_star, radius). The density and its median
-    use the native P_rad; the Barnes-formula P_rad is overlaid as a median line
-    only (no second density), keeping each panel legible.
+    One row, three columns (L_bol, M_star, radius); transparent scatter coloured
+    by ambient-pressure (P_DE) environment with a per-environment median line.
+    The native-vs-Barnes comparison is a separate figure
+    (:func:`plot_native_vs_barnes`).
     """
-    p_native, p_barnes = _prad_arrays(records)
+    p_native, _ = _prad_arrays(records)
+    env = np.array([r["PISM"] for r in records], dtype=float)
+    labels = pde_env_labels(records)
     cols = _column_specs(radius_key)
     fig, axes = plt.subplots(1, len(cols), figsize=(3.8 * len(cols), 3.6), squeeze=False)
+    handles = []
     for j, (getx, xlabel) in enumerate(cols):
         ax = axes[0, j]
         x = np.array([getx(r) for r in records], dtype=float)
-        hexbin_median(ax, x, p_native, xscale="log", yscale="log", median_color="k")
-        bx, by = binned_median(x, p_barnes, xscale="log")
-        if bx.size:
-            ax.plot(bx, by, color=COLOR_BARNES, ls="--", lw=2.0, zorder=6)
+        handles = scatter_median_by_env(ax, x, p_native, env, xscale="log",
+                                        yscale="log", env_labels=labels)
         ax.set_xscale("log")
         ax.set_yscale("log")
         ax.grid(True, which="both", alpha=0.25, lw=0.5)
         if j == 0:
             ax.set_ylabel(r"$P_{\rm rad}/k$ [K cm$^{-3}$]")
         ax.set_xlabel(xlabel)
-
-    handles = [
-        Line2D([0], [0], color="k", lw=2.2,
-               label=r"TRINITY-native (density + median)"),
-        Line2D([0], [0], color=COLOR_BARNES, ls="--", lw=2.0,
-               label=r"Barnes formula (median)"),
-    ]
-    fig.legend(handles=handles, loc="upper center", ncol=2, frameon=False,
-               fontsize=10, bbox_to_anchor=(0.5, 1.0))
+    fig.legend(handles=_env_legend(handles), loc="upper center",
+               ncol=max(2, len(handles)), frameon=False, fontsize=9,
+               bbox_to_anchor=(0.5, 1.0))
     fig.suptitle(_pop_title(info, radius_key), y=1.04, fontsize=11)
     fig.tight_layout(rect=[0, 0, 1, 0.95])
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out_path, bbox_inches="tight")
+    plt.close(fig)
+    print(f"Saved: {out_path}")
+
+
+def plot_native_vs_barnes(records, info, out_path):
+    """Separate comparison panel: TRINITY-native vs Barnes-formula P_rad (1:1)."""
+    p_native, p_barnes = _prad_arrays(records)
+    env = np.array([r["PISM"] for r in records], dtype=float)
+    labels = pde_env_labels(records)
+    fig, ax = plt.subplots(figsize=(4.8, 4.6))
+    handles = scatter_median_by_env(ax, p_native, p_barnes, env, xscale="log",
+                                    yscale="log", env_labels=labels, median=False)
+    both = np.concatenate([p_native, p_barnes])
+    both = both[np.isfinite(both) & (both > 0)]
+    if both.size:
+        ax.plot([both.min(), both.max()], [both.min(), both.max()],
+                color="0.4", ls="--", lw=1.0, zorder=1)
+    ax.set_xscale("log")
+    ax.set_yscale("log")
+    ax.grid(True, which="both", alpha=0.25, lw=0.5)
+    ax.set_xlabel(r"$P_{\rm rad}/k$ native [K cm$^{-3}$]")
+    ax.set_ylabel(r"$P_{\rm rad}/k$ Barnes formula [K cm$^{-3}$]")
+    leg = _env_legend(handles)
+    leg.append(Line2D([0], [0], color="0.4", ls="--", lw=1.0, label="1:1"))
+    ax.legend(handles=leg, fontsize=8, frameon=False, loc="upper left")
+    fig.suptitle(r"$P_{\rm rad}$: TRINITY-native vs Barnes formula"
+                 f"  (N={info['n_surviving']})", y=0.99, fontsize=11)
+    fig.tight_layout()
     out_path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(out_path, bbox_inches="tight")
     plt.close(fig)
@@ -234,6 +265,8 @@ def main():
         for radius_key in radii:
             plot_population(records, info, radius_key,
                             out_dir / f"barnes26_PradSources_{radius_key}_population.pdf")
+        plot_native_vs_barnes(records, info,
+                              out_dir / "barnes26_PradSources_nativeVsBarnes_population.pdf")
         return
 
     print(f"Loaded {len(outputs)} run(s); ages = {args.ages} Myr")
