@@ -43,6 +43,18 @@ import numpy as np
 
 logger = logging.getLogger(__name__)
 
+# ---------------------------------------------------------------------------
+# Default synthesis parameters
+# ---------------------------------------------------------------------------
+# Single source of truth shared by synthesize_population() and the
+# add_population_cli() flags, so a default is changed in exactly one place.
+DEFAULT_T_OBS = 3.0            # observation time [Myr]
+DEFAULT_N_BUBBLE = 20000       # population size
+DEFAULT_CMF_SLOPE = -1.7       # cloud mass function dN/dM ~ M^slope
+DEFAULT_SFE_MEDIAN = 0.03      # SFE log-normal median
+DEFAULT_SFE_SIGMA_DEX = 0.4    # SFE log-normal width [dex]
+DEFAULT_SEED = 42              # RNG seed
+
 
 # ---------------------------------------------------------------------------
 # Samplers
@@ -356,15 +368,15 @@ def _synthesize_on_grid(grid, n, *, t_obs, cmf_slope, m_range, sfe_median,
 def synthesize_population(
     outputs,
     *,
-    t_obs: float = 3.0,
-    n_bubble: int = 20000,
-    cmf_slope: float = -1.7,
+    t_obs: float = DEFAULT_T_OBS,
+    n_bubble: int = DEFAULT_N_BUBBLE,
+    cmf_slope: float = DEFAULT_CMF_SLOPE,
     m_range: Optional[Tuple[float, float]] = None,
-    sfe_median: float = 0.03,
-    sfe_sigma_dex: float = 0.4,
+    sfe_median: float = DEFAULT_SFE_MEDIAN,
+    sfe_sigma_dex: float = DEFAULT_SFE_SIGMA_DEX,
     fixed_sfe: Optional[float] = None,
     fixed_ncore: Optional[float] = None,
-    seed: int = 42,
+    seed: int = DEFAULT_SEED,
 ) -> Tuple[List[Dict], Dict]:
     """Synthesize a bubble population from a grid of TRINITY runs.
 
@@ -440,19 +452,19 @@ def add_population_cli(parser):
                      help="Synthesize a bubble population at a single --t-obs (default).")
     pop.add_argument("--no-population", dest="population", action="store_false",
                      help="Revert to per-run markers at fixed --ages.")
-    parser.add_argument("--t-obs", type=float, default=3.0,
-                        help="Observation time [Myr] for the population (default: 5).")
-    parser.add_argument("--n-bubble", type=int, default=20000,
-                        help="Number of synthetic bubbles (default: 20000).")
-    parser.add_argument("--cmf-slope", type=float, default=-1.7,
-                        help="Cloud mass function slope dN/dM ~ M^slope (default: -1.7).")
-    parser.add_argument("--sfe-median", type=float, default=0.03,
-                        help="SFE log-normal median (default: 0.03).")
-    parser.add_argument("--sfe-sigma-dex", type=float, default=0.4,
-                        help="SFE log-normal width [dex] (default: 0.4).")
+    parser.add_argument("--t-obs", type=float, default=DEFAULT_T_OBS,
+                        help=f"Observation time [Myr] for the population (default: {DEFAULT_T_OBS:g}).")
+    parser.add_argument("--n-bubble", type=int, default=DEFAULT_N_BUBBLE,
+                        help=f"Number of synthetic bubbles (default: {DEFAULT_N_BUBBLE}).")
+    parser.add_argument("--cmf-slope", type=float, default=DEFAULT_CMF_SLOPE,
+                        help=f"Cloud mass function slope dN/dM ~ M^slope (default: {DEFAULT_CMF_SLOPE:g}).")
+    parser.add_argument("--sfe-median", type=float, default=DEFAULT_SFE_MEDIAN,
+                        help=f"SFE log-normal median (default: {DEFAULT_SFE_MEDIAN:g}).")
+    parser.add_argument("--sfe-sigma-dex", type=float, default=DEFAULT_SFE_SIGMA_DEX,
+                        help=f"SFE log-normal width [dex] (default: {DEFAULT_SFE_SIGMA_DEX:g}).")
     parser.add_argument("--fixed-sfe", type=float, default=None,
                         help="Hold SFE fixed at this value (overrides the SFE distribution).")
     parser.add_argument("--fixed-ncore", type=float, default=None,
                         help="Use only grid runs with this core density.")
-    parser.add_argument("--seed", type=int, default=42,
-                        help="Population RNG seed (default: 42).")
+    parser.add_argument("--seed", type=int, default=DEFAULT_SEED,
+                        help=f"Population RNG seed (default: {DEFAULT_SEED}).")
