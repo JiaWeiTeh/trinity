@@ -356,7 +356,7 @@ def _synthesize_on_grid(grid, n, *, t_obs, cmf_slope, m_range, sfe_median,
 def synthesize_population(
     outputs,
     *,
-    t_obs: float = 5.0,
+    t_obs: float = 3.0,
     n_bubble: int = 20000,
     cmf_slope: float = -1.7,
     m_range: Optional[Tuple[float, float]] = None,
