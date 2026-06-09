@@ -12,10 +12,12 @@ To regenerate a single figure, pass its short name (or any unique prefix):
 
     python paper/barnes26/make_figures.py -F outputs/<sweep> PradSources
 
-The figures use the scripts' default stellar ages (0.5, 1, 3 Myr). For other
-ages, run the individual script directly with its ``--ages`` flag, e.g.::
+By default each script synthesizes a bubble population at a single t_obs; pass
+``--no-population`` to revert to the per-run, fixed-age version. For other
+synthesis/age knobs, run a script directly, e.g.::
 
-    python -m paper.barnes26.paper_PradSources -F outputs/<sweep> --ages 0.5 1
+    python -m paper.barnes26.paper_PressureBalance -F outputs/<sweep> --t-obs 3
+    python -m paper.barnes26.paper_PradSources -F outputs/<sweep> --no-population --ages 0.5 1
 
 Each run folder under ``-F`` must contain ``dictionary.jsonl``; see the
 individual scripts for the per-figure data requirements (e.g. ``PISM > 0``
@@ -41,7 +43,7 @@ from trinity._output.trinity_reader import find_all_simulations  # noqa: E402
 FIGURES = [
     dict(
         name="PradSources",
-        description="P_rad vs L_bol / M_star / radius, one row per age (R2 + R_IF variants)",
+        description="P_rad vs L_bol / M_star / radius (R2 + R_IF variants)",
         module="paper.barnes26.paper_PradSources",
         args=lambda folder, outdir: [
             "-F", str(folder), "-o", str(outdir), "--radius", "both",
@@ -49,7 +51,7 @@ FIGURES = [
     ),
     dict(
         name="PressureBalance",
-        description="P_ISM vs P_tot and P_tot-P_ISM vs P_tot, one column per age",
+        description="P_ISM/P_tot pressure balance + Sigma_gas vs the ambient ISM",
         module="paper.barnes26.paper_PressureBalance",
         args=lambda folder, outdir: [
             "-F", str(folder), "-o", str(outdir), "--prad", "both",
@@ -75,8 +77,9 @@ def _select(requested):
     return selected
 
 
-def _run_one(fig, folder):
-    cmd = [sys.executable, "-m", fig["module"], *fig["args"](folder, PLOTS_DIR)]
+def _run_one(fig, folder, extra=()):
+    cmd = [sys.executable, "-m", fig["module"],
+           *fig["args"](folder, PLOTS_DIR), *extra]
     print(f"\n[{fig['name']}] {fig['description']}")
     print(f"  $ {' '.join(cmd)}")
     return subprocess.run(cmd, cwd=str(REPO_ROOT)).returncode
@@ -91,6 +94,9 @@ def main(argv=None):
                         help="Figure name(s) to run (unique prefix); default all")
     parser.add_argument("-F", "--folder", required=True,
                         help="Folder of TRINITY run subfolders (each with dictionary.jsonl)")
+    parser.add_argument("--population", action=argparse.BooleanOptionalAction, default=True,
+                        help="Synthesize a bubble population (default). --no-population "
+                             "forwards the per-run, fixed-age mode to each script.")
     args = parser.parse_args(argv)
 
     if not find_all_simulations(args.folder):
@@ -98,10 +104,11 @@ def main(argv=None):
 
     figures = _select(args.names)
     PLOTS_DIR.mkdir(parents=True, exist_ok=True)
+    extra = [] if args.population else ["--no-population"]
 
     failed = []
     for fig in figures:
-        rc = _run_one(fig, args.folder)
+        rc = _run_one(fig, args.folder, extra)
         if rc != 0:
             failed.append((fig, rc))
 

@@ -33,12 +33,17 @@ from matplotlib.lines import Line2D
 import sys as _sys
 _sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from paper._lib.plot_base import FIG_DIR  # noqa: E402  applies trinity.mplstyle
 from trinity._functions.unit_conversions import L_au2cgs  # noqa: E402
 from paper.barnes26._barnes_lib import (  # noqa: E402
     DEFAULT_AGES_MYR, load_runs, collect_age_records,
-    p_rad_native, p_rad_barnes, project_root,
+    p_rad_native, p_rad_barnes, project_root, apply_trinity_style,
+    binned_median, hexbin_median,
 )
+from paper.barnes26._population import (  # noqa: E402
+    synthesize_population, add_population_cli,
+)
+
+apply_trinity_style()  # trinity.mplstyle, without plot_base's stray-fig/ side effect
 
 COLOR_NATIVE = "#0072B2"   # Okabe-Ito blue (colour-blind safe), TRINITY-native P_rad
 COLOR_BARNES = "#D55E00"   # Okabe-Ito vermillion (colour-blind safe), Barnes-formula recompute
@@ -132,6 +137,52 @@ def plot_figure(records_by_age, ages, radius_key, out_path):
     print(f"Saved: {out_path}")
 
 
+def _pop_title(info, radius_key):
+    return (r"$P_{\rm rad}$ vs source properties — synthetic population"
+            f"  (radius={radius_key}; N={info['n_surviving']}, "
+            rf"$t_{{\rm obs}}$={info['t_obs']:g} Myr, $\beta$={info['cmf_slope']})")
+
+
+def plot_population(records, info, radius_key, out_path):
+    """Population mode: hexbin density of P_rad vs source property at one t_obs.
+
+    One row, three columns (L_bol, M_star, radius). The density and its median
+    use the native P_rad; the Barnes-formula P_rad is overlaid as a median line
+    only (no second density), keeping each panel legible.
+    """
+    p_native, p_barnes = _prad_arrays(records)
+    cols = _column_specs(radius_key)
+    fig, axes = plt.subplots(1, len(cols), figsize=(3.8 * len(cols), 3.6), squeeze=False)
+    for j, (getx, xlabel) in enumerate(cols):
+        ax = axes[0, j]
+        x = np.array([getx(r) for r in records], dtype=float)
+        hexbin_median(ax, x, p_native, xscale="log", yscale="log", median_color="k")
+        bx, by = binned_median(x, p_barnes, xscale="log")
+        if bx.size:
+            ax.plot(bx, by, color=COLOR_BARNES, ls="--", lw=2.0, zorder=6)
+        ax.set_xscale("log")
+        ax.set_yscale("log")
+        ax.grid(True, which="both", alpha=0.25, lw=0.5)
+        if j == 0:
+            ax.set_ylabel(r"$P_{\rm rad}/k$ [K cm$^{-3}$]")
+        ax.set_xlabel(xlabel)
+
+    handles = [
+        Line2D([0], [0], color="k", lw=2.2,
+               label=r"TRINITY-native (density + median)"),
+        Line2D([0], [0], color=COLOR_BARNES, ls="--", lw=2.0,
+               label=r"Barnes formula (median)"),
+    ]
+    fig.legend(handles=handles, loc="upper center", ncol=2, frameon=False,
+               fontsize=10, bbox_to_anchor=(0.5, 1.0))
+    fig.suptitle(_pop_title(info, radius_key), y=1.04, fontsize=11)
+    fig.tight_layout(rect=[0, 0, 1, 0.95])
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out_path, bbox_inches="tight")
+    plt.close(fig)
+    print(f"Saved: {out_path}")
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="P_rad vs source properties for Barnes-matched TRINITY runs.",
@@ -142,23 +193,39 @@ def main():
     parser.add_argument("-o", "--output-dir", default=None,
                         help="Output directory (default: paper/plots)")
     parser.add_argument("--ages", nargs="+", type=float, default=list(DEFAULT_AGES_MYR),
-                        help="Stellar ages [Myr], one plot row each (default: 0.5 1 3)")
+                        help="Stellar ages [Myr] for --no-population mode (default: 0.5 1 3)")
     parser.add_argument("--radius", choices=["R2", "R_IF", "both"], default="both",
                         help="Radius variant on the x-axis of the radius column")
+    add_population_cli(parser)
     args = parser.parse_args()
 
     outputs = load_runs(args.folder)
     if not outputs:
         print(f"No runs found under: {args.folder}")
         return
-    print(f"Loaded {len(outputs)} run(s); ages = {args.ages} Myr")
+    out_dir = Path(args.output_dir) if args.output_dir else project_root() / "paper" / "plots"
+    radii = ["R2", "R_IF"] if args.radius == "both" else [args.radius]
 
+    if args.population:
+        records, info = synthesize_population(
+            outputs, t_obs=args.t_obs, n_bubble=args.n_bubble, cmf_slope=args.cmf_slope,
+            sfe_median=args.sfe_median, sfe_sigma_dex=args.sfe_sigma_dex,
+            fixed_sfe=args.fixed_sfe, fixed_ncore=args.fixed_ncore, seed=args.seed,
+        )
+        print(f"Population: {info['n_surviving']}/{info['n_bubble']} bubbles survived "
+              f"(t_obs={args.t_obs:g} Myr)")
+        if not records:
+            print("No surviving bubbles — check grid coverage / t_obs.")
+            return
+        for radius_key in radii:
+            plot_population(records, info, radius_key,
+                            out_dir / f"barnes26_PradSources_{radius_key}_population.pdf")
+        return
+
+    print(f"Loaded {len(outputs)} run(s); ages = {args.ages} Myr")
     records_by_age = collect_age_records(outputs, args.ages)
     for age in args.ages:
         print(f"  t = {age:g} Myr: {len(records_by_age[age])} run(s) reach this age")
-
-    out_dir = Path(args.output_dir) if args.output_dir else project_root() / "paper" / "plots"
-    radii = ["R2", "R_IF"] if args.radius == "both" else [args.radius]
     for radius_key in radii:
         plot_figure(records_by_age, args.ages, radius_key,
                     out_dir / f"barnes26_PradSources_{radius_key}.pdf")

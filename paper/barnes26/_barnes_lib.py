@@ -179,3 +179,82 @@ def collect_age_records(outputs, ages):
 def project_root():
     """Repository root (two levels above this file: barnes26 -> paper -> root)."""
     return Path(__file__).resolve().parents[2]
+
+
+def apply_trinity_style():
+    """Apply the shared ``trinity.mplstyle`` to matplotlib.
+
+    Used instead of importing ``paper._lib.plot_base`` (whose module-level
+    ``FIG_DIR.mkdir`` materialises a stray ``fig/`` directory as an import
+    side effect). matplotlib is imported lazily so this module stays
+    import-light.
+    """
+    import matplotlib.pyplot as plt
+    style = Path(__file__).resolve().parents[1] / "_lib" / "trinity.mplstyle"
+    if style.exists():
+        plt.style.use(str(style))
+
+
+# ---------------------------------------------------------------------------
+# Population rendering helpers (used by the figure scripts in --population mode)
+# ---------------------------------------------------------------------------
+# These take a matplotlib Axes and use only its methods + numpy, so this module
+# still pulls in no matplotlib at import time.
+def binned_median(x, y, *, xscale="log", nbins=12, min_count=5):
+    """Binned-median trend of ``y`` vs ``x``.
+
+    Returns ``(centres, medians)`` over ``nbins`` x-bins (log-spaced when
+    ``xscale == 'log'``), keeping only bins with at least ``min_count`` points.
+    ``y`` may be negative (e.g. a log-ratio); only ``x`` is restricted (to > 0
+    for log binning).
+    """
+    x = np.asarray(x, dtype=float)
+    y = np.asarray(y, dtype=float)
+    m = np.isfinite(x) & np.isfinite(y)
+    if xscale == "log":
+        m &= x > 0
+    x, y = x[m], y[m]
+    if x.size == 0:
+        return np.array([]), np.array([])
+    if xscale == "log":
+        edges = np.logspace(np.log10(x.min()), np.log10(x.max()), nbins + 1)
+        centres = np.sqrt(edges[:-1] * edges[1:])
+    else:
+        edges = np.linspace(x.min(), x.max(), nbins + 1)
+        centres = 0.5 * (edges[:-1] + edges[1:])
+    idx = np.digitize(x, edges)
+    cx, cy = [], []
+    for b in range(1, nbins + 1):
+        sel = idx == b
+        if int(sel.sum()) >= min_count:
+            cx.append(float(centres[b - 1]))
+            cy.append(float(np.median(y[sel])))
+    return np.array(cx), np.array(cy)
+
+
+def hexbin_median(ax, x, y, *, xscale="log", yscale="log", cmap="cividis",
+                  gridsize=30, mincnt=1, median=True, median_color="k",
+                  median_lw=2.2, nbins=12, min_count=5):
+    """Draw a hexbin density of ``(x, y)`` on ``ax`` plus a binned-median line.
+
+    Non-finite points are dropped (and non-positive ones on a log axis).
+    ``cividis`` is a colour-blind-safe sequential map. Returns the hexbin
+    handle, or ``None`` if nothing is plottable.
+    """
+    x = np.asarray(x, dtype=float)
+    y = np.asarray(y, dtype=float)
+    m = np.isfinite(x) & np.isfinite(y)
+    if xscale == "log":
+        m &= x > 0
+    if yscale == "log":
+        m &= y > 0
+    x, y = x[m], y[m]
+    if x.size == 0:
+        return None
+    hb = ax.hexbin(x, y, xscale=xscale, yscale=yscale, gridsize=gridsize,
+                   mincnt=mincnt, cmap=cmap, linewidths=0)
+    if median:
+        cx, cy = binned_median(x, y, xscale=xscale, nbins=nbins, min_count=min_count)
+        if cx.size:
+            ax.plot(cx, cy, color=median_color, lw=median_lw, zorder=5)
+    return hb

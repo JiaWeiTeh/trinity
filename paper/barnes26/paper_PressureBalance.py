@@ -39,11 +39,16 @@ from matplotlib.lines import Line2D
 import sys as _sys
 _sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from paper._lib.plot_base import FIG_DIR  # noqa: E402  applies trinity.mplstyle
 from paper.barnes26._barnes_lib import (  # noqa: E402
     DEFAULT_AGES_MYR, load_runs, collect_age_records,
     to_Pk, pism_to_Pk, p_rad_native, p_rad_barnes, sigma_gas, project_root,
+    apply_trinity_style, binned_median, hexbin_median,
 )
+from paper.barnes26._population import (  # noqa: E402
+    synthesize_population, add_population_cli,
+)
+
+apply_trinity_style()  # trinity.mplstyle, without plot_base's stray-fig/ side effect
 
 # Okabe-Ito colour-blind-safe palette + redundant marker shapes, so the two
 # P_rad series are distinguishable in greyscale / full colour-blindness.
@@ -183,6 +188,99 @@ def plot_figure(records_by_age, ages, prad_modes, out_path):
     print(f"Saved: {out_path}")
 
 
+def _finish_population(fig, prad_modes, info, n_skipped, out_path):
+    primary = prad_modes[0]
+    handles = [Line2D([0], [0], color="k", lw=2.2,
+                      label=rf"$P_{{\rm rad}}$ {primary} (density + median)")]
+    for mode in prad_modes[1:]:
+        handles.append(Line2D([0], [0], color=PRAD_STYLES[mode]["color"], ls="--",
+                              lw=2.0, label=rf"$P_{{\rm rad}}$ {mode} (median)"))
+    fig.legend(handles=handles, loc="upper center", ncol=len(handles), frameon=False,
+               fontsize=9, bbox_to_anchor=(0.5, 1.0))
+    extra = f"  ({n_skipped} skipped: P_ISM<=0)" if n_skipped else ""
+    fig.suptitle("Pressure balance — synthetic population "
+                 f"(N={info['n_surviving']}, "
+                 rf"$t_{{\rm obs}}$={info['t_obs']:g} Myr){extra}",
+                 y=1.02, fontsize=11)
+    fig.tight_layout(rect=[0, 0, 1, 0.96])
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out_path, bbox_inches="tight")
+    plt.close(fig)
+    print(f"Saved: {out_path}")
+
+
+def plot_population(records, info, prad_modes, out_path):
+    """Population mode: hexbin density at one t_obs (3 rows, single column).
+
+    The density + black median use the primary --prad mode; any other requested
+    mode is overlaid as a dashed median line (no second density).
+    """
+    recs, n_skipped = _with_positive_pism(records)
+    fig, axes = plt.subplots(3, 1, figsize=(4.4, 9.8), squeeze=False)
+    ax_abs, ax_pt, ax_sig = axes[0, 0], axes[1, 0], axes[2, 0]
+
+    if not recs:
+        for ax in (ax_abs, ax_pt, ax_sig):
+            ax.text(0.5, 0.5, "no bubbles with P_ISM > 0", ha="center", va="center",
+                    transform=ax.transAxes, color="grey", fontsize=9)
+            ax.set_xticks([]); ax.set_yticks([])
+        _finish_population(fig, prad_modes, info, n_skipped, out_path)
+        return
+
+    PISM, series = _ptot_series(recs, prad_modes)
+    Sigma = sigma_gas(np.array([r["mCloud"] for r in recs], dtype=float),
+                      np.array([r["rCloud"] for r in recs], dtype=float))
+    primary = prad_modes[0]
+    Ptot_p = series[primary]
+
+    # --- row 0: P_ISM vs P_tot (log-log) ---
+    hexbin_median(ax_abs, PISM, Ptot_p, xscale="log", yscale="log", median_color="k")
+    for mode in prad_modes[1:]:
+        bx, by = binned_median(PISM, series[mode], xscale="log")
+        if bx.size:
+            ax_abs.plot(bx, by, color=PRAD_STYLES[mode]["color"], ls="--", lw=2.0, zorder=6)
+    pos = [v[np.isfinite(v) & (v > 0)] for v in (PISM, Ptot_p)]
+    pos = [a for a in pos if a.size]
+    if pos:
+        allv = np.concatenate(pos)
+        ax_abs.plot([allv.min(), allv.max()], [allv.min(), allv.max()],
+                    color="0.4", ls="--", lw=1.0, zorder=1)
+    ax_abs.set_xscale("log"); ax_abs.set_yscale("log")
+    ax_abs.grid(True, which="both", alpha=0.25, lw=0.5)
+    ax_abs.set_ylabel(r"$P_{\rm tot}/k$ [K cm$^{-3}$]")
+    ax_abs.set_xlabel(r"$P_{\rm ISM}/k$ [K cm$^{-3}$]")
+
+    # --- rows 1 & 2: log10(P_tot)-log10(P_ISM) (linear y) vs P_tot / Sigma_gas ---
+    y_primary = _logratio(Ptot_p, PISM)
+    for ax, x_primary, x_others, xlabel in (
+        (ax_pt,  Ptot_p, {m: series[m] for m in prad_modes[1:]},
+         r"$P_{\rm tot}/k$ [K cm$^{-3}$]"),
+        (ax_sig, Sigma,  {m: Sigma for m in prad_modes[1:]},
+         r"$\Sigma_{\rm gas}$ [M$_\odot$ pc$^{-2}$]"),
+    ):
+        hexbin_median(ax, x_primary, y_primary, xscale="log", yscale="linear",
+                      median_color="k")
+        for mode, xm in x_others.items():
+            bx, by = binned_median(xm, _logratio(series[mode], PISM), xscale="log")
+            if bx.size:
+                ax.plot(bx, by, color=PRAD_STYLES[mode]["color"], ls="--", lw=2.0, zorder=6)
+        ax.set_xscale("log")
+        ax.axhline(0.0, color="0.35", ls="--", lw=1.3, zorder=1)
+        ymin, ymax = ax.get_ylim()
+        lo, hi = min(ymin, 0.0), max(ymax, 0.0)
+        pad = 0.08 * (hi - lo) if hi > lo else 0.5
+        ax.set_ylim(lo - pad, hi + pad)
+        ax.grid(True, which="both", alpha=0.25, lw=0.5)
+        ax.set_ylabel(_LOGRATIO_LABEL)
+        ax.text(0.03, 0.97, "over-pressured", transform=ax.transAxes,
+                va="top", ha="left", fontsize=7, style="italic", color="0.4")
+        ax.text(0.03, 0.03, "under-pressured", transform=ax.transAxes,
+                va="bottom", ha="left", fontsize=7, style="italic", color="0.4")
+        ax.set_xlabel(xlabel)
+
+    _finish_population(fig, prad_modes, info, n_skipped, out_path)
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Pressure balance vs ambient ISM for Barnes-matched TRINITY runs.",
@@ -196,18 +294,33 @@ def main():
                         help="Stellar ages [Myr], one plot column each (default: 0.5 1 3)")
     parser.add_argument("--prad", choices=["native", "barnes", "both"], default="native",
                         help="Radiation-pressure definition used in P_tot (default: native)")
+    add_population_cli(parser)
     args = parser.parse_args()
 
     outputs = load_runs(args.folder)
     if not outputs:
         print(f"No runs found under: {args.folder}")
         return
-    print(f"Loaded {len(outputs)} run(s); ages = {args.ages} Myr; prad = {args.prad}")
-
-    records_by_age = collect_age_records(outputs, args.ages)
     prad_modes = ["native", "barnes"] if args.prad == "both" else [args.prad]
-
     out_dir = Path(args.output_dir) if args.output_dir else project_root() / "paper" / "plots"
+
+    if args.population:
+        records, info = synthesize_population(
+            outputs, t_obs=args.t_obs, n_bubble=args.n_bubble, cmf_slope=args.cmf_slope,
+            sfe_median=args.sfe_median, sfe_sigma_dex=args.sfe_sigma_dex,
+            fixed_sfe=args.fixed_sfe, fixed_ncore=args.fixed_ncore, seed=args.seed,
+        )
+        print(f"Population: {info['n_surviving']}/{info['n_bubble']} bubbles survived "
+              f"(t_obs={args.t_obs:g} Myr); prad={args.prad}")
+        if not records:
+            print("No surviving bubbles — check grid coverage / t_obs.")
+            return
+        plot_population(records, info, prad_modes,
+                        out_dir / f"barnes26_PressureBalance_{args.prad}_population.pdf")
+        return
+
+    print(f"Loaded {len(outputs)} run(s); ages = {args.ages} Myr; prad = {args.prad}")
+    records_by_age = collect_age_records(outputs, args.ages)
     plot_figure(records_by_age, args.ages, prad_modes,
                 out_dir / f"barnes26_PressureBalance_{args.prad}.pdf")
 
