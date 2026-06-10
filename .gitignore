@@ -219,3 +219,6 @@ For a more nuclear
 #  option (not recommended) you can uncomment the following to ignore the 
 entire idea folder.
 #.idea/
+
+# Personal talk-prep notes (not part of the codebase)
+TRINITY_talk_QA_prep.docx
