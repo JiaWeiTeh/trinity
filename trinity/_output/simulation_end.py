@@ -695,12 +695,22 @@ def _jsonable(val: Any) -> Any:
 
 
 def _build_sanity_checks(snap: Dict[str, Any]) -> List[Dict[str, Any]]:
-    """Run the small set of last-snapshot physics sanity checks."""
+    """Run the small set of last-snapshot physics sanity checks.
+
+    Phase-aware: a few invariants only hold in the energy-driven phases.
+    In the momentum phase the bubble energy is zeroed (``Eb=0``) and the
+    inner discontinuity is collapsed onto the shell (``R1=R2``) by design,
+    so the ``Eb > 0`` and ``R1 < R2`` checks are skipped there instead of
+    reported as spurious failures.  Shell collapse is a physical outcome
+    (recorded in ``final_state`` as ``isCollapse`` and in the comparison
+    table), not a health check, so it is not asserted here.
+    """
     checks: List[Dict[str, Any]] = []
+    in_momentum = snap.get('current_phase') == 'momentum'
 
     R1 = snap.get('R1')
     R2 = snap.get('R2')
-    if R1 is not None and R2 is not None:
+    if R1 is not None and R2 is not None and not in_momentum:
         checks.append({
             "check": "R1 < R2",
             "passed": bool(R1 < R2),
@@ -709,6 +719,8 @@ def _build_sanity_checks(snap: Dict[str, Any]) -> List[Dict[str, Any]]:
 
     for key, label in (("Eb", "Eb > 0"), ("Pb", "Pb > 0"),
                        ("shell_mass", "shell_mass > 0")):
+        if key == "Eb" and in_momentum:
+            continue
         val = snap.get(key)
         if val is not None and isinstance(val, (int, float)):
             checks.append({
@@ -716,14 +728,6 @@ def _build_sanity_checks(snap: Dict[str, Any]) -> List[Dict[str, Any]]:
                 "passed": bool(val > 0),
                 "detail": f"{key}={val:.4e}",
             })
-
-    isCollapse = snap.get('isCollapse')
-    if isCollapse is not None:
-        checks.append({
-            "check": "isCollapse",
-            "passed": not bool(isCollapse),
-            "detail": f"isCollapse={bool(isCollapse)}",
-        })
 
     return checks
 

@@ -312,6 +312,18 @@ class DescribedDict(dict):
         except Exception as e:
             logger.error(f"Failed to write termination debug report: {e}")
 
+        # Write the human-readable companion to metadata.json. Done last, so
+        # it captures the just-written termination + termination_debug blocks.
+        # Best-effort: this convenience artefact must never break the run.
+        try:
+            output_dir = self._get_output_dir()
+            from trinity._output.show_run import format_run_summary
+            summary = format_run_summary(Path(output_dir))
+            (Path(output_dir) / "metadata_humanreadable.txt").write_text(
+                summary + "\n", encoding="utf-8")
+        except Exception as e:
+            logger.error(f"Failed to write metadata_humanreadable.txt: {e}")
+
     def set_termination_reason(self, reason: str) -> None:
         """
         Record the reason the process is about to exit.

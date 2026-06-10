@@ -13,7 +13,10 @@ outputs/*
 txt/
 fig/
 paper/plots/
-paper/barnes26/plots/
+
+# Private: kept local, not tracked
+paper/barnes26/
+test/test_barnes_population.py
 movie.txt
 lib/*
 !lib/default/

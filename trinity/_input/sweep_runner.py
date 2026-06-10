@@ -523,7 +523,69 @@ class SweepReport:
                 for result in self.successful:
                     f.write(f"{result.name}: {result.duration:.2f}s -> {result.output_path}\n")
 
+                f.write("\n")
+                self._write_physics_section(f)
+
         return report_path
+
+    def _write_physics_section(self, f) -> None:
+        """Write the per-run physics-outcomes table into an open report file.
+
+        One row per successful run with its final physical state (R2, v2,
+        collapsed/dissolved/phase), read from each run's ``metadata.json``.
+        Rendered as the ``PHYSICS OUTCOMES`` section of ``sweep_report.txt``.
+        """
+        if not self.successful:
+            return
+
+        # v2 is stored internally in pc/Myr; show km/s like show_run does.
+        try:
+            from trinity._functions.unit_conversions import INV_CONV
+            v_to_kms = INV_CONV.v_au2kms
+        except Exception:
+            v_to_kms = None
+
+        def _row(result) -> dict:
+            info = {"name": result.name, "outcome": "—", "t": None, "R2": None,
+                    "v2": None, "collapsed": "—", "dissolved": "—", "phase": "—"}
+            try:
+                with open(Path(result.output_path) / "metadata.json", encoding="utf-8") as fh:
+                    md = json.load(fh)
+                info["outcome"] = md.get("termination", {}).get("outcome", "—")
+                fs = md.get("final_state", {})
+                info["t"] = fs.get("t_now")
+                info["R2"] = fs.get("R2")
+                v2 = fs.get("v2")
+                info["v2"] = v2 * v_to_kms if (v2 is not None and v_to_kms is not None) else v2
+                if "isCollapse" in fs:
+                    info["collapsed"] = "yes" if fs["isCollapse"] else "no"
+                if "isDissolved" in fs:
+                    info["dissolved"] = "yes" if fs["isDissolved"] else "no"
+                info["phase"] = fs.get("current_phase", "—")
+            except Exception:
+                pass
+            return info
+
+        def _num(v, fmt: str) -> str:
+            return format(v, fmt) if isinstance(v, (int, float)) and v == v else "—"
+
+        rows = [_row(r) for r in self.successful]
+        name_w = max([len(r["name"]) for r in rows] + [len("run")])
+
+        f.write("-" * 80 + "\n")
+        f.write("PHYSICS OUTCOMES\n")
+        f.write("-" * 80 + "\n\n")
+
+        header = (f"{'run':<{name_w}}  {'outcome':<14} {'t[Myr]':>7} "
+                  f"{'R2[pc]':>9} {'v2[km/s]':>9}  {'collapsed':<9} "
+                  f"{'dissolved':<9} phase")
+        f.write(header + "\n")
+        f.write("-" * len(header) + "\n")
+        for r in rows:
+            f.write(f"{r['name']:<{name_w}}  {str(r['outcome']):<14} "
+                    f"{_num(r['t'], '.3f'):>7} {_num(r['R2'], '.3f'):>9} "
+                    f"{_num(r['v2'], '.3f'):>9}  {r['collapsed']:<9} "
+                    f"{r['dissolved']:<9} {r['phase']}\n")
 
     def write_json(self, output_path: Path) -> Path:
         """Write machine-readable JSON report."""
