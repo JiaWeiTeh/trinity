@@ -18,7 +18,6 @@ analysis/bubble-conduction-convergence.md.
 
 import numpy as np
 import os
-import sys
 import pickle
 import scipy.optimize
 import scipy.integrate
@@ -61,7 +60,9 @@ _T_INIT_BOUNDARY = 3e4
 # (fsolve converging on a garbage residual, or T_array gaining a random tail
 # that tripped MonotonicError / the cooling lookup). The solver is now
 # solve_ivp, whose `success` flag is checked so a failed solve is reported
-# (BubbleSolverError, or the fsolve penalty below) rather than used.
+# (BubbleSolverError, or the fsolve penalty below) rather than used. A T->0
+# collapse detected inside the ODE RHS likewise raises BubbleSolverError,
+# which _solve_bubble_structure converts to the same ok=False contract.
 # See analysis/bubble-integrator-robustness.md.
 
 # Deterministic residual returned to fsolve when a velocity-residual solve
@@ -95,7 +96,7 @@ _CONDUCTION_NPTS = 2000
 
 
 class BubbleSolverError(Exception):
-    """Raised when a bubble-structure solve_ivp integration fails.
+    """Raised when a bubble-structure solve fails or yields an unphysical solution.
 
     Replaces silent consumption of the former odeint path's uninitialised-memory
     output with an explicit, deterministic failure so behaviour is reproducible.
@@ -135,15 +136,22 @@ def _solve_bubble_structure(initial_conditions, r_array, params, Pb,
     if not np.all(np.isfinite(initial_conditions)):
         psoln = np.full((len(r_array), 3), np.nan)
         return psoln, False, {'message': 'non-finite initial conditions'}, None
-    sol = scipy.integrate.solve_ivp(
-        fun=lambda r, y: _get_bubble_ODE(r, y, params, Pb),
-        t_span=(r_array[0], r_array[-1]),
-        y0=initial_conditions,
-        method='LSODA',
-        dense_output=True,
-        rtol=rtol,
-        atol=_BUBBLE_ATOL,
-    )
+    # The RHS raises BubbleSolverError when T collapses to ~zero mid-solve
+    # (see _get_bubble_ODE); solve_ivp propagates RHS exceptions raw, so
+    # convert that abort into the same ok=False contract as a solver failure.
+    try:
+        sol = scipy.integrate.solve_ivp(
+            fun=lambda r, y: _get_bubble_ODE(r, y, params, Pb),
+            t_span=(r_array[0], r_array[-1]),
+            y0=initial_conditions,
+            method='LSODA',
+            dense_output=True,
+            rtol=rtol,
+            atol=_BUBBLE_ATOL,
+        )
+    except BubbleSolverError as e:
+        psoln = np.full((len(r_array), 3), np.nan)
+        return psoln, False, {'message': str(e)}, None
     # On success sol.sol is the continuous solution; if the solve failed before
     # any step it can be None, in which case there is nothing to sample.
     psoln = (sol.sol(r_array).T if sol.sol is not None
@@ -518,6 +526,18 @@ def _bubble_luminosity_legacy(params, R1, Pb, r2Prime, initial_conditions,
     v_array = psoln[:, 0]
     T_array = psoln[:, 1]
     dTdr_array = psoln[:, 2]
+
+    # Unphysical-solution net, checked before the profile is consumed
+    # (previously this sat below find_nearest_higher -- whose MonotonicError
+    # fired first on most bad profiles -- and killed the process via
+    # sys.exit). Near-unreachable on a successful solve (T = 3e4 at the
+    # boundary, error-controlled inward); raise the catchable error so the
+    # caller can penalise instead of dying.
+    if np.any(T_array < 0):
+        logger.critical('Negative temperature in bubble structure solution')
+        raise BubbleSolverError(
+            'negative temperature in bubble structure solution')
+
     n_array = Pb / ((params['mu_convert'].value / params['mu_ion'].value) * params['k_B'].value * T_array)
 
     logger.debug(f'Bubble structure: r=[{r_array[0]:.4f}, {r_array[-1]:.4f}], '
@@ -555,10 +575,6 @@ def _bubble_luminosity_legacy(params, R1, Pb, r2Prime, initial_conditions,
 
     index_CIE_switch = operations.find_nearest_higher(T_array, _CIEswitch)
     index_cooling_switch = operations.find_nearest_higher(T_array, _coolingswitch)
-
-    if any(T_array < 0):
-        logger.critical('Negative temperature detected')
-        sys.exit('Negative temperature in bubble structure')
 
     # Process CIE/non-CIE transition
     if index_cooling_switch != index_CIE_switch:
@@ -1113,8 +1129,13 @@ def _get_bubble_ODE(r_arr, initial_ODEs, params, Pb: float):
     v, T, dTdr = initial_ODEs
 
     if np.abs(T - 0) < 1e-5:
-        logger.critical('T is zero in bubble ODE')
-        sys.exit()
+        # T has collapsed to ~zero (typically an infeasible trial dMdt during
+        # the fsolve probe). Raise a catchable error -- _solve_bubble_structure
+        # converts it to its ok=False contract -- rather than sys.exit, which
+        # bypasses every handler (SystemExit is not an Exception).
+        logger.debug(f'T~0 in bubble ODE RHS (T={T:.3e}); aborting solve')
+        raise BubbleSolverError(
+            f'temperature reached zero in bubble ODE RHS (T={T:.3e})')
 
     ndens = Pb / ((params['mu_convert'].value / params['mu_ion'].value) * params['k_B'].value * T)
     phi = params['Qi'].value / (4 * np.pi * r_arr**2)
