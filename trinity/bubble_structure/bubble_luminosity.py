@@ -1,18 +1,17 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Bubble luminosity with dataclass returns.
+Bubble luminosity (pure, dataclass-returning API).
 
-This module provides bubble property calculations that return a dataclass
-instead of mutating the params dictionary. This is essential for use with
-adaptive ODE solvers.
-
-Key difference from bubble_luminosity.py:
+Computes bubble properties from the Weaver+77 bubble-structure ODE and returns
+them in a BubbleProperties dataclass instead of mutating the params dict:
 - get_bubbleproperties_pure() returns a BubbleProperties dataclass
 - No dictionary mutations during calculation
-- Use updateDict(params, bubble_data) after call returns
+- Use updateDict(params, bubble_data) after the call returns
 
-TODO: add docstrings for each function
+The structure ODE is integrated with scipy.integrate.solve_ivp (dense output);
+see analysis/bubble-integrator-robustness.md and
+analysis/bubble-conduction-convergence.md.
 
 @author: Jia Wei Teh
 """
@@ -121,9 +120,9 @@ def _solve_bubble_structure(initial_conditions, r_array, params, Pb,
         former ``odeint`` output (``psoln[0]`` is the initial condition).
       * ``ok`` -- ``sol.success``; when False the caller must not consume psoln.
       * ``infodict`` -- dict (``message``/``status``/``nfev``/``nst``/``hu``)
-        compatible with ``_capture_bubble_integration``'s odeint-style reader.
-      * ``sol`` -- the dense-output solution object (reused for the conduction
-        zone in a later step; unused here).
+        consumed by the gated ``_capture_bubble_integration`` diagnostic.
+      * ``sol`` -- the dense-output solution object. The structure path samples
+        the conduction zone from it; the velocity-residual solve ignores it.
 
     ``t_span`` is the actual grid span ``(r_array[0], r_array[-1])`` so sampling
     ``r_array`` never extrapolates outside the integrated interval.
@@ -163,7 +162,7 @@ def _solve_bubble_structure(initial_conditions, r_array, params, Pb,
 # Gated bubble-integration diagnostic (observational only).
 #
 # Set the environment variable TRINITY_BUBBLE_DIAG=1 to capture every
-# problematic bubble temperature profile from the L172 odeint call:
+# problematic bubble temperature profile from the main structure solve:
 # the arrays + integration context are saved to <path2output>/bubble_diag/
 # and a one-line mode classification is logged. This exists to disambiguate
 # the two known triggers of the downstream `MonotonicError`
@@ -173,9 +172,8 @@ def _solve_bubble_structure(initial_conditions, r_array, params, Pb,
 #   - "boundary_transient": a small, smooth dip at the T_init=3e4 (outer)
 #     edge, confined to the first ~0.1% of points; the bulk is monotonic.
 #
-# IMPORTANT: this is purely observational. When the flag is unset the
-# odeint call and all control flow are byte-identical to before; when set
-# it only saves files and logs — it never alters T_array or the result.
+# IMPORTANT: this is purely observational. It only reads psoln, saves
+# files, and logs — it never alters T_array or the result.
 _BUBBLE_DIAG_MAX = 100          # cap on saved events per process
 _bubble_diag_count = 0
 
@@ -257,11 +255,10 @@ def _capture_bubble_integration(params, r_array, psoln, infodict,
                 geom[_gk] = float(params[_gk].value)
             except Exception:
                 pass
-        # full LSODA step diagnostics (present because the gated call used
-        # full_output=True): info_hu (step sizes), info_mused (method),
-        # info_nst (cumulative steps), info_tcur/info_tsw, scalars. These
-        # confirm whether the solver hiccuped at the violation. NB: odeint's
-        # infodict has no 'ier' key (success is via 'message').
+        # solver step diagnostics from _solve_bubble_structure's infodict:
+        # info_message, info_status, info_nfev, info_nst (accepted steps) and
+        # info_hu (per-step sizes). These confirm whether the solver hiccuped
+        # at the violation. (No 'ier' key; success is read from 'status'.)
         info_save = {}
         if isinstance(infodict, dict):
             for _k, _v in infodict.items():
@@ -473,31 +470,29 @@ def get_bubbleproperties_pure(params) -> BubbleProperties:
         bubble_dMdt, params, Pb, R1
     )
 
-    # Create radius array and solve ODE
-    # NOTE: The adaptive grid (_create_adaptive_radius_grid) is disabled because it
-    # concentrates points around shock regions but under-samples the conduction zone
-    # (T = 1e4 to 10^5.5 K), causing incorrect cooling calculations. The cleaned
-    # legacy grid fixes the LSODA warnings while maintaining accuracy.
-    #
-    # TODO: To re-enable adaptive grid, ensure it maintains sufficient resolution
-    # in the conduction zone, not just shock regions. The cooling calculations
-    # at lines 267+ expect ~100+ points between index_cooling_switch and index_CIE_switch.
+    # Create radius array and solve ODE.
+    # NOTE: _create_adaptive_radius_grid (currently unused) was an alternative
+    # that concentrates points around shock regions but under-samples the
+    # conduction zone (T = 1e4 to 10^5.5 K). The legacy grid is used for output
+    # sampling; the LSODA dense-output interpolation failures it once caused are
+    # now avoided by integrating with solve_ivp (see _solve_bubble_structure and
+    # analysis/bubble-integrator-robustness.md), not by the grid itself.
     initial_conditions = [v_r2Prime, T_r2Prime, dTdr_r2Prime]
 
-    # Step 1 of the solve_ivp rewrite: the grid-based luminosity is extracted
-    # into _bubble_luminosity_legacy (below) and retained as the runtime
-    # fallback. The solve_ivp primary path + try/fallback is added next.
     return _bubble_luminosity_legacy(
         params, R1, Pb, r2Prime, initial_conditions, bubble_r_Tb, bubble_dMdt)
 
 
 def _bubble_luminosity_legacy(params, R1, Pb, r2Prime, initial_conditions,
                               bubble_r_Tb, bubble_dMdt):
-    """Legacy grid-based bubble luminosity, retained as a runtime fallback.
+    """Compute bubble luminosity on the legacy radius grid (production path).
 
-    60k-point legacy grid + odeint + find_nearest_higher region split +
-    trapezoid integration (the original get_bubbleproperties_pure body). Kept
-    so the solve_ivp path can fall back here on failure.
+    Builds the ~60k-point legacy grid, integrates the structure with solve_ivp
+    (via _solve_bubble_structure), splits the profile into CIE / conduction /
+    intermediate regions (find_nearest_higher) and trapezoid-integrates the
+    cooling in each. The '_legacy' name refers only to the grid construction
+    (an earlier plan to add a separate primary path with this as fallback was
+    dropped); this is the sole luminosity path.
     """
     # Always use cleaned legacy grid for now (adaptive grid causes accuracy issues)
     r_array = _create_legacy_radius_grid(R1, r2Prime)
@@ -506,7 +501,7 @@ def _bubble_luminosity_legacy(params, R1, Pb, r2Prime, initial_conditions,
     # near-duplicate radii that make odeint's dense-output interpolation fail
     # are never requested of the integrator. _ok reports solver success so a
     # failed solve is detected rather than consumed. (_sol is the dense-output
-    # object, reused for the conduction zone in a later step.)
+    # object; the conduction zone below samples it.)
     psoln, _ok, _infodict, _sol = _solve_bubble_structure(
         initial_conditions, r_array, params, Pb)
 
@@ -778,10 +773,9 @@ def _clean_radius_grid(r_array: np.ndarray, min_relative_spacing: float = MIN_SP
 
     The np.insert() operations used to build the radius grid can create
     near-duplicate points at join boundaries (differences of ~1e-8 to 1e-9).
-    With backward integration + dense output grid, LSODA hits situations
-    where the next requested output radius is numerically just outside its
-    valid interpolation interval [tcur - hu, tcur], causing "intdy-- t illegal"
-    warnings.
+    On the former odeint path these tripped LSODA's dense-output interpolation
+    ("intdy-- t illegal" warnings); the structure is now integrated with
+    solve_ivp, so this removal is grid hygiene rather than a correctness fix.
 
     This function removes near-duplicates by enforcing a minimum relative
     spacing between consecutive points.
@@ -830,7 +824,9 @@ def _create_legacy_radius_grid(R1: float, r2Prime: float) -> np.ndarray:
 
     This wraps the original grid construction logic (three np.logspace chunks
     stitched together with np.insert) and applies cleaning to remove
-    near-duplicate points that cause LSODA interpolation warnings.
+    near-duplicate points. (Those near-duplicates once caused LSODA
+    dense-output interpolation warnings on the odeint path; with solve_ivp the
+    cleaning is grid hygiene only.)
 
     Parameters
     ----------
@@ -858,7 +854,7 @@ def _create_legacy_radius_grid(R1: float, r2Prime: float) -> np.ndarray:
     )
     r_array = np.insert(r_array[:-5], len(r_array[:-5]), r_further)
 
-    # Clean near-duplicates to avoid LSODA interpolation warnings
+    # Remove near-duplicate points (grid hygiene; see _clean_radius_grid)
     return _clean_radius_grid(r_array)
 
 
@@ -870,7 +866,8 @@ def _create_adaptive_radius_grid(R1: float, r2Prime: float,
     """
     Create an adaptive radius grid concentrated around shock regions.
 
-    Uses solve_ivp() with dense_output=True to solve ODE once, then evaluates
+    CURRENTLY UNUSED (kept for reference). Uses solve_ivp() with
+    dense_output=True to solve ODE once, then evaluates
     on a coarse grid to find shock regions via |dT/dr|. Builds a refined grid
     concentrated only around shocks, resulting in ~3-5k points vs 60k with
     accuracy preserved at shock fronts.
@@ -991,11 +988,10 @@ def _create_adaptive_radius_grid(R1: float, r2Prime: float,
 def _solve_bubble_ode_with_ivp(r_array: np.ndarray, initial_conditions: list,
                                 params, Pb: float):
     """
-    Alternative ODE solver using solve_ivp instead of odeint.
+    Alternative solve_ivp wrapper (CURRENTLY UNUSED).
 
-    Kept for future experimentation and as a reference implementation.
-    Uses LSODA method with solve_ivp for potentially better error handling
-    and modern interface.
+    Superseded by _solve_bubble_structure, the production solve_ivp path
+    (which uses dense_output rather than t_eval). Kept only for reference.
 
     Parameters
     ----------
