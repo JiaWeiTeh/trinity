@@ -22,6 +22,26 @@ All conversions are to "Astronomy Units" (AU):
 
 Constants derived from astropy.units and frozen for safety.
 See test suite at bottom for accuracy verification.
+
+How to use
+----------
+The repo-wide convention is to import this module as ``cvt`` and use the
+flat module-level names::
+
+    import trinity._functions.unit_conversions as cvt
+
+    r_pc = r_cm * cvt.cm2pc        # CGS -> astronomy units
+    r_cm = r_pc * cvt.pc2cm        # astronomy units -> CGS
+    E_au = E_erg * cvt.E_cgs2au    # naming: <quantity>_cgs2au / <quantity>_au2cgs
+    kT   = cvt.K_B_CGS * T         # CGS physical constants: <NAME>_CGS
+
+For unit strings coming from .param files, use ``convert2au("g*cm**2/s**2")``.
+
+Internally, the frozen dataclass instances ``CONV`` (CGS->AU), ``INV_CONV``
+(AU->CGS) and ``CGS`` (physical constants) are the immutable source of truth;
+the flat names are re-exports of their fields, so ``cvt.cm2pc`` and
+``CONV.cm2pc`` are the same number. Prefer the flat ``cvt.X`` spelling in new
+code for consistency with the rest of the codebase.
 """
 
 import re
@@ -209,7 +229,10 @@ class PhysicalConstantsCGS:
 CGS = PhysicalConstantsCGS()
 
 
-# Backward-compatible aliases for CGS constants
+# Flat module-level names for the CGS physical constants (cvt.G_CGS, ...).
+# Re-exports of the frozen CGS dataclass above — this is the canonical
+# call-site spelling (see "How to use" in the module docstring), not a
+# deprecated layer.
 G_CGS = CGS.G
 K_B_CGS = CGS.k_B
 M_H_CGS = CGS.m_H
@@ -221,9 +244,15 @@ H_CGS = CGS.h
 
 
 # =============================================================================
-# Backward compatibility aliases (deprecated, but kept for old code)
+# Flat module-level conversion factors — the canonical call-site API (cvt.X)
 # =============================================================================
-# These maintain compatibility with old code but are deprecated
+# Re-exports of the frozen CONV/INV_CONV fields above, so call sites read
+# ``cvt.pc2cm`` instead of ``cvt.INV_CONV.pc2cm``. NOT deprecated: this is
+# the spelling used throughout the codebase (see "How to use" in the module
+# docstring).
+#
+# Note: Pb_au2_KcmInv and Mdot_au2Msunyr below are original definitions
+# (derived constants that only exist at module level), not re-exports.
 
 cm2pc = CONV.cm2pc
 pc2cm = INV_CONV.pc2cm
