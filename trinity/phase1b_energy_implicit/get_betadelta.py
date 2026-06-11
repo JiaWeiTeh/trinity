@@ -56,6 +56,17 @@ LBFGSB_FALLBACK_THRESHOLD = 5.0
 GRID_SIZE = 5  # 5x5 grid (matching original get_betadelta.py)
 GRID_EPSILON = 0.02  # Search range around guess
 
+# Early-exit residual for the grid scan: stop scanning once a point this far
+# INSIDE the acceptance threshold is found. The margin matters: residuals at
+# the accepted point grow by roughly 3x per subsequent segment as beta/delta
+# drift, so a deeply converged pick keeps the *next* segments' input guesses
+# below RESIDUAL_THRESHOLD (long runs of 1-evaluation short-circuits), while
+# a barely-converged pick forces a fresh grid search almost immediately.
+# Exiting only on an excellent point keeps that downstream behavior intact;
+# segments with no excellent point fall back to the full best-of-grid scan,
+# identical to the original semantics.
+GRID_EARLY_EXIT_RESIDUAL = RESIDUAL_THRESHOLD / 10
+
 
 def _describe_exc(e: BaseException) -> str:
     """Format an exception as 'ClassName: message at file:line' for log warnings.
@@ -97,15 +108,24 @@ class BubbleParamsView:
 
     Since get_bubbleproperties_pure() only READS params (never writes),
     this is safe and provides ~25-100x speedup per residual evaluation.
+
+    ``dMdt_guess``, when given, additionally overrides ``bubble_dMdt`` — the
+    seed from which get_bubbleproperties_pure starts its fsolve for the mass
+    flux. Without it, every evaluation in a segment starts from the previous
+    segment's accepted dMdt; threading the last solved value through a grid
+    scan starts each fsolve near its root instead.
     """
     __slots__ = ('_params', '_overrides')
 
-    def __init__(self, params, beta: float, delta: float):
+    def __init__(self, params, beta: float, delta: float,
+                 dMdt_guess: Optional[float] = None):
         self._params = params
         self._overrides = {
             'cool_beta': _MockValue(beta),
             'cool_delta': _MockValue(delta),
         }
+        if dMdt_guess is not None:
+            self._overrides['bubble_dMdt'] = _MockValue(dMdt_guess)
 
     def __getitem__(self, key: str):
         if key in self._overrides:
@@ -309,6 +329,21 @@ def compute_R1_Pb(
     return R1, Pb
 
 
+def _usable_dMdt(props: Optional[BubbleProperties]) -> Optional[float]:
+    """The solved dMdt from a bubble result, or None when unusable.
+
+    A warm-start seed must come from a successful solve and be finite and
+    positive — anything else (failed point, fsolve stranded on the penalty
+    plateau returning garbage) must not poison the seed chain.
+    """
+    if props is None:
+        return None
+    dMdt = props.bubble_dMdt
+    if np.isfinite(dMdt) and dMdt > 0:
+        return float(dMdt)
+    return None
+
+
 # =============================================================================
 # Pure Residual Calculation
 # =============================================================================
@@ -318,6 +353,7 @@ def get_residual_pure(
     delta: float,
     params,
     return_bubble_props: bool = False,
+    dMdt_guess: Optional[float] = None,
 ) -> Tuple[float, float, Optional[BubbleProperties]]:
     """
     Calculate residuals for beta and delta without mutating params.
@@ -336,6 +372,9 @@ def get_residual_pure(
         Parameter dictionary (read-only)
     return_bubble_props : bool
         If True, also return the BubbleProperties
+    dMdt_guess : float, optional
+        Warm-start seed for the bubble dMdt fsolve (see BubbleParamsView).
+        None keeps the seed from params (previous segment's accepted value).
 
     Returns
     -------
@@ -348,7 +387,7 @@ def get_residual_pure(
     """
     # Create a lightweight view that overrides beta/delta without copying
     # This is ~25-100x faster than copy.deepcopy(params)
-    params_view = BubbleParamsView(params, beta, delta)
+    params_view = BubbleParamsView(params, beta, delta, dMdt_guess=dMdt_guess)
 
     # Calculate bubble properties
     try:
@@ -433,30 +472,38 @@ def get_residual_detailed(
     beta: float,
     delta: float,
     params,
+    bubble_props: Optional[BubbleProperties] = None,
 ) -> ResidualDetails:
     """
     Calculate residuals with all raw components for diagnostics.
 
     Returns a ResidualDetails object containing both normalized residuals
     and the raw values used to compute them.
-    """
-    # Create a lightweight view that overrides beta/delta without copying
-    params_view = BubbleParamsView(params, beta, delta)
 
-    # Calculate bubble properties
-    try:
-        bubble_props = get_bubbleproperties_pure(params_view)
-    except Exception as e:
-        logger.warning(f"Bubble properties calculation failed: {_describe_exc(e)}")
-        return ResidualDetails(
-            Edot_residual=100.0,
-            T_residual=100.0,
-            Edot_from_beta=np.nan,
-            Edot_from_balance=np.nan,
-            T_bubble=np.nan,
-            T0=np.nan,
-            bubble_props=None,
-        )
+    If ``bubble_props`` is supplied (a BubbleProperties already solved at this
+    exact (beta, delta)), the expensive bubble-structure solve is skipped and
+    only the cheap scalar diagnostics are recomputed from it. Since
+    get_bubbleproperties_pure is deterministic in (params, beta, delta), this
+    is equivalent to re-solving.
+    """
+    if bubble_props is None:
+        # Create a lightweight view that overrides beta/delta without copying
+        params_view = BubbleParamsView(params, beta, delta)
+
+        # Calculate bubble properties
+        try:
+            bubble_props = get_bubbleproperties_pure(params_view)
+        except Exception as e:
+            logger.warning(f"Bubble properties calculation failed: {_describe_exc(e)}")
+            return ResidualDetails(
+                Edot_residual=100.0,
+                T_residual=100.0,
+                Edot_from_beta=np.nan,
+                Edot_from_balance=np.nan,
+                T_bubble=np.nan,
+                T0=np.nan,
+                bubble_props=None,
+            )
 
     # Extract needed values from original params
     R2 = params['R2'].value
@@ -565,23 +612,30 @@ def solve_betadelta_pure(
             bubble_properties=bubble_props_input,
         )
 
-    # Track candidates: (beta, delta, residual, method_name, iterations)
+    # Track candidates: (beta, delta, residual, method_name, iterations, props)
+    # props is the BubbleProperties already solved at that point (None when not
+    # captured, e.g. the L-BFGS-B path) so the final detailed evaluation can
+    # skip re-solving the winning point.
     candidates = []
 
     # Always add original input as a candidate
     if np.isfinite(total_res_input):
-        candidates.append((beta_guess, delta_guess, total_res_input, 'input', 0))
+        candidates.append((beta_guess, delta_guess, total_res_input, 'input', 0,
+                           bubble_props_input))
 
     # Step 1: Try grid search first
     grid_converged = False
     grid_result = None
     try:
-        beta_grid, delta_grid, iter_grid = _solve_grid(beta_guess, delta_guess, params)
-        Edot_res_grid, T_res_grid, _ = get_residual_pure(beta_grid, delta_grid, params)
-        total_res_grid = Edot_res_grid**2 + T_res_grid**2
+        beta_grid, delta_grid, props_grid, total_res_grid, iter_grid = _solve_grid(
+            beta_guess, delta_guess, params,
+            input_residual=total_res_input if np.isfinite(total_res_input) else None,
+            input_props=bubble_props_input,
+        )
 
         if np.isfinite(total_res_grid):
-            candidates.append((beta_grid, delta_grid, total_res_grid, 'grid', iter_grid))
+            candidates.append((beta_grid, delta_grid, total_res_grid, 'grid', iter_grid,
+                               props_grid))
             grid_result = (beta_grid, delta_grid, total_res_grid, iter_grid)
 
             if total_res_grid < RESIDUAL_THRESHOLD:
@@ -620,7 +674,8 @@ def solve_betadelta_pure(
 
             if np.isfinite(total_res_lbfgsb):
                 candidates.append((
-                    beta_lbfgsb, delta_lbfgsb, total_res_lbfgsb, 'lbfgsb', iter_lbfgsb
+                    beta_lbfgsb, delta_lbfgsb, total_res_lbfgsb, 'lbfgsb', iter_lbfgsb,
+                    None
                 ))
                 lbfgsb_result = (beta_lbfgsb, delta_lbfgsb, total_res_lbfgsb, iter_lbfgsb)
 
@@ -655,7 +710,8 @@ def solve_betadelta_pure(
 
     # Sort by residual and pick best
     candidates.sort(key=lambda x: x[2])
-    best_beta, best_delta, best_residual, best_method, best_iterations = candidates[0]
+    (best_beta, best_delta, best_residual, best_method, best_iterations,
+     best_props) = candidates[0]
 
     # Determine convergence and method description
     converged = best_residual < RESIDUAL_THRESHOLD
@@ -668,8 +724,12 @@ def solve_betadelta_pure(
         # Neither converged, picked best from all candidates
         method_desc = f'best({best_method})'
 
-    # Get final detailed residuals for best result
-    details = get_residual_detailed(best_beta, best_delta, params)
+    # Get final detailed residuals for best result. Passing the winning
+    # candidate's already-solved bubble props skips a redundant (deterministic,
+    # identical) bubble-structure solve; only the L-BFGS-B path (props=None)
+    # still re-solves here.
+    details = get_residual_detailed(best_beta, best_delta, params,
+                                    bubble_props=best_props)
 
     logger.debug(
         f"Beta-delta result ({method_desc}): β={best_beta:.4f}, δ={best_delta:.4f}, "
@@ -700,11 +760,33 @@ def _solve_grid(
     beta_guess: float,
     delta_guess: float,
     params,
-) -> Tuple[float, float, int]:
+    input_residual: Optional[float] = None,
+    input_props: Optional[BubbleProperties] = None,
+) -> Tuple[float, float, Optional[BubbleProperties], float, int]:
     """
     Grid search solver using BubbleParamsView (no deepcopy).
 
     Searches a 5x5 grid around the guess, matching original get_betadelta.py.
+
+    The caller has already evaluated the input guess itself (the grid center),
+    so that point is skipped here and its residual/props are passed in via
+    ``input_residual``/``input_props`` to seed the best-so-far. Each evaluated
+    point's residual and bubble properties are kept (only the current best is
+    held), so the caller never needs to re-solve the winning point.
+
+    The scan runs center-out (in index space, so the ordering stays valid when
+    the linspace is clamped at the parameter bounds) and stops early only when
+    a point is found whose residual is below GRID_EARLY_EXIT_RESIDUAL — deep
+    inside the acceptance threshold, where stopping costs nothing downstream
+    (see the constant's comment). When no such point exists, the full grid is
+    evaluated and the global best returned, matching the original semantics.
+
+    The dMdt solved at each successful point warm-starts the next point's
+    fsolve (adjacent grid points differ by at most GRID_EPSILON in beta/delta,
+    so their dMdt roots are close); the first point is seeded from
+    ``input_props``. Failed points leave the seed untouched.
+
+    Returns ``(best_beta, best_delta, best_props, best_residual, n_evals)``.
     """
     # Generate grid around guess
     beta_min = max(BETA_MIN, beta_guess - GRID_EPSILON)
@@ -715,23 +797,61 @@ def _solve_grid(
     beta_range = np.linspace(beta_min, beta_max, GRID_SIZE)
     delta_range = np.linspace(delta_min, delta_max, GRID_SIZE)
 
-    # Evaluate all grid points
-    best_residual = float('inf')
+    # Center-out scan order: in the settled regime the optimum (where the
+    # excellent points cluster) lies near the previous accepted point, i.e.
+    # the grid center, so scanning nearest-first reaches the early-exit
+    # condition sooner. Ties broken by (i, j) for determinism.
+    center = (GRID_SIZE - 1) // 2
+    scan_order = sorted(
+        ((i, j) for i in range(GRID_SIZE) for j in range(GRID_SIZE)),
+        key=lambda ij: ((ij[0] - center) ** 2 + (ij[1] - center) ** 2, ij[0], ij[1]),
+    )
+
+    # Evaluate grid points, seeded with the already-evaluated input guess
+    best_residual = float('inf') if input_residual is None else input_residual
     best_beta, best_delta = beta_guess, delta_guess
+    best_props = input_props
+    last_dMdt = _usable_dMdt(input_props)
+    n_evals = 0
 
-    for beta in beta_range:
-        for delta in delta_range:
-            try:
-                Edot_res, T_res, _ = get_residual_pure(beta, delta, params)
-                residual = Edot_res**2 + T_res**2
-                if residual < best_residual:
-                    best_residual = residual
-                    best_beta, best_delta = beta, delta
-            except Exception as e:
-                logger.warning(f"Grid point ({beta:.3f}, {delta:.3f}) failed: {e}")
-                continue
+    for i, j in scan_order:
+        beta = beta_range[i]
+        delta = delta_range[j]
+        # The exact input guess was already evaluated by the caller — skip
+        # it. (Tolerance because linspace's midpoint can differ from the
+        # guess in the last ulp. For a guess near — but not at — a clamped
+        # bound, the shifted grid no longer contains the guess, no point
+        # matches, and the full grid runs.)
+        if abs(beta - beta_guess) < 1e-12 and abs(delta - delta_guess) < 1e-12:
+            continue
+        try:
+            Edot_res, T_res, props = get_residual_pure(
+                beta, delta, params, return_bubble_props=True,
+                dMdt_guess=last_dMdt
+            )
+            n_evals += 1
+            solved_dMdt = _usable_dMdt(props)
+            if solved_dMdt is not None:
+                last_dMdt = solved_dMdt
+            residual = Edot_res**2 + T_res**2
+            if residual < best_residual:
+                best_residual = residual
+                best_beta, best_delta = beta, delta
+                best_props = props
+            if residual < GRID_EARLY_EXIT_RESIDUAL:
+                # Early exit on a deeply converged point. No earlier point was
+                # below the margin (the scan would have exited there), so this
+                # point is also the current best.
+                logger.debug(
+                    f"Grid scan early exit after {n_evals} evaluations: "
+                    f"β={beta:.4f}, δ={delta:.4f}, residual={residual:.2e}"
+                )
+                return best_beta, best_delta, best_props, best_residual, n_evals
+        except Exception as e:
+            logger.warning(f"Grid point ({beta:.3f}, {delta:.3f}) failed: {e}")
+            continue
 
-    return best_beta, best_delta, GRID_SIZE * GRID_SIZE
+    return best_beta, best_delta, best_props, best_residual, n_evals
 
 
 def _solve_lbfgsb(
