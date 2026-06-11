@@ -1,0 +1,45 @@
+{
+  "permissions": {
+    "defaultMode": "default",
+    "disableBypassPermissionsMode": "disable",
+    "deny": [
+      "Bash(rm -rf *)",
+      "Bash(sudo rm *)",
+      "Bash(dd *)",
+      "Bash(mkfs *)",
+      "Bash(chmod -R *)",
+      "Bash(chmod 777 *)",
+      "Bash(chown -R *)",
+      "Bash(git push --force *)",
+      "Bash(git push -f *)",
+      "Bash(curl * | sh)",
+      "Bash(curl * | bash)",
+      "Bash(wget * | sh)",
+      "Bash(wget * | bash)",
+      "Read(.env)",
+      "Read(.env.*)",
+      "Read(**/*.pem)",
+      "Read(secrets/**)",
+      "Edit(.env*)"
+    ],
+    "ask": [
+      "Bash(git push *)",
+      "Bash(git commit *)",
+      "Bash(git reset --hard *)",
+      "Bash(npm install *)",
+      "Bash(npm uninstall *)",
+      "Bash(brew *)"
+    ]
+  },
+  "sandbox": {
+    "enabled": true,
+    "filesystem": {
+      "denyRead": ["~/.ssh", "~/.aws", "~/.config/gcloud", "~/.kube"]
+    }
+  },
+  "hooks": {
+    "PreToolUse": [
+      { "matcher": "Bash", "hooks": [ { "type": "command", "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/guard-bash.sh" } ] }
+    ]
+  }
+}
