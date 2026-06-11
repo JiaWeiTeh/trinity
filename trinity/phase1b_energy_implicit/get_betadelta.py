@@ -56,6 +56,17 @@ LBFGSB_FALLBACK_THRESHOLD = 5.0
 GRID_SIZE = 5  # 5x5 grid (matching original get_betadelta.py)
 GRID_EPSILON = 0.02  # Search range around guess
 
+# Early-exit residual for the grid scan: stop scanning once a point this far
+# INSIDE the acceptance threshold is found. The margin matters: residuals at
+# the accepted point grow by roughly 3x per subsequent segment as beta/delta
+# drift, so a deeply converged pick keeps the *next* segments' input guesses
+# below RESIDUAL_THRESHOLD (long runs of 1-evaluation short-circuits), while
+# a barely-converged pick forces a fresh grid search almost immediately.
+# Exiting only on an excellent point keeps that downstream behavior intact;
+# segments with no excellent point fall back to the full best-of-grid scan,
+# identical to the original semantics.
+GRID_EARLY_EXIT_RESIDUAL = RESIDUAL_THRESHOLD / 10
+
 
 def _describe_exc(e: BaseException) -> str:
     """Format an exception as 'ClassName: message at file:line' for log warnings.
@@ -763,6 +774,13 @@ def _solve_grid(
     point's residual and bubble properties are kept (only the current best is
     held), so the caller never needs to re-solve the winning point.
 
+    The scan runs center-out (in index space, so the ordering stays valid when
+    the linspace is clamped at the parameter bounds) and stops early only when
+    a point is found whose residual is below GRID_EARLY_EXIT_RESIDUAL — deep
+    inside the acceptance threshold, where stopping costs nothing downstream
+    (see the constant's comment). When no such point exists, the full grid is
+    evaluated and the global best returned, matching the original semantics.
+
     The dMdt solved at each successful point warm-starts the next point's
     fsolve (adjacent grid points differ by at most GRID_EPSILON in beta/delta,
     so their dMdt roots are close); the first point is seeded from
@@ -779,6 +797,16 @@ def _solve_grid(
     beta_range = np.linspace(beta_min, beta_max, GRID_SIZE)
     delta_range = np.linspace(delta_min, delta_max, GRID_SIZE)
 
+    # Center-out scan order: in the settled regime the optimum (where the
+    # excellent points cluster) lies near the previous accepted point, i.e.
+    # the grid center, so scanning nearest-first reaches the early-exit
+    # condition sooner. Ties broken by (i, j) for determinism.
+    center = (GRID_SIZE - 1) // 2
+    scan_order = sorted(
+        ((i, j) for i in range(GRID_SIZE) for j in range(GRID_SIZE)),
+        key=lambda ij: ((ij[0] - center) ** 2 + (ij[1] - center) ** 2, ij[0], ij[1]),
+    )
+
     # Evaluate grid points, seeded with the already-evaluated input guess
     best_residual = float('inf') if input_residual is None else input_residual
     best_beta, best_delta = beta_guess, delta_guess
@@ -786,32 +814,42 @@ def _solve_grid(
     last_dMdt = _usable_dMdt(input_props)
     n_evals = 0
 
-    for beta in beta_range:
-        for delta in delta_range:
-            # The exact input guess was already evaluated by the caller — skip
-            # it. (Tolerance because linspace's midpoint can differ from the
-            # guess in the last ulp. For a guess near — but not at — a clamped
-            # bound, the shifted grid no longer contains the guess, no point
-            # matches, and the full grid runs.)
-            if abs(beta - beta_guess) < 1e-12 and abs(delta - delta_guess) < 1e-12:
-                continue
-            try:
-                Edot_res, T_res, props = get_residual_pure(
-                    beta, delta, params, return_bubble_props=True,
-                    dMdt_guess=last_dMdt
+    for i, j in scan_order:
+        beta = beta_range[i]
+        delta = delta_range[j]
+        # The exact input guess was already evaluated by the caller — skip
+        # it. (Tolerance because linspace's midpoint can differ from the
+        # guess in the last ulp. For a guess near — but not at — a clamped
+        # bound, the shifted grid no longer contains the guess, no point
+        # matches, and the full grid runs.)
+        if abs(beta - beta_guess) < 1e-12 and abs(delta - delta_guess) < 1e-12:
+            continue
+        try:
+            Edot_res, T_res, props = get_residual_pure(
+                beta, delta, params, return_bubble_props=True,
+                dMdt_guess=last_dMdt
+            )
+            n_evals += 1
+            solved_dMdt = _usable_dMdt(props)
+            if solved_dMdt is not None:
+                last_dMdt = solved_dMdt
+            residual = Edot_res**2 + T_res**2
+            if residual < best_residual:
+                best_residual = residual
+                best_beta, best_delta = beta, delta
+                best_props = props
+            if residual < GRID_EARLY_EXIT_RESIDUAL:
+                # Early exit on a deeply converged point. No earlier point was
+                # below the margin (the scan would have exited there), so this
+                # point is also the current best.
+                logger.debug(
+                    f"Grid scan early exit after {n_evals} evaluations: "
+                    f"β={beta:.4f}, δ={delta:.4f}, residual={residual:.2e}"
                 )
-                n_evals += 1
-                solved_dMdt = _usable_dMdt(props)
-                if solved_dMdt is not None:
-                    last_dMdt = solved_dMdt
-                residual = Edot_res**2 + T_res**2
-                if residual < best_residual:
-                    best_residual = residual
-                    best_beta, best_delta = beta, delta
-                    best_props = props
-            except Exception as e:
-                logger.warning(f"Grid point ({beta:.3f}, {delta:.3f}) failed: {e}")
-                continue
+                return best_beta, best_delta, best_props, best_residual, n_evals
+        except Exception as e:
+            logger.warning(f"Grid point ({beta:.3f}, {delta:.3f}) failed: {e}")
+            continue
 
     return best_beta, best_delta, best_props, best_residual, n_evals
 

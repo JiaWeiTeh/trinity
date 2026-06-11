@@ -283,9 +283,9 @@ def test_warmstart_threads_dmdt_through_scan(monkeypatch):
 
 def test_warmstart_failed_point_keeps_previous_seed(monkeypatch):
     """A failed point (props=None) must not advance the warm-start seed."""
-    # Make the second scanned point fail: row-major order from the corner —
-    # first points are (0.48, -0.52) then (0.48, -0.51).
-    rec = ResidualRecorder(lambda b, d: 1.0, fail_at=[(0.48, -0.51)])
+    # Make the second scanned point fail: the center-out scan visits ring-1
+    # neighbours first — (0.49, -0.5) then (0.5, -0.51).
+    rec = ResidualRecorder(lambda b, d: 1.0, fail_at=[(0.5, -0.51)])
     monkeypatch.setattr(GBD, "get_residual_pure", rec)
 
     GBD._solve_grid(0.5, -0.5, params=None,
@@ -319,3 +319,105 @@ def test_usable_dmdt_guards():
     assert GBD._usable_dMdt(make_props(dMdt=-5.0)) is None
     assert GBD._usable_dMdt(make_props(dMdt=0.0)) is None
     assert GBD._usable_dMdt(make_props(dMdt=13.0)) == 13.0
+
+
+# =============================================================================
+# Center-out scan order and excellent-point early exit
+# =============================================================================
+
+def test_scan_order_is_center_out(monkeypatch):
+    """The first scanned points are the ring-1 index-space neighbours of the
+    (skipped) center, in the documented deterministic order."""
+    rec = ResidualRecorder(lambda b, d: 1.0)  # nothing excellent
+    monkeypatch.setattr(GBD, "get_residual_pure", rec)
+
+    GBD._solve_grid(0.5, -0.5, params=None,
+                    input_residual=2.0, input_props=None)
+
+    ring1 = [(0.49, -0.5), (0.5, -0.51), (0.5, -0.49), (0.51, -0.5)]
+    assert [(round(b, 6), round(d, 6)) for b, d in rec.calls[:4]] == ring1
+    assert len(rec.calls) == GBD.GRID_SIZE ** 2 - 1
+
+
+def test_no_exit_on_merely_converged_point(monkeypatch):
+    """A point below RESIDUAL_THRESHOLD but above the early-exit margin must
+    NOT stop the scan: merely-converged picks decay above the acceptance
+    threshold within ~a segment, costing a fresh grid search downstream."""
+    merely = (0.5, -0.51)  # scanned second; converged but not excellent
+
+    def landscape(b, d):
+        if abs(b - merely[0]) < 1e-9 and abs(d - merely[1]) < 1e-9:
+            return 0.5 * GBD.RESIDUAL_THRESHOLD
+        return 1.0
+
+    rec = ResidualRecorder(landscape)
+    monkeypatch.setattr(GBD, "get_residual_pure", rec)
+
+    best_beta, best_delta, _, _, n_evals = GBD._solve_grid(
+        0.5, -0.5, params=None, input_residual=2.0, input_props=None)
+
+    assert n_evals == GBD.GRID_SIZE ** 2 - 1  # full scan
+    assert (round(best_beta, 6), round(best_delta, 6)) == merely  # still best
+
+
+def test_early_exit_on_excellent_point(monkeypatch):
+    """The scan stops at the first point below GRID_EARLY_EXIT_RESIDUAL."""
+    excellent = (0.5, -0.51)  # second point in the center-out scan
+
+    def landscape(b, d):
+        if abs(b - excellent[0]) < 1e-9 and abs(d - excellent[1]) < 1e-9:
+            return 0.5 * GBD.GRID_EARLY_EXIT_RESIDUAL
+        return 1.0
+
+    rec = ResidualRecorder(landscape)
+    monkeypatch.setattr(GBD, "get_residual_pure", rec)
+
+    best_beta, best_delta, best_props, best_residual, n_evals = GBD._solve_grid(
+        0.5, -0.5, params=None, input_residual=2.0, input_props=None)
+
+    assert n_evals == 2
+    assert (round(best_beta, 6), round(best_delta, 6)) == excellent
+    assert best_residual < GBD.GRID_EARLY_EXIT_RESIDUAL
+    assert best_props is not None
+
+
+def test_no_excellence_scans_all_and_returns_best(monkeypatch):
+    """Without any sub-margin point the full grid is evaluated and the global
+    best returned — original best-of-grid semantics preserved."""
+    target_b, target_d = 0.513, -0.487
+    landscape = lambda b, d: 1.0 + (b - target_b) ** 2 + (d - target_d) ** 2
+    rec = ResidualRecorder(landscape)
+    monkeypatch.setattr(GBD, "get_residual_pure", rec)
+
+    best_beta, best_delta, _, _, n_evals = GBD._solve_grid(
+        0.5, -0.5, params=None, input_residual=landscape(0.5, -0.5),
+        input_props=None)
+
+    assert n_evals == GBD.GRID_SIZE ** 2 - 1
+    expected = min(rec.calls, key=lambda bd: landscape(*bd))
+    assert (best_beta, best_delta) == expected
+
+
+def test_solver_early_exit_end_to_end(monkeypatch):
+    """End to end: an excellent ring-1 point means solve_betadelta_pure does
+    1 (input) + 2 (scan) evaluations instead of 25, converges, and reuses
+    the winning props without re-solving."""
+    excellent = (0.5, -0.51)
+
+    def landscape(b, d):
+        if abs(b - excellent[0]) < 1e-9 and abs(d - excellent[1]) < 1e-9:
+            return 0.5 * GBD.GRID_EARLY_EXIT_RESIDUAL
+        return 1.0
+
+    rec = ResidualRecorder(landscape)
+    monkeypatch.setattr(GBD, "get_residual_pure", rec)
+    forbid_bubble_solve(monkeypatch)
+
+    result = GBD.solve_betadelta_pure(0.5, -0.5, make_params())
+
+    assert len(rec.calls) == 3
+    # plain truthiness: on the grid path `converged` is a numpy bool
+    # (residuals are numpy scalars), so `is True` would be wrong
+    assert result.converged
+    assert (round(result.beta, 6), round(result.delta, 6)) == excellent
+    assert result.bubble_properties is not None
