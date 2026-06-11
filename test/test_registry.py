@@ -152,6 +152,28 @@ def test_run_const_and_metadata_exclude_disjoint() -> None:
     assert set(run_const_keys()) & metadata_exclude_keys() == set()
 
 
+def test_metadata_exclude_specs_persist_somewhere() -> None:
+    """``metadata_exclude`` only blocks metadata.json.  Every spec
+    carrying it must therefore either be kept out of snapshots
+    explicitly (``exclude_from_snapshot=True`` — paths, function
+    tables) or be one of the profile arrays the snapshot writer
+    serializes specially (``SNAPSHOT_PROFILE_ARRAY_KEYS``).  A spec in
+    neither set would have its data silently dropped from BOTH output
+    files — the regression fixed in hotfix/metadata-excluding."""
+    from trinity._input.dictionary import SNAPSHOT_PROFILE_ARRAY_KEYS
+    offenders = [
+        s.name for s in SPECS
+        if s.metadata_exclude
+        and not s.exclude_from_snapshot
+        and s.name not in SNAPSHOT_PROFILE_ARRAY_KEYS
+    ]
+    assert offenders == [], (
+        f"{offenders}: metadata_exclude=True but neither "
+        "exclude_from_snapshot=True nor handled by a snapshot "
+        "serializer branch — their data would be persisted nowhere"
+    )
+
+
 # ---------------------------------------------------------------------------
 # Construction-time guards
 # ---------------------------------------------------------------------------
