@@ -433,30 +433,38 @@ def get_residual_detailed(
     beta: float,
     delta: float,
     params,
+    bubble_props: Optional[BubbleProperties] = None,
 ) -> ResidualDetails:
     """
     Calculate residuals with all raw components for diagnostics.
 
     Returns a ResidualDetails object containing both normalized residuals
     and the raw values used to compute them.
-    """
-    # Create a lightweight view that overrides beta/delta without copying
-    params_view = BubbleParamsView(params, beta, delta)
 
-    # Calculate bubble properties
-    try:
-        bubble_props = get_bubbleproperties_pure(params_view)
-    except Exception as e:
-        logger.warning(f"Bubble properties calculation failed: {_describe_exc(e)}")
-        return ResidualDetails(
-            Edot_residual=100.0,
-            T_residual=100.0,
-            Edot_from_beta=np.nan,
-            Edot_from_balance=np.nan,
-            T_bubble=np.nan,
-            T0=np.nan,
-            bubble_props=None,
-        )
+    If ``bubble_props`` is supplied (a BubbleProperties already solved at this
+    exact (beta, delta)), the expensive bubble-structure solve is skipped and
+    only the cheap scalar diagnostics are recomputed from it. Since
+    get_bubbleproperties_pure is deterministic in (params, beta, delta), this
+    is equivalent to re-solving.
+    """
+    if bubble_props is None:
+        # Create a lightweight view that overrides beta/delta without copying
+        params_view = BubbleParamsView(params, beta, delta)
+
+        # Calculate bubble properties
+        try:
+            bubble_props = get_bubbleproperties_pure(params_view)
+        except Exception as e:
+            logger.warning(f"Bubble properties calculation failed: {_describe_exc(e)}")
+            return ResidualDetails(
+                Edot_residual=100.0,
+                T_residual=100.0,
+                Edot_from_beta=np.nan,
+                Edot_from_balance=np.nan,
+                T_bubble=np.nan,
+                T0=np.nan,
+                bubble_props=None,
+            )
 
     # Extract needed values from original params
     R2 = params['R2'].value
@@ -565,23 +573,30 @@ def solve_betadelta_pure(
             bubble_properties=bubble_props_input,
         )
 
-    # Track candidates: (beta, delta, residual, method_name, iterations)
+    # Track candidates: (beta, delta, residual, method_name, iterations, props)
+    # props is the BubbleProperties already solved at that point (None when not
+    # captured, e.g. the L-BFGS-B path) so the final detailed evaluation can
+    # skip re-solving the winning point.
     candidates = []
 
     # Always add original input as a candidate
     if np.isfinite(total_res_input):
-        candidates.append((beta_guess, delta_guess, total_res_input, 'input', 0))
+        candidates.append((beta_guess, delta_guess, total_res_input, 'input', 0,
+                           bubble_props_input))
 
     # Step 1: Try grid search first
     grid_converged = False
     grid_result = None
     try:
-        beta_grid, delta_grid, iter_grid = _solve_grid(beta_guess, delta_guess, params)
-        Edot_res_grid, T_res_grid, _ = get_residual_pure(beta_grid, delta_grid, params)
-        total_res_grid = Edot_res_grid**2 + T_res_grid**2
+        beta_grid, delta_grid, props_grid, total_res_grid, iter_grid = _solve_grid(
+            beta_guess, delta_guess, params,
+            input_residual=total_res_input if np.isfinite(total_res_input) else None,
+            input_props=bubble_props_input,
+        )
 
         if np.isfinite(total_res_grid):
-            candidates.append((beta_grid, delta_grid, total_res_grid, 'grid', iter_grid))
+            candidates.append((beta_grid, delta_grid, total_res_grid, 'grid', iter_grid,
+                               props_grid))
             grid_result = (beta_grid, delta_grid, total_res_grid, iter_grid)
 
             if total_res_grid < RESIDUAL_THRESHOLD:
@@ -620,7 +635,8 @@ def solve_betadelta_pure(
 
             if np.isfinite(total_res_lbfgsb):
                 candidates.append((
-                    beta_lbfgsb, delta_lbfgsb, total_res_lbfgsb, 'lbfgsb', iter_lbfgsb
+                    beta_lbfgsb, delta_lbfgsb, total_res_lbfgsb, 'lbfgsb', iter_lbfgsb,
+                    None
                 ))
                 lbfgsb_result = (beta_lbfgsb, delta_lbfgsb, total_res_lbfgsb, iter_lbfgsb)
 
@@ -655,7 +671,8 @@ def solve_betadelta_pure(
 
     # Sort by residual and pick best
     candidates.sort(key=lambda x: x[2])
-    best_beta, best_delta, best_residual, best_method, best_iterations = candidates[0]
+    (best_beta, best_delta, best_residual, best_method, best_iterations,
+     best_props) = candidates[0]
 
     # Determine convergence and method description
     converged = best_residual < RESIDUAL_THRESHOLD
@@ -668,8 +685,12 @@ def solve_betadelta_pure(
         # Neither converged, picked best from all candidates
         method_desc = f'best({best_method})'
 
-    # Get final detailed residuals for best result
-    details = get_residual_detailed(best_beta, best_delta, params)
+    # Get final detailed residuals for best result. Passing the winning
+    # candidate's already-solved bubble props skips a redundant (deterministic,
+    # identical) bubble-structure solve; only the L-BFGS-B path (props=None)
+    # still re-solves here.
+    details = get_residual_detailed(best_beta, best_delta, params,
+                                    bubble_props=best_props)
 
     logger.debug(
         f"Beta-delta result ({method_desc}): β={best_beta:.4f}, δ={best_delta:.4f}, "
@@ -700,11 +721,21 @@ def _solve_grid(
     beta_guess: float,
     delta_guess: float,
     params,
-) -> Tuple[float, float, int]:
+    input_residual: Optional[float] = None,
+    input_props: Optional[BubbleProperties] = None,
+) -> Tuple[float, float, Optional[BubbleProperties], float, int]:
     """
     Grid search solver using BubbleParamsView (no deepcopy).
 
     Searches a 5x5 grid around the guess, matching original get_betadelta.py.
+
+    The caller has already evaluated the input guess itself (the grid center),
+    so that point is skipped here and its residual/props are passed in via
+    ``input_residual``/``input_props`` to seed the best-so-far. Each evaluated
+    point's residual and bubble properties are kept (only the current best is
+    held), so the caller never needs to re-solve the winning point.
+
+    Returns ``(best_beta, best_delta, best_props, best_residual, n_evals)``.
     """
     # Generate grid around guess
     beta_min = max(BETA_MIN, beta_guess - GRID_EPSILON)
@@ -715,23 +746,36 @@ def _solve_grid(
     beta_range = np.linspace(beta_min, beta_max, GRID_SIZE)
     delta_range = np.linspace(delta_min, delta_max, GRID_SIZE)
 
-    # Evaluate all grid points
-    best_residual = float('inf')
+    # Evaluate grid points, seeded with the already-evaluated input guess
+    best_residual = float('inf') if input_residual is None else input_residual
     best_beta, best_delta = beta_guess, delta_guess
+    best_props = input_props
+    n_evals = 0
 
     for beta in beta_range:
         for delta in delta_range:
+            # The exact input guess was already evaluated by the caller — skip
+            # it. (Tolerance because linspace's midpoint can differ from the
+            # guess in the last ulp. For a guess near — but not at — a clamped
+            # bound, the shifted grid no longer contains the guess, no point
+            # matches, and the full grid runs.)
+            if abs(beta - beta_guess) < 1e-12 and abs(delta - delta_guess) < 1e-12:
+                continue
             try:
-                Edot_res, T_res, _ = get_residual_pure(beta, delta, params)
+                Edot_res, T_res, props = get_residual_pure(
+                    beta, delta, params, return_bubble_props=True
+                )
+                n_evals += 1
                 residual = Edot_res**2 + T_res**2
                 if residual < best_residual:
                     best_residual = residual
                     best_beta, best_delta = beta, delta
+                    best_props = props
             except Exception as e:
                 logger.warning(f"Grid point ({beta:.3f}, {delta:.3f}) failed: {e}")
                 continue
 
-    return best_beta, best_delta, GRID_SIZE * GRID_SIZE
+    return best_beta, best_delta, best_props, best_residual, n_evals
 
 
 def _solve_lbfgsb(
