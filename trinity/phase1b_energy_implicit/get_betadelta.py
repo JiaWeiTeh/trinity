@@ -97,15 +97,24 @@ class BubbleParamsView:
 
     Since get_bubbleproperties_pure() only READS params (never writes),
     this is safe and provides ~25-100x speedup per residual evaluation.
+
+    ``dMdt_guess``, when given, additionally overrides ``bubble_dMdt`` — the
+    seed from which get_bubbleproperties_pure starts its fsolve for the mass
+    flux. Without it, every evaluation in a segment starts from the previous
+    segment's accepted dMdt; threading the last solved value through a grid
+    scan starts each fsolve near its root instead.
     """
     __slots__ = ('_params', '_overrides')
 
-    def __init__(self, params, beta: float, delta: float):
+    def __init__(self, params, beta: float, delta: float,
+                 dMdt_guess: Optional[float] = None):
         self._params = params
         self._overrides = {
             'cool_beta': _MockValue(beta),
             'cool_delta': _MockValue(delta),
         }
+        if dMdt_guess is not None:
+            self._overrides['bubble_dMdt'] = _MockValue(dMdt_guess)
 
     def __getitem__(self, key: str):
         if key in self._overrides:
@@ -309,6 +318,21 @@ def compute_R1_Pb(
     return R1, Pb
 
 
+def _usable_dMdt(props: Optional[BubbleProperties]) -> Optional[float]:
+    """The solved dMdt from a bubble result, or None when unusable.
+
+    A warm-start seed must come from a successful solve and be finite and
+    positive — anything else (failed point, fsolve stranded on the penalty
+    plateau returning garbage) must not poison the seed chain.
+    """
+    if props is None:
+        return None
+    dMdt = props.bubble_dMdt
+    if np.isfinite(dMdt) and dMdt > 0:
+        return float(dMdt)
+    return None
+
+
 # =============================================================================
 # Pure Residual Calculation
 # =============================================================================
@@ -318,6 +342,7 @@ def get_residual_pure(
     delta: float,
     params,
     return_bubble_props: bool = False,
+    dMdt_guess: Optional[float] = None,
 ) -> Tuple[float, float, Optional[BubbleProperties]]:
     """
     Calculate residuals for beta and delta without mutating params.
@@ -336,6 +361,9 @@ def get_residual_pure(
         Parameter dictionary (read-only)
     return_bubble_props : bool
         If True, also return the BubbleProperties
+    dMdt_guess : float, optional
+        Warm-start seed for the bubble dMdt fsolve (see BubbleParamsView).
+        None keeps the seed from params (previous segment's accepted value).
 
     Returns
     -------
@@ -348,7 +376,7 @@ def get_residual_pure(
     """
     # Create a lightweight view that overrides beta/delta without copying
     # This is ~25-100x faster than copy.deepcopy(params)
-    params_view = BubbleParamsView(params, beta, delta)
+    params_view = BubbleParamsView(params, beta, delta, dMdt_guess=dMdt_guess)
 
     # Calculate bubble properties
     try:
@@ -735,6 +763,11 @@ def _solve_grid(
     point's residual and bubble properties are kept (only the current best is
     held), so the caller never needs to re-solve the winning point.
 
+    The dMdt solved at each successful point warm-starts the next point's
+    fsolve (adjacent grid points differ by at most GRID_EPSILON in beta/delta,
+    so their dMdt roots are close); the first point is seeded from
+    ``input_props``. Failed points leave the seed untouched.
+
     Returns ``(best_beta, best_delta, best_props, best_residual, n_evals)``.
     """
     # Generate grid around guess
@@ -750,6 +783,7 @@ def _solve_grid(
     best_residual = float('inf') if input_residual is None else input_residual
     best_beta, best_delta = beta_guess, delta_guess
     best_props = input_props
+    last_dMdt = _usable_dMdt(input_props)
     n_evals = 0
 
     for beta in beta_range:
@@ -763,9 +797,13 @@ def _solve_grid(
                 continue
             try:
                 Edot_res, T_res, props = get_residual_pure(
-                    beta, delta, params, return_bubble_props=True
+                    beta, delta, params, return_bubble_props=True,
+                    dMdt_guess=last_dMdt
                 )
                 n_evals += 1
+                solved_dMdt = _usable_dMdt(props)
+                if solved_dMdt is not None:
+                    last_dMdt = solved_dMdt
                 residual = Edot_res**2 + T_res**2
                 if residual < best_residual:
                     best_residual = residual

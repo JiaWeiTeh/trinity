@@ -80,15 +80,29 @@ class ResidualRecorder:
 
     landscape(beta, delta) -> total residual; the recorder splits it as
     Edot_res = sqrt(residual), T_res = 0 so Edot**2 + T**2 reproduces it.
+
+    Each successful call returns props with dMdt = 100 + <call number>, and
+    the dMdt_guess seen by every call is recorded, so warm-start threading
+    is observable. ``fail_at`` marks (beta, delta) points (1e-9 tolerance)
+    that return the failure contract (100, 100, None).
     """
 
-    def __init__(self, landscape):
+    def __init__(self, landscape, fail_at=()):
         self.landscape = landscape
-        self.calls = []  # (beta, delta) in evaluation order
+        self.fail_at = fail_at
+        self.calls = []        # (beta, delta) in evaluation order
+        self.dmdt_seeds = []   # dMdt_guess kwarg per call, parallel to calls
+
+    def _fails(self, beta, delta):
+        return any(abs(beta - b) < 1e-9 and abs(delta - d) < 1e-9
+                   for b, d in self.fail_at)
 
     def __call__(self, beta, delta, params, return_bubble_props=False,
-                 **kwargs):
+                 dMdt_guess=None, **kwargs):
         self.calls.append((beta, delta))
+        self.dmdt_seeds.append(dMdt_guess)
+        if self._fails(beta, delta):
+            return 100.0, 100.0, None
         total = self.landscape(beta, delta)
         props = make_props(dMdt=100.0 + len(self.calls))
         if return_bubble_props:
@@ -233,3 +247,75 @@ def test_detailed_reuses_supplied_props(monkeypatch):
 
     assert details.T_bubble == 2e6
     assert details.bubble_props is props
+
+
+# =============================================================================
+# dMdt warm-start threading
+# =============================================================================
+
+def test_view_dmdt_override():
+    """BubbleParamsView returns the dMdt override when given, and falls
+    through to params when not."""
+    params = {'bubble_dMdt': SimpleNamespace(value=7.0)}
+
+    view = GBD.BubbleParamsView(params, 0.5, -0.5, dMdt_guess=3.0)
+    assert view['bubble_dMdt'].value == 3.0
+
+    view_cold = GBD.BubbleParamsView(params, 0.5, -0.5)
+    assert view_cold['bubble_dMdt'].value == 7.0
+
+
+def test_warmstart_threads_dmdt_through_scan(monkeypatch):
+    """Each grid point's fsolve is seeded with the previous successful
+    point's solved dMdt; the first point is seeded from the input props."""
+    rec = ResidualRecorder(lambda b, d: 1.0)
+    monkeypatch.setattr(GBD, "get_residual_pure", rec)
+
+    GBD._solve_grid(0.5, -0.5, params=None,
+                    input_residual=2.0, input_props=make_props(dMdt=42.0))
+
+    # First scanned point seeded from input props; call k seeded with the
+    # dMdt solved at call k-1 (recorder returns dMdt = 100 + call number).
+    assert rec.dmdt_seeds[0] == 42.0
+    for k in range(1, len(rec.dmdt_seeds)):
+        assert rec.dmdt_seeds[k] == 100.0 + k
+
+
+def test_warmstart_failed_point_keeps_previous_seed(monkeypatch):
+    """A failed point (props=None) must not advance the warm-start seed."""
+    # Make the second scanned point fail: row-major order from the corner —
+    # first points are (0.48, -0.52) then (0.48, -0.51).
+    rec = ResidualRecorder(lambda b, d: 1.0, fail_at=[(0.48, -0.51)])
+    monkeypatch.setattr(GBD, "get_residual_pure", rec)
+
+    GBD._solve_grid(0.5, -0.5, params=None,
+                    input_residual=2.0, input_props=make_props(dMdt=42.0))
+
+    # Call 0 succeeds (dMdt -> 101), call 1 fails, call 2 must still be
+    # seeded with 101, after which the chain resumes.
+    assert rec.dmdt_seeds[0] == 42.0
+    assert rec.dmdt_seeds[1] == 101.0
+    assert rec.dmdt_seeds[2] == 101.0
+    assert rec.dmdt_seeds[3] == 103.0
+
+
+def test_warmstart_no_input_props_starts_cold(monkeypatch):
+    """Without usable input props the first point runs cold (None seed) and
+    threading starts from the first success."""
+    rec = ResidualRecorder(lambda b, d: 1.0)
+    monkeypatch.setattr(GBD, "get_residual_pure", rec)
+
+    GBD._solve_grid(0.5, -0.5, params=None,
+                    input_residual=None, input_props=None)
+
+    assert rec.dmdt_seeds[0] is None
+    assert rec.dmdt_seeds[1] == 101.0
+
+
+def test_usable_dmdt_guards():
+    """Only finite, positive dMdt from a successful solve is usable."""
+    assert GBD._usable_dMdt(None) is None
+    assert GBD._usable_dMdt(make_props(dMdt=np.nan)) is None
+    assert GBD._usable_dMdt(make_props(dMdt=-5.0)) is None
+    assert GBD._usable_dMdt(make_props(dMdt=0.0)) is None
+    assert GBD._usable_dMdt(make_props(dMdt=13.0)) == 13.0
