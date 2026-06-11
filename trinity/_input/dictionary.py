@@ -56,6 +56,23 @@ import numpy as np
 
 
 # =============================================================================
+# Profile arrays serialized per-snapshot by _clean_for_snapshot()
+# =============================================================================
+# Raw source keys that the special-case branches of _clean_for_snapshot()
+# transform into simplified ``log_*`` / ``*_r_arr`` snapshot entries.
+# Several of them carry ``metadata_exclude`` in the ParamSpec registry
+# (their empty phase-0 placeholders must not land in metadata.json) —
+# the snapshot writer must NEVER strip these, or their data is silently
+# lost from dictionary.jsonl (regression fixed in hotfix/metadata-excluding).
+SNAPSHOT_PROFILE_ARRAY_KEYS: frozenset = frozenset({
+    "bubble_r_arr", "bubble_T_arr", "bubble_n_arr",
+    "bubble_dTdr_arr", "bubble_v_arr",
+    "shell_grav_r", "shell_grav_force_m",
+    "shell_r_arr", "shell_n_arr",
+})
+
+
+# =============================================================================
 # JSON helper: encode numpy types
 # =============================================================================
 class NpEncoder(json.JSONEncoder):
@@ -571,16 +588,22 @@ class DescribedDict(dict):
         # Run-constants are written to metadata.json once per run
         # and never appear in per-snapshot dicts.  ``DROPPED_IN_V2``
         # keys are also stripped (they are reconstructed on demand by
-        # the reader from other run-constants), as are
-        # ``METADATA_EXCLUDE`` keys (paths, function tables, empty
-        # placeholders that have no place in either file).  Imported
-        # lazily to keep dictionary.py independent of the _output
-        # package at import time.
+        # the reader from other run-constants).  ``METADATA_EXCLUDE``
+        # keys (paths, function tables) are stripped defensively —
+        # normally ``exclude_from_snapshot`` already covers them — but
+        # the profile arrays in that set must survive: their flag only
+        # keeps the empty phase-0 placeholders out of metadata.json,
+        # while their real data is written to every snapshot by the
+        # special-case branches below (in simplified ``log_*`` /
+        # ``*_r_arr`` form).  Imported lazily to keep dictionary.py
+        # independent of the _output package at import time.
         from trinity._output.run_constants import (
             RUN_CONST_KEYS, METADATA_EXCLUDE, DROPPED_IN_V2,
         )
         run_const_keys = (
-            frozenset(RUN_CONST_KEYS) | METADATA_EXCLUDE | DROPPED_IN_V2
+            frozenset(RUN_CONST_KEYS)
+            | (METADATA_EXCLUDE - SNAPSHOT_PROFILE_ARRAY_KEYS)
+            | DROPPED_IN_V2
         )
 
         # Reset the per-snapshot R² log counter so each snapshot in the
@@ -604,7 +627,6 @@ class DescribedDict(dict):
                 continue
             # Skip:
             #   * RUN_CONST_KEYS   → live in metadata.json (once per run)
-            #   * METADATA_EXCLUDE → not JSON-serializable (paths, tables)
             #   * DROPPED_IN_V2    → reconstructible from RUN_CONST_KEYS
             if key in run_const_keys:
                 continue

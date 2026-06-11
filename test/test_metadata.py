@@ -25,7 +25,7 @@ import pytest
 from trinity._input.dictionary import DescribedDict, DescribedItem
 from trinity._output.run_constants import (
     METADATA_EXCLUDE, METADATA_FILENAME, METADATA_VERSION,
-    RUN_CONST_KEYS, DROPPED_IN_V2,
+    RUN_CONST_KEYS, DROPPED_IN_V2, FINAL_STATE_EXCLUDE_ARRAYS,
 )
 from trinity._output.trinity_reader import TrinityOutput
 
@@ -204,6 +204,61 @@ class TestWriter:
             # Varying keys must still be there
             assert "t_now" in snap
             assert "R2" in snap
+
+    def test_profile_arrays_written_to_snapshots(
+        self, tmp_path, disable_crash_handlers,
+    ):
+        """Regression: ``metadata_exclude`` keeps the raw profile-array
+        placeholders out of metadata.json, but must NOT strip them from
+        the snapshot stream — their simplified ``log_*`` / ``*_r_arr``
+        forms are the stream's payload (cf. FINAL_STATE_EXCLUDE_ARRAYS,
+        which excludes them from final_state precisely because the last
+        dictionary.jsonl line is the full final-state profile)."""
+        d = _make_params(tmp_path)
+        r = np.linspace(0.1, 1.0, 50)
+        d["bubble_r_arr"] = DescribedItem(r)
+        d["bubble_T_arr"] = DescribedItem(np.linspace(1e6, 1e4, 50))
+        d["bubble_n_arr"] = DescribedItem(np.linspace(1.0, 100.0, 50))
+        d["bubble_dTdr_arr"] = DescribedItem(np.linspace(-1e6, -1e4, 50))
+        d["bubble_v_arr"] = DescribedItem(np.linspace(10.0, 0.0, 50))
+        d["shell_r_arr"] = DescribedItem(r)
+        d["shell_n_arr"] = DescribedItem(np.linspace(1.0, 100.0, 50))
+        d["shell_grav_r"] = DescribedItem(r)
+        d["shell_grav_force_m"] = DescribedItem(np.linspace(-3.0, -0.5, 50))
+        _save_snapshot_with(d, t_now=0.0, R2=0.1)
+        d.flush()
+
+        with open(tmp_path / "dictionary.jsonl") as f:
+            snap = json.loads(f.readline())
+
+        # The simplified profile entries must all be present.
+        for key in (
+            "log_bubble_T_arr", "bubble_T_arr_r_arr",
+            "log_bubble_n_arr", "bubble_n_arr_r_arr",
+            "log_bubble_dTdr_arr", "bubble_dTdr_arr_r_arr",
+            "bubble_v_arr", "bubble_v_arr_r_arr",
+            "log_shell_n_arr", "shell_r_arr",
+        ):
+            assert key in snap, f"{key} missing from snapshot"
+            assert len(snap[key]) > 0, f"{key} written empty"
+
+        # Raw arrays never appear under their original names ...
+        for key in ("bubble_T_arr", "bubble_n_arr", "bubble_dTdr_arr",
+                    "bubble_r_arr", "shell_n_arr"):
+            assert key not in snap
+        # ... and unserializable metadata-excluded keys (paths,
+        # function tables) are still stripped defensively.
+        assert "path2output" not in snap
+
+        # Schema contract: FINAL_STATE_EXCLUDE_ARRAYS omits these keys
+        # from final_state on the grounds that the last dictionary.jsonl
+        # line carries the full final-state profile — so every key it
+        # names must actually appear in the stream.  Deriving from the
+        # schema keeps newly added profile arrays covered automatically.
+        missing = FINAL_STATE_EXCLUDE_ARRAYS - set(snap)
+        assert not missing, (
+            f"snapshot stream is missing schema-contract keys: {missing}"
+        )
 
     def test_metadata_json_overwritten_on_fresh_run(
         self, tmp_path, disable_crash_handlers,
