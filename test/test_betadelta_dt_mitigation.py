@@ -79,6 +79,33 @@ def test_dt_floor_and_cap_respected():
     assert cap == RIP.DT_SEGMENT_MAX
 
 
+def test_mitigation_disengages_beyond_max_streak():
+    # A long streak means the root is unreachable; dt policy reverts to
+    # standard adaptive stepping (growth allowed, no forced shrink).
+    over = RIP.BETADELTA_DT_SHRINK_MAX_STREAK + 1
+    grown = RIP.next_dt_segment(DT, max_dex_change=0.01, unconverged_streak=over)
+    assert grown == pytest.approx(DT * RIP.ADAPTIVE_FACTOR)
+    shrunk = RIP.next_dt_segment(DT, max_dex_change=0.1, unconverged_streak=over)
+    assert shrunk == pytest.approx(DT / RIP.ADAPTIVE_FACTOR)  # single, not compound
+
+
+def test_mitigation_still_active_at_exactly_max_streak():
+    at_cap = RIP.BETADELTA_DT_SHRINK_MAX_STREAK
+    out = RIP.next_dt_segment(DT, max_dex_change=0.01, unconverged_streak=at_cap)
+    assert out == pytest.approx(DT / RIP.ADAPTIVE_FACTOR)
+
+
+def test_warns_once_when_mitigation_disengages(caplog):
+    cap = RIP.BETADELTA_DT_SHRINK_MAX_STREAK
+    with caplog.at_level(logging.WARNING, logger=RIP.logger.name):
+        streak = RIP.update_unconverged_streak(cap, False, 1.0, 0.5)
+        assert streak == cap + 1
+        assert "disengaged" in caplog.text
+        n_warn = len(caplog.records)
+        streak = RIP.update_unconverged_streak(streak, False, 1.0, 0.5)
+        assert len(caplog.records) == n_warn  # no re-warn past the transition
+
+
 # =============================================================================
 # Persistence registration (mirrors residual_deltaT end-to-end)
 # =============================================================================

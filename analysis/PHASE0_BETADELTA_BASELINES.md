@@ -142,12 +142,19 @@ are attributable behavior changes, not drift.
   outside the box. Same floor-dt cost blow-up.
 
 **D1 wall-time budget (+5%): catastrophically exceeded on pathological
-configs (≳4–10×), inherent to the dt mitigation as designed.** Proposed
-refinement (not yet implemented): cap the forced shrink at a streak
-length of ~10 — a long streak means the root is unreachable (outside
-bounds or outrunning the cap), where floor-dt multiplies cost without
-buying correctness; revert to standard adaptive dt and keep logging. The
-real remedy for those stretches is the Phase-2/3 solver change.
+configs (≳4–10×), inherent to the dt mitigation as first designed.** The
+worst field case: the extended Phase-1 heavy-config run ground at the dt
+floor in its β=1-pinned stretch at ~1e-4 Myr/segment — a ~4-day projected
+completion. Refinement implemented in response
+(`BETADELTA_DT_SHRINK_MAX_STREAK = 10`): beyond 10 consecutive
+unconverged segments the forced shrink and growth suppression disengage
+and standard adaptive stepping resumes, with a WARNING at the transition
+— a long streak means the root is unreachable (outside bounds or
+outrunning the grid window even at the floor), where floor-dt multiplies
+cost without buying correctness. The real remedy for those stretches is
+the Phase-2/3 solver change. Both extended Phase-1 runs
+(`p1_mock4e3_ext`, `p1_cloud1e6_ext`) run with the cap after a container
+restart forced their relaunch — the cap's field test.
 
 ## Caveats
 

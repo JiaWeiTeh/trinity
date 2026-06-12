@@ -119,6 +119,15 @@ ADAPTIVE_FACTOR = 10**0.1     # Factor to increase/decrease DT_SEGMENT (~1.26)
 # Consecutive unconverged beta-delta solves before a WARNING is logged
 BETADELTA_UNCONVERGED_WARN_STREAK = 3
 
+# Streak length beyond which the dt mitigation disengages. A short streak
+# means the solver is chasing a nearby root and shorter segments help it
+# catch up; a long streak means the root is unreachable (outside the hard
+# bounds, or outrunning the grid window even at DT_SEGMENT_MIN), where
+# floor-dt only multiplies segment count without buying correctness
+# (field case: a 1e6 Msun run pinned at beta=1 ground at ~1e-4 Myr/segment
+# with a ~4-day projected phase completion).
+BETADELTA_DT_SHRINK_MAX_STREAK = 10
+
 # Velocity-based proactive timestep control (for rapid collapse)
 # When |v2| exceeds threshold, reduce dt_segment to ensure fine temporal resolution
 VELOCITY_THRESHOLD_COLLAPSE = 50.0   # pc/Myr - proactively reduce step when |v2| > this
@@ -225,6 +234,12 @@ def update_unconverged_streak(streak: int, converged: bool, t_now: float,
             f"(t={t_now:.6e} Myr, accepted residual={total_residual:.3e}); "
             f"dt_segment growth suppressed until convergence"
         )
+    elif streak == BETADELTA_DT_SHRINK_MAX_STREAK + 1:
+        logger.warning(
+            f"beta-delta solver unconverged for {streak} consecutive segments "
+            f"(t={t_now:.6e} Myr): dt mitigation disengaged — root apparently "
+            f"unreachable; resuming standard adaptive stepping"
+        )
     return streak
 
 
@@ -235,24 +250,28 @@ def next_dt_segment(dt_segment: float, max_dex_change: float,
 
     Base policy (unchanged from the original inline block): shrink on a
     large monitored-parameter change, grow on a small one. Guard: while the
-    beta-delta solver is unconverged (streak > 0), growth is suppressed and
-    dt shrinks instead — an unconverged solver lags the root, which makes
-    parameter changes *look* small precisely when the next segment must
-    stay short to bound the damage of another bad solve.
+    beta-delta solver is unconverged (0 < streak <= the cap), growth is
+    suppressed and dt shrinks instead — an unconverged solver lags the
+    root, which makes parameter changes *look* small precisely when the
+    next segment must stay short to bound the damage of another bad solve.
+    Beyond BETADELTA_DT_SHRINK_MAX_STREAK the guard disengages and standard
+    adaptive stepping resumes: a long streak means the root is unreachable
+    and floor-dt would only multiply cost (see the constant's comment).
     """
     dt_old = dt_segment
+    mitigating = 0 < unconverged_streak <= BETADELTA_DT_SHRINK_MAX_STREAK
     if max_dex_change > ADAPTIVE_THRESHOLD_DEX:
         # Large change: decrease dt_segment
         dt_segment = max(dt_segment / ADAPTIVE_FACTOR, DT_SEGMENT_MIN)
         logger.debug(f"Adaptive: max_dex={max_dex_change:.3f} > {ADAPTIVE_THRESHOLD_DEX}, "
                      f"dt: {dt_old:.3e} -> {dt_segment:.3e}")
-    elif unconverged_streak == 0:
+    elif not mitigating:
         # Small change: increase dt_segment
         dt_segment = min(dt_segment * ADAPTIVE_FACTOR, DT_SEGMENT_MAX)
         if dt_segment != dt_old:
             logger.debug(f"Adaptive: max_dex={max_dex_change:.3f} < {ADAPTIVE_THRESHOLD_DEX}, "
                          f"dt: {dt_old:.3e} -> {dt_segment:.3e}")
-    if unconverged_streak > 0:
+    if mitigating:
         dt_pre_guard = dt_segment
         dt_segment = max(dt_segment / ADAPTIVE_FACTOR, DT_SEGMENT_MIN)
         logger.debug(f"beta-delta unconverged (streak {unconverged_streak}): "
