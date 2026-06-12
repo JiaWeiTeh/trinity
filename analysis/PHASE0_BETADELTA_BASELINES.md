@@ -1,0 +1,122 @@
+# Phase 0 results: beta–delta solver baselines (four configs)
+
+> ⚠️ **This document may be out of date — verify before trusting it.** It is a
+> point-in-time analysis/audit, not a maintained spec; the code moves faster
+> than these notes (paths, line numbers, and "what shipped" status drift).
+> **Any agent or person reading this: treat it as unverified. Flag that it may
+> be stale and re-check each claim, snippet, and line reference against the
+> current source before relying on it.**
+
+Companion to `docs/dev/BETADELTA_HYBR_PLAN.md` (plan v2). Baselines ran the
+production solver at worktree commit `1eda451` (code identical to main;
+docs-only commits after the merge base). Environment: Python 3.11,
+numpy 1.26.4, scipy 1.17.1, astropy 7.2.0. Harvest scripts:
+`scratch/phase0/harvest.py`, `scratch/phase0/predictor_test.py` (not
+shipped). Convergence criterion throughout: legacy f-metric total
+(`residual_betaEdot² + residual_deltaT²`) < 1e-4 at the accepted point.
+
+## Configs
+
+All four in `scratch/phase0/*.param` (uncommitted; contents inline):
+
+| run | mCloud | sfe | profile | nCore | rCore | nISM | stop_t |
+|---|---|---|---|---|---|---|---|
+| `base_mock4e3` | 3966 | 0.0085 | flat (α=0) | 5e2 | — | 0.1 | 0.3 |
+| `base_simple1e5` | 1e5 | 0.3 | flat (α=0) | (default) | — | (default) | 0.3 |
+| `base_cloud1e6` | 1e6 | 0.01 | flat (α=0) | 1e3 | — | 10 | 1.0 |
+| `base_cloudPL` | 1e6 | 0.01 | α_ρ = −2 | 1e5 | 1 pc | 10 | 1.0 |
+
+`base_mock4e3` replicates the committed sample run (`4e3_sfe001_n5e2_PL0`)
+and sits just below the supported low-mass corner (maintainer: mCloud ≳ 1e4,
+sfe ~ 0.01). `simple_cluster` and the 1e6 configs are worked examples;
+`base_cloudPL` uses the worked PL example with a physically typical 1 pc
+core (maintainer guidance) and core density raised to 1e5 cm⁻³ to pass the
+`rCloud_max` plausibility validation (rCloud ≈ 23 pc).
+
+## Headline table (implicit phase, per accepted segment)
+
+| run | segs | converged | β at ±0.02 grid edge | hard-bound hits | sign-wrong Ėb segs | residual median/max |
+|---|---|---|---|---|---|---|
+| `base_mock4e3` | 50 | **0%** | 98% | δ=0: 12 | **16** | 1.2 / 3.3 |
+| `base_simple1e5` | 61 | 52.5% | 42% | 0 | **10** | 9.8e-5 / 3.3 |
+| `base_cloud1e6` | 91 | **93.4%** | 7.8% | 0 | 0 | 2.9e-5 / 4.5e-4 |
+| `base_cloudPL` | 56 | **0%** | 73% | **β=1: 14 (10 consecutive)**, δ=0: 5, δ=−1: 1 | 8 | 0.42 / 8.9 |
+
+Phase-resolved convergence for `base_simple1e5`: first third 25%, middle
+third **100%**, last third 33% — two distinct failure episodes (post-handoff
+chase; pre-transition runaway) bracketing a settled regime where the grid
+solver is flawless.
+
+## Findings
+
+1. **Gate G0: PASS — Phases 2–4 proceed.** Material non-convergence on a
+   worked example (47.5% of `simple_cluster` segments) and total failure on
+   two configs; cap/bound saturation on three of four.
+2. **Mechanism, flat profiles: the ±0.02/segment drift cap.** The mock
+   chase rail-rides 98% of steps for the entire phase (β 0.76→0.24,
+   residuals → 3.3); it nearly converges around segment 20 (residual
+   2.1e-2) but never crosses threshold before the root accelerates away.
+   δ=0 pinning is transient (12/50 segments) — the corner the capped chase
+   gets clipped against, not a root exclusion.
+3. **Mechanism, steep profiles: the hard bounds.** `base_cloudPL` pins
+   β at BETA_MAX = 1 for 10 consecutive segments right after the shell
+   exits the 1 pc core, where the adiabatic self-similar root
+   3α̃−1 crosses 1 (reaching 1.42 by phase end, cooling pushing higher).
+   0% convergence outside the core; terminal unwind to β = 0, δ = −0.96
+   (touching DELTA_MIN). The box excludes the root; the prediction
+   β_adia = 3·(3/(5+α_ρ))−1 > 1 for α_ρ < −2/3 is confirmed in production.
+4. **The legacy f-metric pole is NOT operative anywhere.**
+   |Ėb_from_β| ≥ 0.14·Lmech in every segment of every run; zero
+   zero-crossings. Recomputing the g-metric offline leaves every
+   convergence rate unchanged, and at the mock's accepted points g grows
+   to 4.5 — the failures are real distance from the root, not metric
+   artifacts. The metric swap remains justified as hygiene (pole-free,
+   denominators per-segment constants), not as a fix.
+5. **Production integrates wrong-signed Ėb on affected configs.** In the
+   late phase the energy-balance branch goes negative while the β-branch
+   (which the integrator uses) stays positive: 16/50 mock segments,
+   10/61 simple_cluster segments, 8/56 cloudPL segments. E_b consequently
+   rises monotonically to the implicit→transition boundary in all four
+   runs instead of peaking inside the phase. **Paper-I caveat material**:
+   published implicit-phase E_b(t) tracks for low-mass and steep-profile
+   configs integrate clamped, lagged β with sign-wrong Ėb stretches.
+6. **Analytic warm-start predictor and tiered 1-D solver: rejected.**
+   Tested offline (`predictor_test.py`): on converged segments the
+   A12-inverse predictor errs by median |Δβ| 0.036 / |Δδ| 0.067 vs ~0 for
+   the previous-root warm start; the consistency relation
+   δ = (2/7)(2α̃−β−1) misses solved δ by 0.05–0.14 even where the solver
+   converges. Open: behavior at SB99 luminosity jumps (none in the data).
+7. **Cost baseline (bounded, not exact** — production does not persist
+   per-segment evaluation counts): an unconverged segment pays the full
+   5×5 grid (24 evaluations + 1 input check); a converged-input segment
+   short-circuits at 1. Convergence rates above therefore bound the
+   short-circuit rate: ~0% on mock/cloudPL (every segment pays full
+   price), ≤93% on cloud1e6. Exact counts come from the Phase-2 arms.
+
+## Phase 1 drift check (D1) — status
+
+Phase-1 safety fixes (commit `3496b8e`) vs baselines, same configs:
+
+- `cloud1e6`: **PASS.** Energy phase (isolates the R1 bracket change):
+  max relative deviation 6.6e-9 in R2/v2/Eb/R1 — brentq-tolerance noise.
+  Implicit phase: deviations ≤ 3.4e-3, all attributable to the intentional
+  dt mitigation, which activates from segment 0 (the handoff segment is
+  unconverged on every config) — note this means the strict <1e-5 implicit
+  budget effectively gates only the energy phase. End state at t=1.0 Myr:
+  ΔEb 0.17%, ΔR2 0.012%. Convergence improved 93.4% → **98.9%** (the dt
+  shrink slows root drift per segment). Zero R1 failures/warnings; new
+  persistence keys present.
+- `mock4e3`, `simple1e5`, `cloudPL`: reruns in progress (first attempts
+  killed by a container restart).
+
+## Caveats
+
+- `base_cloud1e6` hit stop_t = 1.0 Myr still inside the implicit phase
+  (E_b rising, |Ėb| ≥ 0.19·Lmech): the healthy config never approaches the
+  E_b peak, so the pole-at-peak hazard is constrained only by the mock and
+  cloudPL runs (where the answer was: branches disagree long before any
+  pole).
+- Wall-time comparisons across runs are unreliable here: matched log
+  markers showed a 1.27× host-speed difference between identical runs at
+  different times of day (shared cloud infrastructure). All cost gates in
+  later phases should use evaluation counts, not wall time, where possible.
