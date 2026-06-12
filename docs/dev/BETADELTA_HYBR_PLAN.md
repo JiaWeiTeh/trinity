@@ -116,6 +116,22 @@ the tree. Work branch: `bugfix/beta-delta-solver`.
 
 ## Phase 0 — Baseline measurement (running; no trinity/ changes)
 
+**Coverage protocol (applies to every measurement run in Phases 0/2/4):**
+a run counts for solver assessment only if its implicit phase terminates
+naturally on cooling balance AND the run continues through the end of the
+transition phase. `stop_t` is a safety net set ≥ 2× the extrapolated
+cooling-balance time, never the terminator: the defects concentrate in the
+late implicit phase (simple_cluster: 100% converged mid-phase, 33% in the
+final third), and the transition phase consumes the *last implicit-phase
+accepted (β, δ)* without re-solving (`run_transition_phase.py` energy
+balance; `bubble_luminosity.py` structure ODE) — so a censored implicit
+phase both hides the worst regime and hands contaminated values to
+transition. `base_cloud1e6` was right-censored at stop_t = 1.0 Myr
+(balance ratio 0.41 and falling slowly; linear/exponential extrapolations
+reach the 0.05 threshold at ~1.9/~4.2 Myr, with the WR ramp delaying it
+further): an extended rerun at stop_t = 6 Myr is in progress, which also
+brackets the WR/SN luminosity jumps the later phases need.
+
 Finish the three baseline runs, **plus a fourth steep-profile config**
 (densPL_alpha = −2, mid-mass) once a worker frees up — the only baseline
 that can test whether the hard β-bound excludes the self-similar root

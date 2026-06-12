@@ -112,10 +112,18 @@ Phase-1 safety fixes (commit `3496b8e`) vs baselines, same configs:
 ## Caveats
 
 - `base_cloud1e6` hit stop_t = 1.0 Myr still inside the implicit phase
-  (E_b rising, |Ėb| ≥ 0.19·Lmech): the healthy config never approaches the
-  E_b peak, so the pole-at-peak hazard is constrained only by the mock and
-  cloudPL runs (where the answer was: branches disagree long before any
-  pole).
+  (E_b rising, |Ėb| ≥ 0.19·Lmech, balance ratio 0.41): the healthy config's
+  row is **right-censored** — it never sampled the late-phase regime where
+  the other configs fail. Extrapolating its own cooling-balance trajectory
+  puts natural phase end at ~1.9 Myr (linear) to ~4.2 Myr (exponential),
+  with the WR ramp delaying it further; an extended rerun
+  (`base_cloud1e6_ext`, stop_t = 6 Myr) is in progress and supersedes this
+  row when complete. Protocol going forward (now in the plan): runs count
+  only if the implicit phase ends naturally on cooling balance and the run
+  continues through transition — the transition phase consumes the last
+  implicit (β, δ) without re-solving, so censored runs both hide the worst
+  regime and mask cross-phase contamination (mock hands transition
+  β=0.24/δ=−0.60; cloudPL hands it β=0.00/δ=−0.96).
 - Wall-time comparisons across runs are unreliable here: matched log
   markers showed a 1.27× host-speed difference between identical runs at
   different times of day (shared cloud infrastructure). All cost gates in
