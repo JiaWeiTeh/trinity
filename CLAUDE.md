@@ -52,6 +52,9 @@ Generated / scratch — not source, do not tidy or treat as ground truth: `outpu
   reformat working code to satisfy style; run the tools. Don't widen the ruff rule set to "clean up."
 - Units are a recurring bug class here. Match the surrounding module's unit conventions; see
   `trinity/_functions/unit_conversions.py` and `test/test_conventional_units.py`.
+- Tests and scratch configs use physically plausible values, not convenient round numbers — e.g.
+  rCore ≈ 1 pc, realistic GMC masses/densities (and check `rCloud_max` plausibility validation
+  passes). Unphysical inputs exercise regimes the code never runs in and hide real regressions.
 
 ## Working rules
 
