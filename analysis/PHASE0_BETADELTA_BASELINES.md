@@ -103,21 +103,51 @@ mass (4e3→1e6) and profile (flat and α_ρ = −2), ends its implicit phase at
    short-circuit rate: ~0% on mock/cloudPL (every segment pays full
    price), ≤93% on cloud1e6. Exact counts come from the Phase-2 arms.
 
-## Phase 1 drift check (D1) — status
+## Phase 1 drift check (D1) — verdicts
 
-Phase-1 safety fixes (commit `3496b8e`) vs baselines, same configs:
+Phase-1 safety fixes (commit `3496b8e`) vs baselines, same configs.
+**Energy phase (isolates the R1 bracket change): strict PASS on all four
+configs** — max relative deviation 6.6e-9 / 2.7e-9 / 1.4e-8 / 1.9e-8
+(cloud1e6 / mock / simple1e5 / cloudPL), pure brentq-tolerance noise;
+zero R1 failures anywhere. The implicit phase is dominated everywhere by
+the *intentional* dt mitigation (active from segment 0 — the handoff
+segment is unconverged on every config), so the strict <1e-5 budget
+effectively gates only the energy phase; implicit-phase differences below
+are attributable behavior changes, not drift.
 
-- `cloud1e6`: **PASS.** Energy phase (isolates the R1 bracket change):
-  max relative deviation 6.6e-9 in R2/v2/Eb/R1 — brentq-tolerance noise.
-  Implicit phase: deviations ≤ 3.4e-3, all attributable to the intentional
-  dt mitigation, which activates from segment 0 (the handoff segment is
-  unconverged on every config) — note this means the strict <1e-5 implicit
-  budget effectively gates only the energy phase. End state at t=1.0 Myr:
-  ΔEb 0.17%, ΔR2 0.012%. Convergence improved 93.4% → **98.9%** (the dt
-  shrink slows root drift per segment). Zero R1 failures/warnings; new
-  persistence keys present.
-- `mock4e3`, `simple1e5`, `cloudPL`: reruns in progress (first attempts
-  killed by a container restart).
+- `cloud1e6` (t ≤ 1.0 window): end-state ΔEb 0.17%, ΔR2 0.012%;
+  convergence 93.4% → **98.9%**. The mitigation helps cleanly on
+  mildly-affected stretches. Extended (6 Myr) Phase-1 rerun in progress;
+  interim at t≈1.8: the better-tracking solver pushes β up until it
+  **pins at BETA_MAX = 1 late in the phase even on this flat profile** —
+  the bound binds wherever the solver tracks well into the cooling-
+  dominated regime, not just on steep profiles.
+- `mock4e3`: **the baseline's phase boundary was a solver artifact.**
+  Phase-1 run: 33.7% converged (baseline 0%), sign-wrong-Ėb segments
+  16 → 0, β ends ~0.9 (baseline rail-artifact 0.24) — and cooling balance
+  is NOT reached by t = 0.3 Myr, vs the baseline's exit at t = 0.101
+  computed from garbage (β, δ). Extrapolated natural end ≈ 1.2 Myr: the
+  implicit→transition time moves by ≳3×, corrupting all downstream
+  evolution. Cost: 181 segments vs 50 for a third of the (old) phase.
+  Extended rerun (stop_t = 3.0) in progress.
+- `simple1e5` (partial, stopped deliberately): **adverse interaction
+  found.** In its late-phase episode the grid cannot converge at any dt,
+  and shrinking dt just gives the broken minimizer more ±0.02 steps per
+  unit time: β unwound to 0.0 (hit BETA_MIN; baseline only fell to 0.68),
+  ~200 segments to cover what the baseline did in ~50, dt pinned at the
+  floor. The mitigation amplifies the parameter-space unwind when no
+  catchable root exists.
+- `cloudPL` (partial, stopped deliberately): β pins at BETA_MAX = 1
+  exactly as in the baseline — no dt policy helps when the root is
+  outside the box. Same floor-dt cost blow-up.
+
+**D1 wall-time budget (+5%): catastrophically exceeded on pathological
+configs (≳4–10×), inherent to the dt mitigation as designed.** Proposed
+refinement (not yet implemented): cap the forced shrink at a streak
+length of ~10 — a long streak means the root is unreachable (outside
+bounds or outrunning the cap), where floor-dt multiplies cost without
+buying correctness; revert to standard adaptive dt and keep logging. The
+real remedy for those stretches is the Phase-2/3 solver change.
 
 ## Caveats
 
