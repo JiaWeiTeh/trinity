@@ -129,7 +129,16 @@ are attributable behavior changes, not drift.
   computed from garbage (β, δ). Extrapolated natural end ≈ 1.2 Myr: the
   implicit→transition time moves by ≳3×, corrupting all downstream
   evolution. Cost: 181 segments vs 50 for a third of the (old) phase.
-  Extended rerun (stop_t = 3.0) in progress.
+  **Capped-mitigation completion of the same config** (the dt-policy
+  trade-off, measured): with the cap the run finishes in ~45 min but the
+  whole phase is one long unconverged streak, the mitigation disengages
+  ~10 segments in, and the baseline pathology returns (0% converged,
+  17 sign-wrong segments, artifact boundary at t = 0.068). Three-way
+  verdict: baseline = fast+wrong; uncapped = slow+partially right;
+  capped = fast+wrong-but-bounded. **No dt policy is both affordable and
+  correct on pathological configs — only the Phase-2/3 solver change
+  fixes them.** The cap stays as the shipping default (bounded cost;
+  short-streak benefit intact on mildly-affected configs).
 - `simple1e5` (partial, stopped deliberately): **adverse interaction
   found.** In its late-phase episode the grid cannot converge at any dt,
   and shrinking dt just gives the broken minimizer more ±0.02 steps per
