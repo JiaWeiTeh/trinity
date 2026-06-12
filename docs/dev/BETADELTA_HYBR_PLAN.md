@@ -229,7 +229,17 @@ caveats material), not a code bug.
 
 2.3 **Arms** (per segment: same warm start, dMdt warm-start threading,
 structure failure → exception abort — the (100,100) plateau is never fed to
-any solver):
+any solver). **Abort contract includes invalid dMdt**: the inner fsolve at
+`bubble_luminosity.py` (~line 460) checks neither `ier` nor the sign of its
+result, so at the exotic (β, δ) the wide arms explore, a silently
+unconverged or negative dMdt can produce garbage residuals *without*
+raising. The arm harness must treat dMdt non-finite, ≤ 0, or fsolve
+ier ≠ 1 as evaluation failure → abort, same as a structure exception.
+(Data note: across all seven Phase-0/D1 runs, 865 accepted segments, the
+accepted dMdt was never negative or non-finite — the hazard is at trial
+evaluations, which snapshots don't record. The production-side guard —
+check ier + positivity, raise instead of fabricating, mirroring the R1
+fix — ships with Phase 3.)
 
 - **A — control:** the production path *exactly* (f metric, 1e-4 threshold,
   ±0.02 cap, hard bounds, including the L-BFGS-B fallback gated at
