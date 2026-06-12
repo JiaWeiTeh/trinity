@@ -39,13 +39,23 @@ core (maintainer guidance) and core density raised to 1e5 cm⁻³ to pass the
 |---|---|---|---|---|---|---|
 | `base_mock4e3` | 50 | **0%** | 98% | δ=0: 12 | **16** | 1.2 / 3.3 |
 | `base_simple1e5` | 61 | 52.5% | 42% | 0 | **10** | 9.8e-5 / 3.3 |
-| `base_cloud1e6` | 91 | **93.4%** | 7.8% | 0 | 0 | 2.9e-5 / 4.5e-4 |
+| `base_cloud1e6_ext` | 121 | 77.7% | 28% | 0 | **10** | 4.0e-5 / 3.1 |
 | `base_cloudPL` | 56 | **0%** | 73% | **β=1: 14 (10 consecutive)**, δ=0: 5, δ=−1: 1 | 8 | 0.42 / 8.9 |
+
+(`base_cloud1e6_ext` supersedes the right-censored `base_cloud1e6` row —
+91 segs, 93.4% — whose stop_t = 1.0 Myr cut the phase short; the extended
+run reached natural cooling-balance termination at t = 2.544 Myr, between
+the two extrapolations, and continued through transition and momentum.)
 
 Phase-resolved convergence for `base_simple1e5`: first third 25%, middle
 third **100%**, last third 33% — two distinct failure episodes (post-handoff
 chase; pre-transition runaway) bracketing a settled regime where the grid
-solver is flawless.
+solver is flawless. The same structure appears in `base_cloud1e6_ext`,
+time-resolved: 93.3% (t < 1 Myr) → 50% (1–2 Myr) → **0% (t > 2 Myr)**.
+**The pre-transition runaway is universal**: every Phase-0 config, across
+mass (4e3→1e6) and profile (flat and α_ρ = −2), ends its implicit phase at
+0% convergence approaching cooling balance — and then hands its last
+(garbage) accepted (β, δ) to the transition phase.
 
 ## Findings
 
@@ -111,19 +121,17 @@ Phase-1 safety fixes (commit `3496b8e`) vs baselines, same configs:
 
 ## Caveats
 
-- `base_cloud1e6` hit stop_t = 1.0 Myr still inside the implicit phase
-  (E_b rising, |Ėb| ≥ 0.19·Lmech, balance ratio 0.41): the healthy config's
-  row is **right-censored** — it never sampled the late-phase regime where
-  the other configs fail. Extrapolating its own cooling-balance trajectory
-  puts natural phase end at ~1.9 Myr (linear) to ~4.2 Myr (exponential),
-  with the WR ramp delaying it further; an extended rerun
-  (`base_cloud1e6_ext`, stop_t = 6 Myr) is in progress and supersedes this
-  row when complete. Protocol going forward (now in the plan): runs count
-  only if the implicit phase ends naturally on cooling balance and the run
-  continues through transition — the transition phase consumes the last
-  implicit (β, δ) without re-solving, so censored runs both hide the worst
-  regime and mask cross-phase contamination (mock hands transition
-  β=0.24/δ=−0.60; cloudPL hands it β=0.00/δ=−0.96).
+- (Resolved) The original `base_cloud1e6` was right-censored at
+  stop_t = 1.0 Myr and reported 93.4% convergence; the extended run
+  (`base_cloud1e6_ext`, natural phase end at t = 2.544 Myr) shows the true
+  full-phase figure is 77.7% with a 0%-converged final stretch. Protocol
+  (now in the plan): runs count only if the implicit phase ends naturally
+  on cooling balance and the run continues through transition — the
+  transition phase consumes the last implicit (β, δ) without re-solving,
+  so censored runs both hide the worst regime and mask cross-phase
+  contamination (mock hands transition β=0.24/δ=−0.60; cloudPL hands it
+  β=0.00/δ=−0.96). The pole stays dead in the extended run too:
+  |Ėb_from_β| ≥ 0.16·Lmech with zero sign changes through the full phase.
 - Wall-time comparisons across runs are unreliable here: matched log
   markers showed a 1.27× host-speed difference between identical runs at
   different times of day (shared cloud infrastructure). All cost gates in
