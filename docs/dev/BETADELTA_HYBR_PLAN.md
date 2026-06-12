@@ -46,6 +46,23 @@ the tree. Work branch: `bugfix/beta-delta-solver`.
    yet — E_b still rising in all three runs at time of writing). The pole
    remains a *late-phase* hazard: the committed sample's late sign
    disagreement is consistent with Ėb crossing zero near the E_b peak.
+5. **Offline predictor / consistency-relation test**
+   (`scratch/phase0/predictor_test.py`): an analytic warm-start predictor
+   (β from the A12 inverse `Ebdot_to_cool_beta` on the balance estimate with
+   the previous segment's L_loss; δ = (2/7)(2α − β − 1)) was tested against
+   the accepted roots. On converged segments (the 1e6 run, n=76) it loses
+   badly to the existing previous-root warm start: median |Δβ| 0.036 and
+   |Δδ| 0.067 versus ~0 for the warm start. The consistency relation misses
+   solved δ by 0.05–0.14 *on converged segments* — the implicit phase is
+   materially non-adiabatic from its start, so "δ slaved to the relation"
+   (a proposed 1-D tiered solver) is empirically unsafe and is NOT adopted.
+   Open: the predictor's claimed advantage at SB99 luminosity jumps is
+   untested (no jump inside the data yet); revisit only with jump-segment
+   evidence. Solved α stays 0.38–0.59 in all three (flat-profile) baselines,
+   so adiabatic β = 3α − 1 < 0.76 and the [0,1] β-bounds are untested where
+   they would bind: self-similar theory puts adiabatic β at 3·(3/(5+α_ρ))−1
+   (= 2 for an α_ρ = −2 power-law cloud), **outside BETA_MAX = 1 with no
+   cooling involved** — a steep-profile baseline is required to test this.
 
 ## Diagnosis (ranked by evidence)
 
@@ -86,7 +103,11 @@ the tree. Work branch: `bugfix/beta-delta-solver`.
 
 ## Phase 0 — Baseline measurement (running; no trinity/ changes)
 
-Finish the three baseline runs; final harvest per segment/config:
+Finish the three baseline runs, **plus a fourth steep-profile config**
+(densPL_alpha = −2, mid-mass) once a worker frees up — the only baseline
+that can test whether the hard β-bound excludes the self-similar root
+(Evidence 5); without it the bounds question rests on theory alone.
+Final harvest per segment/config:
 both metrics at the accepted point; convergence under f and (descriptively)
 under g; **drift-cap riding (±GRID_EPSILON edge) counted separately from
 hard-bound pinning (BETA_/DELTA_ MIN/MAX)** — different defects; Edot branch
@@ -158,6 +179,16 @@ g along β- and δ-transects at spacings 1e-5…1e-2; the measured jitter scale
 (not the assumed 1e-4) sets hybr's finite-difference `eps` and the honest
 tolerance for arms B–D. Floor above ~1e-3 → tighten the dMdt inner tolerance
 first (2.1b, own drift check) before any solver comparison.
+Expectation to test: the T-residual is measured at `bubble_xi_Tb = 0.98` of
+the bubble *thickness* (`bubble_r_Tb = R1 + ξ(R2−R1)`,
+`bubble_luminosity.py`), where the conductive edge gives
+d ln T/dξ = −(2/5)/(1−ξ) ≈ −20 — the δ-direction floor is plausibly
+edge-amplified by ~20× relative to measuring at ξ = 0.9. If the transect
+confirms it, moving ξ_Tb inward is a contingent option **out of this
+program's scope** (it re-anchors the meaning of the T0 state variable).
+Pre-existing doc bug, flagged not fixed: the registry info strings for
+`bubble_xi_Tb`/`bubble_r_Tb` say "xi = r/R2" / "xi_Tb * R2", but the code
+uses the thickness fraction.
 
 2.2 **Root-existence scan.** ~10 stratified segments per config (early /
 mid / pre-transition), coarse wide grid β∈[−1,2], δ∈[−1,0.5]: does each
@@ -252,8 +283,8 @@ history are the archive.
 1. Is the low-mass corner (~4e3 M☉, sfe ~0.01) supported parameter space for
    Paper I? Decides how prominent the "implicit-phase tracks integrate
    lagged β" caveat must be.
-2. If 2.2 finds genuine δ>0 (or β outside [0,1]) epochs: widening the hard
-   bounds is a physics call.
+2. If 2.2 or the steep-profile baseline finds genuine δ>0 (or β outside
+   [0,1]) epochs: widening the hard bounds is a physics call.
 3. Confirm or adjust the G2 promotion margins (≥80% convergence, 15-point /
    3× margins) before Phase 2 runs.
 
