@@ -117,11 +117,25 @@ are attributable behavior changes, not drift.
 
 - `cloud1e6` (t ≤ 1.0 window): end-state ΔEb 0.17%, ΔR2 0.012%;
   convergence 93.4% → **98.9%**. The mitigation helps cleanly on
-  mildly-affected stretches. Extended (6 Myr) Phase-1 rerun in progress;
-  interim at t≈1.8: the better-tracking solver pushes β up until it
-  **pins at BETA_MAX = 1 late in the phase even on this flat profile** —
-  the bound binds wherever the solver tracks well into the cooling-
-  dominated regime, not just on steep profiles.
+  mildly-affected stretches. The *uncapped* extended attempt additionally
+  showed β **pinning at BETA_MAX = 1 late in the phase even on this flat
+  profile** (t ≈ 1.5+, dt ground to the floor, projected ~4 days) — the
+  bound binds wherever the solver tracks well into the cooling-dominated
+  regime, not just on steep profiles.
+- `cloud1e6` extended, capped (stop_t = 6.0; **complete**, ~67 min):
+  traverses all phases with **zero β-pinned segments** — the uncapped
+  death-grind did not recur, so that grind was at least partly an
+  artifact of the unbounded mitigation itself (floor-dt steps trapping
+  the solver in the pinned region). Convergence by era: ~100% through
+  t ≈ 1.1, **12.5% for t ≈ 1.2–2.7** — the late-phase failure stands
+  regardless of dt policy. Shifts vs the uncensored baseline, from dt
+  policy + convergence differences alone: implicit→transition
+  2.544 → 2.722 Myr (+7%), momentum onset 3.577 → 3.874 Myr (+8%); at
+  t = 6 Myr, R2 54.7 → 58.7 pc (+7%), v2 6.07 → 7.12 km/s (+17%).
+  Neither run is ground truth (both leave the late phase largely
+  unconverged), so this spread is a **lower bound on solver-induced
+  uncertainty in published quantities on the flagship config** — the
+  number that motivates Phase 4's attribution gate.
 - `mock4e3`: **the baseline's phase boundary was a solver artifact.**
   Phase-1 run: 33.7% converged (baseline 0%), sign-wrong-Ėb segments
   16 → 0, β ends ~0.9 (baseline rail-artifact 0.24) — and cooling balance
@@ -182,3 +196,36 @@ restart forced their relaunch — the cap's field test.
   markers showed a 1.27× host-speed difference between identical runs at
   different times of day (shared cloud infrastructure). All cost gates in
   later phases should use evaluation counts, not wall time, where possible.
+
+## Phase 2 interim — probe results (steps 2.1/2.2)
+
+Probes ran in-process beside the production solver (transects + wide
+coarse scans β∈[−1,1+], δ∈[−1,0.25+]) on `mock4e3` (complete: segments
+2, 8, 20, 45 — the capped mock phase has only ~54 segments) and
+`simple1e5` (2, 8, 20, 45 done; 90, 160 in progress).
+
+- **Noise floor (2.1): ~1e-7 everywhere.** Finest-spacing transect
+  jitter is 5e-9…5e-7 at every probed segment on both configs — four
+  orders below the 1e-4 convergence tolerance. The residual landscape is
+  smooth; default hybr finite-difference `eps` is safe; **the ξ_Tb = 0.98
+  edge-amplification worry is falsified** (δ-direction noise is the
+  *smaller* of the two). No dMdt-tolerance tightening needed (2.1b skipped).
+- **Root maps (2.2), `simple1e5`:** both residual components change sign
+  in-box at all four probed segments — a root exists. The grid minimum
+  drifts from mid-box (seg 2–8) to **β ≈ 0.9–1.0 by segments 20–45**,
+  i.e. toward the production wall, consistent with the late-phase failure
+  being "root crosses the bound" (the bounds hypothesis). Late-segment
+  maps (90, 160) pending — they decide it.
+- **Root maps (2.2), `mock4e3`:** roots in-box at segments 2 and 8; by
+  **segment 20 the T-residual is single-signed across the wide box** (no
+  zero contour → no root), and at segment 45 the landscape minimum is
+  residual ≈ 1.4 at the box *corner* (β=−1, δ=−1) — no root anywhere
+  plausible. Caveat: traversal states on the mock come from the shipping
+  solver's unconverged trajectory (0% conv on the capped run), so this
+  shows "no root at the states the production code actually visits," not
+  "no root along the true trajectory" — the uncapped D1 run (34% conv,
+  β tracking to ~0.9) visits very different states. The in-line arms
+  (Phase 2.3), which re-solve from each arm's *own* trajectory, are the
+  honest test; if D (free hybr) also finds no roots on the mock, the
+  pre-registered pivot clause applies to this config (closure
+  inconsistency — model finding, not solver bug).
