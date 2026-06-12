@@ -63,6 +63,16 @@ the tree. Work branch: `bugfix/beta-delta-solver`.
    they would bind: self-similar theory puts adiabatic β at 3·(3/(5+α_ρ))−1
    (= 2 for an α_ρ = −2 power-law cloud), **outside BETA_MAX = 1 with no
    cooling involved** — a steep-profile baseline is required to test this.
+6. **Steep-profile baseline complete** (`base_cloudPL`: 1e6 M☉, sfe 0.01,
+   α_ρ = −2 outside a 1 pc / 1e5 cm⁻³ core; 56 implicit segments,
+   t ∈ [0.003, 0.225] Myr, R2 0.27→2.76 pc): **0% convergence**, 73%
+   rail-riding, β pinned at BETA_MAX = 1 for 10 consecutive segments right
+   after the shell exits the core (α̃ 0.55→0.81; adiabatic 3α̃−1 crosses 1
+   and reaches 1.42), then an unwind to β = 0 with δ → −0.96 (touching
+   DELTA_MIN once) and residuals up to 8.9; 8 wrong-signed-Ėb segments;
+   0% convergence outside the core. Confirms the bounds-exclusion
+   prediction empirically: for steep profiles the box, not the cap, is the
+   binding defect.
 
 ## Diagnosis (ranked by evidence)
 
@@ -72,11 +82,14 @@ the tree. Work branch: `bugfix/beta-delta-solver`.
    needs O(20) segments to walk to the root, silently integrating
    10–30%-of-Lmech energy-imbalance the whole way. No convergence flag is
    persisted; the only trace is per-segment DEBUG logging.
-2. **Secondary — hard bounds** (β∈[0,1], δ∈[−1,0], lines 41–44). In the data
-   so far they bind only transiently, as the corner the capped chase gets
-   clipped against. Whether genuine roots ever lie outside the box (δ>0 at
-   WR/SN luminosity jumps) is open — the Phase-2 root-existence scan decides;
-   widening bounds is a physics decision, not a solver default.
+2. **Co-primary for steep profiles — hard bounds** (β∈[0,1], δ∈[−1,0],
+   lines 41–44). On flat-profile configs they bind only transiently, as the
+   corner the capped chase gets clipped against. But the steep-profile
+   baseline (Evidence 6) shows β pinned at BETA_MAX = 1 for 10 consecutive
+   segments with the adiabatic root 3α̃−1 reaching 1.42 — the box genuinely
+   excludes the root for α_ρ = −2 clouds, with 0% convergence outside the
+   core and a catastrophic unwind to β = 0, δ = −0.96 at phase end.
+   Widening bounds remains a physics decision, now with direct evidence.
 3. **Hygiene (real defects, not yet operative in measured segments):**
    - f-metric pole: `Edot_residual = (E1−E2)/E1` (line 436) diverges as
      E1→0, and the |E1|≤1e-300 fallback returns *raw* E2 (line 438), mixing
@@ -212,12 +225,17 @@ any solver):
   metric. Expected ≈ no-op (the offline check above); kept because ranking
   can differ point-to-point even when accepted-point statistics don't, and
   it is cheap falsification.
-- **C — cap:** grid + g, hard bounds kept, but the ±0.02 window *iterates*:
-  re-center and rescan from each new best until the optimum is interior or
-  10 iterations. Isolates the drift cap — the primary suspect. (The draft
-  had no cap-isolating arm; its wide-bounds arm is dropped — bound pinning
-  was transient in the data, and the bounds question belongs to 2.2 + D's
-  out-of-box log.)
+- **C — cap + bounds:** grid + g with the ±0.02 window *iterating*
+  (re-center and rescan from each new best until the optimum is interior or
+  10 iterations) AND wide hard rails (β ∈ [−2, 5], δ ∈ [−2, 1]; the old box
+  demoted to a logged warn-window). Originally C was cap-only with bounds
+  kept, on the flat-profile evidence that pinning was transient — the
+  completed steep-profile baseline (Evidence 6) overturned that: β rides
+  BETA_MAX = 1 for 10 consecutive segments with the self-similar root
+  genuinely outside [0,1], so a grid freed of the cap but not the bounds
+  would still fail there. C now isolates "grid freed of both artificial
+  constraints" vs D's "root-finder"; C's logs record how often the iterated
+  window walks outside the old box (the cap-vs-bounds attribution).
 - **D — hybr:** `scipy.optimize.root(method='hybr')` on g, unconstrained,
   `eps` from 2.1, `xtol=1e-8`, `factor=0.1`, `maxfev=30`; out-of-box roots
   accepted and logged against a warn-window (in shadow, never rejected back
