@@ -10,6 +10,7 @@ of the bubble. grep "Section" so jump between different sections.
 """
 # libraries
 import numpy as np
+import scipy.optimize
 import logging
 import astropy.units as u
 import trinity._functions.unit_conversions as cvt
@@ -427,4 +428,31 @@ def get_r1(r1, params):
     equation = np.sqrt( Lmech_total / v_mech_total / Ebubble * (r2**3 - r1**3) ) - r1
     # return
     return equation
+
+
+def solve_R1(R2, Eb, Lmech_total, v_mech_total):
+    """
+    Solve get_r1 for the inner bubble radius R1 (wind termination shock) [pc].
+
+    Uses the full bracket [0, R2]: for Lmech_total > 0 the equation is
+    sqrt(Lmech/v/Eb * R2**3) > 0 at r1 = 0 and -R2 < 0 at r1 = R2, so the
+    bracket always contains the root (the former [1e-3*R2, R2] bracket
+    missed roots below 1e-3*R2 and raised). Lmech_total <= 0 means no wind
+    ram pressure, hence no termination shock: returns 0.0.
+
+    Raises on root-finding failure instead of fabricating a value.
+    """
+    if Lmech_total <= 0:
+        return 0.0
+    try:
+        return scipy.optimize.brentq(
+            get_r1, 0.0, R2,
+            args=([Lmech_total, Eb, v_mech_total, R2]),
+        )
+    except (ValueError, RuntimeError):
+        logger.error(
+            f"R1 root finding failed on [0, R2]: R2={R2:.6e}, Eb={Eb:.6e}, "
+            f"Lmech_total={Lmech_total:.6e}, v_mech_total={v_mech_total:.6e}"
+        )
+        raise
 

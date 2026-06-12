@@ -109,11 +109,16 @@ lagged β — a Paper-I-relevant caveat independent of any fix.
 1.1 **R1 bracket.** Widen `[1e-3·R2, R2]` → `[0, R2]` (for Lmech>0 the
 get_r1 equation is >0 at 0 and −R2<0 at R2 — always brackets); guard
 `Lmech_total <= 0 → R1 = 0`; delete the fabricated `0.01·R2` fallback; on
-genuine failure log state and raise. Sites: `get_betadelta.py:316`,
-`energy_phase_ODEs.py:224,363`, `run_energy_phase.py:96,327` (same bracket —
-the draft omitted these two). `run_transition_phase.py` (505, 747, 832) is
-covered via the shared `compute_R1_Pb`; read those sites and report whether
-`Lmech_total <= 0` with `Eb > 0` is reachable there.
+genuine failure log state and raise. Implemented as one shared helper
+(`get_bubbleParams.solve_R1`) replacing six call sites: `get_betadelta.py`
+(compute_R1_Pb), `energy_phase_ODEs.py` ×2, `run_energy_phase.py` ×2 (the
+init site used `1e-4·R2`, not 1e-3), and `bubble_luminosity.py`
+(get_bubbleproperties_pure — i.e. **every residual evaluation**; a bracket
+failure there surfaced as the (100,100) plateau). The draft plan listed only
+four of these. `run_transition_phase.py` (505, 747, 832) is covered via the
+shared `compute_R1_Pb`; SB99-driven `Lmech_total` is strictly positive at
+all tabulated ages, so the `Lmech <= 0` guard is unreachable there in
+practice (defensive only).
 
 1.2 **Persistence + dt mitigation.** Persist `betadelta_converged` and
 `betadelta_total_residual` (register in `registry.py` + the `dictionary.py`

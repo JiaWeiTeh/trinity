@@ -116,6 +116,9 @@ FOUR_PI = 4.0 * np.pi
 ADAPTIVE_THRESHOLD_DEX = 0.05  # dex - threshold for parameter change (10^0.1 ≈ 1.26x)
 ADAPTIVE_FACTOR = 10**0.1     # Factor to increase/decrease DT_SEGMENT (~1.26)
 
+# Consecutive unconverged beta-delta solves before a WARNING is logged
+BETADELTA_UNCONVERGED_WARN_STREAK = 3
+
 # Velocity-based proactive timestep control (for rapid collapse)
 # When |v2| exceeds threshold, reduce dt_segment to ensure fine temporal resolution
 VELOCITY_THRESHOLD_COLLAPSE = 50.0   # pc/Myr - proactively reduce step when |v2| > this
@@ -201,6 +204,60 @@ def compute_max_dex_change(params_before: dict, params_after: dict, keys: list) 
             continue
 
     return max_dex
+
+
+def update_unconverged_streak(streak: int, converged: bool, t_now: float,
+                              total_residual: float) -> int:
+    """
+    Consecutive-unconverged counter for the beta-delta solver.
+
+    Resets on a converged solve. Warns once when the streak reaches
+    BETADELTA_UNCONVERGED_WARN_STREAK: the per-segment convergence trace is
+    DEBUG-only, so without this a fully unconverged phase is silent at the
+    default log level.
+    """
+    if converged:
+        return 0
+    streak += 1
+    if streak == BETADELTA_UNCONVERGED_WARN_STREAK:
+        logger.warning(
+            f"beta-delta solver unconverged for {streak} consecutive segments "
+            f"(t={t_now:.6e} Myr, accepted residual={total_residual:.3e}); "
+            f"dt_segment growth suppressed until convergence"
+        )
+    return streak
+
+
+def next_dt_segment(dt_segment: float, max_dex_change: float,
+                    unconverged_streak: int) -> float:
+    """
+    Adaptive dt_segment update plus the beta-delta non-convergence guard.
+
+    Base policy (unchanged from the original inline block): shrink on a
+    large monitored-parameter change, grow on a small one. Guard: while the
+    beta-delta solver is unconverged (streak > 0), growth is suppressed and
+    dt shrinks instead — an unconverged solver lags the root, which makes
+    parameter changes *look* small precisely when the next segment must
+    stay short to bound the damage of another bad solve.
+    """
+    dt_old = dt_segment
+    if max_dex_change > ADAPTIVE_THRESHOLD_DEX:
+        # Large change: decrease dt_segment
+        dt_segment = max(dt_segment / ADAPTIVE_FACTOR, DT_SEGMENT_MIN)
+        logger.debug(f"Adaptive: max_dex={max_dex_change:.3f} > {ADAPTIVE_THRESHOLD_DEX}, "
+                     f"dt: {dt_old:.3e} -> {dt_segment:.3e}")
+    elif unconverged_streak == 0:
+        # Small change: increase dt_segment
+        dt_segment = min(dt_segment * ADAPTIVE_FACTOR, DT_SEGMENT_MAX)
+        if dt_segment != dt_old:
+            logger.debug(f"Adaptive: max_dex={max_dex_change:.3f} < {ADAPTIVE_THRESHOLD_DEX}, "
+                         f"dt: {dt_old:.3e} -> {dt_segment:.3e}")
+    if unconverged_streak > 0:
+        dt_pre_guard = dt_segment
+        dt_segment = max(dt_segment / ADAPTIVE_FACTOR, DT_SEGMENT_MIN)
+        logger.debug(f"beta-delta unconverged (streak {unconverged_streak}): "
+                     f"dt: {dt_pre_guard:.3e} -> {dt_segment:.3e}")
+    return dt_segment
 
 
 def get_monitor_values(params) -> dict:
@@ -520,6 +577,9 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
     # Adaptive time stepping
     dt_segment = DT_SEGMENT_INIT
 
+    # Consecutive unconverged beta-delta solves (see update_unconverged_streak)
+    betadelta_unconverged_streak = 0
+
     # =============================================================================
     # Build events for safe termination
     # =============================================================================
@@ -622,6 +682,11 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
             updateDict(params, bubble_props)
 
         # Save residual diagnostics to dictionary (after ODE, not during)
+        params['betadelta_converged'].value = betadelta_result.converged
+        params['betadelta_total_residual'].value = betadelta_result.total_residual
+        betadelta_unconverged_streak = update_unconverged_streak(
+            betadelta_unconverged_streak, betadelta_result.converged,
+            t_now, betadelta_result.total_residual)
         params['residual_deltaT'].value = betadelta_result.T_residual
         params['residual_betaEdot'].value = betadelta_result.Edot_residual
         if betadelta_result.Edot_from_beta is not None:
@@ -867,19 +932,8 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         values_after = get_monitor_values(params)
         max_dex_change = compute_max_dex_change(values_before, values_after, ADAPTIVE_MONITOR_KEYS)
 
-        if max_dex_change > ADAPTIVE_THRESHOLD_DEX:
-            # Large change: decrease dt_segment
-            dt_segment_old = dt_segment
-            dt_segment = max(dt_segment / ADAPTIVE_FACTOR, DT_SEGMENT_MIN)
-            logger.debug(f"Adaptive: max_dex={max_dex_change:.3f} > {ADAPTIVE_THRESHOLD_DEX}, "
-                        f"dt: {dt_segment_old:.3e} -> {dt_segment:.3e}")
-        else:
-            # Small change: increase dt_segment
-            dt_segment_old = dt_segment
-            dt_segment = min(dt_segment * ADAPTIVE_FACTOR, DT_SEGMENT_MAX)
-            if dt_segment != dt_segment_old:
-                logger.debug(f"Adaptive: max_dex={max_dex_change:.3f} < {ADAPTIVE_THRESHOLD_DEX}, "
-                            f"dt: {dt_segment_old:.3e} -> {dt_segment:.3e}")
+        dt_segment = next_dt_segment(dt_segment, max_dex_change,
+                                     betadelta_unconverged_streak)
 
         # ---------------------------------------------------------------------
         # Proactive velocity-based timestep control during collapse

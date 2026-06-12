@@ -211,7 +211,7 @@ def cool_beta_to_Ebdot_pure(
     beta : float
         Weaver cooling parameter -(t/Pb)*(dPb/dt)
     Pb : float
-        Bubble pressure [cgs]
+        Bubble pressure [au] (code units)
     t_now : float
         Current time [Myr]
     R1 : float
@@ -310,19 +310,9 @@ def compute_R1_Pb(
     R1 : float
         Inner bubble radius [pc]
     Pb : float
-        Bubble pressure [cgs]
+        Bubble pressure [au] (code units)
     """
-    try:
-        R1 = scipy.optimize.brentq(
-            get_bubbleParams.get_r1,
-            1e-3 * R2,
-            R2,
-            args=([Lmech_total, Eb, v_mech_total, R2])
-        )
-    except (ValueError, RuntimeError):
-        # Fallback if root finding fails
-        R1 = 0.01 * R2
-        logger.warning(f"R1 root finding failed, using fallback R1 = {R1:.4e}")
+    R1 = get_bubbleParams.solve_R1(R2, Eb, Lmech_total, v_mech_total)
 
     Pb = get_bubbleParams.bubble_E2P(Eb, R2, R1, gamma_adia)
 
