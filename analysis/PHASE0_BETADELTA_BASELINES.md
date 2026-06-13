@@ -229,3 +229,15 @@ coarse scans β∈[−1,1+], δ∈[−1,0.25+]) on `mock4e3` (complete: segments
   honest test; if D (free hybr) also finds no roots on the mock, the
   pre-registered pivot clause applies to this config (closure
   inconsistency — model finding, not solver bug).
+- **Arm-harness smoke (2.3 preview), mock segments 1–2:** hybr (arm D)
+  found machine-precision roots (f ≈ 7e-16) at (β=0.230, δ=−0.357) and
+  (β=0.143, δ=−0.305) in 25–34 evaluations — far from production's
+  accepted (0.78, −0.15) with f ≈ 2–3. The energy-phase handoff guess is
+  simply wrong and the ±0.02 window cannot walk to the true root, so
+  the mock's early "failures" are a reachability problem, not missing
+  roots. Two operational caveats measured: (a) hybr's own status said
+  failure (ier 5/2) *at a true root* — acceptance must be by residual
+  value, not `sol.success`; (b) the inner dMdt fsolve is multimodal and
+  seed-dependent — the same (β, δ) root evaluates cleanly with one
+  warm-start seed (dMdt ≈ 8.46) and hangs >20 s with another (≈ 3.56),
+  so per-point timeouts are load-bearing in any production hybr path.
