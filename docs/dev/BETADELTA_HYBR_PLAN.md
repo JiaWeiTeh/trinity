@@ -364,11 +364,18 @@ not cooling. Phase end stays owned by the existing cooling-balance event
   `BubbleSolverError` rather than silently integrating a negative-dMdt
   structure (the WARPFIELD freeze anti-pattern; mirrors the Phase-1 R1 fix).
 
-**Commit 4 — validation.** The steep-profile (α_ρ=−2) self-consistent hybr run
-is the decisive remaining test: does hybr find `dMdt>0` roots at the geometric
-adiabatic β≈2 (⇒ no-root rare everywhere, safety-net design holds), or does
-steep-profile high β break the structure (⇒ no-root common, rethink)? Then
-Phase-4-style validation on flat + steep, plus the legacy byte-identical hash.
+**Commit 4 — validation.** The gating question is **answered** (2026-06-13): a
+2×2 self-consistent matrix (flat α=0 / steep α=−2 × hybr / legacy, 1e6 M☉,
+n=1e5, to 3 Myr) shows **no-root never fires on a hybr-driven trajectory** in
+*either* profile — β goes out-of-box (flat→1.63, steep→2.82), dMdt stays
+positive throughout, 100% convergence (vs legacy 0%). So the safety-net design
+holds. The matrix also produced the headline **macro-delta**: legacy
+**mis-times and profile-blinds the transition** — it transitions *both* profiles
+at ~0.097 Myr (clamped β, contaminated Lloss), while hybr gives a physical
+profile spread (flat transitions at 0.247 Myr; steep stays energy-driven past
+3 Myr). Remaining Commit-4 work: the no-root safety-net unit test, the legacy
+byte-identical hash on the three configs, and the `stress`-marked integration
+run. (Raw runs were scratch under `/tmp`; re-run to regenerate.)
 
 ## Phase 4 — Validation and default flip
 
@@ -408,6 +415,21 @@ The implicit→momentum transition is the cooling-balance event
 `(Lgain−Lloss)/Lgain < ε`, with ε = 0.05 **hardcoded** in
 `phase_events.make_cooling_balance_event`. Open questions:
 
+- **NEW (2026-06-13) — the ratio can STALL above ε, so the criterion may be
+  the wrong *trigger*, not just mis-tuned.** On the steep self-consistent hybr
+  run the ratio fell to ~0.32 by t=0.26 Myr then **plateaued/oscillated at
+  ~0.30–0.39 for the rest of the run to 3 Myr** (`Lloss/Lgain ≈ 0.65`,
+  both luminosities tracking) — a quasi-steady energy-driven state that **never
+  approaches 0.05**. So ε=0.05 is not just too strict for steep profiles, it is
+  *unreachable*: such a bubble would never transition on cooling balance — it
+  ends on `stop_t`, and its real fate is presumably **blowout (R2 > rCloud) or
+  the cluster luminosity dropping** (a WR/SN feature was visible near t≈2.2 Myr:
+  β jumped to ~2.8 with an Lgain dip, and hybr converged through it). Whether a
+  *normal-density* flat cloud also stalls (vs the dense flat run, which did
+  reach 0.05 at 0.247 Myr) is the discriminator for how general this is —
+  in-flight runs (`typical` n=1e3 flat, `simple_cluster`) were started to
+  answer it. **Implication: the transition may need a profile-aware or
+  blowout/luminosity-aware trigger, not an energy-ratio threshold at all.**
 - **Is the energy-ratio criterion physically sound?** It marks "E_b stops
   *growing*", not "the bubble pressure force stops *driving* the shell". The
   momentum phase deletes the `4πR²·Pb` thermal drive
