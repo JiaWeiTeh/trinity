@@ -183,6 +183,26 @@ last implicit time (Myr). `ratio_end` = `(Lgain−Lloss)/Lgain` at the end.
 runs (`m_steep{1e5,4e3b}_hybr`, 3 segs; `m_steeplong_hybr`, hung at t=0.367)
 omitted. The live `sweep_*` (stop_t=4 Myr) runs append here when complete.
 
+## End-to-end robustness sweep to the momentum phase (stop_t = 4 Myr)
+
+Four problem-prone configs driven by hybr through the *full* phase sequence
+(energy → implicit → transition → momentum), to confirm nothing crashes or
+hangs over a long run. **All four: exit 0, 100% convergence, zero
+negative-dMdt, no hangs.**
+
+| run | α_ρ | nCore | mCloud | impl | conv% | neg | β range | t_end | ratio_end | fate |
+|---|---|---|---|---|---|---|---|---|---|---|
+| sweep_flat    |  0 | 1e5 | 1e6  |  90 | 100 | 0 | [0.43, 1.63]  | 0.25 | 0.002 | **momentum ✓** (collapsed, small_radius @0.37 Myr) |
+| sweep_typical |  0 | 1e3 | 1e6  | 177 | 100 | 0 | [0.50, 4.18]  | 3.42 | 0.009 | **momentum ✓** (ran to 4 Myr, R2=38 pc) |
+| sweep_mock    |  0 | 5e2 | 3966 | 144 | 100 | 0 | [−1.04, 4.23] | 4.00 | 0.888 | energy-driven to stop_t (no transition) |
+| sweep_steep   | −2 | 1e5 | 1e6  | 133 | 100 | 0 | [−2.44, 3.43] | 4.00 | 0.524 | energy-driven to stop_t (no transition) |
+
+The two transitioning configs (flat, typical) hand off to momentum and complete
+cleanly; the two energy-driven configs (mock, steep) run ~4 Myr of continuous
+hybr structure solves without a single crash, hang, or non-physical dMdt.
+**β spans [−2.44, +4.23] across the sweep — including negative β (rising Pb) —
+and hybr converges every segment regardless.** No robustness issues found.
+
 ## Headline comparison 1 — convergence (the core fix)
 
 | metric | legacy | hybr |
