@@ -555,7 +555,44 @@ def get_residual_detailed(
 # Main Solver
 # =============================================================================
 
+def _get_betadelta_solver(params) -> str:
+    """The configured beta-delta solver ('legacy' default).
+
+    Robust to params that predate the ``betadelta_solver`` key (e.g. the
+    unit-test fixtures), which fall back to the legacy path.
+    """
+    item = params.get('betadelta_solver') if hasattr(params, 'get') else None
+    if item is None:
+        return 'legacy'
+    value = getattr(item, 'value', item)
+    return value if value else 'legacy'
+
+
 def solve_betadelta_pure(
+    beta_guess: float,
+    delta_guess: float,
+    params,
+    method: str = 'grid',
+) -> BetaDeltaResult:
+    """Dispatch to the configured beta-delta solver (``betadelta_solver``).
+
+    'legacy' (default) is the bounded grid + L-BFGS-B search, byte-identical
+    to the pre-switch behaviour. 'hybr' is the unbounded scipy root-finder
+    with a physical dMdt>0 acceptance gate (Phase 3) — not yet wired in.
+    """
+    solver = _get_betadelta_solver(params)
+    if solver == 'legacy':
+        return _solve_betadelta_legacy(beta_guess, delta_guess, params, method)
+    if solver == 'hybr':
+        raise NotImplementedError(
+            "betadelta_solver='hybr' is not yet implemented "
+            "(lands in the next Phase 3 commit)."
+        )
+    # The param validator guards user input; this guards programmatic misuse.
+    raise ValueError(f"Unknown betadelta_solver '{solver}'.")
+
+
+def _solve_betadelta_legacy(
     beta_guess: float,
     delta_guess: float,
     params,
