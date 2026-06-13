@@ -13,6 +13,17 @@ with `python scratch/phase2/analyze_arms.py` — the numbers below are only as
 good as that jsonl on disk; re-run after any new arms race and **re-verify
 against the harness code before acting on any conclusion here.**
 
+> 🛑 **SUPERSEDED IN PART — read this first.** The §2.3 "shadow" arms below
+> graded arm D (hybr) on the states the **legacy** (clamped, lagged) solver
+> visited. Driving the integration with hybr instead (Phase 3, self-consistent
+> runs) shows the headline shadow finding — β running away to ~2.6 and ~20% of
+> segments hitting "no physical root" — was largely a **shadow artifact**: on a
+> self-consistent hybr trajectory **no-root never fires** and β stays moderate.
+> The promotion verdict (D wins, bounds are the binding defect) stands; the
+> runaway/no-root demographics do not. **See the new section
+> "Phase 3 — self-consistent validation (2026-06-13)" at the bottom for the
+> real, plottable results.**
+
 ## What ran
 
 Two configs carried the four-arm race to natural completion (both implicit
@@ -132,3 +143,115 @@ artificial box. See the plan's Decisions section.
 
 Next: triage D's aborts against the §2.2 root-existence probes, then proceed to
 Phase 3 (implement D behind `betadelta_solver`, default `legacy`).
+
+---
+
+# Phase 3 — self-consistent validation (2026-06-13)
+
+> ⚠️ Same staleness caveat as the top banner. These rows are extracted from
+> per-run `dictionary.jsonl` of scratch runs under `/tmp` (ephemeral — gone on
+> container restart). **Re-run to regenerate the raw per-segment data for
+> plotting** (recipes at the end). Numbers here are summary statistics; treat
+> as a point-in-time snapshot, not ground truth.
+
+Unlike the §2.3 shadow arms, here hybr **drives** the integration
+(`betadelta_solver=hybr`), so every (β, δ, dMdt, Lgain, Lloss) is
+self-consistent. This is the real comparison.
+
+## Master runs table (the plottable demographics)
+
+One row per run. `α_ρ` = density-profile slope (0 flat, −2 steep). `impl` =
+implicit-phase segments solved. `conv%` = converged below 1e-4. `neg` =
+segments with dMdt ≤ 0. `β`/`dMdt` ranges over the implicit phase. `t_end` =
+last implicit time (Myr). `ratio_end` = `(Lgain−Lloss)/Lgain` at the end.
+`t_trans` = cooling-balance transition time (— = never reached by `stop_t`).
+
+| run | solver | mCloud[M☉] | sfe | nCore[cm⁻³] | α_ρ | stop_t | impl | conv% | neg | β_min | β_max | dMdt_min | dMdt_max | t_end | ratio_end | t_trans | end |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| flat·hybr     | hybr   | 1e6  | 0.01   | 1e5 |  0 | 3.0  |  90 | **100** | 0 | 0.43 | 1.63 |  39 |  252 | 0.247 | 0.002 | **0.247** | cooling_balance |
+| flat·legacy   | legacy | 1e6  | 0.01   | 1e5 |  0 | 3.0  |  74 | **0**   | 0 | 0.46 | 0.84 | 204 |  548 | 0.097 | 0.034 | **0.097** | cooling_balance |
+| steep·hybr    | hybr   | 1e6  | 0.01   | 1e5 | −2 | 3.0  | 113 | **100** | 0 | 0.59 | 2.82 | 152 |  502 | 3.000 | 0.386 | **—**     | reached_tmax (stall) |
+| steep·legacy  | legacy | 1e6  | 0.01   | 1e5 | −2 | 3.0  |  74 | **0**   | 0 | 0.46 | 0.84 | 204 |  595 | 0.098 | 0.045 | **0.098** | cooling_balance |
+| typical·hybr  | hybr   | 1e6  | 0.01   | 1e3 |  0 | 3.0  | 151 | **100** | 0 | 0.50 | 4.18 |  42 |  610 | 3.000 | 0.009 | **~2.5**  | cooling_balance |
+| simple·hybr   | hybr   | 1e5† | 0.3    | 1e5 |  0 | 3.0  | 123 | **100** | 0 | 0.76 | 4.20 | 361 | 5595 | 3.000 | 0.827 | **—**     | reached_tmax |
+| mock·hybr     | hybr   | 3966 | 0.0085 | 5e2 |  0 | 0.3  |  66 | **100** | 0 | 0.35 | 1.03 | 3.8 |  6.4 | 0.300 | 0.410 | **—**     | reached_tmax |
+| cost·hybr     | hybr   | 1e6  | 0.01   | 1e5 |  0 | 0.08 |  45 | **100** | 0 | 0.59 | 0.93 | 166 |  252 | 0.080 | 0.316 | —         | reached_tmax |
+| cost·legacy   | legacy | 1e6  | 0.01   | 1e5 |  0 | 0.08 |  12 | **0**   | 0 | 0.54 | 0.76 | 204 |  235 | 0.005 | 0.667 | —         | (timed out at t=0.005) |
+
+† `simple·hybr` is `simple_cluster` (pre-SFE mCloud_input = 1e5, gas mCloud
+= 7e4 after sfe=0.3). The `mock·hybr` row is `mockfull`. Partial restart-killed
+runs (`m_steep{1e5,4e3b}_hybr`, 3 segs; `m_steeplong_hybr`, hung at t=0.367)
+omitted. The live `sweep_*` (stop_t=4 Myr) runs append here when complete.
+
+## Headline comparison 1 — convergence (the core fix)
+
+| metric | legacy | hybr |
+|---|---|---|
+| convergence (flat 1e6) | **0%** (0/74) | **100%** (90/90) |
+| convergence (steep 1e6) | **0%** (0/74) | **100%** (113/113) |
+| convergence (typical 1e6) | (not run) | **100%** (151/151) |
+| convergence (mock 4e3) | 0% (Phase-0) | **100%** (66/66) |
+| convergence (simple 1e5) | ~50% (Phase-0 shadow) | **100%** (123/123) |
+| β reachable | clamped ≤ 0.84 | **out-of-box, up to 4.20** |
+| negative-dMdt / no-root | n/a | **0 across every run** |
+
+hybr converges 100% on every self-consistent run, with `dMdt > 0` always and
+no-root never firing — across mass (4e3→1e6), density (5e2→1e5), profile
+(flat/steep), and sfe (0.0085→0.3).
+
+## Headline comparison 2 — transition timing (the science impact)
+
+Matched configs (1e6, n=1e5), hybr vs legacy:
+
+| config | legacy t_trans | hybr t_trans | factor |
+|---|---|---|---|
+| flat (α=0)  | 0.097 Myr | 0.247 Myr | **2.5×** |
+| steep (α=−2) | 0.098 Myr | >3 Myr (stalls) | **>30×** |
+
+Legacy transitions *both* profiles at ~0.097 Myr (profile-blind — its clamped β
+gives a contaminated Lloss that crosses the 0.05 threshold early). hybr gives a
+**physical, profile-dependent** spread. Demographics by regime:
+
+| regime | config | hybr transition behaviour |
+|---|---|---|
+| dense flat (n=1e5) | flat·hybr   | transitions cleanly at 0.247 Myr |
+| normal flat (n=1e3) | typical·hybr | transitions cleanly at ~2.5 Myr (β spikes to 4.2 at the 0.05 crossing) |
+| steep halo (α=−2)  | steep·hybr  | **stalls** at ratio ≈ 0.35, never reaches 0.05 by 3 Myr |
+| low-mass (4e3)     | mock·hybr   | energy-driven, ratio 0.41 at 0.3 Myr |
+| sfe=0.3 (variable Lmech) | simple·hybr | energy-driven, ratio swings 0.32↔0.92 with SB99 jumps |
+
+So flat profiles cross 0.05 (cooling balance works); steep r⁻² halos *stall*
+above it (the cooling-balance trigger may be the wrong criterion for steep — see
+`docs/dev/BETADELTA_HYBR_PLAN.md` Phase 5).
+
+## Headline comparison 3 — cost (Phase-4 wall-time gate)
+
+Matched config (1e6, n=1e5, flat), to a matched short stop_t:
+
+| solver | sim time reached | implicit segs | wall (implicit) | rate (Myr sim / s wall) |
+|---|---|---|---|---|
+| hybr   | 0.080 Myr | 45 | 580 s | 1.4e-4 |
+| legacy | 0.005 Myr | 12 | 666 s | 7.7e-6 |
+
+**hybr advances ~18× faster** (it short-circuits when settled; legacy never
+converges this config and grinds full 5×5 grids with shrinking dt). The +20%
+gate is a large win, not a cost.
+
+## How to regenerate the raw data (for plotting)
+
+Each run writes per-segment `dictionary.jsonl` (fields per row include
+`t_now, cool_beta, cool_delta, bubble_dMdt, bubble_Lgain, bubble_Lloss,
+betadelta_converged, betadelta_total_residual, R2, Pb, Eb, v2`). To rebuild a
+row of the master table:
+
+```bash
+# matched 2x2 (vary densPL_alpha 0/-2, betadelta_solver hybr/legacy):
+python run.py <param with mCloud=1e6 sfe=0.01 nCore=1e5 rCore=1 \
+    densPL_alpha={0,-2} betadelta_solver={hybr,legacy} stop_t=3.0>
+# then read outputs/<model>/dictionary.jsonl
+```
+
+Plot ideas the table feeds: convergence% vs (mass, density, α_ρ); β trajectory
+vs t per config (out-of-box demographics); cooling ratio vs t (transition vs
+stall by regime); wall-time/segment hybr vs legacy; transition time vs cloud
+structure.
