@@ -424,12 +424,15 @@ The implicit→momentum transition is the cooling-balance event
   *unreachable*: such a bubble would never transition on cooling balance — it
   ends on `stop_t`, and its real fate is presumably **blowout (R2 > rCloud) or
   the cluster luminosity dropping** (a WR/SN feature was visible near t≈2.2 Myr:
-  β jumped to ~2.8 with an Lgain dip, and hybr converged through it). Whether a
-  *normal-density* flat cloud also stalls (vs the dense flat run, which did
-  reach 0.05 at 0.247 Myr) is the discriminator for how general this is —
-  in-flight runs (`typical` n=1e3 flat, `simple_cluster`) were started to
-  answer it. **Implication: the transition may need a profile-aware or
-  blowout/luminosity-aware trigger, not an energy-ratio threshold at all.**
+  β jumped to ~2.8 with an Lgain dip, and hybr converged through it).
+  **The stall is steep-specific (resolved 2026-06-13):** both flat runs cross
+  0.05 cleanly — dense flat (n=1e5) at 0.247 Myr, *normal-density* flat
+  (n=1e3) at **2.5 Myr** (β spiking to ~4 right at the crossing — the high-β
+  excursion *is* the flat-profile transition signature). Only the steep r⁻²
+  halo sustains the bubble and stalls the ratio. **Implication: cooling balance
+  is a fine trigger for flat profiles; steep profiles need a different one
+  (blowout `R2 > rCloud`, or cluster-luminosity decline) — the criterion is
+  profile-dependent, which a single hardcoded ε cannot express.**
 - **Is the energy-ratio criterion physically sound?** It marks "E_b stops
   *growing*", not "the bubble pressure force stops *driving* the shell". The
   momentum phase deletes the `4πR²·Pb` thermal drive
