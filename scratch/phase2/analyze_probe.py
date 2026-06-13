@@ -187,6 +187,92 @@ def plot_regime(data, path):
     plt.close(fig)
 
 
+def fg_grids(recs, seg):
+    """7x7 f-metric and g-metric residual grids for one segment's scan.
+
+    f_total = f_E**2 + f_T**2 (legacy; f_E denominator Edot_from_beta -> pole).
+    g_total = g_E**2 + f_T**2 with g_E = (E1 - E2)/Lmech_total (pole-free).
+    E1=Edot_from_beta, E2=Edot_from_balance, Lg=L_gain=Lmech_total (recorded).
+    Cells with no bubble structure stay NaN (masked).
+    """
+    fgrid = np.full((7, 7), np.nan)
+    ggrid = np.full((7, 7), np.nan)
+    for r in recs:
+        if r["kind"] != "scan" or r["segment"] != seg or not r.get("ok"):
+            continue
+        i = int(np.argmin(np.abs(BETA_AX - r["beta"])))
+        j = int(np.argmin(np.abs(DELTA_AX - r["delta"])))
+        fgrid[j, i] = r["f_E"] ** 2 + r["f_T"] ** 2
+        g_E = (r["E1"] - r["E2"]) / r["Lg"]
+        ggrid[j, i] = g_E**2 + r["f_T"] ** 2
+    return fgrid, ggrid
+
+
+def plot_f_vs_g(items, path):
+    """Rows = config, cols = metric (f legacy vs g hybr), shared colour scale."""
+    norm = LogNorm(vmin=1e-3, vmax=1e1)  # f-pole saturates at top; g stays low
+    cmap = plt.cm.viridis_r.copy()
+    cmap.set_bad("0.82")
+    col_titles = ["f-metric (legacy) — pole at Edot_β=0", "g-metric (hybr) — pole-free"]
+
+    fig, axes = plt.subplots(len(items), 2, figsize=(11, 5 * len(items)), constrained_layout=True)
+    for row, (label, fgrid, ggrid, acc) in enumerate(items):
+        for col, grid in enumerate((fgrid, ggrid)):
+            ax = axes[row, col]
+            m = ax.pcolormesh(
+                BETA_AX,
+                DELTA_AX,
+                np.ma.masked_invalid(grid),
+                norm=norm,
+                cmap=cmap,
+                shading="nearest",
+            )
+            _clampbox(ax)
+            ax.plot(
+                acc["beta"],
+                acc["delta"],
+                marker="*",
+                ms=18,
+                mfc="white",
+                mec="k",
+                mew=1.2,
+                ls="none",
+                zorder=6,
+            )
+            ax.set_xlim(-1.3, 2.3)
+            ax.set_ylim(-1.2, 0.7)
+            ax.set_xlabel(r"$\beta$")
+            if col == 0:
+                ax.set_ylabel(f"{label}\n\n" + r"$\delta$")
+            if row == 0:
+                ax.set_title(col_titles[col], fontsize=11)
+    cb = fig.colorbar(m, ax=axes, shrink=0.8, label="residual  (sum of squares, log)")
+    cb.ax.axhline(RES_THRESH, color="white", lw=1.4)
+    handles = [
+        Patch(fill=False, edgecolor="cyan", lw=2, label="legacy clamp box"),
+        plt.Line2D(
+            [],
+            [],
+            marker="*",
+            mfc="white",
+            mec="k",
+            ls="none",
+            ms=12,
+            label="pure-solver root (ref)",
+        ),
+        Patch(facecolor="0.82", label="no structure"),
+    ]
+    fig.legend(
+        handles=handles, loc="lower center", ncol=3, fontsize=8.5, bbox_to_anchor=(0.5, -0.03)
+    )
+    fig.suptitle(
+        "Same scan, two metrics — the f-pole (dark stripe at β≈1.5) vanishes under g",
+        fontsize=12,
+    )
+    fig.savefig(path, dpi=130, bbox_inches="tight")
+    plt.close(fig)
+
+
 def main():
     data = []
     for fn, label in CONFIGS:
@@ -196,7 +282,16 @@ def main():
         data.append((label, res, regime, acc))
     plot_residual(data, HERE / "betadelta_residual.png")
     plot_regime(data, HERE / "betadelta_regime.png")
-    print("wrote betadelta_residual.png, betadelta_regime.png")
+
+    # f-vs-g comparison for a converger (flat) and a staller (steep)
+    fg = []
+    for fn, label in (CONFIGS[0], CONFIGS[1]):
+        recs = load(fn)
+        seg, acc = pick_segment(recs)
+        fgrid, ggrid = fg_grids(recs, seg)
+        fg.append((label, fgrid, ggrid, acc))
+    plot_f_vs_g(fg, HERE / "betadelta_f_vs_g.png")
+    print("wrote betadelta_residual.png, betadelta_regime.png, betadelta_f_vs_g.png")
 
 
 if __name__ == "__main__":
