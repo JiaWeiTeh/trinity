@@ -283,6 +283,38 @@ stretches and land at or below baseline cost. **Promotion rule: the simplest
 passing arm promotes.** D over C only with a ≥15-point convergence margin or
 ≥3× fewer evaluations at equal convergence.
 
+2.5 **Results — 2026-06-13** (full detail + stats tables + figures in
+`analysis/BETADELTA_PHASE2_ARMS.md`; regenerate with
+`python scratch/phase2/analyze_arms.py`. **Re-verify these numbers against the
+harness `scratch/phase2/arms.py` and the jsonl before acting — this section
+drifts like the rest of the doc.**) Two configs ran to completion:
+`arms_mock4e3` (0% baseline) and `arms_simple1e5` (~50% baseline).
+
+- **D (hybr) promotes.** Convergence under g: D 78% (mock) / 80% (simple1e5)
+  vs A,B 0%/50%, C 0%/60%. On simple1e5 D is also cheapest (median 10 evals,
+  under the ≤15 gate); on the mock D costs 29 (over gate) and does not restore
+  the short-circuit (root drifts too fast per segment). D clears the D-over-C
+  bar comfortably (78-pt margin on mock; 20 pts AND ~3.7× fewer evals on
+  simple1e5). B and C do not pass.
+- **The hard bounds are the binding defect, confirmed.** D's converged roots
+  run β ≈ −0.14…2.60, δ ≈ −1.51…−0.27 (mock: 19/21 outside the legacy box),
+  while production sits clamped on the box's δ≈0 edge chasing via the ±0.02
+  cap. C proves the cap alone isn't it: freed + widened, an iterated ±0.02 grid
+  still gets 0% on the mock at median 121 evals (full 240 s budget every
+  segment) — it cannot traverse to a root a unit outside the box; only a
+  root-finder reaches it. **B (metric) is a confirmed no-op for convergence.**
+- **No §2.2 pivot.** A root exists almost everywhere D evaluates — it just
+  lives outside the box. simple1e5's root is in-box until late phase, then
+  escapes to β≈3 (self-similar β leaving [0,1], as predicted).
+- **Physical acceptance gate already works.** The harness aborts dMdt ≤ 0 /
+  non-finite (`arms.py:98`); on simple1e5 four of D's six aborts were exactly
+  negative-dMdt trial points (−83…−1022). So every root D *accepts* satisfies
+  dMdt > 0 by construction — this is the gate that replaces the artificial box
+  once bounds are widened (maintainer Decision #2, now greenlit; see below).
+- **Open before Phase 3:** triage D's ~20% aborts against the §2.2 probes
+  (no-root segments vs fragile structure solves); decide whether the mock's
+  29-eval cost needs a predictor warm start (§0 Evidence 5, shelved).
+
 ## Phase 3 — Promotion behind a switch (default unchanged)
 
 Implement the winner inside `get_betadelta.py`: residual-components refactor
@@ -329,6 +361,13 @@ history are the archive.
    lagged β" caveat must be.
 2. If 2.2 or the steep-profile baseline finds genuine δ>0 (or β outside
    [0,1]) epochs: widening the hard bounds is a physics call.
+   **RESOLVED 2026-06-13 — widen.** The §2.3 race found genuine roots at
+   β up to ~3 and δ down to ~−1.5 (arm D, dMdt>0 by construction); the
+   maintainer confirmed these are physical states the model should occupy.
+   Phase 3 replaces the artificial β/δ box with physical acceptance gates —
+   `dMdt > 0`, finite/valid structure — not wider arbitrary rails. (Re-verify
+   the root ranges against `analysis/BETADELTA_PHASE2_ARMS.md` and the jsonl
+   before encoding any specific bound.)
 3. Confirm or adjust the G2 promotion margins (≥80% convergence, 15-point /
    3× margins) before Phase 2 runs.
 
