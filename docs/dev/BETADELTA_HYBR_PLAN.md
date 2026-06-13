@@ -317,14 +317,58 @@ drifts like the rest of the doc.**) Two configs ran to completion:
 
 ## Phase 3 — Promotion behind a switch (default unchanged)
 
-Implement the winner inside `get_betadelta.py`: residual-components refactor
-+ metric helpers (f stays in outputs for continuity; g drives acceptance);
-param key `betadelta_solver` defaulting to `legacy` (byte-identical to
-Phase 1, hash-tested on all three configs); winner selectable by name;
+Implement the winner inside `get_betadelta.py`: metric helpers (f stays in
+outputs for continuity; g drives acceptance); param key `betadelta_solver`
+defaulting to `legacy` (byte-identical to Phase 1); winner selectable by name;
 unconverged-segment summary WARNING at phase end ships regardless of winner.
-Winner-mode unit tests inherited from Phase 2, including the pole regression
-test (E1 crosses zero at a synthetic root: f diverges, g converges); a
-`stress`-marked integration run on the worst Phase-0 config.
+Winner-mode unit tests, including the pole regression test (E1 crosses zero at
+a synthetic root: f diverges, g converges); a `stress`-marked integration run.
+
+**Progress — 2026-06-13** (work branch `bugfix/beta-delta-solver-pt2`):
+- *Commit 1* — `betadelta_solver` param (`legacy` default, validator,
+  `default.param` regenerated). `solve_betadelta_pure` is now a dispatcher
+  whose `legacy` path is the verbatim former body (`_solve_betadelta_legacy`),
+  byte-identical. Tests: `test_betadelta_solver_switch.py`.
+- *Commit 2* — `_solve_betadelta_hybr`: the g residual (Lmech denominator),
+  `scipy.optimize.root(hybr)` (xtol 1e-8, factor 0.1, maxfev 30, eps 3e-4),
+  the `dMdt>0`/valid-structure gate raising `_NoPhysicalRoot`, returning a
+  `no_physical_root`-flagged `BetaDeltaResult` when the gate rejects every
+  point reached. Tests: `test_betadelta_hybr.py` (convergence incl. roots
+  outside the legacy box, the three gate paths, the f-pole case).
+
+**Key finding that revises the no-root design (re-verify before trusting):**
+A self-consistent hybr-*driven* run overturns the Phase-2 shadow reading. On
+the mock (flat, 4e3) `betadelta_solver=hybr` drove the *entire* implicit phase
+to t=0.3: **66/66 converged, dMdt always positive (~4–6), β never above ~1.03,
+no-root never fired** — versus legacy **0/35** (cap-riding, "root unreachable")
+on the identical config. The Phase-2 β→2.6 / no-root was a **shadow artifact**:
+arm D was graded on the *legacy* (lagged, clamped) trajectory's contaminated
+states; on its own self-consistent trajectory the root never has to chase, so
+β stays moderate and dMdt stays positive. The negative-dMdt hazard is therefore
+largely self-inflicted by the legacy lag, not intrinsic physics.
+
+Consequence: **no-root must NOT force a transition** — it would mis-fire,
+especially for steep profiles where high β is geometric (adiabatic 3α̃−1≈2),
+not cooling. Phase end stays owned by the existing cooling-balance event
+(`phase_events.make_cooling_balance_event`, `(Lgain−Lloss)/Lgain < ε`).
+
+**Commit 3 (revised) — no-root as a logged safety net, not a phase trigger:**
+- In `run_energy_implicit_phase`, on `betadelta_result.no_physical_root`: do
+  NOT transition. Emit a WARNING naming segment, t, (β,δ), dMdt, Lgain/Lloss;
+  hold the last physical dMdt for that segment and continue. Count occurrences
+  and report them in the end-of-phase summary, so the frequency of the
+  negative-dMdt regime is observable rather than silent.
+- Production inner-fsolve dMdt guard (plan §2.3, deferred to here): the inner
+  fsolve in `bubble_luminosity.py` checks neither `ier` nor the sign of its
+  result; add a guard that rejects non-finite / ≤0 dMdt and raises
+  `BubbleSolverError` rather than silently integrating a negative-dMdt
+  structure (the WARPFIELD freeze anti-pattern; mirrors the Phase-1 R1 fix).
+
+**Commit 4 — validation.** The steep-profile (α_ρ=−2) self-consistent hybr run
+is the decisive remaining test: does hybr find `dMdt>0` roots at the geometric
+adiabatic β≈2 (⇒ no-root rare everywhere, safety-net design holds), or does
+steep-profile high β break the structure (⇒ no-root common, rethink)? Then
+Phase-4-style validation on flat + steep, plus the legacy byte-identical hash.
 
 ## Phase 4 — Validation and default flip
 
@@ -353,6 +397,47 @@ published tracks" note). Fail on attribution → default stays `legacy`,
 findings documented, STOP. End state after one quiet release: delete the
 legacy path and the param key — **exactly one solver in the tree**; tags and
 history are the archive.
+
+## Phase 5 — Transition-criterion study (DEFERRED to after this program)
+
+Out of scope for the solver repair; queued for *after* the hybr program lands
+and the default flips. Recorded here so it is not lost (same staleness caveat
+as the rest of this doc — re-verify before acting).
+
+The implicit→momentum transition is the cooling-balance event
+`(Lgain−Lloss)/Lgain < ε`, with ε = 0.05 **hardcoded** in
+`phase_events.make_cooling_balance_event`. Open questions:
+
+- **Is the energy-ratio criterion physically sound?** It marks "E_b stops
+  *growing*", not "the bubble pressure force stops *driving* the shell". The
+  momentum phase deletes the `4πR²·Pb` thermal drive
+  (`phase2_momentum/run_momentum_phase.py`: Eb≈0, ram pressure only), so the
+  dynamically correct transition is where that dropped force becomes
+  subdominant — a force/continuity statement, not an energy-accumulation one.
+  ε = 0.05 is a convention, not derived.
+- **What value / criterion is right, and how do you know from the outputs?**
+  (1) v2 / dv2/dt continuity across the seam (the dropped force shows up as a
+  kink if you transition too early); (2) dropped-force magnitude `4πR²Pb` vs
+  the surviving forces (`pdot_wind+SN`, `F_rad`, `F_HII`) at the candidate
+  transition — **decomposition needs care**: the implicit-phase output field
+  `F_ram` *is itself* `4πR²Pb` (naming trap), and the shell is driven by
+  `max(Pb, P_HII)` (`compute_forces_pure`), so dropping `Pb` only matters when
+  `Pb > P_HII`; (3) macro-observable sensitivity sweep over ε
+  (insensitive→robust, report the range; sensitive→pin dynamically); (4)
+  energy-budget closure across the seam.
+- **Principled alternative:** replace the energy ε with a dynamical
+  force-ratio trigger (`4πR²Pb / surviving-forces < O(1)`) — continuity-
+  preserving by construction, likely more robust than tuning ε.
+- **Step 0 (cheap, honest):** lift ε out of `make_cooling_balance_event` into
+  a documented param, so "different transition values" is a config knob + a
+  sensitivity test instead of a code edit.
+
+**Other physics questions parked here (not solver-repair scope):**
+- `bubble_xi_Tb` = 0.98-of-*thickness* T-residual measurement point (§2.1):
+  the conductive edge amplifies the δ-direction noise ~20×; moving ξ_Tb inward
+  re-anchors the T0 state variable — its own study.
+- Registry info-string bug for `bubble_xi_Tb` / `bubble_r_Tb` ("xi = r/R2" vs
+  the thickness fraction the code uses) — flagged in §2.1; fix when convenient.
 
 ## Decisions that belong to the maintainer, not the code
 
