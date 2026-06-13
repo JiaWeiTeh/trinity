@@ -4,19 +4,22 @@
 Reads the probe_*.jsonl written by probe.py (re-readable scratch data, not
 ephemeral). Each probed segment carries a regular 7x7 ``scan`` grid over
 beta in [-1, 2] x delta in [-1, 0.5] -- every grid point recording the two
-residual components (f_E, f_T), feasibility (``ok`` = structure integrator
-returned a solution), and the Phase-2 dMdt>0 abort flag (``dmdt_ok``) -- plus
-the solver's accepted root (``accept``).
+residual components (f_E, f_T), the detailed pieces (E1=Edot_from_beta,
+E2=Edot_from_balance, Lg=L_gain=Lmech_total), feasibility (``ok`` = structure
+integrator returned a solution), and the dMdt>0 acceptance flag (``dmdt_ok``)
+-- plus the solver's accepted root (``accept``).
 
-Convergence metric (pure solver): total_residual = f_E**2 + f_T**2, converged
-when < 1e-4 (trinity.phase1b_energy_implicit.get_betadelta.RESIDUAL_THRESHOLD).
-Legacy clamp box = beta in [0, 1], delta in [-1, 0] (BETA/DELTA_MIN/MAX); the
-scan deliberately reaches outside it.
+Two residual metrics (both: total = E-comp**2 + T-comp**2, converged < 1e-4):
+  f (legacy) : f_E = (E1-E2)/E1   -- denominator E1 hits 0 near the E_b peak,
+               a pole that wrecks the bounded solver.
+  g (hybr)   : g_E = (E1-E2)/Lg   -- per-segment-constant denominator, pole-free
+               (reconstructed here from the recorded E1, E2, Lg -- no rerun).
 
+Legacy clamp box = beta in [0, 1], delta in [-1, 0]; the scan reaches outside it.
 Per config the segment shown is the one whose accepted root has the lowest
 residual (the closest each config gets to convergence). Produces:
-  - betadelta_residual.png : 7x7 residual landscape + root + clamp box (2x2)
-  - betadelta_regime.png   : feasibility/abort regime map + root + box (2x2)
+  - betadelta_gmap.png   : g-metric residual + feasibility, one panel/config (2x2)
+  - betadelta_f_vs_g.png : f vs g side by side (flat converger, steep staller)
 
 Usage: python scratch/phase2/analyze_probe.py
 """
@@ -29,7 +32,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
-from matplotlib.colors import BoundaryNorm, ListedColormap, LogNorm  # noqa: E402
+from matplotlib.colors import LogNorm  # noqa: E402
 from matplotlib.patches import Patch, Rectangle  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
@@ -37,6 +40,7 @@ RES_THRESH = 1e-4  # RESIDUAL_THRESHOLD
 BETA_BOX, DELTA_BOX = (0.0, 1.0), (-1.0, 0.0)  # legacy clamp
 BETA_AX = np.linspace(-1.0, 2.0, 7)  # SCAN_BETA from probe.py
 DELTA_AX = np.linspace(-1.0, 0.5, 7)  # SCAN_DELTA
+DB, DD = 0.5, 0.25  # grid spacing (for per-cell hatch rectangles)
 
 # (file, short label) -- segment auto-picked as the lowest-residual accept
 CONFIGS = [
@@ -63,21 +67,42 @@ def pick_segment(recs):
     return best["segment"], best
 
 
-def grids(recs, seg):
-    """Build 7x7 residual + regime grids for one segment's scan."""
-    res = np.full((7, 7), np.nan)  # [delta_idx, beta_idx]
-    regime = np.full((7, 7), np.nan)  # 0 no-structure, 1 dMdt<=0, 2 feasible
+def _idx(r):
+    i = int(np.argmin(np.abs(BETA_AX - r["beta"])))
+    j = int(np.argmin(np.abs(DELTA_AX - r["delta"])))
+    return i, j
+
+
+def g_grid(recs, seg):
+    """7x7 g-metric residual grid + the dMdt<=0 abort cells.
+
+    g_total = ((E1-E2)/Lg)**2 + f_T**2 over cells with a bubble structure;
+    no-structure cells stay NaN (masked gray). ``abort`` lists (i, j) cells that
+    have a structure but dMdt<=0 -- where the hybr acceptance gate rejects.
+    """
+    g = np.full((7, 7), np.nan)
+    abort = []
     for r in recs:
-        if r["kind"] != "scan" or r["segment"] != seg:
+        if r["kind"] != "scan" or r["segment"] != seg or not r.get("ok"):
             continue
-        i = int(np.argmin(np.abs(BETA_AX - r["beta"])))
-        j = int(np.argmin(np.abs(DELTA_AX - r["delta"])))
-        if r.get("ok"):
-            res[j, i] = r["f_E"] ** 2 + r["f_T"] ** 2
-            regime[j, i] = 2.0 if r.get("dmdt_ok") else 1.0
-        else:
-            regime[j, i] = 0.0
-    return res, regime
+        i, j = _idx(r)
+        g[j, i] = ((r["E1"] - r["E2"]) / r["Lg"]) ** 2 + r["f_T"] ** 2
+        if not r.get("dmdt_ok"):
+            abort.append((i, j))
+    return g, abort
+
+
+def f_and_g(recs, seg):
+    """7x7 f-metric and g-metric grids for the f-vs-g comparison."""
+    fgrid = np.full((7, 7), np.nan)
+    ggrid = np.full((7, 7), np.nan)
+    for r in recs:
+        if r["kind"] != "scan" or r["segment"] != seg or not r.get("ok"):
+            continue
+        i, j = _idx(r)
+        fgrid[j, i] = r["f_E"] ** 2 + r["f_T"] ** 2
+        ggrid[j, i] = ((r["E1"] - r["E2"]) / r["Lg"]) ** 2 + r["f_T"] ** 2
+    return fgrid, ggrid
 
 
 def _clampbox(ax):
@@ -89,123 +114,83 @@ def _clampbox(ax):
             fill=False,
             edgecolor="cyan",
             lw=2.0,
-            ls="-",
             zorder=5,
         )
     )
 
 
 def _root(ax, acc):
-    conv = acc["converged"]
     ax.plot(
         acc["beta"],
         acc["delta"],
         marker="*",
-        ms=20,
-        mfc="lime" if conv else "red",
+        ms=18,
+        mfc="white",
         mec="k",
-        mew=1.0,
+        mew=1.2,
         ls="none",
         zorder=6,
     )
 
 
-def _frame(ax, label, acc):
+def _hatch_abort(ax, abort):
+    for i, j in abort:
+        ax.add_patch(
+            Rectangle(
+                (BETA_AX[i] - DB / 2, DELTA_AX[j] - DD / 2),
+                DB,
+                DD,
+                fill=False,
+                hatch="xxxx",
+                edgecolor="0.15",
+                lw=0.0,
+                zorder=4,
+            )
+        )
+
+
+def _axfmt(ax):
     ax.set_xlim(-1.3, 2.3)
     ax.set_ylim(-1.2, 0.7)
     ax.set_xlabel(r"$\beta$")
     ax.set_ylabel(r"$\delta$")
-    tag = "converged" if acc["converged"] else f"res={acc['total_residual']:.1e}"
-    ax.set_title(f"{label}\nseg {acc['segment']}, t={acc['t_now']:.3g} Myr · {tag}", fontsize=9)
 
 
-def plot_residual(data, path):
-    fin = [d[1][np.isfinite(d[1])] for d in data]
-    allres = np.concatenate([a for a in fin if a.size])
-    norm = LogNorm(vmin=max(allres.min(), 1e-6), vmax=allres.max())
+def plot_gmap(data, path):
+    """One figure: g-metric residual + feasibility, a panel per config."""
+    allg = np.concatenate([d[1][np.isfinite(d[1])] for d in data])
+    norm = LogNorm(vmin=max(allg.min(), 1e-4), vmax=allg.max())
     cmap = plt.cm.viridis_r.copy()
-    cmap.set_bad("0.8")  # no-structure cells
+    cmap.set_bad("0.82")  # no-structure cells
 
     fig, axes = plt.subplots(2, 2, figsize=(11.5, 9), constrained_layout=True)
-    for ax, (label, res, _regime, acc) in zip(axes.flat, data):
+    for ax, (label, g, abort, acc) in zip(axes.flat, data):
         m = ax.pcolormesh(
-            BETA_AX, DELTA_AX, np.ma.masked_invalid(res), norm=norm, cmap=cmap, shading="nearest"
+            BETA_AX, DELTA_AX, np.ma.masked_invalid(g), norm=norm, cmap=cmap, shading="nearest"
         )
-        if np.nanmin(res) < RES_THRESH < np.nanmax(res):
-            ax.contour(BETA_AX, DELTA_AX, res, levels=[RES_THRESH], colors="white", linewidths=1.4)
+        _hatch_abort(ax, abort)
         _clampbox(ax)
         _root(ax, acc)
-        _frame(ax, label, acc)
-    cb = fig.colorbar(m, ax=axes, shrink=0.85, label=r"residual  $f_E^2+f_T^2$  (log)")
+        _axfmt(ax)
+        ax.set_title(f"{label}\nseg {acc['segment']}, t={acc['t_now']:.3g} Myr", fontsize=9)
+    cb = fig.colorbar(m, ax=axes, shrink=0.85, label=r"$g$ residual  $g_E^2+g_T^2$  (log)")
     cb.ax.axhline(RES_THRESH, color="white", lw=1.4)
     handles = [
-        plt.Line2D([], [], marker="*", mfc="lime", mec="k", ls="none", ms=13, label="root (conv)"),
-        plt.Line2D(
-            [], [], marker="*", mfc="red", mec="k", ls="none", ms=13, label="root (no conv)"
-        ),
+        plt.Line2D([], [], marker="*", mfc="white", mec="k", ls="none", ms=12, label="root (ref)"),
         Patch(fill=False, edgecolor="cyan", lw=2, label="legacy clamp box"),
-        Patch(facecolor="0.8", label="no structure"),
+        Patch(facecolor="white", hatch="xxxx", edgecolor="0.15", label="structure, dMdt≤0 (abort)"),
+        Patch(facecolor="0.82", label="no structure"),
     ]
     fig.legend(
         handles=handles, loc="lower center", ncol=4, fontsize=8.5, bbox_to_anchor=(0.5, -0.02)
     )
     fig.suptitle(
-        r"(β, δ) residual landscape — root vs the legacy clamp box  (conv threshold "
-        f"{RES_THRESH:g} marked on bar)",
+        r"(β, δ) g-metric (pole-free) residual + feasibility  (conv threshold "
+        f"{RES_THRESH:g} on bar)",
         fontsize=12,
     )
     fig.savefig(path, dpi=130, bbox_inches="tight")
     plt.close(fig)
-
-
-def plot_regime(data, path):
-    cmap = ListedColormap(["#d62728", "#ff7f0e", "#2ca02c"])
-    norm = BoundaryNorm([-0.5, 0.5, 1.5, 2.5], cmap.N)
-    fig, axes = plt.subplots(2, 2, figsize=(11.5, 9), constrained_layout=True)
-    for ax, (label, _res, regime, acc) in zip(axes.flat, data):
-        ax.pcolormesh(
-            BETA_AX, DELTA_AX, np.ma.masked_invalid(regime), norm=norm, cmap=cmap, shading="nearest"
-        )
-        _clampbox(ax)
-        _root(ax, acc)
-        _frame(ax, label, acc)
-    handles = [
-        Patch(facecolor="#2ca02c", label="feasible (dMdt>0)"),
-        Patch(facecolor="#ff7f0e", label="structure, dMdt≤0 (abort)"),
-        Patch(facecolor="#d62728", label="no structure / timeout"),
-        Patch(fill=False, edgecolor="cyan", lw=2, label="legacy clamp box"),
-        plt.Line2D(
-            [], [], marker="*", mfc="lime", mec="k", ls="none", ms=13, label="accepted root"
-        ),
-    ]
-    fig.legend(handles=handles, loc="lower center", ncol=5, fontsize=8, bbox_to_anchor=(0.5, -0.02))
-    fig.suptitle(
-        "(β, δ) feasibility regime — where a valid bubble structure exists vs the clamp box",
-        fontsize=12,
-    )
-    fig.savefig(path, dpi=130, bbox_inches="tight")
-    plt.close(fig)
-
-
-def fg_grids(recs, seg):
-    """7x7 f-metric and g-metric residual grids for one segment's scan.
-
-    f_total = f_E**2 + f_T**2 (legacy; f_E denominator Edot_from_beta -> pole).
-    g_total = g_E**2 + f_T**2 with g_E = (E1 - E2)/Lmech_total (pole-free).
-    E1=Edot_from_beta, E2=Edot_from_balance, Lg=L_gain=Lmech_total (recorded).
-    Cells with no bubble structure stay NaN (masked).
-    """
-    fgrid = np.full((7, 7), np.nan)
-    ggrid = np.full((7, 7), np.nan)
-    for r in recs:
-        if r["kind"] != "scan" or r["segment"] != seg or not r.get("ok"):
-            continue
-        i = int(np.argmin(np.abs(BETA_AX - r["beta"])))
-        j = int(np.argmin(np.abs(DELTA_AX - r["delta"])))
-        fgrid[j, i] = r["f_E"] ** 2 + r["f_T"] ** 2
-        g_E = (r["E1"] - r["E2"]) / r["Lg"]
-        ggrid[j, i] = g_E**2 + r["f_T"] ** 2
-    return fgrid, ggrid
 
 
 def plot_f_vs_g(items, path):
@@ -228,20 +213,8 @@ def plot_f_vs_g(items, path):
                 shading="nearest",
             )
             _clampbox(ax)
-            ax.plot(
-                acc["beta"],
-                acc["delta"],
-                marker="*",
-                ms=18,
-                mfc="white",
-                mec="k",
-                mew=1.2,
-                ls="none",
-                zorder=6,
-            )
-            ax.set_xlim(-1.3, 2.3)
-            ax.set_ylim(-1.2, 0.7)
-            ax.set_xlabel(r"$\beta$")
+            _root(ax, acc)
+            _axfmt(ax)
             if col == 0:
                 ax.set_ylabel(f"{label}\n\n" + r"$\delta$")
             if row == 0:
@@ -266,32 +239,29 @@ def plot_f_vs_g(items, path):
         handles=handles, loc="lower center", ncol=3, fontsize=8.5, bbox_to_anchor=(0.5, -0.03)
     )
     fig.suptitle(
-        "Same scan, two metrics — the f-pole (dark stripe at β≈1.5) vanishes under g",
-        fontsize=12,
+        "Same scan, two metrics — the f-pole (dark stripe at β≈1.5) vanishes under g", fontsize=12
     )
     fig.savefig(path, dpi=130, bbox_inches="tight")
     plt.close(fig)
 
 
 def main():
-    data = []
+    gdata = []
     for fn, label in CONFIGS:
         recs = load(fn)
         seg, acc = pick_segment(recs)
-        res, regime = grids(recs, seg)
-        data.append((label, res, regime, acc))
-    plot_residual(data, HERE / "betadelta_residual.png")
-    plot_regime(data, HERE / "betadelta_regime.png")
+        g, abort = g_grid(recs, seg)
+        gdata.append((label, g, abort, acc))
+    plot_gmap(gdata, HERE / "betadelta_gmap.png")
 
-    # f-vs-g comparison for a converger (flat) and a staller (steep)
     fg = []
-    for fn, label in (CONFIGS[0], CONFIGS[1]):
+    for fn, label in (CONFIGS[0], CONFIGS[1]):  # flat converger, steep staller
         recs = load(fn)
         seg, acc = pick_segment(recs)
-        fgrid, ggrid = fg_grids(recs, seg)
+        fgrid, ggrid = f_and_g(recs, seg)
         fg.append((label, fgrid, ggrid, acc))
     plot_f_vs_g(fg, HERE / "betadelta_f_vs_g.png")
-    print("wrote betadelta_residual.png, betadelta_regime.png, betadelta_f_vs_g.png")
+    print("wrote betadelta_gmap.png, betadelta_f_vs_g.png")
 
 
 if __name__ == "__main__":
