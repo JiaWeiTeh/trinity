@@ -352,30 +352,68 @@ especially for steep profiles where high β is geometric (adiabatic 3α̃−1≈
 not cooling. Phase end stays owned by the existing cooling-balance event
 (`phase_events.make_cooling_balance_event`, `(Lgain−Lloss)/Lgain < ε`).
 
-**Commit 3 (revised) — no-root as a logged safety net, not a phase trigger:**
-- In `run_energy_implicit_phase`, on `betadelta_result.no_physical_root`: do
-  NOT transition. Emit a WARNING naming segment, t, (β,δ), dMdt, Lgain/Lloss;
-  hold the last physical dMdt for that segment and continue. Count occurrences
-  and report them in the end-of-phase summary, so the frequency of the
-  negative-dMdt regime is observable rather than silent.
-- Production inner-fsolve dMdt guard (plan §2.3, deferred to here): the inner
-  fsolve in `bubble_luminosity.py` checks neither `ier` nor the sign of its
-  result; add a guard that rejects non-finite / ≤0 dMdt and raises
-  `BubbleSolverError` rather than silently integrating a negative-dMdt
-  structure (the WARPFIELD freeze anti-pattern; mirrors the Phase-1 R1 fix).
+**Commit 3 (shipped `94fe38c`) — no-root as a logged safety net, not a phase
+trigger:** in `run_energy_implicit_phase`, on `betadelta_result.no_physical_root`,
+do NOT transition — emit a WARNING (segment, t, β/δ, held dMdt, Lgain/Lloss),
+hold the last physical dMdt for that segment, count it, and report it in the
+end-of-phase `betadelta_phase_summary` helper (INFO when every segment
+converged and no no-root, WARNING otherwise). Phase end stays owned by the
+cooling-balance event. The inner-fsolve dMdt guard once slated here was moved to
+Commit 4 and then **dropped** after a line-by-line check — see Commit 4 / A.
 
-**Commit 4 — validation.** The gating question is **answered** (2026-06-13): a
-2×2 self-consistent matrix (flat α=0 / steep α=−2 × hybr / legacy, 1e6 M☉,
-n=1e5, to 3 Myr) shows **no-root never fires on a hybr-driven trajectory** in
-*either* profile — β goes out-of-box (flat→1.63, steep→2.82), dMdt stays
-positive throughout, 100% convergence (vs legacy 0%). So the safety-net design
-holds. The matrix also produced the headline **macro-delta**: legacy
-**mis-times and profile-blinds the transition** — it transitions *both* profiles
-at ~0.097 Myr (clamped β, contaminated Lloss), while hybr gives a physical
-profile spread (flat transitions at 0.247 Myr; steep stays energy-driven past
-3 Myr). Remaining Commit-4 work: the no-root safety-net unit test, the legacy
-byte-identical hash on the three configs, and the `stress`-marked integration
-run. (Raw runs were scratch under `/tmp`; re-run to regenerate.)
+**Commit 4 — validation (revised 2026-06-13 after a line-by-line check of the
+inner-fsolve guard; re-verify before trusting).**
+
+**A. Inner-fsolve dMdt guard — DROPPED, not shipped.** A trace of a blanket
+`raise` on non-positive/non-finite dMdt after the inner fsolve
+(`bubble_luminosity.py:461`) showed it does not make sense:
+- (i) the energy-phase caller (`run_energy_phase.py:159`) is **unwrapped** (the
+  only try is at :319, *after* it), so a raise there propagates to `main.py`'s
+  top-level `except` and **aborts the run** — on a shared, solver-independent
+  path that today tolerates negative dMdt silently;
+- (ii) it is **redundant for hybr** — Commit 2's outer gate already rejects
+  dMdt≤0; the inner guard would only change the no-root *reason* string;
+- (iii) it does **not fix legacy** — legacy mis-times from the β-clamp, not from
+  negative dMdt (its accepted dMdt is positive: 865/865 in Phase 0,
+  steep-legacy `dMdt=594`);
+- (iv) negative inner dMdt is **not observed** in any tested config.
+So it is inert defense bought at an abort risk + a wider byte-identity
+footprint; the protection that matters already lives in the hybr outer gate. If
+defense-in-depth for legacy is ever wanted, the safe form is a scoped opt-in
+(`require_positive_dMdt=False` kwarg; solver callers pass True, the energy phase
+keeps False) — never a shared raise. **Consequence:** the "legacy
+byte-identical hash" sub-task is **moot** — with no shared-code change the
+legacy numeric path is verbatim former code (Commit 1 renamed; 2–3 are pure
+additions), byte-identical by construction.
+
+**B. `stress`-marked integration test** — mirror `test_bubble_solver_stress.py`
+(`@pytest.mark.stress`, deselected by default via `pyproject.toml`'s
+`-m 'not stress'`): run a hybr config end-to-end ×N, assert no crash and 100%
+convergence. The real regression guard.
+
+**C. hybr regression test** — pin a short hybr trajectory's accepted (β,δ)
+against a recorded golden so future solver changes are caught (replaces the
+moot legacy hash; hybr is the path that's new).
+
+**D. (Not code) default flip** — maintainer decision to set `betadelta_solver`
+default to `hybr`, keeping `legacy` selectable one release, plus the
+"implications for published tracks" note (the macro-delta below).
+
+**Validation already gathered** (self-consistent hybr runs; raw runs were
+scratch under `/tmp`, re-run to regenerate):
+- **2×2 matrix** (flat α=0 / steep α=−2 × hybr / legacy, 1e6 M☉, n=1e5, to
+  3 Myr): no-root never fires on any hybr-driven trajectory; β out-of-box
+  (flat→1.63, steep→2.82, simple_cluster→4.20), dMdt always positive, 100% conv
+  vs legacy 0%.
+- **Macro-delta:** legacy mis-times AND profile-blinds the transition (both
+  profiles ~0.097 Myr, clamped β / contaminated Lloss); hybr gives a physical
+  spread (dense flat 0.247 Myr, normal flat 2.5 Myr, steep energy-driven past
+  3 Myr).
+- **Cost gate:** on a config where legacy converges 0%, hybr advances ~18×
+  *faster* (it short-circuits; legacy grinds full grids with shrinking dt) — the
+  +20% gate is a large win, not a cost.
+- **WR/SN robustness:** simple_cluster (sfe 0.3, swinging Lmech) converged 100%
+  with β to 4.20.
 
 ## Phase 4 — Validation and default flip
 
