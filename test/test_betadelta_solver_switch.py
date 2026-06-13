@@ -95,7 +95,16 @@ def test_dispatch_missing_key_routes_to_legacy(monkeypatch):
     assert GBD.solve_betadelta_pure(0.5, -0.5, {}) is sentinel
 
 
-def test_dispatch_hybr_is_not_yet_implemented():
+def test_dispatch_hybr_calls_hybr_impl(monkeypatch):
+    sentinel = object()
+    seen = {}
+
+    def fake_hybr(beta, delta, params, method):
+        seen["args"] = (beta, delta, params, method)
+        return sentinel
+
+    monkeypatch.setattr(GBD, "_solve_betadelta_hybr", fake_hybr)
     params = {"betadelta_solver": SimpleNamespace(value="hybr")}
-    with pytest.raises(NotImplementedError):
-        GBD.solve_betadelta_pure(0.5, -0.5, params)
+    out = GBD.solve_betadelta_pure(0.5, -0.5, params, method="grid")
+    assert out is sentinel
+    assert seen["args"] == (0.5, -0.5, params, "grid")
