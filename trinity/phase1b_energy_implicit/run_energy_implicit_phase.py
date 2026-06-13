@@ -243,6 +243,22 @@ def update_unconverged_streak(streak: int, converged: bool, t_now: float,
     return streak
 
 
+def betadelta_phase_summary(solve_count: int, converged_count: int,
+                            no_root_count: int) -> tuple:
+    """End-of-phase beta-delta solver summary: ``(clean, message)``.
+
+    ``clean`` (every segment converged AND none was a no-physical-root
+    safety-net hit) selects INFO logging; otherwise WARNING. Per-segment
+    convergence is DEBUG-only, so without this a fully unconverged or
+    degenerate implicit phase would be silent at the phase boundary.
+    """
+    pct = 100.0 * converged_count / solve_count if solve_count else 0.0
+    clean = converged_count == solve_count and no_root_count == 0
+    message = (f"beta-delta solver: {converged_count}/{solve_count} segments "
+               f"converged ({pct:.0f}%), {no_root_count} with no physical root")
+    return clean, message
+
+
 def next_dt_segment(dt_segment: float, max_dex_change: float,
                     unconverged_streak: int) -> float:
     """
@@ -599,6 +615,11 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
     # Consecutive unconverged beta-delta solves (see update_unconverged_streak)
     betadelta_unconverged_streak = 0
 
+    # End-of-phase solver summary counters (see the summary log after the loop).
+    betadelta_solve_count = 0
+    betadelta_converged_count = 0
+    betadelta_no_root_count = 0
+
     # =============================================================================
     # Build events for safe termination
     # =============================================================================
@@ -687,6 +708,30 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
 
         beta = betadelta_result.beta
         delta = betadelta_result.delta
+
+        # Track solver outcomes for the end-of-phase summary.
+        betadelta_solve_count += 1
+        if betadelta_result.converged:
+            betadelta_converged_count += 1
+
+        # No physical (dMdt>0, valid-structure) root: the energy-driven solution
+        # is degenerate at this (beta, delta). Rare on a self-consistent
+        # trajectory (it did not occur in any Phase-3 validation run) -- a logged
+        # safety net, NOT a transition trigger (phase end stays owned by the
+        # cooling-balance event). bubble_properties is None here, so the
+        # structure values and the dMdt warm start below hold at the last
+        # physical segment.
+        if betadelta_result.no_physical_root:
+            betadelta_no_root_count += 1
+            logger.warning(
+                f"beta-delta: no physical (dMdt>0) root at segment "
+                f"{segment_count} (t={t_now:.6e} Myr): "
+                f"{betadelta_result.no_root_reason}. Holding last physical "
+                f"dMdt={params['bubble_dMdt'].value:.3e} "
+                f"(Lgain={params['bubble_Lgain'].value:.3e}, "
+                f"Lloss={params['bubble_Lloss'].value:.3e}); implicit phase "
+                f"continues."
+            )
 
         # Update params with new beta/delta
         params['cool_beta'].value = beta
@@ -1108,6 +1153,13 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
     completion_log = logger.warning if termination_reason == "unknown" else logger.info
     completion_log(f"Implicit phase completed: {termination_reason}")
     completion_log(f"  Final time: {t_now:.6e} Myr, Segments: {segment_count}")
+
+    # Beta-delta solver summary: surface unconverged / no-physical-root segments
+    # at phase end (per-segment detail is DEBUG, so a fully unconverged or
+    # degenerate phase would otherwise be silent here).
+    _clean, _summary = betadelta_phase_summary(
+        betadelta_solve_count, betadelta_converged_count, betadelta_no_root_count)
+    (logger.info if _clean else logger.warning)(f"  {_summary}")
 
     return ImplicitPhaseResults(
         t=np.array(t_results),

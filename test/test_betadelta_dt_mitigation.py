@@ -118,3 +118,36 @@ def test_convergence_keys_registered_like_residual_deltaT(key):
     assert spec.category == reference.category == "runtime_residuals"
     assert not spec.exclude_from_snapshot  # saved into snapshots
     assert key in COOLING_PHASE_KEYS  # reset with the other solver residuals
+
+
+# =============================================================================
+# betadelta_phase_summary (end-of-phase solver summary)
+# =============================================================================
+
+
+def test_summary_clean_when_all_converged_no_no_root():
+    clean, msg = RIP.betadelta_phase_summary(
+        solve_count=40, converged_count=40, no_root_count=0)
+    assert clean is True
+    assert "40/40" in msg and "100%" in msg and "0 with no physical root" in msg
+
+
+def test_summary_dirty_when_some_unconverged():
+    clean, msg = RIP.betadelta_phase_summary(
+        solve_count=40, converged_count=10, no_root_count=0)
+    assert clean is False
+    assert "10/40" in msg and "25%" in msg
+
+
+def test_summary_dirty_when_any_no_root():
+    clean, msg = RIP.betadelta_phase_summary(
+        solve_count=40, converged_count=40, no_root_count=3)
+    assert clean is False
+    assert "3 with no physical root" in msg
+
+
+def test_summary_handles_zero_solves():
+    clean, msg = RIP.betadelta_phase_summary(
+        solve_count=0, converged_count=0, no_root_count=0)
+    assert clean is True  # vacuously: nothing failed
+    assert "0/0" in msg and "0%" in msg
