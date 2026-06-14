@@ -1221,6 +1221,8 @@ COOLING_PHASE_KEYS = [
     # 'bubble_r_arr',
     # 'bubble_n_arr',
     'bubble_dMdt',
+    # Velocity-structure diagnostic (WARPFIELD "Problem 2"); diagnostic only
+    'v_neg_frac_thick',
 ]
 
 

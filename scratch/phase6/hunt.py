@@ -19,6 +19,7 @@ bubble thickness. Touches no production code.
 """
 import argparse
 import csv
+import dataclasses
 import sys
 
 import numpy as np
@@ -38,6 +39,23 @@ def _pv(params, key):
         return float(params[key].value)
     except Exception:
         return float('nan')
+
+
+def _frac(res):
+    """Inflow thickness-fraction of a result's structure (None if no structure)."""
+    bp = res.bubble_properties
+    if bp is None:
+        return None
+    v = np.asarray(getattr(bp, 'bubble_v_arr', []), dtype=float)
+    r = np.asarray(getattr(bp, 'bubble_r_arr', []), dtype=float)
+    if v.size < 2 or r.size != v.size:
+        return 0.0
+    neg = v < 0
+    rspan = abs(float(r[-1]) - float(r[0]))
+    if not neg.any() or rspan <= 0:
+        return 0.0
+    rn = r[neg]
+    return abs(float(rn.max()) - float(rn.min())) / rspan
 
 
 def _row(params, res):
@@ -92,6 +110,10 @@ def main():
     ap.add_argument('param')
     ap.add_argument('--out')
     ap.add_argument('--validate-only', action='store_true')
+    ap.add_argument('--hold-inflow', type=float, default=None,
+                    help='Phase 6.1 counterfactual: when a segment inflow '
+                         'thickness-fraction exceeds this, reject it and hold '
+                         'the last physical structure (mimics no_physical_root).')
     args = ap.parse_args()
 
     from trinity._input import read_param
@@ -124,6 +146,17 @@ def main():
 
     def wrapped(beta_guess, delta_guess, params, *a, **k):
         res = orig(beta_guess, delta_guess, params, *a, **k)
+        # Phase 6.1 counterfactual: reject a deep-inflow structure and hold the
+        # last physical one, by mimicking the runner's no_physical_root path
+        # (bubble_properties=None -> updateDict skipped -> dMdt/Lgain/Lloss held).
+        if args.hold_inflow is not None:
+            f = _frac(res)
+            if f is not None and f > args.hold_inflow:
+                sys.stderr.write(f"HOLD inflow seg: frac={f:.2f} "
+                                 f"t={_pv(params, 't_now'):.3f}\n")
+                res = dataclasses.replace(
+                    res, bubble_properties=None, no_physical_root=True,
+                    L_gain=None, L_loss=None)
         try:
             row = _row(params, res)
             stats['n'] += 1

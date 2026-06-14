@@ -172,6 +172,27 @@ ODE_METHOD = 'LSODA'
 # Adaptive Stepping Helper
 # =============================================================================
 
+def _inflow_frac_thickness(v_arr, r_arr) -> float:
+    """Radial-thickness fraction of the bubble with inward (v<0) flow.
+
+    Diagnostic for WARPFIELD "Problem 2" (transient interior inflow during a
+    feedback re-pressurisation). Grid-independent; recorded for monitoring and
+    NOT used in any physics (v is absent from the cooling integrals).
+    """
+    if v_arr is None or r_arr is None:
+        return float('nan')
+    v = np.asarray(v_arr, dtype=float)
+    r = np.asarray(r_arr, dtype=float)
+    if v.size < 2 or r.size != v.size:
+        return 0.0
+    neg = v < 0
+    rspan = abs(float(r[-1]) - float(r[0]))
+    if not neg.any() or rspan <= 0:
+        return 0.0
+    rneg = r[neg]
+    return abs(float(rneg.max()) - float(rneg.min())) / rspan
+
+
 def compute_max_dex_change(params_before: dict, params_after: dict, keys: list) -> float:
     """
     Compute the maximum dex (log10) change across monitored parameters.
@@ -744,6 +765,12 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         # This is critical: without this, bubble_mass, bubble arrays, etc. remain stale
         if bubble_props is not None:
             updateDict(params, bubble_props)
+            # Diagnostic-only (WARPFIELD "Problem 2"): fraction of the bubble
+            # thickness flowing inward (v<0) during a re-pressurisation. Logged
+            # for monitoring; NOT used in any physics. analysis/stalling-energy-phase.md
+            params['v_neg_frac_thick'].value = _inflow_frac_thickness(
+                getattr(bubble_props, 'bubble_v_arr', None),
+                getattr(bubble_props, 'bubble_r_arr', None))
 
         # Save residual diagnostics to dictionary (after ODE, not during)
         params['betadelta_converged'].value = betadelta_result.converged
