@@ -21,6 +21,9 @@ that re-pressurise the bubble (beta<0). Produces:
   - negvel_timeline.png   : steep vs mock -- Lmech surge -> beta+delta -> inflow
   - negvel_dmdt_lmech.png : dMdt vs Lmech_total per run (clean fn + transient lag)
   - negvel_feedback.png   : steep -- cooling_ratio + Eb/Pb vs t (stall + repress.)
+  - negvel_causal.png     : steep -- the cause->consequence ladder (Lmech spike
+                            -> Eb/Pb up (beta<0) -> beta+delta<-0.4 -> inflow)
+                            with the beta/delta decomposition
 
 Usage: python scratch/phase2/analyze_negvel.py
 """
@@ -304,13 +307,94 @@ def plot_feedback(path):
     plt.close(fig)
 
 
+def plot_causal_ladder(path):
+    """Steep run: the full cause->consequence chain in 4 aligned panels.
+
+    beta = -(t/Pb) dPb/dt (so beta<0 = Pb rising); delta = (t/T) dT/dt (delta>0
+    = T rising). The dv/dr source term is (beta+delta)/t = -d ln(n)/dt, so
+    beta+delta<0 means the inner gas is being COMPRESSED -- the inflow trigger.
+    """
+    d = load(RUNS[0][0])  # steep
+    t = d["t_now"]
+    m = (t >= 2.85) & (t <= 3.5)  # the WR-surge -> inflow window
+    tw = t[m]
+    real = d["v_struct_nneg"] >= NNEG_REAL
+    win = (t[real].min() - 0.02, t[real].max() + 0.02) if real.any() else None
+
+    fig, (a1, a2, a3, a4) = plt.subplots(4, 1, sharex=True, figsize=(9.5, 11))
+
+    a1.plot(tw, d["Lmech_total"][m] / 1e8, "k-", lw=2, label=r"$L_{\rm mech,total}$")
+    a1.plot(
+        tw, d["Lmech_W"][m] / 1e8, color="#0072B2", lw=1.3, ls="--", label=r"$L_{\rm mech,W}$ (WR)"
+    )
+    a1.set_ylabel(r"$L_{\rm mech}$ [$10^8$]")
+    a1.set_title("① CAUSE: feedback power surge (WR wind ramp)", fontsize=10, loc="left")
+    a1.legend(fontsize=8, loc="upper left")
+
+    a2.plot(tw, d["Eb"][m] / 1e8, color="#009E73", lw=2)
+    a2.set_ylabel(r"$E_b$ [$10^8$]", color="#009E73")
+    a2.tick_params(axis="y", labelcolor="#009E73")
+    a2b = a2.twinx()
+    a2b.plot(tw, d["Pb"][m], color="#D55E00", lw=2)
+    a2b.set_ylabel(r"$P_b$", color="#D55E00")
+    a2b.tick_params(axis="y", labelcolor="#D55E00")
+    a2.set_title(
+        "② MECHANISM: bubble re-pressurises — Eb climbs, Pb bumps up", fontsize=10, loc="left"
+    )
+
+    a3.plot(tw, d["cool_beta"][m], color="#0072B2", lw=1.6, label=r"$\beta$ (<0 = Pb rising)")
+    a3.plot(tw, d["cool_delta"][m], color="#009E73", lw=1.6, label=r"$\delta$ (>0 = T rising)")
+    a3.plot(
+        tw,
+        d["beta_plus_delta"][m],
+        color="#D55E00",
+        lw=2.6,
+        label=r"$\beta+\delta = -t\,d\ln n/dt$",
+    )
+    a3.axhline(-0.4, color="k", ls="--", lw=1.0)
+    a3.axhline(0.0, color="0.6", ls=":", lw=0.8)
+    a3.text(2.86, -0.45, "inflow trigger ~−0.4", color="k", fontsize=8, va="top")
+    a3.set_ylabel(r"$\beta$,  $\delta$,  $\beta+\delta$")
+    a3.set_title(
+        "③ TRIGGER: β dive (Pb-rate) outweighs δ (T-rate) → β+δ<−0.4 = net compression",
+        fontsize=9.5,
+        loc="left",
+    )
+    a3.legend(fontsize=8, loc="lower left")
+
+    a4.plot(tw, d["v_struct_min"][m], color="#b30000", lw=2, marker=".", ms=5)
+    a4.axhline(0.0, color="k", lw=0.8)
+    a4.set_ylabel("v_struct_min\n[pc/Myr]")
+    a4.set_title(
+        "④ CONSEQUENCE: inner velocity reverses → inflow (terminal; energy-budget-immune)",
+        fontsize=9.5,
+        loc="left",
+    )
+    a4.set_xlabel("t  [Myr]")
+
+    for ax in (a1, a2, a3, a4):
+        if win:
+            ax.axvspan(*win, color="orange", alpha=0.15, zorder=0)
+    a1.set_xlim(2.85, 3.5)
+    fig.suptitle(
+        "Negative-velocity causal ladder (steep 1e6, α=−2): "
+        "Lmech spike → re-pressurise (β<0) → β+δ<−0.4 → inflow",
+        fontsize=11,
+    )
+    fig.tight_layout(rect=(0, 0, 1, 0.98))
+    fig.savefig(path, dpi=130, bbox_inches="tight")
+    plt.close(fig)
+
+
 def main():
     plot_trigger(HERE / "negvel_trigger.png")
     plot_timeline(HERE / "negvel_timeline.png")
     plot_dmdt_lmech(HERE / "negvel_dmdt_lmech.png")
     plot_feedback(HERE / "negvel_feedback.png")
+    plot_causal_ladder(HERE / "negvel_causal.png")
     print(
-        "wrote negvel_trigger.png, negvel_timeline.png, negvel_dmdt_lmech.png, negvel_feedback.png"
+        "wrote negvel_trigger.png, negvel_timeline.png, negvel_dmdt_lmech.png, "
+        "negvel_feedback.png, negvel_causal.png"
     )
 
 
