@@ -17,7 +17,9 @@ Two residual metrics (both: total = E-comp**2 + T-comp**2, converged < 1e-4):
 
 Legacy clamp box = beta in [0, 1], delta in [-1, 0]; the scan reaches outside it.
 Per config the segment shown is the one whose accepted root has the lowest
-residual (the closest each config gets to convergence). Produces:
+total_residual -- the probe's *f*-metric (pure-solver) total; that pure-solver
+root is the white star on the maps (a reference point, NOT the g-minimum).
+Produces:
   - betadelta_gmap.png   : g-metric residual + feasibility, one panel/config (2x2)
   - betadelta_f_vs_g.png : f vs g side by side (flat converger, steep staller)
 
@@ -61,7 +63,7 @@ def load(fn):
 
 
 def pick_segment(recs):
-    """Segment whose accepted root has the smallest total_residual."""
+    """Segment whose accepted root has the smallest (f-metric) total_residual."""
     accepts = [r for r in recs if r["kind"] == "accept"]
     best = min(accepts, key=lambda r: r["total_residual"])
     return best["segment"], best

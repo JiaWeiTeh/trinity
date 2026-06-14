@@ -96,7 +96,10 @@ def reconstruct(params, row):
     props = get_bubbleproperties_pure(params)
     v = np.asarray(props.bubble_v_arr, dtype=float)
     r = np.asarray(props.bubble_r_arr, dtype=float)
-    f = (r - props.R1) / (R2 - props.R1)  # 0 = R1 (inner BC), 1 = R2 (outer)
+    # radial fraction: 0 = R1 (inner BC), 1 = R2 (outer). bubble_r_arr is
+    # integrated from r2_prime (~R2) inward toward R1, so f can stop a hair short
+    # of 0/1 -- cosmetic only; the v values themselves are exact (validated).
+    f = (r - props.R1) / (R2 - props.R1)
     o = np.argsort(f)
     f, v = f[o], v[o]
     s = max(1, len(f) // 1500)  # thin the very fine grid for plotting

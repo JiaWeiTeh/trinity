@@ -96,11 +96,11 @@ def plot_trigger(path):
         )
     ax.axvline(BPD_OLD, ls="--", color="r", lw=1.2)
     ax.text(BPD_OLD - 0.03, 0.7, "old −0.5\nthreshold", color="r", ha="right", fontsize=8)
-    ax.axvspan(-0.42, -0.27, color="orange", alpha=0.10)
+    ax.axvspan(-0.45, -0.35, color="orange", alpha=0.10)
     ax.text(
-        -0.34,
+        -0.40,
         0.02,
-        "inflow actually\nstarts here (~−0.3)",
+        "inflow onset ~−0.4\n(excl. h4 handoff)",
         color="#cc6600",
         ha="center",
         va="bottom",
@@ -109,7 +109,7 @@ def plot_trigger(path):
     ax.set_xlabel(r"$\beta+\delta$")
     ax.set_ylabel("v_neg_frac_thick   (inflow band / bubble thickness)")
     ax.set_title(
-        "Inflow band vs β+δ across 6 hunt configs — appears at β+δ ≈ −0.3 (softer than −0.5),\n"
+        "Inflow band vs β+δ across 6 hunt configs — onset near β+δ ≈ −0.4 (softer than −0.5),\n"
         "and grows as β+δ goes more negative (deepest in the weakest-feedback h1)",
         fontsize=10,
     )

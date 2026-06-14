@@ -42,7 +42,11 @@ ARM_LABEL = {
 BOX_B, BOX_D = (0.0, 1.0), (-1.0, 0.0)  # legacy hard bounds
 G2_CONV, G2_EVALS = 80.0, 15.0  # gate thresholds
 THRESH = 1e-4  # residual threshold for f and g (caption only)
-C_CONV, C_NC, C_AB = "#2ca02c", "0.72", "#d62728"  # outcome stack colors
+# outcome stack colours: converged / not-converged / no-root handoff (gate).
+# the "abort" is the acceptance gate firing (no physical root -> hand off to
+# transition), NOT a solver failure -- so it is amber, not red, and the
+# converged-among-solvable tick below shows the handoff-adjusted convergence.
+C_CONV, C_NC, C_AB = "#2ca02c", "0.72", "#E69F00"
 ARM_COLOR = {"A": "0.5", "B": "#1f77b4", "C": "#ff7f0e", "D": "#2ca02c"}
 CFG_MARK = {"arms_mock4e3": "o", "arms_simple1e5": "s"}
 
@@ -129,13 +133,13 @@ def _bucket(by, a):
 
 
 def plot_summary(data, path):
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(13, 5.2))
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(13, 5.6), constrained_layout=True)
     x = list(range(len(ARMS)))
     w = 0.38
     for k, cfg in enumerate(CONFIGS):
         by = data[cfg]
         xs = [i + (k - 0.5) * w for i in x]
-        pcv, pnc, pab, pcf, ev, ns = [], [], [], [], [], []
+        pcv, pnc, pab, pcf, ev, ns, cas, abn = [], [], [], [], [], [], [], []
         for a in ARMS:
             n, cv, nc, ab, cf, med = _bucket(by, a)
             pcv.append(100 * cv / n)
@@ -144,6 +148,8 @@ def plot_summary(data, path):
             pcf.append(100 * cf / n)
             ev.append(med)
             ns.append((cv, n))
+            cas.append(100 * cv / (n - ab) if (n - ab) > 0 else 0.0)  # conv among solvable
+            abn.append(ab)
         f0 = k == 0
         # stacked outcomes: converged / not-converged / aborted (= 100% of segments)
         ax1.bar(xs, pcv, w, color=C_CONV, label="converged (g)" if f0 else None)
@@ -156,7 +162,7 @@ def plot_summary(data, path):
             bottom=bot,
             color=C_AB,
             hatch="//",
-            label="aborted (no root)" if f0 else None,
+            label="no-root handoff (gate)" if f0 else None,
         )
         for j, (xi, cf) in enumerate(zip(xs, pcf)):  # "also converged under f" tick
             ax1.plot(
@@ -166,24 +172,26 @@ def plot_summary(data, path):
                 lw=1.3,
                 label="also converged (f)" if (f0 and j == 0) else None,
             )
-        for xi, (cv, n) in zip(xs, ns):  # config tag (in-bar) + converged count atop
-            ax1.text(
-                xi,
-                2,
-                cfg.replace("arms_", ""),
-                rotation=90,
-                ha="center",
-                va="bottom",
-                fontsize=6.5,
-                color="white",
-            )
+        # converged-among-solvable tick: aborts are no-root handoffs, not failures,
+        # so this is the gate-relevant convergence (= 100% for D on both configs)
+        for j, (xi, c_as, ab) in enumerate(zip(xs, cas, abn)):
+            if ab > 0:
+                ax1.plot(
+                    [xi - w / 2, xi + w / 2],
+                    [c_as, c_as],
+                    c="#0072B2",
+                    lw=2.0,
+                    zorder=6,
+                    label="converged / solvable" if (f0 and j == ARMS.index("D")) else None,
+                )
+        for xi, (cv, n) in zip(xs, ns):  # converged count atop each bar
             ax1.text(xi, 101, f"{cv}/{n}", ha="center", va="bottom", fontsize=6.5)
         ax2.bar(xs, ev, w, label=cfg.replace("arms_", ""))
-        for xi, e in zip(xs, ev):
+        for a, xi, e in zip(ARMS, xs, ev):
             ax2.text(xi, e * 1.05, f"{e:.0f}", ha="center", va="bottom", fontsize=7)
-            if e > 100:  # full wall-budget every segment, not an organic cost
+            if a == "C" and e > 100:  # arm C hit its 240 s rescanning budget
                 ax2.annotate(
-                    "≈ full 240 s\nbudget/seg",
+                    "≈ full 240 s\nC budget/seg",
                     xy=(xi, e),
                     xytext=(xi, e * 2.2),
                     fontsize=6.5,
@@ -191,7 +199,7 @@ def plot_summary(data, path):
                     arrowprops=dict(arrowstyle="->", lw=0.7),
                 )
     ax1.axhline(G2_CONV, ls="--", c="k", lw=1, label=f"G2 gate {G2_CONV:.0f}%")
-    ax1.set_ylim(0, 148)  # headroom above the 100% bars for the legend
+    ax1.set_ylim(0, 134)  # modest headroom above the 100% bars for the legend
     ax1.set_ylabel("% of sampled segments")
     ax1.set_title("Convergence per arm (stacked outcomes)")
     # the eval gate is specified for C/D only; A/B are the production-cost baseline
@@ -215,10 +223,10 @@ def plot_summary(data, path):
     ax2.legend(fontsize=7, loc="upper left", framealpha=0.95)
     fig.suptitle(
         "Phase 2.3 four-arm shadow experiment — metric g, threshold "
-        f"{THRESH:g}; bars: left = mock4e3, right = simple1e5",
-        fontsize=10,
+        f"{THRESH:g}; bars: left = mock4e3, right = simple1e5  "
+        "(amber = no-root handoff, a correct gate outcome, not a failure)",
+        fontsize=9.5,
     )
-    fig.tight_layout(rect=(0, 0, 1, 0.94))
     fig.savefig(path, dpi=130)
     plt.close(fig)
 
@@ -392,6 +400,20 @@ def plot_pareto(data, path):
                 zorder=4,
             )
             ax.annotate(a, (ev, conv), textcoords="offset points", xytext=(7, 4), fontsize=9)
+            ab = d["aborts"]
+            if ab > 0:  # aborts are no-root handoffs -> show handoff-adjusted conv
+                cas = 100 * d["conv_g"] / (d["segs"] - ab)
+                ax.plot([ev, ev], [conv, cas], color=ARM_COLOR[a], ls=":", lw=1.0, zorder=3)
+                ax.scatter(
+                    ev,
+                    cas,
+                    marker=CFG_MARK[cfg],
+                    s=110,
+                    facecolor="none",
+                    edgecolor=ARM_COLOR[a],
+                    lw=1.6,
+                    zorder=4,
+                )
     ax.set_xscale("log")
     ax.set_xlim(8, 220)
     ax.set_ylim(-6, 108)
@@ -408,8 +430,20 @@ def plot_pareto(data, path):
         )
         for c in CONFIGS
     ]
+    solv_h = [
+        Line2D(
+            [],
+            [],
+            marker="o",
+            ls="",
+            mfc="none",
+            mec="0.3",
+            mew=1.5,
+            label="○ conv / solvable\n(aborts = handoffs)",
+        )
+    ]
     ax.legend(
-        handles=arm_h + cfg_h + [Patch(fc="#d5efd5", ec="k", label="G2 pass region")],
+        handles=arm_h + cfg_h + solv_h + [Patch(fc="#d5efd5", ec="k", label="G2 pass region")],
         fontsize=8,
         loc="center right",
         ncol=1,

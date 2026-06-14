@@ -13,6 +13,13 @@ validation"): the master runs table + the three headline comparisons.
   recipe) before relying on any conclusion. Edit the constants below if the
   table moves.
 
+  Re-verified 2026-06-14 against bugfix/beta-delta-solver-pt2: the master table
+  + headline comparisons here are UNCHANGED (that branch only *appended* an
+  end-to-end robustness-sweep section). NOTE the steep/mock rows below are the
+  master-table runs (stop_t = 3.0 / 0.3 Myr); the stop_t = 4 Myr sweep runs used
+  by analyze_negvel.py / plot_hunt.py reach higher beta_max (steep 3.43, mock
+  4.23) and ratio_end -- so those two configs differ by design across scripts.
+
 Produces:
   - phase3_headline.png : convergence / beta-reach / transition / cost,
                           legacy vs hybr (the four headline findings)
@@ -34,7 +41,8 @@ HERE = Path(__file__).resolve().parent
 L_COL, H_COL = "0.6", "#2ca02c"  # legacy / hybr
 BETA_BOX_TOP = 1.0  # legacy BETA_MAX
 RATIO_THRESH = 0.05  # cooling-balance transition trigger
-CAT_COL = {"transition": "#2ca02c", "energy": "0.5", "stall": "#d62728", "short": "0.8"}
+# colourblind-safe (Wong): transition = blue, stall = vermillion
+CAT_COL = {"transition": "#0072B2", "energy": "0.5", "stall": "#D55E00", "short": "0.8"}
 
 # apply trinity's house style; usetex off so scratch renders without LaTeX.
 _STYLE = HERE.parents[1] / "paper" / "_lib" / "trinity.mplstyle"
@@ -108,7 +116,7 @@ def plot_headline(path):
     )
     axB.set_ylim(0, 4.8)
     axB.set_ylabel(r"$\beta_{\max}$ reached")
-    axB.set_title(r"B. $\beta$ reach — hybr leaves the box, legacy clamped")
+    axB.set_title(r"B. $\beta$ reach — hybr exceeds the box (most configs); legacy clamped")
     axB.legend(loc="upper left", fontsize=8)
 
     # C: transition time (log)

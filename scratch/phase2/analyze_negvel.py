@@ -7,15 +7,20 @@ Source data (committed on bugfix/beta-delta-solver-pt2, copied into scratch):
   stalling_mock_4e3.csv           (sweep_mock,  144 rows)
 See analysis/stalling-energy-phase.md for the writeup. Key diagnostics:
   v_struct_min  = most-negative point in the bubble velocity profile [pc/Myr]
-  v_struct_nneg = count of negative-v points (of 100); >=10 = real inflow,
-                  1..9 = a single inner-BC grid point dipping (artifact).
+  v_struct_nneg = count of negative-v points (of ~100 sample points; these
+                  stalling CSVs predate the v_struct_npts column). >=10 = real
+                  inflow, 1..9 = a single inner-BC grid point dipping (artifact).
 
 Finding the plots make: the bubble's interior velocity goes negative (inflow)
-when **beta+delta <~ -0.5** -- the source term of dv/dr is (beta+delta)/t -- NOT
-simply when beta is negative. The driver is feedback luminosity surges (WR wind,
-then SN onset) that re-pressurise the bubble (beta<0). Produces:
-  - negvel_trigger.png  : where in (beta,delta) inflow lives + nneg vs (beta+delta)
-  - negvel_timeline.png : steep run -- Lmech surge -> beta+delta dive -> inflow
+when beta+delta goes sufficiently negative -- the source term of dv/dr is
+(beta+delta)/t -- NOT simply when beta is negative. Here (steep baseline) the
+cut sits near -0.5; the 6-config Phase-6 hunt (plot_hunt.py) refines the onset
+to ~ -0.4. The driver is feedback luminosity surges (WR wind, then SN onset)
+that re-pressurise the bubble (beta<0). Produces:
+  - negvel_trigger.png    : (beta,delta) plane + beta+delta strip, inflow vs no
+  - negvel_timeline.png   : steep vs mock -- Lmech surge -> beta+delta -> inflow
+  - negvel_dmdt_lmech.png : dMdt vs Lmech_total per run (clean fn + transient lag)
+  - negvel_feedback.png   : steep -- cooling_ratio + Eb/Pb vs t (stall + repress.)
 
 Usage: python scratch/phase2/analyze_negvel.py
 """
@@ -163,9 +168,10 @@ def _timeline_col(axcol, d, title):
     a1.plot(t, d["Lmech_total"] / lmax, color="k", lw=1.0, ls="--", label=r"$L_{\rm mech,total}$")
     a1.set_title(title, fontsize=11)
 
-    a2.plot(t, d["cool_beta"], color="#2ca02c", label=r"$\beta$")
-    a2.plot(t, d["beta_plus_delta"], color="#d62728", label=r"$\beta+\delta$")
-    a2.axhline(BPD_THRESH, color="r", ls="--", lw=1.0)
+    # colourblind-safe (Wong): beta = blue, beta+delta = vermillion
+    a2.plot(t, d["cool_beta"], color="#0072B2", label=r"$\beta$")
+    a2.plot(t, d["beta_plus_delta"], color="#D55E00", lw=1.8, label=r"$\beta+\delta$")
+    a2.axhline(BPD_THRESH, color="k", ls="--", lw=1.0)
     a2.axhline(0.0, color="0.6", ls=":", lw=0.8)
 
     a3.plot(t, d["v_struct_nneg"], color="#ff7f0e", marker=".", ms=4)
@@ -211,7 +217,7 @@ def plot_timeline(path):
     axes[2, 0].set_ylabel("v_struct_nneg")
     axes[0, 0].legend(fontsize=7.5, loc="upper left")
     axes[1, 0].legend(fontsize=8, loc="upper left")
-    axes[1, 0].text(2.55, BPD_THRESH, " β+δ=−0.5", color="r", va="bottom", fontsize=7.5)
+    axes[1, 0].text(2.55, BPD_THRESH, " β+δ=−0.5", color="k", va="bottom", fontsize=7.5)
     axes[2, 0].set_xlabel("t  [Myr]")
     axes[2, 1].set_xlabel("t  [Myr]")
     axes[0, 0].set_xlim(2.5, 4.0)  # the WR/SN epoch; t<2.5 quiescent for both
@@ -268,16 +274,17 @@ def plot_feedback(path):
     a1.set_ylim(0, 1.0)
     a1b = a1.twinx()
     a1b.plot(tw, d["Lmech_total"][m] / 1e8, color="0.55", lw=1.0, ls=":")
-    a1b.set_ylabel(r"$L_{\rm mech,total}$ [$10^8$]", color="0.55")
+    a1b.set_ylabel(r"$L_{\rm mech,total}$ [$10^8$ code units]", color="0.55")
     a1b.tick_params(axis="y", labelcolor="0.55")
 
-    a2.plot(tw, d["Eb"][m] / 1e8, color="#2ca02c", lw=1.8)
-    a2.set_ylabel(r"$E_b$ [$10^8$]", color="#2ca02c")
-    a2.tick_params(axis="y", labelcolor="#2ca02c")
+    # colourblind-safe (Wong): Eb = bluish-green, Pb = vermillion
+    a2.plot(tw, d["Eb"][m] / 1e8, color="#009E73", lw=1.8)
+    a2.set_ylabel(r"$E_b$ [$10^8$ code units]", color="#009E73")
+    a2.tick_params(axis="y", labelcolor="#009E73")
     a2b = a2.twinx()
-    a2b.plot(tw, d["Pb"][m], color="#d62728", lw=1.8)
-    a2b.set_ylabel(r"$P_b$", color="#d62728")
-    a2b.tick_params(axis="y", labelcolor="#d62728")
+    a2b.plot(tw, d["Pb"][m], color="#D55E00", lw=1.8)
+    a2b.set_ylabel(r"$P_b$ [code units]", color="#D55E00")
+    a2b.tick_params(axis="y", labelcolor="#D55E00")
     a2.set_xlabel("t  [Myr]")
 
     for ax in (a1, a2):
