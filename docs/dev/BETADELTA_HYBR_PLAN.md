@@ -471,6 +471,21 @@ The implicit→momentum transition is the cooling-balance event
   is a fine trigger for flat profiles; steep profiles need a different one
   (blowout `R2 > rCloud`, or cluster-luminosity decline) — the criterion is
   profile-dependent, which a single hardcoded ε cannot express.**
+- **NEW (2026-06-14) — the stall is feedback-SUSTAINED, and β goes negative.**
+  hybr (not clamped to β∈[0,1] like legacy) shows the stall is not a passive
+  plateau: episodic feedback luminosity surges reset it upward. On the steep
+  4-Myr run `Lmech_total` (= `bubble_Lgain`) jumps at a wind/WR surge
+  (~3.0–3.4 Myr; `Lmech_W` climbs 2.0e8→3.5e8) and again at the SN onset
+  (~3.5–3.8 Myr; `Lmech_SN` jumps to >1e8). Each re-energises the bubble: `Eb`
+  and `Pb` rise — so **β goes negative** (to −2.4; β = −(t/Pb)dPb/dt, β<0 ⇔ Pb
+  rising) — `dMdt` rises in lockstep (~420→~2100), and the cooling ratio **jumps
+  back up** (0.44→0.67), *further* from transition. So `(Lgain−Lloss)/Lgain < ε`
+  can never fire while the cluster is still in its wind/SN epoch — the criterion
+  must be feedback/dynamics-aware (reinforces the force-ratio / blowout
+  alternatives below). Full per-segment data + the Lmech_W/SN split:
+  `analysis/stalling-energy-phase.md`,
+  `analysis/data/stalling_{steep_1e6_alpha-2,mock_4e3}.csv`. Legacy could never
+  show this (β pinned ≥0).
 - **Is the energy-ratio criterion physically sound?** It marks "E_b stops
   *growing*", not "the bubble pressure force stops *driving* the shell". The
   momentum phase deletes the `4πR²·Pb` thermal drive
@@ -501,6 +516,105 @@ The implicit→momentum transition is the cooling-balance event
   re-anchors the T0 state variable — its own study.
 - Registry info-string bug for `bubble_xi_Tb` / `bubble_r_Tb` ("xi = r/R2" vs
   the thickness fraction the code uses) — flagged in §2.1; fix when convenient.
+
+## Phase 6 — Velocity-structure ("Problem 2") investigation (6.0 RAN 2026-06-14)
+
+Surfaced by the same negative-β runs (2026-06-14). Out of solver-repair scope; a
+self-contained phased study. Same staleness caveat — the line refs below were
+verified against current source on 2026-06-14, re-verify before acting.
+**Phase 6.0 ran; Gate G6 is marginally OPEN on one bounded `dMdt` channel —
+cosmetic in 5/6 configs. See the 6.0 result block below.**
+
+**The finding (verified).** The bubble-structure ODE's velocity source term is
+`(β+δ)/t` (`bubble_luminosity.py:1150`, `dvdr`). When **β+δ goes strongly
+negative** (≲ −0.5) the interior velocity falls through zero — *inflow*, which
+the Weaver self-similar (outflow) structure does not admit (WARPFIELD
+"Problem 2"). **The acceptance gate does not guard against it:** the inner
+velocity residual checks only the inner-edge BC `(v[-1])/(v[0]+1e-4)`
+(`bubble_luminosity.py:1085`), `min_T < 3e4` (`:1088`), `nan` (`:1092`), and
+monotonic-T (`:1096`); the hybr outer gate checks only structure-success
+(`get_betadelta.py:819`) and `dMdt>0` (`:824`). Neither checks interior-v sign.
+So such segments are **converged but partially unphysical** in velocity.
+
+Measured (`sweep_steep`, 1e6 M☉ α=−2): 4 of 133 segments, all during the WR
+wind surge (β+δ ∈ [−1.11, −0.49]); the negative band is the inner ~2–73 % of the
+bubble thickness, `v_min ≈ −0.1…−0.6` pc/Myr vs shell `v2 ≈ 10` (a ~1–6 %
+reversal). **Driven by β+δ, not β:** the mock (β to −1.04) keeps (β+δ)_min=+0.25
+and has **zero** real inflow segments. Data: `analysis/data/stalling_*.csv`
+(`v_struct_min`, `v_struct_nneg`, `beta_plus_delta` columns).
+
+**Impact is probably negligible — confirm before treating.** The cooling
+luminosity does **not** use v: the three integrals are `chi_e·n²·Λ(T)`
+(`bubble_luminosity.py:612`), `dudt(n,T,φ)` (`:659`), and the intermediate
+region (`:677+`) — all density/temperature only. v feeds only the coupled ODE
+and one interpolated grid point `v_CIEswitch` (`:587,593,600`). In the data
+`Lloss`, `dMdt`, `Eb` evolve smoothly and stay converged (~1e-14) straight
+through the inflow band. So on current evidence the inflow is **cosmetic**, and
+the obvious "clip v≥0" would change essentially nothing.
+
+### Phase 6.0 — Gate: does it EVER contaminate? [DONE 2026-06-14]
+Ran six instrumented hybr configs (harness `scratch/phase6/hunt.py`, classifier
+`scratch/phase6/analyze_hunt.py`) probing deeper/longer β+δ surges — stronger SN
+(sfe 0.01→0.30), denser core, long multi-epoch span, flat control. Per accepted
+segment: convergence, `Lloss`/`dMdt`/`Eb` smoothness across the band, and inflow
+extent (`v_neg_frac_thick`, `v_min`) vs β+δ. **909 segments, 100% converged.**
+Full write-up + plottable data: `analysis/stalling-energy-phase.md`
+(§ "Phase 6.0 contamination hunt") and `analysis/data/hunt_*.csv`.
+
+**Gate G6 result — marginally OPEN, on one bounded channel; cosmetic in 5/6:**
+- **No non-convergence anywhere** (the cleanest contamination signal — absent).
+- **"Stronger surge → worse inflow" is FALSIFIED:** the deepest dip is in the
+  *weakest*-feedback baseline (sfe 0.01: β+δ→−1.11, inflow 74 % of thickness);
+  stronger feedback keeps β+δ shallow/positive → no/shallow inflow. The dense
+  case's deep band is a short-lived explicit→implicit handoff transient.
+- **Energy-budget immune:** v is absent from all three cooling integrals
+  (`:612`/`:659`/`:677`), so `Lloss`/`Eb` cannot be corrupted. The only
+  v-coupled output is `dMdt`.
+- **The dMdt "kink" is the feedback surge, which LEADS the inflow** — h1's
+  biggest dMdt jumps (+42 %, +62 %) land *before* β+δ goes negative.
+  Deconfounded vs each config's surge ramp: h1 ×0.7, h2/h3 ×0.9 (clean), h4
+  handoff-excluded; **only h6** keeps a bounded ×1.9 (10.9 %) dMdt step, and even
+  that looks like a *lagged* SN-surge response, not a clean inflow signature.
+
+So the inflow is real, sometimes deep, always converges, and is provably
+energy-immune — its sole possible impact is a bounded, ambiguous `dMdt` step in
+one config. The screen cannot certify that channel as *exactly* zero, so →
+**narrow 6.1** (below). It is **not** the broad contamination the raw first-
+difference heuristic suggested before deconfounding.
+
+### Phase 6.1 — Treatments + metric [narrowed by 6.0: `dMdt` channel only]
+6.0 narrowed this from "does it contaminate?" to "does the bounded `dMdt`
+response on the inflow segments change anything macroscopic?" (Lloss/Eb are
+energy-immune, so they are *not* the test). The treatment arms are unchanged:
+- **A — accept** (status quo): the baseline.
+- **B — clip v≥0** in the structure output / `v_CIEswitch`: cosmetic unless a
+  consumer of v is found; cheapest.
+- **C — velocity-sign reject → hold**: treat interior-v<0 as a structure
+  failure (a Problem-2 gate, mirroring the dMdt gate and the `min_T` penalty at
+  `bubble_luminosity.py:1088`) so the segment flags `no_physical_root` and the
+  runner holds the last physical structure (the Commit-3 path).
+- **D — penalise-in-solver**: add a v<0 penalty in `_get_velocity_residuals`
+  alongside the existing penalties — *only* sensible if a positive-v root exists
+  nearby (it may not: β+δ<0 is set by the physical Lmech surge).
+
+**Metric (pre-registered, narrowed):** vs arm A on the open config (h6, and h1
+for the deepest band) — the **macro deltas** that a changed `dMdt` could move:
+`R2`, `v2`, terminal momentum, transition time, and energy-budget closure across
+the band. With **no** disturbance to the (already-fine) common case
+(byte-identical on non-inflow segments). Promotion: simplest arm that removes any
+macro delta without perturbing the common case — *and if arm A's macro deltas
+are already negligible (the likely outcome), the result is "document + ship the
+diagnostic-only `v_neg_frac_thick` snapshot field, no treatment".*
+
+### Phase 6.2 — Multi-arm experiment [only if G6 opens]
+Run arms A–D in parallel (pure structure call, zero production impact — like the
+§2.3 shadow arms), per-segment diagnostics to jsonl, compare against the 6.1
+metric. Promote the winner behind a param/flag, default = accept.
+
+**The deeper question (not just "which treatment"):** is the inner inflow during
+a violent re-pressurisation *physically real* (genuine transient) or a
+quasi-steady-structure breakdown? A treatment that suppresses real physics would
+be wrong, so 6.0's job is as much to *understand* as to gate.
 
 ## Decisions that belong to the maintainer, not the code
 
