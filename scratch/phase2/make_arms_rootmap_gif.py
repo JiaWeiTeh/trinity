@@ -73,6 +73,14 @@ def main():
     gD = np.array([(r.get("g", np.nan) if (r and "g" in r) else np.nan) for r in D])
     snorm = Normalize(segs[0], segs[-1])
 
+    # axis limits from the actual data (D leaves the box) + the box, with padding
+    allb = [b for (b, d) in ax_a + ax_d if b is not None]
+    alld = [d for (b, d) in ax_a + ax_d if d is not None]
+    xlo, xhi = min(allb + [BOX_B[0]]), max(allb + [BOX_B[1]])
+    ylo, yhi = min(alld + [BOX_D[0]]), max(alld + [BOX_D[1]])
+    xpad, ypad = 0.08 * (xhi - xlo) + 0.05, 0.08 * (yhi - ylo) + 0.05
+    XLIM, YLIM = (xlo - xpad, xhi + xpad), (ylo - ypad, yhi + ypad)
+
     fig, (aL, aR) = plt.subplots(1, 2, figsize=(12, 5.5), constrained_layout=True)
 
     def update(i):
@@ -125,8 +133,8 @@ def main():
                     ls="none",
                     zorder=5,
                 )
-        aL.set_xlim(-0.4, 2.2)
-        aL.set_ylim(-1.15, 0.5)
+        aL.set_xlim(*XLIM)
+        aL.set_ylim(*YLIM)
         aL.set_xlabel(r"$\beta$")
         aL.set_ylabel(r"$\delta$")
         aL.set_title(

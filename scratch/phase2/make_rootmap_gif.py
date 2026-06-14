@@ -5,8 +5,9 @@ Three panels, frame = energy-implicit segment (i.e. increasing time):
   LEFT  : the (beta,delta) plane. The legacy clamp box is "the cage". The hybr
           root (no cage) traces out over time; when it leaves the box the cage
           pins it to the nearest edge (clip), with a connector = the clamp error.
-  TOP-R : the reconstructed bubble velocity profile v vs density n at that segment
-          (re-solved with get_bubbleproperties_pure; inflow = v<0).
+  TOP-R : the reconstructed bubble velocity profile v vs radial fraction (R1->R2)
+          (re-solved with get_bubbleproperties_pure; inflow = v<0). Profiles are
+          cached to rootmap_cage_profiles.npz so later renders skip the re-solve.
   BOT-R : Lmech_W / Lmech_SN / Lmech_total vs t, with a marker at the current t.
 
 Data: analysis/data/stalling_steep_1e6_alpha-2.csv (state + Lmech) + the steep
@@ -89,12 +90,13 @@ def reconstruct(params, row):
     ):
         params[k].value = val
     props = get_bubbleproperties_pure(params)
-    narr = np.asarray(props.bubble_n_arr, dtype=float)
+    r = np.asarray(props.bubble_r_arr, dtype=float)
     varr = np.asarray(props.bubble_v_arr, dtype=float)
-    o = np.argsort(narr)
-    narr, varr = narr[o], varr[o]
-    s = max(1, len(narr) // NPLOT)
-    return narr[::s], varr[::s], dict(t=t, beta=beta, delta=delta)
+    rf = (r - props.R1) / (R2 - props.R1)  # radial fraction: 0 = R1, 1 = R2
+    o = np.argsort(rf)
+    rf, varr = rf[o], varr[o]
+    s = max(1, len(rf) // NPLOT)
+    return rf[::s], varr[::s], dict(t=t, beta=beta, delta=delta)
 
 
 def main():
@@ -106,22 +108,24 @@ def main():
     b_all = np.array([float(r["cool_beta"]) for r in rows])
     d_all = np.array([float(r["cool_delta"]) for r in rows])
 
-    params = init_params()
-    frames = []
     sel = rows[::SUBSAMPLE]
-    print(f"reconstructing {len(sel)} segments...")
-    for k, row in enumerate(sel):
-        n, v, meta = reconstruct(params, row)
-        frames.append(dict(n=n, v=v, **meta))
-        if k % 10 == 0:
-            print(f"  {k}/{len(sel)}  t={meta['t']:.2f}")
+    cache = HERE / "rootmap_cage_profiles.npz"  # re-solve once; later renders are a read
+    if cache.exists():
+        frames = list(np.load(cache, allow_pickle=True)["frames"])
+        print(f"loaded {len(frames)} cached profiles")
+    else:
+        params = init_params()
+        frames = []
+        print(f"reconstructing {len(sel)} segments (cached after)...")
+        for k, row in enumerate(sel):
+            rf, v, meta = reconstruct(params, row)
+            frames.append(dict(rf=rf, v=v, **meta))
+            if k % 10 == 0:
+                print(f"  {k}/{len(sel)}  t={meta['t']:.2f}")
+        np.savez(cache, frames=np.array(frames, dtype=object))
 
     bf = np.array([f["beta"] for f in frames])
     df = np.array([f["delta"] for f in frames])
-    nmin = min(f["n"].min() for f in frames)
-    nmax = max(f["n"].max() for f in frames)
-    vmin = min(f["v"].min() for f in frames)
-    vmax = max(f["v"].max() for f in frames)
 
     fig, axd = plt.subplot_mosaic(
         [["A", "B"], ["A", "C"]],
@@ -218,19 +222,18 @@ def main():
         aA.legend(loc="lower right", fontsize=8)
         aA.grid(alpha=0.3)
 
-        # ---- panel B: bubble velocity vs density ----
+        # ---- panel B: bubble velocity vs radius ----
         aB.clear()
         aB.axhline(0.0, color="k", lw=0.8)
-        aB.axhspan(min(vmin, -0.05) * 1.1, 0.0, color="r", alpha=0.06)
-        aB.plot(f["n"], f["v"], color="#0072B2", lw=1.8)
-        aB.set_xscale("log")
-        aB.set_xlim(nmin, nmax)
-        aB.set_ylim(vmin * 1.1 - 0.05, vmax * 1.05)
-        aB.set_xlabel("bubble density  n  [code units, log]")
+        aB.axhspan(-1.1, 0.0, color="r", alpha=0.06)
+        aB.plot(f["rf"], f["v"], color="#0072B2", lw=1.8)
+        aB.set_xlim(0, 1)
+        aB.set_ylim(-1.1, 11.0)  # fixed so the inner inflow (v<0) is visible (late v2 clips)
+        aB.set_xlabel("radial fraction  (0 = R1, 1 = R2)")
         aB.set_ylabel("v(r)  [pc/Myr]")
         inflow = float(np.nanmin(f["v"])) < -0.01
         aB.set_title(
-            "bubble velocity vs n" + ("  — INFLOW (v<0)" if inflow else ""),
+            "bubble velocity vs radius" + ("  — INFLOW (v<0)" if inflow else ""),
             fontsize=10,
             color="#b30000" if inflow else "k",
         )
