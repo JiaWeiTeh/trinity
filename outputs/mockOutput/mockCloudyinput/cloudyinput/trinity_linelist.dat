@@ -1,0 +1,16 @@
+# CLOUDY line list for the TRINITY → CLOUDY pipeline.
+# Format: <species> <ionisation>  <wavelength>
+# CLOUDY reads to end-of-file. Edit freely to add/remove lines.
+H  1   6562.81A   # Halpha
+H  1   4861.33A   # Hbeta
+H  1   4340.47A   # Hgamma
+He 1   5875.61A
+He 2   4685.68A
+O  2   3726.03A
+O  2   3728.81A
+O  3   4958.91A
+O  3   5006.84A
+N  2   6548.05A
+N  2   6583.45A
+S  2   6716.44A
+S  2   6730.81A

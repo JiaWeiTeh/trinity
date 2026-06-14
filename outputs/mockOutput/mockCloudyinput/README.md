@@ -8,8 +8,8 @@ without running the driver.
 
 ```
 mockCloudyinput/
-├── 1e5_sfe001_n20_PL0_yesPHII_208_implicit_t1p9783myr.in
-├── 1e5_sfe001_n20_PL0_yesPHII_208_implicit_t1p9783myr.dlaw.txt
+├── 1e5_sfe001_n1e3_PL0_yesPHII_232_momentum_t2p0197myr.in
+├── 1e5_sfe001_n1e3_PL0_yesPHII_232_momentum_t2p0197myr.dlaw.txt
 ├── trinity_linelist.dat
 └── cloudyinput.zip            # the three files above, bundled for download
 ```
@@ -23,45 +23,47 @@ mockCloudyinput/
 
 ## Where it came from
 
-Generated from a TRINITY run named `1e5_sfe001_n20_PL0_yesPHII`
-(1×10⁵ M☉ cloud, SFE ≈ 0.0085 → ~850 M☉ cluster, n_core = 20 cm⁻³,
-uniform power-law profile, photoionisation pressure on). The deck is
-for snapshot 208 in the **implicit** phase, at cluster age ≈ 1.98 Myr —
-i.e., the energy-driven phase is still active and the bubble has not
-yet broken out.
+Generated from a TRINITY run named `1e5_sfe001_n1e3_PL0_yesPHII`
+(1×10⁵ M☉ cloud, SFE = 0.01 → 1000 M☉ cluster, uniform power-law
+profile with n_core = 10³ cm⁻³, covering fraction Cf = 0.77,
+photoionisation pressure on, Z = Z☉). The deck is for snapshot 232 in
+the **momentum** phase, at cluster age ≈ 2.02 Myr — the energy-driven
+phase is over and the shell is coasting as a momentum-driven snowplow
+at ≈ 27.7 pc.
 
 To regenerate from a copy of that run directory:
 
 ```bash
 python -m trinity._output.cloudy.trinity_to_cloudy \
-    -F outputs/.../1e5_sfe001_n20_PL0_yesPHII/ \
+    -F outputs/rosette_cf_survey_updated_0p77/1e5_sfe001_n1e3_PL0_yesPHII/ \
     --age 2.0 \
     --out outputs/mockOutput/mockCloudyinput/
 ```
 
-The closest snapshot to age 2.0 Myr is index 208, at 1.9783 Myr — hence
-the filename suffix `t1p9783myr`.
+The closest snapshot to age 2.0 Myr is index 232, at 2.0197 Myr — hence
+the filename suffix `t2p0197myr`.
 
 ## Why this snapshot is interesting
 
-The dlaw block is a **textbook ionisation front**, exactly the case the
-pipeline's IF-preserving densification was built for. Walking through
-the block:
+Even in the momentum phase the dlaw is a **textbook ionisation front**,
+but with the opposite weighting from a young, dense shell: here the
+ionised gas fills almost the entire shell and the neutral region is a
+thin outer skin. Walking through the 100-row block:
 
-| Rows  | log r (dex) | r (pc)      | log n_H (dex) | n_H (cm⁻³) | Region                              |
-|-------|-------------|-------------|---------------|------------|-------------------------------------|
-| 1–51  | 20.0198 → 20.0606 | 33.85 → 37.11 | 1.077 → 1.085 | ≈12        | ionised inner shell (just inside R2) |
-| 52    | 20.06061 → 20.06072 | 37.12 → 37.12 | 1.085 → 3.405 | **12 → 2540** | **the ionisation front itself**    |
-| 53–100 | 20.0607 → 20.0613 | 37.12 → 37.16 | 3.405 → 3.407 | ≈2540       | neutral compressed snowplow         |
+| Rows   | log r (dex)         | r (pc)          | log n_H (dex) | n_H (cm⁻³)   | Region                                   |
+|--------|---------------------|-----------------|---------------|--------------|------------------------------------------|
+| 1–58   | 19.3187 → 19.9310   | 6.75 → 27.65    | 0.788 → 0.883 | ≈6–8         | ionised interior (nearly the whole shell) |
+| 58→59  | 19.93102 → 19.93103 | 27.647 → 27.648 | 0.883 → 3.184 | **8 → 1530** | **the ionisation front itself**           |
+| 59–100 | 19.9310 → 19.9317   | 27.65 → 27.69   | 3.184 → 3.186 | ≈1530        | thin neutral skin at the shell's edge     |
 
-The IF spans about **0.001 pc** of physical thickness with a **2.3 dex
-(× 210) density jump**. The dlaw preserves this verbatim — `dlaw.py`'s
-edge-detection threshold catches the row pair as steep and densifies
-only the smooth spans on either side, never inserting interpolated rows
-that would smear the front.
+The IF spans about **0.001 pc** of physical thickness with a **2.30 dex
+(× 200) density jump**, sitting just **0.045 pc inside `rShell`**. The
+dlaw preserves this verbatim — `dlaw.py`'s edge-detection threshold
+catches the row pair as steep and densifies only the smooth spans on
+either side, never inserting interpolated rows that would smear the front.
 
-CLOUDY interpolates linearly between dlaw rows, so the deck presents
-this as a near-step in density. CLOUDY then computes its own ionisation
+CLOUDY interpolates linearly between dlaw rows, so the deck presents this
+as a near-step in density. CLOUDY then computes its own ionisation
 balance and decides where it thinks the IF actually sits — comparing
 TRINITY's IF location to CLOUDY's is itself a useful diagnostic of how
 well the 1-D thin-shell prescription is doing.
@@ -72,22 +74,23 @@ All numbers in the dlaw are **log₁₀** (CLOUDY's `dlaw table radius`
 convention):
 
 ```
-radius 20.0198 20.0613      ← log₁₀(R2/cm)  log₁₀(rShell/cm)
+radius 19.3187 19.9317      ← log₁₀(R2/cm)  log₁₀(rShell/cm)
               │                   │
-              33.85 pc            37.16 pc        →  shell thickness 3.3 pc
+              6.75 pc             27.69 pc        →  shell thickness 20.9 pc
 ```
 
-For comparison: the cluster has Q(H) = 10⁴⁹·⁸ ≈ 6×10⁴⁹ photons/s.
-Static Strömgren in n_H = 12 cm⁻³ would be ~12 pc — but TRINITY's
-expanding HII region with PHII pressure is balanced at ~37 pc here,
-which is where the dlaw begins.
+For comparison: the cluster has Q(H) = 10⁴⁹·⁸¹ ≈ 6.5×10⁴⁹ photons/s.
+That is enough to keep nearly the full 20.9 pc shell thickness ionised
+at the low interior density (n_H ≈ 6–8 cm⁻³); only a ~0.05 pc neutral
+skin survives at the outer edge, which is where the dlaw's density jump —
+the ionisation front — sits.
 
 ## Before running CLOUDY
 
 The deck's `table star` line carries a `<<<EDIT_ME>>>` sentinel:
 
 ```
-table star "<<<EDIT_ME>>>" age = 1.9783e+06 years
+table star "<<<EDIT_ME>>>" age = 2.0197e+06 years
 ```
 
 CLOUDY needs the name of a CLOUDY-compiled SB99 atmosphere grid (a
