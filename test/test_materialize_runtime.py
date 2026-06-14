@@ -1,7 +1,7 @@
 """Phase-9 materialize_runtime contract tests.
 
 Pins ``materialize_runtime`` against the behavior the pre-Phase-9
-inline Step-10 block produced for the 103 runtime/derived-init
+inline Step-10 block produced for the 105 runtime/derived-init
 adds.  The reconciliation tests in ``test_registry.py``
 (``test_registry_covers_all_param_keys``, ``test_runtime_units_match_live``,
 ``test_exclude_from_snapshot_matches_live``) already prove the
@@ -89,21 +89,21 @@ def _step10_entry_state(profile: str) -> dict:
 
 
 @pytest.mark.parametrize("profile", ["densPL", "densBE"])
-def test_live_flow_adds_exactly_103(profile: str) -> None:
+def test_live_flow_adds_exactly_105(profile: str) -> None:
     """At Step 10 entry on a real read_param run (densPL or densBE),
-    materialize_runtime adds exactly 103 items.  Both branches converge
+    materialize_runtime adds exactly 105 items.  Both branches converge
     because the 8 densBE_* runtime are owned by Phase 8 either way --
     materialize_runtime sees them and skips."""
     params = _step10_entry_state(profile)
     pre = set(params)
     materialize_runtime(params)
     added = set(params) - pre
-    assert len(added) == 103, f"{profile}: expected 103 adds, got {len(added)}"
+    assert len(added) == 105, f"{profile}: expected 105 adds, got {len(added)}"
 
 
-def test_live_flow_add_excl_split_is_9_true_94_false() -> None:
-    """Of the 103 live-flow adds, 9 carry exclude_from_snapshot=True
-    (cooling cubes, sps_data/sps_f, the rcloud counter) and 94 carry
+def test_live_flow_add_excl_split_is_9_true_96_false() -> None:
+    """Of the 105 live-flow adds, 9 carry exclude_from_snapshot=True
+    (cooling cubes, sps_data/sps_f, the rcloud counter) and 96 carry
     False (time-varying simulation state).  Locks in the exact split
     from the fidelity audit."""
     params = _step10_entry_state("densPL")
@@ -113,7 +113,7 @@ def test_live_flow_add_excl_split_is_9_true_94_false() -> None:
     n_true = sum(1 for k in added if params[k].exclude_from_snapshot)
     n_false = sum(1 for k in added if not params[k].exclude_from_snapshot)
     assert n_true == 9
-    assert n_false == 94
+    assert n_false == 96
 
 
 def test_added_items_metadata_comes_from_spec() -> None:

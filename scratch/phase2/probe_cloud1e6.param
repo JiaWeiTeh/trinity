@@ -1,0 +1,9 @@
+model_name    probe_cloud1e6
+mCloud    1e6
+sfe    0.01
+dens_profile    densPL
+densPL_alpha    0
+nCore    1e3
+nISM    10
+stop_t    6.0
+log_level    INFO

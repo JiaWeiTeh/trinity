@@ -1,0 +1,5 @@
+model_name    arms_simple1e5
+mCloud    1e5
+sfe    0.3
+stop_t    1.0
+log_level    INFO

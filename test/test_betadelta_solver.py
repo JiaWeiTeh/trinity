@@ -55,9 +55,9 @@ def make_params() -> dict:
     """Fake params dict: plain mapping of name -> object with .value.
 
     Values only need to keep the cheap post-bubble scalar algebra in
-    ``get_residual_detailed`` finite (compute_R1_Pb falls back to
-    R1 = 0.01*R2 if its brentq fails, so nothing here needs to be
-    physically self-consistent).
+    ``get_residual_detailed`` finite; solve_R1's full [0, R2] bracket
+    finds the (tiny) R1 root for these values, so nothing here needs
+    to be physically self-consistent.
     """
     vals = {
         'R2': 10.0,

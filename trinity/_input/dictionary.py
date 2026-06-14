@@ -1185,6 +1185,8 @@ COOLING_PHASE_KEYS = [
     'residual_Edot2_guess',
     'residual_T1_guess',
     'residual_T2_guess',
+    'betadelta_converged',
+    'betadelta_total_residual',
     # Bubble energy balance
     'bubble_Lgain',
     'bubble_Lloss',

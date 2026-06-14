@@ -112,6 +112,19 @@ def _validate_dens_profile(value, params) -> None:
         )
 
 
+def _validate_betadelta_solver(value, params) -> None:
+    """Selects the energy-implicit (beta, delta) solver. 'legacy' is the
+    bounded grid + L-BFGS-B search (default, unchanged behaviour); 'hybr'
+    is the unbounded scipy root-finder with a physical dMdt>0 acceptance
+    gate (see trinity/phase1b_energy_implicit/get_betadelta.py)."""
+    from trinity._input.errors import ParameterFileError
+    if value not in ('legacy', 'hybr'):
+        raise ParameterFileError(
+            f"Invalid betadelta_solver '{value}'. "
+            f"Must be 'legacy' or 'hybr'."
+        )
+
+
 def _validate_stop_at_rCloud_nSnap(value, params) -> None:
     """Validate AND coerce: whole-number floats (e.g. 5.0 from '5')
     become ints; fractional floats / negatives / non-numerics raise."""
@@ -291,6 +304,7 @@ SPECS: tuple[ParamSpec, ...] = (
     ParamSpec(name='include_PHII', default='True', info='Include HII pressure (from Strömgren ionization balance in shell) in P_drive. When False, P_HII is set to zero.', category='input_physical', unit=None, exclude_from_snapshot=True, run_const=True),
     ParamSpec(name='coverFraction', default='1.0', info='Closed fraction of the bubble wall (covering fraction Cf). Geometry-set energy/mass leak: hot gas vents through the open area (1-Cf)*4*pi*R2^2 at the interior sound speed, draining bubble energy (and, when the mass sink is enabled, mass). Cf=1 recovers the sealed (Weaver) bubble exactly; not fragmentation-triggered. Usable range ~0.9-0.99; Cf near 0 drains the bubble within a step and stresses the integrator.', category='input_physical', unit=None, exclude_from_snapshot=True, run_const=True, validator=_validate_coverFraction),
     ParamSpec(name='dens_profile', default='densPL', info='Specifies how the cloud density scales with radius.', category='input_profile', unit=None, run_const=True, validator=_validate_dens_profile),
+    ParamSpec(name='betadelta_solver', default='legacy', info="Energy-implicit (beta, delta) solver: 'legacy' (bounded grid + L-BFGS-B, default, unchanged) or 'hybr' (unbounded scipy root-finder with a physical dMdt>0 acceptance gate).", category='input_admin', unit=None, exclude_from_snapshot=True, run_const=True, validator=_validate_betadelta_solver),
     ParamSpec(name='densBE_Omega', default='14.1', info='if `densBE` is selected, then the ratio `Omega = nCore/nCloudEdge` must be specified.', category='input_profile', unit=None, exclude_from_snapshot=True, run_const=True, active_when=_active_densBE),
     ParamSpec(name='densPL_alpha', default='0', info='if `densPL` is selected, then the power-law coefficient `nCore*(r/rCore)^alpha` (0 = homogeneous, -2 = isothermal) must be specified.', category='input_profile', unit=None, run_const=True, active_when=_active_densPL),
     ParamSpec(name='nCore', default='1e5', info='Hydrogen nuclei number density of cloud core (n_H). Standard GMC/ISM convention. Mass density: rho = nCore * mu_convert * m_H. If `densPL` AND densPL_alpha = 0, this is the average cloud density.', category='input_physical', unit='cm**-3', run_const=True),
@@ -463,6 +477,8 @@ SPECS: tuple[ParamSpec, ...] = (
     ParamSpec(name='residual_Edot2_guess', default=np.nan, info='Edot from energy balance', category='runtime_residuals', unit='Msun*pc**2/Myr**3'),
     ParamSpec(name='residual_T1_guess', default=np.nan, info='T from bubble_Trgoal', category='runtime_residuals', unit='K'),
     ParamSpec(name='residual_T2_guess', default=np.nan, info='T from T0', category='runtime_residuals', unit='K'),
+    ParamSpec(name='betadelta_converged', default=False, info='Did the beta-delta solver converge below threshold this segment?', category='runtime_residuals', unit='N/A'),
+    ParamSpec(name='betadelta_total_residual', default=np.nan, info='Total residual (Edot_res**2 + T_res**2) at the accepted beta-delta point', category='runtime_residuals', unit='dimensionless'),
     ParamSpec(name='densBE_Teff', default=0, info='Effective (turbulent) temperature of the BE sphere = mu_convert * c_s**2 / (gamma_adia * k_B), where c_s is the support velocity dispersion (see densBE_sigma). NOT the gas thermal temperature: for GMC-mass clouds c_s is turbulent (~km/s, Larson-law), giving Teff ~ 1e4-1e7 K. Only used to encode c_s for the r<->xi profile mapping (mu/gamma cancel in that round-trip).', category='derived_init', unit='K', exclude_from_snapshot=True, run_const=True, active_when=_active_densBE),
     ParamSpec(name='densBE_sigma', default=0, info='Effective velocity dispersion sigma = c_s of the BE sphere [km/s] -- the support sound speed that sets the BE hydrostatic structure. For GMC-mass clouds this is turbulent (Larson-law, ~km/s), not the ~0.2 km/s thermal sound speed of cold molecular gas. Same physical quantity as densBE_Teff, in transparent units.', category='derived_init', unit='km/s', exclude_from_snapshot=True, run_const=True, active_when=_active_densBE),
     ParamSpec(name='densBE_xi_arr', default=[], info='Lane-Emden xi array', category='runtime_cloud_profile', unit='dimensionless', exclude_from_snapshot=True, active_when=_active_densBE),

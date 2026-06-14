@@ -116,6 +116,18 @@ FOUR_PI = 4.0 * np.pi
 ADAPTIVE_THRESHOLD_DEX = 0.05  # dex - threshold for parameter change (10^0.1 ≈ 1.26x)
 ADAPTIVE_FACTOR = 10**0.1     # Factor to increase/decrease DT_SEGMENT (~1.26)
 
+# Consecutive unconverged beta-delta solves before a WARNING is logged
+BETADELTA_UNCONVERGED_WARN_STREAK = 3
+
+# Streak length beyond which the dt mitigation disengages. A short streak
+# means the solver is chasing a nearby root and shorter segments help it
+# catch up; a long streak means the root is unreachable (outside the hard
+# bounds, or outrunning the grid window even at DT_SEGMENT_MIN), where
+# floor-dt only multiplies segment count without buying correctness
+# (field case: a 1e6 Msun run pinned at beta=1 ground at ~1e-4 Myr/segment
+# with a ~4-day projected phase completion).
+BETADELTA_DT_SHRINK_MAX_STREAK = 10
+
 # Velocity-based proactive timestep control (for rapid collapse)
 # When |v2| exceeds threshold, reduce dt_segment to ensure fine temporal resolution
 VELOCITY_THRESHOLD_COLLAPSE = 50.0   # pc/Myr - proactively reduce step when |v2| > this
@@ -201,6 +213,86 @@ def compute_max_dex_change(params_before: dict, params_after: dict, keys: list) 
             continue
 
     return max_dex
+
+
+def update_unconverged_streak(streak: int, converged: bool, t_now: float,
+                              total_residual: float) -> int:
+    """
+    Consecutive-unconverged counter for the beta-delta solver.
+
+    Resets on a converged solve. Warns once when the streak reaches
+    BETADELTA_UNCONVERGED_WARN_STREAK: the per-segment convergence trace is
+    DEBUG-only, so without this a fully unconverged phase is silent at the
+    default log level.
+    """
+    if converged:
+        return 0
+    streak += 1
+    if streak == BETADELTA_UNCONVERGED_WARN_STREAK:
+        logger.warning(
+            f"beta-delta solver unconverged for {streak} consecutive segments "
+            f"(t={t_now:.6e} Myr, accepted residual={total_residual:.3e}); "
+            f"dt_segment growth suppressed until convergence"
+        )
+    elif streak == BETADELTA_DT_SHRINK_MAX_STREAK + 1:
+        logger.warning(
+            f"beta-delta solver unconverged for {streak} consecutive segments "
+            f"(t={t_now:.6e} Myr): dt mitigation disengaged — root apparently "
+            f"unreachable; resuming standard adaptive stepping"
+        )
+    return streak
+
+
+def betadelta_phase_summary(solve_count: int, converged_count: int,
+                            no_root_count: int) -> tuple:
+    """End-of-phase beta-delta solver summary: ``(clean, message)``.
+
+    ``clean`` (every segment converged AND none was a no-physical-root
+    safety-net hit) selects INFO logging; otherwise WARNING. Per-segment
+    convergence is DEBUG-only, so without this a fully unconverged or
+    degenerate implicit phase would be silent at the phase boundary.
+    """
+    pct = 100.0 * converged_count / solve_count if solve_count else 0.0
+    clean = converged_count == solve_count and no_root_count == 0
+    message = (f"beta-delta solver: {converged_count}/{solve_count} segments "
+               f"converged ({pct:.0f}%), {no_root_count} with no physical root")
+    return clean, message
+
+
+def next_dt_segment(dt_segment: float, max_dex_change: float,
+                    unconverged_streak: int) -> float:
+    """
+    Adaptive dt_segment update plus the beta-delta non-convergence guard.
+
+    Base policy (unchanged from the original inline block): shrink on a
+    large monitored-parameter change, grow on a small one. Guard: while the
+    beta-delta solver is unconverged (0 < streak <= the cap), growth is
+    suppressed and dt shrinks instead — an unconverged solver lags the
+    root, which makes parameter changes *look* small precisely when the
+    next segment must stay short to bound the damage of another bad solve.
+    Beyond BETADELTA_DT_SHRINK_MAX_STREAK the guard disengages and standard
+    adaptive stepping resumes: a long streak means the root is unreachable
+    and floor-dt would only multiply cost (see the constant's comment).
+    """
+    dt_old = dt_segment
+    mitigating = 0 < unconverged_streak <= BETADELTA_DT_SHRINK_MAX_STREAK
+    if max_dex_change > ADAPTIVE_THRESHOLD_DEX:
+        # Large change: decrease dt_segment
+        dt_segment = max(dt_segment / ADAPTIVE_FACTOR, DT_SEGMENT_MIN)
+        logger.debug(f"Adaptive: max_dex={max_dex_change:.3f} > {ADAPTIVE_THRESHOLD_DEX}, "
+                     f"dt: {dt_old:.3e} -> {dt_segment:.3e}")
+    elif not mitigating:
+        # Small change: increase dt_segment
+        dt_segment = min(dt_segment * ADAPTIVE_FACTOR, DT_SEGMENT_MAX)
+        if dt_segment != dt_old:
+            logger.debug(f"Adaptive: max_dex={max_dex_change:.3f} < {ADAPTIVE_THRESHOLD_DEX}, "
+                         f"dt: {dt_old:.3e} -> {dt_segment:.3e}")
+    if mitigating:
+        dt_pre_guard = dt_segment
+        dt_segment = max(dt_segment / ADAPTIVE_FACTOR, DT_SEGMENT_MIN)
+        logger.debug(f"beta-delta unconverged (streak {unconverged_streak}): "
+                     f"dt: {dt_pre_guard:.3e} -> {dt_segment:.3e}")
+    return dt_segment
 
 
 def get_monitor_values(params) -> dict:
@@ -520,6 +612,14 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
     # Adaptive time stepping
     dt_segment = DT_SEGMENT_INIT
 
+    # Consecutive unconverged beta-delta solves (see update_unconverged_streak)
+    betadelta_unconverged_streak = 0
+
+    # End-of-phase solver summary counters (see the summary log after the loop).
+    betadelta_solve_count = 0
+    betadelta_converged_count = 0
+    betadelta_no_root_count = 0
+
     # =============================================================================
     # Build events for safe termination
     # =============================================================================
@@ -609,6 +709,30 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         beta = betadelta_result.beta
         delta = betadelta_result.delta
 
+        # Track solver outcomes for the end-of-phase summary.
+        betadelta_solve_count += 1
+        if betadelta_result.converged:
+            betadelta_converged_count += 1
+
+        # No physical (dMdt>0, valid-structure) root: the energy-driven solution
+        # is degenerate at this (beta, delta). Rare on a self-consistent
+        # trajectory (it did not occur in any Phase-3 validation run) -- a logged
+        # safety net, NOT a transition trigger (phase end stays owned by the
+        # cooling-balance event). bubble_properties is None here, so the
+        # structure values and the dMdt warm start below hold at the last
+        # physical segment.
+        if betadelta_result.no_physical_root:
+            betadelta_no_root_count += 1
+            logger.warning(
+                f"beta-delta: no physical (dMdt>0) root at segment "
+                f"{segment_count} (t={t_now:.6e} Myr): "
+                f"{betadelta_result.no_root_reason}. Holding last physical "
+                f"dMdt={params['bubble_dMdt'].value:.3e} "
+                f"(Lgain={params['bubble_Lgain'].value:.3e}, "
+                f"Lloss={params['bubble_Lloss'].value:.3e}); implicit phase "
+                f"continues."
+            )
+
         # Update params with new beta/delta
         params['cool_beta'].value = beta
         params['cool_delta'].value = delta
@@ -622,6 +746,11 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
             updateDict(params, bubble_props)
 
         # Save residual diagnostics to dictionary (after ODE, not during)
+        params['betadelta_converged'].value = betadelta_result.converged
+        params['betadelta_total_residual'].value = betadelta_result.total_residual
+        betadelta_unconverged_streak = update_unconverged_streak(
+            betadelta_unconverged_streak, betadelta_result.converged,
+            t_now, betadelta_result.total_residual)
         params['residual_deltaT'].value = betadelta_result.T_residual
         params['residual_betaEdot'].value = betadelta_result.Edot_residual
         if betadelta_result.Edot_from_beta is not None:
@@ -867,19 +996,8 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         values_after = get_monitor_values(params)
         max_dex_change = compute_max_dex_change(values_before, values_after, ADAPTIVE_MONITOR_KEYS)
 
-        if max_dex_change > ADAPTIVE_THRESHOLD_DEX:
-            # Large change: decrease dt_segment
-            dt_segment_old = dt_segment
-            dt_segment = max(dt_segment / ADAPTIVE_FACTOR, DT_SEGMENT_MIN)
-            logger.debug(f"Adaptive: max_dex={max_dex_change:.3f} > {ADAPTIVE_THRESHOLD_DEX}, "
-                        f"dt: {dt_segment_old:.3e} -> {dt_segment:.3e}")
-        else:
-            # Small change: increase dt_segment
-            dt_segment_old = dt_segment
-            dt_segment = min(dt_segment * ADAPTIVE_FACTOR, DT_SEGMENT_MAX)
-            if dt_segment != dt_segment_old:
-                logger.debug(f"Adaptive: max_dex={max_dex_change:.3f} < {ADAPTIVE_THRESHOLD_DEX}, "
-                            f"dt: {dt_segment_old:.3e} -> {dt_segment:.3e}")
+        dt_segment = next_dt_segment(dt_segment, max_dex_change,
+                                     betadelta_unconverged_streak)
 
         # ---------------------------------------------------------------------
         # Proactive velocity-based timestep control during collapse
@@ -1035,6 +1153,13 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
     completion_log = logger.warning if termination_reason == "unknown" else logger.info
     completion_log(f"Implicit phase completed: {termination_reason}")
     completion_log(f"  Final time: {t_now:.6e} Myr, Segments: {segment_count}")
+
+    # Beta-delta solver summary: surface unconverged / no-physical-root segments
+    # at phase end (per-segment detail is DEBUG, so a fully unconverged or
+    # degenerate phase would otherwise be silent here).
+    _clean, _summary = betadelta_phase_summary(
+        betadelta_solve_count, betadelta_converged_count, betadelta_no_root_count)
+    (logger.info if _clean else logger.warning)(f"  {_summary}")
 
     return ImplicitPhaseResults(
         t=np.array(t_results),

@@ -67,6 +67,12 @@ GRID_EPSILON = 0.02  # Search range around guess
 # identical to the original semantics.
 GRID_EARLY_EXIT_RESIDUAL = RESIDUAL_THRESHOLD / 10
 
+# hybr (betadelta_solver='hybr') options. The finite-difference step eps is the
+# residual noise floor measured in the Phase-2.1 transect probe (scratch/phase2),
+# not the 1e-4 acceptance threshold; factor=0.1 keeps Newton steps local so the
+# root-finder does not leap into ODE-failing (beta, delta); maxfev caps cost.
+HYBR_OPTIONS = dict(xtol=1e-8, factor=0.1, maxfev=30, eps=3e-4)
+
 
 def _describe_exc(e: BaseException) -> str:
     """Format an exception as 'ClassName: message at file:line' for log warnings.
@@ -161,6 +167,12 @@ class BetaDeltaResult:
     # Energy balance terms
     L_gain: Optional[float] = None              # bubble_Lgain
     L_loss: Optional[float] = None              # bubble_Lloss
+    # hybr no-physical-root signal: set when the dMdt>0 / valid-structure gate
+    # rejects every (beta, delta) the root-finder reaches (the energy-driven
+    # implicit regime has ended). The runner uses this to hand off to the
+    # transition phase; legacy never sets it.
+    no_physical_root: bool = False
+    no_root_reason: Optional[str] = None
 
 
 # =============================================================================
@@ -211,7 +223,7 @@ def cool_beta_to_Ebdot_pure(
     beta : float
         Weaver cooling parameter -(t/Pb)*(dPb/dt)
     Pb : float
-        Bubble pressure [cgs]
+        Bubble pressure [au] (code units)
     t_now : float
         Current time [Myr]
     R1 : float
@@ -310,19 +322,9 @@ def compute_R1_Pb(
     R1 : float
         Inner bubble radius [pc]
     Pb : float
-        Bubble pressure [cgs]
+        Bubble pressure [au] (code units)
     """
-    try:
-        R1 = scipy.optimize.brentq(
-            get_bubbleParams.get_r1,
-            1e-3 * R2,
-            R2,
-            args=([Lmech_total, Eb, v_mech_total, R2])
-        )
-    except (ValueError, RuntimeError):
-        # Fallback if root finding fails
-        R1 = 0.01 * R2
-        logger.warning(f"R1 root finding failed, using fallback R1 = {R1:.4e}")
+    R1 = get_bubbleParams.solve_R1(R2, Eb, Lmech_total, v_mech_total)
 
     Pb = get_bubbleParams.bubble_E2P(Eb, R2, R1, gamma_adia)
 
@@ -565,7 +567,41 @@ def get_residual_detailed(
 # Main Solver
 # =============================================================================
 
+def _get_betadelta_solver(params) -> str:
+    """The configured beta-delta solver ('legacy' default).
+
+    Robust to params that predate the ``betadelta_solver`` key (e.g. the
+    unit-test fixtures), which fall back to the legacy path.
+    """
+    item = params.get('betadelta_solver') if hasattr(params, 'get') else None
+    if item is None:
+        return 'legacy'
+    value = getattr(item, 'value', item)
+    return value if value else 'legacy'
+
+
 def solve_betadelta_pure(
+    beta_guess: float,
+    delta_guess: float,
+    params,
+    method: str = 'grid',
+) -> BetaDeltaResult:
+    """Dispatch to the configured beta-delta solver (``betadelta_solver``).
+
+    'legacy' (default) is the bounded grid + L-BFGS-B search, byte-identical
+    to the pre-switch behaviour. 'hybr' is the unbounded scipy root-finder
+    with a physical dMdt>0 acceptance gate (Phase 3) — not yet wired in.
+    """
+    solver = _get_betadelta_solver(params)
+    if solver == 'legacy':
+        return _solve_betadelta_legacy(beta_guess, delta_guess, params, method)
+    if solver == 'hybr':
+        return _solve_betadelta_hybr(beta_guess, delta_guess, params, method)
+    # The param validator guards user input; this guards programmatic misuse.
+    raise ValueError(f"Unknown betadelta_solver '{solver}'.")
+
+
+def _solve_betadelta_legacy(
     beta_guess: float,
     delta_guess: float,
     params,
@@ -754,6 +790,147 @@ def solve_betadelta_pure(
         L_gain=details.L_gain,
         L_loss=details.L_loss,
     )
+
+
+class _NoPhysicalRoot(BaseException):
+    """Raised inside the hybr search when the physical acceptance gate
+    (dMdt > 0, valid bubble structure) rejects a trial (beta, delta).
+
+    A BaseException, not Exception, so ``get_residual_pure``'s
+    ``except Exception`` plateau handler cannot swallow it while it
+    propagates out through the scipy root-finder's internals.
+    """
+
+
+def _hybr_g_residual(beta, delta, params, dMdt_seed):
+    """The pole-free g residual vector (gE, gT) at (beta, delta), with the
+    solved bubble props and detailed residual components.
+
+    gE divides the Edot mismatch by the per-segment-constant Lmech_total
+    rather than by Edot_from_beta (the legacy f denominator, which crosses
+    zero near the E_b peak — the pole). gT is the temperature residual,
+    identical in f and g. Raises ``_NoPhysicalRoot`` if the structure solve
+    fails or the resulting dMdt is non-finite / <= 0 (the acceptance gate).
+    """
+    _fE, _fT, props = get_residual_pure(
+        float(beta), float(delta), params,
+        return_bubble_props=True, dMdt_guess=dMdt_seed,
+    )
+    if props is None:
+        raise _NoPhysicalRoot(
+            f"structure solve failed at (beta={beta:.4f}, delta={delta:.4f})"
+        )
+    dMdt = float(props.bubble_dMdt)
+    if not (np.isfinite(dMdt) and dMdt > 0):
+        raise _NoPhysicalRoot(
+            f"non-physical dMdt={dMdt:.4g} at (beta={beta:.4f}, delta={delta:.4f})"
+        )
+    det = get_residual_detailed(float(beta), float(delta), params, bubble_props=props)
+    Lmech_total = float(params['Lmech_total'].value)
+    gE = (det.Edot_from_beta - det.Edot_from_balance) / Lmech_total
+    gT = float(det.T_residual)
+    return gE, gT, det
+
+
+def _hybr_result(beta, delta, det, g_total, converged, iterations):
+    """Build a BetaDeltaResult from a hybr-accepted point. The f-metric
+    components stay in the result for output continuity; g drives acceptance
+    (``total_residual`` and ``converged`` are g quantities under this solver).
+    """
+    return BetaDeltaResult(
+        beta=beta,
+        delta=delta,
+        Edot_residual=det.Edot_residual,
+        T_residual=det.T_residual,
+        total_residual=g_total,
+        converged=converged,
+        iterations=iterations,
+        bubble_properties=det.bubble_props,
+        Edot_from_beta=det.Edot_from_beta,
+        Edot_from_balance=det.Edot_from_balance,
+        T_bubble=det.T_bubble,
+        T0=det.T0,
+        L_gain=det.L_gain,
+        L_loss=det.L_loss,
+    )
+
+
+def _no_root_result(beta_guess, delta_guess, reason):
+    """The no-physical-root BetaDeltaResult; the runner hands off on the flag."""
+    return BetaDeltaResult(
+        beta=beta_guess,
+        delta=delta_guess,
+        Edot_residual=float('inf'),
+        T_residual=float('inf'),
+        total_residual=float('inf'),
+        converged=False,
+        iterations=0,
+        bubble_properties=None,
+        no_physical_root=True,
+        no_root_reason=reason,
+    )
+
+
+def _solve_betadelta_hybr(beta_guess, delta_guess, params, method='grid'):
+    """Unbounded scipy hybr root-finder on the pole-free g residual, gated on
+    physical acceptance (dMdt > 0, valid structure) — Phase 3, plan arm D.
+
+    Returns a BetaDeltaResult. When the gate rejects every (beta, delta) the
+    search reaches, returns a result flagged ``no_physical_root`` — the signal
+    the runner uses to end the implicit phase and hand off to transition.
+    ``method`` is accepted for signature parity with the legacy solver and
+    ignored (hybr takes no grid method).
+    """
+    # Warm start: seed=None lets get_residual_pure use the previous segment's
+    # accepted dMdt (carried in params); the solved dMdt then threads forward.
+    try:
+        gE, gT, det = _hybr_g_residual(beta_guess, delta_guess, params, None)
+    except _NoPhysicalRoot as exc:
+        return _no_root_result(beta_guess, delta_guess, str(exc))
+
+    g_total = gE ** 2 + gT ** 2
+    if g_total < RESIDUAL_THRESHOLD:
+        # Guess already satisfies the gate and the g threshold: short-circuit,
+        # mirroring the legacy already-converged-input path.
+        return _hybr_result(beta_guess, delta_guess, det, g_total,
+                            converged=True, iterations=0)
+
+    state = {'seed': _usable_dMdt(det.bubble_props), 'n': 0, 'last': None}
+
+    def gvec(x):
+        b, d = float(x[0]), float(x[1])
+        state['n'] += 1
+        gE_i, gT_i, det_i = _hybr_g_residual(b, d, params, state['seed'])
+        state['seed'] = _usable_dMdt(det_i.bubble_props) or state['seed']
+        state['last'] = (b, d, det_i, gE_i, gT_i)
+        return [gE_i, gT_i]
+
+    try:
+        sol = scipy.optimize.root(
+            gvec, [beta_guess, delta_guess], method='hybr', options=HYBR_OPTIONS,
+        )
+    except _NoPhysicalRoot as exc:
+        return _no_root_result(beta_guess, delta_guess, str(exc))
+
+    b, d = float(sol.x[0]), float(sol.x[1])
+    # Apply the gate to the point actually accepted: reuse the last evaluation
+    # if it is that point, otherwise re-evaluate (and re-gate) it.
+    if (state['last'] is not None and abs(state['last'][0] - b) < 1e-12
+            and abs(state['last'][1] - d) < 1e-12):
+        _, _, det, gE, gT = state['last']
+    else:
+        try:
+            gE, gT, det = _hybr_g_residual(b, d, params, state['seed'])
+        except _NoPhysicalRoot as exc:
+            return _no_root_result(beta_guess, delta_guess, str(exc))
+
+    g_total = gE ** 2 + gT ** 2
+    converged = g_total < RESIDUAL_THRESHOLD
+    logger.debug(
+        f"beta-delta hybr result: beta={b:.4f}, delta={d:.4f}, g={g_total:.2e}, "
+        f"converged={converged}, evals={state['n']}, ier={sol.status}"
+    )
+    return _hybr_result(b, d, det, g_total, converged, state['n'])
 
 
 def _solve_grid(
