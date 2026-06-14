@@ -22,6 +22,12 @@ root-finding **with vs without the cage** (legacy box) over time, alongside the
 re-solved bubble velocity-vs-density profile and Lmech(t). Frame = segment; all
 three panels are the same timestamp. Needs the venv (numpy<2/scipy<2) + pillow.
 
+**Cage counterfactual:** `cage_compare.py` → `cage_compare.png` — the REAL legacy
+(clamped) solve vs hybr at key segments, v vs r: at the WR surge the cage is
+forced to a different in-box root that predicts NO inflow (it *hides* Problem 2).
+Per-segment legacy solve is ~60 s (grids ~25 structure solves through the pole),
+so this is a few segments, not the GIF (whose caged square is a geometric clip).
+
 **Metrics:** `f` = legacy residual, `f_E=(E1−E2)/E1` — its denominator hits 0 near
 the E_b peak (a **pole**). `g` = hybr residual, `g_E=(E1−E2)/Lmech_total` —
 pole-free. Both: total = E-comp² + T-comp², converged < 1e-4. Legacy clamp box:
