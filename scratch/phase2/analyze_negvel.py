@@ -1,0 +1,234 @@
+#!/usr/bin/env python3
+"""Negative interior-velocity diagnosis (WARPFIELD "Problem 2") from the
+committed stalling-phase CSVs.
+
+Source data (committed on bugfix/beta-delta-solver-pt2, copied into scratch):
+  stalling_steep_1e6_alpha-2.csv  (sweep_steep, 133 rows)
+  stalling_mock_4e3.csv           (sweep_mock,  144 rows)
+See analysis/stalling-energy-phase.md for the writeup. Key diagnostics:
+  v_struct_min  = most-negative point in the bubble velocity profile [pc/Myr]
+  v_struct_nneg = count of negative-v points (of 100); >=10 = real inflow,
+                  1..9 = a single inner-BC grid point dipping (artifact).
+
+Finding the plots make: the bubble's interior velocity goes negative (inflow)
+when **beta+delta <~ -0.5** -- the source term of dv/dr is (beta+delta)/t -- NOT
+simply when beta is negative. The driver is feedback luminosity surges (WR wind,
+then SN onset) that re-pressurise the bubble (beta<0). Produces:
+  - negvel_trigger.png  : where in (beta,delta) inflow lives + nneg vs (beta+delta)
+  - negvel_timeline.png : steep run -- Lmech surge -> beta+delta dive -> inflow
+
+Usage: python scratch/phase2/analyze_negvel.py
+"""
+
+import csv
+from pathlib import Path
+
+import matplotlib
+
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt  # noqa: E402
+import numpy as np  # noqa: E402
+
+HERE = Path(__file__).resolve().parent
+BPD_THRESH = -0.5  # beta+delta inflow threshold (doc)
+NNEG_REAL = 10  # v_struct_nneg >= this = real inflow (vs inner-BC artifact)
+RUNS = [
+    ("stalling_steep_1e6_alpha-2.csv", "steep 1e6 α=−2", "o", "#d62728"),
+    ("stalling_mock_4e3.csv", "mock 4e3", "^", "#1f77b4"),
+]
+
+_STYLE = HERE.parents[1] / "paper" / "_lib" / "trinity.mplstyle"
+if _STYLE.exists():
+    plt.style.use(str(_STYLE))
+plt.rcParams["text.usetex"] = False
+
+NUM = (
+    "t_now cool_beta cool_delta beta_plus_delta Pb bubble_dMdt Lmech_total Lmech_W "
+    "Lmech_SN bubble_Lgain bubble_Lloss cooling_ratio v_struct_min v_struct_nneg "
+    "R2 v2 Eb bubble_Tavg c_sound"
+).split()
+
+
+def load(fn):
+    rows = list(csv.DictReader(open(HERE / fn)))
+    return {k: np.array([float(r[k]) for r in rows]) for k in NUM}
+
+
+INFLOW_C = "#b30000"  # solid colour for real-inflow points (size encodes count)
+BG_FACE, BG_EDGE = "0.78", "0.5"  # visible gray for the no-inflow bulk
+YROW = {"steep": 1.0, "mock": 0.0}  # strip-plot rows in panel B
+
+
+def plot_trigger(path):
+    fig, (axA, axB) = plt.subplots(1, 2, figsize=(13, 5.6), constrained_layout=True)
+    rng = np.random.default_rng(0)  # jitter so overlapping strip points are visible
+    for fn, label, mk, _c in RUNS:
+        d = load(fn)
+        nneg = d["v_struct_nneg"]
+        sig = nneg >= NNEG_REAL  # real inflow; rest is no-inflow / inner-BC artifact
+        bg = ~sig
+        key = "steep" if "steep" in fn else "mock"
+
+        # panel A: (beta, delta) plane
+        axA.scatter(
+            d["cool_beta"][bg],
+            d["cool_delta"][bg],
+            s=16,
+            marker=mk,
+            facecolor=BG_FACE,
+            edgecolor=BG_EDGE,
+            linewidths=0.3,
+            alpha=0.85,
+        )
+        axA.scatter(
+            d["cool_beta"][sig],
+            d["cool_delta"][sig],
+            s=60 + nneg[sig] * 6,
+            marker=mk,
+            facecolor=INFLOW_C,
+            edgecolor="k",
+            linewidths=1.1,
+            zorder=5,
+        )
+
+        # panel B: strip plot, y = run (categorical), x = beta+delta
+        y = YROW[key] + rng.uniform(-0.13, 0.13, size=nneg.shape)
+        axB.scatter(
+            d["beta_plus_delta"][bg],
+            y[bg],
+            s=16,
+            marker=mk,
+            facecolor=BG_FACE,
+            edgecolor=BG_EDGE,
+            linewidths=0.3,
+            alpha=0.85,
+        )
+        axB.scatter(
+            d["beta_plus_delta"][sig],
+            y[sig],
+            s=60 + nneg[sig] * 6,
+            marker=mk,
+            facecolor=INFLOW_C,
+            edgecolor="k",
+            linewidths=1.1,
+            zorder=5,
+        )
+
+    # panel A frame + trigger diagonals
+    bb = np.array([-3.0, 2.6])
+    axA.plot(bb, BPD_THRESH - bb, "r--", lw=1.4, label=r"$\beta+\delta=-0.5$ (trigger)")
+    axA.plot(bb, -bb, color="0.5", ls=":", lw=1.0, label=r"$\beta+\delta=0$")
+    axA.set_xlim(-2.8, 2.6)
+    axA.set_ylim(-1.3, 2.2)
+    axA.set_xlabel(r"$\beta$")
+    axA.set_ylabel(r"$\delta$")
+    axA.set_title(
+        "Inflow (red, size ∝ count) sits below β+δ=−0.5,\nnot simply at low β", fontsize=10
+    )
+    for n in (10, 25, 50):  # size legend for the count encoding
+        axA.scatter(
+            [], [], s=60 + n * 6, facecolor=INFLOW_C, edgecolor="k", label=f"inflow nneg={n}"
+        )
+    axA.scatter([], [], s=16, facecolor=BG_FACE, edgecolor=BG_EDGE, label="no inflow")
+    axA.legend(loc="upper right", fontsize=7, framealpha=0.92)
+
+    # panel B frame
+    axB.axvline(BPD_THRESH, color="r", ls="--", lw=1.4)
+    axB.axvspan(-2.0, BPD_THRESH, color="r", alpha=0.06)
+    axB.set_yticks([0, 1])
+    axB.set_yticklabels(["mock\n4e3", "steep\n1e6 α−2"])
+    axB.set_ylim(-0.6, 1.6)
+    axB.set_xlim(-1.6, 3.5)
+    axB.set_xlabel(r"$\beta+\delta$")
+    axB.set_title(
+        "β+δ per run — inflow only left of −0.5;\nmock never enters the zone", fontsize=10
+    )
+    axB.text(BPD_THRESH - 0.05, 1.5, "inflow zone", color="r", ha="right", va="top", fontsize=8)
+
+    fig.suptitle(
+        "Negative interior velocity (WARPFIELD Problem 2) is triggered by β+δ < −0.5, not by β alone",
+        fontsize=12,
+    )
+    fig.savefig(path, dpi=130, bbox_inches="tight")
+    plt.close(fig)
+
+
+def _timeline_col(axcol, d, title):
+    """One run's 3-row column: Lmech surge / beta & beta+delta / inflow count."""
+    a1, a2, a3 = axcol
+    t = d["t_now"]
+    lmax = d["Lmech_total"].max()  # normalise so the tiny mock cluster is comparable
+    a1.plot(t, d["Lmech_W"] / lmax, color="#1f77b4", label=r"$L_{\rm mech,W}$ (wind)")
+    a1.plot(t, d["Lmech_SN"] / lmax, color="#9467bd", label=r"$L_{\rm mech,SN}$")
+    a1.plot(t, d["Lmech_total"] / lmax, color="k", lw=1.0, ls="--", label=r"$L_{\rm mech,total}$")
+    a1.set_title(title, fontsize=11)
+
+    a2.plot(t, d["cool_beta"], color="#2ca02c", label=r"$\beta$")
+    a2.plot(t, d["beta_plus_delta"], color="#d62728", label=r"$\beta+\delta$")
+    a2.axhline(BPD_THRESH, color="r", ls="--", lw=1.0)
+    a2.axhline(0.0, color="0.6", ls=":", lw=0.8)
+
+    a3.plot(t, d["v_struct_nneg"], color="#ff7f0e", marker=".", ms=4)
+    a3.axhline(NNEG_REAL, color="0.4", ls=":", lw=1.0)
+
+    real = d["v_struct_nneg"] >= NNEG_REAL
+    if real.any():
+        tlo, thi = t[real].min() - 0.04, t[real].max() + 0.04
+        for ax in axcol:
+            ax.axvspan(tlo, thi, color="orange", alpha=0.18, zorder=0)
+        a3.text(
+            0.97,
+            0.9,
+            f"inflow: v_min={d['v_struct_min'][real].min():.2f} pc/Myr",
+            transform=a3.transAxes,
+            ha="right",
+            va="top",
+            fontsize=8,
+            color="#b30000",
+        )
+    else:
+        a3.text(
+            0.97,
+            0.9,
+            "no real inflow (nneg ≤ 1)",
+            transform=a3.transAxes,
+            ha="right",
+            va="top",
+            fontsize=8,
+            color="0.3",
+        )
+
+
+def plot_timeline(path):
+    fig, axes = plt.subplots(3, 2, figsize=(13, 9), sharex=True)
+    for r in range(3):  # share y per row so the two runs are directly comparable
+        axes[r, 1].sharey(axes[r, 0])
+    _timeline_col(axes[:, 0], load(RUNS[0][0]), "steep 1e6, α=−2  (inflow)")
+    _timeline_col(axes[:, 1], load(RUNS[1][0]), "mock 4e3  (no inflow)")
+
+    axes[0, 0].set_ylabel(r"$L_{\rm mech}$ / peak")
+    axes[1, 0].set_ylabel(r"$\beta$,  $\beta+\delta$")
+    axes[2, 0].set_ylabel("v_struct_nneg")
+    axes[0, 0].legend(fontsize=7.5, loc="upper left")
+    axes[1, 0].legend(fontsize=8, loc="upper left")
+    axes[1, 0].text(2.55, BPD_THRESH, " β+δ=−0.5", color="r", va="bottom", fontsize=7.5)
+    axes[2, 0].set_xlabel("t  [Myr]")
+    axes[2, 1].set_xlabel("t  [Myr]")
+    axes[0, 0].set_xlim(2.5, 4.0)  # the WR/SN epoch; t<2.5 quiescent for both
+    fig.suptitle(
+        "Same WR/SN surges in both — only steep drives β+δ below −0.5, so only steep gets inflow",
+        fontsize=12,
+    )
+    fig.tight_layout(rect=(0, 0, 1, 0.97))
+    fig.savefig(path, dpi=130, bbox_inches="tight")
+    plt.close(fig)
+
+
+def main():
+    plot_trigger(HERE / "negvel_trigger.png")
+    plot_timeline(HERE / "negvel_timeline.png")
+    print("wrote negvel_trigger.png, negvel_timeline.png")
+
+
+if __name__ == "__main__":
+    main()
