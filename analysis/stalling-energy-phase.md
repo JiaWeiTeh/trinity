@@ -140,6 +140,93 @@ Reading the full `bubble_v_arr` / `bubble_v_arr_r_arr` at the affected segments
   transient inflow or to guard against it (velocity-sign penalty) is the
   Phase-5 call.
 
+## Phase 6.0 contamination hunt: is the inflow ever non-cosmetic? (2026-06-14)
+
+The Problem-2 open question above — *real transient or structure breakdown, and
+does it corrupt anything?* — got a dedicated **gate**
+(`docs/dev/BETADELTA_HYBR_PLAN.md` Phase 6.0). Six hybr runs were instrumented
+(harness `scratch/phase6/hunt.py`, which wraps `solve_betadelta_pure` and dumps
+one row per accepted energy-implicit segment, reading the full `bubble_v_arr`
+for the velocity diagnostics) to hunt a regime where the inflow stops being
+cosmetic — non-convergence, a kink in `Lloss`/`dMdt`/`Eb` across the band, or
+the band dominating the bubble.
+
+**Configs** (all steep r⁻² except the flat control; `betadelta_solver=hybr`):
+
+| config | mCloud | sfe | cluster | profile | nCore | stop_t | probe |
+|--------|--------|-----|---------|---------|-------|--------|-------|
+| h1 base | 1e6 | 0.01 | 1e4 | α=−2 | 1e5 | 4 | reproduce baseline |
+| h2 sfe10 | 1e6 | 0.10 | 1e5 | α=−2 | 1e5 | 6 | 10× stronger SN |
+| h3 sfe30 | 1e6 | 0.30 | 3e5 | α=−2 | 1e5 | 6 | strongest SN |
+| h4 dense | 1e6 | 0.10 | 1e5 | α=−2 | 1e6 | 6 | sustain through SN |
+| h5 long | 1e6 | 0.03 | 3e4 | α=−2 | 1e5 | 8 | full WR→SN→decline |
+| h6 flat | 1e6 | 0.30 | 3e5 | α=0 | 1e3 | 6 | flat control |
+
+**Result — 909 segments, 100% converged. Gate G6 marginally OPEN on one bounded
+channel; cosmetic in 5/6.**
+
+| config | rows | β+δ min | real inflow | t band [Myr] | v_min | max frac | verdict |
+|--------|------|---------|-------------|--------------|-------|----------|---------|
+| h1 base | 134 | −1.11 | 4 | 3.18–3.33 | −0.62 | 0.74 | cosmetic |
+| h2 sfe10 | 174 | −0.42 | 3 | 3.74–3.84 | −0.16 | 0.31 | cosmetic |
+| h3 sfe30 | 172 | −0.35 | 3 | 3.75–3.85 | −0.17 | 0.30 | cosmetic |
+| h4 dense | 25 | −0.27 | 1 | 0.003 (handoff) | −1.33 | 0.72 | cosmetic* |
+| h5 long | 215 | +0.14 | 0 | — | — | — | cosmetic |
+| h6 flat | 189 | −0.37 | 3 | 3.76–3.86 | −0.22 | 0.34 | **flags dMdt** |
+
+(*h4's deep band is the explicit→implicit handoff transient — excluded; it
+transitions to momentum at t=0.037 Myr. **Grid note:** the hunt harness reads
+the full ~6e4-point `bubble_v_arr`, so its raw `v_struct_nneg` count is *not*
+comparable to the old "of 100" tables above — use `v_neg_frac_thick` (the
+thickness fraction, which *does* match: h1 peak 0.74 ≈ old 0.73) or
+`v_struct_nneg / v_struct_npts`.)
+
+**Three findings:**
+
+1. **"Stronger surge → worse inflow" is FALSIFIED.** The deepest dip/inflow is
+   in the *weakest*-feedback baseline (h1, sfe 0.01: β+δ→−1.11, frac 0.74);
+   stronger feedback keeps β+δ shallow (h2/h3/h6: −0.35…−0.42, frac ~0.30) or
+   positive (h5: +0.14, zero inflow). A highly-pressurised bubble sees the WR/SN
+   surge as a *small relative* perturbation, so Pb rises less → β+δ stays up.
+   (Plot: `min(beta_plus_delta)` and `max(v_neg_frac_thick)` vs cluster mass.)
+
+2. **The inflow is energy-budget-immune.** `v` is **absent from all three
+   cooling integrals** (`bubble_luminosity.py:612` bubble, `:659` conduction,
+   `:677` intermediate — they use `n²Λ(T)` / `dudt(n,T,φ)` only), so a deep
+   inflow band cannot corrupt `Lloss` or `Eb`. The only v-coupled output is
+   `dMdt` (the structure solve matches the velocity BC).
+
+3. **The dMdt "kink" is the feedback surge, not the inflow — it LEADS the
+   inflow.** Walking h1's WR surge (driver = `Lmech_W` 2.06e8→3.54e8; SN still
+   noise at ~1e4–1e6):
+
+   | t | β+δ | Lmech_W | dMdt | %dMdt step | v_min |
+   |---|-----|---------|------|-----------|-------|
+   | 3.078 | +1.47 | 2.52e8 | 596 | +42% | 0 (no inflow) |
+   | 3.128 | +0.41 | 3.00e8 | 963 | **+62%** | 0 (no inflow) |
+   | 3.178 | −0.63 | 3.34e8 | 1359 | +41% | −0.11 (inflow starts) |
+   | 3.228 | −1.11 | 3.51e8 | 1616 | +19% | −0.62 (deepest) |
+   | 3.278 | −0.97 | 3.54e8 | 1684 | +4% | −0.45 |
+
+   The biggest dMdt jumps (+42%, +62%) are **before** β+δ goes negative — driven
+   by the Lmech surge; by the time inflow appears the jump is already shrinking,
+   and `Lloss` rises smoothly straight through. So the inflow adds **no**
+   roughness. Deconfounding each config's band step against its own surge ramp
+   (lead/trail windows): h1 dMdt ×0.7, h2/h3 ×0.9 (clean); h4 excluded (handoff).
+   **Only h6** keeps a dMdt step (10.9%, ×1.9) at its inflow onset while Lmech is
+   flat — but that looks like a *lagged* response to the SN surge (dMdt
+   under-shot the rise then caught up), not a clean inflow signature.
+
+**Gate-G6 verdict: marginally OPEN, on one bounded, ambiguous dMdt channel
+(h6).** The inflow is real, sometimes deep (74 % of thickness), always
+converges, and is provably energy-budget-immune; the only thing it can touch is
+`dMdt`, and even that is mostly the surge. The honest screen cannot certify the
+dMdt channel as exactly zero-impact, so the principled next step is a **narrow
+Phase 6.1 counterfactual**: clip v≥0 / reject-and-hold on the inflow segments,
+measure ΔdMdt and the macro deltas (R2, v2, terminal momentum, transition time).
+Expected low/no macro impact given the energy immunity and bounded dMdt response
+— but that is a measurement, not an assumption.
+
 ## Why this matters for the transition criterion (Phase 5)
 
 The "stall" is **feedback-sustained**, not just halo-fed. The steep bubble
@@ -158,16 +245,45 @@ pushing the bubble *back* to strongly energy-driven. So:
 
 ## Data for plotting
 
-Full per-segment time series (committed, plottable):
+Full per-segment time series (committed, plottable). One row = one accepted
+energy-implicit (β,δ) segment.
 
+*Original two (2026-06-13), 100-point velocity grid:*
 - `analysis/data/stalling_steep_1e6_alpha-2.csv` — `sweep_steep`, 133 rows.
 - `analysis/data/stalling_mock_4e3.csv` — `sweep_mock`, 144 rows.
 
-Columns: `t_now, cool_beta, cool_delta, beta_plus_delta, Pb, bubble_dMdt,
-Lmech_total, Lmech_W, Lmech_SN, bubble_Lgain, bubble_Lloss, cooling_ratio,
-v_struct_min, v_struct_nneg, R2, v2, Eb, bubble_Tavg, c_sound,
-betadelta_converged`. (`v_struct_min`/`v_struct_nneg` = min and count of
-negative points in the bubble velocity profile — the Problem-2 diagnostic.)
+*Phase 6.0 hunt (2026-06-14), full ~6e4-point velocity grid, six configs:*
+- `analysis/data/hunt_h1_steep_base.csv` … `hunt_h6_flat_sfe30.csv` (see the
+  config table above; 909 rows total).
+
+**Column dictionary** (units: t [Myr]; v, c_sound [pc/Myr]; R2 [pc]; T [K];
+luminosities [M⊙ pc² Myr⁻³]; dMdt [M⊙ Myr⁻¹]; Pb, Eb in code/au units):
+
+| column | meaning |
+|--------|---------|
+| `t_now` | segment time |
+| `cool_beta`, `cool_delta` | β = −(t/Pb)dPb/dt, δ = (t/T)dT/dt |
+| `beta_plus_delta` | β+δ — the `dv/dr` source `(β+δ)/t`; **inflow driver** |
+| `Pb` | bubble pressure |
+| `bubble_dMdt` | conductive mass flux shell→bubble (the v-coupled output) |
+| `Lmech_total`/`_W`/`_SN` | mechanical luminosity: total / winds(+WR) / SNe |
+| `bubble_Lgain` | = `Lmech_total` (energy gain) |
+| `bubble_Lloss` | radiative cooling loss (uses n²Λ(T); **no v**) |
+| `cooling_ratio` | (Lgain−Lloss)/Lgain — the transition diagnostic |
+| `v_struct_min` | min of `bubble_v_arr` (most negative interior velocity) |
+| `v_struct_nneg` | count of v<0 grid points (**hunt: of ~6e4; old: of 100**) |
+| `v_struct_npts` | grid size (hunt CSVs only) — use `nneg/npts` for fraction |
+| `v_neg_frac_thick` | radial-thickness fraction with v<0 (hunt CSVs only) |
+| `R2`, `v2` | shell radius, velocity |
+| `Eb` | bubble energy |
+| `bubble_Tavg` | volume-avg bubble temperature |
+| `c_sound` | bubble sound speed |
+| `no_physical_root` | gate fired (dMdt≤0 / solve failed) — hunt CSVs only |
+| `betadelta_converged` | (β,δ) root converged |
+
+`v_struct_min`/`v_neg_frac_thick` are the **Problem-2** diagnostics; for
+cross-grid comparison prefer `v_neg_frac_thick` (or `v_struct_nneg/v_struct_npts`)
+over the raw count.
 
 Suggested plots / things to investigate:
 - `β` and `Pb` vs `t` with `Lmech_W`, `Lmech_SN` overlaid — does every β<0
@@ -188,9 +304,25 @@ python run.py <param: mCloud=1e6 sfe=0.01 densPL_alpha=-2 nCore=1e5 rCore=1 \
     betadelta_solver=hybr stop_t=4.0>
 # then dump implicit-phase rows (betadelta_total_residual non-nan) from
 # outputs/<model>/dictionary.jsonl to CSV (see the columns above).
+
+# Phase 6.0 hunt: per-segment velocity diagnostics straight to CSV, plus the
+# Gate-G6 classifier (run single-thread to avoid BLAS oversubscription):
+OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 \
+    python scratch/phase6/hunt.py scratch/phase6/h1_steep_base.param \
+    --out analysis/data/hunt_h1_steep_base.csv
+python scratch/phase6/analyze_hunt.py analysis/data/hunt_h*.csv   # G6 verdict
 ```
 
-Note: the raw runs were `/tmp` scratch (ephemeral); the committed CSVs above are
-the captured data. Re-run to extend `stop_t` (does the steep bubble *ever*
-transition once the SN epoch ends, ~40 Myr?) — that is the open endpoint
+Phase-6-specific plots worth making from the hunt CSVs:
+- `v_struct_min` (and `v_neg_frac_thick`) vs `beta_plus_delta` — the inflow law:
+  the band opens once β+δ ≲ −0.5 and deepens roughly with |β+δ|.
+- `min(beta_plus_delta)` and `max(v_neg_frac_thick)` vs cluster mass across the
+  six configs — the "stronger feedback suppresses the dip" trend.
+- `dMdt`, `Lmech_W`, `Lmech_SN` vs `t` zoomed on each inflow band — confirm the
+  dMdt step *leads* β+δ<0 (surge-driven), and inspect h6's lagged onset step.
+
+Note: the original two CSVs were captured from `/tmp` scratch; the hunt harness
++ configs live in `scratch/phase6/` (gitignored scratch — present locally).
+Re-run to extend `stop_t` (does the steep bubble *ever* transition once the SN
+epoch ends, ~40 Myr?) — that is the open endpoint.
 question.

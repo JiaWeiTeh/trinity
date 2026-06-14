@@ -224,8 +224,3 @@ entire idea folder.
 TRINITY_talk_QA_prep.docx
 pytest-cache-files-*/
 .claude/settings.local.json
-
-# Phase 6.0 contamination-hunt in-flight outputs (harness lives in scratch/,
-# which is gitignored). The curated Phase 6.0 record -- writeup + verdict, and
-# any final CSV kept as evidence -- is committed deliberately, not these.
-analysis/data/hunt_*.csv

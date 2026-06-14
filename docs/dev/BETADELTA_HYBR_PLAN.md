@@ -517,11 +517,13 @@ The implicit→momentum transition is the cooling-balance event
 - Registry info-string bug for `bubble_xi_Tb` / `bubble_r_Tb` ("xi = r/R2" vs
   the thickness fraction the code uses) — flagged in §2.1; fix when convenient.
 
-## Phase 6 — Velocity-structure ("Problem 2") investigation (DEFERRED, phased)
+## Phase 6 — Velocity-structure ("Problem 2") investigation (6.0 RAN 2026-06-14)
 
 Surfaced by the same negative-β runs (2026-06-14). Out of solver-repair scope; a
 self-contained phased study. Same staleness caveat — the line refs below were
 verified against current source on 2026-06-14, re-verify before acting.
+**Phase 6.0 ran; Gate G6 is marginally OPEN on one bounded `dMdt` channel —
+cosmetic in 5/6 configs. See the 6.0 result block below.**
 
 **The finding (verified).** The bubble-structure ODE's velocity source term is
 `(β+δ)/t` (`bubble_luminosity.py:1150`, `dvdr`). When **β+δ goes strongly
@@ -550,19 +552,40 @@ and one interpolated grid point `v_CIEswitch` (`:587,593,600`). In the data
 through the inflow band. So on current evidence the inflow is **cosmetic**, and
 the obvious "clip v≥0" would change essentially nothing.
 
-### Phase 6.0 — Gate: does it EVER contaminate? [do this first]
-Hunt for a regime where the inflow is not cosmetic — deeper/longer β+δ surges:
-massive clusters (strong SN), steep profiles, runs spanning *multiple* SN
-epochs. Per config/segment record: convergence (does the inner fsolve or hybr
-ever fail there), smoothness of `Lloss`/`dMdt`/`Eb` across the inflow band (any
-kink), energy-budget closure, and the inflow extent (`v_struct_nneg`,
-`v_min/v2`) vs `β+δ`. **Gate G6:** if no config shows material contamination
-(non-convergence, a >5 % kink in Lloss/dMdt/Eb, or the band growing to dominate
-the bubble), the inflow is cosmetic → document and **STOP** (optionally ship a
-diagnostic-only `v_struct_nneg` snapshot field). Only if something breaks →
-proceed.
+### Phase 6.0 — Gate: does it EVER contaminate? [DONE 2026-06-14]
+Ran six instrumented hybr configs (harness `scratch/phase6/hunt.py`, classifier
+`scratch/phase6/analyze_hunt.py`) probing deeper/longer β+δ surges — stronger SN
+(sfe 0.01→0.30), denser core, long multi-epoch span, flat control. Per accepted
+segment: convergence, `Lloss`/`dMdt`/`Eb` smoothness across the band, and inflow
+extent (`v_neg_frac_thick`, `v_min`) vs β+δ. **909 segments, 100% converged.**
+Full write-up + plottable data: `analysis/stalling-energy-phase.md`
+(§ "Phase 6.0 contamination hunt") and `analysis/data/hunt_*.csv`.
 
-### Phase 6.1 — Treatments + metric [only if G6 opens]
+**Gate G6 result — marginally OPEN, on one bounded channel; cosmetic in 5/6:**
+- **No non-convergence anywhere** (the cleanest contamination signal — absent).
+- **"Stronger surge → worse inflow" is FALSIFIED:** the deepest dip is in the
+  *weakest*-feedback baseline (sfe 0.01: β+δ→−1.11, inflow 74 % of thickness);
+  stronger feedback keeps β+δ shallow/positive → no/shallow inflow. The dense
+  case's deep band is a short-lived explicit→implicit handoff transient.
+- **Energy-budget immune:** v is absent from all three cooling integrals
+  (`:612`/`:659`/`:677`), so `Lloss`/`Eb` cannot be corrupted. The only
+  v-coupled output is `dMdt`.
+- **The dMdt "kink" is the feedback surge, which LEADS the inflow** — h1's
+  biggest dMdt jumps (+42 %, +62 %) land *before* β+δ goes negative.
+  Deconfounded vs each config's surge ramp: h1 ×0.7, h2/h3 ×0.9 (clean), h4
+  handoff-excluded; **only h6** keeps a bounded ×1.9 (10.9 %) dMdt step, and even
+  that looks like a *lagged* SN-surge response, not a clean inflow signature.
+
+So the inflow is real, sometimes deep, always converges, and is provably
+energy-immune — its sole possible impact is a bounded, ambiguous `dMdt` step in
+one config. The screen cannot certify that channel as *exactly* zero, so →
+**narrow 6.1** (below). It is **not** the broad contamination the raw first-
+difference heuristic suggested before deconfounding.
+
+### Phase 6.1 — Treatments + metric [narrowed by 6.0: `dMdt` channel only]
+6.0 narrowed this from "does it contaminate?" to "does the bounded `dMdt`
+response on the inflow segments change anything macroscopic?" (Lloss/Eb are
+energy-immune, so they are *not* the test). The treatment arms are unchanged:
 - **A — accept** (status quo): the baseline.
 - **B — clip v≥0** in the structure output / `v_CIEswitch`: cosmetic unless a
   consumer of v is found; cheapest.
@@ -574,11 +597,14 @@ proceed.
   alongside the existing penalties — *only* sensible if a positive-v root exists
   nearby (it may not: β+δ<0 is set by the physical Lmech surge).
 
-**Metric (pre-registered):** vs arm A on the *contaminating* config — energy
-closure and `Lloss`/`dMdt`/`Eb`/`R2`/`v2` continuity restored, with **no**
-disturbance to the (already-fine) common case (byte-identical on non-inflow
-segments). Promotion: simplest arm that fixes the contamination without
-perturbing the common case.
+**Metric (pre-registered, narrowed):** vs arm A on the open config (h6, and h1
+for the deepest band) — the **macro deltas** that a changed `dMdt` could move:
+`R2`, `v2`, terminal momentum, transition time, and energy-budget closure across
+the band. With **no** disturbance to the (already-fine) common case
+(byte-identical on non-inflow segments). Promotion: simplest arm that removes any
+macro delta without perturbing the common case — *and if arm A's macro deltas
+are already negligible (the likely outcome), the result is "document + ship the
+diagnostic-only `v_neg_frac_thick` snapshot field, no treatment".*
 
 ### Phase 6.2 — Multi-arm experiment [only if G6 opens]
 Run arms A–D in parallel (pure structure call, zero production impact — like the
