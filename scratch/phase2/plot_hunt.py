@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 """Phase 6.0 velocity-contamination hunt — visuals over the 6 hunt configs.
 
-Reads the hunt CSVs (copied into scratch from bugfix/beta-delta-solver-pt2's
-analysis/data/hunt_*.csv; canonical copies live there). The G6 classification
-itself is in that branch's scratch/phase6/analyze_hunt.py; this script makes the
-plots the writeup (analysis/stalling-energy-phase.md, Phase 6.0) calls for.
+Reads the canonical hunt CSVs from analysis/data/hunt_*.csv. The G6 classification
+itself is in scratch/phase6/analyze_hunt.py; this script makes the plots the
+writeup (analysis/stalling-energy-phase.md, Phase 6.0) calls for.
 
   ⚠️ Use v_neg_frac_thick (band / bubble thickness), NOT raw v_struct_nneg:
   the hunt harness reads the full ~6e4-point bubble_v_arr, so nneg is a huge raw
@@ -30,6 +29,7 @@ import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
+DATA = HERE.parents[1] / "analysis" / "data"  # canonical hunt CSVs (was scratch dupes)
 REAL_FRAC, V_FLOOR = 0.02, 0.01  # real inflow vs inner-BC artifact (analyze_hunt)
 BPD_OLD = -0.5  # the old steep-baseline threshold
 
@@ -54,7 +54,7 @@ plt.rcParams["text.usetex"] = False
 
 
 def load(fn):
-    rows = list(csv.DictReader(open(HERE / fn)))
+    rows = list(csv.DictReader(open(DATA / fn)))
 
     def col(k):
         out = []
