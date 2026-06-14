@@ -292,6 +292,45 @@ measure ΔdMdt and the macro deltas (R2, v2, terminal momentum, transition time)
 Expected low/no macro impact given the energy immunity and bounded dMdt response
 — but that is a measurement, not an assumption.
 
+### Phase 6.1 — counterfactual: the inflow IS immaterial (measured, 2026-06-14)
+
+The narrow 6.1 was run (harness `--hold-inflow`, classifier
+`scratch/phase6/compare_hold.py`): for the four configs with real inflow, every
+inflow segment was **rejected and held** (flagged `no_physical_root` so the
+runner holds the last physical structure — arm C, via the production hold path),
+and the held trajectory diffed against the accepted baseline.
+
+| config | segs held | dMdt kicked (local) | final ΔR2 | final Δv2 | final ΔEb | max ΔEb (transient) |
+|--------|-----------|---------------------|-----------|-----------|-----------|----------------------|
+| h1 (deepest, frac 0.74) | 4 | 42.8 % | +0.043 % | +0.038 % | +0.022 % | 0.63 % |
+| h2 (sfe10) | 3 | 11.7 % | −0.0001 % | +0.0001 % | −0.0002 % | 0.026 % |
+| h3 (sfe30) | 3 | 9.6 % | +0.0000 % | −0.0000 % | +0.0000 % | 0.0002 % |
+| h6 (flat, the dMdt flag) | 3 | 12.5 % | +0.0000 % | +0.0000 % | +0.0000 % | 0.0000 % |
+
+**Deleting the inflow entirely — a 9.6–42.8 % local kick to dMdt — moves R2, v2,
+Eb (hence terminal momentum) by ≤0.04 % at the end** across all four; h1 (the
+smallest, most sensitive bubble) is the only nonzero final effect, the large
+bubbles ~0 (h6 differs by ~1e-9). So the inflow is not only energy-immune in
+principle, it is **empirically immaterial** to every reported quantity —
+including the dMdt channel that kept G6 "marginally open."
+
+**On "why so small" (checked, not hand-waved):** it is *not* a units or
+propagation artefact. Deltas are relative (dimensionless) so units cancel; and
+the held outputs genuinely respond (h1's Eb deviates 0.63 % *during* the band,
+nonzero, then re-equilibrates), so the held structure reaches the integrated
+state via the segment-start snapshot `solve_ivp` uses — not zero by
+construction. The smallness is physical: the band is brief (~0.15 Myr of a 4 Myr
+run), the bubble recovers, and dMdt (conductive evaporation) is a small term next
+to the cumulative Lmech injection and the swept shell mass. *(A sustained-freeze
+positive control to bound the channel gain was attempted but the ephemeral
+container reclaimed the long runs before they finished; the nonzero held-run
+responses already establish propagation, so the conclusion does not rest on it.)*
+
+**Net: Problem 2 is closed** — the WR-re-pressurisation inflow is real but
+cosmetic for the energy/momentum budget. `v_neg_frac_thick` ships as a snapshot
+diagnostic (registry + `COOLING_PHASE_KEYS`) so any future config that *does*
+drive a deep inflow is flagged automatically; no treatment is applied.
+
 ## Why this matters for the transition criterion (Phase 5)
 
 The "stall" is **feedback-sustained**, not just halo-fed. The steep bubble

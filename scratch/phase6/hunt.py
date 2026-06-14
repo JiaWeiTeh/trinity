@@ -114,6 +114,10 @@ def main():
                     help='Phase 6.1 counterfactual: when a segment inflow '
                          'thickness-fraction exceeds this, reject it and hold '
                          'the last physical structure (mimics no_physical_root).')
+    ap.add_argument('--hold-after', type=float, default=None,
+                    help='Positive control: hold (freeze) the structure on EVERY '
+                         'segment after this t [Myr] -- a sustained perturbation '
+                         'that must move the macro state if propagation works.')
     args = ap.parse_args()
 
     from trinity._input import read_param
@@ -146,17 +150,26 @@ def main():
 
     def wrapped(beta_guess, delta_guess, params, *a, **k):
         res = orig(beta_guess, delta_guess, params, *a, **k)
-        # Phase 6.1 counterfactual: reject a deep-inflow structure and hold the
-        # last physical one, by mimicking the runner's no_physical_root path
-        # (bubble_properties=None -> updateDict skipped -> dMdt/Lgain/Lloss held).
+        # Phase 6.1 counterfactual: reject a structure and hold the last physical
+        # one, by mimicking the runner's no_physical_root path (bubble_properties
+        # =None -> updateDict skipped -> dMdt/structure held). Two triggers:
+        #   --hold-inflow FRAC : the actual treatment (hold deep-inflow segments)
+        #   --hold-after T0    : POSITIVE CONTROL -- hold EVERY segment after T0,
+        #                        a large sustained perturbation that MUST move the
+        #                        macro state if the channel propagates at all.
+        t_now = _pv(params, 't_now')
+        do_hold = False
         if args.hold_inflow is not None:
             f = _frac(res)
             if f is not None and f > args.hold_inflow:
-                sys.stderr.write(f"HOLD inflow seg: frac={f:.2f} "
-                                 f"t={_pv(params, 't_now'):.3f}\n")
-                res = dataclasses.replace(
-                    res, bubble_properties=None, no_physical_root=True,
-                    L_gain=None, L_loss=None)
+                sys.stderr.write(f"HOLD inflow seg: frac={f:.2f} t={t_now:.3f}\n")
+                do_hold = True
+        if args.hold_after is not None and t_now is not None and t_now > args.hold_after:
+            do_hold = True
+        if do_hold:
+            res = dataclasses.replace(
+                res, bubble_properties=None, no_physical_root=True,
+                L_gain=None, L_loss=None)
         try:
             row = _row(params, res)
             stats['n'] += 1
