@@ -17,6 +17,11 @@ WARPFIELD "Problem 2" study). **Not source** — regenerable. Canonical writeups
 | `hunt_*` (h1–h6) | 6.0 | **hunt**: velocity-contamination sweep, 6 configs | `scratch/phase6/hunt.py` → `analysis/data/hunt_*.csv` | `plot_hunt.py` → `hunt_*` |
 | `negvel_*`   | 5/6 | the negative-velocity diagnosis figures (trigger / timeline / dmdt-lmech / feedback / profile / causal) | — | `analyze_negvel.py`, `reconstruct_vprofile.py` |
 
+**Animation:** `make_rootmap_gif.py` → `rootmap_cage.gif` — the steep run's (β,δ)
+root-finding **with vs without the cage** (legacy box) over time, alongside the
+re-solved bubble velocity-vs-density profile and Lmech(t). Frame = segment; all
+three panels are the same timestamp. Needs the venv (numpy<2/scipy<2) + pillow.
+
 **Metrics:** `f` = legacy residual, `f_E=(E1−E2)/E1` — its denominator hits 0 near
 the E_b peak (a **pole**). `g` = hybr residual, `g_E=(E1−E2)/Lmech_total` —
 pole-free. Both: total = E-comp² + T-comp², converged < 1e-4. Legacy clamp box:
