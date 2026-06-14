@@ -517,7 +517,7 @@ The implicit→momentum transition is the cooling-balance event
 - Registry info-string bug for `bubble_xi_Tb` / `bubble_r_Tb` ("xi = r/R2" vs
   the thickness fraction the code uses) — flagged in §2.1; fix when convenient.
 
-## Phase 6 — Velocity-structure ("Problem 2") investigation (6.0 RAN 2026-06-14)
+## Phase 6 — Velocity-structure ("Problem 2") investigation (6.0+6.1 DONE — CLOSED 2026-06-14)
 
 Surfaced by the same negative-β runs (2026-06-14). Out of solver-repair scope; a
 self-contained phased study. Same staleness caveat — the line refs below were
@@ -582,17 +582,29 @@ one config. The screen cannot certify that channel as *exactly* zero, so →
 **narrow 6.1** (below). It is **not** the broad contamination the raw first-
 difference heuristic suggested before deconfounding.
 
-### Phase 6.1 — Treatments + metric [narrowed by 6.0: `dMdt` channel only]
-6.0 narrowed this from "does it contaminate?" to "does the bounded `dMdt`
-response on the inflow segments change anything macroscopic?" (Lloss/Eb are
-energy-immune, so they are *not* the test). The treatment arms are unchanged:
-- **A — accept** (status quo): the baseline.
+### Phase 6.1 — Treatments + metric [DONE 2026-06-14 — arm C run, Problem 2 CLOSED]
+**Result: the inflow is empirically immaterial → no treatment needed.** Arm C
+(reject-and-hold) was run on the four real-inflow configs (harness
+`scratch/phase6/hunt.py --hold-inflow`, diff `scratch/phase6/compare_hold.py`):
+deleting every inflow segment — a 9.6–42.8 % local kick to `dMdt` — moves the
+macro outputs (R2, v2, Eb, terminal momentum) by **≤0.04 %** (h1, the smallest
+bubble; the large bubbles ~0, h6 ~1e-9). Propagation is real, not a units/path
+artefact (deltas are relative; the held Eb deviates 0.63 % *during* the band then
+recovers), so the smallness is physical — the band is brief and `dMdt` is a small
+term. Full table + reasoning: `analysis/stalling-energy-phase.md` (§ "Phase 6.1
+— counterfactual"). Shipped the diagnostic-only `v_neg_frac_thick` snapshot field
+(registry + `COOLING_PHASE_KEYS`) as the tripwire; **arm A (accept) stands.**
+
+The treatment arms below were the menu *if* a macro effect had shown up; kept for
+the record (none was promoted):
+- **A — accept** (status quo): the baseline. **← stands; no effect found.**
 - **B — clip v≥0** in the structure output / `v_CIEswitch`: cosmetic unless a
   consumer of v is found; cheapest.
 - **C — velocity-sign reject → hold**: treat interior-v<0 as a structure
   failure (a Problem-2 gate, mirroring the dMdt gate and the `min_T` penalty at
   `bubble_luminosity.py:1088`) so the segment flags `no_physical_root` and the
-  runner holds the last physical structure (the Commit-3 path).
+  runner holds the last physical structure (the Commit-3 path). **← the arm run
+  as the 6.1 counterfactual; ≤0.04 % macro impact.**
 - **D — penalise-in-solver**: add a v<0 penalty in `_get_velocity_residuals`
   alongside the existing penalties — *only* sensible if a positive-v root exists
   nearby (it may not: β+δ<0 is set by the physical Lmech surge).
