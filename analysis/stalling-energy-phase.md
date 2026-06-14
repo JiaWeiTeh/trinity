@@ -108,6 +108,38 @@ Distinctions that matter:
   is a velocity-sign guard analogous to `min_T` — reject/penalise interior-v<0
   structures so the gate covers Problem 2, not just `dMdt>0` (Problem 1).
 
+### Diagnosis from the captured profiles (2026-06-14)
+
+Reading the full `bubble_v_arr` / `bubble_v_arr_r_arr` at the affected segments
+(steep run) pins it down:
+
+- **The trigger is β+δ, not β.** `dv/dr`'s source term is `(β+δ)/t`, so the
+  inflow appears only when **β+δ ≲ −0.5**, regardless of β alone. Proof from
+  the two runs: `sweep_mock` reaches β=−1.04 but δ compensates so its
+  **(β+δ)_min = +0.25 → zero real inflow segments**; `sweep_steep` hits
+  **(β+δ)_min = −1.11 → 4 inflow segments** (their β+δ ∈ [−1.11, −0.49]). So
+  negative β is *necessary-ish but not sufficient* — you need β+δ negative.
+- **It is an inner-bubble band.** v runs 0 at R1 (inner, the BC) up to ≈v₂ at
+  R2 (outer). During the surge the dip is in the **inner ~2–70 % of the bubble
+  thickness** (radial fraction from R1), recovering to positive toward R2:
+
+  | t | β | β+δ | v_min [pc/Myr] | r(v_min)/R₂ | negative band (frac. of thickness) |
+  |---|---|---|---|---|---|
+  | 3.178 | −2.44 | −0.63 | −0.11 | 0.21 | 0.02–0.42 |
+  | 3.228 | −2.10 | −1.11 | **−0.62** | 0.40 | **0.02–0.73** |
+  | 3.278 | −1.26 | −0.97 | −0.45 | 0.37 | 0.02–0.68 |
+  | 3.328 | −0.39 | −0.49 | −0.01 | 0.08 | 0.02–0.16 |
+
+- **Magnitude is small but real:** v_min ≈ −0.1…−0.6 pc/Myr against a shell
+  v₂ ≈ 10 — a genuine reversal (inflow) in the inner band, ~1–6 % of v₂. The
+  band grows to the inner ~¾ of the bubble at peak (β+δ=−1.11) then collapses.
+- **Reading:** the quasi-steady Weaver structure is being pushed outside its
+  validity by a *violent transient* re-pressurisation (β+δ swinging strongly
+  negative over ~0.15 Myr); the inner gas momentarily flows inward, which the
+  self-similar outflow ansatz cannot represent. Whether to treat that as real
+  transient inflow or to guard against it (velocity-sign penalty) is the
+  Phase-5 call.
+
 ## Why this matters for the transition criterion (Phase 5)
 
 The "stall" is **feedback-sustained**, not just halo-fed. The steep bubble
