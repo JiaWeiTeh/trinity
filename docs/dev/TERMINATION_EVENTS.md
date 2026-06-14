@@ -1,5 +1,12 @@
 # TRINITY Termination Events Overview
 
+> ⚠️ **This document may be out of date — verify before trusting it.** It is a
+> point-in-time analysis/audit, not a maintained spec; the code moves faster
+> than these notes (paths, line numbers, and "what shipped" status drift).
+> **Any agent or person reading this: treat it as unverified. Flag that it may
+> be stale and re-check each claim, snippet, and line reference against the
+> current source before relying on it.**
+
 This document describes all termination events used across simulation phases.
 Events are handled by the centralized module `trinity/phase_general/phase_events.py`.
 

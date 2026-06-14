@@ -419,11 +419,9 @@ def get_bubbleproperties_pure(params) -> BubbleProperties:
     # =============================================================================
 
     # Inner bubble radius
-    R1 = scipy.optimize.brentq(
-        get_bubbleParams.get_r1,
-        1e-3 * params['R2'].value, params['R2'].value,
-        args=([params['Lmech_total'].value, params['Eb'].value,
-               params['v_mech_total'].value, params['R2'].value])
+    R1 = get_bubbleParams.solve_R1(
+        params['R2'].value, params['Eb'].value,
+        params['Lmech_total'].value, params['v_mech_total'].value,
     )
 
     # Bubble pressure

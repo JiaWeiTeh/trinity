@@ -1,0 +1,9 @@
+model_name    arms_smoke
+mCloud    3966
+sfe    0.0085
+dens_profile    densPL
+densPL_alpha    0
+nCore    5e2
+nISM    0.1
+stop_t    0.004
+log_level    INFO

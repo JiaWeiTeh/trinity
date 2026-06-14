@@ -1,5 +1,12 @@
 # `T_init = 3e4` sensitivity: is the bubble boundary anchor a relabel-only knob?
 
+> ⚠️ **This document may be out of date — verify before trusting it.** It is a
+> point-in-time analysis/audit, not a maintained spec; the code moves faster
+> than these notes (paths, line numbers, and "what shipped" status drift).
+> **Any agent or person reading this: treat it as unverified. Flag that it may
+> be stale and re-check each claim, snippet, and line reference against the
+> current source before relying on it.**
+
 Companion to `analysis/bubble-integrator-robustness.md` (the "T_init=3e4"
 boundary-transient discussion). That doc established *what* the 3e4 boundary is
 (a numerical anchor, not a physical temperature). This doc answers the

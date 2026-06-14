@@ -1,0 +1,11 @@
+model_name    h4_steep_dense
+mCloud    1e6
+sfe    0.10
+dens_profile    densPL
+densPL_alpha    -2
+nCore    1e6
+rCore    1
+nISM    10
+stop_t    6.0
+log_level    WARNING
+betadelta_solver    hybr
