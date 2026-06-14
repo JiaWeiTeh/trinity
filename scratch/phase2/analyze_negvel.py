@@ -224,10 +224,87 @@ def plot_timeline(path):
     plt.close(fig)
 
 
+def plot_dmdt_lmech(path):
+    """dMdt vs Lmech_total per run; colour = time so a lag shows as a loop."""
+    fig, axes = plt.subplots(1, 2, figsize=(12, 5), constrained_layout=True)
+    for ax, (fn, label, _mk, _c) in zip(axes, RUNS):
+        d = load(fn)
+        o = np.argsort(d["t_now"])
+        L, M, tt = d["Lmech_total"][o], d["bubble_dMdt"][o], d["t_now"][o]
+        ax.plot(L, M, color="0.8", lw=0.8, zorder=1)  # time-ordered path
+        sc = ax.scatter(L, M, c=tt, cmap="viridis", s=22, zorder=2, edgecolor="k", linewidths=0.2)
+        r = np.corrcoef(L, M)[0, 1]
+        ax.set_title(f"{label}\nPearson r(dMdt, Lmech) = {r:.3f}", fontsize=10)
+        ax.set_xlabel(r"$L_{\rm mech,total}$  [code units]")
+        ax.set_ylabel(r"bubble $\dot M$  [M$_\odot$/Myr]")
+        fig.colorbar(sc, ax=ax, label="t [Myr]")
+    fig.suptitle(
+        r"Conductive evaporation $\dot M$ vs injected power $L_{\rm mech,total}$"
+        "  (colour = time; loops = lag)",
+        fontsize=12,
+    )
+    fig.savefig(path, dpi=130, bbox_inches="tight")
+    plt.close(fig)
+
+
+def plot_feedback(path):
+    """Steep run: cooling_ratio + Lmech (top), Eb + Pb (bottom) vs t."""
+    d = load(RUNS[0][0])
+    t = d["t_now"]
+    real = d["v_struct_nneg"] >= NNEG_REAL
+    win = (t[real].min() - 0.04, t[real].max() + 0.04) if real.any() else None
+    frac = d["Lmech_SN"] / np.where(d["Lmech_total"] > 0, d["Lmech_total"], np.nan)
+    sn = np.where((t > 3.0) & (frac > 0.1))[0]
+    t_sn = t[sn[0]] if len(sn) else None
+    m = (t >= 2.5) & (t <= 4.0)  # window the data so axes scale to the shown range
+    tw = t[m]
+
+    fig, (a1, a2) = plt.subplots(2, 1, sharex=True, figsize=(10, 7.5), constrained_layout=True)
+    a1.plot(tw, d["cooling_ratio"][m], color="#1f77b4", lw=1.8)
+    a1.axhline(0.05, color="k", ls="--", lw=1.0)
+    a1.text(2.52, 0.08, "transition threshold 0.05", fontsize=8)
+    a1.set_ylabel(r"cooling ratio $(L_g-L_l)/L_g$", color="#1f77b4")
+    a1.tick_params(axis="y", labelcolor="#1f77b4")
+    a1.set_ylim(0, 1.0)
+    a1b = a1.twinx()
+    a1b.plot(tw, d["Lmech_total"][m] / 1e8, color="0.55", lw=1.0, ls=":")
+    a1b.set_ylabel(r"$L_{\rm mech,total}$ [$10^8$]", color="0.55")
+    a1b.tick_params(axis="y", labelcolor="0.55")
+
+    a2.plot(tw, d["Eb"][m] / 1e8, color="#2ca02c", lw=1.8)
+    a2.set_ylabel(r"$E_b$ [$10^8$]", color="#2ca02c")
+    a2.tick_params(axis="y", labelcolor="#2ca02c")
+    a2b = a2.twinx()
+    a2b.plot(tw, d["Pb"][m], color="#d62728", lw=1.8)
+    a2b.set_ylabel(r"$P_b$", color="#d62728")
+    a2b.tick_params(axis="y", labelcolor="#d62728")
+    a2.set_xlabel("t  [Myr]")
+
+    for ax in (a1, a2):
+        if win:
+            ax.axvspan(*win, color="orange", alpha=0.18, zorder=0)
+        if t_sn is not None:
+            ax.axvline(t_sn, color="purple", ls="--", lw=1.0)
+    if t_sn is not None:
+        a1.text(t_sn + 0.01, 0.92, "SN onset", color="purple", fontsize=8)
+    a1.set_xlim(2.5, 4.0)
+    fig.suptitle(
+        "Feedback response (steep 1e6, α=−2): the WR surge drives Eb up + a local Pb rise (β<0)\n"
+        "and resets the cooling ratio upward — it never reaches the 0.05 transition (stall)",
+        fontsize=11,
+    )
+    fig.savefig(path, dpi=130, bbox_inches="tight")
+    plt.close(fig)
+
+
 def main():
     plot_trigger(HERE / "negvel_trigger.png")
     plot_timeline(HERE / "negvel_timeline.png")
-    print("wrote negvel_trigger.png, negvel_timeline.png")
+    plot_dmdt_lmech(HERE / "negvel_dmdt_lmech.png")
+    plot_feedback(HERE / "negvel_feedback.png")
+    print(
+        "wrote negvel_trigger.png, negvel_timeline.png, negvel_dmdt_lmech.png, negvel_feedback.png"
+    )
 
 
 if __name__ == "__main__":
