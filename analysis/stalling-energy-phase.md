@@ -140,6 +140,71 @@ Reading the full `bubble_v_arr` / `bubble_v_arr_r_arr` at the affected segments
   transient inflow or to guard against it (velocity-sign penalty) is the
   Phase-5 call.
 
+### Is the inflow physical? A physical reading (2026-06-14) — INTERPRETATION, NOT established
+
+> **Epistemic status: mostly conjecture.** The "measured" bullets are read
+> straight from `analysis/data/hunt_h1_steep_base.csv`; everything labelled
+> *interpretation* or *guess* is a physical story fitted to those numbers — **not**
+> verified against a time-dependent hydro solve, an independent structure code, or
+> the literature. Treat every causal claim below as a hypothesis to check, not a
+> result. Do not cite any of it as settled.
+
+**Measured at the deepest dip (h1, t=3.228 Myr):**
+- interior T ≈ 4.9e6 K → `c_sound` ≈ 338 pc/Myr (~330 km/s).
+- `v_struct_min` = −0.62 pc/Myr ⇒ **inflow Mach |v_min|/c_sound ≈ 0.002**;
+  |v_min|/v2 ≈ 6 %; kinetic-vs-thermal energy of that gas ~ (v/c_s)² ~ **1e-6**.
+- across the band Eb rises smoothly 7.6e7→1.2e8, T rises 4.3→4.9e6 K, R2 keeps
+  expanding 26→29.6 pc, v2 keeps rising 9.2→10.5 pc/Myr; Pb dips then bumps up.
+- β<0 and δ>0 occur *together* (Pb rising **and** T rising — both reinforce the
+  negative `(β+δ)/t` source).
+
+**Interpretation (plausible, unverified) — what the dip *might* be:** β<0 ⇔ Pb
+rising, δ>0 ⇔ T rising; both at once ⇒ the bubble is being **re-pressurised and
+re-heated faster than expansion relieves it**. The timing (~3 Myr, before the
+SN-onset marker) is *consistent with* the **Wolf–Rayet wind luminosity surge**
+("WR bump" in SB99-type `Lmech`) of a coeval cluster — but we have **not**
+confirmed the surge is WR-specific vs another `Lmech` feature; check the SB99
+input. The plot-1 velocity shape (v=0 at R1, a subsonic negative trough over the
+inner ~40–74 % of the thickness, steep rise to +v2 at R2) *reads as* a
+**stagnation radius** — re-energised inner gas back-drifting while the massive
+outer shell coasts out on its inertia. That is a cartoon, not a derived flow.
+
+**Why it is *probably* an artefact more than a real inflow (conjecture):** the
+Weaver/WARPFIELD interior structure is derived on the **self-similar expanding
+attractor** (β≈0.5–0.6, monotonic outflow, T∝(1−r/R2)^{2/5}); the `(β+δ)/t` term
+is that steady structure's time-dependence book-keeping. Feeding it β+δ≈−1
+(transiently *anti*-self-similar) extrapolates the ansatz outside its domain, so
+the returned profile is mathematically consistent but **not guaranteed to be the
+true transient flow**. A time-dependent hydro solve would *probably* show a weak
+compressive / sound-wave re-adjustment instead — **we have not run one; this is a
+guess.**
+
+**Why it "settles itself" (reasoning, plausible):**
+1. the driver is transient — β<0 only while `Lmech` is steeply *rising* (~0.15 Myr);
+2. the interior is Mach ~1e-3 with sound-crossing ~R2/c_s ≈ 0.08 Myr, so any
+   imbalance is ironed out almost instantly — no reservoir to sustain a flow;
+3. no positive feedback — `v` is absent from the radiative cooling integrals
+   (`bubble_luminosity.py:612/659/677`) so it cannot change `Lloss`, and it
+   carries ~1e-6 of the thermal energy so it cannot materially move `Eb`/`Pb`
+   either. ⇒ a **forced, damped, bounded excursion, not an instability** — which
+   matches the observed ~4-segment spike-and-recover. *(Caveat: "no positive
+   feedback" is an inference from where v does/doesn't appear in the code, not a
+   proof of dynamical stability.)*
+
+**Why steep dips but the mock does not (interpretation):** the inflow needs
+β+δ≲−0.5, i.e. the pressure surge (β<0) and temperature surge (δ) must
+*reinforce*. In steep-1e6 they do (β+δ→−1.1); in the 4e3 mock δ compensates
+(β+δ floor +0.25) → no inflow. So it is *not* a generic feedback feature — it
+seems to need the dense / strongly-cooling / weakly-driven corner where P and T
+surge together. The δ sign-behaviour driving this wants its own check.
+
+**Net (still a guess):** most likely a *physically-motivated flag* of a real
+re-pressurisation event, rendered as a *quantitatively unreliable* inflow profile
+by the quasi-steady ansatz, and **energetically negligible** (~1e-6 of thermal)
+so it does not touch the macro budget. Whether a *real* bubble has a small genuine
+transient inflow here is **open** and would need a time-dependent interior solve
+to settle — do **not** record it as "resolved".
+
 ## Phase 6.0 contamination hunt: is the inflow ever non-cosmetic? (2026-06-14)
 
 The Problem-2 open question above — *real transient or structure breakdown, and
