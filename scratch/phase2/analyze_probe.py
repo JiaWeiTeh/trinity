@@ -21,7 +21,7 @@ total_residual -- the probe's *f*-metric (pure-solver) total; that pure-solver
 root is the white star on the maps (a reference point, NOT the g-minimum).
 Produces:
   - betadelta_gmap.png   : g-metric residual + feasibility, one panel/config (2x2)
-  - betadelta_f_vs_g.png : f vs g side by side (flat converger, steep staller)
+  - betadelta_f_vs_g.png : f vs g side by side (typical converger, steep staller)
 
 Usage: python scratch/phase2/analyze_probe.py
 """
@@ -46,8 +46,8 @@ DB, DD = 0.5, 0.25  # grid spacing (for per-cell hatch rectangles)
 
 # (file, short label) -- segment auto-picked as the lowest-residual accept
 CONFIGS = [
-    ("probe_cloud1e6.jsonl", "flat   1e6, n=1e5, α=0"),
-    ("probe_cloudPL.jsonl", "steep  1e6, α=−2"),
+    ("probe_cloud1e6.jsonl", "typical 1e6, n=1e3, α=0"),  # nCore=1e3 (NOT the dense flat n=1e5)
+    ("probe_cloudPL.jsonl", "steep  1e6, α=−2, n=1e5"),
     ("probe_mock4e3.jsonl", "mock   4e3, low-mass"),
     ("probe_simple1e5.jsonl", "simple 1e5, sfe=0.3"),
 ]
@@ -257,7 +257,7 @@ def main():
     plot_gmap(gdata, HERE / "betadelta_gmap.png")
 
     fg = []
-    for fn, label in (CONFIGS[0], CONFIGS[1]):  # flat converger, steep staller
+    for fn, label in (CONFIGS[0], CONFIGS[1]):  # typical converger, steep staller
         recs = load(fn)
         seg, acc = pick_segment(recs)
         fgrid, ggrid = f_and_g(recs, seg)

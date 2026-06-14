@@ -43,7 +43,7 @@ import trinity.main as tmain  # noqa: E402
 import trinity.phase1_energy.run_energy_phase as RE  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
-CSV = HERE / "stalling_steep_1e6_alpha-2.csv"
+CSV = HERE.parents[1] / "analysis" / "data" / "stalling_steep_1e6_alpha-2.csv"  # canonical
 PARAM = HERE / "probe_cloudPL.param"  # the steep 1e6, alpha=-2 config
 NNEG_REAL = 10
 
@@ -153,6 +153,23 @@ def main():
     ax.axhline(0.0, color="k", lw=1.0)
     ax.axhspan(ax.get_ylim()[0], 0.0, color="r", alpha=0.05)
     ax.text(0.02, -0.4, "inflow (v<0)", color="#b30000", fontsize=9, va="top")
+
+    # how significant is the inflow? (numbers per analysis/stalling-energy-phase.md)
+    deep = min(inflow, key=lambda r: float(r["v_struct_min"]))
+    mach = abs(float(deep["v_struct_min"])) / float(deep["c_sound"])
+    ax.text(
+        0.98,
+        0.02,
+        f"deepest band: Mach ≈ {mach:.3f} (subsonic), KE/thermal ~ {mach**2:.0e}\n"
+        "→ energetically negligible. The profile is a quasi-steady-ansatz output;\n"
+        "likely an artefact — real-vs-artefact is OPEN (stalling-energy-phase.md).",
+        transform=ax.transAxes,
+        ha="right",
+        va="bottom",
+        fontsize=7.5,
+        color="0.25",
+        bbox=dict(boxstyle="round", fc="white", ec="0.7", alpha=0.92),
+    )
     ax.set_xlim(0, 1)
     ax.set_xlabel("radial fraction across bubble   (0 = R1 inner, 1 = R2 outer shell)")
     ax.set_ylabel("bubble interior velocity  v(r)  [pc/Myr]")

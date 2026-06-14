@@ -2,7 +2,7 @@
 """Negative interior-velocity diagnosis (WARPFIELD "Problem 2") from the
 committed stalling-phase CSVs.
 
-Source data (committed on bugfix/beta-delta-solver-pt2, copied into scratch):
+Source data (canonical, read from analysis/data/):
   stalling_steep_1e6_alpha-2.csv  (sweep_steep, 133 rows)
   stalling_mock_4e3.csv           (sweep_mock,  144 rows)
 See analysis/stalling-energy-phase.md for the writeup. Key diagnostics:
@@ -38,6 +38,7 @@ import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
+DATA = HERE.parents[1] / "analysis" / "data"  # canonical stalling CSVs (was scratch dupes)
 BPD_THRESH = -0.5  # beta+delta inflow threshold (doc)
 NNEG_REAL = 10  # v_struct_nneg >= this = real inflow (vs inner-BC artifact)
 RUNS = [
@@ -58,7 +59,7 @@ NUM = (
 
 
 def load(fn):
-    rows = list(csv.DictReader(open(HERE / fn)))
+    rows = list(csv.DictReader(open(DATA / fn)))
     return {k: np.array([float(r[k]) for r in rows]) for k in NUM}
 
 
@@ -308,11 +309,15 @@ def plot_feedback(path):
 
 
 def plot_causal_ladder(path):
-    """Steep run: the full cause->consequence chain in 4 aligned panels.
+    """Steep run: the measured drivers vs the (conjectural) inflow, 4 panels.
 
-    beta = -(t/Pb) dPb/dt (so beta<0 = Pb rising); delta = (t/T) dT/dt (delta>0
-    = T rising). The dv/dr source term is (beta+delta)/t = -d ln(n)/dt, so
-    beta+delta<0 means the inner gas is being COMPRESSED -- the inflow trigger.
+    beta = -(t/Pb) dPb/dt (beta<0 = Pb rising); delta = (t/T) dT/dt (delta>0 =
+    T rising). The dv/dr source is (beta+delta)/t = -d ln(n)/dt, so beta+delta<0
+    is FORMALLY a compression term. Panels 1-3 (Lmech, Eb/Pb, beta/delta) are
+    measured and solid; the inflow in panel 4 is the quasi-steady-ansatz output
+    -- subsonic (Mach~2e-3), energetically negligible (~1e-6 of thermal), and its
+    physical reality (real transient vs ansatz artefact) is OPEN. See
+    analysis/stalling-energy-phase.md "Is the inflow physical?".
     """
     d = load(RUNS[0][0])  # steep
     t = d["t_now"]
@@ -356,7 +361,7 @@ def plot_causal_ladder(path):
     a3.text(2.86, -0.45, "inflow trigger ~−0.4", color="k", fontsize=8, va="top")
     a3.set_ylabel(r"$\beta$,  $\delta$,  $\beta+\delta$")
     a3.set_title(
-        "③ TRIGGER: β dive (Pb-rate) outweighs δ (T-rate) → β+δ<−0.4 = net compression",
+        "③ TRIGGER: β dive (Pb-rate) outweighs δ (T-rate) → β+δ<−0.4 (formal compression term)",
         fontsize=9.5,
         loc="left",
     )
@@ -366,8 +371,9 @@ def plot_causal_ladder(path):
     a4.axhline(0.0, color="k", lw=0.8)
     a4.set_ylabel("v_struct_min\n[pc/Myr]")
     a4.set_title(
-        "④ CONSEQUENCE: inner velocity reverses → inflow (terminal; energy-budget-immune)",
-        fontsize=9.5,
+        "④ CONSEQUENCE (ansatz output): inner inflow — subsonic, ~1e-6 of thermal; "
+        "likely artefact, real-vs-artefact OPEN",
+        fontsize=9,
         loc="left",
     )
     a4.set_xlabel("t  [Myr]")
@@ -377,9 +383,10 @@ def plot_causal_ladder(path):
             ax.axvspan(*win, color="orange", alpha=0.15, zorder=0)
     a1.set_xlim(2.85, 3.5)
     fig.suptitle(
-        "Negative-velocity causal ladder (steep 1e6, α=−2): "
-        "Lmech spike → re-pressurise (β<0) → β+δ<−0.4 → inflow",
-        fontsize=11,
+        "Negative-velocity chain (steep 1e6, α=−2): the measured drivers "
+        "(①–③ Lmech↑→Eb/Pb↑→β+δ↓) are solid;\nthe inflow (④) is a likely-artefact, "
+        "energetically negligible structure-ansatz output",
+        fontsize=10.5,
     )
     fig.tight_layout(rect=(0, 0, 1, 0.98))
     fig.savefig(path, dpi=130, bbox_inches="tight")
