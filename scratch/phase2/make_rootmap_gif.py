@@ -28,13 +28,13 @@ Six panels, current time = the frame's t grid point:
             marks the current clamp error.
   LEFT  B : residual g of the two arms vs t (g<1e-4 = converged). hybr converges;
             the cage cannot (it is structurally forbidden the out-of-box root).
-  LEFT  C : interior velocity v(r) vs PHYSICAL radius r [pc] (R1->R2), cage vs no
-            cage -- shows the bubble physically growing as the axis fills.
+  LEFT  C : the expansion trajectory -- outer-edge velocity v2 vs outer radius R2,
+            with a marker at the current time.
   RIGHT D : interior velocity v(r) vs radial fraction (0=R1, 1=R2), cage vs no cage
             (inflow = v<0; the cage's monotone solve hides the surge inflow).
   RIGHT E : Lmech_W / Lmech_SN / Lmech_total vs t, marker at the current t.
-  RIGHT F : bubble radius R2 and ionization front R_IF vs t (R_IF~R2 for a dense
-            shell; they diverge for a less-dense / optically-thin shell).
+  RIGHT F : shell radii vs t -- R2 (inner edge = bubble outer) and rShell (outer edge);
+            their gap is the shell thickness.
 
   python scratch/phase2/make_rootmap_gif.py
 Writes rootmap_cage.gif.
@@ -50,7 +50,8 @@ import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
 from matplotlib.animation import FuncAnimation, PillowWriter  # noqa: E402
-from matplotlib.colors import Normalize  # noqa: E402
+from matplotlib import cm as mcm  # noqa: E402
+from matplotlib.colors import BoundaryNorm  # noqa: E402
 from matplotlib.patches import Rectangle  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
@@ -90,9 +91,11 @@ def load(scalars, profiles):
         g_c=scal["g_cage"].to_numpy(),
         cage_ok=scal["cage_ok"].to_numpy().astype(bool),
         R2=scal["R2"].to_numpy(),
+        v2=scal["v2"].to_numpy(),
         R1_h=scal["R1_nocage"].to_numpy(),
         R1_c=scal["R1_cage"].to_numpy(),
         R_IF=col("R_IF_nocage"),
+        rShell=col("rShell_nocage"),
         lw=scal["Lmech_W"].to_numpy() / 1e8,
         lsn=scal["Lmech_SN"].to_numpy() / 1e8,
         lt=scal["Lmech_total"].to_numpy() / 1e8,
@@ -112,10 +115,15 @@ def main():
     t = d["t"]
     hb, hd, cb, cd = d["hb"], d["hd"], d["cb"], d["cd"]
     g_h, g_c, cage_ok = d["g_h"], d["g_c"], d["cage_ok"]
-    R2, R1_h, R1_c, R_IF = d["R2"], d["R1_h"], d["R1_c"], d["R_IF"]
+    R2, v2, rShell = d["R2"], d["v2"], d["rShell"]
     lw, lsn, lt = d["lw"], d["lsn"], d["lt"]
     f_grid, v_h, v_c = d["f_grid"], d["v_h"], d["v_c"]
-    tnorm = Normalize(t.min(), t.max())
+    # discrete time colour (fixed bins) -> a point's colour never changes AND the GIF
+    # palette stays stable frame-to-frame (continuous viridis re-quantizes -> shimmer).
+    NTBINS = 10
+    bounds = np.linspace(t.min(), t.max(), NTBINS + 1)
+    cmap_t = plt.get_cmap("viridis", NTBINS)
+    tnorm = BoundaryNorm(bounds, cmap_t.N)
 
     # ---- frame grid: uniform in t; denser than the (capped-dt) late segments so the
     # surge inflow survives, decimating the over-dense early phase ----
@@ -123,7 +131,7 @@ def main():
     lin = lambda y: np.interp(tg, t, y)  # noqa: E731  smooth current-marker value
     logi = lambda y: 10 ** np.interp(tg, t, np.log10(np.clip(y, 1e-7, None)))  # noqa: E731
     hb_f, hd_f, cb_f, cd_f = lin(hb), lin(hd), lin(cb), lin(cd)
-    R2_f, R1h_f, R1c_f, RIF_f = lin(R2), lin(R1_h), lin(R1_c), lin(R_IF)
+    R2_f, v2_f = lin(R2), lin(v2)
     gh_f, gc_f = logi(g_h), logi(g_c)
     cage_f = lin(cage_ok.astype(float)) > 0.999  # cage curves valid at this frame?
 
@@ -142,7 +150,10 @@ def main():
     vlo = float(np.nanmin([np.nanmin(v_h), np.nanmin(v_c)]))
     vhi = float(np.nanmax([np.nanmax(v_h), np.nanmax(v_c)]))
     VLIM = (min(vlo, -0.2) - 0.05 * abs(vhi), vhi * 1.05)
-    RPC_MAX = float(np.nanmax(R2)) * 1.02
+    R2MAX = float(np.nanmax(R2)) * 1.02  # panel C x-axis (R2)
+    v2hi = float(np.nanmax(v2))
+    V2LIM = (min(0.0, float(np.nanmin(v2))) - 0.04 * abs(v2hi), v2hi * 1.05)
+    RFMAX = float(np.nanmax([np.nanmax(R2), np.nanmax(rShell)])) * 1.05  # panel F y-axis
 
     fig, axd = plt.subplot_mosaic(
         [["A", "D"], ["A", "D"], ["B", "E"], ["C", "F"]],
@@ -152,6 +163,13 @@ def main():
         constrained_layout=True,
     )
     aA, aB, aC, aD, aE, aF = (axd[k] for k in "ABCDEF")
+    # one persistent colourbar for the time-coloured scatter (created once, NOT in
+    # update(), so it neither stacks nor rescales -> no colour blinking).
+    sm = mcm.ScalarMappable(norm=tnorm, cmap=cmap_t)
+    sm.set_array([])
+    cbar = fig.colorbar(sm, ax=aA, fraction=0.045, pad=0.02)
+    cbar.set_label("t  [Myr]", fontsize=8)
+    cbar.ax.tick_params(labelsize=7)
 
     def update(i):
         tc = tg[i]
@@ -179,7 +197,7 @@ def main():
             cb[rmc],
             cd[rmc],
             c=t[rmc],
-            cmap="viridis",
+            cmap=cmap_t,
             norm=tnorm,
             marker="s",
             s=18,
@@ -192,7 +210,7 @@ def main():
             hb[rm],
             hd[rm],
             c=t[rm],
-            cmap="viridis",
+            cmap=cmap_t,
             norm=tnorm,
             s=24,
             edgecolor="k",
@@ -274,20 +292,15 @@ def main():
         aB.legend(fontsize=7, loc="upper left", ncol=1)
         aB.grid(alpha=0.3)
 
-        # ---- C: interior velocity vs physical radius [pc] ----
+        # ---- C: the expansion trajectory  v2 vs R2 ----
         aC.clear()
-        aC.axhline(0.0, color="k", lw=0.6)
-        rpc_h = R1h_f[i] + f_grid * (R2_f[i] - R1h_f[i])
-        aC.plot(rpc_h, vh_f[i], color=HYBR_C, lw=1.7, label="no cage")
-        if cage_f[i]:
-            rpc_c = R1c_f[i] + f_grid * (R2_f[i] - R1c_f[i])
-            aC.plot(rpc_c, vc_f[i], color=CAGE_C, lw=1.7, ls="--", label="cage")
-        aC.set_xlim(0, RPC_MAX)
-        aC.set_ylim(*VLIM)
-        aC.set_xlabel("radius  r  [pc]")
-        aC.set_ylabel("v(r)  [pc/Myr]")
-        aC.set_title("velocity vs physical radius", fontsize=9)
-        aC.legend(fontsize=7, loc="upper left")
+        aC.plot(R2, v2, color=HYBR_C, lw=1.6)
+        aC.plot(R2_f[i], v2_f[i], "o", ms=8, mfc="#ffd000", mec="k", zorder=5)
+        aC.set_xlim(0, R2MAX)
+        aC.set_ylim(*V2LIM)
+        aC.set_xlabel(r"$R_2$  [pc]")
+        aC.set_ylabel(r"$v_2$  [pc/Myr]")
+        aC.set_title("expansion trajectory", fontsize=9)
         aC.grid(alpha=0.3)
 
         # ---- D: interior velocity vs radial fraction ----
@@ -336,17 +349,20 @@ def main():
         aE.legend(fontsize=7, loc="upper left", ncol=3)
         aE.grid(alpha=0.3)
 
-        # ---- F: bubble radius R2 & ionization front R_IF vs t ----
+        # ---- F: shell radii  R2 (inner edge) & rShell (outer edge) vs t ----
         aF.clear()
-        aF.plot(t, R2, color=HYBR_C, lw=1.7, label=r"$R_2$ (bubble)")
-        if np.isfinite(R_IF).any():
-            aF.plot(t, R_IF, color="#d62728", lw=1.2, ls="--", label=r"$R_{\rm IF}$ (ion. front)")
+        aF.plot(t, R2, color=HYBR_C, lw=1.7, label=r"$R_2$ (inner edge)")
+        if np.isfinite(rShell).any():
+            aF.plot(
+                t, rShell, color="#d62728", lw=1.4, ls="--", label=r"$r_{\rm shell}$ (outer edge)"
+            )
         aF.axvline(tc, color="crimson", lw=1.0, alpha=0.6)
         aF.plot(tc, R2_f[i], "o", ms=7, mfc="#ffd000", mec="k", zorder=5)
         aF.set_xlim(t.min(), t.max())
+        aF.set_ylim(0, RFMAX)
         aF.set_xlabel("t  [Myr]")
         aF.set_ylabel("radius  [pc]")
-        aF.set_title("bubble radius & ionization front", fontsize=9)
+        aF.set_title("shell radii", fontsize=9)
         aF.legend(fontsize=7, loc="upper left")
         aF.grid(alpha=0.3)
         return []

@@ -127,6 +127,7 @@ SCALAR_COLS = {
     "R1_h": "R1_nocage",
     "R1_c": "R1_cage",
     "R_IF": "R_IF_nocage",
+    "rShell": "rShell_nocage",
     "vmin_h": "vmin_nocage",
     "vmin_c": "vmin_cage",
     "c_sound": "c_sound",
@@ -207,6 +208,7 @@ def main():
             "R1_h",
             "R1_c",
             "R_IF",
+            "rShell",
             "vmin_h",
             "vmin_c",
             "cage_ok",
@@ -242,11 +244,12 @@ def main():
             params["Pb"].value = ph.Pb
             params["bubble_mass"].value = ph.bubble_mass
             try:
-                R_IF = float(shell_structure_pure(params).R_IF)
+                _sh = shell_structure_pure(params)
+                R_IF, rShell = float(_sh.R_IF), float(_sh.rShell)
             except Exception:
-                R_IF = np.nan
+                R_IF = rShell = np.nan
         else:
-            vh, nh, g_h, R1_h, R_IF = nan, nan, np.nan, np.nan, np.nan
+            vh, nh, g_h, R1_h, R_IF, rShell = nan, nan, np.nan, np.nan, np.nan, np.nan
 
         # --- cage (legacy): REAL bounded solve, threaded-guess continuity ---
         if cage_guess is None:  # both arms start from the same (clamped) point
@@ -291,6 +294,7 @@ def main():
             ("R1_h", float(R1_h)),
             ("R1_c", float(R1_c)),
             ("R_IF", float(R_IF)),
+            ("rShell", float(rShell)),
             ("vmin_h", float(np.nanmin(vh))),
             ("vmin_c", float(vmin_c)),
         ):
