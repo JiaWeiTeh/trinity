@@ -40,6 +40,7 @@ Six panels, current time = the frame's t grid point:
 Writes rootmap_cage.gif.
 """
 
+import argparse
 from pathlib import Path
 
 import matplotlib
@@ -53,8 +54,7 @@ from matplotlib.colors import Normalize  # noqa: E402
 from matplotlib.patches import Rectangle  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
-SCALARS = HERE / "rootmap_cage_scalars.csv"
-PROFILES = HERE / "rootmap_cage_profiles.csv.gz"
+DEFAULT_PREFIX = "rootmap_cage"  # steep run; --prefix selects another tabulation
 BOX_B, BOX_D = (0.0, 1.0), (-1.0, 0.0)  # the cage (legacy clamp)
 THRESH = 1e-4
 NFRAMES = 150  # frames on the uniform (linear) t grid
@@ -67,14 +67,14 @@ if _STYLE.exists():
 plt.rcParams["text.usetex"] = False
 
 
-def load():
-    if not SCALARS.exists() or not PROFILES.exists():
+def load(scalars, profiles):
+    if not scalars.exists() or not profiles.exists():
         raise SystemExit(
-            f"missing {SCALARS.name}/{PROFILES.name} -- run "
+            f"missing {scalars.name}/{profiles.name} -- run "
             f"`python {HERE.name}/tabulate_cage.py` first"
         )
-    scal = pd.read_csv(SCALARS)
-    prof = pd.read_csv(PROFILES)
+    scal = pd.read_csv(scalars)
+    prof = pd.read_csv(profiles)
     nseg = len(scal)
     nf = int((prof["segment"] == 0).sum())
     f_grid = prof["f"].to_numpy()[:nf]
@@ -103,7 +103,12 @@ def load():
 
 
 def main():
-    d = load()
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--prefix", default=DEFAULT_PREFIX, help="CSV/gif basename prefix")
+    ap.add_argument("--label", default="", help="optional config label shown in the title")
+    args = ap.parse_args()
+    lbl = f" — {args.label}" if args.label else ""
+    d = load(HERE / f"{args.prefix}_scalars.csv", HERE / f"{args.prefix}_profiles.csv.gz")
     t = d["t"]
     hb, hd, cb, cd = d["hb"], d["hd"], d["cb"], d["cd"]
     g_h, g_c, cage_ok = d["g_h"], d["g_c"], d["cage_ok"]
@@ -228,7 +233,7 @@ def main():
         aA.set_ylabel(r"$\delta$")
         tag = "OUTSIDE the cage" if out else "inside the cage"
         aA.set_title(
-            f"Root finding with vs without the cage  (t={tc:.3g} Myr; {tag})\n"
+            f"Root finding with vs without the cage{lbl}  (t={tc:.3g} Myr; {tag})\n"
             f"hybr  β={hb_f[i]:+.2f}, δ={hd_f[i]:+.2f}   |   cage  β={cb_f[i]:+.2f}, δ={cd_f[i]:+.2f}",
             fontsize=10,
         )
@@ -347,7 +352,7 @@ def main():
         return []
 
     anim = FuncAnimation(fig, update, frames=NFRAMES, interval=1000 / FPS, blit=False)
-    out = HERE / "rootmap_cage.gif"
+    out = HERE / f"{args.prefix}.gif"
     anim.save(out, writer=PillowWriter(fps=FPS), dpi=85)
     plt.close(fig)
     print(f"wrote {out}  ({NFRAMES} frames, linear-t paced)")

@@ -59,10 +59,10 @@ class _InitDone(Exception):
     pass
 
 
-def init_params():
+def init_params(param_path):
     """Run the real init (cloud/SPS/CIE) but stop before phase 1a."""
     RE.run_energy = lambda params: (_ for _ in ()).throw(_InitDone())
-    params = read_param.read_param(str(PARAM))
+    params = read_param.read_param(str(param_path))
     try:
         tmain.start_expansion(params)
     except _InitDone:
@@ -139,10 +139,11 @@ def save_outputs(npz_path, data):
     profiles = long format (one row per (segment, radial-fraction) sample)."""
     npz_path = Path(npz_path)
     np.savez(npz_path, **data)
+    prefix = npz_path.stem.replace("_table", "")  # rootmap_cage_table.npz -> rootmap_cage
 
     scal = pd.DataFrame({csv_name: data[k] for k, csv_name in SCALAR_COLS.items()})
     scal.insert(0, "segment", np.arange(len(scal)))
-    scalar_path = npz_path.with_name("rootmap_cage_scalars.csv")
+    scalar_path = npz_path.with_name(f"{prefix}_scalars.csv")
     scal.to_csv(scalar_path, index=False, float_format="%.8g")
 
     f_grid, nseg, nf = data["f_grid"], len(data["t"]), len(data["f_grid"])
@@ -158,7 +159,7 @@ def save_outputs(npz_path, data):
     )
     # gzip the bulk profiles (80k float rows -- diffing them is meaningless);
     # pandas infers gzip from the .gz suffix on read and write alike.
-    profile_path = npz_path.with_name("rootmap_cage_profiles.csv.gz")
+    profile_path = npz_path.with_name(f"{prefix}_profiles.csv.gz")
     prof.to_csv(profile_path, index=False, float_format="%.6g")
     print(f"wrote {scalar_path.name} ({nseg} rows) + {profile_path.name} ({nseg * nf} rows)")
 
@@ -168,14 +169,21 @@ def main():
     ap.add_argument(
         "--limit", type=int, default=None, help="only the first N segments (smoke test)"
     )
-    ap.add_argument("--out", type=Path, default=OUT)
+    ap.add_argument("--param", type=Path, default=PARAM, help="config .param for the run")
+    ap.add_argument(
+        "--csv",
+        type=Path,
+        default=CSV,
+        help="hybr-trajectory CSV (implicit-phase rows; same columns as stalling_steep)",
+    )
+    ap.add_argument("--out", type=Path, default=OUT, help="npz path; CSV prefix derived from it")
     args = ap.parse_args()
 
-    rows = list(csv.DictReader(open(CSV)))
+    rows = list(csv.DictReader(open(args.csv)))
     if args.limit:
         rows = rows[: args.limit]
     f_grid = np.linspace(0.0, 1.0, NF)
-    params = init_params()
+    params = init_params(args.param)
 
     rec = {
         k: []
