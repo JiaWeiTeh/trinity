@@ -30,6 +30,45 @@ profile-dependent (cooling ∨ blowout) trigger. Steep transitions by BLOWOUT
 (2.728 Myr), not cooling; F2 + F3 eliminated; F1 does not beat F0. Optional
 remaining: overlay figures.** (See FIRM G0 VERDICT section.)
 
+## AT A GLANCE — state, results, next step (2026-06-15, 12:54)
+
+**Where things stand:** P0 (the divergence-map investigation) is **complete**; the
+**G0 gate = PROCEED**. No runs are active. Everything is committed + pushed on
+`fix/transition-trigger` (head `c5a633a`); all 5 CSVs live in `analysis/data/`.
+
+**A. Runs harvested (5 configs)**
+
+| config | profile | stop_t | fate | criterion that fires | CSV (`analysis/data/`) |
+|---|---|---|---|---|---|
+| mock4e3 (legacy) | flat, low-mass | 0.3 | energy-driven | none (F0 was a clamp artifact) | `transition_mock4e3.csv` |
+| mock_hybr | flat, low-mass | 0.3 | energy-driven | none | `transition_mock_hybr.csv` |
+| **dense_flat** | flat, n1e5 | 0.5 | **transitions @0.21** | **cooling: F0=F1(η0.3)=Eb-peak @0.197** | `transition_dense_flat.csv` |
+| steep | α=−2 | 1.0 | stall (to 1 Myr) | none | `transition_steep.csv` |
+| **steep_long** | α=−2 | 4.0 | **blowout @2.728** | **F4 (R2>rCloud)** | `transition_steep_long.csv` |
+
+**B. Candidate triggers (verdicts)**
+
+| candidate | definition | verdict | key evidence |
+|---|---|---|---|
+| **F0** cooling ratio | (Lgain−Lloss)/Lgain < 0.05 | **viable (flat)** | fires @Eb-peak (dense); stalls + resets 0.44→0.67 for steep |
+| **F1** cumulative | ∫Lloss/∫Lgain > 1−η | **= F0 for flat, fails steep** | retreats 0.65→0.56 under the surge — not worth the state |
+| F2 timescale | t_cool/t_dyn < 1 | ✗ red herring | radiative-onset, ~60× early; **not** units |
+| F3 force-ratio | 4πR²Pb / surviving < O(1) | ✗ degenerate | Pb≡P_HII (force-continuous); never <1 (~7–57×) |
+| **F4** blowout | R2 > rCloud | **viable (steep)** | fires @2.728 Myr, before the surge |
+
+**C. G0 verdict & next step**
+
+- **Verdict:** trigger is **profile-dependent** → use **cooling-balance OR blowout,
+  whichever fires first**. A single hardcoded ε cannot express it. Headline science:
+  *steep bubbles transition by blowout, not cooling; the current ε=0.05 can never
+  fire for them.*
+- **Logical next step (recommended): P-sens / design the two-criterion trigger** —
+  formalize the cooling∨blowout switch, decide thresholds, and scope the code
+  change. Optional side-task: per-config overlay figures (communication only).
+- Validations banked: harness reproduces production (mod 1-segment left-rectangle
+  offset); F2 not-units; F3 degeneracy is real physics (shell pressure-confined by
+  bubble).
+
 ## Verifications closed before any code (the plan's "Read first")
 - **`Lloss` is pure radiative cooling, no PdV** — `bubble_LTotal = L_bubble +
   L_conduction + L_intermediate` (`bubble_luminosity.py:706`, returned `:750–757`),
