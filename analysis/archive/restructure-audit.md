@@ -7,6 +7,15 @@
 > be stale and re-check each claim, snippet, and line reference against the
 > current source before relying on it.**
 >
+> 🔄 **Living plan — recheck and refine on every visit.** This is an evolving
+> strategy doc, not a frozen record. Any agent or person who opens this file
+> must, as part of the visit: (1) re-verify the claims and line references above
+> against current source; (2) update anything that has drifted; (3) **rethink the
+> strategy itself** — if a better ordering, gate, candidate, or experiment
+> exists, revise the doc and note what changed and why (date it). Leave it better
+> than you found it. **Keep both banner paragraphs at the top of every plan and
+> analysis doc.**
+>
 > **Audit status (2026-06-08):** **all three phases (A `_modified` drop, B
 > `src/→trinity`, C plotting split) have shipped**, as has the "only remaining"
 > integrator follow-up (#659) — this reads as a forward plan but describes
