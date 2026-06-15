@@ -13,8 +13,16 @@
 > against current source; (2) update anything that has drifted; (3) **rethink the
 > strategy itself** — if a better ordering, gate, candidate, or experiment
 > exists, revise the doc and note what changed and why (date it). Leave it better
-> than you found it. **Keep both banner paragraphs at the top of every plan and
+> than you found it. **Keep all banner paragraphs at the top of every plan and
 > analysis doc.**
+>
+> 💾 **Persist diagnostics — commit, don't re-run.** The container is ephemeral
+> and full/hybr runs cost hours, so any diagnostic worth keeping must be saved as
+> a committed artifact (a CSV/table under `analysis/data/`, or a force-added
+> harness/figure under `scratch/` as the hybr work did) — never left in `/tmp` or
+> an untracked `outputs/`. A future visit must be able to reproduce or compare
+> against the numbers **without re-running**; record the exact config + command
+> that produced each artifact.
 >
 > **Audit status (2026-06-08):** **all three phases (A `_modified` drop, B
 > `src/→trinity`, C plotting split) have shipped**, as has the "only remaining"
