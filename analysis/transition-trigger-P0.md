@@ -100,10 +100,9 @@ betadelta work. **The trigger's behaviour is solver-dependent.**
 | F4 `R2>rCloud` | never | never | small bubble |
 
 On the clean trajectory **F0 and F1 agree** (energy-driven, never transition —
-physically right for this low-mass cloud), while **F2 fires at phase start on both
-trajectories** → the instantaneous `t_cool=Eb/Lloss, t_dyn=R2/v2` form is
-mis-scaled or mis-defined (a transition trigger firing at t≈0 is unphysical). Top
-P-sens priority.
+physically right for this low-mass cloud), while **F2 fires very early** (0.0065).
+*(Earlier I called F2 "broken / mis-scaled / firing at t≈0" — that was wrong; see
+the F2 diagnosis below. It is not units, and the mock actually starts adiabatic.)*
 
 ## Third data point — dense-flat HYBR (transitioning config, 2026-06-15)
 `tt_dense_flat` (1e6, n1e5, α=0), 57 implicit + 33 transition segs, transitions
@@ -119,10 +118,10 @@ cleanly. CSV: `analysis/data/transition_dense_flat.csv`; config:
   injected energy is radiated by transition. The **retained fraction ≈ 0.29**
   lands squarely in the literature η≈0.25–0.3 range (the Lancaster cross-check
   passes). So cumulative-energy with η≈0.3 ≈ F0 here.
-- **F2 fires at phase start (0.0034) AGAIN** — third config in a row. The
-  instantaneous `t_cool=Eb/Lloss, t_dyn=R2/v2` form fires at t≈0 universally →
-  broken as a transition discriminator (units or definition). Confirmed P-sens
-  priority.
+- **F2 fires early (0.0034)** — dense-flat is *already* radiative (t_cool/t_dyn =
+  0.54) at the implicit-phase start, physically right for a dense bubble. See the
+  F2 diagnosis below: **not units**, and not "broken" — it marks the
+  radiative-interior onset, which precedes the momentum transition by ~60×.
 - F4 (blowout): never (flat profile, R2 < rCloud).
 
 ### Emerging divergence map (3 configs, preliminary)
@@ -137,12 +136,43 @@ configs run so far (fire together when the bubble transitions, both "never" when
 it doesn't); **F2 is broken** (fires at t≈0 always). Awaiting steep (the
 stall/blowout crux) before G0.
 
+## F2 (t_cool/t_dyn) diagnosis — NOT units (2026-06-15, corrects earlier "broken")
+The early-firing of F2 is **not** a unit bug and **not** "broken." Raw values
+(from the CSVs), `t_cool = Eb/Lloss`, `t_dyn = R2/v2`:
+
+| config | t | t_cool [Myr] | t_dyn [Myr] | t_cool/t_dyn |
+|---|---|---|---|---|
+| mock (n5e2) | 0.0034 (start) | 0.0123 | 0.0092 | **1.34** (adiabatic) |
+| mock | 0.0065 | ~0.013 | ~0.013 | ~1.0 (crosses) |
+| mock | 0.30 (end) | 0.107 | 0.538 | 0.20 |
+| dense-flat (n1e5) | 0.0034 (start) | 0.0046 | 0.0084 | **0.54** (already radiative) |
+| dense-flat | 0.197 (Eb-peak) | ~0.024 | ~0.65 | **~0.04** |
+
+- **Units consistent.** `t_cool` and `t_dyn` are both ~0.01 Myr early — impossible
+  if one were erg and the other code units (~10⁴³ mismatch). `Eb` is au-energy
+  (`Eb ≈ ⅕·Lgain·t`), so `Eb/Lloss` is genuinely Myr, same as `R2/v2`.
+- **F2 is physical but measures the WRONG transition.** `t_cool<t_dyn` marks the
+  **radiative-interior onset** — when the bubble interior cools faster than it
+  expands. That happens **~60× earlier** than the energy→momentum transition
+  (dense-flat: t_cool<t_dyn at 0.003 Myr, F0/Eb-peak at 0.197). The bubble stays
+  energy-driven (Eb growing, Lgain>Lloss) long after the interior is locally
+  radiative.
+- **The threshold k is the whole lever, not units.** k=1 fires at the radiative
+  onset; the actual transition sits at **t_cool/t_dyn ≈ 0.04–0.05** (t_cool ~ 1/20
+  t_dyn). Tuning k≈0.05 would make F2 ≈ F0 — i.e. F2 becomes a re-parameterization
+  of F0/F1, not an independent criterion.
+- **Validates the plan's literature caveat.** The instantaneous `Eb/Lloss, R2/v2`
+  form is *our* construction; Mac Low & McCray's `t_cool` is the **cumulative**
+  balance `∫Lloss dt = Eb` — i.e. essentially **F1 (cumulative-energy)**, the
+  candidate already behaving well (η≈0.3 → Eb-peak). So the principled timescale
+  criterion collapses onto the cumulative one; the *instantaneous* k=1 form is the
+  one to drop (or relabel as a radiative-onset diagnostic, not a transition).
+
 ## Caveats to pin (feed P-sens)
-- **F2 units unverified.** `t_cool = Eb/Lloss` only gives a time if `Eb` and
-  `Lloss` are in consistent energy units (`Eb` is bubble energy in code/au;
-  `Lloss` au luminosity). The "fires at phase start, t_cool/t_dyn≈0.4 throughout"
-  result could be a unit artifact — **verify the unit consistency of Eb/Lloss
-  before trusting any F2 epoch.**
+- **F2 units — RESOLVED, not a unit issue** (see the F2 diagnosis section). The
+  early firing is physical (radiative-interior onset), ~60× before the momentum
+  transition; the open P-sens question is now the *threshold/definition*
+  (instantaneous k=1 vs the cumulative MLM88 form = F1), not units.
 - **Legacy contamination.** Re-harvest on hybr trajectories before any reading.
 
 ## Next
