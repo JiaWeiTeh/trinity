@@ -80,6 +80,31 @@ of the divergence, **not** for any conclusion. CSV: `analysis/data/transition_mo
   Even discounting the legacy contamination, this validates that the
   cross-candidate comparison is the right experiment.
 
+## Second data point — mock 4e3 HYBR (clean control, 2026-06-15)
+Fresh `betadelta_solver=hybr` run of the *same* mock config (67 implicit segs,
+**energy-driven to stop_t = 0.3, no transition**). CSV:
+`analysis/data/transition_mock_hybr.csv`; config: `scratch/transition/mock_hybr.param`.
+
+**The legacy "transition at 0.089 Myr" was a clamp artifact.** On the clean hybr
+trajectory the current trigger **F0 never fires** (ratio_F0 ∈ [0.40, 0.85], never
+nears 0.05) — the bubble stays energy-driven to stop_t with **no transition phase
+at all** (Clock B absent). Legacy's early transition came from the β-clamp's
+contaminated `Lloss` crossing 0.05 — exactly the profile-blind story from the
+betadelta work. **The trigger's behaviour is solver-dependent.**
+
+| candidate | hybr mock | legacy mock | note |
+|---|---|---|---|
+| F0 `inst<0.05` | **never** | 0.089 | legacy crossing was a clamp artifact |
+| F1 `cum>1−η` | **never** (frac_cum 0.49) | never (0.56) | <60 % radiated either way — energy-driven cloud |
+| F2 `tc/td<1` | **0.0065** (phase start) | 0.0041 (phase start) | fires immediately on **both** — units/def. flag |
+| F4 `R2>rCloud` | never | never | small bubble |
+
+On the clean trajectory **F0 and F1 agree** (energy-driven, never transition —
+physically right for this low-mass cloud), while **F2 fires at phase start on both
+trajectories** → the instantaneous `t_cool=Eb/Lloss, t_dyn=R2/v2` form is
+mis-scaled or mis-defined (a transition trigger firing at t≈0 is unphysical). Top
+P-sens priority.
+
 ## Caveats to pin (feed P-sens)
 - **F2 units unverified.** `t_cool = Eb/Lloss` only gives a time if `Eb` and
   `Lloss` are in consistent energy units (`Eb` is bubble energy in code/au;
@@ -89,9 +114,11 @@ of the divergence, **not** for any conclusion. CSV: `analysis/data/transition_mo
 - **Legacy contamination.** Re-harvest on hybr trajectories before any reading.
 
 ## Next
-1. Harvest the **hybr** mock (`tt_mock_hybr`, running) — same config, hybr vs the
-   legacy trajectory above (a clean control for the contamination).
-2. Background a steep (α=−2) and a dense-flat (n1e5) hybr run; harvest both.
-3. Verify F2 units; add F3 (force-ratio) once the surviving-force set is pinned.
+1. ~~Harvest the hybr mock~~ **DONE** (above) — F0 never fires on the clean
+   trajectory; legacy transition was a clamp artifact.
+2. Harvest the steep (α=−2) and dense-flat (n1e5) hybr runs (`tt_steep`,
+   `tt_dense_flat`, running; 10-min heartbeat armed).
+3. **Verify F2 units** (now the top flag — fires at t≈0 on both mocks); add F3
+   (force-ratio) once the surviving-force set is pinned.
 4. Build the per-config overlay figure (Eb(t)/ratio(t) with firing epochs marked).
 5. Assemble the divergence map → **Gate G0**.
