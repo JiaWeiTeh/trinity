@@ -80,13 +80,15 @@ Different physics, different fixes. Conflating them is the first trap; P0 separa
 - `Lgain = feedback_post.Lmech_total` — **instantaneous** mechanical luminosity
   (`run_energy_implicit_phase.py:1056`).
 - `Lloss = bubble_props.bubble_LTotal (+ bubble_Leak)` (`:1061–1064`).
-- **OPEN — verify before any criterion rests on it:** is `bubble_LTotal` *pure
-  radiative cooling*, or is PdV folded in? The betadelta energy balance subtracts
-  `4πR2²·v2·Pb` *separately*, which *suggests* `Lloss` is pure radiative — read
-  `bubble_luminosity.py` (`get_bubbleproperties_pure` / the legacy path) and the
-  betadelta residual to confirm. Cooling integrals are `n²Λ(T)` / `dudt(n,T,φ)`
-  with **no velocity** (`bubble_luminosity.py:612/659/677`, per the stalling doc —
-  re-verify).
+- **RESOLVED 2026-06-15 — `Lloss` is pure radiative cooling (no PdV).**
+  `bubble_LTotal = L_bubble + L_conduction + L_intermediate`
+  (`bubble_luminosity.py:706`, returned `:750–757`), each a radiative integral
+  `∫χₑ·n²·Λ(T)·4πr²dr` (CIE) / `∫dudt(n,T,φ)·4πr²dr` (non-CIE) over the bubble
+  interior — **no PdV term**, no velocity. The betadelta energy balance carries
+  `4πR2²·v2·Pb` *separately*, so PdV is not double-counted in the ratio. The
+  runner then adds the leak: `Lloss = bubble_LTotal + bubble_Leak`. ⇒ the energy
+  ratio is a clean cooling-vs-injection fraction; every candidate metric can rest
+  on it.
 
 ### No `t_cool` / `t_dyn` machinery exists
 `grep` finds none in the physics path — any time-ratio criterion is *new
