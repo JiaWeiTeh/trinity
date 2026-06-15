@@ -3,18 +3,29 @@
 
 All the expensive physics (the real legacy/caged solve and the re-solved interior
 profiles) is tabulated once by tabulate_cage.py into two COMMITTED csvs
-(rootmap_cage_scalars.csv per segment + rootmap_cage_profiles.csv long-format);
+(rootmap_cage_scalars.csv per segment + rootmap_cage_profiles.csv.gz long-format);
 this script only reads those and renders, so it runs in seconds, is cheap to
 re-style, and reproduces from git after the container is gone. Run
 tabulate_cage.py first (needs the pinned venv); this script needs only
 numpy + pandas + matplotlib + pillow.
 
-Frame = one energy-implicit segment (increasing time). Five panels:
+Frame pacing: the run samples t very unevenly (dt ramps 3e-4 -> capped 5e-2, so
+~35% of segments live in the first 3% of physical time). Playing one frame per
+segment would dwell on the early phase. Frames are laid on a uniform grid in t
+(linear): the late phase is already uniform (dt capped) so the grid is DENSER than
+the segments there -- preserving sharp 1-segment features like the surge inflow --
+while the over-dense early phase is decimated, fixing the dwell. (log-t was tried
+first but under-samples the late phase and washes out the inflow spike.) The moving
+star/square and the profile curves are INTERPOLATED onto the grid for smooth
+motion; the accumulated (beta,delta) scatter and the residual history stay at the
+REAL segment times (dots), so nothing fabricated hides the true samples.
+
+Five panels, current time = the frame's log-t grid point:
   LEFT  A : the (beta,delta) plane. Cyan box = the legacy clamp ("the cage").
-            hybr roots (no cage, circles) escape the box; the REAL legacy/caged
-            roots (squares) -- the actual bounded solve, not a geometric clip --
-            ride the edge. Both accumulate, coloured by time; a dashed connector
-            marks the per-segment clamp error.
+            hybr roots (no cage) escape the box; the REAL legacy/caged roots
+            (squares) -- the actual bounded solve, not a geometric clip -- ride
+            the edge. Dots = real segments (colour = time); a dashed connector
+            marks the current clamp error.
   LEFT  B : residual g of the two arms vs t (g<1e-4 = converged). hybr converges;
             the cage cannot (it is structurally forbidden the out-of-box root).
   LEFT  C : interior density n(r) [cm^-3] vs radial fraction, cage vs no cage.
@@ -43,7 +54,8 @@ SCALARS = HERE / "rootmap_cage_scalars.csv"
 PROFILES = HERE / "rootmap_cage_profiles.csv.gz"
 BOX_B, BOX_D = (0.0, 1.0), (-1.0, 0.0)  # the cage (legacy clamp)
 THRESH = 1e-4
-FPS = 9
+NFRAMES = 150  # frames on the uniform (linear) t grid
+FPS = 12
 HYBR_C, CAGE_C = "#0072B2", "0.45"  # no-cage (blue) vs cage (grey)
 
 _STYLE = HERE.parents[1] / "paper" / "_lib" / "trinity.mplstyle"
@@ -87,15 +99,28 @@ def load():
 
 def main():
     d = load()
-    t, hb, hd, cb, cd = d["t"], d["hb"], d["hd"], d["cb"], d["cd"]
+    t = d["t"]
+    hb, hd, cb, cd = d["hb"], d["hd"], d["cb"], d["cd"]
     g_h, g_c, cage_ok = d["g_h"], d["g_c"], d["cage_ok"]
-    R2 = d["R2"]
-    lw, lsn, lt = d["lw"], d["lsn"], d["lt"]
+    R2, lw, lsn, lt = d["R2"], d["lw"], d["lsn"], d["lt"]
     f_grid, v_h, n_h, v_c, n_c = d["f_grid"], d["v_h"], d["n_h"], d["v_c"], d["n_c"]
-    n = len(t)
     tnorm = Normalize(t.min(), t.max())
 
-    # static axis limits (so nothing jumps frame-to-frame)
+    # ---- frame grid: uniform in t; denser than the (capped-dt) late segments so the
+    # surge inflow survives, decimating the over-dense early phase ----
+    tg = np.linspace(t[0], t[-1], NFRAMES)
+    lin = lambda y: np.interp(tg, t, y)  # noqa: E731  smooth current-marker value
+    logi = lambda y: 10 ** np.interp(tg, t, np.log10(np.clip(y, 1e-7, None)))  # noqa: E731
+    hb_f, hd_f, cb_f, cd_f = lin(hb), lin(hd), lin(cb), lin(cd)
+    R2_f, gh_f, gc_f = lin(R2), logi(g_h), logi(g_c)
+    cage_f = lin(cage_ok.astype(float)) > 0.999  # cage curves valid at this frame?
+
+    def prof_interp(P):  # interpolate each radial-fraction column onto tg
+        return np.column_stack([np.interp(tg, t, P[:, j]) for j in range(P.shape[1])])
+
+    vh_f, nh_f, vc_f, nc_f = (prof_interp(P) for P in (v_h, n_h, v_c, n_c))
+
+    # ---- static axis limits (from the real data, so nothing jumps) ----
     allb = np.concatenate([hb, cb[cage_ok]])
     alld = np.concatenate([hd, cd[cage_ok]])
     xlo, xhi = min(allb.min(), BOX_B[0]), max(allb.max(), BOX_B[1])
@@ -118,9 +143,9 @@ def main():
     aA, aB, aC, aD, aE = (axd[k] for k in "ABCDE")
 
     def update(i):
-        out = not (BOX_B[0] <= hb[i] <= BOX_B[1] and BOX_D[0] <= hd[i] <= BOX_D[1])
-        m = slice(0, i + 1)
-        ok = cage_ok[: i + 1]
+        tc = tg[i]
+        rm = t <= tc + 1e-12  # real segments revealed so far
+        out = not (BOX_B[0] <= hb_f[i] <= BOX_B[1] and BOX_D[0] <= hd_f[i] <= BOX_D[1])
 
         # ---- A: (beta, delta) plane, cage vs no cage ----
         aA.clear()
@@ -138,40 +163,40 @@ def main():
             zorder=2,
         )
         aA.plot(hb, hd, color="0.85", lw=1.0, zorder=1)  # full hybr path (context)
-        for k in range(i + 1):  # connectors cage -> hybr (clamp error)
-            if cage_ok[k]:
-                aA.plot([cb[k], hb[k]], [cd[k], hd[k]], color="0.7", lw=0.6, alpha=0.5, zorder=1)
+        rmc = rm & cage_ok
         aA.scatter(
-            cb[m][ok],
-            cd[m][ok],
-            c=t[m][ok],
+            cb[rmc],
+            cd[rmc],
+            c=t[rmc],
             cmap="viridis",
             norm=tnorm,
             marker="s",
-            s=20,
+            s=18,
             edgecolor="0.3",
             lw=0.3,
             zorder=3,
             label="cage (real legacy solve)",
         )
         aA.scatter(
-            hb[m],
-            hd[m],
-            c=t[m],
+            hb[rm],
+            hd[rm],
+            c=t[rm],
             cmap="viridis",
             norm=tnorm,
-            s=26,
+            s=24,
             edgecolor="k",
             lw=0.3,
             zorder=4,
             label="no cage (hybr)",
         )
-        if out and cage_ok[i]:
-            aA.plot([cb[i], hb[i]], [cd[i], hd[i]], color="crimson", lw=1.4, ls="--", zorder=5)
-        if cage_ok[i]:
+        if out and cage_f[i]:
             aA.plot(
-                cb[i],
-                cd[i],
+                [cb_f[i], hb_f[i]], [cd_f[i], hd_f[i]], color="crimson", lw=1.4, ls="--", zorder=5
+            )
+        if cage_f[i]:
+            aA.plot(
+                cb_f[i],
+                cd_f[i],
                 marker="s",
                 ms=12,
                 mfc="crimson",
@@ -181,7 +206,15 @@ def main():
                 zorder=6,
             )
         aA.plot(
-            hb[i], hd[i], marker="*", ms=22, mfc="#ffd000", mec="k", mew=1.2, ls="none", zorder=7
+            hb_f[i],
+            hd_f[i],
+            marker="*",
+            ms=22,
+            mfc="#ffd000",
+            mec="k",
+            mew=1.2,
+            ls="none",
+            zorder=7,
         )
         aA.set_xlim(*XLIM)
         aA.set_ylim(*YLIM)
@@ -189,14 +222,14 @@ def main():
         aA.set_ylabel(r"$\delta$")
         tag = "OUTSIDE the cage" if out else "inside the cage"
         aA.set_title(
-            f"Root finding with vs without the cage  (t={t[i]:.2f} Myr; {tag})\n"
-            f"hybr  β={hb[i]:+.2f}, δ={hd[i]:+.2f}   |   cage  β={cb[i]:+.2f}, δ={cd[i]:+.2f}",
+            f"Root finding with vs without the cage  (t={tc:.3g} Myr; {tag})\n"
+            f"hybr  β={hb_f[i]:+.2f}, δ={hd_f[i]:+.2f}   |   cage  β={cb_f[i]:+.2f}, δ={cd_f[i]:+.2f}",
             fontsize=10,
         )
         aA.text(
             0.02,
             0.98,
-            "marker colour = time →",
+            "dots = real segments (colour = time)",
             transform=aA.transAxes,
             fontsize=8,
             va="top",
@@ -205,14 +238,21 @@ def main():
         aA.legend(loc="lower right", fontsize=8)
         aA.grid(alpha=0.3)
 
-        # ---- B: residual g of the two arms vs t ----
+        # ---- B: residual g of the two arms vs t (real history + current marker) ----
         aB.clear()
         aB.plot(
-            t[m], np.clip(g_h[m], 1e-7, None), "-o", ms=2.5, color=HYBR_C, label="no cage (hybr)"
+            t[rm], np.clip(g_h[rm], 1e-7, None), "-o", ms=2.5, color=HYBR_C, label="no cage (hybr)"
         )
         aB.plot(
-            t[m], np.clip(g_c[m], 1e-7, None), "-s", ms=2.5, color="crimson", label="cage (legacy)"
+            t[rm],
+            np.clip(g_c[rm], 1e-7, None),
+            "-s",
+            ms=2.5,
+            color="crimson",
+            label="cage (legacy)",
         )
+        aB.plot(tc, gh_f[i], "o", ms=8, mfc="#ffd000", mec="k", zorder=5)
+        aB.plot(tc, gc_f[i], "s", ms=8, mfc="crimson", mec="k", zorder=5)
         aB.axhline(THRESH, color="k", ls="--", lw=1, label=f"converged < {THRESH:g}")
         aB.set_yscale("log")
         aB.set_ylim(4e-7, 1e2)
@@ -225,9 +265,9 @@ def main():
 
         # ---- C: interior density vs radius ----
         aC.clear()
-        aC.semilogy(f_grid, n_h[i], color=HYBR_C, lw=1.6, label="no cage")
-        if cage_ok[i]:
-            aC.semilogy(f_grid, n_c[i], color=CAGE_C, lw=1.6, ls="--", label="cage")
+        aC.semilogy(f_grid, nh_f[i], color=HYBR_C, lw=1.6, label="no cage")
+        if cage_f[i]:
+            aC.semilogy(f_grid, nc_f[i], color=CAGE_C, lw=1.6, ls="--", label="cage")
         aC.set_xlim(0, 1)
         aC.set_ylim(nlo * 0.7, nhi * 1.4)
         aC.set_xlabel("radial fraction  (0 = R1, 1 = R2)")
@@ -241,24 +281,28 @@ def main():
         aD.axhline(0.0, color="k", lw=0.8)
         aD.axhspan(VLIM[0], 0.0, color="r", alpha=0.06)
         aD.plot(
-            f_grid, v_h[i], color=HYBR_C, lw=1.9, label=f"no cage  (v_min={np.nanmin(v_h[i]):+.2f})"
+            f_grid,
+            vh_f[i],
+            color=HYBR_C,
+            lw=1.9,
+            label=f"no cage  (v_min={np.nanmin(vh_f[i]):+.2f})",
         )
-        if cage_ok[i]:
+        if cage_f[i]:
             aD.plot(
                 f_grid,
-                v_c[i],
+                vc_f[i],
                 color=CAGE_C,
                 lw=1.9,
                 ls="--",
-                label=f"cage  (v_min={np.nanmin(v_c[i]):+.2f})",
+                label=f"cage  (v_min={np.nanmin(vc_f[i]):+.2f})",
             )
         aD.set_xlim(0, 1)
         aD.set_ylim(*VLIM)
         aD.set_xlabel("radial fraction  (0 = R1, 1 = R2)")
         aD.set_ylabel("v(r)  [pc/Myr]")
-        inflow = float(np.nanmin(v_h[i])) < -0.01
+        inflow = float(np.nanmin(vh_f[i])) < -0.01
         aD.set_title(
-            f"interior velocity  (R2={R2[i]:.2f} pc)" + ("  — INFLOW (v<0)" if inflow else ""),
+            f"interior velocity  (R2={R2_f[i]:.2f} pc)" + ("  — INFLOW (v<0)" if inflow else ""),
             fontsize=10,
             color="#b30000" if inflow else "k",
         )
@@ -270,7 +314,7 @@ def main():
         aE.plot(t, lt, color="k", lw=1.6, ls="--", label=r"$L_{\rm tot}$")
         aE.plot(t, lw, color=HYBR_C, lw=1.4, label=r"$L_{\rm W}$ (wind)")
         aE.plot(t, lsn, color="#9467bd", lw=1.4, label=r"$L_{\rm SN}$")
-        aE.axvline(t[i], color="crimson", lw=1.4)
+        aE.axvline(tc, color="crimson", lw=1.4)
         aE.set_xlim(t.min(), t.max())
         aE.set_xlabel("t  [Myr]")
         aE.set_ylabel(r"$L_{\rm mech}$ [$10^8$]")
@@ -279,11 +323,11 @@ def main():
         aE.grid(alpha=0.3)
         return []
 
-    anim = FuncAnimation(fig, update, frames=n, interval=1000 / FPS, blit=False)
+    anim = FuncAnimation(fig, update, frames=NFRAMES, interval=1000 / FPS, blit=False)
     out = HERE / "rootmap_cage.gif"
     anim.save(out, writer=PillowWriter(fps=FPS), dpi=85)
     plt.close(fig)
-    print(f"wrote {out}  ({n} frames)")
+    print(f"wrote {out}  ({NFRAMES} frames, linear-t paced)")
 
 
 if __name__ == "__main__":
