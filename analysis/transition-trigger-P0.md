@@ -156,11 +156,15 @@ transition** (the stall). CSV: `analysis/data/transition_steep.csv`; config:
 - **F2: early radiative onset (0.0034)** — same red herring (see F2 diagnosis).
 
 ### Complete divergence map (4 configs) — preliminary G0 input
-| config | fate | F0 | F1(η0.3) | F2 inst | F4 blowout | retained @end |
-|---|---|---|---|---|---|---|
-| mock (4e3 flat) | energy-driven | never | never | early | never | 0.51 |
-| dense-flat (1e6 n1e5) | **transitions** | **0.197** | **0.197** | early | never | **0.29** |
-| steep (1e6 α−2) | **STALL** | never | never (plateau 0.65) | early | ~2.8 Myr (proj.) | 0.35 |
+| config | fate | F0 | F1(η0.3) | F2 inst✗ | F3 force✗ | F4 blowout | retained @end |
+|---|---|---|---|---|---|---|---|
+| mock (4e3 flat) | energy-driven | never | never | early | never | never | 0.51 |
+| dense-flat (1e6 n1e5) | **transitions** | **0.197** | **0.197** | early | never | never | **0.29** |
+| steep (1e6 α−2) | **STALL** | never | never (plateau 0.65) | early | never | ~2.8 Myr (proj.) | 0.35 |
+
+✗ = **eliminated candidate**: F2 = radiative-onset red herring (fires t≈0; not
+units); F3 = degenerate (Pb≡P_HII, force-continuous; never < 1, ~7–57×). **Viable
+set: F0/F1 (cooling) for flat-profile transitions; F4 (blowout) for steep.**
 
 ### Preliminary G0 reading (steep→3 Myr still needed for the surge regime)
 1. **Transitioning (flat) configs: F0 ≈ F1(η≈0.3) ≈ Eb-peak.** The two cooling
@@ -173,7 +177,10 @@ transition** (the stall). CSV: `analysis/data/transition_steep.csv`; config:
 3. **Blowout (F4) is steep's fate**, at ~2.8 Myr (R2→rCloud) — a geometric, not a
    cooling, transition. Confirms the profile-dependence thesis: cooling triggers
    for flat, blowout/dynamical for steep.
-4. **F2 (instantaneous t_cool/t_dyn): red herring** (radiative onset, ~60× early).
+4. **Two candidates eliminated.** F2 (instantaneous t_cool/t_dyn) = radiative-onset
+   red herring (~60× early). F3 (force-ratio) = degenerate — `Pb≡P_HII`
+   (bubble–shell pressure equilibrium) makes the transition force-continuous, and
+   F3 never < 1 (~7–57×). **Viable set is F0/F1 (cooling) + F4 (blowout).**
 5. **Open before a firm G0:** rerun steep to ~3 Myr to (a) confirm blowout fires
    (R2→rCloud) and (b) test F1-vs-F0 across the WR/SN surge — the reset regime F1
    is specifically meant to fix, which `stop_t=1.0` does not reach.
@@ -210,6 +217,36 @@ The early-firing of F2 is **not** a unit bug and **not** "broken." Raw values
   criterion collapses onto the cumulative one; the *instantaneous* k=1 form is the
   one to drop (or relabel as a radiative-onset diagnostic, not a transition).
 
+## Harness validation — reproduces production (mod a 1-segment offset, 2026-06-15)
+Checked the harvest's F0 against the live production trigger on dense-flat: the
+harvested `(Lgain−Lloss)/Lgain` **equals** the production inline-check ratio
+segment-by-segment (`bubble_Lgain ≡ Lmech_total`, `bubble_Lloss ≡ bubble_LTotal`,
+`bubble_Leak = 0` here). The only gap: my "first ratio<0.05" reads at **0.197**
+while production transitions at **0.2097** — a **one-segment left-rectangle
+offset** (snapshot = state at segment *start*; the trigger fires at segment
+*end*). So **relative** candidate comparison is exact; **absolute** epochs carry
+~1 segment vs production. (The plan's "do not assume snapshot timing" — confirmed.)
+
+## F3 (force-ratio) — ELIMINATED: bubble–shell pressure equilibrium (2026-06-15)
+The plan's *preferred* candidate (`4πR²Pb / surviving forces < O(1)`) is
+**degenerate** — found on existing data, no new runs:
+- **`Pb ≡ P_HII ≡ P_drive` to 6 sig figs in every implicit segment** of all three
+  hybr runs (`F_ram ≡ F_HII`, `degenerate=True`). **Physics, not artifact:**
+  `P_HII` is the Strömgren-front pressure of a shell that `shell_structure_pure`
+  solves with `Pb` at its inner boundary, so the ionized shell is
+  **pressure-confined by the bubble** → `P_HII = Pb` by equilibrium
+  (`run_energy_implicit_phase.py:841,847`; `compute_forces_pure:439,443,446`). The
+  *legacy* mock predates this (`Pb≠P_HII`) — solver/age difference, ignore.
+- **Consequence: the transition is force-CONTINUOUS.** "Dropping" the bubble
+  thermal force `4πR²Pb` leaves the ionized-shell force `4πR²P_HII = 4πR²Pb`
+  intact → net dropped force ≈ 0. The plan's own caveat ("dropping Pb only matters
+  when Pb > P_HII") is decisive: **Pb is never > P_HII.**
+- **F3 never fires.** `F_ram/(F_rad + pdot)` stays at **~7–57×** across all four
+  configs (dense-flat 6.8–8.9 *even at its cooling transition*), never dropping to
+  O(1). Bubble/HII pressure dominates radiation+ram throughout. So the
+  energy→momentum transition is a **cooling/energy event, not a force-balance
+  one** — F3 cannot trigger it. **F3 is eliminated.**
+
 ## Caveats to pin (feed P-sens)
 - **F2 units — RESOLVED, not a unit issue** (see the F2 diagnosis section). The
   early firing is physical (radiative-interior onset), ~60× before the momentum
@@ -221,10 +258,12 @@ The early-firing of F2 is **not** a unit bug and **not** "broken." Raw values
 1. ~~Harvest hybr mock~~ **DONE** — F0 never (legacy transition was a clamp artifact).
 2. ~~Harvest dense-flat~~ **DONE** — F0 = F1(η0.3) = Eb-peak (0.197); retained ≈0.29.
 3. ~~Harvest steep~~ **DONE** — F0 *and* F1 both stall; blowout is the fate (~2.8 Myr).
-4. ~~Verify F2~~ **DONE** — not units; instantaneous t_cool/t_dyn is a radiative-onset
-   red herring (see F2 diagnosis).
-5. **Rerun steep to ~3 Myr** — confirm blowout (R2→rCloud) and test F1-vs-F0 across
-   the WR/SN surge (the feedback-reset regime, the one place F1 should beat F0).
-6. **Add F3 (force-ratio)** to the harness (`F_ram`=4πR²Pb vs surviving forces).
-7. **Overlay figures** per config (Eb(t)/ratio(t)/frac_cum with firing epochs).
-8. Finalize the divergence map → **Gate G0**.
+4. ~~Verify F2~~ **DONE** — not units; radiative-onset red herring.
+5. ~~Add F3 (force-ratio)~~ **DONE** — eliminated; Pb≡P_HII force-continuous, F3
+   never < 1 (see F3 section).
+6. ~~Validate harness vs production~~ **DONE** — F0 matches segment-by-segment, mod
+   a 1-segment left-rectangle offset.
+7. **Rerun steep to ~3 Myr** — the one remaining science gap: confirm blowout
+   (R2→rCloud) and test F1-vs-F0 across the WR/SN surge (the reset regime).
+8. **Overlay figures** per config (Eb(t)/ratio(t)/frac_cum with firing epochs).
+9. Finalize the divergence map → **Gate G0**.

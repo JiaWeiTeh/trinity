@@ -112,12 +112,23 @@ def harvest(run_dir, csv_path=None):
     f2 = [tc / td if td > 0 else float("nan") for tc, td in zip(t_cool, t_dyn)]
     # F4 blowout
     r_over_rc = [r / rCloud if rCloud else float("nan") for r in R2]
+    # F3 force-ratio: bubble thermal force F_ram(=4piR^2 Pb) vs surviving non-thermal
+    # forces (F_rad + wind/SN ram pdot). NOTE F_ram == F_HII here (Pb == P_HII,
+    # bubble-shell pressure equilibrium: the ionized shell is pressure-confined by
+    # the bubble) -> the 'dropped' Pb is replaced by HII pressure, so the transition
+    # is force-CONTINUOUS; F3 just measures pressure dominance, not a drop.
+    Fram = [g(d, "F_ram") for d in impl]
+    FHII = [g(d, "F_HII") for d in impl]
+    surv = [g(d, "F_rad") + g(d, "pdot_total") for d in impl]
+    f3 = [a / s if s > 0 else float("nan") for a, s in zip(Fram, surv)]
+    f3_degenerate = all(abs(a - b) <= 1e-6 * max(abs(a), 1.0) for a, b in zip(Fram, FHII))
 
     # firing epochs
     fire = {
         "F0 inst<0.05": first_cross(t, ratio, "<", EPS),
         **{f"F1 cum>1-{e}": first_cross(t, fcum, ">", 1 - e) for e in ETAS},
         **{f"F2 tc/td<{int(k)}": first_cross(t, f2, "<", k) for k in KS},
+        "F3 Fram/surv<1": first_cross(t, f3, "<", 1.0),
         "F4 R2>rCloud": first_cross(t, R2, ">", rCloud) if rCloud else None,
     }
     # reference: Eb peak
@@ -146,6 +157,8 @@ def harvest(run_dir, csv_path=None):
           f"({'INTERIOR' if peak_interior else 'at boundary -> still rising / no peak'})")
     print(f"  ratio_F0 range: [{min(ratio):.3f}, {max(ratio):.3f}]   "
           f"frac_cum end: {fcum[-1]:.3f}   t_cool/t_dyn end: {f2[-1]:.3g}")
+    print(f"  F3 F_ram/(F_rad+pdot) range: [{min(f3):.2f}, {max(f3):.2f}]   "
+          f"degenerate (F_ram==F_HII, i.e. Pb==P_HII): {f3_degenerate}")
     print("  candidate firing epochs (Myr; '—' = never):")
     for k, v in fire.items():
         print(f"    {k:16s}: {v:.4g}" if v is not None else f"    {k:16s}: —")
@@ -155,8 +168,8 @@ def harvest(run_dir, csv_path=None):
         cols = ["t_now", "current_phase", "R2", "v2", "Eb", "Pb", "cool_beta",
                 "cool_delta", "beta_plus_delta", "Lgain", "Lloss", "ratio_F0",
                 "cum_Lloss", "cum_Lgain", "frac_cum", "t_cool", "t_dyn",
-                "F2_tcool_tdyn", "R2_over_rCloud", "F_ram", "F_rad", "F_HII",
-                "pdot_total"]
+                "F2_tcool_tdyn", "F3_force_ratio", "R2_over_rCloud", "F_ram",
+                "F_rad", "F_HII", "pdot_total"]
         with open(csv_path, "w", newline="") as fh:
             w = _csv.writer(fh)
             w.writerow(cols)
@@ -164,7 +177,7 @@ def harvest(run_dir, csv_path=None):
                 w.writerow([t[k], "implicit", R2[k], v2[k], Eb[k], Pb[k], beta[k],
                             delta[k], beta[k] + delta[k], Lgain[k], Lloss[k],
                             ratio[k], cumL[k], cumG[k], fcum[k], t_cool[k],
-                            t_dyn[k], f2[k], r_over_rc[k], g(impl[k], "F_ram"),
+                            t_dyn[k], f2[k], f3[k], r_over_rc[k], g(impl[k], "F_ram"),
                             g(impl[k], "F_rad"), g(impl[k], "F_HII"),
                             g(impl[k], "pdot_total")])
         print(f"  wrote {csv_path}")
