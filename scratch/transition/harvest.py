@@ -169,7 +169,7 @@ def harvest(run_dir, csv_path=None):
                 "cool_delta", "beta_plus_delta", "Lgain", "Lloss", "ratio_F0",
                 "cum_Lloss", "cum_Lgain", "frac_cum", "t_cool", "t_dyn",
                 "F2_tcool_tdyn", "F3_force_ratio", "R2_over_rCloud", "F_ram",
-                "F_rad", "F_HII", "pdot_total"]
+                "F_rad", "F_HII", "pdot_total", "c_sound"]
         with open(csv_path, "w", newline="") as fh:
             w = _csv.writer(fh)
             w.writerow(cols)
@@ -179,7 +179,7 @@ def harvest(run_dir, csv_path=None):
                             ratio[k], cumL[k], cumG[k], fcum[k], t_cool[k],
                             t_dyn[k], f2[k], f3[k], r_over_rc[k], g(impl[k], "F_ram"),
                             g(impl[k], "F_rad"), g(impl[k], "F_HII"),
-                            g(impl[k], "pdot_total")])
+                            g(impl[k], "pdot_total"), g(impl[k], "c_sound")])
         print(f"  wrote {csv_path}")
 
 

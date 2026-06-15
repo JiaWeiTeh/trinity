@@ -27,8 +27,9 @@
 Execution log for **P0** of `docs/dev/TRANSITION_TRIGGER_PLAN.md`. **Status
 2026-06-15: P0 COMPLETE — 5 configs harvested; G0 VERDICT = PROCEED with a
 profile-dependent (cooling ∨ blowout) trigger. Steep transitions by BLOWOUT
-(2.728 Myr), not cooling; F2 + F3 eliminated; F1 does not beat F0. Optional
-remaining: overlay figures.** (See FIRM G0 VERDICT section.)
+(2.728 Myr), not cooling; F2 + F3 eliminated; F1 does not beat F0. P-sens DONE:
+ε robust, sustained rule + cumulative not needed. Next: design the two-criterion
+trigger (P-shadow).** (See FIRM G0 VERDICT and P-sens sections.)
 
 ## AT A GLANCE — state, results, next step (2026-06-15, 12:54)
 
@@ -62,9 +63,15 @@ remaining: overlay figures.** (See FIRM G0 VERDICT section.)
   whichever fires first**. A single hardcoded ε cannot express it. Headline science:
   *steep bubbles transition by blowout, not cooling; the current ε=0.05 can never
   fire for them.*
-- **Logical next step (recommended): P-sens / design the two-criterion trigger** —
-  formalize the cooling∨blowout switch, decide thresholds, and scope the code
-  change. Optional side-task: per-config overlay figures (communication only).
+- **P-sens DONE (offline, no runs):** ε robust (dense-flat fires @0.197 for
+  ε∈[0.02,0.10]; no ε rescues steep); sustained-rule moot; reset pre-empted
+  (steep blows out 2.728 < surge 3.078). ⇒ design needs **no** sustained rule and
+  **no** cumulative form.
+- **Logical next step (recommended): design the two-criterion trigger (P-shadow)** —
+  minimal **F0(ε=0.05) ∨ F4(R2>rCloud)**; scope = add F4 as a selectable shadow
+  trigger + reconcile the dead `make_cooling_balance_event` factory
+  (`phase_events.py:495`). Optional Tier-2: `Lloss` cooling-floor systematics; a
+  surge-stressed energy-driven config; per-config overlay figures.
 - Validations banked: harness reproduces production (mod 1-segment left-rectangle
   offset); F2 not-units; F3 degeneracy is real physics (shell pressure-confined by
   bubble).
@@ -306,6 +313,56 @@ The early-firing of F2 is **not** a unit bug and **not** "broken." Raw values
   candidate already behaving well (η≈0.3 → Eb-peak). So the principled timescale
   criterion collapses onto the cumulative one; the *instantaneous* k=1 form is the
   one to drop (or relabel as a radiative-onset diagnostic, not a transition).
+
+## P-sens (offline, 2026-06-15) — ε robust; sustained rule moot; reset pre-empted
+Family-agnostic P-sens on the committed CSVs (**no new runs**; F2-specific items
+1–2 skipped — F2 eliminated at G0). Script: `scratch/transition/psens.py`.
+
+**Item 5 — ε sensitivity** (F0 firing epoch vs `phaseSwitch_LlossLgain`):
+
+| config | ε=0.02 | 0.03 | 0.05 | 0.07 | 0.10 |
+|---|---|---|---|---|---|
+| dense_flat | 0.197 | 0.197 | 0.197 | 0.197 | 0.197 |
+| mock_hybr / steep / steep_long | — | — | — | — | — |
+
+→ **ε is robust.** Dense-flat fires at the *same segment* (0.197) across a 5× ε
+range — the ratio falls off a cliff at the transition, so the threshold doesn't
+move the epoch. And **no ε rescues steep** (never fires even at 0.10): steep's
+fate is not a cooling event at any threshold. **Keep ε=0.05.**
+
+**Item 4 — sustained-over-t_cross rule** (require ratio<ε for ≥ R2/c_sound):
+
+| config | F0 instantaneous | F0 sustained | t_cross@trans |
+|---|---|---|---|
+| dense_flat | 0.197 | 0.210 | 0.0043 |
+| others | — | — | — |
+
+→ **Adds nothing material.** Shifts dense-flat by one segment (0.197→0.210, which
+matches production's transition epoch — the left-rectangle offset) and cannot make
+a non-firing config fire. The "cheap fix" is unnecessary here.
+
+**Structural finding — the reset is MOOT in practice.** Every transition fires
+BEFORE the first WR/SN surge (β<0):
+
+| config | cooling F0 | blowout F4 | 1st β<0 surge | transition | precedes surge? |
+|---|---|---|---|---|---|
+| dense_flat | 0.197 | — | none (short run) | 0.197 | YES |
+| steep_long | — | **2.728** | **3.078** | **2.728** | **YES (by 0.35 Myr)** |
+
+→ Steep **blows out at 2.728, before its WR surge at 3.078.** So F0's reset
+(0.44→0.67 *at* the surge) never affects a real transition decision in these
+configs — the two-criterion trigger fires pre-surge in both regimes.
+
+**P-sens consequence for the design:** the two-criterion trigger needs **no
+sustained-rule complexity and no cumulative form** — ε=0.05 is robust and both
+criteria fire before the reset can bite. Minimal design stands:
+**F0(ε=0.05) ∨ F4(R2>rCloud), whichever fires first.**
+
+**Remaining (optional, Tier-2, needs runs):** (a) item 3 — `Lloss` cooling-floor
+systematics (1e4 vs 3e4 K) common-mode test; (b) a *surge-stressed,
+still-energy-driven* config (massive flat, low density; no blowout/cooling by
+~3 Myr) — the only scenario where the reset could actually delay a transition;
+none of the current configs exercise it.
 
 ## Harness validation — reproduces production (mod a 1-segment offset, 2026-06-15)
 Checked the harvest's F0 against the live production trigger on dense-flat: the
