@@ -24,10 +24,11 @@ REAL segment times (dots), so nothing fabricated hides the true samples.
   * A/B/D show the cage as a SHADOW: the legacy/caged root-finder re-solved at each
     state ALONG the hybr trajectory (a counterfactual, "what would the cage return
     here?"). Because the hybr run reaches 4 Myr, the shadow spans 4 Myr too.
-  * C shows the cage as a REAL standalone run, which actually evolves under those
-    clamped roots and stalls early (R2~0.9 pc, t~0.036 Myr) -- it never reaches 4 Myr.
+  * C and F show the cage as a REAL standalone run: it evolves under those clamped
+    roots, expands to R2~2 pc (t~0.26 Myr), then RECOLLAPSES (v2<0, R2 falls back to
+    ~1.5 pc, run ends t~0.44 Myr) -- while the hybr run expands to R2~37 pc at 4 Myr.
 They are complementary: A/B say the cage gives bad/non-converged roots at every
-state; C shows a real run built on those roots cannot progress.
+state; C/F show the real caged run those roots produce turns over and collapses.
 
 Six panels, current time = the frame's t grid point:
   LEFT  A : the (beta,delta) plane. Cyan box = the legacy clamp ("the cage").
@@ -36,15 +37,15 @@ Six panels, current time = the frame's t grid point:
             (colour = time); a dashed connector marks the current clamp error.
   LEFT  B : residual g of the two arms vs t (g<1e-4 = converged). hybr converges;
             the cage shadow cannot (structurally forbidden the out-of-box root).
-  LEFT  C : expansion trajectory v2 vs R2 (log-R2): hybr (real run) vs the caged
-            REAL run. They agree until the cage binds (~R2=0.9 pc), then the caged
-            run crawls to a halt (X marker; animated square marker) while hybr
-            expands on to R2~37 pc.
+  LEFT  C : expansion trajectory v2 vs R2 (log-R2): the two REAL runs, caged
+            (crimson) vs hybr (blue). They track together while decelerating, then
+            diverge -- the caged bubble peaks at R2~2 pc and recollapses (v2<0,
+            shaded) while hybr expands on to R2~37 pc.
   RIGHT D : interior velocity v(r) vs radial fraction (0=R1, 1=R2), cage SHADOW vs
             no cage (inflow = v<0; the cage's monotone solve hides the surge inflow).
   RIGHT E : Lmech_W / Lmech_SN / Lmech_total vs t, marker at the current t.
-  RIGHT F : shell radii vs t -- R2 (inner edge = bubble outer) and rShell (outer edge);
-            their gap is the shell thickness.
+  RIGHT F : shell radii vs t (log-log), both REAL runs: R2 (solid, inner edge) and
+            rShell (dashed, outer edge), caged (black) vs hybr (blue).
 
   python scratch/phase2/make_rootmap_gif.py
 Writes rootmap_cage.gif.
@@ -78,7 +79,7 @@ if _STYLE.exists():
 plt.rcParams["text.usetex"] = False
 
 
-def load(scalars, profiles, legacy_traj=None):
+def load(scalars, profiles, legacy_traj=None, hybr_traj=None):
     if not scalars.exists() or not profiles.exists():
         raise SystemExit(
             f"missing {scalars.name}/{profiles.name} -- run "
@@ -92,6 +93,8 @@ def load(scalars, profiles, legacy_traj=None):
     rs = lambda c: prof[c].to_numpy().reshape(nseg, nf)  # noqa: E731
     col = lambda c: scal[c].to_numpy() if c in scal else np.full(nseg, np.nan)  # noqa: E731
     lg = pd.read_csv(legacy_traj) if (legacy_traj and legacy_traj.exists()) else None
+    hg = pd.read_csv(hybr_traj) if (hybr_traj and hybr_traj.exists()) else None
+    tr = lambda df, c: df[c].to_numpy() if df is not None else None  # noqa: E731  traj column
     return dict(
         t=scal["t"].to_numpy(),
         hb=scal["beta_nocage"].to_numpy(),
@@ -106,10 +109,15 @@ def load(scalars, profiles, legacy_traj=None):
         R1_h=scal["R1_nocage"].to_numpy(),
         R1_c=scal["R1_cage"].to_numpy(),
         R_IF=col("R_IF_nocage"),
-        rShell=col("rShell_nocage"),
-        leg_R2=lg["R2"].to_numpy() if lg is not None else None,
-        leg_v2=lg["v2"].to_numpy() if lg is not None else None,
-        leg_t=lg["t"].to_numpy() if lg is not None else None,
+        # panels C & F: the two REAL driven runs (caged / hybr), each from its own CSV
+        leg_t=tr(lg, "t"),
+        leg_R2=tr(lg, "R2"),
+        leg_v2=tr(lg, "v2"),
+        leg_rsh=tr(lg, "rShell"),
+        hyb_t=tr(hg, "t"),
+        hyb_R2=tr(hg, "R2"),
+        hyb_v2=tr(hg, "v2"),
+        hyb_rsh=tr(hg, "rShell"),
         lw=scal["Lmech_W"].to_numpy() / 1e8,
         lsn=scal["Lmech_SN"].to_numpy() / 1e8,
         lt=scal["Lmech_total"].to_numpy() / 1e8,
@@ -129,12 +137,14 @@ def main():
         HERE / f"{args.prefix}_scalars.csv",
         HERE / f"{args.prefix}_profiles.csv.gz",
         HERE / "steep_legacy_traj.csv",
+        HERE / "steep_hybr_traj.csv",
     )
     t = d["t"]
     hb, hd, cb, cd = d["hb"], d["hd"], d["cb"], d["cd"]
     g_h, g_c, cage_ok = d["g_h"], d["g_c"], d["cage_ok"]
-    R2, v2, rShell = d["R2"], d["v2"], d["rShell"]
-    leg_R2, leg_v2, leg_t = d["leg_R2"], d["leg_v2"], d["leg_t"]
+    R2, v2 = d["R2"], d["v2"]
+    leg_t, leg_R2, leg_v2, leg_rsh = d["leg_t"], d["leg_R2"], d["leg_v2"], d["leg_rsh"]
+    hyb_t, hyb_R2, hyb_v2, hyb_rsh = d["hyb_t"], d["hyb_R2"], d["hyb_v2"], d["hyb_rsh"]
     lw, lsn, lt = d["lw"], d["lsn"], d["lt"]
     f_grid, v_h, v_c = d["f_grid"], d["v_h"], d["v_c"]
     # discrete time colour (fixed bins) -> a point's colour never changes AND the GIF
@@ -169,11 +179,16 @@ def main():
     vlo = float(np.nanmin([np.nanmin(v_h), np.nanmin(v_c)]))
     vhi = float(np.nanmax([np.nanmax(v_h), np.nanmax(v_c)]))
     VLIM = (min(vlo, -0.2) - 0.05 * abs(vhi), vhi * 1.05)
-    R2MAX = float(np.nanmax(R2)) * 1.02  # panel C x-axis (R2)
-    v2all = v2 if leg_v2 is None else np.concatenate([v2, leg_v2])
+    # panels C & F span both real runs (hybr to R2~37; caged peaks ~2 pc then recollapses)
+    R2all = np.concatenate([a for a in (hyb_R2, leg_R2) if a is not None])
+    v2all = np.concatenate([a for a in (hyb_v2, leg_v2) if a is not None])
+    R2MAX = float(np.nanmax(R2all)) * 1.05  # panel C x-axis (R2)
+    R2MIN = float(np.nanmin(R2all)) * 0.9
     v2hi = float(np.nanmax(v2all))
-    V2LIM = (min(0.0, float(np.nanmin(v2all))) - 0.04 * abs(v2hi), v2hi * 1.05)
-    RFMAX = float(np.nanmax([np.nanmax(R2), np.nanmax(rShell)])) * 1.05  # panel F y-axis
+    V2LIM = (float(np.nanmin(v2all)) - 0.06 * abs(v2hi), v2hi * 1.05)
+    rfall = np.concatenate([a for a in (hyb_R2, hyb_rsh, leg_R2, leg_rsh) if a is not None])
+    RFMAX = float(np.nanmax(rfall)) * 1.25  # panel F y-axis (log)
+    RFMIN = float(np.nanmin(rfall)) * 0.8
 
     fig, axd = plt.subplot_mosaic(
         [["A", "D"], ["A", "D"], ["B", "E"], ["C", "F"]],
@@ -196,8 +211,8 @@ def main():
         0.5,
         0.012,
         'cage shown two ways — A/B/D: cage root-finder re-solved along the hybr path '
-        "(counterfactual, spans full t).    C: cage as a real standalone run "
-        "(stalls at R2≈0.9 pc).",
+        "(counterfactual).    C/F: the two real runs — caged expands to ~2 pc then "
+        "recollapses (v₂<0), while hybr expands to ~37 pc.",
         ha="center",
         va="bottom",
         fontsize=8,
@@ -326,26 +341,30 @@ def main():
         aB.legend(fontsize=7, loc="upper left", ncol=1)
         aB.grid(alpha=0.3)
 
-        # ---- C: the expansion trajectory v2 vs R2 — caged vs no cage ----
-        # both are real driven runs; log-R2 so the caged stub (R2<1) and the full
-        # hybr path (R2->37) are both legible. They overlap until the cage binds,
-        # then the caged integrator crawls to a halt while hybr expands on.
+        # ---- C: expansion trajectory v2 vs R2 — the two REAL driven runs ----
+        # caged (crimson) and hybr (blue), each from its own run CSV. log-R2 so the
+        # caged hook (R2<2) and the full hybr path (R2->37) are both legible. They
+        # track together while decelerating, then DIVERGE: the caged bubble peaks at
+        # R2~2 pc and recollapses (v2<0, shaded), while hybr keeps expanding.
         aC.clear()
-        aC.plot(R2, v2, color=HYBR_C, lw=1.8, label="no cage (hybr)")
+        aC.axhspan(V2LIM[0], 0.0, color="r", alpha=0.06)  # v2<0 = recollapse / infall
+        aC.axhline(0.0, color="k", lw=0.8)
+        aC.plot(hyb_R2, hyb_v2, color=HYBR_C, lw=1.8, label="hybr (free β,δ)")
         if leg_R2 is not None:
-            aC.plot(leg_R2, leg_v2, color="crimson", lw=2.2, ls="--", label="caged — real run")
+            aC.plot(leg_R2, leg_v2, color="crimson", lw=2.0, label="caged (clamped β,δ)")
             aC.plot(leg_R2[-1], leg_v2[-1], marker="X", ms=11, mfc="crimson", mec="k", ls="none")
+            ip = int(np.argmax(leg_R2))  # turnover point
             aC.annotate(
-                "caged run stalls\n(cannot integrate on)",
-                xy=(leg_R2[-1], leg_v2[-1]),
-                xytext=(leg_R2[-1] * 1.4, leg_v2[-1] + 0.18 * (V2LIM[1] - V2LIM[0])),
+                f"caged peaks R₂={leg_R2[ip]:.1f} pc\nthen recollapses (v₂<0)",
+                xy=(leg_R2[ip], leg_v2[ip]),
+                xytext=(leg_R2[ip] * 0.16, V2LIM[0] + 0.30 * (V2LIM[1] - V2LIM[0])),
                 fontsize=7,
                 color="crimson",
                 arrowprops=dict(arrowstyle="->", color="crimson", lw=1),
             )
         aC.plot(R2_f[i], v2_f[i], "o", ms=8, mfc="#ffd000", mec="k", zorder=6)
-        # animated caged marker: rides the stub while the real caged run is live
-        # (t<=0.036 Myr), then parks on the stall X for the rest of the animation.
+        # animated caged marker: rides the real caged run (t<=0.44 Myr) then parks
+        # on the final recollapsed state for the rest of the animation.
         if leg_R2 is not None:
             if tc <= leg_t[-1]:
                 cr = float(np.interp(tc, leg_t, leg_R2))
@@ -354,11 +373,11 @@ def main():
                 cr, cv = float(leg_R2[-1]), float(leg_v2[-1])
             aC.plot(cr, cv, marker="s", ms=9, mfc="crimson", mec="k", mew=1.0, ls="none", zorder=7)
         aC.set_xscale("log")
-        aC.set_xlim(float(np.nanmin(R2)) * 0.9, R2MAX)
+        aC.set_xlim(R2MIN, R2MAX)
         aC.set_ylim(*V2LIM)
         aC.set_xlabel(r"$R_2$  [pc]")
         aC.set_ylabel(r"$v_2$  [pc/Myr]")
-        aC.set_title("expansion trajectory: caged vs no cage", fontsize=9)
+        aC.set_title("expansion trajectory: caged vs hybr (real runs)", fontsize=9)
         aC.legend(fontsize=7, loc="upper right")
         aC.grid(alpha=0.3, which="both")
 
@@ -408,35 +427,36 @@ def main():
         aE.legend(fontsize=7, loc="upper left", ncol=3)
         aE.grid(alpha=0.3)
 
-        # ---- F: shell radii  R2 (inner edge) & rShell (outer edge) vs t ----
-        # real driven-run rShell; the shell is thin (<~1.7% of R2) so the band
-        # between the two is shaded to make the thickness legible.
+        # ---- F: shell radii vs t — both REAL runs, R2 (solid) & rShell (dashed) ----
+        # caged (black) vs hybr (blue). log-log: the two runs differ ~20x in both
+        # radius and lifetime, so log axes show the caged recollapse (R2 turns over
+        # ~2 pc, ends t~0.44 Myr) alongside the hybr run climbing to ~37 pc at 4 Myr.
         aF.clear()
-        aF.plot(t, R2, color=HYBR_C, lw=1.7, label=r"$R_2$ (inner edge)")
-        if np.isfinite(rShell).any():
-            aF.fill_between(t, R2, rShell, color="#d62728", alpha=0.25, lw=0)
-            aF.plot(
-                t, rShell, color="#d62728", lw=1.4, ls="--", label=r"$r_{\rm shell}$ (outer edge)"
-            )
-            thick = float(np.nanmax(rShell - R2))
-            aF.text(
-                0.97,
-                0.05,
-                f"max shell thickness {thick:.2f} pc",
-                transform=aF.transAxes,
-                ha="right",
+        aF.plot(hyb_t, hyb_R2, color=HYBR_C, lw=1.7, label=r"hybr $R_2$")
+        aF.plot(hyb_t, hyb_rsh, color=HYBR_C, lw=1.4, ls="--", label=r"hybr $r_{\rm shell}$")
+        if leg_R2 is not None:
+            aF.plot(leg_t, leg_R2, color="k", lw=1.7, label=r"caged $R_2$")
+            aF.plot(leg_t, leg_rsh, color="k", lw=1.4, ls="--", label=r"caged $r_{\rm shell}$")
+            aF.plot(leg_t[-1], leg_R2[-1], marker="X", ms=9, mfc="k", mec="w", mew=0.8, ls="none")
+            aF.annotate(
+                "caged ends\n(recollapse)",
+                xy=(leg_t[-1], leg_R2[-1]),
+                xytext=(leg_t[-1] * 1.3, leg_R2[-1] * 0.28),
                 fontsize=7,
-                color="#d62728",
+                color="0.2",
+                arrowprops=dict(arrowstyle="->", color="0.2", lw=1),
             )
         aF.axvline(tc, color="crimson", lw=1.0, alpha=0.6)
         aF.plot(tc, R2_f[i], "o", ms=7, mfc="#ffd000", mec="k", zorder=5)
-        aF.set_xlim(t.min(), t.max())
-        aF.set_ylim(0, RFMAX)
+        aF.set_xscale("log")
+        aF.set_yscale("log")
+        aF.set_xlim(min(float(leg_t[0]), float(hyb_t[0])) * 0.8, float(hyb_t[-1]) * 1.1)
+        aF.set_ylim(RFMIN, RFMAX)
         aF.set_xlabel("t  [Myr]")
         aF.set_ylabel("radius  [pc]")
-        aF.set_title("shell radii", fontsize=9)
-        aF.legend(fontsize=7, loc="upper left")
-        aF.grid(alpha=0.3)
+        aF.set_title("shell radii: caged vs hybr (R₂ solid, r_shell dashed)", fontsize=9)
+        aF.legend(fontsize=7, loc="upper left", ncol=2)
+        aF.grid(alpha=0.3, which="both")
         return []
 
     anim = FuncAnimation(fig, update, frames=NFRAMES, interval=1000 / FPS, blit=False)
