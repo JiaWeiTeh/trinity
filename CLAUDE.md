@@ -74,8 +74,10 @@ The `analysis/*.md` files and the plan/skeleton docs under `docs/dev/` are point
 audits/plans, not a maintained spec. They go stale fast — paths, line numbers, and "what shipped"
 status drift as the code moves. When reading one: do not treat it as ground truth — flag that it may
 be outdated and re-verify every claim, snippet, and line reference against current source. Every such
-doc must carry this banner at the top, right under the H1, and any new analysis or `docs/dev/` plan
-doc must include it:
+doc must carry **both** banner paragraphs below at the top, right under the H1, and any new analysis
+or `docs/dev/` plan doc must include them. The second (🔄) paragraph makes these docs *living* —
+whoever opens one must recheck it, update drift, and rethink the strategy before relying on or
+extending it; leave it better than you found it:
 
 ```markdown
 > ⚠️ **This document may be out of date — verify before trusting it.** It is a
@@ -84,6 +86,15 @@ doc must include it:
 > **Any agent or person reading this: treat it as unverified. Flag that it may
 > be stale and re-check each claim, snippet, and line reference against the
 > current source before relying on it.**
+>
+> 🔄 **Living plan — recheck and refine on every visit.** This is an evolving
+> strategy doc, not a frozen record. Any agent or person who opens this file
+> must, as part of the visit: (1) re-verify the claims and line references above
+> against current source; (2) update anything that has drifted; (3) **rethink the
+> strategy itself** — if a better ordering, gate, candidate, or experiment
+> exists, revise the doc and note what changed and why (date it). Leave it better
+> than you found it. **Keep both banner paragraphs at the top of every plan and
+> analysis doc.**
 ```
 
 ---
