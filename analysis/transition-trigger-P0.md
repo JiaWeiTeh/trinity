@@ -105,6 +105,38 @@ trajectories** → the instantaneous `t_cool=Eb/Lloss, t_dyn=R2/v2` form is
 mis-scaled or mis-defined (a transition trigger firing at t≈0 is unphysical). Top
 P-sens priority.
 
+## Third data point — dense-flat HYBR (transitioning config, 2026-06-15)
+`tt_dense_flat` (1e6, n1e5, α=0), 57 implicit + 33 transition segs, transitions
+cleanly. CSV: `analysis/data/transition_dense_flat.csv`; config:
+`scratch/transition/dense_flat.param`.
+
+- **Clock A** (t_trans): 0.0034 → **0.210 Myr**. **Clock B** (1c): 0.212 → 0.247,
+  length **0.036 Myr**. **Eb-peak: t=0.197 Myr, INTERIOR** (the physical reference).
+- **F0 fires AT the Eb-peak** (0.197) — the current trigger is well-timed for a
+  clean-transition config.
+- **F1(η=0.30) coincides with F0/Eb-peak** (0.197); η=0.40 earlier (0.098);
+  **η≤0.25 never fires** — `frac_cum` maxes at **0.708**, i.e. only ~71 % of the
+  injected energy is radiated by transition. The **retained fraction ≈ 0.29**
+  lands squarely in the literature η≈0.25–0.3 range (the Lancaster cross-check
+  passes). So cumulative-energy with η≈0.3 ≈ F0 here.
+- **F2 fires at phase start (0.0034) AGAIN** — third config in a row. The
+  instantaneous `t_cool=Eb/Lloss, t_dyn=R2/v2` form fires at t≈0 universally →
+  broken as a transition discriminator (units or definition). Confirmed P-sens
+  priority.
+- F4 (blowout): never (flat profile, R2 < rCloud).
+
+### Emerging divergence map (3 configs, preliminary)
+| config | fate | F0 (current) | F1 (η≈0.3) | F2 inst t_cool/t_dyn | retained @ end |
+|---|---|---|---|---|---|
+| mock hybr (4e3 flat) | energy-driven | never | never | t≈0 | 0.51 |
+| dense-flat (1e6 n1e5) | transitions | **0.197 = Eb-peak** | **0.197** | t≈0 | **0.29** |
+| steep (1e6 α−2) | (running) | — | — | — | — |
+
+Early read: **F0 and F1(η≈0.3) agree with each other and with the Eb-peak** on the
+configs run so far (fire together when the bubble transitions, both "never" when
+it doesn't); **F2 is broken** (fires at t≈0 always). Awaiting steep (the
+stall/blowout crux) before G0.
+
 ## Caveats to pin (feed P-sens)
 - **F2 units unverified.** `t_cool = Eb/Lloss` only gives a time if `Eb` and
   `Lloss` are in consistent energy units (`Eb` is bubble energy in code/au;
@@ -116,8 +148,8 @@ P-sens priority.
 ## Next
 1. ~~Harvest the hybr mock~~ **DONE** (above) — F0 never fires on the clean
    trajectory; legacy transition was a clamp artifact.
-2. Harvest the steep (α=−2) and dense-flat (n1e5) hybr runs (`tt_steep`,
-   `tt_dense_flat`, running; 10-min heartbeat armed).
+2. ~~Harvest dense-flat~~ **DONE** (above) — F0 = F1(η0.3) = Eb-peak at 0.197;
+   retained ≈0.29 (in lit range). Steep (`tt_steep`) still running.
 3. **Verify F2 units** (now the top flag — fires at t≈0 on both mocks); add F3
    (force-ratio) once the surviving-force set is pinned.
 4. Build the per-config overlay figure (Eb(t)/ratio(t) with firing epochs marked).
