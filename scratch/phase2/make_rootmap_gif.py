@@ -1,52 +1,50 @@
 #!/usr/bin/env python3
-"""Animated (beta,delta) root-finding GIF for the steep run: the cage vs no cage.
+"""Animated cage-vs-no-cage root-finding GIF for the steep run -- a PURE READ.
 
-Three panels, frame = energy-implicit segment (i.e. increasing time):
-  LEFT  : the (beta,delta) plane. The legacy clamp box is "the cage". The hybr
-          root (no cage) traces out over time; when it leaves the box the cage
-          pins it to the nearest edge (clip), with a connector = the clamp error.
-  TOP-R : the reconstructed bubble velocity profile v vs radial fraction (R1->R2)
-          (re-solved with get_bubbleproperties_pure; inflow = v<0). Profiles are
-          cached to rootmap_cage_profiles.npz so later renders skip the re-solve.
-  BOT-R : Lmech_W / Lmech_SN / Lmech_total vs t, with a marker at the current t.
+All the expensive physics (the real legacy/caged solve and the re-solved interior
+profiles) is tabulated once by tabulate_cage.py into two COMMITTED csvs
+(rootmap_cage_scalars.csv per segment + rootmap_cage_profiles.csv long-format);
+this script only reads those and renders, so it runs in seconds, is cheap to
+re-style, and reproduces from git after the container is gone. Run
+tabulate_cage.py first (needs the pinned venv); this script needs only
+numpy + pandas + matplotlib + pillow.
 
-Data: analysis/data/stalling_steep_1e6_alpha-2.csv (state + Lmech) + the steep
-config probe_cloudPL.param (for the structure re-solve). REQUIRES the pinned
-deps (numpy<2, scipy<2) + pillow:
-  PYTHONPATH=<repo> /path/to/venv/bin/python scratch/phase2/make_rootmap_gif.py
+Frame = one energy-implicit segment (increasing time). Five panels:
+  LEFT  A : the (beta,delta) plane. Cyan box = the legacy clamp ("the cage").
+            hybr roots (no cage, circles) escape the box; the REAL legacy/caged
+            roots (squares) -- the actual bounded solve, not a geometric clip --
+            ride the edge. Both accumulate, coloured by time; a dashed connector
+            marks the per-segment clamp error.
+  LEFT  B : residual g of the two arms vs t (g<1e-4 = converged). hybr converges;
+            the cage cannot (it is structurally forbidden the out-of-box root).
+  LEFT  C : interior density n(r) [cm^-3] vs radial fraction, cage vs no cage.
+  RIGHT D : interior velocity v(r) [pc/Myr] vs radial fraction, cage vs no cage
+            (inflow = v<0; the cage's monotone solve hides the surge inflow).
+  RIGHT E : Lmech_W / Lmech_SN / Lmech_total vs t, marker at the current t.
+
+  python scratch/phase2/make_rootmap_gif.py
 Writes rootmap_cage.gif.
 """
 
-import csv
-import logging
 from pathlib import Path
 
-logging.disable(logging.CRITICAL)
-
-import matplotlib  # noqa: E402
+import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
+import pandas as pd  # noqa: E402
 from matplotlib.animation import FuncAnimation, PillowWriter  # noqa: E402
 from matplotlib.colors import Normalize  # noqa: E402
 from matplotlib.patches import Rectangle  # noqa: E402
 
-from trinity._input import read_param  # noqa: E402
-from trinity._input.dictionary import updateDict  # noqa: E402
-from trinity.sps.update_feedback import get_current_sps_feedback  # noqa: E402
-from trinity.bubble_structure.bubble_luminosity import get_bubbleproperties_pure  # noqa: E402
-from trinity.cooling.non_CIE import read_cloudy as non_CIE  # noqa: E402
-import trinity.main as tmain  # noqa: E402
-import trinity.phase1_energy.run_energy_phase as RE  # noqa: E402
-
 HERE = Path(__file__).resolve().parent
-CSV = HERE.parents[1] / "analysis" / "data" / "stalling_steep_1e6_alpha-2.csv"
-PARAM = HERE / "probe_cloudPL.param"
-BOX_B, BOX_D = (0.0, 1.0), (-1.0, 0.0)  # the "cage" (legacy clamp)
-SUBSAMPLE = 1  # reconstruct every Nth segment (cost: ~2.2 s each)
-NPLOT = 400  # thin the ~6e4-point profile for plotting
-FPS = 10
+SCALARS = HERE / "rootmap_cage_scalars.csv"
+PROFILES = HERE / "rootmap_cage_profiles.csv.gz"
+BOX_B, BOX_D = (0.0, 1.0), (-1.0, 0.0)  # the cage (legacy clamp)
+THRESH = 1e-4
+FPS = 9
+HYBR_C, CAGE_C = "#0072B2", "0.45"  # no-cage (blue) vs cage (grey)
 
 _STYLE = HERE.parents[1] / "paper" / "_lib" / "trinity.mplstyle"
 if _STYLE.exists():
@@ -54,102 +52,80 @@ if _STYLE.exists():
 plt.rcParams["text.usetex"] = False
 
 
-class _InitDone(Exception):
-    pass
-
-
-def init_params():
-    RE.run_energy = lambda params: (_ for _ in ()).throw(_InitDone())
-    params = read_param.read_param(str(PARAM))
-    try:
-        tmain.start_expansion(params)
-    except _InitDone:
-        pass
-    return params
-
-
-def reconstruct(params, row):
-    """Re-solve the structure for one segment; return thinned (n, v) + scalars."""
-    t = float(row["t_now"])
-    R2, v2, Eb = float(row["R2"]), float(row["v2"]), float(row["Eb"])
-    beta, delta = float(row["cool_beta"]), float(row["cool_delta"])
-    params["t_now"].value = t
-    updateDict(params, get_current_sps_feedback(t, params))
-    c, h, n = non_CIE.get_coolingStructure(params)
-    params["cStruc_cooling_nonCIE"].value = c
-    params["cStruc_heating_nonCIE"].value = h
-    params["cStruc_net_nonCIE_interpolation"].value = n
-    params["current_phase"].value = "implicit"
-    for k, val in (
-        ("R2", R2),
-        ("v2", v2),
-        ("Eb", Eb),
-        ("cool_alpha", t / R2 * v2),
-        ("cool_beta", beta),
-        ("cool_delta", delta),
-    ):
-        params[k].value = val
-    props = get_bubbleproperties_pure(params)
-    r = np.asarray(props.bubble_r_arr, dtype=float)
-    varr = np.asarray(props.bubble_v_arr, dtype=float)
-    rf = (r - props.R1) / (R2 - props.R1)  # radial fraction: 0 = R1, 1 = R2
-    o = np.argsort(rf)
-    rf, varr = rf[o], varr[o]
-    s = max(1, len(rf) // NPLOT)
-    return rf[::s], varr[::s], dict(t=t, beta=beta, delta=delta)
+def load():
+    if not SCALARS.exists() or not PROFILES.exists():
+        raise SystemExit(
+            f"missing {SCALARS.name}/{PROFILES.name} -- run "
+            f"`python {HERE.name}/tabulate_cage.py` first"
+        )
+    scal = pd.read_csv(SCALARS)
+    prof = pd.read_csv(PROFILES)
+    nseg = len(scal)
+    nf = int((prof["segment"] == 0).sum())
+    f_grid = prof["f"].to_numpy()[:nf]
+    rs = lambda c: prof[c].to_numpy().reshape(nseg, nf)  # noqa: E731
+    return dict(
+        t=scal["t"].to_numpy(),
+        hb=scal["beta_nocage"].to_numpy(),
+        hd=scal["delta_nocage"].to_numpy(),
+        cb=scal["beta_cage"].to_numpy(),
+        cd=scal["delta_cage"].to_numpy(),
+        g_h=scal["g_nocage"].to_numpy(),
+        g_c=scal["g_cage"].to_numpy(),
+        cage_ok=scal["cage_ok"].to_numpy().astype(bool),
+        R2=scal["R2"].to_numpy(),
+        lw=scal["Lmech_W"].to_numpy() / 1e8,
+        lsn=scal["Lmech_SN"].to_numpy() / 1e8,
+        lt=scal["Lmech_total"].to_numpy() / 1e8,
+        f_grid=f_grid,
+        v_h=rs("v_nocage"),
+        n_h=rs("n_nocage_cm3"),
+        v_c=rs("v_cage"),
+        n_c=rs("n_cage_cm3"),
+    )
 
 
 def main():
-    rows = list(csv.DictReader(open(CSV)))
-    t_all = np.array([float(r["t_now"]) for r in rows])
-    lw = np.array([float(r["Lmech_W"]) for r in rows]) / 1e8
-    lsn = np.array([float(r["Lmech_SN"]) for r in rows]) / 1e8
-    lt = np.array([float(r["Lmech_total"]) for r in rows]) / 1e8
-    b_all = np.array([float(r["cool_beta"]) for r in rows])
-    d_all = np.array([float(r["cool_delta"]) for r in rows])
+    d = load()
+    t, hb, hd, cb, cd = d["t"], d["hb"], d["hd"], d["cb"], d["cd"]
+    g_h, g_c, cage_ok = d["g_h"], d["g_c"], d["cage_ok"]
+    R2 = d["R2"]
+    lw, lsn, lt = d["lw"], d["lsn"], d["lt"]
+    f_grid, v_h, n_h, v_c, n_c = d["f_grid"], d["v_h"], d["n_h"], d["v_c"], d["n_c"]
+    n = len(t)
+    tnorm = Normalize(t.min(), t.max())
 
-    sel = rows[::SUBSAMPLE]
-    cache = HERE / "rootmap_cage_profiles.npz"  # re-solve once; later renders are a read
-    if cache.exists():
-        frames = list(np.load(cache, allow_pickle=True)["frames"])
-        print(f"loaded {len(frames)} cached profiles")
-    else:
-        params = init_params()
-        frames = []
-        print(f"reconstructing {len(sel)} segments (cached after)...")
-        for k, row in enumerate(sel):
-            rf, v, meta = reconstruct(params, row)
-            frames.append(dict(rf=rf, v=v, **meta))
-            if k % 10 == 0:
-                print(f"  {k}/{len(sel)}  t={meta['t']:.2f}")
-        np.savez(cache, frames=np.array(frames, dtype=object))
-
-    bf = np.array([f["beta"] for f in frames])
-    df = np.array([f["delta"] for f in frames])
+    # static axis limits (so nothing jumps frame-to-frame)
+    allb = np.concatenate([hb, cb[cage_ok]])
+    alld = np.concatenate([hd, cd[cage_ok]])
+    xlo, xhi = min(allb.min(), BOX_B[0]), max(allb.max(), BOX_B[1])
+    ylo, yhi = min(alld.min(), BOX_D[0]), max(alld.max(), BOX_D[1])
+    xpad, ypad = 0.08 * (xhi - xlo) + 0.05, 0.08 * (yhi - ylo) + 0.05
+    XLIM, YLIM = (xlo - xpad, xhi + xpad), (ylo - ypad, yhi + ypad)
+    vlo = float(np.nanmin([np.nanmin(v_h), np.nanmin(v_c)]))
+    vhi = float(np.nanmax([np.nanmax(v_h), np.nanmax(v_c)]))
+    VLIM = (min(vlo, -0.2) - 0.05 * abs(vhi), vhi * 1.05)
+    nlo = float(np.nanmin([np.nanmin(n_h[n_h > 0]), np.nanmin(n_c[n_c > 0])]))
+    nhi = float(np.nanmax([np.nanmax(n_h), np.nanmax(n_c)]))
 
     fig, axd = plt.subplot_mosaic(
-        [["A", "B"], ["A", "C"]],
-        figsize=(13, 7.5),
+        [["A", "D"], ["A", "D"], ["B", "D"], ["C", "E"]],
+        figsize=(14, 9.5),
         width_ratios=[1.5, 1.0],
+        height_ratios=[1.15, 1.15, 0.95, 0.95],
         constrained_layout=True,
     )
-    aA, aB, aC = axd["A"], axd["B"], axd["C"]
-    tnorm = Normalize(t_all.min(), t_all.max())
+    aA, aB, aC, aD, aE = (axd[k] for k in "ABCDE")
 
     def update(i):
-        f = frames[i]
-        # ---- panel A: (beta, delta) plane, cage vs no cage ----
+        out = not (BOX_B[0] <= hb[i] <= BOX_B[1] and BOX_D[0] <= hd[i] <= BOX_D[1])
+        m = slice(0, i + 1)
+        ok = cage_ok[: i + 1]
+
+        # ---- A: (beta, delta) plane, cage vs no cage ----
         aA.clear()
         aA.add_patch(
-            Rectangle(
-                (BOX_B[0], BOX_D[0]),
-                BOX_B[1] - BOX_B[0],
-                BOX_D[1] - BOX_D[0],
-                fill=False,
-                edgecolor="cyan",
-                lw=2.5,
-                zorder=2,
-            )
+            Rectangle((BOX_B[0], BOX_D[0]), 1, 1, fill=False, edgecolor="cyan", lw=2.5, zorder=2)
         )
         aA.text(
             0.5,
@@ -161,59 +137,66 @@ def main():
             fontsize=8,
             zorder=2,
         )
-        aA.plot(b_all, d_all, color="0.85", lw=1.0, zorder=1)  # full path (context)
+        aA.plot(hb, hd, color="0.85", lw=1.0, zorder=1)  # full hybr path (context)
+        for k in range(i + 1):  # connectors cage -> hybr (clamp error)
+            if cage_ok[k]:
+                aA.plot([cb[k], hb[k]], [cd[k], hd[k]], color="0.7", lw=0.6, alpha=0.5, zorder=1)
         aA.scatter(
-            bf[: i + 1],
-            df[: i + 1],
-            c=[fr["t"] for fr in frames[: i + 1]],
+            cb[m][ok],
+            cd[m][ok],
+            c=t[m][ok],
             cmap="viridis",
             norm=tnorm,
-            s=16,
-            zorder=3,
-        )
-        bt, dt = f["beta"], f["delta"]
-        bc, dc = np.clip(bt, *BOX_B), np.clip(dt, *BOX_D)  # the caged (clamped) root
-        out = (bt != bc) or (dt != dc)
-        if out:
-            aA.plot([bc, bt], [dc, dt], color="crimson", lw=1.4, ls="--", zorder=4)
-        aA.plot(
-            bt,
-            dt,
-            marker="*",
-            ms=22,
-            mfc="#ffd000",
-            mec="k",
-            mew=1.2,
-            ls="none",
-            zorder=6,
-            label="hybr root (no cage)",
-        )
-        aA.plot(
-            bc,
-            dc,
             marker="s",
-            ms=11,
-            mfc="crimson" if out else "none",
-            mec="crimson",
-            mew=1.6,
-            ls="none",
-            zorder=5,
-            label="caged root (clamped)",
+            s=20,
+            edgecolor="0.3",
+            lw=0.3,
+            zorder=3,
+            label="cage (real legacy solve)",
         )
-        aA.set_xlim(-2.75, 2.1)
-        aA.set_ylim(-1.3, 2.05)
+        aA.scatter(
+            hb[m],
+            hd[m],
+            c=t[m],
+            cmap="viridis",
+            norm=tnorm,
+            s=26,
+            edgecolor="k",
+            lw=0.3,
+            zorder=4,
+            label="no cage (hybr)",
+        )
+        if out and cage_ok[i]:
+            aA.plot([cb[i], hb[i]], [cd[i], hd[i]], color="crimson", lw=1.4, ls="--", zorder=5)
+        if cage_ok[i]:
+            aA.plot(
+                cb[i],
+                cd[i],
+                marker="s",
+                ms=12,
+                mfc="crimson",
+                mec="k",
+                mew=1.2,
+                ls="none",
+                zorder=6,
+            )
+        aA.plot(
+            hb[i], hd[i], marker="*", ms=22, mfc="#ffd000", mec="k", mew=1.2, ls="none", zorder=7
+        )
+        aA.set_xlim(*XLIM)
+        aA.set_ylim(*YLIM)
         aA.set_xlabel(r"$\beta$")
         aA.set_ylabel(r"$\delta$")
         tag = "OUTSIDE the cage" if out else "inside the cage"
         aA.set_title(
-            f"Root finding with vs without the cage   (t={f['t']:.2f} Myr; {tag})\n"
-            f"β={bt:+.2f}, δ={dt:+.2f}, β+δ={bt+dt:+.2f}",
+            f"Root finding with vs without the cage  (t={t[i]:.2f} Myr; {tag})\n"
+            f"hybr  β={hb[i]:+.2f}, δ={hd[i]:+.2f}   |   cage  β={cb[i]:+.2f}, δ={cd[i]:+.2f}",
             fontsize=10,
         )
         aA.text(
             0.02,
             0.98,
-            "path colour = time →",
+            "marker colour = time →",
             transform=aA.transAxes,
             fontsize=8,
             va="top",
@@ -222,41 +205,85 @@ def main():
         aA.legend(loc="lower right", fontsize=8)
         aA.grid(alpha=0.3)
 
-        # ---- panel B: bubble velocity vs radius ----
+        # ---- B: residual g of the two arms vs t ----
         aB.clear()
-        aB.axhline(0.0, color="k", lw=0.8)
-        aB.axhspan(-1.1, 0.0, color="r", alpha=0.06)
-        aB.plot(f["rf"], f["v"], color="#0072B2", lw=1.8)
-        aB.set_xlim(0, 1)
-        aB.set_ylim(-1.1, 11.0)  # fixed so the inner inflow (v<0) is visible (late v2 clips)
-        aB.set_xlabel("radial fraction  (0 = R1, 1 = R2)")
-        aB.set_ylabel("v(r)  [pc/Myr]")
-        inflow = float(np.nanmin(f["v"])) < -0.01
-        aB.set_title(
-            "bubble velocity vs radius" + ("  — INFLOW (v<0)" if inflow else ""),
+        aB.plot(
+            t[m], np.clip(g_h[m], 1e-7, None), "-o", ms=2.5, color=HYBR_C, label="no cage (hybr)"
+        )
+        aB.plot(
+            t[m], np.clip(g_c[m], 1e-7, None), "-s", ms=2.5, color="crimson", label="cage (legacy)"
+        )
+        aB.axhline(THRESH, color="k", ls="--", lw=1, label=f"converged < {THRESH:g}")
+        aB.set_yscale("log")
+        aB.set_ylim(4e-7, 1e2)
+        aB.set_xlim(t.min(), t.max())
+        aB.set_xlabel("t  [Myr]")
+        aB.set_ylabel(r"residual $g$")
+        aB.set_title("convergence — two arms", fontsize=9)
+        aB.legend(fontsize=7, loc="upper left", ncol=1)
+        aB.grid(alpha=0.3)
+
+        # ---- C: interior density vs radius ----
+        aC.clear()
+        aC.semilogy(f_grid, n_h[i], color=HYBR_C, lw=1.6, label="no cage")
+        if cage_ok[i]:
+            aC.semilogy(f_grid, n_c[i], color=CAGE_C, lw=1.6, ls="--", label="cage")
+        aC.set_xlim(0, 1)
+        aC.set_ylim(nlo * 0.7, nhi * 1.4)
+        aC.set_xlabel("radial fraction  (0 = R1, 1 = R2)")
+        aC.set_ylabel(r"$n(r)$  [cm$^{-3}$]")
+        aC.set_title("interior density", fontsize=9)
+        aC.legend(fontsize=7, loc="upper left")
+        aC.grid(alpha=0.3, which="both")
+
+        # ---- D: interior velocity vs radius ----
+        aD.clear()
+        aD.axhline(0.0, color="k", lw=0.8)
+        aD.axhspan(VLIM[0], 0.0, color="r", alpha=0.06)
+        aD.plot(
+            f_grid, v_h[i], color=HYBR_C, lw=1.9, label=f"no cage  (v_min={np.nanmin(v_h[i]):+.2f})"
+        )
+        if cage_ok[i]:
+            aD.plot(
+                f_grid,
+                v_c[i],
+                color=CAGE_C,
+                lw=1.9,
+                ls="--",
+                label=f"cage  (v_min={np.nanmin(v_c[i]):+.2f})",
+            )
+        aD.set_xlim(0, 1)
+        aD.set_ylim(*VLIM)
+        aD.set_xlabel("radial fraction  (0 = R1, 1 = R2)")
+        aD.set_ylabel("v(r)  [pc/Myr]")
+        inflow = float(np.nanmin(v_h[i])) < -0.01
+        aD.set_title(
+            f"interior velocity  (R2={R2[i]:.2f} pc)" + ("  — INFLOW (v<0)" if inflow else ""),
             fontsize=10,
             color="#b30000" if inflow else "k",
         )
-        aB.grid(alpha=0.3)
+        aD.legend(fontsize=8, loc="upper left")
+        aD.grid(alpha=0.3)
 
-        # ---- panel C: Lmech vs t ----
-        aC.clear()
-        aC.plot(t_all, lt, color="k", lw=1.6, ls="--", label=r"$L_{\rm tot}$")
-        aC.plot(t_all, lw, color="#0072B2", lw=1.4, label=r"$L_{\rm W}$ (wind)")
-        aC.plot(t_all, lsn, color="#9467bd", lw=1.4, label=r"$L_{\rm SN}$")
-        aC.axvline(f["t"], color="crimson", lw=1.4)
-        aC.set_xlabel("t  [Myr]")
-        aC.set_ylabel(r"$L_{\rm mech}$ [$10^8$]")
-        aC.set_title("feedback power", fontsize=10)
-        aC.legend(fontsize=7, loc="upper left", ncol=3)
-        aC.grid(alpha=0.3)
+        # ---- E: Lmech vs t ----
+        aE.clear()
+        aE.plot(t, lt, color="k", lw=1.6, ls="--", label=r"$L_{\rm tot}$")
+        aE.plot(t, lw, color=HYBR_C, lw=1.4, label=r"$L_{\rm W}$ (wind)")
+        aE.plot(t, lsn, color="#9467bd", lw=1.4, label=r"$L_{\rm SN}$")
+        aE.axvline(t[i], color="crimson", lw=1.4)
+        aE.set_xlim(t.min(), t.max())
+        aE.set_xlabel("t  [Myr]")
+        aE.set_ylabel(r"$L_{\rm mech}$ [$10^8$]")
+        aE.set_title("feedback power", fontsize=9)
+        aE.legend(fontsize=7, loc="upper left", ncol=3)
+        aE.grid(alpha=0.3)
         return []
 
-    anim = FuncAnimation(fig, update, frames=len(frames), interval=1000 / FPS, blit=False)
+    anim = FuncAnimation(fig, update, frames=n, interval=1000 / FPS, blit=False)
     out = HERE / "rootmap_cage.gif"
     anim.save(out, writer=PillowWriter(fps=FPS), dpi=85)
     plt.close(fig)
-    print(f"wrote {out}  ({len(frames)} frames)")
+    print(f"wrote {out}  ({n} frames)")
 
 
 if __name__ == "__main__":
