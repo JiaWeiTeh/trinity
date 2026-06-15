@@ -20,19 +20,28 @@ star/square and the profile curves are INTERPOLATED onto the grid for smooth
 motion; the accumulated (beta,delta) scatter and the residual history stay at the
 REAL segment times (dots), so nothing fabricated hides the true samples.
 
+"cage" means two different things across the panels -- labelled on each:
+  * A/B/D show the cage as a SHADOW: the legacy/caged root-finder re-solved at each
+    state ALONG the hybr trajectory (a counterfactual, "what would the cage return
+    here?"). Because the hybr run reaches 4 Myr, the shadow spans 4 Myr too.
+  * C shows the cage as a REAL standalone run, which actually evolves under those
+    clamped roots and stalls early (R2~0.9 pc, t~0.036 Myr) -- it never reaches 4 Myr.
+They are complementary: A/B say the cage gives bad/non-converged roots at every
+state; C shows a real run built on those roots cannot progress.
+
 Six panels, current time = the frame's t grid point:
   LEFT  A : the (beta,delta) plane. Cyan box = the legacy clamp ("the cage").
-            hybr roots (no cage) escape the box; the REAL legacy/caged roots
-            (squares) -- the actual bounded solve, not a geometric clip -- ride
-            the edge. Dots = real segments (colour = time); a dashed connector
-            marks the current clamp error.
+            hybr roots (no cage) escape the box; the cage SHADOW roots (squares,
+            re-solved along the hybr path) ride the edge. Dots = real segments
+            (colour = time); a dashed connector marks the current clamp error.
   LEFT  B : residual g of the two arms vs t (g<1e-4 = converged). hybr converges;
-            the cage cannot (it is structurally forbidden the out-of-box root).
-  LEFT  C : expansion trajectory v2 vs R2 (log-R2), caged vs no cage -- both REAL
-            driven runs. They agree until the cage binds (~R2=0.9 pc), then the
-            caged run crawls to a halt while hybr expands on to R2~37 pc.
-  RIGHT D : interior velocity v(r) vs radial fraction (0=R1, 1=R2), cage vs no cage
-            (inflow = v<0; the cage's monotone solve hides the surge inflow).
+            the cage shadow cannot (structurally forbidden the out-of-box root).
+  LEFT  C : expansion trajectory v2 vs R2 (log-R2): hybr (real run) vs the caged
+            REAL run. They agree until the cage binds (~R2=0.9 pc), then the caged
+            run crawls to a halt (X marker; animated square marker) while hybr
+            expands on to R2~37 pc.
+  RIGHT D : interior velocity v(r) vs radial fraction (0=R1, 1=R2), cage SHADOW vs
+            no cage (inflow = v<0; the cage's monotone solve hides the surge inflow).
   RIGHT E : Lmech_W / Lmech_SN / Lmech_total vs t, marker at the current t.
   RIGHT F : shell radii vs t -- R2 (inner edge = bubble outer) and rShell (outer edge);
             their gap is the shell thickness.
@@ -100,6 +109,7 @@ def load(scalars, profiles, legacy_traj=None):
         rShell=col("rShell_nocage"),
         leg_R2=lg["R2"].to_numpy() if lg is not None else None,
         leg_v2=lg["v2"].to_numpy() if lg is not None else None,
+        leg_t=lg["t"].to_numpy() if lg is not None else None,
         lw=scal["Lmech_W"].to_numpy() / 1e8,
         lsn=scal["Lmech_SN"].to_numpy() / 1e8,
         lt=scal["Lmech_total"].to_numpy() / 1e8,
@@ -124,7 +134,7 @@ def main():
     hb, hd, cb, cd = d["hb"], d["hd"], d["cb"], d["cd"]
     g_h, g_c, cage_ok = d["g_h"], d["g_c"], d["cage_ok"]
     R2, v2, rShell = d["R2"], d["v2"], d["rShell"]
-    leg_R2, leg_v2 = d["leg_R2"], d["leg_v2"]
+    leg_R2, leg_v2, leg_t = d["leg_R2"], d["leg_v2"], d["leg_t"]
     lw, lsn, lt = d["lw"], d["lsn"], d["lt"]
     f_grid, v_h, v_c = d["f_grid"], d["v_h"], d["v_c"]
     # discrete time colour (fixed bins) -> a point's colour never changes AND the GIF
@@ -173,6 +183,7 @@ def main():
         constrained_layout=True,
     )
     aA, aB, aC, aD, aE, aF = (axd[k] for k in "ABCDEF")
+    fig.get_layout_engine().set(rect=(0, 0.035, 1, 0.965))  # reserve bottom strip for the note
     # one persistent colourbar for the time-coloured scatter (created once, NOT in
     # update(), so it neither stacks nor rescales -> no colour blinking).
     sm = mcm.ScalarMappable(norm=tnorm, cmap=cmap_t)
@@ -180,6 +191,18 @@ def main():
     cbar = fig.colorbar(sm, ax=aA, fraction=0.045, pad=0.02)
     cbar.set_label("t  [Myr]", fontsize=8)
     cbar.ax.tick_params(labelsize=7)
+    # persistent note: the two senses of "cage" in this figure (added once -> no flicker).
+    fig.text(
+        0.5,
+        0.012,
+        'cage shown two ways — A/B/D: cage root-finder re-solved along the hybr path '
+        "(counterfactual, spans full t).    C: cage as a real standalone run "
+        "(stalls at R2≈0.9 pc).",
+        ha="center",
+        va="bottom",
+        fontsize=8,
+        color="0.35",
+    )
 
     def update(i):
         tc = tg[i]
@@ -214,7 +237,7 @@ def main():
             edgecolor="0.3",
             lw=0.3,
             zorder=3,
-            label="cage (real legacy solve)",
+            label="cage shadow (along hybr path)",
         )
         aA.scatter(
             hb[rm],
@@ -268,7 +291,8 @@ def main():
         aA.text(
             0.02,
             0.98,
-            "dots = real segments (colour = time)",
+            "dots = real segments (colour = time)\n"
+            "squares = cage re-solved along this path (counterfactual)",
             transform=aA.transAxes,
             fontsize=8,
             va="top",
@@ -288,7 +312,7 @@ def main():
             "-s",
             ms=2.5,
             color="crimson",
-            label="cage (legacy)",
+            label="cage shadow (along hybr path)",
         )
         aB.plot(tc, gh_f[i], "o", ms=8, mfc="#ffd000", mec="k", zorder=5)
         aB.plot(tc, gc_f[i], "s", ms=8, mfc="crimson", mec="k", zorder=5)
@@ -309,7 +333,7 @@ def main():
         aC.clear()
         aC.plot(R2, v2, color=HYBR_C, lw=1.8, label="no cage (hybr)")
         if leg_R2 is not None:
-            aC.plot(leg_R2, leg_v2, color="crimson", lw=2.2, ls="--", label="caged (legacy)")
+            aC.plot(leg_R2, leg_v2, color="crimson", lw=2.2, ls="--", label="caged — real run")
             aC.plot(leg_R2[-1], leg_v2[-1], marker="X", ms=11, mfc="crimson", mec="k", ls="none")
             aC.annotate(
                 "caged run stalls\n(cannot integrate on)",
@@ -320,6 +344,15 @@ def main():
                 arrowprops=dict(arrowstyle="->", color="crimson", lw=1),
             )
         aC.plot(R2_f[i], v2_f[i], "o", ms=8, mfc="#ffd000", mec="k", zorder=6)
+        # animated caged marker: rides the stub while the real caged run is live
+        # (t<=0.036 Myr), then parks on the stall X for the rest of the animation.
+        if leg_R2 is not None:
+            if tc <= leg_t[-1]:
+                cr = float(np.interp(tc, leg_t, leg_R2))
+                cv = float(np.interp(tc, leg_t, leg_v2))
+            else:
+                cr, cv = float(leg_R2[-1]), float(leg_v2[-1])
+            aC.plot(cr, cv, marker="s", ms=9, mfc="crimson", mec="k", mew=1.0, ls="none", zorder=7)
         aC.set_xscale("log")
         aC.set_xlim(float(np.nanmin(R2)) * 0.9, R2MAX)
         aC.set_ylim(*V2LIM)
@@ -347,7 +380,7 @@ def main():
                 color=CAGE_C,
                 lw=1.9,
                 ls="--",
-                label=f"cage  (v_min={np.nanmin(vc_f[i]):+.2f})",
+                label=f"cage shadow  (v_min={np.nanmin(vc_f[i]):+.2f})",
             )
         aD.set_xlim(0, 1)
         aD.set_ylim(*VLIM)
