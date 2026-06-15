@@ -11,7 +11,7 @@ import os
 import subprocess
 import sys
 
-NAMES = ["mock_hybr", "dense_flat", "steep"]
+NAMES = ["steep_long"]
 BASE = "/home/user/trinity"
 
 

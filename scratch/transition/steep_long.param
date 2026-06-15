@@ -1,0 +1,11 @@
+model_name    tt_steep_long
+mCloud    1e6
+sfe    0.01
+dens_profile    densPL
+densPL_alpha    -2
+nCore    1e5
+rCore    1
+nISM    10
+stop_t    4.0
+log_level    WARNING
+betadelta_solver    hybr
