@@ -104,6 +104,37 @@ caller first — plan §"ε is already a param".)
    shadow+promote in one go? Recommend **shadow-only first** (lands the param,
    logging, byte-identical proof), promote in a follow-up after the continuity gate.
 
+## 6b. Re-entry / reversibility — surges re-inject energy (raised 2026-06-15)
+**Q (maintainer):** can the bubble re-enter the energy-driven phase after the
+trigger fires?
+
+- **Current architecture: no.** Phases run strictly one-way (1a→1b→1c→2,
+  `main.py:280–349`); no path moves backward. A surge re-pressurizes *within* a
+  phase (β<0 ⇒ dEb/dt>0 in 1b; or stalls the 1c drain via
+  `min(Ed_energy_balance, Ed_soundcrossing)`) but never reverses the sequence. True
+  reversibility = large architectural change, **out of scope** (no runner changes
+  beyond the switch condition).
+- **Physically: re-energizing is real, acute for steep.** In `tt_steep_long` Eb is
+  **monotonically rising the whole run** and **triples after blowout** (7.0e7 at
+  R2>rCloud @2.728 → 2.05e8 @4 Myr); the WR/SN surges (β→−2.44 @3.08–3.33)
+  *accelerate* the rise. The steep bubble is **not** thermally exhausted at blowout.
+
+**Consequence for F4.** Blowout is **geometric** (shell escaped the cloud), firing
+on an energetically-active bubble. Switching to momentum (Eb→0) discards a
+still-growing Eb; the 1D justification is that a blown-out bubble **vents** its hot
+interior (champagne flow, unrepresentable in 1D) rather than doing PdV work — energy
+treated as lost. Explicit approximation, sharpest in the steep regime.
+
+**Reinforces decision #1 (route blowout through 1c):** the 1c `min(...)` drain lets
+a post-blowout surge *stall* the Eb loss rather than abruptly zeroing it — softer,
+more physical. Neither choice re-enters energy-driven.
+
+**Open physics question it surfaces (maintainer/paper):** for steep, is
+"blowout → momentum" the right model at all, or should the energy-rich blown-out
+bubble get a **venting/leak treatment** (ramp `bubble_Leak`) instead of a hard
+switch? A modeling call beyond the switch condition — flag in the paper's caveats;
+do not silently encode either way.
+
 ## 7. Out of scope (unchanged from plan)
 Betadelta solver; transition/momentum runner internals beyond the switch condition;
 3D mixing-layer physics; the clock-B (1c sound-crossing drain) treatment (separate
