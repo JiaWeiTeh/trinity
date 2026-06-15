@@ -6,8 +6,9 @@ This is the slow half of the rootmap_cage animation, factored out so the GIF
 segment of the canonical steep hybr trajectory (analysis/data/stalling_steep_*.csv)
 it records, at the SAME bubble state:
 
-  no-cage (hybr) : the recorded (beta, delta) root, its residual g, and the
-                   re-solved interior profiles v(r), n(r).
+  no-cage (hybr) : the recorded (beta, delta) root, its residual g, the re-solved
+                   interior profiles v(r), n(r), and the ionization-front radius
+                   R_IF (a shell-structure solve; ~R2 for a dense absorbing shell).
   cage  (legacy) : the REAL bounded legacy solve (betadelta_solver='legacy'),
                    NOT a geometric clip -- its actual in-box optimum, residual g,
                    and profiles. The legacy guess is threaded from the cage's own
@@ -42,6 +43,7 @@ from trinity._input.dictionary import updateDict  # noqa: E402
 from trinity.sps.update_feedback import get_current_sps_feedback  # noqa: E402
 import trinity.phase1b_energy_implicit.get_betadelta as GB  # noqa: E402
 from trinity.cooling.non_CIE import read_cloudy as non_CIE  # noqa: E402
+from trinity.shell_structure.shell_structure import shell_structure_pure  # noqa: E402
 import trinity.main as tmain  # noqa: E402
 import trinity.phase1_energy.run_energy_phase as RE  # noqa: E402
 
@@ -124,6 +126,7 @@ SCALAR_COLS = {
     "v2": "v2",
     "R1_h": "R1_nocage",
     "R1_c": "R1_cage",
+    "R_IF": "R_IF_nocage",
     "vmin_h": "vmin_nocage",
     "vmin_c": "vmin_cage",
     "c_sound": "c_sound",
@@ -195,6 +198,7 @@ def main():
             "c_sound",
             "R1_h",
             "R1_c",
+            "R_IF",
             "vmin_h",
             "vmin_c",
             "cage_ok",
@@ -223,8 +227,18 @@ def main():
             vh, nh = profiles(ph, R2, f_grid)
             g_h = g_residual(GB.get_residual_detailed(hb, hd, params, bubble_props=ph), Lm)
             R1_h = ph.R1
+            # ionization-front radius (shell solve) on the hybr trajectory; the shell
+            # solver reads the current bubble R1/Pb/mass, so set them first (as the
+            # implicit runner does before calling shell_structure_pure).
+            params["R1"].value = ph.R1
+            params["Pb"].value = ph.Pb
+            params["bubble_mass"].value = ph.bubble_mass
+            try:
+                R_IF = float(shell_structure_pure(params).R_IF)
+            except Exception:
+                R_IF = np.nan
         else:
-            vh, nh, g_h, R1_h = nan, nan, np.nan, np.nan
+            vh, nh, g_h, R1_h, R_IF = nan, nan, np.nan, np.nan, np.nan
 
         # --- cage (legacy): REAL bounded solve, threaded-guess continuity ---
         if cage_guess is None:  # both arms start from the same (clamped) point
@@ -268,6 +282,7 @@ def main():
             ("c_sound", float(row["c_sound"])),
             ("R1_h", float(R1_h)),
             ("R1_c", float(R1_c)),
+            ("R_IF", float(R_IF)),
             ("vmin_h", float(np.nanmin(vh))),
             ("vmin_c", float(vmin_c)),
         ):

@@ -22,19 +22,21 @@ WARPFIELD "Problem 2" study). **Not source** — regenerable. Canonical writeups
   revealed over segments: the REAL production-clamped roots (arm A = cage) vs hybr
   (arm D = no cage) + a residual-`g` convergence panel. Pure read of the jsonl → ~50 s.
 - `make_rootmap_gif.py` → `rootmap_cage.gif` — the steep run's root-finding **with vs
-  without the cage** over time. Five panels, frame = segment (same timestamp across all):
-  LEFT the (β,δ) plane (cage box; hybr roots escape, the **real legacy/caged** roots ride
-  the edge — NOT a geometric clip), a two-arm **residual-g** convergence panel, and
-  **density n(r) [cm⁻³]** vs radial fraction; RIGHT **velocity v(r)** vs radial fraction
-  (inflow = v<0) and Lmech(t). Both profile panels overlay cage vs no-cage. Now a **pure
-  read** of two committed csvs (`rootmap_cage_scalars.csv`, `rootmap_cage_profiles.csv.gz`)
-  produced once by `tabulate_cage.py`, so it renders in seconds and needs only
-  numpy+pandas+matplotlib+pillow (no venv).
+  without the cage** over time. Six panels: LEFT the (β,δ) plane (cage box; hybr roots
+  escape, the **real legacy/caged** roots ride the edge — NOT a geometric clip), a two-arm
+  **residual-g** convergence panel, and **velocity v(r) vs physical radius [pc]**; RIGHT
+  **velocity v(r) vs radial fraction** (inflow = v<0), Lmech(t), and **R2 & R_IF vs t**
+  (the ionization front ~ R2 for this dense shell). Profile panels overlay cage vs no-cage.
+  Frames are paced on a uniform **linear-t** grid (interpolated markers/curves; real
+  segments kept as dots) so the over-dense early phase no longer dwells. A **pure read** of
+  two committed csvs (`rootmap_cage_scalars.csv`, `rootmap_cage_profiles.csv.gz`) produced
+  once by `tabulate_cage.py`; renders in seconds, needs only numpy+pandas+matplotlib+pillow.
 - `tabulate_cage.py` → `rootmap_cage_{scalars.csv,profiles.csv.gz}` (+ a gitignored
   `rootmap_cage_table.npz` cache) — the slow half of the animation, factored out: for every
-  steep-hybr segment it records both roots, both residuals, the recovered ODE-state T0, and
-  the re-solved v(r)/n(r) for **both** the no-cage (hybr) and the **REAL** caged (legacy,
-  threaded-guess) solve. ~1.5 hr (the per-segment legacy solve dominates). Needs the venv.
+  steep-hybr segment it records both roots, both residuals, the recovered ODE-state T0, the
+  ionization-front radius R_IF (a shell solve), and the re-solved v(r)/n(r) for **both** the
+  no-cage (hybr) and the **REAL** caged (legacy, threaded-guess) solve. ~1.5 hr (the
+  per-segment legacy solve dominates). Needs the venv.
 
 **Cage counterfactual:** `cage_compare.py` → `cage_compare.png` — the REAL legacy
 (clamped) solve vs hybr at two key segments, v vs r: at the WR surge the cage is
