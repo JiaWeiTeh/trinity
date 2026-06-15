@@ -25,7 +25,9 @@
 > that produced each artifact.
 
 Execution log for **P0** of `docs/dev/TRANSITION_TRIGGER_PLAN.md`. **Status
-2026-06-15: IN PROGRESS — harness built and proven; real (hybr) harvest running.**
+2026-06-15: 4 configs harvested (mock legacy+hybr, dense-flat, steep);
+preliminary G0 reading below. Remaining: steep→3 Myr (surge regime), F3 force-
+ratio, overlay figures.**
 
 ## Verifications closed before any code (the plan's "Read first")
 - **`Lloss` is pure radiative cooling, no PdV** — `bubble_LTotal = L_bubble +
@@ -131,10 +133,50 @@ cleanly. CSV: `analysis/data/transition_dense_flat.csv`; config:
 | dense-flat (1e6 n1e5) | transitions | **0.197 = Eb-peak** | **0.197** | t≈0 | **0.29** |
 | steep (1e6 α−2) | (running) | — | — | — | — |
 
-Early read: **F0 and F1(η≈0.3) agree with each other and with the Eb-peak** on the
-configs run so far (fire together when the bubble transitions, both "never" when
-it doesn't); **F2 is broken** (fires at t≈0 always). Awaiting steep (the
-stall/blowout crux) before G0.
+Early read (superseded by the complete map below once steep landed): F0 and
+F1(η≈0.3) agree with the Eb-peak; F2 fires early.
+
+## Fourth data point — steep HYBR (the stall/blowout crux, 2026-06-15)
+`tt_steep` (1e6, n1e5, α=−2), 73 implicit segs, **energy-driven to stop_t=1.0, no
+transition** (the stall). CSV: `analysis/data/transition_steep.csv`; config:
+`scratch/transition/steep.param`. rCloud = 23.4 pc.
+
+- **Clock A**: 0.0034 → 1.0 (full run, never transitions). **Clock B absent.** Eb
+  still rising at 1.0 (no peak).
+- **F0 (current): never** — ratio_F0 plateaus at **0.28–0.36**, nowhere near 0.05
+  (the stall, cf. `phase3_regime.png`).
+- **F1 (cumulative) ALSO stalls** — `frac_cum` **plateaus at 0.654** (t=0.48→1.0:
+  0.653/0.656/0.654), never reaching η=0.3 (0.70) or η=0.25 (0.75); only η=0.4
+  (0.60) fired, early (0.107). **Retained fraction ≈0.35, flat.** So the cumulative
+  form does **not** rescue the steep stall: Lgain and Lloss grow together, so the
+  ratio-of-integrals is stuck. (Its real advantage is the feedback-RESET — see G0.)
+- **F4 (blowout): not by 1 Myr** — R2=8.9 pc vs rCloud=23.4 (R2/rCloud=0.38). At
+  v2≈8 pc/Myr, projected blowout **~2.8 Myr**. F4 is steep's real fate, later than
+  this stop_t.
+- **F2: early radiative onset (0.0034)** — same red herring (see F2 diagnosis).
+
+### Complete divergence map (4 configs) — preliminary G0 input
+| config | fate | F0 | F1(η0.3) | F2 inst | F4 blowout | retained @end |
+|---|---|---|---|---|---|---|
+| mock (4e3 flat) | energy-driven | never | never | early | never | 0.51 |
+| dense-flat (1e6 n1e5) | **transitions** | **0.197** | **0.197** | early | never | **0.29** |
+| steep (1e6 α−2) | **STALL** | never | never (plateau 0.65) | early | ~2.8 Myr (proj.) | 0.35 |
+
+### Preliminary G0 reading (steep→3 Myr still needed for the surge regime)
+1. **Transitioning (flat) configs: F0 ≈ F1(η≈0.3) ≈ Eb-peak.** The two cooling
+   criteria agree with each other and the physical Eb-peak; retained ≈0.29 (lit
+   range). Cooling balance works here; ε≈0.05 ↔ η≈0.3 are mutually consistent.
+2. **Steep stall: BOTH F0 and F1 fail.** Neither the instantaneous ratio nor the
+   cumulative fraction reaches threshold (`frac_cum` plateaus at 0.65). So the
+   cumulative form's advantage is about the **feedback-reset** (WR/SN surges),
+   **not** the halo-fed stall. For steep, **no cooling-based trigger fires.**
+3. **Blowout (F4) is steep's fate**, at ~2.8 Myr (R2→rCloud) — a geometric, not a
+   cooling, transition. Confirms the profile-dependence thesis: cooling triggers
+   for flat, blowout/dynamical for steep.
+4. **F2 (instantaneous t_cool/t_dyn): red herring** (radiative onset, ~60× early).
+5. **Open before a firm G0:** rerun steep to ~3 Myr to (a) confirm blowout fires
+   (R2→rCloud) and (b) test F1-vs-F0 across the WR/SN surge — the reset regime F1
+   is specifically meant to fix, which `stop_t=1.0` does not reach.
 
 ## F2 (t_cool/t_dyn) diagnosis — NOT units (2026-06-15, corrects earlier "broken")
 The early-firing of F2 is **not** a unit bug and **not** "broken." Raw values
@@ -176,11 +218,13 @@ The early-firing of F2 is **not** a unit bug and **not** "broken." Raw values
 - **Legacy contamination.** Re-harvest on hybr trajectories before any reading.
 
 ## Next
-1. ~~Harvest the hybr mock~~ **DONE** (above) — F0 never fires on the clean
-   trajectory; legacy transition was a clamp artifact.
-2. ~~Harvest dense-flat~~ **DONE** (above) — F0 = F1(η0.3) = Eb-peak at 0.197;
-   retained ≈0.29 (in lit range). Steep (`tt_steep`) still running.
-3. **Verify F2 units** (now the top flag — fires at t≈0 on both mocks); add F3
-   (force-ratio) once the surviving-force set is pinned.
-4. Build the per-config overlay figure (Eb(t)/ratio(t) with firing epochs marked).
-5. Assemble the divergence map → **Gate G0**.
+1. ~~Harvest hybr mock~~ **DONE** — F0 never (legacy transition was a clamp artifact).
+2. ~~Harvest dense-flat~~ **DONE** — F0 = F1(η0.3) = Eb-peak (0.197); retained ≈0.29.
+3. ~~Harvest steep~~ **DONE** — F0 *and* F1 both stall; blowout is the fate (~2.8 Myr).
+4. ~~Verify F2~~ **DONE** — not units; instantaneous t_cool/t_dyn is a radiative-onset
+   red herring (see F2 diagnosis).
+5. **Rerun steep to ~3 Myr** — confirm blowout (R2→rCloud) and test F1-vs-F0 across
+   the WR/SN surge (the feedback-reset regime, the one place F1 should beat F0).
+6. **Add F3 (force-ratio)** to the harness (`F_ram`=4πR²Pb vs surviving forces).
+7. **Overlay figures** per config (Eb(t)/ratio(t)/frac_cum with firing epochs).
+8. Finalize the divergence map → **Gate G0**.
