@@ -25,9 +25,10 @@
 > that produced each artifact.
 
 Execution log for **P0** of `docs/dev/TRANSITION_TRIGGER_PLAN.md`. **Status
-2026-06-15: 4 configs harvested (mock legacy+hybr, dense-flat, steep);
-preliminary G0 reading below. Remaining: steep→3 Myr (surge regime), F3 force-
-ratio, overlay figures.**
+2026-06-15: P0 COMPLETE — 5 configs harvested; G0 VERDICT = PROCEED with a
+profile-dependent (cooling ∨ blowout) trigger. Steep transitions by BLOWOUT
+(2.728 Myr), not cooling; F2 + F3 eliminated; F1 does not beat F0. Optional
+remaining: overlay figures.** (See FIRM G0 VERDICT section.)
 
 ## Verifications closed before any code (the plan's "Read first")
 - **`Lloss` is pure radiative cooling, no PdV** — `bubble_LTotal = L_bubble +
@@ -181,9 +182,59 @@ set: F0/F1 (cooling) for flat-profile transitions; F4 (blowout) for steep.**
    red herring (~60× early). F3 (force-ratio) = degenerate — `Pb≡P_HII`
    (bubble–shell pressure equilibrium) makes the transition force-continuous, and
    F3 never < 1 (~7–57×). **Viable set is F0/F1 (cooling) + F4 (blowout).**
-5. **Open before a firm G0:** rerun steep to ~3 Myr to (a) confirm blowout fires
-   (R2→rCloud) and (b) test F1-vs-F0 across the WR/SN surge — the reset regime F1
-   is specifically meant to fix, which `stop_t=1.0` does not reach.
+5. ~~Open: rerun steep to ~3 Myr~~ **DONE** (steep 4 Myr below) — blowout fires at
+   2.728 Myr; F1 retreats under the surge (does NOT beat F0).
+
+## Fifth data point — steep 4 Myr (blowout FIRES; F1 retreats) [2026-06-15]
+`tt_steep_long` (same steep config, **stop_t=4.0**, 133 segs, energy-driven the
+whole way — no cooling transition). CSV:
+`analysis/data/transition_steep_long.csv`; config:
+`scratch/transition/steep_long.param`. Resolves both open G0 questions:
+
+- **BLOWOUT (F4) FIRES at t=2.728 Myr** (R2 crosses rCloud=23.4 pc) — steep's real
+  transition, geometric not cooling. **It fires BEFORE the WR/SN surge (3.1–3.8)**,
+  so the feedback physics is *moot* for the transition: geometry seals the fate first.
+- **The surge resets F0 and retreats F1 — neither fires** (walking the WR surge):
+
+  | t [Myr] | ratio_F0 (F0) | frac_cum (F1) | β | Lgain |
+  |---|---|---|---|---|
+  | 3.028 | 0.44 | 0.646 | +1.65 | 2.1e8 |
+  | 3.178 | **0.67** | 0.630 | **−2.44** | 3.3e8 |
+  | 3.728 | 0.66 | 0.573 | −0.54 | 5.2e8 |
+  | 4.000 | 0.56 | **0.558** | — | — |
+
+  - **F0 (instantaneous) spikes UP 0.44→0.67** — the classic reset (β→−2.44, Pb
+    re-pressurizing; Lgain spikes 2→5e8). Confirms the stalling-doc pathology.
+  - **F1 (cumulative) DRIFTS DOWN 0.65→0.56** — the surge inflates ∫Lgain, so the
+    cumulative fraction *retreats* from the 1−η threshold. **The cumulative form
+    does NOT rescue the steep stall:** its "no-reset" advantage fails because the
+    surge permanently grows the integral denominator. (It doesn't spike like F0,
+    but it moves the wrong way — away from firing.)
+
+## FIRM G0 VERDICT — PROCEED, the trigger is profile-dependent (supersedes above)
+The 5-config map is complete. A single hardcoded ε cannot express the transition:
+
+| config | fate | the criterion that fires |
+|---|---|---|
+| mock 4e3 (flat, low-mass) | energy-driven to stop_t (0.3 Myr) | none yet (short run) |
+| dense-flat (n1e5) | transitions @ 0.21 Myr | **F0 cooling = F1(η0.3) = Eb-peak** |
+| steep (α−2) | **blowout @ 2.728 Myr** | **F4 (R2>rCloud)** — cooling never fires |
+
+1. **Flat → cooling balance (F0/F1) works**, agreeing with the Eb-peak; retained
+   ≈0.29 (lit range); ε≈0.05 ↔ η≈0.3 consistent.
+2. **Steep → blowout (F4) is the transition** (2.728 Myr, before the surge). No
+   cooling criterion fires; F1 actively retreats under feedback.
+3. **F2, F3 eliminated** (radiative-onset red herring / Pb≡P_HII force-continuous).
+4. **Design implication:** the trigger should be **cooling-balance OR blowout,
+   whichever fires first** — a two-criterion, profile-aware switch, **not** a single
+   tuned scalar, and **not** the cumulative form (F1 equals F0 for flat and fails
+   for steep — not worth the complexity).
+
+**G0 = PROCEED** to P-sens/design with the two-criterion (cooling ∨ blowout)
+structure. Headline science (Paper-I material regardless of implementation):
+**steep bubbles transition by blowout, not cooling balance — the current
+hardcoded ε=0.05 can *never* fire for them** (ratio plateaus 0.28–0.67, and the
+bubble blows out of the cloud at 2.7 Myr while still formally "energy-driven").
 
 ## F2 (t_cool/t_dyn) diagnosis — NOT units (2026-06-15, corrects earlier "broken")
 The early-firing of F2 is **not** a unit bug and **not** "broken." Raw values
