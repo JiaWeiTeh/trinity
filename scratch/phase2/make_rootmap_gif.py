@@ -28,8 +28,9 @@ Six panels, current time = the frame's t grid point:
             marks the current clamp error.
   LEFT  B : residual g of the two arms vs t (g<1e-4 = converged). hybr converges;
             the cage cannot (it is structurally forbidden the out-of-box root).
-  LEFT  C : the expansion trajectory -- outer-edge velocity v2 vs outer radius R2,
-            with a marker at the current time.
+  LEFT  C : expansion trajectory v2 vs R2 (log-R2), caged vs no cage -- both REAL
+            driven runs. They agree until the cage binds (~R2=0.9 pc), then the
+            caged run crawls to a halt while hybr expands on to R2~37 pc.
   RIGHT D : interior velocity v(r) vs radial fraction (0=R1, 1=R2), cage vs no cage
             (inflow = v<0; the cage's monotone solve hides the surge inflow).
   RIGHT E : Lmech_W / Lmech_SN / Lmech_total vs t, marker at the current t.
@@ -68,7 +69,7 @@ if _STYLE.exists():
 plt.rcParams["text.usetex"] = False
 
 
-def load(scalars, profiles):
+def load(scalars, profiles, legacy_traj=None):
     if not scalars.exists() or not profiles.exists():
         raise SystemExit(
             f"missing {scalars.name}/{profiles.name} -- run "
@@ -81,6 +82,7 @@ def load(scalars, profiles):
     f_grid = prof["f"].to_numpy()[:nf]
     rs = lambda c: prof[c].to_numpy().reshape(nseg, nf)  # noqa: E731
     col = lambda c: scal[c].to_numpy() if c in scal else np.full(nseg, np.nan)  # noqa: E731
+    lg = pd.read_csv(legacy_traj) if (legacy_traj and legacy_traj.exists()) else None
     return dict(
         t=scal["t"].to_numpy(),
         hb=scal["beta_nocage"].to_numpy(),
@@ -96,6 +98,8 @@ def load(scalars, profiles):
         R1_c=scal["R1_cage"].to_numpy(),
         R_IF=col("R_IF_nocage"),
         rShell=col("rShell_nocage"),
+        leg_R2=lg["R2"].to_numpy() if lg is not None else None,
+        leg_v2=lg["v2"].to_numpy() if lg is not None else None,
         lw=scal["Lmech_W"].to_numpy() / 1e8,
         lsn=scal["Lmech_SN"].to_numpy() / 1e8,
         lt=scal["Lmech_total"].to_numpy() / 1e8,
@@ -111,11 +115,16 @@ def main():
     ap.add_argument("--label", default="", help="optional config label shown in the title")
     args = ap.parse_args()
     lbl = f" — {args.label}" if args.label else ""
-    d = load(HERE / f"{args.prefix}_scalars.csv", HERE / f"{args.prefix}_profiles.csv.gz")
+    d = load(
+        HERE / f"{args.prefix}_scalars.csv",
+        HERE / f"{args.prefix}_profiles.csv.gz",
+        HERE / "steep_legacy_traj.csv",
+    )
     t = d["t"]
     hb, hd, cb, cd = d["hb"], d["hd"], d["cb"], d["cd"]
     g_h, g_c, cage_ok = d["g_h"], d["g_c"], d["cage_ok"]
     R2, v2, rShell = d["R2"], d["v2"], d["rShell"]
+    leg_R2, leg_v2 = d["leg_R2"], d["leg_v2"]
     lw, lsn, lt = d["lw"], d["lsn"], d["lt"]
     f_grid, v_h, v_c = d["f_grid"], d["v_h"], d["v_c"]
     # discrete time colour (fixed bins) -> a point's colour never changes AND the GIF
@@ -151,8 +160,9 @@ def main():
     vhi = float(np.nanmax([np.nanmax(v_h), np.nanmax(v_c)]))
     VLIM = (min(vlo, -0.2) - 0.05 * abs(vhi), vhi * 1.05)
     R2MAX = float(np.nanmax(R2)) * 1.02  # panel C x-axis (R2)
-    v2hi = float(np.nanmax(v2))
-    V2LIM = (min(0.0, float(np.nanmin(v2))) - 0.04 * abs(v2hi), v2hi * 1.05)
+    v2all = v2 if leg_v2 is None else np.concatenate([v2, leg_v2])
+    v2hi = float(np.nanmax(v2all))
+    V2LIM = (min(0.0, float(np.nanmin(v2all))) - 0.04 * abs(v2hi), v2hi * 1.05)
     RFMAX = float(np.nanmax([np.nanmax(R2), np.nanmax(rShell)])) * 1.05  # panel F y-axis
 
     fig, axd = plt.subplot_mosaic(
@@ -292,16 +302,32 @@ def main():
         aB.legend(fontsize=7, loc="upper left", ncol=1)
         aB.grid(alpha=0.3)
 
-        # ---- C: the expansion trajectory  v2 vs R2 ----
+        # ---- C: the expansion trajectory v2 vs R2 — caged vs no cage ----
+        # both are real driven runs; log-R2 so the caged stub (R2<1) and the full
+        # hybr path (R2->37) are both legible. They overlap until the cage binds,
+        # then the caged integrator crawls to a halt while hybr expands on.
         aC.clear()
-        aC.plot(R2, v2, color=HYBR_C, lw=1.6)
-        aC.plot(R2_f[i], v2_f[i], "o", ms=8, mfc="#ffd000", mec="k", zorder=5)
-        aC.set_xlim(0, R2MAX)
+        aC.plot(R2, v2, color=HYBR_C, lw=1.8, label="no cage (hybr)")
+        if leg_R2 is not None:
+            aC.plot(leg_R2, leg_v2, color="crimson", lw=2.2, ls="--", label="caged (legacy)")
+            aC.plot(leg_R2[-1], leg_v2[-1], marker="X", ms=11, mfc="crimson", mec="k", ls="none")
+            aC.annotate(
+                "caged run stalls\n(cannot integrate on)",
+                xy=(leg_R2[-1], leg_v2[-1]),
+                xytext=(leg_R2[-1] * 1.4, leg_v2[-1] + 0.18 * (V2LIM[1] - V2LIM[0])),
+                fontsize=7,
+                color="crimson",
+                arrowprops=dict(arrowstyle="->", color="crimson", lw=1),
+            )
+        aC.plot(R2_f[i], v2_f[i], "o", ms=8, mfc="#ffd000", mec="k", zorder=6)
+        aC.set_xscale("log")
+        aC.set_xlim(float(np.nanmin(R2)) * 0.9, R2MAX)
         aC.set_ylim(*V2LIM)
         aC.set_xlabel(r"$R_2$  [pc]")
         aC.set_ylabel(r"$v_2$  [pc/Myr]")
-        aC.set_title("expansion trajectory", fontsize=9)
-        aC.grid(alpha=0.3)
+        aC.set_title("expansion trajectory: caged vs no cage", fontsize=9)
+        aC.legend(fontsize=7, loc="upper right")
+        aC.grid(alpha=0.3, which="both")
 
         # ---- D: interior velocity vs radial fraction ----
         aD.clear()
@@ -350,11 +376,24 @@ def main():
         aE.grid(alpha=0.3)
 
         # ---- F: shell radii  R2 (inner edge) & rShell (outer edge) vs t ----
+        # real driven-run rShell; the shell is thin (<~1.7% of R2) so the band
+        # between the two is shaded to make the thickness legible.
         aF.clear()
         aF.plot(t, R2, color=HYBR_C, lw=1.7, label=r"$R_2$ (inner edge)")
         if np.isfinite(rShell).any():
+            aF.fill_between(t, R2, rShell, color="#d62728", alpha=0.25, lw=0)
             aF.plot(
                 t, rShell, color="#d62728", lw=1.4, ls="--", label=r"$r_{\rm shell}$ (outer edge)"
+            )
+            thick = float(np.nanmax(rShell - R2))
+            aF.text(
+                0.97,
+                0.05,
+                f"max shell thickness {thick:.2f} pc",
+                transform=aF.transAxes,
+                ha="right",
+                fontsize=7,
+                color="#d62728",
             )
         aF.axvline(tc, color="crimson", lw=1.0, alpha=0.6)
         aF.plot(tc, R2_f[i], "o", ms=7, mfc="#ffd000", mec="k", zorder=5)
