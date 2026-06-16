@@ -1,0 +1,84 @@
+# ==============================================================================
+# Sweep Parameter File: Paper II — full GMC / feedback grid
+# ==============================================================================
+#
+# Full Cartesian (grid) sweep over the six axes below. Each `key [list]` is one
+# sweep dimension; the runner expands the product of all of them.
+#
+#   sfe            11 values
+#   mCloud         10 values
+#   nCore           3 values
+#   PISM            4 values
+#   nISM            2 values
+#   coverFraction   4 values
+#   -----------------------------------------------------------------
+#   total          11 x 10 x 3 x 4 x 2 x 4 = 10,560 combinations
+#
+# Usage:
+#   python run.py param/paperII_grid_sweep.param --dry-run        # list, run nothing
+#   python run.py param/paperII_grid_sweep.param --workers N      # run across N workers
+#   python run.py param/paperII_grid_sweep.param --emit-jobs jobs/  # then sbatch for HPC
+#
+
+# =============================================================================
+# Sweep axes (Cartesian product)
+# =============================================================================
+
+# Star formation efficiency: 0.01, 0.05, 0.1, then 0.2..0.9 in steps of 0.1
+sfe             [0.01, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
+
+# Cloud mass [Msun]: 1e5..5e9 in 1,5 x decade steps
+mCloud          [1e5, 5e5, 1e6, 5e6, 1e7, 5e7, 1e8, 5e8, 1e9, 5e9]
+
+# Core number density [cm^-3]: decade spacing
+nCore           [1e2, 1e3, 1e4]
+
+# ISM pressure P/k [K cm^-3]
+PISM            [0, 1e4, 1e5, 1e6]
+
+# ISM number density [cm^-3]
+nISM            [0.1, 1]
+
+# Covering (closed) fraction Cf. NOTE: the schema documents the usable range as
+# ~0.9-0.99; Cf=0.25 and 0.5 are below it and may stress/fail the integrator.
+coverFraction   [0.25, 0.5, 0.75, 0.9]
+
+# =============================================================================
+# Fixed parameters (constant across all runs)
+# =============================================================================
+
+# Density profile
+dens_profile    densPL
+densPL_alpha    0
+
+# Cloud
+ZCloud    1
+
+# Termination
+allowShellDissolution    True
+stop_t_diss    1
+stop_r    None
+stop_t    3
+coll_r    1
+stop_at_rCloud_nSnap    None
+
+# Logging
+log_level    INFO
+
+# P_HII
+include_PHII    True
+
+# Output (each run writes a subfolder under this directory)
+path2output    outputs/paperII_grid_sweep
+
+# sps stuffs — carried over from rosette_cf_survey_updated.param; confirm these
+# are the SPS settings you want for paper II.
+sps_path  lib/sps/custom/1e6cluster_default.csv
+sps_refmass 1e6
+sps_col_t            0 yr linear
+sps_col_Qi           1 cgs log
+sps_col_fi           2 cgs log
+sps_col_Lbol         3 cgs log
+sps_col_Lmech_W      6 cgs log
+sps_col_pdot_W       5 cgs log
+sps_col_Lmech_total  4 cgs log
