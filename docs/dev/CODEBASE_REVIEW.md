@@ -6,6 +6,23 @@
 > **Any agent or person reading this: treat it as unverified. Flag that it may
 > be stale and re-check each claim, snippet, and line reference against the
 > current source before relying on it.**
+>
+> 🔄 **Living document — recheck and refine on every visit.** This is an
+> evolving audit, not a frozen record. Any agent or person who opens this file
+> must, as part of the visit: (1) re-verify the claims and line references above
+> against current source; (2) update anything that has drifted; (3) reconsider
+> the findings themselves — if a finding is stale, mis-scoped, or a better fix
+> has landed, revise it and note what changed and why (date it). Leave it better
+> than you found it. **Keep all banner paragraphs at the top of every plan and
+> analysis doc.**
+>
+> 💾 **Persist diagnostics — commit, don't re-run.** The container is ephemeral
+> and full runs cost minutes-to-hours, so any diagnostic worth keeping must be
+> saved as a committed artifact (a CSV/table under `docs/dev/data/`, or a
+> force-added harness/figure under `scratch/`) — never left in `/tmp` or an
+> untracked `outputs/`. A future visit must be able to reproduce or compare
+> against the numbers **without re-running**; record the exact config + command
+> that produced each artifact.
 
 **Review goal.** Audit the *entire* repository for inconsistencies
 (code ↔ docstrings ↔ comments), stale/dead references, and anything that is
@@ -68,7 +85,9 @@ into `docs/dev/`** (this file is now `docs/dev/CODEBASE_REVIEW.md`, section file
 under `docs/dev/codebase_review/`), and every `analysis/<path>` reference across
 source/tests/tools/docs was repointed.
 
-**Fixed on this branch** (the safe set — stale docstrings / comments / pointers):
+**Fixed on this branch:**
+
+*Round 1 — stale docstrings / comments / pointers:*
 - H3 dead `example_scripts/` pointer → repointed to `paper/methods/figures/` (`_output/README.md`, `trinity_reader.py`).
 - Units labels: `Eb [erg]` → `[Msun pc²/Myr²]`; `get_dudt` Returns block; `get_shellODE` "assumes cgs" → code units; BE-sphere debug logs `cm⁻³` → `1/pc³`.
 - Run startup banner link → `jiaweiteh.github.io/trinity-web` (was the deprecated readthedocs mirror).
@@ -80,15 +99,26 @@ source/tests/tools/docs was repointed.
 - `make_density_profile_gif.py` default run-dir + docstring → the shipped mock run.
 - `docs/dev/archive/README.md` given the mandated staleness banner.
 
-**Flagged, deliberately NOT changed here** (logic changes, deletions, or
-needs-a-decision — outside a docstring/comment sweep):
-- H1 de-track `scratch/` (`git rm -r --cached scratch/`).
-- H2 metallicity `UnboundLocalError` — needs an `else: raise` (a logic change).
+*Round 2 — small logic / config / citation fixes:*
+- **H2 metallicity** `UnboundLocalError` → clear `ValueError` for unsupported `ZCloud` (have 1.0, 0.15).
+- `flake8` → ruff/pre-commit across the `[dev]` extra, `requirements.txt`, and CONTRIBUTING.
+- Paper citation → `Teh et al. (2026), arXiv:2605.27517` in `publications.rst` + `license.rst` (matches README; confirmed on arXiv by the author).
+
+**Flagged, deliberately NOT changed here** (deletions or needs-a-decision):
+- **H1 `scratch/` is NOT de-tracked.** Reversed the audit's first instinct: the
+  `💾 Persist diagnostics` convention (`docs/dev/TRANSITION_TRIGGER_PLAN.md`, on
+  `main`) explicitly says kept diagnostics may be *force-added* under `scratch/`,
+  so the 65 tracked files are most likely **intentional** persisted artifacts,
+  not accidental cruft. Whether `scratch/` is the right home is a structure
+  decision (see open questions), not a clear bug.
 - H4 / dead modules `input_warnings.py`, `read_mist_models.py`, unused solvers — deletions (CLAUDE.md rule 3: flag, don't silently delete).
 - Packaging: `package-data` / `MANIFEST.in` data-glob gap.
-- `flake8` → `ruff` in the `[dev]` extra / `requirements.txt` / CONTRIBUTING.
-- Paper "posted on arXiv" vs "in preparation" — needs the true status + a human arXiv-id check.
 - Cloudy README run-dir layout rewrite; CWD-relative cloudy test paths; inert `output_format` knob.
+
+> **Note for the next visitor:** this branch (`fix/code-hygiene`) predates current
+> `main` (which added the transition-trigger docs via PR #687). When synced with
+> `main`, the new `analysis/transition-trigger-*.md` files must get the same
+> `analysis/ → docs/dev/` move this branch applied.
 
 ---
 

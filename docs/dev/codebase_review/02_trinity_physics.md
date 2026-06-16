@@ -4,6 +4,23 @@
 > **Any agent or person reading this: treat it as unverified. Flag that it may
 > be stale and re-check each claim, snippet, and line reference against the
 > current source before relying on it.**
+>
+> 🔄 **Living document — recheck and refine on every visit.** This is an
+> evolving audit, not a frozen record. Any agent or person who opens this file
+> must, as part of the visit: (1) re-verify the claims and line references above
+> against current source; (2) update anything that has drifted; (3) reconsider
+> the findings themselves — if a finding is stale, mis-scoped, or a better fix
+> has landed, revise it and note what changed and why (date it). Leave it better
+> than you found it. **Keep all banner paragraphs at the top of every plan and
+> analysis doc.**
+>
+> 💾 **Persist diagnostics — commit, don't re-run.** The container is ephemeral
+> and full runs cost minutes-to-hours, so any diagnostic worth keeping must be
+> saved as a committed artifact (a CSV/table under `docs/dev/data/`, or a
+> force-added harness/figure under `scratch/`) — never left in `/tmp` or an
+> untracked `outputs/`. A future visit must be able to reproduce or compare
+> against the numbers **without re-running**; record the exact config + command
+> that produced each artifact.
 
 # 02 — trinity/ physics modules
 
