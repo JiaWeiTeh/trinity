@@ -19,7 +19,7 @@
 > 💾 **Persist diagnostics — commit, don't re-run.** The container is ephemeral
 > and full/hybr runs cost hours, so any diagnostic worth keeping must be saved as
 > a committed artifact (a CSV/table under `docs/dev/data/`, or a force-added
-> harness/figure under `scratch/` as the hybr work did) — never left in `/tmp` or
+> harness/figure under `docs/dev/scratch/` as the hybr work did) — never left in `/tmp` or
 > an untracked `outputs/`. A future visit must be able to reproduce or compare
 > against the numbers **without re-running**; record the exact config + command
 > that produced each artifact.
@@ -28,7 +28,7 @@
 > `src/→trinity`, C plotting split) have shipped**, as has the "only remaining"
 > integrator follow-up (#659) — this reads as a forward plan but describes
 > completed work. The target-layout and design-decision records still hold; the
-> blast-radius metrics and the "tracked `scratch/`" outcome do **not** (scratch
+> blast-radius metrics and the "tracked `docs/dev/scratch/`" outcome do **not** (scratch
 > was instead **deleted**, commit `b4e2996`).
 
 Single source of truth for three structural changes raised in the
@@ -46,7 +46,7 @@ End goal:
 3. Separate the 23k-line plotting tree by **audience/lifecycle**: the
    engine (installed), the `make_figures.py` reproduction closure (public
    deliverable, 5 scripts + infra), and 31 personal scripts (tracked
-   `scratch/`, quarantined out of `trinity/` and `paper/`).
+   `docs/dev/scratch/`, quarantined out of `trinity/` and `paper/`).
 
 All three are **behavior-preserving**. Nothing in this plan changes a
 single physics result; the verification battery is "the same 358 tests
@@ -209,7 +209,7 @@ Decision to confirm with the user before starting Phase B:
 > **Restyled per the audience model — see Appendix D (authoritative).**
 > Public = the *closure of `paper/make_figures.py`* (5 scripts + 5 infra),
 > **not** all 34 `paper_*`. Everything else (31 scripts) is personal and
-> goes to a **tracked** `scratch/` (gitignored would not survive this
+> goes to a **tracked** `docs/dev/scratch/` (gitignored would not survive this
 > ephemeral container). The sketch below is updated to match.
 
 Target layout:
@@ -225,14 +225,14 @@ paper/              # the reproduction DELIVERABLE
                     #      paper_rcloud_smoothing, paper_feedback)
     _lib/           #   <- cli, plot_base, plot_markers, force_colors,
                     #      grid_template, trinity.mplstyle
-scratch/            # TRACKED: the 31 personal paper_*/pedrini_*/diag scripts
+docs/dev/scratch/            # TRACKED: the 31 personal paper_*/pedrini_*/diag scripts
 tools/              # compare_outputs.py (user-facing run-diff)
 ```
 
 **The step-by-step is now in Appendix D (D.5), restyled around the
-`make_figures.py` closure and a tracked `scratch/`.** In brief:
+`make_figures.py` closure and a tracked `docs/dev/scratch/`.** In brief:
 
-- **C.1** — carve a *tracked* `scratch/`; move the 31 personal scripts
+- **C.1** — carve a *tracked* `docs/dev/scratch/`; move the 31 personal scripts
   (29 `paper_*` + 2 `pedrini_*` + `diag_simplify`) there. Safe stop-point.
 - **C.2** — move the 5 closure scripts → `paper/figures/`, the 5 infra +
   `trinity.mplstyle` → `paper/figures/_lib/`.
@@ -280,7 +280,7 @@ executed; integrator: planned (separate doc) — the only remaining phase.
 The guiding rule (the convention to enshrine): **organize by
 audience/lifecycle with a strict one-way dependency.** Everything may
 import the installed `trinity` package; the engine imports nothing
-downstream (`paper/`, `examples/`, `scratch/`, `tools/`).
+downstream (`paper/`, `examples/`, `docs/dev/scratch/`, `tools/`).
 
 ```
 trinity-repo/
@@ -296,7 +296,7 @@ trinity-repo/
 ├── lib/default/           # bundled tables, top-level by design (keeps trinity/ pure code)
 ├── param/                 # canonical parameter-file library
 ├── examples/              # runnable getting-started scripts (reference param/)
-├── scratch/               # TRACKED personal scripts (31 paper_*/pedrini_*/diag)
+├── docs/dev/scratch/               # TRACKED personal scripts (31 paper_*/pedrini_*/diag)
 ├── docs/dev/  docs/  tests/
 ├── pyproject.toml  README.md     # run.py -> console entry point
 ```
@@ -305,7 +305,7 @@ trinity-repo/
 
 Two criteria, applied separately (see Appendix D.0):
 - **Scripts** split by the **`make_figures.py` closure**: in it → public
-  `paper/figures/`; not in it → personal `scratch/` (31 files).
+  `paper/figures/`; not in it → personal `docs/dev/scratch/` (31 files).
 - **Infra** below moves to the public `_lib/` because the closure scripts
   import it. The engine keeps none of it:
 
@@ -328,12 +328,12 @@ figure scripts.
 - **`param/` vs `examples/`**: `param/` is the canonical parameter-file
   library; `examples/` holds narrative getting-started scripts that
   *reference* `param/` files (no duplicated `.param` content).
-- **`scratch/` not `notebooks/`**: reserve `notebooks/` for committed
-  tutorials if ever wanted. **In this effort `scratch/` is TRACKED**
+- **`docs/dev/scratch/` not `notebooks/`**: reserve `notebooks/` for committed
+  tutorials if ever wanted. **In this effort `docs/dev/scratch/` is TRACKED**
   (Appendix D.3): the personal scripts are real work that must survive an
   ephemeral container, so they are version-controlled but quarantined out
   of `trinity/` and `paper/`. (A truly gitignored sandbox is a later option
-  on a persistent checkout.) `diag_simplify.py` → `scratch/`.
+  on a persistent checkout.) `diag_simplify.py` → `docs/dev/scratch/`.
 - **`tests/` not `test/`**: plural is the prevailing pytest convention;
   trivial, only worth folding into the rename pass.
 
@@ -375,12 +375,12 @@ erodes within a few months.
   scripts are personal. *(Appendix D.0.)*
 - **Phase C package shape**: ~~importable vs. flat?~~ **importable
   `paper/figures/` package** (`__init__.py` in `figures/` + `_lib/`).
-- **`scratch/`**: ~~gitignored?~~ **TRACKED** — ephemeral container would
+- **`docs/dev/scratch/`**: ~~gitignored?~~ **TRACKED** — ephemeral container would
   lose a gitignored sandbox. *(Appendix D.3.)*
 - **pedrini test coupling**: **drop `TestPedriniEmergenceMigration`**
   (it pins a 2-line wrapper over the engine-tested `read_simulation_end()`).
 - **Personal-script imports**: **rewrite best-effort** so they still run
-  from `scratch/` (no test harness covers them).
+  from `docs/dev/scratch/` (no test harness covers them).
 - **`plot_style.py` / `radial_profile.py`**: both **dead (0 importers) →
   delete** (re-confirm at execution).
 
@@ -732,7 +732,7 @@ Then `git mv src trinity`.
 # Appendix D — Phase C execution detail (separate the plotting tree)
 
 > **STATUS: EXECUTED (C.1–C.5).** Done in two commits: C.1 carved the 33
-> personal scripts into a tracked `scratch/`; C.2–C.5 moved the 5-script
+> personal scripts into a tracked `docs/dev/scratch/`; C.2–C.5 moved the 5-script
 > `make_figures.py` closure to `paper/figures/` (+ infra in `_lib/`),
 > relocated `compare_outputs.py` to `tools/`, deleted dead
 > `radial_profile.py`/`plot_style.py`, removed `trinity/_plots/`, and added
@@ -767,7 +767,7 @@ Everything not in that closure — **31 scripts** (29 other `paper_*`, both
 - `trinity/_plots/` = **46 `.py` files, 23,229 lines** (~42% of repo
   Python). Split by the closure above:
   - **Public (10 tracked files)**: 5 scripts + 5 infra + `trinity.mplstyle`.
-  - **Personal (31 scripts)**: → `scratch/`.
+  - **Personal (31 scripts)**: → `docs/dev/scratch/`.
   - **Dead (delete, 0 importers)**: `radial_profile.py` (grep-confirmed
     unused), and `trinity/_functions/plot_style.py` (the only engine→plots
     link — see D.2).
@@ -797,20 +797,20 @@ Everything not in that closure — **31 scripts** (29 other `paper_*`, both
 
 ## D.3 Resolved decisions
 
-- **`scratch/` is TRACKED, not gitignored.** Rationale: this work happens
-  in an *ephemeral* container; a gitignored `scratch/` would not be pushed
+- **`docs/dev/scratch/` is TRACKED, not gitignored.** Rationale: this work happens
+  in an *ephemeral* container; a gitignored `docs/dev/scratch/` would not be pushed
   and the 31 scripts (~20k lines) would be lost on teardown, surviving only
-  in git history. Tracking `scratch/` keeps them version-controlled and out
+  in git history. Tracking `docs/dev/scratch/` keeps them version-controlled and out
   of both `trinity/` and `paper/`. (Revisit later on a persistent
   checkout if a truly-ignored sandbox is wanted.)
 - **Personal scripts get their imports rewritten so they still run** from
-  `scratch/` — best-effort (no test harness covers them): `from
+  `docs/dev/scratch/` — best-effort (no test harness covers them): `from
   trinity._plots.<infra>` → the new public `_lib` path, and intra-personal
-  `from trinity._plots.<paper_x>` → the sibling `scratch/` path.
+  `from trinity._plots.<paper_x>` → the sibling `docs/dev/scratch/` path.
 - **Package shape**: `paper/figures/` is an **importable package**
   (`__init__.py` in `figures/` and `figures/_lib/`), so `make_figures.py`'s
   `python -m` targets and the infra imports are clean (no `sys.path` hacks).
-- **`compare_outputs.py` → `tools/`**; **`diag_simplify.py` → `scratch/`**.
+- **`compare_outputs.py` → `tools/`**; **`diag_simplify.py` → `docs/dev/scratch/`**.
 - **`test/` → `tests/`** stays out of scope (fold in separately).
 
 ## D.4 The `__file__`-depth landmines (must rewrite, not just `git mv`)
@@ -825,13 +825,13 @@ files change depth, so every repo-root shim in a moved file is re-counted:
    `cli.py` and each public script's `__main__` shim.
 2. **`run_all.py`** holds a hardcoded path table of
    `"trinity/_plots/paper_X.py"` strings. Since most targets are now
-   personal, `run_all.py` either moves to `scratch/` with the bulk of the
+   personal, `run_all.py` either moves to `docs/dev/scratch/` with the bulk of the
    scripts **or** is pared to the public set — decide at execution; do not
    leave it pointing at moved files.
 
 ## D.5 Execution order (incremental, each its own revertable commit)
 
-1. **C.1 — carve scratch (tracked)**: create `scratch/`; `git mv` the 31
+1. **C.1 — carve scratch (tracked)**: create `docs/dev/scratch/`; `git mv` the 31
    personal scripts (29 `paper_*` + 2 `pedrini_*`) + `diag_simplify.py`
    there. Safe stop-point.
 2. **C.2 — public surface**: `git mv` the 5 public scripts → `paper/figures/`

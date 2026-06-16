@@ -19,7 +19,7 @@
 > 💾 **Persist diagnostics — commit, don't re-run.** The container is ephemeral
 > and full/hybr runs cost hours, so any diagnostic worth keeping must be saved as
 > a committed artifact (a CSV/table under `docs/dev/data/`, or a force-added
-> harness/figure under `scratch/` as the hybr work did) — never left in `/tmp` or
+> harness/figure under `docs/dev/scratch/` as the hybr work did) — never left in `/tmp` or
 > an untracked `outputs/`. A future visit must be able to reproduce or compare
 > against the numbers **without re-running**; record the exact config + command
 > that produced each artifact.
@@ -96,7 +96,7 @@ trigger (P-shadow).** (See FIRM G0 VERDICT and P-sens sections.)
   all harvestable offline; no production change.
 
 ## Harness
-`scratch/transition/harvest.py <run_dir> [--csv out]` — reads a finished run,
+`docs/dev/scratch/transition/harvest.py <run_dir> [--csv out]` — reads a finished run,
 filters implicit rows, evaluates every candidate trigger on the same trajectory,
 reports both clocks and each candidate's firing epoch, dumps a per-segment CSV.
 
@@ -132,7 +132,7 @@ of the divergence, **not** for any conclusion. CSV: `docs/dev/data/transition_mo
 ## Second data point — mock 4e3 HYBR (clean control, 2026-06-15)
 Fresh `betadelta_solver=hybr` run of the *same* mock config (67 implicit segs,
 **energy-driven to stop_t = 0.3, no transition**). CSV:
-`docs/dev/data/transition_mock_hybr.csv`; config: `scratch/transition/mock_hybr.param`.
+`docs/dev/data/transition_mock_hybr.csv`; config: `docs/dev/scratch/transition/mock_hybr.param`.
 
 **The legacy "transition at 0.089 Myr" was a clamp artifact.** On the clean hybr
 trajectory the current trigger **F0 never fires** (ratio_F0 ∈ [0.40, 0.85], never
@@ -156,7 +156,7 @@ the F2 diagnosis below. It is not units, and the mock actually starts adiabatic.
 ## Third data point — dense-flat HYBR (transitioning config, 2026-06-15)
 `tt_dense_flat` (1e6, n1e5, α=0), 57 implicit + 33 transition segs, transitions
 cleanly. CSV: `docs/dev/data/transition_dense_flat.csv`; config:
-`scratch/transition/dense_flat.param`.
+`docs/dev/scratch/transition/dense_flat.param`.
 
 - **Clock A** (t_trans): 0.0034 → **0.210 Myr**. **Clock B** (1c): 0.212 → 0.247,
   length **0.036 Myr**. **Eb-peak: t=0.197 Myr, INTERIOR** (the physical reference).
@@ -186,7 +186,7 @@ F1(η≈0.3) agree with the Eb-peak; F2 fires early.
 ## Fourth data point — steep HYBR (the stall/blowout crux, 2026-06-15)
 `tt_steep` (1e6, n1e5, α=−2), 73 implicit segs, **energy-driven to stop_t=1.0, no
 transition** (the stall). CSV: `docs/dev/data/transition_steep.csv`; config:
-`scratch/transition/steep.param`. rCloud = 23.4 pc.
+`docs/dev/scratch/transition/steep.param`. rCloud = 23.4 pc.
 
 - **Clock A**: 0.0034 → 1.0 (full run, never transitions). **Clock B absent.** Eb
   still rising at 1.0 (no peak).
@@ -235,7 +235,7 @@ set: F0/F1 (cooling) for flat-profile transitions; F4 (blowout) for steep.**
 `tt_steep_long` (same steep config, **stop_t=4.0**, 133 segs, energy-driven the
 whole way — no cooling transition). CSV:
 `docs/dev/data/transition_steep_long.csv`; config:
-`scratch/transition/steep_long.param`. Resolves both open G0 questions:
+`docs/dev/scratch/transition/steep_long.param`. Resolves both open G0 questions:
 
 - **BLOWOUT (F4) FIRES at t=2.728 Myr** (R2 crosses rCloud=23.4 pc) — steep's real
   transition, geometric not cooling. **It fires BEFORE the WR/SN surge (3.1–3.8)**,
@@ -316,7 +316,7 @@ The early-firing of F2 is **not** a unit bug and **not** "broken." Raw values
 
 ## P-sens (offline, 2026-06-15) — ε robust; sustained rule moot; reset pre-empted
 Family-agnostic P-sens on the committed CSVs (**no new runs**; F2-specific items
-1–2 skipped — F2 eliminated at G0). Script: `scratch/transition/psens.py`.
+1–2 skipped — F2 eliminated at G0). Script: `docs/dev/scratch/transition/psens.py`.
 
 **Item 5 — ε sensitivity** (F0 firing epoch vs `phaseSwitch_LlossLgain`):
 

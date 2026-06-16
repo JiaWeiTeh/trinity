@@ -19,7 +19,7 @@
 > 💾 **Persist diagnostics — commit, don't re-run.** The container is ephemeral
 > and full/hybr runs cost hours, so any diagnostic worth keeping must be saved as
 > a committed artifact (a CSV/table under `docs/dev/data/`, or a force-added
-> harness/figure under `scratch/` as the hybr work did) — never left in `/tmp` or
+> harness/figure under `docs/dev/scratch/` as the hybr work did) — never left in `/tmp` or
 > an untracked `outputs/`. A future visit must be able to reproduce or compare
 > against the numbers **without re-running**; record the exact config + command
 > that produced each artifact.
@@ -28,13 +28,13 @@ Companion to `docs/dev/BETADELTA_HYBR_PLAN.md` (plan v2). Baselines ran the
 production solver at worktree commit `1eda451` (code identical to main;
 docs-only commits after the merge base). Environment: Python 3.11,
 numpy 1.26.4, scipy 1.17.1, astropy 7.2.0. Harvest scripts:
-`scratch/phase0/harvest.py`, `scratch/phase0/predictor_test.py` (not
+`docs/dev/scratch/phase0/harvest.py`, `docs/dev/scratch/phase0/predictor_test.py` (not
 shipped). Convergence criterion throughout: legacy f-metric total
 (`residual_betaEdot² + residual_deltaT²`) < 1e-4 at the accepted point.
 
 ## Configs
 
-All four in `scratch/phase0/*.param` (uncommitted; contents inline):
+All four in `docs/dev/scratch/phase0/*.param` (uncommitted; contents inline):
 
 | run | mCloud | sfe | profile | nCore | rCore | nISM | stop_t |
 |---|---|---|---|---|---|---|---|

@@ -19,7 +19,7 @@
 > 💾 **Persist diagnostics — commit, don't re-run.** The container is ephemeral
 > and full/hybr runs cost hours, so any diagnostic worth keeping must be saved as
 > a committed artifact (a CSV/table under `docs/dev/data/`, or a force-added
-> harness/figure under `scratch/` as the hybr work did) — never left in `/tmp` or
+> harness/figure under `docs/dev/scratch/` as the hybr work did) — never left in `/tmp` or
 > an untracked `outputs/`. A future visit must be able to reproduce or compare
 > against the numbers **without re-running**; record the exact config + command
 > that produced each artifact.
@@ -64,7 +64,7 @@ the tree. Work branch: `bugfix/beta-delta-solver`.
    remains a *late-phase* hazard: the committed sample's late sign
    disagreement is consistent with Ėb crossing zero near the E_b peak.
 5. **Offline predictor / consistency-relation test**
-   (`scratch/phase0/predictor_test.py`): an analytic warm-start predictor
+   (`docs/dev/scratch/phase0/predictor_test.py`): an analytic warm-start predictor
    (β from the A12 inverse `Ebdot_to_cool_beta` on the balance estimate with
    the previous segment's L_loss; δ = (2/7)(2α − β − 1)) was tested against
    the accepted roots. On converged segments (the 1e6 run, n=76) it loses
@@ -302,8 +302,8 @@ passing arm promotes.** D over C only with a ≥15-point convergence margin or
 
 2.5 **Results — 2026-06-13** (full detail + stats tables + figures in
 `docs/dev/BETADELTA_PHASE2_ARMS.md`; regenerate with
-`python scratch/phase2/analyze_arms.py`. **Re-verify these numbers against the
-harness `scratch/phase2/arms.py` and the jsonl before acting — this section
+`python docs/dev/scratch/phase2/analyze_arms.py`. **Re-verify these numbers against the
+harness `docs/dev/scratch/phase2/arms.py` and the jsonl before acting — this section
 drifts like the rest of the doc.**) Two configs ran to completion:
 `arms_mock4e3` (0% baseline) and `arms_simple1e5` (~50% baseline).
 
@@ -570,8 +570,8 @@ through the inflow band. So on current evidence the inflow is **cosmetic**, and
 the obvious "clip v≥0" would change essentially nothing.
 
 ### Phase 6.0 — Gate: does it EVER contaminate? [DONE 2026-06-14]
-Ran six instrumented hybr configs (harness `scratch/phase6/hunt.py`, classifier
-`scratch/phase6/analyze_hunt.py`) probing deeper/longer β+δ surges — stronger SN
+Ran six instrumented hybr configs (harness `docs/dev/scratch/phase6/hunt.py`, classifier
+`docs/dev/scratch/phase6/analyze_hunt.py`) probing deeper/longer β+δ surges — stronger SN
 (sfe 0.01→0.30), denser core, long multi-epoch span, flat control. Per accepted
 segment: convergence, `Lloss`/`dMdt`/`Eb` smoothness across the band, and inflow
 extent (`v_neg_frac_thick`, `v_min`) vs β+δ. **909 segments, 100% converged.**
@@ -602,7 +602,7 @@ difference heuristic suggested before deconfounding.
 ### Phase 6.1 — Treatments + metric [DONE 2026-06-14 — arm C run, Problem 2 CLOSED]
 **Result: the inflow is empirically immaterial → no treatment needed.** Arm C
 (reject-and-hold) was run on the four real-inflow configs (harness
-`scratch/phase6/hunt.py --hold-inflow`, diff `scratch/phase6/compare_hold.py`):
+`docs/dev/scratch/phase6/hunt.py --hold-inflow`, diff `docs/dev/scratch/phase6/compare_hold.py`):
 deleting every inflow segment — a 9.6–42.8 % local kick to `dMdt` — moves the
 macro outputs (R2, v2, Eb, terminal momentum) by **≤0.04 %** (h1, the smallest
 bubble; the large bubbles ~0, h6 ~1e-9). Propagation is real, not a units/path

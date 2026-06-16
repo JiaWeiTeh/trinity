@@ -15,7 +15,7 @@ Two panels per frame (frame = energy-implicit segment):
   RIGHT : residual g at the accepted root vs t, per arm (g<1e-4 = converged).
 
 Needs pillow (matplotlib PillowWriter). No trinity / no venv required.
-  python scratch/phase2/make_arms_rootmap_gif.py [config]   # default arms_simple1e5
+  python docs/dev/scratch/phase2/make_arms_rootmap_gif.py [config]   # default arms_simple1e5
 Writes arms_rootmap_<config>.gif.
 """
 

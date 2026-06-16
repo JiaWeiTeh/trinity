@@ -47,7 +47,7 @@ Six panels, current time = the frame's t grid point:
   RIGHT F : shell radii vs t (log-log), both REAL runs: R2 (solid, inner edge) and
             rShell (dashed, outer edge), caged (black) vs hybr (blue).
 
-  python scratch/phase2/make_rootmap_gif.py
+  python docs/dev/scratch/phase2/make_rootmap_gif.py
 Writes rootmap_cage.gif.
 """
 

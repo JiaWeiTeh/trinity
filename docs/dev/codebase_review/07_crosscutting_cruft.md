@@ -24,7 +24,14 @@
 
 # 07 — Cross-cutting sweep & cruft
 
-**Scope.** A static, repo-wide hygiene/privacy audit from the perspective of a stranger who `git clone`s this public repo. I swept all tracked files (`git ls-files`, `git grep`, `git check-ignore`) for hardcoded machine/personal paths, secrets, committed generated artifacts, debug leftovers, TODO/FIXME markers, `.gitignore`-vs-tracked inconsistencies, the mandated `docs/dev/`/`docs/dev/` staleness banner, and confusing top-level dirs. The dominant real finding is a **65-file `scratch/` tree that `.gitignore` explicitly says is "kept locally, not tracked" yet is fully committed (~6.4 MB, mostly PNG/GIF/jsonl artifacts)**. Privacy is clean: the only email and personal name are the intentional author/contact attribution; there are no secrets, tokens, debug breakpoints, or `__pycache__`/`.DS_Store` junk tracked. The three files `.gitignore` flags as "Private" (`paper/barnes26/`, `test/test_barnes_population.py`, `movie.txt`) are confirmed **not** tracked — no leak. `outputs/mockOutput/` is confirmed by-design test fixtures (referenced by `test/test_cloudy_*.py` and `test/test_metadata.py`), not an accidental output dump.
+**Scope.** A static, repo-wide hygiene/privacy audit from the perspective of a stranger who `git clone`s this public repo. I swept all tracked files (`git ls-files`, `git grep`, `git check-ignore`) for hardcoded machine/personal paths, secrets, committed generated artifacts, debug leftovers, TODO/FIXME markers, `.gitignore`-vs-tracked inconsistencies, the mandated `docs/dev/` staleness banner, and confusing top-level dirs. The dominant real finding is a **65-file `scratch/` tree that `.gitignore` explicitly says is "kept locally, not tracked" yet is fully committed (~6.4 MB, mostly PNG/GIF/jsonl artifacts)**. Privacy is clean: the only email and personal name are the intentional author/contact attribution; there are no secrets, tokens, debug breakpoints, or `__pycache__`/`.DS_Store` junk tracked. The three files `.gitignore` flags as "Private" (`paper/barnes26/`, `test/test_barnes_population.py`, `movie.txt`) are confirmed **not** tracked — no leak. `outputs/mockOutput/` is confirmed by-design test fixtures (referenced by `test/test_cloudy_*.py` and `test/test_metadata.py`), not an accidental output dump.
+
+> 🔄 **Update (post-audit):** the `scratch/` tree discussed below was subsequently
+> **consolidated into `docs/dev/scratch/`**, and the top-level `.gitignore` rule
+> anchored to `/scratch/` — so `docs/dev/scratch/` is now *normally* tracked (the
+> ignored-but-tracked contradiction is resolved) and top-level `scratch/` is
+> local-only. The H1 finding below records the **original** state; see
+> `CODEBASE_REVIEW.md` → Status (Round 3) for the resolution.
 
 ---
 

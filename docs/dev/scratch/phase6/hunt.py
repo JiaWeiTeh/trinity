@@ -14,8 +14,8 @@ bubble_luminosity.py:1150) stops being cosmetic -- i.e. non-convergence in the
 band, a kink in Lloss/dMdt/Eb across it, or the band growing to dominate the
 bubble thickness. Touches no production code.
 
-    python scratch/phase6/hunt.py <param> --out docs/dev/data/hunt_<name>.csv
-    python scratch/phase6/hunt.py <param> --validate-only
+    python docs/dev/scratch/phase6/hunt.py <param> --out docs/dev/data/hunt_<name>.csv
+    python docs/dev/scratch/phase6/hunt.py <param> --validate-only
 """
 import argparse
 import csv

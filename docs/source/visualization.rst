@@ -16,7 +16,7 @@ package, under ``paper/methods/figures/``, with two entry points:
   under ``paper/methods/figures/`` (with shared infrastructure in
   ``paper/_lib/``); see *Published Paper Figures* below.
 - **Exploratory / personal scripts** — the broader catalogue below —
-  live under ``scratch/``. They are not part of the installed package
+  live under ``docs/dev/scratch/``. They are not part of the installed package
   and are run directly, writing to ``fig/{folder_name}/``.
 
 Each script is a thin wrapper around the :ref:`sec-trinity-reader`
@@ -98,7 +98,7 @@ script and bundle:
        trajectories.
 
 The remaining ``paper/methods/figures/`` script, ``paper_feedback.py``
-(*Force Budget Plots* below), and the ``scratch/`` catalogue are run
+(*Force Budget Plots* below), and the ``docs/dev/scratch/`` catalogue are run
 directly rather than through ``make_figures.py``.
 
 

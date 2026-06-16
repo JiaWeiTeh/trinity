@@ -19,7 +19,7 @@
 > 💾 **Persist diagnostics — commit, don't re-run.** The container is ephemeral
 > and full/hybr runs cost hours, so any diagnostic worth keeping must be saved as
 > a committed artifact (a CSV/table under `docs/dev/data/`, or a force-added
-> harness/figure under `scratch/` as the hybr work did) — never left in `/tmp` or
+> harness/figure under `docs/dev/scratch/` as the hybr work did) — never left in `/tmp` or
 > an untracked `outputs/`. A future visit must be able to reproduce or compare
 > against the numbers **without re-running**; record the exact config + command
 > that produced each artifact.
@@ -227,7 +227,7 @@ to settle — do **not** record it as "resolved".
 The Problem-2 open question above — *real transient or structure breakdown, and
 does it corrupt anything?* — got a dedicated **gate**
 (`docs/dev/BETADELTA_HYBR_PLAN.md` Phase 6.0). Six hybr runs were instrumented
-(harness `scratch/phase6/hunt.py`, which wraps `solve_betadelta_pure` and dumps
+(harness `docs/dev/scratch/phase6/hunt.py`, which wraps `solve_betadelta_pure` and dumps
 one row per accepted energy-implicit segment, reading the full `bubble_v_arr`
 for the velocity diagnostics) to hunt a regime where the inflow stops being
 cosmetic — non-convergence, a kink in `Lloss`/`dMdt`/`Eb` across the band, or
@@ -312,7 +312,7 @@ Expected low/no macro impact given the energy immunity and bounded dMdt response
 ### Phase 6.1 — counterfactual: the inflow IS immaterial (measured, 2026-06-14)
 
 The narrow 6.1 was run (harness `--hold-inflow`, classifier
-`scratch/phase6/compare_hold.py`): for the four configs with real inflow, every
+`docs/dev/scratch/phase6/compare_hold.py`): for the four configs with real inflow, every
 inflow segment was **rejected and held** (flagged `no_physical_root` so the
 runner holds the last physical structure — arm C, via the production hold path),
 and the held trajectory diffed against the accepted baseline.
@@ -429,9 +429,9 @@ python run.py <param: mCloud=1e6 sfe=0.01 densPL_alpha=-2 nCore=1e5 rCore=1 \
 # Phase 6.0 hunt: per-segment velocity diagnostics straight to CSV, plus the
 # Gate-G6 classifier (run single-thread to avoid BLAS oversubscription):
 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 \
-    python scratch/phase6/hunt.py scratch/phase6/h1_steep_base.param \
+    python docs/dev/scratch/phase6/hunt.py docs/dev/scratch/phase6/h1_steep_base.param \
     --out docs/dev/data/hunt_h1_steep_base.csv
-python scratch/phase6/analyze_hunt.py docs/dev/data/hunt_h*.csv   # G6 verdict
+python docs/dev/scratch/phase6/analyze_hunt.py docs/dev/data/hunt_h*.csv   # G6 verdict
 ```
 
 Phase-6-specific plots worth making from the hunt CSVs:
@@ -443,7 +443,7 @@ Phase-6-specific plots worth making from the hunt CSVs:
   dMdt step *leads* β+δ<0 (surge-driven), and inspect h6's lagged onset step.
 
 Note: the original two CSVs were captured from `/tmp` scratch; the hunt harness
-+ configs live in `scratch/phase6/` (gitignored scratch — present locally).
++ configs live in `docs/dev/scratch/phase6/` (gitignored scratch — present locally).
 Re-run to extend `stop_t` (does the steep bubble *ever* transition once the SN
 epoch ends, ~40 Myr?) — that is the open endpoint.
 question.

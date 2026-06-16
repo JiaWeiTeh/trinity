@@ -1,4 +1,4 @@
-# scratch/phase6 — velocity-structure ("Problem 2") hunt & treatment tooling
+# docs/dev/scratch/phase6 — velocity-structure ("Problem 2") hunt & treatment tooling
 
 Harness/tooling for **Phase 6** of the β–δ hybr study: does the transient inner
 inflow (negative interior velocity during a feedback re-pressurisation) ever
@@ -31,5 +31,5 @@ contaminate anything? **Not source.** Canonical writeup:
 | **h5 long**  | 0.03 | 3e4 | −2 | 1e5 | 8 | full WR→SN→decline |
 | **h6 flat**  | 0.30 | 3e5 |  0 | 1e3 | 6 | flat control |
 
-Plots from these CSVs: `scratch/phase2/plot_hunt.py` (`hunt_trigger/massdep/dmdt_leads`).
-See `scratch/phase2/README.md` for the full run-name glossary and the other phases.
+Plots from these CSVs: `docs/dev/scratch/phase2/plot_hunt.py` (`hunt_trigger/massdep/dmdt_leads`).
+See `docs/dev/scratch/phase2/README.md` for the full run-name glossary and the other phases.

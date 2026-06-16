@@ -7,7 +7,7 @@ Family-agnostic P-sens items from TRANSITION_TRIGGER_PLAN.md (F2-specific items
   plus the structural test: does the transition (cooling OR blowout) fire BEFORE
   the first WR/SN surge (beta<0)? If so the reset pathology is moot in practice.
 
-Usage: python scratch/transition/psens.py
+Usage: python docs/dev/scratch/transition/psens.py
 """
 import csv
 

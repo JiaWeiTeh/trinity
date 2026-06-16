@@ -104,13 +104,12 @@ source/tests/tools/docs was repointed.
 - `flake8` → ruff/pre-commit across the `[dev]` extra, `requirements.txt`, and CONTRIBUTING.
 - Paper citation → `Teh et al. (2026), arXiv:2605.27517` in `publications.rst` + `license.rst` (matches README; confirmed on arXiv by the author).
 
+*Round 3 — structure (`docs/dev/` consolidation):*
+- `analysis/` folded into `docs/dev/` (audits, plan docs, `data/`, `archive/`); all references repointed; merged `main` (PR #687) and folded its new `analysis/` docs in too.
+- **`scratch/` consolidated → `docs/dev/scratch/`** (all 81 files). The top-level `.gitignore` rule was anchored to `/scratch/`, so `docs/dev/scratch/` is now **normally tracked** — resolving H1's original ignored-but-tracked contradiction — while `scratch/` stays local-only. The 💾 persist convention now commits diagnostics under `docs/dev/`.
+- Banners: 🔄 living + 💾 persist added to the review master + all 7 section files.
+
 **Flagged, deliberately NOT changed here** (deletions or needs-a-decision):
-- **H1 `scratch/` is NOT de-tracked.** Reversed the audit's first instinct: the
-  `💾 Persist diagnostics` convention (`docs/dev/TRANSITION_TRIGGER_PLAN.md`, on
-  `main`) explicitly says kept diagnostics may be *force-added* under `scratch/`,
-  so the 65 tracked files are most likely **intentional** persisted artifacts,
-  not accidental cruft. Whether `scratch/` is the right home is a structure
-  decision (see open questions), not a clear bug.
 - H4 / dead modules `input_warnings.py`, `read_mist_models.py`, unused solvers — deletions (CLAUDE.md rule 3: flag, don't silently delete).
 - Packaging: `package-data` / `MANIFEST.in` data-glob gap.
 - Cloudy README run-dir layout rewrite; CWD-relative cloudy test paths; inert `output_format` knob.

@@ -19,7 +19,7 @@
 > 💾 **Persist diagnostics — commit, don't re-run.** The container is ephemeral
 > and full/hybr runs cost hours, so any diagnostic worth keeping must be saved as
 > a committed artifact (a CSV/table under `docs/dev/data/`, or a force-added
-> harness/figure under `scratch/` as the hybr work did) — never left in `/tmp` or
+> harness/figure under `docs/dev/scratch/` as the hybr work did) — never left in `/tmp` or
 > an untracked `outputs/`. A future visit must be able to reproduce or compare
 > against the numbers **without re-running**; record the exact config + command
 > that produced each artifact.
@@ -32,7 +32,7 @@ candidate trigger; production changes only if the evidence passes a
 pre-registered gate. It is designed so that
 "the proposed trigger is not better" is a valid, publishable conclusion — not a
 failure. Background data: `docs/dev/stalling-energy-phase.md`,
-`docs/dev/BETADELTA_PHASE2_ARMS.md`; figures `scratch/phase2/phase3_regime.png`
+`docs/dev/BETADELTA_PHASE2_ARMS.md`; figures `docs/dev/scratch/phase2/phase3_regime.png`
 (headline). Work branch: `fix/transition-trigger` (optional per-phase
 sub-branches, e.g. `fix/transition-trigger/p0-harvest`).
 
@@ -167,7 +167,7 @@ conclusion to *earn* from the harvest, not assume.
 - **Reuse the existing config set — no new physics invented:** dense-flat
   (1e6, n1e5), normal-flat/"typical" (1e6, n1e3), **steep (1e6, α=−2) — include,
   it is the crux**, mock (4e3), simple (1e5, sfe 0.3), and the hunt sweep h1–h6
-  (`scratch/phase6/`). Add at least one config with a strong WR/SN luminosity jump
+  (`docs/dev/scratch/phase6/`). Add at least one config with a strong WR/SN luminosity jump
   (the reset is sharpest there). These bracket transition / long-delay / stall /
   feedback-surge / blowout.
 - **Pre-registered gates**, both banner paragraphs on every results doc.
