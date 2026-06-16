@@ -43,7 +43,7 @@ References:
 - Ebert (1955): Z. Astrophys. 37, 217
 - Rahner et al. (2017): MNRAS 470, 4453
 
-@author: TRINITY Team (integrated from analysis/bonnorEbert/)
+@author: TRINITY Team (integrated from a standalone Bonnor-Ebert prototype)
 """
 
 import numpy as np

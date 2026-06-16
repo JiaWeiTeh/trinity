@@ -35,6 +35,7 @@ lib/default/      bundled SB99 SPS + cooling tables (quickstart runs out of the 
 test/             pytest suite (test_*.py)
 tools/            small CLI utilities (param generation, audits, output comparisons)
 docs/             Sphinx source (docs/source) built into docs/build
+  dev/            internal plan & audit write-ups (incl. CODEBASE_REVIEW.md) — not built, may be stale
 paper/            scripts + committed .npz data that regenerate published figures
 ```
 
@@ -68,14 +69,14 @@ Generated / scratch — not source, do not tidy or treat as ground truth: `outpu
 4. **Verify.** Turn tasks into checks: bug → write a failing test, then fix; feature → test the
    invalid inputs, then pass; refactor → tests green before and after. Run `pytest` before declaring done.
 
-## `analysis/` & `docs/dev/` plan docs are unverified
+## `docs/dev/` plan & audit docs are unverified
 
-The `analysis/*.md` files and the plan/skeleton docs under `docs/dev/` are point-in-time
-audits/plans, not a maintained spec. They go stale fast — paths, line numbers, and "what shipped"
-status drift as the code moves. When reading one: do not treat it as ground truth — flag that it may
-be outdated and re-verify every claim, snippet, and line reference against current source. Every such
-doc must carry this banner at the top, right under the H1, and any new analysis or `docs/dev/` plan
-doc must include it:
+The plan, audit, and write-up docs under `docs/dev/` (this is where such docs live now — the old
+top-level `analysis/` directory was folded in here) are point-in-time audits/plans, not a maintained
+spec. They go stale fast — paths, line numbers, and "what shipped" status drift as the code moves.
+When reading one: do not treat it as ground truth — flag that it may be outdated and re-verify every
+claim, snippet, and line reference against current source. Every such doc must carry this banner at
+the top, right under the H1, and any new `docs/dev/` doc must include it:
 
 ```markdown
 > ⚠️ **This document may be out of date — verify before trusting it.** It is a

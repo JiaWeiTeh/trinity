@@ -7,7 +7,7 @@
 
 # 07 — Cross-cutting sweep & cruft
 
-**Scope.** A static, repo-wide hygiene/privacy audit from the perspective of a stranger who `git clone`s this public repo. I swept all tracked files (`git ls-files`, `git grep`, `git check-ignore`) for hardcoded machine/personal paths, secrets, committed generated artifacts, debug leftovers, TODO/FIXME markers, `.gitignore`-vs-tracked inconsistencies, the mandated `analysis/`/`docs/dev/` staleness banner, and confusing top-level dirs. The dominant real finding is a **65-file `scratch/` tree that `.gitignore` explicitly says is "kept locally, not tracked" yet is fully committed (~6.4 MB, mostly PNG/GIF/jsonl artifacts)**. Privacy is clean: the only email and personal name are the intentional author/contact attribution; there are no secrets, tokens, debug breakpoints, or `__pycache__`/`.DS_Store` junk tracked. The three files `.gitignore` flags as "Private" (`paper/barnes26/`, `test/test_barnes_population.py`, `movie.txt`) are confirmed **not** tracked — no leak. `outputs/mockOutput/` is confirmed by-design test fixtures (referenced by `test/test_cloudy_*.py` and `test/test_metadata.py`), not an accidental output dump.
+**Scope.** A static, repo-wide hygiene/privacy audit from the perspective of a stranger who `git clone`s this public repo. I swept all tracked files (`git ls-files`, `git grep`, `git check-ignore`) for hardcoded machine/personal paths, secrets, committed generated artifacts, debug leftovers, TODO/FIXME markers, `.gitignore`-vs-tracked inconsistencies, the mandated `docs/dev/`/`docs/dev/` staleness banner, and confusing top-level dirs. The dominant real finding is a **65-file `scratch/` tree that `.gitignore` explicitly says is "kept locally, not tracked" yet is fully committed (~6.4 MB, mostly PNG/GIF/jsonl artifacts)**. Privacy is clean: the only email and personal name are the intentional author/contact attribution; there are no secrets, tokens, debug breakpoints, or `__pycache__`/`.DS_Store` junk tracked. The three files `.gitignore` flags as "Private" (`paper/barnes26/`, `test/test_barnes_population.py`, `movie.txt`) are confirmed **not** tracked — no leak. `outputs/mockOutput/` is confirmed by-design test fixtures (referenced by `test/test_cloudy_*.py` and `test/test_metadata.py`), not an accidental output dump.
 
 ---
 
@@ -16,8 +16,8 @@
 ### [🔴] `scratch/` is `.gitignore`d as "kept locally, not tracked" but 65 files are committed (6.4 MB of scratch artifacts)
 - **Where:** `scratch/phase2/` (55 files) + `scratch/phase6/` (10 files) = 65 tracked files; ignore rule at `.gitignore:30` (`scratch/`, under header `# Personal scratch/test config — kept locally, not tracked`). Confirmed via `git check-ignore --no-index --verbose` matching every scratch path to `.gitignore:30`. Total ≈ 6.4 MB.
 - **Issue:** The `.gitignore` header (`.gitignore:29-30`) declares scratch private/untracked, but the tree was committed before the rule (or `git add -f`'d). Contents are explicitly non-source, self-described as regenerable: `scratch/phase2/README.md:1` "**Not source** — regenerable"; `scratch/phase6/README.md` "**Not source.**". Bulk is binary/generated diagnostics: 18 `.png`, 3 `.gif`, 14 `.jsonl`, 13 `.param`, 15 `.py`, 2 README. Largest: `scratch/phase2/rootmap_cage.gif` (1.6 MB), `scratch/phase2/arms_rootmap_simple1e5.gif` (424 KB), `scratch/phase2/arms_rootmap_mock4e3.gif` (376 KB), `scratch/phase2/cage_compare.png` (220 KB).
-- **Impact (git-puller):** A cloner downloads 6.4 MB of one developer's private diagnostic plots/GIFs/run logs that CLAUDE.md itself says are "do not treat as ground truth" (CLAUDE.md, generated/scratch list). The ignored-but-tracked state is confusing: a contributor editing these sees them staged-by-default yet `.gitignore` claims they're local-only, so new scratch files silently won't be tracked while old ones are. It bloats the repo with non-reproducible binaries and blurs what is canonical (the real writeups live in `analysis/*.md` and `docs/dev/*.md`, which the scratch READMEs point to).
-- **Fix:** Decide intent. If scratch is genuinely meant to be local: `git rm -r --cached scratch/` and commit (keeps files on disk, honors the existing `.gitignore:30` rule). If these diagnostics are meant to be shared, move the canonical CSVs that plot scripts actually read (already at `analysis/data/`) and drop the binaries, then remove or scope the `scratch/` ignore rule so the state is self-consistent. Either way the current "ignored but tracked" contradiction should not ship.
+- **Impact (git-puller):** A cloner downloads 6.4 MB of one developer's private diagnostic plots/GIFs/run logs that CLAUDE.md itself says are "do not treat as ground truth" (CLAUDE.md, generated/scratch list). The ignored-but-tracked state is confusing: a contributor editing these sees them staged-by-default yet `.gitignore` claims they're local-only, so new scratch files silently won't be tracked while old ones are. It bloats the repo with non-reproducible binaries and blurs what is canonical (the real writeups live in `docs/dev/*.md` and `docs/dev/*.md`, which the scratch READMEs point to).
+- **Fix:** Decide intent. If scratch is genuinely meant to be local: `git rm -r --cached scratch/` and commit (keeps files on disk, honors the existing `.gitignore:30` rule). If these diagnostics are meant to be shared, move the canonical CSVs that plot scripts actually read (already at `docs/dev/data/`) and drop the binaries, then remove or scope the `scratch/` ignore rule so the state is self-consistent. Either way the current "ignored but tracked" contradiction should not ship.
 
 ---
 
@@ -25,15 +25,15 @@
 
 ### [🟠] Committed binary/generated artifacts under `scratch/` (PNG/GIF/jsonl run dumps)
 - **Where:** `scratch/phase2/` — 18 PNG, 3 GIF, 14 jsonl. E.g. `scratch/phase2/rootmap_cage.gif` (1.6 MB), `scratch/phase2/probe_cloud1e6.jsonl` (168 KB), `scratch/phase2/arms_rootmap.png` (184 KB).
-- **Issue:** These are generated diagnostic figures and raw `.jsonl` simulation outputs, not source or fixtures used by the test suite (no `test/*` references them; tests use `outputs/mockOutput/` and `analysis/data/`). They are the byte-bulk inside the High finding above and are independently bad source-repo hygiene.
+- **Issue:** These are generated diagnostic figures and raw `.jsonl` simulation outputs, not source or fixtures used by the test suite (no `test/*` references them; tests use `outputs/mockOutput/` and `docs/dev/data/`). They are the byte-bulk inside the High finding above and are independently bad source-repo hygiene.
 - **Impact (git-puller):** Repo carries megabytes of non-reproducible, non-fixture binaries that git cannot meaningfully diff; every clone/fetch pays for them forever in history.
-- **Fix:** Remove from tracking together with the `scratch/` cleanup (`git rm -r --cached scratch/`). If any single CSV is genuinely an input to a committed plot script, relocate that CSV to `analysis/data/` (where the canonical ones already live per `scratch/phase2/README.md:75`) and drop the rest.
+- **Fix:** Remove from tracking together with the `scratch/` cleanup (`git rm -r --cached scratch/`). If any single CSV is genuinely an input to a committed plot script, relocate that CSV to `docs/dev/data/` (where the canonical ones already live per `scratch/phase2/README.md:75`) and drop the rest.
 
-### [🟠] `analysis/archive/README.md` is missing the mandatory staleness banner
-- **Where:** `analysis/archive/README.md:1-9` (no `> ⚠️ This document may be out of date` block under the H1).
-- **Issue:** CLAUDE.md mandates every `analysis/*.md` and `docs/dev/*.md` doc carry the staleness banner directly under the H1. I checked all 17 such docs (excluding this review's own files): **16 have it, 1 does not** — `analysis/archive/README.md`. Its body does carry a bespoke "everything here has shipped / verify against source" caution, so the spirit is met, but the exact mandated banner is absent.
+### [🟠] `docs/dev/archive/README.md` is missing the mandatory staleness banner
+- **Where:** `docs/dev/archive/README.md:1-9` (no `> ⚠️ This document may be out of date` block under the H1).
+- **Issue:** CLAUDE.md mandates every `docs/dev/*.md` and `docs/dev/*.md` doc carry the staleness banner directly under the H1. I checked all 17 such docs (excluding this review's own files): **16 have it, 1 does not** — `docs/dev/archive/README.md`. Its body does carry a bespoke "everything here has shipped / verify against source" caution, so the spirit is met, but the exact mandated banner is absent.
 - **Impact (git-puller):** Minor inconsistency with the project's own documented rule; a reader auditing doc hygiene will flag it as the one offender. Low real-world risk because the file already warns it is historical.
-- **Fix:** Add the standard banner block under the `# analysis/archive` H1 (the README can keep its extra historical-context note below it).
+- **Fix:** Add the standard banner block under the `# docs/dev/archive` H1 (the README can keep its extra historical-context note below it).
 
 ### [🟠] `.gitignore` contains wrapped/garbled comment lines (copy-paste formatting damage)
 - **Where:** `.gitignore` — comment lines wrapped mid-sentence so the continuation is no longer a `#` comment, e.g. `:77` `into it.`, `:134` `the code is`, `:140` `Pipfile.lock in version control.`, `:155` a bare `https://python-poetry.org/...` URL, `:216` a bare `https://github.com/github/gitignore/...` URL.
@@ -85,7 +85,7 @@ All tracked `*.py` (19 hits; no FIXME/XXX/HACK found). The 3 `test_cloudy_cli.py
 | `trinity/shell_structure/get_shellODE.py:19` | TODO | `# TODO: add cover fraction cf (f_cover)` |
 | `trinity/shell_structure/shell_structure.py:105` | TODO | `# TODO: Add f_cover from fragmentation mechanics` |
 
-(Markdown docs also contain "TODO" in prose — `analysis/backward-compat-audit.md:15,96,105`, `trinity/_output/cloudy/README.md:142` — these are documentation about TODOs, not actionable code markers.)
+(Markdown docs also contain "TODO" in prose — `docs/dev/backward-compat-audit.md:15,96,105`, `trinity/_output/cloudy/README.md:142` — these are documentation about TODOs, not actionable code markers.)
 
 ---
 
@@ -110,14 +110,14 @@ Only **one** real ignored-but-tracked inconsistency: `scratch/`. The whitelist-b
 
 ## Top-level / confusing dirs
 
-Tracked-file counts (`git ls-files`): `scratch/` = 65 (🔴), `outputs/` = 19 (by-design fixtures, all `mockOutput/`), `analysis/` = 22 docs+data. **Not tracked / absent** (gitignored or empty, so no clone confusion): `fig/`, `tbd/`, `old_doNotRead/`, `paper/plots/`, `txt/`, `jobs/` — all 0 tracked files. CLAUDE.md lists `outputs/ fig/ scratch/ tbd/ old_doNotRead/` as generated/scratch; of these only `scratch/` actually ships content into a clone, which is exactly the contradiction flagged above.
+Tracked-file counts (`git ls-files`): `scratch/` = 65 (🔴), `outputs/` = 19 (by-design fixtures, all `mockOutput/`), `docs/dev/` = 22 docs+data. **Not tracked / absent** (gitignored or empty, so no clone confusion): `fig/`, `tbd/`, `old_doNotRead/`, `paper/plots/`, `txt/`, `jobs/` — all 0 tracked files. CLAUDE.md lists `outputs/ fig/ scratch/ tbd/ old_doNotRead/` as generated/scratch; of these only `scratch/` actually ships content into a clone, which is exactly the contradiction flagged above.
 
 ## Privacy / secrets summary (all clear)
 
 - **Emails:** 1 only — `README.md:99` `<jiaweiteh.astro@gmail.com>` (intentional contact for "available on request" data). `pyproject.toml` author block (`:12-14`) lists name only, no email. ✅ By-design.
 - **Names:** all author attribution (`@author: Jia Wei Teh` headers, `docs/source/conf.py:19-20`, `trinity/__init__.py:23`, `trinity/_output/header.py:54` `© J.W. Teh, R.S. Klessen, S.C.O. Glover, K. Kreckel`) or cited-paper authors (Rahner, Teh et al. 2026). ✅ By-design.
 - **Secrets/tokens:** none. Every `git grep` hit for `token`/`key`/`secret` is tokenizer/parser code (`sps/sps_columns.py`, `sweep_parser.py`) or dict keys. No API keys, passwords, SSH/PEM material.
-- **Machine/HPC paths:** no real personal absolute paths in *source*. `/home/user/trinity/...` appears only inside `analysis/*.md` audit docs (not code). HPC references (`bwForCluster Helix`, `bwUniCluster`, `sbatch`) are documented SLURM support with placeholder `--account=YOUR_ACCOUNT` (`trinity/_input/sweep_jobs.py:58-60`, `README.md:70-76`, `run.py:22`) — ✅ by-design, no real account/host leaked.
+- **Machine/HPC paths:** no real personal absolute paths in *source*. `/home/user/trinity/...` appears only inside `docs/dev/*.md` audit docs (not code). HPC references (`bwForCluster Helix`, `bwUniCluster`, `sbatch`) are documented SLURM support with placeholder `--account=YOUR_ACCOUNT` (`trinity/_input/sweep_jobs.py:58-60`, `README.md:70-76`, `run.py:22`) — ✅ by-design, no real account/host leaked.
 - **Debug leftovers:** none — 0 `breakpoint()`/`pdb`/`set_trace` in tracked `*.py`.
 
 ## Counts: 1 high / 3 medium / 2 low

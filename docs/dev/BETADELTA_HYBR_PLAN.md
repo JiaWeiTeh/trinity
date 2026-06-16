@@ -150,7 +150,7 @@ example"):** re-scope to Phase 1 + hygiene only if **no** config shows
 material non-convergence (>15% of segments) **and** no cap/bound saturation.
 The interim table already passes this gate; the draft's version would have
 cancelled the program while keeping the one change the data shows to be a
-no-op. Record in the results doc (`analysis/`, with staleness banner): on
+no-op. Record in the results doc (`docs/dev/`, with staleness banner): on
 affected configs, production implicit-phase E_b(t) integrates clamped,
 lagged β — a Paper-I-relevant caveat independent of any fix.
 
@@ -284,7 +284,7 @@ passing arm promotes.** D over C only with a ≥15-point convergence margin or
 ≥3× fewer evaluations at equal convergence.
 
 2.5 **Results — 2026-06-13** (full detail + stats tables + figures in
-`analysis/BETADELTA_PHASE2_ARMS.md`; regenerate with
+`docs/dev/BETADELTA_PHASE2_ARMS.md`; regenerate with
 `python scratch/phase2/analyze_arms.py`. **Re-verify these numbers against the
 harness `scratch/phase2/arms.py` and the jsonl before acting — this section
 drifts like the rest of the doc.**) Two configs ran to completion:
@@ -483,8 +483,8 @@ The implicit→momentum transition is the cooling-balance event
   can never fire while the cluster is still in its wind/SN epoch — the criterion
   must be feedback/dynamics-aware (reinforces the force-ratio / blowout
   alternatives below). Full per-segment data + the Lmech_W/SN split:
-  `analysis/stalling-energy-phase.md`,
-  `analysis/data/stalling_{steep_1e6_alpha-2,mock_4e3}.csv`. Legacy could never
+  `docs/dev/stalling-energy-phase.md`,
+  `docs/dev/data/stalling_{steep_1e6_alpha-2,mock_4e3}.csv`. Legacy could never
   show this (β pinned ≥0).
 - **Is the energy-ratio criterion physically sound?** It marks "E_b stops
   *growing*", not "the bubble pressure force stops *driving* the shell". The
@@ -540,7 +540,7 @@ Measured (`sweep_steep`, 1e6 M☉ α=−2): 4 of 133 segments, all during the WR
 wind surge (β+δ ∈ [−1.11, −0.49]); the negative band is the inner ~2–73 % of the
 bubble thickness, `v_min ≈ −0.1…−0.6` pc/Myr vs shell `v2 ≈ 10` (a ~1–6 %
 reversal). **Driven by β+δ, not β:** the mock (β to −1.04) keeps (β+δ)_min=+0.25
-and has **zero** real inflow segments. Data: `analysis/data/stalling_*.csv`
+and has **zero** real inflow segments. Data: `docs/dev/data/stalling_*.csv`
 (`v_struct_min`, `v_struct_nneg`, `beta_plus_delta` columns).
 
 **Impact is probably negligible — confirm before treating.** The cooling
@@ -558,8 +558,8 @@ Ran six instrumented hybr configs (harness `scratch/phase6/hunt.py`, classifier
 (sfe 0.01→0.30), denser core, long multi-epoch span, flat control. Per accepted
 segment: convergence, `Lloss`/`dMdt`/`Eb` smoothness across the band, and inflow
 extent (`v_neg_frac_thick`, `v_min`) vs β+δ. **909 segments, 100% converged.**
-Full write-up + plottable data: `analysis/stalling-energy-phase.md`
-(§ "Phase 6.0 contamination hunt") and `analysis/data/hunt_*.csv`.
+Full write-up + plottable data: `docs/dev/stalling-energy-phase.md`
+(§ "Phase 6.0 contamination hunt") and `docs/dev/data/hunt_*.csv`.
 
 **Gate G6 result — marginally OPEN, on one bounded channel; cosmetic in 5/6:**
 - **No non-convergence anywhere** (the cleanest contamination signal — absent).
@@ -591,7 +591,7 @@ macro outputs (R2, v2, Eb, terminal momentum) by **≤0.04 %** (h1, the smallest
 bubble; the large bubbles ~0, h6 ~1e-9). Propagation is real, not a units/path
 artefact (deltas are relative; the held Eb deviates 0.63 % *during* the band then
 recovers), so the smallness is physical — the band is brief and `dMdt` is a small
-term. Full table + reasoning: `analysis/stalling-energy-phase.md` (§ "Phase 6.1
+term. Full table + reasoning: `docs/dev/stalling-energy-phase.md` (§ "Phase 6.1
 — counterfactual"). Shipped the diagnostic-only `v_neg_frac_thick` snapshot field
 (registry + `COOLING_PHASE_KEYS`) as the tripwire; **arm A (accept) stands.**
 
@@ -640,7 +640,7 @@ be wrong, so 6.0's job is as much to *understand* as to gate.
    maintainer confirmed these are physical states the model should occupy.
    Phase 3 replaces the artificial β/δ box with physical acceptance gates —
    `dMdt > 0`, finite/valid structure — not wider arbitrary rails. (Re-verify
-   the root ranges against `analysis/BETADELTA_PHASE2_ARMS.md` and the jsonl
+   the root ranges against `docs/dev/BETADELTA_PHASE2_ARMS.md` and the jsonl
    before encoding any specific bound.)
 3. Confirm or adjust the G2 promotion margins (≥80% convergence, 15-point /
    3× margins) before Phase 2 runs.

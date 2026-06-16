@@ -7,7 +7,7 @@
 > be stale and re-check each claim, snippet, and line reference against the
 > current source before relying on it.**
 
-Companion to `analysis/bubble-integrator-robustness.md` (the "T_init=3e4"
+Companion to `docs/dev/bubble-integrator-robustness.md` (the "T_init=3e4"
 boundary-transient discussion). That doc established *what* the 3e4 boundary is
 (a numerical anchor, not a physical temperature). This doc answers the
 follow-up: **does the bubble cooling luminosity actually depend on the choice of

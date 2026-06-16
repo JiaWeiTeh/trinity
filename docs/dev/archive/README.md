@@ -1,4 +1,4 @@
-# analysis/archive
+# docs/dev/archive
 
 Completed or superseded analysis docs, kept for historical reference only.
 

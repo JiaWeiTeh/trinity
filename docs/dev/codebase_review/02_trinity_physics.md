@@ -89,10 +89,10 @@ not run-breakers.
 
 ### [🟠] Dead/unused alternative code paths kept in production physics files (not referenced anywhere in the package or `run.py`)
 - **Where:**
-  - `trinity/phase1_energy/run_energy_phase.py:343` `run_energy_continuous(params)` — "Alternative implementation"; `git grep` finds it only in `analysis/*.md`, never imported/called.
+  - `trinity/phase1_energy/run_energy_phase.py:343` `run_energy_continuous(params)` — "Alternative implementation"; `git grep` finds it only in `docs/dev/*.md`, never imported/called.
   - `trinity/bubble_structure/bubble_luminosity.py:875` `_create_adaptive_radius_grid(...)` — docstring says "CURRENTLY UNUSED (kept for reference)".
   - `trinity/bubble_structure/bubble_luminosity.py:1002` `_solve_bubble_ode_with_ivp(...)` — docstring says "Alternative solve_ivp wrapper (CURRENTLY UNUSED)".
-  - `trinity/bubble_structure/get_bubbleParams.py:232` `bubble_P2E(...)` — inverse of `bubble_E2P`; only referenced in `analysis/*.md`, not in package code. It also takes **astropy Quantity** inputs while its inverse `bubble_E2P` takes raw cgs floats (`get_bubbleParams.py:198-230`), an internal API-style inconsistency.
+  - `trinity/bubble_structure/get_bubbleParams.py:232` `bubble_P2E(...)` — inverse of `bubble_E2P`; only referenced in `docs/dev/*.md`, not in package code. It also takes **astropy Quantity** inputs while its inverse `bubble_E2P` takes raw cgs floats (`get_bubbleParams.py:198-230`), an internal API-style inconsistency.
 - **Issue:** These are self-labeled dead/alternative functions left in the most performance- and correctness-critical physics module. They aren't broken, but they pad the file a stranger must read to understand the live path and (in `bubble_P2E`'s case) advertise a units convention (astropy Quantity) that no other function in the module uses.
 - **Impact (git-puller):** A reader auditing the bubble solver wastes time on `_create_adaptive_radius_grid` / `_solve_bubble_ode_with_ivp` / `run_energy_continuous` before realizing the legacy grid + `_solve_bubble_structure` + segment loop are the only live paths.
 - **Fix:** Per CLAUDE.md rule 3, don't delete pre-existing dead code as part of an unrelated change — but these should be flagged for removal (or moved to a `scratch/`-style location). If `bubble_P2E` is kept, align it to the same raw-cgs-float convention as `bubble_E2P` or clearly document why it diverges.

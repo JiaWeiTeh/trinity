@@ -21,7 +21,7 @@
 Multi-agent, multi-phase review. **Phase 1** mapped the repo and established
 ground truth (deps, entry point, test collection). **Phase 2** partitioned the
 codebase into seven areas; one sub-agent audited each in parallel and wrote its
-findings to a section file under `analysis/codebase_review/`. **Phase 3** (this
+findings to a section file under `docs/dev/codebase_review/`. **Phase 3** (this
 file) consolidates them, after independent spot-verification of every
 High-severity finding against the source.
 
@@ -51,7 +51,7 @@ astropy 7.2, matplotlib 3.11, pandas 2.3), so beyond the static audit:
 | 04 | Docs (`README`, `CLAUDE.md`, `CONTRIBUTING`, `CHANGELOG`, `docs/`) | `codebase_review/04_docs.md` | 1 / 5 / 4 |
 | 05 | Tests (`test/`) | `codebase_review/05_tests.md` | 0 / 0 / 2 |
 | 06 | `tools/`, `paper/`, `lib/` | `codebase_review/06_tools_paper_lib.md` | 0 / 2 / 2 |
-| 07 | Cross-cutting sweep & cruft (`scratch/`, `outputs/`, `analysis/`, repo-wide) | `codebase_review/07_crosscutting_cruft.md` | 1 / 3 / 2 |
+| 07 | Cross-cutting sweep & cruft (`scratch/`, `outputs/`, `docs/dev/`, repo-wide) | `codebase_review/07_crosscutting_cruft.md` | 1 / 3 / 2 |
 | | **Total** | | **4 / 24 / 24 = 52** |
 
 ---
@@ -166,7 +166,7 @@ trust signal of a public scientific code.
 | `flake8` advertised in `[dev]` extra / `requirements.txt` / CONTRIBUTING, but the project lints with **ruff** (no flake8 config exists). | `pyproject.toml:50`, `requirements.txt:16-20`, `CONTRIBUTING.md:11-15` | 03, 04 |
 | `.pre-commit-config.yaml` comment blames a "pre-existing TOML issue" in `pyproject.toml` that doesn't exist (file parses as valid TOML). | `.pre-commit-config.yaml:26-29` | 03 |
 | Committed binary/generated artifacts under `scratch/` (18 PNG, 3 GIF incl. 1.6 MB, 14 jsonl); not test fixtures. | `scratch/phase2/`, `scratch/phase6/` | 07 |
-| `analysis/archive/README.md` missing the staleness banner CLAUDE.md mandates (1 of 17 such docs). | `analysis/archive/README.md` | 07 |
+| `docs/dev/archive/README.md` missing the staleness banner CLAUDE.md mandates (1 of 17 such docs). | `docs/dev/archive/README.md` | 07 |
 | `.gitignore` has wrapped/garbled comment lines (continuations lost their `#`). | `.gitignore:77,134,140,155,216` | 03, 07 |
 
 > The 04 section self-counts 5 Medium; the table above lists the four

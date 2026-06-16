@@ -15,8 +15,8 @@
 > was instead **deleted**, commit `b4e2996`).
 
 Single source of truth for three structural changes raised in the
-codebase review, in the same shape as `analysis/sb99-refactor-audit.md`
-and `analysis/cooling-refactor-audit.md`: (Part I) the audit — *what is*
+codebase review, in the same shape as `docs/dev/sb99-refactor-audit.md`
+and `docs/dev/cooling-refactor-audit.md`: (Part I) the audit — *what is*
 — with measured blast radii, and (Part II) the phased plan and its
 equivalence-test battery — *what to do, in what order, and how to prove
 nothing changed*.
@@ -254,7 +254,7 @@ without blocking A and B.
 **A separate, behavior-AFFECTING follow-up — sequenced dead last —** is the
 flaky `MonotonicError` robustness fix. It is deliberately *not* part of the
 A–C restructure (those are byte-preserving; this one changes a runtime code
-path), so it lives in its own doc, `analysis/bubble-integrator-robustness.md`,
+path), so it lives in its own doc, `docs/dev/bubble-integrator-robustness.md`,
 and must land after the structural churn settles. Status: A/B/C all
 executed; integrator: planned (separate doc) — the only remaining phase.
 
@@ -280,7 +280,7 @@ trinity-repo/
 ├── param/                 # canonical parameter-file library
 ├── examples/              # runnable getting-started scripts (reference param/)
 ├── scratch/               # TRACKED personal scripts (31 paper_*/pedrini_*/diag)
-├── analysis/  docs/  tests/
+├── docs/dev/  docs/  tests/
 ├── pyproject.toml  README.md     # run.py -> console entry point
 ```
 
@@ -453,7 +453,7 @@ consistency or leave:
 ## A.6 Out of scope / do NOT touch
 
 - `docs/source/running.rst` L176 — `_modified` here is an **output-filename** suffix sibling to `_summary.txt` (255-byte cap), unrelated to these modules.
-- `analysis/cooling-refactor-audit.md` and `analysis/sb99-refactor-audit.md` — multiple `*_modified.py` mentions are **historical point-in-time records** of completed refactors. Recommendation: leave as-is (they document what existed then). Optional: a one-line note that files were later renamed in Phase A.
+- `docs/dev/cooling-refactor-audit.md` and `docs/dev/sb99-refactor-audit.md` — multiple `*_modified.py` mentions are **historical point-in-time records** of completed refactors. Recommendation: leave as-is (they document what existed then). Optional: a one-line note that files were later renamed in Phase A.
 
 ## A.7 Judgment calls (need a decision before executing)
 
@@ -628,7 +628,7 @@ the codegen gate guarantees consistency.
 > *pre-existing* flaky `MonotonicError` in the bubble integrator (numpy
 > 1.26.4, passed 2 of 3 identical re-runs; unrelated to the rename). That
 > flake is the subject of the final phase — see
-> `analysis/bubble-integrator-robustness.md`.
+> `docs/dev/bubble-integrator-robustness.md`.
 
 Measured on `feature/reforming-structure` after Phase A + the
 deprecated-param removal. Pure, behavior-preserving package rename.

@@ -16,7 +16,7 @@ COSMETIC or CONTAMINATING using only signals the CSV carries directly:
 Gate G6: a config is CONTAMINATING if (1) fires, or (2) fires, or (3) exceeds
 the dominance threshold. If no config contaminates -> inflow is cosmetic, STOP.
 
-    python scratch/phase6/analyze_hunt.py analysis/data/hunt_*.csv
+    python scratch/phase6/analyze_hunt.py docs/dev/data/hunt_*.csv
 """
 import csv
 import sys

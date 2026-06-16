@@ -3,7 +3,7 @@
 Scratch diagnostics/plots for the β–δ **hybr** solver investigation (the
 pole-free `g` metric, the four-arm promotion, and the negative-velocity /
 WARPFIELD "Problem 2" study). **Not source** — regenerable. Canonical writeups:
-`analysis/BETADELTA_PHASE2_ARMS.md`, `analysis/stalling-energy-phase.md`,
+`docs/dev/BETADELTA_PHASE2_ARMS.md`, `docs/dev/stalling-energy-phase.md`,
 `docs/dev/BETADELTA_HYBR_PLAN.md`. Companion harness dir: `scratch/phase6/`.
 
 ## Experiment families (by file prefix)
@@ -13,8 +13,8 @@ WARPFIELD "Problem 2" study). **Not source** — regenerable. Canonical writeups
 | `arms_*`     | 2.3 | **four-arm** shadow: 4 solver strategies side by side (A control / B metric / C cap+bounds / D **hybr**) | `arms.py` → `arms_*.jsonl` | `analyze_arms.py` |
 | `probe_*`    | 2.1/2.2 | **probe**: (β,δ) residual *landscape* — a 7×7 scan + transects per segment | `probe.py` → `probe_*.jsonl` | `analyze_probe.py` → `betadelta_*` |
 | `phase3_*`   | 3 | **hybr-vs-legacy** master-table summary (convergence / β-reach / transition / cost) | *(transcribed from the doc; no jsonl)* | `analyze_phase3.py` |
-| `stalling_*` | 3/5 | **stall**: self-consistent `stop_t=4` sweep runs — source of the negative-velocity study | run → `analysis/data/stalling_*.csv` | `analyze_negvel.py` → `negvel_*` |
-| `hunt_*` (h1–h6) | 6.0 | **hunt**: velocity-contamination sweep, 6 configs | `scratch/phase6/hunt.py` → `analysis/data/hunt_*.csv` | `plot_hunt.py` → `hunt_*` |
+| `stalling_*` | 3/5 | **stall**: self-consistent `stop_t=4` sweep runs — source of the negative-velocity study | run → `docs/dev/data/stalling_*.csv` | `analyze_negvel.py` → `negvel_*` |
+| `hunt_*` (h1–h6) | 6.0 | **hunt**: velocity-contamination sweep, 6 configs | `scratch/phase6/hunt.py` → `docs/dev/data/hunt_*.csv` | `plot_hunt.py` → `hunt_*` |
 | `negvel_*`   | 5/6 | the negative-velocity diagnosis figures (trigger / timeline / dmdt-lmech / feedback / profile / causal) | — | `analyze_negvel.py`, `reconstruct_vprofile.py` |
 
 **Animations:**
@@ -72,8 +72,8 @@ density — master-table **flat** is n=1e5, **typical** is n=1e3. The probe run
 
 ## Data locations
 
-- **canonical** (committed, read by the plot scripts): `analysis/data/stalling_*.csv`,
-  `analysis/data/hunt_*.csv`.
+- **canonical** (committed, read by the plot scripts): `docs/dev/data/stalling_*.csv`,
+  `docs/dev/data/hunt_*.csv`.
 - **scratch jsonl** (here): `arms_*.jsonl`, `probe_*.jsonl` — the per-segment shadow logs.
 - `reconstruct_vprofile.py` re-solves the real bubble structure (needs a venv with
   the pinned deps, numpy<2/scipy<2) to recover `v(r)`, which the CSVs don't store.
@@ -117,8 +117,8 @@ and `rootmap_cage_profiles.npz` are gitignored — debug frame + the GIF profile
 
 ## Status / log (2026-06-14)
 
-- **Plot scripts read the canonical committed CSVs** (`analysis/data/stalling_*.csv`,
-  `analysis/data/hunt_*.csv`); the earlier scratch duplicates were removed so there is
+- **Plot scripts read the canonical committed CSVs** (`docs/dev/data/stalling_*.csv`,
+  `docs/dev/data/hunt_*.csv`); the earlier scratch duplicates were removed so there is
   one source of truth. The `*.jsonl` shadow logs (arms/probe) stay here — they are
   scratch-only and not duplicated upstream.
 - **Negative-velocity figures are aligned with the canonical "Is the inflow physical?"
@@ -136,7 +136,7 @@ and `rootmap_cage_profiles.npz` are gitignored — debug frame + the GIF profile
 - **Probe label fix:** `probe_cloud1e6` is the **typical** density (n=1e3, α=0), *not*
   the dense "flat" (n=1e5) — see the config glossary heads-up above.
 - **Tracking note:** this README is the live tracker for the plotting/animation work so it
-  does not collide with the canonical docs (`analysis/stalling-energy-phase.md`,
+  does not collide with the canonical docs (`docs/dev/stalling-energy-phase.md`,
   `docs/dev/BETADELTA_HYBR_PLAN.md`) that are being edited for Phase 6.1.
 - **Pending (maintainer-owned):** the Phase-6.1 reject-and-hold counterfactual is running
   separately; once it lands, the planned figure is the treatment effect (arm A accept vs

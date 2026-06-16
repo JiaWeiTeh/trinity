@@ -3,14 +3,14 @@
 Harness/tooling for **Phase 6** of the β–δ hybr study: does the transient inner
 inflow (negative interior velocity during a feedback re-pressurisation) ever
 contaminate anything? **Not source.** Canonical writeup:
-`analysis/stalling-energy-phase.md` ("Phase 6.0 contamination hunt" +
+`docs/dev/stalling-energy-phase.md` ("Phase 6.0 contamination hunt" +
 "Is the inflow physical?"); plan: `docs/dev/BETADELTA_HYBR_PLAN.md` Phase 6.
 
 ## Files
 
 - `hunt.py` — runs a config and dumps one row per accepted energy-implicit
   segment (β, δ, β+δ, Pb, dMdt, Lmech, v_struct_min/nneg/npts, **v_neg_frac_thick**,
-  …) → `analysis/data/hunt_*.csv`. `--hold-inflow` = the reject-and-hold
+  …) → `docs/dev/data/hunt_*.csv`. `--hold-inflow` = the reject-and-hold
   counterfactual (treat interior-v<0 as a structure failure → hold last physical).
 - `analyze_hunt.py` — the **Gate-G6** classifier (cosmetic vs contaminating) over
   the hunt CSVs.

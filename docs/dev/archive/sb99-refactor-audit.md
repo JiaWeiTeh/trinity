@@ -928,19 +928,19 @@ location, then invoke `run.py` on the copy.
 
 ```bash
 git checkout main
-mkdir -p analysis/sb99-refactor-golden
-python analysis/sb99_refactor_equivalence.py --capture-golden \
+mkdir -p docs/dev/sb99-refactor-golden
+python docs/dev/sb99_refactor_equivalence.py --capture-golden \
     --configs param/cloud_example_PL.param \
               param/cloud_example_BE.param \
               param/cloud_example_homogeneous.param \
-    --golden-dir analysis/sb99-refactor-golden
+    --golden-dir docs/dev/sb99-refactor-golden
 ```
 
 The harness does two independent things per anchor:
 
 1. **E2E capture (subprocess).** Copy the `.param` to a temp location,
    rewrite `path2output` to point under
-   `analysis/sb99-refactor-golden/<stem>/`, then invoke
+   `docs/dev/sb99-refactor-golden/<stem>/`, then invoke
    `python run.py <tmp_param>` via `subprocess.run`. Trinity writes the
    JSONL snapshot tree directly into the golden directory; nothing inside
    trinity needs to change.
@@ -954,7 +954,7 @@ The harness does two independent things per anchor:
 The golden snapshot tree must be **frozen for the entire refactor**. Do not
 regenerate it on later commits — that would silently mask drift. Record the
 commit SHA of `main` at capture time in
-`analysis/sb99-refactor-golden/MANIFEST.json`.
+`docs/dev/sb99-refactor-golden/MANIFEST.json`.
 
 If `main` changes between PRs (e.g. an unrelated merge), the golden does not
 need to be regenerated for *this* refactor — what matters is that each
@@ -965,7 +965,7 @@ branched from main.
 
 A single Python script `sb99_refactor_equivalence.py` runs all tests; each
 PR's gate is "run the script with `--pr N`, must exit 0". Placement of the
-script (`test/` vs `analysis/`) is open question §14, but the codebase
+script (`test/` vs `docs/dev/`) is open question §14, but the codebase
 already has a tracked `test/` directory (cloudy + simplify + metadata
 pytest files), so the harness can plausibly live there.
 
@@ -989,7 +989,7 @@ def test_path_resolution_matrix():
 
 def test_loader_byte_equivalence():
     """The 11-array loader output is byte-identical to the pickled golden."""
-    golden = pickle.load(open('analysis/sb99-refactor-golden/loader_arrays.pkl', 'rb'))
+    golden = pickle.load(open('docs/dev/sb99-refactor-golden/loader_arrays.pkl', 'rb'))
     arrays = read_SB99.read_SB99(f_mass=1.0, params=mock_params_legacy())
     for name, gold, cur in zip(ARRAY_NAMES, golden, arrays):
         assert np.array_equal(gold, cur), f"{name} drifted"
@@ -1021,7 +1021,7 @@ def test_e2e_snapshot_equivalence():
     for cfg in CANONICAL_CONFIGS:
         tmp_cfg = rewrite_path2output(cfg, tmpdir / cfg.stem)
         subprocess.run(['python', 'run.py', str(tmp_cfg)], check=True, cwd=TRINITY_ROOT)
-        gold_out = f"analysis/sb99-refactor-golden/{cfg.stem}/"
+        gold_out = f"docs/dev/sb99-refactor-golden/{cfg.stem}/"
         diff_snapshot_trees(gold_out, tmpdir / cfg.stem, rtol=1e-12, atol=0)
 
 def test_e2e_with_explicit_sps_path():
@@ -1030,7 +1030,7 @@ def test_e2e_with_explicit_sps_path():
         explicit_cfg = inject_sps_path(cfg, legacy_grammar_path_for(cfg))
         tmp_cfg = rewrite_path2output(explicit_cfg, tmpdir / cfg.stem)
         subprocess.run(['python', 'run.py', str(tmp_cfg)], check=True, cwd=TRINITY_ROOT)
-        gold_out = f"analysis/sb99-refactor-golden/{cfg.stem}/"
+        gold_out = f"docs/dev/sb99-refactor-golden/{cfg.stem}/"
         diff_snapshot_trees(gold_out, tmpdir / cfg.stem, rtol=1e-12, atol=0)
 
 def test_legacy_path_emits_one_info_log_per_run(caplog, recwarn):
@@ -1058,7 +1058,7 @@ def test_legacy_fallback_byte_identical_to_pr1():
     """sps_path = def_path, no sps_col_* keys → arrays byte-identical to PR-1."""
     params = mock_params_legacy()
     arrays = read_SB99.read_SB99(f_mass=1.0, params=params)
-    golden = pickle.load(open('analysis/sb99-refactor-golden/loader_arrays.pkl', 'rb'))
+    golden = pickle.load(open('docs/dev/sb99-refactor-golden/loader_arrays.pkl', 'rb'))
     for cur, gold in zip(arrays, golden):
         assert np.array_equal(cur, gold)
 
@@ -1215,8 +1215,8 @@ mode this whole plan exists to prevent.
 
 ```
 test/                                            # (existing pytest dir)
-└── test_sb99_refactor_equivalence.py            # OR analysis/sb99_refactor_equivalence.py
-analysis/
+└── test_sb99_refactor_equivalence.py            # OR docs/dev/sb99_refactor_equivalence.py
+docs/dev/
 ├── sb99-refactor-audit.md                       # this file (single source of truth)
 └── sb99-refactor-golden/                        # gitignored; pickled goldens + JSONL trees
     ├── MANIFEST.json                            # commit SHA of main at capture time
@@ -1237,7 +1237,7 @@ analysis/
     └── cloud_example_homogeneous/
 ```
 
-Add `analysis/sb99-refactor-golden/` to `.gitignore`. The pickles and JSONL
+Add `docs/dev/sb99-refactor-golden/` to `.gitignore`. The pickles and JSONL
 trees are too big and ephemeral to commit.
 
 ## 12. Risk register
@@ -1315,7 +1315,7 @@ Before starting PR-1, please confirm:
    sweep executor and are awkward to golden cleanly.
 4. **Harness placement.** Put `test_sb99_refactor_equivalence.py` under
    the existing tracked `test/` dir (alongside `test_cloudy_*` etc.), or
-   keep it as a working artifact under `analysis/` and delete it once the
+   keep it as a working artifact under `docs/dev/` and delete it once the
    refactor lands? CLAUDE.md says "don't reintroduce the deleted /test/
    folder" but a `test/` dir currently exists and is tracked, so the
    guidance is stale.

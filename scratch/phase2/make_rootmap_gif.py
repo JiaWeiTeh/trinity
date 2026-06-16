@@ -10,7 +10,7 @@ Three panels, frame = energy-implicit segment (i.e. increasing time):
           cached to rootmap_cage_profiles.npz so later renders skip the re-solve.
   BOT-R : Lmech_W / Lmech_SN / Lmech_total vs t, with a marker at the current t.
 
-Data: analysis/data/stalling_steep_1e6_alpha-2.csv (state + Lmech) + the steep
+Data: docs/dev/data/stalling_steep_1e6_alpha-2.csv (state + Lmech) + the steep
 config probe_cloudPL.param (for the structure re-solve). REQUIRES the pinned
 deps (numpy<2, scipy<2) + pillow:
   PYTHONPATH=<repo> /path/to/venv/bin/python scratch/phase2/make_rootmap_gif.py

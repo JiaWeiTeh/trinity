@@ -21,7 +21,7 @@
 
 Single source of truth for decoupling the cooling-table loaders from the
 hardcoded SB99/OPIATE/CLOUDY assumptions, in the same shape as
-`analysis/archive/sb99-refactor-audit.md`. Combines (Part I) the architectural
+`docs/dev/archive/sb99-refactor-audit.md`. Combines (Part I) the architectural
 audit — *what is* — with (Part II) the phased refactor plan and its
 equivalence-test battery — *what to do, in what order, and how to prove
 nothing changed*.
@@ -727,12 +727,12 @@ Anchor configs — same three single-runs as the SPS refactor:
 
 ```bash
 git checkout main
-mkdir -p analysis/cooling-refactor-golden
-python analysis/cooling_refactor_equivalence.py --capture-golden \
+mkdir -p docs/dev/cooling-refactor-golden
+python docs/dev/cooling_refactor_equivalence.py --capture-golden \
     --configs param/cloud_example_PL.param \
               param/cloud_example_BE.param \
               param/cloud_example_homogeneous.param \
-    --golden-dir analysis/cooling-refactor-golden
+    --golden-dir docs/dev/cooling-refactor-golden
 ```
 
 The harness does **three** independent things per anchor:
@@ -754,7 +754,7 @@ The harness does **three** independent things per anchor:
 
 The golden tree must be **frozen for the entire refactor**. Record the
 commit SHA of `main` at capture time in
-`analysis/cooling-refactor-golden/MANIFEST.json`.
+`docs/dev/cooling-refactor-golden/MANIFEST.json`.
 
 ### 11.2 Per-PR test battery
 
@@ -785,7 +785,7 @@ def test_nonCIE_age_interpolation_unchanged():
 def test_cube_byte_equivalence(equal_nan=True):
     """The 5-tuple loader output is byte-identical to the pickled golden,
     NaN-aware."""
-    golden = pickle.load(open('analysis/cooling-refactor-golden/cubes.pkl', 'rb'))
+    golden = pickle.load(open('docs/dev/cooling-refactor-golden/cubes.pkl', 'rb'))
     for (rot, Z, age), gold_tuple in golden.items():
         cur = create_cubes(*resolve_nonCIE_paths(rot, Z, age))
         for name, g, c in zip(CUBE_FIELDS, gold_tuple, cur):
@@ -882,7 +882,7 @@ default `np.array_equal` would report all-NaN positions as unequal.
 ```
 test/                                            # (existing pytest dir)
 └── test_cooling_refactor_equivalence.py
-analysis/
+docs/dev/
 ├── cooling-refactor-audit.md                    # this file
 └── cooling-refactor-golden/                     # gitignored; pickled goldens + JSONL trees
     ├── MANIFEST.json                            # commit SHA of main at capture
@@ -894,7 +894,7 @@ analysis/
     └── cloud_example_homogeneous/...
 ```
 
-Add `analysis/cooling-refactor-golden/` to `.gitignore`.
+Add `docs/dev/cooling-refactor-golden/` to `.gitignore`.
 
 ## 12. Risk register
 
@@ -1017,5 +1017,5 @@ Before starting PR-1, please confirm:
   to be read by the SPS loader. The parameter remains a first-class
   config knob.
 - **No `read_cloudy_old.py` exists** despite the reference at
-  `analysis/archive/sb99-refactor-audit.md:258`. That doc has a stale
+  `docs/dev/archive/sb99-refactor-audit.md:258`. That doc has a stale
   reference; this audit does not reproduce it.

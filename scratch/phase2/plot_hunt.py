@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Phase 6.0 velocity-contamination hunt — visuals over the 6 hunt configs.
 
-Reads the canonical hunt CSVs from analysis/data/hunt_*.csv. The G6 classification
+Reads the canonical hunt CSVs from docs/dev/data/hunt_*.csv. The G6 classification
 itself is in scratch/phase6/analyze_hunt.py; this script makes the plots the
-writeup (analysis/stalling-energy-phase.md, Phase 6.0) calls for.
+writeup (docs/dev/stalling-energy-phase.md, Phase 6.0) calls for.
 
   ⚠️ Use v_neg_frac_thick (band / bubble thickness), NOT raw v_struct_nneg:
   the hunt harness reads the full ~6e4-point bubble_v_arr, so nneg is a huge raw

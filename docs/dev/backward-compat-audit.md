@@ -23,7 +23,7 @@ re-checked against source at the audit commit.
 | What | Where | Notes |
 |---|---|---|
 | `_create_adaptive_radius_grid()` | `trinity/bubble_structure/bubble_luminosity.py:865-989` | Explicitly disabled (see note at `:477-491`); no callers anywhere. ~125 lines. |
-| `_solve_bubble_ode_with_ivp()` | `trinity/bubble_structure/bubble_luminosity.py:991-1040` | "Kept for future experimentation"; no callers. Referenced only by `analysis/bubble-integrator-robustness.md` (a stale-by-design doc). |
+| `_solve_bubble_ode_with_ivp()` | `trinity/bubble_structure/bubble_luminosity.py:991-1040` | "Kept for future experimentation"; no callers. Referenced only by `docs/dev/bubble-integrator-robustness.md` (a stale-by-design doc). |
 | `get_beta_delta_wrapper_pure()` | `trinity/phase1b_energy_implicit/get_betadelta.py:781` | Docstring says it "matches the interface of the original `get_beta_delta_wrapper`" — **that original no longer exists**. Zero callers. |
 | Commented-out "depreciated" cooling blocks | `trinity/cooling/net_coolingcurve.py:70-75, 107-110, 136-139` | Old non-CIE netcooling-grid path, commented out (note misspelling "depreciated"). |
 | `plot_folder_grid = plot_grid` alias | `paper/methods/figures/paper_feedback.py:572` | Zero callers. |

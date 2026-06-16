@@ -5,7 +5,7 @@ Non-invasive: wraps ``solve_betadelta_pure`` for the duration of a full TRINITY
 run and records, per accepted energy-phase segment, the bubble-structure
 velocity health (``v_struct_min``, ``v_struct_nneg`` count, inflow thickness
 fraction), convergence, Lloss/dMdt/Eb, and beta+delta. The CSV schema is a
-superset of ``analysis/data/stalling_*.csv`` (adds ``v_struct_npts``,
+superset of ``docs/dev/data/stalling_*.csv`` (adds ``v_struct_npts``,
 ``v_neg_frac_thick``, ``no_physical_root``) so the old runs stay comparable.
 
 Goal (Phase 6.0, docs/dev/BETADELTA_HYBR_PLAN.md): hunt a regime where interior
@@ -14,7 +14,7 @@ bubble_luminosity.py:1150) stops being cosmetic -- i.e. non-convergence in the
 band, a kink in Lloss/dMdt/Eb across it, or the band growing to dominate the
 bubble thickness. Touches no production code.
 
-    python scratch/phase6/hunt.py <param> --out analysis/data/hunt_<name>.csv
+    python scratch/phase6/hunt.py <param> --out docs/dev/data/hunt_<name>.csv
     python scratch/phase6/hunt.py <param> --validate-only
 """
 import argparse

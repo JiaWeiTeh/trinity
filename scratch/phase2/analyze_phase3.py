@@ -5,7 +5,7 @@ Unlike analyze_arms.py (which re-reads the per-arm/per-segment shadow jsonl),
 the Phase-3 self-consistent runs write per-run ``dictionary.jsonl`` under /tmp,
 which is ephemeral and gone on container restart. So the numbers here are
 transcribed from the **summary tables** in
-``analysis/BETADELTA_PHASE2_ARMS.md`` (section "Phase 3 — self-consistent
+``docs/dev/BETADELTA_PHASE2_ARMS.md`` (section "Phase 3 — self-consistent
 validation"): the master runs table + the three headline comparisons.
 
   ⚠️ Point-in-time values. That doc carries the staleness banner; re-verify
@@ -50,7 +50,7 @@ if _STYLE.exists():
     plt.style.use(str(_STYLE))
 plt.rcParams["text.usetex"] = False
 
-# --- transcribed from analysis/BETADELTA_PHASE2_ARMS.md (Phase 3 section) ---
+# --- transcribed from docs/dev/BETADELTA_PHASE2_ARMS.md (Phase 3 section) ---
 # convergence % (< 1e-4): legacy from master table / Phase-0, hybr from master table
 CONV = [  # (config, legacy%, hybr%)   None = not run
     ("flat\n1e6 n1e5", 0, 100),

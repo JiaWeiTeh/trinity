@@ -13,7 +13,7 @@ that legacy (β clamped to [0,1]) could never show:
 1. **Steep / low-mass clouds *stall*** — the cooling ratio `(Lgain−Lloss)/Lgain`
    plateaus well above the 0.05 transition threshold and never crosses it, so
    the bubble stays energy-driven for many Myr (see
-   `analysis/BETADELTA_PHASE2_ARMS.md`, Phase-3 section).
+   `docs/dev/BETADELTA_PHASE2_ARMS.md`, Phase-3 section).
 2. **β goes *negative*** (down to −2.4) in places — i.e. **Pb is *rising***
    (β = −(t/Pb)(dPb/dt), so β<0 ⇔ dPb/dt>0).
 
@@ -143,7 +143,7 @@ Reading the full `bubble_v_arr` / `bubble_v_arr_r_arr` at the affected segments
 ### Is the inflow physical? A physical reading (2026-06-14) — INTERPRETATION, NOT established
 
 > **Epistemic status: mostly conjecture.** The "measured" bullets are read
-> straight from `analysis/data/hunt_h1_steep_base.csv`; everything labelled
+> straight from `docs/dev/data/hunt_h1_steep_base.csv`; everything labelled
 > *interpretation* or *guess* is a physical story fitted to those numbers — **not**
 > verified against a time-dependent hydro solve, an independent structure code, or
 > the literature. Treat every causal claim below as a hypothesis to check, not a
@@ -353,11 +353,11 @@ Full per-segment time series (committed, plottable). One row = one accepted
 energy-implicit (β,δ) segment.
 
 *Original two (2026-06-13), 100-point velocity grid:*
-- `analysis/data/stalling_steep_1e6_alpha-2.csv` — `sweep_steep`, 133 rows.
-- `analysis/data/stalling_mock_4e3.csv` — `sweep_mock`, 144 rows.
+- `docs/dev/data/stalling_steep_1e6_alpha-2.csv` — `sweep_steep`, 133 rows.
+- `docs/dev/data/stalling_mock_4e3.csv` — `sweep_mock`, 144 rows.
 
 *Phase 6.0 hunt (2026-06-14), full ~6e4-point velocity grid, six configs:*
-- `analysis/data/hunt_h1_steep_base.csv` … `hunt_h6_flat_sfe30.csv` (see the
+- `docs/dev/data/hunt_h1_steep_base.csv` … `hunt_h6_flat_sfe30.csv` (see the
   config table above; 909 rows total).
 
 **Column dictionary** (units: t [Myr]; v, c_sound [pc/Myr]; R2 [pc]; T [K];
@@ -413,8 +413,8 @@ python run.py <param: mCloud=1e6 sfe=0.01 densPL_alpha=-2 nCore=1e5 rCore=1 \
 # Gate-G6 classifier (run single-thread to avoid BLAS oversubscription):
 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 \
     python scratch/phase6/hunt.py scratch/phase6/h1_steep_base.param \
-    --out analysis/data/hunt_h1_steep_base.csv
-python scratch/phase6/analyze_hunt.py analysis/data/hunt_h*.csv   # G6 verdict
+    --out docs/dev/data/hunt_h1_steep_base.csv
+python scratch/phase6/analyze_hunt.py docs/dev/data/hunt_h*.csv   # G6 verdict
 ```
 
 Phase-6-specific plots worth making from the hunt CSVs:

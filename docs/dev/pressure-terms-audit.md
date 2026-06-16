@@ -129,7 +129,7 @@ sitting right next to it.
 
 The non-CIE (CLOUDY/opiate) table's density axis is **hydrogen density `n_H`**:
 
-- `analysis/cooling-refactor-audit.md:521` —
+- `docs/dev/cooling-refactor-audit.md:521` —
   `cool_col_nonCIE_ndens → n_H [cm^-3]`.
 - the opiate tables (`lib/default/opiate/opiate_cooling_*.dat`) carry both an
   `ndens` *input* column and a separate `nedens` (electron density) column —
