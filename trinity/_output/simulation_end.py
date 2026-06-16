@@ -423,7 +423,7 @@ CRITICAL_PARAMS = [
     ('F_grav', 'Gravity force', 'code', 1.0),
     ('F_ram', 'Ram force', 'code', 1.0),
     ('F_rad', 'Radiation force', 'code', 1.0),
-    ('F_ion', 'Ion force', 'code', 1.0),
+    ('F_ion_in', 'Ion force', 'code', 1.0),
     # Temperatures
     ('T0', 'Inner temp', 'K', 1.0),
     ('bubble_Tavg', 'Avg bubble temp', 'K', 1.0),

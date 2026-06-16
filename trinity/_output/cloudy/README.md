@@ -48,20 +48,20 @@ CLOUDY output. CLOUDY-side prerequisites are deliberately out of scope
 
 ## Input
 
-A standard TRINITY run directory:
+A current TRINITY run directory (the converter requires `metadata.json`):
 
 ```
 <run_dir>/
-├── <model>.param                    # raw input config (not parsed)
-├── <model>_summary.txt              # full resolved config (parsed)
+├── metadata.json                    # run-invariant config + termination (required)
 ├── dictionary.jsonl                 # snapshot stream
-├── metadata.json                    # run-invariant data
-├── simulationEnd.txt                # success / failure status
-└── ...                              # plots, debug logs (ignored)
+├── trinity.log                      # run log
+└── <model>.param                    # raw input config (optional; not parsed)
 ```
 
-The driver gates on `simulationEnd.txt: Status: SUCCESS`. To convert a
-failed run anyway, pass `--force`.
+The converter reads the resolved config and the run's success/termination
+from `metadata.json` (the `termination` block). Pre-Phase-5 runs additionally
+carried `<model>_summary.txt` and `simulationEnd.txt`; those are legacy and
+loaded only as a fallback when `metadata.json` lacks the block.
 
 ## Output
 

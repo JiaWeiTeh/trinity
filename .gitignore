@@ -74,7 +74,7 @@ MANIFEST
 # PyInstaller
 #  Usually these files are written by a python script from a template
 #  before PyInstaller builds the exe, so as to inject date/other infos 
-into it.
+#  into it.
 *.manifest
 *.spec
 
@@ -131,36 +131,36 @@ ipython_config.py
 
 # pyenv
 #   For a library or package, you might want to ignore these files since 
-the code is
+#   the code is
 #   intended to run in multiple environments; otherwise, check them in:
 # .python-version
 
 # pipenv
 #   According to pypa/pipenv#598, it is recommended to include 
-Pipfile.lock in version control.
+#   Pipfile.lock in version control.
 #   However, in case of collaboration, if having platform-specific 
-dependencies or dependencies
+# dependencies or dependencies
 #   having no cross-platform support, pipenv may install dependencies 
-that don't work, or not
+# that don't work, or not
 #   install all needed dependencies.
 #Pipfile.lock
 
 # poetry
 #   Similar to Pipfile.lock, it is generally recommended to include 
-poetry.lock in version control.
+# poetry.lock in version control.
 #   This is especially recommended for binary packages to ensure 
-reproducibility, and is more
+# reproducibility, and is more
 #   commonly ignored for libraries.
 #   
-https://python-poetry.org/docs/basic-usage/#commit-your-poetrylock-file-to-version-control
+#   https://python-poetry.org/docs/basic-usage/#commit-your-poetrylock-file-to-version-control
 #poetry.lock
 
 # pdm
 #   Similar to Pipfile.lock, it is generally recommended to include 
-pdm.lock in version control.
+# pdm.lock in version control.
 #pdm.lock
 #   pdm stores project-wide configurations in .pdm.toml, but it is 
-recommended to not include it
+# recommended to not include it
 #   in version control.
 #   https://pdm.fming.dev/#use-with-ide
 .pdm.toml
@@ -211,13 +211,13 @@ cython_debug/
 
 # PyCharm
 #  JetBrains specific template is maintained in a separate 
-JetBrains.gitignore that can
+# JetBrains.gitignore that can
 #  be found at 
-https://github.com/github/gitignore/blob/main/Global/JetBrains.gitignore
+#  https://github.com/github/gitignore/blob/main/Global/JetBrains.gitignore
 #  and can be added to the global gitignore or merged into this file.  
-For a more nuclear
+# For a more nuclear
 #  option (not recommended) you can uncomment the following to ignore the 
-entire idea folder.
+# entire idea folder.
 #.idea/
 
 # Personal talk-prep notes (not part of the codebase)
