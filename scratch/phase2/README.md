@@ -22,17 +22,29 @@ WARPFIELD "Problem 2" study). **Not source** — regenerable. Canonical writeups
   revealed over segments: the REAL production-clamped roots (arm A = cage) vs hybr
   (arm D = no cage) + a residual-`g` convergence panel. Pure read of the jsonl → ~50 s.
 - `make_rootmap_gif.py` → `rootmap_cage.gif` — the steep run's root-finding **with vs
-  without the cage** over time, + the re-solved bubble **velocity-vs-radius** profile
-  (radial fraction R1→R2; inflow = v<0) + Lmech(t). Frame = segment; all panels are the
-  same timestamp. Its caged square is a geometric clip (the *real* caged solve is
-  `cage_compare.png`). Re-solves v(r) per segment, **cached** to
-  `rootmap_cage_profiles.npz` so re-renders are ~2 min. Needs the venv + pillow.
+  without the cage** over time. Six panels: LEFT the (β,δ) plane (cage box; hybr roots
+  escape, the **real legacy/caged** roots ride the edge — NOT a geometric clip), a two-arm
+  **residual-g** convergence panel, and **velocity v(r) vs physical radius [pc]**; RIGHT
+  **velocity v(r) vs radial fraction** (inflow = v<0), Lmech(t), and **R2 & R_IF vs t**
+  (the ionization front ~ R2 for this dense shell). Profile panels overlay cage vs no-cage.
+  Frames are paced on a uniform **linear-t** grid (interpolated markers/curves; real
+  segments kept as dots) so the over-dense early phase no longer dwells. A **pure read** of
+  two committed csvs (`rootmap_cage_scalars.csv`, `rootmap_cage_profiles.csv.gz`) produced
+  once by `tabulate_cage.py`; renders in seconds, needs only numpy+pandas+matplotlib+pillow.
+- `tabulate_cage.py` → `rootmap_cage_{scalars.csv,profiles.csv.gz}` (+ a gitignored
+  `rootmap_cage_table.npz` cache) — the slow half of the animation, factored out: for every
+  steep-hybr segment it records both roots, both residuals, the recovered ODE-state T0, the
+  ionization-front radius R_IF (a shell solve), and the re-solved v(r)/n(r) for **both** the
+  no-cage (hybr) and the **REAL** caged (legacy, threaded-guess) solve. ~1.5 hr (the
+  per-segment legacy solve dominates). Needs the venv.
 
 **Cage counterfactual:** `cage_compare.py` → `cage_compare.png` — the REAL legacy
-(clamped) solve vs hybr at key segments, v vs r: at the WR surge the cage is
+(clamped) solve vs hybr at two key segments, v vs r: at the WR surge the cage is
 forced to a different in-box root that predicts NO inflow (it *hides* Problem 2).
-Per-segment legacy solve is ~60 s (grids ~25 structure solves through the pole),
-so this is a few segments, not the GIF (whose caged square is a geometric clip).
+The per-segment legacy solve is ~60 s (grids ~25 structure solves through the pole);
+`cage_compare.png` is the static 2-segment deep-dive, while `tabulate_cage.py` now runs
+that same real solve over **every** segment so `rootmap_cage.gif` animates the real cage
+trajectory + profiles (its caged markers are no longer a geometric clip).
 
 **Metrics:** `f` = legacy residual, `f_E=(E1−E2)/E1` — its denominator hits 0 near
 the E_b peak (a **pole**). `g` = hybr residual, `g_E=(E1−E2)/Lmech_total` —
@@ -75,8 +87,11 @@ density — master-table **flat** is n=1e5, **typical** is n=1e3. The probe run
 - **canonical** (committed, read by the plot scripts): `docs/dev/data/stalling_*.csv`,
   `docs/dev/data/hunt_*.csv`.
 - **scratch jsonl** (here): `arms_*.jsonl`, `probe_*.jsonl` — the per-segment shadow logs.
+- **rootmap_cage tables** (here, committed): `rootmap_cage_scalars.csv` +
+  `rootmap_cage_profiles.csv.gz` — the steep cage-vs-no-cage roots/residuals + v(r)/n(r)
+  profiles per segment, written by `tabulate_cage.py`; `make_rootmap_gif.py` reads these.
 - `reconstruct_vprofile.py` re-solves the real bubble structure (needs a venv with
-  the pinned deps, numpy<2/scipy<2) to recover `v(r)`, which the CSVs don't store.
+  the pinned deps, numpy<2/scipy<2) to recover `v(r)`, which the stalling CSVs don't store.
 
 ## Figures index
 
@@ -113,7 +128,8 @@ and `rootmap_cage_profiles.npz` are gitignored — debug frame + the GIF profile
 
 **Cage counterfactual (`cage_compare.py` + `make_rootmap_gif.py`):**
 - `cage_compare.png` — REAL legacy (clamped) solve vs hybr at key segments; the cage hides Problem 2.
-- `rootmap_cage.gif` — steep run, root-finding with vs without the cage over time + re-solved v(r) + Lmech(t).
+- `rootmap_cage.gif` — steep run, cage vs no-cage over time: (β,δ) plane (real caged roots) +
+  two-arm residual + density n(r) + velocity v(r) (cage vs no-cage) + Lmech(t). Pure CSV read.
 
 ## Status / log (2026-06-14)
 
@@ -129,10 +145,16 @@ and `rootmap_cage_profiles.npz` are gitignored — debug frame + the GIF profile
   at the WR-surge segment: it is forced to a different *in-box* root that predicts NO
   interior inflow. The GIF's clamped square is only a geometric proxy for the box edge;
   the real caged prediction is `cage_compare.png`.
-- **Animation cost is the structure re-solve, not the read.** `make_arms_rootmap_gif.py`
-  is a pure jsonl read (~50 s). `make_rootmap_gif.py` re-solves v(r) per segment, now
-  **cached** to `rootmap_cage_profiles.npz`, so re-renders are ~2 min. Panel B is
-  velocity-vs-radius (radial fraction R1→R2) with a fixed y-limit so the inflow stays visible.
+- **Both animations are now pure reads; the solve is factored out.**
+  `make_arms_rootmap_gif.py` reads the jsonl (~50 s). `make_rootmap_gif.py` reads the
+  committed `rootmap_cage_*` csvs and renders in seconds; the one-time ~1.5 hr solve
+  (incl. the **real** per-segment legacy/caged solve and density) lives in
+  `tabulate_cage.py`. Velocity/density share the radial-fraction x-axis with fixed
+  y-limits so the inflow and the cage-vs-no-cage gap stay visible across frames.
+- **T0 is an ODE state variable, not in the stalling CSV.** `tabulate_cage.py` recovers
+  each segment's evolved T0 as `T_bubble` at the converged hybr root (gT≈0 there), then
+  uses that shared target for the caged solve — otherwise the temperature residual is
+  computed against the stale initial T0 and every segment looks unconverged.
 - **Probe label fix:** `probe_cloud1e6` is the **typical** density (n=1e3, α=0), *not*
   the dense "flat" (n=1e5) — see the config glossary heads-up above.
 - **Tracking note:** this README is the live tracker for the plotting/animation work so it

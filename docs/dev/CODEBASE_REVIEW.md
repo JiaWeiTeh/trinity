@@ -115,10 +115,10 @@ source/tests/tools/docs was repointed.
 - Packaging: `package-data` / `MANIFEST.in` data-glob gap.
 - Cloudy README run-dir layout rewrite; CWD-relative cloudy test paths; inert `output_format` knob.
 
-> **Note for the next visitor:** this branch (`fix/code-hygiene`) predates current
-> `main` (which added the transition-trigger docs via PR #687). When synced with
-> `main`, the new `analysis/transition-trigger-*.md` files must get the same
-> `analysis/ → docs/dev/` move this branch applied.
+> **Note:** `main` (PR #687, the transition-trigger workstream) has been merged
+> into this branch; its new `analysis/` docs (`transition-trigger-*.md`,
+> `data/transition_*.csv`) were folded into `docs/dev/` and repointed like the
+> rest, so the `analysis/ → docs/dev/` collapse is complete across the merged tree.
 
 ---
 
