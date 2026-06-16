@@ -32,7 +32,7 @@ from trinity._output.cloudy.trinity_to_cloudy import (
 )
 
 
-MOCK_FULLRUN = Path("outputs/mockOutput/mockFullrun")
+MOCK_FULLRUN = Path(__file__).resolve().parents[1] / "outputs" / "mockOutput" / "mockFullrun"
 
 
 # --------------------------------------------------------------------------- #

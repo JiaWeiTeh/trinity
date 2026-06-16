@@ -228,35 +228,7 @@ def bubble_E2P(Eb, r2, r1, gamma):
     Pb = (gamma - 1) * Eb / (r2**3 - r1**3) / (4 * np.pi / 3)
     # return back in au
     return Pb * cvt.Pb_cgs2au
-    
-def bubble_P2E(Pb, r2, r1, gamma):
-    """
-    Convert bubble pressure to bubble thermal energy.
 
-    Inverse of bubble_E2P(). Inputs are astropy quantities (not raw cgs floats).
-
-    Parameters
-    ----------
-    Pb : astropy Quantity
-        Bubble pressure (convertible to g/cm/s**2).
-    r2 : astropy Quantity
-        Outer bubble radius (= inner shell edge) (convertible to cm).
-    r1 : astropy Quantity
-        Inner bubble radius (wind termination shock) (convertible to cm).
-    gamma : float
-        Adiabatic index.
-
-    Returns
-    -------
-    Eb : astropy Quantity
-        Bubble thermal energy [erg].
-    """
-    r2 = r2.to(u.cm)
-    r1 = r1.to(u.cm)
-    Pb = Pb.to(u.g/u.cm/u.s**2)
-    Eb = 4 * np.pi / 3 / (gamma - 1) * (r2**3 - r1**3) * Pb
-
-    return Eb.to(u.erg)
 
 def get_leak_luminosity(coverFraction, R2, Pb, c_sound, gamma):
     """
@@ -455,4 +427,3 @@ def solve_R1(R2, Eb, Lmech_total, v_mech_total):
             f"Lmech_total={Lmech_total:.6e}, v_mech_total={v_mech_total:.6e}"
         )
         raise
-

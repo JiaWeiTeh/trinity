@@ -37,7 +37,7 @@ from trinity._output.cloudy.snapshot_to_deck import (
 )
 
 
-MOCK_FULLRUN = Path("outputs/mockOutput/mockFullrun")
+MOCK_FULLRUN = Path(__file__).resolve().parents[1] / "outputs" / "mockOutput" / "mockFullrun"
 
 
 # --------------------------------------------------------------------------- #

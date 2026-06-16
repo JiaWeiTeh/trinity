@@ -1,7 +1,7 @@
 """Module-level registry of ParamSpec entries — the single source of truth.
 
 ``SPECS`` holds one ``ParamSpec`` per parameter that TRINITY produces
-(186 total: 72 declared in ``default.param`` + 114 runtime/derived
+(input specs declared in ``default.param`` plus runtime/derived specs
 created in ``read_param`` Steps 6/8/10).  Production wiring:
 ``trinity._output.run_constants`` derives its lists from the registry
 (Phase 5); ``read_param`` Step 5 calls ``validate_all`` (Phase 6),
@@ -292,7 +292,7 @@ def _resolve_sps_bundle(value, params) -> str:
 SPECS: tuple[ParamSpec, ...] = (
     ParamSpec(name='model_name', default='default', info='Specifies the model name, which serves as the prefix for all output filenames.', category='input_admin', unit=None, run_const=True),
     ParamSpec(name='path2output', default='def_dir', info='Defines the output directory where all generated files will be stored.', category='input_admin', unit=None, exclude_from_snapshot=True, metadata_exclude=True, resolver=_resolve_path2output),
-    ParamSpec(name='output_format', default='JSON', info='Specifies the output format.', category='input_admin', unit=None, exclude_from_snapshot=True, run_const=True),
+    ParamSpec(name='output_format', default='JSON', info='Output-format selector; currently inert — snapshots are always written as JSONL.', category='input_admin', unit=None, exclude_from_snapshot=True, run_const=True),
     ParamSpec(name='simplify_npoints', default='100', info='Target number of points retained for simplified profile arrays in saved snapshots (bubble_T_arr, bubble_n_arr, bubble_dTdr_arr, bubble_v_arr, shell_grav_force_m, shell_n_arr). Default 100. Larger values give higher-fidelity snapshots at the cost of larger output files. Clamped to >= 20 (matches the coverage-skeleton chunk count). The first two simplify calls per implicit-phase snapshot log their reconstruction R² at INFO level so you can verify the chosen budget is faithful.', category='input_admin', unit=None, exclude_from_snapshot=True),
     ParamSpec(name='log_level', default='DEBUG', info='Logging level for terminal and file output. Controls how much detail is logged.', category='input_admin', unit=None, exclude_from_snapshot=True, run_const=True),
     ParamSpec(name='log_console', default='False', info='Enable console (terminal) output for logging. If True, log messages are printed to terminal.', category='input_admin', unit=None, exclude_from_snapshot=True, run_const=True),

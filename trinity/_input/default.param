@@ -27,7 +27,7 @@ model_name    default
 # INFO: Defines the output directory where all generated files will be stored.
 path2output    def_dir
 
-# INFO: Specifies the output format.
+# INFO: Output-format selector; currently inert — snapshots are always written as JSONL.
 output_format    JSON
 
 # INFO: Target number of points retained for simplified profile arrays in saved snapshots (bubble_T_arr, bubble_n_arr, bubble_dTdr_arr, bubble_v_arr, shell_grav_force_m, shell_n_arr). Default 100. Larger values give higher-fidelity snapshots at the cost of larger output files. Clamped to >= 20 (matches the coverage-skeleton chunk count). The first two simplify calls per implicit-phase snapshot log their reconstruction R² at INFO level so you can verify the chosen budget is faithful.

@@ -85,7 +85,9 @@ for the full workflow.
 
 The method-paper figures regenerate from the post-processed `.npz`
 bundles committed under `paper/methods/data/` — no raw simulation output
-and no extra downloads needed:
+and no extra *data* downloads needed. The figure scripts do need the `[plots]`
+extra (`pip install -e ".[plots]"`) and a LaTeX install (the plot style uses
+`text.usetex`):
 
 ```bash
 python paper/methods/make_figures.py           # all figures → paper/plots/

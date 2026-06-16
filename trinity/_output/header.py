@@ -21,11 +21,6 @@ def display():
     Note: This function uses print() instead of logging because it should
     display BEFORE logging is configured. This ensures the header appears
     first in the terminal output.
-
-    Parameters
-    ----------
-    params : DescribedDict
-        Dictionary of simulation parameters
     """
     # display logo for TRINITY
     show_logo()
