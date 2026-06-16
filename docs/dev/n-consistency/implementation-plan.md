@@ -23,7 +23,14 @@
 > an untracked `outputs/`. A future visit must be able to reproduce or compare
 > against the numbers **without re-running**; record the exact config + command
 > that produced each artifact.
->
+
+**About this document**
+- **Type:** plan — the detailed, line-by-line edit spec (phased, per-site before/after) that applies the `n ≡ n_H` audit; records what shipped.
+- **Workstream:** `n-consistency/` — the "every number density n is hydrogen-nuclei n_H" convention & pressure terms.
+- **Where it sits:** `audit.md` (physics rationale & finding) → **this** (exact edits, Phases 0–6 + Phase A) → terminal; pinned by `test/test_mu_audit_drift.py`. Shipped in #657.
+- **Code it concerns:** `_input/` (`registry.py`, `read_param.py`, composition params), `phase1*`/`phase2*` pressure prefactors, `bubble_structure/bubble_luminosity.py`, `cooling/net_coolingcurve.py`, `shell_structure/`, `cloud_properties/bonnorEbertSphere.py`, `_functions/operations.py`.
+- **Linked files & data:** sibling docs `audit.md`, `pressure-terms-audit.md`; code `trinity/_input/{registry,read_param}.py`, `trinity/bubble_structure/bubble_luminosity.py`, `trinity/cooling/net_coolingcurve.py`, `trinity/shell_structure/{get_shellODE,shell_structure}.py`, `trinity/_functions/operations.py`; test `test/test_mu_audit_drift.py`.
+
 > **Audit status (2026-06-08):** **shipped in #657.** The status header correctly
 > names the phases, but the **Phase 1 & Phase 3 before/after tables predate the
 > Phase A singly-ionised-shell decision** and name the wrong μ/χ (`mu_ion`/

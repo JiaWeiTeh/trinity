@@ -23,7 +23,14 @@
 > an untracked `outputs/`. A future visit must be able to reproduce or compare
 > against the numbers **without re-running**; record the exact config + command
 > that produced each artifact.
->
+
+**About this document**
+- **Type:** audit — the finding that establishes `n ≡ n_H` (hydrogen-nuclei density) against the model paper, with the canonical μ/χ_e reference table and a per-site inventory of where the code violates it.
+- **Workstream:** `n-consistency/` — the "every number density n is hydrogen-nuclei n_H" convention & pressure terms.
+- **Where it sits:** entry point (single source of truth) → **this** → `implementation-plan.md` (the line-by-line edit spec); supersedes the earlier `pressure-terms-audit.md`. Shipped in #657 with a later Phase A singly-ionised-shell split.
+- **Code it concerns:** `cloud_properties/`, `bubble_structure/` (`bubble_luminosity.py`), `cooling/` (`net_coolingcurve.py`), `shell_structure/`, and the pressure terms in `phase1*`/`phase2*`.
+- **Linked files & data:** sibling docs `implementation-plan.md`, `pressure-terms-audit.md`; code `trinity/bubble_structure/bubble_luminosity.py`, `trinity/cooling/net_coolingcurve.py`, `trinity/shell_structure/{get_shellODE,shell_structure}.py`, `trinity/cloud_properties/bonnorEbertSphere.py`.
+
 > **Audit status (2026-06-08):** **the implementation shipped in #657** — the
 > `Implementation: NOT started` / "every ❌ site still open" framing is obsolete.
 > The μ physics and values still hold, but the single-composition tables predate

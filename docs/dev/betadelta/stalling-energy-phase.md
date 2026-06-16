@@ -24,6 +24,13 @@
 > against the numbers **without re-running**; record the exact config + command
 > that produced each artifact.
 
+**About this document**
+- **Type:** study — deep dive into the stalling energy-driven phase, rising Pb / negative β (feedback re-pressurisation), and the resulting unphysical interior inflow ("Problem 2"); includes the Phase 6.0 contamination hunt and the Phase 6.1 counterfactual that closes Problem 2 (inflow real but cosmetic).
+- **Workstream:** `betadelta/` — β–δ (beta–delta) implicit-phase solver repair.
+- **Where it sits:** `PHASE2_ARMS.md` (hybr surfaces negative β) → **this** (Phase 5/6 follow-ons) → terminal (Phase 5 transition-criterion study is deferred; see `HYBR_PLAN.md`).
+- **Code it concerns:** the bubble-structure velocity ODE and cooling integrals (`trinity/bubble_structure/bubble_luminosity.py`, the `(β+δ)/t` source and `dMdt` gate), the `phase1b_energy_implicit` hybr solver (`get_betadelta.py`), and the cooling-balance transition trigger (`trinity/phase_general/phase_events.py`).
+- **Linked files & data:** plan `HYBR_PLAN.md` (Phases 5/6); sibling `PHASE2_ARMS.md`; data `docs/dev/data/stalling_{steep_1e6_alpha-2,mock_4e3}.csv` and `docs/dev/data/hunt_h*.csv`; harness `docs/dev/betadelta/velstruct/` (`hunt.py`, `analyze_hunt.py`, `compare_hold.py`, `h*.param`).
+
 Investigation (2026-06-13) of two things the self-consistent hybr runs surfaced
 that legacy (β clamped to [0,1]) could never show:
 

@@ -24,6 +24,13 @@
 > against the numbers **without re-running**; record the exact config + command
 > that produced each artifact.
 
+**About this document**
+- **Type:** plan — characterize the implicit→momentum transition trigger (clocks A/B, candidate families F0–F5) and decide via pre-registered gates before changing production.
+- **Workstream:** `transition/` — the implicit→momentum transition trigger.
+- **Where it sits:** promoted from Phase 5 of `docs/dev/betadelta/HYBR_PLAN.md` → **this (entry point)** → `P0.md` (P0/P-sens results) → `pshadow-design.md` (design).
+- **Code it concerns:** phase 1b implicit terminator (`run_energy_implicit_phase.py` cooling_balance block) and clock B, the 1c transition phase (`phase1c_transition/run_transition_phase.py`).
+- **Linked files & data:** sibling docs `P0.md`, `pshadow-design.md`; background `docs/dev/betadelta/HYBR_PLAN.md`, `docs/dev/betadelta/stalling-energy-phase.md`; data `docs/dev/data/transition_*.csv`; harness `docs/dev/transition/harness/`.
+
 Promotes **Phase 5** of `docs/dev/betadelta/HYBR_PLAN.md` (deferred there) into
 its own program now that the hybr solver has landed and exposed the behaviour.
 This is a **measurement-first investigation**, not an implementation task: the

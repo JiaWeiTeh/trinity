@@ -24,6 +24,13 @@
 > against the numbers **without re-running**; record the exact config + command
 > that produced each artifact.
 
+**About this document**
+- **Type:** results — the Phase 2.3 four-arm shadow experiment (A control / B g-metric / C cap+bounds / D hybr) and Gate-G2 evaluation, plus a Phase-3 self-consistent hybr validation section that partly supersedes the shadow reading (D still promotes).
+- **Workstream:** `betadelta/` — β–δ (beta–delta) implicit-phase solver repair.
+- **Where it sits:** `PHASE0_BASELINES.md` (Phase 0) → **this** (Phase 2/3) → `stalling-energy-phase.md` (the Phase-5/6 follow-ons hybr surfaced).
+- **Code it concerns:** the `phase1b_energy_implicit` solver and its new hybr path (`trinity/phase1b_energy_implicit/get_betadelta.py`, `run_energy_implicit_phase.py`); the cooling-balance transition event (`trinity/phase_general/phase_events.py`).
+- **Linked files & data:** plan `HYBR_PLAN.md`; sibling `PHASE0_BASELINES.md`, `stalling-energy-phase.md`; harness + jsonl/figures `docs/dev/betadelta/diagnostics/` (`arms.py`, `analyze_arms.py`, `arms_{mock4e3,simple1e5}.jsonl`).
+
 Generated 2026-06-13 from `docs/dev/betadelta/diagnostics/arms_{mock4e3,simple1e5}.jsonl`
 (harness `docs/dev/betadelta/diagnostics/arms.py`, plan §2.3). Regenerate stats and figures
 with `python docs/dev/betadelta/diagnostics/analyze_arms.py` — the numbers below are only as

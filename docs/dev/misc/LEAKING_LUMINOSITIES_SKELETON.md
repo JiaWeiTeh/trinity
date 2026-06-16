@@ -23,7 +23,14 @@
 > an untracked `outputs/`. A future visit must be able to reproduce or compare
 > against the numbers **without re-running**; record the exact config + command
 > that produced each artifact.
->
+
+**About this document**
+- **Type:** plan (skeleton) — a phased implementation plan for the geometry-set covering-fraction enthalpy leak, tracking what shipped (A–C drafted) versus open work (mass sink D, photon/X-ray G) and the unresolved edge cases.
+- **Workstream:** `misc/` — standalone (`coverFraction`/`Cf` leak feature).
+- **Where it sits:** standalone — concerns the core energy equation in the energy/implicit/transition phases and the downstream CLOUDY post-processing; tracked on branch `feature/add-Cf` (these have no before/after within misc/).
+- **Code it concerns:** the `coverFraction` (`Cf`) input and `get_leak_luminosity` helper; the energy/implicit/transition ODE RHS (`Lleak`, mass sink, photon budget).
+- **Linked files & data:** code `trinity/bubble_structure/get_bubbleParams.py`, `trinity/phase1_energy/energy_phase_ODEs.py`, `trinity/phase1_energy/run_energy_phase.py`, `trinity/phase1b_energy_implicit/run_energy_implicit_phase.py`, `trinity/_input/registry.py`; tests `test/test_cf_leak.py`.
+
 > **Note (2026-06-08, not re-audited):** the `coverFraction`/`Cf` feature has
 > progressed since this skeleton (commits `#641 Feature/add cf`, `#647`/`#648`
 > plot-cf, plus the `rosette_cf*` params). The Status line below predates that —

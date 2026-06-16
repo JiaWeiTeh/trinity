@@ -29,6 +29,13 @@
 > `n-consistency-audit.md` / `n-consistency-implementation-plan.md` is valid and
 > its μ constants are correct. No content fix needed.
 
+**About this document**
+- **Type:** audit — the first-pass `2nkT` / `mu_p`,`mu_n` pressure-terms audit examining what `n` means across modules; **self-declared SUPERSEDED** (it reached the opposite sign on the bubble before the paper pinned `n ≡ n_H`).
+- **Workstream:** `n-consistency/` — the "every number density n is hydrogen-nuclei n_H" convention & pressure terms.
+- **Where it sits:** entry point (earliest pass) → superseded by **`audit.md`** (physics) and `implementation-plan.md` (what shipped) → terminal; kept as a historical record of the reasoning.
+- **Code it concerns:** `bubble_structure/bubble_luminosity.py` (Finding A), `cooling/net_coolingcurve.py` (Finding B), `shell_structure/` (Findings C/D), and the cloud/ISM `n_H` reference modules.
+- **Linked files & data:** sibling docs `audit.md`, `implementation-plan.md`; code `trinity/bubble_structure/bubble_luminosity.py`, `trinity/cooling/net_coolingcurve.py`, `trinity/shell_structure/{get_shellODE,shell_structure}.py`.
+
 > **⚠️ SUPERSEDED (historical).** This first pass — written *before* the model
 > paper fixed the convention — reached the *opposite* conclusion on the bubble
 > (it treated `mu_ion` as the mass-conversion weight). The paper pins

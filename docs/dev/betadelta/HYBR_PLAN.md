@@ -24,6 +24,13 @@
 > against the numbers **without re-running**; record the exact config + command
 > that produced each artifact.
 
+**About this document**
+- **Type:** plan — the master, phased work plan for the β–δ solver repair (Phases 0–6: baselines, safety fixes, four-arm shadow race, hybr promotion behind a switch, validation/default-flip, transition-criterion study, velocity-structure "Problem 2").
+- **Workstream:** `betadelta/` — β–δ (beta–delta) implicit-phase solver repair.
+- **Where it sits:** entry point → **this** → results docs `PHASE0_BASELINES.md`, `PHASE2_ARMS.md`, study `stalling-energy-phase.md`.
+- **Code it concerns:** the `phase1b_energy_implicit` solver and its handoffs (`trinity/phase1b_energy_implicit/get_betadelta.py`, `run_energy_implicit_phase.py`), the cooling-balance transition event (`trinity/phase_general/phase_events.py`), and structure/R1 helpers (`trinity/bubble_structure/bubble_luminosity.py`, `get_bubbleParams.py`).
+- **Linked files & data:** sibling docs `PHASE0_BASELINES.md`, `PHASE2_ARMS.md`, `stalling-energy-phase.md`; data `docs/dev/data/stalling_*.csv`, `docs/dev/data/hunt_*.csv`; harnesses `docs/dev/betadelta/diagnostics/`, `docs/dev/betadelta/velstruct/`.
+
 v2 (2026-06-12) supersedes v1 of this file. Changes of substance: interim
 Phase-0 data from three live baseline runs re-ranked the diagnosis (the
 ±0.02/segment grid drift cap is the primary defect; the f-metric pole is not

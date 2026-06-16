@@ -24,6 +24,13 @@
 > against the numbers **without re-running**; record the exact config + command
 > that produced each artifact.
 
+**About this document**
+- **Type:** design — a reference overview of every termination event (simulation-ending, phase-ending, monitoring) and post-integration stopping check, tabulated per phase with thresholds and the event-result structure.
+- **Workstream:** `misc/` — standalone (simulation termination events / stopping fates).
+- **Where it sits:** standalone — spans the whole pipeline (energy → implicit → transition → momentum → simulation end), describing the phase-flow and exit conditions (these have no before/after within misc/).
+- **Code it concerns:** the centralized event module `phase_general/phase_events.py` and the per-phase runners (energy, implicit, transition, momentum); exit codes via the `SimulationEndCode` enum.
+- **Linked files & data:** code `trinity/phase_general/phase_events.py`, `trinity/_output/simulation_end.py`, `trinity/phase1_energy/run_energy_phase.py`, `trinity/phase1b_energy_implicit/run_energy_implicit_phase.py`, `trinity/phase1c_transition/run_transition_phase.py`, `trinity/phase2_momentum/run_momentum_phase.py`.
+
 This document describes all termination events used across simulation phases.
 Events are handled by the centralized module `trinity/phase_general/phase_events.py`.
 

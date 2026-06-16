@@ -24,6 +24,13 @@
 > against the numbers **without re-running**; record the exact config + command
 > that produced each artifact.
 
+**About this document**
+- **Type:** study — a thread-pinned sweep testing whether the `T_init = 3e4` bubble-boundary anchor is a relabel-only knob or actually shifts the bubble cooling luminosity `L_total`.
+- **Workstream:** `misc/` — standalone (`T_init` / bubble-boundary anchor sensitivity).
+- **Where it sits:** standalone — companion/follow-up to the integrator-robustness boundary-transient discussion; concerns phase0_init / the bubble boundary (these have no before/after within misc/).
+- **Code it concerns:** the `_T_INIT_BOUNDARY` (3e4 K) anchor in bubble-structure luminosity and the linear "L3" patch over `[1e4, T_init]`; the full `get_bubbleproperties_pure` pipeline (R1/Pb → fsolve `dMdt` → ODE → luminosity).
+- **Linked files & data:** code `trinity/bubble_structure/bubble_luminosity.py`; harness `tools/tinit_sweep/` (`run_sweep.py`, `sweep.py`, `README.md`), `tools/bubble_audit/audit.py`; related docs `docs/dev/bubble/integrator-robustness.md`.
+
 Companion to `docs/dev/bubble/integrator-robustness.md` (the "T_init=3e4"
 boundary-transient discussion). That doc established *what* the 3e4 boundary is
 (a numerical anchor, not a physical temperature). This doc answers the

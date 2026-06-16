@@ -24,6 +24,13 @@
 > numbers **without re-running**; record the exact config + command that produced
 > each artifact.
 
+**About this document**
+- **Type:** design — the shadow-first, two-criterion (F0 cooling ∨ F4 blowout) trigger design, awaiting maintainer sign-off; no code changed yet.
+- **Workstream:** `transition/` — the implicit→momentum transition trigger.
+- **Where it sits:** `TRIGGER_PLAN.md` (plan) → `P0.md` (P0/P-sens evidence, G0 = profile-dependent) → **this (design for review)** → implementation (P-shadow → P-promote, not yet written).
+- **Code it concerns:** phase 1b implicit terminator (`run_energy_implicit_phase.py` F0 block + new `transition_trigger` param), the dead/blowout event factories in `phase_events.py`, and 1b→1c→2 routing in `main.py`.
+- **Linked files & data:** plan `TRIGGER_PLAN.md`; evidence `P0.md`; data `docs/dev/data/transition_*.csv`; code `trinity/phase1b_energy_implicit/run_energy_implicit_phase.py`, `trinity/phase_general/phase_events.py`, `trinity/main.py`.
+
 **Status:** DESIGN FOR REVIEW (2026-06-15). No code changed yet. Implements the
 P-shadow phase of `docs/dev/transition/TRIGGER_PLAN.md` using the evidence from
 `docs/dev/transition/P0.md` (P0 + P-sens complete; G0 = profile-dependent

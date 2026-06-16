@@ -24,6 +24,13 @@
 > against the numbers **without re-running**; record the exact config + command
 > that produced each artifact.
 
+**About this document**
+- **Type:** audit — a tiered inventory of backward-compat shims, dead code, stale comments, and misnamed-but-live paths across the repo, with a suggested cleanup-PR sequence.
+- **Workstream:** `misc/` — standalone (backward-compat & stale-code cleanup).
+- **Where it sits:** standalone — feeds the future `feature/remove-backward-compat-codeblocks` cleanup branch; audit-only, no code changed (these have no before/after within misc/).
+- **Code it concerns:** cross-cutting — `_output/` (reader, cloudy loader, `simulation_end`, `show_run`), `_input/` (registry, read_param, param_spec), bubble-structure (`bubble_luminosity`, `get_bubbleParams`), cooling, plus `test/`, `paper/`, and `docs/`.
+- **Linked files & data:** code `trinity/bubble_structure/bubble_luminosity.py`, `trinity/_output/simulation_end.py`, `trinity/_output/cloudy/run_loader.py`, `trinity/_output/trinity_reader.py`, `trinity/_input/registry.py`, `trinity/_functions/unit_conversions.py`; tests `test/test_phase5_text_drop.py`, `test/test_phase4_consumer_migration.py`; related docs `docs/dev/bubble/integrator-robustness.md`.
+
 Audited at commit `b7c5db6` (2026-06-10). Feeds the future cleanup branch
 `feature/remove-backward-compat-codeblocks`. **Audit only — no code was changed.**
 
