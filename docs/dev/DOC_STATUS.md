@@ -35,9 +35,9 @@ cross-checked with `CHANGELOG.md` and `git log`.
 | `archive/betadelta/PHASE0_BASELINES.md` | ✅ SHIPPED (record) | — | **Archive** |
 | `archive/betadelta/PHASE2_ARMS.md` | ✅ SHIPPED (arm D / hybr landed) | — | **Archive** (forward item lives in stalling + HYBR Phase 5) |
 | `archive/betadelta/stalling-energy-phase.md` | ✅ SHIPPED (settled study) | minor | Fix 1 parenthetical → **archive** |
-| `transition/TRIGGER_PLAN.md` | 🔵 ACTIONABLE | accurate | **Keep** (P-shadow unbuilt) |
+| `transition/TRIGGER_PLAN.md` | 🔵 ACTIONABLE | accurate | **Keep** (P-shadow shipped; P-promote unbuilt) |
 | `transition/P0.md` | ✅ SHIPPED (results record) | — | Keep alongside the plan (don't archive yet) |
-| `transition/pshadow-design.md` | 🔵 ACTIONABLE | ⚠️ (1: `stop_r`) | Fix ref → **keep** (actionable head) |
+| `transition/pshadow-design.md` | 🟡 PARTIAL (P-shadow shipped) | refreshed | **Keep** (P-promote head) |
 | `archive/bubble/integrator-robustness.md` | ⛔ SUPERSEDED (by the `solve_ivp` migration) | ⚠️ (heavy) | Add "superseded" banner → **archive** |
 | `archive/bubble/conduction-convergence.md` | ✅ SHIPPED (sign-off; switch landed) | minor | **Archive** |
 | `cooling/refactor-audit.md` | 🔵 ACTIONABLE (nothing shipped) | ⚠️ (~1–3 lines) | Refresh refs → **keep** |
@@ -49,12 +49,17 @@ cross-checked with `CHANGELOG.md` and `git log`.
 | `misc/TERMINATION_EVENTS.md` | 📘 REFERENCE (accurate) | — | **Keep** (current reference) |
 | `misc/LEAKING_LUMINOSITIES_SKELETON.md` | 🟡 PARTIAL (A–C shipped; D/F/G open) | — | **Keep** |
 
-**Tally:** 7 ✅ shipped · 2 ⛔ superseded · 4 🔵 actionable · 2 🟡 partial · 1 📘 reference · (1 results-record).
+**Tally:** 7 ✅ shipped · 2 ⛔ superseded · 3 🔵 actionable · 3 🟡 partial · 1 📘 reference · (1 results-record).
 
 > **Acted on (2026-06-16):** the shipped/superseded workstreams were moved to
 > `docs/dev/archive/` (`betadelta/`, `bubble/`, `n-consistency/` — writeups +
 > harnesses), each doc carries a verified **Status** line, and the two precise
 > stale refs (`pshadow-design` `stop_r`, `stalling` velstruct note) were fixed.
+>
+> **Update (2026-06-16):** **P-shadow shipped** — the log-only F0/F4
+> transition-trigger diagnostics (`transition_trigger` param +
+> `trinity/phase_general/transition_shadow.py`, wired into 1b) landed;
+> `transition/pshadow-design.md` moved 🔵→🟡 (P-promote still gated on §6 sign-off).
 
 ## Open items carried forward (from archived docs)
 
@@ -62,8 +67,9 @@ cross-checked with `CHANGELOG.md` and `git log`.
   (`trinity/_input/default.param:49`); the verified-good `hybr` path exists but the
   flip to `hybr` is a deferred maintainer decision (`archive/betadelta/HYBR_PLAN.md` Phase 4).
 - **β–δ Phase-5 — transition criterion.** The "is the fixed 0.05 cooling-balance
-  trigger right (esp. steep r⁻²)?" question is now the **active** `transition/`
-  workstream (`TRIGGER_PLAN.md` → `pshadow-design.md`), still unbuilt.
+  trigger right (esp. steep r⁻²)?" question is the **active** `transition/`
+  workstream (`TRIGGER_PLAN.md` → `pshadow-design.md`); **P-shadow (log-only
+  F0/F4 diagnostics) shipped 2026-06-16**, P-promote still unbuilt.
 
 ## Per-doc detail (decisive evidence)
 
@@ -92,17 +98,22 @@ own Phase-3 section; the forward item (steep r⁻² cooling-balance) lives in `s
 parenthetical: it calls `velstruct/` + data "gitignored scratch" but they are **committed**.
 
 ### `transition/TRIGGER_PLAN.md` — 🔵 ACTIONABLE
-Clocks A/B and `phaseSwitch_LlossLgain` param verified (`run_energy_implicit_phase.py:1070-1079`,
-`registry.py:346`); **no** candidate F0–F5 is wired into production (`git grep transition_trigger|blowout` → empty).
-Plan is current and accurate; the next live step (P-shadow) is unbuilt.
+Clocks A/B and `phaseSwitch_LlossLgain` param verified (`run_energy_implicit_phase.py:1085-1097`,
+`registry.py:346`); the `transition_trigger` param + F0/F4 **shadow** log are now wired (P-shadow,
+2026-06-16) but log-only — **no** candidate acts on production (F4 blowout is recorded, not enforced;
+`'cooling_or_blowout'` rejected with a `ValueError`). Plan is current and accurate; P-promote is the
+next unbuilt step.
 
 ### `transition/P0.md` — ✅ SHIPPED (results record)
 Offline harvest record; harness (`transition/harness/harvest.py,psens.py`) + 5 `data/transition_*.csv` all present
-and match. Complete by its own terms; keep with the plan until P-shadow ships.
+and match. Complete by its own terms; keep with the plan (P-shadow shipped 2026-06-16; P-promote pending).
 
-### `transition/pshadow-design.md` — 🔵 ACTIONABLE, ⚠️ 1 stale ref
-Entirely unbuilt (accurate "awaiting sign-off"): no `transition_trigger` param, no blowout/shadow code.
-Routing `main.py:283,303,343` and the F0 terminator verified. Stale: §3 says `stop_r` default `None`; actual `'500'` (`registry.py:316`).
+### `transition/pshadow-design.md` — 🟡 PARTIAL (P-shadow shipped; P-promote actionable)
+P-shadow built 2026-06-16: `transition_trigger` param (`registry.py:347`, `default.param`) + log-only
+`ShadowTransitionLog` (`trinity/phase_general/transition_shadow.py`) wired into 1b
+(`run_energy_implicit_phase.py:1094` update / `:1192` write); `test_transition_shadow.py` green (9 tests);
+production byte-identical. P-promote (the `cooling_or_blowout` break) remains gated on §6 sign-off.
+Routing `main.py:283,303,343` and the F0 terminator verified; §3/§4 line refs refreshed.
 
 ### `archive/bubble/integrator-robustness.md` — ⛔ SUPERSEDED, ⚠️ heavy stale-refs
 The `_odeint_checked` wrapper it documents was **removed**; the structure solve is now

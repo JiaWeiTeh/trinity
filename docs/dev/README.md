@@ -59,7 +59,7 @@ The top-level `scratch/` (repo root) is separate, git-ignored, local-only.
 ### `transition/` — implicit→momentum transition trigger
 - `TRIGGER_PLAN.md` — **plan** (🔵 actionable): characterize the transition trigger, then decide.
 - `P0.md` — **results** (✅): P0 harvest (both clocks + candidate divergence).
-- `pshadow-design.md` — **design** (🔵 actionable): two-criterion (F0 ∨ F4) trigger, unbuilt.
+- `pshadow-design.md` — **design** (🟡 partial): two-criterion (F0 ∨ F4) trigger; P-shadow (log-only) shipped, P-promote pending sign-off.
 - `harness/` — offline harvest / P-sensitivity harnesses + README.
 - Data: `data/transition_*.csv`.
 

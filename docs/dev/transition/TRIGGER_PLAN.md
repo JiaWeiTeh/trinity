@@ -25,7 +25,7 @@
 > that produced each artifact.
 
 **About this document**
-- **Status (verified 2026-06-16):** 🔵 **ACTIONABLE** (verified 2026-06-16) — plan is current and accurate; no trigger candidate is wired into production yet.
+- **Status (verified 2026-06-16):** 🔵 **ACTIONABLE** (verified 2026-06-16) — plan is current and accurate. **P-shadow shipped 2026-06-16** (log-only F0/F4 diagnostics, `transition_trigger` param); no trigger acts on production yet — P-promote is the next step.
 - **Type:** plan — characterize the implicit→momentum transition trigger (clocks A/B, candidate families F0–F5) and decide via pre-registered gates before changing production.
 - **Workstream:** `transition/` — the implicit→momentum transition trigger.
 - **Where it sits:** promoted from Phase 5 of `docs/dev/archive/betadelta/HYBR_PLAN.md` → **this (entry point)** → `P0.md` (P0/P-sens results) → `pshadow-design.md` (design).
@@ -260,6 +260,12 @@ or better than F1, and (c) its advantage is **not** reproduced by adding the
 sustained-over-`t_cross` rule to F0/F1. If (c) fails, adopt the simpler trigger.
 
 ### P-shadow — Shadow implementation (zero production impact; only if G1 passes)
+> **✅ Shipped 2026-06-16** — `transition_trigger` param (default `instantaneous`)
+> + log-only `ShadowTransitionLog` (`trinity/phase_general/transition_shadow.py`,
+> wired into the 1b loop) record the first F0/F4 epoch to `transition_shadow.jsonl`;
+> production byte-identical; `test/test_transition_shadow.py` green. **Not yet done:**
+> the dead-event-factory reconcile below (still on the P-promote tail).
+
 Add a `transition_trigger` param (default `instantaneous` = current F0 behaviour;
 threshold still `phaseSwitch_LlossLgain`). Reconcile the dead event factory
 (`phase_events.py:495`) so there is one parameterized energy-ratio path.

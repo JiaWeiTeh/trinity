@@ -25,18 +25,20 @@
 > each artifact.
 
 **About this document**
-- **Status (verified 2026-06-16):** 🔵 **ACTIONABLE** (verified 2026-06-16) — design is sound and entirely unbuilt; awaiting sign-off.
-- **Type:** design — the shadow-first, two-criterion (F0 cooling ∨ F4 blowout) trigger design, awaiting maintainer sign-off; no code changed yet.
+- **Status (verified 2026-06-16):** 🟡 **PARTIAL** (verified 2026-06-16) — **P-shadow shipped** (log-only F0/F4 diagnostics); **P-promote** still 🔵 ACTIONABLE, awaiting sign-off on the §6 open decisions.
+- **Type:** design — the shadow-first, two-criterion (F0 cooling ∨ F4 blowout) trigger design; the shadow phase is now built, promote awaits maintainer sign-off.
 - **Workstream:** `transition/` — the implicit→momentum transition trigger.
-- **Where it sits:** `TRIGGER_PLAN.md` (plan) → `P0.md` (P0/P-sens evidence, G0 = profile-dependent) → **this (design for review)** → implementation (P-shadow → P-promote, not yet written).
+- **Where it sits:** `TRIGGER_PLAN.md` (plan) → `P0.md` (P0/P-sens evidence, G0 = profile-dependent) → **this (design)** → implementation (**P-shadow shipped** → P-promote, awaiting sign-off).
 - **Code it concerns:** phase 1b implicit terminator (`run_energy_implicit_phase.py` F0 block + new `transition_trigger` param), the dead/blowout event factories in `phase_events.py`, and 1b→1c→2 routing in `main.py`.
 - **Linked files & data:** plan `TRIGGER_PLAN.md`; evidence `P0.md`; data `docs/dev/data/transition_*.csv`; code `trinity/phase1b_energy_implicit/run_energy_implicit_phase.py`, `trinity/phase_general/phase_events.py`, `trinity/main.py`.
 
-**Status:** DESIGN FOR REVIEW (2026-06-15). No code changed yet. Implements the
-P-shadow phase of `docs/dev/transition/TRIGGER_PLAN.md` using the evidence from
+**Status:** **P-SHADOW SHIPPED** (2026-06-16) — log-only F0/F4 diagnostics landed
+(`transition_trigger` param + `trinity/phase_general/transition_shadow.py`,
+wired into the 1b loop); production unchanged (byte-identical snapshots). Implements
+the P-shadow phase of `docs/dev/transition/TRIGGER_PLAN.md` using the evidence from
 `docs/dev/transition/P0.md` (P0 + P-sens complete; G0 = profile-dependent
-trigger). **Awaiting maintainer sign-off on the open decisions in §6 before any
-implementation.**
+trigger). **P-promote (the `cooling_or_blowout` break) remains gated on maintainer
+sign-off of the open decisions in §6 before implementation.**
 
 ## 1. What the evidence mandates (recap, one line each)
 - **Flat configs transition by cooling** — F0 `(Lgain−Lloss)/Lgain < ε` fires at
@@ -58,23 +60,31 @@ F4 fixes it.
 ## 3. Verified code sites (re-check per banner before editing)
 | site | file:line | role |
 |---|---|---|
-| F0 live terminator | `run_energy_implicit_phase.py:1076–1079` | `if (Lgain−Lloss)/Lgain < threshold: termination_reason="cooling_balance"; break` — does **not** set `EndSimulationDirectly` |
-| ε param | `phaseSwitch_LlossLgain` (read at `:1070–1074`, default 0.05) | the cooling threshold |
+| F0 live terminator | `run_energy_implicit_phase.py:1096–1097` | `if (Lgain−Lloss)/Lgain < threshold: termination_reason="cooling_balance"; break` — does **not** set `EndSimulationDirectly` |
+| shadow log (P-shadow) | `run_energy_implicit_phase.py:1094` (`shadow_log.update`), `:1192` (`.write`) | records the first F0/F4 epoch to `transition_shadow.jsonl`; never acts on it |
+| ε param | `phaseSwitch_LlossLgain` (read at `:1085`, default 0.05) | the cooling threshold |
 | rCloud | `params['rCloud'].value` (already used `:664`) | cloud radius for F4 |
 | existing R2>rCloud awareness | `:659–669`, `:885–892` (`stop_at_rCloud_nSnap`) | snapshot-stop only, not a transition |
-| `large_radius` (≠ blowout) | `:1106–1113` | `R2 > stop_r` (param, default `'500'` per `registry.py:316`) → **ends sim** (`EndSimulationDirectly=True`); not a phase transition |
+| `large_radius` (≠ blowout) | `:1126–1129` | `R2 > stop_r` (param, default `'500'` per `registry.py:316`) → **ends sim** (`EndSimulationDirectly=True`); not a phase transition |
 | blowout factory (exists, unused in 1b) | `phase_events.py:218` `make_cloud_boundary_event(rCloud)` | `R2 − rCloud`, direction +1; currently 1a→1b only |
 | dead cooling factory | `phase_events.py:317` `make_cooling_balance_event(threshold=0.05)` | hardcoded 0.05; built by `build_implicit_phase_events` but never the live terminator |
 | phase routing | `main.py:280,300,340` | `EndSimulationDirectly` gates 1b→1c→2; `cooling_balance` flows through to 1c→2 |
 
 ## 4. Design (shadow-first, zero production impact)
+> **✅ Shipped (P-shadow, 2026-06-16):** the param + shadow mode below are built.
+> `transition_trigger` is registered (`registry.py:347`, `default.param`);
+> `ShadowTransitionLog` (`trinity/phase_general/transition_shadow.py`) is wired
+> into the 1b loop (`run_energy_implicit_phase.py:1094` update / `:1192` write).
+> `'cooling_or_blowout'` is rejected with a `ValueError` until P-promote. The
+> promote-mode prose below is the spec for that follow-up.
+
 **New param** `transition_trigger`, default `"instantaneous"` (current F0-only
 behaviour). Register beside `phaseSwitch_LlossLgain` (registry + `default.param`).
 
-**Shadow mode (default, `"instantaneous"`):** in the 1b loop, right after the F0
-check (`:1079`), compute the F4 condition `R2 > params['rCloud'].value`. Do **not**
+**Shadow mode (default, `"instantaneous"`):** in the 1b loop, right before the F0
+check (`:1094–1096`), compute the F4 condition `R2 > params['rCloud'].value`. Do **not**
 act on it — record the first epoch where each criterion *would* fire to a sideline
-file (e.g. `<output>/transition_shadow.jsonl`: `{t, R2, rCloud, ratio_F0, which}`).
+file (`<output>/transition_shadow.jsonl`: `{which, t, R2, rCloud, ratio_F0}`).
 Production still breaks on F0 only ⇒ **byte-identical snapshots**.
 
 **Promote mode (later, behind the param, `"cooling_or_blowout"`):** add a parallel
