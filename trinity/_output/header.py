@@ -32,7 +32,7 @@ def display():
     print('\t\t      --------------------------------------------------')
     print('\t\t      Welcome to' + ' \033[32m' + link('https://github.com/JiaWeiTeh/trinity', 'TRINITY') + '\033[0m!\n')
     print('\t\t      Notes:')
-    print('\t\t         - Documentation can be found \033[32m' + link('https://trinitysf.readthedocs.io/en/latest/index.html', 'here') + '\033[0m.')
+    print('\t\t         - Documentation can be found \033[32m' + link('https://jiaweiteh.github.io/trinity-web/', 'here') + '\033[0m.')
     print(f'\t\t         - \033[1m\033[96mBold text{cpr.END} indicates that a file is saved.')
     print(f'\t\t         - {cpr.WARN}Warning message{cpr.END}. Code runs still.')
     print(f'\t\t         - {cpr.FAIL}Error encountered.{cpr.END} Code terminates.\n')

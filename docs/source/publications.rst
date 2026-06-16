@@ -4,7 +4,9 @@ Acknowledging TRINITY
 =====================
 
 If you use TRINITY in any published work, please cite the TRINITY
-method paper (Teh et al., in preparation).
+method paper, Teh et al. (2026), `arXiv:2605.27517
+<https://arxiv.org/abs/2605.27517>`__ (BibTeX via
+`ADS <https://ui.adsabs.harvard.edu/abs/2026arXiv260527517T/abstract>`__).
 
 Legacy citations
 ----------------

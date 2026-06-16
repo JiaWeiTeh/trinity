@@ -226,7 +226,7 @@ def _resolve_sps_bundle(value, params) -> str:
     7-column SB99 layout (DEFAULT_SPS_COLUMN_MAP). The default rejects
     combinations the bundled cooling tables can't fulfill; users who need
     a different metallicity or rotation must set sps_path explicitly.
-    See analysis/archive/sb99-refactor-audit.md §9.
+    See docs/dev/archive/sb99-refactor-audit.md §9.
 
     Side effects (the coupled members of the bundle):
       * ``params['sps_refmass'].value`` — 'def_value' resolves to 1e6 only
@@ -460,7 +460,7 @@ SPECS: tuple[ParamSpec, ...] = (
     ParamSpec(name='bubble_T_r_Tb', default=0, info='Temperature at r_Tb', category='runtime_bubble', unit='K'),
     ParamSpec(name='bubble_r_arr', default=np.array([]), info='Bubble radius structure', category='runtime_bubble', unit='pc', metadata_exclude=True),
     ParamSpec(name='bubble_v_arr', default=np.array([]), info='Bubble velocity structure', category='runtime_bubble', unit='pc/Myr'),
-    ParamSpec(name='v_neg_frac_thick', default=np.nan, info='Fraction of bubble thickness with inward (v<0) flow -- WARPFIELD "Problem 2" diagnostic (transient interior inflow during a feedback re-pressurisation). Grid-independent; diagnostic only, NOT used in any physics (v is absent from the cooling integrals). See analysis/stalling-energy-phase.md.', category='runtime_bubble', unit='dimensionless'),
+    ParamSpec(name='v_neg_frac_thick', default=np.nan, info='Fraction of bubble thickness with inward (v<0) flow -- WARPFIELD "Problem 2" diagnostic (transient interior inflow during a feedback re-pressurisation). Grid-independent; diagnostic only, NOT used in any physics (v is absent from the cooling integrals). See docs/dev/archive/betadelta/stalling-energy-phase.md.', category='runtime_bubble', unit='dimensionless'),
     ParamSpec(name='bubble_T_arr', default=np.array([]), info='Bubble temperature structure', category='runtime_bubble', unit='K', metadata_exclude=True),
     ParamSpec(name='bubble_dTdr_arr', default=np.array([]), info='Bubble temperature gradient', category='runtime_bubble', unit='K/pc', metadata_exclude=True),
     ParamSpec(name='bubble_n_arr', default=np.array([]), info='Bubble density structure', category='runtime_bubble', unit='1/pc**3', metadata_exclude=True),

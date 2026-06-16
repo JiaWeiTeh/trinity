@@ -8,7 +8,7 @@ This is essential for using adaptive ODE solvers like scipy.integrate.solve_ivp,
 which take trial steps that can be rejected. If ODE functions mutate state during
 rejected trial steps, the params dictionary becomes corrupted.
 
-Key difference from energy_phase_ODEs.py:
+Why pure (non-mutating) functions:
 - get_ODE_Edot_pure() returns only derivatives, never writes to params
 - All parameters are read at the start and passed as a frozen snapshot
 - Dictionary updates happen only after successful integration segments

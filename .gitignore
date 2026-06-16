@@ -27,7 +27,7 @@ param/*
 !param/cloud_*
 !param/*_example.param
 !param/simple_cluster.param
-scratch/
+/scratch/
 
 
 # Large test data files (optional - uncomment to exclude from git)

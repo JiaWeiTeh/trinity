@@ -5,7 +5,7 @@ temperature `T_init` (the `_T_INIT_BOUNDARY = 3e4` K constant in
 `bubble_structure/bubble_luminosity.py`) is a *relabel-only numerical knob*,
 i.e. whether `L_total` and its components are invariant to the choice of anchor.
 
-See `analysis/tinit-sensitivity.md` for the findings.
+See `docs/dev/misc/tinit-sensitivity.md` for the findings.
 
 ## Design (why it cannot pass by coincidence)
 

@@ -28,7 +28,8 @@ Usage:
   python tools/make_density_profile_gif.py [run_dir] [-o out.gif]
          [--fps 15] [--frames 200] [--t-start 1e-3] [--raw [--stride N]]
 
-``run_dir`` defaults to the rosette example. Unless ``-o`` is given, the GIF is
+``run_dir`` defaults to the bundled mock run (``outputs/mockOutput/mockFullrun``).
+Unless ``-o`` is given, the GIF is
 written to ``fig/density_profile/<parent-folder>__<run-name>.gif`` (the run's
 parent folder + its own name, so GIFs from different sweeps don't collide).
 Requires the pinned deps plus Pillow (matplotlib's PillowWriter).
@@ -62,9 +63,7 @@ from trinity._functions.unit_conversions import ndens_cgs2au  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parent
-DEFAULT_RUN = (
-    REPO / "outputs" / "rosette_cf_survey_updated_0p77" / "1e5_sfe001_n1e3_PL0_yesPHII"
-)
+DEFAULT_RUN = REPO / "outputs" / "mockOutput" / "mockFullrun"
 DEFAULT_FIG_DIR = REPO / "fig" / "density_profile"
 
 # Colours for the two physical regions and the boundary markers.

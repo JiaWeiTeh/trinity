@@ -13,7 +13,7 @@ Run explicitly::
 These cover what the synthetic-landscape unit tests (``test_betadelta_hybr.py``)
 cannot: the hybr solver driving the real bubble-structure physics through the
 integrated pipeline. No-root never fires on a self-consistent trajectory (see
-the 2x2 validation matrix in ``docs/dev/BETADELTA_HYBR_PLAN.md``), so these
+the 2x2 validation matrix in ``docs/dev/archive/betadelta/HYBR_PLAN.md``), so these
 assert the healthy path: no crashes, 100% convergence, dMdt>0, and a
 (beta, delta) trajectory that matches a recorded golden within tolerance.
 

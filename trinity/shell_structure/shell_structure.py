@@ -7,7 +7,7 @@ This module provides shell structure calculations that return a dataclass
 instead of mutating the params dictionary. This is essential for use with
 adaptive ODE solvers.
 
-Key difference from shell_structure.py:
+Why pure (non-mutating) functions:
 - shell_structure_pure() returns a ShellProperties dataclass
 - No dictionary mutations during calculation
 - Use updateDict(params, shell_data) after call returns
