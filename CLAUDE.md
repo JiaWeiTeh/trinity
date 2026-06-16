@@ -74,8 +74,12 @@ The `analysis/*.md` files and the plan/skeleton docs under `docs/dev/` are point
 audits/plans, not a maintained spec. They go stale fast — paths, line numbers, and "what shipped"
 status drift as the code moves. When reading one: do not treat it as ground truth — flag that it may
 be outdated and re-verify every claim, snippet, and line reference against current source. Every such
-doc must carry this banner at the top, right under the H1, and any new analysis or `docs/dev/` plan
-doc must include it:
+doc must carry **all three** banner paragraphs below at the top, right under the H1, and any new
+analysis or `docs/dev/` plan doc must include them. The 🔄 paragraph makes these docs *living* —
+whoever opens one rechecks it, updates drift, and rethinks the strategy before relying on or
+extending it. The 💾 paragraph makes them *durable* — diagnostics worth keeping are committed as
+CSV/tables (`analysis/data/`) or force-added scratch, so a future session reproduces or compares
+without re-running the expensive sims; leave it better than you found it:
 
 ```markdown
 > ⚠️ **This document may be out of date — verify before trusting it.** It is a
@@ -84,6 +88,23 @@ doc must include it:
 > **Any agent or person reading this: treat it as unverified. Flag that it may
 > be stale and re-check each claim, snippet, and line reference against the
 > current source before relying on it.**
+>
+> 🔄 **Living plan — recheck and refine on every visit.** This is an evolving
+> strategy doc, not a frozen record. Any agent or person who opens this file
+> must, as part of the visit: (1) re-verify the claims and line references above
+> against current source; (2) update anything that has drifted; (3) **rethink the
+> strategy itself** — if a better ordering, gate, candidate, or experiment
+> exists, revise the doc and note what changed and why (date it). Leave it better
+> than you found it. **Keep all banner paragraphs at the top of every plan and
+> analysis doc.**
+>
+> 💾 **Persist diagnostics — commit, don't re-run.** The container is ephemeral
+> and full/hybr runs cost hours, so any diagnostic worth keeping must be saved as
+> a committed artifact (a CSV/table under `analysis/data/`, or a force-added
+> harness/figure under `scratch/` as the hybr work did) — never left in `/tmp` or
+> an untracked `outputs/`. A future visit must be able to reproduce or compare
+> against the numbers **without re-running**; record the exact config + command
+> that produced each artifact.
 ```
 
 ---
