@@ -23,7 +23,7 @@ Produces:
   - betadelta_gmap.png   : g-metric residual + feasibility, one panel/config (2x2)
   - betadelta_f_vs_g.png : f vs g side by side (typical converger, steep staller)
 
-Usage: python docs/dev/betadelta/diagnostics/analyze_probe.py
+Usage: python docs/dev/archive/betadelta/diagnostics/analyze_probe.py
 """
 
 import json

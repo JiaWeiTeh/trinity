@@ -25,13 +25,14 @@
 > that produced each artifact.
 
 **About this document**
+- **Status (verified 2026-06-16):** ✅ **SHIPPED** (verified 2026-06-16) — Gate-G0 baseline record for a program now through Phase 3.
 - **Type:** results — Phase 0 baseline measurements of the production (legacy) solver across four configs (mock 4e3, simple 1e5, flat 1e6, steep α=−2), the Gate-G0 evidence that authorises the rest of the program.
 - **Workstream:** `betadelta/` — β–δ (beta–delta) implicit-phase solver repair.
 - **Where it sits:** `HYBR_PLAN.md` (Phase 0) → **this** → `PHASE2_ARMS.md` (Phase 2/3 arms).
 - **Code it concerns:** the legacy `phase1b_energy_implicit` solver (`trinity/phase1b_energy_implicit/get_betadelta.py`, `run_energy_implicit_phase.py`) — drift cap, hard β/δ bounds, f-metric — and its handoff into `phase1c_transition`.
-- **Linked files & data:** plan `HYBR_PLAN.md`; sibling `PHASE2_ARMS.md`; harnesses `docs/dev/betadelta/diagnostics/` (probe `probe.py`, jsonl/params) — Phase-0 `scratch/phase0/*` harvest scripts are noted as not committed.
+- **Linked files & data:** plan `HYBR_PLAN.md`; sibling `PHASE2_ARMS.md`; harnesses `docs/dev/archive/betadelta/diagnostics/` (probe `probe.py`, jsonl/params) — Phase-0 `scratch/phase0/*` harvest scripts are noted as not committed.
 
-Companion to `docs/dev/betadelta/HYBR_PLAN.md` (plan v2). Baselines ran the
+Companion to `docs/dev/archive/betadelta/HYBR_PLAN.md` (plan v2). Baselines ran the
 production solver at worktree commit `1eda451` (code identical to main;
 docs-only commits after the merge base). Environment: Python 3.11,
 numpy 1.26.4, scipy 1.17.1, astropy 7.2.0. Harvest scripts:

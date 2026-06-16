@@ -25,11 +25,12 @@
 > that produced each artifact.
 
 **About this document**
+- **Status (verified 2026-06-16):** ✅ **SHIPPED** (Phases 0–3, verified 2026-06-16) — historical record. Open tail: the Phase-4 default flip to `hybr` (still `legacy`) and the Phase-5 transition-criterion study (now the `transition/` workstream).
 - **Type:** plan — the master, phased work plan for the β–δ solver repair (Phases 0–6: baselines, safety fixes, four-arm shadow race, hybr promotion behind a switch, validation/default-flip, transition-criterion study, velocity-structure "Problem 2").
 - **Workstream:** `betadelta/` — β–δ (beta–delta) implicit-phase solver repair.
 - **Where it sits:** entry point → **this** → results docs `PHASE0_BASELINES.md`, `PHASE2_ARMS.md`, study `stalling-energy-phase.md`.
 - **Code it concerns:** the `phase1b_energy_implicit` solver and its handoffs (`trinity/phase1b_energy_implicit/get_betadelta.py`, `run_energy_implicit_phase.py`), the cooling-balance transition event (`trinity/phase_general/phase_events.py`), and structure/R1 helpers (`trinity/bubble_structure/bubble_luminosity.py`, `get_bubbleParams.py`).
-- **Linked files & data:** sibling docs `PHASE0_BASELINES.md`, `PHASE2_ARMS.md`, `stalling-energy-phase.md`; data `docs/dev/data/stalling_*.csv`, `docs/dev/data/hunt_*.csv`; harnesses `docs/dev/betadelta/diagnostics/`, `docs/dev/betadelta/velstruct/`.
+- **Linked files & data:** sibling docs `PHASE0_BASELINES.md`, `PHASE2_ARMS.md`, `stalling-energy-phase.md`; data `docs/dev/data/stalling_*.csv`, `docs/dev/data/hunt_*.csv`; harnesses `docs/dev/archive/betadelta/diagnostics/`, `docs/dev/archive/betadelta/velstruct/`.
 
 v2 (2026-06-12) supersedes v1 of this file. Changes of substance: interim
 Phase-0 data from three live baseline runs re-ranked the diagnosis (the
@@ -308,9 +309,9 @@ passing arm promotes.** D over C only with a ≥15-point convergence margin or
 ≥3× fewer evaluations at equal convergence.
 
 2.5 **Results — 2026-06-13** (full detail + stats tables + figures in
-`docs/dev/betadelta/PHASE2_ARMS.md`; regenerate with
-`python docs/dev/betadelta/diagnostics/analyze_arms.py`. **Re-verify these numbers against the
-harness `docs/dev/betadelta/diagnostics/arms.py` and the jsonl before acting — this section
+`docs/dev/archive/betadelta/PHASE2_ARMS.md`; regenerate with
+`python docs/dev/archive/betadelta/diagnostics/analyze_arms.py`. **Re-verify these numbers against the
+harness `docs/dev/archive/betadelta/diagnostics/arms.py` and the jsonl before acting — this section
 drifts like the rest of the doc.**) Two configs ran to completion:
 `arms_mock4e3` (0% baseline) and `arms_simple1e5` (~50% baseline).
 
@@ -507,7 +508,7 @@ The implicit→momentum transition is the cooling-balance event
   can never fire while the cluster is still in its wind/SN epoch — the criterion
   must be feedback/dynamics-aware (reinforces the force-ratio / blowout
   alternatives below). Full per-segment data + the Lmech_W/SN split:
-  `docs/dev/betadelta/stalling-energy-phase.md`,
+  `docs/dev/archive/betadelta/stalling-energy-phase.md`,
   `docs/dev/data/stalling_{steep_1e6_alpha-2,mock_4e3}.csv`. Legacy could never
   show this (β pinned ≥0).
 - **Is the energy-ratio criterion physically sound?** It marks "E_b stops
@@ -577,12 +578,12 @@ through the inflow band. So on current evidence the inflow is **cosmetic**, and
 the obvious "clip v≥0" would change essentially nothing.
 
 ### Phase 6.0 — Gate: does it EVER contaminate? [DONE 2026-06-14]
-Ran six instrumented hybr configs (harness `docs/dev/betadelta/velstruct/hunt.py`, classifier
-`docs/dev/betadelta/velstruct/analyze_hunt.py`) probing deeper/longer β+δ surges — stronger SN
+Ran six instrumented hybr configs (harness `docs/dev/archive/betadelta/velstruct/hunt.py`, classifier
+`docs/dev/archive/betadelta/velstruct/analyze_hunt.py`) probing deeper/longer β+δ surges — stronger SN
 (sfe 0.01→0.30), denser core, long multi-epoch span, flat control. Per accepted
 segment: convergence, `Lloss`/`dMdt`/`Eb` smoothness across the band, and inflow
 extent (`v_neg_frac_thick`, `v_min`) vs β+δ. **909 segments, 100% converged.**
-Full write-up + plottable data: `docs/dev/betadelta/stalling-energy-phase.md`
+Full write-up + plottable data: `docs/dev/archive/betadelta/stalling-energy-phase.md`
 (§ "Phase 6.0 contamination hunt") and `docs/dev/data/hunt_*.csv`.
 
 **Gate G6 result — marginally OPEN, on one bounded channel; cosmetic in 5/6:**
@@ -609,13 +610,13 @@ difference heuristic suggested before deconfounding.
 ### Phase 6.1 — Treatments + metric [DONE 2026-06-14 — arm C run, Problem 2 CLOSED]
 **Result: the inflow is empirically immaterial → no treatment needed.** Arm C
 (reject-and-hold) was run on the four real-inflow configs (harness
-`docs/dev/betadelta/velstruct/hunt.py --hold-inflow`, diff `docs/dev/betadelta/velstruct/compare_hold.py`):
+`docs/dev/archive/betadelta/velstruct/hunt.py --hold-inflow`, diff `docs/dev/archive/betadelta/velstruct/compare_hold.py`):
 deleting every inflow segment — a 9.6–42.8 % local kick to `dMdt` — moves the
 macro outputs (R2, v2, Eb, terminal momentum) by **≤0.04 %** (h1, the smallest
 bubble; the large bubbles ~0, h6 ~1e-9). Propagation is real, not a units/path
 artefact (deltas are relative; the held Eb deviates 0.63 % *during* the band then
 recovers), so the smallness is physical — the band is brief and `dMdt` is a small
-term. Full table + reasoning: `docs/dev/betadelta/stalling-energy-phase.md` (§ "Phase 6.1
+term. Full table + reasoning: `docs/dev/archive/betadelta/stalling-energy-phase.md` (§ "Phase 6.1
 — counterfactual"). Shipped the diagnostic-only `v_neg_frac_thick` snapshot field
 (registry + `COOLING_PHASE_KEYS`) as the tripwire; **arm A (accept) stands.**
 
@@ -664,7 +665,7 @@ be wrong, so 6.0's job is as much to *understand* as to gate.
    maintainer confirmed these are physical states the model should occupy.
    Phase 3 replaces the artificial β/δ box with physical acceptance gates —
    `dMdt > 0`, finite/valid structure — not wider arbitrary rails. (Re-verify
-   the root ranges against `docs/dev/betadelta/PHASE2_ARMS.md` and the jsonl
+   the root ranges against `docs/dev/archive/betadelta/PHASE2_ARMS.md` and the jsonl
    before encoding any specific bound.)
 3. Confirm or adjust the G2 promotion margins (≥80% convergence, 15-point /
    3× margins) before Phase 2 runs.

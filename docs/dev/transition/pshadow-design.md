@@ -25,6 +25,7 @@
 > each artifact.
 
 **About this document**
+- **Status (verified 2026-06-16):** 🔵 **ACTIONABLE** (verified 2026-06-16) — design is sound and entirely unbuilt; awaiting sign-off.
 - **Type:** design — the shadow-first, two-criterion (F0 cooling ∨ F4 blowout) trigger design, awaiting maintainer sign-off; no code changed yet.
 - **Workstream:** `transition/` — the implicit→momentum transition trigger.
 - **Where it sits:** `TRIGGER_PLAN.md` (plan) → `P0.md` (P0/P-sens evidence, G0 = profile-dependent) → **this (design for review)** → implementation (P-shadow → P-promote, not yet written).
@@ -61,7 +62,7 @@ F4 fixes it.
 | ε param | `phaseSwitch_LlossLgain` (read at `:1070–1074`, default 0.05) | the cooling threshold |
 | rCloud | `params['rCloud'].value` (already used `:664`) | cloud radius for F4 |
 | existing R2>rCloud awareness | `:659–669`, `:885–892` (`stop_at_rCloud_nSnap`) | snapshot-stop only, not a transition |
-| `large_radius` (≠ blowout) | `:1106–1113` | `R2 > stop_r` (param, default None) → **ends sim** (`EndSimulationDirectly=True`); not a phase transition |
+| `large_radius` (≠ blowout) | `:1106–1113` | `R2 > stop_r` (param, default `'500'` per `registry.py:316`) → **ends sim** (`EndSimulationDirectly=True`); not a phase transition |
 | blowout factory (exists, unused in 1b) | `phase_events.py:218` `make_cloud_boundary_event(rCloud)` | `R2 − rCloud`, direction +1; currently 1a→1b only |
 | dead cooling factory | `phase_events.py:317` `make_cooling_balance_event(threshold=0.05)` | hardcoded 0.05; built by `build_implicit_phase_events` but never the live terminator |
 | phase routing | `main.py:280,300,340` | `EndSimulationDirectly` gates 1b→1c→2; `cooling_balance` flows through to 1c→2 |

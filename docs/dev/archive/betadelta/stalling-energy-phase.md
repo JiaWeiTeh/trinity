@@ -25,11 +25,12 @@
 > that produced each artifact.
 
 **About this document**
+- **Status (verified 2026-06-16):** ✅ **SHIPPED** (verified 2026-06-16) — settled 'Problem 2' study; the `v_neg_frac_thick` diagnostic shipped, no treatment applied (by design).
 - **Type:** study — deep dive into the stalling energy-driven phase, rising Pb / negative β (feedback re-pressurisation), and the resulting unphysical interior inflow ("Problem 2"); includes the Phase 6.0 contamination hunt and the Phase 6.1 counterfactual that closes Problem 2 (inflow real but cosmetic).
 - **Workstream:** `betadelta/` — β–δ (beta–delta) implicit-phase solver repair.
 - **Where it sits:** `PHASE2_ARMS.md` (hybr surfaces negative β) → **this** (Phase 5/6 follow-ons) → terminal (Phase 5 transition-criterion study is deferred; see `HYBR_PLAN.md`).
 - **Code it concerns:** the bubble-structure velocity ODE and cooling integrals (`trinity/bubble_structure/bubble_luminosity.py`, the `(β+δ)/t` source and `dMdt` gate), the `phase1b_energy_implicit` hybr solver (`get_betadelta.py`), and the cooling-balance transition trigger (`trinity/phase_general/phase_events.py`).
-- **Linked files & data:** plan `HYBR_PLAN.md` (Phases 5/6); sibling `PHASE2_ARMS.md`; data `docs/dev/data/stalling_{steep_1e6_alpha-2,mock_4e3}.csv` and `docs/dev/data/hunt_h*.csv`; harness `docs/dev/betadelta/velstruct/` (`hunt.py`, `analyze_hunt.py`, `compare_hold.py`, `h*.param`).
+- **Linked files & data:** plan `HYBR_PLAN.md` (Phases 5/6); sibling `PHASE2_ARMS.md`; data `docs/dev/data/stalling_{steep_1e6_alpha-2,mock_4e3}.csv` and `docs/dev/data/hunt_h*.csv`; harness `docs/dev/archive/betadelta/velstruct/` (`hunt.py`, `analyze_hunt.py`, `compare_hold.py`, `h*.param`).
 
 Investigation (2026-06-13) of two things the self-consistent hybr runs surfaced
 that legacy (β clamped to [0,1]) could never show:
@@ -37,7 +38,7 @@ that legacy (β clamped to [0,1]) could never show:
 1. **Steep / low-mass clouds *stall*** — the cooling ratio `(Lgain−Lloss)/Lgain`
    plateaus well above the 0.05 transition threshold and never crosses it, so
    the bubble stays energy-driven for many Myr (see
-   `docs/dev/betadelta/PHASE2_ARMS.md`, Phase-3 section).
+   `docs/dev/archive/betadelta/PHASE2_ARMS.md`, Phase-3 section).
 2. **β goes *negative*** (down to −2.4) in places — i.e. **Pb is *rising***
    (β = −(t/Pb)(dPb/dt), so β<0 ⇔ dPb/dt>0).
 
@@ -233,8 +234,8 @@ to settle — do **not** record it as "resolved".
 
 The Problem-2 open question above — *real transient or structure breakdown, and
 does it corrupt anything?* — got a dedicated **gate**
-(`docs/dev/betadelta/HYBR_PLAN.md` Phase 6.0). Six hybr runs were instrumented
-(harness `docs/dev/betadelta/velstruct/hunt.py`, which wraps `solve_betadelta_pure` and dumps
+(`docs/dev/archive/betadelta/HYBR_PLAN.md` Phase 6.0). Six hybr runs were instrumented
+(harness `docs/dev/archive/betadelta/velstruct/hunt.py`, which wraps `solve_betadelta_pure` and dumps
 one row per accepted energy-implicit segment, reading the full `bubble_v_arr`
 for the velocity diagnostics) to hunt a regime where the inflow stops being
 cosmetic — non-convergence, a kink in `Lloss`/`dMdt`/`Eb` across the band, or
@@ -319,7 +320,7 @@ Expected low/no macro impact given the energy immunity and bounded dMdt response
 ### Phase 6.1 — counterfactual: the inflow IS immaterial (measured, 2026-06-14)
 
 The narrow 6.1 was run (harness `--hold-inflow`, classifier
-`docs/dev/betadelta/velstruct/compare_hold.py`): for the four configs with real inflow, every
+`docs/dev/archive/betadelta/velstruct/compare_hold.py`): for the four configs with real inflow, every
 inflow segment was **rejected and held** (flagged `no_physical_root` so the
 runner holds the last physical structure — arm C, via the production hold path),
 and the held trajectory diffed against the accepted baseline.
@@ -369,7 +370,7 @@ pushing the bubble *back* to strongly energy-driven. So:
   whose feedback keeps Lmech high (steep halos, and any cloud still inside its
   SN epoch). This is the core Phase-5 question: the transition criterion likely
   needs to be feedback/dynamics-aware (e.g. force-ratio or blowout), not a pure
-  energy-ratio threshold. See `docs/dev/betadelta/HYBR_PLAN.md` Phase 5.
+  energy-ratio threshold. See `docs/dev/archive/betadelta/HYBR_PLAN.md` Phase 5.
 
 ## Data for plotting
 
@@ -436,9 +437,9 @@ python run.py <param: mCloud=1e6 sfe=0.01 densPL_alpha=-2 nCore=1e5 rCore=1 \
 # Phase 6.0 hunt: per-segment velocity diagnostics straight to CSV, plus the
 # Gate-G6 classifier (run single-thread to avoid BLAS oversubscription):
 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 \
-    python docs/dev/betadelta/velstruct/hunt.py docs/dev/betadelta/velstruct/h1_steep_base.param \
+    python docs/dev/archive/betadelta/velstruct/hunt.py docs/dev/archive/betadelta/velstruct/h1_steep_base.param \
     --out docs/dev/data/hunt_h1_steep_base.csv
-python docs/dev/betadelta/velstruct/analyze_hunt.py docs/dev/data/hunt_h*.csv   # G6 verdict
+python docs/dev/archive/betadelta/velstruct/analyze_hunt.py docs/dev/data/hunt_h*.csv   # G6 verdict
 ```
 
 Phase-6-specific plots worth making from the hunt CSVs:
@@ -450,7 +451,7 @@ Phase-6-specific plots worth making from the hunt CSVs:
   dMdt step *leads* β+δ<0 (surge-driven), and inspect h6's lagged onset step.
 
 Note: the original two CSVs were captured from `/tmp` scratch; the hunt harness
-+ configs live in `docs/dev/betadelta/velstruct/` (gitignored scratch — present locally).
++ configs live in `docs/dev/archive/betadelta/velstruct/` (committed/tracked, not gitignored).
 Re-run to extend `stop_t` (does the steep bubble *ever* transition once the SN
 epoch ends, ~40 Myr?) — that is the open endpoint.
 question.

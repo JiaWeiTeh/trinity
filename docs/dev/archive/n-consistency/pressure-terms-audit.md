@@ -30,6 +30,7 @@
 > its μ constants are correct. No content fix needed.
 
 **About this document**
+- **Status (verified 2026-06-16):** ⛔ **SUPERSEDED** (verified 2026-06-16) — first pass; the final code uses `n ≡ n_H`, not this doc's `n_tot` lean. See `audit.md`.
 - **Type:** audit — the first-pass `2nkT` / `mu_p`,`mu_n` pressure-terms audit examining what `n` means across modules; **self-declared SUPERSEDED** (it reached the opposite sign on the bubble before the paper pinned `n ≡ n_H`).
 - **Workstream:** `n-consistency/` — the "every number density n is hydrogen-nuclei n_H" convention & pressure terms.
 - **Where it sits:** entry point (earliest pass) → superseded by **`audit.md`** (physics) and `implementation-plan.md` (what shipped) → terminal; kept as a historical record of the reasoning.

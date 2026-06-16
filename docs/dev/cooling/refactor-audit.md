@@ -37,6 +37,7 @@
 > SPS resolver pattern."
 
 **About this document**
+- **Status (verified 2026-06-16):** 🔵 **ACTIONABLE** (verified 2026-06-16) — nothing shipped; the cooling loaders are still hardcoded as described. (Cited line numbers have drifted ~1–5 lines.)
 - **Type:** audit + implementation plan — decouple the cooling-table loaders from the hardcoded SB99/OPIATE/CLOUDY assumptions. Per its status note this has **not** shipped (cooling source byte-stable); the surrounding code has since moved (`src/`→`trinity/`, the `registry.py` resolver).
 - **Workstream:** `cooling/` — cooling tables (CIE + non-CIE) and their loaders.
 - **Where it sits:** standalone — an actionable plan, not yet implemented.

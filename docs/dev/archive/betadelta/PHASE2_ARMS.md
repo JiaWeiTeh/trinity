@@ -25,15 +25,16 @@
 > that produced each artifact.
 
 **About this document**
+- **Status (verified 2026-06-16):** ✅ **SHIPPED** (verified 2026-06-16) — the hybr arm (D) landed behind the `betadelta_solver` param.
 - **Type:** results — the Phase 2.3 four-arm shadow experiment (A control / B g-metric / C cap+bounds / D hybr) and Gate-G2 evaluation, plus a Phase-3 self-consistent hybr validation section that partly supersedes the shadow reading (D still promotes).
 - **Workstream:** `betadelta/` — β–δ (beta–delta) implicit-phase solver repair.
 - **Where it sits:** `PHASE0_BASELINES.md` (Phase 0) → **this** (Phase 2/3) → `stalling-energy-phase.md` (the Phase-5/6 follow-ons hybr surfaced).
 - **Code it concerns:** the `phase1b_energy_implicit` solver and its new hybr path (`trinity/phase1b_energy_implicit/get_betadelta.py`, `run_energy_implicit_phase.py`); the cooling-balance transition event (`trinity/phase_general/phase_events.py`).
-- **Linked files & data:** plan `HYBR_PLAN.md`; sibling `PHASE0_BASELINES.md`, `stalling-energy-phase.md`; harness + jsonl/figures `docs/dev/betadelta/diagnostics/` (`arms.py`, `analyze_arms.py`, `arms_{mock4e3,simple1e5}.jsonl`).
+- **Linked files & data:** plan `HYBR_PLAN.md`; sibling `PHASE0_BASELINES.md`, `stalling-energy-phase.md`; harness + jsonl/figures `docs/dev/archive/betadelta/diagnostics/` (`arms.py`, `analyze_arms.py`, `arms_{mock4e3,simple1e5}.jsonl`).
 
-Generated 2026-06-13 from `docs/dev/betadelta/diagnostics/arms_{mock4e3,simple1e5}.jsonl`
-(harness `docs/dev/betadelta/diagnostics/arms.py`, plan §2.3). Regenerate stats and figures
-with `python docs/dev/betadelta/diagnostics/analyze_arms.py` — the numbers below are only as
+Generated 2026-06-13 from `docs/dev/archive/betadelta/diagnostics/arms_{mock4e3,simple1e5}.jsonl`
+(harness `docs/dev/archive/betadelta/diagnostics/arms.py`, plan §2.3). Regenerate stats and figures
+with `python docs/dev/archive/betadelta/diagnostics/analyze_arms.py` — the numbers below are only as
 good as that jsonl on disk; re-run after any new arms race and **re-verify
 against the harness code before acting on any conclusion here.**
 
@@ -82,7 +83,7 @@ Arms: **A** production exactly (control, f-metric), **B** g-metric only,
 | C cap+bounds | 30 | 7/30 (23%) | 18/30 (60%) | 40% | 37 | 121 | 0 | 0 |
 | D hybr | 30 | 18/30 (60%) | 24/30 (80%) | 40% | 10 | 33 | 6 (neg_dMdt:4, structure:1, timeout:1) | 5 |
 
-Figures (regenerable, not committed — `docs/dev/betadelta/diagnostics/`):
+Figures (regenerable, not committed — `docs/dev/archive/betadelta/diagnostics/`):
 `arms_summary.png` (convergence + cost bars vs G2 gates),
 `arms_rootmap.png` (the (β,δ) maps below).
 
@@ -266,7 +267,7 @@ gives a contaminated Lloss that crosses the 0.05 threshold early). hybr gives a
 
 So flat profiles cross 0.05 (cooling balance works); steep r⁻² halos *stall*
 above it (the cooling-balance trigger may be the wrong criterion for steep — see
-`docs/dev/betadelta/HYBR_PLAN.md` Phase 5).
+`docs/dev/archive/betadelta/HYBR_PLAN.md` Phase 5).
 
 ## Headline comparison 3 — cost (Phase-4 wall-time gate)
 

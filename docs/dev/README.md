@@ -19,14 +19,20 @@ documentation (Sphinx builds only `docs/source/`) and is **not** packaged
 (`pyproject` excludes `docs*`) — it is a working record of investigations, not a
 maintained spec. The user-facing docs live in `docs/source/` and the project site.
 
+**Status-driven layout.** **Active** workstreams (work still pending) sit at the
+top; workstreams whose work has **shipped or been superseded** are moved under
+`archive/`. The per-doc verdicts (with `trinity/…:line` evidence) live in
+[`DOC_STATUS.md`](DOC_STATUS.md) — start there to see what's done vs. live.
+
 **Banner convention.** Every plan/analysis doc carries **three** banner paragraphs
 right under its H1 — ⚠️ *verify* (staleness), 🔄 *living* (recheck & refine on every
 visit), 💾 *persist diagnostics* (commit results under `docs/dev/`, don't re-run).
-Canonical banner text is in `CLAUDE.md`. (This index carries the first two.)
+Canonical banner text is in `CLAUDE.md`. (This index carries the first two.) Each
+doc's "About this document" block also carries a verified **Status** line.
 
 **Naming.** Each workstream folder is self-contained (writeups **+** its harnesses
 and figures); the folder name gives the context, so filenames inside drop the
-workstream prefix (`betadelta/HYBR_PLAN.md`, not `BETADELTA_HYBR_PLAN.md`).
+workstream prefix (`transition/TRIGGER_PLAN.md`, not `TRANSITION_TRIGGER_PLAN.md`).
 `SCREAMING_SNAKE.md` = a major plan/spec/overview, `kebab-case.md` = an audit/results note.
 
 ## Layout
@@ -34,54 +40,46 @@ workstream prefix (`betadelta/HYBR_PLAN.md`, not `BETADELTA_HYBR_PLAN.md`).
 ```
 docs/dev/
 ├── CODEBASE_REVIEW.md + codebase_review/   fresh-clone consistency review (this audit)
+├── DOC_STATUS.md                           per-doc verified status (shipped / actionable / superseded)
 ├── data/                                   committed diagnostic CSVs (provenance for writeups)
-├── archive/                                superseded / historical docs
-├── betadelta/        β–δ implicit solver / hybr
-├── transition/       implicit→momentum transition trigger
-├── bubble/           bubble solver / integrator
-├── cooling/          cooling tables
-├── n-consistency/    the meaning of `n` (n ≡ n_H) & pressure terms
-└── misc/             standalone audits / notes
+├── transition/   implicit→momentum transition trigger   (🔵 ACTIVE)
+├── cooling/      cooling-table refactor                 (🔵 ACTIVE)
+├── misc/         standalone audits / notes              (🟡 mixed)
+└── archive/      shipped / superseded / historical:
+    ├── betadelta/        β–δ implicit solver / hybr      (✅ shipped)
+    ├── bubble/           bubble solver / integrator      (✅/⛔ done)
+    ├── n-consistency/    n ≡ n_H & pressure terms        (✅/⛔ done)
+    └── restructure-audit.md, sb99-refactor-audit.md, …   (older history)
 ```
 
-`data/` and the top-level `scratch/` (repo root, git-ignored, local-only) are **not**
-inside the workstream folders; committed diagnostics live under each workstream.
+The top-level `scratch/` (repo root) is separate, git-ignored, local-only.
 
-## Workstreams
-
-### `betadelta/` — β–δ implicit-phase solver & hybr
-- `HYBR_PLAN.md` — **plan**: beta–delta solver repair (drift cap, metric, bounds, hybr).
-- `PHASE0_BASELINES.md` — **results**: solver baselines across four configs.
-- `PHASE2_ARMS.md` — **results**: Phase 2.3 four-arm shadow experiment + Gate G2.
-- `stalling-energy-phase.md` — **study**: stalling energy-driven phase, rising Pb, negative β.
-- `diagnostics/` — harnesses + figures (rootmaps, arms, cage, stalling, negvel) + their README.
-- `velstruct/` — the velocity-structure ("Problem 2") hunt harness + README.
-- Data: `data/stalling_*.csv`, `data/hunt_*.csv`.
+## Active workstreams
 
 ### `transition/` — implicit→momentum transition trigger
-- `TRIGGER_PLAN.md` — **plan**: characterize the transition trigger, then decide.
-- `P0.md` — **results**: P0 harvest (both clocks + candidate divergence).
-- `pshadow-design.md` — **design**: two-criterion (F0 ∨ F4) trigger.
+- `TRIGGER_PLAN.md` — **plan** (🔵 actionable): characterize the transition trigger, then decide.
+- `P0.md` — **results** (✅): P0 harvest (both clocks + candidate divergence).
+- `pshadow-design.md` — **design** (🔵 actionable): two-criterion (F0 ∨ F4) trigger, unbuilt.
 - `harness/` — offline harvest / P-sensitivity harnesses + README.
 - Data: `data/transition_*.csv`.
 
-### `bubble/` — bubble solver / integrator
-- `integrator-robustness.md` — the flaky `MonotonicError`, diagnosis + fix.
-- `conduction-convergence.md` — conduction-zone luminosity convergence audit.
-
-### `cooling/`
-- `refactor-audit.md` — cooling-table refactor: audit + implementation plan.
-
-### `n-consistency/` — the meaning of `n` & pressure
-- `audit.md` — `n ≡ n_H` consistency audit against the paper.
-- `implementation-plan.md` — line-by-line plan for the above.
-- `pressure-terms-audit.md` — pressure terms & the meaning of `n` (`2nkT`, `mu_p`/`mu_n`).
+### `cooling/` — cooling-table refactor
+- `refactor-audit.md` — **plan** (🔵 actionable): decouple the loaders from hardcoded SB99/OPIATE/CLOUDY. Nothing shipped yet.
 
 ### `misc/` — standalone audits / notes
-- `backward-compat-audit.md` — backward-compatibility & stale-code audit.
-- `tinit-sensitivity.md` — is `T_init = 3e4` a relabel-only knob?
-- `TERMINATION_EVENTS.md` — overview of the simulation termination events.
-- `LEAKING_LUMINOSITIES_SKELETON.md` — phase plan for the `coverFraction` geometry leak.
+- `backward-compat-audit.md` — (🔵 actionable) backward-compat / stale-code cleanup; ~95% pending.
+- `tinit-sensitivity.md` — (🟡 partial) is `T_init = 3e4` a relabel-only knob? Study done; one open rec.
+- `TERMINATION_EVENTS.md` — (📘 reference) current per-phase termination-events reference.
+- `LEAKING_LUMINOSITIES_SKELETON.md` — (🟡 partial) `coverFraction` leak; A–C shipped, D/F/G open.
+
+## Archived (shipped / superseded — see `DOC_STATUS.md`)
+
+Moved under `archive/` once their work landed; kept as historical record (harnesses + data move with them).
+
+- `archive/betadelta/` — β–δ solver repair: `HYBR_PLAN`, `PHASE0_BASELINES`, `PHASE2_ARMS`, `stalling-energy-phase` + `diagnostics/`, `velstruct/`. ✅ shipped (one open tail: the Phase-4 default flip to `hybr`).
+- `archive/bubble/` — `integrator-robustness` (⛔ superseded by the `solve_ivp` migration), `conduction-convergence` (✅ shipped).
+- `archive/n-consistency/` — `audit`, `implementation-plan` (✅ shipped, pinned by `test_mu_audit_drift.py`), `pressure-terms-audit` (⛔ superseded).
+- `archive/restructure-audit.md`, `archive/sb99-refactor-audit.md` — older completed restructures.
 
 ---
 

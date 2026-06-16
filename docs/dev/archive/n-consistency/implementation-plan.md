@@ -25,6 +25,7 @@
 > that produced each artifact.
 
 **About this document**
+- **Status (verified 2026-06-16):** ✅ **SHIPPED** (verified 2026-06-16) — all phases (0–6 + A) landed in #657. (Before/after tables use pre-reorg flat filenames / pre-fix line numbers.)
 - **Type:** plan — the detailed, line-by-line edit spec (phased, per-site before/after) that applies the `n ≡ n_H` audit; records what shipped.
 - **Workstream:** `n-consistency/` — the "every number density n is hydrogen-nuclei n_H" convention & pressure terms.
 - **Where it sits:** `audit.md` (physics rationale & finding) → **this** (exact edits, Phases 0–6 + Phase A) → terminal; pinned by `test/test_mu_audit_drift.py`. Shipped in #657.

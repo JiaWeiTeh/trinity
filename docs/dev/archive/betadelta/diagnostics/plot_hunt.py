@@ -2,8 +2,8 @@
 """Phase 6.0 velocity-contamination hunt — visuals over the 6 hunt configs.
 
 Reads the canonical hunt CSVs from docs/dev/data/hunt_*.csv. The G6 classification
-itself is in docs/dev/betadelta/velstruct/analyze_hunt.py; this script makes the plots the
-writeup (docs/dev/betadelta/stalling-energy-phase.md, Phase 6.0) calls for.
+itself is in docs/dev/archive/betadelta/velstruct/analyze_hunt.py; this script makes the plots the
+writeup (docs/dev/archive/betadelta/stalling-energy-phase.md, Phase 6.0) calls for.
 
   ⚠️ Use v_neg_frac_thick (band / bubble thickness), NOT raw v_struct_nneg:
   the hunt harness reads the full ~6e4-point bubble_v_arr, so nneg is a huge raw
@@ -16,7 +16,7 @@ Produces:
                          (finding 1 -- weakest feedback gives the DEEPEST inflow)
   - hunt_dmdt_leads.png: h1 surge walk -- the dMdt jump leads the inflow
 
-Usage: python docs/dev/betadelta/diagnostics/plot_hunt.py
+Usage: python docs/dev/archive/betadelta/diagnostics/plot_hunt.py
 """
 
 import csv

@@ -3,7 +3,7 @@ Opt-in stress test for the nondeterministic bubble-solver failure.
 
 This is the *statistical* gate for the LSODA bubble-structure crash (the
 intermittent ``BubbleSolverError`` / ``MonotonicError`` / cooling-table
-``ValueError`` documented in ``docs/dev/bubble/integrator-robustness.md``).
+``ValueError`` documented in ``docs/dev/archive/bubble/integrator-robustness.md``).
 The failure is floating-point / thread / scipy-version sensitive: the *same*
 inputs pass on one run and crash on the next, so a single run proves nothing.
 This test runs the failing scenario ``N`` times and asserts that none crash.

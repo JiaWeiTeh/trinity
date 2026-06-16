@@ -9,11 +9,27 @@
 
 Completed or superseded analysis docs, kept for historical reference only.
 
-The plans in here **have fully shipped** — they read as forward-looking plans
-but describe work that is already done, so their paths, line numbers, and
-"what to do next" framing are obsolete against current code. Each file keeps
-its caution banner; treat everything here as a historical record, not a guide
-to the current codebase. Verify against source before relying on anything.
+The plans in here **have fully shipped** (or been superseded) — they read as
+forward-looking plans but describe work that is already done, so their paths,
+line numbers, and "what to do next" framing are obsolete against current code.
+Each file keeps its caution banner and a verified **Status** line; treat
+everything here as a historical record, not a guide to the current codebase.
+Verify against source before relying on anything. See `../DOC_STATUS.md` for the
+per-doc verdicts.
+
+## Archived workstreams (self-contained: writeups + harnesses)
+
+- `betadelta/` — β–δ implicit-solver repair / hybr. ✅ shipped (Phases 0–3):
+  `HYBR_PLAN.md`, `PHASE0_BASELINES.md`, `PHASE2_ARMS.md`, `stalling-energy-phase.md`
+  + `diagnostics/`, `velstruct/`. One open tail tracked in `../DOC_STATUS.md`
+  (the Phase-4 default flip to `hybr`; Phase-5 → the active `transition/` workstream).
+- `bubble/` — bubble luminosity-solver robustness. `integrator-robustness.md`
+  (⛔ superseded by the `solve_ivp` migration), `conduction-convergence.md` (✅ shipped).
+- `n-consistency/` — the `n ≡ n_H` / He-aware-μ convention. `audit.md`,
+  `implementation-plan.md` (✅ shipped, pinned by `test/test_mu_audit_drift.py`),
+  `pressure-terms-audit.md` (⛔ superseded first pass).
+
+## Older restructures
 
 - `restructure-audit.md` — `src/→trinity` rename, `_modified` drop, and the
   plotting/`scratch` split. All shipped (the `scratch/` tree was later removed,

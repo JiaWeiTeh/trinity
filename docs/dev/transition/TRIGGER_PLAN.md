@@ -25,21 +25,22 @@
 > that produced each artifact.
 
 **About this document**
+- **Status (verified 2026-06-16):** 🔵 **ACTIONABLE** (verified 2026-06-16) — plan is current and accurate; no trigger candidate is wired into production yet.
 - **Type:** plan — characterize the implicit→momentum transition trigger (clocks A/B, candidate families F0–F5) and decide via pre-registered gates before changing production.
 - **Workstream:** `transition/` — the implicit→momentum transition trigger.
-- **Where it sits:** promoted from Phase 5 of `docs/dev/betadelta/HYBR_PLAN.md` → **this (entry point)** → `P0.md` (P0/P-sens results) → `pshadow-design.md` (design).
+- **Where it sits:** promoted from Phase 5 of `docs/dev/archive/betadelta/HYBR_PLAN.md` → **this (entry point)** → `P0.md` (P0/P-sens results) → `pshadow-design.md` (design).
 - **Code it concerns:** phase 1b implicit terminator (`run_energy_implicit_phase.py` cooling_balance block) and clock B, the 1c transition phase (`phase1c_transition/run_transition_phase.py`).
-- **Linked files & data:** sibling docs `P0.md`, `pshadow-design.md`; background `docs/dev/betadelta/HYBR_PLAN.md`, `docs/dev/betadelta/stalling-energy-phase.md`; data `docs/dev/data/transition_*.csv`; harness `docs/dev/transition/harness/`.
+- **Linked files & data:** sibling docs `P0.md`, `pshadow-design.md`; background `docs/dev/archive/betadelta/HYBR_PLAN.md`, `docs/dev/archive/betadelta/stalling-energy-phase.md`; data `docs/dev/data/transition_*.csv`; harness `docs/dev/transition/harness/`.
 
-Promotes **Phase 5** of `docs/dev/betadelta/HYBR_PLAN.md` (deferred there) into
+Promotes **Phase 5** of `docs/dev/archive/betadelta/HYBR_PLAN.md` (deferred there) into
 its own program now that the hybr solver has landed and exposed the behaviour.
 This is a **measurement-first investigation**, not an implementation task: the
 output of the offline phases (P0, P-sens) is *evidence* for or against each
 candidate trigger; production changes only if the evidence passes a
 pre-registered gate. It is designed so that
 "the proposed trigger is not better" is a valid, publishable conclusion — not a
-failure. Background data: `docs/dev/betadelta/stalling-energy-phase.md`,
-`docs/dev/betadelta/PHASE2_ARMS.md`; figures `docs/dev/betadelta/diagnostics/phase3_regime.png`
+failure. Background data: `docs/dev/archive/betadelta/stalling-energy-phase.md`,
+`docs/dev/archive/betadelta/PHASE2_ARMS.md`; figures `docs/dev/archive/betadelta/diagnostics/phase3_regime.png`
 (headline). Work branch: `fix/transition-trigger` (optional per-phase
 sub-branches, e.g. `fix/transition-trigger/p0-harvest`).
 
@@ -174,7 +175,7 @@ conclusion to *earn* from the harvest, not assume.
 - **Reuse the existing config set — no new physics invented:** dense-flat
   (1e6, n1e5), normal-flat/"typical" (1e6, n1e3), **steep (1e6, α=−2) — include,
   it is the crux**, mock (4e3), simple (1e5, sfe 0.3), and the hunt sweep h1–h6
-  (`docs/dev/betadelta/velstruct/`). Add at least one config with a strong WR/SN luminosity jump
+  (`docs/dev/archive/betadelta/velstruct/`). Add at least one config with a strong WR/SN luminosity jump
   (the reset is sharpest there). These bracket transition / long-delay / stall /
   feedback-surge / blowout.
 - **Pre-registered gates**, both banner paragraphs on every results doc.
