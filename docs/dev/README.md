@@ -34,6 +34,7 @@ workstream prefix (`betadelta/HYBR_PLAN.md`, not `BETADELTA_HYBR_PLAN.md`).
 ```
 docs/dev/
 ├── CODEBASE_REVIEW.md + codebase_review/   fresh-clone consistency review (this audit)
+├── DOC_STATUS.md                           per-doc verified status (shipped / actionable / superseded)
 ├── data/                                   committed diagnostic CSVs (provenance for writeups)
 ├── archive/                                superseded / historical docs
 ├── betadelta/        β–δ implicit solver / hybr
