@@ -56,7 +56,7 @@ before the divergence data exists.
 2. **Is ε = 0.05 the right threshold?**
 3. **Is the energy *ratio* the right metric?** Candidate families below.
 
-## Current state (verified 2026-06-15 against source — re-verify per banner)
+## Current state (verified 2026-06-15; code line refs re-verified/refreshed 2026-06-16 — re-verify per banner)
 
 ### There are two distinct "transition" clocks
 - **(A) Time to *reach* transition** (`t_trans`): the implicit phase ends on the
@@ -69,10 +69,10 @@ before the divergence data exists.
 - **(B) Length of the transition *phase* (1c)** — a *separate* ODE phase
   (`trinity/phase1c_transition/run_transition_phase.py`). `get_ODE_transition_pure`
   (`:195`) integrates `dEb/dt = min(Ed_energy_balance, Ed_soundcrossing)` with
-  `Ed_soundcrossing = −Eb/(R2/c_sound)` (`:233–239`;
-  `c_sound = operations.get_soundspeed`, `operations.py:191`). It ends when
+  `Ed_soundcrossing = −Eb/(R2/c_sound)` (`:235`;
+  `c_sound = operations.get_soundspeed`, `operations.py:183`). It ends when
   `Eb < ENERGY_FLOOR = 1e3` erg (`:94`, `:761` → momentum), `reached_tmax`
-  (`:601`), or `small_radius` (`:785`). **(B) is set by the sound-crossing time
+  (`:604`), or `small_radius` (`:785`). **(B) is set by the sound-crossing time
   `R2/c_sound`**, and the `min()` lets a feedback surge re-inject and *stall the
   drain* — a second, distinct stall mechanism from (A).
 
@@ -80,12 +80,12 @@ Different physics, different fixes. Conflating them is the first trap; P0 separa
 
 ### ε is *already* a param — but two checks disagree
 - **Live terminator** of the implicit phase is an **inline** check
-  (`run_energy_implicit_phase.py:1069–1079`): reads **`phaseSwitch_LlossLgain`**
+  (`run_energy_implicit_phase.py:1085–1097`): reads **`phaseSwitch_LlossLgain`**
   (registered, default `0.05`, `run_const=True`, `registry.py:346`,
   `default.param:279`) and breaks on `(Lgain − Lloss)/Lgain < threshold`.
 - **Dead/inconsistent path:** `build_implicit_phase_events` builds
   `make_cooling_balance_event(threshold=0.05)` (`phase_events.py:495`,
-  **hardcoded 0.05**); the runner unpacks the factory (`:650`) but **never uses
+  **hardcoded 0.05**); the runner unpacks the factory (`:665`) but **never uses
   it**. So the real knob is the existing param; the hardcoded event is inert here
   (confirm against every caller of `build_implicit_phase_events`).
   **Consequence:** the ε sensitivity sweep (P-sens) needs *no code change to
@@ -94,8 +94,8 @@ Different physics, different fixes. Conflating them is the first trap; P0 separa
 
 ### What Lgain / Lloss contain (the current trigger is an INSTANTANEOUS rate-ratio)
 - `Lgain = feedback_post.Lmech_total` — **instantaneous** mechanical luminosity
-  (`run_energy_implicit_phase.py:1056`).
-- `Lloss = bubble_props.bubble_LTotal (+ bubble_Leak)` (`:1061–1064`).
+  (`run_energy_implicit_phase.py:1071`).
+- `Lloss = bubble_props.bubble_LTotal (+ bubble_Leak)` (`:1076–1079`).
 - **RESOLVED 2026-06-15 — `Lloss` is pure radiative cooling (no PdV).**
   `bubble_LTotal = L_bubble + L_conduction + L_intermediate`
   (`bubble_luminosity.py:706`, returned `:750–757`), each a radiative integral
@@ -181,7 +181,7 @@ conclusion to *earn* from the harvest, not assume.
 - **Pre-registered gates**, both banner paragraphs on every results doc.
 
 ## Read first (before any code)
-1. `run_energy_implicit_phase.py` — the cooling_balance block (`~:1076`): what
+1. `run_energy_implicit_phase.py` — the cooling_balance block (`~:1096`): what
    `Lgain`/`Lloss` contain, where it is evaluated vs the ODE and the snapshot.
 2. `run_energy_phase.py` — confirms 1a has no own trigger (verified; recheck).
 3. `bubble_luminosity.py` — `get_bubbleproperties_pure` / legacy path: **is
