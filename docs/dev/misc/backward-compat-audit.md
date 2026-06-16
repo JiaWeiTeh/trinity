@@ -30,7 +30,7 @@
 - **Workstream:** `misc/` — standalone (backward-compat & stale-code cleanup).
 - **Where it sits:** standalone — feeds the future `feature/remove-backward-compat-codeblocks` cleanup branch; audit-only, no code changed (these have no before/after within misc/).
 - **Code it concerns:** cross-cutting — `_output/` (reader, cloudy loader, `simulation_end`, `show_run`), `_input/` (registry, read_param, param_spec), bubble-structure (`bubble_luminosity`, `get_bubbleParams`), cooling, plus `test/`, `paper/`, and `docs/`.
-- **Linked files & data:** code `trinity/bubble_structure/bubble_luminosity.py`, `trinity/_output/simulation_end.py`, `trinity/_output/cloudy/run_loader.py`, `trinity/_output/trinity_reader.py`, `trinity/_input/registry.py`, `trinity/_functions/unit_conversions.py`; tests `test/test_phase5_text_drop.py`, `test/test_phase4_consumer_migration.py`; related docs `docs/dev/bubble/integrator-robustness.md`.
+- **Linked files & data:** code `trinity/bubble_structure/bubble_luminosity.py`, `trinity/_output/simulation_end.py`, `trinity/_output/cloudy/run_loader.py`, `trinity/_output/trinity_reader.py`, `trinity/_input/registry.py`, `trinity/_functions/unit_conversions.py`; tests `test/test_phase5_text_drop.py`, `test/test_phase4_consumer_migration.py`; related docs `docs/dev/archive/bubble/integrator-robustness.md`.
 
 Audited at commit `b7c5db6` (2026-06-10). Feeds the future cleanup branch
 `feature/remove-backward-compat-codeblocks`. **Audit only — no code was changed.**
@@ -48,7 +48,7 @@ re-checked against source at the audit commit.
 | What | Where | Notes |
 |---|---|---|
 | `_create_adaptive_radius_grid()` | `trinity/bubble_structure/bubble_luminosity.py:865-989` | Explicitly disabled (see note at `:477-491`); no callers anywhere. ~125 lines. |
-| `_solve_bubble_ode_with_ivp()` | `trinity/bubble_structure/bubble_luminosity.py:991-1040` | "Kept for future experimentation"; no callers. Referenced only by `docs/dev/bubble/integrator-robustness.md` (a stale-by-design doc). |
+| `_solve_bubble_ode_with_ivp()` | `trinity/bubble_structure/bubble_luminosity.py:991-1040` | "Kept for future experimentation"; no callers. Referenced only by `docs/dev/archive/bubble/integrator-robustness.md` (a stale-by-design doc). |
 | `get_beta_delta_wrapper_pure()` | `trinity/phase1b_energy_implicit/get_betadelta.py:781` | Docstring says it "matches the interface of the original `get_beta_delta_wrapper`" — **that original no longer exists**. Zero callers. |
 | Commented-out "depreciated" cooling blocks | `trinity/cooling/net_coolingcurve.py:70-75, 107-110, 136-139` | Old non-CIE netcooling-grid path, commented out (note misspelling "depreciated"). |
 | `plot_folder_grid = plot_grid` alias | `paper/methods/figures/paper_feedback.py:572` | Zero callers. |

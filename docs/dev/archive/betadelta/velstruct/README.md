@@ -1,10 +1,10 @@
-# docs/dev/betadelta/velstruct — velocity-structure ("Problem 2") hunt & treatment tooling
+# docs/dev/archive/betadelta/velstruct — velocity-structure ("Problem 2") hunt & treatment tooling
 
 Harness/tooling for **Phase 6** of the β–δ hybr study: does the transient inner
 inflow (negative interior velocity during a feedback re-pressurisation) ever
 contaminate anything? **Not source.** Canonical writeup:
-`docs/dev/betadelta/stalling-energy-phase.md` ("Phase 6.0 contamination hunt" +
-"Is the inflow physical?"); plan: `docs/dev/betadelta/HYBR_PLAN.md` Phase 6.
+`docs/dev/archive/betadelta/stalling-energy-phase.md` ("Phase 6.0 contamination hunt" +
+"Is the inflow physical?"); plan: `docs/dev/archive/betadelta/HYBR_PLAN.md` Phase 6.
 
 ## Files
 
@@ -31,5 +31,5 @@ contaminate anything? **Not source.** Canonical writeup:
 | **h5 long**  | 0.03 | 3e4 | −2 | 1e5 | 8 | full WR→SN→decline |
 | **h6 flat**  | 0.30 | 3e5 |  0 | 1e3 | 6 | flat control |
 
-Plots from these CSVs: `docs/dev/betadelta/diagnostics/plot_hunt.py` (`hunt_trigger/massdep/dmdt_leads`).
-See `docs/dev/betadelta/diagnostics/README.md` for the full run-name glossary and the other phases.
+Plots from these CSVs: `docs/dev/archive/betadelta/diagnostics/plot_hunt.py` (`hunt_trigger/massdep/dmdt_leads`).
+See `docs/dev/archive/betadelta/diagnostics/README.md` for the full run-name glossary and the other phases.

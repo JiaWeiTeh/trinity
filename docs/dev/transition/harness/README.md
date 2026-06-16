@@ -20,4 +20,4 @@ phase? **Not source — regenerable.** Canonical writeups:
 - `{mock_hybr,dense_flat,steep,steep_long}.param` — the four harvested configs.
 
 Data produced: `docs/dev/data/transition_{mock_hybr,dense_flat,steep,steep_long}.csv`.
-See `docs/dev/betadelta/diagnostics/README.md` for the run-name glossary and the β–δ phases.
+See `docs/dev/archive/betadelta/diagnostics/README.md` for the run-name glossary and the β–δ phases.

@@ -271,7 +271,7 @@ without blocking A and B.
 **A separate, behavior-AFFECTING follow-up — sequenced dead last —** is the
 flaky `MonotonicError` robustness fix. It is deliberately *not* part of the
 A–C restructure (those are byte-preserving; this one changes a runtime code
-path), so it lives in its own doc, `docs/dev/bubble/integrator-robustness.md`,
+path), so it lives in its own doc, `docs/dev/archive/bubble/integrator-robustness.md`,
 and must land after the structural churn settles. Status: A/B/C all
 executed; integrator: planned (separate doc) — the only remaining phase.
 
@@ -645,7 +645,7 @@ the codegen gate guarantees consistency.
 > *pre-existing* flaky `MonotonicError` in the bubble integrator (numpy
 > 1.26.4, passed 2 of 3 identical re-runs; unrelated to the rename). That
 > flake is the subject of the final phase — see
-> `docs/dev/bubble/integrator-robustness.md`.
+> `docs/dev/archive/bubble/integrator-robustness.md`.
 
 Measured on `feature/reforming-structure` after Phase A + the
 deprecated-param removal. Pure, behavior-preserving package rename.

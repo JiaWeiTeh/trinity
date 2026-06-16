@@ -8,14 +8,14 @@ fraction), convergence, Lloss/dMdt/Eb, and beta+delta. The CSV schema is a
 superset of ``docs/dev/data/stalling_*.csv`` (adds ``v_struct_npts``,
 ``v_neg_frac_thick``, ``no_physical_root``) so the old runs stay comparable.
 
-Goal (Phase 6.0, docs/dev/betadelta/HYBR_PLAN.md): hunt a regime where interior
+Goal (Phase 6.0, docs/dev/archive/betadelta/HYBR_PLAN.md): hunt a regime where interior
 inflow (WARPFIELD "Problem 2", driven by (beta+delta)/t in dvdr at
 bubble_luminosity.py:1150) stops being cosmetic -- i.e. non-convergence in the
 band, a kink in Lloss/dMdt/Eb across it, or the band growing to dominate the
 bubble thickness. Touches no production code.
 
-    python docs/dev/betadelta/velstruct/hunt.py <param> --out docs/dev/data/hunt_<name>.csv
-    python docs/dev/betadelta/velstruct/hunt.py <param> --validate-only
+    python docs/dev/archive/betadelta/velstruct/hunt.py <param> --out docs/dev/data/hunt_<name>.csv
+    python docs/dev/archive/betadelta/velstruct/hunt.py <param> --validate-only
 """
 import argparse
 import csv

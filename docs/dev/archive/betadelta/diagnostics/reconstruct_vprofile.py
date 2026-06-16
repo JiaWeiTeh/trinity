@@ -154,7 +154,7 @@ def main():
     ax.axhspan(ax.get_ylim()[0], 0.0, color="r", alpha=0.05)
     ax.text(0.02, -0.4, "inflow (v<0)", color="#b30000", fontsize=9, va="top")
 
-    # how significant is the inflow? (numbers per docs/dev/betadelta/stalling-energy-phase.md)
+    # how significant is the inflow? (numbers per docs/dev/archive/betadelta/stalling-energy-phase.md)
     deep = min(inflow, key=lambda r: float(r["v_struct_min"]))
     mach = abs(float(deep["v_struct_min"])) / float(deep["c_sound"])
     ax.text(

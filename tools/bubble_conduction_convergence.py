@@ -8,7 +8,7 @@ on a ~60k-point legacy grid. That grid fuses two concerns the physics wants
 separate -- the *integration* step control and the *output* sampling used for
 the conduction-zone trapezoid integral. Refining the output sampling means
 asking LSODA for near-duplicate output radii, which both (a) stresses the
-integrator (the intermittent crash; see docs/dev/bubble/integrator-robustness.md)
+integrator (the intermittent crash; see docs/dev/archive/bubble/integrator-robustness.md)
 and (b) still under-resolves the trapezoid. This tool measures (b): it
 re-integrates each state with ``solve_ivp(dense_output=True)`` -- whose accuracy
 is set by ``rtol`` independently of output sampling -- and converges the

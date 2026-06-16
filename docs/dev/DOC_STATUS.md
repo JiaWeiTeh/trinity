@@ -31,29 +31,43 @@ cross-checked with `CHANGELOG.md` and `git log`.
 
 | Doc | Verdict | Stale refs | Recommendation |
 |-----|---------|:---------:|----------------|
-| `betadelta/HYBR_PLAN.md` | ✅ SHIPPED (Phases 0–3) + live tail | ⚠️ | Archive after extracting open tail (Phase-4 default flip; Phase-5 study) |
-| `betadelta/PHASE0_BASELINES.md` | ✅ SHIPPED (record) | — | **Archive** |
-| `betadelta/PHASE2_ARMS.md` | ✅ SHIPPED (arm D / hybr landed) | — | **Archive** (forward item lives in stalling + HYBR Phase 5) |
-| `betadelta/stalling-energy-phase.md` | ✅ SHIPPED (settled study) | minor | Fix 1 parenthetical → **archive** |
+| `archive/betadelta/HYBR_PLAN.md` | ✅ SHIPPED (Phases 0–3) + live tail | ⚠️ | Archive after extracting open tail (Phase-4 default flip; Phase-5 study) |
+| `archive/betadelta/PHASE0_BASELINES.md` | ✅ SHIPPED (record) | — | **Archive** |
+| `archive/betadelta/PHASE2_ARMS.md` | ✅ SHIPPED (arm D / hybr landed) | — | **Archive** (forward item lives in stalling + HYBR Phase 5) |
+| `archive/betadelta/stalling-energy-phase.md` | ✅ SHIPPED (settled study) | minor | Fix 1 parenthetical → **archive** |
 | `transition/TRIGGER_PLAN.md` | 🔵 ACTIONABLE | accurate | **Keep** (P-shadow unbuilt) |
 | `transition/P0.md` | ✅ SHIPPED (results record) | — | Keep alongside the plan (don't archive yet) |
 | `transition/pshadow-design.md` | 🔵 ACTIONABLE | ⚠️ (1: `stop_r`) | Fix ref → **keep** (actionable head) |
-| `bubble/integrator-robustness.md` | ⛔ SUPERSEDED (by the `solve_ivp` migration) | ⚠️ (heavy) | Add "superseded" banner → **archive** |
-| `bubble/conduction-convergence.md` | ✅ SHIPPED (sign-off; switch landed) | minor | **Archive** |
+| `archive/bubble/integrator-robustness.md` | ⛔ SUPERSEDED (by the `solve_ivp` migration) | ⚠️ (heavy) | Add "superseded" banner → **archive** |
+| `archive/bubble/conduction-convergence.md` | ✅ SHIPPED (sign-off; switch landed) | minor | **Archive** |
 | `cooling/refactor-audit.md` | 🔵 ACTIONABLE (nothing shipped) | ⚠️ (~1–3 lines) | Refresh refs → **keep** |
-| `n-consistency/audit.md` | ✅ SHIPPED (pinned by `test_mu_audit_drift`) | by-design | **Archive** |
-| `n-consistency/implementation-plan.md` | ✅ SHIPPED (all phases landed) | ⚠️ (flat→subdir) | **Archive** |
-| `n-consistency/pressure-terms-audit.md` | ⛔ SUPERSEDED (self-declared, confirmed) | historical | **Archive** |
+| `archive/n-consistency/audit.md` | ✅ SHIPPED (pinned by `test_mu_audit_drift`) | by-design | **Archive** |
+| `archive/n-consistency/implementation-plan.md` | ✅ SHIPPED (all phases landed) | ⚠️ (flat→subdir) | **Archive** |
+| `archive/n-consistency/pressure-terms-audit.md` | ⛔ SUPERSEDED (self-declared, confirmed) | historical | **Archive** |
 | `misc/backward-compat-audit.md` | 🔵 ACTIONABLE (~95% un-executed) | ⚠️ (heavy) | Refresh refs, mark Tier-4 done → **keep** |
 | `misc/tinit-sensitivity.md` | 🟡 PARTIAL (study done; rec #3 open) | — | **Keep** (one open physics rec) |
 | `misc/TERMINATION_EVENTS.md` | 📘 REFERENCE (accurate) | — | **Keep** (current reference) |
 | `misc/LEAKING_LUMINOSITIES_SKELETON.md` | 🟡 PARTIAL (A–C shipped; D/F/G open) | — | **Keep** |
 
-**Tally:** 7 ✅ shipped · 2 ⛔ superseded · 4 🔵 actionable · 2 🟡 partial · 1 📘 reference · (1 results-record). 8 clear archive candidates.
+**Tally:** 7 ✅ shipped · 2 ⛔ superseded · 4 🔵 actionable · 2 🟡 partial · 1 📘 reference · (1 results-record).
+
+> **Acted on (2026-06-16):** the shipped/superseded workstreams were moved to
+> `docs/dev/archive/` (`betadelta/`, `bubble/`, `n-consistency/` — writeups +
+> harnesses), each doc carries a verified **Status** line, and the two precise
+> stale refs (`pshadow-design` `stop_r`, `stalling` velstruct note) were fixed.
+
+## Open items carried forward (from archived docs)
+
+- **β–δ Phase-4 — default-solver flip.** `betadelta_solver` defaults to `legacy`
+  (`trinity/_input/default.param:49`); the verified-good `hybr` path exists but the
+  flip to `hybr` is a deferred maintainer decision (`archive/betadelta/HYBR_PLAN.md` Phase 4).
+- **β–δ Phase-5 — transition criterion.** The "is the fixed 0.05 cooling-balance
+  trigger right (esp. steep r⁻²)?" question is now the **active** `transition/`
+  workstream (`TRIGGER_PLAN.md` → `pshadow-design.md`), still unbuilt.
 
 ## Per-doc detail (decisive evidence)
 
-### `betadelta/HYBR_PLAN.md` — ✅ SHIPPED (Phases 0–3), live tail, ⚠️ stale-refs
+### `archive/betadelta/HYBR_PLAN.md` — ✅ SHIPPED (Phases 0–3), live tail, ⚠️ stale-refs
 Phase 1.1 shared `solve_R1` bracket (`get_bubbleParams.py:433-457`, 6 call sites), Phase 1.2
 convergence-flag persistence + dt mitigation (`run_energy_implicit_phase.py:283-316`,
 `registry.py:481-482`), Phase 3 hybr behind `betadelta_solver` (`get_betadelta.py:583-601,795-833`;
@@ -61,17 +75,17 @@ convergence-flag persistence + dt mitigation (`run_energy_implicit_phase.py:283-
 `hybr` (deferred maintainer call) and the Phase-5 transition-criterion study. Stale: `bubble_E2P:229`→`:198`;
 the §3 `compute_R1_Pb` `[1e-3·R2,R2]` bracket no longer exists (replaced by the Phase-1.1 fix).
 
-### `betadelta/PHASE0_BASELINES.md` — ✅ SHIPPED (record)
+### `archive/betadelta/PHASE0_BASELINES.md` — ✅ SHIPPED (record)
 Baselined the legacy solver (`GRID_EPSILON=0.02` `get_betadelta.py:57`; bounds `:41-43`); the
 `BETADELTA_DT_SHRINK_MAX_STREAK=10` response shipped (`run_energy_implicit_phase.py:129`). Gate-G0 evidence
 for a program now through Phase 3. The uncommitted `scratch/phase0/` harness it cites is gone (self-disclosed).
 
-### `betadelta/PHASE2_ARMS.md` — ✅ SHIPPED (arm D promoted)
+### `archive/betadelta/PHASE2_ARMS.md` — ✅ SHIPPED (arm D promoted)
 hybr arm landed: `betadelta_solver` (`registry.py:307`), `_solve_betadelta_hybr` (`get_betadelta.py:874`),
 `dMdt>0` acceptance gate (`:170,796`). Harness/data present. §2.3 self-marked "superseded in part" by its
 own Phase-3 section; the forward item (steep r⁻² cooling-balance) lives in `stalling-energy-phase.md` + HYBR Phase 5.
 
-### `betadelta/stalling-energy-phase.md` — ✅ SHIPPED (settled "Problem 2" study)
+### `archive/betadelta/stalling-energy-phase.md` — ✅ SHIPPED (settled "Problem 2" study)
 `v_neg_frac_thick` + `_inflow_frac_thickness` shipped (`registry.py:463`,
 `run_energy_implicit_phase.py:175-193`); "v absent from cooling integrals" verified in
 `bubble_luminosity.py`; reject-and-hold remains harness-only (`velstruct/hunt.py`) by design. One stale
@@ -90,13 +104,13 @@ and match. Complete by its own terms; keep with the plan until P-shadow ships.
 Entirely unbuilt (accurate "awaiting sign-off"): no `transition_trigger` param, no blowout/shadow code.
 Routing `main.py:283,303,343` and the F0 terminator verified. Stale: §3 says `stop_r` default `None`; actual `'500'` (`registry.py:316`).
 
-### `bubble/integrator-robustness.md` — ⛔ SUPERSEDED, ⚠️ heavy stale-refs
+### `archive/bubble/integrator-robustness.md` — ⛔ SUPERSEDED, ⚠️ heavy stale-refs
 The `_odeint_checked` wrapper it documents was **removed**; the structure solve is now
 `solve_ivp(LSODA, dense_output=True)` via `_solve_bubble_structure` (`bubble_luminosity.py:106-166`, PRs #666/#678).
 `BubbleSolverError` + the shape-aware guard shipped; the `sys.exit` it flags as pending is now fixed (`:1129-1136`).
 Value is historical.
 
-### `bubble/conduction-convergence.md` — ✅ SHIPPED
+### `archive/bubble/conduction-convergence.md` — ✅ SHIPPED
 The `solve_ivp(dense_output=True)` switch it signs off **landed** (`bubble_luminosity.py:143-151`); conduction band
 sampled from dense output at `_CONDUCTION_NPTS=2000` (`:632-641`); tool `tools/bubble_conduction_convergence.py` exists
 (its header still says "production odeint" — now stale).
@@ -107,17 +121,17 @@ keys; CIE still integer-index with silent fall-through (`read_param.py:417-429`)
 (`read_coolingcurve.py:25`). SPS side did land as `_resolve_sps_bundle` (`registry.py:216`), not the named helper.
 Faithful, implementable plan; line numbers drifted +1..+5.
 
-### `n-consistency/audit.md` — ✅ SHIPPED
+### `archive/n-consistency/audit.md` — ✅ SHIPPED
 `n ≡ n_H`, He-aware μ's, `chi_e`/`chi_e_shell`, `mu_ion_shell`, Phase-A bubble-vs-shell split all implemented
 (`read_param.py:302-324`, `registry.py:327-375`, `bubble_luminosity.py:539-1160`, `get_shellODE.py:63-66`) and pinned by
 `test/test_mu_audit_drift.py`. `get_shellParams.py` removed. The audit's pre-fix line table is intentionally a snapshot.
 
-### `n-consistency/implementation-plan.md` — ✅ SHIPPED, ⚠️ stale-refs
+### `archive/n-consistency/implementation-plan.md` — ✅ SHIPPED, ⚠️ stale-refs
 Every phase (0–6 + A) landed (#657); pinned by `test_mu_audit_drift.py` (14 tests). Stale: before/after tables use
 **flat filenames** (files now live in `phase1_energy/`, `phase1b_energy_implicit/`, `phase1c_transition/`,
 `phase2_momentum/`) and pre-Phase-A line numbers.
 
-### `n-consistency/pressure-terms-audit.md` — ⛔ SUPERSEDED
+### `archive/n-consistency/pressure-terms-audit.md` — ⛔ SUPERSEDED
 Self-declared first pass; its `n_tot`-leaning fix is **not** what shipped (`n ≡ n_H` did). Superseded by `audit.md`
 + `implementation-plan.md` (both present). Kept only as a reasoning trail.
 

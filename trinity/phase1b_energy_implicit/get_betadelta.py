@@ -68,7 +68,7 @@ GRID_EPSILON = 0.02  # Search range around guess
 GRID_EARLY_EXIT_RESIDUAL = RESIDUAL_THRESHOLD / 10
 
 # hybr (betadelta_solver='hybr') options. The finite-difference step eps is the
-# residual noise floor measured in the Phase-2.1 transect probe (docs/dev/betadelta/diagnostics),
+# residual noise floor measured in the Phase-2.1 transect probe (docs/dev/archive/betadelta/diagnostics),
 # not the 1e-4 acceptance threshold; factor=0.1 keeps Newton steps local so the
 # root-finder does not leap into ODE-failing (beta, delta); maxfev caps cost.
 HYBR_OPTIONS = dict(xtol=1e-8, factor=0.1, maxfev=30, eps=3e-4)

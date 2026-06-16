@@ -5,7 +5,7 @@ committed stalling-phase CSVs.
 Source data (canonical, read from docs/dev/data/):
   stalling_steep_1e6_alpha-2.csv  (sweep_steep, 133 rows)
   stalling_mock_4e3.csv           (sweep_mock,  144 rows)
-See docs/dev/betadelta/stalling-energy-phase.md for the writeup. Key diagnostics:
+See docs/dev/archive/betadelta/stalling-energy-phase.md for the writeup. Key diagnostics:
   v_struct_min  = most-negative point in the bubble velocity profile [pc/Myr]
   v_struct_nneg = count of negative-v points (of ~100 sample points; these
                   stalling CSVs predate the v_struct_npts column). >=10 = real
@@ -25,7 +25,7 @@ that re-pressurise the bubble (beta<0). Produces:
                             -> Eb/Pb up (beta<0) -> beta+delta<-0.4 -> inflow)
                             with the beta/delta decomposition
 
-Usage: python docs/dev/betadelta/diagnostics/analyze_negvel.py
+Usage: python docs/dev/archive/betadelta/diagnostics/analyze_negvel.py
 """
 
 import csv
@@ -317,7 +317,7 @@ def plot_causal_ladder(path):
     measured and solid; the inflow in panel 4 is the quasi-steady-ansatz output
     -- subsonic (Mach~2e-3), energetically negligible (~1e-6 of thermal), and its
     physical reality (real transient vs ansatz artefact) is OPEN. See
-    docs/dev/betadelta/stalling-energy-phase.md "Is the inflow physical?".
+    docs/dev/archive/betadelta/stalling-energy-phase.md "Is the inflow physical?".
     """
     d = load(RUNS[0][0])  # steep
     t = d["t_now"]

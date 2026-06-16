@@ -31,7 +31,7 @@
 > the committed diagnostics are now *normally* tracked (the ignored-but-tracked
 > contradiction is resolved) and top-level `scratch/` is local-only. They have since
 > been reorganised into per-workstream folders: the old `scratch/phase2`/`phase6`
-> are now `docs/dev/betadelta/diagnostics/` and `docs/dev/betadelta/velstruct/`, and
+> are now `docs/dev/archive/betadelta/diagnostics/` and `docs/dev/archive/betadelta/velstruct/`, and
 > the transition harness is `docs/dev/transition/harness/`. The H1 finding below
 > records the **original** state; see `CODEBASE_REVIEW.md` → Status (Rounds 3–4).
 

@@ -6,7 +6,7 @@ advances on its own (arm-A) result exactly as before; arms B-D are
 shadow-evaluated from the same warm start and logged. One jsonl line per
 arm per segment, flushed per line (crash loses at most one record).
 
-Arms (docs/dev/betadelta/HYBR_PLAN.md 2.3):
+Arms (docs/dev/archive/betadelta/HYBR_PLAN.md 2.3):
   A  control — the production call itself (validates the harness).
   B  metric  — production 5x5 grid/box/cap, but g-ranked and g-thresholded.
      The L-BFGS-B fallback is NOT re-implemented; records would_fallback
@@ -29,7 +29,7 @@ points (as production does); inside hybr a failure aborts the arm's
 segment via _ArmAbort (BaseException: the plateau handler in
 get_residual_pure catches only Exception).
 
-Usage: python docs/dev/betadelta/diagnostics/arms.py <param> <out.jsonl> [stride]
+Usage: python docs/dev/archive/betadelta/diagnostics/arms.py <param> <out.jsonl> [stride]
   stride 2 = arms at every 2nd implicit segment (cost cap: plan 2.3 allows
   a stratified ~50% subset when the baseline exceeds ~30 min).
 """
