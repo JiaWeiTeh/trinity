@@ -94,6 +94,7 @@ from trinity.phase_general.phase_events import (
     check_event_termination,
     apply_event_result,
 )
+from trinity.phase_general.transition_shadow import ShadowTransitionLog
 from trinity._output.simulation_end import SimulationEndCode
 
 logger = logging.getLogger(__name__)
@@ -623,6 +624,24 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
     beta = params['cool_beta'].value
     delta = params['cool_delta'].value
 
+    # Transition trigger (P-shadow). Default 'instantaneous' = current F0-only
+    # behaviour. The 'cooling_or_blowout' (F0 v F4) promote mode is the
+    # P-promote follow-up; reject it here so a misconfigured run fails loudly
+    # rather than silently behaving like 'instantaneous'.
+    # See docs/dev/transition/pshadow-design.md.
+    trigger_spec = params.get('transition_trigger', None)
+    transition_trigger = (trigger_spec.value if trigger_spec is not None
+                          and hasattr(trigger_spec, 'value') else 'instantaneous')
+    if transition_trigger != 'instantaneous':
+        raise ValueError(
+            f"transition_trigger={transition_trigger!r} is not implemented yet "
+            f"(P-promote); only 'instantaneous' (default) is available."
+        )
+    # Shadow log: record where each transition criterion WOULD fire, without
+    # acting on it (zero production impact — writes a sideline file only).
+    shadow_log = ShadowTransitionLog()
+    rCloud_shadow = params['rCloud'].value
+
     # Track previous R2 for collapse detection
     R2_prev = R2
 
@@ -1069,6 +1088,11 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         else:
             threshold = 0.05
 
+        # Shadow diagnostics: record the first epoch where F0 (cooling balance)
+        # and F4 (blowout, R2 > rCloud) would fire. Logged only; the live break
+        # below still terminates on F0 alone, so snapshots are byte-identical.
+        shadow_log.update(t_now, R2, rCloud_shadow, Lgain, Lloss, threshold)
+
         if Lgain > 0 and (Lgain - Lloss) / Lgain < threshold:
             termination_reason = "cooling_balance"
             logger.info(f"Cooling balance reached: Lloss/Lgain ratio below {threshold}")
@@ -1162,6 +1186,10 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         params.save_snapshot()
     except Exception as e:
         logger.warning(f"Phase-boundary reconciliation failed: {e}")
+
+    # Persist the shadow transition epochs (zero production impact; see
+    # docs/dev/transition/pshadow-design.md).
+    shadow_log.write(params['path2output'].value)
 
     # =============================================================================
     # Build results
