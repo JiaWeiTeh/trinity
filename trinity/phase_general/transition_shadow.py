@@ -1,19 +1,24 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Shadow (log-only) transition-trigger diagnostics for the implicit phase (1b).
+"""Implicit->momentum transition-trigger criteria (F0 / F4) and shadow logging.
 
-Records the first segment where each candidate implicit->momentum transition
-criterion *would* fire, **without acting on it**. Production still terminates the
-implicit phase on F0 (``cooling_balance``) only; F4 (blowout, ``R2 > rCloud``) is
-logged here for the P-promote follow-up.
+This module is the single source of truth for the two transition criteria:
+  F0 instantaneous rate-ratio (cooling balance): ``(Lgain - Lloss)/Lgain < eps``
+  F4 blowout (geometric):                        ``R2 > rCloud``
 
-Zero production impact: this writes a sideline ``transition_shadow.jsonl`` and
-never touches snapshots, result arrays, or ``params`` state, so snapshot output
-stays byte-identical. See ``docs/dev/transition/pshadow-design.md`` (P-shadow).
+The ``*_fires`` predicates and ``implicit_termination_reason`` are used by **both**
+the live implicit-phase terminator (``run_energy_implicit_phase.py``) and the
+``ShadowTransitionLog`` below, so the shadow F0 epoch equals the live break epoch
+*by construction*. Selection is via the ``transition_trigger`` param:
+  ``'instantaneous'`` (default): terminate on F0 only; F4 is logged (shadow) but
+                                 not acted on -> byte-identical snapshots.
+  ``'cooling_or_blowout'`` (P-promote): terminate on F0 **or** F4, whichever fires
+                                 first. Both route 1b->1c->2 like ``cooling_balance``.
 
-Criteria (plan F0 / F4; see ``docs/dev/transition/TRIGGER_PLAN.md``):
-  F0 instantaneous rate-ratio (current live trigger): ``(Lgain - Lloss)/Lgain < eps``
-  F4 blowout (geometric):                              ``R2 > rCloud``
+``ShadowTransitionLog`` records the first segment where each criterion *would*
+fire and writes a sideline ``transition_shadow.jsonl`` — it never touches
+snapshots, result arrays, or ``params`` state. See
+``docs/dev/transition/pshadow-design.md`` and ``TRIGGER_PLAN.md``.
 """
 import json
 import logging
@@ -22,6 +27,59 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 SHADOW_FILENAME = "transition_shadow.jsonl"
+
+VALID_TRANSITION_TRIGGERS = ("instantaneous", "cooling_or_blowout")
+
+
+def validate_transition_trigger(value):
+    """Return ``value`` if it is a known ``transition_trigger``, else raise.
+
+    Fails loudly so a misconfigured run does not silently fall back to the
+    default behaviour.
+    """
+    if value not in VALID_TRANSITION_TRIGGERS:
+        raise ValueError(
+            f"transition_trigger={value!r} is invalid; "
+            f"expected one of {VALID_TRANSITION_TRIGGERS}."
+        )
+    return value
+
+
+def cooling_balance_fires(Lgain, Lloss, threshold):
+    """F0 (cooling balance): the instantaneous energy-retention ratio
+    ``(Lgain - Lloss)/Lgain`` has dropped below ``threshold``.
+
+    This is the live implicit-phase terminator in every mode. ``Lgain <= 0``
+    never fires (no injected power for cooling to overtake).
+    """
+    return Lgain > 0 and (Lgain - Lloss) / Lgain < threshold
+
+
+def blowout_fires(R2, rCloud):
+    """F4 (blowout, geometric): the shell radius ``R2`` has escaped the cloud
+    (``R2 > rCloud``).
+
+    Independent of the energy budget — a blown-out shell may still be formally
+    energy-driven (the steep-profile fate; see pshadow-design.md §6b).
+    """
+    return rCloud is not None and R2 > rCloud
+
+
+def implicit_termination_reason(transition_trigger, Lgain, Lloss, threshold, R2, rCloud):
+    """Transition reason for this implicit-phase segment, or ``None`` to continue.
+
+    F0 (``"cooling_balance"``) terminates the implicit phase in every mode. F4
+    (``"blowout"``) terminates it only under ``'cooling_or_blowout'`` (P-promote).
+    F0 takes precedence when both hold in the same segment, so the cooling path
+    is byte-identical to the pre-promote behaviour. Both reasons route
+    1b->1c->2 (neither sets ``EndSimulationDirectly``); the caller owns the
+    break, logging, and any param state.
+    """
+    if cooling_balance_fires(Lgain, Lloss, threshold):
+        return "cooling_balance"
+    if transition_trigger == "cooling_or_blowout" and blowout_fires(R2, rCloud):
+        return "blowout"
+    return None
 
 
 class ShadowTransitionLog:
@@ -44,10 +102,10 @@ class ShadowTransitionLog:
         live ``cooling_balance`` break epoch.
         """
         ratio_F0 = (Lgain - Lloss) / Lgain if Lgain > 0 else float("nan")
-        if self.F0 is None and Lgain > 0 and ratio_F0 < threshold:
+        if self.F0 is None and cooling_balance_fires(Lgain, Lloss, threshold):
             self.F0 = {"which": "F0", "t": t, "R2": R2, "rCloud": rCloud,
                        "ratio_F0": ratio_F0}
-        if self.F4 is None and rCloud is not None and R2 > rCloud:
+        if self.F4 is None and blowout_fires(R2, rCloud):
             self.F4 = {"which": "F4", "t": t, "R2": R2, "rCloud": rCloud,
                        "ratio_F0": ratio_F0}
 

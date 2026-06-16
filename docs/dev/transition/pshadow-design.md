@@ -25,20 +25,22 @@
 > each artifact.
 
 **About this document**
-- **Status (verified 2026-06-16):** 🟡 **PARTIAL** (verified 2026-06-16) — **P-shadow shipped** (log-only F0/F4 diagnostics); **P-promote** still 🔵 ACTIONABLE, awaiting sign-off on the §6 open decisions.
-- **Type:** design — the shadow-first, two-criterion (F0 cooling ∨ F4 blowout) trigger design; the shadow phase is now built, promote awaits maintainer sign-off.
+- **Status (verified 2026-06-16):** 🟢 **SHIPPED** (2026-06-16) — **P-shadow + P-promote both shipped**. `transition_trigger='cooling_or_blowout'` now terminates the implicit phase on F0 ∨ F4 (blowout `R2>rCloud`), routing 1b→1c→2; default stays `instantaneous` (byte-identical). The §6 decisions are resolved (maintainer, 2026-06-16). **Remaining:** P-validate — the continuity gate + macro deltas on a full steep run.
+- **Type:** design — the shadow-first, two-criterion (F0 cooling ∨ F4 blowout) trigger design; both the shadow and the promote break are now built. P-validate is the remaining step.
 - **Workstream:** `transition/` — the implicit→momentum transition trigger.
-- **Where it sits:** `TRIGGER_PLAN.md` (plan) → `P0.md` (P0/P-sens evidence, G0 = profile-dependent) → **this (design)** → implementation (**P-shadow shipped** → P-promote, awaiting sign-off).
+- **Where it sits:** `TRIGGER_PLAN.md` (plan) → `P0.md` (P0/P-sens evidence, G0 = profile-dependent) → **this (design)** → implementation (**P-shadow + P-promote shipped**) → P-validate.
 - **Code it concerns:** phase 1b implicit terminator (`run_energy_implicit_phase.py` F0 block + new `transition_trigger` param), the dead/blowout event factories in `phase_events.py`, and 1b→1c→2 routing in `main.py`.
 - **Linked files & data:** plan `TRIGGER_PLAN.md`; evidence `P0.md`; data `docs/dev/data/transition_*.csv`; code `trinity/phase1b_energy_implicit/run_energy_implicit_phase.py`, `trinity/phase_general/phase_events.py`, `trinity/main.py`.
 
-**Status:** **P-SHADOW SHIPPED** (2026-06-16) — log-only F0/F4 diagnostics landed
-(`transition_trigger` param + `trinity/phase_general/transition_shadow.py`,
-wired into the 1b loop); production unchanged (byte-identical snapshots). Implements
-the P-shadow phase of `docs/dev/transition/TRIGGER_PLAN.md` using the evidence from
-`docs/dev/transition/P0.md` (P0 + P-sens complete; G0 = profile-dependent
-trigger). **P-promote (the `cooling_or_blowout` break) remains gated on maintainer
-sign-off of the open decisions in §6 before implementation.**
+**Status:** **P-SHADOW + P-PROMOTE SHIPPED** (2026-06-16) — the `transition_trigger`
+param + shared F0/F4 criteria (`trinity/phase_general/transition_shadow.py`) drive
+the 1b terminator. Default `instantaneous` = F0 only (byte-identical snapshots);
+`cooling_or_blowout` adds the F4 blowout break (`R2 > rCloud`), routing 1b→1c→2 like
+cooling balance. Implements P-shadow + P-promote of `docs/dev/transition/TRIGGER_PLAN.md`
+on the evidence from `docs/dev/transition/P0.md` (P0 + P-sens complete; G0 =
+profile-dependent trigger). The §6 maintainer decisions are resolved (2026-06-16).
+**Remaining:** P-validate — the continuity gate (test-plan #4) + macro deltas on a
+full steep run.
 
 ## 1. What the evidence mandates (recap, one line each)
 - **Flat configs transition by cooling** — F0 `(Lgain−Lloss)/Lgain < ε` fires at
@@ -71,12 +73,14 @@ F4 fixes it.
 | phase routing | `main.py:280,300,340` | `EndSimulationDirectly` gates 1b→1c→2; `cooling_balance` flows through to 1c→2 |
 
 ## 4. Design (shadow-first, zero production impact)
-> **✅ Shipped (P-shadow, 2026-06-16):** the param + shadow mode below are built.
-> `transition_trigger` is registered (`registry.py:347`, `default.param`);
-> `ShadowTransitionLog` (`trinity/phase_general/transition_shadow.py`) is wired
-> into the 1b loop (`run_energy_implicit_phase.py:1094` update / `:1192` write).
-> `'cooling_or_blowout'` is rejected with a `ValueError` until P-promote. The
-> promote-mode prose below is the spec for that follow-up.
+> **✅ Shipped (P-shadow + P-promote, 2026-06-16):** the param, shadow mode, and
+> the promote break below are all built. `transition_trigger` is registered
+> (`registry.py:347`, `default.param`); the shared F0/F4 predicates +
+> `implicit_termination_reason` + `validate_transition_trigger` +
+> `ShadowTransitionLog` (`trinity/phase_general/transition_shadow.py`) drive the 1b
+> loop (`run_energy_implicit_phase.py` shadow update / decision break / `.write`).
+> `'instantaneous'` = F0 live break + F4 shadow-logged; `'cooling_or_blowout'` =
+> F0 ∨ F4 live break, routing 1b→1c→2. Invalid values raise.
 
 **New param** `transition_trigger`, default `"instantaneous"` (current F0-only
 behaviour). Register beside `phaseSwitch_LlossLgain` (registry + `default.param`).
@@ -109,18 +113,19 @@ caller first — plan §"ε is already a param".)
 4. **Continuity (P-promote gate):** at the blowout switch Eb/Rb/v2/P_drive hand off
    to 1c no more discontinuously than F0 (1c/2 drive on `max(Pb, P_HII+P_ram)`).
 
-## 6. Open decisions for the maintainer (blocking implementation)
+## 6. Maintainer decisions — RESOLVED 2026-06-16 (implemented in P-promote)
 1. **Route blowout through 1c (Eb drain) like cooling_balance, or skip 1c → direct
-   to momentum?** Recommend **through 1c** (same handoff mechanism, minimal change;
-   a blown-out bubble still has Eb to drain). Decide before promote.
-2. **Param shape:** `transition_trigger ∈ {instantaneous, cooling_or_blowout}`
-   (recommended) vs a separate boolean `enable_blowout_transition`. The former
-   matches the plan's wording and leaves room for future families.
-3. **Blowout threshold:** exactly `R2 > rCloud` (P-sens: the crossing is clean at
-   ratio 1.0, no tuning needed) vs a fraction `f·rCloud`. Recommend **1.0**.
-4. **Scope of this PR:** shadow-only (steps in §4 shadow + §5 tests 1–2), or
-   shadow+promote in one go? Recommend **shadow-only first** (lands the param,
-   logging, byte-identical proof), promote in a follow-up after the continuity gate.
+   to momentum?** ✅ **Through 1c.** The `blowout` break leaves `EndSimulationDirectly`
+   untouched, exactly like `cooling_balance`, so 1b→1c→2 routing is identical; the
+   residual Eb drains through the transition phase.
+2. **Param shape:** ✅ **`transition_trigger ∈ {instantaneous, cooling_or_blowout}`**
+   (the enum, as built in P-shadow) — not a separate boolean. Leaves room for future
+   families. Invalid values raise via `validate_transition_trigger`.
+3. **Blowout threshold:** ✅ **exactly `R2 > rCloud` (ratio 1.0)** — `blowout_fires`
+   uses strict `>`; no fraction/tuning (P-sens: the crossing is clean at 1.0).
+4. **Scope:** ✅ **shadow + promote landed together** (shadow shipped earlier the
+   same day; this change adds the live F4 break + the dead-factory reconcile). The
+   continuity gate (test-plan #4) moves to **P-validate** — it needs a full steep run.
 
 ## 6b. Re-entry / reversibility — surges re-inject energy (raised 2026-06-15)
 **Q (maintainer):** can the bubble re-enter the energy-driven phase after the
@@ -147,11 +152,15 @@ treated as lost. Explicit approximation, sharpest in the steep regime.
 a post-blowout surge *stall* the Eb loss rather than abruptly zeroing it — softer,
 more physical. Neither choice re-enters energy-driven.
 
-**Open physics question it surfaces (maintainer/paper):** for steep, is
-"blowout → momentum" the right model at all, or should the energy-rich blown-out
-bubble get a **venting/leak treatment** (ramp `bubble_Leak`) instead of a hard
-switch? A modeling call beyond the switch condition — flag in the paper's caveats;
-do not silently encode either way.
+**Open physics question it surfaces (maintainer/paper) — RESOLVED 2026-06-16:**
+for steep, is "blowout → momentum" the right model at all, or should the energy-rich
+blown-out bubble get a **venting/leak treatment** (ramp `bubble_Leak`) instead of a
+hard switch? ✅ **Decision: hard switch, flagged as a Paper-I caveat.** The blown-out
+hot interior is treated as vented (champagne flow, unrepresentable in 1D); routing
+through 1c (decision #1) already softens the discontinuity by draining the residual
+Eb. No `bubble_Leak` ramp is added — that venting model is a deliberately deferred,
+separate physics sub-task (its own validation), **not** silently encoded here. The
+steep energy-discard approximation must be stated explicitly in the Paper-I caveats.
 
 ## 7. Out of scope (unchanged from plan)
 Betadelta solver; transition/momentum runner internals beyond the switch condition;

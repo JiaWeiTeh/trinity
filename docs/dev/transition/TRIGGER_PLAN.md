@@ -25,7 +25,7 @@
 > that produced each artifact.
 
 **About this document**
-- **Status (verified 2026-06-16):** 🔵 **ACTIONABLE** (verified 2026-06-16) — plan is current and accurate. **P-shadow shipped 2026-06-16** (log-only F0/F4 diagnostics, `transition_trigger` param); no trigger acts on production yet — P-promote is the next step.
+- **Status (verified 2026-06-16):** 🔵 **ACTIONABLE** (verified 2026-06-16) — plan is current and accurate. **P-shadow + P-promote shipped 2026-06-16**: `transition_trigger='cooling_or_blowout'` adds the live F4 blowout break (`R2>rCloud`), routing 1b→1c→2; default `instantaneous` stays byte-identical. Next: **P-validate** (continuity gate + macro deltas on a full steep run).
 - **Type:** plan — characterize the implicit→momentum transition trigger (clocks A/B, candidate families F0–F5) and decide via pre-registered gates before changing production.
 - **Workstream:** `transition/` — the implicit→momentum transition trigger.
 - **Where it sits:** promoted from Phase 5 of `docs/dev/archive/betadelta/HYBR_PLAN.md` → **this (entry point)** → `P0.md` (P0/P-sens results) → `pshadow-design.md` (design).
@@ -278,6 +278,16 @@ precision; `transition_trigger='instantaneous'` reproduces production exactly
 (byte-identical snapshot hash).
 
 ### P-promote — Promotion behind the switch (default unchanged)
+> **✅ Shipped 2026-06-16** — `transition_trigger='cooling_or_blowout'` wires the F4
+> blowout break (`R2 > rCloud`) as a live implicit-phase terminator that routes
+> 1b→1c→2 like `cooling_balance` (no `EndSimulationDirectly`), so the residual Eb
+> drains through 1c. F0 ∨ F4, F0-first; default `instantaneous` byte-identical. The
+> F0/F4 criteria are shared pure predicates (`transition_shadow.py`) used by both the
+> live break and the shadow log. Dead cooling-balance event factory reconciled to read
+> `phaseSwitch_LlossLgain`. Maintainer §6 decisions (route through 1c; hard switch +
+> paper caveat) resolved in `pshadow-design.md`. **Continuity gate (below) deferred to
+> P-validate** — it needs a full steep run.
+
 Implement the winner as a fully-wired phase-switch condition selectable via
 `transition_trigger`, **default still `instantaneous`**. Continuity requirement:
 at the switch, `Eb`, `Rb`, `v2`, and `P_drive` must hand off to the transition

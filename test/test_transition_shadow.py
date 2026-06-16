@@ -1,17 +1,26 @@
-"""Tests for the P-shadow transition-trigger diagnostics.
+"""Tests for the transition-trigger criteria (F0/F4) and shadow diagnostics.
 
-Covers the log-only ``ShadowTransitionLog`` (the F0 cooling-balance and F4
-blowout first-fire detection + serialization) and that the ``transition_trigger``
-param is registered as a run-constant, snapshot-excluded knob defaulting to
-``instantaneous``. See ``docs/dev/transition/pshadow-design.md`` (P-shadow).
+Covers the shared pure predicates and decision function used by **both** the live
+implicit-phase terminator and the log-only ``ShadowTransitionLog`` (so the shadow
+F0 epoch equals the live break epoch by construction), the F0/F4 first-fire
+serialization, and that the ``transition_trigger`` param is registered as a
+run-constant, snapshot-excluded knob defaulting to ``instantaneous``.
+See ``docs/dev/transition/pshadow-design.md`` (P-shadow / P-promote).
 """
 from __future__ import annotations
 
 import json
 
+import pytest
+
 from trinity.phase_general.transition_shadow import (
     SHADOW_FILENAME,
+    VALID_TRANSITION_TRIGGERS,
     ShadowTransitionLog,
+    blowout_fires,
+    cooling_balance_fires,
+    implicit_termination_reason,
+    validate_transition_trigger,
 )
 from trinity._input.registry import SPECS
 
@@ -122,6 +131,72 @@ def test_f0_before_f4_ordering(tmp_path):
     log.update(0.3, 12.0, RCLOUD, 100.0, 1.0, THRESHOLD)   # F4
     recs = log.records()
     assert [r["which"] for r in recs] == ["F0", "F4"]
+
+
+# ---------------------------------------------------------------------------
+# Shared criteria predicates (used by both the live terminator and the shadow log)
+# ---------------------------------------------------------------------------
+def test_cooling_balance_fires_matches_live_expression():
+    # ratio = (100-96)/100 = 0.04 < 0.05 -> fires
+    assert cooling_balance_fires(100.0, 96.0, THRESHOLD) is True
+    # ratio = (100-90)/100 = 0.10 -> does not fire
+    assert cooling_balance_fires(100.0, 90.0, THRESHOLD) is False
+
+
+def test_cooling_balance_nonpositive_lgain_never_fires():
+    assert cooling_balance_fires(0.0, 0.0, THRESHOLD) is False
+    assert cooling_balance_fires(-5.0, 100.0, THRESHOLD) is False
+
+
+def test_blowout_fires_on_crossing():
+    assert blowout_fires(11.0, RCLOUD) is True
+    assert blowout_fires(10.0, RCLOUD) is False  # strict >, equality does not fire
+    assert blowout_fires(9.0, RCLOUD) is False
+    assert blowout_fires(1e9, None) is False  # no cloud radius -> never
+
+
+# ---------------------------------------------------------------------------
+# implicit_termination_reason — the live F0 v F4 decision (P-promote)
+# ---------------------------------------------------------------------------
+def test_flat_returns_cooling_balance_in_both_modes():
+    # cooling fires, shell still inside cloud
+    for mode in VALID_TRANSITION_TRIGGERS:
+        assert implicit_termination_reason(
+            mode, 100.0, 96.0, THRESHOLD, R2=3.0, rCloud=RCLOUD) == "cooling_balance"
+
+
+def test_steep_returns_blowout_only_when_promoted():
+    # cooling never fires (ratio 0.99); shell escaped the cloud
+    assert implicit_termination_reason(
+        "cooling_or_blowout", 100.0, 1.0, THRESHOLD, R2=12.0, rCloud=RCLOUD) == "blowout"
+    # default mode: F4 is shadow-only -> no termination (would run to stop_t)
+    assert implicit_termination_reason(
+        "instantaneous", 100.0, 1.0, THRESHOLD, R2=12.0, rCloud=RCLOUD) is None
+
+
+def test_no_criterion_returns_none():
+    assert implicit_termination_reason(
+        "cooling_or_blowout", 100.0, 50.0, THRESHOLD, R2=3.0, rCloud=RCLOUD) is None
+
+
+def test_cooling_takes_precedence_when_both_hold():
+    # both F0 and F4 true in the same segment -> cooling_balance wins
+    # (preserves the byte-identical pre-promote cooling path)
+    assert implicit_termination_reason(
+        "cooling_or_blowout", 100.0, 99.0, THRESHOLD, R2=12.0, rCloud=RCLOUD) == "cooling_balance"
+
+
+# ---------------------------------------------------------------------------
+# Trigger validation
+# ---------------------------------------------------------------------------
+def test_validate_accepts_known_triggers():
+    for mode in ("instantaneous", "cooling_or_blowout"):
+        assert validate_transition_trigger(mode) == mode
+
+
+def test_validate_rejects_unknown_trigger():
+    with pytest.raises(ValueError):
+        validate_transition_trigger("blowout_only")
 
 
 # ---------------------------------------------------------------------------

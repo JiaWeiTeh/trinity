@@ -94,7 +94,11 @@ from trinity.phase_general.phase_events import (
     check_event_termination,
     apply_event_result,
 )
-from trinity.phase_general.transition_shadow import ShadowTransitionLog
+from trinity.phase_general.transition_shadow import (
+    ShadowTransitionLog,
+    implicit_termination_reason,
+    validate_transition_trigger,
+)
 from trinity._output.simulation_end import SimulationEndCode
 
 logger = logging.getLogger(__name__)
@@ -624,23 +628,20 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
     beta = params['cool_beta'].value
     delta = params['cool_delta'].value
 
-    # Transition trigger (P-shadow). Default 'instantaneous' = current F0-only
-    # behaviour. The 'cooling_or_blowout' (F0 v F4) promote mode is the
-    # P-promote follow-up; reject it here so a misconfigured run fails loudly
-    # rather than silently behaving like 'instantaneous'.
-    # See docs/dev/transition/pshadow-design.md.
+    # Transition trigger. 'instantaneous' (default) terminates the implicit phase
+    # on the cooling-balance ratio F0 only; 'cooling_or_blowout' (P-promote) also
+    # terminates on blowout F4 (R2 > rCloud), routing 1b->1c->2 like
+    # cooling_balance. See docs/dev/transition/pshadow-design.md.
     trigger_spec = params.get('transition_trigger', None)
-    transition_trigger = (trigger_spec.value if trigger_spec is not None
-                          and hasattr(trigger_spec, 'value') else 'instantaneous')
-    if transition_trigger != 'instantaneous':
-        raise ValueError(
-            f"transition_trigger={transition_trigger!r} is not implemented yet "
-            f"(P-promote); only 'instantaneous' (default) is available."
-        )
-    # Shadow log: record where each transition criterion WOULD fire, without
-    # acting on it (zero production impact — writes a sideline file only).
+    transition_trigger = validate_transition_trigger(
+        trigger_spec.value if trigger_spec is not None and hasattr(trigger_spec, 'value')
+        else 'instantaneous'
+    )
+    # Shadow log: record where each transition criterion fires (diagnostic; writes
+    # a sideline file only). In 'instantaneous' mode this is log-only; in
+    # 'cooling_or_blowout' mode the live break below also acts on F4.
     shadow_log = ShadowTransitionLog()
-    rCloud_shadow = params['rCloud'].value
+    rCloud_trans = params['rCloud'].value
 
     # Track previous R2 for collapse detection
     R2_prev = R2
@@ -1089,13 +1090,27 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
             threshold = 0.05
 
         # Shadow diagnostics: record the first epoch where F0 (cooling balance)
-        # and F4 (blowout, R2 > rCloud) would fire. Logged only; the live break
-        # below still terminates on F0 alone, so snapshots are byte-identical.
-        shadow_log.update(t_now, R2, rCloud_shadow, Lgain, Lloss, threshold)
+        # and F4 (blowout, R2 > rCloud) would fire. In 'instantaneous' mode this
+        # is log-only and the live break below terminates on F0 alone, so
+        # snapshots are byte-identical.
+        shadow_log.update(t_now, R2, rCloud_trans, Lgain, Lloss, threshold)
 
-        if Lgain > 0 and (Lgain - Lloss) / Lgain < threshold:
+        # Transition trigger: F0 (cooling balance, all modes) or, under
+        # 'cooling_or_blowout', F4 (blowout, R2 > rCloud). Both route 1b->1c->2
+        # like cooling_balance (no EndSimulationDirectly), so the residual Eb
+        # drains through the transition phase; the blown-out hot interior is
+        # treated as vented — a 1D approximation, sharpest for steep profiles
+        # (see docs/dev/transition/pshadow-design.md §6b, a Paper-I caveat).
+        trans_reason = implicit_termination_reason(
+            transition_trigger, Lgain, Lloss, threshold, R2, rCloud_trans)
+        if trans_reason == "cooling_balance":
             termination_reason = "cooling_balance"
             logger.info(f"Cooling balance reached: Lloss/Lgain ratio below {threshold}")
+            break
+        if trans_reason == "blowout":
+            termination_reason = "blowout"
+            logger.info(f"Blowout reached: R2={R2:.4e} pc > rCloud={rCloud_trans:.4e} pc; "
+                        f"routing implicit -> transition (energy-driven shell escaped cloud)")
             break
 
         # Collapse detection: velocity negative AND radius decreasing

@@ -492,7 +492,15 @@ def build_implicit_phase_events(params) -> Tuple[List[Callable], Callable]:
     if stop_r is not None and stop_r > 0:
         events.append(make_max_radius_event(stop_r))
 
-    cooling_factory = make_cooling_balance_event(threshold=0.05)
+    # Read the cooling-balance threshold from the same param the live terminator
+    # uses (run_energy_implicit_phase.py), so there is one parameterized
+    # energy-ratio path rather than a hardcoded 0.05 that can drift from it.
+    # NOTE: this factory is currently built but not invoked — the live implicit
+    # terminator is the inline (Lgain-Lloss)/Lgain check; kept here for parity.
+    threshold_spec = params.get('phaseSwitch_LlossLgain', None)
+    cooling_threshold = (threshold_spec.value if threshold_spec is not None
+                         and hasattr(threshold_spec, 'value') else 0.05)
+    cooling_factory = make_cooling_balance_event(threshold=cooling_threshold)
 
     logger.debug(f"Implicit phase events: min_radius={min_r:.4f} pc, "
                  f"stop_r={stop_r}")

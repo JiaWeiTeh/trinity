@@ -56,10 +56,15 @@ cross-checked with `CHANGELOG.md` and `git log`.
 > harnesses), each doc carries a verified **Status** line, and the two precise
 > stale refs (`pshadow-design` `stop_r`, `stalling` velstruct note) were fixed.
 >
-> **Update (2026-06-16):** **P-shadow shipped** — the log-only F0/F4
-> transition-trigger diagnostics (`transition_trigger` param +
-> `trinity/phase_general/transition_shadow.py`, wired into 1b) landed;
-> `transition/pshadow-design.md` moved 🔵→🟡 (P-promote still gated on §6 sign-off).
+> **Update (2026-06-16):** **P-shadow + P-promote shipped** — the F0/F4
+> transition-trigger criteria (`transition_trigger` param +
+> `trinity/phase_general/transition_shadow.py`) now drive the 1b terminator:
+> default `instantaneous` = F0 only (byte-identical, F4 shadow-logged);
+> `cooling_or_blowout` adds the live F4 blowout break (`R2>rCloud`), routing
+> 1b→1c→2 like cooling balance. Dead cooling-balance event factory reconciled to
+> read `phaseSwitch_LlossLgain`. §6 maintainer decisions resolved (route through 1c;
+> hard switch + Paper-I caveat). `transition/pshadow-design.md` moved 🟡→🟢; the
+> continuity gate + macro deltas remain as **P-validate**.
 
 ## Open items carried forward (from archived docs)
 
@@ -98,22 +103,25 @@ own Phase-3 section; the forward item (steep r⁻² cooling-balance) lives in `s
 parenthetical: it calls `velstruct/` + data "gitignored scratch" but they are **committed**.
 
 ### `transition/TRIGGER_PLAN.md` — 🔵 ACTIONABLE
-Clocks A/B and `phaseSwitch_LlossLgain` param verified (`run_energy_implicit_phase.py:1085-1097`,
-`registry.py:346`); the `transition_trigger` param + F0/F4 **shadow** log are now wired (P-shadow,
-2026-06-16) but log-only — **no** candidate acts on production (F4 blowout is recorded, not enforced;
-`'cooling_or_blowout'` rejected with a `ValueError`). Plan is current and accurate; P-promote is the
-next unbuilt step.
+Clocks A/B and `phaseSwitch_LlossLgain` param verified; the `transition_trigger` param + shared F0/F4
+criteria now drive the 1b terminator (P-shadow + **P-promote**, 2026-06-16). `'instantaneous'` (default)
+= F0 live break + F4 shadow-logged (byte-identical); `'cooling_or_blowout'` = live F0 ∨ F4 blowout break
+(`R2>rCloud`) routing 1b→1c→2. Plan is current and accurate; **P-validate** (continuity gate + macro
+deltas on a full steep run) is the next step.
 
 ### `transition/P0.md` — ✅ SHIPPED (results record)
 Offline harvest record; harness (`transition/harness/harvest.py,psens.py`) + 5 `data/transition_*.csv` all present
-and match. Complete by its own terms; keep with the plan (P-shadow shipped 2026-06-16; P-promote pending).
+and match. Complete by its own terms; keep with the plan (P-shadow + P-promote shipped 2026-06-16; P-validate pending).
 
-### `transition/pshadow-design.md` — 🟡 PARTIAL (P-shadow shipped; P-promote actionable)
-P-shadow built 2026-06-16: `transition_trigger` param (`registry.py:347`, `default.param`) + log-only
-`ShadowTransitionLog` (`trinity/phase_general/transition_shadow.py`) wired into 1b
-(`run_energy_implicit_phase.py:1094` update / `:1192` write); `test_transition_shadow.py` green (9 tests);
-production byte-identical. P-promote (the `cooling_or_blowout` break) remains gated on §6 sign-off.
-Routing `main.py:283,303,343` and the F0 terminator verified; §3/§4 line refs refreshed.
+### `transition/pshadow-design.md` — 🟢 SHIPPED (P-shadow + P-promote)
+Built 2026-06-16: `transition_trigger` param (`registry.py:347`, `default.param`) + shared F0/F4
+criteria/decision (`cooling_balance_fires`, `blowout_fires`, `implicit_termination_reason`,
+`validate_transition_trigger`) + `ShadowTransitionLog` (`trinity/phase_general/transition_shadow.py`)
+drive the 1b loop. `'cooling_or_blowout'` adds the live F4 blowout break routing 1b→1c→2 like
+cooling balance; default `instantaneous` byte-identical. Dead cooling-balance factory reconciled to read
+`phaseSwitch_LlossLgain` (`phase_events.py`). `test_transition_shadow.py` green (18 tests). §6 decisions
+resolved (route through 1c; hard switch + Paper-I caveat). Routing `main.py:283,303,343` gates on
+`EndSimulationDirectly` only (verified). **Remaining:** P-validate (continuity gate + macro deltas).
 
 ### `archive/bubble/integrator-robustness.md` — ⛔ SUPERSEDED, ⚠️ heavy stale-refs
 The `_odeint_checked` wrapper it documents was **removed**; the structure solve is now

@@ -278,7 +278,7 @@ PISM    0
 # INFO: When (Lgain-Lloss)/Lgain approaches this value, begin momentum-driving phase.
 phaseSwitch_LlossLgain    0.05
 
-# INFO: Implicit->momentum transition trigger. 'instantaneous' (default): terminate on the cooling-balance ratio (Lgain-Lloss)/Lgain < phaseSwitch_LlossLgain only; the blowout criterion R2>rCloud is logged (shadow) to transition_shadow.jsonl but not acted on. 'cooling_or_blowout' (not yet implemented; P-promote) would also transition on blowout.
+# INFO: Implicit->momentum transition trigger. 'instantaneous' (default): terminate on the cooling-balance ratio (Lgain-Lloss)/Lgain < phaseSwitch_LlossLgain only; the blowout criterion R2>rCloud is logged (shadow) to transition_shadow.jsonl but not acted on. 'cooling_or_blowout': also transition on blowout (R2>rCloud), routing through the transition phase like cooling balance.
 transition_trigger    instantaneous
 
 # INFO: Cooling related values. alpha = v2*t_now/R2
