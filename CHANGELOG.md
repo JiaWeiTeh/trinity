@@ -105,9 +105,9 @@ composition is set by `x_He` and the ionisation states `Z_He` (hot bubble) and
 
 - Added a fresh-clone consistency review (`docs/dev/CODEBASE_REVIEW.md`) auditing
   the repo for code/docstring/comment inconsistencies and "shouldn't-ship" cruft.
-- Consolidated internal development notes under `docs/dev/`: the former top-level
-  `analysis/` tree was folded in; the `scratch/` diagnostics moved to
-  `docs/dev/scratch/` with descriptive per-workstream names
-  (`betadelta-diagnostics/`, `betadelta-velstruct/`, `transition-trigger/`); and a
-  `docs/dev/README.md` index now maps everything. (`scratch/` at the repo root is
-  git-ignored / local-only.)
+- Reorganised internal development notes under `docs/dev/` into self-contained
+  per-workstream folders (`betadelta/`, `transition/`, `bubble/`, `cooling/`,
+  `n-consistency/`, `misc/`), each holding its writeups plus its harnesses/figures;
+  the former top-level `analysis/` tree and the `scratch/` diagnostics were folded
+  in, and a `docs/dev/README.md` index maps everything. (`scratch/` at the repo
+  root remains git-ignored / local-only.)

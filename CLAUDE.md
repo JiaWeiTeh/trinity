@@ -79,7 +79,7 @@ doc must carry **all three** banner paragraphs below at the top, right under the
 `docs/dev/` doc must include them. The 🔄 paragraph makes these docs *living* —
 whoever opens one rechecks it, updates drift, and rethinks the strategy before relying on or
 extending it. The 💾 paragraph makes them *durable* — diagnostics worth keeping are committed as
-CSV/tables (`docs/dev/data/`) or harnesses/figures in `docs/dev/scratch/`, so a future session reproduces or compares
+CSV/tables (`docs/dev/data/`) or harnesses/figures in the relevant `docs/dev/<workstream>/` folder, so a future session reproduces or compares
 without re-running the expensive sims; leave it better than you found it:
 
 ```markdown
@@ -102,8 +102,8 @@ without re-running the expensive sims; leave it better than you found it:
 > 💾 **Persist diagnostics — commit, don't re-run.** The container is ephemeral
 > and full/hybr runs cost hours, so any diagnostic worth keeping must be saved as
 > a committed artifact under `docs/dev/` (a CSV/table in `docs/dev/data/`, or a
-> harness/figure in `docs/dev/scratch/`) — never left in `/tmp`, the local-only
-> `scratch/`, or an untracked `outputs/`. A future visit must be able to reproduce or compare
+> harness/figure in the relevant `docs/dev/<workstream>/` folder) — never left in
+> `/tmp`, the local-only `scratch/`, or an untracked `outputs/`. A future visit must be able to reproduce or compare
 > against the numbers **without re-running**; record the exact config + command
 > that produced each artifact.
 ```

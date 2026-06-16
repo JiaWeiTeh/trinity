@@ -113,7 +113,7 @@ in-startup-banner link to a doc site the repo itself marks deprecated, and an
 - **Fix:** When 1.0.0 is tagged, change the CHANGELOG heading from "Unreleased" to a date; until then, consider `Development Status :: 4 - Beta`.
 
 ### [🟡] `docs/dev/*.md` staleness banners — all three present (no action; positive confirmation)
-- **Where:** `docs/dev/BETADELTA_HYBR_PLAN.md:3-8`, `docs/dev/LEAKING_LUMINOSITIES_SKELETON.md:3-8`, `docs/dev/TERMINATION_EVENTS.md:3-8`
+- **Where:** `docs/dev/betadelta/HYBR_PLAN.md:3-8`, `docs/dev/misc/LEAKING_LUMINOSITIES_SKELETON.md:3-8`, `docs/dev/misc/TERMINATION_EVENTS.md:3-8`
 - **Issue:** Per CLAUDE.md:71-87 every `docs/dev/` plan/skeleton doc must carry the "may be out of date" banner directly under the H1. All three do. (Minor wording variant: `LEAKING_LUMINOSITIES_SKELETON.md:4` says "point-in-time plan/skeleton" rather than the canonical "point-in-time analysis/audit" — substantively equivalent, banner intact.)
 - **Impact (git-puller):** None — this is a compliance check that passed.
 - **Fix:** None required; optionally normalize the LEAKING_LUMINOSITIES wording to the canonical banner text.

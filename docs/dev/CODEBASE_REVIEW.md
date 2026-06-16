@@ -109,6 +109,10 @@ source/tests/tools/docs was repointed.
 - **`scratch/` consolidated → `docs/dev/scratch/`** (all 81 files). The top-level `.gitignore` rule was anchored to `/scratch/`, so `docs/dev/scratch/` is now **normally tracked** — resolving H1's original ignored-but-tracked contradiction — while `scratch/` stays local-only. The 💾 persist convention now commits diagnostics under `docs/dev/`.
 - Banners: 🔄 living + 💾 persist added to the review master + all 7 section files.
 
+*Round 4 — `docs/dev/` reorganised into self-contained workstream folders:*
+- The flat pile of dev docs + the dissolved `scratch/` were grouped one folder per workstream: `betadelta/` (HYBR_PLAN, PHASE0_BASELINES, PHASE2_ARMS, stalling-energy-phase + `diagnostics/`, `velstruct/`), `transition/` (TRIGGER_PLAN, P0, pshadow-design + `harness/`), `bubble/`, `cooling/`, `n-consistency/`, `misc/`. `CODEBASE_REVIEW.md` + `codebase_review/`, `data/`, `archive/` stay at the `docs/dev/` top.
+- Cryptic `scratch/phase2`/`phase6` (which collided with `trinity/phase2_momentum`) became `betadelta/diagnostics`/`betadelta/velstruct`; `transition` harness → `transition/harness`. All references repointed; `docs/dev/README.md` index + the 💾 convention updated.
+
 **Flagged, deliberately NOT changed here** (deletions or needs-a-decision):
 - H4 / dead modules `input_warnings.py`, `read_mist_models.py`, unused solvers — deletions (CLAUDE.md rule 3: flag, don't silently delete).
 - Packaging: `package-data` / `MANIFEST.in` data-glob gap.

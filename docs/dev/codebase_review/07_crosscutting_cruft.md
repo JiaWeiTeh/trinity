@@ -27,13 +27,13 @@
 **Scope.** A static, repo-wide hygiene/privacy audit from the perspective of a stranger who `git clone`s this public repo. I swept all tracked files (`git ls-files`, `git grep`, `git check-ignore`) for hardcoded machine/personal paths, secrets, committed generated artifacts, debug leftovers, TODO/FIXME markers, `.gitignore`-vs-tracked inconsistencies, the mandated `docs/dev/` staleness banner, and confusing top-level dirs. The dominant real finding is a **65-file `scratch/` tree that `.gitignore` explicitly says is "kept locally, not tracked" yet is fully committed (~6.4 MB, mostly PNG/GIF/jsonl artifacts)**. Privacy is clean: the only email and personal name are the intentional author/contact attribution; there are no secrets, tokens, debug breakpoints, or `__pycache__`/`.DS_Store` junk tracked. The three files `.gitignore` flags as "Private" (`paper/barnes26/`, `test/test_barnes_population.py`, `movie.txt`) are confirmed **not** tracked — no leak. `outputs/mockOutput/` is confirmed by-design test fixtures (referenced by `test/test_cloudy_*.py` and `test/test_metadata.py`), not an accidental output dump.
 
 > 🔄 **Update (post-audit):** the `scratch/` tree discussed below was subsequently
-> **consolidated into `docs/dev/scratch/`**, and the top-level `.gitignore` rule
-> anchored to `/scratch/` — so `docs/dev/scratch/` is now *normally* tracked (the
-> ignored-but-tracked contradiction is resolved) and top-level `scratch/` is
-> local-only. The `phase2`/`phase6` subdirs were also renamed to
-> `betadelta-diagnostics`/`betadelta-velstruct` (and `transition` →
-> `transition-trigger`). The H1 finding below records the **original** state; see
-> `CODEBASE_REVIEW.md` → Status (Round 3) for the resolution.
+> moved into `docs/dev/` and the top-level `.gitignore` anchored to `/scratch/`, so
+> the committed diagnostics are now *normally* tracked (the ignored-but-tracked
+> contradiction is resolved) and top-level `scratch/` is local-only. They have since
+> been reorganised into per-workstream folders: the old `scratch/phase2`/`phase6`
+> are now `docs/dev/betadelta/diagnostics/` and `docs/dev/betadelta/velstruct/`, and
+> the transition harness is `docs/dev/transition/harness/`. The H1 finding below
+> records the **original** state; see `CODEBASE_REVIEW.md` → Status (Rounds 3–4).
 
 ---
 
@@ -111,7 +111,7 @@ All tracked `*.py` (19 hits; no FIXME/XXX/HACK found). The 3 `test_cloudy_cli.py
 | `trinity/shell_structure/get_shellODE.py:19` | TODO | `# TODO: add cover fraction cf (f_cover)` |
 | `trinity/shell_structure/shell_structure.py:105` | TODO | `# TODO: Add f_cover from fragmentation mechanics` |
 
-(Markdown docs also contain "TODO" in prose — `docs/dev/backward-compat-audit.md:15,96,105`, `trinity/_output/cloudy/README.md:142` — these are documentation about TODOs, not actionable code markers.)
+(Markdown docs also contain "TODO" in prose — `docs/dev/misc/backward-compat-audit.md:15,96,105`, `trinity/_output/cloudy/README.md:142` — these are documentation about TODOs, not actionable code markers.)
 
 ---
 

@@ -1,7 +1,7 @@
 """Engine-purity guard (Phase C invariant).
 
 The installed ``trinity`` package is the engine; the plotting/personal
-trees (``paper/``, ``paper/methods/figures/``, ``docs/dev/scratch/``) are downstream
+trees (``paper/``, ``paper/methods/figures/``, ``scratch/``) are downstream
 consumers. The dependency must stay strictly one-way: everything may
 import ``trinity``; ``trinity`` imports nothing downstream. Without this
 guard the separation erodes the next time a plot helper is imported back

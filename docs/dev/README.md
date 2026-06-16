@@ -13,58 +13,71 @@
 
 ## What this is
 
-Internal **plan / audit / diagnostic** write-ups for TRINITY development. This
-tree is **not** part of the rendered documentation (Sphinx builds only
-`docs/source/`) and is **not** packaged (`pyproject` excludes `docs*`). It is a
-working scratchpad of investigations, not a maintained spec — the user-facing
-docs live in `docs/source/` and at the project's docs site.
+Internal **plan / audit / diagnostic** write-ups for TRINITY development, grouped
+one folder per **workstream**. This tree is **not** part of the rendered
+documentation (Sphinx builds only `docs/source/`) and is **not** packaged
+(`pyproject` excludes `docs*`) — it is a working record of investigations, not a
+maintained spec. The user-facing docs live in `docs/source/` and the project site.
 
-**Banner convention.** Every plan/analysis doc here carries **three** banner
-paragraphs right under its H1 — ⚠️ *verify* (staleness), 🔄 *living* (recheck &
-refine on every visit), and 💾 *persist diagnostics* (commit results, don't
-re-run). The canonical banner text is in `CLAUDE.md`. (This index carries the
-first two; the 💾 clause applies to the content docs that hold diagnostics.)
+**Banner convention.** Every plan/analysis doc carries **three** banner paragraphs
+right under its H1 — ⚠️ *verify* (staleness), 🔄 *living* (recheck & refine on every
+visit), 💾 *persist diagnostics* (commit results under `docs/dev/`, don't re-run).
+Canonical banner text is in `CLAUDE.md`. (This index carries the first two.)
 
-**Naming.** `SCREAMING_SNAKE_CASE.md` = a major **plan / spec / overview**;
-`kebab-case.md` = an **audit note / results doc**.
+**Naming.** Each workstream folder is self-contained (writeups **+** its harnesses
+and figures); the folder name gives the context, so filenames inside drop the
+workstream prefix (`betadelta/HYBR_PLAN.md`, not `BETADELTA_HYBR_PLAN.md`).
+`SCREAMING_SNAKE.md` = a major plan/spec/overview, `kebab-case.md` = an audit/results note.
 
 ## Layout
 
-| Path | What's in it |
-|------|--------------|
-| `CODEBASE_REVIEW.md` + `codebase_review/` | The fresh-clone consistency review (this audit) + its 7 per-area section files. |
-| `data/` | Committed diagnostic **CSVs** — so a future session reproduces/compares **without** re-running expensive sims. |
-| `scratch/` | Diagnostic **harnesses + figures**, grouped by workstream (`betadelta-diagnostics/`, `betadelta-velstruct/`, `transition-trigger/`); each has its own README. The **top-level** `scratch/` (repo root) is separate and git-ignored (local-only). |
-| `archive/` | Superseded / historical docs, kept for reference (see `archive/README.md`). |
+```
+docs/dev/
+├── CODEBASE_REVIEW.md + codebase_review/   fresh-clone consistency review (this audit)
+├── data/                                   committed diagnostic CSVs (provenance for writeups)
+├── archive/                                superseded / historical docs
+├── betadelta/        β–δ implicit solver / hybr
+├── transition/       implicit→momentum transition trigger
+├── bubble/           bubble solver / integrator
+├── cooling/          cooling tables
+├── n-consistency/    the meaning of `n` (n ≡ n_H) & pressure terms
+└── misc/             standalone audits / notes
+```
 
-## Documents by workstream
+`data/` and the top-level `scratch/` (repo root, git-ignored, local-only) are **not**
+inside the workstream folders; committed diagnostics live under each workstream.
 
-### β–δ (beta–delta) implicit solver / hybr
-- `BETADELTA_HYBR_PLAN.md` — **plan**: beta–delta solver repair (drift cap, metric, bounds, hybr).
-- `PHASE0_BETADELTA_BASELINES.md` — **results**: solver baselines across four configs.
-- `BETADELTA_PHASE2_ARMS.md` — **results**: Phase 2.3 four-arm shadow experiment + Gate G2.
+## Workstreams
+
+### `betadelta/` — β–δ implicit-phase solver & hybr
+- `HYBR_PLAN.md` — **plan**: beta–delta solver repair (drift cap, metric, bounds, hybr).
+- `PHASE0_BASELINES.md` — **results**: solver baselines across four configs.
+- `PHASE2_ARMS.md` — **results**: Phase 2.3 four-arm shadow experiment + Gate G2.
 - `stalling-energy-phase.md` — **study**: stalling energy-driven phase, rising Pb, negative β.
-- Data: `data/stalling_*.csv`, `data/hunt_*.csv` · Harnesses/figs: `scratch/betadelta-diagnostics/`, `scratch/betadelta-velstruct/`.
+- `diagnostics/` — harnesses + figures (rootmaps, arms, cage, stalling, negvel) + their README.
+- `velstruct/` — the velocity-structure ("Problem 2") hunt harness + README.
+- Data: `data/stalling_*.csv`, `data/hunt_*.csv`.
 
-### implicit→momentum transition trigger
-- `TRANSITION_TRIGGER_PLAN.md` — **plan**: characterize the transition trigger, then decide.
-- `transition-trigger-P0.md` — **results**: P0 harvest (both clocks + candidate divergence).
-- `transition-trigger-pshadow-design.md` — **design**: two-criterion (F0 ∨ F4) trigger.
-- Data: `data/transition_*.csv` · Harnesses: `scratch/transition-trigger/`.
+### `transition/` — implicit→momentum transition trigger
+- `TRIGGER_PLAN.md` — **plan**: characterize the transition trigger, then decide.
+- `P0.md` — **results**: P0 harvest (both clocks + candidate divergence).
+- `pshadow-design.md` — **design**: two-criterion (F0 ∨ F4) trigger.
+- `harness/` — offline harvest / P-sensitivity harnesses + README.
+- Data: `data/transition_*.csv`.
 
-### bubble solver / integrator
-- `bubble-integrator-robustness.md` — the flaky `MonotonicError`, diagnosis + fix.
-- `bubble-conduction-convergence.md` — conduction-zone luminosity convergence audit.
+### `bubble/` — bubble solver / integrator
+- `integrator-robustness.md` — the flaky `MonotonicError`, diagnosis + fix.
+- `conduction-convergence.md` — conduction-zone luminosity convergence audit.
 
-### cooling
-- `cooling-refactor-audit.md` — cooling-table refactor: audit + implementation plan.
+### `cooling/`
+- `refactor-audit.md` — cooling-table refactor: audit + implementation plan.
 
-### `n` / pressure consistency
-- `n-consistency-audit.md` — `n ≡ n_H` consistency audit against the paper.
-- `n-consistency-implementation-plan.md` — line-by-line implementation plan for the above.
+### `n-consistency/` — the meaning of `n` & pressure
+- `audit.md` — `n ≡ n_H` consistency audit against the paper.
+- `implementation-plan.md` — line-by-line plan for the above.
 - `pressure-terms-audit.md` — pressure terms & the meaning of `n` (`2nkT`, `mu_p`/`mu_n`).
 
-### other audits / notes
+### `misc/` — standalone audits / notes
 - `backward-compat-audit.md` — backward-compatibility & stale-code audit.
 - `tinit-sensitivity.md` — is `T_init = 3e4` a relabel-only knob?
 - `TERMINATION_EVENTS.md` — overview of the simulation termination events.

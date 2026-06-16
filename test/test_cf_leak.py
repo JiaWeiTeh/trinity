@@ -1,6 +1,6 @@
 """Covering-fraction leak: helper correctness, Cf=1 invariant, unit landing.
 
-Phase A/C of the geometry-set leak (docs/dev/LEAKING_LUMINOSITIES_SKELETON.md).
+Phase A/C of the geometry-set leak (docs/dev/misc/LEAKING_LUMINOSITIES_SKELETON.md).
 The merge gate is that Cf=1 changes nothing; these tests pin the helper that
 guarantees it, the self-limiting guards, and that Pb*cs*R2**2 lands in the
 code luminosity unit with no hidden conversion factor.

@@ -767,7 +767,7 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
             updateDict(params, bubble_props)
             # Diagnostic-only (WARPFIELD "Problem 2"): fraction of the bubble
             # thickness flowing inward (v<0) during a re-pressurisation. Logged
-            # for monitoring; NOT used in any physics. docs/dev/stalling-energy-phase.md
+            # for monitoring; NOT used in any physics. docs/dev/betadelta/stalling-energy-phase.md
             params['v_neg_frac_thick'].value = _inflow_frac_thickness(
                 getattr(bubble_props, 'bubble_v_arr', None),
                 getattr(bubble_props, 'bubble_r_arr', None))

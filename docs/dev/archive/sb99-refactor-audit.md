@@ -19,7 +19,7 @@
 > 💾 **Persist diagnostics — commit, don't re-run.** The container is ephemeral
 > and full/hybr runs cost hours, so any diagnostic worth keeping must be saved as
 > a committed artifact (a CSV/table under `docs/dev/data/`, or a force-added
-> harness/figure under `docs/dev/scratch/` as the hybr work did) — never left in `/tmp` or
+> harness/figure in the relevant `docs/dev/<workstream>/` folder as the hybr work did) — never left in `/tmp` or
 > an untracked `outputs/`. A future visit must be able to reproduce or compare
 > against the numbers **without re-running**; record the exact config + command
 > that produced each artifact.
