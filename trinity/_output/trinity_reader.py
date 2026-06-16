@@ -117,8 +117,7 @@ bubble properties, forces, and beta-delta residuals.
 
 See Also
 --------
-- example_scripts/example_reader_overview.py: Comprehensive usage examples
-- example_scripts/example_plot_radius_vs_time.py: Plotting examples
+- paper/methods/figures/paper_*.py: worked examples that use TrinityOutput
 
 @author: TRINITY Team
 """

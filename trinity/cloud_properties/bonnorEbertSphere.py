@@ -362,7 +362,7 @@ def create_BE_sphere(
 
     is_stable = Omega < OMEGA_CRITICAL
 
-    logger.debug(f"Creating BE sphere: M={M_cloud:.3f} Msun, n_core={n_core:.2e} cm⁻³, Ω={Omega:.2f}")
+    logger.debug(f"Creating BE sphere: M={M_cloud:.3f} Msun, n_core={n_core:.2e} 1/pc³ (code units), Ω={Omega:.2f}")
 
     # ========================================================================
     # STEP 1: Solve Lane-Emden (or use cached)
@@ -430,7 +430,7 @@ def create_BE_sphere(
     #   = mu * MSUN_TO_G * c_s² / (γ * k_B)
     T_eff = mu * MSUN_TO_G * c_s**2 / (gamma * K_B_CGS)  # [K]
 
-    logger.debug(f"Result: r_out={r_out:.4f} pc, n_out={n_out:.2e} cm⁻³, T_eff={T_eff:.1f} K")
+    logger.debug(f"Result: r_out={r_out:.4f} pc, n_out={n_out:.2e} 1/pc³ (code units), T_eff={T_eff:.1f} K")
 
     return BESphereResult(
         xi_out=xi_out,

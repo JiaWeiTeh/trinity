@@ -29,8 +29,9 @@ def get_coolingStructure(params):
     
     Parameters
     ----------
-    age : float [yr]
-        Current age.
+    params : dict
+        Run parameter dictionary; the current age is read internally as
+        params['t_now'] (Myr) and converted to yr.
 
     Returns
     -------

@@ -22,7 +22,7 @@ output.info(verbose=True)  # Detailed parameter documentation
 t = output.get('t_now')      # Time [Myr]
 R2 = output.get('R2')        # Outer radius [pc]
 v2 = output.get('v2')        # Velocity [pc/Myr]
-Eb = output.get('Eb')        # Bubble energy [erg]
+Eb = output.get('Eb')        # Bubble energy [Msun pc^2 / Myr^2] (code units)
 
 # For non-numeric data
 phase = output.get('current_phase', as_array=False)
@@ -120,10 +120,8 @@ The TrinityOutput reader automatically detects and handles both formats.
 
 ## Examples
 
-See `example_scripts/` for comprehensive examples:
-
-- `example_reader_overview.py`: Full demonstration of reader features
-- `example_plot_radius_vs_time.py`: Plotting examples
+For worked examples that use this reader, see the paper figure scripts under
+`paper/methods/figures/` (e.g. `paper_radiusComparison.py`, `paper_feedback.py`).
 
 ## See Also
 

@@ -31,7 +31,7 @@ to the same timestamp (t_now). The snapshot includes:
 Beta-Delta Solver
 -----------------
 The beta-delta solver (get_betadelta.py) uses:
-1. Grid search first (4x4 grid by default)
+1. Grid search first (5x5 grid by default, GRID_SIZE=5)
 2. L-BFGS-B fallback only if grid residual > LBFGSB_FALLBACK_THRESHOLD
 3. Best result selection from all candidates
 

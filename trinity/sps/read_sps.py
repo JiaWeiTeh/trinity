@@ -330,7 +330,7 @@ def get_interpolation(sps, ftype='cubic'):
     >>> Lmech_W = sps_f['fLmech_W'](t)
     >>> Lmech_SN = sps_f['fLmech_SN'](t)
     >>> Lmech_total = sps_f['fLmech_total'](t)
-    >>> v_mech_total = 2.0 * Lmech_W / sps_f['fpdot_W'](t)  # Correct formula!
+    >>> v_mech_total = 2.0 * Lmech_total / sps_f['fpdot_total'](t)  # mechanical velocity (uses totals, matching update_feedback)
     """
 
     # Unpack all SPS values (with separated components)

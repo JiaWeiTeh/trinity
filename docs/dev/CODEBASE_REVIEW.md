@@ -12,7 +12,7 @@
 "not supposed to be there" or would confuse / mislead / break for **someone who
 `git clone`s this repo and tries to run a simulation themselves**.
 
-**Date:** 2026-06-16 · **Branch:** `claude/friendly-cannon-t4pca1`
+**Date:** 2026-06-16 · **Branch:** `fix/code-hygiene`
 
 ---
 
@@ -30,12 +30,17 @@ cleanly in the review container (numpy 1.26.4 — correctly `<2` — scipy 1.17.
 astropy 7.2, matplotlib 3.11, pandas 2.3), so beyond the static audit:
 
 - ✅ `pip install -r requirements.txt` succeeds; pins resolve.
-- ✅ `python run.py param/simple_cluster.param` runs end-to-end (**exit 0**,
-  ~5 min): loads/validates params, integrates through the phases, and writes a
-  finalized `outputs/simple_cluster/{metadata.json, metadata_humanreadable.txt,
-  dictionary.jsonl, trinity.log}` — no crash.
-- ✅ `pytest` collects **532 tests** (3 stress deselected) with no collection
-  errors.
+- ⏱️ `python run.py param/simple_cluster.param` **starts cleanly**: loads/validates
+  params, writes `outputs/simple_cluster/{metadata.json, dictionary.jsonl,
+  trinity.log}`, and integrates ~100 snapshots through the energy phase with **no
+  error or traceback**. It is a genuinely long simulation: it did **not** finish
+  within a 5-minute cap (the process was killed by SIGTERM), so full end-to-end
+  completion was *not* confirmed here — only a clean start and crash-free
+  integration. (An earlier draft of this file claimed "exit 0, ~5 min"; that was
+  an over-statement and has been corrected.)
+- ✅ `pytest` collects **532 tests**; **531 non-stress tests pass** (the lone
+  ~2.5-min end-to-end smoke test was excluded for time; 3 stress deselected) —
+  no collection or import errors.
 
 ### Severity legend
 - 🔴 **High** — breaks a fresh-clone run, or leaks private/personal/machine-specific info.
@@ -53,6 +58,37 @@ astropy 7.2, matplotlib 3.11, pandas 2.3), so beyond the static audit:
 | 06 | `tools/`, `paper/`, `lib/` | `codebase_review/06_tools_paper_lib.md` | 0 / 2 / 2 |
 | 07 | Cross-cutting sweep & cruft (`scratch/`, `outputs/`, `docs/dev/`, repo-wide) | `codebase_review/07_crosscutting_cruft.md` | 1 / 3 / 2 |
 | | **Total** | | **4 / 24 / 24 = 52** |
+
+---
+
+## Status — applied vs flagged (branch `fix/code-hygiene`)
+
+This review originally lived under `analysis/`; that whole directory was **folded
+into `docs/dev/`** (this file is now `docs/dev/CODEBASE_REVIEW.md`, section files
+under `docs/dev/codebase_review/`), and every `analysis/<path>` reference across
+source/tests/tools/docs was repointed.
+
+**Fixed on this branch** (the safe set — stale docstrings / comments / pointers):
+- H3 dead `example_scripts/` pointer → repointed to `paper/methods/figures/` (`_output/README.md`, `trinity_reader.py`).
+- Units labels: `Eb [erg]` → `[Msun pc²/Myr²]`; `get_dudt` Returns block; `get_shellODE` "assumes cgs" → code units; BE-sphere debug logs `cm⁻³` → `1/pc³`.
+- Run startup banner link → `jiaweiteh.github.io/trinity-web` (was the deprecated readthedocs mirror).
+- Self-referential "Key difference from `<this same file>`" module docstrings reworded.
+- `read_sps` example "Correct formula!" → the total-based formula the runtime actually uses.
+- `read_cloudy.get_coolingStructure` docstring: removed-`age`-param → documents `params`.
+- "4x4 grid" → "5x5 grid (GRID_SIZE=5)".
+- `.pre-commit-config.yaml` comment corrected (there is no real "TOML issue").
+- `make_density_profile_gif.py` default run-dir + docstring → the shipped mock run.
+- `docs/dev/archive/README.md` given the mandated staleness banner.
+
+**Flagged, deliberately NOT changed here** (logic changes, deletions, or
+needs-a-decision — outside a docstring/comment sweep):
+- H1 de-track `scratch/` (`git rm -r --cached scratch/`).
+- H2 metallicity `UnboundLocalError` — needs an `else: raise` (a logic change).
+- H4 / dead modules `input_warnings.py`, `read_mist_models.py`, unused solvers — deletions (CLAUDE.md rule 3: flag, don't silently delete).
+- Packaging: `package-data` / `MANIFEST.in` data-glob gap.
+- `flake8` → `ruff` in the `[dev]` extra / `requirements.txt` / CONTRIBUTING.
+- Paper "posted on arXiv" vs "in preparation" — needs the true status + a human arXiv-id check.
+- Cloudy README run-dir layout rewrite; CWD-relative cloudy test paths; inert `output_format` knob.
 
 ---
 
