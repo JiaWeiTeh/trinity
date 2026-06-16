@@ -45,8 +45,8 @@ log_file    True
 # INFO: Use colored output in terminal. If True, log messages are color-coded by severity (DEBUG=cyan, INFO=green, WARNING=yellow, ERROR=red, CRITICAL=magenta).
 log_colors    True
 
-# INFO: Energy-implicit (beta, delta) solver: 'legacy' (bounded grid + L-BFGS-B, default, unchanged) or 'hybr' (unbounded scipy root-finder with a physical dMdt>0 acceptance gate).
-betadelta_solver    legacy
+# INFO: Energy-implicit (beta, delta) solver: 'hybr' (default; unbounded scipy root-finder with a physical dMdt>0 acceptance gate) or 'legacy' (bounded grid + L-BFGS-B).
+betadelta_solver    hybr
 
 
 # ==============================================================================

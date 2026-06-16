@@ -42,9 +42,9 @@ def test_validator_rejects_unknown(bad):
 # =============================================================================
 
 
-def test_registry_default_is_legacy():
+def test_registry_default_is_hybr():
     spec = next(s for s in SPECS if s.name == "betadelta_solver")
-    assert spec.default == "legacy"
+    assert spec.default == "hybr"
     assert spec.validator is not None
     assert spec.run_const is True
 

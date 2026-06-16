@@ -17,16 +17,16 @@ In the momentum phase the bubble has collapsed (R1 == R2) and its arrays are
 stale leftovers from the last energy-phase solve, so the bubble segment is
 clipped to [R1, R2] and naturally disappears once the bubble is gone.
 
-Frames are paced by interpolating the profiles onto a uniform log10(t) grid, so
-every decade of time gets equal screen time. (t is the pacing axis because it is
-the only monotonic one -- rShell recedes once the shell recollapses.) The grid
-is clipped at ``--t-start`` so the microscopic early energy phase, which spans
-several decades below 0.01 pc, doesn't eat the whole animation. Pass ``--raw``
-for the old one-frame-per-recorded-timestep behaviour.
+Frames are paced linearly in time onto a uniform t grid, so screen time matches
+physical time -- the fast early energy phase passes quickly and the slow late
+evolution gets most of the frames. (t is the pacing axis because it is the only
+monotonic one -- rShell recedes once the shell recollapses.) The grid starts at
+``--t-start``; pass ``--raw`` for the old one-frame-per-recorded-timestep
+behaviour.
 
 Usage:
   python tools/make_density_profile_gif.py [run_dir] [-o out.gif]
-         [--fps 15] [--frames 150] [--t-start 1e-3] [--raw [--stride N]]
+         [--fps 15] [--frames 200] [--t-start 1e-3] [--raw [--stride N]]
 
 ``run_dir`` defaults to the rosette example. Unless ``-o`` is given, the GIF is
 written to ``fig/density_profile/<parent-folder>__<run-name>.gif`` (the run's
@@ -203,13 +203,14 @@ def _normalized_logn(rec, nb, ns):
     return logn_b, logn_s
 
 
-def build_logt_frames(records, t_start, n_frames, nb=120, ns=120):
-    """Interpolate the per-record profiles onto a uniform log10(t) grid.
+def build_frames(records, t_start, n_frames, nb=120, ns=120):
+    """Interpolate the per-record profiles onto a uniform (linear) t grid.
 
-    Pacing by log-t gives every decade of time equal screen time (t is the only
-    monotonic axis -- rShell recedes when the shell recollapses, so radius can't
-    pace the animation). The grid is clipped to ``t_start`` so the microscopic
-    early energy phase, several decades at sub-0.01 pc, doesn't dominate.
+    Pacing linearly in time makes screen time proportional to physical time (t
+    is the only monotonic axis -- rShell recedes when the shell recollapses, so
+    radius can't pace the animation). The fast early energy phase therefore
+    passes quickly and the slow late evolution gets most of the frames. The grid
+    starts at ``t_start``.
 
     Within a phase, and where the bubble/shell topology matches, the bracketing
     records are blended: radii geometrically (constant visual speed on the log
@@ -232,7 +233,7 @@ def build_logt_frames(records, t_start, n_frames, nb=120, ns=120):
         r["_sig"] = _profile_signature(r)
 
     t_start = max(t_start, t[0])
-    t_grid = np.logspace(np.log10(t_start), np.log10(t[-1]), n_frames)
+    t_grid = np.linspace(t_start, t[-1], n_frames)
     grid_b = np.linspace(0.0, 1.0, nb)
     grid_s = np.linspace(0.0, 1.0, ns)
 
@@ -240,7 +241,7 @@ def build_logt_frames(records, t_start, n_frames, nb=120, ns=120):
     for tg in t_grid:
         j = min(max(int(np.searchsorted(t, tg)), 1), len(t) - 1)
         a, b = recs[j - 1], recs[j]
-        w = (np.log10(tg) - np.log10(a["t"])) / (np.log10(b["t"]) - np.log10(a["t"]))
+        w = (tg - a["t"]) / (b["t"] - a["t"])
         w = float(np.clip(w, 0.0, 1.0))
         # Snap across discontinuities: collapse the bracket to the nearer record.
         if a["phase"] != b["phase"] or a["_sig"] != b["_sig"]:
@@ -280,7 +281,7 @@ def build_logt_frames(records, t_start, n_frames, nb=120, ns=120):
     return frames
 
 
-def render_gif(frames, run_dir, out_path, fps, note=None):
+def render_gif(frames, run_dir, out_path, fps):
     """Render a list of prepared draw-frames (raw or interpolated) to a GIF."""
     xlim, ylim = axis_limits(frames)
 
@@ -301,15 +302,14 @@ def render_gif(frames, run_dir, out_path, fps, note=None):
 
     (line_bubble,) = ax.plot([], [], "-", color=C_BUBBLE, lw=2.0, label="bubble (R1→R2)")
     (line_shell,) = ax.plot([], [], "-", color=C_SHELL, lw=2.0, label="shell (R2→rShell)")
+    # Connector across the R2 contact discontinuity, so the bubble and shell read
+    # as one continuous profile rather than two floating segments.
+    (line_link,) = ax.plot([], [], "-", color="0.4", lw=1.5, alpha=0.9, zorder=1.5)
     vlines = [ax.axvline(np.nan, color=c, ls="--", lw=1.2, alpha=0.8) for _, c in BOUNDS]
     # Proxy handles so the boundary lines show up in the legend with their names.
     for (name, c) in BOUNDS:
         ax.plot([], [], color=c, ls="--", lw=1.2, label=name)
     ax.legend(loc="upper left", fontsize=9, framealpha=0.9)
-    if note:
-        # Label the pacing so the GIF is honest about interpolated frames.
-        ax.text(0.985, 0.04, note, transform=ax.transAxes, ha="right", va="bottom",
-                fontsize=7.5, color="0.5", style="italic")
     title = ax.set_title(" ", pad=10)
     fig.tight_layout()
     fig.subplots_adjust(top=0.91)  # reserve headroom so the time title isn't clipped
@@ -318,10 +318,20 @@ def render_gif(frames, run_dir, out_path, fps, note=None):
         f = frames[i]
         line_bubble.set_data(f["bubble_r"], f["bubble_n"])
         line_shell.set_data(f["shell_r"], f["shell_n"])
+        # Bridge the bubble's outer end (≈R2) to the shell's inner end (≈R2):
+        # the density jumps across the contact, so this draws the vertical step
+        # that links the two segments. Skip it once the bubble is gone.
+        if f["bubble_r"].size and f["shell_r"].size:
+            line_link.set_data(
+                [f["bubble_r"][-1], f["shell_r"][0]],
+                [f["bubble_n"][-1], f["shell_n"][0]],
+            )
+        else:
+            line_link.set_data([], [])
         for vl, (name, _) in zip(vlines, BOUNDS):
             vl.set_xdata([f[name], f[name]])
         title.set_text(f"t = {f['t']:.3f} Myr   ·   phase: {f['phase']}")
-        return [line_bubble, line_shell, *vlines, title]
+        return [line_bubble, line_shell, line_link, *vlines, title]
 
     anim = FuncAnimation(fig, update, frames=len(frames), interval=1000 / fps, blit=False)
     anim.save(str(out_path), writer=PillowWriter(fps=fps))
@@ -334,9 +344,9 @@ def main():
     p.add_argument("run_dir", nargs="?", default=str(DEFAULT_RUN), help="run output dir containing dictionary.jsonl")
     p.add_argument("-o", "--out", default=None, help="output GIF path (default fig/density_profile/<parent>__<run>.gif)")
     p.add_argument("--fps", type=int, default=15, help="frames per second (default 15)")
-    p.add_argument("--frames", type=int, default=150, help="number of interpolated log-t frames (default 150)")
-    p.add_argument("--t-start", type=float, default=1e-3, help="clip the log-t grid to start at this time [Myr] (default 1e-3)")
-    p.add_argument("--raw", action="store_true", help="one frame per recorded timestep (no log-t interpolation)")
+    p.add_argument("--frames", type=int, default=200, help="number of interpolated linear-time frames (default 200)")
+    p.add_argument("--t-start", type=float, default=1e-3, help="start the linear-time grid at this time [Myr] (default 1e-3)")
+    p.add_argument("--raw", action="store_true", help="one frame per recorded timestep (no time interpolation)")
     p.add_argument("--stride", type=int, default=1, help="(raw mode only) use every Nth timestep")
     args = p.parse_args()
 
@@ -352,12 +362,10 @@ def main():
     records = load_frames(run_dir)
     if args.raw:
         frames = records[:: args.stride]
-        note = "raw · frame-per-record"
     else:
-        frames = build_logt_frames(records, args.t_start, args.frames)
-        note = "log-t pacing · interpolated"
-    n = render_gif(frames, run_dir, out_path, args.fps, note=note)
-    print(f"wrote {out_path}  ({n} frames @ {args.fps} fps, {'raw' if args.raw else 'log-t interp'})")
+        frames = build_frames(records, args.t_start, args.frames)
+    n = render_gif(frames, run_dir, out_path, args.fps)
+    print(f"wrote {out_path}  ({n} frames @ {args.fps} fps, {'raw' if args.raw else 'linear-time interp'})")
 
 
 if __name__ == "__main__":
