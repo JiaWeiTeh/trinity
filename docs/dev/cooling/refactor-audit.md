@@ -36,6 +36,13 @@
 > below to mirroring `_get_legacy_sb99_filename` should be read as "mirror the
 > SPS resolver pattern."
 
+**About this document**
+- **Type:** audit + implementation plan — decouple the cooling-table loaders from the hardcoded SB99/OPIATE/CLOUDY assumptions. Per its status note this has **not** shipped (cooling source byte-stable); the surrounding code has since moved (`src/`→`trinity/`, the `registry.py` resolver).
+- **Workstream:** `cooling/` — cooling tables (CIE + non-CIE) and their loaders.
+- **Where it sits:** standalone — an actionable plan, not yet implemented.
+- **Code it concerns:** `trinity/cooling/` (CIE/non-CIE loaders, `net_coolingcurve.py`), resolved through `trinity/_input/registry.py`.
+- **Linked files & data:** code `trinity/cooling/`, `trinity/_input/registry.py`; related `docs/dev/archive/sb99-refactor-audit.md` (the analogous SPS refactor this mirrors).
+
 Single source of truth for decoupling the cooling-table loaders from the
 hardcoded SB99/OPIATE/CLOUDY assumptions, in the same shape as
 `docs/dev/archive/sb99-refactor-audit.md`. Combines (Part I) the architectural

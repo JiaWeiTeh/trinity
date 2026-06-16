@@ -28,6 +28,13 @@
 > `a245c29` (#659); see the Status notes in §I.3 / Step 1 / Step 2 for what
 > shipped vs. what's still pending.
 
+**About this document**
+- **Type:** audit + fix plan — single source of truth for eliminating the intermittent `MonotonicError` from the bubble luminosity solver (the one *behavior-affecting* item of the restructure effort).
+- **Workstream:** `bubble/` — bubble-structure luminosity-solver robustness.
+- **Where it sits:** standalone within `bubble/` (sequenced last, after the structural churn); companion to `conduction-convergence.md`, which covers the *accuracy* side of the same fix.
+- **Code it concerns:** `trinity/bubble_structure/bubble_luminosity.py` (the `odeint`/LSODA solve + the `_odeint_checked` guard) and `trinity/_functions/operations.py` (`MonotonicError`).
+- **Linked files & data:** sibling `conduction-convergence.md`; code `trinity/bubble_structure/bubble_luminosity.py`; stress test `test/test_bubble_solver_stress.py`.
+
 Single source of truth for eliminating the intermittent
 `trinity._functions.operations.MonotonicError` raised from the bubble
 luminosity solver. Same shape as the sibling audits: (Part I) the audit —

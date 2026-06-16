@@ -24,6 +24,13 @@
 > against the numbers **without re-running**; record the exact config + command
 > that produced each artifact.
 
+**About this document**
+- **Type:** audit (convergence sign-off) — quantifies how converged the production conduction-zone luminosity is and establishes the target numbers *before* the `solve_ivp(dense_output=True)` integrator switch. No runtime behaviour is changed.
+- **Workstream:** `bubble/` — bubble-structure luminosity-solver robustness.
+- **Where it sits:** companion to `integrator-robustness.md` (that doc covers the *crash*; this one the *accuracy*); the sign-off package for Commit 2/3 of the bubble-solver fix.
+- **Code it concerns:** `trinity/bubble_structure/bubble_luminosity.py` (conduction-zone luminosity; the `odeint` → `solve_ivp` switch).
+- **Linked files & data:** sibling `integrator-robustness.md`; code `trinity/bubble_structure/bubble_luminosity.py`; tool `tools/bubble_conduction_convergence.py`.
+
 Companion to `bubble-integrator-robustness.md`. That document covers the
 *crash* (LSODA "illegal input" on the over-refined grid). This one quantifies
 the *accuracy* question that surfaced while rejecting the grid-de-refinement
