@@ -9,8 +9,7 @@ welcome.
 git clone https://github.com/JiaWeiTeh/trinity
 cd trinity
 python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-pip install pre-commit pytest
+pip install -e ".[dev]"
 pre-commit install
 ```
 
