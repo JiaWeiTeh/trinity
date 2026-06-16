@@ -16,7 +16,7 @@ then recollapses (v2<0) to R2~1.5 pc by t~0.44 Myr, while hybr expands to R2~37 
 Needs only the committed outputs + numpy (no pinned venv). Run once after a run;
 the CSVs it writes are force-added to git so the gif reproduces without the outputs.
 
-  python docs/dev/scratch/phase2/extract_traj.py
+  python docs/dev/scratch/betadelta-diagnostics/extract_traj.py
 """
 
 import json

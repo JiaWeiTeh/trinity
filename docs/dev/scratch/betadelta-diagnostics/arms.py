@@ -29,7 +29,7 @@ points (as production does); inside hybr a failure aborts the arm's
 segment via _ArmAbort (BaseException: the plateau handler in
 get_residual_pure catches only Exception).
 
-Usage: python docs/dev/scratch/phase2/arms.py <param> <out.jsonl> [stride]
+Usage: python docs/dev/scratch/betadelta-diagnostics/arms.py <param> <out.jsonl> [stride]
   stride 2 = arms at every 2nd implicit segment (cost cap: plan 2.3 allows
   a stratified ~50% subset when the baseline exceeds ~30 min).
 """

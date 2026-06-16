@@ -24,9 +24,9 @@
 > against the numbers **without re-running**; record the exact config + command
 > that produced each artifact.
 
-Generated 2026-06-13 from `docs/dev/scratch/phase2/arms_{mock4e3,simple1e5}.jsonl`
-(harness `docs/dev/scratch/phase2/arms.py`, plan §2.3). Regenerate stats and figures
-with `python docs/dev/scratch/phase2/analyze_arms.py` — the numbers below are only as
+Generated 2026-06-13 from `docs/dev/scratch/betadelta-diagnostics/arms_{mock4e3,simple1e5}.jsonl`
+(harness `docs/dev/scratch/betadelta-diagnostics/arms.py`, plan §2.3). Regenerate stats and figures
+with `python docs/dev/scratch/betadelta-diagnostics/analyze_arms.py` — the numbers below are only as
 good as that jsonl on disk; re-run after any new arms race and **re-verify
 against the harness code before acting on any conclusion here.**
 
@@ -75,7 +75,7 @@ Arms: **A** production exactly (control, f-metric), **B** g-metric only,
 | C cap+bounds | 30 | 7/30 (23%) | 18/30 (60%) | 40% | 37 | 121 | 0 | 0 |
 | D hybr | 30 | 18/30 (60%) | 24/30 (80%) | 40% | 10 | 33 | 6 (neg_dMdt:4, structure:1, timeout:1) | 5 |
 
-Figures (regenerable, not committed — `docs/dev/scratch/phase2/`):
+Figures (regenerable, not committed — `docs/dev/scratch/betadelta-diagnostics/`):
 `arms_summary.png` (convergence + cost bars vs G2 gates),
 `arms_rootmap.png` (the (β,δ) maps below).
 

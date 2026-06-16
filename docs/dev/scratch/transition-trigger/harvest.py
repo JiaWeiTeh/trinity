@@ -6,7 +6,7 @@ per implicit-phase segment, evaluates every candidate transition trigger on the
 SAME trajectory so we can see where they diverge. Pure offline read — no
 production change. See docs/dev/TRANSITION_TRIGGER_PLAN.md (P0).
 
-Usage: python docs/dev/scratch/transition/harvest.py outputs/<model>/ [--csv out.csv]
+Usage: python docs/dev/scratch/transition-trigger/harvest.py outputs/<model>/ [--csv out.csv]
 
 Candidates (plan F0–F4):
   F0 instantaneous rate-ratio (current): (Lgain-Lloss)/Lgain < eps   [eps=0.05]

@@ -27,7 +27,7 @@ Produces:
                           transition threshold -- which regimes transition,
                           stall, or stay energy-driven
 
-Usage: python docs/dev/scratch/phase2/analyze_phase3.py
+Usage: python docs/dev/scratch/betadelta-diagnostics/analyze_phase3.py
 """
 
 from pathlib import Path

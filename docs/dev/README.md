@@ -34,7 +34,7 @@ first two; the 💾 clause applies to the content docs that hold diagnostics.)
 |------|--------------|
 | `CODEBASE_REVIEW.md` + `codebase_review/` | The fresh-clone consistency review (this audit) + its 7 per-area section files. |
 | `data/` | Committed diagnostic **CSVs** — so a future session reproduces/compares **without** re-running expensive sims. |
-| `scratch/` | Diagnostic **harnesses + figures**, grouped by workstream (`phase2/`, `phase6/`, `transition/`); each has (or should have) its own README. The **top-level** `scratch/` (repo root) is separate and git-ignored (local-only). |
+| `scratch/` | Diagnostic **harnesses + figures**, grouped by workstream (`betadelta-diagnostics/`, `betadelta-velstruct/`, `transition-trigger/`); each has its own README. The **top-level** `scratch/` (repo root) is separate and git-ignored (local-only). |
 | `archive/` | Superseded / historical docs, kept for reference (see `archive/README.md`). |
 
 ## Documents by workstream
@@ -44,13 +44,13 @@ first two; the 💾 clause applies to the content docs that hold diagnostics.)
 - `PHASE0_BETADELTA_BASELINES.md` — **results**: solver baselines across four configs.
 - `BETADELTA_PHASE2_ARMS.md` — **results**: Phase 2.3 four-arm shadow experiment + Gate G2.
 - `stalling-energy-phase.md` — **study**: stalling energy-driven phase, rising Pb, negative β.
-- Data: `data/stalling_*.csv`, `data/hunt_*.csv` · Harnesses/figs: `scratch/phase2/`, `scratch/phase6/`.
+- Data: `data/stalling_*.csv`, `data/hunt_*.csv` · Harnesses/figs: `scratch/betadelta-diagnostics/`, `scratch/betadelta-velstruct/`.
 
 ### implicit→momentum transition trigger
 - `TRANSITION_TRIGGER_PLAN.md` — **plan**: characterize the transition trigger, then decide.
 - `transition-trigger-P0.md` — **results**: P0 harvest (both clocks + candidate divergence).
 - `transition-trigger-pshadow-design.md` — **design**: two-criterion (F0 ∨ F4) trigger.
-- Data: `data/transition_*.csv` · Harnesses: `scratch/transition/`.
+- Data: `data/transition_*.csv` · Harnesses: `scratch/transition-trigger/`.
 
 ### bubble solver / integrator
 - `bubble-integrator-robustness.md` — the flaky `MonotonicError`, diagnosis + fix.

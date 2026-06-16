@@ -25,7 +25,7 @@ that re-pressurise the bubble (beta<0). Produces:
                             -> Eb/Pb up (beta<0) -> beta+delta<-0.4 -> inflow)
                             with the beta/delta decomposition
 
-Usage: python docs/dev/scratch/phase2/analyze_negvel.py
+Usage: python docs/dev/scratch/betadelta-diagnostics/analyze_negvel.py
 """
 
 import csv

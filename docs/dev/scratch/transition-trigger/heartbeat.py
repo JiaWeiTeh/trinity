@@ -39,7 +39,7 @@ def alive(name):
 
 
 def crashed(name):
-    lf = os.path.join(BASE, "docs/dev/scratch/transition", name + ".log")
+    lf = os.path.join(BASE, "docs/dev/scratch/transition-trigger", name + ".log")
     if not os.path.exists(lf):
         return False
     txt = open(lf, encoding="utf-8", errors="ignore").read()

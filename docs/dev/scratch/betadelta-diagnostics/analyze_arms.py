@@ -15,7 +15,7 @@ config:
 Pure re-read of the jsonl; reruns are cheap and side-effect-free. Numbers are
 only as good as the jsonl on disk -- regenerate after any new arms run.
 
-Usage: python docs/dev/scratch/phase2/analyze_arms.py
+Usage: python docs/dev/scratch/betadelta-diagnostics/analyze_arms.py
 """
 
 import json

@@ -15,7 +15,7 @@ The point: at the surge the cage is forced to a different in-box root that
 predicts NO inflow -- it HIDES the Problem-2 excursion.
 
 REQUIRES the venv (numpy<2, scipy<2):
-  PYTHONPATH=<repo> /path/to/venv/bin/python docs/dev/scratch/phase2/cage_compare.py
+  PYTHONPATH=<repo> /path/to/venv/bin/python docs/dev/scratch/betadelta-diagnostics/cage_compare.py
 """
 
 import csv

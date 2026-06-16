@@ -1,4 +1,4 @@
-# docs/dev/scratch/transition — implicit→momentum transition-trigger harness
+# docs/dev/scratch/transition-trigger — implicit→momentum transition-trigger harness
 
 Offline harness/tooling for the **transition-trigger** investigation: when (and
 on what criterion) should the implicit energy phase hand off to the momentum
@@ -20,4 +20,4 @@ phase? **Not source — regenerable.** Canonical writeups:
 - `{mock_hybr,dense_flat,steep,steep_long}.param` — the four harvested configs.
 
 Data produced: `docs/dev/data/transition_{mock_hybr,dense_flat,steep,steep_long}.csv`.
-See `docs/dev/scratch/phase2/README.md` for the run-name glossary and the β–δ phases.
+See `docs/dev/scratch/betadelta-diagnostics/README.md` for the run-name glossary and the β–δ phases.

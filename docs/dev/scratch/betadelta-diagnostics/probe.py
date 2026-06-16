@@ -15,7 +15,7 @@ center-out so the cheap physical region lands first. Each line records
 both metric components, dMdt validity (Phase-2 abort contract), and wall
 time. Production trajectory unaffected.
 
-Usage: python docs/dev/scratch/phase2/probe.py <param> <out.jsonl> [seg,seg,...]
+Usage: python docs/dev/scratch/betadelta-diagnostics/probe.py <param> <out.jsonl> [seg,seg,...]
 """
 import json
 import signal

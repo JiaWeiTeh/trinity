@@ -1,10 +1,10 @@
-# docs/dev/scratch/phase2 — betadelta hybr-solver diagnostics & plots (glossary)
+# docs/dev/scratch/betadelta-diagnostics — betadelta hybr-solver diagnostics & plots (glossary)
 
 Scratch diagnostics/plots for the β–δ **hybr** solver investigation (the
 pole-free `g` metric, the four-arm promotion, and the negative-velocity /
 WARPFIELD "Problem 2" study). **Not source** — regenerable. Canonical writeups:
 `docs/dev/BETADELTA_PHASE2_ARMS.md`, `docs/dev/stalling-energy-phase.md`,
-`docs/dev/BETADELTA_HYBR_PLAN.md`. Companion harness dir: `docs/dev/scratch/phase6/`.
+`docs/dev/BETADELTA_HYBR_PLAN.md`. Companion harness dir: `docs/dev/scratch/betadelta-velstruct/`.
 
 ## Experiment families (by file prefix)
 
@@ -14,7 +14,7 @@ WARPFIELD "Problem 2" study). **Not source** — regenerable. Canonical writeups
 | `probe_*`    | 2.1/2.2 | **probe**: (β,δ) residual *landscape* — a 7×7 scan + transects per segment | `probe.py` → `probe_*.jsonl` | `analyze_probe.py` → `betadelta_*` |
 | `phase3_*`   | 3 | **hybr-vs-legacy** master-table summary (convergence / β-reach / transition / cost) | *(transcribed from the doc; no jsonl)* | `analyze_phase3.py` |
 | `stalling_*` | 3/5 | **stall**: self-consistent `stop_t=4` sweep runs — source of the negative-velocity study | run → `docs/dev/data/stalling_*.csv` | `analyze_negvel.py` → `negvel_*` |
-| `hunt_*` (h1–h6) | 6.0 | **hunt**: velocity-contamination sweep, 6 configs | `docs/dev/scratch/phase6/hunt.py` → `docs/dev/data/hunt_*.csv` | `plot_hunt.py` → `hunt_*` |
+| `hunt_*` (h1–h6) | 6.0 | **hunt**: velocity-contamination sweep, 6 configs | `docs/dev/scratch/betadelta-velstruct/hunt.py` → `docs/dev/data/hunt_*.csv` | `plot_hunt.py` → `hunt_*` |
 | `negvel_*`   | 5/6 | the negative-velocity diagnosis figures (trigger / timeline / dmdt-lmech / feedback / profile / causal) | — | `analyze_negvel.py`, `reconstruct_vprofile.py` |
 
 **Animations:**
@@ -80,7 +80,7 @@ density — master-table **flat** is n=1e5, **typical** is n=1e3. The probe run
 ## The .param files here
 
 `probe_{cloud1e6,cloudPL,mock4e3,simple1e5}.param`, `arms_{mock4e3,simple1e5,smoke}.param`
-(`*_smoke` = a tiny `stop_t` smoke test). The hunt params live in `docs/dev/scratch/phase6/`.
+(`*_smoke` = a tiny `stop_t` smoke test). The hunt params live in `docs/dev/scratch/betadelta-velstruct/`.
 
 ## Data locations
 
@@ -121,7 +121,7 @@ and `rootmap_cage_profiles.npz` are gitignored — debug frame + the GIF profile
 - `negvel_profile.png` — reconstructed v(r): subsonic (Mach≈0.002), KE ~1e-6 of thermal, likely artefact.
 - `negvel_causal.png` — causal ladder: measured ①–③ vs conjectural inflow ④.
 
-**Velocity-contamination hunt (Phase 6.0, `docs/dev/scratch/phase6/plot_hunt.py`):**
+**Velocity-contamination hunt (Phase 6.0, `docs/dev/scratch/betadelta-velstruct/plot_hunt.py`):**
 - `hunt_trigger.png` — trigger across the 6 configs (h1–h6).
 - `hunt_massdep.png` — mass / sfe dependence.
 - `hunt_dmdt_leads.png` — dMdt leads the velocity contamination.

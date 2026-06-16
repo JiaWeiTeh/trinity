@@ -23,7 +23,7 @@ The hybr structure solve is ~2 s/segment; the real legacy solve is ~60 s/segment
 full ~133-segment run is ~2 hr. Writes rootmap_cage_table.npz (gitignored).
 
 REQUIRES the pinned deps (numpy<2, scipy<2) + the steep config probe_cloudPL.param:
-  PYTHONPATH=<repo> python docs/dev/scratch/phase2/tabulate_cage.py [--limit N] [--out PATH]
+  PYTHONPATH=<repo> python docs/dev/scratch/betadelta-diagnostics/tabulate_cage.py [--limit N] [--out PATH]
 """
 
 import argparse

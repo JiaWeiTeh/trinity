@@ -30,7 +30,9 @@
 > **consolidated into `docs/dev/scratch/`**, and the top-level `.gitignore` rule
 > anchored to `/scratch/` — so `docs/dev/scratch/` is now *normally* tracked (the
 > ignored-but-tracked contradiction is resolved) and top-level `scratch/` is
-> local-only. The H1 finding below records the **original** state; see
+> local-only. The `phase2`/`phase6` subdirs were also renamed to
+> `betadelta-diagnostics`/`betadelta-velstruct` (and `transition` →
+> `transition-trigger`). The H1 finding below records the **original** state; see
 > `CODEBASE_REVIEW.md` → Status (Round 3) for the resolution.
 
 ---
