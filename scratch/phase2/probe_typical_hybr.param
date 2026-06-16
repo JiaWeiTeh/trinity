@@ -1,0 +1,10 @@
+model_name    probe_typical_hybr
+mCloud    1e6
+sfe    0.01
+dens_profile    densPL
+densPL_alpha    0
+nCore    1e3
+nISM    10
+stop_t    3.0
+betadelta_solver    hybr
+log_level    INFO
