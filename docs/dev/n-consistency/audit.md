@@ -25,6 +25,7 @@
 > that produced each artifact.
 
 **About this document**
+- **Status (verified 2026-06-16):** ✅ **SHIPPED** (verified 2026-06-16) — the `n ≡ n_H` convention is fully implemented and pinned by `test/test_mu_audit_drift.py`.
 - **Type:** audit — the finding that establishes `n ≡ n_H` (hydrogen-nuclei density) against the model paper, with the canonical μ/χ_e reference table and a per-site inventory of where the code violates it.
 - **Workstream:** `n-consistency/` — the "every number density n is hydrogen-nuclei n_H" convention & pressure terms.
 - **Where it sits:** entry point (single source of truth) → **this** → `implementation-plan.md` (the line-by-line edit spec); supersedes the earlier `pressure-terms-audit.md`. Shipped in #657 with a later Phase A singly-ionised-shell split.

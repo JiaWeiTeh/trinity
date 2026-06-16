@@ -25,6 +25,7 @@
 > that produced each artifact.
 
 **About this document**
+- **Status (verified 2026-06-16):** 🔵 **ACTIONABLE** (verified 2026-06-16) — only the Tier-4 `unit_conversions` relabel shipped; ~95% of the cleanup is still pending. Cited line numbers have drifted.
 - **Type:** audit — a tiered inventory of backward-compat shims, dead code, stale comments, and misnamed-but-live paths across the repo, with a suggested cleanup-PR sequence.
 - **Workstream:** `misc/` — standalone (backward-compat & stale-code cleanup).
 - **Where it sits:** standalone — feeds the future `feature/remove-backward-compat-codeblocks` cleanup branch; audit-only, no code changed (these have no before/after within misc/).

@@ -25,6 +25,7 @@
 > that produced each artifact.
 
 **About this document**
+- **Status (verified 2026-06-16):** ✅ **SHIPPED** (verified 2026-06-16) — the `solve_ivp(dense_output=True)` switch it signs off landed.
 - **Type:** audit (convergence sign-off) — quantifies how converged the production conduction-zone luminosity is and establishes the target numbers *before* the `solve_ivp(dense_output=True)` integrator switch. No runtime behaviour is changed.
 - **Workstream:** `bubble/` — bubble-structure luminosity-solver robustness.
 - **Where it sits:** companion to `integrator-robustness.md` (that doc covers the *crash*; this one the *accuracy*); the sign-off package for Commit 2/3 of the bubble-solver fix.

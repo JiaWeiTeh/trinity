@@ -25,6 +25,7 @@
 > that produced each artifact.
 
 **About this document**
+- **Status (verified 2026-06-16):** 📘 **REFERENCE** (verified 2026-06-16) — accurate against `phase_events.py` / `simulation_end.py`; keep as a current reference.
 - **Type:** design — a reference overview of every termination event (simulation-ending, phase-ending, monitoring) and post-integration stopping check, tabulated per phase with thresholds and the event-result structure.
 - **Workstream:** `misc/` — standalone (simulation termination events / stopping fates).
 - **Where it sits:** standalone — spans the whole pipeline (energy → implicit → transition → momentum → simulation end), describing the phase-flow and exit conditions (these have no before/after within misc/).

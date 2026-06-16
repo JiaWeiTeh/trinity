@@ -25,6 +25,7 @@
 > that produced each artifact.
 
 **About this document**
+- **Status (verified 2026-06-16):** ✅ **SHIPPED** (verified 2026-06-16) — the hybr arm (D) landed behind the `betadelta_solver` param.
 - **Type:** results — the Phase 2.3 four-arm shadow experiment (A control / B g-metric / C cap+bounds / D hybr) and Gate-G2 evaluation, plus a Phase-3 self-consistent hybr validation section that partly supersedes the shadow reading (D still promotes).
 - **Workstream:** `betadelta/` — β–δ (beta–delta) implicit-phase solver repair.
 - **Where it sits:** `PHASE0_BASELINES.md` (Phase 0) → **this** (Phase 2/3) → `stalling-energy-phase.md` (the Phase-5/6 follow-ons hybr surfaced).

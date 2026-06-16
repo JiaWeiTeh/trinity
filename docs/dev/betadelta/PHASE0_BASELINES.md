@@ -25,6 +25,7 @@
 > that produced each artifact.
 
 **About this document**
+- **Status (verified 2026-06-16):** ✅ **SHIPPED** (verified 2026-06-16) — Gate-G0 baseline record for a program now through Phase 3.
 - **Type:** results — Phase 0 baseline measurements of the production (legacy) solver across four configs (mock 4e3, simple 1e5, flat 1e6, steep α=−2), the Gate-G0 evidence that authorises the rest of the program.
 - **Workstream:** `betadelta/` — β–δ (beta–delta) implicit-phase solver repair.
 - **Where it sits:** `HYBR_PLAN.md` (Phase 0) → **this** → `PHASE2_ARMS.md` (Phase 2/3 arms).

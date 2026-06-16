@@ -25,6 +25,7 @@
 > that produced each artifact.
 
 **About this document**
+- **Status (verified 2026-06-16):** 🟡 **PARTIAL** (verified 2026-06-16) — Phases A–C (`coverFraction`) shipped; Phases D/F/G and findings #7/#8 remain open.
 - **Type:** plan (skeleton) — a phased implementation plan for the geometry-set covering-fraction enthalpy leak, tracking what shipped (A–C drafted) versus open work (mass sink D, photon/X-ray G) and the unresolved edge cases.
 - **Workstream:** `misc/` — standalone (`coverFraction`/`Cf` leak feature).
 - **Where it sits:** standalone — concerns the core energy equation in the energy/implicit/transition phases and the downstream CLOUDY post-processing; tracked on branch `feature/add-Cf` (these have no before/after within misc/).

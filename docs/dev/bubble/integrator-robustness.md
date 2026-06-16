@@ -29,6 +29,7 @@
 > shipped vs. what's still pending.
 
 **About this document**
+- **Status (verified 2026-06-16):** ⛔ **SUPERSEDED** (verified 2026-06-16) — the `_odeint_checked` approach was replaced by the `solve_ivp(LSODA, dense_output=True)` migration (#666/#678); value is historical.
 - **Type:** audit + fix plan — single source of truth for eliminating the intermittent `MonotonicError` from the bubble luminosity solver (the one *behavior-affecting* item of the restructure effort).
 - **Workstream:** `bubble/` — bubble-structure luminosity-solver robustness.
 - **Where it sits:** standalone within `bubble/` (sequenced last, after the structural churn); companion to `conduction-convergence.md`, which covers the *accuracy* side of the same fix.

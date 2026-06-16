@@ -25,6 +25,7 @@
 > that produced each artifact.
 
 **About this document**
+- **Status (verified 2026-06-16):** ✅ **SHIPPED** (Phases 0–3, verified 2026-06-16) — historical record. Open tail: the Phase-4 default flip to `hybr` (still `legacy`) and the Phase-5 transition-criterion study (now the `transition/` workstream).
 - **Type:** plan — the master, phased work plan for the β–δ solver repair (Phases 0–6: baselines, safety fixes, four-arm shadow race, hybr promotion behind a switch, validation/default-flip, transition-criterion study, velocity-structure "Problem 2").
 - **Workstream:** `betadelta/` — β–δ (beta–delta) implicit-phase solver repair.
 - **Where it sits:** entry point → **this** → results docs `PHASE0_BASELINES.md`, `PHASE2_ARMS.md`, study `stalling-energy-phase.md`.

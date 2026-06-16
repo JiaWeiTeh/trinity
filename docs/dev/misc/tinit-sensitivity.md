@@ -25,6 +25,7 @@
 > that produced each artifact.
 
 **About this document**
+- **Status (verified 2026-06-16):** 🟡 **PARTIAL** (verified 2026-06-16) — the study concluded (3e4 is conservative); recommendation #3 (drop the linear L3 patch) is not implemented.
 - **Type:** study — a thread-pinned sweep testing whether the `T_init = 3e4` bubble-boundary anchor is a relabel-only knob or actually shifts the bubble cooling luminosity `L_total`.
 - **Workstream:** `misc/` — standalone (`T_init` / bubble-boundary anchor sensitivity).
 - **Where it sits:** standalone — companion/follow-up to the integrator-robustness boundary-transient discussion; concerns phase0_init / the bubble boundary (these have no before/after within misc/).

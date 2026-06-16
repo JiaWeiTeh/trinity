@@ -25,6 +25,7 @@
 > that produced each artifact.
 
 **About this document**
+- **Status (verified 2026-06-16):** ✅ **SHIPPED** (verified 2026-06-16) — settled 'Problem 2' study; the `v_neg_frac_thick` diagnostic shipped, no treatment applied (by design).
 - **Type:** study — deep dive into the stalling energy-driven phase, rising Pb / negative β (feedback re-pressurisation), and the resulting unphysical interior inflow ("Problem 2"); includes the Phase 6.0 contamination hunt and the Phase 6.1 counterfactual that closes Problem 2 (inflow real but cosmetic).
 - **Workstream:** `betadelta/` — β–δ (beta–delta) implicit-phase solver repair.
 - **Where it sits:** `PHASE2_ARMS.md` (hybr surfaces negative β) → **this** (Phase 5/6 follow-ons) → terminal (Phase 5 transition-criterion study is deferred; see `HYBR_PLAN.md`).
@@ -450,7 +451,7 @@ Phase-6-specific plots worth making from the hunt CSVs:
   dMdt step *leads* β+δ<0 (surge-driven), and inspect h6's lagged onset step.
 
 Note: the original two CSVs were captured from `/tmp` scratch; the hunt harness
-+ configs live in `docs/dev/betadelta/velstruct/` (gitignored scratch — present locally).
++ configs live in `docs/dev/betadelta/velstruct/` (committed/tracked, not gitignored).
 Re-run to extend `stop_t` (does the steep bubble *ever* transition once the SN
 epoch ends, ~40 Myr?) — that is the open endpoint.
 question.

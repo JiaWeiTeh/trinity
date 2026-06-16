@@ -25,6 +25,7 @@
 > that produced each artifact.
 
 **About this document**
+- **Status (verified 2026-06-16):** 🔵 **ACTIONABLE** (verified 2026-06-16) — plan is current and accurate; no trigger candidate is wired into production yet.
 - **Type:** plan — characterize the implicit→momentum transition trigger (clocks A/B, candidate families F0–F5) and decide via pre-registered gates before changing production.
 - **Workstream:** `transition/` — the implicit→momentum transition trigger.
 - **Where it sits:** promoted from Phase 5 of `docs/dev/betadelta/HYBR_PLAN.md` → **this (entry point)** → `P0.md` (P0/P-sens results) → `pshadow-design.md` (design).
