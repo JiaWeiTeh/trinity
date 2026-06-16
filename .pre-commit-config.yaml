@@ -23,9 +23,9 @@ repos:
       - id: ruff
         name: ruff (bug-class checks only)
         args:
-          # --isolated: ignore pyproject.toml (it has a pre-existing
-          # [tool.setuptools.packages.find] TOML issue that trips ruff's
-          # config loader; unrelated to linting).
+          # --isolated: don't load pyproject.toml for ruff config (the project
+          # defines no [tool.ruff] table; this keeps the hook to the bug-class
+          # checks below regardless of repo config).
           - --isolated
           - --select=F821,F811,F823,E9
           # F821 - undefined name (catches partial renames like nCore vs nCore_cgs)

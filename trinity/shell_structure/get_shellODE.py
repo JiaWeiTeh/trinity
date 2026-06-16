@@ -29,7 +29,7 @@ def get_shellODE(y,
     fraction of ionizing photons that reaches a surface with radius r (phi), and the
     optical depth of dust (tau) of the shell.
     
-    This routine assumes cgs
+    All quantities are in code units [Msun, pc, Myr] (see the parameter annotations below).
     
     Parameters
     ----------

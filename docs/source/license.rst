@@ -9,4 +9,5 @@ TRINITY is distributed under the terms of the
 included at the repository root (``LICENSE``).
 
 If you use TRINITY in any published work, please cite the TRINITY
-method paper (in preparation); see :ref:`sec-publications`.
+method paper, Teh et al. (2026), arXiv:2605.27517; see
+:ref:`sec-publications`.

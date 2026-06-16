@@ -35,6 +35,7 @@ lib/default/      bundled SB99 SPS + cooling tables (quickstart runs out of the 
 test/             pytest suite (test_*.py)
 tools/            small CLI utilities (param generation, audits, output comparisons)
 docs/             Sphinx source (docs/source) built into docs/build
+  dev/            internal plan & audit write-ups (incl. CODEBASE_REVIEW.md) — not built, may be stale
 paper/            scripts + committed .npz data that regenerate published figures
 ```
 
@@ -68,17 +69,17 @@ Generated / scratch — not source, do not tidy or treat as ground truth: `outpu
 4. **Verify.** Turn tasks into checks: bug → write a failing test, then fix; feature → test the
    invalid inputs, then pass; refactor → tests green before and after. Run `pytest` before declaring done.
 
-## `analysis/` & `docs/dev/` plan docs are unverified
+## `docs/dev/` plan & audit docs are unverified
 
-The `analysis/*.md` files and the plan/skeleton docs under `docs/dev/` are point-in-time
-audits/plans, not a maintained spec. They go stale fast — paths, line numbers, and "what shipped"
+The plan, audit, and write-up docs under `docs/dev/` (the old top-level `analysis/` directory was
+folded in here) are point-in-time audits/plans, not a maintained spec. They go stale fast — paths, line numbers, and "what shipped"
 status drift as the code moves. When reading one: do not treat it as ground truth — flag that it may
 be outdated and re-verify every claim, snippet, and line reference against current source. Every such
 doc must carry **all three** banner paragraphs below at the top, right under the H1, and any new
-analysis or `docs/dev/` plan doc must include them. The 🔄 paragraph makes these docs *living* —
+`docs/dev/` doc must include them. The 🔄 paragraph makes these docs *living* —
 whoever opens one rechecks it, updates drift, and rethinks the strategy before relying on or
 extending it. The 💾 paragraph makes them *durable* — diagnostics worth keeping are committed as
-CSV/tables (`analysis/data/`) or force-added scratch, so a future session reproduces or compares
+CSV/tables (`docs/dev/data/`) or harnesses/figures in the relevant `docs/dev/<workstream>/` folder, so a future session reproduces or compares
 without re-running the expensive sims; leave it better than you found it:
 
 ```markdown
@@ -100,9 +101,9 @@ without re-running the expensive sims; leave it better than you found it:
 >
 > 💾 **Persist diagnostics — commit, don't re-run.** The container is ephemeral
 > and full/hybr runs cost hours, so any diagnostic worth keeping must be saved as
-> a committed artifact (a CSV/table under `analysis/data/`, or a force-added
-> harness/figure under `scratch/` as the hybr work did) — never left in `/tmp` or
-> an untracked `outputs/`. A future visit must be able to reproduce or compare
+> a committed artifact under `docs/dev/` (a CSV/table in `docs/dev/data/`, or a
+> harness/figure in the relevant `docs/dev/<workstream>/` folder) — never left in
+> `/tmp`, the local-only `scratch/`, or an untracked `outputs/`. A future visit must be able to reproduce or compare
 > against the numbers **without re-running**; record the exact config + command
 > that produced each artifact.
 ```

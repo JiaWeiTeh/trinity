@@ -10,8 +10,8 @@ them in a BubbleProperties dataclass instead of mutating the params dict:
 - Use updateDict(params, bubble_data) after the call returns
 
 The structure ODE is integrated with scipy.integrate.solve_ivp (dense output);
-see analysis/bubble-integrator-robustness.md and
-analysis/bubble-conduction-convergence.md.
+see docs/dev/bubble/integrator-robustness.md and
+docs/dev/bubble/conduction-convergence.md.
 
 @author: Jia Wei Teh
 """
@@ -47,7 +47,7 @@ MIN_SPACING = 1e-12
 #      penalised so fsolve is steered away);
 #   3. the scale of that rejection penalty.
 # It is NOT the physical "no cooling below" floor -- that is _coolingswitch=1e4,
-# a deliberately separate quantity. See analysis/bubble-integrator-robustness.md
+# a deliberately separate quantity. See docs/dev/bubble/integrator-robustness.md
 # (the "T_init=3e4" boundary-transient discussion).
 _T_INIT_BOUNDARY = 3e4
 
@@ -63,7 +63,7 @@ _T_INIT_BOUNDARY = 3e4
 # (BubbleSolverError, or the fsolve penalty below) rather than used. A T->0
 # collapse detected inside the ODE RHS likewise raises BubbleSolverError,
 # which _solve_bubble_structure converts to the same ok=False contract.
-# See analysis/bubble-integrator-robustness.md.
+# See docs/dev/bubble/integrator-robustness.md.
 
 # Deterministic residual returned to fsolve when a velocity-residual solve
 # fails: large and non-zero so fsolve is steered away from the infeasible dMdt
@@ -73,7 +73,7 @@ _SOLVER_FAIL_RESIDUAL = 1e3
 # solve_ivp tolerances for the bubble-structure integration. rtol=1e-8 matches
 # odeint's former default accuracy (~1.49e-8) and sits well inside the regime
 # where the integrated bubble outputs are rtol-independent (verified in
-# analysis/bubble-conduction-convergence.md), so the success-path delta vs the
+# docs/dev/bubble/conduction-convergence.md), so the success-path delta vs the
 # former odeint solve is minimal.
 _BUBBLE_RTOL = 1e-8
 _BUBBLE_ATOL = 1e-10
@@ -90,7 +90,7 @@ _RESIDUAL_RTOL = 1e-6
 # conduction band for the L_conduction / Tavg_conduction trapezoids. The
 # integrand is smooth and the sampled solution is exact, so the trapezoid
 # converges fast (~1/K**2): K=2000 is within ~7e-5 of the K->infinity value at
-# ~1 ms/call (analysis/bubble-conduction-convergence.md), far better resolved
+# ~1 ms/call (docs/dev/bubble/conduction-convergence.md), far better resolved
 # than the former ~100-point conduction re-solve while remaining cheap.
 _CONDUCTION_NPTS = 2000
 
@@ -113,7 +113,7 @@ def _solve_bubble_structure(initial_conditions, r_array, params, Pb,
     output sampling -- the near-duplicate radii in ``r_array`` that make
     ``odeint``'s dense-output interpolation intermittently fail (the
     nondeterministic bubble-solver crash; see
-    analysis/bubble-integrator-robustness.md) are never requested of the
+    docs/dev/bubble/integrator-robustness.md) are never requested of the
     integrator.
 
     Returns ``(psoln, ok, infodict, sol)``:
@@ -174,7 +174,7 @@ def _solve_bubble_structure(initial_conditions, r_array, params, Pb,
 # the arrays + integration context are saved to <path2output>/bubble_diag/
 # and a one-line mode classification is logged. This exists to disambiguate
 # the two known triggers of the downstream `MonotonicError`
-# (see analysis/bubble-integrator-robustness.md):
+# (see docs/dev/bubble/integrator-robustness.md):
 #   - "dead_integrator": LSODA gives up, T-profile has a zero/non-finite
 #     tail at the hot (inner) end.
 #   - "boundary_transient": a small, smooth dip at the T_init=3e4 (outer)
@@ -482,7 +482,7 @@ def get_bubbleproperties_pure(params) -> BubbleProperties:
     # conduction zone (T = 1e4 to 10^5.5 K). The legacy grid is used for output
     # sampling; the LSODA dense-output interpolation failures it once caused are
     # now avoided by integrating with solve_ivp (see _solve_bubble_structure and
-    # analysis/bubble-integrator-robustness.md), not by the grid itself.
+    # docs/dev/bubble/integrator-robustness.md), not by the grid itself.
     initial_conditions = [v_r2Prime, T_r2Prime, dTdr_r2Prime]
 
     return _bubble_luminosity_legacy(
@@ -627,7 +627,7 @@ def _bubble_luminosity_legacy(params, R1, Pb, r2Prime, initial_conditions,
         # grid. _sol is the continuous solution over [R1, r2Prime], so this
         # needs no re-solve -- removing the near-duplicate-radii LSODA crash --
         # and the trapezoids below are converged (_CONDUCTION_NPTS; see
-        # analysis/bubble-conduction-convergence.md). The non-CIE cooling table
+        # docs/dev/bubble/conduction-convergence.md). The non-CIE cooling table
         # is only defined for T < 10**5.5, so the band is masked to it.
         r_conduction = np.linspace(
             r_array[0], r_array[index_CIE_switch], _CONDUCTION_NPTS)

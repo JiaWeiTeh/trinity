@@ -31,7 +31,7 @@ to the same timestamp (t_now). The snapshot includes:
 Beta-Delta Solver
 -----------------
 The beta-delta solver (get_betadelta.py) uses:
-1. Grid search first (4x4 grid by default)
+1. Grid search first (5x5 grid by default, GRID_SIZE=5)
 2. L-BFGS-B fallback only if grid residual > LBFGSB_FALLBACK_THRESHOLD
 3. Best result selection from all candidates
 
@@ -767,7 +767,7 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
             updateDict(params, bubble_props)
             # Diagnostic-only (WARPFIELD "Problem 2"): fraction of the bubble
             # thickness flowing inward (v<0) during a re-pressurisation. Logged
-            # for monitoring; NOT used in any physics. analysis/stalling-energy-phase.md
+            # for monitoring; NOT used in any physics. docs/dev/betadelta/stalling-energy-phase.md
             params['v_neg_frac_thick'].value = _inflow_frac_thickness(
                 getattr(bubble_props, 'bubble_v_arr', None),
                 getattr(bubble_props, 'bubble_r_arr', None))

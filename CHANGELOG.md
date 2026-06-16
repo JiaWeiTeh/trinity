@@ -49,6 +49,11 @@ First public release.
   search is quieter, and the run-termination reason now reports the true cause.
 - `simplify` monotonic-stack pass roughly 2× faster on large profiles
   (byte-identical output).
+- Developer tooling now matches what the project actually runs: the `[dev]`
+  extra and `CONTRIBUTING.md` use ruff + pre-commit (replacing the unused
+  `flake8`), with `pip install -e ".[dev]"` as the documented dev setup.
+- Citation updated to the method paper Teh et al. (2026), `arXiv:2605.27517`,
+  consistently across the README and the Sphinx docs.
 
 #### Changed — number-density / mean-molecular-weight audit
 
@@ -88,3 +93,21 @@ composition is set by `x_He` and the ionisation states `Z_He` (hot bubble) and
   `MonotonicError` and cooling out-of-bounds errors under scipy ≥ 1.15.
 - IR optical depth: carry the dimensionless `tau_IR` directly and fix a
   `dust_KappaIR` unit error (~4800× too large in the fallback path).
+- Unsupported `ZCloud` (anything other than the bundled 1.0 / 0.15) now raises a
+  clear `ValueError` naming the available metallicities, instead of a cryptic
+  `UnboundLocalError` from deep inside the non-CIE cooling loader.
+- Stale docstrings, comments, and dead doc pointers corrected: the reader docs'
+  nonexistent `example_scripts/` reference, the run startup-banner documentation
+  link (now the maintained `jiaweiteh.github.io/trinity-web`), and several wrong
+  unit labels (`Eb`, `get_dudt`, the shell ODE, Bonnor-Ebert debug logs).
+
+### Documentation
+
+- Added a fresh-clone consistency review (`docs/dev/CODEBASE_REVIEW.md`) auditing
+  the repo for code/docstring/comment inconsistencies and "shouldn't-ship" cruft.
+- Reorganised internal development notes under `docs/dev/` into self-contained
+  per-workstream folders (`betadelta/`, `transition/`, `bubble/`, `cooling/`,
+  `n-consistency/`, `misc/`), each holding its writeups plus its harnesses/figures;
+  the former top-level `analysis/` tree and the `scratch/` diagnostics were folded
+  in, and a `docs/dev/README.md` index maps everything. (`scratch/` at the repo
+  root remains git-ignored / local-only.)

@@ -3,8 +3,8 @@
 Every refined operation is validated against the ORIGINAL pre-fix operation
 and value (pre-fix commit 7321fef), so any *silent drift* — a reverted
 factor, a changed mu, a dropped chi_e, an unintended collateral edit — fails
-loudly here.  See analysis/n-consistency-audit.md and
-analysis/n-consistency-implementation-plan.md.
+loudly here.  See docs/dev/n-consistency/audit.md and
+docs/dev/n-consistency/implementation-plan.md.
 
 Composition at defaults: x_He = 0.1, Z_He = 2  =>
     mu_H/mu_p = mu_convert/mu_ion = 2.3 ,   chi_e = 1 + Z_He*x_He = 1.2 .

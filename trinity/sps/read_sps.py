@@ -52,7 +52,7 @@ def read_sps(f_mass, params):
         TRINITY parameters dictionary containing:
         - sps_path : str, full path to the SPS data file (already resolved
           by read_param.py; the bundled default file is used when the user
-          hasn't overridden sps_path — see analysis/archive/sb99-refactor-audit.md §9)
+          hasn't overridden sps_path — see docs/dev/archive/sb99-refactor-audit.md §9)
         - FB_mColdWindFrac, FB_thermCoeffWind : Wind corrections
         - FB_mColdSNFrac, FB_thermCoeffSN, FB_vSN : SN corrections
 
@@ -330,7 +330,7 @@ def get_interpolation(sps, ftype='cubic'):
     >>> Lmech_W = sps_f['fLmech_W'](t)
     >>> Lmech_SN = sps_f['fLmech_SN'](t)
     >>> Lmech_total = sps_f['fLmech_total'](t)
-    >>> v_mech_total = 2.0 * Lmech_W / sps_f['fpdot_W'](t)  # Correct formula!
+    >>> v_mech_total = 2.0 * Lmech_total / sps_f['fpdot_total'](t)  # mechanical velocity (uses totals, matching update_feedback)
     """
 
     # Unpack all SPS values (with separated components)

@@ -32,9 +32,10 @@ def get_dudt(age, ndens, T, phi, params_dict):
 
     Returns
     -------
-    dudt is [M_sun/pc/yr3] (erg/cm3/s), because cooling is in units of (erg cm3/s) [M_sun*pc5/s3] 
-    TYPE
-        DESCRIPTION.
+    dudt : float
+        Energy-density rate in code units [Msun/pc/Myr^3] (computed in cgs as
+        erg/cm^3/s, then converted via cvt.dudt_cgs2au). The cooling function
+        Lambda is erg*cm^3/s in cgs, i.e. Msun*pc^5/Myr^3 in code units.
 
     """
     

@@ -29,8 +29,9 @@ def get_coolingStructure(params):
     
     Parameters
     ----------
-    age : float [yr]
-        Current age.
+    params : dict
+        Run parameter dictionary; the current age is read internally as
+        params['t_now'] (Myr) and converted to yr.
 
     Returns
     -------
@@ -289,10 +290,16 @@ def get_filename(age, metallicity, SB99_rotation, path2cooling):
     # metallicity?
     if float(metallicity) == 1.0:
         # solar, Z = 0.014
-        Z_str = '1.00'        
+        Z_str = '1.00'
     elif float(metallicity) == 0.15:
         # 0.15 solar, Z = 0.002
         Z_str = '0.15'
+    else:
+        raise ValueError(
+            f"ZCloud={metallicity} is unsupported by the bundled non-CIE cooling "
+            f"tables (available: 1.0, 0.15). Supply matching opiate tables via the "
+            f"path_cooling_nonCIE parameter, or set ZCloud to a supported value."
+        )
 
     # What are the available ages? If the given age is greater than the maximum or
     # is lower than the minimum, then use the max/min instead. Otherwise, do interpolation (in another function).
