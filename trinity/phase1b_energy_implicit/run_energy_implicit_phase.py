@@ -529,10 +529,6 @@ def get_ODE_implicit_pure(t: float, y: np.ndarray, snapshot: ODESnapshot,
 
     # Use Ed and Td from beta/delta calculations (computed outside ODE)
     return np.array([rd, vd, Ed_from_beta, Td_from_delta])
-    # try to fix kink (see paper/rCloud_bump)
-    # Ed_from_balance = dydt_energy[2]
-    # Ed = min(Ed_from_beta, Ed_from_balance)
-    # return np.array([rd, vd, Ed, Td_from_delta])
 
 
 # =============================================================================

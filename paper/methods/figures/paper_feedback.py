@@ -34,8 +34,6 @@ from paper._lib.grid_template import (
     phii_file_prefix,
 )
 
-print("...plotting force fractions with ram composition overlay + PISM")
-
 # ---------------- configuration ----------------
 SMOOTH_WINDOW = 21           # None or 1 disables smoothing
 SHOW_PHASE    = False

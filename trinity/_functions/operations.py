@@ -31,10 +31,6 @@ def find_nearest_lower(array, value):
     Elements in array need be monotonically increasing or decreasing!
     """
     # check whether array is monotonic
-    # debug
-    if any(array < 0):
-        print(array)
-
     if not monotonic(array):
         print(f"array has to be monotonic! Instead got {array}.")
         raise MonotonicError()
@@ -152,10 +148,6 @@ def find_nearest_higher(array, value):
     a deep or sustained-interior inversion still raises MonotonicError.
     """
     # check whether array is monotonic
-    # debug
-    if any(array < 0):
-        print(array)
-
     if not _is_monotonic_or_tolerable(array):
         print(f"array has to be monotonic! Instead got {array}.")
         raise MonotonicError()

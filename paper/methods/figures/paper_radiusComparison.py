@@ -39,8 +39,6 @@ from paper._lib.grid_template import (
     attach_grid_legend,
 )
 
-print("...plotting radius comparison (TRINITY vs WARPFIELD vs Weaver)")
-
 # ----------------------------------------------------------------
 # Configuration
 # ----------------------------------------------------------------
