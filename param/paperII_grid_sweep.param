@@ -54,8 +54,11 @@ ZCloud    1
 coverFraction    1.0
 
 # Max plausible cloud radius for the pre-run GMC validation [pc] (default 200).
-# Raised to 300 to allow more diffuse clouds.
-rCloud_max    300
+# Set to 1e9 to effectively disable the rCloud size gate, so very diffuse /
+# high-mass clouds run and are cut/filtered in post-processing instead.
+# NOTE: this only disables the size check — the nEdge<nISM and mass-consistency
+# checks in validate_gmc still apply.
+rCloud_max    1e9
 
 # Termination
 allowShellDissolution    True
