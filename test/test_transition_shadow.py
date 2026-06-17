@@ -148,6 +148,22 @@ def test_cooling_balance_nonpositive_lgain_never_fires():
     assert cooling_balance_fires(-5.0, 100.0, THRESHOLD) is False
 
 
+def test_adiabatic_null_cooling_never_fires():
+    # P-validate adiabatic-null (Weaver) hard gate: with Lloss -> 0 the cooling
+    # ratio is (Lgain-0)/Lgain = 1.0, never < threshold, so F0 must NEVER fire.
+    assert cooling_balance_fires(1e6, 0.0, THRESHOLD) is False
+    assert cooling_balance_fires(1e6, 1e-30, THRESHOLD) is False
+    # The null binds the COOLING criterion only: with the shell still inside the
+    # cloud, cooling_or_blowout returns no termination at Lloss=0.
+    assert implicit_termination_reason(
+        "cooling_or_blowout", 1e6, 0.0, THRESHOLD, R2=3.0, rCloud=RCLOUD) is None
+    # F4 blowout is Lloss-independent BY DESIGN: a shell past rCloud still blows
+    # out at Lloss=0 (geometric fate, not a cooling event) -- so the gate is
+    # scoped to the cooling families, not the blowout terminator.
+    assert implicit_termination_reason(
+        "cooling_or_blowout", 1e6, 0.0, THRESHOLD, R2=12.0, rCloud=RCLOUD) == "blowout"
+
+
 def test_blowout_fires_on_crossing():
     assert blowout_fires(11.0, RCLOUD) is True
     assert blowout_fires(10.0, RCLOUD) is False  # strict >, equality does not fire

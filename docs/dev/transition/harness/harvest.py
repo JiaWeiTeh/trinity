@@ -76,6 +76,14 @@ def first_cross(ts, vals, op, thr):
     return None
 
 
+def first_cross_idx(vals, op, thr):
+    """Index of the first segment where `op(val, thr)` holds; None if never."""
+    for i, v in enumerate(vals):
+        if v == v and ((op == "<" and v < thr) or (op == ">" and v > thr)):
+            return i
+    return None
+
+
 def harvest(run_dir, csv_path=None):
     rows, rCloud = load(run_dir)
     impl = [d for d in rows if d.get("current_phase") == "implicit"]
@@ -112,6 +120,10 @@ def harvest(run_dir, csv_path=None):
     f2 = [tc / td if td > 0 else float("nan") for tc, td in zip(t_cool, t_dyn)]
     # F4 blowout
     r_over_rc = [r / rCloud if rCloud else float("nan") for r in R2]
+    # Lancaster retained-energy cross-check: Eb / cumulative-injected ∫Lgain dt.
+    # At the transition this should land near eta ~ 0.1-0.25 (~1 => fired far too
+    # early, ~0 => far too late). Uses the same left-rectangle cumG as F1.
+    retainedE = [eb / cg if cg > 0 else float("nan") for eb, cg in zip(Eb, cumG)]
     # F3 force-ratio: bubble thermal force F_ram(=4piR^2 Pb) vs surviving non-thermal
     # forces (F_rad + wind/SN ram pdot). NOTE F_ram == F_HII here (Pb == P_HII,
     # bubble-shell pressure equilibrium: the ionized shell is pressure-confined by
@@ -162,24 +174,35 @@ def harvest(run_dir, csv_path=None):
     print("  candidate firing epochs (Myr; '—' = never):")
     for k, v in fire.items():
         print(f"    {k:16s}: {v:.4g}" if v is not None else f"    {k:16s}: —")
+    # Lancaster retained-energy at the physical / operative firing epochs
+    iF0 = first_cross_idx(ratio, "<", EPS)
+    iF4 = first_cross_idx(R2, ">", rCloud) if rCloud else None
+    print("  retained-energy Eb/∫Lgain dt (Lancaster η≈0.1–0.25):")
+    print(f"    at Eb-peak:    {retainedE[ipk]:.3f}")
+    if iF0 is not None:
+        print(f"    at F0 firing:  {retainedE[iF0]:.3f}")
+    if iF4 is not None:
+        print(f"    at F4 blowout: {retainedE[iF4]:.3f}")
 
     if csv_path:
         import csv as _csv
         cols = ["t_now", "current_phase", "R2", "v2", "Eb", "Pb", "cool_beta",
                 "cool_delta", "beta_plus_delta", "Lgain", "Lloss", "ratio_F0",
-                "cum_Lloss", "cum_Lgain", "frac_cum", "t_cool", "t_dyn",
-                "F2_tcool_tdyn", "F3_force_ratio", "R2_over_rCloud", "F_ram",
-                "F_rad", "F_HII", "pdot_total", "c_sound"]
+                "cum_Lloss", "cum_Lgain", "frac_cum", "Eb_over_cumLgain",
+                "t_cool", "t_dyn", "F2_tcool_tdyn", "F3_force_ratio",
+                "R2_over_rCloud", "F_ram", "F_rad", "F_HII", "pdot_total",
+                "c_sound"]
         with open(csv_path, "w", newline="") as fh:
             w = _csv.writer(fh)
             w.writerow(cols)
             for k in range(len(impl)):
                 w.writerow([t[k], "implicit", R2[k], v2[k], Eb[k], Pb[k], beta[k],
                             delta[k], beta[k] + delta[k], Lgain[k], Lloss[k],
-                            ratio[k], cumL[k], cumG[k], fcum[k], t_cool[k],
-                            t_dyn[k], f2[k], f3[k], r_over_rc[k], g(impl[k], "F_ram"),
-                            g(impl[k], "F_rad"), g(impl[k], "F_HII"),
-                            g(impl[k], "pdot_total"), g(impl[k], "c_sound")])
+                            ratio[k], cumL[k], cumG[k], fcum[k], retainedE[k],
+                            t_cool[k], t_dyn[k], f2[k], f3[k], r_over_rc[k],
+                            g(impl[k], "F_ram"), g(impl[k], "F_rad"),
+                            g(impl[k], "F_HII"), g(impl[k], "pdot_total"),
+                            g(impl[k], "c_sound")])
         print(f"  wrote {csv_path}")
 
 
