@@ -1,50 +1,58 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Variant capture-and-replay: which scipy integrator configuration (if any) is a
-safe drop-in for ``scipy.integrate.odeint`` in the TRINITY shell-structure solver?
+Variant capture-and-replay (+ timing + ionization-front event): which scipy
+integrator configuration is the best replacement for ``scipy.integrate.odeint``
+in the TRINITY shell-structure solver, and is it FASTER?
 
 WHY THIS EXISTS
 ---------------
-The first harness (``capture_replay.py``) showed that the bubble-precedent call
-``solve_ivp(method='LSODA', t_eval=grid, dense_output=True)`` raised
-``ValueError: `ts` must be strictly increasing or decreasing`` on EVERY ionized
-shell solve. That error is raised by scipy's GLOBAL dense-output container
-(``OdeSolution``), which is only built when ``dense_output=True`` and which
-rejects the duplicate internal breakpoints LSODA produces when its step collapses
-in the stiff ionization-front layer (the "t + h = t" regime).
+``capture_replay.py`` showed the bubble-precedent call
+``solve_ivp('LSODA', t_eval=grid, dense_output=True)`` crashes on every ionized
+shell solve (``ValueError: `ts` must be strictly increasing``) because the
+micro-scale grid collapses LSODA's internal breakpoints. This harness pins down
+the production-faithful configs AND measures wall time, AND tests an
+out-of-the-box idea: a terminal EVENT at the ionization front so the integrator
+stops at phi<=1e-9 and never enters the float64-overflow tail that the fixed 1k
+grid otherwise integrates and then discards.
 
-That left the production-faithful configurations untested. This harness captures
-each real in-run shell solve ONCE and replays it through several integrator
-configurations, so we learn WHICH (if any) reproduces odeint without failing:
+It captures each real in-run shell solve ONCE and replays it through:
 
-  V_lsoda_teval   solve_ivp('LSODA', t_eval=grid)                 # no dense_output
-  V_lsoda_dense   solve_ivp('LSODA', dense_output=True); sol.sol(grid)   # bubble style
+  V_lsoda_teval   solve_ivp('LSODA', t_eval=grid)                  # the recommended drop-in
+  V_lsoda_event   solve_ivp('LSODA', t_eval=grid, events=phi-1e-9) # stop at the I-front
+  V_lsoda_dense   solve_ivp('LSODA', dense_output=True); sol.sol(grid)
   V_radau_teval   solve_ivp('Radau', t_eval=grid)
   V_bdf_teval     solve_ivp('BDF',   t_eval=grid)
-  V_odeint_hi     odeint(..., mxstep=50000)                       # Option-B evidence
+  V_odeint_hi     odeint(..., mxstep=50000)                        # Option-B noise fix
 
-All solve_ivp variants use rtol=atol=1.49012e-8 (odeint's defaults). Every variant
-is compared against the DEFAULT odeint result (the production baseline) on the same
-(func, y0, grid, args): max relative difference per state variable + the physically
-used last grid point. Fortran LSODA fd-chatter and Python warnings are counted per
-variant.
+Every solve_ivp variant uses rtol=atol=1.49012e-8 (odeint defaults). Accuracy is
+compared against the baseline odeint result on the PHYSICALLY-USED prefix only
+(up to phi-depletion / first non-finite row; production truncates there at idx).
+Wall time is the MIN of TIMING_REPS bare solver calls (no fd/warns capture).
+
+front-event verification: per call we also record idx_phi = first index where the
+BASELINE odeint phi <= 1e-9. If idx_phi is small and matches the event stop, the
+slice is phi-limited and the event restructure is valid; if phi never depletes in
+a slice (idx_phi = -1) the slice is mass-limited and a phi-event alone is
+insufficient (would need cumulative mass carried as an ODE state).
 
 REPRODUCE
 ---------
     cd /home/user/trinity
-    python docs/dev/shell-solver/harness/capture_replay_variants.py
+    python docs/dev/shell-solver/harness/capture_replay_variants.py          # sfe=0.3 (param/simple_cluster.param)
+    python docs/dev/shell-solver/harness/capture_replay_variants.py 0.6      # sfe override -> temp param
 
-Writes docs/dev/shell-solver/data/replay_variants.csv  (long format: one row per
-captured call x variant). Authored env: python 3.11.15, numpy 1.26.4, scipy 1.17.1.
+Writes docs/dev/shell-solver/data/replay_variants_sfe<sfe>.csv (long format:
+one row per captured call x variant). Authored env: python 3.11.15, numpy
+1.26.4, scipy 1.17.1.
 """
 
 import os
 import sys
 import csv
 import time
-import warnings
 import tempfile
+import warnings
 import contextlib
 from pathlib import Path
 
@@ -57,18 +65,22 @@ if str(TRINITY_ROOT) not in sys.path:
 
 DATA_DIR = TRINITY_ROOT / "docs" / "dev" / "shell-solver" / "data"
 DATA_DIR.mkdir(parents=True, exist_ok=True)
-CSV_PATH = DATA_DIR / "replay_variants.csv"
-PARAM_FILE = TRINITY_ROOT / "param" / "simple_cluster.param"
+BASE_PARAM = TRINITY_ROOT / "param" / "simple_cluster.param"
 
-MAX_CAPTURES = 40        # a few more than the first run, to try to reach the neutral region
+MAX_CAPTURES = 40
 HARD_TIMEOUT_S = 300.0
-RTOL = 1.49012e-8        # scipy.integrate.odeint defaults
+RTOL = 1.49012e-8
 ATOL = 1.49012e-8
+TIMING_REPS = 5
+PHI_THRESH = 1e-9  # matches shell_structure.py:173 phiCondition
 
 _LSODA_MARKERS = ("lsoda", "t + h = t", "t+h=t", "excess work", "intdy")
 _REAL_ODEINT = scipy.integrate.odeint
 _rows = []
 _start_time = None
+_SFE = None
+_CONFIG_PATH = None
+_PARAM_FILE = BASE_PARAM
 
 
 class _CaptureDone(Exception):
@@ -83,8 +95,7 @@ class _HostTimeout(Exception):
 def _fd_capture():
     sys.stdout.flush()
     sys.stderr.flush()
-    saved_out = os.dup(1)
-    saved_err = os.dup(2)
+    saved_out, saved_err = os.dup(1), os.dup(2)
     tmp = tempfile.TemporaryFile(mode="w+b")
     captured = {"text": ""}
     try:
@@ -124,36 +135,39 @@ def _max_rel_diff(a, b):
 
 
 def _phys_cutoff(od, n_state):
-    """Index of the physically-USED prefix of a shell-slice solution.
-
-    The fixed slice grid runs far past the ionization front, where the n^2
-    stiffness makes n blow up to inf/nan (this is what makes odeint report
-    "excess work"). Production discards everything past the first index where
-    phi depletes (<=1e-9) or mass is swept; here we approximate that physical
-    truncation with the phi-depletion crossing (ionized) and the first
-    non-finite row, whichever comes first. Only this prefix is meaningful to
-    compare. Returns at least 2."""
+    """Index of the physically-USED prefix (phi-depletion / first non-finite row,
+    whichever first); production discards everything past it. Returns >= 2."""
     od = np.asarray(od, dtype=float)
     finite_rows = np.isfinite(od).all(axis=1)
     cut = len(od) if finite_rows.all() else int(np.argmax(~finite_rows))
-    if n_state == 3:  # ionized: phi is column 1
-        below = np.where(od[:, 1] <= 1e-9)[0]
+    if n_state == 3:
+        below = np.where(od[:, 1] <= PHI_THRESH)[0]
         if below.size:
             cut = min(cut, int(below[0]) + 1)
     return max(cut, 2)
 
 
+def _idx_phi(od, n_state):
+    """First index where baseline phi <= threshold (ionized only); -1 if never."""
+    if n_state != 3:
+        return -1
+    below = np.where(np.asarray(od, dtype=float)[:, 1] <= PHI_THRESH)[0]
+    return int(below[0]) if below.size else -1
+
+
 def _compare(od, y, n_state):
-    """Compare a variant solution y against the baseline odeint od on the
-    physically-used prefix only, masking any non-finite rows. Returns
-    (rel dict, endpoint-rel dict, shapes_match, cutoff_idx, n_common_finite)."""
     rel = {"n": np.nan, "phi": np.nan, "tau": np.nan}
     endp = {"n": np.nan, "phi": np.nan, "tau": np.nan}
-    if y is None or np.asarray(y).shape != np.asarray(od).shape:
-        return rel, endp, False, -1, 0
     od = np.asarray(od, dtype=float)
+    if y is None:
+        return rel, endp, False, -1, 0
     y = np.asarray(y, dtype=float)
-    cut = _phys_cutoff(od, n_state)
+    # event variant returns a SHORT array (stops at the front); compare on the
+    # overlapping prefix rather than requiring identical shape.
+    m = min(len(od), len(y))
+    if m < 2 or y.shape[1] != od.shape[1]:
+        return rel, endp, False, -1, 0
+    cut = min(_phys_cutoff(od, n_state), m)
     odc, yc = od[:cut], y[:cut]
     common = np.isfinite(odc).all(axis=1) & np.isfinite(yc).all(axis=1)
     cols = ("n", "phi", "tau") if n_state == 3 else ("n", "tau")
@@ -165,81 +179,119 @@ def _compare(od, y, n_state):
     return rel, endp, True, cut, int(common.sum())
 
 
-def _run_variant(name, func, y0, t, args, od_ref, n_state):
-    """Run one integrator configuration; return a result row dict (without the
-    per-call identity columns, which the caller adds)."""
+def _time_call(thunk):
+    """Min wall time (s) over TIMING_REPS bare calls; np.nan if it raises."""
+    best = np.inf
+    for _ in range(TIMING_REPS):
+        t0 = time.perf_counter()
+        try:
+            thunk()
+        except Exception:  # noqa: BLE001 - failing variants still get a (fast) time
+            return np.nan
+        best = min(best, time.perf_counter() - t0)
+    return best
+
+
+def _solve(name, func, y0, t, args, is_ionised):
+    """Run one configuration once; return (y_or_None, success, status, message,
+    error, n_pts_out, event_fired, event_r)."""
     fun = lambda r, y: np.asarray(func(y, r, *args))  # noqa: E731  odeint(y,t)->ivp(t,y)
     t0, t1 = float(t[0]), float(t[-1])
     y0 = np.asarray(y0, dtype=float)
-    success = False
-    status = -99
-    message = ""
-    error = ""
-    y = None
-    n_pts_out = -1
-
+    teval = np.asarray(t, dtype=float)
+    event_fired, event_r = 0, np.nan
     try:
-        with warnings.catch_warnings(record=True) as wlist:
-            warnings.simplefilter("always")
-            with _fd_capture() as chatter:
-                if name == "V_odeint_hi":
-                    y = _REAL_ODEINT(func, y0, t, args=args, mxstep=50000)
-                    success = True
-                    status = 0
-                    n_pts_out = len(y)
-                elif name == "V_lsoda_dense":
-                    sol = scipy.integrate.solve_ivp(
-                        fun, (t0, t1), y0, method="LSODA",
-                        dense_output=True, rtol=RTOL, atol=ATOL)
-                    success = bool(sol.success)
-                    status = int(sol.status)
-                    message = str(sol.message)
-                    y = sol.sol(np.asarray(t, dtype=float)).T if sol.sol is not None else None
-                    n_pts_out = -1 if y is None else len(y)
-                else:
-                    method = {"V_lsoda_teval": "LSODA",
-                              "V_radau_teval": "Radau",
-                              "V_bdf_teval": "BDF"}[name]
-                    sol = scipy.integrate.solve_ivp(
-                        fun, (t0, t1), y0, method=method,
-                        t_eval=np.asarray(t, dtype=float),
-                        rtol=RTOL, atol=ATOL)
-                    success = bool(sol.success)
-                    status = int(sol.status)
-                    message = str(sol.message)
-                    y = sol.y.T
-                    n_pts_out = len(y)
-        lsoda_lines = _count_lsoda_lines(chatter())
-        py_warns = len(wlist)
+        if name == "V_odeint_hi":
+            y = _REAL_ODEINT(func, y0, t, args=args, mxstep=50000)
+            return y, True, 0, "", "", len(y), event_fired, event_r
+        if name == "V_lsoda_dense":
+            sol = scipy.integrate.solve_ivp(
+                fun, (t0, t1), y0, method="LSODA", dense_output=True,
+                rtol=RTOL, atol=ATOL)
+            y = sol.sol(teval).T if sol.sol is not None else None
+            return y, bool(sol.success), int(sol.status), str(sol.message), "", \
+                (-1 if y is None else len(y)), event_fired, event_r
+        if name == "V_lsoda_event":
+            if is_ionised:
+                def phi_event(r, y):
+                    return y[1] - PHI_THRESH
+                phi_event.terminal = True
+                phi_event.direction = -1
+                events = phi_event
+            else:
+                events = None  # neutral region has no phi; falls back to t_eval
+            sol = scipy.integrate.solve_ivp(
+                fun, (t0, t1), y0, method="LSODA", t_eval=teval,
+                events=events, rtol=RTOL, atol=ATOL)
+            if events is not None and sol.t_events is not None and len(sol.t_events[0]):
+                event_fired = 1
+                event_r = float(sol.t_events[0][0])
+            return sol.y.T, bool(sol.success), int(sol.status), str(sol.message), "", \
+                len(sol.y.T), event_fired, event_r
+        method = {"V_lsoda_teval": "LSODA", "V_radau_teval": "Radau",
+                  "V_bdf_teval": "BDF"}[name]
+        sol = scipy.integrate.solve_ivp(
+            fun, (t0, t1), y0, method=method, t_eval=teval, rtol=RTOL, atol=ATOL)
+        return sol.y.T, bool(sol.success), int(sol.status), str(sol.message), "", \
+            len(sol.y.T), event_fired, event_r
     except Exception as exc:  # noqa: BLE001
-        error = f"{type(exc).__name__}: {exc}"
-        lsoda_lines = -1
-        py_warns = -1
+        return None, False, -99, "", f"{type(exc).__name__}: {exc}", -1, event_fired, event_r
+
+
+def _thunk(name, func, y0, t, args, is_ionised):
+    """A bare (no-capture) callable of the solve, for timing."""
+    fun = lambda r, y: np.asarray(func(y, r, *args))  # noqa: E731
+    t0, t1 = float(t[0]), float(t[-1])
+    y0a = np.asarray(y0, dtype=float)
+    teval = np.asarray(t, dtype=float)
+    if name == "V_odeint_hi":
+        return lambda: _REAL_ODEINT(func, y0, t, args=args, mxstep=50000)
+    if name == "V_lsoda_dense":
+        def _c():
+            s = scipy.integrate.solve_ivp(fun, (t0, t1), y0a, method="LSODA",
+                                          dense_output=True, rtol=RTOL, atol=ATOL)
+            _ = s.sol(teval) if s.sol is not None else None
+        return _c
+    if name == "V_lsoda_event" and is_ionised:
+        def pe(r, y):
+            return y[1] - PHI_THRESH
+        pe.terminal = True
+        pe.direction = -1
+        return lambda: scipy.integrate.solve_ivp(fun, (t0, t1), y0a, method="LSODA",
+                                                  t_eval=teval, events=pe,
+                                                  rtol=RTOL, atol=ATOL)
+    method = {"V_lsoda_teval": "LSODA", "V_lsoda_event": "LSODA",
+              "V_radau_teval": "Radau", "V_bdf_teval": "BDF"}[name]
+    return lambda: scipy.integrate.solve_ivp(fun, (t0, t1), y0a, method=method,
+                                             t_eval=teval, rtol=RTOL, atol=ATOL)
+
+
+_VARIANTS = ("V_lsoda_teval", "V_lsoda_event", "V_lsoda_dense",
+             "V_radau_teval", "V_bdf_teval", "V_odeint_hi")
+
+
+def _run_variant(name, func, y0, t, args, od_ref, n_state, is_ionised):
+    with warnings.catch_warnings(record=True) as wlist:
+        warnings.simplefilter("always")
+        with _fd_capture() as chatter:
+            y, success, status, message, error, n_out, ev_fired, ev_r = \
+                _solve(name, func, y0, t, args, is_ionised)
+    lsoda = _count_lsoda_lines(chatter()) if error == "" else -1
+    pyw = len(wlist) if error == "" else -1
+    t_ms = _time_call(_thunk(name, func, y0, t, args, is_ionised)) * 1e3
 
     rel, endp, shapes_match, cutoff, n_common = _compare(od_ref, y, n_state)
     return {
-        "variant": name,
-        "success": int(bool(success)),
-        "status": status,
-        "shapes_match": int(shapes_match),
-        "cutoff_idx": cutoff,
-        "n_common_finite": n_common,
-        "n_pts_out": n_pts_out,
-        "lsoda_warns": lsoda_lines,
-        "py_warns": py_warns,
-        "max_rel_diff_n": rel["n"],
-        "max_rel_diff_phi": rel["phi"],
-        "max_rel_diff_tau": rel["tau"],
-        "endpoint_rel_diff_n": endp["n"],
-        "endpoint_rel_diff_phi": endp["phi"],
-        "endpoint_rel_diff_tau": endp["tau"],
-        "message": message,
-        "error": error,
+        "variant": name, "success": int(bool(success)), "status": status,
+        "shapes_match": int(shapes_match), "cutoff_idx": cutoff,
+        "n_common_finite": n_common, "n_pts_out": n_out,
+        "event_fired": ev_fired, "event_r": ev_r,
+        "time_ms": t_ms, "lsoda_warns": lsoda, "py_warns": pyw,
+        "max_rel_diff_n": rel["n"], "max_rel_diff_phi": rel["phi"],
+        "max_rel_diff_tau": rel["tau"], "endpoint_rel_diff_n": endp["n"],
+        "endpoint_rel_diff_phi": endp["phi"], "endpoint_rel_diff_tau": endp["tau"],
+        "message": message, "error": error,
     }
-
-
-_VARIANTS = ("V_lsoda_teval", "V_lsoda_dense", "V_radau_teval",
-             "V_bdf_teval", "V_odeint_hi")
 
 
 def _patched_odeint(func, y0, t, args=(), **kwargs):
@@ -253,57 +305,80 @@ def _patched_odeint(func, y0, t, args=(), **kwargs):
         raise _CaptureDone()
 
     call_idx = n_calls
-    # Baseline: the REAL production odeint result (default mxstep), with warning capture.
     with warnings.catch_warnings(record=True) as base_warns:
         warnings.simplefilter("always")
         with _fd_capture() as base_chatter:
             od_ref = _REAL_ODEINT(func, y0, t, args=args, **kwargs)
     base_lsoda = _count_lsoda_lines(base_chatter())
     base_py = len(base_warns)
+    base_t_ms = _time_call(lambda: _REAL_ODEINT(func, y0, t, args=args, **kwargs)) * 1e3
 
     n_state = np.asarray(od_ref).shape[1]
     is_ionised = bool(args[1]) if len(args) >= 2 else (n_state == 3)
+    idx_phi = _idx_phi(od_ref, n_state)
 
     for vname in _VARIANTS:
-        res = _run_variant(vname, func, y0, t, args, od_ref, n_state)
+        res = _run_variant(vname, func, y0, t, args, od_ref, n_state, is_ionised)
         res.update({
-            "call_idx": call_idx,
-            "is_ionised": int(is_ionised),
-            "n_state": n_state,
-            "n_pts": int(len(t)),
-            "r_start": float(t[0]),
-            "r_stop": float(t[-1]),
+            "call_idx": call_idx, "is_ionised": int(is_ionised), "n_state": n_state,
+            "n_pts": int(len(t)), "r_start": float(t[0]), "r_stop": float(t[-1]),
+            "idx_phi": idx_phi,
+            "baseline_odeint_time_ms": base_t_ms,
             "baseline_odeint_lsoda_warns": base_lsoda,
             "baseline_odeint_py_warns": base_py,
+            "speedup_vs_odeint": (base_t_ms / res["time_ms"]
+                                  if res["time_ms"] and not np.isnan(res["time_ms"])
+                                  and res["time_ms"] > 0 else np.nan),
         })
         _rows.append(res)
 
-    ok = {r["variant"]: r["success"] for r in _rows if r["call_idx"] == call_idx}
+    speeds = {r["variant"]: r["speedup_vs_odeint"]
+              for r in _rows if r["call_idx"] == call_idx}
     print(f"[capture {call_idx + 1}/{MAX_CAPTURES}] ion={int(is_ionised)} "
-          f"npts={len(t)} base_pywarn={base_py} "
-          f"ok=" + ",".join(f"{k.split('_',1)[1]}:{v}" for k, v in ok.items()),
+          f"npts={len(t)} idx_phi={idx_phi} base={base_t_ms:.2f}ms "
+          f"teval_x={speeds.get('V_lsoda_teval', float('nan')):.2f} "
+          f"event_x={speeds.get('V_lsoda_event', float('nan')):.2f}",
           file=sys.stderr, flush=True)
     return od_ref
 
 
-def _write_csv():
+def _write_csv(csv_path):
     if not _rows:
         print("No captures; nothing written.", file=sys.stderr)
         return
     cols = ["call_idx", "is_ionised", "n_state", "n_pts", "r_start", "r_stop",
-            "variant", "success", "status", "shapes_match", "cutoff_idx",
-            "n_common_finite", "n_pts_out",
+            "idx_phi", "variant", "success", "status", "shapes_match",
+            "cutoff_idx", "n_common_finite", "n_pts_out", "event_fired", "event_r",
+            "baseline_odeint_time_ms", "time_ms", "speedup_vs_odeint",
             "baseline_odeint_lsoda_warns", "baseline_odeint_py_warns",
             "lsoda_warns", "py_warns",
             "max_rel_diff_n", "max_rel_diff_phi", "max_rel_diff_tau",
             "endpoint_rel_diff_n", "endpoint_rel_diff_phi", "endpoint_rel_diff_tau",
             "message", "error"]
-    with open(CSV_PATH, "w", newline="") as fh:
+    with open(csv_path, "w", newline="") as fh:
         w = csv.DictWriter(fh, fieldnames=cols)
         w.writeheader()
         for r in _rows:
             w.writerow({c: r.get(c, "") for c in cols})
-    print(f"\nWrote {len(_rows)} rows -> {CSV_PATH}", file=sys.stderr)
+    print(f"\nWrote {len(_rows)} rows -> {csv_path}", file=sys.stderr)
+
+
+def _make_param():
+    """Return the param path to drive. Priority: an explicit param-file arg
+    (used as-is) > an SFE override (writes a temp param over simple_cluster) >
+    the base simple_cluster param."""
+    global _PARAM_FILE
+    if _CONFIG_PATH is not None:
+        _PARAM_FILE = _CONFIG_PATH
+        return _CONFIG_PATH
+    if _SFE is None:
+        _PARAM_FILE = BASE_PARAM
+        return BASE_PARAM
+    tmp = tempfile.NamedTemporaryFile(mode="w", suffix=".param", delete=False)
+    tmp.write(f"mCloud    1e5\nsfe    {_SFE}\n")
+    tmp.close()
+    _PARAM_FILE = Path(tmp.name)
+    return _PARAM_FILE
 
 
 def _drive_host_run():
@@ -312,7 +387,7 @@ def _drive_host_run():
     from trinity._input import read_param
     from trinity.cloud_properties.validate_gmc import validate_gmc_from_params
     from trinity import main
-    params = read_param.read_param(str(PARAM_FILE))
+    params = read_param.read_param(str(_make_param()))
     gmc_check = validate_gmc_from_params(params)
     if not gmc_check.valid:
         raise RuntimeError("GMC validation failed: " + "; ".join(gmc_check.errors))
@@ -320,10 +395,25 @@ def _drive_host_run():
 
 
 def main():
+    global _SFE, _CONFIG_PATH
+    if len(sys.argv) > 1:
+        arg = sys.argv[1]
+        if Path(arg).exists():
+            _CONFIG_PATH = Path(arg)
+        else:
+            _SFE = float(arg)  # bare number -> sfe override on simple_cluster
+    if _CONFIG_PATH is not None:
+        tag = _CONFIG_PATH.stem
+    elif _SFE is not None:
+        tag = f"sfe{_SFE:g}"
+    else:
+        tag = "sfe0.3"
+    csv_path = DATA_DIR / f"replay_variants_{tag}.csv"
+
     print("=" * 70, file=sys.stderr)
-    print("shell-solver VARIANT capture-and-replay", file=sys.stderr)
+    print(f"shell-solver VARIANT + TIMING + EVENT  (config={tag})", file=sys.stderr)
     print(f"  python {sys.version.split()[0]}  numpy {np.__version__}  "
-          f"scipy {scipy.__version__}", file=sys.stderr)
+          f"scipy {scipy.__version__}  timing_reps={TIMING_REPS}", file=sys.stderr)
     print(f"  variants: {', '.join(_VARIANTS)}", file=sys.stderr)
     print("=" * 70, file=sys.stderr)
 
@@ -341,30 +431,40 @@ def main():
               f"{len({r['call_idx'] for r in _rows})} captured.", file=sys.stderr)
     finally:
         scipy.integrate.odeint = _REAL_ODEINT
-        _write_csv()
+        if _SFE is not None and _PARAM_FILE.exists():
+            try:
+                _PARAM_FILE.unlink()
+            except OSError:
+                pass
+        _write_csv(csv_path)
 
     if _rows:
         import logging
         logging.disable(logging.NOTSET)
         n_calls = len({r["call_idx"] for r in _rows})
         n_ion = len({r["call_idx"] for r in _rows if r["is_ionised"]})
+        base = [r["baseline_odeint_time_ms"] for r in _rows
+                if r["variant"] == "V_lsoda_teval"]
+        base_med = sorted(base)[len(base) // 2] if base else float("nan")
+        idxp = [r["idx_phi"] for r in _rows if r["variant"] == "V_lsoda_teval"]
         print("\n" + "=" * 70, file=sys.stderr)
-        print(f"SUMMARY  ({n_calls} calls: ionised={n_ion}, neutral={n_calls - n_ion})",
+        print(f"SUMMARY {tag}  ({n_calls} calls: ion={n_ion}, neu={n_calls - n_ion})",
               file=sys.stderr)
+        print(f"  baseline odeint time: median {base_med:.3f} ms/call", file=sys.stderr)
+        print(f"  idx_phi (phi-depletion row): min={min(idxp)} max={max(idxp)} "
+              f"(of ~1000; -1=never)", file=sys.stderr)
         for v in _VARIANTS:
             vr = [r for r in _rows if r["variant"] == v]
             nok = sum(r["success"] for r in vr)
             rels = [r["max_rel_diff_n"] for r in vr
                     if r["success"] and not np.isnan(r["max_rel_diff_n"])]
             worst = f"{max(rels):.2e}" if rels else "n/a"
-            lsoda = sum(r["lsoda_warns"] for r in vr if r["lsoda_warns"] >= 0)
-            pyw = sum(r["py_warns"] for r in vr if r["py_warns"] >= 0)
-            print(f"  {v:16s} ok={nok}/{len(vr)}  worst_rel_n={worst:>9s}  "
-                  f"lsoda_lines={lsoda}  py_warns={pyw}", file=sys.stderr)
-        base_py = sum({r["call_idx"]: r["baseline_odeint_py_warns"]
-                       for r in _rows}.values())
-        print(f"  baseline odeint py-warns (excess-work), summed over calls: {base_py}",
-              file=sys.stderr)
+            sp = [r["speedup_vs_odeint"] for r in vr
+                  if not np.isnan(r["speedup_vs_odeint"])]
+            sp_med = f"{sorted(sp)[len(sp)//2]:.2f}x" if sp else "n/a"
+            evf = sum(r["event_fired"] for r in vr)
+            print(f"  {v:16s} ok={nok:2d}/{len(vr)}  speedup~{sp_med:>6s}  "
+                  f"worst_rel_n={worst:>9s}  event_fired={evf}", file=sys.stderr)
         print("=" * 70, file=sys.stderr)
 
 
