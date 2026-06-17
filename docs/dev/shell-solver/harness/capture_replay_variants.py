@@ -432,6 +432,14 @@ def main():
         tag = f"{tag}_{_FROM_PHASE}"
     csv_path = DATA_DIR / f"replay_variants_{tag}.csv"
 
+    # If an outer `timeout` kills us mid-gated-run, still flush what we captured.
+    import signal
+
+    def _on_term(signum, frame):
+        _write_csv(csv_path)
+        os._exit(143)
+    signal.signal(signal.SIGTERM, _on_term)
+
     print("=" * 70, file=sys.stderr)
     print(f"shell-solver VARIANT + TIMING + EVENT  (config={tag})", file=sys.stderr)
     print(f"  python {sys.version.split()[0]}  numpy {np.__version__}  "
