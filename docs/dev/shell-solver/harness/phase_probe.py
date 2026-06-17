@@ -1,18 +1,28 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Phase/time probe: WHERE in the run do the first MAX_PROBE shell-structure ODE
-solves (the "/40" the variant harness captures) actually happen? Records the
-evolution phase + simulation time + calling phase-module for each shell solve,
-so we know whether the capture-replay evidence covers energy/implicit only, or
-also transition/momentum.
+Phase/time probe: WHERE in the run do the shell-structure ODE solves happen, and
+how many solves / how much wall time does it take to reach the implicit and
+transition phases? Answers "is the /40 capture enough?" and "can we get a solve
+into the transition phase?".
+
+For each shell solve it records the evolution phase (from params['current_phase']
+AND from the calling phase-module on the stack), the sim time t_now, and the
+wall-clock elapsed. It:
+  - prints a line to stderr EVERY TIME the phase changes (so you see
+    energy -> implicit -> transition -> momentum live), and
+  - appends every record to data/phase_map_<config>.csv, FLUSHED per row, so the
+    map survives even if a wall-time timeout kills the process.
 
 REPRODUCE
     cd /home/user/trinity
-    python docs/dev/shell-solver/harness/phase_probe.py [param-file]   # default: simple_cluster
+    PROBE_N=20000 python docs/dev/shell-solver/harness/phase_probe.py [param-file]
+    # default param: simple_cluster ; default PROBE_N: 40
 """
 import os
 import sys
+import csv
+import time
 import inspect
 from pathlib import Path
 from collections import Counter
@@ -24,9 +34,16 @@ TRINITY_ROOT = Path(__file__).resolve().parents[4]
 if str(TRINITY_ROOT) not in sys.path:
     sys.path.insert(0, str(TRINITY_ROOT))
 
-MAX_PROBE = int(os.environ.get("PROBE_N", "40"))  # how many shell solves to sample
+DATA_DIR = TRINITY_ROOT / "docs" / "dev" / "shell-solver" / "data"
+DATA_DIR.mkdir(parents=True, exist_ok=True)
+
+MAX_PROBE = int(os.environ.get("PROBE_N", "40"))
 _REAL = scipy.integrate.odeint
 _rec = []
+_t0 = None
+_last_phase = None
+_csv_fh = None
+_csv_w = None
 
 _PHASE_FILES = {
     "run_energy_phase.py": "energy",
@@ -49,11 +66,13 @@ def _caller_phase():
 
 
 def _patched(func, y0, t, args=(), **kw):
+    global _t0, _last_phase
+    if _t0 is None:
+        _t0 = time.time()
     if len(_rec) >= MAX_PROBE:
         raise _Done()
     params = args[2] if len(args) >= 3 else None
-    phase_field = ""
-    t_now = float("nan")
+    phase_field, t_now = "", float("nan")
     if params is not None:
         try:
             phase_field = params["current_phase"].value
@@ -63,15 +82,32 @@ def _patched(func, y0, t, args=(), **kw):
             t_now = float(params["t_now"].value)
         except Exception:
             pass
-    is_ion = bool(args[1]) if len(args) >= 2 else None
-    _rec.append({"idx": len(_rec), "caller_phase": _caller_phase(),
-                 "phase_field": phase_field, "t_now": t_now, "is_ion": is_ion})
+    caller = _caller_phase()
+    wall = time.time() - _t0
+    row = {"idx": len(_rec), "caller_phase": caller, "phase_field": phase_field,
+           "t_now": t_now, "wall_s": round(wall, 2),
+           "is_ion": int(bool(args[1])) if len(args) >= 2 else -1}
+    _rec.append(row)
+    _csv_w.writerow(row)
+    _csv_fh.flush()
+    phase = caller if caller != "?" else phase_field
+    if phase != _last_phase:
+        print(f"  PHASE -> {phase:11s} at solve #{len(_rec)-1}  "
+              f"t_now={t_now:.4e} Myr  wall={wall:.1f}s", file=sys.stderr, flush=True)
+        _last_phase = phase
     return _REAL(func, y0, t, args=args, **kw)
 
 
 def main():
+    global _csv_fh, _csv_w
     param = (Path(sys.argv[1]) if len(sys.argv) > 1
              else TRINITY_ROOT / "param" / "simple_cluster.param")
+    csv_path = DATA_DIR / f"phase_map_{param.stem}.csv"
+    _csv_fh = open(csv_path, "w", newline="")
+    _csv_w = csv.DictWriter(_csv_fh, fieldnames=["idx", "caller_phase",
+             "phase_field", "t_now", "wall_s", "is_ion"])
+    _csv_w.writeheader()
+
     import logging
     logging.disable(logging.CRITICAL)
     from trinity._input import read_param
@@ -83,27 +119,28 @@ def main():
     if not chk.valid:
         raise SystemExit("GMC invalid: " + "; ".join(chk.errors))
 
+    print(f"probing {param.name} (PROBE_N={MAX_PROBE}) -> {csv_path.name}",
+          file=sys.stderr, flush=True)
     scipy.integrate.odeint = _patched
     try:
         tmain.start_expansion(params)
-    except _Done:
-        pass
-    except SystemExit:
+    except (_Done, SystemExit):
         pass
     finally:
         scipy.integrate.odeint = _REAL
+        _csv_fh.flush()
+        _csv_fh.close()
 
     logging.disable(logging.NOTSET)
     by_caller = Counter(r["caller_phase"] for r in _rec)
-    by_field = Counter(r["phase_field"] for r in _rec)
     ts = [r["t_now"] for r in _rec if not np.isnan(r["t_now"])]
     print("=" * 64, file=sys.stderr)
-    print(f"phase probe: {param.name}  ({len(_rec)} shell solves captured)",
-          file=sys.stderr)
-    print(f"  by calling phase-module: {dict(by_caller)}", file=sys.stderr)
-    print(f"  by params['current_phase']: {dict(by_field)}", file=sys.stderr)
+    print(f"phase probe: {param.name}  ({len(_rec)} shell solves)", file=sys.stderr)
+    print(f"  shell solves per phase: {dict(by_caller)}", file=sys.stderr)
     if ts:
-        print(f"  t_now range: {min(ts):.6e} .. {max(ts):.6e} Myr", file=sys.stderr)
+        print(f"  t_now: {min(ts):.4e} .. {max(ts):.4e} Myr  "
+              f"(wall {_rec[-1]['wall_s']}s)", file=sys.stderr)
+    print(f"  full map -> {csv_path}", file=sys.stderr)
     print("=" * 64, file=sys.stderr)
 
 

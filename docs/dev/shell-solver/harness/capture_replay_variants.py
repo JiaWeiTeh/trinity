@@ -81,6 +81,11 @@ _start_time = None
 _SFE = None
 _CONFIG_PATH = None
 _PARAM_FILE = BASE_PARAM
+# Optional: skip captures until the run reaches this evolution phase
+# (energy/implicit/transition/momentum). Lets us sample a phase other than the
+# early energy phase, at the cost of running the host sim until it gets there.
+_FROM_PHASE = os.environ.get("FROM_PHASE") or None
+_armed = _FROM_PHASE is None
 
 
 class _CaptureDone(Exception):
@@ -295,7 +300,22 @@ def _run_variant(name, func, y0, t, args, od_ref, n_state, is_ionised):
 
 
 def _patched_odeint(func, y0, t, args=(), **kwargs):
-    global _start_time
+    global _start_time, _armed
+    if not _armed:
+        # Cheap phase gate (params['current_phase']); pass through until reached.
+        params = args[2] if len(args) >= 3 else None
+        ph = ""
+        if params is not None:
+            try:
+                ph = params["current_phase"].value
+            except Exception:
+                ph = ""
+        if ph == _FROM_PHASE:
+            _armed = True
+            print(f"[armed] reached phase '{ph}'; capturing {MAX_CAPTURES} solves",
+                  file=sys.stderr, flush=True)
+        else:
+            return _REAL_ODEINT(func, y0, t, args=args, **kwargs)
     if _start_time is None:
         _start_time = time.time()
     n_calls = len({r["call_idx"] for r in _rows})
@@ -408,6 +428,8 @@ def main():
         tag = f"sfe{_SFE:g}"
     else:
         tag = "sfe0.3"
+    if _FROM_PHASE:
+        tag = f"{tag}_{_FROM_PHASE}"
     csv_path = DATA_DIR / f"replay_variants_{tag}.csv"
 
     print("=" * 70, file=sys.stderr)
