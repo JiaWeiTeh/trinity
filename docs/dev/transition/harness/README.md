@@ -17,6 +17,10 @@ phase? **Not source — regenerable.** Canonical writeups:
   and the "does the transition fire before the first WR/SN surge?" structural test.
 - `heartbeat.py` — one-shot health check (RUN/DONE/CRASH + last `t_now`) of the
   background hybr runs; used by the polling monitor.
+- `probe_rcloud_live.py` — **P-promote sanity check** (~1 s, no full run): confirms
+  the live `params['rCloud'].value` is finite during phase 1b (so the F4 blowout
+  terminator fires), despite per-snapshot `dictionary.jsonl` showing `rCloud: null`
+  (a run-const serialization artifact). See `pshadow-design.md` §5.
 - `{mock_hybr,dense_flat,steep,steep_long}.param` — the four harvested configs.
 
 Data produced: `docs/dev/data/transition_{mock_hybr,dense_flat,steep,steep_long}.csv`.

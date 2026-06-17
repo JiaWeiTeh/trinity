@@ -113,6 +113,21 @@ caller first — plan §"ε is already a param".)
 4. **Continuity (P-promote gate):** at the blowout switch Eb/Rb/v2/P_drive hand off
    to 1c no more discontinuously than F0 (1c/2 drive on `max(Pb, P_HII+P_ram)`).
 
+**Status (P-promote, 2026-06-16):** tests 1–2 green from P-shadow; the live F0∨F4
+decision + validation are unit-tested (`test_transition_shadow.py`, 18 tests).
+Tests 3–4 (which need a real blowout run) move to **P-validate**.
+
+> ⚠️ **rCloud gotcha (verified 2026-06-16 — do not re-chase).** Every per-segment
+> record in `dictionary.jsonl` shows `rCloud: null`. This is a **serialization
+> artifact** — `rCloud` is a run-constant (`registry.py` `run_const=True`), written
+> once to `metadata.json` and nulled in per-snapshot lines. The **live**
+> `params['rCloud'].value` is finite (computed in phase0 `get_InitCloudProp`, before
+> 1b; e.g. **23.42 pc** for `tt_steep`), so the F4 terminator reads a real number
+> and fires once `R2` crosses it. Confirmed against the real run's `metadata.json`
+> and reproducible in ~1 s via `docs/dev/transition/harness/probe_rcloud_live.py`.
+> (The offline P0 harvest read `rCloud` from `metadata.json`, not the snapshots — so
+> its F4 epochs were always against the live value.)
+
 ## 6. Maintainer decisions — RESOLVED 2026-06-16 (implemented in P-promote)
 1. **Route blowout through 1c (Eb drain) like cooling_balance, or skip 1c → direct
    to momentum?** ✅ **Through 1c.** The `blowout` break leaves `EndSimulationDirectly`
