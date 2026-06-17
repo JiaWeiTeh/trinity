@@ -25,7 +25,7 @@
 > that produced each artifact.
 
 **About this document**  (last updated 2026-06-17 — the 🔄 banner *requires* refreshing this on every visit; it is a living doc, not frozen.)
-- **Status (verified 2026-06-17):** 🟠 **ACTIONABLE — but the motivation flipped.** Equivalence is settled: `solve_ivp(LSODA, t_eval)` reproduces `odeint` to ~1e-9–1e-8 across **6 configs / 4 regimes** (incl. the neutral region). **New, decisive finding from cross-regime timing: the migration is NOT a speedup** — `solve_ivp` is **slower** than `odeint` in every realistic regime (~4× for the drop-in), and the warning wall is **specific to the degenerate `simple_cluster` regime** (a code-unit overflow), not science runs. So this is a **robustness/cleanliness** change, not a performance one. Code change still not written. See §P0-results for the data and the reshaped recommendation.
+- **Status (verified 2026-06-17):** 🟠 **ACTIONABLE — but the motivation flipped.** Equivalence is settled: `solve_ivp(LSODA, t_eval)` reproduces `odeint` to **1.6e-10…1.0e-8 in all 12 cells** of a full 6-config × 2-phase (energy+implicit) matrix (incl. neutral solves; §P0-matrix). **New, decisive finding from cross-regime timing: the migration is NOT a speedup** — `solve_ivp` is **slower** than `odeint` in every realistic regime (~4× for the drop-in), and the warning wall is **specific to the degenerate `simple_cluster` regime** (a code-unit overflow), not science runs. So this is a **robustness/cleanliness** change, not a performance one. Code change still not written. See §P0-matrix for the master table and the reshaped recommendation.
 - **Type:** plan — phased migration of the shell-structure ODE integrator from `scipy.integrate.odeint` to `scipy.integrate.solve_ivp`, with the cross-regime equivalence + timing evidence that de-risks it embedded inline (P0).
 - **Workstream:** `shell-solver/` — the shell-structure micro-solver (`trinity/shell_structure/`), distinct from the already-migrated **bubble**-structure solver and from the betadelta/transition solver work.
 - **Where it sits:** entry point → **this** → (companion results/design docs to be spun out per §Phases if the work proceeds).
@@ -148,6 +148,47 @@ The fd-level **Fortran LSODA "t + h = t" chatter counter read 0 across all confi
 - The **unit-overflow root-cause** experiment above (could moot the migration).
 
 ---
+
+## P0-matrix — full config × phase × variant sweep (DONE, 2026-06-17)
+
+Reproducible master table from `run_matrix_sweep.sh` (6 configs, ~10-min matrix
+run each, capturing 15 solves per phase reached) → `aggregate_matrix.py` →
+`data/master_table.csv` + per-config `data/replay_variants_matrix_<config>.csv`.
+Every run reached **energy + implicit**; none reached transition/momentum within
+the 10-min budget (those phases sit beyond it — see scope note). `speedup =
+odeint_time / variant_time` (<1 = slower); `rel_n` = worst accuracy vs odeint on
+the physically-used prefix.
+
+| config | phase | calls (ion/neu) | odeint ms | excess-work | mass-lim | t_eval ok·speed·rel_n | event ok·speed·rel_n | Radau/BDF ok |
+|---|---|---|---|---|---|---|---|---|
+| sfe0.3 (CURRENT) | energy | 15 (15/0) | 7.15 | 100% | 0% | 15/15·0.10×·1.4e-9 | 15/15·**4.12×**·1.4e-9 | **0/15** · 0/15 |
+| sfe0.3 (CURRENT) | implicit | 15 (15/0) | 7.23 | 100% | 0% | 15/15·0.09×·3.9e-10 | 15/15·**5.65×**·3.9e-10 | **0/15** · 0/15 |
+| sfe0.6 | energy | 15 (15/0) | 7.04 | 100% | 0% | 15/15·0.09×·1.7e-9 | 15/15·4.11×·1.7e-9 | 0/15 · 0/15 |
+| sfe0.6 | implicit | 15 (15/0) | 7.01 | 100% | 0% | 15/15·0.09×·1.6e-10 | 15/15·5.65×·1.6e-10 | 0/15 · 0/15 |
+| typical | energy | 15 (15/0) | 1.14 | 20% | 0% | 15/15·0.25×·7.3e-9 | 15/15·0.47×·7.3e-9 | 12/15 · 12/15 |
+| typical | implicit | 15 (15/0) | 0.67 | 0% | 0% | 15/15·0.24×·1.3e-9 | 15/15·0.35×·1.3e-9 | 15/15 · 15/15 |
+| steep | energy | 15 (15/0) | 1.25 | 26% | 0% | 15/15·0.25×·9.8e-9 | 15/15·0.63×·9.8e-9 | 11/15 · 11/15 |
+| steep | implicit | 15 (**8/7**) | 0.80 | 0% | **46%** | 15/15·0.23×·3.5e-10 | 15/15·0.55×·3.5e-10 | 15/15 · 15/15 |
+| dense_flat | energy | 15 (15/0) | 1.15 | 26% | 0% | 15/15·0.26×·9.8e-9 | 15/15·0.65×·9.8e-9 | 11/15 · 11/15 |
+| dense_flat | implicit | 15 (**8/7**) | 0.75 | 0% | **46%** | 15/15·0.24×·3.5e-10 | 15/15·0.53×·3.5e-10 | 15/15 · 15/15 |
+| mock_hybr | energy | 15 (15/0) | 0.19 | 0% | **93%** | 15/15·0.17×·1.0e-8 | 15/15·0.14×·1.0e-8 | 15/15 · 15/15 |
+| mock_hybr | implicit | 15 (15/0) | 0.17 | 0% | **73%** | 15/15·0.17×·7.1e-9 | 15/15·0.14×·7.1e-9 | 15/15 · 15/15 |
+
+### Verified conclusions (every claim traces to `master_table.csv`)
+1. **Accuracy is universal.** `solve_ivp(LSODA, t_eval)` reproduces `odeint` to **1.6e-10 … 1.0e-8** in *every one of the 12 cells*, including the neutral solves. Equivalence is settled across configs **and** phases.
+2. **Two regime classes, sharply separated:**
+   - **Degenerate** (`simple_cluster` sfe0.3/0.6): `odeint` ~7 ms, excess-work **100%**, **Radau/BDF fail 0/15**, and the φ-event is **4–5.7× faster** — the *only* place any `solve_ivp` variant beats `odeint`. Phase-invariant (energy ≈ implicit).
+   - **Realistic** (`typical`/`steep`/`dense_flat`/`mock_hybr`): `odeint` 0.17–1.25 ms, excess-work ≤26%, Radau/BDF mostly succeed, and **every `solve_ivp` variant is slower** (event 0.14–0.65×).
+3. **Phase matters in the realistic regimes** (so "regime-not-phase" was too strong — good that we tested):
+   - Excess-work is an **early-energy** artifact: 20–26% in energy → **0% in implicit**.
+   - Radau/BDF robustness **improves** energy→implicit (11–12/15 → 15/15).
+   - `odeint` gets **faster** energy→implicit (e.g. 1.25→0.80 ms).
+   - **Neutral + mass-limited solves appear in implicit** for `steep`/`dense_flat` (8 ion / 7 neu, 46% mass-limited) but not energy; `mock_hybr` is mass-limited in both (93%/73%).
+4. **The front-event restructure is a niche win.** It helps *only* the degenerate regime, and only because it skips that regime's float64-overflow tail; it's a net loss in all four realistic regimes and can't even fire on the mass-limited/neutral solves that dominate `mock_hybr` and the `steep`/`dense_flat` implicit phase.
+
+### Scope still open
+- **Transition / momentum unreached** — the energy+implicit captures consume the 10-min budget; reaching transition needs a longer (multi-MATRIX_MAX_S) run. The `FROM_PHASE`/matrix machinery supports it; it's just compute time.
+- **Integration-level** equivalence (consumed scalars `n_IF_Str`, `F_rad` inputs) still pending — ODE-level `rel_n` is necessary, not sufficient.
 
 ## The production pattern to implement (adapted from the bubble precedent)
 
