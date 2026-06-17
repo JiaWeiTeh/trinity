@@ -39,7 +39,9 @@ run() {             # run <tag> <param-arg> <max_s> <n_transition>
 }
 
 # Bumps: 100 implicit samples, no transition seek, 25-min safety cap.
-run sfe0.6             0.6                                                    1500 0
+# sfe0.6 is degenerate (Radau/BDF grind ~14s/capture), so 100 implicit needs a
+# bigger cap than the realistic configs -- 45 min, like the sfe0.3 deep run.
+run sfe0.6             0.6                                                    2700 0
 run steep              docs/dev/transition/harness/steep.param               1500 0
 run dense_flat         docs/dev/transition/harness/dense_flat.param          1500 0
 run mock_hybr          docs/dev/transition/harness/mock_hybr.param           1500 0
