@@ -1,0 +1,6 @@
+config,fate,F0_cooling,F1_cum_eta0.3,F2_tcool_tdyn,F4_blowout,Eb_peak,retained_at_end,t_max
+mock 4e3 (legacy),energy-driven,0.089,never,0.004,never,0.094,0.442,0.094
+mock 4e3 (hybr),energy-driven,never,never,0.007,never,0.300,0.509,0.300
+dense-flat n1e5,transitions,0.197,0.197,0.003,never,0.197,0.292,0.210
+steep α−2 (1 Myr),stall,never,never,0.003,never,1.000,0.346,1.000
+steep α−2 (4 Myr),blowout,never,never,0.003,2.728,4.000,0.442,4.000
