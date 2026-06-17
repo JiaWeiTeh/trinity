@@ -151,6 +151,13 @@ The fd-level **Fortran LSODA "t + h = t" chatter counter read 0 across all confi
 
 ## P0-matrix — full config × phase × variant sweep (DONE, 2026-06-17)
 
+> 🔄 **Redo in progress (2026-06-17):** re-running with a sample target of **100
+> solves *in the implicit phase*** per config (the diagnostic is samples taken in
+> a phase, not wall time spent reaching it), and a deep `sfe0.3` run that also
+> seeks the transition phase. The tables below show the first 15-sample pass and
+> will be regenerated (with an explicit CURRENT-DEFAULT row, all context columns
+> kept) via `aggregate_matrix.py` when the redo lands.
+
 Reproducible master table from `run_matrix_sweep.sh` (6 configs, ~10-min matrix
 run each, capturing 15 solves per phase reached) → `aggregate_matrix.py` →
 `data/master_table.csv` + per-config `data/replay_variants_matrix_<config>.csv`.

@@ -171,19 +171,30 @@ def render_by_variant(rows):
 
 
 def render_long(cells):
-    """Full long table: one row per config x phase x variant."""
+    """Comprehensive table: one row per config x phase x variant, keeping the
+    per-cell context columns AND an explicit CURRENT-DEFAULT row (the baseline
+    `odeint` the production code uses today = LSODA over the full grid, the 1.00x
+    reference). Nothing dropped vs the context view."""
     out = []
-    out.append("| config | phase | variant | solver | stopping | ok | "
-               "speedup | worst rel_n | event_fired |")
-    out.append("|---|---|---|---|---|---|---|---|---|")
+    out.append("| config | phase | ion/neu | odeint ms | excess-work | mass-lim | "
+               "variant (solver · stopping) | ok | speed | worst rel_n | ev_fired |")
+    out.append("|---|---|---|---|---|---|---|---|---|---|---|")
     for (config, phase), c in cells.items():
+        ctx = (f"{c['n_ion']}/{c['n_neu']} | {c['odeint_ms_med']} | "
+               f"{int(c['excesswork_frac'] * 100)}% | "
+               f"{int(c['mass_limited_frac'] * 100)}%")
+        # CURRENT PRODUCTION DEFAULT: baseline odeint (LSODA, full grid). It is
+        # the reference, so speed = 1.00x and rel_n = 0 by definition.
+        out.append(f"| {config} | {phase} | {ctx} | "
+                   f"**odeint — CURRENT DEFAULT** (LSODA · full grid) | "
+                   f"{c['n_calls']}/{c['n_calls']} | 1.00× (ref) | 0 (ref) | 0 |")
         for v in VARIANTS:
             vm = c["variants"][v]
             solver, stop, label = VARIANT_META[v]
-            sp = f"{vm['speedup_med']}x" if vm["speedup_med"] != "" else "n/a"
-            out.append(f"| {config} | {phase} | {label} | {solver} | {stop} | "
-                       f"{vm['ok']}/{vm['n']} | {sp} | {vm['worst_rel_n'] or 'n/a'} | "
-                       f"{vm['event_fired']} |")
+            sp = f"{vm['speedup_med']}×" if vm["speedup_med"] != "" else "n/a"
+            out.append(f"| {config} | {phase} | {ctx} | "
+                       f"{label} ({solver} · {stop}) | {vm['ok']}/{vm['n']} | {sp} | "
+                       f"{vm['worst_rel_n'] or 'n/a'} | {vm['event_fired']} |")
     return "\n".join(out)
 
 
