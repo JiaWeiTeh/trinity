@@ -1,0 +1,12 @@
+model_name    val_steep_cob_hybr
+mCloud    1e6
+sfe    0.01
+dens_profile    densPL
+densPL_alpha    -2
+nCore    1e5
+rCore    1
+nISM    10
+stop_t    4.0
+log_level    WARNING
+betadelta_solver    hybr
+transition_trigger    cooling_or_blowout
