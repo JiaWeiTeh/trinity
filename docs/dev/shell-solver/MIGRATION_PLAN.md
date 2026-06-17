@@ -159,6 +159,26 @@ the 10-min budget (those phases sit beyond it — see scope note). `speedup =
 odeint_time / variant_time` (<1 = slower); `rel_n` = worst accuracy vs odeint on
 the physically-used prefix.
 
+### By variant — solver + stopping (regime-pooled, phases combined)
+
+The axis that matters most: which **solver** and which **stopping rule**, and how each fares in the degenerate vs realistic regimes. `speed` is pooled median, `ok` is successes / sampled solves.
+
+| variant | solver | stopping | degenerate (sfe0.3/0.6) ok·speed·rel_n | realistic (typ/steep/dense/mock) ok·speed·rel_n |
+|---|---|---|---|---|
+| LSODA + t_eval (drop-in) | LSODA | normal (full grid) | 60/60·0.09×·1.7e-9 | 120/120·0.23×·1.0e-8 |
+| **LSODA + front event** | LSODA | **SMART: stop at ion. front** | 60/60·**5.05×**·1.7e-9 | 120/120·0.43×·1.0e-8 |
+| LSODA + dense_output | LSODA | normal (dense interp) | 60/60·0.09×·1.7e-9 | 120/120·0.23×·1.0e-8 |
+| Radau | Radau | normal | **0/60**·n/a·n/a | 109/120·0.03×·1.7e-7 |
+| BDF | BDF | normal | **0/60**·n/a·n/a | 109/120·0.04×·1.4e-7 |
+| odeint mxstep=50k | LSODA (odeint) | normal, mxstep=50k | 60/60·0.17×·0 | 120/120·**1.00×**·0 |
+
+- **Only one variant ever beats the `odeint` baseline: `LSODA + front event`, and only in the degenerate regime (5.05× pooled).** In all four realistic configs it is *slower* (0.43×).
+- The faithful **drop-in (`LSODA + t_eval`) and `dense_output` are indistinguishable** (0.09× / 0.23×) — `dense_output` buys nothing here.
+- **Radau & BDF are the worst options**: they *fail outright* in the degenerate regime (0/60) and in realistic configs are ~25–30× slower (0.03–0.04×) **and** less accurate (rel_n ~1e-7 vs ~1e-8 for LSODA).
+- **`odeint(mxstep=50k)` is the free warning-silencer**: bit-identical results (rel_n = 0) at **1.00×** in realistic configs — raising the step ceiling costs nothing there; only 0.16–0.18× in the degenerate regime (the overflow tail makes the extra steps expensive). This is the cheap fix.
+
+### Context (config × phase)
+
 | config | phase | calls (ion/neu) | odeint ms | excess-work | mass-lim | t_eval ok·speed·rel_n | event ok·speed·rel_n | Radau/BDF ok |
 |---|---|---|---|---|---|---|---|---|
 | sfe0.3 (CURRENT) | energy | 15 (15/0) | 7.15 | 100% | 0% | 15/15·0.10×·1.4e-9 | 15/15·**4.12×**·1.4e-9 | **0/15** · 0/15 |
@@ -185,6 +205,9 @@ the physically-used prefix.
    - `odeint` gets **faster** energy→implicit (e.g. 1.25→0.80 ms).
    - **Neutral + mass-limited solves appear in implicit** for `steep`/`dense_flat` (8 ion / 7 neu, 46% mass-limited) but not energy; `mock_hybr` is mass-limited in both (93%/73%).
 4. **The front-event restructure is a niche win.** It helps *only* the degenerate regime, and only because it skips that regime's float64-overflow tail; it's a net loss in all four realistic regimes and can't even fire on the mass-limited/neutral solves that dominate `mock_hybr` and the `steep`/`dense_flat` implicit phase.
+5. **Solver/stopping ranking (see "By variant"):** `dense_output` ≡ `t_eval` (no benefit); **Radau/BDF are the worst** (fail 0/60 in degenerate, ~25–30× slower *and* less accurate in realistic); **`odeint(mxstep=50k)` is the only free option** (bit-identical, 1.00× in realistic) and is the recommended cheap fix to silence the warning without changing solver.
+
+Full per-cell detail (all 72 config × phase × variant rows) lives in `data/master_table.csv`; regenerate the rendered tables (by-variant digest, context, full long) with `python docs/dev/shell-solver/harness/aggregate_matrix.py`.
 
 ### Scope still open
 - **Transition / momentum unreached** — the energy+implicit captures consume the 10-min budget; reaching transition needs a longer (multi-MATRIX_MAX_S) run. The `FROM_PHASE`/matrix machinery supports it; it's just compute time.

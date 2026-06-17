@@ -28,6 +28,17 @@ PHASE_ORDER = {"energy": 0, "implicit": 1, "transition": 2, "momentum": 3, "": 9
 VARIANTS = ["V_lsoda_teval", "V_lsoda_event", "V_lsoda_dense",
             "V_radau_teval", "V_bdf_teval", "V_odeint_hi"]
 
+# variant -> (solver, stopping, human label)
+VARIANT_META = {
+    "V_lsoda_teval": ("LSODA", "normal (full grid)", "LSODA + t_eval (drop-in)"),
+    "V_lsoda_event": ("LSODA", "SMART: stop at ion. front", "LSODA + front event"),
+    "V_lsoda_dense": ("LSODA", "normal (dense interp)", "LSODA + dense_output"),
+    "V_radau_teval": ("Radau", "normal", "Radau"),
+    "V_bdf_teval":   ("BDF", "normal", "BDF"),
+    "V_odeint_hi":   ("LSODA (odeint)", "normal, mxstep=50k", "odeint mxstep=50k"),
+}
+DEGENERATE = {"sfe0.3", "sfe0.6"}  # simple_cluster overflow regime
+
 
 def _f(x):
     try:
@@ -134,6 +145,48 @@ def render_markdown(cells):
     return "\n".join(out)
 
 
+def render_by_variant(rows):
+    """Variant-first digest: each variant a row, split by regime class
+    (degenerate simple_cluster vs the 4 realistic configs), phases pooled."""
+    out = []
+    out.append("| variant | solver | stopping | degenerate (sfe0.3/0.6): "
+               "ok·speed·rel_n | realistic (typ/steep/dense/mock): ok·speed·rel_n |")
+    out.append("|---|---|---|---|---|")
+    for v in VARIANTS:
+        solver, stop, _ = VARIANT_META[v]
+        cells_txt = []
+        for cls in (DEGENERATE, None):  # None = realistic complement
+            vr = [r for r in rows if r["variant"] == v
+                  and ((r["_config"] in DEGENERATE) if cls else (r["_config"] not in DEGENERATE))]
+            ok = sum(1 for r in vr if r["success"] == "1")
+            sp = _med([_f(r["speedup_vs_odeint"]) for r in vr if r["success"] == "1"])
+            rel = [_f(r["max_rel_diff_n"]) for r in vr
+                   if r["success"] == "1" and not math.isnan(_f(r["max_rel_diff_n"]))]
+            worst = f"{max(rel):.1e}" if rel else "n/a"
+            sp_s = f"{sp:.2f}x" if not math.isnan(sp) else "n/a"
+            cells_txt.append(f"{ok}/{len(vr)}·{sp_s}·{worst}")
+        out.append(f"| {VARIANT_META[v][2]} | {solver} | {stop} | "
+                   f"{cells_txt[0]} | {cells_txt[1]} |")
+    return "\n".join(out)
+
+
+def render_long(cells):
+    """Full long table: one row per config x phase x variant."""
+    out = []
+    out.append("| config | phase | variant | solver | stopping | ok | "
+               "speedup | worst rel_n | event_fired |")
+    out.append("|---|---|---|---|---|---|---|---|---|")
+    for (config, phase), c in cells.items():
+        for v in VARIANTS:
+            vm = c["variants"][v]
+            solver, stop, label = VARIANT_META[v]
+            sp = f"{vm['speedup_med']}x" if vm["speedup_med"] != "" else "n/a"
+            out.append(f"| {config} | {phase} | {label} | {solver} | {stop} | "
+                       f"{vm['ok']}/{vm['n']} | {sp} | {vm['worst_rel_n'] or 'n/a'} | "
+                       f"{vm['event_fired']} |")
+    return "\n".join(out)
+
+
 def main():
     rows = load_rows()
     if not rows:
@@ -141,7 +194,12 @@ def main():
         return
     cells = aggregate(rows)
     write_master_csv(cells)
+    print("\n### by variant (solver + stopping, regime-pooled)\n")
+    print(render_by_variant(rows))
+    print("\n### context (config x phase)\n")
     print(render_markdown(cells))
+    print("\n### full (config x phase x variant)\n")
+    print(render_long(cells))
 
 
 if __name__ == "__main__":
