@@ -67,7 +67,7 @@ DATA_DIR = TRINITY_ROOT / "docs" / "dev" / "shell-solver" / "data"
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 BASE_PARAM = TRINITY_ROOT / "param" / "simple_cluster.param"
 
-MAX_CAPTURES = 40
+MAX_CAPTURES = int(os.environ.get("CAP_N", "40"))
 HARD_TIMEOUT_S = 300.0
 RTOL = 1.49012e-8
 ATOL = 1.49012e-8
