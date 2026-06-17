@@ -24,13 +24,13 @@
 > against the numbers **without re-running**; record the exact config + command
 > that produced each artifact.
 
-**About this document**
-- **Status (verified 2026-06-17):** 🔵 **ACTIONABLE** — P0 feasibility is **done and positive** (the right `solve_ivp` config reproduces `odeint` to ~1e-9 and silences the LSODA warning wall); the code change itself is **not yet written**. Two coverage gaps remain before promotion (neutral region, non-degenerate regime).
-- **Type:** plan — phased migration of the shell-structure ODE integrator from `scipy.integrate.odeint` to `scipy.integrate.solve_ivp`, with the equivalence evidence that de-risks it embedded inline (P0).
+**About this document**  (last updated 2026-06-17 — the 🔄 banner *requires* refreshing this on every visit; it is a living doc, not frozen.)
+- **Status (verified 2026-06-17):** 🟠 **ACTIONABLE — but the motivation flipped.** Equivalence is settled: `solve_ivp(LSODA, t_eval)` reproduces `odeint` to ~1e-9–1e-8 across **6 configs / 4 regimes** (incl. the neutral region). **New, decisive finding from cross-regime timing: the migration is NOT a speedup** — `solve_ivp` is **slower** than `odeint` in every realistic regime (~4× for the drop-in), and the warning wall is **specific to the degenerate `simple_cluster` regime** (a code-unit overflow), not science runs. So this is a **robustness/cleanliness** change, not a performance one. Code change still not written. See §P0-results for the data and the reshaped recommendation.
+- **Type:** plan — phased migration of the shell-structure ODE integrator from `scipy.integrate.odeint` to `scipy.integrate.solve_ivp`, with the cross-regime equivalence + timing evidence that de-risks it embedded inline (P0).
 - **Workstream:** `shell-solver/` — the shell-structure micro-solver (`trinity/shell_structure/`), distinct from the already-migrated **bubble**-structure solver and from the betadelta/transition solver work.
 - **Where it sits:** entry point → **this** → (companion results/design docs to be spun out per §Phases if the work proceeds).
 - **Code it concerns:** `trinity/shell_structure/shell_structure.py:156` & `:315` (the two `odeint` calls); `trinity/shell_structure/get_shellODE.py` (the RHS); the bubble precedent `trinity/bubble_structure/bubble_luminosity.py:106-166`.
-- **Linked files & data:** harnesses `docs/dev/shell-solver/harness/{capture_replay.py, capture_replay_variants.py, diagnose_first_call.py}`; data `docs/dev/shell-solver/data/{replay_comparison.csv, replay_variants.csv}`.
+- **Linked files & data:** harnesses `docs/dev/shell-solver/harness/{capture_replay.py, capture_replay_variants.py, diagnose_first_call.py}`; data `docs/dev/shell-solver/data/replay_comparison.csv` (30-row equivalence) + `replay_variants_{sfe0.3,sfe0.6,steep,dense_flat,mock_hybr,probe_typical_hybr}.csv` (timing+event, one per config). **Save/commit every new CSV — future sessions regenerate plots from these without re-running.**
 
 This plan was prompted by the **LSODA "t + h = t" / "Excess work done" warning wall** printed on a plain `python run.py param/simple_cluster.param`. The warnings are non-fatal (the run completes with all sanity checks passing), but they are noisy and they originate from the shell-structure `odeint` calls. The bubble-structure solver was already migrated `odeint → solve_ivp(LSODA, dense_output=True)` (CHANGELOG, PRs #666/#678); this plan asks whether the **same** move is correct for the shell solver, and pins down the exact call that works.
 Environment of record: **python 3.11.15, numpy 1.26.4, scipy 1.17.1.** Work branch: `claude/confident-knuth-pf0wsj`.
@@ -39,9 +39,10 @@ Environment of record: **python 3.11.15, numpy 1.26.4, scipy 1.17.1.** Work bran
 
 ## The question
 
-1. Does `solve_ivp` reproduce the shell `odeint` trajectory on the physically-used grid, within tolerance, on every captured call? **→ YES (≈1e-9), with the right config.**
-2. Does it silence the "Excess work" / "t + h = t" warning wall? **→ YES (0 warnings vs 40/40 for odeint).**
+1. Does `solve_ivp` reproduce the shell `odeint` trajectory on the physically-used grid, within tolerance, on every captured call, **in every regime**? **→ YES (1.4e-9 … 1.05e-8 across 6 configs / 4 regimes, incl. 7 neutral-region solves).**
+2. Does it silence the "Excess work" warning? **→ YES — but the warning is itself regime-specific: 40/40 calls in degenerate `simple_cluster`, only 0–4/40 in realistic low-sfe configs. There is little wall to silence in science runs.**
 3. What is the exact, safe call — and what breaks if you copy the bubble precedent verbatim? **→ `solve_ivp(method='LSODA', t_eval=rShell_arr)` WITHOUT `dense_output`. The bubble precedent's `dense_output=True` is a hard blocker here.**
+4. **Is it faster?** **→ NO.** `solve_ivp` is **slower than `odeint` in every realistic regime** (drop-in ~4× slower; the front-event trick is ~5× *faster* only in degenerate `simple_cluster`, and *slower* everywhere else). The migration buys robustness/cleanliness, not speed.
 
 ---
 
@@ -83,20 +84,52 @@ Two independent in-process **capture-and-replay** harnesses monkeypatch `scipy.i
 1. **`solve_ivp(LSODA, t_eval=rShell_arr)` is a faithful drop-in.** Worst per-variable agreement vs `odeint` over the consumed rows: `rel_n=1.42e-9`, `rel_phi=1.02e-8`, `tau` abs `5.9e-10` (the headline `rel_tau` is a denominator artifact at τ's zero-crossing); endpoint `rel_n=5.4e-11`, `rel_phi=2.6e-9`. **0** LSODA chatter lines, **0** python warnings, `status=0` on all calls.
 2. **`dense_output=True` is the trap.** With the micro-scale grid (step ~1.3e-8 pc) LSODA's internal breakpoints collide below float spacing, so scipy's global `OdeSolution` rejects them. The *integration* succeeds; only the dense-output **object** crashes. The bubble solver gets away with `dense_output=True` because its grid never reaches this micro-scale in the same way. **The shell migration must NOT copy that kwarg.** Since the shell downstream only reads values *at grid points*, `t_eval` alone is both sufficient and safe.
 3. **Radau/BDF are not drop-ins** — they stall in the stiff layer. LSODA's stiff/non-stiff switching is what makes it work; keep it.
-4. **Option B is genuinely free.** `odeint(mxstep=50000)` reproduces the physically-used prefix to **0.00e+00** (bit-identical) while removing the "Excess work" warning — proof the wall was pure tail noise, not a result-affecting convergence failure.
+4. **`odeint(mxstep=50000)` gives a bit-identical result (0.00e+00)** — proof the wall is pure discarded-tail noise, not a result-affecting convergence failure. **But it is NOT free in time** (see §P0-results #5: ~6× slower in the degenerate regime because it stops bailing and grinds the tail). The cheap noise fix is to *silence* the `ODEintWarning`, not raise `mxstep`.
 
-### Reproduce (no re-run needed to read conclusions — data is committed)
+## P0-results — Cross-regime timing + event sweep (DONE, 2026-06-17)
+
+The variant harness was extended with **per-call wall time** (min of 5 reps), a **terminal-event-at-the-front** variant (`solve_ivp` LSODA, `events=φ−1e-9`, stops at the ionization front so it never integrates the discarded tail), and an arbitrary-param override, then swept across **6 configs spanning 4 regimes** (40 captured shell solves each, first timesteps). One committed CSV per config. **All numbers below are measured, not assumed.**
+
+| config (`.param`) | profile / sfe | regime | odeint ms/call | excess-work warns | mass-limited slices | neutral solves | **event** speedup | drop-in (`t_eval`) speedup | worst `rel_n` |
+|---|---|---|---|---|---|---|---|---|---|
+| `simple_cluster` sfe0.3 | flat / 0.3 | **degenerate (overflow)** | 7.19 | **40/40** | 0/40 | 0 | **4.98× faster** | 0.09× (11× slower) | 1.42e-9 |
+| `simple_cluster` sfe0.6 | flat / 0.6 | degenerate | 7.06 | **40/40** | 0/40 | 0 | **4.97× faster** | 0.10× | 1.66e-9 |
+| `probe_typical_hybr` | flat / 0.01, nCore 1e3 | realistic | 0.82 | 3/40 | 0/40 | 0 | 0.43× (slower) | 0.25× | 7.3e-9 |
+| `steep` | **PL−2** / 0.01, nCore 1e5 | realistic, steep | 0.99 | 4/40 | **7/40** | **7** | 0.63× (slower) | 0.26× | 9.8e-9 |
+| `dense_flat` | flat / 0.01, nCore 1e5 | realistic | 1.01 | 4/40 | **7/40** | **7** | 0.62× (slower) | 0.26× | 9.8e-9 |
+| `mock_hybr` | flat / 0.0085, tiny 4e3 M☉ | realistic, tiny | 0.19 | 0/40 | **39/40** | 0 | 0.14× (slower) | 0.18× | 1.05e-8 |
+
+(speedup = `odeint_time / variant_time`; <1 means slower. `odeint(mxstep=50000)` measured too: 0.16–0.17× in the degenerate regime — *slower*, because it stops bailing and grinds the overflow tail — and 0.99–1.02× = free in realistic regimes; result change 0.00e+00 everywhere.)
+
+### Verified findings (each traces to a committed CSV)
+1. **Accuracy is excellent in every regime.** `solve_ivp(LSODA, t_eval)` reproduces `odeint` on the consumed prefix to **1.42e-9 … 1.05e-8**, including the **7 neutral-region (2-state) solves** in `steep`/`dense_flat`. The neutral-region and non-degenerate-regime gaps from the first P0 pass are now **closed** and positive.
+2. **The warning wall is regime-specific.** "Excess work" fires on **40/40** calls only in degenerate `simple_cluster`; it is 3–4/40 in `typical`/`steep`/`dense_flat` and **0/40** in `mock_hybr`. Realistic science configs barely warn.
+3. **The migration does not speed anything up.** In every realistic regime, `odeint` is **0.19–1.01 ms/call** and *every* `solve_ivp` variant is **slower** (drop-in ~4×; the event variant 0.14–0.63×). `solve_ivp` is faster *only* in degenerate `simple_cluster`, and only via the event trick — because there `odeint` wastes 7 ms grinding the float64-overflow tail.
+4. **The front-event restructure is regime-limited.** It needs slices to be **φ-limited**; but mass-limited slices are 7/40 (`steep`/`dense_flat`) and **39/40** (`mock_hybr`), where the φ-event never fires (a full restructure would also need cumulative mass carried as an ODE-state event). So "drop the 1k slice / idx truncation" helps the degenerate regime but is **not** a general win.
+5. **`odeint(mxstep=…)` is the wrong noise fix.** Raising it is ~6× *slower* in the degenerate regime (grinds the discarded tail) for 0.00e+00 result change. To kill the noise, **silence the warning**, don't raise `mxstep`.
+
+### Root-cause lead (highest value, must be tested not assumed)
+The degenerate behaviour is driven by `simple_cluster`'s inner-shell density `y0[0] ≈ 1e61–1e65` **in code units** (physically ~1e6–1e9 cm⁻³). `nShell²` then overflows float64 → the overflow tail → the warning wall → the 7 ms/call. This is a **unit-scaling artifact, not physics.** If the shell ODE carried `n` in a non-overflowing scale, `odeint` would likely be fast and quiet even at sfe 0.3 — **no migration needed.** Units are a known bug class here (CLAUDE.md), so this is a *candidate to test*, not a conclusion: verify `y0[0]` magnitude line-by-line, rescale in a scratch harness, and measure warns/time before touching production.
+
+### Reproduce (data is committed — no re-run needed to read conclusions)
 ```bash
 cd /home/user/trinity
-python docs/dev/shell-solver/harness/capture_replay.py            # -> data/replay_comparison.csv  (30 rows)
-python docs/dev/shell-solver/harness/capture_replay_variants.py   # -> data/replay_variants.csv    (40 calls x 5 variants)
-# one-shot localisation of the dense_output crash + truncation insight:
-python docs/dev/shell-solver/harness/diagnose_first_call.py
+python docs/dev/shell-solver/harness/capture_replay.py                                  # -> data/replay_comparison.csv (30-row equivalence)
+python docs/dev/shell-solver/harness/capture_replay_variants.py                          # -> data/replay_variants_sfe0.3.csv (default)
+python docs/dev/shell-solver/harness/capture_replay_variants.py 0.6                      # sfe override -> ..._sfe0.6.csv
+python docs/dev/shell-solver/harness/capture_replay_variants.py docs/dev/transition/harness/steep.param        # -> ..._steep.csv
+python docs/dev/shell-solver/harness/capture_replay_variants.py docs/dev/transition/harness/dense_flat.param   # -> ..._dense_flat.csv
+python docs/dev/shell-solver/harness/capture_replay_variants.py docs/dev/transition/harness/mock_hybr.param     # -> ..._mock_hybr.csv
+python docs/dev/shell-solver/harness/capture_replay_variants.py docs/dev/archive/betadelta/diagnostics/probe_typical_hybr.param  # -> ..._probe_typical_hybr.csv
 ```
 
-### Coverage gaps (must close before default-flip)
-- **Neutral region (2-state) never exercised** — both harnesses aborted after the early ionized solves. Need a capture that reaches a neutral solve (a param that depletes φ with mass remaining, or capturing later in a run).
-- **Only the degenerate `simple_cluster` regime** — confirm on a non-overflowing regime (smaller `mCloud`/different profile) that the equivalence still holds and that `t_eval`-only still silences nothing-but-the-noise.
+### Known harness caveat (no overclaiming)
+The fd-level **Fortran LSODA "t + h = t" chatter counter read 0 across all configs** — I do not trust this as a measurement (the redirect likely misses it under the host run). The **verified** warning signal is the Python `ODEintWarning` ("Excess work") count in the table above; the raw Fortran-wall magnitude is *not* characterized here.
+
+### Still open before any default-flip
+- **Wall-time over a FULL run** (not just the first 40 solves) per regime, to quantify the production slowdown the migration would cost.
+- **Integration-level** equivalence of the consumed scalars (`n_IF_Str`, `F_rad` inputs) — the ODE-level `rel_n` is necessary but not sufficient; P-shadow must compare at the `shell_structure` output level.
+- The **unit-overflow root-cause** experiment above (could moot the migration).
 
 ---
 
@@ -141,8 +174,8 @@ Call sites `:156` / `:315` become `sol_ODE, ok, info = _solve_shell_ode(...)`. *
 
 ## Phases
 
-### P0 — Equivalence harvest — ✅ DONE (this doc, §P0)
-Offline capture-and-replay; zero production change. **Gate G0 (met):** the right `solve_ivp` config reproduces `odeint` to ≤1e-6 on every consumed row of every captured call, and silences the wall. **Branch taken:** PROCEED — but close the two coverage gaps (neutral region, non-degenerate regime) as the first task of P-shadow.
+### P0 — Equivalence + cross-regime timing harvest — ✅ DONE (this doc, §P0 and §P0-results)
+Offline capture-and-replay; zero production change. **Gate G0 (met, and then some):** the right `solve_ivp` config reproduces `odeint` to ≤1e-8 on every consumed row across **6 configs / 4 regimes incl. the neutral region** — the two original coverage gaps are closed. **But G0 also surfaced a motivation problem:** the change is not a speedup and the wall is regime-specific (§P0-results). **Branch taken:** PROCEED to P-shadow *only if* the maintainer decides robustness alone justifies the production slowdown (Decision #1); otherwise pivot to the cheaper "silence the warning" and/or the unit-overflow root-cause (Decision #4).
 
 ### P-shadow — Equivalence shadow over a full run (zero production impact)
 Extend the harness to run `solve_ivp(LSODA, t_eval)` **alongside** the live `odeint` for an **entire** `simple_cluster` run (and one non-degenerate param), logging per-call `max_rel_diff` to CSV; production still integrates with `odeint` ⇒ byte-identical snapshots. Must reach **neutral-region** solves.
@@ -159,9 +192,10 @@ Add a `shell_integrator` param (default `"odeint"`, byte-identical to today; `"s
 ---
 
 ## Decisions that belong to the maintainer
-1. **Scope now vs later:** ship the lightweight **Option B** (`odeint(mxstep=50000)` + silence the python `ODEintWarning`) as an immediate noise fix — proven `0.00e+00` result change — and pursue the full `solve_ivp` migration separately? Or go straight to `solve_ivp`?
+1. **Is the migration even worth it, given it's slower?** P0-results shows `solve_ivp` is *slower* than `odeint` in every realistic regime. The only motivations left are (a) robustness (deterministic failure contract like the bubble solver) and (b) silencing a wall that only the degenerate regime prints. Pick the lane: **(A)** full `solve_ivp` migration for robustness, accepting a production slowdown; **(B)** just *silence* the `ODEintWarning` (smallest change, 0 result/perf cost) and stop; or **(C)** chase the unit-overflow root cause (Decision #4) which could remove the wall *and* the 7 ms/call with no integrator change.
 2. **Failure semantics:** on a failing shell solve, raise `ShellSolverError` (bubble-style, changes which steps "succeed") vs. preserve `odeint`'s silent best-effort? P-validate must measure the difference.
-3. Acceptable wall-time ceiling vs `odeint`.
+3. Acceptable wall-time ceiling vs `odeint` (the drop-in is ~4× slower in realistic regimes — is that tolerable for the shell micro-solve's share of total runtime? P-shadow must measure the full-run cost, not just per-call).
+4. **Pursue the unit-overflow root cause?** `simple_cluster`'s `y0[0] ≈ 1e61` code units is the source of the overflow/wall/slowness. Rescaling `n` in the shell ODE could fix it at the source — but units are a known bug class. Worth a scoped, tested experiment before committing to any integrator swap?
 
 ## Out of scope
 - The betadelta `hybr` solver and the implicit→momentum transition trigger (separate plans).
@@ -175,5 +209,7 @@ Add a `shell_integrator` param (default `"odeint"`, byte-identical to today; `"s
 | Copying the bubble `dense_output=True` verbatim | **proven hard-crash** here — pattern in §pattern explicitly omits it; documented in P0 row 4 |
 | RHS arg-order flip (`(y,t)`→`(t,y)`) silently wrong | unit test the RHS adapter; P0 harness already validates the closure |
 | `solve_ivp` short-returns on failure where `odeint` didn't | explicit `ok`/length check + `ShellSolverError`; decision #2 + P-validate gate |
-| Neutral region / non-degenerate regime untested | **open gap** — P-shadow G_shadow blocks promotion until both are covered |
+| ~~Neutral region / non-degenerate regime untested~~ | **CLOSED 2026-06-17** — §P0-results covers 4 regimes incl. 7 neutral solves; accuracy holds (≤1.05e-8) |
+| **Migration silently slows production** (~4× per shell solve in realistic regimes) | measure full-run cost in P-shadow; Decision #1/#3 — robustness must justify it, else pivot to "silence the warning" |
+| Front-event restructure assumed φ-limited | **measured** — mass-limited slices are 7/40 (steep) to 39/40 (mock); a φ-only event is insufficient, would need a cumulative-mass event state |
 | No integrated-output test exists today | add it in P-promote *before* touching the solver |
