@@ -55,6 +55,7 @@ import tempfile
 import warnings
 import contextlib
 from pathlib import Path
+from collections import Counter
 
 import numpy as np
 import scipy.integrate
@@ -86,6 +87,13 @@ _PARAM_FILE = BASE_PARAM
 # early energy phase, at the cost of running the host sim until it gets there.
 _FROM_PHASE = os.environ.get("FROM_PHASE") or None
 _armed = _FROM_PHASE is None
+# Matrix mode: in ONE long run, capture up to PER_PHASE_N solves in EACH phase as
+# the host sim passes through energy->implicit->transition->momentum. Avoids
+# re-evolving the slow early phases once per target phase.
+_PER_PHASE_N = int(os.environ["PER_PHASE_N"]) if os.environ.get("PER_PHASE_N") else None
+_MATRIX_MAX_S = float(os.environ.get("MATRIX_MAX_S", "5400"))  # global wall safety
+_TARGET_PHASES = ("energy", "implicit", "transition", "momentum")
+_phase_counts = Counter()
 
 
 class _CaptureDone(Exception):
@@ -299,32 +307,20 @@ def _run_variant(name, func, y0, t, args, od_ref, n_state, is_ionised):
     }
 
 
-def _patched_odeint(func, y0, t, args=(), **kwargs):
-    global _start_time, _armed
-    if not _armed:
-        # Cheap phase gate (params['current_phase']); pass through until reached.
-        params = args[2] if len(args) >= 3 else None
-        ph = ""
-        if params is not None:
-            try:
-                ph = params["current_phase"].value
-            except Exception:
-                ph = ""
-        if ph == _FROM_PHASE:
-            _armed = True
-            print(f"[armed] reached phase '{ph}'; capturing {MAX_CAPTURES} solves",
-                  file=sys.stderr, flush=True)
-        else:
-            return _REAL_ODEINT(func, y0, t, args=args, **kwargs)
-    if _start_time is None:
-        _start_time = time.time()
-    n_calls = len({r["call_idx"] for r in _rows})
-    if (time.time() - _start_time) > HARD_TIMEOUT_S and n_calls < MAX_CAPTURES:
-        raise _HostTimeout(f"Stalled: {n_calls} captures after {HARD_TIMEOUT_S:.0f}s")
-    if n_calls >= MAX_CAPTURES:
-        raise _CaptureDone()
+def _current_phase(args):
+    params = args[2] if len(args) >= 3 else None
+    if params is not None:
+        try:
+            return params["current_phase"].value
+        except Exception:
+            return ""
+    return ""
 
-    call_idx = n_calls
+
+def _capture_one(func, y0, t, args, kwargs, phase_tag):
+    """Baseline odeint + all variants on one shell solve; append rows tagged with
+    phase_tag. Returns the real odeint result so the host run is unperturbed."""
+    call_idx = len({r["call_idx"] for r in _rows})
     with warnings.catch_warnings(record=True) as base_warns:
         warnings.simplefilter("always")
         with _fd_capture() as base_chatter:
@@ -340,7 +336,8 @@ def _patched_odeint(func, y0, t, args=(), **kwargs):
     for vname in _VARIANTS:
         res = _run_variant(vname, func, y0, t, args, od_ref, n_state, is_ionised)
         res.update({
-            "call_idx": call_idx, "is_ionised": int(is_ionised), "n_state": n_state,
+            "call_idx": call_idx, "phase": phase_tag,
+            "is_ionised": int(is_ionised), "n_state": n_state,
             "n_pts": int(len(t)), "r_start": float(t[0]), "r_stop": float(t[-1]),
             "idx_phi": idx_phi,
             "baseline_odeint_time_ms": base_t_ms,
@@ -354,7 +351,7 @@ def _patched_odeint(func, y0, t, args=(), **kwargs):
 
     speeds = {r["variant"]: r["speedup_vs_odeint"]
               for r in _rows if r["call_idx"] == call_idx}
-    print(f"[capture {call_idx + 1}/{MAX_CAPTURES}] ion={int(is_ionised)} "
+    print(f"[capture {call_idx + 1} phase={phase_tag or '?'}] ion={int(is_ionised)} "
           f"npts={len(t)} idx_phi={idx_phi} base={base_t_ms:.2f}ms "
           f"teval_x={speeds.get('V_lsoda_teval', float('nan')):.2f} "
           f"event_x={speeds.get('V_lsoda_event', float('nan')):.2f}",
@@ -362,11 +359,48 @@ def _patched_odeint(func, y0, t, args=(), **kwargs):
     return od_ref
 
 
+def _patched_odeint(func, y0, t, args=(), **kwargs):
+    global _start_time, _armed
+    if _start_time is None:
+        _start_time = time.time()
+
+    # ---- MATRIX MODE: one pass, up to _PER_PHASE_N captures per phase ----
+    if _PER_PHASE_N is not None:
+        if all(_phase_counts[p] >= _PER_PHASE_N for p in _TARGET_PHASES):
+            raise _CaptureDone()
+        if (time.time() - _start_time) > _MATRIX_MAX_S:
+            raise _HostTimeout(f"matrix wall budget {_MATRIX_MAX_S:.0f}s reached")
+        phase = _current_phase(args)
+        if phase not in _TARGET_PHASES or _phase_counts[phase] >= _PER_PHASE_N:
+            return _REAL_ODEINT(func, y0, t, args=args, **kwargs)
+        if _phase_counts[phase] == 0:
+            print(f"[matrix] entering phase '{phase}' "
+                  f"(wall={time.time()-_start_time:.0f}s)", file=sys.stderr, flush=True)
+        _phase_counts[phase] += 1
+        return _capture_one(func, y0, t, args, kwargs, phase)
+
+    # ---- SINGLE / FROM_PHASE MODE ----
+    if not _armed:
+        if _current_phase(args) == _FROM_PHASE:
+            _armed = True
+            print(f"[armed] reached phase '{_FROM_PHASE}'; capturing {MAX_CAPTURES} solves",
+                  file=sys.stderr, flush=True)
+        else:
+            return _REAL_ODEINT(func, y0, t, args=args, **kwargs)
+    n_calls = len({r["call_idx"] for r in _rows})
+    if (not _FROM_PHASE and (time.time() - _start_time) > HARD_TIMEOUT_S
+            and n_calls < MAX_CAPTURES):
+        raise _HostTimeout(f"Stalled: {n_calls} captures after {HARD_TIMEOUT_S:.0f}s")
+    if n_calls >= MAX_CAPTURES:
+        raise _CaptureDone()
+    return _capture_one(func, y0, t, args, kwargs, _current_phase(args))
+
+
 def _write_csv(csv_path):
     if not _rows:
         print("No captures; nothing written.", file=sys.stderr)
         return
-    cols = ["call_idx", "is_ionised", "n_state", "n_pts", "r_start", "r_stop",
+    cols = ["call_idx", "phase", "is_ionised", "n_state", "n_pts", "r_start", "r_stop",
             "idx_phi", "variant", "success", "status", "shapes_match",
             "cutoff_idx", "n_common_finite", "n_pts_out", "event_fired", "event_r",
             "baseline_odeint_time_ms", "time_ms", "speedup_vs_odeint",
@@ -430,6 +464,8 @@ def main():
         tag = "sfe0.3"
     if _FROM_PHASE:
         tag = f"{tag}_{_FROM_PHASE}"
+    if _PER_PHASE_N is not None:
+        tag = f"matrix_{tag}"
     csv_path = DATA_DIR / f"replay_variants_{tag}.csv"
 
     # If an outer `timeout` kills us mid-gated-run, still flush what we captured.
@@ -483,6 +519,10 @@ def main():
         print(f"  baseline odeint time: median {base_med:.3f} ms/call", file=sys.stderr)
         print(f"  idx_phi (phi-depletion row): min={min(idxp)} max={max(idxp)} "
               f"(of ~1000; -1=never)", file=sys.stderr)
+        if _PER_PHASE_N is not None:
+            cap_calls = {r["call_idx"]: r["phase"] for r in _rows}
+            per = Counter(cap_calls.values())
+            print(f"  captures per phase: {dict(per)}", file=sys.stderr)
         for v in _VARIANTS:
             vr = [r for r in _rows if r["variant"] == v]
             nok = sum(r["success"] for r in vr)
