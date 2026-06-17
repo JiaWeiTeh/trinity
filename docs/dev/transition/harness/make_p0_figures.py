@@ -42,7 +42,10 @@ EPS = 0.05        # F0: (Lgain-Lloss)/Lgain < EPS
 ETA = 0.30        # F1: frac_cum > 1-ETA  (η≈0.3 is the flat-config anchor)
 K2 = 1.0          # F2: t_cool/t_dyn < K2
 
-# --- Wong colour-blind-safe palette (no usetex; LaTeX-free container) ----
+# --- Wong colour-blind-safe palette + mathtext math rendering ------------
+# text.usetex stays False (no system LaTeX in this container); matplotlib's
+# built-in mathtext renders the $...$ math (subscripts, integrals, Greek)
+# internally, so labels read as real equations without a TeX install.
 WONG = {
     "black": "#000000", "orange": "#E69F00", "skyblue": "#56B4E9",
     "green": "#009E73", "yellow": "#F0E442", "blue": "#0072B2",
@@ -50,6 +53,7 @@ WONG = {
 }
 plt.rcParams.update({
     "text.usetex": False,
+    "mathtext.fontset": "dejavusans",
     "font.family": "sans-serif",
     "font.size": 11,
     "axes.grid": True,
@@ -58,6 +62,13 @@ plt.rcParams.update({
     "figure.dpi": 130,
     "savefig.bbox": "tight",
 })
+
+
+def _halo(ec: str) -> dict:
+    """White rounded box behind an on-plot annotation so the text stays
+    legible where it would otherwise sit on top of a curve."""
+    return dict(boxstyle="round,pad=0.25", fc="white", ec=ec, lw=0.8, alpha=0.85)
+
 
 # config -> (csv stem, pretty label, fate). Order = low→high duration.
 CONFIGS = [
@@ -115,11 +126,11 @@ def surge_time(df: pd.DataFrame):
 # =========================================================================
 def fig_divergence(all_ep):
     style = {
-        "F0": (WONG["blue"], "o", "F0 cooling (<0.05)"),
-        "F1": (WONG["green"], "s", "F1 cumulative (η0.3)"),
-        "F2": (WONG["yellow"], "v", "F2 t_cool/t_dyn (<1)"),
-        "F4": (WONG["vermillion"], "D", "F4 blowout (R2>rCloud)"),
-        "Ebpeak": (WONG["black"], "*", "Eb-peak (reference)"),
+        "F0": (WONG["blue"], "o", r"F0 cooling $(<0.05)$"),
+        "F1": (WONG["green"], "s", r"F1 cumulative $(\eta=0.3)$"),
+        "F2": (WONG["yellow"], "v", r"F2 $t_\mathrm{cool}/t_\mathrm{dyn}<1$"),
+        "F4": (WONG["vermillion"], "D", r"F4 blowout $(R_2>R_\mathrm{cloud})$"),
+        "Ebpeak": (WONG["black"], "*", r"$E_b$-peak (reference)"),
     }
     labels = [c[1] for c in CONFIGS]
     fig, ax = plt.subplots(figsize=(8.2, 4.3))
@@ -144,7 +155,8 @@ def fig_divergence(all_ep):
     ax.set_ylim(-0.6, len(CONFIGS) - 0.4)
     ax.set_xlabel("firing time  [Myr, log]")
     ax.set_title("P0 divergence map — candidate triggers fire at different epochs\n"
-                 "flat configs → cooling (F0/F1) at the Eb-peak;  steep → blowout (F4)",
+                 r"flat configs $\to$ cooling (F0/F1) at the $E_b$-peak;  "
+                 r"steep $\to$ blowout (F4)",
                  fontsize=11)
     handles = [plt.Line2D([], [], marker=mk, color=col, linestyle="none",
                           markersize=9, label=lab) for col, mk, lab in style.values()]
@@ -165,31 +177,34 @@ def fig_dense_flat():
     ep = epochs(df)
     t = df["t_now"].to_numpy(float)
     fig, ax1 = plt.subplots(figsize=(7.6, 4.4))
-    ax1.plot(t, df["Eb"], color=WONG["black"], lw=2, label="Eb (bubble energy)")
-    ax1.set_xlabel("t  [Myr]")
-    ax1.set_ylabel("Eb  [code units]")
+    ax1.plot(t, df["Eb"], color=WONG["black"], lw=2, label=r"$E_b$ (bubble energy)")
+    ax1.set_xlabel(r"$t$  [Myr]")
+    ax1.set_ylabel(r"$E_b$  [code units]")
     ax2 = ax1.twinx()
     ax2.plot(t, df["ratio_F0"], color=WONG["blue"], lw=1.6,
-             label="ratio_F0 (Lgain−Lloss)/Lgain")
+             label=r"F0  $(L_\mathrm{gain}-L_\mathrm{loss})/L_\mathrm{gain}$")
     ax2.plot(t, df["frac_cum"], color=WONG["green"], lw=1.6, ls="--",
-             label="frac_cum  ∫Lloss/∫Lgain")
+             label=r"F1  $\int L_\mathrm{loss}\,dt\,/\!\int L_\mathrm{gain}\,dt$")
     ax2.axhline(EPS, color=WONG["blue"], lw=0.9, ls=":", alpha=0.7)
     ax2.axhline(1 - ETA, color=WONG["green"], lw=0.9, ls=":", alpha=0.7)
     ax2.set_ylabel("retention ratios")
     # F0 and the Eb-peak coincide here (the headline) — draw one merged marker
     if ep["F0"] and ep["Ebpeak"] and abs(ep["F0"] - ep["Ebpeak"]) < 1e-3:
         ax1.axvline(ep["F0"], color=WONG["vermillion"], lw=1.4, ls="-.", alpha=0.85)
-        ax1.text(ep["F0"] * 0.98, ax1.get_ylim()[1] * 0.32,
-                 f"F0 = F1 = Eb-peak\n{ep['F0']:.3f} Myr ", ha="right",
-                 color=WONG["vermillion"], fontsize=9, va="center")
+        ax1.text(ep["F0"] * 0.97, ax1.get_ylim()[1] * 0.52,
+                 f"F0 = F1 = $E_b$-peak\n{ep['F0']:.3f} Myr", ha="right",
+                 va="center", color=WONG["vermillion"], fontsize=9,
+                 bbox=_halo(WONG["vermillion"]))
     else:
-        for key, col, lab in [("Ebpeak", WONG["vermillion"], "Eb-peak"),
+        for key, col, lab in [("Ebpeak", WONG["vermillion"], r"$E_b$-peak"),
                               ("F0", WONG["blue"], "F0 fires")]:
             if ep[key]:
                 ax1.axvline(ep[key], color=col, lw=1.3, ls="-.", alpha=0.8)
                 ax1.text(ep[key], ax1.get_ylim()[1] * 0.96,
-                         f" {lab}\n {ep[key]:.3f}", color=col, fontsize=8.5, va="top")
-    ax1.set_title("Dense-flat (n1e5): cooling works — F0 ≈ F1(η0.3) ≈ Eb-peak")
+                         f" {lab}\n {ep[key]:.3f}", color=col, fontsize=8.5,
+                         va="top", bbox=_halo(col))
+    ax1.set_title(r"Dense-flat (n1e5): cooling works — "
+                  r"F0 $\approx$ F1$(\eta{=}0.3)$ $\approx$ $E_b$-peak")
     h1, l1 = ax1.get_legend_handles_labels()
     h2, l2 = ax2.get_legend_handles_labels()
     ax1.legend(h1 + h2, l1 + l2, loc="lower right", fontsize=8.5, framealpha=0.9)
@@ -209,27 +224,29 @@ def fig_steep_long():
     surge = surge_time(df)
     t = df["t_now"].to_numpy(float)
     fig, ax1 = plt.subplots(figsize=(7.6, 4.4))
-    ax1.plot(t, df["Eb"], color=WONG["black"], lw=2, label="Eb (still rising)")
-    ax1.set_xlabel("t  [Myr]")
-    ax1.set_ylabel("Eb  [code units]")
+    ax1.plot(t, df["Eb"], color=WONG["black"], lw=2, label=r"$E_b$ (still rising)")
+    ax1.set_xlabel(r"$t$  [Myr]")
+    ax1.set_ylabel(r"$E_b$  [code units]")
     ax2 = ax1.twinx()
     ax2.plot(t, df["R2_over_rCloud"], color=WONG["vermillion"], lw=1.8,
-             label="R2 / rCloud")
+             label=r"$R_2/R_\mathrm{cloud}$")
     ax2.axhline(1.0, color=WONG["vermillion"], lw=0.9, ls=":", alpha=0.8)
     ax2.plot(t, df["ratio_F0"], color=WONG["blue"], lw=1.3, alpha=0.7,
-             label="ratio_F0 (never < 0.05)")
-    ax2.set_ylabel("R2/rCloud   &   ratio_F0")
+             label=r"F0 ratio (never $<0.05$)")
+    ax2.set_ylabel(r"$R_2/R_\mathrm{cloud}$   &   F0 ratio")
     if ep["F4"]:
         ax1.axvline(ep["F4"], color=WONG["vermillion"], lw=1.4, ls="-.")
-        ax1.text(ep["F4"], ax1.get_ylim()[1] * 0.55,
-                 f" blowout\n {ep['F4']:.3f} Myr", color=WONG["vermillion"],
-                 fontsize=9, va="top")
+        ax1.text(ep["F4"] * 0.985, ax1.get_ylim()[1] * 0.40,
+                 f"blowout\n{ep['F4']:.3f} Myr", color=WONG["vermillion"],
+                 fontsize=9, ha="right", va="center",
+                 bbox=_halo(WONG["vermillion"]))
     if surge:
         ax1.axvline(surge, color=WONG["purple"], lw=1.2, ls="--")
-        ax1.text(surge, ax1.get_ylim()[1] * 0.85, f" WR surge\n {surge:.3f}",
-                 color=WONG["purple"], fontsize=8.5, va="top")
-    ax1.set_title("Steep α−2 (4 Myr): transitions by BLOWOUT before the surge —\n"
-                  "cooling (ratio_F0) never reaches 0.05")
+        ax1.text(surge * 1.012, ax1.get_ylim()[1] * 0.88,
+                 f"WR surge\n{surge:.3f}", color=WONG["purple"],
+                 fontsize=8.5, ha="left", va="center", bbox=_halo(WONG["purple"]))
+    ax1.set_title(r"Steep $\alpha=-2$ (4 Myr): transitions by BLOWOUT before "
+                  "the surge —\ncooling (F0 ratio) never reaches 0.05")
     h1, l1 = ax1.get_legend_handles_labels()
     h2, l2 = ax2.get_legend_handles_labels()
     ax1.legend(h1 + h2, l1 + l2, loc="upper left", fontsize=8.5, framealpha=0.9)
@@ -252,20 +269,22 @@ def fig_reset():
     win = df[df["t_now"] >= lo]
     tt = win["t_now"].to_numpy(float)
     fig, ax = plt.subplots(figsize=(7.6, 4.4))
-    ax.plot(tt, win["ratio_F0"], color=WONG["blue"], lw=2, marker="o",
-            ms=3, label="F0 ratio_F0 — resets UP across the surge")
-    ax.plot(tt, win["frac_cum"], color=WONG["green"], lw=2, marker="s",
-            ms=3, label="F1 frac_cum — drifts DOWN (retreats)")
+    ax.plot(tt, win["ratio_F0"], color=WONG["blue"], lw=2, marker="o", ms=3,
+            label=r"F0  $(L_\mathrm{gain}-L_\mathrm{loss})/L_\mathrm{gain}$ — resets UP")
+    ax.plot(tt, win["frac_cum"], color=WONG["green"], lw=2, marker="s", ms=3,
+            label=r"F1  $\int L_\mathrm{loss}\,dt\,/\!\int L_\mathrm{gain}\,dt$ — drifts DOWN")
     ax.axhline(EPS, color=WONG["blue"], lw=0.9, ls=":", alpha=0.7)
     ax.axhline(1 - ETA, color=WONG["green"], lw=0.9, ls=":", alpha=0.7)
+    ax.set_ylim(top=ax.get_ylim()[1] * 1.10)  # headroom so the surge label clears the frame
     if surge:
         ax.axvline(surge, color=WONG["purple"], lw=1.2, ls="--")
-        ax.text(surge, ax.get_ylim()[1] * 0.97, f" WR surge {surge:.3f}",
-                color=WONG["purple"], fontsize=8.5, va="top")
-    ax.set_xlabel("t  [Myr]")
+        ax.text(surge * 1.005, ax.get_ylim()[1] * 0.95, f"WR surge {surge:.3f}",
+                color=WONG["purple"], fontsize=8.5, ha="left", va="top",
+                bbox=_halo(WONG["purple"]))
+    ax.set_xlabel(r"$t$  [Myr]")
     ax.set_ylabel("retention ratio")
     ax.set_title("Steep reset pathology: neither cooling form rescues the stall\n"
-                 "F0 spikes away from 0.05 · F1 retreats from 1−η")
+                 r"F0 spikes away from $0.05$ · F1 retreats from $1-\eta$")
     ax.legend(loc="center left", fontsize=8.5, framealpha=0.9)
     fig.tight_layout()
     out = FIGS / "p0_reset_pathology.png"
