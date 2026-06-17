@@ -30,7 +30,7 @@
 - **Workstream:** `shell-solver/` — the shell-structure micro-solver (`trinity/shell_structure/`), distinct from the already-migrated **bubble**-structure solver and from the betadelta/transition solver work.
 - **Where it sits:** entry point → **this** → (companion results/design docs to be spun out per §Phases if the work proceeds).
 - **Code it concerns:** `trinity/shell_structure/shell_structure.py:156` & `:315` (the two `odeint` calls); `trinity/shell_structure/get_shellODE.py` (the RHS); the bubble precedent `trinity/bubble_structure/bubble_luminosity.py:106-166`.
-- **Linked files & data:** harnesses `docs/dev/shell-solver/harness/{capture_replay.py, capture_replay_variants.py, diagnose_first_call.py}`; data `docs/dev/shell-solver/data/replay_comparison.csv` (30-row equivalence) + `replay_variants_{sfe0.3,sfe0.6,steep,dense_flat,mock_hybr,probe_typical_hybr}.csv` (timing+event, one per config). **Save/commit every new CSV — future sessions regenerate plots from these without re-running.**
+- **Linked files & data:** harnesses `docs/dev/shell-solver/harness/{capture_replay.py, capture_replay_variants.py, diagnose_first_call.py, phase_probe.py}`; data `docs/dev/shell-solver/data/replay_comparison.csv` (30-row equivalence) + `replay_variants_{sfe0.3,sfe0.6,steep,dense_flat,mock_hybr,probe_typical_hybr}.csv` (timing+event, one per config). **Save/commit every new CSV — future sessions regenerate plots from these without re-running.**
 
 This plan was prompted by the **LSODA "t + h = t" / "Excess work done" warning wall** printed on a plain `python run.py param/simple_cluster.param`. The warnings are non-fatal (the run completes with all sanity checks passing), but they are noisy and they originate from the shell-structure `odeint` calls. The bubble-structure solver was already migrated `odeint → solve_ivp(LSODA, dense_output=True)` (CHANGELOG, PRs #666/#678); this plan asks whether the **same** move is correct for the shell solver, and pins down the exact call that works.
 Environment of record: **python 3.11.15, numpy 1.26.4, scipy 1.17.1.** Work branch: `claude/confident-knuth-pf0wsj`.
@@ -92,14 +92,16 @@ The variant harness was extended with **per-call wall time** (min of 5 reps), a 
 
 | config (`.param`) | profile / sfe | regime | odeint ms/call | excess-work warns | mass-limited slices | neutral solves | **event** speedup | drop-in (`t_eval`) speedup | worst `rel_n` |
 |---|---|---|---|---|---|---|---|---|---|
-| `simple_cluster` sfe0.3 | flat / 0.3 | **degenerate (overflow)** | 7.19 | **40/40** | 0/40 | 0 | **4.98× faster** | 0.09× (11× slower) | 1.42e-9 |
+| **`simple_cluster` sfe0.3 ← CURRENT/DEFAULT** | flat / 0.3 | **degenerate (overflow)** | 7.19 | **40/40** | 0/40 | 0 | **4.98× faster** | 0.09× (11× slower) | 1.42e-9 |
 | `simple_cluster` sfe0.6 | flat / 0.6 | degenerate | 7.06 | **40/40** | 0/40 | 0 | **4.97× faster** | 0.10× | 1.66e-9 |
 | `probe_typical_hybr` | flat / 0.01, nCore 1e3 | realistic | 0.82 | 3/40 | 0/40 | 0 | 0.43× (slower) | 0.25× | 7.3e-9 |
 | `steep` | **PL−2** / 0.01, nCore 1e5 | realistic, steep | 0.99 | 4/40 | **7/40** | **7** | 0.63× (slower) | 0.26× | 9.8e-9 |
 | `dense_flat` | flat / 0.01, nCore 1e5 | realistic | 1.01 | 4/40 | **7/40** | **7** | 0.62× (slower) | 0.26× | 9.8e-9 |
 | `mock_hybr` | flat / 0.0085, tiny 4e3 M☉ | realistic, tiny | 0.19 | 0/40 | **39/40** | 0 | 0.14× (slower) | 0.18× | 1.05e-8 |
 
-(speedup = `odeint_time / variant_time`; <1 means slower. `odeint(mxstep=50000)` measured too: 0.16–0.17× in the degenerate regime — *slower*, because it stops bailing and grinds the overflow tail — and 0.99–1.02× = free in realistic regimes; result change 0.00e+00 everywhere.)
+**Current/default config** = the first row, `simple_cluster` at sfe 0.3 — exactly what `python run.py param/simple_cluster.param` runs (the config that prints the warning wall). The other rows are coverage probes from the hybr/transition families.
+
+> ⚠️ **SAMPLING SCOPE — verified, and it is narrow.** The "/40" is the **first 40 shell-structure ODE solves**, after which the harness aborts the (slow) host run. A `phase_probe.py` run (reads `params['current_phase']` + `t_now` per solve) confirms **all 40 are in the ENERGY phase (phase 1), at t ≈ 3e-7 … 1.2e-3 Myr** — the first ~0.001 Myr. **The implicit, transition, and momentum phases are NOT sampled at all.** So every number above characterizes *the early energy phase only*. This is a feasibility sample (and the energy phase is where the wall first appears), **not** whole-run coverage. Generalizing accuracy/timing to the later phases is **unverified** — that is precisely the P-shadow job (run `solve_ivp` alongside `odeint` for a full run, logging every solve across all phases).
 
 ### Verified findings (each traces to a committed CSV)
 1. **Accuracy is excellent in every regime.** `solve_ivp(LSODA, t_eval)` reproduces `odeint` on the consumed prefix to **1.42e-9 … 1.05e-8**, including the **7 neutral-region (2-state) solves** in `steep`/`dense_flat`. The neutral-region and non-degenerate-regime gaps from the first P0 pass are now **closed** and positive.
