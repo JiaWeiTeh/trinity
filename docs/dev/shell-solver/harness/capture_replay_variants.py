@@ -87,13 +87,22 @@ _PARAM_FILE = BASE_PARAM
 # early energy phase, at the cost of running the host sim until it gets there.
 _FROM_PHASE = os.environ.get("FROM_PHASE") or None
 _armed = _FROM_PHASE is None
-# Matrix mode: in ONE long run, capture up to PER_PHASE_N solves in EACH phase as
-# the host sim passes through energy->implicit->transition->momentum. Avoids
-# re-evolving the slow early phases once per target phase.
-_PER_PHASE_N = int(os.environ["PER_PHASE_N"]) if os.environ.get("PER_PHASE_N") else None
+# Matrix mode: in ONE long run, capture a per-phase TARGET number of solves in
+# each phase as the host sim passes through energy->implicit->transition->
+# momentum. Per-phase targets come from N_ENERGY/N_IMPLICIT/N_TRANSITION/
+# N_MOMENTUM (fallback PER_PHASE_N, default 15); target 0 = don't sample that
+# phase. The point of the diagnostic is the SAMPLES taken IN a phase, not the
+# wall time spent reaching it -- so MATRIX_MAX_S is a safety cap, not the limiter.
+_PHASE_ORDER = {"energy": 0, "implicit": 1, "transition": 2, "momentum": 3}
+_TARGET_PHASES = tuple(_PHASE_ORDER)
+_PER_PHASE_N = os.environ.get("PER_PHASE_N")  # legacy default for all phases
+_MATRIX = bool(_PER_PHASE_N) or any(
+    os.environ.get("N_" + p.upper()) for p in _TARGET_PHASES)
+_PHASE_N = {p: int(os.environ.get("N_" + p.upper(), _PER_PHASE_N or "15"))
+            for p in _TARGET_PHASES}
 _MATRIX_MAX_S = float(os.environ.get("MATRIX_MAX_S", "5400"))  # global wall safety
-_TARGET_PHASES = ("energy", "implicit", "transition", "momentum")
 _phase_counts = Counter()
+_max_phase_order = -1  # highest phase order the host run has reached
 
 
 class _CaptureDone(Exception):
@@ -364,18 +373,27 @@ def _patched_odeint(func, y0, t, args=(), **kwargs):
     if _start_time is None:
         _start_time = time.time()
 
-    # ---- MATRIX MODE: one pass, up to _PER_PHASE_N captures per phase ----
-    if _PER_PHASE_N is not None:
-        if all(_phase_counts[p] >= _PER_PHASE_N for p in _TARGET_PHASES):
+    # ---- MATRIX MODE: one pass, per-phase target captures ----
+    if _MATRIX:
+        global _max_phase_order
+        phase = _current_phase(args)
+        if phase in _PHASE_ORDER:
+            _max_phase_order = max(_max_phase_order, _PHASE_ORDER[phase])
+        # A phase is "done" once its target is met OR the run has moved past it
+        # (so a phase shorter than its target stops the run instead of stalling).
+        def _done(p):
+            return (_phase_counts[p] >= _PHASE_N[p]
+                    or _max_phase_order > _PHASE_ORDER[p])
+        if all(_done(p) for p in _TARGET_PHASES):
             raise _CaptureDone()
         if (time.time() - _start_time) > _MATRIX_MAX_S:
             raise _HostTimeout(f"matrix wall budget {_MATRIX_MAX_S:.0f}s reached")
-        phase = _current_phase(args)
-        if phase not in _TARGET_PHASES or _phase_counts[phase] >= _PER_PHASE_N:
+        if (phase not in _PHASE_ORDER or _PHASE_N[phase] == 0
+                or _phase_counts[phase] >= _PHASE_N[phase]):
             return _REAL_ODEINT(func, y0, t, args=args, **kwargs)
         if _phase_counts[phase] == 0:
-            print(f"[matrix] entering phase '{phase}' "
-                  f"(wall={time.time()-_start_time:.0f}s)", file=sys.stderr, flush=True)
+            print(f"[matrix] entering phase '{phase}' (target {_PHASE_N[phase]}, "
+                  f"wall={time.time()-_start_time:.0f}s)", file=sys.stderr, flush=True)
         _phase_counts[phase] += 1
         return _capture_one(func, y0, t, args, kwargs, phase)
 
@@ -464,7 +482,7 @@ def main():
         tag = "sfe0.3"
     if _FROM_PHASE:
         tag = f"{tag}_{_FROM_PHASE}"
-    if _PER_PHASE_N is not None:
+    if _MATRIX:
         tag = f"matrix_{tag}"
     csv_path = DATA_DIR / f"replay_variants_{tag}.csv"
 
@@ -489,7 +507,8 @@ def main():
         print(f"Host run finished early ({len({r['call_idx'] for r in _rows})} captured).",
               file=sys.stderr)
     except _CaptureDone:
-        print(f"Reached {MAX_CAPTURES} captures; host aborted cleanly.", file=sys.stderr)
+        target = dict(_PHASE_N) if _MATRIX else MAX_CAPTURES
+        print(f"Capture targets met ({target}); host aborted cleanly.", file=sys.stderr)
     except _HostTimeout as exc:
         print(f"WARNING: {exc}. Writing what we have.", file=sys.stderr)
     except SystemExit as exc:
@@ -519,10 +538,11 @@ def main():
         print(f"  baseline odeint time: median {base_med:.3f} ms/call", file=sys.stderr)
         print(f"  idx_phi (phi-depletion row): min={min(idxp)} max={max(idxp)} "
               f"(of ~1000; -1=never)", file=sys.stderr)
-        if _PER_PHASE_N is not None:
+        if _MATRIX:
             cap_calls = {r["call_idx"]: r["phase"] for r in _rows}
             per = Counter(cap_calls.values())
-            print(f"  captures per phase: {dict(per)}", file=sys.stderr)
+            print(f"  captures per phase: {dict(per)} (targets {_PHASE_N})",
+                  file=sys.stderr)
         for v in _VARIANTS:
             vr = [r for r in _rows if r["variant"] == v]
             nok = sum(r["success"] for r in vr)
