@@ -35,7 +35,7 @@ def disable_crash_handlers(monkeypatch):
 
 def _write_v3_run(tmp_path: Path, *, exit_code: int = 1,
                   detail: str = "Stopping time reached",
-                  eb: float = 0.0) -> Path:
+                  eb: float = 0.0, is_collapse: bool = False) -> Path:
     """Produce a complete v3-format run directory the CLI can read.
 
     The ``outcome`` field of the termination block is set automatically
@@ -53,7 +53,7 @@ def _write_v3_run(tmp_path: Path, *, exit_code: int = 1,
         ("sfe", 0.01), ("ZCloud", 1.0), ("dens_profile", "densPL"),
         ("densPL_alpha", 0.0), ("nCore", 1.0e3), ("nISM", 1.0),
         ("rCore", 0.01), ("rCloud", 20.0), ("nEdge", 2.0), ("tSF", 0),
-        ("mu_convert", 1.18e-57),
+        ("mu_convert", 1.18e-57), ("coll_r", 1.0),
     ]:
         d[k] = DescribedItem(v)
     # Varying scalars
@@ -72,6 +72,7 @@ def _write_v3_run(tmp_path: Path, *, exit_code: int = 1,
     d["shell_nMax"] = DescribedItem(3.31e55)
     d["Eb"] = DescribedItem(eb)
     d["Pb"] = DescribedItem(4.91)
+    d["isCollapse"] = DescribedItem(is_collapse)
     d.save_snapshot()
     d.flush()
 
@@ -146,6 +147,54 @@ class TestFormatRunSummary:
         assert "shell_mass" in out
         assert "phase" in out and "momentum" in out
         assert "collapsed" in out and "no" in out
+
+    def test_collapsing_at_stopping_time_reads_collapsing_not_yes(
+        self, tmp_path, disable_crash_handlers,
+    ):
+        # Clean run that hit stop_t while still contracting (isCollapse True)
+        # but the collapse-radius event never fired (outcome != shell_-
+        # collapsed). It is NOT collapsed — only collapsing. The status flags
+        # it, and the final-state row reads 'collapsing', never 'yes'.
+        _write_v3_run(tmp_path, exit_code=1, is_collapse=True)
+        out = format_run_summary(tmp_path)
+        assert "stopping_time — shell collapsing" in out
+        # The 'collapsed' row carries the three-state value, not 'yes'.
+        collapsed_row = next(ln for ln in out.splitlines()
+                             if ln.strip().startswith("collapsed"))
+        assert "collapsing" in collapsed_row
+        assert "yes" not in collapsed_row
+
+    def test_reached_coll_r_reads_yes(
+        self, tmp_path, disable_crash_handlers,
+    ):
+        # Collapse itself drove the exit (outcome 'shell_collapsed'): this is
+        # a terminal collapse → 'yes', and the status must NOT redundantly
+        # append '— shell collapsing' (the outcome already says it).
+        _write_v3_run(tmp_path, exit_code=4,
+                      detail="Small radius reached", is_collapse=True)
+        out = format_run_summary(tmp_path)
+        assert "shell_collapsed" in out
+        assert "— shell collapsing" not in out
+        collapsed_row = next(ln for ln in out.splitlines()
+                             if ln.strip().startswith("collapsed"))
+        assert "yes" in collapsed_row
+
+    def test_error_run_collapsing_not_flagged_in_status(
+        self, tmp_path, disable_crash_handlers,
+    ):
+        # A run that crashed (error outcome, ✗) while contracting must still
+        # report 'collapsing' in the final-state row (faithful state), but
+        # the status line must NOT append '— shell collapsing' — the ✗ line
+        # already demands a look and the suffix would only add noise (and
+        # could imply the collapse caused the error).
+        _write_v3_run(tmp_path, exit_code=20,
+                      detail="LSODA gave up", is_collapse=True)
+        out = format_run_summary(tmp_path)
+        assert "ERROR" in out and "error_numerical" in out
+        assert "— shell collapsing" not in out
+        collapsed_row = next(ln for ln in out.splitlines()
+                             if ln.strip().startswith("collapsed"))
+        assert "collapsing" in collapsed_row
 
     def test_eb_rendered_in_erg_with_internal_preserved(
         self, tmp_path, disable_crash_handlers,

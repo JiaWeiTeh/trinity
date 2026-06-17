@@ -24,20 +24,19 @@
 # Sweep axes (Cartesian product)
 # =============================================================================
 
-# Star formation efficiency: 0.01, 0.05, 0.1, then 0.2..0.9 in steps of 0.1
-sfe             [0.01, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
 
-# Cloud mass [Msun]: 1e5..5e9 in 1,5 x decade steps
-mCloud          [1e5, 5e5, 1e6, 5e6, 1e7, 5e7, 1e8, 5e8, 1e9, 5e9]
+# for testing purposes this is very small.
+tuple(sfe, mCloud) [0.01, 1e5] [0.9, 5e9]
 
 # Core number density [cm^-3]: decade spacing
-nCore           [1e2, 1e3, 1e4]
+nCore           1e4
 
 # ISM pressure P/k [K cm^-3]
-PISM            [0, 1e4, 1e5, 1e6]
+PISM            0
 
 # ISM number density [cm^-3]
-nISM            [0.1, 1]
+nISM            1
+
 
 # =============================================================================
 # Fixed parameters (constant across all runs)
@@ -72,7 +71,7 @@ log_level    INFO
 include_PHII    True
 
 # Output (each run writes a subfolder under this directory)
-path2output    outputs/paperII_grid_sweep
+path2output    outputs/paperII_grid_sweep_test
 
 # SPS: use the bundled default Starburst99 table (sps_path left unset).
 # The previous explicit block pointed at lib/sps/custom/1e6cluster_default.csv,

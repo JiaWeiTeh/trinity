@@ -61,14 +61,57 @@ _HR_LIGHT = "-" * _WIDTH
 # Formatting helpers
 # ---------------------------------------------------------------------------
 
+def _collapse_descriptor(final_state: Optional[dict],
+                         outcome: Optional[str]) -> Optional[str]:
+    """Three-state collapse status from the final snapshot.
+
+    ``isCollapse`` alone only means the shell was *contracting* (``v2 < 0``
+    and ``R2`` falling) at exit — NOT that it reached the collapse radius
+    ``coll_r``. The two are distinct outcomes, so render them distinctly:
+
+      ``"no"``         — not contracting at exit
+      ``"collapsing"`` — contracting at exit, but the run ended for some
+                         other reason (stopping time, dissolution, error, …)
+      ``"yes"``        — terminal collapse: the run stopped *because* the
+                         shell reached ``coll_r``
+
+    ``"yes"`` is keyed strictly on the ``shell_collapsed`` outcome — the one
+    unambiguous signal that the collapse-radius event actually fired. Using
+    a bare ``R2 <= coll_r`` test instead would mislabel runs that merely
+    happened to be small-and-contracting when they ended for an unrelated
+    reason (a mid-run numerical crash, an early dissolution).
+
+    Returns ``None`` when ``isCollapse`` is absent (legacy runs), so callers
+    can fall back to omitting the row.
+    """
+    if not final_state or "isCollapse" not in final_state:
+        return None
+    if not final_state.get("isCollapse"):
+        return "no"
+    return "yes" if outcome == "shell_collapsed" else "collapsing"
+
+
 def _status_line(termination: Optional[dict],
-                 is_successful: Optional[bool]) -> str:
-    """One-line "Status : ✓ SUCCESS  (outcome)" header."""
+                 is_successful: Optional[bool],
+                 collapse_state: Optional[str] = None) -> str:
+    """One-line "Status : ✓ SUCCESS  (outcome)" header.
+
+    When a *clean* run terminated for some non-collapse reason yet the shell
+    was still contracting at exit (``collapse_state == "collapsing"`` — e.g.
+    stopping time reached while still falling inward) the collapse is noted
+    in the outcome so both facts are visible at a glance. Only done for
+    successful runs: an error/inspection line is already flagged ✗ and
+    carries the detail in the 'collapsed' row, so the suffix would be noise
+    there. A terminal collapse shows up in ``outcome`` itself ('shell_-
+    collapsed' → state "yes"), so it is never repeated.
+    """
     if termination is None or is_successful is None:
         return "Status   : ? UNKNOWN  (no termination block — legacy or aborted run)"
     glyph = "✓" if is_successful else "✗"
     label = "SUCCESS" if is_successful else "ERROR"
     outcome = termination.get("outcome") or "unknown"
+    if collapse_state == "collapsing" and is_successful:
+        outcome = f"{outcome} — shell collapsing"
     return f"Status   : {glyph} {label}  ({outcome})"
 
 
@@ -114,7 +157,8 @@ def _cloud_section(md: dict) -> list[str]:
     return lines
 
 
-def _final_state_section(final_state: Optional[dict]) -> list[str]:
+def _final_state_section(final_state: Optional[dict],
+                         collapse_state: Optional[str] = None) -> list[str]:
     """Render the 'Final state' section.
 
     Applies unit conversions for human reading (km/s for ``v2``,
@@ -174,8 +218,12 @@ def _final_state_section(final_state: Optional[dict]) -> list[str]:
     phase = final_state.get("current_phase")
     if phase is not None:
         rows.append(("phase", str(phase)))
-    # Collapse / dissolved booleans
-    if "isCollapse" in final_state:
+    # Collapse / dissolved. "collapsed" is three-state (see
+    # _collapse_descriptor): a contracting-but-not-yet-collapsed run reads
+    # "collapsing", distinct from a terminal "yes" (reached coll_r).
+    if collapse_state is not None:
+        rows.append(("collapsed", collapse_state))
+    elif "isCollapse" in final_state:
         rows.append(("collapsed",
                      "yes" if final_state["isCollapse"] else "no"))
     if "isDissolved" in final_state:
@@ -349,11 +397,14 @@ def format_run_summary(run_dir: Path) -> str:
     is_successful = status["is_successful"]
     model_name = status["model_name"]
 
+    outcome = termination.get("outcome") if termination else None
+    collapse_state = _collapse_descriptor(final_state, outcome)
+
     lines = [
         _HR_HEAVY,
         f"TRINITY run: {model_name}",
         _HR_HEAVY,
-        _status_line(termination, is_successful),
+        _status_line(termination, is_successful, collapse_state),
     ]
     if termination:
         if termination.get("detail"):
@@ -367,7 +418,7 @@ def format_run_summary(run_dir: Path) -> str:
         lines.extend(_cloud_section(md))
 
     lines.append("")
-    lines.extend(_final_state_section(final_state))
+    lines.extend(_final_state_section(final_state, collapse_state))
 
     debug_lines = _termination_debug_section(termination_debug)
     if debug_lines:
@@ -423,7 +474,11 @@ def main(argv: Optional[list[str]] = None) -> int:
     # --- --quiet: one-line status + meaningful exit code -------------
     if args.quiet:
         status = _resolve_run_status(run_dir)
-        print(_status_line(status["termination"], status["is_successful"]))
+        _term = status["termination"]
+        _cs = _collapse_descriptor(
+            status["final_state"],
+            _term.get("outcome") if _term else None)
+        print(_status_line(_term, status["is_successful"], _cs))
         if status["is_successful"] is True:
             return 0
         # Failure path: propagate the run's exit_code if we have one,
