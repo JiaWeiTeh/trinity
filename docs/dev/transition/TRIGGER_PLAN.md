@@ -25,7 +25,7 @@
 > that produced each artifact.
 
 **About this document**
-- **Status (verified 2026-06-16):** 🔵 **ACTIONABLE** (verified 2026-06-16) — plan is current and accurate. **P-shadow + P-promote shipped 2026-06-16**: `transition_trigger='cooling_or_blowout'` adds the live F4 blowout break (`R2>rCloud`), routing 1b→1c→2; default `instantaneous` stays byte-identical. Next: **P-validate** (continuity gate + macro deltas on a full steep run).
+- **Status (verified 2026-06-16):** 🔵 **ACTIONABLE** (verified 2026-06-16) — plan is current and accurate. **P-shadow + P-promote shipped 2026-06-16**: `transition_trigger='cooling_or_blowout'` adds the live F4 blowout break (`R2>rCloud`), routing 1b→1c→2; default `instantaneous` stays byte-identical. **P-validate COMPLETE 2026-06-17** (`PVALIDATE.md`): all gates pass on fresh hybr runs; evidence supports flipping the default (held as a maintainer call).
 - **Type:** plan — characterize the implicit→momentum transition trigger (clocks A/B, candidate families F0–F5) and decide via pre-registered gates before changing production.
 - **Workstream:** `transition/` — the implicit→momentum transition trigger.
 - **Where it sits:** promoted from Phase 5 of `docs/dev/archive/betadelta/HYBR_PLAN.md` → **this (entry point)** → `P0.md` (P0/P-sens results) → `pshadow-design.md` (design).
@@ -296,6 +296,14 @@ phase no more discontinuously than F0 does (the transition phase already drives 
 pressure jump).
 
 ### P-validate — Validation & default decision
+> **✅ COMPLETE 2026-06-17 — results in `PVALIDATE.md`.** Fresh hybr runs (steep
+> `cooling_or_blowout` crux + dense-flat; steep `instantaneous` baseline from the
+> P0 CSV). **All gates pass:** F4 fires at the Eb-peak/blowout (2.728 Myr, before
+> the surge), continuity handoff smooth (P_drive −0.15%), retained-energy 0.115
+> (steep) / 0.126 (flat) in the η≈0.1–0.25 band; adiabatic-null cooling gate
+> unit-locked. Macro deltas (steep, t=4 Myr): R2 −12.5%, v2 −59%, same feedback
+> budget. **Evidence supports flipping the default — held as a maintainer call.**
+
 Winner vs current, all configs incl. steep + one strong-WR/SN-jump config:
 - **Firing epoch vs `Eb`-peak (PdV-inclusive):** winner should fire at/just after
   the peak; show F0 firing late (post-stall). Headline evidence.
