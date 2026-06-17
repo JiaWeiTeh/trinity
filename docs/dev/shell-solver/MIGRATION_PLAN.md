@@ -101,7 +101,21 @@ The variant harness was extended with **per-call wall time** (min of 5 reps), a 
 
 **Current/default config** = the first row, `simple_cluster` at sfe 0.3 — exactly what `python run.py param/simple_cluster.param` runs (the config that prints the warning wall). The other rows are coverage probes from the hybr/transition families.
 
-> ⚠️ **SAMPLING SCOPE — verified, and it is narrow.** The "/40" is the **first 40 shell-structure ODE solves**, after which the harness aborts the (slow) host run. A `phase_probe.py` run (reads `params['current_phase']` + `t_now` per solve) confirms **all 40 are in the ENERGY phase (phase 1), at t ≈ 3e-7 … 1.2e-3 Myr** — the first ~0.001 Myr. **The implicit, transition, and momentum phases are NOT sampled at all.** So every number above characterizes *the early energy phase only*. This is a feasibility sample (and the energy phase is where the wall first appears), **not** whole-run coverage. Generalizing accuracy/timing to the later phases is **unverified** — that is precisely the P-shadow job (run `solve_ivp` alongside `odeint` for a full run, logging every solve across all phases).
+> ⚠️ **SAMPLING SCOPE — verified, partially widened.** The "/40" is the **first 40 shell-structure ODE solves**; `phase_probe.py` confirms those are **all in the ENERGY phase (phase 1), t ≈ 3e-7 … 1.2e-3 Myr**. The harness now also supports a `FROM_PHASE` gate (pass through energy, capture once a target phase is reached), and an **implicit-phase capture has been run** (below). **Transition and momentum are still NOT sampled** — `phase_probe.py` shows `simple_cluster` is still in the energy phase at solve #94 / wall 124s (and `mock_hybr` at #98 / 104s): no config dodges the long energy phase, so reaching transition costs many minutes per run (the remaining P-shadow job is a full run logging every phase).
+
+### Implicit-phase spot check (`FROM_PHASE=implicit`, simple_cluster, 20 solves)
+`data/replay_variants_sfe0.3_implicit.csv`. The implicit phase tracks the energy-phase pattern (simple_cluster stays in the degenerate overflow regime), and this run finally caught **2 neutral-region solves**:
+
+| variant | ok | speedup | worst `rel_n` |
+|---|---|---|---|
+| `solve_ivp` LSODA + φ-event | 20/20 | **5.69× faster** | 4.76e-10 |
+| `solve_ivp` LSODA + `t_eval` | 20/20 | 0.09× (11× slower) | 4.76e-10 |
+| `solve_ivp` LSODA + `dense_output` | 20/20 | 0.09× | 4.76e-10 |
+| Radau / BDF + `t_eval` | **5/20** | — | 3.3e-8 / 1.3e-7 |
+| `odeint(mxstep=50000)` | 20/20 | 0.16× (slower) | 0.00e+00 |
+
+- 18 ionized (φ-limited, event fires) + **2 neutral** (`n_state=2`, no φ-event; `rel_n` ≈ 1e-12 — essentially exact). odeint median 7.34 ms for the ionized degenerate solves, ~0.65 ms for the neutral ones.
+- Same verdict as energy: accuracy is excellent; the event trick is ~5.7× faster *only because* simple_cluster is degenerate; `t_eval`/`dense` are ~11× slower; Radau/BDF still mostly stall (5/20).
 
 ### Verified findings (each traces to a committed CSV)
 1. **Accuracy is excellent in every regime.** `solve_ivp(LSODA, t_eval)` reproduces `odeint` on the consumed prefix to **1.42e-9 … 1.05e-8**, including the **7 neutral-region (2-state) solves** in `steep`/`dense_flat`. The neutral-region and non-degenerate-regime gaps from the first P0 pass are now **closed** and positive.
