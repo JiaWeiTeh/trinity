@@ -63,8 +63,8 @@ rCloud_max    1e9
 # Termination
 allowShellDissolution    True
 stop_t_diss    1
-stop_r    None
-stop_t    3
+stop_r    500
+stop_t    10
 coll_r    1
 stop_at_rCloud_nSnap    None
 
