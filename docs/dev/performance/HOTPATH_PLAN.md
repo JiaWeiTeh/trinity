@@ -150,16 +150,43 @@ Gate it on a Tavg / L_total / mBubble convergence sweep.
 
 ---
 
-## F2 — Free, bit-identical wins (ship in one surgical commit; pytest must be unchanged)
+## F2 — Free wins — **SHIPPED on `fix/hotpath-freewins` (2026-06-18, commit `4a13075`)** (F2.1–F2.4; F2.5 dropped, F2.6 deferred)
+
+> **Outcome (measured 2026-06-18) — and it corrected two assumptions.**
+>
+> **Bit-identity:** `harness/verify_getdudt_equiv.py` compares the new `get_dudt`
+> against the pre-change `get_dudt` (`git show HEAD:…`) over **540 points across
+> all three branches → 0 mismatches, worst rel-diff 0.000e+00 (EXACT)**. Full
+> non-stress suite **535 passed** (no regression; `test_mu_audit_drift` source-text
+> assertions preserved). F2.1/F2.2 touch no consumed value → bit-identical by
+> construction.
+>
+> **Efficiency:**
+> - **F2.3/F2.4 (cooling): real win, +23.1% per `get_dudt` call** (163.7 → 125.9
+>   µs; `verify_getdudt_equiv.py`). Innermost hot loop, so it carries.
+> - **F2.1 (logging): NOT a wall-time win — the original P1 hypothesis was wrong
+>   and is retracted.** Clean A/B (same config, only `log_level` differs, identical
+>   **138** snapshots both): **DEBUG 680.8 s vs INFO 740.6 s** — INFO ~9% *slower*,
+>   i.e. the delta is run-to-run noise that does **not** favor INFO. f-string
+>   formatting + buffered file writes are cheap next to the bubble-structure solve.
+>   **F2.1's real value is log cleanliness: `trinity.log` shrinks ~340× (2.7 MB /
+>   22,221 lines → 8 KB / 67 lines)** and DEBUG becomes opt-in. Kept for that, not
+>   speed.
+> - **F2.2 (grav):** removes a 60k-point `simpson` + array op per final structure
+>   solve; small per-solve saving, not separately benchmarked.
+>
+> **Net:** the measurable speedup here is the cooling micro-opt (+23% per
+> `get_dudt`); the rest is correctness-neutral cleanliness. The big wall-time lever
+> remains **F1** (the 60k resample), untouched on this branch.
 
 | # | Win | Where | What's wasted | Risk |
 |---|---|---|---|---|
-| **F2.1** | **DEBUG is the shipped default with file output.** `log_level DEBUG` + `log_file True`; **none** of the 7 example params (incl. `simple_cluster`) override it. Both root logger and `FileHandler` are set to the param level (`logging_setup.py:207,258`), so every hot `logger.debug` formats its f-string **and writes to `trinity.log`**. | `default.param:37,43`; hot sites `energy_phase_ODEs.py:282-283` (2 f-strings/RHS call), `mass_profile.py:204,226` (with `.min()/.max()`) | Per-RHS-stage string-format + disk I/O for an entire run. | Ship `log_level INFO` default and/or guard hot sites with `if logger.isEnabledFor(logging.DEBUG)`. Bit-identical numerics. |
+| **F2.1** ✅ | **DEBUG was the shipped default with file output.** `log_level DEBUG` + `log_file True`; none of the 7 example params overrode it. Both root logger and `FileHandler` set to the param level (`logging_setup.py:207,258`). | `default.param` (now `INFO`); `registry.py:297` (source of truth, changed). | Per-RHS-stage string-format + disk I/O — but **measured cheap** (see Outcome). | **SHIPPED:** `registry.py` default `DEBUG→INFO`, `default.param` regenerated. Value is a ~340× smaller log, **not** speed (A/B showed no wall-time win). Bit-identical numerics. |
 | **F2.2** | **`grav_phi` + `grav_force_m` computed then discarded.** | `bubble_luminosity.py:979-1000`; sole caller `:746` `m_cumulative, _, _ = …` (grep-confirmed no other caller) | A full-array `scipy.integrate.simpson` + a 60k-element divide, every final structure solve, for nothing. | Delete the two computations; trim return to `m_cumulative`. Bit-identical (`m_cumulative` unchanged). |
 | **F2.3** | **`get_dudt` recomputes run-constants every call** (innermost scalar loop). | `net_coolingcurve.py:94,96,103` | `nonCIE_Tcutoff`/`CIE_Tcutoff`/`min(temp)` are boolean-mask+`max`/`min` over fixed grids on every call; `CIE_Tcutoff`/`min(temp)` are true run-constants, the non-CIE one changes only at the cube-rebuild cadence. | Precompute once (cache on the cube / in `params`, refresh only when `get_coolingStructure` runs). Bit-identical. |
 | **F2.4** | **`get_dudt` computes `Lambda_CIE` unconditionally.** | `net_coolingcurve.py:89` | A full `CIE.get_Lambda` (interp1d eval + 2 transcendentals) discarded on the non-CIE and interpolation branches (the common conduction-zone case). | Move it inside the `elif … >= CIE_Tcutoff` branch. Bit-identical. |
-| **F2.5** | **SPS `pdotdot_total` finite-difference in the energy RHS path.** | `update_feedback.py:185` (2 extra of 13 spline evals/call) | Never consumed by the energy/transition RHS (`[rd,vd,Ed]`); it's a diagnostic/momentum derivative. | Compute only where consumed (`compute_derived_quantities`). Bit-identical to the integrated trajectory. |
-| **F2.6** | **Per-snapshot full-dict rescan of `_excluded_keys`.** | `trinity/_input/dictionary.py:614` (`for k, item in self.items(): … _excluded_keys.add(k)`, comment "Refresh excluded sets in case flags changed after insertion") runs every `_clean_for_snapshot` (every snapshot). | A full ~195-key walk per snapshot to refresh a set that is constant after phase 0. | Compute once / on flag change. Bit-identical. *(Verified NOT a hot waste: the simplify-R² `logging.debug` at `:535` is already guarded by `_impl_r2_logged < 2` + phase=="implicit", so ≤2 emits/snapshot — noted only to record it was checked.)* |
+| ~~**F2.5**~~ ⛔ **DROPPED — not a free win** | **SPS `pdotdot_total` finite-difference.** My earlier rationale ("never consumed by the energy/transition RHS") was **wrong**. | `update_feedback.py:185` | **It IS consumed by an integrated RHS:** the phase-1b implicit `Ed` via the A12 coefficient `1.5·pdotdot_total/pdot_total` (`run_energy_implicit_phase.py:854`, `get_betadelta.py:411/520`). | Removing it unconditionally is **NOT** bit-identical (changes the phase-1b trajectory). A *phase-gated lazy eval* (skip the 2 evals only in phase 1/1c/2) is possible but is **F5-class** work, not a free win. **Excluded from this branch.** |
+| **F2.6** ⏸️ deferred | **Per-snapshot full-dict rescan of `_excluded_keys`.** | `trinity/_input/dictionary.py:614` (`for k, item in self.items(): … _excluded_keys.add(k)`) runs every `_clean_for_snapshot`. | A full ~195-key walk per snapshot to refresh a set constant after phase 0. | Compute once / on flag change. Bit-identical. **Not done on this branch** (out of scope). *(The simplify-R² `logging.debug` at `:535` is already guarded — ≤2 emits/snapshot — so it is not a hot waste.)* |
 
 ---
 
