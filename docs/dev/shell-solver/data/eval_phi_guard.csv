@@ -1,0 +1,2 @@
+config,idea,n_solves,used_rel_n_max,used_rel_phi_max,used_rel_tau_max,overflow_warns_total,nonfinite_tail_solves,ms_per_solve_mean,ms_per_solve_baseline,notes
+simple_cluster,phi_guard_v2,5,0.00796379,1,0.0368409,0,0,1.07581,66.4897,cap 5 met
