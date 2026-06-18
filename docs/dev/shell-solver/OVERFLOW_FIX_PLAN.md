@@ -24,9 +24,13 @@
 > against the numbers **without re-running**; record the exact config + command
 > that produced each artifact.
 
-**Status (re-verified 2026-06-18 on `main` @ `c8f0d35`):** 🔵 **PLANNED, not implemented.**
-Root cause verified by three independent investigations + a captured real solve. Recommended fix:
-**evaluate the shell RHS in cgs (exact identity reconditioning)**. No production code changed.
+**Status (re-verified 2026-06-18 on `main` @ `c8f0d35`):** 🟢 **PLANNED — fix decided by the empirical
+matrix, not implemented.** Root cause verified by three investigations + a captured real solve. The
+config×idea validation matrix (accuracy + efficiency + end-to-end science gate) settled it:
+**recommended fix = `clip` (cap `nShell` in the shell RHS)** — the only candidate that *both* silences
+the flood *and* leaves every output column bit-identical. See the **EMPIRICAL VERDICT** below. (The
+earlier "cgs-rescale" recommendation was falsified — cgs is an exact identity and does **not** silence
+the flood.) No production code changed.
 
 **Where this sits:** this doc **is item §F3 of `docs/dev/performance/HOTPATH_PLAN.md`** (the hot-path
 audit's "shell-ODE conditioning" item, which was *descoped to here* on 2026-06-18 and is owned by this
@@ -66,6 +70,48 @@ not cgs. cgs-rescale is demoted to an *optional conditioning/correctness* item (
 mixed-unit `caseB_alpha`·`n²` sites consistent and improves precision) but is **not** the warning fix.
 The §4 ranking and §5 recommendation below are updated accordingly. The validation matrix (configs ×
 the *flood-fixing* ideas, accuracy + efficiency) is running to pick between φ-guard and terminate.
+
+---
+
+## ✅ EMPIRICAL VERDICT (2026-06-18) — `clip` wins: silences the flood AND is bit-identical
+
+The full config×idea matrix is committed under `data/`. Two harnesses settled it:
+- **End-to-end science gate** (`harness/run_endtoend_matrix.sh` → `data/eval_endtoend.csv`): 8 full sims
+  (2 configs × {baseline, phiguard, clip, cgs}), bounded at `stop_t=0.0015` (≈98 timesteps), diffing
+  **every** `dictionary.jsonl` output column vs baseline. Production untouched (monkeypatched RHS).
+- **Solve-level matrix** (`data/eval_terminate.csv`, 6 configs, per-phase ≥50 implicit) for terminate.
+
+| variant | flood (overflow warns) | output max-rel-diff vs baseline | speed | verdict |
+|---|---|---|---|---|
+| **`clip` (cap nShell in RHS)** | 99→**0**, 3→**0** | **0.000e+00 (bit-identical, both configs)** | ~1.0–1.02× | **✅ RECOMMENDED** |
+| `phi-guard` (freeze past front) | 99→**0**, 3→**0** | **2.1e-2** degenerate (n_IF 2.1%, mShell 1.8%, v2 1.6%, R 0.6%, Eb 0.3%); 1.3e-5 realistic | ~1.0–1.05× | silences, but perturbs the science on the degenerate regime |
+| `terminate` (solve_ivp+φ-event) | →0 (6-cfg) | ~1e-9 (used region) | net-slower realistic; mass-limited gap off-flood | clean but heavier (integrator swap) |
+| `cgs-rescale` | 99→**98**, 3→**3** | 7e-9 (exact identity) | ~1.0× | ❌ does NOT silence the flood |
+
+**Why `clip` wins.** It caps `nShell` only where the integrated state runs away in the **discarded
+post-front tail** (used region `~1e65` ≪ cap ≪ overflow `~1.3e154`), so the physically-consumed RHS is
+**byte-for-byte unchanged** → `0.000e+00` diff on every output column in both configs, while the `n²`
+pole can no longer overflow → flood gone. It is one line, keeps `odeint`, and is speed-neutral.
+
+- `cgs` is a true identity but, being identity, the AU state still hits the same pole → **flood persists**.
+- `phi-guard` silences the flood but freezing on the *state* (`phi<=0`) is **not** an identity; on the
+  degenerate regime the front shift propagates into consumed shell scalars (**up to ~2.1%**: n_IF,
+  mShell, v2). Tolerable on realistic inputs (1e-5) but a real perturbation where it matters most.
+- `terminate` is near-identity and clean conceptually but swaps the integrator, is net-slower on
+  realistic runs, and needs a 2nd mass-condition event for the mass-limited slices.
+
+### Recommendation → implement `clip`
+One line in `trinity/shell_structure/get_shellODE.py`: cap `nShell` before the `n²` terms. Choose the
+cap with margin for the `~1e55` `1/(k_B·t_ion)` prefactor in `dndr` (recomb term `~prefactor·n²·…`):
+`1e120` was bit-identical + flood-free in both configs (used `~1e65`; the term stays `<1.8e308`); a
+slightly lower cap (e.g. `1e100`) adds margin. Keep the rollout: **S0** used-region-identity test
+(assert clip == production where `nShell < cap`), **S1** implement, **S2** the committed end-to-end
+gate (flood→0, output diff `0.000e+00`), **S3** revert `mxstep` + correct `insights.html`/plot-5/§F3.
+cgs-conditioning of the mixed-unit sites is an *optional, separate* cleanup (it does not fix the flood).
+
+> Scope note: the end-to-end gate covered 2 configs (degenerate + 1 realistic); `clip`'s bit-identity is
+> *by construction* (it never activates in the used region), so it generalises. `terminate`'s 6-config
+> solve-level data stands. Reproduce: `bash harness/run_endtoend_matrix.sh` then `python harness/aggregate_endtoend.py`.
 
 ---
 
