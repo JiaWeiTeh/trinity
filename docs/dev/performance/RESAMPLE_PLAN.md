@@ -135,11 +135,14 @@ def _get_velocity_residuals(dMdt_init, params, Pb, R1):
 
 ## Phases
 
-### P0 — Capture + baseline + harness (zero production change)
-Build `harness/capture_bubble_residual.py` (monkeypatch `get_bubbleproperties_pure`, matrix phase gate, one CSV/config) + `harness/replay_residual_variants.py` (the method-matrix replay, reusing `tools/bubble_audit/load_state`). Capture 20 energy + 100 implicit per config; commit `data/bubble_residual_baseline_<config>.csv` (timings + the 4 outputs under baseline) and a few `TRINITY_BUBBLE_STATE_DUMP` pickles for offline replay. **Gate G0:** capture reaches 100 implicit solves on ≥4 configs; baseline timings recorded (turn the ~21 ms microbench into a real per-call + per-bubble fraction).
+### P0 — Capture + baseline + harness (zero production change) — 🟡 partly DONE
+Built `harness/{residual_variants,capture_replay_bubble,replay_from_dump,aggregate_p0}.py` + `run_p0_sweep.sh`. **`mock_hybr` captured + validated** (see "### P0 results" + the detailed task plan above). **Gate G0 (open):** capture reaches 100 implicit solves on ≥4 configs; per-call baseline + per-variant timings recorded. **Remaining:** the 5-other-config sweep at `N_IMPLICIT=100`.
 
-### P1 — Residual-level equivalence + NPTS sweep
-Replay all methods on captured inputs; pick the smallest safe `_RESIDUAL_NPTS`. **Gate G1:** numerator bit-identical; residual rel-diff ≤1e-9; **0 monotonic-gate flips** that change acceptance vs baseline, across all captured trial dMdt. Commit `data/residual_variants_matrix.csv` + `aggregate`d master table.
+### P1 — Choose `_RESIDUAL_NPTS` (residual + integration equivalence on the full matrix)
+**P0 already collapsed most of P1's question:** on `mock_hybr` the converged `rel_dMdt` is **identical across M2000…M200** and the speed-vs-N curve is nearly flat, so the choice is about **robustness margin, not accuracy or speed**. P1 = run the full-matrix sweep (G0 data) and pick N:
+- **recommend `M500`** (conservative — 2.5× over the conduction band's own `_CONDUCTION_NPTS=2000`-derived resolution scale, ample for `min_T`/monotonic) unless the sweep shows a config where small N moves `rel_dMdt`;
+- consider **`Mnodes`** (cheapest, no `t_eval`) only if the sweep shows **0** cases where the strict-monotonic gate flips the accepted root (add the `monotonic_flip` diagnostic column for this check).
+**Gate G1:** across **all** captured calls in every config, worst output-level `rel_dMdt` ≤ the G2 bound (≤0.3%; P0 saw 1e-6) at the chosen N, 0 new solver failures, `monotonic_flip` either absent or 0 at the chosen N. (The output-level `rel_dMdt` is binding — it subsumes any residual-level monotonic flip; see the §CSV-schema gap note.) Commit `data/master_p0_table.csv`.
 
 ### P2 — Integration-level equivalence (the decision gate)
 Full `get_bubbleproperties_pure` baseline-residual vs chosen-NPTS-residual on every captured state. **Gate G2 (hard):** converged `bubble_dMdt` rel-diff ≤0.3% (and `LTotal`/`T_r_Tb`/`mass` ≤0.3% / traceable) on **all 12 config×phase cells**, 0 solver failures the baseline didn't have, monotonic-acceptance unchanged. Commit `data/bubble_output_equiv_<config>.csv` + master.
@@ -185,15 +188,33 @@ reproduction harness.
 ### Method variants (`residual_variants.py`)
 `baseline` = the current `_get_velocity_residuals` (60k dense resample). `M{2000,1000,500,200}` = Option (b): `solve_ivp(LSODA, t_eval=linspace(r2Prime, R1, N))`, no `dense_output`; numerator `sol.y[0,-1]`, denominator the IC `v_init`, `min_T`/`monotonic` on `sol.y[1,:]`. `Mnodes` = Option (b) with no `t_eval` (`min_T`/monotonic on adaptive `sol.t`/`sol.y`). All keep the `_RESIDUAL_RTOL`/`_BUBBLE_ATOL`, the `_T_INIT_BOUNDARY` rejection, and the `_SOLVER_FAIL_RESIDUAL` failure contract identical to baseline.
 
-### CSV schema (one row per captured-call × variant)
-`config, phase, call_index, variant, npts, bubble_dMdt, bubble_LTotal, bubble_T_r_Tb, bubble_mass, bubble_Tavg, R1, Pb, time_ms, rel_dMdt, rel_LTotal, rel_T_r_Tb, rel_mass, monotonic_flip, ok` — `rel_*` vs the baseline row for the same call; `monotonic_flip` = did the variant's residual monotonic-gate verdict differ from baseline on any trial dMdt; `time_ms` = min of K reps.
+### CSV schema (one row per captured-call × variant) — AS BUILT
+`config, phase, call_index, variant, npts, bubble_dMdt, bubble_LTotal, bubble_T_r_Tb, bubble_mass, bubble_Tavg, R1, Pb, time_ms, rel_dMdt, rel_LTotal, rel_T_r_Tb, rel_mass, ok` (18 cols) — `rel_*` vs the baseline row for the same `call_index`; `time_ms` = min of K reps.
+**Gap vs the original plan:** a `monotonic_flip` column (per the §Risks behaviour-change caveat) was specced but **not built**. It is *not* needed for the gate — a strict-monotonic flip that changed the accepted root would surface as a non-tiny `rel_dMdt` at the **output** level (the binding G2 metric), and the P0 data shows `rel_dMdt ≤ 1e-6`, i.e. **no flip ever changed the converged dMdt** on `mock_hybr`. **P1 adds `monotonic_flip` as a *diagnostic* only** (to *localise* any flip in a config where `rel_dMdt` does turn out npts-sensitive), not as a separate gate.
 
 ### Tasks (parallel)
 - **Task 1 — `residual_variants.py` + `capture_replay_bubble.py`** (the core + the in-process harness). Validate on **`mock_hybr`** (`N_ENERGY=20 N_IMPLICIT=100`); commit `data/bubble_resample_mock_hybr.csv` + 2–3 state pickles under `data/states/`.
 - **Task 2 — `aggregate_p0.py` + `run_p0_sweep.sh` + `replay_from_dump.py`** (master table from the CSV schema above; the 6-config sweep driver with per-config wall caps; an offline replay that loads a state pickle and runs all variants). Schema-defined → testable without Task 1's data.
 
 ### Gate G0
-≥4 configs reach 100 implicit captures; per-call baseline + per-variant timings recorded (the ~21 ms microbench replaced by a **real** production fraction); one CSV/config + master + 2–3 pickles committed. Then P1 reads these.
+≥4 configs reach 100 implicit captures; per-call baseline + per-variant timings recorded (the ~21 ms microbench replaced by a **real** production fraction); one CSV/config + master committed (pickles gitignored — regenerable). Then P1 reads these.
+
+### P0 results — `mock_hybr` ✅ DONE (2026-06-18); 5/6 configs PENDING
+Harness built + validated; `data/bubble_resample_mock_hybr.csv` (5 energy + 10 implicit calls × 6 variants; `N_ENERGY=5 N_IMPLICIT=10`). Regenerate the table with `python docs/dev/performance/harness/aggregate_p0.py`.
+
+| config | phase | baseline ms | M2000 | M1000 | M500 | M200 | Mnodes | worst rel_dMdt (M*/Mnodes) |
+|---|---|---|---|---|---|---|---|---|
+| mock_hybr | energy | 1176.6 | 1.74× | 1.78× | 1.80× | 1.83× | **1.84×** | 1.3e-7 / 4.3e-7 |
+| mock_hybr | implicit | 1454.2 | 1.41× | 1.45× | 1.45× | 1.46× | **1.58×** | 1.0e-6 / 2.2e-6 |
+
+**Findings (shape P1):**
+1. **Accuracy is universal and ≪ the 0.3% gate** — worst `rel_dMdt` 1.0e-6 (M*) / 2.2e-6 (Mnodes); `rel_LTotal/T_r_Tb/mass` all ≤7e-7. `ok` = 6/6 variants on every call.
+2. **`rel_dMdt` is npts-INSENSITIVE in [200, 2000]** — M2000 ≡ M1000 ≡ M500 ≡ M200 to the digit (1.02e-6 implicit). The coarse sample doesn't move the converged root, so **the accuracy ceiling is set by the integration, not by N**. ⇒ P1 can pick the *smallest* safe N (M200) or even **Mnodes** (no `t_eval`) — the speed-vs-N curve is nearly flat, so the choice is about robustness margin, not accuracy.
+3. **Speed: ~1.4–1.8× per bubble call on the TINY config.** Energy (1.74–1.84×) beats implicit (1.41–1.58×). This is the *floor* of the win — `mock_hybr`'s bubble solves are small, so the 60k resample is a smaller share. The **degenerate `simple_cluster`** (where the microbench put the resample at ~27× the integration) is expected to show a substantially larger factor — that is the headline number the sweep must capture.
+
+### What's DONE vs STILL NEEDED for G0
+- ✅ **Done:** harness (5 files) built, ruff-clean, committed; `mock_hybr` captured + validated; aggregator + master table working; accuracy + per-phase speedup recorded.
+- ⏳ **Still needed (G0):** capture the other **5 configs** at `N_IMPLICIT=100` (`simple_cluster`/sfe0.3 first — the headline degenerate win; then sfe0.6, probe_typical_hybr, steep, dense_flat). Run `run_p0_sweep.sh` (multi-hour; degenerate configs ~45 min each). `mock_hybr` itself needs a re-capture at `N_IMPLICIT=100` (the committed CSV is the N=10 validation slice).
 
 ## Efficiency measurement plan (record every number — 💾)
 - **Per-residual-call**: baseline (60k resample + grid build) vs Option (b) — `timeit`, isolate the resample + grid-build savings.
