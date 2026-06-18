@@ -52,9 +52,14 @@ probe — but the underlying overflow that causes them is).
   `[Msun, pc, Myr]`**, so `nShell` is a number density in **`1/pc³`**. With
   `cvt.ndens_cgs2au ≈ 2.94e55` (`unit_conversions.py:88`), a physical ionisation-front density of
   ~10⁹ cm⁻³ is stored as **`nShell ≈ 10⁶⁴` code units**.
-- The recombination terms `± chi_e · nShell² · …` (`get_shellODE.py:97`, `:100`) then form
-  `nShell² ≈ 10¹²⁸`, which **overflows float64 (max 1.8e308)** as `nShell` rises past the front
-  → `inf`/`nan` derivatives → LSODA forced to machine-precision steps → the `t+h=t` flood.
+- The recombination terms `± chi_e · nShell² · …` (`get_shellODE.py:97`, `:100`) make `dn/dr ∝ +n²`
+  a **finite-radius pole** (`n(r)=n0/(1−A·n0·Δr)`). At the front `nShell² ≈ 9e130` is still *finite*;
+  but a few grid steps into the discarded tail `nShell` blows past **~1.3e154**, so `nShell²` (and the
+  derivative, further amplified by the `1/(k_B·t_ion) ≈ 10⁵⁵` prefactor) **overflows float64
+  (1.8e308) → `inf`/`nan`** → LSODA forced to machine-precision steps → the `t+h=t` flood. (Earlier
+  drafts said "`nShell²≈10¹²⁸` overflows float64" — imprecise: `10¹²⁸ < 10³⁰⁸`. The overflow is the
+  pole reached ~20 steps past the front, not the front value. Corrected 2026-06-18 from a captured
+  real solve — see §9.)
 - **The physics is correct, not a bug.** `dn/dr ∝ +n²` is a *derived* consequence of the
   radiation-force gradient (`docs/dev/archive/n-consistency/implementation-plan.md:268-274`) and is
   pinned by `test/test_mu_audit_drift.py:188-209` to rtol 1e-12. The steep rise is a genuine
@@ -187,7 +192,18 @@ invasive; touches the audited RHS. Not worth it.
 
 - `python run.py param/simple_cluster.param` → `get_shellODE.py:97 overflow encountered` (root cause,
   reproduces on `main`).
-- Probe (front idx vs overflow idx, monkeypatched `odeint`): front at the φ→0 crossing, overflow
-  several steps into the discarded tail (front idx 4 / overflow idx 26 for the captured `y0`).
+- **Captured first ionised solve** (`harness/verify_overflow.py`, monkeypatches `odeint`, bails after
+  the first ionised slice; ~30 s, verified 2026-06-18):
+  | field | value |
+  |---|---|
+  | `y0_n` (slice start, code units) | `1.337e65` |
+  | `nShell` at front | `2.974e65` code-units = **`1.011e10` cm⁻³ physical** |
+  | `front_idx` (first `phi<=1e-9`) | **4** |
+  | `ovf_idx` (first non-finite row) | **26** |
+  | `n_max_finite` before `inf` | `6.65e67` |
+  | grid points integrated | 1000 |
+  | overflow RuntimeWarnings / solve | 1 |
+  Proves: overflow real; `nShell² @ front = 8.8e130` is *finite* (the pole overflows ~20 steps later);
+  overflow row (26) is past the consumed front (4) → discarded tail; physical front density ~1e10 cm⁻³.
 - This container's SciPy does NOT surface `lsoda--` Fortran lines (stiff-probe → 0), so the flood
   itself is verified via the root-cause overflow, not the Fortran text.
