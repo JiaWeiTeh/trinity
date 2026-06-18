@@ -52,7 +52,7 @@ Environment of record (matches the prior plans): **python 3.11.x, numpy 1.26.4 (
 > evaluated), the per-segment framing (`run_energy_phase.py:159`,
 > `run_energy_implicit_phase.py:720`, `get_betadelta.py:56/909/936`,
 > `energy_phase_ODEs.py:223`), `density_profile.py:109-130`, and the
-> transition/momentum "zero bubble solves" (grep `get_bubbleproperties_pure|_create_legacy_radius_grid`
+> transition/momentum "zero bubble solves" (grep `get_bubbleproperties_pure|_create_radius_grid`
 > → 0 in both). **Not reproducible here:** this container has **no astropy**, so
 > the code does not import/run — the F1 "~21 ms vs 0.8 ms" timings remain
 > subagent-microbenchmark-sourced and are still gated on P0 re-measurement; the
@@ -127,7 +127,7 @@ structure solve runs:
   mock). The non-default `legacy` solver instead uses `_solve_grid` (a 5×5 = up to
   25-point grid). Either way it is many bubble solves per segment.
 - **phase1c_transition / phase2_momentum**: **zero** bubble structure solves
-  (verified — no `get_bubbleproperties_pure`, no `_create_legacy_radius_grid`).
+  (verified — no `get_bubbleproperties_pure`, no `_create_radius_grid`).
 
 So the entire 60k cost lives in **phase1_energy and phase1b only**, and §F1 below
 is amplified by the betadelta grid/root-finder, not by the time integrator.
@@ -146,11 +146,10 @@ The ODE RHS *does* run a cheaper `solve_R1` brentq every stage (`energy_phase_OD
 `get_bubbleproperties_pure` solves `dMdt` with `scipy.optimize.fsolve`
 (`bubble_luminosity.py:461`). Each fsolve iteration calls `_get_velocity_residuals`
 (`:875`), which:
-1. rebuilds the ~60 000-point grid (`_create_legacy_radius_grid`, `:894`;
-   three `np.logspace(… int(2e4))` chunks ≈ 6e4 before `_clean_radius_grid`; a
-   captured call measured ≈59,992 — exact count varies with cleaning) — note the
-   `_legacy` name is a **misnomer**: this is the sole production grid, not a
-   deprecated one (see `RESAMPLE_PLAN.md` "Naming note"),
+1. rebuilds the ~60 000-point grid (`_create_radius_grid`, `:894`, renamed
+   2026-06-18 from the misleading `_create_legacy_radius_grid`; three
+   `np.logspace(… int(2e4))` chunks ≈ 6e4 before `_clean_radius_grid`; a captured
+   call measured ≈59,992 — exact count varies with cleaning),
 2. runs a full `solve_ivp(LSODA, dense_output=True)` (`_solve_bubble_structure`, `:900`),
 3. **resamples all ~60 000 points** via `sol.sol(r_array)` (`:157`),
 
@@ -199,7 +198,7 @@ live in `RESAMPLE_PLAN.md`.**
 grid's 25).
 
 ### Cousin experiment (own convergence study, à la `archive/bubble/conduction-convergence.md`)
-**Does the legacy grid need 60 000 points at all?** The conduction zone is already
+**Does the production grid need 60 000 points at all?** The conduction zone is already
 sampled separately at 2000 pts (`_CONDUCTION_NPTS`); the CIE region is smooth.
 Shrinking the base grid speeds the *final* solve too, not just the residual.
 Gate it on a Tavg / L_total / mBubble convergence sweep.

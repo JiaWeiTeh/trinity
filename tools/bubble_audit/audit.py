@@ -82,7 +82,7 @@ def gate_check(params, inputs, ref):
     R1, Pb, r2P = inputs["R1"], inputs["Pb"], inputs["r2Prime"]
     ic = [float(x) for x in inputs["initial_conditions"]]
 
-    r = bl._create_legacy_radius_grid(R1, r2P)
+    r = bl._create_radius_grid(R1, r2P)
     psoln = scipy.integrate.odeint(
         bl._get_bubble_ODE, ic, r, args=(params, Pb), tfirst=True
     )

@@ -477,31 +477,32 @@ def get_bubbleproperties_pure(params) -> BubbleProperties:
     )
 
     # Create radius array and solve ODE.
-    # NOTE: _create_adaptive_radius_grid (currently unused) was an alternative
-    # that concentrates points around shock regions but under-samples the
-    # conduction zone (T = 1e4 to 10^5.5 K). The legacy grid is used for output
-    # sampling; the LSODA dense-output interpolation failures it once caused are
-    # now avoided by integrating with solve_ivp (see _solve_bubble_structure and
+    # NOTE: an adaptive grid concentrating points around shock regions was tried
+    # and dropped -- it under-sampled the conduction zone (T = 1e4 to 10^5.5 K).
+    # The production grid is used for output sampling; the LSODA dense-output
+    # interpolation failures it once caused are now avoided by integrating with
+    # solve_ivp (see _solve_bubble_structure and
     # docs/dev/archive/bubble/integrator-robustness.md), not by the grid itself.
     initial_conditions = [v_r2Prime, T_r2Prime, dTdr_r2Prime]
 
-    return _bubble_luminosity_legacy(
+    return _bubble_luminosity(
         params, R1, Pb, r2Prime, initial_conditions, bubble_r_Tb, bubble_dMdt)
 
 
-def _bubble_luminosity_legacy(params, R1, Pb, r2Prime, initial_conditions,
-                              bubble_r_Tb, bubble_dMdt):
-    """Compute bubble luminosity on the legacy radius grid (production path).
+def _bubble_luminosity(params, R1, Pb, r2Prime, initial_conditions,
+                       bubble_r_Tb, bubble_dMdt):
+    """Compute bubble luminosity on the production radius grid.
 
-    Builds the ~60k-point legacy grid, integrates the structure with solve_ivp
+    Builds the ~60k-point grid, integrates the structure with solve_ivp
     (via _solve_bubble_structure), splits the profile into CIE / conduction /
     intermediate regions (find_nearest_higher) and trapezoid-integrates the
-    cooling in each. The '_legacy' name refers only to the grid construction
-    (an earlier plan to add a separate primary path with this as fallback was
-    dropped); this is the sole luminosity path.
+    cooling in each. This is the sole luminosity path (an earlier plan to add a
+    separate primary path with this as fallback was dropped, which is why this
+    was once suffixed '_legacy').
     """
-    # Always use cleaned legacy grid for now (adaptive grid causes accuracy issues)
-    r_array = _create_legacy_radius_grid(R1, r2Prime)
+    # Use the cleaned production grid (an adaptive shock-concentrating variant
+    # was tried and dropped -- it under-sampled the conduction zone).
+    r_array = _create_radius_grid(R1, r2Prime)
     # Integrate with solve_ivp(dense_output): the integrator picks its own
     # adaptive steps and we sample the continuous solution on r_array, so the
     # near-duplicate radii that make odeint's dense-output interpolation fail
@@ -832,9 +833,9 @@ def _clean_radius_grid(r_array: np.ndarray, min_relative_spacing: float = MIN_SP
     return cleaned
 
 
-def _create_legacy_radius_grid(R1: float, r2Prime: float) -> np.ndarray:
+def _create_radius_grid(R1: float, r2Prime: float) -> np.ndarray:
     """
-    Create the legacy 60k-point radius grid with cleaning.
+    Create the 60k-point radius grid with cleaning.
 
     This wraps the original grid construction logic (three np.logspace chunks
     stitched together with np.insert) and applies cleaning to remove
@@ -890,8 +891,8 @@ def _get_velocity_residuals(dMdt_init, params, Pb: float, R1: float) -> float:
     # =============================================================================
     # radius array at which bubble structure is being evaluated.
     # =============================================================================
-    # Use cleaned legacy grid (called many times during fsolve, so keep it simple)
-    r_array = _create_legacy_radius_grid(R1, r2Prime_val)
+    # Use cleaned production grid (called many times during fsolve, so keep it simple)
+    r_array = _create_radius_grid(R1, r2Prime_val)
 
     # Solve with solve_ivp at a looser rtol -- this solve only locates dMdt for
     # the fsolve (see _RESIDUAL_RTOL). A failed solve returns ok=False; return a

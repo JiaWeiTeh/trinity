@@ -30,7 +30,7 @@
 - **Type:** plan — phased equivalence + timing study (config × method matrix, capture-replay reaching deep into the implicit phase), then promotion behind a tolerance gate.
 - **Workstream:** `performance/` — this is HOTPATH §F1, the headline win. Branch **`fix/hotpath-resample`** (off `fix/hotpath-freewins`, which carries the §F2 wins).
 - **Where it sits:** `HOTPATH_PLAN.md` §F1 → **this** (the detailed F1 plan + its harness/data).
-- **Code it concerns:** `trinity/bubble_structure/bubble_luminosity.py` — `_get_velocity_residuals` (`:875`, the target), `_solve_bubble_structure` (`:106`, left **untouched**), `_create_legacy_radius_grid` (`:835`), `_get_bubble_ODE_initial_conditions` (`:926`), the final structure path `_bubble_luminosity_legacy` (`:492`, left **untouched**). Reached in the implicit phase via `run_energy_implicit_phase.py:720` → `solve_betadelta_pure` → `_solve_betadelta_hybr` (`get_betadelta.py:874`) → `get_residual_pure` (`:353`) → `get_bubbleproperties_pure` (`:398`) → `fsolve` (`:461`).
+- **Code it concerns:** `trinity/bubble_structure/bubble_luminosity.py` — `_get_velocity_residuals` (`:875`, the target), `_solve_bubble_structure` (`:106`, left **untouched**), `_create_radius_grid` (`:835`), `_get_bubble_ODE_initial_conditions` (`:926`), the final structure path `_bubble_luminosity` (`:492`, left **untouched**). Reached in the implicit phase via `run_energy_implicit_phase.py:720` → `solve_betadelta_pure` → `_solve_betadelta_hybr` (`get_betadelta.py:874`) → `get_residual_pure` (`:353`) → `get_bubbleproperties_pure` (`:398`) → `fsolve` (`:461`).
 - **Linked files & data:** to be created under `harness/` + `data/`. Reuses `tools/bubble_audit/` (`load_state` reconstructs full params from a `TRINITY_BUBBLE_STATE_DUMP` pickle) and the shell-solver capture pattern (`docs/dev/shell-solver/harness/capture_replay_variants.py`). **Commit every CSV.**
 
 Environment of record: **python 3.11.x, numpy 1.26.4 (`<2` pin), scipy 1.17.1, astropy 7.2.1, pytest 9.1.0** (container needs `pip install -e ".[dev]"`).
@@ -39,7 +39,7 @@ Environment of record: **python 3.11.x, numpy 1.26.4 (`<2` pin), scipy 1.17.1, a
 
 ## The question
 
-The dMdt `fsolve` (`bubble_luminosity.py:461`) calls `_get_velocity_residuals` (`:875`) many times per bubble solve. Each call builds the ~60k-point legacy grid (`_create_legacy_radius_grid`, `:894`), runs `solve_ivp(LSODA, dense_output=True)`, and **resamples all ~60k points** via `sol.sol(r_array)` (`_solve_bubble_structure:157`) — but the residual it returns (`:908-921`) consumes only **four scalars**: `v[-1]`, `v[0]`, `np.min(T)`, `monotonic(T)`. The ~60k resample (microbench ~21 ms vs ~0.8 ms integration) is wasted.
+The dMdt `fsolve` (`bubble_luminosity.py:461`) calls `_get_velocity_residuals` (`:875`) many times per bubble solve. Each call builds the ~60k-point grid (`_create_radius_grid`, `:894`), runs `solve_ivp(LSODA, dense_output=True)`, and **resamples all ~60k points** via `sol.sol(r_array)` (`_solve_bubble_structure:157`) — but the residual it returns (`:908-921`) consumes only **four scalars**: `v[-1]`, `v[0]`, `np.min(T)`, `monotonic(T)`. The ~60k resample (microbench ~21 ms vs ~0.8 ms integration) is wasted.
 
 **Can the residual be computed from a coarse solve — endpoints from the integrator's own nodes, `min_T`/monotonicity from a ~2000-point `t_eval` — with the converged `bubble_dMdt` (and downstream `LTotal`/`T_r_Tb`/`mass`) unchanged within tolerance, across every regime and deep into the implicit phase?**
 
@@ -47,21 +47,19 @@ The dMdt `fsolve` (`bubble_luminosity.py:461`) calls `_get_velocity_residuals` (
 
 ## Mechanism / current state (verified 2026-06-18 against source + two real dumped solves)
 
-> **Naming note (verified 2026-06-18 — don't be misled by "legacy").** The bubble
-> functions this plan touches — `_bubble_luminosity_legacy` (`:492`) and
-> `_create_legacy_radius_grid` (`:835`) — are **NOT deprecated; they are the SOLE
-> production path.** `_bubble_luminosity_legacy`'s own docstring says so: *"the
-> '_legacy' name refers only to the grid construction (an earlier plan to add a
-> separate primary path… was dropped); this is the sole luminosity path."* The
-> "non-legacy" alternative `_create_adaptive_radius_grid` no longer exists (its
-> `def` is deleted; only a **stale comment at `:480`** still names it). This is
-> different from the genuinely-legacy `_solve_betadelta_legacy` (`get_betadelta.py:604`),
-> which has a live default replacement (`hybr`). **F1 optimizes the live path** —
-> the name is a leftover, not a signal that a better path exists. (Pre-existing
-> cleanups flagged, not done here: rename these to drop "legacy"; fix the `:480`
-> comment. CLAUDE.md rule 3 — flag, don't bundle into this change.)
+> **Naming note (resolved 2026-06-18 — the "legacy" misnomer is fixed).** The two
+> bubble functions this plan touches were **NOT deprecated** — they are the SOLE
+> production path; "_legacy" was a leftover from a dropped plan, not a signal that
+> a better path exists. **They have now been renamed** (commit on this branch):
+> `_bubble_luminosity_legacy` → **`_bubble_luminosity`** (`:492`) and
+> `_create_legacy_radius_grid` → **`_create_radius_grid`** (`:835`); callers, the
+> two tests/tools that referenced them, and the stale `:480` comment (which named
+> the deleted `_create_adaptive_radius_grid`) were updated too — `pytest` 535
+> passed, behavior-preserving. This is distinct from the genuinely-legacy
+> `_solve_betadelta_legacy` (`get_betadelta.py:604`), which keeps its name because
+> it has a live default replacement (`hybr`). **F1 optimizes the live path.**
 
-- **Grid is strictly decreasing** (`_create_legacy_radius_grid`, `:835`): `r_array[0]` = outer start `r2Prime`, `r_array[-1]` = inner end `R1`; `t_span=(r_array[0], r_array[-1])` (`:148`) integrates outward→inward.
+- **Grid is strictly decreasing** (`_create_radius_grid`, `:835`): `r_array[0]` = outer start `r2Prime`, `r_array[-1]` = inner end `R1`; `t_span=(r_array[0], r_array[-1])` (`:148`) integrates outward→inward.
 - **Numerator** `v_array[-1]` (`:908`): `r_array[-1] == sol.t[-1]`, so `sol.sol(r_array[-1])` returns `sol.y[:,-1]` **bit-identically** (measured abs diff `0.0`, both states). With `t_eval` ending at `R1`, `sol.y[0,-1]` is the same value → **numerator bit-identical**.
 - **Denominator** `v_array[0] = sol.sol(r_array[0])[0]` (`:908`): the current code uses the dense interpolant at the start, which differs from the IC `v_init` by **~1e-12 rel** under LSODA (state_0000 abs `8.08e-9`, rel `3.60e-12`; state_0001 `8.86e-9`, `6.55e-12`; **`0.0` under RK45**). `v_init` is the *exact* IC, known before integrating (`_get_bubble_ODE_initial_conditions`, `:926`). Replacing the dense-interp denominator with `v_init` shifts the residual by ~1e-12 rel — far below `fsolve`'s `xtol=1e-4` and the `_RESIDUAL_RTOL=1e-6` regime the code already declares acceptable.
 - **`min_T` / `monotonic`** (`:910,919`): the only consumers that genuinely need the *profile*. Today read off the 60k grid; the fix reads them off a coarse `t_eval`. **The one non-trivial behavior change** (see Risks): `monotonic` uses the *strict* `operations.monotonic` (`operations.py:68`), so a coarse grid could in principle smooth over a dense-output single-point spike a 60k grid would catch and flip the `1e2` penalty. Held across a 0.5×–2× dMdt scan on a real state (60k vs 2000 vs 200 all agreed) — **must be confirmed at scale (P2)**.
@@ -70,7 +68,7 @@ The dMdt `fsolve` (`bubble_luminosity.py:461`) calls `_get_velocity_residuals` (
 
 ## The fix — Option (b): coarse `t_eval` residual solve (rewrite `_get_velocity_residuals` ONLY)
 
-Leaves `_solve_bubble_structure` (`:106`) and the final structure path (`:492`, which legitimately needs the 60k grid + dense `_sol` for the conduction zone, `:632`) **byte-identical**. Drops three costs per fsolve iteration: the 60k `sol.sol`, the `_create_legacy_radius_grid` build+clean, and the `dense_output` allocation.
+Leaves `_solve_bubble_structure` (`:106`) and the final structure path (`:492`, which legitimately needs the 60k grid + dense `_sol` for the conduction zone, `:632`) **byte-identical**. Drops three costs per fsolve iteration: the 60k `sol.sol`, the `_create_radius_grid` build+clean, and the `dense_output` allocation.
 
 ```python
 _RESIDUAL_NPTS = 2000   # coarse min-T/monotonicity grid; matches _CONDUCTION_NPTS precedent
@@ -169,7 +167,7 @@ A/B wall-time on a short `simple_cluster` (and `mock_hybr`): baseline vs F1, sam
 | Denominator `v_init` ~1e-12 ≠ byte-identical | measured ≪ `xtol=1e-4`/`_RESIDUAL_RTOL=1e-6`; G2 confirms converged dMdt within 0.3% |
 | Coarse `t_eval` misses a real T dip affecting `min_T` rejection | NPTS sweep (P1) + the 0.3% integration gate (P2); 2000 pts resolves the conduction band (precedent: `_CONDUCTION_NPTS`) |
 | Capture doesn't reach the implicit phase | matrix phase gate (proven in shell harness); `mock_hybr` reaches implicit cheaply; require 100 implicit on ≥4 configs |
-| Changes the final structure solve | scope is `_get_velocity_residuals` only; P3 asserts `_solve_bubble_structure`/`_bubble_luminosity_legacy` diff-free |
+| Changes the final structure solve | scope is `_get_velocity_residuals` only; P3 asserts `_solve_bubble_structure`/`_bubble_luminosity` diff-free |
 | LSODA vs RK45 endpoint difference | documented (RK45 denom bit-identical); we keep LSODA, so the ~1e-12 is the worst case |
 
 ## Decisions for the maintainer
