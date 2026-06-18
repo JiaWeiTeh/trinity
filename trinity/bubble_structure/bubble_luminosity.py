@@ -86,6 +86,14 @@ _BUBBLE_ATOL = 1e-10
 # shifts by <=0.3% (measured), bounded and within the series' output-diff.
 _RESIDUAL_RTOL = 1e-6
 
+# Coarse output grid for the dMdt velocity-residual solve. This solve only
+# LOCATES dMdt for the fsolve, so it integrates once on this many points instead
+# of resampling a dense-output solution onto the ~60k _create_radius_grid. P0/P1
+# (docs/dev/performance) show the converged dMdt is insensitive to this in
+# [200, 2000] (rel_dMdt <= 3e-6 vs the 60k grid across 6 configs); 500 is the
+# conservative pick.
+_RESIDUAL_NPTS = 500
+
 # Number of points used to sample the dense-output solution across the
 # conduction band for the L_conduction / Tavg_conduction trapezoids. The
 # integrand is smooth and the sampled solution is exact, so the trapezoid
@@ -888,23 +896,32 @@ def _get_velocity_residuals(dMdt_init, params, Pb: float, R1: float) -> float:
     T_init      = np.asarray(T_r2Prime).item()
     dTdr_init   = np.asarray(dTdr_r2Prime).item()
 
-    # =============================================================================
-    # radius array at which bubble structure is being evaluated.
-    # =============================================================================
-    # Use cleaned production grid (called many times during fsolve, so keep it simple)
-    r_array = _create_radius_grid(R1, r2Prime_val)
-
-    # Solve with solve_ivp at a looser rtol -- this solve only locates dMdt for
-    # the fsolve (see _RESIDUAL_RTOL). A failed solve returns ok=False; return a
-    # deterministic, large, non-zero penalty so fsolve is steered away from this
+    # This solve only LOCATES dMdt for the fsolve (looser _RESIDUAL_RTOL), so it
+    # integrates once on a coarse t_eval grid rather than resampling a dense
+    # solution onto the ~60k _create_radius_grid (HOTPATH F1; docs/dev/performance).
+    # Integration accuracy is set by rtol/atol; the residual only needs v at the
+    # endpoints plus the min_T / monotonic guards along the path. A failed solve
+    # returns a deterministic, large penalty so fsolve is steered away from this
     # dMdt instead of falsely converging on garbage (a zero tail -> residual ~0).
-    psoln, _ok, _, _ = _solve_bubble_structure(
-        [v_init, T_init, dTdr_init], r_array, params, Pb, rtol=_RESIDUAL_RTOL)
-    if not _ok:
+    if not np.all(np.isfinite([v_init, T_init, dTdr_init])):
+        return _SOLVER_FAIL_RESIDUAL
+    try:
+        sol = scipy.integrate.solve_ivp(
+            fun=lambda r, y: _get_bubble_ODE(r, y, params, Pb),
+            t_span=(r2Prime_val, R1),
+            y0=[v_init, T_init, dTdr_init],
+            method='LSODA',
+            t_eval=np.linspace(r2Prime_val, R1, _RESIDUAL_NPTS),
+            rtol=_RESIDUAL_RTOL,
+            atol=_BUBBLE_ATOL,
+        )
+    except BubbleSolverError:
+        return _SOLVER_FAIL_RESIDUAL
+    if not sol.success:
         return _SOLVER_FAIL_RESIDUAL
 
-    v_array = psoln[:, 0]
-    T_array = psoln[:, 1]
+    v_array = sol.y[0]
+    T_array = sol.y[1]
 
     residual = (v_array[-1] - 0) / (v_array[0] + 1e-4)
 
