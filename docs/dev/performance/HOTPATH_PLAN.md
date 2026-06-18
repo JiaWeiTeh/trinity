@@ -57,6 +57,14 @@ Environment of record (matches the prior plans): **python 3.11.x, numpy 1.26.4 (
 > the code does not import/run — the F1 "~21 ms vs 0.8 ms" timings remain
 > subagent-microbenchmark-sourced and are still gated on P0 re-measurement; the
 > source-structure claims above are all confirmed statically.
+>
+> **Correction 2026-06-18 (hybr default).** An earlier F5 bullet said the hybr
+> default was "still `legacy`" and that flipping it would "shrink `_solve_grid`'s
+> 25 bubble solves/segment to ~10." Both wrong: the default is **already `hybr`**
+> (`registry.py:307`, `default.param:49` — Phase-4 flip shipped), and hybr does
+> **not** use `_solve_grid` (legacy-only path) — it calls `scipy.optimize.root`,
+> whose per-segment eval count is config-dependent (~10–29, e.g. 29 on the mock,
+> *more* than 25). Fixed in §F5, the framing note, and the recurring-classes list.
 
 ---
 
@@ -99,7 +107,7 @@ python -m pytest -q                                         # -> 535 passed
 
 1. **Computing far more than the consumer needs** — §F1 (60k-point resample for 4 scalars), §F2.2 (computed-then-discarded gravity).
 2. **Per-call work that is actually run-constant** — §F2.1 (DEBUG logging), §F2.3 (cooling cutoffs), §F5 (profile constants).
-3. **Hand-rolled vs. library / right-sized solver** — the hybr lesson; a smaller version survives in §F5 (the `_solve_grid` 25-point grid; hybr default-flip still pending).
+3. **Hand-rolled vs. library / right-sized solver** — the hybr lesson, now the shipped default (`betadelta_solver=hybr`). The legacy `_solve_grid` 25-point grid survives only as the non-default `legacy` path.
 4. **Unit-scaling *conditioning*** — §F3 (real, but **not** the float64 *overflow* the docs claim).
 
 ---
@@ -112,7 +120,12 @@ momentum) are cheap and consume pre-computed scalars. The ~60k-point bubble
 structure solve runs:
 - **phase1_energy** (`run_energy_phase.py:159`): **once per segment**.
 - **phase1b_energy_implicit** (`run_energy_implicit_phase.py:720` → `solve_betadelta_pure`):
-  **many times per segment** — up to 25 via `_solve_grid`, fewer under `hybr`.
+  **many times per segment.** The **default solver is `hybr`** (`registry.py:307`,
+  `default.param:49` — the HYBR_PLAN Phase-4 flip has SHIPPED), which calls
+  `get_bubbleproperties_pure` once per root-finder evaluation: **~10–29 per
+  segment, config-dependent** (HYBR_PLAN §2.5: median 10 on `simple1e5`, 29 on the
+  mock). The non-default `legacy` solver instead uses `_solve_grid` (a 5×5 = up to
+  25-point grid). Either way it is many bubble solves per segment.
 - **phase1c_transition / phase2_momentum**: **zero** bubble structure solves
   (verified — no `get_bubbleproperties_pure`, no `_create_legacy_radius_grid`).
 
@@ -155,8 +168,9 @@ The ODE RHS *does* run a cheaper `solve_R1` brentq every stage (`energy_phase_OD
 > unchanged. P0 must re-measure the absolute resample fraction on a real run.
 
 **Frequency:** once per fsolve iteration (xtol=1e-4, factor=50 → ~3–8 iters) ×
-up to 25 `_solve_grid` points × every phase1b segment → easily **10²–10³** of
-these resamples per phase1b run.
+the per-segment bubble-solve count (default `hybr`: ~10–29 root-finder evals;
+`legacy`: up to 25 `_solve_grid` points) × every phase1b segment → easily
+**10²–10³** of these resamples per phase1b run.
 
 ### Fix — two parts, two risk levels
 - **(a) Endpoints from boundary nodes — BIT-IDENTICAL, ship immediately.**
@@ -279,8 +293,9 @@ change. `net_coolingcurve.py:127,150` already does it right; the `exp(-tau)` cla
 - **The cooling `.interp` calls in the luminosity integrals** (`bubble_luminosity.py:650-694`)
   are already **vectorized** `RegularGridInterpolator` calls over the whole array
   — not Python loops.
-- **`_solve_grid` already caches the winning point's `props`** (`get_betadelta.py:~1017`)
-  and early-exits — no double-solve there.
+- **`_solve_grid` (the non-default `legacy` path) already caches the winning
+  point's `props`** (`get_betadelta.py:~1017`) and early-exits — no double-solve
+  there. (The default `hybr` path doesn't use the grid at all.)
 - **The non-CIE cooling cube** rebuild is correctly periodic (5e-2 Myr energy /
   5e-3 Myr implicit), not per-call; its only waste is reconstructing interpolators
   it could keep (secondary).
@@ -296,8 +311,15 @@ change. `net_coolingcurve.py:127,150` already does it right; the `exp(-tau)` cla
 - **Hoist profile run-constants into the `ODESnapshot`.** `density_profile`/`mass_profile`
   re-extract ~7 constants and rebuild a length-1 `tanh` bridge per RHS stage
   (`density_profile.py:109-130`) to evaluate a closed-form polynomial.
-- **Flip the hybr default** (HYBR_PLAN Phase 4, still `legacy`): shrinks `_solve_grid`'s
-  25 bubble solves/segment to ~10 — the multiplier that makes §F1 hurt.
+- ~~**Flip the hybr default**~~ — **ALREADY SHIPPED** (corrected 2026-06-18). The
+  default is already `hybr` (`registry.py:307`, `default.param:49`); the HYBR_PLAN
+  Phase-4 flip landed. There is no lever here. (The earlier wording — "still
+  `legacy`; hybr shrinks `_solve_grid`'s 25 → ~10" — was wrong twice: the default
+  isn't legacy, and hybr does **not** use/shrink `_solve_grid` — that grid is the
+  *legacy-only* path; hybr replaces it with `scipy.optimize.root`, whose eval
+  count is config-dependent and is **not** uniformly ≤25, e.g. 29 on the mock per
+  HYBR_PLAN §2.5.) The §F1 multiplier under the live default is hybr's ~10–29
+  evals/segment — see the framing note above.
 
 ---
 
