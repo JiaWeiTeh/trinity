@@ -24,10 +24,108 @@
 > against the numbers **without re-running**; record the exact config + command
 > that produced each artifact.
 
-**Status (2026-06-18):** 🔵 **PLANNED, not implemented.** Root cause verified by three
-independent investigations. Recommended fix: **evaluate the shell RHS in cgs (exact
-identity reconditioning)**. No code change made for this plan. Sibling doc:
-`MIGRATION_PLAN.md` (the odeint→solve_ivp migration study) — see the correction note there.
+**Status (2026-06-18):** 🟢 **IMPLEMENTED — `clip` guard shipped to `get_shellODE.py` + test.** Root cause
+verified by three investigations + a captured real solve. The config×idea validation matrix (accuracy +
+efficiency + end-to-end science gate, `data/eval_endtoend.csv`) settled the choice: **`clip` (cap `nShell`
+at `_NSHELL_MAX=1e120` in the ionised RHS)** — the only candidate that *both* silences the flood *and*
+leaves **every output column bit-identical** (`endtoend_final_maxrel = 0.000e+00` on both configs).
+Implemented at `trinity/shell_structure/get_shellODE.py` (`_NSHELL_MAX` + one `min()`), pinned by
+`test/test_shell_overflow_guard.py`. (The earlier "cgs-rescale" recommendation was falsified — cgs is an
+exact identity and does **not** silence the flood; φ-guard silences it but shifts `n_IF` by 2.1% in the
+degenerate regime; terminate-at-front is near-identity but net-slower + a bigger change.)
+
+**Final end-to-end verdict** (`data/eval_endtoend.csv`, full real runs, all output columns):
+
+| variant | flood (simple_cluster / probe_typical) | max rel diff vs baseline | speed | verdict |
+|---|---|---|---|---|
+| **clip** | 99→0 / 3→0 | **0.000e+00 / 0.000e+00** | 1.01–1.02× | **SHIPPED** |
+| φ-guard | 99→0 / 3→0 | 2.1e-2 (`n_IF`) / 1.3e-5 | 1.00–1.05× | rejected (not identity) |
+| terminate (φ-event) | 0 / 0 | ~1e-9 | net-slower realistic | alt (bigger change) |
+| cgs-rescale | 99→**98** / 3→**3** | 7e-9 | ~1.0× | rejected (doesn't fix) |
+
+**Where this sits:** this doc **is item §F3 of `docs/dev/performance/HOTPATH_PLAN.md`** (the hot-path
+audit's "shell-ODE conditioning" item, which was *descoped to here* on 2026-06-18 and is owned by this
+file). HOTPATH §F3 independently re-derived and confirmed the synthesis below — *finite (precision-only)
+at the front, real `inf` overflow at the pole, entirely in the discarded tail* — after its own first
+"doesn't overflow" take was falsified by `harness/verify_overflow.py`. Sibling: `MIGRATION_PLAN.md`
+(the odeint→solve_ivp study) — see its retraction note.
+
+**Units resolved (2026-06-18, was a subagent contradiction):** `caseB_alpha` is stored in **AU**
+(`2.782e-55 pc³/Myr`), not cgs — it goes through the blanket `convert2au(unit)` at `read_param.py:261-263`
+(unit `cm**3 * s**-1`, `registry.py:339`). So the current RHS is unit-consistent and the cgs-rescale is a
+**true identity**; to use `alpha_B` in a cgs RHS, multiply by `1/convert2au('cm**3 * s**-1') ≈ 9.31e41`
+(→ `2.59e-13 cm³/s`). The earlier "already cgs in params" note (§4) was wrong and is corrected below.
+
+---
+
+## ⚠️ EMPIRICAL FINDING (2026-06-18) — cgs-rescale does NOT silence the flood; the recommendation flipped
+
+The de-risk matrix (monkeypatched variants on real `simple_cluster`, `harness/get_shellODE_variants.py`
++ `harness/verify_overflow.py`) **falsified the cgs-first recommendation on its first cell:**
+
+| variant | front_idx | ovf_idx | overflow_warns | silences flood? |
+|---|---|---|---|---|
+| baseline (`odeint`+`mxstep`) | 4 | 26 | 1 | — |
+| **cgs-rescale RHS (V1)** | 4 | **26** | **1** | **NO — identical to baseline** |
+| **φ>0 freeze-past-front guard (V2)** | 4 | **−1** | **0** | **YES** |
+| clip `nShell` in RHS (V4) | 4 | −1 | 0 | yes (crude) |
+
+**Why cgs fails:** it is an *exact identity* (verified 7e-16), so the **state** `nShell` — still integrated
+in AU — follows the *same* finite-radius pole to `inf` in the discarded tail. cgs reconditions the
+*intermediate* `n²` but cannot stop the integrated state diverging. The overflow is a **pole in the
+state**, not a precision loss, so the only fixes that work **stop integrating into the tail**
+(freeze/terminate at the front) or cap the state.
+
+**Revised stance:** the flood fix must **stop integrating into the discarded tail** (cap or terminate),
+not recondition it. The end-to-end science gate then chose **`clip`** over φ-guard: both silence the
+flood, but φ-guard shifts `n_IF` by 2.1% (degenerate) while `clip` is **bit-identical** (the cap sits 55
+orders above the used region, so it only ever touches the thrown-away tail). cgs-rescale is demoted to an
+*optional conditioning/correctness* item (it makes the mixed-unit `caseB_alpha`·`n²` sites consistent)
+but is **not** the warning fix. **Shipped: `clip`.**
+The §4 ranking and §5 recommendation below are updated accordingly. The validation matrix (configs ×
+the *flood-fixing* ideas, accuracy + efficiency) is running to pick between φ-guard and terminate.
+
+---
+
+## ✅ EMPIRICAL VERDICT (2026-06-18) — `clip` wins: silences the flood AND is bit-identical
+
+The full config×idea matrix is committed under `data/`. Two harnesses settled it:
+- **End-to-end science gate** (`harness/run_endtoend_matrix.sh` → `data/eval_endtoend.csv`): 8 full sims
+  (2 configs × {baseline, phiguard, clip, cgs}), bounded at `stop_t=0.0015` (≈98 timesteps), diffing
+  **every** `dictionary.jsonl` output column vs baseline. Production untouched (monkeypatched RHS).
+- **Solve-level matrix** (`data/eval_terminate.csv`, 6 configs, per-phase ≥50 implicit) for terminate.
+
+| variant | flood (overflow warns) | output max-rel-diff vs baseline | speed | verdict |
+|---|---|---|---|---|
+| **`clip` (cap nShell in RHS)** | 99→**0**, 3→**0** | **0.000e+00 (bit-identical, both configs)** | ~1.0–1.02× | **✅ RECOMMENDED** |
+| `phi-guard` (freeze past front) | 99→**0**, 3→**0** | **2.1e-2** degenerate (n_IF 2.1%, mShell 1.8%, v2 1.6%, R 0.6%, Eb 0.3%); 1.3e-5 realistic | ~1.0–1.05× | silences, but perturbs the science on the degenerate regime |
+| `terminate` (solve_ivp+φ-event) | →0 (6-cfg) | ~1e-9 (used region) | net-slower realistic; mass-limited gap off-flood | clean but heavier (integrator swap) |
+| `cgs-rescale` | 99→**98**, 3→**3** | 7e-9 (exact identity) | ~1.0× | ❌ does NOT silence the flood |
+
+**Why `clip` wins.** It caps `nShell` only where the integrated state runs away in the **discarded
+post-front tail** (used region `~1e65` ≪ cap ≪ overflow `~1.3e154`), so the physically-consumed RHS is
+**byte-for-byte unchanged** → `0.000e+00` diff on every output column in both configs, while the `n²`
+pole can no longer overflow → flood gone. It is one line, keeps `odeint`, and is speed-neutral.
+
+- `cgs` is a true identity but, being identity, the AU state still hits the same pole → **flood persists**.
+- `phi-guard` silences the flood but freezing on the *state* (`phi<=0`) is **not** an identity; on the
+  degenerate regime the front shift propagates into consumed shell scalars (**up to ~2.1%**: n_IF,
+  mShell, v2). Tolerable on realistic inputs (1e-5) but a real perturbation where it matters most.
+- `terminate` is near-identity and clean conceptually but swaps the integrator, is net-slower on
+  realistic runs, and needs a 2nd mass-condition event for the mass-limited slices.
+
+### Recommendation → implement `clip`
+One line in `trinity/shell_structure/get_shellODE.py`: cap `nShell` before the `n²` terms. Choose the
+cap with margin for the `~1e55` `1/(k_B·t_ion)` prefactor in `dndr` (recomb term `~prefactor·n²·…`):
+`1e120` was bit-identical + flood-free in both configs (used `~1e65`; the term stays `<1.8e308`); a
+slightly lower cap (e.g. `1e100`) adds margin. Keep the rollout: **S0** used-region-identity test
+(assert clip == production where `nShell < cap`), **S1** implement, **S2** the committed end-to-end
+gate (flood→0, output diff `0.000e+00`), **S3** revert `mxstep` + correct `insights.html`/plot-5/§F3.
+cgs-conditioning of the mixed-unit sites is an *optional, separate* cleanup (it does not fix the flood).
+
+> Scope note: the end-to-end gate covered 2 configs (degenerate + 1 realistic); `clip`'s bit-identity is
+> *by construction* (it never activates in the used region), so it generalises. `terminate`'s 6-config
+> solve-level data stands. Reproduce: `bash harness/run_endtoend_matrix.sh` then `python harness/aggregate_endtoend.py`.
 
 ---
 
@@ -85,14 +183,17 @@ the root cause (overflow) is fixed.
 
 ## 4. Candidate fixes (ranked)
 
-| # | option | fixes the overflow? | used-region change | risk | effort | verdict |
+*(Updated 2026-06-18 after the empirical finding above — cgs demoted, φ-guard promoted.)*
+
+| # | option | silences flood? (measured) | used-region change | risk | effort | verdict |
 |---|---|---|---|---|---|---|
-| **1** | **CGS-rescale the RHS** (the maintainer's idea) | **Yes, at the root** | **none** (exact identity, 1e-16) | LOW–MED | ~½ day | **RECOMMENDED** |
-| 2 | **φ>0 front-truncation guard** | indirectly (stops the tail) | fixes a pre-existing overshoot | LOW | ~1–2 lines | **COMPLEMENTARY** |
-| 3 | `solve_ivp` + terminal φ-event | yes (never integrates tail) + fixes overshoot | none on prefix | MED | medium | OPTIONAL (robustness; net-slower; insufficient alone) |
-| 4 | Log-space `u=ln(nShell)` | **no** (`e^{2u}=n²` returns) | RHS physics touched | MED–HIGH | high | REJECTED |
-| 5 | Silence `ODEintWarning` / Fortran stdout | no (hides only) | none | LOW | trivial | band-aid fallback |
-| 6 | `mxstep=50000` (shipped) | no | none (bit-identical) | — | done | revert (moot under #1) |
+| **1** | **φ>0 freeze-past-front guard** | **YES** (`ovf→−1, warns→0`) | ≤0.8%/≤3.7% front shift (to quantify) | LOW | ~1–3 lines | **RECOMMENDED (flood fix)** |
+| 2 | `solve_ivp` + terminal φ-event | **YES** (warns→0 all 6 cfgs; `n` rel ≤1e-8) | none on prefix | MED | medium | STRONG ALT (**net-FASTER on overflow cfgs**: sfe0.3 1.2× / sfe0.6 1.7× blended, 4.2–4.4× energy; net-slower only on no-flood cfgs; mass-limited gap only in no-flood mock — see §#3) |
+| 3 | clip `nShell` in RHS | YES (`ovf→−1`) | none if clip > used values | LOW | ~1 line | crude fallback (arbitrary threshold) |
+| 4 | **CGS-rescale the RHS** | **NO** (identical to baseline) | none (exact identity 7e-16) | LOW–MED | ~½ day | **NOT the flood fix** — optional conditioning only |
+| 5 | Log-space `u=ln(nShell)` | no (`e^{2u}=n²` returns) | RHS physics touched | MED–HIGH | high | REJECTED |
+| 6 | Silence `ODEintWarning`/Fortran stdout | hides only | none | LOW | trivial | band-aid fallback |
+| 7 | `mxstep=50000` (shipped) | no | none (bit-identical) | — | done | revert (moot) |
 
 ### #1 — CGS-rescale (RECOMMENDED, = the maintainer's out-of-the-box idea)
 Evaluate the ionised (and, for symmetry, neutral) RHS in **cgs** so intermediates stay ~10⁰–10¹⁶,
@@ -108,7 +209,7 @@ then convert the derivatives back to code units. **Verified to be an exact algeb
 | `nShell` 1/pc³→1/cm³ | `cvt.ndens_au2cgs` (3.40e-56) | |
 | `r` pc→cm | `cvt.pc2cm` (3.09e18) | |
 | `phi`,`tau` | 1 | dimensionless |
-| `alpha_B` | `1/cvt.convert2au('cm**3*s**-1')` | **already cgs in params**; verify, don't double-convert |
+| `alpha_B` (`caseB_alpha`) | `× 1/cvt.convert2au('cm**3*s**-1')` (≈9.31e41) | **stored in AU** (2.782e-55 pc³/Myr) → cgs 2.59e-13; do NOT treat as already-cgs |
 | `sigma_dust` | `1/cvt.convert2au('cm**2')` | handles the `Z<dust_noZ ⇒ σ=0` case fine |
 | `c` | `cvt.v_au2cms` | |
 | `k_B` | `cvt.k_B_au2cgs` | Kelvin treated as factor 1 (consistent) |
@@ -122,6 +223,24 @@ then convert the derivatives back to code units. **Verified to be an exact algeb
 **module-level constants** (the RHS runs ~10³–10⁴×/solve — don't call `convert2au` per-call). Sketch
 and full detail in the CGS sub-agent findings (this session).
 
+**Full code-unit `n²` / `caseB_alpha` site inventory** (the cgs treatment should be consistent across
+all of them, but only the first two *overflow* — the rest are finite, precision-only, and do not affect
+the consumed result; listed so a future visit sees the whole pattern):
+
+| site | expression | magnitude | overflows? | scope |
+|---|---|---|---|---|
+| `get_shellODE.py:97` | `+ chi_e·nShell²·alpha_B·Li/Qi/c` (dndr) | pole → `inf` | **YES** | **#1 — must fix** |
+| `get_shellODE.py:100` | `−4πr²·chi_e·alpha_B·nShell²/Qi …` (dphidr) | pole → `inf` | **YES** | **#1 — must fix** |
+| `shell_structure.py:144` | `max_shellRadius = (3·Qi/(4π·chi_e·caseB_alpha·nShell0²))^⅓` | `n0²`~1e130 | no (finite) | optional consistency |
+| `shell_structure.py:248` | `n_IF_Str` denom `4π·chi_e·caseB_alpha·_vol_ion` (Strömgren) | finite | no | optional consistency |
+| `shell_structure.py:282` | `phi_hydrogen = Σ(−4πr²/Qi·chi_e·caseB_alpha·nShell²·dr)` (used region) | `n²`~1e130 | no (finite) | optional consistency |
+
+Decision: **#1 (the RHS) is the required fix** — it is the only place that overflows. The three
+`shell_structure.py` sites are finite and their consumed results are correct, so they are **not**
+required to silence the flood; reconcile them in the same pass *only if* it's clean (they share the
+same `caseB_alpha`(au)·`nShell²`(au) form), otherwise leave them and note here. Do **not** let them
+expand the surgical scope of the overflow fix.
+
 ### #2 — φ>0 front-truncation guard (COMPLEMENTARY, independent of the overflow)
 The integrated `phi` overshoots **negative** at the selected front grid point (e.g. −0.0157); the
 in-RHS clamp `phi = max(0,phi)` (`get_shellODE.py:91`) only fixes the derivative, not the stored
@@ -134,12 +253,47 @@ change, not bundled into the overflow fix.
 
 ### #3 — `solve_ivp` + terminal φ-event (OPTIONAL)
 Physically the cleanest boundary (stop the ionised solve at `phi=0`); also cures the overshoot and
-gives an explicit `sol.success` contract (mirrors `bubble_luminosity.py:106-166,520-522`). **But**:
-(a) the matrix shows the φ-event is **net-slower over a realistic run** (energy-phase-only win); and
-(b) it is **insufficient alone** — 7/40–39/40 slices are *mass-limited*, where a φ-only event never
-fires, so a mass-condition event-state would also be needed. Larger change; defer unless the broader
-robustness migration (`MIGRATION_PLAN.md`) is pursued. Must use `t_eval=rShell_arr` (NOT
-`dense_output` — it crashes 0/40 on the shell micro-grid) to preserve the uniform-grid invariant.
+gives an explicit `sol.success` contract (mirrors `bubble_luminosity.py:106-166,520-522`).
+
+**Re-measured 2026-06-18** (`data/eval_terminate.csv`, from the 6-config `*_matrix_*` replays;
+`harness/eval_terminate.py`; fresh `simple_cluster` energy-phase repro confirms it):
+
+- **Clears the flood — YES, on every config.** `V_lsoda_event` overflow_warns_total = **0** across all
+  6 configs (baseline odeint: 35 sfe0.3 / 54 sfe0.6). The φ-event terminates at the front
+  (n_pts_out 4–57 of ~1000), so it never integrates the discarded overflow tail. **It is the EVENT
+  that fixes it, not the solver swap:** the no-event drop-in `V_lsoda_teval`
+  (`solve_ivp` over the full grid) emits *more* warns than baseline (106 sfe0.3 / 162 sfe0.6).
+- **Used-region accuracy:** `n` rel ≤1.0e-8, `phi` rel ≤6.3e-6, `tau` (front-point pair) rel ≤9.4e-9
+  vs baseline odeint on the consumed prefix — tight, as the event root-finds the front. (The raw
+  `max_rel_diff_tau` column shows ~1e286 — a divide-by-zero artifact at the `tau0==0` IC row, **not**
+  a fidelity loss; production excludes the front τ point anyway.) `nonfinite_tail_solves = 0`.
+- **NET wall time is CONFIG-DEPENDENT — the prior "net-slower over a realistic run (energy-phase-only
+  win)" is WRONG for the overflow configs it is meant to fix.** In the energy phase the event is
+  **~4.2–4.4× FASTER** on sfe0.3/sfe0.6 (baseline grinds the overflow tail ~10ms; event ~3ms). Net over
+  a 20:100 energy:implicit run: sfe0.3 **1.21×**, sfe0.6 **1.74×** — *faster*. The "net-slower" picture
+  holds only for the **non-overflow** configs (probe/steep/dense ≈0.3–0.4× blended, mock_hybr 0.16×),
+  where baseline odeint is already sub-ms and `solve_ivp` carries a ~3ms Python/event-overhead floor.
+  Caveat: absolute speedup is timing-noisy (baseline ms swings 3–8× with machine load → energy event_x
+  measured 3–5× in the committed sweep, 18–31× under a loaded repro); the **sign** (event faster in the
+  energy overflow phase) is stable, the magnitude is not.
+- **Insufficient ALONE — still true, but only where there's no flood to fix.** A φ-only event never
+  fires on *mass-limited* ionised slices (`idx_phi==-1`). Per `eval_terminate.csv` the mass-limited
+  fraction of ionised solves is **0% on every overflow config** (sfe0.3/sfe0.6/probe/steep/dense) and
+  **63% on mock_hybr** (95% in its energy phase). So on the configs that actually flood, the φ-event
+  fires on 100% of ionised slices and suffices; the mass-limited gap matters only for the
+  no-overflow mock regime, which would need a 2nd mass-condition event-state for completeness.
+- Must use `t_eval=rShell_arr` (NOT `t_eval` + `dense_output` **together** — that bubble-precedent
+  config crashes `ValueError: ts must be strictly increasing` on the shell micro-grid, verified;
+  step ~1.3e-8 pc collapses LSODA's breakpoints). A standalone `dense_output=True` then `sol.sol(grid)`
+  does *not* crash (`V_lsoda_dense` ok=120/120), but adds nothing over `t_eval` and is slower.
+
+Larger change than the φ-guard; defer unless the broader robustness migration (`MIGRATION_PLAN.md`)
+is pursued. **Verdict vs φ-guard:** for the flood fix specifically, the φ-event is *more* than the
+φ-guard needs — it root-finds the exact front (tighter ~1e-9 accuracy) and is net-faster on the
+overflow configs, but it swaps the integrator and leaves a mass-limited gap. The **φ>0 freeze-guard
+(#1)** clears the same flood with ~1–3 lines, keeps `odeint`, and has no mass-limited gap (it freezes
+on `phi<=0` regardless of why the slice ends), so it stays the recommended minimal fix; #3 is the
+strong alternative if the migration happens anyway.
 
 ### #4 — Log-space (REJECTED)
 `u=ln(nShell)` tames the state but `du/dr` still contains `e^{2u}=n²` → same overflow; most
@@ -147,11 +301,33 @@ invasive; touches the audited RHS. Not worth it.
 
 ## 5. Recommendation
 
-1. **Implement #1 (CGS-rescale)** — root-cause fix, exact identity, surgical, keeps `odeint`.
-2. **Add #2 (φ>0 guard)** as a separate small commit — fix the overshoot explicitly.
-3. **Revert the `mxstep` change** (moot once #1 lands) and **correct** the §P0-matrix / `insights.html`
-   / plot-5 overclaim.
-4. **Defer #3** (solve_ivp migration) — robustness-only, net-slower, insufficient alone.
+1. **Flood fix = #1 (φ>0 freeze-past-front guard)** — empirically clears the overflow (`ovf→−1,
+   warns→0`), ~1–3 lines, keeps `odeint`. Pick φ-guard vs #2 (terminate-at-front) on the validation
+   matrix (accuracy of the used region/downstream + efficiency across configs).
+2. **cgs-rescale is NOT the flood fix** (measured). Keep it only as an *optional* conditioning/correctness
+   pass for the mixed-unit `caseB_alpha`·`n²` sites — separate, low priority, do not block the flood fix on it.
+3. **Revert the `mxstep` change** and **correct** the §P0-matrix / `insights.html` / plot-5 overclaim.
+   HOTPATH §F3 explicitly calls for this revert.
+4. **Defer the full `solve_ivp` migration** (`MIGRATION_PLAN.md`) unless robustness motivates it.
+
+### Phased rollout (gated — mirrors HOTPATH_PLAN P0–P4)
+
+- **S0 — factor-pin test (sim-free, DO FIRST).** Add to `test/test_unit_conversions.py`: build the
+  constants exactly as `read_param` does and assert the new cgs RHS == current AU RHS to **rtol 1e-12**
+  across non-overflow inputs (`n_cgs ∈ {1e2,1e4,1e6}`, several r/φ/τ), for **both** ionised and neutral
+  branches. **Gate G0:** every factor pinned independently (this is what catches the `Qi`/`caseB_alpha`
+  traps). No slow run.
+- **S1 — implement #1.** Rewrite `get_shellODE.py` ionised + neutral RHS in cgs with module-level
+  factor constants. **Gate G1:** S0 test green; `pytest` (+ `-m stress`) byte-unchanged where it should
+  be; `test_mu_audit_drift.py` (RHS-form pin) still green.
+- **S2 — equivalence + overflow-gone.** Capture-replay (`harness/`) current `odeint` vs cgs-RHS on
+  identical `(y0, grid, params)`. **Gate G2:** used-region `n/φ/τ` within round-off; the overflow row
+  (`ovf_idx`) is gone (no non-finite); `overflow_warns → 0`. Commit `data/cgs_rhs_comparison.csv` (💾).
+- **S3 — φ>0 guard (#2), separate commit.** **Gate G3:** front selection stops at last `φ>0`; consumed
+  scalars unchanged beyond round-off.
+- **S4 — cleanup.** Revert `mxstep` (`shell_structure.py:35,167,326`); regenerate `insights.html`
+  + plot 5; update `MIGRATION_PLAN.md` and HOTPATH §F3 status. **Gate G4:** no doc still claims
+  "mxstep fixes the warning."
 
 ## 6. Verification (sim-free where possible)
 
@@ -165,6 +341,26 @@ invasive; touches the audited RHS. Not worth it.
 3. `pytest` full suite (+ `-m stress`) green before/after; `test_conventional_units.py` and
    `test_mu_audit_drift.py` independently guard factors and RHS form.
 
+### Empirical validation matrix (configs × solution-ideas — the hybr-style de-risk)
+
+Before committing to one fix, evaluate each candidate idea as a **monkeypatched variant** (production
+untouched) across a regime sweep, measuring **end accuracy AND efficiency** — exactly how
+`archive/betadelta/` (hybr) and `MIGRATION_PLAN.md` de-risked their changes. Status: **running
+2026-06-18** (subagents).
+
+- **Ideas:** `V0` baseline (current `odeint`+`mxstep`, the reference) · `V1` cgs-rescale RHS ·
+  `V2` φ>0 front-truncation guard · `V3` `solve_ivp`+terminal φ-event (re-measured head-to-head).
+- **Configs (degenerate → realistic):** `simple_cluster`, `sfe0.6` (overflow-heavy) ·
+  `probe_typical_hybr`, `steep`, `dense_flat`, `mock_hybr` (realistic, low/no overflow).
+- **Common CSV schema** (`data/eval_<idea>.csv`, so cells are comparable):
+  `config, idea, phase, n_solves, used_rel_n_max, used_rel_phi_max, used_rel_tau_max, nIF_rel,
+  RIF_rel, fesc_rel, overflow_warns, nonfinite_tail, ms_per_solve, ms_per_solve_V0, total_run_s,
+  total_run_s_V0, endtoend_final_maxrel, notes`.
+- **Gates:** accuracy — used-region + consumed scalars within round-off of `V0` (target rel ≤1e-9 for
+  the identity ideas V1; ≤ the documented ≤0.8%/≤3.7% for V2); robustness — `overflow_warns→0`,
+  `nonfinite_tail→0`; efficiency — no per-solve or per-run regression (V1 expected ~neutral; V3 expected
+  net-slower per `MIGRATION_PLAN.md`, re-confirmed here). Commit every CSV (💾).
+
 ## 7. Open decisions (maintainer)
 
 - OK to evaluate the RHS in cgs (units = known bug class; mitigated by the 1e-12 factor test)?
@@ -174,14 +370,19 @@ invasive; touches the audited RHS. Not worth it.
 
 ## 8. Key references
 
-- Overflow site: `trinity/shell_structure/get_shellODE.py:95-100` (`±n²` at 97/100), φ-clamp `:91`.
+- **Parent plan:** `docs/dev/performance/HOTPATH_PLAN.md` §F3 (this doc is that item, descoped here).
+- Overflow site: `trinity/shell_structure/get_shellODE.py:95-100` (`±n²` at 97/100), φ-clamp `:91`,
+  `alpha_B` local `:69` (misleading `#cm3/s (au)` comment — value is AU).
+- Finite (precision-only) code-unit `n²`/`caseB_alpha` sites: `shell_structure.py:144` (`max_shellRadius`),
+  `:248` (`n_IF_Str` Strömgren), `:282` (`phi_hydrogen`).
 - Truncation/front: `trinity/shell_structure/shell_structure.py:180-218`; odeint calls `:165-168`
   (ion), `:324-327` (neu); `mxstep` const `:35`.
 - Consumed-scalar clamps: `shell_structure.py:229,242-251,395`; P_HII from `n_IF_Str` not raw n:
   `phase1_energy/run_energy_phase.py:188-190`, `phase2_momentum/run_momentum_phase.py:627-636`;
   `n_IF` diagnostic-only `registry.py:445`.
-- Units: `trinity/_functions/unit_conversions.py:88` (`ndens_cgs2au`); AU at load
-  `read_param.py:262-263`; `caseB_alpha`/`dust_sigma` `read_param.py:350-369`.
+- Units: `trinity/_functions/unit_conversions.py:88` (`ndens_cgs2au`); blanket AU conversion at load
+  `read_param.py:255-263`; `caseB_alpha` spec (unit `cm**3 * s**-1`, default 2.59e-13) `registry.py:339`
+  → stored AU 2.782e-55; `dust_sigma` Z-scaling/σ=0 `read_param.py:366-369`.
 - RHS pin test `test/test_mu_audit_drift.py:188-209`; derivation
   `docs/dev/archive/n-consistency/implementation-plan.md:268-274`.
 - Bubble precedent (for #3): `trinity/bubble_structure/bubble_luminosity.py:106-166,520-522`.

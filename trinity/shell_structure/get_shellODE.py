@@ -16,6 +16,22 @@ import sys
 import trinity._functions.unit_conversions as cvt
 
 
+# Numerical guard for the ionised RHS. The ionised shell ODE has a dn/dr ∝ +nShell**2
+# recombination term, which is a finite-radius pole: just past the ionisation front
+# nShell runs away toward infinity. shell_structure truncates the profile AT the front
+# (first phi<=1e-9 / mass-limited row), so that runaway tail is DISCARDED -- but odeint
+# still integrates through it, and nShell**2 overflows float64 (1.8e308) -> inf/nan ->
+# LSODA is driven to machine-precision steps and floods "t + h = t" warnings.
+# Capping nShell keeps nShell**2 finite in that discarded tail so the integrator steps
+# cleanly. This is a NUMERICAL safety rail, NOT a physics cutoff: the cap is ~55 orders
+# of magnitude above any physical shell density (the ionisation front peaks at ~1e65 in
+# code units, i.e. ~1e10 cm^-3; a neutron star is ~1e38 cm^-3), so it never bites in the
+# used region -- the consumed shell profile is bit-identical to the unguarded solve
+# (verified end-to-end, docs/dev/shell-solver/OVERFLOW_FIX_PLAN.md). The value keeps
+# nShell**2 times the ~1e55 dndr prefactor well under float64's ceiling.
+_NSHELL_MAX = 1e120
+
+
 # TODO: add cover fraction cf (f_cover)
 
 def get_shellODE(y, 
@@ -78,6 +94,10 @@ def get_shellODE(y,
     if is_ionised:
         # unravel, and make sure they are in the right units
         nShell, phi, tau = y
+
+        # numerical guard: cap nShell so the +nShell**2 pole in the discarded
+        # post-front tail cannot overflow float64 (see _NSHELL_MAX above).
+        nShell = min(nShell, _NSHELL_MAX)
         
         # prevent underflow for very large tau values
         if tau > 500:
