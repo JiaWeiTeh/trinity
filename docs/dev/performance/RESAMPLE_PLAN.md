@@ -152,6 +152,49 @@ A/B wall-time on a short `simple_cluster` (and `mock_hybr`): baseline vs F1, sam
 
 ---
 
+## P0 — detailed task plan + verified API contract (line-by-line, 2026-06-18)
+
+Every reference below was re-verified against current source (no assumptions).
+**Design:** in-process capture-and-replay (Design 1, like the shell harness) — one
+live run per config; on each gated bubble call run the baseline + every variant,
+compare + time, write a CSV row per variant; **return the baseline result so the
+host trajectory stays byte-identical.** Plus dump 2–3 state pickles for an offline
+reproduction harness.
+
+### Verified API contract
+- **Driver:** `trinity.main.start_expansion(params)` (`main.py:81`); phase set to
+  `'energy'` (`:241`) then `'implicit'` (`:275`). Wrap in `try/except (SystemExit, BaseException)`.
+- **Monkeypatch target:** `bubble_luminosity.get_bubbleproperties_pure(params)`
+  (`:398`). **Energy** phase → `params` is the real `DescribedDict`; **implicit**
+  phase → `params` is a **`BubbleParamsView`** (`get_betadelta.py:107`; `__slots__`,
+  **no `keys()`**, overrides `cool_beta`/`cool_delta`/`bubble_dMdt` via `_MockValue`,
+  delegates all else to `._params`).
+- **Phase gate read:** `params['current_phase'].value` — works through the view
+  (not an overridden key).
+- **Variant injection:** monkeypatch `bubble_luminosity._get_velocity_residuals`.
+  The dMdt fsolve's `velocity_residuals_wrapper` (`:458`) calls the **module global**,
+  so the swap is picked up. (Variants must keep signature `(dMdt_init, params, Pb, R1)`.)
+- **Recursion guard:** inside the hook, set `BL.get_bubbleproperties_pure = real_gbp`
+  before calling it; restore the hook in `finally` (pattern: `bubble_conduction_convergence.py:160-180`).
+- **Capture param_values from a view** (for the pickles): `real = getattr(params, '_params', params); for k in real.keys(): v = params[k].value` (effective values, incl. the beta/delta/dMdt overrides). Cooling cubes are unpicklable → skip + rebuild offline via the `load_state` recipe (`tools/bubble_audit/audit.py:55-68`).
+- **Offline reconstruct:** `tools/bubble_audit/audit.py:load_state(pkl, base)` (`:38`) returns `(params, inputs, ref, meta)` — or a lean loader doing `read_param(base)` → override `param_values` → rebuild CIE+nonCIE cubes (`audit.py:55-68`) → `get_bubbleproperties_pure(params)`.
+- **Compare fields** (`BubbleProperties`): `bubble_dMdt` (`:390`), `bubble_LTotal` (`:372`), `bubble_T_r_Tb` (`:373`), `bubble_mass` (`:375`); also log `bubble_Tavg`, `R1`, `Pb`, the 3 L-components for context.
+- **Matrix phase-gate skeleton to copy:** `capture_replay_variants.py:88-105` (env `N_ENERGY`/`N_IMPLICIT`, `_PHASE_N`, `_phase_counts` Counter, `_max_phase_order`, `_MATRIX_MAX_S`) + `:371-414` (`_done`, `_CaptureDone`, the gate body). Adapt `_current_phase` to read `params['current_phase'].value` instead of the odeint `args`.
+- **Config files (all exist, verified):** `param/simple_cluster.param` (sfe0.3, degenerate), `docs/dev/transition/harness/{mock_hybr,steep,dense_flat}.param`, `docs/dev/archive/betadelta/diagnostics/probe_typical_hybr.param`. **`mock_hybr` is cheapest to reach implicit — iterate there first.**
+
+### Method variants (`residual_variants.py`)
+`baseline` = the current `_get_velocity_residuals` (60k dense resample). `M{2000,1000,500,200}` = Option (b): `solve_ivp(LSODA, t_eval=linspace(r2Prime, R1, N))`, no `dense_output`; numerator `sol.y[0,-1]`, denominator the IC `v_init`, `min_T`/`monotonic` on `sol.y[1,:]`. `Mnodes` = Option (b) with no `t_eval` (`min_T`/monotonic on adaptive `sol.t`/`sol.y`). All keep the `_RESIDUAL_RTOL`/`_BUBBLE_ATOL`, the `_T_INIT_BOUNDARY` rejection, and the `_SOLVER_FAIL_RESIDUAL` failure contract identical to baseline.
+
+### CSV schema (one row per captured-call × variant)
+`config, phase, call_index, variant, npts, bubble_dMdt, bubble_LTotal, bubble_T_r_Tb, bubble_mass, bubble_Tavg, R1, Pb, time_ms, rel_dMdt, rel_LTotal, rel_T_r_Tb, rel_mass, monotonic_flip, ok` — `rel_*` vs the baseline row for the same call; `monotonic_flip` = did the variant's residual monotonic-gate verdict differ from baseline on any trial dMdt; `time_ms` = min of K reps.
+
+### Tasks (parallel)
+- **Task 1 — `residual_variants.py` + `capture_replay_bubble.py`** (the core + the in-process harness). Validate on **`mock_hybr`** (`N_ENERGY=20 N_IMPLICIT=100`); commit `data/bubble_resample_mock_hybr.csv` + 2–3 state pickles under `data/states/`.
+- **Task 2 — `aggregate_p0.py` + `run_p0_sweep.sh` + `replay_from_dump.py`** (master table from the CSV schema above; the 6-config sweep driver with per-config wall caps; an offline replay that loads a state pickle and runs all variants). Schema-defined → testable without Task 1's data.
+
+### Gate G0
+≥4 configs reach 100 implicit captures; per-call baseline + per-variant timings recorded (the ~21 ms microbench replaced by a **real** production fraction); one CSV/config + master + 2–3 pickles committed. Then P1 reads these.
+
 ## Efficiency measurement plan (record every number — 💾)
 - **Per-residual-call**: baseline (60k resample + grid build) vs Option (b) — `timeit`, isolate the resample + grid-build savings.
 - **Per-bubble-call**: full `get_bubbleproperties_pure` baseline vs F1 (the fsolve × residual product).
