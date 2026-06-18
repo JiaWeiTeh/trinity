@@ -59,7 +59,7 @@ run() {             # run <tag> <param-arg> <max_s>
     echo ">>> SKIP $tag (implicit=$have >= $IMPL_TARGET)"; return
   fi
   echo ">>> START $tag (energy=$N_ENERGY impl=$IMPL_TARGET maxs=${maxs}s $(date +%H:%M:%S))"
-  N_ENERGY=$N_ENERGY N_IMPLICIT=$IMPL_TARGET N_TRANSITION=0 N_MOMENTUM=0 \
+  CONFIG_NAME=$tag N_ENERGY=$N_ENERGY N_IMPLICIT=$IMPL_TARGET N_TRANSITION=0 N_MOMENTUM=0 \
     MATRIX_MAX_S=$maxs timeout $((maxs + 40)) \
     python "$H" "$arg" > "/tmp/p0_${tag}.out" 2>&1
   local rc=$?

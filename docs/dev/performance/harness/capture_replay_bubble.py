@@ -287,7 +287,10 @@ def main():
     if not param_path.exists():
         print(f"config not found: {param_path}", file=sys.stderr)
         return 2
-    config = param_path.stem
+    # Name the run by CONFIG_NAME if given (the sweep's tag), else the param
+    # stem. The stem is wrong when configs share a .param (sfe0.3/sfe0.6 both use
+    # simple_cluster) or use a temp file -> the sweep passes CONFIG_NAME=<tag>.
+    config = os.environ.get("CONFIG_NAME") or param_path.stem
     csv_path = DATA_DIR / f"bubble_resample_{config}.csv"
 
     import numpy as _np

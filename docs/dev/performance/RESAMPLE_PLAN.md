@@ -26,7 +26,7 @@
 > command that produced each artifact.
 
 **About this document**  (created 2026-06-18 — the 🔄 banner *requires* refreshing this on every visit.)
-- **Status (2026-06-18):** 🟡 **P0 HARNESS BUILT + VALIDATED on `mock_hybr`; production fix not written yet.** The fix is a surgical rewrite of **`_get_velocity_residuals` only** (`solve_ivp` with a coarse `t_eval` instead of the 60k `dense_output` resample); empirically (two dumped states) numerator bit-identical, denominator ~1e-12 rel. **P0 done on `mock_hybr`** (`harness/`, `data/bubble_resample_mock_hybr.csv`): reached the implicit phase, **worst `rel_dMdt` = 1.0e-06** (≪ the 0.3% gate), **~1.5× faster/call** on this tiny config (baseline 1362 ms → variants 825–912 ms; degenerate configs expected larger). **Open:** the full 6-config sweep at 100 implicit (G0), then P1→P4. No production code changed.
+- **Status (2026-06-18):** 🟢 **P0 essentially DONE (5/6 configs; `sfe0.6` running); patch + regression test STAGED; production fix not yet applied.** The fix is a surgical rewrite of **`_get_velocity_residuals` only** (coarse `t_eval` instead of the 60k `dense_output` resample). **Cross-regime result** (`data/master_p0_table.csv`): a **uniform ~1.5×/call (energy) / ~1.4×/call (implicit) speedup across all configs** — the degenerate `simple_cluster` is no faster per-call than tiny `mock_hybr` (the resample is fixed-size; the degenerate payoff is a full-RUN effect, P4). **G2 PASS:** worst `rel_dMdt` = 3.1e-6 ≪ 0.3% (~1000× margin); npts-insensitive in [200,2000] → **P1 locked at `_RESIDUAL_NPTS=500`**. Patch in `P3_PRODUCTION_PATCH.md`, guard in `test/test_residual_resample.py`. **Next:** finish `sfe0.6` → apply P3 → P4 full-run A/B. No production code changed yet.
 - **Type:** plan — phased equivalence + timing study (config × method matrix, capture-replay reaching deep into the implicit phase), then promotion behind a tolerance gate.
 - **Workstream:** `performance/` — this is HOTPATH §F1, the headline win. Branch **`fix/hotpath-resample`** (off `fix/hotpath-freewins`, which carries the §F2 wins).
 - **Where it sits:** `HOTPATH_PLAN.md` §F1 → **this** (the detailed F1 plan + its harness/data).
@@ -216,18 +216,22 @@ reproduction harness.
 ### Gate G0
 ≥4 configs reach 100 implicit captures; per-call baseline + per-variant timings recorded (the ~21 ms microbench replaced by a **real** production fraction); one CSV/config + master committed (pickles gitignored — regenerable). Then P1 reads these.
 
-### P0 results — `mock_hybr` ✅ DONE (2026-06-18); 5/6 configs PENDING
-Harness built + validated; `data/bubble_resample_mock_hybr.csv` (5 energy + 10 implicit calls × 6 variants; `N_ENERGY=5 N_IMPLICIT=10`). Regenerate the table with `python docs/dev/performance/harness/aggregate_p0.py`.
+### P0 results — 5/6 configs DONE (2026-06-18); `sfe0.6` running. Source: `data/master_p0_table.csv` (regenerate: `python harness/aggregate_p0.py`)
 
-| config | phase | baseline ms | M2000 | M1000 | M500 | M200 | Mnodes | worst rel_dMdt (M*/Mnodes) |
-|---|---|---|---|---|---|---|---|---|
-| mock_hybr | energy | 1176.6 | 1.74× | 1.78× | 1.80× | 1.83× | **1.84×** | 1.3e-7 / 4.3e-7 |
-| mock_hybr | implicit | 1454.2 | 1.41× | 1.45× | 1.45× | 1.46× | **1.58×** | 1.0e-6 / 2.2e-6 |
+**M500 per-call speedup (baseline = the 60k resample) and worst `rel_dMdt`:**
 
-**Findings (shape P1):**
-1. **Accuracy is universal and ≪ the 0.3% gate** — worst `rel_dMdt` 1.0e-6 (M*) / 2.2e-6 (Mnodes); `rel_LTotal/T_r_Tb/mass` all ≤7e-7. `ok` = 6/6 variants on every call.
-2. **`rel_dMdt` is npts-INSENSITIVE in [200, 2000]** — M2000 ≡ M1000 ≡ M500 ≡ M200 to the digit (1.02e-6 implicit). The coarse sample doesn't move the converged root, so **the accuracy ceiling is set by the integration, not by N**. ⇒ P1 can pick the *smallest* safe N (M200) or even **Mnodes** (no `t_eval`) — the speed-vs-N curve is nearly flat, so the choice is about robustness margin, not accuracy.
-3. **Speed: ~1.4–1.8× per bubble call on the TINY config.** Energy (1.74–1.84×) beats implicit (1.41–1.58×). This is the *floor* of the win — `mock_hybr`'s bubble solves are small, so the 60k resample is a smaller share. The **degenerate `simple_cluster`** (where the microbench put the resample at ~27× the integration) is expected to show a substantially larger factor — that is the headline number the sweep must capture.
+| config | energy speed | implicit speed | worst rel_dMdt (any variant) |
+|---|---|---|---|
+| mock_hybr | 1.68× | 1.45× | 3.1e-6 |
+| probe_typical_hybr | 1.53× | 1.39× | 2.7e-6 |
+| steep | 1.52× | 1.46× | 1.8e-6 |
+| dense_flat | 1.52× | 1.45× | 1.8e-6 |
+| **simple_cluster (sfe0.3)** | 1.52× | 1.39× | 2.6e-6 |
+
+**Findings — the cross-regime data overturns the "headline" hypothesis:**
+1. **The per-call win is CONFIG-INDEPENDENT: ~1.5× energy, ~1.4× implicit, everywhere.** The degenerate `simple_cluster` (1.52×/1.39×) is no better than the tiny `mock_hybr` (1.68×/1.45×). Reason: the 60k resample is a **fixed-size** op (~baseline 1.1–1.5 s/call regardless of config), so removing it nets a constant per-call factor. The microbench's ~27× was the resample-vs-integrate ratio for *one* op; a full `get_bubbleproperties_pure` call also runs the fsolve loop + conduction + luminosity, so the call-level win is ~1.4–1.5×. **The degenerate payoff, if any, is a FULL-RUN effect (P4), not a per-call one** — `simple_cluster` spends the largest wall-time fraction in bubble calls.
+2. **Accuracy is universal and ≪ the 0.3% G2 gate** — worst `rel_dMdt` across all 5 configs × 2 phases × 5 variants = **3.1e-6** (~1000× margin); `rel_LTotal/T_r_Tb/mass` all ≤1e-6; `ok` = n/n everywhere.
+3. **`rel_dMdt` is npts-INSENSITIVE in [200, 2000] in EVERY cell** — M2000≡M1000≡M500≡M200 to the digit; only Mnodes occasionally differs (still ≤3e-6). ⇒ **P1 locked: `_RESIDUAL_NPTS = 500`** (conservative; accuracy is set by the integration, not N, so 500 buys robustness margin at no measurable cost). **G2 PASS.**
 
 ### Harness correctness review ✅ PASS (2026-06-18)
 Read-through of `capture_replay_bubble.py` + `residual_variants.py` against
@@ -248,9 +252,11 @@ current source — the multi-hour sweep output is trustworthy:
 - Minor (non-blocking): `call_idx` rebuilds a set over all rows each call (O(n²)
   total) — negligible at N≤120; left as-is.
 
-### What's DONE vs STILL NEEDED for G0
-- ✅ **Done:** harness (5 files) built, ruff-clean, committed; `mock_hybr` captured + validated; aggregator + master table working; accuracy + per-phase speedup recorded.
-- ⏳ **Still needed (G0):** capture the other **5 configs** at `N_IMPLICIT=100` (`simple_cluster`/sfe0.3 first — the headline degenerate win; then sfe0.6, probe_typical_hybr, steep, dense_flat). Run `run_p0_sweep.sh` (multi-hour; degenerate configs ~45 min each). `mock_hybr` itself needs a re-capture at `N_IMPLICIT=100` (the committed CSV is the N=10 validation slice).
+### Status vs gates
+- ✅ **G0 met (5/6 configs):** `mock_hybr` (86i = its natural max), `probe_typical_hybr`/`steep`/`dense_flat`/`simple_cluster` (100i each); `sfe0.6` running. Per-call baseline + per-variant timings recorded in `master_p0_table.csv`. (≥4 configs at 100 implicit ✓.)
+- ✅ **G1/G2 met:** worst `rel_dMdt` 3.1e-6 ≪ 0.3% across all cells; npts-insensitive → `_RESIDUAL_NPTS=500` locked. 0 solver failures (`ok` = n/n).
+- ⏳ **Remaining:** `sfe0.6` to finish (autosaver missed it — temp-param naming bug, now fixed via `CONFIG_NAME`; handle its CSV manually). Then **P3 apply** (staged) + **P4 full-run A/B** (the degenerate full-run number) — both HEAVY, deferred until the timing sweep is fully done so they don't perturb each other.
+- **Known harness fix (done):** `capture_replay_bubble.py` named CSVs by param-file stem, so `sfe0.3`→`simple_cluster.csv` and `sfe0.6`→a temp name (autosaver/skip-gate missed them). Added a `CONFIG_NAME` env override (the sweep passes the tag); the already-running `sfe0.6` predates the fix.
 
 ## Efficiency measurement plan (record every number — 💾)
 - **Per-residual-call**: baseline (60k resample + grid build) vs Option (b) — `timeit`, isolate the resample + grid-build savings.
