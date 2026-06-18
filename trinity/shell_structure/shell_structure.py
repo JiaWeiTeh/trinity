@@ -25,6 +25,15 @@ from trinity.shell_structure import get_shellODE
 
 logger = logging.getLogger(__name__)
 
+# odeint's default internal step ceiling (mxstep=500) is exhausted in the
+# degenerate code-unit-overflow regime (simple_cluster), where it emits
+# "Excess work done on this call" and silently truncates the shell integration.
+# Raising the ceiling silences the warning and lets the solve complete; where the
+# ceiling was never hit the result is bit-identical (verified across 6 configs in
+# docs/dev/shell-solver: the odeint(mxstep=50k) variant is 1.00x speed with
+# rel_n=0 in the realistic regimes). Robustness fix only -- same LSODA solver.
+_SHELL_ODE_MXSTEP = 50000
+
 
 @dataclass
 class ShellProperties:
@@ -155,7 +164,7 @@ def shell_structure_pure(params) -> ShellProperties:
         y0 = [nShell0, phi0, tau0_ion]
         sol_ODE = scipy.integrate.odeint(
             get_shellODE.get_shellODE, y0, rShell_arr,
-            args=(f_cover, is_ionised, params)
+            args=(f_cover, is_ionised, params), mxstep=_SHELL_ODE_MXSTEP
         )
         nShell_arr = sol_ODE[:, 0]
         phiShell_arr = sol_ODE[:, 1]
@@ -314,7 +323,7 @@ def shell_structure_pure(params) -> ShellProperties:
                 y0 = [nShell0, tau0_neu]
                 sol_ODE = scipy.integrate.odeint(
                     get_shellODE.get_shellODE, y0, rShell_arr,
-                    args=(f_cover, is_ionised, params)
+                    args=(f_cover, is_ionised, params), mxstep=_SHELL_ODE_MXSTEP
                 )
                 nShell_arr = sol_ODE[:, 0]
                 tauShell_arr = sol_ODE[:, 1]
