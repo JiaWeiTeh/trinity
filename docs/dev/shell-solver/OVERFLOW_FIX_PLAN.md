@@ -24,10 +24,22 @@
 > against the numbers **without re-running**; record the exact config + command
 > that produced each artifact.
 
-**Status (2026-06-18):** 🔵 **PLANNED, not implemented.** Root cause verified by three
-independent investigations. Recommended fix: **evaluate the shell RHS in cgs (exact
-identity reconditioning)**. No code change made for this plan. Sibling doc:
-`MIGRATION_PLAN.md` (the odeint→solve_ivp migration study) — see the correction note there.
+**Status (re-verified 2026-06-18 on `main` @ `c8f0d35`):** 🔵 **PLANNED, not implemented.**
+Root cause verified by three independent investigations + a captured real solve. Recommended fix:
+**evaluate the shell RHS in cgs (exact identity reconditioning)**. No production code changed.
+
+**Where this sits:** this doc **is item §F3 of `docs/dev/performance/HOTPATH_PLAN.md`** (the hot-path
+audit's "shell-ODE conditioning" item, which was *descoped to here* on 2026-06-18 and is owned by this
+file). HOTPATH §F3 independently re-derived and confirmed the synthesis below — *finite (precision-only)
+at the front, real `inf` overflow at the pole, entirely in the discarded tail* — after its own first
+"doesn't overflow" take was falsified by `harness/verify_overflow.py`. Sibling: `MIGRATION_PLAN.md`
+(the odeint→solve_ivp study) — see its retraction note.
+
+**Units resolved (2026-06-18, was a subagent contradiction):** `caseB_alpha` is stored in **AU**
+(`2.782e-55 pc³/Myr`), not cgs — it goes through the blanket `convert2au(unit)` at `read_param.py:261-263`
+(unit `cm**3 * s**-1`, `registry.py:339`). So the current RHS is unit-consistent and the cgs-rescale is a
+**true identity**; to use `alpha_B` in a cgs RHS, multiply by `1/convert2au('cm**3 * s**-1') ≈ 9.31e41`
+(→ `2.59e-13 cm³/s`). The earlier "already cgs in params" note (§4) was wrong and is corrected below.
 
 ---
 
@@ -108,7 +120,7 @@ then convert the derivatives back to code units. **Verified to be an exact algeb
 | `nShell` 1/pc³→1/cm³ | `cvt.ndens_au2cgs` (3.40e-56) | |
 | `r` pc→cm | `cvt.pc2cm` (3.09e18) | |
 | `phi`,`tau` | 1 | dimensionless |
-| `alpha_B` | `1/cvt.convert2au('cm**3*s**-1')` | **already cgs in params**; verify, don't double-convert |
+| `alpha_B` (`caseB_alpha`) | `× 1/cvt.convert2au('cm**3*s**-1')` (≈9.31e41) | **stored in AU** (2.782e-55 pc³/Myr) → cgs 2.59e-13; do NOT treat as already-cgs |
 | `sigma_dust` | `1/cvt.convert2au('cm**2')` | handles the `Z<dust_noZ ⇒ σ=0` case fine |
 | `c` | `cvt.v_au2cms` | |
 | `k_B` | `cvt.k_B_au2cgs` | Kelvin treated as factor 1 (consistent) |
@@ -121,6 +133,24 @@ then convert the derivatives back to code units. **Verified to be an exact algeb
 **Footguns:** the `Qi` `1/Myr` label trap (use `cvt.s2Myr`); precompute all factors as
 **module-level constants** (the RHS runs ~10³–10⁴×/solve — don't call `convert2au` per-call). Sketch
 and full detail in the CGS sub-agent findings (this session).
+
+**Full code-unit `n²` / `caseB_alpha` site inventory** (the cgs treatment should be consistent across
+all of them, but only the first two *overflow* — the rest are finite, precision-only, and do not affect
+the consumed result; listed so a future visit sees the whole pattern):
+
+| site | expression | magnitude | overflows? | scope |
+|---|---|---|---|---|
+| `get_shellODE.py:97` | `+ chi_e·nShell²·alpha_B·Li/Qi/c` (dndr) | pole → `inf` | **YES** | **#1 — must fix** |
+| `get_shellODE.py:100` | `−4πr²·chi_e·alpha_B·nShell²/Qi …` (dphidr) | pole → `inf` | **YES** | **#1 — must fix** |
+| `shell_structure.py:144` | `max_shellRadius = (3·Qi/(4π·chi_e·caseB_alpha·nShell0²))^⅓` | `n0²`~1e130 | no (finite) | optional consistency |
+| `shell_structure.py:248` | `n_IF_Str` denom `4π·chi_e·caseB_alpha·_vol_ion` (Strömgren) | finite | no | optional consistency |
+| `shell_structure.py:282` | `phi_hydrogen = Σ(−4πr²/Qi·chi_e·caseB_alpha·nShell²·dr)` (used region) | `n²`~1e130 | no (finite) | optional consistency |
+
+Decision: **#1 (the RHS) is the required fix** — it is the only place that overflows. The three
+`shell_structure.py` sites are finite and their consumed results are correct, so they are **not**
+required to silence the flood; reconcile them in the same pass *only if* it's clean (they share the
+same `caseB_alpha`(au)·`nShell²`(au) form), otherwise leave them and note here. Do **not** let them
+expand the surgical scope of the overflow fix.
 
 ### #2 — φ>0 front-truncation guard (COMPLEMENTARY, independent of the overflow)
 The integrated `phi` overshoots **negative** at the selected front grid point (e.g. −0.0157); the
@@ -150,8 +180,27 @@ invasive; touches the audited RHS. Not worth it.
 1. **Implement #1 (CGS-rescale)** — root-cause fix, exact identity, surgical, keeps `odeint`.
 2. **Add #2 (φ>0 guard)** as a separate small commit — fix the overshoot explicitly.
 3. **Revert the `mxstep` change** (moot once #1 lands) and **correct** the §P0-matrix / `insights.html`
-   / plot-5 overclaim.
+   / plot-5 overclaim. HOTPATH §F3 explicitly calls for this revert.
 4. **Defer #3** (solve_ivp migration) — robustness-only, net-slower, insufficient alone.
+
+### Phased rollout (gated — mirrors HOTPATH_PLAN P0–P4)
+
+- **S0 — factor-pin test (sim-free, DO FIRST).** Add to `test/test_unit_conversions.py`: build the
+  constants exactly as `read_param` does and assert the new cgs RHS == current AU RHS to **rtol 1e-12**
+  across non-overflow inputs (`n_cgs ∈ {1e2,1e4,1e6}`, several r/φ/τ), for **both** ionised and neutral
+  branches. **Gate G0:** every factor pinned independently (this is what catches the `Qi`/`caseB_alpha`
+  traps). No slow run.
+- **S1 — implement #1.** Rewrite `get_shellODE.py` ionised + neutral RHS in cgs with module-level
+  factor constants. **Gate G1:** S0 test green; `pytest` (+ `-m stress`) byte-unchanged where it should
+  be; `test_mu_audit_drift.py` (RHS-form pin) still green.
+- **S2 — equivalence + overflow-gone.** Capture-replay (`harness/`) current `odeint` vs cgs-RHS on
+  identical `(y0, grid, params)`. **Gate G2:** used-region `n/φ/τ` within round-off; the overflow row
+  (`ovf_idx`) is gone (no non-finite); `overflow_warns → 0`. Commit `data/cgs_rhs_comparison.csv` (💾).
+- **S3 — φ>0 guard (#2), separate commit.** **Gate G3:** front selection stops at last `φ>0`; consumed
+  scalars unchanged beyond round-off.
+- **S4 — cleanup.** Revert `mxstep` (`shell_structure.py:35,167,326`); regenerate `insights.html`
+  + plot 5; update `MIGRATION_PLAN.md` and HOTPATH §F3 status. **Gate G4:** no doc still claims
+  "mxstep fixes the warning."
 
 ## 6. Verification (sim-free where possible)
 
@@ -165,6 +214,26 @@ invasive; touches the audited RHS. Not worth it.
 3. `pytest` full suite (+ `-m stress`) green before/after; `test_conventional_units.py` and
    `test_mu_audit_drift.py` independently guard factors and RHS form.
 
+### Empirical validation matrix (configs × solution-ideas — the hybr-style de-risk)
+
+Before committing to one fix, evaluate each candidate idea as a **monkeypatched variant** (production
+untouched) across a regime sweep, measuring **end accuracy AND efficiency** — exactly how
+`archive/betadelta/` (hybr) and `MIGRATION_PLAN.md` de-risked their changes. Status: **running
+2026-06-18** (subagents).
+
+- **Ideas:** `V0` baseline (current `odeint`+`mxstep`, the reference) · `V1` cgs-rescale RHS ·
+  `V2` φ>0 front-truncation guard · `V3` `solve_ivp`+terminal φ-event (re-measured head-to-head).
+- **Configs (degenerate → realistic):** `simple_cluster`, `sfe0.6` (overflow-heavy) ·
+  `probe_typical_hybr`, `steep`, `dense_flat`, `mock_hybr` (realistic, low/no overflow).
+- **Common CSV schema** (`data/eval_<idea>.csv`, so cells are comparable):
+  `config, idea, phase, n_solves, used_rel_n_max, used_rel_phi_max, used_rel_tau_max, nIF_rel,
+  RIF_rel, fesc_rel, overflow_warns, nonfinite_tail, ms_per_solve, ms_per_solve_V0, total_run_s,
+  total_run_s_V0, endtoend_final_maxrel, notes`.
+- **Gates:** accuracy — used-region + consumed scalars within round-off of `V0` (target rel ≤1e-9 for
+  the identity ideas V1; ≤ the documented ≤0.8%/≤3.7% for V2); robustness — `overflow_warns→0`,
+  `nonfinite_tail→0`; efficiency — no per-solve or per-run regression (V1 expected ~neutral; V3 expected
+  net-slower per `MIGRATION_PLAN.md`, re-confirmed here). Commit every CSV (💾).
+
 ## 7. Open decisions (maintainer)
 
 - OK to evaluate the RHS in cgs (units = known bug class; mitigated by the 1e-12 factor test)?
@@ -174,14 +243,19 @@ invasive; touches the audited RHS. Not worth it.
 
 ## 8. Key references
 
-- Overflow site: `trinity/shell_structure/get_shellODE.py:95-100` (`±n²` at 97/100), φ-clamp `:91`.
+- **Parent plan:** `docs/dev/performance/HOTPATH_PLAN.md` §F3 (this doc is that item, descoped here).
+- Overflow site: `trinity/shell_structure/get_shellODE.py:95-100` (`±n²` at 97/100), φ-clamp `:91`,
+  `alpha_B` local `:69` (misleading `#cm3/s (au)` comment — value is AU).
+- Finite (precision-only) code-unit `n²`/`caseB_alpha` sites: `shell_structure.py:144` (`max_shellRadius`),
+  `:248` (`n_IF_Str` Strömgren), `:282` (`phi_hydrogen`).
 - Truncation/front: `trinity/shell_structure/shell_structure.py:180-218`; odeint calls `:165-168`
   (ion), `:324-327` (neu); `mxstep` const `:35`.
 - Consumed-scalar clamps: `shell_structure.py:229,242-251,395`; P_HII from `n_IF_Str` not raw n:
   `phase1_energy/run_energy_phase.py:188-190`, `phase2_momentum/run_momentum_phase.py:627-636`;
   `n_IF` diagnostic-only `registry.py:445`.
-- Units: `trinity/_functions/unit_conversions.py:88` (`ndens_cgs2au`); AU at load
-  `read_param.py:262-263`; `caseB_alpha`/`dust_sigma` `read_param.py:350-369`.
+- Units: `trinity/_functions/unit_conversions.py:88` (`ndens_cgs2au`); blanket AU conversion at load
+  `read_param.py:255-263`; `caseB_alpha` spec (unit `cm**3 * s**-1`, default 2.59e-13) `registry.py:339`
+  → stored AU 2.782e-55; `dust_sigma` Z-scaling/σ=0 `read_param.py:366-369`.
 - RHS pin test `test/test_mu_audit_drift.py:188-209`; derivation
   `docs/dev/archive/n-consistency/implementation-plan.md:268-274`.
 - Bubble precedent (for #3): `trinity/bubble_structure/bubble_luminosity.py:106-166,520-522`.
