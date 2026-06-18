@@ -25,7 +25,7 @@
 > exact config + command that produced each artifact.
 
 **About this document**  (created 2026-06-18 — the 🔄 banner *requires* refreshing this on every visit; it is a living doc, not frozen.)
-- **Status (verified 2026-06-18):** 🔵 **ACTIONABLE — nothing shipped yet.** This is a fresh hot-path audit prompted by "what else can one do?" after the hybr (`archive/betadelta/`) and shell-solver (`shell-solver/`) wins. Every finding below was traced to current source (file:line) and, where a number is quoted, to a subagent microbenchmark noted inline. **The headline (§F1) is a measured 27× overhead and is the next solver-class win; §F2 is a batch of bit-identical free wins; §F3 corrects an overstatement in `shell-solver/MIGRATION_PLAN.md`.** No production code has been changed by this doc.
+- **Status (verified 2026-06-18):** 🔵 **ACTIONABLE — nothing shipped yet.** This is a fresh hot-path audit prompted by "what else can one do?" after the hybr (`archive/betadelta/`) and shell-solver (`shell-solver/`) wins. Every finding below was traced to current source (file:line) and, where a number is quoted, to a subagent microbenchmark noted inline. **The headline (§F1) is a measured 27× overhead and is the next solver-class win; §F2 is a batch of bit-identical free wins; §F3 is **descoped** — the shell-ODE overflow is owned by `shell-solver/OVERFLOW_FIX_PLAN.md` (on `main`, `bugfix/LSODA-shellODE`), and my first take there was itself wrong (corrected in place 2026-06-18).** No production code has been changed by this doc.
 - **Type:** plan — a ranked, phased plan to remove hot-path waste and improve numerical conditioning, with the evidence that de-risks each item embedded inline.
 - **Workstream:** `performance/` — cross-cutting hot-path cost & conditioning. Distinct from the *integrator-swap* workstreams (`shell-solver/`, `archive/bubble/`) and the *solver-repair* workstream (`archive/betadelta/`), though §F1 and §F5 touch the same files.
 - **Where it sits:** entry point → the per-segment bubble/cooling solves → **this**. The two prior wins fixed *which solver* runs; this fixes *how much redundant work each solve does*.
@@ -163,31 +163,47 @@ Gate it on a Tavg / L_total / mBubble convergence sweep.
 
 ---
 
-## F3 — Unit "overflow" reframed → precision **conditioning** (corrects `shell-solver/MIGRATION_PLAN.md`)
+## F3 — Shell-ODE conditioning — **OWNED BY `shell-solver/OVERFLOW_FIX_PLAN.md`** (descoped 2026-06-18)
 
-`MIGRATION_PLAN.md` (and its root-cause lead) say `nShell²` "overflows float64." **It
-does not.** Squared code-unit densities reach ~**1e110–1e130**; float64's ceiling
-is **1.8e308** — ~178 decades of headroom. **No site overflows.** (`nShell²` would
-need `nShell > 1.34e154 pc⁻³ ≈ 4.6e98 cm⁻³`, unphysical by ~90 orders.)
+> **Update 2026-06-18 — descoped, and my earlier framing here was itself wrong.**
+> The `bugfix/LSODA-shellODE` branch (now on `main`, PRs #691/#692) owns this via
+> `docs/dev/shell-solver/OVERFLOW_FIX_PLAN.md` + `harness/verify_overflow.py`. Its
+> captured real solve **falsifies my first take.** Do **not** duplicate it — track
+> it there.
 
-What is **real** is **precision loss** (~15 ULPs lost to squaring a ~1e55–1e65
-number, then multiplying by a ~1e-86 conversion constant), and it only *matters*
-in the shell ODE because it feeds a precision-sensitive monotonic guard inside the
-integrator.
+**What I got wrong.** An earlier draft of this section claimed the shell sites
+"do **not** overflow — only precision loss (~1e110–1e130 ≪ 1.8e308)." That was a
+*static magnitude* argument that ignored the **ODE dynamics**: `dndr` carries a
+`+chi_e·nShell²·…` recombination term with a ~`1/k_B` (~1e55) prefactor
+(`get_shellODE.py:97`), making `dn/dr ∝ +n²` a **finite-radius pole**
+(`n(r)=n0/(1−A·n0·Δr)`). So `n` does **not** stay at ~1e65 — it blows past
+~1.3e154 a few steps past the front and `nShell²` genuinely **overflows float64 →
+inf/nan**. Their `verify_overflow.py` capture (real `simple_cluster` first ionised
+solve) pins it: `y0_n=1.337e65`, `n_front=2.974e65` (=1.011e10 cm⁻³, finite,
+`nShell²≈8.8e130`), `front_idx=4`, **`ovf_idx=26` (first non-finite row)**,
+`n_max_finite=6.65e67`. The truth is the *synthesis* both prior docs missed:
+**finite (precision-only) at the front, real `inf` overflow at the pole — but
+entirely in the discarded post-front tail** (`shell_structure.py` truncates at the
+front ~idx 4; the overflow is ~idx 26). MIGRATION_PLAN's "overflows float64" was
+right *that* it overflows; my "doesn't overflow" was right only about the *front*.
 
-| tier | site | quantity | risk |
-|---|---|---|---|
-| 1 (real) | `get_shellODE.py:97,100`; `shell_structure.py:144,282,246-249` | code-unit `nShell**2` in the recombination terms, inside the integrator/guard | precision, **not** overflow; **no** clamp present |
-| 2 (cosmetic) | `bubble_luminosity.py:612,699` | code-unit `n**2` in one-shot trapezoid integrands | precision round-trip; correctness no-op |
-| 3 (clean) | `net_coolingcurve.py:127,150` | `ndens**2` — **already** converted to cgs at `:46` first | none — this is the **reference pattern** |
-| 3 (clean) | `get_shellODE.py:83-86,114-117` | `exp(-tau)` with `if tau>500: =0` clamp | properly guarded |
+**Action — none for this workstream on the shell.** Their plan's **#1 (CGS-rescale
+the whole shell RHS — verified exact 1e-12 identity)** is the root-cause fix and
+supersedes my "cgs-first squaring" note for `get_shellODE.py:97,100` and
+`shell_structure.py:144,282`. It is PLANNED there (not yet implemented). We only
+(a) drop the shell sites from this doc, and (b) flag that their plan must **revert
+the `mxstep` change** that `shell-solver/MIGRATION_PLAN.md` and this doc's earlier
+context credited as the warning fix — their §3 shows `mxstep` silenced a
+*different* warning (`ODEintWarning`), not the `t+h=t` overflow flood.
 
-**Fix (uniform):** convert the density to cgs *before* squaring (`n /= cvt.ndens_cgs2au`),
-matching `get_dudt`'s pattern. **Fold into the shell workstream**, not here — Tier-2
-is optional consistency only. **And update the MIGRATION_PLAN wording** from
-"overflows float64" to "loses precision (conditioning)", because the current text
-sends a reader hunting a non-existent NaN. Conversion magnitudes from
-`unit_conversions.py`: `ndens_cgs2au = 2.938e+55`, `Lambda_cgs2au = 5.650e-86`.
+**Still in THIS doc's scope (NOT covered by the shell plan), low value:** the
+**bubble** cooling integrands `bubble_luminosity.py:612,699` square a code-unit
+`n_bubble` (~1e53–1e55) → `n²`~1e106–1e114. There is **no `+n²` ODE term there**
+(one-shot trapezoid integrands), so **no pole and no overflow — genuinely
+precision-only**, and the consumed result is unaffected. Optional consistency fix
+(cgs-first, matching `get_dudt`'s `net_coolingcurve.py:46`); not worth a dedicated
+change. `net_coolingcurve.py:127,150` already does it right; the `exp(-tau)` clamp
+`get_shellODE.py:83-86,114-117` is properly guarded.
 
 ---
 
