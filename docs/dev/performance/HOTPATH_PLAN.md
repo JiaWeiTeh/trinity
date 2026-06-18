@@ -36,6 +36,28 @@ This audit was prompted by the question of where the *next* ground-breaking effi
 
 Environment of record (matches the prior plans): **python 3.11.x, numpy 1.26.4 (`<2` pin), scipy 1.17.1.** Work branch: `claude/beautiful-johnson-4kw4w9`.
 
+> **Verification log — line-by-line pass 2026-06-18.** Every `file.py:line`
+> claim below was re-checked against current source. **Corrected:** `solve_R1`
+> def is `get_bubbleParams.py:405` (was `:420`); the second `exp(-tau)` clamp is
+> `get_shellODE.py:114-117` (was `113-117`); `dictionary.py` lives in
+> `trinity/_input/` (not `_output/`) with the metadata first-flush write at
+> `:821`; the F2.6 simplify-R² `:535` debug is **already guarded** (≤2/snapshot)
+> so it was demoted from a "waste" item to a checked-and-clean note (the real
+> F2.6 win is the `_excluded_keys` rescan at `:614`); softened the exact 60k grid
+> count to "≈59,992, varies with cleaning". **Confirmed correct as written:** all
+> F1 refs (`bubble_luminosity.py` 461/875/894/900/157/908-923/87), all
+> `net_coolingcurve.py` sites (46/89/94/96/103/127/150), `default.param:37,43` +
+> `logging_setup.py:207,258`, `mass_profile.py:204,226`, `update_feedback.py:185`,
+> the unit constants (`ndens_cgs2au=2.938e+55`, `Lambda_cgs2au=5.650e-86`, both
+> evaluated), the per-segment framing (`run_energy_phase.py:159`,
+> `run_energy_implicit_phase.py:720`, `get_betadelta.py:56/909/936`,
+> `energy_phase_ODEs.py:223`), `density_profile.py:109-130`, and the
+> transition/momentum "zero bubble solves" (grep `get_bubbleproperties_pure|_create_legacy_radius_grid`
+> → 0 in both). **Not reproducible here:** this container has **no astropy**, so
+> the code does not import/run — the F1 "~21 ms vs 0.8 ms" timings remain
+> subagent-microbenchmark-sourced and are still gated on P0 re-measurement; the
+> source-structure claims above are all confirmed statically.
+
 ---
 
 ## The recurring bug/bottleneck classes here
@@ -63,7 +85,7 @@ So the entire 60k cost lives in **phase1_energy and phase1b only**, and §F1 bel
 is amplified by the betadelta grid/root-finder, not by the time integrator.
 
 The ODE RHS *does* run a cheaper `solve_R1` brentq every stage (`energy_phase_ODEs.py:223`
-→ `get_bubbleParams.py:420`) — that is §F5's warm-start candidate, a different
+→ `get_bubbleParams.py:405`) — that is §F5's warm-start candidate, a different
 (and smaller) cost than the per-segment 60k solve.
 
 ---
@@ -77,7 +99,8 @@ The ODE RHS *does* run a cheaper `solve_R1` brentq every stage (`energy_phase_OD
 (`bubble_luminosity.py:461`). Each fsolve iteration calls `_get_velocity_residuals`
 (`:875`), which:
 1. rebuilds the ~60 000-point legacy grid (`_create_legacy_radius_grid`, `:894`;
-   three `np.logspace(… int(2e4))` chunks → 59 992 points after cleaning),
+   three `np.logspace(… int(2e4))` chunks ≈ 6e4 before `_clean_radius_grid`; a
+   captured call measured ≈59,992 — exact count varies with cleaning),
 2. runs a full `solve_ivp(LSODA, dense_output=True)` (`_solve_bubble_structure`, `:900`),
 3. **resamples all ~60 000 points** via `sol.sol(r_array)` (`:157`),
 
@@ -136,7 +159,7 @@ Gate it on a Tavg / L_total / mBubble convergence sweep.
 | **F2.3** | **`get_dudt` recomputes run-constants every call** (innermost scalar loop). | `net_coolingcurve.py:94,96,103` | `nonCIE_Tcutoff`/`CIE_Tcutoff`/`min(temp)` are boolean-mask+`max`/`min` over fixed grids on every call; `CIE_Tcutoff`/`min(temp)` are true run-constants, the non-CIE one changes only at the cube-rebuild cadence. | Precompute once (cache on the cube / in `params`, refresh only when `get_coolingStructure` runs). Bit-identical. |
 | **F2.4** | **`get_dudt` computes `Lambda_CIE` unconditionally.** | `net_coolingcurve.py:89` | A full `CIE.get_Lambda` (interp1d eval + 2 transcendentals) discarded on the non-CIE and interpolation branches (the common conduction-zone case). | Move it inside the `elif … >= CIE_Tcutoff` branch. Bit-identical. |
 | **F2.5** | **SPS `pdotdot_total` finite-difference in the energy RHS path.** | `update_feedback.py:185` (2 extra of 13 spline evals/call) | Never consumed by the energy/transition RHS (`[rd,vd,Ed]`); it's a diagnostic/momentum derivative. | Compute only where consumed (`compute_derived_quantities`). Bit-identical to the integrated trajectory. |
-| **F2.6** | **Per-snapshot full-dict rescans / debug logs.** | `dictionary.py:614` (`_excluded_keys` re-derived per snapshot), `:535` simplify-R² `logging.debug` | Constant after phase 0 / debug-only string work per snapshot. | Compute `_excluded_keys` once; guard the R² log. Bit-identical. |
+| **F2.6** | **Per-snapshot full-dict rescan of `_excluded_keys`.** | `trinity/_input/dictionary.py:614` (`for k, item in self.items(): … _excluded_keys.add(k)`, comment "Refresh excluded sets in case flags changed after insertion") runs every `_clean_for_snapshot` (every snapshot). | A full ~195-key walk per snapshot to refresh a set that is constant after phase 0. | Compute once / on flag change. Bit-identical. *(Verified NOT a hot waste: the simplify-R² `logging.debug` at `:535` is already guarded by `_impl_r2_logged < 2` + phase=="implicit", so ≤2 emits/snapshot — noted only to record it was checked.)* |
 
 ---
 
@@ -157,7 +180,7 @@ integrator.
 | 1 (real) | `get_shellODE.py:97,100`; `shell_structure.py:144,282,246-249` | code-unit `nShell**2` in the recombination terms, inside the integrator/guard | precision, **not** overflow; **no** clamp present |
 | 2 (cosmetic) | `bubble_luminosity.py:612,699` | code-unit `n**2` in one-shot trapezoid integrands | precision round-trip; correctness no-op |
 | 3 (clean) | `net_coolingcurve.py:127,150` | `ndens**2` — **already** converted to cgs at `:46` first | none — this is the **reference pattern** |
-| 3 (clean) | `get_shellODE.py:83-86,113-117` | `exp(-tau)` with `if tau>500: =0` clamp | properly guarded |
+| 3 (clean) | `get_shellODE.py:83-86,114-117` | `exp(-tau)` with `if tau>500: =0` clamp | properly guarded |
 
 **Fix (uniform):** convert the density to cgs *before* squaring (`n /= cvt.ndens_cgs2au`),
 matching `get_dudt`'s pattern. **Fold into the shell workstream**, not here — Tier-2
@@ -170,8 +193,9 @@ sends a reader hunting a non-existent NaN. Conversion magnitudes from
 
 ## F4 — Verified clean (non-findings — so the next visit doesn't re-dig)
 
-- **File I/O is batched, not per-step:** one flush per 10 snapshots, single
-  `metadata.json` write (`dictionary.py:750,825`). No per-step open/close.
+- **File I/O is batched, not per-step:** one flush per 10 snapshots
+  (`snapshot_interval=10`, `trinity/_input/dictionary.py:220,750`), single
+  `metadata.json` write on the first flush (`:821`). No per-step open/close.
 - **SPS/SB99 interpolators are built once** at `main.py:147` and cached; never
   rebuilt in a loop.
 - **The cooling `.interp` calls in the luminosity integrals** (`bubble_luminosity.py:650-694`)
@@ -187,7 +211,7 @@ sends a reader hunting a non-existent NaN. Conversion magnitudes from
 
 ## F5 — Bigger levers (need an experiment / drift budget — NOT free)
 
-- **Warm-start `R1` (brentq, every RHS stage, `get_bubbleParams.py:420`) and
+- **Warm-start `R1` (brentq, every RHS stage, `get_bubbleParams.py:405`) and
   `dMdt` across segments.** Both evolve smoothly; the implicit phase already
   threads `dMdt` warm-starts. **Not bit-identical** (changes convergence path) →
   needs a drift budget like HYBR_PLAN Phase 1.
