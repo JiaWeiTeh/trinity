@@ -1,0 +1,9 @@
+config,idea,total_run_s,total_run_s_baseline,overflow_warns_total,endtoend_final_maxrel,endtoend_traj_maxrel,n_timesteps,n_timesteps_baseline,notes
+simple_cluster,baseline,223.954,223.954,99,0.000e+00,0.000e+00,98,98,baseline; flood=99 overflow-warns; final_t=0.00291034
+simple_cluster,phiguard,214.115,223.954,0,2.123e-02,2.123e-02,98,98,flood 99->0; speed 1.05x vs base; final_worst=n_IF; traj_worst=n_IF; nrows 98vs98
+simple_cluster,clip,219.654,223.954,0,0.000e+00,0.000e+00,98,98,flood 99->0; speed 1.02x vs base; final_worst=t_now; traj_worst=t_now; nrows 98vs98
+simple_cluster,cgs,221.836,223.954,98,7.230e-09,7.747e-09,98,98,flood 99->98; speed 1.01x vs base; final_worst=Eb; traj_worst=Eb; nrows 98vs98
+probe_typical_hybr,baseline,205.429,205.429,3,0.000e+00,0.000e+00,98,98,baseline; flood=3 overflow-warns; final_t=0.00291196
+probe_typical_hybr,phiguard,205.68,205.429,0,1.340e-05,1.340e-05,98,98,flood 3->0; speed 1.00x vs base; final_worst=n_IF; traj_worst=n_IF; nrows 98vs98
+probe_typical_hybr,clip,204.054,205.429,0,0.000e+00,0.000e+00,98,98,flood 3->0; speed 1.01x vs base; final_worst=t_now; traj_worst=t_now; nrows 98vs98
+probe_typical_hybr,cgs,207.564,205.429,3,8.950e-10,7.301e-09,98,98,flood 3->3; speed 0.99x vs base; final_worst=Eb; traj_worst=Eb; nrows 98vs98
