@@ -86,12 +86,28 @@ def _install_variant(idea):
     if idea == "baseline":
         return orig
     import get_shellODE_variants as V
-    fn = {
-        "phiguard": V.get_shellODE_phiguard,
-        "clip": V.get_shellODE_clip,
-        "cgs": V.get_shellODE_cgs,
-    }[idea]
-    mod.get_shellODE = fn
+    # phiguard/clip delegate to production via
+    # `from ...get_shellODE import get_shellODE as _prod` *inside* the function.
+    # If we patch mod.get_shellODE = phiguard, that import would resolve _prod to
+    # phiguard -> infinite recursion. So wrap them to delegate to the captured
+    # ORIGINAL production callable instead. cgs is self-contained (no _prod call).
+    if idea == "cgs":
+        mod.get_shellODE = V.get_shellODE_cgs
+    elif idea == "phiguard":
+        def _phiguard(y, r, f_cover, is_ionised, params):
+            if is_ionised and y[1] <= 0.0:
+                return 0.0, 0.0, 0.0
+            return orig(y, r, f_cover, is_ionised, params)
+        mod.get_shellODE = _phiguard
+    elif idea == "clip":
+        clip = V._NSHELL_CLIP
+        def _clip(y, r, f_cover, is_ionised, params):
+            if is_ionised:
+                y = (min(y[0], clip), y[1], y[2])
+            else:
+                y = (min(y[0], clip), y[1])
+            return orig(y, r, f_cover, is_ionised, params)
+        mod.get_shellODE = _clip
     # shell_structure.py imports the *module* and calls get_shellODE.get_shellODE,
     # so patching the module attribute suffices for the real solver call site.
     return orig
