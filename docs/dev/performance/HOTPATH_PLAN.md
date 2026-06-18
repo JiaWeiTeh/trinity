@@ -146,9 +146,11 @@ The ODE RHS *does* run a cheaper `solve_R1` brentq every stage (`energy_phase_OD
 `get_bubbleproperties_pure` solves `dMdt` with `scipy.optimize.fsolve`
 (`bubble_luminosity.py:461`). Each fsolve iteration calls `_get_velocity_residuals`
 (`:875`), which:
-1. rebuilds the ~60 000-point legacy grid (`_create_legacy_radius_grid`, `:894`;
+1. rebuilds the ~60 000-point grid (`_create_legacy_radius_grid`, `:894`;
    three `np.logspace(… int(2e4))` chunks ≈ 6e4 before `_clean_radius_grid`; a
-   captured call measured ≈59,992 — exact count varies with cleaning),
+   captured call measured ≈59,992 — exact count varies with cleaning) — note the
+   `_legacy` name is a **misnomer**: this is the sole production grid, not a
+   deprecated one (see `RESAMPLE_PLAN.md` "Naming note"),
 2. runs a full `solve_ivp(LSODA, dense_output=True)` (`_solve_bubble_structure`, `:900`),
 3. **resamples all ~60 000 points** via `sol.sol(r_array)` (`:157`),
 

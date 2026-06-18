@@ -47,6 +47,20 @@ The dMdt `fsolve` (`bubble_luminosity.py:461`) calls `_get_velocity_residuals` (
 
 ## Mechanism / current state (verified 2026-06-18 against source + two real dumped solves)
 
+> **Naming note (verified 2026-06-18 — don't be misled by "legacy").** The bubble
+> functions this plan touches — `_bubble_luminosity_legacy` (`:492`) and
+> `_create_legacy_radius_grid` (`:835`) — are **NOT deprecated; they are the SOLE
+> production path.** `_bubble_luminosity_legacy`'s own docstring says so: *"the
+> '_legacy' name refers only to the grid construction (an earlier plan to add a
+> separate primary path… was dropped); this is the sole luminosity path."* The
+> "non-legacy" alternative `_create_adaptive_radius_grid` no longer exists (its
+> `def` is deleted; only a **stale comment at `:480`** still names it). This is
+> different from the genuinely-legacy `_solve_betadelta_legacy` (`get_betadelta.py:604`),
+> which has a live default replacement (`hybr`). **F1 optimizes the live path** —
+> the name is a leftover, not a signal that a better path exists. (Pre-existing
+> cleanups flagged, not done here: rename these to drop "legacy"; fix the `:480`
+> comment. CLAUDE.md rule 3 — flag, don't bundle into this change.)
+
 - **Grid is strictly decreasing** (`_create_legacy_radius_grid`, `:835`): `r_array[0]` = outer start `r2Prime`, `r_array[-1]` = inner end `R1`; `t_span=(r_array[0], r_array[-1])` (`:148`) integrates outward→inward.
 - **Numerator** `v_array[-1]` (`:908`): `r_array[-1] == sol.t[-1]`, so `sol.sol(r_array[-1])` returns `sol.y[:,-1]` **bit-identically** (measured abs diff `0.0`, both states). With `t_eval` ending at `R1`, `sol.y[0,-1]` is the same value → **numerator bit-identical**.
 - **Denominator** `v_array[0] = sol.sol(r_array[0])[0]` (`:908`): the current code uses the dense interpolant at the start, which differs from the IC `v_init` by **~1e-12 rel** under LSODA (state_0000 abs `8.08e-9`, rel `3.60e-12`; state_0001 `8.86e-9`, `6.55e-12`; **`0.0` under RK45**). `v_init` is the *exact* IC, known before integrating (`_get_bubble_ODE_initial_conditions`, `:926`). Replacing the dense-interp denominator with `v_init` shifts the residual by ~1e-12 rel — far below `fsolve`'s `xtol=1e-4` and the `_RESIDUAL_RTOL=1e-6` regime the code already declares acceptable.
