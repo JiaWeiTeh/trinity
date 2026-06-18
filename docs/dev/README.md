@@ -44,6 +44,7 @@ docs/dev/
 ├── data/                                   committed diagnostic CSVs (provenance for writeups)
 ├── transition/   implicit→momentum transition trigger   (🔵 ACTIVE)
 ├── cooling/      cooling-table refactor                 (🔵 ACTIVE)
+├── performance/  hot-path cost & conditioning           (🔵 ACTIVE)
 ├── misc/         standalone audits / notes              (🟡 mixed)
 └── archive/      shipped / superseded / historical:
     ├── betadelta/        β–δ implicit solver / hybr      (✅ shipped)
@@ -65,6 +66,9 @@ The top-level `scratch/` (repo root) is separate, git-ignored, local-only.
 
 ### `cooling/` — cooling-table refactor
 - `refactor-audit.md` — **plan** (🔵 actionable): decouple the loaders from hardcoded SB99/OPIATE/CLOUDY. Nothing shipped yet.
+
+### `performance/` — hot-path cost & conditioning
+- `HOTPATH_PLAN.md` — **plan** (🔵 actionable): the next solver-class wins after hybr/shell. Headline = stop the dMdt fsolve resampling 60k points to read 4 numbers (measured ~27× overhead); plus a batch of bit-identical free wins (DEBUG default, dead-gravity delete, `get_dudt` micro-opts) and a correction to the shell-solver "overflow" framing (it's precision conditioning, not float64 overflow). Nothing shipped yet; P0 baseline + harness unbuilt.
 
 ### `misc/` — standalone audits / notes
 - `backward-compat-audit.md` — (🔵 actionable) backward-compat / stale-code cleanup; ~95% pending.
