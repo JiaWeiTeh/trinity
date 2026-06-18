@@ -27,6 +27,12 @@ mkdir -p "$DATA"
 N_ENERGY=${N_ENERGY:-20}
 IMPL_TARGET=${N_IMPLICIT:-100}
 
+# Each gated call replays 6 variants; at TIMING_REPS=3 that is ~18 solves/call,
+# which blows the wall budget before reaching 100 implicit. Accuracy (rel_*) is
+# rep-independent (deterministic) and the speedup is a MEAN over ~100 calls, so
+# 1 timing rep is statistically sufficient and ~3x cheaper. Override if desired.
+export TIMING_REPS=${TIMING_REPS:-1}
+
 # A temp sfe0.6 param (mCloud 1e5 / sfe 0.6); cleaned up on exit.
 SFE06_PARAM=""
 cleanup() { [ -n "$SFE06_PARAM" ] && rm -f "$SFE06_PARAM"; }
@@ -61,15 +67,15 @@ run() {             # run <tag> <param-arg> <max_s>
 }
 
 # Order: cheapest-to-reach-implicit first; degenerate sfe configs last (biggest cap).
-# mock_hybr is the tiny iterate-first config (~10 min cap). Realistic flat/steep
-# configs ~25 min. The two degenerate simple_cluster points (sfe0.3/sfe0.6) grind,
-# so they get the 45-min cap, like the shell sweep's degenerate run.
-run mock_hybr           docs/dev/transition/harness/mock_hybr.param                    600
-run probe_typical_hybr  docs/dev/archive/betadelta/diagnostics/probe_typical_hybr.param 1500
-run steep               docs/dev/transition/harness/steep.param                        1500
-run dense_flat          docs/dev/transition/harness/dense_flat.param                   1500
-run sfe0.3              param/simple_cluster.param                                     2700
-run sfe0.6              "$(make_sfe06_param)"                                           2700
+# Caps sized for ~6 solves/gated-call (TIMING_REPS=1) x ~120 gated calls:
+# mock ~720s, realistic ~1100s (~1.5s/solve), degenerate ~4300s (~6s/solve).
+# Caps carry headroom so a config can actually REACH 100 implicit in one pass.
+run mock_hybr           docs/dev/transition/harness/mock_hybr.param                    1200
+run probe_typical_hybr  docs/dev/archive/betadelta/diagnostics/probe_typical_hybr.param 2400
+run steep               docs/dev/transition/harness/steep.param                        2400
+run dense_flat          docs/dev/transition/harness/dense_flat.param                   2400
+run sfe0.3              param/simple_cluster.param                                     6000
+run sfe0.6              "$(make_sfe06_param)"                                           6000
 
 echo ">>> P0 SWEEP COMPLETE"
 echo ">>> aggregate with: python docs/dev/performance/harness/aggregate_p0.py"
