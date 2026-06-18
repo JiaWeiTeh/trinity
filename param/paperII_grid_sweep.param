@@ -75,7 +75,7 @@ log_level    INFO
 include_PHII    True
 
 # Output (each run writes a subfolder under this directory)
-path2output    outputs/paperII_grid_sweep
+path2output    /gpfs/bwfor/work/ws/hd_cq295-trinity/paperII_grid_sweep/
 
 # SPS: use the bundled default Starburst99 table (sps_path left unset).
 # The previous explicit block pointed at lib/sps/custom/1e6cluster_default.csv,
