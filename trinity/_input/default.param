@@ -33,8 +33,8 @@ output_format    JSON
 # INFO: Target number of points retained for simplified profile arrays in saved snapshots (bubble_T_arr, bubble_n_arr, bubble_dTdr_arr, bubble_v_arr, shell_grav_force_m, shell_n_arr). Default 100. Larger values give higher-fidelity snapshots at the cost of larger output files. Clamped to >= 20 (matches the coverage-skeleton chunk count). The first two simplify calls per implicit-phase snapshot log their reconstruction R² at INFO level so you can verify the chosen budget is faithful.
 simplify_npoints    100
 
-# INFO: Logging level for terminal and file output. Controls how much detail is logged.
-log_level    DEBUG
+# INFO: Logging level for terminal and file output. Controls how much detail is logged. DEBUG emits per-RHS-evaluation records (formatted and written to the log file on every solver stage), a measurable hot-path cost over a full run; INFO is the default, DEBUG is opt-in for diagnostics.
+log_level    INFO
 
 # INFO: Enable console (terminal) output for logging. If True, log messages are printed to terminal.
 log_console    False

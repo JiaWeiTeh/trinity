@@ -977,7 +977,18 @@ def _get_bubble_ODE(r_arr, initial_ODEs, params, Pb: float):
 
 
 def _get_mass_and_grav(n, r, params):
-    """Calculate cumulative mass and gravitational potential."""
+    """Calculate cumulative mass (gravity outputs currently DISABLED).
+
+    The sole caller (``get_bubbleproperties_pure``) consumes only
+    ``m_cumulative`` (``m_cumulative, _, _ = _get_mass_and_grav(...)``), so
+    computing ``grav_phi`` (a full-array ``simpson``) and ``grav_force_m`` (a
+    full-array op) on the ~60k-point grid every structure solve was pure waste
+    (HOTPATH F2.2). The gravity computation is kept commented below so it can be
+    restored verbatim when needed; the function returns ``None`` placeholders
+    (not ``0.0``) so any future consumer that reads them before re-enabling the
+    block fails loudly instead of silently integrating zero gravity. This is
+    bit-identical to before for the consumed ``m_cumulative``.
+    """
     # Flip arrays to be monotonically increasing
     r_new = r[::-1]
     rho_new = n[::-1] * params['mu_convert'].value # Mass density [Msun/pc³] (rho = mu_H * n_H)
@@ -989,12 +1000,15 @@ def _get_mass_and_grav(n, r, params):
     m_cumulative = 4 * np.pi * scipy.integrate.cumulative_trapezoid(
         integrand, x=r_new, initial=0
     )
-    # Gravitational potential [pc²/Myr²]
-    grav_phi = -4 * np.pi * params['G'].value * scipy.integrate.simpson(
-        r_new * rho_new, x=r_new
-    )
-    # Gravitational force per unit mass [pc/Myr²]
-    # Add small number to avoid division by zero at r=0
-    grav_force_m = params['G'].value * m_cumulative / (r_new**2 + 1e-10)
+    # --- DISABLED (HOTPATH F2.2): uncomment this block to restore gravity. ---
+    # # Gravitational potential [pc²/Myr²]
+    # grav_phi = -4 * np.pi * params['G'].value * scipy.integrate.simpson(
+    #     r_new * rho_new, x=r_new
+    # )
+    # # Gravitational force per unit mass [pc/Myr²]
+    # # Add small number to avoid division by zero at r=0
+    # grav_force_m = params['G'].value * m_cumulative / (r_new**2 + 1e-10)
+    grav_phi = None
+    grav_force_m = None
 
     return m_cumulative, grav_phi, grav_force_m
