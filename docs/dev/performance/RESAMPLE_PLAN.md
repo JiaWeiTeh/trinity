@@ -26,7 +26,8 @@
 > command that produced each artifact.
 
 **About this document**  (created 2026-06-18 — the 🔄 banner *requires* refreshing this on every visit.)
-- **Status (2026-06-18):** 🟢 **P0 essentially DONE (5/6 configs; `sfe0.6` running); patch + regression test STAGED; production fix not yet applied.** The fix is a surgical rewrite of **`_get_velocity_residuals` only** (coarse `t_eval` instead of the 60k `dense_output` resample). **Cross-regime result** (`data/master_p0_table.csv`): a **uniform ~1.5×/call (energy) / ~1.4×/call (implicit) speedup across all configs** — the degenerate `simple_cluster` is no faster per-call than tiny `mock_hybr` (the resample is fixed-size; the degenerate payoff is a full-RUN effect, P4). **G2 PASS:** worst `rel_dMdt` = 3.1e-6 ≪ 0.3% (~1000× margin); npts-insensitive in [200,2000] → **P1 locked at `_RESIDUAL_NPTS=500`**. Patch in `P3_PRODUCTION_PATCH.md`, guard in `test/test_residual_resample.py`. **Next:** finish `sfe0.6` → apply P3 → P4 full-run A/B. No production code changed yet.
+- **Status (2026-06-19):** 🟠 **P3 APPLIED (`24c6914`) but F1 is NOT YET CLEARED — under final full-run validation; revert-ready.** The per-call equivalence work (P0–P2, `master_p0_table.csv`) is complete and was *necessary but is **not sufficient***: a per-call `rel_dMdt ≤ 3e-6` says nothing about the **resolution** of the residual's `min_T` / `monotonic(T_array)` gates, which a coarse `t_eval` degrades on stiff/sharp-T configs. **The 60k grid does real convergence work, not just output sampling (domain fact) — so the real decision gate is FULL-RUN equivalence, not the per-call diff.** Done: P3 applied; full normal `pytest` 538 green; **`mock_hybr` full-run original-60k vs F1-coarse MATCH to ~5e-6** on R2/Eb/v2/t_now. **OPEN (the decider):** full-run equivalence on the stiff **edge cases** (`simple_cluster`, low-ρ/hi-M/hi-sfe, hi-ρ/hi-M/lo-sfe) — interrupted by a container restart, re-running. **Caveat:** the earlier P4 `ab_fullrun` "divergence" was a **harness artifact** (two full sims in one Python process → trinity global-state leakage), *not* the fix. **If any edge case diverges → revert P3** (the 60k is load-bearing); if all match → ship + fix the A/B harness to use separate processes.
+- **Per-call speedup (if F1 ships):** uniform ~1.5×/call (energy) / ~1.4×/call (implicit) across all 6 configs; the resample is fixed-size, so the degenerate payoff is a full-RUN effect.
 - **Type:** plan — phased equivalence + timing study (config × method matrix, capture-replay reaching deep into the implicit phase), then promotion behind a tolerance gate.
 - **Workstream:** `performance/` — this is HOTPATH §F1, the headline win. Branch **`fix/hotpath-resample`** (off `fix/hotpath-freewins`, which carries the §F2 wins).
 - **Where it sits:** `HOTPATH_PLAN.md` §F1 → **this** (the detailed F1 plan + its harness/data).
@@ -144,7 +145,14 @@ Built `harness/{residual_variants,capture_replay_bubble,replay_from_dump,aggrega
 - consider **`Mnodes`** (cheapest, no `t_eval`) only if the sweep shows **0** cases where the strict-monotonic gate flips the accepted root (add the `monotonic_flip` diagnostic column for this check).
 **Gate G1:** across **all** captured calls in every config, worst output-level `rel_dMdt` ≤ the G2 bound (≤0.3%; P0 saw 1e-6) at the chosen N, 0 new solver failures, `monotonic_flip` either absent or 0 at the chosen N. (The output-level `rel_dMdt` is binding — it subsumes any residual-level monotonic flip; see the §CSV-schema gap note.) Commit `data/master_p0_table.csv`.
 
-### P2 — Integration-level equivalence (the decision gate)
+### P2 — Per-call integration equivalence (NECESSARY, not sufficient)
+> ⚠️ **This is NOT the decision gate** — it was mistakenly treated as one. A
+> per-call `rel_dMdt` is measured at a *single* converged solve; it cannot see
+> that a coarse `t_eval` under-resolves the `min_T`/`monotonic` gates and so flips
+> fsolve steering on a *later, stiffer* step. The real decision gate is **P5
+> full-run equivalence** (below). P2 passing is required but says nothing about
+> whether F1 holds over a full evolution.
+
 The captured CSVs already hold this: every row's `baseline` variant IS the 60k
 dense-output path, and `rel_dMdt` is variant-vs-baseline on the *converged*
 `get_bubbleproperties_pure` output. So G2 reads straight off `master_p0_table.csv`.
@@ -252,11 +260,13 @@ current source — the multi-hour sweep output is trustworthy:
 - Minor (non-blocking): `call_idx` rebuilds a set over all rows each call (O(n²)
   total) — negligible at N≤120; left as-is.
 
-### Status vs gates
-- ✅ **G0 met (5/6 configs):** `mock_hybr` (86i = its natural max), `probe_typical_hybr`/`steep`/`dense_flat`/`simple_cluster` (100i each); `sfe0.6` running. Per-call baseline + per-variant timings recorded in `master_p0_table.csv`. (≥4 configs at 100 implicit ✓.)
-- ✅ **G1/G2 met:** worst `rel_dMdt` 3.1e-6 ≪ 0.3% across all cells; npts-insensitive → `_RESIDUAL_NPTS=500` locked. 0 solver failures (`ok` = n/n).
-- ⏳ **Remaining:** `sfe0.6` to finish (autosaver missed it — temp-param naming bug, now fixed via `CONFIG_NAME`; handle its CSV manually). Then **P3 apply** (staged) + **P4 full-run A/B** (the degenerate full-run number) — both HEAVY, deferred until the timing sweep is fully done so they don't perturb each other.
-- **Known harness fix (done):** `capture_replay_bubble.py` named CSVs by param-file stem, so `sfe0.3`→`simple_cluster.csv` and `sfe0.6`→a temp name (autosaver/skip-gate missed them). Added a `CONFIG_NAME` env override (the sweep passes the tag); the already-running `sfe0.6` predates the fix.
+### Status vs gates (2026-06-19)
+- ✅ **G0 met (6 configs):** `mock_hybr` (86i = its natural max) + `probe_typical_hybr`/`steep`/`dense_flat`/`simple_cluster`/`sfe0.6` (100i each) in `master_p0_table.csv`.
+- ✅ **G1/G2 (per-call) met — but reclassified necessary-not-sufficient:** worst per-call `rel_dMdt` 3.1e-6 ≪ 0.3%; npts-insensitive in [200,2000] → `_RESIDUAL_NPTS=500`. **Does NOT clear F1** (see P2 banner / the §Status line).
+- ✅ **P3 applied** (`24c6914`); full normal `pytest` 538 green; `test/test_residual_resample.py` green.
+- 🟢 **P5 full-run equivalence — `mock_hybr` PASS:** original-60k vs F1-coarse match to ~5e-6 on R2/Eb/v2/t_now (both reach t=0.3). Method: SEPARATE `run.py` processes per code version (the in-process `ab_fullrun` A/B leaks trinity global state — that bug produced the false P4 "divergence").
+- 🟠 **P5 full-run equivalence — EDGE CASES = THE OPEN DECIDER:** `simple_cluster` + `f1edge_lowdens_himass_hisfe` + `f1edge_hidens_himass_losfe` (the stiff/sharp regimes where the 60k earns its keep). Harness `/tmp/f1_edge_batch.sh` (batched by version, parallel across cores). Interrupted by a container restart on 2026-06-19; **re-running.** Verdict pending → ship or revert P3.
+- **Known harness fixes (done):** `capture_replay_bubble.py` CSV-naming `CONFIG_NAME` override; **TODO:** `harness/ab_fullrun.py` must run each variant in a separate process (the in-process A/B is unreliable).
 
 ## Efficiency measurement plan (record every number — 💾)
 - **Per-residual-call**: baseline (60k resample + grid build) vs Option (b) — `timeit`, isolate the resample + grid-build savings.

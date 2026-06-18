@@ -26,10 +26,16 @@
 
 ---
 
-**Status (2026-06-18):** 🟡 **STAGED, NOT APPLIED.** This is the exact production
-rewrite, ready to drop in once the P0 sweep (gate G0) + the P1 NPTS decision land.
-The hot-path function is unchanged in source. Derived from the verified harness
-(`harness/residual_variants.py` is the same body) — see `RESAMPLE_PLAN.md`.
+**Status (2026-06-19):** 🟠 **APPLIED (`24c6914`) but NOT YET CLEARED — under final
+full-run validation; revert-ready.** This is the production rewrite as shipped to
+`bubble_luminosity.py`. Per-call equivalence (P0–P2) + `mock_hybr` full-run both
+pass, but the **decision gate is full-run equivalence on the stiff edge cases**
+(`simple_cluster`, `f1edge_*.param`) — a coarse `t_eval` can under-resolve the
+`min_T`/`monotonic` gates on sharp T (the 60k does real convergence work), which a
+per-call diff cannot detect. **If any edge case diverges, revert via the §Rollback
+below** (one-commit, self-contained). See `RESAMPLE_PLAN.md` §Status for the live
+verdict. NB: the earlier P4 `ab_fullrun` "divergence" was an in-process harness
+artifact, not this patch.
 
 ## What changes (one function + one constant)
 

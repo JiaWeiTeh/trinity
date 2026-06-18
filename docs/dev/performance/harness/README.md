@@ -4,6 +4,16 @@
 > dense-output resample in the bubble dMdt residual). Re-verify against current
 > source before trusting line refs. Results are committed as CSVs under
 > `../data/`; the multi-MB state pickles are gitignored (regenerable — see below).
+>
+> 🟠 **(2026-06-19) This per-call harness is NECESSARY-NOT-SUFFICIENT.** It measures
+> per-call `rel_dMdt`, which passed (≤3e-6) — but that does **not** clear F1: a coarse
+> `t_eval` can under-resolve the residual's `min_T`/`monotonic` gates on stiff/sharp-T
+> configs and flip fsolve steering over a full run. The real gate is **full-run
+> equivalence** (`RESAMPLE_PLAN.md` §P5): `mock_hybr` passed (~5e-6), stiff edge cases
+> pending. **`ab_fullrun.py` is BUGGED** — it runs both variants in one Python process,
+> and trinity's module-level global state leaks between them (this produced a false
+> "divergence"); a correct A/B runs each variant in a **separate `run.py` process**
+> (see `/tmp/f1_edge_batch.sh` pattern, to be committed under `harness/`).
 
 ## Files
 
