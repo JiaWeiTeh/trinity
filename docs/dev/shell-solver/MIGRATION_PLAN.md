@@ -25,7 +25,7 @@
 > that produced each artifact.
 
 **About this document**  (last updated 2026-06-17 — the 🔄 banner *requires* refreshing this on every visit; it is a living doc, not frozen.)
-- **Status (verified 2026-06-17):** 🟠 **ACTIONABLE — but the motivation flipped.** Equivalence is settled: `solve_ivp(LSODA, t_eval)` reproduces `odeint` to **1.6e-10…1.0e-8 in all 12 cells** of a full 6-config × 2-phase (energy+implicit) matrix (incl. neutral solves; §P0-matrix). **New, decisive finding from cross-regime timing: the migration is NOT a speedup** — `solve_ivp` is **slower** than `odeint` in every realistic regime (~4× for the drop-in), and the warning wall is **specific to the degenerate `simple_cluster` regime** (a code-unit overflow), not science runs. So this is a **robustness/cleanliness** change, not a performance one. Code change still not written. See §P0-matrix for the master table and the reshaped recommendation.
+- **Status (verified 2026-06-18):** 🟢 **Warning fixed; any migration is robustness-only.** A full 6-config × (20 energy + 100 implicit) × 6-variant matrix settles it (§P0-matrix, `data/master_table.csv`). Equivalence is universal (`solve_ivp(LSODA, t_eval)` matches `odeint` to **1.6e-10…1.0e-8 in all 12 cells**, neutral solves included). **The migration is NOT a speedup** — every `solve_ivp` variant is slower over a realistic run; the φ-event's 4–5× is **energy-phase-only** (the 100-sample implicit phase is mixed ion/neutral, where the event is ~0.5×, a *loss* — the 15-sample pass had misread this). **Shipped:** the excess-work warning is silenced for free by raising odeint's `mxstep` (=50000) on both shell-ODE calls — bit-identical, pytest 532 passed. A `solve_ivp` switch would be justified by robustness/cleanliness, not performance, and is still unwritten. See §P0-matrix.
 - **Type:** plan — phased migration of the shell-structure ODE integrator from `scipy.integrate.odeint` to `scipy.integrate.solve_ivp`, with the cross-regime equivalence + timing evidence that de-risks it embedded inline (P0).
 - **Workstream:** `shell-solver/` — the shell-structure micro-solver (`trinity/shell_structure/`), distinct from the already-migrated **bubble**-structure solver and from the betadelta/transition solver work.
 - **Where it sits:** entry point → **this** → (companion results/design docs to be spun out per §Phases if the work proceeds).
@@ -149,75 +149,70 @@ The fd-level **Fortran LSODA "t + h = t" chatter counter read 0 across all confi
 
 ---
 
-## P0-matrix — full config × phase × variant sweep (DONE, 2026-06-17)
+## P0-matrix — full config × phase × variant sweep (DONE, 2026-06-18)
 
-> 🔄 **Redo in progress (2026-06-17):** re-running with a sample target of **100
-> solves *in the implicit phase*** per config (the diagnostic is samples taken in
-> a phase, not wall time spent reaching it), and a deep `sfe0.3` run that also
-> seeks the transition phase. The tables below show the first 15-sample pass and
-> will be regenerated (with an explicit CURRENT-DEFAULT row, all context columns
-> kept) via `aggregate_matrix.py` when the redo lands.
-
-Reproducible master table from `run_matrix_sweep.sh` (6 configs, ~10-min matrix
-run each, capturing 15 solves per phase reached) → `aggregate_matrix.py` →
-`data/master_table.csv` + per-config `data/replay_variants_matrix_<config>.csv`.
-Every run reached **energy + implicit**; none reached transition/momentum within
-the 10-min budget (those phases sit beyond it — see scope note). `speedup =
-odeint_time / variant_time` (<1 = slower); `rel_n` = worst accuracy vs odeint on
-the physically-used prefix.
+Reproducible from `run_matrix_sweep.sh` → per-config
+`data/replay_variants_matrix_<config>.csv` → `aggregate_matrix.py` →
+`data/master_table.csv`. Sample target is **20 solves in energy + 100 in
+implicit** per config — the diagnostic is solves sampled *in* a phase, not wall
+time spent reaching it. `speed = odeint_time / variant_time` (<1 = slower than
+the current-default `odeint`); `rel_n` = worst accuracy vs odeint on the
+physically-used prefix. **Transition/momentum:** a dedicated 45-min `sfe0.3` deep
+run captured 100 implicit then spent ~18 min in pass-through with **zero
+transition solves** — transition is beyond a tractable capture budget for this
+config, so those cells stay empty (a budget reality, not a cheap gap).
 
 ### By variant — solver + stopping (regime-pooled, phases combined)
 
-The axis that matters most: which **solver** and which **stopping rule**, and how each fares in the degenerate vs realistic regimes. `speed` is pooled median, `ok` is successes / sampled solves.
+The axis that matters most: which **solver** and which **stopping rule**. Pool is weighted by sample count, so the 100-sample implicit phase dominates the 20-sample energy phase — these reflect the implicit-heavy reality. `ok` = successes / sampled solves.
 
-| variant | solver | stopping | degenerate (sfe0.3/0.6) ok·speed·rel_n | realistic (typ/steep/dense/mock) ok·speed·rel_n |
-|---|---|---|---|---|
-| LSODA + t_eval (drop-in) | LSODA | normal (full grid) | 60/60·0.09×·1.7e-9 | 120/120·0.23×·1.0e-8 |
-| **LSODA + front event** | LSODA | **SMART: stop at ion. front** | 60/60·**5.05×**·1.7e-9 | 120/120·0.43×·1.0e-8 |
-| LSODA + dense_output | LSODA | normal (dense interp) | 60/60·0.09×·1.7e-9 | 120/120·0.23×·1.0e-8 |
-| Radau | Radau | normal | **0/60**·n/a·n/a | 109/120·0.03×·1.7e-7 |
-| BDF | BDF | normal | **0/60**·n/a·n/a | 109/120·0.04×·1.4e-7 |
-| odeint mxstep=50k | LSODA (odeint) | normal, mxstep=50k | 60/60·0.17×·0 | 120/120·**1.00×**·0 |
+| variant | solver · stopping | degenerate (sfe0.3/0.6) ok·speed·rel_n | realistic (typ/steep/dense/mock) ok·speed·rel_n |
+|---|---|---|---|
+| LSODA + t_eval (drop-in) | LSODA · normal | 240/240·0.16×·2.6e-9 | 480/480·0.21×·1.0e-8 |
+| **LSODA + front event** | LSODA · **smart: stop at front** | 240/240·**0.65×**·2.6e-9 | 480/480·0.29×·1.0e-8 |
+| LSODA + dense_output | LSODA · normal (dense) | 240/240·0.15×·2.6e-9 | 480/480·0.21×·1.0e-8 |
+| Radau | Radau · normal | 151/240·0.05×·3.9e-8 | 469/480·0.05×·1.7e-7 |
+| BDF | BDF · normal | 151/240·0.05×·1.7e-7 | 469/480·0.05×·1.9e-7 |
+| odeint mxstep=50k | LSODA · mxstep=50k | 240/240·0.98×·0 | 480/480·**1.00×**·0 |
 
-- **Only one variant ever beats the `odeint` baseline: `LSODA + front event`, and only in the degenerate regime (5.05× pooled).** In all four realistic configs it is *slower* (0.43×).
-- The faithful **drop-in (`LSODA + t_eval`) and `dense_output` are indistinguishable** (0.09× / 0.23×) — `dense_output` buys nothing here.
-- **Radau & BDF are the worst options**: they *fail outright* in the degenerate regime (0/60) and in realistic configs are ~25–30× slower (0.03–0.04×) **and** less accurate (rel_n ~1e-7 vs ~1e-8 for LSODA).
-- **`odeint(mxstep=50k)` is the free warning-silencer**: bit-identical results (rel_n = 0) at **1.00×** in realistic configs — raising the step ceiling costs nothing there; only 0.16–0.18× in the degenerate regime (the overflow tail makes the extra steps expensive). This is the cheap fix.
+- **No variant beats the `odeint` baseline over a realistic run.** The front-event trick's headline win is **energy-phase-only** (see conclusion 2); pooled across the implicit-heavy reality it is **0.65× even in the degenerate regime** — a net loss.
+- The faithful **drop-in (`LSODA + t_eval`) ≡ `dense_output`** (0.15–0.21×) — `dense_output` buys nothing here.
+- **Radau & BDF are the worst options**: ~20× slower (0.05×) **and** less accurate (rel_n ~1e-7) even where they succeed; in the degenerate regime they fail on the ionised overflow solves and only recover on neutral implicit ones (151/240).
+- **`odeint(mxstep=50k)` is the free warning-silencer**: bit-identical (rel_n = 0) at **0.98–1.00×**. This is the applied fix.
 
 ### Context (config × phase)
 
-| config | phase | calls (ion/neu) | odeint ms | excess-work | mass-lim | t_eval ok·speed·rel_n | event ok·speed·rel_n | Radau/BDF ok |
+`odeint ms` is the **CURRENT DEFAULT** baseline (LSODA, full grid; the 1.00× reference); `speed·rel_n` are per variant vs it.
+
+| config | phase | ion/neu | odeint ms | excess-work | mass-lim | t_eval speed·rel_n | event speed·rel_n | Radau/BDF ok |
 |---|---|---|---|---|---|---|---|---|
-| sfe0.3 (CURRENT) | energy | 15 (15/0) | 7.15 | 100% | 0% | 15/15·0.10×·1.4e-9 | 15/15·**4.12×**·1.4e-9 | **0/15** · 0/15 |
-| sfe0.3 (CURRENT) | implicit | 15 (15/0) | 7.23 | 100% | 0% | 15/15·0.09×·3.9e-10 | 15/15·**5.65×**·3.9e-10 | **0/15** · 0/15 |
-| sfe0.6 | energy | 15 (15/0) | 7.04 | 100% | 0% | 15/15·0.09×·1.7e-9 | 15/15·4.11×·1.7e-9 | 0/15 · 0/15 |
-| sfe0.6 | implicit | 15 (15/0) | 7.01 | 100% | 0% | 15/15·0.09×·1.6e-10 | 15/15·5.65×·1.6e-10 | 0/15 · 0/15 |
-| typical | energy | 15 (15/0) | 1.14 | 20% | 0% | 15/15·0.25×·7.3e-9 | 15/15·0.47×·7.3e-9 | 12/15 · 12/15 |
-| typical | implicit | 15 (15/0) | 0.67 | 0% | 0% | 15/15·0.24×·1.3e-9 | 15/15·0.35×·1.3e-9 | 15/15 · 15/15 |
-| steep | energy | 15 (15/0) | 1.25 | 26% | 0% | 15/15·0.25×·9.8e-9 | 15/15·0.63×·9.8e-9 | 11/15 · 11/15 |
-| steep | implicit | 15 (**8/7**) | 0.80 | 0% | **46%** | 15/15·0.23×·3.5e-10 | 15/15·0.55×·3.5e-10 | 15/15 · 15/15 |
-| dense_flat | energy | 15 (15/0) | 1.15 | 26% | 0% | 15/15·0.26×·9.8e-9 | 15/15·0.65×·9.8e-9 | 11/15 · 11/15 |
-| dense_flat | implicit | 15 (**8/7**) | 0.75 | 0% | **46%** | 15/15·0.24×·3.5e-10 | 15/15·0.53×·3.5e-10 | 15/15 · 15/15 |
-| mock_hybr | energy | 15 (15/0) | 0.19 | 0% | **93%** | 15/15·0.17×·1.0e-8 | 15/15·0.14×·1.0e-8 | 15/15 · 15/15 |
-| mock_hybr | implicit | 15 (15/0) | 0.17 | 0% | **73%** | 15/15·0.17×·7.1e-9 | 15/15·0.14×·7.1e-9 | 15/15 · 15/15 |
+| sfe0.3 (CURRENT) | energy | 20/0 | 9.54 | 100% | 0% | 0.10×·1.4e-9 | **4.18×**·1.4e-9 | **0/20** |
+| sfe0.3 (CURRENT) | implicit | 58/42 | 0.92 | 15% | 42% | 0.18×·1.1e-9 | **0.53×**·1.1e-9 | 85/100 |
+| sfe0.6 | energy | 20/0 | 12.62 | 100% | 0% | 0.10×·1.7e-9 | **4.39×**·1.7e-9 | 0/20 |
+| sfe0.6 | implicit | 71/29 | 1.21 | 34% | 31% | 0.16×·2.6e-9 | 0.49×·2.6e-9 | 66/100 |
+| steep | energy | 20/0 | 1.45 | 20% | 0% | 0.25×·9.8e-9 | 0.62×·9.8e-9 | 16/20 |
+| steep | implicit | 50/50 | 0.87 | 0% | 50% | 0.20×·9.5e-10 | 0.34×·9.5e-10 | 100/100 |
+| dense_flat | energy | 20/0 | 1.42 | 20% | 0% | 0.25×·9.8e-9 | 0.61×·9.8e-9 | 16/20 |
+| dense_flat | implicit | 50/50 | 0.87 | 0% | 50% | 0.20×·9.5e-10 | 0.30×·9.5e-10 | 100/100 |
+| typical | energy | 20/0 | 1.22 | 15% | 0% | 0.24×·7.3e-9 | 0.46×·7.3e-9 | 17/20 |
+| typical | implicit | 66/34 | 0.78 | 0% | 34% | 0.22×·2.8e-9 | 0.35×·2.8e-9 | 100/100 |
+| mock_hybr | energy | 20/0 | 0.24 | 0% | 95% | 0.17×·1.0e-8 | 0.14×·1.0e-8 | 20/20 |
+| mock_hybr | implicit | 79/21 | 0.48 | 0% | 64% | 0.17×·1.0e-8 | 0.14×·1.0e-8 | 100/100 |
 
-### Verified conclusions (every claim traces to `master_table.csv`)
-1. **Accuracy is universal.** `solve_ivp(LSODA, t_eval)` reproduces `odeint` to **1.6e-10 … 1.0e-8** in *every one of the 12 cells*, including the neutral solves. Equivalence is settled across configs **and** phases.
-2. **Two regime classes, sharply separated:**
-   - **Degenerate** (`simple_cluster` sfe0.3/0.6): `odeint` ~7 ms, excess-work **100%**, **Radau/BDF fail 0/15**, and the φ-event is **4–5.7× faster** — the *only* place any `solve_ivp` variant beats `odeint`. Phase-invariant (energy ≈ implicit).
-   - **Realistic** (`typical`/`steep`/`dense_flat`/`mock_hybr`): `odeint` 0.17–1.25 ms, excess-work ≤26%, Radau/BDF mostly succeed, and **every `solve_ivp` variant is slower** (event 0.14–0.65×).
-3. **Phase matters in the realistic regimes** (so "regime-not-phase" was too strong — good that we tested):
-   - Excess-work is an **early-energy** artifact: 20–26% in energy → **0% in implicit**.
-   - Radau/BDF robustness **improves** energy→implicit (11–12/15 → 15/15).
-   - `odeint` gets **faster** energy→implicit (e.g. 1.25→0.80 ms).
-   - **Neutral + mass-limited solves appear in implicit** for `steep`/`dense_flat` (8 ion / 7 neu, 46% mass-limited) but not energy; `mock_hybr` is mass-limited in both (93%/73%).
-4. **The front-event restructure is a niche win.** It helps *only* the degenerate regime, and only because it skips that regime's float64-overflow tail; it's a net loss in all four realistic regimes and can't even fire on the mass-limited/neutral solves that dominate `mock_hybr` and the `steep`/`dense_flat` implicit phase.
-5. **Solver/stopping ranking (see "By variant"):** `dense_output` ≡ `t_eval` (no benefit); **Radau/BDF are the worst** (fail 0/60 in degenerate, ~25–30× slower *and* less accurate in realistic); **`odeint(mxstep=50k)` is the only free option** (bit-identical, 1.00× in realistic) and is the recommended cheap fix to silence the warning without changing solver.
+### Verified conclusions (every claim traces to `master_table.csv`; 2026-06-18, 100-implicit)
+1. **Accuracy is universal.** Every LSODA variant reproduces `odeint` to **1.6e-10 … 1.0e-8** in all 12 cells, neutral solves included. Equivalence is settled across configs **and** phases.
+2. **The event trick's big win is ENERGY-phase-only — the finding the 100-sample redo overturned.** At 15 implicit samples, `sfe0.3` implicit looked fully ionised and the φ-event showed **5.65×**. At 100 samples the implicit phase is revealed to be **mixed (58 ion / 42 neutral, 42% mass-limited)** and the event collapses to **0.53× — a loss**. The 4–5× belongs *only* to the fully-ionised overflow *energy* solves; neutral/mass-limited solves give the φ-event nothing to skip. Pooled over the implicit-heavy reality, even the degenerate event is **0.65× (net loss)**. (This is why "samples *in* the phase, not reach-time" mattered: the 15-sample implicit was unrepresentative.)
+3. **Cost/robustness still splits by regime, but the event-speed split is phase, not regime:** degenerate `simple_cluster` (`odeint` 9–13 ms in energy, excess-work 100%) vs realistic (`odeint` ≤1.5 ms, ≤20% energy excess-work). Excess-work is an **energy-phase** artifact everywhere (→ ~0–34% by implicit).
+4. **Radau/BDF: the worst option.** Even where they succeed they are ~20× slower (0.05×) and less accurate (rel_n ~1e-7). In the degenerate regime they fail on the ionised overflow solves (energy **0/20**) and recover only on neutral implicit solves (sfe0.3 **85/100**, sfe0.6 **66/100**).
+5. **`dense_output` ≡ `t_eval`** (no benefit). **`odeint(mxstep=50k)` is the only free option** — bit-identical (rel_n = 0) at 0.98–1.00× — and is **now APPLIED**: `trinity/shell_structure/shell_structure.py` passes `mxstep=_SHELL_ODE_MXSTEP` (=50000) on both odeint calls (pytest: 532 passed).
 
-Full per-cell detail (all 72 config × phase × variant rows) lives in `data/master_table.csv`; regenerate the rendered tables (by-variant digest, context, full long) with `python docs/dev/shell-solver/harness/aggregate_matrix.py`.
+Full per-cell detail (84 config × phase × variant rows incl. the CURRENT-DEFAULT baseline row) lives in `data/master_table.csv`; regenerate the rendered tables with `python docs/dev/shell-solver/harness/aggregate_matrix.py`.
+
+### Net recommendation
+The 100-sample redo **strengthens** the original call: do **not** restructure to `solve_ivp` for speed — its only advantage (the front-event trick) is narrower than first thought (energy-phase-only) and a net loss over a realistic run. The warning is silenced for free by the `mxstep` bump (done). Any `solve_ivp` migration is justified by **robustness/cleanliness** (explicit success flag, no uninitialised-tail consumption), not performance.
 
 ### Scope still open
-- **Transition / momentum unreached** — the energy+implicit captures consume the 10-min budget; reaching transition needs a longer (multi-MATRIX_MAX_S) run. The `FROM_PHASE`/matrix machinery supports it; it's just compute time.
+- **Transition / momentum unreached** — confirmed beyond a dedicated 45-min `sfe0.3` run. Reaching them needs the P-shadow full-run path, not the capture harness.
 - **Integration-level** equivalence (consumed scalars `n_IF_Str`, `F_rad` inputs) still pending — ODE-level `rel_n` is necessary, not sufficient.
 
 ## The production pattern to implement (adapted from the bubble precedent)
