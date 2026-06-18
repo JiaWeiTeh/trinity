@@ -25,16 +25,16 @@
 > exact config + command that produced each artifact.
 
 **About this document**  (created 2026-06-18 — the 🔄 banner *requires* refreshing this on every visit; it is a living doc, not frozen.)
-- **Status (verified 2026-06-18):** 🔵 **ACTIONABLE — nothing shipped yet.** This is a fresh hot-path audit prompted by "what else can one do?" after the hybr (`archive/betadelta/`) and shell-solver (`shell-solver/`) wins. Every finding below was traced to current source (file:line) and, where a number is quoted, to a subagent microbenchmark noted inline. **The headline (§F1) is a measured 27× overhead and is the next solver-class win; §F2 is a batch of bit-identical free wins; §F3 is **descoped** — the shell-ODE overflow is owned by `shell-solver/OVERFLOW_FIX_PLAN.md` (on `main`, `bugfix/LSODA-shellODE`), and my first take there was itself wrong (corrected in place 2026-06-18).** No production code has been changed by this doc.
+- **Status (verified 2026-06-18):** 🟡 **PARTIAL — §F2.1–F2.4 SHIPPED on `fix/hotpath-freewins` (commit `4a13075`); §F1 (headline) + §F5 pending; §F3 descoped.** A fresh hot-path audit prompted by "what else can one do?" after the hybr (`archive/betadelta/`) and shell-solver (`shell-solver/`) wins. **The headline (§F1) is the next solver-class win (60k-point resample, not yet started); §F2 free wins are implemented and measured (see the ledger below — cooling +23%/call bit-identical; logging is cleanliness not speed; F2.5 dropped); §F3 is descoped to `shell-solver/OVERFLOW_FIX_PLAN.md` (and my first take there was itself wrong, corrected in place).** See the **Results & diagnostics ledger** for every measured number.
 - **Type:** plan — a ranked, phased plan to remove hot-path waste and improve numerical conditioning, with the evidence that de-risks each item embedded inline.
 - **Workstream:** `performance/` — cross-cutting hot-path cost & conditioning. Distinct from the *integrator-swap* workstreams (`shell-solver/`, `archive/bubble/`) and the *solver-repair* workstream (`archive/betadelta/`), though §F1 and §F5 touch the same files.
 - **Where it sits:** entry point → the per-segment bubble/cooling solves → **this**. The two prior wins fixed *which solver* runs; this fixes *how much redundant work each solve does*.
 - **Code it concerns:** `trinity/bubble_structure/bubble_luminosity.py` (the dMdt fsolve + 60k grid + the dead grav returns), `trinity/cooling/net_coolingcurve.py` (`get_dudt` inner loop), `trinity/_input/default.param` + `trinity/_functions/logging_setup.py` (the DEBUG default), `trinity/sps/update_feedback.py` (`pdotdot_total`), `trinity/shell_structure/{get_shellODE.py,shell_structure.py}` (the precision reframe).
-- **Linked files & data:** none committed yet. **Phase P0 must commit** a `data/hotpath_baseline.csv` (per-phase wall-time + bubble-solve / resample call counts) and a `harness/replay_residual_grid.py` capture-replay harness (mirrors `shell-solver/harness/capture_replay_variants.py`) before any §F1(b) change ships. **Save/commit every new CSV.**
+- **Linked files & data:** committed — `harness/verify_getdudt_equiv.py` (the F2.3/F2.4 bit-identity + per-call timing proof). **Phase P0 still must commit** a `data/hotpath_baseline.csv` (per-phase wall-time + bubble-solve / resample call counts) and a `harness/replay_residual_grid.py` capture-replay harness (mirrors `shell-solver/harness/capture_replay_variants.py`) before any §F1(b) change ships. **Save/commit every new CSV.**
 
 This audit was prompted by the question of where the *next* ground-breaking efficiency fix is, given hybr and the shell-solver migration. The recurring win-shape in both was **work done at the wrong granularity, or more work than the consumer needs.** This doc finds at least one more of that exact shape (bigger than either, §F1), a batch of free bit-identical cleanups (§F2), and one place where the prior docs *overstate* the problem (§F3).
 
-Environment of record (matches the prior plans): **python 3.11.x, numpy 1.26.4 (`<2` pin), scipy 1.17.1.** Work branch: `claude/beautiful-johnson-4kw4w9`.
+Environment of record (matches the prior plans): **python 3.11.x, numpy 1.26.4 (`<2` pin), scipy 1.17.1.** Work branch: `fix/hotpath-freewins` (renamed from `claude/beautiful-johnson-4kw4w9` → `fix/overall-hotpath` → `fix/hotpath-freewins`).
 
 > **Verification log — line-by-line pass 2026-06-18.** Every `file.py:line`
 > claim below was re-checked against current source. **Corrected:** `solve_R1`
@@ -57,6 +57,41 @@ Environment of record (matches the prior plans): **python 3.11.x, numpy 1.26.4 (
 > the code does not import/run — the F1 "~21 ms vs 0.8 ms" timings remain
 > subagent-microbenchmark-sourced and are still gated on P0 re-measurement; the
 > source-structure claims above are all confirmed statically.
+
+---
+
+## Results & diagnostics ledger (measured — the persistent record)
+
+Every measured efficiency number and diagnostic, with how it was produced (💾: a
+future visit reads the result here without re-running). Per-call timings and
+bit-identity are reproducible from the committed harness; the wall-time A/B is a
+single-run-per-arm diagnostic (high variance — trust the *direction*, not the 3rd
+digit). **Toolchain of record:** the container needed `pip install -e ".[dev]"`
+(astropy 7.2.1, scipy 1.17.1, numpy 1.26.4 `<2`, pytest 9.1.0) before any run.
+
+| § | Change | Status | Measured efficiency | Bit-identical? | Diagnostic / how produced |
+|---|---|---|---|---|---|
+| **F2.3+F2.4** | cooling cutoffs cached + `Lambda_CIE` moved into its branch (`net_coolingcurve.py`) | ✅ shipped `4a13075` | **+23.1% / call** — `get_dudt` 163.7 → 125.9 µs (non-CIE branch, N=20k) | ✅ **exact** — 0 mismatches, worst rel-diff **0.000e+00** over 540 pts (all 3 branches) | `harness/verify_getdudt_equiv.py` (loads pre-change `get_dudt` from `git show HEAD`, compares + times) |
+| **F2.1** | `log_level` default `DEBUG → INFO` (`registry.py:297` + regenerated `default.param`) | ✅ shipped `4a13075` | **no wall-time win** — A/B (138 snaps each): DEBUG **680.8 s** vs INFO **740.6 s** (INFO ~9% slower = noise). Real benefit: **`trinity.log` 2.7 MB / 22,221 lines → 8 KB / 67 lines (~340×)** | ✅ (no numeric effect) | A/B config `mCloud 1e5, sfe 0.3, stop_t 0.05`, only `log_level` differs (DEBUG vs INFO); `/tmp/ab_{debug,info}.param` |
+| **F2.2** | gravity outputs disabled, `None` placeholders (`_get_mass_and_grav`) | ✅ shipped `4a13075` | removes 1 `simpson`(~60k) + 1 array-divide(~60k) per **final** structure solve (not separately timed) | ✅ by construction (`m_cumulative` unchanged; caller discards the rest) | full non-stress suite (below) |
+| **F2.5** | remove `pdotdot_total` from hot SPS path | ⛔ **dropped** | n/a — would change the phase-1b trajectory | ✗ **not** bit-identical | subagent consumer trace: integrated RHS at `run_energy_implicit_phase.py:854`, `get_betadelta.py:411,520` (A12 coeff `1.5·pdotdot/pdot`) |
+| **F2.6** | `_excluded_keys` per-snapshot rescan | ⏸️ deferred | ~195-key walk / snapshot (not measured) | ✅ (when done) | `dictionary.py:614` (out of this branch's scope) |
+| **F1** | stop the 60k dense-output resample in the dMdt residual | 🔵 planned (next branch) | microbench: `sol.sol(60k)` **~21 ms** vs integrate **~0.8 ms** (~27×); production fraction **TBD (P0)** | endpoint part exact; coarse-sample part needs the harness | P0 `data/hotpath_baseline.csv` + `harness/replay_residual_grid.py` — **both pending** |
+| **F3** | shell-ODE overflow | ➡️ descoped | n/a (owned elsewhere) | — | `shell-solver/OVERFLOW_FIX_PLAN.md` capture (`front_idx=4`, `ovf_idx=26`, `n_max_finite=6.65e67`) |
+| **gate** | full non-stress test suite (after F2) | ✅ | — | — | **535 passed**, 3 deselected (stress), 151.67 s; `test_mu_audit_drift` source assertions preserved |
+
+**Reproduce the F2 numbers (no re-run needed to read them):**
+```bash
+cd /home/user/trinity && pip install -e ".[dev]"           # toolchain (astropy etc.)
+python docs/dev/performance/harness/verify_getdudt_equiv.py # -> 0 mismatches, +23.1%/call
+python -m pytest -q                                         # -> 535 passed
+# F2.1 A/B (slow, ~11 min/arm): two params differing only in log_level DEBUG vs INFO,
+#   mCloud 1e5 / sfe 0.3 / stop_t 0.05  -> compare wall time + trinity.log size.
+```
+
+**Two assumptions this measurement corrected** (the value of measuring, not guessing):
+1. **F2.1 logging was NOT the "biggest free win"** the original time-loop audit (P1) claimed — it is cleanliness, not speed. Retracted.
+2. **F2.5 was NOT a free win** — `pdotdot_total` feeds the phase-1b RHS, so removing it is not bit-identical. Dropped.
 
 ---
 
