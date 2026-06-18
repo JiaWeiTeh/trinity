@@ -41,6 +41,7 @@ cross-checked with `CHANGELOG.md` and `git log`.
 | `archive/bubble/integrator-robustness.md` | ⛔ SUPERSEDED (by the `solve_ivp` migration) | ⚠️ (heavy) | Add "superseded" banner → **archive** |
 | `archive/bubble/conduction-convergence.md` | ✅ SHIPPED (sign-off; switch landed) | minor | **Archive** |
 | `cooling/refactor-audit.md` | 🔵 ACTIONABLE (nothing shipped) | ⚠️ (~1–3 lines) | Refresh refs → **keep** |
+| `performance/HOTPATH_PLAN.md` | 🔵 ACTIONABLE (new 2026-06-18, nothing shipped) | accurate (fresh) | **Keep** (P0 baseline + harness unbuilt) |
 | `archive/n-consistency/audit.md` | ✅ SHIPPED (pinned by `test_mu_audit_drift`) | by-design | **Archive** |
 | `archive/n-consistency/implementation-plan.md` | ✅ SHIPPED (all phases landed) | ⚠️ (flat→subdir) | **Archive** |
 | `archive/n-consistency/pressure-terms-audit.md` | ⛔ SUPERSEDED (self-declared, confirmed) | historical | **Archive** |
@@ -49,7 +50,7 @@ cross-checked with `CHANGELOG.md` and `git log`.
 | `misc/TERMINATION_EVENTS.md` | 📘 REFERENCE (accurate) | — | **Keep** (current reference) |
 | `misc/LEAKING_LUMINOSITIES_SKELETON.md` | 🟡 PARTIAL (A–C shipped; D/F/G open) | — | **Keep** |
 
-**Tally:** 7 ✅ shipped · 2 ⛔ superseded · 4 🔵 actionable · 2 🟡 partial · 1 📘 reference · (1 results-record).
+**Tally:** 7 ✅ shipped · 2 ⛔ superseded · 5 🔵 actionable · 2 🟡 partial · 1 📘 reference · (1 results-record). *(+1 actionable: `performance/HOTPATH_PLAN.md`, added 2026-06-18 — not part of the 2026-06-16 verification pass; its own claims are source-verified inline.)*
 
 > **Acted on (2026-06-16):** the shipped/superseded workstreams were moved to
 > `docs/dev/archive/` (`betadelta/`, `bubble/`, `n-consistency/` — writeups +
