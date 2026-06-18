@@ -19,6 +19,42 @@ import trinity.cooling.CIE.read_coolingcurve as CIE
 import trinity._functions.unit_conversions as cvt
 
 
+# get_dudt runs once per bubble-structure ODE RHS evaluation -- the innermost hot
+# loop. The CIE/non-CIE switch temperatures are reductions over the cooling-table
+# grids, which are fixed for a run. Cache them so the max/min runs once per grid
+# (re)build instead of on every call. Bit-identical: the SAME reduction over the
+# SAME array. (HOTPATH F2.3.)
+_CIE_TCUTOFF_CACHE: dict = {}   # keyed by id(logT_CIE); logT_CIE is built once at
+                                # startup (main.py) and never replaced, so its id
+                                # is stable for the whole run -> no id-reuse hazard.
+
+
+def _noncie_cutoffs(cooling_nonCIE):
+    """(Tcutoff, Tmin) for the non-CIE temp grid, cached on the cube object.
+
+    Cached on the cube object (not by id) so it refreshes automatically when the
+    cube is rebuilt at the COOLING_UPDATE_INTERVAL cadence -- a fresh cube has no
+    cached attr -> recomputed. Same ``max``/``min`` over the same ``.temp`` array
+    as the former per-call expressions -> bit-identical.
+    """
+    cached = getattr(cooling_nonCIE, '_hotpath_cutoffs', None)
+    if cached is None:
+        t = cooling_nonCIE.temp
+        cached = (max(t[t <= 5.5]), min(t))
+        cooling_nonCIE._hotpath_cutoffs = cached
+    return cached
+
+
+def _cie_tcutoff(logT_CIE):
+    """min(logT_CIE[logT_CIE > 5.5]) for the CIE temp grid, cached by array id."""
+    key = id(logT_CIE)
+    cached = _CIE_TCUTOFF_CACHE.get(key)
+    if cached is None:
+        cached = min(logT_CIE[logT_CIE > 5.5])
+        _CIE_TCUTOFF_CACHE[key] = cached
+    return cached
+
+
 def get_dudt(age, ndens, T, phi, params_dict):
     """
     Calculates dudt in cgs, but input and ouput in au. 
@@ -86,21 +122,22 @@ def get_dudt(age, ndens, T, phi, params_dict):
     if T < 1e4:
         T = 1e4
     
-    Lambda_CIE = CIE.get_Lambda(T, CIE_interp, params_dict['ZCloud'].value) # Lambda is returned in units of erg/s * cm3
-    
-    # we take the cutoff at 10e5.5 K. 
-    # These are all in log-space. 
-    # cutoff at which temperature above switches to CIE file:
-    nonCIE_Tcutoff = max(cooling_nonCIE.temp[cooling_nonCIE.temp <= 5.5])
-    # cutoff at which temperature below switches to non-CIE file:
-    CIE_Tcutoff = min(logT_CIE[logT_CIE > 5.5])
+    # we take the cutoff at 10e5.5 K.
+    # These are all in log-space.
+    # cutoff at which temperature above switches to CIE file (nonCIE_Tcutoff);
+    # cutoff at which temperature below switches to non-CIE file (CIE_Tcutoff).
+    # Cached per grid (re)build -- bit-identical to the former per-call max/min
+    # (HOTPATH F2.3). Lambda_CIE is evaluated in the CIE branch below, not here,
+    # so it is not computed on the non-CIE / interpolation paths (HOTPATH F2.4).
+    nonCIE_Tcutoff, nonCIE_Tmin = _noncie_cutoffs(cooling_nonCIE)
+    CIE_Tcutoff = _cie_tcutoff(logT_CIE)
     # output
     # print(f'{cpr.WARN}Taking net-cooling curve from non-CIE condition at T <= {nonCIE_Tcutoff}K and CIE condition at T >= {CIE_Tcutoff}K.{cpr.END}')
     # if nonCIE_Tcutoff != CIE_Tcutoff:
         # print(f'{cpr.WARN}Net cooling for temperature values in-between will be interpolated{cpr.END}.')
 
     # if temperature is lower than the non-CIE temperature, use non-CIE
-    if np.log10(T) <= nonCIE_Tcutoff and np.log10(T) >= min(cooling_nonCIE.temp):
+    if np.log10(T) <= nonCIE_Tcutoff and np.log10(T) >= nonCIE_Tmin:
         # print(f'{cpr.WARN}Entering non-CIE regime...{cpr.END}')
         # All this does here is to interpolate for values of Lambda based on
         # T, dens and phi.
@@ -123,7 +160,9 @@ def get_dudt(age, ndens, T, phi, params_dict):
     # if temperature is higher than the CIE curve, use CIE.
     elif np.log10(T) >= CIE_Tcutoff:
         # print(f'{cpr.WARN}Entering CIE regime...{cpr.END}')
-        # get CIE cooling rate
+        # get CIE cooling rate (Lambda_CIE evaluated here only -- the non-CIE and
+        # interpolation branches never use it; HOTPATH F2.4)
+        Lambda_CIE = CIE.get_Lambda(T, CIE_interp, params_dict['ZCloud'].value)  # erg/s * cm3
         dudt = params_dict['chi_e'].value * ndens**2 * Lambda_CIE
         return -1 * dudt * cvt.dudt_cgs2au
         
