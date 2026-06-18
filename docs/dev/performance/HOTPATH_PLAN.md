@@ -172,20 +172,25 @@ the per-segment bubble-solve count (default `hybr`: ~10–29 root-finder evals;
 `legacy`: up to 25 `_solve_grid` points) × every phase1b segment → easily
 **10²–10³** of these resamples per phase1b run.
 
-### Fix — two parts, two risk levels
-- **(a) Endpoints from boundary nodes — BIT-IDENTICAL, ship immediately.**
-  `v[0]`/`v[-1]` at the integration span ends equal `sol.y[:,0]`/`sol.y[:,-1]`
-  (dense output at the exact `t_span` endpoints *is* the integrator's boundary
-  value). No resample needed for the endpoint ratio `(v[-1])/(v[0]+1e-4)`.
-- **(b) `min_T` / monotonicity from a coarse fixed sample (~500–2000 pts), not
-  60k — NEEDS AN EQUIVALENCE TEST.** This is the *residual-only* solve (looser
-  `_RESIDUAL_RTOL = 1e-6`) whose sole job is to *locate* `dMdt`; a coarse sample
-  is almost certainly within tolerance. **But it changes which `dMdt` the fsolve
-  converges to**, so it is *not* a bit-identical claim — it earns a capture-replay
-  harness comparing final `bubble_dMdt`, `bubble_LTotal`, `bubble_T_r_Tb` across a
-  representative sweep (exactly like `shell-solver/`). The ~21-node adaptive
-  solution alone may miss a sub-node `min_T` dip, so a coarse *fixed* sample
-  (not the adaptive nodes) is the safe middle.
+### Fix — see **`RESAMPLE_PLAN.md`** for the full de-risked plan (config × method matrix, harness, gates)
+The fix is a surgical rewrite of **`_get_velocity_residuals` only** — `solve_ivp`
+with a coarse `t_eval` instead of the 60k `dense_output` resample (leaves
+`_solve_bubble_structure` + the final structure solve byte-identical). Empirically
+measured on two real dumped bubble states (2026-06-18):
+- **Numerator `v[-1]` is bit-identical** — with `t_eval` ending at `R1`, `sol.y[0,-1]`
+  equals today's `sol.sol(r_array[-1])[0]` exactly (abs diff `0.0`).
+- **Denominator → `v_init` (the IC) is within ~1e-12 rel, NOT byte-identical** under
+  LSODA (the dense interpolant doesn't reproduce `y0` to the last bit; `0.0` under
+  RK45). So the earlier "(a) endpoints bit-identical, ship immediately" claim was
+  slightly optimistic — the **whole** fix goes through one equivalence gate.
+- **`min_T` / monotonicity** move from the 60k grid to the coarse `t_eval`. The strict
+  `monotonic` gate could in principle flip on a coarse grid (held across a 0.5×–2×
+  dMdt scan; must be confirmed at scale). `_RESIDUAL_NPTS=2000` is conservative.
+
+Equivalence is gated at the **`BubbleProperties` output level** (converged `bubble_dMdt`,
+`bubble_LTotal`, `bubble_T_r_Tb`, `bubble_mass` within ≤0.3%), captured **20 energy +
+100 implicit** solves across 6 configs. **Full detail, phases, and the harness design
+live in `RESAMPLE_PLAN.md`.**
 
 **Plausible payoff:** ~1 order of magnitude off the phase1b inner loop;
 **multiplies** with the shipped hybr win (hybr ≈ 10 bubble solves/segment vs the

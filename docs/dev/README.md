@@ -68,7 +68,8 @@ The top-level `scratch/` (repo root) is separate, git-ignored, local-only.
 - `refactor-audit.md` — **plan** (🔵 actionable): decouple the loaders from hardcoded SB99/OPIATE/CLOUDY. Nothing shipped yet.
 
 ### `performance/` — hot-path cost & conditioning
-- `HOTPATH_PLAN.md` — **plan** (🔵 actionable): the next solver-class wins after hybr/shell. Headline = stop the dMdt fsolve resampling 60k points to read 4 numbers (measured ~27× overhead); plus a batch of bit-identical free wins (DEBUG default, dead-gravity delete, `get_dudt` micro-opts). §F3 (shell-ODE overflow) is **descoped** — owned by `shell-solver/OVERFLOW_FIX_PLAN.md`. Nothing shipped yet; P0 baseline + harness unbuilt.
+- `HOTPATH_PLAN.md` — **plan** (🟡 partial): the next solver-class wins after hybr/shell. **§F2 free wins SHIPPED** (`fix/hotpath-freewins`: INFO log default, dead-gravity off, `get_dudt` cooling cache +23%/call bit-identical). Headline **§F1** (stop the dMdt fsolve resampling 60k points) detailed in `RESAMPLE_PLAN.md`. §F3 (shell-ODE overflow) **descoped** to `shell-solver/OVERFLOW_FIX_PLAN.md`. Carries the measured-results ledger.
+- `RESAMPLE_PLAN.md` — **plan** (🔵 actionable): HOTPATH §F1 in full — rewrite `_get_velocity_residuals` to a coarse `t_eval` solve (drop the 60k dense resample). De-risked (numerator bit-identical, denominator ~1e-12; refactor = Option b). Phased equivalence (config × NPTS matrix, energy 20 + implicit 100, gated at `BubbleProperties` output ≤0.3%) + full-run speedup. Branch `fix/hotpath-resample`; nothing shipped yet.
 
 ### `misc/` — standalone audits / notes
 - `backward-compat-audit.md` — (🔵 actionable) backward-compat / stale-code cleanup; ~95% pending.

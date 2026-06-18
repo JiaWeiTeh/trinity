@@ -1,0 +1,174 @@
+# Plan: bubble dMdt residual solve — drop the 60k dense-output resample (HOTPATH §F1)
+
+> ⚠️ **This document may be out of date — verify before trusting it.** It is a
+> point-in-time analysis/audit, not a maintained spec; the code moves faster
+> than these notes (paths, line numbers, and "what shipped" status drift).
+> **Any agent or person reading this: treat it as unverified. Flag that it may
+> be stale and re-check each claim, snippet, and line reference against the
+> current source before relying on it.**
+>
+> 🔄 **Living plan — recheck and refine on every visit.** This is an evolving
+> strategy doc, not a frozen record. Any agent or person who opens this file
+> must, as part of the visit: (1) re-verify the claims and line references above
+> against current source; (2) update anything that has drifted; (3) **rethink the
+> strategy itself** — if a better ordering, gate, candidate, or experiment
+> exists, revise the doc and note what changed and why (date it). Leave it better
+> than you found it. **Keep all banner paragraphs at the top of every plan and
+> analysis doc.**
+>
+> 💾 **Persist diagnostics — commit, don't re-run.** The container is ephemeral
+> and full runs cost minutes-to-hours, so any diagnostic worth keeping must be
+> saved as a committed artifact under `docs/dev/` (a CSV/table in
+> `docs/dev/performance/data/`, or a harness/figure in
+> `docs/dev/performance/harness/`) — never left in `/tmp`, the local-only
+> `scratch/`, or an untracked `outputs/`. A future visit must be able to reproduce
+> or compare against the numbers **without re-running**; record the exact config +
+> command that produced each artifact.
+
+**About this document**  (created 2026-06-18 — the 🔄 banner *requires* refreshing this on every visit.)
+- **Status (2026-06-18):** 🔵 **PLANNED — de-risked, nothing shipped.** Two subagents (refactor + empirical bit-identity; verification design) settled the mechanics: the fix is a surgical rewrite of **`_get_velocity_residuals` only**, `solve_ivp` with a coarse `t_eval` instead of a 60k `dense_output` resample. **Empirically measured** on two real dumped bubble states: numerator bit-identical, denominator within **~1e-12 rel** (LSODA round-off). No production code changed yet — this is the plan; execution is P0→P4 below.
+- **Type:** plan — phased equivalence + timing study (config × method matrix, capture-replay reaching deep into the implicit phase), then promotion behind a tolerance gate.
+- **Workstream:** `performance/` — this is HOTPATH §F1, the headline win. Branch **`fix/hotpath-resample`** (off `fix/hotpath-freewins`, which carries the §F2 wins).
+- **Where it sits:** `HOTPATH_PLAN.md` §F1 → **this** (the detailed F1 plan + its harness/data).
+- **Code it concerns:** `trinity/bubble_structure/bubble_luminosity.py` — `_get_velocity_residuals` (`:875`, the target), `_solve_bubble_structure` (`:106`, left **untouched**), `_create_legacy_radius_grid` (`:835`), `_get_bubble_ODE_initial_conditions` (`:926`), the final structure path `_bubble_luminosity_legacy` (`:492`, left **untouched**). Reached in the implicit phase via `run_energy_implicit_phase.py:720` → `solve_betadelta_pure` → `_solve_betadelta_hybr` (`get_betadelta.py:874`) → `get_residual_pure` (`:353`) → `get_bubbleproperties_pure` (`:398`) → `fsolve` (`:461`).
+- **Linked files & data:** to be created under `harness/` + `data/`. Reuses `tools/bubble_audit/` (`load_state` reconstructs full params from a `TRINITY_BUBBLE_STATE_DUMP` pickle) and the shell-solver capture pattern (`docs/dev/shell-solver/harness/capture_replay_variants.py`). **Commit every CSV.**
+
+Environment of record: **python 3.11.x, numpy 1.26.4 (`<2` pin), scipy 1.17.1, astropy 7.2.1, pytest 9.1.0** (container needs `pip install -e ".[dev]"`).
+
+---
+
+## The question
+
+The dMdt `fsolve` (`bubble_luminosity.py:461`) calls `_get_velocity_residuals` (`:875`) many times per bubble solve. Each call builds the ~60k-point legacy grid (`_create_legacy_radius_grid`, `:894`), runs `solve_ivp(LSODA, dense_output=True)`, and **resamples all ~60k points** via `sol.sol(r_array)` (`_solve_bubble_structure:157`) — but the residual it returns (`:908-921`) consumes only **four scalars**: `v[-1]`, `v[0]`, `np.min(T)`, `monotonic(T)`. The ~60k resample (microbench ~21 ms vs ~0.8 ms integration) is wasted.
+
+**Can the residual be computed from a coarse solve — endpoints from the integrator's own nodes, `min_T`/monotonicity from a ~2000-point `t_eval` — with the converged `bubble_dMdt` (and downstream `LTotal`/`T_r_Tb`/`mass`) unchanged within tolerance, across every regime and deep into the implicit phase?**
+
+---
+
+## Mechanism / current state (verified 2026-06-18 against source + two real dumped solves)
+
+- **Grid is strictly decreasing** (`_create_legacy_radius_grid`, `:835`): `r_array[0]` = outer start `r2Prime`, `r_array[-1]` = inner end `R1`; `t_span=(r_array[0], r_array[-1])` (`:148`) integrates outward→inward.
+- **Numerator** `v_array[-1]` (`:908`): `r_array[-1] == sol.t[-1]`, so `sol.sol(r_array[-1])` returns `sol.y[:,-1]` **bit-identically** (measured abs diff `0.0`, both states). With `t_eval` ending at `R1`, `sol.y[0,-1]` is the same value → **numerator bit-identical**.
+- **Denominator** `v_array[0] = sol.sol(r_array[0])[0]` (`:908`): the current code uses the dense interpolant at the start, which differs from the IC `v_init` by **~1e-12 rel** under LSODA (state_0000 abs `8.08e-9`, rel `3.60e-12`; state_0001 `8.86e-9`, `6.55e-12`; **`0.0` under RK45**). `v_init` is the *exact* IC, known before integrating (`_get_bubble_ODE_initial_conditions`, `:926`). Replacing the dense-interp denominator with `v_init` shifts the residual by ~1e-12 rel — far below `fsolve`'s `xtol=1e-4` and the `_RESIDUAL_RTOL=1e-6` regime the code already declares acceptable.
+- **`min_T` / `monotonic`** (`:910,919`): the only consumers that genuinely need the *profile*. Today read off the 60k grid; the fix reads them off a coarse `t_eval`. **The one non-trivial behavior change** (see Risks): `monotonic` uses the *strict* `operations.monotonic` (`operations.py:68`), so a coarse grid could in principle smooth over a dense-output single-point spike a 60k grid would catch and flip the `1e2` penalty. Held across a 0.5×–2× dMdt scan on a real state (60k vs 2000 vs 200 all agreed) — **must be confirmed at scale (P2)**.
+
+---
+
+## The fix — Option (b): coarse `t_eval` residual solve (rewrite `_get_velocity_residuals` ONLY)
+
+Leaves `_solve_bubble_structure` (`:106`) and the final structure path (`:492`, which legitimately needs the 60k grid + dense `_sol` for the conduction zone, `:632`) **byte-identical**. Drops three costs per fsolve iteration: the 60k `sol.sol`, the `_create_legacy_radius_grid` build+clean, and the `dense_output` allocation.
+
+```python
+_RESIDUAL_NPTS = 2000   # coarse min-T/monotonicity grid; matches _CONDUCTION_NPTS precedent
+
+def _get_velocity_residuals(dMdt_init, params, Pb, R1):
+    r2Prime, T_r2Prime, dTdr_r2Prime, v_r2Prime = _get_bubble_ODE_initial_conditions(
+        dMdt_init, params, Pb, R1)
+    r2Prime_val = np.asarray(r2Prime).item()
+    v_init    = np.asarray(v_r2Prime).item()
+    T_init    = np.asarray(T_r2Prime).item()
+    dTdr_init = np.asarray(dTdr_r2Prime).item()
+    if not np.all(np.isfinite([v_init, T_init, dTdr_init])):
+        return _SOLVER_FAIL_RESIDUAL
+    r_eval = np.linspace(r2Prime_val, R1, _RESIDUAL_NPTS)   # decreasing; [-1]==R1==t_span[-1]
+    try:
+        sol = scipy.integrate.solve_ivp(
+            fun=lambda r, y: _get_bubble_ODE(r, y, params, Pb),
+            t_span=(r2Prime_val, R1), y0=[v_init, T_init, dTdr_init],
+            method='LSODA', t_eval=r_eval,                  # NO dense_output, NO 60k grid
+            rtol=_RESIDUAL_RTOL, atol=_BUBBLE_ATOL)
+    except BubbleSolverError:
+        return _SOLVER_FAIL_RESIDUAL
+    if not sol.success:
+        return _SOLVER_FAIL_RESIDUAL
+    v_last  = sol.y[0, -1]                       # bit-identical to current numerator
+    T_array = sol.y[1, :]
+    residual = (v_last - 0) / (v_init + 1e-4)    # denominator from IC (~1e-12 rel vs current)
+    min_T = np.min(T_array)
+    if min_T < _T_INIT_BOUNDARY:
+        return residual * (_T_INIT_BOUNDARY / (min_T + 1e-1))**2
+    if np.isnan(min_T):
+        return -1e3
+    if not operations.monotonic(T_array):
+        return 1e2
+    return residual
+```
+
+**Equivalence claim (to be gated, not assumed):** numerator exact; denominator + `min_T`/`monotonic` within round-off (~1e-12) at the residual level; the **converged `bubble_dMdt`** and downstream (`bubble_LTotal`, `bubble_T_r_Tb`, `bubble_mass`) within a tolerance the harness measures (target ≤0.3%, the bound the residual solve already declares for its `_RESIDUAL_RTOL` choice).
+
+---
+
+## Verification design — method × config matrix (reaching deep into the implicit phase)
+
+**Method axis** (`_RESIDUAL_NPTS` + variant), replayed on identical captured inputs:
+| id | method | purpose |
+|---|---|---|
+| **baseline** | current 60k `dense_output` + `sol.sol(r_array)` | reference |
+| M2000 | Option (b), `t_eval` N=2000 | recommended (conservative) |
+| M1000 / M500 / M200 | Option (b), N=1000 / 500 / 200 | how coarse is safe? |
+| Mnodes | Option (b), no `t_eval` — `min_T`/monotonic on `sol.t`/`sol.y` adaptive nodes only (~tens of pts) | cheapest; tests whether the profile sample is needed at all |
+
+**Config axis** (6 configs / 4 regimes — the MIGRATION_PLAN set, all already known to reach 20 energy + 100 implicit):
+`mock_hybr` (tiny, **cheapest to reach implicit** — iterate here first) · `probe_typical_hybr` (realistic flat) · `steep` (PL−2, gets neutral-region solves) · `simple_cluster`/`sfe0.3` (**degenerate default**, slowest) · `dense_flat` + `sfe0.6` (fill out flat-vs-steep + 2nd degenerate point).
+
+**Phase depth (the user's requirement):** energy **20** + implicit **100** captured bubble solves per config, via the matrix phase gate (`N_ENERGY=20 N_IMPLICIT=100`, `_phase_counts`/`_done`, `capture_replay_variants.py:377-398`). Transition/momentum are beyond a tractable capture budget (a 45-min `sfe0.3` run reached 0 transition solves) → scope to energy+implicit, exactly as the shell harness did.
+
+**Capture point + compare level:** monkeypatch **`get_bubbleproperties_pure`** (return the real result so the host trajectory stays byte-identical; capture is a side effect), gate on `params['current_phase'].value` (queryable through `BubbleParamsView`). **Compare at the `BubbleProperties` OUTPUT level** — `bubble_dMdt` (`:390`), `bubble_LTotal` (`:372`), `bubble_T_r_Tb` (`:373`), `bubble_mass` (`:375`) — because the residual change affects the *converged* dMdt, whose downstream effect the raw ODE-level `rel_n` would miss (the "necessary but not sufficient" gap MIGRATION_PLAN flagged). Also log the **`monotonic`-gate verdict per trial dMdt** (baseline vs variant) to count any acceptance flips.
+
+**Two harness layers:**
+1. **Residual-level** (fast, micro): replay old vs new `_get_velocity_residuals` on each captured `dMdt`; assert numerator exact, residual rel-diff ~1e-12, monotonic-verdict agreement. Reuses `tools/bubble_audit/load_state` + `validate.py:_solve` (already `solve_ivp(LSODA)`).
+2. **Integration-level** (the real gate): run the full `get_bubbleproperties_pure` with baseline-residual vs variant-residual on each captured state; compare the 4 outputs + time both (`_time_call`, min of 5 reps).
+
+---
+
+## Phases
+
+### P0 — Capture + baseline + harness (zero production change)
+Build `harness/capture_bubble_residual.py` (monkeypatch `get_bubbleproperties_pure`, matrix phase gate, one CSV/config) + `harness/replay_residual_variants.py` (the method-matrix replay, reusing `tools/bubble_audit/load_state`). Capture 20 energy + 100 implicit per config; commit `data/bubble_residual_baseline_<config>.csv` (timings + the 4 outputs under baseline) and a few `TRINITY_BUBBLE_STATE_DUMP` pickles for offline replay. **Gate G0:** capture reaches 100 implicit solves on ≥4 configs; baseline timings recorded (turn the ~21 ms microbench into a real per-call + per-bubble fraction).
+
+### P1 — Residual-level equivalence + NPTS sweep
+Replay all methods on captured inputs; pick the smallest safe `_RESIDUAL_NPTS`. **Gate G1:** numerator bit-identical; residual rel-diff ≤1e-9; **0 monotonic-gate flips** that change acceptance vs baseline, across all captured trial dMdt. Commit `data/residual_variants_matrix.csv` + `aggregate`d master table.
+
+### P2 — Integration-level equivalence (the decision gate)
+Full `get_bubbleproperties_pure` baseline-residual vs chosen-NPTS-residual on every captured state. **Gate G2 (hard):** converged `bubble_dMdt` rel-diff ≤0.3% (and `LTotal`/`T_r_Tb`/`mass` ≤0.3% / traceable) on **all 12 config×phase cells**, 0 solver failures the baseline didn't have, monotonic-acceptance unchanged. Commit `data/bubble_output_equiv_<config>.csv` + master.
+
+### P3 — Promote (rewrite `_get_velocity_residuals`)
+Ship Option (b) at the chosen `_RESIDUAL_NPTS`. **Gate G3:** `pytest` (+ `-m stress`) green; `test_bubble_solver_*` green; the residual+integration harnesses green; `_solve_bubble_structure` + final path **diff-free** (only `_get_velocity_residuals` changed).
+
+### P4 — Full-run speedup (the headline number)
+A/B wall-time on a short `simple_cluster` (and `mock_hybr`): baseline vs F1, same `stop_t`, compare wall time + a snapshot-tolerance check (consumed scalars within G2 bound — not byte-identical, since dMdt shifts ~1e-12–0.3%). Record in `HOTPATH_PLAN.md` ledger + here. **Gate G4:** measurable wall-time reduction, snapshots within tolerance.
+
+---
+
+## Efficiency measurement plan (record every number — 💾)
+- **Per-residual-call**: baseline (60k resample + grid build) vs Option (b) — `timeit`, isolate the resample + grid-build savings.
+- **Per-bubble-call**: full `get_bubbleproperties_pure` baseline vs F1 (the fsolve × residual product).
+- **Full-run wall time** (P4): the headline — does removing the resample actually speed production, and by how much, per regime.
+- All into `data/` CSVs + the `HOTPATH_PLAN.md` ledger row for §F1 (currently "TBD (P0)").
+
+---
+
+## Risks
+| risk | mitigation |
+|---|---|
+| **Strict `monotonic` flips** on a coarse grid (dense-output spike smoothed over) → different acceptance → different dMdt | P1 counts flips across all captured trial dMdt; `_RESIDUAL_NPTS=2000` conservative; if flips occur, switch the residual gate to the tolerant `_is_monotonic_or_tolerable` or raise N |
+| Denominator `v_init` ~1e-12 ≠ byte-identical | measured ≪ `xtol=1e-4`/`_RESIDUAL_RTOL=1e-6`; G2 confirms converged dMdt within 0.3% |
+| Coarse `t_eval` misses a real T dip affecting `min_T` rejection | NPTS sweep (P1) + the 0.3% integration gate (P2); 2000 pts resolves the conduction band (precedent: `_CONDUCTION_NPTS`) |
+| Capture doesn't reach the implicit phase | matrix phase gate (proven in shell harness); `mock_hybr` reaches implicit cheaply; require 100 implicit on ≥4 configs |
+| Changes the final structure solve | scope is `_get_velocity_residuals` only; P3 asserts `_solve_bubble_structure`/`_bubble_luminosity_legacy` diff-free |
+| LSODA vs RK45 endpoint difference | documented (RK45 denom bit-identical); we keep LSODA, so the ~1e-12 is the worst case |
+
+## Decisions for the maintainer
+1. **Equivalence tolerance**: is ≤0.3% on converged `bubble_dMdt` (the bound the residual solve already tolerates for `_RESIDUAL_RTOL`) the right G2 bar, or stricter for published tracks?
+2. **`_RESIDUAL_NPTS`**: ship the conservative 2000, or the smallest P1-safe value (e.g. 500) for more speed?
+3. **Mnodes (no `t_eval`)**: if P1 shows adaptive-nodes-only is safe, it's the cheapest — adopt, or keep the fixed coarse grid for determinism?
+
+## Out of scope
+- `_solve_bubble_structure` and the final structure/conduction path (byte-identical).
+- The shell solver, the betadelta solver, the §F2 wins (separate), §F3 (descoped).
+- Warm-starting dMdt/R1 across segments (HOTPATH §F5) — orthogonal.
+
+## References
+- Target: `bubble_luminosity.py:875` (`_get_velocity_residuals`), residual `:908`, gates `:910-921`; resample `:157`; grid `:835`; IC source `:926`; untouched final path `:492,511,632`; tolerances `_RESIDUAL_RTOL=1e-6:87`, `_BUBBLE_ATOL=1e-10:79`, `_CONDUCTION_NPTS=2000:95`; strict gate `operations.py:68`.
+- Implicit call path: `run_energy_implicit_phase.py:720` → `get_betadelta.py:583,874,353,396` → `bubble_luminosity.py:398,461`.
+- Harness foundations: `tools/bubble_audit/{audit.py:load_state,validate.py:_solve}`; `_dump_bubble_state` `bubble_luminosity.py:314`; shell pattern `docs/dev/shell-solver/harness/capture_replay_variants.py` + `MIGRATION_PLAN.md` §P0-matrix.
