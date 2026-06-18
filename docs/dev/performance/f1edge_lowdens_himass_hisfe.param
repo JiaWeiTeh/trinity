@@ -1,0 +1,6 @@
+# F1 full-run equivalence edge case: LOW density, HIGH mass, HIGH sfe.
+# Diffuse massive cloud with strong feedback -> fast/strong bubble.
+mCloud    1e7
+sfe    0.5
+nCore    1e2
+model_name    f1edge_lowdens
