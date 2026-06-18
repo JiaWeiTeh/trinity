@@ -43,6 +43,32 @@ at the front, real `inf` overflow at the pole, entirely in the discarded tail* �
 
 ---
 
+## ⚠️ EMPIRICAL FINDING (2026-06-18) — cgs-rescale does NOT silence the flood; the recommendation flipped
+
+The de-risk matrix (monkeypatched variants on real `simple_cluster`, `harness/get_shellODE_variants.py`
++ `harness/verify_overflow.py`) **falsified the cgs-first recommendation on its first cell:**
+
+| variant | front_idx | ovf_idx | overflow_warns | silences flood? |
+|---|---|---|---|---|
+| baseline (`odeint`+`mxstep`) | 4 | 26 | 1 | — |
+| **cgs-rescale RHS (V1)** | 4 | **26** | **1** | **NO — identical to baseline** |
+| **φ>0 freeze-past-front guard (V2)** | 4 | **−1** | **0** | **YES** |
+| clip `nShell` in RHS (V4) | 4 | −1 | 0 | yes (crude) |
+
+**Why cgs fails:** it is an *exact identity* (verified 7e-16), so the **state** `nShell` — still integrated
+in AU — follows the *same* finite-radius pole to `inf` in the discarded tail. cgs reconditions the
+*intermediate* `n²` but cannot stop the integrated state diverging. The overflow is a **pole in the
+state**, not a precision loss, so the only fixes that work **stop integrating into the tail**
+(freeze/terminate at the front) or cap the state.
+
+**Revised stance:** the root-cause/flood fix is **φ-guard or terminate-at-front (`solve_ivp` φ-event)**,
+not cgs. cgs-rescale is demoted to an *optional conditioning/correctness* item (it makes the
+mixed-unit `caseB_alpha`·`n²` sites consistent and improves precision) but is **not** the warning fix.
+The §4 ranking and §5 recommendation below are updated accordingly. The validation matrix (configs ×
+the *flood-fixing* ideas, accuracy + efficiency) is running to pick between φ-guard and terminate.
+
+---
+
 ## 1. The symptom (the user's report)
 
 `python run.py param/simple_cluster.param` floods stdout with LSODA Fortran warnings:
@@ -97,14 +123,17 @@ the root cause (overflow) is fixed.
 
 ## 4. Candidate fixes (ranked)
 
-| # | option | fixes the overflow? | used-region change | risk | effort | verdict |
+*(Updated 2026-06-18 after the empirical finding above — cgs demoted, φ-guard promoted.)*
+
+| # | option | silences flood? (measured) | used-region change | risk | effort | verdict |
 |---|---|---|---|---|---|---|
-| **1** | **CGS-rescale the RHS** (the maintainer's idea) | **Yes, at the root** | **none** (exact identity, 1e-16) | LOW–MED | ~½ day | **RECOMMENDED** |
-| 2 | **φ>0 front-truncation guard** | indirectly (stops the tail) | fixes a pre-existing overshoot | LOW | ~1–2 lines | **COMPLEMENTARY** |
-| 3 | `solve_ivp` + terminal φ-event | yes (never integrates tail) + fixes overshoot | none on prefix | MED | medium | OPTIONAL (robustness; net-slower; insufficient alone) |
-| 4 | Log-space `u=ln(nShell)` | **no** (`e^{2u}=n²` returns) | RHS physics touched | MED–HIGH | high | REJECTED |
-| 5 | Silence `ODEintWarning` / Fortran stdout | no (hides only) | none | LOW | trivial | band-aid fallback |
-| 6 | `mxstep=50000` (shipped) | no | none (bit-identical) | — | done | revert (moot under #1) |
+| **1** | **φ>0 freeze-past-front guard** | **YES** (`ovf→−1, warns→0`) | ≤0.8%/≤3.7% front shift (to quantify) | LOW | ~1–3 lines | **RECOMMENDED (flood fix)** |
+| 2 | `solve_ivp` + terminal φ-event | YES (never integrates tail) + fixes overshoot | none on prefix | MED | medium | STRONG ALT (net-slower; mass-limited slices need a 2nd event) |
+| 3 | clip `nShell` in RHS | YES (`ovf→−1`) | none if clip > used values | LOW | ~1 line | crude fallback (arbitrary threshold) |
+| 4 | **CGS-rescale the RHS** | **NO** (identical to baseline) | none (exact identity 7e-16) | LOW–MED | ~½ day | **NOT the flood fix** — optional conditioning only |
+| 5 | Log-space `u=ln(nShell)` | no (`e^{2u}=n²` returns) | RHS physics touched | MED–HIGH | high | REJECTED |
+| 6 | Silence `ODEintWarning`/Fortran stdout | hides only | none | LOW | trivial | band-aid fallback |
+| 7 | `mxstep=50000` (shipped) | no | none (bit-identical) | — | done | revert (moot) |
 
 ### #1 — CGS-rescale (RECOMMENDED, = the maintainer's out-of-the-box idea)
 Evaluate the ionised (and, for symmetry, neutral) RHS in **cgs** so intermediates stay ~10⁰–10¹⁶,
@@ -177,11 +206,14 @@ invasive; touches the audited RHS. Not worth it.
 
 ## 5. Recommendation
 
-1. **Implement #1 (CGS-rescale)** — root-cause fix, exact identity, surgical, keeps `odeint`.
-2. **Add #2 (φ>0 guard)** as a separate small commit — fix the overshoot explicitly.
-3. **Revert the `mxstep` change** (moot once #1 lands) and **correct** the §P0-matrix / `insights.html`
-   / plot-5 overclaim. HOTPATH §F3 explicitly calls for this revert.
-4. **Defer #3** (solve_ivp migration) — robustness-only, net-slower, insufficient alone.
+1. **Flood fix = #1 (φ>0 freeze-past-front guard)** — empirically clears the overflow (`ovf→−1,
+   warns→0`), ~1–3 lines, keeps `odeint`. Pick φ-guard vs #2 (terminate-at-front) on the validation
+   matrix (accuracy of the used region/downstream + efficiency across configs).
+2. **cgs-rescale is NOT the flood fix** (measured). Keep it only as an *optional* conditioning/correctness
+   pass for the mixed-unit `caseB_alpha`·`n²` sites — separate, low priority, do not block the flood fix on it.
+3. **Revert the `mxstep` change** and **correct** the §P0-matrix / `insights.html` / plot-5 overclaim.
+   HOTPATH §F3 explicitly calls for this revert.
+4. **Defer the full `solve_ivp` migration** (`MIGRATION_PLAN.md`) unless robustness motivates it.
 
 ### Phased rollout (gated — mirrors HOTPATH_PLAN P0–P4)
 
