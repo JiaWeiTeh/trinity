@@ -100,6 +100,11 @@ def _install_variant(idea):
 def main():
     param_path = sys.argv[1]
     idea = sys.argv[2]
+    # Optional 3rd arg: stop_t override (Myr) -> identical bounded simulated
+    # evolution for every variant, so trajectories are the SAME length and the
+    # final/trajectory diffs are an apples-to-apples science comparison (and the
+    # run stops NATURALLY, not via an external timeout that truncates mid-flush).
+    stop_t = float(sys.argv[3]) if len(sys.argv) > 3 else None
     assert idea in ("baseline", "phiguard", "clip", "cgs"), idea
 
     from trinity._input import read_param
@@ -107,6 +112,8 @@ def main():
     from trinity import main as trinity_main
 
     params = read_param.read_param(param_path)
+    if stop_t is not None:
+        params["stop_t"].value = stop_t
     # Unique output dir per (config, idea): override model_name so runs never clobber.
     base_model = params["model_name"].value
     model = f"{base_model}__{idea}"
@@ -144,17 +151,28 @@ def main():
         mod.get_shellODE = orig
     wall = time.perf_counter() - t0
 
-    # n_timesteps from the jsonl we just wrote
+    # n_timesteps + terminal state from the jsonl we just wrote
     jsonl = TRINITY_ROOT / "outputs" / model / "dictionary.jsonl"
     n_ts = 0
+    final_t = None
+    end_reason = None
     if jsonl.exists():
+        last = None
         with open(jsonl) as f:
-            n_ts = sum(1 for line in f if line.strip())
+            for line in f:
+                if line.strip():
+                    n_ts += 1
+                    last = line
+        if last is not None:
+            d = json.loads(last)
+            final_t = d.get("t_now")
+            end_reason = d.get("SimulationEndReason")
 
     metrics = {
         "param": param_path, "idea": idea, "model": model,
-        "wall_s": round(wall, 3), "lsoda_lines": lsoda_lines,
+        "stop_t": stop_t, "wall_s": round(wall, 3), "lsoda_lines": lsoda_lines,
         "overflow_warns": n_overflow, "n_timesteps": n_ts,
+        "final_t_now": final_t, "end_reason": end_reason,
         "jsonl": str(jsonl), "error": err,
     }
     # Final line on real stdout = the JSON metrics (everything above was captured).

@@ -128,7 +128,7 @@ the root cause (overflow) is fixed.
 | # | option | silences flood? (measured) | used-region change | risk | effort | verdict |
 |---|---|---|---|---|---|---|
 | **1** | **φ>0 freeze-past-front guard** | **YES** (`ovf→−1, warns→0`) | ≤0.8%/≤3.7% front shift (to quantify) | LOW | ~1–3 lines | **RECOMMENDED (flood fix)** |
-| 2 | `solve_ivp` + terminal φ-event | YES (never integrates tail) + fixes overshoot | none on prefix | MED | medium | STRONG ALT (net-slower; mass-limited slices need a 2nd event) |
+| 2 | `solve_ivp` + terminal φ-event | **YES** (warns→0 all 6 cfgs; `n` rel ≤1e-8) | none on prefix | MED | medium | STRONG ALT (**net-FASTER on overflow cfgs**: sfe0.3 1.2× / sfe0.6 1.7× blended, 4.2–4.4× energy; net-slower only on no-flood cfgs; mass-limited gap only in no-flood mock — see §#3) |
 | 3 | clip `nShell` in RHS | YES (`ovf→−1`) | none if clip > used values | LOW | ~1 line | crude fallback (arbitrary threshold) |
 | 4 | **CGS-rescale the RHS** | **NO** (identical to baseline) | none (exact identity 7e-16) | LOW–MED | ~½ day | **NOT the flood fix** — optional conditioning only |
 | 5 | Log-space `u=ln(nShell)` | no (`e^{2u}=n²` returns) | RHS physics touched | MED–HIGH | high | REJECTED |
@@ -193,12 +193,47 @@ change, not bundled into the overflow fix.
 
 ### #3 — `solve_ivp` + terminal φ-event (OPTIONAL)
 Physically the cleanest boundary (stop the ionised solve at `phi=0`); also cures the overshoot and
-gives an explicit `sol.success` contract (mirrors `bubble_luminosity.py:106-166,520-522`). **But**:
-(a) the matrix shows the φ-event is **net-slower over a realistic run** (energy-phase-only win); and
-(b) it is **insufficient alone** — 7/40–39/40 slices are *mass-limited*, where a φ-only event never
-fires, so a mass-condition event-state would also be needed. Larger change; defer unless the broader
-robustness migration (`MIGRATION_PLAN.md`) is pursued. Must use `t_eval=rShell_arr` (NOT
-`dense_output` — it crashes 0/40 on the shell micro-grid) to preserve the uniform-grid invariant.
+gives an explicit `sol.success` contract (mirrors `bubble_luminosity.py:106-166,520-522`).
+
+**Re-measured 2026-06-18** (`data/eval_terminate.csv`, from the 6-config `*_matrix_*` replays;
+`harness/eval_terminate.py`; fresh `simple_cluster` energy-phase repro confirms it):
+
+- **Clears the flood — YES, on every config.** `V_lsoda_event` overflow_warns_total = **0** across all
+  6 configs (baseline odeint: 35 sfe0.3 / 54 sfe0.6). The φ-event terminates at the front
+  (n_pts_out 4–57 of ~1000), so it never integrates the discarded overflow tail. **It is the EVENT
+  that fixes it, not the solver swap:** the no-event drop-in `V_lsoda_teval`
+  (`solve_ivp` over the full grid) emits *more* warns than baseline (106 sfe0.3 / 162 sfe0.6).
+- **Used-region accuracy:** `n` rel ≤1.0e-8, `phi` rel ≤6.3e-6, `tau` (front-point pair) rel ≤9.4e-9
+  vs baseline odeint on the consumed prefix — tight, as the event root-finds the front. (The raw
+  `max_rel_diff_tau` column shows ~1e286 — a divide-by-zero artifact at the `tau0==0` IC row, **not**
+  a fidelity loss; production excludes the front τ point anyway.) `nonfinite_tail_solves = 0`.
+- **NET wall time is CONFIG-DEPENDENT — the prior "net-slower over a realistic run (energy-phase-only
+  win)" is WRONG for the overflow configs it is meant to fix.** In the energy phase the event is
+  **~4.2–4.4× FASTER** on sfe0.3/sfe0.6 (baseline grinds the overflow tail ~10ms; event ~3ms). Net over
+  a 20:100 energy:implicit run: sfe0.3 **1.21×**, sfe0.6 **1.74×** — *faster*. The "net-slower" picture
+  holds only for the **non-overflow** configs (probe/steep/dense ≈0.3–0.4× blended, mock_hybr 0.16×),
+  where baseline odeint is already sub-ms and `solve_ivp` carries a ~3ms Python/event-overhead floor.
+  Caveat: absolute speedup is timing-noisy (baseline ms swings 3–8× with machine load → energy event_x
+  measured 3–5× in the committed sweep, 18–31× under a loaded repro); the **sign** (event faster in the
+  energy overflow phase) is stable, the magnitude is not.
+- **Insufficient ALONE — still true, but only where there's no flood to fix.** A φ-only event never
+  fires on *mass-limited* ionised slices (`idx_phi==-1`). Per `eval_terminate.csv` the mass-limited
+  fraction of ionised solves is **0% on every overflow config** (sfe0.3/sfe0.6/probe/steep/dense) and
+  **63% on mock_hybr** (95% in its energy phase). So on the configs that actually flood, the φ-event
+  fires on 100% of ionised slices and suffices; the mass-limited gap matters only for the
+  no-overflow mock regime, which would need a 2nd mass-condition event-state for completeness.
+- Must use `t_eval=rShell_arr` (NOT `t_eval` + `dense_output` **together** — that bubble-precedent
+  config crashes `ValueError: ts must be strictly increasing` on the shell micro-grid, verified;
+  step ~1.3e-8 pc collapses LSODA's breakpoints). A standalone `dense_output=True` then `sol.sol(grid)`
+  does *not* crash (`V_lsoda_dense` ok=120/120), but adds nothing over `t_eval` and is slower.
+
+Larger change than the φ-guard; defer unless the broader robustness migration (`MIGRATION_PLAN.md`)
+is pursued. **Verdict vs φ-guard:** for the flood fix specifically, the φ-event is *more* than the
+φ-guard needs — it root-finds the exact front (tighter ~1e-9 accuracy) and is net-faster on the
+overflow configs, but it swaps the integrator and leaves a mass-limited gap. The **φ>0 freeze-guard
+(#1)** clears the same flood with ~1–3 lines, keeps `odeint`, and has no mass-limited gap (it freezes
+on `phi<=0` regardless of why the slice ends), so it stays the recommended minimal fix; #3 is the
+strong alternative if the migration happens anyway.
 
 ### #4 — Log-space (REJECTED)
 `u=ln(nShell)` tames the state but `du/dr` still contains `e^{2u}=n²` → same overflow; most

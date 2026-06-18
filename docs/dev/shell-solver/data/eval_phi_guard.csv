@@ -1,2 +1,7 @@
 config,idea,n_solves,used_rel_n_max,used_rel_phi_max,used_rel_tau_max,overflow_warns_total,nonfinite_tail_solves,ms_per_solve_mean,ms_per_solve_baseline,notes
-simple_cluster,phi_guard_v2,5,0.00796379,1,0.0368409,0,0,1.07581,66.4897,cap 5 met
+simple_cluster,phi_guard_v2,40,0.00796379,1,0.0368409,3,0,4.28602,72.6224,cap 40 met
+sfe0.6,phi_guard_v2,40,0.0729802,1,0.287491,2,0,3.10838,71.2804,cap 40 met
+probe_typical_hybr,phi_guard_v2,40,0.0102883,1,0.0473411,5,0,6.43866,6.72151,cap 40 met
+steep,phi_guard_v2,40,0.0188797,1,0.0850047,7,0,9.14569,8.7716,cap 40 met
+dense_flat,phi_guard_v2,40,0.0188797,1,0.0850047,7,0,9.17033,9.26482,cap 40 met
+mock_hybr,phi_guard_v2,40,0.000755473,0.999999,0.00359994,1,0,1.45287,0.365673,cap 40 met

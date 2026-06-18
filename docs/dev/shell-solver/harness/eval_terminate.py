@@ -185,12 +185,34 @@ def summarise(config, rows):
         [_f(r["speedup_vs_odeint"]) for r in ev_ok
          if not math.isnan(_f(r["speedup_vs_odeint"]))]) if ev_ok else math.nan
 
+    # NET per-run wall time: energy-only (phase_map shows simple_cluster/mock are
+    # ~100% energy-phase shell solves) and blended (captured 20:100 energy:implicit).
+    def _phase_ms(ph):
+        e = [r for r in ev_ok if r["phase"] == ph]
+        if not e:
+            return math.nan, math.nan, 0
+        em = _mean([_f(r["time_ms"]) for r in e])
+        bm = _mean([_f(r["baseline_odeint_time_ms"]) for r in e])
+        return em, bm, len(e)
+    ee, eb, en = _phase_ms("energy")
+    ie, ib, inn = _phase_ms("implicit")
+    e_ratio = eb / ee if ee and not math.isnan(ee) else math.nan
+    tot_ev = (ee * en if en else 0) + (ie * inn if inn and not math.isnan(ie) else 0)
+    tot_b = (eb * en if en else 0) + (ib * inn if inn and not math.isnan(ib) else 0)
+    b_ratio = tot_b / tot_ev if tot_ev else math.nan
+
+    if ovf_base > 0:
+        flood = (f"flood: baseline_odeint_warns={ovf_base} -> event={ovf_event} (CLEARED); "
+                 f"plain solve_ivp/no-event teval_warns={ovf_teval} (NOT cleared - the EVENT, "
+                 f"not the solver swap, is what fixes it).")
+    else:
+        flood = (f"no flood in this config (baseline_warns={ovf_base}); "
+                 f"event_warns={ovf_event}, teval_warns={ovf_teval}.")
     notes = (
-        f"flood: baseline_odeint_warns={ovf_base} -> event={ovf_event} (cleared); "
-        f"plain solve_ivp (no event) teval_warns={ovf_teval} (NOT cleared). "
-        f"event_fired={sum(1 for r in ev if r['event_fired']=='1')}/{n_ion} ion. "
-        f"speedup median: fired-slices={sp_fired:.2f}x all-event={sp_all:.2f}x. "
-        f"per-phase ion mass-lim: {'; '.join(phases)}."
+        f"{flood} event_fired={sum(1 for r in ev if r['event_fired']=='1')}/{n_ion} ion. "
+        f"speedup med fired={sp_fired:.2f}x all-event={sp_all:.2f}x. "
+        f"NET wall: energy-only={e_ratio:.2f}x (base/event), blended20:100={b_ratio:.2f}x "
+        f"(>1=event faster). per-phase ion mass-lim: {'; '.join(phases)}."
     )
 
     return {
