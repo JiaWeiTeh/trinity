@@ -145,10 +145,27 @@ Built `harness/{residual_variants,capture_replay_bubble,replay_from_dump,aggrega
 **Gate G1:** across **all** captured calls in every config, worst output-level `rel_dMdt` ≤ the G2 bound (≤0.3%; P0 saw 1e-6) at the chosen N, 0 new solver failures, `monotonic_flip` either absent or 0 at the chosen N. (The output-level `rel_dMdt` is binding — it subsumes any residual-level monotonic flip; see the §CSV-schema gap note.) Commit `data/master_p0_table.csv`.
 
 ### P2 — Integration-level equivalence (the decision gate)
-Full `get_bubbleproperties_pure` baseline-residual vs chosen-NPTS-residual on every captured state. **Gate G2 (hard):** converged `bubble_dMdt` rel-diff ≤0.3% (and `LTotal`/`T_r_Tb`/`mass` ≤0.3% / traceable) on **all 12 config×phase cells**, 0 solver failures the baseline didn't have, monotonic-acceptance unchanged. Commit `data/bubble_output_equiv_<config>.csv` + master.
+The captured CSVs already hold this: every row's `baseline` variant IS the 60k
+dense-output path, and `rel_dMdt` is variant-vs-baseline on the *converged*
+`get_bubbleproperties_pure` output. So G2 reads straight off `master_p0_table.csv`.
+**Gate G2 (hard), at the chosen `_RESIDUAL_NPTS`:** worst converged `bubble_dMdt`
+`rel` ≤ **0.3%** (and `rel_LTotal`/`rel_T_r_Tb`/`rel_mass` ≤0.3% / traceable)
+across **all 12 cells** (6 configs × {energy, implicit}); `ok` = n/n (0 solver
+failures the baseline didn't have); no monotonic-acceptance change that moves a
+root (subsumed by `rel_dMdt`). **Decision procedure for N:** smallest N whose
+worst-cell `rel_dMdt` is ≤ the gate with ≥10× margin → today's data picks **M500**;
+fall back to a larger N (M1000/M2000) only if a sweep cell breaks the margin;
+consider **Mnodes** only if *additionally* no cell shows a monotonic flip.
 
 ### P3 — Promote (rewrite `_get_velocity_residuals`)
-Ship Option (b) at the chosen `_RESIDUAL_NPTS`. **Gate G3:** `pytest` (+ `-m stress`) green; `test_bubble_solver_*` green; the residual+integration harnesses green; `_solve_bubble_structure` + final path **diff-free** (only `_get_velocity_residuals` changed).
+**The patch is already drafted + harness-reviewed: see `P3_PRODUCTION_PATCH.md`**
+(exact new function body + `_RESIDUAL_NPTS` constant + apply/validate/rollback +
+the regression test to add). Apply it at the N chosen in P2. **Gate G3:** `pytest`
+(+ `-m stress`) green; `test_bubble_solver_*` green; the new
+`test_residual_resample.py` green; `_create_radius_grid`/`_solve_bubble_structure`
++ the structure/conduction path **diff-free** (only `_get_velocity_residuals`
+changed); `ruff` F-rules + `mypy` clean. If the residual was `_create_radius_grid`'s
+last caller, *flag* the newly-dead grid builder — don't delete it in the same change.
 
 ### P4 — Full-run speedup (the headline number)
 A/B wall-time on a short `simple_cluster` (and `mock_hybr`): baseline vs F1, same `stop_t`, compare wall time + a snapshot-tolerance check (consumed scalars within G2 bound — not byte-identical, since dMdt shifts ~1e-12–0.3%). Record in `HOTPATH_PLAN.md` ledger + here. **Gate G4:** measurable wall-time reduction, snapshots within tolerance.
@@ -211,6 +228,25 @@ Harness built + validated; `data/bubble_resample_mock_hybr.csv` (5 energy + 10 i
 1. **Accuracy is universal and ≪ the 0.3% gate** — worst `rel_dMdt` 1.0e-6 (M*) / 2.2e-6 (Mnodes); `rel_LTotal/T_r_Tb/mass` all ≤7e-7. `ok` = 6/6 variants on every call.
 2. **`rel_dMdt` is npts-INSENSITIVE in [200, 2000]** — M2000 ≡ M1000 ≡ M500 ≡ M200 to the digit (1.02e-6 implicit). The coarse sample doesn't move the converged root, so **the accuracy ceiling is set by the integration, not by N**. ⇒ P1 can pick the *smallest* safe N (M200) or even **Mnodes** (no `t_eval`) — the speed-vs-N curve is nearly flat, so the choice is about robustness margin, not accuracy.
 3. **Speed: ~1.4–1.8× per bubble call on the TINY config.** Energy (1.74–1.84×) beats implicit (1.41–1.58×). This is the *floor* of the win — `mock_hybr`'s bubble solves are small, so the 60k resample is a smaller share. The **degenerate `simple_cluster`** (where the microbench put the resample at ~27× the integration) is expected to show a substantially larger factor — that is the headline number the sweep must capture.
+
+### Harness correctness review ✅ PASS (2026-06-18)
+Read-through of `capture_replay_bubble.py` + `residual_variants.py` against
+current source — the multi-hour sweep output is trustworthy:
+- **Linchpin verified:** `get_bubbleproperties_pure` is **pure** — no `params[...]=`
+  / `params.attr=` writeback anywhere in `bubble_luminosity.py`, so the ~12 repeated
+  calls per gated call (baseline + 5 variants, each output + timing) don't perturb
+  the host trajectory or each other's timing. The host receives the BASELINE
+  `base_bp`, so the captured run is byte-identical to an un-instrumented one.
+- **Variants faithful:** same ICs (`_get_bubble_ODE_initial_conditions`), same span
+  (production `r_array` runs `r2Prime→R1`, so `t_span=(r2Prime,R1)` = the variants'),
+  same LSODA + `_RESIDUAL_RTOL`/`_BUBBLE_ATOL`, same `(v_end)/(v_init+1e-4)` residual
+  and `min_T`/nan/monotonic/`_SOLVER_FAIL_RESIDUAL` contract; `BubbleSolverError`
+  caught directly (prod catches it one level down in `_solve_bubble_structure`).
+- **Bookkeeping:** `rel_*` is vs the same-call baseline row; variant timing runs
+  while that variant's residual is still installed; phase gate reads
+  `params['current_phase'].value` through the view; state dump is view-aware.
+- Minor (non-blocking): `call_idx` rebuilds a set over all rows each call (O(n²)
+  total) — negligible at N≤120; left as-is.
 
 ### What's DONE vs STILL NEEDED for G0
 - ✅ **Done:** harness (5 files) built, ruff-clean, committed; `mock_hybr` captured + validated; aggregator + master table working; accuracy + per-phase speedup recorded.
