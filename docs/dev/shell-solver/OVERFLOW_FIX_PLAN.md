@@ -24,13 +24,24 @@
 > against the numbers **without re-running**; record the exact config + command
 > that produced each artifact.
 
-**Status (re-verified 2026-06-18 on `main` @ `c8f0d35`):** 🟢 **PLANNED — fix decided by the empirical
-matrix, not implemented.** Root cause verified by three investigations + a captured real solve. The
-config×idea validation matrix (accuracy + efficiency + end-to-end science gate) settled it:
-**recommended fix = `clip` (cap `nShell` in the shell RHS)** — the only candidate that *both* silences
-the flood *and* leaves every output column bit-identical. See the **EMPIRICAL VERDICT** below. (The
-earlier "cgs-rescale" recommendation was falsified — cgs is an exact identity and does **not** silence
-the flood.) No production code changed.
+**Status (2026-06-18):** 🟢 **IMPLEMENTED — `clip` guard shipped to `get_shellODE.py` + test.** Root cause
+verified by three investigations + a captured real solve. The config×idea validation matrix (accuracy +
+efficiency + end-to-end science gate, `data/eval_endtoend.csv`) settled the choice: **`clip` (cap `nShell`
+at `_NSHELL_MAX=1e120` in the ionised RHS)** — the only candidate that *both* silences the flood *and*
+leaves **every output column bit-identical** (`endtoend_final_maxrel = 0.000e+00` on both configs).
+Implemented at `trinity/shell_structure/get_shellODE.py` (`_NSHELL_MAX` + one `min()`), pinned by
+`test/test_shell_overflow_guard.py`. (The earlier "cgs-rescale" recommendation was falsified — cgs is an
+exact identity and does **not** silence the flood; φ-guard silences it but shifts `n_IF` by 2.1% in the
+degenerate regime; terminate-at-front is near-identity but net-slower + a bigger change.)
+
+**Final end-to-end verdict** (`data/eval_endtoend.csv`, full real runs, all output columns):
+
+| variant | flood (simple_cluster / probe_typical) | max rel diff vs baseline | speed | verdict |
+|---|---|---|---|---|
+| **clip** | 99→0 / 3→0 | **0.000e+00 / 0.000e+00** | 1.01–1.02× | **SHIPPED** |
+| φ-guard | 99→0 / 3→0 | 2.1e-2 (`n_IF`) / 1.3e-5 | 1.00–1.05× | rejected (not identity) |
+| terminate (φ-event) | 0 / 0 | ~1e-9 | net-slower realistic | alt (bigger change) |
+| cgs-rescale | 99→**98** / 3→**3** | 7e-9 | ~1.0× | rejected (doesn't fix) |
 
 **Where this sits:** this doc **is item §F3 of `docs/dev/performance/HOTPATH_PLAN.md`** (the hot-path
 audit's "shell-ODE conditioning" item, which was *descoped to here* on 2026-06-18 and is owned by this
@@ -65,9 +76,12 @@ in AU — follows the *same* finite-radius pole to `inf` in the discarded tail. 
 state**, not a precision loss, so the only fixes that work **stop integrating into the tail**
 (freeze/terminate at the front) or cap the state.
 
-**Revised stance:** the root-cause/flood fix is **φ-guard or terminate-at-front (`solve_ivp` φ-event)**,
-not cgs. cgs-rescale is demoted to an *optional conditioning/correctness* item (it makes the
-mixed-unit `caseB_alpha`·`n²` sites consistent and improves precision) but is **not** the warning fix.
+**Revised stance:** the flood fix must **stop integrating into the discarded tail** (cap or terminate),
+not recondition it. The end-to-end science gate then chose **`clip`** over φ-guard: both silence the
+flood, but φ-guard shifts `n_IF` by 2.1% (degenerate) while `clip` is **bit-identical** (the cap sits 55
+orders above the used region, so it only ever touches the thrown-away tail). cgs-rescale is demoted to an
+*optional conditioning/correctness* item (it makes the mixed-unit `caseB_alpha`·`n²` sites consistent)
+but is **not** the warning fix. **Shipped: `clip`.**
 The §4 ranking and §5 recommendation below are updated accordingly. The validation matrix (configs ×
 the *flood-fixing* ideas, accuracy + efficiency) is running to pick between φ-guard and terminate.
 
