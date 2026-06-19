@@ -37,6 +37,55 @@ code changed yet.**
 
 ---
 
+## 0. Re-baselined against `main @ 946e860b` (2026-06-19)
+
+This plan was first drafted against an older `main`. Rebased onto current `main` (`946e860b`, PR #697)
+and re-verified line-by-line. **The bug still reproduces** (V0 on `fail_repro`, new code: identical
+`R1→R2` degeneracy at `R2≈8.6`, same `Rejected. min T: 29999.99…` grind). Drift + protocol notes:
+
+- **`get_bubbleParams.py` — refs UNCHANGED & re-confirmed:** `bubble_E2P:198`, `r2+=1e-10` (still in cm,
+  still a dud) `:224`, the divide `:228`, `get_r1:375` / its equation `:400`, `solve_R1:405`, error msg
+  `:426`. The core mechanism is byte-stable.
+- **`bubble_luminosity.py` — REFACTORED (PR: "regroup into logical sections (bit-identical)", "drop
+  `_legacy`"), refs MOVED:** the `_get_velocity_residuals` `Rejected. min T` branch `:910-913 → :308-311`;
+  `_T_INIT_BOUNDARY=3e4` `:52 → :51`; the solver is now `solve_ivp` (`sol.success`/`sol.y`) but the
+  rejection logic is identical (penalty `(3e4/(min_T+0.1))² ≈ 0.999994`, a no-op; early `return :311`
+  still shadows the `nan`/`monotonic` checks `:313,:317`).
+- **`run_energy_phase.py` — UNCHANGED:** bubble call `:159`, `solve_R1 :95`, switch `:293-295`.
+- **`run_energy_implicit_phase.py` — `compute_R1_Pb :798` and `cooling_balance :1072-1074` still valid;**
+  note the new `:737` comment ("safety net, NOT a transition trigger").
+- **`get_betadelta.py` (+411 lines) / `run_energy_implicit_phase.py` (+184):** changed materially but the
+  `compute_R1_Pb` → `solve_R1`/`bubble_E2P` degeneracy path is intact. Harness monkeypatch targets
+  (`get_bubbleParams.solve_R1`/`.bubble_E2P`, reached by module-attribute everywhere) remain valid.
+
+**Planning-protocol adoption (new `CLAUDE.md` rule 5 + "size the change first" ladder).** The fix lives
+in a solver/iterative path ⇒ **Risky/iterative**, so it must run the full ladder: gate-first, baseline
+capture, **full-run equivalence on the stiffest edge regimes in separate processes at matched `t`** (not
+just per-call), smallest diff, re-verify (gate + `pytest` + ruff F-rules), persist. The **no-op gate**
+here is the strong form: on healthy configs the fix must be **bit-identical** (value-diff vs `git show
+HEAD` *and* byte-identical `dictionary.jsonl`) — by construction for the clamp (never active when
+`R1≪R2`), to be proven for any transition change. Edge configs to use: `param/simple_cluster.param` +
+`docs/dev/performance/f1edge_{lowdens,hidens}*.param`, **plus** the `5e9/n1e2` crash band itself.
+
+**Relationship to the `docs/dev/transition/` workstream (`TRIGGER_PLAN.md`) — important, do not collide.**
+That is a *measurement-first* investigation of *when* the **normal** implicit→momentum transition should
+fire (candidate families F0–F5; not yet wired to production; default stays F0 `instantaneous`). Three
+facts from it bear directly on this fix:
+1. **Phase 1a has no transition trigger at all** — it ends only at `TFINAL_ENERGY_PHASE` or geometric
+   events; *all* transition logic is in 1b. So a cloud whose `Eb` collapses *during 1a* (the real Helix
+   crash) has no escape hatch — that is a robustness gap 1a-side, independent of the trigger study.
+2. Its **reference physical event is the PdV-inclusive net-energy zero-crossing**
+   `(Lgain − Lloss − 4πR2²·v2·Pb) ≤ 0` — the **`Eb`-peak**. That is *exactly* where my trajectory's `Eb`
+   stops growing and starts collapsing. **V4 should detect *this* (energy no longer being gained), not a
+   bespoke `Eb≤ε` hack**, so it stays consistent with the trigger work.
+3. This bug is the **catastrophic-cooling extreme** of the same transition question (the bubble is
+   cooling-dominated essentially from birth, so the `Eb`-peak is immediate). The trigger study optimizes
+   *late* firing (the stall); **this is a correctness/robustness bug (crash + NaN/negative `Eb`)** and may
+   land its minimal guard now without waiting on the trigger paper — but framed via the same net-energy
+   event so the two never disagree. Scope guard: **do not** re-open the F0–F5 trigger choice here.
+
+---
+
 ## 1. Symptom (the user's report — Helix `paperII_grid_sweep`)
 
 On the Heidelberg `Helix` cluster, the Paper II grid sweep produces failed outputs for the
@@ -123,40 +172,48 @@ Two things the table makes undeniable:
 
 So the crash has **three** orthogonal fix levers, which the matrix will compare head-to-head.
 
-## 4. Candidate fix ideas (to evaluate as monkeypatched variants — production untouched)
+## 4. Candidate fix families & the harness variants
 
-| id | idea | what it changes | scope | hypothesis |
+Two layers, kept distinct so labels never collide:
+
+**(a) Numeric-guard variants — what the harness (`harness/variants.py`) actually monkeypatches & ran.**
+These probe whether *just stopping the divide-by-zero* is enough.
+
+| id | patch | hypothesis |
+|---|---|---|
+| **V0** | baseline (no patch) | crashes on the `5e9/n1e2` band (reference) |
+| **V1** | clamp `R1 ≤ R2·(1−ε)` in `solve_R1` (ε=1e-6) | kills the `inf`; below the cliff `Pb∝Eb` |
+| **V2** | floor the shell volume `R2³−R1³ ≥ ε·R2³` in `bubble_E2P` | same effect via the divide site only |
+| **V3** | V1 + V2 | combined guard |
+
+**(b) Fix families (the actual candidates a production fix would pick from):**
+
+| id | family | what it changes | scope | role |
 |---|---|---|---|---|
-| **V0** | baseline | — | — | crashes on the `5e9/n1e2` band (reference) |
-| **V1** | **rel-volume floor / `R1<R2` clamp** in `bubble_E2P` | floor `R2³−R1³ ≥ ε·R2³` (or clamp `R1≤R2(1−ε)`) | ~2 lines | kills the `inf`; below the cliff `Pb∝Eb` (decays) — does the run survive & reach the existing momentum transition? |
-| **V2** | **cancellation-free `Pb`** via the `get_r1` identity | compute shell volume as `R1²·v·Eb/Lmech` (no subtraction) | ~3 lines | `Pb` stays at the analytic `~4.345e6`; most faithful to Weaver — but only valid at the `solve_R1` root |
-| **V3** | **`isfinite` gate → `BubbleSolverError`** | reject non-finite `Pb`/`T`/profile in the bubble solve; ensure **both** 1a & 1b catch it → clean termination w/ reason | ~5–10 lines | converts crash → handled stop; belt-and-suspenders for *any* nan source (incl. cooling-cube holes) |
-| **V4** | **degeneracy → graceful momentum transition** | detect `Eb`-collapse / `R1→R2` / `(Lgain−Lloss)/Lgain<thr` *before* the divide → break to the existing `cooling_balance` exit (→ momentum phase) | medium | the physically-correct end-state: the cloud is momentum-driven; produce *valid* science output, not a stop |
-| V5 | `Eb` floor (clamp `Eb≥Eb_min`) | — | ~1 line | likely **rejected** (fabricates energy); included as a negative control |
+| **G — geometry guard** | = V1/V2/V3 | `R1<R2` / volume floor so the divide can't blow up | ~2 lines | **necessary safety net; proven NOT sufficient alone** (smoke below) |
+| **C — cancellation-free `Pb`** | the `get_r1` identity `R2³−R1³ = R1²·v·Eb/Lmech` → `Pb=(γ−1)/(4π/3)·Lmech/(v·R1²)` | removes the catastrophic cancellation at its source | ~3 lines | optional conditioning; only valid at the `solve_R1` root |
+| **F — loud-fail** | `isfinite` gate on `Pb`/`T`/profile → `BubbleSolverError`; ensure **both** 1a & 1b catch it → clean termination w/ reason | ~5–10 lines | belt-and-suspenders for *any* nan source (incl. cooling-cube holes) |
+| **T — transition (leading)** | detect the **PdV-inclusive net-energy zero-crossing** `(Lgain − Lloss − 4πR2²·v2·Pb) ≤ 0` (the `Eb`-peak) → hand off to the momentum phase | medium | the physically-correct end-state; **aligned with `docs/dev/transition/` (the `Eb`-peak event), NOT a bespoke `Eb≤ε`** |
 
-**Note on V4 vs the existing machinery:** the code *already* has a `cooling_balance` energy→momentum
-transition (`run_energy_implicit_phase.py:1072`, `(Lgain−Lloss)/Lgain < 0.05` → break). The crash fires
-*before* it can. A central question the matrix answers: **does V1 or V2 alone (just stop the crash) let
-these clouds reach that existing transition on their own?**
+**Partial empirical answer (2026-06-19 smoke, V3 on `fail_repro`): geometry guard alone is NOT enough.**
+With the geometry clamped the energy ODE keeps integrating and `Eb` crosses **zero into negative**
+(`+7.4e8 → −9.1e8 → −1.0e12`), giving negative `Pb`; the bubble solve then has no physical solution →
+fsolve thrashes → `Rejected. min T` spam → no termination in 320 s (`data/smoke_V3_fail_repro_trajectory.csv`).
+The existing `cooling_balance` break (`run_energy_implicit_phase.py:1072-1074`) is *never reached* — the
+grind happens earlier in the iteration (the bubble/beta-delta solve `~:798`), not at the end-of-loop
+transition check. **So family T must fire the handoff at the net-energy zero-crossing, before `Eb` goes
+non-positive** (≈ snapshot 48, `t≈2.8e-3`, `R2≈8.4`, `Eb` still `+7.4e8` but plunging, `R2−R1≈0.09`);
+**G stays as the safety net** so the divide can never blow up even if T mis-times. **Open question for the
+matrix:** does the existing momentum/transition machinery accept a handoff this early cleanly (continuity
+of `Eb`,`R2`,`v2`,`P_drive`), and does T leave the healthy configs **bit-identical**?
 
-**Partial empirical answer (2026-06-19 smoke, V3 on `fail_repro`): NO.** With the geometry clamped, the
-energy ODE keeps integrating and `Eb` crosses **zero into negative** (the bubble solve then has no
-physical solution → fsolve thrashes → `Rejected. min T` spam → no termination in 320 s). The existing
-`cooling_balance` break at `:1072` is *never reached* because the grind happens earlier in the iteration
-(the bubble/beta-delta solve, `:798`-ish), not at the end-of-loop transition check. So the fix must fire
-the transition **early** — gated on `Eb` collapse (e.g. `Eb ≤ ε·E0`) or the `Lloss/Lgain` degeneracy at
-the point of the bubble solve — *before* `Eb` goes non-positive (≈ snapshot 48, `t≈2.8e-3`, `R2≈8.4`,
-`Eb` still `+7.4e8` but plunging, `R2−R1≈0.09`). The numeric guard (V1/V2) stays as a safety net so the
-divide can never blow up even if the transition mis-fires.
-
-**On the `Rejected. min T: 29999.99` noise:** benign. The bubble structure integrates *from* `T=3e4` at
-the outer edge inward; `min_T=29999.99` is a `1.6e-5 %` dip below the `_T_INIT_BOUNDARY=3e4` anchor (the
-documented "boundary_transient", `bubble_luminosity.py:180-181`). The penalty it returns is
-`(3e4/(min_T+0.1))² ≈ 0.999994` — effectively `1.0`, i.e. a *no-op* "rejection" (logs, but does not steer
-fsolve). It is a *symptom* of the fsolve thrashing on the negative-`Eb` bubble, not a cause. Two minor,
-*orthogonal* cleanups (do NOT bundle into the fix): (a) the early `return` at `:913` shadows the
-downstream `nan`/`monotonic` checks (`:915,:919`); (b) a small tolerance (`min_T < 3e4 − tol`) would stop
-the false trip + the log spam.
+**On the `Rejected. min T: 29999.99` noise (re-verified on new code):** benign. The bubble structure
+integrates *from* `T=3e4` inward; `min_T=29999.99` is a `1.6e-5 %` dip below `_T_INIT_BOUNDARY=3e4`
+(`bubble_luminosity.py:51`) — the documented "boundary_transient" (`:867,:918`). The penalty it returns,
+`(3e4/(min_T+0.1))² ≈ 0.999994`, is effectively `1.0` — a *no-op* "rejection" (logs, doesn't steer fsolve).
+It is a *symptom* of fsolve thrashing on the negative-`Eb` bubble, not a cause. Two minor *orthogonal*
+cleanups (do NOT bundle into the fix): (a) the early `return :311` shadows the `nan`/`monotonic` checks
+(`:313,:317`); (b) `min_T < 3e4 − tol` would stop the false trip + the log spam.
 
 ## 5. Empirical matrix (config × idea — the hybr-style de-risk)
 
@@ -184,11 +241,15 @@ final_t, final_R2, final_v2, final_Eb, runtime_s, healthy_maxreldiff_vs_V0, note
   (`reached_phase ≥ 1c/2`) or a clean termination with a recorded `SimulationEndReason` — **never** a
   traceback and never silent `nan` in the outputs.
 
-### Bounded runs (tractability)
-Phase 1a is slow (~1–2.5 min/run) because the no-approximation bubble solve runs per segment. Cap each
-matrix run with a short `stop_t` (≈`0.05` Myr — these massive clouds evolve fast; the crash is at
-`t~3e-3`) so a cell is a few minutes, enough to pass the crash point and observe the end-state.
-Parallelise cells across subagents. Record the exact command per CSV.
+### Bounded runs (tractability) — corrected 2026-06-19
+Phase 1a/1b are slow (the no-approximation bubble solve runs per segment) and **`stop_t` does NOT bound
+wall-time** — the energy phases loop on internal `TFINAL_ENERGY_PHASE`/segment constants, not `stop_t`,
+and the slowness is per-segment solve cost in the degenerate regime. So **bound each cell with a wall-clock
+`timeout`** (the smoke ran 320 s and was SIGTERM'd mid-grind; V0 crashes cleanly in ~110 s). Treat
+**three** outcomes as distinct in the CSV: `crashed` (V0), `completed` (clean `end_reason`), and
+`timeout`/`SystemExit:143` (no termination — the V3 grind). The harness reads the run's `dictionary.jsonl`
+for the final `(t,R2,Eb,Pb,R1,phase)` so a timed-out cell still yields its progress + whether `Eb` went
+negative. Parallelise cells across subagents; record the exact command + `timeout` per CSV.
 
 ## 6. Rollout (gated, mirrors the project's S0–S4 pattern)
 - **S0 — sim-free probe (DONE).** `harness/probe_degeneracy.py` → `data/probe_degeneracy.csv`. Pins the
@@ -204,18 +265,24 @@ Parallelise cells across subagents. Record the exact command per CSV.
 ## 7. Verdict
 _TBD — filled after S2/S3. Will record: winning variant, the gate table, and why._
 
-## 8. Key references
+## 8. Key references (re-verified against `main @ 946e860b`, 2026-06-19)
 - Degeneracy math: `trinity/bubble_structure/get_bubbleParams.py` — `get_r1` `:375-402`, `solve_R1`
   `:405-429`, `bubble_E2P` `:198-230` (the `r2+=1e-10`-in-cm dud guard `:224`, the divide `:228`).
 - Call sites (all currently unguarded for `R1→R2`): phase 1a `run_energy_phase.py:95,159,322`;
   energy ODE `phase1_energy/energy_phase_ODEs.py:223,358`; phase 1b
-  `phase1b_energy_implicit/get_betadelta.py:327,329` + `run_energy_implicit_phase.py:798`;
+  `phase1b_energy_implicit/get_betadelta.py:297(compute_R1_Pb),327,329` + `run_energy_implicit_phase.py:798`;
   phase 1c `phase1c_transition/run_transition_phase.py:505,747,832`; bubble solve
-  `bubble_structure/bubble_luminosity.py:422,428`.
-- Existing energy→momentum transition (V4 target): `run_energy_implicit_phase.py:1072` (`cooling_balance`).
-- `BubbleSolverError` (V3 target): `bubble_structure/bubble_luminosity.py:98,152,521,536,958`.
+  `bubble_structure/bubble_luminosity.py:175,181`.
+- Existing energy→momentum transition (family T context): `run_energy_implicit_phase.py:1072-1074`
+  (`cooling_balance`); the principled `Eb`-peak / net-energy event is owned by `docs/dev/transition/TRIGGER_PLAN.md`.
+- `BubbleSolverError` (family F target): `bubble_structure/bubble_luminosity.py:105(class),298,428(except),361,569,584(raise)`.
+- The benign `Rejected. min T` branch: `bubble_luminosity.py:308-311`; `_T_INIT_BOUNDARY=3e4 :51`;
+  boundary-transient note `:867,:918`.
 - Latent secondary nan source (cooling-cube holes, high-phi/low-n): `cooling/non_CIE/read_cloudy.py:95-97,133`
   (RegularGridInterpolator, default `bounds_error=True`; NaN query → silent NaN). Not the primary trigger
-  for the standard high-Pb large cloud, but covered by V3.
-- Repro configs: `harness/params/fail.param` (= `/tmp/fail.param`), `harness/params/control.param`.
+  for the standard high-Pb large cloud, but covered by family F.
+- Repro configs: `harness/params/fail_repro.param` (sfe0.1/PISM1e4), `harness/params/fail_helix.param`
+  (the real Helix sfe0.05/PISM0 point), healthy controls `harness/params/small_1e{5,6,7}.param`.
+- Sibling workstream: `docs/dev/transition/TRIGGER_PLAN.md` (+`P0.md`,`pshadow-design.md`) — the normal
+  implicit→momentum trigger study (families F0–F5); align family T with its `Eb`-peak event, don't collide.
 

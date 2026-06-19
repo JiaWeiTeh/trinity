@@ -64,6 +64,7 @@ def main():
 
     from trinity._input import read_param
     from trinity import main as trinity_main
+    from trinity._functions.logging_setup import setup_logging
 
     params = read_param.read_param(args.param)
     out_dir = args.out or _val(params, "path2output")
@@ -71,6 +72,18 @@ def main():
         params["path2output"].value = args.out
     if args.stop_t is not None and "stop_t" in params:
         params["stop_t"].value = args.stop_t
+
+    # Honor the param's logging (INFO + file-only by default): run.py does this in
+    # run_single; we bypass that path, so do it here -- otherwise the run inherits
+    # the root logger at DEBUG and floods stdout (the very thing we advise against).
+    setup_logging(
+        log_level=_val(params, "log_level", "INFO"),
+        console_output=bool(_val(params, "log_console", False)),
+        file_output=bool(_val(params, "log_file", True)),
+        log_file_path=out_dir,
+        log_file_name="trinity.log",
+        use_colors=False,
+    )
 
     crashed = False
     crash_excpt = ""
