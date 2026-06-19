@@ -84,7 +84,7 @@ digit). **Toolchain of record:** the container needed `pip install -e ".[dev]"`
 | **F2.2** | gravity outputs disabled, `None` placeholders (`_get_mass_and_grav`) | ✅ shipped `4a13075` | removes 1 `simpson`(~60k) + 1 array-divide(~60k) per **final** structure solve (not separately timed) | ✅ by construction (`m_cumulative` unchanged; caller discards the rest) | full non-stress suite (below) |
 | **F2.5** | remove `pdotdot_total` from hot SPS path | ⛔ **dropped** | n/a — would change the phase-1b trajectory | ✗ **not** bit-identical | subagent consumer trace: integrated RHS at `run_energy_implicit_phase.py:854`, `get_betadelta.py:411,520` (A12 coeff `1.5·pdotdot/pdot`) |
 | **F2.6** | `_excluded_keys` per-snapshot rescan | ⏸️ deferred | ~195-key walk / snapshot (not measured) | ✅ (when done) | `dictionary.py:614` (out of this branch's scope) |
-| **F1** | stop the 60k dense-output resample in the dMdt residual (`RESAMPLE_PLAN.md`) | 🟢 **SHIPPED & fully validated** (`24c6914`) — per-call + full-run equivalence + 538 unit + G3 stress (no-crash + golden) all green | per-call ~1.5×/call (E) / ~1.4×/call (I); **full-run matched-`t` equivalence on mock_hybr + 3 stiff edge cases, worst R2/Eb ≈6e-6** (~500× inside 0.3%) | per-call gate can't see a full-run divergence (full-run mandatory for residual changes); 60k was output over-resolution — LSODA rtol=1e-6 already resolves the stiff solution | `data/master_p0_table.csv`, `data/f1edge_matched_comparison.csv`, `f1edge_{orig,f1}_trajectories.csv`; `test/test_residual_resample.py`; `harness/f1_fullrun_equiv.sh` |
+| **F1** | stop the 60k dense-output resample in the dMdt residual (`BUBBLE_LUMINOSITY_PERFORMANCE.md`) | 🟢 **SHIPPED & fully validated** (`24c6914`) — per-call + full-run equivalence + 538 unit + G3 stress (no-crash + golden) all green | per-call ~1.5×/call (E) / ~1.4×/call (I); **full-run matched-`t` equivalence on mock_hybr + 3 stiff edge cases, worst R2/Eb ≈6e-6** (~500× inside 0.3%) | per-call gate can't see a full-run divergence (full-run mandatory for residual changes); 60k was output over-resolution — LSODA rtol=1e-6 already resolves the stiff solution | `data/master_p0_table.csv`, `data/f1edge_matched_comparison.csv`, `f1edge_{orig,f1}_trajectories.csv`; `test/test_residual_resample.py`; `harness/f1_fullrun_equiv.sh` |
 | **F3** | shell-ODE overflow | ➡️ descoped | n/a (owned elsewhere) | — | `shell-solver/OVERFLOW_FIX_PLAN.md` capture (`front_idx=4`, `ovf_idx=26`, `n_max_finite=6.65e67`) |
 | **gate** | full non-stress test suite (after F2) | ✅ | — | — | **535 passed**, 3 deselected (stress), 151.67 s; `test_mu_audit_drift` source assertions preserved |
 
@@ -138,9 +138,11 @@ The ODE RHS *does* run a cheaper `solve_R1` brentq every stage (`energy_phase_OD
 
 ---
 
-## F1 — [HEADLINE, needs harness] Stop resampling 60 000 points to read 4 numbers
+## F1 — Stop resampling 60 000 points to read 4 numbers — ✅ SHIPPED (`24c6914`, 2026-06-19)
 
-**The single biggest lever; same shape as hybr/shell.**
+**Canonical history + methodology: `BUBBLE_LUMINOSITY_PERFORMANCE.md` (Era D); live reference
+`F1_SUMMARY.md`; illustrated `F1_REPORT.html`; archived plan/patch `archive/bubble/`.** The
+mechanism + cost below are retained as accurate context.
 
 ### Mechanism (verified against source)
 `get_bubbleproperties_pure` solves `dMdt` with `scipy.optimize.fsolve`
@@ -173,35 +175,21 @@ the per-segment bubble-solve count (default `hybr`: ~10–29 root-finder evals;
 `legacy`: up to 25 `_solve_grid` points) × every phase1b segment → easily
 **10²–10³** of these resamples per phase1b run.
 
-### Fix — see **`RESAMPLE_PLAN.md`** for the full de-risked plan (config × method matrix, harness, gates)
-The fix is a surgical rewrite of **`_get_velocity_residuals` only** — `solve_ivp`
-with a coarse `t_eval` instead of the 60k `dense_output` resample (leaves
-`_solve_bubble_structure` + the final structure solve byte-identical). Empirically
-measured on two real dumped bubble states (2026-06-18):
-- **Numerator `v[-1]` is bit-identical** — with `t_eval` ending at `R1`, `sol.y[0,-1]`
-  equals today's `sol.sol(r_array[-1])[0]` exactly (abs diff `0.0`).
-- **Denominator → `v_init` (the IC) is within ~1e-12 rel, NOT byte-identical** under
-  LSODA (the dense interpolant doesn't reproduce `y0` to the last bit; `0.0` under
-  RK45). So the earlier "(a) endpoints bit-identical, ship immediately" claim was
-  slightly optimistic — the **whole** fix goes through one equivalence gate.
-- **`min_T` / monotonicity** move from the 60k grid to the coarse `t_eval`. The strict
-  `monotonic` gate could in principle flip on a coarse grid (held across a 0.5×–2×
-  dMdt scan; must be confirmed at scale). `_RESIDUAL_NPTS=2000` is conservative.
+### Shipped fix
+Rewrote `_get_velocity_residuals` to integrate once on a coarse `t_eval`
+(`_RESIDUAL_NPTS = 500`), dropping the 60k resample (`_solve_bubble_structure` + the final
+structure solve unchanged). **Result: ~1.5×/call, ~2.3× full-run** on the degenerate config.
+Validated per-call (`rel_dMdt ≤ 3.1e-6`, 6 configs) **and** full-run matched-`t` equivalence to
+**~6e-6** (≪ 0.3% gate) on `mock_hybr` + 3 stiff edge cases, + 538 unit + stress gates. The 60k
+was *output* over-resolution (LSODA `rtol=1e-6` already resolves the stiff solution). The
+validation method (and the key lesson — *per-call equivalence is necessary but not sufficient*)
+is in `BUBBLE_LUMINOSITY_PERFORMANCE.md` §Era D / §Methodology.
 
-Equivalence is gated at the **`BubbleProperties` output level** (converged `bubble_dMdt`,
-`bubble_LTotal`, `bubble_T_r_Tb`, `bubble_mass` within ≤0.3%), captured **20 energy +
-100 implicit** solves across 6 configs. **Full detail, phases, and the harness design
-live in `RESAMPLE_PLAN.md`.**
-
-**Plausible payoff:** ~1 order of magnitude off the phase1b inner loop;
-**multiplies** with the shipped hybr win (hybr ≈ 10 bubble solves/segment vs the
-grid's 25).
-
-### Cousin experiment (own convergence study, à la `archive/bubble/conduction-convergence.md`)
-**Does the production grid need 60 000 points at all?** The conduction zone is already
-sampled separately at 2000 pts (`_CONDUCTION_NPTS`); the CIE region is smooth.
-Shrinking the base grid speeds the *final* solve too, not just the residual.
-Gate it on a Tavg / L_total / mBubble convergence sweep.
+### Cousin (STILL OPEN) — does the FINAL structure solve need 60 000 points?
+F1 removed the 60k from the *residual* only. The **final** structure solve still builds
+`_create_radius_grid` (~60k); the conduction zone is already sampled at `_CONDUCTION_NPTS=2000`
+and the CIE region is smooth, so shrinking the base grid would speed the final solve too. Gate
+it on a Tavg / L_total / mBubble convergence sweep (same method as Era D / conduction-convergence).
 
 ---
 

@@ -1,5 +1,11 @@
 # Plan: bubble dMdt residual solve — drop the 60k dense-output resample (HOTPATH §F1)
 
+> **📦 ARCHIVED / SHIPPED (2026-06-19).** F1 shipped (`24c6914`) and is fully validated.
+> Historical planning record only — the de-staled canonical history is
+> **`docs/dev/performance/BUBBLE_LUMINOSITY_PERFORMANCE.md`** (live reference:
+> `performance/F1_SUMMARY.md`; illustrated: `performance/F1_REPORT.html`). The
+> "open / pending / decider" framing below is historical; the final N is **500**.
+
 > ⚠️ **This document may be out of date — verify before trusting it.** It is a
 > point-in-time analysis/audit, not a maintained spec; the code moves faster
 > than these notes (paths, line numbers, and "what shipped" status drift).

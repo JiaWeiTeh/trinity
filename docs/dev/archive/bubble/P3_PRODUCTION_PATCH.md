@@ -1,5 +1,10 @@
 # P3 — staged production patch: coarse-`t_eval` `_get_velocity_residuals`
 
+> **📦 ARCHIVED / SHIPPED (2026-06-19).** This patch was applied (`24c6914`) and validated.
+> Historical record — the canonical history is
+> **`docs/dev/performance/BUBBLE_LUMINOSITY_PERFORMANCE.md`**; the live reference is
+> `performance/F1_SUMMARY.md`.
+
 > ⚠️ **This document may be out of date — verify before trusting it.** It is a
 > point-in-time analysis/audit, not a maintained spec; the code moves faster
 > than these notes (paths, line numbers, and "what shipped" status drift).

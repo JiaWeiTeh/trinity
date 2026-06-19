@@ -68,8 +68,10 @@ The top-level `scratch/` (repo root) is separate, git-ignored, local-only.
 - `refactor-audit.md` — **plan** (🔵 actionable): decouple the loaders from hardcoded SB99/OPIATE/CLOUDY. Nothing shipped yet.
 
 ### `performance/` — hot-path cost & conditioning
-- `HOTPATH_PLAN.md` — **plan** (🟡 partial): the next solver-class wins after hybr/shell. **§F2 free wins SHIPPED** (`fix/hotpath-freewins`: INFO log default, dead-gravity off, `get_dudt` cooling cache +23%/call bit-identical). Headline **§F1** (stop the dMdt fsolve resampling 60k points) detailed in `RESAMPLE_PLAN.md`. §F3 (shell-ODE overflow) **descoped** to `shell-solver/OVERFLOW_FIX_PLAN.md`. Carries the measured-results ledger.
-- `RESAMPLE_PLAN.md` — **plan** (🔵 actionable): HOTPATH §F1 in full — rewrite `_get_velocity_residuals` to a coarse `t_eval` solve (drop the 60k dense resample). De-risked (numerator bit-identical, denominator ~1e-12; refactor = Option b). Phased equivalence (config × NPTS matrix, energy 20 + implicit 100, gated at `BubbleProperties` output ≤0.3%) + full-run speedup. Branch `fix/hotpath-resample`; nothing shipped yet.
+- `BUBBLE_LUMINOSITY_PERFORMANCE.md` — **reference** (📘): the consolidated history of every perf/robustness change to `bubble_luminosity.py` — Era A (odeint→solve_ivp, which demoted the 60k) → B (conduction K=2000) → C (F2 free wins) → D (**F1 shipped**) — plus a **Methodology** section (our testing/planning conventions). Start here.
+- `F1_SUMMARY.md` — **reference** (📘): F1 changes / tests / defaults / efficiency tables. `F1_REPORT.html` — self-contained illustrated report (MathJax + embedded figures). `harness/` + `figs/` + `data/f1edge_*` regenerate both.
+- `HOTPATH_PLAN.md` — **plan** (🟡 partial): solver-class wins after hybr/shell. **§F1 SHIPPED** (`24c6914` → `BUBBLE_LUMINOSITY_PERFORMANCE.md`), **§F2 free wins SHIPPED** (`4a13075`). Open: §F1-cousin (shrink the *final*-solve grid), §F5. §F3 descoped to `shell-solver/`. Carries the measured-results ledger.
+- *(archived)* `archive/bubble/{RESAMPLE_PLAN,P3_PRODUCTION_PATCH}.md` — the F1 planning + patch docs (shipped 2026-06-19).
 
 ### `misc/` — standalone audits / notes
 - `backward-compat-audit.md` — (🔵 actionable) backward-compat / stale-code cleanup; ~95% pending.

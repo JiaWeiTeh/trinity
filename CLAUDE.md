@@ -68,6 +68,16 @@ Generated / scratch — not source, do not tidy or treat as ground truth: `outpu
    don't delete it. Every changed line should trace to the request.
 4. **Verify.** Turn tasks into checks: bug → write a failing test, then fix; feature → test the
    invalid inputs, then pass; refactor → tests green before and after. Run `pytest` before declaring done.
+5. **Equivalence depth & honest measurement** (hard-won — full rationale in
+   `docs/dev/performance/BUBBLE_LUMINOSITY_PERFORMANCE.md` §Methodology). For a change to an
+   **iterative/integrated path** (solver, residual, hot loop), a per-call/single-step equivalence is
+   **necessary but NOT sufficient** — clear it only with a **full-run equivalence** test on the
+   **stiffest/edge regimes** (not just the easy config), comparing full runs in **separate processes**
+   (trinity leaks module-level global state in-process) at **matched simulation time** (runs truncate at
+   different `t`). For a "free win", prove **bit-identical**: diff vs `git show HEAD` *and* a byte-identical
+   `dictionary.jsonl`. **Measure, don't guess** — retract a hypothesis the moment data contradicts it.
+   De-risk with a capture/replay **harness + explicit gates before** touching production, and **persist
+   diagnostics** as committed CSVs/figures so a future session need not re-run the hours-long sims.
 
 ## `docs/dev/` plan & audit docs are unverified
 
