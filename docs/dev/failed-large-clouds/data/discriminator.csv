@@ -1,0 +1,6 @@
+config,kind,pdv_over_lmech_step1,eb_growth_factor,pdv_gt1_first_phasefrac,frac_phase_pdv_gt1
+fail_repro,fail,0.518,1.014,0.096,0.885
+fail_pism6,fail,0.518,1.014,0.096,0.885
+fail_helix,fail,0.517,1.014,0.071,0.929
+small_1e6,healthy,0.57,13620.0,0.006,0.018
+small_1e5,healthy,0.596,37870.0,,0.0

@@ -297,7 +297,22 @@ and `v2` stays ~2000+ km/s.
 - `figures/fig1_dEbdt_budget.png` — the budget: PdV ≫ L_cool, PdV crosses Lmech (the finding).
 - `figures/fig2_healthy_vs_failing.png` — PdV/Lmech, v2, Eb vs **elapsed energy-phase time `t−t0` (log)** for failing vs healthy.
 - `figures/fig3_bug_and_fix.png` — Eb→0 collapses R1→R2 (shell vol→0 → 1/0 → NaN); old crash vs new code-51 stop.
-- Data: `data/budget_fail_repro.csv`, `data/budget_small_1e6.csv` (per-snapshot t,Eb,R1,R2,v2,Pb,Lmech,Lcool,Lleak).
+- `figures/fig4_energy_driven_discriminator.png` — were they ever energy-driven? (reservoir growth + PdV/Lmech, 5 configs).
+- Data: `data/budget_fail_repro.csv`, `data/budget_small_1e6.csv`, `data/discriminator.csv`.
+
+**Were the failing clouds ever genuinely energy-driven? (measured, 5 configs — `data/discriminator.csv`).**
+The cleanest signal is the **reservoir growth** `Eb_peak/Eb_init` (a pure state variable, fully reliable): the
+healthy controls build the hot-bubble thermal reservoir **×13,600 (`small_1e6`) / ×37,900 (`small_1e5`)**; all
+three failing configs build it **×1.014 (≈1%)**. So the energy-driven reservoir essentially **never forms** in
+the failing band. The nuance: it is *not* "PdV>1 from birth" — every config (failing and healthy) starts at the
+same self-similar handoff `PdV/Lmech ≈ 0.52–0.60`. The fork is the **direction**: healthy clouds decelerate →
+`PdV/Lmech` falls and stays `<1` → the reservoir builds; failing clouds never decelerate → `PdV/Lmech` rises
+through 1 within **~7–10%** of the phase and stays above for **~90%** → `Eb` collapses. **Interpretation:** the
+failing clouds are "stillborn" energy-driven bubbles — they inherit the energy-driven IC but fail to establish
+the self-similar deceleration that *defines* the phase. So a PdV-inclusive transition trigger (family T) would be
+detecting "this bubble failed to become energy-driven," i.e. a **regime mismatch**, not a healthy Weaver→momentum
+transition — which argues the deeper-correct fix is to recognise these as free-expansion/momentum-dominated
+*earlier*, not to bolt a PdV term onto the cooling-based transition test.
 
 This **revises** the "catastrophic cooling" label used in §1–§2 and the early commit messages, and it
 *confirms* family **T**'s framing in §4: the principled handoff trigger is the **PdV-inclusive** net-energy

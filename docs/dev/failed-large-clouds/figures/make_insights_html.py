@@ -22,6 +22,7 @@ def img(name):
 
 
 FIG1, FIG2, FIG3 = img("fig1_dEbdt_budget.png"), img("fig2_healthy_vs_failing.png"), img("fig3_bug_and_fix.png")
+FIG4 = img("fig4_energy_driven_discriminator.png")
 
 HTML = r"""<!doctype html>
 <html lang="en">
@@ -178,6 +179,34 @@ logged <span class="nowrap">$1.383\times10^{-3}/1.956\times10^{-5}=70.71$</span>
 explains the IC pressure: <span class="nowrap">$P_{b,0}\propto E_0/r_0^3\propto L_w^2\rho_a/\dot
 p_w^2\propto\rho_a=n_{\rm core}\mu$</span> — set by ambient density and the wind, not by cluster mass.</p>
 
+<h3>Were they ever genuinely energy-driven? (measured, 5 configs)</h3>
+<p>This is the question that decides whether including PdV in a transition trigger is physically natural or a
+band-aid. The cleanest signal is the <strong>reservoir growth</strong>
+<span class="nowrap">$E_b^{\rm peak}/E_b^{\rm init}$</span> — a pure state variable, fully reliable. Healthy
+controls build the hot-bubble thermal reservoir by <strong>$\times$13,600–37,900</strong>; all three failing
+configs build it by <strong>$\times$1.014 (~1%)</strong>. The energy-driven reservoir essentially
+<strong>never forms</strong>. The nuance: it is <em>not</em> "PdV&gt;1 from birth" — every config starts at the
+same self-similar handoff <span class="nowrap">$\text{PdV}/L_{\rm mech}\approx0.5$</span>. The fork is the
+<strong>direction</strong>: healthy clouds decelerate, so PdV/$L_{\rm mech}$ falls and the reservoir builds;
+failing clouds never decelerate, so PdV/$L_{\rm mech}$ rises through 1 within ~7–10% of the phase and
+<span class="nowrap">$E_b$</span> collapses.</p>
+
+<figure>
+  <img src="__FIG4__" alt="were they ever energy-driven">
+  <figcaption><strong>Fig 4 — were the failing clouds ever energy-driven?</strong> Left: reservoir growth
+  $E_b/E_{b,\rm init}$ — healthy (dashed) climb to $\sim$10$^4$, failing (solid) flatline at ~1 then collapse.
+  Right: PdV/$L_{\rm mech}$ — failing rise through break-even, healthy fall and stay below. All start at the
+  same ~0.5 handoff.</figcaption>
+</figure>
+
+<div class="callout">
+<strong>Interpretation.</strong> The failing clouds are "stillborn" energy-driven bubbles: they inherit the
+energy-driven initial condition but never establish the self-similar deceleration that <em>defines</em> the
+phase. So a PdV-inclusive transition trigger would be detecting "this bubble failed to become energy-driven" —
+a <strong>regime mismatch</strong>, not a healthy Weaver→momentum transition. That argues the deeper-correct fix
+is to recognise these as free-expansion/momentum-dominated <em>earlier</em>, not to bolt a PdV term onto the
+cooling-based transition test.</div>
+
 <h2>5 · Ideas tested</h2>
 <p>Two layers were kept distinct: cheap <em>numeric guards</em> (does just stopping the divide-by-zero
 suffice?) and the <em>fix families</em> a production change would choose from.</p>
@@ -293,7 +322,8 @@ This is a point-in-time analysis; line numbers may drift — re-verify against c
 </html>
 """
 
-HTML = HTML.replace("__FIG1__", FIG1).replace("__FIG2__", FIG2).replace("__FIG3__", FIG3)
+HTML = (HTML.replace("__FIG1__", FIG1).replace("__FIG2__", FIG2)
+        .replace("__FIG3__", FIG3).replace("__FIG4__", FIG4))
 
 with open(OUT, "w") as f:
     f.write(HTML)
