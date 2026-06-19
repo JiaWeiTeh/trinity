@@ -37,11 +37,13 @@ code changed yet.**
 
 ---
 
-## 0. Re-baselined against `main @ 946e860b` (2026-06-19)
+## 0. Re-baselined against `main @ 6bdba8de` (2026-06-19, re-merged twice)
 
-This plan was first drafted against an older `main`. Rebased onto current `main` (`946e860b`, PR #697)
-and re-verified line-by-line. **The bug still reproduces** (V0 on `fail_repro`, new code: identical
-`R1→R2` degeneracy at `R2≈8.6`, same `Rejected. min T: 29999.99…` grind). Drift + protocol notes:
+This plan was first drafted against an older `main`, then rebased onto `946e860b` (PR #697), then merged
+up again to `6bdba8de` (PR #698 + the "info-driven logging" commit `6f3aeab9`) — re-verified line-by-line
+each time. **The bug still reproduces** (V0 on `fail_repro`, new code: identical `R1→R2` degeneracy at
+`R2≈8.6`, same `Rejected. min T: 29999.99…` grind; `data/reverify_V0_main_946e860b.csv`). Drift + protocol notes
+(line numbers below are current as of `6bdba8de`):
 
 - **`get_bubbleParams.py` — refs UNCHANGED & re-confirmed:** `bubble_E2P:198`, `r2+=1e-10` (still in cm,
   still a dud) `:224`, the divide `:228`, `get_r1:375` / its equation `:400`, `solve_R1:405`, error msg
@@ -51,12 +53,19 @@ and re-verified line-by-line. **The bug still reproduces** (V0 on `fail_repro`, 
   `_T_INIT_BOUNDARY=3e4` `:52 → :51`; the solver is now `solve_ivp` (`sol.success`/`sol.y`) but the
   rejection logic is identical (penalty `(3e4/(min_T+0.1))² ≈ 0.999994`, a no-op; early `return :311`
   still shadows the `nan`/`monotonic` checks `:313,:317`).
-- **`run_energy_phase.py` — UNCHANGED:** bubble call `:159`, `solve_R1 :95`, switch `:293-295`.
-- **`run_energy_implicit_phase.py` — `compute_R1_Pb :798` and `cooling_balance :1072-1074` still valid;**
-  note the new `:737` comment ("safety net, NOT a transition trigger").
-- **`get_betadelta.py` (+411 lines) / `run_energy_implicit_phase.py` (+184):** changed materially but the
+- **`run_energy_phase.py` — refs shifted +3 by the new INFO logging:** bubble call `:159→:162`,
+  `solve_R1 :95→:96`, switch `:293-295→:296-298`, final `solve_R1 :322→:325`.
+- **`run_energy_implicit_phase.py` — `compute_R1_Pb :798` unchanged; `cooling_balance :1072-1074→:1077-1078`**
+  (the "safety net, NOT a transition trigger" comment moved with it).
+- **`get_betadelta.py` (+411 lines) / `run_energy_implicit_phase.py`:** changed materially but the
   `compute_R1_Pb` → `solve_R1`/`bubble_E2P` degeneracy path is intact. Harness monkeypatch targets
   (`get_bubbleParams.solve_R1`/`.bubble_E2P`, reached by module-attribute everywhere) remain valid.
+- **NEW (`main @6bdba8de`, "fixed logging verbosity — much more info driven"):** `trinity/_output/terminal_prints.py`
+  adds `format_state` (`:163`) / `heartbeat` (`:187`) / `format_end_report` (`:205`), logged at **INFO**
+  from the phase runners. `format_state` reports `R2,v2,Eb(erg),Pb,R1` and **renders `nan`/`inf` literally**
+  (`:147`) — so for *this* bug the collapse (`Eb→negative/nan`) is now visible at **INFO**, no DEBUG needed.
+  This corroborates the logging guidance below (§ Bounded runs): run the matrix at INFO, read the
+  structured trajectory, reserve DEBUG for targeted module dives.
 
 **Planning-protocol adoption (new `CLAUDE.md` rule 5 + "size the change first" ladder).** The fix lives
 in a solver/iterative path ⇒ **Risky/iterative**, so it must run the full ladder: gate-first, baseline
@@ -268,12 +277,12 @@ _TBD — filled after S2/S3. Will record: winning variant, the gate table, and w
 ## 8. Key references (re-verified against `main @ 946e860b`, 2026-06-19)
 - Degeneracy math: `trinity/bubble_structure/get_bubbleParams.py` — `get_r1` `:375-402`, `solve_R1`
   `:405-429`, `bubble_E2P` `:198-230` (the `r2+=1e-10`-in-cm dud guard `:224`, the divide `:228`).
-- Call sites (all currently unguarded for `R1→R2`): phase 1a `run_energy_phase.py:95,159,322`;
+- Call sites (all currently unguarded for `R1→R2`): phase 1a `run_energy_phase.py:96,162,325`;
   energy ODE `phase1_energy/energy_phase_ODEs.py:223,358`; phase 1b
   `phase1b_energy_implicit/get_betadelta.py:297(compute_R1_Pb),327,329` + `run_energy_implicit_phase.py:798`;
-  phase 1c `phase1c_transition/run_transition_phase.py:505,747,832`; bubble solve
+  phase 1c `phase1c_transition/run_transition_phase.py:505,750,835`; bubble solve
   `bubble_structure/bubble_luminosity.py:175,181`.
-- Existing energy→momentum transition (family T context): `run_energy_implicit_phase.py:1072-1074`
+- Existing energy→momentum transition (family T context): `run_energy_implicit_phase.py:1077-1078`
   (`cooling_balance`); the principled `Eb`-peak / net-energy event is owned by `docs/dev/transition/TRIGGER_PLAN.md`.
 - `BubbleSolverError` (family F target): `bubble_structure/bubble_luminosity.py:105(class),298,428(except),361,569,584(raise)`.
 - The benign `Rejected. min T` branch: `bubble_luminosity.py:308-311`; `_T_INIT_BOUNDARY=3e4 :51`;
