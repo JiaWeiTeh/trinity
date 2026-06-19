@@ -300,10 +300,14 @@ and `v2` stays ~2000+ km/s.
 - `figures/fig4_energy_driven_discriminator.png` — were they ever energy-driven? (reservoir growth + PdV/Lmech, 5 configs).
 - Data: `data/budget_fail_repro.csv`, `data/budget_small_1e6.csv`, `data/discriminator.csv`.
 
-**Were the failing clouds ever genuinely energy-driven? (measured, 5 configs — `data/discriminator.csv`).**
+**Were the failing clouds ever genuinely energy-driven? (measured, 5 configs — `data/discriminator.csv`,
+regenerated 2026-06-19 from a single stamped batch at commit `d919ff77`, window `t≤1.0 Myr`).**
 The cleanest signal is the **reservoir growth** `Eb_peak/Eb_init` (a pure state variable, fully reliable): the
-healthy controls build the hot-bubble thermal reservoir **×13,600 (`small_1e6`) / ×37,900 (`small_1e5`)**; all
-three failing configs build it **×1.014 (≈1%)**. So the energy-driven reservoir essentially **never forms** in
+healthy controls build the hot-bubble thermal reservoir **≥×39,300 (`small_1e6`) / ≥×94,900 (`small_1e5`)** —
+*lower bounds*, since both are still energy-driven (`Eb` monotonically growing, no peak) at the `t≤1.0 Myr` window
+cap; all three failing configs build it **×1.014 (≈1%)**. (The earlier committed values ×13,600/×37,900 came from
+**truncated** healthy runs stopped at `t≈0.32 Myr`; the clean regen with a fixed window is larger and the finding
+is stronger — failing matches bit-identically.) So the energy-driven reservoir essentially **never forms** in
 the failing band. The nuance: it is *not* "PdV>1 from birth" — every config (failing and healthy) starts at the
 same self-similar handoff `PdV/Lmech ≈ 0.52–0.60`. The fork is the **direction**: healthy clouds decelerate →
 `PdV/Lmech` falls and stays `<1` → the reservoir builds; failing clouds never decelerate → `PdV/Lmech` rises

@@ -183,7 +183,8 @@ p_w^2\propto\rho_a=n_{\rm core}\mu$</span> — set by ambient density and the wi
 <p>This is the question that decides whether including PdV in a transition trigger is physically natural or a
 band-aid. The cleanest signal is the <strong>reservoir growth</strong>
 <span class="nowrap">$E_b^{\rm peak}/E_b^{\rm init}$</span> — a pure state variable, fully reliable. Healthy
-controls build the hot-bubble thermal reservoir by <strong>$\times$13,600–37,900</strong>; all three failing
+controls build the hot-bubble thermal reservoir by <strong>$\ge\times$39,300–94,900</strong> (lower bounds —
+still energy-driven at the $t\le1$ Myr window cap); all three failing
 configs build it by <strong>$\times$1.014 (~1%)</strong>. The energy-driven reservoir essentially
 <strong>never forms</strong>. The nuance: it is <em>not</em> "PdV&gt;1 from birth" — every config starts at the
 same self-similar handoff <span class="nowrap">$\text{PdV}/L_{\rm mech}\approx0.5$</span>. The fork is the

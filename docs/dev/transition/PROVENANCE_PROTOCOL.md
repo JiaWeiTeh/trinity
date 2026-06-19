@@ -59,7 +59,12 @@ Each output dir then contains `provenance.json`, e.g.:
   off the run (the live tree drifts; the protocol pins the commit, not the API).
 
 ## Note on the existing discriminator
-`../failed-large-clouds/data/discriminator.csv` was **regenerated** under this
-contract from the synced HEAD and verified bit-identical to the prior values
-(the fix is no-op pre-collapse; the LSODA fix is numerically inert). It carries
-a provenance header as the worked example.
+`../failed-large-clouds/data/discriminator.csv` was **regenerated** from a single
+stamped batch at commit `d919ff77`, with a `t≤1.0 Myr` window. The **failing**
+configs came back **bit-identical** (`Eb_growth=1.014`) — confirming the fix is
+no-op pre-collapse and the LSODA fix is numerically inert. The **healthy** values
+*grew* (≥×39,300 / ≥×94,900 vs the old ×13,600 / ×37,900): the prior committed
+healthy runs had been **truncated** at `t≈0.32 Myr`, so their numbers were an
+even-lower lower bound. This is exactly the kind of mystery-provenance defect the
+contract prevents going forward. The regenerated CSV carries a provenance header
+(`commit`, `batch`, `t_cap_myr`) as the worked example.

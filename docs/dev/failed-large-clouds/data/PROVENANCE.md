@@ -26,17 +26,21 @@ The shipped fix (`G` volume floor + `F` `Eb<=0` stop + phase-1a coverage) is a
 shell volume is positive, the `Eb<=0` check only fires at the collapse. And the
 later `main` LSODA fix (`60fb3626`) is **numerically inert** (its own commit
 proves a bit-identical bubble solve: `np.array_equal`, max abs diff 0.0, same
-`nfev`). **Verified 2026-06-19:** a fresh `fail_repro` run on the synced latest
-commit reproduces the committed discriminator value **exactly**
-(`PdV/Lmech@step1=0.518`, `Eb_growth=1.0140`). So the *diagnostic* numbers are
-stage-independent; the only thing the older `/tmp` sources lacked was a recorded
-commit.
+`nfev`). **Verified 2026-06-19:** a full regeneration on the synced commit
+`d919ff77` reproduces the **failing** discriminator values **bit-identically**
+(`Eb_growth=1.014`), confirming the diagnostic numbers are stage-independent. The
+**healthy** values *grew* (≥×39,300 / ≥×94,900 vs the prior ×13,600 / ×37,900) —
+not a code-stage effect but a **run-length** one: the prior committed healthy
+runs had been **truncated** at `t≈0.32 Myr`, while the healthy energy phase runs
+far longer (`Eb` still climbing at `t≈1 Myr`). The regen uses a fixed `t≤1.0 Myr`
+window so the metric is reproducible; the healthy figures are lower bounds. This
+truncation defect is exactly what the `transition/` provenance contract prevents.
 
 ## Manifest
 
 | file | what it is | code state | source run (ephemeral) |
 |---|---|---|---|
-| `discriminator.csv` | reservoir-growth + PdV discriminator, 5 configs | **synced HEAD** (regenerated, stamped) | `/tmp/tbase_<commit>/*` |
+| `discriminator.csv` | reservoir-growth + PdV discriminator, 5 configs | **regenerated @ `d919ff77`**, header-stamped, `t≤1.0 Myr` window | one batch `/tmp/disc_frozen_d919ff77/*` |
 | `budget_fail_repro.csv` | energy budget per snapshot (figs 1–2) | final fix (no-op pre-collapse) | `/tmp/flc_fix3/fail_repro` |
 | `budget_small_1e6.csv` | energy budget per snapshot (figs 1–2) | final fix (no-op pre-collapse) | `/tmp/ver/small_1e6` |
 | `verify_extended_fix_all_configs.csv` | final fix verification, all configs | **final fix (HEAD)** | extended-fix batch |
