@@ -42,6 +42,17 @@ check — `solve_R1`→`get_r1` `sqrt(<0)` at an overshot `R2<0`, then the cooli
 is wrapped so any degenerate-collapse exception → `ENERGY_COLLAPSED`. Production diff total: ~93 lines
 across 4 files + `test/test_energy_collapse_guard.py` (6 cases).
 
+**Corrections log (claims revised mid-analysis — do not re-trust the originals).** Each was settled by a
+specific source/measurement, not opinion:
+1. *"The failure is catastrophic cooling"* → **PdV expansion work**, not cooling. Settled by the `dEb/dt`
+   budget decomposition (fig1): `L_cool/Lmech ≈ 0.01`; `PdV/Lmech` runs 0.52→1.56, crossing 1 at the `Eb` peak.
+2. *"Snapshot 0's `Pb` is a fixed seed/placeholder"* → the **genuine Weaver IC**, computed
+   `Pb = bubble_E2P(E0,r0,R1)` (`run_energy_phase.py:97-100`).
+3. *"`Pb0` is bit-identical across the two clouds"* → **≈equal to ~6 sig figs** (`2.135768e7` vs `2.135766e7`);
+   `Pb0 ∝ nCore` and both share `nCore=1e2`, so it is *near*-equal, not bit-identical.
+4. *"The healthy run starts later (a delay)"* → a **plotting artifact** (`reliable_mask` trimmed the `v2`/`Eb`
+   state too); both runs' snap 1 sits at the same elapsed `t−t0 ≈ 3e-5 Myr`. Fixed by plotting state at every snapshot.
+
 **Status (2026-06-19, earlier):** 🟡 DIAGNOSED + REPRODUCED; scope DECIDED — minimal robustness fix only.
 Two independent investigations + a sim-free probe + two live repros agree on the mechanism. Smoke of V3
 (both guards) on `fail_repro`: it stops the divide-by-zero crash but the run then drives `Eb` through zero
@@ -396,9 +407,9 @@ to `docs/dev/transition/` per the maintainer decision. The implementation:
    `EndSimulationDirectly` gate. **Does not touch the `cooling_balance` transition.**
 
 **Gate results:** robustness ✅ (`fail_repro` completes cleanly, code 51); unit ✅ (5/5, incl. the
-bit-identity pin); regression ✅ (`pytest -m "not stress"` 554 passed). **Pending:** full-run bit-identical
-on a healthy config (separate-process diff vs pre-fix `dictionary.jsonl`) + the rest of the failing
-band/threshold sweep (S2 matrix) — by construction no-ops on healthy, confirming empirically.
+bit-identity pin); regression ✅ (`pytest -m "not stress"` 554 passed). **Healthy full-run no-op: ✅ confirmed
+byte-identical** (see the top status block — this earlier "pending" item is now done). **Deferred (optional):**
+the rest of the failing band/threshold sweep (S2 matrix), which by construction no-ops on healthy.
 
 **Why this and not more:** the divide-by-zero is a real correctness bug; G+F make every affected run
 *complete with a clear status* instead of crashing/NaN/grinding — the maximal fix that does **not** require
