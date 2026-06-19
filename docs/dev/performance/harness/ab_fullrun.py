@@ -2,6 +2,14 @@
 # -*- coding: utf-8 -*-
 """P4 full-run A/B: whole-simulation wall time, baseline vs F1 (coarse t_eval).
 
+⚠️⚠️ BUGGED — DO NOT USE. This harness runs BOTH variants in ONE Python process
+(``_run_one`` x2), but trinity carries module-level global state (crash-safe
+snapshot handlers, caches) that LEAKS between ``start_expansion`` calls, so the
+second run is corrupted. On 2026-06-18 this produced a *false* "F1 divergence"
+(t_now 0.005 vs 0.3) that was a process-state artifact, NOT the fix. Use
+``f1_fullrun_equiv.sh`` instead — it runs each variant in a SEPARATE ``run.py``
+process and compares at matched ``t_now``. Kept only as the cautionary example.
+
 This is the REAL "headline" for the F1 resample optimization. P0 showed the
 per-bubble-call speedup is a uniform ~1.4-1.5x across all configs (the 60k
 resample is fixed-size), so the interesting number is the FULL-RUN wall-time
