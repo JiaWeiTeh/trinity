@@ -24,15 +24,28 @@
 > against the numbers **without re-running**; record the exact config + command
 > that produced each artifact.
 
-**Status (2026-06-19):** 🟡 **DIAGNOSED + REPRODUCED; first smoke result in — numeric guard is
-necessary but NOT sufficient.** Two independent investigations + a sim-free probe + two live repros agree
-on the mechanism. **Smoke test of V3 (both guards) on `fail_repro`:** it *does* stop the divide-by-zero
-crash, but the run then drives **`Eb` through zero into NEGATIVE** (`+7.4e8` @ phase-1a end →
-`−9.1e8` in phase 1b → `−1.0e12`), producing a negative bubble energy/pressure and grinding (timed out at
-320 s, never terminated). Trajectory: `data/smoke_V3_fail_repro_trajectory.csv`. **Implication: clamping
-the geometry (V1/V2/V3) only converts a crash into negative-energy garbage — the real fix must detect the
-energy collapse (`Eb→0` / cooling-dominated) and *transition to the momentum phase* (V4) before `Eb`
-crosses zero.** V4 is now the leading candidate; the numeric guard becomes a safety net. **No production
+**Status (2026-06-19):** 🟢 **MINIMAL ROBUSTNESS FIX IMPLEMENTED — failing band now terminates cleanly;
+`pytest` green (554 passed); full-run bit-identical gate on healthy configs in progress.** Shipped G+F
+(below). `fail_repro` (was a phase-1b `ZeroDivisionError`) now **completes** with
+`SimulationEndCode.ENERGY_COLLAPSED (51)` at the same collapse point (`t=3.41e-3`, `Eb=−9.14e8`, `R2=9.73`),
+no traceback / no NaN / no grind, 104 s (`data/fixed_fail_repro_clean_termination.csv`). Production diff:
+47 lines across 4 files (`simulation_end.py` +1 enum, `get_bubbleParams.bubble_E2P` volume floor,
+`run_energy_phase.py` + `run_energy_implicit_phase.py` collapse checks) + `test/test_energy_collapse_guard.py`.
+
+**Status (2026-06-19, earlier):** 🟡 DIAGNOSED + REPRODUCED; scope DECIDED — minimal robustness fix only.
+Two independent investigations + a sim-free probe + two live repros agree on the mechanism. Smoke of V3
+(both guards) on `fail_repro`: it stops the divide-by-zero crash but the run then drives `Eb` through zero
+into NEGATIVE (`+7.4e8 → −9.1e8 → −1.0e12`) and grinds (timed out 320 s; `data/smoke_V3_fail_repro_trajectory.csv`).
+
+**DECISION (maintainer, 2026-06-19): fix the crash *maximally* without touching transition mechanics.**
+Family **T** (the principled `Eb`-peak → momentum handoff) is **DEFERRED** — it requires the physics
+investigation owned by `docs/dev/transition/TRIGGER_PLAN.md` and is future work. This branch ships only the
+**robustness fix**: **G (geometry guard so the divide can never blow up) + F (detect the non-physical
+energy-driven state — non-finite `Pb`/`T` or `Eb`≤0 — and *terminate the run cleanly* with a recorded
+`SimulationEndReason`, instead of crashing / emitting NaN / grinding forever).** It must **not** change
+*when/how* the normal energy→momentum transition fires, and must be **bit-identical on healthy configs**.
+Net effect for the sweep: the `5e9/n1e2` points produce a clean, flagged (collapsed) output instead of a
+dead job — the cloud's later momentum-driven evolution is left for the deferred T work. **No production
 code changed yet.**
 
 ---
@@ -271,8 +284,28 @@ negative. Parallelise cells across subagents; record the exact command + `timeou
   the no-op on a healthy config. Update this status block + the §7 verdict.
 - **S4 — regression.** `pytest` (+ `-m stress`) green; healthy outputs unchanged.
 
-## 7. Verdict
-_TBD — filled after S2/S3. Will record: winning variant, the gate table, and why._
+## 7. Verdict (2026-06-19)
+**Shipped: G (geometry guard) + F (graceful collapse termination).** Family T (momentum handoff) deferred
+to `docs/dev/transition/` per the maintainer decision. The implementation:
+
+1. **G — `bubble_E2P` volume floor** (`get_bubbleParams.py:226-235`): `if (r2³−r1³) <= 0: shell_volume =
+   1e-13·r2³`. Stops the divide-by-zero at its source. **Bit-identical for every physical bubble** (the
+   branch is dead while `vol > 0`) — pinned by `test_bubble_E2P_bit_identical_when_volume_positive`.
+2. **F — collapse → clean stop** in **both** energy phases (`run_energy_phase.py` ~`:313`,
+   `run_energy_implicit_phase.py` ~`:1006`): when `not isfinite(Eb) or Eb <= 0`, set `EndSimulationDirectly`
+   + `SimulationEndReason` + `SimulationEndCode.ENERGY_COLLAPSED` (new, `(51,"energy_collapsed")`, the
+   50–59 "inspection required" band) and `break`. `main.py` then skips 1b/1c/2 via the existing
+   `EndSimulationDirectly` gate. **Does not touch the `cooling_balance` transition.**
+
+**Gate results:** robustness ✅ (`fail_repro` completes cleanly, code 51); unit ✅ (5/5, incl. the
+bit-identity pin); regression ✅ (`pytest -m "not stress"` 554 passed). **Pending:** full-run bit-identical
+on a healthy config (separate-process diff vs pre-fix `dictionary.jsonl`) + the rest of the failing
+band/threshold sweep (S2 matrix) — by construction no-ops on healthy, confirming empirically.
+
+**Why this and not more:** the divide-by-zero is a real correctness bug; G+F make every affected run
+*complete with a clear status* instead of crashing/NaN/grinding — the maximal fix that does **not** require
+the transition-physics investigation. The cloud's momentum-driven continuation past the collapse is the
+deferred T work; until then these points are cleanly flagged `energy_collapsed` for the sweep to filter.
 
 ## 8. Key references (re-verified against `main @ 6bdba8de`, 2026-06-19)
 - Degeneracy math: `trinity/bubble_structure/get_bubbleParams.py` — `get_r1` `:375-402`, `solve_R1`

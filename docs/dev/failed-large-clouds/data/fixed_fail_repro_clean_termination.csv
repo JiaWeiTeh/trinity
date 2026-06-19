@@ -1,0 +1,2 @@
+config,variant,crashed,crash_phase,crash_excpt,end_reason,reached_phase,final_t,final_R2,final_v2,final_Eb,runtime_s,notes
+fail_repro,V0,False,,,Energy-driven bubble collapsed (catastrophic cooling: Eb <= 0),momentum,0.0034132236381263295,9.729881377713864,2159.1122075879866,-914283253.0903319,104.4,
