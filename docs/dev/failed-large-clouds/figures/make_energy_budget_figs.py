@@ -157,12 +157,17 @@ def fig2_compare(df, dh):
     for d, name, color in [(df, "fail_repro (massive, dies)", "#d95f02"),
                            (dh, "small_1e6 (healthy)", "#1b9e77")]:
         m = reliable_mask(d)
-        tt = d["t"][m]  # real time [Myr], log axis (a normalized-linear axis compresses the
-        # early fast evolution into a spurious-looking spike); also shows the massive cloud
-        # collapses ~100x earlier than the healthy one evolves.
-        axA.plot(tt, d["PdV"][m] / d["Lmech"][m], "-", color=color, lw=2.4, label=name)
-        axB.plot(tt, d["v2"][m] * PC_PER_MYR_TO_KMS, "-", color=color, lw=2.4, label=name)
-        axC.plot(tt, d["Eb"][m] / d["Eb"][m].max(), "-", color=color, lw=2.4, label=name)
+        # x = elapsed time SINCE the energy phase began (t - t0), log axis. The two clouds
+        # start phase 1a at very different absolute t (t0 = dt_phase0 ∝ sqrt(M_cluster): the
+        # 5e8 Msun cluster free-streams ~70x longer than the 1e5 one before its energy phase),
+        # so absolute time puts them at different x. Elapsed time anchors both at their energy-
+        # phase birth -- the fair "evolution since the bubble became energy-driven" comparison.
+        # A normalized-linear axis instead compressed the early fast evolution into a fake spike.
+        t0 = d["t"][0]
+        tau = d["t"][m] - t0
+        axA.plot(tau, d["PdV"][m] / d["Lmech"][m], "-", color=color, lw=2.4, label=name)
+        axB.plot(tau, d["v2"][m] * PC_PER_MYR_TO_KMS, "-", color=color, lw=2.4, label=name)
+        axC.plot(tau, d["Eb"][m] / d["Eb"][m].max(), "-", color=color, lw=2.4, label=name)
 
     axA.axhline(1.0, color="k", lw=1.0, ls="--")
     axA.text(0.97, 0.95, "PdV = $L_{mech}$  (energy-driven break-even)", transform=axA.transAxes,
@@ -181,11 +186,12 @@ def fig2_compare(df, dh):
              bbox=dict(boxstyle="round", fc="#f5f5f5", ec="#888"))
 
     axC.set_ylabel("$E_b / E_{b,\\max}$")
-    axC.set_xlabel("time  [Myr]  (log)")
+    axC.set_xlabel("time since energy phase began,  $t - t_0$  [Myr]  (log)")
     axC.axhline(0.0, color="k", lw=0.8)
     axC.grid(alpha=0.25, which="both")
-    axC.text(0.97, 0.5, "massive: $E_b\\to0$ (collapses)", color="#d95f02", fontsize=9.5,
-             transform=axC.transAxes, ha="right")
+    axC.text(0.5, 0.5, "massive collapses after ~$10^{-3}$ Myr;\nhealthy still energy-driven at ~0.3 Myr",
+             color="#444", fontsize=9, transform=axC.transAxes, ha="center",
+             bbox=dict(boxstyle="round", fc="#f5f5f5", ec="#888"))
 
     fig.tight_layout()
     p = os.path.join(FIG, "fig2_healthy_vs_failing.png")

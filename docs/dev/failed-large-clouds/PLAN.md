@@ -257,10 +257,18 @@ fast free-streaming→Weaver relaxation (first few steps) these differ, so the p
 `dEb/dt`. Concretely `small_1e6` reads `PdV/Lmech>1` at snaps 2–4 while `Eb` is *actually growing* there — a proxy
 artifact, **this is the green "spike."** The figures plot only where the proxy reconstructs `dEb/dt` (data-driven:
 `sign(Ed)==sign(forward-diff dEb/dt)`, excluding the snap-0 IC instant); `fail_repro` reliable from snap 1,
-`small_1e6` from snap 5. **fig2 uses a log-time axis** so the genuine early fast evolution isn't compressed into a
-spurious-looking spike (and it shows the massive cloud collapses ~100× earlier than the healthy one evolves).
-Conclusion unchanged: self-consistent `PdV/Lmech` crosses 1 for the failing band (real max ≈1.56), stays ≤0.95
-(declining) for healthy.
+`small_1e6` from snap 5. **fig2 x-axis = elapsed time since the energy phase began (`t − t0`), log scale** — so the
+genuine early fast evolution isn't compressed into a fake spike, AND both clouds anchor at their energy-phase birth
+(see next note on why their absolute `t0` differ ~70×). Conclusion unchanged: self-consistent `PdV/Lmech` crosses 1
+for the failing band (real max ≈1.56), stays ≤0.95 (declining) for healthy.
+
+**Why the two clouds enter phase 1a at very different absolute `t0` (verified, not assumed).** `tSF=0` (logged) so
+`t0 = dt_phase0`, the free-streaming duration `= √(3·Ṁ/(4π·ρ_a·v0³))` (`get_InitPhaseParam.py:151`). With `ρ_a`
+(same `nCore=1e2`) and `v0=3739 pc/Myr` (same — wind terminal velocity `2L_w/ṗ_w`, mass-independent) equal, only
+`Ṁ` differs, and `Ṁ ∝ M_cluster` (logged `Ṁ_wind`: 1.451 vs 2.901e-4 Msun/yr = ratio **5000** = `M_cluster` ratio).
+So `dt_phase0 ∝ √M_cluster` and `t0` ratio = √5000 = **70.71** (logged `t0`: 1.383e-3 / 1.956e-5 = 70.71 ✓). The
+5e8 M⊙ cluster free-streams ~70× longer before its energy phase begins, then collapses fast — hence the elapsed-time
+axis for a fair comparison.
 
 **Decomposition is faithful (validated):** the reconstructed `Ed = Lmech − L_cool − PdV − L_leak` matches a
 finite-difference `dEb/dt` over the physical snapshots with **median ratio 1.00** (sign agreement 48/52).
@@ -271,7 +279,7 @@ and `v2` stays ~2000+ km/s.
 
 **Figures** (`figures/make_energy_budget_figs.py`, reproducible from the committed CSVs, no re-run needed):
 - `figures/fig1_dEbdt_budget.png` — the budget: PdV ≫ L_cool, PdV crosses Lmech (the finding).
-- `figures/fig2_healthy_vs_failing.png` — PdV/Lmech, v2, Eb vs **log time** for failing vs healthy.
+- `figures/fig2_healthy_vs_failing.png` — PdV/Lmech, v2, Eb vs **elapsed energy-phase time `t−t0` (log)** for failing vs healthy.
 - `figures/fig3_bug_and_fix.png` — Eb→0 collapses R1→R2 (shell vol→0 → 1/0 → NaN); old crash vs new code-51 stop.
 - Data: `data/budget_fail_repro.csv`, `data/budget_small_1e6.csv` (per-snapshot t,Eb,R1,R2,v2,Pb,Lmech,Lcool,Lleak).
 
