@@ -1,0 +1,66 @@
+VERIFICATION FAILURE: the real Helix point (fail_helix) STILL CRASHES under the fix
+====================================================================================
+
+Date: 2026-06-19. Code: /home/user/trinity @ e4883ac2 (the shipped energy-collapse
+fix, HEAD of bugfix/failed-large-clouds). numpy 1.26.4.
+
+Config (harness params/fail_helix.param) -- the REAL Helix failing point:
+    sfe 0.05   mCloud 5e9   nCore 1e2   PISM 0   nISM 0.1   (densPL alpha 0)
+
+Command:
+    cd /home/user/trinity/docs/dev/failed-large-clouds/harness && \
+    timeout 600 python run_variant.py --variant V0 --param params/fail_helix.param \
+      --out /tmp/ver/fail_helix --csv /tmp/ver/fail_helix.csv
+
+Result (REPRODUCED TWICE, deterministic):
+    crashed=True   reached=1a
+    ValueError: The function value at x=0.0 is NaN; solver cannot continue.
+    runtime ~70-78 s
+    NO "Simulation Complete" line in trinity.log.
+    NO SimulationEndCode 51.
+
+Key log lines (/tmp/ver/fail_helix/trinity.log):
+    | INFO  | ----- PHASE 1a: Energy-driven phase (constant cooling) -----
+    | INFO  | run_energy_phase | Switching to no approximation
+    | ERROR | get_bubbleParams | R1 root finding failed on [0, R2]:
+              R2=-1.548644e+02, Eb=-4.412352e+31, Lmech_total=5.070535e+12,
+              v_mech_total=3.739310e+03
+    | INFO  | Emergency flush: saving 3 pending snapshot(s)...
+    <traceback: ValueError NaN at x=0.0 from scipy.optimize.brentq>
+
+Mechanism (why the shipped guard does NOT catch this case):
+    Phase 1a integrates with scipy.integrate.solve_ivp(RK45). The ODE derivative
+    function (energy_phase_ODEs.get_ODE_Edot_pure, line 358) calls
+    get_bubbleParams.solve_R1 -> brentq(get_r1, 0, R2). During catastrophic cooling
+    the RK45 solver explores a TRIAL state with Eb deeply negative AND R2 negative
+    (R2=-154.86, Eb=-4.41e31). In get_r1 (get_bubbleParams.py:408)
+        equation = sqrt( Lmech/v/Eb * (r2**3 - r1**3) ) - r1
+    the argument goes negative -> sqrt -> NaN -> brentq raises ValueError at x=0.0.
+
+    The fix's Eb<=0 collapse guard (run_energy_phase.py:320) sits AFTER solve_ivp
+    returns, checking the COMMITTED post-step Eb. The exception is raised INSIDE
+    solve_ivp (during a trial substep) and propagates out before any post-step
+    guard runs, so the guard never fires. The bubble_E2P shell-volume floor does
+    not help either: the crash is in solve_R1/get_r1, a DIFFERENT function with no
+    floor.
+
+    The last COMMITTED snapshot (dictionary.jsonl, 53 snaps) still shows a positive
+    Eb=4.4657e+06 with R2=7.0072, R1=7.0061 (R2-R1=0.0011, shell on the brink) in
+    phase 'energy'. The collapse-to-negative happens on the next, uncommitted step.
+
+This DIRECTLY CONTRADICTS the e4883ac2 commit message, which claims:
+    "Failing config now completes with code 51 at the same collapse point instead
+     of crashing. ... (phase 1a on Helix ...)"
+
+What the fix DOES cover (verified): fail_pism6 (sfe0.1, PISM1e6) and fail_repro
+(sfe0.1, PISM1e4) reach phase 1b (run_energy_implicit_phase) where the collapse
+is committed BETWEEN steps, so the post-step Eb<=0 guard there fires and the run
+ends cleanly with ENERGY_COLLAPSED (code 51). The prior session verified fail_repro
+(a 1b-collapse point) and generalized to "Helix fixed" -- but the real Helix point
+(PISM=0, sfe=0.05) collapses inside the phase-1a ODE and is NOT caught.
+
+Suggested follow-up (NOT done here -- production code must not be touched in this
+verification pass): guard the catastrophic state INSIDE the phase-1a ODE path
+(e.g. floor/clamp in get_r1 or solve_R1 when Eb<=0 or R2<=0, or add a solve_ivp
+terminal event on Eb crossing 0) so the 1a Helix collapse terminates cleanly with
+code 51 like the 1b path does.

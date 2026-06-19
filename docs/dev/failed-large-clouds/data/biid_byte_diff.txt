@@ -1,0 +1,64 @@
+TRUE byte-diff: pre-fix vs fixed dictionary.jsonl on a healthy cloud (small_1e5)
+================================================================================
+
+Goal
+----
+Empirically confirm the construction proof: on a healthy cloud the energy-collapse
+fix (commit e4883ac2) is BIT-IDENTICAL to the pre-fix code (the only code changes
+are non-taken branches whose bodies never run when Eb stays > 0 and R1 < R2).
+
+Setup
+-----
+- pre-fix code : git worktree /tmp/trinity_prefix @ be96fa16 (no shell_volume floor,
+                 no SimulationEndCode.ENERGY_COLLAPSED), installed into an isolated
+                 venv WITHOUT system site-packages:
+                     python -m venv /tmp/venv_base
+                     /tmp/venv_base/bin/pip install -e /tmp/trinity_prefix   # numpy 1.26.4
+- fixed code   : /home/user/trinity @ e4883ac2 (the HEAD bugfix), system python,
+                 numpy 1.26.4.
+- config       : harness param small_1e5.param (sfe0.1, mCloud1e5, nCore1e2, PISM1e4),
+                 byte-identical between the two trees (diff: only path2output, overridden
+                 by --out). Healthy control; runs through phases 1a -> 1b.
+
+Isolation note
+--------------
+The editable .pth in the venv correctly contains ONLY /tmp/trinity_prefix; the
+apparent "isolation failure" when run from /home/user/trinity was a CWD artifact
+(the empty-string sys.path[0] picks up ./trinity). Run from a NEUTRAL cwd (/tmp),
+isolation is correct:
+    cd /tmp && /tmp/venv_base/bin/python -c "import trinity; print(trinity.__file__)"
+    -> /tmp/trinity_prefix/trinity/__init__.py        (pre-fix)
+    bubble_E2P has shell_volume guard: False
+    has SimulationEndCode.ENERGY_COLLAPSED: False
+
+Commands
+--------
+# pre-fix (isolated venv, neutral cwd):
+cd /tmp && timeout 600 /tmp/venv_base/bin/python \
+  /tmp/trinity_prefix/docs/dev/failed-large-clouds/harness/run_variant.py \
+  --variant V0 --param /tmp/trinity_prefix/.../params/small_1e5.param \
+  --out /tmp/ver/prefix_small_1e5 --csv /tmp/ver/prefix_small_1e5.csv
+# fixed (system python):
+cd /home/user/trinity/docs/dev/failed-large-clouds/harness && timeout 600 python \
+  run_variant.py --variant V0 --param params/small_1e5.param \
+  --out /tmp/ver/small_1e5 --csv /tmp/ver/small_1e5.csv
+
+Both hit the 600s wall-clock timeout (stop_t does not bound wall-time), each
+reaching phase 1b. crashed=False for both.
+
+Result
+------
+file A (pre-fix) : /tmp/ver/prefix_small_1e5/dictionary.jsonl   (173 lines)
+file B (fixed)   : /tmp/ver/small_1e5/dictionary.jsonl          (170 lines)
+common prefix length: 170 lines
+RESULT: the common 170-line prefix is BYTE-IDENTICAL (line-by-line, raw bytes).
+
+The pre-fix run produced 3 more snapshots only because it advanced slightly further
+before the timeout cut it off; every snapshot they share is identical to the byte.
+
+Verdict
+-------
+PASS. On a healthy cloud the fix is bit-identical to pre-fix, empirically confirming
+the construction proof (the two new guards never executed their bodies; see
+verify_noop_and_band.csv: guards_fired=False, min_Eb>0, min(R2-R1)>0 for the
+healthy controls small_1e5 and small_1e6).

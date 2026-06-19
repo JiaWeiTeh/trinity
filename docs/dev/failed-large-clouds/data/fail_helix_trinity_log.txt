@@ -1,0 +1,36 @@
+2026-06-19 12:56:08 | INFO | root | Log file: /tmp/ver/fail_helix/trinity.log
+2026-06-19 12:56:08 | INFO | trinity.main | ================ TRINITY Simulation Starting ===============
+2026-06-19 12:56:08 | INFO | trinity.main | Start time: 2026-06-19 12:56:08.968049
+2026-06-19 12:56:08 | INFO | trinity._output.terminal_prints | 
+--------------------------------------------------
+2026-06-19 12:56:08.968049: Initialising bubble
+--------------------------------------------------
+2026-06-19 12:56:08 | INFO | trinity.main | Step 1: Initializing cloud properties...
+2026-06-19 12:56:08 | INFO | trinity.phase0_init.get_InitCloudProp | Power-law cloud (alpha=0.0): rCloud=689.335 pc, nEdge=1.00e+02 cm^-3
+2026-06-19 12:56:08 | INFO | trinity.main | Step 2: Loading SPS stellar feedback data...
+2026-06-19 12:56:08 | INFO | trinity.sps.read_sps | Reading SPS data with f_mass = 250.0
+2026-06-19 12:56:08 | INFO | trinity.sps.read_sps | SPS data processed: 1001 time points, t_max=99.91 Myr
+2026-06-19 12:56:08 | INFO | trinity.main | SPS data loaded and interpolation functions created
+2026-06-19 12:56:08 | INFO | trinity.main | Step 3: Loading CIE cooling curve...
+2026-06-19 12:56:08 | INFO | trinity.main | Loaded CIE cooling curve (T range: 10^4.0 - 10^10.0 K)
+2026-06-19 12:56:08 | INFO | trinity.main | ===== Initialization complete. Starting bubble expansion simulation... =====
+2026-06-19 12:56:08 | INFO | trinity.main | Computing initial phase parameters (free-streaming -> Weaver transition)...
+2026-06-19 12:56:08 | INFO | trinity.phase0_init.get_InitPhaseParam | Initial Weaver phase values: t0=0.000978 Myr, r0=3.657302e+00 pc, v0=3.739241e+03 pc/Myr, E0=2.254237e+09, T0=4.09e+07 K
+2026-06-19 12:56:08 | INFO | trinity.phase0_init.get_InitPhaseParam | Feedback at SF onset (tSF=0.0000 Myr): log Q=55.130 [1/s], Lbol=8.629e+44 erg/s, Lmech_wind=3.054e+42 erg/s, Mdot_wind=7.253e-01 Msun/yr, E0=4.285e+52 erg
+2026-06-19 12:56:08 | INFO | trinity.main | ----- PHASE 1a: Energy-driven phase (constant cooling) -----
+2026-06-19 12:56:08 | INFO | trinity._output.terminal_prints | 
+--------------------------------------------------
+Entering energy driven phase (constant cooling)
+--------------------------------------------------
+2026-06-19 12:56:08 | INFO | trinity.phase1_energy.run_energy_phase | Starting energy phase with adaptive solver
+2026-06-19 12:56:08 | INFO | trinity.phase1_energy.run_energy_phase | Energy phase initialization:
+2026-06-19 12:56:08 | INFO | trinity.phase1_energy.run_energy_phase |   Inner discontinuity (R1): 3.178806e+00 pc
+2026-06-19 12:56:08 | INFO | trinity.phase1_energy.run_energy_phase |   Initial shell mass: 7.093907e+02 Msun
+2026-06-19 12:56:08 | INFO | trinity.phase1_energy.run_energy_phase |   Initial bubble pressure: 1.000963e+11 K cm⁻³ (P/k_B)
+2026-06-19 12:56:08 | INFO | trinity.phase1_energy.run_energy_phase | State [energy phase entry]:
+  t = 0.000978 Myr          R2 = 3.6573 pc            v2 = 3656.2004 km/s
+  Eb = 4.2855e+52 erg       Pb = 1.0010e+11 K/cm3     T0 = 4.0915e+07 K
+  R1 = 3.1788 pc            Mshell = 0.0000e+00 Msun
+2026-06-19 12:56:10 | INFO | trinity.phase1_energy.run_energy_phase | Switching to no approximation
+2026-06-19 12:57:27 | ERROR | trinity.bubble_structure.get_bubbleParams | R1 root finding failed on [0, R2]: R2=-1.548644e+02, Eb=-4.412352e+31, Lmech_total=5.070535e+12, v_mech_total=3.739310e+03
+2026-06-19 12:57:27 | INFO | trinity._input.dictionary | Emergency flush: saving 3 pending snapshot(s)...

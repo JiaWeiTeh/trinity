@@ -1,0 +1,5 @@
+config,run_mode,crashed,end_reason,n_snapshots,min_Eb,min_R2_minus_R1,guards_fired,runtime_s
+small_1e5,fixed,False,timeout_600s (reached phase 1b; no termination triggered),170,570.281941560688,0.0030262750481474428,False,598.9
+small_1e6,fixed,False,timeout_600s (reached phase 1b; no termination triggered),171,18033.898437948134,0.009569921852795774,False,599.1
+fail_helix,fixed,True,"CRASH: ValueError NaN in solve_R1 (phase 1a), code path uncaught by guard",53,4465666.204892227,0.0010975760841738236,False,78.4
+fail_pism6,fixed,False,"energy_collapsed (ENERGY_COLLAPSED code 51, clean termination in phase 1b)",53,-914283253.0903319,0.0,True,115.7
