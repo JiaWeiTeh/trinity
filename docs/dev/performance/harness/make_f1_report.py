@@ -36,6 +36,7 @@ for the un-integrated tail, and <i>those bytes</i> vary run-to-run … Consuming
 whole bubble solve non-deterministic."</blockquote>
 <p>So <code>fsolve</code> could converge on a ~0 <i>garbage</i> residual, and the temperature array could grow a
 random tail that intermittently tripped the monotonicity guard.</p>
+__FIG_GARBAGE__
 
 <h3>1.2 The origin of the 60&nbsp;000-point grid <span class="meta">(the crux of the whole arc)</span></h3>
 <p>The ~60k grid was <b>not a free design choice</b> — it was <i>the output grid <code>odeint</code> was asked to
@@ -264,15 +265,25 @@ migration decoupled accuracy from sampling) → <b>removed</b> from the residual
 study proved the coarse sample reproduces the physics. Correctness first, then speed — and the speed was hiding
 in plain sight in a number that had outlived its original reason for being.</p>
 
-<p class="meta" style="margin-top:3rem">Sources: <code>docs/dev/performance/{RESAMPLE_PLAN,HOTPATH_PLAN,P3_PRODUCTION_PATCH,F1_SUMMARY}.md</code>,
+<p class="meta" style="margin-top:3rem">Sources: the canonical history
+<code>docs/dev/performance/BUBBLE_LUMINOSITY_PERFORMANCE.md</code> (+ <code>F1_SUMMARY.md</code>,
+<code>HOTPATH_PLAN.md</code>), the archived F1 planning + patch docs
+<code>docs/dev/archive/bubble/{RESAMPLE_PLAN,P3_PRODUCTION_PATCH}.md</code>,
 <code>docs/dev/archive/bubble/{integrator-robustness,conduction-convergence}.md</code>,
-<code>docs/dev/performance/data/*.csv</code>. Figures: <code>make_f1_figures.py</code>. Reproduce this report:
+<code>docs/dev/performance/data/*.csv</code>. Figures: <code>make_f1_figures.py</code> +
+<code>make_odeint_garbage_figure.py</code>. Reproduce this report:
 <code>python docs/dev/performance/harness/make_f1_report.py</code>.</p>
 
 </body></html>
 """
 
 HTML = HTML.replace("<!--PREV_WORK-->", PREV_WORK_HTML)
+HTML = HTML.replace("__FIG_GARBAGE__", img("odeint_uninitialised_memory.png",
+                    "Figure 1-1. What \"uninitialised memory\" and \"consuming garbage\" mean. odeint's "
+                    "un-integrated tail keeps stale RAM bytes that vary run-to-run; the old code consumed them "
+                    "(divide-by-zero on the zero tail, a random monotonicity trip), so run.py crashed ~1-in-3. "
+                    "The solve_ivp rewrite checks the success flag and samples the continuous solution, never "
+                    "reading an un-integrated region → byte-identical runs."))
 HTML = HTML.replace("__FIG_VARIANT__", img("f1_variant_tradeoff.png",
                     "Figure F1-1. The six options: every coarse grid beats the 60k baseline ~1.5x (speed flat across npts) and accuracy is npts-insensitive — so M500 is the conservative robustness pick."))
 HTML = HTML.replace("__FIG_PERCALL__", img("f1_percall.png",

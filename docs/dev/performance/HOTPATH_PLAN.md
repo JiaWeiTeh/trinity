@@ -144,19 +144,21 @@ The ODE RHS *does* run a cheaper `solve_R1` brentq every stage (`energy_phase_OD
 `F1_SUMMARY.md`; illustrated `F1_REPORT.html`; archived plan/patch `archive/bubble/`.** The
 mechanism + cost below are retained as accurate context.
 
-### Mechanism (verified against source)
-`get_bubbleproperties_pure` solves `dMdt` with `scipy.optimize.fsolve`
-(`bubble_luminosity.py:461`). Each fsolve iteration calls `_get_velocity_residuals`
-(`:875`), which:
-1. rebuilds the ~60 000-point grid (`_create_radius_grid`, `:894`, renamed
-   2026-06-18 from the misleading `_create_legacy_radius_grid`; three
-   `np.logspace(… int(2e4))` chunks ≈ 6e4 before `_clean_radius_grid`; a captured
-   call measured ≈59,992 — exact count varies with cleaning),
-2. runs a full `solve_ivp(LSODA, dense_output=True)` (`_solve_bubble_structure`, `:900`),
-3. **resamples all ~60 000 points** via `sol.sol(r_array)` (`:157`),
+### Mechanism (the PRE-F1 residual — what F1 removed; anchor by function name)
+`get_bubbleproperties_pure` solves `dMdt` with `scipy.optimize.fsolve`. **Before F1**, each
+fsolve iteration called `_get_velocity_residuals`, which:
+1. rebuilt the ~60 000-point grid (`_create_radius_grid`; three `np.logspace(… int(2e4))`
+   chunks ≈ 6e4 before `_clean_radius_grid`; a captured call measured ≈59,992 — exact count
+   varies with cleaning),
+2. ran a full `solve_ivp(LSODA, dense_output=True)` (`_solve_bubble_structure`),
+3. **resampled all ~60 000 points** via `sol.sol(r_array)`,
 
-…then the residual it returns (`:908-923`) consumes exactly **four reductions**:
-`v_array[-1]`, `v_array[0]`, `np.min(T_array)`, `operations.monotonic(T_array)`.
+…then returned a residual that consumes exactly **four reductions**: `v_array[-1]`,
+`v_array[0]`, `np.min(T_array)`, `operations.monotonic(T_array)`. **F1 replaced steps 1–3 with
+a single `solve_ivp` on a coarse `t_eval` (`_RESIDUAL_NPTS = 500`)**; the residual still reads
+those same four numbers. (Volatile `bubble_luminosity.py:NNN` line numbers were dropped from
+this doc on 2026-06-19 — the logical-section reorder moved every def; anchor by function name
+and grep instead.)
 
 ### Cost (measured — microbenchmark, trivial RHS; re-measure on the real RHS in P0)
 | step | cost | note |
@@ -225,7 +227,7 @@ it on a Tavg / L_total / mBubble convergence sweep (same method as Era D / condu
 | # | Win | Where | What's wasted | Risk |
 |---|---|---|---|---|
 | **F2.1** ✅ | **DEBUG was the shipped default with file output.** `log_level DEBUG` + `log_file True`; none of the 7 example params overrode it. Both root logger and `FileHandler` set to the param level (`logging_setup.py:207,258`). | `default.param` (now `INFO`); `registry.py:297` (source of truth, changed). | Per-RHS-stage string-format + disk I/O — but **measured cheap** (see Outcome). | **SHIPPED:** `registry.py` default `DEBUG→INFO`, `default.param` regenerated. Value is a ~340× smaller log, **not** speed (A/B showed no wall-time win). Bit-identical numerics. |
-| **F2.2** | **`grav_phi` + `grav_force_m` computed then discarded.** | `bubble_luminosity.py:979-1000`; sole caller `:746` `m_cumulative, _, _ = …` (grep-confirmed no other caller) | A full-array `scipy.integrate.simpson` + a 60k-element divide, every final structure solve, for nothing. | Delete the two computations; trim return to `m_cumulative`. Bit-identical (`m_cumulative` unchanged). |
+| **F2.2** | **`grav_phi` + `grav_force_m` computed then discarded.** | `_get_mass_and_grav` (grav block); sole caller in `_bubble_luminosity` (`m_cumulative, _, _ = …`, grep-confirmed no other caller) | A full-array `scipy.integrate.simpson` + a 60k-element divide, every final structure solve, for nothing. | Delete the two computations; trim return to `m_cumulative`. Bit-identical (`m_cumulative` unchanged). |
 | **F2.3** | **`get_dudt` recomputes run-constants every call** (innermost scalar loop). | `net_coolingcurve.py:94,96,103` | `nonCIE_Tcutoff`/`CIE_Tcutoff`/`min(temp)` are boolean-mask+`max`/`min` over fixed grids on every call; `CIE_Tcutoff`/`min(temp)` are true run-constants, the non-CIE one changes only at the cube-rebuild cadence. | Precompute once (cache on the cube / in `params`, refresh only when `get_coolingStructure` runs). Bit-identical. |
 | **F2.4** | **`get_dudt` computes `Lambda_CIE` unconditionally.** | `net_coolingcurve.py:89` | A full `CIE.get_Lambda` (interp1d eval + 2 transcendentals) discarded on the non-CIE and interpolation branches (the common conduction-zone case). | Move it inside the `elif … >= CIE_Tcutoff` branch. Bit-identical. |
 | ~~**F2.5**~~ ⛔ **DROPPED — not a free win** | **SPS `pdotdot_total` finite-difference.** My earlier rationale ("never consumed by the energy/transition RHS") was **wrong**. | `update_feedback.py:185` | **It IS consumed by an integrated RHS:** the phase-1b implicit `Ed` via the A12 coefficient `1.5·pdotdot_total/pdot_total` (`run_energy_implicit_phase.py:854`, `get_betadelta.py:411/520`). | Removing it unconditionally is **NOT** bit-identical (changes the phase-1b trajectory). A *phase-gated lazy eval* (skip the 2 evals only in phase 1/1c/2) is possible but is **F5-class** work, not a free win. **Excluded from this branch.** |
@@ -267,7 +269,8 @@ context credited as the warning fix — their §3 shows `mxstep` silenced a
 *different* warning (`ODEintWarning`), not the `t+h=t` overflow flood.
 
 **Still in THIS doc's scope (NOT covered by the shell plan), low value:** the
-**bubble** cooling integrands `bubble_luminosity.py:612,699` square a code-unit
+**bubble** cooling integrands (`_bubble_luminosity`, the CIE-bubble and intermediate-region
+trapezoid integrands) square a code-unit
 `n_bubble` (~1e53–1e55) → `n²`~1e106–1e114. There is **no `+n²` ODE term there**
 (one-shot trapezoid integrands), so **no pole and no overflow — genuinely
 precision-only**, and the consumed result is unaffected. Optional consistency fix
@@ -284,8 +287,8 @@ change. `net_coolingcurve.py:127,150` already does it right; the `exp(-tau)` cla
   `metadata.json` write on the first flush (`:821`). No per-step open/close.
 - **SPS/SB99 interpolators are built once** at `main.py:147` and cached; never
   rebuilt in a loop.
-- **The cooling `.interp` calls in the luminosity integrals** (`bubble_luminosity.py:650-694`)
-  are already **vectorized** `RegularGridInterpolator` calls over the whole array
+- **The cooling `.interp` calls in the luminosity integrals** (the conduction/intermediate
+  blocks of `_bubble_luminosity`) are already **vectorized** `RegularGridInterpolator` calls over the whole array
   — not Python loops.
 - **`_solve_grid` (the non-default `legacy` path) already caches the winning
   point's `props`** (`get_betadelta.py:~1017`) and early-exits — no double-solve
