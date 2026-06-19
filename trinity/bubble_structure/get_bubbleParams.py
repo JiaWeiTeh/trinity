@@ -225,7 +225,15 @@ def bubble_E2P(Eb, r2, r1, gamma):
     
     # pressure, see https://www.imprs-hd.mpg.de/399417/thesis_Rahner.pdf
     # pg71 Eq 6.
-    Pb = (gamma - 1) * Eb / (r2**3 - r1**3) / (4 * np.pi / 3)
+    shell_volume = r2**3 - r1**3
+    if shell_volume <= 0:
+        # Catastrophic-cooling degeneracy: Eb collapses, the wind shock R1 -> R2,
+        # so (r2**3 - r1**3) underflows to 0 in float64 and the divide blows up
+        # (-> inf/ZeroDivisionError -> Eb=nan). Floor it so the divide stays finite;
+        # the energy phases detect the collapse (Eb<=0) and stop cleanly. Bit-identical
+        # on every physical bubble (shell_volume > 0). See docs/dev/failed-large-clouds.
+        shell_volume = 1e-13 * r2**3
+    Pb = (gamma - 1) * Eb / shell_volume / (4 * np.pi / 3)
     # return back in au
     return Pb * cvt.Pb_cgs2au
 
@@ -410,11 +418,19 @@ def solve_R1(R2, Eb, Lmech_total, v_mech_total):
     sqrt(Lmech/v/Eb * R2**3) > 0 at r1 = 0 and -R2 < 0 at r1 = R2, so the
     bracket always contains the root (the former [1e-3*R2, R2] bracket
     missed roots below 1e-3*R2 and raised). Lmech_total <= 0 means no wind
-    ram pressure, hence no termination shock: returns 0.0.
+    ram pressure, hence no termination shock: returns 0.0. A non-physical
+    R2 <= 0 (a transient ODE-integrator excursion during the energy-driven
+    Eb -> 0 collapse) likewise has no shock: returns 0.0, so the energy-phase
+    RHS stays finite and the integrator's error control rejects the bad step
+    instead of get_r1 hitting sqrt(<0) -> NaN -> brentq raising and crashing
+    the run (see docs/dev/failed-large-clouds).
 
-    Raises on root-finding failure instead of fabricating a value.
+    Raises on root-finding failure for a physical bubble instead of
+    fabricating a value.
     """
     if Lmech_total <= 0:
+        return 0.0
+    if not (R2 > 0):  # R2 <= 0 or NaN: non-physical radius, no wind shock
         return 0.0
     try:
         return scipy.optimize.brentq(

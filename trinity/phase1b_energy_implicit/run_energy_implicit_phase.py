@@ -999,6 +999,25 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         params['Eb'].value = Eb
         params['T0'].value = T0
 
+        # Catastrophic-cooling collapse: Eb has fallen through zero (cooling
+        # outruns the wind). The energy-driven model is invalid past this point
+        # (it would drive R1->R2 and divide-by-zero in compute_R1_Pb). Stop the
+        # run cleanly; momentum-driven continuation is future work (docs/dev/
+        # transition). See docs/dev/failed-large-clouds.
+        if not np.isfinite(Eb) or Eb <= 0:
+            params['EndSimulationDirectly'].value = True
+            params['SimulationEndReason'].value = (
+                "Energy-driven bubble collapsed: Eb fell to <= 0 "
+                "(energy-driven phase no longer self-sustains)"
+            )
+            params['SimulationEndCode'].value = SimulationEndCode.ENERGY_COLLAPSED.code
+            termination_reason = "energy_collapsed"
+            logger.warning(
+                f"Energy-driven bubble collapsed at t={t_now:.6e} Myr "
+                f"(Eb={Eb:.3e}, R2={R2:.4f} pc): stopping run cleanly."
+            )
+            break
+
         # Throttled progress heartbeat (long phase, ~273 segments). Outer loop
         # only — never inside the solvers; self-throttles to HEARTBEAT_EVERY.
         terminal_prints.heartbeat(params, "1b implicit", segment_count, tmin, tmax)

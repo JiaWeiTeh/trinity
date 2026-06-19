@@ -35,6 +35,7 @@ import trinity._functions.operations as operations
 from trinity._input.dictionary import updateDict
 import trinity._functions.unit_conversions as cvt
 import trinity._output.terminal_prints as terminal_prints
+from trinity._output.simulation_end import SimulationEndCode
 from trinity.sps.update_feedback import get_current_sps_feedback
 
 # Import centralized event functions
@@ -159,7 +160,27 @@ def run_energy(params):
         # =============================================================================
         # 3. Compute bubble structure (always, not conditional on loop_count)
         # =============================================================================
-        bubble_data = bubble_luminosity.get_bubbleproperties_pure(params)
+        # In the energy-driven Eb -> 0 collapse the bubble degenerates:
+        # the cooling table goes out of bounds, solve_R1 cannot bracket, etc. Any
+        # such failure here means the energy-driven model has broken down -- stop
+        # the run cleanly rather than crash with the bare exception. The momentum-
+        # driven continuation is future work (docs/dev/transition). See
+        # docs/dev/failed-large-clouds.
+        try:
+            bubble_data = bubble_luminosity.get_bubbleproperties_pure(params)
+        except (ValueError, RuntimeError, bubble_luminosity.BubbleSolverError) as e:
+            params['EndSimulationDirectly'].value = True
+            params['SimulationEndReason'].value = (
+                "Energy-driven bubble collapsed: bubble solve degenerate as Eb -> 0 "
+                "(energy-driven phase no longer self-sustains)"
+            )
+            params['SimulationEndCode'].value = SimulationEndCode.ENERGY_COLLAPSED.code
+            logger.warning(
+                f"Energy-driven bubble collapsed at t={t_now:.6e} Myr "
+                f"(Eb={Eb:.3e}, R2={R2:.4f} pc; bubble solve failed: "
+                f"{type(e).__name__}: {e}): stopping run cleanly."
+            )
+            break
         updateDict(params, bubble_data)
 
         T0 = bubble_data.bubble_T_r_Tb
@@ -309,6 +330,25 @@ def run_energy(params):
         params['R2'].value = R2
         params['v2'].value = v2
         params['Eb'].value = Eb
+
+        # Catastrophic-cooling collapse: a massive/dense cloud can radiate the
+        # bubble's thermal energy away faster than the wind resupplies it, so Eb
+        # falls through zero. The energy-driven model is then invalid (it would
+        # otherwise drive R1->R2 and divide-by-zero -> Eb=nan, crashing the run).
+        # Stop cleanly here; the momentum-driven continuation is future work
+        # (docs/dev/transition). See docs/dev/failed-large-clouds.
+        if not np.isfinite(Eb) or Eb <= 0:
+            params['EndSimulationDirectly'].value = True
+            params['SimulationEndReason'].value = (
+                "Energy-driven bubble collapsed: Eb fell to <= 0 "
+                "(energy-driven phase no longer self-sustains)"
+            )
+            params['SimulationEndCode'].value = SimulationEndCode.ENERGY_COLLAPSED.code
+            logger.warning(
+                f"Energy-driven bubble collapsed at t={t_now:.6e} Myr "
+                f"(Eb={Eb:.3e}, R2={R2:.4f} pc): stopping run cleanly."
+            )
+            break
 
         loop_count += 1
 

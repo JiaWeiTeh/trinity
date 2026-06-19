@@ -1,0 +1,4 @@
+51:2026-06-19 12:58:05 | WARNING | trinity.phase1b_energy_implicit.run_energy_implicit_phase | Energy-driven bubble collapsed at t=3.413224e-03 Myr (Eb=-9.143e+08, R2=9.7299 pc): stopping run cleanly.
+52:2026-06-19 12:58:06 | INFO | trinity.phase1b_energy_implicit.run_energy_implicit_phase | Implicit phase completed: energy_collapsed
+75:2026-06-19 12:58:06 | INFO | trinity.main | ================ TRINITY Simulation Complete ===============
+78:2026-06-19 12:58:06 | INFO | trinity.main | Simulation ended (inspection required): ENERGY_COLLAPSED (code 51) — Energy-driven bubble collapsed (catastrophic cooling: Eb <= 0)
