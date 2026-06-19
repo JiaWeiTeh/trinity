@@ -55,6 +55,7 @@ from dataclasses import dataclass
 
 import trinity._functions.unit_conversions as cvt
 import trinity.cloud_properties.mass_profile as mass_profile
+import trinity._output.terminal_prints as terminal_prints
 from trinity.sps.update_feedback import get_current_sps_feedback
 from trinity._input.dictionary import updateDict
 
@@ -508,6 +509,8 @@ def run_phase_momentum(params) -> MomentumPhaseResults:
 
     params['Eb'].value = 0.0
 
+    logger.info(terminal_prints.format_state(params, label="momentum phase entry"))
+
     # Pre-allocate results
     t_results = [tmin]
     R2_results = [R2]
@@ -758,7 +761,10 @@ def run_phase_momentum(params) -> MomentumPhaseResults:
         params['t_now'].value = t_now
         params['R2'].value = R2
         params['v2'].value = v2
-        
+
+        # Throttled progress heartbeat (outer loop only — never inside solvers).
+        terminal_prints.heartbeat(params, "2 momentum", segment_count, tmin, tmax)
+
         # Shell mass update for adaptive stepping comparison.
         # Apply the same collapse-freeze and never-decrease guards as the
         # primary shell mass block (lines 580-609).
@@ -913,6 +919,7 @@ def run_phase_momentum(params) -> MomentumPhaseResults:
     completion_log = logger.warning if termination_reason == "unknown" else logger.info
     completion_log(f"Momentum phase completed: {termination_reason}")
     completion_log(f"  Final time: {t_now:.6e} Myr, Final R2: {R2:.6e} pc, Segments: {segment_count}")
+    logger.info(terminal_prints.format_state(params, label="momentum phase exit"))
 
     return MomentumPhaseResults(
         t=np.array(t_results),

@@ -54,6 +54,7 @@ from dataclasses import dataclass
 import trinity.cloud_properties.mass_profile as mass_profile
 import trinity._functions.unit_conversions as cvt
 import trinity._functions.operations as operations
+import trinity._output.terminal_prints as terminal_prints
 from trinity.sps.update_feedback import get_current_sps_feedback
 from trinity._input.dictionary import updateDict
 
@@ -389,8 +390,7 @@ def run_phase_transition(params) -> TransitionPhaseResults:
     logger.info(f"PHASE BOUNDARY [implicit->transition]: "
                 f"v2_ODE={v2_from_ODE:.6e}, v2_alpha={v2_from_alpha:.6e}, "
                 f"ratio={v2_from_alpha/v2_from_ODE if v2_from_ODE != 0 else float('inf'):.4f}")
-    logger.info(f"  R2={params['R2'].value:.6e}, shell_mass={params['shell_mass'].value:.6e}, "
-                f"Eb={params['Eb'].value:.6e}, t_now={params['t_now'].value:.6e}")
+    logger.info(terminal_prints.format_state(params, label="implicit->transition entry"))
     # --- END DIAGNOSTIC ---
 
     # Update cool_alpha to match ODE-evolved v2 (preserves ODE continuity)
@@ -683,7 +683,10 @@ def run_phase_transition(params) -> TransitionPhaseResults:
         params['R2'].value = R2
         params['v2'].value = v2
         params['Eb'].value = Eb
-        
+
+        # Throttled progress heartbeat (outer loop only — never inside solvers).
+        terminal_prints.heartbeat(params, "1c transition", segment_count, tmin, tmax)
+
         # Shell mass update for adaptive stepping comparison.
         # Apply the same collapse-freeze and never-decrease guards as the
         # primary shell mass block (lines 510-531).
@@ -869,6 +872,7 @@ def run_phase_transition(params) -> TransitionPhaseResults:
     completion_log = logger.warning if termination_reason == "unknown" else logger.info
     completion_log(f"Transition phase completed: {termination_reason}")
     completion_log(f"  Final time: {t_now:.6e} Myr, Final Eb: {Eb:.6e}, Segments: {segment_count}")
+    logger.info(terminal_prints.format_state(params, label="transition phase exit"))
 
     return TransitionPhaseResults(
         t=np.array(t_results),

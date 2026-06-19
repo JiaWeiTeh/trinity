@@ -189,7 +189,10 @@ def start_expansion(params):
     # Write simulation end report to file
     try:
         exit_code = write_simulation_end(params)
-        logger.info(f"Simulation end report written (exit code: {exit_code})")
+        # Spell out the stopping fate (and final state) in the log, not just the
+        # bare exit code — this is the headline scientific result of the run.
+        logger.info(terminal_prints.format_end_report(params))
+        logger.debug(f"Simulation end report written (exit code: {exit_code})")
     except Exception as e:
         logger.warning(f"Could not write simulation end report: {e}")
         exit_code = 99

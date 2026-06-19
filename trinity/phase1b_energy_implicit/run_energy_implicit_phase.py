@@ -65,6 +65,7 @@ import trinity.bubble_structure.get_bubbleParams as get_bubbleParams
 import trinity._functions.unit_conversions as cvt
 import trinity.cooling.non_CIE.read_cloudy as non_CIE
 import trinity._functions.operations as operations
+import trinity._output.terminal_prints as terminal_prints
 from trinity.sps.update_feedback import get_current_sps_feedback
 from trinity._input.dictionary import updateDict
 
@@ -562,8 +563,7 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
     logger.info(f"PHASE BOUNDARY [energy->implicit]: "
                 f"v2_ODE={v2_from_ODE:.6e}, v2_alpha={v2_from_alpha:.6e}, "
                 f"ratio={v2_from_alpha/v2_from_ODE if v2_from_ODE != 0 else float('inf'):.4f}")
-    logger.info(f"  R2={params['R2'].value:.6e}, shell_mass={params['shell_mass'].value:.6e}, "
-                f"Eb={params['Eb'].value:.6e}, t_now={params['t_now'].value:.6e}")
+    logger.info(terminal_prints.format_state(params, label="energy->implicit entry"))
     # --- END DIAGNOSTIC ---
 
     # Update cool_alpha to match ODE-evolved v2 (preserves ODE continuity)
@@ -998,7 +998,11 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         params['v2'].value = v2
         params['Eb'].value = Eb
         params['T0'].value = T0
-        
+
+        # Throttled progress heartbeat (long phase, ~273 segments). Outer loop
+        # only — never inside the solvers; self-throttles to HEARTBEAT_EVERY.
+        terminal_prints.heartbeat(params, "1b implicit", segment_count, tmin, tmax)
+
         # Shell mass update for adaptive stepping comparison.
         # Apply the same collapse-freeze and never-decrease guards as the
         # primary shell mass block (lines 642-662).
@@ -1183,6 +1187,7 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
     _clean, _summary = betadelta_phase_summary(
         betadelta_solve_count, betadelta_converged_count, betadelta_no_root_count)
     (logger.info if _clean else logger.warning)(f"  {_summary}")
+    logger.info(terminal_prints.format_state(params, label="implicit phase exit"))
 
     return ImplicitPhaseResults(
         t=np.array(t_results),

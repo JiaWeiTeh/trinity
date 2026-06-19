@@ -34,6 +34,7 @@ import trinity.cooling.non_CIE.read_cloudy as non_CIE
 import trinity._functions.operations as operations
 from trinity._input.dictionary import updateDict
 import trinity._functions.unit_conversions as cvt
+import trinity._output.terminal_prints as terminal_prints
 from trinity.sps.update_feedback import get_current_sps_feedback
 
 # Import centralized event functions
@@ -104,6 +105,8 @@ def run_energy(params):
 
     params['Pb'].value = Pb
     params['R1'].value = R1
+
+    logger.info(terminal_prints.format_state(params, label="energy phase entry"))
 
     loop_count = 0
 
@@ -333,4 +336,5 @@ def run_energy(params):
         logger.warning(f"Phase-boundary reconciliation failed: {e}")
 
     logger.info(f'Energy phase complete: {loop_count} segments')
+    logger.info(terminal_prints.format_state(params, label="energy phase exit"))
     return
