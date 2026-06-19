@@ -110,8 +110,9 @@ facts from it bear directly on this fix:
    `(Lgain − Lloss − 4πR2²·v2·Pb) ≤ 0` — the **`Eb`-peak**. That is *exactly* where my trajectory's `Eb`
    stops growing and starts collapsing. **V4 should detect *this* (energy no longer being gained), not a
    bespoke `Eb≤ε` hack**, so it stays consistent with the trigger work.
-3. This bug is the **catastrophic-cooling extreme** of the same transition question (the bubble is
-   cooling-dominated essentially from birth, so the `Eb`-peak is immediate). The trigger study optimizes
+3. This bug is the **energy-collapse extreme** of the same transition question (the bubble is
+   momentum/PdV-dominated essentially from birth — the energy-driven solution never self-sustains (§3b),
+   so the `Eb`-peak is immediate). The trigger study optimizes
    *late* firing (the stall); **this is a correctness/robustness bug (crash + NaN/negative `Eb`)** and may
    land its minimal guard now without waiting on the trigger paper — but framed via the same net-energy
    event so the two never disagree. Scope guard: **do not** re-open the F0–F5 trigger choice here.
@@ -215,18 +216,35 @@ So the crash has **three** orthogonal fix levers, which the matrix will compare 
 Decomposing the energy ODE the code actually integrates (`phase1_energy/energy_phase_ODEs.py:280`),
 `Ed = (Lmech − L_bubble) − (4π·R2²·press_bubble)·v2 − L_leak`, over the live `fail_repro` trajectory:
 
-| t (×10⁻³ Myr) | Eb | Lmech (in) | **L_cool** (`bubble_LTotal`) | **PdV** = 4πR²·Pb·v2 | v2 (km/s) |
-|---|---|---|---|---|---|
-| 1.4 | 6.4e9 | 1.01e13 | **1.4e11** (≈1%) | **2.7e13** (≈2.7×) | 3656 |
-| 1.9 | 4.9e9 | 1.01e13 | **1.1e11** | **1.6e13** | — |
-| 2.6 | 1.4e9 | 1.01e13 | **5.4e10** | **1.4e13** | — |
-| 2.9 | 5.6e8 | 1.01e13 | **3.8e10** (≈0.4%) | **1.3e13** | 2331 |
+Self-consistent snapshots only (snapshot 0 is the phase-0→1a **seed** — a fixed initial `Pb=1e11 K/cm³`,
+bit-identical across unrelated clouds — and is **excluded**; see the data-integrity note below):
 
-**The energy sink is the PdV expansion work, not radiative cooling.** `L_cool/Lmech ≈ 0.01` throughout;
-`PdV/Lmech ≈ 1.3–2.7 > 1`, so `dEb/dt < 0` and `Eb` falls to zero. The driver is the **shell velocity**:
+| t (×10⁻³ Myr) | Eb | Lmech (in) | **L_cool** (`bubble_LTotal`) | **PdV** = 4πR²·Pb·v2 | PdV/Lmech | v2 (km/s) |
+|---|---|---|---|---|---|---|
+| 1.41 | 6.20e9 | 1.01e13 | **1.35e11** (1.3%) | **5.25e12** | 0.52 | 723 |
+| 1.53 | 6.47e9 | 1.01e13 | **1.39e11** | **1.01e13** | **0.99** (peak Eb) | 1380 |
+| 1.74 | 5.87e9 | 1.01e13 | **1.26e11** | **1.48e13** | **1.46** | 2112 |
+| 2.28 | 2.94e9 | 1.01e13 | **7.90e10** | **1.49e13** | **1.47** | 2438 |
+| 2.82 | 7.40e8 | 1.01e13 | **4.26e10** (0.4%) | **1.32e13** | **1.30** | 2330 |
+
+**The energy sink is the PdV expansion work, not radiative cooling.** `L_cool/Lmech ≈ 0.004–0.014` (~1%)
+throughout. `PdV/Lmech` rises from **0.52 → 1.56**, crossing 1 at `t≈1.55e-3` — exactly where `Eb` stops
+growing and starts collapsing (`Eb` peaks `6.47e9` at the crossing). So `dEb/dt` flips sign with the PdV
+term, not cooling. The driver is the **shell velocity**:
 this cluster launches the shell at ~2000–3700 km/s (near free-expansion, `R ≈ v·t`), and `PdV ∝ v2`.
 The system is out of the self-similar Weaver equilibrium (where PdV is a fixed fraction of `Lmech` and `Eb`
 grows) — physically it is **momentum/free-expansion-dominated from birth**.
+
+**Same mechanism on the real Helix point (`fail_helix`, sfe0.05/PISM0):** `L_cool/Lmech ≈ 0.001–0.012`,
+`PdV/Lmech` rises through 1 to ~1.44 — confirmed, not assumed, so the PdV finding holds across the band.
+
+**Data-integrity note (2026-06-19):** snapshot 0 of every run is the phase-0→1a **handoff seed** — its `Pb`
+is the *fixed initial bubble pressure* (`1e11 K/cm³` → `Pb=2.136e7`, **bit-identical across the `5e9` and the
+`1e6` cloud**), not a self-consistent bubble solve. Including it produced a spurious `PdV` spike (`PdV/Lmech≈2.7`
+at `t≈1.38e-3`, the seed `Pb` × the free-streaming `v0=3739 pc/Myr`). The figures and the table above **exclude
+snap 0**; `Pb` is cloud-specific from snap 1 on. The conclusion is unchanged — the *self-consistent* `PdV/Lmech`
+still crosses 1 (real max ≈1.56). (`v0=3739` itself is real: it is the free-streaming velocity `r0/t0`, ~equal
+for both clouds. The seed is the pressure, not the velocity.)
 
 **Decomposition is faithful (validated):** the reconstructed `Ed = Lmech − L_cool − PdV − L_leak` matches a
 finite-difference `dEb/dt` over the physical snapshots with **median ratio 1.00** (sign agreement 48/52).

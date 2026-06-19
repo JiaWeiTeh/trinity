@@ -81,8 +81,17 @@ def load(name):
 
 
 def physical_mask(d):
-    """Snapshots before the ODE overshoots into the non-physical tail (Eb<=0/R2<=0)."""
-    return (d["Eb"] > 0) & (d["R2"] > 0) & np.isfinite(d["Pb"])
+    """Self-consistent snapshots only. Excludes:
+      - the non-physical tail where the ODE overshoots (Eb<=0 / R2<=0);
+      - snapshot 0, the phase-0->1a handoff SEED: its Pb is the fixed initial
+        bubble pressure (~1e11 K/cm3 -> Pb=2.136e7, bit-identical across unrelated
+        clouds), NOT a self-consistent bubble solve. Pb becomes cloud-specific from
+        snap 1. Including snap 0 produced a spurious PdV spike (the seed Pb x the
+        free-streaming v0); it is not a physical rate. Verified: fail_repro and
+        small_1e6 share Pb[0]=2.136e7 but differ from snap 1 on."""
+    m = (d["Eb"] > 0) & (d["R2"] > 0) & np.isfinite(d["Pb"])
+    m[0] = False
+    return m
 
 
 # ----------------------------------------------------------------------------- fig 1
@@ -100,7 +109,7 @@ def fig1_budget(d):
     ax1.set_title("fail_repro  —  energy budget of $dE_b/dt$  (phase 1a/1b)")
     ax1.legend(loc="lower left", fontsize=9, framealpha=0.95)
     ax1.grid(alpha=0.25, which="both")
-    ax1.text(0.97, 0.93, "PdV work $>L_{mech}$  →  $E_b$ drained\ncooling is only ~1% of input",
+    ax1.text(0.97, 0.93, "PdV work crosses $L_{mech}$  →  $E_b$ peaks then collapses\ncooling is only ~1% of input",
              transform=ax1.transAxes, ha="right", va="top", fontsize=9.5,
              bbox=dict(boxstyle="round", fc="#fff3e0", ec="#d95f02"))
 
@@ -112,7 +121,7 @@ def fig1_budget(d):
     ax2.set_xlabel(r"time  [$10^{-3}$ Myr]")
     ax2.legend(loc="center left", fontsize=9, framealpha=0.95)
     ax2.grid(alpha=0.25, which="both")
-    ax2.text(0.97, 0.55, "PdV/$L_{mech}\\approx$1.3–2.7  (net loss)\n$L_{cool}/L_{mech}\\approx$0.01",
+    ax2.text(0.97, 0.55, "PdV/$L_{mech}$: 0.5 → 1.6 (crosses 1 ⇒ net loss)\n$L_{cool}/L_{mech}\\approx$0.01 (negligible)",
              transform=ax2.transAxes, ha="right", va="bottom", fontsize=9.5,
              bbox=dict(boxstyle="round", fc="#ede7f6", ec="#7570b3"))
 
