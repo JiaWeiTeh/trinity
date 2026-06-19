@@ -142,8 +142,8 @@ The `r2 += 1e-10` guard at `:224` is applied in **cm** (`r2 ≈ 2e19 cm`), so it
 meaningless and does **not** prevent the zero denominator.
 
 **It strikes in either energy sub-phase** (same degeneracy, two call paths, both currently unguarded):
-- **Phase 1a** (`run_energy_phase.py:159` → `bubble_luminosity.get_bubbleproperties_pure` →
-  `solve_R1` @ `:422`): the real Helix crash. The segment-0 ODE already produced `Eb=nan`; loop-1's
+- **Phase 1a** (`run_energy_phase.py:162` → `bubble_luminosity.get_bubbleproperties_pure` →
+  `solve_R1` @ `:175`): the real Helix crash. The segment-0 ODE already produced `Eb=nan`; loop-1's
   bubble solve calls `solve_R1(nan)` → raise → **uncaught** → run dies.
 - **Phase 1b** (`run_energy_implicit_phase.py:798` → `get_betadelta.compute_R1_Pb` → `bubble_E2P`):
   the local repro. The beta-delta solve fails to find a physical `dMdt>0` root (handled — "Holding last
@@ -208,7 +208,7 @@ These probe whether *just stopping the divide-by-zero* is enough.
 With the geometry clamped the energy ODE keeps integrating and `Eb` crosses **zero into negative**
 (`+7.4e8 → −9.1e8 → −1.0e12`), giving negative `Pb`; the bubble solve then has no physical solution →
 fsolve thrashes → `Rejected. min T` spam → no termination in 320 s (`data/smoke_V3_fail_repro_trajectory.csv`).
-The existing `cooling_balance` break (`run_energy_implicit_phase.py:1072-1074`) is *never reached* — the
+The existing `cooling_balance` break (`run_energy_implicit_phase.py:1077-1078`) is *never reached* — the
 grind happens earlier in the iteration (the bubble/beta-delta solve `~:798`), not at the end-of-loop
 transition check. **So family T must fire the handoff at the net-energy zero-crossing, before `Eb` goes
 non-positive** (≈ snapshot 48, `t≈2.8e-3`, `R2≈8.4`, `Eb` still `+7.4e8` but plunging, `R2−R1≈0.09`);
@@ -274,7 +274,7 @@ negative. Parallelise cells across subagents; record the exact command + `timeou
 ## 7. Verdict
 _TBD — filled after S2/S3. Will record: winning variant, the gate table, and why._
 
-## 8. Key references (re-verified against `main @ 946e860b`, 2026-06-19)
+## 8. Key references (re-verified against `main @ 6bdba8de`, 2026-06-19)
 - Degeneracy math: `trinity/bubble_structure/get_bubbleParams.py` — `get_r1` `:375-402`, `solve_R1`
   `:405-429`, `bubble_E2P` `:198-230` (the `r2+=1e-10`-in-cm dud guard `:224`, the divide `:228`).
 - Call sites (all currently unguarded for `R1→R2`): phase 1a `run_energy_phase.py:96,162,325`;
