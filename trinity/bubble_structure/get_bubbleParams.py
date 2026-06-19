@@ -419,8 +419,8 @@ def solve_R1(R2, Eb, Lmech_total, v_mech_total):
     bracket always contains the root (the former [1e-3*R2, R2] bracket
     missed roots below 1e-3*R2 and raised). Lmech_total <= 0 means no wind
     ram pressure, hence no termination shock: returns 0.0. A non-physical
-    R2 <= 0 (a transient ODE-integrator excursion during the catastrophic-
-    cooling collapse) likewise has no shock: returns 0.0, so the energy-phase
+    R2 <= 0 (a transient ODE-integrator excursion during the energy-driven
+    Eb -> 0 collapse) likewise has no shock: returns 0.0, so the energy-phase
     RHS stays finite and the integrator's error control rejects the bad step
     instead of get_r1 hitting sqrt(<0) -> NaN -> brentq raising and crashing
     the run (see docs/dev/failed-large-clouds).

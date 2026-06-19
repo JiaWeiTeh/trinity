@@ -160,7 +160,7 @@ def run_energy(params):
         # =============================================================================
         # 3. Compute bubble structure (always, not conditional on loop_count)
         # =============================================================================
-        # In the catastrophic-cooling collapse the bubble degenerates (Eb -> 0):
+        # In the energy-driven Eb -> 0 collapse the bubble degenerates:
         # the cooling table goes out of bounds, solve_R1 cannot bracket, etc. Any
         # such failure here means the energy-driven model has broken down -- stop
         # the run cleanly rather than crash with the bare exception. The momentum-
@@ -171,7 +171,8 @@ def run_energy(params):
         except (ValueError, RuntimeError, bubble_luminosity.BubbleSolverError) as e:
             params['EndSimulationDirectly'].value = True
             params['SimulationEndReason'].value = (
-                "Energy-driven bubble collapsed (catastrophic cooling: bubble solve failed)"
+                "Energy-driven bubble collapsed: bubble solve degenerate as Eb -> 0 "
+                "(energy-driven phase no longer self-sustains)"
             )
             params['SimulationEndCode'].value = SimulationEndCode.ENERGY_COLLAPSED.code
             logger.warning(
@@ -339,7 +340,8 @@ def run_energy(params):
         if not np.isfinite(Eb) or Eb <= 0:
             params['EndSimulationDirectly'].value = True
             params['SimulationEndReason'].value = (
-                "Energy-driven bubble collapsed (catastrophic cooling: Eb <= 0)"
+                "Energy-driven bubble collapsed: Eb fell to <= 0 "
+                "(energy-driven phase no longer self-sustains)"
             )
             params['SimulationEndCode'].value = SimulationEndCode.ENERGY_COLLAPSED.code
             logger.warning(

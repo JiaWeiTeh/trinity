@@ -1007,7 +1007,8 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         if not np.isfinite(Eb) or Eb <= 0:
             params['EndSimulationDirectly'].value = True
             params['SimulationEndReason'].value = (
-                "Energy-driven bubble collapsed (catastrophic cooling: Eb <= 0)"
+                "Energy-driven bubble collapsed: Eb fell to <= 0 "
+                "(energy-driven phase no longer self-sustains)"
             )
             params['SimulationEndCode'].value = SimulationEndCode.ENERGY_COLLAPSED.code
             termination_reason = "energy_collapsed"
