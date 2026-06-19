@@ -159,4 +159,48 @@ ax.text(0.5, 0.06,
 fig.suptitle("F1 'drop the 60k resample' — validation workflow", fontsize=12)
 fig.savefig(os.path.join(FIGS, "f1_workflow.png"), dpi=130, bbox_inches="tight"); plt.close(fig)
 
+# ---------------- Figure 5: variant tradeoff — WHY M500 ----------------
+VORDER = ["baseline", "M2000", "M1000", "M500", "M200", "Mnodes"]
+VNPTS = {"baseline": "~60k", "M2000": "2000", "M1000": "1000",
+         "M500": "500", "M200": "200", "Mnodes": "adaptive"}
+agg = {v: {"t": [], "r": []} for v in VORDER}
+for c in pc:
+    for ph in pc[c]:
+        for v, d in pc[c][ph].items():
+            if v in agg:
+                agg[v]["t"] += d["t"]; agg[v]["r"] += d["r"]
+mean_t = {v: (np.mean(agg[v]["t"]) if agg[v]["t"] else np.nan) for v in VORDER}
+worst_r = {v: (max(agg[v]["r"]) if agg[v]["r"] else 0.0) for v in VORDER}
+
+fig, (axa, axb) = plt.subplots(1, 2, figsize=(13, 5))
+xv = np.arange(len(VORDER))
+tcol = ["tab:gray" if v == "baseline" else ("tab:green" if v == "M500" else "tab:blue")
+        for v in VORDER]
+ba = axa.bar(xv, [mean_t[v] for v in VORDER], color=tcol)
+for b, v in zip(ba, VORDER):
+    sp = mean_t["baseline"] / mean_t[v]
+    axa.text(b.get_x() + b.get_width() / 2, mean_t[v] + 8,
+             f"{mean_t[v]:.0f} ms\n{sp:.2f}x", ha="center", fontsize=7.5)
+axa.set_xticks(xv); axa.set_xticklabels([f"{v}\n({VNPTS[v]})" for v in VORDER], fontsize=8)
+axa.set_ylabel("mean per-call time [ms] (all configs)")
+axa.set_title("(a) speed: 60k baseline vs coarse options (≈flat across npts)")
+
+cv = VORDER[1:]  # skip baseline (it's the 0 reference)
+rcol = ["tab:green" if v == "M500" else ("tab:purple" if v == "Mnodes" else "tab:blue") for v in cv]
+bb = axb.bar(np.arange(len(cv)), [worst_r[v] for v in cv], color=rcol)
+for b, v in zip(bb, cv):
+    axb.text(b.get_x() + b.get_width() / 2, worst_r[v] * 1.25, f"{worst_r[v]:.1e}",
+             ha="center", fontsize=7.5)
+axb.axhline(GATE, color="r", ls="--", label="0.3% gate")
+axb.set_yscale("log"); axb.set_ylim(1e-7, 1e-2)
+axb.set_xticks(np.arange(len(cv))); axb.set_xticklabels([f"{v}\n({VNPTS[v]})" for v in cv], fontsize=8)
+axb.set_ylabel("worst rel_dMdt (all configs)")
+axb.set_title("(b) accuracy: npts-INSENSITIVE in [200,2000]")
+axb.legend(loc="upper right")
+fig.suptitle("Why 500: every coarse option beats the 60k baseline ~1.5x (speed ≈flat across npts) and is "
+             "npts-insensitive (all ≪ gate).\nM500 (green) gives a GUARANTEED fixed-resolution "
+             "min_T/monotonic check; Mnodes (purple) uses only LSODA's variable adaptive nodes — fine "
+             "here, less predictable on an unseen config.", fontsize=9.5)
+fig.tight_layout(); fig.savefig(os.path.join(FIGS, "f1_variant_tradeoff.png"), dpi=130); plt.close(fig)
+
 print("wrote:", ", ".join(sorted(os.listdir(FIGS))))
