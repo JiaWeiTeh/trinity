@@ -41,7 +41,10 @@ cross-checked with `CHANGELOG.md` and `git log`.
 | `archive/bubble/integrator-robustness.md` | ⛔ SUPERSEDED (by the `solve_ivp` migration) | ⚠️ (heavy) | Add "superseded" banner → **archive** |
 | `archive/bubble/conduction-convergence.md` | ✅ SHIPPED (sign-off; switch landed) | minor | **Archive** |
 | `cooling/refactor-audit.md` | 🔵 ACTIONABLE (nothing shipped) | ⚠️ (~1–3 lines) | Refresh refs → **keep** |
-| `performance/HOTPATH_PLAN.md` | 🔵 ACTIONABLE (new 2026-06-18, nothing shipped) | accurate (fresh) | **Keep** (P0 baseline + harness unbuilt) |
+| `performance/HOTPATH_PLAN.md` | 🟡 PARTIAL (F1 + F2 SHIPPED; F1-cousin + F5 open) | accurate (fresh) | **Keep** |
+| `performance/BUBBLE_LUMINOSITY_PERFORMANCE.md` | 📘 REFERENCE (consolidated bubble-perf history A→D + methodology) | fresh (2026-06-19) | **Keep** (canonical) |
+| `performance/F1_SUMMARY.md` + `F1_REPORT.html` | 📘 REFERENCE (F1 tables + illustrated report) | fresh | **Keep** |
+| `archive/bubble/RESAMPLE_PLAN.md` + `P3_PRODUCTION_PATCH.md` | ✅ SHIPPED (F1, `24c6914`, 2026-06-19) | superseded banner added | **Archived** |
 | `archive/n-consistency/audit.md` | ✅ SHIPPED (pinned by `test_mu_audit_drift`) | by-design | **Archive** |
 | `archive/n-consistency/implementation-plan.md` | ✅ SHIPPED (all phases landed) | ⚠️ (flat→subdir) | **Archive** |
 | `archive/n-consistency/pressure-terms-audit.md` | ⛔ SUPERSEDED (self-declared, confirmed) | historical | **Archive** |

@@ -1,0 +1,6 @@
+# F1 full-run equivalence edge case: HIGH density, HIGH mass, LOW sfe.
+# Dense massive cloud with weak feedback -> bubble struggles against dense gas.
+mCloud    1e7
+sfe    0.01
+nCore    1e6
+model_name    f1edge_hidens

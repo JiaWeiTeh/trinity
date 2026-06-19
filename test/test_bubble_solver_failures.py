@@ -46,7 +46,7 @@ def test_nonfinite_initial_conditions_return_ok_false():
 
 
 def test_failed_solve_raises_with_message(monkeypatch):
-    """_bubble_luminosity_legacy turns ok=False into BubbleSolverError carrying
+    """_bubble_luminosity turns ok=False into BubbleSolverError carrying
     the infodict message (the message-only failure dict is sufficient)."""
     def failing_solve(initial_conditions, r_array, params, Pb, rtol=None):
         return np.full((len(r_array), 3), np.nan), False, {"message": "xyz-solver-failed"}, None
@@ -54,7 +54,7 @@ def test_failed_solve_raises_with_message(monkeypatch):
     monkeypatch.setattr(BL, "_solve_bubble_structure", failing_solve)
     monkeypatch.delenv("TRINITY_BUBBLE_DIAG", raising=False)
     with pytest.raises(BL.BubbleSolverError, match="xyz-solver-failed"):
-        BL._bubble_luminosity_legacy(object(), 0.5, 1.0, 1.0, [1.0, 3e4, -1.0], 0.7, 1.0)
+        BL._bubble_luminosity(object(), 0.5, 1.0, 1.0, [1.0, 3e4, -1.0], 0.7, 1.0)
 
 
 def test_negative_temperature_raises(monkeypatch):
@@ -74,4 +74,4 @@ def test_negative_temperature_raises(monkeypatch):
     monkeypatch.setattr(BL, "_solve_bubble_structure", rigged_solve)
     monkeypatch.delenv("TRINITY_BUBBLE_DIAG", raising=False)
     with pytest.raises(BL.BubbleSolverError, match="negative temperature"):
-        BL._bubble_luminosity_legacy(object(), 0.5, 1.0, 1.0, [1.0, 3e4, -1.0], 0.7, 1.0)
+        BL._bubble_luminosity(object(), 0.5, 1.0, 1.0, [1.0, 3e4, -1.0], 0.7, 1.0)

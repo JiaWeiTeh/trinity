@@ -68,7 +68,10 @@ The top-level `scratch/` (repo root) is separate, git-ignored, local-only.
 - `refactor-audit.md` — **plan** (🔵 actionable): decouple the loaders from hardcoded SB99/OPIATE/CLOUDY. Nothing shipped yet.
 
 ### `performance/` — hot-path cost & conditioning
-- `HOTPATH_PLAN.md` — **plan** (🔵 actionable): the next solver-class wins after hybr/shell. Headline = stop the dMdt fsolve resampling 60k points to read 4 numbers (measured ~27× overhead); plus a batch of bit-identical free wins (DEBUG default, dead-gravity delete, `get_dudt` micro-opts). §F3 (shell-ODE overflow) is **descoped** — owned by `shell-solver/OVERFLOW_FIX_PLAN.md`. Nothing shipped yet; P0 baseline + harness unbuilt.
+- `BUBBLE_LUMINOSITY_PERFORMANCE.md` — **reference** (📘): the consolidated history of every perf/robustness change to `bubble_luminosity.py` — Era A (odeint→solve_ivp, which demoted the 60k) → B (conduction K=2000) → C (F2 free wins) → D (**F1 shipped**) — plus a **Methodology** section (our testing/planning conventions). Start here.
+- `F1_SUMMARY.md` — **reference** (📘): F1 changes / tests / defaults / efficiency tables. `F1_REPORT.html` — self-contained illustrated report (MathJax + embedded figures). `harness/` + `figs/` + `data/f1edge_*` regenerate both.
+- `HOTPATH_PLAN.md` — **plan** (🟡 partial): solver-class wins after hybr/shell. **§F1 SHIPPED** (`24c6914` → `BUBBLE_LUMINOSITY_PERFORMANCE.md`), **§F2 free wins SHIPPED** (`4a13075`). Open: §F1-cousin (shrink the *final*-solve grid), §F5. §F3 descoped to `shell-solver/`. Carries the measured-results ledger.
+- *(archived)* `archive/bubble/{RESAMPLE_PLAN,P3_PRODUCTION_PATCH}.md` — the F1 planning + patch docs (shipped 2026-06-19).
 
 ### `misc/` — standalone audits / notes
 - `backward-compat-audit.md` — (🔵 actionable) backward-compat / stale-code cleanup; ~95% pending.

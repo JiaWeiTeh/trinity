@@ -68,6 +68,43 @@ Generated / scratch — not source, do not tidy or treat as ground truth: `outpu
    don't delete it. Every changed line should trace to the request.
 4. **Verify.** Turn tasks into checks: bug → write a failing test, then fix; feature → test the
    invalid inputs, then pass; refactor → tests green before and after. Run `pytest` before declaring done.
+5. **Equivalence depth & honest measurement** (hard-won — full rationale in
+   `docs/dev/performance/BUBBLE_LUMINOSITY_PERFORMANCE.md` §Methodology). For a change to an
+   **iterative/integrated path** (solver, residual, hot loop), a per-call/single-step equivalence is
+   **necessary but NOT sufficient** — clear it only with a **full-run equivalence** test on the
+   **stiffest/edge regimes** (not just the easy config), comparing full runs in **separate processes**
+   (trinity leaks module-level global state in-process) at **matched simulation time** (runs truncate at
+   different `t`). For a "free win", prove **bit-identical**: diff vs `git show HEAD` *and* a byte-identical
+   `dictionary.jsonl`. **Measure, don't guess** — retract a hypothesis the moment data contradicts it.
+   De-risk with a capture/replay **harness + explicit gates before** touching production, and **persist
+   diagnostics** as committed CSVs/figures so a future session need not re-run the hours-long sims.
+
+### Planning protocol — size the change first, then match the depth
+
+Run rule 1 before touching code: state the change, your assumptions, and any competing
+interpretations. Then size it — don't gate a typo, don't fast-path a solver edit.
+
+- **Trivial / local** (typo, comment, isolated pure helper, new test): rules 1–4 — make it,
+  add/adjust the check, `pytest`, done.
+- **Risky / iterative / outward-facing** (anything in a solver/residual/hot loop, a cross-module
+  refactor, a perf "win", a default flip, or anything pushed/published): run the ladder in order,
+  and don't skip a rung because an earlier one passed —
+  1. **Gate first.** Define what "equivalent" means and the pass/fail bar *before* editing
+     (rule 5). A doc-worthy effort gets a `docs/dev/<workstream>/` writeup with the three banners.
+  2. **Capture a baseline** the edit is measured against (a `git show HEAD` value, a byte hash, a
+     saved trajectory) so "before" survives the change.
+  3. **Equivalence gate.** Per-call / single-step first (cheap, necessary) — but **NOT sufficient**
+     for an iterative path: clear it with a **full-run** equivalence on the **stiffest edge
+     regimes**, in **separate processes**, at **matched `t`**. A "free win" ⇒ **bit-identical**
+     (value-diff *and* byte-identical `dictionary.jsonl`).
+  4. **Apply** the smallest diff that passes the gate (rules 2–3).
+  5. **Re-verify** post-apply: the gate again + full `pytest` + ruff F-rules. Measure, don't guess.
+  6. **Persist** diagnostics as a committed CSV/figure/harness (not `/tmp` or `scratch/`) with the
+     exact config + command, so the next session compares without re-running.
+
+  When unsure which depth applies, treat it as risky. Bubble/solver edges worth testing:
+  `param/simple_cluster.param` (energy-driven baseline) + `docs/dev/performance/f1edge_{lowdens,hidens}*.param`
+  (span feedback strength × cloud density) — plus the stiffest regime your change could plausibly break.
 
 ## Ponytail — lazy senior dev mode
 

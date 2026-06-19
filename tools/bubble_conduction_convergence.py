@@ -62,7 +62,7 @@ _RTOLS = (1e-6, 1e-8, 1e-10)
 
 def _L_conduction(sol_fn, r_lo, r_hi, params, Pb, K):
     """Conduction-zone luminosity from a continuous solution, sampled at K
-    points. Mirrors bubble_luminosity._bubble_luminosity_legacy's non-CIE
+    points. Mirrors bubble_luminosity._bubble_luminosity's non-CIE
     integral, including the production ``T < 10**5.5`` mask (line ~568)."""
     r = np.linspace(r_hi, r_lo, K)
     T = sol_fn(r)[1]

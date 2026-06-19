@@ -225,3 +225,8 @@ cython_debug/
 TRINITY_talk_QA_prep.docx
 pytest-cache-files-*/
 .claude/settings.local.json
+.claude/worktrees/
+
+# HOTPATH F1 capture: large regenerable bubble-state pickles (~3 MB each).
+# Commit the CSV diagnostics under docs/dev/performance/data/, not these.
+docs/dev/performance/data/states/
