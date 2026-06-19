@@ -53,6 +53,21 @@ def test_bubble_E2P_finite_when_shell_collapses():
     assert np.isfinite(Pb)
 
 
+def test_solve_R1_returns_zero_for_nonphysical_R2():
+    # During the collapse the RK45 integrator can evaluate the RHS at a
+    # non-physical trial state (R2 <= 0 or NaN). The old code let brentq hit
+    # get_r1(0) = sqrt(<0) -> NaN and raised "function value at x=0 is NaN",
+    # crashing the run in phase 1a (the real Helix point). solve_R1 now returns
+    # 0.0 (no positive radius -> no wind shock), keeping the RHS finite so the
+    # integrator can reject the bad step; the Eb<=0 check then stops cleanly.
+    assert get_bubbleParams.solve_R1(-154.0, -4.4e31, 5e12, 3739.0) == 0.0
+    assert get_bubbleParams.solve_R1(0.0, 1e5, 1.0, 1.0) == 0.0
+    assert get_bubbleParams.solve_R1(np.nan, 1e5, 1.0, 1.0) == 0.0
+    # A physical R2 > 0 with NaN Eb must STILL raise (real failure, not fabricated)
+    with pytest.raises(ValueError):
+        get_bubbleParams.solve_R1(10.0, np.nan, 1.0, 1.0)
+
+
 def test_energy_collapsed_endcode_is_inspection_required():
     # New end code used by the energy phases when Eb collapses; lives in the
     # 50-59 "inspection required (completed, warrants a human look)" band.

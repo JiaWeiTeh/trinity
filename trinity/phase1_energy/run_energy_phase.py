@@ -160,7 +160,26 @@ def run_energy(params):
         # =============================================================================
         # 3. Compute bubble structure (always, not conditional on loop_count)
         # =============================================================================
-        bubble_data = bubble_luminosity.get_bubbleproperties_pure(params)
+        # In the catastrophic-cooling collapse the bubble degenerates (Eb -> 0):
+        # the cooling table goes out of bounds, solve_R1 cannot bracket, etc. Any
+        # such failure here means the energy-driven model has broken down -- stop
+        # the run cleanly rather than crash with the bare exception. The momentum-
+        # driven continuation is future work (docs/dev/transition). See
+        # docs/dev/failed-large-clouds.
+        try:
+            bubble_data = bubble_luminosity.get_bubbleproperties_pure(params)
+        except (ValueError, RuntimeError, bubble_luminosity.BubbleSolverError) as e:
+            params['EndSimulationDirectly'].value = True
+            params['SimulationEndReason'].value = (
+                "Energy-driven bubble collapsed (catastrophic cooling: bubble solve failed)"
+            )
+            params['SimulationEndCode'].value = SimulationEndCode.ENERGY_COLLAPSED.code
+            logger.warning(
+                f"Energy-driven bubble collapsed at t={t_now:.6e} Myr "
+                f"(Eb={Eb:.3e}, R2={R2:.4f} pc; bubble solve failed: "
+                f"{type(e).__name__}: {e}): stopping run cleanly."
+            )
+            break
         updateDict(params, bubble_data)
 
         T0 = bubble_data.bubble_T_r_Tb
