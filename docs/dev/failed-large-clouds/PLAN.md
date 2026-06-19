@@ -216,8 +216,9 @@ So the crash has **three** orthogonal fix levers, which the matrix will compare 
 Decomposing the energy ODE the code actually integrates (`phase1_energy/energy_phase_ODEs.py:280`),
 `Ed = (Lmech − L_bubble) − (4π·R2²·press_bubble)·v2 − L_leak`, over the live `fail_repro` trajectory:
 
-Self-consistent snapshots only (snapshot 0 is the phase-0→1a **seed** — a fixed initial `Pb=1e11 K/cm³`,
-bit-identical across unrelated clouds — and is **excluded**; see the data-integrity note below):
+Self-consistent snapshots only (the leading free-streaming→Weaver IC-relaxation rows are **excluded** — the
+per-snapshot `Pb·v2` proxy doesn't track `dEb/dt` there; see the data-integrity note below for why, and why
+snap 0's identical `Pb` across clouds is the *real* IC, not a bug):
 
 | t (×10⁻³ Myr) | Eb | Lmech (in) | **L_cool** (`bubble_LTotal`) | **PdV** = 4πR²·Pb·v2 | PdV/Lmech | v2 (km/s) |
 |---|---|---|---|---|---|---|
@@ -238,23 +239,39 @@ grows) — physically it is **momentum/free-expansion-dominated from birth**.
 **Same mechanism on the real Helix point (`fail_helix`, sfe0.05/PISM0):** `L_cool/Lmech ≈ 0.001–0.012`,
 `PdV/Lmech` rises through 1 to ~1.44 — confirmed, not assumed, so the PdV finding holds across the band.
 
-**Data-integrity note (2026-06-19):** snapshot 0 of every run is the phase-0→1a **handoff seed** — its `Pb`
-is the *fixed initial bubble pressure* (`1e11 K/cm³` → `Pb=2.136e7`, **bit-identical across the `5e9` and the
-`1e6` cloud**), not a self-consistent bubble solve. Including it produced a spurious `PdV` spike (`PdV/Lmech≈2.7`
-at `t≈1.38e-3`, the seed `Pb` × the free-streaming `v0=3739 pc/Myr`). The figures and the table above **exclude
-snap 0**; `Pb` is cloud-specific from snap 1 on. The conclusion is unchanged — the *self-consistent* `PdV/Lmech`
-still crosses 1 (real max ≈1.56). (`v0=3739` itself is real: it is the free-streaming velocity `r0/t0`, ~equal
-for both clouds. The seed is the pressure, not the velocity.)
+**Data-integrity note (2026-06-19, corrected) — snapshot 0 is the genuine IC, not a placeholder.**
+An earlier draft of this note called snap 0 a "seed"; that was wrong. `run_energy_phase.py:97-100` *computes*
+the initial `Pb = bubble_E2P(E0, r0, R1)` from the Weaver IC — it is real physics. It is **identical across the
+`5e9` and `1e6` clouds because they share `nCore=1e2`** (they differ only in `mCloud`):
+- `Pb0 ∝ nCore` (ambient density). Derivation from `get_InitPhaseParam.py`: with `E0=(5/11)L_w·dt0`,
+  `r0=v0·dt0`, `dt0²=3·Ṁ/(4π·ρ_a·v0³)`, `Ṁ=ṗ_w²/(2L_w)` ⇒ `Pb0 ∝ E0/r0³ ∝ L_w²·ρ_a/ṗ_w²`. `L_w,ṗ_w ∝ M_cluster`,
+  so `L_w²/ṗ_w²` is mass-independent and `Pb0 ∝ ρ_a = nCore·μ`.
+- `v0 = 2L_w/ṗ_w` (wind terminal velocity) — likewise mass-independent (both `∝ M_cluster`). So `v0=3739 pc/Myr`
+  for *every* cloud. **Scientifically fine:** intensive IC quantities (`Pb0`, `v0`) are set by `nCore` + the SPS
+  wind, not by `mCloud`; only extensive ones (`E0`, `r0`, mass) scale with the cluster. A different `nCore` gives
+  a different `Pb0`.
+
+**Why the figures still exclude the first few points — IC-relaxation transient (not the IC value itself).**
+The snapshot stores **segment-START** `(R2,Pb,v2)`, but the budget `Ed` needs the **segment-AVERAGE**. During the
+fast free-streaming→Weaver relaxation (first few steps) these differ, so the per-snapshot `PdV` proxy mis-tracks
+`dEb/dt`. Concretely `small_1e6` reads `PdV/Lmech>1` at snaps 2–4 while `Eb` is *actually growing* there — a proxy
+artifact, **this is the green "spike."** The figures plot only where the proxy reconstructs `dEb/dt` (data-driven:
+`sign(Ed)==sign(forward-diff dEb/dt)`, excluding the snap-0 IC instant); `fail_repro` reliable from snap 1,
+`small_1e6` from snap 5. **fig2 uses a log-time axis** so the genuine early fast evolution isn't compressed into a
+spurious-looking spike (and it shows the massive cloud collapses ~100× earlier than the healthy one evolves).
+Conclusion unchanged: self-consistent `PdV/Lmech` crosses 1 for the failing band (real max ≈1.56), stays ≤0.95
+(declining) for healthy.
 
 **Decomposition is faithful (validated):** the reconstructed `Ed = Lmech − L_cool − PdV − L_leak` matches a
 finite-difference `dEb/dt` over the physical snapshots with **median ratio 1.00** (sign agreement 48/52).
 
-**Healthy vs failing discriminator:** for the healthy `small_1e6`, `PdV/Lmech ≈ 0.5 < 1` (Eb grows, classic
-Weaver) and `v2` decelerates to ~50 km/s; for `fail_repro`, `PdV/Lmech` crosses 1 and `v2` stays ~2000+ km/s.
+**Healthy vs failing discriminator:** for the healthy `small_1e6`, `PdV/Lmech` stays **< 1** (≤0.95, declining;
+Eb grows, classic Weaver) and `v2` decelerates to ~50 km/s; for `fail_repro`, `PdV/Lmech` crosses 1 (peak ≈1.56)
+and `v2` stays ~2000+ km/s.
 
 **Figures** (`figures/make_energy_budget_figs.py`, reproducible from the committed CSVs, no re-run needed):
-- `figures/fig1_dEbdt_budget.png` — the budget: PdV ≫ L_cool, PdV > Lmech (the finding).
-- `figures/fig2_healthy_vs_failing.png` — PdV/Lmech, v2, Eb for failing vs healthy (why this band dies).
+- `figures/fig1_dEbdt_budget.png` — the budget: PdV ≫ L_cool, PdV crosses Lmech (the finding).
+- `figures/fig2_healthy_vs_failing.png` — PdV/Lmech, v2, Eb vs **log time** for failing vs healthy.
 - `figures/fig3_bug_and_fix.png` — Eb→0 collapses R1→R2 (shell vol→0 → 1/0 → NaN); old crash vs new code-51 stop.
 - Data: `data/budget_fail_repro.csv`, `data/budget_small_1e6.csv` (per-snapshot t,Eb,R1,R2,v2,Pb,Lmech,Lcool,Lleak).
 

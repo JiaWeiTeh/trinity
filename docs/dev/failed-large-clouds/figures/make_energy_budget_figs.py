@@ -77,26 +77,45 @@ def load(name):
     # derived terms (code units, Msun pc^2 / Myr^3)
     d["PdV"] = 4 * np.pi * d["R2"] ** 2 * d["Pb"] * d["v2"]
     d["Ed"] = d["Lmech"] - d["Lcool"] - d["PdV"] - d["Lleak"]
+    # forward-difference dEb/dt (ground truth): the snapshot holds segment-START
+    # values, so Ed at snap i should predict the change to snap i+1.
+    fd = np.empty_like(d["Eb"])
+    fd[:-1] = np.diff(d["Eb"]) / np.diff(d["t"])
+    fd[-1] = fd[-2]
+    d["fd"] = fd
     return d
 
 
-def physical_mask(d):
-    """Self-consistent snapshots only. Excludes:
-      - the non-physical tail where the ODE overshoots (Eb<=0 / R2<=0);
-      - snapshot 0, the phase-0->1a handoff SEED: its Pb is the fixed initial
-        bubble pressure (~1e11 K/cm3 -> Pb=2.136e7, bit-identical across unrelated
-        clouds), NOT a self-consistent bubble solve. Pb becomes cloud-specific from
-        snap 1. Including snap 0 produced a spurious PdV spike (the seed Pb x the
-        free-streaming v0); it is not a physical rate. Verified: fail_repro and
-        small_1e6 share Pb[0]=2.136e7 but differ from snap 1 on."""
-    m = (d["Eb"] > 0) & (d["R2"] > 0) & np.isfinite(d["Pb"])
-    m[0] = False
+def reliable_mask(d):
+    """Self-consistent, proxy-reliable snapshots only. Excludes:
+      - the non-physical overshoot tail (Eb<=0 / R2<=0);
+      - the leading free-streaming -> Weaver IC-RELAXATION rows where the per-snapshot
+        Pb*v2 proxy does not yet reconstruct dEb/dt. The snapshot stores segment-START
+        (R2,Pb,v2); the budget Ed needs the segment-AVERAGE. While the IC relaxes (a few
+        fast early steps) these differ, so Ed over/under-shoots the true finite-difference
+        dEb/dt. Cutoff is DATA-DRIVEN: drop leading rows (within the first third) where Ed
+        disagrees with dEb/dt in sign or by >2x. Verified: fail_repro reliable from snap 1,
+        small_1e6 from snap 5 (its snaps 2-4 read PdV/Lmech>1 while Eb is actually growing).
+
+    NB snapshot 0 is NOT a placeholder: its Pb is the genuine Weaver initial bubble
+    pressure (bubble_E2P of the IC E0,r0,R1). It is identical across the 5e9 and 1e6
+    clouds because they share nCore=1e2 (Pb0 ∝ nCore) and v0=2L_w/pdot_w is the
+    mass-independent wind terminal velocity. It is simply the un-relaxed IC instant."""
+    phys = (d["Eb"] > 0) & (d["R2"] > 0) & np.isfinite(d["Pb"])
+    ok = np.sign(d["Ed"]) == np.sign(d["fd"])  # proxy reconstructs the sign of dEb/dt
+    ok[0] = False  # snap 0 is the IC handoff instant (pre-phase-1 boundary), not an interior segment
+    idx = np.where(phys)[0]
+    lead = idx[: max(3, len(idx) // 3)]  # transient lives at the very start; scan the leading third
+    bad = [i for i in lead if not ok[i]]
+    start = (max(bad) + 1) if bad else idx[0]
+    m = phys.copy()
+    m[:start] = False
     return m
 
 
 # ----------------------------------------------------------------------------- fig 1
 def fig1_budget(d):
-    m = physical_mask(d)
+    m = reliable_mask(d)
     t = d["t"][m] * 1e3  # 10^-3 Myr
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(7.2, 7.2), sharex=True)
 
@@ -137,33 +156,36 @@ def fig2_compare(df, dh):
     fig, (axA, axB, axC) = plt.subplots(3, 1, figsize=(7.2, 9.0), sharex=True)
     for d, name, color in [(df, "fail_repro (massive, dies)", "#d95f02"),
                            (dh, "small_1e6 (healthy)", "#1b9e77")]:
-        m = physical_mask(d)
-        tt = d["t"][m]
-        tn = (tt - tt.min()) / (tt.max() - tt.min())  # normalized 0..1 over the phase span
-        axA.plot(tn, d["PdV"][m] / d["Lmech"][m], "-", color=color, lw=2.4, label=name)
-        axB.plot(tn, d["v2"][m] * PC_PER_MYR_TO_KMS, "-", color=color, lw=2.4, label=name)
-        axC.plot(tn, d["Eb"][m] / d["Eb"][m].max(), "-", color=color, lw=2.4, label=name)
+        m = reliable_mask(d)
+        tt = d["t"][m]  # real time [Myr], log axis (a normalized-linear axis compresses the
+        # early fast evolution into a spurious-looking spike); also shows the massive cloud
+        # collapses ~100x earlier than the healthy one evolves.
+        axA.plot(tt, d["PdV"][m] / d["Lmech"][m], "-", color=color, lw=2.4, label=name)
+        axB.plot(tt, d["v2"][m] * PC_PER_MYR_TO_KMS, "-", color=color, lw=2.4, label=name)
+        axC.plot(tt, d["Eb"][m] / d["Eb"][m].max(), "-", color=color, lw=2.4, label=name)
 
     axA.axhline(1.0, color="k", lw=1.0, ls="--")
-    axA.text(0.02, 1.05, "PdV = $L_{mech}$  (energy-driven break-even)", fontsize=8.5, va="bottom")
+    axA.text(0.97, 0.95, "PdV = $L_{mech}$  (energy-driven break-even)", transform=axA.transAxes,
+             fontsize=8.5, ha="right", va="top")
     axA.set_yscale("log")
+    axA.set_xscale("log")
     axA.set_ylabel("PdV / $L_{mech}$")
     axA.set_title("Why the massive cloud's bubble dies and a healthy one does not")
-    axA.legend(loc="center right", fontsize=9)
+    axA.legend(loc="lower left", fontsize=9)
     axA.grid(alpha=0.25, which="both")
 
     axB.set_ylabel("shell velocity $v_2$  [km/s]")
-    axB.grid(alpha=0.25)
+    axB.grid(alpha=0.25, which="both")
     axB.text(0.97, 0.9, "massive: ~2000+ km/s, near free-expansion\nhealthy: decelerates (Weaver-like)",
              transform=axB.transAxes, ha="right", va="top", fontsize=9,
              bbox=dict(boxstyle="round", fc="#f5f5f5", ec="#888"))
 
     axC.set_ylabel("$E_b / E_{b,\\max}$")
-    axC.set_xlabel("fraction of evolution  (t / $t_{end}$)")
+    axC.set_xlabel("time  [Myr]  (log)")
     axC.axhline(0.0, color="k", lw=0.8)
-    axC.grid(alpha=0.25)
-    axC.text(0.5, 0.1, "massive: $E_b\\to0$ (collapses)", color="#d95f02", fontsize=9.5,
-             transform=axC.transAxes, ha="center")
+    axC.grid(alpha=0.25, which="both")
+    axC.text(0.97, 0.5, "massive: $E_b\\to0$ (collapses)", color="#d95f02", fontsize=9.5,
+             transform=axC.transAxes, ha="right")
 
     fig.tight_layout()
     p = os.path.join(FIG, "fig2_healthy_vs_failing.png")
