@@ -24,10 +24,16 @@
 > against the numbers **without re-running**; record the exact config + command
 > that produced each artifact.
 
-**Status (2026-06-19):** 🟡 **DIAGNOSED + REPRODUCED — root cause confirmed; candidate-fix matrix
-running.** Two independent investigations + a sim-free probe + two live repros (local) agree on the
-mechanism. The empirical config×idea matrix (robustness + no-op on healthy + science end-state) is the
-open item; this doc owns it. **No production code changed yet** — fix direction is gated on the matrix.
+**Status (2026-06-19):** 🟡 **DIAGNOSED + REPRODUCED; first smoke result in — numeric guard is
+necessary but NOT sufficient.** Two independent investigations + a sim-free probe + two live repros agree
+on the mechanism. **Smoke test of V3 (both guards) on `fail_repro`:** it *does* stop the divide-by-zero
+crash, but the run then drives **`Eb` through zero into NEGATIVE** (`+7.4e8` @ phase-1a end →
+`−9.1e8` in phase 1b → `−1.0e12`), producing a negative bubble energy/pressure and grinding (timed out at
+320 s, never terminated). Trajectory: `data/smoke_V3_fail_repro_trajectory.csv`. **Implication: clamping
+the geometry (V1/V2/V3) only converts a crash into negative-energy garbage — the real fix must detect the
+energy collapse (`Eb→0` / cooling-dominated) and *transition to the momentum phase* (V4) before `Eb`
+crosses zero.** V4 is now the leading candidate; the numeric guard becomes a safety net. **No production
+code changed yet.**
 
 ---
 
@@ -131,8 +137,26 @@ So the crash has **three** orthogonal fix levers, which the matrix will compare 
 **Note on V4 vs the existing machinery:** the code *already* has a `cooling_balance` energy→momentum
 transition (`run_energy_implicit_phase.py:1072`, `(Lgain−Lloss)/Lgain < 0.05` → break). The crash fires
 *before* it can. A central question the matrix answers: **does V1 or V2 alone (just stop the crash) let
-these clouds reach that existing transition on their own?** If yes, the minimal numeric guard *is* the
-fix and V4 is already implemented — we just need to not crash before it.
+these clouds reach that existing transition on their own?**
+
+**Partial empirical answer (2026-06-19 smoke, V3 on `fail_repro`): NO.** With the geometry clamped, the
+energy ODE keeps integrating and `Eb` crosses **zero into negative** (the bubble solve then has no
+physical solution → fsolve thrashes → `Rejected. min T` spam → no termination in 320 s). The existing
+`cooling_balance` break at `:1072` is *never reached* because the grind happens earlier in the iteration
+(the bubble/beta-delta solve, `:798`-ish), not at the end-of-loop transition check. So the fix must fire
+the transition **early** — gated on `Eb` collapse (e.g. `Eb ≤ ε·E0`) or the `Lloss/Lgain` degeneracy at
+the point of the bubble solve — *before* `Eb` goes non-positive (≈ snapshot 48, `t≈2.8e-3`, `R2≈8.4`,
+`Eb` still `+7.4e8` but plunging, `R2−R1≈0.09`). The numeric guard (V1/V2) stays as a safety net so the
+divide can never blow up even if the transition mis-fires.
+
+**On the `Rejected. min T: 29999.99` noise:** benign. The bubble structure integrates *from* `T=3e4` at
+the outer edge inward; `min_T=29999.99` is a `1.6e-5 %` dip below the `_T_INIT_BOUNDARY=3e4` anchor (the
+documented "boundary_transient", `bubble_luminosity.py:180-181`). The penalty it returns is
+`(3e4/(min_T+0.1))² ≈ 0.999994` — effectively `1.0`, i.e. a *no-op* "rejection" (logs, but does not steer
+fsolve). It is a *symptom* of the fsolve thrashing on the negative-`Eb` bubble, not a cause. Two minor,
+*orthogonal* cleanups (do NOT bundle into the fix): (a) the early `return` at `:913` shadows the
+downstream `nan`/`monotonic` checks (`:915,:919`); (b) a small tolerance (`min_T < 3e4 − tol`) would stop
+the false trip + the log spam.
 
 ## 5. Empirical matrix (config × idea — the hybr-style de-risk)
 
