@@ -1,0 +1,28 @@
+# healthy control 1e7
+model_name      small_1e7
+path2output     /tmp/flc/small_1e7
+
+sfe             0.1
+mCloud          1e7
+nCore           1e2
+PISM            1e4
+nISM            0.1
+
+# fixed block (paperII_grid_sweep.param)
+dens_profile    densPL
+densPL_alpha    0
+ZCloud          1
+coverFraction   1.0
+rCloud_max      1e9
+
+allowShellDissolution    True
+stop_t_diss     1
+stop_r          500
+stop_t          10
+coll_r          1
+stop_at_rCloud_nSnap    None
+
+log_level       INFO
+log_console     False
+log_file        True
+include_PHII    True
