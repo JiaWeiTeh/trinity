@@ -98,25 +98,39 @@ def reliable_mask(d):
         small_1e6 from snap 5 (its snaps 2-4 read PdV/Lmech>1 while Eb is actually growing).
 
     NB snapshot 0 is NOT a placeholder: its Pb is the genuine Weaver initial bubble
-    pressure (bubble_E2P of the IC E0,r0,R1). It is identical across the 5e9 and 1e6
-    clouds because they share nCore=1e2 (Pb0 ∝ nCore) and v0=2L_w/pdot_w is the
-    mass-independent wind terminal velocity. It is simply the un-relaxed IC instant."""
-    phys = (d["Eb"] > 0) & (d["R2"] > 0) & np.isfinite(d["Pb"])
-    ok = np.sign(d["Ed"]) == np.sign(d["fd"])  # proxy reconstructs the sign of dEb/dt
-    ok[0] = False  # snap 0 is the IC handoff instant (pre-phase-1 boundary), not an interior segment
-    idx = np.where(phys)[0]
-    lead = idx[: max(3, len(idx) // 3)]  # transient lives at the very start; scan the leading third
-    bad = [i for i in lead if not ok[i]]
-    start = (max(bad) + 1) if bad else idx[0]
-    m = phys.copy()
-    m[:start] = False
+    pressure (bubble_E2P of the IC E0,r0,R1). It is ~equal (to ~6 sig figs, NOT bit-
+    identical: 2.135768e7 vs 2.135766e7) across the 5e9 and 1e6 clouds because they share
+    nCore=1e2 (Pb0 ∝ nCore) and v0=2L_w/pdot_w is the mass-independent wind terminal
+    velocity; the tiny residual is an mCloud-dependent correction. Just the un-relaxed IC."""
+    m = physical(d).copy()
+    m[: reliable_start(d)] = False
     return m
+
+
+def physical(d):
+    """Physical snapshots (Eb>0, R2>0, finite Pb) -- ALL of them. v2 and Eb are stored
+    STATE and are reliable at every physical snapshot; only the derived PdV proxy is not."""
+    return (d["Eb"] > 0) & (d["R2"] > 0) & np.isfinite(d["Pb"])
+
+
+def reliable_start(d):
+    """First index from which the per-snapshot PdV proxy reconstructs dEb/dt (sign of the
+    forward-difference). Leading rows are the free-streaming->Weaver IC relaxation, where the
+    snapshot (segment-START) Pb,v2 over/under-shoot the segment-AVERAGE the budget needs.
+    Applies ONLY to PdV (panel A); v2/Eb are exact at every snapshot."""
+    phys = physical(d)
+    ok = np.sign(d["Ed"]) == np.sign(d["fd"])
+    ok[0] = False  # snap 0 is the IC handoff instant (t-t0=0; log-undefined anyway)
+    idx = np.where(phys)[0]
+    lead = idx[: max(3, len(idx) // 3)]
+    bad = [i for i in lead if not ok[i]]
+    return (max(bad) + 1) if bad else idx[0]
 
 
 # ----------------------------------------------------------------------------- fig 1
 def fig1_budget(d):
     m = reliable_mask(d)
-    t = d["t"][m] * 1e3  # 10^-3 Myr
+    t = (d["t"][m] - d["t"][0]) * 1e3  # elapsed since energy phase began, 10^-3 Myr (consistent w/ fig2/fig3)
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(7.2, 7.2), sharex=True)
 
     ax1.plot(t, d["Lmech"][m], "-", color="#1b9e77", lw=2.2, label="gain: $L_{mech}$ (wind+SN in)")
@@ -137,7 +151,7 @@ def fig1_budget(d):
     ax2.plot(t, d["Lcool"][m] / d["Lmech"][m], "-", color="#7570b3", lw=2.2, label="$L_{cool}$ / $L_{mech}$")
     ax2.set_yscale("log")
     ax2.set_ylabel("loss term / $L_{mech}$")
-    ax2.set_xlabel(r"time  [$10^{-3}$ Myr]")
+    ax2.set_xlabel(r"time since energy phase began,  $t-t_0$  [$10^{-3}$ Myr]")
     ax2.legend(loc="center left", fontsize=9, framealpha=0.95)
     ax2.grid(alpha=0.25, which="both")
     ax2.text(0.97, 0.55, "PdV/$L_{mech}$: 0.5 → 1.6 (crosses 1 ⇒ net loss)\n$L_{cool}/L_{mech}\\approx$0.01 (negligible)",
@@ -156,22 +170,28 @@ def fig2_compare(df, dh):
     fig, (axA, axB, axC) = plt.subplots(3, 1, figsize=(7.2, 9.0), sharex=True)
     for d, name, color in [(df, "fail_repro (massive, dies)", "#d95f02"),
                            (dh, "small_1e6 (healthy)", "#1b9e77")]:
-        m = reliable_mask(d)
-        # x = elapsed time SINCE the energy phase began (t - t0), log axis. The two clouds
-        # start phase 1a at very different absolute t (t0 = dt_phase0 ∝ sqrt(M_cluster): the
-        # 5e8 Msun cluster free-streams ~70x longer than the 1e5 one before its energy phase),
-        # so absolute time puts them at different x. Elapsed time anchors both at their energy-
-        # phase birth -- the fair "evolution since the bubble became energy-driven" comparison.
-        # A normalized-linear axis instead compressed the early fast evolution into a fake spike.
-        t0 = d["t"][0]
-        tau = d["t"][m] - t0
-        axA.plot(tau, d["PdV"][m] / d["Lmech"][m], "-", color=color, lw=2.4, label=name)
-        axB.plot(tau, d["v2"][m] * PC_PER_MYR_TO_KMS, "-", color=color, lw=2.4, label=name)
-        axC.plot(tau, d["Eb"][m] / d["Eb"][m].max(), "-", color=color, lw=2.4, label=name)
+        # x = elapsed time SINCE the energy phase began (t - t0), log axis. The two clouds start
+        # phase 1a at very different absolute t (t0 = dt_phase0 ∝ sqrt(M_cluster): the 5e8 Msun
+        # cluster free-streams ~70x longer before its energy phase), so absolute time puts them at
+        # different x. Elapsed time anchors BOTH at their energy-phase birth -- snap 1 of each sits
+        # at t-t0 ≈ 3e-5 Myr, so the curves start together (no spurious "delay").
+        ph = physical(d)
+        ph[0] = False  # snap 0 is at t-t0=0 (log-undefined); it is the IC instant, not a segment
+        tau = d["t"] - d["t"][0]
+        # v2, Eb are stored STATE -> exact at every snapshot: plot all of them.
+        axB.plot(tau[ph], d["v2"][ph] * PC_PER_MYR_TO_KMS, "-", color=color, lw=2.4, label=name)
+        axC.plot(tau[ph], d["Eb"][ph] / d["Eb"][ph].max(), "-", color=color, lw=2.4, label=name)
+        # PdV is a per-snapshot proxy: solid where it reconstructs dEb/dt, dotted (faded) through
+        # the IC-relaxation transient where segment-START != segment-AVERAGE (near break-even).
+        s = reliable_start(d)
+        pre = ph.copy(); pre[s + 1:] = False   # snaps 1..s  (connects to the solid at s)
+        sol = ph.copy(); sol[:s] = False       # snaps s..end
+        axA.plot(tau[pre], d["PdV"][pre] / d["Lmech"][pre], ":", color=color, lw=1.6, alpha=0.55)
+        axA.plot(tau[sol], d["PdV"][sol] / d["Lmech"][sol], "-", color=color, lw=2.4, label=name)
 
     axA.axhline(1.0, color="k", lw=1.0, ls="--")
-    axA.text(0.97, 0.95, "PdV = $L_{mech}$  (energy-driven break-even)", transform=axA.transAxes,
-             fontsize=8.5, ha="right", va="top")
+    axA.text(0.97, 0.95, "PdV = $L_{mech}$ (break-even).  dotted = IC-relaxation\n(PdV proxy uncertain near break-even)",
+             transform=axA.transAxes, fontsize=8.0, ha="right", va="top")
     axA.set_yscale("log")
     axA.set_xscale("log")
     axA.set_ylabel("PdV / $L_{mech}$")
@@ -202,7 +222,7 @@ def fig2_compare(df, dh):
 
 # ----------------------------------------------------------------------------- fig 3
 def fig3_bug_fix(d):
-    t = d["t"] * 1e3
+    t = (d["t"] - d["t"][0]) * 1e3  # elapsed since energy phase began, 10^-3 Myr (consistent w/ fig1/fig2)
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(7.2, 7.6), sharex=True)
 
     # collapse index: first non-physical Eb
@@ -225,7 +245,7 @@ def fig3_bug_fix(d):
     ax2.plot(t[m], d["R1"][m], "-", color="#ff7f0e", lw=2.2, label="$R_1$ (wind shock)")
     ax2.fill_between(t[m], d["R1"][m], d["R2"][m], color="#1f77b4", alpha=0.15)
     ax2.set_ylabel("radius  [pc]")
-    ax2.set_xlabel(r"time  [$10^{-3}$ Myr]")
+    ax2.set_xlabel(r"time since energy phase began,  $t-t_0$  [$10^{-3}$ Myr]")
     ax2.legend(loc="upper left", fontsize=9)
     ax2.grid(alpha=0.25)
     gap = d["R2"] - d["R1"]

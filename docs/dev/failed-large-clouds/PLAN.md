@@ -241,8 +241,9 @@ grows) — physically it is **momentum/free-expansion-dominated from birth**.
 
 **Data-integrity note (2026-06-19, corrected) — snapshot 0 is the genuine IC, not a placeholder.**
 An earlier draft of this note called snap 0 a "seed"; that was wrong. `run_energy_phase.py:97-100` *computes*
-the initial `Pb = bubble_E2P(E0, r0, R1)` from the Weaver IC — it is real physics. It is **identical across the
-`5e9` and `1e6` clouds because they share `nCore=1e2`** (they differ only in `mCloud`):
+the initial `Pb = bubble_E2P(E0, r0, R1)` from the Weaver IC — it is real physics. It is **≈equal (to ~6 sig
+figs — `2.135768e7` vs `2.135766e7`, NOT bit-identical) across the `5e9` and `1e6` clouds because they share
+`nCore=1e2`** (they differ only in `mCloud`; the ~1e-6 residual is an `mCloud`-dependent correction):
 - `Pb0 ∝ nCore` (ambient density). Derivation from `get_InitPhaseParam.py`: with `E0=(5/11)L_w·dt0`,
   `r0=v0·dt0`, `dt0²=3·Ṁ/(4π·ρ_a·v0³)`, `Ṁ=ṗ_w²/(2L_w)` ⇒ `Pb0 ∝ E0/r0³ ∝ L_w²·ρ_a/ṗ_w²`. `L_w,ṗ_w ∝ M_cluster`,
   so `L_w²/ṗ_w²` is mass-independent and `Pb0 ∝ ρ_a = nCore·μ`.
@@ -251,16 +252,20 @@ the initial `Pb = bubble_E2P(E0, r0, R1)` from the Weaver IC — it is real phys
   wind, not by `mCloud`; only extensive ones (`E0`, `r0`, mass) scale with the cluster. A different `nCore` gives
   a different `Pb0`.
 
-**Why the figures still exclude the first few points — IC-relaxation transient (not the IC value itself).**
-The snapshot stores **segment-START** `(R2,Pb,v2)`, but the budget `Ed` needs the **segment-AVERAGE**. During the
-fast free-streaming→Weaver relaxation (first few steps) these differ, so the per-snapshot `PdV` proxy mis-tracks
-`dEb/dt`. Concretely `small_1e6` reads `PdV/Lmech>1` at snaps 2–4 while `Eb` is *actually growing* there — a proxy
-artifact, **this is the green "spike."** The figures plot only where the proxy reconstructs `dEb/dt` (data-driven:
-`sign(Ed)==sign(forward-diff dEb/dt)`, excluding the snap-0 IC instant); `fail_repro` reliable from snap 1,
-`small_1e6` from snap 5. **fig2 x-axis = elapsed time since the energy phase began (`t − t0`), log scale** — so the
-genuine early fast evolution isn't compressed into a fake spike, AND both clouds anchor at their energy-phase birth
-(see next note on why their absolute `t0` differ ~70×). Conclusion unchanged: self-consistent `PdV/Lmech` crosses 1
-for the failing band (real max ≈1.56), stays ≤0.95 (declining) for healthy.
+**What the figures trim, and what they don't (corrected — `v2`/`Eb` are never trimmed).** Only the **`PdV` proxy**
+has a reliability caveat: the snapshot stores **segment-START** `(R2,Pb,v2)` but the budget `Ed` needs the
+**segment-AVERAGE**, so during the fast free-streaming→Weaver relaxation (first few steps) it mis-tracks `dEb/dt`
+(`small_1e6` reads `PdV/Lmech>1` at snaps 2–4 while `Eb` is *actually growing* — this was the green "spike";
+midpoint-averaging does **not** fix it). So in **panel A** the proxy is **solid where it reconstructs `dEb/dt`**
+(`sign(Ed)==sign(forward-diff dEb/dt)`; `fail_repro` from snap 1, `small_1e6` from snap 5) and **dotted/faded through
+the IC-relaxation**. `v2` and `Eb` are **stored STATE — plotted at every snapshot** (panels B/C), so both clouds
+start together at `t−t0 ≈ 3e-5 Myr`. An earlier draft *trimmed* `small_1e6` to snap 5 in all panels, which made the
+green look like it "started late" — that was a plotting artifact, now fixed. **All three figures use elapsed time
+`t−t0`** (fig2 log; fig1/fig3 linear) so the same `fail_repro` curve sits at the same x everywhere. Conclusion
+unchanged: self-consistent `PdV/Lmech` crosses 1 for the failing band (real max ≈1.56), stays ≤0.95 for healthy.
+
+(NB the early `v2≈739 pc/Myr` is ~equal for both clouds to ~7 sig figs — `v0` is mass-independent and the first
+segment is near-self-similar — then diverges from snap 2 as cloud-specific effects enter. Real, not an artifact.)
 
 **Why the two clouds enter phase 1a at very different absolute `t0` (verified, not assumed).** `tSF=0` (logged) so
 `t0 = dt_phase0`, the free-streaming duration `= √(3·Ṁ/(4π·ρ_a·v0³))` (`get_InitPhaseParam.py:151`). With `ρ_a`
