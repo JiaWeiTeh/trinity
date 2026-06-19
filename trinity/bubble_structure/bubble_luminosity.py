@@ -17,6 +17,7 @@ docs/dev/archive/bubble/conduction-convergence.md.
 
 import numpy as np
 import os
+import contextlib
 import pickle
 import scipy.optimize
 import scipy.integrate
@@ -100,6 +101,39 @@ _RESIDUAL_NPTS = 500
 # ~1 ms/call (docs/dev/archive/bubble/conduction-convergence.md), far better resolved
 # than the former ~100-point conduction re-solve while remaining cheap.
 _CONDUCTION_NPTS = 2000
+
+
+@contextlib.contextmanager
+def _quiet_lsoda_fortran():
+    """Silence LSODA's Fortran step-underflow chatter ("lsoda-- warning..internal t
+    and h are such that t + h = t ... solver will continue anyway") during a bubble
+    solve, by redirecting the C-level stdout/stderr fds to /dev/null for the call.
+
+    Those warnings fire when LSODA crosses the bubble's ultra-thin conduction layer
+    (~1e-10 pc for a massive-cluster wind) in machine-precision sub-steps -- a stiff
+    but finite regime, NOT an overflow (see docs/dev/performance/BUBBLE_CONDUCTION_STIFFNESS.md).
+    The solve still SUCCEEDS and the profile is verified correct (matches Radau /
+    tight-LSODA references to ~1e-6), so the warning is pure noise. This suppresses
+    only that noise: it touches no numerics, and genuine solver failures are still
+    caught by the separate ``sol.success`` -> BubbleSolverError contract. scipy's
+    solve_ivp(LSODA) exposes no API to quiet the Fortran prints, so fd redirection is
+    the portable route.
+    """
+    import sys
+    sys.stdout.flush()
+    sys.stderr.flush()
+    saved_out, saved_err = os.dup(1), os.dup(2)
+    devnull = os.open(os.devnull, os.O_WRONLY)
+    try:
+        os.dup2(devnull, 1)
+        os.dup2(devnull, 2)
+        yield
+    finally:
+        os.dup2(saved_out, 1)
+        os.dup2(saved_err, 2)
+        os.close(saved_out)
+        os.close(saved_err)
+        os.close(devnull)
 
 
 class BubbleSolverError(Exception):
@@ -286,15 +320,16 @@ def _get_velocity_residuals(dMdt_init, params, Pb: float, R1: float) -> float:
     if not np.all(np.isfinite([v_init, T_init, dTdr_init])):
         return _SOLVER_FAIL_RESIDUAL
     try:
-        sol = scipy.integrate.solve_ivp(
-            fun=lambda r, y: _get_bubble_ODE(r, y, params, Pb),
-            t_span=(r2Prime_val, R1),
-            y0=[v_init, T_init, dTdr_init],
-            method='LSODA',
-            t_eval=np.linspace(r2Prime_val, R1, _RESIDUAL_NPTS),
-            rtol=_RESIDUAL_RTOL,
-            atol=_BUBBLE_ATOL,
-        )
+        with _quiet_lsoda_fortran():
+            sol = scipy.integrate.solve_ivp(
+                fun=lambda r, y: _get_bubble_ODE(r, y, params, Pb),
+                t_span=(r2Prime_val, R1),
+                y0=[v_init, T_init, dTdr_init],
+                method='LSODA',
+                t_eval=np.linspace(r2Prime_val, R1, _RESIDUAL_NPTS),
+                rtol=_RESIDUAL_RTOL,
+                atol=_BUBBLE_ATOL,
+            )
     except BubbleSolverError:
         return _SOLVER_FAIL_RESIDUAL
     if not sol.success:
@@ -416,15 +451,16 @@ def _solve_bubble_structure(initial_conditions, r_array, params, Pb,
     # (see _get_bubble_ODE); solve_ivp propagates RHS exceptions raw, so
     # convert that abort into the same ok=False contract as a solver failure.
     try:
-        sol = scipy.integrate.solve_ivp(
-            fun=lambda r, y: _get_bubble_ODE(r, y, params, Pb),
-            t_span=(r_array[0], r_array[-1]),
-            y0=initial_conditions,
-            method='LSODA',
-            dense_output=True,
-            rtol=rtol,
-            atol=_BUBBLE_ATOL,
-        )
+        with _quiet_lsoda_fortran():
+            sol = scipy.integrate.solve_ivp(
+                fun=lambda r, y: _get_bubble_ODE(r, y, params, Pb),
+                t_span=(r_array[0], r_array[-1]),
+                y0=initial_conditions,
+                method='LSODA',
+                dense_output=True,
+                rtol=rtol,
+                atol=_BUBBLE_ATOL,
+            )
     except BubbleSolverError as e:
         psoln = np.full((len(r_array), 3), np.nan)
         return psoln, False, {'message': str(e)}, None
