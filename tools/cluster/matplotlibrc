@@ -1,0 +1,24 @@
+# Trinity headless plotting config for Helix (or any node with no display / no LaTeX).
+#
+# Gives the LaTeX *look* (Computer Modern math) with ZERO external LaTeX toolchain
+# (no latex/dvipng/ghostscript needed) — the fonts ship inside matplotlib, so it
+# renders on any compute node. Activate by pointing matplotlib at this file BEFORE
+# it imports (the sbatch wrapper tools/cluster/plot_sweep.sh does this for you):
+#
+#     export MATPLOTLIBRC="$REPO/tools/cluster/matplotlibrc"
+#     export MPLCONFIGDIR="$SCRATCH/mplcache"   # writable font-cache dir (Helix /home is often read-only at runtime)
+#
+# Under the Agg backend, plt.show() is a harmless no-op, so the scratch scripts'
+# show() calls need no editing. Final *publication* figures that use text.usetex=True
+# should be rendered locally (or on a node with `module load texlive`) from the
+# reduced summary.csv / a handful of rsynced jsonl — never from the full sweep.
+
+backend                     : Agg
+text.usetex                 : False
+mathtext.fontset            : cm
+font.family                 : serif
+font.serif                  : cmr10, Computer Modern Roman, DejaVu Serif
+axes.formatter.use_mathtext : True     # render tick labels via mathtext (fixes the cmr10 minus-glyph warning)
+axes.unicode_minus          : False    # cmr10 lacks the U+2212 glyph; use ASCII hyphen instead
+savefig.bbox                : tight
+figure.dpi                  : 150
