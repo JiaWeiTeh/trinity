@@ -1,0 +1,13 @@
+config,var,common_t_max,n_pts,worst_rel,worst_at_t,median_rel
+f1cmp_simple,R2,4.5395,251,5.655e-08,0.2073,1.086e-09
+f1cmp_simple,Eb,4.5395,251,5.914e-07,0.0636,7.745e-09
+f1cmp_simple,v2,4.5395,251,1.707e-07,0.0981,2.179e-09
+f1cmp_simple,rShell,4.5395,251,5.665e-08,0.2073,1.047e-09
+f1edge_lowdens,R2,3.7340,238,6.477e-09,1.7611,2.567e-10
+f1edge_lowdens,Eb,3.7340,238,2.881e-07,0.3220,2.024e-09
+f1edge_lowdens,v2,3.7340,238,4.955e-08,0.3670,7.530e-10
+f1edge_lowdens,rShell,3.7340,238,6.444e-09,1.7611,2.571e-10
+f1edge_hidens,R2,0.0518,133,2.086e-07,0.0518,3.112e-10
+f1edge_hidens,Eb,0.0518,133,6.016e-06,0.0439,7.533e-09
+f1edge_hidens,v2,0.0518,133,6.130e-05,0.0508,1.259e-09
+f1edge_hidens,rShell,0.0518,133,2.102e-07,0.0518,3.124e-10

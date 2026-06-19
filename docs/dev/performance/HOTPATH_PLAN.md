@@ -52,7 +52,7 @@ Environment of record (matches the prior plans): **python 3.11.x, numpy 1.26.4 (
 > evaluated), the per-segment framing (`run_energy_phase.py:159`,
 > `run_energy_implicit_phase.py:720`, `get_betadelta.py:56/909/936`,
 > `energy_phase_ODEs.py:223`), `density_profile.py:109-130`, and the
-> transition/momentum "zero bubble solves" (grep `get_bubbleproperties_pure|_create_legacy_radius_grid`
+> transition/momentum "zero bubble solves" (grep `get_bubbleproperties_pure|_create_radius_grid`
 > → 0 in both). **Not reproducible here:** this container has **no astropy**, so
 > the code does not import/run — the F1 "~21 ms vs 0.8 ms" timings remain
 > subagent-microbenchmark-sourced and are still gated on P0 re-measurement; the
@@ -84,7 +84,7 @@ digit). **Toolchain of record:** the container needed `pip install -e ".[dev]"`
 | **F2.2** | gravity outputs disabled, `None` placeholders (`_get_mass_and_grav`) | ✅ shipped `4a13075` | removes 1 `simpson`(~60k) + 1 array-divide(~60k) per **final** structure solve (not separately timed) | ✅ by construction (`m_cumulative` unchanged; caller discards the rest) | full non-stress suite (below) |
 | **F2.5** | remove `pdotdot_total` from hot SPS path | ⛔ **dropped** | n/a — would change the phase-1b trajectory | ✗ **not** bit-identical | subagent consumer trace: integrated RHS at `run_energy_implicit_phase.py:854`, `get_betadelta.py:411,520` (A12 coeff `1.5·pdotdot/pdot`) |
 | **F2.6** | `_excluded_keys` per-snapshot rescan | ⏸️ deferred | ~195-key walk / snapshot (not measured) | ✅ (when done) | `dictionary.py:614` (out of this branch's scope) |
-| **F1** | stop the 60k dense-output resample in the dMdt residual | 🔵 planned (next branch) | microbench: `sol.sol(60k)` **~21 ms** vs integrate **~0.8 ms** (~27×); production fraction **TBD (P0)** | endpoint part exact; coarse-sample part needs the harness | P0 `data/hotpath_baseline.csv` + `harness/replay_residual_grid.py` — **both pending** |
+| **F1** | stop the 60k dense-output resample in the dMdt residual (`BUBBLE_LUMINOSITY_PERFORMANCE.md`) | 🟢 **SHIPPED & fully validated** (`24c6914`) — per-call + full-run equivalence + 538 unit + G3 stress (no-crash + golden) all green | per-call ~1.5×/call (E) / ~1.4×/call (I); **full-run matched-`t` equivalence on mock_hybr + 3 stiff edge cases, worst R2/Eb ≈6e-6** (~500× inside 0.3%) | per-call gate can't see a full-run divergence (full-run mandatory for residual changes); 60k was output over-resolution — LSODA rtol=1e-6 already resolves the stiff solution | `data/master_p0_table.csv`, `data/f1edge_matched_comparison.csv`, `f1edge_{orig,f1}_trajectories.csv`; `test/test_residual_resample.py`; `harness/f1_fullrun_equiv.sh` |
 | **F3** | shell-ODE overflow | ➡️ descoped | n/a (owned elsewhere) | — | `shell-solver/OVERFLOW_FIX_PLAN.md` capture (`front_idx=4`, `ovf_idx=26`, `n_max_finite=6.65e67`) |
 | **gate** | full non-stress test suite (after F2) | ✅ | — | — | **535 passed**, 3 deselected (stress), 151.67 s; `test_mu_audit_drift` source assertions preserved |
 
@@ -127,7 +127,7 @@ structure solve runs:
   mock). The non-default `legacy` solver instead uses `_solve_grid` (a 5×5 = up to
   25-point grid). Either way it is many bubble solves per segment.
 - **phase1c_transition / phase2_momentum**: **zero** bubble structure solves
-  (verified — no `get_bubbleproperties_pure`, no `_create_legacy_radius_grid`).
+  (verified — no `get_bubbleproperties_pure`, no `_create_radius_grid`).
 
 So the entire 60k cost lives in **phase1_energy and phase1b only**, and §F1 below
 is amplified by the betadelta grid/root-finder, not by the time integrator.
@@ -138,22 +138,27 @@ The ODE RHS *does* run a cheaper `solve_R1` brentq every stage (`energy_phase_OD
 
 ---
 
-## F1 — [HEADLINE, needs harness] Stop resampling 60 000 points to read 4 numbers
+## F1 — Stop resampling 60 000 points to read 4 numbers — ✅ SHIPPED (`24c6914`, 2026-06-19)
 
-**The single biggest lever; same shape as hybr/shell.**
+**Canonical history + methodology: `BUBBLE_LUMINOSITY_PERFORMANCE.md` (Era D); live reference
+`F1_SUMMARY.md`; illustrated `F1_REPORT.html`; archived plan/patch `archive/bubble/`.** The
+mechanism + cost below are retained as accurate context.
 
-### Mechanism (verified against source)
-`get_bubbleproperties_pure` solves `dMdt` with `scipy.optimize.fsolve`
-(`bubble_luminosity.py:461`). Each fsolve iteration calls `_get_velocity_residuals`
-(`:875`), which:
-1. rebuilds the ~60 000-point legacy grid (`_create_legacy_radius_grid`, `:894`;
-   three `np.logspace(… int(2e4))` chunks ≈ 6e4 before `_clean_radius_grid`; a
-   captured call measured ≈59,992 — exact count varies with cleaning),
-2. runs a full `solve_ivp(LSODA, dense_output=True)` (`_solve_bubble_structure`, `:900`),
-3. **resamples all ~60 000 points** via `sol.sol(r_array)` (`:157`),
+### Mechanism (the PRE-F1 residual — what F1 removed; anchor by function name)
+`get_bubbleproperties_pure` solves `dMdt` with `scipy.optimize.fsolve`. **Before F1**, each
+fsolve iteration called `_get_velocity_residuals`, which:
+1. rebuilt the ~60 000-point grid (`_create_radius_grid`; three `np.logspace(… int(2e4))`
+   chunks ≈ 6e4 before `_clean_radius_grid`; a captured call measured ≈59,992 — exact count
+   varies with cleaning),
+2. ran a full `solve_ivp(LSODA, dense_output=True)` (`_solve_bubble_structure`),
+3. **resampled all ~60 000 points** via `sol.sol(r_array)`,
 
-…then the residual it returns (`:908-923`) consumes exactly **four reductions**:
-`v_array[-1]`, `v_array[0]`, `np.min(T_array)`, `operations.monotonic(T_array)`.
+…then returned a residual that consumes exactly **four reductions**: `v_array[-1]`,
+`v_array[0]`, `np.min(T_array)`, `operations.monotonic(T_array)`. **F1 replaced steps 1–3 with
+a single `solve_ivp` on a coarse `t_eval` (`_RESIDUAL_NPTS = 500`)**; the residual still reads
+those same four numbers. (Volatile `bubble_luminosity.py:NNN` line numbers were dropped from
+this doc on 2026-06-19 — the logical-section reorder moved every def; anchor by function name
+and grep instead.)
 
 ### Cost (measured — microbenchmark, trivial RHS; re-measure on the real RHS in P0)
 | step | cost | note |
@@ -172,30 +177,21 @@ the per-segment bubble-solve count (default `hybr`: ~10–29 root-finder evals;
 `legacy`: up to 25 `_solve_grid` points) × every phase1b segment → easily
 **10²–10³** of these resamples per phase1b run.
 
-### Fix — two parts, two risk levels
-- **(a) Endpoints from boundary nodes — BIT-IDENTICAL, ship immediately.**
-  `v[0]`/`v[-1]` at the integration span ends equal `sol.y[:,0]`/`sol.y[:,-1]`
-  (dense output at the exact `t_span` endpoints *is* the integrator's boundary
-  value). No resample needed for the endpoint ratio `(v[-1])/(v[0]+1e-4)`.
-- **(b) `min_T` / monotonicity from a coarse fixed sample (~500–2000 pts), not
-  60k — NEEDS AN EQUIVALENCE TEST.** This is the *residual-only* solve (looser
-  `_RESIDUAL_RTOL = 1e-6`) whose sole job is to *locate* `dMdt`; a coarse sample
-  is almost certainly within tolerance. **But it changes which `dMdt` the fsolve
-  converges to**, so it is *not* a bit-identical claim — it earns a capture-replay
-  harness comparing final `bubble_dMdt`, `bubble_LTotal`, `bubble_T_r_Tb` across a
-  representative sweep (exactly like `shell-solver/`). The ~21-node adaptive
-  solution alone may miss a sub-node `min_T` dip, so a coarse *fixed* sample
-  (not the adaptive nodes) is the safe middle.
+### Shipped fix
+Rewrote `_get_velocity_residuals` to integrate once on a coarse `t_eval`
+(`_RESIDUAL_NPTS = 500`), dropping the 60k resample (`_solve_bubble_structure` + the final
+structure solve unchanged). **Result: ~1.5×/call, ~2.3× full-run** on the degenerate config.
+Validated per-call (`rel_dMdt ≤ 3.1e-6`, 6 configs) **and** full-run matched-`t` equivalence to
+**~6e-6** (≪ 0.3% gate) on `mock_hybr` + 3 stiff edge cases, + 538 unit + stress gates. The 60k
+was *output* over-resolution (LSODA `rtol=1e-6` already resolves the stiff solution). The
+validation method (and the key lesson — *per-call equivalence is necessary but not sufficient*)
+is in `BUBBLE_LUMINOSITY_PERFORMANCE.md` §Era D / §Methodology.
 
-**Plausible payoff:** ~1 order of magnitude off the phase1b inner loop;
-**multiplies** with the shipped hybr win (hybr ≈ 10 bubble solves/segment vs the
-grid's 25).
-
-### Cousin experiment (own convergence study, à la `archive/bubble/conduction-convergence.md`)
-**Does the legacy grid need 60 000 points at all?** The conduction zone is already
-sampled separately at 2000 pts (`_CONDUCTION_NPTS`); the CIE region is smooth.
-Shrinking the base grid speeds the *final* solve too, not just the residual.
-Gate it on a Tavg / L_total / mBubble convergence sweep.
+### Cousin (STILL OPEN) — does the FINAL structure solve need 60 000 points?
+F1 removed the 60k from the *residual* only. The **final** structure solve still builds
+`_create_radius_grid` (~60k); the conduction zone is already sampled at `_CONDUCTION_NPTS=2000`
+and the CIE region is smooth, so shrinking the base grid would speed the final solve too. Gate
+it on a Tavg / L_total / mBubble convergence sweep (same method as Era D / conduction-convergence).
 
 ---
 
@@ -231,7 +227,7 @@ Gate it on a Tavg / L_total / mBubble convergence sweep.
 | # | Win | Where | What's wasted | Risk |
 |---|---|---|---|---|
 | **F2.1** ✅ | **DEBUG was the shipped default with file output.** `log_level DEBUG` + `log_file True`; none of the 7 example params overrode it. Both root logger and `FileHandler` set to the param level (`logging_setup.py:207,258`). | `default.param` (now `INFO`); `registry.py:297` (source of truth, changed). | Per-RHS-stage string-format + disk I/O — but **measured cheap** (see Outcome). | **SHIPPED:** `registry.py` default `DEBUG→INFO`, `default.param` regenerated. Value is a ~340× smaller log, **not** speed (A/B showed no wall-time win). Bit-identical numerics. |
-| **F2.2** | **`grav_phi` + `grav_force_m` computed then discarded.** | `bubble_luminosity.py:979-1000`; sole caller `:746` `m_cumulative, _, _ = …` (grep-confirmed no other caller) | A full-array `scipy.integrate.simpson` + a 60k-element divide, every final structure solve, for nothing. | Delete the two computations; trim return to `m_cumulative`. Bit-identical (`m_cumulative` unchanged). |
+| **F2.2** | **`grav_phi` + `grav_force_m` computed then discarded.** | `_get_mass_and_grav` (grav block); sole caller in `_bubble_luminosity` (`m_cumulative, _, _ = …`, grep-confirmed no other caller) | A full-array `scipy.integrate.simpson` + a 60k-element divide, every final structure solve, for nothing. | Delete the two computations; trim return to `m_cumulative`. Bit-identical (`m_cumulative` unchanged). |
 | **F2.3** | **`get_dudt` recomputes run-constants every call** (innermost scalar loop). | `net_coolingcurve.py:94,96,103` | `nonCIE_Tcutoff`/`CIE_Tcutoff`/`min(temp)` are boolean-mask+`max`/`min` over fixed grids on every call; `CIE_Tcutoff`/`min(temp)` are true run-constants, the non-CIE one changes only at the cube-rebuild cadence. | Precompute once (cache on the cube / in `params`, refresh only when `get_coolingStructure` runs). Bit-identical. |
 | **F2.4** | **`get_dudt` computes `Lambda_CIE` unconditionally.** | `net_coolingcurve.py:89` | A full `CIE.get_Lambda` (interp1d eval + 2 transcendentals) discarded on the non-CIE and interpolation branches (the common conduction-zone case). | Move it inside the `elif … >= CIE_Tcutoff` branch. Bit-identical. |
 | ~~**F2.5**~~ ⛔ **DROPPED — not a free win** | **SPS `pdotdot_total` finite-difference.** My earlier rationale ("never consumed by the energy/transition RHS") was **wrong**. | `update_feedback.py:185` | **It IS consumed by an integrated RHS:** the phase-1b implicit `Ed` via the A12 coefficient `1.5·pdotdot_total/pdot_total` (`run_energy_implicit_phase.py:854`, `get_betadelta.py:411/520`). | Removing it unconditionally is **NOT** bit-identical (changes the phase-1b trajectory). A *phase-gated lazy eval* (skip the 2 evals only in phase 1/1c/2) is possible but is **F5-class** work, not a free win. **Excluded from this branch.** |
@@ -273,7 +269,8 @@ context credited as the warning fix — their §3 shows `mxstep` silenced a
 *different* warning (`ODEintWarning`), not the `t+h=t` overflow flood.
 
 **Still in THIS doc's scope (NOT covered by the shell plan), low value:** the
-**bubble** cooling integrands `bubble_luminosity.py:612,699` square a code-unit
+**bubble** cooling integrands (`_bubble_luminosity`, the CIE-bubble and intermediate-region
+trapezoid integrands) square a code-unit
 `n_bubble` (~1e53–1e55) → `n²`~1e106–1e114. There is **no `+n²` ODE term there**
 (one-shot trapezoid integrands), so **no pole and no overflow — genuinely
 precision-only**, and the consumed result is unaffected. Optional consistency fix
@@ -290,8 +287,8 @@ change. `net_coolingcurve.py:127,150` already does it right; the `exp(-tau)` cla
   `metadata.json` write on the first flush (`:821`). No per-step open/close.
 - **SPS/SB99 interpolators are built once** at `main.py:147` and cached; never
   rebuilt in a loop.
-- **The cooling `.interp` calls in the luminosity integrals** (`bubble_luminosity.py:650-694`)
-  are already **vectorized** `RegularGridInterpolator` calls over the whole array
+- **The cooling `.interp` calls in the luminosity integrals** (the conduction/intermediate
+  blocks of `_bubble_luminosity`) are already **vectorized** `RegularGridInterpolator` calls over the whole array
   — not Python loops.
 - **`_solve_grid` (the non-default `legacy` path) already caches the winning
   point's `props`** (`get_betadelta.py:~1017`) and early-exits — no double-solve

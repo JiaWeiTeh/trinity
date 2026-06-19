@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-Bubble luminosity (pure, dataclass-returning API).
+"""Bubble luminosity (pure, dataclass-returning API).
 
 Computes bubble properties from the Weaver+77 bubble-structure ODE and returns
 them in a BubbleProperties dataclass instead of mutating the params dict:
@@ -86,6 +85,14 @@ _BUBBLE_ATOL = 1e-10
 # shifts by <=0.3% (measured), bounded and within the series' output-diff.
 _RESIDUAL_RTOL = 1e-6
 
+# Coarse output grid for the dMdt velocity-residual solve. This solve only
+# LOCATES dMdt for the fsolve, so it integrates once on this many points instead
+# of resampling a dense-output solution onto the ~60k _create_radius_grid. P0/P1
+# (docs/dev/performance) show the converged dMdt is insensitive to this in
+# [200, 2000] (rel_dMdt <= 3e-6 vs the 60k grid across 6 configs); 500 is the
+# conservative pick.
+_RESIDUAL_NPTS = 500
+
 # Number of points used to sample the dense-output solution across the
 # conduction band for the L_conduction / Tavg_conduction trapezoids. The
 # integrand is smooth and the sampled solution is exact, so the trapezoid
@@ -103,267 +110,14 @@ class BubbleSolverError(Exception):
     """
 
 
-def _solve_bubble_structure(initial_conditions, r_array, params, Pb,
-                            rtol=_BUBBLE_RTOL):
-    """Integrate the bubble-structure ODE and sample it on ``r_array``.
-
-    Uses ``solve_ivp(dense_output=True)``: the integrator chooses its own
-    adaptive steps (accuracy set by rtol/atol) and the output grid is sampled
-    from the *continuous* solution. This decouples integration accuracy from
-    output sampling -- the near-duplicate radii in ``r_array`` that make
-    ``odeint``'s dense-output interpolation intermittently fail (the
-    nondeterministic bubble-solver crash; see
-    docs/dev/archive/bubble/integrator-robustness.md) are never requested of the
-    integrator.
-
-    Returns ``(psoln, ok, infodict, sol)``:
-      * ``psoln`` -- ``(len(r_array), 3)`` array [v, T, dTdr], matching the
-        former ``odeint`` output (``psoln[0]`` is the initial condition).
-      * ``ok`` -- ``sol.success``; when False the caller must not consume psoln.
-      * ``infodict`` -- dict (``message``/``status``/``nfev``/``nst``/``hu``)
-        consumed by the gated ``_capture_bubble_integration`` diagnostic.
-      * ``sol`` -- the dense-output solution object. The structure path samples
-        the conduction zone from it; the velocity-residual solve ignores it.
-
-    ``t_span`` is the actual grid span ``(r_array[0], r_array[-1])`` so sampling
-    ``r_array`` never extrapolates outside the integrated interval.
-    """
-    # solve_ivp validates its inputs and RAISES (ValueError) on a non-finite
-    # y0 rather than returning success=False. Convert that to the same
-    # deterministic failure the caller already handles, so a bad initial
-    # condition is reported as ok=False (-> BubbleSolverError) instead of
-    # escaping as a raw, uncontrolled error.
-    if not np.all(np.isfinite(initial_conditions)):
-        psoln = np.full((len(r_array), 3), np.nan)
-        return psoln, False, {'message': 'non-finite initial conditions'}, None
-    # The RHS raises BubbleSolverError when T collapses to ~zero mid-solve
-    # (see _get_bubble_ODE); solve_ivp propagates RHS exceptions raw, so
-    # convert that abort into the same ok=False contract as a solver failure.
-    try:
-        sol = scipy.integrate.solve_ivp(
-            fun=lambda r, y: _get_bubble_ODE(r, y, params, Pb),
-            t_span=(r_array[0], r_array[-1]),
-            y0=initial_conditions,
-            method='LSODA',
-            dense_output=True,
-            rtol=rtol,
-            atol=_BUBBLE_ATOL,
-        )
-    except BubbleSolverError as e:
-        psoln = np.full((len(r_array), 3), np.nan)
-        return psoln, False, {'message': str(e)}, None
-    # On success sol.sol is the continuous solution; if the solve failed before
-    # any step it can be None, in which case there is nothing to sample.
-    psoln = (sol.sol(r_array).T if sol.sol is not None
-             else np.full((len(r_array), 3), np.nan))
-    infodict = {
-        'message': sol.message,
-        'status': sol.status,
-        'nfev': sol.nfev,
-        'nst': int(sol.t.size),
-        'hu': np.abs(np.diff(sol.t)),
-    }
-    return psoln, sol.success, infodict, sol
-
-
 # =============================================================================
-# Gated bubble-integration diagnostic (observational only).
-#
-# Set the environment variable TRINITY_BUBBLE_DIAG=1 to capture every
-# problematic bubble temperature profile from the main structure solve:
-# the arrays + integration context are saved to <path2output>/bubble_diag/
-# and a one-line mode classification is logged. This exists to disambiguate
-# the two known triggers of the downstream `MonotonicError`
-# (see docs/dev/archive/bubble/integrator-robustness.md):
-#   - "dead_integrator": LSODA gives up, T-profile has a zero/non-finite
-#     tail at the hot (inner) end.
-#   - "boundary_transient": a small, smooth dip at the T_init=3e4 (outer)
-#     edge, confined to the first ~0.1% of points; the bulk is monotonic.
-#
-# IMPORTANT: this is purely observational. It only reads psoln, saves
-# files, and logs — it never alters T_array or the result.
-_BUBBLE_DIAG_MAX = 100          # cap on saved events per process
-_bubble_diag_count = 0
-
-
-def _bubble_diag_enabled():
-    """True iff the gated bubble-integration diagnostic is requested."""
-    return bool(os.environ.get('TRINITY_BUBBLE_DIAG'))
-
-
-def _capture_bubble_integration(params, r_array, psoln, infodict,
-                                R1, Pb, initial_conditions, bubble_dMdt):
-    """Save + classify a problematic bubble T-profile (gated diagnostic).
-
-    Called only when TRINITY_BUBBLE_DIAG is set. Returns immediately unless
-    the profile is non-finite, non-monotonic, or has a sub-floor tail, so a
-    healthy run produces no output. Never mutates state or raises into the
-    caller.
-    """
-    global _bubble_diag_count
-    try:
-        T = np.asarray(psoln[:, 1], dtype=float)
-        n = T.size
-        if n < 2:
-            return
-        finite = bool(np.isfinite(T).all())
-        diffs = np.diff(T)
-        negs = np.where(diffs < 0)[0]
-        strictly_monotonic = (negs.size == 0
-                              or bool(np.all(diffs >= 0))
-                              or bool(np.all(diffs <= 0)))
-        floor = 1e4
-        tail = T[-max(10, n // 100):]
-        tail_below_floor = int(np.sum(tail < floor))
-        problem = (not finite) or (not strictly_monotonic) or (tail_below_floor > 0)
-        if not problem:
-            return
-
-        cmax = np.maximum.accumulate(T)
-        drawdown = (cmax - T) / np.maximum(np.abs(cmax), 1e-300)
-        max_dd = float(drawdown.max())
-        dd_loc = int(np.argmax(drawdown))
-        last_bad = int(negs.max()) if negs.size else -1
-
-        if (not finite) or tail_below_floor > 0:
-            mode = "dead_integrator(zero/nonfinite tail)"
-        elif max_dd <= 1e-2 and (last_bad < 0.01 * n):
-            mode = "boundary_transient"
-        else:
-            mode = "bulk_nonmonotonic(possible real inversion)"
-
-        ier = None
-        message = ""
-        if isinstance(infodict, dict):
-            _ier = infodict.get('ier')
-            ier = int(_ier) if _ier is not None else None
-            message = str(infodict.get('message', ''))
-
-        beta = params['cool_beta'].value
-        delta = params['cool_delta'].value
-        R2 = params['R2'].value
-        Eb = params['Eb'].value
-        t_now = params['t_now'].value
-
-        logger.warning(
-            f"[bubble-diag] mode={mode} ier={ier} "
-            f"max_drawdown={max_dd:.3e}@frac{dd_loc / n:.4f} "
-            f"last_bad_idx={last_bad}/{n} T0={T[0]:.3e} Tend={T[-1]:.3e} "
-            f"dMdt={bubble_dMdt:.3e} beta={beta:.4f} delta={delta:.4f} "
-            f"R2={R2:.4e} Eb={Eb:.4e} t={t_now:.4e} msg={message!r}"
-        )
-
-        if _bubble_diag_count >= _BUBBLE_DIAG_MAX:
-            return
-        # geometry context — lets the inspector localize an event against the
-        # cloud/grid (rCloud was a red herring for the spike; kept as reference).
-        geom = {}
-        for _gk in ('rCloud', 'rCore'):
-            try:
-                geom[_gk] = float(params[_gk].value)
-            except Exception:
-                pass
-        # solver step diagnostics from _solve_bubble_structure's infodict:
-        # info_message, info_status, info_nfev, info_nst (accepted steps) and
-        # info_hu (per-step sizes). These confirm whether the solver hiccuped
-        # at the violation. (No 'ier' key; success is read from 'status'.)
-        info_save = {}
-        if isinstance(infodict, dict):
-            for _k, _v in infodict.items():
-                try:
-                    info_save[f"info_{_k}"] = np.asarray(_v)
-                except Exception:
-                    pass
-        outdir = os.path.join(params['path2output'].value, 'bubble_diag')
-        os.makedirs(outdir, exist_ok=True)
-        fname = os.path.join(outdir, f"event_{_bubble_diag_count:04d}_t{t_now:.6e}.npz")
-        np.savez(
-            fname,
-            r=r_array, v=psoln[:, 0], T=T, dTdr=psoln[:, 2],
-            ier=(ier if ier is not None else -999), message=message,
-            R1=R1, Pb=Pb, R2=R2, Eb=Eb, t_now=t_now,
-            beta=beta, delta=delta, bubble_dMdt=bubble_dMdt,
-            initial_conditions=np.asarray(initial_conditions, dtype=float),
-            mode=mode, max_drawdown=max_dd, last_bad_idx=last_bad,
-            **geom, **info_save,
-        )
-        _bubble_diag_count += 1
-        if _bubble_diag_count == _BUBBLE_DIAG_MAX:
-            logger.warning(
-                f"[bubble-diag] reached cap of {_BUBBLE_DIAG_MAX} saved "
-                "events; suppressing further saves (logging continues)"
-            )
-    except Exception as e:
-        logger.warning(f"[bubble-diag] capture failed (ignored): {e}")
-
-
+# Public API: bubble-properties dataclass + entry point
 # =============================================================================
-# Gated bubble-state dump (observational only) — for the offline audit harness.
-#
-# Set TRINITY_BUBBLE_STATE_DUMP=<N> to pickle the first N bubble-structure call
-# states to <path2output>/bubble_state/. Each dump holds every picklable param
-# value (the runtime cooling cubes are skipped — they are reconstructed
-# deterministically offline via read_param + get_coolingStructure), the solved
-# inputs (R1, Pb, dMdt, r2Prime, initial_conditions), and the structure arrays
-# so the harness can verify it reproduces this exact call. Byte-identical to
-# before when unset; never mutates state or raises into the caller.
-_bubble_state_dump_count = 0
-_bubble_state_last_t = 0.0
-
-
-def _dump_bubble_state(params, R1, Pb, bubble_dMdt, bubble_r_Tb, r2Prime,
-                       initial_conditions, r_array, v_array, T_array, dTdr_array):
-    """Pickle one bubble-call state for the offline correctness audit (gated)."""
-    global _bubble_state_dump_count, _bubble_state_last_t
-    try:
-        cap = int(os.environ.get('TRINITY_BUBBLE_STATE_DUMP') or 0)
-        if cap <= 0 or _bubble_state_dump_count >= cap:
-            return
-        # Optional log-spacing in time so dumped states span the evolution:
-        # require t_now to have grown by TRINITY_BUBBLE_STATE_DT between dumps
-        # (default 1.0 = no spacing = first-N behavior).
-        dt_factor = float(os.environ.get('TRINITY_BUBBLE_STATE_DT') or 1.0)
-        t_now = params['t_now'].value
-        if _bubble_state_dump_count > 0 and t_now < _bubble_state_last_t * dt_factor:
-            return
-        _bubble_state_last_t = t_now
-        pvals, skipped = {}, []
-        for k in params.keys():
-            try:
-                v = params[k].value
-                pickle.dumps(v)
-                pvals[k] = v
-            except Exception:
-                skipped.append(k)
-        state = {
-            'param_values': pvals,
-            'skipped_param_keys': skipped,
-            'R1': float(R1), 'Pb': float(Pb),
-            'bubble_dMdt': float(bubble_dMdt), 'bubble_r_Tb': float(bubble_r_Tb),
-            'r2Prime': float(r2Prime),
-            'initial_conditions': np.asarray(initial_conditions, dtype=float),
-            'r_array': np.asarray(r_array, dtype=float),
-            'v_array': np.asarray(v_array, dtype=float),
-            'T_array': np.asarray(T_array, dtype=float),
-            'dTdr_array': np.asarray(dTdr_array, dtype=float),
-        }
-        t_now = params['t_now'].value
-        outdir = os.path.join(params['path2output'].value, 'bubble_state')
-        os.makedirs(outdir, exist_ok=True)
-        fname = os.path.join(outdir, f"state_{_bubble_state_dump_count:04d}_t{t_now:.6e}.pkl")
-        with open(fname, 'wb') as fh:
-            pickle.dump(state, fh)
-        _bubble_state_dump_count += 1
-        logger.warning(f"[bubble-state] dumped {fname} "
-                       f"(skipped {len(skipped)} unpicklable params)")
-    except Exception as e:
-        logger.warning(f"[bubble-state] dump failed (ignored): {e}")
 
 
 @dataclass
 class BubbleProperties:
-    """
-    Dataclass containing all bubble properties.
+    """Dataclass containing all bubble properties.
 
     This can be used with updateDict(params, bubble_properties) to
     update the params dictionary after bubble calculation completes.
@@ -396,8 +150,7 @@ class BubbleProperties:
 
 
 def get_bubbleproperties_pure(params) -> BubbleProperties:
-    """
-    Calculate bubble properties and return as a dataclass.
+    """Calculate bubble properties and return as a dataclass.
 
     This is the pure version that does NOT mutate params.
     All calculated values are returned in a BubbleProperties dataclass.
@@ -477,31 +230,326 @@ def get_bubbleproperties_pure(params) -> BubbleProperties:
     )
 
     # Create radius array and solve ODE.
-    # NOTE: _create_adaptive_radius_grid (currently unused) was an alternative
-    # that concentrates points around shock regions but under-samples the
-    # conduction zone (T = 1e4 to 10^5.5 K). The legacy grid is used for output
-    # sampling; the LSODA dense-output interpolation failures it once caused are
-    # now avoided by integrating with solve_ivp (see _solve_bubble_structure and
+    # NOTE: an adaptive grid concentrating points around shock regions was tried
+    # and dropped -- it under-sampled the conduction zone (T = 1e4 to 10^5.5 K).
+    # The production grid is used for output sampling; the LSODA dense-output
+    # interpolation failures it once caused are now avoided by integrating with
+    # solve_ivp (see _solve_bubble_structure and
     # docs/dev/archive/bubble/integrator-robustness.md), not by the grid itself.
     initial_conditions = [v_r2Prime, T_r2Prime, dTdr_r2Prime]
 
-    return _bubble_luminosity_legacy(
+    return _bubble_luminosity(
         params, R1, Pb, r2Prime, initial_conditions, bubble_r_Tb, bubble_dMdt)
 
 
-def _bubble_luminosity_legacy(params, R1, Pb, r2Prime, initial_conditions,
-                              bubble_r_Tb, bubble_dMdt):
-    """Compute bubble luminosity on the legacy radius grid (production path).
+# =============================================================================
+# dMdt root-find (shell->bubble mass flux, velocity BC)
+# =============================================================================
 
-    Builds the ~60k-point legacy grid, integrates the structure with solve_ivp
+
+def _get_init_dMdt(params, Pb: float) -> float:
+    """Initial guess for dMdt (Equation 33 in Weaver+77)."""
+    dMdt_factor = 1.646
+    R2 = params['R2'].value
+    t_now = params['t_now'].value
+    mu_ion = params['mu_ion'].value
+    k_B = params['k_B'].value
+    C_thermal = params['C_thermal'].value
+    return (12 / 75 * dMdt_factor**(5/2) * 4 * np.pi * R2**3 / t_now
+            * mu_ion / k_B
+            * (t_now * C_thermal / R2**2)**(2/7)
+            * Pb**(5/7))
+
+
+def _get_velocity_residuals(dMdt_init, params, Pb: float, R1: float) -> float:
+    """Calculate velocity residual for dMdt solver."""
+    # =============================================================================
+    # Get initial bubble values for integration
+    # =============================================================================
+    r2Prime, T_r2Prime, dTdr_r2Prime, v_r2Prime = _get_bubble_ODE_initial_conditions(
+        dMdt_init, params, Pb, R1
+    )
+
+    # numpy 2.x: float(size-1 1-d array) errors, so coerce through .item()
+    r2Prime_val = np.asarray(r2Prime).item()
+    v_init      = np.asarray(v_r2Prime).item()
+    T_init      = np.asarray(T_r2Prime).item()
+    dTdr_init   = np.asarray(dTdr_r2Prime).item()
+
+    # This solve only LOCATES dMdt for the fsolve (looser _RESIDUAL_RTOL), so it
+    # integrates once on a coarse t_eval grid rather than resampling a dense
+    # solution onto the ~60k _create_radius_grid (HOTPATH F1; docs/dev/performance).
+    # Integration accuracy is set by rtol/atol; the residual only needs v at the
+    # endpoints plus the min_T / monotonic guards along the path. A failed solve
+    # returns a deterministic, large penalty so fsolve is steered away from this
+    # dMdt instead of falsely converging on garbage (a zero tail -> residual ~0).
+    if not np.all(np.isfinite([v_init, T_init, dTdr_init])):
+        return _SOLVER_FAIL_RESIDUAL
+    try:
+        sol = scipy.integrate.solve_ivp(
+            fun=lambda r, y: _get_bubble_ODE(r, y, params, Pb),
+            t_span=(r2Prime_val, R1),
+            y0=[v_init, T_init, dTdr_init],
+            method='LSODA',
+            t_eval=np.linspace(r2Prime_val, R1, _RESIDUAL_NPTS),
+            rtol=_RESIDUAL_RTOL,
+            atol=_BUBBLE_ATOL,
+        )
+    except BubbleSolverError:
+        return _SOLVER_FAIL_RESIDUAL
+    if not sol.success:
+        return _SOLVER_FAIL_RESIDUAL
+
+    v_array = sol.y[0]
+    T_array = sol.y[1]
+
+    residual = (v_array[-1] - 0) / (v_array[0] + 1e-4)
+
+    min_T = np.min(T_array)
+    if min_T < _T_INIT_BOUNDARY:
+        logger.debug(f'Rejected. min T: {min_T}')
+        return residual * (_T_INIT_BOUNDARY / (min_T + 1e-1))**2
+
+    if np.isnan(min_T):
+        logger.debug('Rejected. nan temperature')
+        return -1e3
+
+    if not operations.monotonic(T_array):
+        logger.debug('Temperature not monotonic')
+        return 1e2
+
+    return residual
+
+
+# =============================================================================
+# Bubble-structure ODE: initial conditions, RHS, integrate, grid
+# =============================================================================
+
+
+def _get_bubble_ODE_initial_conditions(dMdt, params, Pb: float, R1: float):
+    """Get initial conditions for bubble ODE (Eq 44 in Weaver+77)."""
+    T_init = _T_INIT_BOUNDARY
+
+    k_B = params['k_B'].value
+    mu_ion = params['mu_ion'].value
+    C_thermal = params['C_thermal'].value
+    R2 = params['R2'].value
+
+    constant = (25/4 * k_B / mu_ion / C_thermal)
+    dR2 = T_init**(5/2) / (constant * dMdt / (4 * np.pi * R2**2))
+
+    T = (constant * dMdt * dR2 / (4 * np.pi * R2**2))**(2/5)
+    v = (params['cool_alpha'].value * R2 / params['t_now'].value
+         - dMdt / (4 * np.pi * R2**2)
+         * k_B * T / mu_ion / Pb)
+    dTdr = -2/5 * T / dR2
+    r2_prime = R2 - dR2
+
+    return r2_prime, T, dTdr, v
+
+
+def _get_bubble_ODE(r_arr, initial_ODEs, params, Pb: float):
+    """Bubble structure ODE (Equations 42-43 in Weaver+77)."""
+    v, T, dTdr = initial_ODEs
+
+    if np.abs(T - 0) < 1e-5:
+        # T has collapsed to ~zero (typically an infeasible trial dMdt during
+        # the fsolve probe). Raise a catchable error -- _solve_bubble_structure
+        # converts it to its ok=False contract -- rather than sys.exit, which
+        # bypasses every handler (SystemExit is not an Exception).
+        logger.debug(f'T~0 in bubble ODE RHS (T={T:.3e}); aborting solve')
+        raise BubbleSolverError(
+            f'temperature reached zero in bubble ODE RHS (T={T:.3e})')
+
+    ndens = Pb / ((params['mu_convert'].value / params['mu_ion'].value) * params['k_B'].value * T)
+    phi = params['Qi'].value / (4 * np.pi * r_arr**2)
+
+    dudt = net_coolingcurve.get_dudt(params['t_now'].value, ndens, T, phi, params)
+
+    v_term = params['cool_alpha'].value * r_arr / params['t_now'].value
+
+    dTdrr = (Pb / (params['C_thermal'].value * T**(5/2)) * (
+        (params['cool_beta'].value + 2.5 * params['cool_delta'].value) / params['t_now'].value
+        + 2.5 * (v - v_term) * dTdr / T - dudt / Pb
+    ) - 2.5 * dTdr**2 / T - 2 * dTdr / r_arr)
+
+    dvdr = ((params['cool_beta'].value + params['cool_delta'].value) / params['t_now'].value
+            + (v - v_term) * dTdr / T - 2 * v / r_arr)
+
+    return [dvdr, dTdr, dTdrr]
+
+
+def _solve_bubble_structure(initial_conditions, r_array, params, Pb,
+                            rtol=_BUBBLE_RTOL):
+    """Integrate the bubble-structure ODE and sample it on ``r_array``.
+
+    Uses ``solve_ivp(dense_output=True)``: the integrator chooses its own
+    adaptive steps (accuracy set by rtol/atol) and the output grid is sampled
+    from the *continuous* solution. This decouples integration accuracy from
+    output sampling -- the near-duplicate radii in ``r_array`` that make
+    ``odeint``'s dense-output interpolation intermittently fail (the
+    nondeterministic bubble-solver crash; see
+    docs/dev/archive/bubble/integrator-robustness.md) are never requested of the
+    integrator.
+
+    Returns ``(psoln, ok, infodict, sol)``:
+      * ``psoln`` -- ``(len(r_array), 3)`` array [v, T, dTdr], matching the
+        former ``odeint`` output (``psoln[0]`` is the initial condition).
+      * ``ok`` -- ``sol.success``; when False the caller must not consume psoln.
+      * ``infodict`` -- dict (``message``/``status``/``nfev``/``nst``/``hu``)
+        consumed by the gated ``_capture_bubble_integration`` diagnostic.
+      * ``sol`` -- the dense-output solution object. The structure path samples
+        the conduction zone from it; the velocity-residual solve ignores it.
+
+    ``t_span`` is the actual grid span ``(r_array[0], r_array[-1])`` so sampling
+    ``r_array`` never extrapolates outside the integrated interval.
+    """
+    # solve_ivp validates its inputs and RAISES (ValueError) on a non-finite
+    # y0 rather than returning success=False. Convert that to the same
+    # deterministic failure the caller already handles, so a bad initial
+    # condition is reported as ok=False (-> BubbleSolverError) instead of
+    # escaping as a raw, uncontrolled error.
+    if not np.all(np.isfinite(initial_conditions)):
+        psoln = np.full((len(r_array), 3), np.nan)
+        return psoln, False, {'message': 'non-finite initial conditions'}, None
+    # The RHS raises BubbleSolverError when T collapses to ~zero mid-solve
+    # (see _get_bubble_ODE); solve_ivp propagates RHS exceptions raw, so
+    # convert that abort into the same ok=False contract as a solver failure.
+    try:
+        sol = scipy.integrate.solve_ivp(
+            fun=lambda r, y: _get_bubble_ODE(r, y, params, Pb),
+            t_span=(r_array[0], r_array[-1]),
+            y0=initial_conditions,
+            method='LSODA',
+            dense_output=True,
+            rtol=rtol,
+            atol=_BUBBLE_ATOL,
+        )
+    except BubbleSolverError as e:
+        psoln = np.full((len(r_array), 3), np.nan)
+        return psoln, False, {'message': str(e)}, None
+    # On success sol.sol is the continuous solution; if the solve failed before
+    # any step it can be None, in which case there is nothing to sample.
+    psoln = (sol.sol(r_array).T if sol.sol is not None
+             else np.full((len(r_array), 3), np.nan))
+    infodict = {
+        'message': sol.message,
+        'status': sol.status,
+        'nfev': sol.nfev,
+        'nst': int(sol.t.size),
+        'hu': np.abs(np.diff(sol.t)),
+    }
+    return psoln, sol.success, infodict, sol
+
+
+def _create_radius_grid(R1: float, r2Prime: float) -> np.ndarray:
+    """Create the 60k-point radius grid with cleaning.
+
+    This wraps the original grid construction logic (three np.logspace chunks
+    stitched together with np.insert) and applies cleaning to remove
+    near-duplicate points. (Those near-duplicates once caused LSODA
+    dense-output interpolation warnings on the odeint path; with solve_ivp the
+    cleaning is grid hygiene only.)
+
+    Parameters
+    ----------
+    R1 : float
+        Inner bubble radius [pc]
+    r2Prime : float
+        Outer integration boundary (R2 - dR2) [pc]
+
+    Returns
+    -------
+    np.ndarray
+        Cleaned radius array in decreasing order (for backward integration)
+    """
+    # Step 1: create array sampled at higher density at larger radius
+    # i.e., more datapoints near bubble's outer edge (reverse logspace)
+    r_array = (r2Prime + R1) - np.logspace(np.log10(R1), np.log10(r2Prime), int(2e4))
+
+    # Step 2: add front-heavy resolution at high r
+    r_improve = np.logspace(np.log10(r_array[0]), np.log10(r_array[2]), int(2e4))
+    r_array = np.insert(r_array[3:], 0, r_improve)
+
+    # Step 3: further front-heavy for end of array
+    r_further = (r_array[-1] + r_array[-5]) - np.logspace(
+        np.log10(r_array[-1]), np.log10(r_array[-5]), int(2e4)
+    )
+    r_array = np.insert(r_array[:-5], len(r_array[:-5]), r_further)
+
+    # Remove near-duplicate points (grid hygiene; see _clean_radius_grid)
+    return _clean_radius_grid(r_array)
+
+
+def _clean_radius_grid(r_array: np.ndarray, min_relative_spacing: float = MIN_SPACING) -> np.ndarray:
+    """Remove near-duplicate points from a radius grid.
+
+    The np.insert() operations used to build the radius grid can create
+    near-duplicate points at join boundaries (differences of ~1e-8 to 1e-9).
+    On the former odeint path these tripped LSODA's dense-output interpolation
+    ("intdy-- t illegal" warnings); the structure is now integrated with
+    solve_ivp, so this removal is grid hygiene rather than a correctness fix.
+
+    This function removes near-duplicates by enforcing a minimum relative
+    spacing between consecutive points.
+
+    Parameters
+    ----------
+    r_array : np.ndarray
+        Radius array (typically in decreasing order for backward integration)
+    min_relative_spacing : float
+        Minimum allowed relative difference between consecutive points.
+        Points closer than this (relative to their magnitude) are removed.
+        Default is 1e-12 (MIN_SPACING).
+
+    Returns
+    -------
+    np.ndarray
+        Cleaned radius array with near-duplicates removed
+    """
+    if len(r_array) < 2:
+        return r_array
+
+    # Calculate relative differences between consecutive points
+    # Use the average magnitude of consecutive points as reference
+    avg_magnitude = 0.5 * (np.abs(r_array[:-1]) + np.abs(r_array[1:]))
+    # Avoid division by zero for very small values
+    avg_magnitude = np.maximum(avg_magnitude, 1e-30)
+    relative_diff = np.abs(np.diff(r_array)) / avg_magnitude
+
+    # Keep points that have sufficient spacing from previous point
+    # First point is always kept
+    keep_mask = np.concatenate([[True], relative_diff >= min_relative_spacing])
+
+    cleaned = r_array[keep_mask]
+
+    n_removed = len(r_array) - len(cleaned)
+    if n_removed > 0:
+        logger.debug(f'_clean_radius_grid: removed {n_removed} near-duplicate points '
+                     f'({len(r_array)} -> {len(cleaned)})')
+
+    return cleaned
+
+
+# =============================================================================
+# Luminosity integration + bubble mass
+# =============================================================================
+
+
+def _bubble_luminosity(params, R1, Pb, r2Prime, initial_conditions,
+                       bubble_r_Tb, bubble_dMdt):
+    """Compute bubble luminosity on the production radius grid.
+
+    Builds the ~60k-point grid, integrates the structure with solve_ivp
     (via _solve_bubble_structure), splits the profile into CIE / conduction /
     intermediate regions (find_nearest_higher) and trapezoid-integrates the
-    cooling in each. The '_legacy' name refers only to the grid construction
-    (an earlier plan to add a separate primary path with this as fallback was
-    dropped); this is the sole luminosity path.
+    cooling in each. This is the sole luminosity path (an earlier plan to add a
+    separate primary path with this as fallback was dropped, which is why this
+    was once suffixed '_legacy').
     """
-    # Always use cleaned legacy grid for now (adaptive grid causes accuracy issues)
-    r_array = _create_legacy_radius_grid(R1, r2Prime)
+    # Use the cleaned production grid (an adaptive shock-concentrating variant
+    # was tried and dropped -- it under-sampled the conduction zone).
+    r_array = _create_radius_grid(R1, r2Prime)
     # Integrate with solve_ivp(dense_output): the integrator picks its own
     # adaptive steps and we sample the continuous solution on r_array, so the
     # near-duplicate radii that make odeint's dense-output interpolation fail
@@ -767,215 +815,6 @@ def _bubble_luminosity_legacy(params, R1, Pb, r2Prime, initial_conditions,
     )
 
 
-def _get_init_dMdt(params, Pb: float) -> float:
-    """Initial guess for dMdt (Equation 33 in Weaver+77)."""
-    dMdt_factor = 1.646
-    R2 = params['R2'].value
-    t_now = params['t_now'].value
-    mu_ion = params['mu_ion'].value
-    k_B = params['k_B'].value
-    C_thermal = params['C_thermal'].value
-    return (12 / 75 * dMdt_factor**(5/2) * 4 * np.pi * R2**3 / t_now
-            * mu_ion / k_B
-            * (t_now * C_thermal / R2**2)**(2/7)
-            * Pb**(5/7))
-
-
-def _clean_radius_grid(r_array: np.ndarray, min_relative_spacing: float = MIN_SPACING) -> np.ndarray:
-    """
-    Remove near-duplicate points from a radius grid.
-
-    The np.insert() operations used to build the radius grid can create
-    near-duplicate points at join boundaries (differences of ~1e-8 to 1e-9).
-    On the former odeint path these tripped LSODA's dense-output interpolation
-    ("intdy-- t illegal" warnings); the structure is now integrated with
-    solve_ivp, so this removal is grid hygiene rather than a correctness fix.
-
-    This function removes near-duplicates by enforcing a minimum relative
-    spacing between consecutive points.
-
-    Parameters
-    ----------
-    r_array : np.ndarray
-        Radius array (typically in decreasing order for backward integration)
-    min_relative_spacing : float
-        Minimum allowed relative difference between consecutive points.
-        Points closer than this (relative to their magnitude) are removed.
-        Default is 1e-12 (MIN_SPACING).
-
-    Returns
-    -------
-    np.ndarray
-        Cleaned radius array with near-duplicates removed
-    """
-    if len(r_array) < 2:
-        return r_array
-
-    # Calculate relative differences between consecutive points
-    # Use the average magnitude of consecutive points as reference
-    avg_magnitude = 0.5 * (np.abs(r_array[:-1]) + np.abs(r_array[1:]))
-    # Avoid division by zero for very small values
-    avg_magnitude = np.maximum(avg_magnitude, 1e-30)
-    relative_diff = np.abs(np.diff(r_array)) / avg_magnitude
-
-    # Keep points that have sufficient spacing from previous point
-    # First point is always kept
-    keep_mask = np.concatenate([[True], relative_diff >= min_relative_spacing])
-
-    cleaned = r_array[keep_mask]
-
-    n_removed = len(r_array) - len(cleaned)
-    if n_removed > 0:
-        logger.debug(f'_clean_radius_grid: removed {n_removed} near-duplicate points '
-                     f'({len(r_array)} -> {len(cleaned)})')
-
-    return cleaned
-
-
-def _create_legacy_radius_grid(R1: float, r2Prime: float) -> np.ndarray:
-    """
-    Create the legacy 60k-point radius grid with cleaning.
-
-    This wraps the original grid construction logic (three np.logspace chunks
-    stitched together with np.insert) and applies cleaning to remove
-    near-duplicate points. (Those near-duplicates once caused LSODA
-    dense-output interpolation warnings on the odeint path; with solve_ivp the
-    cleaning is grid hygiene only.)
-
-    Parameters
-    ----------
-    R1 : float
-        Inner bubble radius [pc]
-    r2Prime : float
-        Outer integration boundary (R2 - dR2) [pc]
-
-    Returns
-    -------
-    np.ndarray
-        Cleaned radius array in decreasing order (for backward integration)
-    """
-    # Step 1: create array sampled at higher density at larger radius
-    # i.e., more datapoints near bubble's outer edge (reverse logspace)
-    r_array = (r2Prime + R1) - np.logspace(np.log10(R1), np.log10(r2Prime), int(2e4))
-
-    # Step 2: add front-heavy resolution at high r
-    r_improve = np.logspace(np.log10(r_array[0]), np.log10(r_array[2]), int(2e4))
-    r_array = np.insert(r_array[3:], 0, r_improve)
-
-    # Step 3: further front-heavy for end of array
-    r_further = (r_array[-1] + r_array[-5]) - np.logspace(
-        np.log10(r_array[-1]), np.log10(r_array[-5]), int(2e4)
-    )
-    r_array = np.insert(r_array[:-5], len(r_array[:-5]), r_further)
-
-    # Remove near-duplicate points (grid hygiene; see _clean_radius_grid)
-    return _clean_radius_grid(r_array)
-
-
-def _get_velocity_residuals(dMdt_init, params, Pb: float, R1: float) -> float:
-    """Calculate velocity residual for dMdt solver."""
-    # =============================================================================
-    # Get initial bubble values for integration
-    # =============================================================================
-    r2Prime, T_r2Prime, dTdr_r2Prime, v_r2Prime = _get_bubble_ODE_initial_conditions(
-        dMdt_init, params, Pb, R1
-    )
-
-    # numpy 2.x: float(size-1 1-d array) errors, so coerce through .item()
-    r2Prime_val = np.asarray(r2Prime).item()
-    v_init      = np.asarray(v_r2Prime).item()
-    T_init      = np.asarray(T_r2Prime).item()
-    dTdr_init   = np.asarray(dTdr_r2Prime).item()
-
-    # =============================================================================
-    # radius array at which bubble structure is being evaluated.
-    # =============================================================================
-    # Use cleaned legacy grid (called many times during fsolve, so keep it simple)
-    r_array = _create_legacy_radius_grid(R1, r2Prime_val)
-
-    # Solve with solve_ivp at a looser rtol -- this solve only locates dMdt for
-    # the fsolve (see _RESIDUAL_RTOL). A failed solve returns ok=False; return a
-    # deterministic, large, non-zero penalty so fsolve is steered away from this
-    # dMdt instead of falsely converging on garbage (a zero tail -> residual ~0).
-    psoln, _ok, _, _ = _solve_bubble_structure(
-        [v_init, T_init, dTdr_init], r_array, params, Pb, rtol=_RESIDUAL_RTOL)
-    if not _ok:
-        return _SOLVER_FAIL_RESIDUAL
-
-    v_array = psoln[:, 0]
-    T_array = psoln[:, 1]
-
-    residual = (v_array[-1] - 0) / (v_array[0] + 1e-4)
-
-    min_T = np.min(T_array)
-    if min_T < _T_INIT_BOUNDARY:
-        logger.debug(f'Rejected. min T: {min_T}')
-        return residual * (_T_INIT_BOUNDARY / (min_T + 1e-1))**2
-
-    if np.isnan(min_T):
-        logger.debug('Rejected. nan temperature')
-        return -1e3
-
-    if not operations.monotonic(T_array):
-        logger.debug('Temperature not monotonic')
-        return 1e2
-
-    return residual
-
-
-def _get_bubble_ODE_initial_conditions(dMdt, params, Pb: float, R1: float):
-    """Get initial conditions for bubble ODE (Eq 44 in Weaver+77)."""
-    T_init = _T_INIT_BOUNDARY
-
-    k_B = params['k_B'].value
-    mu_ion = params['mu_ion'].value
-    C_thermal = params['C_thermal'].value
-    R2 = params['R2'].value
-
-    constant = (25/4 * k_B / mu_ion / C_thermal)
-    dR2 = T_init**(5/2) / (constant * dMdt / (4 * np.pi * R2**2))
-
-    T = (constant * dMdt * dR2 / (4 * np.pi * R2**2))**(2/5)
-    v = (params['cool_alpha'].value * R2 / params['t_now'].value
-         - dMdt / (4 * np.pi * R2**2)
-         * k_B * T / mu_ion / Pb)
-    dTdr = -2/5 * T / dR2
-    r2_prime = R2 - dR2
-
-    return r2_prime, T, dTdr, v
-
-
-def _get_bubble_ODE(r_arr, initial_ODEs, params, Pb: float):
-    """Bubble structure ODE (Equations 42-43 in Weaver+77)."""
-    v, T, dTdr = initial_ODEs
-
-    if np.abs(T - 0) < 1e-5:
-        # T has collapsed to ~zero (typically an infeasible trial dMdt during
-        # the fsolve probe). Raise a catchable error -- _solve_bubble_structure
-        # converts it to its ok=False contract -- rather than sys.exit, which
-        # bypasses every handler (SystemExit is not an Exception).
-        logger.debug(f'T~0 in bubble ODE RHS (T={T:.3e}); aborting solve')
-        raise BubbleSolverError(
-            f'temperature reached zero in bubble ODE RHS (T={T:.3e})')
-
-    ndens = Pb / ((params['mu_convert'].value / params['mu_ion'].value) * params['k_B'].value * T)
-    phi = params['Qi'].value / (4 * np.pi * r_arr**2)
-
-    dudt = net_coolingcurve.get_dudt(params['t_now'].value, ndens, T, phi, params)
-
-    v_term = params['cool_alpha'].value * r_arr / params['t_now'].value
-
-    dTdrr = (Pb / (params['C_thermal'].value * T**(5/2)) * (
-        (params['cool_beta'].value + 2.5 * params['cool_delta'].value) / params['t_now'].value
-        + 2.5 * (v - v_term) * dTdr / T - dudt / Pb
-    ) - 2.5 * dTdr**2 / T - 2 * dTdr / r_arr)
-
-    dvdr = ((params['cool_beta'].value + params['cool_delta'].value) / params['t_now'].value
-            + (v - v_term) * dTdr / T - 2 * v / r_arr)
-
-    return [dvdr, dTdr, dTdrr]
-
-
 def _get_mass_and_grav(n, r, params):
     """Calculate cumulative mass (gravity outputs currently DISABLED).
 
@@ -1012,3 +851,197 @@ def _get_mass_and_grav(n, r, params):
     grav_force_m = None
 
     return m_cumulative, grav_phi, grav_force_m
+
+
+# =============================================================================
+# Gated bubble-integration diagnostic (observational only)
+# =============================================================================
+# Set the environment variable TRINITY_BUBBLE_DIAG=1 to capture every
+# problematic bubble temperature profile from the main structure solve:
+# the arrays + integration context are saved to <path2output>/bubble_diag/
+# and a one-line mode classification is logged. This exists to disambiguate
+# the two known triggers of the downstream `MonotonicError`
+# (see docs/dev/archive/bubble/integrator-robustness.md):
+#   - "dead_integrator": LSODA gives up, T-profile has a zero/non-finite
+#     tail at the hot (inner) end.
+#   - "boundary_transient": a small, smooth dip at the T_init=3e4 (outer)
+#     edge, confined to the first ~0.1% of points; the bulk is monotonic.
+#
+# IMPORTANT: this is purely observational. It only reads psoln, saves
+# files, and logs — it never alters T_array or the result.
+_BUBBLE_DIAG_MAX = 100          # cap on saved events per process
+_bubble_diag_count = 0
+
+
+def _bubble_diag_enabled():
+    """True iff the gated bubble-integration diagnostic is requested."""
+    return bool(os.environ.get('TRINITY_BUBBLE_DIAG'))
+
+
+def _capture_bubble_integration(params, r_array, psoln, infodict,
+                                R1, Pb, initial_conditions, bubble_dMdt):
+    """Save + classify a problematic bubble T-profile (gated diagnostic).
+
+    Called only when TRINITY_BUBBLE_DIAG is set. Returns immediately unless
+    the profile is non-finite, non-monotonic, or has a sub-floor tail, so a
+    healthy run produces no output. Never mutates state or raises into the
+    caller.
+    """
+    global _bubble_diag_count
+    try:
+        T = np.asarray(psoln[:, 1], dtype=float)
+        n = T.size
+        if n < 2:
+            return
+        finite = bool(np.isfinite(T).all())
+        diffs = np.diff(T)
+        negs = np.where(diffs < 0)[0]
+        strictly_monotonic = (negs.size == 0
+                              or bool(np.all(diffs >= 0))
+                              or bool(np.all(diffs <= 0)))
+        floor = 1e4
+        tail = T[-max(10, n // 100):]
+        tail_below_floor = int(np.sum(tail < floor))
+        problem = (not finite) or (not strictly_monotonic) or (tail_below_floor > 0)
+        if not problem:
+            return
+
+        cmax = np.maximum.accumulate(T)
+        drawdown = (cmax - T) / np.maximum(np.abs(cmax), 1e-300)
+        max_dd = float(drawdown.max())
+        dd_loc = int(np.argmax(drawdown))
+        last_bad = int(negs.max()) if negs.size else -1
+
+        if (not finite) or tail_below_floor > 0:
+            mode = "dead_integrator(zero/nonfinite tail)"
+        elif max_dd <= 1e-2 and (last_bad < 0.01 * n):
+            mode = "boundary_transient"
+        else:
+            mode = "bulk_nonmonotonic(possible real inversion)"
+
+        ier = None
+        message = ""
+        if isinstance(infodict, dict):
+            _ier = infodict.get('ier')
+            ier = int(_ier) if _ier is not None else None
+            message = str(infodict.get('message', ''))
+
+        beta = params['cool_beta'].value
+        delta = params['cool_delta'].value
+        R2 = params['R2'].value
+        Eb = params['Eb'].value
+        t_now = params['t_now'].value
+
+        logger.warning(
+            f"[bubble-diag] mode={mode} ier={ier} "
+            f"max_drawdown={max_dd:.3e}@frac{dd_loc / n:.4f} "
+            f"last_bad_idx={last_bad}/{n} T0={T[0]:.3e} Tend={T[-1]:.3e} "
+            f"dMdt={bubble_dMdt:.3e} beta={beta:.4f} delta={delta:.4f} "
+            f"R2={R2:.4e} Eb={Eb:.4e} t={t_now:.4e} msg={message!r}"
+        )
+
+        if _bubble_diag_count >= _BUBBLE_DIAG_MAX:
+            return
+        # geometry context — lets the inspector localize an event against the
+        # cloud/grid (rCloud was a red herring for the spike; kept as reference).
+        geom = {}
+        for _gk in ('rCloud', 'rCore'):
+            try:
+                geom[_gk] = float(params[_gk].value)
+            except Exception:
+                pass
+        # solver step diagnostics from _solve_bubble_structure's infodict:
+        # info_message, info_status, info_nfev, info_nst (accepted steps) and
+        # info_hu (per-step sizes). These confirm whether the solver hiccuped
+        # at the violation. (No 'ier' key; success is read from 'status'.)
+        info_save = {}
+        if isinstance(infodict, dict):
+            for _k, _v in infodict.items():
+                try:
+                    info_save[f"info_{_k}"] = np.asarray(_v)
+                except Exception:
+                    pass
+        outdir = os.path.join(params['path2output'].value, 'bubble_diag')
+        os.makedirs(outdir, exist_ok=True)
+        fname = os.path.join(outdir, f"event_{_bubble_diag_count:04d}_t{t_now:.6e}.npz")
+        np.savez(
+            fname,
+            r=r_array, v=psoln[:, 0], T=T, dTdr=psoln[:, 2],
+            ier=(ier if ier is not None else -999), message=message,
+            R1=R1, Pb=Pb, R2=R2, Eb=Eb, t_now=t_now,
+            beta=beta, delta=delta, bubble_dMdt=bubble_dMdt,
+            initial_conditions=np.asarray(initial_conditions, dtype=float),
+            mode=mode, max_drawdown=max_dd, last_bad_idx=last_bad,
+            **geom, **info_save,
+        )
+        _bubble_diag_count += 1
+        if _bubble_diag_count == _BUBBLE_DIAG_MAX:
+            logger.warning(
+                f"[bubble-diag] reached cap of {_BUBBLE_DIAG_MAX} saved "
+                "events; suppressing further saves (logging continues)"
+            )
+    except Exception as e:
+        logger.warning(f"[bubble-diag] capture failed (ignored): {e}")
+
+
+# =============================================================================
+# Gated bubble-state dump (observational only) — offline audit harness
+# =============================================================================
+# Set TRINITY_BUBBLE_STATE_DUMP=<N> to pickle the first N bubble-structure call
+# states to <path2output>/bubble_state/. Each dump holds every picklable param
+# value (the runtime cooling cubes are skipped — they are reconstructed
+# deterministically offline via read_param + get_coolingStructure), the solved
+# inputs (R1, Pb, dMdt, r2Prime, initial_conditions), and the structure arrays
+# so the harness can verify it reproduces this exact call. Byte-identical to
+# before when unset; never mutates state or raises into the caller.
+_bubble_state_dump_count = 0
+_bubble_state_last_t = 0.0
+
+
+def _dump_bubble_state(params, R1, Pb, bubble_dMdt, bubble_r_Tb, r2Prime,
+                       initial_conditions, r_array, v_array, T_array, dTdr_array):
+    """Pickle one bubble-call state for the offline correctness audit (gated)."""
+    global _bubble_state_dump_count, _bubble_state_last_t
+    try:
+        cap = int(os.environ.get('TRINITY_BUBBLE_STATE_DUMP') or 0)
+        if cap <= 0 or _bubble_state_dump_count >= cap:
+            return
+        # Optional log-spacing in time so dumped states span the evolution:
+        # require t_now to have grown by TRINITY_BUBBLE_STATE_DT between dumps
+        # (default 1.0 = no spacing = first-N behavior).
+        dt_factor = float(os.environ.get('TRINITY_BUBBLE_STATE_DT') or 1.0)
+        t_now = params['t_now'].value
+        if _bubble_state_dump_count > 0 and t_now < _bubble_state_last_t * dt_factor:
+            return
+        _bubble_state_last_t = t_now
+        pvals, skipped = {}, []
+        for k in params.keys():
+            try:
+                v = params[k].value
+                pickle.dumps(v)
+                pvals[k] = v
+            except Exception:
+                skipped.append(k)
+        state = {
+            'param_values': pvals,
+            'skipped_param_keys': skipped,
+            'R1': float(R1), 'Pb': float(Pb),
+            'bubble_dMdt': float(bubble_dMdt), 'bubble_r_Tb': float(bubble_r_Tb),
+            'r2Prime': float(r2Prime),
+            'initial_conditions': np.asarray(initial_conditions, dtype=float),
+            'r_array': np.asarray(r_array, dtype=float),
+            'v_array': np.asarray(v_array, dtype=float),
+            'T_array': np.asarray(T_array, dtype=float),
+            'dTdr_array': np.asarray(dTdr_array, dtype=float),
+        }
+        t_now = params['t_now'].value
+        outdir = os.path.join(params['path2output'].value, 'bubble_state')
+        os.makedirs(outdir, exist_ok=True)
+        fname = os.path.join(outdir, f"state_{_bubble_state_dump_count:04d}_t{t_now:.6e}.pkl")
+        with open(fname, 'wb') as fh:
+            pickle.dump(state, fh)
+        _bubble_state_dump_count += 1
+        logger.warning(f"[bubble-state] dumped {fname} "
+                       f"(skipped {len(skipped)} unpicklable params)")
+    except Exception as e:
+        logger.warning(f"[bubble-state] dump failed (ignored): {e}")
