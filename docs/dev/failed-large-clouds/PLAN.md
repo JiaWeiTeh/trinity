@@ -141,9 +141,13 @@ on `[0, R2]` cannot bracket and raises. `Eb` already went `nan` an iteration ear
 ## 2. Root cause (verified 3× — two code traces + sim-free probe + live repro)
 
 A `mCloud=5e9, sfe~0.05-0.1` cloud is a **5×10⁸ M⊙ cluster** with `Lmech ≈ 5×10¹²` (code units), ~500×
-a typical `1e6` cluster. At `nCore=1e2` the bubble **radiates faster than the wind resupplies it**, so
-`Eb` collapses instead of growing (local repro: `E0=6.4e9 → 4.8e8`, a 13× drop, in 0.003 Myr; the
-healthy `1e7` control's `Eb` *grows* `5.7e5 → 2.3e7`).
+a typical `1e6` cluster. It launches the shell at **~2000–3700 km/s** (near free-expansion), and the
+bubble's **PdV work on that fast shell, `4πR²·Pb·v2`, exceeds `Lmech`** — so `Eb` is drained and collapses
+instead of growing (local repro: `E0=6.4e9 → 4.8e8`, a 13× drop, in 0.003 Myr; the healthy `1e7` control's
+`Eb` *grows* `5.7e5 → 2.3e7`). **⚠️ Mechanism correction (2026-06-19): radiative cooling is _not_ the
+driver** — the measured `L_cool` is only **~1% of `Lmech`**; the energy sink is **PdV expansion work**
+(§3b, with figures). "Catastrophic cooling" is a misnomer for this band; keep it only as the historical
+label. The crash *mechanics* below (R1→R2, divide-by-zero) are unchanged by this correction.
 
 The inner wind shock `R1` solves `get_bubbleParams.get_r1`:
 
@@ -174,8 +178,10 @@ meaningless and does **not** prevent the zero denominator.
 
 ### Why mass-dependent (the regime boundary)
 `mCloud=1e7` (same `nCore`, `sfe`, `PISM`, `nISM`) runs healthy through 1a (95 segments) into 1b — `Eb`
-grows. Only the catastrophic-cooling band (high cluster mass → `Lcool > Lmech`) collapses `Eb`. The
-matrix (§5) will pin the mass/density threshold.
+grows. Only the high-cluster-mass band collapses `Eb`: a more massive cluster launches a **faster shell**,
+so the **PdV work `4πR²·Pb·v2` exceeds `Lmech`** (`PdV/Lmech > 1`) and the energy-driven solution cannot
+self-sustain (§3b). (Originally framed as `Lcool > Lmech`; the budget shows `Lcool/Lmech ≈ 0.01` — it is
+the PdV term, not cooling, that crosses unity.) The matrix (§5) will pin the mass/density threshold.
 
 ## 3. Key finding from the sim-free probe (`harness/probe_degeneracy.py` → `data/probe_degeneracy.csv`)
 
@@ -203,6 +209,40 @@ Two things the table makes undeniable:
    `4.345e6` falls straight out** (matches the table). This is just the wind ram pressure at `R1`.
 
 So the crash has **three** orthogonal fix levers, which the matrix will compare head-to-head.
+
+## 3b. Energy budget — the collapse is PdV work, not cooling (2026-06-19) — with figures
+
+Decomposing the energy ODE the code actually integrates (`phase1_energy/energy_phase_ODEs.py:280`),
+`Ed = (Lmech − L_bubble) − (4π·R2²·press_bubble)·v2 − L_leak`, over the live `fail_repro` trajectory:
+
+| t (×10⁻³ Myr) | Eb | Lmech (in) | **L_cool** (`bubble_LTotal`) | **PdV** = 4πR²·Pb·v2 | v2 (km/s) |
+|---|---|---|---|---|---|
+| 1.4 | 6.4e9 | 1.01e13 | **1.4e11** (≈1%) | **2.7e13** (≈2.7×) | 3656 |
+| 1.9 | 4.9e9 | 1.01e13 | **1.1e11** | **1.6e13** | — |
+| 2.6 | 1.4e9 | 1.01e13 | **5.4e10** | **1.4e13** | — |
+| 2.9 | 5.6e8 | 1.01e13 | **3.8e10** (≈0.4%) | **1.3e13** | 2331 |
+
+**The energy sink is the PdV expansion work, not radiative cooling.** `L_cool/Lmech ≈ 0.01` throughout;
+`PdV/Lmech ≈ 1.3–2.7 > 1`, so `dEb/dt < 0` and `Eb` falls to zero. The driver is the **shell velocity**:
+this cluster launches the shell at ~2000–3700 km/s (near free-expansion, `R ≈ v·t`), and `PdV ∝ v2`.
+The system is out of the self-similar Weaver equilibrium (where PdV is a fixed fraction of `Lmech` and `Eb`
+grows) — physically it is **momentum/free-expansion-dominated from birth**.
+
+**Decomposition is faithful (validated):** the reconstructed `Ed = Lmech − L_cool − PdV − L_leak` matches a
+finite-difference `dEb/dt` over the physical snapshots with **median ratio 1.00** (sign agreement 48/52).
+
+**Healthy vs failing discriminator:** for the healthy `small_1e6`, `PdV/Lmech ≈ 0.5 < 1` (Eb grows, classic
+Weaver) and `v2` decelerates to ~50 km/s; for `fail_repro`, `PdV/Lmech` crosses 1 and `v2` stays ~2000+ km/s.
+
+**Figures** (`figures/make_energy_budget_figs.py`, reproducible from the committed CSVs, no re-run needed):
+- `figures/fig1_dEbdt_budget.png` — the budget: PdV ≫ L_cool, PdV > Lmech (the finding).
+- `figures/fig2_healthy_vs_failing.png` — PdV/Lmech, v2, Eb for failing vs healthy (why this band dies).
+- `figures/fig3_bug_and_fix.png` — Eb→0 collapses R1→R2 (shell vol→0 → 1/0 → NaN); old crash vs new code-51 stop.
+- Data: `data/budget_fail_repro.csv`, `data/budget_small_1e6.csv` (per-snapshot t,Eb,R1,R2,v2,Pb,Lmech,Lcool,Lleak).
+
+This **revises** the "catastrophic cooling" label used in §1–§2 and the early commit messages, and it
+*confirms* family **T**'s framing in §4: the principled handoff trigger is the **PdV-inclusive** net-energy
+zero-crossing (`Lgain − Lloss − 4πR²·v2·Pb ≤ 0`), i.e. the PdV term is exactly the one that tips it.
 
 ## 4. Candidate fix families & the harness variants
 
