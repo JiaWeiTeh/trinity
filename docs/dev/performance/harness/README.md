@@ -5,15 +5,15 @@
 > source before trusting line refs. Results are committed as CSVs under
 > `../data/`; the multi-MB state pickles are gitignored (regenerable — see below).
 >
-> 🟠 **(2026-06-19) This per-call harness is NECESSARY-NOT-SUFFICIENT.** It measures
-> per-call `rel_dMdt`, which passed (≤3e-6) — but that does **not** clear F1: a coarse
-> `t_eval` can under-resolve the residual's `min_T`/`monotonic` gates on stiff/sharp-T
-> configs and flip fsolve steering over a full run. The real gate is **full-run
-> equivalence** (`RESAMPLE_PLAN.md` §P5): `mock_hybr` passed (~5e-6), stiff edge cases
-> pending. **`ab_fullrun.py` is BUGGED** — it runs both variants in one Python process,
-> and trinity's module-level global state leaks between them (this produced a false
-> "divergence"); a correct A/B runs each variant in a **separate `run.py` process**
-> (see `/tmp/f1_edge_batch.sh` pattern, to be committed under `harness/`).
+> 🟢 **(2026-06-19) F1 CLEARED.** This per-call harness is NECESSARY-NOT-SUFFICIENT — it
+> measures per-call `rel_dMdt` (≤3e-6), which alone does **not** clear F1. The decider is
+> **full-run equivalence** (`RESAMPLE_PLAN.md` §P5), and F1 PASSED it: `mock_hybr` (~5e-6)
+> + three stiff edge cases via matched-`t` original-60k-vs-F1-coarse, worst R2/Eb ≈ 6e-6
+> (`../data/f1edge_matched_comparison.csv`). **`ab_fullrun.py` is BUGGED** — both variants
+> in one process → trinity global-state leakage (a false "divergence"); the correct A/B is
+> **`f1_fullrun_equiv.sh`** (separate `run.py` per version), and compare at matched-`t`
+> (its built-in final-state verdict false-flags when the two runs truncate at different
+> `t` under the 1h cap).
 
 ## Files
 

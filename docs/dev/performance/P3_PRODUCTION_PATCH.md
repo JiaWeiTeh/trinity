@@ -26,16 +26,16 @@
 
 ---
 
-**Status (2026-06-19):** 🟠 **APPLIED (`24c6914`) but NOT YET CLEARED — under final
-full-run validation; revert-ready.** This is the production rewrite as shipped to
-`bubble_luminosity.py`. Per-call equivalence (P0–P2) + `mock_hybr` full-run both
-pass, but the **decision gate is full-run equivalence on the stiff edge cases**
-(`simple_cluster`, `f1edge_*.param`) — a coarse `t_eval` can under-resolve the
-`min_T`/`monotonic` gates on sharp T (the 60k does real convergence work), which a
-per-call diff cannot detect. **If any edge case diverges, revert via the §Rollback
-below** (one-commit, self-contained). See `RESAMPLE_PLAN.md` §Status for the live
-verdict. NB: the earlier P4 `ab_fullrun` "divergence" was an in-process harness
-artifact, not this patch.
+**Status (2026-06-19):** 🟢 **APPLIED (`24c6914`) and CLEARED — F1 ships.** This is the
+production rewrite in `bubble_luminosity.py`. Validated end-to-end: per-call (P0–P2),
+`mock_hybr` full-run (~5e-6), and the **full-run matched-`t` equivalence on the three
+stiff/sharp edge cases** (`simple_cluster`, `f1edge_lowdens`, `f1edge_hidens`) — worst
+R2/Eb/rShell ≈ 6e-6, ~500× inside the 0.3% gate (`data/f1edge_matched_comparison.csv`).
+The 60k turned out to be output over-resolution: LSODA's adaptive stepping (rtol=1e-6)
+already resolves the stiff solution, so the 500-pt `t_eval` converges the `min_T`/
+`monotonic` gates to the same `dMdt`. §Rollback below stays valid if ever needed. NB:
+the earlier P4 `ab_fullrun` "divergence" was an in-process harness artifact, not this
+patch; the correct A/B is `harness/f1_fullrun_equiv.sh` compared at matched-`t`.
 
 ## What changes (one function + one constant)
 
