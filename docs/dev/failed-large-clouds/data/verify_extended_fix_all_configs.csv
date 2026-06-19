@@ -1,0 +1,6 @@
+config,phase_of_collapse,crashed,end_code,end_reason,final_R2_pc,final_Eb_au,runtime_s
+fail_repro,1b,False,51,energy_collapsed,9.7299,-9.14e8,106.5
+fail_pism6,1b,False,51,energy_collapsed,9.7299,-9.14e8,107.0
+fail_helix(real Helix sfe0.05/PISM0),1a,False,51,energy_collapsed,7.0312,5.09e-3,77.5
+small_1e5(healthy),n/a,False,n/a,no-op(guards dormant; bit-identical),12.94,2.16e7,599
+small_1e6(healthy),n/a,False,n/a,no-op(guards dormant; bit-identical),22.63,2.64e8,599

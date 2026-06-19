@@ -24,13 +24,23 @@
 > against the numbers **without re-running**; record the exact config + command
 > that produced each artifact.
 
-**Status (2026-06-19):** 🟢 **MINIMAL ROBUSTNESS FIX IMPLEMENTED — failing band now terminates cleanly;
-`pytest` green (554 passed); full-run bit-identical gate on healthy configs in progress.** Shipped G+F
-(below). `fail_repro` (was a phase-1b `ZeroDivisionError`) now **completes** with
-`SimulationEndCode.ENERGY_COLLAPSED (51)` at the same collapse point (`t=3.41e-3`, `Eb=−9.14e8`, `R2=9.73`),
-no traceback / no NaN / no grind, 104 s (`data/fixed_fail_repro_clean_termination.csv`). Production diff:
-47 lines across 4 files (`simulation_end.py` +1 enum, `get_bubbleParams.bubble_E2P` volume floor,
-`run_energy_phase.py` + `run_energy_implicit_phase.py` collapse checks) + `test/test_energy_collapse_guard.py`.
+**Status (2026-06-19):** 🟢 **FIX COMPLETE — all three failing configs terminate cleanly; healthy no-op
+confirmed (byte-identical); `pytest` 555 passed.** Shipped G+F+ the phase-1a collapse coverage (below).
+Verification (`data/verify_extended_fix_all_configs.csv`):
+
+| config | collapse phase | crashed | end | final R2 |
+|---|---|---|---|---|
+| `fail_repro` (sfe0.1/PISM1e4) | 1b | **False** | `ENERGY_COLLAPSED` (51) | 9.73 |
+| `fail_pism6` (sfe0.1/PISM1e6) | 1b | **False** | `ENERGY_COLLAPSED` (51) | 9.73 |
+| **`fail_helix` (real Helix: sfe0.05/PISM0)** | **1a** | **False** | `ENERGY_COLLAPSED` (51) | 7.03 |
+| `small_1e5`/`small_1e6` (healthy) | — | False | **no-op (byte-identical to pre-fix)** | — |
+
+Took **two** rounds: the first (G+F: `bubble_E2P` floor + post-ODE `Eb<=0` check) fixed the 1b configs but
+the real Helix point collapses *inside* phase 1a, where the per-segment solves raise *before* the post-ODE
+check — `solve_R1`→`get_r1` `sqrt(<0)` at an overshot `R2<0`, then the cooling table out-of-bounds at
+`Eb≈0`. Round two added: `solve_R1` returns `0.0` for non-physical `R2<=0`, and the phase-1a bubble solve
+is wrapped so any degenerate-collapse exception → `ENERGY_COLLAPSED`. Production diff total: ~93 lines
+across 4 files + `test/test_energy_collapse_guard.py` (6 cases).
 
 **Status (2026-06-19, earlier):** 🟡 DIAGNOSED + REPRODUCED; scope DECIDED — minimal robustness fix only.
 Two independent investigations + a sim-free probe + two live repros agree on the mechanism. Smoke of V3
