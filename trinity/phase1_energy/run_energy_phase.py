@@ -35,6 +35,7 @@ import trinity._functions.operations as operations
 from trinity._input.dictionary import updateDict
 import trinity._functions.unit_conversions as cvt
 import trinity._output.terminal_prints as terminal_prints
+from trinity._output.simulation_end import SimulationEndCode
 from trinity.sps.update_feedback import get_current_sps_feedback
 
 # Import centralized event functions
@@ -309,6 +310,24 @@ def run_energy(params):
         params['R2'].value = R2
         params['v2'].value = v2
         params['Eb'].value = Eb
+
+        # Catastrophic-cooling collapse: a massive/dense cloud can radiate the
+        # bubble's thermal energy away faster than the wind resupplies it, so Eb
+        # falls through zero. The energy-driven model is then invalid (it would
+        # otherwise drive R1->R2 and divide-by-zero -> Eb=nan, crashing the run).
+        # Stop cleanly here; the momentum-driven continuation is future work
+        # (docs/dev/transition). See docs/dev/failed-large-clouds.
+        if not np.isfinite(Eb) or Eb <= 0:
+            params['EndSimulationDirectly'].value = True
+            params['SimulationEndReason'].value = (
+                "Energy-driven bubble collapsed (catastrophic cooling: Eb <= 0)"
+            )
+            params['SimulationEndCode'].value = SimulationEndCode.ENERGY_COLLAPSED.code
+            logger.warning(
+                f"Energy-driven bubble collapsed at t={t_now:.6e} Myr "
+                f"(Eb={Eb:.3e}, R2={R2:.4f} pc): stopping run cleanly."
+            )
+            break
 
         loop_count += 1
 

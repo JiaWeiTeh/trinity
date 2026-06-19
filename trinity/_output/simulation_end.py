@@ -87,6 +87,7 @@ class SimulationEndCode(Enum):
 
     # Inspection required (50-59)
     VELOCITY_RUNAWAY = (50, "velocity_runaway")
+    ENERGY_COLLAPSED = (51, "energy_collapsed")
 
     # Unknown — also treated as inspection-required
     UNKNOWN = (99, "unknown")
