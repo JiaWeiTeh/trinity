@@ -47,10 +47,17 @@ _REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _FIXTURE_PATH = os.path.join(_REPO_ROOT, "test", "data", "residual_resample_fixture.json")
 
 # Keys whose values are filesystem paths baked into the captured state; they
-# point at the ORIGINAL checkout, which need not be this worktree. Let
-# read_param(base) supply the worktree-local path instead (the bundled tables
-# are byte-identical), so the test is self-contained.
-_PATH_OVERRIDE_SKIP = {"path_cooling_CIE"}
+# point at the ORIGINAL checkout, which need not be this worktree (e.g. CI runs
+# from /home/runner/...). Let read_param(base) supply the worktree-local path
+# instead (the bundled tables are byte-identical), so the test is self-contained
+# and portable. Covers every path-valued key the fixture carries: the CIE table,
+# the non-CIE OPIATE cube dir, the SPS file, and the output dir.
+_PATH_OVERRIDE_SKIP = {
+    "path_cooling_CIE",
+    "path_cooling_nonCIE",
+    "sps_path",
+    "path2output",
+}
 
 
 def _load_fixture():
