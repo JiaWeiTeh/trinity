@@ -61,6 +61,56 @@ committed CSVs; nothing under `trinity/` changes.
 
 ---
 
+## 0.1 Epistemic stance — TRINITY/WARPFIELD are hypotheses, not ground truth
+
+**Do not assume TRINITY, WARPFIELD, or Weaver is correct.** C0 (§2) certifies that
+TRINITY correctly *implements its own equations* and reproduces the analytic
+**Weaver (1977)** energy-driven limit. That is a bug-catch, **not** a validation of
+the physics: Weaver is a model with strong assumptions (quasi-steady,
+spherically-symmetric, conduction-mediated interior, *no turbulent mixing*), and
+the modern literature argues it is **wrong for real star-forming clouds**. So the
+transition criterion must be anchored to *independent* models and observations,
+not to TRINITY's or WARPFIELD's internal choices.
+
+**What the external literature says (consulted 2026-06-20; refs §8 — verify each
+before citing in the paper):**
+- **Efficient cooling ⇒ momentum-driven, low energy retention.** Lancaster et al.
+  2021 (I & II) — turbulent mixing at a *fractal* bubble–shell interface radiates
+  away the vast majority of wind energy; bubbles are **momentum-driven**, with
+  velocities/pressures orders of magnitude below Weaver, and a **retained-energy
+  fraction ~0.01–0.1 that decreases with time** — validated by 3D hydro over
+  >3 dex in density.
+- **Observations agree.** "The classical model in which ~half the wind energy stays
+  in a hot bubble is not in agreement with observations" (Geen et al. 2021; Orion
+  [CII], Pabst et al. 2020): stored energy ~**1%** of input wind energy; winds
+  carry ~10% of the photoionization momentum.
+- **SN superbubbles too.** El-Badry et al. 2019 — conduction+cooling at the
+  interface remove a large, time-increasing fraction of injected energy.
+
+**Consequence for the "stall" (independent reading — to test, NOT assert).**
+TRINITY inherits the **energy-conserving** Weaver/Rahner interior and does **not**
+model fractal mixing-layer cooling. If real bubbles radiate 90–99% of their energy
+and go momentum-driven early, then a run that retains so much energy it **never
+transitions in 15 Myr is physically suspect** — the stall may be a symptom of
+**systematic under-cooling (a missing physics term), upstream of the transition
+trigger**. You cannot fix missing cooling physics by tuning a threshold. Measure,
+don't assume.
+
+**External-anchor diagnostic (added to the harvest, §6).** Alongside the internal
+`Eb`-peak oracle, compute TRINITY's **retained-energy fraction**
+`f_ret(t) = Eb / ∫Lgain dt` per run and compare to the literature band (~0.01–0.1,
+decreasing). Three outcomes, all informative:
+1. `f_ret` enters the band and *then* the bubble transitions ⇒ the trigger question
+   is well-posed; tune/replace the trigger.
+2. `f_ret` stays far **above** the band (retains too much energy) ⇒ the stall is an
+   **under-cooling** symptom; the finding is a *physics gap* (mixing-layer cooling,
+   cf. Lancaster F5), and the trigger is secondary.
+3. `f_ret` collapses far **below** the band ⇒ over-cooling / a different bug.
+
+This anchors "is the model even in the right regime?" to data, not to Weaver.
+
+---
+
 ## 1. Contamination policy — ideas in, results out
 
 **Reusable (ideas, cheap, falsifiable — we test them anyway):** the candidate
@@ -139,9 +189,14 @@ denominator/cooling depend on are not trajectory-consistent ⇒ escalate scope.
 > check is independent; if tautological, drop it and rest C0.2 on `β↔Pb` (genuine)
 > plus the external C0.1. Do not report the δ residual as evidence until resolved.
 
-### C0.1 — analytic adiabatic Weaver null (external truth) — STAGED
-The strongest, numerics-independent check: in the adiabatic limit (`Lloss→0`) the
-energy-driven bubble has the closed-form Weaver (1977) solution
+### C0.1 — analytic adiabatic Weaver null (analytic-limit regression — implementation check, NOT physics validation) — STAGED
+**Caveat (§0.1):** matching Weaver certifies the code solves *its own* equations in
+a known limit; it does **not** certify the physics — the literature argues the
+Weaver energy-conserving limit is wrong for real clouds. Physical plausibility is a
+*separate* track (the §0.1 `f_ret` anchor), not part of substrate certification.
+The strongest *implementation* check available, numerics-independent: in the
+adiabatic limit (`Lloss→0`) the energy-driven bubble has the closed-form
+Weaver (1977) solution
 (`R₂ ∝ (Lt³/ρ)^{1/5}`, `Eb = (5/11)L_w t` — cf. `get_InitPhaseParam.py:166`; a
 constant β; `T` from Weaver Eq. 37).
 
@@ -218,7 +273,7 @@ measured, not inherited):
 | F2 | timescale | `t_cool/t_dyn < k` (define `t_cool`,`t_dyn` explicitly; report sensitivity) |
 | F3 | force / continuity | `4πR²Pb / (surviving forces) < O(1)` |
 | F4 | blowout (geometric) | `R2 > rCloud` |
-| F5 | mixing-flux balance | (no sharp 1D transition; cite, do not model) |
+| F5 | mixing-flux balance (Lancaster+2021) | efficient fractal-interface cooling ⇒ momentum-driven; no sharp 1D transition (cite; a 1D switch is a modeling necessity, not 3D physics) |
 
 **Open hypotheses (to confirm/refute from regenerated data — NOT findings):**
 1. The trigger's **instantaneous numerator** resets the ratio *upward* on each
@@ -232,13 +287,23 @@ measured, not inherited):
 3. The implicit-phase duration ("clock A", reach-transition) and the 1c
    transition-phase length ("clock B", sound-crossing drain) are **distinct
    clocks**; separate before explaining any "long transition". *(hypothesis)*
+4. **Under-cooling hypothesis (§0.1):** the stall is not (only) a mis-tuned trigger
+   but a symptom that TRINITY's Weaver/Rahner interior **under-cools** (no fractal
+   mixing-layer losses), so the modeled bubble retains far more energy than real
+   bubbles (literature `f_ret`~0.01–0.1) and never reaches energy balance.
+   Falsifiable: if measured `f_ret` enters the literature band yet the bubble still
+   doesn't transition, the trigger is the problem; if `f_ret` stays far above the
+   band, the cooling physics is. *(hypothesis — decides whether this is a trigger
+   problem or a physics problem; the latter is out of current scope but must be
+   named, not silently treated as a threshold-tuning task)*
 
 ---
 
 ## 6. Downstream (sketched; detail deferred until C0 passes)
 - **H0 — harvest (shadow/offline):** from the pinned SHA, per implicit-phase
-  segment, log each family's would-fire epoch **and** the §3 oracle; commit CSVs +
-  harness + exact command.
+  segment, log each family's would-fire epoch, the §3 oracle, **and the §0.1
+  retained-energy anchor `f_ret = Eb/∫Lgain dt`** (vs the ~0.01–0.1 literature
+  band); commit CSVs + harness + exact command.
 - **G0 — divergence gate (pre-registered):** which families track the `Eb`-peak
   *without resetting* across the WR/SN jump, across the full span incl. the steep
   crux. "No single scalar works → profile-dependent" is an allowed, publishable
@@ -252,3 +317,30 @@ measured, not inherited):
 - Pinned baseline SHA: recorded in `data/` outputs (see harness `--meta`).
 - C0.2: `python docs/dev/transition/cleanroom/c0_consistency.py <param-or-jsonl> [--stop-t T] [--out CSV]`.
 - Data lands in `docs/dev/transition/cleanroom/data/` (committed).
+
+---
+
+## 8. External references (independent of TRINITY — verify journal refs before paper)
+
+Consulted 2026-06-20 via web search; treat as the *physical* anchors the trigger is
+judged against (TRINITY/WARPFIELD/Weaver are the hypotheses, not these).
+
+- **Weaver, Williams, McCray & Moore 1977** — classical energy-driven wind bubble
+  (the analytic limit C0.1 regresses against). *The model the others dispute for
+  real clouds.*
+- **Lancaster, Ostriker, Kim & Kim 2021a/b**, ApJ 914 — "Efficiently Cooled Stellar
+  Wind Bubbles in Turbulent Clouds" I (fractal theory, arXiv:2104.07691) & II (3D
+  hydro validation, arXiv:2104.07722). Retained energy ~0.01–0.1, decreasing;
+  momentum-driven. *Primary external anchor.*
+- **Lancaster et al. 2021c**, ApJL — "Star Formation Regulation and Self-pollution
+  by Stellar Wind Feedback" (arXiv:2110.05508).
+- **El-Badry, Ostriker, Kim, Quataert & Weisz 2019**, MNRAS — superbubbles with
+  conduction & cooling (arXiv:1902.09547).
+- **Geen, Pellegrini, Bieri & Klessen 2021**, MNRAS 501, 1352 — wind bubbles in
+  photoionised HII regions; stored energy ~1% of input (arXiv:2009.08742).
+- **Pabst et al. 2020** — Orion [CII] M42/M43/NGC 1977, expanding wind shells
+  (arXiv:2005.03917).
+- **Mac Low & McCray 1988; Koo & McKee 1992** — classic cooling/timescale criteria
+  (cumulative `t_cool`, not the instantaneous form — see candidate caveats).
+- **Rahner et al. 2017/2019** — WARPFIELD (TRINITY's ancestor; the current F0
+  energy-retention trigger). *A hypothesis under test, not the reference.*
