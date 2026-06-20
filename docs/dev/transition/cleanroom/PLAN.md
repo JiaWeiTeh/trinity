@@ -481,6 +481,33 @@ physics, exactly as the mandate intended (a "no single scalar works → profile/
 
 ---
 
+## 6.6 ROOT-FIX PROTOTYPE — mixing-layer cooling (2026-06-20)
+
+Per the G0 verdict (the stall is under-cooling), prototyped the simplest
+Lancaster+2021/El-Badry+2019 term: an extra sink `L_mix = theta*Lmech`
+(default-off `mixL_theta`; injected at `run_energy_implicit_phase.py:854` (Ed) and
+`:1080` (trigger Lloss)).
+
+- **Magnitude confirmed (offline, `mixcool_whatif.py`):** theta ~0.2-0.3 brings
+  `f_ret` into the observed 0.01-0.1 band in all 6 configs — the literature value.
+- **Naive bulk-sink injection is NUMERICALLY NON-VIABLE.** Dynamical runs (theta=0.25
+  and 0.4, simple_cluster) **STALL the hybr solver**: subtracting `theta*Lmech` from
+  `dEb/dt` *after* the (beta,delta) structure solve drives Eb/Pb down into a regime
+  where the conductive **`dMdt<0`** (no physical evaporation root) → hybr reports
+  `no physical (dMdt>0) root` every segment → the dt-shrink guard spins → ~zero
+  progress (>12 min stuck at t~0.15-0.22). Also a back-reaction: lower Eb → lower
+  radiative `bubble_Lloss`, partially self-limiting the added sink (modified ratio
+  bottomed ~0.077, just above the 0.05 trigger).
+- **Root cause:** the cooling is injected *after* the structure/(beta,delta) solve, so
+  the structure is inconsistent with it → unphysical dMdt. **A proper mixing-layer
+  cooling must be integrated INTO the structure solve** (so beta,delta are solved
+  *with* it, keeping dMdt>0) — a deeper change, not a bulk Eb sink.
+- **Status:** root-fix *direction validated* (magnitude right), naive *implementation
+  rejected* (solver-stalling). `mixL_theta` is default-off (production byte-identical;
+  full pytest green: 557 passed) but the `>0` path is non-viable as-is. Decision
+  pending: (a) integrate the cooling into the betadelta structure solve, or (b) revert
+  the bulk-sink injection and write up the result.
+
 ## 6.5 Visualization plan (figures + tables)
 
 Build under `cleanroom/figures/`, regenerable from the committed CSVs, using the
