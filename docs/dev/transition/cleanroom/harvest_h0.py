@@ -24,6 +24,11 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 FOURPI = 4.0 * math.pi
 
+# rCloud (pc) per config -- run-const, excluded from snapshots, so taken from the
+# validated config table (the original sweep; cross-checked in PLAN.md S4). F4 = R2 > rCloud.
+RCLOUD = {"large_diffuse_lowsfe": 88.0, "simple_cluster": 1.69, "small_dense_highsfe": 0.33,
+          "midrange_pl0": 8.53, "pl2_steep": 21.4, "be_sphere": 15.5}
+
 
 def load(path):
     rows = []
@@ -54,7 +59,8 @@ def _first(rows, cond):
 def harvest(path):
     rows = load(path)
     impl = [r for r in rows if r["phase"] == "implicit"]
-    name = Path(path).name.replace("c0_", "").replace("_st6.csv", "")
+    name = Path(path).stem.replace("c0_", "").replace("_h0", "").replace("_st6", "")
+    rcloud = RCLOUD.get(name)
 
     def Lg(r):  # Lgain = mechanical luminosity (matches production trigger)
         return r.get("Lmech_total")
@@ -97,11 +103,10 @@ def harvest(path):
                 and FOURPI * r["R2"]**2 * r["Pb"] / surviving(r) < 1.0)
 
     # --- F4 blowout ---
-    f4 = _first(rows, lambda r: r.get("rCloud") and r["R2"] > r["rCloud"])
+    f4 = _first(rows, lambda r: rcloud and r["R2"] > rcloud) if rcloud else None
 
     return dict(name=name, t_end=rows[-1]["t_now"], eb_zero=eb_zero, eb_argmax=eb_argmax,
-                f0=f0, f1=f1, f2=f2, f3=f3, f4=f4,
-                rCloud=next((r.get("rCloud") for r in rows if r.get("rCloud")), None))
+                f0=f0, f1=f1, f2=f2, f3=f3, f4=f4, rCloud=rcloud)
 
 
 def _fmt(t):
@@ -114,10 +119,10 @@ def main():
     print(f"{'config':22s} {'Eb*(0)':>7s} {'Eb*(max)':>8s} {'F0':>6s} "
           f"{'F1.25':>6s} {'F2.k1':>6s} {'F3':>6s} {'F4blow':>7s} {'rCloud':>7s}")
     for a in res:
+        rc = f"{a['rCloud']:.1f}" if a['rCloud'] else "?"
         print(f"{a['name']:22s} {_fmt(a['eb_zero']):>7s} {_fmt(a['eb_argmax']):>8s} "
               f"{_fmt(a['f0']):>6s} {_fmt(a['f1'][0.25]):>6s} {_fmt(a['f2'][1]):>6s} "
-              f"{_fmt(a['f3']):>6s} {_fmt(a['f4']):>7s} "
-              f"{a['rCloud']:.1f}" if a['rCloud'] else "")
+              f"{_fmt(a['f3']):>6s} {_fmt(a['f4']):>7s} {rc:>7s}")
     print("\n# F1 cumulative firing vs eta (t_fire):")
     for a in res:
         print(f"  {a['name']:22s} " + "  ".join(f"eta{e}:{_fmt(a['f1'][e])}" for e in (0.20,0.25,0.30,0.40)))
