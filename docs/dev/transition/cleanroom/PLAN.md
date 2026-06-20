@@ -25,7 +25,7 @@
 > that produced each artifact.
 
 **About this document**
-- **Status (2026-06-20):** 🟡 **IN PROGRESS** — pre-registration. C0 substrate-certification gate defined; C0.3 audit done; C0.2 harness built (smoke-validated); C0.1 staged. No production change. No candidate trigger evaluated yet.
+- **Status (2026-06-20):** 🟡 **IN PROGRESS — C0 running.** C0.3 audit ✅; C0.2 harness built + run across the 6-config span (short `stop_t=0.05` done; full `stop_t=6` in flight); the δ↔dT0/dt check resolved as tautological (dropped, replaced by the solver T-residual); C0.1 (adiabatic Weaver null) staged. Emerging `f_ret`/β results are provisional (§2 Progress). No production change; no candidate trigger evaluated yet.
 - **Type:** plan + pre-registration — a *clean-room* redo of the implicit→momentum transition-trigger investigation that deliberately does **not** inherit prior numerical results/rankings/verdicts (see §1).
 - **Workstream:** `transition/` (clean-room subdir `cleanroom/`).
 - **Where it sits:** supersedes-as-entry-point the **quarantined** `docs/dev/transition/{TRIGGER_PLAN,P0,pshadow-design}.md` and the background `docs/dev/archive/betadelta/*`. Those remain on disk as prior art; their *conclusions* are quarantined (§1), their *methodology and candidate menu* are reused.
@@ -36,12 +36,50 @@
 
 ## 0. Why a clean-room redo, and the trust boundary
 
-**Problem.** Under the default `betadelta_solver=hybr`, full runs **stall in the
-implicit energy phase and never reach momentum** — the cooling-balance trigger
-`(Lgain−Lloss)/Lgain < 0.05` (`run_energy_implicit_phase.py:1095`) plateaus well
-above 0.05 and never fires, so runs sit in implicit until the `stop_t` cap. This
-is a real behaviour the more-correct hybr solver exposed (legacy clamped β∈[0,1],
-which could only ever let Pb decline → monotone approach to cooling balance).
+**The actual problem (concrete).** TRINITY integrates a feedback bubble through
+four phases: **energy (1a)** — the adiabatic, Weaver-like energy-driven start;
+**implicit energy-driven (1b)** — the long energy-driven phase where the hot
+shocked interior does PdV work on the shell while radiating, and the β–δ
+(beta–delta) structure solver runs every segment; **transition (1c)** — the
+hand-off where the interior has lost enough energy that thermal pressure stops
+driving the shell; **momentum (2)** — the shell coasts on swept-up momentum until
+it dissolves or stalls. A normal run walks energy→implicit→transition→momentum and
+ends at a physical fate (dissolution at a few Myr, blowout, or the time cap).
+
+The **implicit→momentum hand-off** is decided by a *single* criterion at
+`run_energy_implicit_phase.py:1095`: switch to momentum once radiative cooling has
+nearly caught up with feedback heating, operationalized as
+`(Lgain − Lloss)/Lgain < 0.05` — the bubble radiates ≥95 % of the *instantaneous*
+mechanical power being injected. `Lgain` is the instantaneous SB99 mechanical
+luminosity; `Lloss` is the bubble's (pure radiative) cooling.
+
+**The symptom.** Under the new default solver (`betadelta_solver=hybr`), this
+trigger **never fires**: across all six test configs the ratio plateaus at
+~0.3–0.5 and never approaches 0.05, so every run sits in the implicit phase until
+it hits the 15 Myr `stop_t` cap (or `large_radius`) — **0/6 reach the transition or
+momentum phases** (the legacy solver reached momentum in 6/6). Because the hybr
+runs never complete a physical energy→momentum evolution, their late-time and
+stopping-fate outputs are **not trustworthy as-is**.
+
+**Why the trigger stops firing — two views of one effect.** (a) *The metric is
+instantaneous.* Each time a new feedback source switches on (Wolf–Rayet winds, then
+SNe), the `Lgain` denominator spikes, so the ratio jumps **up and away** from 0.05
+exactly when cooling might otherwise catch up — it tests the instantaneous
+numerator, not an integrated budget. (b) *hybr finds the true root.* Legacy clamped
+the cooling parameter β to [0,1], so `Pb` could only ever decline → the ratio
+drifted monotonically to balance and crossed 0.05. hybr is an unbounded root-find
+with a physical `dMdt>0` gate; in some regimes it returns **negative β** (`Pb`
+*rising* — the bubble re-pressurising under a feedback surge), keeping the interior
+net-heating so balance is never reached. The 0.05 threshold *and the rate-ratio
+metric itself* were calibrated for the clamped-β legacy solver and are not robust
+to the more-correct hybr behaviour.
+
+**Why it matters / the open question.** Two honest readings, both kept open
+(see §0.1): the stall is *either* a transition criterion that needs replacing for
+the hybr regime (a **trigger** problem), *or* a sign that TRINITY's cooling is
+physically incomplete, so the bubble retains too much energy to ever balance (a
+**physics** problem). This plan is built to decide which — against external data,
+not against TRINITY's own assumptions.
 
 **Why clean-room.** Prior efforts on this exist across branches/docs. Their
 *ideas* are valuable; their *numbers, rankings, and verdicts* may be contaminated
@@ -172,11 +210,15 @@ implicit-phase snapshots and compare to the predictions from the stored β, δ.
 This certifies the solver's (β,δ) outputs are consistent with the integrated
 trajectory — independent of the trigger.
 
-**Pre-registered bars:** (i) median relative residual ≤ **5%** over implicit-phase
-rows for *both* `dPb/dt` and `dT0/dt`; (ii) the median residual **shrinks under
-timestep refinement** (first-order finite-difference truncation → ∝ Δt), i.e. it
-is consistency error, not a systematic offset. Fail ⇒ the β/δ the trigger's
-denominator/cooling depend on are not trajectory-consistent ⇒ escalate scope.
+**Pre-registered bars (REVISED 2026-06-20 — the δ↔dT0/dt residual turned out
+tautological (see Progress below) and is NOT a gate):**
+(i) **`res_beta` (β↔dPb/dt — the genuine, trajectory-level check):** median
+relative residual ≤ **5%** over implicit-phase rows, AND it **shrinks under
+timestep refinement** (∝ Δt ⇒ finite-difference truncation, not a defect).
+(ii) **`res_T0_struct` (= |T0 − bubble_T_r_Tb|/bubble_T_r_Tb — the two sides of the
+solver's own `T_residual`) on converged segments:** small (≤ a few %), confirming
+the solver drives its temperature residual to zero on the trajectory. Fail either
+⇒ the β/δ the trigger depends on are not trajectory-consistent ⇒ escalate scope.
 
 > **Progress (2026-06-20) — δ resolved, first real hybr result; results vary
 > sharply by config/phase, so do NOT generalize from one run.**
@@ -199,10 +241,14 @@ denominator/cooling depend on are not trajectory-consistent ⇒ escalate scope.
 >   (`res_beta` 2.5%; `res_T0_struct` 15% from loose legacy convergence; `f_ret`
 >   *rising* 0.50→0.62 not falling), the hybr run differs on every axis. **Certify
 >   across the full span AND over time/phase — never from one run.**
-> - **Cost reality:** hybr ≈35 s/implicit segment ⇒ Myr-scale coverage is hours.
->   Substrate certification uses short `stop_t` across all 6 (`run_c0_batch.sh`);
->   the long-time `f_ret`/negative-β behaviour needs separate long background runs
->   (flagged, not yet done).
+> - **Cost reality (CORRECTED 2026-06-20):** the ~35 s/segment above was a
+>   **DEBUG-logging artifact** — the harness calls `start_expansion` directly,
+>   tripping `main.py`'s DEBUG fallback (per-RHS records, a known hot-path cost).
+>   With a log handler installed first, full `stop_t=6` runs proceed at normal pace
+>   (~30–90 min; t≈3 Myr in ~30 min) — Myr coverage is **feasible**, not "hours".
+>   Both short (`stop_t=0.05`) and full (`stop_t=6`) batches run via
+>   `run_c0_batch.sh` (3 concurrent on the 4-core box), health-monitored by
+>   `heartbeat.sh` (CPU-state liveness; a Monitor pings every 6 min).
 >
 > **Cross-config short-run certification (2026-06-20, `stop_t=0.05`, EARLY implicit
 > only, t≤0.014):** consistent across configs — `res_T0_struct` median 0.27–0.50%,
@@ -213,9 +259,27 @@ denominator/cooling depend on are not trajectory-consistent ⇒ escalate scope.
 > across very different configs + the within-run 14%→6% decay), **not certified
 > until** the refinement check + full runs show it drops <5% in mid/late implicit.
 > The under-cooling and negative-β questions are **not answerable from short runs** —
-> hence the full (`stop_t=6`) runs now in flight. **Logging fix:** the harness now
-> installs a WARNING handler before `start_expansion` (bypasses `main.py`'s DEBUG
-> fallback — a per-RHS hot-path cost), so full runs hit the ~30–60 min regime.
+> hence the full (`stop_t=6`) runs now in flight. **Logging fix:** the harness
+> installs an **INFO** handler before `start_expansion` (bypasses `main.py`'s DEBUG
+> fallback — a per-RHS hot-path cost; INFO is the normal `run.py` level — light and
+> per-phase insightful), so full runs hit the ~30–90 min regime.
+>
+> **Full-run progress (2026-06-20, IN FLIGHT — PROVISIONAL, not certified):** with
+> 3 of 6 full runs in mid-implicit (t≈2–3 Myr), `f_ret` has fallen from ~0.42 to
+> **~0.18–0.27** and sits **above** the literature 0.01–0.1 band (the run past the
+> WR surge at t=3.0 is at 0.27, slightly *up* from 0.18 at t≈1.9 — a feedback
+> re-energisation). This **leans toward the under-cooling reading** (§0.1 outcome 2)
+> but is undecided until t=6 (plateau vs continued descent — the f_ret verdict plot
+> settles it). **No negative β** in any of the 3 configs run so far (be_sphere,
+> large_diffuse, midrange) even past the WR surge — qualifying the quarantined docs'
+> negative-β claim; **watch the steep `pl2_steep`** (wave 2), where it should appear
+> if anywhere.
+> **Recheck item:** the analyzer reports `betadelta_converged = 0` in the CSVs, so
+> the `res_T0_struct` "converged-only" filter is currently falling back to
+> all-implicit rows. Verify whether `betadelta_converged` is actually a written
+> snapshot key (and its truthiness) so the converged qualification on C0.2 (ii)
+> really bites — `res_T0_struct` is tiny regardless (~0.3–0.5%), but the gate's
+> wording should match what the filter does.
 
 ### C0.1 — analytic adiabatic Weaver null (analytic-limit regression — implementation check, NOT physics validation) — STAGED
 **Caveat (§0.1):** matching Weaver certifies the code solves *its own* equations in
