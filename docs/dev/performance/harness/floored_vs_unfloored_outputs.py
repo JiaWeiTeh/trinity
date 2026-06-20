@@ -32,6 +32,22 @@ ROOT = Path(__file__).resolve().parents[4]
 FIGS = ROOT / "docs" / "dev" / "performance" / "figs"
 DATA = ROOT / "docs" / "dev" / "performance" / "data"
 
+# House style with usetex OFF (no LaTeX in the container; see make_dR2_figures.py).
+plt.style.use(str(ROOT / "paper" / "_lib" / "trinity.mplstyle"))
+plt.rcParams.update({
+    "text.usetex": False,
+    "figure.dpi": 130,
+    "savefig.dpi": 140,
+    "axes.grid": True,
+    "grid.alpha": 0.25,
+    "axes.titlesize": 10.5,
+    "axes.labelsize": 10.5,
+    "xtick.labelsize": 9,
+    "ytick.labelsize": 9,
+    "legend.fontsize": 8.5,
+    "figure.constrained_layout.use": True,
+})
+
 _spec = importlib.util.spec_from_file_location(
     "_dr2test", ROOT / "test" / "test_dR2min_magic_number.py")
 T = importlib.util.module_from_spec(_spec)
@@ -167,10 +183,10 @@ def main():
         if a_ / t_ > 1.5:
             ax1.text(xi + w / 2, a_ * 1.25, f"x{a_/t_:.0f}", ha="center",
                      color="#d62728", fontweight="bold", fontsize=10)
+    ax1.set_ylim(top=max(av) * 6)   # headroom so the x-factor labels don't clip
     ax1.set_title("L3 (the dR2 layer's emission) inflates ~1:1 with the floor;\n"
                   "L_total jumps ~8x. The bulk L1 is untouched.")
-    ax1.legend(fontsize=9, loc="upper left")
-    ax1.grid(True, axis="y", which="both", alpha=0.25)
+    ax1.legend(loc="upper left")
 
     labels = [lbl.strip() for lbl, _, _, _, _, _, _ in rows]
     rels = [max(r[4], 1e-16) for r in rows]   # r[4] = relA
@@ -185,14 +201,13 @@ def main():
     ax2.set_xlabel("|relative difference|  vs trinity  (floorA)")
     ax2.set_title("What differs most: luminosity (L3 / L_total);\n"
                   "mass flux, temperatures, mass all stay < 0.3%")
-    ax2.grid(True, axis="x", which="both", alpha=0.25)
+    ax2.set_xlim(left=1e-17)
 
     fig.suptitle("trinity's bubble solver: exact dR2 vs the SAME solver with dR2 floored to "
-                 f"WARPFIELD's dR2min\n(only the dR2 initial condition differs; stiff state "
-                 f"dR2/R2={stiff['dR2_over_R2']:.1e})", fontsize=11)
-    fig.tight_layout(rect=(0, 0, 1, 0.96))
+                 "WARPFIELD's dR2min\n(only the dR2 initial condition differs; stiff state "
+                 f"dR2/R2={stiff['dR2_over_R2']:.1e})", fontsize=10.5)
     FIGS.mkdir(parents=True, exist_ok=True)
-    fig.savefig(FIGS / "dR2_output_diff.png", dpi=130)
+    fig.savefig(FIGS / "dR2_output_diff.png")
     plt.close(fig)
     print("wrote dR2_output_diff.png + dR2_output_comparison.csv")
 
