@@ -13,19 +13,24 @@ crash=$(grep -lE "Traceback|CRITICAL|\[FAIL\]" "$D"/c0_*_st6.log 2>/dev/null | s
 live=$(find /tmp -maxdepth 3 -name dictionary.jsonl -mmin -4 2>/dev/null | wc -l | tr -d ' ')
 
 echo "[$ts] HEARTBEAT C0/stop_t6: done=$done/6 | live_writers(<4min)=$live | crashed=[${crash:-none}]"
+working=0
 for pid in $(pgrep -f "c0_consistency.py.*stop-t 6" 2>/dev/null); do
   args=$(ps -o args= -p "$pid" 2>/dev/null)
   case "$args" in *python*) ;; *) continue ;; esac
   cfg=$(printf '%s' "$args" | grep -oE "configs/[a-z0-9_]+" | sed 's#configs/##')
   [ -z "$cfg" ] && continue
   el=$(ps -o etime= -p "$pid" 2>/dev/null | tr -d ' ')
+  # R/D = actively computing (a stiff hybr segment can run minutes with no jsonl
+  # write, so CPU-state is the reliable liveness signal, not jsonl freshness).
+  state=$(ps -o stat= -p "$pid" 2>/dev/null | cut -c1)
+  case "$state" in R|D) working=$((working + 1)) ;; esac
   ph=$(grep -oE "PHASE 1[abc][^,]*|momentum-driven|shell.dissolved|Simulation (finished|complete)" \
        "$D/c0_${cfg}_st6.log" 2>/dev/null | tail -1)
-  echo "   $cfg (elapsed $el): ${ph:-init}"
+  echo "   $cfg (el=$el state=$state): ${ph:-init}"
 done
 
 # anomaly flags (for the monitoring loop to act on)
 [ "$done" = 6 ] && echo "   >>> ALL 6 COMPLETE"
 [ -n "$crash" ] && echo "   >>> CRASH in: $crash"
-[ "$live" = 0 ] && [ "$done" != 6 ] && echo "   >>> WARNING: no active jsonl writers (possible stall)"
+[ "$working" = 0 ] && [ "$done" != 6 ] && echo "   >>> WARNING: no sims computing (R/D) -- possible stall/crash"
 exit 0
