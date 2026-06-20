@@ -6,7 +6,7 @@
 set -u
 export OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1
 ST="${1:-0.05}"
-SUF="st${ST/./p}"
+SUF="${2:-st${ST/./p}}"   # optional 2nd arg overrides the output suffix (e.g. h0)
 CR="$(git rev-parse --show-toplevel)/docs/dev/transition/cleanroom"
 export ST SUF CR
 ls "$CR"/configs/*.param | xargs -P 3 -I{} bash -c '
