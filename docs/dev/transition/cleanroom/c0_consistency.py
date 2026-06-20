@@ -208,8 +208,11 @@ def run_config(param_path: str, stop_t: float | None, refine: float = 1.0) -> st
     # module constants only -- nothing in trinity/ is edited on disk.
     if refine and refine != 1.0:
         import trinity.phase1b_energy_implicit.run_energy_implicit_phase as rmod
+        # ADAPTIVE_THRESHOLD_DEX is the DOMINANT timestep control in early implicit
+        # (the adaptive max_dex controller, not the DT_SEGMENT caps) -- tighten it too
+        # or the knob barely bites where res_beta truncation is worst.
         for c in ("DT_SEGMENT_INIT", "DT_SEGMENT_MIN", "DT_SEGMENT_MAX",
-                  "ODE_MAX_STEP", "DT_SEGMENT_COLLAPSE"):
+                  "ODE_MAX_STEP", "DT_SEGMENT_COLLAPSE", "ADAPTIVE_THRESHOLD_DEX"):
             if hasattr(rmod, c):
                 setattr(rmod, c, getattr(rmod, c) / refine)
     params = read_param.read_param(param_path)
