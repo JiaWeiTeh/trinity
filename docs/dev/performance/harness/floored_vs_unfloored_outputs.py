@@ -64,6 +64,22 @@ def _floored_ic(kind):
     return ic
 
 
+def _floored_at(floor_pc):
+    """Floor dR2 at an explicit pc value, keeping the cold boundary T0 (floorA)."""
+    def ic(dMdt, params, Pb, R1):
+        kB = params["k_B"].value
+        mu = params["mu_ion"].value
+        C = params["C_thermal"].value
+        R2 = params["R2"].value
+        ca = params["cool_alpha"].value
+        tn = params["t_now"].value
+        const = 25.0 / 4.0 * kB / mu / C
+        dR2 = max(TI ** 2.5 / (const * dMdt / (4 * np.pi * R2 ** 2)), floor_pc)
+        v = ca * R2 / tn - dMdt / (4 * np.pi * R2 ** 2) * kB * TI / mu / Pb
+        return R2 - dR2, TI, -2.0 / 5.0 * TI / dR2, v
+    return ic
+
+
 def _run(icfn):
     if "bubble_dMdt" in params:
         params["bubble_dMdt"].value = float("nan")   # clean fsolve
@@ -113,6 +129,23 @@ def main():
     for label, key, bt, a, ra, b, rb in rows:
         print(f"  {label:22s} trinity={bt:.4e}  floorA={a:.4e} (x{a/bt if bt else np.nan:.2f})")
 
+    # ---- decisive cross-check: L3 must scale 1:1 with the floored layer width ----
+    # (intermediate-region width = (3e4-1e4)/|dTdr|, and |dTdr| ~ 1/dR2). This proves
+    # the inflation is a deterministic law, not an artifact of one floor value.
+    L3_0 = base.bubble_L3Intermediate
+    with open(DATA / "dR2_L3_linearity.csv", "w", newline="") as fh:
+        w = csv.writer(fh)
+        w.writerow(["floor_x_analytic", "dR2_pc", "L3", "L3_over_L3exact", "LTotal",
+                    "LTotal_over_exact"])
+        print("  L3 linearity (floor x analytic -> L3/L3_exact):")
+        for mult in (1, 10, 100, 1000, int(round(FLOOR_RATIO))):
+            bp = _run(_floored_at(DR2_ANALYTIC * mult))
+            w.writerow([mult, f"{DR2_ANALYTIC*mult:.3e}", f"{bp.bubble_L3Intermediate:.6e}",
+                        f"{bp.bubble_L3Intermediate/L3_0:.3f}", f"{bp.bubble_LTotal:.6e}",
+                        f"{bp.bubble_LTotal/base.bubble_LTotal:.3f}"])
+            print(f"    x{mult:<6d} L3/L3_exact={bp.bubble_L3Intermediate/L3_0:8.1f}  "
+                  f"LTotal x{bp.bubble_LTotal/base.bubble_LTotal:.2f}")
+
     # ---- figure: luminosity components + per-output relative error ----------
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12.4, 5.2))
 
@@ -123,9 +156,9 @@ def main():
     av = [getattr(A, k) for k in comps]
     x = np.arange(len(comps))
     w = 0.38
-    ax1.bar(x - w / 2, bt, w, color="#1f77b4", label="trinity (exact dR2)")
+    ax1.bar(x - w / 2, bt, w, color="#1f77b4", label="trinity solver, exact dR2")
     ax1.bar(x + w / 2, av, w, color="#d62728",
-            label=f"WARPFIELD floor (dR2 x{FLOOR_RATIO:.0f})")
+            label=f"same solver, dR2 floored to dR2min (x{FLOOR_RATIO:.0f})")
     ax1.set_yscale("log")
     ax1.set_xticks(x)
     ax1.set_xticklabels(names)
@@ -154,8 +187,9 @@ def main():
                   "mass flux, temperatures, mass all stay < 0.3%")
     ax2.grid(True, axis="x", which="both", alpha=0.25)
 
-    fig.suptitle(f"Output parameters: trinity's exact dR2 vs WARPFIELD's dR2min floor "
-                 f"(stiff state, dR2/R2={stiff['dR2_over_R2']:.1e})", fontsize=12)
+    fig.suptitle("trinity's bubble solver: exact dR2 vs the SAME solver with dR2 floored to "
+                 f"WARPFIELD's dR2min\n(only the dR2 initial condition differs; stiff state "
+                 f"dR2/R2={stiff['dR2_over_R2']:.1e})", fontsize=11)
     fig.tight_layout(rect=(0, 0, 1, 0.96))
     FIGS.mkdir(parents=True, exist_ok=True)
     fig.savefig(FIGS / "dR2_output_diff.png", dpi=130)

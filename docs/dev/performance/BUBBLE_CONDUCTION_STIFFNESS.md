@@ -23,13 +23,19 @@
 > to reproduce or compare against the numbers **without re-running**; record the
 > exact config + command that produced each artifact.
 
-**Status (2026-06-19):** 🟡 **CAUSE diagnosed; symptom mitigated, cause deferred.** The
+**Status (2026-06-20):** 🟡 **CAUSE diagnosed; symptom mitigated, cause deferred — and the
+unfloored treatment is now characterised (a floor would HURT, not help).** The
 LSODA `t+h=t` flood on massive low-density clouds (e.g. `mCloud=5e9, sfe=0.01, nCore=1e2`)
 is the **bubble structure solver**, not the shell ODE. The noise is suppressed
 (`_quiet_lsoda_fortran` around the bubble `solve_ivp`, `bubble_luminosity.py`); the
 **underlying stiffness is left as the tracked item below** because the solve is *verified
 correct*, so it is noise — fixing the cause is an optional robustness/perf improvement, not a
-correctness bug.
+correctness bug. **New (2026-06-20):** the no-floor choice is now pinned by
+`test/test_dR2min_magic_number.py` and, crucially, the §Robustness + §Consequence sections below
+show that re-introducing WARPFIELD's `dR2min` floor would **inflate the bubble cooling luminosity
+~2–8×** on the stiff state (the floor over-thickens the conduction layer ~10³×) — so the deferred
+"floor `dR2`" item is now understood to be a *correctness risk*, viable only as a heavily-gated
+perf/noise tweak that holds `L_bubble` fixed.
 
 ## Symptom
 ```
@@ -84,15 +90,27 @@ config's bubble solves complete cleanly segment after segment). And the **whole*
 (`get_bubbleproperties_pure`) returns a physical result on that state. So the unfloored layer is
 *integrated correctly*, not just quiet. This is the executable form of the §Correctness measurement above.
 
-**Consequence of the floor on the OUTPUTS (2026-06-20).** Feeding WARPFIELD's floored `dR2`
-(`dR2min` bumped to `6e-7` pc for this `Mclus=5e7`, **3096× thicker** than the exact `1.94e-10` pc)
-through trinity's own production solver on the stiff state shows the magic number is not benign: the
-**intermediate-zone luminosity `L3` inflates ~1:1 with the over-thickening (×3096)** — `L3` is literally
-the emission of the `dR2` layer — dragging **total bubble luminosity up ~8×**, while the mass flux,
-temperatures and bubble mass all move **< 0.3%** and `R1`/`Pb` are unchanged (set before the `dMdt`
-solve). Since `L_bubble` is the energy sink in the bubble's `dEb/dt`, an ~8× error there would
-materially corrupt the feedback. Harness `docs/dev/performance/harness/floored_vs_unfloored_outputs.py`,
-data `data/dR2_output_comparison.csv`, figure `figs/dR2_output_diff.png`.
+**Consequence of the floor on the OUTPUTS (2026-06-20).** Running **trinity's own production solver
+twice — once with the exact analytic `dR2`, once with that `dR2` floored to WARPFIELD's `dR2min`**
+(same solver, only the initial condition differs) on the stiff state shows the magic number is not
+benign. The mechanism is exact and verified: the intermediate region (`L3`) is the radial shell over
+which `T` falls from `3e4` to `1e4` K, width `(3e4−1e4)/|dTdr|` with `|dTdr| = 2/5·T/dR2`, so
+**`L3 ∝ dR2`** — confirmed dead-linear by a floor-multiplier scan (`data/dR2_L3_linearity.csv`:
+×10→10.0, ×100→100.0, ×1000→1000.0). For `Mclus=5e7` the floor `dR2min` is `1e-7`–`6e-7` pc vs the
+exact `1.94e-10` pc, i.e. **~516×–3096× too thick**, so `L3` inflates by that factor and **total
+bubble luminosity rises ~2× (base floor) to ~8× (bumped floor)**, while mass flux, temperatures and
+bubble mass move **< 0.3%** and `R1`/`Pb` are unchanged (set before the `dMdt` solve). `L_bubble` is
+the energy sink in `dEb/dt`, so this is a real corruption — and trinity's negligible `L3` is the
+*correct* physics (the conduction front genuinely is ~`1e-10` pc thin), pinned by
+`test_intermediate_zone_luminosity_negligible_for_exact_layer`.
+**Scope/caveat (honest):** this measures **trinity's** sensitivity to the `dR2` IC — the relevant
+question for whether trinity should add a floor. It is *not* a claim about WARPFIELD's own published
+luminosity (WARPFIELD's luminosity code is not in this repo, and its exact `dR2min` units/application
+are assumed: pc, applied as `max(dR2, dR2min)`). The floor activates by 500×–50000× under every
+interpretation tried (base/bumped floor, stellar/gas `Mclus`), and `L3 ∝ dR2` is assumption-free, so
+the qualitative result is robust even if the exact factor is not. Harness
+`docs/dev/performance/harness/floored_vs_unfloored_outputs.py`, data `data/dR2_output_comparison.csv`
++ `data/dR2_L3_linearity.csv`, figure `figs/dR2_output_diff.png`.
 
 Figures (`docs/dev/performance/figs/make_dR2_figures.py`, regenerate from the committed fixtures):
 `dR2_idea.png` (analytic layer vs WARPFIELD's floored+bumped `dR2min` — ~10³× over-thick for massive

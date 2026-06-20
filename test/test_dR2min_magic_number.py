@@ -312,6 +312,31 @@ def test_production_bubble_path_healthy_on_stiff_state(fixture_name):
     assert np.all(np.diff(T) >= 0) or np.all(np.diff(T) <= 0)
 
 
+def test_intermediate_zone_luminosity_negligible_for_exact_layer():
+    """The exact thin dR2 makes the 1e4-3e4 K intermediate shell geometrically tiny.
+
+    That shell's luminosity (L3) is the bit most sensitive to dR2: its radial width is
+    ``(3e4-1e4)/|dTdr|`` with ``|dTdr| = 2/5*T/dR2``, so L3 is proportional to dR2
+    (verified linear in docs/dev/performance/harness/floored_vs_unfloored_outputs.py ->
+    data/dR2_L3_linearity.csv). With trinity's exact ~1e-10 pc layer L3 is therefore a
+    negligible fraction of L_total -- the physically correct result (the conduction
+    front really is that thin). WARPFIELD's dR2min floor, by over-thickening dR2 ~1e3x,
+    would inflate L3 (and hence the bubble cooling luminosity that drives dEb/dt) in
+    direct proportion. Pinning L3 << L_total guards that correct behaviour.
+    """
+    _, params = _load_state("dR2_stiff_state_fixture.json")
+    if "bubble_dMdt" in params:
+        params["bubble_dMdt"].value = float("nan")
+    bp = BL.get_bubbleproperties_pure(params)
+    assert bp.bubble_LTotal > 0
+    frac = bp.bubble_L3Intermediate / bp.bubble_LTotal
+    assert 0 <= frac < 0.01, (
+        f"intermediate-zone L3 is {frac:.2%} of L_total -- expected negligible for the "
+        f"exact thin layer; a non-negligible value means the conduction front is being "
+        f"over-thickened (cf. WARPFIELD's dR2min floor)."
+    )
+
+
 # =============================================================================
 # Tier 1 -- regime breadth (pure, no sims): the no-floor property and the
 # numerical safety envelope held across bubble sizes, not just the one captured
