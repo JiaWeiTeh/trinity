@@ -58,7 +58,8 @@ def main():
             ha="right", va="bottom", fontsize=8, color="#D55E00")
     a1.set_ylabel(r"cooling ratio $(L_{\rm gain}-L_{\rm loss})/L_{\rm gain}$")
     a1.set_ylim(-0.05, 1.0)
-    a1.set_title("F0 pathology: ratio plateaus ~0.3-0.5, never reaches 0.05, bumps UP at the SN surge")
+    a1.set_title("F0 never fires: cooling ratio plateaus ~0.5, never reaches 0.05 (resets up at the SN surge)",
+                 fontsize=10)
     a1.legend(fontsize=7, ncol=3, loc="upper right", framealpha=0.9)
     a2.set_yscale("log"); a2.set_ylabel(r"$L_{\rm mech}$")
     a2.set_xlabel("time  [Myr]")
