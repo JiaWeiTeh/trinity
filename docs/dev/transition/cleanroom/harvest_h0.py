@@ -96,11 +96,13 @@ def harvest(path):
     f2 = {k: _first(impl, lambda r, k=k: Ll(r) > 0 and r["v2"] > 0
                     and (r["Eb"] / Ll(r)) / (r["R2"] / r["v2"]) < k) for k in (1, 2, 3)}
 
-    # --- F3 force (PROVISIONAL: thermal drive vs surviving rad+ram) ---
-    def surviving(r):
-        return (r.get("F_rad") or 0.0) + (r.get("F_ram") or 0.0)
-    f3 = _first(impl, lambda r: surviving(r) > 0
-                and FOURPI * r["R2"]**2 * r["Pb"] / surviving(r) < 1.0)
+    # --- F3 force/continuity. STRUCTURAL FINDING: Pb == P_HII to machine precision
+    # (bubble-shell pressure continuity by construction; P_ram=0, F_ISM=0), so a
+    # "Pb vs P_HII" criterion is DEGENERATE. The only genuinely-competing outward
+    # driver is radiation: F_ram is the bubble-pressure (thermal) force, F_rad the
+    # radiation force. F3 = thermal force drops below radiation force. (physics call.)
+    f3 = _first(impl, lambda r: (r.get("F_rad") or 0) > 0 and (r.get("F_ram") or 0) > 0
+                and r["F_ram"] < r["F_rad"])
 
     # --- F4 blowout ---
     f4 = _first(rows, lambda r: rcloud and r["R2"] > rcloud) if rcloud else None
