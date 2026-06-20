@@ -345,7 +345,12 @@ measured, not inherited):
 
 Build under `cleanroom/figures/`, regenerable from the committed CSVs, using the
 repo `trinity.mplstyle` + Wong palette. Each maps to a question; favour figures
-that render a verdict by shape alone.
+that render a verdict by shape alone. **Convention: every time-series figure
+shades the four evolution-phase regions (energy / implicit / transition /
+momentum) as background bands**, so each plot shows all phases at a glance and the
+phase-dependence is never hidden — and **every phase gets a dedicated plot or two**
+(below), since the physics differs by phase (rule: don't read one phase as the
+whole story).
 
 **Headline / "nail in coffin":**
 1. **`f_ret(t)` verdict plot** — all 6 configs, log-y; shade the literature band
@@ -364,9 +369,26 @@ that render a verdict by shape alone.
 6. β(t) with β<0 shaded + `Lmech_total` overlay (re-pressurisation; steep crux vs
    small_dense contrast).
 
+**Per-phase coverage (a plot or two each — the phase-by-phase narrative):**
+- **Energy (1a):** *E1* R₂(t), v₂(t) vs the analytic Weaver self-similar law
+  `R∝t^{3/(5−|α|)}` (the C0.1b external check — does the energy phase track
+  Weaver?); *E2* `f_ret` entry level (~0.42–0.76) per config.
+- **Implicit (1b) — the crux, carries the headline set:** the `f_ret` verdict plot
+  (1), F0 pathology (2), β(t) re-pressurisation (6), and the res_beta/res_T0_struct
+  certification (4–5) all live here.
+- **Transition (1c):** *T1* `Eb(t)` & `f_ret(t)` through the sound-crossing drain
+  (clock B) — show `f_ret` crashing toward the band (the mock did 0.44→0.012),
+  legacy reaching it vs hybr maybe not; *T2* which `min(Ed_energy_balance,
+  Ed_soundcrossing)` branch is active over time (does a feedback surge stall the
+  drain?).
+- **Momentum (2):** *M1* R₂(t)/v₂(t) coast + dissolution and `f_ret`→0 — the
+  endgame fate per config (shell_dissolved / large_radius / stopping_time).
+
 **Tables:** A) C0 scorecard (configs × res_beta early/late, res_T0_struct, conv%,
 verdict); B) f_ret/fate (configs × f_ret_min, enters-band?, final phase, fate);
-C) candidate firing-epoch divergence vs the Eb-peak (the G0 deliverable).
+C) candidate firing-epoch divergence vs the Eb-peak (the G0 deliverable);
+D) per-phase durations (configs × energy/implicit/transition/momentum Myr, legacy
+vs hybr — the numeric companion to the fate bars).
 
 ## 7. Reproduce / artifacts
 - Pinned baseline SHA: recorded in `data/` outputs (see harness `--meta`).
