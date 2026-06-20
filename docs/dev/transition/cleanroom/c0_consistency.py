@@ -192,7 +192,7 @@ def summarize(rows: list[dict], provenance: str) -> None:
               f"min={s['min']:.3g} | end {in_band}")
 
 
-def run_config(param_path: str, stop_t: float | None) -> str:
+def run_config(param_path: str, stop_t: float | None, refine: float = 1.0) -> str:
     # The harness calls start_expansion() directly (not via run.py), which trips
     # main.py's DEBUG-logging fallback -- per-RHS DEBUG records are a measured
     # hot-path cost over a full run (registry log_level note). Install an INFO
@@ -202,6 +202,16 @@ def run_config(param_path: str, stop_t: float | None) -> str:
     logging.basicConfig(level=logging.INFO)
     from trinity._input import read_param
     from trinity import main as trinity_main
+    # C0.2 bar (ii) refinement check: shrink the adaptive-timestep scales by `refine`
+    # so snapshots are denser. If res_beta drops ~proportionally, the residual is
+    # finite-difference TRUNCATION (∝ Δt), not a substrate defect. Monkeypatch the
+    # module constants only -- nothing in trinity/ is edited on disk.
+    if refine and refine != 1.0:
+        import trinity.phase1b_energy_implicit.run_energy_implicit_phase as rmod
+        for c in ("DT_SEGMENT_INIT", "DT_SEGMENT_MIN", "DT_SEGMENT_MAX",
+                  "ODE_MAX_STEP", "DT_SEGMENT_COLLAPSE"):
+            if hasattr(rmod, c):
+                setattr(rmod, c, getattr(rmod, c) / refine)
     params = read_param.read_param(param_path)
     out_dir = tempfile.mkdtemp(prefix="c0_")
     params["path2output"].value = out_dir
@@ -226,14 +236,16 @@ def main() -> None:
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("target", help=".param to run (hybr), or an existing dictionary.jsonl")
     ap.add_argument("--stop-t", type=float, default=None)
+    ap.add_argument("--refine", type=float, default=1.0,
+                    help="shrink adaptive-timestep scales by this factor (C0.2 refinement check)")
     ap.add_argument("--out", default=None, help="write full per-row CSV here")
     args = ap.parse_args()
 
     if args.target.endswith(".jsonl"):
         jsonl, prov = args.target, f"snapshots {args.target} (provenance not certified)"
     else:
-        jsonl = run_config(args.target, args.stop_t)
-        prov = f"ran {args.target} (hybr, stop_t={args.stop_t}) @ {_git_sha()}"
+        jsonl = run_config(args.target, args.stop_t, args.refine)
+        prov = f"ran {args.target} (hybr, stop_t={args.stop_t}, refine={args.refine}) @ {_git_sha()}"
 
     rows = annotate(load_rows(jsonl))
     summarize(rows, prov)
