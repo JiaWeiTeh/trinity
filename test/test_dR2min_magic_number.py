@@ -29,9 +29,12 @@ layer with the stiff adaptive solver. These tests pin that this is robust:
      not occur for real clusters.
   3. the unfloored thin layer is integrated *correctly*: production LSODA matches an
      independent stiff Radau reference on the temperature profile to ~1e-6, on two
-     real captured states -- a mild cluster and a genuinely-stiff high-feedback one
-     (dR2/R2 ~ 3e-10, the LSODA-warning-flood regime) -- the cross-solver agreement
-     measured in docs/dev/performance/BUBBLE_CONDUCTION_STIFFNESS.md, as a test.
+     real captured states -- a mild cluster and a genuinely-stiff one from the
+     documented 5e9/sfe0.01 conduction-stiffness config (dR2/R2 ~ 1e-10, the
+     LSODA-warning-flood regime) -- the cross-solver agreement measured in
+     docs/dev/performance/BUBBLE_CONDUCTION_STIFFNESS.md, as a test.
+  4. the WHOLE production solver (get_bubbleproperties_pure) returns a physical result
+     on that stiff state (test_production_bubble_path_healthy_on_stiff_state).
 
 Coverage tiers:
   * the no-floor + conditioning invariants are also swept over bubble size
@@ -220,7 +223,7 @@ def test_thin_layer_well_conditioned_across_physical_clusters(state):
     "fixture_name,max_dR2_over_R2",
     [
         ("residual_resample_fixture.json", 1e-7),   # mild real cluster (~1e-8)
-        ("dR2_stiff_state_fixture.json", 1e-9),     # genuinely stiff, flood regime (~3e-10)
+        ("dR2_stiff_state_fixture.json", 1e-9),     # 5e9/sfe0.01 flood regime (~1.2e-10)
     ],
 )
 def test_unfloored_thin_layer_integrates_correctly(fixture_name, max_dR2_over_R2):
@@ -233,9 +236,9 @@ def test_unfloored_thin_layer_integrates_correctly(fixture_name, max_dR2_over_R2
     the stiffness from the thin (unfloored) conduction layer is integrated, not faked.
 
     Run on two REAL captured states for regime coverage: a mild cluster and a
-    genuinely-stiff high-feedback state (dR2/R2 ~ 3e-10 -- the LSODA-warning-flood
-    regime WARPFIELD's dR2min floor targeted, captured by
-    docs/dev/performance/harness/capture_stiff_dR2_state.py).
+    genuinely-stiff state from the documented 5e9/sfe0.01 conduction-stiffness config
+    (dR2/R2 ~ 1.2e-10 -- the LSODA-warning-flood regime WARPFIELD's dR2min floor
+    targeted, captured by docs/dev/performance/harness/capture_stiff_dR2_state.py).
     """
     fixture, params = _load_state(fixture_name)
     Pb, R1 = fixture["Pb"], fixture["R1"]
@@ -275,6 +278,38 @@ def test_unfloored_thin_layer_integrates_correctly(fixture_name, max_dR2_over_R2
     # v passes through ~0 near R1 (its own boundary condition), so compare absolute
     # disagreement scaled by the boundary velocity rather than a blow-up relative error.
     assert np.max(np.abs(v_p - v_r)) < 1e-4 * abs(v0)
+
+
+@pytest.mark.parametrize(
+    "fixture_name",
+    ["residual_resample_fixture.json", "dR2_stiff_state_fixture.json"],
+)
+def test_production_bubble_path_healthy_on_stiff_state(fixture_name):
+    """The WHOLE production solver -- not just the isolated ODE -- is robust unfloored.
+
+    ``get_bubbleproperties_pure`` runs solve_R1 -> bubble_E2P -> the dMdt fsolve ->
+    the backward structure integration across the thin layer -> the luminosity
+    trapezoids. Driving it end-to-end on the genuinely-stiff captured state (the
+    flood regime, where WARPFIELD reached for dR2min) must return a fully physical
+    result: a positive mass flux, a sane geometry, and a finite, strictly positive,
+    monotonic temperature profile. This is the integrated-path check the CLAUDE.md
+    rule-5 ladder asks for (the lower-level cross-solver test is per-step only).
+    """
+    fixture, params = _load_state(fixture_name)
+    if "bubble_dMdt" in params:
+        params["bubble_dMdt"].value = float("nan")  # force a clean fsolve, no stale guess
+
+    bp = BL.get_bubbleproperties_pure(params)
+    R2 = params["R2"].value
+
+    assert np.isfinite(bp.bubble_dMdt) and bp.bubble_dMdt > 0
+    assert 0 < bp.R1 < R2
+    assert np.isfinite(bp.Pb) and bp.Pb > 0
+    assert np.isfinite(bp.bubble_LTotal)
+
+    T = np.asarray(bp.bubble_T_arr)
+    assert np.all(np.isfinite(T)) and np.all(T > 0)
+    assert np.all(np.diff(T) >= 0) or np.all(np.diff(T) <= 0)
 
 
 # =============================================================================

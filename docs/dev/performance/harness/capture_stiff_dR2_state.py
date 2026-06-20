@@ -21,9 +21,15 @@ REPRODUCE
     python docs/dev/performance/harness/capture_stiff_dR2_state.py \
         docs/dev/performance/f1edge_lowdens_himass_hisfe.param \
         test/data/dR2_stiff_state_fixture.json
+
+    # scan the first N=40 bubble solves and keep the stiffest (smallest dR2/R2):
+    N_SCAN=40 python docs/dev/performance/harness/capture_stiff_dR2_state.py \
+        docs/dev/performance/conduction_stiff_5e9_sfe001.param \
+        test/data/dR2_stiff_state_fixture.json
 """
 
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -37,6 +43,8 @@ import trinity.bubble_structure.bubble_luminosity as BL  # noqa: E402
 
 _REAL_GBP = BL.get_bubbleproperties_pure
 _T_INIT = BL._T_INIT_BOUNDARY
+# Scan this many of the first bubble solves and keep the stiffest (smallest dR2/R2).
+_N_SCAN = int(os.environ.get("N_SCAN", "1"))
 
 
 class _CaptureDone(Exception):
@@ -60,27 +68,39 @@ def _scalar_snapshot(params):
 
 
 def _make_hook(base_param, out_path, captured):
+    seen = {"n": 0, "best": np.inf}
+
     def hook(params):
         bp = _REAL_GBP(params)  # real solve -> converged dMdt, R1, Pb
         R2 = float(params["R2"].value)
         const = 25.0 / 4.0 * (params["k_B"].value / params["mu_ion"].value
                               / params["C_thermal"].value)
         dR2 = _T_INIT ** 2.5 / (const * bp.bubble_dMdt / (4.0 * np.pi * R2 ** 2))
-        captured.update({
-            "_comment": ("genuinely-stiff bubble state for test_dR2min_magic_number "
-                         "Tier 2; captured by capture_stiff_dR2_state.py"),
-            "base_param": base_param,
-            "Pb": float(bp.Pb),
-            "R1": float(bp.R1),
-            "dMdt_converged": float(bp.bubble_dMdt),
-            "dR2_over_R2": float(dR2 / R2),
-            "param_values": _scalar_snapshot(params),
-        })
-        with open(out_path, "w") as fh:
-            json.dump(captured, fh, indent=2, sort_keys=True)
-        print(f"[capture] dR2/R2={dR2 / R2:.3e}  R2={R2:.4e}  dMdt={bp.bubble_dMdt:.4e}  "
-              f"-> {out_path}", file=sys.stderr, flush=True)
-        raise _CaptureDone()
+        ratio = dR2 / R2
+        seen["n"] += 1
+        if ratio < seen["best"]:
+            seen["best"] = ratio
+            captured.clear()
+            captured.update({
+                "_comment": ("genuinely-stiff bubble state for test_dR2min_magic_number "
+                             "Tier 2; captured by capture_stiff_dR2_state.py"),
+                "base_param": base_param,
+                "Pb": float(bp.Pb),
+                "R1": float(bp.R1),
+                "dMdt_converged": float(bp.bubble_dMdt),
+                "dR2_over_R2": float(ratio),
+                "param_values": _scalar_snapshot(params),
+            })
+            print(f"[scan {seen['n']}] new stiffest dR2/R2={ratio:.3e} "
+                  f"(R2={R2:.4e}, dMdt={bp.bubble_dMdt:.4e})", file=sys.stderr, flush=True)
+        if seen["n"] >= _N_SCAN:
+            with open(out_path, "w") as fh:
+                json.dump(captured, fh, indent=2, sort_keys=True)
+            print(f"[capture] stiffest over {seen['n']} solves: "
+                  f"dR2/R2={captured['dR2_over_R2']:.3e} -> {out_path}",
+                  file=sys.stderr, flush=True)
+            raise _CaptureDone()
+        return bp
     return hook
 
 

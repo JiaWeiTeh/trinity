@@ -77,10 +77,12 @@ across bubble size × 8–10 decades of `dMdt`; (b) `R2 − dR2` is well-conditi
 thinnest *physical* layer (`dR2/R2 ~ 3e-11`), clearing the float64 cancellation cliff
 (`~ε/2`) by **~5.5 decades**; (c) production LSODA matches an independent **Radau** reference
 to **~3e-8** on `T`/`dTdr` on two real captured states — a mild cluster *and* a genuinely-stiff
-high-feedback one (`dR2/R2 ~ 3e-10`, the flood regime; fixture
-`test/data/dR2_stiff_state_fixture.json`, captured by
-`docs/dev/performance/harness/capture_stiff_dR2_state.py`). So the unfloored layer is *integrated
-correctly*, not just quiet. This is the executable form of the §Correctness measurement above.
+one captured from **this very config** (`5e9/sfe0.01/n1e2`, `dR2/R2 ~ 1.2e-10`, the flood regime;
+fixture `test/data/dR2_stiff_state_fixture.json` + `conduction_stiff_5e9_sfe001.param`, captured by
+`docs/dev/performance/harness/capture_stiff_dR2_state.py` — whose 40-solve scan also shows the stiff
+config's bubble solves complete cleanly segment after segment). And the **whole** production solver
+(`get_bubbleproperties_pure`) returns a physical result on that state. So the unfloored layer is
+*integrated correctly*, not just quiet. This is the executable form of the §Correctness measurement above.
 
 ## Deferred — fixing the CAUSE (optional; needs its own gate)
 Each would *reduce the stiffness* rather than hide it, and is **not** correctness-required
