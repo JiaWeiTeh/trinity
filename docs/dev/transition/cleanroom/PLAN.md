@@ -178,16 +178,31 @@ timestep refinement** (first-order finite-difference truncation → ∝ Δt), i.
 is consistency error, not a systematic offset. Fail ⇒ the β/δ the trigger's
 denominator/cooling depend on are not trajectory-consistent ⇒ escalate scope.
 
-> **Smoke observation (2026-06-20, harness mechanics only — provenance-unknown
-> legacy run `outputs/mockOutput/mockFullrun`, 49 implicit rows; NOT a
-> certification):** `β↔dPb/dt` median **2.2%**, p90 8.7% — a *genuine* cross-check
-> (`Pb` from the structure solve / `bubble_E2P(Eb,…)`, `β` from the solver, so
-> agreement is non-trivial). `δ↔dT0/dt` came out **exactly 0.000%**, which is a
-> **red flag, not a pass**: it strongly suggests `T0` is advanced by the *same*
-> δ-ODE (`delta2dTdt_pure`, `dT/dt=(T/t)δ`), making the δ check **tautological**
-> (certifies nothing). **Open item before C0.2 counts:** confirm whether the δ
-> check is independent; if tautological, drop it and rest C0.2 on `β↔Pb` (genuine)
-> plus the external C0.1. Do not report the δ residual as evidence until resolved.
+> **Progress (2026-06-20) — δ resolved, first real hybr result; results vary
+> sharply by config/phase, so do NOT generalize from one run.**
+> - **δ↔dT0/dt is TAUTOLOGICAL — dropped as a gate.** `T0` is a `solve_ivp` state
+>   variable whose RHS *is* `δ·T0/t` (`run_energy_implicit_phase.py:507–532,989`),
+>   so finite-differencing it trivially matches. Replaced by `res_T0_struct =
+>   |T0 − bubble_T_r_Tb|/bubble_T_r_Tb` — the two sides of the solver's own
+>   `T_residual` (`get_betadelta.py:449`), meaningful **on converged segments**.
+> - **`β↔dPb/dt` is GENUINE** (trajectory-level: `Pb←bubble_E2P(Eb)`, independent
+>   of the solver's `β`). Its 5548% mock outlier and the 9% below are real signals
+>   to chase, not noise.
+> - **First real hybr run** (`small_dense`, reached only t=0.028 Myr in ~10 min ⇒
+>   ~35 s/implicit segment): `res_T0_struct` median **0.0%**, max 0.85% ⇒ hybr
+>   converges its T-residual tightly **(PASS)**. `res_beta` median **9.2%** (14%→6%
+>   early→late within the run) ⇒ **PROVISIONAL**: the early→late decrease looks
+>   like finite-difference truncation, not a defect, but the pre-registered bar
+>   (ii) **timestep-refinement check** must confirm before `res_beta` counts. No
+>   negative β here (the docs' negative-β is a later / steeper-config phenomenon).
+> - **Variability (the headline caution):** vs the provenance-unknown legacy mock
+>   (`res_beta` 2.5%; `res_T0_struct` 15% from loose legacy convergence; `f_ret`
+>   *rising* 0.50→0.62 not falling), the hybr run differs on every axis. **Certify
+>   across the full span AND over time/phase — never from one run.**
+> - **Cost reality:** hybr ≈35 s/implicit segment ⇒ Myr-scale coverage is hours.
+>   Substrate certification uses short `stop_t` across all 6 (`run_c0_batch.sh`);
+>   the long-time `f_ret`/negative-β behaviour needs separate long background runs
+>   (flagged, not yet done).
 
 ### C0.1 — analytic adiabatic Weaver null (analytic-limit regression — implementation check, NOT physics validation) — STAGED
 **Caveat (§0.1):** matching Weaver certifies the code solves *its own* equations in

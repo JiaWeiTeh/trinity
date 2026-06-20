@@ -1,0 +1,5 @@
+mCloud         1e6
+nCore          1e4
+sfe            0.1
+dens_profile   densPL
+densPL_alpha   0

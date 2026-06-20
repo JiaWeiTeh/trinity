@@ -1,37 +1,46 @@
 #!/usr/bin/env python3
-"""C0.2 substrate-certification gate: betadelta (beta, delta) <-> trajectory consistency.
+"""C0 substrate certification + physical-anchor harness (clean-room; see PLAN.md).
 
-Clean-room redo of the implicit->momentum transition study (see PLAN.md). This
-harness certifies, independently of the transition trigger, that the solver's
-(beta, delta) outputs are consistent with the integrated trajectory it produced,
-via the *definitions* the code enforces (get_betadelta.py:248,294):
+Two things, both computed per-snapshot so we can inspect them BY PHASE and BY TIME
+(never trust a single summary number -- behaviour differs across config / phase /
+feedback surge):
 
-    beta  = -(t/Pb)(dPb/dt)   =>  predicted dPb/dt = -beta * Pb / t
-    delta =  (t/T )(dT /dt)   =>  predicted dT0/dt =  delta * T0 / t
+  C0.2  beta/delta <-> trajectory consistency (INTERNAL, code-derived).
+        The energy ODE is the Rahner A12 form (get_betadelta.py:182): cooling
+        enters via beta, not an explicit Lloss term. So we certify the DEFINITIONS
+        the code enforces:
+            beta  = -(t/Pb)(dPb/dt)  => predicted dPb/dt = -beta*Pb/t   (:248)
+            delta =  (t/T )(dT /dt)  => predicted dT0/dt =  delta*T0/t   (:294)
+        finite-differencing stored Pb(t), T0(t) over implicit-phase snapshots.
+        NOTE (open item, PLAN.md S2): the delta<->T0 check may be TAUTOLOGICAL if
+        T0 is advanced by that same ODE -- reported but flagged, not yet trusted.
 
-We finite-difference the stored Pb(t), T0(t) across consecutive implicit-phase
-snapshots and compare to the predictions from the stored beta, delta. Pure
-diagnostic: nothing in trinity/ is modified, production is untouched.
+  f_ret PHYSICAL ANCHOR (EXTERNAL, PLAN.md S0.1).  Retained hot-bubble energy
+        fraction f_ret(t) = Eb / integral(Lmech_total dt)  (left-rectangle).
+        Compare to the 3D-sim/observation band ~0.01-0.1, DECREASING with time
+        (Lancaster+2021; Geen+2021 ~1%). This is the test of whether the stall is
+        a trigger problem (f_ret reaches the band) or an under-cooling physics gap
+        (f_ret stays far above it). Independent of TRINITY/Weaver being correct.
+
+Pure diagnostic: nothing in trinity/ is modified; production is untouched.
 
 Usage:
-    # analyze an existing run's snapshots:
-    python c0_consistency.py path/to/dictionary.jsonl [--out data/foo.csv]
-    # run a config (hybr) then analyze:
-    python c0_consistency.py param/simple_cluster.param --stop-t 0.5 --out data/foo.csv
-
-Pre-registered bars (PLAN.md S2 C0.2): median relative residual <= 5% for BOTH
-dPb/dt and dT0/dt over implicit-phase rows, and the median shrinks under timestep
-refinement (consistency error, not a systematic offset).
+    python c0_consistency.py <dictionary.jsonl>            # analyze an existing run
+    python c0_consistency.py <config.param> --stop-t 5 --out data/foo.csv  # run+analyze
 """
 from __future__ import annotations
 
 import argparse
+import csv
 import json
 import statistics
 import subprocess
 import sys
 import tempfile
 from pathlib import Path
+
+PHASES = ("energy", "implicit", "transition", "momentum")
+LIT_BAND = (0.01, 0.10)  # Lancaster+2021 / Geen+2021 retained-energy band
 
 
 def _git_sha() -> str:
@@ -43,71 +52,149 @@ def _git_sha() -> str:
         return "unknown"
 
 
-def load_implicit_rows(jsonl_path: str) -> list[dict]:
-    """Load implicit-phase snapshots, sorted by t_now."""
-    rows = []
-    with open(jsonl_path) as fh:
-        for line in fh:
-            line = line.strip()
-            if not line:
-                continue
-            d = json.loads(line)
-            if d.get("current_phase") != "implicit":
-                continue
-            rows.append(d)
-    rows.sort(key=lambda d: d["t_now"])
-    return rows
-
-
 def _finite(*vals) -> bool:
     return all(v is not None and v == v and abs(v) != float("inf") for v in vals)
 
 
-def consistency(rows: list[dict]) -> tuple[list[dict], dict]:
-    """Per-adjacent-pair relative residual of the beta<->Pb and delta<->T0 laws."""
-    per_row = []
-    for a, b in zip(rows, rows[1:]):
-        t0, t1 = a["t_now"], b["t_now"]
-        dt = t1 - t0
-        if dt <= 0:
-            continue
-        rec = {"t_now": t0, "dt": dt}
-        # beta law: dPb/dt = -beta*Pb/t  (evaluate prediction at the segment start)
-        Pb0, Pb1, beta0 = a.get("Pb"), b.get("Pb"), a.get("cool_beta")
-        if _finite(Pb0, Pb1, beta0, t0) and t0 > 0 and abs(Pb0) > 0:
-            meas = (Pb1 - Pb0) / dt
-            pred = -beta0 * Pb0 / t0
-            rec["res_beta"] = abs(meas - pred) / (abs(pred) + abs(Pb0) / t0 * 1e-9 + 1e-300)
-        # delta law: dT0/dt = delta*T0/t
-        T0, T1, delta0 = a.get("T0"), b.get("T0"), a.get("cool_delta")
-        if _finite(T0, T1, delta0, t0) and t0 > 0 and abs(T0) > 0:
-            meas = (T1 - T0) / dt
-            pred = delta0 * T0 / t0
-            rec["res_delta"] = abs(meas - pred) / (abs(pred) + abs(T0) / t0 * 1e-9 + 1e-300)
-        per_row.append(rec)
+def load_rows(jsonl_path: str) -> list[dict]:
+    rows = []
+    with open(jsonl_path) as fh:
+        for line in fh:
+            line = line.strip()
+            if line:
+                rows.append(json.loads(line))
+    rows.sort(key=lambda d: d.get("t_now", 0.0))
+    return rows
 
-    def _stats(key):
-        xs = [r[key] for r in per_row if key in r]
-        if not xs:
-            return None
-        xs_sorted = sorted(xs)
-        return {
-            "n": len(xs),
-            "median": statistics.median(xs),
-            "p90": xs_sorted[min(len(xs) - 1, int(0.9 * len(xs)))],
-            "max": max(xs),
+
+def annotate(rows: list[dict]) -> list[dict]:
+    """Add cumulative injected energy E_inj and retained fraction f_ret to each row,
+    plus the per-pair consistency residuals res_beta / res_delta (implicit only)."""
+    E_inj = 0.0
+    out = []
+    for i, r in enumerate(rows):
+        rec = {
+            "t_now": r.get("t_now"),
+            "phase": r.get("current_phase"),
+            "Eb": r.get("Eb"),
+            "Lmech_total": r.get("Lmech_total"),
+            "Pb": r.get("Pb"),
+            "T0": r.get("T0"),
+            "cool_beta": r.get("cool_beta"),
+            "cool_delta": r.get("cool_delta"),
+            "R2": r.get("R2"),
+            "v2": r.get("v2"),
+            "bubble_Lgain": r.get("bubble_Lgain"),
+            "bubble_Lloss": r.get("bubble_Lloss"),
+            "bubble_T_r_Tb": r.get("bubble_T_r_Tb"),
+            "betadelta_converged": r.get("betadelta_converged"),
         }
+        # GENUINE delta-side check: ODE-integrated T0 vs structure-solved T(xi_Tb).
+        # (delta<->dT0/dt is tautological because T0 is advanced by that ODE; but the
+        #  bubble structure solves T independently, so T0 must match bubble_T_r_Tb.)
+        _T0, _Ts = r.get("T0"), r.get("bubble_T_r_Tb")
+        rec["res_T0_struct"] = (abs(_T0 - _Ts) / abs(_Ts)
+                                if _finite(_T0, _Ts) and abs(_Ts) > 0 else None)
+        # f_ret = Eb / E_inj, E_inj cumulative left-rectangle of Lmech_total
+        rec["E_inj"] = E_inj if E_inj > 0 else None
+        Eb = r.get("Eb")
+        rec["f_ret"] = (Eb / E_inj) if (E_inj > 0 and _finite(Eb)) else None
+        # advance E_inj for the NEXT row (left-rectangle: state before segment)
+        if i + 1 < len(rows):
+            dt = rows[i + 1].get("t_now", 0.0) - r.get("t_now", 0.0)
+            Lm = r.get("Lmech_total")
+            if _finite(Lm, dt) and dt > 0:
+                E_inj += Lm * dt
+        out.append(rec)
 
-    summary = {"res_beta": _stats("res_beta"), "res_delta": _stats("res_delta"),
-               "n_implicit_rows": len(rows)}
-    return per_row, summary
+    # consistency residuals on adjacent IMPLICIT-phase rows
+    for a, b in zip(out, out[1:]):
+        if a["phase"] != "implicit":
+            continue
+        t0, t1 = a["t_now"], b["t_now"]
+        if not _finite(t0, t1) or t1 <= t0 or t0 <= 0:
+            continue
+        dt = t1 - t0
+        Pb0, Pb1, beta0 = a["Pb"], b["Pb"], a["cool_beta"]
+        if _finite(Pb0, Pb1, beta0) and abs(Pb0) > 0:
+            meas, pred = (Pb1 - Pb0) / dt, -beta0 * Pb0 / t0
+            a["res_beta"] = abs(meas - pred) / (abs(pred) + 1e-300)
+        T0_, T1_, delta0 = a["T0"], b["T0"], a["cool_delta"]
+        if _finite(T0_, T1_, delta0) and abs(T0_) > 0:
+            meas, pred = (T1_ - T0_) / dt, delta0 * T0_ / t0
+            a["res_delta"] = abs(meas - pred) / (abs(pred) + 1e-300)
+    return out
+
+
+def _stats(xs: list[float]) -> dict | None:
+    xs = [x for x in xs if x is not None and x == x]
+    if not xs:
+        return None
+    s = sorted(xs)
+    return {"n": len(s), "median": statistics.median(s),
+            "p90": s[min(len(s) - 1, int(0.9 * len(s)))], "max": max(s), "min": min(s)}
+
+
+def summarize(rows: list[dict], provenance: str) -> None:
+    print(f"# C0 certify + f_ret anchor")
+    print(f"# {provenance}")
+    from collections import Counter
+    print(f"# phase rows: {dict(Counter(r['phase'] for r in rows))}")
+
+    # --- C0.2 consistency, overall AND time-resolved (early/mid/late implicit) ---
+    impl = [r for r in rows if r["phase"] == "implicit"]
+    conv = [r for r in impl if r.get("betadelta_converged")]
+    print("## C0.2 substrate consistency (implicit phase)")
+    print(f"  betadelta_converged: {len(conv)}/{len(impl)} implicit segments")
+    # GENUINE trajectory gate: beta the solver returned vs how Pb ACTUALLY evolved.
+    s = _stats([r.get("res_beta") for r in impl])
+    if s:
+        bar = "PASS" if s["median"] <= 0.05 else "FAIL"
+        print(f"  beta<->dPb/dt   (GENUINE trajectory) : n={s['n']:4d} median={s['median']:.3%} "
+              f"p90={s['p90']:.3%} max={s['max']:.3%} [median<=5%:{bar}]")
+    # solver's own T-residual |T0-T_struct|/T_struct, on CONVERGED segments only
+    # (T0 and bubble_T_r_Tb are the two sides of the solver's T_residual, :449).
+    s = _stats([r.get("res_T0_struct") for r in (conv or impl)])
+    if s:
+        where = "converged" if conv else "ALL impl (NO conv flag!)"
+        print(f"  |T0-Tstruct|/Tstruct (solver T-resid, {where}): n={s['n']:4d} "
+              f"median={s['median']:.3%} p90={s['p90']:.3%} max={s['max']:.3%}")
+    # tautological delta check (diagnostic only; expect ~0)
+    s = _stats([r.get("res_delta") for r in impl])
+    if s:
+        print(f"  delta<->dT0/dt  (TAUTOLOGICAL, diag)  : median={s['median']:.3%} (expect ~0)")
+    # time-resolved: thirds of the implicit phase (catch surge-localized breakdown)
+    if len(impl) >= 6:
+        third = len(impl) // 3
+        for name, seg in [("early", impl[:third]), ("mid", impl[third:2 * third]),
+                          ("late", impl[2 * third:])]:
+            tlo, thi = seg[0]["t_now"], seg[-1]["t_now"]
+            parts = []
+            for key in ("res_beta", "res_T0_struct"):
+                sb = _stats([r.get(key) for r in seg])
+                if sb:
+                    parts.append(f"{key}:med={sb['median']:.2%},max={sb['max']:.2%}")
+            if parts:
+                print(f"    {name:5s} [t={tlo:.3f}-{thi:.3f}]: " + "  ".join(parts))
+
+    # --- f_ret physical anchor, per phase + trend ---
+    print(f"## f_ret = Eb/integral(Lmech dt)  vs literature band {LIT_BAND} (decreasing)")
+    for ph in PHASES:
+        seg = [r for r in rows if r["phase"] == ph and r["f_ret"] is not None]
+        s = _stats([r["f_ret"] for r in seg])
+        if not s:
+            continue
+        f_first, f_last = seg[0]["f_ret"], seg[-1]["f_ret"]
+        trend = "DOWN" if f_last < f_first else "UP"
+        in_band = "IN-BAND" if LIT_BAND[0] <= f_last <= LIT_BAND[1] else (
+            "ABOVE(under-cooled?)" if f_last > LIT_BAND[1] else "BELOW")
+        print(f"  {ph:11s}: n={s['n']:4d} f_ret {f_first:.3g}->{f_last:.3g} ({trend}) "
+              f"min={s['min']:.3g} | end {in_band}")
 
 
 def run_config(param_path: str, stop_t: float | None) -> str:
-    """Run a config with betadelta_solver=hybr to a temp dir; return its dictionary.jsonl."""
     from trinity._input import read_param
     from trinity import main as trinity_main
-
     params = read_param.read_param(param_path)
     out_dir = tempfile.mkdtemp(prefix="c0_")
     params["path2output"].value = out_dir
@@ -118,7 +205,6 @@ def run_config(param_path: str, stop_t: float | None) -> str:
         trinity_main.start_expansion(params)
     except SystemExit:
         pass
-    # find the dictionary.jsonl the run wrote
     hits = list(Path(out_dir).rglob("dictionary.jsonl"))
     if not hits:
         sys.exit(f"no dictionary.jsonl produced under {out_dir}")
@@ -126,44 +212,34 @@ def run_config(param_path: str, stop_t: float | None) -> str:
 
 
 def main() -> None:
-    ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("target", help=".param config to run, or an existing dictionary.jsonl")
-    ap.add_argument("--stop-t", type=float, default=None, help="override stop_t (Myr) when running a config")
-    ap.add_argument("--out", default=None, help="write per-row residuals to this CSV")
+    ap = argparse.ArgumentParser(description=__doc__,
+                                 formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("target", help=".param to run (hybr), or an existing dictionary.jsonl")
+    ap.add_argument("--stop-t", type=float, default=None)
+    ap.add_argument("--out", default=None, help="write full per-row CSV here")
     args = ap.parse_args()
 
     if args.target.endswith(".jsonl"):
-        jsonl = args.target
-        provenance = f"existing snapshots: {jsonl} (provenance not certified)"
+        jsonl, prov = args.target, f"snapshots {args.target} (provenance not certified)"
     else:
         jsonl = run_config(args.target, args.stop_t)
-        provenance = f"ran {args.target} (hybr, stop_t={args.stop_t}) @ {_git_sha()}"
+        prov = f"ran {args.target} (hybr, stop_t={args.stop_t}) @ {_git_sha()}"
 
-    rows = load_implicit_rows(jsonl)
-    per_row, summary = consistency(rows)
-
-    print(f"# C0.2 beta/delta<->trajectory consistency")
-    print(f"# {provenance}")
-    print(f"# implicit-phase rows: {summary['n_implicit_rows']}")
-    for key, label in [("res_beta", "beta<->dPb/dt"), ("res_delta", "delta<->dT0/dt")]:
-        s = summary[key]
-        if s is None:
-            print(f"  {label:18s}: no valid pairs")
-            continue
-        bar = "PASS" if s["median"] <= 0.05 else "FAIL"
-        print(f"  {label:18s}: n={s['n']:4d}  median={s['median']:.3%}  p90={s['p90']:.3%}  max={s['max']:.3%}  [median<=5%: {bar}]")
+    rows = annotate(load_rows(jsonl))
+    summarize(rows, prov)
 
     if args.out:
         out = Path(args.out)
         out.parent.mkdir(parents=True, exist_ok=True)
-        import csv
-        cols = ["t_now", "dt", "res_beta", "res_delta"]
+        cols = ["t_now", "phase", "betadelta_converged", "Eb", "Lmech_total", "E_inj",
+                "f_ret", "Pb", "cool_beta", "res_beta", "T0", "bubble_T_r_Tb",
+                "res_T0_struct", "cool_delta", "res_delta", "R2", "v2"]
         with open(out, "w", newline="") as fh:
-            w = csv.DictWriter(fh, fieldnames=cols)
+            w = csv.DictWriter(fh, fieldnames=cols, extrasaction="ignore")
             w.writeheader()
-            for r in per_row:
-                w.writerow({c: r.get(c) for c in cols})
-        print(f"# wrote {len(per_row)} rows -> {out}")
+            for r in rows:
+                w.writerow(r)
+        print(f"# wrote {len(rows)} rows -> {out}")
 
 
 if __name__ == "__main__":

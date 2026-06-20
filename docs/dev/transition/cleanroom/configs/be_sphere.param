@@ -1,0 +1,6 @@
+mCloud         1e6
+nCore          1e4
+rCore          1
+sfe            0.05
+dens_profile   densBE
+densBE_Omega   14.0
