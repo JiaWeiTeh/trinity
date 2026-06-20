@@ -852,6 +852,12 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         # ---------------------------------------------------------------------
 
         Ed = cool_beta_to_Ebdot_pure(beta, Pb, t_now, R1, R2, v2, Eb, feedback.pdot_total, feedback.pdotdot_total)
+        # Prototype mixing-layer cooling (Lancaster+2021/El-Badry+2019): an extra
+        # interface energy sink theta*Lmech, not captured by the smooth Weaver
+        # structure. mixL_theta default 0 -> Ed unchanged -> production byte-identical.
+        _mixL = params.get('mixL_theta', None)
+        if _mixL is not None and getattr(_mixL, 'value', 0):
+            Ed -= _mixL.value * feedback.Lmech_total
         Td = delta2dTdt_pure(t_now, T0, delta)
 
         force_props = compute_forces_pure(R2, mShell, Pb, shell_props, params)
@@ -1081,6 +1087,11 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
             bubble_Leak = params.get('bubble_Leak', None)
             if bubble_Leak is not None and hasattr(bubble_Leak, 'value'):
                 Lloss += bubble_Leak.value
+            # prototype mixing-layer cooling (see Ed injection above): the trigger
+            # must see the same theta*Lmech sink. mixL_theta default 0 -> unchanged.
+            _mixL = params.get('mixL_theta', None)
+            if _mixL is not None and getattr(_mixL, 'value', 0):
+                Lloss += _mixL.value * Lgain
         else:
             Lloss_param = params.get('bubble_Lloss', None)
             Lloss = Lloss_param.value if Lloss_param and hasattr(Lloss_param, 'value') else 0.0

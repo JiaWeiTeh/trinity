@@ -204,7 +204,8 @@ def summarize(rows: list[dict], provenance: str) -> None:
               f"min={s['min']:.3g} | end {in_band}")
 
 
-def run_config(param_path: str, stop_t: float | None, refine: float = 1.0) -> str:
+def run_config(param_path: str, stop_t: float | None, refine: float = 1.0,
+               mixl: float = 0.0) -> str:
     # The harness calls start_expansion() directly (not via run.py), which trips
     # main.py's DEBUG-logging fallback -- per-RHS DEBUG records are a measured
     # hot-path cost over a full run (registry log_level note). Install an INFO
@@ -234,6 +235,10 @@ def run_config(param_path: str, stop_t: float | None, refine: float = 1.0) -> st
     ll = params.get("log_level", None)
     if ll is not None and hasattr(ll, "value"):
         ll.value = "INFO"
+    if mixl:
+        ml = params.get("mixL_theta", None)
+        if ml is not None and hasattr(ml, "value"):
+            ml.value = mixl
     if stop_t is not None:
         params["stop_t"].value = stop_t
     try:
@@ -253,14 +258,16 @@ def main() -> None:
     ap.add_argument("--stop-t", type=float, default=None)
     ap.add_argument("--refine", type=float, default=1.0,
                     help="shrink adaptive-timestep scales by this factor (C0.2 refinement check)")
+    ap.add_argument("--mixl", type=float, default=0.0,
+                    help="mixL_theta: prototype mixing-layer cooling efficiency (0=off)")
     ap.add_argument("--out", default=None, help="write full per-row CSV here")
     args = ap.parse_args()
 
     if args.target.endswith(".jsonl"):
         jsonl, prov = args.target, f"snapshots {args.target} (provenance not certified)"
     else:
-        jsonl = run_config(args.target, args.stop_t, args.refine)
-        prov = f"ran {args.target} (hybr, stop_t={args.stop_t}, refine={args.refine}) @ {_git_sha()}"
+        jsonl = run_config(args.target, args.stop_t, args.refine, args.mixl)
+        prov = f"ran {args.target} (hybr, stop_t={args.stop_t}, refine={args.refine}, mixl={args.mixl}) @ {_git_sha()}"
 
     rows = annotate(load_rows(jsonl))
     summarize(rows, prov)

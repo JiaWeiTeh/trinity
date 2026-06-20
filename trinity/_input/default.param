@@ -278,6 +278,9 @@ PISM    0
 # INFO: When (Lgain-Lloss)/Lgain approaches this value, begin momentum-driving phase.
 phaseSwitch_LlossLgain    0.05
 
+# INFO: Prototype mixing-layer cooling efficiency theta (extra interface sink theta*Lmech). 0 = off.
+mixL_theta    0
+
 # INFO: Cooling related values. alpha = v2*t_now/R2
 cool_alpha    0.6
 
