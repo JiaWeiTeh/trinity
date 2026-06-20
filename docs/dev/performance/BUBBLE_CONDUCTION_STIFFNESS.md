@@ -23,8 +23,8 @@
 > to reproduce or compare against the numbers **without re-running**; record the
 > exact config + command that produced each artifact.
 
-**Status (2026-06-20):** 🟡 **CAUSE diagnosed; symptom mitigated, cause deferred — and the
-unfloored treatment is now characterised (a floor would HURT, not help).** The
+**Status (2026-06-20):** 🟢 **CAUSE diagnosed; symptom mitigated; full run now confirmed HEALTHY
+end-to-end — and the unfloored treatment is characterised (a floor would HURT, not help).** The
 LSODA `t+h=t` flood on massive low-density clouds (e.g. `mCloud=5e9, sfe=0.01, nCore=1e2`)
 is the **bubble structure solver**, not the shell ODE. The noise is suppressed
 (`_quiet_lsoda_fortran` around the bubble `solve_ivp`, `bubble_luminosity.py`); the
@@ -35,7 +35,10 @@ correctness bug. **New (2026-06-20):** the no-floor choice is now pinned by
 show that re-introducing WARPFIELD's `dR2min` floor would **inflate the bubble cooling luminosity
 ~2–8×** on the stiff state (the floor over-thickens the conduction layer ~10³×) — so the deferred
 "floor `dR2`" item is now understood to be a *correctness risk*, viable only as a heavily-gated
-perf/noise tweak that holds `L_bubble` fixed.
+perf/noise tweak that holds `L_bubble` fixed. **New (2026-06-20, end-to-end):** the §End-to-end
+section confirms the *full run* of this flood regime is healthy — 180 segments, `t→1.34 Myr`, **zero**
+flood lines, **zero** crashes/`ENERGY_COLLAPSED`, `Eb` grows ~2900× and `v2` decelerates 3739→78 km/s
+(the *healthy* Weaver branch, not the failed-large-clouds collapse band).
 
 ## Symptom
 ```
@@ -118,6 +121,25 @@ clusters), `dR2_envelope.png` (`dR2/R2` vs cluster mass, the float64 cancellatio
 ~6-decade margin), `dR2_crosssolver.png` (LSODA vs Radau across the stiff thin layer, residual ~3e-8 vs
 the 1e-5 test bar; data `docs/dev/performance/data/dR2_crosssolver_residual.csv`).
 
+## End-to-end confirmation — the flood regime runs HEALTHY in full (2026-06-20)
+The §Correctness and §Robustness sections measure the *per-call* solve (a captured stiff state).
+This closes the loop with the *whole run*: `docs/dev/performance/conduction_stiff_5e9_sfe001.param`
+(the exact flood config) was run to a 600 s wall-clock cap — **180 segments, `t→1.34 Myr`**, exit via
+`timeout` (124), **not** a crash. Verified from the run log + `dictionary.jsonl`:
+- **Flood silent:** `0` `lsoda-- ... t+h=t` lines across the whole run (the `_quiet_lsoda_fortran`
+  mitigation holds at scale); `0` tracebacks; `0` `ENERGY_COLLAPSED`. (2280 benign `Rejected. min T:
+  29999.99…` boundary-transient logs — the documented no-op penalty `≈1.0`.)
+- **Healthy Weaver branch, not the collapse band:** clean phase 1a→1b handoff at `t≈0.0041 Myr` (84
+  segments in 1a); **`Eb` GROWS** `2.0e8 → 5.8e11` (~2900×); **`v2` DECELERATES** `3739 → 78 km/s`;
+  **`R1 < R2` throughout** (`max R1/R2 = 0.938`, far from the `R1→R2` shell-volume degeneracy). This is
+  the *opposite* of the failed-large-clouds collapse band (`sfe 0.05–0.1`, where `PdV/Lmech > 1` keeps
+  `v2 ~2000+ km/s` and `Eb` collapses → `ENERGY_COLLAPSED`; see `docs/dev/failed-large-clouds/PLAN.md`).
+  So `sfe 0.01` is correctly *outside* that band — the conduction stiffness genuinely is just noise on
+  an otherwise-correct, complete run.
+- **Artifacts (💾):** harness `docs/dev/performance/harness/conduction_stiff_endtoend.py` (carries the
+  healthy-branch assertions as its runnable check — re-runs in <1 s against the committed CSV, no sim
+  needed), trajectory `data/conduction_stiff_5e9_trajectory.csv`, figure `figs/conduction_stiff_endtoend.png`.
+
 ## Deferred — fixing the CAUSE (optional; needs its own gate)
 Each would *reduce the stiffness* rather than hide it, and is **not** correctness-required
 (the result is already correct). Per the CLAUDE.md planning protocol, any of these needs a
@@ -133,7 +155,12 @@ full-run equivalence gate on the stiff edge regimes (this config + the f1edge pa
    numerically marginal) — cheapest, honest, doesn't change results.
 
 ## Reproduce
-- Config: `mCloud 5e9 / sfe 0.01 / nCore 1e2 / rCloud_max 1e9`.
+- Config: `mCloud 5e9 / sfe 0.01 / nCore 1e2 / rCloud_max 1e9`
+  (`docs/dev/performance/conduction_stiff_5e9_sfe001.param`).
+- Full run (healthy end-to-end, §End-to-end): `timeout 600 python run.py
+  docs/dev/performance/conduction_stiff_5e9_sfe001.param`, then `python
+  docs/dev/performance/harness/conduction_stiff_endtoend.py` to (re)build the trajectory CSV +
+  figure and re-assert the healthy-branch invariants.
 - Detector (counts the `t+h=t` condition directly, since this container does not surface the
   Fortran lines): wrap `scipy.integrate.solve_ivp`/`odeint`, flag ≥12 consecutive RHS calls with
   `|Δr| < 1e-13`. Measured: first bubble solve floods immediately (`stuck_count=522`), shell
