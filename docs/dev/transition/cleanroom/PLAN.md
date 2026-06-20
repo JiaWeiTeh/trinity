@@ -341,6 +341,33 @@ measured, not inherited):
 
 ---
 
+## 6.5 Visualization plan (figures + tables)
+
+Build under `cleanroom/figures/`, regenerable from the committed CSVs, using the
+repo `trinity.mplstyle` + Wong palette. Each maps to a question; favour figures
+that render a verdict by shape alone.
+
+**Headline / "nail in coffin":**
+1. **`f_ret(t)` verdict plot** — all 6 configs, log-y; shade the literature band
+   0.01–0.1 (Lancaster/Geen), Weaver ~0.5 dashed; mark WR/SN epochs. Shape = the
+   verdict: curves into the band ⇒ **trigger** problem; flat at ~0.2–0.5 never
+   reaching it ⇒ **under-cooling physics gap**. *Single most important figure.*
+2. **F0 pathology** — 2 shared-x panels: cooling ratio `(Lgain−Lloss)/Lgain` vs the
+   0.05 threshold (top), `Lmech_W`/`Lmech_SN` (bottom); arrow each surge showing the
+   ratio jump *away* from 0.05. Overlay the Eb-peak oracle + F0/F1/F4 firing epochs.
+3. **Legacy-vs-hybr fate bars** — stacked phase durations per config, two bars each;
+   hybr's never-transitioned implicit block in red.
+
+**Certification:**
+4. `res_beta(t)` & `res_T0_struct(t)` small multiples (truncation vs defect).
+5. `res_beta` median vs timestep, log-log (slope ~1 ⇒ truncation; the nail).
+6. β(t) with β<0 shaded + `Lmech_total` overlay (re-pressurisation; steep crux vs
+   small_dense contrast).
+
+**Tables:** A) C0 scorecard (configs × res_beta early/late, res_T0_struct, conv%,
+verdict); B) f_ret/fate (configs × f_ret_min, enters-band?, final phase, fate);
+C) candidate firing-epoch divergence vs the Eb-peak (the G0 deliverable).
+
 ## 7. Reproduce / artifacts
 - Pinned baseline SHA: recorded in `data/` outputs (see harness `--meta`).
 - C0.2: `python docs/dev/transition/cleanroom/c0_consistency.py <param-or-jsonl> [--stop-t T] [--out CSV]`.
