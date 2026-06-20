@@ -84,6 +84,12 @@ config's bubble solves complete cleanly segment after segment). And the **whole*
 (`get_bubbleproperties_pure`) returns a physical result on that state. So the unfloored layer is
 *integrated correctly*, not just quiet. This is the executable form of the §Correctness measurement above.
 
+Figures (`docs/dev/performance/figs/make_dR2_figures.py`, regenerate from the committed fixtures):
+`dR2_idea.png` (analytic layer vs WARPFIELD's floored+bumped `dR2min` — ~10³× over-thick for massive
+clusters), `dR2_envelope.png` (`dR2/R2` vs cluster mass, the float64 cancellation cliff at `ε/2` with a
+~6-decade margin), `dR2_crosssolver.png` (LSODA vs Radau across the stiff thin layer, residual ~3e-8 vs
+the 1e-5 test bar; data `docs/dev/performance/data/dR2_crosssolver_residual.csv`).
+
 ## Deferred — fixing the CAUSE (optional; needs its own gate)
 Each would *reduce the stiffness* rather than hide it, and is **not** correctness-required
 (the result is already correct). Per the CLAUDE.md planning protocol, any of these needs a
