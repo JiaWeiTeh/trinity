@@ -22,7 +22,10 @@ export MPLBACKEND=Agg
 export MPLCONFIGDIR="${MPLCONFIGDIR:-${SCRATCH:-${TMPDIR:-/tmp}}/mplcache-$USER}"
 mkdir -p "$MPLCONFIGDIR"
 
-echo "Trinity headless plotting env set: Agg + Computer Modern mathtext, no LaTeX."
-echo "  MATPLOTLIBRC=$MATPLOTLIBRC"
-echo "  MPLCONFIGDIR=$MPLCONFIGDIR"
+# Announce only in interactive shells, on stderr — so sourcing this from
+# ~/.bashrc never corrupts scp/sftp/rsync (they break on any stdout at startup).
+case "$-" in
+  *i*) echo "Trinity headless plotting env set: Agg + Computer Modern mathtext, no LaTeX." >&2
+       echo "  MATPLOTLIBRC=$MATPLOTLIBRC  MPLCONFIGDIR=$MPLCONFIGDIR" >&2 ;;
+esac
 unset _self _repo
