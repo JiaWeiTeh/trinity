@@ -1,0 +1,2 @@
+# run logs are large and ephemeral; commit only the CSV diagnostics
+*.log

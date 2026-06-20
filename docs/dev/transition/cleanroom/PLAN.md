@@ -203,6 +203,19 @@ denominator/cooling depend on are not trajectory-consistent ⇒ escalate scope.
 >   Substrate certification uses short `stop_t` across all 6 (`run_c0_batch.sh`);
 >   the long-time `f_ret`/negative-β behaviour needs separate long background runs
 >   (flagged, not yet done).
+>
+> **Cross-config short-run certification (2026-06-20, `stop_t=0.05`, EARLY implicit
+> only, t≤0.014):** consistent across configs — `res_T0_struct` median 0.27–0.50%,
+> max ≤0.92% (**PASS, span-wide**); `res_beta` median **5.5–6.1%** (just over the
+> 5% bar, *every* config), all in the early-implicit FD-truncation regime;
+> `f_ret`≈**0.42 uniformly** (Weaver half-energy); **no negative β** this early.
+> Reading: `res_beta`'s ~6% is most likely early-implicit FD truncation (consistent
+> across very different configs + the within-run 14%→6% decay), **not certified
+> until** the refinement check + full runs show it drops <5% in mid/late implicit.
+> The under-cooling and negative-β questions are **not answerable from short runs** —
+> hence the full (`stop_t=6`) runs now in flight. **Logging fix:** the harness now
+> installs a WARNING handler before `start_expansion` (bypasses `main.py`'s DEBUG
+> fallback — a per-RHS hot-path cost), so full runs hit the ~30–60 min regime.
 
 ### C0.1 — analytic adiabatic Weaver null (analytic-limit regression — implementation check, NOT physics validation) — STAGED
 **Caveat (§0.1):** matching Weaver certifies the code solves *its own* equations in

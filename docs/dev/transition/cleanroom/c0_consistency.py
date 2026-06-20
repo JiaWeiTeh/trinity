@@ -193,12 +193,21 @@ def summarize(rows: list[dict], provenance: str) -> None:
 
 
 def run_config(param_path: str, stop_t: float | None) -> str:
+    # The harness calls start_expansion() directly (not via run.py), which trips
+    # main.py's DEBUG-logging fallback -- per-RHS DEBUG records are a measured
+    # hot-path cost over a full run (registry log_level note). Install a WARNING
+    # handler FIRST so the fallback (`if not root.handlers`) is skipped.
+    import logging
+    logging.basicConfig(level=logging.WARNING)
     from trinity._input import read_param
     from trinity import main as trinity_main
     params = read_param.read_param(param_path)
     out_dir = tempfile.mkdtemp(prefix="c0_")
     params["path2output"].value = out_dir
     params["betadelta_solver"].value = "hybr"
+    ll = params.get("log_level", None)
+    if ll is not None and hasattr(ll, "value"):
+        ll.value = "WARNING"
     if stop_t is not None:
         params["stop_t"].value = stop_t
     try:
