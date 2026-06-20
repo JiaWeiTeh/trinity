@@ -84,6 +84,16 @@ config's bubble solves complete cleanly segment after segment). And the **whole*
 (`get_bubbleproperties_pure`) returns a physical result on that state. So the unfloored layer is
 *integrated correctly*, not just quiet. This is the executable form of the §Correctness measurement above.
 
+**Consequence of the floor on the OUTPUTS (2026-06-20).** Feeding WARPFIELD's floored `dR2`
+(`dR2min` bumped to `6e-7` pc for this `Mclus=5e7`, **3096× thicker** than the exact `1.94e-10` pc)
+through trinity's own production solver on the stiff state shows the magic number is not benign: the
+**intermediate-zone luminosity `L3` inflates ~1:1 with the over-thickening (×3096)** — `L3` is literally
+the emission of the `dR2` layer — dragging **total bubble luminosity up ~8×**, while the mass flux,
+temperatures and bubble mass all move **< 0.3%** and `R1`/`Pb` are unchanged (set before the `dMdt`
+solve). Since `L_bubble` is the energy sink in the bubble's `dEb/dt`, an ~8× error there would
+materially corrupt the feedback. Harness `docs/dev/performance/harness/floored_vs_unfloored_outputs.py`,
+data `data/dR2_output_comparison.csv`, figure `figs/dR2_output_diff.png`.
+
 Figures (`docs/dev/performance/figs/make_dR2_figures.py`, regenerate from the committed fixtures):
 `dR2_idea.png` (analytic layer vs WARPFIELD's floored+bumped `dR2min` — ~10³× over-thick for massive
 clusters), `dR2_envelope.png` (`dR2/R2` vs cluster mass, the float64 cancellation cliff at `ε/2` with a
