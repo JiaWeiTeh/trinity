@@ -88,6 +88,18 @@ def annotate(rows: list[dict]) -> list[dict]:
             "bubble_Lloss": r.get("bubble_Lloss"),
             "bubble_T_r_Tb": r.get("bubble_T_r_Tb"),
             "betadelta_converged": r.get("betadelta_converged"),
+            # H0 trigger-harvest columns (candidate families F0-F4 + the Eb-peak oracle)
+            "Lmech_W": r.get("Lmech_W"),
+            "Lmech_SN": r.get("Lmech_SN"),
+            "R1": r.get("R1"),
+            "rCloud": r.get("rCloud"),
+            "F_ram": r.get("F_ram"),
+            "F_rad": r.get("F_rad"),
+            "F_grav": r.get("F_grav"),
+            "F_ISM": r.get("F_ISM"),
+            "P_HII": r.get("P_HII"),
+            "P_ram": r.get("P_ram"),
+            "P_drive": r.get("P_drive"),
         }
         # GENUINE delta-side check: ODE-integrated T0 vs structure-solved T(xi_Tb).
         # (delta<->dT0/dt is tautological because T0 is advanced by that ODE; but the
@@ -256,9 +268,12 @@ def main() -> None:
     if args.out:
         out = Path(args.out)
         out.parent.mkdir(parents=True, exist_ok=True)
-        cols = ["t_now", "phase", "betadelta_converged", "Eb", "Lmech_total", "E_inj",
-                "f_ret", "Pb", "cool_beta", "res_beta", "T0", "bubble_T_r_Tb",
-                "res_T0_struct", "cool_delta", "res_delta", "R2", "v2"]
+        cols = ["t_now", "phase", "betadelta_converged", "Eb", "Lmech_total",
+                "Lmech_W", "Lmech_SN", "E_inj", "f_ret", "bubble_Lgain", "bubble_Lloss",
+                "Pb", "R1", "R2", "v2", "rCloud",
+                "F_ram", "F_rad", "F_grav", "F_ISM", "P_HII", "P_ram", "P_drive",
+                "cool_beta", "res_beta", "T0", "bubble_T_r_Tb", "res_T0_struct",
+                "cool_delta", "res_delta"]
         with open(out, "w", newline="") as fh:
             w = csv.DictWriter(fh, fieldnames=cols, extrasaction="ignore")
             w.writeheader()
