@@ -25,7 +25,7 @@
 > that produced each artifact.
 
 **About this document**
-- **Status (2026-06-20):** 🟢 **C0 COMPLETE → now H0 (trigger harvest).** Substrate **fully certified** (self-consistency level): C0.3 ✅, `res_T0_struct` ✅ span-wide, **`res_beta` ✅** (genuine 4× refinement: 6.65%→1.74%, 3.82× lower ∝ Δt = truncation, gate PASSES), C0.1 adiabatic null infeasible → C0.1b Weaver-corroborated. **6/6 physics:** unanimous under-cooling (`f_ret` 0.25–0.40, none reach the observed 0.01–0.1 band), steep `pl2_steep` blowout (R2 ~14× rCloud, profile-dependent fate), negative β in 6/6 at the SN surge — **the stall is a physics-completeness signal, not a threshold bug.** **Now harvesting candidate triggers F0–F4 + the Eb-peak oracle** across the 6 configs (enriched re-run, suffix `h0`; `harvest_h0.py`). Figures: `figures/{fret_verdict,beta_repressurization,cert_residuals}`. No production change.
+- **Status (2026-06-20):** 🟢 **C0 + H0/G0 COMPLETE.** Substrate **fully certified**: C0.3 ✅, `res_T0_struct` ✅, **`res_beta` ✅** (4× refinement 6.65%→1.74% ∝ Δt = truncation), C0.1 adiabatic null infeasible → C0.1b Weaver-corroborated. **6/6 physics:** unanimous under-cooling (`f_ret` 0.25–0.40, none reach 0.01–0.1), steep blowout, negative β in 6/6. **6/6 G0 (trigger harvest):** UNANIMOUS — no cooling family (F0, F1 any η) ever fires, no force family (F3) fires, F2 fires at t≈0 (artifact), Eb-peak oracle barely exists (5/6 monotone Eb); **only F4 blowout fires, geometric epoch (0.01–3.66 Myr ∝ cloud size).** Structural: `Pb≡P_HII` by construction. **VERDICT: the energy→momentum transition is not a cooling/energy event for these under-cooled bubbles — no scalar threshold works; the only physical transition is geometric blowout. F0 tests for an event that doesn't occur. Pragmatic fix = F4 trigger; root fix = cooling physics (mixing layer).** Figures: `figures/{fret_verdict,beta_repressurization,cert_residuals,f0_pathology,g0_divergence}`. No production change.
 - **Type:** plan + pre-registration — a *clean-room* redo of the implicit→momentum transition-trigger investigation that deliberately does **not** inherit prior numerical results/rankings/verdicts (see §1).
 - **Workstream:** `transition/` (clean-room subdir `cleanroom/`).
 - **Where it sits:** supersedes-as-entry-point the **quarantined** `docs/dev/transition/{TRIGGER_PLAN,P0,pshadow-design}.md` and the background `docs/dev/archive/betadelta/*`. Those remain on disk as prior art; their *conclusions* are quarantined (§1), their *methodology and candidate menu* are reused.
@@ -447,6 +447,37 @@ measured, not inherited):
   verdict.
 - **Shadow → validate → default decision**, all behind a `transition_trigger`
   param with **default unchanged** (`instantaneous`).
+
+**G0 RESULT (2026-06-20, 6/6 — pre-registered divergence gate).** Harvested F0–F4 +
+the Eb-peak oracle across all six configs (`harvest_h0.py`; figure
+`figures/g0_divergence`). **UNANIMOUS:**
+- **No cooling family fires, ever** — F0 (instantaneous) and F1 (cumulative, *every*
+  η∈{0.2,0.25,0.3,0.4}) are `never` in all 6. Cumulative cooling never reaches
+  (1−η)·∫Lgain ⇒ it is *not* a metric-form problem; the bubble genuinely never cools
+  enough (the under-cooling verdict, again).
+- **No force family fires** — F3 `never` (thermal force stays > radiation). And a
+  structural finding: **`Pb ≡ P_HII` to machine precision** (bubble–shell pressure
+  continuity by construction; `P_ram=0`, `F_ISM=0`), so any pressure-balance F3 is
+  degenerate.
+- **F2 (instantaneous timescale) fires at t≈0** — artifact: `t_cool=Eb/Lloss` ignores
+  that `Lgain` continuously replenishes, so a short instantaneous `t_cool` ≠ the
+  bubble actually cooling.
+- **The Eb-peak oracle barely exists** — for 5/6 the bubble's `Eb` *monotonically
+  grows to t=6* (never peaks); only `large_diffuse` peaks (~5.06 Myr). There is no
+  clean "energy stops growing" event to track.
+- **Only F4 (blowout, R2>rCloud) yields a physical transition** — but its epoch is
+  *purely geometric*: 0.01 Myr (0.3-pc `small_dense`) → 3.66 Myr (88-pc
+  `large_diffuse`), scaling with cloud size, not a cooling event.
+
+**Verdict:** for these (under-cooled) bubbles the energy→momentum transition **is not
+a cooling/energy/force event at all** — no scalar threshold (the whole F0–F2 family)
+can express it. The only physical end-of-energy-phase is **geometric blowout (F4)**,
+which is profile/size-dependent. So the F0 cooling-ratio trigger isn't mis-*tuned*,
+it tests for an **event that does not occur** in the hybr regime. Pragmatic fix =
+an F4 (blowout) trigger; **root** fix = the cooling physics (mixing layer, §0.1) so a
+cooling transition exists at all. This closes the trigger question against external
+physics, exactly as the mandate intended (a "no single scalar works → profile/geometry
+-dependent" outcome is the pre-registered allowed verdict).
 
 ---
 
