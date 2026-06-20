@@ -8,9 +8,11 @@ ts=$(date '+%H:%M:%S')
 
 done=$(ls "$D"/c0_*_st6.csv 2>/dev/null | wc -l | tr -d ' ')
 crash=$(grep -lE "Traceback|CRITICAL|\[FAIL\]" "$D"/c0_*_st6.log 2>/dev/null | sed 's#.*/c0_##;s/_st6.log//' | tr '\n' ',')
-live=$(find /tmp -maxdepth 3 -name dictionary.jsonl -mmin -2 2>/dev/null | wc -l | tr -d ' ')
+# 4-min freshness window: hybr stiff segments can exceed 2 min, so a tighter
+# window false-flags a working run as quiet.
+live=$(find /tmp -maxdepth 3 -name dictionary.jsonl -mmin -4 2>/dev/null | wc -l | tr -d ' ')
 
-echo "[$ts] HEARTBEAT C0/stop_t6: done=$done/6 | live_writers(<2min)=$live | crashed=[${crash:-none}]"
+echo "[$ts] HEARTBEAT C0/stop_t6: done=$done/6 | live_writers(<4min)=$live | crashed=[${crash:-none}]"
 for pid in $(pgrep -f "c0_consistency.py.*stop-t 6" 2>/dev/null); do
   args=$(ps -o args= -p "$pid" 2>/dev/null)
   case "$args" in *python*) ;; *) continue ;; esac
