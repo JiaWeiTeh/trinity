@@ -28,12 +28,20 @@ layer with the stiff adaptive solver. These tests pin that this is robust:
      cluster range -- the catastrophic cancellation the floor guarded against does
      not occur for real clusters.
   3. the unfloored thin layer is integrated *correctly*: production LSODA matches an
-     independent stiff Radau reference on the temperature profile to ~1e-6 (the
-     cross-solver agreement measured in
-     docs/dev/performance/BUBBLE_CONDUCTION_STIFFNESS.md, persisted here as a test).
+     independent stiff Radau reference on the temperature profile to ~1e-6, on two
+     real captured states -- a mild cluster and a genuinely-stiff high-feedback one
+     (dR2/R2 ~ 3e-10, the LSODA-warning-flood regime) -- the cross-solver agreement
+     measured in docs/dev/performance/BUBBLE_CONDUCTION_STIFFNESS.md, as a test.
 
-The captured state (``test/data/residual_resample_fixture.json``) is a real bubble
-solve; the loader mirrors ``test_residual_resample._build_params``.
+Coverage tiers:
+  * the no-floor + conditioning invariants are also swept over bubble size
+    (test_dR2_is_pure_analytic_layer_across_bubble_sizes) and the degeneracy
+    boundary is pinned (test_degeneracy_boundary_and_physical_margin) -- pure, no sims.
+
+Captured states are real bubble solves: ``test/data/residual_resample_fixture.json``
+(mild) and ``test/data/dR2_stiff_state_fixture.json`` (stiff, from
+docs/dev/performance/harness/capture_stiff_dR2_state.py). The loader mirrors
+``test_residual_resample._build_params``.
 """
 
 import json
@@ -61,6 +69,28 @@ _PATH_OVERRIDE_SKIP = {
 }
 
 _EPS = np.finfo(float).eps
+
+
+class _Scalar:
+    """Minimal stand-in for a params entry (only ``.value`` is read)."""
+
+    __slots__ = ("value",)
+
+    def __init__(self, value):
+        self.value = value
+
+
+def _scalar_params(pv, R2):
+    """A tiny params holding only the scalars the IC formula reads.
+
+    ``_get_bubble_ODE_initial_conditions`` touches k_B, mu_ion, C_thermal, R2,
+    cool_alpha and t_now -- nothing else, no cooling cubes. Building a fresh dict
+    per call lets the regime sweep vary R2 without mutating the shared (cooling-
+    bearing) ``state`` params.
+    """
+    p = {k: _Scalar(pv[k]) for k in ("k_B", "mu_ion", "C_thermal", "cool_alpha", "t_now")}
+    p["R2"] = _Scalar(R2)
+    return p
 
 
 def _build_params(fixture):
@@ -94,11 +124,23 @@ def _build_params(fixture):
     return params
 
 
-@pytest.fixture(scope="module")
-def state():
-    with open(_FIXTURE_PATH) as fh:
+def _load_state(fixture_name):
+    """(fixture dict, full params with cooling) for a fixture under test/data/."""
+    with open(os.path.join(_REPO_ROOT, "test", "data", fixture_name)) as fh:
         fixture = json.load(fh)
     return fixture, _build_params(fixture)
+
+
+@pytest.fixture(scope="module")
+def state():
+    return _load_state("residual_resample_fixture.json")
+
+
+@pytest.fixture(scope="module")
+def scalars():
+    """Just the captured scalar constants -- no cooling rebuild (Tier-1 sweeps)."""
+    with open(_FIXTURE_PATH) as fh:
+        return json.load(fh)
 
 
 def _ic(dMdt, params, Pb, R1):
@@ -174,7 +216,14 @@ def test_thin_layer_well_conditioned_across_physical_clusters(state):
         assert dTdr < 0                           # temperature rises inward
 
 
-def test_unfloored_thin_layer_integrates_correctly(state):
+@pytest.mark.parametrize(
+    "fixture_name,max_dR2_over_R2",
+    [
+        ("residual_resample_fixture.json", 1e-7),   # mild real cluster (~1e-8)
+        ("dR2_stiff_state_fixture.json", 1e-9),     # genuinely stiff, flood regime (~3e-10)
+    ],
+)
+def test_unfloored_thin_layer_integrates_correctly(fixture_name, max_dR2_over_R2):
     """The ultra-thin layer is crossed correctly without artificial thickening.
 
     Production LSODA (rtol=1e-8) vs an independent fully-implicit Radau reference
@@ -182,11 +231,23 @@ def test_unfloored_thin_layer_integrates_correctly(state):
     inner-boundary temperature must agree to ~1e-6 (measured ~1e-8). This is the
     live form of the cross-solver check in BUBBLE_CONDUCTION_STIFFNESS.md -- it shows
     the stiffness from the thin (unfloored) conduction layer is integrated, not faked.
+
+    Run on two REAL captured states for regime coverage: a mild cluster and a
+    genuinely-stiff high-feedback state (dR2/R2 ~ 3e-10 -- the LSODA-warning-flood
+    regime WARPFIELD's dR2min floor targeted, captured by
+    docs/dev/performance/harness/capture_stiff_dR2_state.py).
     """
-    fixture, params = state
+    fixture, params = _load_state(fixture_name)
     Pb, R1 = fixture["Pb"], fixture["R1"]
     r2Prime, T0, dTdr0, v0 = _ic(fixture["dMdt_converged"], params, Pb, R1)
     y0 = [v0, T0, dTdr0]
+
+    # confirm the state really is in the intended (thin-layer) regime
+    dR2_over_R2 = _dR2_from_dTdr(T0, dTdr0) / params["R2"].value
+    assert dR2_over_R2 < max_dR2_over_R2, (
+        f"{fixture_name}: dR2/R2={dR2_over_R2:.2e} not in the expected regime "
+        f"(< {max_dR2_over_R2:.0e}) -- recapture the fixture."
+    )
 
     def integrate(method, rtol, atol):
         with BL._quiet_lsoda_fortran():
@@ -214,3 +275,60 @@ def test_unfloored_thin_layer_integrates_correctly(state):
     # v passes through ~0 near R1 (its own boundary condition), so compare absolute
     # disagreement scaled by the boundary velocity rather than a blow-up relative error.
     assert np.max(np.abs(v_p - v_r)) < 1e-4 * abs(v0)
+
+
+# =============================================================================
+# Tier 1 -- regime breadth (pure, no sims): the no-floor property and the
+# numerical safety envelope held across bubble sizes, not just the one captured
+# state. dR2 depends only on (R2, dMdt); Pb/R1 do not enter it, so a (R2, dMdt)
+# grid spans the regimes the IC formula can see.
+# =============================================================================
+
+
+@pytest.mark.parametrize("R2", [1e-3, 1e-2, 0.1, 1.0, 10.0, 100.0])
+def test_dR2_is_pure_analytic_layer_across_bubble_sizes(scalars, R2):
+    """For every bubble size, dR2 is exactly T_init**(5/2)*4*pi*R2**2/(const*dMdt).
+
+    Across 8 decades of dMdt (small -> massive-cluster wind) the dimensionless
+    group ``dR2*dMdt/R2**2`` equals the single analytic constant ``T_init**(5/2)*
+    4*pi/const`` to ~1e-10 -- so no floor engages at any size or feedback strength
+    (WARPFIELD's dR2min would peel this group upward once the clamp activated).
+    """
+    pv = scalars["param_values"]
+    Pb, R1 = scalars["Pb"], scalars["R1"]
+    params = _scalar_params(pv, R2)
+
+    const = 25.0 / 4.0 * pv["k_B"] / pv["mu_ion"] / pv["C_thermal"]
+    expected = BL._T_INIT_BOUNDARY ** 2.5 * 4.0 * np.pi / const  # dR2*dMdt/R2**2
+
+    for dMdt in np.logspace(0, 8, 9):
+        _, T, dTdr, _ = _ic(dMdt, params, Pb, R1)
+        assert abs(T - BL._T_INIT_BOUNDARY) <= 1e-9 * BL._T_INIT_BOUNDARY
+        group = _dR2_from_dTdr(T, dTdr) * dMdt / R2 ** 2
+        assert abs(group - expected) <= 1e-10 * expected, (
+            f"dR2*dMdt/R2**2={group:.6e} != analytic {expected:.6e} at "
+            f"R2={R2:g}, dMdt={dMdt:.1e} -- a floor would break the analytic law."
+        )
+
+
+def test_degeneracy_boundary_and_physical_margin():
+    """Quantify where the unfloored R2-dR2 *would* break, and the margin to it.
+
+    The subtraction ``r2Prime = R2 - dR2`` only rounds back to R2 when ``dR2/R2``
+    approaches machine epsilon (~1e-16). The thinnest *physical* conduction layer on
+    record -- ``dR2/R2 ~ 3.4e-11`` for the 5e7 M_sun cluster
+    (docs/dev/performance/BUBBLE_CONDUCTION_STIFFNESS.md) -- clears that by >1e4, so
+    the exact analytic dR2 is numerically safe with no clamp. This is the honest
+    boundary: trinity is not magic, the regime simply never reaches the cliff.
+    """
+    phys_ratio = 3.4e-11           # stiffest physical dR2/R2
+    boundary = _EPS / 2.0          # float64 round-to-nearest collapse point
+    assert phys_ratio / boundary > 1e4
+
+    for R2 in (1e-2, 1.0, 5.6, 100.0):
+        # stiffest physical layer is resolvable: the subtraction does not collapse
+        assert (R2 - phys_ratio * R2) < R2
+        # far below the boundary the subtraction does round back to R2 (the failure
+        # WARPFIELD's floor existed to prevent -- only reachable at ~1e7x the
+        # stiffest physical thinness, i.e. never in a real run)
+        assert (R2 - 1e-18 * R2) == R2

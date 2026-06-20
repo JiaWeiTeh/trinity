@@ -69,13 +69,28 @@ layer correctly in sub-steps; it just prints a warning each time. **The answer i
 `simple_cluster`); genuine failures still caught by `sol.success` → `BubbleSolverError`.
 Pinned by `test/test_bubble_lsoda_quiet.py`.
 
+## Robustness of the current (unfloored) treatment — pinned (2026-06-20)
+The "no floor, exact analytic `dR2`" choice is now characterised by
+`test/test_dR2min_magic_number.py` (vs WARPFIELD's hand-tuned `dR2min=1e-7`, bumped
+`1e-14*Mclus+1e-7` for `Mclus>1e7`): (a) `dR2` is the exact `1/dMdt` layer with **no clamp**
+across bubble size × 8–10 decades of `dMdt`; (b) `R2 − dR2` is well-conditioned down to the
+thinnest *physical* layer (`dR2/R2 ~ 3e-11`), clearing the float64 cancellation cliff
+(`~ε/2`) by **~5.5 decades**; (c) production LSODA matches an independent **Radau** reference
+to **~3e-8** on `T`/`dTdr` on two real captured states — a mild cluster *and* a genuinely-stiff
+high-feedback one (`dR2/R2 ~ 3e-10`, the flood regime; fixture
+`test/data/dR2_stiff_state_fixture.json`, captured by
+`docs/dev/performance/harness/capture_stiff_dR2_state.py`). So the unfloored layer is *integrated
+correctly*, not just quiet. This is the executable form of the §Correctness measurement above.
+
 ## Deferred — fixing the CAUSE (optional; needs its own gate)
 Each would *reduce the stiffness* rather than hide it, and is **not** correctness-required
 (the result is already correct). Per the CLAUDE.md planning protocol, any of these needs a
 full-run equivalence gate on the stiff edge regimes (this config + the f1edge params) before shipping:
 1. **Floor `dR2`** to a resolvable thickness (e.g. a small multiple of the grid spacing) so the
    initial `dTdr` is finite-steep. Changes the initial condition → must prove the sampled profile
-   and `dMdt` stay within tolerance of the current (verified-correct) result.
+   and `dMdt` stay within tolerance of the current (verified-correct) result. **NB:** the
+   robustness tests above show this floor is *not needed* for any physical cluster — only pursue it
+   as a perf/noise nicety, and gate the IC change against those tests.
 2. **Analytic conduction-layer treatment** — integrate the sub-grid layer in closed form and start
    the ODE just outside it. Most principled, biggest change.
 3. **Input validation / warning** when `dR2` underflows the grid (flag the regime as
