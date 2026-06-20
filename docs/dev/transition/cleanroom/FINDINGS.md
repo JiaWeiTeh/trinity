@@ -1,0 +1,130 @@
+# Findings: the hybr implicit-phase stall is under-cooling, not a trigger threshold
+
+> ⚠️ **This document may be out of date — verify before trusting it.** It is a
+> point-in-time analysis/audit, not a maintained spec; the code moves faster
+> than these notes (paths, line numbers, and "what shipped" status drift).
+> **Any agent or person reading this: treat it as unverified. Flag that it may
+> be stale and re-check each claim, snippet, and line reference against the
+> current source before relying on it.**
+>
+> 🔄 **Living plan — recheck and refine on every visit.** This is an evolving
+> strategy doc, not a frozen record. Any agent or person who opens this file
+> must, as part of the visit: (1) re-verify the claims and line references above
+> against current source; (2) update anything that has drifted; (3) **rethink the
+> strategy itself** — if a better ordering, gate, candidate, or experiment
+> exists, revise the doc and note what changed and why (date it). Leave it better
+> than you found it. **Keep all banner paragraphs at the top of every plan and
+> analysis doc.**
+>
+> 💾 **Persist diagnostics — commit, don't re-run.** The container is ephemeral
+> and full/hybr runs cost hours, so any diagnostic worth keeping must be saved as
+> a committed artifact (a CSV/table under `docs/dev/data/`, or a force-added
+> harness/figure in the relevant `docs/dev/<workstream>/` folder) — never left in
+> `/tmp` or an untracked `outputs/`. A future visit must be able to reproduce or
+> compare against the numbers **without re-running**; record the exact config +
+> command that produced each artifact.
+
+**Summary.** Under the default `betadelta_solver=hybr`, TRINITY runs stall in the
+implicit energy phase and never reach momentum (0/6 of a regime-spanning config
+set). This investigation — done clean-room, substrate-certified first, gated
+against external physics (never assuming TRINITY/WARPFIELD/Weaver correct) — finds
+the stall is **a physics-completeness signal, not a tunable-threshold bug**: the
+modelled bubble retains far more energy than real bubbles, so **no cooling-balance
+event exists to trigger on**, and the only physical end-of-energy-phase is
+**geometric blowout**. The root fix (mixing-layer cooling) is the right direction
+but requires integration into the solver, not a bulk energy sink.
+
+Working doc with full method/gates: `PLAN.md`. Data: `data/c0_*_{st6,h0}.csv`.
+Figures: `figures/`. All reproducible from committed harnesses.
+
+---
+
+## 1. The problem
+
+The implicit→momentum hand-off fires on a single criterion
+(`run_energy_implicit_phase.py:1095`): `(Lgain − Lloss)/Lgain < 0.05` — switch when
+radiative cooling has nearly caught up with the *instantaneous* mechanical power.
+Under hybr (the more-correct unbounded solver, vs legacy's clamped β∈[0,1]) the
+ratio plateaus at ~0.3–0.5 and never approaches 0.05, so every run sits in implicit
+to the 15 Myr cap. Late-time / stopping-fate outputs are therefore untrustworthy.
+
+## 2. Method (one paragraph)
+
+Clean-room redo: reuse the candidate menu + methodology, **quarantine all prior
+numbers/verdicts**. *Certify the substrate before building on it.* Gate everything
+against an independent oracle and external physics. Config span (6, regenerable):
+`large_diffuse`, `simple_cluster`, `small_dense`, `midrange`, `pl2_steep` (steep
+crux), `be_sphere` — 3 dex in cloud mass, all profiles, all sfe.
+
+## 3. Results
+
+**C0 — substrate is certified (sound).**
+- `Lloss` is pure radiative (no PdV/velocity) — audited.
+- `res_T0_struct` (solver T-residual) tight span-wide (≤0.13% median).
+- `res_beta` (β↔Pb trajectory consistency) is finite-difference **truncation**, not
+  a defect — proven by a 4× timestep refinement: median 6.65% → 1.74% (3.82×, ∝Δt).
+- The adiabatic-Weaver null is infeasible (solver can't run with `Lloss≡0`), but the
+  energy-phase retained fraction lands at ~0.42–0.44 vs Weaver 5/11 — the code
+  faithfully reproduces the energy-*conserving* limit.
+⇒ hybr introduced no bug; it *exposed* real behaviour.
+
+**Physics — unanimous under-cooling (6/6).** Retained energy
+`f_ret = Eb/∫Lmech dt` plateaus at **0.25–0.40** in every config and **never reaches
+the observed/3D-sim band 0.01–0.1** (Lancaster+2021; El-Badry+2019; Geen+2021;
+Orion [CII] Pabst+2020). TRINITY's energy-conserving Weaver/Rahner interior lacks
+the turbulent fractal mixing-layer cooling that dominates real bubbles. Figure
+`figures/fret_verdict`. Negative β (re-pressurisation) appears in all 6 at the
+~3 Myr SN surge (`figures/beta_repressurization`).
+
+**G0 — no cooling transition exists; only geometric blowout (6/6, unanimous).**
+Harvested every candidate trigger vs the Eb-peak oracle (`harvest_h0.py`,
+`figures/g0_divergence`):
+- **F0 (current) and F1 (cumulative, any η) NEVER fire** — cooling never catches up
+  even cumulatively. Not a metric-form problem.
+- **F3 (force) never fires**; and `Pb ≡ P_HII` to machine precision (bubble–shell
+  pressure continuity by construction) makes pressure-balance criteria degenerate.
+- **F2 (instantaneous timescale) fires at t≈0** — an artifact (ignores Lgain
+  replenishment).
+- **The Eb-peak oracle barely exists** — 5/6 the bubble's Eb grows monotonically to
+  t=6.
+- **Only F4 (blowout, R2>rCloud) gives a physical transition**, at an epoch set
+  purely by cloud size (0.01→3.66 Myr).
+⇒ For these under-cooled bubbles the transition **is not a cooling/energy event**;
+the F0 trigger tests for an event that does not occur. Figure
+`figures/f0_pathology` shows the ratio plateauing far above 0.05 and bumping *up* at
+the SN surge.
+
+**Root-fix prototype — direction validated, naive implementation rejected.**
+- Offline (`mixcool_whatif.py`): a mixing-layer sink `L_mix = θ·Lmech` at the
+  literature θ≈0.25 brings `f_ret` into the observed band in all 6 configs.
+- Dynamical bulk-sink injection (subtract θ·Lmech from `dEb/dt`) is **numerically
+  non-viable**: it drives the conductive `dMdt<0` (no physical evaporation root), so
+  hybr finds no root and the dt-shrink guard spins — the solver stalls. A proper
+  mixing-layer cooling must be integrated **into the betadelta structure solve** (so
+  β,δ are solved *with* it, keeping `dMdt>0`). The bulk-sink injection was reverted;
+  production is unchanged.
+
+## 4. Conclusion & recommendations
+
+1. **The stall is physics, not a threshold.** Retuning 0.05→X is futile — there is
+   no cooling-balance event in the hybr regime. Do not "fix" it by tuning the trigger.
+2. **Pragmatic interim** (if completable runs are needed now): a profile-aware **F4
+   blowout** transition (`R2 > rCloud`) — the only candidate that fires physically.
+   Caveat: its epoch is geometric (near-instant for compact clouds); consider
+   `R2 > k·rCloud` or a sustained criterion.
+3. **Root fix:** integrate Lancaster/El-Badry mixing-layer cooling **into the bubble
+   structure solve** (θ≈0.25 magnitude confirmed). This is the first-order issue —
+   it would bring `f_ret` into the observed band and let a real transition exist.
+4. **Paper-worthy as-is:** substrate certified; under-cooling quantified across the
+   regime; the transition shown to be geometric, not thermal — earned from data
+   against external observations/3D sims, the pre-registered "no single scalar works"
+   outcome.
+
+## 5. Artifacts (all committed, regenerable)
+- Harnesses: `c0_consistency.py` (certify + f_ret), `harvest_h0.py` (G0 divergence),
+  `mixcool_whatif.py` (root-fix calibration), `analyze_c0.py`, `heartbeat*.sh`.
+- Data: `data/c0_*_st6.csv` (C0), `data/c0_*_h0.csv` (H0 enriched), refinement CSV.
+- Figures: `fret_verdict`, `beta_repressurization`, `cert_residuals`, `f0_pathology`,
+  `g0_divergence`.
+- References (external anchors): Weaver+1977; Lancaster+2021 I/II; El-Badry+2019;
+  Geen+2021; Pabst+2020; Mac Low & McCray 1988; Rahner+2017/2019 (see PLAN.md §8).

@@ -344,7 +344,6 @@ SPECS: tuple[ParamSpec, ...] = (
     ParamSpec(name='k_B', default='1.380649e-16', info='Boltzmann constant', category='input_constants', unit='erg * K**-1', exclude_from_snapshot=True, run_const=True),
     ParamSpec(name='PISM', default='0', info='ISM Pressure, P/k', category='input_constants', unit='K * cm**-3', exclude_from_snapshot=True, run_const=True),
     ParamSpec(name='phaseSwitch_LlossLgain', default='0.05', info='When (Lgain-Lloss)/Lgain approaches this value, begin momentum-driving phase.', category='input_solver', unit=None, exclude_from_snapshot=True, run_const=True),
-    ParamSpec(name='mixL_theta', default='0', info='Prototype mixing-layer (Lancaster+2021/El-Badry+2019) cooling efficiency theta: an extra interface energy sink theta*Lmech in the implicit phase (subtracted from dEb/dt and added to the cooling-balance trigger Lloss), approximating the turbulent fractal-interface cooling the smooth Weaver structure misses. Default 0 = OFF (production byte-identical). theta~0.2-0.3 brings retained energy into the observed 0.01-0.1 band.', category='input_solver', unit=None, exclude_from_snapshot=True, run_const=True),
     ParamSpec(name='cool_alpha', default='0.6', info='Cooling related values. alpha = v2*t_now/R2', category='input_solver', unit=None),
     ParamSpec(name='cool_beta', default='0.8', info='Cooling related values. beta = - dPb/dt.', category='input_solver', unit=None),
     ParamSpec(name='cool_delta', default='-6/35', info='Cooling related values. delta = dT/dt.', category='input_solver', unit=None),
