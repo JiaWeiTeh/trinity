@@ -1,4 +1,4 @@
-# Finding #1 — the `net_coolingcurve` `T<1e4` clamp: measure before fixing
+# Finding #1 — the `net_coolingcurve` `T<1e4` clamp: measured, then fixed (file-tied floor)
 
 > ⚠️ **This document may be out of date — verify before trusting it.** It is a
 > point-in-time analysis/audit, not a maintained spec; the code moves faster
@@ -23,13 +23,14 @@
 > to reproduce or compare against the numbers **without re-running**; record the
 > exact config + command that produced each artifact.
 
-**Status (2026-06-20):** 🟢 **MEASUREMENT COMPLETE — fix decision pending (no production code changed).**
-This is the measure-first step for `docs/dev/magic-numbers/AUDIT.md` finding #1. **Result:** across 9.46M
-`get_dudt` calls in 4 regimes (incl. the stiffest LSODA-flood) the `T<1e4` clamp fired **0 times** — it is
-**dead code**, and its justifying comment is *factually wrong about the table bounds* (table reaches
-3162 K, not "3.99", so `1e4` over-floors the valid decade [3162,10000) K). M3 is moot (dead branch ⇒ all
-clamp values bit-identical by construction). See §Verdict for the three fix options; **awaiting a decision
-before touching the hot-loop `net_coolingcurve.py`.**
+**Status (2026-06-20):** ✅ **FIXED & GATED — shipped (option 1, the file-tied floor).**
+This was the measure-first step for `docs/dev/magic-numbers/AUDIT.md` finding #1. **Measurement result:**
+across 9.46M `get_dudt` calls in 4 regimes (incl. the stiffest LSODA-flood) the `T<1e4` clamp fired
+**0 times** — it is **dead code**, and its justifying comment was *factually wrong about the table bounds*
+(table reaches 3162 K, not "3.99", so `1e4` over-floored the valid decade [3162,10000) K). M3 is moot
+(dead branch ⇒ all clamp values bit-identical by construction). **Fix shipped:** the hard-coded `1e4`
+floor is replaced by a floor tied to the cooling file (`if np.log10(T) < nonCIE_Tmin: T = 10**nonCIE_Tmin`),
+gated bit-identical on every reachable regime (see §Fix shipped & gate evidence).
 
 ## The code under audit
 `trinity/cooling/net_coolingcurve.py:122-123`:
@@ -137,12 +138,12 @@ tested regime (the differing code path is unreachable). No separate equivalence 
 this — the M1 counters already prove the branch is dead. (A confirmatory full-run bit-identity is the gate
 for *whichever* fix ships, not a question still open.)
 
-## Verdict & options for the fix (decision pending — measurement complete)
+## Verdict & options for the fix — ✅ option 1 chosen & shipped (2026-06-20)
 The clamp is simultaneously (a) **dead code** in all tested regimes and (b) built on a **factually-wrong
 premise** (the comment's "table only to 3.99"; the table reaches 3162 K, so `1e4` over-floors the valid
-decade [3162, 10000) K). Three ways to close audit finding #1:
+decade [3162, 10000) K). Three ways to close audit finding #1 (**#1 shipped**):
 
-1. **Fix to the TODO (recommended).** Replace `if T < 1e4: T = 1e4` with a guard tied to the real table
+1. **Fix to the TODO (✅ SHIPPED).** Replace `if T < 1e4: T = 1e4` with a guard tied to the real table
    min — `if np.log10(T) < nonCIE_Tmin: T = 10**nonCIE_Tmin` (3162 K, the nearest valid table value).
    *Provably inert on current runs* (dead branch ⇒ bit-identical), removes the magic number, and makes the
    guard *correct* if any future regime/table ever does overshoot (uses real table coverage instead of a
@@ -153,6 +154,37 @@ decade [3162, 10000) K). Three ways to close audit finding #1:
    code); change nothing executable. Smallest possible change; leaves the magic number in place.
 3. **Remove entirely.** Deletes the magic number but drops the raise-guard insurance for any untested
    regime that *could* overshoot below 3162 K (would then crash at line 203 instead of degrading gracefully).
+
+## Fix shipped & gate evidence (2026-06-20)
+**The diff** (`trinity/cooling/net_coolingcurve.py`, in `get_dudt`): removed the hard-coded floor + its
+wrong TODO comment; added — *after* the cutoffs are computed so `nonCIE_Tmin` is in scope —
+```python
+if np.log10(T) < nonCIE_Tmin:
+    T = 10 ** nonCIE_Tmin
+```
+This floors a sub-table `T` to the cooling file's **minimum tabulated** temperature (the nearest valid
+table value) so it degrades to the table edge via the non-CIE branch instead of falling through to the
+`raise`. The `10**x → log10` round-trip is exact for the bundled grid min (`nonCIE_Tmin = 3.5`,
+`log10(10**3.5) == 3.5`), so the clamped value lands on the non-CIE branch (no raise). Strictly more robust
+than the old floor, which would itself have raised on any table whose min exceeds 1e4.
+
+**Why this is safe — the equivalence story (NOT "bit-identical everywhere"):** the fix *intentionally*
+changes behaviour in the sub-1e4 decade the old code over-floored. The correct gate is **bit-identical for
+every `T ≥ 1e4`** (the only regime any real run reaches — measured min T = 30000 K) and **documented,
+one-directional divergence below 1e4** (old → 1e4; new → table edge 3162 K; neither raises).
+
+| gate | tool / command | result |
+|---|---|---|
+| Per-call equivalence (vs `git show HEAD`) | `python docs/dev/magic-numbers/harness/verify_tclamp_equiv.py` | **576 / 576 bit-identical** for T≥1e4 (0 mismatches); 144 / 144 diverged below 1e4 *by design*; **0 raises** (new or ref) |
+| Unit tests (runtime `get_dudt`) | `pytest test/test_net_coolingcurve.py` | **3 / 3 pass** — clamps to table edge (not 1e4); over-floored decade uses real T; T≥1e4 untouched |
+| **Full-run byte-identity** (new vs HEAD, separate processes, matched-`t`) | `harness/simple_cluster_capped.param` (`stop_t=0.5`), run each, `sha256sum dictionary.jsonl` | **BYTE-IDENTICAL** across 169 snapshots — both `9da691bb458a7aacd7b87a72a4557139edb5bd6699770ba900922773ff302ab0` |
+| Full suite + bug-class lint | `pytest` · `ruff check --select F821,F811,F823,E9` | **574 passed**, 3 deselected (stress) · ruff clean |
+
+Capped `stop_t=0.5` (vs the default 15) keeps the full-run gate to minutes — an uncapped `simple_cluster`
+reaches only t≈2 Myr in ~20 min. A fixed `stop_t` makes both runs truncate at the **same** `t` by
+construction (the matched-`t` requirement). The early energy-driven phase exercises the solver + cooling +
+snapshot I/O end-to-end; combined with the per-call gate covering the *entire reachable input domain*, there
+is no reachable state where new ≠ old. Reproduce: `python run.py docs/dev/magic-numbers/harness/simple_cluster_capped.param`.
 
 ## Subagent fan-out (this round)
 Lead built + smoked the M1/M2 harness (validated: it reproduces the documented 3e4 boundary floor). Three

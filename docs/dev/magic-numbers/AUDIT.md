@@ -23,8 +23,9 @@
 > to reproduce or compare against the numbers **without re-running**; record the
 > exact config + command that produced each artifact.
 
-**Status (2026-06-20):** 🟡 **AUDIT COMPLETE — findings triaged & top candidates source-verified;
-NOTHING fixed yet (each fix is a physics-touching change needing its own gate).** Motivated by the
+**Status (2026-06-20):** 🟡 **AUDIT COMPLETE — findings triaged & source-verified. #1 measured & FIXED**
+(file-tied T-floor, gated bit-identical — see `TCLAMP_PLAN.md`); **#2–#5 still open** (each remaining fix is
+a physics-touching change needing its own gate). Motivated by the
 `dR2min` story (`docs/dev/performance/BUBBLE_CONDUCTION_STIFFNESS.md`): WARPFIELD's hand-tuned
 `dR2min = 1e-7` pc floor would inflate bubble luminosity ~8×, and the companion `r2 += 1e-10`
 "guard" in `bubble_E2P` is a unit-mismatched **dud** (1e-10 cm added to `r2 ≈ 3e18` cm). This sweep
@@ -75,11 +76,12 @@ Every item touches physics on an iterative path ⇒ **Risky/iterative** under th
 gate-first (define equivalence), capture a baseline, full-run equivalence on the stiff edge regimes
 in separate processes at matched `t`, smallest diff, re-verify (gate + `pytest` + ruff F-rules), persist.
 
-1. **#1 `net_coolingcurve` T-clamp** — highest value and the most `dR2min`-like. *First measure, don't fix*:
-   instrument how often `T<1e4` actually fires across `simple_cluster` + the `f1edge`/stiff configs, and
-   whether the sub-1e4 K dip is a real physical excursion or a solver transient. The clamp may be hiding a
-   bug (the comment suspects so). Only then decide: extend the table, follow the file's true `T_min`, or fix
-   the upstream dip.
+1. **#1 `net_coolingcurve` T-clamp** — ✅ **DONE (2026-06-20).** Measured first: across **9.46M** `get_dudt`
+   calls over `simple_cluster` + both `f1edge` edges + the stiff LSODA-flood, `T<1e4` fired **0 times** (min
+   T ever = 30000 K) — the clamp was **dead code** on a false premise (table reaches 3162 K, not 3.99). No
+   upstream dip to fix. Shipped the file-tied floor (`if np.log10(T) < nonCIE_Tmin: T = 10**nonCIE_Tmin`),
+   gated bit-identical for all reachable T (≥1e4) incl. a full-run byte-identity. Full writeup + evidence:
+   `TCLAMP_PLAN.md`.
 2. **#2 `dt_switchon`** — characterise the first-1000-yr `R1` ramp's effect on `Pb` (bit-diff a run with the
    ramp vs without on a healthy config); if inert, delete; if active, justify or parameterise.
 3. **#3 `dt=1e-9` pdotdot step** — cheap to test: compare `pdotdot` from the analytic spline derivative vs the
