@@ -274,6 +274,19 @@ the solver drives its temperature residual to zero on the trajectory. Fail eithe
 > large_diffuse, midrange) even past the WR surge — qualifying the quarantined docs'
 > negative-β claim; **watch the steep `pl2_steep`** (wave 2), where it should appear
 > if anywhere.
+>
+> **First completed full run (large_diffuse, t=6, 2026-06-20) — CORRECTS the note
+> above:** STALLED in implicit (energy+implicit only, no transition/momentum —
+> confirms the stall). C0.2 **PASSES** for this config: `res_beta` median
+> **5.65%→3.65%→1.42%** across early/mid/late implicit (truncation confirmed — drops
+> well under 5% as Δt coarsens), with a *localized* max 37% spike at a sharp
+> β-transition (FD artifact at a re-pressurisation, not a defect); `res_T0_struct`
+> med 0.13%, max 0.98% (tight). `f_ret` falls 0.42→**0.248** and **plateaus ~0.25,
+> above the 0.01–0.1 band, never reaching it** — first full-run support for
+> under-cooling (§0.1 outcome 2). **The "no negative β" claim above was a premature
+> mid-run (t≲3) read:** the full run has **9.3% negative-β segments (β_min=−2.05)**
+> in the *later* implicit (SN epoch), so the docs' negative-β claim is **confirmed**.
+> Textbook "don't trust one time-slice." (Provisional: one config; awaiting the span.)
 > **Recheck item:** the analyzer reports `betadelta_converged = 0` in the CSVs, so
 > the `res_T0_struct` "converged-only" filter is currently falling back to
 > all-implicit rows. Verify whether `betadelta_converged` is actually a written
