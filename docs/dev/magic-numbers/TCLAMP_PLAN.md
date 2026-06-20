@@ -23,11 +23,13 @@
 > to reproduce or compare against the numbers **without re-running**; record the
 > exact config + command that produced each artifact.
 
-**Status (2026-06-20):** 🔵 **PLAN — facts verified, measurement not yet run.** This is the
-measure-first step for `docs/dev/magic-numbers/AUDIT.md` finding #1. No production code will change
-until the gate below is cleared. **Headline correction from verification (see §Verified facts):** the
-clamp's own justifying comment is *factually wrong about the table bounds*, which upgrades this from a
-"harmless guard" to a "guard on a false premise that over-floors a valid decade of temperature."
+**Status (2026-06-20):** 🟢 **MEASUREMENT COMPLETE — fix decision pending (no production code changed).**
+This is the measure-first step for `docs/dev/magic-numbers/AUDIT.md` finding #1. **Result:** across 9.46M
+`get_dudt` calls in 4 regimes (incl. the stiffest LSODA-flood) the `T<1e4` clamp fired **0 times** — it is
+**dead code**, and its justifying comment is *factually wrong about the table bounds* (table reaches
+3162 K, not "3.99", so `1e4` over-floors the valid decade [3162,10000) K). M3 is moot (dead branch ⇒ all
+clamp values bit-identical by construction). See §Verdict for the three fix options; **awaiting a decision
+before touching the hot-loop `net_coolingcurve.py`.**
 
 ## The code under audit
 `trinity/cooling/net_coolingcurve.py:122-123`:
@@ -112,18 +114,45 @@ atexit flush ⇒ a `timeout`-killed stiff run still persists partial data. Optio
 ### M1/M2 by config
 | config | get_dudt calls | T<1e4 | T<3162 | T<3e4 | min T (any RHS) | accepted solves | accepted min T | verdict |
 |---|---|---|---|---|---|---|---|---|
-| `simple_cluster` (baseline, **full run**) | 1,225,515 | **0** | 0 | 0 | **30000.000** | 127 | 29999.997 | clamp **never fires**; floor = boundary |
-| `f1edge_lowdens_himass_hisfe` | _pending subagent_ | | | | | | | |
-| `f1edge_hidens_himass_losfe` | _pending subagent_ | | | | | | | |
-| `conduction_stiff_5e9` (LSODA flood) | _pending subagent_ | | | | | | | |
+| `simple_cluster` (baseline, **full run**) | 1,225,515 | **0** | 0 | 0 | **30000.000** | 127 | 29999.997 | clamp **never fires** |
+| `f1edge_lowdens_himass_hisfe` (timeout) | 2,451,122 | **0** | 0 | 0 | **30000.000** | 291 | 29999.997 | clamp **never fires** |
+| `f1edge_hidens_himass_losfe` (timeout) | 2,666,884 | **0** | 0 | 0 | **30000.000** | 246 | 29999.99997 | clamp **never fires** |
+| `conduction_stiff_5e9` (LSODA flood, timeout) | 3,115,937 | **0** | 0 | 0 | **30000.000** | 380 | 29999.995 | clamp **never fires** |
+| **TOTAL** | **9,459,458** | **0** | **0** | **0** | — | 1044 | — | — |
 
-**Baseline reading (2026-06-20):** in 1.2M RHS evals the minimum `T` ever passed to `get_dudt` is exactly
-`30000.0` — the integrator never goes below the 3e4 boundary. The 69 "accepted < 3e4" are the
-`29999.997` boundary-transient hair (log 4.477, within 1e-5 of 3e4; the documented `min_T` noise), not
-real sub-boundary excursions; every accepted profile floors at the boundary (`accepted_minT_hist` = all
-127 in the 4.45 bin). ⇒ on the energy-driven baseline the clamp is **provably inert** — it is dead code
-for this regime. The author's observed `1e3.91` must come from a stiffer regime (or older path); the edge
-configs test that.
+**Conclusion (2026-06-20): the clamp is DEAD CODE in every regime tested.** Across **9.46 million**
+`get_dudt` calls spanning the energy-driven baseline, both feedback-strength × density edges, and the
+stiffest LSODA-flood, `T < 1e4` fired **zero** times. The minimum `T` the bubble ODE RHS ever passes to
+`get_dudt` is exactly **30000.0** — the integrator never goes below the 3e4 outer boundary, never near the
+true table min (3162 K), never near 1e4. The per-config "accepted < 3e4" counts (69/158/136/181) are
+*all* the `29999.99x` boundary-transient hair — every one sits in the 4.45 log-bin (= the 3e4 boundary),
+within 1e-5 fractional of 3e4 (floating-point dust at the boundary), and `accepted_below_1e4 = 0`
+everywhere. The author's observed `1e3.91` does **not** reproduce in any current config — it predates the
+3e4-boundary / `T~0` guards (`bubble_luminosity.py:390`) or came from a config/table not in this matrix.
+
+### M3 — moot
+Because the `T < 1e4` branch is **never taken**, the clamp value is **provably inert**: V0 (`1e4`),
+V1 (clamp at the real table min `10**3.5`), and "no clamp" are **bit-identical by construction** on every
+tested regime (the differing code path is unreachable). No separate equivalence run is needed to establish
+this — the M1 counters already prove the branch is dead. (A confirmatory full-run bit-identity is the gate
+for *whichever* fix ships, not a question still open.)
+
+## Verdict & options for the fix (decision pending — measurement complete)
+The clamp is simultaneously (a) **dead code** in all tested regimes and (b) built on a **factually-wrong
+premise** (the comment's "table only to 3.99"; the table reaches 3162 K, so `1e4` over-floors the valid
+decade [3162, 10000) K). Three ways to close audit finding #1:
+
+1. **Fix to the TODO (recommended).** Replace `if T < 1e4: T = 1e4` with a guard tied to the real table
+   min — `if np.log10(T) < nonCIE_Tmin: T = 10**nonCIE_Tmin` (3162 K, the nearest valid table value).
+   *Provably inert on current runs* (dead branch ⇒ bit-identical), removes the magic number, and makes the
+   guard *correct* if any future regime/table ever does overshoot (uses real table coverage instead of a
+   2.5×-hotter floor, and still prevents the line-203 raise below the true table edge). Gate: existing
+   `verify_getdudt_equiv.py` (per-call) + a unit test pinning both the no-op on in-range T and the new
+   in-table coverage on [3162,10000) K + a full-run byte-identity on `dictionary.jsonl` (trivially passes).
+2. **Leave + document.** Correct the wrong table-bound comment and record the measurement (verified dead
+   code); change nothing executable. Smallest possible change; leaves the magic number in place.
+3. **Remove entirely.** Deletes the magic number but drops the raise-guard insurance for any untested
+   regime that *could* overshoot below 3162 K (would then crash at line 203 instead of degrading gracefully).
 
 ## Subagent fan-out (this round)
 Lead built + smoked the M1/M2 harness (validated: it reproduces the documented 3e4 boundary floor). Three
