@@ -287,6 +287,18 @@ the solver drives its temperature residual to zero on the trajectory. Fail eithe
 > mid-run (t≲3) read:** the full run has **9.3% negative-β segments (β_min=−2.05)**
 > in the *later* implicit (SN epoch), so the docs' negative-β claim is **confirmed**.
 > Textbook "don't trust one time-slice." (Provisional: one config; awaiting the span.)
+>
+> **Steep crux (pl2_steep, t=6, 2026-06-20) — SUPPORTS hypothesis 2 (§5).** Also
+> STALLED in implicit. Substrate OK (res_beta 7.4%→6.4%→**1.9%** by thirds =
+> truncation; res_T0_struct ≤0.96%). `f_ret` plateaus at **0.34 — the HIGHEST of the
+> span** (steep r⁻²: `Lloss∝n²` collapses as the bubble expands into thin gas ⇒ least
+> cooling ⇒ most retained), reinforcing under-cooling. **Key:** R2 reached **297 pc**
+> vs the config-table rCloud≈21 pc (~14×) while F0 kept it energy-driven to t=6 — the
+> shell **escaped the cloud** (geometric **blowout, F4: R2>rCloud**), a fate the
+> cooling-ratio trigger cannot catch ⇒ the steep transition is **profile-dependent**,
+> not a cooling event. Negative β 4.6%, min −1.07. *(Caveats: one steep config;
+> reconfirm rCloud from run metadata and how TRINITY treats post-rCloud expansion
+> before calling it definitive.)*
 > **Recheck item:** the analyzer reports `betadelta_converged = 0` in the CSVs, so
 > the `res_T0_struct` "converged-only" filter is currently falling back to
 > all-implicit rows. Verify whether `betadelta_converged` is actually a written
