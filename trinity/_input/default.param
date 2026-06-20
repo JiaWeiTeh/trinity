@@ -278,7 +278,7 @@ PISM    0
 # INFO: When (Lgain-Lloss)/Lgain approaches this value, begin momentum-driving phase.
 phaseSwitch_LlossLgain    0.05
 
-# INFO: Prototype mixing-layer cooling efficiency theta (extra interface sink theta*Lmech). 0 = off.
+# INFO: Prototype mixing-layer (Lancaster+2021/El-Badry+2019) cooling efficiency theta: an extra interface energy sink theta*Lmech in the implicit phase (subtracted from dEb/dt and added to the cooling-balance trigger Lloss), approximating the turbulent fractal-interface cooling the smooth Weaver structure misses. Default 0 = OFF (production byte-identical). theta~0.2-0.3 brings retained energy into the observed 0.01-0.1 band.
 mixL_theta    0
 
 # INFO: Cooling related values. alpha = v2*t_now/R2
