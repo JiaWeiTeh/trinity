@@ -10,7 +10,7 @@ crash=$(grep -lE "Traceback|CRITICAL" /tmp/mixl_test.log /tmp/mixl040.log 2>/dev
 echo "[$ts] MIXL validation: done=$done/2 | crashed=[${crash:-none}]"
 working=0
 for pid in $(pgrep -f "c0_consistency.py.*--mixl" 2>/dev/null); do
-  args=$(ps -o args= -p "$pid" 2>/dev/null); case "$args" in *python*) ;; *) continue ;; esac
+  args=$(ps -o args= -p "$pid" 2>/dev/null); case "$args" in python*) ;; *) continue ;; esac
   th=$(printf '%s' "$args" | grep -oE "\-\-mixl [0-9.]+")
   st=$(ps -o stat= -p "$pid" 2>/dev/null | cut -c1)
   el=$(ps -o etime= -p "$pid" 2>/dev/null | tr -d ' ')
