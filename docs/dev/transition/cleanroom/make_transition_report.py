@@ -48,6 +48,7 @@ FIGURES = {
     "__FIG_PDVMASS__": ("pdv_massspectrum.png", "Eb collapse for a 5e9 cluster and max PdV/Lmech per config"),
     "__FIG_LEGHYBREXTRA__": ("legacy_vs_hybr_extra.png", "legacy vs hybr: delta, beta+delta, Eb, Pb through the dip"),
     "__FIG_CAUSAL__": ("dip_causalorder.png", "causal ordering of the dip turnovers: v2, Lloss, ratio, Pb, T0"),
+    "__FIG_BLOWCHAIN__": ("blowout_chain.png", "blowout chain: v2 re-accel, Pb collapse, Lloss turnover, ratio recovery"),
 }
 
 
@@ -592,19 +593,47 @@ so the line sits at the sim's true blowout epoch. The hypothesis: maybe blowout 
 <p><b>It does &mdash; for the compact flat clouds.</b> For small_dense, simple_cluster and midrange the blowout line
 lands essentially <i>on</i> the dip minimum (blowout leads the ratio-min by ~10%: 0.012 vs 0.015, 0.090 vs 0.098,
 0.392 vs 0.432 Myr). For a flat cloud the interior density holds ~constant out to \(r_{\text{cloud}}\), so
-\(L_{\text{loss}}\) stays high until the shell crosses the edge &mdash; then \(n\) drops to ambient, \(n^2\Lambda\)
-collapses, and the ratio recovers. So for these the §7.2 emission-measure turnover is, specifically, <b>the shell
+\(L_{\text{loss}}\) stays high until the shell crosses the edge &mdash; then the shell exits into the dilute ISM and
+the cooling collapses (mechanism below). So for these the §7.2 emission-measure turnover is, specifically, <b>the shell
 crossing \(r_{\text{cloud}}\)</b>, not merely smooth dilution. <b>But not for the steep / BE / diffuse clouds:</b> the
 dip recovers <i>well before</i> blowout (pl2_steep 0.037 vs 0.840; be_sphere 0.556 vs 0.856; large_diffuse before its
 3.66) &mdash; their density falls off <i>within</i> the cloud (the \(r^{-2}\) profile, or the large bubble diluting
 long before the far edge), so in-cloud dilution collapses \(L_{\text{loss}}\) first. And the late \(\sim\!3\) Myr SN
 surge is <b>not</b> blowout (it is the feedback event of §4).</p>
-<div class="box find"><div class="lab">verdict on the blowout&ndash;dip hypothesis</div>Partly right, and physically
-clean: <b>for compact flat clouds the dip recovery <i>is</i> the blowout</b> (shell hits the cloud edge → density
-drops → cooling collapses); for steep/BE/diffuse profiles in-cloud dilution gets there first; the late SN surge is
-feedback, not geometry. This also connects to §5: blowout is not only the lone <i>scalar transition</i> that fires
-&mdash; for the compact-flat regime it is the very event that ends the cooling episode. (See the dash-dot lines on
-<code>f0_pathology</code>, <code>dip_mechanism</code>, <code>dip_drivers</code>.)</div>
+<p><b>The mechanism, traced in code and data (why the ratio goes <i>up</i>).</b> Crossing \(r_{\text{cloud}}\) drops
+the swept-gas density \(n_{\text{core}}\!\to\!n_{\text{ISM}}\) &mdash; a factor \(\sim\!10^5\) for simple_cluster
+(<code>density_profile.py</code>). That collapses the swept-mass rate \(\dot m_{\text{shell}}=4\pi R_2^2\rho v_2\), so
+the ram-brake \(-\dot m_{\text{shell}}v_2\) in the shell velocity ODE vanishes
+(<code>energy_phase_ODEs.py:265</code>): the shell stops decelerating, <b>\(v_2\) re-accelerates</b> and \(R_2\) growth
+speeds up (measured: \(d\ln R_2/d\ln t\) jumps, e.g. \(0.52\!\to\!0.70\)). With the volume rising,
+\(P_b=(\gamma-1)E_b/V\) <b>collapses</b> (<code>get_bubbleParams.py:236</code>); the interior \(n\propto P_b\) falls
+(<code>bubble_luminosity.py:623</code>), and \(L_{\text{loss}}\) turns over &mdash; it tracks the <b>full emission
+measure</b> \((P_b/T_0)^2R_2^3\) (data: \(\ln L_{\text{loss}}\) vs \(\ln[(P_b/T_0)^2R_2^3]\) slope \(\approx\!0.6\),
+\(r\!\approx\!0.99\); <i>not</i> \(n^2\) alone, whose slope is \(\approx\!0.1\) &mdash; the \(R_2^3\) growth partly
+offsets the \(n^2\) drop). So \((L_{\text{gain}}-L_{\text{loss}})/L_{\text{gain}}\) <b>rises</b>. For the early
+crossers the turning points cluster within ~1 step of blowout: \(v_2\)-min → \(L_{\text{loss}}\)-peak → ratio-min →
+recovery.</p>
+<p><b>Recover vs cross is the β-clamp &mdash; so this is a hybr phenomenon.</b> \(\beta=-(t/P_b)\,dP_b/dt\) caps how
+fast \(P_b\) can fall. <b>hybr</b> is unbounded, returns \(\beta\!\approx\!+2\) to \(+4\) at blowout, and lets \(P_b\)
+(and \(L_{\text{loss}}\)) collapse → the ratio recovers. <b>legacy</b> clamps \(\beta\!\in\![0,1]\)
+(<code>get_betadelta.py:41</code>), so \(|dP_b/dt|\le P_b/t\): \(P_b\) and \(L_{\text{loss}}\) stay high and the ratio
+crosses 0.05 instead. Clean contrast at be_sphere just after blowout: legacy \(\beta\!=\!0\) holds
+\(L_{\text{loss}}\!=\!1.17\times10^9\) (ratio \(-0.02\), crossed) vs hybr \(\beta\!=\!2.46\) collapses it to
+\(5.4\times10^8\) (ratio \(0.535\), recovered) &mdash; a 2.2× split from the clamp alone, at identical \(T_0\).</p>
+<figure>__FIG_BLOWCHAIN__<figcaption>The chain for the three early crossers (hybr), normalised vs t with the blowout
+line marked: \(v_2\) (green, ▼ min) re-accelerates at blowout → \(P_b\) (grey) collapses → \(L_{\text{loss}}\)
+(orange, ▲ peak) turns over → the cooling ratio (blue, ● min) recovers. Pure read of <code>data/c0_*_h0.csv</code>
+via <code>plot_blowout_chain.py</code>.</figcaption></figure>
+<div class="box find"><div class="lab">the deepest point: at blowout the geometry drives cooling the WRONG way for a cooling trigger</div>
+For the compact flat clouds the dip recovery <i>is</i> the blowout: hitting the cloud edge removes the ram-brake, the
+bubble depressurises, and cooling (\(\propto\) emission measure) <b>falls</b> &mdash; so the ratio moves <i>up, away
+from 0.05</i>. That is the <i>opposite</i> of a cooling transition. The real end-of-energy-phase here is a
+<b>confinement loss</b> (venting / champagne flow) &mdash; a geometric event that actively <b>suppresses</b> radiative
+cooling, so a cooling-balance trigger can <i>never</i> fire at it. The same blowout yields opposite outcomes only
+because the β-clamp decides whether \(P_b\) may collapse (hybr → recover) or is held high (legacy → cross). This is the
+mechanistic core of why the transition is geometric, not thermal (§5, §7.2) and why legacy &ldquo;transitioned&rdquo;
+while hybr stalls (§7.5). <span class="muted">Scope: the sharp blowout→recovery is the early-crossing compact-flat
+regime; for steep/BE/diffuse the dip precedes blowout, and the late SN surge is feedback.</span></div>
 """
 
 SEC_REPRO = r"""
@@ -617,7 +646,7 @@ without re-running the (hours-long) hybr sims. Each figure is a pure read of a c
 <tr><td><code>mixcool_whatif.py</code></td><td>offline mixing-layer (\(\theta\)) calibration for the root fix</td></tr>
 <tr><td><code>blowout_marker.py</code></td><td>reconstructs \(r_{\text{cloud}}\) per config from the <code>.param</code> via TRINITY <code>validate_gmc</code> (not hardcoded) &amp; draws the blowout lines on the time-axis figures</td></tr>
 <tr><td><code>data/c0_*_st6.csv</code> &middot; <code>data/c0_*_h0.csv</code> &middot; <code>data/c0_*_legacy.csv</code> &middot; <code>data/surge_coincidence.csv</code></td><td>per-config hybr captures, legacy (BEFORE) captures, + the surge-coincidence table</td></tr>
-<tr><td><code>plot_{fret,f0path,beta,surge,phaseportrait,dipdrivers,g0,blowout,mixcool,cert,dipmechanism,beforeafter,legacy_vs_hybr,legacy_vs_hybr_extra,pdv,pdv_massspectrum,dip_causalorder}.py</code> &rarr; <code>figures/*.png</code></td><td>the seventeen figures above (each a pure read of a CSV)</td></tr>
+<tr><td><code>plot_{fret,f0path,beta,surge,phaseportrait,dipdrivers,g0,blowout,mixcool,cert,dipmechanism,beforeafter,legacy_vs_hybr,legacy_vs_hybr_extra,pdv,pdv_massspectrum,dip_causalorder,blowout_chain}.py</code> &rarr; <code>figures/*.png</code></td><td>the eighteen figures above (each a pure read of a CSV)</td></tr>
 <tr><td><code>PLAN.md</code> &middot; <code>FINDINGS.md</code></td><td>the living plan / pre-registration &amp; the consolidated write-up</td></tr>
 </tbody></table>
 <p class="small muted">Rebuild this report:
