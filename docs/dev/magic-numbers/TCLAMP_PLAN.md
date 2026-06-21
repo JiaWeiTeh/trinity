@@ -180,6 +180,10 @@ one-directional divergence below 1e4** (old → 1e4; new → table edge 3162 K; 
 | **Full-run byte-identity** (new vs HEAD, separate processes, matched-`t`) | `harness/simple_cluster_capped.param` (`stop_t=0.5`), run each, `sha256sum dictionary.jsonl` | **BYTE-IDENTICAL** across 169 snapshots — both `9da691bb458a7aacd7b87a72a4557139edb5bd6699770ba900922773ff302ab0` |
 | Full suite + bug-class lint | `pytest` · `ruff check --select F821,F811,F823,E9` | **574 passed**, 3 deselected (stress) · ruff clean |
 
+**Illustrated write-up:** `docs/dev/magic-numbers/tclamp_report.html` (self-contained, 6 figures + LaTeX) —
+regenerate with `python docs/dev/magic-numbers/harness/make_tclamp_report.py` (figures:
+`make_tclamp_figures.py`, a pure read of `data/`; the dudt overlay tabulates once via `make_tclamp_overlay_data.py`).
+
 Capped `stop_t=0.5` (vs the default 15) keeps the full-run gate to minutes — an uncapped `simple_cluster`
 reaches only t≈2 Myr in ~20 min. A fixed `stop_t` makes both runs truncate at the **same** `t` by
 construction (the matched-`t` requirement). The early energy-driven phase exercises the solver + cooling +
