@@ -138,7 +138,18 @@ the SN surge.
   Lgain` (~half the input is *work*), so adding it pulls the ratio ~0.5→0.05–0.15 (nearly fires)
   but it still crosses 0.05 only in large_diffuse (@4.76 Myr, its Eb-peak); the other 5 never peak
   (Eb grows monotonically). It swaps one non-event for another *and* mis-frames the physics — it
-  would call the bubble momentum-driven at its energetic peak, mid-drive. **Keep PdV out.**
+  would call the bubble momentum-driven at its energetic peak, mid-drive. **Keep PdV out of the
+  cooling *ratio*** — but see the next bullet for where it *does* belong.
+- **PdV at the other end — large clouds, and the reconciliation** (`figures/pdv_massspectrum`; links
+  `docs/dev/failed-large-clouds/`): for a `5e9 M⊙` cloud (~5e8 M⊙ cluster) the shell free-expands at
+  ~2000–3700 km/s so `Ẇ/Lmech > 1` (peak 1.56, `Lcool ~1%`); `Eb` peaks then **collapses through zero
+  into negative** → `R1→R2` → `Pb` divide → NaN crash. **One control parameter `Ẇ/Lmech` sorts the
+  regimes:** our six (+ healthy 1e6) sit < 1 (Eb grows → the stall); only the 5e9 cluster exceeds 1
+  (Eb collapses → crash). **Reconciliation:** PdV doesn't belong in the cooling *ratio*, but the
+  correct **regime-spanning** transition IS the PdV-inclusive net-energy zero-crossing `(Lgain−Lloss−Ẇ)≤0`
+  = the Eb-peak — it fires immediately for the 5e9 cluster (the principled crash fix) and never for
+  typical clouds (the stall). Handled today by: **robustness** (shipped: geometry guard + clean
+  `ENERGY_COLLAPSED` termination) + **family T** (the Eb-peak handoff, deferred to this workstream).
 
 ## 4. Conclusion & recommendations
 
@@ -170,7 +181,7 @@ the SN surge.
   (BEFORE), `data/leaktest/` (leakage Cf sweep), `data/betadelta_summary.csv`, refinement CSV.
 - Figures (13): `fret_verdict`, `beta_repressurization`, `cert_residuals`, `f0_pathology`,
   `g0_divergence`, `dip_drivers`, `betadelta_portrait`, `surge_coincidence`, `blowout_geometric`,
-  `mixcool_rootfix`, `dip_mechanism`, `before_after`, `legacy_vs_hybr`, `pdv_trigger` — full HTML
-  report in `transition_report.html` (14 figures).
+  `mixcool_rootfix`, `dip_mechanism`, `before_after`, `legacy_vs_hybr`, `pdv_trigger`, `pdv_massspectrum` — full HTML
+  report in `transition_report.html` (15 figures).
 - References (external anchors): Weaver+1977; Lancaster+2021 I/II; El-Badry+2019;
   Geen+2021; Pabst+2020; Mac Low & McCray 1988; Rahner+2017/2019 (see PLAN.md §8).

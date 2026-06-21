@@ -45,6 +45,7 @@ FIGURES = {
     "__FIG_BEFOREAFTER__": ("before_after.png", "cooling trigger vs time, legacy (crosses) vs hybr (never crosses)"),
     "__FIG_LEGHYBR__": ("legacy_vs_hybr.png", "legacy vs hybr through the dip: ratio, Lloss, beta, three configs"),
     "__FIG_PDV__": ("pdv_trigger.png", "input partition (cooling/work/net) and F0 vs F0+PdV trigger ratios"),
+    "__FIG_PDVMASS__": ("pdv_massspectrum.png", "Eb collapse for a 5e9 cluster and max PdV/Lmech per config"),
 }
 
 
@@ -515,8 +516,37 @@ is <b>physically the wrong term</b>. \(\dot W\!\approx\!0.43\!-\!0.46\,L_{\text{
 pulls the ratio tantalisingly close to 0.05 &mdash; but it crosses only in large_diffuse, and only at <b>4.76 Myr</b>
 (its \(E_b\)-peak), while the other five never peak (\(E_b\) grows monotonically to t=6). So PdV-inclusion swaps one
 non-event (&ldquo;cooling never wins&rdquo;) for another (&ldquo;\(E_b\) never peaks&rdquo;) <i>and</i> mis-frames the
-physics: it would declare the bubble momentum-driven at its energetic peak, mid-drive. Keep PdV out; the transition is
-a radiative-loss criterion, and the real fix is still the missing cooling (§7.2&ndash;7.4).</div>
+physics: it would declare the bubble momentum-driven at its energetic peak, mid-drive. So keep PdV out of the
+<i>cooling-balance ratio</i> &mdash; but that is the cooling-driven view; the <b>regime-spanning</b> criterion (and
+the large-cloud case) is the PdV-inclusive \(E_b\)-peak itself &mdash; see §7.7.</div>
+
+<h3>7.7&nbsp; The other end of the spectrum: huge PdV, negative \(E_b\), and how it's handled</h3>
+<p>The same \(\dot W\) term that is harmless work here becomes <i>catastrophic</i> for very massive clusters (the
+prior <code>failed-large-clouds</code> investigation). A <code>5e9</code> \(M_\odot\) cloud at \(\text{sfe}\!\sim\!0.05\)
+is a \(\sim\!5\times10^8\,M_\odot\) cluster (\(L_{\text{mech}}\!\sim\!500\times\) typical); it launches the shell at
+<b>~2000&ndash;3700 km/s</b> (near free-expansion), so \(\dot W=4\pi R_2^2 v\,P_b\) <b>exceeds \(L_{\text{mech}}\)</b>
+(\(\dot W/L_{\text{mech}}\!\to\!1.56\), with \(L_{\text{cool}}\!\sim\!1\%\)). \(E_b\) then <b>peaks and collapses
+through zero into negative</b> &mdash; whereupon \(R_1\!\to\!R_2\) (shell volume\(\to\!0\)), the \(P_b\) divide blows
+up, and the run crashes with \(E_b=\text{nan}\). It is the <i>opposite</i> failure to the stall, from the <i>same</i>
+budget term.</p>
+<figure>__FIG_PDVMASS__<figcaption><b>Left:</b> the \(5e9\) cluster's \(E_b\) rises, peaks at \(t\!\approx\!1.5\times
+10^{-3}\) Myr (where \(\dot W/L_{\text{mech}}\!\to\!1\)), then plunges <b>negative</b> &rarr; the \(R_1\!\to\!R_2\)
+NaN crash. <b>Right:</b> max \(\dot W/L_{\text{mech}}\) per config &mdash; <b>one control parameter sorts the
+regimes:</b> our six typical clouds (and the healthy \(1e6\) control) sit below 1 (\(E_b\) grows, energy-driven &rarr;
+the stall, because cooling never catches up either); only the \(5e9\) cluster exceeds 1 (\(E_b\) collapses, momentum
+from birth &rarr; crash). My six are computed from <code>data/c0_*_h0.csv</code>; the two large-cloud values are the
+<code>failed-large-clouds</code> PLAN's reliable post-IC-relaxation numbers.</figcaption></figure>
+<div class="box find"><div class="lab">how it's dealt with &mdash; and the reconciliation with §7.6</div>
+Two layers, both already scoped. <b>(1) Robustness (shipped in <code>failed-large-clouds</code>):</b> a geometry guard
+(floor the shell volume so the \(P_b\) divide can't blow up, bit-identical when \(R_1\!\ll\!R_2\)) + a loud-fail that
+detects non-finite or \(E_b\!\le\!0\) and <b>terminates cleanly</b> with an <code>ENERGY_COLLAPSED</code> reason instead
+of crashing/NaN. <b>(2) Physics (&ldquo;family T&rdquo;, deferred to <i>this</i> workstream):</b> hand off to the
+momentum phase at the <b>PdV-inclusive net-energy zero-crossing</b> \((L_{\text{gain}}-L_{\text{loss}}-\dot W)\le0\)
+&mdash; the \(E_b\)-peak &mdash; <i>before</i> \(E_b\) goes negative. <b>This is the reconciliation:</b> PdV does not
+belong in the cooling-balance <i>ratio</i> (§7.6), but the correct, <b>regime-spanning</b> transition is exactly the
+PdV-inclusive \(E_b\)-peak: it fires immediately for the \(5e9\) cluster (PdV-driven, the principled fix for the crash)
+and <i>never</i> for typical clouds (\(E_b\) keeps growing &mdash; which is precisely the stall, and exposes that the
+missing physics there is cooling). One criterion, both ends.</div>
 """
 
 SEC_REPRO = r"""
@@ -528,7 +558,7 @@ without re-running the (hours-long) hybr sims. Each figure is a pure read of a c
 <tr><td><code>harvest_h0.py</code></td><td>candidate-trigger firing-epoch harvest (the G0 deliverable)</td></tr>
 <tr><td><code>mixcool_whatif.py</code></td><td>offline mixing-layer (\(\theta\)) calibration for the root fix</td></tr>
 <tr><td><code>data/c0_*_st6.csv</code> &middot; <code>data/c0_*_h0.csv</code> &middot; <code>data/c0_*_legacy.csv</code> &middot; <code>data/surge_coincidence.csv</code></td><td>per-config hybr captures, legacy (BEFORE) captures, + the surge-coincidence table</td></tr>
-<tr><td><code>plot_{fret,f0path,beta,surge,phaseportrait,dipdrivers,g0,blowout,mixcool,cert,dipmechanism,beforeafter,legacy_vs_hybr,pdv}.py</code> &rarr; <code>figures/*.png</code></td><td>the fourteen figures above (each a pure read of a CSV)</td></tr>
+<tr><td><code>plot_{fret,f0path,beta,surge,phaseportrait,dipdrivers,g0,blowout,mixcool,cert,dipmechanism,beforeafter,legacy_vs_hybr,pdv,pdv_massspectrum}.py</code> &rarr; <code>figures/*.png</code></td><td>the fifteen figures above (each a pure read of a CSV)</td></tr>
 <tr><td><code>PLAN.md</code> &middot; <code>FINDINGS.md</code></td><td>the living plan / pre-registration &amp; the consolidated write-up</td></tr>
 </tbody></table>
 <p class="small muted">Rebuild this report:
