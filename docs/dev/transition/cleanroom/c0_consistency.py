@@ -244,7 +244,8 @@ def _freeze_feedback(t_freeze: float) -> None:
 
 
 def run_config(param_path: str, stop_t: float | None, refine: float = 1.0,
-               solver: str = "hybr", freeze_feedback_at: float | None = None) -> str:
+               solver: str = "hybr", freeze_feedback_at: float | None = None,
+               run_dir: str | None = None) -> str:
     # The harness calls start_expansion() directly (not via run.py), which trips
     # main.py's DEBUG-logging fallback -- per-RHS DEBUG records are a measured
     # hot-path cost over a full run (registry log_level note). Install an INFO
@@ -268,7 +269,13 @@ def run_config(param_path: str, stop_t: float | None, refine: float = 1.0,
             if hasattr(rmod, c):
                 setattr(rmod, c, getattr(rmod, c) / refine)
     params = read_param.read_param(param_path)
-    out_dir = tempfile.mkdtemp(prefix="c0_")
+    # Persistent run_dir (survives container soft-restart; lets a supervisor read the
+    # live dictionary.jsonl mid-run for checkpointing). Default: ephemeral mkdtemp.
+    if run_dir is not None:
+        out_dir = run_dir
+        Path(out_dir).mkdir(parents=True, exist_ok=True)
+    else:
+        out_dir = tempfile.mkdtemp(prefix="c0_")
     params["path2output"].value = out_dir
     params["betadelta_solver"].value = solver
     ll = params.get("log_level", None)
@@ -287,7 +294,8 @@ def run_config(param_path: str, stop_t: float | None, refine: float = 1.0,
     hits = list(Path(out_dir).rglob("dictionary.jsonl"))
     if not hits:
         sys.exit(f"no dictionary.jsonl produced under {out_dir}")
-    return str(hits[0])
+    # newest, in case a reused run_dir holds dictionaries from prior attempts
+    return str(max(hits, key=lambda p: p.stat().st_mtime))
 
 
 def main() -> None:
@@ -303,13 +311,16 @@ def main() -> None:
     ap.add_argument("--freeze-feedback-at", type=float, default=None, metavar="MYR",
                     help="freeze ALL stellar feedback to its value at this time [Myr], held "
                          "constant for the whole run (no WR/SN surges). Default: off (no-op).")
+    ap.add_argument("--run-dir", default=None, metavar="DIR",
+                    help="persistent output dir for the run (default: ephemeral mkdtemp). Use a "
+                         "stable path so a supervisor can checkpoint the live dictionary.jsonl.")
     args = ap.parse_args()
 
     if args.target.endswith(".jsonl"):
         jsonl, prov = args.target, f"snapshots {args.target} (provenance not certified)"
     else:
         jsonl = run_config(args.target, args.stop_t, args.refine, args.solver,
-                           args.freeze_feedback_at)
+                           args.freeze_feedback_at, args.run_dir)
         frz = f", freeze_feedback_at={args.freeze_feedback_at}" if args.freeze_feedback_at is not None else ""
         prov = f"ran {args.target} ({args.solver}, stop_t={args.stop_t}, refine={args.refine}{frz}) @ {_git_sha()}"
 
