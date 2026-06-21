@@ -34,6 +34,7 @@ FIGURES = {
     "__FIG_F0__": ("f0_pathology.png", "cooling ratio vs the 0.05 threshold, with mechanical luminosity"),
     "__FIG_BETA__": ("beta_repressurization.png", "beta(t) per config with negative-beta shaded over mechanical luminosity"),
     "__FIG_SURGE__": ("surge_coincidence.png", "per-config correlation of the cooling-ratio change with feedback, beta and delta"),
+    "__FIG_PORTRAIT__": ("betadelta_portrait.png", "delta-beta phase portrait of all implicit rows coloured by time"),
     "__FIG_G0__": ("g0_divergence.png", "timeline per config showing where each candidate family would fire"),
     "__FIG_FRET__": ("fret_verdict.png", "retained-energy fraction vs time for all six configs against the observed band"),
     "__FIG_BLOW__": ("blowout_geometric.png", "F4 blowout epoch vs cloud radius, one point per config"),
@@ -203,6 +204,12 @@ re-pressurisation is a <i>co-symptom</i> of the surge, not its threshold.</p>
 \(\Delta\delta\) (green). Blue \(>0\) and orange \(<0\) in <b>every</b> config: the surge is a feedback event
 that simultaneously re-pressurises the bubble (\(\beta\) drops). Pure read of <code>data/c0_*_h0.csv</code>
 via <code>plot_surge.py</code> (table in <code>data/surge_coincidence.csv</code>).</figcaption></figure>
+<figure>__FIG_PORTRAIT__<figcaption>The same answer in 2-D: every implicit-phase row of all six runs in
+\((\delta,\beta)\) space, coloured by time. The re-pressurisation band (\(\beta<0\), shaded) is not a tight
+cluster at one \(\beta\), \(\delta\), or \(\beta+\delta\) value (the dotted \(\beta+\delta=0\) line is only a
+reference) &mdash; it sweeps a wide \(\delta>0\) band and lights up at the \(\sim\!3\) Myr SN-epoch colours.
+Re-pressurisation is a late-time <i>feedback</i> event, not a structure threshold. Pure read of
+<code>data/c0_*_st6.csv</code> via <code>plot_phaseportrait.py</code>.</figcaption></figure>
 <div class="box hyp"><div class="lab">the fork this sets up</div>Two honest readings, both kept open: either the
 criterion needs replacing for the hybr regime (a <b>trigger</b> problem), or the bubble retains too much
 energy to ever balance because the cooling physics is incomplete (a <b>physics</b> problem). The rest of the
@@ -372,7 +379,7 @@ without re-running the (hours-long) hybr sims. Each figure is a pure read of a c
 <tr><td><code>harvest_h0.py</code></td><td>candidate-trigger firing-epoch harvest (the G0 deliverable)</td></tr>
 <tr><td><code>mixcool_whatif.py</code></td><td>offline mixing-layer (\(\theta\)) calibration for the root fix</td></tr>
 <tr><td><code>data/c0_*_st6.csv</code> &middot; <code>data/c0_*_h0.csv</code> &middot; <code>data/surge_coincidence.csv</code></td><td>per-config full-run captures + the surge-coincidence table (the evidence)</td></tr>
-<tr><td><code>plot_{fret,f0path,beta,surge,g0,blowout,mixcool,cert}.py</code> &rarr; <code>figures/*.png</code></td><td>the eight figures above (each a pure read of a CSV)</td></tr>
+<tr><td><code>plot_{fret,f0path,beta,surge,phaseportrait,g0,blowout,mixcool,cert}.py</code> &rarr; <code>figures/*.png</code></td><td>the nine figures above (each a pure read of a CSV)</td></tr>
 <tr><td><code>PLAN.md</code> &middot; <code>FINDINGS.md</code></td><td>the living plan / pre-registration &amp; the consolidated write-up</td></tr>
 </tbody></table>
 <p class="small muted">Rebuild this report:
