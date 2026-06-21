@@ -396,10 +396,10 @@ recovers (\(L_{\text{loss}}\) collapses) and never crosses. That is exactly why 
 solver upgrade.</p>
 <figure>__FIG_BEFOREAFTER__<figcaption>Cooling trigger \((L_{\text{mech}}-L_{\text{loss}})/L_{\text{mech}}\) over the
 evolution. <b>Left (legacy):</b> the ratio dives through 0.05 at the first cooling episode &mdash; dots mark the
-crossing where each run transitions (small_dense 0.024, pl2_steep 0.128, simple_cluster 0.178, midrange 0.822 Myr).
-<b>Right (hybr):</b> the same early dip, but it recovers and <b>never crosses</b>. Real legacy runs
-(<code>--solver legacy</code>) vs the committed hybr runs. <span class="muted">be_sphere / large_diffuse are
-late/very-late crossers (be_sphere rerun still grinding; large_diffuse crosses ~6 Myr, beyond the window).</span></figcaption></figure>
+crossing where each run transitions (small_dense 0.024, pl2_steep 0.128, simple_cluster 0.178, midrange 0.822,
+be_sphere 1.037 Myr &mdash; 5/6). <b>Right (hybr):</b> the same early dip, but it recovers and <b>never crosses</b>.
+Real legacy runs (<code>--solver legacy</code>) vs the committed hybr runs. <span class="muted">large_diffuse is the
+lone very-late crosser (~6 Myr, beyond the stop_t=2.5 window).</span></figcaption></figure>
 
 <h3>7.2&nbsp; What the dip actually is: an emission-measure turnover, not a thermal trigger</h3>
 <p>We tested the obvious hypothesis &mdash; that \(L_{\text{loss}}\) rises because gas enters the efficient-cooling
