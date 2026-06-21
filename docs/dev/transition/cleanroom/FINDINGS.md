@@ -73,8 +73,9 @@ crux), `be_sphere` — 3 dex in cloud mass, all profiles, all sfe.
 the observed/3D-sim band 0.01–0.1** (Lancaster+2021; El-Badry+2019; Geen+2021;
 Orion [CII] Pabst+2020). TRINITY's energy-conserving Weaver/Rahner interior lacks
 the turbulent fractal mixing-layer cooling that dominates real bubbles. Figure
-`figures/fret_verdict`. Negative β (re-pressurisation) appears in all 6 at the
-~3 Myr SN surge (`figures/beta_repressurization`).
+`figures/fret_verdict`. β goes negative (re-pressurisation) at the ~3 Myr surge, but
+the *compression/inflow* source `β+δ` rarely reaches its −0.4 trigger (δ offsets β —
+see Follow-ups; `figures/beta_repressurization`).
 
 **G0 — no cooling transition exists; only geometric blowout (6/6, unanimous).**
 Harvested every candidate trigger vs the Eb-peak oracle (`harvest_h0.py`,
@@ -104,6 +105,33 @@ the SN surge.
   β,δ are solved *with* it, keeping `dMdt>0`). The bulk-sink injection was reverted;
   production is unchanged.
 
+**Follow-ups (post-G0).**
+- **The dip is geometry, not thermal** (`figures/dip_mechanism`): the early cooling-ratio
+  dip is an emission-measure turnover `Lloss ∝ n²V = (Pb/T0)²R2³` (rise = volume growth
+  beats dilution; collapse = R2 dilutes n²), **not** gas entering the Λ(T) peak — `T0` stays
+  3–8e6 K, far above the 1e5–1e6 K cooling-peak band the whole time. So the under-cooling
+  root is that the interior is **too hot to radiate efficiently**; the mixing-layer fix is
+  needed to *create* the ~1e5–1e6 K gas.
+- **BEFORE/AFTER + legacy-vs-hybr** (`figures/before_after`, `figures/legacy_vs_hybr`): the
+  legacy clamped-β solver crosses 0.05 at the first cooling episode (5/6 cross, 0.024–1.037
+  Myr) and transitions; hybr's same dip recovers and never crosses. The dip diagnostic on
+  legacy vs hybr shows **`T0` is ~identical** — the difference is entirely the β-clamp:
+  legacy pinned to [0,1] keeps `Lloss` high (ratio→crossing), hybr's free β swings to +2..+4
+  and `Lloss` collapses (ratio→recovery). So legacy's transition was a **constrained
+  edge-root artifact of the clamp**, not extra cooling (consistent with C0: hybr finds the
+  true root).
+- **Leakage makes the cooling trigger fire — viably** (`data/leaktest/`): the WARPFIELD-style
+  switch `log Lmech − log Lcool < 0.05` is the same family as F0 and doesn't fire at Cf=1
+  (gap 0.145–0.292 dex); but its leakage term `Lcool = Lb + Lleak`, supplied via
+  `coverFraction<1`, **does** fire it — at Cf=0.95 (5% leak) the ratio crosses 0.05 @ t=0.131
+  and the run transitions, solver-healthy (unlike the bulk-sink). Caveat: leakage *vents* hot
+  gas (advective), it does not *create* cool radiating gas — a different lever than mixing.
+- **β+δ, not β alone** (`figures/betadelta_portrait`, `data/betadelta_summary.csv`): the
+  interior-velocity source is `(β+δ)/t = −t dln n/dt`, inflow trigger `β+δ ≲ −0.4` (**not** β
+  alone, **not** β+δ=0). β dives to −1.6 (re-pressurisation, 5/6) but β+δ crosses −0.4 in only
+  large_diffuse (δ>0 offsets β); the resulting inflow is "real but cosmetic" (archive). The
+  structure provides **no** transition threshold — the stall is a cooling-budget problem.
+
 ## 4. Conclusion & recommendations
 
 1. **The stall is physics, not a threshold.** Retuning 0.05→X is futile — there is
@@ -112,9 +140,15 @@ the SN surge.
    blowout** transition (`R2 > rCloud`) — the only candidate that fires physically.
    Caveat: its epoch is geometric (near-instant for compact clouds); consider
    `R2 > k·rCloud` or a sustained criterion.
-3. **Root fix:** integrate Lancaster/El-Badry mixing-layer cooling **into the bubble
-   structure solve** (θ≈0.25 magnitude confirmed). This is the first-order issue —
-   it would bring `f_ret` into the observed band and let a real transition exist.
+3. **Root fix — two viable levers for the missing loss.** (a) **Leakage**
+   (`coverFraction<1`) is now *demonstrated* to fire the cooling trigger at Cf≈0.95,
+   solver-healthy — but it *vents* hot gas (advective). (b) **Mixing-layer cooling**
+   (Lancaster/El-Badry) integrated **into the bubble structure solve** (θ≈0.25 magnitude
+   confirmed) — it *creates* the ~1e5–1e6 K radiating gas the dip analysis shows is
+   missing. Both bring `f_ret` into the band and let a real transition exist; which is
+   physically right depends on the true covering fraction. Note θ=const has no state
+   dependence and naive `θ·Lmech` double-counts `L_cool`'s smooth interface — a faithful
+   `L_mix` ties to interface area / mixing velocity / density.
 4. **Paper-worthy as-is:** substrate certified; under-cooling quantified across the
    regime; the transition shown to be geometric, not thermal — earned from data
    against external observations/3D sims, the pre-registered "no single scalar works"
@@ -123,8 +157,12 @@ the SN surge.
 ## 5. Artifacts (all committed, regenerable)
 - Harnesses: `c0_consistency.py` (certify + f_ret), `harvest_h0.py` (G0 divergence),
   `mixcool_whatif.py` (root-fix calibration), `analyze_c0.py`, `heartbeat*.sh`.
-- Data: `data/c0_*_st6.csv` (C0), `data/c0_*_h0.csv` (H0 enriched), refinement CSV.
-- Figures: `fret_verdict`, `beta_repressurization`, `cert_residuals`, `f0_pathology`,
-  `g0_divergence`.
+- Data (canonical map in `data/README.md`): `data/c0_*_st6.csv` (C0/f_ret),
+  `data/c0_*_h0.csv` (triggers/cooling/forces — the source of truth), `data/c0_*_legacy.csv`
+  (BEFORE), `data/leaktest/` (leakage Cf sweep), `data/betadelta_summary.csv`, refinement CSV.
+- Figures (13): `fret_verdict`, `beta_repressurization`, `cert_residuals`, `f0_pathology`,
+  `g0_divergence`, `dip_drivers`, `betadelta_portrait`, `surge_coincidence`, `blowout_geometric`,
+  `mixcool_rootfix`, `dip_mechanism`, `before_after`, `legacy_vs_hybr` — full HTML report in
+  `transition_report.html`.
 - References (external anchors): Weaver+1977; Lancaster+2021 I/II; El-Badry+2019;
   Geen+2021; Pabst+2020; Mac Low & McCray 1988; Rahner+2017/2019 (see PLAN.md §8).

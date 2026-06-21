@@ -43,6 +43,7 @@ FIGURES = {
     "__FIG_CERT__": ("cert_residuals.png", "res_beta and res_T0_struct vs time for all six configs"),
     "__FIG_DIPMECH__": ("dip_mechanism.png", "Lloss, emission-measure proxy and T0 through the early dip"),
     "__FIG_BEFOREAFTER__": ("before_after.png", "cooling trigger vs time, legacy (crosses) vs hybr (never crosses)"),
+    "__FIG_LEGHYBR__": ("legacy_vs_hybr.png", "legacy vs hybr through the dip: ratio, Lloss, beta, three configs"),
 }
 
 
@@ -466,6 +467,26 @@ so <b>cannot reproduce the measured config-to-config spread</b> (\(f_{\text{ret}
 magnitude-right (it <i>did</i> bring the bubble into the band) but <b>not predictive</b>; a faithful term ties
 \(L_{\text{mix}}\) to interface area (\(\propto R_2^2\)), a mixing velocity, and the contact-discontinuity density,
 reducing to \(\theta L_{\text{mech}}\) only in the efficient limit.</div>
+
+<h3>7.5&nbsp; What actually changed legacy&rarr;hybr: the β-clamp, not the temperature</h3>
+<p>Running the dip diagnostic on the <i>legacy</i> runs and overlaying them on hybr isolates the difference. At
+<b>matched times the interior temperature \(T_0\) is ~identical</b> in both (4&ndash;5\(\times10^6\) K) &mdash; the
+temperature is <b>not</b> what changed. The difference is entirely in <b>β</b>: legacy clamps
+\(\beta\!\in\![0,1]\), which forces a structure that keeps \(L_{\text{loss}}\) high so the ratio is driven
+monotonically down to its crossing; hybr is unbounded and β swings to <b>+2…+4</b> right at the dip, the structure
+\(L_{\text{loss}}\) <i>collapses</i>, and the ratio recovers.</p>
+<figure>__FIG_LEGHYBR__<figcaption>Legacy (blue, solid) vs hybr (orange, dashed) through the dip, three early
+crossers. <b>Left:</b> cooling ratio &mdash; legacy crosses 0.05 (marked) and transitions; hybr recovers.
+<b>Middle:</b> \(L_{\text{loss}}\) &mdash; legacy keeps cooling, hybr's collapses out of the dip. <b>Right:</b>
+β &mdash; legacy pinned in the shaded [0,1] clamp box, hybr escapes upward; the \(T_0\)-at-crossing annotation
+confirms the two temperatures agree. Pure read of <code>data/c0_*_legacy.csv</code> + <code>data/c0_*_h0.csv</code>
+via <code>plot_legacy_vs_hybr.py</code>.</figcaption></figure>
+<div class="box find"><div class="lab">so the BEFORE/AFTER is a solver-root difference, not a cooling-physics one</div>
+The C0 certification established hybr finds the <i>true</i> root; legacy, when the true root leaves \([0,1]\), is
+pinned to the constraint <i>edge</i>. So legacy's &ldquo;transition&rdquo; was a <b>consequence of the β-clamp</b>
+(a constrained edge-root that keeps \(L_{\text{loss}}\) high), not genuine extra cooling &mdash; the interior is
+equally hot in both. This closes the loop with §7.1&ndash;7.2: the stall is what the <i>correct</i> root does, and
+the old trigger fired only because the caged solver couldn't reach it.</div>
 """
 
 SEC_REPRO = r"""
@@ -477,7 +498,7 @@ without re-running the (hours-long) hybr sims. Each figure is a pure read of a c
 <tr><td><code>harvest_h0.py</code></td><td>candidate-trigger firing-epoch harvest (the G0 deliverable)</td></tr>
 <tr><td><code>mixcool_whatif.py</code></td><td>offline mixing-layer (\(\theta\)) calibration for the root fix</td></tr>
 <tr><td><code>data/c0_*_st6.csv</code> &middot; <code>data/c0_*_h0.csv</code> &middot; <code>data/c0_*_legacy.csv</code> &middot; <code>data/surge_coincidence.csv</code></td><td>per-config hybr captures, legacy (BEFORE) captures, + the surge-coincidence table</td></tr>
-<tr><td><code>plot_{fret,f0path,beta,surge,phaseportrait,dipdrivers,g0,blowout,mixcool,cert,dipmechanism,beforeafter}.py</code> &rarr; <code>figures/*.png</code></td><td>the twelve figures above (each a pure read of a CSV)</td></tr>
+<tr><td><code>plot_{fret,f0path,beta,surge,phaseportrait,dipdrivers,g0,blowout,mixcool,cert,dipmechanism,beforeafter,legacy_vs_hybr}.py</code> &rarr; <code>figures/*.png</code></td><td>the thirteen figures above (each a pure read of a CSV)</td></tr>
 <tr><td><code>PLAN.md</code> &middot; <code>FINDINGS.md</code></td><td>the living plan / pre-registration &amp; the consolidated write-up</td></tr>
 </tbody></table>
 <p class="small muted">Rebuild this report:
