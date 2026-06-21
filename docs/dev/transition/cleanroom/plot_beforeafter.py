@@ -97,10 +97,10 @@ def main():
     axB.set_ylabel(r"cooling trigger  $(L_{\rm gain}-L_{\rm loss})/L_{\rm gain}$")
     axB.text(0.97, THRESH + 0.015, "transition threshold 0.05", transform=axB.get_yaxis_transform(),
              ha="right", va="bottom", fontsize=8, color="0.45")
-    handles, labels = axB.get_legend_handles_labels()
-    if len(labels) < len(names):                       # fall back to AFTER legend
-        handles, labels = axA.get_legend_handles_labels()
-    fig.legend(handles, labels, loc="upper center", ncol=len(labels) or 1,
+    import matplotlib.lines as mlines
+    handles = [mlines.Line2D([], [], color=WONG[i % len(WONG)], lw=1.6, label=n)
+               for i, n in enumerate(names)]
+    fig.legend(handles=handles, loc="upper center", ncol=len(names),
                fontsize=8, frameon=False, bbox_to_anchor=(0.5, 1.02))
     fig.suptitle("Cooling-balance trigger over the evolution  "
                  "(below 0.05 → implicit transitions to momentum)", y=1.10, fontsize=11)
