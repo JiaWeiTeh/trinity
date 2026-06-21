@@ -199,10 +199,20 @@ integrated budget. <b>(b) hybr finds the true root:</b> legacy clamped the cooli
 so \(P_b\) could only decline and the ratio drifted to balance; hybr is unbounded with a physical
 \(dM/dt>0\) gate and in places returns <b>negative \(\beta\)</b> (\(P_b\) <i>rising</i> &mdash; the bubble
 re-pressurising under a feedback surge), keeping the interior net-heating.</p>
-<figure>__FIG_BETA__<figcaption>Why balance is never reached: \(\beta(t)\) per config (blue), with
-\(\beta<0\) re-pressurisation shaded, over \(L_{\text{mech}}\) (grey). Negative-\(\beta\) segments appear in
-<b>all six</b> configs at the SN epoch (1&ndash;12% of implicit rows). Pure read of <code>data/c0_*_st6.csv</code>
-via <code>plot_beta.py</code>.</figcaption></figure>
+<div class="box over"><div class="lab">β alone vs β+δ &mdash; the right compression variable</div>A correction worth stating
+plainly (per the archived β&ndash;δ study): the structural quantity that governs the interior velocity is
+<b>not β alone, and not β+δ=0</b>. The bubble velocity ODE source term is \((\beta+\delta)/t = -t\,d\ln n/dt\),
+so <b>β+δ</b> is the compression term and its interior-inflow trigger sits at <b>β+δ ≲ −0.4</b> (−0.5 for the
+steep archive config). β&lt;0 by itself is only <i>re-pressurisation</i> (\(P_b\) rising); δ&gt;0 (T rising)
+partly cancels it. In our six, β dives to <b>−1.6</b> (re-pressurisation in 5/6), but β+δ crosses −0.4 in
+<b>only one</b> (large_diffuse, 10 rows) &mdash; everywhere else δ offsets β and the net compression stays above
+the trigger. The archive's resulting inflow is in any case <b>&ldquo;real but cosmetic&rdquo;</b> (subsonic,
+~10⁻⁶ of thermal), not an energy-budget term &mdash; so this corrects the <i>diagnostic framing</i>, not the
+trigger verdict.</div>
+<figure>__FIG_BETA__<figcaption>β (blue, the \(P_b\)-rate) vs β+δ (orange, the compression source) per config,
+with the β+δ=−0.4 inflow trigger (dashed) and the sub-trigger region shaded red. β dives deep at the WR/SN
+surge, but β+δ stays <i>above</i> −0.4 in 5/6 &mdash; only large_diffuse reaches it. Pure read of
+<code>data/c0_*_h0.csv</code> via <code>plot_beta.py</code>.</figcaption></figure>
 <p><b>So what actually triggers a surge &mdash; feedback, or the structure (\(\beta,\delta\))?</b> We measured
 both, per config, making no assumptions (step-to-step correlation of the ratio change \(\Delta r\) with
 \(\Delta L_{\text{mech}}\), \(\Delta\beta\), \(\Delta\delta\), over the implicit rows of each
@@ -221,11 +231,13 @@ re-pressurisation is a <i>co-symptom</i> of the surge, not its threshold.</p>
 that simultaneously re-pressurises the bubble (\(\beta\) drops). Pure read of <code>data/c0_*_h0.csv</code>
 via <code>plot_surge.py</code> (table in <code>data/surge_coincidence.csv</code>).</figcaption></figure>
 <figure>__FIG_PORTRAIT__<figcaption>The same answer in 2-D: every implicit-phase row of all six runs in
-\((\delta,\beta)\) space, coloured by time. The re-pressurisation band (\(\beta<0\), shaded) is not a tight
-cluster at one \(\beta\), \(\delta\), or \(\beta+\delta\) value (the dotted \(\beta+\delta=0\) line is only a
-reference) &mdash; it sweeps a wide \(\delta>0\) band and lights up at the \(\sim\!3\) Myr SN-epoch colours.
-Re-pressurisation is a late-time <i>feedback</i> event, not a structure threshold. Pure read of
-<code>data/c0_*_st6.csv</code> via <code>plot_phaseportrait.py</code>.</figcaption></figure>
+\((\delta,\beta)\) space, coloured by time. The re-pressurisation rows (\(\beta<0\), shaded) sweep a wide
+\(\delta>0\) band and light up at the \(\sim\!3\) Myr SN-epoch colours &mdash; that \(\delta>0\) (T rising) is
+exactly what holds \(\beta+\delta\) above the inflow trigger: the dashed \(\beta+\delta=-0.4\) line (the
+compression/inflow threshold, <b>not</b> \(\beta+\delta=0\)) is barely touched, and only by large_diffuse. So
+re-pressurisation (\(\beta<0\)) is a late-time <i>feedback</i> event, while net compression
+(\(\beta+\delta<-0.4\)) almost never happens. Pure read of <code>data/c0_*_st6.csv</code> via
+<code>plot_phaseportrait.py</code>.</figcaption></figure>
 <div class="box hyp"><div class="lab">the fork this sets up</div>Two honest readings, both kept open: either the
 criterion needs replacing for the hybr regime (a <b>trigger</b> problem), or the bubble retains too much
 energy to ever balance because the cooling physics is incomplete (a <b>physics</b> problem). The rest of the

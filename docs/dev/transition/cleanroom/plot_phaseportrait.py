@@ -1,17 +1,18 @@
 #!/usr/bin/env python3
 """New-findings figure: the (delta, beta) phase portrait (user Q follow-up, 2026-06-20).
 
-The surge_coincidence diagnostic showed the F0-ratio surge co-moves with beta
-DROPPING (re-pressurisation) but at no fixed beta/delta value. This 2-D view makes
-that geometric: every implicit-phase row of all six runs, plotted in (delta, beta)
-space and coloured by time. The beta<0 half (re-pressurisation / negative velocity
-structure) is shaded; the beta+delta=0 diagonal is drawn so one can read whether
-re-pressurisation sits on any fixed beta+delta contour (it does not).
+CORRECTION (2026-06-21, per docs/dev/archive/betadelta/): the structural quantity
+that governs the interior velocity is the dv/dr source (beta+delta)/t = -t*dln(n)/dt,
+with an inflow trigger at beta+delta <~ -0.4 -- NOT beta alone, NOT beta+delta=0.
+This 2-D view: every implicit-phase row of all six runs in (delta, beta) space,
+coloured by time. beta<0 (re-pressurisation, Pb rising) is shaded; the REAL
+threshold beta+delta=-0.4 (inflow) is drawn (the beta+delta=0 line is only a faint
+reference).
 
-The story by shape: beta<0 points are NOT a tight cluster at one (beta,delta) or
-one beta+delta value -- they sweep a band, and they light up at the late-time
-(SN-epoch) colours where delta is large/positive. Re-pressurisation is a feedback
-event, not a structure threshold.
+The story by shape: beta dives well below 0 at the SN epoch (re-pressurisation),
+but the points stay ABOVE the beta+delta=-0.4 line because delta>0 (T rising)
+offsets beta -- so net compression/inflow almost never triggers. Re-pressurisation
+(beta<0) is common; compression (beta+delta<-0.4) is not.
 
 Pure read of the committed data/c0_*_st6.csv; no re-run.
 
@@ -29,7 +30,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 HERE = Path(__file__).resolve().parent
-STYLE = HERE.parents[2] / "paper" / "_lib" / "trinity.mplstyle"
+STYLE = HERE.parents[3] / "paper" / "_lib" / "trinity.mplstyle"  # parents[3]=repo root
 if STYLE.exists():
     plt.style.use(str(STYLE))
 plt.rcParams["text.usetex"] = False
@@ -56,23 +57,29 @@ def main():
         sys.exit("no implicit-phase (beta,delta) rows found")
     t = [x[0] for x in rows]; d = [x[1] for x in rows]; b = [x[2] for x in rows]
     nneg = sum(1 for bb in b if bb < 0)
+    ntrig = sum(1 for x in rows if x[1] + x[2] < -0.4)  # beta+delta < -0.4 inflow trigger
 
     fig, ax = plt.subplots(figsize=(7.2, 5.0))
     dlo, dhi = min(d), max(d)
-    ax.axhspan(min(b) - 0.5, 0, color="#D55E00", alpha=0.08, zorder=0)        # beta<0 region
-    ax.axhline(0, color="#D55E00", lw=1.1, ls="--", zorder=2)
-    ax.plot([dlo, dhi], [-dlo, -dhi], color="0.55", lw=1.0, ls=":", zorder=2,
-            label=r"$\beta+\delta=0$")
+    ax.axhspan(min(b) - 0.5, 0, color="#D55E00", alpha=0.07, zorder=0)        # beta<0 region
+    ax.axhline(0, color="#D55E00", lw=1.0, ls="--", zorder=2)
+    ax.plot([dlo, dhi], [-dlo, -dhi], color="0.7", lw=0.9, ls=":", zorder=2,
+            label=r"$\beta+\delta=0$ (ref)")
+    # the REAL structural threshold: beta+delta = -0.4 (interior-inflow trigger); below = compression
+    ax.plot([dlo, dhi], [-0.4 - dlo, -0.4 - dhi], color="k", lw=1.4, ls="--", zorder=2,
+            label=r"$\beta+\delta=-0.4$ (inflow trigger)")
+    ax.fill_between([dlo, dhi], [-0.4 - dlo, -0.4 - dhi], min(b) - 0.5,
+                    color="#b30000", alpha=0.10, zorder=1)
     sc = ax.scatter(d, b, c=t, cmap="viridis", s=10, alpha=0.65, linewidths=0, zorder=3)
     cb = fig.colorbar(sc, ax=ax, pad=0.015)
     cb.set_label("time  [Myr]")
 
     ax.set_xlabel(r"$\delta \equiv (t/T)\,dT/dt$   (interior heating rate)")
     ax.set_ylabel(r"$\beta \equiv -(t/P_b)\,dP_b/dt$   ($\beta<0$: $P_b$ rising, re-pressurising)")
-    ax.set_title("(δ, β) phase portrait: β<0 re-pressurisation has no fixed threshold",
-                 fontsize=10.5)
-    ax.text(0.015, 0.04, f"β<0: {nneg}/{len(rows)} rows ({100*nneg/len(rows):.0f}%), a wide δ band at\n"
-            "late (SN-epoch) times — no fixed β / δ / (β+δ) value",
+    ax.set_title("(δ, β) portrait: β<0 (re-pressurisation) is common; β+δ<−0.4 (inflow) is not",
+                 fontsize=10)
+    ax.text(0.015, 0.04, f"β<0: {nneg}/{len(rows)} rows ({100*nneg/len(rows):.0f}%) — wide δ band, "
+            f"SN-epoch.\nβ+δ<−0.4 (compression/inflow): only {ntrig} rows — δ>0 offsets β.",
             transform=ax.transAxes, ha="left", va="bottom", fontsize=7.8, color="0.3",
             bbox=dict(boxstyle="round,pad=0.3", fc="#fff6ec", ec="#f6dcbd"))
     ax.legend(fontsize=8, loc="upper right", framealpha=0.9)
