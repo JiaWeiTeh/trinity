@@ -18,8 +18,10 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
+from blowout_marker import mark
+
 HERE = Path(__file__).resolve().parent
-STYLE = HERE.parents[2] / "paper" / "_lib" / "trinity.mplstyle"
+STYLE = HERE.parents[3] / "paper" / "_lib" / "trinity.mplstyle"
 if STYLE.exists():
     plt.style.use(str(STYLE))
 plt.rcParams["text.usetex"] = False
@@ -53,6 +55,9 @@ def main():
         t, ratio, lm = load(p)
         a1.plot(t, ratio, color=c, lw=1.3, label=name)
         a2.plot(t, lm, color=c, lw=1.0)
+        # blowout (R2 exits rCloud) in this config's colour; label only on the first (top axis)
+        mark(a1, name, color=c, label=(i == 0))
+        mark(a2, name, color=c, label=False)
     a1.axhline(0.05, ls="--", lw=1.3, color="#D55E00")
     a1.text(0.99, 0.06, r"$\epsilon=0.05$ threshold (F0 fires below)", transform=a1.get_yaxis_transform(),
             ha="right", va="bottom", fontsize=8, color="#D55E00")

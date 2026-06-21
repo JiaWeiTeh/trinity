@@ -54,6 +54,8 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
+from blowout_marker import mark
+
 HERE = Path(__file__).resolve().parent
 # repo-root paper/_lib/trinity.mplstyle (parents[3] == /home/user/trinity)
 STYLE = HERE.parents[3] / "paper" / "_lib" / "trinity.mplstyle"
@@ -138,7 +140,7 @@ def main():
 
     print("config                 t(Lloss pk)  t(EM pk)   T0@pk[K]   r-min t   "
           "EM rise/fall   slopes@pk (n^2 , V , sum)")
-    for ax, p in zip(axes, paths):
+    for k, (ax, p) in enumerate(zip(axes, paths)):
         name = Path(p).name.replace("c0_", "").replace("_h0.csv", "")
         d = load(p)
         if not d["t"]:
@@ -165,6 +167,9 @@ def main():
         ax.plot(t[irm], lln[irm], marker="^", ms=8, color="0.25",
                 mec="k", mew=0.5, ls="none", zorder=5,
                 label="cooling-ratio min")
+        # per-config blowout time (shell exits the cloud); grey so it reads as a
+        # separate annotation against the Lloss/EM curve colours. Label once.
+        mark(ax, name, color="0.35", label=(k == 0))
         ax.set_xscale("log")
         ax.set_ylim(0.0, 1.18)
         ax.set_ylabel("normalized\n(own max)")

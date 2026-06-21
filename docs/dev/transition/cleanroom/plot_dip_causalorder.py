@@ -60,6 +60,8 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
+from blowout_marker import mark
+
 HERE = Path(__file__).resolve().parent
 # repo-root paper/_lib/trinity.mplstyle (parents[3] == /home/user/trinity)
 STYLE = HERE.parents[3] / "paper" / "_lib" / "trinity.mplstyle"
@@ -115,7 +117,8 @@ def main():
     FIGDIR.mkdir(exist_ok=True)
     fig, axes = plt.subplots(len(PANELS), 1, figsize=(7.0, 9.0), sharex=False)
 
-    for ax, (name, win, label) in zip(axes, PANELS):
+    for pi, (ax, (name, win, label)) in enumerate(zip(axes, PANELS)):
+        cfg = name.replace("c0_", "").replace("_h0", "")  # bare config for blowout_marker
         col, phase = _load(name)
         t = col("t_now")
         Lloss = col("bubble_Lloss")
@@ -153,6 +156,12 @@ def main():
         # Turning-point markers.
         ax.axvline(t_v2min, color=C_V2, lw=1.0, ls="-", alpha=0.7)
         ax.axvline(t_llosspk, color=C_LLOSS, lw=1.0, ls="--", alpha=0.7)
+        # per-config blowout (shell exits cloud), grey dash-dot; label on top panel.
+        # Window is the early dip (t<=win); freeze xlim so an out-of-window line
+        # can't auto-expand the view.
+        xl = ax.get_xlim()
+        mark(ax, cfg, color="0.25", label=(pi == 0))
+        ax.set_xlim(xl)
         ax.annotate(f"$v_2$ min\n{t_v2min:.3f}", (t_v2min, 1.10), color=C_V2,
                     fontsize=8, ha="center", va="top")
         ax.annotate(f"$L_{{\\rm loss}}$ pk /\n$r$ min  {t_llosspk:.3f}",

@@ -21,6 +21,8 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
+from blowout_marker import mark
+
 HERE = Path(__file__).resolve().parent
 STYLE = HERE.parents[3] / "paper" / "_lib" / "trinity.mplstyle"  # parents[3]=repo root
 if STYLE.exists():
@@ -52,7 +54,7 @@ def main():
     if not n:
         sys.exit("no usable CSVs")
     fig, axes = plt.subplots(n, 1, figsize=(7.6, 1.8 * n + 0.6), sharex=True, squeeze=False)
-    for ax, p in zip(axes[:, 0], paths):
+    for i, (ax, p) in enumerate(zip(axes[:, 0], paths)):
         name = Path(p).name.replace("c0_", "").replace("_h0.csv", "").replace("_st6.csv", "")
         t, b, d, lm = load(p)
         bpd = [bi + di for bi, di in zip(b, d)]
@@ -66,6 +68,8 @@ def main():
         ax.fill_between(t, bpd, BPD_TRIGGER, where=[x < BPD_TRIGGER for x in bpd],
                         color="#b30000", alpha=0.35, interpolate=True)
         ax.set_ylabel(r"$\beta,\ \beta+\delta$")
+        # blowout (R2 exits rCloud) in this panel's compression-curve colour; label only top row
+        mark(ax, name, color="#D55E00", label=(i == 0))
         ax.text(0.99, 0.05, f"{name}   β<0: {fneg:.0%}   rows β+δ<−0.4: {ntrig}",
                 transform=ax.transAxes, ha="right", va="bottom", fontsize=8)
         ax2 = ax.twinx()

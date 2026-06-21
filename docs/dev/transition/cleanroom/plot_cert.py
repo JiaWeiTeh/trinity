@@ -16,8 +16,10 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
+from blowout_marker import mark
+
 HERE = Path(__file__).resolve().parent
-STYLE = HERE.parents[2] / "paper" / "_lib" / "trinity.mplstyle"
+STYLE = HERE.parents[3] / "paper" / "_lib" / "trinity.mplstyle"
 if STYLE.exists():
     plt.style.use(str(STYLE))
 plt.rcParams["text.usetex"] = False
@@ -52,6 +54,10 @@ def main():
         t, y = load(p, "res_T0_struct")
         if t:
             a2.plot(t, y, color=c, lw=1.0, alpha=0.85)
+        # blowout (R2 exits rCloud) in this config's colour, on both residual panels;
+        # label only on the top panel (a1) for the first config to avoid clutter.
+        mark(a1, name, color=c, label=(i == 0))
+        mark(a2, name, color=c, label=False)
     for ax in (a1, a2):
         ax.set_yscale("log")
         ax.axhline(0.05, ls="--", lw=1.0, color="0.5")  # 5% reference bar

@@ -27,6 +27,8 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
+from blowout_marker import mark
+
 HERE = Path(__file__).resolve().parent
 STYLE = HERE.parents[3] / "paper" / "_lib" / "trinity.mplstyle"  # parents[3]=repo root
 if STYLE.exists():
@@ -61,6 +63,7 @@ def main():
     fig, (axA, axB) = plt.subplots(1, 2, figsize=(13, 5.2), constrained_layout=True)
 
     # Panel A: input partition for simple_cluster (cooling + work + net = 1)
+    nameA = "simple_cluster" if "simple_cluster" in data else next(iter(data))
     d = data.get("simple_cluster") or next(iter(data.values()))
     t = [x["t"] for x in d]
     cool = [x["cool"] for x in d]; work = [x["work"] for x in d]; net = [x["net"] for x in d]
@@ -69,6 +72,8 @@ def main():
                           r"PdV$/L_{\rm gain}$ (work on shell, ~45%)",
                           r"net $\dot E_b/L_{\rm gain}$ (Eb growth, ~35%)"],
                   colors=["#D55E00", "#0072B2", "#009E73"], alpha=0.85)
+    # blowout for this single config (grey against the stacked segment colours)
+    mark(axA, nameA, color="0.2", label=True)
     axA.set_xscale("log"); axA.set_ylim(0, 1.05); axA.set_xlabel("t  [Myr]")
     axA.set_ylabel(r"fraction of $L_{\rm gain}$")
     axA.set_title("Where the input goes (simple_cluster):\nnearly half is expansion WORK, not radiated",
@@ -80,6 +85,7 @@ def main():
         t = [x["t"] for x in d]
         axB.plot(t, [x["f0"] for x in d], color=WONG[i % 6], lw=1.4, ls="-")
         axB.plot(t, [x["net"] for x in d], color=WONG[i % 6], lw=1.4, ls="--", alpha=0.9)
+        mark(axB, name, color=WONG[i % 6], label=False)  # each config's blowout, own colour
     axB.axhline(0.05, color="k", ls=":", lw=1.1)
     axB.text(axB.get_xlim()[0] if False else 4e-3, 0.075, "trigger 0.05", fontsize=8)
     axB.axhline(0, color="0.6", lw=0.7)

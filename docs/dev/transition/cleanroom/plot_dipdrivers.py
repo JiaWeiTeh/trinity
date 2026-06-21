@@ -32,8 +32,10 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
+from blowout_marker import mark
+
 HERE = Path(__file__).resolve().parent
-STYLE = HERE.parents[2] / "paper" / "_lib" / "trinity.mplstyle"
+STYLE = HERE.parents[3] / "paper" / "_lib" / "trinity.mplstyle"
 if STYLE.exists():
     plt.style.use(str(STYLE))
 plt.rcParams["text.usetex"] = False  # no LaTeX in this container
@@ -130,6 +132,12 @@ def main():
         xs, ys = _xy(t, lsn)
         ax3.plot(xw, yw, color=c, lw=1.5, ls="-")
         ax3.plot(xs, ys, color=c, lw=1.3, ls="--")
+
+        # blowout (R2 exits rCloud) in this config's colour, on every time panel;
+        # label only on the top panel (ax1) for the first config to avoid clutter.
+        mark(ax1, name, color=c, label=(i == 0))
+        mark(ax2, name, color=c, label=False)
+        mark(ax3, name, color=c, label=False)
         n += 1
 
     # Panel 1 cosmetics.
@@ -148,6 +156,7 @@ def main():
 
     # Panel 3 cosmetics.
     ax3.set_yscale("log")
+    ax3.set_ylim(1e5, 1e10)  # SN curve dives to ~1e-15 pre-onset; focus on the active range
     ax3.set_title("3.  mechanical feedback: SN onset (~3 Myr) is late — "
                   "the early dip is pre-SN", pad=8)
     ax3.set_ylabel(r"$|L_{\rm mech}|$:  wind (—),  SN (- -)")

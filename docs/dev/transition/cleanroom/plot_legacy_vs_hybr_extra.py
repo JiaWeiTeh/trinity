@@ -28,6 +28,8 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
+from blowout_marker import mark
+
 HERE = Path(__file__).resolve().parent
 STYLE = HERE.parents[3] / "paper" / "_lib" / "trinity.mplstyle"  # parents[3]=repo root
 if STYLE.exists():
@@ -92,11 +94,17 @@ def main():
         ae.set_ylabel(r"$E_b$  [erg]", fontsize=9); ae.set_yscale("log")
         ap.set_ylabel(r"$P_b$", fontsize=9); ap.set_yscale("log")
 
-        # mark the legacy crossing time on every panel for alignment
-        for ax in (ad, abd, ae, ap):
+        # mark the legacy crossing time on every panel for alignment, plus the
+        # per-config blowout (grey, dash-dot) -- freeze the windowed xlim first so
+        # an out-of-window blowout line can't auto-expand the early-dip view.
+        # Label the blowout once, on this row's first panel.
+        for j, ax in enumerate((ad, abd, ae, ap)):
             ax.set_xscale("log")
             if tcross:
                 ax.axvline(tcross, color=LEG, ls=":", lw=0.8, alpha=0.7)
+            xl = ax.get_xlim()
+            mark(ax, cfg, color="0.25", label=(i == 0 and j == 0))
+            ax.set_xlim(xl)
 
         if i == 0:
             ad.legend(fontsize=8, loc="lower left")

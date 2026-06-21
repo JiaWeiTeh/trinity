@@ -25,7 +25,7 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 from harvest_h0 import harvest  # noqa: E402
 
-STYLE = HERE.parents[2] / "paper" / "_lib" / "trinity.mplstyle"
+STYLE = HERE.parents[3] / "paper" / "_lib" / "trinity.mplstyle"
 if STYLE.exists():
     plt.style.use(str(STYLE))
 plt.rcParams["text.usetex"] = False

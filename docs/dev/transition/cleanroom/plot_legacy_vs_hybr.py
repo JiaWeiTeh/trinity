@@ -22,6 +22,8 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
+from blowout_marker import mark
+
 HERE = Path(__file__).resolve().parent
 STYLE = HERE.parents[3] / "paper" / "_lib" / "trinity.mplstyle"  # parents[3]=repo root
 if STYLE.exists():
@@ -81,8 +83,16 @@ def main():
         T0h = hyb[min(range(len(hyb)), key=lambda k: abs(hyb[k]["t"] - (tcross or 0.1)))]["T0"]
         ab.text(0.97, 0.95, f"T0@cross  leg {T0l:.1e}\n        hybr {T0h:.1e} K  (same order)",
                 transform=ab.transAxes, ha="right", va="top", fontsize=6.8, color="0.3")
-        for ax in axes[i]:
+        # per-config blowout on every (time-axis) panel of this row; grey so it
+        # reads against the legacy/hybr colours. Label on this row's first panel.
+        # NB: window is the early dip (thi=tcross*4) -- blowout for pl2_steep may
+        # fall outside it and simply not show, which is itself informative.
+        # Freeze the windowed xlim first so an out-of-window line can't auto-expand it.
+        for j, ax in enumerate(axes[i]):
             ax.set_xscale("log")
+            xl = ax.get_xlim()
+            mark(ax, cfg, color="0.25", label=(i == 0 and j == 0))
+            ax.set_xlim(xl)
         if i == 0:
             ar.legend(fontsize=8, loc="upper right")
             ar.set_title("cooling ratio: legacy crosses 0.05, hybr recovers", fontsize=9)

@@ -29,7 +29,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 HERE = Path(__file__).resolve().parent
-STYLE = HERE.parents[2] / "paper" / "_lib" / "trinity.mplstyle"
+STYLE = HERE.parents[3] / "paper" / "_lib" / "trinity.mplstyle"
 if STYLE.exists():
     plt.style.use(str(STYLE))
 plt.rcParams["text.usetex"] = False

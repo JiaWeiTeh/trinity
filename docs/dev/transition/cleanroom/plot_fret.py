@@ -20,8 +20,10 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
+from blowout_marker import mark
+
 HERE = Path(__file__).resolve().parent
-STYLE = HERE.parents[2] / "paper" / "_lib" / "trinity.mplstyle"
+STYLE = HERE.parents[3] / "paper" / "_lib" / "trinity.mplstyle"
 if STYLE.exists():
     plt.style.use(str(STYLE))
 plt.rcParams["text.usetex"] = False  # no LaTeX in this container
@@ -58,7 +60,10 @@ def main():
         t, f, ph = load(p)
         if not t:
             continue
-        ax.plot(t, f, color=WONG[i % len(WONG)], lw=1.6, label=f"{name}  (end {f[-1]:.2f})")
+        c = WONG[i % len(WONG)]
+        ax.plot(t, f, color=c, lw=1.6, label=f"{name}  (end {f[-1]:.2f})")
+        # blowout (R2 exits rCloud) in this config's colour; label only the first plotted run
+        mark(ax, name, color=c, label=(n == 0))
         n += 1
 
     ax.set_yscale("log")

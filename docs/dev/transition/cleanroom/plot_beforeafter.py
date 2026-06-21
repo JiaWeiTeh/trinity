@@ -27,9 +27,11 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
+from blowout_marker import mark
+
 HERE = Path(__file__).resolve().parent
 DATA = HERE / "data"
-STYLE = HERE.parents[2] / "paper" / "_lib" / "trinity.mplstyle"
+STYLE = HERE.parents[3] / "paper" / "_lib" / "trinity.mplstyle"
 if STYLE.exists():
     plt.style.use(str(STYLE))
 plt.rcParams["text.usetex"] = False
@@ -73,6 +75,10 @@ def main():
         ta, ra = ratio(DATA / f"c0_{name}_h0.csv")
         if ta:
             axA.plot(ta, ra, color=col, lw=1.4)
+        # per-config blowout (shell exits cloud), each in its own curve colour;
+        # label on AFTER panel only (the representative axis for this figure)
+        mark(axA, name, color=col, label=(i == 0))
+        mark(axB, name, color=col, label=False)
         # BEFORE (legacy) if present
         leg = DATA / f"c0_{name}_legacy.csv"
         if leg.exists():

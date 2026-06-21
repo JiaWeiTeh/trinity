@@ -582,6 +582,29 @@ belong in the cooling-balance <i>ratio</i> (§7.6), but the correct, <b>regime-s
 PdV-inclusive \(E_b\)-peak: it fires immediately for the \(5e9\) cluster (PdV-driven, the principled fix for the crash)
 and <i>never</i> for typical clouds (\(E_b\) keeps growing &mdash; which is precisely the stall, and exposes that the
 missing physics there is cooling). One criterion, both ends.</div>
+
+<h3>7.8&nbsp; Does hitting the cloud edge (blowout) drive the dip recovery?</h3>
+<p>Every time-axis figure now carries a per-config <b>blowout</b> line (dash-dot, in the config's own colour) at the
+epoch where \(R_2\) first exceeds \(r_{\text{cloud}}\) &mdash; the shell exiting the cloud into the low-density
+ambient. \(r_{\text{cloud}}\) is <i>reconstructed</i> from each config's <code>.param</code>
+(\(m_{\text{cloud}}\), sfe, profile) through TRINITY's own <code>validate_gmc</code> (it is not in the snapshots),
+so the line sits at the sim's true blowout epoch. The hypothesis: maybe blowout is what recovers the dip.</p>
+<p><b>It does &mdash; for the compact flat clouds.</b> For small_dense, simple_cluster and midrange the blowout line
+lands essentially <i>on</i> the dip minimum (blowout leads the ratio-min by ~10%: 0.012 vs 0.015, 0.090 vs 0.098,
+0.392 vs 0.432 Myr). For a flat cloud the interior density holds ~constant out to \(r_{\text{cloud}}\), so
+\(L_{\text{loss}}\) stays high until the shell crosses the edge &mdash; then \(n\) drops to ambient, \(n^2\Lambda\)
+collapses, and the ratio recovers. So for these the §7.2 emission-measure turnover is, specifically, <b>the shell
+crossing \(r_{\text{cloud}}\)</b>, not merely smooth dilution. <b>But not for the steep / BE / diffuse clouds:</b> the
+dip recovers <i>well before</i> blowout (pl2_steep 0.037 vs 0.840; be_sphere 0.556 vs 0.856; large_diffuse before its
+3.66) &mdash; their density falls off <i>within</i> the cloud (the \(r^{-2}\) profile, or the large bubble diluting
+long before the far edge), so in-cloud dilution collapses \(L_{\text{loss}}\) first. And the late \(\sim\!3\) Myr SN
+surge is <b>not</b> blowout (it is the feedback event of §4).</p>
+<div class="box find"><div class="lab">verdict on the blowout&ndash;dip hypothesis</div>Partly right, and physically
+clean: <b>for compact flat clouds the dip recovery <i>is</i> the blowout</b> (shell hits the cloud edge → density
+drops → cooling collapses); for steep/BE/diffuse profiles in-cloud dilution gets there first; the late SN surge is
+feedback, not geometry. This also connects to §5: blowout is not only the lone <i>scalar transition</i> that fires
+&mdash; for the compact-flat regime it is the very event that ends the cooling episode. (See the dash-dot lines on
+<code>f0_pathology</code>, <code>dip_mechanism</code>, <code>dip_drivers</code>.)</div>
 """
 
 SEC_REPRO = r"""
@@ -592,6 +615,7 @@ without re-running the (hours-long) hybr sims. Each figure is a pure read of a c
 <tr><td><code>c0_consistency.py</code></td><td>substrate certification harness (C0: residuals + \(f_{\text{ret}}\))</td></tr>
 <tr><td><code>harvest_h0.py</code></td><td>candidate-trigger firing-epoch harvest (the G0 deliverable)</td></tr>
 <tr><td><code>mixcool_whatif.py</code></td><td>offline mixing-layer (\(\theta\)) calibration for the root fix</td></tr>
+<tr><td><code>blowout_marker.py</code></td><td>reconstructs \(r_{\text{cloud}}\) per config from the <code>.param</code> via TRINITY <code>validate_gmc</code> (not hardcoded) &amp; draws the blowout lines on the time-axis figures</td></tr>
 <tr><td><code>data/c0_*_st6.csv</code> &middot; <code>data/c0_*_h0.csv</code> &middot; <code>data/c0_*_legacy.csv</code> &middot; <code>data/surge_coincidence.csv</code></td><td>per-config hybr captures, legacy (BEFORE) captures, + the surge-coincidence table</td></tr>
 <tr><td><code>plot_{fret,f0path,beta,surge,phaseportrait,dipdrivers,g0,blowout,mixcool,cert,dipmechanism,beforeafter,legacy_vs_hybr,legacy_vs_hybr_extra,pdv,pdv_massspectrum,dip_causalorder}.py</code> &rarr; <code>figures/*.png</code></td><td>the seventeen figures above (each a pure read of a CSV)</td></tr>
 <tr><td><code>PLAN.md</code> &middot; <code>FINDINGS.md</code></td><td>the living plan / pre-registration &amp; the consolidated write-up</td></tr>
