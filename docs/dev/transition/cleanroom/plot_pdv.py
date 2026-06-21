@@ -65,9 +65,9 @@ def main():
     t = [x["t"] for x in d]
     cool = [x["cool"] for x in d]; work = [x["work"] for x in d]; net = [x["net"] for x in d]
     axA.stackplot(t, cool, work, [max(n, 0) for n in net],
-                  labels=[r"$L_{\rm loss}/L_{\rm gain}$ (radiated, ~50%)",
+                  labels=[r"$L_{\rm loss}/L_{\rm gain}$ (radiated, ~20%)",
                           r"PdV$/L_{\rm gain}$ (work on shell, ~45%)",
-                          r"net $\dot E_b/L_{\rm gain}$ (Eb growth, ~5%)"],
+                          r"net $\dot E_b/L_{\rm gain}$ (Eb growth, ~35%)"],
                   colors=["#D55E00", "#0072B2", "#009E73"], alpha=0.85)
     axA.set_xscale("log"); axA.set_ylim(0, 1.05); axA.set_xlabel("t  [Myr]")
     axA.set_ylabel(r"fraction of $L_{\rm gain}$")

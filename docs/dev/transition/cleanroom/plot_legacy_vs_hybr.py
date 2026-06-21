@@ -79,7 +79,7 @@ def main():
         ab.set_ylabel(r"$\beta$ (clamp [0,1] shaded)", fontsize=8.5)
         T0l = leg[min(range(len(leg)), key=lambda k: abs(leg[k]["t"] - (tcross or 0.1)))]["T0"]
         T0h = hyb[min(range(len(hyb)), key=lambda k: abs(hyb[k]["t"] - (tcross or 0.1)))]["T0"]
-        ab.text(0.97, 0.95, f"T0@cross  leg {T0l:.1e}\n        hybr {T0h:.1e} K  (≈ same)",
+        ab.text(0.97, 0.95, f"T0@cross  leg {T0l:.1e}\n        hybr {T0h:.1e} K  (same order)",
                 transform=ab.transAxes, ha="right", va="top", fontsize=6.8, color="0.3")
         for ax in axes[i]:
             ax.set_xscale("log")
@@ -90,7 +90,7 @@ def main():
             ab.set_title(r"$\beta$: legacy clamped [0,1], hybr unbounded → +", fontsize=9)
     for ax in axes[-1]:
         ax.set_xlabel("t  [Myr]")
-    fig.suptitle("What changed, legacy → hybr: same T0, but the β-clamp drives the divergence "
+    fig.suptitle("What changed, legacy → hybr: comparable T0, but the β-clamp drives the divergence "
                  "(legacy ratio→crossing, hybr ratio→recovery)", fontsize=11)
     fig.tight_layout(rect=(0, 0, 1, 0.98))
     out = HERE / "figures"; out.mkdir(exist_ok=True)

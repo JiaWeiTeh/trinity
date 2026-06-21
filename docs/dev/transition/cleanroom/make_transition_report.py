@@ -46,6 +46,8 @@ FIGURES = {
     "__FIG_LEGHYBR__": ("legacy_vs_hybr.png", "legacy vs hybr through the dip: ratio, Lloss, beta, three configs"),
     "__FIG_PDV__": ("pdv_trigger.png", "input partition (cooling/work/net) and F0 vs F0+PdV trigger ratios"),
     "__FIG_PDVMASS__": ("pdv_massspectrum.png", "Eb collapse for a 5e9 cluster and max PdV/Lmech per config"),
+    "__FIG_LEGHYBREXTRA__": ("legacy_vs_hybr_extra.png", "legacy vs hybr: delta, beta+delta, Eb, Pb through the dip"),
+    "__FIG_CAUSAL__": ("dip_causalorder.png", "causal ordering of the dip turnovers: v2, Lloss, ratio, Pb, T0"),
 }
 
 
@@ -119,8 +121,8 @@ the root fix. Verified 2026-06-20; all artifacts committed under
 
 <div class="tldr">
 <p style="margin:0"><b>TL;DR.</b> Under the default solver <code>betadelta_solver=hybr</code>, every run stalls
-in the implicit energy phase and never reaches momentum (<b>0/6</b> configs transition; legacy reached it
-6/6). The hand-off fires on a single criterion, \((L_{\text{gain}}-L_{\text{loss}})/L_{\text{gain}} < 0.05\),
+in the implicit energy phase and never reaches momentum (<b>0/6</b> configs transition; legacy reaches it
+5/6 &mdash; large_diffuse only near ~6 Myr). The hand-off fires on a single criterion, \((L_{\text{gain}}-L_{\text{loss}})/L_{\text{gain}} < 0.05\),
 which never trips. We first <b>certified the substrate</b> (the hybr solver + the \(\beta,\delta,P_b,E_b\)
 machinery the trigger reads) with an independent gate &mdash; it is <b>sound</b>, so hybr exposed real
 behaviour, not a bug. Measuring the retained-energy fraction \(f_{\text{ret}}=E_b/\!\int\!L_{\text{mech}}\,dt\)
@@ -176,15 +178,15 @@ transition &rarr; momentum. The implicit&rarr;momentum hand-off is decided by a 
 (<code>run_energy_implicit_phase.py:1095</code>): switch once radiative cooling has nearly caught up with
 the <i>instantaneous</i> mechanical power,
 \[ \frac{L_{\text{gain}}-L_{\text{loss}}}{L_{\text{gain}}} < 0.05 . \]
-Under the new default <code>hybr</code> solver this ratio plateaus near <b>0.5</b> and never approaches 0.05,
+Under the new default <code>hybr</code> solver this ratio plateaus at <b>0.5&ndash;0.85</b> and never approaches 0.05,
 so all six configs sit in implicit until the 15&nbsp;Myr cap &mdash; <b>0/6</b> reach transition or momentum.</p>
 <figure>__FIG_F0__<figcaption>The mechanism. <b>Top:</b> the cooling ratio (the current trigger) for all six
-configs &mdash; it lives at \(\sim\!0.5\), an order of magnitude above the 0.05 threshold (dashed), and
+configs &mdash; it lives at \(0.5\!-\!0.85\), well over an order of magnitude above the 0.05 threshold (dashed), and
 <i>jumps up</i> at the \(t\!\approx\!3\) Myr SN surge. <b>Bottom:</b> \(L_{\text{mech}}\) showing that surge.
 Pure read of <code>data/c0_*_h0.csv</code> via <code>plot_f0path.py</code>.</figcaption></figure>
 <p>The ratio's shape has <b>two distinct features with different causes</b> &mdash; we decomposed both into
 \(L_{\text{gain}}\) and \(L_{\text{loss}}\) (verified, committed). <b>An early dip</b> (\(t<1\) Myr, before any
-SN) in 5/6 configs: cooling \(L_{\text{loss}}\) <i>rises</i> 2&ndash;20&times; while \(L_{\text{gain}}\) stays
+SN) in 5/6 configs: cooling \(L_{\text{loss}}\) <i>rises</i> \(\sim\!1.7\!-\!15\times\) while \(L_{\text{gain}}\) stays
 flat (the bubble briefly becomes radiative), pulling the ratio down &mdash; the same first cooling episode the
 <i>legacy</i> solver transitioned on. Then a <b>recovery</b>: \(L_{\text{loss}}\) <i>collapses</i> (the bubble
 expands, \(n^2\Lambda\) falls) while \(L_{\text{gain}}\) is still flat &mdash; pure cooling, with supernovae
@@ -205,9 +207,10 @@ re-pressurising under a feedback surge), keeping the interior net-heating.</p>
 <div class="box over"><div class="lab">β alone vs β+δ &mdash; the right compression variable</div>A correction worth stating
 plainly (per the archived β&ndash;δ study): the structural quantity that governs the interior velocity is
 <b>not β alone, and not β+δ=0</b>. The bubble velocity ODE source term is \((\beta+\delta)/t = -t\,d\ln n/dt\),
-so <b>β+δ</b> is the compression term and its interior-inflow trigger sits at <b>β+δ ≲ −0.4</b> (−0.5 for the
-steep archive config). β&lt;0 by itself is only <i>re-pressurisation</i> (\(P_b\) rising); δ&gt;0 (T rising)
-partly cancels it. In our six, β dives to <b>−1.6</b> (re-pressurisation in 5/6), but β+δ crosses −0.4 in
+so <b>β+δ</b> is the compression term and its interior-inflow trigger sits at <b>β+δ ≲ −0.4</b> (−0.5 in the
+archive). β&lt;0 by itself is only <i>re-pressurisation</i> (\(P_b\) rising); δ&gt;0 (T rising)
+partly cancels it. In our six, β dives to <b>−2.05</b> (re-pressurisation in all six, be_sphere only marginally),
+but β+δ crosses −0.4 in
 <b>only one</b> (large_diffuse, 10 rows) &mdash; everywhere else δ offsets β and the net compression stays above
 the trigger. The archive's resulting inflow is in any case <b>&ldquo;real but cosmetic&rdquo;</b> (subsonic,
 ~10⁻⁶ of thermal), not an energy-budget term &mdash; so this corrects the <i>diagnostic framing</i>, not the
@@ -287,20 +290,20 @@ SEC_CONFIGS = r"""
 sfe range. If \(f_{\text{ret}}\) curves into the observed 0.01&ndash;0.1 band, the trigger question is
 well-posed; if it plateaus far above, the stall is an under-cooling <i>physics</i> gap.</p>
 <figure>__FIG_FRET__<figcaption>The single most important figure. All six \(f_{\text{ret}}(t)\) curves plateau
-at <b>0.25&ndash;0.40</b> &mdash; pinned near the Weaver energy-conserving value 5/11 (dashed) and <b>never
+at <b>0.25&ndash;0.40</b> &mdash; <b>below</b> the Weaver energy-conserving value 5/11≈0.45 (dashed) and <b>never
 entering</b> the observed / 3D-sim band 0.01&ndash;0.1 (shaded). Unanimous across regimes. Pure read of
 <code>data/c0_*_st6.csv</code> via <code>plot_fret.py</code>.</figcaption></figure>
 <p>The verdict holds across <i>every</i> regime, not just the easy one &mdash; including the steep
-\(r^{-2}\) crux, where \(L_{\text{loss}}\!\propto\!n^2\) collapses as the bubble expands into thin gas, giving
-it the <i>highest</i> retention (least cooling) of the span. The under-cooling is structural, not a
-one-config fluke.</p>
+\(r^{-2}\) crux, where \(L_{\text{loss}}\!\propto\!n^2\) collapses as the bubble expands into thin gas, so its
+late-time cooling is weak &mdash; yet it still under-cools like the rest (it is mid-pack in retention, not the
+extreme). The under-cooling is structural, not a one-config fluke.</p>
 <table><thead><tr><th>config</th><th>mCloud / profile</th><th>\(f_{\text{ret}}\) end</th>
 <th>\(f_{\text{ret}}\) min</th><th>in 0.01&ndash;0.1 band?</th></tr></thead><tbody>
 <tr><td>large_diffuse_lowsfe</td><td>1e7 &middot; flat</td><td>0.248</td><td>0.248</td><td class="loss">no</td></tr>
 <tr><td>be_sphere</td><td>1e6 &middot; Bonnor&ndash;Ebert</td><td>0.283</td><td>0.165</td><td class="loss">no</td></tr>
 <tr><td>midrange_pl0</td><td>1e6 &middot; flat</td><td>0.330</td><td>0.169</td><td class="loss">no</td></tr>
 <tr><td>pl2_steep <span class="tag" style="background:#e8842a">crux</span></td><td>1e6 &middot; \(r^{-2}\)</td><td>0.339</td><td>0.197</td><td class="loss">no</td></tr>
-<tr><td>small_dense_highsfe</td><td>1e4 &middot; flat</td><td>0.383</td><td>0.150</td><td class="loss">no</td></tr>
+<tr><td>small_dense_highsfe</td><td>1e4 &middot; flat</td><td>0.383</td><td>0.160</td><td class="loss">no</td></tr>
 <tr><td>simple_cluster</td><td>1e5 &middot; flat</td><td>0.397</td><td>0.150</td><td class="loss">no</td></tr>
 </tbody></table>
 <p class="small muted">Numbers read from the final / minimum <code>f_ret</code> rows of each
@@ -419,11 +422,12 @@ lone very-late crosser (~6 Myr, beyond the stop_t=2.5 window).</span></figcaptio
 <h3>7.2&nbsp; What the dip actually is: an emission-measure turnover, not a thermal trigger</h3>
 <p>We tested the obvious hypothesis &mdash; that \(L_{\text{loss}}\) rises because gas enters the efficient-cooling
 band (the \(\Lambda(T)\) peak, \(\sim\!10^5\!-\!10^6\) K) &mdash; and <b>the data refuted it.</b> \(T_0\) stays at
-<b>3&ndash;8\(\times10^6\) K through the whole dip and never enters that band</b>, so \(\Lambda\) is effectively flat.
+<b>at or above \(10^6\) K through the dip (typically 3&ndash;8\(\times10^6\); small_dense only grazes the \(10^6\) K
+band edge)</b>, so \(\Lambda\) is effectively flat.
 The dip is set purely by the <b>emission measure</b> \(n^2 V \propto (P_b/T_0)^2 R_2^3\): it <i>rises</i> because
 volume growth outruns dilution, then <i>collapses</i> because \(R_2\) expansion dilutes \(n^2\) faster than \(V\)
-grows (the log-slopes cross at the \(L_{\text{loss}}\) peak in all six configs; the EM proxy peaks within 1.3&times;
-in time of the real \(L_{\text{loss}}\) peak).</p>
+grows (the log-slopes cross at the \(L_{\text{loss}}\) peak in all six configs; the EM proxy peaks within ~1.7&times;
+in time of the real \(L_{\text{loss}}\) peak &mdash; 4/6 within 1.3&times;).</p>
 <figure>__FIG_DIPMECH__<figcaption>Through the early dip (3 representative configs): \(L_{\text{loss}}\) (orange) and
 the emission-measure proxy \(n^2V=(P_b/T_0)^2R_2^3\) (blue) rise-then-collapse together, while \(T_0\) (green, right
 axis) sits far <i>above</i> the shaded \(10^5\!-\!10^6\) K cooling-peak band the entire time. Pure read of
@@ -433,6 +437,26 @@ energy because <b>its interior stays too hot</b> (\(>\!10^6\) K, up in the weak-
 it never makes the \(\sim\!10^5\!-\!10^6\) K gas that radiates efficiently. So the fix is not &ldquo;add a loss
 term&rdquo; but &ldquo;<b>create the cool, efficiently-radiating gas</b>&rdquo; &mdash; precisely what a turbulent
 mixing layer does. The dip diagnosis and the mixing-layer root-fix are the same story from two directions.</div>
+<p><b>What turns over first?</b> A natural worry: does something in the <i>velocity</i> (or \(\dot E_b\)) change
+course first and <i>cause</i> \(L_{\text{loss}}\) to drop? We checked the turning-point order per config. The shell
+velocity <i>does</i> lead: \(v_2\) decelerates to a minimum then re-accelerates, and that minimum leads (or
+coincides with) the \(L_{\text{loss}}\)-peak / ratio-minimum in <b>4/5 early-dip configs</b> (small_dense 0.012&lt;0.015,
+simple_cluster 0.084&lt;0.098, midrange 0.392&lt;0.432). But it is <b>not causal, and \(\dot E_b\) never flips</b>:
+\(\dot E_b = L_{\text{gain}}-L_{\text{loss}}-4\pi R_2^2 v_2 P_b\) stays strongly positive through the whole dip (the
+bubble keeps gaining energy). Underneath both \(v_2\) and \(L_{\text{loss}}\), <b>\(P_b\) and \(T_0\) fall
+monotonically with no turning point</b> &mdash; neither causes the other; both track the interior
+depressurisation/dilution. β,δ peak <i>after</i> \(L_{\text{loss}}\) &mdash; a lagging readout, not the trigger.</p>
+<figure>__FIG_CAUSAL__<figcaption>Causal ordering through the dip (representative configs): normalised \(v_2\),
+\(L_{\text{loss}}\), and ratio with their turning points marked, \(P_b\)/\(T_0\) on a log right axis. \(v_2\)-min
+leads the \(L_{\text{loss}}\)-peak, but \(P_b\),\(T_0\) decline monotonically &mdash; the common driver. Pure read of
+<code>data/c0_*_h0.csv</code> via <code>plot_dip_causalorder.py</code>.</figcaption></figure>
+<div class="box over"><div class="lab">units &amp; formula audit &mdash; clean</div>Because a wrong unit or formula could
+fake all of this, we audited the source against the registry units (<code>trinity/_input/registry.py</code>). No bug:
+the velocity-ODE source \((\beta+\delta)/t\) is dimensionally \([1/\text{Myr}]\) (correctly scales a velocity,
+<code>bubble_luminosity.py:411</code>); the work term \(4\pi R_2^2 v_2 P_b\) carries \(L_{\text{mech}}\) units
+(\(M_\odot\,\text{pc}^2/\text{Myr}^3\)), so \(L_{\text{gain}}-L_{\text{loss}}-\dot W\) is unit-homogeneous;
+<code>cool_beta_to_Ebdot_pure</code>, <code>bubble_E2P</code> (its cgs detour cancels to machine precision), and
+<code>get_leak_luminosity</code> all check term-by-term. The dip is real physics, not a unit slip.</div>
 
 <h3>7.3&nbsp; The WARPFIELD criterion is our current trigger in disguise</h3>
 <p>A WARPFIELD-style switch \(\log_{10}L_{\text{mech}}-\log_{10}L_{\text{cool}}<0.05\) (i.e.
@@ -472,7 +496,8 @@ reducing to \(\theta L_{\text{mech}}\) only in the efficient limit.</div>
 
 <h3>7.5&nbsp; What actually changed legacy&rarr;hybr: the β-clamp, not the temperature</h3>
 <p>Running the dip diagnostic on the <i>legacy</i> runs and overlaying them on hybr isolates the difference. At
-<b>matched times the interior temperature \(T_0\) is ~identical</b> in both (4&ndash;5\(\times10^6\) K) &mdash; the
+<b>matched times the interior temperature \(T_0\) is comparable</b> in both (same order, \(\sim\!3\!-\!6\times10^6\) K
+&mdash; within ~20% for small_dense and simple_cluster, ~2\(\times\) for pl2_steep) &mdash; the
 temperature is <b>not</b> what changed. The difference is entirely in <b>β</b>: legacy clamps
 \(\beta\!\in\![0,1]\), which forces a structure that keeps \(L_{\text{loss}}\) high so the ratio is driven
 monotonically down to its crossing; hybr is unbounded and β swings to <b>+2…+4</b> right at the dip, the structure
@@ -481,13 +506,23 @@ monotonically down to its crossing; hybr is unbounded and β swings to <b>+2…+
 crossers. <b>Left:</b> cooling ratio &mdash; legacy crosses 0.05 (marked) and transitions; hybr recovers.
 <b>Middle:</b> \(L_{\text{loss}}\) &mdash; legacy keeps cooling, hybr's collapses out of the dip. <b>Right:</b>
 β &mdash; legacy pinned in the shaded [0,1] clamp box, hybr escapes upward; the \(T_0\)-at-crossing annotation
-confirms the two temperatures agree. Pure read of <code>data/c0_*_legacy.csv</code> + <code>data/c0_*_h0.csv</code>
-via <code>plot_legacy_vs_hybr.py</code>.</figcaption></figure>
+shows the two temperatures are the same order (within ~2&times;). Pure read of <code>data/c0_*_legacy.csv</code>
++ <code>data/c0_*_h0.csv</code> via <code>plot_legacy_vs_hybr.py</code>.</figcaption></figure>
+<p>The companion panels (δ, β+δ, \(E_b\), \(P_b\)) pin the discriminator more sharply: δ plunges negative in
+<i>both</i> solvers (so δ alone isn't it), but <b>β+δ</b> is decisive &mdash; under legacy it dips <b>below 0</b>
+(to ~−0.5 in pl2_steep, crossing the −0.4 line) while under hybr it stays <b>strictly positive</b> (min ~0.07&ndash;0.69).
+Lifting the β-clamp lets β+δ re-sum positive, \(E_b\) stays supported (hybr retains ~2&times; more out of the dip),
+and \(P_b\) takes a sharper but <i>recoverable</i> excursion. The cure direction made visible: keep β+δ positive
+(don't clamp β) and \(E_b\) is sustained.</p>
+<figure>__FIG_LEGHYBREXTRA__<figcaption>Companion to the above: legacy (blue, solid) vs hybr (orange, dashed) through
+the dip for δ, β+δ (with the −0.4 line), \(E_b\), and \(P_b\), same three configs. The β+δ column is the
+discriminator &mdash; legacy dips below 0, hybr stays positive. Pure read of <code>data/c0_*_legacy.csv</code> +
+<code>data/c0_*_h0.csv</code> via <code>plot_legacy_vs_hybr_extra.py</code>.</figcaption></figure>
 <div class="box find"><div class="lab">so the BEFORE/AFTER is a solver-root difference, not a cooling-physics one</div>
 The C0 certification established hybr finds the <i>true</i> root; legacy, when the true root leaves \([0,1]\), is
 pinned to the constraint <i>edge</i>. So legacy's &ldquo;transition&rdquo; was a <b>consequence of the β-clamp</b>
 (a constrained edge-root that keeps \(L_{\text{loss}}\) high), not genuine extra cooling &mdash; the interior is
-equally hot in both. This closes the loop with §7.1&ndash;7.2: the stall is what the <i>correct</i> root does, and
+comparably hot in both (same order). This closes the loop with §7.1&ndash;7.2: the stall is what the <i>correct</i> root does, and
 the old trigger fired only because the caged solver couldn't reach it.</div>
 
 <h3>7.6&nbsp; Why not put the PdV work term into the trigger?</h3>
@@ -506,8 +541,8 @@ events. And \(\dot W\) is <i>largest when the bubble is healthiest</i> (high \(R
 driving), so the PdV-inclusive ratio is <i>lowest</i> exactly when the bubble is most energy-driven &mdash; firing
 there is backwards.</p>
 <figure>__FIG_PDV__<figcaption><b>Left:</b> where the input goes (simple_cluster) &mdash; \(L_{\text{gain}}\) splits
-into radiated \(L_{\text{loss}}\) (~50%), expansion <b>work</b> \(\dot W\) (~45%), and a small net \(\dot E_b\)
-(~5%). Nearly half the input is work, not radiation. <b>Right:</b> F0 (solid, no PdV) vs F0+PdV (dashed
+into radiated \(L_{\text{loss}}\) (~20%), expansion <b>work</b> \(\dot W\) (~45%), and a net \(\dot E_b\)
+(~35%). Nearly half the input is work &mdash; more than is radiated. <b>Right:</b> F0 (solid, no PdV) vs F0+PdV (dashed
 \(=\dot E_b/L_{\text{gain}}\)) for all six: subtracting \(\dot W\) pulls the ratio ~0.5&rarr;0.05&ndash;0.15
 (<i>nearly</i> firing) but it still never crosses 0.05 in 5/6 &mdash; it is tracking the \(E_b\)-peak, which the
 bubble never reaches. Pure read of <code>data/c0_*_h0.csv</code> via <code>plot_pdv.py</code>.</figcaption></figure>
@@ -558,7 +593,7 @@ without re-running the (hours-long) hybr sims. Each figure is a pure read of a c
 <tr><td><code>harvest_h0.py</code></td><td>candidate-trigger firing-epoch harvest (the G0 deliverable)</td></tr>
 <tr><td><code>mixcool_whatif.py</code></td><td>offline mixing-layer (\(\theta\)) calibration for the root fix</td></tr>
 <tr><td><code>data/c0_*_st6.csv</code> &middot; <code>data/c0_*_h0.csv</code> &middot; <code>data/c0_*_legacy.csv</code> &middot; <code>data/surge_coincidence.csv</code></td><td>per-config hybr captures, legacy (BEFORE) captures, + the surge-coincidence table</td></tr>
-<tr><td><code>plot_{fret,f0path,beta,surge,phaseportrait,dipdrivers,g0,blowout,mixcool,cert,dipmechanism,beforeafter,legacy_vs_hybr,pdv,pdv_massspectrum}.py</code> &rarr; <code>figures/*.png</code></td><td>the fifteen figures above (each a pure read of a CSV)</td></tr>
+<tr><td><code>plot_{fret,f0path,beta,surge,phaseportrait,dipdrivers,g0,blowout,mixcool,cert,dipmechanism,beforeafter,legacy_vs_hybr,legacy_vs_hybr_extra,pdv,pdv_massspectrum,dip_causalorder}.py</code> &rarr; <code>figures/*.png</code></td><td>the seventeen figures above (each a pure read of a CSV)</td></tr>
 <tr><td><code>PLAN.md</code> &middot; <code>FINDINGS.md</code></td><td>the living plan / pre-registration &amp; the consolidated write-up</td></tr>
 </tbody></table>
 <p class="small muted">Rebuild this report:
