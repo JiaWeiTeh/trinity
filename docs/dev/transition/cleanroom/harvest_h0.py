@@ -14,7 +14,12 @@ Families (PLAN.md S5):
   F4  blowout (geometric): R2 > rCloud
 Oracle: Eb-peak = first t with (Lgain - Lloss - 4*pi*R2^2*v2*Pb) <= 0  [and argmax(Eb)].
 
-    python harvest_h0.py docs/dev/transition/cleanroom/data/c0_*_st6.csv
+    python harvest_h0.py docs/dev/transition/cleanroom/data/c0_*_h0.csv
+
+SOURCE OF TRUTH: the trigger/cooling harvest REQUIRES c0_*_h0.csv -- only those have
+bubble_Lgain (== Lmech_total, verified), bubble_Lloss, and the F_* force columns. The
+c0_*_st6.csv files are the C0/f_ret captures and DO NOT carry bubble_Lloss, so running
+this on st6 would silently treat Lloss=0 (garbage). See data/README.md.
 """
 from __future__ import annotations
 
@@ -116,7 +121,7 @@ def _fmt(t):
 
 
 def main():
-    paths = sorted(sys.argv[1:] or glob.glob(str(HERE / "data" / "c0_*_st6.csv")))
+    paths = sorted(sys.argv[1:] or glob.glob(str(HERE / "data" / "c0_*_h0.csv")))
     res = [harvest(p) for p in paths]
     print(f"{'config':22s} {'Eb*(0)':>7s} {'Eb*(max)':>8s} {'F0':>6s} "
           f"{'F1.25':>6s} {'F2.k1':>6s} {'F3':>6s} {'F4blow':>7s} {'rCloud':>7s}")
