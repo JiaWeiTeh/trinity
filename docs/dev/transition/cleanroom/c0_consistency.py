@@ -204,8 +204,47 @@ def summarize(rows: list[dict], provenance: str) -> None:
               f"min={s['min']:.3g} | end {in_band}")
 
 
+class _FrozenInterp:
+    """Wraps an SPS interpolator so it returns its t_freeze value for ANY input t,
+    while preserving .x (update_feedback uses it for the SPS time-range check). Freezing
+    at the interpolator SOURCE means EVERY consumer sees the same constant -- both
+    get_current_sps_feedback AND the paths that read params['sps_f'] directly
+    (get_InitPhaseParam:88, the snapshot logger), which a get_current_sps_feedback
+    rebind alone misses."""
+    __slots__ = ("_v", "x")
+
+    def __init__(self, f, tf):
+        self._v = f(tf)                  # 0-d array at the freeze time (supports [()])
+        self.x = getattr(f, "x", None)
+
+    def __call__(self, t):
+        return self._v
+
+
+def _freeze_feedback(t_freeze: float) -> None:
+    """Freeze ALL stellar feedback to its t_freeze value for the whole run, by replacing
+    the SPS interpolators with constant ones at their source -- read_sps.get_interpolation,
+    which main() calls once during setup (main.py:148) BEFORE any phase runs. Every
+    SPSFeedback field (Lmech_W/SN/total, pdot_*, v_mech_total, Qi/Li/Ln/Lbol) becomes a
+    true constant; derived rates (v_mech = 2L/pdot) stay self-consistent, and the
+    finite-difference pdotdot_total -> 0 (correct for constant feedback). Cumulative
+    budgets (E_inj, shell mass, momentum) keep integrating the now-constant rates
+    downstream. This is the robust freeze: a get_current_sps_feedback monkeypatch only
+    covered SOME paths (others read params['sps_f'] directly), so the sim still saw real
+    feedback -- verified by the smoke's bubble_Lgain being real, not frozen."""
+    import trinity.sps.read_sps as _rs
+    _orig = _rs.get_interpolation
+
+    def frozen_get_interpolation(sps_data, _tf=t_freeze, _o=_orig):
+        d = _o(sps_data)
+        return {k: (_FrozenInterp(f, _tf) if callable(f) and hasattr(f, "x") else f)
+                for k, f in d.items()}
+
+    _rs.get_interpolation = frozen_get_interpolation
+
+
 def run_config(param_path: str, stop_t: float | None, refine: float = 1.0,
-               solver: str = "hybr") -> str:
+               solver: str = "hybr", freeze_feedback_at: float | None = None) -> str:
     # The harness calls start_expansion() directly (not via run.py), which trips
     # main.py's DEBUG-logging fallback -- per-RHS DEBUG records are a measured
     # hot-path cost over a full run (registry log_level note). Install an INFO
@@ -237,6 +276,10 @@ def run_config(param_path: str, stop_t: float | None, refine: float = 1.0,
         ll.value = "INFO"
     if stop_t is not None:
         params["stop_t"].value = stop_t
+    # Opt-in: freeze stellar feedback to its t_freeze value for the whole run.
+    # NO-OP when freeze_feedback_at is None -- behaviour is byte-identical to before.
+    if freeze_feedback_at is not None:
+        _freeze_feedback(freeze_feedback_at)
     try:
         trinity_main.start_expansion(params)
     except SystemExit:
@@ -257,13 +300,18 @@ def main() -> None:
     ap.add_argument("--solver", default="hybr", choices=["hybr", "legacy"],
                     help="betadelta solver (default hybr; 'legacy' for the BEFORE comparison)")
     ap.add_argument("--out", default=None, help="write full per-row CSV here")
+    ap.add_argument("--freeze-feedback-at", type=float, default=None, metavar="MYR",
+                    help="freeze ALL stellar feedback to its value at this time [Myr], held "
+                         "constant for the whole run (no WR/SN surges). Default: off (no-op).")
     args = ap.parse_args()
 
     if args.target.endswith(".jsonl"):
         jsonl, prov = args.target, f"snapshots {args.target} (provenance not certified)"
     else:
-        jsonl = run_config(args.target, args.stop_t, args.refine, args.solver)
-        prov = f"ran {args.target} ({args.solver}, stop_t={args.stop_t}, refine={args.refine}) @ {_git_sha()}"
+        jsonl = run_config(args.target, args.stop_t, args.refine, args.solver,
+                           args.freeze_feedback_at)
+        frz = f", freeze_feedback_at={args.freeze_feedback_at}" if args.freeze_feedback_at is not None else ""
+        prov = f"ran {args.target} ({args.solver}, stop_t={args.stop_t}, refine={args.refine}{frz}) @ {_git_sha()}"
 
     rows = annotate(load_rows(jsonl))
     summarize(rows, prov)
