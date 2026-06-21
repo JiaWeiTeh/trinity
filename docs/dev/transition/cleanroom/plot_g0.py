@@ -26,11 +26,11 @@ plt.rcParams["text.usetex"] = False
 # family -> (marker, color, label)
 FAM = {
     "eb_zero": ("*", "#000000", "Eb-peak (oracle)"),
-    "f0":      ("o", "#999999", "F0 rate-ratio (current)"),
-    "f1":      ("s", "#56B4E9", "F1 cumulative"),
-    "f2":      ("v", "#E69F00", "F2 timescale"),
-    "f3":      ("D", "#CC79A7", "F3 force"),
-    "f4":      ("P", "#D55E00", "F4 blowout (R2>rCloud)"),
+    "f0":      ("o", "#999999", "rate-ratio (current)"),
+    "f1":      ("s", "#56B4E9", "cumulative cooling"),
+    "f2":      ("v", "#E69F00", "cooling timescale"),
+    "f3":      ("D", "#CC79A7", "force balance"),
+    "f4":      ("P", "#D55E00", "blowout (R2>rCloud)"),
 }
 
 
@@ -54,17 +54,18 @@ def main():
     ax.set_yticks(range(n)); ax.set_yticklabels(names, fontsize=8)
     ax.set_ylim(-0.6, n - 0.4); ax.invert_yaxis()
     ax.set_xlabel("time  [Myr]   (grey bar = full run; markers = candidate firing epoch)")
-    ax.set_title("G0 divergence: only F4 (blowout) fires at a physical epoch", fontsize=10)
+    ax.set_title("Only the blowout trigger fires at a physical epoch", fontsize=10)
     handles = [plt.Line2D([0], [0], marker=mk, color="w", markerfacecolor=col,
                           markersize=9, label=lab) for k, (mk, col, lab) in FAM.items()]
     ax.legend(handles=handles, fontsize=7.5, ncol=3, loc="upper center",
               bbox_to_anchor=(0.5, -0.18), framealpha=0.9)
     # note the "never" families per config
+    NEVER_LABEL = {"f0": "rate-ratio", "f1": "cumulative", "f3": "force"}
     for y, a in enumerate(res):
-        nev = [k.upper() for k in ("f0", "f1", "f3")
+        nev = [NEVER_LABEL[k] for k in ("f0", "f1", "f3")
                if not isinstance(a[k][0.25] if k == "f1" else a[k], float)]
         if nev:
-            ax.text(a["t_end"] + 0.1, y, "never: " + ",".join(nev), fontsize=6,
+            ax.text(a["t_end"] + 0.1, y, "never fire: " + ", ".join(nev), fontsize=6,
                     va="center", color="0.5")
     fig.tight_layout()
     out = HERE / "figures"; out.mkdir(exist_ok=True)

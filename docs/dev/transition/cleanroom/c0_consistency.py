@@ -204,7 +204,8 @@ def summarize(rows: list[dict], provenance: str) -> None:
               f"min={s['min']:.3g} | end {in_band}")
 
 
-def run_config(param_path: str, stop_t: float | None, refine: float = 1.0) -> str:
+def run_config(param_path: str, stop_t: float | None, refine: float = 1.0,
+               solver: str = "hybr") -> str:
     # The harness calls start_expansion() directly (not via run.py), which trips
     # main.py's DEBUG-logging fallback -- per-RHS DEBUG records are a measured
     # hot-path cost over a full run (registry log_level note). Install an INFO
@@ -230,7 +231,7 @@ def run_config(param_path: str, stop_t: float | None, refine: float = 1.0) -> st
     params = read_param.read_param(param_path)
     out_dir = tempfile.mkdtemp(prefix="c0_")
     params["path2output"].value = out_dir
-    params["betadelta_solver"].value = "hybr"
+    params["betadelta_solver"].value = solver
     ll = params.get("log_level", None)
     if ll is not None and hasattr(ll, "value"):
         ll.value = "INFO"
@@ -253,14 +254,16 @@ def main() -> None:
     ap.add_argument("--stop-t", type=float, default=None)
     ap.add_argument("--refine", type=float, default=1.0,
                     help="shrink adaptive-timestep scales by this factor (C0.2 refinement check)")
+    ap.add_argument("--solver", default="hybr", choices=["hybr", "legacy"],
+                    help="betadelta solver (default hybr; 'legacy' for the BEFORE comparison)")
     ap.add_argument("--out", default=None, help="write full per-row CSV here")
     args = ap.parse_args()
 
     if args.target.endswith(".jsonl"):
         jsonl, prov = args.target, f"snapshots {args.target} (provenance not certified)"
     else:
-        jsonl = run_config(args.target, args.stop_t, args.refine)
-        prov = f"ran {args.target} (hybr, stop_t={args.stop_t}, refine={args.refine}) @ {_git_sha()}"
+        jsonl = run_config(args.target, args.stop_t, args.refine, args.solver)
+        prov = f"ran {args.target} ({args.solver}, stop_t={args.stop_t}, refine={args.refine}) @ {_git_sha()}"
 
     rows = annotate(load_rows(jsonl))
     summarize(rows, prov)

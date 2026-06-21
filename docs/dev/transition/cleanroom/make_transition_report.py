@@ -35,9 +35,10 @@ FIGURES = {
     "__FIG_BETA__": ("beta_repressurization.png", "beta(t) per config with negative-beta shaded over mechanical luminosity"),
     "__FIG_SURGE__": ("surge_coincidence.png", "per-config correlation of the cooling-ratio change with feedback, beta and delta"),
     "__FIG_PORTRAIT__": ("betadelta_portrait.png", "delta-beta phase portrait of all implicit rows coloured by time"),
+    "__FIG_DIP__": ("dip_drivers.png", "cooling ratio, Lgain/Lloss, and wind/SN feedback vs time, three panels"),
     "__FIG_G0__": ("g0_divergence.png", "timeline per config showing where each candidate family would fire"),
     "__FIG_FRET__": ("fret_verdict.png", "retained-energy fraction vs time for all six configs against the observed band"),
-    "__FIG_BLOW__": ("blowout_geometric.png", "F4 blowout epoch vs cloud radius, one point per config"),
+    "__FIG_BLOW__": ("blowout_geometric.png", "blowout epoch vs cloud radius, one point per config"),
     "__FIG_MIX__": ("mixcool_rootfix.png", "retained energy and cooling ratio under a theta mixing-layer sink"),
     "__FIG_CERT__": ("cert_residuals.png", "res_beta and res_T0_struct vs time for all six configs"),
 }
@@ -143,12 +144,12 @@ STEPS = [
     ("2 &middot; If the substrate is sound, why does the trigger never fire?",
      r"The bubble retains too much energy to ever balance: \(f_{\text{ret}}\) plateaus at 0.25&ndash;0.40 "
      r"and never enters the observed 0.01&ndash;0.1 band. The modelled interior <b>under-cools</b>."),
-    ("3 &middot; Is it just the metric form (the instantaneous F0 ratio)?",
-     r"No. Cumulative (F1, any \(\eta\)), timescale (F2) and force (F3) families were harvested too &mdash; "
+    ("3 &middot; Is it just the metric form (the instantaneous rate-ratio)?",
+     r"No. The cumulative-cooling (any \(\eta\)), cooling-timescale and force-balance families were harvested too &mdash; "
      r"the cumulative cooling never reaches \((1-\eta)\!\int\!L_{\text{gain}}\) either. Not a metric-form bug."),
     ("4 &middot; Then is there <i>any</i> cooling transition to trigger on?",
      r"No. \(E_b\) grows monotonically to t=6 in 5/6 configs &mdash; there is no \(E_b\)-peak to track. "
-     r"The only family that fires at a physical epoch is <b>F4 blowout</b> (\(R_2>r_{\text{cloud}}\)), "
+     r"The only family that fires at a physical epoch is <b>blowout</b> (\(R_2>r_{\text{cloud}}\)), "
      r"whose epoch is purely geometric (0.01&ndash;3.66 Myr \(\propto\) cloud size)."),
     ("5 &middot; Can we restore a cooling transition by adding the missing physics?",
      r"The magnitude is right &mdash; a mixing-layer sink \(\theta\!\approx\!0.25\) brings "
@@ -158,8 +159,8 @@ STEPS = [
 
 FLOW_OUTRO = (
     "<p><b>Conclusion:</b> substrate sound &rarr; the bubble under-cools &rarr; no cooling family ever "
-    "fires &rarr; the transition is <i>geometric, not thermal</i> &rarr; so the F0 trigger isn't "
-    "mis-tuned, it tests for an event that does not occur. Pragmatic fix = an F4 (blowout) trigger; "
+    "fires &rarr; the transition is <i>geometric, not thermal</i> &rarr; so the rate-ratio trigger isn't "
+    "mis-tuned, it tests for an event that does not occur. Pragmatic fix = a blowout trigger; "
     "root fix = the cooling physics (mixing layer), integrated into the structure solve.</p>"
 )
 
@@ -172,10 +173,23 @@ the <i>instantaneous</i> mechanical power,
 \[ \frac{L_{\text{gain}}-L_{\text{loss}}}{L_{\text{gain}}} < 0.05 . \]
 Under the new default <code>hybr</code> solver this ratio plateaus near <b>0.5</b> and never approaches 0.05,
 so all six configs sit in implicit until the 15&nbsp;Myr cap &mdash; <b>0/6</b> reach transition or momentum.</p>
-<figure>__FIG_F0__<figcaption>The mechanism. <b>Top:</b> the F0 cooling ratio for all six configs &mdash; it
-lives at \(\sim\!0.5\), an order of magnitude above the 0.05 threshold (dashed), and <i>jumps up</i> at the
-\(t\!\approx\!3\) Myr SN surge. <b>Bottom:</b> \(L_{\text{mech}}\) showing that surge. Pure read of
-<code>data/c0_*_h0.csv</code> via <code>plot_f0path.py</code>.</figcaption></figure>
+<figure>__FIG_F0__<figcaption>The mechanism. <b>Top:</b> the cooling ratio (the current trigger) for all six
+configs &mdash; it lives at \(\sim\!0.5\), an order of magnitude above the 0.05 threshold (dashed), and
+<i>jumps up</i> at the \(t\!\approx\!3\) Myr SN surge. <b>Bottom:</b> \(L_{\text{mech}}\) showing that surge.
+Pure read of <code>data/c0_*_h0.csv</code> via <code>plot_f0path.py</code>.</figcaption></figure>
+<p>The ratio's shape has <b>two distinct features with different causes</b> &mdash; we decomposed both into
+\(L_{\text{gain}}\) and \(L_{\text{loss}}\) (verified, committed). <b>An early dip</b> (\(t<1\) Myr, before any
+SN) in 5/6 configs: cooling \(L_{\text{loss}}\) <i>rises</i> 2&ndash;20&times; while \(L_{\text{gain}}\) stays
+flat (the bubble briefly becomes radiative), pulling the ratio down &mdash; the same first cooling episode the
+<i>legacy</i> solver transitioned on. Then a <b>recovery</b>: \(L_{\text{loss}}\) <i>collapses</i> (the bubble
+expands, \(n^2\Lambda\) falls) while \(L_{\text{gain}}\) is still flat &mdash; pure cooling, with supernovae
+absent (\(L_{\text{mech,SN}}\!\approx\!0\) until \(\sim\!3\) Myr). Only the <i>later</i> plateau is SN-sustained.
+So the early dip-then-surge is an \(L_{\text{loss}}\) story; the late surge is the feedback one.</p>
+<figure>__FIG_DIP__<figcaption>Decomposing the dip-then-surge. <b>(1)</b> the cooling ratio dips early then
+surges back up; <b>(2)</b> \(L_{\text{gain}}\) (solid) stays flat while \(L_{\text{loss}}\) (dashed) rises into
+the dip and collapses out of it &mdash; the surge is \(L_{\text{loss}}\) collapsing, not \(L_{\text{gain}}\)
+rising; <b>(3)</b> wind (solid) is steady and SN (dashed) only switch on at \(\sim\!3\) Myr, so the early dip is
+pre-SN. Pure read of <code>data/c0_*_h0.csv</code> via <code>plot_dipdrivers.py</code>.</figcaption></figure>
 <p>Two views of one effect. <b>(a) The metric is instantaneous:</b> every time a feedback source switches on
 (Wolf&ndash;Rayet winds, then SNe) the \(L_{\text{gain}}\) denominator spikes, so the ratio jumps
 <i>away</i> from 0.05 exactly when cooling might catch up &mdash; it tests an instantaneous numerator, not an
@@ -199,7 +213,7 @@ midrange / simple_cluster, the SN onset \(\sim\!3\) Myr for the other four). But
 and \(\delta\) both signs &mdash; there is no &ldquo;\(\beta=-0.05\)&rdquo; trigger value. Negative-\(\beta\)
 episodes do carry an <i>elevated</i> ratio (higher in \(\beta<0\) rows than \(\beta\ge0\) in 5/6 configs), so
 re-pressurisation is a <i>co-symptom</i> of the surge, not its threshold.</p>
-<figure>__FIG_SURGE__<figcaption>Per config, the step-to-step correlation of the F0 cooling-ratio change
+<figure>__FIG_SURGE__<figcaption>Per config, the step-to-step correlation of the cooling-ratio change
 \(\Delta r\) with feedback (\(\Delta L_{\text{mech}}\), blue), \(\Delta\beta\) (orange), and
 \(\Delta\delta\) (green). Blue \(>0\) and orange \(<0\) in <b>every</b> config: the surge is a feedback event
 that simultaneously re-pressurises the bubble (\(\beta\) drops). Pure read of <code>data/c0_*_h0.csv</code>
@@ -225,25 +239,25 @@ Geen+2021, Pabst+2020), treating TRINITY / WARPFIELD / Weaver as hypotheses, not
 <p>Five candidate trigger families were on the menu &mdash; <i>which fires when</i> was to be measured, not
 inherited (a prior pass had leaked verdicts, so all prior firing-epochs/rankings were quarantined and
 re-derived from scratch):</p>
-<table><thead><tr><th>id</th><th>family</th><th>criterion</th><th>idea being tested</th></tr></thead><tbody>
-<tr><td><b>F0</b> <span class="tag" style="background:#8d99ae">CURRENT</span></td><td>instantaneous rate-ratio</td><td>\((L_{\text{gain}}-L_{\text{loss}})/L_{\text{gain}} < \varepsilon\)</td><td>the production baseline</td></tr>
-<tr><td>F1</td><td>cumulative energy</td><td>\(\int\!L_{\text{loss}}\,dt / \int\!L_{\text{gain}}\,dt > 1-\eta\)</td><td>remove the instantaneous-reset artifact</td></tr>
-<tr><td>F2</td><td>timescale</td><td>\(t_{\text{cool}}/t_{\text{dyn}} < k\)</td><td>classic Mac&nbsp;Low&ndash;McCray criterion</td></tr>
-<tr><td>F3</td><td>force / continuity</td><td>\(4\pi R^2 P_b /\,(\text{surviving forces}) < O(1)\)</td><td>thermal drive becomes subdominant</td></tr>
-<tr><td><b>F4</b></td><td>blowout (geometric)</td><td>\(R_2 > r_{\text{cloud}}\)</td><td>shell escapes the cloud</td></tr>
-<tr><td>F5</td><td>mixing-flux balance</td><td>Lancaster+2021 fractal-interface cooling</td><td>the root-physics reading (no sharp 1D switch)</td></tr>
+<table><thead><tr><th>trigger</th><th>family</th><th>criterion</th><th>idea being tested</th></tr></thead><tbody>
+<tr><td><b>rate-ratio</b> <span class="tag" style="background:#8d99ae">CURRENT</span></td><td>instantaneous rate-ratio</td><td>\((L_{\text{gain}}-L_{\text{loss}})/L_{\text{gain}} < \varepsilon\)</td><td>the production baseline</td></tr>
+<tr><td>cumulative cooling</td><td>cumulative energy</td><td>\(\int\!L_{\text{loss}}\,dt / \int\!L_{\text{gain}}\,dt > 1-\eta\)</td><td>remove the instantaneous-reset artifact</td></tr>
+<tr><td>cooling timescale</td><td>timescale</td><td>\(t_{\text{cool}}/t_{\text{dyn}} < k\)</td><td>classic Mac&nbsp;Low&ndash;McCray criterion</td></tr>
+<tr><td>force balance</td><td>force / continuity</td><td>\(4\pi R^2 P_b /\,(\text{surviving forces}) < O(1)\)</td><td>thermal drive becomes subdominant</td></tr>
+<tr><td><b>blowout</b></td><td>blowout (geometric)</td><td>\(R_2 > r_{\text{cloud}}\)</td><td>shell escapes the cloud</td></tr>
+<tr><td>mixing-layer</td><td>mixing-flux balance</td><td>Lancaster+2021 fractal-interface cooling</td><td>the root-physics reading (no sharp 1D switch)</td></tr>
 </tbody></table>
 <p>Each family was harvested per implicit-phase segment across the full span and judged against an
 independent oracle that depends on no candidate and no threshold: the <b>\(E_b\)-peak</b>
 (PdV-inclusive net-energy zero crossing, \(L_{\text{gain}}-L_{\text{loss}}-4\pi R_2^2 v_2 P_b \le 0\)).</p>
-<figure>__FIG_G0__<figcaption>The result, by shape alone: only <b>F4 (blowout, +)</b> fires at a physical
-epoch. F0/F1/F3 <b>never</b> fire (annotated right); F2 (&#9660;) fires absurdly early (\(t\!\approx\!0\), an
+<figure>__FIG_G0__<figcaption>The result, by shape alone: only the <b>blowout</b> trigger (+) fires at a physical
+epoch. The rate-ratio, cumulative and force triggers <b>never</b> fire (annotated right); the cooling-timescale trigger (&#9660;) fires absurdly early (\(t\!\approx\!0\), an
 artifact); the \(E_b\)-peak oracle (&#9733;) exists in only one config. Pure read of
 <code>data/c0_*_h0.csv</code> via <code>plot_g0.py</code>.</figcaption></figure>
 <div class="box over"><div class="lab">the path was not straight (kept in the story)</div>
 A mid-run read at \(t\!\lesssim\!3\) Myr reported &ldquo;no negative \(\beta\) in any config&rdquo; &mdash;
 <b>retracted</b> once the runs passed the SN epoch, where negative-\(\beta\) re-pressurisation appears in all
-six (textbook &ldquo;don&rsquo;t trust one time-slice&rdquo;). And the appealing F1 fix &mdash; &ldquo;the
+six (textbook &ldquo;don&rsquo;t trust one time-slice&rdquo;). And the appealing cumulative-cooling fix &mdash; &ldquo;the
 problem is just the instantaneous numerator, integrate it away&rdquo; &mdash; was <b>falsified</b>: the
 cumulative ratio never fires either.</div>
 """
@@ -280,12 +294,12 @@ one-config fluke.</p>
 SEC_MEASURE = r"""
 <h2 id="measure">4 &middot; The measurements &mdash; where each family would fire</h2>
 <p>One row per config, harvested from <code>data/c0_*_h0.csv</code> (the G0 deliverable). The cooling and
-force families are flatly <code>never</code>; F2 is an artifact at \(t\!\approx\!0\); the \(E_b\)-peak oracle
-exists in only one config; and F4&rsquo;s firing epoch tracks <b>cloud size</b>, not any cooling event &mdash;
+force families are flatly <code>never</code>; the cooling-timescale trigger is an artifact at \(t\!\approx\!0\); the \(E_b\)-peak oracle
+exists in only one config; and the blowout epoch tracks <b>cloud size</b>, not any cooling event &mdash;
 spanning 0.01&nbsp;Myr (a 0.33-pc cloud) to 3.66&nbsp;Myr (an 88-pc cloud).</p>
 <table><thead><tr><th>config</th><th>\(r_{\text{cloud}}\) [pc]</th>
-<th>F0 / F1 / F3</th><th>F2 (artifact)</th><th>\(E_b\)-peak</th>
-<th><b>F4 blowout</b> [Myr]</th></tr></thead><tbody>
+<th>rate-ratio / cumulative / force</th><th>timescale (artifact)</th><th>\(E_b\)-peak</th>
+<th><b>blowout</b> [Myr]</th></tr></thead><tbody>
 <tr><td>small_dense_highsfe</td><td>0.33</td><td class="loss">never</td><td>0.00</td><td>&mdash;</td><td class="win">0.01</td></tr>
 <tr><td>simple_cluster</td><td>1.69</td><td class="loss">never</td><td>0.00</td><td>&mdash;</td><td class="win">0.09</td></tr>
 <tr><td>midrange_pl0</td><td>8.53</td><td class="loss">never</td><td>0.01</td><td>&mdash;</td><td class="win">0.39</td></tr>
@@ -296,15 +310,15 @@ spanning 0.01&nbsp;Myr (a 0.33-pc cloud) to 3.66&nbsp;Myr (an 88-pc cloud).</p>
 <p class="small muted">Firing epochs from <code>harvest_h0.py</code> over <code>data/c0_*_h0.csv</code>.
 A structural note from the same harvest: \(P_b \equiv P_{\text{HII}}\) to machine precision
 (bubble&ndash;shell pressure continuity by construction, with \(P_{\text{ram}}=0,\,F_{\text{ISM}}=0\)), so any
-pressure-balance F3 is degenerate &mdash; another reason no force criterion bites.</p>
-<figure>__FIG_BLOW__<figcaption>The one surviving transition, plotted: the F4 blowout epoch against cloud
+pressure-balance force criterion is degenerate &mdash; another reason no force criterion bites.</p>
+<figure>__FIG_BLOW__<figcaption>The one surviving transition, plotted: the blowout epoch against cloud
 radius, one point per config. It hugs a slope-1 (\(t_{\text{blowout}}\!\propto\!r_{\text{cloud}}\)) guide over
 \(2.5\) dex in size &mdash; the end of the energy phase is set by <i>geometry</i>, not by any cooling event
-(F0/F1/F3 never fire). Pure read of <code>data/c0_*_h0.csv</code> via <code>plot_blowout.py</code>.</figcaption></figure>
+(the cooling and force triggers never fire). Pure read of <code>data/c0_*_h0.csv</code> via <code>plot_blowout.py</code>.</figcaption></figure>
 <div class="box find"><div class="lab">measurement verdict (6/6, unanimous)</div>For these under-cooled bubbles
 the energy&rarr;momentum transition <b>is not a cooling / energy / force event at all</b> &mdash; no scalar
-threshold in the F0&ndash;F2 family can express it. The only physical end-of-energy-phase is
-<b>geometric blowout</b>, which is profile/size-dependent. The F0 ratio is not mis-<i>tuned</i>; it tests for
+threshold in the rate-ratio / cumulative / timescale family can express it. The only physical end-of-energy-phase is
+<b>geometric blowout</b>, which is profile/size-dependent. The rate-ratio is not mis-<i>tuned</i>; it tests for
 an event that does not occur in the hybr regime.</div>
 """
 
@@ -313,7 +327,7 @@ SEC_SOLUTION = r"""
 <p>The deliverable here is a <b>diagnosis</b>, and a deliberate <i>non-change</i> to production. Retuning the
 0.05 threshold is futile &mdash; there is no cooling-balance event in the hybr regime to tune toward.</p>
 <div class="box find"><div class="lab">recommendation</div>
-<b>Pragmatic interim</b> (if completable runs are needed now): a profile-aware <b>F4 blowout</b> transition
+<b>Pragmatic interim</b> (if completable runs are needed now): a profile-aware <b>blowout</b> transition
 (\(R_2>r_{\text{cloud}}\)) &mdash; the only candidate that fires physically (caveat: its epoch is geometric,
 near-instant for compact clouds, so consider \(R_2>k\,r_{\text{cloud}}\) or a sustained criterion).
 <b>Root fix:</b> integrate Lancaster/El-Badry mixing-layer cooling so a cooling transition exists at all.</div>
@@ -323,7 +337,7 @@ sink \(L_{\text{mix}}=\theta\,L_{\text{mech}}\) at the literature \(\theta\!\app
 <figure>__FIG_MIX__<figcaption>Root-fix sizing (static what-if on the committed CSVs). <b>Top:</b> the modified
 retained energy \(f_{\text{ret}}-\theta\) enters the observed 0.01&ndash;0.1 band near the literature
 \(\theta\!\approx\!0.25\) (dotted) for all six configs. <b>Bottom:</b> the modified minimum cooling ratio
-crosses the 0.05 F0 threshold &mdash; i.e. a cooling transition <i>would</i> now fire. The magnitude is right;
+crosses the 0.05 threshold &mdash; i.e. a cooling transition <i>would</i> now fire. The magnitude is right;
 the red note records why the naive <i>dynamical</i> version is not. Pure read of <code>data/c0_*_h0.csv</code>
 via <code>plot_mixcool.py</code>.</figcaption></figure>
 <div class="box warnbox"><div class="lab">retracted &mdash; the naive implementation does not work</div>
@@ -379,7 +393,7 @@ without re-running the (hours-long) hybr sims. Each figure is a pure read of a c
 <tr><td><code>harvest_h0.py</code></td><td>candidate-trigger firing-epoch harvest (the G0 deliverable)</td></tr>
 <tr><td><code>mixcool_whatif.py</code></td><td>offline mixing-layer (\(\theta\)) calibration for the root fix</td></tr>
 <tr><td><code>data/c0_*_st6.csv</code> &middot; <code>data/c0_*_h0.csv</code> &middot; <code>data/surge_coincidence.csv</code></td><td>per-config full-run captures + the surge-coincidence table (the evidence)</td></tr>
-<tr><td><code>plot_{fret,f0path,beta,surge,phaseportrait,g0,blowout,mixcool,cert}.py</code> &rarr; <code>figures/*.png</code></td><td>the nine figures above (each a pure read of a CSV)</td></tr>
+<tr><td><code>plot_{fret,f0path,beta,surge,phaseportrait,dipdrivers,g0,blowout,mixcool,cert}.py</code> &rarr; <code>figures/*.png</code></td><td>the ten figures above (each a pure read of a CSV)</td></tr>
 <tr><td><code>PLAN.md</code> &middot; <code>FINDINGS.md</code></td><td>the living plan / pre-registration &amp; the consolidated write-up</td></tr>
 </tbody></table>
 <p class="small muted">Rebuild this report:

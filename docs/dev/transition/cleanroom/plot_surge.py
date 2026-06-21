@@ -112,7 +112,7 @@ def main():
             label=r"corr($\Delta r,\ \Delta\delta$)")
     ax.axvline(0, color="0.3", lw=0.9)
     ax.set_yticks(list(y)); ax.set_yticklabels(names, fontsize=8.5)
-    ax.set_xlim(-1, 1); ax.set_xlabel("step-to-step correlation with the F0 cooling-ratio change  $\\Delta r$")
+    ax.set_xlim(-1, 1); ax.set_xlabel("step-to-step correlation with the cooling-ratio change  $\\Delta r$")
     ax.set_title("What the cooling-ratio surge coincides with: feedback up (+), $\\beta$ dropping (−)")
     ax.legend(fontsize=7.8, loc="upper left", framealpha=0.92)
     ax.text(0.5, -0.165, "all configs: $\\Delta r$ is positively correlated with feedback "

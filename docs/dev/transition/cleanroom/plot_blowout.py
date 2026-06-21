@@ -66,9 +66,9 @@ def main():
 
     ax.set_xscale("log"); ax.set_yscale("log")
     ax.set_xlabel(r"cloud radius  $r_{\rm cloud}$  [pc]")
-    ax.set_ylabel(r"F4 blowout epoch  ($R_2>r_{\rm cloud}$)  [Myr]")
+    ax.set_ylabel(r"blowout epoch  ($R_2>r_{\rm cloud}$)  [Myr]")
     ax.set_title("The only transition is geometric: blowout epoch tracks cloud size, not cooling")
-    ax.text(0.02, 0.97, "F0 / F1 / F3 (cooling, force) never fire in any config",
+    ax.text(0.02, 0.97, "cooling & force triggers never fire in any config",
             transform=ax.transAxes, ha="left", va="top", fontsize=8.5, color="#a33",
             bbox=dict(boxstyle="round,pad=0.3", fc="#fdeef0", ec="#f3ccd3"))
     ax.legend(fontsize=8, loc="lower right", framealpha=0.9)
