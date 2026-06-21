@@ -131,6 +131,14 @@ the SN surge.
   alone, **not** β+δ=0). β dives to −1.6 (re-pressurisation, 5/6) but β+δ crosses −0.4 in only
   large_diffuse (δ>0 offsets β); the resulting inflow is "real but cosmetic" (archive). The
   structure provides **no** transition threshold — the stall is a cooling-budget problem.
+- **PdV does not belong in the trigger** (`figures/pdv_trigger`): the expansion-work term
+  `Ẇ = Pb dV/dt = 4πR2²v Pb` is the *energy-driving mechanism* (reversible work on the shell),
+  not a radiative loss; the transition is `Lloss→Lgain` (catastrophic cooling). Adding it gives
+  `(Lgain−Lloss−Ẇ)/Lgain = normalised dEb/dt` = the **Eb-peak** criterion. Measured: `Ẇ≈0.43–0.46
+  Lgain` (~half the input is *work*), so adding it pulls the ratio ~0.5→0.05–0.15 (nearly fires)
+  but it still crosses 0.05 only in large_diffuse (@4.76 Myr, its Eb-peak); the other 5 never peak
+  (Eb grows monotonically). It swaps one non-event for another *and* mis-frames the physics — it
+  would call the bubble momentum-driven at its energetic peak, mid-drive. **Keep PdV out.**
 
 ## 4. Conclusion & recommendations
 
@@ -162,7 +170,7 @@ the SN surge.
   (BEFORE), `data/leaktest/` (leakage Cf sweep), `data/betadelta_summary.csv`, refinement CSV.
 - Figures (13): `fret_verdict`, `beta_repressurization`, `cert_residuals`, `f0_pathology`,
   `g0_divergence`, `dip_drivers`, `betadelta_portrait`, `surge_coincidence`, `blowout_geometric`,
-  `mixcool_rootfix`, `dip_mechanism`, `before_after`, `legacy_vs_hybr` — full HTML report in
-  `transition_report.html`.
+  `mixcool_rootfix`, `dip_mechanism`, `before_after`, `legacy_vs_hybr`, `pdv_trigger` — full HTML
+  report in `transition_report.html` (14 figures).
 - References (external anchors): Weaver+1977; Lancaster+2021 I/II; El-Badry+2019;
   Geen+2021; Pabst+2020; Mac Low & McCray 1988; Rahner+2017/2019 (see PLAN.md §8).

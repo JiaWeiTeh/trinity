@@ -44,6 +44,7 @@ FIGURES = {
     "__FIG_DIPMECH__": ("dip_mechanism.png", "Lloss, emission-measure proxy and T0 through the early dip"),
     "__FIG_BEFOREAFTER__": ("before_after.png", "cooling trigger vs time, legacy (crosses) vs hybr (never crosses)"),
     "__FIG_LEGHYBR__": ("legacy_vs_hybr.png", "legacy vs hybr through the dip: ratio, Lloss, beta, three configs"),
+    "__FIG_PDV__": ("pdv_trigger.png", "input partition (cooling/work/net) and F0 vs F0+PdV trigger ratios"),
 }
 
 
@@ -487,6 +488,35 @@ pinned to the constraint <i>edge</i>. So legacy's &ldquo;transition&rdquo; was a
 (a constrained edge-root that keeps \(L_{\text{loss}}\) high), not genuine extra cooling &mdash; the interior is
 equally hot in both. This closes the loop with §7.1&ndash;7.2: the stall is what the <i>correct</i> root does, and
 the old trigger fired only because the caged solver couldn't reach it.</div>
+
+<h3>7.6&nbsp; Why not put the PdV work term into the trigger?</h3>
+<p>The current trigger compares only \(L_{\text{gain}}\) vs \(L_{\text{loss}}\) and <b>excludes</b> the expansion-work
+term \(\dot W = P_b\,dV/dt = 4\pi R_2^2 v\,P_b\) (the only difference between the trigger and the Eb-peak oracle). Why
+keep it out? <b>Because PdV is the energy-DRIVING mechanism, not a loss.</b> The bubble energy budget is
+\(\dot E_b = L_{\text{gain}} - L_{\text{loss}} - \dot W\): \(L_{\text{loss}}\) is irreversible <i>radiation leaving
+the system</i>; \(\dot W\) is <i>reversible work the bubble does on the shell</i> &mdash; it is literally how an
+energy-driven bubble drives. The energy&rarr;momentum transition is the onset of <i>catastrophic radiative cooling</i>
+(\(L_{\text{loss}}\!\to\!L_{\text{gain}}\)), when the interior can no longer hold its over-pressure. Counting \(\dot W\)
+as a &ldquo;loss&rdquo; conflates <i>doing work</i> with <i>dying</i>.</p>
+<p>Mechanically, \((L_{\text{gain}}-L_{\text{loss}}-\dot W)/L_{\text{gain}}\) is just the normalised
+\(\dot E_b/L_{\text{gain}}\) &mdash; so a PdV-inclusive trigger fires at the <b>\(E_b\)-peak</b> (\(\dot E_b\!=\!0\)),
+which asks &ldquo;has \(E_b\) stopped growing?&rdquo; not &ldquo;is cooling winning?&rdquo; Those are different
+events. And \(\dot W\) is <i>largest when the bubble is healthiest</i> (high \(R_2^2 v\), still hot, vigorously
+driving), so the PdV-inclusive ratio is <i>lowest</i> exactly when the bubble is most energy-driven &mdash; firing
+there is backwards.</p>
+<figure>__FIG_PDV__<figcaption><b>Left:</b> where the input goes (simple_cluster) &mdash; \(L_{\text{gain}}\) splits
+into radiated \(L_{\text{loss}}\) (~50%), expansion <b>work</b> \(\dot W\) (~45%), and a small net \(\dot E_b\)
+(~5%). Nearly half the input is work, not radiation. <b>Right:</b> F0 (solid, no PdV) vs F0+PdV (dashed
+\(=\dot E_b/L_{\text{gain}}\)) for all six: subtracting \(\dot W\) pulls the ratio ~0.5&rarr;0.05&ndash;0.15
+(<i>nearly</i> firing) but it still never crosses 0.05 in 5/6 &mdash; it is tracking the \(E_b\)-peak, which the
+bubble never reaches. Pure read of <code>data/c0_*_h0.csv</code> via <code>plot_pdv.py</code>.</figcaption></figure>
+<div class="box find"><div class="lab">verdict on PdV-in-the-trigger</div>It does <b>not</b> rescue the trigger and
+is <b>physically the wrong term</b>. \(\dot W\!\approx\!0.43\!-\!0.46\,L_{\text{gain}}\) (measured), so adding it
+pulls the ratio tantalisingly close to 0.05 &mdash; but it crosses only in large_diffuse, and only at <b>4.76 Myr</b>
+(its \(E_b\)-peak), while the other five never peak (\(E_b\) grows monotonically to t=6). So PdV-inclusion swaps one
+non-event (&ldquo;cooling never wins&rdquo;) for another (&ldquo;\(E_b\) never peaks&rdquo;) <i>and</i> mis-frames the
+physics: it would declare the bubble momentum-driven at its energetic peak, mid-drive. Keep PdV out; the transition is
+a radiative-loss criterion, and the real fix is still the missing cooling (§7.2&ndash;7.4).</div>
 """
 
 SEC_REPRO = r"""
@@ -498,7 +528,7 @@ without re-running the (hours-long) hybr sims. Each figure is a pure read of a c
 <tr><td><code>harvest_h0.py</code></td><td>candidate-trigger firing-epoch harvest (the G0 deliverable)</td></tr>
 <tr><td><code>mixcool_whatif.py</code></td><td>offline mixing-layer (\(\theta\)) calibration for the root fix</td></tr>
 <tr><td><code>data/c0_*_st6.csv</code> &middot; <code>data/c0_*_h0.csv</code> &middot; <code>data/c0_*_legacy.csv</code> &middot; <code>data/surge_coincidence.csv</code></td><td>per-config hybr captures, legacy (BEFORE) captures, + the surge-coincidence table</td></tr>
-<tr><td><code>plot_{fret,f0path,beta,surge,phaseportrait,dipdrivers,g0,blowout,mixcool,cert,dipmechanism,beforeafter,legacy_vs_hybr}.py</code> &rarr; <code>figures/*.png</code></td><td>the thirteen figures above (each a pure read of a CSV)</td></tr>
+<tr><td><code>plot_{fret,f0path,beta,surge,phaseportrait,dipdrivers,g0,blowout,mixcool,cert,dipmechanism,beforeafter,legacy_vs_hybr,pdv}.py</code> &rarr; <code>figures/*.png</code></td><td>the fourteen figures above (each a pure read of a CSV)</td></tr>
 <tr><td><code>PLAN.md</code> &middot; <code>FINDINGS.md</code></td><td>the living plan / pre-registration &amp; the consolidated write-up</td></tr>
 </tbody></table>
 <p class="small muted">Rebuild this report:
