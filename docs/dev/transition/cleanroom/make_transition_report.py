@@ -41,6 +41,8 @@ FIGURES = {
     "__FIG_BLOW__": ("blowout_geometric.png", "blowout epoch vs cloud radius, one point per config"),
     "__FIG_MIX__": ("mixcool_rootfix.png", "retained energy and cooling ratio under a theta mixing-layer sink"),
     "__FIG_CERT__": ("cert_residuals.png", "res_beta and res_T0_struct vs time for all six configs"),
+    "__FIG_DIPMECH__": ("dip_mechanism.png", "Lloss, emission-measure proxy and T0 through the early dip"),
+    "__FIG_BEFOREAFTER__": ("before_after.png", "cooling trigger vs time, legacy (crosses) vs hybr (never crosses)"),
 }
 
 
@@ -384,6 +386,76 @@ was the model honestly reporting that <b>its bubble never cools enough to transi
 not a trigger bug. Don&rsquo;t fix missing physics by tuning a scalar.</div>
 """
 
+SEC_FOLLOWUP = r"""
+<h2 id="followup">7 &middot; Follow-up &mdash; legacy-vs-hybr, the dip mechanism, and the WARPFIELD / θ critique</h2>
+
+<h3>7.1&nbsp; Why the stall is new: BEFORE (legacy) vs AFTER (hybr)</h3>
+<p>The early dip is the <i>first cooling episode</i>. Under the legacy clamped-\(\beta\) solver the ratio is driven
+all the way down to 0.05 there and the run transitions to momentum; under hybr the <i>same</i> episode dips but
+recovers (\(L_{\text{loss}}\) collapses) and never crosses. That is exactly why the stall appeared only after the
+solver upgrade.</p>
+<figure>__FIG_BEFOREAFTER__<figcaption>Cooling trigger \((L_{\text{mech}}-L_{\text{loss}})/L_{\text{mech}}\) over the
+evolution. <b>Left (legacy):</b> the ratio dives through 0.05 at the first cooling episode &mdash; dots mark the
+crossing where each run transitions (small_dense 0.024, pl2_steep 0.128, simple_cluster 0.178, midrange 0.822 Myr).
+<b>Right (hybr):</b> the same early dip, but it recovers and <b>never crosses</b>. Real legacy runs
+(<code>--solver legacy</code>) vs the committed hybr runs. <span class="muted">be_sphere / large_diffuse are
+late/very-late crossers (be_sphere rerun still grinding; large_diffuse crosses ~6 Myr, beyond the window).</span></figcaption></figure>
+
+<h3>7.2&nbsp; What the dip actually is: an emission-measure turnover, not a thermal trigger</h3>
+<p>We tested the obvious hypothesis &mdash; that \(L_{\text{loss}}\) rises because gas enters the efficient-cooling
+band (the \(\Lambda(T)\) peak, \(\sim\!10^5\!-\!10^6\) K) &mdash; and <b>the data refuted it.</b> \(T_0\) stays at
+<b>3&ndash;8\(\times10^6\) K through the whole dip and never enters that band</b>, so \(\Lambda\) is effectively flat.
+The dip is set purely by the <b>emission measure</b> \(n^2 V \propto (P_b/T_0)^2 R_2^3\): it <i>rises</i> because
+volume growth outruns dilution, then <i>collapses</i> because \(R_2\) expansion dilutes \(n^2\) faster than \(V\)
+grows (the log-slopes cross at the \(L_{\text{loss}}\) peak in all six configs; the EM proxy peaks within 1.3&times;
+in time of the real \(L_{\text{loss}}\) peak).</p>
+<figure>__FIG_DIPMECH__<figcaption>Through the early dip (3 representative configs): \(L_{\text{loss}}\) (orange) and
+the emission-measure proxy \(n^2V=(P_b/T_0)^2R_2^3\) (blue) rise-then-collapse together, while \(T_0\) (green, right
+axis) sits far <i>above</i> the shaded \(10^5\!-\!10^6\) K cooling-peak band the entire time. Pure read of
+<code>data/c0_*_h0.csv</code> via <code>plot_dipmechanism.py</code>.</figcaption></figure>
+<div class="box find"><div class="lab">the mechanistic root of the under-cooling</div>The bubble retains too much
+energy because <b>its interior stays too hot</b> (\(>\!10^6\) K, up in the weak-\(\Lambda\) bremsstrahlung tail) &mdash;
+it never makes the \(\sim\!10^5\!-\!10^6\) K gas that radiates efficiently. So the fix is not &ldquo;add a loss
+term&rdquo; but &ldquo;<b>create the cool, efficiently-radiating gas</b>&rdquo; &mdash; precisely what a turbulent
+mixing layer does. The dip diagnosis and the mixing-layer root-fix are the same story from two directions.</div>
+
+<h3>7.3&nbsp; The WARPFIELD criterion is our current trigger in disguise</h3>
+<p>A WARPFIELD-style switch \(\log_{10}L_{\text{mech}}-\log_{10}L_{\text{cool}}<0.05\) (i.e.
+\(L_{\text{cool}}>0.89\,L_{\text{mech}}\), PdV excluded) is the <b>same family</b> as the current rate-ratio trigger.
+On our hybr data it <b>does not fire</b>: the gap bottoms at <b>0.145&ndash;0.292 dex</b> (\(L_{\text{cool}}\) reaches
+only 51&ndash;72% of \(L_{\text{mech}}\), never 89%). The looser 0.89 threshold gets <i>closer at the dip</i> but the
+under-cooling wall still blocks it &mdash; the log-space reformulation doesn't escape the G0 verdict.</p>
+<table><thead><tr><th>config</th><th>min WARPFIELD gap [dex]</th><th>max \(L_{\text{cool}}/L_{\text{mech}}\)</th><th>fires (&lt;0.05 dex)?</th></tr></thead><tbody>
+<tr><td>small_dense_highsfe</td><td>0.145</td><td>0.717</td><td class="loss">no</td></tr>
+<tr><td>simple_cluster</td><td>0.170</td><td>0.676</td><td class="loss">no</td></tr>
+<tr><td>midrange_pl0</td><td>0.197</td><td>0.636</td><td class="loss">no</td></tr>
+<tr><td>large_diffuse_lowsfe</td><td>0.272</td><td>0.535</td><td class="loss">no</td></tr>
+<tr><td>be_sphere</td><td>0.277</td><td>0.529</td><td class="loss">no</td></tr>
+<tr><td>pl2_steep</td><td>0.292</td><td>0.511</td><td class="loss">no</td></tr>
+</tbody></table>
+<p>The one real difference is WARPFIELD's <b>leakage term</b> \(L_{\text{cool}}=L_b+L_{\text{leak}}\); our default
+runs are sealed (\(\text{coverFraction}=1,\ L_{\text{leak}}=0\)). Leakage is an extra loss channel &mdash; whether a
+<i>plausible</i> coverFraction closes the 0.15&ndash;0.3 dex gap and stays solver-healthy is <b>under test</b>
+(Cf = 0.99 / 0.95 / 0.90). Note leakage <i>vents hot gas</i>; it does not <i>create</i> cool radiating gas, so it is a
+different lever than mixing-layer cooling.</p>
+
+<h3>7.4&nbsp; Open problems with the \(\theta\,L_{\text{mech}}\) mixing-layer term</h3>
+<div class="box over"><div class="lab">(1) double-counting against L_cool</div>TRINITY's
+\(L_{\text{cool}}=L_{\text{bubble}}+L_{\text{conduction}}+L_{\text{intermediate}}\) already contains a smooth 1-D
+<i>interface</i> model. Lancaster's \(L_{\text{mix}}\) is the <i>same</i> interface done turbulently, so adding
+\(\theta L_{\text{mech}}\) on top of the full \(L_{\text{cool}}\) <b>double-counts</b> the conductive/intermediate
+interface. The correct move is to <b>replace</b> \(L_{\text{conduction}}+L_{\text{intermediate}}\) with the turbulent
+term (or add only the excess) &mdash; not stack a flat fraction on the whole.</div>
+<div class="box over"><div class="lab">(2) θ=const carries no state dependence</div>\(L_{\text{cool}}=\int n^2
+\Lambda(T)\,dV\) responds to the actual bubble structure; \(\theta L_{\text{mech}}\) knows only the feedback.
+\(\theta\!\approx\!\)const is an <i>emergent</i> 3-D-sim result in the efficient-cooling limit &mdash; it should depend
+on density, metallicity, turbulent velocity, density contrast. A constant \(\theta\) shifts every config equally and
+so <b>cannot reproduce the measured config-to-config spread</b> (\(f_{\text{ret}}\) 0.25&ndash;0.40). It is
+magnitude-right (it <i>did</i> bring the bubble into the band) but <b>not predictive</b>; a faithful term ties
+\(L_{\text{mix}}\) to interface area (\(\propto R_2^2\)), a mixing velocity, and the contact-discontinuity density,
+reducing to \(\theta L_{\text{mech}}\) only in the efficient limit.</div>
+"""
+
 SEC_REPRO = r"""
 <h2 id="repro">Artifacts &amp; reproducibility</h2>
 <p class="small">Everything is committed under <code>docs/dev/transition/cleanroom/</code> &mdash; reproducible
@@ -392,8 +464,8 @@ without re-running the (hours-long) hybr sims. Each figure is a pure read of a c
 <tr><td><code>c0_consistency.py</code></td><td>substrate certification harness (C0: residuals + \(f_{\text{ret}}\))</td></tr>
 <tr><td><code>harvest_h0.py</code></td><td>candidate-trigger firing-epoch harvest (the G0 deliverable)</td></tr>
 <tr><td><code>mixcool_whatif.py</code></td><td>offline mixing-layer (\(\theta\)) calibration for the root fix</td></tr>
-<tr><td><code>data/c0_*_st6.csv</code> &middot; <code>data/c0_*_h0.csv</code> &middot; <code>data/surge_coincidence.csv</code></td><td>per-config full-run captures + the surge-coincidence table (the evidence)</td></tr>
-<tr><td><code>plot_{fret,f0path,beta,surge,phaseportrait,dipdrivers,g0,blowout,mixcool,cert}.py</code> &rarr; <code>figures/*.png</code></td><td>the ten figures above (each a pure read of a CSV)</td></tr>
+<tr><td><code>data/c0_*_st6.csv</code> &middot; <code>data/c0_*_h0.csv</code> &middot; <code>data/c0_*_legacy.csv</code> &middot; <code>data/surge_coincidence.csv</code></td><td>per-config hybr captures, legacy (BEFORE) captures, + the surge-coincidence table</td></tr>
+<tr><td><code>plot_{fret,f0path,beta,surge,phaseportrait,dipdrivers,g0,blowout,mixcool,cert,dipmechanism,beforeafter}.py</code> &rarr; <code>figures/*.png</code></td><td>the twelve figures above (each a pure read of a CSV)</td></tr>
 <tr><td><code>PLAN.md</code> &middot; <code>FINDINGS.md</code></td><td>the living plan / pre-registration &amp; the consolidated write-up</td></tr>
 </tbody></table>
 <p class="small muted">Rebuild this report:
@@ -413,7 +485,8 @@ def main():
             parts.append('<div class="arrow">&#9660;</div>')
     parts.append("</div>")
     parts.append(FLOW_OUTRO)
-    parts += [SEC_PROBLEM, SEC_IDEAS, SEC_CONFIGS, SEC_MEASURE, SEC_SOLUTION, SEC_ARC, SEC_REPRO]
+    parts += [SEC_PROBLEM, SEC_IDEAS, SEC_CONFIGS, SEC_MEASURE, SEC_SOLUTION, SEC_ARC,
+              SEC_FOLLOWUP, SEC_REPRO]
     parts.append("</div></body></html>")
     html = "".join(parts)
 
