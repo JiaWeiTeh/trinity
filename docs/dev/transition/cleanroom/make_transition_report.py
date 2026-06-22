@@ -29,9 +29,6 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 FIGS = HERE / "figures"
 OUT = HERE / "transition_report.html"
-# Central collection of rendered HTML insight reports (docs/dev/html-insights/), kept in
-# sync by this generator so a reader finds every report in one place without drift.
-INSIGHTS_OUT = HERE.parents[1] / "html-insights" / "transition_trigger_investigation.html"
 
 FIGURES = {
     "__FIG_F0__": ("f0_pathology.png", "cooling ratio vs the 0.05 threshold, with mechanical luminosity"),
@@ -722,12 +719,8 @@ def main():
     OUT.write_text(html, encoding="utf-8")
     kb = OUT.stat().st_size / 1024
     print(f"wrote {OUT}  ({kb:.0f} KB)")
-
-    # Mirror into the central html-insights collection (self-contained: figures are
-    # base64-embedded, so the copy needs no sibling files).
-    INSIGHTS_OUT.parent.mkdir(parents=True, exist_ok=True)
-    INSIGHTS_OUT.write_text(html, encoding="utf-8")
-    print(f"wrote {INSIGHTS_OUT}  ({kb:.0f} KB)")
+    # This report is chapter 3 of the S1 storyline book; rebuild the central
+    # collection with: python docs/dev/html-insights/build_storylines.py
 
 
 if __name__ == "__main__":

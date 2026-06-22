@@ -31,7 +31,7 @@ cross-checked with `CHANGELOG.md` and `git log`.
 
 | Doc | Verdict | Stale refs | Recommendation |
 |-----|---------|:---------:|----------------|
-| `archive/betadelta/HYBR_PLAN.md` | ✅ SHIPPED (Phases 0–3) + live tail | ⚠️ | Archive after extracting open tail (Phase-4 default flip; Phase-5 study) |
+| `archive/betadelta/HYBR_PLAN.md` | ✅ SHIPPED (Phases 0–4) + live tail | ⚠️ | Archive after extracting open tail (Phase-5 study; Phase-4 hybr-default flip now shipped) |
 | `archive/betadelta/PHASE0_BASELINES.md` | ✅ SHIPPED (record) | — | **Archive** |
 | `archive/betadelta/PHASE2_ARMS.md` | ✅ SHIPPED (arm D / hybr landed) | — | **Archive** (forward item lives in stalling + HYBR Phase 5) |
 | `archive/betadelta/stalling-energy-phase.md` | ✅ SHIPPED (settled study) | minor | Fix 1 parenthetical → **archive** |
@@ -62,21 +62,28 @@ cross-checked with `CHANGELOG.md` and `git log`.
 
 ## Open items carried forward (from archived docs)
 
-- **β–δ Phase-4 — default-solver flip.** `betadelta_solver` defaults to `legacy`
-  (`trinity/_input/default.param:49`); the verified-good `hybr` path exists but the
-  flip to `hybr` is a deferred maintainer decision (`archive/betadelta/HYBR_PLAN.md` Phase 4).
+- **β–δ Phase-4 — default-solver flip (✅ SHIPPED; verified 2026-06-22).**
+  `betadelta_solver` now defaults to **`hybr`** (`trinity/_input/registry.py:307`,
+  `trinity/_input/default.param:49`); `legacy` remains a selectable fallback. The
+  formerly-deferred flip has landed (`archive/betadelta/HYBR_PLAN.md` Phase 4).
 - **β–δ Phase-5 — transition criterion.** The "is the fixed 0.05 cooling-balance
-  trigger right (esp. steep r⁻²)?" question is now the **active** `transition/`
-  workstream (`TRIGGER_PLAN.md` → `pshadow-design.md`), still unbuilt.
+  trigger right (esp. steep r⁻²)?" question was investigated clean-room: under the
+  hybr default **no cooling-balance event fires** (0/6 configs) — the transition is
+  **geometric (blowout), not thermal** (`transition/cleanroom/FINDINGS.md`). The
+  `pshadow-design.md` two-criterion (F0 ∨ F4) proposal and `P0.md` are **superseded**
+  by that result (their "flat configs cool" premise was falsified) and nothing shipped.
+  Open: the root fix (mixing-layer cooling / leakage) and the regime-spanning Eb-peak
+  handoff remain unbuilt.
 
 ## Per-doc detail (decisive evidence)
 
 ### `archive/betadelta/HYBR_PLAN.md` — ✅ SHIPPED (Phases 0–3), live tail, ⚠️ stale-refs
 Phase 1.1 shared `solve_R1` bracket (`get_bubbleParams.py:433-457`, 6 call sites), Phase 1.2
 convergence-flag persistence + dt mitigation (`run_energy_implicit_phase.py:283-316`,
-`registry.py:481-482`), Phase 3 hybr behind `betadelta_solver` (`get_betadelta.py:583-601,795-833`;
-`default.param:49` default still `legacy`) all **shipped**. **Open tail:** Phase-4 default flip to
-`hybr` (deferred maintainer call) and the Phase-5 transition-criterion study. Stale: `bubble_E2P:229`→`:198`;
+`registry.py:481-482`), Phase 3 hybr behind `betadelta_solver` (`get_betadelta.py:583-601,795-833`)
+all **shipped**, and Phase 4 has now landed too — `default.param:49` / `registry.py:307` default is
+**`hybr`** (verified 2026-06-22). **Open tail:** only the Phase-5 transition-criterion study (now the
+clean-room result: transition is geometric, not thermal). Stale: `bubble_E2P:229`→`:198`;
 the §3 `compute_R1_Pb` `[1e-3·R2,R2]` bracket no longer exists (replaced by the Phase-1.1 fix).
 
 ### `archive/betadelta/PHASE0_BASELINES.md` — ✅ SHIPPED (record)

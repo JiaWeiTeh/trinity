@@ -98,9 +98,15 @@ event could stop at the ionisation front and skip the wasted tail). Across <b>6 
 2 phases × 6 solver/stopping variants</b>, with <b>100 sampled solves per implicit phase</b>:
 equivalence is settled (all LSODA variants match <code>odeint</code> to \\(\\sim\\!10^{-8}\\)),
 but <b>no variant is faster over a realistic run</b> — the event's only win is
-<b>energy-phase-only</b>. The warning itself is fixed <b>for free</b> by raising
-<code>odeint</code>'s step ceiling (<code>mxstep=50000</code>; shipped, <code>pytest</code>
-532&nbsp;passed). <b>Verdict: any migration is a robustness/cleanliness choice, not a speedup.</b></p>
+<b>energy-phase-only</b>. Two separate warnings were fixed: the LSODA Fortran <b>"t+h=t"
+step-underflow flood</b> — the user-visible noise — is stopped by the <code>_NSHELL_MAX=1e120</code>
+clip guard in <code>get_shellODE.py</code> (commit&nbsp;<code>b27cede</code>), which keeps
+<code>nShell²</code> finite in the discarded overflow tail; the Python
+<code>ODEintWarning("Excess work")</code> — a separate, less visible ceiling — is silenced by
+raising <code>mxstep=50000</code> in <code>shell_structure.py</code>
+(commit&nbsp;<code>00e9f54</code>). Both are bit-identical on the consumed prefix;
+<code>pytest</code>: <b>532 passed</b>. <b>Verdict: any migration is a robustness/cleanliness
+choice, not a speedup.</b></p>
 </div>
 """)
 
@@ -120,7 +126,7 @@ every link is backed by a plot and a table below.</p>
         ("4 · Why does the win vanish in implicit?",
          "The implicit phase is mostly <b>neutral / mass-limited</b> solves; the φ-front event has nothing to skip there."),
         ("5 · Then what fixes the warning we started with?",
-         "It's localised to the degenerate energy phase. Raising <code>odeint</code>'s <code>mxstep</code> removes it, bit-identical — shipped."),
+         "Two separate warnings, two fixes. The user-visible LSODA Fortran <b>\"t+h=t\" flood</b> is stopped by the <code>_NSHELL_MAX=1e120</code> clip guard in <code>get_shellODE.py</code> (commit <code>b27cede</code>). The Python <code>ODEintWarning(\"Excess work\")</code> is silenced by <code>mxstep=50000</code> in <code>shell_structure.py</code> (commit <code>00e9f54</code>). Both bit-identical — shipped."),
     ]
     for i, (q, a) in enumerate(steps):
         P.append(f'<div class="step"><div class="q">{q}</div><div class="a">{a}</div></div>')
@@ -241,14 +247,35 @@ the event's mechanism only applies to a minority of (energy-phase) solves.</div>
 """)
 
     P.append(f"""
-<h3>Step 5 — The fix</h3>
-<p><b>Question:</b> then what fixes the original warning? <b>Finding:</b> the warning is localised to the
-degenerate energy phase (100% of those solves). Raising <code>odeint</code>'s step ceiling
-(<code>mxstep=50000</code>) lets the integration complete: <b>free (~1.0×) in the science configs</b> where
-the ceiling was barely touched, and ~0.2× in the degenerate energy phase — because it now does the heavy
-overflow work the warning was hiding. <b>Bit-identical (\\(\\mathrm{{rel}}_n=0\\)) throughout.</b></p>
+<h3>Step 5 — The two fixes</h3>
+<p><b>Question:</b> then what fixes the original warnings? <b>Finding:</b> there are two distinct
+warnings with two distinct root causes — and two fixes shipped in order.</p>
+<p><b>Fix 1 — the LSODA Fortran "t+h=t" flood</b> (<code>get_shellODE.py:32,100</code>, commit
+<code>b27cede</code>, 2026-06-18): the user-visible noise. The ionised shell ODE has a
+\\(\\mathrm{{d}}n/\\mathrm{{d}}r \\propto n^2\\) recombination pole past the ionisation front;
+<code>shell_structure.py</code> discards that tail at truncation index <code>idx</code> (typically
+1–57 of 1000 rows), but <code>odeint</code> still integrates through it. In
+<code>simple_cluster</code>, code-unit inner densities reach \\(\\sim 10^{{61}}\\)–\\(10^{{65}}\\)
+pc⁻³, so <code>nShell²</code> overflows <code>float64</code> → inf/NaN → LSODA collapses to
+machine-precision steps and floods "t+h=t" chatter. The fix is a single <code>min()</code> clip
+at <code>_NSHELL_MAX = 1​​e120</code> in the ionised branch of <code>get_shellODE.py</code>:
+the cap is ~55 orders of magnitude above any physical shell density (neutron-star is
+\\(\\sim 10^{{38}}\\) cm⁻³; the ionisation front is \\(\\sim 10^{{65}}\\) code units \\(\\approx
+10^{{10}}\\) cm⁻³), so it never touches the consumed profile — end-to-end outputs are
+<b>bit-identical</b> to the unguarded solve (verified, docs/dev/shell-solver). The flood drops
+from 99 → 0 in <code>simple_cluster</code> and from 3 → 0 in <code>probe_typical_hybr</code>.</p>
+<p><b>Fix 2 — the Python <code>ODEintWarning("Excess work")</code></b>
+(<code>shell_structure.py:35</code>, commit <code>00e9f54</code>, same day): a separate, less
+visible Python-level ceiling. <code>odeint</code>'s default <code>mxstep=500</code> is exhausted
+when it grinds the overflow tail (before the clip guard existed). Raising it to
+<code>_SHELL_ODE_MXSTEP = 50000</code> lets the solve complete rather than silently truncating;
+<b>free (~1.0×) in the science configs</b> where the ceiling was barely hit, and ~0.2× in the
+degenerate energy phase. Result: bit-identical (\\(\\mathrm{{rel}}_n=0\\)) throughout.</p>
 <figure>{img("5_free_fix_mxstep.png","the mxstep fix")}<figcaption>Excess-work warning fraction (bars) vs
-<code>odeint(mxstep=50k)</code> speed (◆); the warning lives only where the bars are tall.</figcaption></figure>
+<code>odeint(mxstep=50k)</code> speed (◆); the warning lives only where the bars are tall.
+Note: this plot characterises the Python <code>ODEintWarning</code> ("Excess work") fix; the
+LSODA Fortran "t+h=t" flood is a separate signal silenced by the
+<code>_NSHELL_MAX</code> clip guard.</figcaption></figure>
 """)
 
     # ---- master tables ----
@@ -290,11 +317,37 @@ overflow work the warning was hiding. <b>Bit-identical (\\(\\mathrm{{rel}}_n=0\\
     # ---- solution ----
     P.append("""
 <h2 id="solution">6 · Solution &amp; what shipped</h2>
-<div class="box find"><div class="lab">shipped</div>
-<code>trinity/shell_structure/shell_structure.py</code> now passes <code>mxstep=_SHELL_ODE_MXSTEP</code>
-(= 50000) on both <code>odeint</code> calls — a module constant, mirroring the bubble module's
-<code>_BUBBLE_RTOL</code>. Bit-identical on the used prefix; <code>pytest</code>: <b>532 passed</b>.
-This silences the warning without changing solver or API.</div>
+<p>Two distinct warnings were diagnosed and fixed separately. They are driven by different mechanisms
+and silenced by different changes — the earlier <code>mxstep</code> fix alone does <em>not</em> stop
+the user-visible LSODA Fortran flood.</p>
+
+<div class="box find"><div class="lab">shipped — fix 1: LSODA "t+h=t" flood
+(commit <code>b27cede</code>, 2026-06-18)</div>
+<p style="margin:6px 0 4px"><b>Root cause:</b> <code>nShell²</code> overflows <code>float64</code>
+in the discarded post-ionisation-front tail, driving LSODA to machine-precision steps and flooding
+the Fortran-level "t+h=t" step-underflow chatter. The consumed profile is truncated at row
+<code>idx</code> (typically 1–57 of 1000) and was never affected — the overflow was pure noise
+from the discarded tail.</p>
+<p style="margin:4px 0"><b>Fix:</b> <code>get_shellODE.py:32,100</code> introduces
+<code>_NSHELL_MAX = 1e120</code> and clips <code>nShell = min(nShell, _NSHELL_MAX)</code> in the
+ionised branch. The cap is ~55 orders of magnitude above any physical shell density, so it never
+touches the consumed profile — end-to-end outputs are <b>bit-identical</b>
+(<code>endtoend_final_maxrel = 0.000e+00</code>, verified). Overflow warns: 99 → 0
+(<code>simple_cluster</code>), 3 → 0 (<code>probe_typical_hybr</code>). Pinned by
+<code>test/test_shell_overflow_guard.py</code>.</p></div>
+
+<div class="box find"><div class="lab">shipped — fix 2: Python <code>ODEintWarning("Excess work")</code>
+(commit <code>00e9f54</code>, 2026-06-18)</div>
+<p style="margin:6px 0 4px"><b>Root cause:</b> a separate, Python-level ceiling. Before the clip
+guard, <code>odeint</code>'s default <code>mxstep=500</code> internal step budget was exhausted
+while grinding the overflow tail, emitting "Excess work done on this call" and silently truncating
+the integration mid-grid.</p>
+<p style="margin:4px 0"><b>Fix:</b> <code>shell_structure.py:35</code> introduces
+<code>_SHELL_ODE_MXSTEP = 50000</code> — passed as <code>mxstep=_SHELL_ODE_MXSTEP</code> on both
+<code>odeint</code> calls (ionised and neutral branches). <b>Free (~1.0×) in all science
+configs</b> where the ceiling was rarely or never hit; bit-identical
+(\\(\\mathrm{rel}_n=0\\)) throughout. <code>pytest</code>: <b>532 passed</b>.</p></div>
+
 <p><b>On the migration question (H3):</b> a <code>solve_ivp</code> switch would be a
 <b>robustness/cleanliness</b> change — explicit <code>sol.success</code> flag, no consumption of an
 uninitialised-memory tail — <i>not</i> a performance one. It is not written, and is optional.</p>

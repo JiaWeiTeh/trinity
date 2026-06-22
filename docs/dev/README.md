@@ -41,6 +41,7 @@ workstream prefix (`transition/TRIGGER_PLAN.md`, not `TRANSITION_TRIGGER_PLAN.md
 docs/dev/
 ├── CODEBASE_REVIEW.md + codebase_review/   fresh-clone consistency review (this audit)
 ├── DOC_STATUS.md                           per-doc verified status (shipped / actionable / superseded)
+├── html-insights/                          📖 storyline books — workstream reports merged into chaptered HTML
 ├── data/                                   committed diagnostic CSVs (provenance for writeups)
 ├── transition/   implicit→momentum transition trigger   (🔵 ACTIVE)
 ├── cooling/      cooling-table refactor                 (🔵 ACTIVE)
@@ -83,7 +84,7 @@ The top-level `scratch/` (repo root) is separate, git-ignored, local-only.
 
 Moved under `archive/` once their work landed; kept as historical record (harnesses + data move with them).
 
-- `archive/betadelta/` — β–δ solver repair: `HYBR_PLAN`, `PHASE0_BASELINES`, `PHASE2_ARMS`, `stalling-energy-phase` + `diagnostics/`, `velstruct/`. ✅ shipped (one open tail: the Phase-4 default flip to `hybr`).
+- `archive/betadelta/` — β–δ solver repair: `HYBR_PLAN`, `PHASE0_BASELINES`, `PHASE2_ARMS`, `stalling-energy-phase` + `diagnostics/`, `velstruct/`, and the illustrated report `insights_betadelta_illustrated.html`. ✅ shipped, incl. the Phase-4 default flip — `betadelta_solver` now defaults to `hybr` (`registry.py:307`).
 - `archive/bubble/` — `integrator-robustness` (⛔ superseded by the `solve_ivp` migration), `conduction-convergence` (✅ shipped).
 - `archive/n-consistency/` — `audit`, `implementation-plan` (✅ shipped, pinned by `test_mu_audit_drift.py`), `pressure-terms-audit` (⛔ superseded).
 - `archive/restructure-audit.md`, `archive/sb99-refactor-audit.md` — older completed restructures.
