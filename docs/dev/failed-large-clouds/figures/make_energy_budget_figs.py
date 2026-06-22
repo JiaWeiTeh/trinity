@@ -30,6 +30,22 @@ import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+
+ROOT = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", ".."))
+plt.style.use(str(os.path.join(ROOT, "paper", "_lib", "trinity.mplstyle")))
+plt.rcParams.update({
+    "text.usetex": False,
+    "figure.dpi": 130,
+    "savefig.dpi": 140,
+    "axes.grid": True,
+    "grid.alpha": 0.25,
+    "axes.titlesize": 11,
+    "axes.labelsize": 11,
+    "xtick.labelsize": 9,
+    "ytick.labelsize": 9,
+    "legend.fontsize": 8.5,
+    "figure.constrained_layout.use": True,
+})
 import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -158,9 +174,8 @@ def fig1_budget(d):
              transform=ax2.transAxes, ha="right", va="bottom", fontsize=9.5,
              bbox=dict(boxstyle="round", fc="#ede7f6", ec="#7570b3"))
 
-    fig.tight_layout()
     p = os.path.join(FIG, "fig1_dEbdt_budget.png")
-    fig.savefig(p, dpi=130)
+    fig.savefig(p)
     plt.close(fig)
     return p
 
@@ -213,9 +228,8 @@ def fig2_compare(df, dh):
              color="#444", fontsize=9, transform=axC.transAxes, ha="center",
              bbox=dict(boxstyle="round", fc="#f5f5f5", ec="#888"))
 
-    fig.tight_layout()
     p = os.path.join(FIG, "fig2_healthy_vs_failing.png")
-    fig.savefig(p, dpi=130)
+    fig.savefig(p)
     plt.close(fig)
     return p
 
@@ -255,9 +269,8 @@ def fig3_bug_fix(d):
                  bbox=dict(boxstyle="round", fc="#ffebee", ec="#d62728"),
                  arrowprops=dict(arrowstyle="->", color="#d62728"))
 
-    fig.tight_layout()
     p = os.path.join(FIG, "fig3_bug_and_fix.png")
-    fig.savefig(p, dpi=130)
+    fig.savefig(p)
     plt.close(fig)
     return p
 

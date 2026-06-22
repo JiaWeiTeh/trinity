@@ -23,6 +23,22 @@ import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+
+ROOT = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", ".."))
+plt.style.use(str(os.path.join(ROOT, "paper", "_lib", "trinity.mplstyle")))
+plt.rcParams.update({
+    "text.usetex": False,
+    "figure.dpi": 130,
+    "savefig.dpi": 140,
+    "axes.grid": True,
+    "grid.alpha": 0.25,
+    "axes.titlesize": 11,
+    "axes.labelsize": 11,
+    "xtick.labelsize": 9,
+    "ytick.labelsize": 9,
+    "legend.fontsize": 8.5,
+    "figure.constrained_layout.use": True,
+})
 import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -135,9 +151,8 @@ def figure():
 
     fig.suptitle("Were the failing clouds ever genuinely energy-driven?  (all start at the same ~0.5 handoff)",
                  fontsize=12)
-    fig.tight_layout(rect=(0, 0, 1, 0.96))
     p = os.path.join(HERE, "fig4_energy_driven_discriminator.png")
-    fig.savefig(p, dpi=130)
+    fig.savefig(p)
     plt.close(fig)
     return p
 
