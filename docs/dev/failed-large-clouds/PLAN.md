@@ -297,7 +297,26 @@ and `v2` stays ~2000+ km/s.
 - `figures/fig1_dEbdt_budget.png` — the budget: PdV ≫ L_cool, PdV crosses Lmech (the finding).
 - `figures/fig2_healthy_vs_failing.png` — PdV/Lmech, v2, Eb vs **elapsed energy-phase time `t−t0` (log)** for failing vs healthy.
 - `figures/fig3_bug_and_fix.png` — Eb→0 collapses R1→R2 (shell vol→0 → 1/0 → NaN); old crash vs new code-51 stop.
-- Data: `data/budget_fail_repro.csv`, `data/budget_small_1e6.csv` (per-snapshot t,Eb,R1,R2,v2,Pb,Lmech,Lcool,Lleak).
+- `figures/fig4_energy_driven_discriminator.png` — were they ever energy-driven? (reservoir growth + PdV/Lmech, 5 configs).
+- Data: `data/budget_fail_repro.csv`, `data/budget_small_1e6.csv`, `data/discriminator.csv`.
+
+**Were the failing clouds ever genuinely energy-driven? (measured, 5 configs — `data/discriminator.csv`,
+regenerated 2026-06-19 from a single stamped batch at commit `d919ff77`, window `t≤1.0 Myr`).**
+The cleanest signal is the **reservoir growth** `Eb_peak/Eb_init` (a pure state variable, fully reliable): the
+healthy controls build the hot-bubble thermal reservoir **≥×39,300 (`small_1e6`) / ≥×94,900 (`small_1e5`)** —
+*lower bounds*, since both are still energy-driven (`Eb` monotonically growing, no peak) at the `t≤1.0 Myr` window
+cap; all three failing configs build it **×1.014 (≈1%)**. (The earlier committed values ×13,600/×37,900 came from
+**truncated** healthy runs stopped at `t≈0.32 Myr`; the clean regen with a fixed window is larger and the finding
+is stronger — failing matches bit-identically.) So the energy-driven reservoir essentially **never forms** in
+the failing band. The nuance: it is *not* "PdV>1 from birth" — every config (failing and healthy) starts at the
+same self-similar handoff `PdV/Lmech ≈ 0.52–0.60`. The fork is the **direction**: healthy clouds decelerate →
+`PdV/Lmech` falls and stays `<1` → the reservoir builds; failing clouds never decelerate → `PdV/Lmech` rises
+through 1 within **~7–10%** of the phase and stays above for **~90%** → `Eb` collapses. **Interpretation:** the
+failing clouds are "stillborn" energy-driven bubbles — they inherit the energy-driven IC but fail to establish
+the self-similar deceleration that *defines* the phase. So a PdV-inclusive transition trigger (family T) would be
+detecting "this bubble failed to become energy-driven," i.e. a **regime mismatch**, not a healthy Weaver→momentum
+transition — which argues the deeper-correct fix is to recognise these as free-expansion/momentum-dominated
+*earlier*, not to bolt a PdV term onto the cooling-based transition test.
 
 This **revises** the "catastrophic cooling" label used in §1–§2 and the early commit messages, and it
 *confirms* family **T**'s framing in §4: the principled handoff trigger is the **PdV-inclusive** net-energy
@@ -437,3 +456,58 @@ deferred T work; until then these points are cleanly flagged `energy_collapsed` 
 - Sibling workstream: `docs/dev/transition/TRIGGER_PLAN.md` (+`P0.md`,`pshadow-design.md`) — the normal
   implicit→momentum trigger study (families F0–F5); align family T with its `Eb`-peak event, don't collide.
 
+
+## 9. Go-forward options (decision pending — 2026-06-19)
+
+The bug fix (`G+F`) is shipped and proven; the diagnosis is complete; `data/discriminator.csv` shows the
+failing band are **stillborn energy-driven bubbles** (reservoir ×1.01 vs healthy ×10⁴). What remains is **not an
+engineering bug** — it is a physics-modelling decision: *what should these edge clouds do after the energy phase
+fails to establish?* Three paths, in detail, so the call can be made on evidence.
+
+### Path 1 — Ship & defer  *(recommended)*
+- **What:** open a PR for `bugfix/failed-large-clouds` → main. `G+F` + the diagnostic suite (4 figs, CSVs,
+  `insights.html`) land. `ENERGY_COLLAPSED` (code 51) is the documented, **permanent** behaviour for this band;
+  downstream sweeps filter on it. Paths 2/3 stay pre-scoped, pulled off the shelf only on a concrete need.
+- **Remaining work:** a PR description; nothing else.
+- **Cost:** ~zero (done).  **Risk:** none technical; the only limitation is scientific (flagged, not continued)
+  and it is documented + cheap to lift later.
+- **Gates:** already met — robustness ✅, healthy byte-identical ✅, `pytest` 555 ✅.
+- **Right when:** no current science needs faithful post-collapse trajectories for the 5e9/sfe0.1 + Helix band.
+  Given these are extreme-edge clouds, this is very plausibly the correct *permanent* answer, not just interim.
+
+### Path 2 — `T` probe (gated experiment)
+- **What:** add the PdV-inclusive net-energy zero-crossing event (the `Eb`-peak:
+  `Lgain − Lloss − 4πR²·v2·Pb ≤ 0`) to phases 1a/1b; at the peak hand off to phase 1c → 2 (momentum) instead of
+  force-stopping. Run `fail_repro` + `fail_helix` and **measure** whether 1c→2 yield a physical momentum
+  trajectory (R2 grows, v2 decays sensibly, no NaN/grind) or immediately hit 1c's `ENERGY_FLOOR` / degenerate.
+- **How:** behind the existing variants harness first — an experiment, **not** a production commit. Persist the
+  trajectory CSV; compare against the free-expansion expectation.
+- **Cost:** medium (event hook ~10–20 lines; the validation is the work).
+- **Risk:** the hand-off state — even at the "peak" the reservoir only grew 1%, so 1c's energy-balance ODE may
+  not accept it. A degenerate result is itself informative: it is the evidence that Path 3 is required.
+- **Gates (rule 5):** (a) no production change until the probe yields a sane trajectory; (b) if productionised,
+  the new event must **not** perturb healthy clouds — they must stay byte-identical (prove the `Eb`-peak event
+  never fires before `cooling_balance` on the ×10⁴ runs). This is the make-or-break gate.
+- **Right when:** you want to know whether continuation is *feasible* at all, cheaply, before committing. Good
+  de-risking; its outcome decides between "T suffices" and "need Path 3."
+
+### Path 3 — Early regime routing
+- **What:** detect the free-expansion/momentum regime *early* (sustained `PdV/Lmech > 1`, or shell velocity near
+  the wind terminal velocity, or reservoir-not-building over N steps) and route these clouds to the momentum
+  model from birth, bypassing the energy phase's self-similar assumptions. The physically-correct treatment per
+  the discriminator (they were never energy-driven).
+- **Cost:** high — a new regime branch + IC + validation; a physics workstream, not a patch.
+- **Risk:** largest surface. Must prove (a) healthy clouds untouched (byte-identical), (b) the early-routing
+  criterion separates the bands with no false positives, (c) the momentum trajectories are physical (ideally vs
+  an analytic free-expansion / momentum-driven shell solution).
+- **Gates:** full rule-5 ladder (gate → baseline → equivalence → full-run on stiff edges → persist).
+- **Right when:** the science genuinely needs faithful trajectories for this regime (e.g. the band matters for a
+  paper/sweep), justifying the investment.
+
+### Dependency & recommendation
+Paths 2 and 3 are both gated on a **science need only the maintainer can assess** — is faithful continuation of
+these extreme clouds actually required, or is flag-and-filter scientifically adequate? If continuation is wanted,
+the rational order is **Path 2 first (cheap probe) → Path 3 only if Path 2 degenerates** — never start Path 3
+blind. **Recommendation: Path 1 now** (ship the correct fix; do not build continuation speculatively — rule 1 /
+YAGNI, doubly so when the data shows there is no energy-driven phase to "continue" from), with Path 2 defined and
+ready for when/if a sweep needs these cells.

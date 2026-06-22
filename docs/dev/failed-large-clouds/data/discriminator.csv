@@ -1,0 +1,8 @@
+# provenance: commit=a8240cd3 batch=/tmp/disc_frozen_d919ff77 generator=make_discriminator.py t_cap_myr=1.0 (healthy eb_growth is a LOWER BOUND: still energy-driven at t_cap)
+# regenerate: run_stamped.py each <cfg>.param into one batch, then DISC_BATCH=<batch> python figures/make_discriminator.py
+config,kind,pdv_over_lmech_step1,eb_growth_factor,pdv_gt1_first_phasefrac,frac_phase_pdv_gt1
+fail_repro,fail,0.518,1.014,0.096,0.885
+fail_pism6,fail,0.518,1.014,0.096,0.885
+fail_helix,fail,0.517,1.014,0.071,0.929
+small_1e6,healthy,0.57,39280.0,0.005,0.016
+small_1e5,healthy,0.596,94870.0,,0.0
