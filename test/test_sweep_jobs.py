@@ -83,6 +83,15 @@ def test_emit_concurrency_sets_array_throttle(tmp_path) -> None:
     assert '#SBATCH --array=1-4%4' in (jobs / 'submit_sweep.sbatch').read_text()
 
 
+def test_emit_sbatch_is_offset_aware(tmp_path) -> None:
+    """Emitted sbatch shifts the runs.tsv line by $OFFSET (chunked submission
+    under a MaxSubmitJobs cap) and fails loud on an out-of-range line."""
+    _s, _o, jobs, _n, _i = _emit(tmp_path)
+    sbatch = (jobs / 'submit_sweep.sbatch').read_text()
+    assert 'SLURM_ARRAY_TASK_ID + ${OFFSET:-0}' in sbatch  # offset arithmetic
+    assert 'no line $N in runs.tsv' in sbatch              # empty-line guard
+
+
 def test_emit_dry_run_writes_nothing(tmp_path) -> None:
     sweep, out = _make_sweep(tmp_path)
     cfg = read_sweep_config(str(sweep))
