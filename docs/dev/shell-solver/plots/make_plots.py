@@ -23,10 +23,23 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt          # noqa: E402
 import numpy as np                        # noqa: E402
 
-plt.rcParams.update({"text.usetex": False, "figure.dpi": 130,
-                     "axes.grid": True, "grid.alpha": 0.3, "font.size": 10})
-
 ROOT = Path(__file__).resolve().parents[4]
+
+plt.style.use(str(ROOT / "paper" / "_lib" / "trinity.mplstyle"))
+plt.rcParams.update({
+    "text.usetex": False,          # no LaTeX in this container; CM rendered via mathtext
+    "figure.dpi": 130,
+    "savefig.dpi": 140,
+    "axes.grid": True,
+    "grid.alpha": 0.25,
+    "axes.titlesize": 11,
+    "axes.labelsize": 11,
+    "xtick.labelsize": 9,
+    "ytick.labelsize": 9,
+    "legend.fontsize": 8.5,
+    "figure.constrained_layout.use": True,
+})
+
 DATA = ROOT / "docs" / "dev" / "shell-solver" / "data"
 OUT = Path(__file__).resolve().parent
 
@@ -92,7 +105,7 @@ def footer(fig, text):
 # 1 - Equivalence gate: accuracy of every variant vs odeint
 # ----------------------------------------------------------------------------
 def plot1():
-    fig, ax = plt.subplots(figsize=(8.5, 5.2))
+    fig, ax = plt.subplots(figsize=(8.5, 5.2), layout="none")
     worst, colors, exact = [], [], []
     for v in VARIANTS:
         rels = [f(r["max_rel_diff_n"]) for r in sel(variant=v)
@@ -134,7 +147,7 @@ def plot1():
 # 2 - Speed: distribution of per-solve speedup vs odeint, per variant
 # ----------------------------------------------------------------------------
 def plot2():
-    fig, ax = plt.subplots(figsize=(9, 5.2))
+    fig, ax = plt.subplots(figsize=(9, 5.2), layout="none")
     data = []
     for v in VARIANTS:
         sp = [f(r["speedup_vs_odeint"]) for r in sel(variant=v)
@@ -165,7 +178,7 @@ def plot2():
 # 3 - The event win is energy-phase-only
 # ----------------------------------------------------------------------------
 def plot3():
-    fig, ax = plt.subplots(figsize=(9.5, 5.2))
+    fig, ax = plt.subplots(figsize=(9.5, 5.2), layout="none")
     x = np.arange(len(CONFIG_ORDER))
     w = 0.38
     en = [median([f(r["speedup_vs_odeint"]) for r in sel("V_lsoda_event", c, "energy")])
@@ -210,7 +223,7 @@ def comp(config, phase):
 
 
 def plot4():
-    fig, axes = plt.subplots(1, 2, figsize=(11, 5.2), sharey=True)
+    fig, axes = plt.subplots(1, 2, figsize=(11, 5.2), sharey=True, layout="none")
     x = np.arange(len(CONFIG_ORDER))
     for ax, phase in zip(axes, ("energy", "implicit")):
         neu = [comp(c, phase)[0] * 100 if comp(c, phase) else 0 for c in CONFIG_ORDER]
@@ -240,7 +253,7 @@ def plot4():
 # 5 - The free fix: warning is localized; mxstep kills it at ~1.0x, bit-identical
 # ----------------------------------------------------------------------------
 def plot5():
-    fig, ax = plt.subplots(figsize=(10, 5.2))
+    fig, ax = plt.subplots(figsize=(10, 5.2), layout="none")
     cells, ew, sp_hi, colors = [], [], [], []
     for c in CONFIG_ORDER:
         for ph in ("energy", "implicit"):

@@ -190,9 +190,23 @@ def extract_content(raw: str) -> str:
     return inner.strip()
 
 
+def _drop_heading_rules(css: str) -> str:
+    """Drop rules whose selectors are ALL bare h1..h6 — headings are governed
+    uniformly by BOOK_CSS; source rules are keyed to pre-demotion tags."""
+
+    def repl(m):
+        sels = [s.strip() for s in m.group(1).split(",") if s.strip()]
+        if sels and all(re.fullmatch(r"h[1-6]", s, re.I) for s in sels):
+            return ""
+        return m.group(0)
+
+    return re.sub(r"([^{}]+)\{[^{}]*\}", repl, css)
+
+
 def extract_style(raw: str) -> str:
     css = "\n".join(m.group(1) for m in re.finditer(r"<style[^>]*>(.*?)</style>", raw, re.S | re.I))
-    return re.sub(r"/\*.*?\*/", "", css, flags=re.S)  # drop comments
+    css = re.sub(r"/\*.*?\*/", "", css, flags=re.S)  # drop comments
+    return _drop_heading_rules(css)
 
 
 def _scope_flat(css: str, scope: str) -> str:
@@ -287,12 +301,13 @@ def build_chapter(
         sub = ""
     else:
         raw = Path(ch["src"]).read_text(encoding="utf-8", errors="replace")
-        scoped = scope_css(extract_style(raw), f"#{cid}")
+        scoped = scope_css(extract_style(raw), f"#{cid}-body")
         # Overflow guard: cap EVERY image (and code block) to the column width — the
         # reports' own CSS often only targets `figure.fig img`, so `.grid2` cells, bare
         # <img>, and embedded GIFs would otherwise render at natural size and overflow.
         guard = (
-            f"#{cid} img{{max-width:100%;height:auto}} #{cid} pre{{max-width:100%;overflow-x:auto}}"
+            f"#{cid}-body img{{max-width:100%;height:auto}}"
+            f" #{cid}-body pre{{max-width:100%;overflow-x:auto}}"
         )
         style = f"<style>{scoped}\n{guard}</style>\n"
         content = ensure_h2_ids(extract_content(raw))
@@ -357,6 +372,8 @@ nav.toc a{color:var(--accent);text-decoration:none;}nav.toc a:hover{text-decorat
 letter-spacing:.08em;color:var(--accent);margin-bottom:3px;}
 .chlede{color:var(--mut);font-size:15px;margin:2px 0 16px;}
 .chapter h3{font-size:19px;margin:26px 0 8px;}
+.chapter h4{font-size:16px;margin:20px 0 6px;color:var(--accent);}
+.chapter h5{font-size:14.5px;margin:16px 0 5px;font-weight:600;}
 .chapter ul,.chapter ol{margin:10px 0;}.chapter code{background:#f3f6fa;border:1px solid var(--line);
 border-radius:4px;padding:1px 5px;font:13px/1.4 "SFMono-Regular",Consolas,Menlo,monospace;}
 .book img,.chapter img{max-width:100%;height:auto}
@@ -389,8 +406,8 @@ def build_book(sl: dict) -> str:
         toc.append("</li>")
     toc.append("</ol></nav>")
     mathjax = (
-        '<script>window.MathJax={tex:{inlineMath:[["\\\\(","\\\\)"]],'
-        'displayMath:[["\\\\[","\\\\]"]]}};</script>\n'
+        '<script>window.MathJax={tex:{inlineMath:[["\\\\(","\\\\)"],["$","$"]],'
+        'displayMath:[["$$","$$"],["\\\\[","\\\\]"]]},svg:{fontCache:"global"}};</script>\n'
         '<script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>'
     )
     return (

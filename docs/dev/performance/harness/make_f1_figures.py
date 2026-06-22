@@ -11,11 +11,28 @@ matched-t verdict, and the validation workflow.
 import csv
 import glob
 import os
+from pathlib import Path
 
 import numpy as np
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
+
+ROOT = Path(__file__).resolve().parents[4]
+plt.style.use(str(ROOT / "paper" / "_lib" / "trinity.mplstyle"))
+plt.rcParams.update({
+    "text.usetex": False,
+    "figure.dpi": 130,
+    "savefig.dpi": 140,
+    "axes.grid": True,
+    "grid.alpha": 0.25,
+    "axes.titlesize": 11,
+    "axes.labelsize": 11,
+    "xtick.labelsize": 9,
+    "ytick.labelsize": 9,
+    "legend.fontsize": 8.5,
+    "figure.constrained_layout.use": True,
+})
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATA = os.path.join(HERE, "..", "data")
@@ -72,7 +89,7 @@ ax2.set_yscale("log"); ax2.set_ylim(1e-8, 1e-2)
 ax2.set_xticks(x); ax2.set_xticklabels(configs, rotation=30, ha="right", fontsize=8)
 ax2.set_ylabel("worst per-call rel_dMdt"); ax2.set_title("(b) F1 per-call accuracy vs gate"); ax2.legend()
 fig.suptitle("F1: 60k dense-output resample -> 500-pt coarse t_eval in the dMdt residual", fontsize=12)
-fig.tight_layout(); fig.savefig(os.path.join(FIGS, "f1_percall.png"), dpi=130); plt.close(fig)
+fig.savefig(os.path.join(FIGS, "f1_percall.png")); plt.close(fig)
 
 
 # ---------------- full-run trajectories ----------------
@@ -115,7 +132,7 @@ for j, (c, label) in enumerate(tcfg):
             ax.legend(fontsize=8)
 fig.suptitle("F1 full-run equivalence — R2(t) & Eb(t): original-60k vs F1-coarse overlaid "
              "(dotted line = common-t cap; F1 runs further as it is faster)", fontsize=10)
-fig.tight_layout(); fig.savefig(os.path.join(FIGS, "f1_fullrun_overlay.png"), dpi=130); plt.close(fig)
+fig.savefig(os.path.join(FIGS, "f1_fullrun_overlay.png")); plt.close(fig)
 
 # Figure 3: matched-t rel-diff (t normalised to common range so all 3 are comparable)
 fig, ax = plt.subplots(figsize=(9, 5.5))
@@ -131,11 +148,12 @@ ax.set_yscale("log"); ax.set_ylim(1e-11, 1e-2)
 ax.set_xlabel("fraction of common t-range"); ax.set_ylabel("matched-t  |R2_F1 - R2_orig| / R2_orig")
 ax.set_title("F1 full-run accuracy: matched-t R2 rel-diff, ~500x inside the 0.3% gate")
 ax.legend(fontsize=8, loc="upper left")
-fig.tight_layout(); fig.savefig(os.path.join(FIGS, "f1_matched_reldiff.png"), dpi=130); plt.close(fig)
+fig.savefig(os.path.join(FIGS, "f1_matched_reldiff.png")); plt.close(fig)
 
 
 # ---------------- Figure 4: validation workflow ----------------
-fig, ax = plt.subplots(figsize=(13, 4)); ax.set_xlim(0, 1); ax.set_ylim(0, 1); ax.axis("off")
+# Manually-positioned schematic: opt out of constrained_layout (bbox_inches crops it).
+fig, ax = plt.subplots(figsize=(13, 4), layout="none"); ax.set_xlim(0, 1); ax.set_ylim(0, 1); ax.axis("off")
 phases = [("P0", "capture + sweep\n6 configs", "G0 ok"),
           ("P1", "pick N = 500\n(npts-insensitive)", "G1 ok"),
           ("P2", "per-call equiv\nrel_dMdt 3e-6", "G2 ok\n(necessary,\nNOT sufficient)"),
@@ -157,7 +175,7 @@ ax.text(0.5, 0.06,
         "only the full-run equivalence (P5) can clear a change to the residual.",
         ha="center", fontsize=8.5, style="italic", color="darkred")
 fig.suptitle("F1 'drop the 60k resample' — validation workflow", fontsize=12)
-fig.savefig(os.path.join(FIGS, "f1_workflow.png"), dpi=130, bbox_inches="tight"); plt.close(fig)
+fig.savefig(os.path.join(FIGS, "f1_workflow.png"), bbox_inches="tight"); plt.close(fig)
 
 # ---------------- Figure 5: variant tradeoff — WHY M500 ----------------
 VORDER = ["baseline", "M2000", "M1000", "M500", "M200", "Mnodes"]
@@ -197,10 +215,10 @@ axb.set_xticks(np.arange(len(cv))); axb.set_xticklabels([f"{v}\n({VNPTS[v]})" fo
 axb.set_ylabel("worst rel_dMdt (all configs)")
 axb.set_title("(b) accuracy: npts-INSENSITIVE in [200,2000]")
 axb.legend(loc="upper right")
-fig.suptitle("Why 500: every coarse option beats the 60k baseline ~1.5x (speed ≈flat across npts) and is "
-             "npts-insensitive (all ≪ gate).\nM500 (green) gives a GUARANTEED fixed-resolution "
+fig.suptitle("Why 500: every coarse option beats the 60k baseline ~1.5x (speed ~flat across npts) and is "
+             "npts-insensitive (all << gate).\nM500 (green) gives a GUARANTEED fixed-resolution "
              "min_T/monotonic check; Mnodes (purple) uses only LSODA's variable adaptive nodes — fine "
              "here, less predictable on an unseen config.", fontsize=9.5)
-fig.tight_layout(); fig.savefig(os.path.join(FIGS, "f1_variant_tradeoff.png"), dpi=130); plt.close(fig)
+fig.savefig(os.path.join(FIGS, "f1_variant_tradeoff.png")); plt.close(fig)
 
 print("wrote:", ", ".join(sorted(os.listdir(FIGS))))

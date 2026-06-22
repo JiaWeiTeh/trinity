@@ -6,10 +6,27 @@ Pure schematic (no data). Run: python make_odeint_garbage_figure.py
 Output: ../figs/odeint_uninitialised_memory.png
 """
 import os
+from pathlib import Path
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib.patches import FancyBboxPatch, FancyArrowPatch, Rectangle
+
+ROOT = Path(__file__).resolve().parents[4]
+plt.style.use(str(ROOT / "paper" / "_lib" / "trinity.mplstyle"))
+plt.rcParams.update({
+    "text.usetex": False,
+    "figure.dpi": 130,
+    "savefig.dpi": 140,
+    "axes.grid": True,
+    "grid.alpha": 0.25,
+    "axes.titlesize": 11,
+    "axes.labelsize": 11,
+    "xtick.labelsize": 9,
+    "ytick.labelsize": 9,
+    "legend.fontsize": 8.5,
+    "figure.constrained_layout.use": True,
+})
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(HERE, '..', 'figs', 'odeint_uninitialised_memory.png')
@@ -20,7 +37,8 @@ GRAY = '#9e9e9e'
 BLUE = '#1565c0'
 INK = '#212121'
 
-fig = plt.figure(figsize=(13, 10))
+# Manually-positioned schematic: opt out of constrained_layout (full-figure axes).
+fig = plt.figure(figsize=(13, 10), layout="none")
 ax = fig.add_axes([0, 0, 1, 1])
 ax.set_xlim(0, 100)
 ax.set_ylim(0, 100)

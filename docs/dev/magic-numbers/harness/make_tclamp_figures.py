@@ -13,11 +13,28 @@ committed TCLAMP_PLAN.md gate table.
 import csv
 import json
 import os
+from pathlib import Path
 
 import numpy as np
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
+
+ROOT = Path(__file__).resolve().parents[4]
+plt.style.use(str(ROOT / "paper" / "_lib" / "trinity.mplstyle"))
+plt.rcParams.update({
+    "text.usetex": False,
+    "figure.dpi": 130,
+    "savefig.dpi": 140,
+    "axes.grid": True,
+    "grid.alpha": 0.25,
+    "axes.titlesize": 11,
+    "axes.labelsize": 11,
+    "xtick.labelsize": 9,
+    "ytick.labelsize": 9,
+    "legend.fontsize": 8.5,
+    "figure.constrained_layout.use": True,
+})
 from matplotlib.patches import FancyBboxPatch, FancyArrowPatch  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -278,7 +295,8 @@ def fig_overlay():
     fig.suptitle("The fix is bit-identical where every run lives (T ≥ 10⁴) and only changes the never-reached "
                  "sub-10⁴ decade — where it is strictly more correct (table edge, not a 2.5× hotter floor)",
                  fontsize=10.5)
-    fig.tight_layout(rect=[0, 0, 1, 0.95])
+    # constrained_layout (global) handles the suptitle spacing; a manual
+    # tight_layout(rect=...) here fights it and squashes the two panels.
     fig.savefig(os.path.join(FIGS, "tclamp_dudt_overlay.png"), dpi=140, facecolor="white")
     plt.close(fig)
 
