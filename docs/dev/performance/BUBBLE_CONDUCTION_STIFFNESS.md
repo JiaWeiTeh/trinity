@@ -23,13 +23,22 @@
 > to reproduce or compare against the numbers **without re-running**; record the
 > exact config + command that produced each artifact.
 
-**Status (2026-06-19):** 🟡 **CAUSE diagnosed; symptom mitigated, cause deferred.** The
+**Status (2026-06-20):** 🟢 **CAUSE diagnosed; symptom mitigated; full run now confirmed HEALTHY
+end-to-end — and the unfloored treatment is characterised (a floor would HURT, not help).** The
 LSODA `t+h=t` flood on massive low-density clouds (e.g. `mCloud=5e9, sfe=0.01, nCore=1e2`)
 is the **bubble structure solver**, not the shell ODE. The noise is suppressed
 (`_quiet_lsoda_fortran` around the bubble `solve_ivp`, `bubble_luminosity.py`); the
 **underlying stiffness is left as the tracked item below** because the solve is *verified
 correct*, so it is noise — fixing the cause is an optional robustness/perf improvement, not a
-correctness bug.
+correctness bug. **New (2026-06-20):** the no-floor choice is now pinned by
+`test/test_dR2min_magic_number.py` and, crucially, the §Robustness + §Consequence sections below
+show that re-introducing WARPFIELD's `dR2min` floor would **inflate the bubble cooling luminosity
+~2–8×** on the stiff state (the floor over-thickens the conduction layer ~10³×) — so the deferred
+"floor `dR2`" item is now understood to be a *correctness risk*, viable only as a heavily-gated
+perf/noise tweak that holds `L_bubble` fixed. **New (2026-06-20, end-to-end):** the §End-to-end
+section confirms the *full run* of this flood regime is healthy — 180 segments, `t→1.34 Myr`, **zero**
+flood lines, **zero** crashes/`ENERGY_COLLAPSED`, `Eb` grows ~2900× and `v2` decelerates 3739→78 km/s
+(the *healthy* Weaver branch, not the failed-large-clouds collapse band).
 
 ## Symptom
 ```
@@ -69,20 +78,89 @@ layer correctly in sub-steps; it just prints a warning each time. **The answer i
 `simple_cluster`); genuine failures still caught by `sol.success` → `BubbleSolverError`.
 Pinned by `test/test_bubble_lsoda_quiet.py`.
 
+## Robustness of the current (unfloored) treatment — pinned (2026-06-20)
+The "no floor, exact analytic `dR2`" choice is now characterised by
+`test/test_dR2min_magic_number.py` (vs WARPFIELD's hand-tuned `dR2min=1e-7`, bumped
+`1e-14*Mclus+1e-7` for `Mclus>1e7`): (a) `dR2` is the exact `1/dMdt` layer with **no clamp**
+across bubble size × 8–10 decades of `dMdt`; (b) `R2 − dR2` is well-conditioned down to the
+thinnest *physical* layer (`dR2/R2 ~ 3e-11`), clearing the float64 cancellation cliff
+(`~ε/2`) by **~5.5 decades**; (c) production LSODA matches an independent **Radau** reference
+to **~3e-8** on `T`/`dTdr` on two real captured states — a mild cluster *and* a genuinely-stiff
+one captured from **this very config** (`5e9/sfe0.01/n1e2`, `dR2/R2 ~ 1.2e-10`, the flood regime;
+fixture `test/data/dR2_stiff_state_fixture.json` + `conduction_stiff_5e9_sfe001.param`, captured by
+`docs/dev/performance/harness/capture_stiff_dR2_state.py` — whose 40-solve scan also shows the stiff
+config's bubble solves complete cleanly segment after segment). And the **whole** production solver
+(`get_bubbleproperties_pure`) returns a physical result on that state. So the unfloored layer is
+*integrated correctly*, not just quiet. This is the executable form of the §Correctness measurement above.
+
+**Consequence of the floor on the OUTPUTS (2026-06-20).** Running **trinity's own production solver
+twice — once with the exact analytic `dR2`, once with that `dR2` floored to WARPFIELD's `dR2min`**
+(same solver, only the initial condition differs) on the stiff state shows the magic number is not
+benign. The mechanism is exact and verified: the intermediate region (`L3`) is the radial shell over
+which `T` falls from `3e4` to `1e4` K, width `(3e4−1e4)/|dTdr|` with `|dTdr| = 2/5·T/dR2`, so
+**`L3 ∝ dR2`** — confirmed dead-linear by a floor-multiplier scan (`data/dR2_L3_linearity.csv`:
+×10→10.0, ×100→100.0, ×1000→1000.0). For `Mclus=5e7` the floor `dR2min` is `1e-7`–`6e-7` pc vs the
+exact `1.94e-10` pc, i.e. **~516×–3096× too thick**, so `L3` inflates by that factor and **total
+bubble luminosity rises ~2× (base floor) to ~8× (bumped floor)**, while mass flux, temperatures and
+bubble mass move **< 0.3%** and `R1`/`Pb` are unchanged (set before the `dMdt` solve). `L_bubble` is
+the energy sink in `dEb/dt`, so this is a real corruption — and trinity's negligible `L3` is the
+*correct* physics (the conduction front genuinely is ~`1e-10` pc thin), pinned by
+`test_intermediate_zone_luminosity_negligible_for_exact_layer`.
+**Scope/caveat (honest):** this measures **trinity's** sensitivity to the `dR2` IC — the relevant
+question for whether trinity should add a floor. It is *not* a claim about WARPFIELD's own published
+luminosity (WARPFIELD's luminosity code is not in this repo, and its exact `dR2min` units/application
+are assumed: pc, applied as `max(dR2, dR2min)`). The floor activates by 500×–50000× under every
+interpretation tried (base/bumped floor, stellar/gas `Mclus`), and `L3 ∝ dR2` is assumption-free, so
+the qualitative result is robust even if the exact factor is not. Harness
+`docs/dev/performance/harness/floored_vs_unfloored_outputs.py`, data `data/dR2_output_comparison.csv`
++ `data/dR2_L3_linearity.csv`, figure `figs/dR2_output_diff.png`.
+
+Figures (`docs/dev/performance/figs/make_dR2_figures.py`, regenerate from the committed fixtures):
+`dR2_idea.png` (analytic layer vs WARPFIELD's floored+bumped `dR2min` — ~10³× over-thick for massive
+clusters), `dR2_envelope.png` (`dR2/R2` vs cluster mass, the float64 cancellation cliff at `ε/2` with a
+~6-decade margin), `dR2_crosssolver.png` (LSODA vs Radau across the stiff thin layer, residual ~3e-8 vs
+the 1e-5 test bar; data `docs/dev/performance/data/dR2_crosssolver_residual.csv`).
+
+## End-to-end confirmation — the flood regime runs HEALTHY in full (2026-06-20)
+The §Correctness and §Robustness sections measure the *per-call* solve (a captured stiff state).
+This closes the loop with the *whole run*: `docs/dev/performance/conduction_stiff_5e9_sfe001.param`
+(the exact flood config) was run to a 600 s wall-clock cap — **180 segments, `t→1.34 Myr`**, exit via
+`timeout` (124), **not** a crash. Verified from the run log + `dictionary.jsonl`:
+- **Flood silent:** `0` `lsoda-- ... t+h=t` lines across the whole run (the `_quiet_lsoda_fortran`
+  mitigation holds at scale); `0` tracebacks; `0` `ENERGY_COLLAPSED`. (2280 benign `Rejected. min T:
+  29999.99…` boundary-transient logs — the documented no-op penalty `≈1.0`.)
+- **Healthy Weaver branch, not the collapse band:** clean phase 1a→1b handoff at `t≈0.0041 Myr` (84
+  segments in 1a); **`Eb` GROWS** `2.0e8 → 5.8e11` (~2900×); **`v2` DECELERATES** `3739 → 78 km/s`;
+  **`R1 < R2` throughout** (`max R1/R2 = 0.938`, far from the `R1→R2` shell-volume degeneracy). This is
+  the *opposite* of the failed-large-clouds collapse band (`sfe 0.05–0.1`, where `PdV/Lmech > 1` keeps
+  `v2 ~2000+ km/s` and `Eb` collapses → `ENERGY_COLLAPSED`; see `docs/dev/failed-large-clouds/PLAN.md`).
+  So `sfe 0.01` is correctly *outside* that band — the conduction stiffness genuinely is just noise on
+  an otherwise-correct, complete run.
+- **Artifacts (💾):** harness `docs/dev/performance/harness/conduction_stiff_endtoend.py` (carries the
+  healthy-branch assertions as its runnable check — re-runs in <1 s against the committed CSV, no sim
+  needed), trajectory `data/conduction_stiff_5e9_trajectory.csv`, figure `figs/conduction_stiff_endtoend.png`.
+
 ## Deferred — fixing the CAUSE (optional; needs its own gate)
 Each would *reduce the stiffness* rather than hide it, and is **not** correctness-required
 (the result is already correct). Per the CLAUDE.md planning protocol, any of these needs a
 full-run equivalence gate on the stiff edge regimes (this config + the f1edge params) before shipping:
 1. **Floor `dR2`** to a resolvable thickness (e.g. a small multiple of the grid spacing) so the
    initial `dTdr` is finite-steep. Changes the initial condition → must prove the sampled profile
-   and `dMdt` stay within tolerance of the current (verified-correct) result.
+   and `dMdt` stay within tolerance of the current (verified-correct) result. **NB:** the
+   robustness tests above show this floor is *not needed* for any physical cluster — only pursue it
+   as a perf/noise nicety, and gate the IC change against those tests.
 2. **Analytic conduction-layer treatment** — integrate the sub-grid layer in closed form and start
    the ODE just outside it. Most principled, biggest change.
 3. **Input validation / warning** when `dR2` underflows the grid (flag the regime as
    numerically marginal) — cheapest, honest, doesn't change results.
 
 ## Reproduce
-- Config: `mCloud 5e9 / sfe 0.01 / nCore 1e2 / rCloud_max 1e9`.
+- Config: `mCloud 5e9 / sfe 0.01 / nCore 1e2 / rCloud_max 1e9`
+  (`docs/dev/performance/conduction_stiff_5e9_sfe001.param`).
+- Full run (healthy end-to-end, §End-to-end): `timeout 600 python run.py
+  docs/dev/performance/conduction_stiff_5e9_sfe001.param`, then `python
+  docs/dev/performance/harness/conduction_stiff_endtoend.py` to (re)build the trajectory CSV +
+  figure and re-assert the healthy-branch invariants.
 - Detector (counts the `t+h=t` condition directly, since this container does not surface the
   Fortran lines): wrap `scipy.integrate.solve_ivp`/`odeint`, flag ≥12 consecutive RHS calls with
   `|Δr| < 1e-13`. Measured: first bubble solve floods immediately (`stuck_count=522`), shell

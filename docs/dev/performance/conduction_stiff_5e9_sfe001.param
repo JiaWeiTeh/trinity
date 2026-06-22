@@ -1,0 +1,23 @@
+# Documented conduction-stiffness edge (BUBBLE_CONDUCTION_STIFFNESS.md):
+# massive cloud, LOW sfe, low density -> 5e7 Msun cluster, dR2/R2 ~ 3e-11.
+# Low sfe keeps it out of the failed-large-clouds Eb/PdV collapse band (sfe 0.05-0.1).
+model_name      conduction_stiff_5e9
+path2output     /tmp/dR2cap/conduction_stiff_5e9
+
+sfe             0.01
+mCloud          5e9
+nCore           1e2
+PISM            0
+nISM            0.1
+
+dens_profile    densPL
+densPL_alpha    0
+ZCloud          1
+coverFraction   1.0
+rCloud_max      1e9
+
+stop_t          10
+log_level       INFO
+log_console     False
+log_file        False
+include_PHII    True

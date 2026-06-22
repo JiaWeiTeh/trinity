@@ -111,17 +111,6 @@ def get_dudt(age, ndens, T, phi, params_dict):
     # _timer.end()
     # 
     
-    # just a gate for limit
-    # TODO: this in the future has to depend on the file. It should
-    # be set such that it follows the minumu temperature of the cooling file.
-    # The reason im adding this is because the temperature seem to run at 
-    # some very low value (~1e3.91) and the lowest available value of hte coolingf ile that we 
-    # use is only until 3.99. Not sure why though, as the temperature should be 
-    # around 1e7, not 1e4. 
-    
-    if T < 1e4:
-        T = 1e4
-    
     # we take the cutoff at 10e5.5 K.
     # These are all in log-space.
     # cutoff at which temperature above switches to CIE file (nonCIE_Tcutoff);
@@ -131,6 +120,15 @@ def get_dudt(age, ndens, T, phi, params_dict):
     # so it is not computed on the non-CIE / interpolation paths (HOTPATH F2.4).
     nonCIE_Tcutoff, nonCIE_Tmin = _noncie_cutoffs(cooling_nonCIE)
     CIE_Tcutoff = _cie_tcutoff(logT_CIE)
+
+    # Gate: clamp a sub-table temperature up to the cooling file's minimum
+    # tabulated T (nonCIE_Tmin, log10 K) so it degrades to the table edge via the
+    # non-CIE branch below instead of falling through to the raise. Tied to the
+    # file -- replaces a hard-coded 1e4 floor that over-floored the whole valid
+    # [10**nonCIE_Tmin, 1e4) decade. Inert on every profiled regime: the bubble
+    # ODE never sends T below the 3e4 boundary (see docs/dev/magic-numbers/).
+    if np.log10(T) < nonCIE_Tmin:
+        T = 10**nonCIE_Tmin
     # output
     # print(f'{cpr.WARN}Taking net-cooling curve from non-CIE condition at T <= {nonCIE_Tcutoff}K and CIE condition at T >= {CIE_Tcutoff}K.{cpr.END}')
     # if nonCIE_Tcutoff != CIE_Tcutoff:

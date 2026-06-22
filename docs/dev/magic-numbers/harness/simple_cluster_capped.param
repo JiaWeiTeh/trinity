@@ -1,0 +1,11 @@
+# Capped simple_cluster for the T-floor byte-identity gate (audit finding #1).
+# Identical to param/simple_cluster.param but stops early so the new-vs-HEAD
+# full-run dictionary.jsonl comparison finishes in minutes instead of ~2 h.
+# stop_t caps simulation time -> both runs truncate at the SAME t by construction
+# (matched-t, per CLAUDE.md rule 5). The early energy-driven phase exercises the
+# solver + cooling + snapshot I/O end-to-end; T never drops near the floor here
+# (measured min T = 30000 K over full runs), so output must be byte-identical.
+mCloud    1e5
+sfe    0.3
+stop_t    0.5
+model_name    tclamp_byteid
