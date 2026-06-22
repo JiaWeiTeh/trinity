@@ -1,0 +1,4 @@
+# H2 baseline: simple_cluster (alpha=0 homogeneous). mCloud=1e5, sfe=0.3.
+# mCluster = mCloud*sfe = 3e4. rCloud ~ 1.69 pc. nCore = 1e5 cm^-3 (default).
+mCloud         1e5
+sfe            0.3
