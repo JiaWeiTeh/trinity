@@ -32,15 +32,18 @@ FREEZE=1.0 ; STOP=6 ; CYCLE=300 ; PUSH_EVERY=2   # checkpoint each cycle (5min),
 
 mkdir -p "$RUNROOT"
 
-launch () {  # $1=cfg ; start a run, wrapper writes exit code; record pid
-  local cfg="$1" dir="$RUNROOT/$1"
-  mkdir -p "$dir"
-  rm -f "$dir.exit" 2>/dev/null || true
+launch () {  # $1=cfg ; start a run in a FRESH per-attempt dir, wrapper writes exit code
+  # Fresh subdir per attempt: trinity APPENDS to an existing dictionary.jsonl
+  # (dictionary.py: mode="a" if exists), so a relaunch into a reused dir would mix
+  # stale+new rows. A timestamped subdir isolates every attempt; newest_jsonl picks it.
+  local cfg="$1" rundir="$RUNROOT/$1/run_$(date +%s)"
+  mkdir -p "$rundir"
+  rm -f "$RUNROOT/$cfg.exit" 2>/dev/null || true
   ( python "$HARNESS" "$CD/configs/$cfg.param" --solver hybr \
-        --freeze-feedback-at "$FREEZE" --stop-t "$STOP" --run-dir "$dir" \
-        > "$RUNROOT/$cfg.log" 2>&1 ; echo $? > "$dir.exit" ) &
+        --freeze-feedback-at "$FREEZE" --stop-t "$STOP" --run-dir "$rundir" \
+        > "$RUNROOT/$cfg.log" 2>&1 ; echo $? > "$RUNROOT/$cfg.exit" ) &
   echo $! > "$RUNROOT/$cfg.pid"
-  echo "  launched $cfg pid $(cat "$RUNROOT/$cfg.pid")"
+  echo "  launched $cfg pid $(cat "$RUNROOT/$cfg.pid") -> $rundir"
 }
 
 newest_jsonl () { find "$RUNROOT/$1" -name dictionary.jsonl -printf '%T@ %p\n' 2>/dev/null | sort -n | tail -1 | cut -d' ' -f2-; }
