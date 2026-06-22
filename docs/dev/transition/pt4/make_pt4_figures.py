@@ -381,7 +381,6 @@ def fig_r1_firing_preview():
     ax.set_title("R1 shadow: where the transition WOULD hand off\n"
                  "star = blowout (R2>rCloud) · diamond = Eb-peak · grey bar = how long the CURRENT "
                  "trigger keeps it energy-driven (never fires)", fontsize=8.6)
-    import matplotlib.lines as mlines
     leg = [mlines.Line2D([], [], marker="*", color="0.3", ls="", ms=13, label="blowout (R1) — normal clouds"),
            mlines.Line2D([], [], marker="D", color="0.3", ls="", ms=7, label="Eb-peak (R1) — heavy clouds"),
            mlines.Line2D([], [], color="0.5", lw=5, alpha=0.4, label="energy-driven duration (current: never transitions)")]
