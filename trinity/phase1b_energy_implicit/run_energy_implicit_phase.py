@@ -210,6 +210,22 @@ def evaluate_r1_shadow(R2, rCloud, edot_balance, k_blowout=1.0):
     return blowout, ebpeak
 
 
+def r1_transition_decision(transition_trigger, blowout_fired, ebpeak_fired):
+    """Which R1 criterion (if any) should DRIVE the energy->momentum transition,
+    given the `transition_trigger` keyword. The default 'cooling_balance' returns
+    None (R1 stays inert / shadow-only -> byte-identical). Otherwise returns
+    'blowout', 'ebpeak', or None. Blowout takes precedence under 'r1'.
+    docs/dev/transition/pt4/R1_SHADOW_PLAN.md
+    """
+    if transition_trigger == 'cooling_balance':
+        return None
+    if blowout_fired and transition_trigger in ('blowout', 'r1'):
+        return 'blowout'
+    if ebpeak_fired and transition_trigger in ('ebpeak', 'r1'):
+        return 'ebpeak'
+    return None
+
+
 def compute_max_dex_change(params_before: dict, params_after: dict, keys: list) -> float:
     """
     Compute the maximum dex (log10) change across monitored parameters.
@@ -1139,6 +1155,19 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
             shadow_ebpeak_t = t_now
             logger.info(f"R1 shadow: Eb-PEAK (net energy<=0) would fire at t={t_now:.6e} Myr, "
                         f"R2={R2:.4g} pc, Edot_balance={_edot_bal:.3e}")
+
+        # --- R1 transition DRIVE (OPT-IN via the transition_trigger keyword). ---
+        # Default 'cooling_balance' -> r1_transition_decision returns None -> this block
+        # is inert and the run is byte-identical. When the keyword selects a fired
+        # criterion, R1 ends the energy phase HERE; main.py then proceeds to phase 1c
+        # (same hand-off path as cooling_balance, gated only by EndSimulationDirectly).
+        _drive = r1_transition_decision(params['transition_trigger'].value, _blowout, _ebpeak)
+        if _drive is not None:
+            termination_reason = _drive
+            logger.info(f"R1 transition (transition_trigger="
+                        f"{params['transition_trigger'].value!r}): '{_drive}' fired at "
+                        f"t={t_now:.6e} Myr, R2={R2:.4g} pc -> ending energy phase (-> momentum)")
+            break
 
         if Lgain > 0 and (Lgain - Lloss) / Lgain < threshold:
             termination_reason = "cooling_balance"

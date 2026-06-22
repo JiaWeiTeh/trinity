@@ -344,6 +344,7 @@ SPECS: tuple[ParamSpec, ...] = (
     ParamSpec(name='k_B', default='1.380649e-16', info='Boltzmann constant', category='input_constants', unit='erg * K**-1', exclude_from_snapshot=True, run_const=True),
     ParamSpec(name='PISM', default='0', info='ISM Pressure, P/k', category='input_constants', unit='K * cm**-3', exclude_from_snapshot=True, run_const=True),
     ParamSpec(name='phaseSwitch_LlossLgain', default='0.05', info='When (Lgain-Lloss)/Lgain approaches this value, begin momentum-driving phase.', category='input_solver', unit=None, exclude_from_snapshot=True, run_const=True),
+    ParamSpec(name='transition_trigger', default='cooling_balance', info="Energy->momentum transition criterion. 'cooling_balance' (default = current behavior); opt-in alternatives: 'blowout' (R2>rCloud), 'ebpeak' (net energy Edot_from_balance<=0), 'r1' (blowout or ebpeak, whichever first). Non-default values DRIVE the R1 transition (docs/dev/transition/pt4/R1_SHADOW_PLAN.md).", category='input_solver', unit=None, exclude_from_snapshot=True, run_const=True),
     ParamSpec(name='cool_alpha', default='0.6', info='Cooling related values. alpha = v2*t_now/R2', category='input_solver', unit=None),
     ParamSpec(name='cool_beta', default='0.8', info='Cooling related values. beta = - dPb/dt.', category='input_solver', unit=None),
     ParamSpec(name='cool_delta', default='-6/35', info='Cooling related values. delta = dT/dt.', category='input_solver', unit=None),

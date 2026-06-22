@@ -278,6 +278,11 @@ PISM    0
 # INFO: When (Lgain-Lloss)/Lgain approaches this value, begin momentum-driving phase.
 phaseSwitch_LlossLgain    0.05
 
+# INFO: Energy->momentum transition criterion. 'cooling_balance' (default = current
+# behavior); opt-in alternatives 'blowout' (R2>rCloud), 'ebpeak' (Edot_from_balance<=0),
+# 'r1' (either, whichever first). Non-default values drive the R1 transition.
+transition_trigger    cooling_balance
+
 # INFO: Cooling related values. alpha = v2*t_now/R2
 cool_alpha    0.6
 
