@@ -114,6 +114,11 @@ STORYLINES = [
                 "src": DEV / "transition/cleanroom/transition_report.html",
             },
             {
+                "title": "Re-examining the verdict — bug, fake boundary, or a real exit? (part 4)",
+                "type": "html",
+                "src": DEV / "transition/pt4/pt4_transition_report.html",
+            },
+            {
                 "title": "Postscript — the superseded pshadow / P0 proposal",
                 "type": "inline",
                 "unnumbered": True,
@@ -144,6 +149,11 @@ STORYLINES = [
                 "title": "Failed large clouds — diagnosis & fix",
                 "type": "html",
                 "src": DEV / "failed-large-clouds/insights.html",
+            },
+            {
+                "title": "Heavy clouds, part 4 — can we keep them alive?",
+                "type": "html",
+                "src": DEV / "transition/pt4/pt4_heavy_report.html",
             },
         ],
     },
