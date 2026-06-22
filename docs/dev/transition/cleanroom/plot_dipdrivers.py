@@ -162,6 +162,7 @@ def main():
     ax3.set_ylabel(r"$|L_{\rm mech}|$:  wind (—),  SN (- -)")
     ax3.set_xlabel("t  [Myr]")
     ax3.set_xscale("log")
+    ax3.set_xlim(left=1e-3)  # start the shared time axis at 1e-3 Myr (per request)
 
     # One shared config legend above the top panel (does not cover data).
     handles, labels = ax1.get_legend_handles_labels()
