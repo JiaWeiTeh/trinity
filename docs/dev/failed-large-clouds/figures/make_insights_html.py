@@ -132,7 +132,7 @@ budget drains <span class="nowrap">$E_b$</span>? The energy-phase ODE
 $$\frac{dE_b}{dt}=\underbrace{L_{\rm mech}}_{\text{wind+SN in}}
 -\underbrace{L_{\rm cool}}_{\text{radiative}}
 -\underbrace{4\pi R_2^{2}\,P_b\,v_2}_{\text{PdV work on the shell}}
--\underbrace{L_{\rm leak}}_{\text{conduction}}.$$
+-\underbrace{L_{\rm leak}}_{\text{cover-fraction leak (}C_f<1\text{)}}.$$
 <p>The first hypothesis was <em>catastrophic cooling</em>. Decomposing the budget from the run snapshots
 falsified it: cooling is <strong>~1%</strong> of the mechanical input
 (<span class="nowrap">$L_{\rm cool}/L_{\rm mech}\approx0.01$</span>), while the <strong>PdV expansion work</strong>
