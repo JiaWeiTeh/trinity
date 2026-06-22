@@ -6,8 +6,11 @@ truth table is the contract.
 """
 import numpy as np
 
+import pytest
+
 from trinity.phase1b_energy_implicit.run_energy_implicit_phase import (
     evaluate_r1_shadow,
+    parse_transition_triggers,
     r1_transition_decision,
 )
 
@@ -46,26 +49,47 @@ def test_both_can_fire_together():
     assert evaluate_r1_shadow(R2=11.0, rCloud=10.0, edot_balance=-1.0) == (True, True)
 
 
-# --- r1_transition_decision: which criterion DRIVES, given the keyword ---
+# --- parse_transition_triggers: comma-separated SET, 'r1' alias, validation ---
 
-def test_default_keyword_never_drives():
-    # 'cooling_balance' (default) keeps R1 inert even if both criteria fired
-    assert r1_transition_decision("cooling_balance", True, True) is None
-
-
-def test_blowout_keyword_drives_only_on_blowout():
-    assert r1_transition_decision("blowout", True, False) == "blowout"
-    assert r1_transition_decision("blowout", False, True) is None
-    assert r1_transition_decision("blowout", False, False) is None
+def test_parse_default_is_cooling_balance_only():
+    assert parse_transition_triggers("cooling_balance") == frozenset({"cooling_balance"})
 
 
-def test_ebpeak_keyword_drives_only_on_ebpeak():
-    assert r1_transition_decision("ebpeak", False, True) == "ebpeak"
-    assert r1_transition_decision("ebpeak", True, False) is None
+def test_parse_multiple_comma_separated():
+    assert parse_transition_triggers("cooling_balance,blowout") == frozenset(
+        {"cooling_balance", "blowout"})
+    assert parse_transition_triggers(" blowout , ebpeak ") == frozenset({"blowout", "ebpeak"})
 
 
-def test_r1_keyword_drives_on_either_blowout_precedence():
-    assert r1_transition_decision("r1", True, True) == "blowout"
-    assert r1_transition_decision("r1", False, True) == "ebpeak"
-    assert r1_transition_decision("r1", True, False) == "blowout"
-    assert r1_transition_decision("r1", False, False) is None
+def test_parse_r1_alias_expands():
+    assert parse_transition_triggers("r1") == frozenset({"blowout", "ebpeak"})
+    assert parse_transition_triggers("cooling_balance,r1") == frozenset(
+        {"cooling_balance", "blowout", "ebpeak"})
+
+
+def test_parse_unknown_token_raises():
+    with pytest.raises(ValueError):
+        parse_transition_triggers("blowowt")
+    with pytest.raises(ValueError):
+        parse_transition_triggers("cooling_balance,nonsense")
+
+
+# --- r1_transition_decision: which R1 criterion DRIVES, given the active SET ---
+
+def test_decision_default_set_never_drives_r1():
+    # cooling_balance-only set => R1 (blowout/ebpeak) never drives (cooling is inline)
+    s = parse_transition_triggers("cooling_balance")
+    assert r1_transition_decision(s, True, True) is None
+
+
+def test_decision_blowout_only_on_blowout():
+    s = parse_transition_triggers("blowout")
+    assert r1_transition_decision(s, True, False) == "blowout"
+    assert r1_transition_decision(s, False, True) is None
+
+
+def test_decision_combined_set_blowout_precedence():
+    s = parse_transition_triggers("cooling_balance,blowout,ebpeak")
+    assert r1_transition_decision(s, True, True) == "blowout"
+    assert r1_transition_decision(s, False, True) == "ebpeak"
+    assert r1_transition_decision(s, False, False) is None

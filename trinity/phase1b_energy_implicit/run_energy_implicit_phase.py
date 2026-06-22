@@ -210,18 +210,42 @@ def evaluate_r1_shadow(R2, rCloud, edot_balance, k_blowout=1.0):
     return blowout, ebpeak
 
 
-def r1_transition_decision(transition_trigger, blowout_fired, ebpeak_fired):
-    """Which R1 criterion (if any) should DRIVE the energy->momentum transition,
-    given the `transition_trigger` keyword. The default 'cooling_balance' returns
-    None (R1 stays inert / shadow-only -> byte-identical). Otherwise returns
-    'blowout', 'ebpeak', or None. Blowout takes precedence under 'r1'.
+_VALID_TRIGGERS = frozenset({'cooling_balance', 'blowout', 'ebpeak'})
+
+
+def parse_transition_triggers(transition_trigger):
+    """Parse the `transition_trigger` param into a SET of active criteria.
+
+    The param is a comma-separated string so one run can enable MORE THAN ONE
+    criterion (the transition then fires on whichever occurs first), e.g.
+    'cooling_balance,blowout'. 'r1' is an alias for 'blowout,ebpeak'. (A list
+    `[a, b]` is NOT used because that is sweep syntax in a .param.) Validates at
+    this trust boundary: an unknown token raises ValueError.
     docs/dev/transition/pt4/R1_SHADOW_PLAN.md
     """
-    if transition_trigger == 'cooling_balance':
-        return None
-    if blowout_fired and transition_trigger in ('blowout', 'r1'):
+    parts = {p.strip() for p in str(transition_trigger).split(',') if p.strip()}
+    if 'r1' in parts:
+        parts.discard('r1')
+        parts |= {'blowout', 'ebpeak'}
+    unknown = parts - _VALID_TRIGGERS
+    if unknown:
+        raise ValueError(
+            f"transition_trigger has unknown token(s) {sorted(unknown)}; "
+            f"allowed: {sorted(_VALID_TRIGGERS)} (or 'r1'=blowout+ebpeak), "
+            f"comma-separated for multiple.")
+    return frozenset(parts)
+
+
+def r1_transition_decision(active_triggers, blowout_fired, ebpeak_fired):
+    """Which R1 criterion (if any) should DRIVE the energy->momentum transition,
+    given the SET of active triggers (from parse_transition_triggers). Returns
+    'blowout', 'ebpeak', or None (cooling_balance is handled by the inline ratio
+    check, gated on its membership in the set). Blowout takes precedence when both
+    are active and fired in the same segment. docs/dev/transition/pt4/R1_SHADOW_PLAN.md
+    """
+    if blowout_fired and 'blowout' in active_triggers:
         return 'blowout'
-    if ebpeak_fired and transition_trigger in ('ebpeak', 'r1'):
+    if ebpeak_fired and 'ebpeak' in active_triggers:
         return 'ebpeak'
     return None
 
@@ -663,6 +687,9 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
     shadow_rows = []
     shadow_blowout_t = None
     shadow_ebpeak_t = None
+    # Active transition criteria (parsed + validated once; default {'cooling_balance'}
+    # reproduces current behavior exactly). Comma-separated set allows >1 trigger.
+    active_triggers = parse_transition_triggers(params['transition_trigger'].value)
 
     # Adaptive time stepping
     dt_segment = DT_SEGMENT_INIT
@@ -1157,11 +1184,12 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
                         f"R2={R2:.4g} pc, Edot_balance={_edot_bal:.3e}")
 
         # --- R1 transition DRIVE (OPT-IN via the transition_trigger keyword). ---
-        # Default 'cooling_balance' -> r1_transition_decision returns None -> this block
-        # is inert and the run is byte-identical. When the keyword selects a fired
-        # criterion, R1 ends the energy phase HERE; main.py then proceeds to phase 1c
-        # (same hand-off path as cooling_balance, gated only by EndSimulationDirectly).
-        _drive = r1_transition_decision(params['transition_trigger'].value, _blowout, _ebpeak)
+        # active_triggers defaults to {'cooling_balance'} -> r1_transition_decision
+        # returns None here AND the cooling check below stays active -> byte-identical.
+        # A non-default set (e.g. {'cooling_balance','blowout'}) makes the transition
+        # fire on whichever listed criterion occurs first; main.py then proceeds to
+        # phase 1c (same hand-off path, gated only by EndSimulationDirectly).
+        _drive = r1_transition_decision(active_triggers, _blowout, _ebpeak)
         if _drive is not None:
             termination_reason = _drive
             logger.info(f"R1 transition (transition_trigger="
@@ -1169,7 +1197,7 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
                         f"t={t_now:.6e} Myr, R2={R2:.4g} pc -> ending energy phase (-> momentum)")
             break
 
-        if Lgain > 0 and (Lgain - Lloss) / Lgain < threshold:
+        if 'cooling_balance' in active_triggers and Lgain > 0 and (Lgain - Lloss) / Lgain < threshold:
             termination_reason = "cooling_balance"
             logger.info(f"Cooling balance reached: Lloss/Lgain ratio below {threshold}")
             break
