@@ -1,0 +1,2 @@
+config,variant,t_window,kappa,crashed,crash_phase,crash_excpt,end_reason,end_code,reached_phase,final_t,final_R2,final_v2,final_Eb,E0,min_Eb_seen,cap_activated,n1a,n1b,max_pdv_ratio,max_pdv_ratio_in_window,max_pdv_ratio_after,survived_past_window,self_sustained,final_Eb_growth,n_rows,runtime_s
+fail_helix,PDVCAP,0.003,0.9,False,,SystemExit:143,,,1b,0.010251413407849283,17.120638300689002,942.0078072602123,9810948586.776514,2254237304.7435155,2254237304.7435155,True,515,54,2.3575,2.3575,1.2128,True,True,799596173.7562008,83,479.6
