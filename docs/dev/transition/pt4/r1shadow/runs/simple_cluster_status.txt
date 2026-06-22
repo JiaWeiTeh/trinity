@@ -1,0 +1,7 @@
+config=simple_cluster
+param=docs/dev/transition/cleanroom/configs/simple_cluster.param
+stop_t=0.2
+timeout_s=900
+exit_code=0
+status=completed
+runtime_s=893

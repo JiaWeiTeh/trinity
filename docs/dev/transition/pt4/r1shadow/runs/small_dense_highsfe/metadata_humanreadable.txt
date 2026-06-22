@@ -1,0 +1,42 @@
+============================================================
+TRINITY run: small_dense_highsfe
+============================================================
+Status   : ✓ SUCCESS  (stopping_time)
+Detail   : Stopping time reached
+At       : 2026-06-22 18:46:43
+
+------------------------------------------------------------
+Cloud
+------------------------------------------------------------
+  mCloud        : 5.00e+03  Msun
+  nCore         : 1.00e+06  cm⁻³
+  rCloud        : 0.325  pc
+  rCore         : 0.100  pc
+  dens_profile  : densPL
+  densPL_alpha  : 0.00
+  nISM          : 1.00e+00  cm⁻³
+  sfe           : 0.5000
+  mCluster      : 5.00e+03  Msun
+  ZCloud        : 1.00  Z☉
+
+------------------------------------------------------------
+Final state  [t = 0.050 Myr]
+------------------------------------------------------------
+  R2            : 0.905 pc
+  v2            : 21.982 km/s    (2.248e+01 pc/Myr)
+  shell_mass    : 5.000e+03 Msun
+  shell_nMax    : 7.858e+06 cm⁻³    (2.309e+62 pc⁻³)
+  Pb            : 8.218e+08 K cm⁻³ (P/k_B)    (1.754e+05 internal)
+  Eb            : 1.546e+49 erg    (8.133e+05 internal)
+  T0            : 3.548e+06 K
+  bubble_Tavg   : 9.110e+06 K
+  phase         : momentum
+  collapsed     : no
+  dissolved     : no
+
+------------------------------------------------------------
+Termination diagnostics
+------------------------------------------------------------
+  reason        : Normal exit / atexit
+  (no flagged changes, no NaN/Inf, all sanity checks passed)
+============================================================

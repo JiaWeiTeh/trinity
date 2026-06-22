@@ -1,0 +1,2 @@
+config,variant,crashed,crash_phase,crash_excpt,end_reason,end_code,reached_phase,final_t,final_R2,final_v2,final_Eb,E0,floor,floor_activated,act_drive,act_state,min_Eb_seen,trigger_fired,ratio_min,n_rows,runtime_s
+fail_helix,V0,False,,,Energy-driven bubble collapsed: bubble solve degenerate as Eb -> 0 (energy-driven phase no longer self-sustains),51,1a,0.00255003588748582,7.031161284336838,2002.482596315607,0.005085287954767937,2254237304.7435155,0.001,False,0,0,,False,,57,60.2
