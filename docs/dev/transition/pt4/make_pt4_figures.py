@@ -340,6 +340,55 @@ def fig_h4_control():
     _save(fig, "h4_control_vs_collapse")
 
 
+def fig_r1_firing_preview():
+    """R1 shadow PREVIEW (from committed data; offline criteria == the in-code shadow,
+    proven by the byte-identical gate). Per config: where R1 would hand off
+    (blowout R2>rCloud = star; Eb-peak = diamond) vs the CURRENT trigger, which never
+    fires (the bubble stays energy-driven the whole bar -> the grey duration)."""
+    import numpy as np
+    rows = []  # (name, t0, t1, blowout_t, ebpeak_t, color)
+    for i, name in enumerate(CONFIGS):  # 6 normal, from c0 data
+        d = load(CLEAN / f"c0_{name}_h0.csv", ["R2", "Eb"], drop_momentum=False)
+        if not d or name not in RCLOUD:
+            continue
+        t = d["t_now"]; R2 = d["R2"]; Eb = d["Eb"]; rc = RCLOUD[name]
+        bt = next((t[k] for k in range(len(R2)) if R2[k] > rc), None)
+        imax = max(range(len(Eb)), key=lambda k: Eb[k])
+        et = t[imax] if imax < len(Eb) - 3 else None  # interior peak only
+        rows.append((name, t[0], t[-1], bt, et, WONG[i % len(WONG)]))
+    for j, name in enumerate(["fail_repro", "fail_helix"]):  # heavy, from h4 traj
+        d = load(HERE / "traj" / f"h4_traj_{name}_V0.csv", ["R2", "Eb"], drop_momentum=False)
+        if not d:
+            continue
+        t = d["t_now"]; Eb = d["Eb"]
+        imax = max(range(len(Eb)), key=lambda k: Eb[k])
+        et = t[imax] if imax < len(Eb) - 1 else t[imax]
+        rows.append((name + " (5e9)", t[0], t[-1], None, et, "0.35"))
+
+    fig, ax = plt.subplots(figsize=(8.4, 5.0))
+    for y, (name, t0, t1, bt, et, c) in enumerate(rows):
+        ax.plot([t0, t1], [y, y], color=c, lw=5, alpha=0.35, solid_capstyle="round")
+        if bt is not None:
+            ax.scatter([bt], [y], marker="*", s=220, color=c, edgecolor="0.15",
+                       linewidth=0.7, zorder=6)
+        if et is not None:
+            ax.scatter([et], [y], marker="D", s=70, color=c, edgecolor="0.15",
+                       linewidth=0.7, zorder=6)
+    ax.set_yticks(range(len(rows)))
+    ax.set_yticklabels([r[0] for r in rows], fontsize=8)
+    ax.set_xscale("log"); ax.set_xlabel("time  [Myr]")
+    ax.set_ylim(-0.6, len(rows) - 0.4)
+    ax.set_title("R1 shadow: where the transition WOULD hand off\n"
+                 "star = blowout (R2>rCloud) · diamond = Eb-peak · grey bar = how long the CURRENT "
+                 "trigger keeps it energy-driven (never fires)", fontsize=8.6)
+    import matplotlib.lines as mlines
+    leg = [mlines.Line2D([], [], marker="*", color="0.3", ls="", ms=13, label="blowout (R1) — normal clouds"),
+           mlines.Line2D([], [], marker="D", color="0.3", ls="", ms=7, label="Eb-peak (R1) — heavy clouds"),
+           mlines.Line2D([], [], color="0.5", lw=5, alpha=0.4, label="energy-driven duration (current: never transitions)")]
+    ax.legend(handles=leg, fontsize=7.5, loc="upper left", framealpha=0.95)
+    _save(fig, "r1_firing_preview")
+
+
 def _save(fig, stem):
     OUT.mkdir(exist_ok=True)
     fig.tight_layout()
