@@ -1,0 +1,4 @@
+config,variant,crashed,crash_phase,crash_excpt,end_reason,end_code,reached_phase,final_t,final_R2,final_v2,final_Eb,E0,floor,floor_activated,act_drive,act_state,min_Eb_seen,trigger_fired,ratio_min,n_rows,runtime_s
+simple_cluster,V0,False,,,Stopping time reached,1,1b,0.005,0.3708657862593461,37.2134944121833,1153007.3446452585,93.70688505918945,0.001,False,0,0,,False,0.6661747039405732,104,189.4
+large_diffuse_lowsfe,V0,False,,,Stopping time reached,1,1b,0.005,1.8821216845485769,219.24018117983155,4270939.745192224,18033.898437948134,0.001,False,0,0,,False,0.9682049430137688,105,137.2
+small_dense_highsfe,V0,False,,,Stopping time reached,1,1b,0.005,0.2615105495845283,13.872001271665619,223112.83813740307,2.0162511403289645,0.001,False,0,0,,False,0.4964809613102876,103,218.3
